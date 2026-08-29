@@ -1,0 +1,92 @@
+diff --git a/internal/plugin/runtime/host_sandbox.go b/internal/plugin/runtime/host_sandbox.go
+index e963932..77dae11 100644
+--- a/internal/plugin/runtime/host_sandbox.go
++++ b/internal/plugin/runtime/host_sandbox.go
+@@ -153,6 +153,10 @@ type HostSandboxLauncher struct {
+ 	Secrets        SecretInjector
+ 	Runner         SandboxedProcessRunner
+ 	RefreshTrigger LeaseRefreshTrigger
++	// Now is the host operational clock used by lease supervision. Production
++	// hosts normally leave it nil (time.Now); tests and deterministic hosts may
++	// inject the same clock used by their Resource Broker.
++	Now func() time.Time
+ }
+ 
+ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req Request) (Response, error) {
+@@ -220,7 +224,7 @@ func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req R
+ 		if lc, ok := wrapped.base.(*leaseController); ok {
+ 			recorder = lc
+ 		}
+-		supervisor := &leaseSupervisor{controller: wrapped, recorder: recorder, policy: spec.LeasePolicy, trigger: h.RefreshTrigger}
++		supervisor := &leaseSupervisor{controller: wrapped, recorder: recorder, policy: spec.LeasePolicy, trigger: h.RefreshTrigger, now: h.Now}
+ 		supervisorErrCh = make(chan error, 1)
+ 		go func() {
+ 			err := supervisor.run(invokeCtx)
+diff --git a/internal/plugin/runtime/host_sandbox_test.go b/internal/plugin/runtime/host_sandbox_test.go
+index 8df1cea..0faff3c 100644
+--- a/internal/plugin/runtime/host_sandbox_test.go
++++ b/internal/plugin/runtime/host_sandbox_test.go
+@@ -211,7 +211,7 @@ func TestLiveSecretRefreshIsExplicitAndAppliedBySandbox(t *testing.T) {
+ 	broker := &resource.AdapterBroker{Adapters: []resource.Adapter{adapter}, TTL: 10 * time.Minute, Now: func() time.Time { return now }}
+ 	sec := &refreshSecretInjector{}
+ 	runner := &refreshRunner{}
+-	host := &pruntime.HostSandboxLauncher{Network: &netEnforcer{}, Filesystem: &fsEnforcer{}, Secrets: sec, Runner: runner}
++	host := &pruntime.HostSandboxLauncher{Network: &netEnforcer{}, Filesystem: &fsEnforcer{}, Secrets: sec, Runner: runner, Now: func() time.Time { return now }}
+ 	inv, err := (pruntime.Registry{Sandboxes: host, Resources: broker}).InvokeWithProvenance(context.Background(), plan, plugin.CapabilityDeploymentExecutor, cid("migration.refresh"), "execute", "refresh-test", map[string]string{"x": "y"})
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -239,7 +239,7 @@ func TestLiveRefreshEnforcementFailureIsFailClosedEvenIfPluginIgnoresIt(t *testi
+ 	broker := &resource.AdapterBroker{Adapters: []resource.Adapter{&resource.StaticAdapter{ResourceKind: permission.KindSecret, Entries: []resource.StaticResource{{ResourceID: binding.ResourceID, SecretHandle: "vault://v1"}}, RefreshSuffix: "#v"}}, TTL: 10 * time.Minute, Now: func() time.Time { return now }}
+ 	sec := &refreshSecretInjector{fail: true}
+ 	runner := &refreshRunner{}
+-	host := &pruntime.HostSandboxLauncher{Network: &netEnforcer{}, Filesystem: &fsEnforcer{}, Secrets: sec, Runner: runner}
++	host := &pruntime.HostSandboxLauncher{Network: &netEnforcer{}, Filesystem: &fsEnforcer{}, Secrets: sec, Runner: runner, Now: func() time.Time { return now }}
+ 	_, err := (pruntime.Registry{Sandboxes: host, Resources: broker}).InvokeWithProvenance(context.Background(), plan, plugin.CapabilityDeploymentExecutor, cid("migration.refresh.fail"), "execute", "refresh-fail", nil)
+ 	if err == nil || !runner.ignored {
+ 		t.Fatalf("expected fail-closed refresh error; ignored=%v err=%v", runner.ignored, err)
+diff --git a/internal/plugin/runtime/supervisor.go b/internal/plugin/runtime/supervisor.go
+index ca653f2..9521857 100644
+--- a/internal/plugin/runtime/supervisor.go
++++ b/internal/plugin/runtime/supervisor.go
+@@ -22,6 +22,14 @@ type leaseSupervisor struct {
+ 	recorder   *leaseController
+ 	policy     resource.LeasePolicy
+ 	trigger    LeaseRefreshTrigger
++	now        func() time.Time
++}
++
++func (s *leaseSupervisor) currentTime() time.Time {
++	if s != nil && s.now != nil {
++		return s.now()
++	}
++	return time.Now()
+ }
+ 
+ func (s *leaseSupervisor) record(state resource.SupervisionState, message string) {
+@@ -61,14 +69,14 @@ func (s *leaseSupervisor) run(ctx context.Context) error {
+ 			s.record(resource.SupervisionRenewalDeadlineMissed, err.Error())
+ 			return err
+ 		}
+-		now := time.Now()
++		now := s.currentTime()
+ 		if !now.Before(expiry) {
+ 			err := fmt.Errorf("resource lease %s renewal deadline missed at %s", current.ID, expiry.Format(time.RFC3339Nano))
+ 			s.record(resource.SupervisionRenewalDeadlineMissed, err.Error())
+ 			return err
+ 		}
+ 		renewAt := expiry.Add(-policy.RenewBeforeDuration())
+-		wait := time.Until(renewAt)
++		wait := renewAt.Sub(now)
+ 		if wait < 0 {
+ 			wait = 0
+ 		}
+@@ -131,7 +139,8 @@ func (s *leaseSupervisor) run(ctx context.Context) error {
+ 			renewed, err := s.controller.Renew(ctx)
+ 			if err != nil {
+ 				s.record(resource.SupervisionRenewalFailed, err.Error())
+-				if time.Now().After(expiry) || time.Now().Equal(expiry) {
++				now := s.currentTime()
++				if now.After(expiry) || now.Equal(expiry) {
+ 					s.record(resource.SupervisionRenewalDeadlineMissed, "renewal did not complete before lease expiry")
+ 				}
+ 				return fmt.Errorf("supervised resource lease renewal failed: %w", err)
