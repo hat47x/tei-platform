@@ -14,6 +14,7 @@ import (
 	"tei/internal/plugin"
 	"tei/internal/releaseplan"
 	"tei/internal/semantic"
+	"tei/internal/subject"
 )
 
 type Severity string
@@ -24,9 +25,10 @@ const (
 )
 
 type Diagnostic struct {
-	Code     string
-	Severity Severity
-	Message  string
+	Code     string           `json:"code"`
+	Severity Severity         `json:"severity"`
+	Message  string           `json:"message"`
+	Subject  *subject.Subject `json:"subject,omitempty"`
 }
 
 func Validate(w ir.World) []Diagnostic {
@@ -44,7 +46,7 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_VERSION", "plugin %s: %v", p.ID, err))
 		}
 		if !p.Runtime.Kind.Valid() {
-			out = append(out, errd("INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
+			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
 		}
 		if p.Runtime.Kind == plugin.RuntimeProcess && strings.TrimSpace(p.Runtime.Command) == "" {
 			out = append(out, errd("PLUGIN_PROCESS_COMMAND_REQUIRED", "plugin %s process runtime requires a command", p.ID))
@@ -150,7 +152,7 @@ func Validate(w ir.World) []Diagnostic {
 		semanticNamespaces[ns.ID] = ns
 		for _, typ := range ns.Types {
 			if !strings.HasPrefix(string(typ.ID), string(ns.ID)+".") {
-				out = append(out, errd("SEMANTIC_TYPE_NAMESPACE_MISMATCH", "type %s is declared in semantic namespace %s", typ.ID, ns.ID))
+				out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_NAMESPACE_MISMATCH", "type %s is declared in semantic namespace %s", typ.ID, ns.ID))
 			}
 			if !typ.Kind.Valid() {
 				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
@@ -161,13 +163,13 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		for _, d := range ns.Data {
 			if !strings.HasPrefix(string(d.ID), string(ns.ID)+".") {
-				out = append(out, errd("SEMANTIC_DATA_NAMESPACE_MISMATCH", "data %s is declared in semantic namespace %s", d.ID, ns.ID))
+				out = append(out, errFor(subject.Subject{Kind: "semantic-data", ID: string(d.ID)}, "SEMANTIC_DATA_NAMESPACE_MISMATCH", "data %s is declared in semantic namespace %s", d.ID, ns.ID))
 			}
 			addSemanticElement(d.ID, "data")
 			semanticData[d.ID] = struct{}{}
 			for _, a := range d.Attributes {
 				if !strings.HasPrefix(string(a.ID), string(d.ID)+".") {
-					out = append(out, errd("SEMANTIC_ATTRIBUTE_PARENT_MISMATCH", "attribute %s is declared under data %s", a.ID, d.ID))
+					out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_PARENT_MISMATCH", "attribute %s is declared under data %s", a.ID, d.ID))
 				}
 				addSemanticElement(a.ID, "attribute")
 				semanticAttributes = append(semanticAttributes, a)
@@ -178,7 +180,7 @@ func Validate(w ir.World) []Diagnostic {
 					out = append(out, errd("SEMANTIC_RELATION_PARENT_MISMATCH", "relation %s is declared under data %s", r.ID, d.ID))
 				}
 				if !r.Cardinality.Valid() {
-					out = append(out, errd("INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q", r.ID, r.Cardinality))
+					out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "INVALID_SEMANTIC_RELATION_CARDINALITY", "relation %s has invalid cardinality %q", r.ID, r.Cardinality))
 				}
 				addSemanticElement(r.ID, "relation")
 				semanticRelations = append(semanticRelations, r)
@@ -267,7 +269,7 @@ func Validate(w ir.World) []Diagnostic {
 
 	for _, a := range w.Applications {
 		if _, exists := apps[a.ID]; exists {
-			out = append(out, errd("DUPLICATE_APPLICATION", "duplicate application %s", a.ID))
+			out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "DUPLICATE_APPLICATION", "duplicate application %s", a.ID))
 		}
 		apps[a.ID] = a
 		seenAlias := map[core.LocalName]struct{}{}
@@ -277,7 +279,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[r.Alias] = struct{}{}
 			if !r.Access.Valid() {
-				out = append(out, errd("INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q", a.ID, r.Alias, r.Access))
+				out = append(out, errFor(subject.Subject{Kind: "application", ID: string(a.ID)}, "INVALID_DATABASE_ACCESS", "application %s datasource %s has invalid access mode %q", a.ID, r.Alias, r.Access))
 			}
 		}
 	}
@@ -296,7 +298,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		dbs[d.ID] = d
 		if !d.Ownership.Valid() {
-			out = append(out, errd("INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q", d.ID, d.Ownership))
+			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q", d.ID, d.Ownership))
 		}
 		semanticUseSet := map[core.CanonicalID]struct{}{}
 		for _, ns := range d.SemanticUses {
@@ -312,7 +314,7 @@ func Validate(w ir.World) []Diagnostic {
 			contracts[c.ID] = c
 			contractOwners[c.ID] = d.ID
 			if !strings.HasPrefix(string(c.ID), string(d.ID)+".") {
-				out = append(out, errd("DATABASE_CONTRACT_NAMESPACE_MISMATCH", "contract %s is declared by database %s but is outside its namespace", c.ID, d.ID))
+				out = append(out, errFor(subject.Subject{Kind: "database-contract", ID: string(c.ID)}, "DATABASE_CONTRACT_NAMESPACE_MISMATCH", "contract %s is declared by database %s but is outside its namespace", c.ID, d.ID))
 			}
 			if c.Version.Major < 1 || c.Version.Minor < 0 {
 				out = append(out, errd("INVALID_DATABASE_CONTRACT_VERSION", "contract %s has invalid version %d.%d", c.ID, c.Version.Major, c.Version.Minor))
@@ -1079,6 +1081,14 @@ func errd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Error, Message: fmt.Sprintf(format, args...)}
 }
 
+func errFor(s subject.Subject, code, format string, args ...any) Diagnostic {
+	return Diagnostic{Code: code, Severity: Error, Message: fmt.Sprintf(format, args...), Subject: &s}
+}
+
 func warnd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...)}
+}
+
+func warnFor(s subject.Subject, code, format string, args ...any) Diagnostic {
+	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...), Subject: &s}
 }
