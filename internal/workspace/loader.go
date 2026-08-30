@@ -477,7 +477,7 @@ func relPath(root, path string) string {
 	}
 	return filepath.ToSlash(x)
 }
-func sourceErr(path string, err error) error { return fmt.Errorf("%s: %w", path, err) }
+func sourceErr(path string, err error) error { return &SourceError{Path: path, Err: err} }
 
 func Normalize(w *ir.World) {
 	for i := range w.Plugins {
