@@ -180,6 +180,14 @@ func main() {
 		os.Exit(2)
 	}
 
+	if command == "validate" && *workspacePath != "" {
+		if validateWorkspace(*workspacePath) {
+			os.Exit(1)
+		}
+		fmt.Println("ok")
+		return
+	}
+
 	w, err := loadWorld(*worldPath, *workspacePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -911,6 +919,45 @@ func loadObservations(analysisPaths, schemaPaths, planPaths []string) ([]analyze
 		plans = append(plans, p)
 	}
 	return analyses, snapshots, plans, nil
+}
+
+func validateWorkspace(root string) bool {
+	r, err := workspace.Load(root)
+	if err != nil {
+		if diagnostic, ok := workspace.SourceDiagnosticFromError(root, err); ok {
+			fmt.Println(formatSourceDiagnostic(diagnostic))
+			return true
+		}
+		fmt.Fprintln(os.Stderr, err)
+		return true
+	}
+	idx, err := workspace.BuildSourceIndex(root, r)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return true
+	}
+	projected := workspace.ProjectDiagnostics(validation.Validate(r.World), idx)
+	hasErr := false
+	for _, diagnostic := range projected {
+		fmt.Println(formatProjectedDiagnostic(diagnostic))
+		if diagnostic.Diagnostic.Severity == validation.Error {
+			hasErr = true
+		}
+	}
+	return hasErr
+}
+
+func formatProjectedDiagnostic(projected workspace.ProjectedDiagnostic) string {
+	diagnostic := projected.Diagnostic
+	if len(projected.Sources) == 0 {
+		return fmt.Sprintf("%s\t%s\t%s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+	}
+	source := projected.Sources[0]
+	return fmt.Sprintf("%s:%d:%d\t%s\t%s\t%s", source.ArtifactPath, source.Range.Start.Line, source.Range.Start.Column, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+}
+
+func formatSourceDiagnostic(diagnostic workspace.SourceDiagnostic) string {
+	return fmt.Sprintf("%s:%d:%d\t%s\t%s\t%s", diagnostic.Source.ArtifactPath, diagnostic.Source.Range.Start.Line, diagnostic.Source.Range.Start.Column, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 }
 
 func validateOrExit(w ir.World) {
