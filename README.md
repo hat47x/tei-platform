@@ -4,8 +4,8 @@ TEI is an experimental low-code platform architecture for building and operating
 
 日本語では、**業務の意味を先に定義し、実装・データベース・配備先を必要以上に一体化しないローコード基盤**を目指しています。生成AIを大量のコードを吐く装置としてだけ使うのではなく、既存の意味部品・契約・制約・実現方式を理解して再利用できる土台を作ることが主眼です。
 
-> **Current status:** architecture probe / research implementation.  
-> CLI、モデル、検証、参照Workspace、Deployment/Pluginの安全境界は実行可能ですが、完成したEditorや本番用Runtimeを提供する段階ではありません。
+> **現在地:** M0.22.1 / architecture probe / research implementation  
+> CLI、モデル、検証、参照Workspace、Deployment / Pluginの安全境界は実行可能ですが、完成したEditorや本番用Runtimeを提供する段階ではありません。
 
 ## TEIが解こうとしていること
 
@@ -99,7 +99,7 @@ process Pluginには、必要なCapabilityへ必要なPermissionだけを明示G
 
 ## まず動かす
 
-正規ソースツリー展開後に必要なのはGo toolchainです。
+clone後に必要なのはGo toolchainだけです。
 
 ```bash
 git clone https://github.com/hat47x/tei-platform.git
@@ -137,8 +137,11 @@ go run ./examples/runtime-reattach
 cmd/tei/                 CLI
 internal/                executable architecture models / validation
 reference/workspace/     small end-to-end TEI workspace
+reference/observed/      deployment observation fixtures
+reference/world.json     golden canonical world snapshot
 examples/                focused executable examples
 docs/                    public and technical documentation
+.github/workflows/       repository verification
 ```
 
 主要なドキュメント:
@@ -148,6 +151,7 @@ docs/                    public and technical documentation
 - [Getting Started](docs/getting-started.md)
 - [アーキテクチャ](docs/architecture.md)
 - [現在の実装範囲](docs/status.md)
+- [設計判断記録（ADR）](docs/adr/README.md)
 - [Plugin / Bundle](docs/plugins.md)
 - [Security / Trust Boundary](docs/security.md)
 - [命名とWorkspace](docs/naming.md)
@@ -187,6 +191,8 @@ docs/                    public and technical documentation
 - production supportや互換性保証
 
 この区別は意図的です。現段階では、後から大きく壊れやすい境界を先に実行可能なコードで検証しています。
+
+M0.22.1を最初の公開設計チェックポイントとして扱う理由は、[ADR-0002](docs/adr/0002-m0221-public-checkpoint.md) に記録しています。
 
 ## 名前について
 
