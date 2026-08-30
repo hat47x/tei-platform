@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          files="$(gofmt -l internal/plugin/runtime/process_stdio.go internal/plugin/runtime/process_stdio_test.go)"
+          files="$(gofmt -l internal/plugin/runtime/process_stdio.go internal/plugin/runtime/process_stdio_test.go tools/reference-process-plugin examples/process-plugin)"
           if [[ -n "$files" ]]; then
             echo "$files"
             exit 1
@@ -34,3 +34,13 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test ./...
+      - name: Build reference process plugin
+        run: go build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin
+      - name: Run DeploymentExecutor through real process
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./examples/process-plugin -plugin /tmp/tei-reference-process-plugin > /tmp/process-result.json
+          grep -q '"outcome": "accepted"' /tmp/process-result.json
+          grep -q '"boundary": "process"' /tmp/process-result.json
+          grep -q 'reference-process://reference-process-command-1' /tmp/process-result.json
