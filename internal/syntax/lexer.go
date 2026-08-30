@@ -1,6 +1,9 @@
 package syntax
 
-import "unicode"
+import (
+	"fmt"
+	"unicode"
+)
 
 type TokenKind int
 
@@ -74,7 +77,7 @@ func (l *Lexer) Next() (Token, error) {
 	end := start
 	end.Offset++
 	end.Column++
-	return Token{}, &LexError{Start: start, End: end, Msg: "unexpected character " + string([]byte{'\'', l.src[l.off], '\''})}
+	return Token{}, &LexError{Start: start, End: end, Msg: fmt.Sprintf("unexpected character %q", l.src[l.off])}
 }
 
 func (l *Lexer) ReadRawBlock() (string, Position, error) {
