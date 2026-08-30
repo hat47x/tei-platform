@@ -53,6 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # This must use the actual PostgreSQL catalog, including provider
+          # normalization such as separating primary keys from ordinary indexes.
           go run ./tools/reference-postgres-integration > /tmp/postgres-integration.json
           cat /tmp/postgres-integration.json
           grep -q '"connectionDataPersisted": false' /tmp/postgres-integration.json
