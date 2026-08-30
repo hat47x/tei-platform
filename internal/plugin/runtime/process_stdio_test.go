@@ -33,6 +33,10 @@ func runProcessHelper(mode string) int {
 		_, _ = fmt.Fprint(os.Stdout, "{")
 		return 0
 	}
+	if mode == "large" {
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		return 0
+	}
 	if mode == "exit" {
 		_, _ = fmt.Fprintln(os.Stderr, "TOP-SECRET-SHOULD-NOT-LEAK")
 		return 7
@@ -118,6 +122,14 @@ func TestStdioProcessLauncherRejectsMalformedResponse(t *testing.T) {
 	launcher, command := helperLauncher(t, "malformed")
 	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "decode process plugin response") {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestStdioProcessLauncherBoundsUntrustedStdout(t *testing.T) {
+	launcher, command := helperLauncher(t, "large")
+	launcher.MaxResponseBytes = 128
+	if _, err := launcher.Invoke(context.Background(), command, processRequest()); err == nil || !strings.Contains(err.Error(), "response exceeds 128 bytes") {
+		t.Fatalf("oversized response was not rejected: %v", err)
 	}
 }
 
