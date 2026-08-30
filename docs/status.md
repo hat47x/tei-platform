@@ -108,6 +108,12 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 
 一方、`RuntimeUnknown`時にDurable Invocation Handle上のfencing generationをどこまで進めたとみなすかは、意味上の判断が残っています。この論点はIssue #9へ分離しており、M0.22.1のConformance testで先に意味を固定していません。
 
+### 文書の読書導線
+
+Issue #5では、一般読者向けと開発者向けの入口が混線しないよう文書構成と用語の初出説明を監査しました。
+
+READMEは全体像と読書入口へ寄せ、詳細な実装一覧はこの`status.md`へ集約します。一般読者向けの[説明](for-readers.md)、一段技術寄りの[考え方](overview.md)、実際に動かす[Getting Started](getting-started.md)、実装構造を追う[Architecture](architecture.md)を、それぞれ別の役割として扱います。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -130,4 +136,4 @@ M0.22.1の次に進む方向は、現時点で一つへ固定していません�
 
 production adapter、Deployment / Reconcileの外部接続、Plugin / Runtimeの実プロセス境界、AuthoringからCanonical Semantic Layerまでの入力経路など、複数の候補があります。どのvertical sliceが設計上の不確実性を最も減らせるかを、Issue #6で比較します。
 
-その前段として、Issue #5で一般読者向け文書の入口と用語を監査しています。Reference再現性監査（#3）とPlugin / Runtime Conformance監査（#4）は完了しています。
+Reference再現性監査（#3）、Plugin / Runtime Conformance監査（#4）、一般読者向け文書監査（#5）で明らかになった基準を保ちながら、次のvertical sliceを選びます。
