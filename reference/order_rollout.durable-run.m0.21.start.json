@@ -1,0 +1,265 @@
+{
+  "formatVersion": 5,
+  "revision": 1,
+  "runId": "order-rollout-prod-m0.21",
+  "solutionId": "order_rollout",
+  "solutionVersion": "2026.8.27",
+  "environment": "production",
+  "planFingerprint": "ee84a63c8f571370ca421181ca30cffc87993f435f85e009f65ebeb55815ed26",
+  "pluginLockFingerprint": "74d225e985ebf68be9d0289f533d6599b7eb17e6757bb4425c1d0b08cfede220",
+  "runtimePolicyFingerprint": "bc67cae4df0f8ad7c9b441c348055f6237433eadfb9ab3654031cef2597a8f3d",
+  "status": "ready",
+  "initial": {
+    "environment": "production",
+    "observedAt": "2026-08-27T18:30:00+09:00",
+    "activeApplications": [
+      {
+        "application": "order_entry",
+        "version": "3.7.0"
+      }
+    ],
+    "databases": [
+      {
+        "database": "master_data",
+        "source": "observed",
+        "provides": [
+          {
+            "id": "master_data.customer",
+            "version": {
+              "major": 2,
+              "minor": 4
+            }
+          }
+        ],
+        "dataReadiness": "ready",
+        "observedAt": "2026-08-27T18:30:00+09:00"
+      },
+      {
+        "database": "sales_core",
+        "source": "release",
+        "release": "4.0.0",
+        "provides": [
+          {
+            "id": "sales_core.order_legacy",
+            "version": {
+              "major": 1,
+              "minor": 0
+            }
+          }
+        ],
+        "dataReadiness": "ready"
+      }
+    ]
+  },
+  "lastObserved": {
+    "environment": "production",
+    "observedAt": "2026-08-27T18:30:00+09:00",
+    "activeApplications": [
+      {
+        "application": "order_entry",
+        "version": "3.7.0"
+      }
+    ],
+    "databases": [
+      {
+        "database": "master_data",
+        "source": "observed",
+        "provides": [
+          {
+            "id": "master_data.customer",
+            "version": {
+              "major": 2,
+              "minor": 4
+            }
+          }
+        ],
+        "dataReadiness": "ready",
+        "observedAt": "2026-08-27T18:30:00+09:00"
+      },
+      {
+        "database": "sales_core",
+        "source": "release",
+        "release": "4.0.0",
+        "provides": [
+          {
+            "id": "sales_core.order_legacy",
+            "version": {
+              "major": 1,
+              "minor": 0
+            }
+          }
+        ],
+        "dataReadiness": "ready"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "master_ready/gate",
+      "step": "master_ready",
+      "kind": "database-gate",
+      "mode": "observation",
+      "database": "master_data",
+      "contract": "master_data.customer",
+      "compatibleMajor": 2,
+      "status": "completed",
+      "completionSource": "observed database contract state"
+    },
+    {
+      "id": "order_app/start",
+      "step": "order_app",
+      "kind": "application-start",
+      "mode": "command",
+      "prerequisites": [
+        "master_ready/gate",
+        "sales_expand/apply"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:order_app/start",
+      "application": "order_entry",
+      "version": "3.8.0",
+      "status": "pending"
+    },
+    {
+      "id": "order_app/traffic-1000",
+      "step": "order_app",
+      "kind": "traffic-shift",
+      "mode": "command",
+      "prerequisites": [
+        "order_app/start"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:order_app/traffic-1000",
+      "application": "order_entry",
+      "version": "3.8.0",
+      "trafficBasisPoints": 1000,
+      "status": "pending"
+    },
+    {
+      "id": "order_app/health-1000",
+      "step": "order_app",
+      "kind": "rollout-health-gate",
+      "mode": "evidence",
+      "prerequisites": [
+        "order_app/traffic-1000"
+      ],
+      "application": "order_entry",
+      "version": "3.8.0",
+      "trafficBasisPoints": 1000,
+      "evidenceKind": "rollout-health",
+      "status": "pending"
+    },
+    {
+      "id": "order_app/traffic-5000",
+      "step": "order_app",
+      "kind": "traffic-shift",
+      "mode": "command",
+      "prerequisites": [
+        "order_app/health-1000"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:order_app/traffic-5000",
+      "application": "order_entry",
+      "version": "3.8.0",
+      "trafficBasisPoints": 5000,
+      "status": "pending"
+    },
+    {
+      "id": "order_app/health-5000",
+      "step": "order_app",
+      "kind": "rollout-health-gate",
+      "mode": "evidence",
+      "prerequisites": [
+        "order_app/traffic-5000"
+      ],
+      "application": "order_entry",
+      "version": "3.8.0",
+      "trafficBasisPoints": 5000,
+      "evidenceKind": "rollout-health",
+      "status": "pending"
+    },
+    {
+      "id": "order_app/traffic-10000",
+      "step": "order_app",
+      "kind": "traffic-shift",
+      "mode": "command",
+      "prerequisites": [
+        "order_app/health-5000"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:order_app/traffic-10000",
+      "application": "order_entry",
+      "version": "3.8.0",
+      "trafficBasisPoints": 10000,
+      "status": "pending"
+    },
+    {
+      "id": "retire_order_37/stop-accepting",
+      "step": "retire_order_37",
+      "kind": "stop-accepting-work",
+      "mode": "command",
+      "prerequisites": [
+        "order_app/traffic-10000"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:retire_order_37/stop-accepting",
+      "application": "order_entry",
+      "version": "3.7.0",
+      "status": "pending"
+    },
+    {
+      "id": "retire_order_37/drain-complete",
+      "step": "retire_order_37",
+      "kind": "drain-complete-gate",
+      "mode": "observation",
+      "prerequisites": [
+        "retire_order_37/stop-accepting"
+      ],
+      "application": "order_entry",
+      "version": "3.7.0",
+      "status": "pending"
+    },
+    {
+      "id": "retire_order_37/retire",
+      "step": "retire_order_37",
+      "kind": "application-retire",
+      "mode": "command",
+      "prerequisites": [
+        "retire_order_37/drain-complete"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:retire_order_37/retire",
+      "application": "order_entry",
+      "version": "3.7.0",
+      "status": "pending"
+    },
+    {
+      "id": "sales_contract/apply",
+      "step": "sales_contract",
+      "kind": "database-release",
+      "mode": "command",
+      "prerequisites": [
+        "retire_order_37/retire"
+      ],
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:sales_contract/apply",
+      "version": "4.2.0",
+      "database": "sales_core",
+      "status": "pending"
+    },
+    {
+      "id": "sales_expand/apply",
+      "step": "sales_expand",
+      "kind": "database-release",
+      "mode": "command",
+      "idempotencyKey": "tei:deploy:production:ee84a63c8f571370:sales_expand/apply",
+      "version": "4.1.0",
+      "database": "sales_core",
+      "status": "pending"
+    }
+  ],
+  "readyActions": [
+    "sales_expand/apply"
+  ],
+  "events": [
+    {
+      "sequence": 1,
+      "kind": "action-completed",
+      "actionId": "master_ready/gate",
+      "message": "observed database contract state"
+    }
+  ]
+}
