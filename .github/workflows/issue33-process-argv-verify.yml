@@ -1,0 +1,68 @@
+name: Verify Issue 33 process argv
+
+on:
+  push:
+    branches:
+      - work/issue-33-process-argv
+    paths:
+      - .github/workflows/issue33-process-argv-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-33-process-argv
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l cmd internal examples tools)"
+          if [[ -n "$unformatted" ]]; then
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: Validate reference workspace
+        run: go run ./cmd/tei validate -workspace reference/workspace
+      - name: Verify reference world
+        shell: bash
+        run: |
+          go run ./cmd/tei world -workspace reference/workspace > /tmp/world.json
+          diff -u reference/world.json /tmp/world.json
+      - name: Verify plugin lock
+        shell: bash
+        run: |
+          go run ./cmd/tei plugin-lock -workspace reference/workspace > /tmp/plugin-lock.json
+          diff -u reference/workspace/.tei/plugin-lock.json /tmp/plugin-lock.json
+      - name: Verify durable run fixture
+        shell: bash
+        run: |
+          go run ./cmd/tei deployment-start \
+            -workspace reference/workspace \
+            -solution order_rollout \
+            -version 2026.8.27 \
+            -deployment reference/observed/production.deployment-state.json \
+            -run-id order-rollout-prod-m0.21 \
+            -plugin-lock reference/workspace/.tei/plugin-lock.json \
+            > /tmp/run.json
+          diff -u reference/order_rollout.durable-run.m0.21.start.json /tmp/run.json
+      - name: Run argv through actual process
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin
+          go run ./examples/process-plugin -plugin /tmp/tei-reference-process-plugin > /tmp/result.json
+          grep -q '"outcome": "accepted"' /tmp/result.json
+          grep -q 'argv=--tei-reference-marker=argv value preserved' /tmp/result.json
