@@ -33,121 +33,51 @@ jobs:
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery.go",
-              '''\tSupervisorOwnerID        string           `json:"supervisorOwnerId,omitempty"`\n\tFencingToken             uint64           `json:"fencingToken,omitempty"`\n\tLifecycle                RuntimeLifecycle `json:"lifecycle"`''',
-              '''\tSupervisorOwnerID        string           `json:"supervisorOwnerId,omitempty"`\n\tFencingToken             uint64           `json:"fencingToken,omitempty"`\n\tRuntimeFencingToken      uint64           `json:"runtimeFencingToken,omitempty"`\n\tLifecycle                RuntimeLifecycle `json:"lifecycle"`''',
+              '\tSupervisorOwnerID        string           `json:"supervisorOwnerId,omitempty"`\n\tFencingToken             uint64           `json:"fencingToken,omitempty"`\n\tLifecycle                RuntimeLifecycle `json:"lifecycle"`',
+              '\tSupervisorOwnerID        string           `json:"supervisorOwnerId,omitempty"`\n\tFencingToken             uint64           `json:"fencingToken,omitempty"`\n\tRuntimeFencingToken      uint64           `json:"runtimeFencingToken,omitempty"`\n\tLifecycle                RuntimeLifecycle `json:"lifecycle"`',
           )
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery.go",
-              '''\tif h.Revision < 1 {\n\t\treturn fmt.Errorf("durable invocation handle revision must be positive")\n\t}\n\treturn nil''',
-              '''\tif h.Revision < 1 {\n\t\treturn fmt.Errorf("durable invocation handle revision must be positive")\n\t}\n\tif h.RuntimeFencingToken > h.FencingToken {\n\t\treturn fmt.Errorf("durable invocation runtime fencing token %d exceeds supervisor fencing token %d", h.RuntimeFencingToken, h.FencingToken)\n\t}\n\treturn nil''',
+              '\tif h.Revision < 1 {\n\t\treturn fmt.Errorf("durable invocation handle revision must be positive")\n\t}\n\treturn nil',
+              '\tif h.Revision < 1 {\n\t\treturn fmt.Errorf("durable invocation handle revision must be positive")\n\t}\n\tif h.RuntimeFencingToken > h.FencingToken {\n\t\treturn fmt.Errorf("durable invocation runtime fencing token %d exceeds supervisor fencing token %d", h.RuntimeFencingToken, h.FencingToken)\n\t}\n\treturn nil',
           )
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery.go",
-              '''\tcase RuntimeUnknown:\n\t\toutcome = RecoveryWaitingObserve\n\t\tfindings = append(findings, "runtime state is unknown; keep the deployment action unresolved")''',
-              '''\tcase RuntimeUnknown:\n\t\toutcome = RecoveryWaitingObserve\n\t\tfindings = append(findings, "runtime state is unknown; keep the deployment action unresolved")\n\t\tfindings = append(findings, fmt.Sprintf("runtime fencing authority is unresolved; supervisor generation is %d while runtime-confirmed generation remains %d", fencingToken, h.RuntimeFencingToken))''',
+              '\tcase RuntimeUnknown:\n\t\toutcome = RecoveryWaitingObserve\n\t\tfindings = append(findings, "runtime state is unknown; keep the deployment action unresolved")',
+              '\tcase RuntimeUnknown:\n\t\toutcome = RecoveryWaitingObserve\n\t\tfindings = append(findings, "runtime state is unknown; keep the deployment action unresolved")\n\t\tfindings = append(findings, fmt.Sprintf("runtime fencing authority is unresolved; supervisor generation is %d while runtime-confirmed generation remains %d", fencingToken, h.RuntimeFencingToken))',
           )
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery.go",
-              '''\tnext.SupervisorOwnerID = ownerID\n\tnext.FencingToken = fencingToken\n\tnext.Lifecycle = obs.Lifecycle''',
-              '''\tnext.SupervisorOwnerID = ownerID\n\tnext.FencingToken = fencingToken\n\tif outcome == RecoveryReattached {\n\t\tnext.RuntimeFencingToken = fencingToken\n\t}\n\tnext.Lifecycle = obs.Lifecycle''',
+              '\tnext.SupervisorOwnerID = ownerID\n\tnext.FencingToken = fencingToken\n\tnext.Lifecycle = obs.Lifecycle',
+              '\tnext.SupervisorOwnerID = ownerID\n\tnext.FencingToken = fencingToken\n\tif outcome == RecoveryReattached {\n\t\tnext.RuntimeFencingToken = fencingToken\n\t}\n\tnext.Lifecycle = obs.Lifecycle',
           )
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery_test.go",
-              '''\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tLifecycle:                pruntime.RuntimeRunning,''',
-              '''\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tRuntimeFencingToken:      1,\n\t\tLifecycle:                pruntime.RuntimeRunning,''',
+              '\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tLifecycle:                pruntime.RuntimeRunning,',
+              '\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tRuntimeFencingToken:      1,\n\t\tLifecycle:                pruntime.RuntimeRunning,',
           )
 
           replace_once(
               "internal/plugin/runtime/invocation_recovery_test.go",
-              '''\tif res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.Revision != 2 {\n\t\tt.Fatalf("handle=%#v", res.Handle)\n\t}''',
-              '''\tif res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.RuntimeFencingToken != 2 || res.Handle.Revision != 2 {\n\t\tt.Fatalf("handle=%#v", res.Handle)\n\t}''',
-          )
-
-          marker = '''func TestInvocationRecoveryReattachesStartingRuntime(t *testing.T) {'''
-          addition = r'''func TestInvocationRecoveryUnknownSeparatesSupervisorAndRuntimeAuthority(t *testing.T) {
-	ctx := context.Background()
-	store := pruntime.NewMemoryInvocationHandleStore()
-	h := recoveryHandle()
-	if _, err := store.Save(ctx, h, 0); err != nil {
-		t.Fatal(err)
-	}
-	rt := pruntime.NewReferenceReattachableRuntime()
-	rt.Put(h.RuntimeHandle, pruntime.RuntimeUnknown, 1)
-
-	unresolved, err := pruntime.ReconcileDurableInvocation(ctx, store, rt, recoveryPlan(), h.InvocationID, "host-b", 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if unresolved.Outcome != pruntime.RecoveryWaitingObserve {
-		t.Fatalf("outcome=%s", unresolved.Outcome)
-	}
-	if unresolved.Handle.SupervisorOwnerID != "host-b" || unresolved.Handle.FencingToken != 2 {
-		t.Fatalf("supervisor authority=%#v", unresolved.Handle)
-	}
-	if unresolved.Handle.RuntimeFencingToken != 1 {
-		t.Fatalf("unknown observation advanced runtime authority: %#v", unresolved.Handle)
-	}
-	if len(unresolved.Findings) < 2 {
-		t.Fatalf("findings=%#v", unresolved.Findings)
-	}
-
-	// The same supervisor generation may retry observation. Once the runtime is
-	// live again, authority-bearing reattach advances only the runtime-confirmed
-	// generation and fences the stale runtime token.
-	rt.Put(h.RuntimeHandle, pruntime.RuntimeRunning, 1)
-	reattached, err := pruntime.ReconcileDurableInvocation(ctx, store, rt, recoveryPlan(), h.InvocationID, "host-b", 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reattached.Outcome != pruntime.RecoveryReattached || reattached.Handle.FencingToken != 2 || reattached.Handle.RuntimeFencingToken != 2 {
-		t.Fatalf("reattached=%#v", reattached)
-	}
-	if _, err := rt.ReattachInvocation(ctx, h.RuntimeHandle, 1); err == nil {
-		t.Fatal("expected stale runtime generation rejection after authority convergence")
-	}
-}
-
-func TestDurableInvocationHandleRejectsRuntimeAuthorityAheadOfSupervisor(t *testing.T) {
-	h := recoveryHandle()
-	h.RuntimeFencingToken = h.FencingToken + 1
-	if err := h.Validate(); err == nil {
-		t.Fatal("expected runtime fencing token ahead of supervisor to be rejected")
-	}
-}
-
-func TestDurableInvocationHandleDoesNotInferMissingRuntimeFencingToken(t *testing.T) {
-	h := recoveryHandle()
-	h.RuntimeFencingToken = 0
-	if err := h.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if h.RuntimeFencingToken != 0 {
-		t.Fatalf("runtime fencing token was inferred: %#v", h)
-	}
-}
-
-'''
-          replace_once(
-              "internal/plugin/runtime/invocation_recovery_test.go",
-              marker,
-              addition + marker,
+              '\tif res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.Revision != 2 {\n\t\tt.Fatalf("handle=%#v", res.Handle)\n\t}',
+              '\tif res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.RuntimeFencingToken != 2 || res.Handle.Revision != 2 {\n\t\tt.Fatalf("handle=%#v", res.Handle)\n\t}',
           )
 
           replace_once(
               "examples/runtime-reattach/main.go",
-              '''\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tLifecycle:                pruntime.RuntimeRunning,''',
-              '''\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tRuntimeFencingToken:      1,\n\t\tLifecycle:                pruntime.RuntimeRunning,''',
+              '\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tLifecycle:                pruntime.RuntimeRunning,',
+              '\t\tSupervisorOwnerID:        "host-a",\n\t\tFencingToken:             1,\n\t\tRuntimeFencingToken:      1,\n\t\tLifecycle:                pruntime.RuntimeRunning,',
           )
 
       - name: Format and verify
         shell: bash
         run: |
           set -euo pipefail
-          gofmt -w internal/plugin/runtime/invocation_recovery.go internal/plugin/runtime/invocation_recovery_test.go examples/runtime-reattach/main.go
+          gofmt -w internal/plugin/runtime/invocation_recovery.go internal/plugin/runtime/invocation_recovery_test.go internal/plugin/runtime/invocation_authority_test.go examples/runtime-reattach/main.go
           go vet ./...
           go test ./...
           go run ./examples/runtime-reattach >/tmp/runtime-reattach.json
@@ -159,6 +89,6 @@ func TestDurableInvocationHandleDoesNotInferMissingRuntimeFencingToken(t *testin
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/plugin/runtime/invocation_recovery.go internal/plugin/runtime/invocation_recovery_test.go examples/runtime-reattach/main.go
+          git add internal/plugin/runtime/invocation_recovery.go internal/plugin/runtime/invocation_recovery_test.go internal/plugin/runtime/invocation_authority_test.go examples/runtime-reattach/main.go
           git commit -m "Supervisorとruntime fencing authorityを分離する"
           git push origin HEAD:work/issue-9-runtime-fencing-authority
