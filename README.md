@@ -1,11 +1,23 @@
 # TEI（鼎／テイ）
 
-TEI is an experimental low-code platform architecture for building and operating business applications with **semantic intent, deterministic realization, and traceable execution**.
+TEIは、**業務上の意味を長く保ちながら、実装・データベース・配備先を必要以上に一体化しないローコード基盤**を目指す実験的なプロジェクトです。
 
-日本語では、**業務の意味を先に定義し、実装・データベース・配備先を必要以上に一体化しないローコード基盤**を目指しています。生成AIを大量のコードを吐く装置としてだけ使うのではなく、既存の意味部品・契約・制約・実現方式を理解して再利用できる土台を作ることが主眼です。
+画面やテーブルを素早く作ることだけでなく、「この業務概念は何を意味するのか」「どの実装へ落ちたのか」「本番で実際に何が起きたのか」を、技術が変わっても追跡できる状態を重視しています。
 
 > **現在地:** M0.22.1 / architecture probe / research implementation  
 > CLI、モデル、検証、参照Workspace、Deployment / Pluginの安全境界は実行可能ですが、完成したEditorや本番用Runtimeを提供する段階ではありません。
+
+## どこから読むか
+
+目的に応じて入口を分けています。
+
+- **TEIを初めて知る:** [はじめてTEIを知る方へ](docs/for-readers.md)
+- **考え方をもう少し知る:** [TEIの考え方](docs/overview.md)
+- **実際に動かす:** [Getting Started](docs/getting-started.md)
+- **技術構造を追う:** [Architecture](docs/architecture.md)
+- **実装済み／未実装を確認する:** [現在の実装状況](docs/status.md)
+
+最初からコードを読む必要はありません。一般向けの説明と、実装を追うための技術文書を分けています。
 
 ## TEIが解こうとしていること
 
@@ -13,12 +25,14 @@ TEI is an experimental low-code platform architecture for building and operating
 
 - 「受注」「顧客」「請求」のような業務概念
 - 有効期間、履歴、承認、状態遷移などの共通パターン
-- Applicationが複数Databaseを利用する現実
+- 一つのApplicationが複数Databaseを利用する現実
 - Database SchemaとApplication Releaseの独立したライフサイクル
 - SQL、Go、外部ツール、クラウド等の実装方式
 - 本番で何が実際に起きたかというObservation / Evidence
 
-TEIでは、これらを一つの巨大な独自DSLへ押し込めず、**意味・実現・実行・観測を分けたまま追跡可能にする**ことを重視しています。
+従来は、こうした意味が画面定義、SQL、プログラム、DB制約、運用手順書、担当者の知識へ分散しがちでした。
+
+TEIでは、それらを一つの巨大な独自DSLへ押し込めるのではなく、**意味・実現・実行・観測を分けたまま相互に追跡できる状態**を目指します。
 
 ```text
 Intent / Semantic Definition
@@ -33,6 +47,8 @@ Observed State + Evidence
         ↓
 Reconciliation / Recovery
 ```
+
+ここでCanonical Modelは「特定の画面やDB製品に依存しない、基準となる意味表現」、Realization / Bindingは「その意味を具体的な技術や環境へ結び付ける段階」を指します。
 
 ## 設計上の特徴
 
@@ -65,7 +81,9 @@ Workspaceは`tei.workspace.yaml`と管理ディレクトリで識別します。
 
 ### 3. 生成AIに「意味の部品」を渡せる構造
 
-AIが毎回ゼロからコードを生成するのではなく、まず既存のDomain Component、Semantic Pattern、Policy、Capabilityを探索し、それでも足りない部分だけを実装へ落とす方向を想定しています。
+AIが毎回ゼロからコードを生成するのではなく、既存の業務概念、意味パターン、Policy、Capabilityを先に探索し、それでも足りない部分だけを実装へ落とす方向を想定しています。
+
+AIが常時本番判断を行うことや、自動的に強い実行権限を持つことを前提にはしていません。実行時の規則や権限は、明示的で追跡可能な形へ固定することを重視します。
 
 ### 4. 「命令した」と「実際に変わった」を分ける
 
@@ -85,11 +103,11 @@ actual state confirmed
 completed
 ```
 
-Canaryのhealth gate、drain、Database migration、rollback/forward-fixも同じ考え方で扱います。
+Canaryのhealth gate、drain、Database migration、rollback / forward-fixも同じ考え方で扱います。
 
 ### 5. Pluginは意味モデルではなく配布単位
 
-Plugin / BundleはExecutor、Database Provider、Migration Provider、Editor Intelligence等を配布するための仕組みです。Business Canonical IDとは分離されています。
+Plugin / BundleはExecutor、Database Provider、Migration Provider、Editor Intelligence等を配布するための仕組みです。Business Canonical IDとは分離しています。
 
 ### 6. 実行時権限を最小化する
 
@@ -99,7 +117,7 @@ process Pluginには、必要なCapabilityへ必要なPermissionだけを明示G
 
 ## まず動かす
 
-clone後に必要なのはGo toolchainだけです。
+ここから先は開発者向けです。clone後に必要なのはGo toolchainだけです。
 
 ```bash
 git clone https://github.com/hat47x/tei-platform.git
@@ -111,25 +129,13 @@ go run ./cmd/tei validate -workspace reference/workspace
 
 Validationでは、参照用のhistorical contractについてWarningが出ますが、最後に`ok`となればReference Workspaceは整合しています。
 
-Plugin解決を見る例:
-
-```bash
-go run ./cmd/tei plugin-lock \
-  -workspace reference/workspace > /tmp/tei-plugin-lock.json
-
-go run ./cmd/tei plugin-runtime-plan \
-  -workspace reference/workspace \
-  -environment production \
-  -plugin-lock /tmp/tei-plugin-lock.json
-```
-
-Host takeover後のruntime reattachの最小例:
+Host takeover後のruntime reattachの最小例は次で実行できます。
 
 ```bash
 go run ./examples/runtime-reattach
 ```
 
-詳しくは [Getting Started](docs/getting-started.md) を参照してください。
+Plugin解決やReference artifactの再生成を含む手順は [Getting Started](docs/getting-started.md) を参照してください。
 
 ## Repository layout
 
@@ -144,40 +150,21 @@ docs/                    public and technical documentation
 .github/workflows/       repository verification
 ```
 
-主要なドキュメント:
+技術文書:
 
-- [はじめてTEIを知る方へ](docs/for-readers.md)
-- [TEIの考え方](docs/overview.md)
-- [Getting Started](docs/getting-started.md)
-- [アーキテクチャ](docs/architecture.md)
-- [現在の実装範囲](docs/status.md)
+- [Architecture](docs/architecture.md)
+- [現在の実装状況](docs/status.md)
 - [設計判断記録（ADR）](docs/adr/README.md)
 - [Plugin / Bundle](docs/plugins.md)
 - [Security / Trust Boundary](docs/security.md)
 - [命名とWorkspace](docs/naming.md)
-- [Community posture](docs/community.md)
+- [Community](docs/community.md)
 
-## 現在できること
+## 現在の実装範囲
 
-このRepositoryでは、少なくとも次をコードとテストで検証しています。
+このRepositoryでは、Semantic / WorkspaceからApplication・Database・Query、Release / Deployment、Plugin / Resource authority、Host takeover / runtime reattachまでを、一本の縦切りとしてコードとテストで検証しています。
 
-- Semantic / Application / Database / Environmentの基本IR
-- Applicationから複数DatabaseへのRequirement / Binding
-- Database Contract / Persistence Mapping / Desired Schema
-- Schema Diff / versioned DDL+DML Migration
-- Database Release / Application Release / Solution Release
-- SQL analysis boundaryとDerived Query IR
-- PostgreSQL schema / EXPLAIN normalization
-- Database Workbench向けderived view model
-- Deployment Release Graph
-- Canary / traffic shift / drain / retire
-- Durable Deployment Run / Evidence / Retry / Recovery
-- Executor / Observation / Evidence provider routing
-- Plugin / Bundle / Plugin Lock / capability negotiation
-- Plugin permission / Resource Broker / Sandbox Profile
-- Lease renew / refresh / revoke / Host-side supervisor
-- Supervisor ownership / heartbeat / fencing
-- Durable runtime invocation handle / takeover後のreattach判定
+個々の実装項目をREADMEへ重複して列挙せず、最新の一覧は [現在の実装状況](docs/status.md) に集約しています。
 
 ## まだ提供していないもの
 
