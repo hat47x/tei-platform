@@ -25,6 +25,7 @@ import (
 
 type ParseError struct {
 	Pos Position
+	End Position
 	Msg string
 }
 
