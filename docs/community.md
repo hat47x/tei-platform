@@ -1,5 +1,20 @@
-# Community posture
+# Community / 参加の考え方
 
-TEI uses the MIT License. Active code contribution is welcome but is not a prerequisite for useful participation.
+TEIはMIT Licenseで公開します。
 
-Using TEI, publishing operational/design findings, reporting incompatibilities, sharing reusable semantic knowledge, and documenting experience are all valuable forms of participation. The project should not design its governance around requiring users to become maintainers or frequent code contributors.
+このプロジェクトでは、積極的にコードを書くことだけを参加とは考えません。TEIを実際に使ってみること、その結果として得られた運用・設計上の知見を公開すること、既存システムとの不整合や違和感を報告すること、再利用できる意味上の知識を共有することも重要な参加です。
+
+利用者がmaintainerになったり、継続的にコード貢献したりすることを前提とした運営にはしません。
+
+とくに、次のような知見はコード変更と同じくらい価値があります。
+
+- 既存の業務システムへ当てはめたときに表現しにくかったこと
+- 他のローコード基盤、Workflow Engine、Database tool等との比較
+- 長期運用や移行で問題になりそうな境界
+- AIと人間が共同で設計するときに分かりにくかった概念
+- Reference Workspaceでは見えていない現実の業務要件
+- TEIの概念や文書について、自然に理解できた点・できなかった点
+
+プロジェクト側も、利用者へ積極的な貢献を要求するより、まず自由に試せて、得られた知見を必要に応じて共有しやすい状態を重視します。
+
+コード変更を提案する場合の基本的な進め方は [CONTRIBUTING.md](../CONTRIBUTING.md) を参照してください。
