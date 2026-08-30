@@ -35,13 +35,14 @@ func (n Nullability) Valid() bool { return n == Required || n == Optional }
 // element. It is intentionally separate from the semantic model so the same
 // domain meaning can be realized by different databases and physical layouts.
 type Mapping struct {
-	ID           core.CanonicalID   `json:"id"`
-	Database     core.CanonicalID   `json:"database"`
-	SemanticData core.CanonicalID   `json:"semanticData"`
-	Table        string             `json:"table"`
-	Columns      []ColumnMapping    `json:"columns"`
-	PrimaryKey   []core.CanonicalID `json:"primaryKey,omitempty"`
-	Indexes      []IndexMapping     `json:"indexes,omitempty"`
+	ID           core.CanonicalID    `json:"id"`
+	Database     core.CanonicalID    `json:"database"`
+	SemanticData core.CanonicalID    `json:"semanticData"`
+	Table        string              `json:"table"`
+	Columns      []ColumnMapping     `json:"columns"`
+	PrimaryKey   []core.CanonicalID  `json:"primaryKey,omitempty"`
+	Indexes      []IndexMapping      `json:"indexes,omitempty"`
+	ForeignKeys  []ForeignKeyMapping `json:"foreignKeys,omitempty"`
 }
 
 type ColumnMapping struct {
@@ -55,6 +56,16 @@ type IndexMapping struct {
 	Name       string             `json:"name"`
 	Attributes []core.CanonicalID `json:"attributes"`
 	Unique     bool               `json:"unique,omitempty"`
+}
+
+// ForeignKeyMapping records an explicit database-owned decision to realize a
+// relational foreign key. It refers to semantic attributes through Mapping
+// identities rather than embedding physical target table/column names.
+type ForeignKeyMapping struct {
+	Name                 string             `json:"name,omitempty"`
+	Attributes           []core.CanonicalID `json:"attributes"`
+	ReferencedMapping    core.CanonicalID   `json:"referencedMapping"`
+	ReferencedAttributes []core.CanonicalID `json:"referencedAttributes"`
 }
 
 func (m Mapping) ColumnByAttribute(id core.CanonicalID) (ColumnMapping, bool) {
