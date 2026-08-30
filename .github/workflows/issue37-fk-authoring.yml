@@ -1,0 +1,123 @@
+name: Apply Issue 37 persistence foreign key authoring
+
+on:
+  push:
+    branches:
+      - work/issue-37-foreign-key-diff
+    paths:
+      - .github/workflows/issue37-fk-authoring.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Persistence parserへForeign Key blockを追加
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("internal/syntax/parser.go")
+          s = p.read_text()
+          marker = '''\t\t\tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+          \t\tdefault:
+          \t\t\treturn m, p.errAt(t, "expected database, semantic, table, column, primary-key, index, or unique-index")
+          '''
+          replacement = '''\t\t\tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+          \t\tcase "foreign-key":
+          \t\t\t_, _ = p.next()
+          \t\t\tname, err := p.expect(TokenIdent)
+          \t\t\tif err != nil {
+          \t\t\t\treturn m, err
+          \t\t\t}
+          \t\t\tfk := persistence.ForeignKeyMapping{Name: name.Text}
+          \t\t\tif _, err := p.expect(TokenLBrace); err != nil {
+          \t\t\t\treturn m, err
+          \t\t\t}
+          \t\t\tfor {
+          \t\t\t\tz, err := p.peek()
+          \t\t\t\tif err != nil {
+          \t\t\t\t\treturn m, err
+          \t\t\t\t}
+          \t\t\t\tif z.Kind == TokenRBrace {
+          \t\t\t\t\t_, _ = p.next()
+          \t\t\t\t\tbreak
+          \t\t\t\t}
+          \t\t\t\tswitch z.Text {
+          \t\t\t\tcase "source":
+          \t\t\t\t\t_, _ = p.next()
+          \t\t\t\t\tv, err := p.expect(TokenIdent)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, err
+          \t\t\t\t\t}
+          \t\t\t\t\tid, err := core.ParseCanonicalID(v.Text)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, p.errAt(v, err.Error())
+          \t\t\t\t\t}
+          \t\t\t\t\tfk.Attributes = append(fk.Attributes, id)
+          \t\t\t\tcase "references":
+          \t\t\t\t\t_, _ = p.next()
+          \t\t\t\t\tv, err := p.expect(TokenIdent)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, err
+          \t\t\t\t\t}
+          \t\t\t\t\tif fk.ReferencedMapping != "" {
+          \t\t\t\t\t\treturn m, p.errAt(v, "foreign-key references may be declared only once")
+          \t\t\t\t\t}
+          \t\t\t\t\tfk.ReferencedMapping, err = core.ParseCanonicalID(v.Text)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, p.errAt(v, err.Error())
+          \t\t\t\t\t}
+          \t\t\t\tcase "target":
+          \t\t\t\t\t_, _ = p.next()
+          \t\t\t\t\tv, err := p.expect(TokenIdent)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, err
+          \t\t\t\t\t}
+          \t\t\t\t\tid, err := core.ParseCanonicalID(v.Text)
+          \t\t\t\t\tif err != nil {
+          \t\t\t\t\t\treturn m, p.errAt(v, err.Error())
+          \t\t\t\t\t}
+          \t\t\t\t\tfk.ReferencedAttributes = append(fk.ReferencedAttributes, id)
+          \t\t\t\tdefault:
+          \t\t\t\t\treturn m, p.errAt(z, "expected source, references, or target")
+          \t\t\t\t}
+          \t\t\t}
+          \t\t\tif len(fk.Attributes) == 0 {
+          \t\t\t\treturn m, p.errAt(name, "foreign-key requires at least one source attribute")
+          \t\t\t}
+          \t\t\tif fk.ReferencedMapping == "" {
+          \t\t\t\treturn m, p.errAt(name, "foreign-key requires references mapping")
+          \t\t\t}
+          \t\t\tif len(fk.Attributes) != len(fk.ReferencedAttributes) {
+          \t\t\t\treturn m, p.errAt(name, "foreign-key source/target attribute count mismatch")
+          \t\t\t}
+          \t\t\tm.ForeignKeys = append(m.ForeignKeys, fk)
+          \t\tdefault:
+          \t\t\treturn m, p.errAt(t, "expected database, semantic, table, column, primary-key, index, unique-index, or foreign-key")
+          '''
+          if marker not in s:
+              raise SystemExit("ParsePersistence marker not found or already changed")
+          p.write_text(s.replace(marker, replacement, 1))
+      - name: 整形・静的検査・テスト
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w internal/syntax/parser.go internal/syntax/persistence_foreign_key_test.go internal/database/persistence/model.go internal/database/persistence/realize.go internal/database/persistence/foreign_key_test.go
+          go vet ./...
+          go test ./...
+      - name: 実装をcommit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/syntax/parser.go internal/syntax/persistence_foreign_key_test.go internal/database/persistence
+          git commit -m "Persistence Foreign Key authoringとDesired realizationを追加する"
+          git push
