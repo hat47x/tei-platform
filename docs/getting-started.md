@@ -113,7 +113,26 @@ go run ./cmd/tei deployment-start \
 
 保存済みの `reference/order_rollout.durable-run.m0.21.start.json` はこの入力から再生成可能な参照fixtureです。詳しくは [reference/README.md](../reference/README.md) を参照してください。
 
-## 7. Runtime reattach example
+## 7. 実process Pluginの参照例
+
+M0.24では、Reference Pluginを実際のOS child processとして起動できます。まずhelper binaryをbuildします。
+
+```bash
+go build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin
+```
+
+次に、既存`DeploymentExecutor` adapterからstdio processへcommandを渡します。
+
+```bash
+go run ./examples/process-plugin \
+  -plugin /tmp/tei-reference-process-plugin
+```
+
+出力の`outcome`は`accepted`、Plugin Invocationの`boundary`は`process`になります。`accepted`はexecutor acknowledgementであり、外部stateの完成証明ではありません。
+
+この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+
+## 8. Runtime reattach example
 
 ```bash
 go run ./examples/runtime-reattach
@@ -123,7 +142,7 @@ go run ./examples/runtime-reattach
 
 重要なのは、runtime handleが`missing`だった場合に自動再実行しないことです。外部副作用の有無を確定できないため、Recoveryへ送ります。
 
-## 8. コードを読む順番
+## 9. コードを読む順番
 
 初めて実装を読む場合は、次の順が比較的追いやすいです。
 
