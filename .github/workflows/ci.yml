@@ -161,5 +161,7 @@ jobs:
           grep -q '"connectionDataPersisted": false' /tmp/tei-postgres-integration.json
           grep -q '"actualTables": 2' /tmp/tei-postgres-integration.json
           grep -q '"foreignKeys": 1' /tmp/tei-postgres-integration.json
+          grep -q '"foreignKeyDriftDetected": true' /tmp/tei-postgres-integration.json
           grep -q '"kind": "drop-column"' /tmp/tei-postgres-integration.json
           grep -q '"name": "drift_note"' /tmp/tei-postgres-integration.json
+          grep -q '"kind": "add-foreign-key"' /tmp/tei-postgres-integration.json
