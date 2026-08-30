@@ -132,7 +132,20 @@ go run ./examples/process-plugin \
 
 この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。実process境界は [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
 
-## 8. Runtime reattach example
+## 8. actual PostgreSQL Desired / Actual / Diff
+
+PostgreSQLを用意し、接続文字列をHost-side environment variableとして渡すと、Reference integrationを実行できます。
+
+```bash
+TEI_TEST_POSTGRES_DSN='postgres://user:password@127.0.0.1:5432/database?sslmode=disable' \
+  go run ./tools/reference-postgres-integration
+```
+
+このharnessは専用fixture schemaを準備し、Persistence MappingからDesiredを生成したうえでactual catalogをintrospectします。baselineでは差分0件を要求し、その後actual側だけにcolumnを追加してdrift検出を確認します。fixture DDLはintegration test harnessであり、TEIのautomatic schema apply機能ではありません。
+
+詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+
+## 9. Runtime reattach example
 
 ```bash
 go run ./examples/runtime-reattach
@@ -142,7 +155,7 @@ go run ./examples/runtime-reattach
 
 重要なのは、runtime handleが`missing`だった場合に自動再実行しないことです。外部副作用の有無を確定できないため、Recoveryへ送ります。
 
-## 9. コードを読む順番
+## 10. コードを読む順番
 
 初めて実装を読む場合は、次の順が比較的追いやすいです。
 

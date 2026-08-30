@@ -123,3 +123,43 @@ jobs:
 
       - name: Runtime reattachの参照例を実行
         run: go run ./examples/runtime-reattach
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tei
+          POSTGRES_PASSWORD: tei-reference-password
+          POSTGRES_DB: tei_reference
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei -d tei_reference"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEI_TEST_POSTGRES_DSN: postgres://tei:tei-reference-password@127.0.0.1:5432/tei_reference?sslmode=disable
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+
+      - name: Goを準備
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: actual PostgreSQLでDesired / Actual / Diffを検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-integration > /tmp/tei-postgres-integration.json
+          cat /tmp/tei-postgres-integration.json
+          grep -q '"connectionDataPersisted": false' /tmp/tei-postgres-integration.json
+          grep -q '"actualTables": 2' /tmp/tei-postgres-integration.json
+          grep -q '"foreignKeys": 1' /tmp/tei-postgres-integration.json
+          grep -q '"kind": "drop-column"' /tmp/tei-postgres-integration.json
+          grep -q '"name": "drift_note"' /tmp/tei-postgres-integration.json
