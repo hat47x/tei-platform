@@ -1,0 +1,98 @@
+name: Apply Issue 33 process argv model v7
+
+on:
+  push:
+    branches:
+      - work/issue-33-process-argv
+    paths:
+      - .github/workflows/issue33-process-argv-apply7.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-33-process-argv
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Reuse v6 transformation and migrate Reference Workspace
+        shell: python
+        run: |
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/issue33-process-argv-apply6.yml').read_text()
+          marker = '      - name: Reuse v5 transformation and migrate ProcessLauncher fixtures\n        shell: python\n        run: |\n'
+          start = workflow.index(marker) + len(marker)
+          rest = workflow[start:]
+          end = rest.index('\n      - name: Format')
+          block = rest[:end]
+          lines = []
+          for line in block.splitlines():
+              if line.startswith('          '):
+                  line = line[10:]
+              lines.append(line)
+          exec(compile('\n'.join(lines), '<issue33-v6-transform>', 'exec'))
+
+          p = Path('reference/workspace/plugins/tei-editor-intelligence-sql/1.0.0/plugin.tei')
+          text = p.read_text()
+          old = 'runtime process "python3 -m tei_sql_worker" sandbox required'
+          new = 'runtime process "python3" args "-m" "tei_sql_worker" sandbox required'
+          if text.count(old) != 1:
+              raise SystemExit(f'reference legacy command count={text.count(old)}')
+          p.write_text(text.replace(old, new, 1))
+
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w $(find internal/plugin internal/syntax tools/reference-deployment-attempt tools/reference-lease-supervision -name '*.go' -type f)
+
+      - name: Regenerate Plugin Lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei plugin-lock -workspace reference/workspace > /tmp/plugin-lock.json
+          mv /tmp/plugin-lock.json reference/workspace/.tei/plugin-lock.json
+
+      - name: Regenerate Reference World
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei world -workspace reference/workspace > /tmp/world.json
+          mv /tmp/world.json reference/world.json
+
+      - name: Regenerate Durable Run fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei deployment-start \
+            -workspace reference/workspace \
+            -solution order_rollout \
+            -version 2026.8.27 \
+            -deployment reference/observed/production.deployment-state.json \
+            -run-id order-rollout-prod-m0.21 \
+            -plugin-lock reference/workspace/.tei/plugin-lock.json \
+            > /tmp/durable-run.json
+          mv /tmp/durable-run.json reference/order_rollout.durable-run.m0.21.start.json
+
+      - name: Static checks
+        run: go vet ./...
+      - name: Tests
+        run: go test ./...
+
+      - name: Commit executable argv core and Reference fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/plugin internal/syntax tools/reference-deployment-attempt tools/reference-lease-supervision reference
+          git commit -m "process commandをexecutableとargvへ分離する"
+          git push origin HEAD:work/issue-33-process-argv
