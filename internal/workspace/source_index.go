@@ -12,8 +12,8 @@ import (
 
 // BuildSourceIndex projects workspace source metadata into the M0.23
 // source-side index. Physical source metadata remains outside ir.World.
-// Declaration kinds with an exact syntax anchor use the identifier token range;
-// other subjects continue to use the loader's legacy point location until their
+// Subjects with an exact syntax anchor use the identifier token range; other
+// subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	idx := sourceindex.Index{}
@@ -70,7 +70,7 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		}
 		content := contents[artifact.Path]
 		subject := subjectFromSourceKey(key)
-		rng, exact, err := declarationIdentifierRange(content, subject)
+		rng, exact, err := exactSubjectRange(content, subject)
 		if err != nil {
 			return sourceindex.Index{}, fmt.Errorf("source %s in %s: %w", key, artifact.Path, err)
 		}
@@ -102,6 +102,32 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	return idx, nil
 }
 
+func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
+	if isSemanticSubjectKind(subject.Kind) {
+		anchored, err := syntax.ParseSemanticFileAnchored(string(content))
+		if err != nil {
+			return sourceindex.Range{}, true, err
+		}
+		for _, item := range anchored.Anchors {
+			if item.Kind == subject.Kind && item.ID == subject.ID {
+				rng, err := sourceindex.RangeFromOffsets(content, item.Anchor.Start.Offset, item.Anchor.End.Offset)
+				return rng, true, err
+			}
+		}
+		return sourceindex.Range{}, true, fmt.Errorf("semantic subject %s:%s has no syntax anchor", subject.Kind, subject.ID)
+	}
+	return declarationIdentifierRange(content, subject)
+}
+
+func isSemanticSubjectKind(kind string) bool {
+	switch kind {
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability":
+		return true
+	default:
+		return false
+	}
+}
+
 func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
 	var keyword string
 	switch subject.Kind {
@@ -113,8 +139,6 @@ func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (so
 		keyword = "contract"
 	case "query":
 		keyword = "query"
-	case "semantic":
-		keyword = "namespace"
 	default:
 		return sourceindex.Range{}, false, nil
 	}
