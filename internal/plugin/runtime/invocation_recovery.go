@@ -50,6 +50,7 @@ type DurableInvocationHandle struct {
 	ResourceLeaseID          string           `json:"resourceLeaseId,omitempty"`
 	SupervisorOwnerID        string           `json:"supervisorOwnerId,omitempty"`
 	FencingToken             uint64           `json:"fencingToken,omitempty"`
+	RuntimeFencingToken      uint64           `json:"runtimeFencingToken,omitempty"`
 	Lifecycle                RuntimeLifecycle `json:"lifecycle"`
 	StartedAt                string           `json:"startedAt,omitempty"`
 	LastObservedAt           string           `json:"lastObservedAt,omitempty"`
@@ -76,6 +77,9 @@ func (h DurableInvocationHandle) Validate() error {
 	}
 	if h.Revision < 1 {
 		return fmt.Errorf("durable invocation handle revision must be positive")
+	}
+	if h.RuntimeFencingToken > h.FencingToken {
+		return fmt.Errorf("durable invocation runtime fencing token %d exceeds supervisor fencing token %d", h.RuntimeFencingToken, h.FencingToken)
 	}
 	return nil
 }
@@ -263,6 +267,7 @@ func ReconcileDurableInvocation(ctx context.Context, store InvocationHandleStore
 	case RuntimeUnknown:
 		outcome = RecoveryWaitingObserve
 		findings = append(findings, "runtime state is unknown; keep the deployment action unresolved")
+		findings = append(findings, fmt.Sprintf("runtime fencing authority is unresolved; supervisor generation is %d while runtime-confirmed generation remains %d", fencingToken, h.RuntimeFencingToken))
 	default:
 		return InvocationRecoveryResult{}, fmt.Errorf("runtime returned invalid lifecycle %q", obs.Lifecycle)
 	}
@@ -270,6 +275,9 @@ func ReconcileDurableInvocation(ctx context.Context, store InvocationHandleStore
 	next := h
 	next.SupervisorOwnerID = ownerID
 	next.FencingToken = fencingToken
+	if outcome == RecoveryReattached {
+		next.RuntimeFencingToken = fencingToken
+	}
 	next.Lifecycle = obs.Lifecycle
 	next.LastObservedAt = obs.ObservedAt
 	next.LastMessage = obs.Message
