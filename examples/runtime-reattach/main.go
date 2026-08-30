@@ -44,6 +44,7 @@ func main() {
 		ResourceLeaseID:          "lease-atlas-001",
 		SupervisorOwnerID:        "host-a",
 		FencingToken:             1,
+		RuntimeFencingToken:      1,
 		Lifecycle:                pruntime.RuntimeRunning,
 	}
 	if _, err := store.Save(ctx, handle, 0); err != nil {
