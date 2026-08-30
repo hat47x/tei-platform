@@ -1,0 +1,72 @@
+name: Verify Issue 35 actual PostgreSQL integration
+
+on:
+  push:
+    branches:
+      - work/issue-35-postgres-integration
+    paths:
+      - .github/workflows/issue35-postgres-integration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tei
+          POSTGRES_PASSWORD: tei-reference-password
+          POSTGRES_DB: tei_reference
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei -d tei_reference"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEI_TEST_POSTGRES_DSN: postgres://tei:tei-reference-password@127.0.0.1:5432/tei_reference?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-35-postgres-integration
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Add reference database/sql driver
+        run: go get github.com/lib/pq@v1.12.3
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w tools/reference-postgres-integration/main.go
+          test -z "$(gofmt -l cmd internal examples tools)"
+      - name: Static checks
+        run: go vet ./...
+      - name: Unit tests
+        run: go test ./...
+      - name: Run actual PostgreSQL Desired Actual Diff integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-integration > /tmp/postgres-integration.json
+          cat /tmp/postgres-integration.json
+          grep -q '"connectionDataPersisted": false' /tmp/postgres-integration.json
+          grep -q '"actualTables": 2' /tmp/postgres-integration.json
+          grep -q '"foreignKeys": 1' /tmp/postgres-integration.json
+      - name: Commit dependency and formatting after successful integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add go.mod go.sum tools/reference-postgres-integration/main.go
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "M0.26 Reference PostgreSQL driverとintegration harnessを固定する"
+          git push origin HEAD:work/issue-35-postgres-integration
