@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -110,6 +111,13 @@ func (c *leaseController) HeartbeatOwnership(ctx context.Context) error {
 	}
 	next, err := store.Heartbeat(ctx, current, ttl)
 	if err != nil {
+		// Cancellation of the invocation/supervisor context is the normal signal
+		// used to stop the heartbeat loop. If the store reports that same context
+		// termination, ownership has not been proven lost and fail-closed state
+		// must not be synthesized from shutdown itself.
+		if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
+			return nil
+		}
 		c.mu.Lock()
 		c.ownershipEvents = append(c.ownershipEvents, resource.OwnershipRecord{State: resource.OwnershipLost, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano), OwnerID: current.OwnerID, FencingToken: current.FencingToken, OwnerExpiresAt: current.OwnerExpiresAt, Message: err.Error()})
 		c.mu.Unlock()
