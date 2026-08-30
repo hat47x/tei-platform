@@ -1,0 +1,13 @@
+plugin tei.runtime.reference v1.0.0 {
+    runtime builtin
+
+    provides deployment-executor runtime.reference {
+        action application-start
+        action stop-accepting-work
+        action application-retire
+    }
+
+    provides observation-provider runtime.observer {
+        observation application-runtime
+    }
+}

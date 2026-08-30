@@ -1,0 +1,7 @@
+plugin tei.health.reference v1.0.0 {
+    runtime builtin
+
+    provides evidence-provider health.reference {
+        evidence rollout-health
+    }
+}

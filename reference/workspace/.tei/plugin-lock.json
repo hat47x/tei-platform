@@ -1,0 +1,93 @@
+{
+  "formatVersion": 2,
+  "environments": [
+    {
+      "environment": "development",
+      "plugins": [
+        {
+          "id": "tei.database.observer.reference",
+          "version": "1.0.0",
+          "fingerprint": "2c55da013160c1afbd07e017b2fe3a278ad1349d4cb26514e7ab7d8500722d2f"
+        },
+        {
+          "id": "tei.database.oracle",
+          "version": "1.0.0",
+          "fingerprint": "26045b36a9192e191d5305008ab6f8353ffc336d24d5667a3286c038bebcac7c"
+        },
+        {
+          "id": "tei.database.postgres",
+          "version": "1.0.0",
+          "fingerprint": "1e2db2065b8594c9557aa83e27486d5867ff6ce09f9035c277189023924679a2"
+        },
+        {
+          "id": "tei.editor.intelligence.sql",
+          "version": "1.0.0",
+          "fingerprint": "128967e9a501e22568cceaec3799ed29e7649bd8b021118cce0f4ec52db4d0b9",
+          "artifactDigest": "sha256:5af655bd19fffee7c3564b060f92056e1a6bd521c0b15bd1155dd244cd77de43"
+        },
+        {
+          "id": "tei.health.reference",
+          "version": "1.0.0",
+          "fingerprint": "11a5e27d23e07606d10850e44c43663bb34db997555227fdb087f431a3a08eed"
+        },
+        {
+          "id": "tei.migration.atlas",
+          "version": "1.0.0",
+          "fingerprint": "a39b77d70f4b8c0838dcb96bf4d3bca8c41d8d081449fbe865d3ed8ec0fa2f76",
+          "artifactDigest": "sha256:553a998532767887a13c39f58b43936bbae4a5f0ccd6764f1c2500f575acded2"
+        },
+        {
+          "id": "tei.runtime.reference",
+          "version": "1.0.0",
+          "fingerprint": "f093059463561b9ba0463666424fc7db1f99bc2faace2321873efbada52eee0b"
+        },
+        {
+          "id": "tei.traffic.reference",
+          "version": "1.0.0",
+          "fingerprint": "d35cac7faf335f33b2482539ce244498a696fc09cf39621ac7b5a5c47f983878"
+        }
+      ]
+    },
+    {
+      "environment": "production",
+      "plugins": [
+        {
+          "id": "tei.database.observer.reference",
+          "version": "1.0.0",
+          "fingerprint": "2c55da013160c1afbd07e017b2fe3a278ad1349d4cb26514e7ab7d8500722d2f"
+        },
+        {
+          "id": "tei.database.oracle",
+          "version": "1.0.0",
+          "fingerprint": "26045b36a9192e191d5305008ab6f8353ffc336d24d5667a3286c038bebcac7c"
+        },
+        {
+          "id": "tei.database.postgres",
+          "version": "1.0.0",
+          "fingerprint": "1e2db2065b8594c9557aa83e27486d5867ff6ce09f9035c277189023924679a2"
+        },
+        {
+          "id": "tei.health.reference",
+          "version": "1.0.0",
+          "fingerprint": "11a5e27d23e07606d10850e44c43663bb34db997555227fdb087f431a3a08eed"
+        },
+        {
+          "id": "tei.migration.atlas",
+          "version": "1.0.0",
+          "fingerprint": "a39b77d70f4b8c0838dcb96bf4d3bca8c41d8d081449fbe865d3ed8ec0fa2f76",
+          "artifactDigest": "sha256:553a998532767887a13c39f58b43936bbae4a5f0ccd6764f1c2500f575acded2"
+        },
+        {
+          "id": "tei.runtime.reference",
+          "version": "1.0.0",
+          "fingerprint": "f093059463561b9ba0463666424fc7db1f99bc2faace2321873efbada52eee0b"
+        },
+        {
+          "id": "tei.traffic.reference",
+          "version": "1.0.0",
+          "fingerprint": "d35cac7faf335f33b2482539ce244498a696fc09cf39621ac7b5a5c47f983878"
+        }
+      ]
+    }
+  ]
+}

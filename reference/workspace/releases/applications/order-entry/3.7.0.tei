@@ -1,0 +1,19 @@
+application-release order_entry 3.7.0 {
+    source-revision "reference-app-3.7.0"
+
+    database sales {
+        target sales_core
+        access read-write
+        requires {
+            contract sales_core.order_legacy ^1
+        }
+    }
+
+    database master {
+        target master_data
+        access read
+        requires {
+            contract master_data.customer ^2
+        }
+    }
+}

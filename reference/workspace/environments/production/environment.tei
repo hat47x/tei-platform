@@ -1,0 +1,39 @@
+environment production {
+    bundle tei.reference.providers ^1
+    feature editor.database_workbench
+
+    database-instance sales_core.prod {
+        definition sales_core
+        provider postgres
+    }
+
+    database-instance master_data.prod {
+        definition master_data
+        provider oracle
+    }
+
+    bind order_entry.sales -> sales_core.prod
+    bind order_entry.master -> master_data.prod
+
+
+    deployment-executor database-release for database sales_core -> migration.atlas
+    deployment-executor application-start for application order_entry -> runtime.reference
+    deployment-executor traffic-shift for application order_entry -> traffic.reference
+    deployment-executor stop-accepting-work for application order_entry -> runtime.reference
+    deployment-executor application-retire for application order_entry -> runtime.reference
+
+    observation-provider application-runtime -> runtime.observer
+    observation-provider database-state -> database.observer
+
+    evidence-provider rollout-health -> health.reference
+
+    resource secret database-credential -> production.sales_core.migration_credential inject environment "TEI_DATABASE_CREDENTIAL" refresh live
+    resource network database-endpoint -> production.sales_core.database_endpoint
+    resource filesystem migration-workdir -> production.sales_core.migration_workdir
+
+    grant deployment-executor migration.atlas permission secret read database-credential
+    grant deployment-executor migration.atlas permission network connect database-endpoint
+    grant deployment-executor migration.atlas permission filesystem read-write migration-workdir
+
+    lease-policy deployment-executor migration.atlas max-lifetime 45m renew-before 5m revoke-timeout 15s renewal-failure fail-closed
+}

@@ -1,0 +1,4 @@
+migration-provider sales_core {
+    tool atlas
+    mode versioned
+}

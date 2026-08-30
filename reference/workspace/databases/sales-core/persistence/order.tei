@@ -1,0 +1,15 @@
+persist sales_core.order {
+    database sales_core
+    semantic sales.order
+    table public.orders
+
+    column sales.order.order_id -> order_id storage int64 required
+    column sales.order.customer_id -> customer_id storage int64 required
+    column sales.order.ordered_at -> ordered_at storage datetime-tz required
+    column sales.order.status -> status storage varchar required
+    column sales.order.total -> total_amount storage decimal required
+    column sales.order.external_id -> external_id storage varchar optional
+
+    primary-key sales.order.order_id
+    index orders_customer_idx on sales.order.customer_id
+}

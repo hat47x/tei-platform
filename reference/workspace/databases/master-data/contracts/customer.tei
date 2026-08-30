@@ -1,0 +1,4 @@
+contract master_data.customer v2.4 {
+    read customer.customer
+    query find_by_id
+}

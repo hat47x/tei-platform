@@ -1,0 +1,20 @@
+application order_entry {
+    uses semantic sales
+    uses semantic customer
+
+    database sales {
+        target sales_core
+        access read-write
+        requires {
+            contract sales_core.order ^4
+        }
+    }
+
+    database master {
+        target master_data
+        access read
+        requires {
+            contract master_data.customer ^2
+        }
+    }
+}

@@ -1,0 +1,19 @@
+namespace sales
+
+type OrderId from std.identifier
+type OrderStatus from std.code
+
+data Order {
+    attribute orderId type sales.order_id
+    attribute customerId type customer.customer_id
+    attribute orderedAt type std.datetime
+    attribute status type sales.order_status
+    attribute total type std.money
+    attribute externalId type std.text
+    relation customer to customer.customer one
+}
+
+capability sales.order.submit {
+    input order sales.order
+    output sales.order
+}

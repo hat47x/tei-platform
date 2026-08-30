@@ -1,0 +1,7 @@
+plugin tei.database.postgres v1.0.0 {
+    runtime builtin
+
+    provides database-provider database.postgres {
+        provider postgres
+    }
+}

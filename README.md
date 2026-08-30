@@ -97,10 +97,6 @@ process Pluginには、必要なCapabilityへ必要なPermissionだけを明示G
 
 現在はさらに、Lease renewal、refresh、revoke、Supervisor ownership、fencing、Host takeover、runtime reattachの境界まで実験実装しています。
 
-## Repository staging note
-
-GitHub側では初回公開チェックポイントのソースツリーを通常の`cmd/`・`internal/`・`reference/`構成へ正規化している途中です。設計・文書・ローカル検証済みソースはM0.22まで揃っていますが、`main`上の搬送用`bootstrap/`を最終構成とはみなしません。正規化完了後はこの注記と`bootstrap/`を削除します。
-
 ## まず動かす
 
 正規ソースツリー展開後に必要なのはGo toolchainです。

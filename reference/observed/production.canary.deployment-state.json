@@ -1,0 +1,47 @@
+{
+  "environment": "production",
+  "observedAt": "2026-08-28T15:45:00+09:00",
+  "activeApplications": [
+    {"application": "order_entry", "version": "3.7.0"},
+    {"application": "order_entry", "version": "3.8.0"}
+  ],
+  "applicationRuntime": [
+    {
+      "application": "order_entry",
+      "version": "3.7.0",
+      "lifecycle": "serving",
+      "trafficBasisPoints": 7000,
+      "acceptingWork": true,
+      "drainComplete": false
+    },
+    {
+      "application": "order_entry",
+      "version": "3.8.0",
+      "lifecycle": "serving",
+      "trafficBasisPoints": 3000,
+      "acceptingWork": true,
+      "drainComplete": false
+    }
+  ],
+  "databases": [
+    {
+      "database": "sales_core",
+      "source": "release",
+      "release": "4.1.0",
+      "provides": [
+        {"id": "sales_core.order_legacy", "version": {"major": 1, "minor": 0}},
+        {"id": "sales_core.order", "version": {"major": 4, "minor": 1}}
+      ],
+      "dataReadiness": "ready"
+    },
+    {
+      "database": "master_data",
+      "source": "observed",
+      "provides": [
+        {"id": "master_data.customer", "version": {"major": 2, "minor": 4}}
+      ],
+      "dataReadiness": "ready",
+      "observedAt": "2026-08-28T15:45:00+09:00"
+    }
+  ]
+}

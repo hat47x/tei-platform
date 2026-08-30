@@ -1,0 +1,43 @@
+solution-release order_rollout 2026.8.27 {
+    step sales_expand {
+        kind database-release
+        phase expand
+        database sales_core
+        version 4.1.0
+    }
+
+    step master_ready {
+        kind database-gate
+        phase transition
+        database master_data
+        contract master_data.customer ^2
+    }
+
+    step order_app {
+        kind application-release
+        phase rollout
+        application order_entry
+        version 3.8.0
+        strategy canary
+        traffic 1000
+        traffic 5000
+        traffic 10000
+    }
+
+    step retire_order_37 {
+        kind application-retire
+        phase transition
+        application order_entry
+        version 3.7.0
+    }
+
+    step sales_contract {
+        kind database-release
+        phase contract
+        database sales_core
+        version 4.2.0
+    }
+
+    after order_app sales_expand
+    after retire_order_37 order_app
+}

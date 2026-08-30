@@ -1,0 +1,5 @@
+contract sales_core.order v4.2 {
+    read sales.order
+    write sales.order.status
+    query find_by_id
+}

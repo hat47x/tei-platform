@@ -1,0 +1,1098 @@
+{
+  "plugins": [
+    {
+      "id": "tei.database.observer.reference",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "observation-provider",
+          "id": "database.observer",
+          "observations": [
+            "database-state"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tei.database.oracle",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "database-provider",
+          "id": "database.oracle",
+          "databaseProviders": [
+            "oracle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tei.database.postgres",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "database-provider",
+          "id": "database.postgres",
+          "databaseProviders": [
+            "postgres"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tei.editor.intelligence.sql",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "process",
+        "command": "python3 -m tei_sql_worker",
+        "sandbox": "required"
+      },
+      "artifact": {
+        "digest": "sha256:5af655bd19fffee7c3564b060f92056e1a6bd521c0b15bd1155dd244cd77de43",
+        "signatureRef": "sigstore://tei/reference/tei-editor-intelligence-sql@1.0.0",
+        "provenance": "source://tei/reference/plugins/tei-editor-intelligence-sql/1.0.0"
+      },
+      "provides": [
+        {
+          "kind": "editor-intelligence",
+          "id": "editor.sqlglot",
+          "features": [
+            "editor.sql_analysis"
+          ]
+        }
+      ],
+      "externalRequirements": [
+        {
+          "scope": "editor",
+          "kind": "language-package",
+          "name": "sqlglot"
+        },
+        {
+          "scope": "editor",
+          "kind": "runtime",
+          "name": "python"
+        }
+      ]
+    },
+    {
+      "id": "tei.health.reference",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "evidence-provider",
+          "id": "health.reference",
+          "evidence": [
+            "rollout-health"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tei.migration.atlas",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "process",
+        "command": "atlas",
+        "sandbox": "required"
+      },
+      "artifact": {
+        "digest": "sha256:553a998532767887a13c39f58b43936bbae4a5f0ccd6764f1c2500f575acded2",
+        "signatureRef": "sigstore://tei/reference/tei-migration-atlas@1.0.0",
+        "provenance": "source://tei/reference/plugins/tei-migration-atlas/1.0.0"
+      },
+      "provides": [
+        {
+          "kind": "deployment-executor",
+          "id": "migration.atlas",
+          "actions": [
+            "database-release"
+          ],
+          "permissions": [
+            {
+              "kind": "filesystem",
+              "access": "read-write",
+              "scope": "migration-workdir"
+            },
+            {
+              "kind": "network",
+              "access": "connect",
+              "scope": "database-endpoint"
+            },
+            {
+              "kind": "secret",
+              "access": "read",
+              "scope": "database-credential"
+            }
+          ]
+        },
+        {
+          "kind": "migration-provider",
+          "id": "migration.atlas",
+          "migrationTools": [
+            "atlas"
+          ]
+        }
+      ],
+      "externalRequirements": [
+        {
+          "scope": "migration",
+          "kind": "tool",
+          "name": "atlas"
+        }
+      ]
+    },
+    {
+      "id": "tei.runtime.reference",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "deployment-executor",
+          "id": "runtime.reference",
+          "actions": [
+            "application-retire",
+            "application-start",
+            "stop-accepting-work"
+          ]
+        },
+        {
+          "kind": "observation-provider",
+          "id": "runtime.observer",
+          "observations": [
+            "application-runtime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tei.traffic.reference",
+      "version": "1.0.0",
+      "runtime": {
+        "kind": "builtin"
+      },
+      "artifact": {},
+      "provides": [
+        {
+          "kind": "deployment-executor",
+          "id": "traffic.reference",
+          "actions": [
+            "traffic-shift"
+          ]
+        }
+      ]
+    }
+  ],
+  "bundles": [
+    {
+      "id": "tei.reference.providers",
+      "version": "1.0.0",
+      "plugins": [
+        {
+          "plugin": "tei.database.observer.reference",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.database.oracle",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.database.postgres",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.health.reference",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.migration.atlas",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.runtime.reference",
+          "compatibleMajor": 1
+        },
+        {
+          "plugin": "tei.traffic.reference",
+          "compatibleMajor": 1
+        }
+      ]
+    }
+  ],
+  "semantics": [
+    {
+      "id": "customer",
+      "types": [
+        {
+          "id": "customer.customer_id",
+          "symbol": "CustomerId",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        }
+      ],
+      "data": [
+        {
+          "id": "customer.customer",
+          "symbol": "Customer",
+          "attributes": [
+            {
+              "id": "customer.customer.customer_id",
+              "symbol": "customerId",
+              "type": "customer.customer_id"
+            },
+            {
+              "id": "customer.customer.name",
+              "symbol": "name",
+              "type": "std.text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sales",
+      "types": [
+        {
+          "id": "sales.order_id",
+          "symbol": "OrderId",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        },
+        {
+          "id": "sales.order_status",
+          "symbol": "OrderStatus",
+          "kind": "alias",
+          "underlying": "std.code"
+        }
+      ],
+      "data": [
+        {
+          "id": "sales.order",
+          "symbol": "Order",
+          "attributes": [
+            {
+              "id": "sales.order.customer_id",
+              "symbol": "customerId",
+              "type": "customer.customer_id"
+            },
+            {
+              "id": "sales.order.external_id",
+              "symbol": "externalId",
+              "type": "std.text"
+            },
+            {
+              "id": "sales.order.order_id",
+              "symbol": "orderId",
+              "type": "sales.order_id"
+            },
+            {
+              "id": "sales.order.ordered_at",
+              "symbol": "orderedAt",
+              "type": "std.datetime"
+            },
+            {
+              "id": "sales.order.status",
+              "symbol": "status",
+              "type": "sales.order_status"
+            },
+            {
+              "id": "sales.order.total",
+              "symbol": "total",
+              "type": "std.money"
+            }
+          ],
+          "relations": [
+            {
+              "id": "sales.order.customer",
+              "symbol": "customer",
+              "target": "customer.customer",
+              "cardinality": "one"
+            }
+          ]
+        }
+      ],
+      "capabilities": [
+        {
+          "id": "sales.order.submit",
+          "symbol": "submit",
+          "inputs": [
+            {
+              "name": "order",
+              "type": "sales.order"
+            }
+          ],
+          "output": "sales.order"
+        }
+      ]
+    },
+    {
+      "id": "std",
+      "types": [
+        {
+          "id": "std.binary",
+          "symbol": "binary",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.boolean",
+          "symbol": "boolean",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.code",
+          "symbol": "code",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.date",
+          "symbol": "date",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.datetime",
+          "symbol": "datetime",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.decimal",
+          "symbol": "decimal",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.identifier",
+          "symbol": "identifier",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.integer",
+          "symbol": "integer",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.json",
+          "symbol": "json",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.money",
+          "symbol": "money",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.text",
+          "symbol": "text",
+          "kind": "primitive"
+        },
+        {
+          "id": "std.time",
+          "symbol": "time",
+          "kind": "primitive"
+        }
+      ]
+    }
+  ],
+  "applications": [
+    {
+      "id": "order_entry",
+      "semanticUses": [
+        "sales",
+        "customer"
+      ],
+      "databases": [
+        {
+          "alias": "master",
+          "target": "master_data",
+          "access": "read",
+          "requires": [
+            {
+              "contract": "master_data.customer",
+              "compatibleMajor": 2
+            }
+          ]
+        },
+        {
+          "alias": "sales",
+          "target": "sales_core",
+          "access": "read-write",
+          "requires": [
+            {
+              "contract": "sales_core.order",
+              "compatibleMajor": 4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "id": "master_data",
+      "semanticUses": [
+        "customer"
+      ],
+      "kind": "relational",
+      "ownership": "external-observed",
+      "contracts": [
+        {
+          "id": "master_data.customer",
+          "version": {
+            "major": 2,
+            "minor": 4
+          },
+          "reads": [
+            "customer.customer"
+          ],
+          "queries": [
+            {
+              "name": "find_by_id"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sales_core",
+      "semanticUses": [
+        "sales"
+      ],
+      "kind": "relational",
+      "ownership": "managed-here",
+      "contracts": [
+        {
+          "id": "sales_core.order",
+          "version": {
+            "major": 4,
+            "minor": 2
+          },
+          "reads": [
+            "sales.order"
+          ],
+          "writes": [
+            "sales.order.status"
+          ],
+          "queries": [
+            {
+              "name": "find_by_id"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "persistenceMappings": [
+    {
+      "id": "sales_core.order",
+      "database": "sales_core",
+      "semanticData": "sales.order",
+      "table": "public.orders",
+      "columns": [
+        {
+          "attribute": "sales.order.order_id",
+          "column": "order_id",
+          "storage": "int64",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order.customer_id",
+          "column": "customer_id",
+          "storage": "int64",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order.ordered_at",
+          "column": "ordered_at",
+          "storage": "datetime-tz",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order.status",
+          "column": "status",
+          "storage": "varchar",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order.total",
+          "column": "total_amount",
+          "storage": "decimal",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order.external_id",
+          "column": "external_id",
+          "storage": "varchar",
+          "nullability": "optional"
+        }
+      ],
+      "primaryKey": [
+        "sales.order.order_id"
+      ],
+      "indexes": [
+        {
+          "name": "orders_customer_idx",
+          "attributes": [
+            "sales.order.customer_id"
+          ]
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "id": "20260826_001",
+      "database": "sales_core",
+      "recovery": "forward-fix",
+      "steps": [
+        {
+          "kind": "schema",
+          "sql": {
+            "provider": "postgres",
+            "source": "CREATE INDEX orders_customer_idx\n        ON public.orders (customer_id);"
+          }
+        },
+        {
+          "kind": "data",
+          "sql": {
+            "provider": "postgres",
+            "source": "UPDATE public.orders\n        SET status = 'UNKNOWN'\n        WHERE status IS NULL;"
+          }
+        },
+        {
+          "kind": "verify",
+          "sql": {
+            "provider": "postgres",
+            "source": "SELECT COUNT(*)\n        FROM public.orders\n        WHERE status IS NULL;"
+          }
+        }
+      ]
+    }
+  ],
+  "migrationProviders": [
+    {
+      "database": "sales_core",
+      "tool": "atlas",
+      "mode": "versioned"
+    }
+  ],
+  "applicationReleases": [
+    {
+      "application": "order_entry",
+      "version": "3.7.0",
+      "sourceRevision": "reference-app-3.7.0",
+      "databases": [
+        {
+          "alias": "master",
+          "target": "master_data",
+          "access": "read",
+          "requires": [
+            {
+              "contract": "master_data.customer",
+              "compatibleMajor": 2
+            }
+          ]
+        },
+        {
+          "alias": "sales",
+          "target": "sales_core",
+          "access": "read-write",
+          "requires": [
+            {
+              "contract": "sales_core.order_legacy",
+              "compatibleMajor": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "application": "order_entry",
+      "version": "3.8.0",
+      "sourceRevision": "reference-app-3.8.0",
+      "databases": [
+        {
+          "alias": "master",
+          "target": "master_data",
+          "access": "read",
+          "requires": [
+            {
+              "contract": "master_data.customer",
+              "compatibleMajor": 2
+            }
+          ]
+        },
+        {
+          "alias": "sales",
+          "target": "sales_core",
+          "access": "read-write",
+          "requires": [
+            {
+              "contract": "sales_core.order",
+              "compatibleMajor": 4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "databaseReleases": [
+    {
+      "database": "sales_core",
+      "version": "4.0.0",
+      "schemaFingerprint": "reference-sales-4.0",
+      "provides": [
+        {
+          "id": "sales_core.order_legacy",
+          "version": {
+            "major": 1,
+            "minor": 0
+          }
+        }
+      ],
+      "dataReadiness": "ready"
+    },
+    {
+      "database": "sales_core",
+      "version": "4.1.0",
+      "schemaFingerprint": "reference-sales-4.1",
+      "migrations": [
+        "20260826_001"
+      ],
+      "provides": [
+        {
+          "id": "sales_core.order_legacy",
+          "version": {
+            "major": 1,
+            "minor": 0
+          }
+        },
+        {
+          "id": "sales_core.order",
+          "version": {
+            "major": 4,
+            "minor": 1
+          }
+        }
+      ],
+      "dataReadiness": "ready"
+    },
+    {
+      "database": "sales_core",
+      "version": "4.2.0",
+      "schemaFingerprint": "reference-sales-4.2",
+      "provides": [
+        {
+          "id": "sales_core.order",
+          "version": {
+            "major": 4,
+            "minor": 2
+          }
+        }
+      ],
+      "dataReadiness": "ready"
+    }
+  ],
+  "solutionReleases": [
+    {
+      "id": "order_rollout",
+      "version": "2026.8.27",
+      "steps": [
+        {
+          "id": "master_ready",
+          "kind": "database-gate",
+          "phase": "transition",
+          "database": "master_data",
+          "contract": "master_data.customer",
+          "compatibleMajor": 2
+        },
+        {
+          "id": "order_app",
+          "kind": "application-release",
+          "phase": "rollout",
+          "application": "order_entry",
+          "version": "3.8.0",
+          "rolloutStrategy": "canary",
+          "trafficSteps": [
+            1000,
+            5000,
+            10000
+          ]
+        },
+        {
+          "id": "retire_order_37",
+          "kind": "application-retire",
+          "phase": "transition",
+          "application": "order_entry",
+          "version": "3.7.0"
+        },
+        {
+          "id": "sales_contract",
+          "kind": "database-release",
+          "phase": "contract",
+          "database": "sales_core",
+          "version": "4.2.0"
+        },
+        {
+          "id": "sales_expand",
+          "kind": "database-release",
+          "phase": "expand",
+          "database": "sales_core",
+          "version": "4.1.0"
+        }
+      ],
+      "after": [
+        {
+          "step": "order_app",
+          "after": "sales_expand"
+        },
+        {
+          "step": "retire_order_37",
+          "after": "order_app"
+        }
+      ]
+    },
+    {
+      "id": "order_rollout_fix",
+      "version": "2026.8.28",
+      "steps": [
+        {
+          "id": "sales_expand_fix",
+          "kind": "database-release",
+          "phase": "expand",
+          "database": "sales_core",
+          "version": "4.1.0"
+        }
+      ]
+    }
+  ],
+  "environments": [
+    {
+      "id": "development",
+      "plugins": [
+        {
+          "id": "tei.editor.intelligence.sql",
+          "compatibleMajor": 1
+        }
+      ],
+      "bundles": [
+        {
+          "id": "tei.reference.providers",
+          "compatibleMajor": 1
+        }
+      ],
+      "features": [
+        "editor.database_workbench",
+        "editor.sql_analysis"
+      ],
+      "instances": [
+        {
+          "id": "master_data.dev",
+          "definition": "master_data",
+          "provider": "oracle"
+        },
+        {
+          "id": "sales_core.dev",
+          "definition": "sales_core",
+          "provider": "postgres"
+        }
+      ],
+      "bindings": [
+        {
+          "application": "order_entry",
+          "alias": "master",
+          "instance": "master_data.dev"
+        },
+        {
+          "application": "order_entry",
+          "alias": "sales",
+          "instance": "sales_core.dev"
+        }
+      ],
+      "deploymentExecutors": [
+        {
+          "action": "database-release",
+          "scope": "database",
+          "target": "sales_core",
+          "executor": "migration.atlas"
+        },
+        {
+          "action": "application-start",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        },
+        {
+          "action": "traffic-shift",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "traffic.reference"
+        },
+        {
+          "action": "stop-accepting-work",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        },
+        {
+          "action": "application-retire",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        }
+      ],
+      "observationProviders": [
+        {
+          "kind": "application-runtime",
+          "provider": "runtime.observer"
+        },
+        {
+          "kind": "database-state",
+          "provider": "database.observer"
+        }
+      ],
+      "evidenceProviders": [
+        {
+          "kind": "rollout-health",
+          "provider": "health.reference"
+        }
+      ],
+      "permissionGrants": [
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "secret",
+            "access": "read",
+            "scope": "database-credential"
+          }
+        },
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "network",
+            "access": "connect",
+            "scope": "database-endpoint"
+          }
+        },
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "filesystem",
+            "access": "read-write",
+            "scope": "migration-workdir"
+          }
+        }
+      ],
+      "resourceBindings": [
+        {
+          "kind": "secret",
+          "scope": "database-credential",
+          "resourceId": "development.sales_core.migration_credential",
+          "secretDelivery": "environment",
+          "secretTarget": "TEI_DATABASE_CREDENTIAL",
+          "refresh": "live"
+        },
+        {
+          "kind": "network",
+          "scope": "database-endpoint",
+          "resourceId": "development.sales_core.database_endpoint"
+        },
+        {
+          "kind": "filesystem",
+          "scope": "migration-workdir",
+          "resourceId": "development.sales_core.migration_workdir"
+        }
+      ],
+      "leasePolicies": [
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "policy": {
+            "maxLifetime": "45m",
+            "renewBefore": "5m",
+            "revokeTimeout": "15s",
+            "renewalFailure": "fail-closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "production",
+      "bundles": [
+        {
+          "id": "tei.reference.providers",
+          "compatibleMajor": 1
+        }
+      ],
+      "features": [
+        "editor.database_workbench"
+      ],
+      "instances": [
+        {
+          "id": "master_data.prod",
+          "definition": "master_data",
+          "provider": "oracle"
+        },
+        {
+          "id": "sales_core.prod",
+          "definition": "sales_core",
+          "provider": "postgres"
+        }
+      ],
+      "bindings": [
+        {
+          "application": "order_entry",
+          "alias": "master",
+          "instance": "master_data.prod"
+        },
+        {
+          "application": "order_entry",
+          "alias": "sales",
+          "instance": "sales_core.prod"
+        }
+      ],
+      "deploymentExecutors": [
+        {
+          "action": "database-release",
+          "scope": "database",
+          "target": "sales_core",
+          "executor": "migration.atlas"
+        },
+        {
+          "action": "application-start",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        },
+        {
+          "action": "traffic-shift",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "traffic.reference"
+        },
+        {
+          "action": "stop-accepting-work",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        },
+        {
+          "action": "application-retire",
+          "scope": "application",
+          "target": "order_entry",
+          "executor": "runtime.reference"
+        }
+      ],
+      "observationProviders": [
+        {
+          "kind": "application-runtime",
+          "provider": "runtime.observer"
+        },
+        {
+          "kind": "database-state",
+          "provider": "database.observer"
+        }
+      ],
+      "evidenceProviders": [
+        {
+          "kind": "rollout-health",
+          "provider": "health.reference"
+        }
+      ],
+      "permissionGrants": [
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "secret",
+            "access": "read",
+            "scope": "database-credential"
+          }
+        },
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "network",
+            "access": "connect",
+            "scope": "database-endpoint"
+          }
+        },
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "permission": {
+            "kind": "filesystem",
+            "access": "read-write",
+            "scope": "migration-workdir"
+          }
+        }
+      ],
+      "resourceBindings": [
+        {
+          "kind": "secret",
+          "scope": "database-credential",
+          "resourceId": "production.sales_core.migration_credential",
+          "secretDelivery": "environment",
+          "secretTarget": "TEI_DATABASE_CREDENTIAL",
+          "refresh": "live"
+        },
+        {
+          "kind": "network",
+          "scope": "database-endpoint",
+          "resourceId": "production.sales_core.database_endpoint"
+        },
+        {
+          "kind": "filesystem",
+          "scope": "migration-workdir",
+          "resourceId": "production.sales_core.migration_workdir"
+        }
+      ],
+      "leasePolicies": [
+        {
+          "capabilityKind": "deployment-executor",
+          "capabilityId": "migration.atlas",
+          "policy": {
+            "maxLifetime": "45m",
+            "renewBefore": "5m",
+            "revokeTimeout": "15s",
+            "renewalFailure": "fail-closed"
+          }
+        }
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "id": "order_entry.recent_orders",
+      "application": "order_entry",
+      "datasource": "sales",
+      "dialect": "postgres",
+      "source": "SELECT\n            o.order_id,\n            o.customer_id,\n            o.ordered_at,\n            o.status,\n            o.total_amount\n        FROM public.orders AS o\n        WHERE o.ordered_at \u003e= :from\n        ORDER BY o.ordered_at DESC"
+    }
+  ],
+  "customGoBindings": [
+    {
+      "application": "order_entry",
+      "capability": "order_entry.compose_order_summary"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+bundle tei.reference.providers v1.0.0 {
+    plugin tei.runtime.reference ^1
+    plugin tei.traffic.reference ^1
+    plugin tei.health.reference ^1
+    plugin tei.database.observer.reference ^1
+    plugin tei.migration.atlas ^1
+    plugin tei.database.postgres ^1
+    plugin tei.database.oracle ^1
+}

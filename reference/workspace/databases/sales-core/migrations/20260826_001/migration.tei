@@ -1,0 +1,21 @@
+migration 20260826_001 {
+    database sales_core
+    recovery forward-fix
+
+    schema sql postgres {
+        CREATE INDEX orders_customer_idx
+        ON public.orders (customer_id);
+    }
+
+    data sql postgres {
+        UPDATE public.orders
+        SET status = 'UNKNOWN'
+        WHERE status IS NULL;
+    }
+
+    verify sql postgres {
+        SELECT COUNT(*)
+        FROM public.orders
+        WHERE status IS NULL;
+    }
+}

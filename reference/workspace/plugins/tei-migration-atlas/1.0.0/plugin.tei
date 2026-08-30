@@ -1,0 +1,22 @@
+plugin tei.migration.atlas v1.0.0 {
+    runtime process "atlas" sandbox required
+
+    artifact {
+        digest "sha256:553a998532767887a13c39f58b43936bbae4a5f0ccd6764f1c2500f575acded2"
+        signature "sigstore://tei/reference/tei-migration-atlas@1.0.0"
+        provenance "source://tei/reference/plugins/tei-migration-atlas/1.0.0"
+    }
+
+    provides deployment-executor migration.atlas {
+        action database-release
+        permission secret read database-credential
+        permission network connect database-endpoint
+        permission filesystem read-write migration-workdir
+    }
+
+    provides migration-provider migration.atlas {
+        tool atlas
+    }
+
+    external migration tool atlas
+}

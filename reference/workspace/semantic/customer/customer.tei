@@ -1,0 +1,8 @@
+namespace customer
+
+type CustomerId from std.identifier
+
+data Customer {
+    attribute customerId type customer.customer_id
+    attribute name type std.text
+}

@@ -1,0 +1,7 @@
+plugin tei.traffic.reference v1.0.0 {
+    runtime builtin
+
+    provides deployment-executor traffic.reference {
+        action traffic-shift
+    }
+}

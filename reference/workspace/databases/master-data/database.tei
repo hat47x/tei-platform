@@ -1,0 +1,5 @@
+database master_data {
+    kind relational
+    ownership external-observed
+    uses semantic customer
+}

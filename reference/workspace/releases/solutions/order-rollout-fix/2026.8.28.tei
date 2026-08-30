@@ -1,0 +1,8 @@
+solution-release order_rollout_fix 2026.8.28 {
+    step sales_expand_fix {
+        kind database-release
+        phase expand
+        database sales_core
+        version 4.1.0
+    }
+}

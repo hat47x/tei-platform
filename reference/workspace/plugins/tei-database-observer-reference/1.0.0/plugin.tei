@@ -1,0 +1,7 @@
+plugin tei.database.observer.reference v1.0.0 {
+    runtime builtin
+
+    provides observation-provider database.observer {
+        observation database-state
+    }
+}

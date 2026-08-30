@@ -1,0 +1,5 @@
+database-release sales_core 4.2.0 {
+    schema-fingerprint "reference-sales-4.2"
+    provides contract sales_core.order v4.2
+    data-readiness ready
+}
