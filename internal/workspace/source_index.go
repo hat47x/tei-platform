@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"tei/internal/sourceindex"
+	"tei/internal/syntax"
 )
 
-// BuildSourceIndex projects the workspace loader's current source metadata into
-// the M0.23 source-side index. It deliberately keeps physical source metadata
-// outside ir.World. Parser-level exact ranges will replace the current point
-// anchors incrementally without changing this ownership boundary.
+// BuildSourceIndex projects workspace source metadata into the M0.23
+// source-side index. Physical source metadata remains outside ir.World.
+// Declaration kinds with an exact syntax anchor use the identifier token range;
+// other subjects continue to use the loader's legacy point location until their
+// parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 	idx := sourceindex.Index{}
 	contents := map[string][]byte{}
@@ -67,19 +69,26 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			return sourceindex.Index{}, fmt.Errorf("source %s: %w", key, err)
 		}
 		content := contents[artifact.Path]
-		line, column := location.Line, location.Column
-		if line < 1 {
-			line = 1
-		}
-		if column < 1 {
-			column = 1
-		}
-		rng, err := sourceindex.PointRangeAt(content, line, column)
+		subject := subjectFromSourceKey(key)
+		rng, exact, err := declarationIdentifierRange(content, subject)
 		if err != nil {
-			return sourceindex.Index{}, fmt.Errorf("source %s at %s:%d:%d: %w", key, artifact.Path, line, column, err)
+			return sourceindex.Index{}, fmt.Errorf("source %s in %s: %w", key, artifact.Path, err)
+		}
+		if !exact {
+			line, column := location.Line, location.Column
+			if line < 1 {
+				line = 1
+			}
+			if column < 1 {
+				column = 1
+			}
+			rng, err = sourceindex.PointRangeAt(content, line, column)
+			if err != nil {
+				return sourceindex.Index{}, fmt.Errorf("source %s at %s:%d:%d: %w", key, artifact.Path, line, column, err)
+			}
 		}
 		idx.References = append(idx.References, sourceindex.Reference{
-			Subject:      subjectFromSourceKey(key),
+			Subject:      subject,
 			ArtifactPath: artifact.Path,
 			Range:        rng,
 			Role:         sourceindex.RoleDefinition,
@@ -91,6 +100,30 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		return sourceindex.Index{}, err
 	}
 	return idx, nil
+}
+
+func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
+	var keyword string
+	switch subject.Kind {
+	case "application":
+		keyword = "application"
+	case "database":
+		keyword = "database"
+	case "database-contract":
+		keyword = "contract"
+	case "query":
+		keyword = "query"
+	case "semantic":
+		keyword = "namespace"
+	default:
+		return sourceindex.Range{}, false, nil
+	}
+	anchor, err := syntax.DeclarationIdentifierAnchor(string(content), keyword, subject.ID)
+	if err != nil {
+		return sourceindex.Range{}, true, err
+	}
+	rng, err := sourceindex.RangeFromOffsets(content, anchor.Start.Offset, anchor.End.Offset)
+	return rng, true, err
 }
 
 func subjectFromSourceKey(key string) sourceindex.Subject {
