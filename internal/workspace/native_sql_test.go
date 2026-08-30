@@ -134,8 +134,8 @@ func TestNativeSQLMoveChangesOnlyAuthoringLocator(t *testing.T) {
 	if afterAuthoring.ArtifactPath != "applications/order-entry/queries/sql/recent_orders.sql" {
 		t.Fatalf("after authoring path=%q", afterAuthoring.ArtifactPath)
 	}
-	beforeArtifact := artifactByPath(t, beforeIndex, beforeAuthoring.ArtifactPath)
-	afterArtifact := artifactByPath(t, afterIndex, afterAuthoring.ArtifactPath)
+	beforeArtifact := nativeSQLArtifactByPath(t, beforeIndex, beforeAuthoring.ArtifactPath)
+	afterArtifact := nativeSQLArtifactByPath(t, afterIndex, afterAuthoring.ArtifactPath)
 	if beforeArtifact.Fingerprint != afterArtifact.Fingerprint {
 		t.Fatalf("same SQL content changed fingerprint: %s != %s", beforeArtifact.Fingerprint, afterArtifact.Fingerprint)
 	}
@@ -253,7 +253,7 @@ func referenceByRole(t *testing.T, refs []sourceindex.Reference, role sourceinde
 	return sourceindex.Reference{}
 }
 
-func artifactByPath(t *testing.T, idx sourceindex.Index, path string) sourceindex.Artifact {
+func nativeSQLArtifactByPath(t *testing.T, idx sourceindex.Index, path string) sourceindex.Artifact {
 	t.Helper()
 	for _, artifact := range idx.Artifacts {
 		if artifact.Path == path {
