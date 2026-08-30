@@ -40,6 +40,7 @@ type PluginRuntime struct {
 	Boundary              Boundary             `json:"boundary"`
 	Trust                 TrustClass           `json:"trust"`
 	Command               string               `json:"command,omitempty"`
+	Args                  []string             `json:"args,omitempty"`
 	SandboxPolicy         plugin.SandboxPolicy `json:"sandboxPolicy,omitempty"`
 	Artifact              plugin.Artifact      `json:"artifact,omitempty"`
 }
@@ -80,7 +81,7 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 		if !ok {
 			return EnvironmentPlan{}, fmt.Errorf("resolved plugin %s@%s missing from catalog", ident.ID, ident.Version)
 		}
-		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), Command: d.Runtime.Command, SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
+		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), Command: d.Runtime.Command, Args: append([]string(nil), d.Runtime.Args...), SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
 		switch d.Runtime.Kind {
 		case plugin.RuntimeBuiltin:
 			pr.Boundary, pr.Trust = BoundaryInProcess, TrustHostTrusted
@@ -234,11 +235,18 @@ type Builtin interface {
 	Invoke(context.Context, Request) (Response, error)
 }
 
-// ProcessLauncher is supplied by the TEI host. M0.15 deliberately does not
-// execute arbitrary workspace process commands by itself. A host may implement
-// a stdio process protocol, container boundary, or stronger sandbox later.
+// ProcessCommand preserves executable and argv as separate values across the
+// Host boundary. It is never a shell command line and must not be reparsed by
+// ProcessLauncher implementations.
+type ProcessCommand struct {
+	Executable string   `json:"executable"`
+	Args       []string `json:"args,omitempty"`
+}
+
+// ProcessLauncher is supplied by the TEI host. It receives a structured
+// executable/argv pair so hosts cannot silently introduce shell semantics.
 type ProcessLauncher interface {
-	Invoke(context.Context, string, Request) (Response, error)
+	Invoke(context.Context, ProcessCommand, Request) (Response, error)
 }
 
 type SandboxMount struct {
@@ -267,7 +275,7 @@ type SandboxProfile struct {
 }
 
 type SandboxSpec struct {
-	Command         string                  `json:"command"`
+	Command         ProcessCommand          `json:"command"`
 	Plugin          plugin.Identity         `json:"plugin"`
 	Artifact        plugin.Artifact         `json:"artifact,omitempty"`
 	Permissions     []permission.Spec       `json:"permissionLease,omitempty"`
@@ -547,9 +555,10 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		if policy == "" {
 			policy = plugin.SandboxNone
 		}
+		processCommand := ProcessCommand{Executable: pr.Command, Args: append([]string(nil), pr.Args...)}
 		if r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred) {
 			prov.Sandboxed = true
-			resp, err = r.Sandboxes.Invoke(ctx, SandboxSpec{Command: pr.Command, Plugin: cr.Plugin, Artifact: pr.Artifact, Permissions: req.Permissions, ResourceLease: lease, LeaseController: leaseControl, LeasePolicy: cr.LeasePolicy, Profile: sandboxProfile(lease)}, req)
+			resp, err = r.Sandboxes.Invoke(ctx, SandboxSpec{Command: processCommand, Plugin: cr.Plugin, Artifact: pr.Artifact, Permissions: req.Permissions, ResourceLease: lease, LeaseController: leaseControl, LeasePolicy: cr.LeasePolicy, Profile: sandboxProfile(lease)}, req)
 		} else {
 			if policy == plugin.SandboxRequired {
 				return Invocation{}, fmt.Errorf("process plugin %s@%s requires sandbox launcher", cr.Plugin.ID, cr.Plugin.Version)
@@ -557,7 +566,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 			if r.Processes == nil {
 				return Invocation{}, fmt.Errorf("process plugin %s@%s has no host process launcher", cr.Plugin.ID, cr.Plugin.Version)
 			}
-			resp, err = r.Processes.Invoke(ctx, pr.Command, req)
+			resp, err = r.Processes.Invoke(ctx, processCommand, req)
 		}
 	default:
 		return Invocation{}, fmt.Errorf("unsupported runtime boundary %s", cr.Boundary)

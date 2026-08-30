@@ -1088,10 +1088,34 @@ func (p *Parser) ParsePlugin() (plugin.Definition, error) {
 				if err != nil {
 					return d, err
 				}
+				if strings.ContainsAny(cmd.Text, " \t\r\n") {
+					return d, p.errAt(cmd, "process command must be a single executable name/path; use args for arguments")
+				}
 				d.Runtime.Command = cmd.Text
 				next, err := p.peek()
 				if err != nil {
 					return d, err
+				}
+				if next.Text == "args" {
+					argsTok, _ := p.next()
+					for {
+						arg, err := p.peek()
+						if err != nil {
+							return d, err
+						}
+						if arg.Kind != TokenString {
+							break
+						}
+						v, _ := p.next()
+						d.Runtime.Args = append(d.Runtime.Args, v.Text)
+					}
+					if len(d.Runtime.Args) == 0 {
+						return d, p.errAt(argsTok, "args requires at least one quoted argument")
+					}
+					next, err = p.peek()
+					if err != nil {
+						return d, err
+					}
 				}
 				if next.Text == "sandbox" {
 					_, _ = p.next()

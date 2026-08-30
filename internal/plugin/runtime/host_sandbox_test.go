@@ -50,7 +50,7 @@ func (i *secretInjector) InjectSecrets(_ context.Context, in []pruntime.SecretIn
 
 type sandboxRunner struct{ called bool }
 
-func (r *sandboxRunner) InvokeSandboxed(_ context.Context, _ string, _ pruntime.Request) (pruntime.Response, error) {
+func (r *sandboxRunner) InvokeSandboxed(_ context.Context, _ pruntime.ProcessCommand, _ pruntime.Request) (pruntime.Response, error) {
 	r.called = true
 	return pruntime.Response{Status: pruntime.ResponseOK}, nil
 }
@@ -61,7 +61,7 @@ func TestHostSandboxLauncherAppliesNetworkMountAndSecretInjection(t *testing.T) 
 	sec := &secretInjector{}
 	runner := &sandboxRunner{}
 	launcher := pruntime.HostSandboxLauncher{Network: net, Filesystem: fs, Secrets: sec, Runner: runner}
-	spec := pruntime.SandboxSpec{Command: "worker", Profile: pruntime.SandboxProfile{
+	spec := pruntime.SandboxSpec{Command: pruntime.ProcessCommand{Executable: "worker"}, Profile: pruntime.SandboxProfile{
 		DenyNetworkByDefault: true, DenyFilesystemByDefault: true,
 		NetworkAllowlist: []string{"db.internal:5432"},
 		Mounts:           []pruntime.SandboxMount{{Scope: "migration-workdir", ResourceID: core.MustCanonicalID("prod.workdir"), SourceHandle: "mount://source", Target: "/tei/migration", Access: permission.AccessReadWrite}},
@@ -184,7 +184,7 @@ func (i *refreshSecretInjector) RefreshSecrets(_ context.Context, from, to []pru
 
 type refreshRunner struct{ ignored bool }
 
-func (r *refreshRunner) InvokeSandboxed(ctx context.Context, _ string, req pruntime.Request) (pruntime.Response, error) {
+func (r *refreshRunner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, req pruntime.Request) (pruntime.Response, error) {
 	if req.LeaseController == nil {
 		return pruntime.Response{}, context.Canceled
 	}
@@ -251,7 +251,7 @@ func TestLiveRefreshEnforcementFailureIsFailClosedEvenIfPluginIgnoresIt(t *testi
 
 type ignoringRenewRunner struct{}
 
-func (r *ignoringRenewRunner) InvokeSandboxed(ctx context.Context, _ string, req pruntime.Request) (pruntime.Response, error) {
+func (r *ignoringRenewRunner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, req pruntime.Request) (pruntime.Response, error) {
 	_, _ = req.LeaseController.Renew(ctx)
 	return pruntime.Response{Status: pruntime.ResponseOK}, nil
 }
@@ -311,7 +311,7 @@ func (c *failingSupervisorController) Refresh(context.Context) (resource.Lease, 
 
 type cancelAwareRunner struct{ canceled chan struct{} }
 
-func (r *cancelAwareRunner) InvokeSandboxed(ctx context.Context, _ string, _ pruntime.Request) (pruntime.Response, error) {
+func (r *cancelAwareRunner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, _ pruntime.Request) (pruntime.Response, error) {
 	<-ctx.Done()
 	close(r.canceled)
 	return pruntime.Response{}, ctx.Err()
@@ -322,7 +322,7 @@ func TestHostLeaseSupervisorCancelsInvocationWhenAutomaticRenewalFails(t *testin
 	ctrl := &failingSupervisorController{lease: resource.Lease{ID: "lease-supervisor-fail", Revision: 1, IssuedAt: now.Format(time.RFC3339Nano), ExpiresAt: now.Add(80 * time.Millisecond).Format(time.RFC3339Nano)}}
 	runner := &cancelAwareRunner{canceled: make(chan struct{})}
 	host := pruntime.HostSandboxLauncher{Network: &netEnforcer{}, Filesystem: &fsEnforcer{}, Secrets: &secretInjector{}, Runner: runner}
-	spec := pruntime.SandboxSpec{Command: "reference", LeaseController: ctrl, LeasePolicy: resource.LeasePolicy{MaxLifetime: "1s", RenewBefore: "50ms", RevokeTimeout: "1s", RenewalFailure: resource.RenewalFailClosed}, Profile: pruntime.SandboxProfile{DenyNetworkByDefault: true, DenyFilesystemByDefault: true}}
+	spec := pruntime.SandboxSpec{Command: pruntime.ProcessCommand{Executable: "reference"}, LeaseController: ctrl, LeasePolicy: resource.LeasePolicy{MaxLifetime: "1s", RenewBefore: "50ms", RevokeTimeout: "1s", RenewalFailure: resource.RenewalFailClosed}, Profile: pruntime.SandboxProfile{DenyNetworkByDefault: true, DenyFilesystemByDefault: true}}
 	_, err := host.Invoke(context.Background(), spec, pruntime.Request{LeaseController: ctrl})
 	if err == nil {
 		t.Fatal("expected supervised renewal failure")
