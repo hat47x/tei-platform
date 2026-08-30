@@ -119,6 +119,7 @@ jobs:
           grep -q '"outcome": "accepted"' /tmp/tei-reference-process-result.json
           grep -q '"boundary": "process"' /tmp/tei-reference-process-result.json
           grep -q 'reference-process://reference-process-command-1' /tmp/tei-reference-process-result.json
+          grep -q 'argv=--tei-reference-marker=argv value preserved' /tmp/tei-reference-process-result.json
 
       - name: Runtime reattachの参照例を実行
         run: go run ./examples/runtime-reattach
