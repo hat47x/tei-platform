@@ -198,6 +198,23 @@ M0.26では、既存Database lifecycleをactual PostgreSQLへ接続しました�
 
 fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic schema applyやmigration executionを実装したわけではありません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
 
+## M0.27 Foreign Key realization / drift
+
+M0.27では、M0.26でactual PostgreSQLから観測できることまで確認したForeign Keyを、Persistence MappingのDesired realizationとprovider-neutral Schema Diffへ統合しました。設計判断は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) に記録しています。
+
+- Foreign KeyをSemantic Relationから自動生成せず、Database所有のPersistence Mappingで明示
+- authoringではsource Attribute、referenced Mapping、target Attributeをidentityで指定
+- `RealizeDesired`がMapping / Attribute identityからphysical table / columnへ解決
+- cross-database FKをM0.27では拒否
+- constraint名はtrace / DDL metadataとして保持するが、Schema Driftの意味identityにはしない
+- FKの構造差を`drop-foreign-key` + `add-foreign-key`として表現
+- composite FKのcolumn順序を保持
+- 同一構造constraintのmultiplicityを保持
+- actual PostgreSQLでFK込みbaseline差分ゼロを確認
+- actual constraint削除後に`add-foreign-key` driftを検出
+
+詳細は [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -215,7 +232,7 @@ fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic sc
 - DeploymentExecutorからactual child processへstdio protocolで到達できること
 - executable / argvをshell-like stringへ畳まず、空白を含む一つのargv elementがactual child processまで保存されること
 - runtime reattachの参照例が動作すること
-- actual PostgreSQLからPhysical Schemaをintrospectし、baseline差分ゼロと意図的drift検出を確認できること
+- actual PostgreSQLからPhysical Schemaをintrospectし、Foreign Key込みbaseline差分ゼロ、column drift、Foreign Key driftを確認できること
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
 
@@ -223,7 +240,7 @@ CIはproduction-gradeな外部環境を検証するものではありません�
 
 M0.23でSource / meaning境界を厚くした後も、次の候補が残ります。
 
-- Foreign Keyを含むSchema Diff対象の拡張
+- Foreign Key option（ON DELETE / ON UPDATE等）をprovider-neutral modelへ持ち上げる必要性の検討
 - migration proposalからactual DB schema changeへ至る明示的execution integration
 - durable process manager / container runtimeとのcross-host reattach integration
 - production-grade Host sandbox / process isolation adapter
