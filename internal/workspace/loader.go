@@ -11,6 +11,7 @@ import (
 	"tei/internal/ir"
 	"tei/internal/plugin"
 	"tei/internal/semantic"
+	"tei/internal/sourceindex"
 	"tei/internal/stdlib"
 	"tei/internal/syntax"
 )
@@ -27,10 +28,17 @@ type ManagedFile struct {
 	Extension  string `json:"extension,omitempty"`
 }
 
+type SourceContribution struct {
+	Subject sourceindex.Subject
+	File    string
+	Role    sourceindex.Role
+}
+
 type Result struct {
-	World        ir.World
-	Sources      map[string]SourceLocation
-	ManagedFiles []ManagedFile
+	World               ir.World
+	Sources             map[string]SourceLocation
+	ManagedFiles        []ManagedFile
+	SourceContributions []SourceContribution
 }
 
 func Load(root string) (Result, error) {
@@ -293,9 +301,26 @@ func loadApplications(root string, r *Result) error {
 			if err != nil {
 				return err
 			}
-			q, err := syntax.NewParser(string(qsrc)).ParseQuery(a.ID)
+			authoring, err := syntax.NewParser(string(qsrc)).ParseQueryAuthoring(a.ID)
 			if err != nil {
 				return sourceErr(qpath, err)
+			}
+			q := authoring.Value
+			if authoring.NativeSQLPath != "" {
+				nativePath, err := resolveNativeSQLFile(root, qpath, authoring.NativeSQLPath)
+				if err != nil {
+					return fmt.Errorf("%s: SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
+				}
+				sqlSource, err := os.ReadFile(nativePath)
+				if err != nil {
+					return fmt.Errorf("%s: read SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
+				}
+				q.Source = strings.TrimSpace(string(sqlSource))
+				r.SourceContributions = append(r.SourceContributions, SourceContribution{
+					Subject: sourceindex.Subject{Kind: "query", ID: string(q.ID)},
+					File:    relPath(root, nativePath),
+					Role:    sourceindex.RoleAuthoring,
+				})
 			}
 			r.World.Queries = append(r.World.Queries, q)
 			r.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}
@@ -460,6 +485,49 @@ func loadEnvironments(root string, r *Result) error {
 		r.Sources["environment:"+string(e.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 	return nil
+}
+
+func resolveNativeSQLFile(root, declarationPath, rawRef string) (string, error) {
+	ref := strings.TrimSpace(rawRef)
+	if ref == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	ref = strings.ReplaceAll(ref, "\\", "/")
+	refPath := filepath.FromSlash(ref)
+	if filepath.IsAbs(refPath) || filepath.VolumeName(refPath) != "" {
+		return "", fmt.Errorf("path must be relative to the Query declaration")
+	}
+	if strings.ToLower(filepath.Ext(refPath)) != ".sql" {
+		return "", fmt.Errorf("path must refer to a .sql file")
+	}
+
+	candidate := filepath.Clean(filepath.Join(filepath.Dir(declarationPath), refPath))
+	logicalRel, err := filepath.Rel(root, candidate)
+	if err != nil || logicalRel == ".." || strings.HasPrefix(logicalRel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path escapes the Workspace")
+	}
+
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve Workspace root: %w", err)
+	}
+	candidateReal, err := filepath.EvalSymlinks(candidate)
+	if err != nil {
+		return "", err
+	}
+	realRel, err := filepath.Rel(rootReal, candidateReal)
+	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path resolves outside the Workspace")
+	}
+
+	info, err := os.Stat(candidateReal)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("path does not refer to a regular file")
+	}
+	return candidate, nil
 }
 
 func globSorted(pattern string) ([]string, error) {

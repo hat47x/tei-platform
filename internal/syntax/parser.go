@@ -690,62 +690,14 @@ func (p *Parser) ParseEnvironment() (environment.Environment, error) {
 }
 
 func (p *Parser) ParseQuery(owner core.CanonicalID) (query.EmbeddedSQL, error) {
-	if _, err := p.expectText("query"); err != nil {
-		return query.EmbeddedSQL{}, err
-	}
-	idTok, err := p.expect(TokenIdent)
+	out, err := p.ParseQueryAuthoring(owner)
 	if err != nil {
 		return query.EmbeddedSQL{}, err
 	}
-	id, err := core.ParseCanonicalID(idTok.Text)
-	if err != nil {
-		return query.EmbeddedSQL{}, p.errAt(idTok, err.Error())
+	if err := nativeQueryRequiresWorkspace(out); err != nil {
+		return out.Value, err
 	}
-	q := query.EmbeddedSQL{ID: id, Application: owner}
-	if _, err := p.expect(TokenLBrace); err != nil {
-		return q, err
-	}
-	for {
-		t, err := p.peek()
-		if err != nil {
-			return q, err
-		}
-		if t.Kind == TokenRBrace {
-			_, _ = p.next()
-			break
-		}
-		switch t.Text {
-		case "datasource":
-			_, _ = p.next()
-			v, err := p.expect(TokenIdent)
-			if err != nil {
-				return q, err
-			}
-			q.Datasource, err = core.ParseLocalName(v.Text)
-			if err != nil {
-				return q, p.errAt(v, err.Error())
-			}
-		case "sql":
-			_, _ = p.next()
-			v, err := p.expect(TokenIdent)
-			if err != nil {
-				return q, err
-			}
-			q.Dialect = environment.DatabaseProvider(v.Text)
-			if _, err := p.expect(TokenLBrace); err != nil {
-				return q, err
-			}
-			body, _, err := p.lx.ReadRawBlock()
-			if err != nil {
-				return q, err
-			}
-			p.peeked = nil
-			q.Source = strings.TrimSpace(body)
-		default:
-			return q, p.errAt(t, "expected datasource or sql")
-		}
-	}
-	return q, p.expectEOF()
+	return out.Value, nil
 }
 
 func (p *Parser) ParseRealization() (realization.CustomGoBinding, error) {
