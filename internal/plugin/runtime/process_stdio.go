@@ -57,6 +57,9 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command string, req Re
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return Response{}, fmt.Errorf("process plugin %q canceled: %w", command, ctxErr)
+		}
 		return Response{}, processExecutionError(command, err, stderr.Bytes())
 	}
 
