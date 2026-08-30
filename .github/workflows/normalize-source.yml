@@ -130,38 +130,6 @@ jobs:
               _, after = rest.split(next_heading, 1)
               text = before.rstrip() + "\n\n" + next_heading + after
           readme.write_text(text)
-
-          ci = Path(".github/workflows/ci.yml")
-          ci.parent.mkdir(parents=True, exist_ok=True)
-          ci.write_text("""name: CI
-
-          on:
-            push:
-              branches:
-                - main
-            pull_request:
-
-          permissions:
-            contents: read
-
-          jobs:
-            test:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-go@v5
-                  with:
-                    go-version-file: go.mod
-                    cache: false
-                - name: Vet
-                  run: go vet ./...
-                - name: Test
-                  run: go test ./...
-                - name: Validate reference workspace
-                  run: go run ./cmd/tei validate -workspace reference/workspace
-                - name: Exercise runtime reattach
-                  run: go run ./examples/runtime-reattach
-          """.replace("          ", ""))
           PY
 
           go vet ./...
