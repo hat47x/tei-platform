@@ -1,0 +1,36 @@
+name: Verify Issue 31 real process runtime
+
+on:
+  push:
+    branches:
+      - work/issue-31-real-process-runtime
+    paths:
+      - .github/workflows/issue31-process-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-31-real-process-runtime
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(gofmt -l internal/plugin/runtime/process_stdio.go internal/plugin/runtime/process_stdio_test.go)"
+          if [[ -n "$files" ]]; then
+            echo "$files"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
