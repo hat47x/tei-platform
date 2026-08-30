@@ -139,6 +139,10 @@ EnvironmentではCapability IDへBindingし、Plugin Lockがexact versionとdesc
 
 process PluginではResource Broker、Permission Grant、Resource Lease、Sandbox Profile、Host Lease Supervisor、Ownership / Fencingを通して実行します。
 
+M0.24では`StdioProcessLauncher`をReference Host adapterとして追加し、`exec.CommandContext`でactual child processを起動してRequest / Response JSONをstdioで交換します。commandは一つのexecutable名/pathとして扱い、shell展開や空白からのargv推測は行いません。plain process launcherはsandboxではなく、`sandbox required`の実行には引き続きHost Sandboxのpolicy enforcerが必要です。
+
+このone-shot local process境界とDurable reattachは別です。OS PIDをDurable Runtime Handleとはみなさず、cross-host reattachにはopaque durable handleを提供する外部runtime adapterが必要です。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+
 M0.22.1で直接検証している境界とテストの対応は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
 ## Host restart / takeover
