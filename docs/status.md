@@ -12,6 +12,11 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - Semantic namespace / type / data / relation / capability
 - `std.*` prelude
 - managed native filesの列挙
+- Canonical Worldから分離したSource Index
+- Source Artifact fingerprint / byte range / source role
+- Semantic SubjectからSource ReferenceへのDiagnostic projection
+- parse / lexer errorのsource-direct diagnostic
+- `tei source-index` inspection CLI
 
 ### Application / Database
 - Application `DatabaseRequirement[]`
@@ -26,7 +31,10 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 
 ### Query / Workbench
 - embedded SQL boundary
+- native `.sql` authoritative source
+- Query declarationとSQL authoring sourceのrole分離
 - SQL analyzer stable protocol
+- authoring pathを含まないAnalyzer request / derived boundary
 - scope / field identity / lineage
 - provider-neutral Query IR
 - PostgreSQL schema observation
@@ -60,6 +68,8 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 
 M0.22.1で直接確認しているPlugin / Runtime境界の保証は、[Conformance — M0.22.1](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
+M0.23で直接確認しているSource / meaning境界の保証は、[Conformance — M0.23 Source-to-Canonical Traceability](conformance/source-traceability-m0.23.md) に整理しています。
+
 ## 現時点での重要な非目標
 
 以下を実装済みとは主張しません。
@@ -73,6 +83,8 @@ M0.22.1で直接確認しているPlugin / Runtime境界の保証は、[Conforma
 - production durability / HA guarantee
 - cryptographic signing of all Durable Run artifacts
 - API compatibility guarantee
+- Go source semantic analysis / refactoring engine
+- AIによるauthoritative sourceの自動編集
 
 ## 最初の公開設計チェックポイント
 
@@ -108,6 +120,35 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 
 一方、`RuntimeUnknown`時にDurable Invocation Handle上のfencing generationをどこまで進めたとみなすかは、意味上の判断が残っています。この論点はIssue #9へ分離しており、M0.22.1のConformance testで先に意味を固定していません。
 
+## M0.23 Source-to-Canonical Traceability
+
+M0.23では、実行側adapterをさらに増やす前に、Authoring sourceからCanonical Semantic Layerへ入る側の追跡性をvertical sliceとして実装しました。
+
+設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録し、Issue #16〜#19で段階的に検証しています。
+
+### 到達した境界
+
+- Source IndexをCanonical Worldから分離
+- Canonical IDをfile pathから独立したまま維持
+- source content fingerprintと半開byte rangeを検証
+- Parser source anchorをdomain modelから分離
+- semantic diagnosticをpath-independentなSubjectからsourceへ投影
+- parse diagnosticをCanonical subjectなしでsource-directに表示
+- `tei validate -workspace`で解決可能なfindingを`path:line:column`へ復元
+- native `.sql`をauthoritative sourceのままQueryへ接続
+- Query declaration=`definition`、SQL file=`authoring`というroleをSource Indexで区別
+- physical `.sql` pathをCanonical Query / Analyzer protocolへ混入させない
+- file rename / moveだけではnormalized Worldを変更しない
+- source move後はDiagnostic projectionが新locatorへ追随
+- derived artifactからauthoritative sourceへ暗黙に逆書きするAPIを設けない
+- `tei source-index`でsubjectからsource reference / fingerprintをinspection可能
+
+Reference Workspaceの`order_entry.recent_orders`はnative SQLへ移行済みですが、`reference/world.json`は変更していません。旧embedded SQLと同じnormalized meaningを再生成できることをCIで確認しています。
+
+Source Index全体のgolden snapshotは保存せず、deterministic generation、range / fingerprint整合、重要subjectのrole / locator、rename invarianceをコードとCIで固定します。
+
+詳細な対応表は [M0.23 Conformance](conformance/source-traceability-m0.23.md) を参照してください。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -116,6 +157,7 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 - `go vet ./...`
 - `go test ./...`
 - Reference Workspaceのvalidation
+- Reference QueryのSource Index projectionで`definition` / `authoring` sourceとfingerprintを追跡できること
 - `reference/world.json` がWorkspaceから再生成して一致すること
 - Plugin LockがWorkspaceから再生成して一致すること
 - Durable Deployment Run fixtureがReference Workspaceとobserved stateから再生成して一致すること
@@ -124,22 +166,14 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
 
-## M0.23の重点
+## 次に残る境界
 
-M0.23では、実行側のadapterをさらに増やす前に、**Source-to-Canonical Traceability** を次のvertical sliceとして扱います。
+M0.23でSource / meaning境界を厚くした後も、次の候補が残ります。
 
-M0.22.1までで、意味からRelease、Deployment、Plugin / Runtime、Observation / Recoveryまでの実行側の境界はかなり厚くなりました。一方、Authoring sourceからCanonical Semantic Layerへ入る側では、「どのsourceのどの範囲が、どの意味を定義したか」という追跡性が相対的に薄い状態です。
+- Database lifecycleの実DB integration
+- Plugin / Runtimeの実process integration
+- Deploymentのexternal executor integration
+- Source Indexを利用するGUI / LSP authoring experience
+- Go等、SQL以外のnative source semantic analysis
 
-M0.23ではGUI Editorを先に作らず、次を検証します。
-
-- Source IndexをCanonical Worldから分離する
-- Canonical IDをfile pathから独立したまま保つ
-- source content fingerprintとbyte rangeを使って正確なsource位置を追跡する
-- semantic diagnosticをpath-independentなsubjectからsourceへ投影する
-- native `.sql`をauthoritative sourceのままQueryへ接続する
-- file rename / moveだけではnormalized Worldを変えない
-- derived artifactからauthoritative sourceへ暗黙に逆書きしない
-
-設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録しています。実装はGitHub Issue #16〜#19へ分け、Source Index基盤 → Diagnostic投影 / native SQL → end-to-end Conformanceの順で進めます。
-
-Database lifecycleの実DB integration、Plugin / Runtimeの実process integration、Deploymentのexternal executor integrationも後続候補として残しますが、まず外部製品固有のadapterよりTEI固有のsource / meaning境界を検証します。
+これらを進める場合も、外部製品固有adapterやGUIの都合を先にCanonical modelへ持ち込まず、TEI固有のidentity / source / execution境界を先に固定する方針を維持します。

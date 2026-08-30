@@ -28,6 +28,8 @@ go run ./cmd/tei validate -workspace reference/workspace
 
 Referenceには過去Releaseを意図的に残しているため、historical contractについてWarningが表示されます。最後が`ok`で終わればValidation自体は成功です。
 
+Source Indexで位置を解決できるfindingは、`path:line:column`を伴って表示されます。
+
 ## 3. 正規化Worldを見る
 
 ```bash
@@ -39,7 +41,47 @@ go run ./cmd/tei world \
 
 `reference/world.json` は同じReference Workspaceから再生成できるgolden snapshotで、CIでも一致を確認しています。
 
-## 4. Plugin LockとRuntime Plan
+重要なのは、Canonical Worldにauthoring file pathを混ぜないことです。Sourceの物理位置は次のSource Indexから確認します。
+
+## 4. Source Indexでsourceへ戻る
+
+Source Index全体を見るには次を実行します。
+
+```bash
+go run ./cmd/tei source-index \
+  -workspace reference/workspace
+```
+
+特定のsemantic subjectだけを確認する場合は、kindとIDを指定します。
+
+```bash
+go run ./cmd/tei source-index \
+  -workspace reference/workspace \
+  -subject-kind query \
+  -subject-id order_entry.recent_orders
+```
+
+Reference Queryでは、同じ`query:order_entry.recent_orders`に対して次の二つが表示されます。
+
+- `definition`: `applications/order-entry/queries/recent_orders.tei`
+- `authoring`: `applications/order-entry/queries/recent_orders.sql`
+
+`.tei`はQuery declaration、`.sql`はauthoritative SQL bodyです。Artifactにはcontent fingerprintも含まれます。
+
+`recent_orders.tei`自体はSQL本文を埋め込まず、次の形でnative sourceを参照しています。
+
+```tei
+query order_entry.recent_orders {
+    datasource sales
+    sql postgres file "recent_orders.sql"
+}
+```
+
+SQL fileを別pathへ移し、この参照だけを更新した場合、Canonical Query IDとnormalized Worldは変わらず、Source Index locatorだけが変わることをテストしています。
+
+この境界の詳細は [Conformance — M0.23 Source-to-Canonical Traceability](conformance/source-traceability-m0.23.md) を参照してください。
+
+## 5. Plugin LockとRuntime Plan
 
 ```bash
 go run ./cmd/tei plugin-lock \
@@ -55,7 +97,7 @@ EnvironmentがどのPlugin / version / capabilityを使い、どのPermission / 
 
 Repositoryに保存したReference Plugin Lockも、CIでWorkspaceから再生成して一致を確認しています。
 
-## 5. Deploymentの参照経路
+## 6. Deploymentの参照経路
 
 Reference Workspaceと観測fixtureからDurable Deployment Runを再生成できます。
 
@@ -71,7 +113,7 @@ go run ./cmd/tei deployment-start \
 
 保存済みの `reference/order_rollout.durable-run.m0.21.start.json` はこの入力から再生成可能な参照fixtureです。詳しくは [reference/README.md](../reference/README.md) を参照してください。
 
-## 6. Runtime reattach example
+## 7. Runtime reattach example
 
 ```bash
 go run ./examples/runtime-reattach
@@ -81,7 +123,7 @@ go run ./examples/runtime-reattach
 
 重要なのは、runtime handleが`missing`だった場合に自動再実行しないことです。外部副作用の有無を確定できないため、Recoveryへ送ります。
 
-## 7. コードを読む順番
+## 8. コードを読む順番
 
 初めて実装を読む場合は、次の順が比較的追いやすいです。
 
@@ -91,12 +133,14 @@ go run ./examples/runtime-reattach
 4. `reference/workspace/databases/`
 5. `reference/workspace/environments/`
 6. `reference/workspace/releases/`
-7. `internal/ir/`, `internal/workspace/`, `internal/validation/`
+7. `internal/ir/`, `internal/workspace/`, `internal/sourceindex/`, `internal/validation/`
 8. `internal/database/`, `internal/query/`
 9. `internal/deployment/`
 10. `internal/plugin/runtime/`, `internal/resource/`
 
-Plugin / Runtimeの安全境界を読む場合は、[Conformance — M0.22.1](conformance/plugin-runtime-m0.22.1.md) がコードとテストの対応表として使えます。
+Source / meaning境界を読む場合は、[Conformance — M0.23 Source-to-Canonical Traceability](conformance/source-traceability-m0.23.md) がコードとテストの対応表として使えます。
+
+Plugin / Runtimeの安全境界を読む場合は、[Conformance — M0.22.1](conformance/plugin-runtime-m0.22.1.md) を参照してください。
 
 ## 注意
 
