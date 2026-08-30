@@ -14,6 +14,8 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 )
 
+const referenceArgvMarker = "--tei-reference-marker=argv value preserved"
+
 func main() {
 	pluginPath := flag.String("plugin", "", "path to the reference process plugin executable")
 	flag.Parse()
@@ -39,6 +41,7 @@ func main() {
 			Boundary:              pruntime.BoundaryProcess,
 			Trust:                 pruntime.TrustExternalProcess,
 			Command:               *pluginPath,
+			Args:                  []string{referenceArgvMarker},
 			SandboxPolicy:         plugin.SandboxNone,
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{

@@ -48,7 +48,7 @@ func (secrets) RefreshSecrets(context.Context, []pruntime.SecretInjection, []pru
 
 type runner struct{}
 
-func (runner) InvokeSandboxed(ctx context.Context, _ string, _ pruntime.Request) (pruntime.Response, error) {
+func (runner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, _ pruntime.Request) (pruntime.Response, error) {
 	// M0.21 deliberately does not call Renew or Refresh from plugin code.
 	// The short delay gives the host refresh trigger a chance to fire; lease
 	// lifecycle management remains entirely host-supervised.

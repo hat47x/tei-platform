@@ -58,6 +58,7 @@ func (p SandboxPolicy) Valid() bool {
 type Runtime struct {
 	Kind    RuntimeKind   `json:"kind"`
 	Command string        `json:"command,omitempty"`
+	Args    []string      `json:"args,omitempty"`
 	Sandbox SandboxPolicy `json:"sandbox,omitempty"`
 }
 

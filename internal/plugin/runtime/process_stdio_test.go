@@ -67,7 +67,7 @@ func runProcessHelper(mode string) int {
 	return 0
 }
 
-func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, string) {
+func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, pruntime.ProcessCommand) {
 	t.Helper()
 	executable, err := os.Executable()
 	if err != nil {
@@ -75,7 +75,7 @@ func helperLauncher(t *testing.T, mode string) (pruntime.StdioProcessLauncher, s
 	}
 	env := append([]string(nil), os.Environ()...)
 	env = append(env, processHelperModeEnv+"="+mode)
-	return pruntime.StdioProcessLauncher{Env: env}, executable
+	return pruntime.StdioProcessLauncher{Env: env}, pruntime.ProcessCommand{Executable: executable}
 }
 
 func processRequest() pruntime.Request {
@@ -173,7 +173,8 @@ func TestRegistryRejectsForgedIdentityFromRealProcess(t *testing.T) {
 			DescriptorFingerprint: req.DescriptorFingerprint,
 			Boundary:              pruntime.BoundaryProcess,
 			Trust:                 pruntime.TrustExternalProcess,
-			Command:               command,
+			Command:               command.Executable,
+			Args:                  append([]string(nil), command.Args...),
 			SandboxPolicy:         plugin.SandboxNone,
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{

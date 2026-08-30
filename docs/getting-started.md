@@ -128,9 +128,9 @@ go run ./examples/process-plugin \
   -plugin /tmp/tei-reference-process-plugin
 ```
 
-出力の`outcome`は`accepted`、Plugin Invocationの`boundary`は`process`になります。`accepted`はexecutor acknowledgementであり、外部stateの完成証明ではありません。
+出力の`outcome`は`accepted`、Plugin Invocationの`boundary`は`process`になります。Reference pluginには`--tei-reference-marker=argv value preserved`という空白を含む一つのargv elementも渡され、子process側がその境界を確認してから成功Responseを返します。`accepted`はexecutor acknowledgementであり、外部stateの完成証明ではありません。
 
-この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。実process境界は [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
 
 ## 8. Runtime reattach example
 
