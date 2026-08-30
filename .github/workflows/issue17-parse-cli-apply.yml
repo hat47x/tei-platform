@@ -1,0 +1,138 @@
+name: Apply Issue 17 parse diagnostic CLI patch
+
+on:
+  push:
+    branches:
+      - work/issue-17-parse-diagnostic-cli
+    paths:
+      - .github/workflows/issue17-parse-cli-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-17-parse-diagnostic-cli
+
+      - name: Apply narrow source diagnostic patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, got {count}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "internal/syntax/parser.go",
+              '''type ParseError struct {
+          \tPos Position
+          \tMsg string
+          }''',
+              '''type ParseError struct {
+          \tPos Position
+          \tEnd Position
+          \tMsg string
+          }''',
+          )
+          replace_once(
+              "internal/syntax/parser.go",
+              'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, Msg: msg} }',
+              'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, End: t.End, Msg: msg} }',
+          )
+          replace_once(
+              "internal/workspace/loader.go",
+              'func sourceErr(path string, err error) error { return fmt.Errorf("%s: %w", path, err) }',
+              'func sourceErr(path string, err error) error { return wrapSourceError(path, err) }',
+          )
+
+          marker = '''\tif (*worldPath == "") == (*workspacePath == "") {
+          \t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
+          \t\tos.Exit(2)
+          \t}
+
+          \tw, err := loadWorld(*worldPath, *workspacePath)'''
+          replacement = '''\tif (*worldPath == "") == (*workspacePath == "") {
+          \t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
+          \t\tos.Exit(2)
+          \t}
+
+          \tif command == "validate" && *workspacePath != "" {
+          \t\tif validateWorkspace(*workspacePath) {
+          \t\t\tos.Exit(1)
+          \t\t}
+          \t\tfmt.Println("ok")
+          \t\treturn
+          \t}
+
+          \tw, err := loadWorld(*worldPath, *workspacePath)'''
+          replace_once("cmd/tei/main.go", marker, replacement)
+
+          marker = '''func validateOrExit(w ir.World) {'''
+          helpers = r'''func validateWorkspace(root string) bool {
+          	r, err := workspace.Load(root)
+          	if err != nil {
+          		if diagnostic, ok := workspace.SourceDiagnosticFromError(root, err); ok {
+          			fmt.Println(formatSourceDiagnostic(diagnostic))
+          			return true
+          		}
+          		fmt.Fprintln(os.Stderr, err)
+          		return true
+          	}
+          	idx, err := workspace.BuildSourceIndex(root, r)
+          	if err != nil {
+          		fmt.Fprintln(os.Stderr, err)
+          		return true
+          	}
+          	projected := workspace.ProjectDiagnostics(validation.Validate(r.World), idx)
+          	hasErr := false
+          	for _, diagnostic := range projected {
+          		fmt.Println(formatProjectedDiagnostic(diagnostic))
+          		if diagnostic.Diagnostic.Severity == validation.Error {
+          			hasErr = true
+          		}
+          	}
+          	return hasErr
+          }
+
+          func formatProjectedDiagnostic(projected workspace.ProjectedDiagnostic) string {
+          	diagnostic := projected.Diagnostic
+          	if len(projected.Sources) == 0 {
+          		return fmt.Sprintf("%s\t%s\t%s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+          	}
+          	source := projected.Sources[0]
+          	return fmt.Sprintf("%s:%d:%d\t%s\t%s\t%s", source.ArtifactPath, source.Range.Start.Line, source.Range.Start.Column, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+          }
+
+          func formatSourceDiagnostic(diagnostic workspace.SourceDiagnostic) string {
+          	return fmt.Sprintf("%s:%d:%d\t%s\t%s\t%s", diagnostic.Source.ArtifactPath, diagnostic.Source.Range.Start.Line, diagnostic.Source.Range.Start.Column, diagnostic.Severity, diagnostic.Code, diagnostic.Message)
+          }
+
+          func validateOrExit(w ir.World) {'''
+          replace_once("cmd/tei/main.go", marker, helpers)
+
+      - name: Format and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w internal/syntax/parser.go internal/syntax/lexer.go internal/syntax/error.go internal/workspace/loader.go internal/workspace/source_diagnostic.go cmd/tei/main.go
+          go vet ./...
+          go test ./...
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/syntax/parser.go internal/syntax/lexer.go internal/syntax/error.go internal/workspace/loader.go internal/workspace/source_diagnostic.go cmd/tei/main.go
+          git commit -m "Parse diagnosticをsource-aware CLIへ接続する"
+          git push origin HEAD:work/issue-17-parse-diagnostic-cli
