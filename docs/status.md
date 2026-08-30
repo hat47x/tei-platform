@@ -149,6 +149,25 @@ Source Index全体のgolden snapshotは保存せず、deterministic generation�
 
 詳細な対応表は [M0.23 Conformance](conformance/source-traceability-m0.23.md) を参照してください。
 
+## M0.24 実process Plugin runtime
+
+M0.24では、`BoundaryProcess`をHost注入interfaceだけに留めず、actual OS child processへ接続する最小vertical sliceを実装しました。
+
+- `StdioProcessLauncher`でRequest / Response JSONをstdio transport
+- commandは単一executable名/pathとして実行し、shell semanticsを暗黙に導入しない
+- context cancellationで直接child processを終了
+- malformed / oversized responseを拒否
+- untrusted stdoutをReference default 8 MiBでbounded capture
+- stderr本文をTEI errorへコピーせず、異常終了時はbyte数とSHA-256だけを保持
+- forged Plugin identityを既存Registry validationで拒否
+- `tools/reference-process-plugin`を実binaryとしてbuild可能
+- `examples/process-plugin`でDeploymentExecutor → Registry → actual child processまで再現
+- Plugin Invocation provenanceで`boundary=process`を検証
+
+`StdioProcessLauncher`はplain process transportでありOS sandboxそのものではありません。`SandboxedProcessRunner`として再利用する場合も、policy適用は`HostSandboxLauncher`側の責務です。
+
+また、このone-shot local processのPIDをDurable Runtime Handleとはみなしません。Host restart / cross-host reattachはM0.22 / ADR-0005のopaque durable handle契約を満たす別runtime adapterの責務として残します。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -162,6 +181,8 @@ Source Index全体のgolden snapshotは保存せず、deterministic generation�
 - Plugin LockがWorkspaceから再生成して一致すること
 - Durable Deployment Run fixtureがReference Workspaceとobserved stateから再生成して一致すること
 - Deployment executorの参照例が動作すること
+- Reference process Pluginを実binaryへbuildできること
+- DeploymentExecutorからactual child processへstdio protocolで到達できること
 - runtime reattachの参照例が動作すること
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
@@ -171,8 +192,9 @@ CIはproduction-gradeな外部環境を検証するものではありません�
 M0.23でSource / meaning境界を厚くした後も、次の候補が残ります。
 
 - Database lifecycleの実DB integration
-- Plugin / Runtimeの実process integration
-- Deploymentのexternal executor integration
+- durable process manager / container runtimeとのcross-host reattach integration
+- production-grade Host sandbox / process isolation adapter
+- Deploymentの外部実環境executor integration
 - Source Indexを利用するGUI / LSP authoring experience
 - Go等、SQL以外のnative source semantic analysis
 
