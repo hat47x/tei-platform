@@ -133,13 +133,22 @@ reattach時に最も避けたいのは、「見つからなかったからもう
 
 これらの分岐は `internal/plugin/runtime/invocation_recovery_test.go` で直接固定します。
 
-## 現時点で未決の境界
+## RuntimeUnknownとfencing authority
 
-`RuntimeUnknown` のfencing authorityには、M0.22.1の監査で未決の継ぎ目が見つかりました。
+M0.22.1の監査で見つかった`RuntimeUnknown`時の継ぎ目は、Issue #9 / ADR-0005で判断を固定しました。
 
-現在の実装は、runtimeが`unknown`ならreattachを行わず観測待ちにしますが、Durable Invocation Handle上のSupervisor owner / fencing tokenは新しい世代へ進めます。このtokenが「観測・調停するSupervisorの世代」を表すのか、「runtime自身にも設置済みのauthority世代」を表すのかで、意味が変わります。
+Durable Invocation Handleでは、Supervisor Ownership Store上で現在の調停権を持つgenerationと、外部runtimeがauthority-bearingな操作を通じて実際に受理したgenerationを別の事実として扱います。
 
-この点はIssue #9で独立して検討します。M0.22.1のConformance test追加では、どちらかの意味を先に固定しません。
+- `SupervisorOwnerID` / `FencingToken`: Durable control plane上のSupervisor authority
+- `RuntimeFencingToken`: runtime側で受理済みと確認できた最後のgeneration
+
+基本不変条件は`RuntimeFencingToken <= FencingToken`です。fieldが存在しない既存Handleは、runtime generationを`FencingToken`から暗黙に推測せず、0をunknownとして扱います。
+
+`RuntimeUnknown`を観測した場合、新Supervisorのowner / fencing tokenは保存しますが、`RuntimeFencingToken`は進めません。reattachも行わず、deployment actionはunresolvedのまま残します。後続観測で同じruntimeが`running` / `starting`へ戻り、authority-bearing reattachが成功した場合にだけ`RuntimeFencingToken`を現在のSupervisor generationへ進めます。
+
+この区別により、Resource Broker側では新generationへtakeover済みでも、runtime-side fencingがまだ未確立という状態をDurableに表現できます。その期間にfull runtime authorityを持つとは主張せず、runtime-mutating operationや自動replayへ短絡しません。
+
+Conformance testでは、unknownでSupervisor generationだけが進むこと、後続reattachでruntime generationが追いつくこと、runtime generationがSupervisor generationを超えるHandleを拒否すること、terminal / missingの非authority-bearing observationだけではruntime generationを進めないことを直接確認します。設計理由は [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md) に記録しています。
 
 ## この文書が保証しないもの
 
