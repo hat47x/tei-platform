@@ -46,69 +46,75 @@ jobs:
               p = Path(path)
               text = p.read_text()
               if text.count(old) != 1:
-                  raise SystemExit(f"{path}: expected exactly one replacement for {old[:80]!r}")
+                  raise SystemExit(f"{path}: expected exactly one replacement")
               p.write_text(text.replace(old, new, 1))
 
           status_marker = "詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。\n\n## 継続的な検証"
-          status_addition = """詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
-
-## M0.26 actual PostgreSQL Desired / Actual / Diff
-
-M0.26では、既存Database lifecycleをactual PostgreSQLへ接続しました。新しいCanonical DB modelを増やさず、既存のPersistence Mapping、PostgreSQL provider、Physical Schema、Schema Diffを一続きで検証しています。
-
-- `persistence.RealizeDesired`でPostgreSQL向けDesired Physical Schemaを生成
-- `database/sql` + `SQLCatalogReader`でactual PostgreSQL catalogを観測
-- `provider.Introspect`を通してDatabaseInstance / Provider整合を検証
-- same-state fixtureで`schemadiff.Compare`のchangesが0件
-- actual側だけに追加した`drift_note` columnをdriftとして検出
-- actual foreign keyをSchemaSnapshotへ観測
-- Primary Key backing indexを通常Indexとして二重計上しないようPostgreSQL providerをnormalize
-- DSN / credentialをPhysical SnapshotやDiffへ保存しない
-- Reference driver選択はtool assemblyに留め、PostgreSQL provider SPIは`database/sql`依存のまま維持
-
-fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic schema applyやmigration executionを実装したわけではありません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
-
-## 継続的な検証"""
-          replace_once("docs/status.md", status_marker, status_addition)
+          status_lines = [
+              "詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。",
+              "",
+              "## M0.26 actual PostgreSQL Desired / Actual / Diff",
+              "",
+              "M0.26では、既存Database lifecycleをactual PostgreSQLへ接続しました。新しいCanonical DB modelを増やさず、既存のPersistence Mapping、PostgreSQL provider、Physical Schema、Schema Diffを一続きで検証しています。",
+              "",
+              "- `persistence.RealizeDesired`でPostgreSQL向けDesired Physical Schemaを生成",
+              "- `database/sql` + `SQLCatalogReader`でactual PostgreSQL catalogを観測",
+              "- `provider.Introspect`を通してDatabaseInstance / Provider整合を検証",
+              "- same-state fixtureで`schemadiff.Compare`のchangesが0件",
+              "- actual側だけに追加した`drift_note` columnをdriftとして検出",
+              "- actual foreign keyをSchemaSnapshotへ観測",
+              "- Primary Key backing indexを通常Indexとして二重計上しないようPostgreSQL providerをnormalize",
+              "- DSN / credentialをPhysical SnapshotやDiffへ保存しない",
+              "- Reference driver選択はtool assemblyに留め、PostgreSQL provider SPIは`database/sql`依存のまま維持",
+              "",
+              "fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic schema applyやmigration executionを実装したわけではありません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。",
+              "",
+              "## 継続的な検証",
+          ]
+          replace_once("docs/status.md", status_marker, "\n".join(status_lines))
           replace_once(
               "docs/status.md",
               "- runtime reattachの参照例が動作すること",
-              "- runtime reattachの参照例が動作すること\n- actual PostgreSQLからPhysical Schemaをintrospectし、baseline差分ゼロと意図的drift検出を確認できること"
+              "- runtime reattachの参照例が動作すること\n- actual PostgreSQLからPhysical Schemaをintrospectし、baseline差分ゼロと意図的drift検出を確認できること",
           )
           replace_once(
               "docs/status.md",
               "- Database lifecycleの実DB integration\n- durable process manager / container runtimeとのcross-host reattach integration",
-              "- Foreign Keyを含むSchema Diff対象の拡張\n- migration proposalからactual DB schema changeへ至る明示的execution integration\n- durable process manager / container runtimeとのcross-host reattach integration"
+              "- Foreign Keyを含むSchema Diff対象の拡張\n- migration proposalからactual DB schema changeへ至る明示的execution integration\n- durable process manager / container runtimeとのcross-host reattach integration",
           )
 
           architecture_marker = "Application Releaseは複数Database Contract Requirementのsnapshotを持ちます。\n\n## Query"
-          architecture_addition = """Application Releaseは複数Database Contract Requirementのsnapshotを持ちます。
-
-M0.26ではこのうちDesired / Actual / Diffをactual PostgreSQLへ接続しました。Persistence MappingからPostgreSQL向けDesired Physical Schemaを導出し、`database/sql`経由のPostgreSQL catalog introspectionでActual Physical Schemaを取得して比較します。Actualはregeneratableな観測情報であり、connection stringやcredentialはPhysical Schemaへ含めません。
-
-PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表現しません。Primary Keyは`PrimaryKey`、明示的な通常indexは`Indexes`として分離します。actual DBとの差分を検出しても、自動的なmigration採用・schema applyへ進めません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
-
-## Query"""
-          replace_once("docs/architecture.md", architecture_marker, architecture_addition)
+          architecture_lines = [
+              "Application Releaseは複数Database Contract Requirementのsnapshotを持ちます。",
+              "",
+              "M0.26ではこのうちDesired / Actual / Diffをactual PostgreSQLへ接続しました。Persistence MappingからPostgreSQL向けDesired Physical Schemaを導出し、`database/sql`経由のPostgreSQL catalog introspectionでActual Physical Schemaを取得して比較します。Actualはregeneratableな観測情報であり、connection stringやcredentialはPhysical Schemaへ含めません。",
+              "",
+              "PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表現しません。Primary Keyは`PrimaryKey`、明示的な通常indexは`Indexes`として分離します。actual DBとの差分を検出しても、自動的なmigration採用・schema applyへ進めません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。",
+              "",
+              "## Query",
+          ]
+          replace_once("docs/architecture.md", architecture_marker, "\n".join(architecture_lines))
 
           getting_marker = "この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。実process境界は [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。\n\n## 8. Runtime reattach example"
-          getting_addition = """この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。実process境界は [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
-
-## 8. actual PostgreSQL Desired / Actual / Diff
-
-PostgreSQLを用意し、接続文字列をHost-side environment variableとして渡すと、Reference integrationを実行できます。
-
-```bash
-TEI_TEST_POSTGRES_DSN='postgres://user:password@127.0.0.1:5432/database?sslmode=disable' \\
-  go run ./tools/reference-postgres-integration
-```
-
-このharnessは専用fixture schemaを準備し、Persistence MappingからDesiredを生成したうえでactual catalogをintrospectします。baselineでは差分0件を要求し、その後actual側だけにcolumnを追加してdrift検出を確認します。fixture DDLはintegration test harnessであり、TEIのautomatic schema apply機能ではありません。
-
-詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
-
-## 9. Runtime reattach example"""
-          replace_once("docs/getting-started.md", getting_marker, getting_addition)
+          getting_lines = [
+              "この例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。実process境界は [M0.24実process Conformance](conformance/process-runtime-m0.24.md)、executable / argv境界は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。",
+              "",
+              "## 8. actual PostgreSQL Desired / Actual / Diff",
+              "",
+              "PostgreSQLを用意し、接続文字列をHost-side environment variableとして渡すと、Reference integrationを実行できます。",
+              "",
+              "```bash",
+              "TEI_TEST_POSTGRES_DSN='postgres://user:password@127.0.0.1:5432/database?sslmode=disable' \\",
+              "  go run ./tools/reference-postgres-integration",
+              "```",
+              "",
+              "このharnessは専用fixture schemaを準備し、Persistence MappingからDesiredを生成したうえでactual catalogをintrospectします。baselineでは差分0件を要求し、その後actual側だけにcolumnを追加してdrift検出を確認します。fixture DDLはintegration test harnessであり、TEIのautomatic schema apply機能ではありません。",
+              "",
+              "詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。",
+              "",
+              "## 9. Runtime reattach example",
+          ]
+          replace_once("docs/getting-started.md", getting_marker, "\n".join(getting_lines))
           replace_once("docs/getting-started.md", "## 9. コードを読む順番", "## 10. コードを読む順番")
       - name: Tidy and verify
         shell: bash
