@@ -1,0 +1,205 @@
+name: Apply Issue 18 native SQL foundation patch
+
+on:
+  push:
+    branches:
+      - work/issue-18-native-sql-foundation
+    paths:
+      - .github/workflows/issue18-native-sql-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-18-native-sql-foundation
+
+      - name: Apply narrow parser and workspace patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # ParseQuery remains the compatibility API for embedded SQL. The
+          # authoring-aware parser is the shared implementation.
+          p = Path("internal/syntax/parser.go")
+          text = p.read_text()
+          start = text.index("func (p *Parser) ParseQuery(owner core.CanonicalID)")
+          end = text.index("func (p *Parser) ParseRealization()", start)
+          replacement = '''func (p *Parser) ParseQuery(owner core.CanonicalID) (query.EmbeddedSQL, error) {
+          \tout, err := p.ParseQueryAuthoring(owner)
+          \tif err != nil {
+          \t\treturn query.EmbeddedSQL{}, err
+          \t}
+          \tif err := nativeQueryRequiresWorkspace(out); err != nil {
+          \t\treturn out.Value, err
+          \t}
+          \treturn out.Value, nil
+          }
+
+          '''
+          text = text[:start] + replacement + text[end:]
+          p.write_text(text)
+
+          p = Path("internal/workspace/loader.go")
+          text = p.read_text()
+
+          old = '\t"tei/internal/semantic"\n\t"tei/internal/stdlib"'
+          new = '\t"tei/internal/semantic"\n\t"tei/internal/sourceindex"\n\t"tei/internal/stdlib"'
+          if text.count(old) != 1:
+              raise SystemExit("loader import insertion point changed")
+          text = text.replace(old, new, 1)
+
+          old = '''type Result struct {
+          \tWorld        ir.World
+          \tSources      map[string]SourceLocation
+          \tManagedFiles []ManagedFile
+          }'''
+          new = '''type SourceContribution struct {
+          \tSubject sourceindex.Subject
+          \tFile    string
+          \tRole    sourceindex.Role
+          }
+
+          type Result struct {
+          \tWorld               ir.World
+          \tSources             map[string]SourceLocation
+          \tManagedFiles        []ManagedFile
+          \tSourceContributions []SourceContribution
+          }'''
+          if text.count(old) != 1:
+              raise SystemExit("Result struct insertion point changed")
+          text = text.replace(old, new, 1)
+
+          old = '''\t\t\tq, err := syntax.NewParser(string(qsrc)).ParseQuery(a.ID)
+          \t\t\tif err != nil {
+          \t\t\t\treturn sourceErr(qpath, err)
+          \t\t\t}
+          \t\t\tr.World.Queries = append(r.World.Queries, q)
+          \t\t\tr.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}'''
+          new = '''\t\t\tauthoring, err := syntax.NewParser(string(qsrc)).ParseQueryAuthoring(a.ID)
+          \t\t\tif err != nil {
+          \t\t\t\treturn sourceErr(qpath, err)
+          \t\t\t}
+          \t\t\tq := authoring.Value
+          \t\t\tif authoring.NativeSQLPath != "" {
+          \t\t\t\tnativePath, err := resolveNativeSQLFile(root, qpath, authoring.NativeSQLPath)
+          \t\t\t\tif err != nil {
+          \t\t\t\t\treturn fmt.Errorf("%s: SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
+          \t\t\t\t}
+          \t\t\t\tsqlSource, err := os.ReadFile(nativePath)
+          \t\t\t\tif err != nil {
+          \t\t\t\t\treturn fmt.Errorf("%s: read SQL file %q: %w", qpath, authoring.NativeSQLPath, err)
+          \t\t\t\t}
+          \t\t\t\tq.Source = strings.TrimSpace(string(sqlSource))
+          \t\t\t\tr.SourceContributions = append(r.SourceContributions, SourceContribution{
+          \t\t\t\t\tSubject: sourceindex.Subject{Kind: "query", ID: string(q.ID)},
+          \t\t\t\t\tFile:    relPath(root, nativePath),
+          \t\t\t\t\tRole:    sourceindex.RoleAuthoring,
+          \t\t\t\t})
+          \t\t\t}
+          \t\t\tr.World.Queries = append(r.World.Queries, q)
+          \t\t\tr.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}'''
+          if text.count(old) != 1:
+              raise SystemExit("query loader block changed")
+          text = text.replace(old, new, 1)
+
+          marker = '''func globSorted(pattern string) ([]string, error) {'''
+          helper = r'''func resolveNativeSQLFile(root, declarationPath, rawRef string) (string, error) {
+          	ref := strings.TrimSpace(rawRef)
+          	if ref == "" {
+          		return "", fmt.Errorf("path is empty")
+          	}
+          	ref = strings.ReplaceAll(ref, "\\", "/")
+          	refPath := filepath.FromSlash(ref)
+          	if filepath.IsAbs(refPath) || filepath.VolumeName(refPath) != "" {
+          		return "", fmt.Errorf("path must be relative to the Query declaration")
+          	}
+          	if strings.ToLower(filepath.Ext(refPath)) != ".sql" {
+          		return "", fmt.Errorf("path must refer to a .sql file")
+          	}
+
+          	candidate := filepath.Clean(filepath.Join(filepath.Dir(declarationPath), refPath))
+          	logicalRel, err := filepath.Rel(root, candidate)
+          	if err != nil || logicalRel == ".." || strings.HasPrefix(logicalRel, ".."+string(os.PathSeparator)) {
+          		return "", fmt.Errorf("path escapes the Workspace")
+          	}
+
+          	rootReal, err := filepath.EvalSymlinks(root)
+          	if err != nil {
+          		return "", fmt.Errorf("resolve Workspace root: %w", err)
+          	}
+          	candidateReal, err := filepath.EvalSymlinks(candidate)
+          	if err != nil {
+          		return "", err
+          	}
+          	realRel, err := filepath.Rel(rootReal, candidateReal)
+          	if err != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(os.PathSeparator)) {
+          		return "", fmt.Errorf("path resolves outside the Workspace")
+          	}
+
+          	info, err := os.Stat(candidateReal)
+          	if err != nil {
+          		return "", err
+          	}
+          	if !info.Mode().IsRegular() {
+          		return "", fmt.Errorf("path does not refer to a regular file")
+          	}
+          	return candidate, nil
+          }
+
+          func globSorted(pattern string) ([]string, error) {'''
+          if text.count(marker) != 1:
+              raise SystemExit("globSorted insertion point changed")
+          text = text.replace(marker, helper, 1)
+          p.write_text(text)
+
+          p = Path("internal/workspace/source_index.go")
+          text = p.read_text()
+          marker = '''\tidx.Normalize()
+          \tif err := idx.Validate(read); err != nil {'''
+          addition = '''\tfor _, contribution := range result.SourceContributions {
+          \t\tartifact, err := ensureArtifact(contribution.File)
+          \t\tif err != nil {
+          \t\t\treturn sourceindex.Index{}, fmt.Errorf("source contribution %s:%s: %w", contribution.Subject.Kind, contribution.Subject.ID, err)
+          \t\t}
+          \t\tcontent := contents[artifact.Path]
+          \t\trng, err := sourceindex.RangeFromOffsets(content, 0, len(content))
+          \t\tif err != nil {
+          \t\t\treturn sourceindex.Index{}, err
+          \t\t}
+          \t\tidx.References = append(idx.References, sourceindex.Reference{
+          \t\t\tSubject:      contribution.Subject,
+          \t\t\tArtifactPath: artifact.Path,
+          \t\t\tRange:        rng,
+          \t\t\tRole:         contribution.Role,
+          \t\t})
+          \t}
+
+          \tidx.Normalize()
+          \tif err := idx.Validate(read); err != nil {'''
+          if text.count(marker) != 1:
+              raise SystemExit("Source Index insertion point changed")
+          text = text.replace(marker, addition, 1)
+          p.write_text(text)
+
+      - name: Format and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w internal/syntax/parser.go internal/syntax/query_authoring.go internal/syntax/query_authoring_test.go internal/workspace/loader.go internal/workspace/source_index.go
+          go vet ./...
+          go test ./...
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/syntax/parser.go internal/syntax/query_authoring.go internal/syntax/query_authoring_test.go internal/workspace/loader.go internal/workspace/source_index.go
+          git commit -m "native SQLをWorkspace Queryへ接続する基盤を追加する"
+          git push origin HEAD:work/issue-18-native-sql-foundation
