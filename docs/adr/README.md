@@ -27,7 +27,8 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0002: M0.22.1を最初の公開設計チェックポイントとする](0002-m0221-public-checkpoint.md)
 - [ADR-0003: Reference Workspaceのgolden出力と観測fixtureをRepositoryに保持する](0003-reference-fixtures.md)
 - [ADR-0004: Source-to-Canonical TraceabilityをCanonical Worldから分離する](0004-source-to-canonical-traceability.md)
+- [ADR-0005: Supervisor authorityとruntime fencing authorityを分離する](0005-supervisor-and-runtime-fencing-authority.md)
 
 ## 関連する進行管理
 
-M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14から実装Issueへ分解して進めます。
+M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理します。
