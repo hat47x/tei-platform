@@ -180,6 +180,18 @@ func main() {
 		os.Exit(2)
 	}
 
+	if command == "validate" && *workspacePath != "" {
+		code, err := validateWorkspace(os.Stdout, *workspacePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+
 	w, err := loadWorld(*worldPath, *workspacePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

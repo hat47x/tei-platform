@@ -1952,4 +1952,6 @@ func (p *Parser) expectEOF() error {
 	}
 	return nil
 }
-func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, Msg: msg} }
+func (p *Parser) errAt(t Token, msg string) error {
+	return &ParseError{Pos: t.Start, End: t.End, Msg: msg}
+}
