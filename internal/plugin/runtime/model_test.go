@@ -30,7 +30,7 @@ func (b builtin) Invoke(_ context.Context, req pruntime.Request) (pruntime.Respo
 
 type launcher struct{ called bool }
 
-func (l *launcher) Invoke(_ context.Context, command string, req pruntime.Request) (pruntime.Response, error) {
+func (l *launcher) Invoke(_ context.Context, command pruntime.ProcessCommand, req pruntime.Request) (pruntime.Response, error) {
 	l.called = true
 	raw, _ := json.Marshal(map[string]any{"ok": true, "command": command})
 	return pruntime.Response{Status: pruntime.ResponseOK, Payload: raw}, nil
@@ -76,7 +76,7 @@ func rb(kind permission.Kind, scope, id string) environment.ResourceBinding {
 
 func TestRuntimePlanDerivesTrustBoundaryFromLockedDescriptor(t *testing.T) {
 	p1 := plugin.Definition{ID: cid("tei.runtime"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}, Provides: []plugin.Capability{{Kind: plugin.CapabilityDeploymentExecutor, ID: cid("runtime.main"), Actions: []deployment.ActionKind{deployment.ActionApplicationStart}}}}
-	p2 := plugin.Definition{ID: cid("tei.sql"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "python3 -m worker"}, Provides: []plugin.Capability{{Kind: plugin.CapabilityEditorIntelligence, ID: cid("editor.sql"), Features: []environment.Feature{environment.FeatureSQLAnalysis}}}}
+	p2 := plugin.Definition{ID: cid("tei.sql"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "python3", Args: []string{"-m", "worker"}}, Provides: []plugin.Capability{{Kind: plugin.CapabilityEditorIntelligence, ID: cid("editor.sql"), Features: []environment.Feature{environment.FeatureSQLAnalysis}}}}
 	env := environment.Environment{ID: cid("dev"), Plugins: []environment.ExtensionRequirement{{ID: p1.ID, CompatibleMajor: 1}, {ID: p2.ID, CompatibleMajor: 1}}}
 	cat := plugin.Catalog{Plugins: []plugin.Definition{p1, p2}}
 	lock, err := plugin.BuildLock(cat, []environment.Environment{env})
@@ -125,7 +125,7 @@ func TestBuiltinDeploymentAdapterUsesExactLockedPlugin(t *testing.T) {
 }
 
 func TestProcessPluginRequiresHostLauncher(t *testing.T) {
-	def := plugin.Definition{ID: cid("tei.sql"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "python3 -m worker"}, Provides: []plugin.Capability{{Kind: plugin.CapabilityEditorIntelligence, ID: cid("editor.sql"), Features: []environment.Feature{environment.FeatureSQLAnalysis}}}}
+	def := plugin.Definition{ID: cid("tei.sql"), Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "python3", Args: []string{"-m", "worker"}}, Provides: []plugin.Capability{{Kind: plugin.CapabilityEditorIntelligence, ID: cid("editor.sql"), Features: []environment.Feature{environment.FeatureSQLAnalysis}}}}
 	env := environment.Environment{ID: cid("dev"), Plugins: []environment.ExtensionRequirement{{ID: def.ID, CompatibleMajor: 1}}}
 	cat := plugin.Catalog{Plugins: []plugin.Definition{def}}
 	lock, _ := plugin.BuildLock(cat, []environment.Environment{env})

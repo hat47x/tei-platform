@@ -53,7 +53,7 @@ type SecretRefresher interface {
 }
 
 type SandboxedProcessRunner interface {
-	InvokeSandboxed(context.Context, string, Request) (Response, error)
+	InvokeSandboxed(context.Context, ProcessCommand, Request) (Response, error)
 }
 
 type supervisorOwnershipController interface {

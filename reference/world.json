@@ -56,7 +56,11 @@
       "version": "1.0.0",
       "runtime": {
         "kind": "process",
-        "command": "python3 -m tei_sql_worker",
+        "command": "python3",
+        "args": [
+          "-m",
+          "tei_sql_worker"
+        ],
         "sandbox": "required"
       },
       "artifact": {

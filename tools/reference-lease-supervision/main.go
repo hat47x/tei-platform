@@ -42,7 +42,7 @@ func (secrets) InjectSecrets(context.Context, []pruntime.SecretInjection) (prunt
 
 type slowRunner struct{}
 
-func (slowRunner) InvokeSandboxed(ctx context.Context, _ string, _ pruntime.Request) (pruntime.Response, error) {
+func (slowRunner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, _ pruntime.Request) (pruntime.Response, error) {
 	select {
 	case <-ctx.Done():
 		return pruntime.Response{}, ctx.Err()
