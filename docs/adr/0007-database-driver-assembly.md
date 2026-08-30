@@ -13,7 +13,7 @@ M0.26では、この境界を実際のPostgreSQLへ接続します。既存のPo
 
 ここでactual PostgreSQLへ接続するためには、`database/sql` compatible driverをどこかで登録し、接続文字列やcredentialを渡す必要があります。
 
-実装上は、PostgreSQL provider package自身がpgx等のdriverをimportする方法もあります。しかし、その形にすると「PostgreSQLの意味を読み取るprovider」と「このHostでどのdriverを使って接続するか」という別の責務が同じpackageへ混ざります。将来、別driverへ交換したい場合や、Host側でTLS、connection pool、credential deliveryを制御したい場合にも、Core側へ実行環境固有の都合が入りやすくなります。
+実装上は、PostgreSQL provider package自身がpgxやlib/pq等のdriverをimportする方法もあります。しかし、その形にすると「PostgreSQLの意味を読み取るprovider」と「このHostでどのdriverを使って接続するか」という別の責務が同じpackageへ混ざります。将来、別driverへ交換したい場合や、Host側でTLS、connection pool、credential deliveryを制御したい場合にも、Core側へ実行環境固有の都合が入りやすくなります。
 
 ## 判断
 
@@ -45,7 +45,7 @@ Provider-neutral Database lifecycle
   - Migration Proposal
 ```
 
-M0.26のReference integrationでは、pgxの`database/sql` adapterをHost側の具体例として利用します。これはTEI Coreがpgxを標準driverとして固定するという意味ではありません。
+M0.26のReference integrationでは、`lib/pq`を`database/sql` driverの具体例として利用します。これはTEI Coreがlib/pqを標準driverとして固定するという意味ではありません。将来、Reference assemblyをpgx/stdlib等へ交換しても、Provider Coreの意味境界は変えないことを意図しています。
 
 ## credentialと接続情報
 
@@ -78,7 +78,7 @@ actual DBでは、default expression、型名、暗黙index、schema qualificati
 
 ## 採用しなかった案
 
-### PostgreSQL providerがpgxを直接importする
+### PostgreSQL providerが具体driverを直接importする
 
 実装は短くなりますが、driver選択とmetadata意味解釈が結合します。Hostごとの接続policyやdriver交換をCoreへ持ち込みやすいため採用しません。
 
@@ -94,7 +94,7 @@ catalog readerの局所的な動作は検証できますが、PostgreSQLが実�
 
 - PostgreSQL providerは引き続き`database/sql`境界を中心に保てる
 - Reference toolや将来のHost adapterがdriver、DSN、credentialを組み立てる
-- pgxはM0.26 Reference integrationの具体実装であり、Canonical modelの一部ではない
+- lib/pqはM0.26 Reference integrationの具体実装であり、Canonical modelの一部ではない
 - actual PostgreSQLを使うCIを追加しても、production接続policyを実装済みとは扱わない
 - 将来MySQLや他DBをactual integrationする場合も、同じHost assembly原則を適用できる
 
