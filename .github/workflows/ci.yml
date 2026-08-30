@@ -43,6 +43,30 @@ jobs:
       - name: Reference Workspaceを検証
         run: go run ./cmd/tei validate -workspace reference/workspace
 
+      - name: Source IndexのQuery追跡経路を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei source-index \
+            -workspace reference/workspace \
+            -subject-kind query \
+            -subject-id order_entry.recent_orders \
+            > /tmp/tei-source-index-query.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          view = json.loads(Path('/tmp/tei-source-index-query.json').read_text())
+          assert view['subject'] == {'kind': 'query', 'id': 'order_entry.recent_orders'}
+          refs = {ref['role']: ref['artifactPath'] for ref in view['references']}
+          assert refs == {
+              'definition': 'applications/order-entry/queries/recent_orders.tei',
+              'authoring': 'applications/order-entry/queries/recent_orders.sql',
+          }
+          assert len(view['artifacts']) == 2
+          assert all(a['fingerprint'].startswith('sha256:') for a in view['artifacts'])
+          PY
+
       - name: Reference Worldの再現性を確認
         shell: bash
         run: |
