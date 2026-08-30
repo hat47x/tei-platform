@@ -108,12 +108,6 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 
 一方、`RuntimeUnknown`時にDurable Invocation Handle上のfencing generationをどこまで進めたとみなすかは、意味上の判断が残っています。この論点はIssue #9へ分離しており、M0.22.1のConformance testで先に意味を固定していません。
 
-### 文書の読書導線
-
-Issue #5では、一般読者向けと開発者向けの入口が混線しないよう文書構成と用語の初出説明を監査しました。
-
-READMEは全体像と読書入口へ寄せ、詳細な実装一覧はこの`status.md`へ集約します。一般読者向けの[説明](for-readers.md)、一段技術寄りの[考え方](overview.md)、実際に動かす[Getting Started](getting-started.md)、実装構造を追う[Architecture](architecture.md)を、それぞれ別の役割として扱います。
-
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -130,10 +124,22 @@ READMEは全体像と読書入口へ寄せ、詳細な実装一覧はこの`stat
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
 
-## 次の重点
+## M0.23の重点
 
-M0.22.1の次に進む方向は、現時点で一つへ固定していません。
+M0.23では、実行側のadapterをさらに増やす前に、**Source-to-Canonical Traceability** を次のvertical sliceとして扱います。
 
-production adapter、Deployment / Reconcileの外部接続、Plugin / Runtimeの実プロセス境界、AuthoringからCanonical Semantic Layerまでの入力経路など、複数の候補があります。どのvertical sliceが設計上の不確実性を最も減らせるかを、Issue #6で比較します。
+M0.22.1までで、意味からRelease、Deployment、Plugin / Runtime、Observation / Recoveryまでの実行側の境界はかなり厚くなりました。一方、Authoring sourceからCanonical Semantic Layerへ入る側では、「どのsourceのどの範囲が、どの意味を定義したか」という追跡性が相対的に薄い状態です。
 
-Reference再現性監査（#3）、Plugin / Runtime Conformance監査（#4）、一般読者向け文書監査（#5）で明らかになった基準を保ちながら、次のvertical sliceを選びます。
+M0.23ではGUI Editorを先に作らず、次を検証します。
+
+- Source IndexをCanonical Worldから分離する
+- Canonical IDをfile pathから独立したまま保つ
+- source content fingerprintとbyte rangeを使って正確なsource位置を追跡する
+- semantic diagnosticをpath-independentなsubjectからsourceへ投影する
+- native `.sql`をauthoritative sourceのままQueryへ接続する
+- file rename / moveだけではnormalized Worldを変えない
+- derived artifactからauthoritative sourceへ暗黙に逆書きしない
+
+設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録しています。実装はIssue #16〜#19へ分け、Source Index基盤 → Diagnostic投影 / native SQL → end-to-end Conformanceの順で進めます。
+
+Database lifecycleの実DB integration、Plugin / Runtimeの実process integration、Deploymentのexternal executor integrationも後続候補として残しますが、まず外部製品固有のadapterよりTEI固有のsource / meaning境界を検証します。
