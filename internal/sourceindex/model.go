@@ -7,6 +7,8 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	"tei/internal/subject"
 )
 
 type Role string
@@ -35,10 +37,10 @@ type Range struct {
 	End   Position `json:"end"`
 }
 
-type Subject struct {
-	Kind string `json:"kind"`
-	ID   string `json:"id"`
-}
+// Subject remains as a compatibility alias for existing Source Index callers.
+// The semantic identity itself is owned by the neutral subject package, not by
+// Source Index.
+type Subject = subject.Subject
 
 type Reference struct {
 	Subject      Subject `json:"subject"`
