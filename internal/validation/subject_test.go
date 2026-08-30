@@ -13,10 +13,10 @@ import (
 
 func TestRepresentativeDiagnosticsCarryStructuredSubjects(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		world ir.World
-		code string
-		want subject.Subject
+		code  string
+		want  subject.Subject
 	}{
 		{
 			name: "semantic type",
