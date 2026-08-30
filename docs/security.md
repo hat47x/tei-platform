@@ -51,6 +51,8 @@ TEIはmonotonic fencing tokenをResource Brokerおよびruntime reattach境界�
 
 外部副作用が既に発生したか不明な状態で同じActionを再実行することを避け、Recovery判断へ送ります。
 
+M0.22.1でコードとテストから直接追跡できる保証範囲は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
+
 ## 現時点で保証しないもの
 
 このRepositoryのReference実装は、次をproduction-gradeとして提供するものではありません。

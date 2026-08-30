@@ -2,6 +2,8 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -61,5 +63,26 @@ func TestCatalogBrokerAcquiresAndRevokesInvocationScopedLease(t *testing.T) {
 	}
 	if b.ActiveLeaseCount() != 0 {
 		t.Fatalf("lease was not revoked")
+	}
+}
+
+func TestDurableResourceRecordsExcludeConcreteHostMaterial(t *testing.T) {
+	resolved := []resource.Resolved{
+		{Kind: permission.KindSecret, Access: permission.AccessRead, Scope: "credential", ResourceID: core.MustCanonicalID("prod.secret"), SecretHandle: "vault://sensitive-handle", SecretDelivery: resource.SecretDeliveryEnvironment, SecretTarget: "TEI_DATABASE_CREDENTIAL"},
+		{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "database", ResourceID: core.MustCanonicalID("prod.database"), NetworkEndpoint: "db.internal:5432"},
+		{Kind: permission.KindFilesystem, Access: permission.AccessReadWrite, Scope: "workdir", ResourceID: core.MustCanonicalID("prod.workdir"), MountSourceHandle: "mount://sensitive-source", MountPath: "/tei/private-workdir"},
+	}
+	raw, err := json.Marshal(resource.Records(resolved))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	for _, concrete := range []string{"vault://sensitive-handle", "db.internal:5432", "mount://sensitive-source", "/tei/private-workdir"} {
+		if strings.Contains(text, concrete) {
+			t.Fatalf("durable resource record leaked concrete host material %q: %s", concrete, text)
+		}
+	}
+	if !strings.Contains(text, "prod.secret") || !strings.Contains(text, "TEI_DATABASE_CREDENTIAL") {
+		t.Fatalf("durable resource record lost non-sensitive authority metadata: %s", text)
 	}
 }
