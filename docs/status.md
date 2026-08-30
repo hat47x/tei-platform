@@ -182,6 +182,22 @@ M0.25では、process Pluginの実行指定をshell-likeなcommand lineではな
 
 詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
 
+## M0.26 actual PostgreSQL Desired / Actual / Diff
+
+M0.26では、既存Database lifecycleをactual PostgreSQLへ接続しました。新しいCanonical DB modelを増やさず、既存のPersistence Mapping、PostgreSQL provider、Physical Schema、Schema Diffを一続きで検証しています。
+
+- `persistence.RealizeDesired`でPostgreSQL向けDesired Physical Schemaを生成
+- `database/sql` + `SQLCatalogReader`でactual PostgreSQL catalogを観測
+- `provider.Introspect`を通してDatabaseInstance / Provider整合を検証
+- same-state fixtureで`schemadiff.Compare`のchangesが0件
+- actual側だけに追加した`drift_note` columnをdriftとして検出
+- actual foreign keyをSchemaSnapshotへ観測
+- Primary Key backing indexを通常Indexとして二重計上しないようPostgreSQL providerをnormalize
+- DSN / credentialをPhysical SnapshotやDiffへ保存しない
+- Reference driver選択はtool assemblyに留め、PostgreSQL provider SPIは`database/sql`依存のまま維持
+
+fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic schema applyやmigration executionを実装したわけではありません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -199,6 +215,7 @@ M0.25では、process Pluginの実行指定をshell-likeなcommand lineではな
 - DeploymentExecutorからactual child processへstdio protocolで到達できること
 - executable / argvをshell-like stringへ畳まず、空白を含む一つのargv elementがactual child processまで保存されること
 - runtime reattachの参照例が動作すること
+- actual PostgreSQLからPhysical Schemaをintrospectし、baseline差分ゼロと意図的drift検出を確認できること
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
 
@@ -206,7 +223,8 @@ CIはproduction-gradeな外部環境を検証するものではありません�
 
 M0.23でSource / meaning境界を厚くした後も、次の候補が残ります。
 
-- Database lifecycleの実DB integration
+- Foreign Keyを含むSchema Diff対象の拡張
+- migration proposalからactual DB schema changeへ至る明示的execution integration
 - durable process manager / container runtimeとのcross-host reattach integration
 - production-grade Host sandbox / process isolation adapter
 - Deploymentの外部実環境executor integration
