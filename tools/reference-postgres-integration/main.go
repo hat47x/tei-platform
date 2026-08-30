@@ -128,7 +128,7 @@ func referenceMappings() []persistence.Mapping {
 				{Attribute: core.MustCanonicalID("reference.customer.profile"), Column: "profile", Storage: persistence.StorageJSON, Nullability: persistence.Optional},
 			},
 			PrimaryKey: []core.CanonicalID{core.MustCanonicalID("reference.customer.id")},
-			Indexes: []persistence.IndexMapping{{Name: "customers_name_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.name")}}},
+			Indexes:    []persistence.IndexMapping{{Name: "customers_name_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.name")}}},
 		},
 		{
 			ID:           core.MustCanonicalID("reference_postgres.orders"),
@@ -143,7 +143,7 @@ func referenceMappings() []persistence.Mapping {
 				{Attribute: core.MustCanonicalID("reference.order.total"), Column: "total", Storage: persistence.StorageDecimal, Nullability: persistence.Required},
 			},
 			PrimaryKey: []core.CanonicalID{core.MustCanonicalID("reference.order.id")},
-			Indexes: []persistence.IndexMapping{{Name: "orders_customer_id_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.order.customer_id")}}},
+			Indexes:    []persistence.IndexMapping{{Name: "orders_customer_id_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.order.customer_id")}}},
 		},
 	}
 }
