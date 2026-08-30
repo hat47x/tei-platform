@@ -1,0 +1,56 @@
+from pathlib import Path
+
+status = Path("docs/status.md")
+s = status.read_text()
+section = """## M0.27 Foreign Key realization / drift
+
+M0.27では、M0.26でactual PostgreSQLから観測できることまで確認したForeign Keyを、Persistence MappingのDesired realizationとprovider-neutral Schema Diffへ統合しました。設計判断は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) に記録しています。
+
+- Foreign KeyをSemantic Relationから自動生成せず、Database所有のPersistence Mappingで明示
+- authoringではsource Attribute、referenced Mapping、target Attributeをidentityで指定
+- `RealizeDesired`がMapping / Attribute identityからphysical table / columnへ解決
+- cross-database FKをM0.27では拒否
+- constraint名はtrace / DDL metadataとして保持するが、Schema Driftの意味identityにはしない
+- FKの構造差を`drop-foreign-key` + `add-foreign-key`として表現
+- composite FKのcolumn順序を保持
+- 同一構造constraintのmultiplicityを保持
+- actual PostgreSQLでFK込みbaseline差分ゼロを確認
+- actual constraint削除後に`add-foreign-key` driftを検出
+
+詳細は [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+
+"""
+marker = "## 継続的な検証\n"
+if section.strip() not in s:
+    if marker not in s:
+        raise SystemExit("status continuous verification marker not found")
+    s = s.replace(marker, section + marker, 1)
+s = s.replace(
+    "- actual PostgreSQLからPhysical Schemaをintrospectし、baseline差分ゼロと意図的drift検出を確認できること",
+    "- actual PostgreSQLからPhysical Schemaをintrospectし、Foreign Key込みbaseline差分ゼロ、column drift、Foreign Key driftを確認できること",
+)
+s = s.replace(
+    "- Foreign Keyを含むSchema Diff対象の拡張\n",
+    "- Foreign Key option（ON DELETE / ON UPDATE等）をprovider-neutral modelへ持ち上げる必要性の検討\n",
+)
+status.write_text(s)
+
+arch = Path("docs/architecture.md")
+a = arch.read_text()
+para = """M0.27ではForeign Keyも同じDatabase-owned realizationとして扱います。Semantic Relationから自動生成せず、Persistence Mappingがsource Attribute、referenced Mapping、target Attributeを明示します。`RealizeDesired`がphysical FKへ解決し、Schema Diffはconstraint名ではなくsource columns / referenced table / referenced columnsの構造で比較します。constraint名だけの違いはdriftではありません。詳細は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+
+"""
+marker = "## Query\n"
+if para.strip() not in a:
+    if marker not in a:
+        raise SystemExit("architecture query marker not found")
+    a = a.replace(marker, para + marker, 1)
+arch.write_text(a)
+
+m026 = Path("docs/conformance/postgres-actual-schema-m0.26.md")
+c = m026.read_text()
+old = "一方、現行`schemadiff.Compare`はForeign Key差分を比較対象にしていません。したがってM0.26は「FK introspectionは実DBで成立する」ことまでを確認し、FK drift generalizationは別課題とします。"
+new = old + "\n\nこの制約はM0.26時点のものです。後続M0.27 / ADR-0008でPersistence MappingからDesired FKを明示し、provider-neutral Schema DiffへForeign Keyを統合しました。現在の境界は [M0.27 Conformance](foreign-key-drift-m0.27.md) を参照してください。"
+if old in c and "後続M0.27 / ADR-0008" not in c:
+    c = c.replace(old, new, 1)
+m026.write_text(c)
