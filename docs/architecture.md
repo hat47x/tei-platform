@@ -43,6 +43,41 @@ workspace/
 └─ .tei/
 ```
 
+## Source-to-Canonical Traceability
+
+Source情報はCanonical Worldへ埋め込まず、Authoring / Workspace側のderived **Source Index**として分離します。
+
+```text
+Authoring source
+  .tei / .sql / ...
+        │ parse / load
+        ├──────────────────────┐
+        ▼                      ▼
+Canonical World          Source Index
+path-independent         locator / fingerprint / range / role
+        │                      ▲
+        │ validate             │ project
+        ▼                      │
+Diagnostic + Subject ──────────┘
+```
+
+Source ArtifactはWorkspace-relative pathとcontent fingerprintを持ち、Source Referenceはpath-independentなSubjectへbyte rangeとroleを結び付けます。
+
+Semantic validationはSource Indexへ依存せず`Diagnostic + Subject`を返し、Authoring側でsourceへprojectします。Canonical subjectがまだ成立していないparse / lexer errorは、擬似的なidentityを作らずsource-direct diagnosticとして扱います。
+
+Source Indexは次のCLIでinspectionできます。
+
+```bash
+go run ./cmd/tei source-index \
+  -workspace reference/workspace \
+  -subject-kind query \
+  -subject-id order_entry.recent_orders
+```
+
+この出力はderived projectionであり、Canonical source of truthではありません。
+
+M0.23で直接検証している不変条件と実装・テストの対応は、[Source-to-Canonical TraceabilityのConformance](conformance/source-traceability-m0.23.md) に整理しています。
+
 ## Semantic kernel
 
 Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
@@ -75,6 +110,8 @@ Application Releaseは複数Database Contract Requirementのsnapshotを持ちま
 SQLは「低級だから隠す」対象ではなく、正式なauthoring front-endの一つです。
 
 SQL-authored queryではSQLがauthoring source of truthで、Query IRはderivedです。Graph-authored queryでは逆にIRをcanonicalにしてSQLをprojectionにできます。二つのsource of truthを同時に要求しません。
+
+M0.23ではQuery declarationからnative `.sql`を参照できます。Workspace loaderはSQL本文を既存Query modelへ渡しますが、physical `.sql` pathはCanonical QueryやAnalyzer protocolへ混ぜません。Query declarationは`definition`、SQL fileは同一Query Subjectの`authoring` sourceとしてSource Indexから追跡します。
 
 ## Deployment
 
