@@ -1,8 +1,12 @@
 # Getting Started
 
+この文書は、TEIを実際にcloneして動かしたい開発者向けの入口です。まず考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md) を先に読む方が自然です。
+
 ## 前提
 
-現段階のTEIはGoで実装されたarchitecture probeです。まずはGo toolchainがあれば主要部分を試せます。
+現段階のTEIはGoで実装されたarchitecture probeです。完成したGUI製品の操作手順ではなく、設計境界を実行可能なコードで確認するための手順です。
+
+Go toolchainがあれば主要部分を試せます。
 
 ```bash
 go version
@@ -33,6 +37,8 @@ go run ./cmd/tei world \
 
 ここにはSemantic、Application、Database、Environment、Release、Plugin等のnormalized modelが含まれます。
 
+`reference/world.json` は同じReference Workspaceから再生成できるgolden snapshotで、CIでも一致を確認しています。
+
 ## 4. Plugin LockとRuntime Plan
 
 ```bash
@@ -45,9 +51,27 @@ go run ./cmd/tei plugin-runtime-plan \
   -plugin-lock /tmp/tei-plugin-lock.json
 ```
 
-EnvironmentがどのPlugin/version/capabilityを使い、どのPermission / Resource Binding / Sandbox policyを要求するか確認できます。
+EnvironmentがどのPlugin / version / capabilityを使い、どのPermission / Resource Binding / Sandbox policyを要求するか確認できます。
 
-## 5. Runtime reattach example
+Repositoryに保存したReference Plugin Lockも、CIでWorkspaceから再生成して一致を確認しています。
+
+## 5. Deploymentの参照経路
+
+Reference Workspaceと観測fixtureからDurable Deployment Runを再生成できます。
+
+```bash
+go run ./cmd/tei deployment-start \
+  -workspace reference/workspace \
+  -solution order_rollout \
+  -version 2026.8.27 \
+  -deployment reference/observed/production.deployment-state.json \
+  -run-id order-rollout-prod-m0.21 \
+  -plugin-lock reference/workspace/.tei/plugin-lock.json
+```
+
+保存済みの `reference/order_rollout.durable-run.m0.21.start.json` はこの入力から再生成可能な参照fixtureです。詳しくは [reference/README.md](../reference/README.md) を参照してください。
+
+## 6. Runtime reattach example
 
 ```bash
 go run ./examples/runtime-reattach
@@ -57,9 +81,9 @@ go run ./examples/runtime-reattach
 
 重要なのは、runtime handleが`missing`だった場合に自動再実行しないことです。外部副作用の有無を確定できないため、Recoveryへ送ります。
 
-## 6. コードを読む順番
+## 7. コードを読む順番
 
-初めて読む場合は、次の順が比較的追いやすいです。
+初めて実装を読む場合は、次の順が比較的追いやすいです。
 
 1. `reference/workspace/tei.workspace.yaml`
 2. `reference/workspace/semantic/`
@@ -72,6 +96,8 @@ go run ./examples/runtime-reattach
 9. `internal/deployment/`
 10. `internal/plugin/runtime/`, `internal/resource/`
 
+Plugin / Runtimeの安全境界を読む場合は、[Conformance — M0.22.1](conformance/plugin-runtime-m0.22.1.md) がコードとテストの対応表として使えます。
+
 ## 注意
 
-現段階のReference adapterは設計契約を検証するためのものです。production用Vault/Kubernetes/etcd adapter等としてそのまま利用することは想定していません。
+現段階のReference adapterは設計契約を検証するためのものです。production用Vault / Kubernetes / etcd adapter等としてそのまま利用することは想定していません。
