@@ -43,12 +43,44 @@ jobs:
       - name: Reference Workspaceを検証
         run: go run ./cmd/tei validate -workspace reference/workspace
 
-      - name: Golden worldの再現性を確認
+      - name: Reference Worldの再現性を確認
         shell: bash
         run: |
           set -euo pipefail
-          go run ./cmd/tei world -workspace reference/workspace > /tmp/tei-reference-world.json
+          go run ./cmd/tei world \
+            -workspace reference/workspace \
+            > /tmp/tei-reference-world.json
           diff -u reference/world.json /tmp/tei-reference-world.json
+
+      - name: Plugin Lockの再現性を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei plugin-lock \
+            -workspace reference/workspace \
+            > /tmp/tei-reference-plugin-lock.json
+          diff -u \
+            reference/workspace/.tei/plugin-lock.json \
+            /tmp/tei-reference-plugin-lock.json
+
+      - name: Durable Run fixtureの再現性を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei deployment-start \
+            -workspace reference/workspace \
+            -solution order_rollout \
+            -version 2026.8.27 \
+            -deployment reference/observed/production.deployment-state.json \
+            -run-id order-rollout-prod-m0.21 \
+            -plugin-lock reference/workspace/.tei/plugin-lock.json \
+            > /tmp/tei-reference-deployment-run.json
+          diff -u \
+            reference/order_rollout.durable-run.m0.21.start.json \
+            /tmp/tei-reference-deployment-run.json
+
+      - name: Deployment executorの参照例を実行
+        run: go run ./tools/reference-deployment-attempt > /tmp/tei-reference-deployment-attempt.json
 
       - name: Runtime reattachの参照例を実行
         run: go run ./examples/runtime-reattach
