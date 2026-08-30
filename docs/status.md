@@ -140,6 +140,6 @@ M0.23ではGUI Editorを先に作らず、次を検証します。
 - file rename / moveだけではnormalized Worldを変えない
 - derived artifactからauthoritative sourceへ暗黙に逆書きしない
 
-設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録しています。実装はIssue #16〜#19へ分け、Source Index基盤 → Diagnostic投影 / native SQL → end-to-end Conformanceの順で進めます。
+設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録しています。実装はGitHub Issue #16〜#19へ分け、Source Index基盤 → Diagnostic投影 / native SQL → end-to-end Conformanceの順で進めます。
 
 Database lifecycleの実DB integration、Plugin / Runtimeの実process integration、Deploymentのexternal executor integrationも後続候補として残しますが、まず外部製品固有のadapterよりTEI固有のsource / meaning境界を検証します。
