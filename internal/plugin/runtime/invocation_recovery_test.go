@@ -42,6 +42,7 @@ func recoveryHandle() pruntime.DurableInvocationHandle {
 		ResourceLeaseID:          "lease-1",
 		SupervisorOwnerID:        "host-a",
 		FencingToken:             1,
+		RuntimeFencingToken:      1,
 		Lifecycle:                pruntime.RuntimeRunning,
 	}
 }
@@ -65,7 +66,7 @@ func TestInvocationRecoveryReattachesWithNewFencingToken(t *testing.T) {
 	if res.Outcome != pruntime.RecoveryReattached {
 		t.Fatalf("outcome=%s", res.Outcome)
 	}
-	if res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.Revision != 2 {
+	if res.Handle.SupervisorOwnerID != "host-b" || res.Handle.FencingToken != 2 || res.Handle.RuntimeFencingToken != 2 || res.Handle.Revision != 2 {
 		t.Fatalf("handle=%#v", res.Handle)
 	}
 	// Old host cannot retake authority with token 1 after runtime fencing moved to 2.
