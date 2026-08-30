@@ -1,5 +1,7 @@
 # Architecture
 
+この文書は、TEIの実装構造と技術境界を追う開発者向けです。概念を先に把握したい場合は、[TEIの考え方](overview.md) を先に読む方が自然です。
+
 ## レイヤ
 
 TEIの基本的な分離は次の4層です。
@@ -43,7 +45,7 @@ workspace/
 
 ## Semantic kernel
 
-Coreへ無制限に専用kindを追加しない方針です。概念上のMicro/Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
+Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
 
 Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
 
@@ -96,13 +98,15 @@ Release DefinitionとDeployment execution historyを分離します。
 
 PluginはCapabilityの配布単位です。
 
-EnvironmentではCapability IDへBindingし、Plugin Lockがexact versionとdescriptor/artifact identityを固定します。
+EnvironmentではCapability IDへBindingし、Plugin Lockがexact versionとdescriptor / artifact identityを固定します。
 
-process PluginではResource Broker、Permission Lease、Sandbox Profile、Host Lease Supervisor、Ownership/Fencingを通して実行します。
+process PluginではResource Broker、Permission Lease、Sandbox Profile、Host Lease Supervisor、Ownership / Fencingを通して実行します。
+
+M0.22.1で直接検証している境界とテストの対応は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
 ## Host restart / takeover
 
-M0.22では、Supervisor takeover後に外部process/containerへどう再接続するかを`DurableInvocationHandle`として分離しました。
+M0.22では、Supervisor takeover後に外部process / containerへどう再接続するかを`DurableInvocationHandle`として分離しました。
 
 ```text
 host-a dies
@@ -121,3 +125,5 @@ Observe runtime handle
 ```
 
 Resource authorityのfencingとruntime reattachのfencingを両方要求します。
+
+`unknown`時のruntime authorityとDurable Handle上のfencing generationの意味には未決の論点があり、Issue #9で独立して扱っています。
