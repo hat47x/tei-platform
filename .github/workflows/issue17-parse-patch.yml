@@ -1,0 +1,59 @@
+name: Apply Issue 17 parse diagnostic patch
+
+on:
+  push:
+    branches:
+      - work/issue-17-parse-diagnostics-cli
+    paths:
+      - .github/workflows/issue17-parse-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-17-parse-diagnostics-cli
+
+      - name: Apply narrow parser and loader patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          parser = Path("internal/syntax/parser.go")
+          text = parser.read_text()
+          old = "type ParseError struct {\n\tPos Position\n\tMsg string\n}"
+          new = "type ParseError struct {\n\tPos Position\n\tEnd Position\n\tMsg string\n}"
+          if text.count(old) != 1:
+              raise SystemExit("ParseError struct target not found exactly once")
+          text = text.replace(old, new, 1)
+          old = 'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, Msg: msg} }'
+          new = 'func (p *Parser) errAt(t Token, msg string) error {\n\treturn &ParseError{Pos: t.Start, End: t.End, Msg: msg}\n}'
+          if text.count(old) != 1:
+              raise SystemExit("errAt target not found exactly once")
+          parser.write_text(text)
+
+          loader = Path("internal/workspace/loader.go")
+          text = loader.read_text()
+          old = 'func sourceErr(path string, err error) error { return fmt.Errorf("%s: %w", path, err) }'
+          new = 'func sourceErr(path string, err error) error { return &SourceError{Path: path, Err: err} }'
+          if text.count(old) != 1:
+              raise SystemExit("sourceErr target not found exactly once")
+          text = text.replace(old, new, 1)
+          loader.write_text(text)
+
+      - name: Format
+        run: gofmt -w internal/syntax/parser.go internal/workspace/loader.go internal/workspace/source_error.go internal/workspace/source_diagnostic.go
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/syntax/parser.go internal/workspace/loader.go internal/workspace/source_error.go internal/workspace/source_diagnostic.go
+          git commit -m "Parse errorのtoken rangeとsource provenanceを保持する"
+          git push origin HEAD:work/issue-17-parse-diagnostics-cli
