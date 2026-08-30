@@ -23,20 +23,28 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Route workspace validation through source-aware diagnostics
+      - name: Complete parse range and route workspace validation
         shell: python
         run: |
           from pathlib import Path
-          p = Path("cmd/tei/main.go")
-          text = p.read_text()
+          parser = Path("internal/syntax/parser.go")
+          text = parser.read_text()
+          old = 'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, Msg: msg} }'
+          new = 'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, End: t.End, Msg: msg} }'
+          if text.count(old) != 1:
+              raise SystemExit("errAt target not found exactly once")
+          parser.write_text(text.replace(old, new, 1))
+
+          main = Path("cmd/tei/main.go")
+          text = main.read_text()
           needle = "\tw, err := loadWorld(*worldPath, *workspacePath)\n"
           insert = "\tif command == \"validate\" && *workspacePath != \"\" {\n\t\tcode, err := validateWorkspace(os.Stdout, *workspacePath)\n\t\tif err != nil {\n\t\t\tfmt.Fprintln(os.Stderr, err)\n\t\t\tos.Exit(2)\n\t\t}\n\t\tif code != 0 {\n\t\t\tos.Exit(code)\n\t\t}\n\t\treturn\n\t}\n\n"
           if text.count(needle) != 1:
               raise SystemExit("loadWorld routing target not found exactly once")
-          p.write_text(text.replace(needle, insert + needle, 1))
+          main.write_text(text.replace(needle, insert + needle, 1))
 
       - name: Format
-        run: gofmt -w cmd/tei/main.go cmd/tei/validation_output.go cmd/tei/validation_output_test.go internal/workspace/source_diagnostic_test.go
+        run: gofmt -w internal/syntax/parser.go cmd/tei/main.go cmd/tei/validation_output.go cmd/tei/validation_output_test.go internal/workspace/source_diagnostic_test.go
 
       - name: Verify focused packages
         run: go test ./cmd/tei ./internal/workspace ./internal/syntax
