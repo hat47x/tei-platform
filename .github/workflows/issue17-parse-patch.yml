@@ -27,37 +27,13 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-
           p = Path("cmd/tei/main.go")
           text = p.read_text()
-          old = '''\tif (*worldPath == "") == (*workspacePath == "") {
-\t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
-\t\tos.Exit(2)
-\t}
-
-\tw, err := loadWorld(*worldPath, *workspacePath)
-'''
-          new = '''\tif (*worldPath == "") == (*workspacePath == "") {
-\t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
-\t\tos.Exit(2)
-\t}
-\tif command == "validate" && *workspacePath != "" {
-\t\tcode, err := validateWorkspace(os.Stdout, *workspacePath)
-\t\tif err != nil {
-\t\t\tfmt.Fprintln(os.Stderr, err)
-\t\t\tos.Exit(2)
-\t\t}
-\t\tif code != 0 {
-\t\t\tos.Exit(code)
-\t\t}
-\t\treturn
-\t}
-
-\tw, err := loadWorld(*worldPath, *workspacePath)
-'''
-          if text.count(old) != 1:
-              raise SystemExit("main validation routing target not found exactly once")
-          p.write_text(text.replace(old, new, 1))
+          needle = "\tw, err := loadWorld(*worldPath, *workspacePath)\n"
+          insert = "\tif command == \"validate\" && *workspacePath != \"\" {\n\t\tcode, err := validateWorkspace(os.Stdout, *workspacePath)\n\t\tif err != nil {\n\t\t\tfmt.Fprintln(os.Stderr, err)\n\t\t\tos.Exit(2)\n\t\t}\n\t\tif code != 0 {\n\t\t\tos.Exit(code)\n\t\t}\n\t\treturn\n\t}\n\n"
+          if text.count(needle) != 1:
+              raise SystemExit("loadWorld routing target not found exactly once")
+          p.write_text(text.replace(needle, insert + needle, 1))
 
       - name: Format
         run: gofmt -w cmd/tei/main.go cmd/tei/validation_output.go cmd/tei/validation_output_test.go internal/workspace/source_diagnostic_test.go
