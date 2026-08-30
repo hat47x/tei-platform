@@ -26,7 +26,8 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0001: 設計判断と実行作業をADRとIssueに分ける](0001-adr-and-issue-workflow.md)
 - [ADR-0002: M0.22.1を最初の公開設計チェックポイントとする](0002-m0221-public-checkpoint.md)
 - [ADR-0003: Reference Workspaceのgolden出力と観測fixtureをRepositoryに保持する](0003-reference-fixtures.md)
+- [ADR-0004: Source-to-Canonical TraceabilityをCanonical Worldから分離する](0004-source-to-canonical-traceability.md)
 
 ## 関連する進行管理
 
-当面の作業分担はGitHub Issue #1「M0.22.1以降の作業分担と進行管理」から辿れるようにしています。
+M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14から実装Issueへ分解して進めます。
