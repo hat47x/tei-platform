@@ -31,7 +31,7 @@ func TestParsePluginAndBundle(t *testing.T) {
 
 func TestParsePluginSandboxArtifactPermissionAndEnvironmentGrant(t *testing.T) {
 	p, err := syntax.NewParser(`plugin tei.editor.secure v1.0.0 {
-        runtime process "python3 -m worker" sandbox required
+        runtime process "python3" args "-m" "worker" sandbox required
         artifact {
             digest "sha256:5af655bd19fffee7c3564b060f92056e1a6bd521c0b15bd1155dd244cd77de43"
             signature "sigstore://test"
@@ -45,7 +45,7 @@ func TestParsePluginSandboxArtifactPermissionAndEnvironmentGrant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Runtime.Sandbox != plugin.SandboxRequired || p.Artifact.Digest == "" || len(p.Provides[0].Permissions) != 1 {
+	if p.Runtime.Command != "python3" || len(p.Runtime.Args) != 2 || p.Runtime.Args[0] != "-m" || p.Runtime.Args[1] != "worker" || p.Runtime.Sandbox != plugin.SandboxRequired || p.Artifact.Digest == "" || len(p.Provides[0].Permissions) != 1 {
 		t.Fatalf("plugin: %#v", p)
 	}
 
