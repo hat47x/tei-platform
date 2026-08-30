@@ -1,9 +1,6 @@
 package syntax
 
-import (
-	"fmt"
-	"unicode"
-)
+import "unicode"
 
 type TokenKind int
 
@@ -74,7 +71,10 @@ func (l *Lexer) Next() (Token, error) {
 		}
 		return Token{Kind: TokenIdent, Text: l.src[begin:l.off], Start: start, End: l.pos()}, nil
 	}
-	return Token{}, fmt.Errorf("%d:%d: unexpected character %q", start.Line, start.Column, l.src[l.off])
+	end := start
+	end.Offset++
+	end.Column++
+	return Token{}, &LexError{Start: start, End: end, Msg: "unexpected character " + string([]byte{'\'', l.src[l.off], '\''})}
 }
 
 func (l *Lexer) ReadRawBlock() (string, Position, error) {
@@ -155,7 +155,7 @@ func (l *Lexer) ReadRawBlock() (string, Position, error) {
 			l.advanceByte()
 		}
 	}
-	return "", start, fmt.Errorf("%d:%d: unterminated raw block", start.Line, start.Column)
+	return "", start, &LexError{Start: start, End: l.pos(), Msg: "unterminated raw block"}
 }
 
 func (l *Lexer) scanString() (Token, error) {
@@ -182,7 +182,7 @@ func (l *Lexer) scanString() (Token, error) {
 		}
 		l.advanceByte()
 	}
-	return Token{}, fmt.Errorf("%d:%d: unterminated string", start.Line, start.Column)
+	return Token{}, &LexError{Start: start, End: l.pos(), Msg: "unterminated string"}
 }
 
 func (l *Lexer) skipSpaceAndComments() {
