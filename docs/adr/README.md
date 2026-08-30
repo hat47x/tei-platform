@@ -30,7 +30,8 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0005: Supervisor authorityとruntime fencing authorityを分離する](0005-supervisor-and-runtime-fencing-authority.md)
 - [ADR-0006: process commandをexecutableとargvへ分離する](0006-process-command-and-argv.md)
 - [ADR-0007: actual database driverの組み立てをProvider Coreから分離する](0007-database-driver-assembly.md)
+- [ADR-0008: Desired Foreign KeyをPersistence Mappingで明示し、構造で差分比較する](0008-persistence-foreign-key-identity.md)
 
 ## 関連する進行管理
 
-M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で追跡します。
+M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で完了し、M0.27のForeign Key realization / driftはIssue #37とADR-0008で進めます。
