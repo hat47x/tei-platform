@@ -29,7 +29,8 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0004: Source-to-Canonical TraceabilityをCanonical Worldから分離する](0004-source-to-canonical-traceability.md)
 - [ADR-0005: Supervisor authorityとruntime fencing authorityを分離する](0005-supervisor-and-runtime-fencing-authority.md)
 - [ADR-0006: process commandをexecutableとargvへ分離する](0006-process-command-and-argv.md)
+- [ADR-0007: actual database driverの組み立てをProvider Coreから分離する](0007-database-driver-assembly.md)
 
 ## 関連する進行管理
 
-M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、process command / argv境界はIssue #33とADR-0006で進めます。
+M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で追跡します。
