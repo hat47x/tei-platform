@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+
+      - name: Goを準備
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Goコードの整形を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l cmd internal examples tools)"
+          if [[ -n "${unformatted}" ]]; then
+            echo "gofmtが必要なファイルがあります:"
+            echo "${unformatted}"
+            exit 1
+          fi
+
+      - name: 静的検査
+        run: go vet ./...
+
+      - name: テスト
+        run: go test ./...
+
+      - name: Reference Workspaceを検証
+        run: go run ./cmd/tei validate -workspace reference/workspace
+
+      - name: Golden worldの再現性を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei world -workspace reference/workspace > /tmp/tei-reference-world.json
+          diff -u reference/world.json /tmp/tei-reference-world.json
+
+      - name: Runtime reattachの参照例を実行
+        run: go run ./examples/runtime-reattach
