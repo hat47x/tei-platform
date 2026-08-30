@@ -1,0 +1,61 @@
+name: Verify Issue 37 foreign key drift
+
+on:
+  push:
+    branches:
+      - work/issue-37-foreign-key-diff
+    paths:
+      - .github/workflows/issue37-fk-verify.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEI_TEST_POSTGRES_DSN: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Goコードを整形
+        run: gofmt -w internal/database/persistence internal/database/physical internal/database/schemadiff internal/syntax/parser.go internal/syntax/persistence_foreign_key_test.go tools/reference-postgres-integration/main.go
+      - name: 静的検査
+        run: go vet ./...
+      - name: 全テスト
+        run: go test ./...
+      - name: actual PostgreSQLでForeign Key driftを検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-integration > /tmp/tei-postgres-fk.json
+          grep -q '"foreignKeyDriftDetected": true' /tmp/tei-postgres-fk.json
+          grep -q '"kind": "add-foreign-key"' /tmp/tei-postgres-fk.json
+      - name: 整形差分があればcommit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add internal tools
+            git commit -m "M0.27 Foreign Key実装をgofmtする"
+            git push
+          fi
