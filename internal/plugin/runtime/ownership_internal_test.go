@@ -37,3 +37,78 @@ func TestOwnershipHeartbeatFailureIsFailClosed(t *testing.T) {
 		t.Fatalf("ownership events=%#v", events)
 	}
 }
+
+type cancelAwareHeartbeatStore struct {
+	started chan struct{}
+}
+
+func (s cancelAwareHeartbeatStore) Claim(context.Context, string, string, time.Duration) (resource.SupervisorOwnership, bool, error) {
+	return resource.SupervisorOwnership{}, false, nil
+}
+func (s cancelAwareHeartbeatStore) Heartbeat(ctx context.Context, ownership resource.SupervisorOwnership, _ time.Duration) (resource.SupervisorOwnership, error) {
+	select {
+	case s.started <- struct{}{}:
+	default:
+	}
+	<-ctx.Done()
+	return resource.SupervisorOwnership{}, ctx.Err()
+}
+func (cancelAwareHeartbeatStore) Assert(context.Context, resource.SupervisorOwnership) error {
+	return nil
+}
+func (cancelAwareHeartbeatStore) Release(context.Context, resource.SupervisorOwnership) error {
+	return nil
+}
+
+func TestOwnershipHeartbeatCancellationDuringShutdownIsNotFailure(t *testing.T) {
+	now := time.Now().UTC()
+	started := make(chan struct{}, 1)
+	c := &leaseController{
+		current: resource.Lease{ID: "lease-1", Revision: 1, FencingToken: 1, ExpiresAt: now.Add(time.Minute).Format(time.RFC3339Nano)},
+	}
+	c.attachOwnership(
+		cancelAwareHeartbeatStore{started: started},
+		resource.SupervisorOwnership{
+			LeaseID:        "lease-1",
+			OwnerID:        "host-a",
+			FencingToken:   1,
+			ClaimedAt:      now.Format(time.RFC3339Nano),
+			HeartbeatAt:    now.Format(time.RFC3339Nano),
+			OwnerExpiresAt: now.Add(30 * time.Millisecond).Format(time.RFC3339Nano),
+		},
+		30*time.Millisecond,
+		false,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- runOwnershipHeartbeat(ctx, c)
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		cancel()
+		t.Fatal("heartbeat did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("shutdown cancellation became heartbeat failure: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("heartbeat loop did not stop after cancellation")
+	}
+
+	if err := c.FatalError(); err != nil {
+		t.Fatalf("shutdown cancellation marked fail-closed error: %v", err)
+	}
+	for _, event := range c.OwnershipRecords() {
+		if event.State == resource.OwnershipLost {
+			t.Fatalf("shutdown cancellation was recorded as ownership loss: %#v", c.OwnershipRecords())
+		}
+	}
+}
