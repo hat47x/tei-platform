@@ -43,8 +43,14 @@ jobs:
 
           replace_once(
               "docs/getting-started.md",
-              '''## 6. Runtime reattach example\n\n```bash\ngo run ./examples/runtime-reattach\n```''',
-              '''## 6. 実process Pluginの参照例\n\nM0.24では、Reference Pluginを実際のOS child processとして起動できます。まずhelper binaryをbuildします。\n\n```bash\ngo build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin\n```\n\n次に、既存`DeploymentExecutor` adapterからstdio processへcommandを渡します。\n\n```bash\ngo run ./examples/process-plugin \\\n  -plugin /tmp/tei-reference-process-plugin\n```\n\n出力の`outcome`は`accepted`、Plugin Invocationの`boundary`は`process`になります。`accepted`はexecutor acknowledgementであり、外部stateの完成証明ではありません。\n\nこの例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。\n\n## 7. Runtime reattach example\n\n```bash\ngo run ./examples/runtime-reattach\n```''',
+              '''## 7. Runtime reattach example\n\n```bash\ngo run ./examples/runtime-reattach\n```''',
+              '''## 7. 実process Pluginの参照例\n\nM0.24では、Reference Pluginを実際のOS child processとして起動できます。まずhelper binaryをbuildします。\n\n```bash\ngo build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin\n```\n\n次に、既存`DeploymentExecutor` adapterからstdio processへcommandを渡します。\n\n```bash\ngo run ./examples/process-plugin \\\n  -plugin /tmp/tei-reference-process-plugin\n```\n\n出力の`outcome`は`accepted`、Plugin Invocationの`boundary`は`process`になります。`accepted`はexecutor acknowledgementであり、外部stateの完成証明ではありません。\n\nこの例はone-shot local processです。PIDをDurable Runtime Handleとして扱わず、Host restart / cross-host reattachを実現したとはみなしません。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。\n\n## 8. Runtime reattach example\n\n```bash\ngo run ./examples/runtime-reattach\n```''',
+          )
+
+          replace_once(
+              "docs/getting-started.md",
+              '''## 8. コードを読む順番''',
+              '''## 9. コードを読む順番''',
           )
 
           replace_once(
