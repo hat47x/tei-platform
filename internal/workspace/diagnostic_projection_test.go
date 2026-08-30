@@ -5,6 +5,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
@@ -18,7 +19,7 @@ func TestSemanticValidationCarriesPathIndependentSubject(t *testing.T) {
 			ID: "order_entry",
 			Databases: []application.DatabaseRequirement{{
 				Alias:  core.LocalName("sales"),
-				Access: application.DatabaseAccess("invalid"),
+				Access: database.Access("invalid"),
 			}},
 		}},
 	}
