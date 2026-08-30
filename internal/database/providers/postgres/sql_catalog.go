@@ -145,6 +145,7 @@ JOIN pg_catalog.pg_am am ON am.oid = idx.relam
 JOIN generate_series(1, ind.indnkeyatts) AS pos(i) ON true
 WHERE ns.nspname NOT IN ('pg_catalog','information_schema')
   AND ns.nspname !~ '^pg_toast'
+  AND NOT ind.indisprimary
 ORDER BY ns.nspname, tbl.relname, idx.relname, pos.i`)
 	if err != nil {
 		return nil, err
