@@ -100,7 +100,7 @@ PluginはCapabilityの配布単位です。
 
 EnvironmentではCapability IDへBindingし、Plugin Lockがexact versionとdescriptor / artifact identityを固定します。
 
-process PluginではResource Broker、Permission Lease、Sandbox Profile、Host Lease Supervisor、Ownership / Fencingを通して実行します。
+process PluginではResource Broker、Permission Grant、Resource Lease、Sandbox Profile、Host Lease Supervisor、Ownership / Fencingを通して実行します。
 
 M0.22.1で直接検証している境界とテストの対応は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
