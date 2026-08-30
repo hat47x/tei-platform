@@ -163,4 +163,6 @@ Observe runtime handle
 
 Resource authorityのfencingとruntime reattachのfencingを両方要求します。
 
-`unknown`時のruntime authorityとDurable Handle上のfencing generationの意味には未決の論点があり、Issue #9で独立して扱っています。
+ADR-0005では、Supervisor側のauthority generationと、外部runtimeが実際に受理済みのgenerationを分離しました。`DurableInvocationHandle.FencingToken`はSupervisor generation、`RuntimeFencingToken`はruntime-confirmed generationを表します。
+
+`unknown`では新SupervisorのgenerationだけをDurable Handleへ保存し、`RuntimeFencingToken`は進めません。後続観測でruntimeが`running` / `starting`へ戻り、authority-bearing reattachが成功した時点で両generationが再び一致します。これにより、runtime authorityが未確立なのに確立済みとして保存することを避けます。詳細は [ADR-0005](adr/0005-supervisor-and-runtime-fencing-authority.md) を参照してください。

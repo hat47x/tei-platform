@@ -118,7 +118,7 @@ Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設�
 
 監査中には、正常なSupervisor shutdown由来の`context canceled`をheartbeat failureと誤認するtiming依存の問題も見つかりました。これはIssue #11 / PR #12で、正常shutdownと実際のownership store failureを区別するよう修正済みです。
 
-一方、`RuntimeUnknown`時にDurable Invocation Handle上のfencing generationをどこまで進めたとみなすかは、意味上の判断が残っています。この論点はIssue #9へ分離しており、M0.22.1のConformance testで先に意味を固定していません。
+`RuntimeUnknown`時のfencing authorityについてはIssue #9 / ADR-0005で整理しました。Durable control plane上のSupervisor generationと、外部runtimeが実際に受理済みのgenerationを分離し、`FencingToken`と`RuntimeFencingToken`として記録します。unknownでは前者だけを進め、runtime-confirmed generationはlive reattach成功時にだけ追いつかせます。
 
 ## M0.23 Source-to-Canonical Traceability
 
