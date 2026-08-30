@@ -105,6 +105,10 @@ Database Contract
 
 Application Releaseは複数Database Contract Requirementのsnapshotを持ちます。
 
+M0.26ではこのうちDesired / Actual / Diffをactual PostgreSQLへ接続しました。Persistence MappingからPostgreSQL向けDesired Physical Schemaを導出し、`database/sql`経由のPostgreSQL catalog introspectionでActual Physical Schemaを取得して比較します。Actualはregeneratableな観測情報であり、connection stringやcredentialはPhysical Schemaへ含めません。
+
+PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表現しません。Primary Keyは`PrimaryKey`、明示的な通常indexは`Indexes`として分離します。actual DBとの差分を検出しても、自動的なmigration採用・schema applyへ進めません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+
 ## Query
 
 SQLは「低級だから隠す」対象ではなく、正式なauthoring front-endの一つです。
