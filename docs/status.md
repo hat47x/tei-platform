@@ -168,6 +168,20 @@ M0.24では、`BoundaryProcess`をHost注入interfaceだけに留めず、actual
 
 また、このone-shot local processのPIDをDurable Runtime Handleとはみなしません。Host restart / cross-host reattachはM0.22 / ADR-0005のopaque durable handle契約を満たす別runtime adapterの責務として残します。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
 
+## M0.25 process executable / argv
+
+M0.25では、process Pluginの実行指定をshell-likeなcommand lineではなく、単一executableと順序付きargvへ分離しました。設計判断は [ADR-0006](adr/0006-process-command-and-argv.md) に記録しています。
+
+- authoring grammarで `runtime process "python3" args "-m" "worker"` を表現
+- `Runtime.Command`は単一executable、`Runtime.Args`は順序付きargv
+- legacyな空白入りcommandを自動splitせず、明示argsへの移行を要求
+- `ProcessCommand{Executable, Args}`をProcess / Sandbox境界で維持
+- args差分をDefinition / Plugin Lock / Runtime Policy fingerprintへ反映
+- Reference Workspaceのprocess descriptorをargs利用へ移行
+- 空白を含む一つのargv elementがactual child processの`os.Args`まで保存されることをReference実process例で検証
+
+詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
+
 ## 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -183,6 +197,7 @@ M0.24では、`BoundaryProcess`をHost注入interfaceだけに留めず、actual
 - Deployment executorの参照例が動作すること
 - Reference process Pluginを実binaryへbuildできること
 - DeploymentExecutorからactual child processへstdio protocolで到達できること
+- executable / argvをshell-like stringへ畳まず、空白を含む一つのargv elementがactual child processまで保存されること
 - runtime reattachの参照例が動作すること
 
 CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
