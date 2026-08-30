@@ -12,13 +12,21 @@ import (
 func TestBuildSourceIndexKeepsSemanticSubjectIndependentFromPath(t *testing.T) {
 	root := t.TempDir()
 	oldPath := "semantic/order.tei"
-	content := []byte("namespace sales {\n  data Order {\n  }\n}\n")
+	content := []byte(`namespace sales
+
+data Order {
+    attribute orderId type std.identifier
+    relation customer to customer.customer one
+}
+`)
 	writeSource(t, root, oldPath, content)
 
 	result := workspace.Result{
 		Sources: map[string]workspace.SourceLocation{
-			"semantic:sales":            {File: oldPath, Line: 1, Column: 1},
-			"semantic-data:sales.Order": {File: oldPath, Line: 2, Column: 3},
+			"semantic:sales":                          {File: oldPath, Line: 1, Column: 1},
+			"semantic-data:sales.order":               {File: oldPath, Line: 1, Column: 1},
+			"semantic-attribute:sales.order.order_id": {File: oldPath, Line: 1, Column: 1},
+			"semantic-relation:sales.order.customer":  {File: oldPath, Line: 1, Column: 1},
 		},
 		ManagedFiles: []workspace.ManagedFile{{Path: oldPath, SourceRoot: "semantic", Extension: ".tei"}},
 	}
@@ -27,31 +35,37 @@ func TestBuildSourceIndexKeepsSemanticSubjectIndependentFromPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	namespaceSubject := sourceindex.Subject{Kind: "semantic", ID: "sales"}
-	namespaceRefs := idx.ReferencesFor(namespaceSubject)
-	if len(namespaceRefs) != 1 {
-		t.Fatalf("namespace references=%#v", namespaceRefs)
+	wantText := map[sourceindex.Subject]string{
+		{Kind: "semantic", ID: "sales"}:                          "sales",
+		{Kind: "semantic-data", ID: "sales.order"}:               "Order",
+		{Kind: "semantic-attribute", ID: "sales.order.order_id"}: "orderId",
+		{Kind: "semantic-relation", ID: "sales.order.customer"}:  "customer",
 	}
-	if got := string(content[namespaceRefs[0].Range.Start.Offset:namespaceRefs[0].Range.End.Offset]); got != "sales" {
-		t.Fatalf("namespace exact anchor=%q range=%+v", got, namespaceRefs[0].Range)
+	for subject, want := range wantText {
+		refs := idx.ReferencesFor(subject)
+		if len(refs) != 1 {
+			t.Fatalf("references for %+v=%#v", subject, refs)
+		}
+		rng := refs[0].Range
+		if rng.Start.Offset == rng.End.Offset {
+			t.Fatalf("semantic subject %+v remained a point: %+v", subject, rng)
+		}
+		if got := string(content[rng.Start.Offset:rng.End.Offset]); got != want {
+			t.Fatalf("semantic subject %+v anchor=%q want=%q range=%+v", subject, got, want, rng)
+		}
+		if refs[0].ArtifactPath != oldPath {
+			t.Fatalf("artifact path for %+v=%q", subject, refs[0].ArtifactPath)
+		}
 	}
 
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.Order"}
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
 	refs := idx.ReferencesFor(subject)
-	if len(refs) != 1 {
-		t.Fatalf("references=%#v", refs)
-	}
-	if refs[0].ArtifactPath != oldPath {
-		t.Fatalf("artifact path=%q", refs[0].ArtifactPath)
-	}
-	if refs[0].Range.Start.Line != 2 || refs[0].Range.Start.Column != 3 || refs[0].Range.Start.Offset != refs[0].Range.End.Offset {
-		t.Fatalf("legacy point fallback range=%+v", refs[0].Range)
-	}
-
 	newPath := "semantic/model/order.tei"
 	writeSource(t, root, newPath, content)
-	result.Sources["semantic:sales"] = workspace.SourceLocation{File: newPath, Line: 1, Column: 1}
-	result.Sources["semantic-data:sales.Order"] = workspace.SourceLocation{File: newPath, Line: 2, Column: 3}
+	for key, loc := range result.Sources {
+		loc.File = newPath
+		result.Sources[key] = loc
+	}
 	result.ManagedFiles = []workspace.ManagedFile{{Path: newPath, SourceRoot: "semantic", Extension: ".tei"}}
 	moved, err := workspace.BuildSourceIndex(root, result)
 	if err != nil {
