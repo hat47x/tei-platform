@@ -86,7 +86,7 @@ func TestTraceabilityConformanceMoveKeepsWorldAndRetargetsDiagnostic(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	beforeDiagnostic := diagnosticByCode(t, validation.Validate(before.World), "INVALID_DATABASE_ACCESS")
+	beforeDiagnostic := conformanceDiagnosticByCode(t, validation.Validate(before.World), "INVALID_DATABASE_ACCESS")
 	if beforeDiagnostic.Subject == nil || beforeDiagnostic.Subject.Kind != "application" || beforeDiagnostic.Subject.ID != "order_entry" {
 		t.Fatalf("diagnostic subject=%#v", beforeDiagnostic.Subject)
 	}
@@ -117,7 +117,7 @@ func TestTraceabilityConformanceMoveKeepsWorldAndRetargetsDiagnostic(t *testing.
 	if !reflect.DeepEqual(before.World, after.World) {
 		t.Fatalf("directory move changed normalized World\nbefore=%#v\nafter=%#v", before.World, after.World)
 	}
-	afterDiagnostic := diagnosticByCode(t, validation.Validate(after.World), "INVALID_DATABASE_ACCESS")
+	afterDiagnostic := conformanceDiagnosticByCode(t, validation.Validate(after.World), "INVALID_DATABASE_ACCESS")
 	if !reflect.DeepEqual(beforeDiagnostic, afterDiagnostic) {
 		t.Fatalf("directory move changed semantic diagnostic\nbefore=%#v\nafter=%#v", beforeDiagnostic, afterDiagnostic)
 	}
@@ -173,6 +173,48 @@ func TestTraceabilityConformanceParseErrorIsSourceDirect(t *testing.T) {
 	}
 }
 
+func TestTraceabilityConformanceAmbiguousDefinitionsRemainExplicit(t *testing.T) {
+	subject := sourceindex.Subject{Kind: "application", ID: "order_entry"}
+	diagnostic := validation.Diagnostic{
+		Code:     "TEST_AMBIGUOUS_SOURCE",
+		Severity: validation.Error,
+		Message:  "same semantic finding",
+		Subject:  &subject,
+	}
+	index := sourceindex.Index{References: []sourceindex.Reference{
+		{
+			Subject:      subject,
+			ArtifactPath: "applications/a/application.tei",
+			Role:         sourceindex.RoleDefinition,
+		},
+		{
+			Subject:      subject,
+			ArtifactPath: "applications/b/application.tei",
+			Role:         sourceindex.RoleDefinition,
+		},
+		{
+			Subject:      subject,
+			ArtifactPath: "applications/a/custom.go",
+			Role:         sourceindex.RoleImplementation,
+		},
+	}}
+	index.Normalize()
+
+	projected := workspace.ProjectDiagnostics([]validation.Diagnostic{diagnostic}, index)
+	if len(projected) != 1 {
+		t.Fatalf("projection=%#v", projected)
+	}
+	if len(projected[0].Sources) != 2 {
+		t.Fatalf("ambiguous definitions were heuristically collapsed: %#v", projected[0].Sources)
+	}
+	if projected[0].Sources[0].Role != sourceindex.RoleDefinition || projected[0].Sources[1].Role != sourceindex.RoleDefinition {
+		t.Fatalf("non-definition source leaked into authoritative projection: %#v", projected[0].Sources)
+	}
+	if projected[0].Sources[0].ArtifactPath == projected[0].Sources[1].ArtifactPath {
+		t.Fatalf("distinct authoritative candidates were lost: %#v", projected[0].Sources)
+	}
+}
+
 func writeTraceabilityApplication(t *testing.T, root, unit string) {
 	t.Helper()
 	dir := filepath.Join(root, "applications", unit)
@@ -191,7 +233,7 @@ func writeTraceabilityApplication(t *testing.T, root, unit string) {
 	}
 }
 
-func diagnosticByCode(t *testing.T, diagnostics []validation.Diagnostic, code string) validation.Diagnostic {
+func conformanceDiagnosticByCode(t *testing.T, diagnostics []validation.Diagnostic, code string) validation.Diagnostic {
 	t.Helper()
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
