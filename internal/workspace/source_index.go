@@ -95,6 +95,24 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		})
 	}
 
+	for _, contribution := range result.SourceContributions {
+		artifact, err := ensureArtifact(contribution.File)
+		if err != nil {
+			return sourceindex.Index{}, fmt.Errorf("source contribution %s:%s: %w", contribution.Subject.Kind, contribution.Subject.ID, err)
+		}
+		content := contents[artifact.Path]
+		rng, err := sourceindex.RangeFromOffsets(content, 0, len(content))
+		if err != nil {
+			return sourceindex.Index{}, err
+		}
+		idx.References = append(idx.References, sourceindex.Reference{
+			Subject:      contribution.Subject,
+			ArtifactPath: artifact.Path,
+			Range:        rng,
+			Role:         contribution.Role,
+		})
+	}
+
 	idx.Normalize()
 	if err := idx.Validate(read); err != nil {
 		return sourceindex.Index{}, err
