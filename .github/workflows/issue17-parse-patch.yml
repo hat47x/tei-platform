@@ -1,4 +1,4 @@
-name: Apply Issue 17 parse diagnostic patch
+name: Finish Issue 17 source-aware validate
 
 on:
   push:
@@ -18,42 +18,60 @@ jobs:
         with:
           ref: work/issue-17-parse-diagnostics-cli
 
-      - name: Apply narrow parser and loader patch
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Route workspace validation through source-aware diagnostics
         shell: python
         run: |
           from pathlib import Path
 
-          parser = Path("internal/syntax/parser.go")
-          text = parser.read_text()
-          old = "type ParseError struct {\n\tPos Position\n\tMsg string\n}"
-          new = "type ParseError struct {\n\tPos Position\n\tEnd Position\n\tMsg string\n}"
-          if text.count(old) != 1:
-              raise SystemExit("ParseError struct target not found exactly once")
-          text = text.replace(old, new, 1)
-          old = 'func (p *Parser) errAt(t Token, msg string) error { return &ParseError{Pos: t.Start, Msg: msg} }'
-          new = 'func (p *Parser) errAt(t Token, msg string) error {\n\treturn &ParseError{Pos: t.Start, End: t.End, Msg: msg}\n}'
-          if text.count(old) != 1:
-              raise SystemExit("errAt target not found exactly once")
-          parser.write_text(text)
+          p = Path("cmd/tei/main.go")
+          text = p.read_text()
+          old = '''\tif (*worldPath == "") == (*workspacePath == "") {
+\t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
+\t\tos.Exit(2)
+\t}
 
-          loader = Path("internal/workspace/loader.go")
-          text = loader.read_text()
-          old = 'func sourceErr(path string, err error) error { return fmt.Errorf("%s: %w", path, err) }'
-          new = 'func sourceErr(path string, err error) error { return &SourceError{Path: path, Err: err} }'
+\tw, err := loadWorld(*worldPath, *workspacePath)
+'''
+          new = '''\tif (*worldPath == "") == (*workspacePath == "") {
+\t\tfmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
+\t\tos.Exit(2)
+\t}
+\tif command == "validate" && *workspacePath != "" {
+\t\tcode, err := validateWorkspace(os.Stdout, *workspacePath)
+\t\tif err != nil {
+\t\t\tfmt.Fprintln(os.Stderr, err)
+\t\t\tos.Exit(2)
+\t\t}
+\t\tif code != 0 {
+\t\t\tos.Exit(code)
+\t\t}
+\t\treturn
+\t}
+
+\tw, err := loadWorld(*worldPath, *workspacePath)
+'''
           if text.count(old) != 1:
-              raise SystemExit("sourceErr target not found exactly once")
-          text = text.replace(old, new, 1)
-          loader.write_text(text)
+              raise SystemExit("main validation routing target not found exactly once")
+          p.write_text(text.replace(old, new, 1))
 
       - name: Format
-        run: gofmt -w internal/syntax/parser.go internal/workspace/loader.go internal/workspace/source_error.go internal/workspace/source_diagnostic.go
+        run: gofmt -w cmd/tei/main.go cmd/tei/validation_output.go cmd/tei/validation_output_test.go internal/workspace/source_diagnostic_test.go
 
-      - name: Commit patch
+      - name: Verify focused packages
+        run: go test ./cmd/tei ./internal/workspace ./internal/syntax
+
+      - name: Commit and remove one-time workflow
         shell: bash
         run: |
           set -euo pipefail
+          rm .github/workflows/issue17-parse-patch.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/syntax/parser.go internal/workspace/loader.go internal/workspace/source_error.go internal/workspace/source_diagnostic.go
-          git commit -m "Parse errorのtoken rangeとsource provenanceを保持する"
+          git add -A
+          git commit -m "Workspace validateをsource-aware diagnosticへ接続する"
           git push origin HEAD:work/issue-17-parse-diagnostics-cli
