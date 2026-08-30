@@ -1,6 +1,7 @@
 package syntax_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/syntax"
@@ -29,6 +30,14 @@ func TestParseQueryAuthoringKeepsEmbeddedSQLCompatible(t *testing.T) {
 	if got.Value.Source != "SELECT order_id FROM public.orders" {
 		t.Fatalf("source=%q", got.Value.Source)
 	}
+
+	legacy, err := syntax.NewParser(src).ParseQuery("order_entry")
+	if err != nil {
+		t.Fatalf("existing ParseQuery rejected embedded SQL: %v", err)
+	}
+	if legacy != got.Value {
+		t.Fatalf("existing ParseQuery changed value: legacy=%#v authoring=%#v", legacy, got.Value)
+	}
 }
 
 func TestParseQueryAuthoringKeepsNativePathOutsideQueryValue(t *testing.T) {
@@ -48,6 +57,10 @@ func TestParseQueryAuthoringKeepsNativePathOutsideQueryValue(t *testing.T) {
 	}
 	if got.Value.ID != "order_entry.recent_orders" || got.Value.Dialect != "postgres" || got.Value.Datasource != "sales" {
 		t.Fatalf("query metadata=%#v", got.Value)
+	}
+
+	if _, err := syntax.NewParser(src).ParseQuery("order_entry"); err == nil || !strings.Contains(err.Error(), "Workspace loader") {
+		t.Fatalf("existing ParseQuery should require Workspace resolution for native SQL, err=%v", err)
 	}
 }
 
