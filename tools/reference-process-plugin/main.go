@@ -9,6 +9,8 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 )
 
+const referenceArgvMarker = "--tei-reference-marker=argv value preserved"
+
 func main() {
 	var req pruntime.Request
 	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
@@ -23,6 +25,10 @@ func main() {
 		writeError(req, "unsupported operation")
 		return
 	}
+	if !hasExactArg(referenceArgvMarker) {
+		writeError(req, "reference argv marker missing")
+		return
+	}
 
 	var command executor.Command
 	if err := json.Unmarshal(req.Payload, &command); err != nil {
@@ -34,7 +40,7 @@ func main() {
 		ActionID:       command.ActionID,
 		IdempotencyKey: command.IdempotencyKey,
 		Outcome:        executor.OutcomeAccepted,
-		Message:        "reference process accepted deployment intent",
+		Message:        "reference process accepted deployment intent; argv=" + referenceArgvMarker,
 		ExternalRef:    "reference-process://" + command.ID,
 	}
 	payload, err := json.Marshal(result)
@@ -51,6 +57,15 @@ func main() {
 		Status:                pruntime.ResponseOK,
 		Payload:               payload,
 	})
+}
+
+func hasExactArg(want string) bool {
+	for _, arg := range os.Args[1:] {
+		if arg == want {
+			return true
+		}
+	}
+	return false
 }
 
 func writeError(req pruntime.Request, message string) {
