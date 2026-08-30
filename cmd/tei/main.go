@@ -68,7 +68,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -78,6 +78,8 @@ func main() {
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
+	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
+	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	var analysisPaths pathList
 	var schemaPaths pathList
 	var planPaths pathList
@@ -123,6 +125,19 @@ func main() {
 			os.Exit(2)
 		}
 		writeJSON(r.ManagedFiles)
+		return
+	}
+	if command == "source-index" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "source-index requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		inspection, err := buildSourceIndexInspection(*workspacePath, *subjectKind, *subjectID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		writeJSON(inspection)
 		return
 	}
 	if command == "normalize-postgres-plan" {
