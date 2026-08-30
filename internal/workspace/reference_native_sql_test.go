@@ -19,7 +19,7 @@ func TestReferenceQueryUsesNativeSQLAsAuthoritativeSource(t *testing.T) {
 	const queryID = "order_entry.recent_orders"
 	const sqlPath = "applications/order-entry/queries/recent_orders.sql"
 	const declarationPath = "applications/order-entry/queries/recent_orders.tei"
-	const wantSQL = "SELECT\n    o.order_id,\n    o.customer_id,\n    o.ordered_at,\n    o.status,\n    o.total_amount\nFROM public.orders AS o\nWHERE o.ordered_at >= :from\nORDER BY o.ordered_at DESC"
+	const wantSQL = "SELECT\n            o.order_id,\n            o.customer_id,\n            o.ordered_at,\n            o.status,\n            o.total_amount\n        FROM public.orders AS o\n        WHERE o.ordered_at >= :from\n        ORDER BY o.ordered_at DESC"
 
 	if len(result.World.Queries) != 1 {
 		t.Fatalf("queries=%#v", result.World.Queries)
