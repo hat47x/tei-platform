@@ -60,8 +60,8 @@ func TestNativeSQLContentChangeChangesMeaningAndFingerprint(t *testing.T) {
 	subject := sourceindex.Subject{Kind: "query", ID: "order_entry.recent_orders"}
 	beforeRef := referenceByRole(t, beforeIndex.ReferencesFor(subject), sourceindex.RoleAuthoring)
 	afterRef := referenceByRole(t, afterIndex.ReferencesFor(subject), sourceindex.RoleAuthoring)
-	beforeArtifact := artifactByPath(t, beforeIndex, beforeRef.ArtifactPath)
-	afterArtifact := artifactByPath(t, afterIndex, afterRef.ArtifactPath)
+	beforeArtifact := nativeSQLArtifactByPath(t, beforeIndex, beforeRef.ArtifactPath)
+	afterArtifact := nativeSQLArtifactByPath(t, afterIndex, afterRef.ArtifactPath)
 	if beforeArtifact.Fingerprint == afterArtifact.Fingerprint {
 		t.Fatal("changing authoritative SQL did not change source fingerprint")
 	}
