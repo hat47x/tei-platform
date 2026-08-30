@@ -1,4 +1,4 @@
-# Current implementation status
+# 現在の実装状況
 
 TEIはまだ完成したローコード製品ではなく、設計境界を実行可能なコードで検証している段階です。
 
@@ -64,16 +64,39 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - complete Workflow Runtime
 - complete SQL dialect support
 - production-grade distributed ownership store
-- Kubernetes/Vault/Cloud provider integrations
+- Kubernetes / Vault / Cloud provider integrations
 - generic OS sandbox implementation
 - production durability / HA guarantee
 - cryptographic signing of all Durable Run artifacts
 - API compatibility guarantee
 
-## Initial public checkpoint
+## 最初の公開設計チェックポイント
 
-初回Repository公開の切り目は、**M0.22: Durable Invocation Handle / Runtime Reattach**です。公開前のhardeningとして、Lease Supervisorのoperational clockもHostから注入可能にし、Resource Brokerと同じ時間基準でdeterministicに検証できるようにしています。
+最初の公開設計チェックポイントは、**M0.22.1: Durable Invocation Handle / Runtime Reattach + publication hardening**です。
 
-ここまでで、Semantic/Application/Databaseのモデルから、Release、Deployment、Plugin、Resource authority、Host takeover、外部runtime再接続まで、一つの設計思想で縦に接続できることを確認しています。
+M0.22でHost takeover後のruntime reattachまで実装した後、公開前のhardeningとしてLease Supervisorのoperational clockをHostから注入可能にしました。これにより、Resource Brokerと同じ時間基準を使ってdeterministicに検証できます。
 
-次の重点は、Referenceのin-memory Storeをproduction adapterへ置き換えられるようにすることと、Editor/Authoring体験へ再び重心を戻すことです。
+さらに、Repository自体も一時的なsource transportではなく、通常のGoソースツリーへ正規化しました。Reference Workspace、golden world、observed state fixtureを含め、cloneした環境だけで検証できる状態を基準にします。
+
+M0.22.1では、Semantic / Application / Databaseのモデルから、Release、Deployment、Plugin、Resource authority、Host takeover、外部runtime再接続まで、一つの設計思想で縦に接続できることを確認しています。
+
+この位置づけの詳細は [ADR-0002](adr/0002-m0221-public-checkpoint.md) に記録しています。
+
+## 継続的な検証
+
+常設CIでは、少なくとも次を確認します。
+
+- `gofmt` が不要な状態であること
+- `go vet ./...`
+- `go test ./...`
+- Reference Workspaceのvalidation
+- `reference/world.json` がWorkspaceから再生成して一致すること
+- runtime reattachの参照例が動作すること
+
+## 次の重点
+
+M0.22.1の次に進む方向は、現時点で一つへ固定しません。
+
+production adapter、Deployment / Reconcileの外部接続、Plugin / Runtimeの実プロセス境界、AuthoringからCanonical Semantic Layerまでの入力経路など、複数の候補があります。どのvertical sliceが設計上の不確実性を最も減らせるかを、Issue #6で比較します。
+
+並行して、Reference Workspaceの再現性監査、Plugin / Runtime境界のConformance監査、一般読者向け文書の監査を、独立したIssueとして進めます。
