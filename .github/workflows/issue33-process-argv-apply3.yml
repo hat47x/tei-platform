@@ -1,0 +1,68 @@
+name: Apply Issue 33 process argv model v3
+
+on:
+  push:
+    branches:
+      - work/issue-33-process-argv
+    paths:
+      - .github/workflows/issue33-process-argv-apply3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-33-process-argv
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Reuse v2 model transformation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/issue33-process-argv-apply2.yml').read_text()
+          marker = '      - name: Apply executable and argv model\n        shell: python\n        run: |\n'
+          start = workflow.index(marker) + len(marker)
+          rest = workflow[start:]
+          end = rest.index('\n      - name: Format changed code')
+          block = rest[:end]
+          lines = []
+          for line in block.splitlines():
+              if line.startswith('          '):
+                  line = line[10:]
+              lines.append(line)
+          exec(compile('\n'.join(lines), '<issue33-v2-transform>', 'exec'))
+
+          p = Path('internal/plugin/runtime/host_sandbox_test.go')
+          text = p.read_text()
+          old = 'func (r *refreshRunner) InvokeSandboxed(ctx context.Context, _ string, req pruntime.Request)'
+          new = 'func (r *refreshRunner) InvokeSandboxed(ctx context.Context, _ pruntime.ProcessCommand, req pruntime.Request)'
+          if text.count(old) != 1:
+              raise SystemExit(f'refreshRunner signature count={text.count(old)}')
+          p.write_text(text.replace(old, new, 1))
+
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -w $(find internal/plugin internal/syntax tools/reference-deployment-attempt tools/reference-lease-supervision -name '*.go' -type f)
+      - name: Static checks
+        run: go vet ./...
+      - name: Tests
+        run: go test ./...
+      - name: Commit executable argv core
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/plugin internal/syntax tools/reference-deployment-attempt tools/reference-lease-supervision
+          git commit -m "process commandをexecutableとargvへ分離する"
+          git push origin HEAD:work/issue-33-process-argv
