@@ -26,6 +26,9 @@ func (fakeCatalog) Columns(context.Context) ([]postgres.ColumnMeta, error) {
 func (fakeCatalog) PrimaryKeys(context.Context) ([]postgres.PrimaryKeyMeta, error) {
 	return []postgres.PrimaryKeyMeta{{Schema: "public", Table: "orders", Columns: []string{"order_id"}}}, nil
 }
+func (fakeCatalog) UniqueConstraints(context.Context) ([]postgres.UniqueConstraintMeta, error) {
+	return []postgres.UniqueConstraintMeta{{Schema: "public", Table: "orders", Name: "orders_customer_key", Columns: []string{"customer_id"}}}, nil
+}
 func (fakeCatalog) ForeignKeys(context.Context) ([]postgres.ForeignKeyMeta, error) {
 	return []postgres.ForeignKeyMeta{{Schema: "public", Table: "orders", Name: "orders_customer_fk", Columns: []string{"customer_id"}, ReferencedSchema: "public", ReferencedTable: "customers", ReferencedColumns: []string{"customer_id"}}}, nil
 }
@@ -53,6 +56,9 @@ func TestPostgresProviderIntrospectsPhysicalSchema(t *testing.T) {
 	}
 	if len(publicOrders.PrimaryKey) != 1 || publicOrders.PrimaryKey[0] != "order_id" {
 		t.Fatalf("pk=%#v", publicOrders.PrimaryKey)
+	}
+	if len(publicOrders.UniqueConstraints) != 1 || publicOrders.UniqueConstraints[0].Name != "orders_customer_key" {
+		t.Fatalf("unique constraints=%#v", publicOrders.UniqueConstraints)
 	}
 	if len(publicOrders.ForeignKeys) != 1 || len(publicOrders.Indexes) != 1 {
 		t.Fatalf("physical metadata=%#v", publicOrders)
