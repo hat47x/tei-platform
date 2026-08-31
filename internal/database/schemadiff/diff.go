@@ -11,27 +11,30 @@ import (
 type ChangeKind string
 
 const (
-	CreateTable      ChangeKind = "create-table"
-	DropTable        ChangeKind = "drop-table"
-	AddColumn        ChangeKind = "add-column"
-	DropColumn       ChangeKind = "drop-column"
-	AlterColumn      ChangeKind = "alter-column"
-	ChangePrimaryKey ChangeKind = "change-primary-key"
-	AddForeignKey    ChangeKind = "add-foreign-key"
-	DropForeignKey   ChangeKind = "drop-foreign-key"
-	AddIndex         ChangeKind = "add-index"
-	DropIndex        ChangeKind = "drop-index"
+	CreateTable          ChangeKind = "create-table"
+	DropTable            ChangeKind = "drop-table"
+	AddColumn            ChangeKind = "add-column"
+	DropColumn           ChangeKind = "drop-column"
+	AlterColumn          ChangeKind = "alter-column"
+	ChangePrimaryKey     ChangeKind = "change-primary-key"
+	AddUniqueConstraint  ChangeKind = "add-unique-constraint"
+	DropUniqueConstraint ChangeKind = "drop-unique-constraint"
+	AddForeignKey        ChangeKind = "add-foreign-key"
+	DropForeignKey       ChangeKind = "drop-foreign-key"
+	AddIndex             ChangeKind = "add-index"
+	DropIndex            ChangeKind = "drop-index"
 )
 
 type Change struct {
-	Kind             ChangeKind           `json:"kind"`
-	Table            string               `json:"table"`
-	Column           *physical.Column     `json:"column,omitempty"`
-	BeforeColumn     *physical.Column     `json:"beforeColumn,omitempty"`
-	PrimaryKey       []string             `json:"primaryKey,omitempty"`
-	BeforePrimaryKey []string             `json:"beforePrimaryKey,omitempty"`
-	ForeignKey       *physical.ForeignKey `json:"foreignKey,omitempty"`
-	Index            *physical.Index      `json:"index,omitempty"`
+	Kind             ChangeKind                 `json:"kind"`
+	Table            string                     `json:"table"`
+	Column           *physical.Column           `json:"column,omitempty"`
+	BeforeColumn     *physical.Column           `json:"beforeColumn,omitempty"`
+	PrimaryKey       []string                   `json:"primaryKey,omitempty"`
+	BeforePrimaryKey []string                   `json:"beforePrimaryKey,omitempty"`
+	UniqueConstraint *physical.UniqueConstraint `json:"uniqueConstraint,omitempty"`
+	ForeignKey       *physical.ForeignKey       `json:"foreignKey,omitempty"`
+	Index            *physical.Index            `json:"index,omitempty"`
 }
 
 type Diff struct {
@@ -68,6 +71,10 @@ func Compare(desired, actual physical.SchemaSnapshot) (Diff, error) {
 			for _, c := range dt.Columns {
 				cc := c
 				d.Changes = append(d.Changes, Change{Kind: AddColumn, Table: n, Column: &cc})
+			}
+			for _, uc := range dt.UniqueConstraints {
+				uu := uc
+				d.Changes = append(d.Changes, Change{Kind: AddUniqueConstraint, Table: n, UniqueConstraint: &uu})
 			}
 			for _, fk := range dt.ForeignKeys {
 				ff := fk
@@ -119,6 +126,7 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 	if !sameStrings(desired.PrimaryKey, actual.PrimaryKey) {
 		out = append(out, Change{Kind: ChangePrimaryKey, Table: name, PrimaryKey: append([]string(nil), desired.PrimaryKey...), BeforePrimaryKey: append([]string(nil), actual.PrimaryKey...)})
 	}
+	out = append(out, diffUniqueConstraints(name, desired.UniqueConstraints, actual.UniqueConstraints)...)
 	out = append(out, diffForeignKeys(name, desired.ForeignKeys, actual.ForeignKeys)...)
 	di, ai := idxMap(desired), idxMap(actual)
 	var idxNames []string
@@ -149,6 +157,55 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 		}
 	}
 	return out
+}
+
+func diffUniqueConstraints(table string, desired, actual []physical.UniqueConstraint) []Change {
+	dg, ag := uniqueConstraintGroups(desired), uniqueConstraintGroups(actual)
+	keys := make([]string, 0, len(dg)+len(ag))
+	seen := map[string]struct{}{}
+	for k := range dg {
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+	for k := range ag {
+		if _, ok := seen[k]; !ok {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	var drops, adds []Change
+	for _, k := range keys {
+		d, a := dg[k], ag[k]
+		matched := len(d)
+		if len(a) < matched {
+			matched = len(a)
+		}
+		for i := matched; i < len(a); i++ {
+			uc := a[i]
+			drops = append(drops, Change{Kind: DropUniqueConstraint, Table: table, UniqueConstraint: &uc})
+		}
+		for i := matched; i < len(d); i++ {
+			uc := d[i]
+			adds = append(adds, Change{Kind: AddUniqueConstraint, Table: table, UniqueConstraint: &uc})
+		}
+	}
+	return append(drops, adds...)
+}
+
+func uniqueConstraintGroups(constraints []physical.UniqueConstraint) map[string][]physical.UniqueConstraint {
+	out := map[string][]physical.UniqueConstraint{}
+	for _, constraint := range constraints {
+		key := uniqueConstraintStructuralKey(constraint)
+		out[key] = append(out[key], constraint)
+	}
+	for key := range out {
+		sort.Slice(out[key], func(i, j int) bool { return norm(out[key][i].Name) < norm(out[key][j].Name) })
+	}
+	return out
+}
+
+func uniqueConstraintStructuralKey(constraint physical.UniqueConstraint) string {
+	return strings.Join(normalizedStrings(constraint.Columns), "\x1f")
 }
 
 func diffForeignKeys(table string, desired, actual []physical.ForeignKey) []Change {
