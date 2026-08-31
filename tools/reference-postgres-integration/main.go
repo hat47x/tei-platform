@@ -12,6 +12,7 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/persistence"
+	"tei/internal/database/physical"
 	dbprovider "tei/internal/database/provider"
 	"tei/internal/database/providers/postgres"
 	"tei/internal/database/schemadiff"
@@ -21,13 +22,15 @@ import (
 const databaseID = "reference_postgres"
 
 type result struct {
-	Database        string          `json:"database"`
-	BaselineDiff    schemadiff.Diff `json:"baselineDiff"`
-	DriftDiff       schemadiff.Diff `json:"driftDiff"`
-	ActualTables    int             `json:"actualTables"`
-	ForeignKeys     int             `json:"foreignKeys"`
-	ForeignKeyDrift bool            `json:"foreignKeyDriftDetected"`
-	ConnectionData  bool            `json:"connectionDataPersisted"`
+	Database                        string          `json:"database"`
+	BaselineDiff                    schemadiff.Diff `json:"baselineDiff"`
+	DriftDiff                       schemadiff.Diff `json:"driftDiff"`
+	ActualTables                    int             `json:"actualTables"`
+	ForeignKeys                     int             `json:"foreignKeys"`
+	ForeignKeyDrift                 bool            `json:"foreignKeyDriftDetected"`
+	ViewColumnsObserved             bool            `json:"viewColumnsObserved"`
+	MaterializedViewColumnsObserved bool            `json:"materializedViewColumnsObserved"`
+	ConnectionData                  bool            `json:"connectionDataPersisted"`
 }
 
 func main() {
@@ -65,6 +68,24 @@ func main() {
 		Catalog: postgres.SQLCatalogReader{DB: db},
 		Now:     func() time.Time { return time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC) },
 	}
+
+	observedRelations, err := dbprovider.Introspect(ctx, p, instance)
+	if err != nil {
+		panic(err)
+	}
+	viewColumnsObserved := hasColumns(observedRelations, "tei_reference.customer_names_v", physical.TableKindView, "id", "name")
+	materializedViewColumnsObserved := hasColumns(observedRelations, "tei_reference.customer_names_mv", physical.TableKindMaterializedView, "id", "name")
+	if !viewColumnsObserved || !materializedViewColumnsObserved {
+		raw, _ := json.MarshalIndent(observedRelations, "", "  ")
+		panic(fmt.Errorf("reference PostgreSQL did not expose expected view/materialized-view columns:\n%s", raw))
+	}
+	if _, err := db.ExecContext(ctx, `
+DROP VIEW tei_reference.customer_names_v;
+DROP MATERIALIZED VIEW tei_reference.customer_names_mv;
+`); err != nil {
+		panic(err)
+	}
+
 	actual, err := dbprovider.Introspect(ctx, p, instance)
 	if err != nil {
 		panic(err)
@@ -106,13 +127,15 @@ ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
 		foreignKeys += len(table.ForeignKeys)
 	}
 	out := result{
-		Database:        databaseID,
-		BaselineDiff:    baseline,
-		DriftDiff:       drift,
-		ActualTables:    len(actual.Tables),
-		ForeignKeys:     foreignKeys,
-		ForeignKeyDrift: true,
-		ConnectionData:  containsConnectionData(actual, drift, dsn),
+		Database:                        databaseID,
+		BaselineDiff:                    baseline,
+		DriftDiff:                       drift,
+		ActualTables:                    len(actual.Tables),
+		ForeignKeys:                     foreignKeys,
+		ForeignKeyDrift:                 true,
+		ViewColumnsObserved:             viewColumnsObserved,
+		MaterializedViewColumnsObserved: materializedViewColumnsObserved,
+		ConnectionData:                  containsConnectionData(actual, drift, dsn),
 	}
 	if out.ConnectionData {
 		panic("connection data leaked into physical snapshot or diff")
@@ -185,8 +208,25 @@ CREATE TABLE tei_reference.orders (
         REFERENCES tei_reference.customers(id)
 );
 CREATE INDEX orders_customer_id_idx ON tei_reference.orders USING btree (customer_id);
+CREATE VIEW tei_reference.customer_names_v AS
+    SELECT id, name FROM tei_reference.customers;
+CREATE MATERIALIZED VIEW tei_reference.customer_names_mv AS
+    SELECT id, name FROM tei_reference.customers;
 `)
 	return err
+}
+
+func hasColumns(snapshot physical.SchemaSnapshot, table string, kind physical.TableKind, names ...string) bool {
+	t, ok := snapshot.Table(table)
+	if !ok || t.Kind != kind || len(t.Columns) != len(names) {
+		return false
+	}
+	for i, name := range names {
+		if t.Columns[i].Name != name {
+			return false
+		}
+	}
+	return true
 }
 
 func hasDropColumn(diff schemadiff.Diff, table, column string) bool {
