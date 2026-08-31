@@ -109,6 +109,8 @@ M0.26ではこのうちDesired / Actual / Diffをactual PostgreSQLへ接続し�
 
 PostgreSQLではPrimary Keyのbacking indexを通常Indexとして二重に表現しません。Primary Keyは`PrimaryKey`、明示的な通常indexは`Indexes`として分離します。actual DBとの差分を検出しても、自動的なmigration採用・schema applyへ進めません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
 
+M0.27ではForeign Keyも同じDatabase-owned realizationとして扱います。Semantic Relationから自動生成せず、Persistence Mappingがsource Attribute、referenced Mapping、target Attributeを明示します。`RealizeDesired`がphysical FKへ解決し、Schema Diffはconstraint名ではなくsource columns / referenced table / referenced columnsの構造で比較します。constraint名だけの違いはdriftではありません。詳細は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+
 ## Query
 
 SQLは「低級だから隠す」対象ではなく、正式なauthoring front-endの一つです。
