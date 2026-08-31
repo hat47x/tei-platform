@@ -24,6 +24,13 @@ type PrimaryKeyMeta struct {
 	Columns []string
 }
 
+type UniqueConstraintMeta struct {
+	Schema  string
+	Table   string
+	Name    string
+	Columns []string
+}
+
 type ForeignKeyMeta struct {
 	Schema            string
 	Table             string
@@ -49,6 +56,7 @@ type CatalogReader interface {
 	Tables(context.Context) ([]TableMeta, error)
 	Columns(context.Context) ([]ColumnMeta, error)
 	PrimaryKeys(context.Context) ([]PrimaryKeyMeta, error)
+	UniqueConstraints(context.Context) ([]UniqueConstraintMeta, error)
 	ForeignKeys(context.Context) ([]ForeignKeyMeta, error)
 	Indexes(context.Context) ([]IndexMeta, error)
 }
