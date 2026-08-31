@@ -117,11 +117,36 @@ func (s SchemaSnapshot) Normalize() SchemaSnapshot {
 		})
 		t.PrimaryKey = append([]string(nil), t.PrimaryKey...)
 		t.ForeignKeys = append([]ForeignKey(nil), t.ForeignKeys...)
-		sort.Slice(t.ForeignKeys, func(i, j int) bool { return t.ForeignKeys[i].Name < t.ForeignKeys[j].Name })
+		sort.Slice(t.ForeignKeys, func(i, j int) bool {
+			ki := foreignKeyOrderKey(t.ForeignKeys[i])
+			kj := foreignKeyOrderKey(t.ForeignKeys[j])
+			if ki != kj {
+				return ki < kj
+			}
+			return normalizeName(t.ForeignKeys[i].Name) < normalizeName(t.ForeignKeys[j].Name)
+		})
 		t.Indexes = append([]Index(nil), t.Indexes...)
 		sort.Slice(t.Indexes, func(i, j int) bool { return t.Indexes[i].Name < t.Indexes[j].Name })
 	}
 	return out
+}
+
+func foreignKeyOrderKey(fk ForeignKey) string {
+	parts := make([]string, 0, len(fk.Columns)+len(fk.ReferencedColumns)+3)
+	for _, column := range fk.Columns {
+		parts = append(parts, normalizeName(column))
+	}
+	parts = append(parts, "->")
+	if normalizeName(fk.ReferencedSchema) != "" {
+		parts = append(parts, normalizeName(fk.ReferencedSchema)+"."+normalizeName(fk.ReferencedTable))
+	} else {
+		parts = append(parts, normalizeName(fk.ReferencedTable))
+	}
+	parts = append(parts, "::")
+	for _, column := range fk.ReferencedColumns {
+		parts = append(parts, normalizeName(column))
+	}
+	return strings.Join(parts, "\x1f")
 }
 
 func normalizeName(s string) string { return strings.ToLower(strings.TrimSpace(s)) }

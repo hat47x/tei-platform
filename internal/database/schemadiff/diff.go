@@ -17,18 +17,21 @@ const (
 	DropColumn       ChangeKind = "drop-column"
 	AlterColumn      ChangeKind = "alter-column"
 	ChangePrimaryKey ChangeKind = "change-primary-key"
+	AddForeignKey    ChangeKind = "add-foreign-key"
+	DropForeignKey   ChangeKind = "drop-foreign-key"
 	AddIndex         ChangeKind = "add-index"
 	DropIndex        ChangeKind = "drop-index"
 )
 
 type Change struct {
-	Kind             ChangeKind       `json:"kind"`
-	Table            string           `json:"table"`
-	Column           *physical.Column `json:"column,omitempty"`
-	BeforeColumn     *physical.Column `json:"beforeColumn,omitempty"`
-	PrimaryKey       []string         `json:"primaryKey,omitempty"`
-	BeforePrimaryKey []string         `json:"beforePrimaryKey,omitempty"`
-	Index            *physical.Index  `json:"index,omitempty"`
+	Kind             ChangeKind           `json:"kind"`
+	Table            string               `json:"table"`
+	Column           *physical.Column     `json:"column,omitempty"`
+	BeforeColumn     *physical.Column     `json:"beforeColumn,omitempty"`
+	PrimaryKey       []string             `json:"primaryKey,omitempty"`
+	BeforePrimaryKey []string             `json:"beforePrimaryKey,omitempty"`
+	ForeignKey       *physical.ForeignKey `json:"foreignKey,omitempty"`
+	Index            *physical.Index      `json:"index,omitempty"`
 }
 
 type Diff struct {
@@ -65,6 +68,10 @@ func Compare(desired, actual physical.SchemaSnapshot) (Diff, error) {
 			for _, c := range dt.Columns {
 				cc := c
 				d.Changes = append(d.Changes, Change{Kind: AddColumn, Table: n, Column: &cc})
+			}
+			for _, fk := range dt.ForeignKeys {
+				ff := fk
+				d.Changes = append(d.Changes, Change{Kind: AddForeignKey, Table: n, ForeignKey: &ff})
 			}
 			for _, idx := range dt.Indexes {
 				ii := idx
@@ -112,6 +119,7 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 	if !sameStrings(desired.PrimaryKey, actual.PrimaryKey) {
 		out = append(out, Change{Kind: ChangePrimaryKey, Table: name, PrimaryKey: append([]string(nil), desired.PrimaryKey...), BeforePrimaryKey: append([]string(nil), actual.PrimaryKey...)})
 	}
+	out = append(out, diffForeignKeys(name, desired.ForeignKeys, actual.ForeignKeys)...)
 	di, ai := idxMap(desired), idxMap(actual)
 	var idxNames []string
 	seenIdx := map[string]struct{}{}
@@ -141,6 +149,74 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 		}
 	}
 	return out
+}
+
+func diffForeignKeys(table string, desired, actual []physical.ForeignKey) []Change {
+	dg, ag := foreignKeyGroups(desired), foreignKeyGroups(actual)
+	keys := make([]string, 0, len(dg)+len(ag))
+	seen := map[string]struct{}{}
+	for k := range dg {
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+	for k := range ag {
+		if _, ok := seen[k]; !ok {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	var drops, adds []Change
+	for _, k := range keys {
+		d, a := dg[k], ag[k]
+		matched := len(d)
+		if len(a) < matched {
+			matched = len(a)
+		}
+		for i := matched; i < len(a); i++ {
+			fk := a[i]
+			drops = append(drops, Change{Kind: DropForeignKey, Table: table, ForeignKey: &fk})
+		}
+		for i := matched; i < len(d); i++ {
+			fk := d[i]
+			adds = append(adds, Change{Kind: AddForeignKey, Table: table, ForeignKey: &fk})
+		}
+	}
+	return append(drops, adds...)
+}
+
+func foreignKeyGroups(keys []physical.ForeignKey) map[string][]physical.ForeignKey {
+	out := map[string][]physical.ForeignKey{}
+	for _, fk := range keys {
+		key := foreignKeyStructuralKey(fk)
+		out[key] = append(out[key], fk)
+	}
+	for key := range out {
+		sort.Slice(out[key], func(i, j int) bool { return norm(out[key][i].Name) < norm(out[key][j].Name) })
+	}
+	return out
+}
+
+func foreignKeyStructuralKey(fk physical.ForeignKey) string {
+	parts := make([]string, 0, len(fk.Columns)+len(fk.ReferencedColumns)+3)
+	parts = append(parts, normalizedStrings(fk.Columns)...)
+	parts = append(parts, "->", qualified(fk.ReferencedSchema, fk.ReferencedTable), "::")
+	parts = append(parts, normalizedStrings(fk.ReferencedColumns)...)
+	return strings.Join(parts, "\x1f")
+}
+
+func normalizedStrings(values []string) []string {
+	out := make([]string, len(values))
+	for i, value := range values {
+		out[i] = norm(value)
+	}
+	return out
+}
+
+func qualified(schema, table string) string {
+	if norm(schema) == "" {
+		return norm(table)
+	}
+	return norm(schema) + "." + norm(table)
 }
 
 func tableMap(s physical.SchemaSnapshot) map[string]physical.Table {
