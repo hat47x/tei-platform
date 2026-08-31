@@ -1611,8 +1611,77 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 				return m, p.errAt(a, err.Error())
 			}
 			m.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+		case "foreign-key":
+			_, _ = p.next()
+			name, err := p.expect(TokenIdent)
+			if err != nil {
+				return m, err
+			}
+			fk := persistence.ForeignKeyMapping{Name: name.Text}
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return m, err
+			}
+			for {
+				z, err := p.peek()
+				if err != nil {
+					return m, err
+				}
+				if z.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				switch z.Text {
+				case "source":
+					_, _ = p.next()
+					v, err := p.expect(TokenIdent)
+					if err != nil {
+						return m, err
+					}
+					id, err := core.ParseCanonicalID(v.Text)
+					if err != nil {
+						return m, p.errAt(v, err.Error())
+					}
+					fk.Attributes = append(fk.Attributes, id)
+				case "references":
+					_, _ = p.next()
+					v, err := p.expect(TokenIdent)
+					if err != nil {
+						return m, err
+					}
+					if fk.ReferencedMapping != "" {
+						return m, p.errAt(v, "foreign-key references may be declared only once")
+					}
+					fk.ReferencedMapping, err = core.ParseCanonicalID(v.Text)
+					if err != nil {
+						return m, p.errAt(v, err.Error())
+					}
+				case "target":
+					_, _ = p.next()
+					v, err := p.expect(TokenIdent)
+					if err != nil {
+						return m, err
+					}
+					id, err := core.ParseCanonicalID(v.Text)
+					if err != nil {
+						return m, p.errAt(v, err.Error())
+					}
+					fk.ReferencedAttributes = append(fk.ReferencedAttributes, id)
+				default:
+					return m, p.errAt(z, "expected source, references, or target")
+				}
+			}
+			if len(fk.Attributes) == 0 {
+				return m, p.errAt(name, "foreign-key requires at least one source attribute")
+			}
+			if fk.ReferencedMapping == "" {
+				return m, p.errAt(name, "foreign-key requires references mapping")
+			}
+			if len(fk.Attributes) != len(fk.ReferencedAttributes) {
+				return m, p.errAt(name, "foreign-key source/target attribute count mismatch")
+			}
+			m.ForeignKeys = append(m.ForeignKeys, fk)
 		default:
-			return m, p.errAt(t, "expected database, semantic, table, column, primary-key, index, or unique-index")
+			return m, p.errAt(t, "expected database, semantic, table, column, primary-key, index, unique-index, or foreign-key")
 		}
 	}
 	return m, p.expectEOF()

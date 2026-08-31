@@ -81,6 +81,8 @@ PostgreSQL providerはactual foreign keyを`SchemaSnapshot.ForeignKeys`へ観測
 
 一方、現行`schemadiff.Compare`はForeign Key差分を比較対象にしていません。したがってM0.26は「FK introspectionは実DBで成立する」ことまでを確認し、FK drift generalizationは別課題とします。
 
+この制約はM0.26時点のものです。後続M0.27 / ADR-0008でPersistence MappingからDesired FKを明示し、provider-neutral Schema DiffへForeign Keyを統合しました。現在の境界は [M0.27 Conformance](foreign-key-drift-m0.27.md) を参照してください。
+
 ## 常設CI
 
 常設CIにはPostgreSQL serviceを使う独立jobを置きます。

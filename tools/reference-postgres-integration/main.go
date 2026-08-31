@@ -21,12 +21,13 @@ import (
 const databaseID = "reference_postgres"
 
 type result struct {
-	Database       string          `json:"database"`
-	BaselineDiff   schemadiff.Diff `json:"baselineDiff"`
-	DriftDiff      schemadiff.Diff `json:"driftDiff"`
-	ActualTables   int             `json:"actualTables"`
-	ForeignKeys    int             `json:"foreignKeys"`
-	ConnectionData bool            `json:"connectionDataPersisted"`
+	Database        string          `json:"database"`
+	BaselineDiff    schemadiff.Diff `json:"baselineDiff"`
+	DriftDiff       schemadiff.Diff `json:"driftDiff"`
+	ActualTables    int             `json:"actualTables"`
+	ForeignKeys     int             `json:"foreignKeys"`
+	ForeignKeyDrift bool            `json:"foreignKeyDriftDetected"`
+	ConnectionData  bool            `json:"connectionDataPersisted"`
 }
 
 func main() {
@@ -77,7 +78,10 @@ func main() {
 		panic(fmt.Errorf("reference PostgreSQL baseline has schema drift:\n%s", raw))
 	}
 
-	if _, err := db.ExecContext(ctx, `ALTER TABLE tei_reference.orders ADD COLUMN drift_note text`); err != nil {
+	if _, err := db.ExecContext(ctx, `
+ALTER TABLE tei_reference.orders ADD COLUMN drift_note text;
+ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
+`); err != nil {
 		panic(err)
 	}
 	drifted, err := dbprovider.Introspect(ctx, p, instance)
@@ -92,18 +96,23 @@ func main() {
 		raw, _ := json.MarshalIndent(drift, "", "  ")
 		panic(fmt.Errorf("expected actual-only drift_note column in diff:\n%s", raw))
 	}
+	if !hasAddForeignKey(drift, "tei_reference.orders", "customer_id", "tei_reference", "customers", "id") {
+		raw, _ := json.MarshalIndent(drift, "", "  ")
+		panic(fmt.Errorf("expected missing orders_customer_fk in diff:\n%s", raw))
+	}
 
 	foreignKeys := 0
 	for _, table := range actual.Tables {
 		foreignKeys += len(table.ForeignKeys)
 	}
 	out := result{
-		Database:       databaseID,
-		BaselineDiff:   baseline,
-		DriftDiff:      drift,
-		ActualTables:   len(actual.Tables),
-		ForeignKeys:    foreignKeys,
-		ConnectionData: containsConnectionData(actual, drift, dsn),
+		Database:        databaseID,
+		BaselineDiff:    baseline,
+		DriftDiff:       drift,
+		ActualTables:    len(actual.Tables),
+		ForeignKeys:     foreignKeys,
+		ForeignKeyDrift: true,
+		ConnectionData:  containsConnectionData(actual, drift, dsn),
 	}
 	if out.ConnectionData {
 		panic("connection data leaked into physical snapshot or diff")
@@ -144,6 +153,12 @@ func referenceMappings() []persistence.Mapping {
 			},
 			PrimaryKey: []core.CanonicalID{core.MustCanonicalID("reference.order.id")},
 			Indexes:    []persistence.IndexMapping{{Name: "orders_customer_id_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.order.customer_id")}}},
+			ForeignKeys: []persistence.ForeignKeyMapping{{
+				Name:                 "orders_customer_fk",
+				Attributes:           []core.CanonicalID{core.MustCanonicalID("reference.order.customer_id")},
+				ReferencedMapping:    core.MustCanonicalID("reference_postgres.customers"),
+				ReferencedAttributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.id")},
+			}},
 		},
 	}
 }
@@ -177,6 +192,19 @@ CREATE INDEX orders_customer_id_idx ON tei_reference.orders USING btree (custome
 func hasDropColumn(diff schemadiff.Diff, table, column string) bool {
 	for _, c := range diff.Changes {
 		if c.Kind == schemadiff.DropColumn && c.Table == table && c.BeforeColumn != nil && c.BeforeColumn.Name == column {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAddForeignKey(diff schemadiff.Diff, table, column, refSchema, refTable, refColumn string) bool {
+	for _, c := range diff.Changes {
+		if c.Kind != schemadiff.AddForeignKey || c.Table != table || c.ForeignKey == nil {
+			continue
+		}
+		fk := c.ForeignKey
+		if len(fk.Columns) == 1 && fk.Columns[0] == column && fk.ReferencedSchema == refSchema && fk.ReferencedTable == refTable && len(fk.ReferencedColumns) == 1 && fk.ReferencedColumns[0] == refColumn {
 			return true
 		}
 	}
