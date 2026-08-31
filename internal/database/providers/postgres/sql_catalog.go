@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 // SQLCatalogReader is the standard-library adapter for a PostgreSQL connection.
@@ -104,6 +105,45 @@ ORDER BY ns.nspname, cls.relname, pos.i`)
 	return out, rows.Err()
 }
 
+func (r SQLCatalogReader) UniqueConstraints(ctx context.Context) ([]UniqueConstraintMeta, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+SELECT ns.nspname, cls.relname, con.conname, att.attname, ind.indnullsnotdistinct
+FROM pg_catalog.pg_constraint con
+JOIN pg_catalog.pg_class cls ON cls.oid = con.conrelid
+JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
+JOIN pg_catalog.pg_index ind ON ind.indexrelid = con.conindid
+JOIN generate_subscripts(con.conkey, 1) AS pos(i) ON true
+JOIN pg_catalog.pg_attribute att
+  ON att.attrelid = cls.oid AND att.attnum = con.conkey[pos.i]
+WHERE con.contype = 'u'
+ORDER BY ns.nspname, cls.relname, con.conname, pos.i`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UniqueConstraintMeta
+	byKey := map[string]int{}
+	for rows.Next() {
+		var schema, table, name, column string
+		var nullsNotDistinct bool
+		if err := rows.Scan(&schema, &table, &name, &column, &nullsNotDistinct); err != nil {
+			return nil, err
+		}
+		if nullsNotDistinct {
+			return nil, fmt.Errorf("unique constraint %s.%s.%s uses NULLS NOT DISTINCT, which M0.28 does not model", schema, table, name)
+		}
+		k := schema + "." + table + "." + name
+		i, ok := byKey[k]
+		if !ok {
+			out = append(out, UniqueConstraintMeta{Schema: schema, Table: table, Name: name})
+			i = len(out) - 1
+			byKey[k] = i
+		}
+		out[i].Columns = append(out[i].Columns, column)
+	}
+	return out, rows.Err()
+}
+
 func (r SQLCatalogReader) ForeignKeys(ctx context.Context) ([]ForeignKeyMeta, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 SELECT src_ns.nspname, src.relname, con.conname, src_att.attname,
@@ -157,7 +197,12 @@ JOIN pg_catalog.pg_am am ON am.oid = idx.relam
 JOIN generate_series(1, ind.indnkeyatts) AS pos(i) ON true
 WHERE ns.nspname NOT IN ('pg_catalog','information_schema')
   AND ns.nspname !~ '^pg_toast'
-  AND NOT ind.indisprimary
+  AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_constraint con
+      WHERE con.conindid = ind.indexrelid
+        AND con.contype IN ('p','u')
+  )
 ORDER BY ns.nspname, tbl.relname, idx.relname, pos.i`)
 	if err != nil {
 		return nil, err
