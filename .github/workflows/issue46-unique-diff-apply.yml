@@ -1,0 +1,42 @@
+name: Apply Issue 46 unique constraint diff
+
+on:
+  push:
+    branches: [work/issue-46-unique-constraint-drift]
+    paths:
+      - .github/workflows/issue46-unique-diff-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/issue-46-unique-constraint-drift
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Apply diff model
+        run: python3 .github/scripts/issue46_unique_diff.py
+      - name: Format
+        run: gofmt -w internal/database/schemadiff/diff.go internal/database/persistence/model.go internal/database/persistence/realize.go internal/database/physical/model.go internal/database/persistence/unique_constraint_test.go
+      - name: Verify core
+        run: |
+          go vet ./...
+          go test ./internal/database/persistence ./internal/database/physical ./internal/database/schemadiff
+      - name: Commit core
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/database/schemadiff/diff.go internal/database/persistence/model.go internal/database/persistence/realize.go internal/database/physical/model.go internal/database/persistence/unique_constraint_test.go
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Issue #46 Unique Constraint coreとdiffを追加する"
+          git push
