@@ -37,12 +37,24 @@ ORDER BY n.nspname, c.relname`)
 
 func (r SQLCatalogReader) Columns(ctx context.Context) ([]ColumnMeta, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-SELECT table_schema, table_name, column_name,
-       COALESCE(NULLIF(udt_schema || '.' || udt_name, 'pg_catalog.'), data_type),
-       is_nullable = 'YES', COALESCE(column_default, ''), ordinal_position
-FROM information_schema.columns
-WHERE table_schema NOT IN ('pg_catalog','information_schema')
-ORDER BY table_schema, table_name, ordinal_position`)
+SELECT ns.nspname, cls.relname, att.attname,
+       typ_ns.nspname || '.' || typ.typname,
+       NOT att.attnotnull,
+       COALESCE(pg_catalog.pg_get_expr(def.adbin, def.adrelid), ''),
+       att.attnum
+FROM pg_catalog.pg_class cls
+JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
+JOIN pg_catalog.pg_attribute att ON att.attrelid = cls.oid
+JOIN pg_catalog.pg_type typ ON typ.oid = att.atttypid
+JOIN pg_catalog.pg_namespace typ_ns ON typ_ns.oid = typ.typnamespace
+LEFT JOIN pg_catalog.pg_attrdef def
+  ON def.adrelid = cls.oid AND def.adnum = att.attnum
+WHERE cls.relkind IN ('r','p','v','m')
+  AND ns.nspname NOT IN ('pg_catalog','information_schema')
+  AND ns.nspname !~ '^pg_toast'
+  AND att.attnum > 0
+  AND NOT att.attisdropped
+ORDER BY ns.nspname, cls.relname, att.attnum`)
 	if err != nil {
 		return nil, err
 	}
