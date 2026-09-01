@@ -1,0 +1,3 @@
+pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+}
