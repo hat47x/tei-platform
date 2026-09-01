@@ -278,18 +278,23 @@ func joinQuotedIdentifiers(values []string) string {
 }
 
 func qualifiedIndexName(table, index string) (string, error) {
+	indexName := strings.TrimSpace(index)
+	if indexName == "" {
+		return "", fmt.Errorf("index name is empty")
+	}
+
 	parts := strings.Split(strings.TrimSpace(table), ".")
 	switch len(parts) {
 	case 1:
-		if parts[0] == "" {
+		if strings.TrimSpace(parts[0]) == "" {
 			return "", fmt.Errorf("table name is empty")
 		}
-		return quoteIdentifier(index), nil
+		return "", fmt.Errorf("table name %q is not schema-qualified; refusing to render DROP INDEX without a deterministic schema", table)
 	case 2:
 		if strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
 			return "", fmt.Errorf("table name %q contains an empty identifier component", table)
 		}
-		return quoteIdentifier(strings.TrimSpace(parts[0])) + "." + quoteIdentifier(index), nil
+		return quoteIdentifier(strings.TrimSpace(parts[0])) + "." + quoteIdentifier(indexName), nil
 	default:
 		return "", fmt.Errorf("table name %q cannot determine PostgreSQL index schema", table)
 	}
