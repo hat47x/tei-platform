@@ -152,8 +152,18 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	return snapshot.Normalize(), nil
 }
 
+const postgresExpressionNormalizationAuthority = "postgresql-catalog-deparse"
+
 func postgresExpression(source string) *physical.ProviderExpression {
-	return &physical.ProviderExpression{Provider: string(environment.ProviderPostgres), Dialect: "postgresql", Source: strings.TrimSpace(source)}
+	return &physical.ProviderExpression{
+		Provider:       string(environment.ProviderPostgres),
+		Dialect:        "postgresql",
+		Representation: physical.ProviderExpressionProviderNormalized,
+		Source:         strings.TrimSpace(source),
+		Normalization: &physical.ExpressionNormalization{
+			Authority: postgresExpressionNormalizationAuthority,
+		},
+	}
 }
 
 func (p Provider) Explain(ctx context.Context, instance environment.DatabaseInstance, q query.EmbeddedSQL, snapshot *physical.SchemaSnapshot, opts dbprovider.ExplainOptions) (plan.IR, error) {
