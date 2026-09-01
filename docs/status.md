@@ -2,7 +2,7 @@
 
 TEIはまだ完成したローコード製品ではなく、設計境界を実行可能なコードで検証している段階です。
 
-**現在の設計検証チェックポイントはM0.32です。**
+**現在の設計検証チェックポイントはM0.35です。**
 
 この文書では「現在、Repository上で何を実装・検証できているか」と、「まだ何を実装済みとは言えないか」を分けて整理します。
 
@@ -35,6 +35,10 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - Actual Physical Schema
 - Schema Diff
 - 確定したChangeと比較未確定`Unresolved`の分離
+- Foreign Key / Unique Constraint / Advanced IndexのDesired・Actual・Diff
+- ProviderExpressionのauthor text / provider-normalized representation
+- Desired Physical realizationのprovider-owned offline policy
+- PostgreSQL向けAdvanced Index migration SQL rendering
 - versioned DDL / data / verify Migration
 - Migration Provider / applied-history reconciliation
 - Database Release / Application Release / Solution Release
@@ -83,7 +87,7 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 
 ## 現時点で実装済みとは言わないもの
 
-次はProduct Visionに含まれますが、M0.32時点で完成済みとは主張しません。
+次はProduct Visionに含まれますが、M0.35時点で完成済みとは主張しません。
 
 - production-ready GUI Editor / Wails application
 - standard Application Patternの実装
@@ -321,6 +325,60 @@ provider-normalized表現には、必要に応じてnormalization authorityとpr
 
 詳細は [ADR-0012](adr/0012-provider-expression-representation.md) と [M0.32 Conformance](conformance/provider-expression-representation-m0.32.md) を参照してください。
 
+## M0.33 — Desired Physical realizationのoffline provider policy
+
+Desired Physical Schemaを生成する処理から、DBMS固有の知識をruntime Provider SPIと切り離しました。
+
+- `PhysicalRealizationPolicy`をPersistence側のportとして定義
+- PostgreSQL / Oracleがそれぞれoffline policyを所有
+- provider enumからpolicyを選ぶcomposition層を分離
+- physical type、Index既定値、PostgreSQL B-tree normalizationをprovider側へ移動
+- Desired realizationはlive DB接続を要求しない
+- generic providerへ暗黙fallbackしない
+- CLIと実DBintegrationを同じcomposition境界へ接続
+
+この分離により、ProviderExpressionやIndex既定値の知識を増やしても、Persistence Coreや接続系runtime SPIへ無秩序に流入しにくくしました。
+
+詳細は [ADR-0013](adr/0013-offline-physical-realization-policy.md) と [M0.33 Conformance](conformance/offline-physical-realization-policy-m0.33.md) を参照してください。
+
+## M0.34 — プロバイダー固有Index識別子の比較
+
+Advanced Indexのcollationとoperator classについて、表記差だけからIndex再作成を決めない比較契約を固定しました。
+
+- Desiredで明示したcollationを根拠なく空値へ畳まない
+- 両側に明示値があり一致すれば同一、異なれば構造差
+- collationの片側だけが空なら比較未確定
+- Desiredがdefault operator classを要求し、Actualが明示non-defaultなら構造差
+- Desired明示・Actual default表現のoperator classは比較未確定
+- `provider-identifier`のUnresolvedにfield pathとDesired / Actual値を保持
+- 比較未確定から`DROP INDEX` / `CREATE INDEX`を生成しない
+
+「offlineで確定できる既定値」と、「列・型・catalog状態を見なければ確定できない識別子」を分けています。
+
+詳細は [ADR-0014](adr/0014-provider-index-identifier-comparison.md) と [M0.34 Conformance](conformance/provider-index-identifier-m0.34.md) を参照してください。
+
+## M0.35 — Advanced IndexのPostgreSQL migration SQL
+
+Advanced Indexの主要なPhysical semanticsを、PostgreSQL固有のDDLへ意味を失わず戻せるようにしました。同時に、SQL文法の責務を共通migration層からPostgreSQL provider packageへ移しています。
+
+- expression key / ordered key
+- `COLLATE` / operator class
+- `ASC` / `DESC`、`NULLS FIRST` / `NULLS LAST`
+- `INCLUDE`
+- partial predicate
+- unique indexの`NULLS NOT DISTINCT`
+- B-tree以外のaccess method
+- schema-qualifiedな`DROP INDEX`
+- schemaを確定できない破壊的`DROP INDEX`を拒否
+- ProviderExpressionのprovider / dialect / representationを検査
+- ProviderExpression本文を推測で書き換えない
+- `CONCURRENTLY`を通常migrationで自動選択しない
+- `index-state-drift`を自動drop/recreateへ変換しない
+
+CIではPostgreSQL 17を使い、Desired → Diff → SQL生成 → 実DBへ適用 → Introspect → 再比較を一周させ、Advanced Indexを作成した後に`Changes = 0 / Unresolved = 0`へ収束することを確認しています。
+
+詳細は [ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md) と [M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md) を参照してください。
+
 # 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -359,7 +417,8 @@ PostgreSQL 17 serviceを使い、Reference integrationを実行します。
 - Unique Constraintとconstraint backing indexの分離
 - View / Materialized View column observation
 - Advanced Indexの観測・比較
-- ProviderExpression / Unresolvedの安全な比較
+- ProviderExpression / provider identifier / Unresolvedの安全な比較
+- Advanced Index migration SQLの生成・実行・再観測・収束
 - connection dataをPhysical Snapshot / Diffへ保存しないこと
 
 CIはproduction-gradeな外部環境を保証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
@@ -368,7 +427,7 @@ CIはproduction-gradeな外部環境を保証するものではありません�
 
 ## Product側の大きなGap
 
-M0.32までの下部構造に比べ、次はまだ実証が薄い領域です。
+Database / Provider側の設計検証がM0.35まで進んだ一方、次はまだ実証が薄い領域です。
 
 - standard Application Pattern
 - 既存認証・認可を保持したCompatibility
@@ -385,10 +444,9 @@ M0.32までの下部構造に比べ、次はまだ実証が薄い領域です。
 ## Database / Provider側の継続課題
 
 - Partitioned table / child partitionのSchema Drift semantics
-- provider default / identifier normalization
-- Desired Physical realizationのprovider-owned offline policy
-- Advanced Index migration SQL rendering
 - PostgreSQL以外のProviderによる抽象境界の圧力試験
+- production環境でのonline index build / recovery policy
+- provider versionや拡張catalogを含むnormalization authorityの高度化
 
 これらは重要ですが、PostgreSQL固有機能を網羅すること自体を目的にはしません。Product全体のGapと比較しながら着手順を決めます。
 
