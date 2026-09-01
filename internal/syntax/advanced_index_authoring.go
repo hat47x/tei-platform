@@ -9,10 +9,9 @@ import (
 	"tei/internal/environment"
 )
 
-// ParseAdvancedIndex parses one standalone Advanced Index declaration. It is a
-// composable parser entry point for the block form that will be embedded in a
-// Persistence Mapping without changing the meaning of the existing simple
-// `index NAME on ATTRIBUTE` syntax.
+// ParseAdvancedIndex parses one standalone Advanced Index declaration. The
+// same body parser is also used from ParsePersistence so standalone and nested
+// authoring cannot drift apart.
 func ParseAdvancedIndex(src string) (persistence.IndexMapping, error) {
 	return NewParser(src).ParseAdvancedIndex()
 }
@@ -31,7 +30,17 @@ func (p *Parser) ParseAdvancedIndex() (persistence.IndexMapping, error) {
 	if err != nil {
 		return persistence.IndexMapping{}, err
 	}
-	index := persistence.IndexMapping{Name: name.Text, Unique: kind.Text == "unique-index"}
+	index, err := p.parseAdvancedIndexBody(name, kind.Text == "unique-index")
+	if err != nil {
+		return index, err
+	}
+	return index, p.expectEOF()
+}
+
+// parseAdvancedIndexBody parses the block after an already consumed Index name.
+// It intentionally does not consume EOF because Persistence embeds the block.
+func (p *Parser) parseAdvancedIndexBody(name Token, unique bool) (persistence.IndexMapping, error) {
+	index := persistence.IndexMapping{Name: name.Text, Unique: unique}
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return index, err
 	}
@@ -84,11 +93,11 @@ func (p *Parser) ParseAdvancedIndex() (persistence.IndexMapping, error) {
 			}
 			predicateSet = true
 			_, _ = p.next()
-			expression, err := p.parseProviderExpressionBlock(false)
+			expression, _, err := p.parseProviderExpressionBlock(false)
 			if err != nil {
 				return index, err
 			}
-			index.Predicate = &expression.Expression
+			index.Predicate = &expression
 		case "null-treatment":
 			if nullTreatmentSet {
 				return index, p.errAt(t, "null-treatment may be declared only once")
@@ -114,7 +123,7 @@ func (p *Parser) ParseAdvancedIndex() (persistence.IndexMapping, error) {
 	if len(index.Keys) == 0 {
 		return index, p.errAt(name, "advanced index requires at least one key")
 	}
-	return index, p.expectEOF()
+	return index, nil
 }
 
 func (p *Parser) parseAdvancedIndexKey() (persistence.IndexKeyMapping, error) {
@@ -143,38 +152,30 @@ func (p *Parser) parseAdvancedIndexKey() (persistence.IndexKeyMapping, error) {
 		_, _ = p.next()
 		return p.parseIndexKeyOptions(key)
 	case "expression":
-		parsed, err := p.parseProviderExpressionBlock(true)
+		expression, key, err := p.parseProviderExpressionBlock(true)
 		if err != nil {
 			return persistence.IndexKeyMapping{}, err
 		}
-		parsed.Key.Expression = &parsed.Expression
-		return parsed.Key, nil
+		key.Expression = &expression
+		return key, nil
 	default:
 		return persistence.IndexKeyMapping{}, p.errAt(kind, "index key requires attribute or expression")
 	}
 }
 
-type parsedProviderExpression struct {
-	Expression persistence.ProviderExpressionMapping
-	Key        persistence.IndexKeyMapping
-}
-
-func (p *Parser) parseProviderExpressionBlock(withKeyOptions bool) (parsedProviderExpression, error) {
-	if _, err := p.expect(TokenLBrace); err != nil {
-		return parsedProviderExpression{}, err
+func (p *Parser) parseProviderExpressionBlock(withKeyOptions bool) (persistence.ProviderExpressionMapping, persistence.IndexKeyMapping, error) {
+	open, err := p.expect(TokenLBrace)
+	if err != nil {
+		return persistence.ProviderExpressionMapping{}, persistence.IndexKeyMapping{}, err
 	}
-	var out parsedProviderExpression
-	providerSet := false
-	dialectSet := false
-	sourceSet := false
-	collationSet := false
-	operatorClassSet := false
-	orderSet := false
-	nullsSet := false
+	var expression persistence.ProviderExpressionMapping
+	var key persistence.IndexKeyMapping
+	providerSet, dialectSet, sourceSet := false, false, false
+	collationSet, operatorClassSet, orderSet, nullsSet := false, false, false, false
 	for {
 		t, err := p.peek()
 		if err != nil {
-			return out, err
+			return expression, key, err
 		}
 		if t.Kind == TokenRBrace {
 			_, _ = p.next()
@@ -183,126 +184,123 @@ func (p *Parser) parseProviderExpressionBlock(withKeyOptions bool) (parsedProvid
 		switch t.Text {
 		case "provider":
 			if providerSet {
-				return out, p.errAt(t, "provider may be declared only once")
+				return expression, key, p.errAt(t, "provider may be declared only once")
 			}
 			providerSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenIdent)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
 			provider := environment.DatabaseProvider(value.Text)
 			if !provider.Known() {
-				return out, p.errAt(value, fmt.Sprintf("unknown database provider %q", value.Text))
+				return expression, key, p.errAt(value, fmt.Sprintf("unknown database provider %q", value.Text))
 			}
-			out.Expression.Provider = provider
+			expression.Provider = provider
 		case "dialect":
 			if dialectSet {
-				return out, p.errAt(t, "dialect may be declared only once")
+				return expression, key, p.errAt(t, "dialect may be declared only once")
 			}
 			dialectSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenIdent)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
-			out.Expression.Dialect = strings.TrimSpace(value.Text)
+			expression.Dialect = strings.TrimSpace(value.Text)
 		case "source":
 			if sourceSet {
-				return out, p.errAt(t, "source may be declared only once")
+				return expression, key, p.errAt(t, "source may be declared only once")
 			}
 			sourceSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenString)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
-			out.Expression.Source = value.Text
+			expression.Source = value.Text
 		case "collation":
 			if !withKeyOptions {
-				return out, p.errAt(t, "collation is valid only inside an expression key")
+				return expression, key, p.errAt(t, "collation is valid only inside an expression key")
 			}
 			if collationSet {
-				return out, p.errAt(t, "collation may be declared only once")
+				return expression, key, p.errAt(t, "collation may be declared only once")
 			}
 			collationSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenString)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
-			out.Key.Collation = value.Text
+			key.Collation = value.Text
 		case "operator-class":
 			if !withKeyOptions {
-				return out, p.errAt(t, "operator-class is valid only inside an expression key")
+				return expression, key, p.errAt(t, "operator-class is valid only inside an expression key")
 			}
 			if operatorClassSet {
-				return out, p.errAt(t, "operator-class may be declared only once")
+				return expression, key, p.errAt(t, "operator-class may be declared only once")
 			}
 			operatorClassSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenString)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
-			out.Key.OperatorClass = value.Text
+			key.OperatorClass = value.Text
 		case "order":
 			if !withKeyOptions {
-				return out, p.errAt(t, "order is valid only inside an expression key")
+				return expression, key, p.errAt(t, "order is valid only inside an expression key")
 			}
 			if orderSet {
-				return out, p.errAt(t, "order may be declared only once")
+				return expression, key, p.errAt(t, "order may be declared only once")
 			}
 			orderSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenIdent)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
 			order := persistence.IndexOrder(value.Text)
 			if !order.Valid() || order == "" {
-				return out, p.errAt(value, fmt.Sprintf("unknown index order %q", value.Text))
+				return expression, key, p.errAt(value, fmt.Sprintf("unknown index order %q", value.Text))
 			}
-			out.Key.Order = order
+			key.Order = order
 		case "nulls":
 			if !withKeyOptions {
-				return out, p.errAt(t, "nulls is valid only inside an expression key")
+				return expression, key, p.errAt(t, "nulls is valid only inside an expression key")
 			}
 			if nullsSet {
-				return out, p.errAt(t, "nulls may be declared only once")
+				return expression, key, p.errAt(t, "nulls may be declared only once")
 			}
 			nullsSet = true
 			_, _ = p.next()
 			value, err := p.expect(TokenIdent)
 			if err != nil {
-				return out, err
+				return expression, key, err
 			}
 			nulls := persistence.IndexNullsOrder(value.Text)
 			if !nulls.Valid() || nulls == "" {
-				return out, p.errAt(value, fmt.Sprintf("unknown index NULL ordering %q", value.Text))
+				return expression, key, p.errAt(value, fmt.Sprintf("unknown index NULL ordering %q", value.Text))
 			}
-			out.Key.NullsOrder = nulls
+			key.NullsOrder = nulls
 		default:
 			if withKeyOptions {
-				return out, p.errAt(t, "expected provider, dialect, source, collation, operator-class, order, or nulls")
+				return expression, key, p.errAt(t, "expected provider, dialect, source, collation, operator-class, order, or nulls")
 			}
-			return out, p.errAt(t, "expected provider, dialect, or source")
+			return expression, key, p.errAt(t, "expected provider, dialect, or source")
 		}
 	}
 	if !providerSet || !dialectSet || !sourceSet {
-		return out, &ParseError{Pos: p.lx.pos(), End: p.lx.pos(), Msg: "provider expression requires provider, dialect, and source"}
+		return expression, key, p.errAt(open, "provider expression requires provider, dialect, and source")
 	}
-	if strings.TrimSpace(out.Expression.Dialect) == "" || strings.TrimSpace(out.Expression.Source) == "" {
-		return out, &ParseError{Pos: p.lx.pos(), End: p.lx.pos(), Msg: "provider expression dialect and source must not be empty"}
+	if expression.Dialect == "" || strings.TrimSpace(expression.Source) == "" {
+		return expression, key, p.errAt(open, "provider expression dialect and source must not be empty")
 	}
-	return out, nil
+	return expression, key, nil
 }
 
 func (p *Parser) parseIndexKeyOptions(key persistence.IndexKeyMapping) (persistence.IndexKeyMapping, error) {
-	collationSet := false
-	operatorClassSet := false
-	orderSet := false
-	nullsSet := false
+	collationSet, operatorClassSet, orderSet, nullsSet := false, false, false, false
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -372,8 +370,8 @@ func (p *Parser) parseIndexKeyOptions(key persistence.IndexKeyMapping) (persiste
 	return key, nil
 }
 
-// AdvancedIndexIdentifierAnchor returns the exact Index name token for Source
-// Index integration. The physical path remains outside the semantic identity.
+// AdvancedIndexIdentifierAnchor returns the exact Index name token for a
+// standalone Advanced Index declaration.
 func AdvancedIndexIdentifierAnchor(src, expectedName string) (Anchor, error) {
 	lx := NewLexer(src)
 	kind, err := lx.Next()
@@ -394,4 +392,60 @@ func AdvancedIndexIdentifierAnchor(src, expectedName string) (Anchor, error) {
 		return Anchor{}, fmt.Errorf("index identifier %q does not match expected subject %q", name.Text, expectedName)
 	}
 	return Anchor{Start: name.Start, End: name.End}, nil
+}
+
+// PersistenceIndexIdentifierAnchor locates a nested simple or Advanced Index
+// declaration without putting source path information into Index identity.
+func PersistenceIndexIdentifierAnchor(src, expectedMappingID, expectedIndexName string) (Anchor, error) {
+	lx := NewLexer(src)
+	keyword, err := lx.Next()
+	if err != nil {
+		return Anchor{}, err
+	}
+	if keyword.Kind != TokenIdent || keyword.Text != "persist" {
+		return Anchor{}, fmt.Errorf("expected persist declaration at %d:%d", keyword.Start.Line, keyword.Start.Column)
+	}
+	mapping, err := lx.Next()
+	if err != nil {
+		return Anchor{}, err
+	}
+	if mapping.Kind != TokenIdent || mapping.Text != expectedMappingID {
+		return Anchor{}, fmt.Errorf("persistence identifier %q does not match expected subject %q", mapping.Text, expectedMappingID)
+	}
+	open, err := lx.Next()
+	if err != nil {
+		return Anchor{}, err
+	}
+	if open.Kind != TokenLBrace {
+		return Anchor{}, fmt.Errorf("expected persistence body at %d:%d", open.Start.Line, open.Start.Column)
+	}
+
+	depth := 1
+	for depth > 0 {
+		t, err := lx.Next()
+		if err != nil {
+			return Anchor{}, err
+		}
+		switch t.Kind {
+		case TokenLBrace:
+			depth++
+		case TokenRBrace:
+			depth--
+		case TokenIdent:
+			if depth != 1 || (t.Text != "index" && t.Text != "unique-index") {
+				continue
+			}
+			name, err := lx.Next()
+			if err != nil {
+				return Anchor{}, err
+			}
+			if name.Kind != TokenIdent {
+				return Anchor{}, fmt.Errorf("expected index identifier at %d:%d", name.Start.Line, name.Start.Column)
+			}
+			if name.Text == expectedIndexName {
+				return Anchor{Start: name.Start, End: name.End}, nil
+			}
+		}
+	}
+	return Anchor{}, fmt.Errorf("persistence index %s/%s has no syntax anchor", expectedMappingID, expectedIndexName)
 }
