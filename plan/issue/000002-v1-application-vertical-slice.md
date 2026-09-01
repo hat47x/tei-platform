@@ -76,7 +76,7 @@ Referenceを増やしすぎず、過去のM0.xxで蓄積したEvidenceを同じ�
 ### 5. 受注を確定する
 
 - command Pattern
-- 既存` sales.order.submit` Capabilityを利用する
+- 既存の`sales.order.submit` Capabilityを利用する
 - `draft → submitted`等の最小state transitionを扱う
 - command acknowledgementとactual stateを必要に応じて分ける
 - custom implementationを少なくとも一箇所接続する
