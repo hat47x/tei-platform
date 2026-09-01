@@ -443,6 +443,14 @@
             }
           ]
         }
+      ],
+      "patterns": [
+        {
+          "id": "order_entry.recent_orders",
+          "kind": "browse",
+          "data": "sales.order",
+          "query": "order_entry.recent_orders"
+        }
       ]
     }
   ],
