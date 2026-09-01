@@ -60,11 +60,67 @@ type ForeignKey struct {
 	ReferencedColumns []string `json:"referencedColumns"`
 }
 
+// ProviderExpression is a provider-normalized expression that TEI preserves as
+// opaque physical meaning. Provider provenance is part of the value: equal
+// source text from different providers is not assumed to be equivalent.
+type ProviderExpression struct {
+	Provider string `json:"provider"`
+	Source   string `json:"source"`
+}
+
+type IndexOrder string
+
+const (
+	IndexOrderDefault IndexOrder = "default"
+	IndexOrderAsc     IndexOrder = "asc"
+	IndexOrderDesc    IndexOrder = "desc"
+)
+
+type IndexNullsOrder string
+
+const (
+	IndexNullsDefault IndexNullsOrder = "default"
+	IndexNullsFirst   IndexNullsOrder = "first"
+	IndexNullsLast    IndexNullsOrder = "last"
+)
+
+type UniqueNullTreatment string
+
+const (
+	UniqueNullsDistinct    UniqueNullTreatment = "distinct"
+	UniqueNullsNotDistinct UniqueNullTreatment = "not-distinct"
+)
+
+// IndexKey is one ordered search key. Exactly one of Column and Expression is
+// expected to be populated. Included columns are intentionally not IndexKeys.
+type IndexKey struct {
+	Column        string              `json:"column,omitempty"`
+	Expression    *ProviderExpression `json:"expression,omitempty"`
+	Collation     string              `json:"collation,omitempty"`
+	OperatorClass string              `json:"operatorClass,omitempty"`
+	Order         IndexOrder          `json:"order,omitempty"`
+	NullsOrder    IndexNullsOrder     `json:"nullsOrder,omitempty"`
+}
+
+// IndexState is actual lifecycle observation, not Desired structural intent.
+// Desired Physical Schema leaves State nil.
+type IndexState struct {
+	Valid bool `json:"valid"`
+	Ready bool `json:"ready"`
+	Live  bool `json:"live"`
+}
+
+func (s IndexState) Usable() bool { return s.Valid && s.Ready && s.Live }
+
 type Index struct {
-	Name    string   `json:"name"`
-	Columns []string `json:"columns,omitempty"`
-	Unique  bool     `json:"unique,omitempty"`
-	Method  string   `json:"method,omitempty"`
+	Name                string               `json:"name"`
+	Keys                []IndexKey           `json:"keys,omitempty"`
+	IncludedColumns     []string             `json:"includedColumns,omitempty"`
+	Predicate           *ProviderExpression  `json:"predicate,omitempty"`
+	Unique              bool                 `json:"unique,omitempty"`
+	UniqueNullTreatment UniqueNullTreatment  `json:"uniqueNullTreatment,omitempty"`
+	Method              string               `json:"method,omitempty"`
+	State               *IndexState          `json:"state,omitempty"`
 }
 
 func (t Table) QualifiedName() string {
@@ -144,7 +200,31 @@ func (s SchemaSnapshot) Normalize() SchemaSnapshot {
 			return normalizeName(t.ForeignKeys[i].Name) < normalizeName(t.ForeignKeys[j].Name)
 		})
 		t.Indexes = append([]Index(nil), t.Indexes...)
+		for j := range t.Indexes {
+			t.Indexes[j] = cloneIndex(t.Indexes[j])
+		}
 		sort.Slice(t.Indexes, func(i, j int) bool { return t.Indexes[i].Name < t.Indexes[j].Name })
+	}
+	return out
+}
+
+func cloneIndex(index Index) Index {
+	out := index
+	out.Keys = append([]IndexKey(nil), index.Keys...)
+	for i := range out.Keys {
+		if index.Keys[i].Expression != nil {
+			expr := *index.Keys[i].Expression
+			out.Keys[i].Expression = &expr
+		}
+	}
+	out.IncludedColumns = append([]string(nil), index.IncludedColumns...)
+	if index.Predicate != nil {
+		predicate := *index.Predicate
+		out.Predicate = &predicate
+	}
+	if index.State != nil {
+		state := *index.State
+		out.State = &state
 	}
 	return out
 }
