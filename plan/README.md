@@ -10,6 +10,7 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): #67 Application PatternのCanonical境界、正本、Source Index、最初のReferenceを具体化した実装前設計
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
@@ -35,6 +36,8 @@ Editor / AI支援
 
 このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
+最初に着手するApplication Patternについては、[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)で実装直前の境界を具体化しています。既存の`browse` Queryを最小の縦切りとしてPattern基盤を先に検証し、その後`record`、`reference`、`command`、`header-detail`へ広げます。
+
 ## ADR
 
 ADRには、実装方法が変わっても残る設計判断を記録します。
@@ -49,7 +52,7 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 
 既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
 
-現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017として`plan/adr/`に置いています。
+現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017、Patternの正本配置はADR-0018として`plan/adr/`に置いています。
 
 ## Issue文書
 
