@@ -9,24 +9,31 @@
 - [`MASTER_PLAN.md`](MASTER_PLAN.md): 開発全体の作業軸と依存関係
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
+- [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
-現在のv1主線は、既存の`order_entry`をReference Applicationとして育てる次の流れです。
+## 現在のv1主線
+
+現在は、既存の`order_entry`をReference Applicationとして育てます。
 
 ```text
-Application Pattern
-      ↓
-Application Driver
-      ↓
-第一Web Target
+Application Pattern ────────┐
+      ↓                     │
+Application Driver     既存認証Compatibility
+      ↓                     │
+第一Web Target ─────────────┘
       ↓
 Editor / AI支援
       ↓
 第二TargetでTarget-neutral性を検証
 ```
 
-既存認証仕様を保持したCompatibility Referenceは、この主線と並行して進めます。
+個々の機能が実装されたことだけでは、次の段階へ進みません。
+
+[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることなどをEvidence Gateとして定めています。
+
+このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
 ## ADR
 
@@ -41,6 +48,8 @@ plan/adr/0016-example.md
 mainでは`docs/adr/0001`〜`0015`までが既に成立しています。このため、`plan/adr/`で新しく起票するADRは、既存番号と衝突しない0016以降を使います。
 
 既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
+
+現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017として`plan/adr/`に置いています。
 
 ## Issue文書
 
