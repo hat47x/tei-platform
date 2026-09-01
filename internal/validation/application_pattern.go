@@ -76,6 +76,8 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
+			case application.PatternRecord:
+				out = append(out, validateRecordPattern(pattern, patternSubject, semanticData)...)
 			}
 		}
 	}
@@ -163,6 +165,50 @@ func validateBrowsePattern(
 				queryRef.Datasource,
 			))
 		}
+	}
+
+	return out
+}
+
+func validateRecordPattern(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticData map[core.CanonicalID]struct{},
+) []Diagnostic {
+	var out []Diagnostic
+
+	if pattern.Data == "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATA_REQUIRED",
+			"record pattern %s requires semantic data",
+			pattern.ID,
+		))
+	} else if _, ok := semanticData[pattern.Data]; !ok {
+		out = append(out, errFor(
+			patternSubject,
+			"UNKNOWN_APPLICATION_PATTERN_DATA",
+			"record pattern %s refers to unknown semantic data %s",
+			pattern.ID,
+			pattern.Data,
+		))
+	}
+
+	if pattern.Query != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+			"record pattern %s does not accept a query",
+			pattern.ID,
+		))
+	}
+	if pattern.Datasource != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
+			"record pattern %s does not accept a datasource",
+			pattern.ID,
+		))
 	}
 
 	return out
