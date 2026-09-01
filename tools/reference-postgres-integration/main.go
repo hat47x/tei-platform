@@ -15,6 +15,7 @@ import (
 	"tei/internal/database/physical"
 	dbprovider "tei/internal/database/provider"
 	"tei/internal/database/providers/postgres"
+	"tei/internal/database/realization"
 	"tei/internal/database/schemadiff"
 	"tei/internal/environment"
 )
@@ -68,7 +69,7 @@ func main() {
 	}
 
 	mappings := referenceMappings()
-	desired, err := persistence.RealizeDesired(mappings, databaseID, environment.ProviderPostgres)
+	desired, err := realization.RealizeDesired(mappings, databaseID, environment.ProviderPostgres)
 	if err != nil {
 		panic(err)
 	}
