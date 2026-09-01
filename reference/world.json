@@ -281,6 +281,12 @@
           "underlying": "std.identifier"
         },
         {
+          "id": "sales.order_line_id",
+          "symbol": "OrderLineId",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        },
+        {
           "id": "sales.order_status",
           "symbol": "OrderStatus",
           "kind": "alias",
@@ -329,6 +335,43 @@
               "symbol": "customer",
               "target": "customer.customer",
               "cardinality": "one"
+            },
+            {
+              "id": "sales.order.lines",
+              "symbol": "lines",
+              "target": "sales.order_line",
+              "cardinality": "many"
+            }
+          ]
+        },
+        {
+          "id": "sales.order_line",
+          "symbol": "OrderLine",
+          "attributes": [
+            {
+              "id": "sales.order_line.item_code",
+              "symbol": "itemCode",
+              "type": "std.code"
+            },
+            {
+              "id": "sales.order_line.line_number",
+              "symbol": "lineNumber",
+              "type": "std.integer"
+            },
+            {
+              "id": "sales.order_line.order_line_id",
+              "symbol": "orderLineId",
+              "type": "sales.order_line_id"
+            },
+            {
+              "id": "sales.order_line.quantity",
+              "symbol": "quantity",
+              "type": "std.decimal"
+            },
+            {
+              "id": "sales.order_line.unit_price",
+              "symbol": "unitPrice",
+              "type": "std.money"
             }
           ]
         }
