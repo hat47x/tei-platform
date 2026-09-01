@@ -44,10 +44,57 @@ func TestParseBrowseApplicationPatternAcceptsExplicitDatasource(t *testing.T) {
 	}
 }
 
-func TestParseApplicationPatternRejectsUnsupportedKind(t *testing.T) {
+func TestParseRecordApplicationPatternUsesDataOnly(t *testing.T) {
 	src := `pattern order_entry.order_record record {
     data sales.order
+}`
+
+	got, err := syntax.NewParser(src).ParseApplicationPattern()
+	if err != nil {
+		t.Fatalf("parse record pattern: %v", err)
+	}
+	if got.ID != "order_entry.order_record" || got.Kind != application.PatternRecord {
+		t.Fatalf("unexpected record pattern: %#v", got)
+	}
+	if got.Data != "sales.order" {
+		t.Fatalf("record data=%q", got.Data)
+	}
+	if got.Query != "" || got.Datasource != "" {
+		t.Fatalf("record should not acquire query or datasource: %#v", got)
+	}
+}
+
+func TestParseRecordApplicationPatternRequiresData(t *testing.T) {
+	src := `pattern order_entry.order_record record {
+}`
+
+	if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+		t.Fatal("record Pattern without data must be rejected")
+	}
+}
+
+func TestParseRecordApplicationPatternRejectsBrowseOnlyFields(t *testing.T) {
+	for name, src := range map[string]string{
+		"query": `pattern order_entry.order_record record {
+    data sales.order
     query order_entry.recent_orders
+}`,
+		"datasource": `pattern order_entry.order_record record {
+    data sales.order
+    datasource sales
+}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+				t.Fatalf("record Pattern with %s must be rejected until the Reference requires it", name)
+			}
+		})
+	}
+}
+
+func TestParseApplicationPatternRejectsUnsupportedKind(t *testing.T) {
+	src := `pattern order_entry.customer_reference reference {
+    data sales.order
 }`
 
 	if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
