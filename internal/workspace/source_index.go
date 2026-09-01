@@ -192,6 +192,8 @@ func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (so
 	switch subject.Kind {
 	case "application":
 		keyword = "application"
+	case "application-pattern":
+		keyword = "pattern"
 	case "database":
 		keyword = "database"
 	case "database-contract":
