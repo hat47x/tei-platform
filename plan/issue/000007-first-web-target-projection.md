@@ -1,8 +1,8 @@
 # ISSUE-000007: 第一Web TargetへのProjection境界を設計する
 
-- Status: Proposed
+- 状態: 提案中
 - GitHub Issue: #70
-- Dependency: Gate B
+- 依存: Gate B
 
 ## 背景
 
@@ -90,7 +90,7 @@ Custom UIを使う場合も、Application上の意味やValidation、Authorizati
 
 Web固有の実装はCoreへ入れず、独立したAdapter / Packageとして組み立てます。
 
-具体的なframeworkは、このIssueの着手時点で最新の技術条件と、生成物の検査しやすさ、Wails / WebViewとの再利用可能性等を比較して決めます。
+具体的なframeworkは、このIssueの着手時点で最新の技術条件と、生成物の検査しやすさ、Wails / WebViewとの再利用可能性などを比較して決めます。
 
 frameworkの選定結果をPresentation上の意味の一部にはしません。
 
@@ -115,7 +115,7 @@ Target内で独自の業務ruleや認可ruleを再実装しません。
 Application validationとauthoring diagnosticを混同しません。
 
 - end-user向けvalidation feedback
-- authorization failure等の利用者向け状態
+- authorization failureなどの利用者向け状態
 - developer向けSource / Diagnostic
 
 は、それぞれ意味の異なるProjectionとして扱います。
@@ -159,7 +159,7 @@ RQ-024の最終contractは第二Target以降で比較して決めますが、第
 
 Gate Cを通過すると、Application上の意味、Driver実行結果、第一Targetとの差分が実資産として揃います。
 
-この時点で`ISSUE-000008`のBlockedを解除するか判断します。
+この時点で`ISSUE-000008`の保留を解除するか判断します。
 
 EditorやAIが何を表示・探索・確認すべきかを、抽象的な想像ではなく、実際のApplication / Driver / Target差から具体化できる状態にします。
 
@@ -190,6 +190,6 @@ Webで得られた共通候補とWeb固有差分を記録し、第二Targetを�
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/adr/0014-application-pattern-ownership.md`
+- `plan/adr/0017-application-pattern-ownership.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
