@@ -1,0 +1,95 @@
+name: temporary-patch-advanced-index-parser
+
+on:
+  push:
+    branches:
+      - work/advanced-index-authoring
+    paths:
+      - .github/workflows/_temporary_patch_advanced_index_parser.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/advanced-index-authoring
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Patch ParsePersistence
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("internal/syntax/parser.go")
+          source = path.read_text()
+          old = '''\t\tcase "index", "unique-index":
+          \tunique := t.Text == "unique-index"
+          \t_, _ = p.next()
+          \tname, err := p.expect(TokenIdent)
+          \tif err != nil {
+          \t\treturn m, err
+          \t}
+          \tif _, err := p.expectText("on"); err != nil {
+          \t\treturn m, err
+          \t}
+          \ta, err := p.expect(TokenIdent)
+          \tif err != nil {
+          \t\treturn m, err
+          \t}
+          \tattr, err := core.ParseCanonicalID(a.Text)
+          \tif err != nil {
+          \t\treturn m, p.errAt(a, err.Error())
+          \t}
+          \tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+          '''
+          new = '''\t\tcase "index", "unique-index":
+          \tunique := t.Text == "unique-index"
+          \t_, _ = p.next()
+          \tname, err := p.expect(TokenIdent)
+          \tif err != nil {
+          \t\treturn m, err
+          \t}
+          \tnext, err := p.peek()
+          \tif err != nil {
+          \t\treturn m, err
+          \t}
+          \tif next.Text == "on" {
+          \t\t_, _ = p.next()
+          \t\ta, err := p.expect(TokenIdent)
+          \t\tif err != nil {
+          \t\t\treturn m, err
+          \t\t}
+          \t\tattr, err := core.ParseCanonicalID(a.Text)
+          \t\tif err != nil {
+          \t\t\treturn m, p.errAt(a, err.Error())
+          \t\t}
+          \t\tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+          \t\tbreak
+          \t}
+          \tif next.Kind != TokenLBrace {
+          \t\treturn m, p.errAt(next, "expected on or advanced index block")
+          \t}
+          \tindex, err := p.parseAdvancedIndexBody(name, unique)
+          \tif err != nil {
+          \t\treturn m, err
+          \t}
+          \tm.Indexes = append(m.Indexes, index)
+          '''
+          if old not in source:
+              raise SystemExit("expected legacy index parser block was not found exactly")
+          path.write_text(source.replace(old, new, 1))
+      - name: Format parser
+        run: gofmt -w internal/syntax/parser.go
+      - name: Commit patch
+        run: |
+          git config user.name "tei-ci-patch"
+          git config user.email "actions@users.noreply.github.com"
+          git add internal/syntax/parser.go
+          git diff --cached --quiet && exit 0
+          git commit -m "ParsePersistenceへAdvanced Index block formを接続する"
+          git push origin HEAD:work/advanced-index-authoring
