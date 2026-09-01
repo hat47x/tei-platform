@@ -40,6 +40,13 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 			}
 			t.PrimaryKey = append(t.PrimaryKey, name)
 		}
+		for _, constraint := range m.UniqueConstraints {
+			uc, err := realizeUniqueConstraint(m, constraint, columnByAttribute)
+			if err != nil {
+				return physical.SchemaSnapshot{}, err
+			}
+			t.UniqueConstraints = append(t.UniqueConstraints, uc)
+		}
 		for _, idx := range m.Indexes {
 			pi := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: defaultIndexMethod(provider)}
 			for _, attr := range idx.Attributes {
@@ -61,6 +68,21 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 		out.Tables = append(out.Tables, t)
 	}
 	return out.Normalize(), nil
+}
+
+func realizeUniqueConstraint(source Mapping, constraint UniqueConstraintMapping, columns map[core.CanonicalID]string) (physical.UniqueConstraint, error) {
+	if len(constraint.Attributes) == 0 {
+		return physical.UniqueConstraint{}, fmt.Errorf("mapping %s unique constraint %s has no attributes", source.ID, constraint.Name)
+	}
+	out := physical.UniqueConstraint{Name: constraint.Name}
+	for _, attr := range constraint.Attributes {
+		name, ok := columns[attr]
+		if !ok {
+			return physical.UniqueConstraint{}, fmt.Errorf("mapping %s unique constraint %s attribute %s has no column mapping", source.ID, constraint.Name, attr)
+		}
+		out.Columns = append(out.Columns, name)
+	}
+	return out, nil
 }
 
 func realizeForeignKey(source Mapping, fk ForeignKeyMapping, mappings map[core.CanonicalID]Mapping, sourceColumns map[core.CanonicalID]string) (physical.ForeignKey, error) {

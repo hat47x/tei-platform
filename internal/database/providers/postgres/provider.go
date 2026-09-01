@@ -50,6 +50,10 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	if err != nil {
 		return physical.SchemaSnapshot{}, fmt.Errorf("postgres primary keys: %w", err)
 	}
+	uniqueConstraints, err := p.Catalog.UniqueConstraints(ctx)
+	if err != nil {
+		return physical.SchemaSnapshot{}, fmt.Errorf("postgres unique constraints: %w", err)
+	}
 	fks, err := p.Catalog.ForeignKeys(ctx)
 	if err != nil {
 		return physical.SchemaSnapshot{}, fmt.Errorf("postgres foreign keys: %w", err)
@@ -83,6 +87,12 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	for _, meta := range pks {
 		if i, ok := byName[key(meta.Schema, meta.Table)]; ok {
 			snapshot.Tables[i].PrimaryKey = append([]string(nil), meta.Columns...)
+		}
+	}
+	for _, meta := range uniqueConstraints {
+		if i, ok := byName[key(meta.Schema, meta.Table)]; ok {
+			t := &snapshot.Tables[i]
+			t.UniqueConstraints = append(t.UniqueConstraints, physical.UniqueConstraint{Name: meta.Name, Columns: append([]string(nil), meta.Columns...)})
 		}
 	}
 	for _, meta := range fks {

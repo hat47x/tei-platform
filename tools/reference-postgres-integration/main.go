@@ -26,6 +26,10 @@ type result struct {
 	BaselineDiff                    schemadiff.Diff `json:"baselineDiff"`
 	DriftDiff                       schemadiff.Diff `json:"driftDiff"`
 	ActualTables                    int             `json:"actualTables"`
+	UniqueConstraints               int             `json:"uniqueConstraints"`
+	UniqueConstraintDrift           bool            `json:"uniqueConstraintDriftDetected"`
+	UniqueBackingIndexExcluded      bool            `json:"uniqueBackingIndexExcluded"`
+	ExplicitUniqueIndexObserved     bool            `json:"explicitUniqueIndexObserved"`
 	ForeignKeys                     int             `json:"foreignKeys"`
 	ForeignKeyDrift                 bool            `json:"foreignKeyDriftDetected"`
 	ViewColumnsObserved             bool            `json:"viewColumnsObserved"`
@@ -98,8 +102,23 @@ DROP MATERIALIZED VIEW tei_reference.customer_names_mv;
 		raw, _ := json.MarshalIndent(baseline, "", "  ")
 		panic(fmt.Errorf("reference PostgreSQL baseline has schema drift:\n%s", raw))
 	}
+	if !hasUniqueConstraint(actual, "tei_reference.customers", "external_id") {
+		raw, _ := json.MarshalIndent(actual, "", "  ")
+		panic(fmt.Errorf("reference PostgreSQL did not expose customers UNIQUE constraint:\n%s", raw))
+	}
+	uniqueBackingIndexExcluded := !hasIndexNamed(actual, "tei_reference.customers", "customers_external_id_key")
+	if !uniqueBackingIndexExcluded {
+		raw, _ := json.MarshalIndent(actual, "", "  ")
+		panic(fmt.Errorf("UNIQUE constraint backing index was double-counted as a normal index:\n%s", raw))
+	}
+	explicitUniqueIndexObserved := hasIndex(actual, "tei_reference.customers", "customers_name_uidx", true, "name")
+	if !explicitUniqueIndexObserved {
+		raw, _ := json.MarshalIndent(actual, "", "  ")
+		panic(fmt.Errorf("explicit unique index was not preserved as an index:\n%s", raw))
+	}
 
 	if _, err := db.ExecContext(ctx, `
+ALTER TABLE tei_reference.customers DROP CONSTRAINT customers_external_id_key;
 ALTER TABLE tei_reference.orders ADD COLUMN drift_note text;
 ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
 `); err != nil {
@@ -121,9 +140,15 @@ ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
 		raw, _ := json.MarshalIndent(drift, "", "  ")
 		panic(fmt.Errorf("expected missing orders_customer_fk in diff:\n%s", raw))
 	}
+	if !hasAddUniqueConstraint(drift, "tei_reference.customers", "external_id") {
+		raw, _ := json.MarshalIndent(drift, "", "  ")
+		panic(fmt.Errorf("expected missing customers UNIQUE constraint in diff:\n%s", raw))
+	}
 
+	uniqueConstraints := 0
 	foreignKeys := 0
 	for _, table := range actual.Tables {
+		uniqueConstraints += len(table.UniqueConstraints)
 		foreignKeys += len(table.ForeignKeys)
 	}
 	out := result{
@@ -131,6 +156,10 @@ ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
 		BaselineDiff:                    baseline,
 		DriftDiff:                       drift,
 		ActualTables:                    len(actual.Tables),
+		UniqueConstraints:               uniqueConstraints,
+		UniqueConstraintDrift:           true,
+		UniqueBackingIndexExcluded:      uniqueBackingIndexExcluded,
+		ExplicitUniqueIndexObserved:     explicitUniqueIndexObserved,
 		ForeignKeys:                     foreignKeys,
 		ForeignKeyDrift:                 true,
 		ViewColumnsObserved:             viewColumnsObserved,
@@ -157,10 +186,19 @@ func referenceMappings() []persistence.Mapping {
 			Columns: []persistence.ColumnMapping{
 				{Attribute: core.MustCanonicalID("reference.customer.id"), Column: "id", Storage: persistence.StorageInt64, Nullability: persistence.Required},
 				{Attribute: core.MustCanonicalID("reference.customer.name"), Column: "name", Storage: persistence.StorageVarchar, Nullability: persistence.Required},
+				{Attribute: core.MustCanonicalID("reference.customer.external_id"), Column: "external_id", Storage: persistence.StorageVarchar, Nullability: persistence.Required},
 				{Attribute: core.MustCanonicalID("reference.customer.profile"), Column: "profile", Storage: persistence.StorageJSON, Nullability: persistence.Optional},
 			},
 			PrimaryKey: []core.CanonicalID{core.MustCanonicalID("reference.customer.id")},
-			Indexes:    []persistence.IndexMapping{{Name: "customers_name_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.name")}}},
+			UniqueConstraints: []persistence.UniqueConstraintMapping{{
+				Name:       "customers_external_id_key",
+				Attributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.external_id")},
+			}},
+			Indexes: []persistence.IndexMapping{{
+				Name:       "customers_name_uidx",
+				Attributes: []core.CanonicalID{core.MustCanonicalID("reference.customer.name")},
+				Unique:     true,
+			}},
 		},
 		{
 			ID:           core.MustCanonicalID("reference_postgres.orders"),
@@ -193,10 +231,12 @@ CREATE SCHEMA tei_reference;
 CREATE TABLE tei_reference.customers (
     id bigint NOT NULL,
     name varchar NOT NULL,
+    external_id varchar NOT NULL,
     profile jsonb,
-    CONSTRAINT customers_pkey PRIMARY KEY (id)
+    CONSTRAINT customers_pkey PRIMARY KEY (id),
+    CONSTRAINT customers_external_id_key UNIQUE (external_id)
 );
-CREATE INDEX customers_name_idx ON tei_reference.customers USING btree (name);
+CREATE UNIQUE INDEX customers_name_uidx ON tei_reference.customers USING btree (name);
 CREATE TABLE tei_reference.orders (
     id bigint NOT NULL,
     customer_id bigint NOT NULL,
@@ -229,9 +269,57 @@ func hasColumns(snapshot physical.SchemaSnapshot, table string, kind physical.Ta
 	return true
 }
 
+func hasUniqueConstraint(snapshot physical.SchemaSnapshot, table string, columns ...string) bool {
+	t, ok := snapshot.Table(table)
+	if !ok {
+		return false
+	}
+	for _, constraint := range t.UniqueConstraints {
+		if sameStrings(constraint.Columns, columns) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasIndexNamed(snapshot physical.SchemaSnapshot, table, name string) bool {
+	t, ok := snapshot.Table(table)
+	if !ok {
+		return false
+	}
+	for _, index := range t.Indexes {
+		if index.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasIndex(snapshot physical.SchemaSnapshot, table, name string, unique bool, columns ...string) bool {
+	t, ok := snapshot.Table(table)
+	if !ok {
+		return false
+	}
+	for _, index := range t.Indexes {
+		if index.Name == name && index.Unique == unique && sameStrings(index.Columns, columns) {
+			return true
+		}
+	}
+	return false
+}
+
 func hasDropColumn(diff schemadiff.Diff, table, column string) bool {
 	for _, c := range diff.Changes {
 		if c.Kind == schemadiff.DropColumn && c.Table == table && c.BeforeColumn != nil && c.BeforeColumn.Name == column {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAddUniqueConstraint(diff schemadiff.Diff, table string, columns ...string) bool {
+	for _, c := range diff.Changes {
+		if c.Kind == schemadiff.AddUniqueConstraint && c.Table == table && c.UniqueConstraint != nil && sameStrings(c.UniqueConstraint.Columns, columns) {
 			return true
 		}
 	}
@@ -249,6 +337,18 @@ func hasAddForeignKey(diff schemadiff.Diff, table, column, refSchema, refTable, 
 		}
 	}
 	return false
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func containsConnectionData(actual any, diff schemadiff.Diff, dsn string) bool {

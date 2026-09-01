@@ -26,13 +26,14 @@ const (
 )
 
 type Table struct {
-	Schema      string       `json:"schema,omitempty"`
-	Name        string       `json:"name"`
-	Kind        TableKind    `json:"kind,omitempty"`
-	Columns     []Column     `json:"columns,omitempty"`
-	PrimaryKey  []string     `json:"primaryKey,omitempty"`
-	ForeignKeys []ForeignKey `json:"foreignKeys,omitempty"`
-	Indexes     []Index      `json:"indexes,omitempty"`
+	Schema            string             `json:"schema,omitempty"`
+	Name              string             `json:"name"`
+	Kind              TableKind          `json:"kind,omitempty"`
+	Columns           []Column           `json:"columns,omitempty"`
+	PrimaryKey        []string           `json:"primaryKey,omitempty"`
+	UniqueConstraints []UniqueConstraint `json:"uniqueConstraints,omitempty"`
+	ForeignKeys       []ForeignKey       `json:"foreignKeys,omitempty"`
+	Indexes           []Index            `json:"indexes,omitempty"`
 }
 
 type Column struct {
@@ -41,6 +42,14 @@ type Column struct {
 	Nullable     bool   `json:"nullable"`
 	Default      string `json:"default,omitempty"`
 	Ordinal      int    `json:"ordinal,omitempty"`
+}
+
+// UniqueConstraint records relational uniqueness intent separately from the
+// index that a provider may use to implement it. Name is retained for trace and
+// future DDL, while structural comparison uses the ordered Columns.
+type UniqueConstraint struct {
+	Name    string   `json:"name,omitempty"`
+	Columns []string `json:"columns"`
 }
 
 type ForeignKey struct {
@@ -116,6 +125,15 @@ func (s SchemaSnapshot) Normalize() SchemaSnapshot {
 			return normalizeName(t.Columns[i].Name) < normalizeName(t.Columns[j].Name)
 		})
 		t.PrimaryKey = append([]string(nil), t.PrimaryKey...)
+		t.UniqueConstraints = append([]UniqueConstraint(nil), t.UniqueConstraints...)
+		sort.Slice(t.UniqueConstraints, func(i, j int) bool {
+			ki := uniqueConstraintOrderKey(t.UniqueConstraints[i])
+			kj := uniqueConstraintOrderKey(t.UniqueConstraints[j])
+			if ki != kj {
+				return ki < kj
+			}
+			return normalizeName(t.UniqueConstraints[i].Name) < normalizeName(t.UniqueConstraints[j].Name)
+		})
 		t.ForeignKeys = append([]ForeignKey(nil), t.ForeignKeys...)
 		sort.Slice(t.ForeignKeys, func(i, j int) bool {
 			ki := foreignKeyOrderKey(t.ForeignKeys[i])
@@ -129,6 +147,14 @@ func (s SchemaSnapshot) Normalize() SchemaSnapshot {
 		sort.Slice(t.Indexes, func(i, j int) bool { return t.Indexes[i].Name < t.Indexes[j].Name })
 	}
 	return out
+}
+
+func uniqueConstraintOrderKey(uc UniqueConstraint) string {
+	parts := make([]string, len(uc.Columns))
+	for i, column := range uc.Columns {
+		parts[i] = normalizeName(column)
+	}
+	return strings.Join(parts, "\x1f")
 }
 
 func foreignKeyOrderKey(fk ForeignKey) string {
