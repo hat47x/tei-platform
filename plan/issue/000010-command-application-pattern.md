@@ -1,7 +1,8 @@
 # ISSUE-000010: `sales.order.submit`をcommand Application Patternとして実証する
 
-- 状態: Ready
+- 状態: In Progress
 - GitHub Issue: #110
+- 実装PR: #114
 - 上位Issue: `ISSUE-000005` / GitHub Issue #67
 - 関連設計: [`APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
 - Capability結果境界: [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)
@@ -170,6 +171,7 @@ Capability呼び出しによって返されたBusiness Resultと、その後に�
 - GitHub Issue #77: Capabilityの業務Outcomeと実行エラー
 - GitHub Issue #104: `record`実証
 - GitHub Issue #107: `reference`実証
+- GitHub PR #114: `command`最小契約の実装
 - ADR-0017: Application Pattern ownership
 - ADR-0018: Application Pattern authoring source
 - ADR-0020: Capability Business Outcome boundary
