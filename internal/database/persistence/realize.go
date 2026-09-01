@@ -126,7 +126,7 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 		}
 	} else {
 		for position, key := range idx.Keys {
-			physicalKey, err := realizeIndexKey(source, idx.Name, position, key, columns, provider)
+			physicalKey, err := realizeIndexKey(source, idx.Name, position, key, columns, provider, method)
 			if err != nil {
 				return physical.Index{}, err
 			}
@@ -151,7 +151,7 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 	return out, nil
 }
 
-func realizeIndexKey(source Mapping, indexName string, position int, key IndexKeyMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider) (physical.IndexKey, error) {
+func realizeIndexKey(source Mapping, indexName string, position int, key IndexKeyMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider, method string) (physical.IndexKey, error) {
 	hasAttribute := key.Attribute != ""
 	hasExpression := key.Expression != nil
 	if hasAttribute == hasExpression {
@@ -184,7 +184,7 @@ func realizeIndexKey(source Mapping, indexName string, position int, key IndexKe
 			return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d attribute %s has no column mapping", source.ID, indexName, position+1, key.Attribute)
 		}
 		out.Column = column
-		return out, nil
+		return normalizeDesiredIndexKey(out, provider, method), nil
 	}
 
 	expression, err := realizeProviderExpression(source, indexName, fmt.Sprintf("key %d expression", position+1), *key.Expression, provider)
@@ -192,7 +192,31 @@ func realizeIndexKey(source Mapping, indexName string, position int, key IndexKe
 		return physical.IndexKey{}, err
 	}
 	out.Expression = expression
-	return out, nil
+	return normalizeDesiredIndexKey(out, provider, method), nil
+}
+
+// normalizeDesiredIndexKey mirrors provider-side Actual normalization for
+// semantics whose effective default can be resolved without a live database.
+// Provider/version-dependent identifier canonicalization remains a separate
+// concern; this function only collapses deterministic PostgreSQL defaults.
+func normalizeDesiredIndexKey(key physical.IndexKey, provider environment.DatabaseProvider, method string) physical.IndexKey {
+	if provider != environment.ProviderPostgres || !strings.EqualFold(strings.TrimSpace(method), "btree") {
+		return key
+	}
+
+	desc := key.Order == physical.IndexOrderDesc
+	if key.Order == physical.IndexOrderAsc {
+		key.Order = physical.IndexOrderDefault
+	}
+	if !desc && key.NullsOrder == physical.IndexNullsOrderLast {
+		key.NullsOrder = physical.IndexNullsOrderDefault
+	} else if desc && key.NullsOrder == physical.IndexNullsOrderFirst {
+		key.NullsOrder = physical.IndexNullsOrderDefault
+	}
+	if strings.EqualFold(strings.TrimSpace(key.Collation), "pg_catalog.default") {
+		key.Collation = ""
+	}
+	return key
 }
 
 func realizeProviderExpression(source Mapping, indexName, field string, expression ProviderExpressionMapping, provider environment.DatabaseProvider) (*physical.ProviderExpression, error) {
