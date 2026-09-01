@@ -83,13 +83,32 @@ const (
 	UniqueNullTreatmentNotDistinct UniqueNullTreatment = "not-distinct"
 )
 
+type ProviderExpressionRepresentation string
+
+const (
+	ProviderExpressionAuthored           ProviderExpressionRepresentation = "authored"
+	ProviderExpressionProviderNormalized ProviderExpressionRepresentation = "provider-normalized"
+)
+
+// ExpressionNormalization identifies the provider-owned normalization
+// authority that produced a provider-normalized expression. ProviderVersion is
+// optional until a provider can supply a stable version scope offline or from
+// introspection without making Workspace loading depend on a live connection.
+type ExpressionNormalization struct {
+	Authority       string `json:"authority"`
+	ProviderVersion string `json:"providerVersion,omitempty"`
+}
+
 // ProviderExpression keeps database-owned SQL semantics outside the Core SQL
-// model. Source must already be normalized by the provider adapter. Provider
-// and Dialect prevent equal text from being assumed equivalent across DBMSs.
+// model. Representation distinguishes authoritative author text from text that
+// a provider reconstructed from its internal representation. Provider and
+// Dialect prevent equal text from being assumed equivalent across DBMSs.
 type ProviderExpression struct {
-	Provider string `json:"provider"`
-	Dialect  string `json:"dialect,omitempty"`
-	Source   string `json:"source"`
+	Provider       string                           `json:"provider"`
+	Dialect        string                           `json:"dialect,omitempty"`
+	Representation ProviderExpressionRepresentation `json:"representation,omitempty"`
+	Source         string                           `json:"source"`
+	Normalization  *ExpressionNormalization         `json:"normalization,omitempty"`
 }
 
 // IndexKey is one ordered search key. Exactly one of Column or Expression must

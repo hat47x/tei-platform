@@ -234,7 +234,12 @@ func realizeProviderExpression(source Mapping, indexName, field string, expressi
 	if text == "" {
 		return nil, fmt.Errorf("mapping %s index %s %s source is empty", source.ID, indexName, field)
 	}
-	return &physical.ProviderExpression{Provider: string(expression.Provider), Dialect: dialect, Source: text}, nil
+	return &physical.ProviderExpression{
+		Provider:       string(expression.Provider),
+		Dialect:        dialect,
+		Representation: physical.ProviderExpressionAuthored,
+		Source:         text,
+	}, nil
 }
 
 func realizeForeignKey(source Mapping, fk ForeignKeyMapping, mappings map[core.CanonicalID]Mapping, sourceColumns map[core.CanonicalID]string) (physical.ForeignKey, error) {
