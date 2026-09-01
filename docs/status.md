@@ -99,7 +99,7 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - Kubernetes / Vault / Cloud provider integrations
 - generic OS sandbox implementation
 - production durability / HA guarantee
-- cryptographic signing ofすべてのDurable artifact
+- すべてのDurable artifactに対する暗号学的署名
 - API compatibility guarantee
 - Go source semantic analysis / refactoring engine
 - AIによるauthoritative sourceの無確認自動編集
