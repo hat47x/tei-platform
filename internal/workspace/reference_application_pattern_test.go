@@ -30,8 +30,8 @@ func TestReferenceBrowsePatternReusesExistingQueryDatasource(t *testing.T) {
 	if app.ID != "order_entry" {
 		t.Fatalf("application id=%q", app.ID)
 	}
-	if len(app.Patterns) != 4 {
-		t.Fatalf("browse、record、reference、commandが共存していません: %#v", app.Patterns)
+	if len(app.Patterns) != 5 {
+		t.Fatalf("browse、record、reference、command、header-detailが共存していません: %#v", app.Patterns)
 	}
 	pattern := applicationPatternByID(t, app.Patterns, patternID)
 	if pattern.Kind != application.PatternBrowse || pattern.Data != "sales.order" || pattern.Query != patternID {
