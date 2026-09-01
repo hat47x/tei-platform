@@ -5,6 +5,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
+	"tei/internal/semantic"
 	"tei/internal/subject"
 )
 
@@ -14,8 +15,9 @@ type applicationPatternQueryRef struct {
 }
 
 type applicationPatternRelationRef struct {
-	Source core.CanonicalID
-	Target core.CanonicalID
+	Source      core.CanonicalID
+	Target      core.CanonicalID
+	Cardinality semantic.Cardinality
 }
 
 // ValidateApplicationPatternsは、Application Patternが参照する既存資産との整合性を検査する。
@@ -43,8 +45,9 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 					continue
 				}
 				semanticRelations[relation.ID] = applicationPatternRelationRef{
-					Source: data.ID,
-					Target: relation.Target,
+					Source:      data.ID,
+					Target:      relation.Target,
+					Cardinality: relation.Cardinality,
 				}
 			}
 		}
@@ -109,6 +112,8 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
 				out = append(out, validateCommandPattern(pattern, patternSubject, semanticCapabilities)...)
+			case application.PatternHeaderDetail:
+				out = append(out, validateHeaderDetailPattern(pattern, patternSubject, semanticRelations)...)
 			}
 		}
 	}
@@ -411,6 +416,75 @@ func validateCommandPattern(
 			patternSubject,
 			"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
 			"command pattern %s does not accept a datasource because implementation resources remain outside the Application Pattern contract",
+			pattern.ID,
+		))
+	}
+
+	return out
+}
+
+func validateHeaderDetailPattern(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+) []Diagnostic {
+	var out []Diagnostic
+
+	if pattern.Relation == "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_REQUIRED",
+			"header-detail pattern %s requires a semantic relation",
+			pattern.ID,
+		))
+	} else if relation, ok := semanticRelations[pattern.Relation]; !ok {
+		out = append(out, errFor(
+			patternSubject,
+			"UNKNOWN_APPLICATION_PATTERN_RELATION",
+			"header-detail pattern %s refers to unknown semantic relation %s",
+			pattern.ID,
+			pattern.Relation,
+		))
+	} else if relation.Cardinality != semantic.CardinalityMany {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_NOT_MANY",
+			"header-detail pattern %s requires a many relation, but %s has cardinality %s",
+			pattern.ID,
+			pattern.Relation,
+			relation.Cardinality,
+		))
+	}
+
+	if pattern.Data != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATA_NOT_ALLOWED",
+			"header-detail pattern %s does not accept semantic data because the relation already identifies its header and detail data",
+			pattern.ID,
+		))
+	}
+	if pattern.Query != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+			"header-detail pattern %s does not accept a query",
+			pattern.ID,
+		))
+	}
+	if pattern.Capability != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_CAPABILITY_NOT_ALLOWED",
+			"header-detail pattern %s does not accept a capability",
+			pattern.ID,
+		))
+	}
+	if pattern.Datasource != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
+			"header-detail pattern %s does not accept a datasource because data access remains outside this Application Pattern contract",
 			pattern.ID,
 		))
 	}
