@@ -112,12 +112,12 @@ type ProviderExpressionMapping struct {
 // Expression are mutually exclusive. Attribute keys are resolved through this
 // Mapping's ColumnMapping; expression keys remain provider-native.
 type IndexKeyMapping struct {
-	Attribute     core.CanonicalID            `json:"attribute,omitempty"`
-	Expression    *ProviderExpressionMapping  `json:"expression,omitempty"`
-	Collation     string                      `json:"collation,omitempty"`
-	OperatorClass string                      `json:"operatorClass,omitempty"`
-	Order         IndexOrder                  `json:"order,omitempty"`
-	NullsOrder    IndexNullsOrder             `json:"nullsOrder,omitempty"`
+	Attribute     core.CanonicalID           `json:"attribute,omitempty"`
+	Expression    *ProviderExpressionMapping `json:"expression,omitempty"`
+	Collation     string                     `json:"collation,omitempty"`
+	OperatorClass string                     `json:"operatorClass,omitempty"`
+	Order         IndexOrder                 `json:"order,omitempty"`
+	NullsOrder    IndexNullsOrder            `json:"nullsOrder,omitempty"`
 }
 
 // IndexMapping retains Attributes for the existing simple authoring syntax and
