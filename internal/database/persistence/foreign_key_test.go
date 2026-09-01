@@ -6,12 +6,12 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/persistence"
-	"tei/internal/environment"
+	"tei/internal/database/providers/postgres"
 )
 
 func TestRealizeDesiredForeignKeyByMappingAndAttributeIdentity(t *testing.T) {
 	mappings := foreignKeyMappings()
-	snapshot, err := persistence.RealizeDesired(mappings, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired(mappings, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestRealizeDesiredForeignKeyByMappingAndAttributeIdentity(t *testing.T) {
 func TestRealizeDesiredForeignKeyRejectsMismatchedAttributeCounts(t *testing.T) {
 	mappings := foreignKeyMappings()
 	mappings[1].ForeignKeys[0].ReferencedAttributes = nil
-	_, err := persistence.RealizeDesired(mappings, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired(mappings, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "source/target attribute count mismatch") {
 		t.Fatalf("error=%v", err)
 	}
@@ -40,7 +40,7 @@ func TestRealizeDesiredForeignKeyRejectsMismatchedAttributeCounts(t *testing.T) 
 func TestRealizeDesiredForeignKeyRejectsCrossDatabaseReference(t *testing.T) {
 	mappings := foreignKeyMappings()
 	mappings[0].Database = core.MustCanonicalID("master_data")
-	_, err := persistence.RealizeDesired(mappings, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired(mappings, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "crosses database boundary") {
 		t.Fatalf("error=%v", err)
 	}
@@ -49,7 +49,7 @@ func TestRealizeDesiredForeignKeyRejectsCrossDatabaseReference(t *testing.T) {
 func TestRealizeDesiredForeignKeyRejectsUnknownTargetAttribute(t *testing.T) {
 	mappings := foreignKeyMappings()
 	mappings[1].ForeignKeys[0].ReferencedAttributes[0] = core.MustCanonicalID("sales.customer.missing")
-	_, err := persistence.RealizeDesired(mappings, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired(mappings, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "has no column mapping") {
 		t.Fatalf("error=%v", err)
 	}
