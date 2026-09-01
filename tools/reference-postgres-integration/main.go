@@ -301,11 +301,23 @@ func hasIndex(snapshot physical.SchemaSnapshot, table, name string, unique bool,
 		return false
 	}
 	for _, index := range t.Indexes {
-		if index.Name == name && index.Unique == unique && sameStrings(index.Columns, columns) {
+		indexColumns, ok := simpleIndexColumns(index)
+		if ok && index.Name == name && index.Unique == unique && sameStrings(indexColumns, columns) {
 			return true
 		}
 	}
 	return false
+}
+
+func simpleIndexColumns(index physical.Index) ([]string, bool) {
+	columns := make([]string, 0, len(index.Keys))
+	for _, key := range index.Keys {
+		if key.Expression != nil || key.Column == "" {
+			return nil, false
+		}
+		columns = append(columns, key.Column)
+	}
+	return columns, true
 }
 
 func hasDropColumn(diff schemadiff.Diff, table, column string) bool {
