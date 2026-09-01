@@ -32,7 +32,8 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0007: actual database driverの組み立てをProvider Coreから分離する](0007-database-driver-assembly.md)
 - [ADR-0008: Desired Foreign KeyをPersistence Mappingで明示し、構造で差分比較する](0008-persistence-foreign-key-identity.md)
 - [ADR-0009: UNIQUE constraintとunique indexを別のphysical intentとして扱う](0009-unique-constraint-and-unique-index.md)
+- [ADR-0010: Advanced Indexを構造的intentとactual lifecycle stateに分ける](0010-advanced-index-semantics.md)
 
 ## 関連する進行管理
 
-M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で完了し、M0.27のForeign Key realization / driftはIssue #37とADR-0008で完了しました。PostgreSQL catalog normalization監査はIssue #38で完了し、UNIQUE constraintとunique indexの意味境界はIssue #41とADR-0009で整理します。
+M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で完了し、M0.27のForeign Key realization / driftはIssue #37とADR-0008で完了しました。PostgreSQL catalog normalization監査はIssue #38で完了し、M0.28のUNIQUE constraint / unique index境界と実装はIssue #41、#46、ADR-0009で整理済みです。Advanced Index semanticsはIssue #42とADR-0010で設計し、Actual / DiffはIssue #50、Desired authoringはIssue #51へ分割します。
