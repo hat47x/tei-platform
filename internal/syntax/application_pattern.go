@@ -181,6 +181,22 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		if out.Datasource != "" {
 			return out, fmt.Errorf("command pattern %s does not accept datasource", out.ID)
 		}
+	case application.PatternHeaderDetail:
+		if out.Relation == "" {
+			return out, fmt.Errorf("header-detail pattern %s requires relation", out.ID)
+		}
+		if out.Data != "" {
+			return out, fmt.Errorf("header-detail pattern %s does not accept data", out.ID)
+		}
+		if out.Query != "" {
+			return out, fmt.Errorf("header-detail pattern %s does not accept query", out.ID)
+		}
+		if out.Capability != "" {
+			return out, fmt.Errorf("header-detail pattern %s does not accept capability", out.ID)
+		}
+		if out.Datasource != "" {
+			return out, fmt.Errorf("header-detail pattern %s does not accept datasource", out.ID)
+		}
 	}
 	if err := p.expectEOF(); err != nil {
 		return out, err

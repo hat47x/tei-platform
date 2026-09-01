@@ -17,14 +17,19 @@ type DatabaseRequirement struct {
 type PatternKind string
 
 const (
-	PatternBrowse    PatternKind = "browse"
-	PatternRecord    PatternKind = "record"
-	PatternReference PatternKind = "reference"
-	PatternCommand   PatternKind = "command"
+	PatternBrowse       PatternKind = "browse"
+	PatternRecord       PatternKind = "record"
+	PatternReference    PatternKind = "reference"
+	PatternCommand      PatternKind = "command"
+	PatternHeaderDetail PatternKind = "header-detail"
 )
 
 func (k PatternKind) Valid() bool {
-	return k == PatternBrowse || k == PatternRecord || k == PatternReference || k == PatternCommand
+	return k == PatternBrowse ||
+		k == PatternRecord ||
+		k == PatternReference ||
+		k == PatternCommand ||
+		k == PatternHeaderDetail
 }
 
 // PatternにはApplication上の意図だけを保持する。
