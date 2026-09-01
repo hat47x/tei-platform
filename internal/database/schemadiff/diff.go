@@ -430,6 +430,14 @@ func compareProviderExpression(table, indexName, fieldPath string, desired, actu
 	if strings.TrimSpace(desired.Source) == strings.TrimSpace(actual.Source) {
 		return indexStructureComparison{status: indexStructureEqual}
 	}
+
+	if desired.Representation == physical.ProviderExpressionAuthored && actual.Representation == physical.ProviderExpressionAuthored {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+	if sameProviderNormalizationContract(desired, actual) {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+
 	desiredCopy, actualCopy := *desired, *actual
 	return indexStructureComparison{
 		status: indexStructureUnresolved,
@@ -444,4 +452,21 @@ func compareProviderExpression(table, indexName, fieldPath string, desired, actu
 			ActualExpression:  &actualCopy,
 		}},
 	}
+}
+
+func sameProviderNormalizationContract(desired, actual *physical.ProviderExpression) bool {
+	if desired.Representation != physical.ProviderExpressionProviderNormalized || actual.Representation != physical.ProviderExpressionProviderNormalized {
+		return false
+	}
+	if desired.Normalization == nil || actual.Normalization == nil {
+		return false
+	}
+	desiredAuthority := norm(desired.Normalization.Authority)
+	actualAuthority := norm(actual.Normalization.Authority)
+	if desiredAuthority == "" || desiredAuthority != actualAuthority {
+		return false
+	}
+	desiredVersion := strings.TrimSpace(desired.Normalization.ProviderVersion)
+	actualVersion := strings.TrimSpace(actual.Normalization.ProviderVersion)
+	return desiredVersion != "" && desiredVersion == actualVersion
 }
