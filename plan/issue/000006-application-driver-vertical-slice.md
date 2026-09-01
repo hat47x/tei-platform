@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - GitHub Issue: #69
-- 依存: Gate A
+- 依存: Gate A、`ISSUE-000009`で定めるCapability結果境界
 
 ## 背景
 
@@ -11,6 +11,8 @@ Product Requirements Gap Auditでは、RQ-012「Driverを設計検証用の実�
 現行RepositoryにはDeployment executor、process Plugin、runtime reattachなどの実行可能Referenceがありますが、それらはApplication設計を開発中に動かして確かめるDriverとは役割が異なります。
 
 Driverは`ISSUE-000005`のApplication Patternだけを受け取って先行実装するのではなく、`ISSUE-000003`のAuthentication / Authorization境界も含め、Gate A「Application上の意味をDriverへ渡せる」を確認してから主実装へ進みます。
+
+また、既存認証Compatibilityの設計から、Capabilityの呼び出し結果について「業務上の成立・不成立」と「実行そのものの失敗」を分ける必要があることが分かりました。この共通境界は`ISSUE-000009` / GitHub Issue #77で扱います。Driverはこの区別を失わずにScenarioへ反映できる必要があります。
 
 ## 関連するProduct Requirement
 
@@ -38,6 +40,8 @@ Driver Scenario
        ↓
 Query / Load / Edit / Validate / Authorize / Command
        ↓
+業務結果 / 実行エラー
+       ↓
 Observed Result / Evidence
 ```
 
@@ -53,10 +57,14 @@ Driverの主実装へ進む前に、少なくとも次がApplication側から説
 - header-detailの関係
 - Validation
 - commandとして呼ぶCapability
-- AuthorizationのCapabilityと対象action
+- Authentication / Authorization Capabilityと対象action
 - read / read-write Datasource境界
+- Capability Bindingのidentity
+- Capabilityの業務結果と実行エラーを区別する最小契約
 
 これらをWeb画面やDriver専用設定から初めて知る状態では、着手条件を満たしません。
+
+Application Pattern側の詳細は`plan/APPLICATION_PATTERN_V1_DESIGN.md`、既存認証側の詳細は`plan/LEGACY_AUTH_V1_DESIGN.md`を参照します。
 
 ## 最小Scenario
 
@@ -69,9 +77,33 @@ Driverの主実装へ進む前に、少なくとも次がApplication側から説
 5. Validationを実行する
 6. Authorizationを評価する
 7. commandで`sales.order.submit`を呼び出す
-8. 結果として得られた状態を観測する
+8. commandが返した業務結果と実行エラーを区別する
+9. 必要な場合は、結果として得られた外部状態を観測する
 
-ValidationまたはAuthorizationが失敗した場合はcommandへ進みません。
+ValidationまたはAuthorizationが業務上成立しなかった場合は、commandへ進みません。これはDriverの障害ではなく、Scenarioが正常に返し得る結果として扱います。
+
+一方、Database接続失敗やCapability adapterの異常など、実行そのものが成立しなかった場合は、業務上の拒否とは別の実行エラーとして扱います。
+
+## 業務結果と実行エラー
+
+`ISSUE-000009`で定める境界をDriverへそのまま渡します。
+
+概念上、少なくとも次を区別できる必要があります。
+
+```text
+Business Outcome
+  ├─ 成立
+  └─ 業務上の不成立・拒否
+
+Execution Error
+  └─ 呼び出しそのものを完了できなかった状態
+```
+
+Authenticationであればcredential不一致やaccount lockは業務上の拒否であり、認証Databaseへの接続失敗とは意味が異なります。
+
+`sales.order.submit`でも同じ区別が不自然にならないかを確認します。たとえば「現在の状態では確定できない」という業務結果と、実装側の接続障害を同じerrorへ畳みません。
+
+Driverは、この区別をTarget向けのHTTP statusやGUI messageへ先回りして変換しません。Target固有表現は後続Projectionの責務です。
 
 ## 実行境界
 
@@ -86,6 +118,7 @@ DriverはApplication上の意味を直接Goのif文へ埋め込む場所には�
 - Validation
 - Authentication / Authorization Capability
 - Command
+- Capability invocation result
 
 一方、初期Driverのためだけにproduction-grade workflow engineやdistributed schedulerを作りません。
 
@@ -97,13 +130,19 @@ Driverの都合で一つのin-memory Databaseへ意味上統合しません。
 
 actual PostgreSQL integrationを利用する場合も、Driver CoreがPostgreSQL固有APIへ依存しない境界を保ちます。
 
-既存認証Compatibilityが第三Databaseを利用する場合も、DriverはAuthentication / Authorization Capabilityを通して利用し、legacy schemaへ直接依存しません。
+既存認証Compatibilityが別Databaseを利用する場合も、DriverはAuthentication / Authorization Capabilityを通して利用し、legacy schemaへ直接依存しません。
 
 ## CommandとObservation
 
-`sales.order.submit`では、commandを呼び出したことと結果として得られた状態を必要に応じて分けます。
+Capability invocationの結果を区別できるようになっても、RQ-018のCommand / Observation境界は置き換えません。
 
-第一段階でDeploymentほど重いDurable Runを要求する必要はありませんが、RQ-018の原則を崩さず、commandのreturn valueだけを外部世界の最終事実とみなさない設計を選びます。
+`sales.order.submit`では、少なくとも次を別の問いとして扱います。
+
+1. Capability呼び出し自体を実行できたか
+2. 業務上、要求が成立したか
+3. 外部世界で期待した状態が実際に成立したか
+
+第一段階でDeploymentほど重いDurable Runを要求する必要はありませんが、commandのreturn valueだけを外部世界の最終事実とみなさない設計を維持します。
 
 ## ScenarioとEvidence
 
@@ -118,10 +157,12 @@ Driver Scenarioは、別の開発者や生成AIが同じ設計を再現できる
 - validation result
 - authorization result
 - invoked Capability
+- business outcome
+- execution errorの有無とcategory
 - command acknowledgement
 - observed result
 
-ただし、Scenario logをCanonicalの正本にはしません。
+ただし、Scenario logをCanonicalの正本にはしません。secretやcredential materialを通常Evidenceへ保存しない原則も維持します。
 
 ## CLI / API
 
@@ -135,7 +176,7 @@ tei driver run ...
 
 実際のcommand名は既存CLI構成を監査してから決めます。
 
-CLI構文を先に固定することより、Driver CoreがApplication上の意味を正しく実行できることを優先します。
+CLI構文を先に固定することより、Driver CoreがApplication上の意味と結果境界を正しく扱えることを優先します。
 
 ## Gate Bへ進む条件
 
@@ -148,9 +189,12 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 - Capability Bindingを明示する
 - legacy authentication schemaへDriverが直接依存しない
 - validation failureではcommandへ進まない
-- authorization failureではcommandへ進まない
+- authorization denialではcommandへ進まない
+- 業務上の不成立をDriver障害として扱わない
+- execution errorを業務上のresult codeへ押し込まない
 - command acknowledgementとobserved resultを混同しない
 - Driver固有状態をCanonical Worldへ逆流させない
+- secretをScenario Evidenceへ混入させない
 - 同じApplication上の意味を第一Web Targetへ渡せる
 - Reference ScenarioをRepositoryだけから再現できる
 
@@ -164,17 +208,24 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 - full transaction coordinator
 - external orchestratorの内製
 - Web実装を成立させるためのTarget固有処理
+- HTTP statusやGUI messageをDriver Coreの意味として固定すること
 
 ## 完了条件
 
-UIを用意しなくても、`order_entry`のbrowse → record → reference → header-detail → validation → authorization → command → observationという業務シナリオを、一つのDriver ScenarioとしてRepository内で再現できること。
+UIを用意しなくても、`order_entry`のbrowse → record → reference → header-detail → validation → authorization → command → observationという業務シナリオを、一つのDriver ScenarioとしてRepository内で再現できることを完了条件とします。
 
-その結果を、後続の第一Web TargetとEditorが同じApplication上の意味を裏付けるEvidenceとして利用でき、Gate Bを評価できる状態にします。
+その過程で、業務上の成立・不成立、実行エラー、command acknowledgement、observed resultを必要に応じて区別できることもEvidenceとして残します。
+
+後続の第一Web TargetとEditorが、同じApplication上の意味と同じ結果境界を利用でき、Gate Bを評価できる状態にします。
 
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
+- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
+- `plan/adr/0019-authentication-capability-boundary.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000007-first-web-target-projection.md`
+- `plan/issue/000009-capability-outcome-and-execution-error.md`
