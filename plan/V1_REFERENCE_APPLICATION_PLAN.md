@@ -1,4 +1,4 @@
-# TEI v1 Reference Application Plan
+# TEI v1 Reference Application 実証計画
 
 ## 目的
 
@@ -67,7 +67,7 @@ v1では、新しい理想化されたサンプルを別に作らず、既存の
 
 これらは画面テンプレートの一覧ではなく、Targetが変わっても残る可能性があるApplication上の意図として検証します。
 
-Patternの所有境界は[ADR-0014](adr/0014-application-pattern-ownership.md)に定めます。
+Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)に定めます。
 
 ## Referenceへ追加する意味
 
@@ -333,7 +333,7 @@ Gate Cを通過すると、Application上の意味、Driver実行結果、第一
 
 この時点で初めて、EditorやAI支援が何を見せ、何を探索し、何を確認すべきかを具体化できます。
 
-`ISSUE-000008`のBlockedを解除する判断は、このGateを基準に行います。
+`ISSUE-000008`の保留を解除する判断は、このGateを基準に行います。
 
 ## Stage 4 — Editor / AI支援
 
@@ -363,7 +363,7 @@ Editor内部状態を第二の正本にはしません。
 - 既存Patternの探索
 - 既存Capabilityの探索
 - 既回答事項の再質問抑止
-- 1:N、履歴、状態遷移、認証等の典型論点の確認提案
+- 1:N、履歴、状態遷移、認証などの典型論点の確認提案
 - AI提案と採用済みDecisionの分離
 - Decision変更履歴
 - 提案の無視・抑制・無効化
@@ -380,7 +380,7 @@ Editor / AIが完成していること自体をGate Dの条件にはしません
 
 第二Targetは、単なる対応Target数の増加ではなく、Target-neutral境界の圧力試験です。
 
-選定時には、Webとの差が十分に表れるTargetを優先します。Desktop、API、MCP、VUI等の候補から、その時点で最も設計上の差を引き出せるものを選びます。
+選定時には、Webとの差が十分に表れるTargetを優先します。Desktop、API、MCP、VUIなどの候補から、その時点で最も設計上の差を引き出せるものを選びます。
 
 第二TargetのためにCore変更が必要になった場合は、それ自体を失敗とはみなしません。変更理由を分析し、第一Web Targetの都合を誤って共通意味へ持ち上げていなかったかを確認します。
 
@@ -440,7 +440,7 @@ EditorとAI支援の完成、第二Target、production HAはv1の前提条件に
 - `plan/MASTER_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
-- `plan/adr/0014-application-pattern-ownership.md`
+- `plan/adr/0017-application-pattern-ownership.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
