@@ -186,24 +186,39 @@ ORDER BY src_ns.nspname, src.relname, con.conname, pos.i`)
 
 func (r SQLCatalogReader) Indexes(ctx context.Context) ([]IndexMeta, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-SELECT ns.nspname, tbl.relname, idx.relname, ind.indisunique,
-       am.amname,
-       pg_catalog.pg_get_indexdef(ind.indexrelid, pos.i, true)
+SELECT ns.nspname, tbl.relname, idx.relname, ind.indisunique, am.amname,
+       pos.ord, ind.indnkeyatts,
+       COALESCE(att.attname, ''),
+       CASE WHEN pos.ord <= ind.indnkeyatts AND pos.attnum = 0
+            THEN pg_catalog.pg_get_indexdef(ind.indexrelid, pos.ord::int, true)
+            ELSE '' END,
+       CASE WHEN pos.ord <= ind.indnkeyatts AND coll.oid <> 0
+                 AND (att.attname IS NULL OR coll.oid <> att.attcollation)
+            THEN coll_ns.nspname || '.' || coll.collname ELSE '' END,
+       CASE WHEN pos.ord <= ind.indnkeyatts AND opc.oid <> 0 AND NOT opc.opcdefault
+            THEN opc_ns.nspname || '.' || opc.opcname ELSE '' END,
+       CASE WHEN pos.ord <= ind.indnkeyatts THEN COALESCE(pg_catalog.pg_index_column_has_property(ind.indexrelid, pos.ord::int, 'desc'), false) ELSE false END,
+       CASE WHEN pos.ord <= ind.indnkeyatts THEN COALESCE(pg_catalog.pg_index_column_has_property(ind.indexrelid, pos.ord::int, 'nulls_first'), false) ELSE false END,
+       COALESCE(pg_catalog.pg_get_expr(ind.indpred, ind.indrelid, true), ''),
+       ind.indnullsnotdistinct, ind.indisvalid, ind.indisready, ind.indislive
 FROM pg_catalog.pg_index ind
 JOIN pg_catalog.pg_class tbl ON tbl.oid = ind.indrelid
 JOIN pg_catalog.pg_namespace ns ON ns.oid = tbl.relnamespace
 JOIN pg_catalog.pg_class idx ON idx.oid = ind.indexrelid
 JOIN pg_catalog.pg_am am ON am.oid = idx.relam
-JOIN generate_series(1, ind.indnkeyatts) AS pos(i) ON true
+CROSS JOIN LATERAL unnest(ind.indkey) WITH ORDINALITY AS pos(attnum, ord)
+LEFT JOIN pg_catalog.pg_attribute att ON att.attrelid = tbl.oid AND att.attnum = pos.attnum
+LEFT JOIN pg_catalog.pg_collation coll ON coll.oid = CASE WHEN pos.ord <= ind.indnkeyatts THEN ind.indcollation[(pos.ord - 1)::int] ELSE 0 END
+LEFT JOIN pg_catalog.pg_namespace coll_ns ON coll_ns.oid = coll.collnamespace
+LEFT JOIN pg_catalog.pg_opclass opc ON opc.oid = CASE WHEN pos.ord <= ind.indnkeyatts THEN ind.indclass[(pos.ord - 1)::int] ELSE 0 END
+LEFT JOIN pg_catalog.pg_namespace opc_ns ON opc_ns.oid = opc.opcnamespace
 WHERE ns.nspname NOT IN ('pg_catalog','information_schema')
   AND ns.nspname !~ '^pg_toast'
   AND NOT EXISTS (
-      SELECT 1
-      FROM pg_catalog.pg_constraint con
-      WHERE con.conindid = ind.indexrelid
-        AND con.contype IN ('p','u')
+      SELECT 1 FROM pg_catalog.pg_constraint con
+      WHERE con.conindid = ind.indexrelid AND con.contype IN ('p','u')
   )
-ORDER BY ns.nspname, tbl.relname, idx.relname, pos.i`)
+ORDER BY ns.nspname, tbl.relname, idx.relname, pos.ord`)
 	if err != nil {
 		return nil, err
 	}
@@ -211,19 +226,24 @@ ORDER BY ns.nspname, tbl.relname, idx.relname, pos.i`)
 	var out []IndexMeta
 	byKey := map[string]int{}
 	for rows.Next() {
-		var schema, table, name, method, columnOrExpr string
-		var unique bool
-		if err := rows.Scan(&schema, &table, &name, &unique, &method, &columnOrExpr); err != nil {
+		var schema, table, name, method, column, expression, collation, opclass, predicate string
+		var unique, descending, nullsFirst, nullsNotDistinct, valid, ready, live bool
+		var ordinal, keyCount int
+		if err := rows.Scan(&schema, &table, &name, &unique, &method, &ordinal, &keyCount, &column, &expression, &collation, &opclass, &descending, &nullsFirst, &predicate, &nullsNotDistinct, &valid, &ready, &live); err != nil {
 			return nil, err
 		}
 		k := schema + "." + table + "." + name
 		i, ok := byKey[k]
 		if !ok {
-			out = append(out, IndexMeta{Schema: schema, Table: table, Name: name, Unique: unique, Method: method})
+			out = append(out, IndexMeta{Schema: schema, Table: table, Name: name, Unique: unique, NullsNotDistinct: nullsNotDistinct, Method: method, Predicate: predicate, Valid: valid, Ready: ready, Live: live})
 			i = len(out) - 1
 			byKey[k] = i
 		}
-		out[i].Columns = append(out[i].Columns, columnOrExpr)
+		if ordinal <= keyCount {
+			out[i].Keys = append(out[i].Keys, IndexKeyMeta{Column: column, Expression: expression, Collation: collation, OperatorClass: opclass, Descending: descending, NullsFirst: nullsFirst})
+		} else if column != "" {
+			out[i].IncludedColumns = append(out[i].IncludedColumns, column)
+		}
 	}
 	return out, rows.Err()
 }

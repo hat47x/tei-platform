@@ -64,11 +64,15 @@ func renderPostgres(diff schemadiff.Diff) ([]string, error) {
 			if c.Index == nil {
 				return nil, fmt.Errorf("add-index %s has no index", c.Table)
 			}
+			columns, err := simpleIndexColumns(c.Index)
+			if err != nil {
+				return nil, fmt.Errorf("add-index %s.%s: %w", c.Table, c.Index.Name, err)
+			}
 			unique := ""
 			if c.Index.Unique {
 				unique = "UNIQUE "
 			}
-			out = append(out, fmt.Sprintf("CREATE %sINDEX %s ON %s%s (%s);", unique, qid(c.Index.Name), qname(c.Table), indexMethod(c.Index), joinIDs(c.Index.Columns)))
+			out = append(out, fmt.Sprintf("CREATE %sINDEX %s ON %s%s (%s);", unique, qid(c.Index.Name), qname(c.Table), indexMethod(c.Index), joinIDs(columns)))
 		case schemadiff.DropIndex:
 			if c.Index == nil {
 				return nil, fmt.Errorf("drop-index %s has no index", c.Table)
@@ -95,6 +99,26 @@ func joinIDs(xs []string) string {
 	}
 	return strings.Join(ys, ", ")
 }
+func simpleIndexColumns(i *physical.Index) ([]string, error) {
+	if i.Predicate != nil || len(i.IncludedColumns) != 0 {
+		return nil, fmt.Errorf("advanced index rendering is not implemented")
+	}
+	columns := make([]string, 0, len(i.Keys))
+	for _, k := range i.Keys {
+		if k.Expression != nil || strings.TrimSpace(k.Column) == "" || strings.TrimSpace(k.Collation) != "" || strings.TrimSpace(k.OperatorClass) != "" {
+			return nil, fmt.Errorf("advanced index key rendering is not implemented")
+		}
+		if k.Order != "" && k.Order != physical.IndexOrderDefault && k.Order != physical.IndexOrderAsc {
+			return nil, fmt.Errorf("advanced index ordering is not implemented")
+		}
+		if k.NullsOrder != "" && k.NullsOrder != physical.IndexNullsDefault && k.NullsOrder != physical.IndexNullsLast {
+			return nil, fmt.Errorf("advanced index NULL ordering is not implemented")
+		}
+		columns = append(columns, k.Column)
+	}
+	return columns, nil
+}
+
 func indexMethod(i *physical.Index) string {
 	if strings.TrimSpace(i.Method) == "" || strings.EqualFold(i.Method, "btree") {
 		return ""

@@ -33,7 +33,7 @@ func (fakeCatalog) ForeignKeys(context.Context) ([]postgres.ForeignKeyMeta, erro
 	return []postgres.ForeignKeyMeta{{Schema: "public", Table: "orders", Name: "orders_customer_fk", Columns: []string{"customer_id"}, ReferencedSchema: "public", ReferencedTable: "customers", ReferencedColumns: []string{"customer_id"}}}, nil
 }
 func (fakeCatalog) Indexes(context.Context) ([]postgres.IndexMeta, error) {
-	return []postgres.IndexMeta{{Schema: "public", Table: "orders", Name: "orders_customer_idx", Columns: []string{"customer_id"}, Method: "btree"}}, nil
+	return []postgres.IndexMeta{{Schema: "public", Table: "orders", Name: "orders_customer_idx", Method: "btree", Keys: []postgres.IndexKeyMeta{{Column: "customer_id"}}, Valid: true, Ready: true, Live: true}}, nil
 }
 
 func TestPostgresProviderIntrospectsPhysicalSchema(t *testing.T) {

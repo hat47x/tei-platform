@@ -49,12 +49,20 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 		}
 		for _, idx := range m.Indexes {
 			pi := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: defaultIndexMethod(provider)}
+			if idx.Unique && provider == environment.ProviderPostgres {
+				pi.UniqueNullTreatment = physical.UniqueNullsDistinct
+			}
 			for _, attr := range idx.Attributes {
 				name, ok := columnByAttribute[attr]
 				if !ok {
 					return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s index %s attribute %s has no column mapping", m.ID, idx.Name, attr)
 				}
-				pi.Columns = append(pi.Columns, name)
+				k := physical.IndexKey{Column: name}
+				if provider == environment.ProviderPostgres {
+					k.Order = physical.IndexOrderAsc
+					k.NullsOrder = physical.IndexNullsLast
+				}
+				pi.Keys = append(pi.Keys, k)
 			}
 			t.Indexes = append(t.Indexes, pi)
 		}

@@ -104,7 +104,31 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	for _, meta := range indexes {
 		if i, ok := byName[key(meta.Schema, meta.Table)]; ok {
 			t := &snapshot.Tables[i]
-			t.Indexes = append(t.Indexes, physical.Index{Name: meta.Name, Columns: append([]string(nil), meta.Columns...), Unique: meta.Unique, Method: meta.Method})
+			index := physical.Index{Name: meta.Name, IncludedColumns: append([]string(nil), meta.IncludedColumns...), Unique: meta.Unique, Method: meta.Method, State: &physical.IndexState{Valid: meta.Valid, Ready: meta.Ready, Live: meta.Live}}
+			if meta.Unique {
+				index.UniqueNullTreatment = physical.UniqueNullsDistinct
+				if meta.NullsNotDistinct {
+					index.UniqueNullTreatment = physical.UniqueNullsNotDistinct
+				}
+			}
+			if meta.Predicate != "" {
+				index.Predicate = &physical.ProviderExpression{Provider: string(environment.ProviderPostgres), Source: meta.Predicate}
+			}
+			for _, km := range meta.Keys {
+				k := physical.IndexKey{Column: km.Column, Collation: km.Collation, OperatorClass: km.OperatorClass, Order: physical.IndexOrderAsc, NullsOrder: physical.IndexNullsLast}
+				if km.Expression != "" {
+					k.Column = ""
+					k.Expression = &physical.ProviderExpression{Provider: string(environment.ProviderPostgres), Source: km.Expression}
+				}
+				if km.Descending {
+					k.Order = physical.IndexOrderDesc
+				}
+				if km.NullsFirst {
+					k.NullsOrder = physical.IndexNullsFirst
+				}
+				index.Keys = append(index.Keys, k)
+			}
+			t.Indexes = append(t.Indexes, index)
 		}
 	}
 	now := time.Now

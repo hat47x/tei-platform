@@ -23,6 +23,7 @@ const (
 	DropForeignKey       ChangeKind = "drop-foreign-key"
 	AddIndex             ChangeKind = "add-index"
 	DropIndex            ChangeKind = "drop-index"
+	IndexStateDrift      ChangeKind = "index-state-drift"
 )
 
 type Change struct {
@@ -150,10 +151,13 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 		} else if !dok && aok {
 			ii := a
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &ii})
-		} else if dok && aok && !sameIndex(d, a) {
+		} else if dok && aok && !sameIndexStructure(d, a) {
 			old := a
 			newi := d
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &old}, Change{Kind: AddIndex, Table: name, Index: &newi})
+		} else if dok && aok && a.State != nil && !a.State.Usable() {
+			observed := a
+			out = append(out, Change{Kind: IndexStateDrift, Table: name, Index: &observed})
 		}
 	}
 	return out
@@ -312,6 +316,35 @@ func sameStrings(a, b []string) bool {
 	}
 	return true
 }
-func sameIndex(a, b physical.Index) bool {
-	return a.Unique == b.Unique && norm(a.Method) == norm(b.Method) && sameStrings(a.Columns, b.Columns)
+func sameIndexStructure(a, b physical.Index) bool {
+	if a.Unique != b.Unique || norm(a.Method) != norm(b.Method) || a.UniqueNullTreatment != b.UniqueNullTreatment || len(a.Keys) != len(b.Keys) || len(a.IncludedColumns) != len(b.IncludedColumns) {
+		return false
+	}
+	for i := range a.Keys {
+		if !sameIndexKey(a.Keys[i], b.Keys[i]) {
+			return false
+		}
+	}
+	return sameStrings(a.IncludedColumns, b.IncludedColumns) && sameProviderExpression(a.Predicate, b.Predicate)
+}
+func sameIndexKey(a, b physical.IndexKey) bool {
+	return norm(a.Column) == norm(b.Column) && sameProviderExpression(a.Expression, b.Expression) && norm(a.Collation) == norm(b.Collation) && norm(a.OperatorClass) == norm(b.OperatorClass) && normalizeIndexOrder(a.Order) == normalizeIndexOrder(b.Order) && normalizeIndexNullsOrder(a.NullsOrder) == normalizeIndexNullsOrder(b.NullsOrder)
+}
+func sameProviderExpression(a, b *physical.ProviderExpression) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return norm(a.Provider) == norm(b.Provider) && strings.TrimSpace(a.Source) == strings.TrimSpace(b.Source)
+}
+func normalizeIndexOrder(v physical.IndexOrder) physical.IndexOrder {
+	if v == "" {
+		return physical.IndexOrderDefault
+	}
+	return v
+}
+func normalizeIndexNullsOrder(v physical.IndexNullsOrder) physical.IndexNullsOrder {
+	if v == "" {
+		return physical.IndexNullsDefault
+	}
+	return v
 }
