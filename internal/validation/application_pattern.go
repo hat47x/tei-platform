@@ -3,6 +3,7 @@ package validation
 import (
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/subject"
 )
@@ -282,7 +283,7 @@ func validateReferencePattern(
 			"reference pattern %s requires a datasource",
 			pattern.ID,
 		))
-	} else if _, ok := app.DatabaseByAlias(pattern.Datasource); !ok {
+	} else if datasource, ok := app.DatabaseByAlias(pattern.Datasource); !ok {
 		out = append(out, errFor(
 			patternSubject,
 			"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
@@ -290,6 +291,15 @@ func validateReferencePattern(
 			pattern.ID,
 			pattern.Datasource,
 			app.ID,
+		))
+	} else if datasource.Access == database.AccessWrite {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATASOURCE_NOT_READABLE",
+			"reference pattern %s uses datasource %s whose access mode %s does not allow reads",
+			pattern.ID,
+			pattern.Datasource,
+			datasource.Access,
 		))
 	}
 
