@@ -10,7 +10,7 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
-- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と段階的な実証順
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1実装前設計
 - [`adr/`](adr/): 長く残す設計判断
@@ -22,29 +22,53 @@
 
 ```text
 Application Pattern ────────┐
-      ↓                     │
-Application Driver     既存認証Compatibility
-      ↓                     │
-第一Web Target ─────────────┘
-      ↓
-Editor / AI支援
-      ↓
-第二TargetでTarget-neutral性を検証
+      完了                  │
+        │             既存認証Compatibility
+        │                    │
+        └────── Gate A ──────┘
+                  ↓
+          Application Driver
+                  ↓
+            第一Web Target
+                  ↓
+             Editor / AI支援
+                  ↓
+      第二Targetで境界を圧力試験
 ```
+
+Application Pattern側のStage 1実証は完了しました。
+
+`order_entry`では、候補としていた次の5種類が実Referenceまで成立しています。
+
+```text
+browse
+record
+reference
+command
+header-detail
+```
+
+これは5分類をTEI全体の永久的な標準語彙として確定したという意味ではありません。具体的な業務Applicationで、Target固有UIやPersistenceから切り離したApplication上の意図として成立することを確認した段階です。
+
+詳細は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)と[`ISSUE-000005`](issue/000005-application-pattern-reference.md)を参照します。
+
+`header-detail`の前提となる`sales.OrderLine`と`Order 1:N OrderLine`は[`ISSUE-000011`](issue/000011-order-line-semantic-reference.md)でSemanticとして独立して追加し、[`ISSUE-000012`](issue/000012-header-detail-application-pattern.md)でRelation-onlyのApplication Patternとして実証しました。
+
+Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙生成していません。Application PatternもWebの画面テンプレートへ固定していません。
+
+現在の次の主線はGate Aです。
+
+Gate AではApplication PatternのEvidenceに加えて、既存認証Compatibility、Validation、Capability Binding、Business Result / Execution Error境界を合流させ、DriverがApplication上の意味をUI固有設定やlegacy schemaの物理構造から推測せず受け取れることを確認します。
+
+既存認証Compatibilityは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / `ISSUE-000003` / GitHub Issue #68で進めます。
+
+Capabilityの業務上の結果と実行エラーの区別は、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)と[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md)を共通境界として利用します。
+
+Gate AをEvidenceで通過した後、`ISSUE-000006` / GitHub Issue #69のApplication Driverへ進みます。
 
 個々の機能が実装されたことだけでは、次の段階へ進みません。
 
-[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることなどをEvidence Gateとして定めています。
-
-Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)、既存認証側を[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)で扱います。両者は並行して進め、Gate A「Application上の意味をDriverへ渡せる」で合流します。
-
-Application Patternでは、`browse`、`record`、`reference`の実Referenceまで完了しています。次は既存`sales.order.submit` Capabilityへ接続する`command`を[`ISSUE-000010`](issue/000010-command-application-pattern.md) / GitHub Issue #110で実証し、その後に`OrderLine`と対応Relationを追加して`header-detail`を検証します。5種類を一度に一般化せず、各Referenceから必要な意味だけを取り出します。
-
-既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。
-
-認証成功、業務上の拒否、実行エラーの区別はAuthentication固有の規約にせず、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)と[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md)でCapability共通の境界として扱います。名前付きの業務OutcomeはSemantic Capabilityの契約に含め、Execution ErrorはInvocation境界へ残します。
-
-この結果境界はDriverでScenario Evidenceとして保持し、第一Web TargetではHTTP statusや利用者向けmessageへProjectionできます。ただしTarget固有表現からSemantic Outcomeを逆定義しません。
+[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることをEvidence Gateとして定めています。
 
 このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
