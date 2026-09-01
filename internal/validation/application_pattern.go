@@ -12,6 +12,11 @@ type applicationPatternQueryRef struct {
 	Datasource  core.LocalName
 }
 
+type applicationPatternRelationRef struct {
+	Source core.CanonicalID
+	Target core.CanonicalID
+}
+
 // ValidateApplicationPatternsは、Application Patternが参照する既存資産との整合性を検査する。
 // Pattern単体の構文検査とは分け、Workspace全体を読み込んだ後に他のValidationと合成できる形で提供する。
 func ValidateApplicationPatterns(w ir.World) []Diagnostic {
@@ -25,9 +30,21 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	var out []Diagnostic
 
 	semanticData := map[core.CanonicalID]struct{}{}
+	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
+			for _, relation := range data.Relations {
+				if _, exists := semanticRelations[relation.ID]; exists {
+					// Relation自身の重複は既存Semantic Validationが報告する。
+					// Pattern側では最初の定義を使い、同じ原因のDiagnosticを増やさない。
+					continue
+				}
+				semanticRelations[relation.ID] = applicationPatternRelationRef{
+					Source: data.ID,
+					Target: relation.Target,
+				}
+			}
 		}
 	}
 
@@ -78,6 +95,8 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
 				out = append(out, validateRecordPattern(pattern, patternSubject, semanticData)...)
+			case application.PatternReference:
+				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			}
 		}
 	}
@@ -108,6 +127,15 @@ func validateBrowsePattern(
 			"browse pattern %s refers to unknown semantic data %s",
 			pattern.ID,
 			pattern.Data,
+		))
+	}
+
+	if pattern.Relation != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
+			"browse pattern %s does not accept a relation",
+			pattern.ID,
 		))
 	}
 
@@ -194,6 +222,14 @@ func validateRecordPattern(
 		))
 	}
 
+	if pattern.Relation != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
+			"record pattern %s does not accept a relation",
+			pattern.ID,
+		))
+	}
 	if pattern.Query != "" {
 		out = append(out, errFor(
 			patternSubject,
@@ -207,6 +243,69 @@ func validateRecordPattern(
 			patternSubject,
 			"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
 			"record pattern %s does not accept a datasource",
+			pattern.ID,
+		))
+	}
+
+	return out
+}
+
+func validateReferencePattern(
+	app application.Application,
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+) []Diagnostic {
+	var out []Diagnostic
+
+	if pattern.Relation == "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_REQUIRED",
+			"reference pattern %s requires a semantic relation",
+			pattern.ID,
+		))
+	} else if _, ok := semanticRelations[pattern.Relation]; !ok {
+		out = append(out, errFor(
+			patternSubject,
+			"UNKNOWN_APPLICATION_PATTERN_RELATION",
+			"reference pattern %s refers to unknown semantic relation %s",
+			pattern.ID,
+			pattern.Relation,
+		))
+	}
+
+	if pattern.Datasource == "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATASOURCE_REQUIRED",
+			"reference pattern %s requires a datasource",
+			pattern.ID,
+		))
+	} else if _, ok := app.DatabaseByAlias(pattern.Datasource); !ok {
+		out = append(out, errFor(
+			patternSubject,
+			"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
+			"reference pattern %s refers to unknown datasource alias %s in application %s",
+			pattern.ID,
+			pattern.Datasource,
+			app.ID,
+		))
+	}
+
+	if pattern.Data != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATA_NOT_ALLOWED",
+			"reference pattern %s does not accept semantic data because the relation already identifies its source and target",
+			pattern.ID,
+		))
+	}
+	if pattern.Query != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+			"reference pattern %s does not accept a query",
 			pattern.ID,
 		))
 	}
