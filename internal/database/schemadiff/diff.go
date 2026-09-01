@@ -42,6 +42,7 @@ type UnresolvedKind string
 
 const (
 	UnresolvedProviderExpression UnresolvedKind = "provider-expression"
+	UnresolvedProviderIdentifier UnresolvedKind = "provider-identifier"
 )
 
 type UnresolvedReason string
@@ -63,6 +64,8 @@ type UnresolvedComparison struct {
 	Reason            UnresolvedReason             `json:"reason"`
 	DesiredExpression *physical.ProviderExpression `json:"desiredExpression,omitempty"`
 	ActualExpression  *physical.ProviderExpression `json:"actualExpression,omitempty"`
+	DesiredValue      string                       `json:"desiredValue,omitempty"`
+	ActualValue       string                       `json:"actualValue,omitempty"`
 }
 
 type Diff struct {
@@ -375,6 +378,13 @@ type indexStructureComparison struct {
 	unresolved []UnresolvedComparison
 }
 
+type providerIdentifierOmission int
+
+const (
+	providerIdentifierInherited providerIdentifierOmission = iota
+	providerIdentifierDefault
+)
+
 func compareIndexStructure(table, indexName string, desired, actual physical.Index) indexStructureComparison {
 	if desired.Unique != actual.Unique || norm(desired.Method) != norm(actual.Method) || desired.UniqueNullTreatment != actual.UniqueNullTreatment {
 		return indexStructureComparison{status: indexStructureDifferent}
@@ -389,9 +399,23 @@ func compareIndexStructure(table, indexName string, desired, actual physical.Ind
 		if norm(dk.Column) != norm(ak.Column) {
 			return indexStructureComparison{status: indexStructureDifferent}
 		}
-		if strings.TrimSpace(dk.Collation) != strings.TrimSpace(ak.Collation) || strings.TrimSpace(dk.OperatorClass) != strings.TrimSpace(ak.OperatorClass) {
+
+		collation := compareProviderIdentifier(table, indexName, fmt.Sprintf("index.keys[%d].collation", i), dk.Collation, ak.Collation, providerIdentifierInherited)
+		if collation.status == indexStructureDifferent {
 			return indexStructureComparison{status: indexStructureDifferent}
 		}
+		if collation.status == indexStructureUnresolved {
+			unresolved = append(unresolved, collation.unresolved...)
+		}
+
+		opclass := compareProviderIdentifier(table, indexName, fmt.Sprintf("index.keys[%d].operatorClass", i), dk.OperatorClass, ak.OperatorClass, providerIdentifierDefault)
+		if opclass.status == indexStructureDifferent {
+			return indexStructureComparison{status: indexStructureDifferent}
+		}
+		if opclass.status == indexStructureUnresolved {
+			unresolved = append(unresolved, opclass.unresolved...)
+		}
+
 		if dk.Order != ak.Order || dk.NullsOrder != ak.NullsOrder {
 			return indexStructureComparison{status: indexStructureDifferent}
 		}
@@ -415,6 +439,36 @@ func compareIndexStructure(table, indexName string, desired, actual physical.Ind
 		return indexStructureComparison{status: indexStructureUnresolved, unresolved: unresolved}
 	}
 	return indexStructureComparison{status: indexStructureEqual}
+}
+
+func compareProviderIdentifier(table, indexName, fieldPath, desired, actual string, omission providerIdentifierOmission) indexStructureComparison {
+	desired = strings.TrimSpace(desired)
+	actual = strings.TrimSpace(actual)
+	if desired == actual {
+		return indexStructureComparison{status: indexStructureEqual}
+	}
+	if desired != "" && actual != "" {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+	// An omitted operator class means "use the provider default". PostgreSQL
+	// Actual normalization keeps a non-default operator class explicit, so an
+	// omitted Desired value cannot match an explicit non-default Actual value.
+	if omission == providerIdentifierDefault && desired == "" && actual != "" {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+	return indexStructureComparison{
+		status: indexStructureUnresolved,
+		unresolved: []UnresolvedComparison{{
+			Kind:         UnresolvedProviderIdentifier,
+			Table:        table,
+			ObjectKind:   "index",
+			ObjectName:   indexName,
+			FieldPath:    fieldPath,
+			Reason:       UnresolvedNormalizationRequired,
+			DesiredValue: desired,
+			ActualValue:  actual,
+		}},
+	}
 }
 
 func compareProviderExpression(table, indexName, fieldPath string, desired, actual *physical.ProviderExpression) indexStructureComparison {

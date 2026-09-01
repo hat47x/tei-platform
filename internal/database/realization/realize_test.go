@@ -86,8 +86,11 @@ func TestCompositionRealizeDesiredKeepsProviderSpecificOutput(t *testing.T) {
 	if pgIndex.Method != "btree" || pgIndex.UniqueNullTreatment != physical.UniqueNullTreatmentDistinct {
 		t.Fatalf("postgres index defaults=%#v", pgIndex)
 	}
-	if len(pgIndex.Keys) != 1 || pgIndex.Keys[0].Order != physical.IndexOrderDefault || pgIndex.Keys[0].NullsOrder != physical.IndexNullsOrderDefault || pgIndex.Keys[0].Collation != "" {
+	if len(pgIndex.Keys) != 1 || pgIndex.Keys[0].Order != physical.IndexOrderDefault || pgIndex.Keys[0].NullsOrder != physical.IndexNullsOrderDefault {
 		t.Fatalf("postgres normalized key=%#v", pgIndex.Keys)
+	}
+	if pgIndex.Keys[0].Collation != "pg_catalog.default" {
+		t.Fatalf("explicit collation must survive offline realization: %#v", pgIndex.Keys)
 	}
 
 	oraMapping := mapping
