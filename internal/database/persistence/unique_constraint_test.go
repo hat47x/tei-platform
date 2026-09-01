@@ -6,7 +6,7 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/persistence"
-	"tei/internal/environment"
+	"tei/internal/database/providers/postgres"
 )
 
 func TestRealizeDesiredKeepsUniqueConstraintSeparateFromUniqueIndex(t *testing.T) {
@@ -31,7 +31,7 @@ func TestRealizeDesiredKeepsUniqueConstraintSeparateFromUniqueIndex(t *testing.T
 		}},
 	}
 
-	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestRealizeDesiredRejectsEmptyUniqueConstraint(t *testing.T) {
 		UniqueConstraints: []persistence.UniqueConstraintMapping{{Name: "customers_empty_key"}},
 	}
 
-	_, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "has no attributes") {
 		t.Fatalf("error=%v", err)
 	}
@@ -84,7 +84,7 @@ func TestRealizeDesiredRejectsUnknownUniqueConstraintAttribute(t *testing.T) {
 		}},
 	}
 
-	_, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "has no column mapping") {
 		t.Fatalf("error=%v", err)
 	}

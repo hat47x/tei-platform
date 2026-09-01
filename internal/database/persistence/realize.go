@@ -6,13 +6,15 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/physical"
-	"tei/internal/environment"
 )
 
-// RealizeDesired turns provider-neutral relational storage types into a
-// provider-specific desired physical schema. The mapping remains canonical;
-// this snapshot is a deterministic projection and can be regenerated.
-func RealizeDesired(mappings []Mapping, databaseID string, provider environment.DatabaseProvider) (physical.SchemaSnapshot, error) {
+// RealizeDesired projects provider-neutral Persistence Mapping intent into a
+// provider-specific Desired Physical Schema using an offline provider policy.
+// The mapping remains canonical and the resulting snapshot is deterministic.
+func RealizeDesired(mappings []Mapping, databaseID string, policy PhysicalRealizationPolicy) (physical.SchemaSnapshot, error) {
+	if policy == nil {
+		return physical.SchemaSnapshot{}, fmt.Errorf("physical realization policy is nil")
+	}
 	out := physical.SchemaSnapshot{Database: mustDatabaseID(databaseID)}
 	mappingByID := make(map[core.CanonicalID]Mapping, len(mappings))
 	for _, m := range mappings {
@@ -27,7 +29,7 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 		t := physical.Table{Schema: schema, Name: table, Kind: physical.TableKindTable}
 		columnByAttribute := columnNamesByAttribute(m)
 		for i, c := range m.Columns {
-			pt, err := physicalType(provider, c.Storage)
+			pt, err := policy.PhysicalType(c.Storage)
 			if err != nil {
 				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s attribute %s: %w", m.ID, c.Attribute, err)
 			}
@@ -54,7 +56,7 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s declares duplicate index name %q", m.ID, idx.Name)
 			}
 			seenIndexNames[name] = struct{}{}
-			pi, err := realizeIndex(m, idx, columnByAttribute, provider)
+			pi, err := realizeIndex(m, idx, columnByAttribute, policy)
 			if err != nil {
 				return physical.SchemaSnapshot{}, err
 			}
@@ -87,7 +89,7 @@ func realizeUniqueConstraint(source Mapping, constraint UniqueConstraintMapping,
 	return out, nil
 }
 
-func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider) (physical.Index, error) {
+func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID]string, policy PhysicalRealizationPolicy) (physical.Index, error) {
 	if strings.TrimSpace(idx.Name) == "" {
 		return physical.Index{}, fmt.Errorf("mapping %s index name is empty", source.ID)
 	}
@@ -104,13 +106,14 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 		return physical.Index{}, fmt.Errorf("mapping %s non-unique index %s cannot declare NULL treatment", source.ID, idx.Name)
 	}
 
+	defaults := policy.IndexDefaults()
 	method := strings.TrimSpace(idx.Method)
 	if method == "" {
-		method = defaultIndexMethod(provider)
+		method = defaults.Method
 	}
 	out := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: method}
 	if idx.Unique {
-		out.UniqueNullTreatment = defaultUniqueNullTreatment(provider)
+		out.UniqueNullTreatment = defaults.UniqueNullTreatment
 		if idx.UniqueNullTreatment != "" {
 			out.UniqueNullTreatment = physical.UniqueNullTreatment(idx.UniqueNullTreatment)
 		}
@@ -126,7 +129,7 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 		}
 	} else {
 		for position, key := range idx.Keys {
-			physicalKey, err := realizeIndexKey(source, idx.Name, position, key, columns, provider, method)
+			physicalKey, err := realizeIndexKey(source, idx.Name, position, key, columns, policy, method)
 			if err != nil {
 				return physical.Index{}, err
 			}
@@ -142,7 +145,7 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 		out.IncludedColumns = append(out.IncludedColumns, name)
 	}
 	if idx.Predicate != nil {
-		expression, err := realizeProviderExpression(source, idx.Name, "predicate", *idx.Predicate, provider)
+		expression, err := realizeProviderExpression(source, idx.Name, "predicate", *idx.Predicate, policy)
 		if err != nil {
 			return physical.Index{}, err
 		}
@@ -151,7 +154,7 @@ func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID
 	return out, nil
 }
 
-func realizeIndexKey(source Mapping, indexName string, position int, key IndexKeyMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider, method string) (physical.IndexKey, error) {
+func realizeIndexKey(source Mapping, indexName string, position int, key IndexKeyMapping, columns map[core.CanonicalID]string, policy PhysicalRealizationPolicy, method string) (physical.IndexKey, error) {
 	hasAttribute := key.Attribute != ""
 	hasExpression := key.Expression != nil
 	if hasAttribute == hasExpression {
@@ -184,45 +187,22 @@ func realizeIndexKey(source Mapping, indexName string, position int, key IndexKe
 			return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d attribute %s has no column mapping", source.ID, indexName, position+1, key.Attribute)
 		}
 		out.Column = column
-		return normalizeDesiredIndexKey(out, provider, method), nil
+		return policy.NormalizeIndexKey(out, method), nil
 	}
 
-	expression, err := realizeProviderExpression(source, indexName, fmt.Sprintf("key %d expression", position+1), *key.Expression, provider)
+	expression, err := realizeProviderExpression(source, indexName, fmt.Sprintf("key %d expression", position+1), *key.Expression, policy)
 	if err != nil {
 		return physical.IndexKey{}, err
 	}
 	out.Expression = expression
-	return normalizeDesiredIndexKey(out, provider, method), nil
+	return policy.NormalizeIndexKey(out, method), nil
 }
 
-// normalizeDesiredIndexKey mirrors provider-side Actual normalization for
-// semantics whose effective default can be resolved without a live database.
-// Provider/version-dependent identifier canonicalization remains a separate
-// concern; this function only collapses deterministic PostgreSQL defaults.
-func normalizeDesiredIndexKey(key physical.IndexKey, provider environment.DatabaseProvider, method string) physical.IndexKey {
-	if provider != environment.ProviderPostgres || !strings.EqualFold(strings.TrimSpace(method), "btree") {
-		return key
-	}
-
-	desc := key.Order == physical.IndexOrderDesc
-	if key.Order == physical.IndexOrderAsc {
-		key.Order = physical.IndexOrderDefault
-	}
-	if !desc && key.NullsOrder == physical.IndexNullsOrderLast {
-		key.NullsOrder = physical.IndexNullsOrderDefault
-	} else if desc && key.NullsOrder == physical.IndexNullsOrderFirst {
-		key.NullsOrder = physical.IndexNullsOrderDefault
-	}
-	if strings.EqualFold(strings.TrimSpace(key.Collation), "pg_catalog.default") {
-		key.Collation = ""
-	}
-	return key
-}
-
-func realizeProviderExpression(source Mapping, indexName, field string, expression ProviderExpressionMapping, provider environment.DatabaseProvider) (*physical.ProviderExpression, error) {
+func realizeProviderExpression(source Mapping, indexName, field string, expression ProviderExpressionMapping, policy PhysicalRealizationPolicy) (*physical.ProviderExpression, error) {
 	if !expression.Provider.Known() {
 		return nil, fmt.Errorf("mapping %s index %s %s uses unknown provider %q", source.ID, indexName, field, expression.Provider)
 	}
+	provider := policy.Provider()
 	if expression.Provider != provider {
 		return nil, fmt.Errorf("mapping %s index %s %s provider %q does not match desired provider %q", source.ID, indexName, field, expression.Provider, provider)
 	}
@@ -281,58 +261,6 @@ func columnNamesByAttribute(m Mapping) map[core.CanonicalID]string {
 		out[c.Attribute] = c.Column
 	}
 	return out
-}
-
-func physicalType(provider environment.DatabaseProvider, storage StorageType) (string, error) {
-	switch provider {
-	case environment.ProviderPostgres:
-		switch storage {
-		case StorageInt64:
-			return "pg_catalog.int8", nil
-		case StorageVarchar:
-			return "pg_catalog.varchar", nil
-		case StorageText:
-			return "pg_catalog.text", nil
-		case StorageDateTimeTZ:
-			return "pg_catalog.timestamptz", nil
-		case StorageDecimal:
-			return "pg_catalog.numeric", nil
-		case StorageJSON:
-			return "pg_catalog.jsonb", nil
-		}
-	case environment.ProviderOracle:
-		switch storage {
-		case StorageInt64:
-			return "NUMBER(19)", nil
-		case StorageVarchar:
-			return "VARCHAR2(255)", nil
-		case StorageText:
-			return "CLOB", nil
-		case StorageDateTimeTZ:
-			return "TIMESTAMP WITH TIME ZONE", nil
-		case StorageDecimal:
-			return "NUMBER", nil
-		case StorageJSON:
-			return "CLOB", nil
-		}
-	default:
-		return "", fmt.Errorf("unsupported database provider %q", provider)
-	}
-	return "", fmt.Errorf("unsupported storage type %q for provider %q", storage, provider)
-}
-
-func defaultIndexMethod(provider environment.DatabaseProvider) string {
-	if provider == environment.ProviderPostgres {
-		return "btree"
-	}
-	return ""
-}
-
-func defaultUniqueNullTreatment(provider environment.DatabaseProvider) physical.UniqueNullTreatment {
-	if provider == environment.ProviderPostgres {
-		return physical.UniqueNullTreatmentDistinct
-	}
-	return ""
 }
 
 func mustDatabaseID(s string) core.CanonicalID { return core.MustCanonicalID(s) }
