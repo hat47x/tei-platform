@@ -104,7 +104,44 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	for _, meta := range indexes {
 		if i, ok := byName[key(meta.Schema, meta.Table)]; ok {
 			t := &snapshot.Tables[i]
-			t.Indexes = append(t.Indexes, physical.Index{Name: meta.Name, Columns: append([]string(nil), meta.Columns...), Unique: meta.Unique, Method: meta.Method})
+			idx := physical.Index{
+				Name:            meta.Name,
+				IncludedColumns: append([]string(nil), meta.IncludedColumns...),
+				Unique:          meta.Unique,
+				Method:          meta.Method,
+				State:           &physical.IndexState{Valid: meta.Valid, Ready: meta.Ready, Live: meta.Live},
+			}
+			if meta.Unique {
+				idx.UniqueNullTreatment = physical.UniqueNullTreatmentDistinct
+				if meta.NullsNotDistinct {
+					idx.UniqueNullTreatment = physical.UniqueNullTreatmentNotDistinct
+				}
+			}
+			if strings.TrimSpace(meta.Predicate) != "" {
+				idx.Predicate = postgresExpression(meta.Predicate)
+			}
+			for _, keyMeta := range meta.Keys {
+				order := physical.IndexOrder(keyMeta.Order)
+				if order == "" {
+					order = physical.IndexOrderDefault
+				}
+				nullsOrder := physical.IndexNullsOrder(keyMeta.NullsOrder)
+				if nullsOrder == "" {
+					nullsOrder = physical.IndexNullsOrderDefault
+				}
+				key := physical.IndexKey{
+					Column:        keyMeta.Column,
+					Collation:     keyMeta.Collation,
+					OperatorClass: keyMeta.OperatorClass,
+					Order:         order,
+					NullsOrder:    nullsOrder,
+				}
+				if strings.TrimSpace(keyMeta.Expression) != "" {
+					key.Expression = postgresExpression(keyMeta.Expression)
+				}
+				idx.Keys = append(idx.Keys, key)
+			}
+			t.Indexes = append(t.Indexes, idx)
 		}
 	}
 	now := time.Now
@@ -113,6 +150,10 @@ func (p Provider) Introspect(ctx context.Context, instance environment.DatabaseI
 	}
 	snapshot.CapturedAt = now().UTC().Format(time.RFC3339)
 	return snapshot.Normalize(), nil
+}
+
+func postgresExpression(source string) *physical.ProviderExpression {
+	return &physical.ProviderExpression{Provider: string(environment.ProviderPostgres), Dialect: "postgresql", Source: strings.TrimSpace(source)}
 }
 
 func (p Provider) Explain(ctx context.Context, instance environment.DatabaseInstance, q query.EmbeddedSQL, snapshot *physical.SchemaSnapshot, opts dbprovider.ExplainOptions) (plan.IR, error) {
