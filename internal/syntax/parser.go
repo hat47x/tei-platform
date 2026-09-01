@@ -1611,6 +1611,42 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 				return m, p.errAt(a, err.Error())
 			}
 			m.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+		case "unique":
+			_, _ = p.next()
+			name, err := p.expect(TokenIdent)
+			if err != nil {
+				return m, err
+			}
+			constraint := persistence.UniqueConstraintMapping{Name: name.Text}
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return m, err
+			}
+			for {
+				z, err := p.peek()
+				if err != nil {
+					return m, err
+				}
+				if z.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				if _, err := p.expectText("attribute"); err != nil {
+					return m, err
+				}
+				a, err := p.expect(TokenIdent)
+				if err != nil {
+					return m, err
+				}
+				attr, err := core.ParseCanonicalID(a.Text)
+				if err != nil {
+					return m, p.errAt(a, err.Error())
+				}
+				constraint.Attributes = append(constraint.Attributes, attr)
+			}
+			if len(constraint.Attributes) == 0 {
+				return m, p.errAt(name, "unique requires at least one attribute")
+			}
+			m.UniqueConstraints = append(m.UniqueConstraints, constraint)
 		case "foreign-key":
 			_, _ = p.next()
 			name, err := p.expect(TokenIdent)
@@ -1681,7 +1717,7 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 			}
 			m.ForeignKeys = append(m.ForeignKeys, fk)
 		default:
-			return m, p.errAt(t, "expected database, semantic, table, column, primary-key, index, unique-index, or foreign-key")
+			return m, p.errAt(t, "expected database, semantic, table, column, primary-key, unique, index, unique-index, or foreign-key")
 		}
 	}
 	return m, p.expectEOF()

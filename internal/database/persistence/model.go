@@ -35,14 +35,15 @@ func (n Nullability) Valid() bool { return n == Required || n == Optional }
 // element. It is intentionally separate from the semantic model so the same
 // domain meaning can be realized by different databases and physical layouts.
 type Mapping struct {
-	ID           core.CanonicalID    `json:"id"`
-	Database     core.CanonicalID    `json:"database"`
-	SemanticData core.CanonicalID    `json:"semanticData"`
-	Table        string              `json:"table"`
-	Columns      []ColumnMapping     `json:"columns"`
-	PrimaryKey   []core.CanonicalID  `json:"primaryKey,omitempty"`
-	Indexes      []IndexMapping      `json:"indexes,omitempty"`
-	ForeignKeys  []ForeignKeyMapping `json:"foreignKeys,omitempty"`
+	ID                core.CanonicalID          `json:"id"`
+	Database          core.CanonicalID          `json:"database"`
+	SemanticData      core.CanonicalID          `json:"semanticData"`
+	Table             string                    `json:"table"`
+	Columns           []ColumnMapping           `json:"columns"`
+	PrimaryKey        []core.CanonicalID        `json:"primaryKey,omitempty"`
+	UniqueConstraints []UniqueConstraintMapping `json:"uniqueConstraints,omitempty"`
+	Indexes           []IndexMapping            `json:"indexes,omitempty"`
+	ForeignKeys       []ForeignKeyMapping       `json:"foreignKeys,omitempty"`
 }
 
 type ColumnMapping struct {
@@ -50,6 +51,14 @@ type ColumnMapping struct {
 	Column      string           `json:"column"`
 	Storage     StorageType      `json:"storage"`
 	Nullability Nullability      `json:"nullability"`
+}
+
+// UniqueConstraintMapping records a relational uniqueness constraint as a
+// database-owned persistence decision. It is intentionally separate from
+// IndexMapping so constraint intent is not collapsed into an access path.
+type UniqueConstraintMapping struct {
+	Name       string             `json:"name,omitempty"`
+	Attributes []core.CanonicalID `json:"attributes"`
 }
 
 type IndexMapping struct {
