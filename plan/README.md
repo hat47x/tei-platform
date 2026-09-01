@@ -10,7 +10,7 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
-- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの最初の実装境界と、`browse`から始める段階的な実証順
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と段階的な実証順
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1実装前設計
 - [`adr/`](adr/): 長く残す設計判断
@@ -38,7 +38,7 @@ Editor / AI支援
 
 Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)、既存認証側を[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)で扱います。両者は並行して進め、Gate A「Application上の意味をDriverへ渡せる」で合流します。
 
-Application Patternは、既存の`browse` Queryを使って基盤そのものを先に検証し、その後`record`、`reference`、`command`へ広げます。新しい`OrderLine`はPattern基盤と同時には追加せず、`header-detail`を検証する段階で導入します。
+Application Patternでは、`browse`、`record`、`reference`の実Referenceまで完了しています。次は既存`sales.order.submit` Capabilityへ接続する`command`を[`ISSUE-000010`](issue/000010-command-application-pattern.md) / GitHub Issue #110で実証し、その後に`OrderLine`と対応Relationを追加して`header-detail`を検証します。5種類を一度に一般化せず、各Referenceから必要な意味だけを取り出します。
 
 既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。
 
