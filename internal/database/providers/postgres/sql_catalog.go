@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 // SQLCatalogReader is the standard-library adapter for a PostgreSQL connection.
@@ -186,15 +187,52 @@ ORDER BY src_ns.nspname, src.relname, con.conname, pos.i`)
 
 func (r SQLCatalogReader) Indexes(ctx context.Context) ([]IndexMeta, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-SELECT ns.nspname, tbl.relname, idx.relname, ind.indisunique,
+SELECT ns.nspname,
+       tbl.relname,
+       idx.relname,
+       ind.indisunique,
+       ind.indnullsnotdistinct,
        am.amname,
-       pg_catalog.pg_get_indexdef(ind.indexrelid, pos.i, true)
+       ind.indisvalid,
+       ind.indisready,
+       ind.indislive,
+       COALESCE(pg_catalog.pg_get_expr(ind.indpred, ind.indrelid, true), ''),
+       k.pos,
+       k.pos <= ind.indnkeyatts AS is_key,
+       k.attnum,
+       COALESCE(att.attname, ''),
+       CASE
+         WHEN k.pos <= ind.indnkeyatts AND k.attnum = 0
+           THEN pg_catalog.pg_get_indexdef(ind.indexrelid, k.pos::integer, true)
+         ELSE ''
+       END,
+       CASE
+         WHEN coll.oid = 0 OR (coll_ns.nspname = 'pg_catalog' AND coll.collname = 'default') THEN ''
+         ELSE COALESCE(coll_ns.nspname || '.' || coll.collname, '')
+       END,
+       CASE
+         WHEN COALESCE(opc.opcdefault, false) THEN ''
+         ELSE COALESCE(opc_ns.nspname || '.' || opc.opcname, '')
+       END,
+       COALESCE(opt.value, 0)
 FROM pg_catalog.pg_index ind
 JOIN pg_catalog.pg_class tbl ON tbl.oid = ind.indrelid
 JOIN pg_catalog.pg_namespace ns ON ns.oid = tbl.relnamespace
 JOIN pg_catalog.pg_class idx ON idx.oid = ind.indexrelid
 JOIN pg_catalog.pg_am am ON am.oid = idx.relam
-JOIN generate_series(1, ind.indnkeyatts) AS pos(i) ON true
+CROSS JOIN LATERAL unnest(ind.indkey::smallint[]) WITH ORDINALITY AS k(attnum, pos)
+LEFT JOIN pg_catalog.pg_attribute att
+  ON att.attrelid = tbl.oid AND att.attnum = k.attnum AND k.attnum <> 0
+LEFT JOIN LATERAL unnest(ind.indcollation::oid[]) WITH ORDINALITY AS coll_oid(oid, pos)
+  ON coll_oid.pos = k.pos AND k.pos <= ind.indnkeyatts
+LEFT JOIN pg_catalog.pg_collation coll ON coll.oid = coll_oid.oid
+LEFT JOIN pg_catalog.pg_namespace coll_ns ON coll_ns.oid = coll.collnamespace
+LEFT JOIN LATERAL unnest(ind.indclass::oid[]) WITH ORDINALITY AS opc_oid(oid, pos)
+  ON opc_oid.pos = k.pos AND k.pos <= ind.indnkeyatts
+LEFT JOIN pg_catalog.pg_opclass opc ON opc.oid = opc_oid.oid
+LEFT JOIN pg_catalog.pg_namespace opc_ns ON opc_ns.oid = opc.opcnamespace
+LEFT JOIN LATERAL unnest(ind.indoption::smallint[]) WITH ORDINALITY AS opt(value, pos)
+  ON opt.pos = k.pos AND k.pos <= ind.indnkeyatts
 WHERE ns.nspname NOT IN ('pg_catalog','information_schema')
   AND ns.nspname !~ '^pg_toast'
   AND NOT EXISTS (
@@ -203,27 +241,113 @@ WHERE ns.nspname NOT IN ('pg_catalog','information_schema')
       WHERE con.conindid = ind.indexrelid
         AND con.contype IN ('p','u')
   )
-ORDER BY ns.nspname, tbl.relname, idx.relname, pos.i`)
+ORDER BY ns.nspname, tbl.relname, idx.relname, k.pos`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var out []IndexMeta
 	byKey := map[string]int{}
 	for rows.Next() {
-		var schema, table, name, method, columnOrExpr string
-		var unique bool
-		if err := rows.Scan(&schema, &table, &name, &unique, &method, &columnOrExpr); err != nil {
+		var schema, table, name, method, predicate string
+		var unique, nullsNotDistinct, valid, ready, live bool
+		var position int
+		var isKey bool
+		var attnum int
+		var column, expression, collation, operatorClass string
+		var option int
+		if err := rows.Scan(
+			&schema,
+			&table,
+			&name,
+			&unique,
+			&nullsNotDistinct,
+			&method,
+			&valid,
+			&ready,
+			&live,
+			&predicate,
+			&position,
+			&isKey,
+			&attnum,
+			&column,
+			&expression,
+			&collation,
+			&operatorClass,
+			&option,
+		); err != nil {
 			return nil, err
 		}
+
 		k := schema + "." + table + "." + name
 		i, ok := byKey[k]
 		if !ok {
-			out = append(out, IndexMeta{Schema: schema, Table: table, Name: name, Unique: unique, Method: method})
+			out = append(out, IndexMeta{
+				Schema:           schema,
+				Table:            table,
+				Name:             name,
+				Predicate:        strings.TrimSpace(predicate),
+				Unique:           unique,
+				NullsNotDistinct: nullsNotDistinct,
+				Method:           method,
+				Valid:            valid,
+				Ready:            ready,
+				Live:             live,
+			})
 			i = len(out) - 1
 			byKey[k] = i
 		}
-		out[i].Columns = append(out[i].Columns, columnOrExpr)
+
+		if isKey {
+			keyMeta := IndexKeyMeta{
+				Column:        column,
+				Expression:    strings.TrimSpace(expression),
+				Collation:     collation,
+				OperatorClass: operatorClass,
+			}
+			if attnum == 0 {
+				keyMeta.Column = ""
+				if keyMeta.Expression == "" {
+					return nil, fmt.Errorf("index %s.%s.%s key %d is an expression but PostgreSQL returned no expression", schema, table, name, position)
+				}
+			} else {
+				keyMeta.Expression = ""
+			}
+			keyMeta.Order, keyMeta.NullsOrder = normalizeIndexOrder(method, option)
+			out[i].Keys = append(out[i].Keys, keyMeta)
+			continue
+		}
+		if attnum == 0 || column == "" {
+			return nil, fmt.Errorf("index %s.%s.%s INCLUDE position %d does not resolve to a column", schema, table, name, position)
+		}
+		out[i].IncludedColumns = append(out[i].IncludedColumns, column)
 	}
 	return out, rows.Err()
+}
+
+func normalizeIndexOrder(method string, option int) (string, string) {
+	if !strings.EqualFold(strings.TrimSpace(method), "btree") {
+		return "default", "default"
+	}
+	const (
+		indOptionDesc       = 0x0001
+		indOptionNullsFirst = 0x0002
+	)
+	desc := option&indOptionDesc != 0
+	nullsFirst := option&indOptionNullsFirst != 0
+
+	order := "default"
+	if desc {
+		order = "desc"
+	}
+	nullsOrder := "default"
+	// PostgreSQL defaults are ASC NULLS LAST and DESC NULLS FIRST. Keep those
+	// effective defaults as "default" so simple Desired indexes still converge.
+	if !desc && nullsFirst {
+		nullsOrder = "first"
+	} else if desc && !nullsFirst {
+		nullsOrder = "last"
+	}
+	return order, nullsOrder
 }
