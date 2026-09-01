@@ -4,7 +4,7 @@
 
 この文書は、TEI（鼎／テイ）がv1へ進むために必要なApplication側の実証を、既存の`order_entry`を中心に一つの流れとして整理するものです。
 
-個別のIssueには、それぞれの設計課題や完了条件があります。一方、Application Pattern、既存認証互換、Driver、第一Web Target、Editor、AI支援を別々に進めるだけでは、「一つの業務ApplicationがTEIの各層をどのように通るのか」が見えにくくなります。
+個別のIssueには、それぞれの設計課題や完了条件があります。しかし、Application Pattern、既存認証Compatibility、Driver、第一Web Target、Editor、AI支援を別々に進めるだけでは、「一つの業務ApplicationがTEIの各層をどのように通るのか」が見えにくくなります。
 
 そこで、同じReference Applicationを段階的に育て、前の段階で確認した意味を次の段階がそのまま利用する進め方を採ります。
 
@@ -25,13 +25,11 @@ v1では、新しい理想化されたサンプルを別に作らず、既存の
 - Source-to-Canonical Traceability
 - Reference Workspaceと再生成可能なCanonical World
 
-これらを捨てずに使うことで、M0.xxで積み上げたEvidenceをApplication側のv1実証へ接続できます。
+これらを捨てずに使うことで、M0.xxで積み上げたEvidenceをApplication側のv1実証へ接続します。
 
 ## v1で確認する業務シナリオ
 
-最初の業務シナリオは「受注を探し、開き、明細を編集し、内容と利用権限を確認して確定する」という一続きの操作とします。
-
-概念上は次の流れです。
+最初の業務シナリオは、「受注を探し、開き、顧客を参照し、明細を編集し、内容と利用権限を確認して確定する」という一続きの操作とします。
 
 ```text
 受注一覧を探す
@@ -51,13 +49,11 @@ v1では、新しい理想化されたサンプルを別に作らず、既存の
 結果を観測する
 ```
 
-このシナリオを、Application Pattern、Driver、Web Targetで別々に作り直しません。
-
-同じApplication上の意味を共有し、それぞれの層では必要なProjectionやBindingだけを追加します。
+このシナリオをApplication Pattern、Driver、Web Targetで別々に作り直しません。同じApplication上の意味を共有し、それぞれの層では必要なProjectionやBindingだけを追加します。
 
 ## 実証するApplication Pattern
 
-最初のReferenceでは次の5種類を扱います。
+最初のReferenceでは、次の5種類を扱います。
 
 - `browse`
 - `record`
@@ -67,13 +63,15 @@ v1では、新しい理想化されたサンプルを別に作らず、既存の
 
 これらは画面テンプレートの一覧ではなく、Targetが変わっても残る可能性があるApplication上の意図として検証します。
 
-Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)に定めます。
+Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置とfile pathからのidentity分離は[ADR-0018](adr/0018-application-pattern-authoring-source.md)に定めます。最初の実装順や保留事項は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を正とします。
 
 ## Referenceへ追加する意味
 
-### OrderLine
+### `OrderLine`
 
-現在の`sales.Order`へ、受注明細に相当する`OrderLine`を追加します。
+受注明細に相当する`OrderLine`は必要ですが、Pattern基盤の最初の検証と同時には追加しません。
+
+最初に既存の`browse` QueryだけでPatternのCanonicalモデル、正本、Loader、Source Index、Diagnosticを一続きに成立させます。その後、既存のSemantic Data、Relation、Capabilityを使って`record`、`reference`、`command`を追加し、最後に`header-detail`を検証する段階で`OrderLine`を導入します。
 
 概念上は次の関係です。
 
@@ -83,7 +81,7 @@ Order 1 ── N OrderLine
 
 最初から販売管理全体を再現する必要はありません。header-detail、複数fieldにまたがるValidation、金額計算を確かめられる最小構成を選びます。
 
-Semantic Relation、Application上のheader-detail、Database Foreign Keyは、それぞれ別の意味として扱います。1:N関係が存在するという理由だけで、FKや画面構造を暗黙に生成しません。
+Semantic Relation、Application上のheader-detail、Database Foreign Keyは別の意味として扱います。1:N関係が存在するという理由だけで、FKや画面構造を暗黙に生成しません。
 
 ### Validation
 
@@ -102,9 +100,13 @@ Semantic Relation、Application上のheader-detail、Database Foreign Keyは、�
 
 ### Authorization
 
-既存認証互換のReferenceは、Application Patternと並行して進めます。
+既存認証CompatibilityはApplication Patternと並行して進めます。
 
-認証・認可の都合で`order_entry`の業務モデルをTEI標準User schemaへ作り直さず、ApplicationがAuthentication / Authorization Capabilityを利用する形で統合します。
+認証・認可の都合で`order_entry`の業務モデルをTEI標準User schemaへ作り直しません。Application利用者のAuthentication / AuthorizationはSemantic Capabilityとして扱い、既存schemaや認証製品はBinding / implementation側へ残します。
+
+基本境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装順とConformanceは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)を参照します。
+
+Authenticationでは、認証成功、業務上の拒否、実行そのものの失敗を区別する必要があります。この共通境界は[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / GitHub Issue #77で先に整理し、認証だけの場当たり的なerror規約は作りません。
 
 ## 全体の作業順
 
@@ -113,8 +115,8 @@ Stage 0  Product Baseline / Gap Audit
                ↓
 Stage 1  Application Pattern ─────────┐
                │                      │
-               │              Legacy Authentication
-               │                 Compatibility
+               │              既存認証Compatibility
+               │                      │
                ↓                      │
 Gate A ───────────────────────────────┘
                ↓
@@ -150,7 +152,7 @@ Database / Provider側の作業も止めません。ただし、v1 Referenceに�
 - Product Principles
 - Product Requirements RQ-001〜RQ-024
 - Master Plan
-- 期限なしMilestone
+- 期限を置かないMilestone
 - Product Requirement Gap Audit
 
 ### この段階で確認したこと
@@ -161,64 +163,71 @@ Database / Provider、Source / Meaning、Runtime安全境界に比べ、Applicat
 
 ## Stage 1 — Application Pattern
 
-関連: `ISSUE-000005` / GitHub Issue #67
+関連: `ISSUE-000005` / GitHub Issue #67  
+詳細: [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)
 
 ### 目的
 
 `order_entry`の業務シナリオを、Target固有UIへ依存しないApplication上の意図として表現できることを確かめます。
 
-### 作業
+### 作業順
 
-- `OrderLine`をSemantic上の意味として追加する
-- 5種類のApplication Patternを同じApplication上で表現する
-- native SQL Queryをbrowseから参照する
-- `master_data`へのread-only reference lookupを接続する
-- `sales.order.submit` Capabilityをcommandから参照する
-- PatternのSource Index / Diagnostic経路を用意する
-- Application PatternとProjection情報を分離する
+新しい業務SemanticとPattern基盤を一度に変更しません。次の順で進めます。
+
+1. ApplicationがPatternを所有する最小Canonicalモデルを用意する
+2. `patterns/*.tei`を正本としてLoader、Normalization、Validation、Source Index、Diagnosticへ接続する
+3. 既存の`order_entry.recent_orders`とnative SQLを使い、`browse`一件でPattern基盤を一続きに検証する
+4. 既存のSemantic Data、Relation、Capabilityを使って`record`、`reference`、`command`を追加する
+5. `OrderLine`と対応RelationをSemantic側へ追加し、`header-detail`を検証する
+6. 5 Patternを同じApplication上の意味として説明できるか監査し、Gate Aへ渡すEvidenceを揃える
+
+この順序により、Pattern基盤の不具合と、新しい業務Semanticの不足を切り分けやすくします。
 
 ### Gate Aへ進む条件
 
 次を満たしたら、Application Pattern側はGate Aへ合流できる状態とみなします。
 
-- 5 Patternが同じApplication定義から識別できる
+- 5 Patternを同じApplication定義から識別できる
 - Patternのidentityがfile pathへ依存しない
+- Patternの正本とEditor内部状態を暗黙の二重正本にしていない
 - Semantic Relation、Application Pattern、Persistence Mappingの境界を説明できる
 - native SQLを別のDSLへ複製していない
 - read-only Datasourceの制約を維持している
 - `command`がCapability identityへ接続されている
-- Driverが利用できるだけのTarget非依存情報が揃っている
+- Driverが利用できるTarget非依存情報が揃っている
+- Source Index / DiagnosticからPattern定義へ戻れる
 - Reference / Conformanceから上記を再現できる
 
 ## 並行Stage — 既存認証Compatibility
 
-関連: `ISSUE-000003` / GitHub Issue #68
+関連: `ISSUE-000003` / GitHub Issue #68  
+詳細: [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)
 
 ### 目的
 
-既存システム固有の認証・認可仕様を、最初にTEI標準へ作り替えなくてもCapabilityとして接続できることを確かめます。
+既存システム固有の認証・認可仕様を、最初にTEI標準へ作り替えなくてもApplicationから利用できるCapabilityへ接続できることを確かめます。
 
-### 作業
+### 作業順
 
-Referenceでは少なくとも次を扱います。
-
-- user ID
-- credential reference
-- disabled state
-- validity period
-- login failure count
-- lock state
-- organization / role
-- system-specific rule
+1. Reference Workspace内の`security`意味空間でAuthentication / Authorizationの責務を分ける
+2. `ISSUE-000009` / #77で、Capabilityの業務結果と実行エラーの境界を整理する
+3. user ID、credential reference、disabled、有効期間、失敗回数、lock、organization、role、system-specific ruleを含むlegacy認証fixtureを用意する
+4. 既存schemaや既存functionをCapabilityへ接続する
+5. 同じCapability identityを保ったまま、異なる実現方式を一つ追加する
+6. secretがCanonical World、Source Index、Durable artifact、通常logへ混入しないことをConformance化する
+7. `order_entry`のbrowse / edit / submit Authorizationへ接続する
+8. Source / Binding / Mappingの来歴を確認し、Stage 1と合わせてGate Aを監査する
 
 ### Gate Aへ合流する条件
 
-- Authentication / AuthorizationのCapability identityが定義できる
+- Authentication / Authorizationを別のCapability identityとして扱える
 - legacy fieldやfunctionをCapabilityへMappingできる
-- secret値をCanonical sourceへ保存しない
+- secret値をCanonicalな正本へ保存しない
+- Application利用者の認可とPlugin / Runtime Permissionを混同しない
 - Applicationが認証実装の物理構造へ直接依存しない
-- 同じCapability identityのまま実現方式を交換できる見通しが立つ
-- `order_entry`のbrowse / edit / command Authorizationへ接続可能である
+- 同じCapability identityのまま実現方式を交換できる
+- 業務上の拒否と実行エラーを区別できる
+- `order_entry`のbrowse / edit / submit Authorizationへ接続できる
 
 Gate Aでは、認証基盤全体がproduction-readyであることは求めません。既存仕様を保持したままApplicationへ接続できる意味境界が成立していることを確認します。
 
@@ -273,6 +282,7 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 - `master_data`へwriteしないことを検証できる
 - Validation failure時にcommandへ進まない
 - Authorization failure時にcommandへ進まない
+- 業務上の不成立と実行エラーを意味の違いとして扱える
 - command acknowledgementとobserved resultを必要に応じて区別できる
 - Driver固有の状態がCanonical Worldへ逆流しない
 - 同じApplication定義を第一Targetへ渡せる
@@ -281,9 +291,7 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 
 Gate Bでは、画面がなくてもApplicationの主要な振る舞いを実行・検証できることを確認します。
 
-ここを通る前にWeb実装へ進むと、Application上の不足をWeb固有コードで埋める危険があります。
-
-したがって、第一Web Targetの実装はGate Bを原則的な前提とします。
+ここを通る前にWeb実装へ進むと、Application上の不足をWeb固有コードで埋める危険があります。したがって、第一Web Targetの実装はGate Bを原則的な前提とします。
 
 ## Stage 3 — 第一Web Target
 
@@ -307,7 +315,7 @@ Driverで確認済みのApplication上の意味をWebへProjectionし、複数Ta
 
 - Web専用のApplication modelを作る
 - native SQLやCapability implementationを複製する
-- Application ValidationをWeb専用ruleとして書き直す
+- Application ValidationやAuthorization ruleをWeb専用ruleとして書き直す
 - HTMLやframeworkの都合をSemantic Kernelへ持ち上げる
 - read-only Datasource制約をUI都合で無視する
 
@@ -327,7 +335,7 @@ Custom UIでもApplication上の意味、Validation、Capability、Authorization
 - 共通候補とWeb固有差分を文書化できる
 - Reference Scenarioの主要な測定点を取得できる
 
-## Gate C — Editor / AIを設計してよい
+## Gate C — Editor / AIを具体化してよい
 
 Gate Cを通過すると、Application上の意味、Driver実行結果、第一Targetとの差が実資産として揃います。
 
@@ -411,7 +419,8 @@ Editor / AIが完成していること自体をGate Dの条件にはしません
 - Editorの最終UI framework
 - 第二Targetの種類
 - B2C向けの一律性能目標
-- Authentication Referenceを第三Databaseとするか外部Capabilityとするか
+- Authentication ReferenceをDatabase、LDAP、IdP、外部APIなどのどれへ固定するか
+- `std.auth.*`の標準契約
 - Application単位の分散transactionを一般化する方法
 
 これらは、先に決めるよりReferenceから得られるEvidenceを待つ方が安全です。
@@ -427,6 +436,7 @@ v1を単なるVersion番号として扱わず、少なくとも次をRepository�
 - Application PatternをDriverとTargetで共有できる
 - UIがなくてもDriverで主要シナリオを検証できる
 - 第一Targetで標準ProjectionとCustom UIを併用できる
+- Capabilityの業務結果と実行エラーを必要な箇所で分離できる
 - CommandとObservationを必要な箇所で分離できる
 - Reference / Conformanceから同じ結果を再現できる
 - 何が未保証かを`docs/status.md`から明確に判断できる
@@ -440,9 +450,14 @@ EditorとAI支援の完成、第二Target、production HAはv1の前提条件に
 - `plan/MASTER_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
+- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
+- `plan/adr/0018-application-pattern-authoring-source.md`
+- `plan/adr/0019-authentication-capability-boundary.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
+- `plan/issue/000009-capability-outcome-and-execution-error.md`
