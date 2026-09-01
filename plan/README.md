@@ -8,8 +8,25 @@
 
 - [`MASTER_PLAN.md`](MASTER_PLAN.md): 開発全体の作業軸と依存関係
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
+- [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備等の作業単位
+
+現在のv1主線は、既存`order_entry`をReference Applicationとして育てる次の流れです。
+
+```text
+Application Pattern
+      ↓
+Application Driver
+      ↓
+第一Web Target
+      ↓
+Editor / AI支援
+      ↓
+第二TargetでTarget-neutral性を検証
+```
+
+既存認証仕様を保持したCompatibility Referenceは、この主線と並行して進めます。
 
 ## ADR
 
