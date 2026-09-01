@@ -4,8 +4,8 @@ TEIは、**業務上の意味を長く保ちながら、実装・データベー
 
 画面やテーブルを素早く作ることだけでなく、「この業務概念は何を意味するのか」「どの実装へ落ちたのか」「本番で実際に何が起きたのか」を、技術が変わっても追跡できる状態を重視しています。
 
-> **現在地:** M0.32 / architecture & product validation / research implementation  
-> Source-to-Canonical Traceability、Application / Database、actual PostgreSQL、Deployment、Plugin / Runtime等の設計境界は実行可能なReferenceで検証していますが、完成したEditorや本番用Runtimeを提供する段階ではありません。
+> **現在地:** M0.35 / architecture & product validation / research implementation  
+> Source-to-Canonical Traceability、Application / Database、actual PostgreSQL、Schema Diff、Advanced Index、Deployment、Plugin / Runtimeなどの設計境界を実行可能なReferenceとConformanceで検証していますが、完成したEditorや本番用Runtimeを提供する段階ではありません。
 
 ## どこから読むか
 
@@ -128,7 +128,9 @@ completed
 
 Canaryのhealth gate、drain、Database migration、rollback / forward-fixも同じ考え方で扱います。
 
-さらにM0.31以降では、Database Schemaについて「差がある」と「比較に必要な情報が足りず、まだ確定できない」を分離しています。不明なものを都合よく一致や差分へ丸めません。
+M0.31以降では、Database Schemaについて「差がある」と「比較に必要な情報が足りず、まだ確定できない」を分離しています。不明なものを都合よく一致や差分へ丸めません。
+
+M0.35では、この安全境界を保ったままAdvanced Indexの主要な意味をPostgreSQLのマイグレーションSQLへ戻し、生成したDDLを実DBへ適用して再観測後にDesiredへ収束するところまでCIで確認しています。
 
 ### 5. Pluginは意味モデルではなく配布単位
 
@@ -144,7 +146,7 @@ Lease renewal、refresh、revoke、Supervisor ownership、fencing、Host takeove
 
 ## 現在の重点
 
-M0.32までに、Source / Meaning、Database、Execution / Observation、Plugin / Runtimeの下部構造にはかなり強いEvidenceが蓄積しました。
+M0.35までに、Source / Meaning、Database、Execution / Observation、Plugin / Runtimeの下部構造にはかなり強いEvidenceが蓄積しました。Database領域では、Actual / Desired / Diff、比較未確定、ProviderExpression、Advanced Index、プロバイダー固有のマイグレーションSQL生成まで一連の境界を実PostgreSQLで検証しています。
 
 [Product Requirement Gap Audit](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)では、次の領域が相対的に未実証であることを確認しています。
 
@@ -223,13 +225,13 @@ docs/                    public and technical documentation
 - [命名とWorkspace](docs/naming.md)
 - [Community](docs/community.md)
 
-新しい上位・横断的ADRは`plan/adr/`へ置きます。既存の`docs/adr/0001`〜`0012`は参照互換を保つため、段階的に移行します。
+新しい上位・横断的ADRは`plan/adr/`へ置きます。既存の`docs/adr/0001`〜`0015`は参照互換を保ちながら、番号を変えず段階的に移行します。新しい`plan/adr/`の番号は0016以降から継続します。
 
 ## 現在の実装範囲
 
 このRepositoryでは、Semantic / WorkspaceからApplication・Database・Query、Release / Deployment、Plugin / Resource authority、Host takeover / runtime reattachまでを、一本の縦切りとしてコードとテストで検証しています。
 
-M0.23以降はSource-to-Canonical Traceability、actual process Plugin、actual PostgreSQL Desired / Actual / Diff、Foreign Key、Unique Constraint、Advanced Index、比較未確定、ProviderExpression representationまで、個々の境界を段階的に深めています。
+M0.23以降はSource-to-Canonical Traceability、actual process Plugin、actual PostgreSQL Desired / Actual / Diff、Foreign Key、Unique Constraint、Advanced Index、比較未確定、ProviderExpression representation、オフラインのprovider policy、プロバイダー固有識別子の比較、Advanced IndexのマイグレーションSQL生成まで、個々の境界を段階的に深めています。
 
 個々の実装項目をREADMEへ重複して列挙せず、最新の一覧は [現在の実装状況](docs/status.md) に集約します。
 
