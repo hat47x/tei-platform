@@ -1,14 +1,16 @@
 # ISSUE-000005: `order_entry`でApplication Patternを実証する
 
-- 状態: 進行中
-- GitHub Issue: #67
+- 状態: Done
+- GitHub Issue: #67（完了）
 - 設計・実装基線: [`APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
+- Pattern所有境界: [ADR-0017](../adr/0017-application-pattern-ownership.md)
+- Authoring source / identity: [ADR-0018](../adr/0018-application-pattern-authoring-source.md)
 
-## 背景
+## 目的
 
-Product Requirement Gap Auditでは、RQ-014「標準的なApplication Patternを再利用できること」が、Driver、Presentation、Editor、AI支援へ進む前に埋めるべき大きなGapとして残っています。
+Application Patternを画面テンプレートとして先に固定せず、ApplicationがSemanticや既存業務資産をどのような意図で利用するかを、Driverや複数Targetから再利用できる単位として成立させられるかを`order_entry`で実証する作業です。
 
-ただし、v1で最初から「標準Pattern」を確定するわけではありません。既存の`reference/workspace/applications/order-entry`をReference Applicationとして育て、次の5種類をApplicationが所有する意図の候補として一つずつ検証します。
+v1では次の5種類を候補として一つずつ実Referenceから検証しました。
 
 - `browse`
 - `record`
@@ -16,72 +18,11 @@ Product Requirement Gap Auditでは、RQ-014「標準的なApplication Pattern�
 - `command`
 - `header-detail`
 
-Patternの所有境界は[ADR-0017](../adr/0017-application-pattern-ownership.md)、正本の配置とfile pathからのidentity分離は[ADR-0018](../adr/0018-application-pattern-authoring-source.md)に従います。
+5種類すべてが実Referenceまで成立したため、このIssueは完了です。ただし、5分類をTEI全体の永久的な標準語彙として確定したわけではありません。
 
-## 関連するProduct Requirement
+## 実Reference
 
-- RQ-001 業務上の意味
-- RQ-003 暗黙の複数正本を作らない
-- RQ-005 Application ↔ Database N:M
-- RQ-011 Projection
-- RQ-012 Driver
-- RQ-014 Application Pattern
-- RQ-017 二重管理の最小化
-- RQ-021 Reference / Conformance
-
-## 目的
-
-Application Patternを単なる画面テンプレートとして固定せず、**同じApplication上の意図をDriverや複数Targetから利用できる単位として成立させられるか**を`order_entry`で確認します。
-
-このIssueはv1 Reference Application実証計画のStage 1です。完了しただけで直ちにDriverへ進むのではなく、`ISSUE-000003`の既存認証Compatibilityと合わせてGate A「Application上の意味をDriverへ渡せる」を評価します。
-
-## 現在地
-
-`browse`、`record`、`reference`の3種類は実Referenceまで完了しています。
-
-次に実証するのは`command`です。`header-detail`は、新しい`sales.OrderLine`と対応RelationをSemantic側へ追加した後に扱います。
-
-Stage 1、Gate A、Milestone 1の完了はまだ宣言しません。
-
-## 共通基盤として完了したもの
-
-### Canonical model / Parser
-
-PR #87からPatternの最小Canonical modelを導入し、実Referenceから必要性を確認できたKindとfieldだけを段階的に有効化しています。
-
-現在有効なのは次の3種類です。
-
-- `browse`
-- `record`
-- `reference`
-
-現行Patternは、ID、Kind、Data、Relation、Query、Datasourceを型付き参照として保持できますが、Kindごとに不要なfieldは受理しません。
-
-### Loader / Normalization
-
-PR #88で次を実装しました。
-
-- `applications/*/patterns/*.tei`の列挙
-- Pattern sourceのParse
-- 所属Applicationへの統合
-- Canonical ID順のNormalization
-- `application-pattern:<Canonical ID>`のsource mapping
-
-### Source Index / rename invariance
-
-PR #89でPattern ID tokenへのSource Index経路を実装しました。
-
-PR #102では実ReferenceのPatternファイル名だけを変更し、Canonical WorldとPattern identityを変えず、Source Artifact pathだけが追随することを確認しています。
-
-### 共通Validation / Diagnostic
-
-PR #95、#99、#103以降、Pattern固有のWorkspace参照整合性は共通`validation.Validate`から一度だけ実行されます。
-
-Diagnosticは`application-pattern:<Canonical ID>` Subjectを利用し、既存Source Indexを通じて元の定義sourceへ戻れます。
-
-## `browse` — 完了
-
-実Referenceは次です。
+### `browse`
 
 ```tei
 pattern order_entry.recent_orders browse {
@@ -90,20 +31,9 @@ pattern order_entry.recent_orders browse {
 }
 ```
 
-現時点の契約は次です。
+既存Queryがlogical datasourceを保持しているため、実ReferenceではDatasourceをPatternへ重複記述していません。
 
-- `data`: 必須
-- `query`: 必須
-- `datasource`: 任意
-- `relation`: 受理しない
-
-既存Query `order_entry.recent_orders`がDatasource `sales`を正本として保持するため、実ReferenceではPattern側へ同じDatasourceを重複記述していません。
-
-PR #101でReference WorkspaceとGolden Worldへ追加し、PR #102で実Referenceのrename invarianceを確認しました。
-
-## `record` — 完了
-
-Issue #104、PR #105 / #106で実証しました。
+### `record`
 
 ```tei
 pattern order_entry.order_record record {
@@ -111,20 +41,9 @@ pattern order_entry.order_record record {
 }
 ```
 
-現時点の契約は次です。
+「どのSemantic Dataを一件として扱うか」という意味だけで成立しました。取得QueryやDatasourceはPatternへ固定していません。
 
-- `data`: 必須
-- `query`: 受理しない
-- `datasource`: 受理しない
-- `relation`: 受理しない
-
-`record`は「ApplicationがどのSemantic Dataを一件として扱うか」という意味だけで成立しました。
-
-既存Database Contractの`find_by_id`や将来Driverの一件取得を理由に、取得QueryをPatternへ持ち込んでいません。
-
-## `reference` — 完了
-
-Issue #107、PR #108 / #109で実証しました。
+### `reference`
 
 ```tei
 pattern order_entry.customer_reference reference {
@@ -133,149 +52,178 @@ pattern order_entry.customer_reference reference {
 }
 ```
 
-現時点の契約は次です。
+Relationのsource / target / cardinalityはSemantic側を正本とし、Application固有の参照経路であるlogical datasourceだけをPatternに保持します。
 
-- `relation`: 必須
-- `datasource`: 必須
-- `data`: 受理しない
-- `query`: 受理しない
+### `command`
 
-Relation `sales.order.customer`がsource `sales.order`とtarget `customer.customer`をすでに持つため、DataやtargetをPatternへ重複記述していません。
-
-Datasource `master`はApplication固有の論理的な参照経路なのでPatternに保持します。ただし、`access read`そのものはApplicationの`DatabaseRequirement`を正本とし、Patternへ複製しません。
-
-`reference`は読み取り意図なので、`write`専用Datasourceは共通Validationで拒否します。`read-write`は読み取り可能なので受理します。
-
-Reference Conformanceでは、`master`が要求する`master_data.customer ^2`のContractがRelation target `customer.customer`を`read`対象として公開していることまで追跡しています。
-
-この一例だけを理由にPattern専用の重複Contract体系は追加していません。
-
-## 次の優先単位 — `command`
-
-次は、既存Semantic Capability `sales.order.submit`へ接続する`command` Patternを実証します。
-
-第一候補は次の最小形です。
-
-```text
+```tei
 pattern order_entry.submit_order command {
     capability sales.order.submit
 }
 ```
 
-これは実装前の候補であり、実Referenceを成立させるために必要な意味を確認してから確定します。
+Capabilityのinput / output、implementation、DatasourceはPatternへ複製していません。
 
-### 確認する問い
+### `header-detail`
 
-- Capability identityだけで`command`の意味を表せるか
-- `data sales.order`をPatternへ重複記述する必要があるか
-- DatasourceをPatternへ持たせる必要があるか
-- Capabilityの既存`output sales.order`をそのまま利用できるか
-- named Outcomeを追加する必要が本当にあるか
-- Validation / Authorizationとの順序をPattern自身へ持たせるべきか
-
-Capability結果の共通境界は[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)と[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)に従います。
-
-`command`追加だけを理由に、現行`sales.order.submit`の`output`をnamed Outcomeへ書き換えません。
-
-## `header-detail`と`OrderLine`
-
-`command`まで既存資産で実証した後、新しい`sales.OrderLine`と対応RelationをSemantic側へ追加します。
-
-概念上は次の関係です。
-
-```text
-Order 1 ── N OrderLine
+```tei
+pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+}
 ```
 
-その後、`header-detail`をApplication上の意図として実証します。
+Relationのsource `sales.order`、target `sales.order_line`、cardinality `many`をSemantic側の正本から利用します。Header Data、Detail Data、cardinalityをPatternへ重複記述していません。
 
-Semantic Relation、Application上の`header-detail`、Database Foreign Keyは別の意味単位です。RelationからFKや画面構造を暗黙生成しません。
+## `header-detail`の前提Semantic
 
-## 所有境界
+`header-detail`だけは、既存Referenceに明細側の業務Semanticがなかったため、Patternとは別の作業として先に追加しました。
 
-ADR-0017に従い、次の三層を混同しません。
+`ISSUE-000011` / GitHub Issue #117 / PR #119で次を追加しています。
 
-1. Semantic上の意味 — Data / Relation / Capabilityなど
-2. Application上の意図 — browse / record / reference / command / header-detailなど
-3. Projection / Target — Webなどに固有の表現とInteraction
+```tei
+type OrderLineId from std.identifier
 
-現在のPattern名や分類は永久的な標準語彙ではありません。Driver、第一Web Target、第二Targetから得られるEvidenceを使い、Applicationに残す意味、共有知識へ持ち上げる意味、Projectionへ下げる情報を見直します。
+data OrderLine {
+    attribute orderLineId type sales.order_line_id
+    attribute lineNumber type std.integer
+    attribute itemCode type std.code
+    attribute quantity type std.decimal
+    attribute unitPrice type std.money
+}
+```
 
-## 正本
+```tei
+relation lines to sales.order_line many
+```
 
-ADR-0018に従い、Patternの正本はApplication配下の`patterns/*.tei`です。
+この段階ではPersistence Mapping、Database Foreign Key、Database Contract、Migrationを追加していません。
 
-Pattern identityは明示的なCanonical IDとし、file pathやファイル名から導出しません。
+新しいSemanticの不足とApplication Patternの設計を別の実証単位に分けたことで、Patternの都合から物理DB構造を逆算することを避けられました。
 
-同じApplication上の意図について、DSLとEditor内部状態を暗黙の二重正本にはしません。
+## 実証した共通基盤
 
-## Gate Aへ渡す情報
+### Canonical model
 
-このIssueだけでGate Aを完了とはしませんが、Application Pattern側から少なくとも次を説明できるEvidenceを揃えます。
+PatternはApplicationが所有する子要素として保持します。
 
-- 何を`browse`するか
-- 一つの`record`として何を扱うか
-- どのRelationを、どのDatasourceから`reference`するか
-- HeaderとDetailの関係
-- どのValidationを実行するか
-- どのCapabilityを`command`として呼ぶか
-- どのDatasourceがread-onlyか
-- Patternの正本とCanonical identityをどのように追跡するか
+現行modelはID、Kind、Data、Relation、Query、Capability、Datasourceを型付き参照として持ちますが、Kindごとに必要なfieldだけを受理します。
 
-Authorizationは`ISSUE-000003`の既存認証Compatibilityから合流させます。
+### Loader / Normalization
 
-## Conformance
+- `applications/*/patterns/*.tei`を読み込む
+- 所属Applicationへ統合する
+- Canonical ID順に正規化する
+- `application-pattern:<Canonical ID>`のsource mappingを作る
 
-### 確認済み
+### Source Index
 
-- PatternをApplication modelで保持できる
-- Pattern IDをfile pathから独立して保持できる
-- Pattern sourceを`patterns/*.tei`からLoaderで読み込める
-- Pattern順序をCanonical IDで正規化できる
-- Source IndexからPattern ID tokenへ戻れる
-- 共通ValidationからPattern Diagnosticを一度だけ返せる
-- `browse`が既存Query / native SQLを重複せず利用できる
-- `record`がSemantic Data一件の意味だけで成立する
-- `reference`がSemantic Relationとlogical datasourceの組み合わせで成立する
-- `reference`がwrite-only Datasourceを拒否する
-- `browse` / `record` / `reference`が同じApplicationで共存する
-- Reference WorldをRepository自身から再生成できる
+Pattern identityはfile pathから独立したCanonical IDです。
 
-### 次に確認すること
+Source Indexからauthoring sourceへ戻れます。file nameを変更してもCanonical WorldとPattern identityが変わらないことを実Referenceで確認済みです。
 
-- `command`が既存Capabilityへ最小の意味で接続できる
-- Capability Business Result / Execution Error境界をPatternから壊さない
-- `OrderLine`追加後に`header-detail`を自然に表現できる
-- Driverが利用するためにWeb固有情報を必要としない
+### Parser / Workspace Validation
 
-## 非目標
+Parserは構文とKind固有の必須・禁止fieldを扱います。
 
-- Patternの網羅的なcatalog化
-- 5分類を現時点でTEI標準語彙として確定すること
-- Patternごとの完成UI
-- responsive designなどのTarget固有表現
-- automatic UI design
-- PatternをSemantic Kernelへ一括追加すること
-- AIによるPattern推薦
-- Pattern Catalogの共有方式を先に決めること
-- Patternの継承・合成を先に実装すること
-- このIssueだけでGate Aを完了させること
+Workspace全体が必要な参照整合性は共通`validation.Validate`で扱います。
 
-## 完了条件
+- Semantic assetの存在
+- Query ownership
+- Datasourceの存在・access
+- Capabilityの存在
+- `header-detail` Relationの`many` cardinality
 
-`order_entry`の業務シナリオで候補となる5 Patternを一続きに表現し、どこまでがApplication上の意図で、どこからがProjection / Target固有情報かを説明できることを完了条件とします。
+同じ原因のDiagnosticをPattern専用入口と共通入口から重複して返さない構造を維持します。
 
-さらに、Patternの正本、Canonical identity、Source Index、Reference Worldの再現性をRepository内のReference / Conformanceから確認できること。その同じApplication上の意味を後続Driverが利用でき、`ISSUE-000003`のAuthorization境界と合わせてGate Aを評価できるEvidenceを残すことを求めます。
+## 実証から得た設計基線
 
-現在は`browse`、`record`、`reference`まで完了しています。
+### PatternはApplication上の意図
 
-## 関連文書
+Semanticそのものでも、Persistenceでも、Target固有UIでもありません。
 
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
-- `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/adr/0017-application-pattern-ownership.md`
-- `plan/adr/0018-application-pattern-authoring-source.md`
-- `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
-- `plan/issue/000003-legacy-authentication-compatibility-reference.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
+### 既存資産の意味を複製しない
+
+Query、Relation、Capability、Datasourceがすでに持つ意味をPatternへ書き写さず、Canonical IDで接続します。
+
+### Kindごとに必要なfieldだけを持つ
+
+実Referenceで成立した最小形は次です。
+
+```text
+browse        data + query
+record        data
+reference     relation + datasource
+command       capability
+header-detail relation
+```
+
+### 実現方法をPatternへ持ち込まない
+
+native SQL、Capability implementation、Persistence Mapping、Foreign Key、Migration、Web Widgetはそれぞれの責務境界へ残します。
+
+### Semantic RelationとDatabase Foreign Keyを同一視しない
+
+`Order 1:N OrderLine`のSemantic Relationが存在しても、Persistence MappingやFKを暗黙生成しません。
+
+### PatternをUI layoutへ固定しない
+
+`header-detail`をWebのHeader Form + Gridと定義しません。ほかのKindも同様に、Targetが変わっても残る可能性があるApplication上の意図として扱います。
+
+## Evidence
+
+主要な実証は次です。
+
+- `browse`: PR #101〜#103
+- `record`: PR #105 / #106
+- `reference`: PR #108 / #109
+- `command`: PR #114 / #116
+- `OrderLine` Semantic: PR #119 / CI #277
+- `header-detail` Canonical契約: PR #121 / CI #279
+- `header-detail`実Reference: PR #123 / CI #282
+
+主要PRは`verify` / PostgreSQL integrationで成功しています。
+
+Reference WorldはRepository自身の`tei world`から再生成できます。
+
+## 完了条件の確認
+
+1. 5種類のPatternを一つの`order_entry`で表現できる — 完了
+2. Application上の意図とSemanticを分離できる — 完了
+3. PatternとPersistence / Realizationを分離できる — 完了
+4. PatternとProjection / Target固有情報を分離できる — 完了
+5. Patternの正本とCanonical identityを追跡できる — 完了
+6. Source Index / Diagnosticからauthoring sourceへ戻れる — 完了
+7. Reference WorldをRepository内の正本から再生成できる — 完了
+8. 後続DriverへTarget非依存のPattern情報を渡せる — Application Pattern側は完了
+
+## Gate Aとの関係
+
+このIssueが完了してもGate A全体は完了しません。
+
+Gate Aでは、Application PatternのEvidenceに加えて次を合流させます。
+
+- Validation
+- Authentication / Authorization
+- read / read-write Datasource境界
+- Capability Binding
+- Business Result / Execution Error境界
+
+既存認証Compatibilityは`ISSUE-000003` / GitHub Issue #68から受け取ります。
+
+Capability結果境界はADR-0020 / `ISSUE-000009`を利用します。
+
+ValidationをPattern自身のfieldとして持つ必要性は今回の5 Patternから確認されなかったため、後続の具体的な業務ruleからApplication上の構成を決めます。
+
+Gate AをEvidenceで通過した後、`ISSUE-000006` / GitHub Issue #69のApplication Driverへ進みます。
+
+## 関連
+
+- [`../APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
+- [`../V1_REFERENCE_APPLICATION_PLAN.md`](../V1_REFERENCE_APPLICATION_PLAN.md)
+- `ISSUE-000003`
+- `ISSUE-000006`
+- `ISSUE-000009`
+- `ISSUE-000010`
+- `ISSUE-000011`
+- `ISSUE-000012`
+- GitHub Issue #67 / #68 / #69 / #117 / #118
