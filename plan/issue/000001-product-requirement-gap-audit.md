@@ -1,45 +1,50 @@
 # ISSUE-000001: 現行実装をProduct Requirementsへ逆マッピングする
 
-- Status: Ready
+- Status: Done
 
 ## 背景
 
 TEIはM0.32までに多くの設計境界を実行可能なコードで検証してきましたが、その進捗はこれまでM0.xx、ADR、GitHub Issueを中心に整理されてきました。
 
-新しくProduct Requirementsを上位基線として置いたため、現行Repositoryの実装・Conformance・Reference・文書を各Requirementへ逆マッピングし、どこが十分に検証され、どこがまだ概念だけなのかを明示する必要があります。
+新しくProduct Requirementsを上位基線として置いたため、現行Repositoryの実装・Conformance・Reference・文書を各Requirementへ逆マッピングし、どこが十分に検証され、どこがまだ概念だけなのかを明示する必要がありました。
 
 ## 関連するProduct Requirement
 
-全RQを対象とします。特に、Database / Runtime側と比べて実証が薄いRQ-010〜RQ-017を重点的に確認します。
+RQ-001〜RQ-024を対象としました。
 
-## 作業内容
+## 実施内容
 
-- RQ-001〜RQ-024ごとに、関連実装、ADR、Conformance、Reference、Issueを列挙する
-- 状態を少なくとも次に分ける
-  - 実装・Conformanceあり
-  - 部分実証あり
-  - 設計のみ
-  - 未着手
-  - 現行実装と要求の間にGapあり
-- 同じ機能を複数Requirementへ重複計上する場合は、どの側面を検証しているかを明記する
-- 実装量ではなく、要求に対するEvidenceの有無で評価する
-- Gapを見つけても、このIssue内で無条件に実装へ進めず、必要なら後続Issueへ分離する
-
-## 特に確認する偏り
-
-M0.26以降、Database / Providerの意味境界が深く進んでいるため、次を確認します。
-
-- Application PatternがProduct Visionに対して十分か
-- 既存認証・認可互換のReferenceがあるか
-- Driverを設計検証環境として扱う経路があるか
-- target-neutral Presentationの実証があるか
-- Editorの高密度Projectionが未実装のまま、Core側の設計だけが進みすぎていないか
-- AI支援UXを受け止めるDecision / History / Suggestion境界があるか
+- 各Requirementについて、実装、Reference、Conformance / CIのEvidenceを確認
+- `Strong Evidence`、`Partial Evidence`、`Design Only`、`Not Started`へ区分
+- 実装量ではなく、Requirementに対する再現可能なEvidenceの有無で評価
+- 未実証項目をそのまま24本の作業へ分解せず、KJ法で意味の近いGapへ再統合
 
 ## 成果物
 
-`plan/`配下にGap Audit文書を追加し、必要に応じて後続Issueを起票します。
+監査結果は [`../PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../PRODUCT_REQUIREMENT_GAP_AUDIT.md) に整理しました。
 
-## 完了条件
+主要な発見は、M0.32までのTEIがSource / Meaning、Database、Execution / Observation、Plugin / Runtimeの下部構造に強いEvidenceを持つ一方、次の領域には実証がほとんどないことです。
 
-別の開発者や生成AIがRepositoryだけを見て、各Product Requirementについて「何がEvidenceで、何がまだ未検証か」を説明できること。
+- 既存認証・認可を保持した移行
+- standard Application Pattern
+- Driverによる設計シミュレーション
+- target-neutral Presentation / Interaction
+- 開発者向けEditor
+- AIによる知識探索、確認提案、判断履歴
+
+これらはProduct Vision上の大きな空白であり、今後のv1方向ではDatabase側の局所的な深掘りと比較して優先的に不確実性を減らす対象とします。
+
+## 後続作業
+
+- `ISSUE-000002`: v1 Application vertical slice
+- `ISSUE-000003`: 既存認証Compatibility Reference
+- standard Application Patternの実証
+- Driverの最小vertical slice
+- 第一TargetへのPresentation Projection
+- Editor / AI支援UX
+
+後半の作業は、Application vertical sliceの具体化結果を見て、必要以上に先回りした抽象設計にならない粒度でIssue化します。
+
+## 完了確認
+
+RQ-001〜RQ-024について「何がEvidenceで、何がまだ未検証か」をRepositoryだけから説明でき、未実証領域をProduct Valueに沿った次の作業へ接続できる状態になったため、このIssueは完了とします。
