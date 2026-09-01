@@ -1,6 +1,10 @@
 package validation
 
-import "testing"
+import (
+	"testing"
+
+	"tei/internal/application"
+)
 
 func TestValidateIncludesApplicationPatternReferenceDiagnosticsOnce(t *testing.T) {
 	w := validApplicationPatternWorld()
@@ -38,6 +42,41 @@ func TestValidateDoesNotAddPatternDiagnosticsForValidBrowseReference(t *testing.
 	}
 }
 
+func TestValidateAcceptsDataOnlyRecordPattern(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = []application.Pattern{{
+		ID:   "order_entry.order_record",
+		Kind: application.PatternRecord,
+		Data: "sales.order",
+	}}
+
+	diagnostics := Validate(w)
+	for _, diagnostic := range diagnostics {
+		if isApplicationPatternDiagnostic(diagnostic.Code) {
+			t.Fatalf("Dataだけを持つ正常なrecord Patternに不要なDiagnosticが追加されました: %#v", diagnostic)
+		}
+	}
+}
+
+func TestValidateRejectsRecordQueryOnce(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = []application.Pattern{{
+		ID:    "order_entry.order_record",
+		Kind:  application.PatternRecord,
+		Data:  "sales.order",
+		Query: "order_entry.recent_orders",
+	}}
+
+	diagnostics := Validate(w)
+	matches := diagnosticsByCode(diagnostics, "APPLICATION_PATTERN_QUERY_NOT_ALLOWED")
+	if len(matches) != 1 {
+		t.Fatalf("recordのQuery禁止Diagnosticの件数=%d want=1: %#v", len(matches), diagnostics)
+	}
+	if matches[0].Subject == nil || matches[0].Subject.ID != "order_entry.order_record" {
+		t.Fatalf("record DiagnosticのPattern Subjectが失われました: %#v", matches[0].Subject)
+	}
+}
+
 func diagnosticsByCode(diagnostics []Diagnostic, code string) []Diagnostic {
 	var matches []Diagnostic
 	for _, diagnostic := range diagnostics {
@@ -58,7 +97,9 @@ func isApplicationPatternDiagnostic(code string) bool {
 		"UNKNOWN_APPLICATION_PATTERN_QUERY",
 		"APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH",
 		"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
-		"APPLICATION_PATTERN_DATASOURCE_QUERY_MISMATCH":
+		"APPLICATION_PATTERN_DATASOURCE_QUERY_MISMATCH",
+		"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+		"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED":
 		return true
 	default:
 		return false

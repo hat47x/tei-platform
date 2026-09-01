@@ -20,6 +20,19 @@ func TestValidateApplicationPatternsAcceptsBrowseUsingQueryDatasource(t *testing
 	}
 }
 
+func TestValidateApplicationPatternsAcceptsDataOnlyRecord(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = append(w.Applications[0].Patterns, application.Pattern{
+		ID:   "order_entry.order_record",
+		Kind: application.PatternRecord,
+		Data: "sales.order",
+	})
+
+	if ds := validateApplicationPatterns(w); len(ds) != 0 {
+		t.Fatalf("valid record pattern diagnostics=%#v", ds)
+	}
+}
+
 func TestValidateApplicationPatternsReportsReferenceProblemsOnPatternSubject(t *testing.T) {
 	cases := []struct {
 		name string
@@ -69,6 +82,57 @@ func TestValidateApplicationPatternsReportsReferenceProblemsOnPatternSubject(t *
 				t.Fatalf("missing diagnostic %s: %#v", tc.code, ds)
 			}
 			if d.Subject == nil || d.Subject.Kind != "application-pattern" || d.Subject.ID != "order_entry.recent_orders" {
+				t.Fatalf("diagnostic subject=%#v", d.Subject)
+			}
+		})
+	}
+}
+
+func TestValidateApplicationPatternsReportsRecordProblemsOnPatternSubject(t *testing.T) {
+	cases := []struct {
+		name string
+		code string
+		edit func(*application.Pattern)
+	}{
+		{
+			name: "missing data",
+			code: "APPLICATION_PATTERN_DATA_REQUIRED",
+			edit: func(p *application.Pattern) { p.Data = "" },
+		},
+		{
+			name: "unknown data",
+			code: "UNKNOWN_APPLICATION_PATTERN_DATA",
+			edit: func(p *application.Pattern) { p.Data = "sales.missing" },
+		},
+		{
+			name: "query is not part of record meaning",
+			code: "APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+			edit: func(p *application.Pattern) { p.Query = "order_entry.recent_orders" },
+		},
+		{
+			name: "datasource is not part of record meaning",
+			code: "APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
+			edit: func(p *application.Pattern) { p.Datasource = "sales" },
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := validApplicationPatternWorld()
+			record := application.Pattern{
+				ID:   "order_entry.order_record",
+				Kind: application.PatternRecord,
+				Data: "sales.order",
+			}
+			tc.edit(&record)
+			w.Applications[0].Patterns = []application.Pattern{record}
+
+			ds := validateApplicationPatterns(w)
+			d := diagnosticByCode(ds, tc.code)
+			if d == nil {
+				t.Fatalf("missing diagnostic %s: %#v", tc.code, ds)
+			}
+			if d.Subject == nil || d.Subject.Kind != "application-pattern" || d.Subject.ID != "order_entry.order_record" {
 				t.Fatalf("diagnostic subject=%#v", d.Subject)
 			}
 		})
