@@ -24,65 +24,50 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           path = Path("internal/syntax/parser.go")
           source = path.read_text()
-          old = '''\t\tcase "index", "unique-index":
-          \tunique := t.Text == "unique-index"
-          \t_, _ = p.next()
-          \tname, err := p.expect(TokenIdent)
-          \tif err != nil {
-          \t\treturn m, err
-          \t}
-          \tif _, err := p.expectText("on"); err != nil {
-          \t\treturn m, err
-          \t}
-          \ta, err := p.expect(TokenIdent)
-          \tif err != nil {
-          \t\treturn m, err
-          \t}
-          \tattr, err := core.ParseCanonicalID(a.Text)
-          \tif err != nil {
-          \t\treturn m, p.errAt(a, err.Error())
-          \t}
-          \tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
-          '''
-          new = '''\t\tcase "index", "unique-index":
-          \tunique := t.Text == "unique-index"
-          \t_, _ = p.next()
-          \tname, err := p.expect(TokenIdent)
-          \tif err != nil {
-          \t\treturn m, err
-          \t}
-          \tnext, err := p.peek()
-          \tif err != nil {
-          \t\treturn m, err
-          \t}
-          \tif next.Text == "on" {
-          \t\t_, _ = p.next()
-          \t\ta, err := p.expect(TokenIdent)
-          \t\tif err != nil {
-          \t\t\treturn m, err
-          \t\t}
-          \t\tattr, err := core.ParseCanonicalID(a.Text)
-          \t\tif err != nil {
-          \t\t\treturn m, p.errAt(a, err.Error())
-          \t\t}
-          \t\tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
-          \t\tbreak
-          \t}
-          \tif next.Kind != TokenLBrace {
-          \t\treturn m, p.errAt(next, "expected on or advanced index block")
-          \t}
-          \tindex, err := p.parseAdvancedIndexBody(name, unique)
-          \tif err != nil {
-          \t\treturn m, err
-          \t}
-          \tm.Indexes = append(m.Indexes, index)
-          '''
-          if old not in source:
-              raise SystemExit("expected legacy index parser block was not found exactly")
-          path.write_text(source.replace(old, new, 1))
+          pattern = re.compile(r'(?ms)^\t\tcase "index", "unique-index":\n.*?(?=^\t\tcase "unique":)')
+          matches = pattern.findall(source)
+          if len(matches) != 1:
+              raise SystemExit(f"expected exactly one legacy index parser block, found {len(matches)}")
+          replacement = "\n".join([
+              '\t\tcase "index", "unique-index":',
+              '\t\t\tunique := t.Text == "unique-index"',
+              '\t\t\t_, _ = p.next()',
+              '\t\t\tname, err := p.expect(TokenIdent)',
+              '\t\t\tif err != nil {',
+              '\t\t\t\treturn m, err',
+              '\t\t\t}',
+              '\t\t\tnext, err := p.peek()',
+              '\t\t\tif err != nil {',
+              '\t\t\t\treturn m, err',
+              '\t\t\t}',
+              '\t\t\tif next.Text == "on" {',
+              '\t\t\t\t_, _ = p.next()',
+              '\t\t\t\ta, err := p.expect(TokenIdent)',
+              '\t\t\t\tif err != nil {',
+              '\t\t\t\t\treturn m, err',
+              '\t\t\t\t}',
+              '\t\t\t\tattr, err := core.ParseCanonicalID(a.Text)',
+              '\t\t\t\tif err != nil {',
+              '\t\t\t\t\treturn m, p.errAt(a, err.Error())',
+              '\t\t\t\t}',
+              '\t\t\t\tm.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})',
+              '\t\t\t\tbreak',
+              '\t\t\t}',
+              '\t\t\tif next.Kind != TokenLBrace {',
+              '\t\t\t\treturn m, p.errAt(next, "expected on or advanced index block")',
+              '\t\t\t}',
+              '\t\t\tindex, err := p.parseAdvancedIndexBody(name, unique)',
+              '\t\t\tif err != nil {',
+              '\t\t\t\treturn m, err',
+              '\t\t\t}',
+              '\t\t\tm.Indexes = append(m.Indexes, index)',
+              '',
+          ])
+          path.write_text(pattern.sub(replacement, source, count=1))
       - name: Format parser
         run: gofmt -w internal/syntax/parser.go
       - name: Commit patch
