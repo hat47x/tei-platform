@@ -77,6 +77,23 @@ key blockでは、必要な場合に次を指定できます。
 
 collationとoperator classはprovider固有identifierです。Core共通taxonomyへ変換しません。
 
+### PostgreSQL B-treeのeffective default
+
+M0.29 Actual側のPostgreSQL catalog normalizationと表現を合わせるため、B-treeについてDB接続なしに確定できるdefaultはDesired realizationでも正規化します。
+
+| authoring上の意味 | Desired Physical Schema |
+| --- | --- |
+| `ASC NULLS LAST` | `order=default`, `nulls=default` |
+| `DESC NULLS FIRST` | `order=desc`, `nulls=default` |
+| `ASC NULLS FIRST` | `order=default`, `nulls=first` |
+| `DESC NULLS LAST` | `order=desc`, `nulls=last` |
+
+B-tree keyに`pg_catalog.default` collationを明示した場合も、Actual側と同じ空表現へ正規化します。
+
+これにより、既定動作を明示しただけのIndexを構造差として誤検出しません。
+
+一方、default operator classや、provider / method / physical type / provider versionに依存する一般的なidentifier normalizationはM0.30で推測しません。これはIssue #58へ分離します。
+
 ## INCLUDE
 
 INCLUDE対象もSemantic Attribute IDで記述します。
@@ -120,16 +137,22 @@ non-unique indexに`null-treatment`を指定した場合は拒否します。
 
 未指定時はprovider既定のmethodへDesired realizationで解決します。PostgreSQLでは現行Conformance上`btree`へ解決します。
 
-## Source Index
+## Index名とsource identity
 
-Persistence Mapping内にnestedされたIndex declarationにも、独立したsource subjectを与えます。
+同一Persistence Mapping内では、Index名を一意とします。
+
+Source Indexでは次のpath-independentなsubjectを使うためです。
 
 ```text
 Kind = persistence-index
 ID   = <Persistence Mapping ID>/<Index Name>
 ```
 
-たとえば次です。
+同じMapping内に同名Indexを複数許すと、二つの宣言が同じsubjectへ衝突し、source navigationが誤った宣言を指す可能性があります。そのため、Desired realizationとSource Index構築の双方で重複Index名を拒否します。
+
+## Source IndexとDiagnostic projection
+
+たとえば次のsubjectを構築します。
 
 ```text
 persistence-index:sales_core.customer/customers_name_advanced_idx
@@ -140,6 +163,8 @@ Source IndexのrangeはPersistence file全体やMapping先頭ではなく、Inde
 このidentityにはfile pathを含めません。ファイルを移動してもIndex subjectは変わらず、Source Indexのartifact locatorだけが変わります。
 
 simple formのIndexも同じ`persistence-index` subjectで追跡します。
+
+さらに、`validation.Diagnostic`がこのsubjectを持つ場合、Diagnostic projectionが同じIndex名tokenの定義位置へ戻れることを検証します。Source Indexを作れるだけでなく、Editorや診断表示へ接続できる追跡経路まで固定します。
 
 ## Desired realization
 
@@ -167,8 +192,9 @@ Conformance testでは次を固定します。
 
 1. Advanced Persistence MappingからDesired Physical Schemaを生成できる
 2. 同じ構造を持つusable Actual Indexとは差分0になる
-3. INCLUDE等の構造を変えると`drop-index` + `add-index`になる
+3. INCLUDEなどの構造を変えると`drop-index` + `add-index`になる
 4. Actual lifecycle stateはDesired structural identityへ混ざらない
+5. PostgreSQL B-treeの既定動作を明示してもActual normalizationと同じ表現へ収束する
 
 ## parser Conformance
 
@@ -189,6 +215,19 @@ Parserでは次を固定します。
 
 同じfixtureからSource Indexを構築し、simple / Advanced双方のIndex declarationが正確な名前rangeへ解決されることも検証します。
 
+加えて、次を確認します。
+
+- `persistence-index` subjectを持つDiagnosticがIndex名tokenへprojectionされる
+- 同一Mapping内の重複Index名はSource Index構築時にも拒否される
+
+## Reference Workspace
+
+既存Reference Workspaceのsimple Indexは変更しません。
+
+これは後方互換性を確認するfixtureとして有用です。Advanced block formは専用のWorkspace ConformanceでloaderからSource Index / Diagnostic projectionまで通して検証します。
+
+Reference WorkspaceにAdvanced Indexを追加することだけを目的にworld snapshot全体を書き換えることは、M0.30の完了条件にはしません。
+
 ## migration SQLとの境界
 
 M0.30は「Desiredとして表現できること」までを対象とします。
@@ -201,8 +240,9 @@ Advanced Indexを安全なprovider-native DDLへ変換する責務はIssue #55�
 
 - Index recommendation
 - query planからの自動authoring
-- provider expression normalizationの一般解
-- Advanced Index migration SQL生成
+- provider expression normalizationの一般解（#54）
+- provider default / identifier normalizationの一般解（#58）
+- Advanced Index migration SQL生成（#55）
 - automatic migration apply
 - concurrent build policy
 - partitioned index semantics
@@ -210,9 +250,10 @@ Advanced Indexを安全なprovider-native DDLへ変換する責務はIssue #55�
 
 ## 次の境界
 
-M0.30完了後も、Advanced Indexには少なくとも二つの独立した課題が残ります。
+M0.30完了後も、Advanced Indexには独立した課題が残ります。
 
 - Issue #54: Desired / Actual間のProviderExpression normalization contract
 - Issue #55: provider-owned Advanced Index migration SQL rendering
+- Issue #58: expression以外のprovider default / identifier normalization contract
 
-この分離により、authoring構文の都合でDBMS固有の式正規化やDDL運用判断をCoreへ取り込まないようにします。
+この分離により、authoring構文の都合でDBMS固有の式正規化、identifier知識、DDL運用判断をCoreへ取り込まないようにします。
