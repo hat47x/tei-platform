@@ -2,7 +2,7 @@
 
 - 状態: 採用
 - 日付: 2026-09-01
-- 関連Issue: #51, #54, #55
+- 関連Issue: #51, #54, #55, #58
 - 前提: ADR-0010 / M0.29 Advanced Index Actual / Diff
 
 ## 背景
@@ -74,11 +74,11 @@ unique-index customers_name_nulls_nd_uidx {
 
 既存の`index NAME on ATTRIBUTE` / `unique-index NAME on ATTRIBUTE`は、単純な一列Indexを簡潔に記述する構文として残します。
 
-block formは、ordered keyを複数持つ場合や、expression、INCLUDE、predicate、per-key option、非default NULL semantics等を記述する場合に使います。
+block formは、ordered keyを複数持つ場合や、expression、INCLUDE、predicate、per-key option、非default NULL semanticsなどを記述する場合に使います。
 
 同じIndex declarationの中でsimple formとblock formを混在させません。
 
-内部の`IndexMapping.Attributes`は既存simple authoringとの互換境界として残し、advanced formは`Keys`等の構造化fieldへ格納します。Desired realizationでは両者を同じ`physical.Index`へ収束させます。
+内部の`IndexMapping.Attributes`は既存simple authoringとの互換境界として残し、advanced formは`Keys`などの構造化fieldへ格納します。Desired realizationでは両者を同じ`physical.Index`へ収束させます。
 
 ## Index key
 
@@ -121,9 +121,9 @@ Desired realization時には、対象Database providerとexpressionのProvider�
 
 ## expression normalizationは別課題とする
 
-M0.29のActual側では、`pg_get_expr`や`pg_get_indexdef`等が返すprovider-normalizedな文字列を保持します。一方、Desired authoringではauthorがprovider-native expressionを記述します。
+M0.29のActual側では、`pg_get_expr`や`pg_get_indexdef`などが返すprovider-normalizedな文字列を保持します。一方、Desired authoringではauthorがprovider-native expressionを記述します。
 
-DBMSがcastやparentheses等を追加して同じ式を別文字列として返す可能性があります。この問題を、#51のParser実装のためのad-hocな文字列置換では解決しません。
+DBMSがcastやparenthesesなどを追加して同じ式を別文字列として返す可能性があります。この問題を、#51のParser実装のためのad-hocな文字列置換では解決しません。
 
 Desired / Actual間のprovider expression normalization contractはIssue #54で別途設計します。
 
@@ -154,7 +154,20 @@ nulls           default | first | last
 
 collationとoperator classはprovider-specific identifierとして扱います。Core共通taxonomyへ変換しません。
 
-指定がない場合は`default`として保持し、provider向けDesired realizationでM0.29のActual normalizationと比較可能な形へします。
+指定がない場合は`default`として保持し、provider向けDesired realizationでActual側と比較できる形へ正規化します。
+
+### PostgreSQL B-treeで確定できるdefaultを揃える
+
+PostgreSQLのB-treeについては、DB接続なしでもeffective defaultが確定するsort / NULL orderingをDesired側でM0.29 Actualと同じ表現へ揃えます。
+
+- `ASC NULLS LAST`は`order=default / nulls=default`
+- `DESC NULLS FIRST`は`order=desc / nulls=default`
+- `ASC NULLS FIRST`は`order=default / nulls=first`
+- `DESC NULLS LAST`は`order=desc / nulls=last`
+
+`pg_catalog.default` collationをB-tree keyへ明示した場合も、現行ConformanceではActualと同じ空表現へ正規化します。
+
+一方、default operator classや、provider / access method / physical type / provider versionに依存する一般的なcanonicalizationは、このADRへ文字列表として持ち込みません。expression以外のprovider default / identifier normalization contractはIssue #58で別途設計します。
 
 ## unique NULL treatment
 
@@ -172,7 +185,7 @@ non-unique indexで`null-treatment`が指定されている場合は拒否しま
 
 `method`はoptionalです。未指定時はprovider既定値をDesired realizationで解決します。
 
-指定されたmethod名はDatabase-owned physical intentとして保持します。providerが対応しているかどうかの完全なcapability validationは、provider capabilityとmigration renderingが必要になる段階で強化できます。
+指定されたmethod名はDatabase-owned physical intentとして保持します。providerが対応しているかどうかの完全なcapability validationは、provider capabilityとmigration renderingが必要になる段階で強化します。
 
 ## Source Index
 
@@ -192,6 +205,10 @@ Source RangeはIndex名tokenを正確に指します。
 
 このsubjectはphysical file pathをidentityへ含めません。file rename / moveではSource Index locatorだけが変わり、Mapping / Index identityは変えません。
 
+`<Persistence Mapping ID>/<Index Name>`を一意なsubjectとして安全に使うため、同一Persistence Mapping内のIndex名は一意でなければなりません。同名Indexが複数ある場合はDesired realizationでもSource Index構築でも拒否します。これにより、二つ目の宣言が一つ目のsource rangeへ誤って解決されることを防ぎます。
+
+Diagnostic projectionも同じsubjectを用い、`persistence-index`をIndex名tokenの定義位置へ戻せることをConformanceで固定します。
+
 ## Desired realization
 
 Advanced authoringはM0.29で導入した`physical.Index`へ直接対応します。
@@ -200,7 +217,7 @@ Advanced authoringはM0.29で導入した`physical.Index`へ直接対応しま�
 Persistence IndexMapping
   -> resolve Attribute IDs
   -> verify provider provenance
-  -> resolve provider defaults
+  -> resolve deterministic provider defaults
   -> Physical Index structural intent
 ```
 
@@ -219,6 +236,7 @@ Desired `physical.Index.State`は常にnilです。authoringからinvalid / non-
 - 空のdialect / source
 - non-unique indexの`null-treatment`
 - unknown order / null ordering / NULL treatment
+- 同一Persistence Mapping内の重複Index名
 
 Provider固有SQLそのものが構文的・意味的に正しいかはCore Parserの責務にしません。
 
@@ -230,6 +248,14 @@ M0.29でsimple Index以外をmigration rendererが明示的に拒否する挙動
 
 unsupportedなAdvanced Indexをsimple Indexへ黙って縮退させません。
 
+## Reference Workspaceの扱い
+
+既存Reference Workspaceの`index ... on ...`は、そのままsimple formの後方互換fixtureとして残します。
+
+Advanced block formそのものは、Workspace loader / Source Index / Diagnostic projectionを通る専用Conformance fixtureで検証します。Reference Workspaceへ無理にAdvanced Indexを追加してworld snapshot全体を書き換えることは、M0.30の成立条件にはしません。
+
+これにより、「既存authoringが変わらず動くこと」と「新しいAdvanced authoringが実際のWorkspace経路を通ること」を別々に確認できます。
+
 ## 非目標
 
 - Semantic modelからのIndex自動推論
@@ -238,6 +264,7 @@ unsupportedなAdvanced Indexをsimple Indexへ黙って縮退させません。
 - provider expressionの共通SQL AST化
 - provider expression normalizationの一般解（#54）
 - Advanced Index migration SQL生成・自動適用（#55）
+- provider default / identifier normalizationの一般解（#58）
 - partition-specific index semantics（#43）
 - lifecycle stateのDesired authoring
 
@@ -246,16 +273,18 @@ unsupportedなAdvanced Indexをsimple Indexへ黙って縮退させません。
 - Persistence MappingのIndex表現がsimple互換fieldとadvanced fieldを持つ
 - M0.29のPhysical SchemaをDesired側から損失なく構成できる
 - provider固有expressionはDatabase-owned sourceに留まりSemantic modelへ入らない
-- Source Indexでnested Index declarationを独立して追跡できる方向が固定される
-- expression normalizationとDDL生成を独立Issueへ分離できる
+- nested Index declarationをSource IndexとDiagnostic projectionから正確に追跡できる
+- 同一Mapping内のIndex名一意性がsource identityの前提として明示される
+- PostgreSQL B-treeで確定できるeffective defaultはDesired / Actualで同じ表現へ収束する
+- expression normalization、一般的なprovider identifier normalization、DDL生成を独立Issueへ分離できる
 
 ## 実装順序
 
-1. Persistence IndexMappingのadvanced structure
+1. Persistence `IndexMapping`のadvanced structure
 2. Advanced Index block parserとsyntax anchor
 3. `RealizeDesired`でPhysical Indexへ変換
 4. simple authoring互換test
 5. Desired / Actual / Diff unit Conformance
-6. Workspace / Source Index integration
-7. Reference Workspaceでのauthoring例
+6. Workspace / Source Index / Diagnostic projection統合
+7. Index名一意性とPostgreSQL B-tree default normalizationのConformance
 8. CI成功後にIssue #51を完了
