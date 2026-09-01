@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database/persistence"
 	"tei/internal/database/physical"
+	"tei/internal/database/providers/postgres"
 	"tei/internal/environment"
 )
 
@@ -51,7 +52,7 @@ func TestRealizeDesiredAdvancedIndex(t *testing.T) {
 		}},
 	}
 
-	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestRealizeDesiredAdvancedIndexRejectsInvalidIntent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := base
 			m.Indexes = []persistence.IndexMapping{tt.index}
-			_, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+			_, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 			if err == nil || !strings.Contains(err.Error(), tt.wantError) {
 				t.Fatalf("err=%v want substring %q", err, tt.wantError)
 			}
@@ -183,7 +184,7 @@ func TestRealizeDesiredRejectsDuplicateIndexNames(t *testing.T) {
 		},
 	}
 
-	_, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	_, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 	if err == nil || !strings.Contains(err.Error(), "declares duplicate index name") {
 		t.Fatalf("err=%v", err)
 	}
@@ -201,7 +202,7 @@ func TestRealizeDesiredSimpleIndexCompatibility(t *testing.T) {
 		Indexes: []persistence.IndexMapping{{Name: "customers_name_uidx", Attributes: []core.CanonicalID{core.MustCanonicalID("customer.name")}, Unique: true}},
 	}
 
-	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
