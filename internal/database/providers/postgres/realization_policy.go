@@ -55,9 +55,6 @@ func (RealizationPolicy) NormalizeIndexKey(key physical.IndexKey, method string)
 	} else if desc && key.NullsOrder == physical.IndexNullsOrderFirst {
 		key.NullsOrder = physical.IndexNullsOrderDefault
 	}
-	if strings.EqualFold(strings.TrimSpace(key.Collation), "pg_catalog.default") {
-		key.Collation = ""
-	}
 	return key
 }
 
