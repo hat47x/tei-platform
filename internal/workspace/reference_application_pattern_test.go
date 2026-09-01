@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
+	"tei/internal/database"
+	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -27,15 +30,15 @@ func TestReferenceBrowsePatternReusesExistingQueryDatasource(t *testing.T) {
 	if app.ID != "order_entry" {
 		t.Fatalf("application id=%q", app.ID)
 	}
-	if len(app.Patterns) != 2 {
-		t.Fatalf("browseとrecordが共存していません: %#v", app.Patterns)
+	if len(app.Patterns) != 3 {
+		t.Fatalf("browse、record、referenceが共存していません: %#v", app.Patterns)
 	}
 	pattern := applicationPatternByID(t, app.Patterns, patternID)
 	if pattern.Kind != application.PatternBrowse || pattern.Data != "sales.order" || pattern.Query != patternID {
 		t.Fatalf("browse Patternの意味が期待値と異なります: %#v", pattern)
 	}
-	if pattern.Datasource != "" {
-		t.Fatalf("Pattern側にQueryと同じDatasourceが重複記述されています: %q", pattern.Datasource)
+	if pattern.Relation != "" || pattern.Datasource != "" {
+		t.Fatalf("browse Patternへ不要な参照が重複記述されています: %#v", pattern)
 	}
 
 	if len(result.World.Queries) != 1 {
@@ -75,8 +78,8 @@ func TestReferenceRecordPatternUsesSemanticDataWithoutQueryOrDatasource(t *testi
 	if pattern.Kind != application.PatternRecord || pattern.Data != "sales.order" {
 		t.Fatalf("record Patternの意味が期待値と異なります: %#v", pattern)
 	}
-	if pattern.Query != "" || pattern.Datasource != "" {
-		t.Fatalf("record Patternへ取得経路が重複して入り込んでいます: %#v", pattern)
+	if pattern.Relation != "" || pattern.Query != "" || pattern.Datasource != "" {
+		t.Fatalf("record Patternへ取得経路やRelationが重複して入り込んでいます: %#v", pattern)
 	}
 
 	idx, err := workspace.BuildSourceIndex(ws, result)
@@ -92,6 +95,70 @@ func TestReferenceRecordPatternUsesSemanticDataWithoutQueryOrDatasource(t *testi
 	}
 }
 
+func TestReferenceReferencePatternReusesRelationAndReadOnlyDatasourceContracts(t *testing.T) {
+	root := repoRoot(t)
+	ws := filepath.Join(root, "reference", "workspace")
+	result, err := workspace.Load(ws)
+	if err != nil {
+		t.Fatalf("Reference Workspaceの読み込みに失敗しました: %v", err)
+	}
+
+	const patternID = "order_entry.customer_reference"
+	const patternPath = "applications/order-entry/patterns/customer-reference.tei"
+
+	app := result.World.Applications[0]
+	pattern := applicationPatternByID(t, app.Patterns, patternID)
+	if pattern.Kind != application.PatternReference || pattern.Relation != "sales.order.customer" || pattern.Datasource != "master" {
+		t.Fatalf("reference Patternの意味が期待値と異なります: %#v", pattern)
+	}
+	if pattern.Data != "" || pattern.Query != "" {
+		t.Fatalf("Relationが持つsource / targetの意味がPatternへ重複しています: %#v", pattern)
+	}
+
+	sourceData, relation := semanticRelationByID(t, result.World.Semantics, pattern.Relation)
+	if sourceData != "sales.order" || relation.Target != "customer.customer" || relation.Cardinality != semantic.CardinalityOne {
+		t.Fatalf("Relationが保持する参照元・参照先・cardinalityが期待値と異なります: source=%s relation=%#v", sourceData, relation)
+	}
+
+	master, ok := app.DatabaseByAlias(pattern.Datasource)
+	if !ok {
+		t.Fatalf("reference Patternが参照するDatasource %qがApplicationにありません", pattern.Datasource)
+	}
+	if master.Access != database.AccessRead {
+		t.Fatalf("master Datasourceのread-only境界が失われました: access=%q", master.Access)
+	}
+	if master.TargetDatabase != "master_data" {
+		t.Fatalf("master Datasourceのtarget=%q want=master_data", master.TargetDatabase)
+	}
+	if len(master.RequiredContracts) != 1 {
+		t.Fatalf("master DatasourceのRequired Contract=%#v", master.RequiredContracts)
+	}
+
+	requirement := master.RequiredContracts[0]
+	if requirement.ContractID != "master_data.customer" || requirement.CompatibleMajor != 2 {
+		t.Fatalf("master DatasourceのContract Requirementが期待値と異なります: %#v", requirement)
+	}
+	contract := databaseContractByID(t, result.World.Databases, requirement.ContractID)
+	if contract.Version.Major != requirement.CompatibleMajor {
+		t.Fatalf("Contract major=%d requirement=%d", contract.Version.Major, requirement.CompatibleMajor)
+	}
+	if !containsCanonicalID(contract.Reads, relation.Target) {
+		t.Fatalf("Relation target %sをContract %sからreadできません: reads=%#v", relation.Target, contract.ID, contract.Reads)
+	}
+
+	idx, err := workspace.BuildSourceIndex(ws, result)
+	if err != nil {
+		t.Fatalf("Source Indexの構築に失敗しました: %v", err)
+	}
+	refs := idx.ReferencesFor(sourceindex.Subject{Kind: "application-pattern", ID: patternID})
+	if len(refs) != 1 {
+		t.Fatalf("reference Patternのsource references=%#v", refs)
+	}
+	if refs[0].ArtifactPath != patternPath {
+		t.Fatalf("reference Patternのsource path=%q want=%q", refs[0].ArtifactPath, patternPath)
+	}
+}
+
 func applicationPatternByID(t *testing.T, patterns []application.Pattern, id string) application.Pattern {
 	t.Helper()
 	for _, pattern := range patterns {
@@ -101,4 +168,41 @@ func applicationPatternByID(t *testing.T, patterns []application.Pattern, id str
 	}
 	t.Fatalf("Application Pattern %sが見つかりません: %#v", id, patterns)
 	return application.Pattern{}
+}
+
+func semanticRelationByID(t *testing.T, namespaces []semantic.Namespace, id core.CanonicalID) (core.CanonicalID, semantic.Relation) {
+	t.Helper()
+	for _, namespace := range namespaces {
+		for _, data := range namespace.Data {
+			for _, relation := range data.Relations {
+				if relation.ID == id {
+					return data.ID, relation
+				}
+			}
+		}
+	}
+	t.Fatalf("Semantic Relation %sが見つかりません", id)
+	return "", semantic.Relation{}
+}
+
+func databaseContractByID(t *testing.T, databases []database.Database, id core.CanonicalID) database.Contract {
+	t.Helper()
+	for _, db := range databases {
+		for _, contract := range db.Contracts {
+			if contract.ID == id {
+				return contract
+			}
+		}
+	}
+	t.Fatalf("Database Contract %sが見つかりません", id)
+	return database.Contract{}
+}
+
+func containsCanonicalID(ids []core.CanonicalID, target core.CanonicalID) bool {
+	for _, id := range ids {
+		if id == target {
+			return true
+		}
+	}
+	return false
 }
