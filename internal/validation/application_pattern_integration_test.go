@@ -58,6 +58,23 @@ func TestValidateAcceptsDataOnlyRecordPattern(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsRelationAndDatasourceReferencePattern(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = []application.Pattern{{
+		ID:         "order_entry.customer_reference",
+		Kind:       application.PatternReference,
+		Relation:   "sales.order.customer",
+		Datasource: "master",
+	}}
+
+	diagnostics := Validate(w)
+	for _, diagnostic := range diagnostics {
+		if isApplicationPatternDiagnostic(diagnostic.Code) {
+			t.Fatalf("RelationとDatasourceを持つ正常なreference Patternに不要なDiagnosticが追加されました: %#v", diagnostic)
+		}
+	}
+}
+
 func TestValidateRejectsRecordQueryOnce(t *testing.T) {
 	w := validApplicationPatternWorld()
 	w.Applications[0].Patterns = []application.Pattern{{
@@ -77,6 +94,25 @@ func TestValidateRejectsRecordQueryOnce(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsUnknownReferenceRelationOnce(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = []application.Pattern{{
+		ID:         "order_entry.customer_reference",
+		Kind:       application.PatternReference,
+		Relation:   "sales.order.missing",
+		Datasource: "master",
+	}}
+
+	diagnostics := Validate(w)
+	matches := diagnosticsByCode(diagnostics, "UNKNOWN_APPLICATION_PATTERN_RELATION")
+	if len(matches) != 1 {
+		t.Fatalf("referenceの未知Relation Diagnosticの件数=%d want=1: %#v", len(matches), diagnostics)
+	}
+	if matches[0].Subject == nil || matches[0].Subject.Kind != "application-pattern" || matches[0].Subject.ID != "order_entry.customer_reference" {
+		t.Fatalf("reference DiagnosticのPattern Subjectが失われました: %#v", matches[0].Subject)
+	}
+}
+
 func diagnosticsByCode(diagnostics []Diagnostic, code string) []Diagnostic {
 	var matches []Diagnostic
 	for _, diagnostic := range diagnostics {
@@ -93,12 +129,17 @@ func isApplicationPatternDiagnostic(code string) bool {
 		"INVALID_APPLICATION_PATTERN_KIND",
 		"APPLICATION_PATTERN_DATA_REQUIRED",
 		"UNKNOWN_APPLICATION_PATTERN_DATA",
+		"APPLICATION_PATTERN_DATA_NOT_ALLOWED",
+		"APPLICATION_PATTERN_RELATION_REQUIRED",
+		"UNKNOWN_APPLICATION_PATTERN_RELATION",
+		"APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
 		"APPLICATION_PATTERN_QUERY_REQUIRED",
 		"UNKNOWN_APPLICATION_PATTERN_QUERY",
 		"APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH",
+		"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+		"APPLICATION_PATTERN_DATASOURCE_REQUIRED",
 		"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
 		"APPLICATION_PATTERN_DATASOURCE_QUERY_MISMATCH",
-		"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
 		"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED":
 		return true
 	default:
