@@ -48,16 +48,18 @@ Product Value、Vision、Principles、Requirements、Milestone、ADR / Issue運�
 - Domain Component
 - Semantic Pattern / Facet
 - Policy / Variation
-- standard Application Pattern
 - provenance / change trace
+- Applicationから再利用できる意味知識の探索・参照基盤
 
 ### 重点
 
 Source-to-Canonical Traceabilityの次は、**「業務システムで再利用可能な意味知識をどう持つか」**を実証する必要があります。
 
-単にprimitiveを増やすのではなく、受注、参照、header-detail、履歴、状態遷移などの小さい具体例を通して、Micro Kernelと再利用可能Patternの境界を確認します。
+単にprimitiveを増やすのではなく、受注、参照、履歴、状態遷移などの小さい具体例を通して、Micro Kernelと再利用可能な意味知識の境界を確認します。
 
-Application Patternについては、v1の設計検証ではApplicationが所有するCanonicalな意図として扱います。Semantic Kernelへ早い段階から固定せず、Driverと複数Targetから得られるEvidenceを見て分類や粒度を見直します。詳細は[ADR-0017](adr/0017-application-pattern-ownership.md)を参照してください。
+Application Patternそのものは、v1ではこのworkstreamの所有物にはしません。ADR-0017に従い、Applicationが所有するCanonicalな意図としてWorkstream Cで実証します。その結果から、複数Applicationで再利用すべき部分が見つかった場合に、Workstream BのDomain Component、Semantic Pattern、Policy等とどのように接続するかを判断します。
+
+この順序により、一つのApplicationで便利だった分類を、十分なEvidenceなしにSemantic Kernelや標準知識へ持ち上げることを避けます。
 
 ## Workstream C: Application / Legacy Compatibility
 
@@ -67,6 +69,7 @@ TEIが新規の理想形だけでなく、実際の業務システムを受け�
 
 ### 対象
 
+- Application PatternとApplication上の利用意図
 - Application ↔ Database N:M
 - Database Contract
 - read / read-write Binding
@@ -78,9 +81,13 @@ TEIが新規の理想形だけでなく、実際の業務システムを受け�
 
 ### 重点
 
-既存認証のように、標準化するとかえって移行できなくなる領域を重点的に検証します。
+v1では、Application PatternをApplicationが所有するCanonicalな意図として扱います。`browse`、`record`、`reference`、`header-detail`、`command`を最初のReferenceとして実証しますが、この分類を直ちにTEI全体の標準Catalogへ固定しません。
 
-「TEI標準へ作り直してから移行」ではなく、既存仕様を保持したまま取り込み、後からCapability単位で置き換えられることをReferenceで確認します。
+Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置は[ADR-0018](adr/0018-application-pattern-authoring-source.md)、具体的な実証順は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を参照します。
+
+既存認証のように、標準化するとかえって移行できなくなる領域も並行して検証します。「TEI標準へ作り直してから移行」ではなく、既存仕様を保持したまま取り込み、後からCapability単位で置き換えられることをReferenceで確認します。
+
+Authentication / Authorizationの意味境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装前設計は[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)を参照します。
 
 ## Workstream D: Database / Provider Lifecycle
 
@@ -310,7 +317,7 @@ M0.35以降は、次の順を基本とします。
 
 1. Product BaselineをRepositoryへ定着させる
 2. 現在の実装をProduct Requirementsへ逆マッピングし、空白を明示する
-3. standard Application Patternと既存認証互換を`order_entry`周辺の小さいReferenceで実証する
+3. Application Patternと既存認証Compatibilityを`order_entry`周辺の小さいReferenceで実証する
 4. Gate Aを確認する
 5. DriverでApplication設計を動かす最小vertical sliceを作る
 6. Gate Bを確認する
@@ -318,5 +325,7 @@ M0.35以降は、次の順を基本とします。
 8. Gate Cを確認してEditor / AI支援の具体化へ進む
 9. 第二Targetを追加し、Target-neutral境界を圧力試験する
 10. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
+
+Application Patternについては、最初から「標準Pattern Catalogの完成」を目標にしません。v1 ReferenceでApplication上の意図として実証し、複数Applicationや複数Targetから再利用Evidenceが得られた段階で、どこまでを標準知識として共有するかを判断します。
 
 既存のDatabase関連Issueは捨てません。ただし、緊急な安全境界や他workstreamの前提でないものは、プロダクト全体の空白と比較しながら着手順を決めます。
