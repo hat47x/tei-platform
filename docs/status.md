@@ -1,14 +1,14 @@
 # 現在の実装状況
 
-TEIはまだ完成したローコード製品ではなく、設計境界を実行可能なコードで検証している段階です。
+TEIは、完成したローコード製品ではなく、設計上の境界を実行可能なコードとReferenceで検証している段階です。
 
-**現在の設計検証チェックポイントはM0.35です。**
+**Database / Provider側の設計検証チェックポイントはM0.35まで進んでいます。** その後は、v1 Reference Applicationの主線としてApplication Patternの実証を進めています。
 
-この文書では「現在、Repository上で何を実装・検証できているか」と、「まだ何を実装済みとは言えないか」を分けて整理します。
+この文書では、Repository上で実際に実装・検証できていることと、まだ実装済みとは言えないことを分けて整理します。
 
-TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)、上位の価値や今後の方向を確認する場合は [TEI Product Value](../product/value/TEI_PRODUCT_VALUE.md) と [TEI Master Plan](../plan/MASTER_PLAN.md) を先に読む方が自然です。
+TEIを初めて知る場合は[はじめてTEIを知る方へ](for-readers.md)、上位の価値や今後の方向を確認する場合は[TEI Product Value](../product/value/TEI_PRODUCT_VALUE.md)と[TEI Master Plan](../plan/MASTER_PLAN.md)を先に読むと、全体の位置づけを把握しやすくなります。
 
-## 実装済みの主要縦切り
+## 実装済みの主要な縦切り
 
 ### Semantic / Workspace
 
@@ -29,11 +29,13 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - N:M Application ↔ Database
 - logical datasource alias
 - read / read-write Access
-- Applicationが所有するPatternの最小Canonical model
-- `browse` Pattern Parser
+- Applicationが所有するPatternのCanonical model
 - `applications/*/patterns/*.tei`のWorkspace Loader
 - PatternのCanonical ID順Normalization
 - `application-pattern:<Canonical ID>`のSource Indexと識別子range
+- Pattern固有Validationの共通`validation.Validate`への統合
+- Pattern Diagnosticからauthoring sourceへのprojection
+- `browse` / `record` / `reference` PatternのParser・Validation・実Reference
 - Database Contract
 - Persistence Mapping
 - provider-neutral Desired Physical Schema
@@ -48,7 +50,29 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - Migration Provider / applied-history reconciliation
 - Database Release / Application Release / Solution Release
 
-Application Patternについては、`browse`を受け止めるmodel / Parser / Loader / Normalization / Source Indexまでが部分的に実装されています。実際の`order_entry` Reference Pattern、Workspace全体の参照整合性、Reference World、後続Patternはまだ未完了です。
+Application Patternでは、現時点で次の3種類を`order_entry`の実Referenceとして扱えます。
+
+```tei
+pattern order_entry.recent_orders browse {
+    data sales.order
+    query order_entry.recent_orders
+}
+
+pattern order_entry.order_record record {
+    data sales.order
+}
+
+pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+    datasource master
+}
+```
+
+`browse`では、Queryが保持するDatasourceをPatternへ重複記述せず利用できます。`record`はSemantic Data一件という最小の意味だけを保持します。`reference`はSemantic Relationが持つsource / target / cardinalityを複製せず、Application固有のlogical datasourceだけを組み合わせます。
+
+3種類は同じ`order_entry`で共存し、Reference World、Source Index、Diagnostic、Workspace Validationを通して追跡できます。
+
+次のApplication Pattern実証は`command`です。既存`sales.order.submit` Capabilityを、input / outputや実装方式をPatternへ複製せず参照できるかを検証します。その後、`OrderLine`と対応するSemantic Relationを追加し、`header-detail`へ進みます。
 
 ### Query / Workbench
 
@@ -97,7 +121,9 @@ Application Patternについては、`browse`を受け止めるmodel / Parser / 
 次はProduct Visionに含まれますが、現時点で完成済みとは主張しません。
 
 - production-ready GUI Editor / Wails application
-- 5種類のApplication Patternを`order_entry`で一続きに扱うReference（`browse`基盤は部分実装済み）
+- 5種類のApplication Patternを`order_entry`で一続きに扱うReference
+  - `browse` / `record` / `reference`は実Referenceまで完了
+  - `command` / `header-detail`は未完了
 - Application設計を通しで実行するDriver
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
@@ -115,7 +141,7 @@ Application Patternについては、`browse`を受け止めるmodel / Parser / 
 - Go source semantic analysis / refactoring engine
 - AIによるauthoritative sourceの無確認自動編集
 
-このGapの全体像は [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md) に整理しています。
+Gap全体は[Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)に整理しています。
 
 # 設計検証チェックポイント
 
@@ -130,7 +156,7 @@ M0.22.1では、Semantic / Application / DatabaseからRelease、Deployment、Pl
 - Plugin LockとDurable Run fixtureの再生成経路を固定する
 - Plugin / Runtimeの安全条件をConformanceで追跡する
 
-詳細は [ADR-0002](adr/0002-m0221-public-checkpoint.md) と [M0.22.1 Plugin / Runtime Conformance](conformance/plugin-runtime-m0.22.1.md) を参照してください。
+詳細は[ADR-0002](adr/0002-m0221-public-checkpoint.md)と[M0.22.1 Plugin / Runtime Conformance](conformance/plugin-runtime-m0.22.1.md)を参照してください。
 
 M0.22.1は現在地ではなく、公開可能な設計検証を始めた基準点です。
 
@@ -150,9 +176,9 @@ Authoring sourceからCanonical Semantic Layerへ入る側の追跡性をvertica
 - file rename / moveだけではnormalized Worldを変更しない
 - derived artifactからauthoritative sourceへ暗黙に逆書きしない
 
-Reference Workspaceの`order_entry.recent_orders`はnative SQLへ移行済みですが、normalized `reference/world.json`は変更していません。
+Reference Workspaceの`order_entry.recent_orders`はnative SQLへ移行済みですが、この変更だけではnormalized `reference/world.json`を変えていません。
 
-詳細は [M0.23 Conformance](conformance/source-traceability-m0.23.md) を参照してください。
+詳細は[M0.23 Conformance](conformance/source-traceability-m0.23.md)を参照してください。
 
 ## M0.24 — actual process Plugin runtime
 
@@ -169,7 +195,7 @@ Host注入interfaceだけだったprocess boundaryを、actual OS child process�
 
 plain process transportをOS sandboxやDurable cross-host runtimeと同一視しません。
 
-詳細は [M0.24 Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+詳細は[M0.24 Conformance](conformance/process-runtime-m0.24.md)を参照してください。
 
 ## M0.25 — process executable / argv
 
@@ -182,7 +208,7 @@ process Pluginの実行指定をshell-likeなcommand lineではなく、単一ex
 - args差分をDefinition / Plugin Lock / Runtime Policy fingerprintへ反映
 - 空白を含む一つのargv elementがactual child processまで保存されることを確認
 
-詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
+詳細は[M0.25 Conformance](conformance/process-command-argv-m0.25.md)を参照してください。
 
 ## M0.26 — actual PostgreSQL Desired / Actual / Diff
 
@@ -211,7 +237,7 @@ Schema Diff
 
 M0.26でautomatic schema applyを実装したわけではありません。
 
-詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+詳細は[M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md)を参照してください。
 
 ## M0.27 — Foreign Key realization / drift
 
@@ -226,7 +252,7 @@ Foreign KeyをPersistence MappingのDesired realizationとprovider-neutral Schem
 - composite FKのcolumn順序とmultiplicityを保持
 - actual PostgreSQLでbaseline差分0とFK driftを確認
 
-詳細は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+詳細は[ADR-0008](adr/0008-persistence-foreign-key-identity.md)と[M0.27 Conformance](conformance/foreign-key-drift-m0.27.md)を参照してください。
 
 ## M0.28 — Unique Constraint realization / drift
 
@@ -243,7 +269,7 @@ UNIQUE constraintをexplicit unique indexとは別のDatabase-owned physical int
 
 PostgreSQL内部でUNIQUE constraintがunique indexに支えられていても、constraint intentとaccess-path intentを同一視しません。
 
-詳細は [ADR-0009](adr/0009-unique-constraint-and-unique-index.md) と [M0.28 Conformance](conformance/unique-constraint-m0.28.md) を参照してください。
+詳細は[ADR-0009](adr/0009-unique-constraint-and-unique-index.md)と[M0.28 Conformance](conformance/unique-constraint-m0.28.md)を参照してください。
 
 ## M0.29 — Advanced Index Actual / Diff
 
@@ -262,7 +288,7 @@ expression / predicateはCore共通SQL ASTへ変換せず、provider / dialect p
 
 Schema Diffでは、structural driftと`index-state-drift`を分離しました。
 
-詳細は [ADR-0010](adr/0010-advanced-index-semantics.md) と [M0.29 Conformance](conformance/advanced-index-actual-diff-m0.29.md) を参照してください。
+詳細は[ADR-0010](adr/0010-advanced-index-semantics.md)と[M0.29 Conformance](conformance/advanced-index-actual-diff-m0.29.md)を参照してください。
 
 ## M0.30 — Advanced Index Desired authoring
 
@@ -283,7 +309,7 @@ Advanced IndexをSemantic modelから自動推論せず、利用者が選んだp
 
 PostgreSQL B-treeについてofflineで確定できるeffective defaultはDesired / Actualで同じ表現へ正規化します。一方、一般化にprovider固有知識が必要な部分は推測せず後続Issueへ分離しています。
 
-詳細は [ADR-0011](adr/0011-advanced-index-authoring.md) と [M0.30 Conformance](conformance/advanced-index-authoring-m0.30.md) を参照してください。
+詳細は[ADR-0011](adr/0011-advanced-index-authoring.md)と[M0.30 Conformance](conformance/advanced-index-authoring-m0.30.md)を参照してください。
 
 ## M0.31 — Schema Diffの比較未確定
 
@@ -306,7 +332,7 @@ Diff
 
 「比較できない」をmigration可能なChangeとして扱わないことが重要な境界です。
 
-詳細は [M0.31 Conformance](conformance/schema-diff-unresolved-m0.31.md) を参照してください。
+詳細は[M0.31 Conformance](conformance/schema-diff-unresolved-m0.31.md)を参照してください。
 
 ## M0.32 — ProviderExpression representation / comparison
 
@@ -330,7 +356,7 @@ provider-normalized表現には、必要に応じてnormalization authorityとpr
 - provider-normalized同士も、authority / versionが比較可能でなければ異なるtextを即構造差にしない
 - unresolved comparisonからmigration SQLを生成しない
 
-詳細は [ADR-0012](adr/0012-provider-expression-representation.md) と [M0.32 Conformance](conformance/provider-expression-representation-m0.32.md) を参照してください。
+詳細は[ADR-0012](adr/0012-provider-expression-representation.md)と[M0.32 Conformance](conformance/provider-expression-representation-m0.32.md)を参照してください。
 
 ## M0.33 — Desired Physical realizationのoffline provider policy
 
@@ -346,7 +372,7 @@ Desired Physical Schemaを生成する処理から、DBMS固有の知識をrunti
 
 この分離により、ProviderExpressionやIndex既定値の知識を増やしても、Persistence Coreや接続系runtime SPIへ無秩序に流入しにくくしました。
 
-詳細は [ADR-0013](adr/0013-offline-physical-realization-policy.md) と [M0.33 Conformance](conformance/offline-physical-realization-policy-m0.33.md) を参照してください。
+詳細は[ADR-0013](adr/0013-offline-physical-realization-policy.md)と[M0.33 Conformance](conformance/offline-physical-realization-policy-m0.33.md)を参照してください。
 
 ## M0.34 — プロバイダー固有Index識別子の比較
 
@@ -360,9 +386,9 @@ Advanced Indexのcollationとoperator classについて、表記差だけからI
 - `provider-identifier`のUnresolvedにfield pathとDesired / Actual値を保持
 - 比較未確定から`DROP INDEX` / `CREATE INDEX`を生成しない
 
-「offlineで確定できる既定値」と、「列・型・catalog状態を見なければ確定できない識別子」を分けています。
+「offlineで確定できる既定値」と「列・型・catalog状態を見なければ確定できない識別子」を分けています。
 
-詳細は [ADR-0014](adr/0014-provider-index-identifier-comparison.md) と [M0.34 Conformance](conformance/provider-index-identifier-m0.34.md) を参照してください。
+詳細は[ADR-0014](adr/0014-provider-index-identifier-comparison.md)と[M0.34 Conformance](conformance/provider-index-identifier-m0.34.md)を参照してください。
 
 ## M0.35 — Advanced IndexのPostgreSQL migration SQL
 
@@ -384,27 +410,73 @@ Advanced Indexの主要なPhysical semanticsを、PostgreSQL固有のDDLへ意�
 
 CIではPostgreSQL 17を使い、Desired → Diff → SQL生成 → 実DBへ適用 → Introspect → 再比較を一周させ、Advanced Indexを作成した後に`Changes = 0 / Unresolved = 0`へ収束することを確認しています。
 
-詳細は [ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md) と [M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md) を参照してください。
+詳細は[ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md)と[M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md)を参照してください。
 
-## M0.35以後 — v1 Application Pattern基盤の実装開始
+## M0.35以後 — v1 Application Patternの実証
 
-M0.35のDatabase / Provider検証後、v1 Reference Applicationの主線であるApplication Patternへ実装を移しています。ここは新しい設計検証チェックポイントを宣言する節ではなく、M0.35以後に進んだ実装の現在地を記録するものです。
+M0.35のDatabase / Provider検証後、v1 Reference Applicationの主線であるApplication Patternへ実装の重点を移しています。この節は新しいM0.xxチェックポイントを宣言するものではなく、M0.35以後の現在地を記録するためのものです。
 
-PR #87〜#89で、最初の`browse`を受け止める基盤の前半を実装しました。
+### 共通基盤
 
-- Applicationが所有する`Pattern`の最小Canonical model
-- `browse` PatternのParser
-- `applications/*/patterns/*.tei`のLoader
-- PatternのCanonical ID順Normalization
+PR #87〜#103で、Application PatternをReferenceとして扱うための基盤を段階的に閉じました。
+
+- Applicationが所有する`Pattern`のCanonical model
+- Pattern Parser
+- `applications/*/patterns/*.tei` Loader
+- Canonical ID順Normalization
 - `application-pattern:<Canonical ID>`のSource Index
 - Pattern ID tokenを指すsource range
-- Source IndexのSubject identityとfile pathの分離
+- Pattern identityとfile pathの分離
+- Workspace全体の参照整合性Validation
+- Pattern固有Diagnosticのsource projection
+- 共通`validation.Validate`への統合
+- `browse`実ReferenceとGolden World
+- 実Referenceのfile rename invariance
 
-一方、現在の`reference/workspace/applications/order-entry`にはまだ`patterns/`がありません。次はWorkspace参照整合性Validationを追加し、`order_entry.recent_orders`を実Reference Patternとして組み込み、Reference World、Diagnostic、実Referenceでのfile rename invarianceまで一続きに閉じます。
+### `record`
 
-この進捗だけでStage 1、Gate A、Milestone 1の完了とはみなしません。`record`、`reference`、`command`、`header-detail`と既存認証Compatibilityを含め、Driverへ渡せるApplication上の意味が揃ってからGate Aを評価します。
+Issue #104、PR #105 / #106で、`sales.order`を一件として扱う`record`をData-onlyの最小契約として実証しました。
 
-詳細は [Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md) と [ISSUE-000005](../plan/issue/000005-application-pattern-reference.md) を参照してください。
+```tei
+pattern order_entry.order_record record {
+    data sales.order
+}
+```
+
+Query、Datasource、特定`browse`との遷移関係をPatternへ追加しなくてもReferenceが成立したため、現時点ではそれらをCanonical fieldに含めていません。
+
+### `reference`
+
+Issue #107、PR #108 / #109で、Semantic Relation `sales.order.customer`をlogical datasource `master`から参照する`reference`を実証しました。
+
+```tei
+pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+    datasource master
+}
+```
+
+Relationが持つsource / targetをPatternへ複製せず、Datasource accessはApplication定義を正本とします。
+
+`reference`ではwrite-only Datasourceを拒否し、read / read-writeを読み取り可能として扱います。実Referenceでは、`master_data.customer ^2` ContractがRelation target `customer.customer`をread対象として公開していることもConformanceで追跡しています。
+
+### 次の主線
+
+次は`command`として`sales.order.submit` Capabilityへの接続を実証します。
+
+```tei
+pattern order_entry.submit_order command {
+    capability sales.order.submit
+}
+```
+
+第一候補では、Capabilityのinput / output、Datasource、実装方式をPatternへ複製しません。Capability結果はADR-0020のBusiness Result / Execution Error境界を利用し、`command`追加だけを理由に既存`output sales.order`を名前付きOutcomeへ変更しません。
+
+`command`の後は、`OrderLine`と対応Relationを追加して`header-detail`を検証します。
+
+この進捗だけでStage 1、Gate A、Milestone 1の完了とはみなしません。5種類のPattern候補と既存認証Compatibilityを含め、後続Driverへ渡せるApplication上の意味が揃ってからGate Aを評価します。
+
+詳細は[Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md)、[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)、[ISSUE-000010](../plan/issue/000010-command-application-pattern.md)を参照してください。
 
 # 継続的な検証
 
@@ -419,7 +491,7 @@ PR #87〜#89で、最初の`browse`を受け止める基盤の前半を実装し
 
 ### Reference再現性
 
-- Reference QueryのSource Index projection
+- Reference Query / Application PatternのSource Index projection
 - `reference/world.json`の再生成一致
 - Plugin Lockの再生成一致
 - Durable Deployment Run fixtureの再生成一致
@@ -454,9 +526,12 @@ CIはproduction-gradeな外部環境を保証するものではありません�
 
 ## Product側の大きなGap
 
-Database / Provider側の設計検証がM0.35まで進み、Application Patternも`browse`基盤の前半へ着手しました。一方、次はまだ実証が薄い領域です。
+Database / Provider側の設計検証はM0.35まで進み、Application Patternも`browse`、`record`、`reference`の実Referenceまで進みました。
 
-- Application Patternの実Reference、参照整合性、`record` / `reference` / `command` / `header-detail`
+一方、次は引き続き実証が薄い領域です。
+
+- `command` / `header-detail`を含むApplication Pattern Stage 1の完了
+- `OrderLine`を含む最小header-detail Semantic
 - 既存認証・認可を保持したCompatibility
 - Application Driver
 - target-neutral Presentation / Interaction
@@ -464,9 +539,9 @@ Database / Provider側の設計検証がM0.35まで進み、Application Pattern�
 - 開発者向け高密度Editor
 - AIによる知識探索、確認提案、判断履歴
 
-今後は`browse`基盤を実Referenceとして閉じたうえでApplication Patternを段階的に広げ、既存認証CompatibilityとGate Aで合流させます。その後、Application Driver → 第一Web Targetへ進みます。
+今後は`sales.order.submit`を`command` Patternから参照する実証を進め、その後`OrderLine` / `header-detail`へ進みます。Application Pattern側と既存認証Compatibility側のEvidenceが揃ったところでGate Aを評価し、その後Application Driver → 第一Web Targetへ進みます。
 
-詳細は [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md) と [Master Plan](../plan/MASTER_PLAN.md) を参照してください。
+詳細は[Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)、[Master Plan](../plan/MASTER_PLAN.md)、[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
 
 ## Database / Provider側の継続課題
 
