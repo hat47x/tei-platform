@@ -1,6 +1,6 @@
 # ISSUE-000003: 既存認証仕様を保持したCompatibility Referenceを設計する
 
-- Status: Ready
+- 状態: 着手可能
 - GitHub Issue: #68
 
 ## 背景
@@ -11,7 +11,7 @@ TEIが既存システム移行に使えるためには、最初に標準認証�
 
 Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証領域として確認されました。
 
-このIssueは、v1 Reference Application PlanではApplication Patternと並行して進めます。両者の成果はGate A「Application上の意味をDriverへ渡せる」で合流します。
+このIssueは、v1 Reference Application実証計画ではApplication Patternと並行して進めます。両者の成果はGate A「Application上の意味をDriverへ渡せる」で合流します。
 
 ## 関連するProduct Requirement
 
@@ -78,7 +78,7 @@ Referenceでpassword verificationを扱う場合も、Canonical側には「ど�
 
 authenticated subjectが、Application上のaction / resourceを実行できるか判定するCapabilityです。
 
-組織やrole等の既存情報を利用できる必要があります。
+組織やroleなどの既存情報を利用できる必要があります。
 
 AuthenticationとAuthorizationを一つのboolean関数へ固定しません。
 
@@ -125,7 +125,7 @@ Legacy authentication dataを第三DatabaseとしてReference Workspaceへ追加
 
 `order_entry`へ第三Datasourceを先に追加することを要件にはしません。
 
-既存システムでは認証が別DB、LDAP、IdP、独自API等のいずれもあり得るため、Databaseに固定しないCapability契約を優先します。
+既存システムでは認証が別DB、LDAP、IdP、独自APIなどのいずれもあり得るため、Databaseに固定しないCapability契約を優先します。
 
 ## Gate Aへ渡す情報
 
@@ -153,7 +153,7 @@ Gate Aではproduction-readyなIdPやログイン画面の完成は求めませ�
 少なくとも次を確認します。
 
 - legacy field名をCanonical identityとして要求しない
-- disabled / validity / failure count / lock等の既存意味を失わない
+- disabled / validity / failure count / lockなどの既存意味を失わない
 - secret plaintextをCanonical / Durable artifactへ保存しない
 - AuthenticationとPlugin runtime permissionを混同しない
 - 同じCapability identityへ複数implementationをBindingできる
@@ -166,7 +166,7 @@ Gate Aではproduction-readyなIdPやログイン画面の完成は求めませ�
 
 - TEI標準User schemaの制定
 - production IdPの内製
-- OAuth / OIDC / SAML等を一度に網羅すること
+- OAuth / OIDC / SAMLなどを一度に網羅すること
 - password hashing algorithmの独自実装
 - Plugin Permission Grantとの統合
 - GUI login pageの完成
