@@ -12,6 +12,7 @@
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの最初の実装境界と、`browse`から始める段階的な実証順
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
+- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1実装前設計
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
@@ -39,7 +40,11 @@ Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.m
 
 Application Patternは、既存の`browse` Queryを使って基盤そのものを先に検証し、その後`record`、`reference`、`command`へ広げます。新しい`OrderLine`はPattern基盤と同時には追加せず、`header-detail`を検証する段階で導入します。
 
-既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。認証成功、業務上の拒否、実行エラーの区別は、[`issue/000009-capability-outcome-and-execution-error.md`](issue/000009-capability-outcome-and-execution-error.md)でCapability共通の課題として扱います。
+既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。
+
+認証成功、業務上の拒否、実行エラーの区別はAuthentication固有の規約にせず、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)と[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md)でCapability共通の境界として扱います。名前付きの業務OutcomeはSemantic Capabilityの契約に含め、Execution ErrorはInvocation境界へ残します。
+
+この結果境界はDriverでScenario Evidenceとして保持し、第一Web TargetではHTTP statusや利用者向けmessageへProjectionできます。ただしTarget固有表現からSemantic Outcomeを逆定義しません。
 
 このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
@@ -63,6 +68,7 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 - ADR-0017: Application Patternの初期所有境界
 - ADR-0018: Application Patternの正本とfile pathからのidentity分離
 - ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
+- ADR-0020: Capabilityの業務OutcomeをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
 
 ## Issue文書
 
