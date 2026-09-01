@@ -1,14 +1,14 @@
 # ISSUE-000006: Application Driverの最小vertical sliceを実装する
 
-- Status: Proposed
+- 状態: 提案中
 - GitHub Issue: #69
-- Dependency: Gate A
+- 依存: Gate A
 
 ## 背景
 
 Product Requirements Gap Auditでは、RQ-012「Driverを設計検証用の実行・シミュレーション環境として利用できること」が未着手であることを確認しました。
 
-現行RepositoryにはDeployment executor、process Plugin、runtime reattach等の実行可能Referenceがありますが、それらはApplication設計を開発中に動かして確かめるDriverとは役割が異なります。
+現行RepositoryにはDeployment executor、process Plugin、runtime reattachなどの実行可能Referenceがありますが、それらはApplication設計を開発中に動かして確かめるDriverとは役割が異なります。
 
 Driverは`ISSUE-000005`のApplication Patternだけを受け取って先行実装するのではなく、`ISSUE-000003`のAuthentication / Authorization境界も含め、Gate A「Application上の意味をDriverへ渡せる」を確認してから主実装へ進みます。
 
@@ -174,7 +174,7 @@ UIを用意しなくても、`order_entry`のbrowse → record → reference →
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/adr/0014-application-pattern-ownership.md`
+- `plan/adr/0017-application-pattern-ownership.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000007-first-web-target-projection.md`
