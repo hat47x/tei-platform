@@ -113,14 +113,14 @@ type IndexState struct {
 func (s IndexState) Usable() bool { return s.Valid && s.Ready && s.Live }
 
 type Index struct {
-	Name                string               `json:"name"`
-	Keys                []IndexKey           `json:"keys,omitempty"`
-	IncludedColumns     []string             `json:"includedColumns,omitempty"`
-	Predicate           *ProviderExpression  `json:"predicate,omitempty"`
-	Unique              bool                 `json:"unique,omitempty"`
-	UniqueNullTreatment UniqueNullTreatment  `json:"uniqueNullTreatment,omitempty"`
-	Method              string               `json:"method,omitempty"`
-	State               *IndexState          `json:"state,omitempty"`
+	Name                string              `json:"name"`
+	Keys                []IndexKey          `json:"keys,omitempty"`
+	IncludedColumns     []string            `json:"includedColumns,omitempty"`
+	Predicate           *ProviderExpression `json:"predicate,omitempty"`
+	Unique              bool                `json:"unique,omitempty"`
+	UniqueNullTreatment UniqueNullTreatment `json:"uniqueNullTreatment,omitempty"`
+	Method              string              `json:"method,omitempty"`
+	State               *IndexState         `json:"state,omitempty"`
 }
 
 func (t Table) QualifiedName() string {
