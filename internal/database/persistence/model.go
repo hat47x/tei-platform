@@ -1,6 +1,9 @@
 package persistence
 
-import "tei/internal/core"
+import (
+	"tei/internal/core"
+	"tei/internal/environment"
+)
 
 type StorageType string
 
@@ -61,10 +64,74 @@ type UniqueConstraintMapping struct {
 	Attributes []core.CanonicalID `json:"attributes"`
 }
 
+type IndexOrder string
+
+const (
+	IndexOrderDefault IndexOrder = "default"
+	IndexOrderAsc     IndexOrder = "asc"
+	IndexOrderDesc    IndexOrder = "desc"
+)
+
+func (o IndexOrder) Valid() bool {
+	return o == "" || o == IndexOrderDefault || o == IndexOrderAsc || o == IndexOrderDesc
+}
+
+type IndexNullsOrder string
+
+const (
+	IndexNullsOrderDefault IndexNullsOrder = "default"
+	IndexNullsOrderFirst   IndexNullsOrder = "first"
+	IndexNullsOrderLast    IndexNullsOrder = "last"
+)
+
+func (o IndexNullsOrder) Valid() bool {
+	return o == "" || o == IndexNullsOrderDefault || o == IndexNullsOrderFirst || o == IndexNullsOrderLast
+}
+
+type UniqueNullTreatment string
+
+const (
+	UniqueNullTreatmentDistinct    UniqueNullTreatment = "distinct"
+	UniqueNullTreatmentNotDistinct UniqueNullTreatment = "not-distinct"
+)
+
+func (t UniqueNullTreatment) Valid() bool {
+	return t == "" || t == UniqueNullTreatmentDistinct || t == UniqueNullTreatmentNotDistinct
+}
+
+// ProviderExpressionMapping is database-owned provider-native authoring. Source
+// remains opaque to the persistence parser; Provider and Dialect preserve the
+// provenance required to avoid comparing equal text across unrelated DBMSs.
+type ProviderExpressionMapping struct {
+	Provider environment.DatabaseProvider `json:"provider"`
+	Dialect  string                       `json:"dialect"`
+	Source   string                       `json:"source"`
+}
+
+// IndexKeyMapping is one ordered Advanced Index search key. Attribute and
+// Expression are mutually exclusive. Attribute keys are resolved through this
+// Mapping's ColumnMapping; expression keys remain provider-native.
+type IndexKeyMapping struct {
+	Attribute     core.CanonicalID            `json:"attribute,omitempty"`
+	Expression    *ProviderExpressionMapping  `json:"expression,omitempty"`
+	Collation     string                      `json:"collation,omitempty"`
+	OperatorClass string                      `json:"operatorClass,omitempty"`
+	Order         IndexOrder                  `json:"order,omitempty"`
+	NullsOrder    IndexNullsOrder             `json:"nullsOrder,omitempty"`
+}
+
+// IndexMapping retains Attributes for the existing simple authoring syntax and
+// adds structured fields for Advanced Index authoring. Simple and advanced key
+// representations must not be populated at the same time.
 type IndexMapping struct {
-	Name       string             `json:"name"`
-	Attributes []core.CanonicalID `json:"attributes"`
-	Unique     bool               `json:"unique,omitempty"`
+	Name                string                     `json:"name"`
+	Attributes          []core.CanonicalID         `json:"attributes,omitempty"`
+	Keys                []IndexKeyMapping          `json:"keys,omitempty"`
+	IncludedAttributes  []core.CanonicalID         `json:"includedAttributes,omitempty"`
+	Predicate           *ProviderExpressionMapping `json:"predicate,omitempty"`
+	Unique              bool                       `json:"unique,omitempty"`
+	UniqueNullTreatment UniqueNullTreatment        `json:"uniqueNullTreatment,omitempty"`
+	Method              string                     `json:"method,omitempty"`
 }
 
 // ForeignKeyMapping records an explicit database-owned decision to realize a
