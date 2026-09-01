@@ -95,6 +95,47 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		})
 	}
 
+	// Index declarations are nested inside Persistence Mapping files and do not
+	// have their own loader entry. Derive their source references from the
+	// canonical Mapping plus its already-known source artifact. The subject is
+	// path-independent so file moves only change the Source Index locator.
+	for _, mapping := range result.World.Persistence {
+		location, ok := result.Sources["persistence:"+string(mapping.ID)]
+		if !ok {
+			continue
+		}
+		artifact, err := ensureArtifact(location.File)
+		if err != nil {
+			return sourceindex.Index{}, fmt.Errorf("persistence %s: %w", mapping.ID, err)
+		}
+		content := contents[artifact.Path]
+		seenIndexNames := make(map[string]struct{}, len(mapping.Indexes))
+		for _, index := range mapping.Indexes {
+			name := strings.TrimSpace(index.Name)
+			if _, exists := seenIndexNames[name]; exists {
+				return sourceindex.Index{}, fmt.Errorf("persistence %s declares duplicate index name %q; persistence-index source identity must be unique within a mapping", mapping.ID, index.Name)
+			}
+			seenIndexNames[name] = struct{}{}
+			anchor, err := syntax.PersistenceIndexIdentifierAnchor(string(content), string(mapping.ID), index.Name)
+			if err != nil {
+				return sourceindex.Index{}, fmt.Errorf("persistence index %s/%s in %s: %w", mapping.ID, index.Name, artifact.Path, err)
+			}
+			rng, err := sourceindex.RangeFromOffsets(content, anchor.Start.Offset, anchor.End.Offset)
+			if err != nil {
+				return sourceindex.Index{}, err
+			}
+			idx.References = append(idx.References, sourceindex.Reference{
+				Subject: sourceindex.Subject{
+					Kind: "persistence-index",
+					ID:   persistenceIndexSubjectID(string(mapping.ID), index.Name),
+				},
+				ArtifactPath: artifact.Path,
+				Range:        rng,
+				Role:         sourceindex.RoleDefinition,
+			})
+		}
+	}
+
 	for _, contribution := range result.SourceContributions {
 		artifact, err := ensureArtifact(contribution.File)
 		if err != nil {
@@ -166,6 +207,10 @@ func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (so
 	}
 	rng, err := sourceindex.RangeFromOffsets(content, anchor.Start.Offset, anchor.End.Offset)
 	return rng, true, err
+}
+
+func persistenceIndexSubjectID(mappingID, indexName string) string {
+	return mappingID + "/" + indexName
 }
 
 func subjectFromSourceKey(key string) sourceindex.Subject {

@@ -47,17 +47,16 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 			}
 			t.UniqueConstraints = append(t.UniqueConstraints, uc)
 		}
+		seenIndexNames := make(map[string]struct{}, len(m.Indexes))
 		for _, idx := range m.Indexes {
-			pi := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: defaultIndexMethod(provider)}
-			if idx.Unique {
-				pi.UniqueNullTreatment = defaultUniqueNullTreatment(provider)
+			name := strings.TrimSpace(idx.Name)
+			if _, exists := seenIndexNames[name]; exists {
+				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s declares duplicate index name %q", m.ID, idx.Name)
 			}
-			for _, attr := range idx.Attributes {
-				name, ok := columnByAttribute[attr]
-				if !ok {
-					return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s index %s attribute %s has no column mapping", m.ID, idx.Name, attr)
-				}
-				pi.Keys = append(pi.Keys, physical.ColumnIndexKey(name))
+			seenIndexNames[name] = struct{}{}
+			pi, err := realizeIndex(m, idx, columnByAttribute, provider)
+			if err != nil {
+				return physical.SchemaSnapshot{}, err
 			}
 			t.Indexes = append(t.Indexes, pi)
 		}
@@ -86,6 +85,156 @@ func realizeUniqueConstraint(source Mapping, constraint UniqueConstraintMapping,
 		out.Columns = append(out.Columns, name)
 	}
 	return out, nil
+}
+
+func realizeIndex(source Mapping, idx IndexMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider) (physical.Index, error) {
+	if strings.TrimSpace(idx.Name) == "" {
+		return physical.Index{}, fmt.Errorf("mapping %s index name is empty", source.ID)
+	}
+	if len(idx.Attributes) > 0 && len(idx.Keys) > 0 {
+		return physical.Index{}, fmt.Errorf("mapping %s index %s mixes simple attributes and advanced keys", source.ID, idx.Name)
+	}
+	if len(idx.Attributes) == 0 && len(idx.Keys) == 0 {
+		return physical.Index{}, fmt.Errorf("mapping %s index %s has no keys", source.ID, idx.Name)
+	}
+	if !idx.UniqueNullTreatment.Valid() {
+		return physical.Index{}, fmt.Errorf("mapping %s index %s has unknown unique NULL treatment %q", source.ID, idx.Name, idx.UniqueNullTreatment)
+	}
+	if !idx.Unique && idx.UniqueNullTreatment != "" {
+		return physical.Index{}, fmt.Errorf("mapping %s non-unique index %s cannot declare NULL treatment", source.ID, idx.Name)
+	}
+
+	method := strings.TrimSpace(idx.Method)
+	if method == "" {
+		method = defaultIndexMethod(provider)
+	}
+	out := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: method}
+	if idx.Unique {
+		out.UniqueNullTreatment = defaultUniqueNullTreatment(provider)
+		if idx.UniqueNullTreatment != "" {
+			out.UniqueNullTreatment = physical.UniqueNullTreatment(idx.UniqueNullTreatment)
+		}
+	}
+
+	if len(idx.Attributes) > 0 {
+		for _, attr := range idx.Attributes {
+			name, ok := columns[attr]
+			if !ok {
+				return physical.Index{}, fmt.Errorf("mapping %s index %s attribute %s has no column mapping", source.ID, idx.Name, attr)
+			}
+			out.Keys = append(out.Keys, physical.ColumnIndexKey(name))
+		}
+	} else {
+		for position, key := range idx.Keys {
+			physicalKey, err := realizeIndexKey(source, idx.Name, position, key, columns, provider, method)
+			if err != nil {
+				return physical.Index{}, err
+			}
+			out.Keys = append(out.Keys, physicalKey)
+		}
+	}
+
+	for _, attr := range idx.IncludedAttributes {
+		name, ok := columns[attr]
+		if !ok {
+			return physical.Index{}, fmt.Errorf("mapping %s index %s INCLUDE attribute %s has no column mapping", source.ID, idx.Name, attr)
+		}
+		out.IncludedColumns = append(out.IncludedColumns, name)
+	}
+	if idx.Predicate != nil {
+		expression, err := realizeProviderExpression(source, idx.Name, "predicate", *idx.Predicate, provider)
+		if err != nil {
+			return physical.Index{}, err
+		}
+		out.Predicate = expression
+	}
+	return out, nil
+}
+
+func realizeIndexKey(source Mapping, indexName string, position int, key IndexKeyMapping, columns map[core.CanonicalID]string, provider environment.DatabaseProvider, method string) (physical.IndexKey, error) {
+	hasAttribute := key.Attribute != ""
+	hasExpression := key.Expression != nil
+	if hasAttribute == hasExpression {
+		return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d must declare exactly one attribute or expression", source.ID, indexName, position+1)
+	}
+	if !key.Order.Valid() {
+		return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d has unknown order %q", source.ID, indexName, position+1, key.Order)
+	}
+	if !key.NullsOrder.Valid() {
+		return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d has unknown NULL ordering %q", source.ID, indexName, position+1, key.NullsOrder)
+	}
+
+	order := physical.IndexOrderDefault
+	if key.Order != "" {
+		order = physical.IndexOrder(key.Order)
+	}
+	nullsOrder := physical.IndexNullsOrderDefault
+	if key.NullsOrder != "" {
+		nullsOrder = physical.IndexNullsOrder(key.NullsOrder)
+	}
+	out := physical.IndexKey{
+		Collation:     strings.TrimSpace(key.Collation),
+		OperatorClass: strings.TrimSpace(key.OperatorClass),
+		Order:         order,
+		NullsOrder:    nullsOrder,
+	}
+	if hasAttribute {
+		column, ok := columns[key.Attribute]
+		if !ok {
+			return physical.IndexKey{}, fmt.Errorf("mapping %s index %s key %d attribute %s has no column mapping", source.ID, indexName, position+1, key.Attribute)
+		}
+		out.Column = column
+		return normalizeDesiredIndexKey(out, provider, method), nil
+	}
+
+	expression, err := realizeProviderExpression(source, indexName, fmt.Sprintf("key %d expression", position+1), *key.Expression, provider)
+	if err != nil {
+		return physical.IndexKey{}, err
+	}
+	out.Expression = expression
+	return normalizeDesiredIndexKey(out, provider, method), nil
+}
+
+// normalizeDesiredIndexKey mirrors provider-side Actual normalization for
+// semantics whose effective default can be resolved without a live database.
+// Provider/version-dependent identifier canonicalization remains a separate
+// concern; this function only collapses deterministic PostgreSQL defaults.
+func normalizeDesiredIndexKey(key physical.IndexKey, provider environment.DatabaseProvider, method string) physical.IndexKey {
+	if provider != environment.ProviderPostgres || !strings.EqualFold(strings.TrimSpace(method), "btree") {
+		return key
+	}
+
+	desc := key.Order == physical.IndexOrderDesc
+	if key.Order == physical.IndexOrderAsc {
+		key.Order = physical.IndexOrderDefault
+	}
+	if !desc && key.NullsOrder == physical.IndexNullsOrderLast {
+		key.NullsOrder = physical.IndexNullsOrderDefault
+	} else if desc && key.NullsOrder == physical.IndexNullsOrderFirst {
+		key.NullsOrder = physical.IndexNullsOrderDefault
+	}
+	if strings.EqualFold(strings.TrimSpace(key.Collation), "pg_catalog.default") {
+		key.Collation = ""
+	}
+	return key
+}
+
+func realizeProviderExpression(source Mapping, indexName, field string, expression ProviderExpressionMapping, provider environment.DatabaseProvider) (*physical.ProviderExpression, error) {
+	if !expression.Provider.Known() {
+		return nil, fmt.Errorf("mapping %s index %s %s uses unknown provider %q", source.ID, indexName, field, expression.Provider)
+	}
+	if expression.Provider != provider {
+		return nil, fmt.Errorf("mapping %s index %s %s provider %q does not match desired provider %q", source.ID, indexName, field, expression.Provider, provider)
+	}
+	dialect := strings.TrimSpace(expression.Dialect)
+	if dialect == "" {
+		return nil, fmt.Errorf("mapping %s index %s %s dialect is empty", source.ID, indexName, field)
+	}
+	text := strings.TrimSpace(expression.Source)
+	if text == "" {
+		return nil, fmt.Errorf("mapping %s index %s %s source is empty", source.ID, indexName, field)
+	}
+	return &physical.ProviderExpression{Provider: string(expression.Provider), Dialect: dialect, Source: text}, nil
 }
 
 func realizeForeignKey(source Mapping, fk ForeignKeyMapping, mappings map[core.CanonicalID]Mapping, sourceColumns map[core.CanonicalID]string) (physical.ForeignKey, error) {
