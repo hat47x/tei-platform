@@ -1,6 +1,6 @@
 # ADR-0010: Advanced Indexを構造的intentとactual lifecycle stateに分ける
 
-- 状態: 採用候補
+- 状態: 採用
 - 日付: 2026-09-01
 - 関連Issue: #42, #50, #51
 - 前提: M0.26〜M0.28 PostgreSQL Actual / Foreign Key / Unique Constraint
