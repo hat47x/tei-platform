@@ -167,3 +167,13 @@ jobs:
           grep -q '"kind": "drop-column"' /tmp/tei-postgres-integration.json
           grep -q '"name": "drift_note"' /tmp/tei-postgres-integration.json
           grep -q '"kind": "add-foreign-key"' /tmp/tei-postgres-integration.json
+
+      - name: Advanced Indexのmigration SQLを実DBで検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-migration-rendering > /tmp/tei-postgres-migration-rendering.json
+          cat /tmp/tei-postgres-migration-rendering.json
+          grep -q '"renderedStatements": 3' /tmp/tei-postgres-migration-rendering.json
+          grep -q '"advancedIndexes": 3' /tmp/tei-postgres-migration-rendering.json
+          grep -q '"converged": true' /tmp/tei-postgres-migration-rendering.json
