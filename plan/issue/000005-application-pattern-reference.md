@@ -1,4 +1,4 @@
-# ISSUE-000005: `order_entry`でstandard Application Patternを実証する
+# ISSUE-000005: `order_entry`で標準Application Patternを実証する
 
 - 状態: 着手可能
 - GitHub Issue: #67
@@ -31,7 +31,7 @@ Patternの初期所有境界は[ADR-0017](../adr/0017-application-pattern-owners
 
 Application Patternを単なる画面テンプレートとして固定せず、**同じ業務上の意図をDriverや複数Targetから利用できる再利用単位として成立させられるか**を、`order_entry`の具体的な業務シナリオから確認します。
 
-このIssueは、v1 Reference Application PlanのStage 1に当たります。完了後に直ちにDriver実装へ進むのではなく、既存認証Compatibilityと合わせてGate A「Application上の意味をDriverへ渡せる」を確認します。
+このIssueは、v1 Reference Application実証計画のStage 1に当たります。完了後に直ちにDriver実装へ進むのではなく、既存認証Compatibilityと合わせてGate A「Application上の意味をDriverへ渡せる」を確認します。
 
 ## Reference拡張
 
