@@ -4,9 +4,9 @@
 
 この文書は、TEI（鼎／テイ）がv1へ進むために必要なApplication側の実証を、既存の`order_entry`を中心に一つの流れとして整理するものです。
 
-個別のIssueには、それぞれの設計課題や完了条件があります。しかし、Application Pattern、既存認証Compatibility、Driver、第一Web Target、Editor、AI支援を別々に進めるだけでは、「一つの業務ApplicationがTEIの各層をどのように通るのか」が見えにくくなります。
+Application Pattern、既存認証Compatibility、Driver、第一Web Target、Editor、AI支援を個別に実装するだけでは、「一つの業務ApplicationがTEIの各層をどのように通るのか」を確かめにくくなります。
 
-そこで、同じReference Applicationを段階的に育て、前の段階で確認した意味を次の段階がそのまま利用する進め方を採ります。
+そのため、同じReference Applicationを段階的に育て、前の段階で確認した意味を次の段階がそのまま利用する進め方を採ります。
 
 期限は置きません。次へ進む条件は日付ではなく、ReferenceとConformanceから確認できるEvidenceで判断します。
 
@@ -22,16 +22,45 @@ v1では、新しい理想化されたサンプルを別に作らず、既存の
 - Database Contract
 - native SQL Query
 - `sales.order.submit` Capability
+- Application Pattern `browse` / `record` / `reference`
 - Source-to-Canonical Traceability
 - Reference Workspaceと再生成可能なCanonical World
 
-これらを捨てずに使うことで、M0.xxで積み上げたEvidenceをApplication側のv1実証へ接続します。
+M0.xxで積み上げた資産を捨てず、そのままApplication側のv1実証へ接続します。
 
-Application Patternについても実装を開始しており、`browse`を受け止める最小Canonical model、Parser、`patterns/*.tei` Loader、Normalization、Source IndexまではRepositoryへ入っています。ただし、実際の`order_entry`にはまだPatternのReference sourceがなく、Stage 1やGate Aを完了した段階ではありません。
+## 現在地
+
+Stage 1「Application Pattern」は進行中です。
+
+`browse`、`record`、`reference`の3種類については、Canonical modelから実Reference、共通Validation、Source Index、Golden Worldまで成立しています。
+
+現在の実Referenceは次です。
+
+```tei
+pattern order_entry.recent_orders browse {
+    data sales.order
+    query order_entry.recent_orders
+}
+
+pattern order_entry.order_record record {
+    data sales.order
+}
+
+pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+    datasource master
+}
+```
+
+次は`command`として既存Capability `sales.order.submit`への接続を実証します。
+
+`header-detail`は、新しい`sales.OrderLine`と対応RelationをSemantic側へ追加した後に扱います。
+
+Stage 1、Gate A、Milestone 1の完了はまだ宣言しません。
 
 ## v1で確認する業務シナリオ
 
-最初の業務シナリオは、「受注を探し、開き、顧客を参照し、明細を編集し、内容と利用権限を確認して確定する」という一続きの操作とします。
+最初の業務シナリオは、「受注を探し、開き、顧客を参照し、明細を編集し、内容と利用権限を確認して確定する」という一続きの操作です。
 
 ```text
 受注一覧を探す
@@ -51,31 +80,79 @@ Application Patternについても実装を開始しており、`browse`を受�
 結果を観測する
 ```
 
-このシナリオをApplication Pattern、Driver、Web Targetで別々に作り直しません。同じApplication上の意味を共有し、それぞれの層では必要なProjectionやBindingだけを追加します。
+このシナリオをApplication Pattern、Driver、Web Targetで別々に作り直しません。同じApplication上の意味を共有し、各層では必要なProjectionやBindingだけを追加します。
 
-## 実証するApplication Pattern
+## Application Patternの位置づけ
 
-最初のReferenceでは、次の5種類を候補として扱います。
+v1では次の5種類を実証候補として扱います。
 
 - `browse`
 - `record`
 - `reference`
-- `header-detail`
 - `command`
+- `header-detail`
 
-これらは画面テンプレートの一覧ではなく、Targetが変わっても残る可能性があるApplication上の意図として検証します。現時点で5分類をTEI全体の永久的な標準語彙とはみなしません。
+これらは画面テンプレートの一覧ではありません。Targetが変わっても残る可能性があるApplication上の意図として、実Referenceから一つずつ検証します。
 
-Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置とfile pathからのidentity分離は[ADR-0018](adr/0018-application-pattern-authoring-source.md)に定めます。現在の実装Evidence、次の最小縦切り、保留事項は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を正とします。
+現時点で実証済みなのは`browse`、`record`、`reference`です。5分類をTEI全体の永久的な標準語彙とはみなしません。
+
+Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置とfile pathからのidentity分離は[ADR-0018](adr/0018-application-pattern-authoring-source.md)に従います。
+
+現在の詳細なEvidenceと次の実装順は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を正とします。
+
+## ここまでのPattern実証から得た判断
+
+### `browse`
+
+既存Queryをidentityで参照し、native SQLをPatternへ複製せず成立しました。
+
+Query自身がDatasourceを保持しているため、実ReferenceではPattern側へDatasourceを重複記述していません。
+
+### `record`
+
+`sales.order`を「Application上の一件」として扱う意味だけで成立しました。
+
+一件取得用のQueryやDatasourceをPatternへ持ち込む必要はありませんでした。
+
+### `reference`
+
+Semantic Relation `sales.order.customer`とlogical datasource `master`の組み合わせで成立しました。
+
+Relationが参照元と参照先をすでに持つため、DataやtargetをPatternへ重複記述していません。
+
+`master`の`access read`はApplication定義を正本とし、Patternへread-only属性を複製していません。
+
+Reference Conformanceでは、`master_data.customer ^2`がRelation target `customer.customer`を実際に`read`対象として公開していることまで確認しています。
 
 ## Referenceへ追加する意味
 
-### `OrderLine`
+### `command`
 
-受注明細に相当する`OrderLine`は必要ですが、Pattern基盤の最初の検証と同時には追加しません。
+次の実証では、既存`sales.order.submit` Capabilityへ接続します。
 
-`browse`を受け止めるmodel、Parser、Loader、Normalization、Source Indexはすでに実装済みです。次は既存の`order_entry.recent_orders`とnative SQLを実Reference Patternから参照し、Workspace参照整合性、Diagnostic、Reference World、実Referenceでのfile rename invarianceまでを一続きに閉じます。
+第一候補はCapability identityだけを保持する最小形です。
 
-その後、既存のSemantic Data、Relation、Capabilityを使って`record`、`reference`、`command`を追加し、最後に`header-detail`を検証する段階で`OrderLine`を導入します。
+```text
+pattern order_entry.submit_order command {
+    capability sales.order.submit
+}
+```
+
+ただし、これは実装前の候補です。対象Data、Datasource、Validation、Authorizationとの関係をPatternへ直接持たせる必要があるかは、実Referenceから判断します。
+
+`command`を単なるRecord更新へ還元せず、業務上の操作としてCapabilityへ接続します。
+
+Capabilityの結果境界は[ADR-0020](adr/0020-capability-business-outcome-boundary.md)と[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)に従います。
+
+既存の単一`output`とnamed OutcomeはいずれもBusiness Resultとして扱い、Capability呼び出しそのものを完了できなかった状態はExecution Errorとして分離します。
+
+`command`を追加するという理由だけで、現行`sales.order.submit`の`output`をnamed Outcomeへ書き換えません。
+
+### `OrderLine`と`header-detail`
+
+受注明細に相当する`OrderLine`は必要ですが、Pattern基盤と同時には追加しません。
+
+`command`まで既存資産で実証した後に、`OrderLine`と対応RelationをSemantic側へ追加し、`header-detail`へ進みます。
 
 概念上は次の関係です。
 
@@ -83,9 +160,9 @@ Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)�
 Order 1 ── N OrderLine
 ```
 
-最初から販売管理全体を再現する必要はありません。header-detail、複数fieldにまたがるValidation、金額計算を確かめられる最小構成を選びます。
+Semantic Relation、Application上の`header-detail`、Database Foreign Keyは別の意味です。
 
-Semantic Relation、Application上のheader-detail、Database Foreign Keyは別の意味として扱います。1:N関係が存在するという理由だけで、FKや画面構造を暗黙に生成しません。
+1:N関係が存在するという理由だけで、FKや画面構造を暗黙生成しません。
 
 ### Validation
 
@@ -94,17 +171,9 @@ Semantic Relation、Application上のheader-detail、Database Foreign Keyは別�
 1. 一つのfieldだけで判定できるValidation
 2. HeaderとDetail、または複数fieldをまたぐValidation
 
-これにより、単純なHTML入力制約やDatabase constraintだけでは表せないApplication上のruleを確認します。
+単純なHTML入力制約やDatabase constraintだけでは表せないApplication上のruleを確認します。
 
-### Command
-
-受注確定には既存の`sales.order.submit` Capabilityを利用します。
-
-`command` Patternを単なるRecord更新へ還元せず、業務上の操作としてCapabilityへ接続します。
-
-Capabilityの結果境界は[ADR-0020](adr/0020-capability-business-outcome-boundary.md)と[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)に従います。既存の単一`output`と名前付きOutcomeはいずれもBusiness Resultとして扱い、Capability呼び出しそのものを完了できなかった状態はExecution Errorとして分離します。
-
-`command` Patternを追加するという理由だけで、現行`sales.order.submit`の`output`を名前付きOutcomeへ書き換えません。Commandを正常に実行して初めて分かる業務上の分岐がReferenceで本当に必要な場合に、Capability Outcomeの圧力試験として扱います。
+ValidationをPatternそのものが直接参照するべきか、Driver Scenario側で構成するべきかは、必要な実例が揃うまで固定しません。
 
 ### Authorization
 
@@ -114,9 +183,7 @@ Capabilityの結果境界は[ADR-0020](adr/0020-capability-business-outcome-boun
 
 基本境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装順とConformanceは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)を参照します。
 
-Authenticationの結果についてもADR-0020を利用します。たとえば`authenticated`と`denied`は、認証処理を正常に完了して得られる名前付きOutcomeとして表せます。Database接続失敗やadapter異常など、認証判断そのものを完了できなかった状態はExecution Errorとして外側へ残します。
-
-この境界はAuthentication専用ではなく、[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / GitHub Issue #77でCapability共通の実装・検証課題として扱います。
+AuthenticationのBusiness ResultとExecution ErrorにもADR-0020を適用します。
 
 ## 全体の作業順
 
@@ -147,7 +214,7 @@ Stage 5  第二Target
 
 Stage 1と既存認証Compatibilityは並行して進められます。
 
-Database / Provider側の作業も止めません。ただし、v1 Referenceに必要な境界や安全上の重要課題を優先し、PostgreSQL固有機能を増やすこと自体を目的にはしません。
+Database / Provider側の作業も止めません。ただし、v1 Referenceに必要な境界や安全上の重要課題を優先し、Provider固有機能を増やすこと自体を目的にはしません。
 
 ## Stage 0 — Product BaselineとGap Audit
 
@@ -160,16 +227,14 @@ Database / Provider側の作業も止めません。ただし、v1 Referenceに�
 - Product Value
 - Product Vision
 - Product Principles
-- Product Requirements RQ-001〜RQ-024
+- Product Requirements
 - Master Plan
 - 期限を置かないMilestone
 - Product Requirement Gap Audit
 
-### この段階で確認したこと
+Database / Provider、Source / Meaning、Runtime安全境界に比べ、Application Pattern、既存認証、Driver、Target、Editor、AI支援の実証が薄いことが確認されました。
 
-Database / Provider、Source / Meaning、Runtime安全境界に比べ、Application Pattern、既存認証、Driver、Target、Editor、AI支援の実証が薄いことが明確になりました。
-
-この偏りを受け、以後の主線をApplication vertical sliceへ移します。
+この偏りを受け、主線をApplication vertical sliceへ移しています。
 
 ## Stage 1 — Application Pattern
 
@@ -180,42 +245,29 @@ Database / Provider、Source / Meaning、Runtime安全境界に比べ、Applicat
 
 進行中です。
 
-PR #87〜#89で、`browse`を受け止める次の基盤までは実装済みです。
+### 完了済み
 
-- Applicationが所有するPatternの最小Canonical model
-- `browse` Parser
-- `applications/*/patterns/*.tei` Loader
-- Canonical ID順のNormalization
-- `application-pattern:<Canonical ID>`のSource Index
-- Pattern ID tokenへのsource range
+- PatternのCanonical model
+- `patterns/*.tei` Loader / Normalization
+- Source Indexとfile pathから独立したPattern identity
+- 共通Validation / Diagnostic projection
+- `browse`実Reference
+- `record`実Reference
+- `reference`実Reference
+- Repository自身の`tei world`によるGolden再生成
 
-一方、実際の`order_entry`にはまだ`patterns/`がありません。したがって、実Reference、Workspace参照整合性、Reference World、後続Patternは未完了です。
+### 次の作業順
 
-### 目的
-
-`order_entry`の業務シナリオを、Target固有UIへ依存しないApplication上の意図として表現できることを確かめます。
-
-### 現在の作業順
-
-新しい業務SemanticとPattern基盤を一度に変更しません。実装済みの基盤を踏まえ、次の順で進めます。
-
-1. Patternが参照するData / Query / DatasourceのWorkspace参照整合性ValidationとDiagnosticを整える
-2. 既存の`order_entry.recent_orders`とnative SQLを使い、`browse`を実Reference Patternとして追加する
-3. Patternを含むReference Worldの再生成一致と、実Referenceでのfile rename invarianceを確認する
-4. 既存のSemantic Data、Relation、Capabilityを使って`record`、`reference`、`command`を追加する
-5. `OrderLine`と対応RelationをSemantic側へ追加し、`header-detail`を検証する
-6. 5 Patternを同じApplication上の意味として説明できるか監査し、Gate Aへ渡すEvidenceを揃える
-
-この順序により、Pattern基盤の不具合と、新しい業務Semanticの不足を切り分けやすくします。
-
-PR #89ではSource IndexのSubject identityとArtifact pathについてfile renameの挙動を確認していますが、実Referenceを含むCanonical World全体のrename invarianceまで完了したとはみなしません。
+1. `command`として`sales.order.submit` Capabilityへの接続を実証する
+2. `OrderLine`と対応RelationをSemantic側へ追加する
+3. `header-detail`を実証する
+4. 5 Patternを同じApplication上の意味として説明できるか監査する
+5. 既存認証CompatibilityのEvidenceと合流し、Gate Aを評価する
 
 ### Gate Aへ進む条件
 
-次を満たしたら、Application Pattern側はGate Aへ合流できる状態とみなします。
-
 - 5 Patternを同じApplication定義から識別できる
-- Patternのidentityがfile pathへ依存しない
+- Pattern identityがfile pathへ依存しない
 - Patternの正本とEditor内部状態を暗黙の二重正本にしていない
 - Semantic Relation、Application Pattern、Persistence Mappingの境界を説明できる
 - native SQLを別のDSLへ複製していない
@@ -236,22 +288,9 @@ PR #89ではSource IndexのSubject identityとArtifact pathについてfile rena
 
 既存システム固有の認証・認可仕様を、最初にTEI標準へ作り替えなくてもApplicationから利用できるCapabilityへ接続できることを確かめます。
 
-### 現在の設計基線
+### 設計基線
 
-Authentication / Authorizationの責務分離はADR-0019、CapabilityのBusiness Result / Execution Error境界はADR-0020で決定済みです。
-
-ただし、既存認証fixture、複数の実現方式、`order_entry`へのAuthorization接続など、Reference / Conformanceによる実装Evidenceはこれから揃えます。
-
-### 作業順
-
-1. Reference Workspace内の`security`意味空間へAuthentication / Authorizationの最小Referenceを置く
-2. ADR-0020に従い、Authenticationの`authenticated` / `denied`とExecution Errorを区別できるCapability結果契約を実装する
-3. user ID、credential reference、disabled、有効期間、失敗回数、lock、organization、role、system-specific ruleを含むlegacy認証fixtureを用意する
-4. 既存schemaや既存functionをCapabilityへ接続する
-5. 同じCapability identityを保ったまま、異なる実現方式を一つ追加する
-6. secretがCanonical World、Source Index、Durable artifact、通常logへ混入しないことをConformance化する
-7. `order_entry`のbrowse / edit / submit Authorizationへ接続する
-8. Source / Binding / Mappingの来歴を確認し、Stage 1と合わせてGate Aを監査する
+Authentication / Authorizationの責務分離はADR-0019、CapabilityのBusiness Result / Execution Error境界はADR-0020に従います。
 
 ### Gate Aへ合流する条件
 
@@ -261,10 +300,10 @@ Authentication / Authorizationの責務分離はADR-0019、CapabilityのBusiness
 - Application利用者の認可とPlugin / Runtime Permissionを混同しない
 - Applicationが認証実装の物理構造へ直接依存しない
 - 同じCapability identityのまま実現方式を交換できる
-- Authenticationの名前付きOutcomeとExecution Errorを区別できる
+- Authenticationのnamed OutcomeとExecution Errorを区別できる
 - `order_entry`のbrowse / edit / submit Authorizationへ接続できる
 
-Gate Aでは、認証基盤全体がproduction-readyであることは求めません。既存仕様を保持したままApplicationへ接続できる意味境界が成立していることを確認します。
+Gate Aでは、認証基盤全体がproduction-readyであることは求めません。
 
 ## Gate A — Application上の意味をDriverへ渡せる
 
@@ -273,14 +312,14 @@ Gate Aは、Stage 1と既存認証Compatibilityの成果をDriverへ渡す接続
 次の質問にRepository上のEvidenceから答えられることを条件とします。
 
 - このApplicationは何をbrowseするのか
-- 一件のRecordとは何か
-- 何を別Datasourceからreferenceするのか
+- 一件のrecordとは何か
+- どのRelationを、どのDatasourceからreferenceするのか
 - HeaderとDetailの関係は何か
 - どのValidationを実行するのか
 - どのCapabilityをcommandとして呼ぶのか
 - 誰がその操作を行えるのか
 - どのDatabaseがread-onlyで、どこへwriteできるのか
-- Capabilityが返したBusiness Resultと、呼び出しを完了できなかったExecution Errorをどう区別するのか
+- CapabilityのBusiness ResultとExecution Errorをどう区別するのか
 
 これらに答えるためにWeb画面やEditor内部状態を読む必要がある場合、Gate Aは未達とします。
 
@@ -304,13 +343,11 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 8. CapabilityのBusiness ResultとExecution Errorを区別する
 9. 必要な場合は、外部世界で得られた状態をObservationから確認する
 
-Business Resultは、既存の単一`output` valueまたは名前付きOutcomeとして扱います。期待した`denied`や`rejected`等のOutcomeをDriver障害へ変換せず、Execution Errorとも混同しません。
-
 ### Driverがしてはいけないこと
 
 - Application ruleをDriver専用Goコードとして重複実装する
 - native SQLをDriver側へコピーする
-- logical datasourceを一つのin-memory DBへ意味上統合する
+- logical datasourceを意味上ひとつのDatabaseへ統合する
 - Target固有Presentationを必要条件にする
 - Driver独自のOutcome体系を作る
 - HTTP statusやGUI messageをDriver Coreの意味として固定する
@@ -321,10 +358,9 @@ Business Resultは、既存の単一`output` valueまたは名前付きOutcome�
 - ScenarioをRepositoryだけから再現できる
 - Application / Pattern / Query / Capability / Datasourceの解決結果を追跡できる
 - `master_data`へwriteしないことを検証できる
-- Validationが成立しない場合にcommandへ進まない
-- Authorizationが成立しない場合にcommandへ進まない
-- 既存`output`と名前付きOutcomeを同じBusiness Result境界から扱える
-- Execution Errorを名前付きOutcomeや業務result codeへ押し込まない
+- ValidationまたはAuthorizationが成立しない場合にcommandへ進まない
+- 既存`output`とnamed Outcomeを同じBusiness Result境界から扱える
+- Execution Errorをnamed Outcomeや業務result codeへ押し込まない
 - command acknowledgementとobserved resultを必要に応じて区別できる
 - Driver固有の状態がCanonical Worldへ逆流しない
 - 同じApplication定義を第一Targetへ渡せる
@@ -333,7 +369,7 @@ Business Resultは、既存の単一`output` valueまたは名前付きOutcome�
 
 Gate Bでは、画面がなくてもApplicationの主要な振る舞いを実行・検証できることを確認します。
 
-ここを通る前にWeb実装へ進むと、Application上の不足をWeb固有コードで埋める危険があります。したがって、第一Web Targetの実装はGate Bを原則的な前提とします。
+ここを通る前にWeb実装へ進むと、Application上の不足をWeb固有コードで埋める危険があります。第一Web Targetの実装はGate Bを原則的な前提とします。
 
 ## Stage 3 — 第一Web Target
 
@@ -362,9 +398,8 @@ Driverで確認済みのApplication上の意味をWebへProjectionし、複数Ta
 - native SQLやCapability implementationを複製する
 - Application ValidationやAuthorization ruleをWeb専用ruleとして書き直す
 - HTMLやframeworkの都合をSemantic Kernelへ持ち上げる
-- expectedな名前付きOutcomeとExecution Errorを一種類のWeb errorへ畳む
+- expectedなnamed OutcomeとExecution Errorを一種類のWeb errorへ畳む
 - HTTP statusやUI messageからSemantic Outcomeを逆定義する
-- 既存`output`をWeb都合の暗黙`success` Outcomeへ変換する
 - read-only Datasource制約をUI都合で無視する
 
 ### Custom UI
@@ -382,13 +417,12 @@ Custom UIでもApplication上の意味、Validation、Capability、Authorization
 - 標準ProjectionとCustom UIを併存できる
 - Source / Application / Targetの来歴を追跡できる
 - 共通候補とWeb固有差分を文書化できる
-- Reference Scenarioの主要な測定点を取得できる
 
 ## Gate C — Editor / AIを具体化してよい
 
 Gate Cを通過すると、Application上の意味、Driver実行結果、第一Targetとの差が実資産として揃います。
 
-この時点で初めて、EditorやAI支援が何を見せ、何を探索し、何を確認すべきかを具体化できます。
+この時点でEditorやAI支援が何を見せ、何を探索し、何を確認すべきかを具体化します。
 
 `ISSUE-000008`の保留を解除する判断は、このGateを基準に行います。
 
@@ -417,8 +451,7 @@ Editor内部状態を第二の正本にはしません。
 
 対象は次です。
 
-- 既存Patternの探索
-- 既存Capabilityの探索
+- 既存Pattern / Capabilityの探索
 - 既回答事項の再質問抑止
 - 1:N、履歴、状態遷移、認証などの典型論点の確認提案
 - AI提案と採用済みDecisionの分離
@@ -429,17 +462,15 @@ Editor内部状態を第二の正本にはしません。
 
 Editor / AIが完成していること自体をGate Dの条件にはしません。
 
-第二Targetへ進むために必要なのは、第一Web Targetで「共通と思われた部分」と「Web固有と判断した部分」が追跡可能なことです。
-
-第二Targetは、その分類が本当に妥当だったかを検証するために利用します。
+第一Web Targetで「共通と思われた部分」と「Web固有と判断した部分」が追跡可能であることを条件とします。
 
 ## Stage 5 — 第二Target
 
 第二Targetは、単なる対応Target数の増加ではなく、Target-neutral境界の圧力試験です。
 
-選定時には、Webとの差が十分に表れるTargetを優先します。Desktop、API、MCP、VUIなどの候補から、その時点で最も設計上の差を引き出せるものを選びます。
+Webとの差が十分に表れるTargetを優先し、Desktop、API、MCP、VUIなどから、その時点で最も設計上の差を引き出せるものを選びます。
 
-第二TargetのためにCore変更が必要になった場合は、それ自体を失敗とはみなしません。変更理由を分析し、第一Web Targetの都合を誤って共通意味へ持ち上げていなかったかを確認します。
+第二TargetのためにCore変更が必要になった場合は、それ自体を失敗とはみなしません。第一Web Targetの都合を誤って共通意味へ持ち上げていなかったかを確認します。
 
 ## Evidenceの残し方
 
@@ -456,14 +487,15 @@ Editor / AIが完成していること自体をGate Dの条件にはしません
 - ADR
 - 未解決事項を明示した監査文書
 
-実験結果が予想と異なる場合、その差を隠して既存計画へ合わせません。Product Valueに照らして意味のある差であれば、PatternやRequirement、Milestone側を更新します。
+実験結果が予想と異なる場合、その差を隠して既存計画へ合わせません。Product Valueに照らして意味のある差であれば、Pattern、Requirement、Milestoneを更新します。
 
 ## 判断を保留する事項
 
 次は現時点で固定しません。
 
 - Application Patternの網羅的な標準一覧
-- 後続PatternのDSL最終構文
+- `command` / `header-detail`のDSL最終構文
+- PatternとValidation / Authorizationの最終的な直接関係
 - 第一Web Targetのframework
 - Editorの最終UI framework
 - 第二Targetの種類
@@ -490,7 +522,7 @@ v1を単なるVersion番号として扱わず、少なくとも次をRepository�
 - Reference / Conformanceから同じ結果を再現できる
 - 何が未保証かを`docs/status.md`から明確に判断できる
 
-EditorとAI支援の完成、第二Target、production HAはv1の前提条件にはしません。それらをv1へ無理に詰め込まず、v1で成立したApplication vertical sliceを基盤としてv2以降で拡張します。
+EditorとAI支援の完成、第二Target、production HAはv1の前提条件にはしません。v1で成立したApplication vertical sliceを基盤として、その後に拡張します。
 
 ## 関連文書
 
