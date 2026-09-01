@@ -10,6 +10,9 @@ import (
 )
 
 func Render(provider environment.DatabaseProvider, diff schemadiff.Diff) ([]string, error) {
+	if len(diff.Unresolved) > 0 {
+		return nil, fmt.Errorf("migration SQL rendering requires a fully resolved schema diff: %d unresolved comparison(s)", len(diff.Unresolved))
+	}
 	switch provider {
 	case environment.ProviderPostgres:
 		return renderPostgres(diff)
