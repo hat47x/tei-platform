@@ -148,7 +148,7 @@ func TestRealizeDesiredAdvancedIndexRejectsInvalidIntent(t *testing.T) {
 			index: persistence.IndexMapping{
 				Name: "bad_key_idx",
 				Keys: []persistence.IndexKeyMapping{{
-					Attribute:   core.MustCanonicalID("customer.name"),
+					Attribute:  core.MustCanonicalID("customer.name"),
 					Expression: &persistence.ProviderExpressionMapping{Provider: environment.ProviderPostgres, Dialect: "postgresql", Source: "lower(name)"},
 				}},
 			},
