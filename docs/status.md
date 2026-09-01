@@ -2,13 +2,18 @@
 
 TEIはまだ完成したローコード製品ではなく、設計境界を実行可能なコードで検証している段階です。
 
-この文書は「現在、Repository上で何を実装・検証できているか」を確認するための一覧です。TEIを初めて知る場合は、先に [はじめてTEIを知る方へ](for-readers.md) を読む方が自然です。
+**現在の設計検証チェックポイントはM0.35です。**
+
+この文書では「現在、Repository上で何を実装・検証できているか」と、「まだ何を実装済みとは言えないか」を分けて整理します。
+
+TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)、上位の価値や今後の方向を確認する場合は [TEI Product Value](../product/value/TEI_PRODUCT_VALUE.md) と [TEI Master Plan](../plan/MASTER_PLAN.md) を先に読む方が自然です。
 
 ## 実装済みの主要縦切り
 
 ### Semantic / Workspace
+
 - `tei.workspace.yaml`
-- Canonical IDとpathの分離
+- Canonical IDとfile pathの分離
 - Semantic namespace / type / data / relation / capability
 - `std.*` prelude
 - managed native filesの列挙
@@ -19,17 +24,27 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - `tei source-index` inspection CLI
 
 ### Application / Database
+
 - Application `DatabaseRequirement[]`
 - N:M Application ↔ Database
+- logical datasource alias
+- read / read-write Access
 - Database Contract
 - Persistence Mapping
-- provider-neutral desired schema
+- provider-neutral Desired Physical Schema
+- Actual Physical Schema
 - Schema Diff
+- 確定したChangeと比較未確定`Unresolved`の分離
+- Foreign Key / Unique Constraint / Advanced IndexのDesired・Actual・Diff
+- ProviderExpressionのauthor text / provider-normalized representation
+- Desired Physical realizationのprovider-owned offline policy
+- PostgreSQL向けAdvanced Index migration SQL rendering
 - versioned DDL / data / verify Migration
 - Migration Provider / applied-history reconciliation
 - Database Release / Application Release / Solution Release
 
 ### Query / Workbench
+
 - embedded SQL boundary
 - native `.sql` authoritative source
 - Query declarationとSQL authoring sourceのrole分離
@@ -42,6 +57,7 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - Database Workbench derived model
 
 ### Deployment
+
 - release graph
 - multi-DB compatibility
 - active consumer withdrawal gate
@@ -53,9 +69,11 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - explicit Executor / Observation / Evidence routing
 
 ### Plugin / Security boundary
+
 - Plugin / Bundle / Capability negotiation
 - Plugin Lock
 - in-process / process runtime boundary
+- actual child processとのstdio protocol
 - artifact verification contract
 - explicit Permission Grant
 - Resource Broker
@@ -65,187 +83,379 @@ TEIはまだ完成したローコード製品ではなく、設計境界を実�
 - Host-side Lease Supervisor
 - Supervisor Ownership / heartbeat / monotonic fencing
 - Durable Invocation Handle / runtime observe / reattach
+- Supervisor generationとruntime-confirmed generationの分離
 
-M0.22.1で直接確認しているPlugin / Runtime境界の保証は、[Conformance — M0.22.1](conformance/plugin-runtime-m0.22.1.md) に整理しています。
+## 現時点で実装済みとは言わないもの
 
-M0.23で直接確認しているSource / meaning境界の保証は、[Conformance — M0.23 Source-to-Canonical Traceability](conformance/source-traceability-m0.23.md) に整理しています。
+次はProduct Visionに含まれますが、M0.35時点で完成済みとは主張しません。
 
-## 現時点での重要な非目標
-
-以下を実装済みとは主張しません。
-
-- production-ready GUI Editor
+- production-ready GUI Editor / Wails application
+- standard Application Patternの実装
+- Application設計を通しで実行するDriver
+- target-neutral Presentation / Interaction IR
+- production-readyなWeb / Desktop / Mobile Target
+- 既存認証仕様を保持したCompatibility Reference
+- AIによるDomain Component / Pattern探索
+- AIの確認提案・判断履歴・提案抑制UX
 - complete Workflow Runtime
 - complete SQL dialect support
 - production-grade distributed ownership store
 - Kubernetes / Vault / Cloud provider integrations
 - generic OS sandbox implementation
 - production durability / HA guarantee
-- cryptographic signing of all Durable Run artifacts
+- すべてのDurable artifactに対する暗号学的署名
 - API compatibility guarantee
 - Go source semantic analysis / refactoring engine
-- AIによるauthoritative sourceの自動編集
+- AIによるauthoritative sourceの無確認自動編集
 
-## 最初の公開設計チェックポイント
+このGapの全体像は [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md) に整理しています。
 
-最初の公開設計チェックポイントは、**M0.22.1: Durable Invocation Handle / Runtime Reattach + publication hardening**です。
+# 設計検証チェックポイント
 
-M0.22でHost takeover後のruntime reattachまで実装した後、公開前のhardeningとしてLease Supervisorのoperational clockをHostから注入可能にしました。これにより、Resource Brokerと同じ時間基準を使ってdeterministicに検証できます。
+## M0.22.1 — 最初の公開設計チェックポイント
 
-さらに、Repository自体も一時的なsource transportではなく、通常のGoソースツリーへ正規化しました。Reference Workspace、golden world、observed state fixtureを含め、cloneした環境だけで検証できる状態を基準にします。
+M0.22.1では、Semantic / Application / DatabaseからRelease、Deployment、Plugin、Resource authority、Host takeover、外部runtime再接続までを一本の設計思想で接続できることを確認しました。
 
-M0.22.1では、Semantic / Application / Databaseのモデルから、Release、Deployment、Plugin、Resource authority、Host takeover、外部runtime再接続まで、一つの設計思想で縦に接続できることを確認しています。
+公開前のhardeningとして、次も整えました。
 
-この位置づけの詳細は [ADR-0002](adr/0002-m0221-public-checkpoint.md) に記録しています。
+- Lease Supervisorのoperational clockをHostから注入可能にする
+- Reference Workspace、golden World、observed state fixtureをRepositoryだけから再現可能にする
+- Plugin LockとDurable Run fixtureの再生成経路を固定する
+- Plugin / Runtimeの安全条件をConformanceで追跡する
 
-## M0.22.1公開後のhardening
+詳細は [ADR-0002](adr/0002-m0221-public-checkpoint.md) と [M0.22.1 Plugin / Runtime Conformance](conformance/plugin-runtime-m0.22.1.md) を参照してください。
 
-公開チェックポイントを成立させた後も、M0.22.1の意味を広げるのではなく、再現性と安全境界の監査を進めています。
+M0.22.1は現在地ではなく、公開可能な設計検証を始めた基準点です。
 
-### Reference artifactの再現性
+## M0.23 — Source-to-Canonical Traceability
 
-Issue #3 / PR #8で、Reference Workspaceから導出されるartifactとfixtureの関係を監査しました。
-
-- `reference/world.json` をWorkspaceから再生成可能
-- `reference/workspace/.tei/plugin-lock.json` をWorkspaceから再生成可能
-- baseline observed stateからDurable Deployment Run fixtureを再生成可能
-- `reference/README.md` でfixtureの役割と再生成方法を説明
-- cloneしたRepositoryだけでDeployment executorの参照例まで実行可能
-
-### Plugin / Runtime Conformance
-
-Issue #4 / PR #10で、Plugin / Runtime境界の主要な安全条件を「設計意図・実装箇所・検証箇所」で追跡できるようにしました。
-
-監査中には、正常なSupervisor shutdown由来の`context canceled`をheartbeat failureと誤認するtiming依存の問題も見つかりました。これはIssue #11 / PR #12で、正常shutdownと実際のownership store failureを区別するよう修正済みです。
-
-`RuntimeUnknown`時のfencing authorityについてはIssue #9 / ADR-0005で整理しました。Durable control plane上のSupervisor generationと、外部runtimeが実際に受理済みのgenerationを分離し、`FencingToken`と`RuntimeFencingToken`として記録します。unknownでは前者だけを進め、runtime-confirmed generationはlive reattach成功時にだけ追いつかせます。
-
-## M0.23 Source-to-Canonical Traceability
-
-M0.23では、実行側adapterをさらに増やす前に、Authoring sourceからCanonical Semantic Layerへ入る側の追跡性をvertical sliceとして実装しました。
-
-設計判断は [ADR-0004](adr/0004-source-to-canonical-traceability.md) に記録し、Issue #16〜#19で段階的に検証しています。
-
-### 到達した境界
+Authoring sourceからCanonical Semantic Layerへ入る側の追跡性をvertical sliceとして実装しました。
 
 - Source IndexをCanonical Worldから分離
 - Canonical IDをfile pathから独立したまま維持
-- source content fingerprintと半開byte rangeを検証
+- content fingerprintと半開byte rangeを検証
 - Parser source anchorをdomain modelから分離
 - semantic diagnosticをpath-independentなSubjectからsourceへ投影
-- parse diagnosticをCanonical subjectなしでsource-directに表示
-- `tei validate -workspace`で解決可能なfindingを`path:line:column`へ復元
+- parse diagnosticをsource-directに表示
 - native `.sql`をauthoritative sourceのままQueryへ接続
-- Query declaration=`definition`、SQL file=`authoring`というroleをSource Indexで区別
-- physical `.sql` pathをCanonical Query / Analyzer protocolへ混入させない
+- Query declaration=`definition`、SQL file=`authoring`というroleを区別
+- physical pathをCanonical Query / Analyzer protocolへ混ぜない
 - file rename / moveだけではnormalized Worldを変更しない
-- source move後はDiagnostic projectionが新locatorへ追随
-- derived artifactからauthoritative sourceへ暗黙に逆書きするAPIを設けない
-- `tei source-index`でsubjectからsource reference / fingerprintをinspection可能
+- derived artifactからauthoritative sourceへ暗黙に逆書きしない
 
-Reference Workspaceの`order_entry.recent_orders`はnative SQLへ移行済みですが、`reference/world.json`は変更していません。旧embedded SQLと同じnormalized meaningを再生成できることをCIで確認しています。
+Reference Workspaceの`order_entry.recent_orders`はnative SQLへ移行済みですが、normalized `reference/world.json`は変更していません。
 
-Source Index全体のgolden snapshotは保存せず、deterministic generation、range / fingerprint整合、重要subjectのrole / locator、rename invarianceをコードとCIで固定します。
+詳細は [M0.23 Conformance](conformance/source-traceability-m0.23.md) を参照してください。
 
-詳細な対応表は [M0.23 Conformance](conformance/source-traceability-m0.23.md) を参照してください。
+## M0.24 — actual process Plugin runtime
 
-## M0.24 実process Plugin runtime
-
-M0.24では、`BoundaryProcess`をHost注入interfaceだけに留めず、actual OS child processへ接続する最小vertical sliceを実装しました。
+Host注入interfaceだけだったprocess boundaryを、actual OS child processへ接続しました。
 
 - `StdioProcessLauncher`でRequest / Response JSONをstdio transport
-- commandは単一executable名/pathとして実行し、shell semanticsを暗黙に導入しない
-- context cancellationで直接child processを終了
+- shell semanticsを暗黙に導入しない
+- context cancellationでchild processを終了
 - malformed / oversized responseを拒否
-- untrusted stdoutをReference default 8 MiBでbounded capture
-- stderr本文をTEI errorへコピーせず、異常終了時はbyte数とSHA-256だけを保持
-- forged Plugin identityを既存Registry validationで拒否
-- `tools/reference-process-plugin`を実binaryとしてbuild可能
-- `examples/process-plugin`でDeploymentExecutor → Registry → actual child processまで再現
-- Plugin Invocation provenanceで`boundary=process`を検証
+- untrusted stdoutをbounded capture
+- stderr本文をTEI errorへ無条件にコピーしない
+- forged Plugin identityを拒否
+- Repository内のReference process Pluginを実binaryとしてbuild可能
 
-`StdioProcessLauncher`はplain process transportでありOS sandboxそのものではありません。`SandboxedProcessRunner`として再利用する場合も、policy適用は`HostSandboxLauncher`側の責務です。
+plain process transportをOS sandboxやDurable cross-host runtimeと同一視しません。
 
-また、このone-shot local processのPIDをDurable Runtime Handleとはみなしません。Host restart / cross-host reattachはM0.22 / ADR-0005のopaque durable handle契約を満たす別runtime adapterの責務として残します。詳細は [M0.24実process Conformance](conformance/process-runtime-m0.24.md) を参照してください。
+詳細は [M0.24 Conformance](conformance/process-runtime-m0.24.md) を参照してください。
 
-## M0.25 process executable / argv
+## M0.25 — process executable / argv
 
-M0.25では、process Pluginの実行指定をshell-likeなcommand lineではなく、単一executableと順序付きargvへ分離しました。設計判断は [ADR-0006](adr/0006-process-command-and-argv.md) に記録しています。
+process Pluginの実行指定をshell-likeなcommand lineではなく、単一executableと順序付きargvへ分離しました。
 
-- authoring grammarで `runtime process "python3" args "-m" "worker"` を表現
-- `Runtime.Command`は単一executable、`Runtime.Args`は順序付きargv
-- legacyな空白入りcommandを自動splitせず、明示argsへの移行を要求
-- `ProcessCommand{Executable, Args}`をProcess / Sandbox境界で維持
+- `Runtime.Command`は単一executable
+- `Runtime.Args`は順序付きargv
+- legacyな空白入りcommandを暗黙splitしない
+- executable / argvをHost境界まで構造化したまま維持
 - args差分をDefinition / Plugin Lock / Runtime Policy fingerprintへ反映
-- Reference Workspaceのprocess descriptorをargs利用へ移行
-- 空白を含む一つのargv elementがactual child processの`os.Args`まで保存されることをReference実process例で検証
+- 空白を含む一つのargv elementがactual child processまで保存されることを確認
 
 詳細は [M0.25 Conformance](conformance/process-command-argv-m0.25.md) を参照してください。
 
-## M0.26 actual PostgreSQL Desired / Actual / Diff
+## M0.26 — actual PostgreSQL Desired / Actual / Diff
 
-M0.26では、既存Database lifecycleをactual PostgreSQLへ接続しました。新しいCanonical DB modelを増やさず、既存のPersistence Mapping、PostgreSQL provider、Physical Schema、Schema Diffを一続きで検証しています。
+既存Database lifecycleをactual PostgreSQLへ接続しました。
 
-- `persistence.RealizeDesired`でPostgreSQL向けDesired Physical Schemaを生成
-- `database/sql` + `SQLCatalogReader`でactual PostgreSQL catalogを観測
-- `provider.Introspect`を通してDatabaseInstance / Provider整合を検証
-- same-state fixtureで`schemadiff.Compare`のchangesが0件
-- actual側だけに追加した`drift_note` columnをdriftとして検出
-- actual foreign keyをSchemaSnapshotへ観測
-- Primary Key backing indexを通常Indexとして二重計上しないようPostgreSQL providerをnormalize
-- DSN / credentialをPhysical SnapshotやDiffへ保存しない
-- Reference driver選択はtool assemblyに留め、PostgreSQL provider SPIは`database/sql`依存のまま維持
+```text
+Persistence Mapping
+    ↓
+Desired Physical Schema
 
-fixture setup DDLはintegration harnessの責務であり、M0.26でautomatic schema applyやmigration executionを実装したわけではありません。詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
+actual PostgreSQL
+    ↓ introspection
+Actual Physical Schema
 
-## M0.27 Foreign Key realization / drift
+Desired + Actual
+    ↓
+Schema Diff
+```
 
-M0.27では、M0.26でactual PostgreSQLから観測できることまで確認したForeign Keyを、Persistence MappingのDesired realizationとprovider-neutral Schema Diffへ統合しました。設計判断は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) に記録しています。
+- PostgreSQL向けDesiredを生成
+- `database/sql`経由でactual catalogを観測
+- same-stateで差分0を確認
+- actual側の意図的なcolumn driftを検出
+- credential / DSNをPhysical SnapshotやDiffへ保存しない
+- DB driver assemblyをProvider Coreから分離
 
-- Foreign KeyをSemantic Relationから自動生成せず、Database所有のPersistence Mappingで明示
-- authoringではsource Attribute、referenced Mapping、target Attributeをidentityで指定
-- `RealizeDesired`がMapping / Attribute identityからphysical table / columnへ解決
-- cross-database FKをM0.27では拒否
-- constraint名はtrace / DDL metadataとして保持するが、Schema Driftの意味identityにはしない
-- FKの構造差を`drop-foreign-key` + `add-foreign-key`として表現
-- composite FKのcolumn順序を保持
-- 同一構造constraintのmultiplicityを保持
-- actual PostgreSQLでFK込みbaseline差分ゼロを確認
-- actual constraint削除後に`add-foreign-key` driftを検出
+M0.26でautomatic schema applyを実装したわけではありません。
 
-詳細は [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+詳細は [M0.26 Conformance](conformance/postgres-actual-schema-m0.26.md) を参照してください。
 
-## 継続的な検証
+## M0.27 — Foreign Key realization / drift
+
+Foreign KeyをPersistence MappingのDesired realizationとprovider-neutral Schema Diffへ統合しました。
+
+- Semantic RelationからFKを自動生成しない
+- source Attribute、referenced Mapping、target Attributeを明示
+- Mapping / Attribute identityからphysical FKへ解決
+- cross-database FKは拒否
+- constraint名をdrift identityにはしない
+- 構造差を`drop-foreign-key` + `add-foreign-key`として表現
+- composite FKのcolumn順序とmultiplicityを保持
+- actual PostgreSQLでbaseline差分0とFK driftを確認
+
+詳細は [ADR-0008](adr/0008-persistence-foreign-key-identity.md) と [M0.27 Conformance](conformance/foreign-key-drift-m0.27.md) を参照してください。
+
+## M0.28 — Unique Constraint realization / drift
+
+UNIQUE constraintをexplicit unique indexとは別のDatabase-owned physical intentとして扱う境界を実装しました。
+
+- Persistence MappingからUnique Constraintを明示
+- Attribute IDからphysical columnへDesired realization
+- actual PostgreSQLの`UNIQUE` constraintを観測
+- constraint backing indexを通常Indexへ二重計上しない
+- explicit unique indexはIndexとして保持
+- constraint名だけの差はdriftにしない
+- ordered columnsとmultiplicityを保持
+- actual UNIQUE constraint削除後に`add-unique-constraint`を検出
+
+PostgreSQL内部でUNIQUE constraintがunique indexに支えられていても、constraint intentとaccess-path intentを同一視しません。
+
+詳細は [ADR-0009](adr/0009-unique-constraint-and-unique-index.md) と [M0.28 Conformance](conformance/unique-constraint-m0.28.md) を参照してください。
+
+## M0.29 — Advanced Index Actual / Diff
+
+PostgreSQLのAdvanced Indexを、単純なcolumn listへ潰さずActual Physical Schemaへ保持できるようにしました。
+
+- ordered column / expression key
+- INCLUDE column
+- partial predicate
+- per-key collation / operator class
+- ASC / DESC、NULL ordering
+- unique indexのNULL treatment
+- access method
+- actual lifecycle state `valid / ready / live`
+
+expression / predicateはCore共通SQL ASTへ変換せず、provider / dialect provenanceを持つ`ProviderExpression`として扱います。
+
+Schema Diffでは、structural driftと`index-state-drift`を分離しました。
+
+詳細は [ADR-0010](adr/0010-advanced-index-semantics.md) と [M0.29 Conformance](conformance/advanced-index-actual-diff-m0.29.md) を参照してください。
+
+## M0.30 — Advanced Index Desired authoring
+
+M0.29で観測・比較できるようになったAdvanced Indexを、Database-ownedなPersistence authoringからDesiredへ明示できるようにしました。
+
+- simple Index authoringとの互換性を維持
+- advanced block form
+- ordered Attribute / expression key
+- INCLUDE
+- partial predicate
+- sort / NULL ordering
+- collation / operator class
+- unique NULL treatment
+- access method
+- Source Index / Diagnostic projection
+
+Advanced IndexをSemantic modelから自動推論せず、利用者が選んだphysical intentとしてPersistence Mappingに置きます。
+
+PostgreSQL B-treeについてofflineで確定できるeffective defaultはDesired / Actualで同じ表現へ正規化します。一方、一般化にprovider固有知識が必要な部分は推測せず後続Issueへ分離しています。
+
+詳細は [ADR-0011](adr/0011-advanced-index-authoring.md) と [M0.30 Conformance](conformance/advanced-index-authoring-m0.30.md) を参照してください。
+
+## M0.31 — Schema Diffの比較未確定
+
+Schema Diffに、確定したChangeとは別の`Unresolved`を導入しました。
+
+ProviderExpressionのDesired author textとActual decompiled textが異なるとき、信頼できるnormalizationがなければ「同じ」「違う」のどちらにも断定しません。
+
+```text
+Diff
+├─ Changes[]
+└─ Unresolved[]
+```
+
+- provider / dialectが明確に違えば構造差
+- sourceが同じなら一致
+- 同じprovider / dialectで表記だけが異なり意味比較できなければUnresolved
+- 明確な別構造があれば通常のChange
+- lifecycle state driftは観測事実としてChange
+- `Unresolved`が残るDiffからmigration SQLを生成しない
+
+「比較できない」をmigration可能なChangeとして扱わないことが重要な境界です。
+
+詳細は [M0.31 Conformance](conformance/schema-diff-unresolved-m0.31.md) を参照してください。
+
+## M0.32 — ProviderExpression representation / comparison
+
+`ProviderExpression`の文字列が、利用者が記述したものなのか、providerが内部表現から再構成したものなのかを明示しました。
+
+```text
+ProviderExpression
+├─ authored
+└─ provider-normalized
+```
+
+provider-normalized表現には、必要に応じてnormalization authorityとprovider versionのprovenanceを持たせます。
+
+主な比較契約は次のとおりです。
+
+- Desired authoringは`authored`
+- PostgreSQL catalog由来は`provider-normalized`
+- source textが完全一致すればrepresentationが異なっても一致
+- authored同士の異なるsourceは異なるauthoring intentとして構造差
+- authored / provider-normalizedで異なるsourceは、信頼できるnormalizerを通すまでUnresolved
+- provider-normalized同士も、authority / versionが比較可能でなければ異なるtextを即構造差にしない
+- unresolved comparisonからmigration SQLを生成しない
+
+詳細は [ADR-0012](adr/0012-provider-expression-representation.md) と [M0.32 Conformance](conformance/provider-expression-representation-m0.32.md) を参照してください。
+
+## M0.33 — Desired Physical realizationのoffline provider policy
+
+Desired Physical Schemaを生成する処理から、DBMS固有の知識をruntime Provider SPIと切り離しました。
+
+- `PhysicalRealizationPolicy`をPersistence側のportとして定義
+- PostgreSQL / Oracleがそれぞれoffline policyを所有
+- provider enumからpolicyを選ぶcomposition層を分離
+- physical type、Index既定値、PostgreSQL B-tree normalizationをprovider側へ移動
+- Desired realizationはlive DB接続を要求しない
+- generic providerへ暗黙fallbackしない
+- CLIと実DBintegrationを同じcomposition境界へ接続
+
+この分離により、ProviderExpressionやIndex既定値の知識を増やしても、Persistence Coreや接続系runtime SPIへ無秩序に流入しにくくしました。
+
+詳細は [ADR-0013](adr/0013-offline-physical-realization-policy.md) と [M0.33 Conformance](conformance/offline-physical-realization-policy-m0.33.md) を参照してください。
+
+## M0.34 — プロバイダー固有Index識別子の比較
+
+Advanced Indexのcollationとoperator classについて、表記差だけからIndex再作成を決めない比較契約を固定しました。
+
+- Desiredで明示したcollationを根拠なく空値へ畳まない
+- 両側に明示値があり一致すれば同一、異なれば構造差
+- collationの片側だけが空なら比較未確定
+- Desiredがdefault operator classを要求し、Actualが明示non-defaultなら構造差
+- Desired明示・Actual default表現のoperator classは比較未確定
+- `provider-identifier`のUnresolvedにfield pathとDesired / Actual値を保持
+- 比較未確定から`DROP INDEX` / `CREATE INDEX`を生成しない
+
+「offlineで確定できる既定値」と、「列・型・catalog状態を見なければ確定できない識別子」を分けています。
+
+詳細は [ADR-0014](adr/0014-provider-index-identifier-comparison.md) と [M0.34 Conformance](conformance/provider-index-identifier-m0.34.md) を参照してください。
+
+## M0.35 — Advanced IndexのPostgreSQL migration SQL
+
+Advanced Indexの主要なPhysical semanticsを、PostgreSQL固有のDDLへ意味を失わず戻せるようにしました。同時に、SQL文法の責務を共通migration層からPostgreSQL provider packageへ移しています。
+
+- expression key / ordered key
+- `COLLATE` / operator class
+- `ASC` / `DESC`、`NULLS FIRST` / `NULLS LAST`
+- `INCLUDE`
+- partial predicate
+- unique indexの`NULLS NOT DISTINCT`
+- B-tree以外のaccess method
+- schema-qualifiedな`DROP INDEX`
+- schemaを確定できない破壊的`DROP INDEX`を拒否
+- ProviderExpressionのprovider / dialect / representationを検査
+- ProviderExpression本文を推測で書き換えない
+- `CONCURRENTLY`を通常migrationで自動選択しない
+- `index-state-drift`を自動drop/recreateへ変換しない
+
+CIではPostgreSQL 17を使い、Desired → Diff → SQL生成 → 実DBへ適用 → Introspect → 再比較を一周させ、Advanced Indexを作成した後に`Changes = 0 / Unresolved = 0`へ収束することを確認しています。
+
+詳細は [ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md) と [M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md) を参照してください。
+
+# 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
 
-- Goコードに`gofmt`が不要なこと
+### 基本検証
+
+- `gofmt`
 - `go vet ./...`
 - `go test ./...`
-- Reference Workspaceのvalidation
-- Reference QueryのSource Index projectionで`definition` / `authoring` sourceとfingerprintを追跡できること
-- `reference/world.json` がWorkspaceから再生成して一致すること
-- Plugin LockがWorkspaceから再生成して一致すること
-- Durable Deployment Run fixtureがReference Workspaceとobserved stateから再生成して一致すること
-- Deployment executorの参照例が動作すること
-- Reference process Pluginを実binaryへbuildできること
-- DeploymentExecutorからactual child processへstdio protocolで到達できること
-- executable / argvをshell-like stringへ畳まず、空白を含む一つのargv elementがactual child processまで保存されること
-- runtime reattachの参照例が動作すること
-- actual PostgreSQLからPhysical Schemaをintrospectし、Foreign Key込みbaseline差分ゼロ、column drift、Foreign Key driftを確認できること
+- Reference Workspace validation
 
-CIはproduction-gradeな外部環境を検証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
+### Reference再現性
 
-## 次に残る境界
+- Reference QueryのSource Index projection
+- `reference/world.json`の再生成一致
+- Plugin Lockの再生成一致
+- Durable Deployment Run fixtureの再生成一致
 
-M0.23でSource / meaning境界を厚くした後も、次の候補が残ります。
+### 実行境界
 
-- Foreign Key option（ON DELETE / ON UPDATE等）をprovider-neutral modelへ持ち上げる必要性の検討
+- Deployment executor参照例
+- Reference process Pluginの実binary build
+- DeploymentExecutorからactual child processへのstdio protocol
+- executable / argvのend-to-end保持
+- runtime reattach参照例
+
+### actual PostgreSQL
+
+PostgreSQL 17 serviceを使い、Reference integrationを実行します。
+
+少なくとも次の経路はunit / integration testを通して継続的に検証されます。
+
+- Desired / Actual / Diff
+- column drift
+- Foreign Key
+- Unique Constraintとconstraint backing indexの分離
+- View / Materialized View column observation
+- Advanced Indexの観測・比較
+- ProviderExpression / provider identifier / Unresolvedの安全な比較
+- Advanced Index migration SQLの生成・実行・再観測・収束
+- connection dataをPhysical Snapshot / Diffへ保存しないこと
+
+CIはproduction-gradeな外部環境を保証するものではありません。Reference実装の意味境界と再現性がRepository内で崩れていないことを継続して確認するものです。
+
+# 現在残っている主な境界
+
+## Product側の大きなGap
+
+Database / Provider側の設計検証がM0.35まで進んだ一方、次はまだ実証が薄い領域です。
+
+- standard Application Pattern
+- 既存認証・認可を保持したCompatibility
+- Application Driver
+- target-neutral Presentation / Interaction
+- 第一Web Target
+- 開発者向け高密度Editor
+- AIによる知識探索、確認提案、判断履歴
+
+今後は既存`order_entry`をv1 Reference Applicationとして育て、Application Pattern → Driver → 第一Web Targetを主線として進めます。
+
+詳細は [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md) と [Master Plan](../plan/MASTER_PLAN.md) を参照してください。
+
+## Database / Provider側の継続課題
+
+- Partitioned table / child partitionのSchema Drift semantics
+- PostgreSQL以外のProviderによる抽象境界の圧力試験
+- production環境でのonline index build / recovery policy
+- provider versionや拡張catalogを含むnormalization authorityの高度化
+
+これらは重要ですが、PostgreSQL固有機能を網羅すること自体を目的にはしません。Product全体のGapと比較しながら着手順を決めます。
+
+## Production境界
+
 - migration proposalからactual DB schema changeへ至る明示的execution integration
 - durable process manager / container runtimeとのcross-host reattach integration
 - production-grade Host sandbox / process isolation adapter
 - Deploymentの外部実環境executor integration
-- Source Indexを利用するGUI / LSP authoring experience
-- Go等、SQL以外のnative source semantic analysis
+- production durability / HA / compatibility policy
 
-これらを進める場合も、外部製品固有adapterやGUIの都合を先にCanonical modelへ持ち込まず、TEI固有のidentity / source / execution境界を先に固定する方針を維持します。
+これらを進める場合も、外部製品固有adapterの都合を先にCanonical modelへ持ち込まず、TEI固有のidentity / meaning / execution / observation境界を保つ方針を維持します。
