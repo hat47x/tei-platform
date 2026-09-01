@@ -29,6 +29,11 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - N:M Application ↔ Database
 - logical datasource alias
 - read / read-write Access
+- Applicationが所有するPatternの最小Canonical model
+- `browse` Pattern Parser
+- `applications/*/patterns/*.tei`のWorkspace Loader
+- PatternのCanonical ID順Normalization
+- `application-pattern:<Canonical ID>`のSource Indexと識別子range
 - Database Contract
 - Persistence Mapping
 - provider-neutral Desired Physical Schema
@@ -42,6 +47,8 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 - versioned DDL / data / verify Migration
 - Migration Provider / applied-history reconciliation
 - Database Release / Application Release / Solution Release
+
+Application Patternについては、`browse`を受け止めるmodel / Parser / Loader / Normalization / Source Indexまでが部分的に実装されています。実際の`order_entry` Reference Pattern、Workspace全体の参照整合性、Reference World、後続Patternはまだ未完了です。
 
 ### Query / Workbench
 
@@ -87,10 +94,10 @@ TEIを初めて知る場合は [はじめてTEIを知る方へ](for-readers.md)�
 
 ## 現時点で実装済みとは言わないもの
 
-次はProduct Visionに含まれますが、M0.35時点で完成済みとは主張しません。
+次はProduct Visionに含まれますが、現時点で完成済みとは主張しません。
 
 - production-ready GUI Editor / Wails application
-- standard Application Patternの実装
+- 5種類のApplication Patternを`order_entry`で一続きに扱うReference（`browse`基盤は部分実装済み）
 - Application設計を通しで実行するDriver
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
@@ -379,6 +386,26 @@ CIではPostgreSQL 17を使い、Desired → Diff → SQL生成 → 実DBへ適�
 
 詳細は [ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md) と [M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md) を参照してください。
 
+## M0.35以後 — v1 Application Pattern基盤の実装開始
+
+M0.35のDatabase / Provider検証後、v1 Reference Applicationの主線であるApplication Patternへ実装を移しています。ここは新しい設計検証チェックポイントを宣言する節ではなく、M0.35以後に進んだ実装の現在地を記録するものです。
+
+PR #87〜#89で、最初の`browse`を受け止める基盤の前半を実装しました。
+
+- Applicationが所有する`Pattern`の最小Canonical model
+- `browse` PatternのParser
+- `applications/*/patterns/*.tei`のLoader
+- PatternのCanonical ID順Normalization
+- `application-pattern:<Canonical ID>`のSource Index
+- Pattern ID tokenを指すsource range
+- Source IndexのSubject identityとfile pathの分離
+
+一方、現在の`reference/workspace/applications/order-entry`にはまだ`patterns/`がありません。次はWorkspace参照整合性Validationを追加し、`order_entry.recent_orders`を実Reference Patternとして組み込み、Reference World、Diagnostic、実Referenceでのfile rename invarianceまで一続きに閉じます。
+
+この進捗だけでStage 1、Gate A、Milestone 1の完了とはみなしません。`record`、`reference`、`command`、`header-detail`と既存認証Compatibilityを含め、Driverへ渡せるApplication上の意味が揃ってからGate Aを評価します。
+
+詳細は [Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md) と [ISSUE-000005](../plan/issue/000005-application-pattern-reference.md) を参照してください。
+
 # 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
@@ -427,9 +454,9 @@ CIはproduction-gradeな外部環境を保証するものではありません�
 
 ## Product側の大きなGap
 
-Database / Provider側の設計検証がM0.35まで進んだ一方、次はまだ実証が薄い領域です。
+Database / Provider側の設計検証がM0.35まで進み、Application Patternも`browse`基盤の前半へ着手しました。一方、次はまだ実証が薄い領域です。
 
-- standard Application Pattern
+- Application Patternの実Reference、参照整合性、`record` / `reference` / `command` / `header-detail`
 - 既存認証・認可を保持したCompatibility
 - Application Driver
 - target-neutral Presentation / Interaction
@@ -437,7 +464,7 @@ Database / Provider側の設計検証がM0.35まで進んだ一方、次はま�
 - 開発者向け高密度Editor
 - AIによる知識探索、確認提案、判断履歴
 
-今後は既存`order_entry`をv1 Reference Applicationとして育て、Application Pattern → Driver → 第一Web Targetを主線として進めます。
+今後は`browse`基盤を実Referenceとして閉じたうえでApplication Patternを段階的に広げ、既存認証CompatibilityとGate Aで合流させます。その後、Application Driver → 第一Web Targetへ進みます。
 
 詳細は [Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md) と [Master Plan](../plan/MASTER_PLAN.md) を参照してください。
 
