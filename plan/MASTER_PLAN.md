@@ -2,17 +2,17 @@
 
 ## 目的
 
-この文書は、TEI（鼎／テイ）のProduct ValueとProduct Requirementsを、開発上のworkstreamへ分解し、どこを並行して進め、どこで合流させるかを示します。
+この文書は、TEI（鼎／テイ）のProduct ValueとProduct Requirementsを開発上のworkstreamへ分解し、どこを並行して進め、どこで合流させるかを示します。
 
 期限は置きません。優先順位は、実装量ではなく「TEIの中心価値に関する不確実性をどれだけ減らせるか」で見直します。
 
 ## 現在地
 
-Repositoryは、M0.22.1までにSemantic / Application / Database / Release / Deployment / Plugin / Runtimeを一本のvertical sliceとして接続し、その後M0.23でSource-to-Canonical Traceability、M0.24〜M0.25でactual process boundary、M0.26以降でactual PostgreSQLとPhysical SchemaのDesired / Actual / Diffを段階的に検証してきました。
+Repositoryは、M0.22.1までにSemantic / Application / Database / Release / Deployment / Plugin / Runtimeを一本のvertical sliceとして接続しました。その後、M0.23でSource-to-Canonical Traceability、M0.24〜M0.25でactual process boundary、M0.26以降でactual PostgreSQLとPhysical SchemaのDesired / Actual / Diffを段階的に検証してきました。
 
 M0.32時点では、ProviderExpressionの表現と比較未確定を含め、Database / Provider側の意味境界はかなり深く検証されています。
 
-一方、Product Vision全体から見ると、Application Pattern、既存システム移行、Editor、AI支援、Target-neutral Presentation / Driver等は、Database領域ほど実証が進んでいません。
+一方、Product Vision全体から見ると、Application Pattern、既存システム移行、Editor、AI支援、Target-neutral Presentation、Driver等は、Database領域ほど実証が進んでいません。
 
 今後はDatabase検証を止めるのではなく、**一つの技術領域だけがプロダクト全体の進路を決めないよう、上位のworkstreamを並走させます。**
 
@@ -53,9 +53,11 @@ Product Value、Vision、Principles、Requirements、Milestone、ADR / Issue運�
 
 ### 重点
 
-今後は、Source-to-Canonical Traceabilityの次に、**「業務システムで再利用可能な意味知識をどう持つか」**を実証する必要があります。
+Source-to-Canonical Traceabilityの次は、**「業務システムで再利用可能な意味知識をどう持つか」**を実証する必要があります。
 
 単にprimitiveを増やすのではなく、受注、参照、header-detail、履歴、状態遷移等の小さい具体例を通して、Micro Kernelと再利用可能Patternの境界を確認します。
+
+Application Patternについては、v1の設計検証ではApplicationが所有するCanonicalな意図として扱います。Semantic Kernelへ早い段階から固定せず、Driverと複数Targetから得られるEvidenceを見て分類や粒度を見直します。詳細は[ADR-0014](adr/0014-application-pattern-ownership.md)を参照してください。
 
 ## Workstream C: Application / Legacy Compatibility
 
@@ -96,7 +98,7 @@ DatabaseのDesired / Actual / Diff / Migration / Contract lifecycleを、Provide
 
 ### 進め方
 
-PostgreSQLは深い実証Providerとして継続利用します。ただしPostgreSQL固有機能を網羅することを目的にはしません。
+PostgreSQLは深い実証Providerとして継続利用します。ただし、PostgreSQL固有機能を網羅すること自体を目的にはしません。
 
 Provider-neutralな境界の妥当性を確認するため、一定の時点でOracle等の異なるProviderへ小さいReferenceを接続し、PostgreSQLで偶然成立している抽象がないか検査します。
 
@@ -122,6 +124,8 @@ Driverを本番Runtimeの簡易版だけにはしません。
 
 開発中に「この設計は整合しているか」を確かめる設計検証環境として成立させ、Editorと往復できることを重視します。
 
+UIより先にDriverを成立させることで、Application上の不足をWeb固有コードで補ってしまうことを避けます。
+
 ## Workstream F: Target-neutral Presentation
 
 ### 目的
@@ -143,12 +147,14 @@ ApplicationのPresentation / Interactionを、一つのWeb frameworkへ固定せ
 
 最初から全Targetを同じ深さで作りません。
 
-1. 標準的な業務画面をWebでvertical sliceとして成立させる
-2. 同じ上位設計を別TargetへProjectionする
-3. その差分からTarget-neutralな境界を修正する
-4. Coreを変更せず第三Targetを追加できることを確認する
+1. Application PatternとDriverでTarget非依存の意味を確かめる
+2. 標準的な業務Applicationを第一Web TargetへProjectionする
+3. Webで必要になった共通候補とWeb固有差分を分けて記録する
+4. 同じ上位設計を第二TargetへProjectionする
+5. 第二Targetとの差からTarget-neutralな境界を修正する
+6. Coreを変更せず第三Targetを追加できるか確認する
 
-この順に進めます。
+第一Targetだけで「Target-neutral設計が完成した」とは判断しません。
 
 ## Workstream G: Editor / Developer Experience
 
@@ -172,6 +178,8 @@ TEIの厳格な意味モデルを、開発者が実用上軽く扱えるEditor�
 EditorはCanonicalを所有しません。Projectionと編集支援を担います。
 
 また、単純なno-code UIを目指すのではなく、複雑な業務システムを扱う開発者が高い情報密度で全体を追えることを優先します。
+
+Application Pattern、Driver、第一Targetの実証から意味境界が見えるまでは、Editorの詳細interfaceを先に固定しません。
 
 ## Workstream H: AI-assisted Engineering
 
@@ -202,6 +210,8 @@ AIは、使えるからといって常時話しかけません。
 - 後から判断理由と履歴へ戻れる
 
 このUXはAI機能の付加価値ではなく、TEIの「厳格だが軽い」を成立させる主要要件として扱います。
+
+AI支援の詳細も、実在するPattern、Driver Scenario、Projection差、Decision履歴を入力として扱える段階になってから具体化します。
 
 ## Workstream I: Ecosystem / Production Boundary
 
@@ -251,17 +261,59 @@ D / E / F / G ───────────────→ I Ecosystem / Pro
 
 実際には完全な直列ではありません。B〜Hは小さいvertical sliceを共有しながら並走します。
 
+## v1 Reference Applicationでworkstreamを合流させる
+
+上記のworkstreamを抽象的な並行作業のままにせず、v1では既存の`order_entry`へ合流させます。
+
+詳細な実証順とEvidence Gateは[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)にまとめています。
+
+主線は次のとおりです。
+
+```text
+Application Pattern ────────┐
+      ↓                     │
+Application Driver     既存認証Compatibility
+      ↓                     │
+第一Web Target ─────────────┘
+      ↓
+Editor / AI支援
+      ↓
+第二Target
+```
+
+この流れでは、日付ではなく次のEvidence Gateで進行を判断します。
+
+### Gate A — Application上の意味をDriverへ渡せる
+
+WebやEditorを見なくても、何をbrowseし、何をreferenceし、どのValidationとCommandを使い、誰が操作でき、どのDatasourceへwriteできるかを説明できることを確認します。
+
+### Gate B — UIなしで主要シナリオを再現できる
+
+Driverだけでbrowse → record → reference → header-detail → validation → authorization → command → observationを再現できることを確認します。
+
+### Gate C — 第一Targetとの差を説明できる
+
+WebとDriverが同じApplication上の意味を共有し、共通Presentation候補とWeb固有差分を追跡できることを確認します。
+
+### Gate D — 第二Targetで圧力試験できる
+
+第一Targetで共通とみなした部分とTarget固有とみなした部分が追跡可能で、第二Targetから検証し直せる状態を確認します。
+
+Gateを設ける目的は手続きを増やすことではありません。実装しやすい層の都合で、未実証の意味を上位モデルへ固定することを避けるためです。
+
 ## 次に優先して不確実性を減らす領域
 
 M0.32以降は、次の順を基本とします。
 
 1. Product BaselineをRepositoryへ定着させる
 2. 現在の実装をProduct Requirementsへ逆マッピングし、空白を明示する
-3. standard Application Patternと既存認証互換を小さいReferenceで実証する
-4. DriverでApplication設計を動かす最小vertical sliceを作る
-5. 同じ設計をWeb Projectionへ接続する
-6. Editorの高密度ProjectionとAI確認UXを、そのvertical slice上で試す
-7. 第二Targetを追加し、Target-neutral境界を圧力試験する
-8. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
+3. standard Application Patternと既存認証互換を`order_entry`周辺の小さいReferenceで実証する
+4. Gate Aを確認する
+5. DriverでApplication設計を動かす最小vertical sliceを作る
+6. Gate Bを確認する
+7. 同じ設計を第一Web TargetへProjectionする
+8. Gate Cを確認してEditor / AI支援の具体化へ進む
+9. 第二Targetを追加し、Target-neutral境界を圧力試験する
+10. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
 
 既存のDatabase関連Issueは捨てません。ただし、緊急な安全境界や他workstreamの前提でないものは、プロダクト全体の空白と比較しながら着手順を決めます。
