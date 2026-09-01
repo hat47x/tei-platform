@@ -47,7 +47,13 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 			}
 			t.UniqueConstraints = append(t.UniqueConstraints, uc)
 		}
+		seenIndexNames := make(map[string]struct{}, len(m.Indexes))
 		for _, idx := range m.Indexes {
+			name := strings.TrimSpace(idx.Name)
+			if _, exists := seenIndexNames[name]; exists {
+				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s declares duplicate index name %q", m.ID, idx.Name)
+			}
+			seenIndexNames[name] = struct{}{}
 			pi, err := realizeIndex(m, idx, columnByAttribute, provider)
 			if err != nil {
 				return physical.SchemaSnapshot{}, err
