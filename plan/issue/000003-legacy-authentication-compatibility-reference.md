@@ -2,22 +2,26 @@
 
 - 状態: 着手可能
 - GitHub Issue: #68
+- 実装前設計: [`LEGACY_AUTH_V1_DESIGN.md`](../LEGACY_AUTH_V1_DESIGN.md)
 
 ## 背景
 
-業務システムの移行では、標準的なID / password認証であっても、ユーザー無効化、有効期限、ログイン失敗回数、ロック、組織属性など、システム固有の制御が長年積み重なっています。
+業務システムの移行では、標準的なID / password認証であっても、ユーザー無効化、有効期限、ログイン失敗回数、ロック、組織属性、role、個別ruleなど、システム固有の制御が長年積み重なっています。
 
-TEIが既存システム移行に使えるためには、最初に標準認証へ作り替えることを要求せず、既存仕様を保持したままCapabilityへ接続できる必要があります。
+TEIが既存システム移行に使えるためには、先に標準認証へ作り替えることを要求せず、既存仕様を保持したままApplicationから利用できるCapabilityへ接続する必要があります。
 
-Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証領域として確認されました。
+Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証領域として残っています。
 
-このIssueは、v1 Reference Application実証計画ではApplication Patternと並行して進めます。両者の成果はGate A「Application上の意味をDriverへ渡せる」で合流します。
+このIssueはApplication Pattern #67と並行して進め、両者の成果をGate A「Application上の意味をDriverへ渡せる」で合流させます。
+
+認証・認可の基本境界は[ADR-0019](../adr/0019-authentication-capability-boundary.md)に従います。
 
 ## 関連するProduct Requirement
 
 - RQ-004 Native asset
 - RQ-008 Capability単位の置換
 - RQ-009 既存認証・認可仕様の保持
+- RQ-012 Driver
 - RQ-015 AIによる既存知識の探索
 - RQ-017 二重管理の最小化
 - RQ-019 Resource authorityとの責務分離
@@ -27,18 +31,16 @@ Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証
 
 TEI標準のUser tableや認証schemaを先に定義するのではなく、**既存システム固有の認証状態と処理を、その意味を失わずAuthentication / Authorization Capabilityへ接続できること**を実証します。
 
-ここで扱うApplication利用者の認証と、Plugin / RuntimeのPermission Grant / Resource Leaseは別の責務です。両者を同じ「権限」概念へ畳みません。
+Application利用者の認証・認可と、Plugin / RuntimeのPermission Grant / Resource Leaseは別の責務です。両者を同じ「権限」概念へ畳みません。
 
-## Referenceの既存認証モデル
+## v1で扱う既存認証資産
 
-小さな既存システムを想定した認証資産を用意します。
-
-最低限、次の既存fieldを持つものとします。
+小さな既存システムを想定し、最低限、次の状態を持つ認証資産を用意します。
 
 ```text
 LegacyUser
 - user_id
-- password_hash / credential reference
+- credential reference / password hash
 - disabled
 - valid_from
 - valid_until
@@ -48,99 +50,128 @@ LegacyUser
 - role_code
 ```
 
-さらに、単純な標準化では消えやすいシステム固有ruleを一つ入れます。
+さらに、単純なfield対応だけでは消えやすいシステム固有ruleを一つ含めます。
 
-例として、特定の状態や組織条件を含むログイン可否判定を用意します。最終的なruleは、Referenceを過度に人工的にしないものを選びます。
+最終的なruleはReferenceを不自然に複雑にしない範囲で実装時に決めます。重要なのは、こうした既存仕様を「TEI標準に合わせるため」という理由で削らないことです。
 
-## Secretの扱い
+## Capability境界
 
-passwordの平文やcredential secretをCanonical definitionへ保存しません。
+v1ではReference workspace側の`security`意味空間で、少なくとも次を分けて検証します。
 
-Referenceでpassword verificationを扱う場合も、Canonical側には「どのCapabilityが何を要求するか」を置き、secret materialはHostまたは既存implementation側の責務として扱います。
+```text
+security.authenticate
+security.authorize
+```
 
-## Capability Contract
+### `security.authenticate`
 
-最初から巨大なIAM modelを作らず、少なくとも次の二つを分けて検討します。
+credentialをもとにApplication利用者のidentityを確認します。
 
-### authenticate
-
-与えられたcredentialをもとに利用者identityを確認するCapabilityです。
-
-概念上は次の情報を扱える必要があります。
+概念上、次を扱える必要があります。
 
 - login identifier
-- credential input / handle
-- authentication result
+- credential inputまたはcredential handle
+- authentication outcome
 - authenticated subject
-- failure reason category
+- 認証が成立しなかった場合の理由
 
-### authorize
+成功、正常な拒否、実行エラーの表し方は`ISSUE-000009` / GitHub Issue #77で決めます。
 
-authenticated subjectが、Application上のaction / resourceを実行できるか判定するCapabilityです。
+### `security.authorize`
 
-組織やroleなどの既存情報を利用できる必要があります。
+authenticated subjectがApplication上のaction / resourceを実行できるかを判定します。
+
+組織、role、既存の個別rule等をimplementation側から利用できる必要があります。
 
 AuthenticationとAuthorizationを一つのboolean関数へ固定しません。
 
-## Mapping
+## `std`への標準化は保留する
+
+将来`std.auth.*`等の標準Capabilityが有用になる可能性はあります。
+
+ただし、一つのReferenceだけで標準契約を固定しません。v1ではworkspace側の`security`意味空間で実証し、複数Applicationや複数実現方式でも同じ契約として成立するEvidenceを得てから標準化を判断します。
+
+## 既存schemaとの接続
 
 既存fieldをTEI標準fieldへ物理コピーすることを前提にしません。
 
 次の方式を比較します。
 
 1. Capability implementationが既存schemaを直接読む
-2. 既存fieldを論理的な情報へMappingする
-3. 既存関数、stored procedure、external APIをCapabilityとして呼ぶ
+2. Persistence Mapping等を通じて既存fieldを論理的な意味へ対応付ける
+3. 既存関数、stored procedure、外部API等をadapterから呼ぶ
 
-Referenceでは少なくとも一つの既存schema Mappingと、一つのCustom implementation経路を実証します。
+Referenceでは、少なくとも一つの既存schema経路と、一つのCustom implementation経路を確認します。
 
-## 実現方式の交換
+重要なのは、Applicationから見たCapability identityを変えずに実現方式を交換できることです。
 
-RQ-008も同時に検証するため、同じCapability contractについて次のうち少なくとも二方式を比較します。
+## Plugin Capabilityとは分ける
 
-- existing implementation
-- Custom Go Binding
-- process Plugin
-- 将来のbuiltin / generated implementation
+認証実装がprocess Pluginとして動く場合でも、Application利用者のAuthenticationを`plugin.CapabilityKind`へ直接追加することを基本方針にはしません。
 
-最初から全方式を作る必要はありません。
+process PluginはSemantic Capabilityの実現方式であり、Plugin自身がどの外部resourceへアクセスしてよいかというPermissionとは別です。
 
-重要なのは、Applicationから見たCapability identityを変えずにimplementationを差し替えられることです。
+## Secretの扱い
+
+password平文、秘密鍵、token等のsecret materialをCanonical Worldへ保存しません。
+
+少なくとも次へsecretを混入させません。
+
+- `reference/world.json`
+- Source Index
+- Durable artifact
+- 通常のDiagnostic
+- 通常の実行log
+- Git管理するReference fixture
+
+Canonical側には、Capability契約、secretではないMapping / Bindingの来歴、どの境界でsecretを解決するかだけを残します。
+
+## 業務結果と実行エラー
+
+Authenticationでは、少なくとも次を分ける必要があります。
+
+```text
+Authenticated(subject)
+Denied(reason)
+ExecutionError(error)
+```
+
+credential不一致やaccount lockは、認証処理を正常に実行した結果としての拒否です。Database接続失敗やadapter異常とは意味が異なります。
+
+この問題はAuthentication固有ではないため、`ISSUE-000009` / GitHub Issue #77へ分離します。#68だけの場当たり的なerror規約は作りません。
 
 ## `order_entry`との接続
 
 Reference単体で境界を確認した後、v1 `order_entry`へ接続します。
 
-Application上では、少なくとも次を確認します。
+少なくとも次を確認します。
 
-- browseを利用できる利用者
-- recordを編集できる利用者
+- 受注一覧を閲覧できる利用者
+- 受注recordを編集できる利用者
 - `sales.order.submit` commandを実行できる利用者
 
 Authorization ruleをWeb Target内のif文として再実装せず、Application / Capability境界から利用します。
 
-## Database / external boundary
+## Database方式へ固定しない
 
-Legacy authentication dataを第三DatabaseとしてReference Workspaceへ追加するか、外部Capabilityとして扱うかは、実証上どちらが意味を明確にするかで決めます。
+既存認証情報は、別Database、同一Databaseの別schema、LDAP、IdP、独自API等のどこに存在するか分かりません。
 
-`order_entry`へ第三Datasourceを先に追加することを要件にはしません。
-
-既存システムでは認証が別DB、LDAP、IdP、独自APIなどのいずれもあり得るため、Databaseに固定しないCapability契約を優先します。
+Referenceで既存Databaseを利用しても、Authentication Capability自体を「第三Datasourceが必ず存在する」契約にはしません。
 
 ## Gate Aへ渡す情報
 
-このIssueでは、Driverが認証製品やlegacy schemaの内部構造を知らなくても、Application上のAuthorizationを評価できる境界を用意します。
+Driverが認証製品やlegacy schemaの内部構造を知らなくても、Application上のAuthorizationを評価できる境界を用意します。
 
 Gate Aへ渡す情報は少なくとも次です。
 
 - authenticated subjectを表すidentity
 - Application上で認可対象となるaction / resource
-- authorize Capabilityのidentity
+- Authentication / Authorization Capabilityのidentity
 - Capability BindingとMappingの来歴
-- 既存仕様のうち、どの条件が認証・認可判断に使われるか
+- 既存仕様のどの条件が認証・認可判断に使われるか
 - secret materialをどの境界で解決するか
 
-Gate Aではproduction-readyなIdPやログイン画面の完成は求めません。既存仕様を保ったままApplication上の意味へ接続できることを確認します。
+Gate Aではproduction-readyなIdPやログイン画面の完成を求めません。既存仕様を保ったままApplication上の意味へ接続できることを確認します。
 
 ## AI / Editorへの引き継ぎ
 
@@ -148,25 +179,42 @@ Gate Aではproduction-readyなIdPやログイン画面の完成は求めませ�
 
 このIssueではAI UI自体は実装しませんが、後から「何が決定済みか」を追跡できる構造を壊さないことを条件とします。
 
+## 実装順
+
+1. `security`意味空間の最小Referenceを定める
+2. Authentication / Authorization Capabilityのidentityと責務を定める
+3. #77でCapability outcomeと実行エラーの境界を確定する
+4. legacy認証fixtureを用意する
+5. existing schema / functionとCapabilityを接続する
+6. Custom Go等の異なる実現方式を一つ追加する
+7. secret非混入をConformance化する
+8. `order_entry`のbrowse / edit / submitへAuthorizationを接続する
+9. Source / Binding / Mappingの来歴を確認する
+10. #67と合わせてGate Aを監査する
+
 ## Conformance
 
 少なくとも次を確認します。
 
 - legacy field名をCanonical identityとして要求しない
-- disabled / validity / failure count / lockなどの既存意味を失わない
-- secret plaintextをCanonical / Durable artifactへ保存しない
-- AuthenticationとPlugin runtime permissionを混同しない
-- 同じCapability identityへ複数implementationをBindingできる
+- disabled / validity / failure count / lock等の既存意味を失わない
+- system固有ruleを標準化のために削らない
+- secret plaintextをCanonical / Durable artifact / Source Indexへ保存しない
+- AuthenticationとAuthorizationを一つのbooleanへ畳まない
+- Application user authorizationとPlugin runtime permissionを混同しない
+- 同じCapability identityを保ったままimplementationを交換できる
 - implementationを交換してもApplication側の業務上の意味を作り直さない
-- `order_entry`のcommand authorizationをTarget固有コードへ閉じ込めない
+- `order_entry`のAuthorizationをTarget固有コードへ閉じ込めない
 - Source / Binding / implementationの来歴を追跡できる
-- Driverがlegacy schemaの物理構造へ直接依存せずAuthorizationを評価できる
+- Driverがlegacy schemaの物理構造へ直接依存しない
+- 業務上の拒否と実行エラーを#77の境界で区別できる
 
 ## 非目標
 
 - TEI標準User schemaの制定
+- `std.auth.*`の即時標準化
 - production IdPの内製
-- OAuth / OIDC / SAMLなどを一度に網羅すること
+- OAuth / OIDC / SAML等の一括対応
 - password hashing algorithmの独自実装
 - Plugin Permission Grantとの統合
 - GUI login pageの完成
@@ -174,14 +222,17 @@ Gate Aではproduction-readyなIdPやログイン画面の完成は求めませ�
 
 ## 完了条件
 
-既存認証仕様を変更せず、Authentication / Authorization Capabilityへ接続できるReferenceが成立すること。
+既存認証仕様を変更せず、Authentication / Authorization Capabilityへ接続できるReferenceが成立することを完了条件とします。
 
-さらに、同じApplication Capability identityのまま実現方式を交換でき、`order_entry`のbrowse / edit / command Authorizationへ接続できることを示します。
+さらに、同じCapability identityのまま実現方式を交換でき、`order_entry`のbrowse / edit / submit Authorizationへ接続できること、secretがCanonicalへ漏れないこと、Driverがlegacy schemaへ直接依存しないことをEvidenceとして残します。
 
-`ISSUE-000005`のApplication Patternと合わせて、Gate A「Application上の意味をDriverへ渡せる」を評価できるEvidenceを残します。
+`ISSUE-000005`のApplication Patternと合わせて、Gate A「Application上の意味をDriverへ渡せる」を評価します。
 
 ## 関連文書
 
+- `plan/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
+- `plan/adr/0019-authentication-capability-boundary.md`
+- `plan/issue/000009-capability-outcome-and-execution-error.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
