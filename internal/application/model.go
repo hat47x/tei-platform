@@ -13,15 +13,16 @@ type DatabaseRequirement struct {
 }
 
 // PatternKindは、Applicationが所有する意図の種類を表す。
-// v1ではbrowseから実証し、ほかの種類はそれぞれのReferenceで意味を確認してから有効化する。
+// v1では実Referenceで意味を確認できたKindから順に有効化し、未検証の分類は先回りして固定しない。
 type PatternKind string
 
 const (
 	PatternBrowse PatternKind = "browse"
+	PatternRecord PatternKind = "record"
 )
 
 func (k PatternKind) Valid() bool {
-	return k == PatternBrowse
+	return k == PatternBrowse || k == PatternRecord
 }
 
 // PatternにはApplication上の意図だけを保持する。
