@@ -41,13 +41,28 @@ type ForeignKeyMeta struct {
 	ReferencedColumns []string
 }
 
+type IndexKeyMeta struct {
+	Column        string
+	Expression    string
+	Collation     string
+	OperatorClass string
+	Order         string
+	NullsOrder    string
+}
+
 type IndexMeta struct {
-	Schema  string
-	Table   string
-	Name    string
-	Columns []string
-	Unique  bool
-	Method  string
+	Schema           string
+	Table            string
+	Name             string
+	Keys             []IndexKeyMeta
+	IncludedColumns  []string
+	Predicate        string
+	Unique           bool
+	NullsNotDistinct bool
+	Method           string
+	Valid            bool
+	Ready            bool
+	Live             bool
 }
 
 // CatalogReader isolates PostgreSQL catalog access from TEI's provider model.

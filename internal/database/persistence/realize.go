@@ -49,12 +49,15 @@ func RealizeDesired(mappings []Mapping, databaseID string, provider environment.
 		}
 		for _, idx := range m.Indexes {
 			pi := physical.Index{Name: idx.Name, Unique: idx.Unique, Method: defaultIndexMethod(provider)}
+			if idx.Unique {
+				pi.UniqueNullTreatment = defaultUniqueNullTreatment(provider)
+			}
 			for _, attr := range idx.Attributes {
 				name, ok := columnByAttribute[attr]
 				if !ok {
 					return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s index %s attribute %s has no column mapping", m.ID, idx.Name, attr)
 				}
-				pi.Columns = append(pi.Columns, name)
+				pi.Keys = append(pi.Keys, physical.ColumnIndexKey(name))
 			}
 			t.Indexes = append(t.Indexes, pi)
 		}
@@ -167,6 +170,13 @@ func physicalType(provider environment.DatabaseProvider, storage StorageType) (s
 func defaultIndexMethod(provider environment.DatabaseProvider) string {
 	if provider == environment.ProviderPostgres {
 		return "btree"
+	}
+	return ""
+}
+
+func defaultUniqueNullTreatment(provider environment.DatabaseProvider) physical.UniqueNullTreatment {
+	if provider == environment.ProviderPostgres {
+		return physical.UniqueNullTreatmentDistinct
 	}
 	return ""
 }

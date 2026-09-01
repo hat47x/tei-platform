@@ -23,6 +23,7 @@ const (
 	DropForeignKey       ChangeKind = "drop-foreign-key"
 	AddIndex             ChangeKind = "add-index"
 	DropIndex            ChangeKind = "drop-index"
+	IndexStateDrift      ChangeKind = "index-state-drift"
 )
 
 type Change struct {
@@ -150,10 +151,13 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 		} else if !dok && aok {
 			ii := a
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &ii})
-		} else if dok && aok && !sameIndex(d, a) {
+		} else if dok && aok && !sameIndexStructure(d, a) {
 			old := a
 			newi := d
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &old}, Change{Kind: AddIndex, Table: name, Index: &newi})
+		} else if dok && aok && a.State != nil && !a.State.Usable() {
+			observed := a
+			out = append(out, Change{Kind: IndexStateDrift, Table: name, Index: &observed})
 		}
 	}
 	return out
@@ -312,6 +316,38 @@ func sameStrings(a, b []string) bool {
 	}
 	return true
 }
-func sameIndex(a, b physical.Index) bool {
-	return a.Unique == b.Unique && norm(a.Method) == norm(b.Method) && sameStrings(a.Columns, b.Columns)
+
+func sameIndexStructure(a, b physical.Index) bool {
+	if a.Unique != b.Unique || norm(a.Method) != norm(b.Method) || a.UniqueNullTreatment != b.UniqueNullTreatment {
+		return false
+	}
+	if !sameIndexKeys(a.Keys, b.Keys) || !sameStrings(a.IncludedColumns, b.IncludedColumns) {
+		return false
+	}
+	return sameProviderExpression(a.Predicate, b.Predicate)
+}
+
+func sameIndexKeys(a, b []physical.IndexKey) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if norm(a[i].Column) != norm(b[i].Column) || !sameProviderExpression(a[i].Expression, b[i].Expression) {
+			return false
+		}
+		if strings.TrimSpace(a[i].Collation) != strings.TrimSpace(b[i].Collation) || strings.TrimSpace(a[i].OperatorClass) != strings.TrimSpace(b[i].OperatorClass) {
+			return false
+		}
+		if a[i].Order != b[i].Order || a[i].NullsOrder != b[i].NullsOrder {
+			return false
+		}
+	}
+	return true
+}
+
+func sameProviderExpression(a, b *physical.ProviderExpression) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return norm(a.Provider) == norm(b.Provider) && norm(a.Dialect) == norm(b.Dialect) && strings.TrimSpace(a.Source) == strings.TrimSpace(b.Source)
 }
