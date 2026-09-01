@@ -63,7 +63,7 @@ Milestoneの到達条件とGateのEvidenceが重なる場合は、同じReferenc
 - native sourceをauthoritativeなまま接続できる
 - Diagnosticをmeaningからsourceへ戻せる
 - Domain Component / Semantic Pattern等の再利用単位を小さいReferenceで扱える
-- standard Application Patternを少なくとも数種類、意味を保った再利用部品として表せる
+- Application Patternを少なくとも数種類、意味を保った再利用候補として表せ、どこまでを共有・標準化できるかをEvidenceから説明できる
 
 ### 意味
 
@@ -71,7 +71,7 @@ Milestoneの到達条件とGateのEvidenceが重なる場合は、同じReferenc
 
 M0.23までのSource-to-Canonical Traceabilityは、このMilestoneの基礎をかなり満たしています。今後は意味知識の再利用へ重点を移します。
 
-v1では、browse、record、reference、header-detail、commandをApplicationが所有する意図として実証し、DriverやTarget固有の表示定義と混同しないことを確認します。
+v1では、browse、record、reference、header-detail、commandをまずApplicationが所有する意図の候補として実証し、DriverやTarget固有の表示定義と混同しないことを確認します。そのうえで、複数Applicationへ再利用できる部分や標準化できる範囲をEvidenceから判断します。
 
 ## Milestone 2 — 現実の既存業務をそのまま受け止められる
 
@@ -98,7 +98,8 @@ v1では、既存認証CompatibilityをApplication Patternと並行して実証�
 - Database Bindingを含む小さい業務シナリオを閉じた環境で再現できる
 - Authentication / Authorization CapabilityをApplication上の意味から評価できる
 - 設計変更をすぐにValidation / Simulationへ反映できる
-- command、actual observation、evidenceを区別できる
+- Capability invocationのBusiness ResultとExecution Errorを区別できる
+- command acknowledgement、actual observation、evidenceを区別できる
 - unknown / unresolvedを安全に保持できる
 - Reference ScenarioをRepositoryだけから再現できる
 
@@ -106,7 +107,7 @@ v1では、既存認証CompatibilityをApplication Patternと並行して実証�
 
 設計が、静的な文書や定義だけでなく「動かして確かめられる設計」になります。
 
-v1のGate Bでは、browse → record → reference → header-detail → validation → authorization → command → observationをUIなしで再現できることを確認します。
+v1のGate Bでは、browse → record → reference → header-detail → validation → authorization → commandをUIなしで再現し、Business Result / Execution Errorと、必要なObservationを意味の違いとして保持できることを確認します。
 
 ## Milestone 4 — 一つの実用TargetでApplicationを完成形に近く通せる
 
@@ -116,6 +117,7 @@ v1のGate Bでは、browse → record → reference → header-detail → valida
 - 標準的な業務ApplicationをWeb等の第一TargetへProjectionできる
 - browse / record / reference / header-detail / command等のPatternをUIへつなげられる
 - Database、Capability、Validation、Authorizationを同じApplication vertical sliceで扱える
+- CapabilityのBusiness Result、Execution Error、Observationを意味の違いを保ったままTargetへProjectionできる
 - 生成された画面だけでなく、Custom UIを接続できる
 - Driverと実Targetの意味差を説明できる
 - 第一Targetに固有の情報と、複数Targetで共有できそうな情報を分けて記録できる
