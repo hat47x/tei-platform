@@ -1599,18 +1599,31 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 			if err != nil {
 				return m, err
 			}
-			if _, err := p.expectText("on"); err != nil {
-				return m, err
-			}
-			a, err := p.expect(TokenIdent)
+			next, err := p.peek()
 			if err != nil {
 				return m, err
 			}
-			attr, err := core.ParseCanonicalID(a.Text)
-			if err != nil {
-				return m, p.errAt(a, err.Error())
+			if next.Text == "on" {
+				_, _ = p.next()
+				a, err := p.expect(TokenIdent)
+				if err != nil {
+					return m, err
+				}
+				attr, err := core.ParseCanonicalID(a.Text)
+				if err != nil {
+					return m, p.errAt(a, err.Error())
+				}
+				m.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+				break
 			}
-			m.Indexes = append(m.Indexes, persistence.IndexMapping{Name: name.Text, Attributes: []core.CanonicalID{attr}, Unique: unique})
+			if next.Kind != TokenLBrace {
+				return m, p.errAt(next, "expected on or advanced index block")
+			}
+			index, err := p.parseAdvancedIndexBody(name, unique)
+			if err != nil {
+				return m, err
+			}
+			m.Indexes = append(m.Indexes, index)
 		case "unique":
 			_, _ = p.next()
 			name, err := p.expect(TokenIdent)
