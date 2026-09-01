@@ -33,7 +33,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		return out, err
 	}
 
-	var hasData, hasRelation, hasQuery, hasDatasource bool
+	var hasData, hasRelation, hasQuery, hasCapability, hasDatasource bool
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -86,6 +86,20 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			if err != nil {
 				return out, p.errAt(v, err.Error())
 			}
+		case "capability":
+			if hasCapability {
+				return out, p.errAt(t, "capability is declared more than once")
+			}
+			hasCapability = true
+			_, _ = p.next()
+			v, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.Capability, err = core.ParseCanonicalID(v.Text)
+			if err != nil {
+				return out, p.errAt(v, err.Error())
+			}
 		case "datasource":
 			if hasDatasource {
 				return out, p.errAt(t, "datasource is declared more than once")
@@ -101,7 +115,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(v, err.Error())
 			}
 		default:
-			return out, p.errAt(t, "expected data, relation, query, or datasource")
+			return out, p.errAt(t, "expected data, relation, query, capability, or datasource")
 		}
 	}
 
@@ -116,6 +130,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		if out.Relation != "" {
 			return out, fmt.Errorf("browse pattern %s does not accept relation", out.ID)
 		}
+		if out.Capability != "" {
+			return out, fmt.Errorf("browse pattern %s does not accept capability", out.ID)
+		}
 	case application.PatternRecord:
 		if out.Data == "" {
 			return out, fmt.Errorf("record pattern %s requires data", out.ID)
@@ -125,6 +142,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		}
 		if out.Query != "" {
 			return out, fmt.Errorf("record pattern %s does not accept query", out.ID)
+		}
+		if out.Capability != "" {
+			return out, fmt.Errorf("record pattern %s does not accept capability", out.ID)
 		}
 		if out.Datasource != "" {
 			return out, fmt.Errorf("record pattern %s does not accept datasource", out.ID)
@@ -141,6 +161,25 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		}
 		if out.Query != "" {
 			return out, fmt.Errorf("reference pattern %s does not accept query", out.ID)
+		}
+		if out.Capability != "" {
+			return out, fmt.Errorf("reference pattern %s does not accept capability", out.ID)
+		}
+	case application.PatternCommand:
+		if out.Capability == "" {
+			return out, fmt.Errorf("command pattern %s requires capability", out.ID)
+		}
+		if out.Data != "" {
+			return out, fmt.Errorf("command pattern %s does not accept data", out.ID)
+		}
+		if out.Relation != "" {
+			return out, fmt.Errorf("command pattern %s does not accept relation", out.ID)
+		}
+		if out.Query != "" {
+			return out, fmt.Errorf("command pattern %s does not accept query", out.ID)
+		}
+		if out.Datasource != "" {
+			return out, fmt.Errorf("command pattern %s does not accept datasource", out.ID)
 		}
 	}
 	if err := p.expectEOF(); err != nil {
