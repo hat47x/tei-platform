@@ -3,6 +3,7 @@ package workspace_test
 import (
 	"testing"
 
+	"tei/internal/subject"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -36,6 +37,10 @@ sources:
 	diagnostic, ok := diagnosticByCode(diagnostics, "UNKNOWN_APPLICATION_PATTERN_DATA")
 	if !ok {
 		t.Fatalf("Pattern Validationに期待したDiagnosticがありません: %#v", diagnostics)
+	}
+	wantSubject := subject.Subject{Kind: "application-pattern", ID: "sample_app.recent_orders"}
+	if diagnostic.Subject == nil || *diagnostic.Subject != wantSubject {
+		t.Fatalf("DiagnosticのSubject=%#v want=%+v", diagnostic.Subject, wantSubject)
 	}
 
 	projected := workspace.ProjectDiagnostics([]validation.Diagnostic{diagnostic}, idx)
