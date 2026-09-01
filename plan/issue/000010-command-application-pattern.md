@@ -1,25 +1,35 @@
 # ISSUE-000010: `sales.order.submit`をcommand Application Patternとして実証する
 
-- 状態: In Progress
-- GitHub Issue: #110
-- 実装PR: #114
+- 状態: Done
+- GitHub Issue: #110（完了）
+- 実装PR: #114 / #116
 - 上位Issue: `ISSUE-000005` / GitHub Issue #67
 - 関連設計: [`APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
-- Capability結果境界: [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)
+- Capability結果境界: [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)
 
 ## 目的
 
-`order_entry`の業務操作として、既存Semantic Capability `sales.order.submit`をApplication Patternから参照できることを実証します。
+`order_entry`の業務操作として、既存Semantic Capability `sales.order.submit`をApplication PatternからTarget非依存に参照できることを実証する作業です。
 
-ここで確認したいのは、ButtonやHTTP endpointの形ではありません。Applicationが「どの業務Capabilityを呼び出すか」というTarget非依存の意図を保持し、その意味を後続Driverへ渡せることです。
+Button、HTTP endpoint、Custom Go等の実装方法をPatternの意味にせず、Applicationが「どの業務Capabilityを呼ぶか」だけを保持できるかを確認しました。
 
-既存Capabilityがすでに持つ入力型、出力型、Datasource、実装方式をPatternへ複製せず、Canonical IDによる参照だけで成立するかを確かめます。
+## 実証した契約
 
-## 前提
+```tei
+pattern order_entry.submit_order command {
+    capability sales.order.submit
+}
+```
 
-`browse`、`record`、`reference`の最小実証は完了しています。
+契約は次です。
 
-既存Capabilityは次の定義です。
+- `capability`: 必須
+- `data`: 受理しない
+- `relation`: 受理しない
+- `query`: 受理しない
+- `datasource`: 受理しない
+
+Capabilityのinput / outputはSemantic側を正本とします。
 
 ```tei
 capability sales.order.submit {
@@ -28,60 +38,25 @@ capability sales.order.submit {
 }
 ```
 
-Application `order_entry`は`uses semantic sales`を宣言済みです。
+## PR #114 — Canonical model / Parser / Validation
 
-Capabilityの業務上の結果と実行エラーの境界はADR-0020で定めています。既存の単一`output`はBusiness Resultとして利用でき、名前付きOutcomeは複数の業務上の結末が実例として必要な場合にだけ導入します。
+PR #114で次を実装しました。
 
-## 最小構文の第一候補
+- `PatternCommand`を有効化
+- Patternへ型付きCapability参照を追加
+- Capability-onlyの`command`をParserで受理
+- Capabilityなしの`command`を拒否
+- Data / Relation / Query / Datasourceを拒否
+- ほかのPattern KindへCapabilityが混入した場合も拒否
+- Workspace ValidationでCapabilityの存在を確認
+- Pattern Diagnosticを`application-pattern:<Canonical ID>` Subjectで返す
+- 共通`validation.Validate`から同じDiagnosticを一度だけ返す
 
-```tei
-pattern order_entry.submit_order command {
-    capability sales.order.submit
-}
-```
+CI #270は`verify` / PostgreSQL integrationとも成功しました。
 
-初期契約は次の形から検証します。
+## PR #116 — 実Reference
 
-- `capability`: 必須
-- `data`: 受理しない
-- `relation`: 受理しない
-- `query`: 受理しない
-- `datasource`: 受理しない
-
-Capabilityのinput / outputはSemantic側を正本とし、Patternでは再記述しません。
-
-## 実装する範囲
-
-### Canonical model
-
-- `PatternCommand`を有効化する
-- `Pattern`へ型付きの`Capability`参照を追加する
-- 既存Kindの意味を変更しない
-
-### Parser
-
-- `command`で`capability`を必須にする
-- `command`にData / Relation / Query / Datasourceが記述された場合は拒否する
-- `browse` / `record` / `reference`にCapabilityが記述された場合も拒否する
-- 同じfieldの重複は既存方針どおり構文段階で拒否する
-
-### Workspace Validation
-
-少なくとも次を確認します。
-
-- CapabilityがCanonical Worldに存在する
-- `command`にCapabilityが設定されている
-- Kind固有の禁止fieldが混入していない
-- Diagnosticが`application-pattern:<Canonical ID>` Subjectを利用する
-- CapabilityのSemantic NamespaceをApplicationから利用できることについて、既存`SemanticUses`とValidationで保証済みかを先に確認する
-
-Semantic Namespace利用境界が既存Validationで十分に守られている場合、Pattern専用の同等検査を重ねません。不足がReferenceから確認できた場合だけ、より共通的な境界として最小の検査を追加します。
-
-Capability IDの文字列prefixだけからNamespace所属を推測しません。
-
-### 実Reference
-
-Reference Workspaceへ次を追加します。
+Reference Workspaceへ次を追加しました。
 
 ```tei
 pattern order_entry.submit_order command {
@@ -89,90 +64,64 @@ pattern order_entry.submit_order command {
 }
 ```
 
-Patternへ次を複製しません。
+Conformanceで次を確認しています。
 
-- `input order sales.order`
-- `output sales.order`
-- logical datasource
-- Database Contract
-- Custom Go等の実装方式
-- Button / HTTP等のTarget固有表現
+- `browse` / `record` / `reference` / `command`が同じApplicationで共存する
+- `sales.order.submit`をCanonical IDで追跡できる
+- input `order sales.order`をSemantic側から取得できる
+- output `sales.order`をSemantic側から取得できる
+- Data / Relation / Query / DatasourceをPatternへ重複保持しない
+- `order_entry`が`uses semantic sales`を保持する
+- Source Indexからauthoring sourceへ戻れる
+- Reference WorldをRepository自身から再生成できる
 
-### Conformance
+CI #275は`verify` / PostgreSQL integrationとも成功しました。
 
-次をRepository内のテストとReferenceから確認します。
+## 実証から得た判断
 
-- `browse` / `record` / `reference` / `command`が同じ`order_entry`で共存する
-- `command`から`sales.order.submit`をCanonical IDで追跡できる
-- input / outputはSemantic Capabilityの定義から取得できる
-- PatternがData / Query / Datasource / implementationを重複保持しない
-- Pattern固有Diagnosticからauthoring sourceへ戻れる
-- Reference WorldをRepository自身の`tei world`から再生成できる
-- 既存`output sales.order`を不用意に名前付きOutcomeへ変更しない
+### Capability identityだけで成立する
 
-## Capability Bindingとの境界
+対象Data、input、outputをPatternへ重複記述する必要はありませんでした。
 
-Application Patternは「どのCapabilityを呼ぶか」を表します。
+### Capability Binding / implementationはPatternへ含めない
 
-一方、Capabilityをどの実装で実現するかはBinding / Realization / Driver側の責務です。
+同じCapabilityがbuiltin、generated、Custom Go、process plugin、外部API等の異なる方式で実現されても、Application上のcommand identityを変えない構造を維持します。
 
-同じCapabilityが将来、builtin、generated、custom Go、process plugin、既存API等の異なる方式で実現されても、Application上のcommand identityを変えない構造を維持します。
+### DatasourceはPatternへ持ち込まない
 
-このIssueではBindingをPatternのfieldとして持たせません。
+Capability implementationが利用するresourceはBinding / Realization / Driver側の情報です。
 
-## Business Result / Execution Errorとの境界
+`command`のApplication上の意図を表すためにDatasourceを追加するEvidenceは得られませんでした。
 
-`command` Pattern自身は結果型を再定義しません。
+### Business ResultとExecution Errorを混同しない
 
-現行`sales.order.submit`の`output sales.order`は、ADR-0020に従ってBusiness Resultとして扱います。
+既存`output sales.order`はADR-0020に従うBusiness Resultとして維持しました。
 
-Commandを実行して初めて判明する複数の業務上の結末が本当に必要だと分かった場合は、GitHub Issue #77の圧力試験として名前付きOutcomeを検討します。このIssueだけを理由に、既存CapabilityをOutcome形式へ書き換えません。
+`command`追加だけを理由にnamed Outcomeへ変更していません。
 
 Database接続失敗、adapter異常、process起動失敗等はExecution Errorであり、業務Outcomeへ変換しません。
 
-## CommandとObservationの境界
+### CommandとObservationを分離する
 
-Capability呼び出しによって返されたBusiness Resultと、その後に外部世界から観測したActual / Observationは別の意味です。
+Capability呼び出しのBusiness Resultと、その後に外部世界から観測するActual / Observationは別の意味です。
 
-このIssueではApplication上のcommand意図までを扱い、ObservationをPatternのfieldにはしません。
+Observationを`command` Patternへ持ち込みません。
 
-両者の接続は後続Driverで扱います。
+## 完了条件の確認
 
-## 非目標
-
-このIssueでは次を行いません。
-
-- `header-detail` / `OrderLine`の実装
-- Driverからの実Capability invocation
-- production-grade transaction coordinator
-- 名前付きOutcomeの強制導入
-- Web Button、HTTP status、画面messageの設計
-- Custom Go Bindingの具体的な実装方式の確定
-- Workflow全般の抽象化
-
-## 完了条件
-
-次をReference / Conformanceから再現できることを完了条件とします。
-
-1. `command` KindとCapability参照をCanonical model / Parser / Loader / Normalizationから扱える
-2. `sales.order.submit`のinput / outputをPatternへ複製せずcommand意図を表現できる
-3. Capabilityの存在とApplicationからの利用可能性を、既存境界を尊重して検査できる
-4. Pattern Diagnosticが既存Subject / Source Index経路を利用できる
-5. Capability Binding / implementationをPatternから分離したまま維持できる
-6. 既存`output sales.order`をBusiness Resultとして保ち、Execution Errorと混同しない
-7. `browse` / `record` / `reference` / `command`が`order_entry`で共存できる
-8. Reference WorldをRepositoryだけから再生成できる
-9. 後続DriverへCapability identityと結果境界をTarget非依存の情報として渡せる
+1. `command` KindとCapability参照をCanonical model / Parser / Loader / Normalizationから扱える — 完了
+2. input / outputをPatternへ複製せずcommand意図を表現できる — 完了
+3. Capabilityの存在を共通Validationから検査できる — 完了
+4. Pattern Diagnosticが既存Subject / Source Index経路を利用できる — 完了
+5. Capability Binding / implementationをPatternから分離できる — 完了
+6. 既存outputをBusiness Resultとして維持し、Execution Errorと混同しない — 完了
+7. 4種類のPatternが`order_entry`で共存できる — 完了
+8. Reference WorldをRepositoryだけから再生成できる — 完了
+9. 後続DriverへCapability identityと結果境界を渡せる — Application Pattern側は完了
 
 ## 関連
 
-- GitHub Issue #67: v1 Application Pattern実証
-- GitHub Issue #69: Application Driver
-- GitHub Issue #77: Capabilityの業務Outcomeと実行エラー
-- GitHub Issue #104: `record`実証
-- GitHub Issue #107: `reference`実証
-- GitHub PR #114: `command`最小契約の実装
-- ADR-0017: Application Pattern ownership
-- ADR-0018: Application Pattern authoring source
-- ADR-0020: Capability Business Outcome boundary
-- RQ-001, RQ-003, RQ-008, RQ-011, RQ-014, RQ-017, RQ-018, RQ-021
+- GitHub Issue #67 / #69 / #77 / #110
+- GitHub PR #114 / #116
+- ADR-0017 / ADR-0018 / ADR-0020
+- `ISSUE-000005` / `ISSUE-000009`
