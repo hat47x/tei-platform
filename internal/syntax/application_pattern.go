@@ -8,7 +8,7 @@ import (
 )
 
 // ParseApplicationPatternは、Application配下の独立したPattern定義を読み取る。
-// 最初の縦切りではbrowseだけを有効とし、ほかのKindはReferenceで意味を確かめてから追加する。
+// Pattern Kindごとの必須条件は、実Referenceで確認した意味に限ってここで構文契約として固定する。
 func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 	if _, err := p.expectText("pattern"); err != nil {
 		return application.Pattern{}, err
@@ -91,12 +91,23 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		}
 	}
 
-	if out.Kind == application.PatternBrowse {
+	switch out.Kind {
+	case application.PatternBrowse:
 		if out.Data == "" {
 			return out, fmt.Errorf("browse pattern %s requires data", out.ID)
 		}
 		if out.Query == "" {
 			return out, fmt.Errorf("browse pattern %s requires query", out.ID)
+		}
+	case application.PatternRecord:
+		if out.Data == "" {
+			return out, fmt.Errorf("record pattern %s requires data", out.ID)
+		}
+		if out.Query != "" {
+			return out, fmt.Errorf("record pattern %s does not accept query", out.ID)
+		}
+		if out.Datasource != "" {
+			return out, fmt.Errorf("record pattern %s does not accept datasource", out.ID)
 		}
 	}
 	if err := p.expectEOF(); err != nil {
