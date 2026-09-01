@@ -70,7 +70,7 @@ func TestCompareIndexReportsLifecycleDriftSeparately(t *testing.T) {
 	}
 }
 
-func TestCompareIndexTreatsAdvancedStructureAsMeaningful(t *testing.T) {
+func TestCompareIndexTreatsResolvedAdvancedStructureAsMeaningful(t *testing.T) {
 	tests := []struct {
 		name   string
 		mutate func(*physical.Index)
@@ -82,7 +82,6 @@ func TestCompareIndexTreatsAdvancedStructureAsMeaningful(t *testing.T) {
 		{name: "predicate", mutate: func(i *physical.Index) { i.Predicate = postgresExpr("deleted_at IS NULL") }},
 		{name: "sort", mutate: func(i *physical.Index) { i.Keys[0].Order = physical.IndexOrderDesc }},
 		{name: "null order", mutate: func(i *physical.Index) { i.Keys[0].NullsOrder = physical.IndexNullsOrderFirst }},
-		{name: "collation", mutate: func(i *physical.Index) { i.Keys[0].Collation = "pg_catalog.C" }},
 		{name: "operator class", mutate: func(i *physical.Index) { i.Keys[0].OperatorClass = "pg_catalog.text_pattern_ops" }},
 	}
 
@@ -100,6 +99,24 @@ func TestCompareIndexTreatsAdvancedStructureAsMeaningful(t *testing.T) {
 				t.Fatalf("changes=%#v", diff.Changes)
 			}
 		})
+	}
+}
+
+func TestCompareIndexKeepsUnresolvedCollationOutOfMigrationChanges(t *testing.T) {
+	desired := simpleIndex("customers_email_idx")
+	actual := desired
+	actual.Keys = append([]physical.IndexKey(nil), desired.Keys...)
+	actual.Keys[0].Collation = "pg_catalog.C"
+
+	diff, err := schemadiff.Compare(indexSchema(desired), indexSchema(actual))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diff.Changes) != 0 || len(diff.Unresolved) != 1 {
+		t.Fatalf("diff=%#v", diff)
+	}
+	if diff.Unresolved[0].Kind != schemadiff.UnresolvedProviderIdentifier || diff.Unresolved[0].FieldPath != "index.keys[0].collation" {
+		t.Fatalf("unresolved=%#v", diff.Unresolved)
 	}
 }
 

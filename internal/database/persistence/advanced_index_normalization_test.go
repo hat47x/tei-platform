@@ -49,8 +49,11 @@ func TestRealizeDesiredNormalizesPostgresBtreeDefaults(t *testing.T) {
 	}
 
 	ascending := table.Indexes[0].Keys[0]
-	if ascending.Order != physical.IndexOrderDefault || ascending.NullsOrder != physical.IndexNullsOrderDefault || ascending.Collation != "" {
-		t.Fatalf("ASC NULLS LAST/default collation were not normalized: %#v", ascending)
+	if ascending.Order != physical.IndexOrderDefault || ascending.NullsOrder != physical.IndexNullsOrderDefault {
+		t.Fatalf("ASC NULLS LAST was not normalized: %#v", ascending)
+	}
+	if ascending.Collation != "pg_catalog.default" {
+		t.Fatalf("explicit collation authoring must be preserved until Desired/Actual comparison can resolve it: %#v", ascending)
 	}
 
 	descending := table.Indexes[1].Keys[0]
