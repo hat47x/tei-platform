@@ -4,9 +4,38 @@
 
 TEI（鼎／テイ）のMilestoneには期限を置きません。
 
-Milestoneは「いつまでに終えるか」ではなく、**どのCapabilityが揃えば、次の段階へ進んだとみなせるか**を示します。
+Milestoneは「いつまでに終えるか」ではなく、**どのCapabilityとEvidenceが揃えば、次の段階へ進んだとみなせるか**を示します。
 
 個別実装のM0.xxは設計検証上の細かなcheckpointとして継続利用できますが、この文書ではプロダクト全体を見渡す、より大きなMilestoneを扱います。
+
+## v1 Reference Applicationとの対応
+
+Milestone 1〜4は、既存の`order_entry`を育てるv1 Reference Applicationで一続きに検証します。
+
+詳細な作業順は[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)に置き、次のEvidence Gateで段階を区切ります。
+
+```text
+Milestone 1 / 2
+Application Pattern + 既存認証Compatibility
+                ↓
+             Gate A
+                ↓
+Milestone 3
+Application Driver
+                ↓
+             Gate B
+                ↓
+Milestone 4
+第一Web Target
+                ↓
+             Gate C
+```
+
+Gateは新しい機能一覧ではありません。
+
+たとえばGate Aでは、WebやEditorを見なくてもApplication上の意味をDriverへ渡せること、Gate BではUIなしで主要な業務シナリオを再現できること、Gate Cでは第一Targetと共通意味の差を説明できることを確認します。
+
+Milestoneの到達条件とGateのEvidenceが重なる場合は、同じReference / Conformanceを二重に作りません。一つのEvidenceを複数の観点から参照できるようにします。
 
 ## Milestone 0 — 上位基線がある
 
@@ -42,6 +71,8 @@ Milestoneは「いつまでに終えるか」ではなく、**どのCapability�
 
 M0.23までのSource-to-Canonical Traceabilityは、このMilestoneの基礎をかなり満たしています。今後は意味知識の再利用へ重点を移します。
 
+v1では、browse、record、reference、header-detail、commandをApplicationが所有する意図として実証し、DriverやTarget固有の表示定義と混同しないことを確認します。
+
 ## Milestone 2 — 現実の既存業務をそのまま受け止められる
 
 ### 到達条件
@@ -57,12 +88,15 @@ M0.23までのSource-to-Canonical Traceabilityは、このMilestoneの基礎を�
 
 新規の理想化されたサンプルだけでなく、実際のSIer案件で発生する移行要件を受け止められる状態です。
 
+v1では、既存認証CompatibilityをApplication Patternと並行して実証し、認証・認可をWeb Targetへ後付けするのではなく、Gate AでDriverへ渡せるApplication上の意味として合流させます。
+
 ## Milestone 3 — 設計をDriverで動かして確認できる
 
 ### 到達条件
 
 - ApplicationのData / Rule / Validation / CapabilityをDriverで実行できる
 - Database Bindingを含む小さい業務シナリオを閉じた環境で再現できる
+- Authentication / Authorization CapabilityをApplication上の意味から評価できる
 - 設計変更をすぐにValidation / Simulationへ反映できる
 - command、actual observation、evidenceを区別できる
 - unknown / unresolvedを安全に保持できる
@@ -72,34 +106,42 @@ M0.23までのSource-to-Canonical Traceabilityは、このMilestoneの基礎を�
 
 設計が、静的な文書や定義だけでなく「動かして確かめられる設計」になります。
 
+v1のGate Bでは、browse → record → reference → header-detail → validation → authorization → command → observationをUIなしで再現できることを確認します。
+
 ## Milestone 4 — 一つの実用TargetでApplicationを完成形に近く通せる
 
 ### 到達条件
 
-- target-neutral Presentation / Interaction境界がある
+- target-neutral Presentation / Interaction境界の候補を実例から抽出できる
 - 標準的な業務ApplicationをWeb等の第一TargetへProjectionできる
 - browse / record / reference / header-detail / command等のPatternをUIへつなげられる
 - Database、Capability、Validation、Authorizationを同じApplication vertical sliceで扱える
-- 生成された画面だけでなく、custom UIを接続できる
+- 生成された画面だけでなく、Custom UIを接続できる
 - Driverと実Targetの意味差を説明できる
+- 第一Targetに固有の情報と、複数Targetで共有できそうな情報を分けて記録できる
 
 ### 意味
 
 TEIがarchitecture probeだけでなく、実際の業務Applicationを一つのTargetへ通せる段階です。
 
+ただし、第一TargetだけでTarget-neutral設計の完成を宣言しません。Gate Cで共通候補とWeb固有差分を明示し、第二Targetから検証し直せる状態を作ります。
+
 ## Milestone 5 — 同じ意味を複数Targetへ展開できる
 
 ### 到達条件
 
-- 第二TargetをCore変更なしで追加できる
+- 第二TargetをCoreへTarget固有実装を埋め込まず追加できる
 - Target CapabilityとBindingの差を明示できる
 - Web / Desktop / Mobile / API / MCP / VUIのうち複数で同じ上位設計を利用できる
 - Target固有機能をCoreへ逆流させない
+- 第一Targetで共通とみなした意味を第二Targetから検証し直せる
 - TargetごとのConformanceと性能条件を定義できる
 
 ### 意味
 
 Target-neutralが設計上の主張ではなく、複数Targetの実装で確認された状態です。
+
+第二Targetで境界修正が必要になった場合も、それ自体を失敗とはみなしません。第一Targetの都合を共通意味へ持ち上げていなかったかを検証するEvidenceとして扱います。
 
 ## Milestone 6 — Editorが日常の開発環境として成立する
 
@@ -116,6 +158,8 @@ Target-neutralが設計上の主張ではなく、複数Targetの実装で確認
 
 CLIや手書きsource中心の研究実装から、TEI自身を使ってTEI型の開発を行える段階へ進みます。
 
+Editorの詳細interfaceは第一Targetより先に固定せず、Gate CでApplication / Driver / Target差が実資産として揃ってから具体化します。
+
 ## Milestone 7 — AI支援が、厳格さを軽いUXへ変える
 
 ### 到達条件
@@ -131,6 +175,8 @@ CLIや手書きsource中心の研究実装から、TEI自身を使ってTEI型�
 ### 意味
 
 AI機能が追加されたというだけではなく、TEIの厳格な内部構造が利用者の負担を減らす方向に働く状態です。
+
+最初のAI支援は、実在するApplication Pattern、Capability、Driver Scenario、Projection差、Decision履歴を探索できるread-onlyな経路から始め、無確認のauthoritative編集とは分離します。
 
 ## Milestone 8 — Provider / Runtimeの交換可能性が実証される
 
@@ -176,7 +222,9 @@ Product Valueと境界を実行可能なReferenceで検証する期間です。
 
 少なくともMilestone 0〜4を満たし、実際の業務Applicationを、設計・検証・Database接続・第一Targetまで一続きに扱える状態を目安とします。
 
-完成度の高い全Target対応より、ひとつの実用的なvertical sliceを優先します。
+完成度の高い全Target対応より、一つの実用的なvertical sliceを優先します。
+
+EditorとAI支援の完成、第二Target、production HAはv1の前提条件にはしません。これらをv1へ詰め込むより、v1で成立したApplication vertical sliceを基盤として後続段階で検証します。
 
 ### v2 — Target / Provider Expansion
 
