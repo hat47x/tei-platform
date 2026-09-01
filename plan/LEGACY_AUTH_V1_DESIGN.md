@@ -10,6 +10,8 @@ v1では、こうした既存仕様を失わずにAuthentication / Authorization
 
 Application利用者の認証・認可と、Plugin / Runtimeに与えるPermissionやResource Leaseは別の責務です。この境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)で固定します。
 
+Authenticationを含むCapabilityの業務Outcomeと実行エラーの境界は、[ADR-0020](adr/0020-capability-business-outcome-boundary.md)で固定します。具体的なv1実装順は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
+
 ## 現行実装から確認できる前提
 
 ### Semantic Capabilityは薄い契約として使える
@@ -73,7 +75,9 @@ credentialをもとにApplication利用者のidentityを確認するCapability�
 - 認証されたsubject
 - 認証が成立しなかった場合の理由
 
-ただし、成功・拒否・実行エラーをどの型で表すかは、`ISSUE-000009` / GitHub Issue #77で決めます。
+v1ではADR-0020に従い、認証処理を正常に完了して得られる業務上の結末を名前付きOutcomeとして表します。最初のReferenceでは、概念上`authenticated`と`denied`を区別します。
+
+Database接続失敗やadapter異常など、認証判断そのものを完了できなかった場合はOutcomeへ変換せず、Execution ErrorとしてInvocation境界へ残します。
 
 `subject_id = ""`のようなsentinel値だけで「認証されなかった」を表す設計にはしません。
 
@@ -89,6 +93,8 @@ authenticated subjectが、Application上のaction / resourceを実行できる�
 - 必要な場合のcontext
 
 既存のorganizationやrole、個別ruleは実装側から利用できますが、Web Targetに同じ認可条件を再実装しません。
+
+Authorizationの具体的なOutcome名やpayloadは、AuthenticationのReferenceだけから先回りして固定しません。実装時にはADR-0020の境界を使い、業務上の不成立と実行エラーを分離します。
 
 ### AuthenticationとAuthorizationを分ける
 
@@ -127,9 +133,9 @@ Referenceでpassword verificationを扱う場合も、Canonical側には「ど�
 
 テスト用credentialが必要な場合も、実秘密情報と混同しないfixtureとして扱います。
 
-## 業務結果と実行エラー
+## 業務Outcomeと実行エラー
 
-Authenticationを具体化すると、次の三つを分ける必要があります。
+Authenticationでは、次の三つを意味の違いとして扱います。
 
 ```text
 Authenticated(subject)
@@ -139,9 +145,11 @@ ExecutionError(error)
 
 credential不一致、account disabled、lock等は、Authentication処理を正常に実行した結果としての拒否です。Database接続失敗やadapter異常とは意味が違います。
 
-この問題はAuthentication固有ではないため、`ISSUE-000009` / GitHub Issue #77へ分離しました。
+ADR-0020では、前者をSemantic Capabilityの名前付きOutcome、後者をInvocation境界のExecution Errorとして扱う方針を採用しました。
 
-v1のAuthentication実装では、#77で決めた境界を利用します。#68だけの場当たり的なerror規約は作りません。
+したがってv1のAuthentication実装では、`authenticated` / `denied`を正常なBusiness Resultとして扱い、`denied`をPlugin Runtimeの`ResponseError`やGo `error`へ変換しません。既存実装の固有return codeはBinding / adapterでSemantic Outcomeへ対応付けます。
+
+この共通境界の実装・検証は`ISSUE-000009` / GitHub Issue #77と[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)で進めます。#68だけの場当たり的なerror規約は作りません。
 
 ## Application利用者の権限とPlugin権限を分ける
 
@@ -204,6 +212,7 @@ Driverへ渡す情報は少なくとも次です。
 - Application上で認可対象となるaction / resource
 - Authentication / Authorization Capabilityのidentity
 - Capability BindingとMappingの来歴
+- Capabilityの名前付きOutcomeとExecution Errorを区別する契約
 - 既存仕様のどの条件が認証・認可判断に使われるか
 - secret materialをどの境界で解決するか
 
@@ -215,14 +224,15 @@ Gate Aではproduction-readyなIdPやログイン画面を求めません。Web�
 
 1. `security`意味空間の最小Referenceを定める
 2. Authentication / Authorization Capabilityのidentityと責務を定める
-3. #77でCapability outcomeと実行エラーの境界を確定する
-4. legacy認証fixtureを用意する
-5. existing schema / functionとCapabilityを接続する
-6. Custom Go等、異なる実現方式を一つ追加する
-7. secret非混入をConformance化する
-8. `order_entry`のbrowse / edit / submitへAuthorizationを接続する
-9. Source / Binding / Mappingの来歴を確認する
-10. #67と合わせてGate Aを監査する
+3. ADR-0020に基づく名前付きOutcomeの最小基盤を`ISSUE-000009`で実装・検証する
+4. `security.authenticate`へ`authenticated` / `denied` Outcomeを接続する
+5. legacy認証fixtureを用意する
+6. existing schema / functionとCapabilityを接続する
+7. Custom Go等、異なる実現方式を一つ追加する
+8. denialとExecution Errorを別経路で再現し、secret非混入をConformance化する
+9. `order_entry`のbrowse / edit / submitへAuthorizationを接続する
+10. Source / Binding / Mappingの来歴を確認する
+11. #67と合わせてGate Aを監査する
 
 ## まだ固定しないこと
 
@@ -235,6 +245,7 @@ Gate Aではproduction-readyなIdPやログイン画面を求めません。Web�
 - refresh token等のTarget / protocol固有設計
 - GUI login page
 - 認証処理を実行するPlugin CapabilityKind
+- Authorizationの最終Outcome語彙
 
 これらはv1 Referenceで本当に必要な境界が見えてから決めます。
 
@@ -253,7 +264,10 @@ Gate Aではproduction-readyなIdPやログイン画面を求めません。Web�
 - `order_entry`のAuthorizationをTarget固有コードへ閉じ込めない
 - Source / Binding / Mappingの来歴を追跡できる
 - Driverがlegacy schemaの物理構造へ直接依存しない
-- 業務上の拒否と実行エラーを#77の境界で区別できる
+- `authenticated` / `denied`を名前付きOutcomeとして区別できる
+- credential不一致やlockをExecution Errorへ変換しない
+- Database / adapter障害を`denied` Outcomeへ変換しない
+- ADR-0020のOutcome / Execution Error境界をDriverへ引き継げる
 
 ## 非目標
 
@@ -271,12 +285,16 @@ Gate Aではproduction-readyなIdPやログイン画面を求めません。Web�
 
 さらに、同じCapability identityを保ったまま実現方式を交換でき、`order_entry`のbrowse / edit / submit Authorizationへ接続できること、secretがCanonicalへ漏れないこと、Driverがlegacy schemaへ直接依存しないことをEvidenceとして残します。
 
+Authenticationでは、`authenticated` / `denied`の業務OutcomeとExecution ErrorをADR-0020の境界で分離し、Driverへその意味を保ったまま渡せることも確認します。
+
 `ISSUE-000005`のApplication Patternと合わせて、Gate A「Application上の意味をDriverへ渡せる」を評価します。
 
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
+- `plan/adr/0020-capability-business-outcome-boundary.md`
+- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
 - `plan/issue/000005-application-pattern-reference.md`

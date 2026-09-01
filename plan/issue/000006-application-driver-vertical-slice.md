@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - GitHub Issue: #69
-- 依存: Gate A、`ISSUE-000009`で定めるCapability結果境界
+- 依存: Gate A、ADR-0020 / `ISSUE-000009`のCapability結果境界
 
 ## 背景
 
@@ -12,7 +12,7 @@ Product Requirements Gap Auditでは、RQ-012「Driverを設計検証用の実�
 
 Driverは`ISSUE-000005`のApplication Patternだけを受け取って先行実装するのではなく、`ISSUE-000003`のAuthentication / Authorization境界も含め、Gate A「Application上の意味をDriverへ渡せる」を確認してから主実装へ進みます。
 
-また、既存認証Compatibilityの設計から、Capabilityの呼び出し結果について「業務上の成立・不成立」と「実行そのものの失敗」を分ける必要があることが分かりました。この共通境界は`ISSUE-000009` / GitHub Issue #77で扱います。Driverはこの区別を失わずにScenarioへ反映できる必要があります。
+また、既存認証Compatibilityの設計から、Capabilityの呼び出し結果について「正常に返された業務上の結果」と「実行そのものを完了できなかった状態」を分ける必要があることが分かりました。この共通境界は[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)で定め、実装前設計は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。Driverはこの区別を失わずScenarioへ反映する必要があります。
 
 ## 関連するProduct Requirement
 
@@ -40,7 +40,7 @@ Driver Scenario
        ↓
 Query / Load / Edit / Validate / Authorize / Command
        ↓
-業務結果 / 実行エラー
+Business Result / Execution Error
        ↓
 Observed Result / Evidence
 ```
@@ -60,11 +60,11 @@ Driverの主実装へ進む前に、少なくとも次がApplication側から説
 - Authentication / Authorization Capabilityと対象action
 - read / read-write Datasource境界
 - Capability Bindingのidentity
-- Capabilityの業務結果と実行エラーを区別する最小契約
+- CapabilityのBusiness ResultとExecution Errorを区別する契約
 
 これらをWeb画面やDriver専用設定から初めて知る状態では、着手条件を満たしません。
 
-Application Pattern側の詳細は`plan/APPLICATION_PATTERN_V1_DESIGN.md`、既存認証側の詳細は`plan/LEGACY_AUTH_V1_DESIGN.md`を参照します。
+Application Pattern側の詳細は`plan/APPLICATION_PATTERN_V1_DESIGN.md`、既存認証側の詳細は`plan/LEGACY_AUTH_V1_DESIGN.md`、Capability結果境界の詳細は`plan/CAPABILITY_OUTCOME_V1_DESIGN.md`を参照します。
 
 ## 最小Scenario
 
@@ -77,31 +77,33 @@ Application Pattern側の詳細は`plan/APPLICATION_PATTERN_V1_DESIGN.md`、既�
 5. Validationを実行する
 6. Authorizationを評価する
 7. commandで`sales.order.submit`を呼び出す
-8. commandが返した業務結果と実行エラーを区別する
+8. Capabilityが返したBusiness ResultとExecution Errorを区別する
 9. 必要な場合は、結果として得られた外部状態を観測する
 
-ValidationまたはAuthorizationが業務上成立しなかった場合は、commandへ進みません。これはDriverの障害ではなく、Scenarioが正常に返し得る結果として扱います。
+ValidationまたはAuthorizationが業務上成立しなかった場合は、commandへ進みません。これはDriver自体の障害ではなく、Scenarioが正常に確認できる結果として扱います。
 
-一方、Database接続失敗やCapability adapterの異常など、実行そのものが成立しなかった場合は、業務上の拒否とは別の実行エラーとして扱います。
+一方、Database接続失敗やCapability adapterの異常など、実行そのものを完了できなかった場合は、Business Resultとは別のExecution Errorとして扱います。
 
-## 業務結果と実行エラー
+## Business ResultとExecution Error
 
-`ISSUE-000009`で定める境界をDriverへそのまま渡します。
+ADR-0020の境界をDriverへそのまま引き継ぎます。
 
-概念上、少なくとも次を区別できる必要があります。
+Capabilityが正常に実行された場合、Driverが受け取るBusiness Resultには次の二形態があります。
 
 ```text
-Business Outcome
-  ├─ 成立
-  └─ 業務上の不成立・拒否
+Business Result
+  ├─ Output value
+  └─ Named Outcome(name, payload)
 
 Execution Error
-  └─ 呼び出しそのものを完了できなかった状態
+  └─ Capability呼び出しそのものを完了できなかった状態
 ```
 
-Authenticationであればcredential不一致やaccount lockは業務上の拒否であり、認証Databaseへの接続失敗とは意味が異なります。
+既存の単一`output` CapabilityはOutput valueを返せます。名前付きOutcomeを持つCapabilityは、正常な一回のInvocationにつき契約上のOutcomeを一つ返します。
 
-`sales.order.submit`でも同じ区別が不自然にならないかを確認します。たとえば「現在の状態では確定できない」という業務結果と、実装側の接続障害を同じerrorへ畳みません。
+Authenticationであれば、`authenticated`と`denied`はいずれも正常に実行されたBusiness Resultです。credential不一致やaccount lockによる`denied`は、認証Databaseへの接続失敗とは意味が異なります。
+
+`sales.order.submit`については、現行`output sales.order`を直ちにOutcomeへ書き換えません。Commandを実行して初めて判明する業務上の分岐がReferenceで必要になった場合に、ADR-0020の名前付きOutcomeが自然に使えるかを圧力試験します。ValidationやAuthorizationで事前に判定できる不成立をCommand Outcomeへ重複させません。
 
 Driverは、この区別をTarget向けのHTTP statusやGUI messageへ先回りして変換しません。Target固有表現は後続Projectionの責務です。
 
@@ -118,7 +120,7 @@ DriverはApplication上の意味を直接Goのif文へ埋め込む場所には�
 - Validation
 - Authentication / Authorization Capability
 - Command
-- Capability invocation result
+- Capability Business Result / Execution Error
 
 一方、初期Driverのためだけにproduction-grade workflow engineやdistributed schedulerを作りません。
 
@@ -139,7 +141,7 @@ Capability invocationの結果を区別できるようになっても、RQ-018�
 `sales.order.submit`では、少なくとも次を別の問いとして扱います。
 
 1. Capability呼び出し自体を実行できたか
-2. 業務上、要求が成立したか
+2. CapabilityがどのBusiness Resultを返したか
 3. 外部世界で期待した状態が実際に成立したか
 
 第一段階でDeploymentほど重いDurable Runを要求する必要はありませんが、commandのreturn valueだけを外部世界の最終事実とみなさない設計を維持します。
@@ -157,8 +159,9 @@ Driver Scenarioは、別の開発者や生成AIが同じ設計を再現できる
 - validation result
 - authorization result
 - invoked Capability
-- business outcome
-- execution errorの有無とcategory
+- Business Result
+  - output value、またはnamed Outcomeとpayload
+- Execution Errorの有無と必要なcategory
 - command acknowledgement
 - observed result
 
@@ -190,8 +193,9 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 - legacy authentication schemaへDriverが直接依存しない
 - validation failureではcommandへ進まない
 - authorization denialではcommandへ進まない
-- 業務上の不成立をDriver障害として扱わない
-- execution errorを業務上のresult codeへ押し込まない
+- expectedなnamed OutcomeをDriver障害として扱わない
+- Execution Errorを業務上のOutcomeやresult codeへ押し込まない
+- 既存`output`と名前付きOutcomeの両方をBusiness Resultとして扱える
 - command acknowledgementとobserved resultを混同しない
 - Driver固有状態をCanonical Worldへ逆流させない
 - secretをScenario Evidenceへ混入させない
@@ -209,12 +213,13 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 - external orchestratorの内製
 - Web実装を成立させるためのTarget固有処理
 - HTTP statusやGUI messageをDriver Coreの意味として固定すること
+- Driver独自のOutcome体系を作ること
 
 ## 完了条件
 
 UIを用意しなくても、`order_entry`のbrowse → record → reference → header-detail → validation → authorization → command → observationという業務シナリオを、一つのDriver ScenarioとしてRepository内で再現できることを完了条件とします。
 
-その過程で、業務上の成立・不成立、実行エラー、command acknowledgement、observed resultを必要に応じて区別できることもEvidenceとして残します。
+その過程で、既存`output`または名前付きOutcomeとして返るBusiness Result、Execution Error、command acknowledgement、observed resultを必要に応じて区別できることもEvidenceとして残します。
 
 後続の第一Web TargetとEditorが、同じApplication上の意味と同じ結果境界を利用でき、Gate Bを評価できる状態にします。
 
@@ -223,8 +228,10 @@ UIを用意しなくても、`order_entry`のbrowse → record → reference →
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/APPLICATION_PATTERN_V1_DESIGN.md`
 - `plan/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
+- `plan/adr/0020-capability-business-outcome-boundary.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000007-first-web-target-projection.md`
