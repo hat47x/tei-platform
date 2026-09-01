@@ -23,8 +23,8 @@ func TestParseBrowseApplicationPattern(t *testing.T) {
 	if got.Data != "sales.order" || got.Query != "order_entry.recent_orders" {
 		t.Fatalf("unexpected references: %#v", got)
 	}
-	if got.Datasource != "" {
-		t.Fatalf("datasource should remain optional, got %q", got.Datasource)
+	if got.Relation != "" || got.Datasource != "" {
+		t.Fatalf("browse should not acquire unrelated references: %#v", got)
 	}
 }
 
@@ -44,6 +44,18 @@ func TestParseBrowseApplicationPatternAcceptsExplicitDatasource(t *testing.T) {
 	}
 }
 
+func TestParseBrowseApplicationPatternRejectsRelation(t *testing.T) {
+	src := `pattern order_entry.recent_orders browse {
+    data sales.order
+    relation sales.order.customer
+    query order_entry.recent_orders
+}`
+
+	if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+		t.Fatal("browse Pattern must not accept relation")
+	}
+}
+
 func TestParseRecordApplicationPatternUsesDataOnly(t *testing.T) {
 	src := `pattern order_entry.order_record record {
     data sales.order
@@ -59,8 +71,8 @@ func TestParseRecordApplicationPatternUsesDataOnly(t *testing.T) {
 	if got.Data != "sales.order" {
 		t.Fatalf("record data=%q", got.Data)
 	}
-	if got.Query != "" || got.Datasource != "" {
-		t.Fatalf("record should not acquire query or datasource: %#v", got)
+	if got.Relation != "" || got.Query != "" || got.Datasource != "" {
+		t.Fatalf("record should not acquire unrelated references: %#v", got)
 	}
 }
 
@@ -73,8 +85,12 @@ func TestParseRecordApplicationPatternRequiresData(t *testing.T) {
 	}
 }
 
-func TestParseRecordApplicationPatternRejectsBrowseOnlyFields(t *testing.T) {
+func TestParseRecordApplicationPatternRejectsOtherFields(t *testing.T) {
 	for name, src := range map[string]string{
+		"relation": `pattern order_entry.order_record record {
+    data sales.order
+    relation sales.order.customer
+}`,
 		"query": `pattern order_entry.order_record record {
     data sales.order
     query order_entry.recent_orders
@@ -92,8 +108,67 @@ func TestParseRecordApplicationPatternRejectsBrowseOnlyFields(t *testing.T) {
 	}
 }
 
-func TestParseApplicationPatternRejectsUnsupportedKind(t *testing.T) {
+func TestParseReferenceApplicationPatternUsesRelationAndDatasource(t *testing.T) {
 	src := `pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+    datasource master
+}`
+
+	got, err := syntax.NewParser(src).ParseApplicationPattern()
+	if err != nil {
+		t.Fatalf("parse reference pattern: %v", err)
+	}
+	if got.ID != "order_entry.customer_reference" || got.Kind != application.PatternReference {
+		t.Fatalf("unexpected reference pattern: %#v", got)
+	}
+	if got.Relation != "sales.order.customer" || got.Datasource != "master" {
+		t.Fatalf("unexpected reference links: %#v", got)
+	}
+	if got.Data != "" || got.Query != "" {
+		t.Fatalf("reference must not duplicate relation source/target through other fields: %#v", got)
+	}
+}
+
+func TestParseReferenceApplicationPatternRequiresRelationAndDatasource(t *testing.T) {
+	for name, src := range map[string]string{
+		"relation": `pattern order_entry.customer_reference reference {
+    datasource master
+}`,
+		"datasource": `pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+				t.Fatalf("reference Pattern without %s must be rejected", name)
+			}
+		})
+	}
+}
+
+func TestParseReferenceApplicationPatternRejectsDuplicatedMeaning(t *testing.T) {
+	for name, src := range map[string]string{
+		"data": `pattern order_entry.customer_reference reference {
+    data sales.order
+    relation sales.order.customer
+    datasource master
+}`,
+		"query": `pattern order_entry.customer_reference reference {
+    relation sales.order.customer
+    query order_entry.recent_orders
+    datasource master
+}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+				t.Fatalf("reference Pattern with %s must be rejected", name)
+			}
+		})
+	}
+}
+
+func TestParseApplicationPatternRejectsUnsupportedKind(t *testing.T) {
+	src := `pattern order_entry.submit_order command {
     data sales.order
 }`
 
