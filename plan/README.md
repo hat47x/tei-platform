@@ -10,6 +10,8 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの最初の実装境界と、`browse`から始める段階的な実証順
+- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
@@ -33,6 +35,12 @@ Editor / AI支援
 
 [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることなどをEvidence Gateとして定めています。
 
+Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)、既存認証側を[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)で扱います。両者は並行して進め、Gate A「Application上の意味をDriverへ渡せる」で合流します。
+
+Application Patternは、既存の`browse` Queryを使って基盤そのものを先に検証し、その後`record`、`reference`、`command`へ広げます。新しい`OrderLine`はPattern基盤と同時には追加せず、`header-detail`を検証する段階で導入します。
+
+既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。認証成功、業務上の拒否、実行エラーの区別は、[`issue/000009-capability-outcome-and-execution-error.md`](issue/000009-capability-outcome-and-execution-error.md)でCapability共通の課題として扱います。
+
 このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
 ## ADR
@@ -49,7 +57,12 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 
 既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
 
-現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017として`plan/adr/`に置いています。
+現在の上位・横断的な判断は、次の順で置いています。
+
+- ADR-0016: 文書体系と権威関係
+- ADR-0017: Application Patternの初期所有境界
+- ADR-0018: Application Patternの正本とfile pathからのidentity分離
+- ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
 
 ## Issue文書
 
