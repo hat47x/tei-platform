@@ -30,14 +30,14 @@ func TestReferenceBrowsePatternReusesExistingQueryDatasource(t *testing.T) {
 	if app.ID != "order_entry" {
 		t.Fatalf("application id=%q", app.ID)
 	}
-	if len(app.Patterns) != 3 {
-		t.Fatalf("browse、record、referenceが共存していません: %#v", app.Patterns)
+	if len(app.Patterns) != 4 {
+		t.Fatalf("browse、record、reference、commandが共存していません: %#v", app.Patterns)
 	}
 	pattern := applicationPatternByID(t, app.Patterns, patternID)
 	if pattern.Kind != application.PatternBrowse || pattern.Data != "sales.order" || pattern.Query != patternID {
 		t.Fatalf("browse Patternの意味が期待値と異なります: %#v", pattern)
 	}
-	if pattern.Relation != "" || pattern.Datasource != "" {
+	if pattern.Relation != "" || pattern.Capability != "" || pattern.Datasource != "" {
 		t.Fatalf("browse Patternへ不要な参照が重複記述されています: %#v", pattern)
 	}
 
@@ -78,8 +78,8 @@ func TestReferenceRecordPatternUsesSemanticDataWithoutQueryOrDatasource(t *testi
 	if pattern.Kind != application.PatternRecord || pattern.Data != "sales.order" {
 		t.Fatalf("record Patternの意味が期待値と異なります: %#v", pattern)
 	}
-	if pattern.Relation != "" || pattern.Query != "" || pattern.Datasource != "" {
-		t.Fatalf("record Patternへ取得経路やRelationが重複して入り込んでいます: %#v", pattern)
+	if pattern.Relation != "" || pattern.Query != "" || pattern.Capability != "" || pattern.Datasource != "" {
+		t.Fatalf("record Patternへ取得経路やRelation、Capabilityが重複して入り込んでいます: %#v", pattern)
 	}
 
 	idx, err := workspace.BuildSourceIndex(ws, result)
@@ -111,8 +111,8 @@ func TestReferenceReferencePatternReusesRelationAndReadOnlyDatasourceContracts(t
 	if pattern.Kind != application.PatternReference || pattern.Relation != "sales.order.customer" || pattern.Datasource != "master" {
 		t.Fatalf("reference Patternの意味が期待値と異なります: %#v", pattern)
 	}
-	if pattern.Data != "" || pattern.Query != "" {
-		t.Fatalf("Relationが持つsource / targetの意味がPatternへ重複しています: %#v", pattern)
+	if pattern.Data != "" || pattern.Query != "" || pattern.Capability != "" {
+		t.Fatalf("Relationが持つsource / targetの意味やCapabilityがPatternへ重複しています: %#v", pattern)
 	}
 
 	sourceData, relation := semanticRelationByID(t, result.World.Semantics, pattern.Relation)
