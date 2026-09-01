@@ -8,45 +8,169 @@
 
 - [`MASTER_PLAN.md`](MASTER_PLAN.md): 開発全体の作業軸と依存関係
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
-- [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
+- [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): M0.32時点のProduct Requirementsと実装Evidence / Gapの監査スナップショット
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
-- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と段階的な実証順
-- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
-- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1実装前設計
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Pattern Stageで成立した設計・実装基線
+- [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driverへ進む前に必要なApplication上の意味の現在地
+- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計
+- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): CapabilityのBusiness ResultとExecution Errorを分離する設計
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
+`PRODUCT_REQUIREMENT_GAP_AUDIT.md`はM0.32時点のスナップショットとして残します。そこにある「Application Pattern未着手」等の評価を過去へ遡って書き換えません。Application Pattern完了後の現在地は、このREADME、`V1_REFERENCE_APPLICATION_PLAN.md`、`GATE_A_READINESS_AUDIT.md`から確認します。
+
 ## 現在のv1主線
 
-現在は、既存の`order_entry`をReference Applicationとして育てます。
+現在は、既存の`order_entry`をReference Applicationとして育てています。
 
 ```text
-Application Pattern ────────┐
-      ↓                     │
-Application Driver     既存認証Compatibility
-      ↓                     │
-第一Web Target ─────────────┘
-      ↓
-Editor / AI支援
-      ↓
-第二TargetでTarget-neutral性を検証
+Stage 0  Product Baseline / Gap Audit      完了
+              ↓
+Stage 1  Application Pattern               完了
+              ↓
+Gate A   readiness監査                     進行中 / Blocked
+              │
+              ├─ #68   既存認証Compatibility
+              ├─ #77   Capability Outcome
+              ├─ #125  業務Validation
+              └─ #126  Capability Binding
+              ↓
+Stage 2  Application Driver #69            Gate A待ち
+              ↓
+Stage 3  第一Web Target #70
+              ↓
+Stage 4  Editor / AI支援
+              ↓
+Stage 5  第二TargetでTarget-neutral性を検証
 ```
 
-個々の機能が実装されたことだけでは、次の段階へ進みません。
+個々の機能を実装しただけでは、次の段階へ進みません。
 
-[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることなどをEvidence Gateとして定めています。
+## Application Pattern Stage — 完了
 
-Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)、既存認証側を[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)で扱います。両者は並行して進め、Gate A「Application上の意味をDriverへ渡せる」で合流します。
+v1 Reference Applicationでは、候補としていた5種類のApplication Patternがすべて実Referenceまで成立しました。
 
-Application Patternでは、`browse`、`record`、`reference`の実Referenceまで完了しています。次は既存`sales.order.submit` Capabilityへ接続する`command`を[`ISSUE-000010`](issue/000010-command-application-pattern.md) / GitHub Issue #110で実証し、その後に`OrderLine`と対応Relationを追加して`header-detail`を検証します。5種類を一度に一般化せず、各Referenceから必要な意味だけを取り出します。
+```text
+browse        data + query
+record        data
+reference     relation + datasource
+command       capability
+header-detail relation
+```
 
-既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。
+同じ`order_entry`で5種類が共存し、Canonical World、Workspace Validation、Source Index、Reference Conformanceから追跡できます。
 
-認証成功、業務上の拒否、実行エラーの区別はAuthentication固有の規約にせず、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)と[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md)でCapability共通の境界として扱います。名前付きの業務OutcomeはSemantic Capabilityの契約に含め、Execution ErrorはInvocation境界へ残します。
+重要なのは、Patternが既存資産の意味を書き直す場所ではなく、Applicationがどの既存identityをどの意図で利用するかを表す層として成立したことです。
 
-この結果境界はDriverでScenario Evidenceとして保持し、第一Web TargetではHTTP statusや利用者向けmessageへProjectionできます。ただしTarget固有表現からSemantic Outcomeを逆定義しません。
+たとえば、次は参照先の正本へ残します。
 
-このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
+- QueryのDatasource
+- Relationのsource / target / cardinality
+- Capabilityのinput / output
+- Datasourceのread / read-write access
+- Persistence Mapping
+- Database Foreign Key
+- Target固有UI
+
+5種類がReferenceで成立したことは、5分類をTEI全体の永久的な標準語彙として確定したことを意味しません。Driverと複数TargetからのEvidenceを受けて、分類や共有範囲を見直せます。
+
+## Gate A — 現在の主作業
+
+Application Pattern Stageの完了とGate Aの完了は分けて扱います。
+
+Gate Aでは、Driver #69がWeb画面やDriver専用設定から業務意味を補わず、Repository上のCanonicalな定義、Contract、Bindingだけから必要な情報を解決できることを確認します。
+
+現在の詳細な判定は[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)を正とします。
+
+### Readyな領域
+
+- browse対象
+- record対象
+- reference対象RelationとDatasource
+- header-detail対象Relation
+- command対象Capability
+- Pattern identity / Source Index
+- `sales` read-write / `master` readのDatasource境界
+- `sales.order.submit`の既存単一output
+- Command / Observation分離の基本境界
+
+### Blockedな領域
+
+- #68: Authentication / Authorization Reference
+- #77: Gate Aに必要なnamed Outcome / Execution Errorの実装Evidence
+- #125: 業務Validationの正本と最小Reference
+- #126: `sales.order.submit`のCapability Binding identity
+
+このため、Application Driver #69は現在Blockedです。
+
+## Gate Aで守ること
+
+Gate Aを「関連Issueがすべてcloseしたか」だけでは判定しません。
+
+Driverへ渡すために必要な意味がReference / Conformanceから再現できるかを基準にします。
+
+たとえば#77には第一Web TargetへのOutcome Projectionも含まれますが、それはGate A以後へDeferredできます。一方、Authenticationの`denied`をBusiness Resultとして扱うためのnamed Outcome自体はGate Aに必要です。
+
+逆に、IssueがcloseしていてもDriverが次を暗黙に補う必要があるならGate Aは未達です。
+
+- 業務ValidationをDriver専用Goコードで実装する
+- `sales.order.submit`のimplementationをfile pathやGo symbolから推測する
+- Authorization ruleをDriver設定へ書き直す
+- named OutcomeをRuntime errorへ畳む
+
+## Gate Aの作業単位
+
+### 既存認証Compatibility — `ISSUE-000003` / #68
+
+既存システム固有の認証状態をTEI標準User schemaへ先に作り替えず、Authentication / Authorization Capabilityへ接続します。
+
+Gate Aでは少なくとも、authenticated subject、Capability identity、action / resource、legacy Mapping、secret解決境界をDriverへ渡せる必要があります。
+
+### Capability Outcome — `ISSUE-000009` / #77
+
+ADR-0020に従い、Business ResultとExecution Errorを分離します。
+
+既存`sales.order.submit`の単一`output`は維持しながら、Authenticationで必要な`authenticated` / `denied`等のnamed OutcomeをReference化します。
+
+### 業務Validation — `ISSUE-000014` / #125
+
+Patternの構文・参照整合性Validationとは別に、Applicationが利用する業務ruleの正本とidentityを実証します。
+
+Driver専用Goコード、Web form validator、Database constraintのいずれか一つだけを業務ruleの正本にはしません。
+
+### Capability Binding — `ISSUE-000015` / #126
+
+`command` Patternは`sales.order.submit`というCapability identityだけを保持します。
+
+Driverがfile pathやGo symbolを推測せず、明示的なBindingからimplementationを解決できるReferenceを作ります。
+
+## Application Driver
+
+[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69は、Gate A通過までBlockedです。
+
+Driverはproduction Runtimeの簡易版ではなく、Application上の意味をUIなしで実行・検証する環境とします。
+
+Gate A通過後の最小Scenarioは次です。
+
+```text
+browse
+  ↓
+record
+  ↓
+reference
+  ↓
+header-detail
+  ↓
+business validation
+  ↓
+authorization
+  ↓
+command
+  ↓
+Business Result / Execution Error
+  ↓
+必要に応じてObservation
+```
 
 ## ADR
 
@@ -58,17 +182,17 @@ ADRには、実装方法が変わっても残る設計判断を記録します�
 plan/adr/0016-example.md
 ```
 
-mainでは`docs/adr/0001`〜`0015`までが既に成立しています。このため、`plan/adr/`で新しく起票するADRは、既存番号と衝突しない0016以降を使います。
+mainでは`docs/adr/0001`〜`0015`までが成立しています。このため、`plan/adr/`で新しく起票するADRは既存番号と衝突しない0016以降を使います。
 
-既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
-
-現在の上位・横断的な判断は、次の順で置いています。
+現在の上位・横断的な判断は次です。
 
 - ADR-0016: 文書体系と権威関係
 - ADR-0017: Application Patternの初期所有境界
 - ADR-0018: Application Patternの正本とfile pathからのidentity分離
 - ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
-- ADR-0020: Capabilityの業務OutcomeをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
+- ADR-0020: CapabilityのBusiness ResultをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
+
+既存ADRは参照を壊さないよう、番号を維持したまま段階的に移行します。新旧の場所に同じ番号の異なる判断を置きません。
 
 ## Issue文書
 
@@ -83,7 +207,7 @@ GitHub Issueの`#123`とRepository内のIssue IDは別物です。
 - Repository内Issue: 長く残す作業定義、背景、制約、完了条件
 - GitHub Issue: 実際の進行、会話、PRとの接続
 
-必要な場合はRepository内IssueからGitHub Issue番号を参照します。GitHub Issueだけで十分な小さな作業まで、機械的に文書化する必要はありません。
+GitHub Issueだけで十分な小さい作業まで機械的に文書化する必要はありません。一方、Gateや設計境界に影響する作業はRepository側にも残します。
 
 ## 計画の更新方法
 
@@ -104,4 +228,4 @@ GitHub Issueの`#123`とRepository内のIssue IDは別物です。
 
 計画文書、ADR、Issueは、内容を整理した後に必ず全文を読み直し、意味を変えず自然な日本語へ整えます。
 
-機械的な箇条書きだけで背景や判断理由が失われている場合は文章として補います。逆に、長い文章の中で条件や完了基準が埋もれる場合は、箇条書きへ分けます。
+機械的な箇条書きだけで背景や判断理由が失われている場合は文章として補います。逆に、長い文章の中で条件や完了基準が埋もれる場合は箇条書きへ分けます。
