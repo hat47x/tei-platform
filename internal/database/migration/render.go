@@ -64,11 +64,15 @@ func renderPostgres(diff schemadiff.Diff) ([]string, error) {
 			if c.Index == nil {
 				return nil, fmt.Errorf("add-index %s has no index", c.Table)
 			}
+			columns, err := simpleIndexColumns(c.Index)
+			if err != nil {
+				return nil, fmt.Errorf("add-index %s.%s: %w", c.Table, c.Index.Name, err)
+			}
 			unique := ""
 			if c.Index.Unique {
 				unique = "UNIQUE "
 			}
-			out = append(out, fmt.Sprintf("CREATE %sINDEX %s ON %s%s (%s);", unique, qid(c.Index.Name), qname(c.Table), indexMethod(c.Index), joinIDs(c.Index.Columns)))
+			out = append(out, fmt.Sprintf("CREATE %sINDEX %s ON %s%s (%s);", unique, qid(c.Index.Name), qname(c.Table), indexMethod(c.Index), joinIDs(columns)))
 		case schemadiff.DropIndex:
 			if c.Index == nil {
 				return nil, fmt.Errorf("drop-index %s has no index", c.Table)
@@ -95,6 +99,27 @@ func joinIDs(xs []string) string {
 	}
 	return strings.Join(ys, ", ")
 }
+
+func simpleIndexColumns(index *physical.Index) ([]string, error) {
+	if len(index.IncludedColumns) != 0 || index.Predicate != nil {
+		return nil, fmt.Errorf("advanced index rendering is not implemented")
+	}
+	if index.UniqueNullTreatment == physical.UniqueNullTreatmentNotDistinct {
+		return nil, fmt.Errorf("NULLS NOT DISTINCT index rendering is not implemented")
+	}
+	columns := make([]string, 0, len(index.Keys))
+	for _, key := range index.Keys {
+		if key.Expression != nil || strings.TrimSpace(key.Column) == "" {
+			return nil, fmt.Errorf("expression index rendering is not implemented")
+		}
+		if strings.TrimSpace(key.Collation) != "" || strings.TrimSpace(key.OperatorClass) != "" || key.Order != physical.IndexOrderDefault || key.NullsOrder != physical.IndexNullsOrderDefault {
+			return nil, fmt.Errorf("advanced index key rendering is not implemented")
+		}
+		columns = append(columns, key.Column)
+	}
+	return columns, nil
+}
+
 func indexMethod(i *physical.Index) string {
 	if strings.TrimSpace(i.Method) == "" || strings.EqualFold(i.Method, "btree") {
 		return ""
