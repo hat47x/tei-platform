@@ -33,7 +33,21 @@ func TestValidateApplicationPatternsAcceptsDataOnlyRecord(t *testing.T) {
 	}
 }
 
-func TestValidateApplicationPatternsReportsReferenceProblemsOnPatternSubject(t *testing.T) {
+func TestValidateApplicationPatternsAcceptsReferenceUsingRelationAndDatasource(t *testing.T) {
+	w := validApplicationPatternWorld()
+	w.Applications[0].Patterns = []application.Pattern{{
+		ID:         "order_entry.customer_reference",
+		Kind:       application.PatternReference,
+		Relation:   "sales.order.customer",
+		Datasource: "master",
+	}}
+
+	if ds := validateApplicationPatterns(w); len(ds) != 0 {
+		t.Fatalf("valid reference pattern diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsBrowseProblemsOnPatternSubject(t *testing.T) {
 	cases := []struct {
 		name string
 		code string
@@ -43,6 +57,11 @@ func TestValidateApplicationPatternsReportsReferenceProblemsOnPatternSubject(t *
 			name: "unknown data",
 			code: "UNKNOWN_APPLICATION_PATTERN_DATA",
 			edit: func(w *ir.World) { w.Applications[0].Patterns[0].Data = "sales.missing" },
+		},
+		{
+			name: "relation is not part of browse meaning",
+			code: "APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
+			edit: func(w *ir.World) { w.Applications[0].Patterns[0].Relation = "sales.order.customer" },
 		},
 		{
 			name: "unknown query",
@@ -65,10 +84,7 @@ func TestValidateApplicationPatternsReportsReferenceProblemsOnPatternSubject(t *
 		{
 			name: "explicit datasource conflicts with query",
 			code: "APPLICATION_PATTERN_DATASOURCE_QUERY_MISMATCH",
-			edit: func(w *ir.World) {
-				w.Applications[0].Databases = append(w.Applications[0].Databases, application.DatabaseRequirement{Alias: "master"})
-				w.Applications[0].Patterns[0].Datasource = "master"
-			},
+			edit: func(w *ir.World) { w.Applications[0].Patterns[0].Datasource = "master" },
 		},
 	}
 
@@ -94,26 +110,11 @@ func TestValidateApplicationPatternsReportsRecordProblemsOnPatternSubject(t *tes
 		code string
 		edit func(*application.Pattern)
 	}{
-		{
-			name: "missing data",
-			code: "APPLICATION_PATTERN_DATA_REQUIRED",
-			edit: func(p *application.Pattern) { p.Data = "" },
-		},
-		{
-			name: "unknown data",
-			code: "UNKNOWN_APPLICATION_PATTERN_DATA",
-			edit: func(p *application.Pattern) { p.Data = "sales.missing" },
-		},
-		{
-			name: "query is not part of record meaning",
-			code: "APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
-			edit: func(p *application.Pattern) { p.Query = "order_entry.recent_orders" },
-		},
-		{
-			name: "datasource is not part of record meaning",
-			code: "APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
-			edit: func(p *application.Pattern) { p.Datasource = "sales" },
-		},
+		{name: "missing data", code: "APPLICATION_PATTERN_DATA_REQUIRED", edit: func(p *application.Pattern) { p.Data = "" }},
+		{name: "unknown data", code: "UNKNOWN_APPLICATION_PATTERN_DATA", edit: func(p *application.Pattern) { p.Data = "sales.missing" }},
+		{name: "relation is not part of record meaning", code: "APPLICATION_PATTERN_RELATION_NOT_ALLOWED", edit: func(p *application.Pattern) { p.Relation = "sales.order.customer" }},
+		{name: "query is not part of record meaning", code: "APPLICATION_PATTERN_QUERY_NOT_ALLOWED", edit: func(p *application.Pattern) { p.Query = "order_entry.recent_orders" }},
+		{name: "datasource is not part of record meaning", code: "APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED", edit: func(p *application.Pattern) { p.Datasource = "sales" }},
 	}
 
 	for _, tc := range cases {
@@ -136,6 +137,66 @@ func TestValidateApplicationPatternsReportsRecordProblemsOnPatternSubject(t *tes
 				t.Fatalf("diagnostic subject=%#v", d.Subject)
 			}
 		})
+	}
+}
+
+func TestValidateApplicationPatternsReportsReferencePatternProblemsOnPatternSubject(t *testing.T) {
+	cases := []struct {
+		name string
+		code string
+		edit func(*application.Pattern)
+	}{
+		{name: "missing relation", code: "APPLICATION_PATTERN_RELATION_REQUIRED", edit: func(p *application.Pattern) { p.Relation = "" }},
+		{name: "unknown relation", code: "UNKNOWN_APPLICATION_PATTERN_RELATION", edit: func(p *application.Pattern) { p.Relation = "sales.order.missing" }},
+		{name: "missing datasource", code: "APPLICATION_PATTERN_DATASOURCE_REQUIRED", edit: func(p *application.Pattern) { p.Datasource = "" }},
+		{name: "unknown datasource", code: "UNKNOWN_APPLICATION_PATTERN_DATASOURCE", edit: func(p *application.Pattern) { p.Datasource = "missing" }},
+		{name: "data duplicates relation meaning", code: "APPLICATION_PATTERN_DATA_NOT_ALLOWED", edit: func(p *application.Pattern) { p.Data = "sales.order" }},
+		{name: "query is not part of reference meaning", code: "APPLICATION_PATTERN_QUERY_NOT_ALLOWED", edit: func(p *application.Pattern) { p.Query = "order_entry.recent_orders" }},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := validApplicationPatternWorld()
+			reference := application.Pattern{
+				ID:         "order_entry.customer_reference",
+				Kind:       application.PatternReference,
+				Relation:   "sales.order.customer",
+				Datasource: "master",
+			}
+			tc.edit(&reference)
+			w.Applications[0].Patterns = []application.Pattern{reference}
+
+			ds := validateApplicationPatterns(w)
+			d := diagnosticByCode(ds, tc.code)
+			if d == nil {
+				t.Fatalf("missing diagnostic %s: %#v", tc.code, ds)
+			}
+			if d.Subject == nil || d.Subject.Kind != "application-pattern" || d.Subject.ID != "order_entry.customer_reference" {
+				t.Fatalf("diagnostic subject=%#v", d.Subject)
+			}
+		})
+	}
+}
+
+func TestApplicationPatternRelationIndexPreservesSourceAndTarget(t *testing.T) {
+	w := validApplicationPatternWorld()
+	var got applicationPatternRelationRef
+	found := false
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			for _, relation := range data.Relations {
+				if relation.ID == "sales.order.customer" {
+					got = applicationPatternRelationRef{Source: data.ID, Target: relation.Target}
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("sales.order.customer relation is missing from fixture")
+	}
+	if got.Source != "sales.order" || got.Target != "customer.customer" {
+		t.Fatalf("relation source/target=%#v", got)
 	}
 }
 
@@ -178,17 +239,30 @@ func TestValidateApplicationPatternsRechecksParserRequiredFieldsForCanonicalWorl
 
 func validApplicationPatternWorld() ir.World {
 	return ir.World{
-		Semantics: []semantic.Namespace{{
-			ID:   "sales",
-			Data: []semantic.Data{{ID: "sales.order"}},
-		}},
+		Semantics: []semantic.Namespace{
+			{
+				ID: "sales",
+				Data: []semantic.Data{{
+					ID: "sales.order",
+					Relations: []semantic.Relation{{
+						ID:          "sales.order.customer",
+						Target:      "customer.customer",
+						Cardinality: semantic.CardinalityOne,
+					}},
+				}},
+			},
+			{
+				ID:   "customer",
+				Data: []semantic.Data{{ID: "customer.customer"}},
+			},
+		},
 		Applications: []application.Application{{
 			ID:           "order_entry",
-			SemanticUses: []core.CanonicalID{"sales"},
-			Databases: []application.DatabaseRequirement{{
-				Alias:  "sales",
-				Access: database.AccessReadWrite,
-			}},
+			SemanticUses: []core.CanonicalID{"sales", "customer"},
+			Databases: []application.DatabaseRequirement{
+				{Alias: "sales", Access: database.AccessReadWrite},
+				{Alias: "master", Access: database.AccessRead},
+			},
 			Patterns: []application.Pattern{{
 				ID:         "order_entry.recent_orders",
 				Kind:       application.PatternBrowse,
