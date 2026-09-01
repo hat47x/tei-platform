@@ -1,7 +1,7 @@
 # ISSUE-000008: Editor / AI支援の着手条件を整理する
 
-- Status: Blocked
-- Blocked by: Gate C
+- 状態: 保留
+- 解除条件: Gate C
 
 ## 背景
 
@@ -11,7 +11,7 @@ Product Requirements Gap Auditでは、EditorとAI支援が大きな未実証領
 
 このIssueは実装Issueではなく、**いつEditor / AI支援へ着手してよいか**を明示するための待機条件を記録します。
 
-v1 Reference Application Planでは、Application Pattern、既存認証Compatibility、Driver、第一Web Targetを順に実証し、Gate C「第一Targetとの差を説明できる」を通過してからEditor / AI支援を具体化します。
+v1 Reference Application実証計画では、Application Pattern、既存認証Compatibility、Driver、第一Web Targetを順に実証し、Gate C「第一Targetとの差を説明できる」を通過してからEditor / AI支援を具体化します。
 
 ## 関連するProduct Requirement
 
@@ -104,9 +104,9 @@ Editor / AI支援を完成させてから第二Targetへ進む必要はありま
 
 ## 完了条件
 
-Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor / AI支援に必要な意味境界を具体的に説明できるようになった時点で、本IssueのBlockedを解除します。
+Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor / AI支援に必要な意味境界を具体的に説明できるようになった時点で、本Issueの保留を解除します。
 
-その後、Editor Projection、正本の編集、AI knowledge search、確認提案、Decision履歴等を、責務が混ざらない複数の実装Issueへ分解します。
+その後、Editor Projection、正本の編集、AI knowledge search、確認提案、Decision履歴などを、責務が混ざらない複数の実装Issueへ分解します。
 
 ## 関連文書
 
