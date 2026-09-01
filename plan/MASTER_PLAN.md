@@ -10,9 +10,9 @@
 
 Repositoryは、M0.22.1までにSemantic / Application / Database / Release / Deployment / Plugin / Runtimeを一本のvertical sliceとして接続しました。その後、M0.23でSource-to-Canonical Traceability、M0.24〜M0.25でactual process boundary、M0.26以降でactual PostgreSQLとPhysical SchemaのDesired / Actual / Diffを段階的に検証してきました。
 
-M0.32時点では、ProviderExpressionの表現と比較未確定を含め、Database / Provider側の意味境界はかなり深く検証されています。
+M0.35までにDatabase / Provider側では、比較未確定の分離、ProviderExpression、offline provider policy、Advanced Indexの識別子比較、PostgreSQL向けマイグレーションSQLの生成と実DBでの再観測まで、一連の意味境界を深く検証しています。
 
-一方、Product Vision全体から見ると、Application Pattern、既存システム移行、Editor、AI支援、Target-neutral Presentation、Driver等は、Database領域ほど実証が進んでいません。
+一方、Product Vision全体から見ると、Application Pattern、既存システム移行、Editor、AI支援、Target-neutral Presentation、Driverなどは、Database領域ほど実証が進んでいません。
 
 今後はDatabase検証を止めるのではなく、**一つの技術領域だけがプロダクト全体の進路を決めないよう、上位のworkstreamを並走させます。**
 
@@ -55,9 +55,9 @@ Product Value、Vision、Principles、Requirements、Milestone、ADR / Issue運�
 
 Source-to-Canonical Traceabilityの次は、**「業務システムで再利用可能な意味知識をどう持つか」**を実証する必要があります。
 
-単にprimitiveを増やすのではなく、受注、参照、header-detail、履歴、状態遷移等の小さい具体例を通して、Micro Kernelと再利用可能Patternの境界を確認します。
+単にprimitiveを増やすのではなく、受注、参照、header-detail、履歴、状態遷移などの小さい具体例を通して、Micro Kernelと再利用可能Patternの境界を確認します。
 
-Application Patternについては、v1の設計検証ではApplicationが所有するCanonicalな意図として扱います。Semantic Kernelへ早い段階から固定せず、Driverと複数Targetから得られるEvidenceを見て分類や粒度を見直します。詳細は[ADR-0014](adr/0014-application-pattern-ownership.md)を参照してください。
+Application Patternについては、v1の設計検証ではApplicationが所有するCanonicalな意図として扱います。Semantic Kernelへ早い段階から固定せず、Driverと複数Targetから得られるEvidenceを見て分類や粒度を見直します。詳細は[ADR-0017](adr/0017-application-pattern-ownership.md)を参照してください。
 
 ## Workstream C: Application / Legacy Compatibility
 
@@ -90,17 +90,20 @@ DatabaseのDesired / Actual / Diff / Migration / Contract lifecycleを、Provide
 
 ### 現在の主な論点
 
+M0.35までに、provider default / identifier comparison、offline provider policy、Advanced Index migration renderingの主要な安全境界は実装とConformanceまで進みました。
+
+今後の主な論点は次です。
+
 - partition semantics
-- provider default / identifier normalization
-- offline provider policy
-- advanced migration rendering
-- additional providerでのConformance
+- PostgreSQL以外のProviderによる抽象境界の圧力試験
+- production環境でのonline index build / recovery policy
+- provider versionや拡張catalogを含むnormalization authorityの高度化
 
 ### 進め方
 
 PostgreSQLは深い実証Providerとして継続利用します。ただし、PostgreSQL固有機能を網羅すること自体を目的にはしません。
 
-Provider-neutralな境界の妥当性を確認するため、一定の時点でOracle等の異なるProviderへ小さいReferenceを接続し、PostgreSQLで偶然成立している抽象がないか検査します。
+Provider-neutralな境界の妥当性を確認するため、一定の時点でOracleなど異なるProviderへ小さいReferenceを接続し、PostgreSQLで偶然成立している抽象がないか検査します。
 
 ## Workstream E: Driver / Execution
 
@@ -303,7 +306,7 @@ Gateを設ける目的は手続きを増やすことではありません。実�
 
 ## 次に優先して不確実性を減らす領域
 
-M0.32以降は、次の順を基本とします。
+M0.35以降は、次の順を基本とします。
 
 1. Product BaselineをRepositoryへ定着させる
 2. 現在の実装をProduct Requirementsへ逆マッピングし、空白を明示する
