@@ -6,7 +6,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database/persistence"
 	"tei/internal/database/physical"
-	"tei/internal/environment"
+	"tei/internal/database/providers/postgres"
 )
 
 func TestRealizeDesiredConvertsSimpleIndexToOrderedColumnKeys(t *testing.T) {
@@ -26,7 +26,7 @@ func TestRealizeDesiredConvertsSimpleIndexToOrderedColumnKeys(t *testing.T) {
 		}},
 	}
 
-	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
