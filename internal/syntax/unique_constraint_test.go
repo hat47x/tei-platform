@@ -12,9 +12,9 @@ func TestParsePersistenceUniqueConstraint(t *testing.T) {
         database sales_core
         semantic sales.customer
         table public.customers
-        column sales.customer.id -> id int64 required
-        column sales.customer.tenant_id -> tenant_id int64 required
-        column sales.customer.external_id -> external_id varchar required
+        column sales.customer.id -> id storage int64 required
+        column sales.customer.tenant_id -> tenant_id storage int64 required
+        column sales.customer.external_id -> external_id storage varchar required
         unique customers_identity_key {
             attribute sales.customer.tenant_id
             attribute sales.customer.external_id
@@ -37,7 +37,7 @@ func TestParsePersistenceRejectsEmptyUniqueConstraint(t *testing.T) {
         database sales_core
         semantic sales.customer
         table customers
-        column sales.customer.id -> id int64 required
+        column sales.customer.id -> id storage int64 required
         unique customers_empty_key { }
     }`).ParsePersistence()
 	if err == nil || !strings.Contains(err.Error(), "unique requires at least one attribute") {
