@@ -1,40 +1,32 @@
 # ADR-0012: ProviderExpressionのauthor textとprovider-normalized representationを分離する
 
-- 状態: 提案中
+- 状態: 採用
 - 日付: 2026-09-01
 - 関連Issue: #54, #58, #59, #60
-- 前提: ADR-0010, ADR-0011 / M0.29, M0.30
+- 前提: ADR-0010, ADR-0011 / M0.29〜M0.31
 
 ## 背景
 
-M0.29では、PostgreSQLのexpression indexとpartial predicateをActual Physical Schemaへ取り込むため、`pg_get_indexdef`や`pg_get_expr`が返す文字列を`ProviderExpression.Source`へ格納しました。
+M0.29では、PostgreSQLのexpression indexとpartial predicateをActual Physical Schemaへ取り込むため、`pg_get_indexdef`や`pg_get_expr`から得た文字列を`ProviderExpression.Source`へ格納しました。
 
-M0.30では、同じ`ProviderExpression`をDesired側にも使い、Persistence authoringに書かれたprovider-native expressionを`Source`へ格納するようにしました。
+M0.30では、同じ型をDesired側でも使い、Persistence authoringに書かれたprovider-native expressionを`Source`へ格納しました。
 
-ここで、同じfieldが二つの異なる性質の文字列を表していることが明確になりました。
+しかし、二つの`Source`は同じ性質ではありません。
 
-- Desired: 利用者が記述したauthoritativeなauthor text
-- Actual: DBMSが内部表現から再構成したprovider-decompiled text
+- Desired側は、利用者が記述したauthoritativeなauthor textです。
+- Actual側は、DBMSが内部表現から再構成したprovider-decompiled textです。
 
-PostgreSQL公式ドキュメントでも、`pg_get_expr`はcatalog内の`pg_node_tree`をdecompileする関数、`pg_get_indexdef`はIndexの作成定義を内部表現から再構成する関数と説明されています。どちらも元のSQL文字列を返す契約ではありません。
+PostgreSQLの`pg_get_expr`や`pg_get_indexdef`は、元のSQL文字列を保存して返す仕組みではありません。内部表現からSQL表現を再構成します。したがって、DesiredとActualの`Source`を単純な文字列一致だけで比較すると、同じ意味でも表記差によってfalse driftになる可能性があります。
 
-また、`pg_index.indexprs`と`indpred`はPostgreSQL内部の`pg_node_tree`表現です。これをTEIの安定した共通serializationとして直接比較することもしません。
+一方、TEI CoreへPostgreSQL専用のSQL parserや一般的な式同値性判定器を組み込むことも避けます。Provider固有の表現問題を、共通Coreの文字列補正規則へ押し込むべきではありません。
 
-したがって、DesiredとActualの`Source`をtrimした文字列だけで比較し続けると、意味が同じでも表記が違うだけで`drop-index + add-index`を生成するfalse driftが起こり得ます。
+M0.31では、この問題に先立ってSchema Diffへ`Unresolved`を導入しました。これにより、「構造差がある」と「比較を確定するだけの情報が足りない」を分離できます。
 
-一方、TEI CoreへPostgreSQL式parserや独自の式同値性判定器を組み込むことも避けます。PostgreSQL自身もpartial indexの利用可否について一般的な数学的同値性を証明する仕組みを持たず、限定的な含意判定を除けばpredicateの構造的な一致が重要です。TEIがそれより広い一般解をCoreに持つ必要はありません。
+## 判断
 
-参考:
+`ProviderExpression`は、provider-nativeな文字列だけでなく、その文字列がどの表現段階にあるかを明示します。
 
-- PostgreSQL System Information Functions: https://www.postgresql.org/docs/current/functions-info.html
-- PostgreSQL `pg_index`: https://www.postgresql.org/docs/current/catalog-pg-index.html
-- PostgreSQL Partial Indexes: https://www.postgresql.org/docs/17/indexes-partial.html
-
-## 判断案
-
-`ProviderExpression`では、provider-nativeな文字列であることだけでなく、その文字列がどの表現段階にあるかを明示します。
-
-概念上は次のようにします。
+概念上は次です。
 
 ```text
 ProviderExpression
@@ -45,14 +37,14 @@ ProviderExpression
   Normalization?
 ```
 
-`Representation`は少なくとも次を区別します。
+`Representation`は、少なくとも次を区別します。
 
 ```text
 authored
 provider-normalized
 ```
 
-`Normalization`は`provider-normalized`に必要なprovenanceを保持します。
+`provider-normalized`では、比較可能な範囲を説明するためのprovenanceを持てます。
 
 ```text
 ExpressionNormalization
@@ -60,71 +52,89 @@ ExpressionNormalization
   ProviderVersion?
 ```
 
-最終的なfield名・JSON表現は実装時に確定します。重要なのは、author textとproviderが再構成したtextを同じ無印文字列として扱わないことです。
+ここでいう`provider-normalized`は、数学的に同値な式を必ず同じ文字列へ変換する普遍的なcanonical formではありません。特定providerの内部表現から、そのprovider自身またはprovider-ownedな処理によって再構成された比較用表現です。
 
-## author textは失わない
+## authoredは利用者の記述を表す
 
-Persistence authoringの`ProviderExpressionMapping.Source`は、引き続き利用者が記述したauthoritative textです。
+Persistence authoringからDesired Physical Schemaへrealizeしたexpression keyとpredicateは`authored`です。
 
-normalizationのためにauthoring sourceそのものを書き換えません。利用者が書いた式と、providerが比較用に再構成した式は別の責務を持ちます。
+利用者が書いたsource textを、normalizationの都合でprovider-decompiled textへ置き換えません。Source IndexやEditorから戻るauthoritative sourceも、引き続きPersistence authoringです。
 
-これにより、Source Index、Editor、レビューでは元の記述へ戻れます。
+前後の空白を除く既存の軽い整形は維持しますが、SQLの意味を書き換える正規化は行いません。
 
-## Actualはprovider-normalizedとして観測する
+## PostgreSQL Actualはprovider-normalizedとして扱う
 
-PostgreSQL Actualで`pg_get_expr(..., false)`や`pg_get_indexdef(..., false)`から得た式は、`provider-normalized` representationとして扱います。
+PostgreSQLのActual observationで取得したexpression keyとpredicateは`provider-normalized`です。
 
-ここでいうnormalizedは「数学的に同値なすべての式が同じ文字列になる」という意味ではありません。特定provider / dialect / versionの内部表現をprovider自身がdecompileした比較用表現という意味です。
+M0.32ではnormalization authorityを次の値で記録します。
 
-この区別を明示するため、`canonical`という語を無条件には使いません。DBMSが返した一つのdecompile表現を、普遍的な意味canonical formと誤解させないためです。
+```text
+postgresql-catalog-deparse
+```
 
-## provider version
+これは、PostgreSQL catalogの内部表現から`pg_get_expr` / `pg_get_indexdef`系の経路で再構成された表現であることを示します。
 
-provider-normalized representationは、provider versionによって表記が変わる可能性があります。
+現行の`CatalogReader`はserver versionをexpression provenanceとして返しません。そのため、M0.32のPostgreSQL Actualでは`ProviderVersion`を推測せず空のままとします。
 
-そのため、provider-owned normalizerが生成した表現を永続的な比較キーとして使う場合は、少なくともnormalization authorityと、必要に応じてprovider major versionをprovenanceとして保持します。
+## provider versionを推測しない
 
-M0.31でversionを必須fieldにするかは、PostgreSQL 17 / 18のConformanceを通して決めます。根拠なくversion-independentと仮定しません。
+provider-normalized representationは、provider versionによって表記が変化する可能性があります。
+
+そのため、異なるprovider-normalized textを「確実に別の構造」と判定するには、少なくとも同じnormalization authorityに加え、同じ既知のprovider versionで生成されたことを確認します。
+
+M0.32では次を採用します。
+
+- 同じauthority、同じ既知version: 異なるnormalized textを構造差と判定できる
+- version不明: 異なるnormalized textだけでは構造差と断定しない
+- authority不明または異なる: 異なるtextだけでは構造差と断定しない
+
+server versionの取得方法そのものは、現在のruntime introspection SPIへ場当たり的に追加しません。必要なprovider-owned policyやmetadata境界はIssue #59で整理します。
 
 ## 比較規則
 
-ProviderExpressionの比較は、単純なboolean equalityから「一致 / 不一致 / 未確定」を返せる契約へ拡張します。
-
-少なくとも次の規則を候補とします。
+ProviderExpressionの比較は、一致・不一致・未確定の三つを区別します。
 
 ### ProviderまたはDialectが異なる
 
-同一視しません。これはnormalization不足ではなく、明確な構造差です。
+明確な構造差です。
 
-### 同じrepresentation authorityでprovider-normalized同士を比較できる
+異なるproviderやdialectの式を、文字列が似ているという理由だけで同一視しません。
 
-同じnormalization契約を共有すると確認できる場合、normalized Sourceを比較します。
+### Sourceが同一
 
-### authored同士
+Provider / Dialectが同じで、trim後のSourceが同一なら一致とします。
 
-同じprovider / dialectでauthor textが同一なら一致とします。
+`authored`と`provider-normalized`の組み合わせであっても、比較対象のprovider-native text自体が一致しているためです。
 
-異なるauthor textを数学的に同値と推測しません。authoring同士の異なる式は、原則として異なるintentです。
+### authored同士でSourceが異なる
 
-### authoredとprovider-normalizedが同じ文字列
+明確な構造差です。
 
-同じprovider / dialectで、trim後のSourceがそのまま一致する場合は一致として扱えます。
+利用者が異なる式をauthoritative intentとして記述しているため、TEIが勝手に同義式と推測しません。
 
-### authoredとprovider-normalizedの文字列が異なる
+### authoredとprovider-normalizedでSourceが異なる
 
-信頼できるnormalizerを通していない場合、直ちに構造差と断定しません。
+比較未確定です。
 
-Schema DiffではIssue #60の「比較未確定」へ送り、`drop-index + add-index`を自動生成しない方向とします。
+Desired author textがproviderのdeparse表現へ変換されたときに同じ文字列になるかを、この時点では確認できません。M0.31の`Diff.Unresolved`へ送り、`drop-index + add-index`を生成しません。
 
-この扱いは、false driftからIndex再作成へ進むより安全です。
+### provider-normalized同士でSourceが異なる
+
+同じnormalization authorityと同じ既知provider versionを共有する場合だけ、構造差と判定します。
+
+authorityまたはversionの比較契約が不足している場合は`Unresolved`とします。
+
+### legacy representation
+
+M0.31以前の`Representation`を持たない値は、Sourceが同一なら一致できます。
+
+Sourceが異なる場合は、`authored`か`provider-normalized`かを推測せず`Unresolved`とします。旧データを理由に破壊的な変更へ進みません。
 
 ## 「比較未確定」はChangeではない
 
-normalizationが不足していること自体はDatabase構造の変更ではありません。
+normalization情報が不足していることは、Database構造の変更そのものではありません。
 
-したがって、`normalization-required`を`ChangeKind`へ追加しません。
-
-Issue #60で、概念上は次のような結果を検討します。
+したがって、M0.31で採用した次の分離を維持します。
 
 ```text
 Diff
@@ -132,91 +142,117 @@ Diff
   Unresolved[]
 ```
 
-`Changes`には確定した構造差だけを含め、`Unresolved`には比較に追加情報が必要な項目を保持します。
+`Changes`には確定した構造差とActual lifecycle state driftだけを含めます。
 
-migration rendererは`Unresolved`を変更命令として解釈しません。
+`Unresolved`には、比較の確定に追加情報が必要な項目を保持します。
+
+ProviderExpressionだけが未確定で、他に明確なIndex構造差がない場合、Indexの`drop-index + add-index`は生成しません。
+
+一方、INCLUDE、key数、sort order、unique semanticsなどに明確な構造差があれば、ProviderExpressionの未確定だけを理由に既知の差まで隠しません。そのIndexは通常の構造差として扱います。
+
+## lifecycle stateとは分離する
+
+`valid / ready / live`はActualから得た観測事実です。
+
+ProviderExpressionの比較が未確定でも、Actual Indexが利用可能状態を満たしていなければ`index-state-drift`は従来どおり報告できます。
+
+比較未確定と運用状態を同じ概念へ混ぜません。
 
 ## arbitrary textをCoreでcanonicalizeしない
 
-PostgreSQLの`pg_get_expr`は、既にcatalogへ保存された内部expression treeをrelation OIDの文脈でdecompileする関数です。任意のtextを渡してread-onlyにcanonicalizeするAPIではありません。
+`pg_get_expr`は、既にPostgreSQL catalogへ保存された内部expression treeをrelationの文脈でdecompileする仕組みです。任意のtextをread-onlyに渡してcanonical formを得るためのAPIではありません。
 
-そのため、通常のWorkspace load / validationでDB接続を必須にしたり、Coreが疑似PostgreSQL parserを持ったりしません。
+したがって、通常のWorkspace loadやvalidationでDB接続を必須化しません。また、CoreにPostgreSQL parserを内製しません。
 
-normalizationの実装候補はprovider-ownedな境界に置きます。
+将来normalizationが必要になった場合も、次のようなprovider-ownedな手段を検討します。
 
-候補は次のとおりです。
+- provider versionに対応したoffline parser / deparser
+- 隔離されたprovider環境でserver自身に解釈させる経路
+- connected validationで生成した比較用表現を、source hashとnormalization provenance付きの生成物として保持する経路
 
-1. provider versionと対応したoffline parser / deparser
-2. shadow databaseや隔離されたprovider環境でserver自身に解釈させる経路
-3. connected validationで比較用表現を生成し、source hashとnormalization provenanceを持つ生成物として保持する経路
-
-どの方式を採る場合も、production targetへcanonicalizationだけを目的としたDDLを発行しません。
+production targetへ、normalizationだけを目的としたDDLを発行する設計にはしません。
 
 ## runtime Provider SPIへ直接足さない
 
 現行`database/provider.Provider`は、`Capabilities`と`Introspect`を中心に、`context.Context`と`DatabaseInstance`を伴うruntime SPIです。
 
-Desired realizationのoffline normalizationをこのinterfaceへ直接追加すると、Workspace buildに不要なruntime assemblyや接続依存を持ち込む恐れがあります。
+Desired realizationのoffline normalizationをこのinterfaceへ直接追加すると、Workspace buildへ不要なruntime assemblyやDB接続依存を持ち込む恐れがあります。
 
-Issue #59で、runtime Providerとは別のprovider-ownedなpure policy / normalizer境界を設計します。
+そのため、provider固有のpureなdefault解決やnormalization policyの所有境界はIssue #59で別に設計します。
 
-ADR-0012では、その具体的なinterface shapeを先取りしません。
+ADR-0012では、将来のinterface shapeを先取りして巨大な抽象化を導入しません。
 
 ## provider identifier normalizationとは分ける
 
-expression / predicateの文字列表現問題と、collation / operator class / access methodなどのprovider identifierやeffective defaultの問題は似ていますが、同じものではありません。
+expression / predicateの表現問題と、collation / operator class / access method等のprovider identifierやeffective defaultの問題は関連しますが、同じ問題ではありません。
 
-- expression representation / comparison: Issue #54
+- ProviderExpression representation / comparison: Issue #54 / 本ADR
 - expression以外のprovider default / identifier normalization: Issue #58
 - provider-owned offline policy境界: Issue #59
-- 比較未確定のSchema Diff表現: Issue #60
+- Schema Diffの比較未確定: Issue #60 / M0.31
+- Advanced Index migration SQL: Issue #55
 
 一つの巨大な`NormalizeEverything()`へまとめません。
 
 ## migrationとの境界
 
-Issue #55でAdvanced Index migration SQLを実装するとき、対象Indexにexpression comparisonの`Unresolved`が残る場合は、drop/recreate DDLを生成しません。
+M0.31の契約どおり、`Diff.Unresolved`が残る場合はmigration SQLを生成しません。
 
-これは「変更がない」とみなすのではなく、「安全に変更判断できるだけの比較情報がない」と扱います。
+これは「変更がない」とみなすのではなく、「安全に変更判断できるだけの比較情報がない」と扱うものです。
 
-Editor / CLIでも、差分0と同じ表示に潰さないことを前提とします。
+Issue #55でAdvanced Index DDLを実装するときも、この安全境界を維持します。
 
 ## Source Indexとの関係
 
-normalization representationを追加しても、source navigationのidentityは変えません。
+ProviderExpressionにrepresentationやnormalization provenanceを追加しても、source navigationのidentityは変えません。
 
-Persistence側のauthor textは引き続きauthoritative sourceであり、M0.30で導入した`persistence-index:<mapping>/<index>`からIndex declarationへ戻れます。
+Persistence側のauthor textが引き続きauthoritative sourceです。M0.30で導入した`persistence-index:<mapping>/<index>`からIndex declarationへ戻れます。
 
-将来、expression field単位の精密diagnosticが必要になった場合はnested source anchorを追加できますが、ProviderExpressionのcomparison identityへfile pathを混ぜません。
+provider-normalized expressionをSource Index上のauthoritative definitionへ昇格させません。
 
-## 非目標
+## 採用しない案
 
-- SQL式の数学的同値性の一般判定
-- PostgreSQL parserのCore内製
-- `pg_node_tree`をTEI共通serializationとして固定
-- normalization目的のproduction DDL
-- provider expressionからSemantic modelへの逆推論
-- automatic index recommendation
-- #55のmigration SQL renderingそのもの
+### Source文字列だけを永続的な比較キーにする
 
-## 提案段階で確認するConformance
+providerのdeparse差によるfalse driftを避けられないため採用しません。
 
-採用前に、少なくとも次をfixtureとして確認します。
+### 表記が違う式をすべて構造差とする
 
-1. authored expressionと同一textのprovider-normalized expressionは一致できる
-2. authored expressionと異なるprovider-normalized expressionは、normalizerがない限り構造差ではなく比較未確定になる
-3. provider / dialectが異なるexpressionは明確な構造差になる
-4. provider-normalized同士でもnormalization authority / version契約が異なる場合は、根拠なく同一視しない
-5. unresolved expressionを持つIndexからmigrationのdrop/recreateを生成しない
-6. simple column indexとexpressionを含まないAdvanced Indexには既存diff behaviorの回帰がない
-7. Actual lifecycle state driftは比較未確定へ混ざらない
+安全側に見えても、不要なIndex再作成へ直結し得るため採用しません。
 
-## 採用までの作業順序
+### 表記が違う式をすべて同一視する
 
-1. Issue #54でRepresentation / Normalization metadataの最小modelを確定する
-2. Issue #60で`Diff.Changes`と比較未確定を分離する
-3. PostgreSQL Actualにprovider-normalized provenanceを付与する
-4. Desired authored expressionとの比較Conformanceを追加する
-5. Issue #59でoffline provider policy SPIを設計する
-6. 必要なnormalizer経路を選び、provider/version境界をConformanceで確認する
-7. ADR-0012を採用へ更新する
+本当に異なる式まで一致させるため採用しません。
+
+### CoreにPostgreSQL parserを持つ
+
+provider境界を壊し、version追随責任までCoreへ持ち込むため採用しません。
+
+### provider-normalizedならversionを無視して比較できると仮定する
+
+provider versionによるserialization差を検証せず固定することになるため採用しません。
+
+## Conformance
+
+M0.32では次を固定します。
+
+1. Desired expression / predicateは`authored`になる
+2. PostgreSQL Actual expression / predicateは`provider-normalized`になり、normalization authorityを保持する
+3. authored同士の異なるSourceは構造差になる
+4. authoredとprovider-normalizedの異なるSourceは`Unresolved`になる
+5. 同じauthority・同じ既知versionのprovider-normalized同士は、異なるSourceを構造差と判定できる
+6. version不明のprovider-normalized同士は、異なるSourceを`Unresolved`にする
+7. normalization authorityが異なる場合は`Unresolved`にする
+8. Sourceが同一ならrepresentationが異なっても収束する
+9. legacy representationの異表記は保守的に`Unresolved`とする
+10. unresolved comparisonからmigration SQLを生成しない
+11. Actual lifecycle state driftを比較未確定へ混ぜない
+
+## 影響
+
+- Physical SchemaはProviderExpressionの表現段階を明示できる
+- Desired author textを失わずにActual provider-decompiled textと区別できる
+- false textual driftから破壊的migrationへ進む経路を抑止できる
+- provider versionが不明なとき、不確実性を隠さず保持できる
+- provider-owned normalizerの実装はIssue #59へ分離できる
+- expression以外のprovider normalizationはIssue #58として独立して進められる
