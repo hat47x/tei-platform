@@ -109,7 +109,13 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			return sourceindex.Index{}, fmt.Errorf("persistence %s: %w", mapping.ID, err)
 		}
 		content := contents[artifact.Path]
+		seenIndexNames := make(map[string]struct{}, len(mapping.Indexes))
 		for _, index := range mapping.Indexes {
+			name := strings.TrimSpace(index.Name)
+			if _, exists := seenIndexNames[name]; exists {
+				return sourceindex.Index{}, fmt.Errorf("persistence %s declares duplicate index name %q; persistence-index source identity must be unique within a mapping", mapping.ID, index.Name)
+			}
+			seenIndexNames[name] = struct{}{}
 			anchor, err := syntax.PersistenceIndexIdentifierAnchor(string(content), string(mapping.ID), index.Name)
 			if err != nil {
 				return sourceindex.Index{}, fmt.Errorf("persistence index %s/%s in %s: %w", mapping.ID, index.Name, artifact.Path, err)
