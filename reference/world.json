@@ -281,6 +281,12 @@
           "underlying": "std.identifier"
         },
         {
+          "id": "sales.order_line_id",
+          "symbol": "OrderLineId",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        },
+        {
           "id": "sales.order_status",
           "symbol": "OrderStatus",
           "kind": "alias",
@@ -329,6 +335,28 @@
               "symbol": "customer",
               "target": "customer.customer",
               "cardinality": "one"
+            },
+            {
+              "id": "sales.order.lines",
+              "symbol": "lines",
+              "target": "sales.order_line",
+              "cardinality": "many"
+            }
+          ]
+        },
+        {
+          "id": "sales.order_line",
+          "symbol": "OrderLine",
+          "attributes": [
+            {
+              "id": "sales.order_line.amount",
+              "symbol": "amount",
+              "type": "std.money"
+            },
+            {
+              "id": "sales.order_line.order_line_id",
+              "symbol": "orderLineId",
+              "type": "sales.order_line_id"
             }
           ]
         }
