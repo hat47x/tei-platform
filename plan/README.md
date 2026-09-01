@@ -38,7 +38,13 @@ Editor / AI支援
 
 Stage 1の詳細は、Application Pattern側を[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)、既存認証側を[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)で扱います。両者は並行して進め、Gate A「Application上の意味をDriverへ渡せる」で合流します。
 
-Application Patternでは、`browse`、`record`、`reference`の実Referenceまで完了しています。次は既存`sales.order.submit` Capabilityへ接続する`command`を[`ISSUE-000010`](issue/000010-command-application-pattern.md) / GitHub Issue #110で実証し、その後に`OrderLine`と対応Relationを追加して`header-detail`を検証します。5種類を一度に一般化せず、各Referenceから必要な意味だけを取り出します。
+Application Patternでは、`browse`、`record`、`reference`、`command`の4種類が実Referenceまで完了しています。
+
+最後の候補である`header-detail`の前提となる業務Semanticも、[`ISSUE-000011`](issue/000011-order-line-semantic-reference.md) / GitHub Issue #117 / PR #119で成立しました。`sales.OrderLine`と`sales.order.lines -> sales.order_line many`をSemantic Referenceとして追加しながら、Persistence Mapping、Database Foreign Key、Database Contractは暗黙に拡張していません。
+
+現在は[`ISSUE-000012`](issue/000012-header-detail-application-pattern.md) / GitHub Issue #118で、成立済みRelationを利用した`header-detail` Patternを実証しています。第一候補はRelation-onlyで、Relationがすでに持つsource / target / cardinalityをPatternへ重複記述しません。
+
+この段階でも、Semantic Relation、Application Pattern、Persistence Mapping、Database Foreign Key、Webの画面構造を同時に扱いません。各層が自分の意味だけを持つ状態でEvidenceを積み上げます。
 
 既存認証Compatibilityでは、Authentication / AuthorizationをSemantic Capabilityとして扱い、既存schemaや認証製品へApplicationを固定しません。
 
