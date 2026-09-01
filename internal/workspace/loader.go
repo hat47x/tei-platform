@@ -292,9 +292,22 @@ func loadApplications(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		r.World.Applications = append(r.World.Applications, a)
 		r.Sources["application:"+string(a.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		unitDir := filepath.Dir(path)
+		patternFiles, _ := globSorted(filepath.Join(unitDir, "patterns", "*.tei"))
+		for _, patternPath := range patternFiles {
+			patternSource, err := os.ReadFile(patternPath)
+			if err != nil {
+				return err
+			}
+			pattern, err := syntax.NewParser(string(patternSource)).ParseApplicationPattern()
+			if err != nil {
+				return sourceErr(patternPath, err)
+			}
+			a.Patterns = append(a.Patterns, pattern)
+			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
+		}
+		r.World.Applications = append(r.World.Applications, a)
 		qfiles, _ := globSorted(filepath.Join(unitDir, "queries", "*.tei"))
 		for _, qpath := range qfiles {
 			qsrc, err := os.ReadFile(qpath)
@@ -617,6 +630,9 @@ func Normalize(w *ir.World) {
 	for i := range w.Applications {
 		sort.Slice(w.Applications[i].Databases, func(a, b int) bool {
 			return w.Applications[i].Databases[a].Alias < w.Applications[i].Databases[b].Alias
+		})
+		sort.Slice(w.Applications[i].Patterns, func(a, b int) bool {
+			return w.Applications[i].Patterns[a].ID < w.Applications[i].Patterns[b].ID
 		})
 	}
 	for i := range w.Environments {
