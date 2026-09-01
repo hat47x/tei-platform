@@ -1,0 +1,3 @@
+pattern order_entry.submit_order command {
+    capability sales.order.submit
+}
