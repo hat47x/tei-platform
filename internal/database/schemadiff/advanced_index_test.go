@@ -28,7 +28,10 @@ func TestAdvancedIndexStructuralDriftRequiresReplacement(t *testing.T) {
 		{name: "expression", mutate: func(i *physical.Index) { i.Keys[1].Expression.Source = "upper(name)" }},
 		{name: "expression-provider", mutate: func(i *physical.Index) { i.Keys[1].Expression.Provider = "other-provider" }},
 		{name: "include", mutate: func(i *physical.Index) { i.IncludedColumns = []string{"payload", "tag"} }},
-		{name: "include-order", mutate: func(i *physical.Index) { i.IncludedColumns = []string{"payload", "tag"}; i.IncludedColumns[0], i.IncludedColumns[1] = i.IncludedColumns[1], i.IncludedColumns[0] }},
+		{name: "include-order", mutate: func(i *physical.Index) {
+			i.IncludedColumns = []string{"payload", "tag"}
+			i.IncludedColumns[0], i.IncludedColumns[1] = i.IncludedColumns[1], i.IncludedColumns[0]
+		}},
 		{name: "order", mutate: func(i *physical.Index) { i.Keys[0].Order = physical.IndexOrderAsc }},
 		{name: "nulls-order", mutate: func(i *physical.Index) { i.Keys[0].NullsOrder = physical.IndexNullsFirst }},
 		{name: "collation", mutate: func(i *physical.Index) { i.Keys[1].Collation = "pg_catalog.C" }},
