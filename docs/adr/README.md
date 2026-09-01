@@ -1,44 +1,7 @@
-# ADR（Architecture Decision Record）
+# ADRの保存場所について
 
-このディレクトリには、TEIの設計に長く影響する判断を記録します。
+TEIのADRの正本は [`plan/adr/`](../../plan/adr/README.md) へ移動しました。
 
-Issueは「何を行うか」を管理する場所、ADRは「なぜその方針を採ったか」を残す場所です。実装や調査が終わってIssueが閉じても、設計判断の背景は後から参照できるようにします。
+ADR-0001〜0015の旧URLとの互換性を保つため、`docs/adr/`には各ADRの案内ファイルだけを残しています。設計判断の本文、新しいADR、現在の一覧は[`plan/adr/README.md`](../../plan/adr/README.md)を参照してください。
 
-## 運用方法
-
-- 新しい設計判断には、連番のADRを追加します。
-- 採用済みのADRを後から都合よく書き換えるのではなく、判断が変わった場合は新しいADRを追加し、旧ADRを「置き換え済み」とします。
-- 単なる作業手順、軽微なリファクタリング、調査メモはADRにしません。Issueまたは通常の文書で扱います。
-- 生成AIが並行して作業する場合も、既存ADRと矛盾する変更を独断で進めません。変更が必要なら、まず論点をIssueへ戻します。
-- ADRは形式を整えることより、背景、判断、影響が自然な日本語で読めることを優先します。
-
-## 状態
-
-主に次の状態を使います。
-
-- `提案中`: まだ採用を決めていない
-- `採用`: 現在の設計判断として有効
-- `置き換え済み`: 後続ADRによって判断が更新された
-- `却下`: 検討したが採用しなかった
-
-## 一覧
-
-- [ADR-0001: 設計判断と実行作業をADRとIssueに分ける](0001-adr-and-issue-workflow.md)
-- [ADR-0002: M0.22.1を最初の公開設計チェックポイントとする](0002-m0221-public-checkpoint.md)
-- [ADR-0003: Reference Workspaceのgolden出力と観測fixtureをRepositoryに保持する](0003-reference-fixtures.md)
-- [ADR-0004: Source-to-Canonical TraceabilityをCanonical Worldから分離する](0004-source-to-canonical-traceability.md)
-- [ADR-0005: Supervisor authorityとruntime fencing authorityを分離する](0005-supervisor-and-runtime-fencing-authority.md)
-- [ADR-0006: process commandをexecutableとargvへ分離する](0006-process-command-and-argv.md)
-- [ADR-0007: actual database driverの組み立てをProvider Coreから分離する](0007-database-driver-assembly.md)
-- [ADR-0008: Desired Foreign KeyをPersistence Mappingで明示し、構造で差分比較する](0008-persistence-foreign-key-identity.md)
-- [ADR-0009: UNIQUE constraintとunique indexを別のphysical intentとして扱う](0009-unique-constraint-and-unique-index.md)
-- [ADR-0010: Advanced Indexを構造的intentとactual lifecycle stateに分ける](0010-advanced-index-semantics.md)
-- [ADR-0011: Advanced Index authoringをDatabase-owned Persistence intentとして記述する](0011-advanced-index-authoring.md)
-- [ADR-0012: ProviderExpressionのauthor textとprovider-normalized representationを分離する](0012-provider-expression-representation.md)
-- [ADR-0013: Desired Physical realizationのprovider policyをruntime Provider SPIから分離する](0013-offline-physical-realization-policy.md)
-- [ADR-0014: プロバイダー固有のIndex識別子は、根拠を持って判定できる範囲だけを正規化する](0014-provider-index-identifier-comparison.md)
-- [ADR-0015: マイグレーションSQLの文法責務をデータベースプロバイダー側に置く](0015-provider-owned-migration-sql-rendering.md)
-
-## 関連する進行管理
-
-M0.22.1公開後の初期分担はGitHub Issue #1で完了しています。M0.23のSource-to-Canonical TraceabilityはIssue #14〜#19で完了しました。Runtime takeover時のauthority境界はIssue #9とADR-0005で整理済みです。M0.24の実process Plugin runtimeはIssue #31で完了し、M0.25のprocess command / argv境界はIssue #33とADR-0006で完了しました。M0.26のactual PostgreSQL integrationはIssue #35とADR-0007で完了し、M0.27のForeign Key realization / driftはIssue #37とADR-0008で完了しました。PostgreSQL catalog normalization監査はIssue #38で完了し、M0.28のUNIQUE constraint / unique index境界と実装はIssue #41、#46、ADR-0009で整理済みです。Advanced Index semanticsはIssue #42とADR-0010で設計し、M0.29のActual / DiffはIssue #50で完了しました。M0.30のDesired authoringはIssue #51とADR-0011で完了し、M0.31ではIssue #60としてSchema Diffの比較未確定をChangeから分離しました。M0.32ではIssue #54とADR-0012としてProviderExpressionのrepresentation / comparison contractを固定しました。M0.33ではIssue #59とADR-0013としてDesired Physical realizationのprovider-owned offline policy境界を分離しました。M0.34ではIssue #58とADR-0014として、Advanced Indexのcollation / operator classを、根拠を持って判定できる範囲だけで比較する契約を固定しました。M0.35ではIssue #55とADR-0015として、Advanced Indexを含むPostgreSQL向けマイグレーションSQLの文法責務をプロバイダー側へ移し、生成DDLを実DBで再観測するConformanceを固定します。
+このディレクトリを新しいADRの保存先として使用しません。
