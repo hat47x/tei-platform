@@ -12,10 +12,10 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/database/migration"
-	"tei/internal/database/persistence"
 	"tei/internal/database/physical"
 	"tei/internal/database/plan"
 	"tei/internal/database/providers/postgres"
+	"tei/internal/database/realization"
 	"tei/internal/database/reconcile"
 	"tei/internal/database/release"
 	"tei/internal/database/schemadiff"
@@ -315,7 +315,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "unknown database %s\n", *databaseID)
 			os.Exit(2)
 		}
-		snap, err := persistence.RealizeDesired(w.Persistence, *databaseID, pid)
+		snap, err := realization.RealizeDesired(w.Persistence, *databaseID, pid)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
@@ -342,7 +342,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
 			os.Exit(2)
 		}
-		desired, err := persistence.RealizeDesired(w.Persistence, string(dbid), pid)
+		desired, err := realization.RealizeDesired(w.Persistence, string(dbid), pid)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
@@ -393,7 +393,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
 			os.Exit(2)
 		}
-		desired, err := persistence.RealizeDesired(w.Persistence, string(dbid), pid)
+		desired, err := realization.RealizeDesired(w.Persistence, string(dbid), pid)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)

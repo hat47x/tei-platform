@@ -5,7 +5,8 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/database/persistence"
-	"tei/internal/environment"
+	"tei/internal/database/providers/oracle"
+	"tei/internal/database/providers/postgres"
 )
 
 func TestRealizeDesiredIsProviderSpecific(t *testing.T) {
@@ -14,14 +15,14 @@ func TestRealizeDesiredIsProviderSpecific(t *testing.T) {
 		Columns:    []persistence.ColumnMapping{{Attribute: core.MustCanonicalID("sales.order.order_id"), Column: "order_id", Storage: persistence.StorageInt64, Nullability: persistence.Required}},
 		PrimaryKey: []core.CanonicalID{core.MustCanonicalID("sales.order.order_id")},
 	}
-	pg, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	pg, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := pg.Tables[0].Columns[0].PhysicalType; got != "pg_catalog.int8" {
 		t.Fatalf("postgres type: %s", got)
 	}
-	ora, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderOracle)
+	ora, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", oracle.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
