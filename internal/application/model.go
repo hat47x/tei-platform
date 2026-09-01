@@ -20,20 +20,22 @@ const (
 	PatternBrowse    PatternKind = "browse"
 	PatternRecord    PatternKind = "record"
 	PatternReference PatternKind = "reference"
+	PatternCommand   PatternKind = "command"
 )
 
 func (k PatternKind) Valid() bool {
-	return k == PatternBrowse || k == PatternRecord || k == PatternReference
+	return k == PatternBrowse || k == PatternRecord || k == PatternReference || k == PatternCommand
 }
 
 // PatternにはApplication上の意図だけを保持する。
-// Semantic定義、Query本文、物理パス、Target固有の表現は既存の層に残し、ここではidentityで参照する。
+// Semantic定義、Query本文、Capability契約、物理パス、Target固有の表現は既存の層に残し、ここではidentityで参照する。
 type Pattern struct {
 	ID         core.CanonicalID `json:"id"`
 	Kind       PatternKind      `json:"kind"`
 	Data       core.CanonicalID `json:"data,omitempty"`
 	Relation   core.CanonicalID `json:"relation,omitempty"`
 	Query      core.CanonicalID `json:"query,omitempty"`
+	Capability core.CanonicalID `json:"capability,omitempty"`
 	Datasource core.LocalName   `json:"datasource,omitempty"`
 }
 
