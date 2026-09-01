@@ -1,11 +1,11 @@
 # ISSUE-000005: `order_entry`でstandard Application Patternを実証する
 
-- Status: Ready
+- 状態: 着手可能
 - GitHub Issue: #67
 
 ## 背景
 
-Product Requirements Gap Auditでは、RQ-014「標準的なApplication Patternを再利用できること」が未着手であり、Driver、Presentation、Editor、AI支援へ進む前に埋めるべき大きなGapであることが分かりました。
+Product Requirement Gap Auditでは、RQ-014「標準的なApplication Patternを再利用できること」が未着手であり、Driver、Presentation、Editor、AI支援へ進む前に埋めるべき大きなGapであることが分かりました。
 
 `ISSUE-000002`では、既存の`reference/workspace/applications/order-entry`をv1 Reference Applicationへ育て、次の5つのPatternを実証する方針を採用しています。
 
@@ -15,7 +15,7 @@ Product Requirements Gap Auditでは、RQ-014「標準的なApplication Pattern�
 - header-detail
 - command
 
-Patternの初期所有境界は[ADR-0014](../adr/0014-application-pattern-ownership.md)で定めます。v1ではSemantic Kernelへ早い段階から固定せず、Applicationが所有するCanonicalな意図として実証します。
+Patternの初期所有境界は[ADR-0017](../adr/0017-application-pattern-ownership.md)で定めます。v1ではSemantic Kernelへ早い段階から固定せず、Applicationが所有するCanonicalな意図として実証します。
 
 ## 関連するProduct Requirement
 
@@ -71,7 +71,7 @@ PatternがQueryそのものを所有するのではなく、「一覧として�
 
 一つの業務Recordを表示・編集するApplication上の意図です。
 
-`sales.Order`を基準に、表示可能、編集可能、read-only等の差がどの層へ属するかを確認します。
+`sales.Order`を基準に、表示可能、編集可能、read-onlyなどの差がどの層へ属するかを確認します。
 
 ### 3. reference
 
@@ -102,13 +102,13 @@ PatternがQueryそのものを所有するのではなく、「一覧として�
 
 ## Patternの所有境界
 
-ADR-0014に従い、v1ではApplication PatternをApplicationが所有するCanonicalな意図として扱います。
+ADR-0017に従い、v1ではApplication PatternをApplicationが所有するCanonicalな意図として扱います。
 
 次の三層を混同しません。
 
-1. Semantic上の意味 — Data / Relation / Capability等
-2. Application上の意図 — browse / record / reference / header-detail / command等
-3. Projection / Target — Web等に固有の表現とInteraction
+1. Semantic上の意味 — Data / Relation / Capabilityなど
+2. Application上の意図 — browse / record / reference / header-detail / commandなど
+3. Projection / Target — Webなどに固有の表現とInteraction
 
 ただし、現在のPattern名や分類を永久的な標準語彙として固定するものではありません。
 
@@ -142,7 +142,7 @@ Authorizationは`ISSUE-000003`の既存認証Compatibilityから合流させま�
 
 - 5 Patternを同じApplication modelから識別できる
 - Patternがfile pathを意味上のidentityにしない
-- PatternがSemantic Data、Query、Capability、Datasource等をCanonical IDで参照できる
+- PatternがSemantic Data、Query、Capability、DatasourceなどをCanonical IDで参照できる
 - browseがnative SQLの正本を壊さない
 - referenceが`master_data`のread-only Bindingを維持する
 - header-detailのSemantic RelationとPersistence FKを混同しない
@@ -155,7 +155,7 @@ Authorizationは`ISSUE-000003`の既存認証Compatibilityから合流させま�
 
 - Patternの網羅的catalog化
 - Patternごとの完成UI
-- responsive design等のTarget固有表現
+- responsive designなどのTarget固有表現
 - automatic UI design
 - PatternをSemantic Kernelへ一括追加すること
 - AIによるPattern推薦
@@ -170,6 +170,6 @@ Authorizationは`ISSUE-000003`の既存認証Compatibilityから合流させま�
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/adr/0014-application-pattern-ownership.md`
+- `plan/adr/0017-application-pattern-ownership.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
