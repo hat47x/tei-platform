@@ -21,11 +21,13 @@ func TestReferenceOrderLineExistsAsSemanticDetailWithoutPersistenceAssumption(t 
 	if len(orderLine.Attributes) != 2 {
 		t.Fatalf("OrderLineはheader-detail実証に必要な最小属性だけを持つ想定です: %#v", orderLine.Attributes)
 	}
-	if orderLine.Attributes[0].ID != "sales.order_line.order_line_id" || orderLine.Attributes[0].TypeRef != "sales.order_line_id" {
-		t.Fatalf("OrderLine識別子の意味が期待値と異なります: %#v", orderLine.Attributes[0])
+	orderLineID := semanticAttributeByID(t, orderLine.Attributes, "sales.order_line.order_line_id")
+	if orderLineID.TypeRef != "sales.order_line_id" {
+		t.Fatalf("OrderLine識別子の型が期待値と異なります: %#v", orderLineID)
 	}
-	if orderLine.Attributes[1].ID != "sales.order_line.amount" || orderLine.Attributes[1].TypeRef != "std.money" {
-		t.Fatalf("OrderLine金額の意味が期待値と異なります: %#v", orderLine.Attributes[1])
+	amount := semanticAttributeByID(t, orderLine.Attributes, "sales.order_line.amount")
+	if amount.TypeRef != "std.money" {
+		t.Fatalf("OrderLine金額の型が期待値と異なります: %#v", amount)
 	}
 
 	source, lines := semanticRelationByID(t, result.World.Semantics, "sales.order.lines")
@@ -51,4 +53,15 @@ func semanticDataByID(t *testing.T, namespaces []semantic.Namespace, id core.Can
 	}
 	t.Fatalf("Semantic Data %sが見つかりません", id)
 	return semantic.Data{}
+}
+
+func semanticAttributeByID(t *testing.T, attributes []semantic.Attribute, id core.CanonicalID) semantic.Attribute {
+	t.Helper()
+	for _, attribute := range attributes {
+		if attribute.ID == id {
+			return attribute
+		}
+	}
+	t.Fatalf("Semantic Attribute %sが見つかりません: %#v", id, attributes)
+	return semantic.Attribute{}
 }
