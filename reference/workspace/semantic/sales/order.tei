@@ -2,6 +2,7 @@ namespace sales
 
 type OrderId from std.identifier
 type OrderStatus from std.code
+type OrderLineId from std.identifier
 
 data Order {
     attribute orderId type sales.order_id
@@ -11,6 +12,12 @@ data Order {
     attribute total type std.money
     attribute externalId type std.text
     relation customer to customer.customer one
+    relation lines to sales.order_line many
+}
+
+data OrderLine {
+    attribute orderLineId type sales.order_line_id
+    attribute amount type std.money
 }
 
 capability sales.order.submit {
