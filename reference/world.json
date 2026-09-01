@@ -446,6 +446,12 @@
       ],
       "patterns": [
         {
+          "id": "order_entry.customer_reference",
+          "kind": "reference",
+          "relation": "sales.order.customer",
+          "datasource": "master"
+        },
+        {
           "id": "order_entry.order_record",
           "kind": "record",
           "data": "sales.order"
