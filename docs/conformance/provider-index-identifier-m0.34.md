@@ -1,46 +1,46 @@
-# M0.34 Provider-native Index identifier Conformance
+# M0.34 プロバイダー固有のIndex識別子 Conformance
 
 ## 目的
 
 M0.34では、Advanced Indexの`collation`と`operator class`について、DesiredとActualの表記差を安全に比較できるようにします。
 
-重要なのは、文字列が違うという理由だけでIndex再作成へ進まないことと、情報が足りないのに同じ意味だと決めつけないことです。
+重要なのは、文字列が異なるという理由だけでIndex再作成へ進まないことと、情報が足りない状態で同じ意味だと決めつけないことです。
 
-M0.31で導入した`Diff.Unresolved`を、ProviderExpressionだけでなくprovider-native identifierにも適用します。
+M0.31で導入した`Diff.Unresolved`を、ProviderExpressionだけでなく、プロバイダー固有のIndex識別子にも適用します。
 
 ## 固定する境界
 
 ### Desired Physical realization
 
-PostgreSQLのoffline `RealizationPolicy`は、DB接続なしに意味が確定する既定値だけを正規化します。
+PostgreSQLのオフライン`RealizationPolicy`は、DBへ接続しなくても意味を確定できる既定値だけを正規化します。
 
-維持する正規化は次です。
+次の正規化は維持します。
 
-- default index methodを`btree`として解決する
-- unique indexのdefault NULL treatmentを`distinct`として解決する
+- 既定のindex methodを`btree`として解決する
+- unique indexの既定NULL treatmentを`distinct`として解決する
 - B-treeの`ASC`をeffective defaultへ畳む
 - B-treeの`ASC NULLS LAST`をeffective defaultへ畳む
 - B-treeの`DESC NULLS FIRST`をeffective defaultへ畳む
 
-一方、明示された`pg_catalog.default` collationは保持します。
+一方、明示された`pg_catalog.default` collationは、そのまま保持します。
 
-PostgreSQLではcollation省略時に列または式のcollationを利用するため、明示値と省略をofflineで同一視しないためです。
+PostgreSQLではcollationを省略すると、列または式が持つcollationを利用します。そのため、明示値と省略をオフライン処理だけで同一視しません。
 
 ### PostgreSQL Actual observation
 
-Actual adapterは、live catalogを根拠に正規化できます。
+Actual adapterは、実際のカタログ情報を根拠に正規化できます。
 
 現在は次の契約を持ちます。
 
-- catalog上の`pg_catalog.default` collationは空表現へ畳む
-- `pg_opclass.opcdefault = true`のoperator classは空表現へ畳む
-- non-default operator classはschema-qualifiedな明示値として保持する
+- カタログ上の`pg_catalog.default` collationを空表現へ正規化する
+- `pg_opclass.opcdefault = true`のoperator classを空表現へ正規化する
+- 既定値ではないoperator classはschema-qualifiedな明示値として保持する
 
-Actual側が空値へ畳めることと、Desired側が同じ値をofflineで空値へ畳めることは別問題として扱います。
+Actual側がカタログを根拠に空値へ正規化できることと、Desired側が同じ値をオフラインで空値へ正規化できることは、別の問題として扱います。
 
 ## Schema Diffの三値比較
 
-Index keyのprovider-native identifierは、次の3状態に分けます。
+Index keyのプロバイダー固有識別子は、次の3状態に分けます。
 
 ```text
 同一
@@ -48,7 +48,7 @@ Index keyのprovider-native identifierは、次の3状態に分けます。
 比較未確定
 ```
 
-比較未確定は`Change`ではなく`Diff.Unresolved`に格納します。
+比較未確定は`Change`ではなく、`Diff.Unresolved`に格納します。
 
 ### collation
 
@@ -68,15 +68,15 @@ collationの省略は、列または式からの継承を含みます。片側�
 | --- | --- | --- |
 | 同じ明示値 | 同じ明示値 | 同一 |
 | 異なる明示値 | 異なる明示値 | 構造差 |
-| 空 | 明示non-default | 構造差 |
+| 空 | 明示された非既定値 | 構造差 |
 | 明示値 | 空 | 比較未確定 |
 | 空 | 空 | 同一 |
 
-Desiredのoperator class省略はdefault operator classを使うintentです。
+Desiredでoperator classを省略した場合は、既定のoperator classを使うというintentになります。
 
-PostgreSQL Actual adapterはlive catalogでdefaultと確認したoperator classを空表現へ畳むため、Actualに明示値が残っている場合はnon-defaultだと判断できます。
+PostgreSQL Actual adapterは、実カタログで既定値だと確認したoperator classを空表現へ正規化します。そのため、Actualに明示値が残っている場合、その値は既定operator classではないと判断できます。
 
-逆に、Desiredで明示されたoperator classがActual環境ではdefaultである可能性はofflineでは判定できないため、Actualが空の場合は比較未確定にします。
+逆に、Desiredで明示されたoperator classがActual環境では既定値である可能性は、オフライン処理だけでは判定できません。Actualが空の場合は、構造差とは断定せず比較未確定にします。
 
 ## UnresolvedComparison
 
@@ -86,7 +86,7 @@ M0.34では`UnresolvedKind`に次を追加します。
 provider-identifier
 ```
 
-provider identifierの比較未確定では次を保持します。
+プロバイダー固有識別子の比較未確定では、次の情報を保持します。
 
 ```text
 kind
@@ -117,32 +117,34 @@ actualValue
 }
 ```
 
-Desiredが空の場合、`omitempty`により`desiredValue`はJSON上に出ないことがあります。空であること自体は比較処理の入力として保持されています。
+Desiredが空の場合、`omitempty`によって`desiredValue`がJSONに出力されないことがあります。空であるという入力自体は、比較処理の中で保持されています。
 
 ## Migration safety
 
 M0.31以降のルールを変更しません。
 
-`Diff.Unresolved`が1件でも残っているSchema Diffから、migration SQLは生成しません。
+`Diff.Unresolved`が1件でも残っているSchema Diffからは、migration SQLを生成しません。
 
-そのため、collationやoperator classの同値性が確定できない状態から、自動的に`DROP INDEX` / `CREATE INDEX`へ進むことはありません。
+そのため、collationやoperator classの同値性を確定できない状態から、自動的に`DROP INDEX` / `CREATE INDEX`へ進むことはありません。
 
 ## Unit Conformance
 
-`internal/database/schemadiff/provider_identifier_test.go`で、少なくとも次を確認します。
+`internal/database/schemadiff/provider_identifier_test.go`では、少なくとも次を確認します。
 
 - collationの片側省略が`UnresolvedProviderIdentifier`になる
-- 明示`pg_catalog.default`とActualの空表現を即座に同一視しない
+- 明示した`pg_catalog.default`とActualの空表現を、根拠なく同一視しない
 - 異なる明示collationはIndexのdrop/addになる
-- Desired省略・Actual明示non-default operator classは構造差になる
-- Desired明示operator class・Actual default表現は比較未確定になる
+- Desired省略・Actual明示の非既定operator classは構造差になる
+- Desired明示operator class・Actual既定値表現は比較未確定になる
 - 同じ明示collation / operator classは収束する
 
-`internal/database/persistence/advanced_index_normalization_test.go`では、PostgreSQL B-treeのsort / NULL ordering既定値を引き続き正規化しつつ、明示collation authoringを保持することを確認します。
+`internal/database/persistence/advanced_index_normalization_test.go`では、PostgreSQL B-treeのsort / NULL ordering既定値を従来どおり正規化しながら、明示されたcollationを保持することを確認します。
 
-## 既存Conformanceとの組み合わせ
+`internal/database/migration/provider_identifier_unresolved_test.go`では、プロバイダー固有識別子の比較未確定が残るSchema Diffからmigration planを生成できないことを確認します。
 
-M0.34は次の既存契約を変更しません。
+## 既存Conformanceとの関係
+
+M0.34は、次の既存契約を変更しません。
 
 - M0.29 Advanced Index Actual / Diff
 - M0.30 Advanced Index Desired authoring
@@ -150,16 +152,16 @@ M0.34は次の既存契約を変更しません。
 - M0.32 ProviderExpression representation / comparison
 - M0.33 offline Physical realization policy
 
-ProviderExpressionとprovider identifierは、ともに「分からない差をmigration Changeへ変換しない」という同じ原則に従いますが、表現と判定規則は別に保ちます。
+ProviderExpressionとプロバイダー固有識別子は、ともに「分からない差をmigration Changeへ変換しない」という原則に従います。ただし、意味や判定に必要な情報が異なるため、表現と比較規則は分けて保ちます。
 
 ## 現時点で行わないこと
 
 M0.34では次を行いません。
 
-- PostgreSQLのdefault operator class一覧をoffline固定表として複製する
-- provider versionごとのidentifier catalog snapshotを導入する
-- live DBへのround-tripを通常のDesired realizationへ必須化する
+- PostgreSQLの既定operator class一覧をオフラインの固定表として複製する
+- プロバイダーのバージョンごとにidentifier catalog snapshotを導入する
+- 実DBへのround-tripを通常のDesired realizationへ必須化する
 - collationやoperator classを新しい大規模なPhysical型へ置き換える
-- ProviderExpressionとidentifierのnormalization機構を一つの巨大なinterfaceへ統合する
+- ProviderExpressionとidentifierの正規化機構を、一つの巨大なinterfaceへ統合する
 
 必要性が確認できたものだけを、後続Issueで小さく追加します。
