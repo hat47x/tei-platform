@@ -33,7 +33,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		return out, err
 	}
 
-	var hasData, hasQuery, hasDatasource bool
+	var hasData, hasRelation, hasQuery, hasDatasource bool
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -55,6 +55,20 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, err
 			}
 			out.Data, err = core.ParseCanonicalID(v.Text)
+			if err != nil {
+				return out, p.errAt(v, err.Error())
+			}
+		case "relation":
+			if hasRelation {
+				return out, p.errAt(t, "relation is declared more than once")
+			}
+			hasRelation = true
+			_, _ = p.next()
+			v, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.Relation, err = core.ParseCanonicalID(v.Text)
 			if err != nil {
 				return out, p.errAt(v, err.Error())
 			}
@@ -87,7 +101,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(v, err.Error())
 			}
 		default:
-			return out, p.errAt(t, "expected data, query, or datasource")
+			return out, p.errAt(t, "expected data, relation, query, or datasource")
 		}
 	}
 
@@ -99,15 +113,34 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		if out.Query == "" {
 			return out, fmt.Errorf("browse pattern %s requires query", out.ID)
 		}
+		if out.Relation != "" {
+			return out, fmt.Errorf("browse pattern %s does not accept relation", out.ID)
+		}
 	case application.PatternRecord:
 		if out.Data == "" {
 			return out, fmt.Errorf("record pattern %s requires data", out.ID)
+		}
+		if out.Relation != "" {
+			return out, fmt.Errorf("record pattern %s does not accept relation", out.ID)
 		}
 		if out.Query != "" {
 			return out, fmt.Errorf("record pattern %s does not accept query", out.ID)
 		}
 		if out.Datasource != "" {
 			return out, fmt.Errorf("record pattern %s does not accept datasource", out.ID)
+		}
+	case application.PatternReference:
+		if out.Relation == "" {
+			return out, fmt.Errorf("reference pattern %s requires relation", out.ID)
+		}
+		if out.Datasource == "" {
+			return out, fmt.Errorf("reference pattern %s requires datasource", out.ID)
+		}
+		if out.Data != "" {
+			return out, fmt.Errorf("reference pattern %s does not accept data", out.ID)
+		}
+		if out.Query != "" {
+			return out, fmt.Errorf("reference pattern %s does not accept query", out.ID)
 		}
 	}
 	if err := p.expectEOF(); err != nil {

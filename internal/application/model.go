@@ -17,12 +17,13 @@ type DatabaseRequirement struct {
 type PatternKind string
 
 const (
-	PatternBrowse PatternKind = "browse"
-	PatternRecord PatternKind = "record"
+	PatternBrowse    PatternKind = "browse"
+	PatternRecord    PatternKind = "record"
+	PatternReference PatternKind = "reference"
 )
 
 func (k PatternKind) Valid() bool {
-	return k == PatternBrowse || k == PatternRecord
+	return k == PatternBrowse || k == PatternRecord || k == PatternReference
 }
 
 // PatternにはApplication上の意図だけを保持する。
@@ -31,6 +32,7 @@ type Pattern struct {
 	ID         core.CanonicalID `json:"id"`
 	Kind       PatternKind      `json:"kind"`
 	Data       core.CanonicalID `json:"data,omitempty"`
+	Relation   core.CanonicalID `json:"relation,omitempty"`
 	Query      core.CanonicalID `json:"query,omitempty"`
 	Datasource core.LocalName   `json:"datasource,omitempty"`
 }
