@@ -86,7 +86,7 @@ const (
 type ProviderExpressionRepresentation string
 
 const (
-	ProviderExpressionAuthored          ProviderExpressionRepresentation = "authored"
+	ProviderExpressionAuthored           ProviderExpressionRepresentation = "authored"
 	ProviderExpressionProviderNormalized ProviderExpressionRepresentation = "provider-normalized"
 )
 
