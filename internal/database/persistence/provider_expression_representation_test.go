@@ -6,6 +6,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database/persistence"
 	"tei/internal/database/physical"
+	"tei/internal/database/providers/postgres"
 	"tei/internal/environment"
 )
 
@@ -36,7 +37,7 @@ func TestDesiredProviderExpressionIsAuthored(t *testing.T) {
 		}},
 	}
 
-	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", environment.ProviderPostgres)
+	snapshot, err := persistence.RealizeDesired([]persistence.Mapping{mapping}, "sales_core", postgres.RealizationPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
