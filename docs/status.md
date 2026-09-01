@@ -97,7 +97,7 @@ Application Patternについては、`browse`を受け止めるmodel / Parser / 
 次はProduct Visionに含まれますが、現時点で完成済みとは主張しません。
 
 - production-ready GUI Editor / Wails application
-- Application Patternの5種類を`order_entry`で一続きに扱うReference（`browse`基盤は部分実装済み）
+- 5種類のApplication Patternを`order_entry`で一続きに扱うReference（`browse`基盤は部分実装済み）
 - Application設計を通しで実行するDriver
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
