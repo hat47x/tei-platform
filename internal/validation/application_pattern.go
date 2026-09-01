@@ -12,6 +12,12 @@ type applicationPatternQueryRef struct {
 	Datasource  core.LocalName
 }
 
+// ValidateApplicationPatternsは、Application Patternが参照する既存資産との整合性を検査する。
+// Pattern単体の構文検査とは分け、Workspace全体を読み込んだ後に他のValidationと合成できる形で提供する。
+func ValidateApplicationPatterns(w ir.World) []Diagnostic {
+	return validateApplicationPatterns(w)
+}
+
 // validateApplicationPatternsは、Pattern単体の構文だけでは判断できない
 // Workspace全体の参照整合性を検査する。Patternには参照先の定義内容を複製せず、
 // Canonical IDで既存資産へ接続するという境界をここで守る。
