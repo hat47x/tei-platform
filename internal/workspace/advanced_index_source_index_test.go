@@ -1,9 +1,12 @@
 package workspace_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/sourceindex"
+	"tei/internal/subject"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -73,5 +76,51 @@ func TestWorkspaceLoadsAdvancedIndexAndIndexesNestedDeclaration(t *testing.T) {
 		if got := string(content[rng.Start.Offset:rng.End.Offset]); got != name {
 			t.Fatalf("anchor for %s=%q range=%+v", name, got, rng)
 		}
+	}
+
+	advancedSubject := subject.Subject{Kind: "persistence-index", ID: "sales_core.customer/customers_name_advanced_idx"}
+	projected := workspace.ProjectDiagnostics([]validation.Diagnostic{{
+		Code:     "ADVANCED_INDEX_TEST",
+		Severity: validation.Error,
+		Message:  "advanced index diagnostic",
+		Subject:  &advancedSubject,
+	}}, idx)
+	if len(projected) != 1 || len(projected[0].Sources) != 1 {
+		t.Fatalf("projected=%#v", projected)
+	}
+	projectedRange := projected[0].Sources[0].Range
+	if got := string(content[projectedRange.Start.Offset:projectedRange.End.Offset]); got != "customers_name_advanced_idx" {
+		t.Fatalf("projected source=%q range=%+v", got, projectedRange)
+	}
+}
+
+func TestSourceIndexRejectsDuplicatePersistenceIndexIdentity(t *testing.T) {
+	root := t.TempDir()
+	writeSource(t, root, "tei.workspace.yaml", []byte("workspace: advanced_index_duplicate_test\nsources:\n  - databases\n"))
+	writeSource(t, root, "databases/sales-core/database.tei", []byte(`database sales_core {
+    kind relational
+    ownership managed-here
+}
+`))
+	writeSource(t, root, "databases/sales-core/persistence/customer.tei", []byte(`persist sales_core.customer {
+    database sales_core
+    semantic customer.customer
+    table public.customers
+    column customer.name -> name storage varchar required
+
+    index customers_name_idx on customer.name
+    index customers_name_idx {
+        key attribute customer.name
+    }
+}
+`))
+
+	result, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = workspace.BuildSourceIndex(root, result)
+	if err == nil || !strings.Contains(err.Error(), "duplicate index name") {
+		t.Fatalf("err=%v", err)
 	}
 }
