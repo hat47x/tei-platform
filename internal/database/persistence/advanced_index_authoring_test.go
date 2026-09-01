@@ -168,6 +168,27 @@ func TestRealizeDesiredAdvancedIndexRejectsInvalidIntent(t *testing.T) {
 	}
 }
 
+func TestRealizeDesiredRejectsDuplicateIndexNames(t *testing.T) {
+	m := persistence.Mapping{
+		ID:           core.MustCanonicalID("sales_core.customer"),
+		Database:     core.MustCanonicalID("sales_core"),
+		SemanticData: core.MustCanonicalID("customer.customer"),
+		Table:        "public.customers",
+		Columns: []persistence.ColumnMapping{
+			{Attribute: core.MustCanonicalID("customer.name"), Column: "name", Storage: persistence.StorageVarchar, Nullability: persistence.Required},
+		},
+		Indexes: []persistence.IndexMapping{
+			{Name: "customers_name_idx", Attributes: []core.CanonicalID{core.MustCanonicalID("customer.name")}},
+			{Name: "customers_name_idx", Keys: []persistence.IndexKeyMapping{{Attribute: core.MustCanonicalID("customer.name")}}},
+		},
+	}
+
+	_, err := persistence.RealizeDesired([]persistence.Mapping{m}, "sales_core", environment.ProviderPostgres)
+	if err == nil || !strings.Contains(err.Error(), "declares duplicate index name") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestRealizeDesiredSimpleIndexCompatibility(t *testing.T) {
 	m := persistence.Mapping{
 		ID:           core.MustCanonicalID("sales_core.customer"),
