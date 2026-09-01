@@ -64,9 +64,18 @@ type Parameter struct {
 	Type core.CanonicalID `json:"type"`
 }
 
+// Outcomeは、Capabilityが正常に実行を完了した結果として得られる、
+// 名前付きの業務上の結末を表す。実行そのものを完了できなかった状態は
+// Outcomeではなく、Runtime / Driver側のExecution Errorとして扱う。
+type Outcome struct {
+	Name    core.LocalName   `json:"name"`
+	Payload core.CanonicalID `json:"payload"`
+}
+
 type Capability struct {
-	ID     core.CanonicalID `json:"id"`
-	Symbol string           `json:"symbol"`
-	Inputs []Parameter      `json:"inputs,omitempty"`
-	Output core.CanonicalID `json:"output,omitempty"`
+	ID       core.CanonicalID `json:"id"`
+	Symbol   string           `json:"symbol"`
+	Inputs   []Parameter      `json:"inputs,omitempty"`
+	Output   core.CanonicalID `json:"output,omitempty"`
+	Outcomes []Outcome        `json:"outcomes,omitempty"`
 }
