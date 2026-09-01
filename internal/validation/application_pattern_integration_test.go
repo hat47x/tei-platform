@@ -75,6 +75,15 @@ func TestValidateAcceptsRelationAndDatasourceReferencePattern(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsCapabilityOnlyCommandPattern(t *testing.T) {
+	diagnostics := Validate(validCommandPatternWorld())
+	for _, diagnostic := range diagnostics {
+		if isApplicationPatternDiagnostic(diagnostic.Code) {
+			t.Fatalf("Capabilityだけを持つ正常なcommand Patternに不要なDiagnosticが追加されました: %#v", diagnostic)
+		}
+	}
+}
+
 func TestValidateRejectsRecordQueryOnce(t *testing.T) {
 	w := validApplicationPatternWorld()
 	w.Applications[0].Patterns = []application.Pattern{{
@@ -137,9 +146,13 @@ func isApplicationPatternDiagnostic(code string) bool {
 		"UNKNOWN_APPLICATION_PATTERN_QUERY",
 		"APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH",
 		"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+		"APPLICATION_PATTERN_CAPABILITY_REQUIRED",
+		"UNKNOWN_APPLICATION_PATTERN_CAPABILITY",
+		"APPLICATION_PATTERN_CAPABILITY_NOT_ALLOWED",
 		"APPLICATION_PATTERN_DATASOURCE_REQUIRED",
 		"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
 		"APPLICATION_PATTERN_DATASOURCE_QUERY_MISMATCH",
+		"APPLICATION_PATTERN_DATASOURCE_NOT_READABLE",
 		"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED":
 		return true
 	default:

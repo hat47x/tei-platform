@@ -32,6 +32,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 
 	semanticData := map[core.CanonicalID]struct{}{}
 	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
+	semanticCapabilities := map[core.CanonicalID]struct{}{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
@@ -46,6 +47,14 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 					Target: relation.Target,
 				}
 			}
+		}
+		for _, capability := range ns.Capabilities {
+			if _, exists := semanticCapabilities[capability.ID]; exists {
+				// Capability自身の重複は既存Semantic Validationが報告する。
+				// Pattern側では存在確認だけを行い、同じ原因のDiagnosticを増やさない。
+				continue
+			}
+			semanticCapabilities[capability.ID] = struct{}{}
 		}
 	}
 
@@ -98,6 +107,8 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				out = append(out, validateRecordPattern(pattern, patternSubject, semanticData)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
+			case application.PatternCommand:
+				out = append(out, validateCommandPattern(pattern, patternSubject, semanticCapabilities)...)
 			}
 		}
 	}
@@ -136,6 +147,14 @@ func validateBrowsePattern(
 			patternSubject,
 			"APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
 			"browse pattern %s does not accept a relation",
+			pattern.ID,
+		))
+	}
+	if pattern.Capability != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_CAPABILITY_NOT_ALLOWED",
+			"browse pattern %s does not accept a capability",
 			pattern.ID,
 		))
 	}
@@ -239,6 +258,14 @@ func validateRecordPattern(
 			pattern.ID,
 		))
 	}
+	if pattern.Capability != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_CAPABILITY_NOT_ALLOWED",
+			"record pattern %s does not accept a capability",
+			pattern.ID,
+		))
+	}
 	if pattern.Datasource != "" {
 		out = append(out, errFor(
 			patternSubject,
@@ -316,6 +343,74 @@ func validateReferencePattern(
 			patternSubject,
 			"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
 			"reference pattern %s does not accept a query",
+			pattern.ID,
+		))
+	}
+	if pattern.Capability != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_CAPABILITY_NOT_ALLOWED",
+			"reference pattern %s does not accept a capability",
+			pattern.ID,
+		))
+	}
+
+	return out
+}
+
+func validateCommandPattern(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticCapabilities map[core.CanonicalID]struct{},
+) []Diagnostic {
+	var out []Diagnostic
+
+	if pattern.Capability == "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_CAPABILITY_REQUIRED",
+			"command pattern %s requires a semantic capability",
+			pattern.ID,
+		))
+	} else if _, ok := semanticCapabilities[pattern.Capability]; !ok {
+		out = append(out, errFor(
+			patternSubject,
+			"UNKNOWN_APPLICATION_PATTERN_CAPABILITY",
+			"command pattern %s refers to unknown semantic capability %s",
+			pattern.ID,
+			pattern.Capability,
+		))
+	}
+
+	if pattern.Data != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATA_NOT_ALLOWED",
+			"command pattern %s does not accept semantic data because the capability already declares its inputs and result contract",
+			pattern.ID,
+		))
+	}
+	if pattern.Relation != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_RELATION_NOT_ALLOWED",
+			"command pattern %s does not accept a relation",
+			pattern.ID,
+		))
+	}
+	if pattern.Query != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_QUERY_NOT_ALLOWED",
+			"command pattern %s does not accept a query",
+			pattern.ID,
+		))
+	}
+	if pattern.Datasource != "" {
+		out = append(out, errFor(
+			patternSubject,
+			"APPLICATION_PATTERN_DATASOURCE_NOT_ALLOWED",
+			"command pattern %s does not accept a datasource because implementation resources remain outside the Application Pattern contract",
 			pattern.ID,
 		))
 	}
