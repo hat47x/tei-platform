@@ -38,9 +38,37 @@ type Change struct {
 	Index            *physical.Index            `json:"index,omitempty"`
 }
 
+type UnresolvedKind string
+
+const (
+	UnresolvedProviderExpression UnresolvedKind = "provider-expression"
+)
+
+type UnresolvedReason string
+
+const (
+	UnresolvedNormalizationRequired UnresolvedReason = "normalization-required"
+)
+
+// UnresolvedComparison records a comparison that cannot safely be reduced to
+// either equality or a structural Change with the information currently
+// available. It is deliberately separate from Change because comparison
+// uncertainty is not a migration operation.
+type UnresolvedComparison struct {
+	Kind              UnresolvedKind               `json:"kind"`
+	Table             string                       `json:"table"`
+	ObjectKind        string                       `json:"objectKind"`
+	ObjectName        string                       `json:"objectName"`
+	FieldPath         string                       `json:"fieldPath"`
+	Reason            UnresolvedReason             `json:"reason"`
+	DesiredExpression *physical.ProviderExpression `json:"desiredExpression,omitempty"`
+	ActualExpression  *physical.ProviderExpression `json:"actualExpression,omitempty"`
+}
+
 type Diff struct {
-	Database string   `json:"database"`
-	Changes  []Change `json:"changes,omitempty"`
+	Database   string                 `json:"database"`
+	Changes    []Change               `json:"changes,omitempty"`
+	Unresolved []UnresolvedComparison `json:"unresolved,omitempty"`
 }
 
 func Compare(desired, actual physical.SchemaSnapshot) (Diff, error) {
@@ -88,14 +116,17 @@ func Compare(desired, actual physical.SchemaSnapshot) (Diff, error) {
 		case !dok && aok:
 			d.Changes = append(d.Changes, Change{Kind: DropTable, Table: n})
 		case dok && aok:
-			d.Changes = append(d.Changes, diffTable(n, dt, at)...)
+			changes, unresolved := diffTable(n, dt, at)
+			d.Changes = append(d.Changes, changes...)
+			d.Unresolved = append(d.Unresolved, unresolved...)
 		}
 	}
 	return d, nil
 }
 
-func diffTable(name string, desired, actual physical.Table) []Change {
+func diffTable(name string, desired, actual physical.Table) ([]Change, []UnresolvedComparison) {
 	var out []Change
+	var unresolved []UnresolvedComparison
 	dc, ac := colMap(desired), colMap(actual)
 	var names []string
 	seen := map[string]struct{}{}
@@ -148,19 +179,33 @@ func diffTable(name string, desired, actual physical.Table) []Change {
 		if dok && !aok {
 			ii := d
 			out = append(out, Change{Kind: AddIndex, Table: name, Index: &ii})
-		} else if !dok && aok {
+			continue
+		}
+		if !dok && aok {
 			ii := a
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &ii})
-		} else if dok && aok && !sameIndexStructure(d, a) {
+			continue
+		}
+		if !dok || !aok {
+			continue
+		}
+
+		comparison := compareIndexStructure(name, n, d, a)
+		if comparison.status == indexStructureDifferent {
 			old := a
 			newi := d
 			out = append(out, Change{Kind: DropIndex, Table: name, Index: &old}, Change{Kind: AddIndex, Table: name, Index: &newi})
-		} else if dok && aok && a.State != nil && !a.State.Usable() {
+			continue
+		}
+		if comparison.status == indexStructureUnresolved {
+			unresolved = append(unresolved, comparison.unresolved...)
+		}
+		if a.State != nil && !a.State.Usable() {
 			observed := a
 			out = append(out, Change{Kind: IndexStateDrift, Table: name, Index: &observed})
 		}
 	}
-	return out
+	return out, unresolved
 }
 
 func diffUniqueConstraints(table string, desired, actual []physical.UniqueConstraint) []Change {
@@ -317,37 +362,86 @@ func sameStrings(a, b []string) bool {
 	return true
 }
 
-func sameIndexStructure(a, b physical.Index) bool {
-	if a.Unique != b.Unique || norm(a.Method) != norm(b.Method) || a.UniqueNullTreatment != b.UniqueNullTreatment {
-		return false
-	}
-	if !sameIndexKeys(a.Keys, b.Keys) || !sameStrings(a.IncludedColumns, b.IncludedColumns) {
-		return false
-	}
-	return sameProviderExpression(a.Predicate, b.Predicate)
+type indexStructureStatus int
+
+const (
+	indexStructureEqual indexStructureStatus = iota
+	indexStructureDifferent
+	indexStructureUnresolved
+)
+
+type indexStructureComparison struct {
+	status     indexStructureStatus
+	unresolved []UnresolvedComparison
 }
 
-func sameIndexKeys(a, b []physical.IndexKey) bool {
-	if len(a) != len(b) {
-		return false
+func compareIndexStructure(table, indexName string, desired, actual physical.Index) indexStructureComparison {
+	if desired.Unique != actual.Unique || norm(desired.Method) != norm(actual.Method) || desired.UniqueNullTreatment != actual.UniqueNullTreatment {
+		return indexStructureComparison{status: indexStructureDifferent}
 	}
-	for i := range a {
-		if norm(a[i].Column) != norm(b[i].Column) || !sameProviderExpression(a[i].Expression, b[i].Expression) {
-			return false
+	if len(desired.Keys) != len(actual.Keys) || !sameStrings(desired.IncludedColumns, actual.IncludedColumns) {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+
+	var unresolved []UnresolvedComparison
+	for i := range desired.Keys {
+		dk, ak := desired.Keys[i], actual.Keys[i]
+		if norm(dk.Column) != norm(ak.Column) {
+			return indexStructureComparison{status: indexStructureDifferent}
 		}
-		if strings.TrimSpace(a[i].Collation) != strings.TrimSpace(b[i].Collation) || strings.TrimSpace(a[i].OperatorClass) != strings.TrimSpace(b[i].OperatorClass) {
-			return false
+		if strings.TrimSpace(dk.Collation) != strings.TrimSpace(ak.Collation) || strings.TrimSpace(dk.OperatorClass) != strings.TrimSpace(ak.OperatorClass) {
+			return indexStructureComparison{status: indexStructureDifferent}
 		}
-		if a[i].Order != b[i].Order || a[i].NullsOrder != b[i].NullsOrder {
-			return false
+		if dk.Order != ak.Order || dk.NullsOrder != ak.NullsOrder {
+			return indexStructureComparison{status: indexStructureDifferent}
+		}
+		expression := compareProviderExpression(table, indexName, fmt.Sprintf("index.keys[%d].expression", i), dk.Expression, ak.Expression)
+		if expression.status == indexStructureDifferent {
+			return indexStructureComparison{status: indexStructureDifferent}
+		}
+		if expression.status == indexStructureUnresolved {
+			unresolved = append(unresolved, expression.unresolved...)
 		}
 	}
-	return true
+
+	predicate := compareProviderExpression(table, indexName, "index.predicate", desired.Predicate, actual.Predicate)
+	if predicate.status == indexStructureDifferent {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+	if predicate.status == indexStructureUnresolved {
+		unresolved = append(unresolved, predicate.unresolved...)
+	}
+	if len(unresolved) > 0 {
+		return indexStructureComparison{status: indexStructureUnresolved, unresolved: unresolved}
+	}
+	return indexStructureComparison{status: indexStructureEqual}
 }
 
-func sameProviderExpression(a, b *physical.ProviderExpression) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
+func compareProviderExpression(table, indexName, fieldPath string, desired, actual *physical.ProviderExpression) indexStructureComparison {
+	if desired == nil || actual == nil {
+		if desired == nil && actual == nil {
+			return indexStructureComparison{status: indexStructureEqual}
+		}
+		return indexStructureComparison{status: indexStructureDifferent}
 	}
-	return norm(a.Provider) == norm(b.Provider) && norm(a.Dialect) == norm(b.Dialect) && strings.TrimSpace(a.Source) == strings.TrimSpace(b.Source)
+	if norm(desired.Provider) != norm(actual.Provider) || norm(desired.Dialect) != norm(actual.Dialect) {
+		return indexStructureComparison{status: indexStructureDifferent}
+	}
+	if strings.TrimSpace(desired.Source) == strings.TrimSpace(actual.Source) {
+		return indexStructureComparison{status: indexStructureEqual}
+	}
+	desiredCopy, actualCopy := *desired, *actual
+	return indexStructureComparison{
+		status: indexStructureUnresolved,
+		unresolved: []UnresolvedComparison{{
+			Kind:              UnresolvedProviderExpression,
+			Table:             table,
+			ObjectKind:        "index",
+			ObjectName:        indexName,
+			FieldPath:         fieldPath,
+			Reason:            UnresolvedNormalizationRequired,
+			DesiredExpression: &desiredCopy,
+			ActualExpression:  &actualCopy,
+		}},
+	}
 }
