@@ -461,6 +461,11 @@
           "kind": "browse",
           "data": "sales.order",
           "query": "order_entry.recent_orders"
+        },
+        {
+          "id": "order_entry.submit_order",
+          "kind": "command",
+          "capability": "sales.order.submit"
         }
       ]
     }
