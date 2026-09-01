@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
@@ -34,7 +33,7 @@ func TestReferenceCommandPatternUsesCapabilityContractWithoutDuplicatingIt(t *te
 	}
 
 	pattern := applicationPatternByID(t, app.Patterns, patternID)
-	if pattern.Kind != application.PatternCommand || pattern.Capability != "sales.order.submit" {
+	if pattern.Kind != "command" || pattern.Capability != "sales.order.submit" {
 		t.Fatalf("command Patternの意味が期待値と異なります: %#v", pattern)
 	}
 	if pattern.Data != "" || pattern.Relation != "" || pattern.Query != "" || pattern.Datasource != "" {
@@ -77,5 +76,3 @@ func semanticCapabilityByID(t *testing.T, namespaces []semantic.Namespace, id co
 	t.Fatalf("Semantic Capability %sが見つかりません", id)
 	return semantic.Capability{}
 }
-
-var _ = application.Pattern{}
