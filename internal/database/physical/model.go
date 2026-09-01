@@ -60,11 +60,76 @@ type ForeignKey struct {
 	ReferencedColumns []string `json:"referencedColumns"`
 }
 
+type IndexOrder string
+
+const (
+	IndexOrderDefault IndexOrder = "default"
+	IndexOrderAsc     IndexOrder = "asc"
+	IndexOrderDesc    IndexOrder = "desc"
+)
+
+type IndexNullsOrder string
+
+const (
+	IndexNullsOrderDefault IndexNullsOrder = "default"
+	IndexNullsOrderFirst   IndexNullsOrder = "first"
+	IndexNullsOrderLast    IndexNullsOrder = "last"
+)
+
+type UniqueNullTreatment string
+
+const (
+	UniqueNullTreatmentDistinct    UniqueNullTreatment = "distinct"
+	UniqueNullTreatmentNotDistinct UniqueNullTreatment = "not-distinct"
+)
+
+// ProviderExpression keeps database-owned SQL semantics outside the Core SQL
+// model. Source must already be normalized by the provider adapter. Provider
+// and Dialect prevent equal text from being assumed equivalent across DBMSs.
+type ProviderExpression struct {
+	Provider string `json:"provider"`
+	Dialect  string `json:"dialect,omitempty"`
+	Source   string `json:"source"`
+}
+
+// IndexKey is one ordered search key. Exactly one of Column or Expression must
+// be populated by producers. Per-key options describe effective physical
+// behavior after provider-side default normalization.
+type IndexKey struct {
+	Column        string              `json:"column,omitempty"`
+	Expression    *ProviderExpression `json:"expression,omitempty"`
+	Collation     string              `json:"collation,omitempty"`
+	OperatorClass string              `json:"operatorClass,omitempty"`
+	Order         IndexOrder          `json:"order"`
+	NullsOrder    IndexNullsOrder     `json:"nullsOrder"`
+}
+
+// IndexState is actual observation only. Desired Physical Schema does not ask
+// for an invalid, non-ready or non-live index.
+type IndexState struct {
+	Valid bool `json:"valid"`
+	Ready bool `json:"ready"`
+	Live  bool `json:"live"`
+}
+
+func (s IndexState) Usable() bool { return s.Valid && s.Ready && s.Live }
+
+// Index records Database-owned access-path intent. Keys, include columns,
+// predicate and uniqueness semantics are structural; State is actual lifecycle
+// observation and is intentionally excluded from structural comparison.
 type Index struct {
-	Name    string   `json:"name"`
-	Columns []string `json:"columns,omitempty"`
-	Unique  bool     `json:"unique,omitempty"`
-	Method  string   `json:"method,omitempty"`
+	Name                string              `json:"name"`
+	Keys                []IndexKey          `json:"keys,omitempty"`
+	IncludedColumns     []string            `json:"includedColumns,omitempty"`
+	Predicate           *ProviderExpression `json:"predicate,omitempty"`
+	Unique              bool                `json:"unique,omitempty"`
+	UniqueNullTreatment UniqueNullTreatment `json:"uniqueNullTreatment,omitempty"`
+	Method              string              `json:"method,omitempty"`
+	State               *IndexState         `json:"state,omitempty"`
+}
+
+func ColumnIndexKey(column string) IndexKey {
+	return IndexKey{Column: column, Order: IndexOrderDefault, NullsOrder: IndexNullsOrderDefault}
 }
 
 func (t Table) QualifiedName() string {
@@ -144,7 +209,11 @@ func (s SchemaSnapshot) Normalize() SchemaSnapshot {
 			return normalizeName(t.ForeignKeys[i].Name) < normalizeName(t.ForeignKeys[j].Name)
 		})
 		t.Indexes = append([]Index(nil), t.Indexes...)
-		sort.Slice(t.Indexes, func(i, j int) bool { return t.Indexes[i].Name < t.Indexes[j].Name })
+		for j := range t.Indexes {
+			t.Indexes[j].Keys = append([]IndexKey(nil), t.Indexes[j].Keys...)
+			t.Indexes[j].IncludedColumns = append([]string(nil), t.Indexes[j].IncludedColumns...)
+		}
+		sort.Slice(t.Indexes, func(i, j int) bool { return normalizeName(t.Indexes[i].Name) < normalizeName(t.Indexes[j].Name) })
 	}
 	return out
 }

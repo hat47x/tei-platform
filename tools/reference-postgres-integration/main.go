@@ -30,6 +30,12 @@ type result struct {
 	UniqueConstraintDrift           bool            `json:"uniqueConstraintDriftDetected"`
 	UniqueBackingIndexExcluded      bool            `json:"uniqueBackingIndexExcluded"`
 	ExplicitUniqueIndexObserved     bool            `json:"explicitUniqueIndexObserved"`
+	AdvancedPartialIndexObserved    bool            `json:"advancedPartialIndexObserved"`
+	ExpressionIndexObserved         bool            `json:"expressionIndexObserved"`
+	IncludeIndexObserved            bool            `json:"includeIndexObserved"`
+	PerKeyOptionsObserved           bool            `json:"perKeyOptionsObserved"`
+	UniqueNullTreatmentObserved     bool            `json:"uniqueNullTreatmentObserved"`
+	InvalidNonReadyIndexObserved    bool            `json:"invalidNonReadyIndexObserved"`
 	ForeignKeys                     int             `json:"foreignKeys"`
 	ForeignKeyDrift                 bool            `json:"foreignKeyDriftDetected"`
 	ViewColumnsObserved             bool            `json:"viewColumnsObserved"`
@@ -57,6 +63,9 @@ func main() {
 	if err := prepareFixture(ctx, db); err != nil {
 		panic(err)
 	}
+	if err := createFailedConcurrentIndex(ctx, db); err != nil {
+		panic(err)
+	}
 
 	mappings := referenceMappings()
 	desired, err := persistence.RealizeDesired(mappings, databaseID, environment.ProviderPostgres)
@@ -70,7 +79,7 @@ func main() {
 	}
 	p := postgres.Provider{
 		Catalog: postgres.SQLCatalogReader{DB: db},
-		Now:     func() time.Time { return time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC) },
+		Now:     func() time.Time { return time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC) },
 	}
 
 	observedRelations, err := dbprovider.Introspect(ctx, p, instance)
@@ -83,9 +92,24 @@ func main() {
 		raw, _ := json.MarshalIndent(observedRelations, "", "  ")
 		panic(fmt.Errorf("reference PostgreSQL did not expose expected view/materialized-view columns:\n%s", raw))
 	}
+
+	advancedPartialIndexObserved, includeIndexObserved, perKeyOptionsObserved := inspectAdvancedColumnIndex(observedRelations)
+	expressionIndexObserved := inspectExpressionIndex(observedRelations)
+	uniqueNullTreatmentObserved := inspectUniqueNullTreatment(observedRelations)
+	invalidNonReadyIndexObserved := inspectInvalidNonReadyIndex(observedRelations)
+	if !advancedPartialIndexObserved || !includeIndexObserved || !perKeyOptionsObserved || !expressionIndexObserved || !uniqueNullTreatmentObserved || !invalidNonReadyIndexObserved {
+		raw, _ := json.MarshalIndent(observedRelations, "", "  ")
+		panic(fmt.Errorf("reference PostgreSQL did not expose expected advanced index semantics:\n%s", raw))
+	}
+
 	if _, err := db.ExecContext(ctx, `
 DROP VIEW tei_reference.customer_names_v;
 DROP MATERIALIZED VIEW tei_reference.customer_names_mv;
+DROP INDEX tei_reference.customers_name_advanced_idx;
+DROP INDEX tei_reference.customers_lower_name_expr_idx;
+DROP INDEX tei_reference.customers_name_nulls_nd_uidx;
+DROP TABLE tei_reference.index_state_probe;
+DROP FUNCTION tei_reference.fail_on_zero(bigint);
 `); err != nil {
 		panic(err)
 	}
@@ -111,7 +135,7 @@ DROP MATERIALIZED VIEW tei_reference.customer_names_mv;
 		raw, _ := json.MarshalIndent(actual, "", "  ")
 		panic(fmt.Errorf("UNIQUE constraint backing index was double-counted as a normal index:\n%s", raw))
 	}
-	explicitUniqueIndexObserved := hasIndex(actual, "tei_reference.customers", "customers_name_uidx", true, "name")
+	explicitUniqueIndexObserved := hasSimpleIndex(actual, "tei_reference.customers", "customers_name_uidx", true, "name")
 	if !explicitUniqueIndexObserved {
 		raw, _ := json.MarshalIndent(actual, "", "  ")
 		panic(fmt.Errorf("explicit unique index was not preserved as an index:\n%s", raw))
@@ -160,6 +184,12 @@ ALTER TABLE tei_reference.orders DROP CONSTRAINT orders_customer_fk;
 		UniqueConstraintDrift:           true,
 		UniqueBackingIndexExcluded:      uniqueBackingIndexExcluded,
 		ExplicitUniqueIndexObserved:     explicitUniqueIndexObserved,
+		AdvancedPartialIndexObserved:    advancedPartialIndexObserved,
+		ExpressionIndexObserved:         expressionIndexObserved,
+		IncludeIndexObserved:            includeIndexObserved,
+		PerKeyOptionsObserved:           perKeyOptionsObserved,
+		UniqueNullTreatmentObserved:     uniqueNullTreatmentObserved,
+		InvalidNonReadyIndexObserved:    invalidNonReadyIndexObserved,
 		ForeignKeys:                     foreignKeys,
 		ForeignKeyDrift:                 true,
 		ViewColumnsObserved:             viewColumnsObserved,
@@ -237,6 +267,15 @@ CREATE TABLE tei_reference.customers (
     CONSTRAINT customers_external_id_key UNIQUE (external_id)
 );
 CREATE UNIQUE INDEX customers_name_uidx ON tei_reference.customers USING btree (name);
+CREATE INDEX customers_name_advanced_idx
+    ON tei_reference.customers USING btree
+    (name COLLATE "C" varchar_pattern_ops DESC NULLS LAST)
+    INCLUDE (external_id)
+    WHERE profile IS NOT NULL;
+CREATE INDEX customers_lower_name_expr_idx
+    ON tei_reference.customers USING btree (lower(name));
+CREATE UNIQUE INDEX customers_name_nulls_nd_uidx
+    ON tei_reference.customers USING btree (name) NULLS NOT DISTINCT;
 CREATE TABLE tei_reference.orders (
     id bigint NOT NULL,
     customer_id bigint NOT NULL,
@@ -252,8 +291,69 @@ CREATE VIEW tei_reference.customer_names_v AS
     SELECT id, name FROM tei_reference.customers;
 CREATE MATERIALIZED VIEW tei_reference.customer_names_mv AS
     SELECT id, name FROM tei_reference.customers;
+CREATE FUNCTION tei_reference.fail_on_zero(value bigint)
+RETURNS bigint
+LANGUAGE SQL
+IMMUTABLE
+AS $$ SELECT 1 / value $$;
+CREATE TABLE tei_reference.index_state_probe (value bigint NOT NULL);
+INSERT INTO tei_reference.index_state_probe(value) VALUES (0);
 `)
 	return err
+}
+
+func createFailedConcurrentIndex(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
+CREATE INDEX CONCURRENTLY index_state_probe_idx
+ON tei_reference.index_state_probe (tei_reference.fail_on_zero(value))`)
+	if err == nil {
+		return fmt.Errorf("expected CREATE INDEX CONCURRENTLY state probe to fail")
+	}
+	return nil
+}
+
+func inspectAdvancedColumnIndex(snapshot physical.SchemaSnapshot) (partial, include, options bool) {
+	index, ok := findIndex(snapshot, "tei_reference.customers", "customers_name_advanced_idx")
+	if !ok || len(index.Keys) != 1 {
+		return false, false, false
+	}
+	key := index.Keys[0]
+	partial = index.Predicate != nil && index.Predicate.Provider == string(environment.ProviderPostgres) && index.Predicate.Dialect == "postgresql"
+	include = len(index.IncludedColumns) == 1 && index.IncludedColumns[0] == "external_id"
+	options = key.Column == "name" && key.Collation == "pg_catalog.C" && key.OperatorClass == "pg_catalog.varchar_pattern_ops" && key.Order == physical.IndexOrderDesc && key.NullsOrder == physical.IndexNullsOrderLast
+	return partial, include, options
+}
+
+func inspectExpressionIndex(snapshot physical.SchemaSnapshot) bool {
+	index, ok := findIndex(snapshot, "tei_reference.customers", "customers_lower_name_expr_idx")
+	if !ok || len(index.Keys) != 1 || index.Keys[0].Column != "" || index.Keys[0].Expression == nil {
+		return false
+	}
+	expr := index.Keys[0].Expression
+	return expr.Provider == string(environment.ProviderPostgres) && expr.Dialect == "postgresql" && expr.Source != ""
+}
+
+func inspectUniqueNullTreatment(snapshot physical.SchemaSnapshot) bool {
+	index, ok := findIndex(snapshot, "tei_reference.customers", "customers_name_nulls_nd_uidx")
+	return ok && index.Unique && index.UniqueNullTreatment == physical.UniqueNullTreatmentNotDistinct
+}
+
+func inspectInvalidNonReadyIndex(snapshot physical.SchemaSnapshot) bool {
+	index, ok := findIndex(snapshot, "tei_reference.index_state_probe", "index_state_probe_idx")
+	return ok && index.State != nil && !index.State.Valid && !index.State.Ready
+}
+
+func findIndex(snapshot physical.SchemaSnapshot, table, name string) (physical.Index, bool) {
+	t, ok := snapshot.Table(table)
+	if !ok {
+		return physical.Index{}, false
+	}
+	for _, index := range t.Indexes {
+		if index.Name == name {
+			return index, true
+		}
+	}
+	return physical.Index{}, false
 }
 
 func hasColumns(snapshot physical.SchemaSnapshot, table string, kind physical.TableKind, names ...string) bool {
@@ -283,29 +383,22 @@ func hasUniqueConstraint(snapshot physical.SchemaSnapshot, table string, columns
 }
 
 func hasIndexNamed(snapshot physical.SchemaSnapshot, table, name string) bool {
-	t, ok := snapshot.Table(table)
-	if !ok {
-		return false
-	}
-	for _, index := range t.Indexes {
-		if index.Name == name {
-			return true
-		}
-	}
-	return false
+	_, ok := findIndex(snapshot, table, name)
+	return ok
 }
 
-func hasIndex(snapshot physical.SchemaSnapshot, table, name string, unique bool, columns ...string) bool {
-	t, ok := snapshot.Table(table)
-	if !ok {
+func hasSimpleIndex(snapshot physical.SchemaSnapshot, table, name string, unique bool, columns ...string) bool {
+	index, ok := findIndex(snapshot, table, name)
+	if !ok || index.Unique != unique || len(index.Keys) != len(columns) {
 		return false
 	}
-	for _, index := range t.Indexes {
-		if index.Name == name && index.Unique == unique && sameStrings(index.Columns, columns) {
-			return true
+	for i, column := range columns {
+		key := index.Keys[i]
+		if key.Column != column || key.Expression != nil || key.Order != physical.IndexOrderDefault || key.NullsOrder != physical.IndexNullsOrderDefault {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func hasDropColumn(diff schemadiff.Diff, table, column string) bool {
