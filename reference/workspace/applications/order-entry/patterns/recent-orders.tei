@@ -1,0 +1,4 @@
+pattern order_entry.recent_orders browse {
+    data sales.order
+    query order_entry.recent_orders
+}
