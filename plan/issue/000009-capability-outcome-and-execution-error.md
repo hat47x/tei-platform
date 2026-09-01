@@ -1,19 +1,14 @@
-# ISSUE-000009: Capabilityの業務結果と実行エラーを分離する
+# ISSUE-000009: Capabilityの業務Outcomeと実行エラーを分離する
 
 - 状態: 着手可能
 - GitHub Issue: #77
+- 設計判断: ADR-0020
 
 ## 背景
 
 既存認証Compatibilityを具体化する中で、Authenticationに固有ではないCapability実行上の不足が見つかりました。
 
-現在のSemantic Capabilityは一つのoutput型を持ちます。一方、実際の業務処理では、少なくとも次の三つを区別したい場合があります。
-
-```text
-業務上の成功
-業務上の不成立・拒否
-実行そのものの失敗
-```
+現行Semantic Capabilityは一つの`output`型を持ちます。一方、実際の業務処理では、処理を正常に実行した結果として複数の業務上の結末があり得ます。
 
 Authenticationであれば、次の違いです。
 
@@ -23,128 +18,317 @@ Denied(reason)
 ExecutionError(error)
 ```
 
-credential不一致やaccount lockは、認証処理を正常に実行した結果としての拒否です。Database接続失敗やadapter異常とは意味が異なります。
+credentialの不一致やaccount lockは、認証処理を正常に実行した結果としての拒否です。Database接続失敗やadapter異常は、認証判断そのものを完了できなかった状態です。
 
-この区別は、受注確定、審査、在庫引当、外部申請等の業務Capabilityにも現れ得ます。Authenticationだけのために例外的な仕組みを作らず、Capability実行全体の境界として検討します。
+この境界はAuthenticationだけでなく、受注確定、審査、在庫引当、外部申請等のSemantic Capabilityにも現れます。
+
+ADR-0020では、業務上の分岐をSemantic Capabilityの**名前付きOutcome**として表し、Execution ErrorはInvocation境界へ残す方針を採用しました。
+
+詳細な実装前設計は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
 
 ## 関連するProduct Requirement
 
-- RQ-001 業務上の意味
-- RQ-008 Capability単位の置換
-- RQ-012 Driver
-- RQ-018 CommandとObservationの分離
-- RQ-021 Reference / Conformance
+- RQ-001 業務上の意味を実装技術から独立して保持する
+- RQ-008 Capability単位で実装を置き換える
+- RQ-009 既存認証・認可仕様を保持する
+- RQ-012 Driverで設計を実行・検証する
+- RQ-018 CommandとObservationを分離する
+- RQ-021 Reference / Conformanceで再現可能性を示す
 
-## 問題
+## 採用した境界
 
-### 業務上の不成立と実行エラーを同じerrorへ畳まない
+### 業務上の分岐は名前付きOutcomeにする
 
-業務上のdenialをGo errorやRuntime errorだけで表すと、DriverやTargetから見た意味が失われます。
+v1では一般的なsum typeをSemantic型体系へ追加せず、Capabilityに直接ぶら下がる名前付きOutcomeを導入します。
 
-逆に、実行エラーまで業務結果codeへ押し込むと、retry、障害解析、Observation等の扱いが曖昧になります。
-
-### 欠損をsentinel値だけで表さない
-
-たとえばAuthentication失敗時に、`subject_id = ""`だけで「subjectが存在しない」と表す設計は避けます。
-
-空文字が正規値なのか欠損なのかを型から判断できず、同じ規約が他Capabilityへ広がるためです。
-
-### 型体系を必要以上に広げない
-
-一方、Authentication一件のために一般的なsum type、例外体系、workflow result model等を一度に導入することも避けます。
-
-既存CapabilityとDriverで本当に必要な最小境界を確認します。
-
-## 比較する案
-
-### 案A — 業務上のoutcomeをSemantic outputとして表す
-
-業務上の成功・不成立をSemantic outputとして明示し、実行エラーはCapability invocation側で別に扱います。
-
-業務上の意味がCanonicalに見える利点がありますが、現行Semantic型にはoptional / variant表現がないため、型拡張の影響を見極める必要があります。
-
-### 案B — Capability invocation envelopeで分離する
-
-概念上、実行結果を次のようなenvelopeとして扱います。
+概念例:
 
 ```text
-InvocationResult
-├─ Outcome
-└─ ExecutionError
+capability security.authenticate {
+  input loginId std.identifier
+  input credential security.credential
+
+  outcome authenticated security.authenticated_subject
+  outcome denied security.authentication_denial
+}
 ```
 
-Outcomeの内部に業務上のsuccess / denialを持たせます。
+各OutcomeはCapability内で一意なlocal nameとpayload型を持ちます。
 
-複数Capabilityへ再利用しやすい反面、業務上のresultがSemantic Layerから見えにくくならないよう注意が必要です。
+Outcomeのidentityをfile pathや宣言順へ依存させません。
 
-### 案C — Semantic型へoptional / variantを最小追加する
+### payload型はv1では必須にする
 
-Semantic型体系に最小限の欠損・分岐表現を追加します。
+現在のParserは改行を構文上の意味境界として利用していません。また、現行`std.*`には`unit`型がありません。
 
-表現力は高まりますが、影響範囲が広いため、最初から採用する前提にはしません。
+そのため、v1では次のようなpayload省略構文を導入しません。
 
-## 検証方法
+```text
+outcome accepted
+```
 
-最初はAuthenticationを具体例として使います。
+各Outcomeに明示的なpayload型を要求し、必要性が確認できてから`std.unit`やoptionalな構文を別途検討します。
 
-少なくとも次を同じ呼び出し境界から区別します。
+### 既存`output`を維持する
 
-1. 認証成功
-2. credential不一致
-3. account disabled / locked等の業務上の拒否
-4. 実装側の接続失敗
+一つの通常resultだけを返す既存Capabilityは、従来どおり`output`を利用できます。
 
-次に、Authentication以外のCapabilityでも同じ境界が自然に使えるかを確認します。候補として`sales.order.submit`を利用できます。
+```text
+capability sales.order.submit {
+  input order sales.order
+  output sales.order
+}
+```
+
+`output`と名前付き`outcome`を同一Capabilityで併用することは認めません。
+
+また、既存`output`へ暗黙の`success`や`completed`というOutcome名を付与しません。
+
+### Execution ErrorはInvocation境界に残す
+
+次はSemantic Outcomeではありません。
+
+- Database接続失敗
+- process起動失敗
+- Resource Lease取得失敗
+- adapter異常
+- response identity不一致
+- 未定義Outcomeを返す等のCapability契約違反
+
+Go境界では通常の`error`を利用できます。Plugin Runtimeでは`ResponseError`またはGo `error`をExecution Errorとして扱います。
+
+業務上の`denied`や`rejected`を`ResponseError`へ変換しません。
+
+## 現行実装との接続
+
+### Semantic model
+
+`semantic.Capability`へ`Outcomes`を追加し、Outcomeは概念上次を持ちます。
+
+```text
+Outcome
+- Name
+- Payload type
+```
+
+既存`Output`は残します。
+
+### Parser
+
+Capability本文へ次を追加します。
+
+```text
+outcome <local-name> <payload-type>
+```
+
+Parser / Validationでは少なくとも次を拒否します。
+
+- `output`と`outcome`の併用
+- Outcome名の重複
+- 不正なlocal name
+- 解決できないpayload型
+
+### Plugin Runtime
+
+現行Plugin Runtimeには`ok / error`とGo `error`が既にあります。
+
+Semantic Capabilityをprocess Plugin等で実現する場合は、概念上次へMappingします。
+
+```text
+ResponseOK + Business Result payload
+    → Semantic Output / Outcome
+
+ResponseError / Go error
+    → Execution Error
+```
+
+credential不一致等の正常な拒否は`ResponseOK`側で`denied` Outcomeとして返します。
+
+## Authentication Reference
+
+最初の具体例として`security.authenticate`を利用します。
+
+少なくとも次をReferenceから区別できるようにします。
+
+1. 正しいcredential → `authenticated`
+2. credential不一致 → `denied`
+3. account disabled / locked → `denied`
+4. Database / adapter障害 → Execution Error
+
+2と3はDriver Scenarioの実行障害ではありません。
+
+Outcome payloadやScenario Evidenceへpassword平文、token等のsecretを保存しません。
+
+## Authentication以外の圧力試験
+
+Authenticationだけに都合のよい抽象になっていないことを確認するため、`sales.order.submit`等の別Capabilityでも検証します。
+
+ただし、現行`sales.order.submit`の`output sales.order`を最初から書き換えません。
+
+まず小さいfixtureで、Commandを正常に実行して初めて分かる業務上の不成立が本当に存在するか確認します。
+
+候補は、競合状態、既確定、外部受付側の業務拒否等です。
+
+ValidationやAuthorizationで事前に判定できる不成立を、Command Outcomeへ重複させません。
+
+名前付きOutcomeが不自然であれば、Authentication向けに抽象を寄せ過ぎていないか設計を見直します。
 
 ## Driverへの引き継ぎ
 
-Driverでは、業務上のdenialと実行障害を異なる意味として扱える必要があります。
+Driverでは少なくとも次を別のEvidenceとして扱います。
 
-- denial: Scenarioの正常な結果として記録できる
-- execution error: Scenarioを実行できなかった障害として扱う
+```text
+Validation result
+Authorization result
+Business Result
+  - output / named outcome
+Execution Error
+Command acknowledgement
+Observed result
+```
 
-副作用を持つCapabilityでは、execution errorが返ったという理由だけで自動retryしてはいけません。retry可否は、実行の冪等性や外部状態の観測結果と合わせて判断します。
+期待した`denied`や`rejected`が返るScenarioは正常終了できます。
 
-## Observationとの関係
+Execution ErrorはScenarioを完了できなかった状態として扱います。
 
-Capability invocationが成功しても、外部状態の最終確定を意味しない処理があります。
+副作用を持つCapabilityでExecution Errorが返った場合、外部状態を確認せず自動retryしません。必要な場合はRQ-018 / RQ-020のObservation、unknown、takeover等の既存境界を利用します。
 
-このIssueはRQ-018のCommand / Observation分離を置き換えません。扱うのは、**一回のCapability invocationが何を返したか**の意味境界です。
+## 第一Web Targetへの引き継ぎ
 
-外部世界で実際に何が成立したかを確かめるObservationは、必要な処理では別に残します。
+Web TargetはOutcomeをHTTP statusや利用者向けmessageへProjectionできます。
+
+ただし、Web固有表現をSemantic Outcomeの定義にはしません。
+
+また、次を一つの「エラー」へ無条件に統合しません。
+
+- Validationの不成立
+- Authorization denial
+- CapabilityのBusiness Outcome
+- Execution Error
+- Observationで確認した状態
+- developer向けDiagnostic
 
 ## 実装順
 
-1. Authenticationのsuccess / denial / execution errorをReferenceで具体化する
-2. 案A〜Cを最小実装で比較する
-3. Driverから結果categoryを区別できることを確認する
-4. `sales.order.submit`等の別Capabilityへ適用する
-5. 不自然なAuthentication専用抽象がないか監査する
-6. Conformanceで境界を固定する
+### Step 1 — Semantic model
+
+- Outcome modelを追加する
+- Capabilityに`Outcomes`を追加する
+- 既存`Output`を維持する
+- Outcomeの安定したNormalization順を定める
+
+### Step 2 — Parser / Validation
+
+- `outcome <name> <payload-type>`を追加する
+- `output`と`outcome`の併用を拒否する
+- Outcome名重複を拒否する
+- payload型を検証する
+- parse / validation errorをsourceへ戻せるようにする
+
+### Step 3 — 最小fixtureと互換性確認
+
+- named Outcomeを持つ小さいCapabilityを追加する
+- 既存`output` CapabilityのCanonical表現が不用意に変わらないことを確認する
+- Outcome declarationの並べ替えでnormalized meaningが変わらないことを確認する
+- source file renameでOutcome identityが変わらないことを確認する
+
+### Step 4 — Authentication Reference
+
+- `security.authenticate`へ`authenticated` / `denied`を追加する
+- legacy認証fixtureと接続する
+- denialとExecution Errorを別経路で再現する
+- secret非混入を検証する
+
+### Step 5 — Invocation adapter
+
+- Business Resultの最小表現を定める
+- Custom Go / process等からOutcomeへMappingする
+- unknown Outcomeやpayload不一致を契約違反として扱う
+- Runtime errorをBusiness Outcomeへ変換しない
+
+### Step 6 — Driver
+
+- expected OutcomeをScenarioから確認できるようにする
+- denial / rejectionをDriver障害にしない
+- Execution Errorを別に記録する
+- Command / Observation境界を維持する
+
+### Step 7 — 別Capabilityで圧力試験
+
+- `sales.order.submit`等で同じ境界を検証する
+- Authentication固有の概念が混入していないか監査する
+- 必要ならOutcome modelを修正する
+
+### Step 8 — Web Projection
+
+- Business Outcome / Execution Error / Observationを別のPresentationへ写す
+- Web固有statusをCanonicalへ逆流させない
+- 第二Targetへ比較可能なEvidenceを残す
+
+## Conformance
+
+少なくとも次を自動検証します。
+
+### Semantic / Parser
+
+- 既存`output` Capabilityを従来どおりparseできる
+- named Outcomeをparseできる
+- `output` + `outcome`を拒否する
+- 重複Outcome名を拒否する
+- 不正payload型を拒否する
+- Outcome declaration順だけでnormalized meaningが変わらない
+- source file renameだけでOutcome identityが変わらない
+
+### Invocation
+
+- 定義済みOutcomeを正常に返せる
+- 未定義Outcomeを契約違反として扱う
+- payload不一致をExecution Errorとして扱う
+- Business ResultとExecution Errorを同時に成立させない
+- Plugin Runtime `ResponseError`をSemantic denialへ変換しない
+
+### Reference / Driver
+
+- valid credential → `authenticated`
+- credential mismatch → `denied`
+- locked / disabled → `denied`
+- adapter / Database failure → Execution Error
+- expected denial Scenarioを正常なScenarioとして扱える
+- secretがCanonical World / Source Index / Scenario Evidenceへ混入しない
+- Business OutcomeとObservationを区別できる
 
 ## 非目標
 
-- 一般的な例外処理言語の設計
-- workflow engineの結果model
-- あらゆる非同期処理の統一
-- HTTP status codeとの一対一対応
-- Authentication専用の場当たり的error規約
-- RQ-018のObservationをCapability resultへ統合すること
+- 一般的なvariant / union type
+- optional type
+- `std.unit`
+- Outcome payloadの省略構文
+- Outcomeのglobal Canonical ID
+- 一般的なExecution Error taxonomy
+- workflow engine全体のresult model
+- HTTP / gRPC statusとの標準対応
+- RQ-018のObservationをBusiness Resultへ統合すること
 
 ## 完了条件
 
-次を説明できる小さな契約とReferenceが成立することを完了条件とします。
+次をRepository上のReference / Conformanceから説明できることを完了条件とします。
 
-- 業務上の成功と不成立を区別できる
-- 業務上の不成立と実行エラーを区別できる
-- 欠損を空文字等のsentinelだけに依存させない
-- Driverから各結果を意味の違いとして扱える
-- RQ-018のObservation境界と混同しない
-- Authentication以外のCapabilityにも無理なく適用できる
+- 業務上の複数の結末をSemantic Capabilityの名前付きOutcomeとして表せる
+- 既存の単一`output` Capabilityを不用意に壊さない
+- 業務OutcomeとExecution Errorを区別できる
+- Authenticationのdenialを正常な業務結果として扱える
+- Authenticationの実行障害をdenialへ変換しない
+- DriverからOutcomeをScenario Evidenceとして扱える
+- Authentication以外のCapabilityにも同じ境界を無理なく適用できる
+- Target固有表現をSemantic Outcomeへ逆流させない
+- Command / Observation境界を維持できる
 
 ## 関連文書
 
+- `plan/adr/0020-capability-business-outcome-boundary.md`
+- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
-- `requirements/TEI_PRODUCT_REQUIREMENTS.md` RQ-012、RQ-018、RQ-021
+- `plan/issue/000007-first-web-target-projection.md`
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md` RQ-001、RQ-008、RQ-009、RQ-012、RQ-018、RQ-021
