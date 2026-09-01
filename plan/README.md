@@ -10,6 +10,8 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
+- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの最初の実装境界、正本、Source Index、段階的な実証順
+- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持したCompatibility Referenceの意味境界と実装順
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
@@ -33,6 +35,8 @@ Editor / AI支援
 
 [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることなどをEvidence Gateとして定めています。
 
+Gate Aへ向けて、Application Patternと既存認証Compatibilityを並行して具体化します。前者は「Applicationが何を扱い、どのQueryやCapabilityを利用するか」を、後者は「誰が何を実行できるか」を受け持ちます。どちらもWebやEditorの都合へ寄せず、Driverへ渡せるApplication上の意味として検証します。
+
 このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
 
 ## ADR
@@ -49,7 +53,12 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 
 既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
 
-現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017として`plan/adr/`に置いています。
+現在の主な上位判断は次のとおりです。
+
+- ADR-0016: 上位文書と計画文書の権威関係
+- ADR-0017: Application PatternをApplicationが所有する意味として検証する
+- ADR-0018: Application Patternの正本をApplication配下の独立した定義ファイルに置く
+- ADR-0019: Authentication / AuthorizationをSemantic Capabilityとして既存仕様へ接続する
 
 ## Issue文書
 
