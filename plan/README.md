@@ -10,7 +10,7 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
-- [`adr/`](adr/): 長く残す設計判断
+- [`adr/`](adr/README.md): 長く残す設計判断の正本
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
 ## 現在のv1主線
@@ -37,19 +37,19 @@ Editor / AI支援
 
 ## ADR
 
-ADRには、実装方法が変わっても残る設計判断を記録します。
+ADRには、実装方法が変わっても残る設計判断を記録します。現在の正本は[`plan/adr/`](adr/README.md)です。
 
 ファイル名は4桁の連番を使います。
 
 ```text
-plan/adr/0016-example.md
+plan/adr/0018-example.md
 ```
 
-mainでは`docs/adr/0001`〜`0015`までが既に成立しています。このため、`plan/adr/`で新しく起票するADRは、既存番号と衝突しない0016以降を使います。
+ADR-0001〜0015は以前`docs/adr/`にありましたが、番号と本文を変えず`plan/adr/`へ移しました。ADR-0016以降も同じ連番で続いています。
 
-既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
+旧URLや過去文書からの参照を壊さないため、`docs/adr/`にはADR-0001〜0015の互換案内だけを残しています。設計判断の本文を新旧二か所へ複製せず、`plan/adr/`だけを正本とします。
 
-現在、文書体系そのものの判断はADR-0016、Application Patternの初期所有境界はADR-0017として`plan/adr/`に置いています。
+新しいADRは`plan/adr/`にのみ追加します。同じ番号を別の意味へ再利用しません。
 
 ## Issue文書
 
