@@ -446,6 +446,11 @@
       ],
       "patterns": [
         {
+          "id": "order_entry.order_record",
+          "kind": "record",
+          "data": "sales.order"
+        },
+        {
           "id": "order_entry.recent_orders",
           "kind": "browse",
           "data": "sales.order",
