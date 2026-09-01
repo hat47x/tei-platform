@@ -32,7 +32,7 @@ type Diagnostic struct {
 }
 
 func Validate(w ir.World) []Diagnostic {
-	var out []Diagnostic
+	out := validateApplicationPatterns(w)
 
 	pluginCatalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
 	seenPluginVersions := map[string]struct{}{}
