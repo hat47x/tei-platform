@@ -26,17 +26,16 @@ Application Pattern Stage 1   完了
             ↓
         Gate A監査
             │
-            ├─ #68   既存認証Compatibility
-            ├─ #77   Capability Outcome / Execution Error
-            └─ #125  業務Validation
-            │
-            │  #126 Capability Binding は完了
+            └─ #68 既存認証Compatibility
+                  ├─ Authenticationをlegacy実装へ接続
+                  ├─ secret非混入を確認
+                  └─ Authorizationをorder_entryへ接続
             ↓
        Gate A再監査
             ↓
-    Application Driver
+    Application Driver #69
             ↓
-      第一Web Target
+      第一Web Target #70
             ↓
        Editor / AI支援
             ↓
@@ -67,7 +66,7 @@ Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key
 
 Gate Aでは、Application PatternのEvidenceに、認証・認可、業務Validation、Capabilityの結果境界、Capability Bindingを合流させます。
 
-[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)で項目ごとに評価した結果、現在もGate A全体はBlockedです。ただし、残条件は4つから3つへ減りました。
+[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)で項目ごとに監査した結果、Gate A全体はまだBlockedです。ただし、独立したblockerは**GitHub Issue #68「既存認証Compatibility」だけ**になりました。
 
 ### Readyになったもの
 
@@ -76,27 +75,31 @@ Gate Aでは、Application PatternのEvidenceに、認証・認可、業務Valid
 - `sales.order.submit`の既存単一`output`
 - Command / Observation分離の基本境界
 - `sales.order.submit`の明示的なCapability Binding
+- 業務ValidationのCanonical rule、実Reference、Evaluator
+- 名前付きOutcomeとExecution ErrorのInvocation境界
+- `security.authenticate`の`authenticated` / `denied` Business Result
 
-Capability Bindingは[`ISSUE-000015`](issue/000015-submit-capability-binding-reference.md) / GitHub Issue #126 / PR #135で実証済みです。
+Capability Bindingは[`ISSUE-000015`](issue/000015-submit-capability-binding-reference.md) / GitHub Issue #126 / PR #135で実証済みです。Driver相当の利用側はApplication + CapabilityからBindingを明示的に解決でき、file path、Go hook、列挙順からimplementationを推測する必要がありません。
 
-Driver相当の利用側はApplication + CapabilityからBindingを明示的に解決でき、file path、Go hook、列挙順からimplementationを推測する必要がありません。
+業務Validationは[`ISSUE-000014`](issue/000014-business-validation-reference.md) / GitHub Issue #125 / PR #136・#139・#140でGate Aに必要な範囲を完了しました。Driverは`quantity > 0`等のrule本文を専用Goコードへ複製せず、同じCanonical ruleとEvaluatorを利用できます。
 
-### 残るGate A条件
+Capabilityの業務結果と実行エラーの境界は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / [`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / ADR-0020で整理し、PR #141で実行時Evidenceまで成立しました。正常な拒否をExecution Errorへ変換せず、Databaseやadapterの障害とは別に扱えます。
 
-1. **既存認証Compatibility — #68**
-   - 既存schemaや認証条件を標準User schemaへ作り替えず、Authentication / Authorization Capabilityへ接続するReferenceが必要です。
-2. **Capability Outcome / Execution Error — #77**
-   - PR #132で名前付きOutcomeのCanonical model / Parser / Validation / Normalizationまでは実装済みです。
-   - 次は実ReferenceとInvocation境界で、expected denialをBusiness Resultとして扱い、Execution Errorと混同しないことを確認します。
-3. **業務Validation — #125**
-   - Pattern定義の構文・参照整合性Validationとは別に、業務ruleの正本とidentityをReference化します。
-   - 最初の候補は`OrderLine.quantity > 0`と、一つのOrder内での`lineNumber`一意です。
+### 残るGate A条件 — #68 既存認証Compatibility
 
-既存認証Compatibilityは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / `ISSUE-000003` / GitHub Issue #68で進めます。
+`security.authenticate`のSemantic契約と結果境界は成立しています。残っているのは、既存認証仕様を**標準User schemaへ作り直さずに**実装へ接続し、Application上のAuthorizationまで通すEvidenceです。
 
-Capabilityの業務上の結果と実行エラーの区別は、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / [`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / ADR-0020を共通境界として利用します。
+Gate Aへ渡すため、少なくとも次を確認します。
 
-業務Validationは[`ISSUE-000014`](issue/000014-business-validation-reference.md) / GitHub Issue #125で実証します。
+- user ID、disabled、有効期間、login failure count、lock、organization、role、system-specific ruleを保持したlegacy fixture
+- legacy schema / functionと`security.authenticate`をつなぐadapter / Binding
+- credentialやtoken等のsecret materialをCanonical World、Source Index、通常Evidenceへ残さない境界
+- authenticated subject identity
+- `security.authorize`の最小契約
+- `order_entry`のbrowse / edit / submitに対するaction / resource
+- Driverがlegacy schemaの物理構造へ直接依存しないこと
+
+詳細は[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / [`ISSUE-000003`](issue/000003-legacy-authentication-compatibility-reference.md) / GitHub Issue #68で追跡します。
 
 Gate AをEvidenceで通過した後、[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69のApplication Driverへ進みます。
 
