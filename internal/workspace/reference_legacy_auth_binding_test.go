@@ -35,7 +35,7 @@ func TestReferenceLegacyAuthenticationBindingKeepsLegacyMeaningAndProvenance(t *
 	}
 
 	app := legacyAuthApplicationByID(t, loaded.World.Applications, "order_entry")
-	if !containsCanonicalID(app.SemanticUses, "security") {
+	if !containsLegacyAuthCanonicalID(app.SemanticUses, "security") {
 		t.Fatalf("order_entryがsecurity意味空間を利用していません: %#v", app.SemanticUses)
 	}
 
@@ -170,7 +170,7 @@ func legacyAuthCapabilityByID(t *testing.T, namespaces []semantic.Namespace, id 
 	return semantic.Capability{}
 }
 
-func containsCanonicalID(values []core.CanonicalID, wanted core.CanonicalID) bool {
+func containsLegacyAuthCanonicalID(values []core.CanonicalID, wanted core.CanonicalID) bool {
 	for _, value := range values {
 		if value == wanted {
 			return true
