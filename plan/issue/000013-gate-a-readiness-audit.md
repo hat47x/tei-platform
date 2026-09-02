@@ -1,20 +1,20 @@
 # ISSUE-000013: Gate Aの到達性を横断監査する
 
-- 状態: In Progress
+- 状態: 完了
 - GitHub Issue: #124
 - 前段: `ISSUE-000005` / GitHub Issue #67（完了）
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
-- 現在の残条件: #68
-- Gate AでReadyになった関連Issue: #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
+- Gate A判定: Ready
+- Gate AでReadyになった関連Issue: #68（既存認証Compatibility） / #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
 - 監査結果: [`GATE_A_READINESS_AUDIT.md`](../GATE_A_READINESS_AUDIT.md)
 
 ## 目的
 
-Application Pattern候補5種類がすべて実Referenceまで成立したため、Patternを増やす段階から、Driverへ渡すApplication上の意味を横断的に確認する段階へ移っています。
+Application Pattern候補5種類がすべて実Referenceまで成立した後、Driverへ渡すApplication上の意味を横断的に確認しました。
 
-Gate Aでは、Web画面やDriver専用設定を見なければ分からない情報を残さないことが重要です。
+Gate Aでは、Web画面やDriver専用設定を見なければ分からない情報を残さないことを重視します。
 
-Driver #69が、Repository上のCanonicalな意味、Contract、Bindingから少なくとも次を解決できるかを監査します。
+Driver #69が、Repository上のCanonicalな意味、Contract、Bindingから少なくとも次を解決できるかを監査対象としました。
 
 - browse / record / reference / header-detail / commandの対象
 - Datasource read / write境界
@@ -24,11 +24,13 @@ Driver #69が、Repository上のCanonicalな意味、Contract、Bindingから少
 - Business Result / Execution Error
 - Command / Observationの境界
 
-## 現在の判定
+## 最終判定
 
-Gate A全体は引き続きBlockedです。ただし、独立した残条件は**#68 既存認証Compatibilityだけ**になりました。
+**Gate AはReadyです。Driver #69の主実装を開始できます。**
 
-### Readyになった領域
+最後まで残っていた#68について、PR #148、#149、#151で必要なEvidenceが揃いました。
+
+### Readyと判断した領域
 
 - Application Pattern 5種類
 - Datasource境界
@@ -36,58 +38,85 @@ Gate A全体は引き続きBlockedです。ただし、独立した残条件は*
 - 業務Validation #125 / PR #136 / #139 / #140
 - Capabilityのnamed Outcome / Execution Error #77 / PR #132 / #141
 - 既存単一output Capabilityとの互換性
+- Authentication / Authorization #68 / PR #148 / #149
+- 既存認証の実現方式交換 #68 / PR #151
+- Secret非保存境界
 - Command / Observation分離の基本境界
 
-PR #141では`security.authenticate`の実Referenceを使い、`authenticated` / `denied`を正常なBusiness Resultとして扱い、Database / adapter障害や未定義OutcomeをExecution Errorとして分離できることを確認しました。
+## #68からGate Aへ渡せるようになったもの
 
-したがって#77はGate AでReadyです。第一Web TargetへのProjection等はGate A以後へDeferredします。
+### Authentication
 
-## 残る条件 — #68 既存認証Compatibility
+`security.authenticate`を`order_entry`から明示的なApplication Bindingで解決できます。
 
-`security.authenticate`の契約と結果境界は成立していますが、既存認証仕様をそのまま実装へ接続するEvidenceはまだ不足しています。
+Referenceでは、user ID、disabled、validity、login failure count、lock、organization、role等の既存情報を保持したまま認証adapterへ渡せます。TEI標準User schemaへ先に作り替える必要はありません。
 
-Gate Aへは少なくとも次を渡せる必要があります。
+認証成功と正常な拒否は`authenticated` / `denied`というBusiness Resultとして扱い、store、adapter、既存関数等の実行障害はExecution Errorとして分離します。
 
-- authenticated subject
-- Authentication Capability identity
-- Authorization Capability identity
-- Application上のaction / resource
-- legacy field / functionからCapabilityへのMapping
-- user ID、disabled、validity、failure count、lock、organization、role、system-specific rule等の既存条件
-- secret materialを解決する境界
-- named Outcome / Execution Errorの結果契約
+### Authorization
 
-既存schemaをTEI標準User schemaへ作り替えてからでなければ利用できない構造にはしません。
+`security.authorize`を次のApplication上の操作へ接続できています。
 
-## Secretの扱い
+```text
+browse  / order_entry.recent_orders
+edit    / order_entry.order_record
+execute / order_entry.submit_order
+```
 
-`security.authenticate`にはcredentialを表す入力型がありますが、Canonicalに保存されるのはCapability契約と型の意味であり、実際のsecret値ではありません。
+resourceにはWeb画面名やURLではなくApplication Pattern identityを使います。
 
-password、token、credential hash、接続資格情報等のsecret materialをCanonical World、Source Index、Durable artifact、Scenario log、通常Evidenceへ保存しません。
+organization、role、既存ruleはadapter側へ残し、ApplicationやDriverへ同じ判断条件を書き写しません。
 
-#68では、実行時に受け取ったcredential valueがEvidenceへ流れないこともConformance対象にします。
+### 実現方式の交換
+
+PR #151では、`order_entry/security.authenticate`という一つのBindingを保ったまま、次の二方式を交換できることを確認しました。
+
+1. 既存の利用者情報を読む方式
+2. 既存認証関数、stored procedure、外部API等に相当する処理を呼ぶ方式
+
+どちらも同じCanonical `security.authenticate`契約とauthenticated subjectを返します。
+
+この実証では`reference/workspace`と`reference/world.json`を変更していません。CI #374のReference World再現性検査もGolden更新なしで成功しており、実現方式の違いがCanonical Worldへ入り込んでいないことを確認できました。
+
+## Secretの境界
+
+実行時credentialや実secretを次へ保存しない境界が成立しています。
+
+- Canonical World
+- Source Index
+- Business Result
+- Git管理するReference fixture
+- 通常Evidence
+
+`security.credential`は入力の意味を表すCanonicalな型であり、credential値そのものの保存場所ではありません。
+
+Driverでも、Scenarioの再現性を理由にsecretを平文で記録しないことをGate Bの条件として引き継ぎます。
 
 ## 判定原則
 
-Gate Aを「関連Issueがすべてcloseしたか」だけでは判定しません。
+Gate Aは、関連Issueがすべてcloseしたかどうかだけでは判定していません。
 
-Driverへ渡すために必要な意味をRepository上のReference / Conformanceから再現できるかを基準にします。
+Driverへ渡すために必要な意味をRepository上のReference / Conformanceから再現できるかを基準に、一項目ずつ再評価しました。
 
-Issue全体がopenでも、Gate Aに必要な限定範囲が十分なEvidenceで成立していれば、その項目はReadyと評価できます。
+その結果、Gate Aの独立したBlockerはなくなりました。
 
-逆にIssueがcloseしていても、Driverが暗黙のGoコードやWeb設定から意味を補う必要がある場合はReadyとは判定しません。
+## Driver #69へ引き継ぐ条件
 
-## 残る作業
+Gate AがReadyになったことは、Driver自体の設計が完了したことを意味しません。
 
-1. legacy認証fixtureを、既存仕様を崩さない形で用意する
-2. `security.authenticate`をlegacy fixtureへ接続するadapter / Bindingを実証する
-3. `authenticated` / `denied` / Execution Errorの既存境界を再利用する
-4. secret materialがCanonical / Source Index / 通常Evidenceへ流れないことを確認する
-5. `security.authorize`の最小契約を実例から作る
-6. `order_entry`のbrowse / edit / submitへaction / resourceを接続する
-7. Gate Aを再評価する
-8. 必須項目がすべてReadyになった時点でDriver #69の開始可否を明示する
-9. 判定を`V1_REFERENCE_APPLICATION_PLAN.md`等へ同期する
+Driverでは、今回成立した境界を**利用すること**を確認します。
+
+- PatternをDriver専用設定へ複製しない
+- Datasource read / write境界を独自定義しない
+- Validation rule本文をDriverへ再実装しない
+- legacy schema、organization、role、return codeへDriverが直接依存しない
+- Capability Bindingをfile pathやGo hookから暗黙に推測しない
+- expectedな`denied`や`NotSatisfied`をDriver障害として扱わない
+- Execution Errorを業務上のOutcomeへ変換しない
+- commandの応答とObservationによる外部状態を混同しない
+- secretをScenario Evidenceへ保存しない
+
+これらを満たしながら、UIなしで主要Scenarioを再現できた時点でGate Bを評価します。
 
 ## 非目標
 
@@ -99,14 +128,15 @@ Issue全体がopenでも、Gate Aに必要な限定範囲が十分なEvidenceで
 - Gate A以後のOutcome Projection
 - 汎用Validation rule engine
 - 認証製品やlegacy schemaの標準化
+- Runtime上の汎用implementation選択機構
 
-## 完了条件
+## 完了条件の評価
 
-- Gate Aの入力項目ごとにEvidenceと不足を説明できる
-- Application Pattern Stage完了とGate A全体完了を混同していない
-- 未完了項目が既存Issueとして追跡されている
-- Driver #69がWebやDriver専用設定から業務意味を補わなくてよい
-- Driver #69を開始してよいかを明示的に判定できる
+- [x] Gate Aの入力項目ごとにEvidenceを説明できる
+- [x] Application Pattern Stage完了とGate A全体完了を混同していない
+- [x] Gate Aで必要なAuthentication / Authorization境界が成立している
+- [x] DriverがWebや専用設定から業務意味を補わなくてよい
+- [x] Driver #69を開始してよいと明示的に判定できる
 
 ## 関連
 
@@ -116,6 +146,6 @@ Issue全体がopenでも、Gate Aに必要な限定範囲が十分なEvidenceで
 - GitHub Issue #77: Capability Outcome / Execution Error（完了）
 - GitHub Issue #125: 業務Validation（完了）
 - GitHub Issue #126: Capability Binding（完了）
-- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143
+- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143 / #148 / #149 / #151
 - ADR-0019 / ADR-0020
 - RQ-005, RQ-008, RQ-009, RQ-012, RQ-014, RQ-017, RQ-018, RQ-019, RQ-021
