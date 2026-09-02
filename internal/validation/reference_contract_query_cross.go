@@ -310,6 +310,7 @@ func referenceInvocationReadyForCross(invocation application.ContractQueryInvoca
 
 func relationKeysReadyForCross(sourceData core.CanonicalID, relation semantic.Relation, attributes map[core.CanonicalID]referenceCrossAttribute) bool {
 	seenPairs := map[string]struct{}{}
+	seenTargets := map[core.CanonicalID]struct{}{}
 	for _, key := range relation.Keys {
 		if key.SourceAttribute == "" || key.TargetAttribute == "" {
 			return false
@@ -319,6 +320,10 @@ func relationKeysReadyForCross(sourceData core.CanonicalID, relation semantic.Re
 			return false
 		}
 		seenPairs[pair] = struct{}{}
+		if _, duplicate := seenTargets[key.TargetAttribute]; duplicate {
+			return false
+		}
+		seenTargets[key.TargetAttribute] = struct{}{}
 
 		source, sourceFound := attributes[key.SourceAttribute]
 		target, targetFound := attributes[key.TargetAttribute]
