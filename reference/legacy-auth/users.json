@@ -1,0 +1,41 @@
+{
+  "schema": "legacy-auth-user-v1",
+  "users": [
+    {
+      "user_id": "legacy-order-editor",
+      "subject_id": "subject-order-editor",
+      "credential_ref": "credential-ref://legacy/order-editor",
+      "disabled": false,
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2030-01-01T00:00:00Z",
+      "login_failure_count": 1,
+      "locked_until": "",
+      "organization_code": "SALES",
+      "role_code": "ORDER_EDITOR"
+    },
+    {
+      "user_id": "legacy-order-locked",
+      "subject_id": "subject-order-locked",
+      "credential_ref": "credential-ref://legacy/order-locked",
+      "disabled": false,
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2030-01-01T00:00:00Z",
+      "login_failure_count": 5,
+      "locked_until": "2030-01-01T00:00:00Z",
+      "organization_code": "SALES",
+      "role_code": "ORDER_EDITOR"
+    },
+    {
+      "user_id": "legacy-order-disabled",
+      "subject_id": "subject-order-disabled",
+      "credential_ref": "credential-ref://legacy/order-disabled",
+      "disabled": true,
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2030-01-01T00:00:00Z",
+      "login_failure_count": 0,
+      "locked_until": "",
+      "organization_code": "SALES",
+      "role_code": "ORDER_VIEWER"
+    }
+  ]
+}
