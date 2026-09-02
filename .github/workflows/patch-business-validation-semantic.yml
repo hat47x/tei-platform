@@ -18,18 +18,18 @@ jobs:
         with:
           ref: work/business-validation-semantic-contract
 
-      - name: ParserとLoaderを安全に更新
+      - name: 共通ValidationとSource Indexを安全に更新
         shell: bash
         run: |
           set -euo pipefail
-          if git log -1 --pretty=%B | grep -Fq '[business-validation-patched]'; then
-            echo '既にpatch済みです。'
+          python3 tools/patch_business_validation_integration.py
+          git diff --check
+          if git diff --quiet -- internal/validation/validation.go internal/workspace/source_index.go; then
+            echo '既に統合patch済みです。'
             exit 0
           fi
-          python3 tools/patch_business_validation_semantic.py
-          git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/syntax/parser.go internal/workspace/loader.go
-          git commit -m "Semantic業務ValidationをParserとLoaderへ接続する [business-validation-patched]"
+          git add internal/validation/validation.go internal/workspace/source_index.go
+          git commit -m "Semantic業務Validationを共通検査とSource Indexへ接続する [business-validation-integrated]"
           git push origin HEAD:work/business-validation-semantic-contract
