@@ -29,7 +29,7 @@ func TestBindNamedParameters(t *testing.T) {
 
 	t.Run("SQL構文上のcolonをparameterと誤認しない", func(t *testing.T) {
 		source := strings.Join([]string{
-			"SELECT ':from' AS literal, \"column:from\" AS quoted, now()::date AS casted, :from AS actual",
+			"SELECT ':from' AS literal, E'escaped\\\':from' AS escaped, \"column:from\" AS quoted, now()::date AS casted, :from AS actual",
 			"-- :comment_parameter",
 			"/* :block_parameter /* :nested_parameter */ */",
 			"WHERE note = $$:dollar_parameter$$",
@@ -45,6 +45,7 @@ func TestBindNamedParameters(t *testing.T) {
 		}
 		for _, preserved := range []string{
 			"':from'",
+			"E'escaped\\\':from'",
 			"\"column:from\"",
 			"now()::date",
 			"-- :comment_parameter",
