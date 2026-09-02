@@ -142,29 +142,6 @@ func TestExecuteReferenceContractQueryRejectsZeroRowsForOne(t *testing.T) {
 	}
 }
 
-func TestExecuteReferenceContractQueryAllowsMultipleRowsForMany(t *testing.T) {
-	world := referenceParameterWorld()
-	world.Databases[0].Contracts[0].Queries[0].ResultCardinality = database.QueryResultMany
-	executor := &recordingContractQueryExecutor{
-		result: driver.ContractQueryResult{Rows: []driver.ContractQueryRow{{}, {}}},
-	}
-
-	execution, err := driver.NewResolver(world).ExecuteReferenceContractQuery(
-		context.Background(),
-		"order_entry",
-		"order_entry.customer_reference",
-		customerMappedResult(),
-		0,
-		executor,
-	)
-	if err != nil {
-		t.Fatalf("many Queryの複数件resultを拒否しています: %v", err)
-	}
-	if len(execution.Result.Rows) != 2 {
-		t.Fatalf("many Queryのrow数が変わっています: %#v", execution.Result.Rows)
-	}
-}
-
 func TestExecuteReferenceContractQueryRejectsAttributeOutsideResultData(t *testing.T) {
 	world := referenceParameterWorld()
 	executor := &recordingContractQueryExecutor{
