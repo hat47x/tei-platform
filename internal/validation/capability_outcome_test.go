@@ -3,22 +3,21 @@ package validation_test
 import (
 	"testing"
 
-	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/validation"
 )
 
 func TestCapabilityOutcomeValidation(t *testing.T) {
-	baseTypes := []semantic.Type{
-		{ID: "security.authenticated_subject", Symbol: "AuthenticatedSubject", Kind: semantic.TypeAlias, Underlying: "std.identifier"},
-		{ID: "security.authentication_denial", Symbol: "AuthenticationDenial", Kind: semantic.TypeAlias, Underlying: "std.code"},
+	payloadData := []semantic.Data{
+		{ID: "security.authenticated_subject", Symbol: "AuthenticatedSubject"},
+		{ID: "security.authentication_denial", Symbol: "AuthenticationDenial"},
 	}
 
 	tests := []struct {
-		name      string
+		name       string
 		capability semantic.Capability
-		wantCodes []string
+		wantCodes  []string
 	}{
 		{
 			name: "named outcomes are valid",
@@ -71,7 +70,7 @@ func TestCapabilityOutcomeValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			world := ir.World{Semantics: []semantic.Namespace{
-				{ID: "security", Types: baseTypes, Capabilities: []semantic.Capability{tt.capability}},
+				{ID: "security", Data: payloadData, Capabilities: []semantic.Capability{tt.capability}},
 			}}
 			diagnostics := validation.Validate(world)
 			for _, code := range tt.wantCodes {
@@ -84,7 +83,6 @@ func TestCapabilityOutcomeValidation(t *testing.T) {
 					if diagnostic.Severity == validation.Error {
 						t.Fatalf("unexpected error diagnostic: %#v", diagnostic)
 					}
-				}
 			}
 		})
 	}
@@ -98,5 +96,3 @@ func hasDiagnosticCode(diagnostics []validation.Diagnostic, code string) bool {
 	}
 	return false
 }
-
-var _ core.CanonicalID
