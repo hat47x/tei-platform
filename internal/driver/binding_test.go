@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/ir"
 	"tei/internal/realization"
@@ -22,7 +23,7 @@ func TestReferenceOrderEntryCapabilityBindingsResolveByCanonicalIdentity(t *test
 		if resolved.Pattern.Pattern.ID != "order_entry.submit_order" ||
 			resolved.Binding.Capability.ID != "sales.order.submit" ||
 			resolved.Binding.Binding.Identity() != "order_entry/sales.order.submit" {
-			t.Fatalf("command binding=%#v", resolved)
+			t.Fatalf("command Binding=%#v", resolved)
 		}
 		if resolved.Binding.Binding.ExpectedAdapterFilename() != "sales__order__submit.bind.go" {
 			t.Fatalf("adapter filename=%q", resolved.Binding.Binding.ExpectedAdapterFilename())
@@ -34,7 +35,7 @@ func TestReferenceOrderEntryCapabilityBindingsResolveByCanonicalIdentity(t *test
 
 	for _, tt := range []struct {
 		name       string
-		capability string
+		capability core.CanonicalID
 		identity   string
 		filename   string
 		hook       string
@@ -55,12 +56,12 @@ func TestReferenceOrderEntryCapabilityBindingsResolveByCanonicalIdentity(t *test
 		},
 	} {
 		t.Run(tt.name+"も同じApplication-scoped入口から解決する", func(t *testing.T) {
-			resolved, err := resolver.ResolveCapabilityBinding("order_entry", driverCanonicalID(tt.capability))
+			resolved, err := resolver.ResolveCapabilityBinding("order_entry", tt.capability)
 			if err != nil {
 				t.Fatalf("Capability Bindingを解決できません: %v", err)
 			}
-			if resolved.Capability.ID != driverCanonicalID(tt.capability) || resolved.Binding.Identity() != tt.identity {
-				t.Fatalf("binding=%#v", resolved)
+			if resolved.Capability.ID != tt.capability || resolved.Binding.Identity() != tt.identity {
+				t.Fatalf("Binding=%#v", resolved)
 			}
 			if resolved.Binding.ExpectedAdapterFilename() != tt.filename {
 				t.Fatalf("adapter filename=%q want=%q", resolved.Binding.ExpectedAdapterFilename(), tt.filename)
@@ -75,11 +76,12 @@ func TestReferenceOrderEntryCapabilityBindingsResolveByCanonicalIdentity(t *test
 func TestCapabilityBindingResolutionDoesNotSelectImplicitCandidates(t *testing.T) {
 	baseWorld := ir.World{
 		Applications: []application.Application{
-		{
-			ID: "app_a",
-			Patterns: []application.Pattern{
-				{ID: "app_a.command", Kind: application.PatternCommand, Capability: "sales.order.submit"},
-				{ID: "app_a.record", Kind: application.PatternRecord, Data: "sales.order"},
+			{
+				ID: "app_a",
+				Patterns: []application.Pattern{
+					{ID: "app_a.command", Kind: application.PatternCommand, Capability: "sales.order.submit"},
+					{ID: "app_a.record", Kind: application.PatternRecord, Data: "sales.order"},
+				},
 			},
 		},
 		Semantics: []semantic.Namespace{
@@ -123,8 +125,4 @@ func TestCapabilityBindingResolutionDoesNotSelectImplicitCandidates(t *testing.T
 			t.Fatal("record Patternをcommandとして扱っています")
 		}
 	})
-}
-
-func driverCanonicalID(value string) core.CanonicalID {
-	return core.CanonicalID(value)
 }
