@@ -1,8 +1,6 @@
 package realization
 
-import (
-	"tei/internal/core"
-)
+import "tei/internal/core"
 
 // ContractQueryTargetは、Database-ownedなContract Queryを実現層から識別するためのtarget identityである。
 //
@@ -12,6 +10,12 @@ type ContractQueryTarget struct {
 	Database core.CanonicalID `json:"database"`
 	Contract core.CanonicalID `json:"contract"`
 	Query    core.LocalName    `json:"query"`
+}
+
+// Validは、target identityの三要素がすべて明示されていることを確認する。
+// 欠けたidentityをfile pathやprovider情報から補完することはしない。
+func (t ContractQueryTarget) Valid() bool {
+	return t.Database != "" && t.Contract != "" && t.Query != ""
 }
 
 // Identityは、diagnosticやruntime registryで利用できる安定したtarget identityを返す。
