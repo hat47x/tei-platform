@@ -543,7 +543,8 @@
       "id": "order_entry",
       "semanticUses": [
         "sales",
-        "customer"
+        "customer",
+        "security"
       ],
       "databases": [
         {
@@ -1255,6 +1256,10 @@
     {
       "application": "order_entry",
       "capability": "sales.order.submit"
+    },
+    {
+      "application": "order_entry",
+      "capability": "security.authenticate"
     }
   ]
 }
