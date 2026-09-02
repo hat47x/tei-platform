@@ -1,0 +1,53 @@
+name: Query Result Mapping Validation接続
+
+on:
+  push:
+    branches:
+      - work/query-result-mapping-validation
+
+permissions:
+  contents: write
+
+jobs:
+  connect-validation:
+    if: ${{ !contains(github.event.head_commit.message, '[query-result-validation-connected]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: work/query-result-mapping-validation
+
+      - name: 共通Validateへ一行だけ接続
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("internal/validation/validation.go")
+          text = path.read_text()
+          old = "\tout := validateApplicationPatterns(w)\n\tout = append(out, validateSemanticBusinessValidations(w)...)\n"
+          new = old + "\tout = append(out, validateQueryResultMappings(w)...)\n"
+          if text.count(old) != 1:
+              raise SystemExit(f"置換対象は1件である必要があります: {text.count(old)}件")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          changed="$(git diff --numstat -- internal/validation/validation.go)"
+          if [ "$changed" != $'1\t0\tinternal/validation/validation.go' ]; then
+            echo "想定外の差分です: $changed" >&2
+            git diff -- internal/validation/validation.go >&2
+            exit 1
+          fi
+
+      - name: 接続結果をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/validation/validation.go
+          git commit -m "Query result mappingを共通Validationへ接続する [query-result-validation-connected]"
+          git push origin HEAD:work/query-result-mapping-validation
