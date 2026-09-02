@@ -264,11 +264,17 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		seenOutcomes := map[core.LocalName]struct{}{}
 		for _, outcome := range c.Outcomes {
-			if _, dup := seenOutcomes[outcome.Name]; dup {
-				out = append(out, errd("DUPLICATE_SEMANTIC_CAPABILITY_OUTCOME", "capability %s declares outcome %s more than once", c.ID, outcome.Name))
+			if outcome.Name == "" {
+				out = append(out, errd("SEMANTIC_CAPABILITY_OUTCOME_NAME_REQUIRED", "capability %s has an outcome without a name", c.ID))
+			} else {
+				if _, dup := seenOutcomes[outcome.Name]; dup {
+					out = append(out, errd("DUPLICATE_SEMANTIC_CAPABILITY_OUTCOME", "capability %s declares outcome %s more than once", c.ID, outcome.Name))
+				}
+				seenOutcomes[outcome.Name] = struct{}{}
 			}
-			seenOutcomes[outcome.Name] = struct{}{}
-			if !semanticValueTypeExists(outcome.Payload) {
+			if outcome.Payload == "" {
+				out = append(out, errd("SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD_REQUIRED", "capability %s outcome %s has no payload type", c.ID, outcome.Name))
+			} else if !semanticValueTypeExists(outcome.Payload) {
 				out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD", "capability %s outcome %s refers to unknown semantic value type %s", c.ID, outcome.Name, outcome.Payload))
 			}
 		}
