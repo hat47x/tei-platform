@@ -1,4 +1,4 @@
-name: Semantic業務Validation接続パッチ
+name: Patch semantic business validation
 
 on:
   push:
@@ -10,15 +10,25 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, '[business-validation-patched]') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Repositoryを取得
+      - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: work/business-validation-semantic-contract
 
-      - name: ParserとLoaderを厳密に更新
+      - name: Skip generated commit
+        id: guard
+        shell: bash
+        run: |
+          if git log -1 --pretty=%B | grep -Fq '[business-validation-patched]'; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Patch parser and loader
+        if: steps.guard.outputs.skip != 'true'
         shell: bash
         run: |
           python3 - <<'PY'
@@ -34,10 +44,8 @@ jobs:
           parser = Path("internal/syntax/parser.go")
           replace_once(
               parser,
-              '''// ParseSemanticFile parses a semantic source file. M0 deliberately keeps the
-// syntax small: a namespace followed by type, data and capability declarations.''',
-              '''// ParseSemanticFile parses a semantic source file. The syntax remains intentionally
-// small: a namespace followed by type, data, capability and typed validation declarations.''',
+              "// ParseSemanticFile parses a semantic source file. M0 deliberately keeps the\n// syntax small: a namespace followed by type, data and capability declarations.",
+              "// ParseSemanticFile parses a semantic source file. The syntax remains intentionally\n// small: a namespace followed by type, data, capability and typed validation declarations.",
           )
           replace_once(
               parser,
@@ -65,10 +73,11 @@ jobs:
 \t\t\treturn ns, p.errAt(t, "expected type, data, capability, or validation")''',
           )
 
-          marker = '''func parseVersion(s string) (database.ContractVersion, error) {'''
-          if parser.read_text().count(marker) != 1:
+          marker = "func parseVersion(s string) (database.ContractVersion, error) {"
+          text = parser.read_text()
+          if text.count(marker) != 1:
               raise SystemExit("internal/syntax/parser.go: parseVersion marker mismatch")
-          validation_parser = r'''func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.Validation, error) {
+          validation_parser = '''func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.Validation, error) {
 \t_, _ = p.next() // validation
 \tidTok, err := p.expect(TokenIdent)
 \tif err != nil {
@@ -167,7 +176,6 @@ jobs:
 }
 
 '''
-          text = parser.read_text()
           parser.write_text(text.replace(marker, validation_parser + marker, 1))
 
           loader = Path("internal/workspace/loader.go")
@@ -207,7 +215,8 @@ jobs:
           )
           PY
 
-      - name: 更新をbranchへ反映
+      - name: Commit patch
+        if: steps.guard.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
