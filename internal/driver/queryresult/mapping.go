@@ -33,8 +33,8 @@ type MappedResult struct {
 // Mapは、raw resultの列名をQuery authoringの明示mappingへ対応付ける。
 //
 // 列名の類似、SELECT順序、Persistence Mappingから意味を推測しない。
-// mappingにないraw列や、raw resultに存在しないmapping列があれば、意味を欠いたまま
-// 実行を続けずerrorを返す。
+// mappingとraw resultの列集合が一致しない場合や、どちらかに曖昧な重複がある場合は、
+// 意味を欠いたまま実行を続けずerrorを返す。
 func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 	if len(q.ResultColumns) == 0 {
 		return MappedResult{}, fmt.Errorf("Query %sにresult mappingが定義されていません", q.ID)
@@ -53,7 +53,20 @@ func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 
 	mappedColumns := make([]Column, len(q.ResultColumns))
 	usedRawColumns := make(map[string]struct{}, len(q.ResultColumns))
+	usedAttributes := make(map[core.CanonicalID]struct{}, len(q.ResultColumns))
 	for i, mapping := range q.ResultColumns {
+		if mapping.Column == "" {
+			return MappedResult{}, fmt.Errorf("Query %sのresult mappingに名前のないraw列があります", q.ID)
+		}
+		if mapping.Attribute == "" {
+			return MappedResult{}, fmt.Errorf("Query %sのresult column %qにSemantic attributeが指定されていません", q.ID, mapping.Column)
+		}
+		if _, exists := usedRawColumns[mapping.Column]; exists {
+			return MappedResult{}, fmt.Errorf("Query %sのresult mappingでraw列 %qが重複しています", q.ID, mapping.Column)
+		}
+		if _, exists := usedAttributes[mapping.Attribute]; exists {
+			return MappedResult{}, fmt.Errorf("Query %sのresult mappingでSemantic attribute %sが重複しています", q.ID, mapping.Attribute)
+		}
 		if _, exists := rawIndex[mapping.Column]; !exists {
 			return MappedResult{}, fmt.Errorf(
 				"Query %sのresult mappingが要求するraw列 %qが実行結果にありません",
@@ -62,6 +75,7 @@ func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 			)
 		}
 		usedRawColumns[mapping.Column] = struct{}{}
+		usedAttributes[mapping.Attribute] = struct{}{}
 		mappedColumns[i] = Column{Raw: mapping.Column, Attribute: mapping.Attribute}
 	}
 	for _, column := range raw.Columns {
