@@ -3,8 +3,8 @@
 - 状態: Blocked
 - GitHub Issue: #69
 - Blocker: `ISSUE-000013` / GitHub Issue #124（Gate A到達性監査）
-- Gate Aの現在の残条件: #68 / #77
-- Gate AでReadyになった関連項目: #125（業務Validation） / #126（Capability Binding）
+- Gate Aの現在の残条件: #68
+- Gate AでReadyになった関連項目: #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
 
 ## 背景
 
@@ -14,20 +14,15 @@ Product Requirement Gap Auditでは、RQ-012「Driverを設計検証用の実行
 
 Application Pattern Stageは完了し、`order_entry`では`browse`、`record`、`reference`、`command`、`header-detail`の5種類が実Referenceまで成立しています。
 
-さらに、Capability Binding #126と業務Validation #125もGate Aで`Ready`になりました。
+Capability Binding #126、業務Validation #125、Capability Outcome / Execution Error #77もGate Aで`Ready`になりました。
 
-一方、Authentication / AuthorizationとCapabilityのnamed Outcome実行境界はまだ揃っていません。このため、Driverの主実装はGate Aを通過するまで開始しません。
+現在残っている独立blockerは#68の既存認証Compatibilityです。Authentication契約と結果境界は成立していますが、legacy認証仕様のMapping / BindingとAuthorizationがまだ揃っていないため、Driverの主実装はGate Aを通過するまで開始しません。
 
 ## なぜ主実装を止めるか
 
-Driverを先に実装すると、未解決の認証・認可条件やCapabilityの結果境界をDriver専用Goコードや設定へ埋め込むおそれがあります。
+Driverを先に実装すると、未解決のAuthentication / Authorization条件をDriver専用Goコードや設定へ埋め込むおそれがあります。
 
-現在の残条件は次の2つです。
-
-- GitHub Issue #68: 既存認証Compatibility
-- GitHub Issue #77: named OutcomeをBusiness Resultとして扱い、Execution Errorと分離する実行時Evidence
-
-これらは単なる実装詳細ではありません。Driverが「誰が実行できるか」「正常な業務上の拒否とは何か」「実行障害とは何か」を判断するための上位の意味です。
+Driverは不足するApplication上の意味を補う場所ではなく、Gate Aで成立した意味を実行・検証する場所とします。
 
 ## Driverの役割
 
@@ -85,33 +80,39 @@ Issue #125 / PR #136 / #139 / #140で、業務ValidationはGate Aに必要な範
 
 Driverはrule本文を専用Goコードへ複製せず、このEvaluator境界を利用します。
 
+### Capability結果境界 — Ready
+
+ADR-0020 / GitHub Issue #77を正とします。
+
+PR #132で名前付きOutcomeのCanonical契約を実装し、PR #141で実行時境界を実証しました。
+
+```text
+Business Result
+  ├─ Output value
+  └─ Named Outcome(name, payload)
+
+Execution Error
+  └─ Capability invocation自体を完了できなかった状態
+```
+
+`security.authenticate`では、`authenticated` / `denied`を正常なBusiness Resultとして扱い、Database / adapter障害や未定義OutcomeをExecution Errorとして分離できます。
+
+既存の`sales.order.submit`も従来の`output sales.order`を保ったまま、同じInvocation入口で扱えます。
+
+Driverはこの境界を再利用し、独自のOutcome体系を作りません。
+
 ### Authentication / Authorization — Blocked
 
-Gate Aへは少なくとも次が必要です。
+`security.authenticate`のSemantic契約は存在しますが、Gate Aにはさらに次が必要です。
 
 - authenticated subject
-- Authentication Capability identity
+- Authentication Capabilityとlegacy実装のMapping / Binding
 - Authorization Capability identity
 - Application上のaction / resource
 - legacy field / functionとのMapping
-- secret解決境界
+- secretを通常Evidenceへ残さない境界
 
 この部分は`ISSUE-000003` / GitHub Issue #68で実証します。
-
-### Capability結果境界 — Partial
-
-ADR-0020 / `ISSUE-000009` / GitHub Issue #77を正とします。
-
-PR #132で、名前付きOutcomeのCanonical model / Parser / Validation / Normalizationまでは実装済みです。
-
-Driver開始前には、少なくとも次を実Referenceから確認する必要があります。
-
-- named Outcomeを正常なBusiness Resultとして扱える
-- expected denialをExecution Errorへ変換しない
-- Binding / adapter / Database障害を業務Outcomeへ押し込まない
-- DriverへBusiness ResultとExecution Errorの区別を渡せる
-
-#68と#77は`security.authenticate`のReferenceで合流させます。
 
 ## 現時点でReadyな入力
 
@@ -128,6 +129,8 @@ Gate A監査では、次を既にReadyと評価しています。
 - `sales.order.submit`の明示的なCapability Binding
 - Binding authoring source / provenance
 - 業務ValidationのCanonical rule / Source / Evaluator
+- named Outcome / Execution ErrorのInvocation境界
+- `security.authenticate`のnamed Outcome契約
 - Command / Observation分離の基本境界
 
 これらをDriver専用設定へ再記述しません。
@@ -136,40 +139,26 @@ Gate A監査では、次を既にReadyと評価しています。
 
 `order_entry`で次を再現します。
 
-1. `browse`で受注一覧を取得する
-2. `record`で一件を扱う
-3. `reference`で顧客を`master_data`から解決する
-4. `header-detail`でOrderLineを扱う
-5. Canonical業務Validationを実行する
-6. Authorizationを評価する
-7. `command`で`sales.order.submit`を呼び出す
-8. CapabilityのBusiness ResultとExecution Errorを区別する
-9. 必要な場合は外部状態をObservationから確認する
+1. Authenticationを実行してsubjectを得る
+2. `browse`で受注一覧を取得する
+3. `record`で一件を扱う
+4. `reference`で顧客を`master_data`から解決する
+5. `header-detail`でOrderLineを扱う
+6. Canonical業務Validationを実行する
+7. Authorizationを評価する
+8. `command`で`sales.order.submit`を呼び出す
+9. CapabilityのBusiness ResultとExecution Errorを区別する
+10. 必要な場合は外部状態をObservationから確認する
 
-ValidationまたはAuthorizationが業務上成立しなかった場合はcommandへ進みません。これはDriver自体の障害ではなく、正常に評価できた業務上の結果として扱います。
+Authenticationの`denied`、Validationの`NotSatisfied`、Authorizationの業務上の拒否は、Driver自体の障害とは扱いません。
 
-一方、Database接続失敗、Binding解決失敗、adapter異常など、実行そのものを完了できなかった状態はExecution Errorです。
+一方、Binding解決失敗、Database接続失敗、adapter異常等はExecution Errorです。
 
-## Business ResultとExecution Error
+## SecretとEvidence
 
-ADR-0020の境界をDriverへそのまま引き継ぎます。
+`security.authenticate`のCanonical契約にcredential型があっても、実際のpassword、token、credential hash、接続資格情報をCanonical Worldや通常Evidenceへ保存しません。
 
-```text
-Business Result
-  ├─ Output value
-  └─ Named Outcome(name, payload)
-
-Execution Error
-  └─ Capability invocation自体を完了できなかった状態
-```
-
-既存の単一`output` CapabilityはOutput valueを返せます。
-
-名前付きOutcomeを持つCapabilityでは、expected denial等をDriver障害へ変換しません。
-
-Authenticationでは、`authenticated`と`denied`はいずれも正常に実行されたBusiness Resultです。credential不一致やaccount lockによる`denied`と、認証Databaseへの接続失敗は意味が異なります。
-
-`sales.order.submit`の既存`output sales.order`は不用意にOutcomeへ書き換えません。
+Driver Scenarioでも、入力の再現性を理由にsecretを平文で記録しません。必要な場合は、実行時に安全な境界から受け取るか、Reference専用の非secret fixture値へ置き換えます。
 
 ## Validationとの境界
 
@@ -197,13 +186,15 @@ implementation
 
 file pathやGo symbolを暗黙に推測してimplementationへ接続しません。
 
+Authentication / Authorizationも同じ原則に従い、legacy schemaや実装名をDriverのCanonicalな意味にしません。
+
 ## Database
 
 最初はReference用adapter / fixtureを利用して構いませんが、`sales_core`と`master_data`という二つのlogical datasourceを維持します。
 
 Driverの都合で一つのin-memory Databaseへ意味上統合しません。
 
-既存認証Compatibilityが別Databaseを利用する場合も、DriverはAuthentication / Authorization Capabilityを通して利用し、legacy schemaへ直接依存しません。
+既存認証Compatibilityが別の保存先や既存関数を利用する場合も、DriverはAuthentication / Authorization Capabilityを通して利用し、legacy schemaへ直接依存しません。
 
 ## CommandとObservation
 
@@ -223,10 +214,11 @@ Driver Scenarioは、別の開発者や生成AIが同じ設計を再現できる
 
 少なくとも次を記録できる形を検討します。
 
-- scenario input
+- scenario inputの非secret部分
 - resolved Pattern
 - resolved Datasource Binding
 - resolved Capability Binding
+- authentication result
 - validation result
 - authorization result
 - invoked Capability
@@ -272,12 +264,13 @@ Driverの実装が存在するだけでは、Gate B「UIなしで業務シナリ
 - HTTP statusやGUI messageをDriver Coreの意味として固定すること
 - Driver独自のOutcome体系
 - Driver独自のValidation rule
+- Driver独自のAuthentication / Authorization rule
 
 ## Block解除条件
 
 `ISSUE-000013` / GitHub Issue #124で、Gate Aの必須項目がすべてReadyと判定されたときに、このIssueを`Ready / In Progress`へ移します。
 
-現時点では#68と#77のGate A必須範囲が残っています。
+現時点の独立blockerは#68のGate A必須範囲です。
 
 Issueが単にcloseしたかではなく、Driverへ必要な意味をReference / Conformanceから再現できることを条件とします。
 
@@ -286,6 +279,6 @@ Issueが単にcloseしたかではなく、Driverへ必要な意味をReference 
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - GitHub Issue #68 / #69 / #77 / #124 / #125 / #126
-- GitHub PR #132 / #135 / #136 / #139 / #140
+- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143
 - ADR-0019 / ADR-0020
 - RQ-005, RQ-008, RQ-009, RQ-011, RQ-012, RQ-014, RQ-017, RQ-018, RQ-021
