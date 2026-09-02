@@ -14,16 +14,16 @@ const AuthenticationCapability core.CanonicalID = "security.authenticate"
 // Userは、既存システム側に存在する認証用recordの最小Referenceである。
 // TEI標準User schemaへ変換するための型ではなく、既存fieldを失わずadapterへ渡す境界として扱う。
 type User struct {
-	LoginID            string
-	SubjectID          string
-	CredentialRef      string
-	Disabled           bool
-	ValidFrom          time.Time
-	ValidUntil         time.Time
-	LoginFailureCount  int
-	LockedUntil        time.Time
-	OrganizationCode   string
-	RoleCode           string
+	LoginID           string
+	SubjectID         string
+	CredentialRef     string
+	Disabled          bool
+	ValidFrom         time.Time
+	ValidUntil        time.Time
+	LoginFailureCount int
+	LockedUntil       time.Time
+	OrganizationCode  string
+	RoleCode          string
 }
 
 // UserStoreは、既存schemaや既存APIから認証対象recordを取得する境界である。

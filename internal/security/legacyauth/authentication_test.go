@@ -213,7 +213,7 @@ func TestLegacyAuthenticationRejectsMalformedLegacyRecordsAsExecutionErrors(t *t
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			adapter := legacyauth.Adapter{
-				Store: storeFunc(func(context.Context, string) (legacyauth.User, bool, error) { return tt.user, true, nil }),
+				Store:    storeFunc(func(context.Context, string) (legacyauth.User, bool, error) { return tt.user, true, nil }),
 				Verifier: verifierFunc(func(context.Context, string, string) (bool, error) { return true, nil }),
 			}
 			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, legacyauth.Input{LoginID: "legacy-user-001", Credential: "runtime-presented-value"})
