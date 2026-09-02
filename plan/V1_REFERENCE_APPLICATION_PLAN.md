@@ -14,17 +14,21 @@ v1では、新しい理想化されたサンプルを別に作らず、`referenc
 
 現在の`order_entry`には、すでに次の資産があります。
 
-- `sales` / `customer` Semantic Namespace
+- `sales` / `customer` / `security` Semantic Namespace
 - `sales.Order` / `sales.OrderLine`
 - `sales.order.customer` Relation
 - `sales.order.lines` 1:N Relation
 - `sales.order.submit` Capability
+- `security.authenticate` / `security.authorize` Capability
 - `sales_core`へのread-write接続
 - `master_data`へのread-only接続
 - Database Contract
 - native SQL Query
 - 5種類のApplication Pattern
-- `sales.order.submit`の明示的なCapability Binding
+- `sales.order.submit` / `security.authenticate` / `security.authorize`の明示的なCapability Binding
+- 業務ValidationのCanonical ruleと最小Evaluator
+- legacy認証Compatibility Reference
+- CapabilityのBusiness Result / Execution Error境界
 - Source-to-Canonical Traceability
 - Reference Workspaceと再生成可能なCanonical World
 
@@ -35,6 +39,8 @@ M0.xxで積み上げたDatabase / Provider / RuntimeのEvidenceを捨てず、Ap
 最初の業務シナリオは、次の一続きの操作です。
 
 ```text
+利用者を認証する
+    ↓
 受注一覧を探す
     ↓
 受注を開く
@@ -45,7 +51,7 @@ M0.xxで積み上げたDatabase / Provider / RuntimeのEvidenceを捨てず、Ap
     ↓
 入力内容を検証する
     ↓
-利用者の認証・認可を確認する
+利用者が操作できるか確認する
     ↓
 受注を確定する
     ↓
@@ -63,17 +69,9 @@ Stage 0  Product Baseline / Gap Audit        完了
                ↓
 Stage 1  Application Pattern                 完了
                ↓
-Gate A   Application上の意味をDriverへ渡せるか監査
-               │
-               ├─ #68   既存認証Compatibility
-               ├─ #77   Capability Outcome / Execution Error
-               └─ #125  業務Validation
-               │
-               │  #126 Capability Binding は完了
+Gate A   Application上の意味をDriverへ渡せる  Ready
                ↓
-          Gate A再監査
-               ↓
-Stage 2  Application Driver #69
+Stage 2  Application Driver #69              Ready
                ↓
 Gate B
                ↓
@@ -197,39 +195,27 @@ Semantic上の関係、Application上の意図、物理DB上の実現を別の�
 
 ### 現在の状態
 
-**Blockedです。**
+**Readyです。**
 
-Application PatternとCapability BindingはReadyです。Capability Outcomeも、名前付きOutcomeをCanonicalに表現する基盤までは実装済みです。
+Gate Aの必須項目に独立したBlockerは残っていません。Application Driver #69の主実装を開始できます。
 
-一方、Driver開始前には次の3領域が残っています。
+この判定は関連Issueのclose状態だけではなく、Driverへ必要な意味をRepository上のReference / Conformanceから再現できるかを項目ごとに監査した結果です。
 
-| 領域 | 現在地 | 追跡先 |
-| --- | --- | --- |
-| Authentication / Authorization | Reference未成立 | #68 / `ISSUE-000003` |
-| named Outcome / Execution Error | Canonical基盤は実装済み。Reference / Invocation境界が未完了 | #77 / `ISSUE-000009` |
-| 業務Validation | 正本とidentityが未成立 | #125 / `ISSUE-000014` |
+### Readyになった領域
 
-Capability BindingはIssue #126 / PR #135で完了しました。
+| 領域 | Evidence |
+| --- | --- |
+| Application Pattern | #67 |
+| Datasource read / write境界 | `order_entry` Application定義 |
+| Capability Binding | #126 / PR #135 |
+| 業務Validation | #125 / PR #136 / #139 / #140 |
+| Business Result / Execution Error | #77 / PR #132 / #141 |
+| Authentication | #68 / PR #148 / #151 |
+| Authorization | #68 / PR #149 |
+| 既存認証の実現方式交換 | #68 / PR #151 |
+| Command / Observation分離 | 既存Runtime / Deployment Evidence |
 
-Driver #69は、残る意味をDriver専用Goコードや設定で補わないよう、Gate A通過まで主実装をBlockedとします。
-
-### 現時点でReadyな情報
-
-- browse対象: `order_entry.recent_orders`
-- record対象: `order_entry.order_record`
-- reference対象: `sales.order.customer` + datasource `master`
-- header-detail関係: `sales.order.lines -> sales.order_line many`
-- command対象: `sales.order.submit`
-- Pattern identity / Source Index
-- `sales` read-write / `master` readのDatasource境界
-- `sales.order.submit`の既存単一`output sales.order`
-- `sales.order.submit`の明示的なCapability Binding
-- Binding authoring source / provenance
-- Command / Observation分離の基本境界
-
-これらをDriver専用設定へ再記述しません。
-
-### Gate Aで答えられる必要がある問い
+### Gate Aで答えられる問い
 
 - このApplicationは何をbrowseするのか
 - 一件のrecordとは何か
@@ -242,14 +228,25 @@ Driver #69は、残る意味をDriver専用Goコードや設定で補わない�
 - CapabilityをどのBindingで実現するのか
 - CapabilityのBusiness ResultとExecution Errorをどう区別するのか
 
-これらに答えるためにWeb画面やDriver専用設定を読む必要がある場合、Gate Aは未達とします。
+これらに答えるためにWeb画面やDriver専用設定を読む必要はありません。
 
-## Gate A残条件 1 — Capability Outcome / Execution Error
+## Gate Aで成立したCapability結果境界
 
 関連: `ISSUE-000009` / GitHub Issue #77  
 設計: [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / ADR-0020
 
-Authenticationでは、少なくとも次を区別する必要があります。
+Capabilityを正常に実行して得られた業務上の結果と、Invocationそのものを完了できなかった状態を分けます。
+
+```text
+Business Result
+  ├─ existing output
+  └─ named Outcome
+
+Execution Error
+  └─ Invocation自体を完了できない状態
+```
+
+Authenticationでは、少なくとも次を区別できます。
 
 ```text
 Authenticated(subject)
@@ -257,53 +254,69 @@ Denied(reason)
 ExecutionError(error)
 ```
 
-credential不一致、disabled、lockは認証処理を正常に完了したBusiness Resultです。Database接続失敗やadapter異常は、認証判断そのものを完了できなかったExecution Errorです。
+credential不一致、disabled、lock等はBusiness Resultとしての`denied`です。Database接続失敗やadapter異常はExecution Errorです。
 
-PR #132で、Semantic Capabilityへ名前付きOutcomeを宣言するためのCanonical基盤は実装済みです。
+既存の`sales.order.submit`は単一`output sales.order`を維持し、named Outcome導入を理由に書き換えていません。
 
-```tei
-capability security.authenticate {
-    input login std.identifier
-    outcome authenticated security.authenticated_subject
-    outcome denied security.authentication_denial
-}
+## Gate Aで成立した業務Validation
+
+関連: `ISSUE-000014` / GitHub Issue #125
+
+Patternの構文・参照整合性を検査するValidationと、業務上のruleを評価するValidationを分けました。
+
+最初の実Referenceは次の二例です。
+
+```text
+sales.order_line.quantity_positive
+sales.order.lines.line_number_unique
 ```
 
-この段階で次を確認しています。
+これらは`sales` Semantic Namespaceを正本とし、同じCanonical ruleを最小Evaluatorへ渡せます。
 
-- Outcome local nameとpayload型を保持できる
-- `outcome <name> <payload-type>`をParserから扱える
-- 既存`output`と名前付きOutcomeを同時に宣言しない
-- Outcome名の重複を拒否する
-- payload型の参照整合性を検査できる
-- 宣言順をCanonicalな意味にしない
+Validation不成立は`NotSatisfied`として扱い、評価そのものを完了できない状態はerrorとして分離します。
 
-したがって、Gate Aで残るのは「Outcomeを宣言できるか」ではなく、実際のCapability呼び出しで結果境界を保てるかです。
+Driver専用Goコード、Web form validator、Database CHECK constraintのいずれか一つだけを正本にはしません。
 
-少なくとも次をReference / Conformanceから確認します。
+## Gate Aで成立したCapability Binding
 
-- `security.authenticate`等の実Referenceでnamed Outcomeを利用できる
-- `authenticated` / `denied`を正常なBusiness Resultとして扱える
-- expected denialをExecution Errorへ変換しない
-- Binding / adapter / Database障害をnamed Outcomeへ押し込まない
-- DriverへBusiness ResultとExecution Errorの区別を渡せる
+関連: `ISSUE-000015` / GitHub Issue #126 / PR #135
 
-第一Web Targetでの表示方法など、Gate A以後でよい作業はDeferredします。
+`sales.order.submit`をApplication + Capabilityから明示的に解決できるReferenceが成立しました。
 
-既存`sales.order.submit`は単一`output sales.order`で成立しているため、named Outcome導入を理由に書き換えません。
+```text
+order_entry / sales.order.submit
+```
 
-## Gate A残条件 2 — 既存認証Compatibility
+#68では同じ原則をAuthentication / Authorizationにも利用しています。
+
+```text
+order_entry / security.authenticate
+order_entry / security.authorize
+```
+
+Driver相当の利用側は、ApplicationとCapabilityを明示してBindingを解決します。
+
+- 0件: Binding未定義としてerror
+- 1件: 一意に解決
+- 複数件: ambiguousとしてerror
+
+file path、Go hook名、列挙順からimplementationを推測しません。
+
+Source IndexからBindingのauthoring sourceへ戻ることができ、file renameでもBinding identityが変わりません。
+
+第一級Binding IDや汎用selection policyは、実Referenceで必要になるまで追加しません。
+
+## Gate Aで成立した既存認証Compatibility
 
 関連: `ISSUE-000003` / GitHub Issue #68  
 詳細: [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / ADR-0019
 
-既存システム固有の認証仕様を、TEI標準User schemaへ先に作り替えなくてもAuthentication / Authorization Capabilityへ接続できることを確認します。
+既存システム固有の認証仕様を、TEI標準User schemaへ先に作り替えなくてもAuthentication / Authorization Capabilityへ接続できることを確認しました。
 
-### Referenceで保持する既存意味
-
-少なくとも次を扱います。
+### 保持した既存意味
 
 - user ID
+- authenticated subject identity
 - credential reference
 - disabled state
 - validity period
@@ -314,9 +327,9 @@ capability security.authenticate {
 
 これらを標準化のために削ったり、Target固有コードへ再実装したりしません。
 
-### 認証・認可の境界
+### Authentication / Authorization
 
-AuthenticationとAuthorizationを分けます。
+AuthenticationとAuthorizationを分けています。
 
 ```text
 Authentication
@@ -326,109 +339,40 @@ Authorization
   そのsubjectがApplication上の操作を行えるか確認する
 ```
 
+AuthorizationのresourceにはWeb画面名ではなくApplication Pattern identityを利用します。
+
+```text
+browse  / order_entry.recent_orders
+edit    / order_entry.order_record
+execute / order_entry.submit_order
+```
+
 Application利用者のAuthorizationと、Plugin / Runtimeに与えるPermission Grant / Resource Leaseも別の責務です。
 
 ### Secretの扱い
 
-password平文、秘密鍵、token等のsecret materialを次へ保存しません。
+password平文、password hash、credential hash、token等のsecret materialを次へ保存しません。
 
 - Canonical World
 - Source Index
-- Durable artifact
-- 通常Diagnostic
-- 通常log
+- Business Result
 - Git管理するReference fixture
+- 通常Evidence
 
-Referenceで必要なcredentialは、実秘密情報ではないdeterministic fixtureまたはsecret handleとして扱います。
+Canonical上の`security.credential`は入力の意味を表す型であり、実際のcredential値を保存する場所ではありません。
 
-### Gate Aへ渡すもの
+### 実現方式の交換
 
-- authenticated subject identity
-- Authentication / Authorization Capability identity
-- Application上のaction / resource
-- Capability Binding / Mappingの来歴
-- named Outcome / Execution Error契約
-- legacy条件のうち判断に利用する意味
-- secretを解決する境界
+PR #151では、`order_entry/security.authenticate`という一つのApplication Bindingを変えず、次の二方式を交換できることを確認しました。
 
-## Gate A残条件 3 — 業務Validation
+1. 既存の利用者情報を読む方式
+2. 既存認証関数、stored procedure、外部API等に相当する処理を呼ぶ方式
 
-関連: `ISSUE-000014` / GitHub Issue #125
+両方式は同じCanonical `security.authenticate`契約と同じauthenticated subjectを返します。
 
-Patternの構文・参照整合性を検査するValidationと、業務上のruleを評価するValidationを分けます。
+この実証では`reference/workspace`と`reference/world.json`を変更しておらず、CI #374のReference World再現性検査もGolden更新なしで成功しました。
 
-PR #134で、既存Semanticだけで実証できる最初の二例を具体化しました。
-
-### 単一属性のrule
-
-```text
-sales.order_line.quantity > 0
-```
-
-### Relation scopeを持つrule
-
-```text
-sales.order.lines
-  └─ lineNumber is unique within one order
-```
-
-後者は`OrderLine`全体の一意性ではなく、一つのOrderに属するDetail集合の中での一意性です。
-
-この二例を使い、少なくとも次の所有候補を比較します。
-
-- Semantic rule
-- Application-owned Validation
-- 外部状態や処理を伴う場合のCapability / Policy等の独立単位
-
-汎用rule engineや式言語を先に固定しません。
-
-確認するのは次です。
-
-- ruleの正本をどこに置くか
-- Validation identityをどう追跡するか
-- DriverとTargetが同じruleを再利用できるか
-- Validation不成立を正常な業務結果として扱えるか
-- Validation不成立とExecution Errorを区別できるか
-
-Driver専用Goコード、Web form validator、Database CHECK constraintのいずれか一つだけを正本にはしません。
-
-## Gate AでReadyになった項目 — Capability Binding
-
-関連: `ISSUE-000015` / GitHub Issue #126 / PR #135
-
-`sales.order.submit`の明示的なCustom Go BindingをReference化しました。
-
-v1では新しい任意のBinding IDを追加せず、ApplicationとCapabilityの組をBinding identityとして扱います。
-
-```text
-order_entry / sales.order.submit
-```
-
-Driver相当の利用側は、ApplicationとCapabilityを明示してBindingを解決できます。
-
-- 0件: Binding未定義としてerror
-- 1件: 一意に解決
-- 複数件: ambiguousとしてerror
-
-file path、Go hook名、列挙順からimplementationを推測しません。
-
-Source IndexからBinding authoring sourceへ戻ることができ、file renameでもBinding identityが変わらないことを確認しました。
-
-同じCapabilityを異なるApplicationがBindingしても衝突せず、同じApplication + Capabilityの重複Bindingは拒否します。
-
-この実証では第一級Binding IDは必要になりませんでした。複数implementationの同時選択やenvironment / release単位の切替が必要になった時点で再評価します。
-
-Binding解決失敗はBusiness Resultではなく、Capabilityを実行する準備を整えられない側のerrorとして扱います。
-
-CI #309は`verify`とPostgreSQL integrationの双方が成功しました。
-
-## Gate A再監査
-
-#68 / #77 / #125のEvidenceが増えたら、[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)を項目単位で更新します。
-
-関連Issueが単にcloseしたかではなく、Driverへ必要な意味をRepositoryから再現できるかで判定します。
-
-必須項目がすべてReadyになった時点で、`ISSUE-000006` / GitHub Issue #69をReady / In Progressへ移します。
+実現方式の違いをApplication上の意味やCanonical Worldへ持ち込まずに交換できています。
 
 ## Stage 2 — Application Driver
 
@@ -436,7 +380,9 @@ CI #309は`verify`とPostgreSQL integrationの双方が成功しました。
 
 ### 現在の状態
 
-**Gate A待ちでBlockedです。**
+**Readyです。**
+
+Gate Aの必須項目が揃ったため、主実装を開始できます。
 
 ### 目的
 
@@ -446,25 +392,28 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 
 ### 最小Scenario
 
-1. `browse`で受注一覧を取得する
-2. `record`で一件を扱う
-3. `reference`で顧客を解決する
-4. `header-detail`でOrderLineを扱う
-5. 業務Validationを実行する
-6. Authorizationを確認する
-7. `command`で`sales.order.submit`を呼ぶ
-8. Business ResultとExecution Errorを区別する
-9. 必要な場合はObservationから外部状態を確認する
+1. Authenticationを実行してsubjectを得る
+2. `browse`で受注一覧を取得する
+3. `record`で一件を扱う
+4. `reference`で顧客を解決する
+5. `header-detail`でOrderLineを扱う
+6. 業務Validationを実行する
+7. Authorizationを確認する
+8. `command`で`sales.order.submit`を呼ぶ
+9. Business ResultとExecution Errorを区別する
+10. 必要な場合はObservationから外部状態を確認する
 
 ### Driverがしてはいけないこと
 
 - Application ruleをDriver専用Goコードへ重複実装する
 - native SQLをDriver側へコピーする
 - logical datasourceを意味上ひとつへ統合する
+- legacy schema、organization、role、legacy return codeへ直接依存する
 - Target固有Presentationを必要条件にする
 - Capability Bindingをfile pathやGo symbolから推測する
 - Driver独自のOutcome体系を作る
 - HTTP statusやGUI messageをDriver Coreの意味にする
+- secretをScenario Evidenceへ保存する
 - Driver固有状態をCanonical Worldへ逆流させる
 
 ### Gate Bへ進む条件
@@ -472,9 +421,13 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 - ScenarioをRepositoryだけから再現できる
 - Pattern / Query / Capability / Datasource / Bindingの解決結果を追跡できる
 - read-only `master_data`へwriteしない
+- native SQLをDriver側へ複製しない
+- legacy認証schemaへDriverが直接依存しない
+- Authenticationの`denied`をDriver障害として扱わない
 - Validation / Authorization不成立時にcommandへ進まない
-- Business ResultとExecution Errorを区別できる
+- expectedなBusiness OutcomeとExecution Errorを区別できる
 - CommandとObservationを必要に応じて分けられる
+- secretを通常のScenario Evidenceへ混入させない
 - 同じApplication定義を第一Targetへ渡せる
 
 ## Gate B — UIなしで業務シナリオを説明できる
@@ -590,6 +543,7 @@ Desktop、API、MCP、VUI等から、Webとの差が十分に表れるTargetを�
 - `std.auth.*`の標準契約
 - Application単位の分散transaction一般化
 - 第一級Binding IDや汎用Binding selection policy
+- Runtime上で複数implementationを動的に選択する汎用機構
 
 ReferenceからEvidenceを得る前に固定しません。
 

@@ -1,34 +1,24 @@
 # ISSUE-000006: Application Driverの最小vertical sliceを実装する
 
-- 状態: Blocked
+- 状態: Ready
 - GitHub Issue: #69
-- Blocker: `ISSUE-000013` / GitHub Issue #124（Gate A到達性監査）
-- Gate Aの現在の残条件: #68
-- Gate AでReadyになった関連項目: #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
+- 前段: `ISSUE-000013` / GitHub Issue #124（Gate A Ready）
+- Gate AでReadyになった関連項目: #67（Application Pattern） / #68（既存認証Compatibility） / #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
+- 次のGate: Gate B「UIなしで主要Scenarioを再現できる」
 
 ## 背景
 
-Product Requirement Gap Auditでは、RQ-012「Driverを設計検証用の実行・シミュレーション環境として利用できること」が未着手であることを確認しました。
+Product Requirement Gap Auditでは、RQ-012「Driverを設計検証用の実行・シミュレーション環境として利用できること」が未着手でした。
 
-現行RepositoryにはDeployment executor、process Plugin、runtime reattachなどの実行可能Referenceがあります。しかし、それらはApplication設計を開発中に動かして確かめるDriverとは役割が異なります。
+現行RepositoryにはDeployment executor、process Plugin、runtime reattach等の実行可能Referenceがありますが、それらはApplication設計を開発中に動かして確かめるDriverとは役割が異なります。
 
-Application Pattern Stageは完了し、`order_entry`では`browse`、`record`、`reference`、`command`、`header-detail`の5種類が実Referenceまで成立しています。
-
-Capability Binding #126、業務Validation #125、Capability Outcome / Execution Error #77もGate Aで`Ready`になりました。
-
-現在残っている独立blockerは#68の既存認証Compatibilityです。Authentication契約と結果境界は成立していますが、legacy認証仕様のMapping / BindingとAuthorizationがまだ揃っていないため、Driverの主実装はGate Aを通過するまで開始しません。
-
-## なぜ主実装を止めるか
-
-Driverを先に実装すると、未解決のAuthentication / Authorization条件をDriver専用Goコードや設定へ埋め込むおそれがあります。
-
-Driverは不足するApplication上の意味を補う場所ではなく、Gate Aで成立した意味を実行・検証する場所とします。
+Gate A監査 #124により、Driverへ渡すApplication上の意味はReadyになりました。したがって、Driver専用コードで不足する意味を補う危険を避けたまま、主実装へ進めます。
 
 ## Driverの役割
 
 第一段階のDriverはproduction Runtimeの簡易版ではありません。
 
-設計途中のApplicationについて、UIがなくても次を一続きに実行し、意味上の矛盾を早い段階で見つけるための設計検証環境です。
+設計途中のApplicationについて、UIがなくても主要な業務Scenarioを一続きに実行し、意味上の矛盾や未解決のBindingを早い段階で見つけるための設計検証環境です。
 
 ```text
 Application定義
@@ -44,47 +34,54 @@ Business Result / Execution Error
 Observed Result / Evidence
 ```
 
-Application上の不足をDriver専用コードで補うのではなく、Gate Aで成立した意味を実行することがDriverの役割です。
+Driverは不足するApplication上の意味を埋める場所ではありません。Gate Aで成立した正本を読み、実行・検証することが役割です。
 
 ## Gate Aから受け取るもの
 
-### Pattern / Data access — Ready
+### Pattern / Data access
 
-- browse対象
-- record対象
-- reference対象RelationとDatasource
-- header-detail対象Relation
-- commandとして呼ぶCapability
-- read / read-write Datasource境界
+`order_entry`では次を解決できます。
 
-この部分はApplication Pattern StageでReadyです。
+- `browse`: `order_entry.recent_orders`
+- `record`: `order_entry.order_record`
+- `reference`: `sales.order.customer` + datasource `master`
+- `header-detail`: `sales.order.lines -> sales.order_line many`
+- `command`: `order_entry.submit_order -> sales.order.submit`
+- `sales`: read-write
+- `master`: read-only
 
-### Capability Binding — Ready
+Driver専用設定へこれらを書き写しません。
 
-Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決できるBinding Referenceが成立しました。
+### Capability Binding
 
-Driverはfile path、Go hook、列挙順をBinding discoveryに利用しません。
+Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決する入口が成立しています。
 
-0件または複数件で一意に解決できない場合は、Business Resultへ変換せずerrorとして扱います。
+#68では同じ原則をAuthentication / Authorizationにも適用しました。
 
-### 業務Validation — Ready
+```text
+order_entry / sales.order.submit
+order_entry / security.authenticate
+order_entry / security.authorize
+```
 
-Issue #125 / PR #136 / #139 / #140で、業務ValidationはGate Aに必要な範囲を満たしました。
+Driverはfile path、Go hook、列挙順からimplementationを推測しません。
 
-- Validation identityとauthoring sourceを追跡できる
-- `sales.order_line.quantity_positive`をCanonical ruleとして保持できる
-- `sales.order.lines.line_number_unique`をCanonical ruleとして保持できる
-- 同じruleを最小Evaluatorへ渡せる
-- Validation不成立を`NotSatisfied`として扱える
-- 評価そのものを完了できない状態を`NotSatisfied`へ畳まずerrorとして扱える
+### 業務Validation
 
-Driverはrule本文を専用Goコードへ複製せず、このEvaluator境界を利用します。
+Issue #125で、次のCanonical ruleと最小Evaluatorが成立しています。
 
-### Capability結果境界 — Ready
+```text
+sales.order_line.quantity_positive
+sales.order.lines.line_number_unique
+```
 
-ADR-0020 / GitHub Issue #77を正とします。
+Driverは`quantity > 0`等のrule本文を再実装せず、Canonical ValidationとEvaluatorを利用します。
 
-PR #132で名前付きOutcomeのCanonical契約を実装し、PR #141で実行時境界を実証しました。
+Validation不成立は`NotSatisfied`、評価そのものを完了できない状態はerrorとして扱います。
+
+### Capability結果境界
+
+ADR-0020 / Issue #77を正とします。
 
 ```text
 Business Result
@@ -95,47 +92,45 @@ Execution Error
   └─ Capability invocation自体を完了できなかった状態
 ```
 
-`security.authenticate`では、`authenticated` / `denied`を正常なBusiness Resultとして扱い、Database / adapter障害や未定義OutcomeをExecution Errorとして分離できます。
+`security.authenticate`の`authenticated` / `denied`、`security.authorize`の`allowed` / `denied`は正常な業務上の結果です。
 
-既存の`sales.order.submit`も従来の`output sales.order`を保ったまま、同じInvocation入口で扱えます。
+Binding解決失敗、Database接続失敗、adapter障害、未対応legacy return code等はExecution Errorです。
 
-Driverはこの境界を再利用し、独自のOutcome体系を作りません。
+既存の`sales.order.submit`は従来の`output sales.order`を維持し、同じInvocation入口で扱います。
 
-### Authentication / Authorization — Blocked
+### Authentication / Authorization
 
-`security.authenticate`のSemantic契約は存在しますが、Gate Aにはさらに次が必要です。
+Issue #68 / PR #148 / #149 / #151で、Gate Aに必要な境界が成立しました。
 
-- authenticated subject
-- Authentication Capabilityとlegacy実装のMapping / Binding
-- Authorization Capability identity
-- Application上のaction / resource
-- legacy field / functionとのMapping
-- secretを通常Evidenceへ残さない境界
+Authentication:
 
-この部分は`ISSUE-000003` / GitHub Issue #68で実証します。
+```text
+security.authenticate
+  ├─ authenticated(subject)
+  └─ denied(reason)
+```
 
-## 現時点でReadyな入力
+Authorization:
 
-Gate A監査では、次を既にReadyと評価しています。
+```text
+subject + action + resource
+          ↓
+ security.authorize
+     ├─ allowed
+     └─ denied
+```
 
-- `browse`: `order_entry.recent_orders`
-- `record`: `order_entry.order_record`
-- `reference`: `sales.order.customer` + datasource `master`
-- `header-detail`: `sales.order.lines -> sales.order_line many`
-- `command`: `sales.order.submit`
-- Pattern identity / Source Index
-- `sales` read-write / `master` readのDatasource境界
-- `sales.order.submit`の既存単一`output sales.order`
-- `sales.order.submit`の明示的なCapability Binding
-- Binding authoring source / provenance
-- 業務ValidationのCanonical rule / Source / Evaluator
-- named Outcome / Execution ErrorのInvocation境界
-- `security.authenticate`のnamed Outcome契約
-- Command / Observation分離の基本境界
+AuthorizationのresourceにはApplication Pattern identityを利用します。
 
-これらをDriver専用設定へ再記述しません。
+```text
+browse  / order_entry.recent_orders
+edit    / order_entry.order_record
+execute / order_entry.submit_order
+```
 
-## Gate A通過後の最小Scenario
+Driverはlegacy schema、organization、role、legacy return codeを直接読みません。これらは既存認証adapterの内側へ残します。
+
+## 最小Scenario
 
 `order_entry`で次を再現します。
 
@@ -150,92 +145,124 @@ Gate A監査では、次を既にReadyと評価しています。
 9. CapabilityのBusiness ResultとExecution Errorを区別する
 10. 必要な場合は外部状態をObservationから確認する
 
-Authenticationの`denied`、Validationの`NotSatisfied`、Authorizationの業務上の拒否は、Driver自体の障害とは扱いません。
+この順序を固定的な汎用workflow engineへ一般化することは、第一段階の目的ではありません。まず一つのReference Scenarioを、同じApplication上の意味から再現できることを確認します。
 
-一方、Binding解決失敗、Database接続失敗、adapter異常等はExecution Errorです。
+## 正常な業務上の不成立
+
+次はDriver自体の障害ではありません。
+
+- Authenticationの`denied`
+- Validationの`NotSatisfied`
+- Authorizationの`denied`
+- Capabilityが契約上定義している別Outcome
+
+Scenarioは、その段階で後続処理へ進めない理由をEvidenceとして残せます。
+
+たとえばAuthorizationが`denied`ならcommandを呼び出しませんが、それをDriverのExecution Errorとは扱いません。
+
+## Execution Error
+
+次は業務上の拒否へ丸めません。
+
+- Pattern / Bindingを一意に解決できない
+- Databaseへ接続できない
+- adapterを起動・実行できない
+- legacy実装が未対応return codeを返す
+- Capability契約にないOutcomeを返す
+- Validation評価そのものを完了できない
+
+Driver独自のerror code体系を作るのではなく、既存の各境界から返されるerrorを、Scenario実行を完了できなかった状態として扱います。
 
 ## SecretとEvidence
 
 `security.authenticate`のCanonical契約にcredential型があっても、実際のpassword、token、credential hash、接続資格情報をCanonical Worldや通常Evidenceへ保存しません。
 
-Driver Scenarioでも、入力の再現性を理由にsecretを平文で記録しません。必要な場合は、実行時に安全な境界から受け取るか、Reference専用の非secret fixture値へ置き換えます。
+Driver Scenarioでも、入力の再現性を理由にsecretを平文で記録しません。
 
-## Validationとの境界
+Scenario Evidenceに残せるのは、たとえば次の情報です。
 
-Driverが実行する業務ValidationはSemantic Validationを正本とします。
+- credential値そのものではない入力識別情報
+- Authentication Outcome
+- authenticated subject identity
+- 利用したCapability / Bindingのidentity
+- secretではない来歴
 
-Driverは、PR #140で成立したEvaluatorへ実Scenarioの値を渡すAdapterを持つことはできますが、`quantity > 0`等のrule本文を再実装しません。
+production用のsecret解決方式は、このvertical sliceの前提にはしません。
 
-Evaluatorの`Source`境界は、Driverより先に汎用的な業務データObject modelを固定しないための最小境界です。Driver Scenarioから自然な値表現が得られた時点で、必要なら圧力試験します。
-
-## Capability Bindingとの境界
-
-`command` PatternはCapability identityを保持します。
-
-Driverは、そのidentityとApplication scopeから既存のBinding解決入口を利用します。
-
-```text
-order_entry.submit_order
-        ↓ capability
-sales.order.submit
-        ↓ Application + Capability
-Custom Go Binding
-        ↓
-implementation
-```
-
-file pathやGo symbolを暗黙に推測してimplementationへ接続しません。
-
-Authentication / Authorizationも同じ原則に従い、legacy schemaや実装名をDriverのCanonicalな意味にしません。
-
-## Database
+## Database境界
 
 最初はReference用adapter / fixtureを利用して構いませんが、`sales_core`と`master_data`という二つのlogical datasourceを維持します。
 
 Driverの都合で一つのin-memory Databaseへ意味上統合しません。
 
-既存認証Compatibilityが別の保存先や既存関数を利用する場合も、DriverはAuthentication / Authorization Capabilityを通して利用し、legacy schemaへ直接依存しません。
+```text
+sales  -> sales_core  -> read-write
+master -> master_data -> read
+```
+
+`master_data`へwriteしないことをScenarioのConformanceとして確認します。
+
+既存認証が別Database、LDAP、既存関数、外部API等を利用しても、DriverはAuthentication / Authorization Capabilityを通して利用し、物理構造へ直接依存しません。
 
 ## CommandとObservation
 
-Capability invocationの結果を扱えるようになっても、RQ-018のCommand / Observation境界は置き換えません。
+Capability invocationの結果と、外部世界で実際に成立した状態は別の問いです。
 
-`sales.order.submit`では、少なくとも次を別の問いとして扱います。
+`sales.order.submit`では少なくとも次を分けます。
 
-1. Capability呼び出し自体を実行できたか
+1. Capability呼び出しを開始・完了できたか
 2. CapabilityがどのBusiness Resultを返したか
 3. 外部世界で期待した状態が実際に成立したか
 
-commandのreturn valueだけを外部世界の最終事実とはみなしません。
+commandのreturn valueだけを外部世界の最終事実とはみなしません。必要な場合はObservationから確認します。
 
-## ScenarioとEvidence
+## Scenario Evidence
 
-Driver Scenarioは、別の開発者や生成AIが同じ設計を再現できる小さなfixtureとして扱います。
+Driver Scenarioは、別の開発者や生成AIがRepositoryから同じ設計を再現できる小さなEvidenceとして扱います。
 
 少なくとも次を記録できる形を検討します。
 
 - scenario inputの非secret部分
 - resolved Pattern
-- resolved Datasource Binding
+- resolved logical Datasource
 - resolved Capability Binding
-- authentication result
-- validation result
-- authorization result
+- Authentication Result
+- Validation Result
+- Authorization Result
 - invoked Capability
 - Business Result
 - Execution Errorの有無
 - command acknowledgement
 - observed result
 
-Scenario logをCanonicalの正本にはしません。secretやcredential materialも通常Evidenceへ保存しません。
+Scenario logをCanonicalの正本にはしません。Driver固有状態をCanonical Worldへ逆流させません。
+
+## 実装順
+
+最初から大きなDriver frameworkを作らず、次の順でvertical sliceを成立させます。
+
+1. `order_entry`を読み込むDriverの最小入口を置く
+2. ScenarioからApplication PatternをCanonical identityで解決する
+3. logical Datasource境界を解決する
+4. Authenticationを既存Bindingから実行する
+5. browse / record / reference / header-detailを一続きに扱う
+6. Canonical Validationを既存Evaluatorへ渡す
+7. Authorizationを既存Bindingから実行する
+8. `sales.order.submit`を既存Bindingから呼び出す
+9. Business Result / Execution ErrorをScenario結果へ反映する
+10. 必要なObservationを別の結果として扱う
+11. Repositoryから再現可能なScenario Evidenceを整える
+12. Gate Bを監査する
+
+CLI/APIの具体的な名前やScenario file formatは、最小縦切りを組む段階で既存CLIとの整合を確認して決めます。先に構文を固定しません。
 
 ## Gate Bへ進む条件
 
-Driverの実装が存在するだけでは、Gate B「UIなしで業務シナリオを説明できる」を通過したとはみなしません。
+Driverのコードが存在するだけでは、Gate Bを通過したとはみなしません。
 
 少なくとも次をReference Scenarioから確認します。
 
-- 同じApplication定義からdeterministicにScenarioを組み立てられる
+- 同じApplication定義から再現可能にScenarioを組み立てられる
 - logical datasource aliasを保持する
 - read-only `master_data`へwriteしない
 - native SQLの正本をDriverが複製しない
@@ -265,20 +292,27 @@ Driverの実装が存在するだけでは、Gate B「UIなしで業務シナリ
 - Driver独自のOutcome体系
 - Driver独自のValidation rule
 - Driver独自のAuthentication / Authorization rule
+- Runtime上の汎用implementation選択機構
 
-## Block解除条件
+## 開始条件の評価
 
-`ISSUE-000013` / GitHub Issue #124で、Gate Aの必須項目がすべてReadyと判定されたときに、このIssueを`Ready / In Progress`へ移します。
+- [x] Gate A監査 #124がReady
+- [x] Application PatternがReady
+- [x] Capability BindingがReady
+- [x] 業務ValidationがReady
+- [x] Capability Business Result / Execution Error境界がReady
+- [x] Authentication / AuthorizationがReady
+- [x] legacy認証CompatibilityがReady
+- [x] Secret非保存境界がReady
 
-現時点の独立blockerは#68のGate A必須範囲です。
-
-Issueが単にcloseしたかではなく、Driverへ必要な意味をReference / Conformanceから再現できることを条件とします。
+したがって、このIssueは**Ready**です。
 
 ## 関連
 
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- GitHub Issue #68 / #69 / #77 / #124 / #125 / #126
-- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143
+- `plan/LEGACY_AUTH_V1_DESIGN.md`
+- GitHub Issue #67 / #68 / #69 / #77 / #124 / #125 / #126
+- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143 / #148 / #149 / #151
 - ADR-0019 / ADR-0020
 - RQ-005, RQ-008, RQ-009, RQ-011, RQ-012, RQ-014, RQ-017, RQ-018, RQ-021
