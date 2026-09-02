@@ -35,7 +35,7 @@ func contractQueryBindingFixture() (environment.Environment, plugin.ResolvedSet,
 		Query:    "find_by_id",
 	}
 	bindings := []ContractQueryExecutorBinding{
-		{Instance: "master_data.dev", Target: target, Executor: "database.query.oracle"},
+		{Environment: "development", Instance: "master_data.dev", Target: target, Executor: "database.query.oracle"},
 	}
 	return env, resolved, target, bindings
 }
@@ -46,6 +46,9 @@ func TestResolveContractQueryExecutorUsesExplicitBinding(t *testing.T) {
 	resolved, err := ResolveContractQueryExecutor(env, plugins, bindings, "master_data.dev", target)
 	if err != nil {
 		t.Fatalf("明示BindingからContract Query executorを解決できません: %v", err)
+	}
+	if resolved.Binding.Environment != "development" {
+		t.Fatalf("Environment identityが変わっています: %#v", resolved.Binding)
 	}
 	if resolved.Instance.ID != "master_data.dev" {
 		t.Fatalf("Database instanceが変わっています: %#v", resolved.Instance)
@@ -64,13 +67,23 @@ func TestResolveContractQueryExecutorDoesNotInferFromProvider(t *testing.T) {
 	}
 }
 
+func TestResolveContractQueryExecutorIgnoresBindingFromAnotherEnvironment(t *testing.T) {
+	env, plugins, target, bindings := contractQueryBindingFixture()
+	bindings[0].Environment = "production"
+
+	_, err := ResolveContractQueryExecutor(env, plugins, bindings, "master_data.dev", target)
+	if err == nil || !strings.Contains(err.Error(), "Environment development") || !strings.Contains(err.Error(), "Bindingがありません") {
+		t.Fatalf("別EnvironmentのBindingを流用しています: %v", err)
+	}
+}
+
 func TestResolveContractQueryExecutorRejectsDuplicateBindings(t *testing.T) {
 	env, plugins, target, bindings := contractQueryBindingFixture()
 	bindings = append(bindings, bindings[0])
 
 	_, err := ResolveContractQueryExecutor(env, plugins, bindings, "master_data.dev", target)
 	if err == nil || !strings.Contains(err.Error(), "Bindingが複数") {
-		t.Fatalf("同じinstanceとtargetへの複数Bindingを受け入れています: %v", err)
+		t.Fatalf("同じEnvironment、instance、targetへの複数Bindingを受け入れています: %v", err)
 	}
 }
 
