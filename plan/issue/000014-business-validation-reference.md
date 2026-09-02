@@ -1,6 +1,6 @@
 # ISSUE-000014: 業務Validationの最小Referenceと所有境界を実証する
 
-- 状態: Ready
+- 状態: 着手可能
 - GitHub Issue: #125
 - 上位Issue: `ISSUE-000013` / GitHub Issue #124
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
