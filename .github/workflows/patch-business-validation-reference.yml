@@ -1,0 +1,100 @@
+name: 業務Validation接続の安全な適用
+
+on:
+  push:
+    branches:
+      - work/business-validation-reference-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[business-validation-patched]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: work/business-validation-reference-v2
+      - name: Goを準備
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 接続箇所を一意に置換
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: replacement target count={count}, want=1")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "internal/syntax/parser.go",
+              '''\t\tcase "uses":\n\t\t\t_, _ = p.next()\n\t\t\tif _, err := p.expectText("semantic"); err != nil {\n\t\t\t\treturn a, err\n\t\t\t}\n\t\t\tv, err := p.expect(TokenIdent)\n\t\t\tif err != nil {\n\t\t\t\treturn a, err\n\t\t\t}\n\t\t\tref, err := core.ParseCanonicalID(v.Text)\n\t\t\tif err != nil {\n\t\t\t\treturn a, p.errAt(v, err.Error())\n\t\t\t}\n\t\t\ta.SemanticUses = append(a.SemanticUses, ref)\n''',
+              '''\t\tcase "uses":\n\t\t\t_, _ = p.next()\n\t\t\tkind, err := p.expect(TokenIdent)\n\t\t\tif err != nil {\n\t\t\t\treturn a, err\n\t\t\t}\n\t\t\tv, err := p.expect(TokenIdent)\n\t\t\tif err != nil {\n\t\t\t\treturn a, err\n\t\t\t}\n\t\t\tref, err := core.ParseCanonicalID(v.Text)\n\t\t\tif err != nil {\n\t\t\t\treturn a, p.errAt(v, err.Error())\n\t\t\t}\n\t\t\tswitch kind.Text {\n\t\t\tcase "semantic":\n\t\t\t\ta.SemanticUses = append(a.SemanticUses, ref)\n\t\t\tcase "validation":\n\t\t\t\ta.Validations = append(a.Validations, ref)\n\t\t\tdefault:\n\t\t\t\treturn a, p.errAt(kind, "expected semantic or validation after uses")\n\t\t\t}\n''')
+
+          replace_once(
+              "internal/syntax/parser.go",
+              '''\t\tcase "capability":\n\t\t\tc, err := p.parseSemanticCapability(nsID)\n\t\t\tif err != nil {\n\t\t\t\treturn ns, err\n\t\t\t}\n\t\t\tns.Capabilities = append(ns.Capabilities, c)\n\t\tdefault:\n\t\t\treturn ns, p.errAt(t, "expected type, data, or capability")\n''',
+              '''\t\tcase "capability":\n\t\t\tc, err := p.parseSemanticCapability(nsID)\n\t\t\tif err != nil {\n\t\t\t\treturn ns, err\n\t\t\t}\n\t\t\tns.Capabilities = append(ns.Capabilities, c)\n\t\tcase "validation":\n\t\t\tv, err := p.parseSemanticValidation(nsID)\n\t\t\tif err != nil {\n\t\t\t\treturn ns, err\n\t\t\t}\n\t\t\tns.Validations = append(ns.Validations, v)\n\t\tdefault:\n\t\t\treturn ns, p.errAt(t, "expected type, data, capability, or validation")\n''')
+
+          replace_once(
+              "internal/workspace/loader.go",
+              '''\t\tr.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)\n''',
+              '''\t\tr.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)\n\t\tr.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)\n''')
+
+          replace_once(
+              "internal/workspace/loader.go",
+              '''\t\tfor _, c := range ns.Capabilities {\n\t\t\tr.Sources["semantic-capability:"+string(c.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}\n\t\t}\n''',
+              '''\t\tfor _, c := range ns.Capabilities {\n\t\t\tr.Sources["semantic-capability:"+string(c.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}\n\t\t}\n\t\tfor _, v := range ns.Validations {\n\t\t\tr.Sources["semantic-validation:"+string(v.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}\n\t\t}\n''')
+
+          replace_once(
+              "internal/workspace/loader.go",
+              '''\t\tsort.Slice(w.Semantics[i].Capabilities, func(a, b int) bool { return w.Semantics[i].Capabilities[a].ID < w.Semantics[i].Capabilities[b].ID })\n''',
+              '''\t\tsort.Slice(w.Semantics[i].Capabilities, func(a, b int) bool { return w.Semantics[i].Capabilities[a].ID < w.Semantics[i].Capabilities[b].ID })\n\t\tsort.Slice(w.Semantics[i].Validations, func(a, b int) bool { return w.Semantics[i].Validations[a].ID < w.Semantics[i].Validations[b].ID })\n''')
+
+          replace_once(
+              "internal/workspace/loader.go",
+              '''\t\tsort.Slice(w.Applications[i].Patterns, func(a, b int) bool {\n\t\t\treturn w.Applications[i].Patterns[a].ID < w.Applications[i].Patterns[b].ID\n\t\t})\n''',
+              '''\t\tsort.Slice(w.Applications[i].Patterns, func(a, b int) bool {\n\t\t\treturn w.Applications[i].Patterns[a].ID < w.Applications[i].Patterns[b].ID\n\t\t})\n\t\tsort.Slice(w.Applications[i].Validations, func(a, b int) bool {\n\t\t\treturn w.Applications[i].Validations[a] < w.Applications[i].Validations[b]\n\t\t})\n''')
+
+          replace_once(
+              "internal/validation/validation.go",
+              '''func Validate(w ir.World) []Diagnostic {\n\tout := validateApplicationPatterns(w)\n''',
+              '''func Validate(w ir.World) []Diagnostic {\n\tout := validateApplicationPatterns(w)\n\tout = append(out, validateBusinessValidationReferences(w)...)\n''')
+
+          replace_once(
+              "internal/workspace/source_index.go",
+              '''\tcase "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability":\n''',
+              '''\tcase "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability", "semantic-validation":\n''')
+
+          replace_once(
+              "internal/syntax/semantic_anchor.go",
+              '''\t\tcase "capability":\n\t\t\tsym, err := expectLexerIdent(lx, "semantic capability symbol")\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tid, err := semanticCapabilityID(namespace, sym.Text)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tanchors = append(anchors, SubjectAnchor{Kind: "semantic-capability", ID: string(id), Anchor: tokenAnchor(sym)})\n\t\t\tif err := expectLexerKind(lx, TokenLBrace, "semantic capability body"); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tif err := skipSemanticCapabilityBody(lx); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\tdefault:\n''',
+              '''\t\tcase "capability":\n\t\t\tsym, err := expectLexerIdent(lx, "semantic capability symbol")\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tid, err := semanticCapabilityID(namespace, sym.Text)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tanchors = append(anchors, SubjectAnchor{Kind: "semantic-capability", ID: string(id), Anchor: tokenAnchor(sym)})\n\t\t\tif err := expectLexerKind(lx, TokenLBrace, "semantic capability body"); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tif err := skipSemanticCapabilityBody(lx); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\tcase "validation":\n\t\t\tidTok, err := expectLexerIdent(lx, "semantic validation id")\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tid, err := core.ParseCanonicalID(idTok.Text)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tanchors = append(anchors, SubjectAnchor{Kind: "semantic-validation", ID: string(id), Anchor: tokenAnchor(idTok)})\n\t\t\tif _, err := expectLexerIdent(lx, "semantic validation kind"); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tif err := expectLexerKind(lx, TokenLBrace, "semantic validation body"); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tif err := skipSemanticValidationBody(lx); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\tdefault:\n''')
+
+          replace_once(
+              "internal/syntax/semantic_anchor.go",
+              '''func semanticChildID(parent core.CanonicalID, symbol string) (core.CanonicalID, error) {\n''',
+              '''func skipSemanticValidationBody(lx *Lexer) error {\n\tfor {\n\t\tt, err := lx.Next()\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif t.Kind == TokenRBrace {\n\t\t\treturn nil\n\t\t}\n\t\tif t.Kind == TokenEOF {\n\t\t\treturn fmt.Errorf("unterminated semantic validation body")\n\t\t}\n\t\tif t.Kind != TokenIdent || (t.Text != "attribute" && t.Text != "relation") {\n\t\t\treturn fmt.Errorf("unexpected semantic validation member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)\n\t\t}\n\t\tif _, err := expectLexerIdent(lx, "semantic validation reference"); err != nil {\n\t\t\treturn err\n\t\t}\n\t}\n}\n\nfunc semanticChildID(parent core.CanonicalID, symbol string) (core.CanonicalID, error) {\n''')
+          PY
+          gofmt -w internal/syntax/parser.go internal/syntax/semantic_anchor.go internal/workspace/loader.go internal/workspace/source_index.go internal/validation/validation.go
+      - name: 変更をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/syntax/parser.go internal/syntax/semantic_anchor.go internal/workspace/loader.go internal/workspace/source_index.go internal/validation/validation.go
+          git commit -m "業務Validationを既存Workspace経路へ接続する [business-validation-patched]"
+          git push origin HEAD:work/business-validation-reference-v2
