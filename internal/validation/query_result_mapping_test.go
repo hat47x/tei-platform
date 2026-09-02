@@ -3,6 +3,7 @@ package validation_test
 import (
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/query"
 	"tei/internal/semantic"
@@ -37,9 +38,15 @@ func TestValidateReportsUnknownQueryResultAttributeWithQuerySubject(t *testing.T
 	}
 }
 
-func queryResultMappingWorld(attribute string) ir.World {
+func queryResultMappingWorld(attribute core.CanonicalID) ir.World {
 	return ir.World{
 		Semantics: []semantic.Namespace{
+			{
+				ID: "std",
+				Types: []semantic.Type{
+					{ID: "std.money", Symbol: "money", Kind: semantic.TypePrimitive},
+				},
+			},
 			{
 				ID: "sales",
 				Data: []semantic.Data{
@@ -57,13 +64,9 @@ func queryResultMappingWorld(attribute string) ir.World {
 			{
 				ID: "order_entry.recent_orders",
 				ResultColumns: []query.ResultColumnMapping{
-					{Column: "total_amount", Attribute: semanticAttributeID(attribute)},
+					{Column: "total_amount", Attribute: attribute},
 				},
 			},
 		},
 	}
-}
-
-func semanticAttributeID(value string) string {
-	return value
 }
