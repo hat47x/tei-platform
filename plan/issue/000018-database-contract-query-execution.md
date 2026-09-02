@@ -35,7 +35,7 @@ Relationはinstanceを辿るSemantic key対応を所有し、Applicationのrefer
 
 ### Query signature
 
-`database.QueryContract`には、既に次の最小契約を追加しています。
+`database.QueryContract`には、次の最小契約を追加しています。
 
 ```text
 QueryContract
@@ -56,7 +56,7 @@ query find_by_id {
 }
 ```
 
-`zero-or-one`は、Semantic Relationの`one`をoptionalへ変更するものではありません。`master_data`がexternal-observedなread境界であるため、外部データの欠落をExecution Errorへ変換せず、正常な「見つからない」として表現できるようにするためです。
+`zero-or-one`は、Semantic Relationの`one`をoptionalへ変更するものではありません。`master_data`がexternal-observedなread境界であるため、外部データの欠落をExecution Errorへ変換せず、正常な「見つからない」として表現するためです。
 
 ### Reference invocation
 
@@ -89,66 +89,109 @@ MappedResult
 
 値はこの境界では型変換せず、そのまま渡します。またruntime parameter値はCanonical Worldや通常Evidenceへ保存しません。
 
-## 現在露出しているGap: Query realization
+### Provider非依存の実行結果境界
 
-Contract Queryの「何を受け、何を返すか」は明示できましたが、`master_data.customer / find_by_id`を**どの実装で実行するか**はまだCanonicalに存在しません。
-
-Repository内を再確認した結果、次が分かりました。
-
-- `internal/driver/queryruntime`の実Query runtimeは現時点でPostgreSQLのみ
-- 第一Referenceの`master_data`はOracle provider
-- `internal/database/realization`のOracle対応はPersistence Mappingから物理Schemaを構成するための`PhysicalRealizationPolicy`であり、Contract Query read runtimeではない
-- 既存`CustomGoBinding`は`Application + Capability`をidentityとするため、Database-owned Queryをそのまま流用すると意味階層が混ざる
-
-したがって、Contract Query realizationは少なくとも`Database / Contract / Query`を起点とする独立したidentityとして扱う必要があります。
-
-## 次に追加する最小実行境界
-
-まずDriver Coreには、Oracle SQLや接続ライブラリを直接持ち込まず、provider非依存の実行境界だけを置きます。
-
-概念上は次の責務です。
+Driver Coreには`ContractQueryExecutor`を置き、Oracle SQL、API、stored procedure等の実装詳細を持ち込まないようにしました。
 
 ```text
 PreparedReferenceContractQuery
         ↓
 ContractQueryExecutor
-  - resolved Database / Contract / Query
-  - runtime parameters
         ↓
 ContractQueryResult
-  - zero rows
-  - one row
-  - execution error
+  ├─ Semantic rows
+  └─ provider固有の非secret Payload
 ```
 
-第一Referenceの`zero-or-one`では、次を明確に区別します。
+第一Referenceの`zero-or-one`では、次を区別します。
 
 - 0件: 正常な「見つからない」
 - 1件: 正常な取得結果
 - 2件以上: Contract違反
 - 接続失敗・SQL/API失敗等: Execution Error
 
-この境界ではまだOracle SQL自体を固定しません。どのprovider implementationを選ぶか、どのSQL/API/stored procedureへ接続するかは、別のrealization identityへ分離します。
+返されたrowについては、attributeがQuery result Dataに属するSemantic attributeであることもDriver側で確認します。物理column名やprovider固有row表現は、この境界より内側へ持ち込みません。
 
-## Query realization identityの要件
+### Query realization target identity
 
-第一段階では、少なくとも次を満たす必要があります。
+Database-ownedなQueryを既存の`Application + Capability` identityへ変換せず、次の三つ組を独立したtarget identityとして追加しました。
 
-- Database IDを含む
-- Contract IDを含む
-- Query名を含む
-- Application IDやCapability IDへ変換しない
-- 同じContract Queryに複数realizationが存在する場合も、環境・provider等の明示情報から選択できる余地を残す
-- SQL/API/stored procedure等の詳細をDatabase Contract signatureへ混ぜない
-- authoring sourceとrealization sourceを追跡できる
+```text
+ContractQueryTarget
+  Database = master_data
+  Contract = master_data.customer
+  Query    = find_by_id
+```
 
-## 実証順
+安定identityは次です。
 
-1. provider非依存の`ContractQueryExecutor`境界を追加する
-2. `zero-or-one`のruntime result表現を追加する
-3. 0件 / 1件 / 複数件 / Execution ErrorをConformanceで固定する
-4. realization identityの最小modelを追加する
-5. 第一Referenceに`master_data.customer / find_by_id`のrealization sourceを明示する
+```text
+master_data/master_data.customer/find_by_id
+```
+
+このidentityにはApplication ID、Capability ID、provider、environment、file pathを含めません。実装方式や配置が変わっても、何を実現しているかというtarget identityを維持します。
+
+### Executor Capabilityと明示Binding
+
+既存`database-provider` CapabilityをContract Query実行能力として暗黙に扱わないため、Plugin Capability kindとして`contract-query-executor`を独立させました。
+
+第一ReferenceのOracle pluginは、概念上次の二つの能力を別々に宣言します。
+
+```tei
+provides database-provider database.oracle {
+    provider oracle
+}
+
+provides contract-query-executor database.query.oracle {
+    provider oracle
+}
+```
+
+さらに、実行時選択のmodelとして`ContractQueryExecutorBinding`を追加しました。
+
+```text
+Database instance
+  master_data.dev
+        +
+ContractQueryTarget
+  master_data/master_data.customer/find_by_id
+        ↓ explicit binding
+Executor Capability
+  database.query.oracle
+```
+
+解決時には次を検査します。
+
+- Bindingが0件ならprovider一致から推測せず未解決とする
+- 同じinstance + targetへのBindingが複数なら曖昧として拒否する
+- Database instanceのdefinitionとtarget Databaseが一致すること
+- executorが`contract-query-executor` kindとして一意に解決できること
+- executor CapabilityがinstanceのDatabase providerを明示的にサポートすること
+
+Environment authoring構文は、このmodel境界を実Referenceで確認してから固定します。巨大な`ParseEnvironment`へ先回りの構文を追加しないことを優先しています。
+
+## 現在露出しているGap
+
+Contract Queryのsignature、reference invocation、runtime parameter、result cardinality、target identity、executor capability、明示Binding modelまでは分離できました。
+
+残っている主要Gapは次です。
+
+1. `ContractQueryExecutorBinding`のauthoring source
+2. authoring sourceからEnvironment runtime compositionへ読み込む経路
+3. `database.query.oracle`を実際のQuery realization sourceへ接続する方法
+4. physical resultからSemantic rowへ変換する明示mapping
+5. Oracle実接続、またはOracle依存を避けたReference adapterによるend-to-end Evidence
+6. realization sourceのSource Index / provenance
+
+ここでも、Oracleの物理列名やSQLをSemantic Relation、Database Contract signature、Driver Coreへ持ち込まないことを維持します。
+
+## 次の実証順
+
+1. `ContractQueryExecutorBinding` modelと選択Conformanceを固定する
+2. 第一ReferenceのOracle pluginへ`contract-query-executor` Capabilityを明示する
+3. Binding authoring sourceの最小構文を、既存Environment authoring体系との整合を確認して追加する
+4. `database.query.oracle`の最小realization sourceを追加する
+5. physical result → Semantic rowの明示mapping境界を追加する
 6. Oracle read implementationを追加する、またはOracle依存を避けたReference adapterで実行境界を先に実証する
 7. authoring source / realization sourceの来歴を確認する
 8. `reference` Patternを一続きに実行する
@@ -161,11 +204,16 @@ Oracle driverや実DB接続がCI環境で安定して用意できない場合で
 - [x] inputがどのSemantic typeを表すか追跡できる
 - [x] resultが`customer.customer`であることを契約から追跡できる
 - [x] result cardinalityを`zero-or-one`として明示できる
-- [ ] Database Contract Queryとrealization方式を分離できる
-- [ ] `master_data`をread-onlyのまま利用する
-- [ ] Database固有SQL / API / stored procedureをDriver Coreへ持ち込まない
-- [ ] 0件とExecution Errorをruntimeで区別する
-- [ ] 1件とcardinality違反をruntimeで区別する
+- [x] Database Contract Queryとrealization target identityを分離できる
+- [x] Database固有SQL / API / stored procedureをDriver Coreへ持ち込まない
+- [x] 0件とExecution Errorをruntimeで区別する
+- [x] 1件とcardinality違反をruntimeで区別する
+- [x] Database Contract Query executorを`database-provider`とは別Capabilityとして表現できる
+- [x] provider一致だけではexecutorを自動選択しない
+- [x] instance + target + executorの明示Bindingをmodelとして表現し、一意性とprovider整合を検査できる
+- [ ] Bindingをauthoring sourceから読み込める
+- [ ] `master_data`をread-onlyのまま実実行できる
+- [ ] physical resultを明示mappingからSemantic rowへ変換できる
 - [ ] authoring source / realization sourceの来歴を追跡できる
 - [x] Relation keyを暗黙変換なしでquery inputへ渡せる
 
@@ -183,14 +231,16 @@ Oracle driverや実DB接続がCI環境で安定して用意できない場合で
 ## 関連
 
 - GitHub Issue #69 / #167 / #178 / #179 / #185 / #192
-- PR #176 / #183 / #184 / #193 / #195 / #197 / #201 / #205
+- PR #176 / #183 / #184 / #193 / #195 / #197 / #201 / #205 / #206
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `reference/workspace/databases/master-data/database.tei`
 - `reference/workspace/databases/master-data/contracts/customer.tei`
 - `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
+- `reference/workspace/plugins/tei-database-oracle/1.0.0/plugin.tei`
 - `internal/database/model.go`
+- `internal/driver/contract_query_execution.go`
 - `internal/driver/reference_contract_query.go`
 - `internal/driver/reference_contract_query_parameters.go`
-- `internal/driver/queryruntime/postgres`
-- `internal/database/realization`
+- `internal/realization/contract_query.go`
+- `internal/realization/contract_query_binding.go`
