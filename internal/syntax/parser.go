@@ -326,7 +326,11 @@ func (p *Parser) ParseContract() (database.Contract, error) {
 			if err != nil {
 				return c, err
 			}
-			c.Queries = append(c.Queries, database.QueryContract{Name: v.Text})
+			queryContract, err := p.parseContractQuerySignature(v.Text)
+			if err != nil {
+				return c, err
+			}
+			c.Queries = append(c.Queries, queryContract)
 		default:
 			return c, p.errAt(t, "expected read, write, or query")
 		}
