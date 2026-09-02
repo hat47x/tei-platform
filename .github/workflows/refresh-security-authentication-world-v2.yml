@@ -1,0 +1,47 @@
+name: Authentication Reference World再生成
+
+on:
+  push:
+    branches:
+      - work/security-authentication-reference-v2
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: ${{ !contains(github.event.head_commit.message, '[authentication-golden]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: work/security-authentication-reference-v2
+
+      - name: Goを準備
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Reference WorldをRepository自身から再生成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/tei world -workspace reference/workspace > /tmp/world.json
+          mv /tmp/world.json reference/world.json
+          git diff --check
+
+      - name: 再生成結果をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reference/world.json
+          if git diff --cached --quiet; then
+            echo "Golden Worldに差分はありません。"
+            exit 0
+          fi
+          git commit -m "Authentication ReferenceをReference Worldへ反映する [authentication-golden]"
+          git push origin HEAD:work/security-authentication-reference-v2
