@@ -4,7 +4,7 @@
 
 この文書は、v1 Reference Application `order_entry`をApplication Driverへ渡す前に、Gate A「Application上の意味をDriverへ渡せる」の現在地を横断的に確認する監査結果です。
 
-Application Pattern候補5種類は、すべて実Referenceまで成立しました。しかし、Patternが揃ったことと、Driverを開始できることは同じではありません。
+Application Pattern候補5種類はすべて実Referenceまで成立しました。しかし、Patternが揃ったことと、Driverを開始できることは同じではありません。
 
 DriverがWeb画面や専用Goコードから意味を補わなくても、必要なApplication上の情報をRepositoryから解決できるかを基準に評価します。
 
@@ -21,11 +21,13 @@ DriverがWeb画面や専用Goコードから意味を補わなくても、必要
 
 **Gate A全体の現在判定はBlockedです。**
 
-Application PatternとCapability BindingはReadyになりました。また、named OutcomeはPR #132でCanonical model / Parser / Validation / Normalizationまで実装され、設計だけの状態から前進しています。
+Application PatternとCapability BindingはReadyです。
 
-一方、Authentication / Authorization、Capability Outcomeを実行時に扱う境界、業務ValidationがDriver開始条件をまだ満たしていません。
+さらに、Capability OutcomeはPR #132で名前付きOutcomeのCanonical基盤まで、業務ValidationはPR #136でSemantic上の最小Canonical契約まで実装されました。このため、両者とも「正本の表現方法がまだない」という段階は通過しています。
 
-現時点でDriver #69の主実装へ進むと、これらの意味をDriver専用コードへ暗黙に埋め込むおそれがあります。
+一方、Authentication / Authorization、Capability Outcomeの実行時境界、業務Validationの実ReferenceとEvaluatorがDriver開始条件をまだ満たしていません。
+
+現時点でDriver #69の主実装へ進むと、不足している意味や評価規則をDriver専用コードへ暗黙に埋め込むおそれがあります。
 
 したがって、現在は次の3作業をGate Aの主線とします。
 
@@ -56,7 +58,7 @@ Capability Binding #126はPR #135で実証を終え、Gate AのReady項目へ移
 | named OutcomeのCanonical契約 | Partial | PR #132でmodel / Parser / Validation / Normalizationを実装 | #77でReference / Invocation境界へ接続する |
 | Authentication | Blocked | ADR-0019 / #68の設計のみ | #68 |
 | Authorization | Blocked | 境界設計はあるがReferenceなし | #68 |
-| 業務Validation | Blocked | Pattern定義のValidationとは別。業務ruleのReferenceなし | #125 |
+| 業務Validation | Partial | PR #136でSemantic ruleのCanonical model / Parser / Source Index /参照整合性を実装 | #125で実ReferenceとEvaluatorを成立させる |
 | Capability Binding | Ready | PR #135で`sales.order.submit`の明示Bindingと解決APIを実証 | Driverで同じ解決入口を利用する |
 | Command / Observation分離 | Ready | 既存Runtime / DeploymentのEvidence。Patternにも混在させていない | Driverで再利用する |
 | Target固有Presentation | Deferred | Gate Aでは不要 | 第一Web Target #70 |
@@ -147,7 +149,7 @@ Execution Error
 
 ## Authentication / Authorization — Blocked
 
-Reference WorkspaceのSemantic Namespaceには現在`sales`と`customer`があり、`security` Referenceはまだ成立していません。
+Reference Workspaceには、Authentication / Authorizationを実証する`security` Referenceがまだ成立していません。
 
 Issue #68では、既存認証仕様をTEI標準User schemaへ作り直さず、Authentication / Authorization Capabilityへ接続することを求めています。
 
@@ -161,32 +163,54 @@ Gate Aに必要なのはproduction-readyなIdPやログイン画面ではあり�
 - secret materialをCanonicalへ保存しない境界
 - named Outcome / Execution Errorの結果契約
 
-このため#68はGate Aのblockerです。
+このため#68は引き続きGate Aのblockerです。
 
-## 業務Validation — Blocked
+## 業務Validation — Partial
 
-現在の`internal/validation`は、Canonical WorldやPatternの構文・参照整合性を検査する仕組みとして成立しています。
+PR #136で、業務ValidationをSemantic上のCanonical ruleとして保持する最小契約が成立しました。
 
-一方、Driver Scenarioが扱う業務Validationの正本は、Reference Workspaceにまだありません。
+最初の二例は次です。
 
-PR #134で、既存Semanticだけで実証できる最初の候補を具体化しました。
-
-```text
-sales.order_line.quantity > 0
+```tei
+validation sales.order_line.quantity_positive positive {
+    attribute sales.order_line.quantity
+}
 ```
 
-および、Relation scopeを必要とする例として、
-
-```text
-sales.order.lines
-  └─ lineNumber is unique within one order
+```tei
+validation sales.order.lines.line_number_unique relation-unique {
+    relation sales.order.lines
+    attribute sales.order_line.line_number
+}
 ```
 
-を候補としています。
+この二つは、特定のWeb画面だけの入力都合ではなく、受注明細という業務意味そのものに属すると判断し、`sales` Semantic Namespaceを正本としました。
 
-この二つを使い、単一属性の条件とHeader / Detail集合の条件を区別しながら、ruleの所有境界を#125で実証します。
+PR #136では次まで成立しています。
 
-重要なのは大きなrule engineを先に作ることではなく、DriverやWebへ同じruleを手書きで複製しなくてよい正本とidentityを成立させることです。
+- Semantic ValidationのCanonical model
+- `positive` / `relation-unique`の型付きrule kind
+- Parser / Loader
+- Canonical ID順のNormalization
+- Source Indexへの接続
+- `positive`対象Attributeの数値型検査
+- `relation-unique`対象Relationが`many`であることの検査
+- Relation target Dataに属するAttributeだけを許可する検査
+
+したがって、「業務ruleの正本とidentityが存在しない」というblockerは解消しました。
+
+一方、Reference Workspace本体にはこの二つの実ruleがまだ置かれておらず、Canonical ruleを実際の入力に対して評価するEvaluatorもありません。
+
+Gate AでReadyへ進むには、#125で少なくとも次を確認する必要があります。
+
+- 二つのruleを実Referenceから読み込める
+- Validation identityからauthoring sourceへ戻れる
+- `quantity > 0`をSatisfied / NotSatisfiedの両方で評価できる
+- 一つのOrderに属する明細集合で`lineNumber`一意性をSatisfied / NotSatisfiedの両方で評価できる
+- 評価不能をNotSatisfiedへ畳まない
+- Driverがrule本文を専用Goコードへ複製せず、Canonical Validationを利用できる
+
+大きな式言語やrule engineを先に作ることは、引き続き目的にしません。
 
 ## Capability Binding — Ready
 
@@ -224,9 +248,9 @@ CI #309は`verify`とPostgreSQL integrationの双方が成功しました。
 
 1. #68 — Authentication / Authorization Reference
 2. #77 — Gate Aに必要なnamed Outcome / Execution Errorの実行境界
-3. #125 — 業務Validation Reference
+3. #125 — 業務Validationの実ReferenceとEvaluator
 
-Capability Binding #126はReadyへ移りました。
+Capability Binding #126はReadyです。
 
 Datasource read / write、5 Pattern、単一output Business Result、Source Index / identityも既にReadyです。
 
@@ -242,6 +266,8 @@ Datasource read / write、5 Pattern、単一output Business Result、Source Inde
 - 5 Patternの共有Catalog化
 - `OrderLine`の物理Persistence / FKを一般化すること
 - production transaction coordinator
+- 汎用Validation式言語 / rule engine
+- Database constraintやWeb form validatorへのValidation Projection
 
 ## 次回監査
 
@@ -263,5 +289,5 @@ Gate Aを通過した時点で、`ISSUE-000006` / GitHub Issue #69を主実装�
 - `plan/issue/000014-business-validation-reference.md`
 - `plan/issue/000015-submit-capability-binding-reference.md`
 - GitHub Issue #67 / #68 / #69 / #77 / #124 / #125 / #126
-- GitHub PR #132 / #135
+- GitHub PR #132 / #135 / #136
 - ADR-0019 / ADR-0020
