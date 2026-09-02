@@ -1,13 +1,14 @@
 # ISSUE-000015: `sales.order.submit`のCapability Binding identityをReference化する
 
-- 状態: 着手可能
-- GitHub Issue: #126
+- 状態: Done
+- GitHub Issue: #126（完了）
+- 実装PR: #135
 - 上位Issue: `ISSUE-000013` / GitHub Issue #124
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
 
 ## 背景
 
-`command` Application Patternは、次の最小形で成立しました。
+`command` Application Patternは、次の最小形で成立しています。
 
 ```tei
 pattern order_entry.submit_order command {
@@ -15,108 +16,96 @@ pattern order_entry.submit_order command {
 }
 ```
 
-これはApplication上の意図として適切です。一方、Driverが実際にCapabilityを呼び出すには、Capabilityからimplementationへ明示的に解決できるRealization / Bindingが必要です。
+Patternが保持するのはApplication上の意図であり、implementation方式ではありません。一方、Driverが実際にCapabilityを呼び出すには、`sales.order.submit`から実装へ明示的に解決できるBindingが必要です。
 
-現在の`order_entry` Referenceで明示されているCustom Go Realizationは`order_entry.compose_order_summary`だけで、`sales.order.submit`のBinding Referenceはまだありません。
+このIssueでは、Driverがfile pathやGo hookを暗黙に推測する構造を作らず、既存の`CustomGoBinding`を利用して最小のBinding Referenceを実証しました。
 
-Driverの中でfile pathやGo symbolを推測して補うのではなく、既存Realization境界をできるだけ再利用して`sales.order.submit`の最小Binding Referenceを成立させます。
+## 実証したBinding identity
 
-## 現行モデルから分かったこと
-
-現行`CustomGoBinding`は、独立したBinding IDを持たず、次の組でBindingを表しています。
+現行`CustomGoBinding`は、独立した任意IDを追加せず、ApplicationとCapabilityの組でBindingを識別します。
 
 ```text
-Application
-Capability
+order_entry / sales.order.submit
 ```
 
-Custom Goというimplementation kindはGoの型そのものが表しています。
-
-adapter file nameとhook nameはCapability identityから導出されます。
-
-そのため、このIssueでは**最初から第一級のBinding IDを新設しません**。
-
-まず既存モデルの
+実装上は次のidentityを利用します。
 
 ```text
-(Application, Capability, implementation kind)
+BindingIdentity(application, capability)
 ```
 
-をv1 Referenceの論理的なBinding keyとして十分に扱えるかを実証します。
+Custom Goというimplementation kindはBinding型そのものが表します。
 
-このkeyで不足するEvidenceが得られた場合だけ、独立したBinding identityを追加します。
+このReferenceでは、第一級のBinding IDを新設しなくても、v1 Driverが必要とする一意なBinding解決とSource追跡を成立させられました。
 
-## 第一段階の仮説
+## 実Reference
 
-`order_entry`に`sales.order.submit`のCustom Go Realizationを一つだけ追加し、次を成立させることを第一候補とします。
+PR #135で、`order_entry`に`sales.order.submit`のCustom Go Realizationを追加しました。
 
-```text
-order_entry
-  + sales.order.submit
-  + custom-go
-        ↓
-explicit Realization / Binding
-        ↓
-reference implementation
-```
-
-この段階では「同じApplication・Capability・implementation kindに複数の候補がある」状態を作りません。
-
-0件または複数件で一意に解決できない場合は、Driverが偶然の列挙順で選ばずDiagnosticにできることを優先します。
-
-## 第一級Binding IDを追加する条件
-
-次のいずれかが実Referenceで必要になった場合に、独立したBinding IDを検討します。
-
-- 同じApplication / Capability / implementation kindに複数implementationを併存させる必要がある
-- environmentやreleaseごとにBinding選択を切り替える必要がある
-- Binding自体へ独立したlifecycle / policy / versionを持たせる必要がある
-- Source IndexやDiagnosticでCapabilityのimplementation referenceだけでは区別できない
-- 外部AdapterやPluginを含む複数方式を同時に選択可能にする必要がある
-
-将来必要になる可能性だけを理由に、今のCanonical modelへ新しいidentityを増やしません。
-
-## Source Index / provenance
-
-Source Indexはpath-independentなSubjectと、`definition` / `authoring` / `implementation`等のroleを分けて扱えます。
-
-そのため第一段階では、Capabilityまたは既存Realizationのlogical Subjectに`implementation` roleのsourceを接続するだけで十分かを確認します。
-
-専用のBinding Subjectが必要だと実Referenceから分かった場合だけ追加します。
-
-file pathをBinding identityそのものにはしません。
-
-## Driverが解決する入口
-
-Driverは`command` Patternから次の順に解決します。
+Pattern側にはimplementation情報を追加していません。
 
 ```text
 order_entry.submit_order
         ↓ capability
 sales.order.submit
-        ↓ Application + CapabilityからBinding候補を解決
+        ↓ Application + Capability
 Custom Go Binding
         ↓
-implementation
+reference implementation
 ```
 
-DriverがGo hook名やadapter filenameを自分で組み立て、存在すれば利用するという暗黙解決にはしません。
+Application上の`command` identityと、Capabilityをどの方式で実現するかを分離したまま接続しています。
 
-hook名やadapter filenameを導出する規則は、明示的に解決されたBindingを実行するためのimplementation detailとして扱います。
+## Driverが利用する解決入口
 
-## 複数implementationの扱い
+`ResolveCustomGoBinding`を追加し、ApplicationとCapabilityを明示してBindingを解決できるようにしました。
 
-将来、同じCapabilityを次のような方式で実現できる可能性があります。
+解決結果は次のように扱います。
 
-- builtin
-- generated
-- Custom Go
-- process plugin
-- 既存API
+- 0件: Binding未定義としてerror
+- 1件: 一意なBindingとして解決
+- 複数件: ambiguousとしてerror
 
-このIssueでは完全なselection policyを先に設計しません。
+Driver相当の利用側が、列挙順、file path、Go hook名から実装を選ぶことはありません。
 
-最初のReferenceは一つの明示Bindingで閉じます。複数候補が必要になった時点で、environment / release / explicit selection等のどの層が選択責務を持つべきかを別のEvidenceとして検討します。
+0件または複数件は業務上のBusiness Resultではなく、Capabilityを実行する準備を整えられなかった状態です。後続DriverではADR-0020のExecution Error境界へ接続します。
+
+## Source Index / provenance
+
+Bindingのsource keyは次の形へ整理しました。
+
+```text
+binding:<application>/<capability>
+```
+
+`realize`宣言中のCapability ID tokenをSource Indexから正確に追跡できます。
+
+file pathをBinding identityにはしていません。Reference fileを改名してもBinding identityは変化せず、authoring sourceだけが新しいpathへ追随することをConformanceで確認しています。
+
+## 複数Applicationと重複Binding
+
+同じCapabilityを異なるApplicationがBindingしても衝突しません。
+
+```text
+first_app  / sales.order.submit
+second_app / sales.order.submit
+```
+
+一方、同じApplicationとCapabilityのBindingを複数定義した場合は、`DUPLICATE_CUSTOM_GO_BINDING`として拒否します。
+
+この実証から、v1時点ではApplication + Capabilityの組をBinding identityとして扱えば十分であることが確認できました。
+
+## 第一級Binding IDを追加しなかった理由
+
+次の要件は、今回のReferenceでは必要になりませんでした。
+
+- 同じApplication / Capability / implementation kindに複数implementationを併存させる
+- environmentやreleaseごとにBinding選択を切り替える
+- Binding自体へ独立したlifecycle / policy / versionを持たせる
+
+将来これらが実例として必要になった場合は、第一級Binding IDやselection policyを改めて検討します。
+
+将来必要になる可能性だけを理由に、現時点のCanonical modelへ新しいidentityを増やしません。
 
 ## Business Result / Execution Errorとの境界
 
@@ -127,89 +116,65 @@ Capability invocation
   ├─ Business Result
   │   └─ sales.order 等
   └─ Execution Error
-      ├─ Binding 0件 / 複数件で解決不能
+      ├─ Binding未定義
+      ├─ Bindingが複数あり一意に解決できない
       ├─ implementationを起動できない
       └─ adapter / transport障害
 ```
 
-この境界はADR-0020 / `ISSUE-000009` / GitHub Issue #77と整合させます。
-
 Binding failureをnamed Outcomeへ変換しません。
+
+この境界はADR-0020 / `ISSUE-000009` / GitHub Issue #77と整合させます。
 
 ## Authorizationとの境界
 
-Capability BindingとApplication利用者のAuthorizationを混同しません。
+Capability BindingとApplication利用者のAuthorizationも別の責務です。
 
 - Authorization: 誰がその業務操作を行ってよいか
 - Binding: そのCapabilityをどのimplementationで実現するか
 
-Plugin / Runtime PermissionもApplication Authorizationとは別の実行権限境界です。
-
-## 守る境界
-
-- `command` Patternへ`custom go`等のimplementation方式を追加しない
-- file pathをBinding identityにしない
-- DriverがCapability IDからGo hookやfile pathを暗黙推測してBindingを発見しない
-- implementation交換でApplication Patternを変更しない
-- 一例だけを理由に第一級Binding IDや汎用selection policyを追加しない
-- 0件 / 複数件の曖昧なBinding候補を偶然の順序で選ばない
-- Plugin / Runtime PermissionとApplication Authorizationを混同しない
-- Binding failureを業務Outcomeへ変換しない
-- implementation選択規則をWeb Targetへ置かない
-
-## Gate Aへ渡す情報
-
-第一段階では、少なくとも次をDriverから明示的に解決できる状態にします。
-
-- Capability identity `sales.order.submit`
-- Application scope `order_entry`
-- implementation kind
-- 解決されたBinding / Realization
-- authoring source / provenance
-- DriverがBindingを解決する入口
-- Binding解決失敗をExecution Errorとして扱う境界
-
-独立したBinding IDが必要かどうかは、このReferenceの結果から判断します。
+Plugin / Runtime PermissionもApplication Authorizationとは別の実行権限境界として維持します。
 
 ## Conformance
 
-少なくとも次を確認します。
+PR #135で次を確認しました。
 
-- `sales.order.submit`に対する明示的なBinding / RealizationをReferenceから読み込める
-- 現行`(Application, Capability, implementation kind)`で一意解決できる
-- CapabilityからBindingへ追跡できる
-- Bindingからauthoring sourceへ戻れる
-- Patternにはimplementation情報が増えない
-- Bindingを変更してもPatternのCanonical meaningが変わらない
-- Driver相当の利用側がfile pathやGo hookをBinding discoveryに使わない
-- 0件 / 複数件を暗黙に選ばない
-- Binding解決失敗をExecution Errorとして扱える
+- `sales.order.submit`に対する明示的なCustom Go BindingをReferenceから読み込める
+- Application + Capabilityから一意なBindingを解決できる
+- Binding未定義をerrorとして扱う
+- 同じApplication + Capabilityの重複Bindingを拒否する
+- 同じCapabilityを異なるApplicationが利用してもidentityが衝突しない
+- Binding authoring sourceをSource Indexから追跡できる
+- file renameでBinding identityが変わらない
+- `command` Patternへimplementation情報を追加しない
+- Reference WorldをRepository自身から再生成できる
 
-## 非目標
+CI #309は`verify`とPostgreSQL integrationの双方が成功しました。
 
-- すべてのCapability implementation方式を実装すること
-- 第一級Binding IDを将来要件だけから追加すること
-- 完成したPlugin marketplace
-- production-grade service discovery
-- Web Target上のendpoint routing
-- Application Authorization
-- 汎用workflow engine
+## 完了条件の確認
 
-## 完了条件
+1. `sales.order.submit`に対する明示的なBinding / Realization Referenceがある — 完了
+2. Application + Capabilityでv1の一意解決が可能かをEvidenceから判断できる — 完了
+3. Driverがfile pathやGo hookをBinding discoveryに使わずimplementationを解決できる — 完了
+4. Binding source / provenanceを追跡できる — 完了
+5. Bindingを追加しても`order_entry.submit_order` PatternのCanonical meaningを変えない — 完了
+6. 0件 / 複数件を暗黙選択しない — 完了
+7. Binding failureとBusiness Resultを区別する境界を維持できる — 完了
+8. 第一級Binding IDを今すぐ追加する必要がないと判断できる — 完了
+9. Gate A監査からCapability Binding項目を再評価できる — 完了
 
-1. `sales.order.submit`に対する明示的なBinding / Realization Referenceがある
-2. 現行`(Application, Capability, implementation kind)`でv1の一意解決が可能かをEvidenceから判断できる
-3. Driverがfile pathやGo hookをBinding discoveryに使わずimplementationを解決できる
-4. Binding source / provenanceを追跡できる
-5. Bindingを交換しても`order_entry.submit_order` PatternのCanonical meaningが変わらない
-6. 0件 / 複数件で一意に解決できない場合を暗黙選択しない
-7. implementation failureとBusiness Resultを区別できる
-8. 第一級Binding IDが必要か不要かを実Referenceから判断できる
-9. Gate A監査からCapability Binding項目を再評価できる
+## Gate Aへの結論
+
+Capability Binding項目はReadyです。
+
+Driver #69は、`sales.order.submit`から明示的なBindingを解決するためにfile pathやGo symbolを推測する必要がなくなりました。
+
+Gate A全体は、既存認証Compatibility #68、Capability Outcome / Execution Error #77、業務Validation #125が未完了のため、引き続きBlockedです。
 
 ## 関連
 
 - GitHub Issue #124 / #126 / #69 / #77
+- GitHub PR #135
 - `ISSUE-000013`: Gate A到達性監査
 - `ISSUE-000006`: Application Driver
 - `ISSUE-000009`: Capability Outcome / Execution Error
