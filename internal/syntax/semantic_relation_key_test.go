@@ -2,6 +2,7 @@ package syntax
 
 import "testing"
 
+// Relation key authoringは既存の1行Relation構文を壊さず、instance traversalが必要なRelationだけを拡張する。
 func TestParseSemanticRelationKeepsExistingKeylessSyntax(t *testing.T) {
 	ns, err := NewParser(`namespace sales
 
