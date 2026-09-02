@@ -83,6 +83,56 @@ func TestMapDoesNotInferMissingOrAdditionalColumns(t *testing.T) {
 	})
 }
 
+func TestMapRejectsAmbiguousAuthoredMapping(t *testing.T) {
+	raw := queryresult.RawResult{
+		Columns: []string{"order_id", "total_amount"},
+		Rows:    [][]any{{"O-001", 1200}},
+	}
+
+	t.Run("同じraw列を二度mappingしない", func(t *testing.T) {
+		q := query.EmbeddedSQL{
+			ID: "order_entry.recent_orders",
+			ResultColumns: []query.ResultColumnMapping{
+				{Column: "order_id", Attribute: "sales.order.order_id"},
+				{Column: "order_id", Attribute: "sales.order.customer_id"},
+			},
+		}
+		if _, err := queryresult.Map(q, raw); err == nil {
+			t.Fatal("重複したresult column mappingを受理しています")
+		}
+	})
+
+	t.Run("同じSemantic attributeへ二つのraw列をmappingしない", func(t *testing.T) {
+		q := query.EmbeddedSQL{
+			ID: "order_entry.recent_orders",
+			ResultColumns: []query.ResultColumnMapping{
+				{Column: "order_id", Attribute: "sales.order.order_id"},
+				{Column: "total_amount", Attribute: "sales.order.order_id"},
+			},
+		}
+		if _, err := queryresult.Map(q, raw); err == nil {
+			t.Fatal("重複したSemantic attribute mappingを受理しています")
+		}
+	})
+
+	t.Run("空のraw列名やSemantic attributeを受理しない", func(t *testing.T) {
+		q := query.EmbeddedSQL{
+			ID: "order_entry.recent_orders",
+			ResultColumns: []query.ResultColumnMapping{
+				{Column: "", Attribute: "sales.order.order_id"},
+			},
+		}
+		if _, err := queryresult.Map(q, raw); err == nil {
+			t.Fatal("名前のないresult column mappingを受理しています")
+		}
+
+		q.ResultColumns = []query.ResultColumnMapping{{Column: "order_id", Attribute: ""}}
+		if _, err := queryresult.Map(q, raw); err == nil {
+			t.Fatal("Semantic attributeのないmappingを受理しています")
+		}
+	})
+}
+
 func TestMapRequiresAuthoredResultMapping(t *testing.T) {
 	q := query.EmbeddedSQL{ID: "order_entry.recent_orders"}
 	if _, err := queryresult.Map(q, queryresult.RawResult{
