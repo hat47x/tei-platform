@@ -53,11 +53,22 @@ const (
 
 func (c Cardinality) Valid() bool { return c == CardinalityOne || c == CardinalityMany }
 
+// RelationKeyは、Relationを実データのinstance間で辿るために、
+// source側とtarget側のどのSemantic attributeを対応付けるかを表す。
+// 物理columnやDatabase Foreign Keyではなく、Semantic attributeのidentityだけを保持する。
+type RelationKey struct {
+	SourceAttribute core.CanonicalID `json:"sourceAttribute"`
+	TargetAttribute core.CanonicalID `json:"targetAttribute"`
+}
+
 type Relation struct {
 	ID          core.CanonicalID `json:"id"`
 	Symbol      string           `json:"symbol"`
 	Target      core.CanonicalID `json:"target"`
 	Cardinality Cardinality      `json:"cardinality"`
+	// Keysは複合keyを含むRelationも表現できるよう、対応関係を順序付きで保持する。
+	// key対応をまだ定義していない概念Relationでは空のままとし、既存Canonical表現を変えない。
+	Keys []RelationKey `json:"keys,omitempty"`
 }
 
 // ValidationKindは、業務上の不変条件として実Referenceで確認できた
