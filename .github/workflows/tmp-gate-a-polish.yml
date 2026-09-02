@@ -1,0 +1,72 @@
+name: gate-a-docs-polish
+
+on:
+  push:
+    branches:
+      - docs/gate-a-ready
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: ${{ !contains(github.event.head_commit.message, '[gate-a-final]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: docs/gate-a-ready
+
+      - name: polish docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          plan = Path('plan/V1_REFERENCE_APPLICATION_PLAN.md')
+          s = plan.read_text()
+          old = 'DriverではGate Aで成立したResolver、Evaluator、Capability Invocation境界を組み合わせ、UIなしで`order_entry`の主要シナリオを実行します。\n## Stage 2 — Application Driver'
+          new = 'DriverではGate Aで成立したResolver、Evaluator、Capability Invocation境界を組み合わせ、UIなしで`order_entry`の主要シナリオを実行します。\n\n## Stage 2 — Application Driver'
+          if s.count(old) != 1:
+              raise SystemExit('V1 plan replacement target must be unique')
+          plan.write_text(s.replace(old, new))
+
+          status = Path('docs/status.md')
+          s = status.read_text()
+          marker = '## Database / Persistence\n'
+          if s.count(marker) != 1:
+              raise SystemExit('status insertion target must be unique')
+          section = '''## Authentication / Authorization / Capability結果境界
+
+Gate Aで必要となるApplication利用者のSecurity境界も、Reference / Conformanceとして成立しています。
+
+- `security.authenticate`の`authenticated` / `denied`を正常なBusiness Resultとして扱う
+- 認証・認可の実行障害をExecution Errorとして分離する
+- 既存user recordのdisabled、validity、lock、organization、role、system-specific ruleを保持したままadapterへ接続する
+- `order_entry/security.authenticate`の同じBinding identityで、既存record経路と既存function経路を交換できる
+- `security.authorize`でApplication Pattern identityをaction / resourceとして利用する
+- legacy roleやschemaをApplication / Driverへ公開して認可ruleを再実装しない
+- password、token、credential hash等のsecret materialをCanonical Worldや通常Evidenceへ保存しない
+
+Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに与えるPermission Grant / Resource Leaseは、引き続き別の責務として扱います。
+
+'''
+          status.write_text(s.replace(marker, section + marker))
+          PY
+
+          changed="$(git diff --name-only)"
+          test "$changed" = $'docs/status.md\nplan/V1_REFERENCE_APPLICATION_PLAN.md'
+
+      - name: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/status.md plan/V1_REFERENCE_APPLICATION_PLAN.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/status.md plan/V1_REFERENCE_APPLICATION_PLAN.md
+          git commit -m "Gate A Ready文書を最終整文する [gate-a-final]"
+          git push origin HEAD:docs/gate-a-ready
