@@ -1,4 +1,11 @@
 query order_entry.recent_orders {
     datasource sales
     sql postgres file "recent_orders.sql"
+    result {
+        column order_id -> sales.order.order_id
+        column customer_id -> sales.order.customer_id
+        column ordered_at -> sales.order.ordered_at
+        column status -> sales.order.status
+        column total_amount -> sales.order.total
+    }
 }
