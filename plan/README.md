@@ -10,30 +10,37 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
+- [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の現在地
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
-- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1実装前設計
+- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1設計
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/`](issue/): 調査、実装、文書整備などの作業単位
 
 ## 現在のv1主線
 
-現在は、既存の`order_entry`をReference Applicationとして育てます。
+現在は、既存の`order_entry`をReference Applicationとして育てています。
 
 ```text
-Application Pattern ────────┐
-      完了                  │
-        │             既存認証Compatibility
-        │                    │
-        └────── Gate A ──────┘
-                  ↓
-          Application Driver
-                  ↓
-            第一Web Target
-                  ↓
-             Editor / AI支援
-                  ↓
-      第二Targetで境界を圧力試験
+Application Pattern Stage 1   完了
+            ↓
+        Gate A監査
+            │
+            ├─ #68   既存認証Compatibility
+            ├─ #77   Capability Outcome / Execution Error
+            └─ #125  業務Validation
+            │
+            │  #126 Capability Binding は完了
+            ↓
+       Gate A再監査
+            ↓
+    Application Driver
+            ↓
+      第一Web Target
+            ↓
+       Editor / AI支援
+            ↓
+第二Targetで境界を圧力試験
 ```
 
 Application Pattern側のStage 1実証は完了しました。
@@ -56,17 +63,44 @@ header-detail
 
 Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙生成していません。Application PatternもWebの画面テンプレートへ固定していません。
 
-現在の次の主線はGate Aです。
+## 現在のGate A
 
-Gate AではApplication PatternのEvidenceに加えて、既存認証Compatibility、Validation、Capability Binding、Business Result / Execution Error境界を合流させ、DriverがApplication上の意味をUI固有設定やlegacy schemaの物理構造から推測せず受け取れることを確認します。
+Gate Aでは、Application PatternのEvidenceに、認証・認可、業務Validation、Capabilityの結果境界、Capability Bindingを合流させます。
+
+[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)で項目ごとに評価した結果、現在もGate A全体はBlockedです。ただし、残条件は4つから3つへ減りました。
+
+### Readyになったもの
+
+- 5種類のApplication Pattern
+- `sales` read-write / `master` readのDatasource境界
+- `sales.order.submit`の既存単一`output`
+- Command / Observation分離の基本境界
+- `sales.order.submit`の明示的なCapability Binding
+
+Capability Bindingは[`ISSUE-000015`](issue/000015-submit-capability-binding-reference.md) / GitHub Issue #126 / PR #135で実証済みです。
+
+Driver相当の利用側はApplication + CapabilityからBindingを明示的に解決でき、file path、Go hook、列挙順からimplementationを推測する必要がありません。
+
+### 残るGate A条件
+
+1. **既存認証Compatibility — #68**
+   - 既存schemaや認証条件を標準User schemaへ作り替えず、Authentication / Authorization Capabilityへ接続するReferenceが必要です。
+2. **Capability Outcome / Execution Error — #77**
+   - PR #132で名前付きOutcomeのCanonical model / Parser / Validation / Normalizationまでは実装済みです。
+   - 次は実ReferenceとInvocation境界で、expected denialをBusiness Resultとして扱い、Execution Errorと混同しないことを確認します。
+3. **業務Validation — #125**
+   - Pattern定義の構文・参照整合性Validationとは別に、業務ruleの正本とidentityをReference化します。
+   - 最初の候補は`OrderLine.quantity > 0`と、一つのOrder内での`lineNumber`一意です。
 
 既存認証Compatibilityは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / `ISSUE-000003` / GitHub Issue #68で進めます。
 
-Capabilityの業務上の結果と実行エラーの区別は、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)と[`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md)を共通境界として利用します。
+Capabilityの業務上の結果と実行エラーの区別は、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / [`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / ADR-0020を共通境界として利用します。
 
-Gate AをEvidenceで通過した後、`ISSUE-000006` / GitHub Issue #69のApplication Driverへ進みます。
+業務Validationは[`ISSUE-000014`](issue/000014-business-validation-reference.md) / GitHub Issue #125で実証します。
 
-個々の機能が実装されたことだけでは、次の段階へ進みません。
+Gate AをEvidenceで通過した後、[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69のApplication Driverへ進みます。
+
+個々のIssueがcloseしたことだけでは次の段階へ進みません。Driverへ必要な意味をRepositoryのReference / Conformanceから再現できることを条件にします。
 
 [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることをEvidence Gateとして定めています。
 
