@@ -19,7 +19,7 @@ jobs:
         with:
           ref: work/semantic-relation-key-parser
 
-      - name: ParserのRelation blockだけを置換
+      - name: ParserのRelation生成だけを置換
         shell: bash
         run: |
           set -euo pipefail
@@ -29,123 +29,37 @@ jobs:
           path = Path("internal/syntax/parser.go")
           text = path.read_text()
 
-          old = '''\t\tcase "relation":
-          \t\t\t_, _ = p.next()
-          \t\t\trSym, err := p.expect(TokenIdent)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\tif _, err := p.expectText("to"); err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\ttargetTok, err := p.expect(TokenIdent)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\ttarget, err := core.ParseCanonicalID(targetTok.Text)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, p.errAt(targetTok, err.Error())
-          \t\t\t}
-          \t\t\tcardTok, err := p.expect(TokenIdent)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\trseg, err := core.SymbolToSegment(rSym.Text)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, p.errAt(rSym, err.Error())
-          \t\t\t}
-          \t\t\trid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
+          old = '''\t\t\trid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
           \t\t\td.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text)})
           '''
-
-          new = '''\t\tcase "relation":
-          \t\t\t_, _ = p.next()
-          \t\t\trSym, err := p.expect(TokenIdent)
+          new = '''\t\t\trid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
+          \t\t\tkeys, err := p.parseSemanticRelationKeyBlock(rSym)
           \t\t\tif err != nil {
           \t\t\t\treturn d, err
           \t\t\t}
-          \t\t\tif _, err := p.expectText("to"); err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\ttargetTok, err := p.expect(TokenIdent)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\ttarget, err := core.ParseCanonicalID(targetTok.Text)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, p.errAt(targetTok, err.Error())
-          \t\t\t}
-          \t\t\tcardTok, err := p.expect(TokenIdent)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\trseg, err := core.SymbolToSegment(rSym.Text)
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, p.errAt(rSym, err.Error())
-          \t\t\t}
-          \t\t\trid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
-          \t\t\trelation := semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text)}
-          
-          \t\t\tnext, err := p.peek()
-          \t\t\tif err != nil {
-          \t\t\t\treturn d, err
-          \t\t\t}
-          \t\t\tif next.Kind == TokenLBrace {
-          \t\t\t\t_, _ = p.next()
-          \t\t\t\tfor {
-          \t\t\t\t\tkeyTok, err := p.peek()
-          \t\t\t\t\tif err != nil {
-          \t\t\t\t\t\treturn d, err
-          \t\t\t\t\t}
-          \t\t\t\t\tif keyTok.Kind == TokenRBrace {
-          \t\t\t\t\t\t_, _ = p.next()
-          \t\t\t\t\t\tbreak
-          \t\t\t\t\t}
-          \t\t\t\t\tif _, err := p.expectText("key"); err != nil {
-          \t\t\t\t\t\treturn d, err
-          \t\t\t\t\t}
-          \t\t\t\t\tsourceTok, err := p.expect(TokenIdent)
-          \t\t\t\t\tif err != nil {
-          \t\t\t\t\t\treturn d, err
-          \t\t\t\t\t}
-          \t\t\t\t\tsourceAttribute, err := core.ParseCanonicalID(sourceTok.Text)
-          \t\t\t\t\tif err != nil {
-          \t\t\t\t\t\treturn d, p.errAt(sourceTok, err.Error())
-          \t\t\t\t\t}
-          \t\t\t\t\tif _, err := p.expect(TokenArrow); err != nil {
-          \t\t\t\t\t\treturn d, err
-          \t\t\t\t\t}
-          \t\t\t\t\ttargetAttributeTok, err := p.expect(TokenIdent)
-          \t\t\t\t\tif err != nil {
-          \t\t\t\t\t\treturn d, err
-          \t\t\t\t\t}
-          \t\t\t\t\ttargetAttribute, err := core.ParseCanonicalID(targetAttributeTok.Text)
-          \t\t\t\t\tif err != nil {
-          \t\t\t\t\t\treturn d, p.errAt(targetAttributeTok, err.Error())
-          \t\t\t\t\t}
-          \t\t\t\t\trelation.Keys = append(relation.Keys, semantic.RelationKey{
-          \t\t\t\t\t\tSourceAttribute: sourceAttribute,
-          \t\t\t\t\t\tTargetAttribute: targetAttribute,
-          \t\t\t\t\t})
-          \t\t\t\t}
-          \t\t\t\tif len(relation.Keys) == 0 {
-          \t\t\t\t\treturn d, p.errAt(rSym, "relation key block requires at least one key mapping")
-          \t\t\t\t}
-          \t\t\t}
-          \t\t\td.Relations = append(d.Relations, relation)
+          \t\t\td.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys})
           '''
 
           count = text.count(old)
           if count != 1:
-              raise SystemExit(f"置換対象のRelation block数が1件ではありません: {count}")
+              raise SystemExit(f"置換対象のRelation生成箇所が1件ではありません: {count}")
 
           path.write_text(text.replace(old, new, 1))
           PY
 
-          gofmt -w internal/syntax/parser.go internal/syntax/semantic_relation_key_test.go
+          gofmt -w internal/syntax/parser.go internal/syntax/semantic_relation_key.go internal/syntax/semantic_relation_key_test.go
 
-          if [ "$(git diff --numstat -- internal/syntax/parser.go | awk '{print NF}')" -eq 0 ]; then
-            echo "parser.goに差分がありません。"
+          changed_files="$(git diff --name-only)"
+          if [ "$changed_files" != "internal/syntax/parser.go" ]; then
+            echo "想定外の差分があります:"
+            printf '%s\n' "$changed_files"
+            exit 1
+          fi
+
+          added="$(git diff --numstat -- internal/syntax/parser.go | awk '{print $1}')"
+          deleted="$(git diff --numstat -- internal/syntax/parser.go | awk '{print $2}')"
+          if [ -z "$added" ] || [ "$added" -gt 6 ] || [ "$deleted" -gt 2 ]; then
+            echo "parser.goの差分が想定より大きいです: +${added:-?} -${deleted:-?}"
             exit 1
           fi
 
@@ -155,6 +69,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/syntax/parser.go internal/syntax/semantic_relation_key_test.go
-          git commit -m "Semantic Relation key authoringをParserへ追加する [relation-key-parser-patched]"
+          git add internal/syntax/parser.go
+          git commit -m "Semantic Relation key authoringをParserへ接続する [relation-key-parser-patched]"
           git push origin HEAD:work/semantic-relation-key-parser
