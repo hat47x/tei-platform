@@ -12,6 +12,7 @@ data Order {
     attribute total type std.money
     attribute externalId type std.text
     relation customer to customer.customer one
+        key sales.order.customer_id -> customer.customer.customer_id
     relation lines to sales.order_line many
 }
 
