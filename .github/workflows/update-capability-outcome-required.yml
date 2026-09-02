@@ -1,0 +1,83 @@
+name: Capability Outcome必須項目の安全な接続
+
+on:
+  push:
+    branches:
+      - work/capability-outcome-core
+
+permissions:
+  contents: write
+
+jobs:
+  update-required-fields:
+    if: ${{ !contains(github.event.head_commit.message, '[capability-outcome-required-generated]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: work/capability-outcome-core
+
+      - name: Goを準備
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Outcome必須項目Validationを接続
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("internal/validation/validation.go")
+          text = path.read_text()
+          old = '''\t\tseenOutcomes := map[core.LocalName]struct{}{}
+          \t\tfor _, outcome := range c.Outcomes {
+          \t\t\tif _, dup := seenOutcomes[outcome.Name]; dup {
+          \t\t\t\tout = append(out, errd("DUPLICATE_SEMANTIC_CAPABILITY_OUTCOME", "capability %s declares outcome %s more than once", c.ID, outcome.Name))
+          \t\t\t}
+          \t\t\tseenOutcomes[outcome.Name] = struct{}{}
+          \t\t\tif !semanticValueTypeExists(outcome.Payload) {
+          \t\t\t\tout = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD", "capability %s outcome %s refers to unknown semantic value type %s", c.ID, outcome.Name, outcome.Payload))
+          \t\t\t}
+          \t\t}
+          '''
+          new = '''\t\tseenOutcomes := map[core.LocalName]struct{}{}
+          \t\tfor _, outcome := range c.Outcomes {
+          \t\t\tif outcome.Name == "" {
+          \t\t\t\tout = append(out, errd("SEMANTIC_CAPABILITY_OUTCOME_NAME_REQUIRED", "capability %s has an outcome without a name", c.ID))
+          \t\t\t} else {
+          \t\t\t\tif _, dup := seenOutcomes[outcome.Name]; dup {
+          \t\t\t\t\tout = append(out, errd("DUPLICATE_SEMANTIC_CAPABILITY_OUTCOME", "capability %s declares outcome %s more than once", c.ID, outcome.Name))
+          \t\t\t\t}
+          \t\t\t\tseenOutcomes[outcome.Name] = struct{}{}
+          \t\t\t}
+          \t\t\tif outcome.Payload == "" {
+          \t\t\t\tout = append(out, errd("SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD_REQUIRED", "capability %s outcome %s has no payload type", c.ID, outcome.Name))
+          \t\t\t} else if !semanticValueTypeExists(outcome.Payload) {
+          \t\t\t\tout = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD", "capability %s outcome %s refers to unknown semantic value type %s", c.ID, outcome.Name, outcome.Payload))
+          \t\t\t}
+          \t\t}
+          '''
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"validation replacement target count={count}, want=1")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          gofmt -w internal/validation/validation.go internal/validation/capability_outcome_test.go
+          go test ./internal/validation
+
+      - name: 変更をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add internal/validation/validation.go internal/validation/capability_outcome_test.go
+          git commit -m "Capability Outcomeの必須項目Validationを追加する [capability-outcome-required-generated]"
+          git push origin HEAD:work/capability-outcome-core
