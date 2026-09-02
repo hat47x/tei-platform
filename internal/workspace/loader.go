@@ -259,6 +259,7 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Types = append(r.World.Semantics[idx].Types, ns.Types...)
 		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, ns.Data...)
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
+		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
 		for _, typ := range ns.Types {
 			r.Sources["semantic-type:"+string(typ.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		}
@@ -273,6 +274,9 @@ func loadSemantics(root string, r *Result) error {
 		}
 		for _, c := range ns.Capabilities {
 			r.Sources["semantic-capability:"+string(c.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+		}
+		for _, v := range ns.Validations {
+			r.Sources["semantic-validation:"+string(v.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		}
 	}
 	return nil
@@ -597,6 +601,7 @@ func Normalize(w *ir.World) {
 			})
 		}
 		sort.Slice(w.Semantics[i].Capabilities, func(a, b int) bool { return w.Semantics[i].Capabilities[a].ID < w.Semantics[i].Capabilities[b].ID })
+		sort.Slice(w.Semantics[i].Validations, func(a, b int) bool { return w.Semantics[i].Validations[a].ID < w.Semantics[i].Validations[b].ID })
 	}
 	sort.Slice(w.Applications, func(i, j int) bool { return w.Applications[i].ID < w.Applications[j].ID })
 	sort.Slice(w.Databases, func(i, j int) bool { return w.Databases[i].ID < w.Databases[j].ID })
@@ -638,6 +643,9 @@ func Normalize(w *ir.World) {
 		})
 		sort.Slice(w.Applications[i].Patterns, func(a, b int) bool {
 			return w.Applications[i].Patterns[a].ID < w.Applications[i].Patterns[b].ID
+		})
+		sort.Slice(w.Applications[i].Validations, func(a, b int) bool {
+			return w.Applications[i].Validations[a] < w.Applications[i].Validations[b]
 		})
 	}
 	for i := range w.Environments {

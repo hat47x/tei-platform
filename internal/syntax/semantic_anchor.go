@@ -110,6 +110,25 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 			if err := skipSemanticCapabilityBody(lx); err != nil {
 				return nil, err
 			}
+		case "validation":
+			idTok, err := expectLexerIdent(lx, "semantic validation id")
+			if err != nil {
+				return nil, err
+			}
+			id, err := core.ParseCanonicalID(idTok.Text)
+			if err != nil {
+				return nil, err
+			}
+			anchors = append(anchors, SubjectAnchor{Kind: "semantic-validation", ID: string(id), Anchor: tokenAnchor(idTok)})
+			if _, err := expectLexerIdent(lx, "semantic validation kind"); err != nil {
+				return nil, err
+			}
+			if err := expectLexerKind(lx, TokenLBrace, "semantic validation body"); err != nil {
+				return nil, err
+			}
+			if err := skipSemanticValidationBody(lx); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("unexpected semantic declaration %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
 		}
@@ -203,6 +222,27 @@ func skipSemanticCapabilityBody(lx *Lexer) error {
 			}
 		default:
 			return fmt.Errorf("unexpected semantic capability member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
+		}
+	}
+}
+
+func skipSemanticValidationBody(lx *Lexer) error {
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return err
+		}
+		if t.Kind == TokenRBrace {
+			return nil
+		}
+		if t.Kind == TokenEOF {
+			return fmt.Errorf("unterminated semantic validation body")
+		}
+		if t.Kind != TokenIdent || (t.Text != "attribute" && t.Text != "relation") {
+			return fmt.Errorf("unexpected semantic validation member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
+		}
+		if _, err := expectLexerIdent(lx, "semantic validation reference"); err != nil {
+			return err
 		}
 	}
 }
