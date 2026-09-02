@@ -9,24 +9,15 @@ import (
 	"tei/internal/core"
 	postgresprovider "tei/internal/database/providers/postgres"
 	"tei/internal/driver"
+	"tei/internal/driver/queryresult"
 	"tei/internal/environment"
 	"tei/internal/query"
 )
 
-// RawResultは、PostgreSQLが返した列名と値をSemanticへ対応付ける前の状態で保持する。
-//
-// この型にはSemantic attributeやPresentation上の意味を持たせない。Query result mappingの正本が
-// 実証から確定するまでは、物理的に観測できたresultと意味付け済みresultを明確に分離する。
-type RawResult struct {
-	Columns []string `json:"columns"`
-	Rows    [][]any  `json:"rows"`
-}
-
-// Resultは、raw resultとnamed parameterの束縛順だけを保持する。
-// ParameterNamesには実行時の値を含めない。
+// Resultは、PostgreSQL固有の実行Evidenceとしてnamed parameterの束縛順だけを保持する。
+// ParameterNamesには実行時の値を含めない。raw resultとSemantic mappingはDriver共通境界が所有する。
 type Result struct {
-	Raw            RawResult `json:"raw"`
-	ParameterNames []string  `json:"parameterNames,omitempty"`
+	ParameterNames []string `json:"parameterNames,omitempty"`
 }
 
 // Executorは、解決済みのPostgreSQL Queryを一つの明示的なDatabase接続へ渡す。
@@ -41,7 +32,8 @@ var _ driver.BrowseQueryExecutor = Executor{}
 
 // ExecuteBrowseQueryは、PostgreSQL固有のparameter bindingを行った後、native SQLを実DBへ渡す。
 //
-// 戻り値はraw resultのままとし、列名の類似や命名規則からSemantic attributeへ対応付けない。
+// 戻り値は物理的に観測したraw resultのままとし、Semantic mappingはDriverがCanonical Queryの
+// 明示mappingから適用する。列名の類似や命名規則からSemantic attributeを推測しない。
 func (e Executor) ExecuteBrowseQuery(
 	ctx context.Context,
 	q query.EmbeddedSQL,
@@ -101,13 +93,13 @@ func (e Executor) ExecuteBrowseQuery(
 		return driver.BrowseQueryResult{}, fmt.Errorf("Query %sのresult row取得中にerrorが発生しました: %w", q.ID, err)
 	}
 
-	return driver.BrowseQueryResult{Payload: Result{
-		Raw: RawResult{
+	return driver.BrowseQueryResult{
+		Raw: queryresult.RawResult{
 			Columns: append([]string(nil), columns...),
 			Rows:    rawRows,
 		},
-		ParameterNames: append([]string(nil), bound.ParameterNames...),
-	}}, nil
+		Payload: Result{ParameterNames: append([]string(nil), bound.ParameterNames...)},
+	}, nil
 }
 
 func stabilizeRawValue(value any) any {
