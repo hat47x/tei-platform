@@ -40,6 +40,7 @@ func ValidateSemanticRelationKeys(w ir.World) []Diagnostic {
 
 				relationSubject := subject.Subject{Kind: "semantic-relation", ID: string(relation.ID)}
 				seenPairs := map[string]struct{}{}
+				seenTargets := map[core.CanonicalID]core.CanonicalID{}
 
 				for _, key := range relation.Keys {
 					pair := string(key.SourceAttribute) + "\x00" + string(key.TargetAttribute)
@@ -55,6 +56,22 @@ func ValidateSemanticRelationKeys(w ir.World) []Diagnostic {
 						continue
 					}
 					seenPairs[pair] = struct{}{}
+
+					if key.TargetAttribute != "" {
+						if priorSource, exists := seenTargets[key.TargetAttribute]; exists {
+							out = append(out, errFor(
+								relationSubject,
+								"DUPLICATE_SEMANTIC_RELATION_KEY_TARGET_ATTRIBUTE",
+								"Relation %sではtarget attribute %sへsource attribute %sと%sの両方が対応付けられており、一意に辿れません",
+								relation.ID,
+								key.TargetAttribute,
+								priorSource,
+								key.SourceAttribute,
+							))
+						} else {
+							seenTargets[key.TargetAttribute] = key.SourceAttribute
+						}
+					}
 
 					if key.SourceAttribute == "" {
 						out = append(out, errFor(
