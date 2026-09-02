@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -145,7 +146,7 @@ func TestLegacyAuthenticationFunctionMappingKeepsRepositoryProvenanceWithoutSecr
 		t.Fatalf("lock code mapping=%#v", mapping.DeniedCodes)
 	}
 
-	data, err := osReadFile(mapping.SourcePath())
+	data, err := os.ReadFile(mapping.SourcePath())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,8 +171,4 @@ func loadReferenceFunctionMapping(t *testing.T) legacyauth.FunctionMapping {
 		t.Fatalf("legacy authentication function mappingを読み込めません: %v", err)
 	}
 	return mapping
-}
-
-var osReadFile = func(path string) ([]byte, error) {
-	return os.ReadFile(path)
 }
