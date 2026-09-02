@@ -1,6 +1,6 @@
 # ISSUE-000015: `sales.order.submit`のCapability Binding identityをReference化する
 
-- 状態: Ready
+- 状態: 着手可能
 - GitHub Issue: #126
 - 上位Issue: `ISSUE-000013` / GitHub Issue #124
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
