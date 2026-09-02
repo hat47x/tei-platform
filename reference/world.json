@@ -388,6 +388,19 @@
           ],
           "output": "sales.order"
         }
+      ],
+      "validations": [
+        {
+          "id": "sales.order.lines_line_number_unique",
+          "kind": "relation-attribute-unique",
+          "attribute": "sales.order_line.line_number",
+          "relation": "sales.order.lines"
+        },
+        {
+          "id": "sales.order_line.quantity_positive",
+          "kind": "attribute-positive",
+          "attribute": "sales.order_line.quantity"
+        }
       ]
     },
     {
@@ -462,6 +475,10 @@
       "semanticUses": [
         "sales",
         "customer"
+      ],
+      "validations": [
+        "sales.order.lines_line_number_unique",
+        "sales.order_line.quantity_positive"
       ],
       "databases": [
         {
