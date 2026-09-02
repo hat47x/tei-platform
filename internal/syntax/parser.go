@@ -1736,8 +1736,8 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 	return m, p.expectEOF()
 }
 
-// ParseSemanticFile parses a semantic source file. M0 deliberately keeps the
-// syntax small: a namespace followed by type, data and capability declarations.
+// ParseSemanticFile parses a semantic source file. The syntax remains intentionally
+// small: a namespace followed by type, data, capability and typed validation declarations.
 func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 	if _, err := p.expectText("namespace"); err != nil {
 		return semantic.Namespace{}, err
@@ -1783,8 +1783,14 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 				return ns, err
 			}
 			ns.Capabilities = append(ns.Capabilities, c)
+		case "validation":
+			v, err := p.parseSemanticValidation(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.Validations = append(ns.Validations, v)
 		default:
-			return ns, p.errAt(t, "expected type, data, or capability")
+			return ns, p.errAt(t, "expected type, data, capability, or validation")
 		}
 	}
 	return ns, nil
@@ -1992,6 +1998,104 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 		}
 	}
 	return c, nil
+}
+
+func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.Validation, error) {
+	_, _ = p.next() // validation
+	idTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return semantic.Validation{}, err
+	}
+	var id core.CanonicalID
+	symbol := idTok.Text
+	if strings.Contains(idTok.Text, ".") {
+		id, err = core.ParseCanonicalID(idTok.Text)
+		if err != nil {
+			return semantic.Validation{}, p.errAt(idTok, err.Error())
+		}
+		if !strings.HasPrefix(string(id), string(namespace)+".") {
+			return semantic.Validation{}, p.errAt(idTok, "validation canonical id must belong to the declared semantic namespace")
+		}
+		parts := strings.Split(string(id), ".")
+		symbol = parts[len(parts)-1]
+	} else {
+		seg, err := core.SymbolToSegment(idTok.Text)
+		if err != nil {
+			return semantic.Validation{}, p.errAt(idTok, err.Error())
+		}
+		id, _ = core.ParseCanonicalID(string(namespace) + "." + seg)
+	}
+
+	kindTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return semantic.Validation{}, err
+	}
+	v := semantic.Validation{ID: id, Symbol: symbol, Kind: semantic.ValidationKind(kindTok.Text)}
+	if !v.Kind.Valid() {
+		return v, p.errAt(kindTok, fmt.Sprintf("unsupported semantic validation kind %q", kindTok.Text))
+	}
+	if _, err := p.expect(TokenLBrace); err != nil {
+		return v, err
+	}
+
+	var hasAttribute, hasRelation bool
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return v, err
+		}
+		if t.Kind == TokenRBrace {
+			_, _ = p.next()
+			break
+		}
+		switch t.Text {
+		case "attribute":
+			if hasAttribute {
+				return v, p.errAt(t, "attribute is declared more than once")
+			}
+			hasAttribute = true
+			_, _ = p.next()
+			a, err := p.expect(TokenIdent)
+			if err != nil {
+				return v, err
+			}
+			v.Attribute, err = core.ParseCanonicalID(a.Text)
+			if err != nil {
+				return v, p.errAt(a, err.Error())
+			}
+		case "relation":
+			if hasRelation {
+				return v, p.errAt(t, "relation is declared more than once")
+			}
+			hasRelation = true
+			_, _ = p.next()
+			r, err := p.expect(TokenIdent)
+			if err != nil {
+				return v, err
+			}
+			v.Relation, err = core.ParseCanonicalID(r.Text)
+			if err != nil {
+				return v, p.errAt(r, err.Error())
+			}
+		default:
+			return v, p.errAt(t, "expected attribute or relation")
+		}
+	}
+
+	if v.Attribute == "" {
+		return v, fmt.Errorf("semantic validation %s requires attribute", v.ID)
+	}
+	switch v.Kind {
+	case semantic.ValidationPositive:
+		if v.Relation != "" {
+			return v, fmt.Errorf("positive semantic validation %s does not accept relation", v.ID)
+		}
+	case semantic.ValidationRelationUnique:
+		if v.Relation == "" {
+			return v, fmt.Errorf("relation-unique semantic validation %s requires relation", v.ID)
+		}
+	}
+	return v, nil
 }
 
 func parseVersion(s string) (database.ContractVersion, error) {
