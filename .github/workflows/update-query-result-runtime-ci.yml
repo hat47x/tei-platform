@@ -1,0 +1,75 @@
+name: Query Result Runtime CI更新
+
+on:
+  push:
+    branches:
+      - work/query-result-mapping-runtime-current
+
+permissions:
+  contents: write
+
+jobs:
+  update-ci:
+    if: ${{ !contains(github.event.head_commit.message, '[query-result-runtime-ci-updated]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: work/query-result-mapping-runtime-current
+
+      - name: Query result runtimeのCI検査を更新
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/ci.yml")
+          text = path.read_text()
+          old = '''      - name: recent_orders native Queryをraw resultまで実DBで検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-query-runtime > /tmp/tei-postgres-query-runtime.json
+          cat /tmp/tei-postgres-query-runtime.json
+          grep -q '\"query\": \"order_entry.recent_orders\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"datasource\": \"sales\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"targetDatabase\": \"sales_core\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"parameterValuesPersisted\": false' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"rawRows\": 2' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"semanticMappingApplied\": false' /tmp/tei-postgres-query-runtime.json
+'''
+          new = '''      - name: recent_orders native QueryをSemantic mappingまで実DBで検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-postgres-query-runtime > /tmp/tei-postgres-query-runtime.json
+          cat /tmp/tei-postgres-query-runtime.json
+          grep -q '\"query\": \"order_entry.recent_orders\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"datasource\": \"sales\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"targetDatabase\": \"sales_core\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"parameterValuesPersisted\": false' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"rawRows\": 2' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"mappedRows\": 2' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"sales.order.total\"' /tmp/tei-postgres-query-runtime.json
+          grep -q '\"semanticMappingApplied\": true' /tmp/tei-postgres-query-runtime.json
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f"置換対象は1件である必要があります: {text.count(old)}件")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          git diff --check -- .github/workflows/ci.yml
+          git diff -- .github/workflows/ci.yml
+
+      - name: 更新結果をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml
+          git commit -m "Query result mappingの実DB CI Evidenceを更新する [query-result-runtime-ci-updated]"
+          git push origin HEAD:work/query-result-mapping-runtime-current
