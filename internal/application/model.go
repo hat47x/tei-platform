@@ -32,16 +32,34 @@ func (k PatternKind) Valid() bool {
 		k == PatternHeaderDetail
 }
 
+// ContractQueryInputBindingは、reference PatternでRelation target keyの値を
+// Database Contract Queryのどのinputへ渡すかを明示する。
+// 型やinput名の一致から対応を推測せず、Semantic attributeのidentityをそのまま保持する。
+type ContractQueryInputBinding struct {
+	TargetAttribute core.CanonicalID `json:"targetAttribute"`
+	Input           core.LocalName   `json:"input"`
+}
+
+// ContractQueryInvocationは、一つのreference Patternが利用するDatabase Contract Queryを表す。
+// Contract QueryのsignatureやDatabase固有の実現方法はそれぞれの所有層に残し、
+// ここではApplicationが選んだContract / QueryとRelation keyからのinput対応だけを保持する。
+type ContractQueryInvocation struct {
+	Contract core.CanonicalID            `json:"contract"`
+	Query    core.LocalName              `json:"query"`
+	Inputs   []ContractQueryInputBinding `json:"inputs,omitempty"`
+}
+
 // PatternにはApplication上の意図だけを保持する。
 // Semantic定義、Query本文、Capability契約、物理パス、Target固有の表現は既存の層に残し、ここではidentityで参照する。
 type Pattern struct {
-	ID         core.CanonicalID `json:"id"`
-	Kind       PatternKind      `json:"kind"`
-	Data       core.CanonicalID `json:"data,omitempty"`
-	Relation   core.CanonicalID `json:"relation,omitempty"`
-	Query      core.CanonicalID `json:"query,omitempty"`
-	Capability core.CanonicalID `json:"capability,omitempty"`
-	Datasource core.LocalName   `json:"datasource,omitempty"`
+	ID            core.CanonicalID         `json:"id"`
+	Kind          PatternKind              `json:"kind"`
+	Data          core.CanonicalID         `json:"data,omitempty"`
+	Relation      core.CanonicalID         `json:"relation,omitempty"`
+	Query         core.CanonicalID         `json:"query,omitempty"`
+	Capability    core.CanonicalID         `json:"capability,omitempty"`
+	Datasource    core.LocalName           `json:"datasource,omitempty"`
+	ContractQuery *ContractQueryInvocation `json:"contractQuery,omitempty"`
 }
 
 type Application struct {
