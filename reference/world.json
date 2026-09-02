@@ -406,6 +406,73 @@
       ]
     },
     {
+      "id": "security",
+      "types": [
+        {
+          "id": "security.authentication_denial_reason",
+          "symbol": "AuthenticationDenialReason",
+          "kind": "alias",
+          "underlying": "std.code"
+        },
+        {
+          "id": "security.credential",
+          "symbol": "Credential",
+          "kind": "alias",
+          "underlying": "std.text"
+        }
+      ],
+      "data": [
+        {
+          "id": "security.authenticated_subject",
+          "symbol": "AuthenticatedSubject",
+          "attributes": [
+            {
+              "id": "security.authenticated_subject.subject_id",
+              "symbol": "subjectId",
+              "type": "std.identifier"
+            }
+          ]
+        },
+        {
+          "id": "security.authentication_denial",
+          "symbol": "AuthenticationDenial",
+          "attributes": [
+            {
+              "id": "security.authentication_denial.reason",
+              "symbol": "reason",
+              "type": "security.authentication_denial_reason"
+            }
+          ]
+        }
+      ],
+      "capabilities": [
+        {
+          "id": "security.authenticate",
+          "symbol": "authenticate",
+          "inputs": [
+            {
+              "name": "login_id",
+              "type": "std.identifier"
+            },
+            {
+              "name": "credential",
+              "type": "security.credential"
+            }
+          ],
+          "outcomes": [
+            {
+              "name": "authenticated",
+              "payload": "security.authenticated_subject"
+            },
+            {
+              "name": "denied",
+              "payload": "security.authentication_denial"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "std",
       "types": [
         {
