@@ -74,8 +74,12 @@ func (r Resolver) ExecuteReferenceContractQuery(
 	target := realization.ContractQueryTarget{
 		Database: prepared.Resolution.Database.ID,
 		Contract: prepared.Resolution.Contract.ID,
-		Query:    core.LocalName(prepared.Resolution.Query.Name),
+		Query:    prepared.Resolution.Invocation.Query,
 	}
+	if !target.Valid() {
+		return ReferenceContractQueryExecution{}, fmt.Errorf("reference Pattern %sのContract Query target identityが不完全です", patternID)
+	}
+
 	result, err := executor.ExecuteContractQuery(
 		ctx,
 		target,
