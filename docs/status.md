@@ -4,7 +4,7 @@ TEIは、完成したローコード製品ではありません。業務上の�
 
 Database / Provider側ではM0.35まで設計検証を進め、その後はv1 Reference Application `order_entry`を使ったApplication側の実証へ重点を移しました。
 
-現在、Application PatternのStage 1は完了しています。一方、Application Driverへ進むためのGate A「Application上の意味をDriverへ渡せる」は未達です。Gate Aの監査では、既存認証Compatibility、Capabilityの名前付きOutcome、業務Validation、Capability Bindingが主な残条件として特定されています。
+Application PatternのStage 1に続き、Gate A「Application上の意味をDriverへ渡せる」もReadyになりました。既存認証Compatibility、Authentication / Authorization、Capabilityの名前付きOutcomeとExecution Error、業務Validation、Capability BindingまでReference / Conformanceから再現できるため、次はApplication Driverの実証へ進みます。
 
 この文書では、Repository上で実装・検証できていることと、まだ実装済みとは言えないことを分けて整理します。
 
@@ -169,11 +169,6 @@ Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに�
 
 次はProduct Visionまたはv1主線に含まれますが、現時点で完成済みとは主張しません。
 
-- Gate A「Application上の意味をDriverへ渡せる」の通過
-- 既存認証仕様を保持したAuthentication / Authorization Compatibility Reference
-- Semantic Capabilityの名前付きOutcomeを使った実Reference
-- 業務ValidationのCanonicalな正本とReference
-- `sales.order.submit`に対する明示的なCapability Binding Reference
 - Application設計を通しで実行するDriver
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
@@ -191,16 +186,13 @@ Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに�
 - Go source semantic analysis / refactoring engine
 - AIによるauthoritative sourceの無確認自動編集
 
-Application Pattern Stage 1は完了していますが、それだけを理由にDriverへ進みません。
+Application Pattern Stage 1とGate Aは完了しています。
 
-Gate A監査では、次の4領域がDriver開始前の主な残条件です。
+Gate Aでは、Application Pattern、Datasource、Capability Binding、業務Validation、Business Result / Execution Error、既存認証Compatibility、Authorizationを同じ`order_entry`から追跡できることを確認しました。
 
-- GitHub Issue #68: 既存認証Compatibility
-- GitHub Issue #77: Capability Outcome / Execution Error
-- GitHub Issue #125: 業務Validation
-- GitHub Issue #126: `sales.order.submit` Capability Binding
+`security.authenticate`は既存record経路と既存function経路を同じCapability / Binding identityのまま交換できます。`security.authorize`はApplication Pattern identityをaction / resourceへ接続し、legacy roleやschemaをDriverへ漏らさず認可判断できます。
 
-詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
+Application Driverは着手可能です。詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
 
 # 設計検証チェックポイント
 
