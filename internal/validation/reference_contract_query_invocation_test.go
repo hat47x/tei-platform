@@ -36,6 +36,69 @@ func TestValidateReferenceContractQueryInvocationsRequiresApplicationContract(t 
 	}
 }
 
+func TestValidateReferenceContractQueryInvocationsRejectsAmbiguousRequirement(t *testing.T) {
+	world := referenceContractQueryWorld(PatternReferenceInvocationFixture())
+	world.Applications[0].Databases[0].RequiredContracts = append(
+		world.Applications[0].Databases[0].RequiredContracts,
+		database.ContractRequirement{ContractID: "master_data.customer", CompatibleMajor: 2},
+	)
+
+	diagnostics := ValidateReferenceContractQueryInvocations(world)
+	if !hasReferenceContractQueryDiagnostic(diagnostics, "AMBIGUOUS_REFERENCE_CONTRACT_QUERY_REQUIREMENT") {
+		t.Fatalf("同じContract requirementが複数ある状態を一意に解決しています: %#v", diagnostics)
+	}
+}
+
+func TestValidateReferenceContractQueryInvocationsRequiresTargetDatabase(t *testing.T) {
+	world := referenceContractQueryWorld(PatternReferenceInvocationFixture())
+	world.Databases = nil
+
+	diagnostics := ValidateReferenceContractQueryInvocations(world)
+	if !hasReferenceContractQueryDiagnostic(diagnostics, "UNKNOWN_REFERENCE_CONTRACT_QUERY_DATABASE") {
+		t.Fatalf("Datasourceのtarget Databaseが存在しない状態を見逃しています: %#v", diagnostics)
+	}
+}
+
+func TestValidateReferenceContractQueryInvocationsDoesNotFallbackToAnotherDatabase(t *testing.T) {
+	world := referenceContractQueryWorld(PatternReferenceInvocationFixture())
+	world.Databases[0].Contracts = nil
+	world.Databases = append(world.Databases, database.Database{
+		ID: "other_master",
+		Contracts: []database.Contract{
+			{
+				ID:      "master_data.customer",
+				Version: database.ContractVersion{Major: 2, Minor: 4},
+				Queries: []database.QueryContract{{Name: "find_by_id"}},
+			},
+		},
+	})
+
+	diagnostics := ValidateReferenceContractQueryInvocations(world)
+	if !hasReferenceContractQueryDiagnostic(diagnostics, "UNKNOWN_REFERENCE_CONTRACT_QUERY_CONTRACT") {
+		t.Fatalf("別Databaseの同名Contractへ暗黙にフォールバックしています: %#v", diagnostics)
+	}
+}
+
+func TestValidateReferenceContractQueryInvocationsRequiresCompatibleMajor(t *testing.T) {
+	world := referenceContractQueryWorld(PatternReferenceInvocationFixture())
+	world.Applications[0].Databases[0].RequiredContracts[0].CompatibleMajor = 3
+
+	diagnostics := ValidateReferenceContractQueryInvocations(world)
+	if !hasReferenceContractQueryDiagnostic(diagnostics, "REFERENCE_CONTRACT_QUERY_MAJOR_VERSION_MISMATCH") {
+		t.Fatalf("Contractのmajor version不整合を見逃しています: %#v", diagnostics)
+	}
+}
+
+func TestValidateReferenceContractQueryInvocationsRequiresDeclaredQuery(t *testing.T) {
+	pattern := PatternReferenceInvocationFixture()
+	pattern.ContractQuery.Query = "find_by_name"
+
+	diagnostics := ValidateReferenceContractQueryInvocations(referenceContractQueryWorld(pattern))
+	if !hasReferenceContractQueryDiagnostic(diagnostics, "UNKNOWN_REFERENCE_CONTRACT_QUERY") {
+		t.Fatalf("Contractに存在しないQueryを暗黙に補っています: %#v", diagnostics)
+	}
+}
+
 func TestValidateReferenceContractQueryInvocationsRejectsAmbiguousBindings(t *testing.T) {
 	pattern := PatternReferenceInvocationFixture()
 	pattern.ContractQuery.Inputs = append(pattern.ContractQuery.Inputs,
@@ -110,6 +173,18 @@ func referenceContractQueryWorld(pattern application.Pattern) ir.World {
 					},
 				},
 				Patterns: []application.Pattern{pattern},
+			},
+		},
+		Databases: []database.Database{
+			{
+				ID: "master_data",
+				Contracts: []database.Contract{
+					{
+						ID:      "master_data.customer",
+						Version: database.ContractVersion{Major: 2, Minor: 4},
+						Queries: []database.QueryContract{{Name: "find_by_id"}},
+					},
+				},
 			},
 		},
 	}
