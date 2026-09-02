@@ -1,0 +1,19 @@
+namespace security
+
+type Credential from std.text
+type AuthenticationDenialReason from std.code
+
+data AuthenticatedSubject {
+    attribute subjectId type std.identifier
+}
+
+data AuthenticationDenial {
+    attribute reason type security.authentication_denial_reason
+}
+
+capability security.authenticate {
+    input loginId std.identifier
+    input credential security.credential
+    outcome authenticated security.authenticated_subject
+    outcome denied security.authentication_denial
+}
