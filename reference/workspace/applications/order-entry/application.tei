@@ -1,6 +1,7 @@
 application order_entry {
     uses semantic sales
     uses semantic customer
+    uses semantic security
 
     database sales {
         target sales_core
