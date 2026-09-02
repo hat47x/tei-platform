@@ -25,8 +25,8 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Authentication Binding Conformanceを確認
-        run: go test ./internal/workspace
+      - name: Authentication Binding Conformanceを先に確認
+        run: go test ./internal/workspace -run TestReferenceLegacyAuthenticationBindingConnectsOrderEntryWithoutPersistingSecret
 
       - name: Reference Worldを正本から再生成
         shell: bash
@@ -36,6 +36,9 @@ jobs:
             -workspace reference/workspace \
             > /tmp/tei-reference-world.json
           mv /tmp/tei-reference-world.json reference/world.json
+
+      - name: Golden更新後のWorkspaceテストを確認
+        run: go test ./internal/workspace
 
       - name: 生成結果をbranchへ反映
         shell: bash
