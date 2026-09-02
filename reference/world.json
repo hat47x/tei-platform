@@ -1323,7 +1323,29 @@
       "application": "order_entry",
       "datasource": "sales",
       "dialect": "postgres",
-      "source": "SELECT\n            o.order_id,\n            o.customer_id,\n            o.ordered_at,\n            o.status,\n            o.total_amount\n        FROM public.orders AS o\n        WHERE o.ordered_at \u003e= :from\n        ORDER BY o.ordered_at DESC"
+      "source": "SELECT\n            o.order_id,\n            o.customer_id,\n            o.ordered_at,\n            o.status,\n            o.total_amount\n        FROM public.orders AS o\n        WHERE o.ordered_at \u003e= :from\n        ORDER BY o.ordered_at DESC",
+      "resultColumns": [
+        {
+          "column": "order_id",
+          "attribute": "sales.order.order_id"
+        },
+        {
+          "column": "customer_id",
+          "attribute": "sales.order.customer_id"
+        },
+        {
+          "column": "ordered_at",
+          "attribute": "sales.order.ordered_at"
+        },
+        {
+          "column": "status",
+          "attribute": "sales.order.status"
+        },
+        {
+          "column": "total_amount",
+          "attribute": "sales.order.total"
+        }
+      ]
     }
   ],
   "customGoBindings": [
