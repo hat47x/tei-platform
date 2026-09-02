@@ -259,6 +259,19 @@ func Validate(w ir.World) []Diagnostic {
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
 			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
+		if c.Output != "" && len(c.Outcomes) > 0 {
+			out = append(out, errd("SEMANTIC_CAPABILITY_OUTPUT_OUTCOME_CONFLICT", "capability %s cannot declare both output and named outcomes", c.ID))
+		}
+		seenOutcomes := map[core.LocalName]struct{}{}
+		for _, outcome := range c.Outcomes {
+			if _, dup := seenOutcomes[outcome.Name]; dup {
+				out = append(out, errd("DUPLICATE_SEMANTIC_CAPABILITY_OUTCOME", "capability %s declares outcome %s more than once", c.ID, outcome.Name))
+			}
+			seenOutcomes[outcome.Name] = struct{}{}
+			if !semanticValueTypeExists(outcome.Payload) {
+				out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD", "capability %s outcome %s refers to unknown semantic value type %s", c.ID, outcome.Name, outcome.Payload))
+			}
+		}
 	}
 
 	apps := map[core.CanonicalID]application.Application{}
