@@ -4,4 +4,8 @@ plugin tei.database.oracle v1.0.0 {
     provides database-provider database.oracle {
         provider oracle
     }
+
+    provides contract-query-executor database.query.oracle {
+        provider oracle
+    }
 }
