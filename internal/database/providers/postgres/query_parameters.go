@@ -113,6 +113,14 @@ func copySingleQuoted(out *strings.Builder, source string, start int) (int, erro
 	out.WriteByte(source[start])
 	for i := start + 1; i < len(source); i++ {
 		out.WriteByte(source[i])
+		// PostgreSQLのE'...'ではbackslash escapeが有効である。
+		// 通常文字列でも保守的に次の1byteをliteralとして扱い、文字列内のcolonを
+		// named parameterとして誤認する方向には倒さない。
+		if source[i] == '\\' && i+1 < len(source) {
+			out.WriteByte(source[i+1])
+			i++
+			continue
+		}
 		if source[i] != '\'' {
 			continue
 		}
