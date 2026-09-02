@@ -1,6 +1,7 @@
 package syntax_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestParseQueryAuthoringKeepsEmbeddedSQLCompatible(t *testing.T) {
 	if err != nil {
 		t.Fatalf("existing ParseQuery rejected embedded SQL: %v", err)
 	}
-	if legacy != got.Value {
+	if !reflect.DeepEqual(legacy, got.Value) {
 		t.Fatalf("existing ParseQuery changed value: legacy=%#v authoring=%#v", legacy, got.Value)
 	}
 }
