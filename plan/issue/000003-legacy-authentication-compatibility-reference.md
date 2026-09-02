@@ -1,20 +1,17 @@
-# ISSUE-000003: 既存認証仕様を保持したCompatibility Referenceを設計する
+# ISSUE-000003: 既存認証仕様を保持したCompatibility Referenceを実証する
 
-- 状態: 着手可能
+- 状態: 完了
 - GitHub Issue: #68
 - 実装前設計: [`LEGACY_AUTH_V1_DESIGN.md`](../LEGACY_AUTH_V1_DESIGN.md)
+- Gate A判定: Ready
 
 ## 背景
 
-業務システムの移行では、標準的なID / password認証であっても、ユーザー無効化、有効期限、ログイン失敗回数、ロック、組織属性、role、個別ruleなど、システム固有の制御が長年積み重なっています。
+業務システムの移行では、標準的なID / password認証であっても、利用者の無効化、有効期間、ログイン失敗回数、lock、組織、role、個別ruleなど、システム固有の制御が長年積み重なっています。
 
-TEIが既存システム移行に使えるためには、先に標準認証へ作り替えることを要求せず、既存仕様を保持したままApplicationから利用できるCapabilityへ接続する必要があります。
+TEIが既存システム移行に使えるためには、先に標準認証へ作り替えることを要求せず、既存仕様を保持したままApplicationから利用できるCapabilityへ接続できる必要があります。
 
-Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証領域として残っています。
-
-このIssueはApplication Pattern #67と並行して進め、両者の成果をGate A「Application上の意味をDriverへ渡せる」で合流させます。
-
-認証・認可の基本境界は[ADR-0019](../adr/0019-authentication-capability-boundary.md)に従います。
+このIssueでは、Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱い、Plugin / RuntimeのPermission Grant / Resource Leaseとは別の責務として実証しました。
 
 ## 関連するProduct Requirement
 
@@ -27,20 +24,49 @@ Product Requirements Gap Auditでも、RQ-009はv1へ向けた大きな未実証
 - RQ-019 Resource authorityとの責務分離
 - RQ-021 Reference / Conformance
 
-## 目的
+## 結論
 
-TEI標準のUser tableや認証schemaを先に定義するのではなく、**既存システム固有の認証状態と処理を、その意味を失わずAuthentication / Authorization Capabilityへ接続できること**を実証します。
+**Gate Aで必要な既存認証CompatibilityはReadyです。**
 
-Application利用者の認証・認可と、Plugin / RuntimeのPermission Grant / Resource Leaseは別の責務です。両者を同じ「権限」概念へ畳みません。
+PR #148、#149、#151により、次をRepository上のReference / Conformanceから確認できるようになりました。
 
-## v1で扱う既存認証資産
+- 既存の利用者情報をTEI標準User schemaへ作り替えずAuthenticationへ接続できる
+- `security.authenticate`を`order_entry`から明示的にBindingできる
+- authenticated subjectをApplication側へ渡せる
+- `security.authorize`をApplication上のaction / resourceへ接続できる
+- organization、role、既存ruleをadapter側へ保てる
+- 業務上の拒否とExecution Errorを区別できる
+- 実行時credentialやsecretをCanonical / Source Index / Business Result / 通常Evidenceへ保存しない
+- 一つのApplication Bindingを保ったまま既存認証の実現方式を交換できる
+- 実現方式を交換してもCanonical Worldを変更する必要がない
 
-小さな既存システムを想定し、最低限、次の状態を持つ認証資産を用意します。
+## Authentication
+
+v1ではReference Workspaceの`security`意味空間にある`security.authenticate`を利用します。
+
+```text
+login identifier + credential
+            ↓
+    security.authenticate
+       ├─ authenticated
+       └─ denied
+```
+
+`authenticated` / `denied`は、認証処理を正常に完了して得られたBusiness Resultです。
+
+Database接続失敗、adapter障害、既存関数の実行障害、未対応return code等は、認証判断を正常に完了できなかった状態としてExecution Errorに残します。
+
+この境界はADR-0020 / Issue #77で成立したCapability共通のInvocation境界を利用します。
+
+## 既存の利用者情報を保持するReference
+
+PR #148では、既存システムを模した利用者情報を次のfieldを保ったまま読み込めるReferenceを追加しました。
 
 ```text
 LegacyUser
 - user_id
-- credential reference / password hash
+- subject_id
+- credential_ref
 - disabled
 - valid_from
 - valid_until
@@ -50,164 +76,162 @@ LegacyUser
 - role_code
 ```
 
-さらに、単純なfield対応だけでは消えやすいシステム固有ruleを一つ含めます。
+これらをTEI標準のUser tableへコピーしてから利用する構造にはしていません。
 
-最終的なruleはReferenceを不自然に複雑にしない範囲で実装時に決めます。重要なのは、こうした既存仕様を「TEI標準に合わせるため」という理由で削らないことです。
+`legacyauth.Adapter`は、既存の利用者情報、credential verification、システム固有ruleを`security.authenticate`へ接続します。
 
-## Capability境界
+少なくとも次を区別できます。
 
-v1ではReference workspace側の`security`意味空間で、少なくとも次を分けて検証します。
+- 正常なcredential → `authenticated`
+- credential不一致 → `denied`
+- disabled → `denied`
+- 有効期間外 → `denied`
+- lock中 → `denied`
+- システム固有条件の不成立 → `denied`
+- store / verifier / ruleの実行障害 → Execution Error
+
+## Authentication Binding
+
+`order_entry`では次のBindingを一意に解決できます。
 
 ```text
-security.authenticate
-security.authorize
+order_entry / security.authenticate
 ```
 
-### `security.authenticate`
+Bindingのauthoring sourceはSource Indexから追跡できます。
 
-credentialをもとにApplication利用者のidentityを確認します。
+Authenticationだけの特別なBinding形式は作らず、`sales.order.submit`で成立したApplication + Capabilityの解決原則を再利用しています。
 
-概念上、次を扱える必要があります。
+Driverはlegacy schema、fixture path、Go hook名等から認証実装を推測する必要がありません。
 
-- login identifier
-- credential inputまたはcredential handle
-- authentication outcome
-- authenticated subject
-- 認証が成立しなかった場合の理由
+## Authorization
 
-成功、正常な拒否、実行エラーの表し方は`ISSUE-000009` / GitHub Issue #77で決めます。
+PR #149では、Authenticationで得たsubjectを利用する`security.authorize`を実証しました。
 
-### `security.authorize`
+```text
+subject + action + resource
+          ↓
+ security.authorize
+     ├─ allowed
+     └─ denied
+```
 
-authenticated subjectがApplication上のaction / resourceを実行できるかを判定します。
+最初のReferenceでは、認可対象のresourceにApplication Pattern identityを利用します。
 
-組織、role、既存の個別rule等をimplementation側から利用できる必要があります。
+```text
+browse  / order_entry.recent_orders
+edit    / order_entry.order_record
+execute / order_entry.submit_order
+```
 
-AuthenticationとAuthorizationを一つのboolean関数へ固定しません。
+Web画面名、URL、button名を認可の正本にはしません。
 
-## `std`への標準化は保留する
+`order_entry.submit_order`はCommand Patternとして`sales.order.submit`へ接続済みなので、認可ruleへCapability実装の情報を重複記述しません。
 
-将来`std.auth.*`等の標準Capabilityが有用になる可能性はあります。
+既存のorganization、role、ruleはadapter側で評価します。ApplicationやDriverへこれらを公開し、同じ認可判断を再実装させない構造です。
 
-ただし、一つのReferenceだけで標準契約を固定しません。v1ではworkspace側の`security`意味空間で実証し、複数Applicationや複数実現方式でも同じ契約として成立するEvidenceを得てから標準化を判断します。
+## 既存認証の実現方式を交換する
 
-## 既存schemaとの接続
+PR #151では、次の二つの実現方式を比較しました。
 
-既存fieldをTEI標準fieldへ物理コピーすることを前提にしません。
+### 既存の利用者情報を読む方式
 
-次の方式を比較します。
+`legacyauth.Adapter`が既存recordを読み、credential verificationと既存ruleを組み合わせます。
 
-1. Capability implementationが既存schemaを直接読む
-2. Persistence Mapping等を通じて既存fieldを論理的な意味へ対応付ける
-3. 既存関数、stored procedure、外部API等をadapterから呼ぶ
+### 既存認証関数を呼ぶ方式
 
-Referenceでは、少なくとも一つの既存schema経路と、一つのCustom implementation経路を確認します。
+`legacyauth.FunctionAdapter`が、既存関数、stored procedure、外部API等に相当する認証処理を呼びます。
 
-重要なのは、Applicationから見たCapability identityを変えずに実現方式を交換できることです。
+Referenceでは`legacy_security.authenticate_user`という既存関数を想定し、既存システム固有のreturn codeをadapterでSemantic Outcomeへ対応付けます。
 
-## Plugin Capabilityとは分ける
+```text
+0  -> authenticated
+10 -> denied / credential_mismatch
+20 -> denied / account_disabled
+30 -> denied / account_locked
+40 -> denied / expired
+50 -> denied / not_yet_valid
+60 -> denied / organization_specific_condition
+```
 
-認証実装がprocess Pluginとして動く場合でも、Application利用者のAuthenticationを`plugin.CapabilityKind`へ直接追加することを基本方針にはしません。
+未対応return codeは正常な拒否とはみなさずExecution Errorにします。
 
-process PluginはSemantic Capabilityの実現方式であり、Plugin自身がどの外部resourceへアクセスしてよいかというPermissionとは別です。
+## 実現方式交換で守った境界
+
+実現方式を比較するために、複数のAuthentication Bindingを同時に登録して曖昧な選択状態を作ってはいません。
+
+`order_entry/security.authenticate`という**一つのApplication Binding**を保ち、その背後のadapterを交換します。
+
+両方式で次が不変です。
+
+- Canonical Capability identity: `security.authenticate`
+- Application Binding identity: `order_entry/security.authenticate`
+- Binding hook
+- Business Result契約
+- authenticated subject identity
+
+PR #151では`reference/workspace`と`reference/world.json`を変更していません。CI #374のReference World再現性検査もGolden更新なしで成功しました。
+
+このEvidenceから、既存認証の実現方式を変えるためにApplication上の意味を作り直す必要がないことを確認できました。
 
 ## Secretの扱い
 
-password平文、秘密鍵、token等のsecret materialをCanonical Worldへ保存しません。
+password平文、password hash、credential hash、token、secret等をCanonical Worldへ保存しません。
 
-少なくとも次へsecretを混入させません。
+少なくとも次への非混入をReference / Conformanceで確認しています。
 
 - `reference/world.json`
 - Source Index
-- Durable artifact
-- 通常のDiagnostic
-- 通常の実行log
-- Git管理するReference fixture
+- Business Result
+- Git管理するlegacy user fixture
+- Git管理するfunction mapping fixture
+- 通常Evidence
 
-Canonical側には、Capability契約、secretではないMapping / Bindingの来歴、どの境界でsecretを解決するかだけを残します。
+Canonical側の`security.credential`は入力の意味を表す型です。実際のcredential値は実行時に検証境界へ渡すだけで、Canonicalへコピーしません。
 
-## 業務結果と実行エラー
+## Application利用者の権限とPlugin権限を分ける
 
-Authenticationでは、少なくとも次を分ける必要があります。
+次の二つは別の責務です。
 
 ```text
-Authenticated(subject)
-Denied(reason)
-ExecutionError(error)
+Application user authorization
+  誰が、どの業務操作を実行できるか
+
+Plugin / Runtime permission
+  実装コードが、どの外部resourceへアクセスしてよいか
 ```
 
-credential不一致やaccount lockは、認証処理を正常に実行した結果としての拒否です。Database接続失敗やadapter異常とは意味が異なります。
-
-この問題はAuthentication固有ではないため、`ISSUE-000009` / GitHub Issue #77へ分離します。#68だけの場当たり的なerror規約は作りません。
-
-## `order_entry`との接続
-
-Reference単体で境界を確認した後、v1 `order_entry`へ接続します。
-
-少なくとも次を確認します。
-
-- 受注一覧を閲覧できる利用者
-- 受注recordを編集できる利用者
-- `sales.order.submit` commandを実行できる利用者
-
-Authorization ruleをWeb Target内のif文として再実装せず、Application / Capability境界から利用します。
-
-## Database方式へ固定しない
-
-既存認証情報は、別Database、同一Databaseの別schema、LDAP、IdP、独自API等のどこに存在するか分かりません。
-
-Referenceで既存Databaseを利用しても、Authentication Capability自体を「第三Datasourceが必ず存在する」契約にはしません。
+認証adapterがDatabaseや外部APIへ接続するためのHost側Permissionが必要になっても、それを「この利用者が受注確定を実行できるか」という業務認可と同じ概念にはしません。
 
 ## Gate Aへ渡す情報
 
-Driverが認証製品やlegacy schemaの内部構造を知らなくても、Application上のAuthorizationを評価できる境界を用意します。
+#68からDriverへ、少なくとも次を渡せる状態になりました。
 
-Gate Aへ渡す情報は少なくとも次です。
+- authenticated subject identity
+- Authentication Capability `security.authenticate`
+- Authorization Capability `security.authorize`
+- Application上のaction / resource
+- Application-scoped Capability Binding
+- Binding / legacy mappingの来歴
+- named Outcome / Execution Errorの結果契約
+- 既存仕様のうち認証・認可判断に利用する条件
+- secretを実行時だけ解決する境界
 
-- authenticated subjectを表すidentity
-- Application上で認可対象となるaction / resource
-- Authentication / Authorization Capabilityのidentity
-- Capability BindingとMappingの来歴
-- 既存仕様のどの条件が認証・認可判断に使われるか
-- secret materialをどの境界で解決するか
+organization、role、legacy return code、物理schema等をDriverのCanonicalな入力へ追加する必要はありません。
 
-Gate Aではproduction-readyなIdPやログイン画面の完成を求めません。既存仕様を保ったままApplication上の意味へ接続できることを確認します。
+## Driverへ残す確認
 
-## AI / Editorへの引き継ぎ
+Gate Aでは、Driverが利用できる意味境界が揃ったことを確認しました。
 
-将来AIやEditorが認証要件を確認するとき、既にMapping済みのfieldやruleを再質問しないためには、採用済みのCapability BindingとMappingを機械的に確認できる必要があります。
+Driver #69では、その境界を実際に利用して次をConformance化します。
 
-このIssueではAI UI自体は実装しませんが、後から「何が決定済みか」を追跡できる構造を壊さないことを条件とします。
+- legacy schemaへDriverが直接依存しない
+- Authenticationの`denied`をDriver障害として扱わない
+- Authorizationの`denied`ではcommandへ進まない
+- Binding解決失敗やadapter障害はExecution Errorとして扱う
+- secretをScenario Evidenceへ保存しない
 
-## 実装順
-
-1. `security`意味空間の最小Referenceを定める
-2. Authentication / Authorization Capabilityのidentityと責務を定める
-3. #77でCapability outcomeと実行エラーの境界を確定する
-4. legacy認証fixtureを用意する
-5. existing schema / functionとCapabilityを接続する
-6. Custom Go等の異なる実現方式を一つ追加する
-7. secret非混入をConformance化する
-8. `order_entry`のbrowse / edit / submitへAuthorizationを接続する
-9. Source / Binding / Mappingの来歴を確認する
-10. #67と合わせてGate Aを監査する
-
-## Conformance
-
-少なくとも次を確認します。
-
-- legacy field名をCanonical identityとして要求しない
-- disabled / validity / failure count / lock等の既存意味を失わない
-- system固有ruleを標準化のために削らない
-- secret plaintextをCanonical / Durable artifact / Source Indexへ保存しない
-- AuthenticationとAuthorizationを一つのbooleanへ畳まない
-- Application user authorizationとPlugin runtime permissionを混同しない
-- 同じCapability identityを保ったままimplementationを交換できる
-- implementationを交換してもApplication側の業務上の意味を作り直さない
-- `order_entry`のAuthorizationをTarget固有コードへ閉じ込めない
-- Source / Binding / implementationの来歴を追跡できる
-- Driverがlegacy schemaの物理構造へ直接依存しない
-- 業務上の拒否と実行エラーを#77の境界で区別できる
+これは#68の設計をやり直す作業ではなく、Gate Aで成立した境界をDriverから利用できることの確認です。
 
 ## 非目標
 
@@ -218,21 +242,27 @@ Gate Aではproduction-readyなIdPやログイン画面の完成を求めませ�
 - password hashing algorithmの独自実装
 - Plugin Permission Grantとの統合
 - GUI login pageの完成
-- このIssueだけでGate Aを完了させること
+- Runtime上で複数implementationを動的に選択する汎用機構
 
-## 完了条件
+## 完了条件の評価
 
-既存認証仕様を変更せず、Authentication / Authorization Capabilityへ接続できるReferenceが成立することを完了条件とします。
-
-さらに、同じCapability identityのまま実現方式を交換でき、`order_entry`のbrowse / edit / submit Authorizationへ接続できること、secretがCanonicalへ漏れないこと、Driverがlegacy schemaへ直接依存しないことをEvidenceとして残します。
-
-`ISSUE-000005`のApplication Patternと合わせて、Gate A「Application上の意味をDriverへ渡せる」を評価します。
+- [x] 既存認証仕様を変更せずAuthentication Capabilityへ接続できる
+- [x] AuthenticationとAuthorizationを分離できる
+- [x] `order_entry`のbrowse / edit / submitへAuthorizationを接続できる
+- [x] secretをCanonicalや通常Evidenceへ保存しない
+- [x] 業務上の拒否とExecution Errorを区別できる
+- [x] 同じCapability identityとApplication Bindingのまま実現方式を交換できる
+- [x] 実現方式の交換でApplication上の意味を作り直さない
+- [x] Gate AからDriverへ必要な意味を渡せる
 
 ## 関連文書
 
 - `plan/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
+- `plan/adr/0020-capability-business-outcome-boundary.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
+- GitHub PR #148 / #149 / #151
