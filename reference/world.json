@@ -406,6 +406,79 @@
       ]
     },
     {
+      "id": "security",
+      "types": [
+        {
+          "id": "security.authentication_denial_reason",
+          "symbol": "AuthenticationDenialReason",
+          "kind": "alias",
+          "underlying": "std.code"
+        },
+        {
+          "id": "security.credential_handle",
+          "symbol": "CredentialHandle",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        },
+        {
+          "id": "security.subject_id",
+          "symbol": "SubjectId",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        }
+      ],
+      "data": [
+        {
+          "id": "security.authenticated_subject",
+          "symbol": "AuthenticatedSubject",
+          "attributes": [
+            {
+              "id": "security.authenticated_subject.subject_id",
+              "symbol": "subjectId",
+              "type": "security.subject_id"
+            }
+          ]
+        },
+        {
+          "id": "security.authentication_denial",
+          "symbol": "AuthenticationDenial",
+          "attributes": [
+            {
+              "id": "security.authentication_denial.reason",
+              "symbol": "reason",
+              "type": "security.authentication_denial_reason"
+            }
+          ]
+        }
+      ],
+      "capabilities": [
+        {
+          "id": "security.authenticate",
+          "symbol": "authenticate",
+          "inputs": [
+            {
+              "name": "login",
+              "type": "std.identifier"
+            },
+            {
+              "name": "credential",
+              "type": "security.credential_handle"
+            }
+          ],
+          "outcomes": [
+            {
+              "name": "authenticated",
+              "payload": "security.authenticated_subject"
+            },
+            {
+              "name": "denied",
+              "payload": "security.authentication_denial"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "std",
       "types": [
         {
