@@ -1,104 +1,147 @@
 # ISSUE-000014: 業務Validationの最小Referenceと所有境界を実証する
 
-- 状態: 着手可能
+- 状態: In Progress
 - GitHub Issue: #125
 - 上位Issue: `ISSUE-000013` / GitHub Issue #124
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
+- Canonical契約: PR #136
 
 ## 背景
 
-Gate A監査で、Patternの構文・参照整合性を検査するValidationと、Driver Scenarioが実行する業務Validationは別の意味であることを確認しました。
+Gate A監査では、PatternやCanonical Worldの構文・参照整合性を確認するValidationと、業務上の条件を評価するValidationを分けています。
 
-現在のRepositoryにはApplication Patternの共通Validationがありますが、数量や明細集合に対する業務ruleの正本は、まだReferenceとして存在しません。
+Driver Scenarioが扱う「数量が正である」「一つの受注に属する明細番号が重複しない」といった条件は、ParserやWorkspace自体の整合性とは別の意味です。
 
-この状態でDriverへ進むと、業務ruleをDriver専用GoコードやWeb入力制約へ暗黙に埋め込むおそれがあります。
+この業務ruleをDriver専用Goコード、Web入力制約、Database constraintのいずれかへ閉じ込めると、同じ意味をTargetごとに作り直すことになります。
 
-## 目的
+そのため、まず業務ruleの正本とidentityをCanonicalに置き、その後にReferenceとEvaluatorを接続します。
 
-`order_entry`で、性質の異なる次の二種類を一例ずつ扱います。
+## 現在地
 
-1. 一つの属性だけで判定できるrule
-2. Relationで結ばれた複数Detailを見なければ判定できないrule
+PR #136で、最初の二例に必要なSemantic業務Validationの最小Canonical契約まで実装しました。
 
-大きなValidation DSLやrule engineを先に作ることが目的ではありません。
+### `positive`
 
-業務ruleの正本、identity、評価結果の意味、DriverとTargetからの再利用境界を、具体例から確認します。
+単一Attributeが正数であるというDomain上の不変条件を表します。
 
-## 最初のReference候補
-
-### 1. 単一属性 — `OrderLine.quantity`は正である
-
-```text
-sales.order_line.quantity > 0
+```tei
+validation sales.order_line.quantity_positive positive {
+    attribute sales.order_line.quantity
+}
 ```
 
-既存の`quantity`だけで成立し、Webのinput属性やDatabase CHECKへ閉じずに「業務上有効な数量」という意味を扱えるかを確認します。
+### `relation-unique`
 
-### 2. Relation単位 — 一つのOrder内で`lineNumber`が重複しない
+一つの`many` Relationに属するtarget Data群の中で、指定Attributeが一意であることを表します。
 
-```text
-sales.order.lines
-  └─ sales.order_line.line_number is unique within one order
+```tei
+validation sales.order.lines.line_number_unique relation-unique {
+    relation sales.order.lines
+    attribute sales.order_line.line_number
+}
 ```
 
-この例を第一候補にする理由は次です。
+Canonical model、Parser、Loader、Normalization、Source Index、共通Validationまで接続済みです。
 
-- 既存`sales.order.lines`と`OrderLine.lineNumber`だけで表せる
-- `lineTotal`、税、値引等の新しいSemanticをValidationのためだけに追加しなくてよい
-- 一項目のHTML validationへ還元できない
-- `OrderLine`全体で一意ではなく「一つのOrderに属する明細集合の中で一意」というRelation scopeを必要とする
-- 物理Foreign KeyやDatabase UNIQUE constraintの実現方法を先にSemanticへ持ち込まずに済む
+このため、業務Validationは「正本をどこに置くか未定」の段階を通過しました。ただし、Reference Workspace本体への実rule追加と評価実行はまだ成立していません。
 
-実Referenceでこの例が不自然だと分かった場合は変更できますが、金額計算等へ広げる前にこの小さい例から始めます。
+## 所有境界について得た判断
 
-## 所有境界として比較するもの
+今回の二つのruleは、特定画面の入力都合ではなく、受注明細という業務意味そのものに属すると判断しました。
 
-### Semantic側のrule
+そのため、第一段階ではApplication PatternやWeb Targetではなく`sales` Semantic Namespaceを正本とします。
 
-複数Applicationでも変わらないDomain上の不変条件として扱う場合です。
+```text
+sales Semantic
+  ├─ sales.order_line.quantity_positive
+  └─ sales.order.lines.line_number_unique
+          ↓
+      Driver / Targetが参照
+```
 
-`quantity > 0`はこの候補になり得ます。
+この判断を、すべての業務Validationへ一般化したわけではありません。
 
-### Application-owned Validation
+Application固有の入力文脈、外部状態を伴う判断、独立したPolicy / Capabilityとして扱う方が自然なruleが現れた場合は、実例から別の所有境界を検討します。
 
-同じSemantic Dataでも、そのApplicationの入力・編集・操作文脈で成立する条件として扱う場合です。
+## PR #136で成立した境界
 
-### Capability / Policy等の独立した意味単位
+### 型付きの最小ruleだけを扱う
 
-外部状態や実行を伴う判断、または再利用可能なPolicyとして独立させる必要が実例から見えた場合に検討します。
+今回必要な`positive`と`relation-unique`だけを扱います。
 
-ただし、このIssueだけを理由に新しい汎用`Policy` modelや式言語を先に追加しません。
+任意の式を記述できるValidation DSLや汎用rule engineは導入していません。
 
-## 表現方法を先に固定しない
+### 既存Semanticとの参照整合性を検査する
 
-最初に決めるのは「どのruleがどこに属するか」であり、「どのDSL構文で書くか」ではありません。
+`positive`では、対象Attributeが数値型であることを求めます。
 
-候補には、型付きの小さなCanonical rule、既存Capability境界の利用、native implementationへのBinding等があります。
+`relation-unique`では、次を求めます。
 
-実Referenceから必要性を確認できない抽象を増やさず、次の条件を満たす最小表現を選びます。
+- 対象Relationが存在する
+- Relationが`many`である
+- 対象Attributeが存在する
+- 対象AttributeがRelation target Dataに属する
 
-- rule identityを追跡できる
-- authoring sourceへ戻れる
-- Driverがrule本文を独自に再実装しない
-- Targetが同じ結果を利用できる
-- 正常な不成立とExecution Errorを区別できる
+これにより、「一つのOrderに属するOrderLine集合の中でlineNumberが一意」というRelation scopeを、物理DatabaseのUNIQUEやForeign Keyから逆算せず表せます。
 
-## 結果境界
+### authoring sourceへ戻れる
 
-Validationが正常に評価された結果と、Validation自体を実行できなかった状態を分けます。
+Validation identityはSource Indexへ接続され、authoring sourceへ追跡できる構造になりました。
+
+file pathそのものをValidation identityにはしません。
+
+## 次に実証すること
+
+Canonical契約が成立しただけではGate AでReadyとは判定しません。
+
+次の二段階を実Referenceで確認します。
+
+### 1. Reference Workspaceへ二つのruleを追加する
+
+`sales` Semantic Namespaceへ次を実sourceとして追加します。
+
+- `sales.order_line.quantity_positive`
+- `sales.order.lines.line_number_unique`
+
+確認すること:
+
+- Reference Workspaceから読み込める
+- Canonical Worldへ同じidentityで現れる
+- Source Indexからauthoring sourceへ戻れる
+- Reference WorldをRepository自身から再生成できる
+- source fileの配置を変えてもCanonical meaningが変わらない
+
+### 2. 最小Evaluatorを追加する
+
+Driver専用のrule再実装ではなく、Canonical Validationを入力として評価する小さな入口を用意します。
+
+結果は少なくとも次のように分けます。
 
 ```text
 Validation Result
-  ├─ satisfied
-  └─ not satisfied
+├─ Satisfied
+└─ NotSatisfied
 
-Execution Error
-  └─ evaluation自体を完了できなかった状態
+Evaluation Error
+└─ 評価そのものを完了できなかった状態
 ```
 
-結果契約は#77 / ADR-0020と矛盾しないようにしますが、Validationを必ずSemantic Capabilityとして実装すると先に決めません。
+`quantity <= 0`や同一Order内の`lineNumber`重複は`NotSatisfied`です。
 
-Authorization denialとも別の意味です。
+一方、rule identityを解決できない、必要な入力が欠けていて評価不能である等の状態を`NotSatisfied`へ畳みません。
+
+## Driverへ渡す情報
+
+Gate Aでは、Driver #69が次をRepositoryから受け取れることを確認します。
+
+- Validation identity
+- rule kind
+- 対象Attribute / Relation
+- authoring source / provenance
+- `Satisfied` / `NotSatisfied`という正常な評価結果
+- 評価を完了できなかった状態との区別
+
+Driverが`quantity > 0`等のrule本文を専用Goコードへもう一度書く状態は認めません。
 
 ## 守る境界
 
@@ -107,32 +150,31 @@ Authorization denialとも別の意味です。
 - Driver専用Goコードにだけruleを書かない
 - Pattern KindのfieldへValidation式を押し込まない
 - 同じruleをSemantic / Application / Database / Webへ手書きで複製しない
-- Validation不成立をExecution Errorと混同しない
-- Authorization不成立とValidation不成立を混同しない
+- Validation不成立を評価不能やExecution Errorと混同しない
+- Authorization denialとValidation不成立を混同しない
 - `lineNumber`のRelation scopeを物理Foreign Key設計から逆算しない
-
-## Gate Aへ渡す情報
-
-- Validation identity
-- ruleが所有される層
-- 対象Data / Attribute / Relation等のidentity
-- Validation Resultの意味
-- implementationが必要な場合のBinding境界
-- authoring source / provenance
-- Driverがrule本文を独自実装せず評価できる入口
+- 今回の二例だけを理由に汎用式言語やrule engineを追加しない
 
 ## Conformance
 
-少なくとも次を確認します。
+### 既に成立しているもの
 
-- `quantity > 0`相当の単一属性ruleをReferenceから読み込める
-- `sales.order.lines`内の`lineNumber`重複禁止相当のRelation-scope ruleをReferenceから読み込める
+- `positive` / `relation-unique`をParseできる
+- 未検証のrule kindを拒否する
+- kindごとの必須・禁止fieldを検査する
+- `positive`を非数値Attributeへ適用できない
+- `relation-unique`で`many`以外のRelationを拒否する
+- Relation target外のAttributeを拒否する
+- Validation identityをSource Indexへ接続できる
+
+### 次に追加するもの
+
+- 二つの実ruleをReference Workspaceから読み込める
 - Validation identityからauthoring sourceへ戻れる
-- Driver専用Goコードを正本にしない
-- Web固有Validationを正本にしない
-- Database constraintを唯一の正本にしない
-- Validation不成立とExecution Errorを区別できる
-- 同じValidation identityを後続Driverへ渡せる
+- `quantity > 0`をSatisfied / NotSatisfiedの両方で評価できる
+- Relation scope内の`lineNumber`一意性をSatisfied / NotSatisfiedの両方で評価できる
+- 評価不能をNotSatisfiedへ変換しない
+- 同じCanonical ruleを後続Driverから利用できる
 
 ## 非目標
 
@@ -144,19 +186,21 @@ Authorization denialとも別の意味です。
 - AIによるrule自動生成
 - 税・値引等を含む販売管理全体の業務rule
 
-## 完了条件
+## Gate Aでの完了条件
 
-1. `quantity > 0`相当の単一属性ruleをReference化できる
-2. `sales.order.lines`内の`lineNumber`重複禁止相当のRelation-scope ruleをReference化できる
-3. Validationの正本がDriver / Web / Databaseのいずれか一つの実装へ閉じていない
-4. Pattern構文・参照整合性Validationと業務Validationを明確に区別できる
-5. Validation不成立を正常な業務結果として扱い、Execution Errorと区別できる
-6. Driver #69がValidation identityと結果契約をGate Aから受け取れる
-7. Reference / Conformanceから同じruleを再現できる
+1. `quantity > 0`のruleを実Referenceから読み込める
+2. `sales.order.lines`内の`lineNumber`重複禁止ruleを実Referenceから読み込める
+3. Validation identityからauthoring sourceへ戻れる
+4. 同じCanonical ruleをEvaluatorが利用できる
+5. Validation不成立を正常な`NotSatisfied`として扱える
+6. 評価不能を`NotSatisfied`へ畳まず別経路で扱える
+7. Driver #69がrule本文を独自実装せずValidation identityと結果契約を受け取れる
+8. Reference / Conformanceから同じruleと評価結果を再現できる
 
 ## 関連
 
 - GitHub Issue #124 / #125 / #69 / #77
+- PR #136
 - `ISSUE-000013`: Gate A到達性監査
 - `ISSUE-000006`: Application Driver
 - `ISSUE-000009`: Capability Outcome / Execution Error
