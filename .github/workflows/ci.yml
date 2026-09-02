@@ -177,3 +177,16 @@ jobs:
           grep -q '"renderedStatements": 3' /tmp/tei-postgres-migration-rendering.json
           grep -q '"advancedIndexes": 3' /tmp/tei-postgres-migration-rendering.json
           grep -q '"converged": true' /tmp/tei-postgres-migration-rendering.json
+
+      - name: recent_ordersをnative Query Runtimeで実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-driver-postgres-query > /tmp/tei-driver-postgres-query.json
+          cat /tmp/tei-driver-postgres-query.json
+          grep -q '"query": "order_entry.recent_orders"' /tmp/tei-driver-postgres-query.json
+          grep -q '"datasource": "sales"' /tmp/tei-driver-postgres-query.json
+          grep -q '"targetDatabase": "sales_core"' /tmp/tei-driver-postgres-query.json
+          grep -q '"rowCount": 2' /tmp/tei-driver-postgres-query.json
+          grep -q '"parameterValuesPersisted": false' /tmp/tei-driver-postgres-query.json
+          grep -q '"semanticMappingApplied": false' /tmp/tei-driver-postgres-query.json
