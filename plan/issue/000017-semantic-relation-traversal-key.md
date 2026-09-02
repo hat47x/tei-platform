@@ -3,7 +3,7 @@
 - 状態: Ready
 - GitHub Issue: #178
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
-- 関連Issue: `ISSUE-000016` / GitHub Issue #167
+- 関連Issue: `ISSUE-000016` / GitHub Issue #167、`ISSUE-000019` / GitHub Issue #185
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
 ## 背景
@@ -54,6 +54,8 @@ pattern order_entry.customer_reference reference {
 ```
 
 `sales -> sales_core`と`master -> master_data`を跨ぐRelationであるため、sales側の物理Foreign KeyをそのままRelation traversalの正本にはできません。
+
+このRelationのtarget keyを、どのDatabase Contract Queryのどのinputへ渡すかはRelation自身の責務には含めません。その接続は`ISSUE-000019`のReference invocationが所有します。
 
 ### OrderからOrderLineを辿るRelation
 
@@ -117,6 +119,25 @@ Semantic Relationは概念上の関係だけを保持し、Application、Databas
 
 cross-datasource Relationや`OrderLine.orderId`の欠如を説明しにくいため、少なくともv1の主たる正本にはしない方向で検証します。
 
+## Reference invocationとの責務分離
+
+`ISSUE-000019`では、`reference` Patternが利用するDatabase Contract Queryと、そのinputへのbindingを扱います。
+
+```text
+Semantic Relation
+  source-key / target-key
+        ↓
+Reference invocation
+  利用するContract / Query
+  target-key -> Query input
+        ↓
+Database Contract Query
+```
+
+このIssueが所有するのは、source instanceとtarget instanceの間を結ぶSemantic key対応までです。どのQueryを呼び出すか、どのQuery inputへ値を渡すかはApplication側のReference invocationへ分離します。
+
+これにより、同じSemantic Relationを異なるDatabase Contractや将来の別実現で利用する場合でも、RelationへDatabase固有の呼び出し情報を埋め込まずに済みます。
+
 ## `OrderLine.orderId`を先に追加しない
 
 このIssueでは、Driverやheader-detailを動かすためだけに`OrderLine`へ`orderId`を追加しません。
@@ -137,8 +158,9 @@ cross-datasource Relationや`OrderLine.orderId`の欠如を説明しにくいた
 3. 二例で共通に必要な意味と、実現方式にだけ必要な情報を分ける
 4. source / target attributeの存在と所属をValidationできるようにする
 5. authoring sourceとSource Index上の来歴を確認する
-6. Driverが名前・型・物理schemaを推測せずRelation traversalへ進めることを確認する
-7. 長期的な所有境界を固定する必要があればADRへ昇格する
+6. `ISSUE-000019`のReference invocationがtarget keyを明示bindingとして参照できることを確認する
+7. Driverが名前・型・物理schemaを推測せずRelation traversalへ進めることを確認する
+8. 長期的な所有境界を固定する必要があればADRへ昇格する
 
 ## 完了条件
 
@@ -147,6 +169,8 @@ cross-datasource Relationや`OrderLine.orderId`の欠如を説明しにくいた
 - [ ] `Order → OrderLine`のmany Relationを明示的に辿れる
 - [ ] key対応の正本とauthoring sourceを追跡できる
 - [ ] 物理Foreign KeyをSemantic Relationの正本と自動的に同一視しない
+- [ ] RelationへDatabase Contract Queryのidentityやinput名を埋め込まない
+- [ ] `ISSUE-000019`の明示bindingからtarget keyを参照できる
 - [ ] `master_data`のread-only境界を維持する
 - [ ] DriverがRelation traversal固有の命名規則を持たない
 - [ ] `record / reference / header-detail`のScenarioへ安全に渡せる
@@ -158,15 +182,17 @@ cross-datasource Relationや`OrderLine.orderId`の欠如を説明しにくいた
 - generic join engine
 - SQL JOINの自動生成一般化
 - Foreign Key DDLの設計
+- Database Contract Queryの選択やinput binding
 - production向けDataLoader / cache / batching
 - GraphQL風resolver framework
 - Target UIのnavigation設計
 
 ## 関連
 
-- GitHub Issue #69 / #167 / #178 / #179
+- GitHub Issue #69 / #167 / #178 / #179 / #185
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000016-native-query-runtime-boundary.md`
+- `plan/issue/000019-reference-contract-query-invocation.md`
 - `reference/workspace/semantic/sales/order.tei`
 - `reference/workspace/semantic/customer/customer.tei`
 - `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
