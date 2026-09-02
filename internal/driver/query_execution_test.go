@@ -60,8 +60,8 @@ func TestDriverExecutesBrowseQueryWithoutReconstructingNativeSQLOrDatasource(t *
 		if q.Application != "order_entry" || q.Datasource != "sales" {
 			return driver.BrowseQueryResult{}, fmt.Errorf("Query ownership=%s datasource=%s", q.Application, q.Datasource)
 		}
-		if q.Source != string(nativeSQL) {
-			return driver.BrowseQueryResult{}, fmt.Errorf("Loaderが読み込んだnative SQLが正本のrecent_orders.sqlと一致しません")
+		if q.Source != strings.TrimSpace(string(nativeSQL)) {
+			return driver.BrowseQueryResult{}, fmt.Errorf("Loaderによる外側空白の正規化を除き、Query Sourceが正本のrecent_orders.sqlと一致しません")
 		}
 		if datasource.Alias != "sales" || datasource.TargetDatabase != "sales_core" || string(datasource.Access) != "read-write" {
 			return driver.BrowseQueryResult{}, fmt.Errorf("Datasource=%#v", datasource)
