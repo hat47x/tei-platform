@@ -17,11 +17,10 @@ func TestMapUsesExplicitColumnNamesInsteadOfRawOrder(t *testing.T) {
 		},
 	}
 
-	mapped, err := queryresult.Map(
-		q,
-		[]string{"total_amount", "order_id"},
-		[][]any{{1200, "O-001"}},
-	)
+	mapped, err := queryresult.Map(q, queryresult.RawResult{
+		Columns: []string{"total_amount", "order_id"},
+		Rows:    [][]any{{1200, "O-001"}},
+	})
 	if err != nil {
 		t.Fatalf("明示mappingを適用できません: %v", err)
 	}
@@ -48,37 +47,37 @@ func TestMapDoesNotInferMissingOrAdditionalColumns(t *testing.T) {
 	}
 
 	t.Run("mappingにある列が実行結果になければ失敗する", func(t *testing.T) {
-		if _, err := queryresult.Map(q, []string{"order_id"}, [][]any{{"O-001"}}); err == nil {
+		if _, err := queryresult.Map(q, queryresult.RawResult{
+			Columns: []string{"order_id"},
+			Rows:    [][]any{{"O-001"}},
+		}); err == nil {
 			t.Fatal("存在しないraw列を補ってmappingしています")
 		}
 	})
 
 	t.Run("mappingにないraw列を黙って捨てない", func(t *testing.T) {
-		if _, err := queryresult.Map(
-			q,
-			[]string{"order_id", "total_amount", "status"},
-			[][]any{{"O-001", 1200, "open"}},
-		); err == nil {
+		if _, err := queryresult.Map(q, queryresult.RawResult{
+			Columns: []string{"order_id", "total_amount", "status"},
+			Rows:    [][]any{{"O-001", 1200, "open"}},
+		}); err == nil {
 			t.Fatal("mappingにないraw列を無視しています")
 		}
 	})
 
 	t.Run("同名raw列をordinalで推測しない", func(t *testing.T) {
-		if _, err := queryresult.Map(
-			q,
-			[]string{"order_id", "order_id"},
-			[][]any{{"O-001", "O-002"}},
-		); err == nil {
+		if _, err := queryresult.Map(q, queryresult.RawResult{
+			Columns: []string{"order_id", "order_id"},
+			Rows:    [][]any{{"O-001", "O-002"}},
+		}); err == nil {
 			t.Fatal("重複したraw列名をordinalで解決しています")
 		}
 	})
 
 	t.Run("row幅がraw列数と違えば失敗する", func(t *testing.T) {
-		if _, err := queryresult.Map(
-			q,
-			[]string{"order_id", "total_amount"},
-			[][]any{{"O-001"}},
-		); err == nil {
+		if _, err := queryresult.Map(q, queryresult.RawResult{
+			Columns: []string{"order_id", "total_amount"},
+			Rows:    [][]any{{"O-001"}},
+		}); err == nil {
 			t.Fatal("raw resultの列数不一致を受理しています")
 		}
 	})
@@ -86,7 +85,10 @@ func TestMapDoesNotInferMissingOrAdditionalColumns(t *testing.T) {
 
 func TestMapRequiresAuthoredResultMapping(t *testing.T) {
 	q := query.EmbeddedSQL{ID: "order_entry.recent_orders"}
-	if _, err := queryresult.Map(q, []string{"order_id"}, [][]any{{"O-001"}}); err == nil {
+	if _, err := queryresult.Map(q, queryresult.RawResult{
+		Columns: []string{"order_id"},
+		Rows:    [][]any{{"O-001"}},
+	}); err == nil {
 		t.Fatal("result mappingのないQueryをSemantic resultへ変換しています")
 	}
 }
