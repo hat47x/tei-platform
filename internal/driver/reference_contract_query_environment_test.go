@@ -8,13 +8,10 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/environment"
+	"tei/internal/ir"
 	"tei/internal/plugin"
 	"tei/internal/realization"
 )
-
-func referenceEnvironmentWorld() (worldFixture interface{ }) {
-	return nil
-}
 
 func contractQueryEnvironmentWorld() (world ir.World) {
 	world = referenceParameterWorld()
