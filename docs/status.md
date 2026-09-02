@@ -4,13 +4,15 @@ TEIは、完成したローコード製品ではありません。業務上の�
 
 Database / Provider側ではM0.35まで設計検証を進め、その後はv1 Reference Application `order_entry`を使ったApplication側の実証へ重点を移しました。
 
-現在、Application PatternのStage 1は完了しています。一方、Application Driverへ進むためのGate A「Application上の意味をDriverへ渡せる」は未達です。Gate Aの監査では、既存認証Compatibility、Capabilityの名前付きOutcome、業務Validation、Capability Bindingが主な残条件として特定されています。
+Application PatternのStage 1は完了し、Gate A「Application上の意味をDriverへ渡せる」もReadyになりました。既存認証Compatibility、CapabilityのBusiness Result / Execution Error、業務Validation、Capability Bindingまで、Driver開始前に必要な意味境界をRepository上のReference / Conformanceから再現できます。
+
+現在のv1主線はApplication Driver #69です。Gate Aで成立した意味をDriver専用設定へ書き写さず、UIなしで主要Scenarioを一続きに再現できるかを検証し、Gate Bへ進みます。
 
 この文書では、Repository上で実装・検証できていることと、まだ実装済みとは言えないことを分けて整理します。
 
 TEIを初めて知る場合は[はじめてTEIを知る方へ](for-readers.md)、上位の価値や今後の方向を確認する場合は[TEI Product Value](../product/value/TEI_PRODUCT_VALUE.md)と[TEI Master Plan](../plan/MASTER_PLAN.md)を先に読むと、全体の位置づけを把握しやすくなります。
 
-Gate Aの現在判定は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を正とします。
+Gate Aの最終判定は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を正とします。
 
 # 実装済みの主要な縦切り
 
@@ -97,6 +99,24 @@ pattern order_entry.order_lines header-detail {
 
 詳細は[Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md)と[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)を参照してください。
 
+### Gate Aで成立したApplication実行前提
+
+Application Pattern Stage 1の後、Driverへ渡す意味をGate Aで横断監査しました。現在は次の境界がReadyです。
+
+- `sales` read-write / `master` read-onlyのDatasource境界
+- `sales.order.submit`の明示的なCapability Binding
+- Canonical業務Validationと最小Evaluator
+- Capabilityの既存output / named Outcome / Execution Error境界
+- `security.authenticate`とauthenticated subject
+- `security.authorize`とApplication Pattern identityを使うaction / resource
+- legacy user field / ruleをTEI標準User schemaへ作り替えず接続するadapter境界
+- secretをCanonical World、Source Index、Business Result、通常Evidenceへ保存しない境界
+- `order_entry/security.authenticate`を変えず、既存認証の実現方式だけを交換できるReference
+
+PR #151では認証の実現方式を交換しても`reference/workspace`と`reference/world.json`を変更せず、Reference Worldの再現性検査もGolden更新なしで成功しています。
+
+詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を参照してください。
+
 ## Database / Persistence
 
 Database側では、次の基礎を実装しています。
@@ -130,7 +150,7 @@ Semantic RelationからDatabase Foreign Keyを暗黙生成しないなど、業�
 - PostgreSQL EXPLAIN normalization
 - Database Workbench derived model
 
-native SQLは別DSLへ書き直さず、authoritative sourceのまま利用します。
+native SQLは別DSLへ書き直さず、正本のまま利用します。
 
 ## Deployment
 
@@ -169,12 +189,8 @@ Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに�
 
 次はProduct Visionまたはv1主線に含まれますが、現時点で完成済みとは主張しません。
 
-- Gate A「Application上の意味をDriverへ渡せる」の通過
-- 既存認証仕様を保持したAuthentication / Authorization Compatibility Reference
-- Semantic Capabilityの名前付きOutcomeを使った実Reference
-- 業務ValidationのCanonicalな正本とReference
-- `sales.order.submit`に対する明示的なCapability Binding Reference
 - Application設計を通しで実行するDriver
+- Gate B「UIなしで主要Scenarioを再現できる」の通過
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
 - production-ready GUI Editor / Wails application
@@ -191,16 +207,11 @@ Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに�
 - Go source semantic analysis / refactoring engine
 - AIによるauthoritative sourceの無確認自動編集
 
-Application Pattern Stage 1は完了していますが、それだけを理由にDriverへ進みません。
+Application Pattern Stage 1とGate Aは完了しました。現在はDriver #69がReadyです。
 
-Gate A監査では、次の4領域がDriver開始前の主な残条件です。
+Driverでは、Gate Aで成立したPattern、Datasource、Validation、Authentication / Authorization、Capability Binding、Business Result / Execution Errorの境界を専用設定へ複製せず、UIなしの主要Scenarioとして一続きに実行できるかを確認します。
 
-- GitHub Issue #68: 既存認証Compatibility
-- GitHub Issue #77: Capability Outcome / Execution Error
-- GitHub Issue #125: 業務Validation
-- GitHub Issue #126: `sales.order.submit` Capability Binding
-
-詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
+詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)、[Application Driver作業定義](../plan/issue/000006-application-driver-vertical-slice.md)、[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
 
 # 設計検証チェックポイント
 
@@ -555,30 +566,25 @@ PR #123で5種類のPatternが同じ`order_entry`に共存し、Source Index、G
 
 これによりApplication Pattern Stage 1は完了しました。
 
-## Gate A — 現在の主線
+## Gate A — Ready
 
 Application Pattern Stageが完了した後、GitHub Issue #124でGate A「Application上の意味をDriverへ渡せる」を横断監査しました。
 
-現在の判定は**Blocked**です。
+最終判定は**Ready**です。PR #153で監査結果、v1計画、Driver作業定義を現在地へ同期しました。
 
-既にReadyな主な項目は次です。
+主なEvidenceは次です。
 
-- 5種類のApplication Pattern
-- Pattern identity / Source Index
-- `sales` read-write / `master` readのDatasource境界
-- `sales.order.submit`の既存単一`output sales.order`
-- Command / Observation分離の基本境界
+- #67: 5種類のApplication Pattern
+- #126 / PR #135: `sales.order.submit`の明示的Capability Binding
+- #125 / PR #136 / #139 / #140: Canonical業務ValidationとEvaluator
+- #77 / PR #132 / #141: named Outcome / Business Result / Execution Error
+- #68 / PR #148: legacy user fixtureと`security.authenticate` Binding
+- #68 / PR #149: `security.authorize`とApplication Pattern identityを使う認可
+- #68 / PR #151: 一つのAuthentication Bindingを保った実現方式交換
 
-Driver開始前に残る主な項目は次です。
+Driver #69はReadyです。Gate Aで成立した意味をDriver専用Goコードへ埋め直さず、UIなしで主要Scenarioを再現する段階へ進みます。
 
-- #68: 既存認証Compatibility
-- #77: named Outcome / Execution Errorの実装Evidence
-- #125: 業務Validationの正本と最小Reference
-- #126: `sales.order.submit`の明示的Capability Binding
-
-これらをDriver専用GoコードやTarget固有設定へ埋め込まず、Application上の意味として成立させてからDriver #69へ進みます。
-
-詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を参照してください。
+詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[Application Driver作業定義](../plan/issue/000006-application-driver-vertical-slice.md)を参照してください。
 
 # 継続的な検証
 
@@ -628,15 +634,14 @@ CIはproduction-gradeな外部環境を保証するものではありません�
 
 ## v1 Application側
 
-Application Pattern Stage 1は完了しています。
+Application Pattern Stage 1とGate Aは完了しています。
 
-現在の最優先はGate Aの残条件を実証し、Driverが上位の意味を暗黙に補わずに済む状態にすることです。
+現在の最優先はApplication Driver #69です。Gate Aで成立した上位の意味を暗黙に補わず、UIなしで主要Scenarioを一続きに実行・説明できる状態を作ります。
 
-- 既存認証・認可を保持したCompatibility
-- named OutcomeとExecution Errorの実Reference
-- 業務Validationの所有境界とReference
-- Capability Bindingの明示的な解決経路
-- その後のApplication Driver
+- Application Driverの最小vertical slice
+- Authentication → browse → record → reference → header-detail → Validation → Authorization → command → ObservationのReference Scenario
+- secretを含まないScenario Evidence
+- Gate B監査
 - target-neutral Presentation / Interaction
 - 第一Web Target
 - 開発者向け高密度Editor
