@@ -7,6 +7,13 @@ import (
 	"tei/internal/query"
 )
 
+// RawResultは、Query Executorが物理的に観測した列名と値を、
+// Semantic上の意味を付ける前の状態で保持する。
+type RawResult struct {
+	Columns []string `json:"columns"`
+	Rows    [][]any  `json:"rows"`
+}
+
 // Columnは、native Queryが返した列名と、その列へ明示的に対応付けられた
 // Semantic attributeを一組として保持する。
 type Column struct {
@@ -16,7 +23,7 @@ type Column struct {
 
 // MappedResultは、Query authoringで明示されたresult mappingを適用した結果である。
 //
-// Valuesはruntimeが受け取った値をそのまま保持し、この境界ではSemantic型への変換や
+// Rowsの値はruntimeが受け取ったものをそのまま保持し、この境界ではSemantic型への変換や
 // Presentation向けの整形を行わない。Columnsと各Rowの値は同じ順序で対応する。
 type MappedResult struct {
 	Columns []Column `json:"columns"`
@@ -28,13 +35,13 @@ type MappedResult struct {
 // 列名の類似、SELECT順序、Persistence Mappingから意味を推測しない。
 // mappingにないraw列や、raw resultに存在しないmapping列があれば、意味を欠いたまま
 // 実行を続けずerrorを返す。
-func Map(q query.EmbeddedSQL, rawColumns []string, rawRows [][]any) (MappedResult, error) {
+func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 	if len(q.ResultColumns) == 0 {
 		return MappedResult{}, fmt.Errorf("Query %sにresult mappingが定義されていません", q.ID)
 	}
 
-	rawIndex := make(map[string]int, len(rawColumns))
-	for i, column := range rawColumns {
+	rawIndex := make(map[string]int, len(raw.Columns))
+	for i, column := range raw.Columns {
 		if column == "" {
 			return MappedResult{}, fmt.Errorf("Query %sのraw resultに名前のない列があります", q.ID)
 		}
@@ -47,19 +54,17 @@ func Map(q query.EmbeddedSQL, rawColumns []string, rawRows [][]any) (MappedResul
 	mappedColumns := make([]Column, len(q.ResultColumns))
 	usedRawColumns := make(map[string]struct{}, len(q.ResultColumns))
 	for i, mapping := range q.ResultColumns {
-		rawPosition, exists := rawIndex[mapping.Column]
-		if !exists {
+		if _, exists := rawIndex[mapping.Column]; !exists {
 			return MappedResult{}, fmt.Errorf(
 				"Query %sのresult mappingが要求するraw列 %qが実行結果にありません",
 				q.ID,
 				mapping.Column,
 			)
 		}
-		_ = rawPosition
 		usedRawColumns[mapping.Column] = struct{}{}
 		mappedColumns[i] = Column{Raw: mapping.Column, Attribute: mapping.Attribute}
 	}
-	for _, column := range rawColumns {
+	for _, column := range raw.Columns {
 		if _, mapped := usedRawColumns[column]; !mapped {
 			return MappedResult{}, fmt.Errorf(
 				"Query %sのraw result列 %qにSemantic attributeのmappingがありません",
@@ -69,14 +74,14 @@ func Map(q query.EmbeddedSQL, rawColumns []string, rawRows [][]any) (MappedResul
 		}
 	}
 
-	mappedRows := make([][]any, len(rawRows))
-	for rowIndex, rawRow := range rawRows {
-		if len(rawRow) != len(rawColumns) {
+	mappedRows := make([][]any, len(raw.Rows))
+	for rowIndex, rawRow := range raw.Rows {
+		if len(rawRow) != len(raw.Columns) {
 			return MappedResult{}, fmt.Errorf(
 				"Query %sのraw result row %dは列数が一致しません: columns=%d values=%d",
 				q.ID,
 				rowIndex,
-				len(rawColumns),
+				len(raw.Columns),
 				len(rawRow),
 			)
 		}
