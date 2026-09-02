@@ -1,0 +1,13 @@
+{
+  "schema": "legacy-auth-function-mapping-v1",
+  "source": "legacy_security.authenticate_user",
+  "authenticated_code": "0",
+  "denied_codes": {
+    "10": "credential_mismatch",
+    "20": "account_disabled",
+    "30": "account_locked",
+    "40": "expired",
+    "50": "not_yet_valid",
+    "60": "organization_specific_condition"
+  }
+}
