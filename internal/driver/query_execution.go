@@ -6,15 +6,17 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/driver/queryresult"
 	"tei/internal/query"
 )
 
-// BrowseQueryResultは、Query Executorが返した結果をDriverが解釈せず保持する最小境界である。
+// BrowseQueryResultは、Executorが観測したraw resultと、Canonical Queryの明示mappingを
+// 適用した結果を分けて保持する。
 //
-// 現時点ではnative SQLの列をSemantic Dataのattributeへ対応付けるCanonicalな規則がないため、
-// Driver側で独自のrow mappingを作らない。Payloadの具体型はExecutor側が所有し、
-// 対応付けの正本が成立した段階で、必要な型境界を上位の意味とともに追加する。
+// PayloadにはExecutor固有の非secret Evidenceを保持できる。実行時parameter値はここへ保存しない。
 type BrowseQueryResult struct {
+	Raw     queryresult.RawResult
+	Mapped  queryresult.MappedResult
 	Payload any
 }
 
@@ -22,6 +24,7 @@ type BrowseQueryResult struct {
 //
 // DriverはQuery.Sourceを解析して物理Databaseやtableを推測せず、解決済みのQueryとDatasourceを
 // そのままExecutorへ渡す。接続情報やSQL placeholderの処理方法はExecutor側の責務とする。
+// Executorは物理的に観測したraw resultを返し、Semantic mappingはDriverがCanonical Queryから適用する。
 type BrowseQueryExecutor interface {
 	ExecuteBrowseQuery(
 		context.Context,
@@ -41,8 +44,9 @@ type BrowseQueryExecution struct {
 // ExecuteBrowseQueryは、browse PatternをCanonical IDから解決し、
 // Queryの正本とlogical Datasourceを変更せずExecutorへ渡す。
 //
-// native SQLをDriverへ複製したり、SQL本文から物理Database objectを推測したりしない。
-// Executorの障害は業務上の空結果へ変換せず、Query実行を完了できなかったerrorとして返す。
+// Executorが返したraw resultにはQuery authoringの明示mappingだけを適用する。
+// native SQL、列名の類似、Persistence MappingからSemantic attributeを推測しない。
+// Executorの障害やmapping不整合は正常な空結果へ変換せず、Query実行を完了できなかったerrorとして返す。
 func (r Resolver) ExecuteBrowseQuery(
 	ctx context.Context,
 	applicationID, patternID core.CanonicalID,
@@ -70,5 +74,10 @@ func (r Resolver) ExecuteBrowseQuery(
 	if err != nil {
 		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sのQuery %sをDatasource %sで実行できませんでした: %w", resolved.Pattern.ID, resolved.Query.ID, resolved.Datasource.Alias, err)
 	}
+	mapped, err := queryresult.Map(*resolved.Query, result.Raw)
+	if err != nil {
+		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sのQuery %s resultをSemantic attributeへ対応付けられません: %w", resolved.Pattern.ID, resolved.Query.ID, err)
+	}
+	result.Mapped = mapped
 	return BrowseQueryExecution{Resolution: resolved, Result: result}, nil
 }
