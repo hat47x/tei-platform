@@ -86,7 +86,7 @@ func TestCapabilityBindingResolutionDoesNotSelectImplicitCandidates(t *testing.T
 		},
 		Semantics: []semantic.Namespace{
 			{
-				ID: "sales",
+				ID:   "sales",
 				Data: []semantic.Data{{ID: "sales.order"}},
 				Capabilities: []semantic.Capability{
 					{ID: "sales.order.submit", Output: "sales.order"},
