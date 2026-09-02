@@ -9,6 +9,7 @@ type Namespace struct {
 	Types        []Type           `json:"types,omitempty"`
 	Data         []Data           `json:"data,omitempty"`
 	Capabilities []Capability     `json:"capabilities,omitempty"`
+	Validations  []Validation     `json:"validations,omitempty"`
 }
 
 type TypeKind string
