@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/driver/queryresult"
+	"tei/internal/realization"
 )
 
 // ContractQueryRowは、Database Contract Queryの実現層が返した一つのSemantic rowを表す。
@@ -30,13 +31,12 @@ type ContractQueryResult struct {
 // ContractQueryExecutorは、Database-ownedなContract Queryを実現方式へ接続するprovider境界である。
 //
 // Driver CoreはOracle SQL、API、stored procedure等を知らない。Executorは明示された
-// Database / Contract / Query identityとruntime parameterを受け、Semantic rowへ変換済みの結果を返す。
+// Database / Contract / Query target identityとruntime parameterを受け、Semantic rowへ変換済みの結果を返す。
 // parameter値は一回の実行にだけ利用し、通常Evidenceへ保存しない。
 type ContractQueryExecutor interface {
 	ExecuteContractQuery(
 		context.Context,
-		core.CanonicalID,
-		core.CanonicalID,
+		realization.ContractQueryTarget,
 		database.QueryContract,
 		map[string]any,
 	) (ContractQueryResult, error)
@@ -71,39 +71,39 @@ func (r Resolver) ExecuteReferenceContractQuery(
 		return ReferenceContractQueryExecution{}, err
 	}
 
+	target := realization.ContractQueryTarget{
+		Database: prepared.Resolution.Database.ID,
+		Contract: prepared.Resolution.Contract.ID,
+		Query:    core.LocalName(prepared.Resolution.Query.Name),
+	}
 	result, err := executor.ExecuteContractQuery(
 		ctx,
-		prepared.Resolution.Database.ID,
-		prepared.Resolution.Contract.ID,
+		target,
 		prepared.Resolution.Query,
 		prepared.Parameters,
 	)
 	if err != nil {
 		return ReferenceContractQueryExecution{}, fmt.Errorf(
-			"reference Pattern %sのContract Query %s / %sをDatabase %sで実行できませんでした: %w",
+			"reference Pattern %sのContract Query %sを実行できませんでした: %w",
 			patternID,
-			prepared.Resolution.Contract.ID,
-			prepared.Resolution.Query.Name,
-			prepared.Resolution.Database.ID,
+			target.Identity(),
 			err,
 		)
 	}
 
 	if err := validateContractQueryResultCardinality(prepared.Resolution.Query, len(result.Rows)); err != nil {
 		return ReferenceContractQueryExecution{}, fmt.Errorf(
-			"reference Pattern %sのContract Query %s / %s resultが契約に一致しません: %w",
+			"reference Pattern %sのContract Query %s resultが契約に一致しません: %w",
 			patternID,
-			prepared.Resolution.Contract.ID,
-			prepared.Resolution.Query.Name,
+			target.Identity(),
 			err,
 		)
 	}
 	if err := r.validateContractQuerySemanticRows(prepared.Resolution.Query, result.Rows); err != nil {
 		return ReferenceContractQueryExecution{}, fmt.Errorf(
-			"reference Pattern %sのContract Query %s / %s resultをSemantic Dataとして受け取れません: %w",
+			"reference Pattern %sのContract Query %s resultをSemantic Dataとして受け取れません: %w",
 			patternID,
-			prepared.Resolution.Contract.ID,
-			prepared.Resolution.Query.Name,
+			target.Identity(),
 			err,
 		)
 	}
