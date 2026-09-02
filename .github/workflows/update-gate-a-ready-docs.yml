@@ -1,0 +1,194 @@
+name: Gate A Ready文書同期
+
+on:
+  push:
+    branches:
+      - docs/gate-a-ready
+
+permissions:
+  contents: write
+
+jobs:
+  update-docs:
+    if: ${{ !contains(github.event.head_commit.message, '[gate-a-docs-generated]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repositoryを取得
+        uses: actions/checkout@v7
+        with:
+          ref: docs/gate-a-ready
+
+      - name: Gate A関連区間だけを更新
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          plan = Path("plan/V1_REFERENCE_APPLICATION_PLAN.md")
+          text = plan.read_text()
+
+          text = text.replace(
+          '''Gate A   Application上の意味をDriverへ渡せるか監査
+                         │
+                         ├─ #68   既存認証Compatibility
+                         ├─ #77   Capability Outcome / Execution Error
+                         └─ #125  業務Validation
+                         │
+                         │  #126 Capability Binding は完了
+                         ↓
+                    Gate A再監査
+                         ↓
+          Stage 2  Application Driver #69''',
+          '''Gate A   Application上の意味をDriverへ渡せるか監査   完了
+                         ↓
+          Stage 2  Application Driver #69                  着手可能''')
+
+          gate = '''## Gate A — Application上の意味をDriverへ渡せる
+
+          関連: `ISSUE-000013` / GitHub Issue #124  
+          監査結果: [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)
+
+          ### 現在の状態
+
+          **Readyです。Application Driver #69の主実装へ進めます。**
+
+          Application Pattern、Datasource、Capability Binding、業務Validation、Capabilityの結果境界、既存認証Compatibility、Authorizationを、同じ`order_entry` Referenceから一続きに追跡できる状態になりました。
+
+          Gate Aでは、関連Issueが閉じたこと自体ではなく、Driverへ必要な意味をRepository上のReference / Conformanceから再現できることを確認しています。
+
+          ### Driverへ渡せる情報
+
+          - browse対象: `order_entry.recent_orders`
+          - record対象: `order_entry.order_record`
+          - reference対象: `sales.order.customer` + datasource `master`
+          - header-detail関係: `sales.order.lines -> sales.order_line many`
+          - command対象: `sales.order.submit`
+          - Pattern identity / Source Index
+          - `sales` read-write / `master` readのDatasource境界
+          - 業務Validation identityとEvaluator境界
+          - `security.authenticate` / `security.authorize`
+          - authenticated subject identity
+          - Application上のAuthorization action / resource
+          - `sales.order.submit` / Authentication / Authorizationの明示Binding
+          - 既存単一outputとnamed Outcomeを扱うBusiness Result境界
+          - Execution Errorとの分離
+          - Command / Observation分離の基本境界
+
+          これらをDriver専用Goコードや設定へ再記述しません。
+
+          ### 既存認証Compatibility
+
+          Issue #68は完了しました。
+
+          既存user recordのdisabled、validity、failure count、lock、organization、role、system-specific ruleを失わず`security.authenticate`へ接続できます。また`security.authorize`では、既存Application Pattern identityをaction / resourceとして認可判断へ渡せます。
+
+          PR #151では、同じ`security.authenticate` Capabilityと`order_entry/security.authenticate` Binding identityを維持したまま、既存recordを読む方式と、既存関数・stored procedure・外部APIのreturn codeをadapterで対応付ける方式を交換できることを確認しました。
+
+          password、token、credential hash等のsecret materialはCanonical World、Source Index、Git管理するReference fixture、通常Evidenceへ保存しません。
+
+          ### Capability結果境界
+
+          Issue #77 / ADR-0020は完了しています。
+
+          `sales.order.submit`の既存`output sales.order`と、`security.authenticate` / `security.authorize`のnamed Outcomeを同じInvocation境界から扱えます。正常なBusiness Resultと、Invocationを完了できなかったExecution Errorを混同しません。
+
+          ### 業務Validation
+
+          Issue #125は完了しています。
+
+          `positive`と`relation-unique`の実Referenceを同じEvaluator境界から評価でき、Validation不成立と評価不能errorを区別できます。
+
+          ### Capability Binding
+
+          Issue #126は完了しています。
+
+          Application + CapabilityからBindingを明示的に解決し、file pathやGo symbolからimplementationを推測しません。
+
+          ### Gate A以後へDeferredするもの
+
+          次は重要ですが、Gate Aのblockerにはしません。
+
+          - named OutcomeのWeb表現
+          - HTTP status / UI messageへのProjection
+          - production-ready IdP / Policy Engine
+          - Target-neutral Presentationの最終抽象
+          - 5 Patternの共有Catalog化
+          - `OrderLine` Persistence / FK一般化
+          - 汎用Validation式言語 / rule engine
+          - Capability Payloadの汎用Object model
+          - environment / release単位のimplementation切替
+
+          ### Gate Aの次
+
+          `ISSUE-000006` / GitHub Issue #69のApplication Driverへ進みます。
+
+          DriverではGate Aで成立したResolver、Evaluator、Capability Invocation境界を組み合わせ、UIなしで`order_entry`の主要シナリオを実行します。
+          '''
+
+          pattern = re.compile(r"## Gate A — Application上の意味をDriverへ渡せる\n.*?(?=\n## Stage 2 — Application Driver)", re.S)
+          text, count = pattern.subn(gate.rstrip(), text)
+          if count != 1:
+              raise SystemExit(f"V1 plan Gate A section replacement count={count}")
+          text = text.replace("**Gate A待ちでBlockedです。**", "**Readyです。Gate Aを通過し、主実装へ着手できます。**")
+          plan.write_text(text)
+
+          status = Path("docs/status.md")
+          text = status.read_text()
+          old = "現在、Application PatternのStage 1は完了しています。一方、Application Driverへ進むためのGate A「Application上の意味をDriverへ渡せる」は未達です。Gate Aの監査では、既存認証Compatibility、Capabilityの名前付きOutcome、業務Validation、Capability Bindingが主な残条件として特定されています。"
+          new = "Application PatternのStage 1に続き、Gate A「Application上の意味をDriverへ渡せる」もReadyになりました。既存認証Compatibility、Authentication / Authorization、Capabilityの名前付きOutcomeとExecution Error、業務Validation、Capability BindingまでReference / Conformanceから再現できるため、次はApplication Driverの実証へ進みます。"
+          if old not in text:
+              raise SystemExit("docs/status.md opening Gate A text not found")
+          text = text.replace(old, new)
+
+          old_bullets = '''- Gate A「Application上の意味をDriverへ渡せる」の通過
+          - 既存認証仕様を保持したAuthentication / Authorization Compatibility Reference
+          - Semantic Capabilityの名前付きOutcomeを使った実Reference
+          - 業務ValidationのCanonicalな正本とReference
+          - `sales.order.submit`に対する明示的なCapability Binding Reference
+          '''
+          if old_bullets not in text:
+              raise SystemExit("docs/status.md completed bullet block not found")
+          text = text.replace(old_bullets, "")
+
+          status_block = re.compile(
+              r"Application Pattern Stage 1は完了していますが、それだけを理由にDriverへ進みません。\n\n"
+              r"Gate A監査では、次の4領域がDriver開始前の主な残条件です。\n\n"
+              r"- GitHub Issue #68: 既存認証Compatibility\n"
+              r"- GitHub Issue #77: Capability Outcome / Execution Error\n"
+              r"- GitHub Issue #125: 業務Validation\n"
+              r"- GitHub Issue #126: `sales.order.submit` Capability Binding\n\n"
+              r"詳細は\[Gate A 到達性監査\]\(\.\./plan/GATE_A_READINESS_AUDIT\.md\)と\[v1 Reference Application実証計画\]\(\.\./plan/V1_REFERENCE_APPLICATION_PLAN\.md\)を参照してください。"
+          )
+          replacement = '''Application Pattern Stage 1とGate Aは完了しています。
+
+          Gate Aでは、Application Pattern、Datasource、Capability Binding、業務Validation、Business Result / Execution Error、既存認証Compatibility、Authorizationを同じ`order_entry`から追跡できることを確認しました。
+
+          `security.authenticate`は既存record経路と既存function経路を同じCapability / Binding identityのまま交換できます。`security.authorize`はApplication Pattern identityをaction / resourceへ接続し、legacy roleやschemaをDriverへ漏らさず認可判断できます。
+
+          Application Driverは着手可能です。詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。'''
+          text, count = status_block.subn(replacement, text)
+          if count != 1:
+              raise SystemExit(f"docs/status.md Gate A block replacement count={count}")
+          status.write_text(text)
+          PY
+
+      - name: 意図した文書だけが変わったことを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          test "$changed" = $'docs/status.md\nplan/V1_REFERENCE_APPLICATION_PLAN.md'
+
+      - name: 変更をbranchへ反映
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/status.md plan/V1_REFERENCE_APPLICATION_PLAN.md
+          git commit -m "Gate A Readyをv1計画と公開statusへ同期する [gate-a-docs-generated]"
+          git push origin HEAD:docs/gate-a-ready
