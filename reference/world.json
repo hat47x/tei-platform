@@ -334,7 +334,13 @@
               "id": "sales.order.customer",
               "symbol": "customer",
               "target": "customer.customer",
-              "cardinality": "one"
+              "cardinality": "one",
+              "keys": [
+                {
+                  "sourceAttribute": "sales.order.customer_id",
+                  "targetAttribute": "customer.customer.customer_id"
+                }
+              ]
             },
             {
               "id": "sales.order.lines",
@@ -653,7 +659,17 @@
           "id": "order_entry.customer_reference",
           "kind": "reference",
           "relation": "sales.order.customer",
-          "datasource": "master"
+          "datasource": "master",
+          "contractQuery": {
+            "contract": "master_data.customer",
+            "query": "find_by_id",
+            "inputs": [
+              {
+                "targetAttribute": "customer.customer.customer_id",
+                "input": "id"
+              }
+            ]
+          }
         },
         {
           "id": "order_entry.order_lines",
@@ -699,7 +715,15 @@
           ],
           "queries": [
             {
-              "name": "find_by_id"
+              "name": "find_by_id",
+              "inputs": [
+                {
+                  "name": "id",
+                  "type": "customer.customer_id"
+                }
+              ],
+              "result": "customer.customer",
+              "resultCardinality": "zero-or-one"
             }
           ]
         }
