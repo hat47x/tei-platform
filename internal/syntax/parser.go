@@ -1968,8 +1968,27 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 			if err != nil {
 				return c, p.errAt(typeTok, err.Error())
 			}
+		case "outcome":
+			_, _ = p.next()
+			nameTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			name, err := core.ParseLocalName(nameTok.Text)
+			if err != nil {
+				return c, p.errAt(nameTok, err.Error())
+			}
+			payloadTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			payload, err := core.ParseCanonicalID(payloadTok.Text)
+			if err != nil {
+				return c, p.errAt(payloadTok, err.Error())
+			}
+			c.Outcomes = append(c.Outcomes, semantic.Outcome{Name: name, Payload: payload})
 		default:
-			return c, p.errAt(t, "expected input or output")
+			return c, p.errAt(t, "expected input, output, or outcome")
 		}
 	}
 	return c, nil

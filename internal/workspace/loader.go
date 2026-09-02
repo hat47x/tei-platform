@@ -591,6 +591,11 @@ func Normalize(w *ir.World) {
 				return w.Semantics[i].Data[j].Relations[a].ID < w.Semantics[i].Data[j].Relations[b].ID
 			})
 		}
+		for j := range w.Semantics[i].Capabilities {
+			sort.Slice(w.Semantics[i].Capabilities[j].Outcomes, func(a, b int) bool {
+				return w.Semantics[i].Capabilities[j].Outcomes[a].Name < w.Semantics[i].Capabilities[j].Outcomes[b].Name
+			})
+		}
 		sort.Slice(w.Semantics[i].Capabilities, func(a, b int) bool { return w.Semantics[i].Capabilities[a].ID < w.Semantics[i].Capabilities[b].ID })
 	}
 	sort.Slice(w.Applications, func(i, j int) bool { return w.Applications[i].ID < w.Applications[j].ID })
