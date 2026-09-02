@@ -175,6 +175,18 @@ func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex
 		}
 		return sourceindex.Range{}, true, fmt.Errorf("semantic subject %s:%s has no syntax anchor", subject.Kind, subject.ID)
 	}
+	if subject.Kind == "binding" {
+		_, capabilityID, ok := strings.Cut(subject.ID, "/")
+		if !ok || strings.TrimSpace(capabilityID) == "" {
+			return sourceindex.Range{}, true, fmt.Errorf("binding subject %q must contain application/capability identity", subject.ID)
+		}
+		anchor, err := syntax.DeclarationIdentifierAnchor(string(content), "realize", capabilityID)
+		if err != nil {
+			return sourceindex.Range{}, true, err
+		}
+		rng, err := sourceindex.RangeFromOffsets(content, anchor.Start.Offset, anchor.End.Offset)
+		return rng, true, err
+	}
 	return declarationIdentifierRange(content, subject)
 }
 
