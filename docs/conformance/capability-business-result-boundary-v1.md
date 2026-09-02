@@ -38,7 +38,7 @@ Reference Workspaceには`security.authenticate`を置きます。
 
 ```tei
 capability security.authenticate {
-    input loginId std.identifier
+    input login_id std.identifier
     input credential security.credential
     outcome authenticated security.authenticated_subject
     outcome denied security.authentication_denial
