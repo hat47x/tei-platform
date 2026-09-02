@@ -61,30 +61,29 @@ M0.xxで積み上げたDatabase / Provider / RuntimeのEvidenceを捨てず、Ap
 Stage 0  Product Baseline / Gap Audit        完了
                ↓
 Stage 1  Application Pattern                 完了
+               ↓
+Gate A   Application上の意味をDriverへ渡せるか監査
                │
-               ├──────────────┐
-               │              │
-               │        Capability Outcome #77
-               │              │
-               │        既存認証Compatibility #68
-               │              │
-               └──────┬───────┘
-                      ↓
-Gate A          Application上の意味をDriverへ渡せる
-                      ↓
-Stage 2         Application Driver #69
-                      ↓
+               ├─ #68   既存認証Compatibility
+               ├─ #77   Capability Outcome / Execution Error
+               ├─ #125  業務Validation
+               └─ #126  Capability Binding
+               ↓
+          Gate A再監査
+               ↓
+Stage 2  Application Driver #69
+               ↓
 Gate B
-                      ↓
-Stage 3         第一Web Target #70
-                      ↓
+               ↓
+Stage 3  第一Web Target #70
+               ↓
 Gate C
-                      ↓
-Stage 4         Editor / AI支援
-                      ↓
+               ↓
+Stage 4  Editor / AI支援
+               ↓
 Gate D
-                      ↓
-Stage 5         第二Target
+               ↓
+Stage 5  第二Target
 ```
 
 Database / Provider側の重要な安全課題は並行して扱いますが、v1の主線はApplication vertical sliceです。
@@ -122,43 +121,25 @@ Database / Provider、Source / Meaning、Runtime安全境界に比べ、Applicat
 
 候補としていた5種類が、同じ`order_entry`の実Referenceとして成立しました。
 
-### `browse`
-
 ```tei
 pattern order_entry.recent_orders browse {
     data sales.order
     query order_entry.recent_orders
 }
-```
 
-### `record`
-
-```tei
 pattern order_entry.order_record record {
     data sales.order
 }
-```
 
-### `reference`
-
-```tei
 pattern order_entry.customer_reference reference {
     relation sales.order.customer
     datasource master
 }
-```
 
-### `command`
-
-```tei
 pattern order_entry.submit_order command {
     capability sales.order.submit
 }
-```
 
-### `header-detail`
-
-```tei
 pattern order_entry.order_lines header-detail {
     relation sales.order.lines
 }
@@ -207,13 +188,61 @@ relation lines to sales.order_line many
 
 Semantic上の関係、Application上の意図、物理DB上の実現を別の意味単位として扱います。
 
-## Capability Outcome / Execution Error — #77
+## Gate A — Application上の意味をDriverへ渡せる
 
-### 状態
+関連: `ISSUE-000013` / GitHub Issue #124  
+監査結果: [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)
 
-**次に閉じる共通基盤です。**
+### 現在の状態
 
-既存認証Compatibility #68では、Authenticationの結果として少なくとも次を区別する必要があります。
+**Blockedです。**
+
+Application Pattern側はReadyですが、Gate A監査によって次の4領域がDriver開始前の残条件として特定されました。
+
+| 領域 | 現在地 | 追跡先 |
+| --- | --- | --- |
+| Authentication / Authorization | Reference未成立 | #68 / `ISSUE-000003` |
+| named Outcome / Execution Error | 境界設計済み、実装Evidence不足 | #77 / `ISSUE-000009` |
+| 業務Validation | 正本とidentityが未成立 | #125 / `ISSUE-000014` |
+| Capability Binding | `sales.order.submit`の明示Bindingがない | #126 / `ISSUE-000015` |
+
+Driver #69は、これらをDriver専用Goコードや設定で補わないよう、Gate A通過まで主実装をBlockedとします。
+
+### 現時点でReadyな情報
+
+- browse対象: `order_entry.recent_orders`
+- record対象: `order_entry.order_record`
+- reference対象: `sales.order.customer` + datasource `master`
+- header-detail関係: `sales.order.lines -> sales.order_line many`
+- command対象: `sales.order.submit`
+- Pattern identity / Source Index
+- `sales` read-write / `master` readのDatasource境界
+- `sales.order.submit`の既存単一`output sales.order`
+- Command / Observation分離の基本境界
+
+これらをDriver専用設定へ再記述しません。
+
+### Gate Aで答えられる必要がある問い
+
+- このApplicationは何をbrowseするのか
+- 一件のrecordとは何か
+- 何をどのDatasourceからreferenceするのか
+- HeaderとDetailをどのRelationで扱うのか
+- どのCapabilityをcommandとして呼ぶのか
+- どの業務Validationを実行するのか
+- 誰がその操作を行えるのか
+- どのDatasourceがread-onlyで、どこへwriteできるのか
+- CapabilityをどのBindingで実現するのか
+- CapabilityのBusiness ResultとExecution Errorをどう区別するのか
+
+これらに答えるためにWeb画面やDriver専用設定を読む必要がある場合、Gate Aは未達とします。
+
+## Gate A残条件 1 — Capability Outcome / Execution Error
+
+関連: `ISSUE-000009` / GitHub Issue #77  
+設計: [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / ADR-0020
+
+既存認証Compatibilityでは、Authenticationの結果として少なくとも次を区別する必要があります。
 
 ```text
 Authenticated(subject)
@@ -223,31 +252,21 @@ ExecutionError(error)
 
 credential不一致、disabled、lockは認証処理を正常に完了したBusiness Resultです。Database接続失敗やadapter異常は、認証判断そのものを完了できなかったExecution Errorです。
 
-この差をAuthentication専用の場当たり的なerror規約にせず、Semantic Capability共通の境界として#77 / ADR-0020で実装します。
+Gate Aで必要なのは、#77の全作業を先に終えることではありません。少なくとも次がReference / Conformanceから確認できればよいものとします。
 
-### 最小の実装順
+- named OutcomeをSemantic Capabilityで表現できる
+- 既存`output`との排他境界を維持できる
+- expected denialをExecution Errorへ変換しない
+- DriverがBusiness Resultとして扱える結果契約がある
 
-1. Semantic Capabilityへ名前付きOutcomeを追加する
-2. `outcome <name> <payload-type>`のParser / Validationを追加する
-3. 既存`output`との排他と互換性を確認する
-4. OutcomeのNormalization / Source追跡を確認する
-5. `security.authenticate` Referenceで圧力試験する
-6. Invocation側のBusiness Result / Execution Error境界へ接続する
+第一Web Targetでの表示方法など、Gate A以後でよい作業はDeferredします。
 
-既存`sales.order.submit`は、単一`output sales.order`で十分なため不用意に書き換えません。
+既存`sales.order.submit`は単一`output sales.order`で成立しているため、named Outcomeを導入するという理由だけで書き換えません。
 
-## 並行Stage — 既存認証Compatibility
+## Gate A残条件 2 — 既存認証Compatibility
 
 関連: `ISSUE-000003` / GitHub Issue #68  
-詳細: [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)
-
-### 状態
-
-未完了です。
-
-Application Pattern #67は完了したため、Gate Aへ進むための主要な残差はこのStageと、その共通基盤#77です。
-
-### 目的
+詳細: [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / ADR-0019
 
 既存システム固有の認証仕様を、TEI標準User schemaへ先に作り替えなくてもAuthentication / Authorization Capabilityへ接続できることを確認します。
 
@@ -293,19 +312,9 @@ password平文、秘密鍵、token等のsecret materialを次へ保存しませ�
 
 Referenceで必要なcredentialは、実秘密情報ではないdeterministic fixtureまたはsecret handleとして扱います。
 
-### `order_entry`への接続
-
-少なくとも次の操作へAuthorizationを接続します。
-
-- browse
-- record / header-detailの編集
-- submit command
-
-Authorization ruleをWeb Target内のif文へ閉じ込めません。
-
 ### Gate Aへ渡すもの
 
-- authenticated subjectのidentity
+- authenticated subject identity
 - Authentication / Authorization Capability identity
 - Application上のaction / resource
 - Capability Binding / Mappingの来歴
@@ -313,37 +322,65 @@ Authorization ruleをWeb Target内のif文へ閉じ込めません。
 - legacy条件のうち判断に利用する意味
 - secretを解決する境界
 
-## Gate A — Application上の意味をDriverへ渡せる
+## Gate A残条件 3 — 業務Validation
 
-Gate Aは、Stage 1のApplication Patternと既存認証CompatibilityをDriverへ渡す接続点です。
+関連: `ISSUE-000014` / GitHub Issue #125
 
-### 現在の状態
+Patternの構文・参照整合性を検査するValidationと、業務上のruleを評価するValidationを分けます。
 
-**未達です。**
+最初のReferenceでは、少なくとも次の二種類を扱います。
 
-Application Pattern側は完了しました。#77と#68を閉じた後に監査します。
+1. 一つのData / fieldだけで判定できるrule
+2. Header / Detailまたは複数fieldをまたいで判定するrule
 
-### Gate Aで答えられる必要がある問い
+汎用rule engineを先に作るのではなく、具体例から次を確認します。
 
-- このApplicationは何をbrowseするのか
-- 一件のrecordとは何か
-- 何をどのDatasourceからreferenceするのか
-- HeaderとDetailをどのRelationで扱うのか
-- どのCapabilityをcommandとして呼ぶのか
-- どのValidationを実行するのか
-- 誰がその操作を行えるのか
-- どのDatasourceがread-onlyで、どこへwriteできるのか
-- CapabilityのBusiness ResultとExecution Errorをどう区別するのか
+- ruleの正本をどこに置くか
+- Validation identityをどう追跡するか
+- DriverとTargetが同じruleを再利用できるか
+- Validation不成立とExecution Errorを区別できるか
 
-これらに答えるためにWeb画面やDriver専用設定を読む必要がある場合、Gate Aは未達とします。
+Driver専用Goコード、Web form validator、Database CHECK constraintのいずれか一つだけを正本にはしません。
+
+## Gate A残条件 4 — Capability Binding
+
+関連: `ISSUE-000015` / GitHub Issue #126
+
+`command` Patternは`sales.order.submit`というCapability identityだけで成立しています。
+
+一方、Driverが実際に実行するには、Capability identityからimplementationへ明示的に解決できるBindingが必要です。
+
+現在のReferenceには`sales.order.submit`のBindingがないため、次を実証します。
+
+- `sales.order.submit`に対する明示的なBinding identity
+- implementation kind
+- authoring source / provenance
+- Driverがfile pathやGo symbolを暗黙推測せずBindingを解決できる入口
+- Binding解決失敗をExecution Errorとして扱う境界
+
+Custom Goは最初の実証手段として利用できますが、標準実装方式として固定しません。
+
+## Gate A再監査
+
+#68 / #77 / #125 / #126のEvidenceが増えたら、[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)を項目単位で更新します。
+
+関連Issueが単にcloseしたかではなく、Driverへ必要な意味をRepositoryから再現できるかで判定します。
+
+必須項目がすべてReadyになった時点で、`ISSUE-000006` / GitHub Issue #69をReady / In Progressへ移します。
 
 ## Stage 2 — Application Driver
 
 関連: `ISSUE-000006` / GitHub Issue #69
 
+### 現在の状態
+
+**Gate A待ちでBlockedです。**
+
 ### 目的
 
 UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設計の整合を確認できるようにします。
+
+第一段階のDriverはproduction Runtimeの簡易版ではなく、設計検証環境です。
 
 ### 最小Scenario
 
@@ -351,7 +388,7 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 2. `record`で一件を扱う
 3. `reference`で顧客を解決する
 4. `header-detail`でOrderLineを扱う
-5. Validationを実行する
+5. 業務Validationを実行する
 6. Authorizationを確認する
 7. `command`で`sales.order.submit`を呼ぶ
 8. Business ResultとExecution Errorを区別する
@@ -363,6 +400,7 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 - native SQLをDriver側へコピーする
 - logical datasourceを意味上ひとつへ統合する
 - Target固有Presentationを必要条件にする
+- Capability Bindingをfile pathやGo symbolから推測する
 - Driver独自のOutcome体系を作る
 - HTTP statusやGUI messageをDriver Coreの意味にする
 - Driver固有状態をCanonical Worldへ逆流させる
@@ -370,7 +408,7 @@ UIを作る前に、Gate Aで揃えたApplication上の意味を実行し、設�
 ### Gate Bへ進む条件
 
 - ScenarioをRepositoryだけから再現できる
-- Pattern / Query / Capability / Datasourceの解決結果を追跡できる
+- Pattern / Query / Capability / Datasource / Bindingの解決結果を追跡できる
 - read-only `master_data`へwriteしない
 - Validation / Authorization不成立時にcommandへ進まない
 - Business ResultとExecution Errorを区別できる
@@ -517,6 +555,7 @@ Editor / AI支援の完成、第二Target、production HAはv1の前提条件に
 - `plan/MASTER_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
+- `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/APPLICATION_PATTERN_V1_DESIGN.md`
 - `plan/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
@@ -530,3 +569,6 @@ Editor / AI支援の完成、第二Target、production HAはv1の前提条件に
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
+- `plan/issue/000013-gate-a-readiness-audit.md`
+- `plan/issue/000014-business-validation-reference.md`
+- `plan/issue/000015-submit-capability-binding-reference.md`
