@@ -212,6 +212,8 @@ func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (so
 		keyword = "contract"
 	case "query":
 		keyword = "query"
+	case "semantic-validation":
+		keyword = "validation"
 	default:
 		return sourceindex.Range{}, false, nil
 	}
