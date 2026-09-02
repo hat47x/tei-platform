@@ -1,16 +1,22 @@
 # 現在の実装状況
 
-TEIは、完成したローコード製品ではなく、設計上の境界を実行可能なコードとReferenceで検証している段階です。
+TEIは、完成したローコード製品ではありません。業務上の意味、実現方法、実行結果、観測結果をどこで分けるべきかを、実行可能なコードとReference、Conformanceから段階的に検証している段階です。
 
-**Database / Provider側の設計検証チェックポイントはM0.35まで進んでいます。** その後は、v1 Reference Applicationの主線としてApplication Patternの実証を進めています。
+Database / Provider側ではM0.35まで設計検証を進め、その後はv1 Reference Application `order_entry`を使ったApplication側の実証へ重点を移しました。
 
-この文書では、Repository上で実際に実装・検証できていることと、まだ実装済みとは言えないことを分けて整理します。
+現在、Application PatternのStage 1は完了しています。一方、Application Driverへ進むためのGate A「Application上の意味をDriverへ渡せる」は未達です。Gate Aの監査では、既存認証Compatibility、Capabilityの名前付きOutcome、業務Validation、Capability Bindingが主な残条件として特定されています。
+
+この文書では、Repository上で実装・検証できていることと、まだ実装済みとは言えないことを分けて整理します。
 
 TEIを初めて知る場合は[はじめてTEIを知る方へ](for-readers.md)、上位の価値や今後の方向を確認する場合は[TEI Product Value](../product/value/TEI_PRODUCT_VALUE.md)と[TEI Master Plan](../plan/MASTER_PLAN.md)を先に読むと、全体の位置づけを把握しやすくなります。
 
-## 実装済みの主要な縦切り
+Gate Aの現在判定は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を正とします。
 
-### Semantic / Workspace
+# 実装済みの主要な縦切り
+
+## Semantic / Workspace
+
+次の基礎はRepository内で実装され、Referenceから再現できます。
 
 - `tei.workspace.yaml`
 - Canonical IDとfile pathの分離
@@ -23,7 +29,17 @@ TEIを初めて知る場合は[はじめてTEIを知る方へ](for-readers.md)�
 - parse / lexer errorのsource-direct diagnostic
 - `tei source-index` inspection CLI
 
-### Application / Database
+v1 Referenceでは、既存の`sales.Order`に加えて`sales.OrderLine`をSemantic Dataとして追加し、次の1:N Relationを成立させています。
+
+```tei
+relation lines to sales.order_line many
+```
+
+このSemantic Relationを追加しただけでは、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙に生成しません。
+
+## Application / Application Pattern
+
+Application側では、次の基礎が成立しています。
 
 - Application `DatabaseRequirement[]`
 - N:M Application ↔ Database
@@ -35,22 +51,11 @@ TEIを初めて知る場合は[はじめてTEIを知る方へ](for-readers.md)�
 - `application-pattern:<Canonical ID>`のSource Indexと識別子range
 - Pattern固有Validationの共通`validation.Validate`への統合
 - Pattern Diagnosticからauthoring sourceへのprojection
-- `browse` / `record` / `reference` PatternのParser・Validation・実Reference
-- Database Contract
-- Persistence Mapping
-- provider-neutral Desired Physical Schema
-- Actual Physical Schema
-- Schema Diff
-- 確定したChangeと比較未確定`Unresolved`の分離
-- Foreign Key / Unique Constraint / Advanced IndexのDesired・Actual・Diff
-- ProviderExpressionのauthor text / provider-normalized representation
-- Desired Physical realizationのprovider-owned offline policy
-- PostgreSQL向けAdvanced Index migration SQL rendering
-- versioned DDL / data / verify Migration
-- Migration Provider / applied-history reconciliation
-- Database Release / Application Release / Solution Release
+- Pattern identityとfile pathの分離
 
-Application Patternでは、現時点で次の3種類を`order_entry`の実Referenceとして扱えます。
+### v1 Application Pattern Stage 1
+
+`order_entry`では、候補としていた5種類のApplication Patternがすべて実Referenceまで成立しました。
 
 ```tei
 pattern order_entry.recent_orders browse {
@@ -66,15 +71,53 @@ pattern order_entry.customer_reference reference {
     relation sales.order.customer
     datasource master
 }
+
+pattern order_entry.submit_order command {
+    capability sales.order.submit
+}
+
+pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+}
 ```
 
-`browse`では、Queryが保持するDatasourceをPatternへ重複記述せず利用できます。`record`はSemantic Data一件という最小の意味だけを保持します。`reference`はSemantic Relationが持つsource / target / cardinalityを複製せず、Application固有のlogical datasourceだけを組み合わせます。
+各Patternで、参照先がすでに持つ意味を重複記述しないことを優先しています。
 
-3種類は同じ`order_entry`で共存し、Reference World、Source Index、Diagnostic、Workspace Validationを通して追跡できます。
+- `browse`: Queryが保持するDatasourceやnative SQLをPatternへ複製しない
+- `record`: 「どのSemantic Dataを一件として扱うか」だけを保持する
+- `reference`: Relationのsource / targetを複製せず、Application固有のDatasourceだけを組み合わせる
+- `command`: Capabilityのinput / outputやimplementationをPatternへ複製しない
+- `header-detail`: Relationのsource / target / cardinalityを複製せず、1:N RelationをApplication上の意図として参照する
 
-次のApplication Pattern実証は`command`です。既存`sales.order.submit` Capabilityを、input / outputや実装方式をPatternへ複製せず参照できるかを検証します。その後、`OrderLine`と対応するSemantic Relationを追加し、`header-detail`へ進みます。
+`header-detail`では、参照Relationが`many`であることをWorkspace Validationから確認します。一方、Webの「ヘッダフォーム + 明細グリッド」のようなTarget固有UIはCanonical Patternへ持ち込んでいません。
 
-### Query / Workbench
+5種類は同じ`order_entry`で共存し、Reference World、Source Index、Diagnostic、Workspace Validationを通して追跡できます。
+
+ただし、5分類をTEI全体の永久的な標準語彙として確定したわけではありません。Driver、第一Target、第二Targetから得られるEvidenceによって、分類や所有境界は今後も見直せます。
+
+詳細は[Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md)と[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)を参照してください。
+
+## Database / Persistence
+
+Database側では、次の基礎を実装しています。
+
+- Database Contract
+- Persistence Mapping
+- provider-neutral Desired Physical Schema
+- Actual Physical Schema
+- Schema Diff
+- 確定したChangeと比較未確定`Unresolved`の分離
+- Foreign Key / Unique Constraint / Advanced IndexのDesired・Actual・Diff
+- ProviderExpressionのauthor text / provider-normalized representation
+- Desired Physical realizationのprovider-owned offline policy
+- PostgreSQL向けAdvanced Index migration SQL rendering
+- versioned DDL / data / verify Migration
+- Migration Provider / applied-history reconciliation
+- Database Release / Application Release / Solution Release
+
+Semantic RelationからDatabase Foreign Keyを暗黙生成しないなど、業務上の意味と物理実現を分離する方針を一貫して維持しています。
+
+## Query / Workbench
 
 - embedded SQL boundary
 - native `.sql` authoritative source
@@ -87,7 +130,9 @@ pattern order_entry.customer_reference reference {
 - PostgreSQL EXPLAIN normalization
 - Database Workbench derived model
 
-### Deployment
+native SQLは別DSLへ書き直さず、authoritative sourceのまま利用します。
+
+## Deployment
 
 - release graph
 - multi-DB compatibility
@@ -99,7 +144,9 @@ pattern order_entry.customer_reference reference {
 - retry / pause / abort / forward-fix / rollback decision
 - explicit Executor / Observation / Evidence routing
 
-### Plugin / Security boundary
+Commandを送ったことと、外部世界で実際に起きたことを同一視しない境界を維持しています。
+
+## Plugin / Security boundary
 
 - Plugin / Bundle / Capability negotiation
 - Plugin Lock
@@ -116,18 +163,21 @@ pattern order_entry.customer_reference reference {
 - Durable Invocation Handle / runtime observe / reattach
 - Supervisor generationとruntime-confirmed generationの分離
 
-## 現時点で実装済みとは言わないもの
+Application利用者のAuthentication / Authorizationと、Plugin / Runtimeに与えるPermission Grant / Resource Leaseは別の責務として扱います。
 
-次はProduct Visionに含まれますが、現時点で完成済みとは主張しません。
+# 現時点で実装済みとは言わないもの
 
-- production-ready GUI Editor / Wails application
-- 5種類のApplication Patternを`order_entry`で一続きに扱うReference
-  - `browse` / `record` / `reference`は実Referenceまで完了
-  - `command` / `header-detail`は未完了
+次はProduct Visionまたはv1主線に含まれますが、現時点で完成済みとは主張しません。
+
+- Gate A「Application上の意味をDriverへ渡せる」の通過
+- 既存認証仕様を保持したAuthentication / Authorization Compatibility Reference
+- Semantic Capabilityの名前付きOutcomeを使った実Reference
+- 業務ValidationのCanonicalな正本とReference
+- `sales.order.submit`に対する明示的なCapability Binding Reference
 - Application設計を通しで実行するDriver
 - target-neutral Presentation / Interaction IR
 - production-readyなWeb / Desktop / Mobile Target
-- 既存認証仕様を保持したCompatibility Reference
+- production-ready GUI Editor / Wails application
 - AIによるDomain Component / Pattern探索
 - AIの確認提案・判断履歴・提案抑制UX
 - complete Workflow Runtime
@@ -141,7 +191,16 @@ pattern order_entry.customer_reference reference {
 - Go source semantic analysis / refactoring engine
 - AIによるauthoritative sourceの無確認自動編集
 
-Gap全体は[Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)に整理しています。
+Application Pattern Stage 1は完了していますが、それだけを理由にDriverへ進みません。
+
+Gate A監査では、次の4領域がDriver開始前の主な残条件です。
+
+- GitHub Issue #68: 既存認証Compatibility
+- GitHub Issue #77: Capability Outcome / Execution Error
+- GitHub Issue #125: 業務Validation
+- GitHub Issue #126: `sales.order.submit` Capability Binding
+
+詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)と[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
 
 # 設計検証チェックポイント
 
@@ -412,13 +471,13 @@ CIではPostgreSQL 17を使い、Desired → Diff → SQL生成 → 実DBへ適�
 
 詳細は[ADR-0015](adr/0015-provider-owned-migration-sql-rendering.md)と[M0.35 Conformance](conformance/advanced-index-migration-rendering-m0.35.md)を参照してください。
 
-## M0.35以後 — v1 Application Patternの実証
+# M0.35以後 — v1 Application側の実証
 
-M0.35のDatabase / Provider検証後、v1 Reference Applicationの主線であるApplication Patternへ実装の重点を移しています。この節は新しいM0.xxチェックポイントを宣言するものではなく、M0.35以後の現在地を記録するためのものです。
+M0.35のDatabase / Provider検証後、v1 Reference Applicationの主線へ実装の重点を移しました。この節は新しいM0.xxチェックポイントを宣言するものではなく、M0.35以後の現在地を記録するためのものです。
 
-### 共通基盤
+## Application Pattern共通基盤
 
-PR #87〜#103で、Application PatternをReferenceとして扱うための基盤を段階的に閉じました。
+PR #87〜#103で、Application PatternをReferenceとして扱うための基盤を段階的に整えました。
 
 - Applicationが所有する`Pattern`のCanonical model
 - Pattern Parser
@@ -433,7 +492,7 @@ PR #87〜#103で、Application PatternをReferenceとして扱うための基盤
 - `browse`実ReferenceとGolden World
 - 実Referenceのfile rename invariance
 
-### `record`
+## `record`
 
 Issue #104、PR #105 / #106で、`sales.order`を一件として扱う`record`をData-onlyの最小契約として実証しました。
 
@@ -443,9 +502,9 @@ pattern order_entry.order_record record {
 }
 ```
 
-Query、Datasource、特定`browse`との遷移関係をPatternへ追加しなくてもReferenceが成立したため、現時点ではそれらをCanonical fieldに含めていません。
+Query、Datasource、特定`browse`との遷移関係をPatternへ追加しなくてもReferenceが成立したため、それらをCanonical fieldに含めていません。
 
-### `reference`
+## `reference`
 
 Issue #107、PR #108 / #109で、Semantic Relation `sales.order.customer`をlogical datasource `master`から参照する`reference`を実証しました。
 
@@ -458,11 +517,9 @@ pattern order_entry.customer_reference reference {
 
 Relationが持つsource / targetをPatternへ複製せず、Datasource accessはApplication定義を正本とします。
 
-`reference`ではwrite-only Datasourceを拒否し、read / read-writeを読み取り可能として扱います。実Referenceでは、`master_data.customer ^2` ContractがRelation target `customer.customer`をread対象として公開していることもConformanceで追跡しています。
+## `command`
 
-### 次の主線
-
-次は`command`として`sales.order.submit` Capabilityへの接続を実証します。
+Issue #110、PR #114 / #116で、既存`sales.order.submit` CapabilityをApplication上の業務操作として参照する`command`を実証しました。
 
 ```tei
 pattern order_entry.submit_order command {
@@ -470,33 +527,78 @@ pattern order_entry.submit_order command {
 }
 ```
 
-第一候補では、Capabilityのinput / output、Datasource、実装方式をPatternへ複製しません。Capability結果はADR-0020のBusiness Result / Execution Error境界を利用し、`command`追加だけを理由に既存`output sales.order`を名前付きOutcomeへ変更しません。
+Capabilityのinput / output、Datasource、implementationをPatternへ複製していません。
 
-`command`の後は、`OrderLine`と対応Relationを追加して`header-detail`を検証します。
+既存`output sales.order`はBusiness Resultとして維持し、`command`を追加したという理由だけでnamed Outcomeへ変更していません。
 
-この進捗だけでStage 1、Gate A、Milestone 1の完了とはみなしません。5種類のPattern候補と既存認証Compatibilityを含め、後続Driverへ渡せるApplication上の意味が揃ってからGate Aを評価します。
+## `OrderLine` Semantic Reference
 
-詳細は[Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md)、[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)、[ISSUE-000010](../plan/issue/000010-command-application-pattern.md)を参照してください。
+Issue #117、PR #119で、`header-detail`の前提となる`sales.OrderLine`と`sales.order.lines` 1:N RelationをPatternとは独立して追加しました。
+
+Semantic Relationの追加だけでは、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを増やしていません。
+
+## `header-detail`
+
+Issue #118、PR #121 / #123で、成立済みの`sales.order.lines`をRelation-onlyの`header-detail`として実証しました。
+
+```tei
+pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+}
+```
+
+Relationがsource `sales.order`、target `sales.order_line`、cardinality `many`をすでに保持するため、Header Data、Detail Data、cardinalityをPatternへ重複記述していません。
+
+`many`であることはWorkspace Validationから確認します。
+
+PR #123で5種類のPatternが同じ`order_entry`に共存し、Source Index、Golden再生成、Persistence / Contractの非生成まで確認しました。
+
+これによりApplication Pattern Stage 1は完了しました。
+
+## Gate A — 現在の主線
+
+Application Pattern Stageが完了した後、GitHub Issue #124でGate A「Application上の意味をDriverへ渡せる」を横断監査しました。
+
+現在の判定は**Blocked**です。
+
+既にReadyな主な項目は次です。
+
+- 5種類のApplication Pattern
+- Pattern identity / Source Index
+- `sales` read-write / `master` readのDatasource境界
+- `sales.order.submit`の既存単一`output sales.order`
+- Command / Observation分離の基本境界
+
+Driver開始前に残る主な項目は次です。
+
+- #68: 既存認証Compatibility
+- #77: named Outcome / Execution Errorの実装Evidence
+- #125: 業務Validationの正本と最小Reference
+- #126: `sales.order.submit`の明示的Capability Binding
+
+これらをDriver専用GoコードやTarget固有設定へ埋め込まず、Application上の意味として成立させてからDriver #69へ進みます。
+
+詳細は[Gate A 到達性監査](../plan/GATE_A_READINESS_AUDIT.md)を参照してください。
 
 # 継続的な検証
 
 常設CIでは、少なくとも次を確認します。
 
-### 基本検証
+## 基本検証
 
 - `gofmt`
 - `go vet ./...`
 - `go test ./...`
 - Reference Workspace validation
 
-### Reference再現性
+## Reference再現性
 
 - Reference Query / Application PatternのSource Index projection
 - `reference/world.json`の再生成一致
 - Plugin Lockの再生成一致
 - Durable Deployment Run fixtureの再生成一致
 
-### 実行境界
+## 実行境界
 
 - Deployment executor参照例
 - Reference process Pluginの実binary build
@@ -504,7 +606,7 @@ pattern order_entry.submit_order command {
 - executable / argvのend-to-end保持
 - runtime reattach参照例
 
-### actual PostgreSQL
+## actual PostgreSQL
 
 PostgreSQL 17 serviceを使い、Reference integrationを実行します。
 
@@ -524,24 +626,21 @@ CIはproduction-gradeな外部環境を保証するものではありません�
 
 # 現在残っている主な境界
 
-## Product側の大きなGap
+## v1 Application側
 
-Database / Provider側の設計検証はM0.35まで進み、Application Patternも`browse`、`record`、`reference`の実Referenceまで進みました。
+Application Pattern Stage 1は完了しています。
 
-一方、次は引き続き実証が薄い領域です。
+現在の最優先はGate Aの残条件を実証し、Driverが上位の意味を暗黙に補わずに済む状態にすることです。
 
-- `command` / `header-detail`を含むApplication Pattern Stage 1の完了
-- `OrderLine`を含む最小header-detail Semantic
 - 既存認証・認可を保持したCompatibility
-- Application Driver
+- named OutcomeとExecution Errorの実Reference
+- 業務Validationの所有境界とReference
+- Capability Bindingの明示的な解決経路
+- その後のApplication Driver
 - target-neutral Presentation / Interaction
 - 第一Web Target
 - 開発者向け高密度Editor
 - AIによる知識探索、確認提案、判断履歴
-
-今後は`sales.order.submit`を`command` Patternから参照する実証を進め、その後`OrderLine` / `header-detail`へ進みます。Application Pattern側と既存認証Compatibility側のEvidenceが揃ったところでGate Aを評価し、その後Application Driver → 第一Web Targetへ進みます。
-
-詳細は[Product Requirement Gap Audit](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)、[Master Plan](../plan/MASTER_PLAN.md)、[v1 Reference Application実証計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md)を参照してください。
 
 ## Database / Provider側の継続課題
 
