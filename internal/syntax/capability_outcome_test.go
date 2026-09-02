@@ -13,7 +13,7 @@ func TestSemanticCapabilityParsesNamedOutcomes(t *testing.T) {
     data AuthenticationDenial {}
 
     capability security.authenticate {
-      input loginId std.identifier
+      input login std.identifier
       outcome denied security.authentication_denial
       outcome authenticated security.authenticated_subject
     }`
