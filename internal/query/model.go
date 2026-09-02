@@ -5,10 +5,10 @@ import (
 	"tei/internal/environment"
 )
 
-// ResultColumnMappingは、native Queryが返す一意なresult列名をSemantic attributeへ結び付ける。
+// ResultColumnMappingは、native Queryが返す一つのraw列labelをSemantic attributeへ結び付ける。
 //
-// SQLの列名やPersistence Mappingから意味を推測せず、Query authoringがresult shapeの意味を明示する。
-// v1では同名のresult列を複数持つQueryを暗黙にordinalで区別しない。必要な場合はSQL側で一意なaliasを付ける。
+// Persistence Mappingは保存構造との対応を所有するのに対し、このmappingはQuery固有の結果射影を所有する。
+// DriverやProviderは、列名の類似やPersistence Mappingからこの意味を推測しない。
 type ResultColumnMapping struct {
 	Column    string           `json:"column"`
 	Attribute core.CanonicalID `json:"attribute"`
