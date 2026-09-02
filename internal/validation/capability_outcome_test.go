@@ -43,6 +43,28 @@ func TestCapabilityOutcomeValidation(t *testing.T) {
 			wantCodes: []string{"SEMANTIC_CAPABILITY_OUTPUT_OUTCOME_CONFLICT"},
 		},
 		{
+			name: "outcome name is required",
+			capability: semantic.Capability{
+				ID:     "security.authenticate",
+				Symbol: "authenticate",
+				Outcomes: []semantic.Outcome{
+					{Payload: "security.authentication_denial"},
+				},
+			},
+			wantCodes: []string{"SEMANTIC_CAPABILITY_OUTCOME_NAME_REQUIRED"},
+		},
+		{
+			name: "outcome payload is required",
+			capability: semantic.Capability{
+				ID:     "security.authenticate",
+				Symbol: "authenticate",
+				Outcomes: []semantic.Outcome{
+					{Name: "denied"},
+				},
+			},
+			wantCodes: []string{"SEMANTIC_CAPABILITY_OUTCOME_PAYLOAD_REQUIRED"},
+		},
+		{
 			name: "outcome names are unique within a capability",
 			capability: semantic.Capability{
 				ID:     "security.authenticate",
