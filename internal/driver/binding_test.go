@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/ir"
 	"tei/internal/realization"
@@ -15,17 +16,17 @@ func TestReferenceOrderEntryCapabilityBindingsUseOneApplicationScopedResolver(t 
 	world := referenceWorld(t)
 	resolver := driver.NewResolver(world)
 
-	for _, capabilityID := range []string{
+	for _, capabilityID := range []core.CanonicalID{
 		"sales.order.submit",
 		"security.authenticate",
 		"security.authorize",
 	} {
-		t.Run(capabilityID, func(t *testing.T) {
+		t.Run(string(capabilityID), func(t *testing.T) {
 			resolved, err := resolver.ResolveCapabilityBinding("order_entry", capabilityID)
 			if err != nil {
 				t.Fatalf("Capability Bindingを解決できません: %v", err)
 			}
-			if string(resolved.Capability.ID) != capabilityID {
+			if resolved.Capability.ID != capabilityID {
 				t.Fatalf("capability=%s want=%s", resolved.Capability.ID, capabilityID)
 			}
 			wantIdentity := realization.BindingIdentity("order_entry", resolved.Capability.ID)
