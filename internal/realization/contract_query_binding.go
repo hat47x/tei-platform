@@ -11,12 +11,13 @@ import (
 // ContractQueryExecutorBindingは、Environment上のDatabase instanceと
 // Database-ownedなContract Query targetを、一つのexecutor Capabilityへ明示的に結び付ける。
 //
-// provider一致だけでexecutorを自動選択しない。どのinstanceで、どのContract Queryを、
-// どのCapabilityへ渡すかをauthoring側の明示情報として保持する。
+// provider一致だけでexecutorを自動選択しない。どのEnvironmentの、どのinstanceで、
+// どのContract Queryを、どのCapabilityへ渡すかをauthoring側の明示情報として保持する。
 type ContractQueryExecutorBinding struct {
-	Instance core.CanonicalID    `json:"instance"`
-	Target   ContractQueryTarget `json:"target"`
-	Executor core.CanonicalID    `json:"executor"`
+	Environment core.CanonicalID    `json:"environment"`
+	Instance    core.CanonicalID    `json:"instance"`
+	Target      ContractQueryTarget `json:"target"`
+	Executor    core.CanonicalID    `json:"executor"`
 }
 
 // ResolvedContractQueryExecutorは、実行時に利用するDatabase instanceと
@@ -27,7 +28,7 @@ type ResolvedContractQueryExecutor struct {
 	Capability plugin.ResolvedCapability    `json:"capability"`
 }
 
-// ResolveContractQueryExecutorは、指定されたinstanceとtargetに完全一致するBindingを一つだけ選ぶ。
+// ResolveContractQueryExecutorは、指定されたEnvironment、instance、targetに完全一致するBindingを一つだけ選ぶ。
 //
 // providerが一致するCapabilityを探索して暗黙に選択することはない。Bindingがない場合や複数ある場合は
 // 未解決として返し、Database definitionとtarget Databaseの不一致、Capability kindやproviderの不一致も拒否する。
@@ -38,6 +39,9 @@ func ResolveContractQueryExecutor(
 	instanceID core.CanonicalID,
 	target ContractQueryTarget,
 ) (ResolvedContractQueryExecutor, error) {
+	if env.ID == "" {
+		return ResolvedContractQueryExecutor{}, fmt.Errorf("Contract Query executorを解決するEnvironmentが指定されていません")
+	}
 	if instanceID == "" {
 		return ResolvedContractQueryExecutor{}, fmt.Errorf("Contract Query executorを解決するDatabase instanceが指定されていません")
 	}
@@ -61,12 +65,13 @@ func ResolveContractQueryExecutor(
 	var matched *ContractQueryExecutorBinding
 	for i := range bindings {
 		binding := bindings[i]
-		if binding.Instance != instanceID || binding.Target != target {
+		if binding.Environment != env.ID || binding.Instance != instanceID || binding.Target != target {
 			continue
 		}
 		if matched != nil {
 			return ResolvedContractQueryExecutor{}, fmt.Errorf(
-				"Database instance %sのContract Query %sにexecutor Bindingが複数あります",
+				"Environment %sのDatabase instance %sにあるContract Query %sへexecutor Bindingが複数あります",
+				env.ID,
 				instanceID,
 				target.Identity(),
 			)
@@ -76,14 +81,16 @@ func ResolveContractQueryExecutor(
 	}
 	if matched == nil {
 		return ResolvedContractQueryExecutor{}, fmt.Errorf(
-			"Database instance %sのContract Query %sにexecutor Bindingがありません",
+			"Environment %sのDatabase instance %sにあるContract Query %sへexecutor Bindingがありません",
+			env.ID,
 			instanceID,
 			target.Identity(),
 		)
 	}
 	if matched.Executor == "" {
 		return ResolvedContractQueryExecutor{}, fmt.Errorf(
-			"Database instance %sのContract Query %sに指定されたexecutor Capabilityが空です",
+			"Environment %sのDatabase instance %sにあるContract Query %sへ指定されたexecutor Capabilityが空です",
+			env.ID,
 			instanceID,
 			target.Identity(),
 		)
