@@ -3,7 +3,8 @@
 - 状態: Blocked
 - GitHub Issue: #69
 - Blocker: `ISSUE-000013` / GitHub Issue #124（Gate A到達性監査）
-- Gate Aの主な残条件: #68 / #77 / #125 / #126
+- Gate Aの現在の残条件: #68 / #77 / #125
+- Gate AでReadyになった関連項目: #126（Capability Binding）
 
 ## 背景
 
@@ -19,22 +20,21 @@ Application Pattern Stageは完了し、`order_entry`では次の5種類が実Re
 - `command`
 - `header-detail`
 
-一方、Gate Aの監査では、Driverへ渡すApplication上の意味がまだすべて揃っていないことが分かりました。
+Capability BindingもIssue #126 / PR #135で実証済みです。
 
-このため、Driverの主実装はGate Aを通過するまで開始しません。
+一方、Gate Aの監査では、Driverへ渡すApplication上の意味がまだすべて揃っていないことが分かっています。このため、Driverの主実装はGate Aを通過するまで開始しません。
 
 ## なぜ主実装を止めるか
 
 Driverを先に実装すると、未解決の意味をDriver専用のGoコードや設定へ埋め込んでしまうおそれがあります。
 
-現在の主な残条件は次です。
+現在の残条件は次の3つです。
 
 - GitHub Issue #68: 既存認証Compatibility
-- GitHub Issue #77: named Outcome / Execution Errorの実装Evidence
+- GitHub Issue #77: named Outcomeを実行時のBusiness Resultとして扱い、Execution Errorと分離するEvidence
 - GitHub Issue #125: 業務Validationの正本と最小Reference
-- GitHub Issue #126: `sales.order.submit`のCapability Binding identity
 
-これらは、後から単純にリファクタリングすればよい実装詳細ではありません。Driverが何を実行し、何を業務結果として受け取り、どの実装へ接続するかを決める上位の意味です。
+これらは、後から単純にリファクタリングすればよい実装詳細ではありません。Driverが何を実行し、何を業務結果として受け取り、誰に何を許可し、どの条件でcommandへ進むかを決める上位の意味です。
 
 ## 関連するProduct Requirement
 
@@ -74,7 +74,7 @@ Application上の不足をDriver専用コードで補うのではなく、Gate A
 
 Driverの主実装へ進む前に、少なくとも次をRepository上のEvidenceから説明できることを前提とします。
 
-### Pattern / Data access
+### Pattern / Data access — Ready
 
 - browse対象
 - record対象
@@ -85,7 +85,19 @@ Driverの主実装へ進む前に、少なくとも次をRepository上のEvidenc
 
 この部分はApplication Pattern StageでReadyです。
 
-### 業務Validation
+### Capability Binding — Ready
+
+Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決できるBinding Referenceが成立しました。
+
+Driverはfile path、Go hook、列挙順をBinding discoveryに利用する必要がありません。
+
+0件または複数件で一意に解決できない場合も暗黙選択せずerrorとして扱えます。
+
+Driverはこの既存の解決入口を利用し、Binding定義を別のDriver専用設定へ複製しません。
+
+### 業務Validation — Blocked
+
+Driverが必要とするのは、Pattern定義の構文・参照整合性Validationではなく、業務上のruleです。
 
 - Validation identity
 - ruleの正本
@@ -94,7 +106,7 @@ Driverの主実装へ進む前に、少なくとも次をRepository上のEvidenc
 
 この部分は`ISSUE-000014` / GitHub Issue #125で実証します。
 
-### Authentication / Authorization
+### Authentication / Authorization — Blocked
 
 - authenticated subject
 - Authentication Capability identity
@@ -105,27 +117,22 @@ Driverの主実装へ進む前に、少なくとも次をRepository上のEvidenc
 
 この部分は`ISSUE-000003` / GitHub Issue #68で実証します。
 
-### Capability結果境界
+### Capability結果境界 — Partial
+
+ADR-0020 / `ISSUE-000009` / GitHub Issue #77を正とします。
+
+PR #132で、名前付きOutcomeのCanonical model / Parser / Validation / Normalizationまでは実装済みです。
+
+Driver開始前には、少なくとも次を実Referenceから確認する必要があります。
 
 - 既存`output` Business Result
-- named Outcome
-- Execution Error
-
-この部分はADR-0020 / `ISSUE-000009` / GitHub Issue #77で実証します。
-
-### Capability Binding
-
-- Capability identity
-- Binding identity
-- implementation kind
-- authoring source / provenance
-- Binding解決失敗をExecution Errorとして扱う境界
-
-`sales.order.submit`の最小Referenceは`ISSUE-000015` / GitHub Issue #126で実証します。
+- named Outcome Business Result
+- expected denialをExecution Errorへ変換しない境界
+- Binding / adapter / Database障害を業務Outcomeへ押し込まない境界
 
 ## 現時点でReadyな入力
 
-Gate A監査では、次は既にReadyと評価しています。
+Gate A監査では、次を既にReadyと評価しています。
 
 - `browse`: `order_entry.recent_orders`
 - `record`: `order_entry.order_record`
@@ -135,6 +142,8 @@ Gate A監査では、次は既にReadyと評価しています。
 - Pattern identity / Source Index
 - `sales` read-write / `master` readのDatasource境界
 - `sales.order.submit`の既存単一`output sales.order`
+- `sales.order.submit`の明示的なCapability Binding
+- Binding authoring source / provenance
 - Command / Observation分離の基本境界
 
 これらをDriver専用設定へ再記述しません。
@@ -192,11 +201,21 @@ Driver専用Goコードにだけruleを書いたり、Web form validationを正�
 
 `command` PatternはCapability identityだけを保持します。
 
-Driverは、そのidentityから明示的なBindingを解決します。
+Driverは、そのidentityとApplication scopeから既存のBinding解決入口を利用します。
+
+```text
+order_entry.submit_order
+        ↓ capability
+sales.order.submit
+        ↓ Application + Capability
+Custom Go Binding
+        ↓
+implementation
+```
 
 file pathやGo symbolを暗黙に推測してimplementationへ接続しません。
 
-`sales.order.submit`の最小Bindingは`ISSUE-000015`で実証します。
+Bindingが見つからない場合、または複数あって一意に決められない場合は、Business Resultではなく実行準備上のerrorとして扱います。
 
 ## Database
 
@@ -264,7 +283,7 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 - logical datasource aliasを保持する
 - read-only `master_data`へwriteしない
 - native SQLの正本をDriverが複製しない
-- Capability Bindingを明示する
+- Capability Bindingを明示的に解決する
 - legacy authentication schemaへDriverが直接依存しない
 - validation failureではcommandへ進まない
 - authorization denialではcommandへ進まない
@@ -294,9 +313,11 @@ Driverの実装が完了したという事実だけではなく、次をEvidence
 
 `ISSUE-000013` / GitHub Issue #124で、Gate Aの必須項目がすべてReadyと判定されたときに、このIssueの状態をReady / In Progressへ移します。
 
-少なくとも#68、#77、#125、#126のGate A必須範囲が成立していることを確認します。
+現時点では、少なくとも#68、#77、#125のGate A必須範囲が成立していることを確認する必要があります。
 
 Issueが単にcloseしたかではなく、Driverへ必要な意味をRepositoryから再現できるかを基準にします。
+
+Capability Binding #126は既にReadyです。
 
 ## 完了条件
 
