@@ -1,12 +1,15 @@
 package syntax
 
 import (
+	"fmt"
+
 	"tei/internal/core"
 	"tei/internal/database"
 )
 
 // parseContractQuerySignatureは、Contract Query名の直後に任意で続くsignature blockを読み取る。
 // blockがなければ従来どおり名前だけのQueryを返し、既存Contract sourceとの互換性を保つ。
+// blockを明示した場合はtyped signatureとして扱い、空blockをlegacy Queryへ読み替えない。
 func (p *Parser) parseContractQuerySignature(name string) (database.QueryContract, error) {
 	queryContract := database.QueryContract{Name: name}
 
@@ -17,7 +20,7 @@ func (p *Parser) parseContractQuerySignature(name string) (database.QueryContrac
 	if next.Kind != TokenLBrace {
 		return queryContract, nil
 	}
-	_, _ = p.next()
+	open, _ := p.next()
 
 	hasResult := false
 	for {
@@ -56,7 +59,7 @@ func (p *Parser) parseContractQuerySignature(name string) (database.QueryContrac
 
 		case "result":
 			if hasResult {
-				return queryContract, p.errAt(t, "result is declared more than once")
+				return queryContract, p.errAt(t, "Query signatureではresultを一度だけ定義できます")
 			}
 			hasResult = true
 			_, _ = p.next()
@@ -72,12 +75,19 @@ func (p *Parser) parseContractQuerySignature(name string) (database.QueryContrac
 			if err != nil {
 				return queryContract, err
 			}
-			queryContract.ResultCardinality = database.QueryResultCardinality(cardinalityTok.Text)
+			cardinality := database.QueryResultCardinality(cardinalityTok.Text)
+			if !cardinality.Valid() {
+				return queryContract, p.errAt(cardinalityTok, fmt.Sprintf("Query result cardinality %qは定義されていません", cardinalityTok.Text))
+			}
+			queryContract.ResultCardinality = cardinality
 
 		default:
-			return queryContract, p.errAt(t, "expected input or result")
+			return queryContract, p.errAt(t, "Query signatureではinputまたはresultを指定してください")
 		}
 	}
 
+	if !hasResult {
+		return queryContract, p.errAt(open, "Query signatureを定義する場合はresultが必要です")
+	}
 	return queryContract, nil
 }
