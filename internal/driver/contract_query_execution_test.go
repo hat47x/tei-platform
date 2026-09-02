@@ -9,11 +9,11 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/driver"
+	"tei/internal/realization"
 )
 
 type recordingContractQueryExecutor struct {
-	databaseID core.CanonicalID
-	contractID core.CanonicalID
+	target     realization.ContractQueryTarget
 	query      database.QueryContract
 	parameters map[string]any
 	result     driver.ContractQueryResult
@@ -22,13 +22,11 @@ type recordingContractQueryExecutor struct {
 
 func (e *recordingContractQueryExecutor) ExecuteContractQuery(
 	_ context.Context,
-	databaseID core.CanonicalID,
-	contractID core.CanonicalID,
+	target realization.ContractQueryTarget,
 	query database.QueryContract,
 	parameters map[string]any,
 ) (driver.ContractQueryResult, error) {
-	e.databaseID = databaseID
-	e.contractID = contractID
+	e.target = target
 	e.query = query
 	e.parameters = parameters
 	return e.result, e.err
@@ -57,8 +55,14 @@ func TestExecuteReferenceContractQueryPassesExplicitIdentityAndParameters(t *tes
 	if err != nil {
 		t.Fatalf("reference Contract Queryを実行できません: %v", err)
 	}
-	if executor.databaseID != "master_data" || executor.contractID != "master_data.customer" || executor.query.Name != "find_by_id" {
-		t.Fatalf("Database / Contract / Query identityが変わっています: database=%s contract=%s query=%s", executor.databaseID, executor.contractID, executor.query.Name)
+	if executor.target.Database != "master_data" || executor.target.Contract != "master_data.customer" || executor.target.Query != "find_by_id" {
+		t.Fatalf("Database / Contract / Query target identityが変わっています: %#v", executor.target)
+	}
+	if executor.target.Identity() != "master_data/master_data.customer/find_by_id" {
+		t.Fatalf("Contract Query target identityが期待値と異なります: %q", executor.target.Identity())
+	}
+	if executor.query.Name != "find_by_id" {
+		t.Fatalf("target identityとQuery signatureを別物として保持できていません: %#v", executor.query)
 	}
 	if len(executor.parameters) != 1 || executor.parameters["id"] != int64(42) {
 		t.Fatalf("明示Relation keyから準備したparameterをExecutorへ渡せていません: %#v", executor.parameters)
