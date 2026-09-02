@@ -415,6 +415,24 @@
           "underlying": "std.code"
         },
         {
+          "id": "security.authorization_action",
+          "symbol": "AuthorizationAction",
+          "kind": "alias",
+          "underlying": "std.code"
+        },
+        {
+          "id": "security.authorization_denial_reason",
+          "symbol": "AuthorizationDenialReason",
+          "kind": "alias",
+          "underlying": "std.code"
+        },
+        {
+          "id": "security.authorization_resource",
+          "symbol": "AuthorizationResource",
+          "kind": "alias",
+          "underlying": "std.identifier"
+        },
+        {
           "id": "security.credential",
           "symbol": "Credential",
           "kind": "alias",
@@ -443,6 +461,38 @@
               "type": "security.authentication_denial_reason"
             }
           ]
+        },
+        {
+          "id": "security.authorization_denial",
+          "symbol": "AuthorizationDenial",
+          "attributes": [
+            {
+              "id": "security.authorization_denial.reason",
+              "symbol": "reason",
+              "type": "security.authorization_denial_reason"
+            }
+          ]
+        },
+        {
+          "id": "security.authorization_grant",
+          "symbol": "AuthorizationGrant",
+          "attributes": [
+            {
+              "id": "security.authorization_grant.action",
+              "symbol": "action",
+              "type": "security.authorization_action"
+            },
+            {
+              "id": "security.authorization_grant.resource",
+              "symbol": "resource",
+              "type": "security.authorization_resource"
+            },
+            {
+              "id": "security.authorization_grant.subject_id",
+              "symbol": "subjectId",
+              "type": "std.identifier"
+            }
+          ]
         }
       ],
       "capabilities": [
@@ -467,6 +517,34 @@
             {
               "name": "denied",
               "payload": "security.authentication_denial"
+            }
+          ]
+        },
+        {
+          "id": "security.authorize",
+          "symbol": "authorize",
+          "inputs": [
+            {
+              "name": "subject",
+              "type": "security.authenticated_subject"
+            },
+            {
+              "name": "action",
+              "type": "security.authorization_action"
+            },
+            {
+              "name": "resource",
+              "type": "security.authorization_resource"
+            }
+          ],
+          "outcomes": [
+            {
+              "name": "allowed",
+              "payload": "security.authorization_grant"
+            },
+            {
+              "name": "denied",
+              "payload": "security.authorization_denial"
             }
           ]
         }
@@ -1260,6 +1338,10 @@
     {
       "application": "order_entry",
       "capability": "security.authenticate"
+    },
+    {
+      "application": "order_entry",
+      "capability": "security.authorize"
     }
   ]
 }

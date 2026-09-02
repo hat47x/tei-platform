@@ -14,6 +14,18 @@
       "role_code": "ORDER_EDITOR"
     },
     {
+      "user_id": "legacy-order-viewer",
+      "subject_id": "subject-order-viewer",
+      "credential_ref": "credential-ref://legacy/order-viewer",
+      "disabled": false,
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2030-01-01T00:00:00Z",
+      "login_failure_count": 0,
+      "locked_until": "",
+      "organization_code": "SALES",
+      "role_code": "ORDER_VIEWER"
+    },
+    {
       "user_id": "legacy-order-locked",
       "subject_id": "subject-order-locked",
       "credential_ref": "credential-ref://legacy/order-locked",
