@@ -33,6 +33,20 @@ func TestValidateSemanticRelationKeysRejectsInvalidMappings(t *testing.T) {
 		code string
 	}{
 		{
+			name: "source attribute is missing",
+			key: semantic.RelationKey{
+				TargetAttribute: "customer.customer.customer_id",
+			},
+			code: "SEMANTIC_RELATION_KEY_SOURCE_REQUIRED",
+		},
+		{
+			name: "target attribute is missing",
+			key: semantic.RelationKey{
+				SourceAttribute: "sales.order.customer_id",
+			},
+			code: "SEMANTIC_RELATION_KEY_TARGET_REQUIRED",
+		},
+		{
 			name: "unknown source attribute",
 			key: semantic.RelationKey{
 				SourceAttribute: "sales.order.missing",
