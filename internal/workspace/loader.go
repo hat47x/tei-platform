@@ -350,7 +350,7 @@ func loadApplications(root string, r *Result) error {
 			}
 			b.Application = a.ID
 			r.World.Bindings = append(r.World.Bindings, b)
-			r.Sources["binding:"+string(b.Capability)] = SourceLocation{File: relPath(root, bpath), Line: 1, Column: 1}
+			r.Sources["binding:"+b.Identity()] = SourceLocation{File: relPath(root, bpath), Line: 1, Column: 1}
 		}
 	}
 	return nil

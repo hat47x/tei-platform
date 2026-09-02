@@ -1169,6 +1169,10 @@
     {
       "application": "order_entry",
       "capability": "order_entry.compose_order_summary"
+    },
+    {
+      "application": "order_entry",
+      "capability": "sales.order.submit"
     }
   ]
 }
