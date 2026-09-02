@@ -83,6 +83,7 @@ func TestCapabilityOutcomeValidation(t *testing.T) {
 					if diagnostic.Severity == validation.Error {
 						t.Fatalf("unexpected error diagnostic: %#v", diagnostic)
 					}
+				}
 			}
 		})
 	}
