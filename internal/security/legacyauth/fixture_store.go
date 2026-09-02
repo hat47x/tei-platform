@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-// FixtureStoreは、既存schemaを模したGit管理可能な非secret fixtureを読むReference実装である。
+// FixtureStoreは、既存schemaを模した、Git管理可能でsecretを含まないfixtureを読むReference実装である。
 // production用の認証Database adapterではなく、legacy fieldを標準User schemaへ変換せず
-// Authentication adapterへ渡せることを検証するために使う。
+// Authentication / Authorizationのadapterへ渡せることを検証するために使う。
 type FixtureStore struct {
 	sourcePath string
 	users      map[string]User
@@ -91,6 +91,20 @@ func (s *FixtureStore) FindByLogin(_ context.Context, login string) (User, bool,
 	}
 	user, ok := s.users[login]
 	return user, ok, nil
+}
+
+// FindBySubjectは、Authenticationが返したsubject identityから既存user recordを引き直す。
+// Authorization側へlegacy schemaを公開せず、既存の組織・role・個別条件をadapterの内側に残すためのReference境界である。
+func (s *FixtureStore) FindBySubject(_ context.Context, subjectID string) (User, bool, error) {
+	if s == nil {
+		return User{}, false, fmt.Errorf("legacy authentication fixture storeがnilです")
+	}
+	for _, user := range s.users {
+		if user.SubjectID == subjectID {
+			return user, true, nil
+		}
+	}
+	return User{}, false, nil
 }
 
 // SourcePathは、Reference Storeがどのlegacy fixtureを正本として読んだかを返す。
