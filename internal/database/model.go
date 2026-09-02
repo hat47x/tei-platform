@@ -15,7 +15,7 @@ func (a Access) Valid() bool { return a == AccessRead || a == AccessWrite || a =
 type Ownership string
 
 const (
-	OwnershipManagedHere      Ownership = "managed-here"
+	OwnershipManagedHere       Ownership = "managed-here"
 	OwnershipExternalObserved Ownership = "external-observed"
 )
 
@@ -40,8 +40,37 @@ type Contract struct {
 	Writes  []core.CanonicalID `json:"writes,omitempty"`
 	Queries []QueryContract    `json:"queries,omitempty"`
 }
+
+// QueryInputは、Database Contract Queryが受け取る一つの入力を表す。
+// Query名や物理parameter名から意味を推測せず、入力名とSemantic型identityを明示的に保持する。
+type QueryInput struct {
+	Name core.LocalName   `json:"name"`
+	Type core.CanonicalID `json:"type"`
+}
+
+// QueryResultCardinalityは、Database Contract Queryが正常に完了したときに返し得る
+// Semantic Data instance数の契約を表す。Execution Errorとは別の意味として扱う。
+type QueryResultCardinality string
+
+const (
+	QueryResultOne       QueryResultCardinality = "one"
+	QueryResultZeroOrOne QueryResultCardinality = "zero-or-one"
+	QueryResultMany      QueryResultCardinality = "many"
+)
+
+func (c QueryResultCardinality) Valid() bool {
+	return c == QueryResultOne || c == QueryResultZeroOrOne || c == QueryResultMany
+}
+
+// QueryContractは、Databaseが外部へ提供するQueryの意味契約を表す。
+// Inputs / Result / ResultCardinalityはDatabase固有SQLやAPIの実現方式を含めず、
+// 「何を受け、どのSemantic Dataをどの件数契約で返すか」だけを保持する。
+// signature未定義の既存Contractはomitemptyにより従来のCanonical JSONを維持する。
 type QueryContract struct {
-	Name string `json:"name"`
+	Name              string                 `json:"name"`
+	Inputs            []QueryInput           `json:"inputs,omitempty"`
+	Result            core.CanonicalID       `json:"result,omitempty"`
+	ResultCardinality QueryResultCardinality `json:"resultCardinality,omitempty"`
 }
 type ContractRequirement struct {
 	ContractID      core.CanonicalID `json:"contract"`
