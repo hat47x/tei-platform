@@ -11,7 +11,7 @@ func TestQueryContractKeepsLegacyJSONWhenSignatureIsUndefined(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryContractをJSONへ変換できません: %v", err)
 	}
-	if string(got) != `{"name":"find_by_id"}`[1:len(`{"name":"find_by_id"}`)-1] {
+	if string(got) != "{\"name\":\"find_by_id\"}" {
 		t.Fatalf("signature未定義の既存JSON shapeを変更しています: %s", got)
 	}
 }
