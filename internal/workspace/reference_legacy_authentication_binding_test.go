@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
 	"tei/internal/sourceindex"
@@ -28,7 +29,7 @@ func TestReferenceLegacyAuthenticationBindingConnectsOrderEntryWithoutPersisting
 			continue
 		}
 		appFound = true
-		if !containsID(app.SemanticUses, "security") {
+		if !containsSemanticUse(app.SemanticUses, "security") {
 			t.Fatalf("order_entryがsecurity Semanticを利用していません: %#v", app.SemanticUses)
 		}
 		binding, err := realization.ResolveCustomGoBinding(loaded.World.Bindings, app.ID, legacyauth.AuthenticationCapability)
@@ -101,7 +102,7 @@ func TestReferenceLegacyAuthenticationBindingConnectsOrderEntryWithoutPersisting
 	}
 }
 
-func containsID(ids []string, want string) bool {
+func containsSemanticUse(ids []core.CanonicalID, want core.CanonicalID) bool {
 	for _, id := range ids {
 		if id == want {
 			return true
