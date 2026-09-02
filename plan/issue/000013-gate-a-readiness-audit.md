@@ -4,8 +4,8 @@
 - GitHub Issue: #124
 - 前段: `ISSUE-000005` / GitHub Issue #67（完了）
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）
-- 現在の残条件: #68 / #77
-- Gate AでReadyになった関連Issue: #125（業務Validation） / #126（Capability Binding）
+- 現在の残条件: #68
+- Gate AでReadyになった関連Issue: #77（Capability Outcome） / #125（業務Validation） / #126（Capability Binding）
 - 監査結果: [`GATE_A_READINESS_AUDIT.md`](../GATE_A_READINESS_AUDIT.md)
 
 ## 目的
@@ -26,62 +26,46 @@ Driver #69が、Repository上のCanonicalな意味、Contract、Bindingから少
 
 ## 現在の判定
 
-Gate A全体は引き続きBlockedです。ただし、残条件は2つまで減りました。
+Gate A全体は引き続きBlockedです。ただし、独立した残条件は**#68 既存認証Compatibilityだけ**になりました。
 
-- #68: 既存認証Compatibility
-- #77: named Outcomeを実際のCapability呼び出しでBusiness Resultとして扱い、Execution Errorと分離するEvidence
+### Readyになった領域
 
-業務Validation #125はPR #136、#139、#140でGate Aに必要な範囲を完了しました。
+- Application Pattern 5種類
+- Datasource境界
+- Capability Binding #126 / PR #135
+- 業務Validation #125 / PR #136 / #139 / #140
+- Capabilityのnamed Outcome / Execution Error #77 / PR #132 / #141
+- 既存単一output Capabilityとの互換性
+- Command / Observation分離の基本境界
 
-- Semantic ValidationのCanonical契約
-- `sales` Namespaceの実Reference
-- Validation identityからauthoring sourceへの追跡
-- `positive` / `relation-unique`の最小Evaluator
-- `Satisfied / NotSatisfied`と評価errorの分離
+PR #141では`security.authenticate`の実Referenceを使い、`authenticated` / `denied`を正常なBusiness Resultとして扱い、Database / adapter障害や未定義OutcomeをExecution Errorとして分離できることを確認しました。
 
-Capability Binding #126もPR #135でReadyです。
+したがって#77はGate AでReadyです。第一Web TargetへのProjection等はGate A以後へDeferredします。
 
-詳細な項目別判定は`GATE_A_READINESS_AUDIT.md`を正とします。
+## 残る条件 — #68 既存認証Compatibility
 
-## Readyになった主な項目
+`security.authenticate`の契約と結果境界は成立していますが、既存認証仕様をそのまま実装へ接続するEvidenceはまだ不足しています。
 
-### Application Pattern
+Gate Aへは少なくとも次を渡せる必要があります。
 
-`order_entry`では、`browse`、`record`、`reference`、`command`、`header-detail`の5種類が実Reference、Source Index、共通Validation、Golden再現性まで成立しています。
+- authenticated subject
+- Authentication Capability identity
+- Authorization Capability identity
+- Application上のaction / resource
+- legacy field / functionからCapabilityへのMapping
+- user ID、disabled、validity、failure count、lock、organization、role、system-specific rule等の既存条件
+- secret materialを解決する境界
+- named Outcome / Execution Errorの結果契約
 
-### Datasource境界
+既存schemaをTEI標準User schemaへ作り替えてからでなければ利用できない構造にはしません。
 
-`sales` read-write / `master` readのlogical datasource境界をApplication定義から追跡できます。
+## Secretの扱い
 
-### Capability Binding
+`security.authenticate`にはcredentialを表す入力型がありますが、Canonicalに保存されるのはCapability契約と型の意味であり、実際のsecret値ではありません。
 
-Issue #126 / PR #135で、`sales.order.submit`をApplication + Capabilityから明示的に解決できるBinding Referenceを実証しました。
+password、token、credential hash、接続資格情報等のsecret materialをCanonical World、Source Index、Durable artifact、Scenario log、通常Evidenceへ保存しません。
 
-Driverがfile path、Go hook、列挙順からimplementationを推測する必要はありません。
-
-### 業務Validation
-
-Issue #125 / PR #136 / #139 / #140で、業務ruleの正本、実Reference、評価境界が成立しました。
-
-Driverは`quantity > 0`や明細番号の一意性を専用Goコードへ書き直さず、Canonical ValidationとEvaluatorを利用できます。
-
-評価不能は`NotSatisfied`へ畳まず、評価errorとして区別できます。
-
-## 残る二つの条件
-
-### #68 既存認証Compatibility
-
-既存schemaや既存ruleをTEI標準User schemaへ先に作り替えず、Authentication / Authorization Capabilityへ接続できるReferenceが必要です。
-
-Gate Aへは少なくとも、authenticated subject、Capability identity、Application上のaction / resource、legacy mapping、secret解決境界を渡せる必要があります。
-
-### #77 Capability Outcome / Execution Error
-
-PR #132で名前付きOutcomeのCanonical基盤までは成立しています。
-
-次は`security.authenticate`等の実Referenceを通じ、`authenticated` / `denied`を正常なBusiness Resultとして扱い、Databaseやadapterの障害をExecution Errorとして分離できることを確認します。
-
-#68と#77はAuthentication Referenceで重なるため、別々の大きな仕組みを先に作らず、一つの実例から両方のEvidenceを増やします。
+#68では、実行時に受け取ったcredential valueがEvidenceへ流れないこともConformance対象にします。
 
 ## 判定原則
 
@@ -89,20 +73,21 @@ Gate Aを「関連Issueがすべてcloseしたか」だけでは判定しませ�
 
 Driverへ渡すために必要な意味をRepository上のReference / Conformanceから再現できるかを基準にします。
 
-そのため、#77の第一Web TargetへのProjectionなど、Gate A以後でよい作業はblockerにはしません。
+Issue全体がopenでも、Gate Aに必要な限定範囲が十分なEvidenceで成立していれば、その項目はReadyと評価できます。
 
 逆にIssueがcloseしていても、Driverが暗黙のGoコードやWeb設定から意味を補う必要がある場合はReadyとは判定しません。
 
 ## 残る作業
 
-1. #68 / #77の共通入口として`security.authenticate`の実Referenceを成立させる
-2. named Outcomeを正常なBusiness Resultとして扱うInvocation境界を実証する
-3. expected denialとExecution Errorを分離する
-4. legacy認証fixtureとCapabilityを接続する
-5. Authorizationを`order_entry`のaction / resourceへ接続する
-6. Gate Aを再評価する
-7. 必須項目がすべてReadyになった時点でDriver #69の開始可否を明示する
-8. 判定を`V1_REFERENCE_APPLICATION_PLAN.md`等へ同期する
+1. legacy認証fixtureを、既存仕様を崩さない形で用意する
+2. `security.authenticate`をlegacy fixtureへ接続するadapter / Bindingを実証する
+3. `authenticated` / `denied` / Execution Errorの既存境界を再利用する
+4. secret materialがCanonical / Source Index / 通常Evidenceへ流れないことを確認する
+5. `security.authorize`の最小契約を実例から作る
+6. `order_entry`のbrowse / edit / submitへaction / resourceを接続する
+7. Gate Aを再評価する
+8. 必須項目がすべてReadyになった時点でDriver #69の開始可否を明示する
+9. 判定を`V1_REFERENCE_APPLICATION_PLAN.md`等へ同期する
 
 ## 非目標
 
@@ -113,6 +98,7 @@ Driverへ渡すために必要な意味をRepository上のReference / Conformanc
 - 5 Patternの標準Catalog昇格
 - Gate A以後のOutcome Projection
 - 汎用Validation rule engine
+- 認証製品やlegacy schemaの標準化
 
 ## 完了条件
 
@@ -125,12 +111,11 @@ Driverへ渡すために必要な意味をRepository上のReference / Conformanc
 ## 関連
 
 - GitHub Issue #124: Gate A到達性監査
-- GitHub Issue #67: Application Pattern（完了）
 - GitHub Issue #68: 既存認証Compatibility
 - GitHub Issue #69: Application Driver
-- GitHub Issue #77: Capability Outcome / Execution Error
+- GitHub Issue #77: Capability Outcome / Execution Error（完了）
 - GitHub Issue #125: 業務Validation（完了）
 - GitHub Issue #126: Capability Binding（完了）
-- GitHub PR #132 / #135 / #136 / #139 / #140
+- GitHub PR #132 / #135 / #136 / #139 / #140 / #141 / #143
 - ADR-0019 / ADR-0020
 - RQ-005, RQ-008, RQ-009, RQ-012, RQ-014, RQ-017, RQ-018, RQ-019, RQ-021
