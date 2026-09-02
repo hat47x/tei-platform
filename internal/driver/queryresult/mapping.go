@@ -8,13 +8,13 @@ import (
 )
 
 // RawResultは、Query Executorが物理的に観測した列名と値を、
-// Semantic上の意味を付ける前の状態で保持する。
+// Semantic上の意味へ対応付ける前の状態で保持する。
 type RawResult struct {
 	Columns []string `json:"columns"`
 	Rows    [][]any  `json:"rows"`
 }
 
-// Columnは、native Queryが返した列名と、その列へ明示的に対応付けられた
+// Columnは、native Queryが返した列名と、その列に明示的に対応付けられた
 // Semantic attributeを一組として保持する。
 type Column struct {
 	Raw       string           `json:"raw"`
@@ -23,7 +23,7 @@ type Column struct {
 
 // MappedResultは、Query authoringで明示されたresult mappingを適用した結果である。
 //
-// Rowsの値はruntimeが受け取ったものをそのまま保持し、この境界ではSemantic型への変換や
+// Rowsにはruntimeで観測した値をそのまま保持し、この境界ではSemantic型への変換や
 // Presentation向けの整形を行わない。Columnsと各Rowの値は同じ順序で対応する。
 type MappedResult struct {
 	Columns []Column `json:"columns"`
@@ -33,8 +33,8 @@ type MappedResult struct {
 // Mapは、raw resultの列名をQuery authoringの明示mappingへ対応付ける。
 //
 // 列名の類似、SELECT順序、Persistence Mappingから意味を推測しない。
-// mappingとraw resultの列集合が一致しない場合や、どちらかに曖昧な重複がある場合は、
-// 意味を欠いたまま実行を続けずerrorを返す。
+// 明示mappingとraw resultの列集合が一致しない場合や、どちらかに曖昧な重複がある場合は、
+// 意味を曖昧にしたまま処理を続けずerrorを返す。
 func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 	if len(q.ResultColumns) == 0 {
 		return MappedResult{}, fmt.Errorf("Query %sにresult mappingが定義されていません", q.ID)
