@@ -15,17 +15,20 @@ type referenceCrossAttribute struct {
 }
 
 type resolvedReferenceCross struct {
-	Relation semantic.Relation
-	Query    database.QueryContract
+	SourceData core.CanonicalID
+	Relation   semantic.Relation
+	Query      database.QueryContract
 }
 
 // ValidateReferenceContractQueryCrossLayerは、reference Patternが明示したContract Query呼び出しについて、
 // Semantic Relation key・Application-ownedなinput binding・Database Contract Query signatureを横断して検査する。
 //
-// 各層のidentityが欠落・重複して一意に解決できない場合は、その層自身のValidationへ診断を委ねる。
-// このValidationでは、三層が一意に解決できて初めて判断できる対応関係だけを扱う。
+// 各層のidentityや参照整合性が成立しない場合は、その層自身のValidationへ診断を委ねる。
+// このValidationでは、三層がそれぞれ単独では妥当で、一意に解決できて初めて判断できる対応関係だけを扱う。
 func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 	attributes := referenceCrossAttributes(w)
+	semanticTypes := referenceCrossSemanticTypes(w)
+	semanticData := referenceCrossSemanticData(w)
 	var out []Diagnostic
 
 	for _, app := range w.Applications {
@@ -35,7 +38,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 			}
 
 			resolved, ok := resolveReferenceCross(w, app, pattern)
-			if !ok {
+			if !ok || !referenceInvocationReadyForCross(*pattern.ContractQuery) {
 				continue
 			}
 
@@ -54,6 +57,9 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 				))
 				continue
 			}
+			if !relationKeysReadyForCross(resolved.SourceData, relation, attributes) {
+				continue
+			}
 
 			if !hasTypedQuerySignature(query) {
 				out = append(out, errFor(
@@ -64,6 +70,9 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					invocation.Contract,
 					invocation.Query,
 				))
+				continue
+			}
+			if !querySignatureReadyForCross(query, semanticTypes, semanticData) {
 				continue
 			}
 
@@ -123,8 +132,8 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					continue
 				}
 
-				attribute, attributeFound := attributes[binding.TargetAttribute]
-				if attributeFound && attribute.Type != input.Type {
+				attribute := attributes[binding.TargetAttribute]
+				if attribute.Type != input.Type {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_INPUT_TYPE_MISMATCH",
@@ -197,13 +206,33 @@ func referenceCrossAttributes(w ir.World) map[core.CanonicalID]referenceCrossAtt
 	return out
 }
 
+func referenceCrossSemanticTypes(w ir.World) map[core.CanonicalID]struct{} {
+	out := map[core.CanonicalID]struct{}{}
+	for _, ns := range w.Semantics {
+		for _, typ := range ns.Types {
+			out[typ.ID] = struct{}{}
+		}
+	}
+	return out
+}
+
+func referenceCrossSemanticData(w ir.World) map[core.CanonicalID]struct{} {
+	out := map[core.CanonicalID]struct{}{}
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			out[data.ID] = struct{}{}
+		}
+	}
+	return out
+}
+
 func resolveReferenceCross(w ir.World, app application.Application, pattern application.Pattern) (resolvedReferenceCross, bool) {
-	var relations []semantic.Relation
+	var relations []resolvedReferenceCross
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			for _, relation := range data.Relations {
 				if relation.ID == pattern.Relation {
-					relations = append(relations, relation)
+					relations = append(relations, resolvedReferenceCross{SourceData: data.ID, Relation: relation})
 				}
 			}
 		}
@@ -214,6 +243,11 @@ func resolveReferenceCross(w ir.World, app application.Application, pattern appl
 
 	datasource, ok := app.DatabaseByAlias(pattern.Datasource)
 	if !ok {
+		return resolvedReferenceCross{}, false
+	}
+	invocation := pattern.ContractQuery
+	requirements := requiredContractRequirements(datasource, invocation.Contract)
+	if len(requirements) != 1 {
 		return resolvedReferenceCross{}, false
 	}
 
@@ -227,14 +261,13 @@ func resolveReferenceCross(w ir.World, app application.Application, pattern appl
 		return resolvedReferenceCross{}, false
 	}
 
-	invocation := pattern.ContractQuery
 	var contracts []database.Contract
 	for _, candidate := range databases[0].Contracts {
 		if candidate.ID == invocation.Contract {
 			contracts = append(contracts, candidate)
 		}
 	}
-	if len(contracts) != 1 {
+	if len(contracts) != 1 || contracts[0].Version.Major != requirements[0].CompatibleMajor {
 		return resolvedReferenceCross{}, false
 	}
 
@@ -248,11 +281,79 @@ func resolveReferenceCross(w ir.World, app application.Application, pattern appl
 		return resolvedReferenceCross{}, false
 	}
 
-	return resolvedReferenceCross{Relation: relations[0], Query: queries[0]}, true
+	resolved := relations[0]
+	resolved.Query = queries[0]
+	return resolved, true
+}
+
+func referenceInvocationReadyForCross(invocation application.ContractQueryInvocation) bool {
+	if invocation.Contract == "" || invocation.Query == "" {
+		return false
+	}
+	seenTargets := map[core.CanonicalID]struct{}{}
+	seenInputs := map[core.LocalName]struct{}{}
+	for _, binding := range invocation.Inputs {
+		if binding.TargetAttribute == "" || binding.Input == "" {
+			return false
+		}
+		if _, duplicate := seenTargets[binding.TargetAttribute]; duplicate {
+			return false
+		}
+		seenTargets[binding.TargetAttribute] = struct{}{}
+		if _, duplicate := seenInputs[binding.Input]; duplicate {
+			return false
+		}
+		seenInputs[binding.Input] = struct{}{}
+	}
+	return true
+}
+
+func relationKeysReadyForCross(sourceData core.CanonicalID, relation semantic.Relation, attributes map[core.CanonicalID]referenceCrossAttribute) bool {
+	seenPairs := map[string]struct{}{}
+	for _, key := range relation.Keys {
+		if key.SourceAttribute == "" || key.TargetAttribute == "" {
+			return false
+		}
+		pair := string(key.SourceAttribute) + "\x00" + string(key.TargetAttribute)
+		if _, duplicate := seenPairs[pair]; duplicate {
+			return false
+		}
+		seenPairs[pair] = struct{}{}
+
+		source, sourceFound := attributes[key.SourceAttribute]
+		target, targetFound := attributes[key.TargetAttribute]
+		if !sourceFound || !targetFound || source.Owner != sourceData || target.Owner != relation.Target || source.Type != target.Type {
+			return false
+		}
+	}
+	return true
 }
 
 func hasTypedQuerySignature(query database.QueryContract) bool {
 	return len(query.Inputs) > 0 || query.Result != "" || query.ResultCardinality != ""
+}
+
+func querySignatureReadyForCross(query database.QueryContract, semanticTypes map[core.CanonicalID]struct{}, semanticData map[core.CanonicalID]struct{}) bool {
+	if query.Result == "" || !query.ResultCardinality.Valid() {
+		return false
+	}
+	if _, ok := semanticData[query.Result]; !ok {
+		return false
+	}
+	seenInputs := map[core.LocalName]struct{}{}
+	for _, input := range query.Inputs {
+		if input.Name == "" || input.Type == "" {
+			return false
+		}
+		if _, duplicate := seenInputs[input.Name]; duplicate {
+			return false
+		}
+		seenInputs[input.Name] = struct{}{}
+		if _, ok := semanticTypes[input.Type]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func referenceQueryCardinalityCompatible(relation semantic.Cardinality, result database.QueryResultCardinality) bool {
