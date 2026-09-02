@@ -1,0 +1,33 @@
+{
+  "schema": "legacy-authorization-rule-v1",
+  "rules": [
+    {
+      "organization_code": "SALES",
+      "role_code": "ORDER_VIEWER",
+      "action": "browse",
+      "resource": "order_entry.recent_orders",
+      "effect": "allow"
+    },
+    {
+      "organization_code": "SALES",
+      "role_code": "ORDER_EDITOR",
+      "action": "browse",
+      "resource": "order_entry.recent_orders",
+      "effect": "allow"
+    },
+    {
+      "organization_code": "SALES",
+      "role_code": "ORDER_EDITOR",
+      "action": "edit",
+      "resource": "order_entry.order_record",
+      "effect": "allow"
+    },
+    {
+      "organization_code": "SALES",
+      "role_code": "ORDER_EDITOR",
+      "action": "execute",
+      "resource": "order_entry.submit_order",
+      "effect": "allow"
+    }
+  ]
+}
