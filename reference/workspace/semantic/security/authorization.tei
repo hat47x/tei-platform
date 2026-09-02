@@ -1,0 +1,23 @@
+namespace security
+
+type AuthorizationAction from std.code
+type AuthorizationResource from std.identifier
+type AuthorizationDenialReason from std.code
+
+data AuthorizationGrant {
+    attribute subjectId type std.identifier
+    attribute action type security.authorization_action
+    attribute resource type security.authorization_resource
+}
+
+data AuthorizationDenial {
+    attribute reason type security.authorization_denial_reason
+}
+
+capability security.authorize {
+    input subject security.authenticated_subject
+    input action security.authorization_action
+    input resource security.authorization_resource
+    outcome allowed security.authorization_grant
+    outcome denied security.authorization_denial
+}
