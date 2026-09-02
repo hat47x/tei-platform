@@ -33,7 +33,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		return out, err
 	}
 
-	var hasData, hasRelation, hasQuery, hasCapability, hasDatasource bool
+	var hasData, hasRelation, hasQuery, hasCapability, hasDatasource, hasContractQuery bool
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -114,8 +114,18 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			if err != nil {
 				return out, p.errAt(v, err.Error())
 			}
+		case "contract-query":
+			if hasContractQuery {
+				return out, p.errAt(t, "contract-queryは一つのPatternで一度だけ定義できます")
+			}
+			hasContractQuery = true
+			invocation, err := p.parseReferenceContractQuery()
+			if err != nil {
+				return out, err
+			}
+			out.ContractQuery = invocation
 		default:
-			return out, p.errAt(t, "expected data, relation, query, capability, or datasource")
+			return out, p.errAt(t, "expected data, relation, query, capability, datasource, or contract-query")
 		}
 	}
 
@@ -133,6 +143,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		if out.Capability != "" {
 			return out, fmt.Errorf("browse pattern %s does not accept capability", out.ID)
 		}
+		if out.ContractQuery != nil {
+			return out, fmt.Errorf("browse pattern %s does not accept contract-query", out.ID)
+		}
 	case application.PatternRecord:
 		if out.Data == "" {
 			return out, fmt.Errorf("record pattern %s requires data", out.ID)
@@ -148,6 +161,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		}
 		if out.Datasource != "" {
 			return out, fmt.Errorf("record pattern %s does not accept datasource", out.ID)
+		}
+		if out.ContractQuery != nil {
+			return out, fmt.Errorf("record pattern %s does not accept contract-query", out.ID)
 		}
 	case application.PatternReference:
 		if out.Relation == "" {
@@ -181,6 +197,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		if out.Datasource != "" {
 			return out, fmt.Errorf("command pattern %s does not accept datasource", out.ID)
 		}
+		if out.ContractQuery != nil {
+			return out, fmt.Errorf("command pattern %s does not accept contract-query", out.ID)
+		}
 	case application.PatternHeaderDetail:
 		if out.Relation == "" {
 			return out, fmt.Errorf("header-detail pattern %s requires relation", out.ID)
@@ -196,6 +215,9 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		}
 		if out.Datasource != "" {
 			return out, fmt.Errorf("header-detail pattern %s does not accept datasource", out.ID)
+		}
+		if out.ContractQuery != nil {
+			return out, fmt.Errorf("header-detail pattern %s does not accept contract-query", out.ID)
 		}
 	}
 	if err := p.expectEOF(); err != nil {
