@@ -77,16 +77,12 @@ func TestValidateSemanticRelationKeysRejectsInvalidMappings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			diagnostics := ValidateSemanticRelationKeys(relationKeyWorld(tt.key))
-			if !hasDiagnosticCode(diagnostics, tt.code) {
+			diagnostic := diagnosticByCode(diagnostics, tt.code)
+			if diagnostic == nil {
 				t.Fatalf("Diagnostic %sがありません: %#v", tt.code, diagnostics)
 			}
-			for _, diagnostic := range diagnostics {
-				if diagnostic.Code != tt.code {
-					continue
-				}
-				if diagnostic.Subject == nil || diagnostic.Subject.Kind != "semantic-relation" || diagnostic.Subject.ID != "sales.order.customer" {
-					t.Fatalf("DiagnosticがRelationのauthoring identityへ結び付いていません: %#v", diagnostic)
-				}
+			if diagnostic.Subject == nil || diagnostic.Subject.Kind != "semantic-relation" || diagnostic.Subject.ID != "sales.order.customer" {
+				t.Fatalf("DiagnosticがRelationのauthoring identityへ結び付いていません: %#v", diagnostic)
 			}
 		})
 	}
@@ -100,7 +96,7 @@ func TestValidateSemanticRelationKeysRejectsDuplicatePair(t *testing.T) {
 	world := relationKeyWorld(key, key)
 
 	diagnostics := ValidateSemanticRelationKeys(world)
-	if !hasDiagnosticCode(diagnostics, "DUPLICATE_SEMANTIC_RELATION_KEY") {
+	if diagnosticByCode(diagnostics, "DUPLICATE_SEMANTIC_RELATION_KEY") == nil {
 		t.Fatalf("重複Relation key mappingを拒否していません: %#v", diagnostics)
 	}
 }
@@ -148,13 +144,4 @@ func relationKeyWorld(keys ...semantic.RelationKey) ir.World {
 			},
 		},
 	}}
-}
-
-func hasDiagnosticCode(diagnostics []Diagnostic, code string) bool {
-	for _, diagnostic := range diagnostics {
-		if diagnostic.Code == code {
-			return true
-		}
-	}
-	return false
 }
