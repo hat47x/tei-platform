@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"tei/internal/application"
-	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/semantic"
@@ -215,5 +214,3 @@ func hasReferenceCrossDiagnostic(diagnostics []Diagnostic, code string) bool {
 	}
 	return false
 }
-
-var _ core.CanonicalID
