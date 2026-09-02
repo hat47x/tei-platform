@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/driver"
+	"tei/internal/driver/queryresult"
 	"tei/internal/query"
 )
 
@@ -41,7 +44,7 @@ func TestDriverExecutesBrowseQueryWithoutReconstructingNativeSQLOrDatasource(t *
 
 	from := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	parameters := map[string]any{"from": from}
-	type executorRows struct {
+	type executorEvidence struct {
 		Count int
 	}
 	const returnedCount = 2
@@ -69,7 +72,16 @@ func TestDriverExecutesBrowseQueryWithoutReconstructingNativeSQLOrDatasource(t *
 		if len(actualParameters) != 1 || actualParameters["from"] != from {
 			return driver.BrowseQueryResult{}, fmt.Errorf("parameters=%#v", actualParameters)
 		}
-		return driver.BrowseQueryResult{Payload: executorRows{Count: returnedCount}}, nil
+		return driver.BrowseQueryResult{
+			Raw: queryresult.RawResult{
+				Columns: []string{"total_amount", "status", "ordered_at", "customer_id", "order_id"},
+				Rows: [][]any{
+					{3100.00, "READY", time.Date(2026, 8, 3, 11, 30, 0, 0, time.UTC), int64(12), int64(102)},
+					{2500.50, "OPEN", time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC), int64(11), int64(101)},
+				},
+			},
+			Payload: executorEvidence{Count: returnedCount},
+		}, nil
 	})
 
 	execution, err := resolver.ExecuteBrowseQuery(
@@ -91,9 +103,27 @@ func TestDriverExecutesBrowseQueryWithoutReconstructingNativeSQLOrDatasource(t *
 	if execution.Resolution.Datasource == nil || execution.Resolution.Datasource.TargetDatabase != "sales_core" {
 		t.Fatalf("Datasource resolution=%#v", execution.Resolution.Datasource)
 	}
-	rows, ok := execution.Result.Payload.(executorRows)
-	if !ok || rows.Count != returnedCount {
-		t.Fatalf("Query result=%#v", execution.Result.Payload)
+	evidence, ok := execution.Result.Payload.(executorEvidence)
+	if !ok || evidence.Count != returnedCount {
+		t.Fatalf("Query executor evidence=%#v", execution.Result.Payload)
+	}
+
+	wantAttributes := []core.CanonicalID{
+		"sales.order.order_id",
+		"sales.order.customer_id",
+		"sales.order.ordered_at",
+		"sales.order.status",
+		"sales.order.total",
+	}
+	gotAttributes := make([]core.CanonicalID, len(execution.Result.Mapped.Columns))
+	for i, column := range execution.Result.Mapped.Columns {
+		gotAttributes[i] = column.Attribute
+	}
+	if !reflect.DeepEqual(gotAttributes, wantAttributes) {
+		t.Fatalf("Semantic attributes=%#v want=%#v", gotAttributes, wantAttributes)
+	}
+	if got := execution.Result.Mapped.Rows[0]; !reflect.DeepEqual(got, []any{int64(102), int64(12), time.Date(2026, 8, 3, 11, 30, 0, 0, time.UTC), "READY", 3100.00}) {
+		t.Fatalf("mapped row=%#v", got)
 	}
 	if strings.Contains(fmt.Sprintf("%#v", execution), from.Format(time.RFC3339)) {
 		t.Fatalf("Driverの実行結果にQuery parameterを保持しています: %#v", execution)
@@ -121,6 +151,31 @@ func TestBrowseQueryExecutionKeepsExecutionFailureSeparateFromEmptyBusinessData(
 		)
 		if err == nil {
 			t.Fatalf("Executor障害が正常なQuery結果になっています: %#v", execution)
+		}
+	})
+
+	t.Run("mapping不整合を正常な空結果へ変換しない", func(t *testing.T) {
+		executor := browseQueryExecutorFunc(func(
+			context.Context,
+			query.EmbeddedSQL,
+			application.DatabaseRequirement,
+			map[string]any,
+		) (driver.BrowseQueryResult, error) {
+			return driver.BrowseQueryResult{
+				Raw: queryresult.RawResult{
+					Columns: []string{"order_id"},
+					Rows:    [][]any{{int64(101)}},
+				},
+			}, nil
+		})
+		if _, err := resolver.ExecuteBrowseQuery(
+			context.Background(),
+			"order_entry",
+			"order_entry.recent_orders",
+			executor,
+			nil,
+		); err == nil {
+			t.Fatal("不完全なraw resultを正常なSemantic resultとして扱っています")
 		}
 	})
 
