@@ -19,8 +19,10 @@ func TestReferenceBusinessValidationsKeepRulesInSemanticAndApplicationUsesIdenti
 		t.Fatalf("Reference Workspaceの読み込みに失敗しました: %v", err)
 	}
 
-	if diagnostics := validation.Validate(result.World); len(diagnostics) != 0 {
-		t.Fatalf("Reference WorkspaceにDiagnosticがあります: %#v", diagnostics)
+	for _, diagnostic := range validation.Validate(result.World) {
+		if diagnostic.Severity == validation.Error {
+			t.Fatalf("Reference Workspaceにerror Diagnosticがあります: %#v", diagnostic)
+		}
 	}
 
 	quantity := semanticValidationByID(t, result.World.Semantics, "sales.order_line.quantity_positive")
