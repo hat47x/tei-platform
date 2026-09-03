@@ -8,6 +8,9 @@
 - Relation traversal: `ISSUE-000017` / GitHub Issue #178
 - Database Contract Query: `ISSUE-000018` / GitHub Issue #179
 - Reference invocation: `ISSUE-000019` / GitHub Issue #185
+- Contract Query runtime instance identity: `ISSUE-000020` / GitHub Issue #222
+- Oracle Contract Query Runner: `ISSUE-000021` / GitHub Issue #224
+- external `master_data`物理Evidence: `ISSUE-000022` / GitHub Issue #214
 
 ## 背景
 
@@ -82,7 +85,14 @@ query find_by_id {
 }
 ```
 
-Database Contract Queryはinput / result / cardinalityを所有し、Database固有の実現方法とは分離します。Queryを実現する対象identity、専用の`contract-query-executor` Capability、Environment + Database instance + target + executorの明示Bindingも導入しました。
+Database Contract Queryはinput / result / cardinalityを所有し、Database固有の実現方法とは分離します。
+
+Queryを実現する対象identityには、ApplicationやCapabilityを流用せず、次の三つ組を使います。
+
+```text
+Database / Contract / Query
+master_data / master_data.customer / find_by_id
+```
 
 詳細は`ISSUE-000018`を正とします。
 
@@ -114,9 +124,35 @@ Database Contract Query
 
 三層は横断Validationされ、target attribute、Query input、Semantic型、result Data、cardinalityの不整合をauthoring段階で検出できます。
 
-runtimeでは、`browse`でmapping済みのsource rowからRelation keyと明示bindingだけを使ってContract Query parameterを構築できます。
+runtimeでは、`browse`でmapping済みのsource rowからRelation keyと明示bindingだけを使ってContract Query parameterを構築できます。詳細は`ISSUE-000019`を正とします。
 
-### Environment runtime composition
+### Contract Query SQL realizationとSemantic result mapping
+
+Reference invocationの次に必要だった、Database Contract Queryと物理Queryの間の境界も実装しています。
+
+```text
+ContractQueryTarget
+  Database / Contract / Query
+        ↓
+ContractQuerySQLRealization
+  ├─ provider
+  ├─ Contract input -> physical parameter
+  ├─ native SQL source
+  └─ raw result column -> Semantic attribute
+        ↓
+provider adapter / raw execution
+        ↓ explicit result mapping
+ContractQueryResult
+  └─ Semantic rows
+```
+
+Contract input名とphysical parameter名が同じ場合でも、対応を省略しません。raw列についても、列名の類似やSELECT順からSemantic attributeを推測しません。
+
+SQL realizationは通常Workspaceから読み込め、authoring sourceをSource Indexで追跡できます。Database Contract Query DiagnosticもContract内のQuery識別子へ投影できます。
+
+したがって、「Query realization sourceの仕組み」や「physical resultからSemantic rowへのmapping機構」は、現在の主要Gapではありません。第一Referenceの**実際の物理名・SQLが未観測であること**とは区別します。
+
+### Environment runtime compositionとinstance identity
 
 第一Referenceはlogical DatasourceからEnvironment上のDatabase instanceを解決し、明示Bindingを通してexecutor Capabilityとruntime実装へ接続できます。
 
@@ -130,43 +166,72 @@ development / master_data.dev
 master_data/master_data.customer/find_by_id
         ↓
 database.query.oracle
-        ↓ runtime registry
+        ↓ instance-aware runtime registry
 ContractQueryExecutor
 ```
 
 Environment、Database instance、executor、runtime implementationをprovider名や配置から推測しません。Binding authoring sourceはWorkspace Loaderから読み込まれ、Source Indexへ来歴を残します。
 
-## Driver入口の一本化
+当初runtime RegistryはCapability IDだけへ縮退していましたが、`ISSUE-000020`でEnvironment + Database instance + executor Capabilityをkeyとして保持する形へ変更しました。同じOracle providerと同じexecutor Capabilityを使う別Database instanceへfallbackしません。
+
+### Oracle `database/sql` Runner
+
+`ISSUE-000021`では、上位のSQL realizationが確定したnative SQLとphysical parameterを、注入済み`*sql.DB`へ渡すOracle向け最小Runnerを追加しています。
+
+Runner自身は、次を決めません。
+
+- table / view / column
+- Contract inputとphysical parameterの対応
+- raw columnとSemantic attributeの対応
+- Environment / Database instance
+- DSN / credential
+- Oracle driver library
+
+0 rowは正常なraw resultとして保持し、Query実行失敗やrow取得失敗はExecution Errorとして返します。runtime parameter値はEvidenceへ保存しません。
+
+### Driver入口の一本化
 
 旧`internal/applicationdriver`は、現在の`internal/driver`とPattern解決・Scenario組み立ての責務が重複していました。
 
-現行Driverへ必要な機能が集約されたため、互換wrapperを追加せず旧packageを削除し、Driver入口を`internal/driver`へ一本化します。今後、新しいScenario実装が旧入口へ分岐する状態を残しません。
+現行Driverへ必要な機能が集約されたため、互換wrapperを追加せず旧packageを削除し、Driver入口を`internal/driver`へ一本化しています。今後、新しいScenario実装を旧入口へ分岐させません。
 
 ## 現在の主要Gap
 
-### 1. Contract Query realization source
+### 1. external `master_data`の物理Evidence
 
-Reference invocationからexecutor Capabilityまでは明示的に解決できますが、`database.query.oracle`が利用する具体的なQuery realization sourceと、そのauthoring / provenance境界はまだ完了していません。
+第一Referenceの`master_data`は`external-observed`です。Repositoryには現在、`master_data.customer / find_by_id`について実際のtable / view / column、native SQL、physical parameter名、raw result列、provenanceがありません。
 
-次に必要なのは、SQLやDatabase APIをDriver Coreへ持ち込まず、Contract Query targetと物理的な実現sourceを明示的に対応付けることです。
+そのため、`CUSTOMER`や`CUSTOMER_ID`のような名前を仮定してReference実SQLを作りません。
 
-### 2. physical resultからSemantic rowへのmapping
+必要な物理Evidenceは`ISSUE-000022` / GitHub Issue #214で扱います。
 
-Contract Query Executorの結果境界はSemantic rowを受け取る形まで定義しています。実DBのphysical column / valueからSemantic rowへ変換する明示mappingを、実現層に追加する必要があります。
+### 2. read-onlyの実効的な保証と実Oracle integration
 
-列名や型からの推測は行いません。
+`find_by_id`という名称や、SQLが`SELECT`に見えることだけではread-onlyの保証としません。
+
+実際のcredential、session、transaction、Database権限等のどの境界が書込みを防ぐかをEvidenceで確認します。また、採用するOracle driverについてnamed parameter、型変換、NULL、raw column名、Error伝播を実接続で確認します。
+
+これらも`ISSUE-000022`の物理Evidenceと一緒に進めます。
 
 ### 3. `Order -> Customer` Referenceのend-to-end実証
 
-Workspace読込み、Relation key、Reference invocation、parameter準備、Environment composition、executor解決を、実read結果まで一続きに通します。
+Workspace読込み、Relation key、Reference invocation、parameter準備、Environment composition、instance-aware Registry、Oracle Runner、raw result mappingを、観測済み物理Evidenceを使った実readまで一続きに通します。
 
 0件は正常な「見つからない」、接続・Query実行失敗はExecution Errorとして区別します。`master_data`のread-only境界も維持します。
+
+このE2Eは新しい推測規則を追加する作業ではなく、既に確定した境界がexternal-observed資産でも成立することを確認するEvidenceです。
 
 ### 4. header-detail
 
 `sales.order.lines`は`many` Relationとして定義されていますが、現行`sales.order_line`には親Order identityに相当するSemantic attributeがありません。
 
 Driverを動かすためだけに物理Foreign KeyをSemanticへコピーせず、Reference業務意味として必要性を確認したうえでRelation keyを確定し、runtime traversalへ接続します。
+
+### 5. 最終Scenario統合
+
+Reference data accessが成立した後、Authentication、Canonical Validation、Authorization、Command、Observationまでを一つのUI-less Scenarioへ接続します。
+
+個別機能が存在するだけではGate B Readyとはせず、同じApplication定義から一続きに再現できることを確認します。
 
 ## 最小Scenario
 
@@ -187,16 +252,19 @@ Driverを動かすためだけに物理Foreign KeyをSemanticへコピーせず�
 
 ## 次の作業
 
-1. Contract Query realization sourceのidentityとauthoring境界を追加する
-2. `master_data.customer / find_by_id`へ具体的なrealization sourceを接続する
-3. physical resultからSemantic rowへの明示mappingを追加する
-4. realization sourceの来歴をSource Indexへ接続する
-5. `Order -> Customer` Referenceを実readまで一続きに実証する
+1. `ISSUE-000022`で`master_data.customer / find_by_id`の物理object、SQL、parameter、raw列、provenanceを確定する
+2. read-onlyを実効的に強制する境界をEvidenceで確認する
+3. 採用Oracle driverでnamed parameter等のintegrationを確認する
+4. 観測済みEvidenceから第一Referenceの実SQL realization authoringを追加する
+5. `Order -> Customer` ReferenceをWorkspace読込みから実read、Semantic resultまで一続きに実証する
 6. `sales.order.lines`のSemantic key要件をReferenceから確定する
 7. header-detailをruntime traversalへ接続する
 8. Canonical Validation / Authorization / Commandを一つのScenarioへ接続する
 9. Scenario EvidenceをRepositoryだけから再現できる形へ整える
-10. Gate Bを監査する
+10. CIが明示的に再有効化された後、関連Conformanceを通常runnerで再検証する
+11. Gate Bを監査する
+
+物理Evidenceが揃う前に手順4以降の実Oracle SQLを仮定しません。
 
 ## Gate Bへ進む条件
 
@@ -211,7 +279,8 @@ Driverのコードが存在するだけではGate B Readyとはみなしませ�
 - Relation keyからQuery inputへのbindingを明示できる
 - Query 0件とQuery Execution Errorを混同しない
 - logical Datasource aliasとEnvironment上のinstance境界を保持する
-- `master_data`へwriteしない
+- runtime Executorが別Database instanceへfallbackしない
+- `master_data`へwriteしないことを実効的な境界で保証する
 - Validation不成立時にcommandへ進まない
 - Authorization `denied`時にcommandへ進まない
 - expectedなNamed OutcomeをDriver障害として扱わない
@@ -221,6 +290,14 @@ Driverのコードが存在するだけではGate B Readyとはみなしませ�
 - Driver固有状態をCanonical Worldへ逆流させない
 - 同じApplication上の意味を第一Web Targetへ渡せる
 - Reference ScenarioをRepositoryだけから再現できる
+
+## CIの扱い
+
+2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、Reference data access収束線にもその停止が取り込まれています。
+
+現在workflow runが作成されないことを、Issue #192で記録した過去の`runner_id=0 / steps=[]`事象の継続と同一視しません。一方、CI未実行の成果をgreenとも扱いません。
+
+このApplication Driver作業線から独断でActionsを再有効化せず、別の明示的な判断でCIが再開された後、Gate B監査前に関連Conformanceを通常runnerで再実行します。
 
 ## 非目標
 
@@ -236,6 +313,7 @@ Driverのコードが存在するだけではGate B Readyとはみなしませ�
 - Runtime上の汎用implementation選択機構
 - DB固有placeholder処理をDriver Coreへ固定すること
 - 未定義のQuery / Relation / BindingをDriverが推測すること
+- 観測されていないexternal Databaseの物理情報をDriverが補完すること
 
 ## 関連
 
@@ -245,6 +323,9 @@ Driverのコードが存在するだけではGate B Readyとはみなしませ�
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000018-database-contract-query-execution.md`
 - `plan/issue/000019-reference-contract-query-invocation.md`
-- GitHub Issue #69 / #77 / #124 / #167 / #178 / #179 / #185
+- `plan/issue/000020-contract-query-runtime-instance-identity.md`
+- `plan/issue/000021-oracle-contract-query-sql-runner.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
+- GitHub Issue #69 / #77 / #124 / #167 / #178 / #179 / #185 / #192 / #214 / #222 / #224
 - ADR-0019 / ADR-0020
 - RQ-005 / RQ-008 / RQ-009 / RQ-011 / RQ-012 / RQ-014 / RQ-017 / RQ-018 / RQ-021
