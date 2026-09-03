@@ -59,6 +59,19 @@ func contractQueryEnvironmentWorld() (world ir.World) {
 	return world
 }
 
+func contractQueryExecutorRegistry(
+	instanceID core.CanonicalID,
+	executor driver.ContractQueryExecutor,
+) driver.ContractQueryExecutorMap {
+	return driver.ContractQueryExecutorMap{
+		{
+			Environment: "development",
+			Instance:    instanceID,
+			Capability:  "database.query.oracle",
+		}: executor,
+	}
+}
+
 func TestExecuteReferenceContractQueryInEnvironmentUsesOnlyExplicitComposition(t *testing.T) {
 	world := contractQueryEnvironmentWorld()
 	executor := &recordingContractQueryExecutor{
@@ -70,9 +83,7 @@ func TestExecuteReferenceContractQueryInEnvironmentUsesOnlyExplicitComposition(t
 			},
 		},
 	}
-	registry := driver.ContractQueryExecutorMap{
-		"database.query.oracle": executor,
-	}
+	registry := contractQueryExecutorRegistry("master_data.dev", executor)
 
 	result, err := driver.NewResolver(world).ExecuteReferenceContractQueryInEnvironment(
 		context.Background(),
@@ -118,7 +129,7 @@ func TestExecuteReferenceContractQueryInEnvironmentDoesNotInferDatabaseInstance(
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": executor},
+		contractQueryExecutorRegistry("master_data.dev", executor),
 	)
 	if err == nil || !strings.Contains(err.Error(), "Database instance Bindingがありません") {
 		t.Fatalf("Database definitionやproviderからinstanceを暗黙選択しています: %v", err)
@@ -137,7 +148,7 @@ func TestExecuteReferenceContractQueryInEnvironmentDoesNotInferExecutorFromProvi
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": executor},
+		contractQueryExecutorRegistry("master_data.dev", executor),
 	)
 	if err == nil || !strings.Contains(err.Error(), "executor Bindingがありません") {
 		t.Fatalf("Oracle providerやRegistryからexecutorを暗黙選択しています: %v", err)
@@ -156,8 +167,34 @@ func TestExecuteReferenceContractQueryInEnvironmentRequiresRuntimeExecutorRegist
 		0,
 		driver.ContractQueryExecutorMap{},
 	)
-	if err == nil || !strings.Contains(err.Error(), "runtime ExecutorがRegistryにありません") {
-		t.Fatalf("未登録executor Capabilityを別実装へfallbackしています: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "master_data.dev") || !strings.Contains(err.Error(), "runtime ExecutorがRegistryにありません") {
+		t.Fatalf("未登録のDatabase instance向けruntime Executorを別実装へfallbackしています: %v", err)
+	}
+}
+
+func TestExecuteReferenceContractQueryInEnvironmentDoesNotFallbackAcrossDatabaseInstances(t *testing.T) {
+	world := contractQueryEnvironmentWorld()
+	world.Environments[0].Instances = append(
+		world.Environments[0].Instances,
+		environment.DatabaseInstance{ID: "master_data.shadow", Definition: "master_data", Provider: environment.ProviderOracle},
+	)
+	wrongExecutor := &recordingContractQueryExecutor{}
+	registry := contractQueryExecutorRegistry("master_data.shadow", wrongExecutor)
+
+	_, err := driver.NewResolver(world).ExecuteReferenceContractQueryInEnvironment(
+		context.Background(),
+		"development",
+		"order_entry",
+		"order_entry.customer_reference",
+		customerMappedResult(),
+		0,
+		registry,
+	)
+	if err == nil || !strings.Contains(err.Error(), "master_data.dev") || !strings.Contains(err.Error(), "runtime ExecutorがRegistryにありません") {
+		t.Fatalf("同じCapabilityを持つ別Database instanceのruntime Executorへfallbackしています: %v", err)
+	}
+	if wrongExecutor.target.Valid() {
+		t.Fatalf("別Database instance向けruntime Executorを呼び出しています: %#v", wrongExecutor.target)
 	}
 }
 
@@ -172,7 +209,7 @@ func TestExecuteReferenceContractQueryInEnvironmentRejectsBindingFromAnotherEnvi
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": &recordingContractQueryExecutor{}},
+		contractQueryExecutorRegistry("master_data.dev", &recordingContractQueryExecutor{}),
 	)
 	if err == nil || !strings.Contains(err.Error(), "Environment development") || !strings.Contains(err.Error(), "executor Bindingがありません") {
 		t.Fatalf("別Environmentのexecutor Bindingを流用しています: %v", err)
@@ -189,7 +226,7 @@ func TestExecuteReferenceContractQueryInEnvironmentRejectsUnknownEnvironment(t *
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": &recordingContractQueryExecutor{}},
+		contractQueryExecutorRegistry("master_data.dev", &recordingContractQueryExecutor{}),
 	)
 	if err == nil || !strings.Contains(err.Error(), "Environment productionが見つかりません") {
 		t.Fatalf("存在しないEnvironmentを暗黙補完しています: %v", err)
