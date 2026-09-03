@@ -48,7 +48,7 @@ func TestExecuteReferenceContractQueryInEnvironmentRejectsRuntimeExecutorProvide
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": executor},
+		contractQueryExecutorRegistry("master_data.dev", executor),
 	)
 	if err == nil || !strings.Contains(err.Error(), "runtime Executor provider postgres") || !strings.Contains(err.Error(), "Database instance master_data.devのprovider oracle") {
 		t.Fatalf("Capability IDに誤登録された別providerのruntime Executorを実行しています: %v", err)
@@ -69,7 +69,7 @@ func TestExecuteReferenceContractQueryInEnvironmentAcceptsMatchingRuntimeExecuto
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": executor},
+		contractQueryExecutorRegistry("master_data.dev", executor),
 	)
 	if err != nil {
 		t.Fatalf("Database instanceと同じproviderのruntime Executorを実行できません: %v", err)
@@ -93,7 +93,7 @@ func TestExecuteReferenceContractQueryInEnvironmentRejectsGenericRuntimeExecutor
 		"order_entry.customer_reference",
 		customerMappedResult(),
 		0,
-		driver.ContractQueryExecutorMap{"database.query.oracle": executor},
+		contractQueryExecutorRegistry("master_data.dev", executor),
 	)
 	if err == nil || !strings.Contains(err.Error(), "provider \"generic\"は実行に使用できません") {
 		t.Fatalf("具体providerを持たないprovider-bound Executorを実行しています: %v", err)
