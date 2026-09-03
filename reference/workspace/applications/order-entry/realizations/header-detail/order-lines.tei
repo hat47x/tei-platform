@@ -1,0 +1,9 @@
+header-detail-contract-query-binding {
+    application order_entry
+    pattern order_entry.order_lines
+    datasource sales
+    database sales_core
+    contract sales_core.order_line
+    query find_by_order
+    input sales.order.order_id to order_id
+}

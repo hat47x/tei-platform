@@ -8,6 +8,7 @@ application order_entry {
         access read-write
         requires {
             contract sales_core.order ^4
+            contract sales_core.order_line ^1
         }
     }
 
