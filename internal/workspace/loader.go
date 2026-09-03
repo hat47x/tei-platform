@@ -391,7 +391,11 @@ func loadDatabases(root string, r *Result) error {
 				return sourceErr(cpath, err)
 			}
 			d.Contracts = append(d.Contracts, c)
-			r.Sources["database-contract:"+string(c.ID)] = SourceLocation{File: relPath(root, cpath), Line: 1, Column: 1}
+			contractSource := SourceLocation{File: relPath(root, cpath), Line: 1, Column: 1}
+			r.Sources["database-contract:"+string(c.ID)] = contractSource
+			for _, query := range c.Queries {
+				r.Sources["database-contract-query:"+string(c.ID)+"/"+string(query.Name)] = contractSource
+			}
 		}
 		persistenceFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
 		for _, ppath := range persistenceFiles {
