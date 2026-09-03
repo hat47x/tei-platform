@@ -103,6 +103,25 @@ func (r Resolver) ExecuteReferenceContractQueryInEnvironment(
 			executorID,
 		)
 	}
+	if providerBound, ok := executor.(DatabaseProviderBoundContractQueryExecutor); ok {
+		runtimeProvider := providerBound.DatabaseProvider()
+		if !runtimeProvider.Known() || runtimeProvider == environment.ProviderGeneric {
+			return ReferenceContractQueryEnvironmentExecution{}, fmt.Errorf(
+				"Contract Query executor Capability %sに登録されたruntime ExecutorのDatabase provider %qは実行に使用できません",
+				executorID,
+				runtimeProvider,
+			)
+		}
+		if runtimeProvider != selected.Instance.Provider {
+			return ReferenceContractQueryEnvironmentExecution{}, fmt.Errorf(
+				"Contract Query executor Capability %sのruntime Executor provider %sとDatabase instance %sのprovider %sが一致しません",
+				executorID,
+				runtimeProvider,
+				selected.Instance.ID,
+				selected.Instance.Provider,
+			)
+		}
+	}
 
 	execution, err := r.ExecuteReferenceContractQuery(ctx, applicationID, patternID, source, rowIndex, executor)
 	if err != nil {
