@@ -61,13 +61,12 @@ func TestReferenceContractQueryEnvironmentCompositionReachesSQLRunnerWithoutInfe
 			Payload: "synthetic-reference-evidence",
 		},
 	}
-	registry := driver.ContractQueryExecutorMap{
-		"database.query.oracle": sqlquery.Executor{
-			Provider:     environment.ProviderOracle,
-			Realizations: world.ContractQuerySQLRealizations,
-			Runner:       runner,
-		},
+	executor := sqlquery.Executor{
+		Provider:     environment.ProviderOracle,
+		Realizations: world.ContractQuerySQLRealizations,
+		Runner:       runner,
 	}
+	registry := contractQueryExecutorRegistry("master_data.dev", executor)
 
 	result, err := driver.NewResolver(world).ExecuteReferenceContractQueryInEnvironment(
 		context.Background(),
@@ -109,13 +108,12 @@ func TestReferenceContractQueryEnvironmentCompositionKeepsZeroRowsAsNormalNotFou
 			},
 		},
 	}
-	registry := driver.ContractQueryExecutorMap{
-		"database.query.oracle": sqlquery.Executor{
-			Provider:     environment.ProviderOracle,
-			Realizations: world.ContractQuerySQLRealizations,
-			Runner:       runner,
-		},
+	executor := sqlquery.Executor{
+		Provider:     environment.ProviderOracle,
+		Realizations: world.ContractQuerySQLRealizations,
+		Runner:       runner,
 	}
+	registry := contractQueryExecutorRegistry("master_data.dev", executor)
 
 	result, err := driver.NewResolver(world).ExecuteReferenceContractQueryInEnvironment(
 		context.Background(),
