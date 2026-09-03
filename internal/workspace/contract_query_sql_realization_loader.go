@@ -11,12 +11,18 @@ import (
 	"tei/internal/syntax"
 )
 
-// loadContractQuerySQLRealizationsは、Database配下の独立authoring sourceから
-// Contract Query SQL realizationをCanonical Worldへ読み込む。
+// loadContractQuerySQLRealizationsは、loadDatabases後に実行されるDatabase補助authoringの読み込み段階で、
+// Relation Storageを既存Persistence Mappingへ合流したうえでContract Query SQL realizationを読み込む。
 //
+// Relation Storageの処理自体は専用loaderへ分離する。ここから委譲するのは、巨大なloader.goへ
+// 新しいdispatchを埋め込まず、Database本体を読み終えた後という既存の順序を保つためである。
 // Databaseディレクトリ名やfile名は整理上の配置であり、target identityの補完には使わない。
 // 外部native SQL fileはauthoring sourceと分離し、implementation contributionとして追跡する。
 func loadContractQuerySQLRealizations(root string, r *Result) error {
+	if err := loadRelationStorageAuthorings(root, r); err != nil {
+		return err
+	}
+
 	files, err := globSorted(filepath.Join(root, "databases", "*", "query-realizations", "*.tei"))
 	if err != nil {
 		return err
