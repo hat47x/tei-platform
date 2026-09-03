@@ -35,6 +35,11 @@ func RealizeDesired(mappings []Mapping, databaseID string, policy PhysicalRealiz
 			}
 			t.Columns = append(t.Columns, physical.Column{Name: c.Column, PhysicalType: pt, Nullable: c.Nullability == Optional, Ordinal: i + 1})
 		}
+		relationColumns, err := realizeRelationStorageColumns(m, len(t.Columns), policy)
+		if err != nil {
+			return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s relation storage: %w", m.ID, err)
+		}
+		t.Columns = append(t.Columns, relationColumns...)
 		for _, attr := range m.PrimaryKey {
 			name, ok := columnByAttribute[attr]
 			if !ok {
