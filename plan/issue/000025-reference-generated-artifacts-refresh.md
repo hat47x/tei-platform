@@ -111,7 +111,11 @@ reference/workspace/.tei/plugin-lock.json
 
 ### World / Plugin Lockに依存するReference artifact
 
-少なくとも次のDurable Runは`pluginLockFingerprint`を保持しているため、Plugin Lock更新後の再生成対象候補です。
+`reference/`直下とその固定fixtureを監査しました。
+
+#### Durable Run
+
+次のDurable Runは`pluginLockFingerprint`を保持しているため、Plugin Lock更新後の再生成対象候補です。
 
 ```text
 reference/order_rollout.durable-run.m0.21.start.json
@@ -119,7 +123,30 @@ reference/order_rollout.durable-run.m0.21.start.json
 
 このファイルはReference Workspace、observed state、Plugin Lockから`tei deployment-start`で再生成できます。Plugin Lock fingerprintが変わった場合は、保存済みfingerprintを人手で置換せず、正規`deployment-start`経路から更新します。
 
-Deployment Evidence、Source Index snapshot等についても、Canonical WorldまたはPlugin Lockのfingerprintを保存するReference artifactがほかにないか引き続き監査します。
+#### observed state
+
+次の2ファイルは、特定時点の外部状態を表す固定fixtureです。
+
+```text
+reference/observed/production.deployment-state.json
+reference/observed/production.canary.deployment-state.json
+```
+
+いずれもWorld / Plugin Lock fingerprintを保持していません。Canonical Workspaceが変わったという理由だけで生成・更新する対象にはしません。
+
+#### legacy-auth fixture
+
+次の3ファイルも、legacy Authentication / Authorization境界を再現する固定fixtureです。
+
+```text
+reference/legacy-auth/authenticate-function.json
+reference/legacy-auth/authorization.json
+reference/legacy-auth/users.json
+```
+
+これらもWorld / Plugin Lock fingerprintを保持せず、今回のCanonical Workspace変更から導出される生成物ではありません。
+
+以上から、現在Repositoryへ保存されているReference artifactのうち、World / Plugin Lock更新に連動して再生成要否を確認すべきものは、`world.json`、Plugin Lock、Durable Runです。observed / legacy-auth fixtureは今回の再生成対象から除外します。
 
 ### PostgreSQL integrationの期待値
 
@@ -151,9 +178,8 @@ TEI_TEST_POSTGRES_DSN=postgres://tei:tei-reference-password@127.0.0.1:5432/tei_r
 6. Plugin Lock fingerprint差分を確認する
 7. 正規生成したWorld / Plugin LockをRepositoryへ反映する
 8. Plugin Lock fingerprintに依存するDurable Runを正規`deployment-start`経路から再生成する必要があるか確認し、必要なら更新する
-9. World / Plugin Lockに依存する他のReference artifactを引き続き洗い出す
-10. `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで実行する
-11. CIが明示的に再有効化された後、通常runnerで再現性検査を行う
+9. `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで実行する
+10. CIが明示的に再有効化された後、通常runnerで再現性検査を行う
 
 ## 完了条件
 
@@ -164,7 +190,7 @@ TEI_TEST_POSTGRES_DSN=postgres://tei:tei-reference-password@127.0.0.1:5432/tei_r
 - [ ] `reference/workspace/.tei/plugin-lock.json`を正規生成経路から再生成した
 - [ ] Plugin Lock fingerprint差分を説明できる
 - [x] Plugin Lock fingerprintを保持するDurable Runを依存artifactとして特定した
-- [ ] World / Plugin Lockに依存する他のReference artifactを洗い出した
+- [x] World / Plugin Lockに依存する他のReference artifactを洗い出した
 - [ ] 必要なReference artifactを手編集せず正規生成経路から更新した
 - [x] `tools/reference-postgres-integration`の既存期待値がOrderLine追加だけでは変わらないことを確認した
 - [ ] `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで成功させた
@@ -180,12 +206,17 @@ TEI_TEST_POSTGRES_DSN=postgres://tei:tei-reference-password@127.0.0.1:5432/tei_r
 ## 関連
 
 - GitHub Issue #69 / #192 / #244 / #255
-- GitHub PR #251 / #253 / #257 / #262
+- GitHub PR #251 / #253 / #257 / #262 / #263
 - `tools/reference-golden`
 - `reference/README.md`
 - `reference/world.json`
 - `reference/workspace/.tei/plugin-lock.json`
 - `reference/order_rollout.durable-run.m0.21.start.json`
+- `reference/observed/production.deployment-state.json`
+- `reference/observed/production.canary.deployment-state.json`
+- `reference/legacy-auth/authenticate-function.json`
+- `reference/legacy-auth/authorization.json`
+- `reference/legacy-auth/users.json`
 - `reference/workspace/plugins/tei-database-postgres/1.0.0/plugin.tei`
 - `reference/workspace/databases/sales-core/persistence/order-line.tei`
 - `reference/workspace/databases/sales-core/relation-storage/order-line.tei`
