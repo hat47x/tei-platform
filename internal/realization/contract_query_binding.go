@@ -20,6 +20,13 @@ type ContractQueryExecutorBinding struct {
 	Executor    core.CanonicalID    `json:"executor"`
 }
 
+// Identityは、Bindingの選択対象を一意に示す安定identityを返す。
+// executor Capability自体は選択結果なのでidentityへ含めず、同じEnvironment / instance / targetへ
+// 複数executorを宣言した場合は同一Bindingの競合として検出できるようにする。
+func (b ContractQueryExecutorBinding) Identity() string {
+	return string(b.Environment) + "/" + string(b.Instance) + "/" + b.Target.Identity()
+}
+
 // ResolvedContractQueryExecutorは、実行時に利用するDatabase instanceと
 // Plugin Capabilityが明示Bindingから一意に解決できた結果を表す。
 type ResolvedContractQueryExecutor struct {
