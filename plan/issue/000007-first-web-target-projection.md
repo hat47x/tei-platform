@@ -105,6 +105,30 @@ Web固有の実装はCoreへ入れず、独立したAdapter / Packageとして�
 
 frameworkの選定結果をPresentation上の意味の一部にはしません。
 
+### 2026-09-03 Wails v3調査から得た検証観点
+
+Wails v3の現行ドキュメントでは、Desktopに加えてiOS / Androidでも同じ`main.go`、Go backend、frontendを共有する構成が示されています。Mobile固有Capabilityはplatform checkやbuild条件で分離し、共通のservice bindingやeventは同じapplication modelから利用できます。
+
+またServer Buildでは、同じservice bindingとevent modelを利用しながら、native window、system tray、native dialog等のCapabilityが存在しないTargetとして実行できます。
+
+この構造は、TEIのRQ-013で想定する「同じ上位設計をTargetへProjectionし、Target差をCapabilityとして明示する」考え方を検証する材料になります。ただし、WailsのAPIや構成をTEIのCanonicalなPresentation意味へ持ち上げる根拠にはしません。
+
+第一Web Target以降では、少なくとも次の比較をEvidenceとして残します。
+
+- 同じApplication上の意図が、Web / Desktop相当 / Mobile相当でどこまで共通に保てるか
+- window、dialog、tray、touch、hardware等、Targetによって存在しないCapabilityをどの層で検出するか
+- Capabilityが存在しない場合を、Application意味の欠落ではなくTarget上の制約として表現できるか
+- Target Adapterを交換してもCanonical WorldやApplication Patternが変化しないか
+- Serverのようにtransportとtrust boundaryが変わるTargetを、Presentation差だけでなくRuntime Binding上の差として扱えるか
+
+Wails v3は2026年9月時点でv3系列が継続的に更新されており、MobileやLLM Controlなど一部機能には実験的な位置づけも残ります。そのため、現時点ではWailsをTarget-neutral設計の前提にはせず、**有力なAdapter / Host候補かつ圧力試験対象**として扱います。
+
+参考:
+
+- Wails v3 Mobile Overview: https://v3.wails.io/guides/mobile/
+- Wails v3 Server Build: https://v3.wails.io/guides/server-build/
+- Wails v3 Changelog: https://v3.wails.io/changelog/
+
 ## Interaction
 
 Web Targetでは、表示だけでなく次の操作をDriverと同じ意味へ接続します。
