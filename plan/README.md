@@ -10,6 +10,7 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
+- [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md): 技術リサーチを既存Requirement / Gate / ADRへ変換する統合方針
 - [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の現在地
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
@@ -62,6 +63,24 @@ header-detail
 `header-detail`の前提となる`sales.OrderLine`と`Order 1:N OrderLine`は[`ISSUE-000011`](issue/000011-order-line-semantic-reference.md)でSemanticとして独立して追加し、[`ISSUE-000012`](issue/000012-header-detail-application-pattern.md)でRelation-onlyのApplication Patternとして実証しました。
 
 Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙生成していません。Application PatternもWebの画面テンプレートへ固定していません。
+
+## 技術リサーチから追加した横断境界
+
+2026年9月の技術リサーチでは、AI支援、UI生成評価、Wails v3等をそのまま採用技術一覧へ追加するのではなく、次の横断境界へ変換して計画へ取り込みます。
+
+- AI出力はProposal / Structured Intent candidateとし、Canonical authorityから分離する
+- Editor / CLI / AI等を共通Acceptance Boundaryへ収束させる
+- AIのautonomyとwrite / invoke / Resource authorityを分離する
+- 過去の成功trajectory等はDerived Experience Knowledgeとして扱い、第二の正本にしない
+- Target CapabilityとExecution / Trust Profileを分離して第二Targetで検証する
+- Target ConformanceをSemantic / Functional / Visual Evidenceへ分ける
+- HostのMCP / control面とApplication自身のMCP Targetを区別する
+
+設計判断は[`ADR-0022`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)、AIの実証は[`ISSUE-000027`](issue/000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267、第二Targetの境界検証は[`ISSUE-000026`](issue/000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で扱います。
+
+`ISSUE-000026`は、main側で先行して`000020`として起票されていたTarget境界Issueと、実装収束branchで既に利用されていた別の`ISSUE-000020`の番号衝突を避けるため、Repository内IDを付け直したものです。
+
+詳細なAI interfaceやTarget Capability taxonomyはGate C前に固定しません。
 
 ## 現在のGate A
 
@@ -127,6 +146,9 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 - ADR-0018: Application Patternの正本とfile pathからのidentity分離
 - ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
 - ADR-0020: Capabilityの業務OutcomeをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
+- ADR-0022: AI ProposalをCanonical authorityから分離し、共通Acceptance Boundaryを通す判断
+
+ADR-0021は実装収束branch側で成立済みのため、番号を再利用しません。
 
 ## Issue文書
 
