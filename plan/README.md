@@ -10,7 +10,8 @@
 - [`MILESTONES.md`](MILESTONES.md): 期限を置かないCapability MilestoneとVersion Horizon
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
-- [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の現在地
+- [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md): 技術リサーチを既存Requirement / Gate / ADRへ変換する統合方針
+- [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の監査結果
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1設計
@@ -24,26 +25,22 @@
 ```text
 Application Pattern Stage 1   完了
             ↓
-        Gate A監査
-            │
-            ├─ #68   既存認証Compatibility
-            ├─ #77   Capability Outcome / Execution Error
-            └─ #125  業務Validation
-            │
-            │  #126 Capability Binding は完了
+        Gate A                 Ready
             ↓
-       Gate A再監査
+    Application Driver         In Progress
             ↓
-    Application Driver
+        Gate B
             ↓
       第一Web Target
+            ↓
+        Gate C
             ↓
        Editor / AI支援
             ↓
 第二Targetで境界を圧力試験
 ```
 
-Application Pattern側のStage 1実証は完了しました。
+Application Pattern側のStage 1実証は完了し、Gate Aで必要だった既存認証Compatibility、Capability Outcome / Execution Error、業務Validation、Capability BindingはReferenceへ合流しました。
 
 `order_entry`では、候補としていた次の5種類が実Referenceまで成立しています。
 
@@ -63,48 +60,25 @@ header-detail
 
 Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙生成していません。Application PatternもWebの画面テンプレートへ固定していません。
 
-## 現在のGate A
+現在は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69で、Gate Aの意味をUIなしで一続きに実行するApplication Driverを進めています。個々のPRの進捗ではなく、RepositoryのReference / ConformanceからGate B条件を再現できるかで次段階を判断します。
 
-Gate Aでは、Application PatternのEvidenceに、認証・認可、業務Validation、Capabilityの結果境界、Capability Bindingを合流させます。
+## 技術リサーチから追加した横断境界
 
-[`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md)で項目ごとに評価した結果、現在もGate A全体はBlockedです。ただし、残条件は4つから3つへ減りました。
+2026年9月の技術リサーチでは、AI支援、UI生成評価、Wails v3等をそのまま採用技術一覧へ追加するのではなく、次の横断境界へ変換して計画へ取り込みます。
 
-### Readyになったもの
+- AI出力はProposal / Structured Intent candidateとし、Canonical authorityから分離する
+- Editor / CLI / AI等を共通Acceptance Boundaryへ収束させる
+- AIのautonomyとwrite / invoke / Resource authorityを分離する
+- 過去の成功trajectory等はDerived Experience Knowledgeとして扱い、第二の正本にしない
+- Target CapabilityとExecution / Trust Profileを分離して第二Targetで検証する
+- Target ConformanceをSemantic / Functional / Visual Evidenceへ分ける
+- HostのMCP / control面とApplication自身のMCP Targetを区別する
 
-- 5種類のApplication Pattern
-- `sales` read-write / `master` readのDatasource境界
-- `sales.order.submit`の既存単一`output`
-- Command / Observation分離の基本境界
-- `sales.order.submit`の明示的なCapability Binding
+設計判断は[`ADR-0022`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)、AIの実証は[`ISSUE-000027`](issue/000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267、第二Targetの境界検証は[`ISSUE-000026`](issue/000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で扱います。
 
-Capability Bindingは[`ISSUE-000015`](issue/000015-submit-capability-binding-reference.md) / GitHub Issue #126 / PR #135で実証済みです。
+`ISSUE-000026`は、main側で先行して`000020`として起票されていたTarget境界Issueと、実装収束branchで既に利用されていた別の`ISSUE-000020`の番号衝突を避けるため、Repository内IDを付け直したものです。
 
-Driver相当の利用側はApplication + CapabilityからBindingを明示的に解決でき、file path、Go hook、列挙順からimplementationを推測する必要がありません。
-
-### 残るGate A条件
-
-1. **既存認証Compatibility — #68**
-   - 既存schemaや認証条件を標準User schemaへ作り替えず、Authentication / Authorization Capabilityへ接続するReferenceが必要です。
-2. **Capability Outcome / Execution Error — #77**
-   - PR #132で名前付きOutcomeのCanonical model / Parser / Validation / Normalizationまでは実装済みです。
-   - 次は実ReferenceとInvocation境界で、expected denialをBusiness Resultとして扱い、Execution Errorと混同しないことを確認します。
-3. **業務Validation — #125**
-   - Pattern定義の構文・参照整合性Validationとは別に、業務ruleの正本とidentityをReference化します。
-   - 最初の候補は`OrderLine.quantity > 0`と、一つのOrder内での`lineNumber`一意です。
-
-既存認証Compatibilityは[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) / `ISSUE-000003` / GitHub Issue #68で進めます。
-
-Capabilityの業務上の結果と実行エラーの区別は、[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) / [`ISSUE-000009`](issue/000009-capability-outcome-and-execution-error.md) / ADR-0020を共通境界として利用します。
-
-業務Validationは[`ISSUE-000014`](issue/000014-business-validation-reference.md) / GitHub Issue #125で実証します。
-
-Gate AをEvidenceで通過した後、[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69のApplication Driverへ進みます。
-
-個々のIssueがcloseしたことだけでは次の段階へ進みません。Driverへ必要な意味をRepositoryのReference / Conformanceから再現できることを条件にします。
-
-[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)では、Application上の意味をDriverへ渡せること、UIなしで主要シナリオを再現できること、第一Web Targetから共通意味とWeb固有差を分離できることをEvidence Gateとして定めています。
-
-このGateによって、WebやEditorの実装都合から上位の意味モデルを先回りして固定することを避けます。
+詳細なAI interfaceやTarget Capability taxonomyはGate C前に固定しません。
 
 ## ADR
 
@@ -127,6 +101,9 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 - ADR-0018: Application Patternの正本とfile pathからのidentity分離
 - ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
 - ADR-0020: Capabilityの業務OutcomeをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
+- ADR-0022: AI ProposalをCanonical authorityから分離し、共通Acceptance Boundaryを通す判断
+
+ADR-0021は実装収束branch側で成立済みのため、番号を再利用しません。
 
 ## Issue文書
 
