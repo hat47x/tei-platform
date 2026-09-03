@@ -78,6 +78,34 @@ go run ./cmd/tei source-index \
 
 M0.23で直接検証している不変条件と実装・テストの対応は、[Source-to-Canonical TraceabilityのConformance](conformance/source-traceability-m0.23.md) に整理しています。
 
+## Authoring candidate / Acceptance Boundary
+
+Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する経路をそれぞれ独立したauthorityとして増やしません。
+
+AIを含む非決定的な支援の出力は、Canonical Worldへ直接書き込まず、受理前のProposal / Structured Intent candidateとして扱います。
+
+```text
+file / CLI / Editor / AI
+          ↓
+  authoring candidate
+          ↓
+ Shared Acceptance Boundary
+          ↓
+ authoritative source
+          ↓ reload
+   Canonical World
+```
+
+Acceptance Boundaryでは、変更種類に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、acceptance policy、reload / conformance等を決定論的に組み合わせます。
+
+すべてを一つの固定processやAPIへ押し込むことは要求しません。一方、AI経路やEditor経路だけがValidation / Conformanceを迂回することは認めません。
+
+interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
+
+AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
+
+この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置き、Gate C後の実証は[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)で行います。
+
 ## Semantic kernel
 
 Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
@@ -118,6 +146,45 @@ SQLは「低級だから隠す」対象ではなく、正式なauthoring front-e
 SQL-authored queryではSQLがauthoring source of truthで、Query IRはderivedです。Graph-authored queryでは逆にIRをcanonicalにしてSQLをprojectionにできます。二つのsource of truthを同時に要求しません。
 
 M0.23ではQuery declarationからnative `.sql`を参照できます。Workspace loaderはSQL本文を既存Query modelへ渡しますが、physical `.sql` pathはCanonical QueryやAnalyzer protocolへ混ぜません。Query declarationは`definition`、SQL fileは同一Query Subjectの`authoring` sourceとしてSource Indexから追跡します。
+
+## Target / Host boundary
+
+ApplicationのPresentation / InteractionをTargetへProjectionするとき、Target差を一つのframework差へまとめません。
+
+少なくとも次の二軸をReferenceから検証します。
+
+```text
+Canonical Application
+        ↓
+Presentation / Interaction
+        ↓
+Target Adapter
+  ├─ Target Capability
+  │    window / dialog / touch / notification / ...
+  └─ Runtime Binding
+        ↓
+Host / Execution
+  └─ Execution / Trust Profile
+       local / network / transport / origin / session / resource / ...
+```
+
+**Target Capability**は、そのTarget / Hostで利用できる入出力・interaction・device機能です。
+
+**Execution / Trust Profile**は、local / network、transport、identity / session、authorization、Resource、secret、lifecycle等、実行環境と信頼境界の性質です。
+
+この二つを分離すべき範囲は、第一Web Targetと第二Targetの差から確定します。現時点で完全なtaxonomyをCoreへ固定しません。
+
+Go + Wails/WebViewはEditor / Hostの有力な実装候補ですが、Wailsのplatform APIをCanonical Presentationへ写しません。Wails等が提供するMCP / control interfaceも、Hostのinspection / development control面と、Application自身がMCPを業務Targetとして公開する場合を区別します。
+
+Target Conformanceでは、少なくとも次を別のEvidenceとして扱います。
+
+1. Semantic Conformance
+2. Interaction / Functional Evidence
+3. Visual Fidelity Evidence
+
+Visual evaluator、GUI agent、VLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
+
+第二Targetでの圧力試験は[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)で扱います。
 
 ## Deployment
 
