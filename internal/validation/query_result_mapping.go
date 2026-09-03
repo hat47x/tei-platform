@@ -6,12 +6,12 @@ import (
 	"tei/internal/subject"
 )
 
-// validateQueryResultMappingsは、Query authorが明示したresult column mappingの
-// Semantic参照がWorkspace全体で解決できることを確認する。
+// validateApplicationQueryResultMappingsは、Application Queryのauthoringで明示した
+// result column mappingについて、Semantic参照がWorkspace全体で解決できることを確認する。
 //
 // raw column labelとSemantic attributeの対応そのものはQueryが所有する。
 // ここでは列名やPersistence Mappingから意味を推測せず、明示されたCanonical IDの存在だけを検査する。
-func validateQueryResultMappings(w ir.World) []Diagnostic {
+func validateApplicationQueryResultMappings(w ir.World) []Diagnostic {
 	semanticAttributes := map[core.CanonicalID]struct{}{}
 	for _, namespace := range w.Semantics {
 		for _, data := range namespace.Data {
