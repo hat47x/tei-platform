@@ -71,9 +71,11 @@ master_data.shadow
 
 PR #223で、runtime Registryをinstance-awareなkeyへ変更し、既存のEnvironment / provider / SQL realization Conformanceを新しい境界へ移行しました。
 
-実装は`work/reference-data-access-convergence`へ統合済みです。ただしGitHub Actionsのworkflow runが作成されない状態が続いているため、通常runnerによる検証はまだ得られていません。
+実装は`work/reference-data-access-convergence`へ統合済みです。2026年9月3日現在、Repositoryでは`.github/workflows/ci.yml`が明示的に削除され、収束線にもその停止が取り込まれています。そのため、現在workflow runが作成されないことは通常runnerの再障害を直接示すものではなく、CIを意図的に実行していない状態です。
 
-また、第一Referenceの実Oracle接続は`ISSUE-000019`の物理Evidence待ちです。Registry境界が実装されたことを理由に、接続先や物理SQLを補完してはいけません。
+CI未実行の成果をgreenとは扱いません。一方、この作業線から独断でActionsを再有効化することもしません。CIが別の明示的な判断で再開された後、Conformanceを通常runnerで再検証します。これはIssue #192で記録した過去の`runner_id=0 / steps=[]`事象とは区別して扱います。
+
+また、第一Referenceの実Oracle接続は`ISSUE-000022`の物理Evidence待ちです。Registry境界が実装されたことを理由に、接続先や物理SQLを補完してはいけません。
 
 ## 完了条件
 
@@ -86,7 +88,7 @@ PR #223で、runtime Registryをinstance-awareなkeyへ変更し、既存のEnvi
 - [x] 既存のprovider整合性検査を維持する
 - [x] 第一Referenceの`development / master_data.dev / database.query.oracle`を表現できる
 - [x] 同一Capability・異なるinstanceの取り違えをConformanceで拒否する
-- [ ] 通常のCI runnerでConformanceが実行され、成功する
+- [ ] CIが明示的に再有効化された後、通常runnerでConformanceが実行され、成功する
 - [ ] 第一Referenceの実接続Evidenceでinstance-aware Registryを通過する
 
 ## 非目標
@@ -96,14 +98,14 @@ PR #223で、runtime Registryをinstance-awareなkeyへ変更し、既存のEnvi
 - Connection Pool / HA設計
 - Oracle SQLや物理object名の推測
 
-これらは`ISSUE-000019`およびprovider integrationの別責務として扱います。
+これらは`ISSUE-000022`およびprovider integrationの別責務として扱います。
 
 ## 関連
 
-- GitHub Issue #179 / #214 / #222
+- GitHub Issue #179 / #192 / #214 / #222
 - PR #223
 - `plan/issue/000018-database-contract-query-execution.md`
-- `plan/issue/000019-external-master-data-physical-query-evidence.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `internal/driver/reference_contract_query_environment.go`
 - `internal/realization/contract_query_binding.go`
 - `reference/workspace/environments/development/contract-query-executors/customer-find-by-id.tei`
