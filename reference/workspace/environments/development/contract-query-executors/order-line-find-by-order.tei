@@ -1,0 +1,8 @@
+contract-query-executor-binding {
+    environment development
+    instance sales_core.dev
+    database sales_core
+    contract sales_core.order_line
+    query find_by_order
+    executor database.query.postgres
+}
