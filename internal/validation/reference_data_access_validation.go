@@ -18,10 +18,13 @@ func validateQueryResultMappings(w ir.World) []Diagnostic {
 //
 // referenceではSemantic Relation keyを使う一方、header-detailのcollection traversalではRelationKeyを
 // 暗黙必須化せず、source Semantic attributeからQuery inputへの別realizationを検査する。
+// Relation Storageについても、Semantic attribute列と物理support columnを混同せず、Relationの
+// source / targetとの整合性だけをこの通常Validation経路から確認する。
 // 各Validationの責務は分離したまま保ち、名前や型、物理情報から不足した関係を補完しない。
 func validateApplicationDataAccessContracts(w ir.World) []Diagnostic {
 	var out []Diagnostic
 	out = append(out, ValidateSemanticRelationKeys(w)...)
+	out = append(out, ValidatePersistenceRelationStorageMappings(w)...)
 	out = append(out, ValidateDatabaseContractQuerySignatures(w)...)
 	out = append(out, ValidateReferenceContractQueryInvocations(w)...)
 	out = append(out, ValidateReferenceContractQueryCrossLayer(w)...)
