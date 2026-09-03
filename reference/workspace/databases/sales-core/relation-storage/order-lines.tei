@@ -1,4 +1,0 @@
-relation-storage sales_core.order_line {
-    relation sales.order.lines
-    component sales.order.order_id -> order_id storage int64 required
-}

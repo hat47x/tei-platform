@@ -79,8 +79,17 @@ func TestReferenceKeylessOrderLinesStorageReachesPhysicalQueryWithoutSyntheticSe
 			continue
 		}
 		realizationFound = true
-		if !strings.Contains(realization.Source, "WHERE order_id = :order_id") {
+		if realization.Provider != "postgres" {
+			t.Fatalf("find_by_orderのproviderが変わっています: %s", realization.Provider)
+		}
+		if len(realization.Inputs) != 1 || realization.Inputs[0].Input != "order_id" || realization.Inputs[0].Parameter != "order_id" {
+			t.Fatalf("find_by_orderのinput -> physical parameter mappingが不正です: %#v", realization.Inputs)
+		}
+		if !strings.Contains(realization.Source, "FROM public.order_lines") || !strings.Contains(realization.Source, "WHERE order_id = :order_id") {
 			t.Fatalf("find_by_orderがRelation-owned physical columnを明示的に参照していません: %s", realization.Source)
+		}
+		if !strings.Contains(realization.Source, "ORDER BY line_number, order_line_id") {
+			t.Fatalf("find_by_orderの並び順が同順位で不安定です: %s", realization.Source)
 		}
 		if strings.Contains(realization.Source, "sales.order_line.order_id") {
 			t.Fatalf("native SQLへ存在しないSemantic attribute identityが漏れています: %s", realization.Source)
@@ -88,5 +97,14 @@ func TestReferenceKeylessOrderLinesStorageReachesPhysicalQueryWithoutSyntheticSe
 	}
 	if !realizationFound {
 		t.Fatal("sales_core.order_line/find_by_order SQL realizationがありません")
+	}
+
+	storageSource := loaded.Sources["persistence-relation-storage:sales_core.order_line/sales.order.lines"]
+	if storageSource.File != "databases/sales-core/relation-storage/order-line.tei" {
+		t.Fatalf("Relation Storageの正本authoring sourceを追跡できません: %#v", storageSource)
+	}
+	querySource := loaded.Sources["contract-query-sql-realization:sales_core/sales_core.order_line/find_by_order/sql/postgres"]
+	if querySource.File != "databases/sales-core/query-realizations/order-line-find-by-order.tei" {
+		t.Fatalf("Contract Query SQL realizationの正本authoring sourceを追跡できません: %#v", querySource)
 	}
 }
