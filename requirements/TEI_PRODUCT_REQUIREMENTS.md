@@ -113,6 +113,10 @@ Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込
 
 Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。
 
+Targetが「何を表示・操作できるか」というTarget Capabilityと、「どのtransport・信頼境界・session・Resource条件で実行されるか」というExecution / Trust Profileを、実装都合だけで一つのTarget差へ畳んではいけません。必要な分離は第一Targetと第二TargetのReferenceから検証します。
+
+Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。
+
 ## RQ-014 標準的なApplication Patternを再利用できること
 
 browse、record、reference、header-detail、command等、業務システムで頻出するApplication Patternを再利用可能な知識として保持できることを目指します。
@@ -133,6 +137,12 @@ browse、record、reference、header-detail、command等、業務システムで
 
 毎回ゼロからコードを生成することを標準経路にはしません。
 
+AIが作った内容を直接Canonical authorityとせず、まずProposal / Structured Intent等の候補として扱い、採用時にはEditor / CLI等と共有できる決定論的なValidation / Acceptance境界を通す必要があります。
+
+構造化された候補から決定論的に生成・変換できる部分は、同じ意味を毎回自由生成する方法より優先します。
+
+過去の成功Proposal、修正trajectory、利用例等を再利用する場合も、Canonical meaningの第二の正本にはせず、元のCanonical ID / Source / Evidenceへ戻れるderived knowledgeとして扱う必要があります。
+
 ## RQ-016 AIによる確認提案は控えめで、履歴を持つこと
 
 AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属性、認証・認可等の典型論点について、必要な場合に確認を提案できることを目指します。
@@ -145,6 +155,12 @@ AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属
 - 不要な提案を無視できる
 - 提案カテゴリを抑制・無効化できる
 - AIの提案と採用済み決定を区別する
+- 提案が参照したCanonical ID / Source / Evidenceを追跡できる
+- purpose、target activity / artifact、AI mechanism / type、autonomy levelを比較・監査できる
+- autonomy levelとwrite / invoke / Resource authorityを別の軸として扱う
+- staleなbase revisionに対する提案を黙って最新版へ適用しない
+
+model名、prompt、tool trajectory等はEvidenceとして保持できても、それ自体を業務上の意味やauthorityの根拠にはしません。
 
 ## RQ-017 人の二重管理を最小化すること
 
@@ -166,6 +182,8 @@ Pluginや外部Runtimeへ与える権限はCapabilityとPermissionに基づき�
 
 secret、network endpoint、filesystem path等のHost materialをCanonical definitionやDurable artifactへ不要に保存せず、Resource Broker等の境界から解決できる必要があります。
 
+AI、Editor、generated code、automationも同じ権限・Resource境界を迂回してはいけません。AI actorであることや自律度が高いことから、write、Capability invocation、secret / network / filesystem access等のauthorityを暗黙に付与してはいけません。
+
 ## RQ-020 再実行・takeover・unknownを安全に扱えること
 
 外部Runtimeの状態が不明なときに、同じ副作用を自動replayしてはいけません。
@@ -178,11 +196,17 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 
 異なるProviderやTargetを追加するときも、「動いた」という事実だけでなく、共通の意味境界を満たしているかを確認できる必要があります。
 
+AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
+
+interactive Targetでは、少なくともSemantic Conformance、利用者ScenarioのInteraction / Functional Evidence、Target固有のVisual Fidelity Evidenceを区別します。GUI agent、VLM、image similarity等のvisual evaluatorを利用しても、その結果だけでSemantic / Functional Conformanceを合格にしてはいけません。
+
 ## RQ-022 完成製品と設計検証段階を明確に区別すること
 
 研究実装、architecture probe、production-ready機能を同じ表現で扱ってはいけません。
 
 README、status、release note等から、何が検証済みで、何が未保証かを利用者が判断できる必要があります。
+
+prerelease / experimentalなframework、AI evaluator、agent方式等を検証に利用する場合も、その技術が動いたこととTEIのProduct Requirementが成立したことを区別します。外部研究のsuccess rate、token削減率、visual score等を、TEI自身のReferenceで検証せず固定KPIやConformance基準へ転記してはいけません。
 
 ## RQ-023 一人でも維持可能な開発構造を保つこと
 

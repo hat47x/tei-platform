@@ -1,4 +1,4 @@
-# ISSUE-000020: Target CapabilityとExecution Profileの境界を検証する
+# ISSUE-000026: Target CapabilityとExecution / Trust Profileの境界を検証する
 
 - 状態: Proposed
 - GitHub Issue: #259
@@ -15,14 +15,16 @@ TEIはRQ-013で、Web、Desktop、Mobile、API、MCP、VUI等を同じ上位設�
 1. **Target Capabilityの差**
    - native window、menu、tray、dialog、touch、haptics、geolocation等の有無
    - Desktop / Mobile / Serverで利用可能な操作や入出力が異なる
-2. **Execution / Trust境界の差**
-   - Desktop / Mobileでは主にin-processのWebView bridgeとして実行される
-   - Server BuildではHTTP / WebSocketを介して複数browser clientから利用される
-   - ServerではTLS、origin制御、input validation等、network越しの信頼境界を扱う必要がある
+2. **Execution / Trust Profileの差**
+   - Desktop / Mobileでは主にlocal / in-processのWebView bridgeとして実行される
+   - ServerではHTTP / WebSocket等を介して複数clientから利用され得る
+   - network越しではTLS、origin、identity / session、input validation、Resource境界等を明示する必要がある
 
 この二つを一つの「Target差」へ畳むと、UI機能の不足と、認証・認可・通信・並行性・Resource境界の違いが混同される可能性があります。
 
 本Issueでは、特定frameworkのAPIをTEIへ写すのではなく、複数Targetの実証から、**何がTarget Capabilityで、何がExecution / Trust Profileとして独立して扱うべきか**を確認します。
+
+このRepository内Issueは、main側で先行起票されていた`ISSUE-000020`と、収束branchで既に利用されていた別の`ISSUE-000020`の番号衝突を解消するため、`000026`へ統一します。GitHub Issueは引き続き#259を利用します。
 
 ## 関連するProduct Requirement
 
@@ -34,6 +36,7 @@ TEIはRQ-013で、Web、Desktop、Mobile、API、MCP、VUI等を同じ上位設�
 - RQ-013 Target-neutralなPresentation / Interaction境界を持つこと
 - RQ-019 実行時の権限とResourceを明示的に制約できること
 - RQ-021 ReferenceとConformanceで再現可能性を示すこと
+- RQ-022 完成製品と設計検証段階を明確に区別すること
 - RQ-024 性能要求をTargetごとに検証可能にすること
 
 ## 現時点の設計仮説
@@ -82,21 +85,29 @@ Execution / Trust Profileは、「何を表示できるか」ではなく、実�
 
 Wails v3はこの境界を考えるための有力な圧力試験材料ですが、Wails自体をTEI仕様の根拠にはしません。
 
-2026年9月時点の公式資料では、次が確認できます。
-
-- iOS / Android / Desktopで同じ`main.go`、Go backend、frontend、service binding、event modelを共有できる
-- Mobileではmulti-window、window geometry、menu、tray等が利用できず、haptics、geolocation、biometrics等のMobile Capabilityが追加される
-- Server Buildでも同じservice bindingとevent modelを利用できる
-- Serverではnative window、tray、dialog等が存在せず、browser clientをHTTP / WebSocket越しに扱う
-- Serverのproduction利用ではTLS、reverse proxy、WebSocket origin制御、input validation等が必要になる
+2026年9月時点の公式資料から、Desktopを中心とするGo backend / frontendの構成に加えて、Mobile、Server、MCP等へ機能が広がっていることを確認できます。
 
 この差を利用し、同じCanonical Applicationを異なるHostへProjectionしたとき、Capability差とExecution / Trust差を別々に説明できるか確認します。
 
-参考資料:
+Mobile等には実験的な位置づけが残るため、現時点ではWailsをTarget-neutral設計の前提にはせず、Adapter / Host候補かつarchitecture probeとして扱います。
 
-- Wails v3 Mobile Overview: https://v3.wails.io/guides/mobile/
-- Wails v3 Server Build: https://v3.wails.io/guides/server-build/
-- Wails v3 Changelog: https://v3.wails.io/changelog/
+### MCP / control面をApplication Targetと混同しない
+
+Wails等がHost inspectionやcontrolのためにMCP interfaceを提供しても、それだけでTEI ApplicationがMCP Targetを持つことにはなりません。
+
+次を区別します。
+
+```text
+Host / Tool Control Plane
+  └─ inspection / automation / development control
+
+Application Target
+  └─ 業務上のPresentation / InteractionをMCPとして公開
+```
+
+同じprotocolを利用していても、authority、subject、lifecycle、Conformanceの対象が異なります。
+
+第二Target候補としてMCPを選ぶ場合は、どちらの意味でMCPを利用するのかを明示します。
 
 ## 実証の進め方
 
@@ -109,8 +120,9 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 - Runtime Bindingで吸収している差
 - HTTP / browser由来の差
 - Canonicalへ持ち上げるべきでない実装都合
+- Semantic / Functional / Visual Evidenceのどこに属する差か
 
-この段階ではTarget Capability schemaやExecution Profile schemaを固定しません。
+この段階ではTarget Capability schemaやExecution / Trust Profile schemaを固定しません。
 
 ### Gate C後
 
@@ -120,10 +132,11 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 
 - Wails Desktop / WebView host
 - Wails Mobile
-- Wails Server Build
-- API / MCP
+- Wails Server
+- API
+- MCP Application Target
 
-単に実装が容易という理由だけで選ばず、RQ-013の不確実性を最も減らせるTargetを選びます。
+単に実装が容易という理由だけで選ばず、RQ-013の不確実性を最も減らせるTarget / Hostを選びます。
 
 ### 比較軸
 
@@ -134,11 +147,12 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 3. Targetが提供するCapability
 4. Projection差
 5. Runtime Binding差
-6. Execution / Trust境界
+6. Execution / Trust Profile
 7. Authorization / Resource境界
 8. Observation方法
 9. 性能測定点
-10. Target固有コードを削除したときCanonicalが変化しないこと
+10. Semantic / Functional / Visual Evidence
+11. Target固有コードを削除したときCanonicalが変化しないこと
 
 ## Conformance候補
 
@@ -148,9 +162,10 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 - Application側のrequired Capability不足を実行前に検出できる
 - optional Capability不足をApplication意味の破損として扱わない
 - Target Adapterを交換してもCanonical IDやApplication Patternが変わらない
-- network越しのExecution Profileをlocal profileと同じ暗黙のtrustで扱わない
+- network越しのExecution / Trust Profileをlocal profileと同じ暗黙trustで扱わない
 - Target固有transportからBusiness Result / Execution Error / Observationを逆定義しない
 - secret、endpoint、filesystem path等のHost materialをCanonicalへ不要に保存しない
+- Host control planeとApplication Targetを区別できる
 - 同じScenarioの意味上の結果を複数Targetで比較できる
 
 ## 非目標
@@ -161,6 +176,7 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 - Desktop / Mobile / Server / API / MCPを最初から同じ深さで実装すること
 - Security policyをPresentation modelへ埋め込むこと
 - 一つのTargetだけからTarget-neutral境界を確定すること
+- HostのMCP control interfaceを無条件に業務MCP Targetとみなすこと
 
 ## 完了条件
 
@@ -171,12 +187,14 @@ Wails v3はこの境界を考えるための有力な圧力試験材料ですが
 - Execution / Trust Profileとして扱うべき差
 - Runtime Bindingで扱う差
 - Target固有実装へ残す差
+- Host control planeに残す差
 - Canonicalへ持ち上げてはいけない差
 
 その結果から、Target CapabilityとExecution / Trust Profileを正式な別概念として採用するか、既存のRuntime Binding / Capabilityモデルへ統合するかをADRで判断します。
 
 ## 関連文書
 
+- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/MASTER_PLAN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
