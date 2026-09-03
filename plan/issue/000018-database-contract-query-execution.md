@@ -201,33 +201,61 @@ Semantic result row
 
 `ContractQueryExecutorRegistry`はexecutor Capability IDだけをkeyとして実装へ接続します。Oracleというprovider名やPlugin名からruntime実装へfallbackしません。
 
-`ir.World`には`ContractQueryExecutorBindings`を保持するmodel境界を追加しました。authoring sourceの読込みはまだ接続していないため、現段階ではConformance上の明示構成として利用します。
+### Binding authoring sourceと来歴
+
+`ContractQueryExecutorBinding`を、Environment配下の独立したauthoring sourceから読み込めるようにしました。第一Referenceは次のsourceを持ちます。
+
+```text
+environments/development/contract-query-executors/customer-find-by-id.tei
+```
+
+内容は次のように、Bindingを構成するidentityをすべて明示します。
+
+```tei
+contract-query-executor-binding {
+    environment development
+    instance master_data.dev
+    database master_data
+    contract master_data.customer
+    query find_by_id
+    executor database.query.oracle
+}
+```
+
+ここではファイル名や親ディレクトリ名を意味の正本にしません。たとえば配置上`environments/development`配下にあるsourceでも、本文に`environment production`と明記されていれば`production`として読み込みます。配置は整理上の都合であり、Canonical identityの補完には使いません。
+
+Workspace Loaderは`environments` source rootを読み込む際に、このsidecar sourceも読み込み、`ir.World.ContractQueryExecutorBindings`へ格納します。Binding identityは次の組合せです。
+
+```text
+Environment / Database instance / Database / Contract / Query
+```
+
+executor Capabilityは選択結果なのでBinding identityには含めません。そのため、同じ対象へ複数executorを宣言した場合は別Bindingとして共存させず、競合として検出します。
+
+Binding authoring sourceは`Sources`とSource Indexの`authoring` contributionにも記録します。これにより、runtime compositionから元のBinding sourceまで追跡できます。
 
 ## 現在露出しているGap
 
-Contract Queryのsignature、reference invocation、runtime parameter、result cardinality、target identity、executor capability、明示Binding model、Environment runtime compositionまでは分離できました。
+Contract Queryのsignature、reference invocation、runtime parameter、result cardinality、target identity、executor capability、Environment固有の明示Binding、Binding authoring source、Environment runtime composition、Binding sourceの来歴までは分離できました。
 
 残っている主要Gapは次です。
 
-1. `ContractQueryExecutorBinding`のauthoring source
-2. authoring sourceから`ir.World.ContractQueryExecutorBindings`へ読み込む経路
-3. `database.query.oracle`を実際のQuery realization sourceへ接続する方法
-4. physical resultからSemantic rowへ変換する明示mapping
-5. Oracle実接続、またはOracle依存を避けたReference adapterによるend-to-end Evidence
-6. realization sourceのSource Index / provenance
+1. `database.query.oracle`を具体的なQuery realization sourceへ接続する方法
+2. physical resultからSemantic rowへ変換する明示mapping
+3. Oracle実接続、またはOracle依存を避けたReference adapterによるend-to-end Evidence
+4. Query realization source自体のSource Index / provenance
+5. 第一Referenceをworkspace読込みから実行結果まで一続きに通す最終Conformance
 
 ここでも、Oracleの物理列名やSQLをSemantic Relation、Database Contract signature、Driver Coreへ持ち込まないことを維持します。
 
 ## 次の実証順
 
-1. Environment runtime compositionのConformanceを固定する
-2. Binding authoring sourceの最小構文を、既存Environment authoring体系との整合を確認して追加する
-3. authoring sourceから`ir.World.ContractQueryExecutorBindings`へ読み込む
-4. `database.query.oracle`の最小realization sourceを追加する
-5. physical result → Semantic rowの明示mapping境界を追加する
-6. Oracle read implementationを追加する、またはOracle依存を避けたReference adapterで実行境界を先に実証する
-7. authoring source / realization sourceの来歴を確認する
-8. 第一Referenceの`reference` Patternをworkspace読込みから一続きに実行する
+1. `database.query.oracle`が利用するQuery realization sourceの最小identityとauthoring境界を追加する
+2. 第一Referenceの`master_data.customer / find_by_id`へrealization sourceを明示する
+3. physical result → Semantic rowの明示mapping境界を追加する
+4. Oracle read implementationを追加する、またはOracle依存を避けたReference adapterで実行境界を先に実証する
+5. Query realization sourceの来歴をSource Indexへ接続する
+6. 第一Referenceの`reference` Patternをworkspace読込みから一続きに実行する
 
 Oracle driverや実DB接続がCI環境で安定して用意できない場合でも、Coreの境界をOracle固有実装へ引きずらないため、まずprovider非依存Conformanceを成立させます。
 
@@ -247,10 +275,11 @@ Oracle driverや実DB接続がCI環境で安定して用意できない場合で
 - [x] Application datasourceからEnvironment上のDatabase instanceを推測なしで解決できる
 - [x] executor Capability IDからruntime Executorを推測なしで解決できる
 - [x] mapped rowからEnvironment compositionを経てSemantic result rowまで一続きに実行できる
-- [ ] Bindingをauthoring sourceから読み込める
+- [x] Bindingをauthoring sourceから`ir.World.ContractQueryExecutorBindings`へ読み込める
+- [x] Binding authoring sourceの来歴をSource Indexから追跡できる
 - [ ] `master_data`をread-onlyのまま実際のread実行へ接続できる
 - [ ] physical resultを明示mappingからSemantic rowへ変換できる
-- [ ] authoring source / realization sourceの来歴を追跡できる
+- [ ] Query realization sourceの来歴を追跡できる
 - [x] Relation keyを暗黙変換なしでquery inputへ渡せる
 
 ## 非目標
@@ -267,12 +296,13 @@ Oracle driverや実DB接続がCI環境で安定して用意できない場合で
 ## 関連
 
 - GitHub Issue #69 / #167 / #178 / #179 / #185 / #192
-- PR #176 / #183 / #184 / #193 / #195 / #197 / #201 / #205 / #206 / #207
+- PR #176 / #183 / #184 / #193 / #195 / #197 / #201 / #205 / #206 / #207 / #208
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `reference/workspace/databases/master-data/database.tei`
 - `reference/workspace/databases/master-data/contracts/customer.tei`
 - `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
+- `reference/workspace/environments/development/contract-query-executors/customer-find-by-id.tei`
 - `reference/workspace/plugins/tei-database-oracle/1.0.0/plugin.tei`
 - `internal/database/model.go`
 - `internal/driver/contract_query_execution.go`
@@ -281,3 +311,5 @@ Oracle driverや実DB接続がCI環境で安定して用意できない場合で
 - `internal/driver/reference_contract_query_environment.go`
 - `internal/realization/contract_query.go`
 - `internal/realization/contract_query_binding.go`
+- `internal/syntax/contract_query_executor_binding.go`
+- `internal/workspace/contract_query_executor_binding_loader.go`
