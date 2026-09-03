@@ -4,4 +4,8 @@ plugin tei.database.postgres v1.0.0 {
     provides database-provider database.postgres {
         provider postgres
     }
+
+    provides contract-query-executor database.query.postgres {
+        provider postgres
+    }
 }
