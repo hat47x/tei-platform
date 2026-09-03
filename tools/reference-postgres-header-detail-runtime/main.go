@@ -21,20 +21,21 @@ import (
 )
 
 type evidence struct {
-	Pattern                              core.CanonicalID   `json:"pattern"`
-	Relation                             core.CanonicalID   `json:"relation"`
-	Environment                          core.CanonicalID   `json:"environment"`
-	DatabaseInstance                     core.CanonicalID   `json:"databaseInstance"`
-	ExecutorCapability                   core.CanonicalID   `json:"executorCapability"`
-	ContractQueryTarget                  string             `json:"contractQueryTarget"`
-	ParameterNames                       []string           `json:"parameterNames"`
-	ParameterValuesPersisted             bool               `json:"parameterValuesPersisted"`
-	Rows                                 int                `json:"rows"`
-	ZeroRows                             int                `json:"zeroRows"`
-	SemanticAttributes                   []core.CanonicalID `json:"semanticAttributes"`
-	RelationStorageColumn                string             `json:"relationStorageColumn"`
-	SemanticOrderLineParentAttributeAdded bool              `json:"semanticOrderLineParentAttributeAdded"`
-	SemanticMappingApplied               bool               `json:"semanticMappingApplied"`
+	Pattern                               core.CanonicalID   `json:"pattern"`
+	Relation                              core.CanonicalID   `json:"relation"`
+	Environment                           core.CanonicalID   `json:"environment"`
+	DatabaseInstance                      core.CanonicalID   `json:"databaseInstance"`
+	ExecutorCapability                    core.CanonicalID   `json:"executorCapability"`
+	ContractQueryTarget                   string             `json:"contractQueryTarget"`
+	ParameterNames                        []string           `json:"parameterNames"`
+	ParameterValuesPersisted              bool               `json:"parameterValuesPersisted"`
+	Rows                                  int                `json:"rows"`
+	ZeroRows                              int                `json:"zeroRows"`
+	ExecutionErrorObserved                bool               `json:"executionErrorObserved"`
+	SemanticAttributes                    []core.CanonicalID `json:"semanticAttributes"`
+	RelationStorageColumn                 string             `json:"relationStorageColumn"`
+	SemanticOrderLineParentAttributeAdded bool               `json:"semanticOrderLineParentAttributeAdded"`
+	SemanticMappingApplied                bool               `json:"semanticMappingApplied"`
 }
 
 func main() {
@@ -129,24 +130,40 @@ func main() {
 		panic(fmt.Errorf("order_id=9999のOrderLine件数=%d want=0", len(zeroExecuted.Execution.Result.Rows)))
 	}
 
+	if err := removeFixtureTable(ctx, db); err != nil {
+		panic(err)
+	}
+	if _, err := resolver.ExecuteHeaderDetailContractQueryInEnvironment(
+		ctx,
+		core.MustCanonicalID("development"),
+		core.MustCanonicalID("order_entry"),
+		core.MustCanonicalID("order_entry.order_lines"),
+		mappedOrderID(int64(1001)),
+		0,
+		registry,
+	); err == nil {
+		panic("物理table欠落によるPostgreSQL実行失敗を正常な空collectionとして扱っています")
+	}
+
 	semanticAttributes := semanticAttributeIDs(executed.Execution.Result.Rows)
 	relationStorageColumn, parentAttributeAdded := inspectOrderLineStorage(loaded)
 
 	out := evidence{
-		Pattern:                              core.MustCanonicalID("order_entry.order_lines"),
-		Relation:                             core.MustCanonicalID("sales.order.lines"),
-		Environment:                          executed.Environment.ID,
-		DatabaseInstance:                     executed.Executor.Instance.ID,
-		ExecutorCapability:                   executed.Executor.Capability.Capability.ID,
-		ContractQueryTarget:                  executed.Execution.Resolution.Binding.Target.Identity(),
-		ParameterNames:                       append([]string(nil), payload.ParameterNames...),
-		ParameterValuesPersisted:             false,
-		Rows:                                 len(executed.Execution.Result.Rows),
-		ZeroRows:                             len(zeroExecuted.Execution.Result.Rows),
-		SemanticAttributes:                   semanticAttributes,
-		RelationStorageColumn:                relationStorageColumn,
+		Pattern:                               core.MustCanonicalID("order_entry.order_lines"),
+		Relation:                              core.MustCanonicalID("sales.order.lines"),
+		Environment:                           executed.Environment.ID,
+		DatabaseInstance:                      executed.Executor.Instance.ID,
+		ExecutorCapability:                    executed.Executor.Capability.Capability.ID,
+		ContractQueryTarget:                   executed.Execution.Resolution.Binding.Target.Identity(),
+		ParameterNames:                        append([]string(nil), payload.ParameterNames...),
+		ParameterValuesPersisted:              false,
+		Rows:                                  len(executed.Execution.Result.Rows),
+		ZeroRows:                              len(zeroExecuted.Execution.Result.Rows),
+		ExecutionErrorObserved:                true,
+		SemanticAttributes:                    semanticAttributes,
+		RelationStorageColumn:                 relationStorageColumn,
 		SemanticOrderLineParentAttributeAdded: parentAttributeAdded,
-		SemanticMappingApplied:               true,
+		SemanticMappingApplied:                true,
 	}
 	encoded, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -204,6 +221,13 @@ CREATE TABLE public.order_lines (
 		); err != nil {
 			return fmt.Errorf("header-detail用fixture rowを追加できません: %w", err)
 		}
+	}
+	return nil
+}
+
+func removeFixtureTable(ctx context.Context, db *sql.DB) error {
+	if _, err := db.ExecContext(ctx, `DROP TABLE public.order_lines;`); err != nil {
+		return fmt.Errorf("Execution Error確認用にfixture tableを削除できません: %w", err)
 	}
 	return nil
 }
