@@ -46,6 +46,32 @@ diff -u \
 
 WorkspaceやPlugin定義を変更したときにこの差分が出た場合も、意図した解決結果の変化かを確認してから更新します。
 
+## WorldとPlugin Lockをまとめて確認・更新する
+
+`world.json`とPlugin Lockは、同じCanonical Workspaceから導かれる生成物です。片方だけを更新して整合性を失わないよう、通常は次のtoolからまとめて確認します。
+
+```bash
+go run ./tools/reference-golden
+```
+
+このコマンドは既定ではRepositoryを変更しません。現在の`reference/workspace`からWorldとPlugin Lockを生成し、保存済みのgoldenとbyte単位で一致するかを確認します。不一致または未作成のartifactがあれば、対象pathを表示して失敗します。
+
+意図したCanonical authoring変更に伴ってgoldenを更新する場合だけ、`-write`を指定します。
+
+```bash
+go run ./tools/reference-golden -write
+```
+
+`-write`は生成差分の内容が正しいことを自動判定するものではありません。更新後は必ず次のように差分を確認し、Semantic Definition、Application、Database、Plugin / Bundle等の変更から説明できる差分だけを受け入れます。
+
+```bash
+git diff -- \
+  reference/world.json \
+  reference/workspace/.tei/plugin-lock.json
+```
+
+個別の`tei world` / `tei plugin-lock`コマンドは、各生成物の仕組みを確認したり個別に調査したりするときの正規入口として引き続き利用できます。`reference-golden`はそれらと同じWorld / Plugin Lock生成APIを使い、日常的な一括確認と更新漏れ防止を担います。
+
 ## 観測状態のfixture
 
 `reference/observed/` にあるJSONは、実際の本番環境から取得した最新データではありません。Deployment、Validation、Durable Runなどを再現するために、時点を固定した参照シナリオです。
