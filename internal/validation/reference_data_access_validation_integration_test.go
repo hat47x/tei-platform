@@ -9,7 +9,7 @@ import (
 	"tei/internal/semantic"
 )
 
-func TestValidateIncludesReferenceDataAccessContracts(t *testing.T) {
+func TestValidateIncludesApplicationDataAccessContracts(t *testing.T) {
 	tests := []struct {
 		name  string
 		world func() ir.World
@@ -58,6 +58,15 @@ func TestValidateIncludesReferenceDataAccessContracts(t *testing.T) {
 			code: "REFERENCE_CONTRACT_QUERY_RELATION_KEY_REQUIRED",
 		},
 		{
+			name: "header-detail Contract Query binding",
+			world: func() ir.World {
+				world := headerDetailContractQueryBindingWorld()
+				world.Databases[0].Contracts[0].Queries[0].ResultCardinality = database.QueryResultZeroOrOne
+				return world
+			},
+			code: "HEADER_DETAIL_BINDING_RESULT_CARDINALITY_NOT_MANY",
+		},
+		{
 			name: "Contract Query SQL realization",
 			world: func() ir.World {
 				world := contractQuerySQLValidationWorld()
@@ -71,14 +80,14 @@ func TestValidateIncludesReferenceDataAccessContracts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			diagnostics := Validate(tt.world())
-			if !containsReferenceDataAccessDiagnostic(diagnostics, tt.code) {
+			if !containsApplicationDataAccessDiagnostic(diagnostics, tt.code) {
 				t.Fatalf("通常のValidate入口からDiagnostic %sを取得できません: %#v", tt.code, diagnostics)
 			}
 		})
 	}
 }
 
-func containsReferenceDataAccessDiagnostic(diagnostics []Diagnostic, code string) bool {
+func containsApplicationDataAccessDiagnostic(diagnostics []Diagnostic, code string) bool {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
 			return true
