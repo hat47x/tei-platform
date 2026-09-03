@@ -27,6 +27,7 @@ Web Targetはこの意味境界を受け取り、利用者向け表示へ変換�
 - RQ-017 二重管理の最小化
 - RQ-018 Command / Observation
 - RQ-021 Reference / Conformance
+- RQ-022 検証段階の明示
 - RQ-024 Target別性能
 
 ## 目的
@@ -105,6 +106,32 @@ Web固有の実装はCoreへ入れず、独立したAdapter / Packageとして�
 
 frameworkの選定結果をPresentation上の意味の一部にはしません。
 
+### 2026-09 Wails v3調査から得た検証観点
+
+Wails v3の現行ドキュメントでは、Desktopを中心とするGo backend / frontend構成に加えて、Mobile、Server、MCP等へ機能が広がっています。
+
+Target / Hostが変わると、native window、dialog、tray、touch、device access等のCapabilityだけでなく、local bridgeかnetwork越しか、sessionやoriginをどう扱うかといったExecution / Trust境界も変わり得ます。
+
+この構造は、TEIのRQ-013で想定する「同じ上位設計をTargetへProjectionし、Target差を明示する」考え方を検証する材料になります。ただし、WailsのAPIや構成をTEIのCanonicalなPresentation意味へ持ち上げる根拠にはしません。
+
+第一Web Target以降では、少なくとも次の比較をEvidenceとして残します。
+
+- 同じApplication上の意図が、性質の異なるTarget / Hostでどこまで共通に保てるか
+- window、dialog、tray、touch、hardware等、Targetによって存在しないCapabilityをどの層で検出するか
+- Capabilityが存在しない場合を、Application意味の欠落ではなくTarget上の制約として表現できるか
+- Target Adapterを交換してもCanonical WorldやApplication Patternが変化しないか
+- transportとtrust boundaryが変わるHostを、Presentation差だけでなくRuntime Binding上の差として扱えるか
+
+Wails v3は2026年9月時点でもpre-releaseとして継続的に更新され、Mobile等には実験的な位置づけが残ります。そのためWailsをTarget-neutral設計の前提にはせず、**有力なAdapter / Host候補かつ圧力試験対象**として扱います。
+
+Wails等が提供するMCP / control interfaceも、それ自体を業務ApplicationのMCP Targetとはみなしません。Hostのinspection / development control面と、Application自身がMCPをPresentation / Interaction Targetとして公開する場合を分けます。
+
+参考:
+
+- Wails v3 Mobile Overview: https://v3.wails.io/guides/mobile/
+- Wails v3 Server Build: https://v3.wails.io/guides/server-build/
+- Wails v3 Changelog: https://v3.wails.io/changelog/
+
 ## Interaction
 
 Web Targetでは、表示だけでなく次の操作をDriverと同じ意味へ接続します。
@@ -163,6 +190,54 @@ Webはこれらを利用者向けに分かりやすく表現できますが、Ta
 
 Developer向けDiagnosticへsecret、credential、不要な内部情報を露出しない原則も維持します。
 
+## Target Conformance Evidence
+
+第一Web Targetでは、「画面が生成できた」ことを一つの合否へまとめません。
+
+技術リサーチで確認したfunctional evaluationとvisual evaluationの分離を参考にしつつ、TEIでは次の三層を明確に区別します。
+
+### Semantic Conformance
+
+同じCanonical Application上の意味を保持しているかを確認します。
+
+少なくとも次を含みます。
+
+- Application Pattern
+- Validation
+- Authorization
+- Capability Binding
+- Business Result / Execution Error
+- Command / Observation
+- Datasourceのread / read-write境界
+- Canonical ID / Source traceability
+
+これは必須です。
+
+### Interaction / Functional Evidence
+
+利用者がReference Scenarioを実際に操作できるかを確認します。
+
+たとえば次をworkflowとして実行します。
+
+- browse → record open
+- reference lookup
+- header-detail edit
+- Validation feedback
+- Authorizationによる許可 / 拒否
+- submit command
+- Business Result / Execution Error表示
+- 必要なObservation確認
+
+browser automationやGUI agentを利用しても構いませんが、評価主体ではなくScenarioを再現する手段として扱います。
+
+### Visual Fidelity Evidence
+
+layout、grouping、readability、visual hierarchy、custom UIの見た目等は、Semantic / Functional Evidenceから独立して記録します。
+
+screenshot比較、VLM judge、visual regression等を補助Evidenceに利用できます。ただし、visual scoreが高いことからSemantic Conformanceを推定したり、visual judgeが操作Scenarioの成立を代替したりしません。
+
+Visual FidelityはTargetや利用形態によって要求水準が異なるため、現時点で一律の数値閾値をProduct Requirementへ固定しません。
+
 ## 性能
 
 RQ-024の最終contractは第二Target以降で比較して決めますが、第一Web Targetから測定点を用意します。
@@ -203,6 +278,10 @@ RQ-024の最終contractは第二Target以降で比較して決めますが、第
 - Source / Application / Targetの来歴を追跡できる
 - 複数Targetで共有できそうなPresentation上の意味と、Web固有差分を明示できる
 - Reference Scenarioの主要な測定点を取得できる
+- Semantic ConformanceとInteraction / Functional Evidenceを別々に再現できる
+- Visual Fidelity EvidenceをSemantic / Functional Evidenceと別に記録できる
+- visual evaluatorの結果だけでSemantic / Functional Conformanceを合格にしない
+- Target Capability候補とExecution / Trust Profile候補を混同せず第二Targetへ引き継げる
 
 ## Editor / AIへの引き継ぎ
 
@@ -214,6 +293,8 @@ EditorやAIが何を表示・探索・確認すべきかを、抽象的な想像
 
 結果境界についても、AIがWeb固有のstatusやmessageを業務上の意味と誤認しないよう、Driver側のBusiness Result / Execution Error / Observationへ戻れることが重要です。
 
+AIからCanonical変更へ進む場合は、[ADR-0022](../adr/0022-ai-proposal-canonical-acceptance-boundary.md)のProposal / Acceptance Boundaryを利用し、Web UI固有状態をAIの正本にしません。
+
 ## 第二Targetへの引き継ぎ
 
 このIssueの完了時点では「Target-neutral設計が完成した」と主張しません。
@@ -221,6 +302,8 @@ EditorやAIが何を表示・探索・確認すべきかを、抽象的な想像
 Webで得られた共通候補とWeb固有差分を記録し、第二Targetを実装したときに初めて、何が本当にTarget-neutralだったかを圧力試験します。
 
 結果表示についても、WebのHTTP / DOM中心の表現がAPI、MCP、VUI等でも自然とは限りません。第二Targetから、どこまでが共有可能なPresentation上の意味で、どこからがWeb固有だったかを検証し直します。
+
+第二Targetでは[`ISSUE-000026`](000026-target-capability-execution-profile-boundary.md)を利用し、Target CapabilityとExecution / Trust Profileを分けて比較します。
 
 第二Targetで境界修正が必要になっても、それ自体を失敗とはみなしません。第一Web Targetの都合を誤って共通意味へ持ち上げていなかったかを検査するEvidenceとして扱います。
 
@@ -234,6 +317,7 @@ Webで得られた共通候補とWeb固有差分を記録し、第二Targetを�
 - B2C大規模負荷のproduction保証
 - Custom UIを禁止すること
 - 第一TargetだけでTarget-neutral設計の完成を宣言すること
+- visual scoreをSemantic Conformanceとみなすこと
 
 ## 完了条件
 
@@ -241,10 +325,11 @@ Webで得られた共通候補とWeb固有差分を記録し、第二Targetを�
 
 CapabilityのBusiness Result、Execution Error、Observation、developer Diagnosticを意味の違いとして保ったまま、それぞれをWeb向けに表現できることも確認します。
 
-その過程で得た「複数Targetで共有できそうなPresentation上の意味」と「Web固有の実装」を明示的に分離し、Gate Cを評価できるEvidenceと、Editor / AI支援および第二Targetへ渡せる差分を残します。
+その過程で得た「複数Targetで共有できそうなPresentation上の意味」と「Web固有の実装」を明示的に分離し、Semantic / Functional / Visual Evidenceを別々に残します。これをGate C、Editor / AI支援、第二Targetへ引き継ぎます。
 
 ## 関連文書
 
+- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/APPLICATION_PATTERN_V1_DESIGN.md`
 - `plan/LEGACY_AUTH_V1_DESIGN.md`
@@ -252,6 +337,8 @@ CapabilityのBusiness Result、Execution Error、Observation、developer Diagnos
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`
+- `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
+- `plan/issue/000026-target-capability-execution-profile-boundary.md`
