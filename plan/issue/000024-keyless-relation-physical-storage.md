@@ -1,6 +1,6 @@
 # ISSUE-000024: keyless header-detail RelationのDatabase-ownedな物理保存境界を定める
 
-- 状態: Ready
+- 状態: In Progress
 - GitHub Issue: #244
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 前段: `ISSUE-000023` / GitHub Issue #233
@@ -9,140 +9,234 @@
 
 ## 背景
 
-`ISSUE-000023`では、`sales.order.lines`のようなkeylessな`many` Semantic Relationを、Application PatternへDatasourceやQueryの責務を戻さず、独立した`HeaderDetailContractQueryBinding`から実行へ接続できることを確認しました。
+`ISSUE-000023`では、`sales.order.lines`のようなkeylessな`many` Semantic Relationを、Application PatternへDatasourceやQueryの責務を戻さず、独立した`HeaderDetailContractQueryBinding`から実行へ接続する方針を確定しました。
 
-現在のReferenceでは、論理的な実行経路は次の形まで成立しています。
+一方、managed-here Databaseである`sales_core`では、親Orderとの関係を物理的に保存する必要があります。ここで`OrderLine.orderId`を物理実装の都合だけでSemantic attributeとして追加すると、Databaseの保存方式がCanonicalな業務意味へ逆流します。
 
-```text
-sales.order.lines
-  ↓
-order_entry.order_lines
-  ↓
-HeaderDetailContractQueryBinding
-  sales.order.order_id -> input order_id
-  ↓
-sales_core.order_line / find_by_order
-  ↓
-development / sales_core.dev
-  ↓
-database.query.postgres
-```
+このIssueでは、Semantic Relation、Application traversal、Database storage realizationを分離したまま、keylessな親子Relationを保存・取得できる最小境界を実証します。
 
-Driverはこの経路を、RelationKeyやphysical Foreign Keyを推測せずに解決できます。0件は正常な空collection、複数件は正常な`many` result、Executorの失敗はExecution Errorとして区別できます。
+## 採用した境界
 
-一方、managed-here Databaseである`sales_core`にOrderLineをどのように保存し、`find_by_order`が利用する親Orderとの物理的な対応をどこへ記述するかは、まだ決まっていません。
+v1では、Persistence Mappingへ**Relation-ownedな物理保存境界（Relation Storage）**を追加します。
 
-## 問題
-
-現行Persistence Mappingは、基本的にSemantic attributeとphysical columnを一対として記述します。
+通常のSemantic attribute列は、従来どおり`ColumnMapping`で表します。
 
 ```tei
-column sales.order.order_id -> order_id storage int64 required
+persist sales_core.order_line {
+    database sales_core
+    semantic sales.order_line
+    table public.order_lines
+
+    column sales.order_line.order_line_id -> order_line_id storage int64 required
+    ...
+}
 ```
 
-しかし、`sales.order_line`には親Order identityに相当するSemantic attributeを置いていません。これは実装漏れではなく、`ISSUE-000011`と`ISSUE-000023`で、DriverやForeign Keyの都合だけを理由に`OrderLine.orderId`をSemanticへ追加しないことを確認した結果です。
+親Orderとの関係を保存する`order_id`は、OrderLineのSemantic attributeへ昇格させず、別authoring sourceでRelation Storageとして明示します。
 
-この状態で、たとえばOrderLine tableへ`order_id`というsupport columnを追加しても、現行Persistence Mappingには、そのcolumnをSemantic Relationの物理実現として表す正しい置き場がありません。
+```tei
+relation-storage sales_core.order_line {
+    relation sales.order.lines
+    component sales.order.order_id -> order_id storage int64 required
+}
+```
 
-したがって、次の三層を分離したまま、Database-ownedな物理保存境界を定める必要があります。
+意味の流れは次のようになります。
 
 ```text
-Semantic
+Semantic Relation
   sales.order.lines
         ↓
-Application traversal
-  sales.order.order_id -> find_by_order(order_id)
+Database-owned Relation Storage
+  sales.order.order_id -> public.order_lines.order_id
         ↓
-Database storage realization
-  親子関係をどのtable / column / constraint / indexで保持するか
+Contract Query SQL realization
+  find_by_order(order_id)
 ```
 
-## 比較する選択肢
+`order_id`という物理列名自体をSemantic Relationのidentityにはしません。Relation Storageは、どのSemantic Relationを、source側のどのSemantic attributeから、どの物理support columnへ保存するかを明示します。
 
-### A. `OrderLine.orderId`をSemantic attributeとして追加する
+## 実装済みの境界
 
-OrderLine自身が、業務上独立した意味として「所属するOrderのidentity」を属性として持つ必要が確認できた場合には自然です。
+### Canonical model
 
-ただし、Driver traversal、SQL、Foreign Key、Migrationを実装しやすくする目的だけでは採用しません。
-
-### B. Persistence MappingへRelation-ownedなphysical storageを追加する
-
-現時点の第一候補です。
-
-概念上は次のような境界です。
+Persistence Mappingに次を追加しました。
 
 ```text
-persist sales_core.order_line
-  semantic sales.order_line
-  table ...
-
-  relation-storage sales.order.lines
-    source sales.order.order_id
-    column order_id
+RelationStorageMapping
+  ├─ Relation
+  └─ Components[]
+       ├─ SourceAttribute
+       ├─ Column
+       ├─ Storage
+       └─ Nullability
 ```
 
-この形では、target Dataへ新しいSemantic attributeを追加せず、DatabaseがRelationを保存するために必要なsupport columnをDatabase-ownedなrealizationとして保持できます。
+component順序を保持するため、将来composite source identityが必要になっても、物理列名やFKから対応順を推測する必要はありません。
 
-実際の構文・modelはこのIssueの実証で最小化します。上記構文を先に仕様として固定しません。
+### 局所Validation
 
-### C. Relation専用のlink storageへ分離する
+Persistence Mapping単体では、次を検査します。
 
-OrderLine本体とは別のlink table等で関係を保存する案です。
+- Relation identityの形式
+- componentが1件以上あること
+- source attributeの重複がないこと
+- support column名が空でないこと
+- 通常のSemantic attribute列や別Relation Storageと物理列名が衝突しないこと
+- storage type / nullabilityが妥当であること
 
-同じSemantic Relationを別の物理構造へ写せる点では一般性がありますが、第一Referenceには過剰になり得ます。B案で表現できない実例が現れるまで先回りして一般化しません。
+### World-level Validation
 
-### D. SQL realizationだけにphysical columnを埋め込む
+Semantic Worldとの参照整合性として、次を検査します。
 
-採用しません。
+- Relationが実在すること
+- Relation target DataとPersistence MappingのSemantic Dataが一致すること
+- source attributeが実在すること
+- source attributeがRelation source Dataに属すること
 
-`find_by_order`のSQLだけに`order_id`等を記述すると、managed-here Databaseであるにもかかわらず、そのcolumnやconstraintの正本がschema / migration側に残りません。Queryが暗黙のschema前提を持つ状態になるためです。
+RelationKeyやphysical Foreign Keyの存在は要求しません。keylessなRelationでも、Semantic Relationとsource attributeが明示されていれば成立します。
 
-### E. physical Foreign Keyや命名規則から自動推論する
+### Desired Physical Schema
 
-採用しません。
+Relation Storageのsupport columnは、通常のSemantic attribute列とは別にDesired Physical Schemaへ投影します。
 
-physical schemaをSemantic Relationの権威へ逆転させ、既存DBの偶然の命名や制約有無に意味解釈が依存するためです。
+`public.order_lines.order_id`はDesired tableのcolumnとして現れますが、Primary Key、Unique、Index、Foreign Keyへ暗黙参加しません。制約やaccess pathが必要な場合は、Database-ownedな別decisionとして明示します。
 
-## 上位原則
+### AuthoringとSource Index
 
-このIssueでは、次を維持します。
+Relation Storageは次の配置から読み込みます。
 
-- `sales.order.lines`を業務Relationの正本とする
-- `OrderLine.orderId`を物理実装の都合だけでは追加しない
-- physical table / column / Foreign KeyはDatabase-ownedなdecisionとして扱う
-- SQL realizationだけにschema前提を隠さない
-- provider固有の物理表現をSemanticやApplication Patternへ持ち込まない
-- physical storageが未定義なら未解決として停止し、名前やFKから補完しない
-- Source Indexから物理realizationのauthoring sourceへ戻れるようにする
-- 将来、別providerや別storage方式へ再選択できる余地を残す
+```text
+databases/<database>/relation-storage/*.tei
+```
 
-## 実証順
+既存の明示Persistence Mappingへ合流し、Source Indexでは次のsubjectを持ちます。
 
-1. 現行Persistence Mapping / parser / Validation / migration生成の責務を確認する
-2. keyless Relation向けphysical storageに必要な最小Canonical modelを比較する
-3. modelだけで、Semantic attributeとsupport columnを混同しないことをConformance化する
-4. 参照整合性Validationを追加する
-5. authoring sourceとSource Index追跡を追加する
-6. PostgreSQL migration / schema表現へ接続する
-7. Referenceの`sales.order_line` persistenceを追加する
-8. 必要なindex / Foreign KeyをDatabase-ownedなdecisionとして明示する
-9. `find_by_order`のSQL realizationを、確定したphysical storageから明示的に作成する
-10. raw result column → `sales.order_line` Semantic attribute mappingを明示する
-11. 実PostgreSQLで0件・複数件・Execution Errorを確認する
-12. 通常CIが明示的に再有効化された後、関連Conformanceを通常runnerで再検証する
+```text
+persistence-relation-storage:<mapping>/<relation>
+```
+
+第一Referenceでは次のsourceへ追跡できます。
+
+```text
+databases/sales-core/relation-storage/order-lines.tei
+```
+
+### Reference Persistence
+
+`sales_core.order_line`は`public.order_lines`へ保存します。
+
+通常のSemantic attribute列は、OrderLine自身の5属性だけです。
+
+- `order_line_id`
+- `line_number`
+- `item_code`
+- `quantity`
+- `unit_price`
+
+親Orderとの関係を保持する`order_id`は通常の`ColumnMapping`には入れず、Relation Storageだけが所有します。
+
+### `find_by_order` SQL realization
+
+確定したDatabase-owned storageを正本として、`sales_core.order_line / find_by_order`のPostgreSQL realizationを追加しました。
+
+```sql
+SELECT
+    order_line_id,
+    line_number,
+    item_code,
+    quantity,
+    unit_price
+FROM public.order_lines
+WHERE order_id = :order_id
+ORDER BY line_number;
+```
+
+Contract inputからphysical parameterへの対応も明示します。
+
+```text
+input order_id -> physical parameter order_id
+```
+
+raw resultはOrderLine自身のSemantic属性だけへmappingします。Relation support columnの`order_id`はSELECT resultへ含めず、`sales.order_line.order_id`のような存在しないSemantic属性を生成しません。
+
+### Reference統合Conformance
+
+実際のReference Workspaceを通常Loaderで読み込み、次を確認するConformanceを追加しました。
+
+- Relation Storageが`sales_core.order_line`へ合流する
+- 通常のSemantic attribute列に`order_id`が混入していない
+- Relation StorageとSemantic RelationがValidation上整合する
+- `find_by_order` SQL realizationとQuery signatureが整合する
+- Relation StorageとSQL realizationのauthoring sourceへSource Indexから戻れる
+
+## physical Foreign Keyの扱い
+
+v1の第一Referenceでは、physical Foreign KeyをRelation Storage成立の必須条件にはしません。
+
+理由は、Semantic Relation、Database support column、physical FKは同じものではないためです。FKを必要とする具体的な整合性要件が確認できた場合は、Database-ownedなdecisionとして別途明示します。
+
+したがって、FKがないことを理由にSemantic RelationやRelation Storageを未定義とは扱いません。また既存FKを発見したことを理由にSemantic Relationを自動生成しません。
+
+## 実PostgreSQL Evidence
+
+停止前のGitHub Actionsでは、PostgreSQL integrationに共通して`TEI_TEST_POSTGRES_DSN`を使用していました。この規約を再利用し、header-detail経路を実PostgreSQLへ通す手動Evidence toolを追加しました。
+
+```text
+tools/reference-postgres-header-detail-runtime
+```
+
+このtoolは次を一続きに実行します。
+
+```text
+Reference Workspace
+  → order_entry.order_lines
+  → HeaderDetailContractQueryBinding
+  → sales_core.order_line/find_by_order
+  → development / sales_core.dev
+  → database.query.postgres
+  → instance-aware runtime Registry
+  → SQL realization
+  → PostgreSQL Runner
+  → raw result
+  → Semantic OrderLine[]
+```
+
+fixtureでは`order_id=1001`に2件、別Orderに1件を用意し、対象Orderの2件取得と、存在しない`order_id=9999`の0件取得を確認する構成です。
+
+ただし、2026年9月3日現在、GitHub Actions workflowはRepositoryで明示的に停止されています。また、このチャットの実行環境から実PostgreSQLサーバーへ接続してtoolを実行する経路もありません。
+
+そのため、**実PostgreSQLでの成功Evidenceはまだ取得していません**。toolを実装したことと、実DBで成功したことは分けて扱います。
+
+## 現在残っている作業
+
+### 1. 実PostgreSQLでの実行確認
+
+`TEI_TEST_POSTGRES_DSN`を与えられる環境で`tools/reference-postgres-header-detail-runtime`を実行し、少なくとも次を確認します。
+
+- `order_id=1001`で2件取得できる
+- `order_id=9999`で0件を正常な空collectionとして扱える
+- Environment / Database instance / executor Capabilityが明示identityのまま保たれる
+- parameter値がEvidenceへ保存されない
+- `order_id` support columnがOrderLineのSemantic属性として返らない
+
+### 2. CI再開後の通常runner検証
+
+CIをこのIssueから独断で再有効化しません。別の明示的な判断でActionsが再開された後、既存の`postgres-integration`規約へこのtoolを接続し、通常runnerでも再現できるEvidenceを残します。
 
 ## 完了条件
 
-- [ ] keyless Semantic Relationのphysical storage責務所有者を決める
-- [ ] `sales.order.lines`をReferenceで保存できる最小authoringを定める
-- [ ] OrderLineのSemantic attributeとDatabase support columnを混同しない
-- [ ] migration / schema生成または明示DDLへ接続できる
-- [ ] `find_by_order` SQL realizationを推測なしで定義できる
-- [ ] result column mappingを`sales.order_line`へ明示できる
-- [ ] physical Foreign Keyを採用する場合もDatabase-ownedなdecisionとして保持する
-- [ ] 0件・複数件の実PostgreSQL readをConformanceで確認する
-- [ ] Source Indexから保存realization / SQL realizationへ追跡できる
-- [ ] 通常CI再開後に関連Conformanceを再実行する
+- [x] keyless Semantic Relationのphysical storage責務をDatabase-ownedなRelation Storageとして定めた
+- [x] `sales.order.lines`をReferenceで保存できる最小authoringを定めた
+- [x] OrderLineのSemantic attributeとDatabase support columnを分離した
+- [x] Relation StorageをDesired Physical Schemaへ接続した
+- [x] `find_by_order` SQL realizationを推測なしで定義した
+- [x] result column mappingを`sales.order_line`へ明示した
+- [x] v1ではphysical Foreign Keyを必須化せず、採用時はDatabase-ownedな別decisionとして扱う方針を明示した
+- [x] Source Indexから保存realization / SQL realizationへ追跡できる
+- [x] 実PostgreSQL用の再現可能な手動Evidence toolを用意した
+- [ ] 0件・複数件の実PostgreSQL readを実際に確認する
+- [ ] 通常CI再開後に関連Conformanceと実PostgreSQL Evidenceを再実行する
 
 ## 非目標
 
@@ -151,16 +245,20 @@ physical schemaをSemantic Relationの権威へ逆転させ、既存DBの偶然�
 - UIのheader-detail layout
 - physical schemaからSemantic Relationを自動生成すること
 - Semantic modelへphysical schemaを逆流させること
+- physical Foreign Keyを全Relationへ必須化すること
 - external-observed `master_data`の物理EvidenceをこのIssueで扱うこと
 
 ## 関連
 
 - GitHub Issue #69 / #117 / #178 / #179 / #185 / #233 / #244
-- GitHub PR #235〜#243
+- GitHub PR #235〜#253
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000011-order-line-semantic-reference.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000023-header-detail-relation-traversal-boundary.md`
-- `reference/workspace/semantic/sales/order.tei`
-- `reference/workspace/databases/sales-core/persistence/order.tei`
+- `reference/workspace/databases/sales-core/persistence/order-line.tei`
+- `reference/workspace/databases/sales-core/relation-storage/order-lines.tei`
 - `reference/workspace/databases/sales-core/contracts/order-line.tei`
+- `reference/workspace/databases/sales-core/query-realizations/order-lines.tei`
+- `reference/workspace/databases/sales-core/query-realizations/order-lines.sql`
+- `tools/reference-postgres-header-detail-runtime/main.go`
