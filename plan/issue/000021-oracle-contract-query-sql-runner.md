@@ -80,7 +80,9 @@ Conformanceでは次を確認しています。
 
 実装は`work/reference-data-access-convergence`へ統合済みです。
 
-ただし、特定のOracle driver packageはまだ選定していません。実Oracle driverが`database/sql`のnamed argumentと対象SQLをどのように扱うかは、`ISSUE-000019`の物理Evidenceが揃った後のintegrationで確認します。
+2026年9月3日現在、GitHub Actions workflowはRepositoryから明示的に削除され、収束線にも停止が取り込まれています。そのため、このConformanceは現時点では通常runnerによる実行Evidenceを持ちません。CI未実行をgreenとは扱わず、CIをこの作業線から独断で再有効化もしません。再開後に通常runnerで改めて検証します。
+
+特定のOracle driver packageはまだ選定していません。実Oracle driverが`database/sql`のnamed argumentと対象SQLをどのように扱うかは、`ISSUE-000022`の物理Evidenceが揃った後のintegrationで確認します。
 
 ## 完了条件
 
@@ -93,7 +95,7 @@ Conformanceでは次を確認しています。
 - [x] row取得途中の失敗をErrorとして返す
 - [x] `[]byte`をdriver側bufferから切り離す
 - [x] 特定Oracle driver packageをCoreへ固定しない
-- [ ] 通常のCI runnerでConformanceが実行され、成功する
+- [ ] CIが明示的に再有効化された後、通常runnerでConformanceが実行され、成功する
 - [ ] 採用したOracle driverとのnamed parameter互換性を実接続で確認する
 - [ ] 第一Referenceの実SQLでRunnerを通過するEvidenceを得る
 
@@ -105,14 +107,14 @@ Conformanceでは次を確認しています。
 - Semantic mappingの再実装
 - SQL文字列解析によるread-only判定
 
-read-onlyの実効的な保証は、`ISSUE-000019`でcredential / session / transaction等の実際の強制境界として確認します。
+read-onlyの実効的な保証は、`ISSUE-000022`でcredential / session / transaction等の実際の強制境界として確認します。
 
 ## 関連
 
-- GitHub Issue #179 / #214 / #222 / #224
+- GitHub Issue #179 / #192 / #214 / #222 / #224
 - PR #225
 - `plan/issue/000018-database-contract-query-execution.md`
-- `plan/issue/000019-external-master-data-physical-query-evidence.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000020-contract-query-runtime-instance-identity.md`
 - `internal/driver/queryruntime/sql/executor.go`
 - `internal/driver/queryruntime/oracle/runner.go`

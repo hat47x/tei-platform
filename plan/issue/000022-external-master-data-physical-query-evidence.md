@@ -1,4 +1,4 @@
-# ISSUE-000019: external-observed `master_data`の物理Query Evidenceを確定する
+# ISSUE-000022: external-observed `master_data`の物理Query Evidenceを確定する
 
 - 状態: Ready
 - GitHub Issue: #214
@@ -159,7 +159,7 @@ Referenceは「既存システムを受け入れる」性質を実証するた�
 5. 採用Oracle driverでnamed parameterとraw resultを確認する
 6. `development / master_data.dev / database.query.oracle`向けruntime Executorをinstance-aware Registryへ登録する
 7. Workspace読込みからSemantic resultまでのE2Eを実行する
-8. 通常CI runnerでも再現可能なEvidenceを残す
+8. CIが明示的に再有効化された後、通常runnerでも再現可能なEvidenceを残す
 
 ## 完了条件
 
