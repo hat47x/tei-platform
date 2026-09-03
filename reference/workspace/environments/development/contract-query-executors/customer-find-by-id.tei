@@ -1,0 +1,8 @@
+contract-query-executor-binding {
+    environment development
+    instance master_data.dev
+    database master_data
+    contract master_data.customer
+    query find_by_id
+    executor database.query.oracle
+}

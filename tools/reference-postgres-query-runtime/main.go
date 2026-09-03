@@ -18,14 +18,16 @@ import (
 )
 
 type evidence struct {
-	Query                    core.CanonicalID `json:"query"`
-	Datasource               string           `json:"datasource"`
-	TargetDatabase           core.CanonicalID `json:"targetDatabase"`
-	ParameterNames           []string         `json:"parameterNames"`
-	ParameterValuesPersisted bool             `json:"parameterValuesPersisted"`
-	Columns                  []string         `json:"columns"`
-	RawRows                  int              `json:"rawRows"`
-	SemanticMappingApplied   bool             `json:"semanticMappingApplied"`
+	Query                    core.CanonicalID   `json:"query"`
+	Datasource               string             `json:"datasource"`
+	TargetDatabase           core.CanonicalID   `json:"targetDatabase"`
+	ParameterNames           []string           `json:"parameterNames"`
+	ParameterValuesPersisted bool               `json:"parameterValuesPersisted"`
+	RawColumns               []string           `json:"rawColumns"`
+	RawRows                  int                `json:"rawRows"`
+	SemanticAttributes       []core.CanonicalID `json:"semanticAttributes"`
+	MappedRows               int                `json:"mappedRows"`
+	SemanticMappingApplied   bool               `json:"semanticMappingApplied"`
 }
 
 func main() {
@@ -77,17 +79,17 @@ func main() {
 	if !ok {
 		panic(fmt.Errorf("PostgreSQL Executorが想定外のpayloadを返しました: %T", executed.Result.Payload))
 	}
-	wantColumns := []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"}
-	if !reflect.DeepEqual(result.Raw.Columns, wantColumns) {
-		panic(fmt.Errorf("raw result columns=%#v want=%#v", result.Raw.Columns, wantColumns))
+	wantRawColumns := []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"}
+	if !reflect.DeepEqual(executed.Result.Raw.Columns, wantRawColumns) {
+		panic(fmt.Errorf("raw result columns=%#v want=%#v", executed.Result.Raw.Columns, wantRawColumns))
 	}
-	if len(result.Raw.Rows) != 2 {
-		panic(fmt.Errorf("raw result rows=%d want=2", len(result.Raw.Rows)))
+	if len(executed.Result.Raw.Rows) != 2 {
+		panic(fmt.Errorf("raw result rows=%d want=2", len(executed.Result.Raw.Rows)))
 	}
-	if got := rawInt64(result.Raw.Rows[0][0]); got != 102 {
+	if got := rawInt64(executed.Result.Raw.Rows[0][0]); got != 102 {
 		panic(fmt.Errorf("first raw order_id=%d want=102", got))
 	}
-	if got := rawInt64(result.Raw.Rows[1][0]); got != 101 {
+	if got := rawInt64(executed.Result.Raw.Rows[1][0]); got != 101 {
 		panic(fmt.Errorf("second raw order_id=%d want=101", got))
 	}
 	if !reflect.DeepEqual(result.ParameterNames, []string{"from"}) {
@@ -97,15 +99,41 @@ func main() {
 		panic("browse QueryまたはDatasourceが解決されていません")
 	}
 
+	wantSemanticAttributes := []core.CanonicalID{
+		"sales.order.order_id",
+		"sales.order.customer_id",
+		"sales.order.ordered_at",
+		"sales.order.status",
+		"sales.order.total",
+	}
+	semanticAttributes := make([]core.CanonicalID, len(executed.Result.Mapped.Columns))
+	for i, column := range executed.Result.Mapped.Columns {
+		semanticAttributes[i] = column.Attribute
+	}
+	if !reflect.DeepEqual(semanticAttributes, wantSemanticAttributes) {
+		panic(fmt.Errorf("semantic attributes=%#v want=%#v", semanticAttributes, wantSemanticAttributes))
+	}
+	if len(executed.Result.Mapped.Rows) != 2 {
+		panic(fmt.Errorf("mapped result rows=%d want=2", len(executed.Result.Mapped.Rows)))
+	}
+	if got := rawInt64(executed.Result.Mapped.Rows[0][0]); got != 102 {
+		panic(fmt.Errorf("first mapped order_id=%d want=102", got))
+	}
+	if !reflect.DeepEqual(executed.Result.Mapped.Rows[0][4], executed.Result.Raw.Rows[0][4]) {
+		panic(fmt.Errorf("total_amountのraw値がmapping時に変換されています: raw=%#v mapped=%#v", executed.Result.Raw.Rows[0][4], executed.Result.Mapped.Rows[0][4]))
+	}
+
 	out := evidence{
 		Query:                    executed.Resolution.Query.ID,
 		Datasource:               string(executed.Resolution.Datasource.Alias),
 		TargetDatabase:           executed.Resolution.Datasource.TargetDatabase,
 		ParameterNames:           append([]string(nil), result.ParameterNames...),
 		ParameterValuesPersisted: false,
-		Columns:                  append([]string(nil), result.Raw.Columns...),
-		RawRows:                  len(result.Raw.Rows),
-		SemanticMappingApplied:   false,
+		RawColumns:               append([]string(nil), executed.Result.Raw.Columns...),
+		RawRows:                  len(executed.Result.Raw.Rows),
+		SemanticAttributes:       semanticAttributes,
+		MappedRows:               len(executed.Result.Mapped.Rows),
+		SemanticMappingApplied:   true,
 	}
 	encoded, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

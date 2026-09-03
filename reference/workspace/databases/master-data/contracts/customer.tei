@@ -1,4 +1,7 @@
 contract master_data.customer v2.4 {
     read customer.customer
-    query find_by_id
+    query find_by_id {
+        input id type customer.customer_id
+        result customer.customer zero-or-one
+    }
 }
