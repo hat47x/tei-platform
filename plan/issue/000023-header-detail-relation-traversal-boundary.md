@@ -1,16 +1,18 @@
 # ISSUE-000023: header-detail Relation traversalの実現境界を定める
 
-- 状態: In Progress
+- 状態: Done
 - GitHub Issue: #233
+- 決定: ADR-0021
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
+- 後続: `ISSUE-000024` / GitHub Issue #244
 - 関連Issue: `ISSUE-000011` / #117、`ISSUE-000012` / #118、`ISSUE-000017` / #178、`ISSUE-000018` / #179、`ISSUE-000019` / #185
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
-## 背景
+## 目的
 
-Gate Bへ向けて`order_entry.order_lines`をruntime traversalへ進めると、`sales.order.lines`というSemantic Relationだけでは、具体的なOrder instanceから複数のOrderLine instanceを取得する方法がまだ定まっていません。
+`sales.order.lines`のようなkeylessな`many` Semantic Relationを、Driverやphysical Foreign Keyの都合でSemanticへ新しい属性を追加せず、Application Patternの責務も重くせずにruntime traversalへ接続する境界を定めます。
 
-現在のSemanticは次の形です。
+第一Referenceでは、次のSemanticが既に成立しています。
 
 ```tei
 data Order {
@@ -28,111 +30,9 @@ data OrderLine {
 }
 ```
 
-`OrderLine`には、親Orderのidentityを表すSemantic attributeを置いていません。
+`OrderLine`には親Order identityを表すSemantic attributeを置いていません。`ISSUE-000011`で、Driverや物理DB設計の都合だけを理由に`orderId`を追加しないことを確認しています。
 
-これは単なる実装漏れではありません。`ISSUE-000011`では、Driverや物理Databaseの都合だけで`orderId`をOrderLineへ追加せず、`sales.order.lines`というRelation自体を親子関係のSemanticな正本として成立させました。`ISSUE-000012`でも、header-detail PatternはRelation-onlyで成立し、DatasourceやQueryを先回りして持たせないことを確認しています。
-
-一方、`ISSUE-000017`で追加した`RelationKey`は、sourceとtargetのSemantic attribute同士に意味のある対応が存在するRelationで有効です。第一Referenceのcustomer Relationでは、次が自然に成立します。
-
-```text
-sales.order.customer_id
-    -> customer.customer.customer_id
-```
-
-これを`lines`へ機械的に適用すると、`sales.order_line.order_id`のようなtarget attributeを追加したくなります。しかし、そのattributeに独立した業務Semantic上の必要性が確認されていない状態で追加すると、runtime traversalやphysical Foreign Keyの都合をSemanticへ逆流させることになります。
-
-このIssueでは、**keylessな`many` Semantic Relationを実行へ接続する責務をどこへ置くか**を決めます。
-
-## 現在確認できている事実
-
-- `sales.order.lines`はSemantic Relationとして成立済み
-- cardinalityは`many`
-- `order_entry.order_lines`はRelation-onlyのheader-detail Patternとして成立済み
-- `sales.order_line`には親Order identity属性がない
-- `sales.order_line`のPersistence Mappingはない
-- `sales.order`には`sales.order.order_id`というsource identityがある
-- Driverの`ResolvePattern`はheader-detailについてRelation source / target / cardinalityだけを解決する
-- physical FKやtable構造をSemanticの正本にしない方針は既に確定している
-- `HeaderDetailContractQueryBinding`によって、Pattern本体を変えずにsource attributeからDatabase Contract Query inputへの対応を表現できる
-- `sales_core.order_line/find_by_order`をtyped QueryとしてReferenceへ置き、result Data=`sales.order_line`、cardinality=`many`を契約できる
-- Binding authoring sourceは`applications/<unit>/realizations/header-detail/*.tei`から読み込み、Source Indexで追跡できる
-
-## 比較した選択肢
-
-### A. OrderLineへ親Order identityをSemantic attributeとして追加する
-
-```text
-sales.order.order_id
-    -> sales.order_line.order_id
-```
-
-OrderLine自身が業務上「どのOrderに属するか」というidentityを保持する必要が、runtimeやPersistenceとは独立して確認できる場合には自然です。
-
-ただし、Driver traversalやphysical Foreign Keyだけを根拠に採用しません。
-
-### B. header-detail Patternが取得Contractとbindingを明示する
-
-Applicationが、このheader-detailで利用するlogical Datasource、Database Contract Query、source attributeからQuery inputへのbindingをPattern自身に持つ案です。
-
-```text
-header-detail Pattern
-  relation sales.order.lines
-  datasource sales
-  Contract Query find_by_order
-  sales.order.order_id -> input order_id
-```
-
-OrderLine側の親IDを要求しない利点があります。一方、Relation-onlyで成立しているPatternへ取得責務を戻すため、既存のApplication intentを不必要に重くします。
-
-### C. Relation traversal realizationを別modelとして置く
-
-Semantic RelationとApplication Patternを維持し、独立realizationが取得方法を明示する案です。
-
-```text
-Application Pattern / logical Datasource
-        ↓
-Database Contract / Query
-        ↓
-source Semantic attribute -> Query input
-        ↓
-result Semantic Data = sales.order_line many
-```
-
-この案では、OrderLineへ親IDを強制せず、Database固有の実現方法もSemantic RelationやPatternへ逆流させません。
-
-### D. aggregate / nested materializationとして一括取得する
-
-Orderを読み込むQuery自身がOrderLine collectionまでSemantic resultとしてmaterializeする案です。
-
-将来のAPIやTargetでは有効ですが、現在のflatなQuery result境界を大きく広げるため、v1の第一候補にはしません。
-
-### E. physical FK / Persistence Mappingから自動推論する
-
-採用しません。
-
-実装の容易さと引き換えに、物理構造をSemantic Relation traversalの権威へしてしまうためです。
-
-## 現時点の実証結果
-
-### C案をruntime実証前の暫定採用とする
-
-PR #235〜#237で、C案を最小model・Validation・authoringまで実証しました。
-
-追加した境界は次です。
-
-```text
-HeaderDetailContractQueryBinding
-  Application
-  Pattern
-  Datasource
-  Target: Database / Contract / Query
-  Inputs[]
-    SourceAttribute -> Query Input
-```
-
-Binding identityは`Application + Pattern`です。DatasourceやContract Queryは選択内容であり、identityには含めません。
-
-この構成では、`order_entry.order_lines`は引き続き次のRelation-only Patternのままです。
+header-detail Patternも、Application intentとしてはRelation-onlyです。
 
 ```tei
 pattern order_entry.order_lines header-detail {
@@ -140,7 +40,70 @@ pattern order_entry.order_lines header-detail {
 }
 ```
 
-取得方法は別authoring sourceへ置きます。
+このIssueでは、この二つの境界を維持したまま`Order -> OrderLine[]`を実行できるかを実Referenceで検証しました。
+
+## 比較した選択肢
+
+### A. OrderLineへ親Order identityをSemantic attributeとして追加する
+
+OrderLine自身の業務Semanticとして必要であることが確認できた場合には自然です。
+
+しかし、runtime traversalやForeign Keyを実装しやすくするためだけに追加すると、物理実現の都合をSemanticへ逆流させます。このIssueの実証では必要ありませんでした。
+
+### B. header-detail PatternへDatasourceと取得Queryを追加する
+
+Pattern自身が、Relationに加えてlogical Datasource、Contract Query、source attributeからQuery inputへのbindingまで所有する案です。
+
+実行は可能ですが、Relation-onlyで成立しているApplication intentへ取得方式を戻すことになります。Patternの責務を不必要に重くするため採用しませんでした。
+
+### C. Pattern外のApplication固有realizationとして取得方法を置く
+
+採用した案です。
+
+```text
+Application Pattern / Semantic Relation
+        ↓
+HeaderDetailContractQueryBinding
+  logical Datasource
+  Database / Contract / Query
+  source Semantic attribute -> Query input
+        ↓
+Database Contract Query
+  typed input / result Data / many
+```
+
+Application PatternはRelation-onlyのまま維持し、取得方法だけを独立realizationへ分離します。
+
+### D. Order取得QueryでOrderLine collectionまで一括materializeする
+
+APIや別Targetでは有効な場合がありますが、第一Referenceのためにflat result境界を先回りで広げる必要はありません。v1の標準境界にはしません。
+
+### E. physical Foreign Key / Persistence Mappingから自動推論する
+
+採用しません。物理構造をSemantic Relationの権威へ逆転させるためです。
+
+## 採用した境界
+
+ADR-0021として、C案を採用しました。
+
+### HeaderDetailContractQueryBinding
+
+v1では次の情報をApplication固有realizationとして保持します。
+
+```text
+HeaderDetailContractQueryBinding
+  Application
+  Pattern
+  Datasource
+  Target
+    Database / Contract / Query
+  Inputs[]
+    SourceAttribute -> Query Input
+```
+
+Binding identityは`Application + Pattern`です。DatasourceやContract Queryは選択内容であり、identityには含めません。
+
+Reference authoringは次です。
 
 ```tei
 header-detail-contract-query-binding {
@@ -156,13 +119,15 @@ header-detail-contract-query-binding {
 
 ### RelationKeyを要求しない
 
-Validationでは、Bindingの`SourceAttribute`がRelation source Dataに属することを確認しますが、`sales.order.lines`にRelationKeyが存在することは要求しません。
+Validationとruntime preparationでは、Bindingの`SourceAttribute`がRelation source Dataに属することを確認しますが、`sales.order.lines`にRelationKeyが存在することは要求しません。
 
-これにより、`sales.order_line.order_id`を追加せず、source側の`sales.order.order_id`をcollection取得Queryのinputへ明示的に渡せます。
+`RelationKey`は、sourceとtargetの両側に業務上意味のあるSemantic attribute対応があるRelationで利用します。すべてのRelationに対する一般的なruntime join keyにはしません。
 
-### Contract Queryの意味契約を分離する
+このため、`sales.order_line.order_id`を追加せずに、`sales.order.order_id`をcollection取得Queryへ渡せます。
 
-Referenceでは次のtyped Queryを追加して実証します。
+### Database Contract Query
+
+Referenceには次のtyped Queryを追加しました。
 
 ```tei
 contract sales_core.order_line v1.0 {
@@ -174,100 +139,166 @@ contract sales_core.order_line v1.0 {
 }
 ```
 
-ここに物理table名、column名、Foreign Key、SQL本文は含めません。
+ここにはphysical table、column、Foreign Key、SQL本文を含めません。
 
 ### 全件Queryへの退行を防ぐ
 
-header-detail traversalでは、少なくとも一つの`SourceAttribute -> Query input` bindingを必須としました。
+header-detail traversalには、少なくとも一つの`SourceAttribute -> Query input` bindingを必須としました。
 
-Query inputが0件のContractを暗黙に利用し、親Orderと無関係な全OrderLineを取得する形はheader-detail traversalとして認めません。
+Query inputが0件のContractを使って親Orderと無関係な全OrderLineを取得する形は、header-detail traversalとして認めません。
 
-### Source traceabilityを維持する
+## 実証結果
 
-Bindingは次のSubjectでSource Indexへ登録します。
+### model / Validation
+
+PR #235と#236で、Canonical modelと通常Validationを追加しました。
+
+次を検査します。
+
+- Application / Pattern identity
+- Pattern kind = `header-detail`
+- readable logical Datasource
+- target Database
+- required Contractとmajor compatibility
+- typed Contract Query
+- source attributeがRelation source Dataに属すること
+- source attribute型とQuery input型の一致
+- 全Query inputへの明示binding
+- result Data = Relation target Data
+- result cardinality = `many`
+- Binding identityの一意性
+
+RelationKeyは検査条件にしていません。
+
+### authoring / Source Index
+
+PR #237で、専用ParserとWorkspace Loaderを追加しました。
+
+配置は次です。
+
+```text
+applications/<unit>/realizations/header-detail/*.tei
+```
+
+Application / Pattern / Datasource / Database / Contract / Query identityはsource本文から取得し、pathやfilenameから補完しません。
+
+Bindingは次のSubjectでSource Indexへ登録されます。
 
 ```text
 header-detail-contract-query-binding:<Application>/<Pattern>
 ```
 
-Validation Diagnosticから独立realization sourceへ戻れることまでConformanceで固定しました。
+Validation Diagnosticからrealization sourceへ戻れることも確認しました。
 
-## 現時点の判断
+### 実Reference
 
-v1ではC案を基準にruntime実証を続けます。
+PR #238で、`sales_core.order_line / find_by_order`と`order_entry.order_lines`のBindingを実Referenceへ追加しました。
 
-ただし、現時点ではADRへ昇格させません。次の点を実行経路で確認した後に、境界が十分安定したかを判断します。
+この時点でも次は追加していません。
 
-- mapped Order instanceから`sales.order.order_id`の実値を取り出せること
-- Bindingだけを正本として`find_by_order(order_id)`のparameterを準備できること
-- Database Contract Query executorの既存compositionを再利用できること
-- 0件を正常な空collectionとして扱えること
-- 複数件を`sales.order_line[]`として保持できること
-- Execution Errorを空collectionと混同しないこと
-- physical PersistenceやFKを追加しなくてもruntime境界を説明できること
+- `sales.order_line.order_id`
+- `sales.order.lines`のRelationKey
+- OrderLine Persistence Mapping
+- physical table / column / Foreign Key
+- SQL realization
 
-これらが成立すれば、AやBへ責務を戻す必要性は低いと判断できます。
+### runtime parameter preparation
 
-## 評価基準
+PR #239で、実Referenceのmapping済みOrder rowから次を準備できることを確認しました。
 
-採用する境界は、少なくとも次を満たす必要があります。
+```text
+sales.order.order_id = 1001
+        ↓ explicit binding
+order_id = 1001
+```
 
-- `sales.order.lines`を業務Semanticの正本として維持する
-- `OrderLine.orderId`をDriver都合だけで追加しない
-- physical FK / table / column名からtraversalを推測しない
-- Application Query / Database Contract Query / Semantic Relationのidentityを混同しない
-- source instanceから必要な値を明示的に取得できる
-- resultが`sales.order_line`かつ`many`であることを検証できる
-- logical DatasourceとEnvironment上のDatabase instanceを混同しない
-- realization / bindingのauthoring sourceを追跡できる
-- PostgreSQL固有の実現方法をCoreへ固定しない
-- header-detail PatternへUI layoutを持ち込まない
-- 同じRelationを別Targetや別Database realizationでも再利用できる余地を残す
-- 汎用ORMやgeneric join engineへ拡張しない
+mapped column順、raw column名、Query input名の類似、Persistence Mapping、physical Foreign Keyから値を推測しません。
 
-## 実証順
+### Contract Query execution
 
-1. A / B / Cについて必要なCanonical identityと責務を比較する — 完了
-2. `OrderLine.orderId`を追加しないケースでも成立する最小Conformanceを作る — 完了
-3. source attribute → traversal inputの明示bindingをmodel上で表す — 完了
-4. result Data / cardinalityのValidation境界を確認する — 完了
-5. Pattern本体へ取得情報を追加せず、別realizationで分離できることを確認する — 完了
-6. 採用境界をReference authoringへ適用する — 実施中
-7. Source Indexからrealization / Contract Queryへ戻れることを確認する — Bindingは完了
-8. Driverで`Order -> OrderLine[]`を0件・複数件・Execution Errorを区別して実行する — 未着手
-9. 実証で設計が安定した時点でADR化の要否を判断する — 未着手
+PR #240で、既存`ContractQueryExecutor`へそのまま接続しました。
 
-## 完了条件
+`many` resultでは次を区別できます。
 
-- [x] `OrderLine.orderId`をruntime都合だけでは追加しない境界を確認できる
-- [x] keylessな`many` Relationを実行へ接続する責務所有者を独立realizationとして試作できる
-- [x] source instance → traversal inputの対応を名前・型推測なしで表現できる
-- [x] result Data / cardinalityを明示的に検証できる
-- [x] physical FKをSemantic Relation keyとして自動採用しない
-- [x] 最小Reference authoringを作り、BindingをSource Indexまで追跡できる
-- [ ] Driverで`Order -> OrderLine[]`を推測なしで実行できる
-- [ ] 0件を正常な空collectionとして扱える
-- [ ] Execution Errorと空collectionを区別できる
-- [ ] 通常CIが明示的に再有効化された後、関連Conformanceを実行する
+```text
+0 row          -> 正常な空collection
+複数row        -> 正常なsales.order_line[]
+Executor error -> Execution Error
+```
+
+header-detail専用のDatabase Executorは追加していません。
+
+### PostgreSQL runtime
+
+PR #241で、共通`sqlquery.Executor`の下位にPostgreSQL SQL Runnerを追加しました。
+
+既存の`:name -> $1, $2, ...` parameter binderを再利用し、runtime値をEvidenceへ保存しません。
+
+PR #242ではReferenceの`tei.database.postgres`に`database.query.postgres` Capabilityを公開し、次のEnvironment compositionを明示しました。
+
+```text
+order_entry.sales
+  -> development / sales_core.dev
+  -> database.query.postgres
+```
+
+provider一致だけでCapabilityや別instanceのruntime Executorを選択しません。
+
+### 物理realizationがない場合は停止する
+
+PR #243では、上記compositionがすべて成立していても、`sales_core/sales_core.order_line/find_by_order`のPostgreSQL SQL realizationが存在しなければ、physical Runnerを呼ぶ前に停止する負のE2Eを追加しました。
+
+Environment compositionの成立を、物理SQLを推測する根拠にはしません。
+
+## 物理保存境界の分離
+
+runtime traversalの責務境界は確定しましたが、managed-here Databaseで`sales.order.lines`をどのphysical column / Foreign Key / link structureへ保存するかは別問題です。
+
+現行Persistence MappingはSemantic attributeとphysical columnの対応を基本としているため、target Dataに親Order attributeを追加しないkeyless Relationには、Database-ownedなrelationship storageを表す境界が不足しています。
+
+この残件は`ISSUE-000024` / GitHub Issue #244へ分離しました。
+
+`ISSUE-000024`が確定する前に、`order_lines.order_id`等のphysical columnやForeign Key、`find_by_order` native SQLをこのIssueから発明しません。
+
+## 完了条件と結果
+
+- [x] `OrderLine.orderId`をruntime都合だけでは追加しない境界を確認した
+- [x] keylessな`many` Relationのruntime取得責務をPattern外realizationへ置いた
+- [x] source instance → Query inputの対応を名前・型推測なしで表現した
+- [x] result Data / cardinalityを明示的に検証した
+- [x] physical Foreign KeyをSemantic Relation keyとして自動採用しない
+- [x] 実Reference authoringを作り、Source Indexまで追跡した
+- [x] Driverで`Order -> OrderLine[]`を推測なしで実行した
+- [x] 0件を正常な空collectionとして扱った
+- [x] 複数件を正常な`many` resultとして扱った
+- [x] Execution Errorと空collectionを区別した
+- [x] Environment / Database instance / executor Capabilityを明示compositionした
+- [x] PostgreSQL runtime境界へ接続した
+- [x] SQL realization欠落時に推測せず停止した
+- [x] 物理保存方式の未決事項を`ISSUE-000024`へ分離した
+
+通常GitHub Actionsは2026年9月3日時点でRepository上から明示的に停止されています。CI再開後の通常runnerによる再検証は、Gate B監査側の横断確認として扱います。このIssueの設計責務は完了しています。
 
 ## 非目標
 
+- keyless Relationのphysical storage方式をこのIssueで決めること
 - 汎用ORM association
 - generic join engine
 - UI Grid / Form layout
-- physical FKの自動発見
-- OrderLine table設計をこのIssueだけで確定すること
+- physical Foreign Keyの自動発見
 - 全種類のcollection Relationを一度に一般化すること
 
 ## 関連
 
-- GitHub Issue #69 / #117 / #118 / #178 / #179 / #185 / #233
-- GitHub PR #235 / #236 / #237
+- ADR-0021
+- GitHub Issue #69 / #117 / #118 / #178 / #179 / #185 / #233 / #244
+- GitHub PR #235〜#243
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000011-order-line-semantic-reference.md`
 - `plan/issue/000012-header-detail-application-pattern.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
+- `plan/issue/000018-database-contract-query-execution.md`
+- `plan/issue/000024-keyless-relation-physical-storage.md`
 - `reference/workspace/semantic/sales/order.tei`
 - `reference/workspace/applications/order-entry/realizations/header-detail/order-lines.tei`
 - `reference/workspace/databases/sales-core/contracts/order-line.tei`
-- `internal/driver/resolver.go`
