@@ -89,6 +89,9 @@ func Load(root string) (Result, error) {
 			if err := loadEnvironments(root, &r); err != nil {
 				return Result{}, err
 			}
+			if err := loadContractQueryExecutorBindings(root, &r); err != nil {
+				return Result{}, err
+			}
 		case "releases":
 			if err := loadReleases(root, &r); err != nil {
 				return Result{}, err
@@ -637,6 +640,9 @@ func Normalize(w *ir.World) {
 	sort.Slice(w.Environments, func(i, j int) bool { return w.Environments[i].ID < w.Environments[j].ID })
 	sort.Slice(w.Queries, func(i, j int) bool { return w.Queries[i].ID < w.Queries[j].ID })
 	sort.Slice(w.Bindings, func(i, j int) bool { return w.Bindings[i].Capability < w.Bindings[j].Capability })
+	sort.Slice(w.ContractQueryExecutorBindings, func(i, j int) bool {
+		return w.ContractQueryExecutorBindings[i].Identity() < w.ContractQueryExecutorBindings[j].Identity()
+	})
 	for i := range w.Applications {
 		sort.Slice(w.Applications[i].Databases, func(a, b int) bool {
 			return w.Applications[i].Databases[a].Alias < w.Applications[i].Databases[b].Alias
