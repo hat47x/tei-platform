@@ -16,18 +16,19 @@ import (
 type CapabilityKind string
 
 const (
-	CapabilityDeploymentExecutor  CapabilityKind = "deployment-executor"
-	CapabilityObservationProvider CapabilityKind = "observation-provider"
-	CapabilityEvidenceProvider    CapabilityKind = "evidence-provider"
-	CapabilityDatabaseProvider    CapabilityKind = "database-provider"
-	CapabilityMigrationProvider   CapabilityKind = "migration-provider"
-	CapabilityEditorIntelligence  CapabilityKind = "editor-intelligence"
+	CapabilityDeploymentExecutor    CapabilityKind = "deployment-executor"
+	CapabilityObservationProvider   CapabilityKind = "observation-provider"
+	CapabilityEvidenceProvider      CapabilityKind = "evidence-provider"
+	CapabilityDatabaseProvider      CapabilityKind = "database-provider"
+	CapabilityContractQueryExecutor CapabilityKind = "contract-query-executor"
+	CapabilityMigrationProvider     CapabilityKind = "migration-provider"
+	CapabilityEditorIntelligence    CapabilityKind = "editor-intelligence"
 )
 
 func (k CapabilityKind) Valid() bool {
 	switch k {
 	case CapabilityDeploymentExecutor, CapabilityObservationProvider, CapabilityEvidenceProvider,
-		CapabilityDatabaseProvider, CapabilityMigrationProvider, CapabilityEditorIntelligence:
+		CapabilityDatabaseProvider, CapabilityContractQueryExecutor, CapabilityMigrationProvider, CapabilityEditorIntelligence:
 		return true
 	default:
 		return false

@@ -326,7 +326,11 @@ func (p *Parser) ParseContract() (database.Contract, error) {
 			if err != nil {
 				return c, err
 			}
-			c.Queries = append(c.Queries, database.QueryContract{Name: v.Text})
+			queryContract, err := p.parseContractQuerySignature(v.Text)
+			if err != nil {
+				return c, err
+			}
+			c.Queries = append(c.Queries, queryContract)
 		default:
 			return c, p.errAt(t, "expected read, write, or query")
 		}
@@ -1898,7 +1902,11 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, p.errAt(rSym, err.Error())
 			}
 			rid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
-			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text)})
+			keys, err := p.parseSemanticRelationKeys()
+			if err != nil {
+				return d, err
+			}
+			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys})
 		default:
 			return d, p.errAt(t, "expected attribute or relation")
 		}
