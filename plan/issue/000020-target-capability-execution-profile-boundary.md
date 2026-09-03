@@ -1,6 +1,7 @@
 # ISSUE-000020: Target CapabilityとExecution Profileの境界を検証する
 
 - 状態: Proposed
+- GitHub Issue: #259
 - 本格着手条件: Gate C
 
 ## 背景
