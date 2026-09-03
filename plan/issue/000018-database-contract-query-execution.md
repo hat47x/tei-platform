@@ -279,7 +279,7 @@ Database Contract Query signatureのDiagnosticは、`database-contract-query:<co
 
 Repositoryには現在、実際のtable / view / column、native SQL、physical parameter名、raw result列、provenanceがありません。
 
-これらは`ISSUE-000019` / GitHub Issue #214で扱います。synthetic Conformanceや命名慣習から補完しません。
+これらは`ISSUE-000022` / GitHub Issue #214で扱います。synthetic Conformanceや命名慣習から補完しません。
 
 ### 2. read-onlyの実効的な保証
 
@@ -319,21 +319,21 @@ Workspace authoring
 
 このE2EがGate Bの主要Evidenceになります。
 
-### 5. CI runner
+### 5. CI
 
-GitHub Actionsのworkflow runが作成されない状態が続いています。Evidence用convergenceへ統合したPRについても、CI成功とは扱っていません。
+2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、`work/reference-data-access-convergence`にもその停止が取り込まれています。そのため、現在のPRでworkflow runが作成されないことは、Issue #192で記録した`runner_id=0 / steps=[]`事象の継続を直接意味しません。
 
-通常runnerが復旧したら、これまでのConformanceを一括で実行し、main統合前のEvidenceを取り直します。
+CI未実行の成果をgreenとは扱いません。一方、このContract Query作業線から独断でActionsを再有効化することもしません。CIが別の明示的な判断で再開された後、これまでのConformanceを通常runnerで一括実行し、Issue #192のrunner割当事象が再現するかも改めて切り分けます。
 
 ## 次の実証順
 
-1. `ISSUE-000019`で第一Referenceの物理object、SQL、parameter、raw列、provenanceを確定する
+1. `ISSUE-000022`で第一Referenceの物理object、SQL、parameter、raw列、provenanceを確定する
 2. read-onlyを実効的に強制する境界をEvidenceで確認する
 3. 採用するOracle driverをintegration境界で接続し、named parameter等の互換性を確認する
 4. 第一Referenceの実SQL realization authoringを追加する
 5. instance-aware Registryへ`development / master_data.dev / database.query.oracle`の実Executorを登録する
 6. Workspace読込みからSemantic resultまでの最終E2Eを通す
-7. 通常CI runnerで全Conformanceを再実行する
+7. CIが明示的に再有効化された後、通常runnerで全Conformanceを再実行する
 
 物理Evidenceが揃う前にOracle SQLを仮定して手順4以降を先取りしません。
 
@@ -369,7 +369,7 @@ GitHub Actionsのworkflow runが作成されない状態が続いています。
 - [ ] `master_data`をread-onlyのまま実際のread実行へ接続できる
 - [ ] 採用Oracle driverとのnamed parameter等の互換性を実接続で確認できる
 - [ ] 第一ReferenceをWorkspace読込みから実Oracle read、Semantic resultまで一続きに通せる
-- [ ] 通常CI runnerで関連Conformanceが成功する
+- [ ] CIが明示的に再有効化された後、通常runnerで関連Conformanceが成功する
 
 ## 非目標
 
@@ -384,11 +384,11 @@ GitHub Actionsのworkflow runが作成されない状態が続いています。
 
 ## 関連
 
-- GitHub Issue #69 / #178 / #179 / #185 / #214 / #222 / #224
+- GitHub Issue #69 / #178 / #179 / #185 / #192 / #214 / #222 / #224
 - PR #193 / #195 / #197 / #201 / #205 / #206 / #207 / #208 / #216 / #217 / #218 / #219 / #220 / #221 / #223 / #225
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
-- `plan/issue/000019-external-master-data-physical-query-evidence.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000020-contract-query-runtime-instance-identity.md`
 - `plan/issue/000021-oracle-contract-query-sql-runner.md`
 - `reference/workspace/databases/master-data/database.tei`
