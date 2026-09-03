@@ -43,6 +43,7 @@ type Mapping struct {
 	SemanticData      core.CanonicalID          `json:"semanticData"`
 	Table             string                    `json:"table"`
 	Columns           []ColumnMapping           `json:"columns"`
+	RelationStorage   []RelationStorageMapping  `json:"relationStorage,omitempty"`
 	PrimaryKey        []core.CanonicalID        `json:"primaryKey,omitempty"`
 	UniqueConstraints []UniqueConstraintMapping `json:"uniqueConstraints,omitempty"`
 	Indexes           []IndexMapping            `json:"indexes,omitempty"`
@@ -54,6 +55,24 @@ type ColumnMapping struct {
 	Column      string           `json:"column"`
 	Storage     StorageType      `json:"storage"`
 	Nullability Nullability      `json:"nullability"`
+}
+
+// RelationStorageMappingは、target Semantic Dataへ新しい属性を追加せず、
+// Semantic Relationをmanaged-here Databaseのtableへ保存するための補助列群を表す。
+// physical column名やForeign KeyをSemantic Relationのidentityとして扱わない。
+type RelationStorageMapping struct {
+	Relation   core.CanonicalID                   `json:"relation"`
+	Components []RelationStorageComponentMapping `json:"components"`
+}
+
+// RelationStorageComponentMappingは、Relation source Data上のSemantic attributeを、
+// target Mappingのtable内にあるDatabase-ownedな物理support columnへ対応付ける。
+// SourceAttributeはtarget Semantic Dataの属性ではないため、通常のColumnMappingとは分離する。
+type RelationStorageComponentMapping struct {
+	SourceAttribute core.CanonicalID `json:"sourceAttribute"`
+	Column          string           `json:"column"`
+	Storage         StorageType      `json:"storage"`
+	Nullability     Nullability      `json:"nullability"`
 }
 
 // UniqueConstraintMapping records a relational uniqueness constraint as a
@@ -151,4 +170,13 @@ func (m Mapping) ColumnByAttribute(id core.CanonicalID) (ColumnMapping, bool) {
 		}
 	}
 	return ColumnMapping{}, false
+}
+
+func (m Mapping) RelationStorageByRelation(id core.CanonicalID) (RelationStorageMapping, bool) {
+	for _, storage := range m.RelationStorage {
+		if storage.Relation == id {
+			return storage, true
+		}
+	}
+	return RelationStorageMapping{}, false
 }
