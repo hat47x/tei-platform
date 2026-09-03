@@ -6,6 +6,8 @@
 
 期限は置きません。優先順位は、実装量ではなく「TEIの中心価値に関する不確実性をどれだけ減らせるか」で見直します。
 
+技術リサーチから得た知見は、[`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md)で既存要求へ対応付けます。外部frameworkや研究方式をそのままMilestoneへ昇格させず、Reference / Conformanceで不確実性を減らせる形へ変換して取り込みます。
+
 ## 現在地
 
 Repositoryは、M0.22.1までにSemantic / Application / Database / Release / Deployment / Plugin / Runtimeを一本のvertical sliceとして接続しました。その後、M0.23でSource-to-Canonical Traceability、M0.24〜M0.25でactual process boundary、M0.26以降でactual PostgreSQLとPhysical SchemaのDesired / Actual / Diffを段階的に検証してきました。
@@ -60,6 +62,8 @@ Source-to-Canonical Traceabilityの次は、**「業務システムで再利用�
 Application Patternそのものは、v1ではこのworkstreamの所有物にはしません。ADR-0017に従い、Applicationが所有するCanonicalな意図としてWorkstream Cで実証します。その結果から、複数Applicationで再利用すべき部分が見つかった場合に、Workstream BのDomain Component、Semantic Pattern、Policy等とどのように接続するかを判断します。
 
 この順序により、一つのApplicationで便利だった分類を、十分なEvidenceなしにSemantic Kernelや標準知識へ持ち上げることを避けます。
+
+AIが利用するSkill、探索ヒント、過去Proposal / trajectory等も、このCanonicalな意味知識と同一視しません。必要な場合はderived knowledgeとしてprovenanceとrevisionを持たせ、第二の正本を作らないことを優先します。
 
 ## Workstream C: Application / Legacy Compatibility
 
@@ -136,6 +140,8 @@ Driverを本番Runtimeの簡易版だけにはしません。
 
 UIより先にDriverを成立させることで、Application上の不足をWeb固有コードで補ってしまうことを避けます。
 
+AI支援を後から加えた場合にも、AIが生成したProposalやTarget固有の見た目ではなく、Driverで同じCanonical Application上の意味を再現できることを基準線にします。
+
 ## Workstream F: Target-neutral Presentation
 
 ### 目的
@@ -144,8 +150,9 @@ ApplicationのPresentation / Interactionを、一つのWeb frameworkへ固定せ
 
 ### 対象
 
-- target-neutral Presentation IR
+- target-neutral Presentation候補
 - Target Capability
+- Execution / Trust Profile候補
 - Runtime Binding
 - Web Adapter
 - Desktop Adapter
@@ -153,18 +160,42 @@ ApplicationのPresentation / Interactionを、一つのWeb frameworkへ固定せ
 - API / MCP / VUI Adapter
 - Target Conformance
 
+### 境界仮説
+
+Target差は少なくとも次の二種類を分けて観測します。
+
+- **Target Capability**: window、dialog、touch、notification、device access等、そのTargetで利用可能なPresentation / Interaction能力
+- **Execution / Trust Profile**: local / network、transport、origin、identity / session、Authorization、Resource、secret、lifecycle等の実行・信頼境界
+
+最初からこの二つを完全なCore schemaにはしません。第一Web Targetと第二Targetの差から必要な分離を決めます。
+
+Wails等がHost inspection / development controlのためにMCPを公開しても、それを自動的にApplicationの業務MCP Targetとはみなしません。
+
+### Conformance Evidence
+
+interactive Targetでは少なくとも次を区別します。
+
+1. Semantic Conformance
+2. Interaction / Functional Evidence
+3. Visual Fidelity Evidence
+
+GUI agentやVLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
+
 ### 着手順
 
 最初から全Targetを同じ深さで作りません。
 
 1. Application PatternとDriverでTarget非依存の意味を確かめる
 2. 標準的な業務Applicationを第一Web TargetへProjectionする
-3. Webで必要になった共通候補とWeb固有差分を分けて記録する
-4. 同じ上位設計を第二TargetへProjectionする
-5. 第二Targetとの差からTarget-neutralな境界を修正する
-6. Coreを変更せず第三Targetを追加できるか確認する
+3. Semantic / Functional / Visual Evidenceを分けて取得する
+4. Webで必要になった共通候補、Target Capability候補、Execution / Trust差、Web固有差分を記録する
+5. 同じ上位設計を第二TargetへProjectionする
+6. 第二Targetとの差からTarget-neutralな境界を修正する
+7. Coreを変更せず第三Targetを追加できるか確認する
 
 第一Targetだけで「Target-neutral設計が完成した」とは判断しません。
+
+第二TargetでのTarget Capability / Execution / Trust境界は[`ISSUE-000026`](issue/000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で検証します。
 
 ## Workstream G: Editor / Developer Experience
 
@@ -182,6 +213,7 @@ TEIの厳格な意味モデルを、開発者が実用上軽く扱えるEditor�
 - decision history
 - reversible choices
 - Wails / WebView based desktop shell
+- shared Acceptance Boundary
 
 ### 重点
 
@@ -191,11 +223,17 @@ EditorはCanonicalを所有しません。Projectionと編集支援を担いま�
 
 Application Pattern、Driver、第一Targetの実証から意味境界が見えるまでは、Editorの詳細interfaceを先に固定しません。
 
+Editorがauthoritative sourceを変更する場合も、file-native / CLI / AI等と共有するAcceptance Boundaryを通します。Editor内部状態を別のCanonical正本にはしません。
+
+Go + Wails/WebViewは有力なEditor / Host実装候補ですが、WailsのAPIやwindow modelをCanonical Applicationの意味へ持ち上げません。生成業務ApplicationのTargetとEditor shellも別の関心事として扱います。
+
 ## Workstream H: AI-assisted Engineering
 
 ### 目的
 
 生成AIを、コード生成器だけでなく、既存知識の探索、設計検査、実装候補作成へ使います。
+
+AIの非決定性をCanonical authorityから分離し、TEI自身のValidation / Conformance / Permission境界へ接続することを中心にします。
 
 ### 対象
 
@@ -205,8 +243,12 @@ Application Pattern、Driver、第一Targetの実証から意味境界が見え�
 - history / audit / lifecycle suggestion
 - implementation mapping generation
 - natural-language projection
+- Proposal / Structured Intent candidate
+- shared Acceptance Boundary
 - choice history
 - suggestion suppression
+- AI assistance profile
+- Derived Experience Knowledge
 
 ### UX原則
 
@@ -216,12 +258,26 @@ AIは、使えるからといって常時話しかけません。
 - 重要性の高い論点を優先する
 - 提案を無視できる
 - 同種提案を抑制できる
+- AI Proposalと採用済みDecisionを区別する
 - 採用済み判断を明示する
 - 後から判断理由と履歴へ戻れる
+- staleなProposalを黙って適用しない
 
 このUXはAI機能の付加価値ではなく、TEIの「厳格だが軽い」を成立させる主要要件として扱います。
 
-AI支援の詳細も、実在するPattern、Driver Scenario、Projection差、Decision履歴を入力として扱える段階になってから具体化します。
+### Acceptance / Authority原則
+
+AIが生成した内容は直接Canonicalへせず、Proposal / Structured Intent candidateとして扱います。
+
+採用時はEditor / CLI等と共有するAcceptance Boundaryを通し、authoritative sourceへ反映した後にreload / Conformanceで確認します。この判断は[ADR-0022](adr/0022-ai-proposal-canonical-acceptance-boundary.md)へ置きます。
+
+AI支援機能について、少なくともpurpose、target activity / artifact、AI mechanism / type、autonomy levelを比較可能にします。
+
+ただしautonomyとauthorityは別です。AI actorであることや自律度から、write、Capability invocation、Resource / secret access等を暗黙付与しません。
+
+過去の成功Proposalやtrajectoryを再利用する場合もDerived Experience Knowledgeとして扱い、Canonicalの第二正本にはしません。
+
+AI支援の詳細は、実在するPattern、Driver Scenario、Projection差、Decision履歴を入力として扱えるGate C後に具体化します。最初のProposal / Acceptance Referenceは[`ISSUE-000027`](issue/000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267で扱います。
 
 ## Workstream I: Ecosystem / Production Boundary
 
@@ -246,6 +302,8 @@ Coreと外部世界の境界を、実際の利用に耐える形へ段階的に�
 外部orchestratorやworkflow engineが既に提供している機能は、TEI固有の価値でない限り積極的に再実装しません。
 
 TEIは、意味、Binding、Evidence、Conformanceを保持し、実行手段は外部Capabilityへ委譲できることを基本とします。
+
+AI agent frameworkについても同様です。agent loopやworkflow engine自体をTEI固有価値として再実装するのではなく、必要なら外部Capabilityとして利用し、Canonical authority、Acceptance、Permission、ObservationをTEI側で保持します。
 
 ## Workstream間の依存
 
@@ -305,9 +363,13 @@ Driverだけでbrowse → record → reference → header-detail → validation 
 
 WebとDriverが同じApplication上の意味を共有し、共通Presentation候補とWeb固有差分を追跡できることを確認します。
 
+加えて、Semantic Conformance、Interaction / Functional Evidence、Visual Fidelity Evidenceを混同せず、Target Capability候補とExecution / Trust差を第二Targetへ引き継げる状態にします。
+
 ### Gate D — 第二Targetで圧力試験できる
 
 第一Targetで共通とみなした部分とTarget固有とみなした部分が追跡可能で、第二Targetから検証し直せる状態を確認します。
+
+Target Capability、Execution / Trust Profile、Runtime Binding、Target固有実装を区別できることをGate Dの主要Evidenceとします。
 
 Gateを設ける目的は手続きを増やすことではありません。実装しやすい層の都合で、未実証の意味を上位モデルへ固定することを避けるためです。
 
@@ -321,10 +383,11 @@ M0.35以降は、次の順を基本とします。
 4. Gate Aを確認する
 5. DriverでApplication設計を動かす最小vertical sliceを作る
 6. Gate Bを確認する
-7. 同じ設計を第一Web TargetへProjectionする
+7. 同じ設計を第一Web TargetへProjectionし、Semantic / Functional / Visual Evidenceを分けて取得する
 8. Gate Cを確認してEditor / AI支援の具体化へ進む
-9. 第二Targetを追加し、Target-neutral境界を圧力試験する
-10. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
+9. AI Proposal / Acceptance Boundaryを小さいReferenceで実証する
+10. 第二Targetを追加し、Target CapabilityとExecution / Trust Profileを含むTarget-neutral境界を圧力試験する
+11. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
 
 Application Patternについては、最初から「標準Pattern Catalogの完成」を目標にしません。v1 ReferenceでApplication上の意図として実証し、複数Applicationや複数Targetから再利用Evidenceが得られた段階で、どこまでを標準知識として共有するかを判断します。
 
