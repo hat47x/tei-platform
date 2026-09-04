@@ -187,17 +187,7 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	cmd.Stderr = os.Stderr
 	runErr := cmd.Run()
 
-	artifactBytes := stdout.Bytes()
-	lane.EvidenceArtifactFingerprint = evidenceArtifactFingerprint(artifactBytes)
-
-	var envelope laneEnvelope
-	decodeErr := json.Unmarshal(artifactBytes, &envelope)
-	if decodeErr == nil {
-		lane.ObservedNature = envelope.EvidenceNature
-		lane.RepositoryRevision = envelope.RepositoryRevision
-		lane.ReproducibleRevision = envelope.ReproducibleRevision
-	}
-
+	envelope, decodeErr := decodeLaneArtifact(stdout.Bytes(), &lane)
 	if runErr != nil {
 		return lane, fmt.Errorf("%s Evidence runnerが失敗しました: %w", spec.Name, runErr)
 	}
@@ -209,6 +199,18 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	}
 	lane.Passed = true
 	return lane, nil
+}
+
+func decodeLaneArtifact(content []byte, lane *laneEvidence) (laneEnvelope, error) {
+	var envelope laneEnvelope
+	if err := json.Unmarshal(content, &envelope); err != nil {
+		return envelope, err
+	}
+	lane.EvidenceArtifactFingerprint = evidenceArtifactFingerprint(content)
+	lane.ObservedNature = envelope.EvidenceNature
+	lane.RepositoryRevision = envelope.RepositoryRevision
+	lane.ReproducibleRevision = envelope.ReproducibleRevision
+	return envelope, nil
 }
 
 func evidenceArtifactFingerprint(content []byte) string {
