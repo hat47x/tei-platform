@@ -16,9 +16,10 @@ Gate Bの必須Evidenceを、同じcandidate repository revisionへ揃えたこ�
 
 Evidence専用の空PostgreSQL Databaseを用意し、`TEI_TEST_POSTGRES_DSN`を設定します。
 
-final runner自身をcompileする段階からRepositoryの`go.mod`だけを基準にするため、正規実行例では`GOWORK=off`と空の`GOFLAGS`を明示します。
+final runner自身をcompileする段階からRepository外のGo environment file、Go workspace、暗黙flagsを入力へしないため、正規実行例では`GOENV=off`、`GOWORK=off`、空の`GOFLAGS`を明示します。
 
 ```bash
+GOENV=off \
 GOWORK=off \
 GOFLAGS= \
 TEI_TEST_POSTGRES_DSN='...' \
@@ -31,6 +32,7 @@ Repository内の新規fileへstdoutを直接redirectしません。command開始
 Repository全体の`go test ./...`も#310で実行したい場合だけ`-broad`を付けます。
 
 ```bash
+GOENV=off \
 GOWORK=off \
 GOFLAGS= \
 TEI_TEST_POSTGRES_DSN='...' \
@@ -40,33 +42,36 @@ go run ./tools/reference-gate-b-final-evidence -broad \
 
 ## Go実行環境をcandidate revisionの外へ広げない
 
-TEI Repositoryには`go.work`がありません。通常のGo実行では、checkoutの親directoryにある`go.work`が自動的に有効になる場合があります。またeffective `GOFLAGS`には`-overlay`、`-modfile`、`-tags`等を指定でき、cleanなGit revisionの外からcompile / test入力を変えられます。
+TEI Repositoryには`go.work`がありません。通常のGo実行では、checkoutの親directoryにある`go.work`が自動的に有効になる場合があります。またeffective `GOFLAGS`には`-overlay`、`-modfile`、`-tags`等を指定でき、cleanなGit revisionの外からcompile / test入力を変えられます。user-level Go environment fileにも`GOTOOLCHAIN`や`GOFLAGS`等を保存できるため、runner自身のcompile前からその暗黙入力を無効化する必要があります。
 
-PR #422以降、final runnerはlaneを一つも実行する前に次を確認します。
+PR #431以降、final runnerはprocess environmentの`GOENV`が**完全一致で`off`**であることを最初に確認します。未設定、空、path、`OFF`、前後空白付き等は受理しません。Go toolがcompile時に特殊値として解釈する条件とruntime guardを一致させ、runtime側だけが値を正規化して安全と誤判定しないためです。
+
+PR #422以降、final runnerはlaneを一つも実行する前に次も確認します。
 
 - `go env GOWORK`が空、または`off`である
 - `go env GOFLAGS`が空である
 
 外部Go workspaceが有効な場合やGOFLAGSが非空の場合はfail closedで停止します。
 
-さらに正規実行例そのものにも`GOWORK=off GOFLAGS=`を明示します。これは、runner内部のguardだけに依存せず、runner自身を`go run`でcompileする前からGo workspaceとflagsを固定するためです。
+さらに正規実行例そのものにも`GOENV=off GOWORK=off GOFLAGS=`を明示します。これは、runner内部のguardだけに依存せず、runner自身を`go run`でcompileする前からuser-level Go environment、Go workspace、flagsを固定するためです。
 
 PR #425以降は、このambient確認に成功した**後だけ**、final runner自身のprocess environmentを`GOWORK=off / GOFLAGS= / GOENV=off`へ固定します。これにより、#310 / #255 / #308 childと、それらが通常の環境継承で起動するnested Go commandが、Repository外のuser-level Go environment fileを後から既定入力として読み直さない状態にします。
 
 ambient環境を確認する前に安全値へ書き換えて、もともと不安全だった状態を隠すことはしません。また3変数の固定に失敗した場合はlaneを開始せずfail closedで停止します。この境界はOS process全体のsandboxではなく、正規Evidence経路の暗黙Go入力を狭めるためのものです。
 
-成功・失敗JSONへ外部workspaceのpathやGOFLAGS本文は保存しません。非機密な判定だけを次の形で残します。
+成功・失敗JSONへ外部workspaceのpathやGOFLAGS本文、GOENVのpathや拒否値は保存しません。非機密な判定だけを次の形で残します。
 
 ```json
 {
   "goEnvironment": {
     "externalWorkspaceActive": false,
-    "goFlagsEmpty": true
+    "goFlagsEmpty": true,
+    "goEnvDisabled": true
   }
 }
 ```
 
-この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspaceやGOFLAGSを持ち込まないためのfail-closed条件です。
+この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspace、GOFLAGS、user-level Go environment fileを持ち込まないためのfail-closed条件です。
 
 ## PostgreSQL DSNを必要なlaneだけへ渡す
 
@@ -86,6 +91,8 @@ DSNにはcredentialを含み得るため、利用しないlaneへsecret候補を
 
 ```text
 clean candidate revision R
+        ↓
+final runner compile前から exact GOENV=off
         ↓
 Go workspace / GOFLAGS確認
         ↓
@@ -143,6 +150,7 @@ final source check
 - Go version
 - `goEnvironment.externalWorkspaceActive`
 - `goEnvironment.goFlagsEmpty`
+- `goEnvironment.goEnvDisabled`
 - `broadRequested`
 - `allLanesSameRevision`
 - laneごとの
@@ -168,6 +176,7 @@ final source check
 - PostgreSQL Database名
 - 外部Go workspaceのpath
 - GOFLAGS本文
+- GOENV path / 拒否値
 
 三laneそれぞれの詳細Evidenceは、必要に応じて個別runnerから別途保存します。fingerprintだけを根拠に、保存していないEvidence本文を後から推測・再構成しません。
 
