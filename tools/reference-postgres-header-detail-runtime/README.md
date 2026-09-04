@@ -13,6 +13,7 @@
 - 0 rowを正常な空collectionとして扱うこと
 - physical execution errorを0 rowへ変換しないこと
 - runtime parameter値を通常Evidenceへ保存しないこと
+- Evidenceを一つのclean repository revisionへ固定できること
 
 一方、tool自身が一時的にfixture table / rowを作ります。このため、**production既存Databaseの物理事実を観測したEvidenceではありません**。
 
@@ -28,11 +29,43 @@ TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runt
 
 DSNやcredentialはEvidence JSONへ保存しません。
 
-## fail-closedの実行順
+## source revisionのfail-closed境界
 
-Databaseへ接続・変更する前に、まず`reference/workspace`を通常Loaderで読み込み、`validation.Validate`を実行します。
+Gate Bへ採用するProvider Evidenceは、後から実際に実行したsourceへ戻れる必要があります。
+
+そのため、Databaseへ接続する前に次を確認します。
+
+```bash
+git rev-parse HEAD
+git status --porcelain
+```
+
+working treeがdirtyなら、Workspace ValidationやPostgreSQL接続へ進まず停止します。
+
+Provider Evidenceを取得し、tool-owned fixtureを片付けた後にも同じ二点を再確認します。次のいずれかが起きていれば成功Evidenceを出しません。
+
+- 実行中にHEADが変化した
+- 実行後にtracked / untracked差分が残った
+
+成功JSONには次を含めます。
 
 ```text
+repositoryRevision
+workingTreeClean = true
+reproducibleRevision = true
+postRunRepository.checked = true
+postRunRepository.repositoryRevision = <same revision>
+postRunRepository.revisionStable = true
+postRunRepository.workingTreeClean = true
+```
+
+source状態の観測規則は`tools/internal/repositoryevidence`へ置き、#310 deterministic Repository Evidenceと#255 generated artifact Evidenceでも同じ規則を利用します。Provider固有のDB操作やSemantic意味はこの共有packageへ持ち込みません。
+
+## fail-closedの実行順
+
+```text
+Repository revision / working tree確認
+  ↓ dirtyなら停止
 Reference Workspace load
   ↓
 Canonical Validation
@@ -50,9 +83,15 @@ public.order_lines既存確認
 tool-owned fixture CREATE
   ↓
 Provider runtime Evidence
+  ↓
+tool-owned fixture cleanup / missing-table Execution Error確認
+  ↓
+Repository revision / working tree再確認
+  ↓ 変化していれば停止
+JSON Evidence
 ```
 
-したがって、Workspace authoringが不正な状態ではPostgreSQLへ接続せず、fixtureも作成しません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+したがって、dirty source、Workspace authoringが不正な状態、既存資産を含むDatabaseのいずれでもfixture作成へ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
 
 ## Database側の安全条件
 
@@ -146,6 +185,7 @@ SELECT to_regclass('public.order_lines')::text;
 主な項目:
 
 - Evidence nature
+- repository revision / working tree / post-run source stability
 - fixture object / tool ownership / preexisting fixture protection
 - `fixtureDatabaseSafety`の非機密な安全判定結果
 - Pattern / Relation
@@ -159,7 +199,7 @@ SELECT to_regclass('public.order_lines')::text;
 - parent Order identityをOrderLine Semantic attributeへ追加していないこと
 - Semantic mapping適用
 
-接続先の実Database名やDSNを通常Evidenceへ保存することは、このtoolの目的に含めません。
+接続先の実Database名やDSNを通常Evidenceへ保存しません。
 
 ## 非目標
 
@@ -171,5 +211,6 @@ SELECT to_regclass('public.order_lines')::text;
 - PostgreSQL既存Schema全体の受入れ検証
 - runtime parameter値やcredentialのEvidence保存
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
+- dirty working tree上の成功をGate B完了Evidenceへ格上げすること
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。

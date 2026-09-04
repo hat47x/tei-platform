@@ -20,6 +20,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/validation"
 	"tei/internal/workspace"
+	"tei/tools/internal/repositoryevidence"
 )
 
 const fixtureObject = "public.order_lines"
@@ -27,6 +28,10 @@ const evidenceNature = "real-postgres-ephemeral-fixture"
 
 type evidence struct {
 	EvidenceNature                        string                        `json:"evidenceNature"`
+	RepositoryRevision                   string                        `json:"repositoryRevision"`
+	WorkingTreeClean                     bool                          `json:"workingTreeClean"`
+	ReproducibleRevision                 bool                          `json:"reproducibleRevision"`
+	PostRunRepository                    repositoryevidence.PostRun    `json:"postRunRepository"`
 	FixtureObject                         string                        `json:"fixtureObject"`
 	PreexistingFixtureProtected           bool                          `json:"preexistingFixtureProtected"`
 	FixtureOwnedByTool                    bool                          `json:"fixtureOwnedByTool"`
@@ -49,6 +54,16 @@ type evidence struct {
 }
 
 func main() {
+	// 実Provider Evidenceは、後から同じsourceへ戻れるclean revisionに固定する。
+	// dirty treeの診断実行をGate B完了Evidenceへ格上げしない。
+	repositorySource, err := repositoryevidence.InspectStart()
+	if err != nil {
+		panic(err)
+	}
+	if !repositorySource.WorkingTreeClean {
+		panic("PostgreSQL Provider Evidenceはclean revisionに固定するため、working treeに未commit差分がある状態ではDatabaseへ接続しません")
+	}
+
 	// Databaseへ接続・変更する前に、Evidenceの前提となるCanonical Workspace自体を検証する。
 	// 無効なauthoringを前提にfixtureを作成してから失敗する順序を許さない。
 	loaded, err := workspace.Load("reference/workspace")
@@ -197,6 +212,8 @@ func main() {
 
 	out := evidence{
 		EvidenceNature:                        evidenceNature,
+		RepositoryRevision:                   repositorySource.RepositoryRevision,
+		WorkingTreeClean:                     repositorySource.WorkingTreeClean,
 		FixtureObject:                         fixtureObject,
 		PreexistingFixtureProtected:           true,
 		FixtureOwnedByTool:                    true,
@@ -217,6 +234,23 @@ func main() {
 		SemanticOrderLineParentAttributeAdded: parentAttributeAdded,
 		SemanticMappingApplied:                true,
 	}
+
+	postRun, err := repositoryevidence.InspectPost(repositorySource.RepositoryRevision)
+	if err != nil {
+		panic(err)
+	}
+	out.PostRunRepository = postRun
+	out.ReproducibleRevision = repositoryevidence.IsReproducible(repositorySource, postRun)
+	if !postRun.RevisionStable {
+		panic("PostgreSQL Evidence実行中にrepository HEADが変化したため、単一revisionのProvider Evidenceとして採用できません")
+	}
+	if !postRun.WorkingTreeClean {
+		panic("PostgreSQL Evidence実行後にworking tree差分が残ったため、記録revisionと実行sourceの同一性を保証できません")
+	}
+	if !out.ReproducibleRevision {
+		panic("PostgreSQL Provider Evidenceを単一のclean revisionへ固定できません")
+	}
+
 	encoded, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
 		panic(err)
