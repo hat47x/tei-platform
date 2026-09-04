@@ -93,11 +93,11 @@ func main() {
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		panic(err)
+		panic(postgresConnectionError("PostgreSQL接続設定の初期化", err))
 	}
 	defer db.Close()
 	if err := db.PingContext(ctx); err != nil {
-		panic(err)
+		panic(postgresConnectionError("PostgreSQL接続確認", err))
 	}
 
 	// #308は「専用の空PostgreSQL Database」を前提とする。
