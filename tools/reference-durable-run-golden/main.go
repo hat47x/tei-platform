@@ -11,6 +11,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/deployment"
 	deploymentdurable "tei/internal/deployment/durable"
+	"tei/internal/environment"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/releaseplan"
@@ -204,15 +205,11 @@ func findSolutionRelease(definitions []releaseplan.Definition, id core.Canonical
 	return releaseplan.Definition{}, false
 }
 
-func findEnvironment(environments []pluginEnvironment, id core.CanonicalID) (pluginEnvironment, bool) {
-	for _, environment := range environments {
-		if environment.ID == id {
-			return environment, true
+func findEnvironment(environments []environment.Environment, id core.CanonicalID) (environment.Environment, bool) {
+	for _, candidate := range environments {
+		if candidate.ID == id {
+			return candidate, true
 		}
 	}
-	return pluginEnvironment{}, false
+	return environment.Environment{}, false
 }
-
-// pluginEnvironmentはEnvironmentの必要部分だけを再定義しないためのaliasである。
-// 実体はenvironment.Environmentをそのまま利用する。
-type pluginEnvironment = environment.Environment
