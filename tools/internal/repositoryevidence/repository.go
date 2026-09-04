@@ -17,6 +17,9 @@ type Source struct {
 
 // PostRunはEvidence実行後に再確認したRepository source状態である。
 //
+// Checkedは、実行後のHEADとworking treeの両方を取得できた場合だけtrueにする。
+// 途中までしか観測できなかった状態を「確認済み」として扱わない。
+//
 // 実行中にHEADまたはworking treeが変化したrunを、開始時revisionのEvidenceとして
 // 誤採用しないための非Canonicalな実行Evidenceである。
 type PostRun struct {
@@ -25,6 +28,8 @@ type PostRun struct {
 	RevisionStable     bool   `json:"revisionStable"`
 	WorkingTreeClean   bool   `json:"workingTreeClean"`
 }
+
+type commandOutputFunc func(name string, args ...string) (string, error)
 
 // InspectStartはEvidence実行開始時のHEADとworking tree状態を取得する。
 func InspectStart() (Source, error) {
@@ -49,23 +54,28 @@ func InspectStart() (Source, error) {
 
 // InspectPostはEvidence実行後のHEADとworking tree状態を取得し、開始revisionとの同一性を記録する。
 func InspectPost(initialRevision string) (PostRun, error) {
-	result := PostRun{Checked: true}
+	return inspectPost(initialRevision, commandOutput)
+}
+
+func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, error) {
+	var result PostRun
 	if strings.TrimSpace(initialRevision) == "" {
 		return result, fmt.Errorf("比較対象のrepository revisionが空です")
 	}
 
-	revision, err := commandOutput("git", "rev-parse", "HEAD")
+	revision, err := output("git", "rev-parse", "HEAD")
 	if err != nil {
 		return result, fmt.Errorf("Evidence実行後のrepository revisionを取得できません: %w", err)
 	}
 	result.RepositoryRevision = strings.TrimSpace(revision)
 	result.RevisionStable = result.RepositoryRevision == initialRevision
 
-	status, err := commandOutput("git", "status", "--porcelain")
+	status, err := output("git", "status", "--porcelain")
 	if err != nil {
 		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
 	}
 	result.WorkingTreeClean = strings.TrimSpace(status) == ""
+	result.Checked = true
 	return result, nil
 }
 
