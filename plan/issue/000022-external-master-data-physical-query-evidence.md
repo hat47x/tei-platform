@@ -23,6 +23,8 @@
 
 PR #340以降、Evidence受入れの成功は単なる人向けメッセージではなく、**どのexternal Evidence artifactを、どのclean Repository revisionで照合したか**を示す機械可読receiptとして残します。
 
+PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。ただし、これはactual physical factsを取得済みという意味ではなく、実Oracle readで観測した事実を失わないためのruntime境界です。
+
 ただし、acceptance receiptはactual Oracle read Evidenceではありません。
 
 ## 既に成立している実行境界
@@ -50,6 +52,7 @@ Environment / Database instance / executor Binding
 instance-aware runtime Registry
         ↓
 Oracle database/sql Runner
+        ↓ raw columns / driver-reported column metadata
         ↓ explicit result mapping
 ContractQueryResult
   └─ Semantic Customer row / not-found / Execution Error
@@ -70,6 +73,8 @@ ContractQueryResult
 - runtime RegistryでDatabase instance identityを保持する
 - 同一Capabilityを共有する別Database instanceへfallbackしない
 - Oracle向け最小`database/sql` Runnerで明示native sourceとnamed parameterをraw executionへ渡す
+- actual read時にdriverが返したraw result列名をOracle固有Payloadへ保持する
+- driverが提供できた`databaseTypeName` / `nullable` / `length` / `precision` / `scale`を、未提供値を推測せずOracle固有Payloadへ保持する
 - 0 rowとExecution Errorを区別する
 - SQL realizationがないWorkspaceでは物理Runnerを呼ばず停止する
 
@@ -300,6 +305,21 @@ Evidenceにはmechanism名だけでなく、その事実を再確認できるEvi
 
 特定Oracle driverに依存しない`database/sql` Runner境界までは成立しています。
 
+PR #364 / #366以降、actual read時のdriver観測をSemantic mapping後に失わないため、Oracle Runner固有Payloadへ次を保持できます。
+
+- 実際に`database/sql`へ渡したnamed parameterの名前
+- Databaseから実際に返されたraw result列名
+- `database/sql.Rows.ColumnTypes()`からdriverが提供できた範囲の`databaseTypeName`
+- driverが提供できた場合だけの`nullable`
+- driverが提供できた場合だけの`length`
+- driverが提供できた場合だけの`precision` / `scale`
+
+`database/sql.ColumnType`が情報を提供できない場合、falseや0を推測せず未観測として保持します。`DatabaseTypeName()`が空文字なら型名未提供として扱います。Go側の`ScanType`はexternal Oracleのphysical typeそのものではないため通常Evidenceへ保存しません。raw row値もOracle固有Payloadへ複製しません。
+
+このruntime metadataは、provenance付きexternal Evidenceに記録した`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。actual read時のdriver観測として、外部観測事実と実行時挙動の対応を確認する材料にします。
+
+`PhysicalType`の記述形式とdriverの`DatabaseTypeName`が同一文字列表現になる保証は、実Oracle / 採用driverを観測するまで仮定しません。実対象を見ずに自動文字列一致規則を先行固定しません。
+
 actual physical Evidence取得後、採用driverについて少なくとも次を確認します。
 
 - named parameterが期待どおりに渡る
@@ -307,6 +327,7 @@ actual physical Evidence取得後、採用driverについて少なくとも次�
 - input / resultの型変換
 - NULLの扱い
 - raw column名
+- driver-reported raw column metadata
 - Query Error / row取得Errorの伝播
 - read-only強制との整合
 
@@ -324,10 +345,11 @@ actual physical Evidence取得後、採用driverについて少なくとも次�
 7. read-onlyを強制したOracle接続境界を用意
 8. 採用Oracle driverでparameter / result / NULL / error伝播を確認
 9. development / master_data.dev / database.query.oracleからactual read
-10. raw resultを明示mappingしてSemantic Customerを得る
-11. Workspace -> actual read -> Semantic resultを一続きに確認
-12. actual readが参照したrepository source identityをEvidenceへ残す
-13. #273 Gate B監査へactual external asset Evidenceとして対応付ける
+10. actual readでraw result列名 / driver-reported metadataを観測
+11. raw resultを明示mappingしてSemantic Customerを得る
+12. Workspace -> actual read -> Semantic resultを一続きに確認
+13. actual readが参照したrepository source identityをEvidenceへ残す
+14. #273 Gate B監査へactual external asset Evidenceとして対応付ける
 ```
 
 acceptance receiptとactual read Evidenceは別工程です。
@@ -349,6 +371,8 @@ actual read Evidenceから、少なくとも次へ戻れるようにします。
 - Environment / Database instance / executor Capability identity
 - Database / Contract / Query target identity
 - actual readが成功・0件・Execution Errorのどの結果だったか
+- actual readでdriverが観測したraw result列名
+- driverが提供できた範囲のraw result列metadata
 - raw resultからSemantic Customerへの明示mappingを確認したこと
 - read-onlyを実効強制した境界のEvidence参照
 
@@ -358,6 +382,7 @@ actual read Evidenceから、少なくとも次へ戻れるようにします。
 - credentialを含むDSN
 - 不要なruntime parameter value
 - 業務上不要な実データ
+- driverが提供していない型 / NULL metadataを推測した値
 
 actual Oracle driverと実物理事実が未確定な現段階では、専用JSON schemaや新しい汎用Evidence modelを先行固定しません。実対象を確認した後、上記の追跡性を満たす最小の取得方法を決めます。
 
@@ -398,8 +423,9 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [ ] `master_data`を実効的にread-onlyのまま実行できる
 - [ ] 採用Oracle driverとのintegration Evidenceがある
 - [ ] RのWorkspace / realization / runtimeを使ったactual readであることを追跡できる
+- [ ] actual readでraw result列名 / driver-reported metadataを観測できる
 - [ ] actual readの結果分類とSemantic Customerへの明示mappingを追跡できる
-- [ ] actual read Evidenceへcredential / secret / 不要なparameter valueを保存していない
+- [ ] actual read Evidenceへcredential / secret / 不要なparameter value / 推測metadataを保存していない
 - [ ] 第一ReferenceのWorkspace → actual read → Semantic resultを一続きに確認できる
 - [ ] physical fixture / adapter / EvidenceがSemantic meaningの正本として扱われていない
 - [ ] 結果を`ISSUE-000029` / #273へ対応付ける
@@ -411,6 +437,8 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [x] SQL realization sourceをSource Indexで追跡できる
 - [x] runtime RegistryがDatabase instance identityを保持する
 - [x] Oracle向け`database/sql` Runner境界がある
+- [x] actual read時のraw result列名をOracle Runner固有Payloadへ保持できる（PR #364）
+- [x] driverが提供できたraw列metadataを未提供値の推測なしで保持できる（PR #366）
 
 ## 非目標
 
@@ -419,6 +447,8 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - external EvidenceをCanonicalへ昇格すること
 - acceptance receiptをactual Oracle read Evidenceとして扱うこと
 - actual Oracle driver未確定の段階で汎用Evidence schemaを先行固定すること
+- driverが提供していないraw列metadataをfalse / 0 / 慣習的Oracle型から推測すること
+- 実Oracle観測前にexternal Evidenceの`PhysicalType`とdriverの`DatabaseTypeName`の文字列一致規則を固定すること
 - 汎用ORMの導入
 - Oracle固有の高度なHA / Connection Poolを本Issueだけで完成させること
 - synthetic Conformance SQLを第一Referenceの実native sourceへ流用すること
@@ -430,7 +460,7 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 ## 関連
 
 - GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310
-- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358
+- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358 / #360 / #364 / #366 / #369
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
@@ -438,3 +468,4 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/README.md`
 - `tools/reference-external-query-evidence/main.go`
+- `internal/driver/queryruntime/oracle/runner.go`
