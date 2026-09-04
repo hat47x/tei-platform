@@ -43,27 +43,70 @@ header-detail runtime Evidence
 tools/reference-postgres-header-detail-runtime
 ```
 
-専用の空PostgreSQL Databaseを`TEI_TEST_POSTGRES_DSN`で指定し、次を実行します。
+`TEI_TEST_POSTGRES_DSN`には、Evidence専用に作成した**空のPostgreSQL Database**を指定します。
 
 ```bash
 go run ./tools/reference-postgres-header-detail-runtime
 ```
 
-DSN、credential、runtime parameter valueをRepositoryや通常Evidenceへ保存しません。
+DSN、credential、runtime parameter value、接続先の実Database名をRepositoryや通常Evidenceへ保存しません。
 
 ## fail-closed安全境界
 
-PR #294 / #300 / #306で、少なくとも次が成立しています。
+PR #294 / #300 / #306で、Workspace Validation、既存fixture保護、tool-owned cleanupの基本境界を成立させました。
+
+PR #324では、「`public.order_lines`さえ存在しなければ既存業務DBでもfixtureを作成できる」という残存リスクを閉じ、**専用空Databaseであることをfail closedに確認する境界**を追加しました。
+
+現在の実行順は次です。
 
 1. WorkspaceをLoadする
 2. 通常`validation.Validate`を実行する
 3. Validation ErrorがあればDB接続前に停止する
 4. Validation成功後にのみPostgreSQLへ接続する
-5. `public.order_lines`が既に存在すれば停止する
-6. 既存tableをDROPしてfixtureへ置換しない
-7. tool自身がCREATEしたfixtureだけをcleanupする
+5. `current_database()`で接続先Database identityを取得する
+6. `postgres` / `template0` / `template1`なら停止する
+7. system / temporary領域を除くuser relation件数を確認する
+8. user relationが1件でも存在すれば停止する
+9. `public.order_lines`の既存有無を再確認し、存在すれば停止する
+10. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
+11. tool自身がCREATEしたfixtureだけをcleanupする
 
-誤ったDSNが既存資産を指していても、既存`public.order_lines`を削除して続行するoverrideは設けません。
+### 既定Databaseを拒否する
+
+次のDatabaseは、内容が空に見えてもEvidence fixture実行先として利用しません。
+
+```text
+postgres
+template0
+template1
+```
+
+Database名からproduction / development等の用途を推測して許可する規則も持ちません。
+
+### 既存user relationを拒否する
+
+`pg_catalog` / `information_schema` / PostgreSQL内部・temporary領域を除き、次のrelationが一つでも存在すれば停止します。
+
+- table / partitioned table
+- view / materialized view
+- foreign table
+- sequence
+
+既存relationの用途や安全性を推測せず、削除して空Databaseへ転用する処理も提供しません。
+
+この検査は「Evidence専用Databaseである」という運用上の意図を完全に証明するものではありませんが、少なくとも既定Databaseや既存user assetを含むDatabaseへfixtureを書き込む経路をfail closedで閉じます。
+
+### fixture objectを再確認する
+
+空Database検査後も、native SQLが利用する`public.order_lines`の既存有無を明示確認します。
+
+```sql
+SELECT to_regclass('public.order_lines')::text
+```
+
+既存objectがあれば停止します。
+
+**既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
 ## 確認するEvidence
 
@@ -80,9 +123,15 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 - Relation Storage support column `order_id`をOrderLine Semantic attributeへ漏らさない
 - parameter名だけをEvidenceへ残し、runtime parameter valueを保存しない
 - `evidenceNature = real-postgres-ephemeral-fixture`を保持する
+- 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
 
 ## 完了条件
 
+- [x] Workspace Validation Error時にDB接続前に停止する
+- [x] PostgreSQL既定Databaseをfixture先として拒否する（PR #324）
+- [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
+- [x] `public.order_lines`既存時に停止する
+- [x] tool-owned fixtureだけをcleanupする
 - [ ] 対象repository revisionを記録する
 - [ ] Canonical Workspace Validationが成功する
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
@@ -90,7 +139,7 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 - [ ] 0件を正常な空collectionとして確認する
 - [ ] physical table欠落をExecution Errorとして確認する
 - [ ] Semantic mappingとsupport column非露出を確認する
-- [ ] parameter value / credentialが通常Evidenceへ残っていないことを確認する
+- [ ] parameter value / credential / DSN / Database名が通常Evidenceへ残っていないことを確認する
 - [ ] Evidence natureが`real-postgres-ephemeral-fixture`であることを確認する
 - [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
 
@@ -99,6 +148,7 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 - keyless Relation Storage境界の再設計
 - header-detail PatternのUI layout設計
 - production既存Databaseをfixtureで置換すること
+- 既存relationを削除してEvidence用Databaseへ転用すること
 - production PostgreSQL schemaの観測Evidence
 - actual Oracle Evidenceの代替
 - physical schemaからSemantic Relationを逆生成すること
@@ -108,10 +158,11 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 ## 関連
 
 - GitHub Issue #69 / #244 / #255 / #273 / #308 / #310
-- PR #294 / #300 / #306 / #309
+- PR #294 / #300 / #306 / #309 / #324
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/issue/000024-keyless-relation-physical-storage.md`
 - `tools/reference-postgres-header-detail-runtime/README.md`
 - `tools/reference-postgres-header-detail-runtime/main.go`
+- `tools/reference-postgres-header-detail-runtime/safety.go`
