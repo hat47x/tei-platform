@@ -10,6 +10,7 @@ import (
 
 	"tei/internal/validation"
 	"tei/internal/workspace"
+	"tei/tools/internal/repositoryevidence"
 )
 
 const evidenceNature = "deterministic-repository"
@@ -30,24 +31,17 @@ type validationEvidence struct {
 	Errors []string `json:"errors,omitempty"`
 }
 
-type postRunRepositoryEvidence struct {
-	Checked            bool   `json:"checked"`
-	RepositoryRevision string `json:"repositoryRevision,omitempty"`
-	RevisionStable     bool   `json:"revisionStable"`
-	WorkingTreeClean   bool   `json:"workingTreeClean"`
-}
-
 type evidence struct {
-	EvidenceNature       string                    `json:"evidenceNature"`
-	RepositoryRevision   string                    `json:"repositoryRevision"`
-	WorkingTreeClean     bool                      `json:"workingTreeClean"`
-	ReproducibleRevision bool                      `json:"reproducibleRevision"`
-	PostRunRepository    postRunRepositoryEvidence `json:"postRunRepository"`
-	GoVersion            string                    `json:"goVersion"`
-	Workspace            string                    `json:"workspace"`
-	WorkspaceValidation  validationEvidence        `json:"workspaceValidation"`
-	Checks               []checkEvidence           `json:"checks"`
-	BroadRequested       bool                      `json:"broadRequested"`
+	EvidenceNature       string                     `json:"evidenceNature"`
+	RepositoryRevision   string                     `json:"repositoryRevision"`
+	WorkingTreeClean     bool                       `json:"workingTreeClean"`
+	ReproducibleRevision bool                       `json:"reproducibleRevision"`
+	PostRunRepository    repositoryevidence.PostRun `json:"postRunRepository"`
+	GoVersion            string                     `json:"goVersion"`
+	Workspace            string                     `json:"workspace"`
+	WorkspaceValidation  validationEvidence         `json:"workspaceValidation"`
+	Checks               []checkEvidence            `json:"checks"`
+	BroadRequested       bool                       `json:"broadRequested"`
 }
 
 func main() {
@@ -77,18 +71,13 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		Checks:         []checkEvidence{},
 	}
 
-	revision, err := commandOutput("git", "rev-parse", "HEAD")
+	source, err := repositoryevidence.InspectStart()
 	if err != nil {
-		return result, fmt.Errorf("repository revisionを取得できません: %w", err)
+		return result, err
 	}
-	result.RepositoryRevision = strings.TrimSpace(revision)
-
-	status, err := commandOutput("git", "status", "--porcelain")
-	if err != nil {
-		return result, fmt.Errorf("working tree状態を取得できません: %w", err)
-	}
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
-	result.ReproducibleRevision = result.WorkingTreeClean
+	result.RepositoryRevision = source.RepositoryRevision
+	result.WorkingTreeClean = source.WorkingTreeClean
+	result.ReproducibleRevision = source.WorkingTreeClean
 	if !result.WorkingTreeClean && !allowDirty {
 		return result, fmt.Errorf("working treeに未commit差分があるためGate B Repository Evidenceを停止します。差分を識別・整理してclean revisionで再実行してください。診断目的だけなら-allow-dirtyを使用できます")
 	}
@@ -144,13 +133,9 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		}
 	}
 
-	postRun, postRunErr := inspectPostRunRepository(result.RepositoryRevision)
+	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
 	result.PostRunRepository = postRun
-	result.ReproducibleRevision = isReproducibleRepositoryState(
-		result.RepositoryRevision,
-		result.WorkingTreeClean,
-		postRun,
-	)
+	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
 	if postRunErr != nil {
 		return result, postRunErr
 	}
@@ -170,37 +155,6 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		return result, fmt.Errorf("-allow-dirtyで診断実行しました。testが成功してもclean revisionへ固定できないためGate B完了Evidenceには使用できません")
 	}
 	return result, nil
-}
-
-func inspectPostRunRepository(initialRevision string) (postRunRepositoryEvidence, error) {
-	result := postRunRepositoryEvidence{Checked: true}
-
-	revision, err := commandOutput("git", "rev-parse", "HEAD")
-	if err != nil {
-		return result, fmt.Errorf("Evidence実行後のrepository revisionを取得できません: %w", err)
-	}
-	result.RepositoryRevision = strings.TrimSpace(revision)
-	result.RevisionStable = result.RepositoryRevision == initialRevision
-
-	status, err := commandOutput("git", "status", "--porcelain")
-	if err != nil {
-		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
-	}
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
-	return result, nil
-}
-
-func isReproducibleRepositoryState(
-	initialRevision string,
-	initialClean bool,
-	postRun postRunRepositoryEvidence,
-) bool {
-	return initialRevision != "" &&
-		initialClean &&
-		postRun.Checked &&
-		postRun.RepositoryRevision == initialRevision &&
-		postRun.RevisionStable &&
-		postRun.WorkingTreeClean
 }
 
 func targetedChecks() []commandSpec {
