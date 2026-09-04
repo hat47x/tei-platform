@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"tei/tools/internal/repositoryevidence"
 )
 
 const evidenceNature = "generated-artifact-reproducibility"
@@ -21,21 +23,14 @@ type checkEvidence struct {
 	Passed  bool     `json:"passed"`
 }
 
-type postRunRepositoryEvidence struct {
-	Checked            bool   `json:"checked"`
-	RepositoryRevision string `json:"repositoryRevision,omitempty"`
-	RevisionStable     bool   `json:"revisionStable"`
-	WorkingTreeClean   bool   `json:"workingTreeClean"`
-}
-
 type evidence struct {
-	EvidenceNature       string                    `json:"evidenceNature"`
-	RepositoryRevision   string                    `json:"repositoryRevision"`
-	WorkingTreeClean     bool                      `json:"workingTreeClean"`
-	ReproducibleRevision bool                      `json:"reproducibleRevision"`
-	PostRunRepository    postRunRepositoryEvidence `json:"postRunRepository"`
-	GoVersion            string                    `json:"goVersion"`
-	Checks               []checkEvidence           `json:"checks"`
+	EvidenceNature       string                     `json:"evidenceNature"`
+	RepositoryRevision   string                     `json:"repositoryRevision"`
+	WorkingTreeClean     bool                       `json:"workingTreeClean"`
+	ReproducibleRevision bool                       `json:"reproducibleRevision"`
+	PostRunRepository    repositoryevidence.PostRun `json:"postRunRepository"`
+	GoVersion            string                     `json:"goVersion"`
+	Checks               []checkEvidence            `json:"checks"`
 }
 
 func main() {
@@ -58,17 +53,12 @@ func run() (evidence, error) {
 		Checks:         []checkEvidence{},
 	}
 
-	revision, err := commandOutput("git", "rev-parse", "HEAD")
+	source, err := repositoryevidence.InspectStart()
 	if err != nil {
-		return result, fmt.Errorf("repository revisionを取得できません: %w", err)
+		return result, err
 	}
-	result.RepositoryRevision = strings.TrimSpace(revision)
-
-	status, err := commandOutput("git", "status", "--porcelain")
-	if err != nil {
-		return result, fmt.Errorf("working tree状態を取得できません: %w", err)
-	}
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
+	result.RepositoryRevision = source.RepositoryRevision
+	result.WorkingTreeClean = source.WorkingTreeClean
 	if !result.WorkingTreeClean {
 		return result, fmt.Errorf("generated artifact完了Evidenceはclean revisionに固定するため、working treeに未commit差分がある状態では実行しません。差分を確認・commitした後に再実行してください")
 	}
@@ -92,13 +82,9 @@ func run() (evidence, error) {
 		}
 	}
 
-	postRun, postRunErr := inspectPostRunRepository(result.RepositoryRevision)
+	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
 	result.PostRunRepository = postRun
-	result.ReproducibleRevision = isReproducibleRepositoryState(
-		result.RepositoryRevision,
-		result.WorkingTreeClean,
-		postRun,
-	)
+	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
 	if postRunErr != nil {
 		return result, postRunErr
 	}
@@ -128,37 +114,6 @@ func checkOnlyCommands() []commandSpec {
 			Args: []string{"run", "./tools/reference-durable-run-golden"},
 		},
 	}
-}
-
-func inspectPostRunRepository(initialRevision string) (postRunRepositoryEvidence, error) {
-	result := postRunRepositoryEvidence{Checked: true}
-
-	revision, err := commandOutput("git", "rev-parse", "HEAD")
-	if err != nil {
-		return result, fmt.Errorf("generated artifact Evidence実行後のrepository revisionを取得できません: %w", err)
-	}
-	result.RepositoryRevision = strings.TrimSpace(revision)
-	result.RevisionStable = result.RepositoryRevision == initialRevision
-
-	status, err := commandOutput("git", "status", "--porcelain")
-	if err != nil {
-		return result, fmt.Errorf("generated artifact Evidence実行後のworking tree状態を取得できません: %w", err)
-	}
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
-	return result, nil
-}
-
-func isReproducibleRepositoryState(
-	initialRevision string,
-	initialClean bool,
-	postRun postRunRepositoryEvidence,
-) bool {
-	return initialRevision != "" &&
-		initialClean &&
-		postRun.Checked &&
-		postRun.RepositoryRevision == initialRevision &&
-		postRun.RevisionStable &&
-		postRun.WorkingTreeClean
 }
 
 func commandOutput(name string, args ...string) (string, error) {
