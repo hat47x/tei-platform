@@ -43,27 +43,56 @@ header-detail runtime Evidence
 tools/reference-postgres-header-detail-runtime
 ```
 
-専用の空PostgreSQL Databaseを`TEI_TEST_POSTGRES_DSN`で指定し、次を実行します。
+**Evidence専用に作成した空PostgreSQL Database**を`TEI_TEST_POSTGRES_DSN`で指定し、次を実行します。
 
 ```bash
 go run ./tools/reference-postgres-header-detail-runtime
 ```
 
-DSN、credential、runtime parameter valueをRepositoryや通常Evidenceへ保存しません。
+DSN、credential、runtime parameter value、実Database名をRepositoryや通常Evidenceへ保存しません。
 
 ## fail-closed安全境界
 
-PR #294 / #300 / #306で、少なくとも次が成立しています。
+PR #294 / #300 / #306 / #324で段階的に強化し、現在は次の順序を要求します。
 
 1. WorkspaceをLoadする
 2. 通常`validation.Validate`を実行する
 3. Validation ErrorがあればDB接続前に停止する
 4. Validation成功後にのみPostgreSQLへ接続する
-5. `public.order_lines`が既に存在すれば停止する
-6. 既存tableをDROPしてfixtureへ置換しない
-7. tool自身がCREATEしたfixtureだけをcleanupする
+5. `current_database()`で接続先identityを確認する
+6. `postgres` / `template0` / `template1`なら停止する
+7. system / temporary領域を除くuser relation件数を確認する
+8. 1件でも既存user relationがあれば停止する
+9. `public.order_lines`既存有無を再確認する
+10. すべて成立した場合だけfixtureをCREATEする
+11. tool自身がCREATEしたfixtureだけをcleanupする
 
-誤ったDSNが既存資産を指していても、既存`public.order_lines`を削除して続行するoverrideは設けません。
+### 専用空Databaseの検証
+
+PR #324以前は`public.order_lines`が存在しないことしか確認していなかったため、既存業務DBでもそのtable名が未使用ならfixtureを作成できる余地がありました。
+
+現在はsystem / temporary領域を除き、少なくとも次のuser relationが一つでも存在すれば拒否します。
+
+- table / partitioned table
+- view / materialized view
+- foreign table
+- sequence
+
+既存relationを削除して「空」にする処理は持ちません。
+
+また`postgres`既定Databaseは、偶然user relationが0件でもfixture先として拒否します。template Databaseも同様です。
+
+このguardは「Evidence専用DBとして作った」という運用上の意図そのものを完全に証明するものではありません。ただし、**既定DBや既存user relationを持つDBを誤ってfixture先にする経路をfail closedで閉じる**ことを安全境界とします。
+
+### fixture objectの再確認
+
+空DB検査後も次を確認します。
+
+```sql
+SELECT to_regclass('public.order_lines')::text;
+```
+
+既存objectがあれば停止します。既存tableをDROPして続行するoverrideは設けません。
 
 ## 確認するEvidence
 
@@ -83,9 +112,20 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 
 ## 完了条件
 
+### 安全境界
+
+- [x] invalid WorkspaceではDB接続前に停止する
+- [x] 既存`public.order_lines`を置換しない
+- [x] 既定`postgres` / template Databaseをfixture先として拒否する（PR #324）
+- [x] 既存user relationが1件でもあるDatabaseを拒否する（PR #324）
+- [x] 既存relationを削除してEvidence用空DBへ転用しない
+
+### 実Provider Evidence
+
 - [ ] 対象repository revisionを記録する
 - [ ] Canonical Workspace Validationが成功する
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
+- [ ] 専用空DB guardを実PostgreSQL上で通過したことを確認する
 - [ ] 2件取得を確認する
 - [ ] 0件を正常な空collectionとして確認する
 - [ ] physical table欠落をExecution Errorとして確認する
@@ -99,19 +139,23 @@ PR #294 / #300 / #306で、少なくとも次が成立しています。
 - keyless Relation Storage境界の再設計
 - header-detail PatternのUI layout設計
 - production既存Databaseをfixtureで置換すること
+- 既存relationを削除してEvidence用Databaseへ転用すること
 - production PostgreSQL schemaの観測Evidence
 - actual Oracle Evidenceの代替
 - physical schemaからSemantic Relationを逆生成すること
 - PostgreSQL固有仕様をSemantic modelへ逆流させること
 - GitHub Actionsの再有効化
 
+PR #324のguard追加自体を実Provider Evidence成功とは扱いません。本Issueは実PostgreSQLでのrunを取得するまで完了しません。
+
 ## 関連
 
-- GitHub Issue #69 / #244 / #255 / #273 / #308 / #310
-- PR #294 / #300 / #306 / #309
+- GitHub Issue #69 / #214 / #244 / #255 / #273 / #308 / #310
+- PR #294 / #300 / #306 / #309 / #324
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/issue/000024-keyless-relation-physical-storage.md`
 - `tools/reference-postgres-header-detail-runtime/README.md`
 - `tools/reference-postgres-header-detail-runtime/main.go`
+- `tools/reference-postgres-header-detail-runtime/safety.go`
