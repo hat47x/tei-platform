@@ -122,8 +122,8 @@ func runWith(
 		if inspectErr != nil {
 			return result, inspectErr
 		}
-		if !postLane.RevisionStable || !postLane.WorkingTreeClean {
-			return result, fmt.Errorf("%s実行後にrepository sourceがcandidate revisionから外れました。最終Evidenceを継続しません", spec.Name)
+		if !postLane.Checked || !postLane.RevisionStable || !postLane.WorkingTreeClean {
+			return result, fmt.Errorf("%s実行後のrepository sourceを同じclean candidate revisionとして確認できません。最終Evidenceを継続しません", spec.Name)
 		}
 		if laneErr != nil {
 			return result, laneErr
