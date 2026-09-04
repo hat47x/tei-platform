@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	deploymentdurable "tei/internal/deployment/durable"
@@ -157,9 +158,48 @@ func checkDurableRunPluginLock(path string, lock plugin.Lock) error {
 
 func writeArtifacts(artifacts []artifact) error {
 	for _, item := range artifacts {
-		if err := os.WriteFile(item.Path, item.Data, 0o644); err != nil {
-			return fmt.Errorf("Reference golden %sを更新できません: %w", item.Path, err)
+		if err := replaceArtifactSafely(item.Path, item.Data); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// replaceArtifactSafelyは既存goldenを直接truncateせず、同じdirectoryの一時fileへ
+// 内容を完全に書き込み、Sync / Closeできた後にRenameする。
+// 生成途中の失敗で既存artifactを空または途中までの内容にしないことが目的であり、
+// OSをまたいだRenameのatomicityそのものは契約にしない。
+func replaceArtifactSafely(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+	temp, err := os.CreateTemp(dir, "."+base+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("Reference golden %sの一時fileを%sへ作成できません: %w", path, dir, err)
+	}
+	tempPath := temp.Name()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = temp.Close()
+		}
+		_ = os.Remove(tempPath)
+	}()
+
+	if err := temp.Chmod(0o644); err != nil {
+		return fmt.Errorf("Reference golden %sの一時file modeを設定できません: %w", path, err)
+	}
+	if _, err := temp.Write(data); err != nil {
+		return fmt.Errorf("Reference golden %sの一時fileへ書き込めません: %w", path, err)
+	}
+	if err := temp.Sync(); err != nil {
+		return fmt.Errorf("Reference golden %sの一時fileをsyncできません: %w", path, err)
+	}
+	if err := temp.Close(); err != nil {
+		return fmt.Errorf("Reference golden %sの一時fileをcloseできません: %w", path, err)
+	}
+	closed = true
+	if err := os.Rename(tempPath, path); err != nil {
+		return fmt.Errorf("Reference golden %sを安全に置換できません: %w", path, err)
 	}
 	return nil
 }

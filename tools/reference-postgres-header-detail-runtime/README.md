@@ -14,7 +14,8 @@
 - physical execution errorを0 rowへ変換しないこと
 - runtime parameter値を通常Evidenceへ保存しないこと
 - Evidenceを一つのclean repository revisionへ固定できること
-- fixture実行後に接続先をuser relation 0件 / fixture object不在へ戻せたこと
+- fixture実行前にuser relation 0件 / Event Trigger 0件 / fixture object不在を確認できること
+- fixture実行後に接続先をuser relation 0件 / Event Trigger 0件 / fixture object不在へ戻せたこと
 
 一方、tool自身が一時的にfixture table / rowを作ります。このため、**production既存Databaseの物理事実を観測したEvidenceではありません**。
 
@@ -79,6 +80,8 @@ TEI_TEST_POSTGRES_DSNへ接続
   ↓
 既存user relationが1件でもあれば停止
   ↓
+Event Triggerが1件でもあれば停止
+  ↓
 public.order_lines既存確認
   ↓
 tool-owned fixture CREATE
@@ -87,14 +90,14 @@ Provider runtime Evidence
   ↓
 tool-owned fixture cleanup / missing-table Execution Error確認
   ↓
-user relation 0件 / fixture object不在を再確認
+user relation 0件 / Event Trigger 0件 / fixture object不在を再確認
   ↓ 残存があれば停止
 Repository revision / working tree再確認
   ↓ 変化していれば停止
 JSON Evidence
 ```
 
-したがって、dirty source、Workspace authoringが不正な状態、既存資産を含むDatabase、cleanup後にuser relationが残るrunのいずれも成功Evidenceへ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+したがって、dirty source、Workspace authoringが不正な状態、既存資産やEvent Triggerを含むDatabase、cleanup後に観測条件へ戻っていないrunのいずれも成功Evidenceへ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
 
 ## Database側の安全条件
 
@@ -137,9 +140,24 @@ WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
 
 1件以上なら、内容や用途を推測せず**fail closedで実行を拒否**します。既存relationを削除して「空」にする処理はありません。
 
-### 3. fixture objectを再確認
+### 3. Event Triggerを拒否
 
-空DB検査後も`public.order_lines`の既存有無を明示確認します。
+PR #365以降、user relationが0件でもEvent Triggerが残るDatabaseはfixture実行先にしません。
+
+Event Triggerはrelationとは別にDatabase内へ存在でき、`CREATE TABLE` / `DROP TABLE`等のDDLへ介入できます。このtool自身がfixture tableをCREATE / DROPするため、relation 0件だけでは安全条件として不十分です。
+
+```sql
+SELECT count(*)
+FROM pg_catalog.pg_event_trigger;
+```
+
+1件でも存在すれば、enabled / disabledや用途を推測せず停止します。既存Event Triggerを削除・無効化して続行する処理はありません。
+
+この確認は「組織運用上、このDatabaseがEvidence専用である」という意図を完全に証明するものではありません。少なくとも、DDLへ介入し得る既存Event Triggerを持つDatabaseをfixture先として受け入れないためのfail-closed境界です。
+
+### 4. fixture objectを再確認
+
+空Database検査後も`public.order_lines`の既存有無を明示確認します。
 
 ```sql
 SELECT to_regclass('public.order_lines')::text;
@@ -147,9 +165,9 @@ SELECT to_regclass('public.order_lines')::text;
 
 既存objectがあれば停止します。
 
-これらは専用Databaseであることの運用上の意図を完全に証明するものではありませんが、少なくとも「他のuser relationがある既存DB」や「既定postgres DB」を誤ってfixture先にする経路を閉じます。
+これらは専用Databaseであることの運用上の意図を完全に証明するものではありませんが、少なくとも「他のuser relationがある既存DB」「Event TriggerがあるDB」「既定postgres DB」を誤ってfixture先にする経路を閉じます。
 
-既存tableをDROPしてfixtureへ置き換えるオプションは提供しません。
+既存tableやEvent Triggerを削除してfixture用Databaseへ転用するオプションは提供しません。
 
 実行を継続できる場合だけtool自身が`public.order_lines`をCREATEし、以後そのfixtureだけをtool所有物として扱います。途中失敗時はbest-effort cleanupを行い、Execution Error確認時にはtool自身のfixtureを削除してmissing-table errorを発生させます。
 
@@ -166,6 +184,7 @@ SELECT to_regclass('public.order_lines')::text;
   "databaseIdentityPersisted": false,
   "nonDefaultDatabaseVerified": true,
   "userRelationsBeforeFixture": 0,
+  "eventTriggersBeforeFixture": 0,
   "fixtureObjectAbsentBeforeCreate": true
 }
 ```
@@ -176,6 +195,7 @@ SELECT to_regclass('public.order_lines')::text;
 - `databaseIdentityPersisted`: 実Database名をEvidenceへ保存していない
 - `nonDefaultDatabaseVerified`: `postgres` / `template0` / `template1`ではなかった
 - `userRelationsBeforeFixture`: system / temporary領域を除くfixture作成前user relation数
+- `eventTriggersBeforeFixture`: fixture作成前に存在したEvent Trigger数
 - `fixtureObjectAbsentBeforeCreate`: `public.order_lines`がfixture作成前に存在しなかった
 - `guardPassed`: 上記の安全条件をすべて通過してからfixture作成へ進んだ
 
@@ -191,6 +211,7 @@ missing-table Execution Errorを確認した後、成功JSONを出す前に接�
 {
   "verified": true,
   "userRelationsAfterCleanup": 0,
+  "eventTriggersAfterCleanup": 0,
   "fixtureObjectAbsentAfterCleanup": true
 }
 ```
@@ -198,12 +219,13 @@ missing-table Execution Errorを確認した後、成功JSONを出す前に接�
 これは、tool-owned fixtureを削除したという制御フラグだけではなく、終了時のPostgreSQL catalogを再観測して次を確認したことを示します。
 
 - system / temporary領域を除くuser relationが0件へ戻った
+- Event Triggerが0件である
 - `public.order_lines`が存在しない
 - missing-table Execution Error確認後も上記状態が維持された
 
-終了時にuser relationが1件でも残っている場合は、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
+終了時にuser relationやEvent Triggerが残っている場合は、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
 
-このEvidenceにもDatabase名、DSN、credentialは保存しません。
+このEvidenceにもDatabase名、DSN、credential、Event Trigger名や定義本文は保存しません。
 
 ## 出力
 
@@ -233,13 +255,15 @@ missing-table Execution Errorを確認した後、成功JSONを出す前に接�
 
 - production Databaseに対する破壊的fixture作成
 - 既存relationを削除してEvidence用Databaseへ転用すること
+- 既存Event Triggerを削除・無効化してEvidence用Databaseへ転用すること
 - 既存`public.order_lines`の置換
 - productionの実データ内容の検証
 - #214 external-observed `master_data`の物理Evidence代替
 - PostgreSQL既存Schema全体の受入れ検証
 - runtime parameter値やcredentialのEvidence保存
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
+- Event Trigger名や定義本文を通常Evidenceへ保存すること
 - dirty working tree上の成功をGate B完了Evidenceへ格上げすること
-- cleanup後にuser relationが残るrunを成功Evidenceへ格上げすること
+- cleanup後にuser relationまたはEvent Triggerが残るrunを成功Evidenceへ格上げすること
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。
