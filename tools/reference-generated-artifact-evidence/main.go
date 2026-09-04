@@ -33,6 +33,11 @@ type evidence struct {
 	Checks               []checkEvidence            `json:"checks"`
 }
 
+type inspectStartFunc func() (repositoryevidence.Source, error)
+type inspectPostFunc func(string) (repositoryevidence.PostRun, error)
+type checkRunnerFunc func(commandSpec) bool
+type commandOutputFunc func(string, ...string) (string, error)
+
 func main() {
 	result, err := run()
 	encoded, encodeErr := json.MarshalIndent(result, "", "  ")
@@ -48,12 +53,26 @@ func main() {
 }
 
 func run() (evidence, error) {
+	return runWith(
+		repositoryevidence.InspectStart,
+		repositoryevidence.InspectPost,
+		runStreamingCommand,
+		commandOutput,
+	)
+}
+
+func runWith(
+	inspectStart inspectStartFunc,
+	inspectPost inspectPostFunc,
+	checkRunner checkRunnerFunc,
+	output commandOutputFunc,
+) (evidence, error) {
 	result := evidence{
 		EvidenceNature: evidenceNature,
 		Checks:         []checkEvidence{},
 	}
 
-	source, err := repositoryevidence.InspectStart()
+	source, err := inspectStart()
 	if err != nil {
 		return result, err
 	}
@@ -63,7 +82,7 @@ func run() (evidence, error) {
 		return result, fmt.Errorf("generated artifact完了Evidenceはclean revisionに固定するため、working treeに未commit差分がある状態では実行しません。差分を確認・commitした後に再実行してください")
 	}
 
-	goVersion, err := commandOutput("go", "version")
+	goVersion, err := output("go", "version")
 	if err != nil {
 		return result, fmt.Errorf("Go toolchainを確認できません: %w", err)
 	}
@@ -71,7 +90,7 @@ func run() (evidence, error) {
 
 	failed := false
 	for _, spec := range checkOnlyCommands() {
-		passed := runStreamingCommand(spec)
+		passed := checkRunner(spec)
 		result.Checks = append(result.Checks, checkEvidence{
 			Name:    spec.Name,
 			Command: commandDisplay(spec),
@@ -82,11 +101,13 @@ func run() (evidence, error) {
 		}
 	}
 
-	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+	postRun, postRunErr := inspectPost(source.RepositoryRevision)
 	result.PostRunRepository = postRun
-	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
 	if postRunErr != nil {
 		return result, postRunErr
+	}
+	if !postRun.Checked {
+		return result, fmt.Errorf("generated artifact Evidence実行後のrepository source確認が完了していません。単一revisionの完了Evidenceとして採用しません")
 	}
 	if !postRun.RevisionStable {
 		return result, fmt.Errorf("generated artifact Evidence実行中にrepository HEADが変化しました。単一revisionの完了Evidenceとして採用せず、固定されたclean revisionで再実行してください")
@@ -97,6 +118,8 @@ func run() (evidence, error) {
 	if failed {
 		return result, fmt.Errorf("generated artifact checkに不一致があります。個別toolの診断を確認し、必要な場合だけ各toolの-writeで修復して差分をcommitした後、新しいclean revisionで本runnerを再実行してください")
 	}
+
+	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
 	if !result.ReproducibleRevision {
 		return result, fmt.Errorf("generated artifact Evidenceを単一のclean revisionへ固定できません")
 	}
