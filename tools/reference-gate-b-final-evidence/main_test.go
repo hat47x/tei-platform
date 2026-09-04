@@ -62,6 +62,32 @@ func TestEvidenceArtifactFingerprintUsesExactBytes(t *testing.T) {
 	}
 }
 
+func TestDecodeLaneArtifactFingerprintsOnlyValidEvidenceJSON(t *testing.T) {
+	content := []byte(`{"evidenceNature":"deterministic-repository","repositoryRevision":"R","reproducibleRevision":true}`)
+	lane := laneEvidence{}
+	envelope, err := decodeLaneArtifact(content, &lane)
+	if err != nil {
+		t.Fatalf("decodeLaneArtifact() error=%v", err)
+	}
+	if envelope.EvidenceNature != "deterministic-repository" || envelope.RepositoryRevision != "R" || !envelope.ReproducibleRevision {
+		t.Fatalf("decoded envelope=%#v", envelope)
+	}
+	if lane.EvidenceArtifactFingerprint != evidenceArtifactFingerprint(content) {
+		t.Fatalf("fingerprint=%q want=%q", lane.EvidenceArtifactFingerprint, evidenceArtifactFingerprint(content))
+	}
+	if lane.ObservedNature != envelope.EvidenceNature || lane.RepositoryRevision != envelope.RepositoryRevision || !lane.ReproducibleRevision {
+		t.Fatalf("lane evidenceがdecoded envelopeと一致しません: %#v", lane)
+	}
+
+	invalidLane := laneEvidence{}
+	if _, err := decodeLaneArtifact([]byte("not-json"), &invalidLane); err == nil {
+		t.Fatal("非JSON stdoutをEvidence artifactとして受理しています")
+	}
+	if invalidLane.EvidenceArtifactFingerprint != "" {
+		t.Fatalf("非JSON stdoutにEvidence artifact fingerprintを付与しています: %q", invalidLane.EvidenceArtifactFingerprint)
+	}
+}
+
 func TestLaneSpecsKeepPostgresLast(t *testing.T) {
 	specs := laneSpecs(false)
 	if len(specs) != 3 {
