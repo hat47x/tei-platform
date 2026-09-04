@@ -51,14 +51,14 @@ Gate Bでは性質の異なるEvidenceを相互代替しません。
 
 | Lane | Repository / GitHub Issue | Evidence nature | 現在地 |
 | --- | --- | --- | --- |
-| A | `ISSUE-000022` / #214（driver integration: `ISSUE-000033` / #371） | actual external asset | **Blocked** — actual Oracle facts / read-only / driver integration / actual read待ち |
+| A | `ISSUE-000022` / #214（driver integration: `ISSUE-000033` / #371、read-only: `ISSUE-000034` / #376） | actual external asset | **Blocked** — actual Oracle facts / read-only / driver integration / actual read待ち |
 | B | `ISSUE-000031` / #308 | real-provider ephemeral fixture | **Ready to run** — Evidence専用空PostgreSQL DB待ち |
 | C | `ISSUE-000025` / #255 | generated artifact reproducibility | **Ready to check** — clean normal Go environment待ち |
 | D | `ISSUE-000032` / #310 | deterministic repository | **Ready to run** — clean checkout / normal Go runner待ち |
 
 PR #342で`GATE_B_EVIDENCE_ACQUISITION.md`に残っていた旧3分類も、この4 Evidence natureへ同期しました。
 
-`ISSUE-000033` / #371はLane Aの具体driver / Host assemblyを確定する子Issueであり、第五Evidence laneではありません。
+`ISSUE-000033` / #371と`ISSUE-000034` / #376はLane Aの具体driver / Host assemblyとread-only Evidenceを確定する子Issueであり、第五・第六Evidence laneではありません。
 
 取得結果は本Issueと`GATE_B_READINESS_AUDIT.md`で総合判定します。
 
@@ -143,6 +143,18 @@ ADR-0007に従い、具体driverの選択・登録、DSN、credential、TLS / TC
 
 実Oracleのversion / authentication / TCPS・Wallet / datatype / NULL / read-only方式 / Host制約を観測してからdriverを確定します。
 
+### actual Oracle read-only Evidence — ISSUE-000034 / #376
+
+read-only保証はSQLが`SELECT`に見えること、TEI Runnerが`QueryContext`を使うこと、read-only transactionのいずれか一つだけでは成立したと判定しません。
+
+第一Referenceでは、実Oracle version / grant構成に応じて、専用least-privilege principal / role、system / object privilegeやrole等へ戻れるgrant Evidence、必要に応じたread-only transaction、Reference read pathのquery-only runtime境界、actual Query成功を組み合わせて確認します。
+
+principal / grant Evidenceを主たるread-only根拠とし、transactionやTEI側query-only境界を追加防御として扱います。一層だけをread-only保証全体へ格上げしません。
+
+read-only確認のためだけに実外部assetへDML / DDL、`SELECT ... FOR UPDATE`、exclusive lock等を試行して失敗確認しません。権限設定が想定より広かった場合に実データ変更・lock・availability影響を生み得るためです。
+
+#376を作成したことは責務分離の完了であり、actual principal / grant Evidenceの完了ではありません。
+
 ### 残るactual external Evidence
 
 - 実physical object / parameter / raw result identity
@@ -150,7 +162,7 @@ ADR-0007に従い、具体driverの選択・登録、DSN、credential、TLS / TC
 - native realization source
 - Semantic Customerへのexplicit mapping
 - provenance
-- 実効的read-only強制
+- `ISSUE-000034` / #376での実効的read-only Evidence
 - `ISSUE-000033` / #371での採用Oracle driver integration
 - actual readでraw列名 / driver提供metadataを観測した結果
 - actual Evidence artifactのsource-fixed acceptance receipt
@@ -395,11 +407,12 @@ Evidence取得は二段階に分けます。
 1. #310をcleanな通常Go runnerで実行し、deterministicな問題を先に露出させる
 2. #255をcheck-onlyし、staleなら正規toolで修復 → 差分確認 → commitする
 3. #308をEvidence専用の空PostgreSQL Databaseで事前実行し、Provider / fixture safety / cleanup復元上の問題を露出させる
-4. #214のactual Oracle physical facts / provenance / read-only Evidenceを取得する
-5. `ISSUE-000033` / #371で実Oracle条件に基づくdriver / Host assemblyを確定する
-6. 観測事実を根拠に必要なOracle realization / driver assemblyを明示authoringする
-7. #214 acceptance / Oracle driver / actual readを事前確認し、不足を修復する
-8. Gate Bに必要なsource / generated artifact変更をすべてcommitする
+4. #214のactual Oracle physical facts / provenanceを取得する
+5. `ISSUE-000034` / #376で実Oracle principal / grant / transaction / query-only runtimeのread-only Evidenceを確定する
+6. `ISSUE-000033` / #371で実Oracle条件に基づくdriver / Host assemblyを確定する
+7. 観測事実を根拠に必要なOracle realization / driver assemblyを明示authoringする
+8. #214 acceptance / Oracle driver / actual readを事前確認し、不足を修復する
+9. Gate Bに必要なsource / generated artifact変更をすべてcommitする
 
 この段階で得た成功JSONも、その後sourceが変わった場合は最終完了Evidenceとして流用しません。
 
@@ -409,16 +422,16 @@ Evidence取得は二段階に分けます。
 2. Rで#310 `reference-gate-b-repository-evidence`を実行する
 3. Rで#255 `reference-generated-artifact-evidence`をcheck-only実行する
 4. Rで#308 PostgreSQL Provider Evidenceを実行する
-5. Rで#214 external Evidence acceptance receiptを再取得し、Rのruntime / realization / driver assemblyでactual Oracle readを実行する
+5. Rで#214 external Evidence acceptance receiptを再取得し、Rのruntime / realization / driver assemblyと#376のread-only境界でactual Oracle readを実行する
 6. 4 laneすべての完了EvidenceがRを参照していることを確認する
-7. secret / read-only / 0件 / Execution Error / Observation期待不一致 / source revision不変 / Event Trigger残存 / Oracle未提供metadata推測等のnegative caseを再監査する
+7. secret / read-only / 0件 / Execution Error / Observation期待不一致 / source revision不変 / Event Trigger残存 / Oracle未提供metadata推測 / unsafe write・lock probe不在等のnegative caseを再監査する
 8. Rを対象にGate BをReady / Not Readyで再判定する
 9. Readyなら#291でRをHandover Baselineとして固定する
 10. その後に第一Web Target #70 / Gate C #270へ進む
 
 Phase 2中にsource変更が必要になった場合は、その変更をcommitした新revisionをRとして選び直し、4 laneをもう一度そのrevisionへ揃えます。
 
-#214に必要な実外部事実が得られない場合はBlockedとして保持し、未観測情報を埋めて先へ進みません。
+#214に必要な実外部事実が得られない場合、#371でdriver / Host assemblyを確定できない場合、または#376で安全なread-only Evidenceを得られない場合はBlockedとして保持し、未観測情報を埋めて先へ進みません。
 
 ## Gate B通過後
 
@@ -439,6 +452,7 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [x] #214 Repository正本をreceipt後へ同期した（PR #343）
 - [x] #214 actual-read観測metadata保持境界を追加した（PR #364 / #366）
 - [x] actual Oracle driver integrationを`ISSUE-000033` / #371へ分離した（PR #372）
+- [x] actual Oracle read-only Evidenceを`ISSUE-000034` / #376へ分離した（PR #378）
 - [x] keyless Relation Storage実装を#244でCompletedへ収束した
 - [x] real PostgreSQL Evidenceを`ISSUE-000031` / #308へ分離した
 - [x] #308 fixture前安全判定をEvidenceへ残した（PR #335）
@@ -488,7 +502,8 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - 一致済みgenerated artifactを形式的に書き換えること
 - Observationを汎用Workflow / Event Sourcing基盤へ一般化すること
 - Gate BのためにEditor / AI / 第二Targetを先行させること
-- `ISSUE-000033` / #371を第五Evidence laneとして扱うこと
+- `ISSUE-000033` / #371や`ISSUE-000034` / #376を独立したGate B Evidence laneとして扱うこと
+- read-only確認のため実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lockを試行すること
 - 異なるrevisionで得た4 laneの成功Evidenceを一つのReady revisionへ読み替えること
 
 ## 関連
@@ -507,5 +522,6 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - `plan/issue/000033-gate-b-oracle-driver-integration.md`
-- GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310 / #371
-- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #351 / #353 / #354 / #364 / #365 / #366 / #367 / #369 / #370 / #372 / #373 / #374 / #375
+- `plan/issue/000034-gate-b-oracle-read-only-evidence.md`
+- GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310 / #371 / #376
+- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #351 / #353 / #354 / #364 / #365 / #366 / #367 / #369 / #370 / #372 / #373 / #374 / #375 / #378
