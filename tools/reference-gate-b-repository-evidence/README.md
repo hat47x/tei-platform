@@ -97,7 +97,16 @@ git status --porcelain
 
 これにより、「実行前はcleanだったがtestや並行操作でsource状態が変化した」runを、元revisionの成功Evidenceとして誤採用しません。
 
-開始時にworking treeがcleanでも、それだけでは`reproducibleRevision = true`にしません。`reproducibleRevision`はpost-runのHEAD同一性とworking tree cleanまで確認できた後にだけtrueになります。Go toolchain取得、Workspace Load / Validationなどでpost-run確認前に失敗したJSONではfalseのままです。
+開始時にworking treeがcleanでも、それだけでは`reproducibleRevision = true`にしません。PR #400以降、`reproducibleRevision`は次をすべて確認した後にだけtrueになります。
+
+- Workspace Validationが成功している
+- 三つのtargeted checkがすべて成功している
+- `-broad`指定時はRepository全体のtestも成功している
+- `postRunRepository.checked = true`
+- 実行前後でHEADが同一
+- 実行後もworking treeがclean
+
+したがってtargeted checkまたはbroad checkが失敗した場合、Repository sourceが同じclean revisionのままでも、その失敗JSONでは`reproducibleRevision = false`を維持します。Go toolchain取得、Workspace Load / Validationなどでpost-run確認前に失敗したJSONでもfalseのままです。
 
 診断目的に限り`-allow-dirty`を指定できます。
 
@@ -159,12 +168,15 @@ stdoutには概ね次の形を出します。
 
 `reproducibleRevision = true`になるには、少なくとも次がすべて必要です。
 
+- Workspace Validationが成功
+- targeted checkがすべて成功
+- `-broad`指定時はbroad checkも成功
 - 実行前working treeがclean
 - 実行後repository状態を確認済み
 - 実行前後でHEADが同一
 - 実行後working treeもclean
 
-これらを最後まで確認できない早期失敗では、開始時cleanであっても`reproducibleRevision`はfalseです。
+check失敗やsource確認未完了を含め、これらを最後まで満たせないrunでは`reproducibleRevision`はfalseです。
 
 JSONへtest stdout、DSN、credential、runtime parameter valueは保存しません。
 
@@ -183,7 +195,7 @@ EvidenceをRepositoryへ永続保存するか、どのpathを標準とするか�
 
 ## Evidenceの意味
 
-成功しても証明するのは、そのcleanかつ実行中に不変だったrepository revisionでdeterministicなGate B境界が通常Go runnerから成立したことだけです。
+`reproducibleRevision = true`で成功して証明するのは、そのcleanかつ実行中に不変だったrepository revisionで、Workspace Validationと必要なdeterministic Gate B checksが通常Go runnerから成立したことです。
 
 次へ格上げしません。
 
