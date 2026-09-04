@@ -119,7 +119,7 @@ persistence-relation-storage:<mapping>/<relation>
 第一Referenceでは次のsourceへ追跡できます。
 
 ```text
-databases/sales-core/relation-storage/order-lines.tei
+databases/sales-core/relation-storage/order-line.tei
 ```
 
 ### Reference Persistence
@@ -149,7 +149,7 @@ SELECT
     unit_price
 FROM public.order_lines
 WHERE order_id = :order_id
-ORDER BY line_number;
+ORDER BY line_number, order_line_id;
 ```
 
 Contract inputからphysical parameterへの対応も明示します。
@@ -204,7 +204,7 @@ Reference Workspace
 
 fixtureでは`order_id=1001`に2件、別Orderに1件を用意し、対象Orderの2件取得と、存在しない`order_id=9999`の0件取得を確認する構成です。
 
-ただし、2026年9月3日現在、GitHub Actions workflowはRepositoryで明示的に停止されています。また、このチャットの実行環境から実PostgreSQLサーバーへ接続してtoolを実行する経路もありません。
+ただし、2026年9月4日現在、GitHub Actions workflowはRepositoryで明示的に停止されています。また、このチャットの実行環境から実PostgreSQLサーバーへ接続してtoolを実行する経路もありません。
 
 そのため、**実PostgreSQLでの成功Evidenceはまだ取得していません**。toolを実装したことと、実DBで成功したことは分けて扱います。
 
@@ -257,8 +257,8 @@ CIをこのIssueから独断で再有効化しません。別の明示的な判�
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000023-header-detail-relation-traversal-boundary.md`
 - `reference/workspace/databases/sales-core/persistence/order-line.tei`
-- `reference/workspace/databases/sales-core/relation-storage/order-lines.tei`
+- `reference/workspace/databases/sales-core/relation-storage/order-line.tei`
 - `reference/workspace/databases/sales-core/contracts/order-line.tei`
-- `reference/workspace/databases/sales-core/query-realizations/order-lines.tei`
-- `reference/workspace/databases/sales-core/query-realizations/order-lines.sql`
+- `reference/workspace/databases/sales-core/query-realizations/order-line-find-by-order.tei`
+- `reference/workspace/databases/sales-core/query-realizations/order-line-find-by-order.sql`
 - `tools/reference-postgres-header-detail-runtime/main.go`
