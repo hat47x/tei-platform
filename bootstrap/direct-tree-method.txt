@@ -1,0 +1,1 @@
+TEI source normalization is switching to direct Git tree content construction.
