@@ -10,20 +10,22 @@ Gate B「UIなしで主要Scenarioを再現できる」を、IssueやPRのclose�
 
 Gate Bの目的は、第一Web Targetへ進む前に、Application上の不足をWeb固有コードで補わずに済む状態を確認することです。
 
-Evidence取得の具体的な手順は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)を参照します。
+Evidence取得の具体的な手順は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を参照します。
 
 ## 結論
 
 Application Driverの主要な意味境界とScenario構造は成立しています。
 
-PR #285で、Contract Query、header-detail、Relation Storage、Observation、最終UI-less Scenario、Reference authoringを`main`へ収束しました。したがって、現在のGate B残件は「Driverの中心設計が未成立」という種類ではなく、**外部事実、実DB、生成物再現、通常runnerというEvidence取得**へ収束しています。
+PR #285でContract Query、header-detail、Relation Storage、Observation、最終UI-less Scenario、Reference authoringを`main`へ収束しました。さらにPR #300で、external-observed Query Evidence受入境界、PostgreSQL header-detail Evidence toolのfail-closed安全化、Gate B Evidence Runbookを最新`main`へ収束しています。
+
+したがって、現在のGate B残件は「Driverの中心設計が未成立」という種類ではなく、**外部事実、実DB、生成物再現、通常runnerというEvidence取得**へ収束しています。
 
 現在Gate Bを直接止めているのは次の四系統です。
 
-1. external-observed `master_data`の実物理 / read-only Evidence
-2. `Order -> OrderLine[]`の実PostgreSQL Evidence
+1. external-observed `master_data`の実Oracle物理 / read-only Evidence
+2. `Order -> OrderLine[]`の実PostgreSQL engine Evidence
 3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
-4. 最終UI-less Scenarioの通常Go runner実行Evidence
+4. 最終UI-less Scenario / external Evidence intakeの通常Go runner実行Evidence
 
 GitHub Actionsによる継続的な再検証は重要ですが、この四系統のProduct Evidenceと同一ではありません。Actions停止そのものを意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
 
@@ -55,7 +57,7 @@ raw列名、列順、Persistence MappingからSemantic attributeを推測しま�
 
 ### `Order -> Customer` reference
 
-**構造はReady、実物理EvidenceはBlocked**です。
+**構造とEvidence受入境界はReady、実物理EvidenceはBlocked**です。
 
 成立済み:
 
@@ -68,6 +70,12 @@ raw列名、列順、Persistence MappingからSemantic attributeを推測しま�
 - instance-aware runtime Registry
 - Oracle向け最小`database/sql` Runner
 - 0件とExecution Errorを分離する契約
+- external EvidenceをCanonical Worldから分離した受入境界
+- target / provider / `external-observed` ownershipの照合
+- Contract input -> physical parameter、raw result -> Semantic attributeの照合
+- native SQL fingerprint / provenance / read-only Evidence参照の検査
+
+PR #288 / #300でEvidence intakeは成立しました。SQL realizationがなければ停止し、Evidenceから生成・補完しません。
 
 一方、external-observed `master_data`の実際のtable / view / parameter / raw column / native SQL / provenanceは未観測です。
 
@@ -75,7 +83,7 @@ raw列名、列順、Persistence MappingからSemantic attributeを推測しま�
 
 ### `Order -> OrderLine[]` header-detail
 
-**意味・保存・runtimeはReady、実DB EvidenceはPending**です。
+**意味・保存・runtime・fixture安全境界はReady、実DB EvidenceはPending**です。
 
 成立済み:
 
@@ -89,10 +97,12 @@ raw列名、列順、Persistence MappingからSemantic attributeを推測しま�
 - Contract Query runtime境界
 - 0件 / 複数件 / Execution Errorの区別
 - 実PostgreSQL Evidence tool
+- 既存`public.order_lines`がある接続先では停止するfail-closed guard
+- tool自身が作成したephemeral fixtureだけをcleanupするownership境界
 
 実行入口は`tools/reference-postgres-header-detail-runtime`です。
 
-このtoolはfixture用`public.order_lines`を作成・削除するため、共有・業務DBではなく破棄可能な専用PostgreSQL databaseで実行します。
+このtoolは**real PostgreSQL engine + ephemeral fixture Evidence**を取得します。production既存Databaseの物理事実を観測するEvidenceではありません。共有・業務DBではなく、破棄可能な専用PostgreSQL databaseで実行します。
 
 ### Validation -> Authorization -> Command
 
@@ -213,6 +223,8 @@ go run ./tools/reference-golden -write
 
 Durable Runがstaleになった場合はfingerprintだけを手編集せず、`tei deployment-start`から出力全体を再生成します。
 
+Relation Storage / SQL realizationの重複authoringは解消済みで、PR #299により計画文書のSource参照も現行正本へ揃えています。
+
 ## Gate B条件別監査
 
 | 条件 | 状態 | 根拠 / 残件 |
@@ -221,9 +233,11 @@ Durable Runがstaleになった場合はfingerprintだけを手編集せず、`t
 | 同じSemantic Order identityを後続境界へ引き継げる | Ready (synthetic structure) | customer_id / order_idを明示継承 |
 | Pattern / Query / Relation / Datasource / Capability / Bindingを追跡できる | Ready | Driver / Source Index / Conformance |
 | browseをSemantic resultまで実行できる | Ready | explicit result mapping |
-| referenceを実外部readまで実行できる | Blocked | #214 external `master_data` Evidence待ち |
+| external Evidenceを未観測情報の補完なしで受け入れられる | Ready | PR #288 / #300 |
+| referenceを実外部readまで実行できる | Blocked | #214 actual Oracle Evidence待ち |
 | read-only `master_data`を実効的に保証 | Blocked | #214 |
 | header-detailの意味・storage・runtimeが成立 | Ready | Relation Storage / Contract Query runtime |
+| PostgreSQL fixtureが既存資産を破壊しない | Ready | PR #294 / #300 fail closed |
 | header-detail実PostgreSQL Evidence | Pending | 専用DBでtool実行待ち |
 | Validation不成立時にCommandへ進まない | Ready | Driver Conformance |
 | Authorization denied時にCommandへ進まない | Ready | Driver Conformance |
@@ -231,7 +245,7 @@ Durable Runがstaleになった場合はfingerprintだけを手編集せず、`t
 | Command acknowledgementとObservationを分離 | Ready (synthetic) | ADR-0023 / `ExecuteObservationRead` |
 | secret / runtime parameterを通常Evidenceへ保存しない | Ready | runtime境界 |
 | 最新authoringからReference生成物を再現 | Pending | #255 / `reference-golden`実行待ち |
-| 最終Scenarioを通常Go runnerで実証 | Pending | runner実行待ち |
+| 最終Scenario / Evidence intakeを通常Go runnerで実証 | Pending | runner実行待ち |
 | 第一Web Targetへ同じ意味を渡せる | Partial | A〜DのEvidence完成待ち |
 
 ## Gate Bを止めないもの
@@ -252,17 +266,20 @@ Durable Runがstaleになった場合はfingerprintだけを手編集せず、`t
 
 ## 次の実行順
 
-Evidence取得は相互に独立して進められる部分を並走させます。
+Evidence取得は相互に独立して進められる部分を並走させます。具体的な停止条件とコマンドは`GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
 
-1. #214でexternal `master_data`の実物理 / read-only Evidenceを得る
+1. Repository checkout + Go toolchainだけで再現できるdeterministic Evidenceを実行する
+   - Workspace Validation
+   - 最終UI-less Scenario
+   - external Evidence intake tests / tool
+   - #255 World / Plugin Lock / Durable Run再生成
 2. `tools/reference-postgres-header-detail-runtime`を専用PostgreSQLで実行する
-3. #255でReference World / Plugin Lock / Durable Runを正規再生成する
-4. 最終UI-less Scenarioを通常Go runnerで実行する
-5. A〜DのEvidenceを本監査へ対応付ける
-6. secret / read-only / 0件 / Execution Error / Observation期待不一致等のnegative caseを再監査する
-7. Gate BをReady / Not Readyで再判定する
+3. #214でexternal `master_data`のactual external asset Evidenceを得る
+4. Evidenceの種類を混同せず本監査へ対応付ける
+5. secret / read-only / 0件 / Execution Error / Observation期待不一致等のnegative caseを再監査する
+6. Gate BをReady / Not Readyで再判定する
 
-GitHub Actionsが別判断で再開された場合は、同じConformanceを継続的なregression検知として再実行します。これは上記1〜7を置き換えるものではありません。
+GitHub Actionsが別判断で再開された場合は、同じConformanceを継続的なregression検知として再実行します。これは上記1〜6を置き換えるものではありません。
 
 ## Gate B Readyの定義
 
@@ -272,8 +289,9 @@ Gate Bは、次をEvidenceから説明できるときReadyとします。
 - 同じ業務identityを重要境界間で明示的に継承できる
 - すべての重要な意味・実現選択へSource / Bindingを辿れる
 - 外部資産の未観測事実をTEIが推測していない
+- external EvidenceをCanonical meaningと混同していない
 - Business Result / Execution Error / Observationを区別できる
-- synthetic Evidenceと実外部Evidenceを区別できる
+- synthetic / real-provider fixture / actual external asset Evidenceを区別できる
 - read-only / secret等の安全境界を保持できる
 - 最新authoringからCanonical / Reference artifactを再現できる
 - 第一Web Targetへ、Web側で意味を補わず同じbaselineを渡せる
