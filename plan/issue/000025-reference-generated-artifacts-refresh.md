@@ -62,12 +62,32 @@ reference/legacy-auth/*
 
 Gate Bへ採用する#255 Evidenceは、後から同じsourceへ戻れる**cleanなrepository revision**へ固定します。
 
+PR #331で、この完了条件を一つのcheck-only runnerへ集約しました。
+
+```text
+tools/reference-generated-artifact-evidence
+```
+
+runnerは`-write`を呼ばず、次を一つのrunで確認します。
+
+1. 実行前repository revision
+2. 実行前working tree clean
+3. Go toolchain identity
+4. `reference-golden`一致
+5. `reference-durable-run-golden`一致
+6. 実行後repository revision
+7. 実行前後のHEAD同一性
+8. 実行後working tree clean
+9. `reproducibleRevision`判定
+
 したがって、artifactがstaleだった場合は次の二段階で扱います。
 
 ```text
-stale検出
+check-only runnerでstale検出
   ↓
-正規toolの-writeで修復
+個別golden toolの診断を確認
+  ↓
+必要なtoolだけ-writeで修復
   ↓
 git diffで意味上の差分を確認
   ↓
@@ -75,16 +95,33 @@ git diffで意味上の差分を確認
   ↓
 新しいclean revision
   ↓
-check-onlyを再実行
+check-only runnerを再実行
   ↓
-実行前後で同じHEAD / clean working treeを確認
+実行前後で同じHEAD / clean working tree
+  ↓
+reproducibleRevision = true
   ↓
 #255完了Evidence候補
 ```
 
-最初から両goldenが一致している場合は、形式的な`-write`を行わず、そのclean revision上のcheck-only結果をEvidence候補とします。
+最初から両goldenが一致している場合は、形式的な`-write`を行わず、そのclean revision上でrunnerが成功した結果をEvidence候補とします。
 
 ## 正規toolの責務
+
+### `tools/reference-generated-artifact-evidence`
+
+#255の**最終完了Evidence入口**です。
+
+```bash
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
+```
+
+Repository内の新規fileへ直接redirectしません。shellがcommand開始前にfileを作成し、runnerの開始時clean条件を壊すためです。
+
+このrunnerには`-allow-dirty`を設けません。dirty treeでの診断は個別golden toolを利用し、完了Evidenceと混同しません。
+
+runner自身のConformanceでは、check-only commandに`-write`を含めないことと、実行前後のrepository stateが再現可能であることを固定しています。
 
 ### `tools/reference-golden`
 
@@ -143,6 +180,8 @@ go run ./tools/reference-durable-run-golden -write
 ```
 
 保存pathを先にtruncateせず、同じdirectoryの一時fileへ全JSONを書き、Sync / Close後にRenameします。安全境界は**生成途中の失敗で既存Durable Runを空にしないこと**です。OS横断のRename atomicityそのものは契約にしません。
+
+PR #326では、`-solution`のCanonical IDを`core.ParseCanonicalID`で検証し、不正な外部入力をpanicではなく診断可能な通常errorとしてfail closedするようにしました。
 
 ## 対象artifact
 
@@ -205,7 +244,18 @@ go run ./cmd/tei validate -workspace reference/workspace
 
 Validation Errorがあれば生成物確認・更新へ進みません。
 
-### 2. World / Plugin Lock check
+### 2. clean revisionからcheck-only Evidence runnerを実行する
+
+```bash
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
+```
+
+成功して`reproducibleRevision = true`なら、そのrevisionを#255 Evidence候補にできます。形式的な`-write`は行いません。
+
+失敗した場合は、runnerが実行した個別golden checkの診断を確認し、必要なartifactだけを修復します。
+
+### 3. World / Plugin Lock check
 
 ```bash
 go run ./tools/reference-golden
@@ -213,7 +263,7 @@ go run ./tools/reference-golden
 
 一致する場合は書き換えません。
 
-### 3. World / Plugin Lock write — staleの場合だけ
+### 4. World / Plugin Lock write — staleの場合だけ
 
 ```bash
 go run ./tools/reference-golden -write
@@ -223,7 +273,7 @@ git diff -- \
   reference/workspace/.tei/plugin-lock.json
 ```
 
-### 4. Durable Run full check
+### 5. Durable Run full check
 
 ```bash
 go run ./tools/reference-durable-run-golden
@@ -231,7 +281,7 @@ go run ./tools/reference-durable-run-golden
 
 Plugin Lockが変わっていなくても、Runtime Policyを含むRun全体の再現性を確認するため実行します。
 
-### 5. Durable Run write — staleの場合だけ
+### 6. Durable Run write — staleの場合だけ
 
 ```bash
 go run ./tools/reference-durable-run-golden -write
@@ -239,28 +289,22 @@ go run ./tools/reference-durable-run-golden -write
 git diff -- reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-### 6. staleがあった場合は生成物をcommitする
+### 7. staleがあった場合は生成物をcommitする
 
 `-write`で差分が生じた場合、差分が正規入力から説明できることを確認し、意図したgenerated artifactだけをcommitします。
 
 DSN、credential、一時Evidence file、fixed observed fixture等を混入させません。
 
-### 7. clean revisionでcheck-onlyを再実行する
+### 8. 新しいclean revisionでEvidence runnerを再実行する
 
 ```bash
-git status --short
-git rev-parse HEAD
-
-go run ./tools/reference-golden
-go run ./tools/reference-durable-run-golden
-
-git rev-parse HEAD
-git status --short
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
 ```
 
-実行前後で同じHEADを保持し、両時点のworking treeがcleanで、両golden toolが一致したrunだけを#255の完了Evidence候補とします。
+実行前後で同じHEADを保持し、両時点のworking treeがcleanで、両golden checkが一致し、`reproducibleRevision = true`になったrunだけを#255の完了Evidence候補とします。
 
-`-write`直後のdirty treeで両checkが成功しても、それだけでは#255を完了にしません。
+`-write`直後のdirty treeで個別checkが成功しても、それだけでは#255を完了にしません。
 
 ## 再生成前に解消済みの事項
 
@@ -308,14 +352,17 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - [x] Durable Run writeで既存fileを先にtruncateしないsafe replace境界を実装した
 - [x] Runbookからshell `mktemp` / direct `deployment-start`の重複手順を外し、専用toolへ一本化した
 - [x] `-write`を修復操作、clean revision上のcheck-onlyを完了Evidenceとして分離した
+- [x] Durable Run goldenの不正Solution Canonical IDをpanicではなくfail-closed errorにした（PR #326）
+- [x] #255完了条件を一つのcheck-only Evidence runnerへ集約した（PR #331）
+- [x] Evidence runnerから`-write`を呼ばないConformanceを固定した
+- [x] Evidence runnerで実行前後のHEAD / working treeを確認する境界を固定した
 - [ ] cleanな通常Go環境でWorkspace Validationを成功させる
-- [ ] `go run ./tools/reference-golden`で現在の一致・不一致を確認する
+- [ ] `go run ./tools/reference-generated-artifact-evidence`をclean revisionで実行する
 - [ ] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する
-- [ ] `go run ./tools/reference-durable-run-golden`でDurable Run全体をcheckする
 - [ ] staleの場合だけDurable Run全体を正規生成し、差分を説明する
 - [ ] stale修復が生じた場合、意図したgenerated artifactをcommitする
-- [ ] 最終的なclean revisionで両golden toolをcheck-only実行し一致させる
-- [ ] final check実行前後のHEAD同一性 / working tree cleanを確認する
+- [ ] final clean revisionでEvidence runnerを再実行し`reproducibleRevision = true`を確認する
+- [ ] JSON Evidenceを再確認する
 - [ ] 必要なReference artifactを手編集せず更新する
 - [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
 
@@ -329,17 +376,19 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - deterministic Repository Evidence全体を本Issueへ抱え込むこと
 - 一致済み生成物を形式的に書き換えること
 - dirty working treeのcheck成功をGate B完了Evidenceとして採用すること
+- Evidence runnerから修復操作を行うこと
 - CIをこのIssueから独断で再有効化すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #323
+- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #321 / #323 / #326 / #331
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
+- `tools/reference-generated-artifact-evidence/`
 - `tools/reference-golden/`
 - `tools/reference-durable-run-golden/`
 - `reference/README.md`
