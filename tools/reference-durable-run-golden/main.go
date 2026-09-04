@@ -84,6 +84,11 @@ func run(workspacePath, deploymentPath, pluginLockPath, durableRunPath, solution
 }
 
 func generateDurableRun(workspacePath, deploymentPath, pluginLockPath, solutionID, version, runID string) ([]byte, error) {
+	solution, err := core.ParseCanonicalID(solutionID)
+	if err != nil {
+		return nil, fmt.Errorf("Reference Solution Release ID %qが不正です: %w", solutionID, err)
+	}
+
 	loaded, err := workspace.Load(workspacePath)
 	if err != nil {
 		return nil, fmt.Errorf("Reference Workspace %sを読み込めません: %w", workspacePath, err)
@@ -95,7 +100,6 @@ func generateDurableRun(workspacePath, deploymentPath, pluginLockPath, solutionI
 		return nil, fmt.Errorf("Reference WorkspaceにValidation Errorがあります: %s: %s", diagnostic.Code, diagnostic.Message)
 	}
 
-	solution := core.MustCanonicalID(solutionID)
 	sr, ok := findSolutionRelease(loaded.World.SolutionReleases, solution, version)
 	if !ok {
 		return nil, fmt.Errorf("Reference Solution Release %s@%sがありません", solutionID, version)
