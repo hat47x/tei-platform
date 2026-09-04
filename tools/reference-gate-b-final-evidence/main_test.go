@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"tei/tools/internal/repositoryevidence"
+)
 
 func TestVerifyLaneEnvelopeAcceptsExpectedCandidateRevision(t *testing.T) {
 	envelope := laneEnvelope{
@@ -90,4 +95,148 @@ func TestLanesConvergeRequiresThreePassedLanesOnSameRevision(t *testing.T) {
 	if lanesConverge(lanes, "R") {
 		t.Fatal("lanesConverge() = true with mixed revisions, want false")
 	}
+}
+
+func TestRunWithRechecksSourceBeforeReturningLaneFailure(t *testing.T) {
+	t.Setenv("TEI_TEST_POSTGRES_DSN", "postgres://evidence-only")
+
+	postCalls := 0
+	laneCalls := 0
+	result, err := runWith(
+		false,
+		func() (repositoryevidence.Source, error) {
+			return repositoryevidence.Source{RepositoryRevision: "R", WorkingTreeClean: true}, nil
+		},
+		func(initial string) (repositoryevidence.PostRun, error) {
+			postCalls++
+			if initial != "R" {
+				t.Fatalf("InspectPost initial = %q, want R", initial)
+			}
+			return cleanPostRun("R"), nil
+		},
+		func(spec laneSpec, candidate string) (laneEvidence, error) {
+			laneCalls++
+			return laneEvidence{Name: spec.Name}, errors.New("lane failed")
+		},
+		fakeGoVersion,
+	)
+	if err == nil {
+		t.Fatal("runWith() error = nil, want lane failure")
+	}
+	if laneCalls != 1 {
+		t.Fatalf("lane calls = %d, want 1", laneCalls)
+	}
+	if postCalls != 1 {
+		t.Fatalf("post-run source checks = %d, want 1", postCalls)
+	}
+	if !result.PostRunRepository.Checked {
+		t.Fatal("postRunRepository.checked = false, want true after lane failure")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision = true on lane failure, want false")
+	}
+}
+
+func TestRunWithStopsBeforeNextLaneWhenSourceDrifts(t *testing.T) {
+	t.Setenv("TEI_TEST_POSTGRES_DSN", "postgres://evidence-only")
+
+	laneCalls := 0
+	result, err := runWith(
+		false,
+		func() (repositoryevidence.Source, error) {
+			return repositoryevidence.Source{RepositoryRevision: "R", WorkingTreeClean: true}, nil
+		},
+		func(string) (repositoryevidence.PostRun, error) {
+			return repositoryevidence.PostRun{
+				Checked:            true,
+				RepositoryRevision: "R2",
+				RevisionStable:     false,
+				WorkingTreeClean:   true,
+			}, nil
+		},
+		func(spec laneSpec, candidate string) (laneEvidence, error) {
+			laneCalls++
+			return passedLane(spec, candidate), nil
+		},
+		fakeGoVersion,
+	)
+	if err == nil {
+		t.Fatal("runWith() error = nil, want source drift failure")
+	}
+	if laneCalls != 1 {
+		t.Fatalf("lane calls = %d, want 1", laneCalls)
+	}
+	if result.AllLanesSameRevision {
+		t.Fatal("allLanesSameRevision = true after source drift, want false")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision = true after source drift, want false")
+	}
+}
+
+func TestRunWithMarksReproducibleOnlyAfterThreeLanesAndFinalSourceCheck(t *testing.T) {
+	t.Setenv("TEI_TEST_POSTGRES_DSN", "postgres://evidence-only")
+
+	postCalls := 0
+	laneCalls := 0
+	result, err := runWith(
+		true,
+		func() (repositoryevidence.Source, error) {
+			return repositoryevidence.Source{RepositoryRevision: "R", WorkingTreeClean: true}, nil
+		},
+		func(string) (repositoryevidence.PostRun, error) {
+			postCalls++
+			return cleanPostRun("R"), nil
+		},
+		func(spec laneSpec, candidate string) (laneEvidence, error) {
+			laneCalls++
+			return passedLane(spec, candidate), nil
+		},
+		fakeGoVersion,
+	)
+	if err != nil {
+		t.Fatalf("runWith() error = %v", err)
+	}
+	if laneCalls != 3 {
+		t.Fatalf("lane calls = %d, want 3", laneCalls)
+	}
+	if postCalls != 4 {
+		t.Fatalf("post-run source checks = %d, want 4 (each lane + final)", postCalls)
+	}
+	if !result.AllLanesSameRevision {
+		t.Fatal("allLanesSameRevision = false, want true")
+	}
+	if !result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision = false, want true")
+	}
+	if !result.BroadRequested {
+		t.Fatal("broadRequested = false, want true")
+	}
+}
+
+func cleanPostRun(revision string) repositoryevidence.PostRun {
+	return repositoryevidence.PostRun{
+		Checked:            true,
+		RepositoryRevision: revision,
+		RevisionStable:     true,
+		WorkingTreeClean:   true,
+	}
+}
+
+func passedLane(spec laneSpec, revision string) laneEvidence {
+	return laneEvidence{
+		Name:                 spec.Name,
+		ExpectedNature:       spec.ExpectedNature,
+		ObservedNature:       spec.ExpectedNature,
+		RepositoryRevision:   revision,
+		ReproducibleRevision: true,
+		Passed:               true,
+	}
+}
+
+func fakeGoVersion(name string, args ...string) (string, error) {
+	if name != "go" || len(args) != 1 || args[0] != "version" {
+		return "", errors.New("unexpected command")
+	}
+	return "go version go1.23.2 linux/amd64", nil
 }
