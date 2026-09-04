@@ -87,13 +87,21 @@ func run(broad bool) (evidence, error) {
 
 	result, err := runWith(
 		broad,
-		repositoryevidence.InspectStart,
-		repositoryevidence.InspectPost,
+		inspectRepositoryStart,
+		inspectRepositoryPost,
 		runLane,
 		commandOutput,
 	)
 	result.GoEnvironment = goEnvironment
 	return result, err
+}
+
+func inspectRepositoryStart() (repositoryevidence.Source, error) {
+	return repositoryevidence.InspectStartWithEnv(environmentWithoutPostgresDSN(os.Environ()))
+}
+
+func inspectRepositoryPost(initialRevision string) (repositoryevidence.PostRun, error) {
+	return repositoryevidence.InspectPostWithEnv(initialRevision, environmentWithoutPostgresDSN(os.Environ()))
 }
 
 func runWith(
