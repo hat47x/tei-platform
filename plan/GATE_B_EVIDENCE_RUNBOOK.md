@@ -39,7 +39,7 @@ Repository checkoutとGo toolchainだけで再現できるものです。
 
 - `tools/reference-postgres-header-detail-runtime`
 
-これはproduction既存資産の物理事実を観測するEvidenceではありません。
+これはproduction既存資産の物理事実を観測したEvidenceではありません。
 
 ### C. actual external asset Evidence
 
@@ -73,7 +73,7 @@ go version
 
 Evidenceを特定revisionへ固定するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
 
-#310の完了Evidenceではclean working treeを要求します。診断目的のdirty実行と、Gate Bへ採用する再現可能Evidenceを混同しません。
+#310の完了Evidenceでは、実行前だけでなく**実行後も同じHEADかつclean working tree**であることを要求します。診断目的のdirty実行と、Gate Bへ採用する再現可能Evidenceを混同しません。
 
 ## 1. Canonical WorkspaceをValidationする
 
@@ -106,12 +106,17 @@ JSON保存先をRepository内の新規fileへ直接redirectしません。shell�
 
 このrunnerは次を一つのEvidenceへ束ねます。
 
-1. repository revision
-2. clean working tree
+1. 実行前repository revision
+2. 実行前working tree clean
 3. Go toolchain identity
 4. Canonical Workspace Validation
 5. 最終UI-less Scenario
 6. external Evidence intake boundary tests
+7. 実行後repository revision
+8. 実行前後のHEAD同一性
+9. 実行後working tree clean
+
+`reproducibleRevision = true`になるには、実行前後でHEADが同一で、両時点のworking treeがcleanである必要があります。test自体が成功していても、並行操作やtest実行でsource状態が変わったrunはGate B完了Evidenceとして採用しません。
 
 ### 最終UI-less Scenario
 
@@ -428,7 +433,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 | Evidence lane | 判定対象 |
 | --- | --- |
-| #310 Repository Evidence runner | UI-less Scenario / external Evidence intake / normal Go runner |
+| #310 Repository Evidence runner | UI-less Scenario / external Evidence intake / normal Go runner / source revision不変性 |
 | #255 `reference-golden` | World / Plugin LockとCanonical Workspaceの再現性 |
 | #255 `reference-durable-run-golden` | Durable Run全体の正規再現性 |
 | #308 PostgreSQL tool | real PostgreSQL engine上のfixture runtime |
@@ -442,6 +447,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 - Workspace Validation Error
 - #310完了Evidenceをdirty working treeから採用しようとしている
+- #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
 - `public.order_lines`が既に存在するPostgreSQL接続先
 - #214でprovenanceのない物理情報しかない
 - read-only保証をSQL文字列だけで主張している
