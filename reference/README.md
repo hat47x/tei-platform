@@ -56,11 +56,17 @@ go run ./tools/reference-golden
 
 このコマンドは既定ではRepositoryを変更しません。現在の`reference/workspace`からWorldとPlugin Lockを生成し、保存済みのgoldenとbyte単位で一致するかを確認します。不一致または未作成のartifactがあれば、対象pathを表示して失敗します。
 
+加えて、既定のReference Durable Runである`reference/order_rollout.durable-run.m0.21.start.json`を読み込み、そのEnvironmentに対して現在のCanonical Workspaceから生成したPlugin Lock fingerprintを再計算します。Durable Runに保存された`pluginLockFingerprint`と一致しない場合も失敗します。
+
+この依存検査ではfingerprintを補正しません。Durable Runが古い場合は、後述する`tei deployment-start`の正規経路から再生成します。別のDurable Runを調査するときは`-durable-run <path>`で対象を変更できます。依存検査だけを意図的に外す必要がある調査では空文字を指定できますが、通常のReference確認では外しません。
+
 意図したCanonical authoring変更に伴ってgoldenを更新する場合だけ、`-write`を指定します。
 
 ```bash
 go run ./tools/reference-golden -write
 ```
+
+`-write`はWorldとPlugin Lockを更新しますが、Durable Runは書き換えません。更新後のPlugin LockとDurable Runが一致しない場合は、World / Plugin Lockを更新した事実を明示したうえで失敗します。これは依存artifactの更新漏れを検出するための挙動です。
 
 `-write`は生成差分の内容が正しいことを自動判定するものではありません。更新後は必ず次のように差分を確認し、Semantic Definition、Application、Database、Plugin / Bundle等の変更から説明できる差分だけを受け入れます。
 
@@ -71,6 +77,28 @@ git diff -- \
 ```
 
 個別の`tei world` / `tei plugin-lock`コマンドは、各生成物の仕組みを確認したり個別に調査したりするときの正規入口として引き続き利用できます。`reference-golden`はそれらと同じWorld / Plugin Lock生成APIを使い、日常的な一括確認と更新漏れ防止を担います。
+
+## Reference artifactの依存関係
+
+現在Repositoryへ保存している主要artifactは、次の依存関係として扱います。
+
+```text
+reference/workspace/                 Canonical authoring
+  ├─> reference/world.json           生成golden
+  └─> .tei/plugin-lock.json          生成golden
+          │
+          └─ Plugin Lock fingerprint
+
+reference/observed/production.deployment-state.json   固定fixture
+reference/workspace/ + Plugin Lock + observed fixture
+  └─> reference/order_rollout.durable-run.m0.21.start.json
+                                                  生成golden
+       └─> tools/reference-deployment-attempt の既定入力
+```
+
+`reference/observed/`はCanonical Workspaceから自動導出する対象ではありません。外部状態を模した固定fixtureなので、Canonical authoring変更だけを理由に機械的に更新しません。
+
+現時点ではSource Index自体をRepository上のReference snapshotとして保存していません。Source Indexは必要時にCanonical sourceから導出し、将来保存する場合は、この依存関係と再生成経路を明示してから追加します。
 
 ## 観測状態のfixture
 
@@ -118,6 +146,8 @@ diff -u \
   reference/order_rollout.durable-run.m0.21.start.json \
   /tmp/tei-reference-deployment-run.json
 ```
+
+Plugin Lockを更新した結果、このdiffが出る場合は`pluginLockFingerprint`だけを手編集しません。`deployment-start`の出力全体を確認し、plan / runtime policy / action構造を含めて現在の入力から説明できる差分であることを確認してからDurable Run goldenを更新します。その後、`go run ./tools/reference-golden`を再実行し、World / Plugin Lock / Durable Runの依存がそろっていることを確認します。
 
 このファイルは、`tools/reference-deployment-attempt` の既定入力としても使われます。
 
