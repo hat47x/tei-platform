@@ -4,19 +4,13 @@
 - GitHub Issue: #69
 - 前段: `ISSUE-000013` / GitHub Issue #124（Gate A Ready）
 - 次のGate: Gate B「UIなしで主要Scenarioを再現できる」
-- Query実行: `ISSUE-000016` / GitHub Issue #167
-- Relation traversal key: `ISSUE-000017` / GitHub Issue #178
-- Database Contract Query: `ISSUE-000018` / GitHub Issue #179
-- Reference invocation: `ISSUE-000019` / GitHub Issue #185
-- Contract Query runtime instance identity: `ISSUE-000020` / GitHub Issue #222
-- Oracle Contract Query Runner: `ISSUE-000021` / GitHub Issue #224
-- external `master_data`物理Evidence: `ISSUE-000022` / GitHub Issue #214
-- header-detail traversal境界: `ISSUE-000023` / GitHub Issue #233（Done / ADR-0021）
-- keyless Relationの物理保存境界: `ISSUE-000024` / GitHub Issue #244
+- Gate B監査: `../GATE_B_READINESS_AUDIT.md` / `ISSUE-000029` / GitHub Issue #273
 
-## 背景
+## 目的
 
-Application Driverは、production Runtimeの簡易版ではありません。設計途中のApplicationをUIなしで実際に動かし、意味の不足、曖昧な参照、実現境界の混同を早い段階で露出させるための設計検証環境です。
+Application Driverはproduction Runtimeの簡易版ではありません。
+
+設計途中のApplicationをUIなしで実際に動かし、Application上の意味、Database / Provider実現、Binding、安全境界の不足や混同を、第一Web Targetへ進む前に露出させるための設計検証環境です。
 
 ```text
 Application定義
@@ -25,20 +19,54 @@ Pattern / Datasource / Bindingの解決
        ↓
 Driver Scenario
        ↓
-Authentication / Query / Load / Edit / Validate / Authorize / Command
+Authentication / Browse / Record / Reference / Header-detail
+       ↓
+Validation / Authorization / Command
        ↓
 Business Result / Execution Error
-       ↓
-Observed Result / Evidence
+       ↓ separate explicit read
+Observation / Evidence
 ```
 
-Driverは不足する意味を独自規則で補いません。実行によってGapが見つかった場合は、その意味を所有すべきApplication / Semantic / Database Contract / Realization / Binding等の上位層へ戻します。
+Driverは不足する意味や外部事実を独自規則で補いません。Gapが見つかった場合は、その意味や事実を所有すべきApplication / Semantic / Database Contract / Realization / Binding / external Evidenceへ戻します。
 
-## 現在までに成立したvertical slice
+## 現在地
 
-### Application PatternとCapability
+2026-09-04時点で、Driverの中心設計と主要runtime境界は大きく成立しています。
 
-`internal/driver`を正式なDriver入口として、Application IDとPattern IDからCanonical資産を解決します。
+一方、**Gate BはNot Ready**です。
+
+残っているのは、初期段階のようなPattern解決やQuery実行APIの不足ではなく、主に次のEvidence / 統合境界です。
+
+1. external-observed `master_data`の実物理Evidence
+2. header-detailの実PostgreSQL成功Evidence
+3. Command acknowledgementとObservationの分離実証
+4. 最新Canonical WorkspaceからのReference生成物再現
+5. 主要Scenarioを一続きにしたUI-less Evidence
+6. CI再開後の通常runner再検証
+
+最新判定は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)を正とします。
+
+## 関連する実装・設計Issue
+
+- native Query runtime: `ISSUE-000016` / #167
+- Relation traversal key: `ISSUE-000017` / #178
+- Database Contract Query: `ISSUE-000018` / #179
+- Reference invocation: `ISSUE-000019` / #185
+- Contract Query runtime instance identity: `ISSUE-000020` / #222
+- Oracle Contract Query Runner: `ISSUE-000021` / #224
+- external `master_data`物理Evidence: `ISSUE-000022` / #214
+- header-detail traversal: `ISSUE-000023` / #233 / ADR-0021
+- keyless Relation physical storage: `ISSUE-000024` / #244
+- Reference生成物再生成: `ISSUE-000025` / #255
+- Command / Observation: GitHub Issue #266 / ADR-0023
+- Gate B readiness audit: `ISSUE-000029` / #273
+
+## 成立しているvertical slice
+
+### 1. Application Pattern / Canonical resolution
+
+`internal/driver`を正式なDriver入口として、Application IDとPattern IDから次を解決できます。
 
 - `browse`: Semantic Data / Application Query / logical Datasource
 - `record`: Semantic Data
@@ -46,160 +74,78 @@ Driverは不足する意味を独自規則で補いません。実行によっ�
 - `header-detail`: `many` Relation / source・target Data / traversal realization
 - `command`: Semantic Capability
 
-Capabilityについては、Application + Capability identityからBindingを一意に解決し、既存Invocation境界から実行できます。Authentication / Authorizationも同じ共通入口を利用し、Driver本体へlegacy実装固有の規則を持ち込みません。
+5種類は第一Referenceで成立した候補であり、TEI全体の永久的な標準一覧とはみなしません。
 
-Business ResultとExecution Errorは分離します。AuthenticationやAuthorizationの`denied`、Validationの`NotSatisfied`をDriver障害へ変換しません。
+### 2. Capability Binding / Authentication / Authorization
 
-### browse Queryと実PostgreSQL
+Application + Capability identityからBindingを一意に解決し、既存Invocation境界から実行できます。
 
-`order_entry.recent_orders`では、logical Datasource `sales`から`sales_core`を解決し、native QueryをProvider側のExecutorへ渡す経路が成立しています。
+```text
+order_entry / security.authenticate
+order_entry / security.authorize
+order_entry / sales.order.submit
+```
 
-named parameterはProvider側で安全にbindingし、Driver CoreへPostgreSQL固有placeholder処理を置きません。実PostgreSQLからraw resultを観測し、raw column labelとSemantic attributeの対応はQuery authoringで明示します。
+Authentication / Authorization / Commandで別々のDriver専用実行体系を作りません。
+
+legacy organization / role / return codeはAdapter側へ残し、Driver Coreへ逆流させません。
+
+Business ResultとExecution Errorも分離します。
+
+### 3. browse Query / PostgreSQL
+
+`order_entry.recent_orders`では、logical Datasource `sales`からEnvironment上のDatabaseへ接続し、native QueryをProvider側Executorへ渡せます。
+
+named parameterのPostgreSQL placeholder変換もProvider側責務です。
+
+raw resultとSemantic resultは分け、raw column labelからSemantic attributeへの対応はQuery authoringで明示します。
 
 ```text
 total_amount -> sales.order.total
 ```
 
-runtimeではraw resultとSemantic mapping後のresultを区別し、列名の類似、SELECT順、Persistence Mappingから対応を推測しません。実行時parameter値も通常Evidenceへ保存しません。
+次から推測しません。
 
-### Semantic Relation traversal key
+- raw列名の類似
+- SELECT列順
+- Persistence Mapping
+- provider固有規則
 
-`reference`を実値まで進める過程で、Relationの概念的なsource / targetだけではinstance間を辿れないケースがあることが分かりました。
+### 4. `Order -> Customer` reference
 
-第一Referenceの`Order -> Customer`では、次を明示しています。
-
-```text
-sales.order.customer_id
-        ↓
-customer.customer.customer_id
-```
-
-Relation keyはSemantic Relation自身が所有します。物理Foreign Key、Database Query、Application Datasource、Query input名は持ち込みません。詳細は`ISSUE-000017`を正とします。
-
-一方、RelationKeyをすべてのRelationへ一般化しません。target側に業務上意味のある対応attributeがないkeylessなRelationは、別の実現境界から実行できます。`Order -> OrderLine[]`でそのことを実証しています。
-
-### Database Contract Query
-
-`master_data.customer / find_by_id`にはtyped signatureを持たせています。
-
-```tei
-query find_by_id {
-    input id type customer.customer_id
-    result customer.customer zero-or-one
-}
-```
-
-Database Contract Queryはinput / result / cardinalityを所有し、Database固有の実現方法とは分離します。
-
-Queryを実現する対象identityには、ApplicationやCapabilityを流用せず、次の三つ組を使います。
+provider非依存の意味・runtime境界は成立しています。
 
 ```text
-Database / Contract / Query
-master_data / master_data.customer / find_by_id
+sales.order.customer
+  source key sales.order.customer_id
+  target key customer.customer.customer_id
+        ↓
+Reference Contract Query invocation
+        ↓
+master_data.customer / find_by_id
+        ↓
+Environment / Database instance / executor Capability
+        ↓
+instance-aware runtime Registry
+        ↓
+Oracle SQL Runner
+        ↓
+raw result -> explicit Semantic mapping
 ```
 
-詳細は`ISSUE-000018`を正とします。
+Contract Query input / result / cardinality、SQL realization model、Environment composition、Oracle向け最小`database/sql` Runnerまで実装済みです。
 
-### Reference Contract Query invocation
+ただし`master_data`は`external-observed`です。実際のtable / view / parameter / raw column / native SQL / provenanceをRepositoryからは観測できていません。
 
-Application Pattern側では、利用するContract / QueryとRelation target keyからQuery inputへのbindingを明示します。
+未観測の`CUSTOMER`表や`CUSTOMER_ID`列等を推測して埋めません。
 
-```tei
-contract-query {
-    contract master_data.customer
-    query find_by_id
-    input customer.customer.customer_id -> id
-}
-```
+この実外部Evidenceは`ISSUE-000022` / #214で扱います。
 
-これにより、Relation key、Reference invocation、Database Contract Query signatureを次の三層へ分離しています。
+### 5. keyless `Order -> OrderLine[]` header-detail
 
-```text
-Semantic Relation
-  source-key / target-key
-        ↓
-Reference invocation
-  Contract / Query選択
-  target-key -> Query input binding
-        ↓
-Database Contract Query
-  input / result / cardinality
-```
+`sales.order.lines`をkeylessなSemantic Relationのまま維持しています。
 
-三層は横断Validationされ、target attribute、Query input、Semantic型、result Data、cardinalityの不整合をauthoring段階で検出できます。
-
-runtimeでは、`browse`でmapping済みのsource rowからRelation keyと明示bindingだけを使ってContract Query parameterを構築できます。詳細は`ISSUE-000019`を正とします。
-
-### Contract Query SQL realizationとSemantic result mapping
-
-Reference invocationの次に必要だった、Database Contract Queryと物理Queryの間の境界も実装しています。
-
-```text
-ContractQueryTarget
-  Database / Contract / Query
-        ↓
-ContractQuerySQLRealization
-  ├─ provider
-  ├─ Contract input -> physical parameter
-  ├─ native SQL source
-  └─ raw result column -> Semantic attribute
-        ↓
-provider adapter / raw execution
-        ↓ explicit result mapping
-ContractQueryResult
-  └─ Semantic rows
-```
-
-Contract input名とphysical parameter名が同じ場合でも、対応を省略しません。raw列についても、列名の類似やSELECT順からSemantic attributeを推測しません。
-
-SQL realizationは通常Workspaceから読み込め、authoring sourceをSource Indexで追跡できます。Database Contract Query DiagnosticもContract内のQuery識別子へ投影できます。
-
-したがって、「Query realization sourceの仕組み」や「physical resultからSemantic rowへのmapping機構」は、現在の主要Gapではありません。第一Referenceの**実際の物理構造やSQLが未確定であること**とは区別します。
-
-### Environment runtime compositionとinstance identity
-
-第一Referenceはlogical DatasourceからEnvironment上のDatabase instanceを解決し、明示Bindingを通してexecutor Capabilityとruntime実装へ接続できます。
-
-`Order -> Customer`では次です。
-
-```text
-order_entry.customer_reference
-        ↓ datasource master
-order_entry.master
-        ↓ Environment binding
-development / master_data.dev
-        ↓ ContractQueryExecutorBinding
-master_data/master_data.customer/find_by_id
-        ↓
-database.query.oracle
-        ↓ instance-aware runtime registry
-ContractQueryExecutor
-```
-
-Environment、Database instance、executor、runtime implementationをprovider名や配置から推測しません。Binding authoring sourceはWorkspace Loaderから読み込まれ、Source Indexへ来歴を残します。
-
-当初runtime RegistryはCapability IDだけへ縮退していましたが、`ISSUE-000020`でEnvironment + Database instance + executor Capabilityをkeyとして保持する形へ変更しました。同じproviderと同じexecutor Capabilityを使う別Database instanceへfallbackしません。
-
-### Oracle `database/sql` Runner
-
-`ISSUE-000021`では、上位のSQL realizationが確定したnative SQLとphysical parameterを、注入済み`*sql.DB`へ渡すOracle向け最小Runnerを追加しています。
-
-Runner自身は、次を決めません。
-
-- table / view / column
-- Contract inputとphysical parameterの対応
-- raw columnとSemantic attributeの対応
-- Environment / Database instance
-- DSN / credential
-- Oracle driver library
-
-0 rowは正常なraw resultとして保持し、Query実行失敗やrow取得失敗はExecution Errorとして返します。runtime parameter値はEvidenceへ保存しません。
-
-### keylessなheader-detail traversal
-
-`ISSUE-000023` / ADR-0021で、`sales.order.lines`をkeylessな`many` Relationのままruntime traversalへ接続しました。
-
-Application PatternはRelation-onlyのまま維持します。
+Application PatternもRelation-onlyです。
 
 ```tei
 pattern order_entry.order_lines header-detail {
@@ -207,205 +153,216 @@ pattern order_entry.order_lines header-detail {
 }
 ```
 
-取得方法は、Pattern外のApplication固有realizationへ置きます。
-
-```tei
-header-detail-contract-query-binding {
-    application order_entry
-    pattern order_entry.order_lines
-    datasource sales
-    database sales_core
-    contract sales_core.order_line
-    query find_by_order
-    input sales.order.order_id to order_id
-}
-```
-
-Database Contract Queryは次のtyped contractです。
-
-```tei
-query find_by_order {
-    input order_id type sales.order_id
-    result sales.order_line many
-}
-```
-
-この経路ではRelationKeyを要求せず、`sales.order_line.order_id`も追加していません。mapped Order rowの`sales.order.order_id`を明示Bindingから`order_id`へ渡します。列順、raw列名、Persistence Mapping、physical Foreign Keyから値を推測しません。
-
-既存`ContractQueryExecutor`を再利用し、次を区別できることを実Referenceで確認しています。
+取得方法はADR-0021に従い、Pattern外のApplication固有realizationへ分離します。
 
 ```text
-0 row          -> 正常な空collection
-複数row        -> 正常なsales.order_line[]
-Executor error -> Execution Error
+sales.order.order_id
+        ↓ explicit binding
+sales_core.order_line / find_by_order(order_id)
 ```
 
-### header-detailのPostgreSQL Environment composition
-
-PostgreSQL側にも共通`sqlquery.Executor`から利用できる最小SQL Runnerを追加し、既存の`:name -> $1, $2, ...` binderを再利用しています。
-
-Referenceの`development`では、次を明示compositionします。
+物理保存はDatabase-ownedなRelation Storageとして表します。
 
 ```text
-order_entry.sales
-  -> sales_core.dev
-  -> database.query.postgres
+sales.order.lines
+  source sales.order.order_id
+        ↓
+public.order_lines.order_id
 ```
 
-providerがPostgreSQLであることだけを根拠にCapabilityを選びません。Database instance Binding、Contract Query executor Binding、Plugin Capability、instance-aware Registryを順に解決します。
+`order_id`を`sales.order_line`のSemantic attributeへ追加しません。
 
-さらに、ここまでのcompositionが成立していても、`sales_core/sales_core.order_line/find_by_order`のPostgreSQL SQL realizationが存在しなければ、physical Runnerを呼ぶ前に明示的に停止します。
+次まで成立しています。
 
-つまり、「runtime接続先を解決できた」ことと「物理SQLが確定した」ことを別の状態として保持します。
+- HeaderDetailContractQueryBinding
+- Relation Storage model / Validation / authoring / Source Index
+- Desired Physical Schema / migration
+- `find_by_order` PostgreSQL SQL realization
+- PostgreSQL Environment composition
+- instance-aware runtime execution
+- 0件を正常な空collectionとして扱う
+- 複数件を正常なcollectionとして扱う
+- Execution Errorを0件へ変換しない
 
-### Driver入口の一本化
+`tools/reference-postgres-header-detail-runtime`もありますが、実PostgreSQLへの成功Evidenceはまだ取得していません。
 
-旧`internal/applicationdriver`は、現在の`internal/driver`とPattern解決・Scenario組み立ての責務が重複していました。
+### 6. Validation -> Authorization -> Command
 
-現行Driverへ必要な機能が集約されたため、互換wrapperを追加せず旧packageを削除し、Driver入口を`internal/driver`へ一本化しています。今後、新しいScenario実装を旧入口へ分岐させません。
+PR #265で、第一Referenceについて次を一つのScenarioとして固定しました。
 
-## 現在の主要Gap
+```text
+Authentication
+  ↓ authenticated subject
+Canonical業務Validation
+  ↓ satisfied
+Authorization
+  ↓ allowed
+sales.order.submit
+  ↓
+Command Business Result
+```
 
-### 1. external `master_data`の物理Evidence
+次を区別します。
 
-第一Referenceの`master_data`は`external-observed`です。Repositoryには現在、`master_data.customer / find_by_id`について実際のtable / view / column、native SQL、physical parameter名、raw result列、provenanceがありません。
+- Validation `Satisfied`
+- Validation `NotSatisfied`
+- Validation評価不能のExecution Error
+- Authorization `allowed`
+- Authorization `denied`
+- Command Business Result
+- Command Execution Error
 
-そのため、`CUSTOMER`や`CUSTOMER_ID`のような名前を仮定してReference実SQLを作りません。
+Validation不成立・評価不能・Authorization deniedの場合はCommandへ進みません。
 
-必要な物理Evidenceは`ISSUE-000022` / GitHub Issue #214で扱います。
+## Observation
 
-### 2. read-onlyの実効的な保証と実Oracle integration
+Command Business Resultは外部状態の確認結果ではありません。
 
-`find_by_id`という名称や、SQLが`SELECT`に見えることだけではread-onlyの保証としません。
+ADR-0023に従い、v1ではObservationをCommand結果から派生させず、**明示されたread境界を別操作として実行した結果**として扱います。
 
-実際のcredential、session、transaction、Database権限等のどの境界が書込みを防ぐかをEvidenceで確認します。また、採用するOracle driverについてnamed parameter、型変換、NULL、raw column名、Error伝播を実接続で確認します。
+```text
+Command invocation
+        ↓
+Business Result / acknowledgement
+        ↓ separate operation
+explicit read boundary
+  Query / Contract Query / read adapter
+        ↓
+read result / Execution Error
+        ↓
+Observation Evidence
+```
 
-これらも`ISSUE-000022`の物理Evidenceと一緒に進めます。
+Observation対象やread方法をCommand payload、Capability名、HTTP status、field名から推測しません。
 
-### 3. `Order -> Customer` Referenceのend-to-end実証
+既存のread意味が使える場合、Observation用途のためだけに第二のCanonical正本を作りません。
 
-Workspace読込み、Relation key、Reference invocation、parameter準備、Environment composition、instance-aware Registry、Oracle Runner、raw result mappingを、観測済み物理Evidenceを使った実readまで一続きに通します。
+現行`sales.order.submit`は実外部状態を書き換えるReferenceではないため、#266の第一実証ではstateful synthetic command/read adapterを利用できます。そのEvidenceは`synethic`ではなく正しく`synthetic`として明示し、実外部Observed stateとは区別します。
 
-0件は正常な「見つからない」、接続・Query実行失敗はExecution Errorとして区別します。`master_data`のread-only境界も維持します。
+## Reference生成物
 
-このE2Eは新しい推測規則を追加する作業ではなく、既に確定した境界がexternal-observed資産でも成立することを確認するEvidenceです。
+Reference data access / Relation Storage / Plugin Capability等のauthoring更新により、保存済み`reference/world.json`等が最新Workspaceより古くなっています。
 
-### 4. keyless header-detail Relationの物理保存
+生成物は手編集せず、#255で正規生成経路から再生成します。
 
-`Order -> OrderLine[]`の論理traversalとruntime compositionは成立しました。残っているのは、managed-hereな`sales_core`で`sales.order.lines`をどのphysical storageへ写すかです。
+対象には少なくとも次を含みます。
 
-現行Persistence MappingはSemantic attributeとphysical columnの対応を基本としているため、target Dataに親Order attributeを追加しないkeyless Relationには、Database-ownedなrelationship storageを表す境界が不足しています。
+- `reference/world.json`
+- `reference/workspace/.tei/plugin-lock.json`
+- Plugin Lock fingerprintへ依存するDurable Run等
 
-この課題は`ISSUE-000024` / GitHub Issue #244で扱います。
+## 最終UI-less Scenario
 
-ここが確定する前に、`order_lines.order_id`、physical Foreign Key、`find_by_order` native SQLをDriver側から発明しません。
+Gate Bでは、最終的に次を同じApplicationから一続きに再現します。
 
-### 5. 最終Scenario統合
-
-Reference data accessが成立した後、Authentication、Canonical Validation、Authorization、Command、Observationまでを一つのUI-less Scenarioへ接続します。
-
-個別機能が存在するだけではGate B Readyとはせず、同じApplication定義から一続きに再現できることを確認します。
-
-## 最小Scenario
-
-`order_entry`で最終的に次を一続きに再現します。
-
-1. Authenticationを実行してsubjectを得る
+1. Authenticationを実行する
 2. `browse`で受注一覧を取得する
 3. `record`で一件を扱う
-4. `reference`で顧客を`master_data`から解決する
+4. `reference`で顧客を解決する
 5. `header-detail`でOrderLineを扱う
 6. Canonical業務Validationを評価する
 7. Authorizationを評価する
-8. `command`で`sales.order.submit`を呼び出す
-9. Business ResultとExecution Errorを区別する
-10. 必要な場合はObservationから外部状態を確認する
+8. `command`で`sales.order.submit`を呼ぶ
+9. Business Result / Execution Errorを区別する
+10. 別の明示read境界からObservationを行う
+11. Scenario EvidenceからSource / Binding / Result分類を追跡する
 
-この順序を汎用Workflow Engineへ一般化することは第一段階の目的ではありません。
+この順序を汎用Workflow Engineへ一般化しません。
+
+## Gate Bを止めている残件
+
+### Blocked — external `master_data`
+
+#214で実物理Evidenceが必要です。
+
+- physical object
+- physical parameter
+- raw result columns
+- native SQL / API realization
+- Semantic mapping
+- provenance
+- effective read-only boundary
+
+### Pending — header-detail実PostgreSQL Evidence
+
+`tools/reference-postgres-header-detail-runtime`を実PostgreSQLへ接続し、次を確認します。
+
+- 複数件
+- 0件
+- Execution Error
+
+### Blocked — Observation
+
+#266 / ADR-0023に従う最小Reference実証が必要です。
+
+### Pending — Reference artifact regeneration
+
+#255で最新authoringからWorld / Plugin Lock等を再生成します。
+
+### Blocked — final Scenario Evidence
+
+上記blockerを解消した後、主要Scenarioを一続きに固定します。
+
+### Pending — normal CI verification
+
+GitHub ActionsはRepositoryから明示的に停止されています。
+
+このIssueから独断で再有効化しません。
+
+CI停止をSemantic design gapとは扱いませんが、通常runnerで未検証の成果をgreenとも扱いません。
+
+## Gate B Ready条件
+
+Gate Bはコード量やIssue close数ではなく、Reference Scenarioから次を説明できるときReadyとします。
+
+- 同じApplication定義から主要ScenarioをUIなしで一続きに再現できる
+- Pattern / Query / Relation / Contract Query / Datasource / Capability / Bindingを追跡できる
+- native SQLやprovider固有処理をDriver Coreへ複製していない
+- raw resultとSemantic resultの対応が明示されている
+- Relation traversalを物理FKや名前から推測していない
+- external assetの未観測事実をTEIが補完していない
+- `master_data`へのwriteを実効的な境界で防げる
+- Validation不成立時にCommandへ進まない
+- Authorization denied時にCommandへ進まない
+- Business ResultとExecution Errorを区別できる
+- Command acknowledgementとObservationを区別できる
+- Query 0件とExecution Errorを区別できる
+- secret / runtime parameter値を通常Evidenceへ残さない
+- Driver固有状態をCanonical Worldへ逆流させない
+- 最新authoringからReference artifactを再現できる
+- 第一Web TargetへWeb固有の意味補完なしに同じbaselineを渡せる
 
 ## 次の作業
 
-1. `ISSUE-000022`で`master_data.customer / find_by_id`の物理object、SQL、parameter、raw列、provenanceを確定する
-2. read-onlyを実効的に強制する境界をEvidenceで確認する
-3. 採用Oracle driverでnamed parameter等のintegrationを確認する
-4. 観測済みEvidenceから第一Referenceの実SQL realization authoringを追加する
-5. `Order -> Customer` ReferenceをWorkspace読込みから実read、Semantic resultまで一続きに実証する
-6. `ISSUE-000024`でkeylessな`sales.order.lines`のDatabase-owned physical storage境界を決める
-7. 確定したstorage authoringからOrderLine persistence / migration / `find_by_order` SQL realizationを追加する
-8. 実PostgreSQLで`Order -> OrderLine[]`の0件・複数件・Execution Errorを確認する
-9. Canonical Validation / Authorization / Commandを一つのScenarioへ接続する
-10. Scenario EvidenceをRepositoryだけから再現できる形へ整える
-11. CIが明示的に再有効化された後、関連Conformanceを通常runnerで再検証する
-12. Gate Bを監査する
+blocker解消効果の高い順に進めます。
 
-`master_data`の物理Evidenceが揃う前に実Oracle SQLを仮定しません。また、`ISSUE-000024`が決まる前にOrderLineのphysical support columnやForeign Keyを仮定しません。
-
-## Gate Bへ進む条件
-
-Driverのコードが存在するだけではGate B Readyとはみなしません。少なくとも次をReference Scenarioから確認します。
-
-- 同じApplication定義からScenarioを再現できる
-- Pattern / Query / Relation / Contract Query / Datasource / Capability / Bindingの解決を追跡できる
-- native QueryやContract Queryの物理実現をDriver Coreへ複製しない
-- raw columnとSemantic attributeの対応を明示mappingから追跡できる
-- Relation traversal keyを名前・型・physical Foreign Keyから推測しない
-- keylessな`many` Relationにtarget-side RelationKeyを強制しない
-- header-detailのsource attribute → Query input bindingを明示できる
-- Reference Contract QueryをQuery名・型・列挙順から推測しない
-- Query 0件とQuery Execution Errorを混同しない
-- `many`の0件を正常な空collectionとして扱える
-- logical Datasource aliasとEnvironment上のinstance境界を保持する
-- runtime Executorが別Database instanceへfallbackしない
-- SQL realization欠落時にproviderやschemaから物理SQLを補完しない
-- `master_data`へwriteしないことを実効的な境界で保証する
-- Validation不成立時にcommandへ進まない
-- Authorization `denied`時にcommandへ進まない
-- expectedなNamed OutcomeをDriver障害として扱わない
-- Execution Errorを業務Outcomeへ押し込まない
-- command acknowledgementとobserved resultを混同しない
-- secretやruntime parameter値を通常Evidenceへ混入させない
-- Driver固有状態をCanonical Worldへ逆流させない
-- 同じApplication上の意味を第一Web Targetへ渡せる
-- Reference ScenarioをRepositoryだけから再現できる
-
-## CIの扱い
-
-2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、Reference data access収束線にもその停止が取り込まれています。
-
-現在workflow runが作成されないことを、Issue #192で記録した過去の`runner_id=0 / steps=[]`事象の継続と同一視しません。一方、CI未実行の成果をgreenとも扱いません。
-
-このApplication Driver作業線から独断でActionsを再有効化せず、別の明示的な判断でCIが再開された後、Gate B監査前に関連Conformanceを通常runnerで再実行します。
+1. #266でCommand / Observationの最小Referenceを実証する
+2. #214でexternal `master_data`の物理Evidenceを得る
+3. header-detail実PostgreSQL Evidenceを取得する
+4. #255でReference生成物を正規再生成する
+5. 最終UI-less Scenarioを統合する
+6. `GATE_B_READINESS_AUDIT.md`を再監査する
+7. CIが別判断で再開された後、通常runnerで関連Conformanceを再検証する
+8. Gate BをReady / Not Readyで再判定する
 
 ## 非目標
 
-- production-grade Workflow Runtime
-- distributed execution / production HA
-- 完成済みWeb / Desktop UI
-- arbitrary user scripting environment
-- full transaction coordinator
-- external orchestratorの内製
-- 汎用ORM
-- Driver独自のOutcome体系
-- Driver独自のValidation / Authentication / Authorization rule
-- Runtime上の汎用implementation選択機構
-- DB固有placeholder処理をDriver Coreへ固定すること
-- 未定義のQuery / Relation / BindingをDriverが推測すること
-- 観測されていないexternal Databaseの物理情報をDriverが補完すること
-- keyless Relationのphysical storageをDriver Coreが決めること
+- Gate B前の第一Web Target実装
+- Web framework選定
+- 汎用Workflow Engine
+- Event Sourcing基盤
+- Observation専用Application Patternの先行導入
+- Editor / AI実装
+- 第二Target
+- production HA / Connection Pool一般化
+- physical FKの自動生成
 
 ## 関連
 
-- `plan/GATE_A_READINESS_AUDIT.md`
+- `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/issue/000016-native-query-runtime-boundary.md`
-- `plan/issue/000017-semantic-relation-traversal-key.md`
-- `plan/issue/000018-database-contract-query-execution.md`
-- `plan/issue/000019-reference-contract-query-invocation.md`
-- `plan/issue/000020-contract-query-runtime-instance-identity.md`
-- `plan/issue/000021-oracle-contract-query-sql-runner.md`
-- `plan/issue/000022-external-master-data-physical-query-evidence.md`
-- `plan/issue/000023-header-detail-relation-traversal-boundary.md`
-- `plan/issue/000024-keyless-relation-physical-storage.md`
-- GitHub Issue #69 / #77 / #124 / #167 / #178 / #179 / #185 / #192 / #214 / #222 / #224 / #233 / #244
-- ADR-0019 / ADR-0020 / ADR-0021
-- RQ-005 / RQ-008 / RQ-009 / RQ-011 / RQ-012 / RQ-014 / RQ-017 / RQ-018 / RQ-021
+- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- ADR-0020 Capability Business Result / Execution Error
+- ADR-0021 header-detail traversal realization
+- ADR-0023 Command / Observation explicit read boundary
+- GitHub #69 / #70 / #214 / #244 / #255 / #266 / #270 / #273
