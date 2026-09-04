@@ -69,11 +69,16 @@ Gate B完了Evidenceとして採用できるのは、次をすべて満たすrun
 - 実行開始時にworking treeがclean
 - `reference-golden`が一致
 - `reference-durable-run-golden`が一致
+- 各golden check直後のrepository source確認が完了し、HEADが同一かつworking treeがclean
 - 実行後のrepository source確認が完了している（`postRunRepository.checked = true`）
 - 実行前後でHEADが同一
 - 実行後もworking treeがclean
 
 いずれかを満たさない場合は非0終了します。
+
+PR #409以降は、二つのcheckをすべて終えてからだけsourceを確認するのではなく、**各checkの直後にもHEADとworking treeを確認**します。check-only toolが回帰によってsourceやgenerated artifactを書き換えた場合は、その時点で後続checkを止めます。誤副作用が生じた状態を次のcheckへ持ち越さないためです。
+
+一方、golden不一致そのものが検出されてもsourceが同じclean revisionのままであれば、診断情報を揃えるため後続checkは実行します。そのrunは最終的に非0終了し、成功Evidenceにはなりません。
 
 `reproducibleRevision`は「repository sourceがたまたま同じだった」という意味だけではありません。PR #398以降は、二つのgolden checkが両方成功し、かつpost-runのsource確認を完了した後にだけ`true`にします。
 
