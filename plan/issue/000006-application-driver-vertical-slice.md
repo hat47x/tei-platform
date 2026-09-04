@@ -48,6 +48,8 @@ Gate B全体は **Not Ready** ですが、残件は新しいDriver抽象の追�
 
 この4 laneは相互代替しません。
 
+PR #354以降、最終Ready判定では、一つのcleanなcandidate repository revision `R`を固定し、**完了判定に用いる4 laneのEvidenceをすべてRへ揃えます**。異なるrevisionで得た成功Evidenceを寄せ集めて、一つのReady revisionへ読み替えません。
+
 具体的なコマンド、安全条件、停止条件は`GATE_B_EVIDENCE_RUNBOOK.md`だけを正とします。本IssueはApplication Driverの成立内容と、Gate Bへ残る責務の所在を保持します。
 
 ## 成立しているvertical slice
@@ -207,6 +209,8 @@ PR #336で#310 / #255 / #308のsource状態観測を`tools/internal/repositoryev
 #308ではDatabaseへ接続する前にclean working treeとHEADを確認し、Provider runtime / cleanup / Database復元確認後にも再確認します。
 
 同じclean revisionへ固定できないrunは成功Evidenceとして採用しません。
+
+PR #355以降、`postRunRepository.checked=true`になるのは、実行後repository revisionとworking tree状態の両方を観測できた後だけです。観測自体に失敗した状態と、観測した結果cleanではなかった状態を区別します。このsource観測規則は#214 / #255 / #308 / #310で共有します。
 
 ##### fixture前安全性
 
@@ -423,6 +427,10 @@ PR #321以降、`reproducibleRevision=true`には次をすべて要求します�
 
 PR #336以降、source観測規則は#255 / #308と同じtool-only packageへ収束しています。
 
+PR #351以降、開始時working treeがcleanであっても、post-run確認が終わるまでは`reproducibleRevision=false`を維持します。途中失敗JSONを再現可能な成功Evidenceへ誤読しません。
+
+PR #355以降、`postRunRepository.checked=true`は、実行後repository revisionとworking tree状態の両方を観測できた場合だけです。
+
 TestやConformanceが実装されていても、通常Go runnerで実runを成功させるまでは#310完了Evidenceとは扱いません。診断用`-allow-dirty`も完了Evidenceには使用しません。
 
 ## Evidence文書の権威関係
@@ -433,6 +441,7 @@ TestやConformanceが実装されていても、通常Go runnerで実runを成�
 - `GATE_B_EVIDENCE_RUNBOOK.md`: 具体コマンド / 実行順 / 差分確認 / fail-closed停止条件
 - `GATE_B_READINESS_AUDIT.md`: 取得EvidenceからのGate B判定
 - `ISSUE-000029`: 4 laneの進行を総合監査へ戻す責務
+- `GATE_B_TO_C_HANDOVER_CONTRACT.md`: Ready revisionをGate Cへ渡す方法
 
 本Issueへコマンド列を重複正本として持ちません。
 
@@ -469,24 +478,41 @@ Gate Bはコード量やIssue close数ではなく、Evidenceから少なくと�
 - Evidence runが参照するsource revisionを実行前後で固定できる
 - Repository source固定境界自体のtargeted Conformanceが成立している
 - #308 fixtureが終了後に専用空DBの観測条件へ戻ったことを説明できる
+- 4 laneの完了判定に用いるEvidenceが同じcandidate revision Rを参照している
 - 第一Web TargetへWeb固有の意味補完なしに同じbaselineを渡せる
 
 ## 次の作業
 
 具体的な実行手順は`GATE_B_EVIDENCE_RUNBOOK.md`だけを正とします。
 
-1. #310 deterministic Repository Evidenceをcleanな通常Go runnerで取得する
-2. #255 generated artifactをclean revisionでfinal check-only runnerから確認し、staleなら修復 → 差分確認 → commit → 新しいclean revisionで再実行する
-3. #308をEvidence専用の空PostgreSQL Databaseで実行する
+Evidence取得は二段階で進めます。
+
+### Phase 1 — 事前確認 / sourceを確定する
+
+1. #310をcleanな通常Go runnerで事前実行する
+2. #255をcheck-onlyし、staleなら正規toolで修復 → 差分確認 → commitする
+3. #308をEvidence専用の空PostgreSQL Databaseで事前実行する
 4. #214 actual Oracle physical facts / provenance / read-only根拠を取得する
 5. 観測事実を根拠に必要なOracle realizationを明示authoringする
-6. #214 external Evidenceをclean revisionで受理しsource-fixed acceptance receiptを取得する
-7. read-only Oracle connection + 採用driverでactual read → explicit Semantic Customer mappingを確認する
-8. 4 laneの結果を`ISSUE-000029` / #273へ対応付ける
-9. negative caseを再監査する
-10. Gate BをReady / Not Readyで再判定する
-11. Readyなら`ISSUE-000030` / #291でそのrevisionをHandover Baselineとして固定する
-12. その後に`ISSUE-000007` / #70第一Web Targetへ進む
+6. #214 acceptance / Oracle driver / actual readを事前確認する
+7. Gate Bに必要なsource / generated artifact変更をすべてcommitする
+
+この段階で得た成功JSONも、その後sourceが変わった場合は最終完了Evidenceとして流用しません。
+
+### Phase 2 — 最終収束 / candidate revision Rを固定する
+
+1. cleanなcandidate revision Rを固定する
+2. Rで#310を実行する
+3. Rで#255をcheck-only実行する
+4. Rで#308を実行する
+5. Rで#214 acceptance receiptを再取得し、Rのruntime / realizationでactual Oracle readを実行する
+6. 4 laneすべての完了EvidenceがRを参照していることを確認する
+7. negative caseを再監査する
+8. Rを対象にGate BをReady / Not Readyで再判定する
+9. Readyなら`ISSUE-000030` / #291でRをHandover Baselineとして固定する
+10. その後に`ISSUE-000007` / #70第一Web Targetへ進む
+
+Phase 2中にsource変更が必要になった場合は、その変更をcommitした新revisionをRとして選び直し、4 laneをもう一度そのrevisionへ揃えます。
 
 ## 非目標
 
@@ -504,12 +530,14 @@ Gate Bはコード量やIssue close数ではなく、Evidenceから少なくと�
 - source-boundary Conformanceを#214 / #255 / #308の代替にすること
 - dirty / source-changing runをGate B完了Evidenceへ採用すること
 - cleanup後にuser relationが残る#308 runを成功Evidenceとして採用すること
+- 異なるrevisionで得た4 laneの成功Evidenceを一つのReady revisionへ読み替えること
 
 ## 関連
 
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `ISSUE-000022` / GitHub #214
 - `ISSUE-000024` / closed GitHub #244
@@ -519,4 +547,4 @@ Gate Bはコード量やIssue close数ではなく、Evidenceから少なくと�
 - `ISSUE-000031` / GitHub #308
 - `ISSUE-000032` / GitHub #310
 - ADR-0020 / ADR-0021 / ADR-0023
-- PR #281 / #285 / #288 / #294 / #300 / #306 / #309 / #311 / #315 / #318 / #321 / #323 / #324 / #326 / #328 / #329 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #347 / #349 / #350
+- PR #281 / #285 / #288 / #294 / #300 / #306 / #309 / #311 / #315 / #318 / #321 / #323 / #324 / #326 / #328 / #329 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #347 / #349 / #350 / #351 / #352 / #354 / #355 / #356 / #357 / #358
