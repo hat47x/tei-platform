@@ -46,6 +46,7 @@ type evidence struct {
 	ReproducibleRevision bool                       `json:"reproducibleRevision"`
 	PostRunRepository    repositoryevidence.PostRun `json:"postRunRepository"`
 	GoVersion            string                     `json:"goVersion"`
+	GoEnvironment        goEnvironmentEvidence      `json:"goEnvironment"`
 	BroadRequested       bool                       `json:"broadRequested"`
 	AllLanesSameRevision bool                       `json:"allLanesSameRevision"`
 	Lanes                []laneEvidence             `json:"lanes"`
@@ -74,13 +75,25 @@ func main() {
 }
 
 func run(broad bool) (evidence, error) {
-	return runWith(
+	goEnvironment, goEnvironmentErr := inspectGoEnvironment(commandOutput)
+	if goEnvironmentErr != nil {
+		return evidence{
+			EvidenceNature: evidenceNature,
+			GoEnvironment:  goEnvironment,
+			BroadRequested: broad,
+			Lanes:          []laneEvidence{},
+		}, goEnvironmentErr
+	}
+
+	result, err := runWith(
 		broad,
 		repositoryevidence.InspectStart,
 		repositoryevidence.InspectPost,
 		runLane,
 		commandOutput,
 	)
+	result.GoEnvironment = goEnvironment
+	return result, err
 }
 
 func runWith(
