@@ -57,7 +57,7 @@ func TestGateBUIlessReferenceScenarioConnectsExistingDriverBoundariesWithoutNewR
 		return driver.BrowseQueryResult{
 			Raw: queryresult.RawResult{
 				Columns: []string{"total_amount", "status", "ordered_at", "customer_id", "order_id"},
-				Rows: [][]any{{3100.00, "READY", time.Date(2026, 9, 3, 11, 30, 0, 0, time.UTC), int64(42), int64(1001)}},
+				Rows:    [][]any{{3100.00, "READY", time.Date(2026, 9, 3, 11, 30, 0, 0, time.UTC), int64(42), int64(1001)}},
 			},
 			Payload: "synthetic-gate-b-browse",
 		}, nil
@@ -167,7 +167,7 @@ func TestGateBUIlessReferenceScenarioConnectsExistingDriverBoundariesWithoutNewR
 		t.Fatalf("Command実行だけでObservationを暗黙実行しています: calls=%d", reader.calls)
 	}
 	evidence.Validation = commandResult.Validation
-	evidence.AuthorizationOutcome = commandResult.Authorization.Outcome
+	evidence.AuthorizationOutcome = string(commandResult.Authorization.Outcome)
 	evidence.CommandCapability = commandResult.Command.Capability
 
 	observation, err := driver.ExecuteObservationRead(

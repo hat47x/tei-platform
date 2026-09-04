@@ -1,10 +1,14 @@
 package validation
 
-import "testing"
+import (
+	"tei/internal/ir"
+	"tei/internal/semantic"
+	"testing"
+)
 
 func TestValidateIncludesCapabilityOutcomeDiagnosticsOnce(t *testing.T) {
-	w := capabilityOutcomeWorld()
-	w.Semantics[1].Capabilities[0].Output = "security.authenticated_subject"
+	w := ir.World{Semantics: []semantic.Namespace{{ID: "security", Data: []semantic.Data{{ID: "security.authenticated_subject"}}, Capabilities: []semantic.Capability{{ID: "security.authenticate", Outcomes: []semantic.Outcome{{Name: "authenticated", Payload: "security.authenticated_subject"}}}}}}}
+	w.Semantics[0].Capabilities[0].Output = "security.authenticated_subject"
 
 	diagnostics := Validate(w)
 	matches := 0

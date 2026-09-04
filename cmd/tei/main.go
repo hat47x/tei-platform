@@ -196,10 +196,13 @@ func main() {
 	}
 
 	if command == "validate" && *workspacePath != "" {
-		if validateWorkspace(*workspacePath) {
-			os.Exit(1)
+		code, err := validateWorkspace(os.Stdout, *workspacePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
 		}
-		fmt.Println("ok")
+		if code != 0 {
+			os.Exit(code)
+		}
 		return
 	}
 
@@ -934,32 +937,6 @@ func loadObservations(analysisPaths, schemaPaths, planPaths []string) ([]analyze
 		plans = append(plans, p)
 	}
 	return analyses, snapshots, plans, nil
-}
-
-func validateWorkspace(root string) bool {
-	r, err := workspace.Load(root)
-	if err != nil {
-		if diagnostic, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			fmt.Println(formatSourceDiagnostic(diagnostic))
-			return true
-		}
-		fmt.Fprintln(os.Stderr, err)
-		return true
-	}
-	idx, err := workspace.BuildSourceIndex(root, r)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return true
-	}
-	projected := workspace.ProjectDiagnostics(validation.Validate(r.World), idx)
-	hasErr := false
-	for _, diagnostic := range projected {
-		fmt.Println(formatProjectedDiagnostic(diagnostic))
-		if diagnostic.Diagnostic.Severity == validation.Error {
-			hasErr = true
-		}
-	}
-	return hasErr
 }
 
 func formatProjectedDiagnostic(projected workspace.ProjectedDiagnostic) string {

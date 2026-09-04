@@ -19,8 +19,8 @@ func (advancedIndexCatalog) Indexes(context.Context) ([]postgres.IndexMeta, erro
 		Table:  "orders",
 		Name:   "orders_advanced_idx",
 		Keys: []postgres.IndexKeyMeta{
-			{Column: "customer_id", OperatorClass: "public.int8_ops", Descending: true, NullsFirst: true},
-			{Expression: "lower(customer_name)", Collation: "public.case_insensitive"},
+			{Column: "customer_id", OperatorClass: "public.int8_ops", Order: "desc", NullsOrder: "first"},
+			{Expression: "lower(customer_name)", Collation: "public.case_insensitive", Order: "asc", NullsOrder: "last"},
 		},
 		IncludedColumns:  []string{"order_id"},
 		Predicate:        "customer_id > 0",
@@ -45,16 +45,16 @@ func TestPostgresProviderPreservesAdvancedIndexMetadata(t *testing.T) {
 		t.Fatalf("indexes=%#v", table.Indexes)
 	}
 	index := table.Indexes[0]
-	if index.Name != "orders_advanced_idx" || !index.Unique || index.Method != "btree" || index.UniqueNullTreatment != physical.UniqueNullsNotDistinct {
+	if index.Name != "orders_advanced_idx" || !index.Unique || index.Method != "btree" || index.UniqueNullTreatment != physical.UniqueNullTreatmentNotDistinct {
 		t.Fatalf("index identity=%#v", index)
 	}
 	if len(index.Keys) != 2 {
 		t.Fatalf("keys=%#v", index.Keys)
 	}
-	if key := index.Keys[0]; key.Column != "customer_id" || key.Expression != nil || key.OperatorClass != "public.int8_ops" || key.Order != physical.IndexOrderDesc || key.NullsOrder != physical.IndexNullsFirst {
+	if key := index.Keys[0]; key.Column != "customer_id" || key.Expression != nil || key.OperatorClass != "public.int8_ops" || key.Order != physical.IndexOrderDesc || key.NullsOrder != physical.IndexNullsOrderFirst {
 		t.Fatalf("column key=%#v", key)
 	}
-	if key := index.Keys[1]; key.Column != "" || key.Expression == nil || key.Expression.Provider != string(environment.ProviderPostgres) || key.Expression.Source != "lower(customer_name)" || key.Collation != "public.case_insensitive" || key.Order != physical.IndexOrderAsc || key.NullsOrder != physical.IndexNullsLast {
+	if key := index.Keys[1]; key.Column != "" || key.Expression == nil || key.Expression.Provider != string(environment.ProviderPostgres) || key.Expression.Source != "lower(customer_name)" || key.Collation != "public.case_insensitive" || key.Order != physical.IndexOrderAsc || key.NullsOrder != physical.IndexNullsOrderLast {
 		t.Fatalf("expression key=%#v", key)
 	}
 	if len(index.IncludedColumns) != 1 || index.IncludedColumns[0] != "order_id" {

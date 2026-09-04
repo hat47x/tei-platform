@@ -56,6 +56,7 @@ func TestReferenceWorkspaceDefinesHeaderDetailContractQueryWithoutParentIdentity
 							t.Fatalf("header-detail traversalのためにsales.order.linesへRelationKeyを追加しています: %#v", relation.Keys)
 						}
 					}
+				}
 			}
 			if data.ID == "sales.order_line" {
 				orderLineFound = true

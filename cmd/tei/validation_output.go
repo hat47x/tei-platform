@@ -11,7 +11,7 @@ import (
 func validateWorkspace(out io.Writer, root string) (int, error) {
 	result, err := workspace.Load(root)
 	if err != nil {
-		if diagnostic, ok := workspace.DiagnosticFromLoadError(root, err); ok {
+		if diagnostic, ok := workspace.SourceDiagnosticFromError(root, err); ok {
 			printSourceDiagnostic(out, diagnostic)
 			return 1, nil
 		}
@@ -60,7 +60,7 @@ func printSourceDiagnostic(out io.Writer, diagnostic workspace.SourceDiagnostic)
 	fmt.Fprintf(
 		out,
 		"%s\t%s\t%s\t%s\n",
-		diagnostic.Location(),
+		fmt.Sprintf("%s:%d:%d", diagnostic.Source.ArtifactPath, diagnostic.Source.Range.Start.Line, diagnostic.Source.Range.Start.Column),
 		diagnostic.Severity,
 		diagnostic.Code,
 		diagnostic.Message,

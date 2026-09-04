@@ -41,8 +41,9 @@ func TestAuthenticationImplementationCanBeExchangedWithoutChangingCanonicalIdent
 		}),
 	}
 	functionAdapter := legacyauth.FunctionAdapter{
-		Invoker: functionInvokerFunc(func(context.Context, string, string) (legacyauth.FunctionResult, error) {
-			return legacyauth.FunctionResult{ResultCode: "00", SubjectID: "subject-001"}, nil
+		Mapping: loadReferenceFunctionMapping(t),
+		Function: authenticateFunctionFunc(func(context.Context, string, string) (legacyauth.FunctionResult, error) {
+			return legacyauth.FunctionResult{ReturnCode: "0", SubjectID: "subject-001"}, nil
 		}),
 	}
 
@@ -89,8 +90,9 @@ func TestAuthenticationImplementationCanBeExchangedWithoutChangingCanonicalIdent
 		}),
 	}
 	deniedFunctionAdapter := legacyauth.FunctionAdapter{
-		Invoker: functionInvokerFunc(func(context.Context, string, string) (legacyauth.FunctionResult, error) {
-			return legacyauth.FunctionResult{ResultCode: "10"}, nil
+		Mapping: loadReferenceFunctionMapping(t),
+		Function: authenticateFunctionFunc(func(context.Context, string, string) (legacyauth.FunctionResult, error) {
+			return legacyauth.FunctionResult{ReturnCode: "10"}, nil
 		}),
 	}
 
