@@ -1,9 +1,10 @@
 # ISSUE-000019: reference PatternからDatabase Contract Queryへの明示的な呼び出し境界を定める
 
-- 状態: In Progress
-- GitHub Issue: #185
+- 状態: Done
+- GitHub Issue: #185（完了）
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 関連Issue: `ISSUE-000017` / GitHub Issue #178、`ISSUE-000018` / GitHub Issue #179、`ISSUE-000020` / GitHub Issue #222、`ISSUE-000022` / GitHub Issue #214
+- 後続Evidence: GitHub Issue #214 / #310、Gate B総合監査 #273
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
 ## 背景
@@ -204,13 +205,19 @@ Database Contract Queryのsignature、realization、executor、result cardinalit
 
 物理Evidenceが存在しない状態で、Invocation境界からOracle SQLやobject名を生成しません。
 
-## CIと完了判定
+## 完了判定と後続Evidence
 
-2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、Reference data access収束線にもその停止が取り込まれています。そのため、現在workflow runが作成されないことは、Issue #192で記録した過去のrunner割当失敗と同一ではありません。
+Reference invocationの設計・authoring・Validation・runtime compositionは成立済みであり、本Issueは完了とします。
 
-このIssueの実装境界は収束線上で成立していますが、CI未実行の成果をgreenとは扱いません。CIが別の明示的な判断で再有効化された後、関連Conformanceを通常runnerで再実行します。このため、Repository内IssueとGitHub Issueは現時点では`In Progress`のまま維持します。
+一方、次は本Issueの実装不足ではなくGate Bの後続Evidenceとして別に追跡します。
 
-## 完了条件
+- #214: actual Oracle physical / read-only / driver integration / `Order -> Customer`実read E2E
+- #310: deterministic Repository / normal Go runner Evidence
+- #273: Gate B全体のEvidence監査
+
+GitHub Actionsは現在Repositoryの通常検証経路として使用していません。未実行をgreenとは扱いませんが、Actions停止そのものを本Issueの未完了条件にはしません。将来CIを再導入する場合は、その時点のCI検証Issueで継続的なregression確認を扱います。
+
+## 実装境界の完了条件
 
 - [x] reference Patternから利用するDatabase Contract Queryを名前推測なしで特定できる
 - [x] Application QueryとDatabase Contract Queryのidentityを混同しない
@@ -227,8 +234,11 @@ Database Contract Queryのsignature、realization、executor、result cardinalit
 - [x] physical resultからSemantic rowへのmappingを明示できる
 - [x] realization sourceの来歴をSource Indexから追跡できる
 - [x] Pattern、Contract、Query、executor Bindingのauthoring sourceを追跡できる
-- [ ] CIが明示的に再有効化された後、関連Conformanceが通常runnerで成功する
-- [ ] `ISSUE-000022`の物理Evidenceを用いた`Order -> Customer`実read E2Eを確認する
+
+### 後続Evidence（本Issueの完了条件外）
+
+- #310で関連Conformance / fail-closed境界を通常Go runnerから再現する
+- #214の物理Evidenceを用いて`Order -> Customer`実read E2Eを確認する
 
 最後の実read E2EはInvocationの選択規則を追加するためのものではなく、既に確定した境界が外部観測資産でも成立することを確認するEvidenceです。
 
@@ -245,7 +255,7 @@ Database Contract Queryのsignature、realization、executor、result cardinalit
 
 ## 関連
 
-- GitHub Issue #69 / #178 / #179 / #185 / #192 / #214 / #222 / #224
+- GitHub Issue #69 / #178 / #179 / #185 / #214 / #222 / #224 / #273 / #310
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000018-database-contract-query-execution.md`
