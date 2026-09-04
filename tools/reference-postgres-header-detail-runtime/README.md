@@ -111,6 +111,34 @@ SELECT to_regclass('public.order_lines')::text;
 
 実行を継続できる場合だけtool自身が`public.order_lines`をCREATEし、以後そのfixtureだけをtool所有物として扱います。途中失敗時はbest-effort cleanupを行い、Execution Error確認時にはtool自身のfixtureを削除してmissing-table errorを発生させます。
 
+## 安全判定をEvidenceへ残す
+
+安全guardを実装しているだけでなく、**そのrunがfixture作成前にどの条件を満たしたか**を、接続先identityを保存せずEvidence JSONへ残します。
+
+`fixtureDatabaseSafety`には次を出力します。
+
+```json
+{
+  "guardPassed": true,
+  "databaseIdentityVerified": true,
+  "databaseIdentityPersisted": false,
+  "nonDefaultDatabaseVerified": true,
+  "userRelationsBeforeFixture": 0,
+  "fixtureObjectAbsentBeforeCreate": true
+}
+```
+
+意味は次です。
+
+- `databaseIdentityVerified`: `current_database()`を取得できた
+- `databaseIdentityPersisted`: 実Database名をEvidenceへ保存していない
+- `nonDefaultDatabaseVerified`: `postgres` / `template0` / `template1`ではなかった
+- `userRelationsBeforeFixture`: system / temporary領域を除くfixture作成前user relation数
+- `fixtureObjectAbsentBeforeCreate`: `public.order_lines`がfixture作成前に存在しなかった
+- `guardPassed`: 上記の安全条件をすべて通過してからfixture作成へ進んだ
+
+`guardPassed = true`は「このDatabaseが組織運用上Evidence専用である」ことまで証明するものではありません。toolが観測できる安全条件を、そのrunで満たしたことを示します。
+
 ## 出力
 
 成功時はJSON Evidenceをstdoutへ出力します。
@@ -119,6 +147,7 @@ SELECT to_regclass('public.order_lines')::text;
 
 - Evidence nature
 - fixture object / tool ownership / preexisting fixture protection
+- `fixtureDatabaseSafety`の非機密な安全判定結果
 - Pattern / Relation
 - Environment / Database instance / executor Capability
 - Contract Query target
@@ -141,5 +170,6 @@ SELECT to_regclass('public.order_lines')::text;
 - #214 external-observed `master_data`の物理Evidence代替
 - PostgreSQL既存Schema全体の受入れ検証
 - runtime parameter値やcredentialのEvidence保存
+- 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。
