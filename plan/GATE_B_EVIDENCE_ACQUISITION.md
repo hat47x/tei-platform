@@ -2,261 +2,218 @@
 
 ## 目的
 
-この文書は、Gate Bの残件を「設計をさらに増やす作業」ではなく、既に成立した境界へ不足しているEvidenceを取得する作業として実行できる形へ整理します。
+この文書は、Gate Bの残件を「設計をさらに増やす作業」ではなく、**成立済み境界へ不足しているEvidenceを取得する作業**として分解します。
 
-Gate Bの正式な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正とします。この文書はその判定条件を変更せず、残件ごとの入力、実行経路、保存してよいEvidence、完了判定を具体化するrunbookです。
+正式な合否判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / `ISSUE-000029` / GitHub Issue #273を正とします。
+
+具体的なコマンド、安全条件、停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を正とします。
+
+この文書は「何を取得すれば各laneが完了するか」を定義します。
 
 ## 現在地
 
-PR #285でApplication Driver / Reference data access / header-detail / Observation / 最終UI-less Scenarioの実装・Reference authoring・Conformanceを`main`へ収束しました。
+PR #285でApplication Driver / Reference data access / header-detail / Observation / 最終UI-less Scenarioの主要境界を`main`へ収束しました。
 
-したがって、現在のGate B残件は主に次の四系統です。
+その後も次の安全境界が成立しています。
 
-1. external-observed `master_data`の実物理 / read-only Evidence
-2. header-detailの実PostgreSQL Evidence
-3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
-4. 最終UI-less Scenarioを通常Go runnerで実行したEvidence
+- PR #288 / #300: external-observed Evidence intake
+- PR #294 / #300: PostgreSQL fixtureの既存資産非破壊
+- PR #306: Invalid WorkspaceではEvidence受入・DB接続前にfail closed
+- PR #309: Relation Storage実装完了とreal PostgreSQL Evidenceの責務分離
 
-GitHub Actionsによる再検証は重要ですが、上記Evidenceと同一ではありません。Actionsが停止していること自体をGate Bの意味設計Gapへ読み替えず、再開後の継続的な再検証経路として別に追跡します。
+したがってGate Bを直接止めているEvidenceは、次の四系統へ固定します。
 
-## Evidence A — external-observed `master_data`
+| Lane | GitHub Issue | Evidenceの性質 |
+| --- | --- | --- |
+| A | #214 | actual external Oracle asset Evidence |
+| B | #308 | real PostgreSQL engine + tool-owned ephemeral fixture Evidence |
+| C | #255 | generated Reference artifact再現Evidence |
+| D | #310 | deterministic Repository / normal Go runner Evidence |
+
+Gate B総合判定は#273、Driver全体の作業入口は#69です。
+
+GitHub Actionsはこの4 laneとは別の継続的regression経路です。Actions停止そのものをProduct Evidence不足へ読み替えず、逆に未実行をgreenとも扱いません。
+
+## Evidence共通原則
+
+すべてのlaneで次を守ります。
+
+- 未観測のexternal物理情報を名前や慣習から推測しない
+- Canonical WorkspaceにValidation Errorがあれば後続Evidence取得へ進まない
+- generated artifactを手編集して合わせない
+- fingerprintを人手で置換しない
+- credential / DSN / token / secretを通常Evidenceへ保存しない
+- 保存不要なruntime parameter値を通常Evidenceへ残さない
+- synthetic Evidenceを実provider / actual external Evidenceへ格上げしない
+- provider fixture Evidenceをproduction既存asset Evidenceへ格上げしない
+- 実行失敗を0件、NotSatisfied、denied、Business Resultへ変換しない
+- Evidence artifactをCanonical meaningの第二の正本にしない
+
+## Lane A — actual external Oracle `master_data`
 
 関連: `ISSUE-000022` / GitHub Issue #214
 
-### 取得前に必要な実物理情報
+### 現在地
 
-TEI側で名前を推測せず、利用対象から少なくとも次を取得します。
+external Evidenceを受け取る非Canonical intake boundaryはReadyです。
 
-- 実際の物理object identity
-  - table / view / API等
-- `customer/find_by_id`へ渡す物理parameter identity
-- raw resultとして返る列identity
-- `customer.customer.customer_id` / `customer.customer.name`への明示mapping
-- native SQLまたはAPI realization source
-- その情報をどこから確認したかというprovenance
-- read-onlyを実効的に保証する境界
+`internal/database/externalqueryevidence` / `tools/reference-external-query-evidence`は、Evidenceを明示authoring済み`ContractQuerySQLRealization`と照合します。
 
-### read-onlyのEvidence
+PR #306により、Canonical WorkspaceがInvalidな場合はEvidenceを受け入れる前に停止します。
 
-`ownership external-observed`という宣言だけでread-onlyを証明したことにはしません。
+一方、actual Oracleの物理事実そのものは未取得です。
 
-利用する環境に応じて、少なくとも次のうち実際に効いている境界を記録します。
+### 必要な観測事実
 
-- read-only credential / database role
+少なくとも次を実対象から確認します。
+
+- physical object kind / identity
+- Contract input `id`に対応するphysical parameter
+- parameter type / NULL上の扱い
+- raw result columns
+- raw column type / NULL上の扱い
+- raw result → `customer.customer` Semantic attribute mapping
+- native Oracle SQLまたは他realization source
+- source / provenance
+- 匿名化・縮約等を行った場合の加工内容
+- 実効的なread-only mechanism
+- 採用Oracle driverでのnamed parameter / result / NULL / error伝播
+
+### read-only Evidence
+
+`ownership external-observed`やSQLが`SELECT`に見えることだけではread-onlyを証明したことにしません。
+
+実際に有効な境界をEvidenceとして残します。
+
+例:
+
+- read-only credential / role
+- write privilegeを持たないprincipal
 - session / transaction read-only設定
 - read-only view / API
-- write権限を持たない接続先
 - 外部側の権限制御
 
-SQL文字列が`SELECT`に見えることだけをread-only Evidenceにはしません。
+### 完了候補
 
-### 保存しないもの
+- actual physical factsとprovenanceが揃う
+- 観測事実を根拠にrealizationを明示authoringできる
+- Evidence intakeでauthoringとの一致を確認できる
+- read-onlyを実効強制した接続で1件 / 0件 / Execution Errorを区別できる
+- raw resultをexplicit mappingからSemantic Customerへ変換できる
+- Environment / Database instance / executor Capability identityを保持できる
 
-通常Evidenceへ次を保存しません。
+未観測の物理名をTEI側から補った場合は完了Evidenceにしません。
 
-- password
-- DSNに含まれるcredential
-- token / secret
-- 実行時parameter valueで保存不要なもの
-- 業務上不要な実データ
+## Lane B — real PostgreSQL header-detail
 
-### 完了判定
+関連: GitHub Issue #308  
+実装完了境界: `ISSUE-000024` / closed GitHub Issue #244
 
-少なくとも次を実接続で区別できたら、このEvidence laneを完了候補とします。
+### Evidenceの性質
 
-- 1件取得
-- 0件を正常なnot-foundとして保持
-- 実行失敗をExecution Errorとして保持
-- 明示mappingからSemantic Customerへ変換
-- read-only境界が実効的であることを説明可能
-- Environment / Database instance / executor Capabilityのidentityを保持
+これは**real PostgreSQL engine + tool-owned ephemeral fixture Evidence**です。
 
-未観測の物理名をTEI側から補った場合はEvidenceとして採用しません。
+production既存Databaseの物理事実を観測するEvidenceではありません。
 
-## Evidence B — header-detail実PostgreSQL
+### 安全前提
 
-関連: `ISSUE-000024` / GitHub Issue #244
+PR #294 / #300 / #306により、tool自体が次をfail closedで強制します。
 
-実行入口は`tools/reference-postgres-header-detail-runtime`です。
+1. Workspace Load
+2. normal Validation
+3. Validation成功後にだけPostgreSQL接続
+4. `public.order_lines`の既存有無を確認
+5. 既存objectがあれば停止
+6. tool自身がCREATEしたfixtureだけをcleanup
 
-### 実行環境
+したがって実行先は**専用の空PostgreSQL Database**に限定します。
 
-このtoolはfixtureとして`public.order_lines`を**作成し、Evidence取得途中で削除します**。既存の業務Databaseや共有Schemaでは実行せず、破棄可能な専用PostgreSQL databaseを使用します。
+### 完了候補
 
-接続情報はRepositoryへ保存せず、環境変数から渡します。
+同じrunで少なくとも次を確認します。
 
-```bash
-export TEI_TEST_POSTGRES_DSN='postgres://...'
-go run ./tools/reference-postgres-header-detail-runtime
-```
-
-### toolが確認すること
-
-- `order_id=1001`で2件取得
-- `order_id=9999`で0件を正常結果として取得
-- table削除後のreadをExecution Errorとして区別
-- physical parameter名は`order_id`
-- parameter valueをEvidenceへ保存しない
-- raw resultを明示mappingからSemantic OrderLineへ変換
-- Relation Storageの`order_id` support columnをSemantic attributeへ逆流させない
+- `order_id=1001` → 2件
+- `order_id=9999` → 正常な0件
+- fixture table欠落 → Execution Error
 - Environment = `development`
 - Database instance = `sales_core.dev`
 - executor Capability = `database.query.postgres`
+- Contract Query target identity
+- explicit Semantic result mapping
+- Relation Storage support columnをSemantic attributeへ漏らしていない
+- parameter名のみをEvidenceへ残し、値を保存していない
+- `evidenceNature = real-postgres-ephemeral-fixture`
 
-正常終了時にJSON Evidenceを標準出力へ返します。
-
-### 完了判定
-
-- 実PostgreSQLへ接続してtoolが正常終了する
-- JSON Evidenceを再確認できる
-- credential / DSNをEvidenceへ含めない
-- 2件 / 0件 / Execution Errorの三状態を区別できる
-- physical support columnをSemantic attributeへ格上げしていない
-
-## Evidence C — Reference golden再生成
+## Lane C — generated Reference artifact
 
 関連: `ISSUE-000025` / GitHub Issue #255
 
-### 1. 現在差分の検査
+### 対象
 
-まずRepositoryを変更せず、現在のCanonical Workspaceと保存済みgoldenの一致を確認します。
-
-```bash
-go run ./tools/reference-golden
-```
-
-一致しない場合、表示されたpathをEvidenceとして記録します。
-
-### 2. 意図したauthoring変更だけを反映
-
-Canonical authoringの変更から説明できる差分であることを確認した場合だけ更新します。
-
-```bash
-go run ./tools/reference-golden -write
-
-git diff -- \
-  reference/world.json \
-  reference/workspace/.tei/plugin-lock.json
-```
-
-生成物を手編集して合わせません。
-
-### 3. Durable Runがstaleになった場合
-
-Plugin Lock fingerprintが変わった場合は`pluginLockFingerprint`だけを書き換えず、正規の`deployment-start`経路から再生成します。
-
-```bash
-go run ./cmd/tei deployment-start \
-  -workspace reference/workspace \
-  -solution order_rollout \
-  -version 2026.8.27 \
-  -deployment reference/observed/production.deployment-state.json \
-  -run-id order-rollout-prod-m0.21 \
-  -plugin-lock reference/workspace/.tei/plugin-lock.json \
-  > /tmp/tei-reference-deployment-run.json
-
-diff -u \
-  reference/order_rollout.durable-run.m0.21.start.json \
-  /tmp/tei-reference-deployment-run.json
-```
-
-差分が現在のWorkspace / Plugin Lock / fixed observed fixtureから説明できる場合だけ、出力全体をgoldenとして更新します。
-
-### 4. 最終確認
-
-```bash
-go run ./tools/reference-golden
-```
-
-World / Plugin Lock / Durable Runの依存がすべて一致することを確認します。
-
-### 完了判定
-
-- 最新authoringからWorldを再現できる
-- 最新authoringからPlugin Lockを再現できる
-- Durable RunのPlugin Lock依存が一致する
-- 更新差分を意味上のauthoring変更から説明できる
-- 手編集によるfingerprint合わせをしていない
-
-## Evidence D — 最終UI-less Scenario
-
-正本は`internal/driver/final_gate_b_scenario_test.go`です。
-
-### 最小実行
-
-```bash
-go test ./internal/driver \
-  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$' \
-  -count=1
-```
-
-このテストは次を一つのtest-local Scenarioへ接続します。
+Canonical Workspaceから導出される主要generated artifact:
 
 ```text
-Authentication
-  -> browse
-  -> record Pattern resolution
-  -> reference Customer
-  -> header-detail OrderLine[]
-  -> Canonical Validation
-  -> Authorization
-  -> Command Business Result
-  -> separate Observation read
+reference/world.json
+reference/workspace/.tei/plugin-lock.json
+reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-synthetic adapterを含むため、成功しても実Oracle / 実PostgreSQL / 実外部Command Evidenceへ格上げしません。
+observed stateやlegacy-auth fixtureはCanonical変更だけを理由に機械更新しません。
 
-### Repository全体の通常runner確認
+### 完了候補
 
-実行可能な環境では、個別Scenarioだけでなく通常のGo検証も行います。
+- Workspace Validationが成功する
+- Worldを正規生成経路から再生成できる
+- World差分を現在のauthoring変更から説明できる
+- Plugin Lockを正規生成経路から再生成できる
+- fingerprint差分を説明できる
+- 必要ならDurable Runを正規`deployment-start`から再生成できる
+- fingerprintを手編集していない
+- `go run ./tools/reference-golden`が最終的に一致する
 
-```bash
-go test ./...
-```
+## Lane D — deterministic Repository / normal runner
 
-GitHub Actionsが停止中でも、独立した通常Go runnerで得た結果はGate BのScenario実行Evidenceとして利用できます。逆に、実行していない状態をgreenとは記録しません。
+関連: GitHub Issue #310
 
-### 完了判定
+### 対象
 
-- 最終Scenario testを通常Go runnerで実行できる
-- testが成功する
-- 使用したrepository revisionを記録できる
-- synthetic Evidenceであることを明示する
-- 実外部Evidenceとの区別を維持する
+外部DBや外部assetを使わず、Repository checkoutとGo toolchainだけで再現できるEvidenceです。
 
-## Gate BとCIの分離
+最低限:
 
-Gate Bは、特定のCIサービスがgreenかどうかではなく、Product Value上必要な意味境界とEvidenceが揃ったかで判定します。
+- Canonical Workspace Validation
+- 最終UI-less Scenario
+- external Evidence intake package / tool test
 
-したがって次を分けます。
+可能ならRepository全体の`go test ./...`も実行します。
 
-### Gate B判定に直接必要
+### 完了候補
 
-- external-observed assetを推測していない実物理Evidence
-- 実PostgreSQL header-detail Evidence
-- Reference artifactの再生成性
-- UI-less Scenarioの通常runner実行Evidence
-- Business Result / Execution Error / Observation等の意味境界
-- read-only / secret等の安全境界
+- 対象repository revisionを記録する
+- Workspace Validationが成功する
+- `TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI`が通常Go runnerで成功する
+- external Evidence intake package / tool testが通常Go runnerで成功する
+- syntheticなEvidence範囲を明示する
+- secret / runtime parameter値をEvidenceへ残していない
+- 可能なら`go test ./...`の結果を記録する
 
-### CI再開後に継続確認するもの
+このlaneの成功だけでLane A / B / Cを完了扱いしません。
 
-- `go test ./...`の継続的再実行
-- Reference golden再現性
-- PostgreSQL integrationの継続的再実行
-- 将来のregression検知
+## 四lane完了後
 
-CIをGate Bの代替Evidenceにせず、逆にCI停止だけを理由にProduct Gateを永久に止めないようにします。
+四系統のEvidenceを取得したら、#273 / `GATE_B_READINESS_AUDIT.md`でnegative caseを含めて再監査します。
 
-## Evidence取得後の更新順
+少なくとも次を再確認します。
 
-Evidenceを得たら、その都度次を更新します。
+- 同じ業務identityを境界間で明示的に継承できる
+- external assetの未観測事実を推測していない
+- read-only / secret境界がEvidenceから説明できる
+- 0件とExecution Errorを混同しない
+- Validation / Authorization不成立時にCommandへ進まない
+- Business Result / Execution Error / Observationを区別する
+- synthetic / provider fixture / actual external Evidenceを区別する
+- generated artifactをauthoritative sourceから再現できる
 
-1. 対応するGitHub Issue / Repository Issueの現在地
-2. `GATE_B_READINESS_AUDIT.md`の条件表
-3. synthetic / external-observed / managed-hereのEvidence性質
-4. unresolved事項
+Gate BがReadyになった場合に初めて、[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) / #291に従い、そのrevisionを第一Handover Baselineとして固定します。
 
-四系統のEvidenceが揃った時点でGate B監査を再実行します。
-
-Gate Bを通過した場合に初めて、第一Web Targetへ「Web側で意味を補わないbaseline」として同じApplication / Driver境界を引き渡します。
+その後に#70第一Web Targetへ進みます。
