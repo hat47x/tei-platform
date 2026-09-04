@@ -57,6 +57,16 @@ func TestIsReproducibleRequiresSameCleanRevisionBeforeAndAfter(t *testing.T) {
 			},
 		},
 		{
+			name:    "revision string mismatch even if stable flag is wrong",
+			initial: initial,
+			post: PostRun{
+				Checked:            true,
+				RepositoryRevision: "def456",
+				RevisionStable:     true,
+				WorkingTreeClean:   true,
+			},
+		},
+		{
 			name:    "dirty after run",
 			initial: initial,
 			post: PostRun{
