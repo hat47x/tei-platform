@@ -5,6 +5,8 @@
 - 提案順位: 1（根幹機能の新規提案内）
 - 着手条件: 最小Scenarioと所有境界の設計は現行主線と並走可能。本格実装はGate C後に基線を固定して行い、Gate B / Cの既存完了条件を増やさない
 - 関連RQ: RQ-001 / RQ-002 / RQ-003 / RQ-008 / RQ-012 / RQ-014 / RQ-018 / RQ-019 / RQ-020 / RQ-021
+- 実装前設計: [業務Lifecycle v1 実装前設計](../BUSINESS_LIFECYCLE_V1_DESIGN.md)（2026-09-05、評価待ち）
+- 設計判断: [ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)（いずれも提案中）
 
 ## 提供する根幹機能
 
@@ -15,7 +17,7 @@
 ## 現在あるものと不足
 
 - [Order定義](../../reference/workspace/semantic/sales/order.tei)には`OrderStatus from std.code`と`sales.order.status`がありますが、許容状態と遷移規則のauthoringはありません。
-- [Semantic model](../../internal/semantic/model.go)と[Validation](../../internal/semantic/validation.go)にはData / Relation / Capability / Validationがあります。既存Validationは属性の正数判定やRelation内の一意性を扱います。
+- [Semantic model](../../internal/semantic/model.go)にはData / Relation / Capability / Validationがあります。既存Validationは属性の正数判定やRelation内の一意性を扱い、参照整合性の検査は[Workspace Validation](../../internal/validation/semantic_business_validation.go)、実データの評価は[Evaluator](../../internal/semantic/validationeval/evaluator.go)が担当します。
 - [submit Scenario](../../internal/driver/submit_order_observation_scenario_test.go)はsynthetic adapter内で状態を`submitted`へ変更します。遷移元の条件と期待する遷移を業務定義から解決する機能は、このGo処理だけでは成立しません。
 - [Observation境界](../../internal/driver/observation.go)と[ADR-0023](../adr/0023-command-observation-explicit-read-boundary.md)により、CommandのBusiness Resultと別操作のObservationは既に分離されています。本Issueではこの境界を利用します。
 - [ISSUE-000002](000002-v1-application-vertical-slice.md)には最小state transitionの要望があります。本Issueはその業務意味と実行への接続を具体化します。[Master PlanのWorkstream B](../MASTER_PLAN.md)も状態遷移等から再利用可能な意味知識を実証する方針です。
@@ -34,6 +36,8 @@
 6. 同じ規則を第一Web Targetから利用し、画面側への業務Rule複製を必要としないことを確認する。
 
 正本の所有者は、Semantic側のLifecycle / ConstraintとApplication側の利用意図を比較して決め、広い設計判断はADRへ残します。`StateMachine`専用Core kindや汎用式言語を初めから決めず、既存の小さい意味モデルと参照で実現できる範囲を先に確かめます。
+
+2026-09-05時点で、この6項目に対する具体的な意味モデル、authoring構文、診断、実行順序、結果契約は[実装前設計](../BUSINESS_LIFECYCLE_V1_DESIGN.md)へまとめ、所有境界と実行境界の判断をADR-0024 / ADR-0025として提案しました。両ADRは提案中であり、採用前に実装へ進みません。
 
 ## 実行と整合性の境界
 
@@ -69,6 +73,7 @@
 
 ## 関連
 
+- [業務Lifecycle v1 実装前設計](../BUSINESS_LIFECYCLE_V1_DESIGN.md)、[ADR-0024](../adr/0024-business-lifecycle-ownership.md)、[ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)
 - [Product Value](../../product/value/TEI_PRODUCT_VALUE.md)、[Product Principles](../../product/principles/TEI_PRODUCT_PRINCIPLES.md)
 - [Application Patternの所有境界](../adr/0017-application-pattern-ownership.md)、[Business Result](../adr/0020-capability-business-outcome-boundary.md)、[Command / Observation](../adr/0023-command-observation-explicit-read-boundary.md)
 - [業務Validation Reference](000014-business-validation-reference.md)
