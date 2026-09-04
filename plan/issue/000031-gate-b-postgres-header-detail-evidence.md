@@ -51,6 +51,39 @@ go run ./tools/reference-postgres-header-detail-runtime
 
 DSN、credential、runtime parameter value、接続先の実Database名をRepositoryや通常Evidenceへ保存しません。
 
+## Repository sourceをEvidenceへ固定する
+
+PR #336で、#310 deterministic Repository Evidence、#255 generated artifact Evidence、#308 real PostgreSQL Provider Evidenceのsource revision観測を`tools/internal/repositoryevidence`へ収束しました。
+
+この共有packageが扱うのはtool実行時のRepository状態だけです。Canonical、Driver、Provider固有の意味やDB操作は持ち込みません。
+
+#308では、Workspace LoadやPostgreSQL接続より前に次を確認します。
+
+1. `git rev-parse HEAD`でrepository revisionを取得する
+2. `git status --porcelain`でworking tree状態を取得する
+3. dirty working treeならDB接続前に停止する
+
+Provider runtimeとtool-owned fixture cleanupが完了した後にも次を再確認します。
+
+1. `git rev-parse HEAD`を再取得する
+2. 実行前HEADと完全一致することを確認する
+3. `git status --porcelain`が空であることを確認する
+4. 同じclean revisionへ固定できないrunは成功Evidenceとして拒否する
+
+成功JSONには次を残します。
+
+- `repositoryRevision`
+- `workingTreeClean`
+- `reproducibleRevision`
+- `postRunRepository.checked`
+- 実行後`repositoryRevision`
+- `postRunRepository.revisionStable`
+- 実行後`workingTreeClean`
+
+`reproducibleRevision = true`には、開始時clean、post-run確認済み、実行前後のHEAD同一、終了時cleanをすべて要求します。
+
+`RevisionStable = true`というbooleanだけを信用せず、post-runのrevision文字列自体も開始時revisionと一致する必要があります。
+
 ## fail-closed安全境界
 
 PR #294 / #300 / #306で、Workspace Validation、既存fixture保護、tool-owned cleanupの基本境界を成立させました。
@@ -59,17 +92,22 @@ PR #324では、「`public.order_lines`さえ存在しなければ既存業務DB
 
 現在の実行順は次です。
 
-1. WorkspaceをLoadする
-2. 通常`validation.Validate`を実行する
-3. Validation ErrorがあればDB接続前に停止する
-4. Validation成功後にのみPostgreSQLへ接続する
-5. `current_database()`で接続先Database identityを取得する
-6. `postgres` / `template0` / `template1`なら停止する
-7. system / temporary領域を除くuser relation件数を確認する
-8. user relationが1件でも存在すれば停止する
-9. `public.order_lines`の既存有無を再確認し、存在すれば停止する
-10. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
-11. tool自身がCREATEしたfixtureだけをcleanupする
+1. repository revision / working tree cleanを確認する
+2. dirtyならDB接続前に停止する
+3. WorkspaceをLoadする
+4. 通常`validation.Validate`を実行する
+5. Validation ErrorがあればDB接続前に停止する
+6. Validation成功後にのみPostgreSQLへ接続する
+7. `current_database()`で接続先Database identityを取得する
+8. `postgres` / `template0` / `template1`なら停止する
+9. system / temporary領域を除くuser relation件数を確認する
+10. user relationが1件でも存在すれば停止する
+11. `public.order_lines`の既存有無を再確認し、存在すれば停止する
+12. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
+13. Provider runtime Evidenceを確認する
+14. tool自身がCREATEしたfixtureをcleanupし、missing-table Execution Errorも確認する
+15. repository HEAD / working treeを再確認する
+16. sourceが変化していれば成功JSONを出さず停止する
 
 ### 既定Databaseを拒否する
 
@@ -110,7 +148,7 @@ SELECT to_regclass('public.order_lines')::text
 
 ## 安全判定をEvidenceへ残す
 
-fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。
+PR #335以降、fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。
 
 期待値:
 
@@ -140,6 +178,11 @@ fixture作成前の安全guardは、実装されているだけでなく、そ�
 
 同じrunで少なくとも次を確認します。
 
+- cleanなrepository revisionから開始したこと
+- `repositoryRevision`を保持すること
+- 実行前後のHEADが同一であること
+- 実行後もworking treeがcleanであること
+- `reproducibleRevision = true`であること
 - `order_id=1001`でOrderLineを2件取得する
 - `order_id=9999`で0件を正常な空collectionとして扱う
 - tool-owned fixture table欠落をExecution Errorとして扱う
@@ -165,10 +208,13 @@ fixture作成前の安全guardは、実装されているだけでなく、そ�
 - [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
 - [x] `public.order_lines`既存時に停止する
 - [x] tool-owned fixtureだけをcleanupする
-- [x] 安全guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない
-- [ ] 対象repository revisionを記録する
-- [ ] Canonical Workspace Validationが成功する
+- [x] 安全guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335）
+- [x] dirty working treeではDB接続前に停止する（PR #336）
+- [x] Provider runtime後にHEAD同一 / working tree cleanを再確認する（PR #336）
+- [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
+- [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
+- [ ] `reproducibleRevision = true`を実runで確認する
 - [ ] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する
 - [ ] 2件取得を確認する
 - [ ] 0件を正常な空collectionとして確認する
@@ -188,16 +234,18 @@ fixture作成前の安全guardは、実装されているだけでなく、そ�
 - actual Oracle Evidenceの代替
 - physical schemaからSemantic Relationを逆生成すること
 - PostgreSQL固有仕様をSemantic modelへ逆流させること
+- dirty / source変化中のrunをProvider Evidenceとして採用すること
 - GitHub Actionsの再有効化
 
 ## 関連
 
 - GitHub Issue #69 / #244 / #255 / #273 / #308 / #310
-- PR #294 / #300 / #306 / #309 / #324
+- PR #294 / #300 / #306 / #309 / #324 / #335 / #336
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/issue/000024-keyless-relation-physical-storage.md`
+- `tools/internal/repositoryevidence/`
 - `tools/reference-postgres-header-detail-runtime/README.md`
 - `tools/reference-postgres-header-detail-runtime/main.go`
 - `tools/reference-postgres-header-detail-runtime/safety.go`
