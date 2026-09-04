@@ -97,6 +97,8 @@ git status --porcelain
 
 これにより、「実行前はcleanだったがtestや並行操作でsource状態が変化した」runを、元revisionの成功Evidenceとして誤採用しません。
 
+開始時にworking treeがcleanでも、それだけでは`reproducibleRevision = true`にしません。`reproducibleRevision`はpost-runのHEAD同一性とworking tree cleanまで確認できた後にだけtrueになります。Go toolchain取得、Workspace Load / Validationなどでpost-run確認前に失敗したJSONではfalseのままです。
+
 診断目的に限り`-allow-dirty`を指定できます。
 
 ```bash
@@ -161,6 +163,8 @@ stdoutには概ね次の形を出します。
 - 実行後repository状態を確認済み
 - 実行前後でHEADが同一
 - 実行後working treeもclean
+
+これらを最後まで確認できない早期失敗では、開始時cleanであっても`reproducibleRevision`はfalseです。
 
 JSONへtest stdout、DSN、credential、runtime parameter valueは保存しません。
 
