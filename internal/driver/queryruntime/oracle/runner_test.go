@@ -159,6 +159,9 @@ func TestRunnerExecutesExplicitSQLWithStableNamedParameters(t *testing.T) {
 	if !reflect.DeepEqual(payload.ParameterNames, []string{"legacy_id", "tenant"}) {
 		t.Fatalf("Evidenceへ保存するparameter名が不安定です: %#v", payload.ParameterNames)
 	}
+	if !reflect.DeepEqual(payload.RawResultColumns, []string{"legacy_customer_id", "legacy_name"}) {
+		t.Fatalf("Evidenceへ保存するraw result列が変わっています: %#v", payload.RawResultColumns)
+	}
 }
 
 func TestRunnerKeepsZeroRowsAsNormalRawResult(t *testing.T) {
