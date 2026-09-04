@@ -176,6 +176,15 @@ func targetedChecks() []commandSpec {
 				"-count=1",
 			},
 		},
+		{
+			Name: "repository-evidence-source-boundary",
+			Args: []string{
+				"test",
+				"./tools/internal/repositoryevidence",
+				"./tools/reference-gate-b-repository-evidence",
+				"-count=1",
+			},
+		},
 	}
 }
 
