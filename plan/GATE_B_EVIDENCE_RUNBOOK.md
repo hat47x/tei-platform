@@ -8,6 +8,48 @@ Evidenceの必要性・証明範囲・完了条件は[`GATE_B_EVIDENCE_ACQUISITI
 
 **具体的なコマンド、実行順、差分確認、fail-closed停止条件については本書を唯一の正本とします。** 他文書に同じコマンドが残っている場合、本書と矛盾する手順を採用しません。
 
+## 2026-09-04 現行Gate B実行scope（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380の再監査により、Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
+
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL Provider Evidence
+
+### 現行の正規実行cycle
+
+Gate Bの最終収束では、cleanなcandidate revision `R`を固定し、次の順で実行します。
+
+1. Canonical WorkspaceをValidationする
+2. Rで#310 `reference-gate-b-repository-evidence`を実行する
+3. Rで#255 `reference-generated-artifact-evidence`をcheck-only実行する
+4. Rで#308 `reference-postgres-header-detail-runtime`をEvidence専用空PostgreSQL Databaseに対して実行する
+5. #310 / #255 / #308の`repositoryRevision = R`と`reproducibleRevision = true`を確認する
+6. external Evidence intake、secret、source revision不変、PostgreSQL fixture前後安全性等のnegative caseを再監査する
+7. `GATE_B_READINESS_AUDIT.md`でRをReady / Not Ready判定する
+8. Readyなら#291で同じRをHandover Baselineとして固定する
+9. #214 / #371 / #376が未完了なら、その未検証範囲をHandover `unresolved`へ明示する
+10. Handover固定後にだけ第一Web Target #70 / Gate C #270へ進む
+
+#255でstaleが見つかった場合は従来どおり修復 → 差分確認 → commitし、その新しいclean revisionをcandidateとしてcycleを最初からやり直します。#308または#310でsource変更が必要になった場合も同様です。
+
+### actual Oracleの扱い
+
+#214 / #371 / #376はGate B必須手順ではありません。actual external asset / legacy compatibility / 第二Database Provider圧力試験として継続します。
+
+このRunbook後半の#214手順は削除せず、actual Oracle Evidenceを取得できる環境で使う正規手順として保持します。ただし、その未完了だけでGate Bの3必須Evidence cycleを停止しません。
+
+一方、次は禁止します。
+
+- 未観測のOracle physical object / column / SQL / datatypeを補完する
+- #310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ読み替える
+- Web側でOracle realizationやread-only方式を補う
+- #214未完了を「Oracle対応済み」と表現する
+
+Gate Bに必須なexternal-observed安全境界は#310の`external-evidence-intake`等で確認します。
+
+以下に残る「4 laneをGate B必須として同一Rへ揃える」Phase記述は`ISSUE-000035`以前の実行契約と判断経緯を保持するための履歴です。現行Gate Bの実行順・必須範囲と矛盾する場合は、本節を優先します。個々のtoolコマンド、fail-closed条件、Evidence非代替性は引き続き有効です。
+
 2026-09-04時点では、Application Driverの主要意味境界、最終UI-less Scenario構造、external-observed Query Evidence受入境界、PostgreSQL fixtureの安全境界まで成立しています。
 
 Gate Bを直接止めているEvidence laneは次の四つです。
