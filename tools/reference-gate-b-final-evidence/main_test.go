@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"tei/tools/internal/repositoryevidence"
@@ -64,6 +65,29 @@ func TestLaneSpecsKeepPostgresLast(t *testing.T) {
 	}
 	if got := specs[2].Name; got != "real-postgres-ephemeral-fixture" {
 		t.Fatalf("last lane = %q, want real-postgres-ephemeral-fixture", got)
+	}
+}
+
+func TestLaneSpecsMatchCanonicalRunnerInterfaces(t *testing.T) {
+	want := []laneSpec{
+		{
+			Name:           "deterministic-repository",
+			ExpectedNature: "deterministic-repository",
+			Args:           []string{"run", "./tools/reference-gate-b-repository-evidence"},
+		},
+		{
+			Name:           "generated-artifact-reproducibility",
+			ExpectedNature: "generated-artifact-reproducibility",
+			Args:           []string{"run", "./tools/reference-generated-artifact-evidence"},
+		},
+		{
+			Name:           "real-postgres-ephemeral-fixture",
+			ExpectedNature: "real-postgres-ephemeral-fixture",
+			Args:           []string{"run", "./tools/reference-postgres-header-detail-runtime"},
+		},
+	}
+	if got := laneSpecs(false); !reflect.DeepEqual(got, want) {
+		t.Fatalf("laneSpecs(false) = %#v, want %#v", got, want)
 	}
 }
 
