@@ -91,6 +91,52 @@ func TestCommandDisplayDoesNotUseShellString(t *testing.T) {
 	}
 }
 
+func TestIntermediateSourceRejectsNewDirtyTreeAfterCleanStart(t *testing.T) {
+	source := cleanSource()
+	postRun := cleanPostRun()
+	postRun.WorkingTreeClean = false
+
+	if err := verifyIntermediateRepositorySource(source, postRun, false, "first-check"); err == nil {
+		t.Fatal("verifyIntermediateRepositorySource() error=nil, want new dirty tree failure")
+	}
+}
+
+func TestIntermediateSourceAllowsInitialDirtyTreeOnlyForAllowDirtyDiagnostic(t *testing.T) {
+	source := cleanSource()
+	source.WorkingTreeClean = false
+	postRun := cleanPostRun()
+	postRun.WorkingTreeClean = false
+
+	if err := verifyIntermediateRepositorySource(source, postRun, true, "diagnostic-check"); err != nil {
+		t.Fatalf("verifyIntermediateRepositorySource() error=%v, want allow-dirty diagnostic continuation", err)
+	}
+	if err := verifyIntermediateRepositorySource(source, postRun, false, "normal-check"); err == nil {
+		t.Fatal("verifyIntermediateRepositorySource() error=nil for dirty normal Evidence run")
+	}
+}
+
+func TestIntermediateSourceRejectsRevisionDriftEvenInAllowDirtyDiagnostic(t *testing.T) {
+	source := cleanSource()
+	source.WorkingTreeClean = false
+	postRun := cleanPostRun()
+	postRun.RepositoryRevision = "R2"
+	postRun.RevisionStable = false
+	postRun.WorkingTreeClean = false
+
+	if err := verifyIntermediateRepositorySource(source, postRun, true, "diagnostic-check"); err == nil {
+		t.Fatal("verifyIntermediateRepositorySource() error=nil, want revision drift failure")
+	}
+}
+
+func TestIntermediateSourceRejectsUncheckedObservation(t *testing.T) {
+	postRun := cleanPostRun()
+	postRun.Checked = false
+
+	if err := verifyIntermediateRepositorySource(cleanSource(), postRun, false, "first-check"); err == nil {
+		t.Fatal("verifyIntermediateRepositorySource() error=nil, want unchecked source failure")
+	}
+}
+
 func TestFinalizeKeepsReproducibleFalseOnTargetedFailure(t *testing.T) {
 	result := evidence{}
 	err := finalizeRepositoryEvidence(&result, cleanSource(), cleanPostRun(), true, false)
