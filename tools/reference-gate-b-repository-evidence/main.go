@@ -198,6 +198,7 @@ func isReproducibleRepositoryState(
 	return initialRevision != "" &&
 		initialClean &&
 		postRun.Checked &&
+		postRun.RepositoryRevision == initialRevision &&
 		postRun.RevisionStable &&
 		postRun.WorkingTreeClean
 }
