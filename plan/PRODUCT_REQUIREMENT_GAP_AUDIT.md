@@ -2,73 +2,74 @@
 
 ## 目的
 
-この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`で定めたRQ-001〜RQ-024について、M0.32時点のRepositoryにどの程度のEvidenceがあるかを逆マッピングした監査結果です。
+この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`で定めたRQ-001〜RQ-024について、現在のRepositoryにどの程度のEvidenceがあり、どこにProduct上の不確実性が残っているかを逆マッピングする監査です。
 
-ここで評価するのは、実装量やコード行数ではありません。
+実装量やコード行数ではなく、次を基準に評価します。
 
-- 実装が存在するか
-- Referenceで再現できるか
-- ConformanceやCIで意味境界を説明できるか
-- 要求の一部だけを満たしている場合、その残差を説明できるか
+- 意味境界が実装されているか
+- 同じReferenceで再現できるか
+- Conformance / Evidenceから境界を説明できるか
+- 一部だけ成立している場合、残っている不確実性を説明できるか
+- 実装済みと実行Evidence取得済みを混同していないか
 
-を基準とします。
-
-この監査は「未実装だから問題」という評価ではありません。TEIのProduct Visionに対して、どの不確実性が既に減っており、どこがまだ大きく残っているかを把握するためのものです。
+この監査は「未実装だから問題」という一覧ではありません。TEIのProduct Visionに対して、次にどこへ時間を使うと大きな不確実性を減らせるかを判断するための文書です。
 
 ## 評価区分
 
 | 区分 | 意味 |
 | --- | --- |
-| **Strong Evidence** | 実装、Reference、Conformance / CIが一続きで存在し、主要な意味境界を説明できる |
-| **Partial Evidence** | 重要な一部は実証済みだが、Requirement全体には届いていない |
-| **Design Only** | 設計思想や文書上の方針はあるが、Referenceによる実証がない |
-| **Not Started** | Product Requirementとしては存在するが、対応する実装・Referenceがまだほぼない |
+| **Strong Evidence** | 実装、Reference、Conformance / Evidenceが一続きで存在し、主要な意味境界を説明できる |
+| **Partial Evidence** | 重要な部分は実証済みだが、Requirement全体や実環境Evidenceまでは届いていない |
+| **Design Only** | 方針や契約は整理されているが、Referenceによる実証がまだない |
+| **Not Started** | Product Requirementとしては存在するが、対応する実装・Referenceがほぼない |
 
-## 全体像
+## 2026-09-04時点の全体像
 
-M0.32時点のTEIは、次の領域に強いEvidenceがあります。
+M0.32時点の旧監査から、Application側は大きく進みました。
 
-- Canonical identityとsourceの分離
-- native SQLを含むSource-to-Canonical Traceability
-- ApplicationとDatabaseの基本的なN:M構造
-- DatabaseのDesired / Actual / Diff
-- commandとObservation / Evidenceの分離
-- Plugin / Resource authority
-- runtime takeover / fencing / unknown
-- Reference / Conformanceによる再現性
+特に次は、もはや「未着手」ではありません。
 
-一方、Product Vision上は重要でありながら、実証がほとんどない領域があります。
+- Application Pattern Stage 1
+- 既存認証・認可Compatibility
+- Application Driverの主要意味境界
+- Validation → Authorization → Command
+- Business Result / Execution Error
+- Command後の明示Observation read
+- browse / record / reference / header-detail / commandをつないだ最終UI-less Scenario
 
-- 既存認証・認可を保持した移行
-- standard Application Pattern
-- Driverによる設計シミュレーション
-- target-neutral Presentation / Interaction
-- 開発者向けEditor
+一方、Product Vision全体から見ると、依然としてEvidenceが薄い領域があります。
+
+- 第一TargetでのPresentation / Interaction実証
 - 複数Projectionをまたぐ編集体験
-- AIによる知識探索、確認提案、判断履歴
+- 開発者向けEditor
+- Decision / Suggestion履歴を含むAI支援
+- 再利用可能な業務知識をAIが探索する経路
+- 第二TargetでのTarget-neutral境界の圧力試験
+- Targetごとの性能契約
 
-この非対称性が、現在もっとも重要な計画上の発見です。
+Database / Provider領域は、TEIの他領域より深く検証されています。今後も必要なProvider Evidenceは取得しますが、特定Providerの詳細だけがProduct全体の着手順を決めないようにします。
 
 ---
+
+# Requirement別の現在地
 
 ## RQ-001 業務上の意味を実装技術から独立して保持できること
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
-- `internal/core`のCanonical ID
-- `internal/semantic`のNamespace / Type / Data / Relation / Capability
-- `internal/application`のApplicationとDatabaseRequirement
-- Source IndexをCanonical Worldから分離
-- file rename / moveでnormalized Worldを変えないM0.23 Conformance
+- Canonical IDとsource pathの分離
+- Semantic Data / Relation / Capability
+- Application / Database Requirement
+- Application PatternをApplication所有のCanonicalな意図として扱う境界
 - Persistence MappingとPhysical Schemaの分離
+- Target固有UIやProvider固有実装をCanonical meaningへ逆流させない設計
 
-### 残るGap
+残るGap:
 
-Semantic KernelはType / Data / Relation / Capabilityを中心に成立していますが、Domain Component、Pattern、Policy等の上位再利用単位はまだReferenceで実証されていません。
-
-RQ-001そのものの基礎は強い一方、Milestone 1で必要な「再利用可能な業務知識」へは次の段階があります。
+- Domain Component / Policy等、複数Applicationで再利用する業務知識の実証
+- 第一Target・第二Targetを通したmeaningの安定性確認
 
 ---
 
@@ -76,23 +77,19 @@ RQ-001そのものの基礎は強い一方、Milestone 1で必要な「再利用
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
-M0.23で次をend-to-endに確認済みです。
-
-- Canonical IDとpathの分離
-- Source Artifact fingerprint
-- byte range
-- source role
-- Semantic SubjectからSource ReferenceへのDiagnostic projection
-- parse errorのsource-direct diagnostic
-- native `.sql`のauthoritative source
+- Source Index
+- Source Artifact fingerprint / byte range / source role
+- native SQLのauthoritative source
 - rename / move invariance
-- `tei source-index` CLI
+- Source Diagnostic
+- Application Pattern / Binding / native realizationからauthoring sourceへ戻る経路
 
-### 残るGap
+残るGap:
 
-SQL以外のnative sourceについて同じ水準のsemantic analysisはまだありません。ただし、RQ-002の基礎契約自体は成立しています。
+- SQL以外のnative sourceに対する同水準のsemantic analysis
+- Editor / AI等の新しいProjectionからauthoritative sourceへ戻る実証
 
 ---
 
@@ -100,17 +97,17 @@ SQL以外のnative sourceについて同じ水準のsemantic analysisはまだ�
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
-- SQL-authored Queryではnative SQLをauthoritative sourceとして扱う
-- Query declarationとSQL bodyを異なるsource roleとして保持
-- Derived Query IRへphysical pathを混ぜない
-- derived artifactからauthoritative sourceへ暗黙に逆書きするAPIを設けない
-- ambiguousなauthoritative sourceをheuristicにmergeしないM0.23方針
+- native SQLとDerived Query IRの分離
+- Source IndexをCanonical Worldから分離
+- Editor / AIをCanonical authorityにしない方針
+- external Evidenceを`ir.World`へ昇格させない境界
+- Handover / Evidence artifactを第二の正本にしない契約
 
-### 残るGap
+残るGap:
 
-Graph-authored、UI-authored等、将来の別authoring modeとの相互運用は未実証です。新しいProjectionを導入するとき、この原則を再度Conformanceで確認する必要があります。
+- Editorや自然言語Projectionから編集する場合のend-to-end Evidence
 
 ---
 
@@ -118,22 +115,19 @@ Graph-authored、UI-authored等、将来の別authoring modeとの相互運用�
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
-- native `.sql`をauthoritative sourceとして利用できる
-- Query analyzerへpathを持ち込まずSQL本文を流せる
-- `CustomGoBinding`によりCapabilityとGo実装を接続する基本モデルがある
-- actual process Pluginを外部実装として実行できる
+- native `.sql`
+- `CustomGoBinding`
+- actual process Plugin
+- legacy Authentication / Authorization Compatibility Reference
+- external-observed asset向けContract Query / Evidence intake
 
-### 残るGap
+残るGap:
 
-- Go sourceのsemantic analysis / refactoringは未実装
-- 既存バッチや外部設定を意味上のsubjectへ接続する一般Referenceがない
-- native assetをApplication移行でどのように段階的に取り込むかのReferenceがない
-
-### 次の作業
-
-`ISSUE-000002`と`ISSUE-000003`のApplication / Legacy vertical sliceで検証します。
+- 既存batch / external API / configurationを段階移行するReference
+- Go source等のsemantic analysis / refactoring
+- actual external assetを使った移行Evidence
 
 ---
 
@@ -141,28 +135,19 @@ Graph-authored、UI-authored等、将来の別authoring modeとの相互運用�
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
 - `Application.DatabaseRequirement[]`
-- logical alias
-- target Database Canonical ID
+- logical Datasource
 - read / read-write Access
-- Required Database Contracts
-- Database ReleaseとApplication Releaseの独立lifecycle
-- multi-DB compatibilityを含むRelease Graph / Deployment validation
+- Database Contract
+- `order_entry`から`sales_core`と`master_data`を別Datasourceとして扱うReference
+- browse / reference / header-detailをDatabase境界へ接続するDriver runtime
 
-### 残るGap
+残るGap:
 
-N:M構造そのものは実装済みですが、Requirementに含めた次の利用者視点の意味はまだ十分にReference化されていません。
-
-- Databaseごとのtransaction boundary
-- Databaseごとのfailure boundary
-- 一つの業務処理が複数Databaseをまたぐ場合の設計上の扱い
-- Application Pattern / UI / Driverから複数Datasourceを自然に利用する経路
-
-### 次の作業
-
-v1 Application vertical sliceで、複数Datasourceを実際の業務シナリオから利用して確認します。
+- 一つの業務処理が複数Databaseをまたぐ場合のtransaction / failure boundary
+- external-observed Datasourceを含む実環境E2E
 
 ---
 
@@ -170,18 +155,18 @@ v1 Application vertical sliceで、複数Datasourceを実際の業務シナリ�
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
-- Persistence MappingからDesired Physical Schemaを生成
-- actual PostgreSQLからActual Physical Schemaを観測
+- Desired Physical Schema
+- actual PostgreSQL observation
 - Schema Diff
-- M0.31で確定Changeと比較未確定Unresolvedを分離
-- M0.32でProviderExpressionのauthored / provider-normalized representationとprovenanceを分離
-- Unresolvedを破壊的migrationへ自動変換しない
+- Unresolvedの明示
+- ProviderExpression / provenance
+- 不確かな差分を破壊的migrationへ自動変換しない境界
 
-### 残るGap
+残るGap:
 
-現在の深い実証はDatabase Schemaを中心としています。将来、Target Capability、external API、Runtime state等でも「差分」と「比較未確定」を区別すべき場面が出た場合、概念を無理に共通frameworkへ一般化せず、同じ原則が必要か個別に検討します。
+- Database以外のTarget / external API等で同じ原則が必要になる場合の実証
 
 ---
 
@@ -189,24 +174,20 @@ v1 Application vertical sliceで、複数Datasourceを実際の業務シナリ�
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
 - PostgreSQL Provider SPI
-- actual DB driver assemblyをCoreから分離したADR-0007
-- ProviderExpressionにProvider / Dialect provenanceを保持
-- PostgreSQL catalog normalizationを監査し、provider側normalizationとprovider-neutral model変更を分離
+- ADR-0007によるactual DB driver assemblyの分離
+- provider-specific normalization / rendering
+- Contract Query SQL Executorとprovider-specific Runnerの分離
+- Oracle向けRunnerでもCanonical Contractをdriverへ固定しない境界
 
-### 残るGap
+残るGap:
 
-- Desired Physical realizationのprovider固有policyがPersistence側へ残っている
-- provider default / identifier normalizationの契約が未完
-- PostgreSQL以外のactual Providerで同じ抽象を圧力試験していない
+- PostgreSQL以外のactual Providerによる抽象境界の圧力試験
+- Provider固有policyが残る箇所の継続監査
 
-### 関連作業
-
-- GitHub Issue #58
-- GitHub Issue #59
-- 将来の第二Database Provider Reference
+**優先順位上の注意:** 第二Providerの深掘りは、Provider境界の検証に必要な範囲へ限定します。特定Providerの実環境詳細だけを理由に、Application / Driver / Target / EditorのProduct主線を長期間止めません。
 
 ---
 
@@ -214,72 +195,63 @@ v1 Application vertical sliceで、複数Datasourceを実際の業務シナリ�
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
 - Semantic Capability
-- Plugin / Bundle / Capability negotiation
+- Capability Binding
 - Environment Binding
-- Plugin Lock
-- in-process / process boundary
-- `CustomGoBinding`
-- `std.*` prelude / namespace方針
+- Plugin / Bundle / Capability negotiation
+- legacy Authentication / Authorization Compatibility
+- Business Result / Execution Error
 
-### 残るGap
+残るGap:
 
-Requirementで想定する次の交換を、一つの業務Capabilityで比較するReferenceがありません。
-
-- builtin
-- generated implementation
-- plugin
-- existing implementation
-
-また、Application側からCapabilityを利用し、Driver / Targetまで通す利用者視点の経路も未実証です。
-
-### 次の作業
-
-既存認証Compatibility Referenceで、同じAuthentication Capabilityに複数実現方式を接続する形を検討します。
+- builtin / generated / plugin / existing implementationを同じ業務Capabilityで比較するReference
+- 第一Targetまで含む置換Evidence
 
 ---
 
 ## RQ-009 既存システムの認証・認可仕様を保持した移行が可能であること
 
-**評価: Not Started**
+**評価: Partial Evidence**
 
-### 現状
+旧監査の`Not Started`から更新します。
 
-Permission / Resource authorityはPlugin実行権限のために存在しますが、業務Applicationのユーザー認証・認可とは別の問題です。
+成立済み:
 
-既存システムにある、たとえば次の仕様を保持したReferenceはありません。
+- legacy Authentication / Authorization Compatibility Reference
+- Authentication / Authorization Capability境界
+- Capability Binding
+- Gate A Ready
+- 最終UI-less ScenarioでAuthentication subjectをAuthorizationへ継承
+- legacy schema / return codeをDriver Coreへ逆流させない境界
 
-- user ID / password
-- disabled flag
-- validity period
-- login failure count
-- lock state
-- organization / role
-- system-specific authorization rule
+残るGap:
 
-### 次の作業
-
-`ISSUE-000003`でCompatibility Referenceを設計します。
-
-これはv1へ向けた優先度の高いGapです。
+- 実移行対象を使ったCompatibility Evidence
+- 標準実装と既存実装を段階的に置き換えるReference
 
 ---
 
 ## RQ-010 Editorを開発者向けの高密度な設計環境として提供できること
 
-**評価: Not Started**
+**評価: Design Only**
 
-### 現状
+設計上の基線:
 
-`docs/status.md`でもproduction-ready GUI Editorは明示的な非目標です。
+- EditorはCanonicalを所有しない
+- high-densityなtable / graph / flow / UI Projection
+- Source / Diagnostic navigation
+- shared Acceptance Boundary
+- Go + Wails/WebViewを有力Host候補とする
 
-Source Index、Diagnostic、Database Workbench等、Editorが利用できる下位のderived modelはありますが、Editor shellや編集Projectionはまだありません。
+残るGap:
 
-### 次の作業
+- Editor shell
+- 実際の編集Projection
+- 同じReferenceを複数視点で編集するEvidence
 
-Editorを単独で先に作り込まず、v1 Application vertical sliceとDriverの意味が成立した後、その同じReferenceを編集する最小Editorを設計します。
+第一Web TargetでApplication / Presentation境界を観測する前にEditorの詳細UIを固定しません。
 
 ---
 
@@ -287,61 +259,76 @@ Editorを単独で先に作り込まず、v1 Application vertical sliceとDriver
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
-- Source IndexはCanonical Worldとは別のderived projection
-- Database Workbench derived model
-- Diagnostic projection
-- Query IR / SQLのauthoritative / derived分離
-- README / Architecture上でProjection概念を明示
+- Source Index
+- Diagnostic
+- Database Workbench
+- Query IR
+- Driver result
+- Handover Baselineというderivedな比較参照
 
-### 残るGap
+残るGap:
 
-table / graph / flow / UI / natural language等を、同じmeaningから実際に切り替えるReferenceはありません。
-
-特に「Projectionから編集したとき、どこがauthoritativeなのか」をRQ-003と矛盾なく成立させる必要があります。
+- table / graph / flow / UI / natural languageを同じmeaningから切り替えるReference
+- Projectionから編集した場合のauthoritative sourceへの反映
 
 ---
 
 ## RQ-012 Driverを設計検証用の実行・シミュレーション環境として利用できること
 
-**評価: Not Started**
+**評価: Partial Evidence**
 
-### 現状
+旧監査の`Not Started`から更新します。
 
-Deployment executor example、process Plugin example、runtime reattach example等の実行可能Referenceは存在します。
+成立済み:
 
-しかし、それらは「ApplicationのData / Rule / UI / Capabilityを、設計途中に閉じた環境で動かすDriver」というProduct Requirementを満たすものではありません。
+- Application Pattern解決
+- Datasource / Contract Query runtime
+- Capability Binding
+- Authentication / Authorization
+- Canonical Validation
+- Business Result / Execution Error
+- Command後の別OperationとしてのObservation read
+- browse → record → reference → header-detail → Validation → Authorization → Command → Observationをつないだ最終UI-less Scenario
+- deterministic Repository Evidence runner
 
-### 次の作業
+残るGap:
 
-v1 Application vertical sliceを定義した後、最初の大きな実装GapとしてDriverの最小vertical sliceを起票します。
+- Gate Bの実run取得
+- 実provider / generated artifact / external assetとのEvidence収束
+- 第一Targetへ渡したときにWeb側の意味補完が不要であることの確認
+
+Driverの主要な意味設計は成立しており、現在の中心は新しい抽象ではなくEvidence取得です。
 
 ---
 
 ## RQ-013 Target-neutralなPresentation / Interaction境界を持つこと
 
-**評価: Not Started**
+**評価: Design Only**
 
-### 現状
+成立している契約:
 
-RepositoryにはWeb / Desktop / Mobile / API / MCP / VUIを共通上位設計から扱うPresentation IRやTarget Adapter境界はまだありません。
+- 第一Web Targetを先に実証する
+- Target CapabilityとExecution / Trust Profileを分けて観測する
+- Gate CでSemantic / Functional / Visual Evidenceを分離する
+- 第一Targetだけで完全なPresentation IRを確定しない
+- 第二Targetとの差から境界を修正する
 
-### 次の作業
+残るGap:
 
-第一Targetを一つ選び、Application vertical sliceを通して必要なPresentation意味を抽出します。
-
-最初から抽象IRを大きく設計せず、第一Targetと第二Targetの差からTarget-neutral境界を確定する方針を維持します。
+- 第一Web Target実装
+- 第二Targetとの比較
 
 ---
 
 ## RQ-014 標準的なApplication Patternを再利用できること
 
-**評価: Not Started**
+**評価: Partial Evidence**
 
-### 現状
+旧監査の`Not Started`から更新します。
 
-Semantic Data / Relation、Query、Application、Database等のprimitiveはありますが、次のようなApplication Patternを意味上の再利用単位として表す実装はありません。
+Stage 1で次の5種類をApplication所有の意図として実証しました。
 
 - browse
 - record
@@ -349,11 +336,20 @@ Semantic Data / Relation、Query、Application、Database等のprimitiveはあ�
 - header-detail
 - command
 
-### 次の作業
+成立済み:
 
-Pattern単体を抽象設計するより、v1 Reference Application内で複数Patternを使い、共通部分が実際にどこに現れるかを確認してから固定します。
+- Canonical identity
+- authoring source
+- Semantic / Query / Relation / Capabilityとの分離
+- Driverからの解決
 
-これはMilestone 1とMilestone 4の間をつなぐ優先度の高いGapです。
+残るGap:
+
+- 複数Applicationでの再利用
+- 第一Target / 第二Targetでの圧力試験
+- 5分類のうち何を標準知識へ持ち上げるべきかのEvidence
+
+現時点で5分類をTEI全体の永久的な標準Catalogにはしません。
 
 ---
 
@@ -361,36 +357,39 @@ Pattern単体を抽象設計するより、v1 Reference Application内で複数P
 
 **評価: Design Only**
 
-### 現状
+成立している方針:
 
-README / overviewでは、AIがDomain Component → Pattern → Policy → Composition → Capability → Custom Implementationの順に探索する方針を明示しています。
+- AIはProposal / authoring candidateを生成する
+- Canonical authorityとは分離する
+- shared Acceptance Boundaryを通す
+- Derived Experience Knowledgeを第二の正本にしない
 
-しかし、検索対象となるDomain Component / Pattern / Policy自体がまだ十分に実装されておらず、AIがRepository上の知識を実際に探索するprotocolもありません。
+残るGap:
 
-### 次の作業
+- AIが検索する価値のあるDomain Component / Pattern / Policy資産
+- 知識探索protocol
+- 実Reference
 
-先にRQ-014の再利用可能Patternを成立させます。その後、その資産をAIが探索する最小Referenceを作ります。
+AI実装より先に、再利用可能な意味知識を増やします。
 
 ---
 
 ## RQ-016 AIによる確認提案は控えめで、履歴を持つこと
 
-**評価: Not Started**
+**評価: Design Only**
 
-### 現状
+Requirement /設計上は次を重視しています。
 
-次のUXはProduct Requirementとして定義されていますが、対応するdomain modelやReferenceはまだありません。
+- 既回答を再質問しない
+- 提案を無視できる
+- 同種提案を抑制できる
+- autonomyとauthorityを分離する
+- Decision / Proposal historyを第二のCanonicalにしない
 
-- 一度回答した質問を繰り返さない
-- 選択と理由を追跡する
-- 後から変更する
-- 提案を無視する
-- 提案カテゴリを抑制 / OFFする
-- AI提案と採用済み判断を区別する
+残るGap:
 
-### 次の作業
-
-AIの会話UIを先に作るのではなく、Decision / Suggestion / Resolution / Suppressionの最小意味モデルが必要かを、Editor vertical slice上で検討します。
+- Decision / Suggestion / Resolution / Suppressionの最小モデル
+- Editor上の実体験
 
 ---
 
@@ -398,19 +397,17 @@ AIの会話UIを先に作るのではなく、Decision / Suggestion / Resolution
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
-- Canonical WorldとSource Indexを分離しつつdeterministicに再生成
-- World / Plugin Lock / Durable Run fixtureの再生成一致
-- native SQLをsource of truthとしてQuery IRをderivedにする
-- Desired Physical SchemaをPersistence Mappingから導出
-- actual stateを観測から再生成
+- Canonical WorldとSource Indexの分離
+- generated artifactのdeterministic regeneration
+- native SQLをauthoritative sourceとして扱う
+- Desired / Actualの導出
+- Gate B generated artifact check-only Evidence
 
-### 残るGap
+残るGap:
 
-設計者がEditorで選んだMappingやAIとの確認結果を、どのように一度だけauthoritativeに保持し、複数Projectionへ再利用するかは未実証です。
-
-RQ-016のdecision historyと合わせて検討します。
+- Editor / AIで一度決めた内容を複数Projectionへ再利用するE2E
 
 ---
 
@@ -418,16 +415,15 @@ RQ-016のdecision historyと合わせて検討します。
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
-- Durable Deployment Run
-- explicit Executor / Observation / Evidence routing
-- evidence gate
-- canary / traffic shift / drain / retire
-- command acknowledgementだけで完了にしない
-- Database actual introspection
+- ADR-0023
+- Business Result / Execution Errorの分離
+- Command後のObservationをseparate explicit readとするDriver境界
+- 最終UI-less Scenario
+- Deployment / Runtime側のObservation / Evidence境界
 
-このRequirementはTEIの現行実装で最も強く実証されている領域の一つです。
+Command acknowledgementをObserved stateへ変換しません。
 
 ---
 
@@ -435,18 +431,16 @@ RQ-016のdecision historyと合わせて検討します。
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
 - explicit Permission Grant
-- Resource Broker
+- Resource Broker / Lease
 - secret / network / filesystem logical binding
-- Resource Lease
 - Sandbox Profile
 - artifact verification
-- Host-side Lease Supervisor
-- Durable RecordへHost materialを漏らさないConformance
+- Host materialをDurable Recordへ漏らさない境界
 
-production-grade sandbox自体は未実装ですが、Requirementが求める権限・Resource境界の基礎は強く検証されています。
+production-grade sandboxは別課題ですが、Product Requirementの意味境界は強く検証されています。
 
 ---
 
@@ -454,17 +448,14 @@ production-grade sandbox自体は未実装ですが、Requirementが求める権
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
 - Supervisor Ownership / heartbeat
-- monotonic fencing
+- fencing
 - Durable Invocation Handle
-- runtime observe / reattach
-- missing時のno-auto-replay
-- unknownをunresolvedのまま保持
-- Supervisor generationとruntime-confirmed generationの分離
-
-production-grade distributed ownership storeは未実装ですが、意味境界はConformanceで明確です。
+- observe / reattach
+- no-auto-replay
+- unknownをunknownのまま保持
 
 ---
 
@@ -472,19 +463,16 @@ production-grade distributed ownership storeは未実装ですが、意味境界
 
 **評価: Strong Evidence**
 
-### Evidence
+主なEvidence:
 
 - Reference Workspace
-- golden World
-- Plugin Lock
-- observed state fixture
-- Durable Run fixture
-- M0.22.1〜M0.32のConformance文書
-- actual process Reference
-- actual PostgreSQL CI
-- deterministic regeneration
+- golden World / Plugin Lock / Durable Run
+- Conformance tests
+- source-fixed Evidence runner
+- generated artifact check-only runner
+- actual Provider向けEvidence tool
 
-TEIの開発方法そのものとして既に定着しているRequirementです。
+Gate Bの未実行Evidenceは残っていますが、Reference / Conformanceを基準に開発する方法自体は定着しています。
 
 ---
 
@@ -492,15 +480,9 @@ TEIの開発方法そのものとして既に定着しているRequirementです
 
 **評価: Strong Evidence**
 
-### Evidence
+README / status /各Evidence文書で、architecture probe、実装済み境界、実行済みEvidence、production-readyを区別しています。
 
-READMEと`docs/status.md`は、現在がarchitecture probe / research implementationであり、完成Editor、production Runtime、HA等を提供していないことを明示しています。
-
-個別Conformance文書も、確認できた範囲とproduction-readyを意味しない範囲を分けています。
-
-### 残るGap
-
-今後v1へ近づくにつれ、機能単位でExperimental / Preview / Supported等の互換性レベルを設ける必要が出る可能性があります。
+今後v1へ近づく段階では、Experimental / Preview / Supported等の互換性レベルが必要かを検討します。
 
 ---
 
@@ -508,36 +490,38 @@ READMEと`docs/status.md`は、現在がarchitecture probe / research implementa
 
 **評価: Partial Evidence**
 
-### Evidence
+主なEvidence:
 
-- 単一Repository内にCore、Provider、Reference、Docs、CIを保持
-- package境界でApplication / Database / Plugin等を分離
-- ReferenceをcloneしたRepositoryだけから再現可能
-- ADR / Issue / Conformanceに判断を残す開発方法
+- 単一Repository
+- package境界
+- ADR / Issue / Referenceによる判断履歴
+- Go中心の基本技術スタック
+- Provider / Target / Host固有差の分離
 
-### 残るGap
+残るGap:
 
-これは機能Conformanceだけでは測りにくい要求です。
+- Editor / Target Adapter / AI支援が増えた後の保守負担
+- Evidence toolや計画文書の増加による運用コスト
 
-今後Editor、Target Adapter、AI支援が増えたときに、package / repository分割がmaintainer負担を増やしていないかを定期的に監査する必要があります。
+同じ意味の文書やEvidence toolを増やしすぎないこと自体を継続監査します。
 
 ---
 
 ## RQ-024 性能要求をTargetごとに検証可能にすること
 
-**評価: Not Started**
+**評価: Design Only**
 
-### 現状
+方針:
 
-現行CIは正しさと再現性を中心としており、Application / Targetごとの性能contractはありません。
+- Targetごとに代表Scenarioと測定対象を定める
+- 根拠のない共通数値を先に固定しない
+- 第一Targetと第二Targetの差から性能contractの置き場所を決める
 
-process Pluginのbounded stdout等、安全上のlimitはありますが、これは利用者向け応答性能とは別です。
+残るGap:
 
-### 次の作業
-
-Target-neutral Presentation / Driverが成立してから、Targetごとに測定対象と代表シナリオを定義します。
-
-根拠のない共通数値を先に固定しません。
+- 実Target
+- 性能計測
+- Target別contract
 
 ---
 
@@ -561,89 +545,109 @@ Target-neutral Presentation / Driverが成立してから、Targetごとに測�
 - RQ-005 Application ↔ Database N:M
 - RQ-007 Provider boundary
 - RQ-008 Capability substitution
+- RQ-009 Legacy authentication / authorization compatibility
 - RQ-011 Projection
+- RQ-012 Driver
+- RQ-014 Application Pattern
 - RQ-017 二重管理の削減
 - RQ-023 maintainability
 
 ## Design Only
 
-- RQ-015 AI knowledge-first workflow
-
-## Not Started
-
-- RQ-009 Legacy authentication / authorization compatibility
 - RQ-010 Editor
-- RQ-012 Driver
-- RQ-013 Target-neutral Presentation
-- RQ-014 Application Pattern
+- RQ-013 Target-neutral Presentation / Interaction
+- RQ-015 AI knowledge-first workflow
 - RQ-016 AI suggestion / decision UX
 - RQ-024 Target performance contract
 
-# KJ法によるGapの再統合
+## Not Started
 
-個別RQの未実装をそのまま24本の作業へ分けると、Productとしてのまとまりを失います。
+現時点では、Requirement全体が完全な`Not Started`に留まる項目はありません。
 
-未実証領域を意味の近さから束ねると、次の4つの島になります。
+ただしDesign Onlyの領域はReference実証がまだないため、実装済みと読み替えません。
 
-## 島A: Applicationを現実の業務へ接続する
+# Product Gapの再統合
 
-- RQ-004 Native asset
-- RQ-005 multi-DB Application
-- RQ-008 Capability substitution
-- RQ-009 Legacy authentication
-- RQ-014 Application Pattern
+個別RQを24本の独立作業として並べるのではなく、Productとして意味の近い課題へ束ねます。
 
-中心課題は、**現在のCore / Database / Capability資産を、現実の一つの業務Applicationとして成立させること**です。
+## A. Gate BをEvidenceで閉じる
 
-## 島B: 設計を動かし、Targetへ出す
+対象:
 
-- RQ-011 Projection
-- RQ-012 Driver
-- RQ-013 Target-neutral Presentation
-- RQ-024 Performance
+- RQ-005
+- RQ-009
+- RQ-012
+- RQ-014
+- RQ-021
 
-中心課題は、**Canonical meaningを静的モデルのままにせず、設計中に動かし、実TargetへProjectionすること**です。
+Application / Driverの意味設計は大きく進みました。ここで新しい抽象を増やすより、成立済み境界を通常Go runner、generated artifact、real PostgreSQL等のEvidenceで確認することを優先します。
 
-## 島C: 厳格さを人の負担へ転嫁しない
+外部Oracle等、実環境情報がなければ進められない個別Provider作業は、必要条件が揃うまで保留できます。特定Providerの詳細だけでProduct全体の学習を止めるかどうかは、Gateの目的に照らして別途監査します。
 
-- RQ-010 Editor
-- RQ-016 AI suggestion / decision UX
-- RQ-017 二重管理の削減
+## B. Canonical meaningを第一Targetへ出す
 
-中心課題は、**厳格な意味モデルを、人が日常的に扱える開発体験へ変換すること**です。
+対象:
 
-## 島D: 再利用知識をAIが探索する
+- RQ-011
+- RQ-013
+- RQ-024
 
-- RQ-014 Application Pattern
-- RQ-015 AI knowledge-first workflow
-- RQ-016 AI suggestion UX
+第一Web Targetでは、Application上の意味をWeb固有コードで補わずProjectionできるかを確認します。
 
-中心課題は、**AIが検索する価値のある業務知識を先に作り、その後AIを載せること**です。
+ここで初めて、Target-neutral Presentation候補、Target Capability、Execution / Trust差、Visual / Functional Evidenceの実データが得られます。
 
-# 優先順位
+## C. 厳格さを開発者の負担へ転嫁しない
 
-監査結果から、M0.32以降の優先順位を次のように更新します。
+対象:
 
-1. **Application vertical sliceの具体化**
-2. **既存認証Compatibility Reference**
-3. **standard Application Patternの抽出**
-4. **Driverの最小vertical slice**
-5. **第一TargetへのPresentation Projection**
-6. **Editorの最小高密度Projection**
-7. **Decision / Suggestion履歴を含むAI支援UX**
-8. **第二TargetでTarget-neutral境界を圧力試験**
-9. **Target別performance contract**
+- RQ-010
+- RQ-011
+- RQ-016
+- RQ-017
+- RQ-023
 
-Database / Providerの既存Issueは継続しますが、他workstreamを塞いでいない深掘りについては、このProduct Gapと比較して着手順を判断します。
+EditorはCanonicalを所有せず、同じReferenceを高密度に見て編集するProjectionとして実証します。
+
+## D. 再利用可能な業務知識を育てる
+
+対象:
+
+- RQ-001の残差
+- RQ-004
+- RQ-008
+- RQ-014
+- RQ-015
+
+一つのApplicationで便利だった分類をすぐ標準知識へ昇格させず、複数Application / TargetのEvidenceからDomain Component / Pattern / Policy等の再利用単位を抽出します。
+
+AIはその後に載せます。
+
+# 現在の優先順位
+
+2026-09-04時点では、次の順でProduct上の不確実性を減らします。
+
+1. **Gate Bのうち外部Oracleに依存しないEvidenceを先に取得する**
+   - #310 deterministic Repository
+   - #255 generated artifact reproducibility
+   - #308 real PostgreSQL Provider
+2. **actual external OracleをGate B必須blockerとする妥当性を、Gate B本来の目的から再監査する**
+3. **Gate B Ready条件が満たされたらHandover Baselineを固定する**
+4. **第一Web Targetへ同じApplication / Driver meaningをProjectionする**
+5. **Gate CでSemantic / Functional / Visual Evidenceを分離して取得する**
+6. **第一Targetで見えた実差分から最小Editor / Target-neutral候補を設計する**
+7. **第二TargetでTarget-neutral境界を圧力試験する**
+8. **複数Referenceから再利用可能な業務知識を抽出する**
+9. **その知識を探索・提案するAI支援を実証する**
+10. **Target別performance contractをEvidenceから定める**
+
+Provider / Databaseの既存作業は必要な範囲で継続しますが、他workstreamよりEvidenceが深い領域の追加深掘りは、上記Product Gapと比較して着手順を判断します。
 
 # 結論
 
-M0.32までのTEIは、**意味を失わず、実装・実行・観測へ追跡可能につなぐための下部構造**について、想定以上に強い基礎を持っています。
+TEIは、意味を失わずsource・実装・実行・観測へつなぐ下部構造だけを作っている段階から、すでに一歩進んでいます。
 
-次に必要なのは、DatabaseやRuntimeの境界をさらに細かくすることだけではありません。
+Application Pattern、既存認証Compatibility、Application Driverの主要Scenarioは実証が進み、旧Gap Auditの「Not Started」という評価は現状を表さなくなりました。
 
-その基礎を使って、
+次に大きく不確実性を減らすのは、特定Database Providerの詳細をさらに深掘りすることではありません。
 
-**現実の業務Applicationを組み、設計中に動かし、Targetへ出し、人とAIが無理なく編集できるか**
-
-を確かめる段階へ移ることが、Product Valueから見て最も大きな不確実性を減らします。
+**成立したApplication / Driverの意味をEvidenceで閉じ、第一Targetへ出し、開発者が扱えるProjectionへ育て、その後に再利用知識とAIへ進むこと**が、現在のProduct主線です。
