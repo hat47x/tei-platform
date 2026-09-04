@@ -7,41 +7,78 @@ import (
 )
 
 func TestValidateDedicatedFixtureDatabaseAcceptsNamedEmptyDatabase(t *testing.T) {
-	if err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", 0); err != nil {
+	if err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", 0, 0); err != nil {
 		t.Fatalf("専用空Databaseを拒否しました: %v", err)
 	}
 }
 
 func TestValidateDedicatedFixtureDatabaseRejectsDefaultPostgresDatabase(t *testing.T) {
-	err := validateDedicatedFixtureDatabase("postgres", 0)
+	err := validateDedicatedFixtureDatabase("postgres", 0, 0)
 	if err == nil || !strings.Contains(err.Error(), "既定Database") {
 		t.Fatalf("postgres既定DatabaseをEvidence fixture先として受け入れています: %v", err)
 	}
 }
 
 func TestValidateDedicatedFixtureDatabaseRejectsExistingUserRelations(t *testing.T) {
-	err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", 1)
+	err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", 1, 0)
 	if err == nil || !strings.Contains(err.Error(), "既存user relation") {
 		t.Fatalf("既存user relationのあるDatabaseを空DBとして受け入れています: %v", err)
 	}
 }
 
+func TestValidateDedicatedFixtureDatabaseRejectsEventTriggers(t *testing.T) {
+	err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", 0, 1)
+	if err == nil || !strings.Contains(err.Error(), "Event Trigger") {
+		t.Fatalf("Event TriggerのあるDatabaseをDDL fixture先として受け入れています: %v", err)
+	}
+}
+
+func TestValidateDedicatedFixtureDatabaseRejectsInvalidCounts(t *testing.T) {
+	cases := []struct {
+		name          string
+		userRelations int
+		eventTriggers int
+	}{
+		{name: "negative user relation count", userRelations: -1, eventTriggers: 0},
+		{name: "negative event trigger count", userRelations: 0, eventTriggers: -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateDedicatedFixtureDatabase("tei_gate_b_evidence", tc.userRelations, tc.eventTriggers); err == nil {
+				t.Fatalf("不正な安全判定件数を受け入れています: userRelations=%d eventTriggers=%d", tc.userRelations, tc.eventTriggers)
+			}
+		})
+	}
+}
+
 func TestValidateDedicatedFixtureDatabaseRejectsEmptyIdentity(t *testing.T) {
-	err := validateDedicatedFixtureDatabase("   ", 0)
+	err := validateDedicatedFixtureDatabase("   ", 0, 0)
 	if err == nil || !strings.Contains(err.Error(), "identityが空") {
 		t.Fatalf("identity不明のDatabaseを受け入れています: %v", err)
 	}
 }
 
-func TestValidateFixtureDatabaseRestoredRequiresZeroUserRelations(t *testing.T) {
-	if err := validateFixtureDatabaseRestored(0); err != nil {
-		t.Fatalf("user relation 0件へ復元したDatabaseを拒否しました: %v", err)
+func TestValidateFixtureDatabaseRestoredRequiresZeroUserRelationsAndEventTriggers(t *testing.T) {
+	if err := validateFixtureDatabaseRestored(0, 0); err != nil {
+		t.Fatalf("user relation / Event Triggerが0件へ復元したDatabaseを拒否しました: %v", err)
 	}
 
-	for _, got := range []int{-1, 1, 2} {
-		if err := validateFixtureDatabaseRestored(got); err == nil {
-			t.Fatalf("終了時user relation=%dを復元済みとして受け入れています", got)
-		}
+	cases := []struct {
+		name          string
+		userRelations int
+		eventTriggers int
+	}{
+		{name: "negative user relation count", userRelations: -1, eventTriggers: 0},
+		{name: "user relation remains", userRelations: 1, eventTriggers: 0},
+		{name: "negative event trigger count", userRelations: 0, eventTriggers: -1},
+		{name: "event trigger remains", userRelations: 0, eventTriggers: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateFixtureDatabaseRestored(tc.userRelations, tc.eventTriggers); err == nil {
+				t.Fatalf("終了状態を復元済みとして受け入れています: userRelations=%d eventTriggers=%d", tc.userRelations, tc.eventTriggers)
+			}
+		})
 	}
 }
 
@@ -52,6 +89,7 @@ func TestFixtureDatabaseSafetyEvidencePersistsAssertionsWithoutDatabaseIdentity(
 		DatabaseIdentityPersisted:       false,
 		NonDefaultDatabaseVerified:      true,
 		UserRelationsBeforeFixture:      0,
+		EventTriggersBeforeFixture:      0,
 		FixtureObjectAbsentBeforeCreate: true,
 	}
 	encoded, err := json.Marshal(got)
@@ -65,6 +103,7 @@ func TestFixtureDatabaseSafetyEvidencePersistsAssertionsWithoutDatabaseIdentity(
 		`"databaseIdentityPersisted":false`,
 		`"nonDefaultDatabaseVerified":true`,
 		`"userRelationsBeforeFixture":0`,
+		`"eventTriggersBeforeFixture":0`,
 		`"fixtureObjectAbsentBeforeCreate":true`,
 	} {
 		if !strings.Contains(text, want) {
@@ -82,6 +121,7 @@ func TestFixtureCleanupSafetyEvidencePersistsRestoredStateWithoutDatabaseIdentit
 	got := fixtureCleanupSafetyEvidence{
 		Verified:                        true,
 		UserRelationsAfterCleanup:       0,
+		EventTriggersAfterCleanup:       0,
 		FixtureObjectAbsentAfterCleanup: true,
 	}
 	encoded, err := json.Marshal(got)
@@ -92,6 +132,7 @@ func TestFixtureCleanupSafetyEvidencePersistsRestoredStateWithoutDatabaseIdentit
 	for _, want := range []string{
 		`"verified":true`,
 		`"userRelationsAfterCleanup":0`,
+		`"eventTriggersAfterCleanup":0`,
 		`"fixtureObjectAbsentAfterCleanup":true`,
 	} {
 		if !strings.Contains(text, want) {
