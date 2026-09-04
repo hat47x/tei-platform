@@ -6,67 +6,40 @@
 
 ## 目的
 
-Gate B「UIなしで主要Scenarioを再現できる」を、個別IssueやPRのclose状態ではなく、現在のReference / Conformance / 実行Evidenceから監査します。
+Gate B「UIなしで主要Scenarioを再現できる」を、IssueやPRのclose数ではなく、現在のReference / Conformance / 実行Evidenceから判定します。
 
 Gate Bの目的は、第一Web Targetへ進む前に、Application上の不足をWeb固有コードで補わずに済む状態を確認することです。
 
-実装済み境界、synthetic Evidence、未取得の外部Evidence、生成物再現性、通常runner検証を分けて扱います。
+Evidence取得の具体的な手順は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)を参照します。
 
 ## 結論
 
-Application Driverの意味境界と主要runtime接続は大きく成立しました。
+Application Driverの主要な意味境界とScenario構造は成立しています。
 
-PR #281では、同じ`order_entry` Application定義と同じSemantic Order rowを使い、次の主要境界を一つのtest-local UI-less Scenarioへ接続しています。
+PR #285で、Contract Query、header-detail、Relation Storage、Observation、最終UI-less Scenario、Reference authoringを`main`へ収束しました。したがって、現在のGate B残件は「Driverの中心設計が未成立」という種類ではなく、**外部事実、実DB、生成物再現、通常runnerというEvidence取得**へ収束しています。
 
-```text
-Authentication
-  ↓ authenticated subject
-browse recent_orders
-  ↓ same Semantic Order row
-record order_record
-  ↓
-reference customer_reference
-  ↓ same customer_id
-header-detail order_lines
-  ↓ same order_id / returned OrderLine values
-Canonical Validation
-  ↓ satisfied
-Authorization
-  ↓ allowed
-sales.order.submit
-  ↓ same order_id / Command Business Result
---- separate operation ---
-explicit Observation read
-  ↓ same order_id / submitted
-```
+現在Gate Bを直接止めているのは次の四系統です。
 
-ここで重要なのは、`customer_id`や`order_id`を別名・物理列・FKから再推測せず、browseでSemantic mapping済みの同じrow identityを後続境界へ引き継いでいることです。またheader-detailで得たOrderLine値をValidation inputへ渡しています。
+1. external-observed `master_data`の実物理 / read-only Evidence
+2. `Order -> OrderLine[]`の実PostgreSQL Evidence
+3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
+4. 最終UI-less Scenarioの通常Go runner実行Evidence
 
-ただしPR #281はDatabase read、Command side effect、Observation readにsynthetic adapterを含む**構造統合Evidence**です。実Oracle / 実PostgreSQL / 実外部CommandのEvidenceや通常runner成功を代替しません。
+GitHub Actionsによる継続的な再検証は重要ですが、この四系統のProduct Evidenceと同一ではありません。Actions停止そのものを意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
 
-2026-09-04時点では次が残るため、Gate BをReadyとは判定しません。
-
-1. external-observed `master_data`の実物理Evidenceが未確定で、`Order -> Customer`を実readまで通せない
-2. `Order -> OrderLine[]`の実PostgreSQL Evidence toolはあるが、実接続成功をまだ取得していない
-3. Reference World / Plugin Lock / 依存Durable Run等を最新Canonical Workspaceから正規再生成・確認していない
-4. PR #281を通常Go runnerで実行・成功確認できていない
-5. GitHub Actionsは明示停止中であり、通常runner再検証は保留されている
-
-残件は「Driver設計未成立」ではなく、**外部事実、実DB Evidence、生成物再現性、Scenario実行Evidence、通常runner検証**へ収束しています。
-
-## 現在までに成立している領域
+## `main`で成立している基線
 
 ### Application Pattern / Canonical resolution
 
-Readyです。
+**Ready**です。
 
-`browse / record / reference / header-detail / command`を同じ`order_entry`から解決できます。
+`browse / record / reference / header-detail / command`を同じ`order_entry` ApplicationからCanonical identityで解決できます。
 
-5分類をTEI全体の永久的な標準語彙へ固定したとはみなしません。
+この5分類をTEI全体の永久的な標準語彙へ固定したとはみなしません。
 
 ### Capability Binding / Authentication / Authorization
 
-Readyです。
+**Ready**です。
 
 Application + Capability identityからBindingを明示解決し、Authentication / Authorization / Commandを同じInvocation境界から扱えます。
 
@@ -74,11 +47,11 @@ legacy schemaやreturn codeをDriver Coreへ逆流させません。
 
 ### browse / Query result mapping
 
-Readyです。
+**Ready**です。
 
 `order_entry.recent_orders`について、logical Datasource、native Query、provider-side parameter binding、raw result、明示的なSemantic result mappingまで接続しています。
 
-raw列名や列順からSemantic attributeを推測しません。
+raw列名、列順、Persistence MappingからSemantic attributeを推測しません。
 
 ### `Order -> Customer` reference
 
@@ -90,14 +63,15 @@ raw列名や列順からSemantic attributeを推測しません。
 - Reference Contract Query invocation
 - typed Contract Query signature
 - Contract Query SQL realization model
+- explicit input / result mapping
 - Environment / Database instance / executor Capability composition
 - instance-aware runtime Registry
 - Oracle向け最小`database/sql` Runner
 - 0件とExecution Errorを分離する契約
 
-PR #281でもbrowseのSemantic mapped rowから`sales.order.customer_id`を取り出し、Relation / invocation / `master_data.dev` / `database.query.oracle`という明示境界を通してCustomer resultへ接続します。
+一方、external-observed `master_data`の実際のtable / view / parameter / raw column / native SQL / provenanceは未観測です。
 
-ただしexternal-observed `master_data`の実際のtable / view / parameter / raw column / native SQL / provenanceはRepository上にありません。未観測のOracle物理情報をTEI側から作らないため、#214をGate Bの外部Evidence blockerとして維持します。
+未観測のOracle物理情報をTEI側から作らないため、#214を外部Evidence blockerとして維持します。read-onlyについても宣言だけではなく、credential / role / session / view / API等の実効的な強制境界をEvidenceとして確認します。
 
 ### `Order -> OrderLine[]` header-detail
 
@@ -116,25 +90,30 @@ PR #281でもbrowseのSemantic mapped rowから`sales.order.customer_id`を取�
 - 0件 / 複数件 / Execution Errorの区別
 - 実PostgreSQL Evidence tool
 
-PR #281でもbrowseの同じ`sales.order.order_id`をheader-detail Query inputへ引き継ぎます。
+実行入口は`tools/reference-postgres-header-detail-runtime`です。
 
-`tools/reference-postgres-header-detail-runtime`を実PostgreSQLへ接続し、複数件、0件、Execution Errorを実際に確認する作業が残っています。
+このtoolはfixture用`public.order_lines`を作成・削除するため、共有・業務DBではなく破棄可能な専用PostgreSQL databaseで実行します。
 
 ### Validation -> Authorization -> Command
 
-Readyです。
+**Ready**です。
 
-PR #265で、Validation `NotSatisfied`、Validation評価不能のExecution Error、Authorization `denied`、Command Business Resultを分離しています。
+次を区別できます。
 
-PR #281ではさらに、header-detailのSemantic OrderLine resultからValidation inputを構成し、Authenticationで得たsubjectをAuthorizationへ引き継ぎ、browseで選択した同じ`order_id`を`sales.order.submit`へ渡しています。
+- Validation `NotSatisfied`
+- Validation評価不能のExecution Error
+- Authorization `denied`
+- Command Business Result
 
-Command Business Resultだけを「外部状態変更を確認済み」とは扱いません。
+Validation不成立、評価不能、Authorization deniedではCommandへ進みません。
+
+最終Scenarioではheader-detailのSemantic OrderLine resultをValidation inputへ渡し、Authenticationで得たsubjectをAuthorizationへ、browseで選択した同じ`order_id`をCommandへ引き継ぎます。
 
 ### Command acknowledgement -> Observation
 
-**境界はReady、Evidenceはsyntheticです。**
+**Ready (synthetic Evidence)**です。
 
-ADR-0023とPR #275以降では、CommandとObservation readを別操作として扱います。
+ADR-0023に従い、CommandとObservation readを別操作として扱います。
 
 ```text
 sales.order.submit
@@ -148,85 +127,112 @@ explicit read boundary
 Observed state / Execution Error
 ```
 
-production Driverには`ExecuteObservationRead`の最小runtime境界があります。read identity、Evidence nature、read resultを保持し、runtime parameter値やcredentialは通常Evidenceへ持ち込みません。
+production Driverには`ExecuteObservationRead`の最小runtime境界があります。
 
-PR #281でもCommandとObservationを別操作にし、browseから引き継いだ同じ`order_id`のsynthetic stateをreadしています。
+- Observation対象をCommand payloadや名前から推測しない
+- read identity / Evidence nature / resultを保持する
+- runtime parameter値やcredentialを通常Evidenceへ保存しない
+- read成功と期待状態評価を分ける
+- Observation Execution ErrorをCommand Business Resultへ逆流させない
+- synthetic Evidenceを実外部Evidenceとして扱わない
 
-synthetic Evidenceを実外部状態のEvidenceとして扱いません。
+この境界は#266で完了し、PR #285で`main`へ統合済みです。
 
-## UI-less最終Scenario
+## 最終UI-less Scenario
 
-**構造統合はReady (synthetic)、実行確認はPending**です。
+**構造統合はReady (synthetic)、通常runner実行EvidenceはPending**です。
 
 正本は`internal/driver/final_gate_b_scenario_test.go`です。
 
-新しいproduction Workflow / Scenario engine / Evidence modelは導入していません。既存の次の境界をtest-localに接続しています。
+```text
+Authentication
+  ↓ authenticated subject
+browse recent_orders
+  ↓ same Semantic Order row
+record order_record
+  ↓
+reference Customer
+  ↓ same customer_id
+header-detail OrderLine[]
+  ↓ same order_id / returned OrderLine values
+Canonical Validation
+  ↓ satisfied
+Authorization
+  ↓ allowed
+sales.order.submit
+  ↓ same order_id / Command Business Result
+--- separate operation ---
+explicit Observation read
+  ↓ same order_id / submitted
+```
 
-- `InvokeCapability`
-- `ExecuteBrowseQuery`
-- `ResolvePattern`
-- `ExecuteReferenceContractQueryInEnvironment`
-- `ExecuteHeaderDetailContractQueryInEnvironment`
-- Canonical Validation evaluator
-- `ExecuteObservationRead`
+`customer_id`や`order_id`を別名・物理列・FKから再推測せず、browseでSemantic mapping済みの同じrow identityを後続境界へ引き継ぎます。
 
 record Patternは現行契約どおりSemantic Data解決までとし、未定義のedit runtimeやPersistence動作をtest都合で補いません。
 
-このScenarioで確認するのは**境界間の接続とidentity継承**です。次の代替にはしません。
+通常runnerでは次を実行します。
 
-- #214 external `master_data`実物理read / read-only Evidence
-- header-detail実PostgreSQL接続成功Evidence
-- #255 Reference artifact再生成
-- 実外部Command side effect / Observation Evidence
-- 通常runner / CI Evidence
+```bash
+go test ./internal/driver \
+  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$' \
+  -count=1
+```
 
-本チャットのローカル実行環境からGitHubをcheckoutしようとしましたが、GitHub hostを名前解決できずGo testを実行できませんでした。またGitHub Actionsも停止中です。したがって、PR #281のmergeをテストgreenとは扱いません。
+このScenarioはsynthetic adapterを含むため、成功しても実Oracle / 実PostgreSQL / 実外部Command Evidenceへ格上げしません。
 
 ## Reference生成物
 
-Gate Bではauthoritative sourceから同じCanonical meaningを再構成できる必要があります。
+**生成責務はReady、実再生成EvidenceはPending**です。
 
-#255ではReference artifact依存の監査まで進みました。
+主要な依存は次です。
 
-- `reference/world.json`: Canonical Workspaceからの生成golden
-- `reference/workspace/.tei/plugin-lock.json`: Canonical Workspaceからの生成golden
-- `reference/order_rollout.durable-run.m0.21.start.json`: Workspace + Plugin Lock + fixed observed fixtureから`tei deployment-start`で生成するgolden
-- `reference/observed/*`: external stateを模した固定fixtureであり、Canonical変更だけでは自動更新しない
+```text
+reference/workspace/
+  ├─> reference/world.json
+  └─> reference/workspace/.tei/plugin-lock.json
+          │
+          └─ Plugin Lock fingerprint
 
-PR #280では`reference-golden`へ、現在のPlugin Lockと保存済みDurable Runの`pluginLockFingerprint`依存stale検知を追加しました。Durable Runの生成責務は`tei deployment-start`へ残しています。
+reference/workspace/ + Plugin Lock + fixed observed fixture
+  └─> reference/order_rollout.durable-run.m0.21.start.json
+```
 
-ただしWorld / Plugin Lock / Durable Runの正規Go commandによる実再生成はまだ実行していません。
+`tools/reference-golden`はWorld / Plugin Lockの一致と、保存Durable RunのPlugin Lock fingerprint staleを検査できます。
 
-## CI / 通常runner
+更新は正規生成経路だけを利用します。
 
-GitHub Actionsは2026-09-03にRepositoryから明示的に停止されています。
+```bash
+go run ./tools/reference-golden
+```
 
-CI停止そのものをApplication意味の設計Gapとは扱いません。一方、通常runnerで再検証されていない状態をgreenとも扱いません。
+意図したauthoring変更に伴う更新時のみ:
 
-CI再開は別の明示判断に従い、この監査から独断で変更しません。
+```bash
+go run ./tools/reference-golden -write
+```
+
+Durable Runがstaleになった場合はfingerprintだけを手編集せず、`tei deployment-start`から出力全体を再生成します。
 
 ## Gate B条件別監査
 
 | 条件 | 状態 | 根拠 / 残件 |
 | --- | --- | --- |
-| 同じApplication定義から主要Scenarioを構成できる | Ready (synthetic structure) | PR #281。通常runner実行確認はPending |
-| 同じSemantic Order identityを後続境界へ引き継げる | Ready (synthetic structure) | PR #281でcustomer_id / order_idをreference / header-detail / command / observationへ接続 |
-| Pattern / Query / Relation / Datasource / Capability / Bindingを追跡できる | Ready | Driver / Source Index / 各Conformance |
-| browseをSemantic resultまで実行できる | Ready | 既存PostgreSQL raw result + explicit mapping Evidence |
-| referenceを実外部readまで実行できる | Blocked | #214 external `master_data`物理Evidence待ち |
-| header-detailの意味・storage・runtimeが成立 | Ready | PR #235〜#262、正本復元PR #274 |
-| header-detail実PostgreSQL Evidence | Pending | tool実行待ち |
-| Validation不成立時にCommandへ進まない | Ready | PR #265 |
-| Authorization denied時にCommandへ進まない | Ready | PR #265 |
-| Business ResultとExecution Errorを区別 | Ready | ADR-0020 / Driver Conformance |
-| Command acknowledgementとObservationを分離 | Ready (synthetic) | ADR-0023 / #266 / PR #275以降 |
+| 同じApplication定義から主要Scenarioを構成できる | Ready (synthetic structure) | 最終UI-less Scenario |
+| 同じSemantic Order identityを後続境界へ引き継げる | Ready (synthetic structure) | customer_id / order_idを明示継承 |
+| Pattern / Query / Relation / Datasource / Capability / Bindingを追跡できる | Ready | Driver / Source Index / Conformance |
+| browseをSemantic resultまで実行できる | Ready | explicit result mapping |
+| referenceを実外部readまで実行できる | Blocked | #214 external `master_data` Evidence待ち |
 | read-only `master_data`を実効的に保証 | Blocked | #214 |
-| secret / runtime parameterを通常Evidenceへ保存しない | Ready | 各runtime境界 |
-| 最新authoringからReference生成物を再現 | Pending | #255。依存監査/stale検知済み、実再生成待ち |
-| 最終Scenarioを一続きに構成 | Ready (synthetic structure) | PR #281 |
-| 最終Scenarioを通常Go runnerで実証 | Pending | 実行環境/CI待ち |
-| 通常runnerで関連Conformanceを再検証済み | Pending | CI再開判断待ち |
-| 第一Web Targetへ同じ意味を渡せる | Partial | Gate B external/runtime Evidence完成待ち |
+| header-detailの意味・storage・runtimeが成立 | Ready | Relation Storage / Contract Query runtime |
+| header-detail実PostgreSQL Evidence | Pending | 専用DBでtool実行待ち |
+| Validation不成立時にCommandへ進まない | Ready | Driver Conformance |
+| Authorization denied時にCommandへ進まない | Ready | Driver Conformance |
+| Business ResultとExecution Errorを区別 | Ready | ADR-0020 / Driver |
+| Command acknowledgementとObservationを分離 | Ready (synthetic) | ADR-0023 / `ExecuteObservationRead` |
+| secret / runtime parameterを通常Evidenceへ保存しない | Ready | runtime境界 |
+| 最新authoringからReference生成物を再現 | Pending | #255 / `reference-golden`実行待ち |
+| 最終Scenarioを通常Go runnerで実証 | Pending | runner実行待ち |
+| 第一Web Targetへ同じ意味を渡せる | Partial | A〜DのEvidence完成待ち |
 
 ## Gate Bを止めないもの
 
@@ -242,21 +248,25 @@ CI再開は別の明示判断に従い、この監査から独断で変更しま
 - physical Foreign Keyの自動生成
 - production HA / Connection Pool一般化
 - production向け汎用Observation schema
+- 特定のCIサービスが稼働していること
 
 ## 次の実行順
 
-1. #214でexternal `master_data`の物理Evidenceを得る
-2. `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで実行する
+Evidence取得は相互に独立して進められる部分を並走させます。
+
+1. #214でexternal `master_data`の実物理 / read-only Evidenceを得る
+2. `tools/reference-postgres-header-detail-runtime`を専用PostgreSQLで実行する
 3. #255でReference World / Plugin Lock / Durable Runを正規再生成する
-4. PR #281のUI-less ScenarioをGo runnerで実行する
-5. external / runtime / golden Evidenceを最終Gate B監査へ対応付ける
+4. 最終UI-less Scenarioを通常Go runnerで実行する
+5. A〜DのEvidenceを本監査へ対応付ける
 6. secret / read-only / 0件 / Execution Error / Observation期待不一致等のnegative caseを再監査する
-7. CIが別判断で再開された後、通常runnerで関連Conformanceを再実行する
-8. 本文書を更新し、Gate BをReady / Not Readyで再判定する
+7. Gate BをReady / Not Readyで再判定する
+
+GitHub Actionsが別判断で再開された場合は、同じConformanceを継続的なregression検知として再実行します。これは上記1〜7を置き換えるものではありません。
 
 ## Gate B Readyの定義
 
-Gate BはIssue close数ではなく、次をEvidenceから説明できるときReadyとします。
+Gate Bは、次をEvidenceから説明できるときReadyとします。
 
 - UIなしで主要Scenarioを一続きに再現できる
 - 同じ業務identityを重要境界間で明示的に継承できる
@@ -268,4 +278,4 @@ Gate BはIssue close数ではなく、次をEvidenceから説明できるときR
 - 最新authoringからCanonical / Reference artifactを再現できる
 - 第一Web Targetへ、Web側で意味を補わず同じbaselineを渡せる
 
-この条件が揃うまでは、第一Web Targetの実装着手条件を満たしたとは判定しません。
+この条件が揃うまでは、第一Web Targetの本格実装着手条件を満たしたとは判定しません。
