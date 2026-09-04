@@ -56,6 +56,8 @@ Gate Bでは性質の異なるEvidenceを相互代替しません。
 | C | `ISSUE-000025` / #255 | generated artifact reproducibility | **Ready to check** — clean normal Go environment待ち |
 | D | `ISSUE-000032` / #310 | deterministic repository | **Ready to run** — clean checkout / normal Go runner待ち |
 
+PR #342で`GATE_B_EVIDENCE_ACQUISITION.md`に残っていた旧3分類も、この4 Evidence natureへ同期しました。
+
 `ISSUE-000033` / #371はLane Aの具体driver / Host assemblyを確定する子Issueであり、第五Evidence laneではありません。
 
 取得結果は本Issueと`GATE_B_READINESS_AUDIT.md`で総合判定します。
@@ -115,6 +117,8 @@ accepted = true
 receiptへphysical object / parameter / raw columns / physical type / NULL情報 / provenance本文 / read-only mechanism本文 / Evidence path / credentialを複製しません。
 
 **acceptance receiptはactual Oracle read Evidenceではありません。**
+
+PR #343でRepository `ISSUE-000022`もこの契約へ同期し、PR #344でRunbookの実行順も更新しました。
 
 ### actual read時のdriver観測 — PR #364 / #366
 
@@ -239,6 +243,8 @@ fixtureをDROPしてmissing-table Execution Errorを確認した後、PostgreSQL
 
 終了時にuser relationまたはEvent Triggerが存在する場合、それがtool由来か他主体の並行変更かを推測せずfail closedします。
 
+PR #338で`ISSUE-000031`をsource固定境界へ同期し、PR #341でcleanup確認まで正本・READMEへ反映しました。PR #344でRunbookも現在手順へ同期済みです。PR #365 / #369ではEvent Triggerを含むfixture前後安全境界へ更新しています。
+
 残るものは**Evidence専用空PostgreSQL Databaseでのactual run**です。実装存在をProvider成功Evidenceとは扱いません。
 
 ## Lane C — generated artifact reproducibility / ISSUE-000025 / #255
@@ -249,6 +255,10 @@ fixtureをDROPしてmissing-table Execution Errorを確認した後、PostgreSQL
 
 - `tools/reference-golden`: World / Plugin Lock check/write + Durable Run Plugin Lock依存check
 - `tools/reference-durable-run-golden`: Durable Run全体の正規生成・完全一致check / safe write
+
+Durable Run toolは、Workspace Validation、exact Solution Release、fixed observed deployment state Validation、`releaseplan.CompileWithDeployment`、`pluginruntime.BuildPlan`、Plugin Lock / Runtime Policy fingerprint、`deploymentdurable.StartWithRuntimePolicy`を通る正規internal API経路を利用します。
+
+PR #326では不正Solution Canonical IDをpanicではなく通常errorでfail closedするようにしました。
 
 PR #367以降、World / Plugin Lockの修復writeも既存goldenを先にtruncateせず、同一directoryの一時fileへ全量write / Sync / Close後にRenameするsafe replaceへ揃っています。
 
@@ -271,6 +281,8 @@ runnerは`-write`を呼ばず、一つのrunで次を確認します。
 PR #336以降、Repository source観測は#310 / #308と同じtool-only境界を利用します。
 
 ### 修復とEvidenceを分離する
+
+`-write`はstaleなgenerated artifactを正規状態へ戻す**修復操作**です。`-write`直後のdirty treeでcheckが成功してもGate B完了Evidenceにはしません。
 
 staleだった場合:
 
@@ -324,6 +336,8 @@ PR #336以降、source状態観測は#255 / #308と同じtool-only packageを利
 PR #346でそのsource固定境界自体のpure Conformanceをtargeted Evidenceへ直接追加しましたが、PRの存在自体を#310成功Evidenceとは扱いません。
 
 PR #351以降、開始時working treeがcleanでも、post-run確認が終わるまでは`reproducibleRevision=false`を維持します。Go toolchain取得、Workspace Load / Validation、targeted test等の途中で失敗したJSONを、再現可能な成功Evidenceへ誤読しません。
+
+この意味はPR #353で`ISSUE-000032`にも同期済みです。
 
 Test自体が成功してもsource revisionが実行中に変わったrun、実行後にtracked / untracked差分が残ったrun、診断用`-allow-dirty` runはGate B完了Evidenceへ採用しません。
 
@@ -422,6 +436,7 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [x] 最終UI-less Scenarioの構造を同じReference World上で接続した
 - [x] external Evidence intake boundaryを実装した
 - [x] #214 acceptanceをsource-fixed receipt化した（PR #340）
+- [x] #214 Repository正本をreceipt後へ同期した（PR #343）
 - [x] #214 actual-read観測metadata保持境界を追加した（PR #364 / #366）
 - [x] actual Oracle driver integrationを`ISSUE-000033` / #371へ分離した（PR #372）
 - [x] keyless Relation Storage実装を#244でCompletedへ収束した
@@ -438,7 +453,10 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [x] #310 / #255 / #308のsource観測をtool-only共有境界へ収束した（PR #336）
 - [x] #310 targeted runnerへsource境界Conformanceを追加した（PR #346）
 - [x] #310の早期失敗で`reproducibleRevision=true`にならない境界を追加した（PR #351）
-- [x] Evidence Acquisitionを4 Evidence natureと直近安全境界へ同期した（PR #342 / #375）
+- [x] #310 Repository正本をPR #351後へ同期した（PR #353）
+- [x] Evidence Acquisitionを4 Evidence natureへ同期した（PR #342）
+- [x] Evidence Acquisitionを直近安全境界へ同期した（PR #375）
+- [x] Runbookを#214 receipt / #308 cleanup後へ同期した（PR #344）
 - [x] Runbookを#214 metadata / #308 Event Trigger / #255 safe replace後へ同期した（PR #369）
 - [x] Gate B→C Handover契約を定義した（#291）
 - [x] 4 laneの最終Evidenceを単一revisionへ揃える契約を定義した（PR #354）
