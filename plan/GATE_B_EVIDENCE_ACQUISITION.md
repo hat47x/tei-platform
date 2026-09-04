@@ -80,6 +80,8 @@ Rと異なるrevisionでしか成功していないlaneは、「意味は変わ�
 
 PR #288 / #300 / #306でEvidence intake boundaryとCanonical Workspace Validation fail-closedが成立しました。PR #340で、その受入れをclean Repository revisionへ固定し、**どのexternal Evidence artifactを照合したか**を機械可読なacceptance receiptへ残す境界も成立しています。
 
+PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。これは外部物理事実を取得済みという意味ではなく、actual readで観測した情報をSemantic mapping後に失わないためのruntime境界です。
+
 一方、第一Referenceで利用する実Oracle物理事実そのものはまだ未取得です。
 
 ### 必要な入力
@@ -135,6 +137,23 @@ acceptance receiptへphysical object、parameter、raw columns、provenance本�
 
 receiptの成功は**external Evidence artifactと明示authoringの受入照合**だけを証明します。actual Oracle read、実効read-only principal、Semantic Customerの実取得を証明しません。
 
+### actual read時のdriver観測
+
+PR #364 / #366以降、actual Oracle read時には次の非secret情報をOracle Runner固有Payloadから追跡できます。
+
+- 実際に`database/sql`へ渡したnamed parameterの名前
+- Databaseから実際に返されたraw result列名
+- driverが提供できた場合の`databaseTypeName`
+- driverが提供できた場合の`nullable`
+- driverが提供できた場合の`length`
+- driverが提供できた場合の`precision` / `scale`
+
+`database/sql.ColumnType`が提供しないmetadataをfalseや0へ補完しません。Go側の`ScanType`はexternal Oracleのphysical typeそのものではないため通常Evidenceへ保存せず、raw row値もOracle固有Payloadへ複製しません。
+
+このruntime metadataは、provenance付きexternal Evidenceの`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。外部観測事実とactual read時のdriver挙動を対応付ける材料です。
+
+実Oracle / 採用driverを観測する前に、external Evidenceの`PhysicalType`とdriverの`DatabaseTypeName`が同じ文字列表現になると仮定せず、自動文字列一致規則を先行固定しません。
+
 ### 完了候補
 
 少なくとも次を説明・再現できることを求めます。
@@ -142,6 +161,8 @@ receiptの成功は**external Evidence artifactと明示authoringの受入照合
 - 実Oracle物理情報が観測sourceへ追跡できる
 - 受入れたEvidence artifactをexact-bytes fingerprintで特定できる
 - acceptance receiptを同じclean Repository revisionへ固定できる
+- actual readで返ったraw result列名と、driverが提供できたmetadataを観測できる
+- driverが提供していない型 / NULL metadataを推測していない
 - 1件取得をSemantic Customerまで明示mappingできる
 - 0件を正常なnot-foundとして保持できる
 - 実行失敗をExecution Errorとして保持できる
@@ -182,7 +203,7 @@ PR #355以降、post-runの`Checked = true`は、実行後repository revisionと
 
 ### fixture作成前の安全境界
 
-PR #294 / #300 / #306 / #324 / #335で、安全境界を段階的に強化しています。
+PR #294 / #300 / #306 / #324 / #335 / #365で、安全境界を段階的に強化しています。
 
 Evidence toolはfixture作成前に次を確認します。
 
@@ -201,6 +222,8 @@ postgres / template0 / template1なら停止
   ↓
 system / temporary領域を除くuser relation件数確認
   ↓ 1件以上なら停止
+Event Trigger件数確認
+  ↓ 1件以上なら停止
 public.order_lines既存確認
   ↓ 既存なら停止
 tool-owned fixture
@@ -208,11 +231,13 @@ tool-owned fixture
 runtime Evidence
 ```
 
-既存relationを削除してEvidence用Databaseへ転用する処理や、既定Databaseで続行するoverrideは持ちません。
+Event Triggerはuser relationとは別にDatabase単位で存在でき、fixtureの`CREATE TABLE` / `DROP TABLE`等のDDLへ介入し得るため、disabledを含め1件でも存在すれば停止します。
+
+既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用する処理や、既定Databaseで続行するoverrideは持ちません。
 
 このguardを通過したことだけでEvidence専用Databaseという運用意図を推測せず、実行先はEvidence専用に作成した空PostgreSQL Databaseへ限定します。
 
-PR #335以降、fixture作成前に観測した安全条件を`fixtureDatabaseSafety`として非機密metadataだけEvidenceへ残します。
+PR #335 / #365以降、fixture作成前に観測した安全条件を`fixtureDatabaseSafety`として非機密metadataだけEvidenceへ残します。
 
 少なくとも次を確認します。
 
@@ -220,19 +245,21 @@ PR #335以降、fixture作成前に観測した安全条件を`fixtureDatabaseSa
 - 実Database名はEvidenceへ保存しない
 - PostgreSQL既定Databaseではない
 - fixture前のuser relationが0件
+- fixture前のEvent Triggerが0件
 - `public.order_lines`がfixture前に存在しない
 
 ### cleanup後の安全境界
 
-PR #341で、Provider runtimeの2件 / 0件確認、tool-owned fixture削除、missing-table Execution Error確認の後にPostgreSQL catalogを再観測し、**接続先を空状態へ戻せたこと**まで成功Evidenceの条件にしました。
+PR #341で、Provider runtimeの2件 / 0件確認、tool-owned fixture削除、missing-table Execution Error確認の後にPostgreSQL catalogを再観測し、**接続先を空状態へ戻せたこと**まで成功Evidenceの条件にしました。PR #365以降はEvent Trigger件数も再観測します。
 
 `fixtureCleanupSafety`で少なくとも次を確認します。
 
 - `verified = true`
 - system / temporary領域を除くuser relationが0件へ戻った
+- Event Triggerが0件である
 - `public.order_lines`が存在しない
 
-終了時にuser relationが1件でも残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。cleanup EvidenceにもDatabase名、DSN、credentialは保存しません。
+終了時にuser relationまたはEvent Triggerが1件でも存在する場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。cleanup EvidenceにもDatabase名、DSN、credential、Event Trigger名や定義本文は保存しません。
 
 ### 証明対象
 
@@ -248,8 +275,8 @@ PR #341で、Provider runtimeの2件 / 0件確認、tool-owned fixture削除、m
 - Database instance = `sales_core.dev`
 - executor Capability = `database.query.postgres`
 - `evidenceNature = real-postgres-ephemeral-fixture`
-- fixture作成前の安全状態を非機密metadataとして確認できる
-- cleanup後にuser relation 0件 / fixture object不在へ戻ったことを確認できる
+- fixture作成前にuser relation 0件 / Event Trigger 0件 / fixture object不在を確認できる
+- cleanup後にuser relation 0件 / Event Trigger 0件 / fixture object不在へ戻ったことを確認できる
 
 ### 完了候補
 
@@ -258,9 +285,9 @@ PR #341で、Provider runtimeの2件 / 0件確認、tool-owned fixture削除、m
 - cleanな対象revisionでValidation成功を記録できる
 - Evidence専用の空PostgreSQL Databaseでtoolが正常終了する
 - `reproducibleRevision = true`である
-- 既定Databaseや既存user relationを含む接続先ではfixture作成前に停止する
-- `fixtureDatabaseSafety`が期待するfixture前安全条件を示す
-- `fixtureCleanupSafety`がcleanup後の空状態を示す
+- 既定Database、既存user relation、Event Triggerを含む接続先ではfixture作成前に停止する
+- `fixtureDatabaseSafety`がuser relation 0件 / Event Trigger 0件 / fixture object不在を含む期待安全条件を示す
+- `fixtureCleanupSafety`がcleanup後に同じ空状態へ戻ったことを示す
 - 2件 / 0件 / Execution Errorを同一runで区別できる
 - Semantic mapping / support column非露出を確認できる
 - credential / DSN / runtime parameter value / Database名をEvidenceへ含めない
@@ -317,6 +344,8 @@ PR #355以降、post-runの`Checked = true`は、実行後repository revisionと
 
 `reference-golden -write` / `reference-durable-run-golden -write`はstale解消の**修復操作**です。
 
+PR #367以降、World / Plugin Lockの`reference-golden -write`も既存goldenを先にtruncateせず、一時fileへの全量write / Sync / Close後にRenameするsafe replaceへ揃っています。これは修復途中の失敗で既存artifactを壊しにくくする安全境界であり、safe replace成功そのものを完了Evidenceへ格上げしません。
+
 修復差分が生じた場合は、差分を意味上確認し、意図したgenerated artifactだけをcommitし、新しいclean revisionで`reference-generated-artifact-evidence`を再実行します。
 
 `-write`直後のdirty working treeで個別checkが通ったことだけを完了Evidenceへ採用しません。
@@ -338,6 +367,7 @@ PR #355以降、post-runの`Checked = true`は、実行後repository revisionと
 - artifact差分を意味上説明できる、または最初から差分がない
 - external-observed `master_data`の未観測物理情報が生成物へ紛れ込んでいない
 - observed fixtureを生成結果へ合わせて書き換えていない
+- safe replaceや`-write`の成功だけを完了Evidenceへ読み替えていない
 - 結果を#273 Gate B監査へ対応付けられる
 
 具体的なcheck / repair順序、差分確認は`GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
@@ -420,6 +450,7 @@ Authentication
 - 不要なruntime parameter value
 - 業務上不要な実データ
 - temporary fixture data
+- driverが提供していないexternal物理metadataを推測した値
 
 必要な監査証跡とsecretそのものを混同しません。
 
@@ -457,10 +488,12 @@ Gate BがRについてReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.
 - external物理情報を推測すること
 - synthetic / generated / fixture Evidenceをactual external asset Evidenceとして扱うこと
 - acceptance receiptをactual Oracle read Evidenceとして扱うこと
+- driverが提供していないOracle raw列metadataをfalse / 0 / 慣習的型から推測すること
+- 実Oracle観測前にexternal Evidenceの`PhysicalType`とdriverの`DatabaseTypeName`の文字列一致規則を固定すること
 - 生成物やfingerprintを手編集して一致させること
-- `-write`直後のdirty treeをgenerated artifact完了Evidenceとして採用すること
+- `-write`やsafe replaceの成功だけをgenerated artifact完了Evidenceとして採用すること
 - source revisionが実行中に変化したrunを完了Evidenceとして採用すること
-- cleanup後にuser relationが残るPostgreSQL runを成功Evidenceとして採用すること
+- cleanup後にuser relationまたはEvent Triggerが残るPostgreSQL runを成功Evidenceとして採用すること
 - 異なるrevisionで得た4 laneの成功Evidenceを、一つのReady revisionへ読み替えること
 - 事前確認後にsourceが変わったのに、その前の成功JSONを最終完了Evidenceとして流用すること
 - Gate Bのために汎用Workflow / Event Sourcing / Presentation IRを先行設計すること
@@ -476,4 +509,4 @@ Gate BがRについてReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.
 - `issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
 - GitHub #214 / #244 / #255 / #273 / #291 / #308 / #310
-- PR #331 / #335 / #336 / #340 / #341 / #346 / #351 / #354 / #355 / #356
+- PR #331 / #335 / #336 / #340 / #341 / #346 / #351 / #354 / #355 / #356 / #364 / #365 / #366 / #367 / #369 / #370 / #373
