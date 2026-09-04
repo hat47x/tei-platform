@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/database/externalqueryevidence"
 	"tei/internal/realization"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -38,6 +39,17 @@ func run(workspacePath, evidencePath string) error {
 	loaded, err := workspace.Load(workspacePath)
 	if err != nil {
 		return fmt.Errorf("Workspace %sを読み込めません: %w", workspacePath, err)
+	}
+	for _, diagnostic := range validation.Validate(loaded.World) {
+		if diagnostic.Severity != validation.Error {
+			continue
+		}
+		return fmt.Errorf(
+			"Workspace %sにValidation Errorがあるためexternal Evidenceを受け入れません: %s: %s",
+			workspacePath,
+			diagnostic.Code,
+			diagnostic.Message,
+		)
 	}
 
 	realizationDef, err := findRealization(loaded.World.ContractQuerySQLRealizations, evidence)
