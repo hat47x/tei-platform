@@ -76,7 +76,7 @@ func run(workspacePath, deploymentPath, pluginLockPath, durableRunPath, solution
 		return nil
 	}
 
-	if err := replaceFileAtomically(durableRunPath, generated); err != nil {
+	if err := replaceFileSafely(durableRunPath, generated); err != nil {
 		return err
 	}
 	fmt.Printf("Reference Durable Run %sを正規生成結果から更新しました。git diffで意味上の差分を確認してください。\n", durableRunPath)
@@ -161,7 +161,10 @@ func encodeJSON(value any) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func replaceFileAtomically(path string, data []byte) error {
+// replaceFileSafelyは既存保存fileを直接truncateせず、同じdirectoryの一時fileを
+// 完全に書き終えてcloseした後にRenameする。生成途中の失敗で既存goldenを空にしないことが目的であり、
+// OSをまたいだRenameのatomicityそのものは契約にしない。
+func replaceFileSafely(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
 	temp, err := os.CreateTemp(dir, "."+base+".tmp-*")
