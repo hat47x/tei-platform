@@ -95,16 +95,17 @@ func run(broad bool) (evidence, error) {
 	for _, spec := range laneSpecs(broad) {
 		lane, laneErr := runLane(spec, source.RepositoryRevision)
 		result.Lanes = append(result.Lanes, lane)
-		if laneErr != nil {
-			return result, laneErr
-		}
 
 		postLane, inspectErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+		result.PostRunRepository = postLane
 		if inspectErr != nil {
 			return result, inspectErr
 		}
 		if !postLane.RevisionStable || !postLane.WorkingTreeClean {
 			return result, fmt.Errorf("%s実行後にrepository sourceがcandidate revisionから外れました。最終Evidenceを継続しません", spec.Name)
+		}
+		if laneErr != nil {
+			return result, laneErr
 		}
 	}
 
