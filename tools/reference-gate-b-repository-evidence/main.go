@@ -115,6 +115,15 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		if !passed {
 			targetedFailed = true
 		}
+
+		postCheck, postCheckErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+		result.PostRunRepository = postCheck
+		if postCheckErr != nil {
+			return result, postCheckErr
+		}
+		if err := verifyIntermediateRepositorySource(source, postCheck, allowDirty, spec.Name); err != nil {
+			return result, err
+		}
 	}
 
 	broadFailed := false
@@ -129,6 +138,15 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		if !passed {
 			broadFailed = true
 		}
+
+		postCheck, postCheckErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+		result.PostRunRepository = postCheck
+		if postCheckErr != nil {
+			return result, postCheckErr
+		}
+		if err := verifyIntermediateRepositorySource(source, postCheck, allowDirty, spec.Name); err != nil {
+			return result, err
+		}
 	}
 
 	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
@@ -140,6 +158,27 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		return result, err
 	}
 	return result, nil
+}
+
+func verifyIntermediateRepositorySource(
+	source repositoryevidence.Source,
+	postRun repositoryevidence.PostRun,
+	allowDirty bool,
+	checkName string,
+) error {
+	if !postRun.Checked {
+		return fmt.Errorf("%s実行後のrepository source確認が完了していません。後続のRepository Evidence checkを実行しません", checkName)
+	}
+	if postRun.RepositoryRevision != source.RepositoryRevision || !postRun.RevisionStable {
+		return fmt.Errorf("%s実行中にrepository HEADが変化しました。後続のRepository Evidence checkを実行せず、固定されたrevisionで再実行してください", checkName)
+	}
+	if source.WorkingTreeClean && !postRun.WorkingTreeClean {
+		return fmt.Errorf("%s実行後にworking tree差分が残りました。testの副作用を確認し、後続checkは実行せずclean revisionからやり直してください", checkName)
+	}
+	if !source.WorkingTreeClean && !allowDirty {
+		return fmt.Errorf("%s実行後のsource確認でdirty working treeを検出しました。Gate B完了Evidenceとして継続できません", checkName)
+	}
+	return nil
 }
 
 func finalizeRepositoryEvidence(
