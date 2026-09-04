@@ -103,6 +103,8 @@ Gate Bのcandidate revisionを`R`とする場合、完了判定へ使うsource-d
 
 異なるrevisionの成功runを寄せ集めてReadyにはしません。
 
+PR #389で、この横断条件を確認する`tools/reference-gate-b-final-evidence`を追加しました。各laneの正規runnerを置き換えず、最終収束時にEvidence nature / revision / reproducible条件だけを照合します。
+
 ### 4. #214未完了はHandoverのunresolvedへ残す
 
 少なくとも次を明示します。
@@ -130,11 +132,11 @@ Oracle固有のactual Evidence手順はGate B必須の実行順から分離し�
 
 まず判断への影響が大きい文書から進めます。
 
-1. `GATE_B_READINESS_AUDIT.md`
-2. `GATE_B_EVIDENCE_ACQUISITION.md`
-3. `GATE_B_TO_C_HANDOVER_CONTRACT.md`
-4. `GATE_B_EVIDENCE_RUNBOOK.md`
-5. `ISSUE-000029`
+1. `GATE_B_READINESS_AUDIT.md` — PR #386で同期済み
+2. `GATE_B_EVIDENCE_ACQUISITION.md` — PR #388で同期済み
+3. `GATE_B_TO_C_HANDOVER_CONTRACT.md` — PR #384で同期済み
+4. `GATE_B_EVIDENCE_RUNBOOK.md` — PR #388で同期済み
+5. `ISSUE-000029` — PR #386で同期済み
 6. `ISSUE-000006`
 7. `V1_REFERENCE_APPLICATION_PLAN.md`
 8. `plan/README.md`
@@ -144,17 +146,25 @@ Runbookは長く安全条件が多いため、scope判断だけを理由に全�
 
 ## 完了条件
 
-- [ ] Readiness Auditを内容保持で3-lane scopeへ同期する
-- [ ] Evidence Acquisitionを内容保持で同期する
-- [ ] Handover Contractへ#214 unresolvedを明示する
-- [ ] Runbookを内容保持で同期する
-- [ ] ISSUE-000029を同期する
+- [x] Readiness Auditを内容保持で3-lane scopeへ同期した（PR #386）
+- [x] Evidence Acquisitionを内容保持で同期した（PR #388）
+- [x] Handover Contractへ#214 unresolvedを明示した（PR #384）
+- [x] Runbookを内容保持で同期した（PR #388）
+- [x] ISSUE-000029を同期した（PR #386）
 - [ ] ISSUE-000006を同期する
 - [ ] V1 Reference Application Planを同期する
 - [ ] Planning READMEを同期する
 - [ ] GitHub Issue本文に古い必須4-lane表現が残っていないか監査する
 - [ ] #380 / ISSUE-000035のscope判断と矛盾しないことを確認する
-- [ ] Gate Bを実EvidenceなしにReadyへ変更していないことを確認する
+- [x] Gate Bを実EvidenceなしにReadyへ変更していないことを確認した
+
+## 現在地
+
+主要なGate B契約文書は3-lane scopeへ同期済みです。
+
+さらにPR #389 / `ISSUE-000037` / #387で、三laneが同じcandidate revisionへ揃ったことを最終確認する薄いrunnerを追加しました。ただし通常Go環境でのpackage testとactual PostgreSQLを含むfinal runは未実行です。
+
+残る文書同期は、v1主線・Planning入口・Application Driver上位正本とGitHub Issue本文です。
 
 ## 非目標
 
@@ -167,5 +177,6 @@ Runbookは長く安全条件が多いため、scope判断だけを理由に全�
 ## 関連
 
 - `ISSUE-000035` / #380
+- `ISSUE-000037` / #387
 - #69 / #70 / #214 / #255 / #273 / #291 / #308 / #310 / #371 / #376 / #383
-- PR #379 / #382
+- PR #379 / #382 / #384 / #385 / #386 / #388 / #389
