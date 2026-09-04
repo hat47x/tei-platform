@@ -9,6 +9,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/realization"
+	"tei/internal/sourceindex"
 )
 
 // Evidenceは、external-observed Database上のContract Queryを実物理資産へ接続するために
@@ -18,13 +19,14 @@ import (
 // Evidenceは、別途authoringされたContractQuerySQLRealizationが観測事実と一致するかを
 // 受入時に検証するためだけに使う。
 type Evidence struct {
-	Target     realization.ContractQueryTarget `json:"target"`
-	Provider   environment.DatabaseProvider    `json:"provider"`
-	Object     PhysicalObject                  `json:"object"`
-	Inputs     []InputObservation              `json:"inputs"`
-	Results    []ResultObservation             `json:"results"`
-	Provenance Provenance                      `json:"provenance"`
-	ReadOnly   ReadOnlyProof                   `json:"readOnly"`
+	Target       realization.ContractQueryTarget `json:"target"`
+	Provider     environment.DatabaseProvider    `json:"provider"`
+	Object       PhysicalObject                  `json:"object"`
+	Inputs       []InputObservation              `json:"inputs"`
+	Results      []ResultObservation             `json:"results"`
+	NativeSource NativeSourceProof               `json:"nativeSource"`
+	Provenance   Provenance                      `json:"provenance"`
+	ReadOnly     ReadOnlyProof                   `json:"readOnly"`
 }
 
 // PhysicalObjectは、実際に観測したtable / view / API / stored procedure等を指す。
@@ -50,6 +52,14 @@ type ResultObservation struct {
 	Attribute    core.CanonicalID `json:"attribute"`
 	PhysicalType string           `json:"physicalType,omitempty"`
 	Nullable     *bool            `json:"nullable,omitempty"`
+}
+
+// NativeSourceProofは、このEvidenceがどのnative SQL本文を確認したものかを固定する。
+// EvidenceRefは元SQL・承認記録・抽出資料等への再確認可能な参照であり、Fingerprintは
+// authoring済みContractQuerySQLRealization.Sourceと完全一致しなければならない。
+type NativeSourceProof struct {
+	EvidenceRef string `json:"evidenceRef"`
+	Fingerprint string `json:"fingerprint"`
 }
 
 // Provenanceは、物理事実をどこから確認し、Reference用Evidenceへどのように加工したかを残す。
@@ -99,6 +109,13 @@ func ValidateAgainst(w ir.World, realizationDef realization.ContractQuerySQLReal
 
 	if strings.TrimSpace(evidence.Object.Kind) == "" || strings.TrimSpace(evidence.Object.Identity) == "" {
 		return fmt.Errorf("external Contract Query Evidence %sに観測済みphysical objectがありません", evidence.Target.Identity())
+	}
+	if strings.TrimSpace(evidence.NativeSource.EvidenceRef) == "" || strings.TrimSpace(evidence.NativeSource.Fingerprint) == "" {
+		return fmt.Errorf("external Contract Query Evidence %sにnative SQL sourceのEvidence参照またはfingerprintがありません", evidence.Target.Identity())
+	}
+	wantFingerprint := sourceindex.Fingerprint([]byte(realizationDef.Source))
+	if evidence.NativeSource.Fingerprint != wantFingerprint {
+		return fmt.Errorf("external Contract Query Evidence %sのnative SQL fingerprintがstaleです: have %s want %s", evidence.Target.Identity(), evidence.NativeSource.Fingerprint, wantFingerprint)
 	}
 	if strings.TrimSpace(evidence.Provenance.SourceRef) == "" {
 		return fmt.Errorf("external Contract Query Evidence %sにphysical factsのsource provenanceがありません", evidence.Target.Identity())
