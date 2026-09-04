@@ -7,6 +7,8 @@ import (
 )
 
 func TestInspectGoEnvironmentAcceptsModuleOnlyExecution(t *testing.T) {
+	t.Setenv("GOENV", "off")
+
 	tests := []struct {
 		name   string
 		goWork string
@@ -27,15 +29,23 @@ func TestInspectGoEnvironmentAcceptsModuleOnlyExecution(t *testing.T) {
 			if !environment.GoFlagsEmpty {
 				t.Fatalf("goFlagsEmpty=false, want true: %#v", environment)
 			}
+			if !environment.GoEnvDisabled {
+				t.Fatalf("goEnvDisabled=false, want true: %#v", environment)
+			}
 		})
 	}
 }
 
 func TestInspectGoEnvironmentRejectsExternalWorkspaceWithoutPersistingPath(t *testing.T) {
+	t.Setenv("GOENV", "off")
+
 	const workspacePath = "/private/build/go.work"
 	environment, err := inspectGoEnvironment(fakeGoEnvironmentOutput(workspacePath+"\n", ""))
 	if err == nil {
 		t.Fatal("inspectGoEnvironment() error=nil, want external workspace failure")
+	}
+	if !environment.GoEnvDisabled {
+		t.Fatalf("goEnvDisabled=false, want true: %#v", environment)
 	}
 	if !environment.ExternalWorkspaceActive {
 		t.Fatalf("externalWorkspaceActive=false, want true: %#v", environment)
@@ -46,10 +56,15 @@ func TestInspectGoEnvironmentRejectsExternalWorkspaceWithoutPersistingPath(t *te
 }
 
 func TestInspectGoEnvironmentRejectsGoFlagsWithoutPersistingValue(t *testing.T) {
+	t.Setenv("GOENV", "off")
+
 	const goFlags = "-overlay=/private/build/overlay.json -tags=evidence_override"
 	environment, err := inspectGoEnvironment(fakeGoEnvironmentOutput("", goFlags+"\n"))
 	if err == nil {
 		t.Fatal("inspectGoEnvironment() error=nil, want GOFLAGS failure")
+	}
+	if !environment.GoEnvDisabled {
+		t.Fatalf("goEnvDisabled=false, want true: %#v", environment)
 	}
 	if environment.ExternalWorkspaceActive {
 		t.Fatalf("externalWorkspaceActive=true, want false: %#v", environment)
@@ -63,6 +78,8 @@ func TestInspectGoEnvironmentRejectsGoFlagsWithoutPersistingValue(t *testing.T) 
 }
 
 func TestInspectGoEnvironmentFailsClosedWhenGoEnvCannotBeObserved(t *testing.T) {
+	t.Setenv("GOENV", "off")
+
 	calls := 0
 	_, err := inspectGoEnvironment(func(name string, args ...string) (string, error) {
 		calls++
