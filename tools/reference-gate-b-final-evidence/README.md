@@ -51,6 +51,10 @@ PR #422以降、final runnerはlaneを一つも実行する前に次を確認し
 
 さらに正規実行例そのものにも`GOWORK=off GOFLAGS=`を明示します。これは、runner内部のguardだけに依存せず、runner自身を`go run`でcompileする前からGo workspaceとflagsを固定するためです。
 
+PR #425以降は、このambient確認に成功した**後だけ**、final runner自身のprocess environmentを`GOWORK=off / GOFLAGS= / GOENV=off`へ固定します。これにより、#310 / #255 / #308 childと、それらが通常の環境継承で起動するnested Go commandが、Repository外のuser-level Go environment fileを後から既定入力として読み直さない状態にします。
+
+ambient環境を確認する前に安全値へ書き換えて、もともと不安全だった状態を隠すことはしません。また3変数の固定に失敗した場合はlaneを開始せずfail closedで停止します。この境界はOS process全体のsandboxではなく、正規Evidence経路の暗黙Go入力を狭めるためのものです。
+
 成功・失敗JSONへ外部workspaceのpathやGOFLAGS本文は保存しません。非機密な判定だけを次の形で残します。
 
 ```json
@@ -84,6 +88,8 @@ DSNにはcredentialを含み得るため、利用しないlaneへsecret候補を
 clean candidate revision R
         ↓
 Go workspace / GOFLAGS確認
+        ↓
+child Go環境をGOWORK=off / GOFLAGS= / GOENV=offへ固定
         ↓
 #310 deterministic Repository Evidence
         ↓ runner自身もsource再確認
@@ -196,5 +202,6 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - actual Oracle Evidenceを代替すること
 - fingerprintだけでchild Evidence本文の存在・真実性を証明したことにすること
 - Go toolchainやmodule cacheをRepositoryへvendoringすること
+- OS process全体をsandbox化すること
 - Gate B Readyをtoolのexit codeだけで自動宣言すること
 - GitHub Actionsを再有効化すること
