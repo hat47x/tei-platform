@@ -42,7 +42,7 @@ Gate BではEvidenceを少なくとも四種類に分けます。
 | --- | --- | --- | --- |
 | deterministic repository Evidence | Workspace Validation、UI-less Scenario、external Evidence intake tests | Repository内のauthoring・Driver / Evidence境界が固定revisionで再現すること | generated artifact再現性、実provider、実外部資産 |
 | generated artifact reproducibility Evidence | World / Plugin Lock / Durable Run golden | 正規入力から保存generated artifactをclean revisionで再現できること | Driver Scenario、実provider、実外部資産 |
-| real-provider ephemeral fixture Evidence | header-detail PostgreSQL tool | 実provider / driver / native SQLを通るruntime | production既存DBの事実、Oracle Evidence |
+| real-provider ephemeral fixture Evidence | header-detail PostgreSQL tool | 実provider / driver / native SQLを通るruntimeとfixture前後の安全状態 | production既存DBの事実、Oracle Evidence |
 | actual external asset Evidence | `master_data` Oracle | TEI非所有資産の実物理・provenance・read-only境界 | synthetic / generated / ephemeral fixture |
 
 一種類の成功を別種類のEvidenceへ格上げしません。
@@ -57,7 +57,7 @@ Gate BではEvidenceを少なくとも四種類に分けます。
 
 これは**actual external asset Evidence**です。
 
-PR #288でEvidence intake boundaryは成立し、PR #304で収束線へ、PR #306で`main`へ、受入前にCanonical Workspaceの通常Validation Errorを拒否するfail-closed境界も成立しました。
+PR #288 / #300 / #306でEvidence intake boundaryとCanonical Workspace Validation fail-closedが成立しました。PR #340で、その受入れをclean Repository revisionへ固定し、**どのexternal Evidence artifactを照合したか**を機械可読なacceptance receiptへ残す境界も成立しています。
 
 一方、第一Referenceで利用する実Oracle物理事実そのものはまだ未取得です。
 
@@ -94,13 +94,33 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 
 `tools/reference-external-query-evidence`は、対応realizationがなければ停止し、EvidenceからSQL realizationを生成・補完しません。
 
-`nativeSource.fingerprint`はraw fileのGit SHAではなく、Workspace Loaderが保持する実行SQL本文とのstale検知に利用します。独立したprovenanceは`nativeSource.evidenceRef` / `provenance.sourceRef`で保持します。
+Gate Bへ採用する受入れでは、Evidence JSONを読む前にclean Repository revisionを要求し、照合後にもHEAD / working treeを再確認します。実行中にsourceが変化したrunは受理しません。
+
+成功時は次の性質を持つacceptance receiptを出します。
+
+- `evidenceNature = external-query-evidence-acceptance`
+- `repositoryRevision`
+- `reproducibleRevision = true`
+- post-run Repository state
+- `evidenceArtifactFingerprint = sha256:<hex>`
+- target / provider
+- `accepted = true`
+
+`evidenceArtifactFingerprint`は、toolが実際に読み込んだEvidence JSONの**exact bytes**を識別します。
+
+`nativeSource.fingerprint`は、Workspace Loaderが保持する実行SQL本文とのstale検知に利用します。両fingerprintは役割が異なり、相互代替しません。独立したprovenanceは`nativeSource.evidenceRef` / `provenance.sourceRef`で保持します。
+
+acceptance receiptへphysical object、parameter、raw columns、provenance本文、read-only mechanism本文、Evidence file path、credential / secretを複製しません。
+
+receiptの成功は**external Evidence artifactと明示authoringの受入照合**だけを証明します。actual Oracle read、実効read-only principal、Semantic Customerの実取得を証明しません。
 
 ### 完了候補
 
 少なくとも次を説明・再現できることを求めます。
 
 - 実Oracle物理情報が観測sourceへ追跡できる
+- 受入れたEvidence artifactをexact-bytes fingerprintで特定できる
+- acceptance receiptを同じclean Repository revisionへ固定できる
 - 1件取得をSemantic Customerまで明示mappingできる
 - 0件を正常なnot-foundとして保持できる
 - 実行失敗をExecution Errorとして保持できる
@@ -108,7 +128,7 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 - Environment / Database instance / executor Capability identityを保持できる
 - credential / secret / 不要な実データを通常Evidenceへ保存していない
 
-未観測の物理名をTEI側から補った場合は完了Evidenceとして採用しません。
+未観測の物理名をTEI側から補った場合は完了Evidenceとして採用しません。acceptance receiptだけでactual readを完了扱いにもしません。
 
 ## Evidence B — header-detail real PostgreSQL engine
 
@@ -128,13 +148,24 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 
 実PostgreSQL provider / driver / native SQL executionを通しますが、tool自身が作る一時fixtureを利用します。production既存Databaseの物理事実を観測するEvidenceではなく、Evidence AのOracle実外部資産を代替しません。
 
-### 安全境界
+### Repository source固定
 
-PR #294 / #300 / #306 / #324で、安全境界を段階的に強化しています。
+PR #336で、#308も#310 / #255と同じ`tools/internal/repositoryevidence`へsource観測規則を揃えました。
+
+- Workspace Load / DB接続より前にclean Repository revisionを要求する
+- Provider runtime、fixture cleanup、Database復元確認後にHEAD / working treeを再確認する
+- 実行前後で同じHEADかつcleanでなければ成功Evidenceを出さない
+- `repositoryRevision` / `reproducibleRevision` / post-run Repository stateをEvidenceへ残す
+
+### fixture作成前の安全境界
+
+PR #294 / #300 / #306 / #324 / #335で、安全境界を段階的に強化しています。
 
 Evidence toolはfixture作成前に次を確認します。
 
 ```text
+clean Repository revision
+  ↓
 Workspace Load
   ↓
 Canonical Validation
@@ -158,8 +189,31 @@ runtime Evidence
 
 このguardを通過したことだけでEvidence専用Databaseという運用意図を推測せず、実行先はEvidence専用に作成した空PostgreSQL Databaseへ限定します。
 
+PR #335以降、fixture作成前に観測した安全条件を`fixtureDatabaseSafety`として非機密metadataだけEvidenceへ残します。
+
+少なくとも次を確認します。
+
+- Database identityを確認できた
+- 実Database名はEvidenceへ保存しない
+- PostgreSQL既定Databaseではない
+- fixture前のuser relationが0件
+- `public.order_lines`がfixture前に存在しない
+
+### cleanup後の安全境界
+
+PR #341で、Provider runtimeの2件 / 0件確認、tool-owned fixture削除、missing-table Execution Error確認の後にPostgreSQL catalogを再観測し、**接続先を空状態へ戻せたこと**まで成功Evidenceの条件にしました。
+
+`fixtureCleanupSafety`で少なくとも次を確認します。
+
+- `verified = true`
+- system / temporary領域を除くuser relationが0件へ戻った
+- `public.order_lines`が存在しない
+
+終了時にuser relationが1件でも残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。cleanup EvidenceにもDatabase名、DSN、credentialは保存しません。
+
 ### 証明対象
 
+- cleanなRepository revisionにProvider runを固定できる
 - `order_id=1001`で2件を正常collectionとして取得できる
 - `order_id=9999`で0件を正常な空collectionとして扱える
 - physical table欠落をExecution Errorとして区別できる
@@ -171,17 +225,22 @@ runtime Evidence
 - Database instance = `sales_core.dev`
 - executor Capability = `database.query.postgres`
 - `evidenceNature = real-postgres-ephemeral-fixture`
+- fixture作成前の安全状態を非機密metadataとして確認できる
+- cleanup後にuser relation 0件 / fixture object不在へ戻ったことを確認できる
 
 ### 完了候補
 
 #308の完了条件として、少なくとも次を確認します。
 
-- Validation成功revisionを記録できる
+- cleanな対象revisionでValidation成功を記録できる
 - Evidence専用の空PostgreSQL Databaseでtoolが正常終了する
+- `reproducibleRevision = true`である
 - 既定Databaseや既存user relationを含む接続先ではfixture作成前に停止する
+- `fixtureDatabaseSafety`が期待するfixture前安全条件を示す
+- `fixtureCleanupSafety`がcleanup後の空状態を示す
 - 2件 / 0件 / Execution Errorを同一runで区別できる
 - Semantic mapping / support column非露出を確認できる
-- credential / DSN / runtime parameter valueをEvidenceへ含めない
+- credential / DSN / runtime parameter value / Database名をEvidenceへ含めない
 - Evidence natureを他種別と区別できる
 - 結果を#273 Gate B監査へ対応付けられる
 
@@ -270,7 +329,7 @@ PR #331で、#255の完了条件を`tools/reference-generated-artifact-evidence`
 
 ### 正規Evidence
 
-PR #315 / #321で`tools/reference-gate-b-repository-evidence`を整備しました。
+PR #315 / #321 / #336で`tools/reference-gate-b-repository-evidence`と共通Repository source観測境界を整備しました。
 
 runnerはWorkspace Validation、最終UI-less Scenario、external Evidence intake testsを一つのrunで扱い、実行前後のrepository状態も確認します。
 
@@ -303,7 +362,7 @@ Authentication
   -> separate Observation read
 ```
 
-加えて、external Evidence intakeのunit/tool testsを通常runnerで実行し、PR #288 / #304 / #306で成立した受入・fail-closed境界がコードとして再現することを確認します。
+加えて、external Evidence intakeのunit/tool testsを通常runnerで実行し、成立済みの受入・fail-closed境界がコードとして再現することを確認します。
 
 ### 完了候補
 
@@ -361,9 +420,11 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 - CIをこの文書から再有効化すること
 - external物理情報を推測すること
 - synthetic / generated / fixture Evidenceをactual external asset Evidenceとして扱うこと
+- acceptance receiptをactual Oracle read Evidenceとして扱うこと
 - 生成物やfingerprintを手編集して一致させること
 - `-write`直後のdirty treeをgenerated artifact完了Evidenceとして採用すること
 - source revisionが実行中に変化したrunを完了Evidenceとして採用すること
+- cleanup後にuser relationが残るPostgreSQL runを成功Evidenceとして採用すること
 - Gate Bのために汎用Workflow / Event Sourcing / Presentation IRを先行設計すること
 
 ## 関連
@@ -377,3 +438,4 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 - `issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
 - GitHub #214 / #244 / #255 / #273 / #308 / #310
+- PR #335 / #336 / #340 / #341
