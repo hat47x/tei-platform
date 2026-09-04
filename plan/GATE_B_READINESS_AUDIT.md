@@ -339,17 +339,32 @@ explicit Observation read
 go run ./tools/reference-gate-b-repository-evidence
 ```
 
-runnerは少なくとも次を一つのrunで扱います。
+PR #346以降、targeted runnerは少なくとも次の三つを**独立check**として一つのrunで扱います。
 
-1. 実行前repository revision取得
-2. 実行前working tree clean確認
-3. Go toolchain identity取得
-4. Canonical Workspace Validation
-5. 最終UI-less Scenario test
-6. external Evidence intake tests
-7. `-broad`指定時だけ`go test ./...`
-8. 実行後HEAD / working tree再確認
-9. 小さい非Canonical JSON Evidence出力
+1. 最終UI-less Scenario
+2. external Evidence intake
+3. Repository source境界Conformance
+
+三つ目の等価コマンドは次です。
+
+```bash
+go test ./tools/internal/repositoryevidence -count=1
+```
+
+JSONでは`repository-evidence-source-boundary`として別checkに残します。
+
+runner自身のpackageをtargeted `go test`へ含めず、共有helperのpure契約だけを検証するため、将来runner testが`run()`を呼ぶ場合にも自己再帰の経路を作りません。
+
+runner全体ではさらに次を扱います。
+
+- 実行前repository revision取得
+- 実行前working tree clean確認
+- Go toolchain identity取得
+- Canonical Workspace Validation
+- 上記targeted checks
+- `-broad`指定時だけ`go test ./...`
+- 実行後HEAD / working tree再確認
+- 小さい非Canonical JSON Evidence出力
 
 PR #321以降、`reproducibleRevision=true`には次のすべてを要求します。
 
@@ -359,6 +374,8 @@ PR #321以降、`reproducibleRevision=true`には次のすべてを要求しま�
 - 実行後clean
 
 PR #336以降、source状態の観測規則は#255 / #308と同じtool-only packageへ収束しています。
+
+PR #346はその共有source境界のpure Conformanceをtargeted Evidenceへ直接含めますが、PRの存在自体を#310成功Evidenceとは扱いません。
 
 Test自体が成功しても、実行中にsource revisionが変化したrunや実行後にtracked / untracked差分が残ったrunはGate B完了Evidenceへ採用しません。
 
@@ -482,10 +499,11 @@ reference-generated-artifact-evidenceを再実行
 | Business ResultとExecution Errorを区別 | Ready | Driver / ADR-0020 |
 | Command acknowledgementとObservationを分離 | Ready (synthetic) | ADR-0023 / `ExecuteObservationRead` |
 | secret / runtime parameterを通常Evidenceへ保存しない | Ready | runtime / Evidence境界 |
+| Repository source境界のtargeted Conformanceがある | Ready | PR #346 |
 | generated artifact個別照合toolがある | Ready | `reference-golden` / `reference-durable-run-golden` |
 | generated artifact final check-only runnerがある | Ready | PR #331 / #334 |
 | 最新authoringからgenerated artifactをclean revisionで再現 | Pending | #255 actual check-only run待ち |
-| 最終Scenario / Evidence intakeをnormal runnerで実証 | Pending | #310実run待ち |
+| 最終Scenario / Evidence intake / source境界をnormal runnerで実証 | Pending | #310実run待ち |
 | 第一Web Targetへ同じ意味を渡せる | Partial | 4 lane完成 + #291 Handover待ち |
 
 ## Gate Bを止めないもの
@@ -527,7 +545,7 @@ reference-generated-artifact-evidenceを再実行
 
 GitHub Actions workflowは現行Repositoryでは意図的に使用していません。
 
-過去のrunner未割当事象を追跡した#192は、現行運用では対象外として`not planned`でclosedです。
+過去のrunner未割当事象を追跡した#192は、現行運用では対象外として`not_planned`でclosedです。
 
 Actionsを将来再導入する場合は、その時点のworkflow / runner / Repository要件で新しいCI検証Issueを作成します。CIサービスのgreenをGate B Product Evidenceの代替にはしません。また、workflow failureがpushそのものを不必要にblockしない運用を維持します。
 
@@ -546,6 +564,7 @@ Gate Bは、次をEvidenceから説明できるときReadyとします。
 - read-only / secret等の安全境界を実Evidenceから説明できる
 - generated artifactをcleanなsource revisionから再現できる
 - Evidence runが参照するsource revisionを実行前後で固定できる
+- Repository source固定境界自体のtargeted Conformanceが成立している
 - #308 fixtureが終了後に専用空DBの観測条件へ戻ったことを説明できる
 - 第一Web Targetへ、Web側で意味を補わず同じbaselineを渡せる
 
