@@ -40,9 +40,74 @@ Gate Bを直接止めているのは次の4 Evidence laneです。
 
 4 laneは相互代替しません。
 
-PR #342で`GATE_B_EVIDENCE_ACQUISITION.md`も同じ4 Evidence natureへ同期しました。
+PR #342 / #350で`GATE_B_EVIDENCE_ACQUISITION.md`も同じ4 Evidence natureと現在のsource-fixed境界へ同期しました。
 
 GitHub Actionsによる継続的な再検証は重要ですが、この4 laneのProduct Evidenceと同一ではありません。Actions停止そのものを意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
+
+## Gate B candidate Ready revision
+
+各Evidence laneが個別run内で`repositoryRevision`を固定していても、異なるrevisionのEvidenceを寄せ集めた状態ではGate B Readyと判定しません。
+
+最終監査では、一つのclean Repository revisionを**candidate Ready revision**として明示します。
+
+candidateを`R`とする場合、少なくとも次をRへ揃えます。
+
+| Lane | Rへ固定するもの |
+| --- | --- |
+| #310 | deterministic Repository Evidence JSONの`repositoryRevision` |
+| #255 | generated artifact Evidence JSONの`repositoryRevision` |
+| #308 | real PostgreSQL Evidence JSONの`repositoryRevision` |
+| #214 | external Evidence acceptance receiptの`repositoryRevision` |
+| #214 actual runtime | Rのauthoring / runtime境界を利用したactual Oracle read / Semantic E2Eであることを追跡可能にする |
+
+Repository revisionを持つEvidenceでは、`repositoryRevision = R`かつ`reproducibleRevision = true`を要求します。
+
+次のような混在はReady Evidenceとして採用しません。
+
+```text
+#310 -> R1
+#255 -> R2
+#308 -> R3
+#214 acceptance -> R4
+```
+
+### external factsの扱い
+
+Oracleのphysical object、raw columns、provenance、read-only権限等の外部観測事実そのものはGit revisionに属しません。
+
+同じexternal Evidence artifact / provenanceが引き続き有効であると確認できる場合、観測事実をrevisionごとに捨てる必要はありません。
+
+ただし、そのEvidenceをTEI sourceへ結び付ける次はcandidate Rへ固定します。
+
+- acceptance receipt
+- SQL realization / mappingとの照合
+- actual Oracle runtime / Semantic E2E
+
+external Evidence artifactを再利用しても、旧revisionのacceptance receiptやruntime結果をRへ黙ってcarry-forwardしません。
+
+### candidateが変わる場合
+
+candidate RのEvidence取得中にsource修正が必要になった場合、Rを暗黙に新revisionへ読み替えません。
+
+1. 必要なsource / generated artifactを修正する
+2. commitする
+3. 新candidate R'を選ぶ
+4. #310 / #255 / #308 / #214 acceptance receiptをR'で再取得する
+5. #214 actual runtimeもR'のauthoring / runtimeから追跡できるよう再確認する
+6. R'でGate B Readyを再監査する
+
+#255のrepair commitが生じた場合も同じです。repair前revisionで取得したsource-dependent Evidenceをrepair後candidateへ混ぜません。
+
+### mainの進行とcandidateを分離する
+
+candidateを選んだ後に並行作業で`main`が進んでも、candidateを自動的に最新mainへ動かしません。
+
+- candidate RをそのままGate B Ready監査するなら、RとRのEvidenceを固定して扱う
+- 後続commitをGate B baselineへ含めたいなら、新candidateを選び直してsource-dependent Evidenceを揃える
+
+これにより、並行開発のたびに比較対象が暗黙に移動することを防ぎます。
+
+Gate B Readyと判定したcandidate Rは、そのまま#291 Handover Baselineのrepository revisionになります。
 
 ## `main`で成立している基線
 
@@ -366,11 +431,13 @@ runner全体ではさらに次を扱います。
 - 実行後HEAD / working tree再確認
 - 小さい非Canonical JSON Evidence出力
 
-PR #321以降、`reproducibleRevision=true`には次のすべてを要求します。
+PR #321 / #336 / #351以降、`reproducibleRevision=true`は開始時cleanだけでは設定しません。post-run確認後に次のすべてを満たした場合だけtrueにします。
 
+- 開始revision非空
 - 実行前clean
 - 実行後確認済み
-- 実行前後でHEAD同一
+- 実行前後でrevision文字列が同一
+- `revisionStable = true`
 - 実行後clean
 
 PR #336以降、source状態の観測規則は#255 / #308と同じtool-only packageへ収束しています。
@@ -504,7 +571,8 @@ reference-generated-artifact-evidenceを再実行
 | generated artifact final check-only runnerがある | Ready | PR #331 / #334 |
 | 最新authoringからgenerated artifactをclean revisionで再現 | Pending | #255 actual check-only run待ち |
 | 最終Scenario / Evidence intake / source境界をnormal runnerで実証 | Pending | #310実run待ち |
-| 第一Web Targetへ同じ意味を渡せる | Partial | 4 lane完成 + #291 Handover待ち |
+| 4 laneのsource-dependent Evidenceを一つのcandidate revisionへ揃える | Pending | 4 lane実Evidence取得後の最終整合監査 |
+| 第一Web Targetへ同じ意味を渡せる | Partial | candidate revision整合 + #291 Handover待ち |
 
 ## Gate Bを止めないもの
 
@@ -526,18 +594,31 @@ reference-generated-artifact-evidenceを再実行
 
 具体的なコマンド、安全条件、停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を唯一の正本とします。
 
-1. #310をcleanな通常Go runnerで実行する
-2. #255をclean revisionで`reference-generated-artifact-evidence`からcheck-onlyする。staleなら正規toolで修復 → 差分確認 → commit → 新しいclean revisionでcheck-onlyを再実行する
-3. #308をEvidence専用の空PostgreSQL Databaseで実行し、source / fixture前安全性 / Provider結果 / cleanup後復元を一つのJSONへ記録する
-4. #214のactual Oracle physical facts / provenance / read-only Evidenceを取得する
-5. 観測事実を根拠に必要なOracle realizationを明示authoringする
-6. #214 external Evidenceをclean revisionで受理しsource-fixed acceptance receiptを取得する
-7. read-only Oracle connection + 採用driverでactual read → explicit Semantic mappingを確認する
-8. 4 laneのEvidenceを本監査へ対応付ける
-9. secret / read-only / 0件 / Execution Error / Observation期待不一致 / source revision不変等のnegative caseを再監査する
-10. Gate BをReady / Not Readyで再判定する
-11. Readyなら#291でそのrevisionをHandover Baselineとして固定する
-12. その後に第一Web Target #70 / Gate C Evidence #270へ進む
+### 準備段階
+
+candidate Ready revisionを選ぶ前に、source変更を必要とし得る作業を先に解消します。
+
+1. #255をcheckし、staleなら正規toolで修復 → 差分確認 → commitする
+2. #214 actual Oracle physical facts / provenance / read-only Evidenceを取得する
+3. 観測事実を根拠に必要なOracle realizationを明示authoringし、commitする
+4. その他のEvidence準備でsource修正が必要ならcommitする
+5. working treeをcleanにし、Gate Bへ含めるsource変更が出揃ったrevisionをcandidate Rとして記録する
+
+### candidate Rでの最終Evidence cycle
+
+6. #255 `reference-generated-artifact-evidence`をRでcheck-only実行する
+7. #310 deterministic Repository EvidenceをRで実行する
+8. #308 real PostgreSQL EvidenceをRで実行する
+9. #214 external EvidenceをRで受理しsource-fixed acceptance receiptを取得する
+10. Rのauthoring / runtimeを使ってactual Oracle read → explicit Semantic mappingを確認する
+11. #310 / #255 / #308 / #214 acceptance receiptの`repositoryRevision = R`と`reproducibleRevision = true`を確認する
+12. actual Oracle runtimeがRへ追跡できることを確認する
+13. secret / read-only / 0件 / Execution Error / Observation期待不一致 / source revision不変等のnegative caseを再監査する
+14. Gate BをRについてReady / Not Readyで再判定する
+15. Readyなら#291で**同じR**をHandover Baselineとして固定する
+16. その後に第一Web Target #70 / Gate C Evidence #270へ進む
+
+candidate RでいずれかのEvidenceがsource修正を要求した場合、Rを修正後revisionへ読み替えません。修正をcommitし、新candidate R'を選んでsource-dependent EvidenceをR'へ揃え直します。
 
 #214に必要な実外部事実が得られない場合は、その領域をBlockedとして保持し、未観測情報を埋めて先へ進めません。
 
@@ -566,8 +647,12 @@ Gate Bは、次をEvidenceから説明できるときReadyとします。
 - Evidence runが参照するsource revisionを実行前後で固定できる
 - Repository source固定境界自体のtargeted Conformanceが成立している
 - #308 fixtureが終了後に専用空DBの観測条件へ戻ったことを説明できる
+- candidate Ready revision Rを一つに明示できる
+- #310 / #255 / #308 / #214 acceptance receiptのsource-dependent EvidenceがRへ揃っている
+- #214 actual Oracle runtime / Semantic E2EがRのauthoring / runtimeへ追跡できる
+- 異なるrevisionのEvidenceを黙ってcarry-forwardしていない
 - 第一Web Targetへ、Web側で意味を補わず同じbaselineを渡せる
 
-Gate B Ready後は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) / #291に従い、その時点のrevisionをHandover Baselineとして固定してから第一Web Targetへ進みます。
+Gate B Ready後は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) / #291に従い、**Readyと判定したcandidate Rそのもの**をHandover Baselineとして固定してから第一Web Targetへ進みます。
 
 この条件が揃うまでは、第一Web Targetの本格実装着手条件を満たしたとは判定しません。

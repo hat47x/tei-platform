@@ -39,6 +39,78 @@ Web実装中に必要な意味がHandover Baselineに存在しないと分かっ
 
 必要ならApplication / Driver側へ戻り、authoritative sourceを変更し、Validation / Driver Scenarioを再確認して新しいbaselineを発行します。
 
+## Gate B candidate Ready revision
+
+Gate Bの4 Evidence laneは、それぞれのrun内でsource revisionを固定するだけでは十分ではありません。
+
+最終Gate B監査では、**一つのclean Repository revisionを`candidate Ready revision`として明示し、そのrevisionに依存するEvidenceを同じrevisionへ揃えます。**
+
+たとえば、次のように異なるrevisionのEvidenceを寄せ集めてGate B Readyとは判定しません。
+
+```text
+#310 repository Evidence      -> R1
+#255 generated artifact       -> R2
+#308 PostgreSQL Evidence      -> R3
+#214 acceptance receipt       -> R4
+```
+
+Gate B Ready候補を`R`とする場合、少なくとも次を要求します。
+
+- #310 `reference-gate-b-repository-evidence`の`repositoryRevision = R`
+- #255 `reference-generated-artifact-evidence`の`repositoryRevision = R`
+- #308 PostgreSQL Evidenceの`repositoryRevision = R`
+- #214 external Evidence acceptance receiptの`repositoryRevision = R`
+- 上記source-fixed Evidenceはいずれも`reproducibleRevision = true`
+- #214 actual Oracle runtime / Semantic E2Eが、Rのauthoring / runtime境界を用いた実行であることを追跡できる
+- 最終Readiness Audit自体がRを監査対象revisionとして明示する
+
+### external factsはGit revisionそのものではない
+
+Oracleの実physical object、raw columns、provenance、read-only権限等の**外部観測事実そのもの**は、Git revisionに属する情報ではありません。
+
+したがって、同じ外部Evidence artifact / provenanceが引き続き有効であることを確認できる場合、観測事実そのものをRepository revisionが変わるたびに捨てる必要はありません。
+
+ただし、その外部EvidenceをTEIのauthoringへ結び付ける次の境界はcandidate Ready revisionへ固定します。
+
+- source-fixed acceptance receipt
+- SQL realization / mappingとの照合
+- actual Oracle runtime / Semantic E2E
+
+外部Evidence artifactを再利用する場合も、新しいcandidate revisionへ黙ってcarry-forwardせず、そのartifactを新candidateのauthoringへ受理・実行した証跡を取り直します。
+
+### candidate revisionが変わった場合
+
+candidate `R`のEvidence取得中にsource変更が必要になった場合、RのEvidenceを新しいrevisionへ黙って読み替えません。
+
+```text
+candidate R
+  ↓ Evidenceでsource修正が必要と判明
+修正・commit
+  ↓
+new candidate R'
+  ↓
+R'でsource-dependent Evidenceを再取得
+```
+
+少なくとも #310 / #255 / #308 / #214 acceptance receipt と、TEI sourceに依存する#214 actual runtime EvidenceはR'へ揃え直します。
+
+#255の`-write`でgenerated artifact修復commitが必要になった場合も同じです。修復後のcommitを新candidateとして選び、それ以前のrevisionで取得したsource-dependent Evidenceを新candidateの完了Evidenceへ混ぜません。
+
+### mainが進んでもcandidateを暗黙に動かさない
+
+candidate Ready revisionを選んだ後に`main`が別作業で進んでも、candidateを自動的に「最新main」へ読み替えません。
+
+- 既存candidateをそのままReady監査するなら、そのrevisionとEvidenceを固定したまま扱う
+- 後続commitをGate B baselineへ含めたいなら、新candidateを選び直し、必要なsource-dependent Evidenceをそのrevisionへ揃える
+
+この規則により、並行開発によってGate Bの比較対象が常に動き続けることを防ぎます。
+
+### Handover revisionとの同一性
+
+Gate B Readyと判定したcandidate revisionを`R`とした場合、**第一Handover Baselineのrepository revisionも必ずRとします。**
+
+Gate BをRで通過した後、Handoverだけを別revisionへ暗黙に進めません。R以後の変更をbaselineへ含める必要がある場合は、変更の性質に応じてGate B Evidenceを再確認し、新しいcandidate / Handover Baselineを発行します。
+
 ## Handover Baselineに必要な情報
 
 具体的なJSON schemaやfile formatはGate B通過時に決めても構いませんが、少なくとも次を復元できる必要があります。
@@ -46,6 +118,7 @@ Web実装中に必要な意味がHandover Baselineに存在しないと分かっ
 ### Repository / Reference identity
 
 - repository revision
+- Gate B candidate Ready revisionとの同一性
 - Reference Workspace path / identity
 - 必要なgenerated artifactのrevision
 - Gate B監査の対象revision
@@ -123,10 +196,13 @@ Gate Bを通過させたEvidenceへ戻れる必要があります。
 少なくとも次を参照します。
 
 - external-observed `master_data`物理 / read-only Evidence
+- #214 source-fixed acceptance receipt
 - header-detail実PostgreSQL Evidence
-- Reference golden再生成Evidence
+- Reference generated artifact reproducibility Evidence
 - 最終UI-less Scenario通常runner Evidence
 - Gate B Readiness Auditの最終判定
+
+Repository revisionを持つEvidenceは、Gate B candidate Ready revisionと同一revisionであることを確認します。
 
 Evidence本文をhandoverへ複製しません。
 
@@ -147,7 +223,7 @@ Gate C Evidence run
        ↓
 Handover Baseline identity
        ↓
-repository revision
+Gate B candidate Ready revision
        ↓
 Canonical Application / Driver Scenario
        ↓
@@ -191,9 +267,11 @@ repository revisionが変わるため、必要なら「baseline source revision�
 この場合は旧baselineへ黙って上書きしません。
 
 1. authoritative sourceを変更する
-2. Driver / Validation / Gate Bに関係するEvidenceを再確認する
-3. 新しいHandover Baselineを発行する
-4. Gate Cで影響するScenarioを再実行する
+2. 新しいGate B candidate Ready revisionを選ぶ
+3. source-dependent Gate B Evidenceをそのcandidateへ揃える
+4. Gate B Readyを再確認する
+5. 新しいHandover Baselineを発行する
+6. Gate Cで影響するScenarioを再実行する
 
 ## Gate B通過時に作るHandover record
 
@@ -203,10 +281,12 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 
 重要なのは形式ではなく、次を満たすことです。
 
+- repository revisionがGate B candidate Ready revisionと一致する
 - revisionが固定される
 - Canonical IDへ戻れる
 - Driver Scenarioへ戻れる
 - Gate B Evidenceへ戻れる
+- source-dependent Gate B Evidenceが同じcandidate revisionへ揃っている
 - unresolvedを保持できる
 - secretを含まない
 - Target固有情報をCanonical baselineへ混ぜない
@@ -215,7 +295,9 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 
 第一Web Targetの本格実装は、Gate B Readyに加えて次を満たしてから開始します。
 
-- Handover Baselineのrepository revisionを固定できる
+- Gate B candidate Ready revisionを一つに固定できる
+- Handover Baselineのrepository revisionがcandidate Ready revisionと一致する
+- source-dependent Gate B Evidenceがcandidate Ready revisionへ揃っている
 - Gate C対象のCanonical identityを列挙できる
 - Driver Scenario baselineを再現できる
 - Gate B Evidenceへの参照が揃っている
@@ -230,6 +312,7 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - Web frameworkの選定
 - Handover artifactからCanonicalへの逆生成
 - Git commitだけをSemantic Conformanceの証明とみなすこと
+- 異なるrevisionのGate B Evidenceを寄せ集めてReady扱いすること
 - 第一TargetだけでTarget-neutral taxonomyを完成させること
 - Gate C開始前に第二Targetの差を推測すること
 
@@ -237,8 +320,11 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 
 - `GATE_B_READINESS_AUDIT.md`
 - `GATE_B_EVIDENCE_ACQUISITION.md`
+- `GATE_B_EVIDENCE_RUNBOOK.md`
 - `GATE_C_EVIDENCE_CONTRACT.md`
 - `V1_REFERENCE_APPLICATION_PLAN.md`
 - `issue/000006-application-driver-vertical-slice.md`
 - `issue/000007-first-web-target-projection.md`
 - `issue/000028-first-web-target-conformance-evidence.md`
+- `issue/000029-gate-b-readiness-audit.md`
+- `issue/000030-gate-b-to-c-handover-baseline.md`
