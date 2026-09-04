@@ -99,6 +99,20 @@ lane runnerが失敗した場合も、source再確認を飛ばして即returnし
 - 最終確認時もRepository HEADがRのままである
 - 最終確認時もworking treeがcleanである
 
+## child Evidence artifactのidentity
+
+最終runnerが実際に読み込んだchild Evidence JSONを後から識別できるよう、各laneのstdout exact bytesに対するSHA-256を`evidenceArtifactFingerprint`として残します。
+
+このfingerprintは、child JSONから横断判定へ使う三fieldとは別の**追跡情報**です。空白や改行だけが変化した場合も別artifactとして扱います。
+
+目的は、個別runnerから別途保存したEvidenceと、final runnerが実際に読み込んだartifactを後から突き合わせられるようにすることです。
+
+次の意味へは格上げしません。
+
+- fingerprintだけでchild Evidence本文の存在や真実性を証明したことにする
+- fingerprintから保存していないchild Evidence本文を推測・再構成する
+- fingerprint一致だけでlaneの`evidenceNature` / revision / reproducible条件を省略する
+
 ## 最終JSON
 
 横断Evidenceには、個別laneの詳細本文を複製しません。
@@ -113,7 +127,7 @@ lane runnerが失敗した場合も、source再確認を飛ばして即returnし
 - Go version
 - `broadRequested`
 - `allLanesSameRevision`
-- laneごとのname / command / Evidence nature / revision / reproducible / pass-fail
+- laneごとのname / command / Evidence nature / revision / reproducible / `evidenceArtifactFingerprint` / pass-fail
 
 次は保存しません。
 
@@ -231,6 +245,8 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 - [x] lane後のsource driftで次laneへ進まないことをtestで固定した（PR #394）
 - [x] `postRunRepository.checked=true`を次laneへの必須条件として固定した（PR #396）
 - [x] 3 lane成功後の最終source再確認まで通って初めて再現可能とすることをtestで固定した（PR #394）
+- [x] 三laneのcommand path / lane名 / `evidenceNature`をinterface testで固定した（PR #399）
+- [x] child Evidence artifactのexact bytesをfingerprintできる境界を追加した
 - [x] READMEで事前確認と最終収束を分離した
 - [x] 隔離Go moduleでpackage-level compile / pure testを実行した
 - [x] actual `repositoryevidence`実装と組み合わせて両package testを実行した
@@ -247,6 +263,7 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 - #255の修復を自動実行すること
 - #308のDatabase安全guardを迂回すること
 - #214 actual Oracle Evidenceを代替すること
+- fingerprintだけでchild Evidence本文を証明・再構成すること
 - toolのexit codeだけでGate B Readyを自動宣言すること
 - GitHub Actionsを再有効化すること
 
@@ -260,4 +277,4 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 - `ISSUE-000035` / #380
 - `ISSUE-000036` / #383（Done）
 - #255 / #308 / #310 / #387
-- PR #389 / #394 / #395 / #396
+- PR #389 / #394 / #395 / #396 / #399 / #401
