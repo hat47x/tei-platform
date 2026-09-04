@@ -90,3 +90,65 @@ func TestCommandDisplayDoesNotUseShellString(t *testing.T) {
 		t.Fatalf("command display=%#v want=%#v", got, want)
 	}
 }
+
+func TestFinalizeKeepsReproducibleFalseOnTargetedFailure(t *testing.T) {
+	result := evidence{}
+	err := finalizeRepositoryEvidence(&result, cleanSource(), cleanPostRun(), true, false)
+	if err == nil {
+		t.Fatal("finalizeRepositoryEvidence() error=nil, want targeted failure")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision=true on targeted failure")
+	}
+}
+
+func TestFinalizeKeepsReproducibleFalseOnBroadFailure(t *testing.T) {
+	result := evidence{}
+	err := finalizeRepositoryEvidence(&result, cleanSource(), cleanPostRun(), false, true)
+	if err == nil {
+		t.Fatal("finalizeRepositoryEvidence() error=nil, want broad failure")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision=true on broad failure")
+	}
+}
+
+func TestFinalizeRejectsUncheckedPostRun(t *testing.T) {
+	result := evidence{}
+	postRun := cleanPostRun()
+	postRun.Checked = false
+
+	err := finalizeRepositoryEvidence(&result, cleanSource(), postRun, false, false)
+	if err == nil {
+		t.Fatal("finalizeRepositoryEvidence() error=nil, want unchecked post-run failure")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision=true with unchecked post-run")
+	}
+}
+
+func TestFinalizeMarksReproducibleOnlyAfterChecksPassAndSourceIsStable(t *testing.T) {
+	result := evidence{}
+	if err := finalizeRepositoryEvidence(&result, cleanSource(), cleanPostRun(), false, false); err != nil {
+		t.Fatalf("finalizeRepositoryEvidence() error=%v", err)
+	}
+	if !result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision=false after successful checks and stable source")
+	}
+}
+
+func cleanSource() repositoryevidence.Source {
+	return repositoryevidence.Source{
+		RepositoryRevision: "R",
+		WorkingTreeClean:   true,
+	}
+}
+
+func cleanPostRun() repositoryevidence.PostRun {
+	return repositoryevidence.PostRun{
+		Checked:            true,
+		RepositoryRevision: "R",
+		RevisionStable:     true,
+		WorkingTreeClean:   true,
+	}
+}
