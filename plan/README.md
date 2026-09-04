@@ -84,6 +84,23 @@ Application Driverの主要な意味境界、runtime境界、最終UI-less Scena
 
 この4 laneは相互代替しません。
 
+### 最終Evidenceは同じrevisionへ収束する
+
+各laneのrunが個別にsource-fixedであっても、異なるrevisionで得た成功Evidenceを寄せ集めてGate B Readyとは判定しません。
+
+Gate Bの完了判定では、source変更が出尽くした時点のcandidate repository revisionを`R`として固定し、#214 / #308 / #255 / #310の最終Evidenceを同じ`R`へ揃えます。
+
+作業は次の二段階に分けます。
+
+1. **事前確認** — 各laneを必要に応じて実行し、authoring不足、staleなgenerated artifact、provider / external側の不足を露出させます。修復やauthoring変更が必要なら、内容を確認してcommitします。
+2. **最終収束** — source変更が出尽くした後に`R`を固定し、4 laneを`R`で再実行・再受入れします。その後にnegative caseを再監査し、Gate Bを最終判定します。
+
+事前確認で成功したEvidenceでも、その後にsource revisionが変わった場合は最終判定へ流用しません。
+
+#214の外部観測資料そのものは`R`より前に取得されたものでも構いません。ただし、最終判定に使うsource-fixed acceptance receiptとactual Oracle readは、`R`のauthoring / runtimeへ結び直します。
+
+4 laneが同じ`R`へ揃ってGate BをReadyと判定した場合、#291でその同じ`R`をHandover Baselineとして固定してから第一Web Targetへ進みます。
+
 ### Lane A — #214 actual external Oracle
 
 external Evidence intake boundaryはReadyです。PR #340以降は、実際に検査したexternal Evidence JSONのexact bytesを`evidenceArtifactFingerprint`で識別し、clean Repository revision上で照合したことをsource-fixed acceptance receiptとして残せます。
@@ -127,6 +144,10 @@ PR #346以降、targeted Evidenceは次の3 checkを独立して扱います。
 三つ目は`tools/internal/repositoryevidence`のpure契約を確認し、runner自身のpackageをtargeted testへ含めないことで自己再帰を避けます。
 
 通常Go runner上の実runはまだ未取得です。実装・Conformanceの存在をgreen扱いしません。
+
+PR #351以降、開始時working treeがcleanであることだけでは`reproducibleRevision = true`にしません。post-runのHEAD同一性とworking tree cleanまで確認できた後にだけtrueとします。
+
+PR #355以降、`postRunRepository.checked = true`は実行後のHEADとworking treeの両方を実際に観測できた場合だけです。途中観測失敗と、観測した結果dirtyだった状態を区別します。
 
 詳細な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、取得対象と証明範囲は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)、具体的なコマンドと停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)だけを正とします。
 
