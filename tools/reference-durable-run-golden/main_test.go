@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -35,6 +36,26 @@ func TestReplaceFileSafelyReplacesWholeFile(t *testing.T) {
 	}
 	if len(temps) != 0 {
 		t.Fatalf("一時fileが残っています: %#v", temps)
+	}
+}
+
+func TestGenerateDurableRunRejectsInvalidSolutionIDBeforeRepositoryReads(t *testing.T) {
+	_, err := generateDurableRun(
+		"missing-workspace",
+		"missing-deployment.json",
+		"missing-plugin-lock.json",
+		"Order Rollout",
+		defaultVersion,
+		defaultRunID,
+	)
+	if err == nil {
+		t.Fatal("不正なSolution IDを受理しました")
+	}
+	if !strings.Contains(err.Error(), "Solution Release ID") || !strings.Contains(err.Error(), "invalid canonical id") {
+		t.Fatalf("入力不正を明示するerrorではありません: %v", err)
+	}
+	if strings.Contains(err.Error(), "Workspace") {
+		t.Fatalf("不正なSolution IDより先にRepository fileを読んでいます: %v", err)
 	}
 }
 
