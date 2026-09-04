@@ -11,19 +11,36 @@ import (
 	"tei/internal/realization"
 )
 
-// ContractQueryExecutorRegistryは、明示的に解決されたexecutor Capabilityを
-// 実行可能なContractQueryExecutorへ接続するruntime registryである。
+// ContractQueryExecutorRegistryは、明示的に解決されたEnvironment / Database instance /
+// executor Capabilityを、実行可能なContractQueryExecutorへ接続するruntime registryである。
 //
-// provider名やPlugin名から実装を推測せず、Capability IDだけを明示keyとして利用する。
+// Capability IDだけへ縮退すると、同じCapabilityを複数instanceで利用する構成で接続先を取り違え得る。
+// provider名やPlugin名からも実装を推測せず、解決済みBindingに残るidentityをそのままlookupへ用いる。
 type ContractQueryExecutorRegistry interface {
-	ExecutorByCapability(core.CanonicalID) (ContractQueryExecutor, bool)
+	ExecutorForContractQuery(realization.ResolvedContractQueryExecutor) (ContractQueryExecutor, bool)
+}
+
+// ContractQueryExecutorRuntimeKeyは、runtime Executorを一つのEnvironmentとDatabase instanceへ
+// 明示的に結び付けるkeyである。同じexecutor Capabilityを複数instanceで再利用しても、
+// runtime接続先をCapability IDだけから選ばない。
+type ContractQueryExecutorRuntimeKey struct {
+	Environment core.CanonicalID
+	Instance    core.CanonicalID
+	Capability  core.CanonicalID
 }
 
 // ContractQueryExecutorMapは、単純なruntime compositionやConformanceで利用できるregistry実装である。
-type ContractQueryExecutorMap map[core.CanonicalID]ContractQueryExecutor
+type ContractQueryExecutorMap map[ContractQueryExecutorRuntimeKey]ContractQueryExecutor
 
-func (m ContractQueryExecutorMap) ExecutorByCapability(id core.CanonicalID) (ContractQueryExecutor, bool) {
-	executor, ok := m[id]
+func (m ContractQueryExecutorMap) ExecutorForContractQuery(
+	selected realization.ResolvedContractQueryExecutor,
+) (ContractQueryExecutor, bool) {
+	key := ContractQueryExecutorRuntimeKey{
+		Environment: selected.Binding.Environment,
+		Instance:    selected.Instance.ID,
+		Capability:  selected.Capability.Capability.ID,
+	}
+	executor, ok := m[key]
 	return executor, ok && executor != nil
 }
 
@@ -33,7 +50,7 @@ func (m ContractQueryExecutorMap) ExecutorByCapability(id core.CanonicalID) (Con
 // runtime parameter値は保持せず、どのEnvironment / Database instance / executor Capabilityを
 // 明示的に選択したかと、通常のContract Query実行結果だけを残す。
 type ReferenceContractQueryEnvironmentExecution struct {
-	Environment environment.Environment                    `json:"environment"`
+	Environment environment.Environment                   `json:"environment"`
 	Executor    realization.ResolvedContractQueryExecutor `json:"executor"`
 	Execution   ReferenceContractQueryExecution            `json:"execution"`
 }
@@ -42,7 +59,7 @@ type ReferenceContractQueryEnvironmentExecution struct {
 // Environment上のDatabase instanceへ明示Bindingし、そのinstanceとContract Query targetに対する
 // executor Bindingを解決してから実行する。
 //
-// Environment、Application datasource、executor Capabilityのいずれも暗黙選択しない。
+// Environment、Application datasource、executor Capability、runtime Database接続のいずれも暗黙選択しない。
 func (r Resolver) ExecuteReferenceContractQueryInEnvironment(
 	ctx context.Context,
 	environmentID, applicationID, patternID core.CanonicalID,
@@ -96,12 +113,33 @@ func (r Resolver) ExecuteReferenceContractQueryInEnvironment(
 	}
 
 	executorID := selected.Capability.Capability.ID
-	executor, ok := registry.ExecutorByCapability(executorID)
+	executor, ok := registry.ExecutorForContractQuery(selected)
 	if !ok {
 		return ReferenceContractQueryEnvironmentExecution{}, fmt.Errorf(
-			"Contract Query executor Capability %sに対応するruntime ExecutorがRegistryにありません",
+			"Environment %sのDatabase instance %s / Contract Query executor Capability %sに対応するruntime ExecutorがRegistryにありません",
+			selected.Binding.Environment,
+			selected.Instance.ID,
 			executorID,
 		)
+	}
+	if providerBound, ok := executor.(DatabaseProviderBoundContractQueryExecutor); ok {
+		runtimeProvider := providerBound.DatabaseProvider()
+		if !runtimeProvider.Known() || runtimeProvider == environment.ProviderGeneric {
+			return ReferenceContractQueryEnvironmentExecution{}, fmt.Errorf(
+				"Contract Query executor Capability %sに登録されたruntime ExecutorのDatabase provider %qは実行に使用できません",
+				executorID,
+				runtimeProvider,
+			)
+		}
+		if runtimeProvider != selected.Instance.Provider {
+			return ReferenceContractQueryEnvironmentExecution{}, fmt.Errorf(
+				"Contract Query executor Capability %sのruntime Executor provider %sとDatabase instance %sのprovider %sが一致しません",
+				executorID,
+				runtimeProvider,
+				selected.Instance.ID,
+				selected.Instance.Provider,
+			)
+		}
 	}
 
 	execution, err := r.ExecuteReferenceContractQuery(ctx, applicationID, patternID, source, rowIndex, executor)

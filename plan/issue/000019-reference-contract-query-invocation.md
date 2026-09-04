@@ -3,12 +3,12 @@
 - 状態: In Progress
 - GitHub Issue: #185
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
-- 関連Issue: `ISSUE-000017` / GitHub Issue #178、`ISSUE-000018` / GitHub Issue #179
+- 関連Issue: `ISSUE-000017` / GitHub Issue #178、`ISSUE-000018` / GitHub Issue #179、`ISSUE-000020` / GitHub Issue #222、`ISSUE-000022` / GitHub Issue #214
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
 ## 背景
 
-Application Driverで`reference` Patternから外部観測DatabaseのSemantic Dataを取得する経路を実際に通すと、Semantic Relationのkey対応とDatabase Contract Queryのsignatureだけでは、両者を安全につなげられません。
+Application Driverで`reference` Patternから外部観測DatabaseのSemantic Dataを取得するには、Semantic Relationのkey対応とDatabase Contract Queryのsignatureだけでは足りません。
 
 第一Referenceでは、次の三層を分離して扱います。
 
@@ -26,7 +26,7 @@ Database Contract Query
   result customer.customer zero-or-one
 ```
 
-Relationはinstance間のSemantic key対応を所有し、Database Contract Queryはinput / result / cardinalityを所有します。このIssueが所有するのは、そのApplication Patternで利用するContract / Queryと、Relation target keyからQuery inputへの明示bindingです。
+Relationはinstance間のSemantic key対応を所有し、Database Contract Queryはinput / result / cardinalityを所有します。このIssueが所有するのは、そのApplication Patternで**どのContract Queryを利用し、Relation target keyの値をどのQuery inputへ渡すか**という明示的な呼び出し境界です。
 
 DriverがQuery名、input名、Semantic型、Contract内のQuery数などから呼び出し先を推測する方針は採りません。
 
@@ -58,11 +58,11 @@ Database Contract Query
   Query: find_by_id
 ```
 
-## ここまでに実装したこと
+## 実装済みの境界
 
 ### Canonical modelとauthoring
 
-`reference` Patternは、次を明示的に保持できます。
+`reference` Patternは、次の呼び出し情報を明示的に保持できます。
 
 ```text
 ContractQueryInvocation
@@ -73,7 +73,7 @@ ContractQueryInvocation
        └─ Input
 ```
 
-`contract-query` authoring blockからこのmodelを構築し、未定義の既存Patternには暗黙の呼び出しを追加しません。
+`contract-query` authoring blockからこのmodelを構築します。呼び出し情報を持たない既存Patternへ、暗黙のContract Queryを補完することはありません。
 
 ### Application境界内のValidation
 
@@ -88,11 +88,11 @@ ContractQueryInvocation
 - target Database / Contract / Queryを一意に解決できる
 - compatible majorを無視しない
 
-別Databaseの同名Contractや同名Queryへfallbackしません。
+別Databaseの同名Contractや、同じContract名・Query名を持つ別定義へfallbackしません。
 
 ### Relation key / Query signatureとの横断Validation
 
-現在は三つのmodelを共通のValidation境界で照合できます。
+Semantic Relation、Reference invocation、Database Contract Query signatureを共通のValidation経路で照合します。
 
 - bindingの`TargetAttribute`がRelation keyのtarget側に存在する
 - 必要なRelation target keyをbindingが過不足なく扱う
@@ -101,7 +101,7 @@ ContractQueryInvocation
 - Query result DataがRelation target Dataと整合する
 - result cardinalityがreference Patternの意味と矛盾しない
 
-型一致は明示bindingの検証に利用しますが、bindingを自動生成する根拠にはしません。
+型一致は明示bindingの妥当性確認には使いますが、bindingを自動生成する根拠にはしません。
 
 ### Runtime parameterの組み立て
 
@@ -111,14 +111,14 @@ ContractQueryInvocation
 MappedResult
   sales.order.customer_id = 42
         ↓ Relation key
-  customer.customer.customer_id
+customer.customer.customer_id
         ↓ explicit invocation binding
-  Query input id
+Query input id
         ↓
-  Parameters["id"] = 42
+Parameters["id"] = 42
 ```
 
-値の型や名前を見て別のinputへ補完しません。runtime parameter値はCanonical Worldや通常Evidenceへ保存しません。
+値の型や名前を見て別inputへ補完しません。runtime parameter値はCanonical Worldや通常Evidenceへ保存しません。
 
 ### Environment runtime composition
 
@@ -134,33 +134,81 @@ development / master_data.dev
 master_data/master_data.customer/find_by_id
         ↓
 database.query.oracle
-        ↓ runtime registry
+        ↓ instance-aware runtime registry
 ContractQueryExecutor
 ```
 
 Environment、Database instance、executor Capability、runtime implementationのいずれもprovider名や配置から暗黙選択しません。
 
+runtime Registryは`ISSUE-000020`でEnvironment + Database instance + executor Capability identityを保持するようにし、同一Capabilityを共有する別Database instanceへfallbackしない境界まで実装しています。
+
+### Query realizationとresult mapping
+
+このIssueの初期段階では未実装だったDatabase Contract Queryの物理realizationも、`ISSUE-000018`側で境界を追加しています。
+
+```text
+ContractQueryTarget
+  Database / Contract / Query
+        ↓
+ContractQuerySQLRealization
+  Contract input -> physical parameter
+  native SQL source
+  raw result column -> Semantic attribute
+        ↓
+ContractQueryResult
+```
+
+SQL realizationは通常Workspaceから読み込め、authoring sourceをSource Indexで追跡できます。raw resultは明示されたresult-column mappingだけでSemantic rowへ変換し、列名の類似やSELECT順序から意味を補完しません。
+
 ### Result境界
 
-provider非依存の`ContractQueryExecutor`からSemantic rowを受け取り、`zero-or-one`では次を区別します。
+`zero-or-one`では次を区別します。
 
 - 0件: 正常な「見つからない」
 - 1件: 正常な取得
 - 2件以上: Contract違反
-- 接続失敗・Query実行失敗: Execution Error
+- 接続失敗・Query実行失敗・row取得失敗: Execution Error
 
-正常な0件をExecution Errorへ変換しません。
+正常な0件をExecution Errorへ変換せず、Execution Errorを0件として隠しません。
 
-## 残る実証対象
+## Invocation境界としての現在地
 
-Reference invocation自体の選択・binding・parameter準備・Environment compositionまでは実装できました。残る主要な境界は`ISSUE-000018`と共有します。
+Reference invocation固有の設計・model・authoring・Validation・parameter準備・Environment compositionは、Evidence用convergence上で一通り接続できました。
 
-1. `database.query.oracle`を具体的なQuery realization sourceへ明示的に接続する
-2. physical resultからSemantic rowへのmappingを明示する
-3. Query realization sourceの来歴をSource Indexから追跡できるようにする
-4. 第一ReferenceをWorkspace読込みから実read結果まで一続きに実証する
+当初このIssueに残していた次の項目は、現在は実装済みです。
 
-これらをApplication PatternやSemantic Relationへ逆流させず、Database固有の実現境界として進めます。
+- concrete Query realizationをDatabase / Contract / Query identityから明示的に解決する仕組み
+- physical resultからSemantic rowへの明示mapping
+- Query realization authoring sourceのSource Index / provenance
+- Environment / Database instance / executor Capabilityを保ったruntime composition
+
+したがって、今後の主な未完了事項はReference invocationの設計不足ではなく、第一Reference固有の**観測された物理Evidence**と最終E2Eです。
+
+## 後続Issueへ委ねる範囲
+
+### `ISSUE-000018`: Database Contract Query実行境界
+
+Database Contract Queryのsignature、realization、executor、result cardinality、provider境界を引き続き統括します。
+
+### `ISSUE-000020`: runtime Database instance identity
+
+同じexecutor Capabilityを複数Database instanceが共有しても、runtime接続先を取り違えない境界を扱います。
+
+### `ISSUE-000021`: Oracle `database/sql` Runner
+
+明示済みnative SQLとphysical parameterを、注入済み`*sql.DB`へ渡すOracle向け最小Runnerを扱います。
+
+### `ISSUE-000022`: external `master_data`の物理Evidence
+
+実際のtable / view / column、native SQL、physical parameter、raw result列、read-only強制、provenance、実Oracle driverとのintegrationを扱います。
+
+物理Evidenceが存在しない状態で、Invocation境界からOracle SQLやobject名を生成しません。
+
+## CIと完了判定
+
+2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、Reference data access収束線にもその停止が取り込まれています。そのため、現在workflow runが作成されないことは、Issue #192で記録した過去のrunner割当失敗と同一ではありません。
+
+このIssueの実装境界は収束線上で成立していますが、CI未実行の成果をgreenとは扱いません。CIが別の明示的な判断で再有効化された後、関連Conformanceを通常runnerで再実行します。このため、Repository内IssueとGitHub Issueは現時点では`In Progress`のまま維持します。
 
 ## 完了条件
 
@@ -173,11 +221,16 @@ Reference invocation自体の選択・binding・parameter準備・Environment co
 - [x] Relation key / Query signature / result Data / cardinalityを横断Validationできる
 - [x] Relation source instanceの値を明示bindingに従ってQuery parameterへ渡せる
 - [x] Environment上のDatabase instanceとexecutorを明示Bindingから解決できる
+- [x] runtime接続先でDatabase instance identityを保持できる
 - [x] 0件とExecution Errorを区別するprovider非依存result境界を持つ
-- [ ] concrete Query realization sourceを明示的に解決できる
-- [ ] physical resultからSemantic rowへのmappingを明示できる
-- [ ] realization sourceの来歴を追跡できる
-- [ ] `Order -> Customer` Referenceを実readまで一続きに実証できる
+- [x] Query realizationをDatabase / Contract / Query identityから明示的に解決できる
+- [x] physical resultからSemantic rowへのmappingを明示できる
+- [x] realization sourceの来歴をSource Indexから追跡できる
+- [x] Pattern、Contract、Query、executor Bindingのauthoring sourceを追跡できる
+- [ ] CIが明示的に再有効化された後、関連Conformanceが通常runnerで成功する
+- [ ] `ISSUE-000022`の物理Evidenceを用いた`Order -> Customer`実read E2Eを確認する
+
+最後の実read E2EはInvocationの選択規則を追加するためのものではなく、既に確定した境界が外部観測資産でも成立することを確認するEvidenceです。
 
 ## 非目標
 
@@ -188,13 +241,17 @@ Reference invocation自体の選択・binding・parameter準備・Environment co
 - Database Contract QueryをすべてSemantic Capabilityへ統一すること
 - Target UI固有のnavigation設計
 - production向けcache / batching / Connection Pool設計
+- 観測されていない外部Databaseの物理情報を推測すること
 
 ## 関連
 
-- GitHub Issue #69 / #178 / #179 / #185
+- GitHub Issue #69 / #178 / #179 / #185 / #192 / #214 / #222 / #224
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000018-database-contract-query-execution.md`
+- `plan/issue/000020-contract-query-runtime-instance-identity.md`
+- `plan/issue/000021-oracle-contract-query-sql-runner.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
 - `reference/workspace/databases/master-data/contracts/customer.tei`
 - `reference/workspace/environments/development/contract-query-executors/customer-find-by-id.tei`
@@ -203,3 +260,4 @@ Reference invocation自体の選択・binding・parameter準備・Environment co
 - `internal/driver/reference_contract_query.go`
 - `internal/driver/reference_contract_query_parameters.go`
 - `internal/driver/reference_contract_query_environment.go`
+- `internal/realization/contract_query_sql.go`
