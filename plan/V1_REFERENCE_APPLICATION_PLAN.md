@@ -158,6 +158,26 @@ Evidence取得: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.m
 
 **主要な意味境界とScenario構造は成立しています。Gate BはNot Readyで、現在はEvidence取得段階です。**
 
+### 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
+
+Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
+
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL Provider Evidence
+
+最終判定では、この三つの完了Evidenceを同じclean candidate revision `R`へ揃えます。
+
+#214 / #371 / #376のactual Oracle EvidenceはGate B必須blockerではありません。`master_data`のactual physical facts / provenance / effective read-only / driver integration / actual readは引き続き未実証であり、完了扱いにはしません。actual external asset / legacy compatibility / 第二Database Provider圧力試験として継続します。
+
+#214が未完了のままGate Bを通過する場合は、#291 Handover Baselineへ未検証範囲を`unresolved`として明示します。第一Web Target側でOracle physical factsやrealizationを補完せず、#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+Gate Bではexternal-observed assetを推測で埋めない境界を維持し、#310のexternal Evidence intake Conformanceで確認します。
+
+**Gate BはまだNot Readyです。** #310 / #255 / #308のactual run Evidenceは未取得です。Gate B ReadyとHandover固定前にStage 3へ進みません。
+
+以下の「Gate Bを直接止める四系統」等の記述は`ISSUE-000035`以前の計画履歴として保持します。現行必須scopeと矛盾する場合は本節を優先し、各Evidence種別の非代替性・安全条件は維持します。
+
 PR #285でContract Query、header-detail、Relation Storage、Observation、最終UI-less Scenario、Reference authoringを`main`へ収束しました。
 
 したがって、Stage 2の中心課題は新しいDriver抽象を増やすことではなく、成立済み境界へ実外部・実DB・生成物再現・通常runnerのEvidenceを揃えることです。
