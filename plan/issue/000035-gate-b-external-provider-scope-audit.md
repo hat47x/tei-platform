@@ -1,49 +1,25 @@
 # ISSUE-000035: Gate Bのactual external Provider必須範囲を再監査する
 
-- 状態: In Progress
-- GitHub Issue: #380
+- 状態: Done — scope判断完了
+- GitHub Issue: #380（Completed）
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
+- 文書同期follow-up: `ISSUE-000036` / GitHub Issue #383
 - 関連Issue: `ISSUE-000022` / #214、`ISSUE-000031` / #308、`ISSUE-000025` / #255、`ISSUE-000032` / #310
 
-## 目的
+## 結論
 
-Gate Bの本来の目的に照らして、actual external Oracle EvidenceをGate Bの必須blockerとして扱い続ける必要があるかを再監査します。
+Gate Bの本来の目的、Product Requirements、`MILESTONES.md`を再監査した結果、**actual external Oracle E2EをGate Bの必須blockerから外します**。
 
-Gate Bは「UIなしで主要Scenarioを再現できる」ことを確かめ、第一Web Target側でApplication上の意味不足を補わなくてよい状態を作るためのGateです。
+これはOracle Database対応を不要とする判断ではありません。
 
-一方、現在のGate B監査では、#214 actual Oracle physical facts / read-only / actual readが未取得であることだけでもGate全体がNot Readyになります。
+Gate BはMilestone 3「設計をDriverで動かして確認できる」のEvidence Gateです。第一Web Targetへ進む前に必要なのは、Application / Driver上の主要ScenarioがUIなしで再現でき、Target側で意味不足や未観測事実を勝手に補わなくてよいことです。
 
-`MASTER_PLAN.md`では、Database / Provider領域が他workstreamより深く検証されており、一つの技術領域だけがProduct全体の進路を決めないよう上位workstreamを並走させる方針を明示しています。
+RQ-004 / RQ-005 / RQ-007 / RQ-009 / RQ-012 / RQ-014を確認しましたが、第一Web Targetへ進む前に特定Oracle環境へのactual E2E成功を要求する条項はありません。
 
-この二つを整合させます。
+## Gate Bで必須とするEvidence
 
-## Product Requirementとの照合
-
-RQ-004 / RQ-005 / RQ-007 / RQ-009 / RQ-012 / RQ-014を再確認しました。
-
-Product Requirementが求めているのは、たとえば次です。
-
-- native assetを独自DSLへ全面移行せず利用できること
-- Application / DatabaseをN:Mで扱えること
-- Provider固有知識をCoreへ漏らさないこと
-- 既存認証・認可仕様を保持した移行
-- Driverで設計途中のApplicationを動かせること
-- Application Patternを再利用可能な知識として扱うこと
-
-これらは重要ですが、**第一Web Targetへ進む前にOracle Databaseへのactual E2Eを成功させること**までは要求していません。
-
-## 現在の判断
-
-actual Oracle E2EをGate Bの必須blockerにし続ける必要性は確認できませんでした。
-
-これは「実行環境がないからGateを緩める」という判断ではありません。
-
-Gate Bが証明すべき対象と、Provider-specificなactual external asset実証を分ける判断です。
-
-## Gate Bで必須として残すEvidence
-
-Gate Bでは、次の三つの実行Evidenceを必須とします。
+Gate Bの必須Evidenceは次の三つです。
 
 1. **#310 deterministic Repository Evidence**
    - Canonical Workspace Validation
@@ -59,64 +35,7 @@ Gate Bでは、次の三つの実行Evidenceを必須とします。
    - explicit Semantic mapping
    - fixture前後の安全境界
 
-これに加えて、external-observed assetについて次の意味境界が成立していることを要求します。
-
-- 未観測のphysical object / column / SQLを推測しない
-- external EvidenceをCanonicalへ昇格させない
-- explicit realizationとEvidenceを照合する
-- actual external Evidence未取得を`unresolved`として保持できる
-
-external Evidence intakeのConformanceは#310で実行します。
-
-## #214の新しい位置づけ
-
-`ISSUE-000022` / #214は削除しません。
-
-actual external Oracle Evidenceは、次を実証する独立したv1作業として継続します。
-
-- external-observed assetのactual physical facts
-- provenance
-- read-only実効保証
-- actual Oracle driver integration
-- actual read → explicit Semantic mapping
-- 第二Database ProviderによるProvider境界の圧力試験
-- legacy / external asset migrationの実証
-
-#371 / #376も#214の子作業として維持します。
-
-ただし、実Oracle環境情報が得られるまで優先度を下げます。
-
-## Gate Cへの引き継ぎ
-
-#214が未完了のままGate Bを通過する場合、Handover Baselineでは未解決事項として明示します。
-
-少なくとも次を隠しません。
-
-- `master_data` actual external Oracle Evidenceが未取得であること
-- actual physical object / SQL / raw columnsが未観測であること
-- actual Oracle readを成功済みと主張しないこと
-
-第一Web Targetでは、Web固有コードからOracle物理情報を補完しません。
-
-Reference / test用の実行経路を使う場合も、それをactual external Oracle Evidenceへ格上げしません。
-
-Gate C Semantic Evidenceでは、Handover Baselineの`unresolved`を保持したまま比較できることを要求します。
-
-## #214を後段で必須にする条件
-
-#214をGate Bから外すことは、対応を消すことではありません。
-
-少なくとも次のいずれかを満たす前にはactual external Oracle Evidenceを必要とします。
-
-- `master_data`をactual external assetとしてv1 Support対象だと主張する
-- legacy / external asset migrationを実証済みと主張する
-- 第二Database ProviderによるProvider-neutral境界の圧力試験を完了扱いする
-
-具体的にどのMilestoneへ置くかは、`MILESTONES.md`とv1 Support条件の更新時に確定します。
-
-## Gate Bの最終Evidence収束
-
-Gate Bのcandidate revisionを`R`とする場合、最終判定に用いるsource-dependent Evidenceは次の三laneをRへ揃えます。
+三laneは相互代替しません。Gate Bのcandidate revisionを`R`とする場合、最終判定に使うEvidenceを同じ`R`へ揃えます。
 
 ```text
 #310 -> R
@@ -124,25 +43,87 @@ Gate Bのcandidate revisionを`R`とする場合、最終判定に用いるsourc
 #308 -> R
 ```
 
-#214 actual external Oracle EvidenceはGate B Ready判定へ含めません。
+現時点では三laneの実runが未取得なので、Gate Bは引き続き **Not Ready** です。
 
-ただしHandover Baselineは、#214未完了を`unresolved`として明示的に引き継ぎます。
+## external-observed assetについてGate Bに残す境界
+
+actual Oracle E2EをGate B必須から外しても、external-observed assetを雑に扱ってよいわけではありません。
+
+Gate Bでは少なくとも次を守ります。
+
+- 未観測のphysical object / column / SQLを推測しない
+- external EvidenceをCanonicalへ昇格させない
+- explicit realizationとEvidenceを照合する
+- actual external Evidence未取得を`unresolved`として保持できる
+- synthetic ScenarioやPostgreSQL Evidenceをactual Oracle成功Evidenceへ格上げしない
+
+external Evidence intakeのConformanceは#310で確認します。
+
+## #214 actual Oracleの新しい位置づけ
+
+`ISSUE-000022` / #214、#371、#376は削除しません。
+
+actual Oracle Evidenceは次の実証として継続します。
+
+### Milestone 2 — 現実の既存業務をそのまま受け止められる
+
+- external-observed assetのactual physical facts
+- provenance
+- read-only実効保証
+- native realization
+- actual read → explicit Semantic mapping
+- legacy / external asset migrationの実証
+
+### Milestone 8 — Provider / Runtimeの交換可能性を実証する
+
+- Oracle driver integration
+- PostgreSQL以外のDatabase Providerによるprovider-neutral境界の圧力試験
+
+実Oracle環境情報が得られるまで、これらのProvider固有作業はApplication → Driver → Targetの主線より優先しません。
+
+## Gate Cへの引き継ぎ
+
+#214が未完了のままGate Bを通過する場合、Handover Baselineへ少なくとも次を`unresolved`として明示します。
+
+- `master_data` actual external Oracle Evidence未取得
+- actual physical object / SQL / raw columns未観測
+- actual Oracle read未実証
+- driver integration未確定
+- read-only実効Evidence未取得
+
+第一Web Targetでは、Web固有コードからOracle物理情報やread-only方式を補完しません。
+
+Reference / test用の経路を利用してCustomer referenceをProjectionしても、それをactual external Oracle Evidenceへ格上げしません。
+
+## actual Oracleを必須にする主張
+
+少なくとも次を主張する前には#214のactual Evidenceが必要です。
+
+- `master_data`をactual external assetとしてv1 Support対象とする
+- legacy / external asset migrationを実証済みとする
+- 第二Database ProviderによるProvider-neutral境界の圧力試験を完了扱いする
+
+## 文書同期
+
+scope判断は本Issueで完了しました。
+
+既存のGate B長文には旧4-lane記述が残っているため、内容を一括圧縮せず、`ISSUE-000036` / #383で設計履歴とfail-closed条件を保持したまま段階的に同期します。
+
+同期完了までは、本Issue / #380のscope判断を古い4-lane必須表現より優先します。
 
 ## 完了条件
 
-- [x] Gate B本来の目的とProduct Requirementを再確認した
-- [x] actual Oracle E2EがProduct Requirement上の第一Web Target前必須条件ではないことを確認した
+- [x] Gate B本来の目的を再確認した
+- [x] Product Requirementsと照合した
+- [x] `MILESTONES.md`と照合した
+- [x] actual Oracle E2EをGate B必須から外す判断を確定した
 - [x] Gate B必須Evidenceを#310 / #255 / #308へ再整理した
-- [x] external-observedの未観測事実を推測しない境界はGate Bに残した
-- [x] #214を後段のactual external / legacy / Provider圧力試験として維持する方針を整理した
-- [ ] `GATE_B_READINESS_AUDIT.md`を3 laneへ更新する
-- [ ] `GATE_B_EVIDENCE_ACQUISITION.md`を3 laneへ更新する
-- [ ] `GATE_B_EVIDENCE_RUNBOOK.md`を3 laneへ更新する
-- [ ] `GATE_B_TO_C_HANDOVER_CONTRACT.md`へ#214 unresolved引き継ぎを明記する
-- [ ] `V1_REFERENCE_APPLICATION_PLAN.md`を更新する
-- [ ] `ISSUE-000006` / `ISSUE-000029`を更新する
-- [ ] #69 / #214 / #273 / #291へ判断を同期する
-- [ ] Gate Bを実EvidenceなしにReadyへ変更しない
+- [x] external-observedの未観測事実を推測しない境界をGate Bへ残した
+- [x] #214をMilestone 2 / 8の継続Evidenceとして位置づけた
+- [x] #214未完了時のHandover `unresolved`を明示した
+- [x] #69 / #214 / #273 / #291 / #70へscope判断を同期した
+- [x] 長文同期を`ISSUE-000036` / #383へ分離した
+- [x] Gate Bを実EvidenceなしにReadyへ変更していない
 
 ## 非目標
 
@@ -157,9 +138,10 @@ Gate Bのcandidate revisionを`R`とする場合、最終判定に用いるsourc
 
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
 - `plan/MASTER_PLAN.md`
+- `plan/MILESTONES.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
-- GitHub #69 / #70 / #214 / #255 / #273 / #291 / #308 / #310 / #371 / #376 / #380
+- GitHub #69 / #70 / #214 / #255 / #273 / #291 / #308 / #310 / #371 / #376 / #380 / #383
