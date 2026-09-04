@@ -33,6 +33,18 @@ func TestValidateDedicatedFixtureDatabaseRejectsEmptyIdentity(t *testing.T) {
 	}
 }
 
+func TestValidateFixtureDatabaseRestoredRequiresZeroUserRelations(t *testing.T) {
+	if err := validateFixtureDatabaseRestored(0); err != nil {
+		t.Fatalf("user relation 0件へ復元したDatabaseを拒否しました: %v", err)
+	}
+
+	for _, got := range []int{-1, 1, 2} {
+		if err := validateFixtureDatabaseRestored(got); err == nil {
+			t.Fatalf("終了時user relation=%dを復元済みとして受け入れています", got)
+		}
+	}
+}
+
 func TestFixtureDatabaseSafetyEvidencePersistsAssertionsWithoutDatabaseIdentity(t *testing.T) {
 	got := fixtureDatabaseSafetyEvidence{
 		GuardPassed:                     true,
@@ -62,6 +74,33 @@ func TestFixtureDatabaseSafetyEvidencePersistsAssertionsWithoutDatabaseIdentity(
 	for _, forbidden := range []string{"databaseName", "dsn", "TEI_TEST_POSTGRES_DSN", "tei_gate_b_evidence"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("安全判定Evidenceへ接続先identityまたはDSN情報を保存しています: %s", text)
+		}
+	}
+}
+
+func TestFixtureCleanupSafetyEvidencePersistsRestoredStateWithoutDatabaseIdentity(t *testing.T) {
+	got := fixtureCleanupSafetyEvidence{
+		Verified:                        true,
+		UserRelationsAfterCleanup:       0,
+		FixtureObjectAbsentAfterCleanup: true,
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(encoded)
+	for _, want := range []string{
+		`"verified":true`,
+		`"userRelationsAfterCleanup":0`,
+		`"fixtureObjectAbsentAfterCleanup":true`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("cleanup安全判定Evidenceに%sがありません: %s", want, text)
+		}
+	}
+	for _, forbidden := range []string{"databaseName", "dsn", "TEI_TEST_POSTGRES_DSN", "tei_gate_b_evidence"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("cleanup安全判定Evidenceへ接続先identityまたはDSN情報を保存しています: %s", text)
 		}
 	}
 }
