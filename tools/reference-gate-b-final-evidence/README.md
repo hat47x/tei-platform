@@ -73,17 +73,21 @@ ambient環境を確認する前に安全値へ書き換えて、もともと不�
 
 この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspace、GOFLAGS、user-level Go environment fileを持ち込まないためのfail-closed条件です。
 
-## PostgreSQL DSNを必要なlaneだけへ渡す
+## PostgreSQL DSNを必要なsubprocessだけへ渡す
 
-`TEI_TEST_POSTGRES_DSN`はfinal runnerの起動時には必要ですが、child subprocessのうち実際にPostgreSQLへ接続するのは#308だけです。
+`TEI_TEST_POSTGRES_DSN`はfinal runnerの起動時には必要ですが、実際にPostgreSQLへ接続するのは#308 real PostgreSQL Provider Evidence childだけです。
 
-そのため、final runnerはDSNをすべてのchildへ一律に継承しません。
+PR #434以降、final runnerはDSNを利用しないsubprocessへ一律に継承しません。
 
+- `go env GOWORK` / `go env GOFLAGS`等のGo環境probeへは渡さない
+- `go version`へは渡さない
 - #310 deterministic Repository Evidenceへは渡さない
 - #255 generated artifact reproducibility Evidenceへは渡さない
 - #308 real PostgreSQL Provider Evidenceへだけ渡す
 
-DSNにはcredentialを含み得るため、利用しないlaneへsecret候補を露出しないための境界です。`PATH`等、DSN以外の環境変数は通常どおりchildへ引き継ぎます。
+DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへそもそもsecret候補を露出しないためのleast-exposure境界です。
+
+DSN除去は共通helperで行い、keyの大小文字差に依存せず同名keyをすべて除去します。`PATH`等、DSN以外のenvironmentは通常どおり引き継ぎます。#308 laneだけはDSNを必要とするため、base environmentのcopyを維持します。
 
 この分離はEvidenceの合否条件を増やすものではありません。#310 / #255 / #308の正規runner、lane順序、revision convergence、child artifact fingerprint、source再確認の意味は従来どおりです。
 
