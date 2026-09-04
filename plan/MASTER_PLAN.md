@@ -89,11 +89,11 @@ TEIが新規の理想形だけでなく、実際の業務システムを受け�
 
 v1では、Application PatternをApplicationが所有するCanonicalな意図として扱います。`browse`、`record`、`reference`、`header-detail`、`command`を最初のReferenceとして実証しますが、この分類を直ちにTEI全体の標準Catalogへ固定しません。
 
-Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置は[ADR-0018](adr/0018-application-pattern-authoring-source.md)、具体的な実証順は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を参照します。
+Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置は[ADR-0018](adr/0018-application-pattern-authoring-source.md)、具体的な実証順は[`APPLICATION_PATTERN_V1_DESIGN.md`](design/APPLICATION_PATTERN_V1_DESIGN.md)を参照します。
 
 既存認証のように、標準化するとかえって移行できなくなる領域も並行して検証します。「TEI標準へ作り直してから移行」ではなく、既存仕様を保持したまま取り込み、後からCapability単位で置き換えられることをReferenceで確認します。
 
-Authentication / Authorizationの意味境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装前設計は[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)を参照します。
+Authentication / Authorizationの意味境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装前設計は[`LEGACY_AUTH_V1_DESIGN.md`](design/LEGACY_AUTH_V1_DESIGN.md)を参照します。
 
 ## Workstream D: Database / Provider Lifecycle
 

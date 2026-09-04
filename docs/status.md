@@ -97,7 +97,7 @@ pattern order_entry.order_lines header-detail {
 
 ただし、5分類をTEI全体の永久的な標準語彙として確定したわけではありません。Driver、第一Target、第二Targetから得られるEvidenceによって、分類や所有境界は今後も見直せます。
 
-詳細は[Application Pattern v1 設計・実装基線](../plan/APPLICATION_PATTERN_V1_DESIGN.md)と[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)を参照してください。
+詳細は[Application Pattern v1 設計・実装基線](../plan/design/APPLICATION_PATTERN_V1_DESIGN.md)と[ISSUE-000005](../plan/issue/000005-application-pattern-reference.md)を参照してください。
 
 ### Gate Aで成立したApplication実行前提
 

@@ -285,8 +285,8 @@ Gate Aの必須項目に独立したBlockerは残っていません。
 ## 関連
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`

@@ -101,7 +101,7 @@ Product Value / Vision / Principles / Requirements / Master Plan / Milestones / 
 ## Stage 1 — Application Pattern
 
 関連: `ISSUE-000005` / GitHub Issue #67  
-詳細: [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)
+詳細: [`APPLICATION_PATTERN_V1_DESIGN.md`](design/APPLICATION_PATTERN_V1_DESIGN.md)
 
 完了しています。
 
@@ -585,9 +585,9 @@ Editor / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0018-application-pattern-authoring-source.md`
 - `plan/adr/0019-authentication-capability-boundary.md`

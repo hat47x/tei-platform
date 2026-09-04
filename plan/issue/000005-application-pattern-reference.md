@@ -2,7 +2,7 @@
 
 - 状態: 完了
 - GitHub Issue: #67
-- 設計・実装基線: [`APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
+- 設計・実装基線: [`APPLICATION_PATTERN_V1_DESIGN.md`](../design/APPLICATION_PATTERN_V1_DESIGN.md)
 
 ## 目的
 
@@ -207,10 +207,10 @@ Application Pattern側のEvidenceは揃いました。次は既存認証Compatib
 
 ## 関連文書
 
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/design/APPLICATION_PATTERN_V1_DESIGN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0018-application-pattern-authoring-source.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`

@@ -208,7 +208,10 @@ Plugin解決やReference artifactの再生成を含む手順は [Getting Started
 ```text
 product/                 Product Value / Vision / Principles
 requirements/            Product Requirements
-plan/                    Milestones / Master Plan / ADR / Issue
+plan/                    Milestones / Master Plan / Gate
+plan/design/             機能ごとの設計文書
+plan/issue/              作業定義と要件詳細化
+plan/adr/                設計判断
 cmd/tei/                 CLI
 internal/                executable architecture models / validation
 reference/workspace/     small end-to-end TEI workspace
@@ -217,6 +220,7 @@ reference/world.json     golden canonical world snapshot
 examples/                focused executable examples
 docs/                    public and technical documentation
 .github/workflows/       repository verification
+AGENTS.md                文書構成と管理ルール
 ```
 
 上位・計画文書:

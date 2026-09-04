@@ -126,6 +126,6 @@ PR #89では小さいfixtureで、Pattern Subject identityとfile pathを分離�
 - PR #99
 - ADR-0017
 - ADR-0018
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/design/APPLICATION_PATTERN_V1_DESIGN.md`
 
 関連RQ: RQ-001, RQ-002, RQ-003, RQ-014, RQ-017, RQ-021
