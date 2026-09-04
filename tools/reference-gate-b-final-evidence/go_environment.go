@@ -18,6 +18,10 @@ type lookupEnvFunc func(string) (string, bool)
 // inspectGoEnvironmentは、final runner自身をcompileする段階からuser-level Go environment fileを
 // 暗黙入力へしないため、process environmentにGOENV=offが明示されていることを最初に確認する。
 //
+// GOENVの特殊値offはGo tool側でexact lowercaseとして扱われるため、ここでも完全一致だけを受理する。
+// 大文字小文字の違いや前後空白を正規化して受理すると、compile時にはGOENV fileが有効だった実行を
+// runtime guardだけが安全と誤判定し得るため、その緩和は行わない。
+//
 // その後、candidate revision外のGo workspaceやGOFLAGSがcompile / test入力へ介入しないことを確認し、
 // ambient環境が安全である場合だけprocess environmentをGOWORK=off / GOFLAGS= / GOENV=offへ固定する。
 // これにより各laneと通常のnested Go commandも同じ境界を継承する。
@@ -44,7 +48,7 @@ func inspectGoEnvironmentForLaunch(
 	var result goEnvironmentEvidence
 
 	goEnv, ok := lookupEnv("GOENV")
-	result.GoEnvDisabled = ok && strings.EqualFold(strings.TrimSpace(goEnv), "off")
+	result.GoEnvDisabled = ok && goEnv == "off"
 	if !result.GoEnvDisabled {
 		return result, fmt.Errorf("Gate B最終Evidenceはfinal runner自身のcompile前からuser-level Go environmentを無効化するため、GOENV=offを明示して起動してください")
 	}
