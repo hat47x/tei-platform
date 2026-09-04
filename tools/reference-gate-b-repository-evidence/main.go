@@ -133,26 +133,42 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 
 	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
 	result.PostRunRepository = postRun
-	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
 	if postRunErr != nil {
 		return result, postRunErr
 	}
-	if !postRun.RevisionStable {
-		return result, fmt.Errorf("Evidence実行中にrepository HEADが変化したため、単一revisionのGate B Evidenceとして採用できません。cleanかつ固定されたrevisionで再実行してください")
-	}
-	if !postRun.WorkingTreeClean {
-		return result, fmt.Errorf("Evidence実行後にworking tree差分が残ったため、記録revisionと実行sourceの同一性を保証できません。差分を確認してclean revisionで再実行してください")
-	}
-	if targetedFailed {
-		return result, fmt.Errorf("targeted Gate B Repository Evidence testに失敗があります")
-	}
-	if broadFailed {
-		return result, fmt.Errorf("broad Repository testに失敗があります")
-	}
-	if !result.ReproducibleRevision {
-		return result, fmt.Errorf("-allow-dirtyで診断実行しました。testが成功してもclean revisionへ固定できないためGate B完了Evidenceには使用できません")
+	if err := finalizeRepositoryEvidence(&result, source, postRun, targetedFailed, broadFailed); err != nil {
+		return result, err
 	}
 	return result, nil
+}
+
+func finalizeRepositoryEvidence(
+	result *evidence,
+	source repositoryevidence.Source,
+	postRun repositoryevidence.PostRun,
+	targetedFailed, broadFailed bool,
+) error {
+	if !postRun.Checked {
+		return fmt.Errorf("Evidence実行後のrepository source確認が完了していません。単一revisionのGate B Evidenceとして採用できません")
+	}
+	if !postRun.RevisionStable {
+		return fmt.Errorf("Evidence実行中にrepository HEADが変化したため、単一revisionのGate B Evidenceとして採用できません。cleanかつ固定されたrevisionで再実行してください")
+	}
+	if !postRun.WorkingTreeClean {
+		return fmt.Errorf("Evidence実行後にworking tree差分が残ったため、記録revisionと実行sourceの同一性を保証できません。差分を確認してclean revisionで再実行してください")
+	}
+	if targetedFailed {
+		return fmt.Errorf("targeted Gate B Repository Evidence testに失敗があります")
+	}
+	if broadFailed {
+		return fmt.Errorf("broad Repository testに失敗があります")
+	}
+
+	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun)
+	if !result.ReproducibleRevision {
+		return fmt.Errorf("-allow-dirtyで診断実行しました。testが成功してもclean revisionへ固定できないためGate B完了Evidenceには使用できません")
+	}
+	return nil
 }
 
 // recordInitialRepositorySourceは開始時に観測できたsource情報だけをEvidenceへ記録する。
