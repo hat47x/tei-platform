@@ -28,11 +28,31 @@ TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runt
 
 DSNやcredentialはEvidence JSONへ保存しません。
 
-## 安全条件
+## fail-closedの実行順
+
+Databaseへ接続・変更する前に、まず`reference/workspace`を通常Loaderで読み込み、`validation.Validate`を実行します。
+
+```text
+Reference Workspace load
+  ↓
+Canonical Validation
+  ↓ Errorがあれば停止
+TEI_TEST_POSTGRES_DSNへ接続
+  ↓
+既存fixture object guard
+  ↓
+tool-owned fixture CREATE
+  ↓
+Provider runtime Evidence
+```
+
+したがって、Workspace authoringが不正な状態ではPostgreSQLへ接続せず、fixtureも作成しません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+
+## Database側の安全条件
 
 このtoolは`reference/workspace`のnative SQLが明示参照する`public.order_lines`をfixtureとして利用します。
 
-誤ったDSNによる既存資産破壊を避けるため、起動時に次を確認します。
+誤ったDSNによる既存資産破壊を避けるため、接続後、fixture作成前に次を確認します。
 
 ```sql
 SELECT to_regclass('public.order_lines')::text
