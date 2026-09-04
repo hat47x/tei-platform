@@ -3,7 +3,29 @@ package main
 import (
 	"reflect"
 	"testing"
+
+	"tei/tools/internal/repositoryevidence"
 )
+
+func TestInitialRepositorySourceNeverClaimsReproducibleRevision(t *testing.T) {
+	result := evidence{ReproducibleRevision: true}
+	source := repositoryevidence.Source{
+		RepositoryRevision: "abc123",
+		WorkingTreeClean:   true,
+	}
+
+	recordInitialRepositorySource(&result, source)
+
+	if result.RepositoryRevision != source.RepositoryRevision {
+		t.Fatalf("repository revision=%q want=%q", result.RepositoryRevision, source.RepositoryRevision)
+	}
+	if !result.WorkingTreeClean {
+		t.Fatal("開始時clean状態を記録できていません")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("post-run確認前にreproducibleRevision=trueを記録しています")
+	}
+}
 
 func TestTargetedChecksKeepGateBMinimumEvidenceSeparate(t *testing.T) {
 	got := targetedChecks()
