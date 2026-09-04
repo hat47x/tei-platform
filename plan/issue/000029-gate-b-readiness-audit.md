@@ -8,15 +8,16 @@
 
 ## 目的
 
-Application Driver #69のGate B readinessを、Issue close数ではなく、**現在のReference / Conformance / 実行Evidenceが必要な種類ごとに揃っているか**で監査します。
+Application Driver #69のGate B readinessを、Issueのclose数ではなく、**現在のReference / Conformance / 実行Evidenceが必要な種類ごとに揃っているか**で監査します。
 
 判定内容の正本は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)です。
 
-Evidence関連文書の責務は次へ分けます。
+Evidence関連文書の責務は次のように分けます。
 
 - [`GATE_B_EVIDENCE_ACQUISITION.md`](../GATE_B_EVIDENCE_ACQUISITION.md): 何を取得するか / 何を証明するか
 - [`GATE_B_EVIDENCE_RUNBOOK.md`](../GATE_B_EVIDENCE_RUNBOOK.md): 具体コマンド / 実行順 / 差分確認 / fail-closed停止条件
 - [`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md): 取得済みEvidenceからのReady / Not Ready判定
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md): Gate B Ready後にGate Cへ渡すbaselineの固定方法
 - 本Issue: 4 Evidence laneの進行を監査し、再判定へ戻す
 
 Runbook以外に具体コマンドを重複正本として持ちません。
@@ -296,11 +297,36 @@ PR #336以降、source状態観測は#255 / #308と同じtool-only packageを利
 
 PR #346でそのsource固定境界自体のpure Conformanceをtargeted Evidenceへ直接追加しましたが、PRの存在自体を#310成功Evidenceとは扱いません。
 
+PR #351以降、開始時working treeがcleanでも、post-run確認が終わるまでは`reproducibleRevision=false`を維持します。Go toolchain取得、Workspace Load / Validation、targeted test等の途中で失敗したJSONを、再現可能な成功Evidenceへ誤読しません。
+
+この意味はPR #353で`ISSUE-000032`にも同期済みです。
+
 Test自体が成功してもsource revisionが実行中に変わったrun、実行後にtracked / untracked差分が残ったrun、診断用`-allow-dirty` runはGate B完了Evidenceへ採用しません。
 
 #310のexternal Evidence intake testsが成功しても、それを#214 actual Oracle Evidenceへ格上げしません。
 
 残るものは**clean checkout / normal Go runnerでのactual run**です。
+
+## 4 laneの最終revisionを揃える — PR #354
+
+4 laneがそれぞれsource-fixedであっても、別々のrevisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。
+
+Gate Bの最終Ready判定では、一つのcandidate repository revision `R`を固定し、4 laneの完了判定に用いるEvidenceをRへ揃えます。
+
+```text
+#214 acceptance + actual read ─┐
+#308 Provider Evidence        ─┼─ repositoryRevision = R
+#255 generated artifact       ─┤
+#310 deterministic Repository ─┘
+                               ↓
+                        Gate B Ready for R
+                               ↓
+                        Handover Baseline R
+```
+
+外部観測資料そのものはRより前に取得されていて構いません。ただし、その資料を現在authoringへ照合する#214 acceptance receiptとactual readはRへ結び直します。
+
+Rと異なるrevisionの完了Evidenceしかないlaneは、「意味は変わっていないはずだ」と推測して流用せず、Rで再実行・再受入れします。
 
 ## Observationとの関係
 
@@ -324,31 +350,44 @@ CIサービスのgreenをLane A〜DのProduct Evidenceへ代替しません。�
 
 具体コマンド、安全条件、停止条件は`GATE_B_EVIDENCE_RUNBOOK.md`だけを正とします。
 
-現在の論理順序:
+Evidence取得は二段階に分けます。
 
-1. #310 deterministic Repository Evidenceをclean normal Go runnerで取得する
-2. #255 generated artifactをclean revisionでcheck-onlyする
-3. staleなら正規toolで修復 → diff確認 → commit → 新clean revisionで#255を再checkする
-4. #308をEvidence専用空PostgreSQL Databaseで実行する
-5. #214 actual physical facts / provenance / read-only根拠を観測する
-6. 観測事実から必要なOracle realizationを明示authoringする
-7. #214 external Evidenceをclean revisionで受理しsource-fixed acceptance receiptを取得する
-8. read-only Oracle connection + 採用driverでactual read → explicit Semantic mappingを確認する
-9. Lane A〜DをGate B監査へ対応付ける
-10. negative caseを再監査する
-11. Gate BをReady / Not Readyで再判定する
-12. Readyなら#291 Handover Baselineを固定する
-13. その後に第一Web Target #70 / Gate C #270へ進む
+### Phase 1 — 事前確認 / sourceを確定する
+
+1. #310をcleanな通常Go runnerで実行し、deterministicな問題を先に露出させる
+2. #255をcheck-onlyし、staleなら正規toolで修復 → 差分確認 → commitする
+3. #308をEvidence専用の空PostgreSQL Databaseで事前実行し、Provider / fixture safety / cleanup復元上の問題を露出させる
+4. #214のactual Oracle physical facts / provenance / read-only Evidenceを取得する
+5. 観測事実を根拠に必要なOracle realizationを明示authoringする
+6. #214 acceptance / Oracle driver / actual readを事前確認し、不足を修復する
+7. Gate Bに必要なsource / generated artifact変更をすべてcommitする
+
+この段階で得た成功JSONも、その後sourceが変わった場合は最終完了Evidenceとして流用しません。
+
+### Phase 2 — 最終収束 / candidate revision Rを固定する
+
+1. cleanなcandidate revision Rを固定する
+2. Rで#310 `reference-gate-b-repository-evidence`を実行する
+3. Rで#255 `reference-generated-artifact-evidence`をcheck-only実行する
+4. Rで#308 PostgreSQL Provider Evidenceを実行する
+5. Rで#214 external Evidence acceptance receiptを再取得し、Rのruntime / realizationでactual Oracle readを実行する
+6. 4 laneすべての完了EvidenceがRを参照していることを確認する
+7. secret / read-only / 0件 / Execution Error / Observation期待不一致 / source revision不変等のnegative caseを再監査する
+8. Rを対象にGate BをReady / Not Readyで再判定する
+9. Readyなら#291でRをHandover Baselineとして固定する
+10. その後に第一Web Target #70 / Gate C #270へ進む
+
+Phase 2中にsource変更が必要になった場合は、その変更をcommitした新revisionをRとして選び直し、4 laneをもう一度そのrevisionへ揃えます。
 
 #214に必要な実外部事実が得られない場合はBlockedとして保持し、未観測情報を埋めて先へ進みません。
 
 ## Gate B通過後
 
-Lane A〜Dを満たしGate BをReadyと判定した後、すぐに「最新Driver」を暗黙のWeb baselineにはしません。
+4 laneの完了Evidenceを同じrevision Rへ揃え、Gate BをRについてReadyと判定した後も、すぐに「最新Driver」を暗黙のWeb baselineにはしません。
 
-[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / #291に従い、そのReady revision、Canonical identity、Driver Scenario、Gate B EvidenceをHandover Baselineとして固定してから第一Web Target #70へ渡します。
+[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / #291に従い、R、Canonical identity、Driver Scenario、Gate B EvidenceをHandover Baselineとして固定してから第一Web Target #70へ渡します。
 
-Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認して新しいbaselineを発行します。
+Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認し、4 laneを新しいrevisionへ揃えてから新baselineを発行します。
 
 ## 完了条件
 
@@ -370,16 +409,22 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [x] #310 runnerで実行前後のsource不変性をfail closedにした（PR #315 / #321）
 - [x] #310 / #255 / #308のsource観測をtool-only共有境界へ収束した（PR #336）
 - [x] #310 targeted runnerへsource境界Conformanceを追加した（PR #346）
+- [x] #310の早期失敗で`reproducibleRevision=true`にならない境界を追加した（PR #351）
+- [x] #310 Repository正本をPR #351後へ同期した（PR #353）
 - [x] Evidence Acquisitionを4 Evidence natureへ同期した（PR #342）
 - [x] Runbookを#214 receipt / #308 cleanup後へ同期した（PR #344）
 - [x] Gate B→C Handover契約を定義した（#291）
-- [ ] #310をcleanな通常Go runnerで実行する
-- [ ] #255をclean revisionでcheck-onlyし、staleなら修復 → commit → clean revision再checkする
-- [ ] #308をEvidence専用の空PostgreSQL Databaseで実行する
+- [x] 4 laneの最終Evidenceを単一revisionへ揃える契約を定義した（PR #354）
+- [ ] #310をcleanな通常Go runnerで事前実行する
+- [ ] #255をclean revisionで事前checkし、staleなら修復 → commitする
+- [ ] #308をEvidence専用の空PostgreSQL Databaseで事前実行する
 - [ ] #214 actual Oracle物理 / read-only / driver integration / actual read Evidenceを得る
-- [ ] Lane A〜D取得後にnegative caseを再監査する
-- [ ] Gate BをReady / Not Readyで最終再判定する
-- [ ] Gate B Ready時の第一Handover Baselineを発行する
+- [ ] Gate Bに必要なsource / generated artifact変更をすべてcommitする
+- [ ] candidate revision Rで#310 / #255 / #308 / #214を再実行・再受入れする
+- [ ] 4 laneの完了EvidenceがすべてRを参照していることを確認する
+- [ ] negative caseを再監査する
+- [ ] Rを対象にGate BをReady / Not Readyで最終再判定する
+- [ ] Gate B Ready時の第一Handover Baseline Rを発行する
 
 ## 非目標
 
@@ -396,6 +441,7 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - 一致済みgenerated artifactを形式的に書き換えること
 - Observationを汎用Workflow / Event Sourcing基盤へ一般化すること
 - Gate BのためにEditor / AI / 第二Targetを先行させること
+- 異なるrevisionで得た4 laneの成功Evidenceを一つのReady revisionへ読み替えること
 
 ## 関連
 
@@ -409,8 +455,8 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000024-keyless-relation-physical-storage.md`
 - `plan/issue/000025-reference-generated-artifacts-refresh.md`
-- `plan/issue/000030-gate-b-to-c-handover.md`
+- `plan/issue/000030-gate-b-to-c-handover-baseline.md`
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310
-- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346
+- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #351 / #353 / #354
