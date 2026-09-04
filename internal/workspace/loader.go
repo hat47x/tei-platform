@@ -81,8 +81,14 @@ func Load(root string) (Result, error) {
 			if err := loadApplications(root, &r); err != nil {
 				return Result{}, err
 			}
+			if err := loadHeaderDetailContractQueryBindings(root, &r); err != nil {
+				return Result{}, err
+			}
 		case "databases":
 			if err := loadDatabases(root, &r); err != nil {
+				return Result{}, err
+			}
+			if err := loadContractQuerySQLRealizations(root, &r); err != nil {
 				return Result{}, err
 			}
 		case "environments":
@@ -388,7 +394,11 @@ func loadDatabases(root string, r *Result) error {
 				return sourceErr(cpath, err)
 			}
 			d.Contracts = append(d.Contracts, c)
-			r.Sources["database-contract:"+string(c.ID)] = SourceLocation{File: relPath(root, cpath), Line: 1, Column: 1}
+			contractSource := SourceLocation{File: relPath(root, cpath), Line: 1, Column: 1}
+			r.Sources["database-contract:"+string(c.ID)] = contractSource
+			for _, query := range c.Queries {
+				r.Sources["database-contract-query:"+string(c.ID)+"/"+string(query.Name)] = contractSource
+			}
 		}
 		persistenceFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
 		for _, ppath := range persistenceFiles {
@@ -640,8 +650,14 @@ func Normalize(w *ir.World) {
 	sort.Slice(w.Environments, func(i, j int) bool { return w.Environments[i].ID < w.Environments[j].ID })
 	sort.Slice(w.Queries, func(i, j int) bool { return w.Queries[i].ID < w.Queries[j].ID })
 	sort.Slice(w.Bindings, func(i, j int) bool { return w.Bindings[i].Capability < w.Bindings[j].Capability })
+	sort.Slice(w.HeaderDetailContractQueryBindings, func(i, j int) bool {
+		return w.HeaderDetailContractQueryBindings[i].Identity() < w.HeaderDetailContractQueryBindings[j].Identity()
+	})
 	sort.Slice(w.ContractQueryExecutorBindings, func(i, j int) bool {
 		return w.ContractQueryExecutorBindings[i].Identity() < w.ContractQueryExecutorBindings[j].Identity()
+	})
+	sort.Slice(w.ContractQuerySQLRealizations, func(i, j int) bool {
+		return w.ContractQuerySQLRealizations[i].Identity() < w.ContractQuerySQLRealizations[j].Identity()
 	})
 	for i := range w.Applications {
 		sort.Slice(w.Applications[i].Databases, func(a, b int) bool {

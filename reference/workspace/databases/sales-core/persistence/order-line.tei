@@ -1,0 +1,13 @@
+persist sales_core.order_line {
+    database sales_core
+    semantic sales.order_line
+    table public.order_lines
+
+    column sales.order_line.order_line_id -> order_line_id storage int64 required
+    column sales.order_line.line_number -> line_number storage int64 required
+    column sales.order_line.item_code -> item_code storage varchar required
+    column sales.order_line.quantity -> quantity storage decimal required
+    column sales.order_line.unit_price -> unit_price storage decimal required
+
+    primary-key sales.order_line.order_line_id
+}

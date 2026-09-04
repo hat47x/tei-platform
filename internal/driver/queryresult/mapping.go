@@ -30,47 +30,53 @@ type MappedResult struct {
 	Rows    [][]any  `json:"rows"`
 }
 
-// Mapは、raw resultの列名をQuery authoringの明示mappingへ対応付ける。
-//
-// 列名の類似、SELECT順序、Persistence Mappingから意味を推測しない。
-// 明示mappingとraw resultの列集合が一致しない場合や、どちらかに曖昧な重複がある場合は、
-// 意味を曖昧にしたまま処理を続けずerrorを返す。
+// Mapは、Application Queryのraw resultへ明示result mappingを適用する。
 func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
-	if len(q.ResultColumns) == 0 {
-		return MappedResult{}, fmt.Errorf("Query %sにresult mappingが定義されていません", q.ID)
+	return MapColumns("Query "+string(q.ID), q.ResultColumns, raw)
+}
+
+// MapColumnsは、raw resultの列名を明示されたSemantic attribute mappingへ対応付ける。
+//
+// Application QueryとDatabase Contract Queryのどちらでも、列名の類似、SELECT順序、
+// Persistence Mappingから意味を推測しない。明示mappingとraw resultの列集合が一致しない場合や、
+// どちらかに曖昧な重複がある場合は、意味を曖昧にしたまま処理を続けずerrorを返す。
+// subjectは診断用の安定した論理identityだけを渡し、file pathやprovider固有接続情報は含めない。
+func MapColumns(subject string, mappings []query.ResultColumnMapping, raw RawResult) (MappedResult, error) {
+	if len(mappings) == 0 {
+		return MappedResult{}, fmt.Errorf("%sにresult mappingが定義されていません", subject)
 	}
 
 	rawIndex := make(map[string]int, len(raw.Columns))
 	for i, column := range raw.Columns {
 		if column == "" {
-			return MappedResult{}, fmt.Errorf("Query %sのraw resultに名前のない列があります", q.ID)
+			return MappedResult{}, fmt.Errorf("%sのraw resultに名前のない列があります", subject)
 		}
 		if _, exists := rawIndex[column]; exists {
-			return MappedResult{}, fmt.Errorf("Query %sのraw resultで列名 %qが重複しています", q.ID, column)
+			return MappedResult{}, fmt.Errorf("%sのraw resultで列名 %qが重複しています", subject, column)
 		}
 		rawIndex[column] = i
 	}
 
-	mappedColumns := make([]Column, len(q.ResultColumns))
-	usedRawColumns := make(map[string]struct{}, len(q.ResultColumns))
-	usedAttributes := make(map[core.CanonicalID]struct{}, len(q.ResultColumns))
-	for i, mapping := range q.ResultColumns {
+	mappedColumns := make([]Column, len(mappings))
+	usedRawColumns := make(map[string]struct{}, len(mappings))
+	usedAttributes := make(map[core.CanonicalID]struct{}, len(mappings))
+	for i, mapping := range mappings {
 		if mapping.Column == "" {
-			return MappedResult{}, fmt.Errorf("Query %sのresult mappingに名前のないraw列があります", q.ID)
+			return MappedResult{}, fmt.Errorf("%sのresult mappingに名前のないraw列があります", subject)
 		}
 		if mapping.Attribute == "" {
-			return MappedResult{}, fmt.Errorf("Query %sのresult column %qにSemantic attributeが指定されていません", q.ID, mapping.Column)
+			return MappedResult{}, fmt.Errorf("%sのresult column %qにSemantic attributeが指定されていません", subject, mapping.Column)
 		}
 		if _, exists := usedRawColumns[mapping.Column]; exists {
-			return MappedResult{}, fmt.Errorf("Query %sのresult mappingでraw列 %qが重複しています", q.ID, mapping.Column)
+			return MappedResult{}, fmt.Errorf("%sのresult mappingでraw列 %qが重複しています", subject, mapping.Column)
 		}
 		if _, exists := usedAttributes[mapping.Attribute]; exists {
-			return MappedResult{}, fmt.Errorf("Query %sのresult mappingでSemantic attribute %sが重複しています", q.ID, mapping.Attribute)
+			return MappedResult{}, fmt.Errorf("%sのresult mappingでSemantic attribute %sが重複しています", subject, mapping.Attribute)
 		}
 		if _, exists := rawIndex[mapping.Column]; !exists {
 			return MappedResult{}, fmt.Errorf(
-				"Query %sのresult mappingが要求するraw列 %qが実行結果にありません",
-				q.ID,
+				"%sのresult mappingが要求するraw列 %qが実行結果にありません",
+				subject,
 				mapping.Column,
 			)
 		}
@@ -81,8 +87,8 @@ func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 	for _, column := range raw.Columns {
 		if _, mapped := usedRawColumns[column]; !mapped {
 			return MappedResult{}, fmt.Errorf(
-				"Query %sのraw result列 %qにSemantic attributeのmappingがありません",
-				q.ID,
+				"%sのraw result列 %qにSemantic attributeのmappingがありません",
+				subject,
 				column,
 			)
 		}
@@ -92,15 +98,15 @@ func Map(q query.EmbeddedSQL, raw RawResult) (MappedResult, error) {
 	for rowIndex, rawRow := range raw.Rows {
 		if len(rawRow) != len(raw.Columns) {
 			return MappedResult{}, fmt.Errorf(
-				"Query %sのraw result row %dは列数が一致しません: columns=%d values=%d",
-				q.ID,
+				"%sのraw result row %dは列数が一致しません: columns=%d values=%d",
+				subject,
 				rowIndex,
 				len(raw.Columns),
 				len(rawRow),
 			)
 		}
-		mappedRow := make([]any, len(q.ResultColumns))
-		for i, mapping := range q.ResultColumns {
+		mappedRow := make([]any, len(mappings))
+		for i, mapping := range mappings {
 			mappedRow[i] = rawRow[rawIndex[mapping.Column]]
 		}
 		mappedRows[rowIndex] = mappedRow

@@ -200,6 +200,19 @@ func isSemanticSubjectKind(kind string) bool {
 }
 
 func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (sourceindex.Range, bool, error) {
+	if subject.Kind == "database-contract-query" {
+		_, queryName, ok := strings.Cut(subject.ID, "/")
+		if !ok || strings.TrimSpace(queryName) == "" {
+			return sourceindex.Range{}, true, fmt.Errorf("database-contract-query subject %q must contain contract/query identity", subject.ID)
+		}
+		anchor, err := syntax.DeclarationIdentifierAnchor(string(content), "query", queryName)
+		if err != nil {
+			return sourceindex.Range{}, true, err
+		}
+		rng, err := sourceindex.RangeFromOffsets(content, anchor.Start.Offset, anchor.End.Offset)
+		return rng, true, err
+	}
+
 	var keyword string
 	switch subject.Kind {
 	case "application":

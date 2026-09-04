@@ -1,0 +1,7 @@
+contract sales_core.order_line v1.0 {
+    read sales.order_line
+    query find_by_order {
+        input order_id type sales.order_id
+        result sales.order_line many
+    }
+}
