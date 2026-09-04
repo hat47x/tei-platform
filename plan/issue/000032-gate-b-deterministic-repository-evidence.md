@@ -50,6 +50,8 @@ PR #351では、開始時working treeがcleanでも、それだけで`reproducib
 
 PR #400ではさらに、targeted testまたは明示したbroad testが失敗したrunを、sourceだけが同じclean revisionだったことを理由に`reproducibleRevision=true`へしないようにしました。必須checkの成功とpost-run source固定の両方が揃った後にだけ、完了Evidenceとしてtrueになります。
 
+PR #412では、targeted / broad checkをすべて実行した後だけではなく、**各checkの直後にもRepository sourceを再確認**するようにしました。開始時cleanな通常Evidence runでHEAD変化、source観測不能、新しいworking tree差分を検出した場合は、その時点で後続checkを実行しません。`-allow-dirty`診断では開始時から存在するdirty状態だけを許容しますが、HEAD変化やsource観測不能は同様にfail closedします。
+
 既定実行:
 
 ```bash
@@ -66,7 +68,7 @@ go run ./tools/reference-gate-b-repository-evidence
 6. external Evidence intake test
 7. Repository source固定境界のpure Conformance test
 8. 必要に応じたbroad test
-9. 実行後HEAD / working treeの再確認
+9. 各check直後と最終時点でのHEAD / working tree再確認
 10. 小さい非Canonical JSON Evidence出力
 
 広いtestは明示指定時だけ追加します。
@@ -81,12 +83,15 @@ Gate B完了Evidenceは、後から**実際に実行した同じsource**へ戻�
 
 そのためrunnerは既定で実行前の`git status --porcelain`が空であることを要求し、dirty working treeではtargeted test前にfail closedします。
 
-さらにtargeted / broad test後にも、次を再確認します。
+さらにPR #412以降、各targeted / broad checkの直後に次を再確認します。
 
 - `git rev-parse HEAD`が実行前revisionと同一であること
-- `git status --porcelain`が空であること
+- Repository source観測が完了していること
+- 開始時cleanな通常Evidence runでは`git status --porcelain`が引き続き空であること
 
-実行中にHEADが変化した場合や、test / 並行操作によってtracked・untracked差分が残った場合は、testが成功していても単一revisionのGate B完了Evidenceとして採用しません。
+開始時cleanだったrunで、test / 並行操作によってtracked・untracked差分が新しく残った場合や、HEADが変化した場合、source観測を完了できなかった場合は、後続checkへ進みません。すべてのcheck終了後にも最終post-run確認を行い、途中と最後の両方でsource固定を確認します。
+
+診断用の`-allow-dirty`では、開始時から存在するdirty working treeそのものは各check間の停止条件にしません。ただしHEAD変化やsource観測不能は診断runでも拒否します。また、最終的にclean revisionへ固定できないため`reproducibleRevision=false`となり、Gate B完了Evidenceには使用できません。
 
 ### 必須check成功とpost-run確認が揃うまで再現可能と判定しない
 
@@ -97,6 +102,7 @@ PR #400以降はsource固定条件だけでなく、そのrunで要求したchec
 - Canonical Workspace Validationが成功している
 - 三つのtargeted checkがすべて成功している
 - `-broad`指定時はbroad testも成功している
+- 各check直後のsource確認を通過している
 - 開始revisionが空でない
 - 開始時working treeがclean
 - post-run状態を確認済み（`postRunRepository.checked = true`）
@@ -107,8 +113,6 @@ PR #400以降はsource固定条件だけでなく、そのrunで要求したchec
 したがって、Go toolchain取得、Workspace Load / Validation等でpost-run確認前に失敗したJSONはもちろん、targeted testやbroad testが失敗したJSONも、sourceが同じclean revisionのままであっても`reproducibleRevision=false`のままです。
 
 これにより、「sourceは変わらなかった」という一事実や「開始時点ではcleanだった」という一事実を、「そのrunの必須Evidenceが成立した」という完了Evidenceへ誤昇格させません。
-
-診断用の`-allow-dirty`もGate B完了Evidenceには使用しません。`reproducibleRevision=false`として非0終了するためです。
 
 Evidence JSONを保存する場合も、Repository内へ直接redirectして先にdirty状態を作らないよう、まずworking tree外へ保存します。
 
@@ -209,7 +213,7 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - `repository-evidence-source-boundary`のcommand / pass-fail
 - broad testを要求したか
 
-`reproducibleRevision = true`になるのは、Workspace Validation、三つのtargeted check、明示した場合のbroad checkが成功し、さらに実行前後で同じHEADを保持し、両時点のworking treeがcleanであることを**post-run確認まで完了した場合だけ**です。check失敗や早期失敗ではfalseのままです。
+`reproducibleRevision = true`になるのは、Workspace Validation、三つのtargeted check、明示した場合のbroad checkが成功し、各check直後のsource確認を通過し、さらに実行前後で同じHEADを保持し、両時点のworking treeがcleanであることを**最終post-run確認まで完了した場合だけ**です。check失敗や早期失敗ではfalseのままです。
 
 次は保存しません。
 
@@ -231,6 +235,7 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - [x] Repository source固定境界のpure Conformanceをtargeted checkへ追加した（PR #346）
 - [x] post-run確認前の早期失敗で`reproducibleRevision=true`を残さない（PR #351）
 - [x] targeted / broad check失敗時にも`reproducibleRevision=false`を維持する（PR #400）
+- [x] targeted / broad checkごとにRepository sourceを再確認し、通常Evidence runでsource変化を検出したら後続checkを止める（PR #412）
 - [ ] cleanな対象revisionでrunnerを実行する
 - [ ] Canonical Workspace Validation成功Evidenceを取得する
 - [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
@@ -257,7 +262,7 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- PR #281 / #288 / #300 / #304 / #306 / #315 / #321 / #336 / #340 / #346 / #351 / #352 / #400
+- PR #281 / #288 / #300 / #304 / #306 / #315 / #321 / #336 / #340 / #346 / #351 / #352 / #400 / #412
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
