@@ -8,19 +8,19 @@
 
 ## 背景
 
-Application Driverの主要な意味境界とScenario構造は成立し、PR #285で`main`へ収束しました。
-
-その後も、external Evidence intake、PostgreSQL fixture安全境界、通常runner用のEvidence入口、各Evidence laneのRepository Issue化を進めています。
+Application Driverの主要な意味境界と最終UI-less Scenario構造は成立しています。
 
 Gate B readinessは「どの実装がまだbranchに残っているか」ではなく、**必要な種類のEvidenceが現在のrevisionに対して揃っているか**で監査します。
 
-監査結果の正本は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)に置きます。
+判定内容の正本は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)に置きます。
 
-Evidence取得については役割を分けます。
+Evidence取得の責務は次へ分けます。
 
 - [`GATE_B_EVIDENCE_ACQUISITION.md`](../GATE_B_EVIDENCE_ACQUISITION.md): 何を取得するか / 何を証明するか
-- [`GATE_B_EVIDENCE_RUNBOOK.md`](../GATE_B_EVIDENCE_RUNBOOK.md): 具体的なコマンド / 実行順 / 差分確認 / fail-closed停止条件
-- 本Issue: 4 Evidence laneの進行とGate B再判定へ戻す責務
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](../GATE_B_EVIDENCE_RUNBOOK.md): 具体コマンド / 実行順 / 差分確認 / fail-closed停止条件
+- 本Issue: 4 Evidence laneの進行を監査し、Gate B再判定へ戻す
+
+Runbook以外に具体コマンドを重複正本として持ちません。
 
 ## 現在の判定
 
@@ -32,211 +32,204 @@ Evidence取得については役割を分けます。
 - Contract Query signature / SQL realization / explicit mapping
 - reference PatternからContract Queryへの明示invocation
 - Environment / Database instance / executor Capabilityを保持するruntime境界
-- Relation Storage
-- Validation -> Authorization -> Command
-- Command acknowledgement -> separate Observation read
+- keyless Relation Storage
+- Validation → Authorization → Command
+- Command Business Result → separate Observation read
 - 最終UI-less Scenarioの構造統合
 - external-observed Evidenceを非Canonicalのまま受け入れる境界
-- PostgreSQL Evidence fixtureの既存資産非破壊境界
+- real PostgreSQL Evidence toolの既存資産非破壊境界
 - deterministic Repository Evidenceを一括実行するrunner
+- World / Plugin Lock / Durable Runを正規生成経路から照合するtool
 
-PR #316で、GitHub Issue #179 / #185に対応する`ISSUE-000018 / 000019`も、設計履歴を保持したままDoneへ同期しました。actual Oracle E2Eや通常runner Evidenceの未取得を理由に、成立済み実装Issueを再びIn Progressへ戻しません。
+GitHub #179 / #185とRepository `ISSUE-000018 / 000019`は実装責務としてDoneです。actual Oracle Evidenceやnormal runner Evidenceの未取得を理由に、成立済み実装Issueを再びIn Progressへ戻しません。
 
 ## Gate Bの4 Evidence lane
 
-Gate Bでは、性質の異なるEvidenceを相互代替しません。
+Gate Bでは性質の異なるEvidenceを相互代替しません。
 
-### A. actual external Oracle Evidence
+| Lane | Repository / GitHub Issue | Evidence nature | 現在地 |
+| --- | --- | --- | --- |
+| A | `ISSUE-000022` / #214 | actual external asset | Blocked — actual Oracle facts待ち |
+| B | `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run — Evidence専用空PostgreSQL DB待ち |
+| C | `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check — clean normal Go environment待ち |
+| D | `ISSUE-000032` / #310 | deterministic repository | Ready to run — clean checkout / normal Go runner待ち |
 
-- Repository Issue: `ISSUE-000022`
-- GitHub Issue: #214
-- Evidence nature: actual external asset
+取得結果は本Issueと`GATE_B_READINESS_AUDIT.md`で総合判定します。
 
-### B. real PostgreSQL engine Evidence
+## Lane A — actual external Oracle / ISSUE-000022 / #214
 
-- Repository Issue: `ISSUE-000031`
-- GitHub Issue: #308
-- Evidence nature: real-provider ephemeral fixture
+#214は次の二層へ分かれます。
 
-### C. generated Reference artifact再現Evidence
+- Evidence intake boundary: **Ready**
+- actual Oracle physical facts / read-only / driver integration / actual read: **Blocked**
 
-- Repository Issue: `ISSUE-000025`
-- GitHub Issue: #255
-- Evidence nature: generated artifact reproducibility
-
-### D. deterministic Repository / normal Go runner Evidence
-
-- Repository Issue: `ISSUE-000032`
-- GitHub Issue: #310
-- Evidence nature: deterministic repository
-
-この4 laneの取得結果を、本Issueと[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)で総合判定します。
-
-## A. actual external Oracle Evidence — ISSUE-000022 / #214
-
-#214は現在、次の二層へ分かれます。
-
-- **Evidence intake boundary: Ready**
-- **actual Oracle physical facts / read-only Evidence: Blocked**
-
-PR #288 / #300で`internal/database/externalqueryevidence`と`tools/reference-external-query-evidence`を`main`へ収束し、PR #306でWorkspace Validation fail-closedも`main`へ入っています。
-
-受入境界では、少なくとも次を明示authoring済みSQL realizationと照合します。
+非Canonical Evidence intakeでは少なくとも次を明示SQL realizationと照合できます。
 
 - target / provider / `external-observed` ownership
-- Contract input -> physical parameter
-- raw result -> Semantic attribute
+- Contract input → physical parameter
+- raw result → Semantic attribute
 - native source fingerprint
-- physical facts provenance
+- provenance
 - effective read-only mechanism / Evidence参照
+- Canonical Workspace Validation
 
-SQL realizationがなければEvidenceから生成・補完せず停止します。Validation ErrorのあるWorkspaceもEvidence受入前に拒否します。
+SQL realizationがなければEvidenceから生成・補完せず停止します。
 
-残るactual external Evidenceは次です。
+残るactual external Evidence:
 
 - 実object / parameter / raw result identity
 - native realization source
 - Semantic Customerへのexplicit mapping
 - provenance
-- 実効的なread-only境界
-- Oracle driverでの実接続
+- 実効的read-only強制
+- Oracle driver integration
 - 1件 / 0件 / Execution Error
-- Workspace -> actual Oracle read -> Semantic resultのE2E
+- Workspace → actual Oracle read → Semantic result E2E
 
-未観測のOracle object名やcolumn名をTEI側から推測しません。
+未観測のOracle object / column / SQLをTEI側から推測しません。
 
-## B. real PostgreSQL engine Evidence — ISSUE-000031 / #308
+## Lane B — real PostgreSQL engine / ISSUE-000031 / #308
 
 keyless Relation Storageの設計・実装は`ISSUE-000024` / #244でCompletedです。
 
-実PostgreSQL engine上のEvidenceだけを`ISSUE-000031` / #308へ分離しています。
+実PostgreSQL engine Evidenceだけを本laneへ分離しています。
 
-`tools/reference-postgres-header-detail-runtime`の安全境界は、PR #294 / #300 / #306で成立しています。
+PR #294 / #300 / #306 / #324により、`tools/reference-postgres-header-detail-runtime`はfixture作成前に次をfail closedで確認します。
 
-- Workspace Validation ErrorならDB接続前に停止する
-- `public.order_lines`が既に存在すればfail closedで停止する
-- 既存tableをDROPしてfixtureへ置換しない
-- overrideを設けない
-- tool自身がCREATEしたfixtureだけをcleanupする
-- `evidenceNature = real-postgres-ephemeral-fixture`を明示する
+1. WorkspaceをLoad / Validateする
+2. Validation ErrorならDB接続前に停止する
+3. PostgreSQLへ接続する
+4. `postgres` / `template0` / `template1`を拒否する
+5. system / temporary領域を除くuser relation件数が0であることを確認する
+6. `public.order_lines`が存在しないことを再確認する
+7. すべて成立した場合だけtool-owned fixtureをCREATEする
+8. tool自身がCREATEしたfixtureだけをcleanupする
 
-残るEvidenceは、専用の空PostgreSQL Databaseで同じrunから次を確認することです。
+既存relationを削除してEvidence用DBへ転用する処理やoverrideはありません。
 
-- `order_id=1001` -> 2件
-- `order_id=9999` -> 正常な0件
-- tool-owned fixture欠落 -> Execution Error
+このguardだけで「Evidence専用DBという運用意図」を証明したとは扱わず、実行先はEvidence専用に作成した空PostgreSQL Databaseへ限定します。
+
+残る実Evidence:
+
+- `order_id=1001` → 2件
+- `order_id=9999` → 正常な0件
+- tool-owned fixture欠落 → Execution Error
 - Environment / Database instance / executor Capability / Contract Query target identity
 - explicit Semantic mapping
 - support column非露出
 - runtime parameter値 / credential非保存
+- `evidenceNature = real-postgres-ephemeral-fixture`
 
-このEvidenceはproduction既存Databaseや#214 actual Oracle asset Evidenceの代替ではありません。
-
-2026-09-04現在、このセッションには`TEI_TEST_POSTGRES_DSN`が設定されていないため、実行済みとは扱いません。
-
-## C. generated Reference artifact再現Evidence — ISSUE-000025 / #255
+## Lane C — generated artifact reproducibility / ISSUE-000025 / #255
 
 #255はWorld / Plugin Lock / Durable Runの**generated artifact再現性だけ**を扱います。
 
-PR #319で、生成物を無条件に再生成するのではなく、まず`tools/reference-golden`で現在のCanonical Workspaceとの一致を確認し、staleなartifactだけを正規経路で更新する責務へ整理しました。
+正規tool:
 
-### 静的に確認済みの依存
+- `tools/reference-golden`: World / Plugin Lock check/write + Durable RunのPlugin Lock依存チェック
+- `tools/reference-durable-run-golden`: Durable Run全体の正規生成・完全一致check / safe write
 
-現在保存されているproduction Plugin Lockから`EnvironmentLockFingerprint`と同じ規則で再計算した値は次です。
+Durable Run toolは、Workspace Validation、exact Solution Release、fixed observed deployment state Validation、`releaseplan.CompileWithDeployment`、`pluginruntime.BuildPlan`、Plugin Lock / Runtime Policy fingerprint、`deploymentdurable.StartWithRuntimePolicy`を通る正規internal API経路を利用します。
 
-```text
-74d225e985ebf68be9d0289f533d6599b7eb17e6757bb4425c1d0b08cfede220
-```
+PR #326では`-solution`のCanonical IDを`ParseCanonicalID`で検証し、不正入力をpanicではなく通常errorでfail closedするようにしました。
 
-保存済みDurable Runの`pluginLockFingerprint`も同じ値です。
+### 修復とEvidenceを分離する
 
-したがって、**保存済みPlugin Lockと保存済みDurable Runの相互依存は現時点で整合しています**。
+`-write`はstaleなgenerated artifactを正規状態へ戻す**修復操作**です。`-write`直後のdirty treeでcheckが成功しても、Gate B完了Evidenceにはしません。
 
-ただし、保存済みWorld / Plugin Lockそのものが現在のCanonical Workspaceから正規生成した結果と一致することは、通常Go commandで未確認です。
+staleだった場合は、
 
-残る手順は次です。
+1. 正規toolで修復する
+2. `git diff`で意味上の差分を確認する
+3. 意図したgenerated artifactだけをcommitする
+4. 新しいclean revisionでcheck-onlyを再実行する
+5. 実行前後で同じHEAD / clean working treeを確認する
 
-1. Workspace Validation
-2. `go run ./tools/reference-golden`で一致確認
-3. staleな場合だけWorld / Plugin Lockを`-write`で正規生成
-4. Plugin Lock依存がstaleになった場合だけDurable Runを正規`deployment-start`で再生成
-5. 最後に`reference-golden`で一致確認
+という順にします。
 
-一致済み生成物を形式的に書き換えません。fingerprintを人手で置換しません。
+最終Evidence候補には次をすべて要求します。
 
-## D. deterministic Repository / normal Go runner Evidence — ISSUE-000032 / #310
+- final check開始時にworking tree clean
+- `reference-golden`一致
+- `reference-durable-run-golden`一致
+- final check実行前後でHEAD同一
+- final check終了後もworking tree clean
 
-PR #315で一括runnerを`main`へ追加しました。
+2026-09-04の静的監査では保存済みproduction Plugin Lockと保存Durable RunのPlugin Lock fingerprintは相互整合していました。ただし、それだけで現在のCanonical Workspaceからの再現性を証明したとは扱いません。
 
-```bash
-go run ./tools/reference-gate-b-repository-evidence
-```
+## Lane D — deterministic Repository / ISSUE-000032 / #310
 
-このrunnerは既定でclean working treeを要求し、一つのrunから次を記録します。
+正規runnerは`tools/reference-gate-b-repository-evidence`です。
 
-- repository revision
-- working tree clean / reproducible revision
-- Go version
+runnerは次を一つのrunで扱います。
+
+- 実行前repository revision
+- 実行前working tree clean
+- Go toolchain identity
 - Canonical Workspace Validation
-- 最終UI-less Scenario test
+- 最終UI-less Scenario
 - external Evidence intake test
+- 明示指定時だけRepository全体のbroad test
+- 実行後HEAD / working tree再確認
 - 小さい非Canonical JSON Evidence
 
-広いRepository testは明示指定時だけ追加します。
+PR #321以降、`reproducibleRevision=true`には次をすべて要求します。
 
-```bash
-go run ./tools/reference-gate-b-repository-evidence -broad
-```
+- 実行前clean
+- 実行後確認済み
+- HEAD同一
+- 実行後clean
 
-診断用`-allow-dirty`は`reproducibleRevision=false`として非0終了するため、Gate B完了Evidenceには使用しません。
-
-2026-09-04現在、このセッションにはGo toolchain自体はありますが、`github.com`を名前解決できずRepository checkoutを取得できないため、#310は未実行のままです。
+Test自体が成功してもsource revisionが実行中に変わったrun、実行後にtracked / untracked差分が残ったrun、診断用`-allow-dirty` runはGate B完了Evidenceへ採用しません。
 
 ## Observationとの関係
 
-Command / ObservationはADR-0023に従いv1境界が成立し、GitHub Issue #266は完了しています。
+Command / ObservationはADR-0023に従いv1境界が成立し、GitHub #266は完了しています。
 
 production Driverの`ExecuteObservationRead`は、Commandとは別の明示read境界としてread identity / Evidence nature / resultを保持します。
 
-Observation設計未決はGate B blockerではありません。
+Observationの汎用化はGate B blockerではありません。
 
 ## GitHub Actionsとの関係
 
-GitHub Actionsによる継続的な再検証は、A〜DのProduct Evidenceと分けます。
+GitHub Actions workflowは現行Repositoryでは意図的に使用していません。
 
-Actions停止そのものを意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。将来再開する場合はregression検知の継続経路として扱います。
+過去のrunner未割当事象を追跡した#192は現行運用では対象外として`not_planned`でclosedです。
 
-特定のCIサービスが動作していることをGate B Readyの定義へ混ぜません。
+CIサービスのgreenをLane A〜DのProduct Evidenceへ代替しません。逆に未実行をgreenとも扱いません。
+
+将来Actionsを再導入する場合は、その時点のworkflow / runner / Repository要件で新しいCI検証Issueを作り、workflow failureがpushそのものを不必要にblockしない運用を維持します。
 
 ## Gate B通過後
 
-A〜Dを満たしてGate BをReadyと判定した後、すぐに「最新Driver」を暗黙のWeb baselineにはしません。
+Lane A〜Dを満たしGate BをReadyと判定した後、すぐに「最新Driver」を暗黙のWeb baselineにはしません。
 
-[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / #291に従い、その時点のrepository revision、Canonical identity、Driver Scenario、Gate B EvidenceをHandover Baselineとして固定してから第一Web Targetへ渡します。
+[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / #291に従い、そのReady revision、Canonical identity、Driver Scenario、Gate B EvidenceをHandover Baselineとして固定してから第一Web Target #70へ渡します。
+
+Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認して新しいbaselineを発行します。
 
 ## 完了条件
 
 - [x] `GATE_B_READINESS_AUDIT.md`を主要Driver境界へ同期した
-- [x] Driver / Reference / Conformanceを`main`へ収束した（PR #285）
 - [x] 各Gate B条件をReady / Partial / Blocked / Pendingへ分類した
 - [x] Observationのv1境界をADR-0023へ固定し、#266を完了した
 - [x] 最終UI-less Scenarioの構造を同じReference World上で接続した
-- [x] external Evidence intake boundaryを実装した（PR #288 / #300）
-- [x] PostgreSQL fixture safetyをfail closedへした（PR #294 / #300 / #306）
-- [x] Gate B Evidence Runbookを`main`へ置いた（PR #296 / #300）
-- [x] Evidence Acquisition / Runbook / Readiness Auditの権威関係を分離した（PR #311）
+- [x] external Evidence intake boundaryを実装した
+- [x] keyless Relation Storage実装を#244でCompletedへ収束した
 - [x] real PostgreSQL Evidenceを`ISSUE-000031` / #308へ分離した
+- [x] generated artifact Evidenceを`ISSUE-000025` / #255へ分離した
 - [x] deterministic Repository Evidenceを`ISSUE-000032` / #310へ分離した
-- [x] #310用一括runnerを`main`へ追加した（PR #315）
-- [x] `ISSUE-000018 / 000019`を設計履歴保持のままDoneへ同期した（PR #316）
-- [x] #255を一致確認優先・stale時のみ再生成へ整理した（PR #319）
-- [x] 保存済みPlugin LockとDurable Runのproduction fingerprint相互整合を静的に確認した
+- [x] #310 runnerで実行前後のsource不変性をfail closedにした（PR #315 / #321）
+- [x] #255用のWorld / Plugin Lock / Durable Run専用toolを整備した（PR #318 / #323）
+- [x] #308で既定DB / 既存user relationをfixture先として拒否した（PR #324）
+- [x] Durable Run goldenの不正Canonical IDをpanicではなくfail-closed errorにした（PR #326）
+- [x] Evidence Acquisition / Runbook / Readiness Auditの権威関係を分離した
 - [x] Gate B→C Handover契約を定義した（#291）
-- [ ] `ISSUE-000032` / #310をcleanな通常Go runnerで実行する
-- [ ] `ISSUE-000025` / #255でCanonical WorkspaceとReference artifactを照合し、必要なartifactだけ正規更新する
-- [ ] `ISSUE-000031` / #308でreal PostgreSQL engine Evidenceを取得する
-- [ ] `ISSUE-000022` / #214でactual Oracle物理 / read-only / E2E Evidenceを得る
-- [ ] A〜D取得後にnegative caseを再監査する
+- [ ] #310をcleanな通常Go runnerで実行する
+- [ ] #255をclean revisionでcheck-onlyし、staleなら修復 → commit → clean revision再checkする
+- [ ] #308をEvidence専用の空PostgreSQL Databaseで実行する
+- [ ] #214 actual Oracle物理 / read-only / E2E Evidenceを得る
+- [ ] Lane A〜D取得後にnegative caseを再監査する
 - [ ] Gate BをReady / Not Readyで最終再判定する
 - [ ] Gate B Ready時の第一Handover Baselineを発行する
 
@@ -247,10 +240,9 @@ A〜Dを満たしてGate BをReadyと判定した後、すぐに「最新Driver�
 - external `master_data`の物理情報を推測すること
 - external EvidenceをCanonical Worldへ昇格すること
 - synthetic / provider fixture Evidenceをactual external Evidenceとして扱うこと
-- #244を実Provider Evidence待ちで再びIn Progressへ戻すこと
-- #179 / #185をactual Oracle Evidence待ちで再びOpenへ戻すこと
-- #255へprovider / external runtime Evidenceを抱え込むこと
+- 成立済み実装IssueをEvidence待ちで再びIn Progressへ戻すこと
 - generated artifactとdeterministic Repository Evidenceを同じlaneへ畳むこと
+- dirty working treeや実行中にsourceが変わったrunを完了Evidenceとして採用すること
 - 一致済みgenerated artifactを形式的に書き換えること
 - Observationを汎用Workflow / Event Sourcing基盤へ一般化すること
 - Gate BのためにEditor / AI / 第二Targetを先行させること
@@ -270,5 +262,5 @@ A〜Dを満たしてGate BをReadyと判定した後、すぐに「最新Driver�
 - `plan/issue/000030-gate-b-to-c-handover-baseline.md`
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
-- GitHub #69 / #70 / #179 / #185 / #214 / #244 / #255 / #270 / #273 / #291 / #308 / #310
-- PR #281 / #285 / #288 / #294 / #296 / #300 / #306 / #311 / #315 / #316 / #319
+- GitHub #69 / #70 / #192 / #214 / #244 / #255 / #270 / #273 / #291 / #308 / #310
+- PR #281 / #285 / #288 / #294 / #300 / #306 / #311 / #315 / #318 / #321 / #323 / #324 / #326 / #328
