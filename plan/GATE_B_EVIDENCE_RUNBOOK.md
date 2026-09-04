@@ -23,12 +23,12 @@ GitHub Actionsによる継続的なregression確認は重要ですが、この�
 
 ### A. deterministic repository Evidence — #310
 
-Repository checkoutとGo toolchainだけで再現できるApplication Driver / Evidence intake / Repository source固定境界のEvidenceです。
+Repository checkoutとGo toolchainだけで再現できるApplication Driver / Evidence intakeのEvidenceです。
 
 - Workspace Validation
 - UI-less synthetic Scenario
 - external Evidence intake tests
-- Repository source境界のpure Conformance
+- Repository source固定境界のpure Conformance
 - 実行前後のsource revision不変性
 
 正規入口は`tools/reference-gate-b-repository-evidence`です。
@@ -65,6 +65,56 @@ TEIが所有していない既存Oracle資産の観測事実とactual readです
 
 synthetic / generated artifact / ephemeral fixtureで代替しません。
 
+## Gate B Evidence取得は二段階で行う
+
+PR #354以降、4 laneが個別にsource-fixedであっても、**別々のrepository revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。**
+
+最終Ready判定では、一つのcandidate repository revision `R`を固定し、4 laneの完了判定に用いるEvidenceをすべてRへ揃えます。
+
+```text
+#214 acceptance + actual read ─┐
+#308 Provider Evidence        ─┼─ repositoryRevision = R
+#255 generated artifact       ─┤
+#310 deterministic Repository ─┘
+                               ↓
+                        Gate B Ready for R
+                               ↓
+                        Handover Baseline R
+```
+
+そのため、作業を二段階に分けます。
+
+### Phase 1 — 事前確認 / sourceを確定する
+
+目的は、実行可能なlaneを先に動かして不足を露出させ、Gate Bに必要なsource変更とgenerated artifact修復をすべて確定することです。
+
+1. #310をcleanな通常Go runnerで事前実行する
+2. #255をcheck-onlyし、staleなら正規toolで修復する
+3. #308をEvidence専用の空PostgreSQL Databaseで事前実行する
+4. #214のactual Oracle physical facts / provenance / read-only Evidenceを取得する
+5. 観測事実を根拠に必要なOracle realizationを明示authoringする
+6. #214 acceptance / Oracle driver / actual readを事前確認する
+7. 必要なsource / generated artifact変更をすべてcommitする
+
+Phase 1で成功JSONを得ても、その後repository sourceが変わった場合、そのJSONを最終完了Evidenceとして流用しません。
+
+### Phase 2 — 最終収束 / candidate revision Rを固定する
+
+sourceとgenerated artifactを確定したclean revisionをRとして選びます。
+
+1. Rで#310を実行する
+2. Rで#255をcheck-only実行する
+3. Rで#308を実行する
+4. Rで#214 acceptance receiptを再取得し、Rのruntime / realizationでactual Oracle readを行う
+5. 4 laneすべての完了EvidenceがRを参照していることを確認する
+6. negative caseを再監査する
+7. Rを対象にGate BをReady / Not Readyで判定する
+8. Readyなら#291でRをHandover Baselineとして固定する
+
+Phase 2中にsource変更が必要になった場合は、その変更をcommitした新revisionを新しいRとして選び直し、4 laneをそのrevisionへもう一度揃えます。
+
+外部観測資料そのものの観測時刻はRより前でも構いません。ただし、その資料を現在authoringへ照合する#214 acceptance receiptとactual readはRへ結び直します。
+
 ## 共通原則
 
 - 未観測の外部事実を名前や慣習から補完しない
@@ -79,6 +129,7 @@ synthetic / generated artifact / ephemeral fixtureで代替しません。
 - Gate Bへ採用するEvidenceは、後から同じsourceへ戻れるclean revisionへ固定する
 - Evidence run実行前後でsource revisionが変化した場合は完了Evidenceとして採用しない
 - stdoutでEvidenceを保存するとき、Repository内の新規fileをredirect先にして開始前clean条件を壊さない
+- Phase 1の成功Evidenceを、source変更後のPhase 2完了Evidenceへ読み替えない
 - GitHub Actionsを本手順から再有効化しない
 
 ## 0. 実行前確認
@@ -94,6 +145,15 @@ go version
 Evidenceを特定revisionへ固定するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
 
 #310 / #255 / #308 / #214 acceptanceの完了Evidenceは、いずれも開始時cleanだけでなく、toolが要求する範囲で**実行後も同じHEADかつclean working tree**であることを要求します。
+
+Phase 2では、実行前に次も記録します。
+
+```bash
+export TEI_GATE_B_CANDIDATE_REVISION="$(git rev-parse HEAD)"
+printf '%s\n' "$TEI_GATE_B_CANDIDATE_REVISION"
+```
+
+この環境変数は便宜上の照合用です。toolへ新しい意味を導入するものではありません。最終判定では各JSONの`repositoryRevision`そのものを確認します。
 
 ## 1. Canonical WorkspaceをValidationする
 
@@ -124,30 +184,29 @@ go run ./tools/reference-gate-b-repository-evidence \
 
 Repository内の新規fileへ直接redirectしません。shellはcommand開始前にredirect先を作成するため、それ自体がworking treeをdirtyにし、runnerが意図どおりfail closedします。
 
-runnerは一つのEvidenceへ次を束ねます。
+runnerは次を一つのEvidenceへ束ねます。
 
 1. 実行前repository revision
 2. 実行前working tree clean
 3. Go toolchain identity
 4. Canonical Workspace Validation
-5. 最終UI-less Scenario check
-6. external Evidence intake check
-7. Repository source境界Conformance check
-8. `-broad`指定時だけRepository全体test
-9. 実行後repository revision
-10. 実行前後のHEAD同一性
-11. 実行後working tree clean
-12. `reproducibleRevision`
+5. 最終UI-less Scenario
+6. external Evidence intake boundary tests
+7. Repository source固定境界のpure Conformance
+8. 実行後repository revision
+9. 実行前後のHEAD同一性
+10. 実行後working tree clean
+11. `reproducibleRevision`
 
-PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。
+PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。PR #346以降は、その共有helper自体のpure Conformanceもtargeted Evidenceとして独立実行します。
 
-PR #346以降、その共有source固定境界のpure Conformanceもtargeted Evidenceの独立checkとして実行します。
+PR #351以降、開始時working treeがcleanであっても、post-run確認が完了するまでは`reproducibleRevision=false`を維持します。Go toolchain取得、Workspace Load / Validation、targeted test等で途中失敗したJSONを、再現可能な成功Evidenceとして扱いません。
 
 `reproducibleRevision = true`になるには、実行前後でHEADが同一で、両時点のworking treeがcleanである必要があります。test自体が成功していても、並行操作やtest実行でsource状態が変わったrunはGate B完了Evidenceとして採用しません。
 
-### targeted check 1: 最終UI-less Scenario
+### 最終UI-less Scenario
 
-等価コマンド:
+runnerが実行する等価コマンド:
 
 ```bash
 go test ./internal/driver \
@@ -171,9 +230,9 @@ Authentication
 
 synthetic adapterを含むため、成功してもactual Oracle / real PostgreSQL / 実外部状態のEvidenceにはしません。
 
-### targeted check 2: external Evidence intake
+### external Evidence intake tests
 
-等価コマンド:
+runnerが実行する等価コマンド:
 
 ```bash
 go test ./internal/database/externalqueryevidence \
@@ -197,28 +256,26 @@ go test ./internal/database/externalqueryevidence \
 
 ここでのtest成功は#214 actual external asset Evidenceではありません。
 
-### targeted check 3: Repository source境界Conformance
+### Repository source固定境界
 
-PR #346で追加した等価コマンド:
+PR #346以降、runnerは共有source観測helperのpure Conformanceを3本目のtargeted Evidenceとして実行します。
 
 ```bash
-go test ./tools/internal/repositoryevidence -count=1
+go test ./tools/internal/repositoryevidence \
+  -count=1
 ```
-
-JSONでは`repository-evidence-source-boundary`として、他のtargeted checkとは別に残します。
 
 確認対象:
 
-- cleanな同一revisionの開始 / 終了だけを再現可能と判定する
-- dirty startを拒否する
-- post-run未確認を拒否する
-- HEAD変化を拒否する
-- post-run dirtyを拒否する
-- revision文字列と`RevisionStable`の矛盾を受理しない
+- 開始revisionが空でない
+- 開始時working treeがclean
+- post-run状態が確認済み
+- post-run revision文字列が開始revisionと同一
+- `revisionStable = true`
+- 終了時working treeがclean
+- どれか一つでも欠ける状態を再現可能と判定しない
 
-runner自身のpackage `./tools/reference-gate-b-repository-evidence`はこのtargeted `go test`へ含めません。将来runner testが`run()`を呼ぶようになった場合でも自己再帰の経路を作らず、共有helperのpure契約だけを検査します。
-
-このConformanceが実装されていることと、#310をnormal Go runnerで成功させたことは別です。
+runner自身のpackageはこのtargeted `go test`へ含めません。将来runner側のtestが`run()`を呼ぶようになった場合にも自己再帰の経路を作らず、共有helperのpure契約だけを検証します。
 
 ### 広いGo test
 
@@ -229,7 +286,7 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
   > /tmp/tei-gate-b-repository-evidence.json
 ```
 
-これは三つのtargeted check成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
+これは3本のtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
 
 ## 3. #255 generated artifactのcheck-only Evidenceを取得する
 
@@ -381,6 +438,8 @@ World / Plugin Lock / Durable Runのいずれかに差分が生じた場合:
 4. 新しいclean revisionから`tools/reference-generated-artifact-evidence`を再実行する
 
 `-write`直後のdirty treeを最終Evidenceのsource revisionとして記録しません。
+
+Phase 1で修復差分をcommitした後は、そのcommitを含むrevisionをcandidate Rとして選ぶか、さらに#214 authoring等を終えてからRを選びます。
 
 ## 6. #308 実PostgreSQL engineでheader-detailを確認する
 
@@ -629,7 +688,11 @@ acceptance receiptが成功しても#214は完了しません。
 
 acceptance receiptをactual Oracle read Evidenceへ格上げしません。
 
-## 8. 最終差分を確認する
+Phase 1でこの工程を通してauthoring変更が必要になった場合は、その変更をcommitしてからPhase 2へ進みます。
+
+Phase 2では、同じexternal Evidence artifactを使う場合でも、candidate revision R上でacceptance receiptを再取得し、Rのruntime / realizationに対してactual readを再確認します。
+
+## 8. Phase 1の最終差分を確認する
 
 ```bash
 git status --short
@@ -644,15 +707,87 @@ commit対象は、正規生成されたartifactと、意味上説明可能なsou
 
 DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommitしません。
 
-#255でgenerated artifactを修復した場合は、dirty差分を残したままGate B監査へ進まず、意図したartifactをcommitしてclean revisionへ固定し、`tools/reference-generated-artifact-evidence`を再実行します。
+#255でgenerated artifactを修復した場合は、dirty差分を残したままPhase 2へ進まず、意図したartifactをcommitします。
 
-## 9. Gate B監査へ戻す
+#214の観測事実からOracle realization等をauthoringした場合も、必要なValidationと差分確認を行い、Phase 2開始前にcommitします。
+
+Phase 2へ入る時点ではworking treeをcleanにします。
+
+## 9. Phase 2でcandidate revision Rへ4 laneを揃える
+
+### 9.1 Rを固定する
+
+```bash
+git status --short
+export TEI_GATE_B_CANDIDATE_REVISION="$(git rev-parse HEAD)"
+printf '%s\n' "$TEI_GATE_B_CANDIDATE_REVISION"
+```
+
+`git status --short`が空でない場合はPhase 2を開始しません。
+
+### 9.2 Rで#310を実行する
+
+```bash
+go run ./tools/reference-gate-b-repository-evidence \
+  > /tmp/tei-gate-b-repository-evidence.json
+```
+
+成功後、JSONの`repositoryRevision`がRと一致し、`reproducibleRevision = true`であることを確認します。
+
+### 9.3 Rで#255を実行する
+
+```bash
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
+```
+
+この段階では`-write`しません。不一致が見つかった場合はPhase 2を中断し、修復 → commit後の新revisionを新しいRとして最初からやり直します。
+
+### 9.4 Rで#308を実行する
+
+```bash
+go run ./tools/reference-postgres-header-detail-runtime \
+  > /tmp/tei-gate-b-postgres-header-detail.json
+```
+
+Evidence専用の空PostgreSQL Databaseを使用し、JSONの`repositoryRevision`がRと一致することを確認します。
+
+### 9.5 Rで#214 acceptance / actual readを再確認する
+
+```bash
+go run ./tools/reference-external-query-evidence \
+  -workspace reference/workspace \
+  -evidence <observed-evidence.json> \
+  > /tmp/tei-external-query-evidence-acceptance.json
+```
+
+receiptの`repositoryRevision`がRと一致し、`reproducibleRevision = true`であることを確認します。
+
+続いて、Rのruntime / realizationに対してread-only Oracle connectionからactual readを行い、explicit Semantic mappingまで確認します。
+
+### 9.6 4 laneのrevision一致を確認する
+
+少なくとも次を確認します。
+
+```text
+#310 repositoryRevision = R
+#255 repositoryRevision = R
+#308 repositoryRevision = R
+#214 acceptance repositoryRevision = R
+#214 actual read target source = R
+```
+
+一つでもRと異なる場合、そのlaneの古い成功EvidenceをRへ読み替えません。
+
+Phase 2中にsource変更が必要になった場合はRを破棄し、変更をcommitした後、新しいRで9.1からやり直します。
+
+## 10. Gate B監査へ戻す
 
 取得したEvidenceを[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)へ対応付けます。
 
 | Evidence lane | 判定対象 |
 | --- | --- |
-| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake / Repository source境界Conformance / normal Go runner / source revision不変性 |
+| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / Repository source固定Conformance / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
 | #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性 / Provider runtime / cleanup後復元 |
 | #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / read-only / Oracle actual read |
@@ -661,15 +796,29 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 一つのEvidence成功を別種類のEvidenceの代替にしません。
 
+さらに最終Ready判定では、4 laneの完了Evidenceがすべて同じcandidate revision Rへ揃っていることを確認します。
+
+negative caseとして少なくとも次を再監査します。
+
+- secret / credentialがEvidenceへ混入していない
+- read-onlyがSQL文字列だけではなく実効的に強制されている
+- 0件がExecution Errorへ化けていない
+- Execution Errorが正常業務結果へ化けていない
+- Observation期待不一致とread Execution Errorを混同していない
+- Evidence run実行中にsource revisionが変化していない
+- #308 cleanup後にEvidence専用空DBの観測条件へ戻っている
+- generated artifactを手編集していない
+- external EvidenceをCanonical meaningへ昇格していない
+
 ## 停止条件
 
 次の場合はfail closedで止めます。
 
 - Workspace Validation Error
 - #310完了Evidenceをdirty working treeから採用しようとしている
+- #310の`repository-evidence-source-boundary` targeted checkが失敗する
+- #310でpost-run確認前の途中失敗JSONを`reproducibleRevision=true`相当として扱おうとしている
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
-- #310で三つのtargeted checkのいずれかが失敗する
-- #310 source-boundary Conformanceを別laneのEvidence代替として扱おうとしている
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
 - #255 `reference-generated-artifact-evidence`でgolden不一致がある
 - #255 Evidence runner実行前後でHEADが変わった、またはworking treeがdirtyである
@@ -690,11 +839,15 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 - fixed observed fixtureを生成結果へ合わせて機械的に変更しようとしている
 - EvidenceとSQL realizationが一致しない
 - 実行失敗を0件・正常Business Resultへ変換しないと先へ進めない
+- Phase 2で4 laneの`repositoryRevision`がcandidate Rへ揃っていない
+- Phase 2中にsource変更が生じたのに、古いRの成功Evidenceを流用しようとしている
 
 これらは「作業が止まった」のではなく、Gate Bが意図どおり不足を露出させたEvidenceとして扱います。
 
 ## Gate B通過後
 
-4 laneのEvidenceが揃い、本監査でGate BをReadyと判定した後は、すぐに最新`main`をWeb baselineへしません。
+4 laneの完了Evidenceが同じrevision Rへ揃い、本監査でRについてGate BをReadyと判定した後も、すぐに最新`main`をWeb baselineへしません。
 
-`GATE_B_TO_C_HANDOVER_CONTRACT.md` / #291に従い、Ready判定対象revisionとEvidenceをHandover Baselineとして固定してから第一Web Target #70 / Gate C #270へ進みます。
+`GATE_B_TO_C_HANDOVER_CONTRACT.md` / #291に従い、RとGate B EvidenceをHandover Baselineとして固定してから第一Web Target #70 / Gate C #270へ進みます。
+
+Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認し、4 laneを新しいrevisionへ揃えてから新しいHandover Baselineを発行します。
