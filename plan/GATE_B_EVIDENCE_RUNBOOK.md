@@ -340,7 +340,7 @@ production既存Databaseの実データEvidenceではありません。
 
 Evidence toolはまず`reference/workspace`をLoadし、通常Validation Errorがないことを確認します。Validation Error時にはPostgreSQLへ接続しません。
 
-その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、既存object guardを実行します。
+その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、接続先が**Evidence専用の空Database**であることをfail closedで検査します。
 
 ```text
 Workspace Load
@@ -349,6 +349,12 @@ Canonical Validation
   ↓ Errorなら停止
 PostgreSQL接続
   ↓
+current_database()でDatabase identity確認
+  ↓
+postgres / template0 / template1なら停止
+  ↓
+system / temporary領域を除くuser relation件数確認
+  ↓ 1件以上なら停止
 public.order_lines既存確認
   ↓ 既存なら停止
 Ephemeral fixture作成
@@ -356,23 +362,50 @@ Ephemeral fixture作成
 Runtime Evidence
 ```
 
-`TEI_TEST_POSTGRES_DSN`には、Evidence専用の空PostgreSQL Databaseを指定します。
+`TEI_TEST_POSTGRES_DSN`には、Evidence専用に作成した空PostgreSQL Databaseを指定します。
 
 ```bash
 export TEI_TEST_POSTGRES_DSN='postgres://...'
 ```
 
-DSNやcredentialをEvidenceファイルへ保存しません。
+DSN、credential、接続先の実Database名をEvidenceファイルへ保存しません。
 
-接続後、toolは次で既存objectを確認します。
+### Database側の安全条件
+
+#### 既定Databaseを拒否する
+
+次のPostgreSQL既定Databaseはfixture実行先として利用しません。
+
+```text
+postgres
+template0
+template1
+```
+
+`postgres`が偶然空であっても拒否します。
+
+#### 既存user relationを拒否する
+
+`pg_catalog` / `information_schema` / PostgreSQL内部・temporary領域を除き、次のrelationが一つでも存在すれば停止します。
+
+- table / partitioned table
+- view / materialized view
+- foreign table
+- sequence
+
+既存relationの内容や用途を推測せず、削除して空Databaseへ転用する処理も提供しません。
+
+#### fixture objectを再確認する
+
+空Database検査後も`public.order_lines`の既存有無を明示確認します。
 
 ```sql
 SELECT to_regclass('public.order_lines')::text
 ```
 
-`public.order_lines`が既に存在する場合はfail closedで停止します。
+既存objectがあればfail closedで停止します。
 
-**既存tableを削除して続行するoverrideはありません。** 別の専用空Databaseを使います。
+これらの検査を通過した場合だけtool-owned fixtureをCREATEします。**既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
 ### 実行
 
@@ -470,7 +503,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 | #310 Repository Evidence runner | UI-less Scenario / external Evidence intake / normal Go runner / source revision不変性 |
 | #255 `reference-golden` | World / Plugin LockとCanonical Workspaceの再現性 |
 | #255 `reference-durable-run-golden` | Durable Run全体の正規再現性 |
-| #308 PostgreSQL tool | real PostgreSQL engine上のfixture runtime |
+| #308 PostgreSQL tool | real PostgreSQL engine上の専用空Database / fixture runtime |
 | #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
 
 #255については、stale修復後のdirty treeではなく、意図した生成物をcommitした**clean revision上のcheck-only一致**を監査Evidenceへ対応付けます。
@@ -486,6 +519,8 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
 - #255 final check-only実行前後でHEADが変わった、またはworking treeがdirtyである
+- #308で`postgres` / `template0` / `template1`へ接続している
+- #308の接続先にsystem / temporary領域以外のuser relationが1件以上存在する
 - `public.order_lines`が既に存在するPostgreSQL接続先
 - #214でprovenanceのない物理情報しかない
 - read-only保証をSQL文字列だけで主張している
