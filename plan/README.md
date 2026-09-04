@@ -18,7 +18,7 @@
 - [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の監査
 - [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md): Application Driverから第一Web Targetへ進めるかをEvidenceから判定する監査
 - [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md): Gate Bで何のEvidenceを取得するかを整理する計画
-- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): Repository / provider fixture / external asset Evidenceを安全に取得・再現する実行手順
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): Repository / generated artifact / provider fixture / external asset Evidenceを安全に取得・再現する実行手順
 - [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md): Gate B通過時のDriver baselineをGate Cへ固定して渡す契約
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線
@@ -71,29 +71,66 @@ header-detail
 
 ## Gate Bの現在地
 
-Application Driverの主要な意味境界とScenario構造は成立し、PR #285で`main`へ収束しました。
+Application Driverの主要な意味境界、runtime境界、最終UI-less Scenario構造は成立しています。
 
-その後、PR #300で次のEvidence境界も最新`main`へ収束しています。
+現在の正式判定は **Gate B: Not Ready** です。ただし、残件の中心は新しいDriver抽象ではなく、性質の異なる次の4 Evidence laneの**実run取得**です。
 
-- external-observed Contract Query Evidence intake
-- PostgreSQL header-detail Evidence toolのfail-closed安全化
-- Gate B Evidence Runbook
-- #214のEvidence intake作業定義
+| Lane | Repository / GitHub Issue | Evidence nature | 現在地 |
+| --- | --- | --- | --- |
+| A | `ISSUE-000022` / #214 | actual external asset | Blocked — actual Oracle facts / read-only / actual read待ち |
+| B | `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run — Evidence専用空PostgreSQL DB待ち |
+| C | `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check — clean normal Go environment待ち |
+| D | `ISSUE-000032` / #310 | deterministic repository | Ready to run — clean checkout / normal Go runner待ち |
 
-現在の正式判定は **Gate B: Not Ready** です。ただし残件の中心は追加設計ではなく、次の四系統のEvidence取得です。
+この4 laneは相互代替しません。
 
-1. external-observed `master_data`のactual Oracle物理 / read-only Evidence
-2. header-detailの実PostgreSQL engine Evidence
-3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
-4. 最終UI-less Scenarioと関連Evidence境界の通常Go runner実行Evidence
+### Lane A — #214 actual external Oracle
 
-#214ではEvidence intake boundary自体はReadyです。actual Oracle object、parameter、raw columns、native source、provenance、read-only強制EvidenceがまだBlockedです。
+external Evidence intake boundaryはReadyです。PR #340以降は、実際に検査したexternal Evidence JSONのexact bytesを`evidenceArtifactFingerprint`で識別し、clean Repository revision上で照合したことをsource-fixed acceptance receiptとして残せます。
 
-PostgreSQL toolは既存`public.order_lines`が存在する接続先ではfail closedで停止し、tool自身が作成したfixtureだけをcleanupします。このEvidenceは`real-postgres-ephemeral-fixture`であり、production既存Databaseや#214のactual external asset Evidenceとは区別します。
+ただし、acceptance receiptはactual Oracle read Evidenceではありません。
 
-詳細な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、取得対象の整理は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)、具体的なコマンドと停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を正とします。
+まだ必要なのは、実physical object / parameter / raw columns / native source / provenance、実効的read-only強制、採用Oracle driver integration、actual read → explicit Semantic Customer mappingです。未観測のOracle object / column / SQLをTEI側から推測しません。
 
-GitHub Actionsによる継続的な再検証は重要ですが、Gate BのProduct Evidenceそのものとは分けます。Actions停止を意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
+### Lane B — #308 real PostgreSQL engine
+
+PostgreSQL Evidence toolは、clean Repository sourceを要求したうえで、Evidence専用空Databaseの観測条件をfixture作成前にfail closedで確認します。
+
+成功Evidenceには、少なくとも次の三層を残します。
+
+- `fixtureDatabaseSafety`: 既定DBではない、user relation 0件、fixture object不在等のfixture前安全判定
+- Provider runtime: 2件 / 正常な0件 / missing-table Execution Error、identity、explicit Semantic mapping、support column非露出
+- `fixtureCleanupSafety`: cleanup後にuser relation 0件 / fixture object不在へ戻ったこと
+
+さらに実行前後で同じclean Repository revisionへ固定できることを要求します。
+
+このEvidenceは`real-postgres-ephemeral-fixture`であり、production既存Databaseや#214 actual external asset Evidenceとは区別します。actual PostgreSQL runはまだ未取得です。
+
+### Lane C — #255 generated artifact reproducibility
+
+最終完了Evidenceの正規入口は`tools/reference-generated-artifact-evidence`です。
+
+World / Plugin Lock / Durable Runをcheck-onlyで照合し、実行前後で同じclean Repository revisionを保った`reproducibleRevision = true`のrunだけを完了候補とします。
+
+`reference-golden` / `reference-durable-run-golden -write`はstale修復の正規toolですが、`-write`直後のdirty treeは完了Evidenceではありません。修復差分を確認・commitした新しいclean revisionでfinal runnerを再実行します。
+
+### Lane D — #310 deterministic Repository
+
+正規入口は`tools/reference-gate-b-repository-evidence`です。
+
+PR #346以降、targeted Evidenceは次の3 checkを独立して扱います。
+
+1. 最終UI-less Scenario
+2. external Evidence intake
+3. Repository source-boundary pure Conformance
+
+三つ目は`tools/internal/repositoryevidence`のpure契約を確認し、runner自身のpackageをtargeted testへ含めないことで自己再帰を避けます。
+
+通常Go runner上の実runはまだ未取得です。実装・Conformanceの存在をgreen扱いしません。
+
+詳細な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、取得対象と証明範囲は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)、具体的なコマンドと停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)だけを正とします。
+
+GitHub Actionsによる継続的な再検証は重要ですが、Gate Bの4 Product Evidenceとは分けます。Actions停止を意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
 
 ## CommandとObservation
 
