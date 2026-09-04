@@ -77,17 +77,20 @@ ambient環境を確認する前に安全値へ書き換えて、もともと不�
 
 `TEI_TEST_POSTGRES_DSN`はfinal runnerの起動時には必要ですが、実際にPostgreSQLへ接続するのは#308 real PostgreSQL Provider Evidence childだけです。
 
-PR #434以降、final runnerはDSNを利用しないsubprocessへ一律に継承しません。
+PR #434以降、final runnerはDSNを利用しないsubprocessへ一律に継承しません。PR #437以降は、runner自身のRepository source観測で起動するGit subprocessにも同じleast-exposure境界を適用します。
 
 - `go env GOWORK` / `go env GOFLAGS`等のGo環境probeへは渡さない
 - `go version`へは渡さない
+- runner開始時・各lane後・最終確認の`git rev-parse` / `git status`へは渡さない
 - #310 deterministic Repository Evidenceへは渡さない
 - #255 generated artifact reproducibility Evidenceへは渡さない
 - #308 real PostgreSQL Provider Evidenceへだけ渡す
 
 DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへそもそもsecret候補を露出しないためのleast-exposure境界です。
 
-DSN除去は共通helperで行い、keyの大小文字差に依存せず同名keyをすべて除去します。`PATH`等、DSN以外のenvironmentは通常どおり引き継ぎます。#308 laneだけはDSNを必要とするため、base environmentのcopyを維持します。
+DSN除去はfinal runner側の共通helperで行い、keyの大小文字差に依存せず同名keyをすべて除去します。`PATH`等、DSN以外のenvironmentは通常どおり引き継ぎます。#308 laneだけはDSNを必要とするため、base environmentのcopyを維持します。
+
+Repository source観測については、共有`repositoryevidence`へProvider固有のDSN名を持ち込まず、callerが明示environmentを渡せるgeneric入口を利用します。source同一性の判定契約は従来どおりです。
 
 この分離はEvidenceの合否条件を増やすものではありません。#310 / #255 / #308の正規runner、lane順序、revision convergence、child artifact fingerprint、source再確認の意味は従来どおりです。
 
