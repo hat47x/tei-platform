@@ -23,12 +23,12 @@ GitHub Actionsによる継続的なregression確認は重要ですが、この�
 
 ### A. deterministic repository Evidence — #310
 
-Repository checkoutとGo toolchainだけで再現できるApplication Driver / Evidence intakeのEvidenceです。
+Repository checkoutとGo toolchainだけで再現できるApplication Driver / Evidence intake / Repository source固定境界のEvidenceです。
 
 - Workspace Validation
 - UI-less synthetic Scenario
 - external Evidence intake tests
-- Repository source固定境界のpure Conformance
+- Repository source境界のpure Conformance
 - 実行前後のsource revision不変性
 
 正規入口は`tools/reference-gate-b-repository-evidence`です。
@@ -124,27 +124,30 @@ go run ./tools/reference-gate-b-repository-evidence \
 
 Repository内の新規fileへ直接redirectしません。shellはcommand開始前にredirect先を作成するため、それ自体がworking treeをdirtyにし、runnerが意図どおりfail closedします。
 
-runnerは次を一つのEvidenceへ束ねます。
+runnerは一つのEvidenceへ次を束ねます。
 
 1. 実行前repository revision
 2. 実行前working tree clean
 3. Go toolchain identity
 4. Canonical Workspace Validation
-5. 最終UI-less Scenario
-6. external Evidence intake boundary tests
-7. Repository source固定境界のpure Conformance
-8. 実行後repository revision
-9. 実行前後のHEAD同一性
-10. 実行後working tree clean
-11. `reproducibleRevision`
+5. 最終UI-less Scenario check
+6. external Evidence intake check
+7. Repository source境界Conformance check
+8. `-broad`指定時だけRepository全体test
+9. 実行後repository revision
+10. 実行前後のHEAD同一性
+11. 実行後working tree clean
+12. `reproducibleRevision`
 
-PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。PR #346以降は、その共有helper自体のpure Conformanceもtargeted Evidenceとして独立実行します。
+PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。
+
+PR #346以降、その共有source固定境界のpure Conformanceもtargeted Evidenceの独立checkとして実行します。
 
 `reproducibleRevision = true`になるには、実行前後でHEADが同一で、両時点のworking treeがcleanである必要があります。test自体が成功していても、並行操作やtest実行でsource状態が変わったrunはGate B完了Evidenceとして採用しません。
 
-### 最終UI-less Scenario
+### targeted check 1: 最終UI-less Scenario
 
-runnerが実行する等価コマンド:
+等価コマンド:
 
 ```bash
 go test ./internal/driver \
@@ -168,9 +171,9 @@ Authentication
 
 synthetic adapterを含むため、成功してもactual Oracle / real PostgreSQL / 実外部状態のEvidenceにはしません。
 
-### external Evidence intake tests
+### targeted check 2: external Evidence intake
 
-runnerが実行する等価コマンド:
+等価コマンド:
 
 ```bash
 go test ./internal/database/externalqueryevidence \
@@ -194,26 +197,28 @@ go test ./internal/database/externalqueryevidence \
 
 ここでのtest成功は#214 actual external asset Evidenceではありません。
 
-### Repository source固定境界
+### targeted check 3: Repository source境界Conformance
 
-PR #346以降、runnerは共有source観測helperのpure Conformanceを3本目のtargeted Evidenceとして実行します。
+PR #346で追加した等価コマンド:
 
 ```bash
-go test ./tools/internal/repositoryevidence \
-  -count=1
+go test ./tools/internal/repositoryevidence -count=1
 ```
+
+JSONでは`repository-evidence-source-boundary`として、他のtargeted checkとは別に残します。
 
 確認対象:
 
-- 開始revisionが空でない
-- 開始時working treeがclean
-- post-run状態が確認済み
-- post-run revision文字列が開始revisionと同一
-- `revisionStable = true`
-- 終了時working treeがclean
-- どれか一つでも欠ける状態を再現可能と判定しない
+- cleanな同一revisionの開始 / 終了だけを再現可能と判定する
+- dirty startを拒否する
+- post-run未確認を拒否する
+- HEAD変化を拒否する
+- post-run dirtyを拒否する
+- revision文字列と`RevisionStable`の矛盾を受理しない
 
-runner自身のpackageはこのtargeted `go test`へ含めません。将来runner側のtestが`run()`を呼ぶようになった場合にも自己再帰の経路を作らず、共有helperのpure契約だけを検証します。
+runner自身のpackage `./tools/reference-gate-b-repository-evidence`はこのtargeted `go test`へ含めません。将来runner testが`run()`を呼ぶようになった場合でも自己再帰の経路を作らず、共有helperのpure契約だけを検査します。
+
+このConformanceが実装されていることと、#310をnormal Go runnerで成功させたことは別です。
 
 ### 広いGo test
 
@@ -224,7 +229,7 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
   > /tmp/tei-gate-b-repository-evidence.json
 ```
 
-これは3本のtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
+これは三つのtargeted check成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
 
 ## 3. #255 generated artifactのcheck-only Evidenceを取得する
 
@@ -647,7 +652,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 | Evidence lane | 判定対象 |
 | --- | --- |
-| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / Repository source固定Conformance / normal Go runner / source revision不変性 |
+| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake / Repository source境界Conformance / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
 | #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性 / Provider runtime / cleanup後復元 |
 | #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / read-only / Oracle actual read |
@@ -662,8 +667,9 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 - Workspace Validation Error
 - #310完了Evidenceをdirty working treeから採用しようとしている
-- #310の`repository-evidence-source-boundary` targeted checkが失敗する
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
+- #310で三つのtargeted checkのいずれかが失敗する
+- #310 source-boundary Conformanceを別laneのEvidence代替として扱おうとしている
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
 - #255 `reference-generated-artifact-evidence`でgolden不一致がある
 - #255 Evidence runner実行前後でHEADが変わった、またはworking treeがdirtyである
