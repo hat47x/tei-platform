@@ -69,11 +69,15 @@ Gate B完了Evidenceとして採用できるのは、次をすべて満たすrun
 - 実行開始時にworking treeがclean
 - `reference-golden`が一致
 - `reference-durable-run-golden`が一致
-- 実行後にrepository HEADを再確認済み
+- 実行後のrepository source確認が完了している（`postRunRepository.checked = true`）
 - 実行前後でHEADが同一
 - 実行後もworking treeがclean
 
 いずれかを満たさない場合は非0終了します。
+
+`reproducibleRevision`は「repository sourceがたまたま同じだった」という意味だけではありません。PR #398以降は、二つのgolden checkが両方成功し、かつpost-runのsource確認を完了した後にだけ`true`にします。
+
+どちらかのgolden checkが失敗した場合、HEADとworking treeが同じclean revisionのままでも、その失敗JSONでは`reproducibleRevision = false`を維持します。失敗runをsource再現性だけからGate B完了Evidenceへ誤読しないためです。
 
 このrunnerには`-allow-dirty`を設けません。dirty treeでの診断は個別golden toolを直接利用し、Gate B完了Evidenceと混同しないためです。
 
@@ -101,7 +105,7 @@ go run ./tools/reference-durable-run-golden -write
 
 ## Evidenceの意味
 
-成功して証明するのは、記録された一つのclean repository revisionについて、保存generated artifactが正規生成結果と一致し、check実行中にもsource revisionが変化しなかったことです。
+`reproducibleRevision = true`で成功して証明するのは、記録された一つのclean repository revisionについて、二つの正規golden checkが成功し、保存generated artifactが正規生成結果と一致し、check実行中にもsource revisionが変化しなかったことです。
 
 次の代替にはしません。
 
