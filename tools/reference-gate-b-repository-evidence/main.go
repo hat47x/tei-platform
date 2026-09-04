@@ -30,16 +30,24 @@ type validationEvidence struct {
 	Errors []string `json:"errors,omitempty"`
 }
 
+type postRunRepositoryEvidence struct {
+	Checked            bool   `json:"checked"`
+	RepositoryRevision string `json:"repositoryRevision,omitempty"`
+	RevisionStable     bool   `json:"revisionStable"`
+	WorkingTreeClean   bool   `json:"workingTreeClean"`
+}
+
 type evidence struct {
-	EvidenceNature       string             `json:"evidenceNature"`
-	RepositoryRevision   string             `json:"repositoryRevision"`
-	WorkingTreeClean     bool               `json:"workingTreeClean"`
-	ReproducibleRevision bool               `json:"reproducibleRevision"`
-	GoVersion            string             `json:"goVersion"`
-	Workspace            string             `json:"workspace"`
-	WorkspaceValidation  validationEvidence `json:"workspaceValidation"`
-	Checks               []checkEvidence    `json:"checks"`
-	BroadRequested       bool               `json:"broadRequested"`
+	EvidenceNature       string                    `json:"evidenceNature"`
+	RepositoryRevision   string                    `json:"repositoryRevision"`
+	WorkingTreeClean     bool                      `json:"workingTreeClean"`
+	ReproducibleRevision bool                      `json:"reproducibleRevision"`
+	PostRunRepository    postRunRepositoryEvidence `json:"postRunRepository"`
+	GoVersion            string                    `json:"goVersion"`
+	Workspace            string                    `json:"workspace"`
+	WorkspaceValidation  validationEvidence        `json:"workspaceValidation"`
+	Checks               []checkEvidence           `json:"checks"`
+	BroadRequested       bool                      `json:"broadRequested"`
 }
 
 func main() {
@@ -109,7 +117,7 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 	}
 	result.WorkspaceValidation.Passed = true
 
-	failed := false
+	targetedFailed := false
 	for _, spec := range targetedChecks() {
 		passed := runStreamingCommand(spec)
 		result.Checks = append(result.Checks, checkEvidence{
@@ -118,14 +126,12 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 			Passed:  passed,
 		})
 		if !passed {
-			failed = true
+			targetedFailed = true
 		}
 	}
-	if failed {
-		return result, fmt.Errorf("targeted Gate B Repository Evidence testに失敗があります")
-	}
 
-	if broad {
+	broadFailed := false
+	if !targetedFailed && broad {
 		spec := broadCheck()
 		passed := runStreamingCommand(spec)
 		result.Checks = append(result.Checks, checkEvidence{
@@ -134,14 +140,66 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 			Passed:  passed,
 		})
 		if !passed {
-			return result, fmt.Errorf("broad Repository testに失敗があります")
+			broadFailed = true
 		}
 	}
 
+	postRun, postRunErr := inspectPostRunRepository(result.RepositoryRevision)
+	result.PostRunRepository = postRun
+	result.ReproducibleRevision = isReproducibleRepositoryState(
+		result.RepositoryRevision,
+		result.WorkingTreeClean,
+		postRun,
+	)
+	if postRunErr != nil {
+		return result, postRunErr
+	}
+	if !postRun.RevisionStable {
+		return result, fmt.Errorf("Evidence実行中にrepository HEADが変化したため、単一revisionのGate B Evidenceとして採用できません。cleanかつ固定されたrevisionで再実行してください")
+	}
+	if !postRun.WorkingTreeClean {
+		return result, fmt.Errorf("Evidence実行後にworking tree差分が残ったため、記録revisionと実行sourceの同一性を保証できません。差分を確認してclean revisionで再実行してください")
+	}
+	if targetedFailed {
+		return result, fmt.Errorf("targeted Gate B Repository Evidence testに失敗があります")
+	}
+	if broadFailed {
+		return result, fmt.Errorf("broad Repository testに失敗があります")
+	}
 	if !result.ReproducibleRevision {
 		return result, fmt.Errorf("-allow-dirtyで診断実行しました。testが成功してもclean revisionへ固定できないためGate B完了Evidenceには使用できません")
 	}
 	return result, nil
+}
+
+func inspectPostRunRepository(initialRevision string) (postRunRepositoryEvidence, error) {
+	result := postRunRepositoryEvidence{Checked: true}
+
+	revision, err := commandOutput("git", "rev-parse", "HEAD")
+	if err != nil {
+		return result, fmt.Errorf("Evidence実行後のrepository revisionを取得できません: %w", err)
+	}
+	result.RepositoryRevision = strings.TrimSpace(revision)
+	result.RevisionStable = result.RepositoryRevision == initialRevision
+
+	status, err := commandOutput("git", "status", "--porcelain")
+	if err != nil {
+		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
+	}
+	result.WorkingTreeClean = strings.TrimSpace(status) == ""
+	return result, nil
+}
+
+func isReproducibleRepositoryState(
+	initialRevision string,
+	initialClean bool,
+	postRun postRunRepositoryEvidence,
+) bool {
+	return initialRevision != "" &&
+		initialClean &&
+		postRun.Checked &&
+		postRun.RevisionStable &&
+		postRun.WorkingTreeClean
 }
 
 func targetedChecks() []commandSpec {
