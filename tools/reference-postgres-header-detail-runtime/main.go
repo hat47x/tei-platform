@@ -27,6 +27,11 @@ const evidenceNature = "real-postgres-ephemeral-fixture"
 
 type evidence struct {
 	EvidenceNature                        string                        `json:"evidenceNature"`
+	RepositoryRevision                   string                        `json:"repositoryRevision"`
+	WorkingTreeClean                     bool                          `json:"workingTreeClean"`
+	ReproducibleRevision                 bool                          `json:"reproducibleRevision"`
+	PostRunRepository                    postRunRepositoryEvidence     `json:"postRunRepository"`
+	GoVersion                            string                        `json:"goVersion"`
 	FixtureObject                         string                        `json:"fixtureObject"`
 	PreexistingFixtureProtected           bool                          `json:"preexistingFixtureProtected"`
 	FixtureOwnedByTool                    bool                          `json:"fixtureOwnedByTool"`
@@ -49,6 +54,13 @@ type evidence struct {
 }
 
 func main() {
+	// Gate Bへ採用するreal-provider Evidenceは、後から同じsourceへ戻れるclean revisionへ固定する。
+	// dirty treeや実行中のHEAD変化をProvider Evidenceへ混ぜない。
+	repositorySource, err := inspectInitialRepository()
+	if err != nil {
+		panic(err)
+	}
+
 	// Databaseへ接続・変更する前に、Evidenceの前提となるCanonical Workspace自体を検証する。
 	// 無効なauthoringを前提にfixtureを作成してから失敗する順序を許さない。
 	loaded, err := workspace.Load("reference/workspace")
@@ -195,8 +207,18 @@ func main() {
 	semanticAttributes := semanticAttributeIDs(executed.Execution.Result.Rows)
 	relationStorageColumn, parentAttributeAdded := inspectOrderLineStorage(loaded)
 
+	// Provider runtimeが完了した後にもsource identityを再確認し、単一revisionへ固定できるrunだけを成功Evidenceにする。
+	if err := finalizeRepositoryEvidence(&repositorySource); err != nil {
+		panic(err)
+	}
+
 	out := evidence{
 		EvidenceNature:                        evidenceNature,
+		RepositoryRevision:                   repositorySource.RepositoryRevision,
+		WorkingTreeClean:                     repositorySource.WorkingTreeClean,
+		ReproducibleRevision:                 repositorySource.ReproducibleRevision,
+		PostRunRepository:                    repositorySource.PostRunRepository,
+		GoVersion:                            repositorySource.GoVersion,
 		FixtureObject:                         fixtureObject,
 		PreexistingFixtureProtected:           true,
 		FixtureOwnedByTool:                    true,
