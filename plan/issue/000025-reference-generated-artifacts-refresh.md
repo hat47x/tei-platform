@@ -13,20 +13,20 @@
 
 Reference data access、header-detail、Relation Storage、Contract Query executor等の追加により、`reference/workspace`のCanonical authoringは更新されています。
 
-このIssueでは、**Canonical Workspaceから生成されるReference artifactの再現性**だけを扱います。生成物を形式的に再作成すること自体を目的にはしません。まず保存済みartifactと現在のCanonical Workspaceが一致するかを正規toolで確認し、staleなものがある場合だけ正規経路から再生成します。
+このIssueでは、**Canonical Workspaceから生成されるReference artifactの再現性**だけを扱います。生成物を形式的に再作成すること自体を目的にはしません。まず保存済みartifactと現在の正規生成結果が一致するかを確認し、staleなものだけを正規経路から再生成します。
 
 実PostgreSQL runtime Evidence、actual external Oracle Evidence、deterministic Repository / normal runner Evidenceは、それぞれ別Issueへ分離します。
 
 ## 依存関係
 
-主要なgenerated Reference artifactは次の依存関係として扱います。
+主要なgenerated Reference artifactは次です。
 
 ```text
 reference/workspace/                 Canonical authoring
   ├─> reference/world.json           generated golden
   └─> .tei/plugin-lock.json          generated golden
           │
-          └─ Plugin Lock fingerprint
+          └─ Plugin Lock / Runtime Policy inputs
 
 reference/observed/production.deployment-state.json   fixed observed fixture
 reference/workspace/ + Plugin Lock + observed fixture
@@ -45,60 +45,76 @@ reference/legacy-auth/*
 
 ## 正本と生成物
 
-Reference生成物を手編集して現在のauthoringへ合わせません。
+正本は`reference/workspace`のauthoring sourceです。
 
-正本は`reference/workspace`のauthoring sourceです。生成物はTEI自身の正規経路から確認・再生成し、差分がCanonical authoringの変更だけで説明できることを確認してから更新します。
+生成物はTEI自身の正規経路から確認・再生成し、差分を現在のCanonical authoring、Plugin Lock、fixed observed fixtureから説明できることを確認してから更新します。
 
-fingerprintや正規化順序も人手で再現して生成物へ書き戻しません。
+次を行いません。
 
-## 一括確認・再生成入口
+- generated JSONの手編集
+- fingerprintだけの置換
+- 保存artifactを正本としてCanonicalへ逆書き
+- fixed observed fixtureを生成結果へ合わせて変更
 
-WorldとPlugin Lockを同じCanonical Workspaceから扱う入口として、次を利用します。
+## 正規toolの責務
+
+### `tools/reference-golden`
+
+WorldとPlugin Lockを同じCanonical Workspaceから扱います。
 
 ```bash
 go run ./tools/reference-golden
 ```
 
-既定ではRepositoryを変更せず、保存済みgoldenとの不一致と、Durable RunのPlugin Lock fingerprint staleを検査します。
+既定はread-only checkです。
 
-ここで一致する場合は、そのrevisionで生成物が再現できるEvidenceとして扱い、**更新するためだけに`-write`を実行しません**。
+確認対象:
 
-不一致があり、現在のCanonical authoringから差分を説明できる場合だけ`-write`を指定します。
+- `reference/world.json`
+- `reference/workspace/.tei/plugin-lock.json`
+- 保存Durable RunのPlugin Lock依存
+
+staleで、差分を現在のauthoringから説明できる場合だけ更新します。
 
 ```bash
 go run ./tools/reference-golden -write
 ```
 
-更新後は必ず差分を確認します。
+### `tools/reference-durable-run-golden`
+
+PR #318で、Durable Run全体を`tei deployment-start`と同じinternal API経路からcheck/writeする専用toolを追加しました。
 
 ```bash
-git diff -- \
-  reference/world.json \
-  reference/workspace/.tei/plugin-lock.json
+go run ./tools/reference-durable-run-golden
 ```
 
-## 2026-09-04 静的依存監査
-
-通常Go runnerを使わずに確認できる範囲として、保存済みPlugin Lockと保存済みDurable Runの依存関係を再監査しました。
-
-`internal/plugin.EnvironmentLockFingerprint`は、対象EnvironmentのLocked PluginをID / version順に正規化し、Environment identityとPlugin集合をJSON化してSHA-256します。
-
-現在保存されているproduction Plugin Lockから同じ規則で再計算したfingerprintは次です。
+生成経路:
 
 ```text
-74d225e985ebf68be9d0289f533d6599b7eb17e6757bb4425c1d0b08cfede220
+Reference Workspace Validation
+  ↓
+Solution Release exact resolution
+  ↓
+fixed observed deployment state Validation
+  ↓
+releaseplan.CompileWithDeployment
+  ↓
+pluginruntime.BuildPlan
+  ↓
+Plugin Lock / Runtime Policy fingerprint
+  ↓
+deploymentdurable.StartWithRuntimePolicy
+  ↓
+saved Durable Runとの完全一致check
 ```
 
-保存済み`reference/order_rollout.durable-run.m0.21.start.json`の`pluginLockFingerprint`も同じ値です。
+staleの場合だけ次で全体を更新します。
 
-したがって、現時点で次は成立しています。
+```bash
+go run ./tools/reference-durable-run-golden -write
+```
 
-- 保存済みPlugin Lockと保存済みDurable RunのPlugin Lock依存は相互に整合している
-- Durable Runのfingerprintだけが保存済みPlugin Lockに対して明らかに古い状態ではない
-
-一方、これは**保存済みPlugin Lockそのものが現在のCanonical Workspaceから正規生成した結果と一致することを証明しません**。その確認は`go run ./tools/reference-golden`で行います。
-
-このため、Durable Runを無条件に再生成する必要はありません。Canonical WorkspaceからPlugin Lockを確認・再生成した結果、そのEnvironment fingerprintが変わった場合にだけDurable Runを正規`deployment-start`から再生成します。
+保存pathを先にtruncateせず、同じdirectoryの一時fileへ全JSONを書き、Sync / Close後にRenameします。安全境界は**生成途中の失敗で既存Durable Runを空にしないこと**です。OS横断のRename atomicityそのものは契約にしません。
 
 ## 対象artifact
 
@@ -108,7 +124,7 @@ git diff -- \
 reference/world.json
 ```
 
-`go run ./cmd/tei world -workspace reference/workspace`または`reference-golden -write`と同じ生成APIから導出します。
+Canonical Workspaceから導出します。
 
 ### Plugin Lock
 
@@ -116,7 +132,7 @@ reference/world.json
 reference/workspace/.tei/plugin-lock.json
 ```
 
-現在のPlugin / Bundle / Environment authoringから生成し、fingerprint差分を確認します。
+現在のPlugin / Bundle / Environment authoringから生成します。
 
 ### Durable Run
 
@@ -124,11 +140,7 @@ reference/workspace/.tei/plugin-lock.json
 reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-保存済みDurable Runは`pluginLockFingerprint`を保持するため、Plugin Lock変更時にstaleとなり得ます。
-
-staleの場合もfingerprintだけを手編集せず、正規`tei deployment-start`からRun全体を再生成します。
-
-保存runのidentity:
+第一Referenceのidentity:
 
 ```text
 solution: order_rollout
@@ -137,9 +149,25 @@ run-id: order-rollout-prod-m0.21
 environment: production
 ```
 
+Plugin Lock fingerprintだけでなくRuntime PolicyとRun全体の正規生成結果を専用toolで確認します。
+
+## 2026-09-04 静的依存監査
+
+通常Go runnerを使わず確認できる範囲では、保存済みproduction Plugin Lockから計算したEnvironment fingerprintと、保存済みDurable Runの`pluginLockFingerprint`は一致していました。
+
+したがって、保存済み二artifact間のPlugin Lock依存だけが明らかに壊れている状態ではありません。
+
+一方、これは次を証明しません。
+
+- 保存済みWorldが現在のCanonical Workspaceからの正規生成結果と一致すること
+- 保存済みPlugin Lockが現在のCanonical Workspaceからの正規生成結果と一致すること
+- 保存済みDurable Runが現在のRuntime Policyを含む正規`deployment-start`結果全体と一致すること
+
+これらは通常Go runnerで正規toolを実行して確認します。
+
 ## 正規実行手順
 
-具体的な順序と停止条件は`plan/GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
+具体的な順序・停止条件は`plan/GATE_B_EVIDENCE_RUNBOOK.md`を唯一の正本とします。
 
 ### 1. Workspace Validation
 
@@ -147,65 +175,55 @@ environment: production
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-Validation Errorがある場合は生成物確認・更新へ進みません。
+Validation Errorがあれば生成物確認・更新へ進みません。
 
-### 2. stale確認
+### 2. World / Plugin Lock check
 
 ```bash
 go run ./tools/reference-golden
 ```
 
-一致する場合は、その結果を#255の再現Evidenceとして記録し、生成物を書き換えません。
+一致する場合は書き換えません。
 
-### 3. World / Plugin Lock再生成 — staleの場合だけ
-
-`reference-golden`がWorld / Plugin Lockの不一致を示した場合に限り実行します。
+### 3. World / Plugin Lock write — staleの場合だけ
 
 ```bash
 go run ./tools/reference-golden -write
-```
 
-その後、World / Plugin Lockの差分が現在のauthoring変更から説明できることを確認します。
-
-```bash
 git diff -- \
   reference/world.json \
   reference/workspace/.tei/plugin-lock.json
 ```
 
-### 4. Durable Run再生成 — Plugin Lock依存がstaleの場合だけ
-
-`reference-golden`がDurable RunのPlugin Lock依存不一致を示した場合に実行します。
-
-既存fileをコマンド失敗で空にしないよう、一時fileへ生成して成功後にだけ置換します。
+### 4. Durable Run full check
 
 ```bash
-tmp="$(mktemp)"
-
-go run ./cmd/tei deployment-start \
-  -workspace reference/workspace \
-  -solution order_rollout \
-  -version 2026.8.27 \
-  -deployment reference/observed/production.deployment-state.json \
-  -run-id order-rollout-prod-m0.21 \
-  -plugin-lock reference/workspace/.tei/plugin-lock.json \
-  > "$tmp" && \
-  mv "$tmp" reference/order_rollout.durable-run.m0.21.start.json
+go run ./tools/reference-durable-run-golden
 ```
 
-その後:
+Plugin Lockが変わっていなくても、Runtime Policyを含むRun全体の再現性を確認するため実行します。
+
+### 5. Durable Run write — staleの場合だけ
 
 ```bash
+go run ./tools/reference-durable-run-golden -write
+
 git diff -- reference/order_rollout.durable-run.m0.21.start.json
-
-go run ./tools/reference-golden
 ```
 
-最終的にWorld / Plugin Lock / Durable Runの依存が一致することを確認します。
+### 6. 最終確認
+
+```bash
+go run ./tools/reference-golden
+
+go run ./tools/reference-durable-run-golden
+```
+
+両方の一致を確認して、generated artifactの再現Evidenceとします。
 
 ## 再生成前に解消済みの事項
 
-Reference authoringの収束過程でOrderLine Relation Storage / SQL realizationが重複していましたが、再生成前に正本を一本化しています。
+OrderLine Relation Storage / SQL realizationの重複authoringは再生成前に正本を一本化済みです。
 
 現在の正本:
 
@@ -216,9 +234,7 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 reference/workspace/databases/sales-core/query-realizations/order-line-find-by-order.sql
 ```
 
-PR #299で計画文書の参照先も現行sourceへ揃えました。
-
-また、`tools/reference-postgres-integration`は独立fixtureを利用しており、OrderLine Persistence Mapping追加だけを理由に既存期待値を変更する必要がないことを確認済みです。
+`tools/reference-postgres-integration`は独立fixtureを利用しており、OrderLine Persistence Mapping追加だけを理由に既存期待値を変更する必要がないことも確認済みです。
 
 ## 他Evidenceとの責務分離
 
@@ -226,40 +242,37 @@ PR #299で計画文書の参照先も現行sourceへ揃えました。
 
 `ISSUE-000031` / #308が、`tools/reference-postgres-header-detail-runtime`によるreal PostgreSQL engine + ephemeral fixture Evidenceを扱います。
 
-PR #294 / #300 / #306により、既存資産非破壊とWorkspace Validation fail-closedの安全境界は成立していますが、実PostgreSQL engineでの成功Evidenceは本Issueの完了条件にしません。
-
 ### actual external Oracle Evidence
 
-`master_data`のactual Oracle物理情報 / read-only Evidenceは`ISSUE-000022` / #214で扱います。
-
-Reference artifact再生成によって未観測のexternal物理情報を生成物へ埋めません。
+`ISSUE-000022` / #214が、`master_data`のactual Oracle物理情報 / provenance / read-only Evidenceを扱います。
 
 ### deterministic Repository Evidence
 
 `ISSUE-000032` / #310が、clean revisionに対するWorkspace Validation、UI-less Scenario、external Evidence intake等のnormal Go runner Evidenceを扱います。
 
-#255でも再生成前にWorkspace Validationを要求しますが、#310のdeterministic Repository Evidence全体を代替するものではありません。
+#255でもWorkspace Validationを要求しますが、#310のEvidence全体を代替しません。
 
 ## 完了条件
 
-- [x] World / Plugin Lockを同じCanonical Workspaceから一括確認・再生成できるtoolがある
-- [x] OrderLine Relation Storage / SQL realizationの重複authoringを再生成前に解消した
-- [x] Plugin Lock fingerprintを保持するDurable Runを依存artifactとして特定した
-- [x] World / Plugin Lockに依存する他Reference artifactを洗い出した
-- [x] Durable RunのPlugin Lock stale検知を追加した
-- [x] `tools/reference-postgres-integration`の既存期待値がOrderLine追加だけでは変わらないことを確認した
-- [x] 正規確認・再生成の具体的コマンドと安全な置換手順をrunbookへ固定した
-- [x] 実PostgreSQL Provider Evidenceを`ISSUE-000031` / #308へ分離した
-- [x] actual Oracle Evidenceを#214へ分離した
+- [x] World / Plugin Lockを同じCanonical Workspaceからcheck/writeできるtoolがある
+- [x] OrderLine Relation Storage / SQL realizationの重複authoringを解消した
+- [x] Durable RunをPlugin Lock / Runtime Policy依存artifactとして特定した
+- [x] World / Plugin Lockに依存するReference artifactを洗い出した
+- [x] `reference-golden`にDurable Run Plugin Lock stale検知を追加した
+- [x] 実PostgreSQL Evidenceを`ISSUE-000031` / #308へ分離した
+- [x] actual Oracle Evidenceを`ISSUE-000022` / #214へ分離した
 - [x] deterministic Repository Evidenceを`ISSUE-000032` / #310へ分離した
-- [x] 保存済みPlugin Lockと保存済みDurable Runのproduction fingerprintが現在相互に一致していることを静的に確認した
-- [ ] Workspace Validationをcleanな通常Go環境で成功させる
-- [ ] `go run ./tools/reference-golden`で現在のWorld / Plugin Lock / Durable Run依存の一致・不一致を確認する
-- [ ] staleの場合だけ`reference/world.json`を正規生成経路から再生成し、差分を説明する
-- [ ] staleの場合だけ`reference/workspace/.tei/plugin-lock.json`を正規生成経路から再生成し、fingerprint差分を説明する
-- [ ] Plugin Lock依存がstaleになった場合だけDurable Runを正規`deployment-start`から再生成する
+- [x] 保存済みPlugin Lockと保存済みDurable Runのproduction fingerprint相互一致を静的確認した
+- [x] Durable Run全体を正規internal APIからcheck/writeする専用toolを追加した（PR #318）
+- [x] Durable Run writeで既存fileを先にtruncateしないsafe replace境界を実装した
+- [x] Runbookからshell `mktemp` / direct `deployment-start`の重複手順を外し、専用toolへ一本化した
+- [ ] cleanな通常Go環境でWorkspace Validationを成功させる
+- [ ] `go run ./tools/reference-golden`で現在の一致・不一致を確認する
+- [ ] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する
+- [ ] `go run ./tools/reference-durable-run-golden`でDurable Run全体をcheckする
+- [ ] staleの場合だけDurable Run全体を正規生成し、差分を説明する
+- [ ] 最終的に両golden toolを一致させる
 - [ ] 必要なReference artifactを手編集せず更新する
-- [ ] `go run ./tools/reference-golden`を最終的に一致させる
 - [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
 
 ## 非目標
@@ -276,13 +289,14 @@ Reference artifact再生成によって未観測のexternal物理情報を生成
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- GitHub PR #251 / #253 / #257 / #262 / #263 / #280 / #299 / #315
+- GitHub PR #280 / #294 / #299 / #306 / #315 / #318
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - `tools/reference-golden/`
+- `tools/reference-durable-run-golden/`
 - `reference/README.md`
 - `reference/world.json`
 - `reference/workspace/.tei/plugin-lock.json`
