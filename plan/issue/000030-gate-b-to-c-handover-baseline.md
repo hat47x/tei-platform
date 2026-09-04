@@ -4,6 +4,7 @@
 - GitHub Issue: #291
 - 親Issue: `ISSUE-000007` / GitHub Issue #70
 - 関連Issue: `ISSUE-000029` / GitHub Issue #273
+- Gate B scope再監査: `ISSUE-000035` / GitHub Issue #380
 - 関連RQ: RQ-011 / RQ-012 / RQ-013 / RQ-018 / RQ-021 / RQ-022
 
 ## 背景
@@ -13,6 +14,28 @@ Gate Cでは、第一Web Targetが、Gate Bを通過したDriverと同じCanonic
 既存のGate C Evidence契約では`Driver baseline identity`をEvidenceへ残すことを要求しています。しかし、比較対象を曖昧な「最新Driver」にすると、Web実装の途中でApplication / Driverが変わったとき、どの意味に対するConformanceなのかを説明できなくなります。
 
 また、Gate Bの4 Evidence laneがそれぞれsource-fixedになっていても、**別々のrevisionで成功したEvidenceを寄せ集めて、一つのGate B Ready revisionへ読み替えることはできません**。
+
+## 2026-09-04 現行scope（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380の再監査により、Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つへ整理しました。
+
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL Provider Evidence
+
+Handover Baseline revisionを`R`とする場合、この三つの完了Evidenceを同じ`R`へ揃えます。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle EvidenceはGate Bの必須blockerではありません。Handover時に完了済みならverified external asset Evidenceとして参照し、未完了なら`unresolved`として明示します。
+
+未完了の場合、少なくとも次を隠しません。
+
+- `master_data` actual Oracle readが未実証であること
+- actual physical object / raw columns / native SQL等が未観測であること
+- actual driver integration / read-only実効保証が未完了であること
+
+Web側でこれらを推測・補完せず、#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+以下の4-lane記述は`ISSUE-000035`以前の契約履歴として保持します。現行Gate B必須範囲と矛盾する場合は本節を優先します。
 
 ## 採用方針
 
@@ -93,6 +116,13 @@ Handover recordへEvidence本文を複製せず、安定した参照を束ねま
 - [ ] #70 / #270の第一Web Target EvidenceからHandover Baselineへ追跡できる
 - [ ] Web実装中のApplication / Driver変更時にbaseline更新規則を実証する
 
+### 現行scopeで追加・置換する完了条件
+
+- [x] Gate B必須Evidenceを#310 / #255 / #308の三つへ再整理した（ISSUE-000035 / #380）
+- [x] #214 / #371 / #376が未完了でも`unresolved`としてHandoverできる契約を定義した
+- [ ] Gate B Ready時に#310 / #255 / #308の完了Evidenceが同一revision `R`へ揃っていることを実証する
+- [ ] #214が未完了なら第一Handover Baselineにその未検証範囲を`unresolved`として実際に記録する
+
 ## 非目標
 
 - Gate B通過前にmachine-readable schemaを固定すること
@@ -113,3 +143,4 @@ Handover recordへEvidence本文を複製せず、安定した参照を束ねま
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
+- `plan/issue/000035-gate-b-external-provider-scope-audit.md`
