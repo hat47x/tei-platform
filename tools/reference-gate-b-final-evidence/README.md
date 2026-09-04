@@ -10,6 +10,8 @@ Gate Bの必須Evidenceを、同じcandidate repository revisionへ揃えたこ�
 
 このtoolは三つの既存runnerを置き換えません。それぞれを正規入口から実行し、返されたEvidence JSONの最小envelopeを照合します。
 
+具体的なGate Bの実行順、安全条件、停止条件の正本は`plan/GATE_B_EVIDENCE_RUNBOOK.md`です。このREADMEはtool固有の利用境界を説明するもので、第二のRunbookにはしません。両者に矛盾が見つかった場合は、矛盾を解消するまで成功Evidenceへ採用しません。
+
 ## 実行
 
 Evidence専用の空PostgreSQL Databaseを用意し、`TEI_TEST_POSTGRES_DSN`を設定します。
@@ -36,17 +38,25 @@ go run ./tools/reference-gate-b-final-evidence -broad \
 clean candidate revision R
         ↓
 #310 deterministic Repository Evidence
-        ↓ same R / clean
+        ↓ runner自身もsource再確認
 #255 generated artifact reproducibility
-        ↓ same R / clean
+        ↓ runner自身もsource再確認
 #308 real PostgreSQL Provider Evidence
-        ↓ same R / clean
+        ↓ runner自身もsource再確認
 final source check
 ```
 
 #310または#255が失敗した場合、#308へ進みません。
 
 つまり、deterministic境界やgenerated artifactが壊れている状態で、不要なPostgreSQL fixture操作を開始しません。
+
+各laneのrunnerが失敗した場合も、その失敗を返す前に最終runner自身がRepository sourceを再観測します。lane実行後に次のいずれかを満たせなければ、その時点で停止して次laneへ進みません。
+
+- `postRunRepository.checked = true`
+- candidate revisionからHEADが変わっていない
+- working treeがcleanである
+
+これにより、「laneは失敗したがsourceも変化していた」「post-run観測が完了していない」といった状態を、後続laneの前提へ持ち越しません。
 
 ## 成功条件
 
@@ -65,7 +75,7 @@ final source check
 #308.repositoryRevision == R
 ```
 
-最後にrunner自身もRepository HEAD / working treeを再観測し、同じclean revisionに留まっていることを確認します。
+最後にrunner自身もRepository HEAD / working treeを再観測し、`repositoryevidence.IsReproducible`の条件を満たす同じclean revisionに留まっていることを確認します。
 
 ## JSONへ残すもの
 
@@ -123,6 +133,7 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 ## 非目標
 
 - 三laneの個別runnerを置き換えること
+- `plan/GATE_B_EVIDENCE_RUNBOOK.md`をこのREADMEで置き換えること
 - generated artifactを修復すること
 - PostgreSQLの既存Databaseをfixture用に変更すること
 - actual Oracle Evidenceを代替すること
