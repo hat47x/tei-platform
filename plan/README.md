@@ -17,7 +17,8 @@
 - [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md): 技術リサーチをRequirement / Gate / ADRへ変換する統合方針
 - [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の監査
 - [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md): Application Driverから第一Web Targetへ進めるかをEvidenceから判定する監査
-- [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md): Gate Bに残る外部事実・実DB・生成物・通常runner Evidenceの取得runbook
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): Gate Bに残るRepository / 実provider fixture / actual external asset Evidenceを区別して取得する実行手順
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md): Gate B通過時のDriver baselineをGate Cへ固定して渡す契約
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計
@@ -37,6 +38,8 @@ Application Pattern Stage 1   完了
     Application Driver         主要境界は成立
             ↓
         Gate B                 Not Ready / Evidence取得中
+            ↓
+   Handover Baseline固定
             ↓
       第一Web Target
             ↓
@@ -65,16 +68,20 @@ header-detail
 
 ## Gate Bの現在地
 
-Application Driverの主要な意味境界とScenario構造は成立し、PR #285で`main`へ収束しました。
+Application Driverの主要な意味境界とScenario構造は成立しています。PR #285でDriver / Reference / Conformanceを、PR #300でexternal Evidence受入境界、PostgreSQL Evidence toolの安全化、Evidence Runbookを`main`へ収束しました。
 
 現在の正式判定は **Gate B: Not Ready** ですが、残件の中心は追加設計ではなく次のEvidence取得です。
 
-1. external-observed `master_data`の実物理 / read-only Evidence
-2. header-detailの実PostgreSQL Evidence
+1. external-observed `master_data`の実Oracle物理 / read-only Evidence
+2. header-detailの実PostgreSQL engine Evidence
 3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
-4. 最終UI-less Scenarioの通常Go runner実行Evidence
+4. 最終UI-less Scenario / external Evidence intakeの通常Go runner実行Evidence
 
-詳細な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、安全な実行手順は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)、進行管理は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69と[`ISSUE-000029`](issue/000029-gate-b-readiness-audit.md) / GitHub Issue #273を正とします。
+#214では、external Evidenceの**受入境界はReady、実物理EvidenceはBlocked**です。EvidenceからSQL realizationを生成・補完せず、実際のphysical object / parameter / raw columns / native source / provenance / read-only保証を得てから照合します。
+
+header-detailのPostgreSQL Evidence toolは、既存`public.order_lines`がある接続先ではfail closedとなり、tool自身のephemeral fixtureだけを作成・削除します。このEvidenceはreal PostgreSQL engine上のfixture Evidenceであり、production既存Databaseの物理事実とは区別します。
+
+詳細な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)、安全な実行手順は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)、進行管理は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69と[`ISSUE-000029`](issue/000029-gate-b-readiness-audit.md) / GitHub Issue #273を正とします。
 
 GitHub Actionsによる継続的な再検証は重要ですが、Gate BのProduct Evidenceそのものとは分けます。Actions停止を意味設計Gapへ読み替えず、逆に未実行をgreenとも扱いません。
 
@@ -96,7 +103,7 @@ production Driverの最小Observation境界と最終UI-less Scenarioへの接続
 
 ## 第一Web TargetとGate C
 
-Gate Bを通過した後、[`ISSUE-000007`](issue/000007-first-web-target-projection.md) / GitHub Issue #70で第一Web Targetへ進みます。
+Gate Bを通過した後、[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)に従って第一Handover Baselineを固定し、そのbaselineを受けて[`ISSUE-000007`](issue/000007-first-web-target-projection.md) / GitHub Issue #70で第一Web Targetへ進みます。
 
 Gate Cは「Web画面が表示できた」だけでは通過しません。[`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)と[`ISSUE-000028`](issue/000028-first-web-target-conformance-evidence.md) / GitHub Issue #270に従い、少なくとも次を分けて取得します。
 
