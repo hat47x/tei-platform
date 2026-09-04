@@ -3,7 +3,7 @@
 - 状態: In Progress
 - GitHub Issue: #214
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
-- 関連Issue: `ISSUE-000020` / `ISSUE-000021`
+- 関連Issue: `ISSUE-000020` / `ISSUE-000021` / `ISSUE-000033` / `ISSUE-000034`
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
@@ -24,6 +24,8 @@
 PR #340以降、Evidence受入れの成功は単なる人向けメッセージではなく、**どのexternal Evidence artifactを、どのclean Repository revisionで照合したか**を示す機械可読receiptとして残します。
 
 PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。ただし、これはactual physical factsを取得済みという意味ではなく、実Oracle readで観測した事実を失わないためのruntime境界です。
+
+PR #372で具体Oracle driver / Host assemblyの確定作業を`ISSUE-000033` / #371へ、PR #378でactual read-only Evidenceの確定作業を`ISSUE-000034` / #376へ分離しました。どちらも本IssueのLane A内部の子Issueであり、Gate Bの第五・第六Evidence laneではありません。
 
 ただし、acceptance receiptはactual Oracle read Evidenceではありません。
 
@@ -290,20 +292,27 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 
 `find_by_id`がQueryであることやnative SQLが`SELECT`に見えることだけではread-only保証としません。
 
-実環境に応じ、たとえば次のいずれかで書込み不能を確認します。
+read-only Evidenceの取得・判定は`ISSUE-000034` / #376で具体化します。これは本Issueの完了条件の一部であり、独立したGate B Evidence laneではありません。
 
-- read-only権限だけを持つDatabase principal / credential
-- Database側permissions
-- read-only session / transaction
-- write APIを公開しないReference adapter
+第一Referenceでは、実Oracle versionと権限構成に応じて、少なくとも次を分離して確認します。
 
-Evidenceにはmechanism名だけでなく、その事実を再確認できるEvidence参照も要求します。
+- 専用のleast-privilege principal / roleと対象objectへのquery privilege
+- system / object privilege、role、必要に応じてPUBLIC等を再確認できるgrant Evidence
+- 採用する場合の`SET TRANSACTION READ ONLY`等のtransaction境界
+- write用`Exec`をReference read pathへ露出させないquery-only runtime境界
+- actual Queryが上記境界の中で成功したこと
 
-ただし、mechanism文字列の記載だけをTEIが真実と判定するわけではありません。実接続・権限Evidenceによる確認が必要です。
+principal / grant Evidenceを主たるread-only根拠とし、transactionやTEI側のquery-only境界を追加防御として扱います。一層だけをread-only保証全体へ格上げしません。
+
+read-only確認のためだけに、実外部assetへ`INSERT` / `UPDATE` / `DELETE` / `MERGE` / DDL、`SELECT ... FOR UPDATE`、exclusive `LOCK TABLE`等を試行して失敗確認する方法は採りません。権限設定が想定より広かった場合に実データやavailabilityへ影響し得るためです。
+
+Evidenceにはmechanism名だけでなく、その事実を再確認できるEvidence参照を要求します。credential / passwordは保存しません。
 
 ## Oracle driver integration
 
 特定Oracle driverに依存しない`database/sql` Runner境界までは成立しています。
+
+具体driverの選択・登録、DSN / credential、TLS / TCPS、Wallet等のHost / Reference assemblyは`ISSUE-000033` / #371で確定します。これは本Issueの完了条件の一部であり、独立したGate B Evidence laneではありません。
 
 PR #364 / #366以降、actual read時のdriver観測をSemantic mapping後に失わないため、Oracle Runner固有Payloadへ次を保持できます。
 
@@ -337,19 +346,21 @@ actual physical Evidence取得後、採用driverについて少なくとも次�
 
 ```text
 1. 実physical object / parameter / raw columns / native sourceを観測
-2. provenance / read-only根拠を確認
-3. external Evidence JSONを作成
-4. 観測事実を根拠にContractQuerySQLRealizationを明示authoring
-5. clean revisionでreference-external-query-evidenceを実行
-6. source-fixed acceptance receiptを取得
-7. read-onlyを強制したOracle接続境界を用意
-8. 採用Oracle driverでparameter / result / NULL / error伝播を確認
-9. development / master_data.dev / database.query.oracleからactual read
-10. actual readでraw result列名 / driver-reported metadataを観測
-11. raw resultを明示mappingしてSemantic Customerを得る
-12. Workspace -> actual read -> Semantic resultを一続きに確認
-13. actual readが参照したrepository source identityをEvidenceへ残す
-14. #273 Gate B監査へactual external asset Evidenceとして対応付ける
+2. provenanceを確認
+3. ISSUE-000034 / #376でread-only grant / transaction / query-only runtime境界を確認
+4. ISSUE-000033 / #371でactual Oracle driver / Host assemblyを確定
+5. external Evidence JSONを作成
+6. 観測事実を根拠にContractQuerySQLRealizationを明示authoring
+7. clean revisionでreference-external-query-evidenceを実行
+8. source-fixed acceptance receiptを取得
+9. read-onlyを強制したOracle接続境界を用意
+10. 採用Oracle driverでparameter / result / NULL / error伝播を確認
+11. development / master_data.dev / database.query.oracleからactual read
+12. actual readでraw result列名 / driver-reported metadataを観測
+13. raw resultを明示mappingしてSemantic Customerを得る
+14. Workspace -> actual read -> Semantic resultを一続きに確認
+15. actual readが参照したrepository source identityをEvidenceへ残す
+16. #273 Gate B監査へactual external asset Evidenceとして対応付ける
 ```
 
 acceptance receiptとactual read Evidenceは別工程です。
@@ -410,6 +421,8 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [x] receiptへEvidence本文 / path / credential / secretを複製しない（PR #340）
 - [x] `evidenceArtifactFingerprint`と`nativeSource.fingerprint`を別責務として扱う（PR #340）
 - [x] post-run観測が完了した場合だけ`postRunRepository.checked = true`にする（PR #355）
+- [x] actual Oracle driver integrationの確定作業を`ISSUE-000033` / #371へ分離した（PR #372）
+- [x] actual Oracle read-only Evidenceの確定作業を`ISSUE-000034` / #376へ分離した（PR #378）
 
 ### 第一Referenceのactual Evidence
 
@@ -420,8 +433,8 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [ ] 実native SQL / API / adapter等のrealization sourceを追跡できる
 - [ ] 物理情報のsource / provenanceを追跡できる
 - [ ] actual Evidence artifactをcandidate revision Rで受理し`reproducibleRevision = true`のsource-fixed receiptを取得できる
-- [ ] `master_data`を実効的にread-onlyのまま実行できる
-- [ ] 採用Oracle driverとのintegration Evidenceがある
+- [ ] `ISSUE-000034` / #376のEvidenceに基づき`master_data`を実効的にread-onlyのまま実行できる
+- [ ] `ISSUE-000033` / #371で確定した採用Oracle driverとのintegration Evidenceがある
 - [ ] RのWorkspace / realization / runtimeを使ったactual readであることを追跡できる
 - [ ] actual readでraw result列名 / driver-reported metadataを観測できる
 - [ ] actual readの結果分類とSemantic Customerへの明示mappingを追跡できる
@@ -453,18 +466,22 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - Oracle固有の高度なHA / Connection Poolを本Issueだけで完成させること
 - synthetic Conformance SQLを第一Referenceの実native sourceへ流用すること
 - SQL文字列だけでread-onlyを推論すること
+- read-only確認のため実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lockを試行すること
+- `ISSUE-000033` / #371や`ISSUE-000034` / #376を独立したGate B Evidence laneとして数えること
 - external Evidence本文やcredentialをacceptance receiptへ複製すること
 - 異なるrevisionのactual readをcandidate RのEvidenceへ読み替えること
 - GitHub Actionsを再有効化すること
 
 ## 関連
 
-- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310
-- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358 / #360 / #364 / #366 / #369
+- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310 / #371 / #376
+- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358 / #360 / #364 / #366 / #369 / #372 / #374 / #378
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/issue/000033-gate-b-oracle-driver-integration.md`
+- `plan/issue/000034-gate-b-oracle-read-only-evidence.md`
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/README.md`
 - `tools/reference-external-query-evidence/main.go`
