@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -27,13 +28,14 @@ type laneEnvelope struct {
 }
 
 type laneEvidence struct {
-	Name                 string   `json:"name"`
-	Command              []string `json:"command"`
-	ExpectedNature       string   `json:"expectedNature"`
-	ObservedNature       string   `json:"observedNature,omitempty"`
-	RepositoryRevision   string   `json:"repositoryRevision,omitempty"`
-	ReproducibleRevision bool     `json:"reproducibleRevision"`
-	Passed               bool     `json:"passed"`
+	Name                        string   `json:"name"`
+	Command                     []string `json:"command"`
+	ExpectedNature              string   `json:"expectedNature"`
+	ObservedNature              string   `json:"observedNature,omitempty"`
+	RepositoryRevision          string   `json:"repositoryRevision,omitempty"`
+	ReproducibleRevision        bool     `json:"reproducibleRevision"`
+	EvidenceArtifactFingerprint string   `json:"evidenceArtifactFingerprint,omitempty"`
+	Passed                      bool     `json:"passed"`
 }
 
 type evidence struct {
@@ -185,8 +187,11 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	cmd.Stderr = os.Stderr
 	runErr := cmd.Run()
 
+	artifactBytes := stdout.Bytes()
+	lane.EvidenceArtifactFingerprint = evidenceArtifactFingerprint(artifactBytes)
+
 	var envelope laneEnvelope
-	decodeErr := json.Unmarshal(stdout.Bytes(), &envelope)
+	decodeErr := json.Unmarshal(artifactBytes, &envelope)
 	if decodeErr == nil {
 		lane.ObservedNature = envelope.EvidenceNature
 		lane.RepositoryRevision = envelope.RepositoryRevision
@@ -204,6 +209,11 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	}
 	lane.Passed = true
 	return lane, nil
+}
+
+func evidenceArtifactFingerprint(content []byte) string {
+	sum := sha256.Sum256(content)
+	return fmt.Sprintf("sha256:%x", sum[:])
 }
 
 func verifyLaneEnvelope(envelope laneEnvelope, expectedNature, candidateRevision string) error {

@@ -52,6 +52,16 @@ func TestVerifyLaneEnvelopeRejectsNonReproducibleEvidence(t *testing.T) {
 	}
 }
 
+func TestEvidenceArtifactFingerprintUsesExactBytes(t *testing.T) {
+	const want = "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+	if got := evidenceArtifactFingerprint([]byte("abc")); got != want {
+		t.Fatalf("evidenceArtifactFingerprint(abc)=%q want=%q", got, want)
+	}
+	if evidenceArtifactFingerprint([]byte("abc")) == evidenceArtifactFingerprint([]byte("abc\n")) {
+		t.Fatal("末尾改行の異なるEvidence artifactを同じfingerprintとして扱っています")
+	}
+}
+
 func TestLaneSpecsKeepPostgresLast(t *testing.T) {
 	specs := laneSpecs(false)
 	if len(specs) != 3 {
