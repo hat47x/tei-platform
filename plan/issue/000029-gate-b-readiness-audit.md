@@ -263,14 +263,29 @@ staleだった場合:
 
 正規runnerは`tools/reference-gate-b-repository-evidence`です。
 
-runnerは次を一つのrunで扱います。
+PR #346以降、targeted runnerは次の三つを独立checkとして扱います。
+
+1. 最終UI-less Scenario
+2. external Evidence intake
+3. `tools/internal/repositoryevidence`のsource境界Conformance
+
+source境界Conformanceの等価コマンド:
+
+```bash
+go test ./tools/internal/repositoryevidence -count=1
+```
+
+JSONには`repository-evidence-source-boundary`として別checkを残します。
+
+runner自身のpackageはtargeted `go test`へ含めず、共有helperのpure契約だけを検証するため、将来runner testが`run()`を呼ぶ場合にも自己再帰を作りません。
+
+runner全体では次を一つのrunで扱います。
 
 - 実行前repository revision
 - 実行前working tree clean
 - Go toolchain identity
 - Canonical Workspace Validation
-- 最終UI-less Scenario
-- external Evidence intake tests
+- 上記targeted checks
 - 明示指定時だけRepository全体のbroad test
 - 実行後HEAD / working tree再確認
 - 小さい非Canonical JSON Evidence
@@ -278,6 +293,8 @@ runnerは次を一つのrunで扱います。
 PR #321以降、`reproducibleRevision=true`には実行前clean / post-run確認 / HEAD同一 / 実行後cleanを要求します。
 
 PR #336以降、source状態観測は#255 / #308と同じtool-only packageを利用します。
+
+PR #346でそのsource固定境界自体のpure Conformanceをtargeted Evidenceへ直接追加しましたが、PRの存在自体を#310成功Evidenceとは扱いません。
 
 Test自体が成功してもsource revisionが実行中に変わったrun、実行後にtracked / untracked差分が残ったrun、診断用`-allow-dirty` runはGate B完了Evidenceへ採用しません。
 
@@ -352,6 +369,7 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [x] deterministic Repository Evidenceを`ISSUE-000032` / #310へ分離した
 - [x] #310 runnerで実行前後のsource不変性をfail closedにした（PR #315 / #321）
 - [x] #310 / #255 / #308のsource観測をtool-only共有境界へ収束した（PR #336）
+- [x] #310 targeted runnerへsource境界Conformanceを追加した（PR #346）
 - [x] Evidence Acquisitionを4 Evidence natureへ同期した（PR #342）
 - [x] Runbookを#214 receipt / #308 cleanup後へ同期した（PR #344）
 - [x] Gate B→C Handover契約を定義した（#291）
@@ -395,4 +413,4 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310
-- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344
+- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346
