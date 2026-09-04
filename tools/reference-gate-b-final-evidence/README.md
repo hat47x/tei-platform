@@ -32,6 +32,20 @@ go run ./tools/reference-gate-b-final-evidence -broad \
   > /tmp/tei-gate-b-final-evidence.json
 ```
 
+## PostgreSQL DSNを必要なlaneだけへ渡す
+
+`TEI_TEST_POSTGRES_DSN`はfinal runnerの起動時には必要ですが、child subprocessのうち実際にPostgreSQLへ接続するのは#308だけです。
+
+そのため、final runnerはDSNをすべてのchildへ一律に継承しません。
+
+- #310 deterministic Repository Evidenceへは渡さない
+- #255 generated artifact reproducibility Evidenceへは渡さない
+- #308 real PostgreSQL Provider Evidenceへだけ渡す
+
+DSNにはcredentialを含み得るため、利用しないlaneへsecret候補を露出しないための境界です。`PATH`等、DSN以外の環境変数は通常どおりchildへ引き継ぎます。
+
+この分離はEvidenceの合否条件を増やすものではありません。#310 / #255 / #308の正規runner、lane順序、revision convergence、child artifact fingerprint、source再確認の意味は従来どおりです。
+
 ## 実行順
 
 ```text
