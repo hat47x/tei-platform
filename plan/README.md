@@ -11,8 +11,9 @@
 - [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md): Product Requirementsと現行実装のEvidence / Gap
 - [`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md): `order_entry`を使ったv1 Application実証の主線とEvidence Gate
 - [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md): 技術リサーチを既存Requirement / Gate / ADRへ変換する統合方針
-- [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
 - [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の監査結果
+- [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md): Application DriverからGate Bへ進めるかをReference / Evidenceから判定する監査
+- [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): Capabilityの業務OutcomeとExecution Errorを分離するv1設計
@@ -30,7 +31,7 @@ Application Pattern Stage 1   完了
             ↓
     Application Driver         In Progress
             ↓
-        Gate B
+        Gate B                 Not Ready / 監査中
             ↓
       第一Web Target
             ↓
@@ -57,11 +58,11 @@ header-detail
 
 詳細は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)と[`ISSUE-000005`](issue/000005-application-pattern-reference.md)を参照します。
 
-`header-detail`の前提となる`sales.OrderLine`と`Order 1:N OrderLine`は[`ISSUE-000011`](issue/000011-order-line-semantic-reference.md)でSemanticとして独立して追加し、[`ISSUE-000012`](issue/000012-header-detail-application-pattern.md)でRelation-onlyのApplication Patternとして実証しました。
+現在は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69でApplication Driverを進め、[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`ISSUE-000029`](issue/000029-gate-b-readiness-audit.md) / GitHub Issue #273でGate Bを監査しています。
 
-Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key、Database Contract、Migrationを暗黙生成していません。Application PatternもWebの画面テンプレートへ固定していません。
+2026-09-04時点では、Driverの中心設計は大きく成立していますがGate BはNot Readyです。主な残件はexternal-observed `master_data`の実物理Evidence、header-detail実PostgreSQL Evidence、Command / Observation分離、Reference生成物再現、最終UI-less Scenarioです。
 
-現在は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69で、Gate Aの意味をUIなしで一続きに実行するApplication Driverを進めています。個々のPRの進捗ではなく、RepositoryのReference / ConformanceからGate B条件を再現できるかで次段階を判断します。
+Command acknowledgementとObserved stateは[`ADR-0023`](adr/0023-command-observation-explicit-read-boundary.md)に従い分離します。v1ではObservation専用の新しいPatternやWorkflow基盤を先に作らず、既存Query / Contract Query / read adapter等の明示read境界をCommandとは別操作として利用します。
 
 第一Web Targetでは[`ISSUE-000007`](issue/000007-first-web-target-projection.md) / GitHub Issue #70に加え、[`ISSUE-000028`](issue/000028-first-web-target-conformance-evidence.md) / GitHub Issue #270でGate CのEvidence契約を実証します。Webが表示できることだけではなく、Driver baselineとのSemantic Conformance、利用者ScenarioのFunctional Evidence、Visual Fidelity Evidenceを分けて残します。
 
@@ -79,8 +80,6 @@ Semantic Relationを追加しても、Persistence Mapping、Database Foreign Key
 
 設計判断は[`ADR-0022`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)、AIの実証は[`ISSUE-000027`](issue/000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267、第一Web TargetのEvidence実証は[`ISSUE-000028`](issue/000028-first-web-target-conformance-evidence.md) / GitHub Issue #270、第二Targetの境界検証は[`ISSUE-000026`](issue/000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で扱います。
 
-`ISSUE-000026`は、main側で先行して`000020`として起票されていたTarget境界Issueと、実装収束branchで既に利用されていた別の`ISSUE-000020`の番号衝突を避けるため、Repository内IDを付け直したものです。
-
 詳細なAI interface、Web framework、Target Capability taxonomy、visual evaluatorはGate C前に固定しません。
 
 ## ADR
@@ -93,9 +92,7 @@ ADRには、実装方法が変わっても残る設計判断を記録します�
 plan/adr/0016-example.md
 ```
 
-mainでは`docs/adr/0001`〜`0015`までが既に成立しています。このため、`plan/adr/`で新しく起票するADRは、既存番号と衝突しない0016以降を使います。
-
-既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊しません。番号を維持したまま段階的に`plan/adr/`へ移し、新旧の場所に同じ番号の異なる判断を置かないことを原則とします。
+`docs/adr/0001`〜`0015`までの既存ADRと番号を衝突させません。既存ADRは多くの文書から参照されているため、一度に移動してリンクを壊さず、番号を維持したまま段階的に`plan/adr/`へ収束します。
 
 現在の上位・横断的な判断は、次の順で置いています。
 
@@ -104,9 +101,9 @@ mainでは`docs/adr/0001`〜`0015`までが既に成立しています。この�
 - ADR-0018: Application Patternの正本とfile pathからのidentity分離
 - ADR-0019: Application利用者のAuthentication / AuthorizationをSemantic Capabilityとして扱う境界
 - ADR-0020: Capabilityの業務OutcomeをSemantic契約に置き、Execution ErrorをInvocation境界へ残す判断
+- ADR-0021: keylessなheader-detail Relation traversalをPattern外のrealizationで実現する判断
 - ADR-0022: AI ProposalをCanonical authorityから分離し、共通Acceptance Boundaryを通す判断
-
-ADR-0021は実装収束branch側で成立済みのため、番号を再利用しません。
+- ADR-0023: Command acknowledgementとObservationを分け、Observationを別の明示read境界として扱う判断
 
 ## Issue文書
 
