@@ -16,7 +16,11 @@ Gate Bの必須Evidenceを、同じcandidate repository revisionへ揃えたこ�
 
 Evidence専用の空PostgreSQL Databaseを用意し、`TEI_TEST_POSTGRES_DSN`を設定します。
 
+final runner自身をcompileする段階からRepositoryの`go.mod`だけを基準にするため、正規実行例では`GOWORK=off`と空の`GOFLAGS`を明示します。
+
 ```bash
+GOWORK=off \
+GOFLAGS= \
 TEI_TEST_POSTGRES_DSN='...' \
 go run ./tools/reference-gate-b-final-evidence \
   > /tmp/tei-gate-b-final-evidence.json
@@ -27,10 +31,38 @@ Repository内の新規fileへstdoutを直接redirectしません。command開始
 Repository全体の`go test ./...`も#310で実行したい場合だけ`-broad`を付けます。
 
 ```bash
+GOWORK=off \
+GOFLAGS= \
 TEI_TEST_POSTGRES_DSN='...' \
 go run ./tools/reference-gate-b-final-evidence -broad \
   > /tmp/tei-gate-b-final-evidence.json
 ```
+
+## Go実行環境をcandidate revisionの外へ広げない
+
+TEI Repositoryには`go.work`がありません。通常のGo実行では、checkoutの親directoryにある`go.work`が自動的に有効になる場合があります。またeffective `GOFLAGS`には`-overlay`、`-modfile`、`-tags`等を指定でき、cleanなGit revisionの外からcompile / test入力を変えられます。
+
+PR #422以降、final runnerはlaneを一つも実行する前に次を確認します。
+
+- `go env GOWORK`が空、または`off`である
+- `go env GOFLAGS`が空である
+
+外部Go workspaceが有効な場合やGOFLAGSが非空の場合はfail closedで停止します。
+
+さらに正規実行例そのものにも`GOWORK=off GOFLAGS=`を明示します。これは、runner内部のguardだけに依存せず、runner自身を`go run`でcompileする前からGo workspaceとflagsを固定するためです。
+
+成功・失敗JSONへ外部workspaceのpathやGOFLAGS本文は保存しません。非機密な判定だけを次の形で残します。
+
+```json
+{
+  "goEnvironment": {
+    "externalWorkspaceActive": false,
+    "goFlagsEmpty": true
+  }
+}
+```
+
+この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspaceやGOFLAGSを持ち込まないためのfail-closed条件です。
 
 ## PostgreSQL DSNを必要なlaneだけへ渡す
 
@@ -50,6 +82,8 @@ DSNにはcredentialを含み得るため、利用しないlaneへsecret候補を
 
 ```text
 clean candidate revision R
+        ↓
+Go workspace / GOFLAGS確認
         ↓
 #310 deterministic Repository Evidence
         ↓ runner自身もsource再確認
@@ -101,6 +135,8 @@ final source check
 - `reproducibleRevision`
 - `postRunRepository`
 - Go version
+- `goEnvironment.externalWorkspaceActive`
+- `goEnvironment.goFlagsEmpty`
 - `broadRequested`
 - `allLanesSameRevision`
 - laneごとの
@@ -124,6 +160,8 @@ final source check
 - 各laneのEvidence本文
 - test stdout
 - PostgreSQL Database名
+- 外部Go workspaceのpath
+- GOFLAGS本文
 
 三laneそれぞれの詳細Evidenceは、必要に応じて個別runnerから別途保存します。fingerprintだけを根拠に、保存していないEvidence本文を後から推測・再構成しません。
 
@@ -157,5 +195,6 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - PostgreSQLの既存Databaseをfixture用に変更すること
 - actual Oracle Evidenceを代替すること
 - fingerprintだけでchild Evidence本文の存在・真実性を証明したことにすること
+- Go toolchainやmodule cacheをRepositoryへvendoringすること
 - Gate B Readyをtoolのexit codeだけで自動宣言すること
 - GitHub Actionsを再有効化すること
