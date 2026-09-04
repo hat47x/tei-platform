@@ -17,7 +17,7 @@ Reference data access、header-detail、Relation Storage、Validation / Authoriz
 
 2026-09-04時点では **Not Ready** です。
 
-一方、Driver内部の最終Scenario構造は未設計blockerではなくなりました。
+一方、Driver内部の最終Scenario構造と、external-observed Query Evidenceを受け入れるための設計境界は、いずれも未設計blockerではなくなりました。
 
 PR #281で`internal/driver/final_gate_b_scenario_test.go`を追加し、同じ`order_entry` Applicationと同じSemantic Order rowを使って次を一つのtest-local Scenarioへ接続しています。
 
@@ -37,13 +37,34 @@ browseから得た`customer_id` / `order_id`をreference / header-detail / comma
 
 ただしDatabase read、Command side effect、Observation readはsynthetic adapterを含むため、構造統合Evidenceと実外部Evidenceを区別します。
 
-現在の主な残件は次です。
+## #214 external `master_data`との関係
 
-1. #214 external-observed `master_data`の実物理Evidence
+PR #288で、external-observed Contract Queryの物理EvidenceをCanonical Worldから分離して受け入れる境界を追加しました。
+
+`internal/database/externalqueryevidence`と`tools/reference-external-query-evidence`では、少なくとも次を確認できます。
+
+- target / provider / external-observed ownership
+- Contract input → physical parameterの観測対応
+- raw result → Semantic attributeの観測対応
+- native SQL source fingerprint
+- physical facts provenance
+- read-only mechanism / Evidence参照
+- SQL realizationがなければEvidenceから生成・補完せず停止すること
+
+このため、#214は「TEI側に外部Evidenceを受け止める設計がない」というblockerではなくなりました。
+
+一方、第一Referenceで本当に利用するOracle object / parameter / raw columns / native SQL / provenance / read-only実証はまだ未取得です。したがって**実外部事実の取得待ちとして#214は引き続きGate B blocker**です。
+
+未観測の`CUSTOMER` / `CUSTOMER_ID`等を仮定して埋めません。
+
+## 現在の主な残件
+
+1. #214 external-observed `master_data`の実物理Evidence / read-only実証
 2. header-detail実PostgreSQL Evidence toolの実接続成功
 3. #255 Reference World / Plugin Lock / Durable Runの正規再生成
 4. PR #281 UI-less Scenarioの通常Go runner実行Evidence
-5. CI再開後の通常runner検証
+5. PR #288 external Evidence受入境界の通常Go runner実行Evidence
+6. CI再開後の通常runner検証
 
 ## 監査で分ける状態
 
@@ -52,6 +73,8 @@ browseから得た`customer_id` / `order_id`をreference / header-detail / comma
 - **Partial**: 主要境界は成立しているが外部・実行Evidence等が不足している
 - **Blocked**: 外部Evidenceまたは未実装境界が必要
 - **Pending**: 実行環境や再生成・通常runner確認を待つ
+
+#214は現在、**Evidence intake boundary = Ready / actual external facts = Blocked**として分けて扱います。
 
 ## Observationとの関係
 
@@ -79,11 +102,13 @@ PR #280で`reference-golden`へDurable Run依存stale検知も追加していま
 
 - [x] `GATE_B_READINESS_AUDIT.md`を最新実装へ同期する
 - [x] 各Gate B条件をReady / Partial / Blocked / Pendingへ分類する
-- [ ] #69のGitHub Issue本文を最新現在地へ同期する
+- [x] #69のGitHub Issue本文を最新現在地へ同期する
 - [x] Observationのv1境界を#266 / ADR-0023へ接続する
 - [x] #214 / #244 / #255 / #266の残件をGate B条件へ対応付ける
+- [x] #214のEvidence受入境界と実外部Evidence不足を分離する（PR #288）
 - [x] 最終UI-less Scenarioの構造を同じReference World上で接続する（PR #281）
 - [ ] PR #281をGo runnerで実行し、synthetic構造Evidenceを確定する
+- [ ] PR #288をGo runnerで実行し、external Evidence受入境界を再確認する
 - [ ] #214 / 実PostgreSQL / #255の外部・生成Evidenceを最終Gate B監査へ対応付ける
 - [x] Gate B通過後に#70 / #270へ渡すbaselineを明示する
 - [ ] blocker解消後に同じ監査を再実行し、Ready / Not Readyを再判定する
@@ -93,6 +118,7 @@ PR #280で`reference-golden`へDurable Run依存stale検知も追加していま
 - Gate B前にWeb実装を開始すること
 - CIをこのIssueから再有効化すること
 - external `master_data`の物理情報を推測すること
+- external EvidenceをCanonical Worldへ取り込むこと
 - synthetic Scenarioを実外部Evidenceとして扱うこと
 - Observationを汎用Workflow / Event Sourcing基盤へ一般化すること
 - Gate BのためにEditor / AI / 第二Targetを先行させること
@@ -101,6 +127,8 @@ PR #280で`reference-golden`へDurable Run依存stale検知も追加していま
 
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
+- `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
-- GitHub #69 / #70 / #214 / #244 / #255 / #266 / #270 / #273 / PR #281
+- GitHub #69 / #70 / #214 / #244 / #255 / #266 / #270 / #273
+- PR #281 / #288
