@@ -1,6 +1,6 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner実装 / 隔離実行確認済み、actual final run待ち
+- 状態: In Progress — runner実装 / 制御フローpure test / 隔離source guard確認済み、actual final run待ち
 - GitHub Issue: #387
 - Gate B scope判断: `ISSUE-000035` / #380
 - 文書同期: `ISSUE-000036` / #383（Done）
@@ -60,17 +60,25 @@ Repository内の新規fileへstdoutを直接redirectしません。shellがcomma
 clean candidate revision R
         ↓
 #310 deterministic Repository Evidence
-        ↓ same R / clean
+        ↓ runner source再確認
 #255 generated artifact reproducibility
-        ↓ same R / clean
+        ↓ runner source再確認
 #308 real PostgreSQL Provider Evidence
-        ↓ same R / clean
+        ↓ runner source再確認
 runner自身の最終source確認
 ```
 
 #310または#255に失敗した場合は#308へ進みません。
 
 これは、deterministicな境界やgenerated artifactに問題が残る状態で、Evidence用PostgreSQLへfixtureを作成する必要がないためです。
+
+各laneの成功・失敗にかかわらず、lane終了後には最終runner自身がRepository sourceを再確認します。次のすべてを確認できない場合、その時点でfail closedし、次laneへ進みません。
+
+- `postRunRepository.checked = true`
+- `revisionStable = true`
+- `workingTreeClean = true`
+
+lane runnerが失敗した場合も、source再確認を飛ばして即returnしません。lane失敗とsource変化が同時に起きた状態を見落とさないためです。
 
 ## 照合する情報
 
@@ -87,6 +95,7 @@ runner自身の最終source確認
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - 三laneすべてが同じRを参照する
+- 各lane後のsource再確認が完了している
 - 最終確認時もRepository HEADがRのままである
 - 最終確認時もworking treeがcleanである
 
@@ -146,11 +155,11 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 
 GitHub上の現行runner実装と同じロジックを隔離Go moduleへ配置してpackage-levelのcompile / pure testを実行しました。
 
+初期のenvelope / lane順序testでは次を確認しました。
+
 ```text
 ok  tei/tools/reference-gate-b-final-evidence  0.002s
 ```
-
-確認した範囲:
 
 - Evidence nature mismatchをrejectする
 - candidate revision mismatchをrejectする
@@ -158,6 +167,22 @@ ok  tei/tools/reference-gate-b-final-evidence  0.002s
 - 三lane同一revisionの収束条件
 - PostgreSQL laneを最後に実行する順序
 - `-broad`を#310だけへ渡すこと
+
+PR #394では制御フローをpure test可能にし、次を追加しました。
+
+- lane runner失敗時にもsourceを再確認してから停止する
+- lane後のsource driftを検出したら次laneへ進まない
+- 3 lane成功時、各lane後3回 + 最終1回のsource確認を通って初めて`reproducibleRevision=true`になる
+
+PR #396ではさらに、`Checked=false / RevisionStable=true / WorkingTreeClean=true`という未確認状態でも次laneへ進まないtestを追加しました。
+
+PR #396後の隔離moduleでは、新testを含めて次を確認しています。
+
+```text
+ok  tei/tools/reference-gate-b-final-evidence  0.001s
+```
+
+これはGitHub branch上の実装とtest seamのcompile / pure test確認であり、actual Gate B Evidenceではありません。
 
 ### actual `repositoryevidence`実装との組合せ
 
@@ -190,7 +215,7 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 
 ### この確認の限界
 
-これは**TEI本体の実Repository checkout上の#310 / #255 / #308 Evidenceではありません**。
+これらは**TEI本体の実Repository checkout上の#310 / #255 / #308 Evidenceではありません**。
 
 通常のGitHub cloneはこのセッション環境でDNS解決できないため、`main`またはcandidate revision `R`をcheckoutしたactual final runは実行できていません。
 
@@ -202,6 +227,10 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 - [x] `evidenceNature` / revision / reproducible条件のpure testを追加した
 - [x] PostgreSQL laneを最後に実行する順序をtestで固定した
 - [x] `-broad`を#310だけへ渡すことをtestで固定した
+- [x] lane失敗時にもsource再確認してから停止することをtestで固定した（PR #394）
+- [x] lane後のsource driftで次laneへ進まないことをtestで固定した（PR #394）
+- [x] `postRunRepository.checked=true`を次laneへの必須条件として固定した（PR #396）
+- [x] 3 lane成功後の最終source再確認まで通って初めて再現可能とすることをtestで固定した（PR #394）
 - [x] READMEで事前確認と最終収束を分離した
 - [x] 隔離Go moduleでpackage-level compile / pure testを実行した
 - [x] actual `repositoryevidence`実装と組み合わせて両package testを実行した
@@ -231,3 +260,4 @@ ok  tei/tools/reference-gate-b-final-evidence          0.002s
 - `ISSUE-000035` / #380
 - `ISSUE-000036` / #383（Done）
 - #255 / #308 / #310 / #387
+- PR #389 / #394 / #395 / #396
