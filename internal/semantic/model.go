@@ -95,6 +95,30 @@ type Validation struct {
 	Relation  core.CanonicalID `json:"relation,omitempty"`
 }
 
+// ValidationKindは、業務上の不変条件として実Referenceで確認できた
+// 最小のrule種別だけを表す。汎用式言語やrule engineを先回りして導入しない。
+type ValidationKind string
+
+const (
+	ValidationPositive       ValidationKind = "positive"
+	ValidationRelationUnique ValidationKind = "relation-unique"
+)
+
+func (k ValidationKind) Valid() bool {
+	return k == ValidationPositive || k == ValidationRelationUnique
+}
+
+// Validationは、Semantic上の業務ruleを機械可読な形で保持する。
+// positiveはAttributeだけを、relation-uniqueはRelationとそのtarget側Attributeを参照する。
+// 評価結果のsatisfied / not-satisfiedと、評価自体を完了できなかったerrorは実行境界で分離する。
+type Validation struct {
+	ID        core.CanonicalID `json:"id"`
+	Symbol    string           `json:"symbol"`
+	Kind      ValidationKind   `json:"kind"`
+	Attribute core.CanonicalID `json:"attribute"`
+	Relation  core.CanonicalID `json:"relation,omitempty"`
+}
+
 type Parameter struct {
 	Name core.LocalName   `json:"name"`
 	Type core.CanonicalID `json:"type"`
