@@ -26,25 +26,26 @@ const fixtureObject = "public.order_lines"
 const evidenceNature = "real-postgres-ephemeral-fixture"
 
 type evidence struct {
-	EvidenceNature                        string             `json:"evidenceNature"`
-	FixtureObject                         string             `json:"fixtureObject"`
-	PreexistingFixtureProtected           bool               `json:"preexistingFixtureProtected"`
-	FixtureOwnedByTool                    bool               `json:"fixtureOwnedByTool"`
-	Pattern                               core.CanonicalID   `json:"pattern"`
-	Relation                              core.CanonicalID   `json:"relation"`
-	Environment                           core.CanonicalID   `json:"environment"`
-	DatabaseInstance                      core.CanonicalID   `json:"databaseInstance"`
-	ExecutorCapability                    core.CanonicalID   `json:"executorCapability"`
-	ContractQueryTarget                   string             `json:"contractQueryTarget"`
-	ParameterNames                        []string           `json:"parameterNames"`
-	ParameterValuesPersisted              bool               `json:"parameterValuesPersisted"`
-	Rows                                  int                `json:"rows"`
-	ZeroRows                              int                `json:"zeroRows"`
-	ExecutionErrorObserved                bool               `json:"executionErrorObserved"`
-	SemanticAttributes                    []core.CanonicalID `json:"semanticAttributes"`
-	RelationStorageColumn                 string             `json:"relationStorageColumn"`
-	SemanticOrderLineParentAttributeAdded bool               `json:"semanticOrderLineParentAttributeAdded"`
-	SemanticMappingApplied                bool               `json:"semanticMappingApplied"`
+	EvidenceNature                        string                        `json:"evidenceNature"`
+	FixtureObject                         string                        `json:"fixtureObject"`
+	PreexistingFixtureProtected           bool                          `json:"preexistingFixtureProtected"`
+	FixtureOwnedByTool                    bool                          `json:"fixtureOwnedByTool"`
+	FixtureDatabaseSafety                 fixtureDatabaseSafetyEvidence `json:"fixtureDatabaseSafety"`
+	Pattern                               core.CanonicalID              `json:"pattern"`
+	Relation                              core.CanonicalID              `json:"relation"`
+	Environment                           core.CanonicalID              `json:"environment"`
+	DatabaseInstance                      core.CanonicalID              `json:"databaseInstance"`
+	ExecutorCapability                    core.CanonicalID              `json:"executorCapability"`
+	ContractQueryTarget                   string                        `json:"contractQueryTarget"`
+	ParameterNames                        []string                      `json:"parameterNames"`
+	ParameterValuesPersisted              bool                          `json:"parameterValuesPersisted"`
+	Rows                                  int                           `json:"rows"`
+	ZeroRows                              int                           `json:"zeroRows"`
+	ExecutionErrorObserved                bool                          `json:"executionErrorObserved"`
+	SemanticAttributes                    []core.CanonicalID            `json:"semanticAttributes"`
+	RelationStorageColumn                 string                        `json:"relationStorageColumn"`
+	SemanticOrderLineParentAttributeAdded bool                          `json:"semanticOrderLineParentAttributeAdded"`
+	SemanticMappingApplied                bool                          `json:"semanticMappingApplied"`
 }
 
 func main() {
@@ -85,7 +86,8 @@ func main() {
 
 	// #308は「専用の空PostgreSQL Database」を前提とする。
 	// public.order_linesだけが空いている既存業務DBをEvidence fixture先として受け入れない。
-	if err := ensureDedicatedEmptyFixtureDatabase(ctx, db); err != nil {
+	fixtureDatabaseSafety, err := ensureDedicatedEmptyFixtureDatabase(ctx, db)
+	if err != nil {
 		panic(err)
 	}
 	if err := createFixtureTable(ctx, db); err != nil {
@@ -198,6 +200,7 @@ func main() {
 		FixtureObject:                         fixtureObject,
 		PreexistingFixtureProtected:           true,
 		FixtureOwnedByTool:                    true,
+		FixtureDatabaseSafety:                 fixtureDatabaseSafety,
 		Pattern:                               core.MustCanonicalID("order_entry.order_lines"),
 		Relation:                              core.MustCanonicalID("sales.order.lines"),
 		Environment:                           executed.Environment.ID,
