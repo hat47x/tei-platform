@@ -106,5 +106,19 @@ jobs:
       - name: Deployment executorの参照例を実行
         run: go run ./tools/reference-deployment-attempt > /tmp/tei-reference-deployment-attempt.json
 
+      - name: Reference実process Pluginをbuild
+        run: go build -o /tmp/tei-reference-process-plugin ./tools/reference-process-plugin
+
+      - name: DeploymentExecutorを実process経由で実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./examples/process-plugin \
+            -plugin /tmp/tei-reference-process-plugin \
+            > /tmp/tei-reference-process-result.json
+          grep -q '"outcome": "accepted"' /tmp/tei-reference-process-result.json
+          grep -q '"boundary": "process"' /tmp/tei-reference-process-result.json
+          grep -q 'reference-process://reference-process-command-1' /tmp/tei-reference-process-result.json
+
       - name: Runtime reattachの参照例を実行
         run: go run ./examples/runtime-reattach
