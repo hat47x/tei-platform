@@ -23,6 +23,34 @@ GATE_B_READINESS_AUDIT.md
 
 ## 現在地
 
+### 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380の再監査により、Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
+
+1. `ISSUE-000032` / #310 — deterministic Repository Evidence
+2. `ISSUE-000025` / #255 — generated artifact reproducibility Evidence
+3. `ISSUE-000031` / #308 — real PostgreSQL Provider Evidence
+
+最終Ready判定では、この三つの完了Evidenceを同じclean candidate revision `R`へ揃えます。各runnerが要求する`reproducibleRevision = true`等のsource固定条件は従来どおり維持します。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle EvidenceはGate B必須blockerではありません。ただしactual external asset EvidenceというEvidence種別自体を削除せず、legacy / external asset実証と第二Database Provider圧力試験として継続します。
+
+Gate Bではexternal-observed assetについて、少なくとも次の境界を引き続き必須とします。
+
+- 未観測のphysical object / column / SQLを推測しない
+- external EvidenceをCanonicalへ昇格させない
+- Evidenceから不足realizationを生成・補完しない
+- 明示authoringとEvidenceを照合する
+- synthetic / generated / PostgreSQL fixture Evidenceをactual Oracle Evidenceへ格上げしない
+
+これらの回帰は#310の`external-evidence-intake`等で確認します。
+
+#214が未完了のままGate Bを通過する場合、#291 Handover Baselineへ#214 / #371 / #376と未観測事項を`unresolved`として明示します。第一Web Target側でOracle物理情報やread-only方式を補完しません。
+
+**Gate Bはこのscope変更だけではReadyになりません。** #310 / #255 / #308のactual run Evidenceは未取得です。
+
+以下の「四laneをGate B必須とする」記述は`ISSUE-000035`以前のEvidence契約と判断経緯を保持するための履歴です。現行Gate B必須範囲と矛盾する場合は、本節を優先します。一方、各Evidence種別の証明範囲、非代替性、安全条件は引き続き有効です。
+
 Application Driverの主要意味境界、最終UI-less Scenario構造、external-observed Query Evidenceの受入境界、header-detail PostgreSQL fixtureの安全境界は成立しています。
 
 2026-09-04時点のGate B残件は、次の四laneです。
