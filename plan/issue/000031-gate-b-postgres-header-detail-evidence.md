@@ -108,6 +108,34 @@ SELECT to_regclass('public.order_lines')::text
 
 **既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
+## 安全判定をEvidenceへ残す
+
+fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。
+
+期待値:
+
+```json
+{
+  "guardPassed": true,
+  "databaseIdentityVerified": true,
+  "databaseIdentityPersisted": false,
+  "nonDefaultDatabaseVerified": true,
+  "userRelationsBeforeFixture": 0,
+  "fixtureObjectAbsentBeforeCreate": true
+}
+```
+
+これは次を意味します。
+
+- `current_database()`によるidentity確認に成功した
+- 実Database名自体はEvidenceへ保存していない
+- PostgreSQL既定Databaseではなかった
+- fixture作成前のuser relation数が0件だった
+- `public.order_lines`がfixture作成前に存在しなかった
+- それらをすべて確認した後だけfixture作成へ進んだ
+
+`guardPassed = true`を「組織運用上、このDatabaseがEvidence専用であることの完全証明」へ格上げしません。toolがそのrunで観測できる安全条件を満たしたことだけを示します。
+
 ## 確認するEvidence
 
 同じrunで少なくとも次を確認します。
@@ -123,6 +151,11 @@ SELECT to_regclass('public.order_lines')::text
 - Relation Storage support column `order_id`をOrderLine Semantic attributeへ漏らさない
 - parameter名だけをEvidenceへ残し、runtime parameter valueを保存しない
 - `evidenceNature = real-postgres-ephemeral-fixture`を保持する
+- `fixtureDatabaseSafety.guardPassed = true`を保持する
+- `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`を保持する
+- `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`を保持する
+- `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`を保持する
+- `fixtureDatabaseSafety.databaseIdentityPersisted = false`を保持する
 - 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
 
 ## 完了条件
@@ -132,9 +165,11 @@ SELECT to_regclass('public.order_lines')::text
 - [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
 - [x] `public.order_lines`既存時に停止する
 - [x] tool-owned fixtureだけをcleanupする
+- [x] 安全guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない
 - [ ] 対象repository revisionを記録する
 - [ ] Canonical Workspace Validationが成功する
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
+- [ ] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する
 - [ ] 2件取得を確認する
 - [ ] 0件を正常な空collectionとして確認する
 - [ ] physical table欠落をExecution Errorとして確認する
