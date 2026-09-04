@@ -128,6 +128,8 @@ working treeがdirtyなら受入れを停止します。
 
 Repository状態の観測には`tools/internal/repositoryevidence`を利用し、#310 deterministic Repository Evidence、#255 generated artifact Evidence、#308 PostgreSQL Provider Evidenceと同じsource再現性規則へ揃えます。
 
+PR #355以降、`postRunRepository.checked=true`になるのは、実行後repository revisionとworking tree状態の両方を観測できた後だけです。観測自体に失敗した状態と、観測した結果cleanではなかった状態を区別します。
+
 ### Evidence artifact fingerprint
 
 Evidence fileをexact bytesで読み、SHA-256を計算します。
@@ -324,10 +326,42 @@ actual physical Evidence取得後、採用driverについて少なくとも次�
 9. development / master_data.dev / database.query.oracleからactual read
 10. raw resultを明示mappingしてSemantic Customerを得る
 11. Workspace -> actual read -> Semantic resultを一続きに確認
-12. #273 Gate B監査へactual external asset Evidenceとして対応付ける
+12. actual readが参照したrepository source identityをEvidenceへ残す
+13. #273 Gate B監査へactual external asset Evidenceとして対応付ける
 ```
 
 acceptance receiptとactual read Evidenceは別工程です。
+
+## actual read EvidenceをGate Bのcandidate revisionへ固定する
+
+PR #354以降、Gate Bの最終Ready判定では4 Evidence laneを同じcandidate repository revision `R`へ揃えます。
+
+したがって#214でも、次を別々に追跡できる必要があります。
+
+1. external Evidence artifactをRのauthoringへ照合したacceptance receipt
+2. RのWorkspace / SQL realization / runtime境界を使って行ったactual Oracle read
+
+外部観測資料そのものはRより前に取得されていて構いません。ただし、acceptance receiptとactual readはRへ結び直します。
+
+actual read Evidenceから、少なくとも次へ戻れるようにします。
+
+- repository revision R
+- Environment / Database instance / executor Capability identity
+- Database / Contract / Query target identity
+- actual readが成功・0件・Execution Errorのどの結果だったか
+- raw resultからSemantic Customerへの明示mappingを確認したこと
+- read-onlyを実効強制した境界のEvidence参照
+
+一方、通常Evidenceへ次を保存しません。
+
+- credential / secret
+- credentialを含むDSN
+- 不要なruntime parameter value
+- 業務上不要な実データ
+
+actual Oracle driverと実物理事実が未確定な現段階では、専用JSON schemaや新しい汎用Evidence modelを先行固定しません。実対象を確認した後、上記の追跡性を満たす最小の取得方法を決めます。
+
+Rと異なるrevisionで得たactual readを、「意味は変わっていないはずだ」と推測してRの完了Evidenceへ読み替えません。
 
 ## 完了条件
 
@@ -350,6 +384,7 @@ acceptance receiptとactual read Evidenceは別工程です。
 - [x] `reproducibleRevision = true`を含むacceptance receiptを出力できる（PR #340）
 - [x] receiptへEvidence本文 / path / credential / secretを複製しない（PR #340）
 - [x] `evidenceArtifactFingerprint`と`nativeSource.fingerprint`を別責務として扱う（PR #340）
+- [x] post-run観測が完了した場合だけ`postRunRepository.checked = true`にする（PR #355）
 
 ### 第一Referenceのactual Evidence
 
@@ -359,9 +394,12 @@ acceptance receiptとactual read Evidenceは別工程です。
 - [ ] raw resultから必要なSemantic attributeへの対応が明示されている
 - [ ] 実native SQL / API / adapter等のrealization sourceを追跡できる
 - [ ] 物理情報のsource / provenanceを追跡できる
-- [ ] actual Evidence artifactをclean revisionで受理しsource-fixed receiptを取得できる
+- [ ] actual Evidence artifactをcandidate revision Rで受理し`reproducibleRevision = true`のsource-fixed receiptを取得できる
 - [ ] `master_data`を実効的にread-onlyのまま実行できる
 - [ ] 採用Oracle driverとのintegration Evidenceがある
+- [ ] RのWorkspace / realization / runtimeを使ったactual readであることを追跡できる
+- [ ] actual readの結果分類とSemantic Customerへの明示mappingを追跡できる
+- [ ] actual read Evidenceへcredential / secret / 不要なparameter valueを保存していない
 - [ ] 第一ReferenceのWorkspace → actual read → Semantic resultを一続きに確認できる
 - [ ] physical fixture / adapter / EvidenceがSemantic meaningの正本として扱われていない
 - [ ] 結果を`ISSUE-000029` / #273へ対応付ける
@@ -380,20 +418,23 @@ acceptance receiptとactual read Evidenceは別工程です。
 - 不明な物理SchemaをTEIが生成・推測すること
 - external EvidenceをCanonicalへ昇格すること
 - acceptance receiptをactual Oracle read Evidenceとして扱うこと
+- actual Oracle driver未確定の段階で汎用Evidence schemaを先行固定すること
 - 汎用ORMの導入
 - Oracle固有の高度なHA / Connection Poolを本Issueだけで完成させること
 - synthetic Conformance SQLを第一Referenceの実native sourceへ流用すること
 - SQL文字列だけでread-onlyを推論すること
 - external Evidence本文やcredentialをacceptance receiptへ複製すること
+- 異なるrevisionのactual readをcandidate RのEvidenceへ読み替えること
 - GitHub Actionsを再有効化すること
 
 ## 関連
 
-- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #308 / #310
-- PR #288 / #300 / #306 / #340 / #342
+- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310
+- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/README.md`
 - `tools/reference-external-query-evidence/main.go`
