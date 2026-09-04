@@ -31,6 +31,21 @@ TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runt
 
 DSNやcredentialはEvidence JSONへ保存しません。
 
+### 接続失敗時のcredential保護
+
+`TEI_TEST_POSTGRES_DSN`にはpassword等のcredentialが含まれ得ます。そのため、接続設定の解析または最初の接続確認でdriverが返すerror本文を、そのままpanic / stderrへ出しません。
+
+次の二段階では、underlying driver errorをwrap・複製せず、非機密なstageだけを診断として残します。
+
+```text
+PostgreSQL接続設定の初期化
+PostgreSQL接続確認
+```
+
+malformed URL等でdriver error本文にraw DSNが含まれる場合でも、その本文をstderrへ転記しないための境界です。
+
+この抑制は接続初期化に限定します。fixture作成後のProvider runtime、専用空Database guard、cleanup、source-fixed Evidenceの診断まで一律に隠すものではありません。
+
 ## source revisionのfail-closed境界
 
 Gate Bへ採用するProvider Evidenceは、後から実際に実行したsourceへ戻れる必要があります。
@@ -262,6 +277,7 @@ missing-table Execution Errorを確認した後、成功JSONを出す前に接�
 - PostgreSQL既存Schema全体の受入れ検証
 - runtime parameter値やcredentialのEvidence保存
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
+- 接続設定parse / initial connect失敗時にraw driver errorをcredential込みでstderrへ複製すること
 - Event Trigger名や定義本文を通常Evidenceへ保存すること
 - dirty working tree上の成功をGate B完了Evidenceへ格上げすること
 - cleanup後にuser relationまたはEvent Triggerが残るrunを成功Evidenceへ格上げすること
