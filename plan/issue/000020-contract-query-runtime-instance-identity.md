@@ -1,6 +1,6 @@
 # ISSUE-000020: Contract Query runtime RegistryでDatabase instance identityを保持する
 
-- 状態: In Progress
+- 状態: Completed
 - GitHub Issue: #222
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
@@ -22,13 +22,13 @@ Executor Capability
   database.query.oracle
 ```
 
-ところが当初のruntime Registryは、最後のruntime ExecutorをCapability IDだけで取得していました。
+当初のruntime Registryは、最後のruntime ExecutorをCapability IDだけで取得していました。
 
 ```text
 ExecutorByCapability(database.query.oracle)
 ```
 
-この形では、同じ`database.query.oracle` Capabilityを複数のOracle instanceで利用したとき、せっかくEnvironment側で確定したDatabase instance identityがruntime境界で失われます。providerもCapabilityも同じ別instance向けExecutorへ誤って接続できる余地が残るため、TEIの「明示されたidentityを途中で曖昧にしない」という原則に反します。
+この形では、同じ`database.query.oracle` Capabilityを複数のOracle instanceで利用したとき、Environment側で確定したDatabase instance identityがruntime境界で失われます。providerもCapabilityも同じ別instance向けExecutorへ誤って接続できる余地が残るため、TEIの「明示されたidentityを途中で曖昧にしない」という原則に反します。
 
 ## 採用した境界
 
@@ -67,15 +67,15 @@ master_data.shadow
 - provider一致だけによる別instanceへのfallback
 - Database definition一致だけによる別instanceへのfallback
 
-## 現在地
+## 完了判断
 
-PR #223で、runtime Registryをinstance-awareなkeyへ変更し、既存のEnvironment / provider / SQL realization Conformanceを新しい境界へ移行しました。
+PR #223でruntime Registryをinstance-awareなkeyへ変更し、Environment / provider / SQL realization Conformanceを新しい境界へ移行しました。その後、この実装はPR #285でApplication Driverの主要境界とともに`main`へ収束しています。
 
-実装は`work/reference-data-access-convergence`へ統合済みです。2026年9月3日現在、Repositoryでは`.github/workflows/ci.yml`が明示的に削除され、収束線にもその停止が取り込まれています。そのため、現在workflow runが作成されないことは通常runnerの再障害を直接示すものではなく、CIを意図的に実行していない状態です。
+このIssueの目的は、**runtime Registry境界でDatabase instance identityを失わないこと**です。この実装・Conformanceは成立したため、本Issueは完了とします。
 
-CI未実行の成果をgreenとは扱いません。一方、この作業線から独断でActionsを再有効化することもしません。CIが別の明示的な判断で再開された後、Conformanceを通常runnerで再検証します。これはIssue #192で記録した過去の`runner_id=0 / steps=[]`事象とは区別して扱います。
+第一Referenceの実Oracle接続やread-only実証は、この境界そのものの未実装ではありません。external-observed `master_data`のactual physical factsと実接続Evidenceは`ISSUE-000022` / GitHub Issue #214、Gate B全体のEvidence判定は`ISSUE-000029` / GitHub Issue #273で追跡します。
 
-また、第一Referenceの実Oracle接続は`ISSUE-000022`の物理Evidence待ちです。Registry境界が実装されたことを理由に、接続先や物理SQLを補完してはいけません。
+GitHub Actionsが明示的に再開された場合の通常runner再検証も、実装Issueを開いたまま保持する理由にはせず、横断的なregression Evidenceとして扱います。
 
 ## 完了条件
 
@@ -88,8 +88,17 @@ CI未実行の成果をgreenとは扱いません。一方、この作業線か�
 - [x] 既存のprovider整合性検査を維持する
 - [x] 第一Referenceの`development / master_data.dev / database.query.oracle`を表現できる
 - [x] 同一Capability・異なるinstanceの取り違えをConformanceで拒否する
-- [ ] CIが明示的に再有効化された後、通常runnerでConformanceが実行され、成功する
-- [ ] 第一Referenceの実接続Evidenceでinstance-aware Registryを通過する
+- [x] 実装を`main`へ収束する
+
+## 後続Evidence
+
+本Issueの完了とは分け、次を後続で確認します。
+
+- #214: 第一Referenceのactual Oracle接続でinstance-aware Registryを通過すること
+- #273: Gate B Evidenceとしてexternal / runner / generated artifactを総合判定すること
+- #192または後継のCI管理: Actions再開後に通常runnerでConformanceを継続再検証すること
+
+未観測の接続先やOracle物理情報を、Registry境界が実装済みであることを理由に補完してはいけません。
 
 ## 非目標
 
@@ -102,10 +111,11 @@ CI未実行の成果をgreenとは扱いません。一方、この作業線か�
 
 ## 関連
 
-- GitHub Issue #179 / #192 / #214 / #222
-- PR #223
+- GitHub Issue #179 / #192 / #214 / #222 / #273
+- PR #223 / #285
 - `plan/issue/000018-database-contract-query-execution.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
+- `plan/issue/000029-gate-b-readiness-audit.md`
 - `internal/driver/reference_contract_query_environment.go`
 - `internal/realization/contract_query_binding.go`
 - `reference/workspace/environments/development/contract-query-executors/customer-find-by-id.tei`
