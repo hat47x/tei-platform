@@ -73,6 +73,67 @@ v2で必要要件を満たせず、v3固有機能が必要な理由を確認で�
 
 Oracle Client固有機能が必要である等の明確な理由がない限り、第一Referenceで最初に固定しません。
 
+## upstream静的監査
+
+実Oracleへ接続する前に、第一候補がTEIの`database/sql`境界と形状上かみ合うかだけをupstream sourceで確認しました。
+
+これは**driver integration成功Evidenceではありません**。READMEやsourceに実装が存在することと、第一Referenceの実Oracleで期待どおり動作することを分離します。
+
+### `go-ora/v2`の`database/sql` metadata境界
+
+2026-09-04時点のupstream sourceでは、v2のresult setが少なくとも次の`database/sql/driver` column metadata境界を実装しています。
+
+- `ColumnTypeDatabaseTypeName`
+- `ColumnTypeNullable`
+- `ColumnTypeLength`
+- `ColumnTypePrecisionScale`
+
+`ColumnTypeDatabaseTypeName`はcolumnのOracle datatype表現を返し、nullable / length / precision / scaleもそれぞれdriverが保持するcolumn metadataから返す実装です。
+
+この形は、PR #366でTEI Oracle Runnerが`Rows.ColumnTypes()`から観測する情報と直接対応します。
+
+ただし、実Oracleでどのdatatypeに対してどの値が返るかは別途actual readで確認します。source実装の存在から、第一Referenceの実値を推測しません。
+
+### named parameter
+
+upstream README / exampleには`sql.Named`を用いたnamed parameterの実例があり、v2 connection / statementも`driver.NamedValue`を受け取る境界を持ちます。
+
+したがって、TEIのauthoring済みphysical parameter名を`database/sql`のnamed bindとして渡す構造とは形状上整合します。
+
+ただし、第一Referenceのnative SQLで同名bindの再利用、case、datatype、NULL等が期待どおり動くかはactual Oracleで確認します。
+
+### TLS / TCPS / Wallet
+
+upstreamの接続設定には、少なくとも次の経路が存在します。
+
+- SSL / TLS有効化
+- server certificate verification
+- Wallet path
+- TCPS auth / protocol
+
+このため、実OracleがTCPS / Walletを要求する場合でもv2を即座に候補外とする必要はありません。
+
+ただし、対象環境のWallet形式、certificate chain、authentication方式との互換性はactual接続前に確認します。設定項目が存在することを互換性Evidenceへ格上げしません。
+
+### v3との比較で見つかった注意点
+
+同じupstream revisionのv3 sourceでは、`ResultSet.ColumnTypeDatabaseTypeName`が空文字を返す実装箇所を確認しました。
+
+v3は23ai対応等の新しい機能を持ちますが、少なくともGate Bで必要なraw physical metadata Evidenceだけを理由に「新しいv3を優先する」とは判断しません。
+
+実Oracle要件がv3を必要とする場合は、その時点の採用versionで`ColumnTypes()`挙動を改めて確認します。
+
+### 現時点の候補順位
+
+静的監査後も、第一検証候補は次の順を維持します。
+
+1. `go-ora/v2` — 現行Go 1.23.2と整合し、named bind / ColumnTypes / TCPS・Walletの必要境界がsource上存在する
+2. Oracle公式`go-oracledb/v26` — 公式実装の利点は大きいが、現行beta / Go 1.26.6 / Oracle 19c+という条件がある
+3. `go-ora/v3` — 実Oracle要件がv3固有機能を必要とする場合に再評価する
+4. `godror` — Oracle Client / CGO等を必要とする明確な理由がある場合に再評価する
+
+これは採用順ではなく、**実環境条件を得た後に最初に適合確認する順序**です。
+
 ## driver固定前に必要な実環境情報
 
 実Oracleから少なくとも次を確認します。
@@ -218,12 +279,13 @@ Phase 2では、#214の最終actual readを**RのWorkspace / realization / runti
 - `PhysicalType`と`DatabaseTypeName`の自動一致規則を実観測前に固定すること
 - external Evidence acceptance receiptをactual readへ格上げすること
 - PostgreSQL fixture Evidenceで代替すること
+- upstream sourceの静的実装確認をactual Oracle成功Evidenceへ格上げすること
 - driver選定だけを理由にGitHub Actionsを再有効化すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #273 / #371
-- PR #340 / #354 / #360 / #364 / #366 / #369
+- PR #340 / #354 / #360 / #364 / #366 / #369 / #372
 - `plan/adr/0007-database-driver-assembly.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
