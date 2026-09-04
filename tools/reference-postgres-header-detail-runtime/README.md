@@ -28,11 +28,54 @@ TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runt
 
 DSNやcredentialはEvidence JSONへ保存しません。
 
-## fail-closedの実行順
+## Repository sourceをEvidenceへ固定する
 
-Databaseへ接続・変更する前に、まず`reference/workspace`を通常Loaderで読み込み、`validation.Validate`を実行します。
+Gate Bへ採用するProvider Evidenceは、後から実際に実行したsourceへ戻れる必要があります。
+
+そのためtoolは、WorkspaceやPostgreSQLへ触れる前に次を確認します。
 
 ```text
+git rev-parse HEAD
+  ↓
+git status --porcelain
+  ↓ dirtyならDB接続前に停止
+go version
+  ↓
+Workspace Validation / PostgreSQL Evidence
+```
+
+Provider runtimeが完了した後にも次を再確認します。
+
+```text
+git rev-parse HEAD
+  -> 実行前HEADと同一
+
+git status --porcelain
+  -> clean
+```
+
+成功JSONには次を残します。
+
+- `repositoryRevision`
+- `workingTreeClean`
+- `reproducibleRevision`
+- `postRunRepository.checked`
+- 実行後`repositoryRevision`
+- `postRunRepository.revisionStable`
+- 実行後`workingTreeClean`
+- `goVersion`
+
+`reproducibleRevision = true`になるのは、開始時clean、実行後確認済み、実行前後で同じHEAD、終了時cleanのすべてを満たす場合だけです。
+
+実行中にsource revisionが変わった場合や、test / tool実行でworking tree差分が生じた場合は、PostgreSQL runtime自体が期待どおりでもGate B完了Evidenceとして採用しません。
+
+## fail-closedの実行順
+
+Databaseへ接続・変更する前に、まずRepository sourceをclean revisionへ固定し、次に`reference/workspace`を通常Loaderで読み込み、`validation.Validate`を実行します。
+
+```text
+Repository revision / clean確認
+  ↓ dirtyなら停止
 Reference Workspace load
   ↓
 Canonical Validation
@@ -50,9 +93,13 @@ public.order_lines既存確認
 tool-owned fixture CREATE
   ↓
 Provider runtime Evidence
+  ↓
+実行後Repository revision / clean再確認
+  ↓ sourceが変化していれば停止
+JSON Evidence
 ```
 
-したがって、Workspace authoringが不正な状態ではPostgreSQLへ接続せず、fixtureも作成しません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+したがって、dirtyなRepositoryやWorkspace authoringが不正な状態ではPostgreSQLへ接続せず、fixtureも作成しません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
 
 ## Database側の安全条件
 
@@ -146,6 +193,8 @@ SELECT to_regclass('public.order_lines')::text;
 主な項目:
 
 - Evidence nature
+- repository revision / Go version / source再現性
+- 実行後repository revision / HEAD同一性 / working tree clean
 - fixture object / tool ownership / preexisting fixture protection
 - `fixtureDatabaseSafety`の非機密な安全判定結果
 - Pattern / Relation
@@ -171,5 +220,6 @@ SELECT to_regclass('public.order_lines')::text;
 - PostgreSQL既存Schema全体の受入れ検証
 - runtime parameter値やcredentialのEvidence保存
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
+- dirty working treeや実行中に変化したHEADをGate B Provider Evidenceとして採用すること
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。
