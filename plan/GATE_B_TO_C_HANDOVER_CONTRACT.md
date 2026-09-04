@@ -39,16 +39,47 @@ Web実装中に必要な意味がHandover Baselineに存在しないと分かっ
 
 必要ならApplication / Driver側へ戻り、authoritative sourceを変更し、Validation / Driver Scenarioを再確認して新しいbaselineを発行します。
 
+### 4. Gate Bの4 Evidence laneを一つのbaseline revisionへ収束させる
+
+各Evidence laneが個別にsource-fixedでも、別々のGit revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。
+
+Gate Bの最終Ready判定では、次の4 laneの**completion Evidence**を一つのHandover Baseline revisionへ収束させます。
+
+1. #214 actual external Oracle Evidence
+2. #308 real PostgreSQL engine + ephemeral fixture Evidence
+3. #255 generated artifact reproducibility Evidence
+4. #310 deterministic Repository Evidence
+
+```text
+Lane A completion Evidence ─┐
+Lane B completion Evidence ─┼─ repositoryRevision = R
+Lane C completion Evidence ─┤
+Lane D completion Evidence ─┘
+                              ↓
+                    Gate B Ready for R
+                              ↓
+                    Handover Baseline R
+```
+
+外部観測資料そのものの`observedAt`がRの時点である必要はありません。たとえばOracleのschema資料を以前に観測していても構いません。
+
+ただし、その資料を現在のauthoringと照合した#214 acceptance receipt、実効的read-only境界を使ったactual read Evidence、#308 / #255 / #310の最終completion Evidenceは、Gate B Ready対象のRへ結び直します。
+
+Rを決めた後にRと異なるrevisionのcompletion Evidenceしかないlaneは、Rで再実行・再受入れしてからReady判定します。意味変更がないことを人手で推測して古い成功EvidenceをRの成功へ読み替えません。
+
 ## Handover Baselineに必要な情報
 
 具体的なJSON schemaやfile formatはGate B通過時に決めても構いませんが、少なくとも次を復元できる必要があります。
 
 ### Repository / Reference identity
 
-- repository revision
+- Handover Baselineとなる単一repository revision
 - Reference Workspace path / identity
-- 必要なgenerated artifactのrevision
+- そのrevisionに保存されているgenerated artifact identity
 - Gate B監査の対象revision
+- 4 Evidence laneのcompletion Evidenceが参照するrepository revision
+
+`generated artifact revision`をHandover用の別versionとして発明しません。#255のcompletion Evidenceが、Handover Baseline revisionに保存されたWorld / Plugin Lock / Durable Runを同じrevisionから再現できることを示します。
 
 独自のWorkspace fingerprintをこの契約のためだけに先行導入しません。Git revisionと既存artifact identityで再現性が足りないことがEvidenceから確認された場合に検討します。
 
@@ -120,15 +151,71 @@ Target側のHTTP status、DOM、toast、dialog等をこの意味の定義には�
 
 Gate Bを通過させたEvidenceへ戻れる必要があります。
 
-少なくとも次を参照します。
+Handover recordではEvidence本文を複製せず、少なくとも次のcompletion Evidenceを安定参照します。
 
-- external-observed `master_data`物理 / read-only Evidence
-- header-detail実PostgreSQL Evidence
-- Reference golden再生成Evidence
-- 最終UI-less Scenario通常runner Evidence
-- Gate B Readiness Auditの最終判定
+#### Lane A — #214 actual external Oracle
 
-Evidence本文をhandoverへ複製しません。
+- actual external Evidence artifactの参照
+- `evidenceArtifactFingerprint`
+- Handover Baseline revision上のsource-fixed acceptance receipt
+  - `accepted = true`
+  - `reproducibleRevision = true`
+  - `repositoryRevision = Handover Baseline revision`
+- 実効的read-only境界を使ったOracle actual read Evidence
+- actual readが同じHandover Baseline revisionのruntime / realizationに対するものであること
+
+acceptance receiptだけをactual read Evidenceへ格上げしません。
+
+#### Lane B — #308 real PostgreSQL engine
+
+`tools/reference-postgres-header-detail-runtime`の成功JSONを参照します。
+
+少なくとも:
+
+- `repositoryRevision = Handover Baseline revision`
+- `reproducibleRevision = true`
+- `fixtureDatabaseSafety.guardPassed = true`
+- `fixtureCleanupSafety.verified = true`
+- 2件 / 0件 / Execution Error
+- Semantic mapping / support column非露出
+
+を同じrunで確認したEvidenceへ戻れる必要があります。
+
+#### Lane C — #255 generated artifact reproducibility
+
+`tools/reference-generated-artifact-evidence`のcheck-only成功JSONを参照します。
+
+少なくとも:
+
+- `repositoryRevision = Handover Baseline revision`
+- `reproducibleRevision = true`
+- World / Plugin Lock golden一致
+- Durable Run golden一致
+
+を要求します。
+
+`-write`による修復操作そのものや、修復直後のdirty treeをcompletion Evidenceへ使いません。
+
+#### Lane D — #310 deterministic Repository
+
+`tools/reference-gate-b-repository-evidence`の成功JSONを参照します。
+
+少なくとも:
+
+- `repositoryRevision = Handover Baseline revision`
+- `reproducibleRevision = true`
+- Canonical Workspace Validation成功
+- `final-ui-less-scenario`成功
+- `external-evidence-intake`成功
+- `repository-evidence-source-boundary`成功
+
+へ戻れる必要があります。
+
+#### Gate B final audit
+
+`GATE_B_READINESS_AUDIT.md`の最終Ready判定も、同じHandover Baseline revisionを対象とした判定として追跡します。
+
+「Lane AはR1、Lane BはR2、Lane CはR3、Lane DはR4で成功した」という集合を、revision収束なしにR4のGate B Ready Evidenceとして扱いません。
 
 ### unresolved
 
@@ -147,11 +234,13 @@ Gate C Evidence run
        ↓
 Handover Baseline identity
        ↓
-repository revision
+repository revision R
        ↓
 Canonical Application / Driver Scenario
        ↓
-Gate B Evidence
+Gate B final audit for R
+       ↓
+4 lane completion Evidence for R
 ```
 
 これにより、Web Adapterやbrowser automationのrevisionだけでなく、「どの意味baselineに対するConformanceか」を固定できます。
@@ -177,6 +266,8 @@ Canonical / Driver baselineが変わらなければHandover Baselineは変更し
 
 repository revisionが変わるため、必要なら「baseline source revisionは同じ、evaluator / target revisionだけが変わった」と区別して記録します。
 
+Gate B completion Evidenceの意味または評価方法を変更する場合は、旧Evidenceを新しいbaselineへ黙って読み替えず、影響するlaneを再実行します。
+
 ### C. Application / Driverの意味変更
 
 例:
@@ -192,8 +283,9 @@ repository revisionが変わるため、必要なら「baseline source revision�
 
 1. authoritative sourceを変更する
 2. Driver / Validation / Gate Bに関係するEvidenceを再確認する
-3. 新しいHandover Baselineを発行する
-4. Gate Cで影響するScenarioを再実行する
+3. 4 laneのcompletion Evidenceを新しいbaseline revisionへ収束させる
+4. 新しいHandover Baselineを発行する
+5. Gate Cで影響するScenarioを再実行する
 
 ## Gate B通過時に作るHandover record
 
@@ -203,7 +295,8 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 
 重要なのは形式ではなく、次を満たすことです。
 
-- revisionが固定される
+- 一つのbaseline revisionが固定される
+- 4 laneのcompletion Evidenceが同じbaseline revisionへ収束している
 - Canonical IDへ戻れる
 - Driver Scenarioへ戻れる
 - Gate B Evidenceへ戻れる
@@ -216,9 +309,11 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 第一Web Targetの本格実装は、Gate B Readyに加えて次を満たしてから開始します。
 
 - Handover Baselineのrepository revisionを固定できる
+- 4 laneのcompletion Evidenceを同じrepository revisionへ収束できる
 - Gate C対象のCanonical identityを列挙できる
 - Driver Scenario baselineを再現できる
 - Gate B Evidenceへの参照が揃っている
+- Gate B final auditが同じrevisionをReadyと判定している
 - unresolvedを明示できる
 
 この条件は新しいGateを追加するものではありません。Gate Bの出力をGate Cの入力へ曖昧なく接続するhandover確認です。
@@ -230,6 +325,8 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - Web frameworkの選定
 - Handover artifactからCanonicalへの逆生成
 - Git commitだけをSemantic Conformanceの証明とみなすこと
+- Evidenceの成功revisionが異なるまま一つのbaselineへ読み替えること
+- 外部観測資料の観測時刻をGit revision時刻へ無理に合わせること
 - 第一TargetだけでTarget-neutral taxonomyを完成させること
 - Gate C開始前に第二Targetの差を推測すること
 
@@ -237,8 +334,11 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 
 - `GATE_B_READINESS_AUDIT.md`
 - `GATE_B_EVIDENCE_ACQUISITION.md`
+- `GATE_B_EVIDENCE_RUNBOOK.md`
 - `GATE_C_EVIDENCE_CONTRACT.md`
 - `V1_REFERENCE_APPLICATION_PLAN.md`
 - `issue/000006-application-driver-vertical-slice.md`
 - `issue/000007-first-web-target-projection.md`
 - `issue/000028-first-web-target-conformance-evidence.md`
+- `issue/000029-gate-b-readiness-audit.md`
+- `issue/000030-gate-b-to-c-handover-baseline.md`
