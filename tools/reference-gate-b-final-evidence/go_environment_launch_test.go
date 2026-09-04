@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestInspectGoEnvironmentForLaunchRequiresExplicitGoEnvOff(t *testing.T) {
+func TestInspectGoEnvironmentForLaunchRequiresExactGoEnvOff(t *testing.T) {
 	setEnvCalled := false
 	setEnv := func(name, value string) error {
 		setEnvCalled = true
@@ -13,14 +13,17 @@ func TestInspectGoEnvironmentForLaunchRequiresExplicitGoEnvOff(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name   string
-		value  string
-		set    bool
+		name  string
+		value string
+		set   bool
 	}{
 		{name: "unset", set: false},
 		{name: "empty", value: "", set: true},
 		{name: "path", value: "/private/build/goenv", set: true},
-		{name: "other", value: "on", set: true},
+		{name: "uppercase", value: "OFF", set: true},
+		{name: "leading-space", value: " off", set: true},
+		{name: "trailing-space", value: "off ", set: true},
+		{name: "other", value: "custom-goenv-setting", set: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setEnvCalled = false
@@ -30,7 +33,7 @@ func TestInspectGoEnvironmentForLaunchRequiresExplicitGoEnvOff(t *testing.T) {
 				func(string) (string, bool) { return tc.value, tc.set },
 			)
 			if err == nil {
-				t.Fatal("GOENV=offでない起動を受理しました")
+				t.Fatal("exact GOENV=offでない起動を受理しました")
 			}
 			if environment.GoEnvDisabled {
 				t.Fatalf("goEnvDisabled=true: %#v", environment)
@@ -45,7 +48,7 @@ func TestInspectGoEnvironmentForLaunchRequiresExplicitGoEnvOff(t *testing.T) {
 	}
 }
 
-func TestInspectGoEnvironmentForLaunchAcceptsExplicitGoEnvOff(t *testing.T) {
+func TestInspectGoEnvironmentForLaunchAcceptsExactGoEnvOff(t *testing.T) {
 	var fixed int
 	environment, err := inspectGoEnvironmentForLaunch(
 		fakeGoEnvironmentOutput("off\n", ""),
