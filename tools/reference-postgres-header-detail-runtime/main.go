@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -20,22 +21,29 @@ import (
 	"tei/internal/workspace"
 )
 
+const fixtureObject = "public.order_lines"
+const evidenceNature = "real-postgres-ephemeral-fixture"
+
 type evidence struct {
-	Pattern                               core.CanonicalID   `json:"pattern"`
-	Relation                              core.CanonicalID   `json:"relation"`
-	Environment                           core.CanonicalID   `json:"environment"`
-	DatabaseInstance                      core.CanonicalID   `json:"databaseInstance"`
-	ExecutorCapability                    core.CanonicalID   `json:"executorCapability"`
-	ContractQueryTarget                   string             `json:"contractQueryTarget"`
-	ParameterNames                        []string           `json:"parameterNames"`
-	ParameterValuesPersisted              bool               `json:"parameterValuesPersisted"`
-	Rows                                  int                `json:"rows"`
-	ZeroRows                              int                `json:"zeroRows"`
-	ExecutionErrorObserved                bool               `json:"executionErrorObserved"`
-	SemanticAttributes                    []core.CanonicalID `json:"semanticAttributes"`
-	RelationStorageColumn                 string             `json:"relationStorageColumn"`
-	SemanticOrderLineParentAttributeAdded bool               `json:"semanticOrderLineParentAttributeAdded"`
-	SemanticMappingApplied                bool               `json:"semanticMappingApplied"`
+	EvidenceNature                         string             `json:"evidenceNature"`
+	FixtureObject                          string             `json:"fixtureObject"`
+	PreexistingFixtureProtected            bool               `json:"preexistingFixtureProtected"`
+	FixtureOwnedByTool                     bool               `json:"fixtureOwnedByTool"`
+	Pattern                                core.CanonicalID   `json:"pattern"`
+	Relation                               core.CanonicalID   `json:"relation"`
+	Environment                            core.CanonicalID   `json:"environment"`
+	DatabaseInstance                       core.CanonicalID   `json:"databaseInstance"`
+	ExecutorCapability                     core.CanonicalID   `json:"executorCapability"`
+	ContractQueryTarget                    string             `json:"contractQueryTarget"`
+	ParameterNames                         []string           `json:"parameterNames"`
+	ParameterValuesPersisted               bool               `json:"parameterValuesPersisted"`
+	Rows                                   int                `json:"rows"`
+	ZeroRows                               int                `json:"zeroRows"`
+	ExecutionErrorObserved                 bool               `json:"executionErrorObserved"`
+	SemanticAttributes                     []core.CanonicalID `json:"semanticAttributes"`
+	RelationStorageColumn                  string             `json:"relationStorageColumn"`
+	SemanticOrderLineParentAttributeAdded  bool               `json:"semanticOrderLineParentAttributeAdded"`
+	SemanticMappingApplied                 bool               `json:"semanticMappingApplied"`
 }
 
 func main() {
@@ -56,7 +64,25 @@ func main() {
 	if err := db.PingContext(ctx); err != nil {
 		panic(err)
 	}
-	if err := prepareFixture(ctx, db); err != nil {
+
+	if err := ensureFixtureObjectAbsent(ctx, db); err != nil {
+		panic(err)
+	}
+	if err := createFixtureTable(ctx, db); err != nil {
+		panic(err)
+	}
+	fixtureOwned := true
+	defer func() {
+		if !fixtureOwned {
+			return
+		}
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cleanupCancel()
+		if err := removeFixtureTable(cleanupCtx, db); err != nil {
+			fmt.Fprintf(os.Stderr, "header-detail fixture cleanup warning: %v\n", err)
+		}
+	}()
+	if err := insertFixtureRows(ctx, db); err != nil {
 		panic(err)
 	}
 
@@ -130,9 +156,12 @@ func main() {
 		panic(fmt.Errorf("order_id=9999のOrderLine件数=%d want=0", len(zeroExecuted.Execution.Result.Rows)))
 	}
 
+	// Execution Errorの実Provider Evidenceを取るため、ここでツール自身が作成したfixtureを削除する。
+	// 開始時に既存public.order_linesがないことを確認済みなので、利用者既存tableは削除しない。
 	if err := removeFixtureTable(ctx, db); err != nil {
 		panic(err)
 	}
+	fixtureOwned = false
 	if _, err := resolver.ExecuteHeaderDetailContractQueryInEnvironment(
 		ctx,
 		core.MustCanonicalID("development"),
@@ -149,21 +178,25 @@ func main() {
 	relationStorageColumn, parentAttributeAdded := inspectOrderLineStorage(loaded)
 
 	out := evidence{
-		Pattern:                               core.MustCanonicalID("order_entry.order_lines"),
-		Relation:                              core.MustCanonicalID("sales.order.lines"),
-		Environment:                           executed.Environment.ID,
-		DatabaseInstance:                      executed.Executor.Instance.ID,
-		ExecutorCapability:                    executed.Executor.Capability.Capability.ID,
-		ContractQueryTarget:                   executed.Execution.Resolution.Binding.Target.Identity(),
-		ParameterNames:                        append([]string(nil), payload.ParameterNames...),
-		ParameterValuesPersisted:              false,
-		Rows:                                  len(executed.Execution.Result.Rows),
-		ZeroRows:                              len(zeroExecuted.Execution.Result.Rows),
-		ExecutionErrorObserved:                true,
-		SemanticAttributes:                    semanticAttributes,
-		RelationStorageColumn:                 relationStorageColumn,
-		SemanticOrderLineParentAttributeAdded: parentAttributeAdded,
-		SemanticMappingApplied:                true,
+		EvidenceNature:                         evidenceNature,
+		FixtureObject:                          fixtureObject,
+		PreexistingFixtureProtected:            true,
+		FixtureOwnedByTool:                     true,
+		Pattern:                                core.MustCanonicalID("order_entry.order_lines"),
+		Relation:                               core.MustCanonicalID("sales.order.lines"),
+		Environment:                            executed.Environment.ID,
+		DatabaseInstance:                       executed.Executor.Instance.ID,
+		ExecutorCapability:                     executed.Executor.Capability.Capability.ID,
+		ContractQueryTarget:                    executed.Execution.Resolution.Binding.Target.Identity(),
+		ParameterNames:                         append([]string(nil), payload.ParameterNames...),
+		ParameterValuesPersisted:               false,
+		Rows:                                   len(executed.Execution.Result.Rows),
+		ZeroRows:                               len(zeroExecuted.Execution.Result.Rows),
+		ExecutionErrorObserved:                 true,
+		SemanticAttributes:                     semanticAttributes,
+		RelationStorageColumn:                  relationStorageColumn,
+		SemanticOrderLineParentAttributeAdded:  parentAttributeAdded,
+		SemanticMappingApplied:                 true,
 	}
 	encoded, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -181,9 +214,24 @@ func mappedOrderID(orderID int64) queryresult.MappedResult {
 	}
 }
 
-func prepareFixture(ctx context.Context, db *sql.DB) error {
+// ensureFixtureObjectAbsentは、Evidence toolが既存のpublic.order_linesを破壊しないためのfail-closed guardである。
+// 既存objectが一つでもあれば、内容や用途を推測せず実行を拒否する。
+func ensureFixtureObjectAbsent(ctx context.Context, db *sql.DB) error {
+	var object sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT to_regclass('public.order_lines')::text`).Scan(&object); err != nil {
+		return fmt.Errorf("header-detail fixture objectの既存有無を確認できません: %w", err)
+	}
+	if object.Valid && strings.TrimSpace(object.String) != "" {
+		return fmt.Errorf(
+			"安全のためEvidence toolを停止します: %sが既に存在します。既存tableをDROPせず、専用の空PostgreSQL DatabaseをTEI_TEST_POSTGRES_DSNへ指定してください",
+			object.String,
+		)
+	}
+	return nil
+}
+
+func createFixtureTable(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `
-DROP TABLE IF EXISTS public.order_lines CASCADE;
 CREATE TABLE public.order_lines (
     order_line_id bigint PRIMARY KEY,
     order_id bigint NOT NULL,
@@ -195,7 +243,10 @@ CREATE TABLE public.order_lines (
 `); err != nil {
 		return fmt.Errorf("header-detail用fixture tableを作成できません: %w", err)
 	}
+	return nil
+}
 
+func insertFixtureRows(ctx context.Context, db *sql.DB) error {
 	rows := []struct {
 		orderLineID int64
 		orderID     int64
@@ -227,7 +278,7 @@ CREATE TABLE public.order_lines (
 
 func removeFixtureTable(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `DROP TABLE public.order_lines;`); err != nil {
-		return fmt.Errorf("Execution Error確認用にfixture tableを削除できません: %w", err)
+		return fmt.Errorf("ツール所有のheader-detail fixture tableを削除できません: %w", err)
 	}
 	return nil
 }
