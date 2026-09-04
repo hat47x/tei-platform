@@ -13,6 +13,7 @@
 - [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md): 技術リサーチを既存Requirement / Gate / ADRへ変換する統合方針
 - [`GATE_A_READINESS_AUDIT.md`](GATE_A_READINESS_AUDIT.md): Driver開始前に必要なApplication上の意味の監査結果
 - [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md): Application DriverからGate Bへ進めるかをReference / Evidenceから判定する監査
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): Gate Bに残るRepository / provider fixture / external asset Evidenceを安全に取得・再現する手順
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線と実Referenceから得た判断
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する実装前設計
@@ -31,7 +32,7 @@ Application Pattern Stage 1   完了
             ↓
     Application Driver         In Progress
             ↓
-        Gate B                 Not Ready / 監査中
+        Gate B                 Not Ready / Evidence取得段階
             ↓
       第一Web Target
             ↓
@@ -60,7 +61,17 @@ header-detail
 
 現在は[`ISSUE-000006`](issue/000006-application-driver-vertical-slice.md) / GitHub Issue #69でApplication Driverを進め、[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`ISSUE-000029`](issue/000029-gate-b-readiness-audit.md) / GitHub Issue #273でGate Bを監査しています。
 
-2026-09-04時点では、Driverの中心設計は大きく成立していますがGate BはNot Readyです。主な残件はexternal-observed `master_data`の実物理Evidence、header-detail実PostgreSQL Evidence、Command / Observation分離、Reference生成物再現、最終UI-less Scenarioです。
+2026-09-04時点では、Driver内部の主要な意味境界、PR #281のUI-less最終Scenario構造、PR #288のexternal-observed Query Evidence受入境界、PR #294のPostgreSQL fixture安全境界まで成立しています。
+
+Gate BがNot Readyなのは、主に次の実Evidence・再現Evidenceが残っているためです。
+
+- external-observed `master_data`の実Oracle物理Evidence / read-only実証
+- header-detailの実PostgreSQLエンジン上のephemeral fixture Evidence
+- Reference World / Plugin Lock / Durable Runの正規再生成
+- PR #281 / #288等の通常Go runner実行Evidence
+- CIが別判断で再開された場合の通常runner再検証
+
+残Evidenceの実行順と停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を正とします。
 
 Command acknowledgementとObserved stateは[`ADR-0023`](adr/0023-command-observation-explicit-read-boundary.md)に従い分離します。v1ではObservation専用の新しいPatternやWorkflow基盤を先に作らず、既存Query / Contract Query / read adapter等の明示read境界をCommandとは別操作として利用します。
 
