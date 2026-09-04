@@ -27,9 +27,9 @@ Application Driverの主要意味境界、最終UI-less Scenario構造、externa
 
 2026-09-04時点のGate B残件は、主に次の四系統です。
 
-1. external-observed `master_data`のactual Oracle物理 / read-only Evidence
-2. header-detailの実PostgreSQL engine Evidence
-3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
+1. external-observed `master_data`のactual Oracle物理 / read-only Evidence（#214）
+2. header-detailのreal PostgreSQL engine Evidence（#308）
+3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence（#255）
 4. 最終UI-less ScenarioとEvidence受入境界の通常Go runner実行Evidence
 
 GitHub Actionsの再開・継続実行は重要ですが、上記Evidenceそのものとは分けます。Actions停止をSemantic design gapとは扱わず、未実行をgreenとも扱いません。
@@ -54,7 +54,7 @@ Gate BではEvidenceを少なくとも三種類に分けます。
 
 これは**actual external asset Evidence**です。
 
-PR #288でEvidence intake boundaryは成立し、PR #304で受入前にCanonical Workspaceの通常Validation Errorを拒否するfail-closed境界も成立しました。
+PR #288でEvidence intake boundaryは成立し、PR #304で収束線へ、PR #306で`main`へ、受入前にCanonical Workspaceの通常Validation Errorを拒否するfail-closed境界も成立しました。
 
 一方、第一Referenceで利用する実Oracle物理事実そのものはまだ未取得です。
 
@@ -103,13 +103,21 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 - 実行失敗をExecution Errorとして保持できる
 - read-only強制をSQL文字列以外の実効境界から説明できる
 - Environment / Database instance / executor Capability identityを保持できる
-- credential / secret /不要な実データを通常Evidenceへ保存していない
+- credential / secret / 不要な実データを通常Evidenceへ保存していない
 
 未観測の物理名をTEI側から補った場合は完了Evidenceとして採用しません。
 
-## Evidence B — header-detail実PostgreSQL
+## Evidence B — header-detail real PostgreSQL engine
 
-関連: `ISSUE-000024` / GitHub Issue #244
+実Provider Evidence: GitHub Issue #308
+
+成立済み設計: `ISSUE-000024` / GitHub Issue #244
+
+### 責務分離
+
+#244では、keyless Relation Storage、`find_by_order` SQL realization、Driver runtime、Evidence toolの安全境界まで成立しており、設計IssueとしてCompletedです。
+
+**実PostgreSQL engine上でEvidenceを取得する作業だけを#308で追跡します。** 実Provider実行が未完了であることを理由に、Relation Storage設計を再びIn Progressへ戻しません。
 
 ### 性質
 
@@ -121,7 +129,7 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 
 PR #294以降、既存`public.order_lines`が存在する接続先ではfail closedで停止し、既存tableをfixtureへ置換するoverrideを持ちません。
 
-PR #304以降はさらに、**Databaseへ接続する前に**`reference/workspace`を読み込み、通常`validation.Validate`のErrorがあれば停止します。
+PR #304で収束線へ、PR #306で`main`へ、**Databaseへ接続する前に**`reference/workspace`を読み込み、通常`validation.Validate`のErrorがあれば停止する境界を追加しました。
 
 したがって順序上の契約は次です。
 
@@ -141,7 +149,7 @@ runtime Evidence
 
 ### 証明対象
 
-- `order_id=1001`で複数件を正常collectionとして取得できる
+- `order_id=1001`で2件を正常collectionとして取得できる
 - `order_id=9999`で0件を正常な空collectionとして扱える
 - physical table欠落をExecution Errorとして区別できる
 - physical parameter identityを保持できる
@@ -151,18 +159,29 @@ runtime Evidence
 - Environment = `development`
 - Database instance = `sales_core.dev`
 - executor Capability = `database.query.postgres`
+- `evidenceNature = real-postgres-ephemeral-fixture`
 
 ### 完了候補
 
+#308の完了条件として、少なくとも次を確認します。
+
+- Validation成功revisionを記録できる
 - Evidence専用の空PostgreSQL Databaseでtoolが正常終了する
-- JSON Evidenceを再確認できる
-- 2件 / 0件 / Execution Errorを一runで区別できる
+- 2件 / 0件 / Execution Errorを同一runで区別できる
+- Semantic mapping / support column非露出を確認できる
 - credential / DSN / runtime parameter valueをEvidenceへ含めない
-- `evidenceNature = real-postgres-ephemeral-fixture`として他Evidence種別と区別できる
+- Evidence natureを他種別と区別できる
+- 結果を#273 Gate B監査へ対応付けられる
 
 ## Evidence C — Reference artifact再生成
 
 関連: `ISSUE-000025` / GitHub Issue #255
+
+### 責務
+
+#255は**generated Reference artifactの再現性だけ**を扱います。
+
+real PostgreSQL engine Evidenceは#308、actual Oracle Evidenceは#214へ分離します。
 
 ### 性質
 
@@ -192,6 +211,7 @@ Canonical Workspaceから派生する生成物をTEI自身の正規経路で再�
 - artifact差分を意味上説明できる
 - external-observed `master_data`の未観測物理情報が生成物へ紛れ込んでいない
 - observed fixtureを生成結果へ合わせて書き換えていない
+- 結果を#273 Gate B監査へ対応付けられる
 
 具体的な安全な再生成順序、Durable Runの一時file利用、差分確認は`GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
 
@@ -219,7 +239,7 @@ Authentication
   -> separate Observation read
 ```
 
-加えて、external Evidence intakeのunit/tool testsを通常runnerで実行し、PR #288 / #304の受入境界がコードとして再現することを確認します。
+加えて、external Evidence intakeのunit/tool testsを通常runnerで実行し、PR #288 / #304 / #306で成立した受入・fail-closed境界がコードとして再現することを確認します。
 
 ### 完了候補
 
@@ -268,6 +288,8 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 ## 非目標
 
 - この文書を第二の実行runbookにすること
+- #244を実Provider Evidence待ちのために再び設計Issueへ戻すこと
+- #255へPostgreSQL / Oracle runtime Evidenceを抱え込むこと
 - Gate B前にWeb実装を開始すること
 - CIをこの文書から再有効化すること
 - external物理情報を推測すること
@@ -283,4 +305,4 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 - `issue/000022-external-master-data-physical-query-evidence.md`
 - `issue/000024-keyless-relation-physical-storage.md`
 - `issue/000025-reference-generated-artifacts-refresh.md`
-- GitHub #214 / #244 / #255 / #273
+- GitHub #214 / #244 / #255 / #273 / #308
