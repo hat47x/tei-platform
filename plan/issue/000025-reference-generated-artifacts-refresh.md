@@ -56,6 +56,34 @@ reference/legacy-auth/*
 - 保存artifactを正本としてCanonicalへ逆書き
 - fixed observed fixtureを生成結果へ合わせて変更
 
+## Evidenceと修復を分離する
+
+`-write`はstaleなgenerated artifactを正規状態へ戻すための**修復操作**です。`-write`が成功し、その直後のdirty working treeでcheckが通ったことだけを、Gate Bの完了Evidenceにはしません。
+
+Gate Bへ採用する#255 Evidenceは、後から同じsourceへ戻れる**cleanなrepository revision**へ固定します。
+
+したがって、artifactがstaleだった場合は次の二段階で扱います。
+
+```text
+stale検出
+  ↓
+正規toolの-writeで修復
+  ↓
+git diffで意味上の差分を確認
+  ↓
+意図したgenerated artifactをcommit
+  ↓
+新しいclean revision
+  ↓
+check-onlyを再実行
+  ↓
+実行前後で同じHEAD / clean working treeを確認
+  ↓
+#255完了Evidence候補
+```
+
+最初から両goldenが一致している場合は、形式的な`-write`を行わず、そのclean revision上のcheck-only結果をEvidence候補とします。
+
 ## 正規toolの責務
 
 ### `tools/reference-golden`
@@ -211,15 +239,28 @@ go run ./tools/reference-durable-run-golden -write
 git diff -- reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-### 6. 最終確認
+### 6. staleがあった場合は生成物をcommitする
+
+`-write`で差分が生じた場合、差分が正規入力から説明できることを確認し、意図したgenerated artifactだけをcommitします。
+
+DSN、credential、一時Evidence file、fixed observed fixture等を混入させません。
+
+### 7. clean revisionでcheck-onlyを再実行する
 
 ```bash
-go run ./tools/reference-golden
+git status --short
+git rev-parse HEAD
 
+go run ./tools/reference-golden
 go run ./tools/reference-durable-run-golden
+
+git rev-parse HEAD
+git status --short
 ```
 
-両方の一致を確認して、generated artifactの再現Evidenceとします。
+実行前後で同じHEADを保持し、両時点のworking treeがcleanで、両golden toolが一致したrunだけを#255の完了Evidence候補とします。
+
+`-write`直後のdirty treeで両checkが成功しても、それだけでは#255を完了にしません。
 
 ## 再生成前に解消済みの事項
 
@@ -250,7 +291,7 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 
 `ISSUE-000032` / #310が、clean revisionに対するWorkspace Validation、UI-less Scenario、external Evidence intake等のnormal Go runner Evidenceを扱います。
 
-#255でもWorkspace Validationを要求しますが、#310のEvidence全体を代替しません。
+#255でもWorkspace Validationとclean revision固定を要求しますが、#310のEvidence全体を代替しません。
 
 ## 完了条件
 
@@ -266,12 +307,15 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - [x] Durable Run全体を正規internal APIからcheck/writeする専用toolを追加した（PR #318）
 - [x] Durable Run writeで既存fileを先にtruncateしないsafe replace境界を実装した
 - [x] Runbookからshell `mktemp` / direct `deployment-start`の重複手順を外し、専用toolへ一本化した
+- [x] `-write`を修復操作、clean revision上のcheck-onlyを完了Evidenceとして分離した
 - [ ] cleanな通常Go環境でWorkspace Validationを成功させる
 - [ ] `go run ./tools/reference-golden`で現在の一致・不一致を確認する
 - [ ] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する
 - [ ] `go run ./tools/reference-durable-run-golden`でDurable Run全体をcheckする
 - [ ] staleの場合だけDurable Run全体を正規生成し、差分を説明する
-- [ ] 最終的に両golden toolを一致させる
+- [ ] stale修復が生じた場合、意図したgenerated artifactをcommitする
+- [ ] 最終的なclean revisionで両golden toolをcheck-only実行し一致させる
+- [ ] final check実行前後のHEAD同一性 / working tree cleanを確認する
 - [ ] 必要なReference artifactを手編集せず更新する
 - [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
 
@@ -284,12 +328,13 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - 実PostgreSQL Provider Evidenceを本Issueへ抱え込むこと
 - deterministic Repository Evidence全体を本Issueへ抱え込むこと
 - 一致済み生成物を形式的に書き換えること
+- dirty working treeのcheck成功をGate B完了Evidenceとして採用すること
 - CIをこのIssueから独断で再有効化すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- GitHub PR #280 / #294 / #299 / #306 / #315 / #318
+- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #323
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
