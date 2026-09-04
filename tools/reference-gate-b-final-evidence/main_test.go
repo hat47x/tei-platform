@@ -174,6 +174,46 @@ func TestRunWithStopsBeforeNextLaneWhenSourceDrifts(t *testing.T) {
 	}
 }
 
+func TestRunWithStopsBeforeNextLaneWhenPostRunWasNotFullyChecked(t *testing.T) {
+	t.Setenv("TEI_TEST_POSTGRES_DSN", "postgres://evidence-only")
+
+	laneCalls := 0
+	result, err := runWith(
+		false,
+		func() (repositoryevidence.Source, error) {
+			return repositoryevidence.Source{RepositoryRevision: "R", WorkingTreeClean: true}, nil
+		},
+		func(string) (repositoryevidence.PostRun, error) {
+			return repositoryevidence.PostRun{
+				Checked:            false,
+				RepositoryRevision: "R",
+				RevisionStable:     true,
+				WorkingTreeClean:   true,
+			}, nil
+		},
+		func(spec laneSpec, candidate string) (laneEvidence, error) {
+			laneCalls++
+			return passedLane(spec, candidate), nil
+		},
+		fakeGoVersion,
+	)
+	if err == nil {
+		t.Fatal("runWith() error = nil, want unchecked post-run failure")
+	}
+	if laneCalls != 1 {
+		t.Fatalf("lane calls = %d, want 1", laneCalls)
+	}
+	if result.PostRunRepository.Checked {
+		t.Fatal("postRunRepository.checked = true, want false")
+	}
+	if result.AllLanesSameRevision {
+		t.Fatal("allLanesSameRevision = true with unchecked post-run state, want false")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision = true with unchecked post-run state, want false")
+	}
+}
+
 func TestRunWithMarksReproducibleOnlyAfterThreeLanesAndFinalSourceCheck(t *testing.T) {
 	t.Setenv("TEI_TEST_POSTGRES_DSN", "postgres://evidence-only")
 
