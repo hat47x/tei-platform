@@ -677,6 +677,11 @@
           "relation": "sales.order.lines"
         },
         {
+          "id": "order_entry.order_lines",
+          "kind": "header-detail",
+          "relation": "sales.order.lines"
+        },
+        {
           "id": "order_entry.order_record",
           "kind": "record",
           "data": "sales.order"
