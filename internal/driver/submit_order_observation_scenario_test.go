@@ -28,10 +28,6 @@ type syntheticOrderStateReader struct {
 	calls int
 }
 
-func (r *syntheticOrderStateReader) Identity() core.CanonicalID {
-	return "synthetic.order_state.read"
-}
-
 func (r *syntheticOrderStateReader) Read(_ context.Context, orderID string) (string, error) {
 	r.calls++
 	if r.err != nil {
@@ -110,15 +106,26 @@ func TestOrderEntrySubmitScenarioObservesStateThroughSeparateExplicitRead(t *tes
 			t.Fatalf("Command payloadへObserved stateを混入させています: %#v", ack)
 		}
 
-		observed, err := reader.Read(context.Background(), "order-1001")
+		observation, err := driver.ExecuteObservationRead(
+			context.Background(),
+			"synthetic.order_state.read",
+			driver.ObservationEvidenceSynthetic,
+			func(ctx context.Context) (any, error) {
+				return reader.Read(ctx, "order-1001")
+			},
+		)
 		if err != nil {
 			t.Fatalf("明示Observation readに失敗しました: %v", err)
 		}
 		if reader.calls != 1 {
 			t.Fatalf("明示Observation readの呼出回数=%d", reader.calls)
 		}
-		if observed != "submitted" {
-			t.Fatalf("Observed state=%q, want submitted", observed)
+		if observation.ReadIdentity != "synthetic.order_state.read" || observation.Nature != driver.ObservationEvidenceSynthetic {
+			t.Fatalf("Observation Evidence=%#v", observation)
+		}
+		observed, ok := observation.Result.(string)
+		if !ok || observed != "submitted" {
+			t.Fatalf("Observed state=%#v, want submitted", observation.Result)
 		}
 	})
 
@@ -146,9 +153,22 @@ func TestOrderEntrySubmitScenarioObservesStateThroughSeparateExplicitRead(t *tes
 			t.Fatalf("Command Business Result=%#v", result.Command)
 		}
 
-		_, observationErr := reader.Read(context.Background(), "order-1001")
+		observation, observationErr := driver.ExecuteObservationRead(
+			context.Background(),
+			"synthetic.order_state.read",
+			driver.ObservationEvidenceSynthetic,
+			func(ctx context.Context) (any, error) {
+				return reader.Read(ctx, "order-1001")
+			},
+		)
 		if observationErr == nil {
 			t.Fatal("Observation Execution Errorが失われています")
+		}
+		if observation.ReadIdentity != "synthetic.order_state.read" || observation.Nature != driver.ObservationEvidenceSynthetic {
+			t.Fatalf("Observation失敗時のEvidence identityが失われています: %#v", observation)
+		}
+		if observation.Result != nil {
+			t.Fatalf("失敗したObservationに正常resultを保持しています: %#v", observation.Result)
 		}
 		if result.Command.Mode != capabilityinvoke.ResultOutput {
 			t.Fatalf("Observation失敗後にCommand Business Resultを書き換えています: %#v", result.Command)
