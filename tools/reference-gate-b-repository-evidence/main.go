@@ -75,9 +75,7 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 	if err != nil {
 		return result, err
 	}
-	result.RepositoryRevision = source.RepositoryRevision
-	result.WorkingTreeClean = source.WorkingTreeClean
-	result.ReproducibleRevision = source.WorkingTreeClean
+	recordInitialRepositorySource(&result, source)
 	if !result.WorkingTreeClean && !allowDirty {
 		return result, fmt.Errorf("working treeに未commit差分があるためGate B Repository Evidenceを停止します。差分を識別・整理してclean revisionで再実行してください。診断目的だけなら-allow-dirtyを使用できます")
 	}
@@ -155,6 +153,15 @@ func run(workspacePath string, broad, allowDirty bool) (evidence, error) {
 		return result, fmt.Errorf("-allow-dirtyで診断実行しました。testが成功してもclean revisionへ固定できないためGate B完了Evidenceには使用できません")
 	}
 	return result, nil
+}
+
+// recordInitialRepositorySourceは開始時に観測できたsource情報だけをEvidenceへ記録する。
+// working treeがcleanでも、post-runのHEAD同一性とclean状態をまだ確認していないため、
+// ReproducibleRevisionは必ずfalseのままにする。
+func recordInitialRepositorySource(result *evidence, source repositoryevidence.Source) {
+	result.RepositoryRevision = source.RepositoryRevision
+	result.WorkingTreeClean = source.WorkingTreeClean
+	result.ReproducibleRevision = false
 }
 
 func targetedChecks() []commandSpec {
