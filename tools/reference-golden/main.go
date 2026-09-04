@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	deploymentdurable "tei/internal/deployment/durable"
 	"tei/internal/plugin"
 	"tei/internal/validation"
 	"tei/internal/workspace"
@@ -23,15 +24,16 @@ func main() {
 	workspacePath := flag.String("workspace", "reference/workspace", "Reference Workspace directory")
 	worldPath := flag.String("world", "reference/world.json", "Reference World golden path")
 	pluginLockPath := flag.String("plugin-lock", "reference/workspace/.tei/plugin-lock.json", "Reference Plugin Lock golden path")
+	durableRunPath := flag.String("durable-run", "reference/order_rollout.durable-run.m0.21.start.json", "Plugin Lock依存を検査するReference Durable Run path。空文字で検査しない")
 	flag.Parse()
 
-	if err := run(*workspacePath, *worldPath, *pluginLockPath, *write); err != nil {
+	if err := run(*workspacePath, *worldPath, *pluginLockPath, *durableRunPath, *write); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(workspacePath, worldPath, pluginLockPath string, write bool) error {
+func run(workspacePath, worldPath, pluginLockPath, durableRunPath string, write bool) error {
 	loaded, err := workspace.Load(workspacePath)
 	if err != nil {
 		return fmt.Errorf("Reference Workspaceを読み込めません: %w", err)
@@ -68,13 +70,22 @@ func run(workspacePath, worldPath, pluginLockPath string, write bool) error {
 		if err := writeArtifacts(artifacts); err != nil {
 			return err
 		}
+		if err := checkDurableRunPluginLock(durableRunPath, lock); err != nil {
+			return fmt.Errorf(
+				"Reference World / Plugin LockはCanonical Workspaceから更新しましたが、依存artifactが一致しません: %w",
+				err,
+			)
+		}
 		fmt.Println("Reference goldenをCanonical Workspaceから更新しました。git diffで意味上の差分を確認してください。")
 		return nil
 	}
 	if err := checkArtifacts(artifacts); err != nil {
 		return err
 	}
-	fmt.Println("Reference goldenはCanonical Workspaceと一致しています。")
+	if err := checkDurableRunPluginLock(durableRunPath, lock); err != nil {
+		return err
+	}
+	fmt.Println("Reference goldenと依存Durable RunはCanonical Workspaceと一致しています。")
 	return nil
 }
 
@@ -109,6 +120,38 @@ func checkArtifacts(artifacts []artifact) error {
 	return fmt.Errorf(
 		"Reference goldenがCanonical Workspaceと一致しません: %s\n更新する場合は `go run ./tools/reference-golden -write` を実行し、生成差分を確認してください",
 		strings.Join(stale, ", "),
+	)
+}
+
+func checkDurableRunPluginLock(path string, lock plugin.Lock) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("Reference Durable Run %sがありません", path)
+		}
+		return fmt.Errorf("Reference Durable Run %sを読み込めません: %w", path, err)
+	}
+	var run deploymentdurable.Run
+	if err := json.Unmarshal(raw, &run); err != nil {
+		return fmt.Errorf("Reference Durable Run %sをJSONとして読み込めません: %w", path, err)
+	}
+
+	expected, err := plugin.EnvironmentLockFingerprint(lock, run.Environment)
+	if err != nil {
+		return fmt.Errorf("Reference Durable Run %sのEnvironment %sに対応するPlugin Lock fingerprintを生成できません: %w", path, run.Environment, err)
+	}
+	if run.PluginLockFingerprint == expected {
+		return nil
+	}
+	return fmt.Errorf(
+		"Reference Durable Run %sのPlugin Lock fingerprintが古い可能性があります: run=%s current=%s。fingerprintを手編集せず、`tei deployment-start`の正規経路からDurable Runを再生成してください",
+		path,
+		run.PluginLockFingerprint,
+		expected,
 	)
 }
 
