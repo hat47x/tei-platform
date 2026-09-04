@@ -37,6 +37,12 @@ func InspectStart() (Source, error) {
 	return inspectStart(commandOutput)
 }
 
+// InspectStartWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して開始時sourceを観測する。
+// environmentの意味はcaller側が決める。このpackageへProvider固有のsecret名や安全規則は持ち込まない。
+func InspectStartWithEnv(env []string) (Source, error) {
+	return inspectStart(commandOutputWithEnv(env))
+}
+
 func inspectStart(output commandOutputFunc) (Source, error) {
 	var result Source
 
@@ -74,6 +80,12 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 // InspectPostはEvidence実行後のHEADとworking tree状態を取得し、開始revisionとの同一性を記録する。
 func InspectPost(initialRevision string) (PostRun, error) {
 	return inspectPost(initialRevision, commandOutput)
+}
+
+// InspectPostWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して実行後sourceを観測する。
+// source同一性の判定契約はInspectPostと同じで、environment選択だけをcallerへ委ねる。
+func InspectPostWithEnv(initialRevision string, env []string) (PostRun, error) {
+	return inspectPost(initialRevision, commandOutputWithEnv(env))
 }
 
 func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, error) {
@@ -135,4 +147,17 @@ func commandOutput(name string, args ...string) (string, error) {
 		return "", fmt.Errorf("%s: %w: %s", strings.Join(append([]string{name}, args...), " "), err, strings.TrimSpace(string(out)))
 	}
 	return string(out), nil
+}
+
+func commandOutputWithEnv(env []string) commandOutputFunc {
+	environment := append([]string{}, env...)
+	return func(name string, args ...string) (string, error) {
+		cmd := exec.Command(name, args...)
+		cmd.Env = append([]string{}, environment...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("%s: %w: %s", strings.Join(append([]string{name}, args...), " "), err, strings.TrimSpace(string(out)))
+		}
+		return string(out), nil
+	}
 }
