@@ -99,6 +99,23 @@ func runWith(
 		if !passed {
 			failed = true
 		}
+
+		// check-only toolが誤ってsourceやgenerated artifactを書き換えた場合、
+		// 後続checkまで実行して副作用を広げず、その場でfail closedする。
+		postCheck, postCheckErr := inspectPost(source.RepositoryRevision)
+		result.PostRunRepository = postCheck
+		if postCheckErr != nil {
+			return result, postCheckErr
+		}
+		if !postCheck.Checked {
+			return result, fmt.Errorf("%s実行後のrepository source確認が完了していません。後続のgenerated artifact checkを実行しません", spec.Name)
+		}
+		if !postCheck.RevisionStable {
+			return result, fmt.Errorf("%s実行中にrepository HEADが変化しました。後続のgenerated artifact checkを実行せず、固定されたclean revisionで再実行してください", spec.Name)
+		}
+		if !postCheck.WorkingTreeClean {
+			return result, fmt.Errorf("%s実行後にworking tree差分が残りました。check-only toolの副作用を確認し、後続checkは実行せずclean revisionからやり直してください", spec.Name)
+		}
 	}
 
 	postRun, postRunErr := inspectPost(source.RepositoryRevision)
