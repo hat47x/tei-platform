@@ -145,6 +145,12 @@ staleで、差分を現在のauthoringから説明できる場合だけ更新し
 go run ./tools/reference-golden -write
 ```
 
+PR #367以降、World / Plugin Lockの修復writeも既存goldenを先にtruncateしません。同じdirectoryの一時fileへ全内容を書き込み、mode設定、Sync、Closeを完了した後にRenameし、一時fileは成功・失敗のどちらでもcleanupします。
+
+この境界の目的は、生成途中のwrite / sync / close失敗で既存artifactを空または途中内容へ壊さないことです。OS横断のRename atomicityや、World / Plugin Lock / Durable Runの複数artifact全体を一つのtransactionとして扱うことまでは契約にしません。
+
+safe replaceが成功しても、それは修復操作の安全性を示すだけです。`-write`直後のdirty treeを#255完了Evidenceへ格上げせず、修復差分をcommitした新しいclean revisionでcheck-only Evidence runnerを再実行します。
+
 ### `tools/reference-durable-run-golden`
 
 PR #318で、Durable Run全体を`tei deployment-start`と同じinternal API経路からcheck/writeする専用toolを追加しました。
@@ -273,6 +279,8 @@ git diff -- \
   reference/workspace/.tei/plugin-lock.json
 ```
 
+PR #367以降、このwriteも一時fileへの全量write / Sync / Close / Renameによるsafe replaceです。修復途中の失敗で既存goldenを先にtruncateしません。
+
 ### 5. Durable Run full check
 
 ```bash
@@ -349,6 +357,7 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - [x] deterministic Repository Evidenceを`ISSUE-000032` / #310へ分離した
 - [x] 保存済みPlugin Lockと保存済みDurable Runのproduction fingerprint相互一致を静的確認した
 - [x] Durable Run全体を正規internal APIからcheck/writeする専用toolを追加した（PR #318）
+- [x] World / Plugin Lock writeで既存fileを先にtruncateしないsafe replace境界を実装した（PR #367）
 - [x] Durable Run writeで既存fileを先にtruncateしないsafe replace境界を実装した
 - [x] Runbookからshell `mktemp` / direct `deployment-start`の重複手順を外し、専用toolへ一本化した
 - [x] `-write`を修復操作、clean revision上のcheck-onlyを完了Evidenceとして分離した
@@ -376,13 +385,14 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - deterministic Repository Evidence全体を本Issueへ抱え込むこと
 - 一致済み生成物を形式的に書き換えること
 - dirty working treeのcheck成功をGate B完了Evidenceとして採用すること
+- safe replaceの成功だけをGate B完了Evidenceとして採用すること
 - Evidence runnerから修復操作を行うこと
 - CIをこのIssueから独断で再有効化すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #321 / #323 / #326 / #331
+- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #321 / #323 / #326 / #331 / #367 / #369
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`

@@ -10,6 +10,31 @@ Gate Cでは、「DriverとWebが同じCanonical Application上の意味を共�
 
 この契約は新しいCanonical schemaを導入するものではありません。Git revision、既存Canonical ID、Reference、Gate B Evidenceへの参照を束ねる、検証上のhandover契約です。
 
+## 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380の再監査により、Gate Bの必須完了Evidenceは次の三つへ整理しました。
+
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL Provider Evidence
+
+Gate Bのcandidate revisionを`R`とする場合、この三つのsource-dependent Evidenceを同じ`R`へ揃え、各Evidenceが要求する`reproducibleRevision = true`等の条件を満たしたうえで最終監査を行います。
+
+external-observed assetについて、未観測事実を推測しないこと、external EvidenceをCanonicalへ昇格させないこと、明示authoringとEvidenceを照合することはGate Bの意味境界として引き続き必須です。#310にはexternal Evidence intake boundaryのConformanceを含めます。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle Evidenceは削除しませんが、Gate B Readyの必須blockerにはしません。
+
+Handover時の扱いは次の二通りです。
+
+- actual Oracle Evidenceが取得済みなら、追加のverified external asset Evidenceとして参照する
+- 未取得なら、`unresolved`として#214 / #371 / #376と未観測事項を明示する
+
+未取得の場合でも、Web側でOracleのphysical object、column、SQL、driver挙動、read-only方式を推測・補完しません。#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+**Gate Bはこのscope変更だけではReadyになりません。** #310 / #255 / #308の実Evidenceを同一candidate revisionへ揃え、最終監査でReadyと判定する必要があります。第一Web Target / Gate Cはその後に開始します。
+
+以下に残る「4 Evidence lane」を前提とした記述は、`ISSUE-000035`以前の契約と判断経緯を保持するための履歴です。現行Gate Bの必須範囲と矛盾する場合は、本節を優先します。
+
 ## 基本原則
 
 ### 1. baselineは「その時点の正本」への参照であり、第二の正本ではない
@@ -336,3 +361,4 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - `issue/000028-first-web-target-conformance-evidence.md`
 - `issue/000029-gate-b-readiness-audit.md`
 - `issue/000030-gate-b-to-c-handover-baseline.md`
+- `issue/000035-gate-b-external-provider-scope-audit.md`
