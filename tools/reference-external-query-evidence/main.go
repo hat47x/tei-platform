@@ -92,6 +92,17 @@ func run(workspacePath, evidencePath string) (acceptanceReceipt, error) {
 			diagnostic.Message,
 		)
 	}
+	for _, diagnostic := range validation.Validate(loaded.World) {
+		if diagnostic.Severity != validation.Error {
+			continue
+		}
+		return fmt.Errorf(
+			"Workspace %sにValidation Errorがあるためexternal Evidenceを受け入れません: %s: %s",
+			workspacePath,
+			diagnostic.Code,
+			diagnostic.Message,
+		)
+	}
 
 	realizationDef, err := findRealization(loaded.World.ContractQuerySQLRealizations, evidence)
 	if err != nil {
