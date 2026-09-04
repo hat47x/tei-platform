@@ -12,9 +12,11 @@ import (
 )
 
 // Resultは、Oracle固有の実行Evidenceとして、実際にdatabase/sqlへ渡した
-// named parameterの名前だけを保持する。runtime parameter値は保存しない。
+// named parameterの名前と、Databaseから返されたraw result列名だけを保持する。
+// runtime parameter値やraw row値は保存しない。
 type Result struct {
-	ParameterNames []string `json:"parameterNames,omitempty"`
+	ParameterNames   []string `json:"parameterNames,omitempty"`
+	RawResultColumns []string `json:"rawResultColumns,omitempty"`
 }
 
 // Runnerは、既に確定しているnative Oracle SQLとphysical parameterを、
@@ -95,7 +97,10 @@ func (r Runner) ExecuteSQL(
 			Columns: append([]string(nil), columns...),
 			Rows:    rawRows,
 		},
-		Payload: Result{ParameterNames: append([]string(nil), parameterNames...)},
+		Payload: Result{
+			ParameterNames:   append([]string(nil), parameterNames...),
+			RawResultColumns: append([]string(nil), columns...),
+		},
 	}, nil
 }
 
