@@ -48,6 +48,11 @@ type evidence struct {
 	Lanes                []laneEvidence             `json:"lanes"`
 }
 
+type inspectStartFunc func() (repositoryevidence.Source, error)
+type inspectPostFunc func(string) (repositoryevidence.PostRun, error)
+type laneRunnerFunc func(laneSpec, string) (laneEvidence, error)
+type commandOutputFunc func(string, ...string) (string, error)
+
 func main() {
 	broad := flag.Bool("broad", false, "#310 deterministic Repository Evidenceでgo test ./...も実行する")
 	flag.Parse()
@@ -66,13 +71,29 @@ func main() {
 }
 
 func run(broad bool) (evidence, error) {
+	return runWith(
+		broad,
+		repositoryevidence.InspectStart,
+		repositoryevidence.InspectPost,
+		runLane,
+		commandOutput,
+	)
+}
+
+func runWith(
+	broad bool,
+	inspectStart inspectStartFunc,
+	inspectPost inspectPostFunc,
+	laneRunner laneRunnerFunc,
+	output commandOutputFunc,
+) (evidence, error) {
 	result := evidence{
 		EvidenceNature: evidenceNature,
 		BroadRequested: broad,
 		Lanes:          []laneEvidence{},
 	}
 
-	source, err := repositoryevidence.InspectStart()
+	source, err := inspectStart()
 	if err != nil {
 		return result, err
 	}
@@ -86,17 +107,17 @@ func run(broad bool) (evidence, error) {
 		return result, fmt.Errorf("TEI_TEST_POSTGRES_DSNが未設定です。#308はEvidence専用の空PostgreSQL Databaseで実行する必要があります")
 	}
 
-	goVersion, err := commandOutput("go", "version")
+	goVersion, err := output("go", "version")
 	if err != nil {
 		return result, fmt.Errorf("Go toolchainを確認できません: %w", err)
 	}
 	result.GoVersion = strings.TrimSpace(goVersion)
 
 	for _, spec := range laneSpecs(broad) {
-		lane, laneErr := runLane(spec, source.RepositoryRevision)
+		lane, laneErr := laneRunner(spec, source.RepositoryRevision)
 		result.Lanes = append(result.Lanes, lane)
 
-		postLane, inspectErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+		postLane, inspectErr := inspectPost(source.RepositoryRevision)
 		result.PostRunRepository = postLane
 		if inspectErr != nil {
 			return result, inspectErr
@@ -114,7 +135,7 @@ func run(broad bool) (evidence, error) {
 		return result, fmt.Errorf("Gate Bの3 laneが同じcandidate revisionへ揃っていません")
 	}
 
-	postRun, postRunErr := repositoryevidence.InspectPost(source.RepositoryRevision)
+	postRun, postRunErr := inspectPost(source.RepositoryRevision)
 	result.PostRunRepository = postRun
 	result.ReproducibleRevision = repositoryevidence.IsReproducible(source, postRun) && result.AllLanesSameRevision
 	if postRunErr != nil {
