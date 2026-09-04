@@ -9,9 +9,9 @@
 
 ## 目的
 
-Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic Evidenceを、cleanなrepository revision上で一つの正規入口から実行し、現在の`main`に成立しているApplication Driver / external Evidence intake境界を再現可能なEvidenceとして確認します。
+Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic Evidenceを、cleanかつ実行中に不変なrepository revision上で一つの正規入口から実行し、現在の`main`に成立しているApplication Driver / external Evidence intake境界を再現可能なEvidenceとして確認します。
 
-このIssueはCIサービスのgreenを要求するためのものではありません。特定CIサービスとは独立した**normal Go runner Evidence**を取得し、後から同じsource revisionへ戻れることを重視します。
+このIssueはCIサービスのgreenを要求するためのものではありません。特定CIサービスとは独立した**normal Go runner Evidence**を取得し、後から実際に実行した同じsource revisionへ戻れることを重視します。
 
 ## Evidenceの性質
 
@@ -23,6 +23,7 @@ Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic
 - 最終UI-less Scenario
 - external Evidence intake / fail-closed境界
 - 必要に応じた広いRepository test
+- Evidence実行前後のrepository source identity / cleanliness
 
 成功しても次の代替にはしません。
 
@@ -46,13 +47,15 @@ go run ./tools/reference-gate-b-repository-evidence
 
 このrunnerは一つのrunで次を扱います。
 
-1. repository revision取得
-2. clean working tree確認
+1. 実行前repository revision取得
+2. 実行前working tree clean確認
 3. Go toolchain identity取得
 4. Canonical Workspace Validation
 5. 最終UI-less Scenario test
 6. external Evidence intake test
-7. 小さい非Canonical JSON Evidence出力
+7. 必要に応じたbroad test
+8. 実行後HEAD / working treeの再確認
+9. 小さい非Canonical JSON Evidence出力
 
 広いtestは明示指定時だけ追加します。
 
@@ -60,13 +63,20 @@ go run ./tools/reference-gate-b-repository-evidence
 go run ./tools/reference-gate-b-repository-evidence -broad
 ```
 
-## clean revision境界
+## cleanかつ固定されたrevision境界
 
-Gate B完了Evidenceは、後から同じsourceへ戻れる必要があります。
+Gate B完了Evidenceは、後から**実際に実行した同じsource**へ戻れる必要があります。
 
-そのためrunnerは既定で`git status --porcelain`が空であることを要求し、dirty working treeではtargeted test前にfail closedします。
+そのためrunnerは既定で実行前の`git status --porcelain`が空であることを要求し、dirty working treeではtargeted test前にfail closedします。
 
-診断用の`-allow-dirty`はGate B完了Evidenceには使用しません。`reproducibleRevision=false`として非0終了するためです。
+さらにtargeted / broad test後にも、次を再確認します。
+
+- `git rev-parse HEAD`が実行前revisionと同一であること
+- `git status --porcelain`が空であること
+
+実行中にHEADが変化した場合や、test / 並行操作によってtracked・untracked差分が残った場合は、testが成功していても単一revisionのGate B完了Evidenceとして採用しません。
+
+診断用の`-allow-dirty`もGate B完了Evidenceには使用しません。`reproducibleRevision=false`として非0終了するためです。
 
 Evidence JSONを保存する場合も、Repository内へ直接redirectして先にdirty状態を作らないよう、まずworking tree外へ保存します。
 
@@ -114,12 +124,18 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 通常Evidenceには少なくとも次を残します。
 
 - `evidenceNature = deterministic-repository`
-- repository revision
-- working tree clean / reproducible revision
+- 実行前repository revision
+- 実行前working tree clean
+- `reproducibleRevision`
+- 実行後repository revision
+- 実行前後のrevision同一性
+- 実行後working tree clean
 - Go version
 - Workspace Validation結果
 - targeted checkごとのcommandとpass / fail
 - broad testを要求したか
+
+`reproducibleRevision = true`になるのは、実行前後で同じHEADを保持し、両時点のworking treeがcleanである場合だけです。
 
 次は保存しません。
 
@@ -131,15 +147,17 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 ## 完了条件
 
 - [x] 専用runnerを`main`へ用意した（PR #315）
-- [x] clean revisionを既定のfail-closed条件にした
+- [x] 実行前clean revisionを既定のfail-closed条件にした
 - [x] Workspace Validationをtargeted testより先に実行する
 - [x] 最終Scenarioとexternal Evidence intakeを別checkとして保持する
 - [x] broad testを明示オプションへ分離した
 - [x] Evidence JSONへsecret / test stdoutを取り込まない境界を定めた
+- [ ] runner実装で実行後HEAD不変・working tree cleanをfail-closed確認する
 - [ ] cleanな対象revisionでrunnerを実行する
 - [ ] Canonical Workspace Validation成功Evidenceを取得する
 - [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
 - [ ] external Evidence intake testを通常Go runnerで成功させる
+- [ ] 実行前後の同一revision / clean状態をJSON Evidenceで再確認する
 - [ ] repository revisionを含むJSON Evidenceを保存・再確認する
 - [ ] 可能なら`-broad`を実行し結果を記録する
 - [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
@@ -153,6 +171,7 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 - generated Reference artifactの手編集
 - synthetic Scenarioをactual external Evidenceへ格上げすること
 - dirty working treeの成功をGate B完了Evidenceとして採用すること
+- 実行中にsource identityが変化したrunを元revisionのEvidenceとして採用すること
 
 ## 関連
 
