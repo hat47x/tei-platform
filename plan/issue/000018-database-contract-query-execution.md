@@ -1,7 +1,7 @@
 # ISSUE-000018: Database Contract Queryのinput・result・実行境界を明示する
 
-- 状態: In Progress
-- GitHub Issue: #179
+- 状態: Done
+- GitHub Issue: #179（Completed）
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 前提Issue: `ISSUE-000017` / GitHub Issue #178
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
@@ -275,6 +275,8 @@ Database Contract Query signatureのDiagnosticは、`database-contract-query:<co
 
 仕組みとして未実装だった主要境界は、Evidence用convergence上ではほぼ埋まりました。現在残っている本質的なGapは、第一Referenceの**観測されていない物理事実を確定すること**です。
 
+これらは本Issueの実装境界を再び`In Progress`へ戻すものではなく、#214のactual external Oracle Evidence、#310の通常Go runner Evidence、#273のGate B総合判定として追跡します。
+
 ### 1. `master_data.customer/find_by_id`の物理Evidence
 
 Repositoryには現在、実際のtable / view / column、native SQL、physical parameter名、raw result列、provenanceがありません。
@@ -319,21 +321,22 @@ Workspace authoring
 
 このE2EがGate Bの主要Evidenceになります。
 
-### 5. CI
+### 5. CI / normal runner
 
 2026年9月3日現在、`.github/workflows/ci.yml`はRepositoryから明示的に削除され、`work/reference-data-access-convergence`にもその停止が取り込まれています。そのため、現在のPRでworkflow runが作成されないことは、Issue #192で記録した`runner_id=0 / steps=[]`事象の継続を直接意味しません。
 
-CI未実行の成果をgreenとは扱いません。一方、このContract Query作業線から独断でActionsを再有効化することもしません。CIが別の明示的な判断で再開された後、これまでのConformanceを通常runnerで一括実行し、Issue #192のrunner割当事象が再現するかも改めて切り分けます。
+CI未実行の成果をgreenとは扱いません。一方、このContract Query作業線から独断でActionsを再有効化することもしません。通常Go runnerによるdeterministic Repository EvidenceはGitHub Issue #310、GitHub Actions再開後のregression確認はCI管理側、Gate B全体の判定はGitHub Issue #273で扱います。これらを本Issueをopenのまま保持する条件にはしません。
 
-## 次の実証順
+## 後続Evidenceの実証順
 
-1. `ISSUE-000022`で第一Referenceの物理object、SQL、parameter、raw列、provenanceを確定する
+1. `ISSUE-000022` / #214で第一Referenceの物理object、SQL、parameter、raw列、provenanceを確定する
 2. read-onlyを実効的に強制する境界をEvidenceで確認する
 3. 採用するOracle driverをintegration境界で接続し、named parameter等の互換性を確認する
 4. 第一Referenceの実SQL realization authoringを追加する
 5. instance-aware Registryへ`development / master_data.dev / database.query.oracle`の実Executorを登録する
 6. Workspace読込みからSemantic resultまでの最終E2Eを通す
-7. CIが明示的に再有効化された後、通常runnerで全Conformanceを再実行する
+7. #310でdeterministic Repository Evidenceを通常Go runnerから再現する
+8. #273でGate B全体を再判定する
 
 物理Evidenceが揃う前にOracle SQLを仮定して手順4以降を先取りしません。
 
@@ -365,11 +368,15 @@ CI未実行の成果をgreenとは扱いません。一方、このContract Quer
 - [x] Database Contract Query DiagnosticをQuery authoring位置へ投影できる
 - [x] provider非依存SQL Executorからraw result → Semantic resultを実行できる
 - [x] Oracle向け`database/sql` Runner境界を持つ
-- [ ] 第一Referenceの実物理object / SQL / parameter / raw列のEvidenceがある
-- [ ] `master_data`をread-onlyのまま実際のread実行へ接続できる
-- [ ] 採用Oracle driverとのnamed parameter等の互換性を実接続で確認できる
-- [ ] 第一ReferenceをWorkspace読込みから実Oracle read、Semantic resultまで一続きに通せる
-- [ ] CIが明示的に再有効化された後、通常runnerで関連Conformanceが成功する
+
+## 後続Evidence（本Issueの完了条件外）
+
+- [ ] #214で第一Referenceの実物理object / SQL / parameter / raw列のEvidenceを得る
+- [ ] #214で`master_data`をread-onlyのまま実際のread実行へ接続する
+- [ ] #214で採用Oracle driverとのnamed parameter等の互換性を実接続で確認する
+- [ ] #214で第一ReferenceをWorkspace読込みから実Oracle read、Semantic resultまで一続きに通す
+- [ ] #310で関連Conformanceを通常Go runnerから再現する
+- [ ] #273で取得EvidenceをGate B総合判定へ対応付ける
 
 ## 非目標
 
@@ -384,13 +391,14 @@ CI未実行の成果をgreenとは扱いません。一方、このContract Quer
 
 ## 関連
 
-- GitHub Issue #69 / #178 / #179 / #185 / #192 / #214 / #222 / #224
-- PR #193 / #195 / #197 / #201 / #205 / #206 / #207 / #208 / #216 / #217 / #218 / #219 / #220 / #221 / #223 / #225
+- GitHub Issue #69 / #178 / #179 / #185 / #192 / #214 / #222 / #224 / #273 / #310
+- PR #193 / #195 / #197 / #201 / #205 / #206 / #207 / #208 / #216 / #217 / #218 / #219 / #220 / #221 / #223 / #225 / #285
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000017-semantic-relation-traversal-key.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000020-contract-query-runtime-instance-identity.md`
 - `plan/issue/000021-oracle-contract-query-sql-runner.md`
+- `plan/issue/000029-gate-b-readiness-audit.md`
 - `reference/workspace/databases/master-data/database.tei`
 - `reference/workspace/databases/master-data/contracts/customer.tei`
 - `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
