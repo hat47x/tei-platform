@@ -28,9 +28,13 @@ Application Driverの主要意味境界、最終UI-less Scenario構造、externa
 2026-09-04時点のGate B残件は、次の四laneです。
 
 1. `ISSUE-000022` / #214 — external-observed `master_data`のactual Oracle物理 / provenance / read-only Evidence
+   - `ISSUE-000033` / #371 — Lane A内のactual Oracle driver / Host assembly
+   - `ISSUE-000034` / #376 — Lane A内のactual Oracle read-only Evidence
 2. `ISSUE-000031` / #308 — header-detailのreal PostgreSQL engine + ephemeral fixture Evidence
 3. `ISSUE-000025` / #255 — Reference World / Plugin Lock / Durable Runのgenerated artifact reproducibility Evidence
 4. `ISSUE-000032` / #310 — 最終UI-less ScenarioとEvidence受入境界のdeterministic Repository / normal Go runner Evidence
+
+#371 / #376は#214の完了条件を具体化する子Issueであり、Gate Bの第五・第六Evidence laneではありません。
 
 GitHub Actionsの再開・継続実行は重要ですが、上記Evidenceそのものとは分けます。Actions停止をSemantic design gapとは扱わず、未実行をgreenとも扱いません。
 
@@ -58,7 +62,7 @@ Gate Bの最終Ready判定では、一つのcleanなcandidate repository revisio
 少なくとも次を要求します。
 
 - #214 acceptance receiptの`repositoryRevision = R`かつ`reproducibleRevision = true`
-- #214 actual Oracle readがRのruntime / realizationに対して行われている
+- #214 actual Oracle readがRのruntime / realization / driver assemblyに対して行われ、#376のread-only Evidenceへ戻れる
 - #308 Provider Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
 - #255 generated artifact Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
 - #310 deterministic Repository Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
@@ -74,6 +78,13 @@ Rと異なるrevisionでしか成功していないlaneは、「意味は変わ�
 
 関連: `ISSUE-000022` / GitHub Issue #214
 
+Lane A内部の具体作業:
+
+- `ISSUE-000033` / #371 — actual Oracle driver / Host assembly
+- `ISSUE-000034` / #376 — actual Oracle read-only Evidence
+
+これらはEvidence Aの内部分解であり、独立したGate B Evidence laneではありません。
+
 ### 性質
 
 これは**actual external asset Evidence**です。
@@ -81,6 +92,8 @@ Rと異なるrevisionでしか成功していないlaneは、「意味は変わ�
 PR #288 / #300 / #306でEvidence intake boundaryとCanonical Workspace Validation fail-closedが成立しました。PR #340で、その受入れをclean Repository revisionへ固定し、**どのexternal Evidence artifactを照合したか**を機械可読なacceptance receiptへ残す境界も成立しています。
 
 PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。これは外部物理事実を取得済みという意味ではなく、actual readで観測した情報をSemantic mapping後に失わないためのruntime境界です。
+
+PR #372で具体driver / Host assemblyを#371へ、PR #378でread-only Evidenceを#376へ分離しました。actual Oracleの実環境条件はまだ未観測であり、両子Issueとも完了していません。
 
 一方、第一Referenceで利用する実Oracle物理事実そのものはまだ未取得です。
 
@@ -99,17 +112,29 @@ TEI側で名前を推測せず、利用対象から少なくとも次を観測�
 - 匿名化・縮約等を行った場合の加工内容
 - read-onlyを実効的に保証する境界とそのEvidence参照
 
-### read-only Evidence
+### read-only Evidence — `ISSUE-000034` / #376
 
-次のような、実際にwriteを防ぐ境界を確認します。
+`ownership = external-observed`という宣言、SQLが`SELECT`に見えること、TEI Runnerが`QueryContext`を使うことのいずれか一つだけをread-only Evidenceにはしません。
 
-- read-only principal / credential / database role
-- Database permission
-- read-only session / transaction
-- write操作を公開しないadapter / API
-- 外部側で強制される同等の制御
+第一Referenceでは、実Oracle version / grant構成に応じて少なくとも次を分離して確認します。
 
-`ownership = external-observed`という宣言や、SQLが`SELECT`に見えることだけをread-only Evidenceにはしません。
+- 専用のleast-privilege principal / roleと対象objectへのquery privilege
+- system / object privilege、role、必要に応じてPUBLIC等を再確認できるgrant Evidence
+- 採用する場合のread-only session / transaction境界
+- write操作をReference read pathへ露出させないquery-only runtime境界
+- actual Queryが上記境界の中で成功したこと
+
+principal / grant Evidenceを主たる根拠とし、transactionやquery-only runtimeを追加防御として扱います。一層だけをread-only保証全体へ格上げしません。
+
+read-only確認のためだけに、実外部assetへ`INSERT` / `UPDATE` / `DELETE` / `MERGE` / DDL、`SELECT ... FOR UPDATE`、exclusive `LOCK TABLE`等を試行して失敗確認する方法は採りません。権限設定が想定より広かった場合に、実データやavailabilityへ影響し得るためです。
+
+Evidenceにはmechanism名だけでなく、その事実を再確認できるEvidence参照を要求します。credential / passwordは保存しません。
+
+### actual Oracle driver / Host assembly — `ISSUE-000033` / #371
+
+具体driverの選択・登録、DSN / credential、TLS / TCPS、Wallet、connection設定はHost / Reference assembly側の責務として確定します。Canonical modelやOracle Provider Coreへ具体driverを固定しません。
+
+実Oracle version / authentication / encryption / datatype / NULL / Host制約を確認してから採用driverを決定します。driver dependencyやGo toolchain変更を未観測条件から先行決定しません。
 
 ### Evidence intakeとの関係
 
@@ -161,6 +186,8 @@ PR #364 / #366以降、actual Oracle read時には次の非secret情報をOracle
 - 実Oracle物理情報が観測sourceへ追跡できる
 - 受入れたEvidence artifactをexact-bytes fingerprintで特定できる
 - acceptance receiptを同じclean Repository revisionへ固定できる
+- #371で実Oracle条件に適合するdriver / Host assemblyを確定できる
+- #376でgrant / transaction / query-only runtimeを組み合わせたread-only Evidenceへ戻れる
 - actual readで返ったraw result列名と、driverが提供できたmetadataを観測できる
 - driverが提供していない型 / NULL metadataを推測していない
 - 1件取得をSemantic Customerまで明示mappingできる
@@ -488,6 +515,8 @@ Gate BがRについてReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.
 - external物理情報を推測すること
 - synthetic / generated / fixture Evidenceをactual external asset Evidenceとして扱うこと
 - acceptance receiptをactual Oracle read Evidenceとして扱うこと
+- #371 / #376を独立したGate B Evidence laneとして数えること
+- read-only確認のため実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lockを試行すること
 - driverが提供していないOracle raw列metadataをfalse / 0 / 慣習的型から推測すること
 - 実Oracle観測前にexternal Evidenceの`PhysicalType`とdriverの`DatabaseTypeName`の文字列一致規則を固定すること
 - 生成物やfingerprintを手編集して一致させること
@@ -508,5 +537,7 @@ Gate BがRについてReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.
 - `issue/000025-reference-generated-artifacts-refresh.md`
 - `issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
-- GitHub #214 / #244 / #255 / #273 / #291 / #308 / #310
-- PR #331 / #335 / #336 / #340 / #341 / #346 / #351 / #354 / #355 / #356 / #364 / #365 / #366 / #367 / #369 / #370 / #373
+- `issue/000033-gate-b-oracle-driver-integration.md`
+- `issue/000034-gate-b-oracle-read-only-evidence.md`
+- GitHub #214 / #244 / #255 / #273 / #291 / #308 / #310 / #371 / #376
+- PR #331 / #335 / #336 / #340 / #341 / #346 / #351 / #354 / #355 / #356 / #364 / #365 / #366 / #367 / #369 / #370 / #372 / #373 / #374 / #378
