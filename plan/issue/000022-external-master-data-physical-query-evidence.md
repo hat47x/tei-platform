@@ -26,11 +26,11 @@ RepositoryにはDatabase Contract、Reference invocation、Environment / executo
 
 ## 現在の判定
 
-**物理Evidenceを受け入れるための非Canonical境界は実装段階へ進みましたが、第一Referenceの実物理Evidence自体は未取得です。**
+**物理Evidenceを受け入れるための非Canonical境界と、その受入れをclean Repository revisionへ固定するreceipt境界は成立していますが、第一Referenceの実物理Evidence自体は未取得です。**
 
 したがって#214は引き続きGate Bのexternal Evidence blockerです。
 
-今回追加する受入境界は、外部EvidenceをCanonical Worldへ取り込むものではありません。観測事実を受け取った後、別途明示authoringされた`ContractQuerySQLRealization`と矛盾していないことを確認するためのEvidence検査です。
+受入境界は、外部EvidenceをCanonical Worldへ取り込むものではありません。観測事実を受け取った後、別途明示authoringされた`ContractQuerySQLRealization`と矛盾していないことを確認し、**どのEvidence artifactを、どのTEI source revisionで照合したか**を非Canonicalなacceptance receiptへ残します。
 
 ```text
 external physical evidence
@@ -43,10 +43,14 @@ non-canonical Evidence intake
           ↓ compare only
 explicit ContractQuerySQLRealization
           ↓
+source-fixed acceptance receipt
+          ↓
 Workspace / Driver runtime
+          ↓
+actual Oracle read Evidence
 ```
 
-EvidenceからSQL realizationを生成・補完する逆向き経路は設けません。
+EvidenceからSQL realizationを生成・補完する逆向き経路は設けません。acceptance receiptもactual Oracle readの代替にはしません。
 
 ## 既に成立している実行境界
 
@@ -137,10 +141,78 @@ go run ./tools/reference-external-query-evidence \
 
 対応するtarget + providerのSQL realizationがWorkspaceに存在しない場合は停止します。Evidenceからrealizationを作ることはありません。
 
+## source-fixed acceptance receipt
+
+PR #340で、`tools/reference-external-query-evidence`の成功を人向け文字列だけで終わらせず、**どのexternal Evidence artifactを、どのclean Repository revisionで照合したか**を機械可読なreceiptとして残す境界を追加しました。
+
+Gate Bへ採用する受入れは、Evidence JSONを読む前に次を確認します。
+
+1. `git rev-parse HEAD`でRepository revisionを取得する
+2. `git status --porcelain`でworking treeがcleanであることを確認する
+3. dirtyならEvidenceを読む前に停止する
+
+Evidence / Workspace / SQL realizationの照合後にもRepository状態を再確認し、次の場合は成功receiptを出しません。
+
+- 実行中にHEADが変化した
+- 実行後にtracked / untracked差分が残った
+
+Repository状態の観測には`tools/internal/repositoryevidence`を利用し、#310 / #255 / #308と同じclean revision規則へ揃えます。
+
+成功receiptは概ね次の非機密metadataだけを保持します。
+
+```json
+{
+  "evidenceNature": "external-query-evidence-acceptance",
+  "repositoryRevision": "<git commit>",
+  "workingTreeClean": true,
+  "reproducibleRevision": true,
+  "postRunRepository": {
+    "checked": true,
+    "repositoryRevision": "<same git commit>",
+    "revisionStable": true,
+    "workingTreeClean": true
+  },
+  "evidenceArtifactFingerprint": "sha256:<hex>",
+  "target": "<Database / Contract / Query identity>",
+  "provider": "oracle",
+  "accepted": true
+}
+```
+
+receiptへexternal Evidence本文を複製しません。少なくとも次はreceiptへ出しません。
+
+- physical object identity
+- physical parameter / raw result column
+- physical type / NULL情報
+- provenance本文
+- read-only mechanism本文
+- Evidence file path
+- credential / secret
+
+### Evidence artifact fingerprint
+
+`evidenceArtifactFingerprint`は、toolが実際に読み込んでstrict parseした**Evidence JSON fileのexact bytes**に対するSHA-256です。
+
+```text
+sha256:<hex>
+```
+
+空白や改行だけが変わっても別artifactとして別fingerprintになります。これは、意味的に近い別fileではなく、実際に受入検査したartifactそのものを識別するためです。
+
+このfingerprintと`nativeSource.fingerprint`は役割が異なります。
+
+- `evidenceArtifactFingerprint`: どのEvidence JSON artifactを受入検査したか
+- `nativeSource.fingerprint`: Evidenceが観測したnative sourceが現在authoring済み実行SQL本文と一致するか
+
+相互代替しません。独立したprovenanceも引き続き`nativeSource.evidenceRef` / `provenance.sourceRef`で追跡します。
+
+receiptが成功しても、それは**external Evidence artifactと明示authoringの受入照合が成立したこと**だけを示します。Oracleへactual readしたこと、read-only principalが実際に効いたこと、Semantic Customerを実取得したことは別Evidenceです。
+
 ## Evidence受入時に検査すること
 
 現時点の受入境界では、少なくとも次を機械的に確認します。
 
+- 実行開始時のRepositoryがclean revisionである
 - target identityがSQL realizationと完全一致する
 - providerが既知かつ`generic`ではない
 - providerがSQL realizationと一致する
@@ -153,6 +225,8 @@ go run ./tools/reference-external-query-evidence \
 - physical factsのprovenanceがある
 - Evidence加工方法がある
 - read-only強制mechanismと、その根拠へのEvidence参照がある
+- 実行後も同じHEADかつclean working treeである
+- 受入れたEvidence exact bytesのfingerprintをreceiptへ残せる
 
 これらの検査は「Evidenceの記載内容が真実である」ことを自動証明するものではありません。外部資料・DB権限・接続設定等の実根拠は別途観測する必要があります。
 
@@ -165,6 +239,9 @@ go run ./tools/reference-external-query-evidence \
 - `SELECT`文字列だけをread-only保証とみなさない
 - physical typeをCanonical Semantic型へ自動変換しない
 - Evidence fixtureを業務意味の第二SSoTにしない
+- acceptance receiptをactual Oracle read Evidenceとして扱わない
+- Evidence本文をacceptance receiptへ複製しない
+- dirty / source変化中のrunをGate B受入Evidenceとして採用しない
 
 ## まだ必要な実物理Evidence
 
@@ -241,13 +318,15 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 1. 実物理object / parameter / raw列 / native source / provenance / read-only根拠を観測する
 2. Evidence JSONを作成する
 3. 観測事実を根拠に第一Referenceの`ContractQuerySQLRealization` authoringとnative SQL sourceを追加する
-4. `reference-external-query-evidence`でEvidenceとWorkspace realizationを照合する
-5. read-onlyを強制した接続境界を用意する
-6. 採用Oracle driverでnamed parameter / raw result / NULL / error伝播を確認する
-7. `development / master_data.dev / database.query.oracle`のruntime Executorから実readする
-8. Workspace → 実read → Semantic resultを一続きに確認する
-9. Gate B監査へexternal Evidenceとして反映する
-10. CIが別判断で再有効化された後、通常runnerでも再現する
+4. clean revisionで`reference-external-query-evidence`を実行し、EvidenceとWorkspace realizationを照合してacceptance receiptを取得する
+5. receiptの`evidenceArtifactFingerprint` / repository revision / `reproducibleRevision = true`を確認する
+6. read-onlyを強制した接続境界を用意する
+7. 採用Oracle driverでnamed parameter / raw result / NULL / error伝播を確認する
+8. `development / master_data.dev / database.query.oracle`のruntime Executorから実readする
+9. Workspace → 実read → Semantic resultを一続きに確認する
+10. Gate B監査へexternal Evidenceとして反映する
+
+GitHub Actionsは現行Repositoryでは意図的に使用していません。将来再導入する場合も、CIのgreenをactual external Evidenceの代替にはしません。
 
 ## 完了条件
 
@@ -263,6 +342,10 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 - [x] physical facts provenanceの欠如を拒否できる
 - [x] read-only mechanism / Evidence参照の欠如を拒否できる
 - [x] SQL realizationがない場合にEvidenceから補完せず停止できる
+- [x] dirty working treeではEvidence本文を読む前に受入れを停止できる（PR #340）
+- [x] Evidence受入れ後にHEAD / working treeを再確認できる（PR #340）
+- [x] Evidence JSON exact bytesのSHA-256を受入receiptへ残せる（PR #340）
+- [x] receiptへexternal Evidence本文を複製せず、target / provider / source revision等の非機密metadataだけを残せる（PR #340）
 
 ### 第一Referenceの実Evidence
 
@@ -272,6 +355,7 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 - [ ] raw result列から必要なSemantic attributeへの対応が明示されている
 - [ ] 実native SQL / API / adapter等のrealization sourceを追跡できる
 - [ ] 物理情報のsource / provenanceを追跡できる
+- [ ] clean revisionでacceptance receiptを実取得し、受入れたEvidence artifactをfingerprintで特定できる
 - [ ] `master_data`を実効的にread-onlyのまま実行できる
 - [ ] 採用Oracle driverとのintegration Evidenceがある
 - [ ] 第一ReferenceのWorkspace → 実read → Semantic resultを一続きに確認できる
@@ -294,10 +378,13 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 - Oracle固有の高度なHA / Connection PoolをこのIssueだけで完成させること
 - synthetic Conformance SQLを第一Referenceの実SQLとして採用すること
 - read-only安全性をSQL文字列解析だけで判定すること
+- acceptance receiptをactual Oracle read Evidenceとして扱うこと
+- Evidence本文やcredential / secretをacceptance receiptへ複製すること
 
 ## 関連
 
 - GitHub Issue #179 / #185 / #214 / #222 / #224
+- PR #288 / #300 / #306 / #340
 - `plan/issue/000018-database-contract-query-execution.md`
 - `plan/issue/000020-contract-query-runtime-instance-identity.md`
 - `plan/issue/000021-oracle-contract-query-sql-runner.md`
