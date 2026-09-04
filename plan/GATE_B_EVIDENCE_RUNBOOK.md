@@ -28,6 +28,7 @@ Repository checkoutとGo toolchainだけで再現できるApplication Driver / E
 - Workspace Validation
 - UI-less synthetic Scenario
 - external Evidence intake tests
+- Repository source固定境界のpure Conformance
 - 実行前後のsource revision不変性
 
 正規入口は`tools/reference-gate-b-repository-evidence`です。
@@ -131,12 +132,13 @@ runnerは次を一つのEvidenceへ束ねます。
 4. Canonical Workspace Validation
 5. 最終UI-less Scenario
 6. external Evidence intake boundary tests
-7. 実行後repository revision
-8. 実行前後のHEAD同一性
-9. 実行後working tree clean
-10. `reproducibleRevision`
+7. Repository source固定境界のpure Conformance
+8. 実行後repository revision
+9. 実行前後のHEAD同一性
+10. 実行後working tree clean
+11. `reproducibleRevision`
 
-PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。
+PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。PR #346以降は、その共有helper自体のpure Conformanceもtargeted Evidenceとして独立実行します。
 
 `reproducibleRevision = true`になるには、実行前後でHEADが同一で、両時点のworking treeがcleanである必要があります。test自体が成功していても、並行操作やtest実行でsource状態が変わったrunはGate B完了Evidenceとして採用しません。
 
@@ -192,6 +194,27 @@ go test ./internal/database/externalqueryevidence \
 
 ここでのtest成功は#214 actual external asset Evidenceではありません。
 
+### Repository source固定境界
+
+PR #346以降、runnerは共有source観測helperのpure Conformanceを3本目のtargeted Evidenceとして実行します。
+
+```bash
+go test ./tools/internal/repositoryevidence \
+  -count=1
+```
+
+確認対象:
+
+- 開始revisionが空でない
+- 開始時working treeがclean
+- post-run状態が確認済み
+- post-run revision文字列が開始revisionと同一
+- `revisionStable = true`
+- 終了時working treeがclean
+- どれか一つでも欠ける状態を再現可能と判定しない
+
+runner自身のpackageはこのtargeted `go test`へ含めません。将来runner側のtestが`run()`を呼ぶようになった場合にも自己再帰の経路を作らず、共有helperのpure契約だけを検証します。
+
 ### 広いGo test
 
 横断回帰も同じrunで確認できる環境では`-broad`を指定します。
@@ -201,7 +224,7 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
   > /tmp/tei-gate-b-repository-evidence.json
 ```
 
-これはtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
+これは3本のtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
 
 ## 3. #255 generated artifactのcheck-only Evidenceを取得する
 
@@ -624,7 +647,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 | Evidence lane | 判定対象 |
 | --- | --- |
-| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / normal Go runner / source revision不変性 |
+| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / Repository source固定Conformance / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
 | #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性 / Provider runtime / cleanup後復元 |
 | #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / read-only / Oracle actual read |
@@ -639,6 +662,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 - Workspace Validation Error
 - #310完了Evidenceをdirty working treeから採用しようとしている
+- #310の`repository-evidence-source-boundary` targeted checkが失敗する
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
 - #255 `reference-generated-artifact-evidence`でgolden不一致がある
