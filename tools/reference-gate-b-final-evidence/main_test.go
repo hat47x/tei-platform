@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/tools/internal/repositoryevidence"
@@ -85,6 +86,35 @@ func TestDecodeLaneArtifactFingerprintsOnlyValidEvidenceJSON(t *testing.T) {
 	}
 	if invalidLane.EvidenceArtifactFingerprint != "" {
 		t.Fatalf("非JSON stdoutにEvidence artifact fingerprintを付与しています: %q", invalidLane.EvidenceArtifactFingerprint)
+	}
+}
+
+func TestEnvironmentForLaneExposesPostgresDSNOnlyToPostgresLane(t *testing.T) {
+	base := []string{
+		"PATH=/usr/bin",
+		"TEI_TEST_POSTGRES_DSN=postgres://user:secret@example.invalid/evidence",
+		"OTHER=value",
+	}
+
+	for _, spec := range laneSpecs(false)[:2] {
+		got := environmentForLane(spec, base)
+		for _, entry := range got {
+			if strings.HasPrefix(strings.ToUpper(entry), postgresDSNEnv+"=") {
+				t.Fatalf("%sへPostgreSQL DSNを渡しています: %q", spec.Name, entry)
+			}
+		}
+		if !reflect.DeepEqual(got, []string{"PATH=/usr/bin", "OTHER=value"}) {
+			t.Fatalf("%s environment=%#v", spec.Name, got)
+		}
+	}
+
+	postgres := laneSpecs(false)[2]
+	if got := environmentForLane(postgres, base); !reflect.DeepEqual(got, base) {
+		t.Fatalf("PostgreSQL lane environment=%#v want=%#v", got, base)
+	}
+
+	if base[1] != "TEI_TEST_POSTGRES_DSN=postgres://user:secret@example.invalid/evidence" {
+		t.Fatalf("base environmentを破壊しました: %#v", base)
 	}
 }
 
