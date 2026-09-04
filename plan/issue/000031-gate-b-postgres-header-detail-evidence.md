@@ -98,6 +98,8 @@ PR #294 / #300 / #306で、Workspace Validation、既存fixture保護、tool-own
 
 PR #324では、「`public.order_lines`さえ存在しなければ既存業務DBでもfixtureを作成できる」という残存リスクを閉じ、専用空Databaseとして扱える最小条件をfail closedに確認する境界を追加しました。
 
+PR #365では、user relationが0件でもDDLへ介入し得るEvent TriggerがDatabaseに残る可能性を閉じました。fixtureの`CREATE TABLE` / `DROP TABLE`より前にEvent Trigger件数も確認し、1件でも存在すれば停止します。disabledなEvent Triggerも「存在しない」とは扱いません。既存Event Triggerを削除・無効化して実行を続ける処理は提供しません。
+
 現在の実行順は次です。
 
 1. repository revision / working tree cleanを確認する
@@ -110,14 +112,17 @@ PR #324では、「`public.order_lines`さえ存在しなければ既存業務DB
 8. `postgres` / `template0` / `template1`なら停止する
 9. system / temporary領域を除くuser relation件数を確認する
 10. user relationが1件でも存在すれば停止する
-11. `public.order_lines`の既存有無を再確認し、存在すれば停止する
-12. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
-13. Provider runtime Evidenceを確認する
-14. tool自身がCREATEしたfixtureをcleanupし、missing-table Execution Errorを確認する
-15. system / temporary領域を除くuser relationが0件へ戻ったことを再確認する
-16. `public.order_lines`が引き続き存在しないことを再確認する
-17. repository HEAD / working treeを再確認する
-18. Databaseまたはsource状態が期待状態へ戻っていなければ成功JSONを出さず停止する
+11. Event Trigger件数を確認する
+12. Event Triggerが1件でも存在すれば停止する
+13. `public.order_lines`の既存有無を再確認し、存在すれば停止する
+14. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
+15. Provider runtime Evidenceを確認する
+16. tool自身がCREATEしたfixtureをcleanupし、missing-table Execution Errorを確認する
+17. system / temporary領域を除くuser relationが0件へ戻ったことを再確認する
+18. Event Triggerが0件であることを再確認する
+19. `public.order_lines`が引き続き存在しないことを再確認する
+20. repository HEAD / working treeを再確認する
+21. Databaseまたはsource状態が期待状態へ戻っていなければ成功JSONを出さず停止する
 
 ### 既定Databaseを拒否する
 
@@ -144,6 +149,18 @@ Database名からproduction / development等の用途を推測して許可する
 
 この検査は「Evidence専用Databaseである」という運用上の意図を完全に証明するものではありませんが、少なくとも既定Databaseや既存user assetを含むDatabaseへfixtureを書き込む経路をfail closedで閉じます。
 
+### Event Triggerを拒否する
+
+Event Triggerは通常のuser relationとは別にDatabase単位で存在でき、DDLへ介入できます。そのため、user relationが0件でもEvent Triggerが1件以上存在するDatabaseはfixture実行先にしません。
+
+概念上は次を確認します。
+
+```sql
+SELECT count(*) FROM pg_catalog.pg_event_trigger
+```
+
+Event Triggerの用途や安全性を推測せず、disabledであっても既存objectとして扱います。削除・無効化してEvidence用Databaseへ転用するoverrideはありません。
+
 ### fixture objectを再確認する
 
 空Database検査後も、native SQLが利用する`public.order_lines`の既存有無を明示確認します。
@@ -154,11 +171,11 @@ SELECT to_regclass('public.order_lines')::text
 
 既存objectがあれば停止します。
 
-**既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
+**既存relation、Event Trigger、tableを削除・無効化して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
 ## fixture作成前の安全判定をEvidenceへ残す
 
-PR #335以降、fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。
+PR #335以降、fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。PR #365以降はEvent Trigger件数も同じ安全判定へ含めます。
 
 期待値:
 
@@ -169,6 +186,7 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
   "databaseIdentityPersisted": false,
   "nonDefaultDatabaseVerified": true,
   "userRelationsBeforeFixture": 0,
+  "eventTriggersBeforeFixture": 0,
   "fixtureObjectAbsentBeforeCreate": true
 }
 ```
@@ -179,6 +197,7 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
 - 実Database名自体はEvidenceへ保存していない
 - PostgreSQL既定Databaseではなかった
 - fixture作成前のuser relation数が0件だった
+- fixture作成前のEvent Trigger数が0件だった
 - `public.order_lines`がfixture作成前に存在しなかった
 - それらをすべて確認した後だけfixture作成へ進んだ
 
@@ -194,6 +213,7 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 {
   "verified": true,
   "userRelationsAfterCleanup": 0,
+  "eventTriggersAfterCleanup": 0,
   "fixtureObjectAbsentAfterCleanup": true
 }
 ```
@@ -201,12 +221,13 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 これは次を示します。
 
 - system / temporary領域を除くuser relationが0件へ戻った
+- Event Triggerが0件である
 - `public.order_lines`が存在しない
 - missing-table Execution Error確認後も上記状態が維持された
 
-終了時にuser relationが1件でも残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
+終了時にuser relationまたはEvent Triggerが1件でも存在する場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
 
-このcleanup EvidenceにもDatabase名、DSN、credentialは保存しません。
+このcleanup EvidenceにもDatabase名、DSN、credential、Event Trigger名や定義本文は保存しません。
 
 ## 確認するEvidence
 
@@ -231,10 +252,12 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - `fixtureDatabaseSafety.guardPassed = true`
 - `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`
 - `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`
+- `fixtureDatabaseSafety.eventTriggersBeforeFixture = 0`
 - `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`
 - `fixtureDatabaseSafety.databaseIdentityPersisted = false`
 - `fixtureCleanupSafety.verified = true`
 - `fixtureCleanupSafety.userRelationsAfterCleanup = 0`
+- `fixtureCleanupSafety.eventTriggersAfterCleanup = 0`
 - `fixtureCleanupSafety.fixtureObjectAbsentAfterCleanup = true`
 - 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
 
@@ -243,13 +266,14 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - [x] Workspace Validation Error時にDB接続前に停止する
 - [x] PostgreSQL既定Databaseをfixture先として拒否する（PR #324）
 - [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
+- [x] Event TriggerがあるDatabaseをfixture先として拒否する（PR #365）
 - [x] `public.order_lines`既存時に停止する
 - [x] tool-owned fixtureだけをcleanupする
-- [x] fixture作成前guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335）
+- [x] fixture作成前guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335 / #365）
 - [x] dirty working treeではDB接続前に停止する（PR #336）
 - [x] Provider runtime後にHEAD同一 / working tree cleanを再確認する（PR #336）
 - [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
-- [x] cleanup後にuser relation 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す
+- [x] cleanup後にuser relation 0件 / Event Trigger 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す（PR #341 / #365）
 - [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
 - [ ] `reproducibleRevision = true`を実runで確認する
@@ -268,19 +292,19 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - keyless Relation Storage境界の再設計
 - header-detail PatternのUI layout設計
 - production既存Databaseをfixtureで置換すること
-- 既存relationを削除してEvidence用Databaseへ転用すること
+- 既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用すること
 - production PostgreSQL schemaの観測Evidence
 - actual Oracle Evidenceの代替
 - physical schemaからSemantic Relationを逆生成すること
 - PostgreSQL固有仕様をSemantic modelへ逆流させること
 - dirty / source変化中のrunをProvider Evidenceとして採用すること
-- cleanup後にuser relationが残るrunを成功Evidenceとして採用すること
+- cleanup後にuser relationまたはEvent Triggerが残るrunを成功Evidenceとして採用すること
 - GitHub Actionsの再有効化
 
 ## 関連
 
 - GitHub Issue #69 / #244 / #255 / #273 / #308 / #310
-- PR #294 / #300 / #306 / #309 / #324 / #335 / #336
+- PR #294 / #300 / #306 / #309 / #324 / #335 / #336 / #341 / #365 / #368
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
