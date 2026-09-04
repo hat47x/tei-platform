@@ -39,6 +39,8 @@ PR #315で次を`main`へ追加しています。
 tools/reference-gate-b-repository-evidence
 ```
 
+PR #321で、targeted / broad test後にもHEAD不変・working tree cleanを再確認するfail-closed境界を追加しています。
+
 既定実行:
 
 ```bash
@@ -152,7 +154,7 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 - [x] 最終Scenarioとexternal Evidence intakeを別checkとして保持する
 - [x] broad testを明示オプションへ分離した
 - [x] Evidence JSONへsecret / test stdoutを取り込まない境界を定めた
-- [ ] runner実装で実行後HEAD不変・working tree cleanをfail-closed確認する
+- [x] runner実装で実行後HEAD不変・working tree cleanをfail-closed確認する（PR #321）
 - [ ] cleanな対象revisionでrunnerを実行する
 - [ ] Canonical Workspace Validation成功Evidenceを取得する
 - [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
@@ -176,7 +178,7 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- PR #281 / #288 / #300 / #304 / #306 / #315
+- PR #281 / #288 / #300 / #304 / #306 / #315 / #321
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
