@@ -46,6 +46,8 @@ PR #336で、このsource観測規則を#255 / #308と同じ`tools/internal/repo
 
 PR #346では、共有helperのpure Conformance testを3本目のtargeted checkへ追加し、`-broad`なしでもsource固定判定そのものの回帰を検知できるようにしました。
 
+PR #351では、開始時working treeがcleanでも、それだけで`reproducibleRevision=true`を一時設定しないようにしました。`reproducibleRevision`はpost-runのHEAD同一性とworking tree cleanまで確認できた後にだけtrueになります。
+
 既定実行:
 
 ```bash
@@ -83,6 +85,23 @@ Gate B完了Evidenceは、後から**実際に実行した同じsource**へ戻�
 - `git status --porcelain`が空であること
 
 実行中にHEADが変化した場合や、test / 並行操作によってtracked・untracked差分が残った場合は、testが成功していても単一revisionのGate B完了Evidenceとして採用しません。
+
+### post-run確認前は再現可能と判定しない
+
+PR #351以降、開始時working treeがcleanでも、開始時点では`reproducibleRevision`をfalseのまま保持します。
+
+次を最後まで確認できた場合にだけ、`repositoryevidence.IsReproducible`からtrueへします。
+
+- 開始revisionが空でない
+- 開始時working treeがclean
+- post-run状態を確認済み
+- post-run revision文字列が開始revisionと同一
+- `revisionStable=true`
+- 終了時working treeがclean
+
+したがって、Go toolchain取得、Workspace Load / Validation、targeted test等でpost-run確認前に失敗したJSONは、開始時cleanであっても`reproducibleRevision=false`のままです。
+
+これにより、「開始時点ではcleanだった」という一事実を「そのrun全体が同じsourceで再現可能だった」というEvidenceへ誤昇格させません。
 
 診断用の`-allow-dirty`もGate B完了Evidenceには使用しません。`reproducibleRevision=false`として非0終了するためです。
 
@@ -185,7 +204,7 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - `repository-evidence-source-boundary`のcommand / pass-fail
 - broad testを要求したか
 
-`reproducibleRevision = true`になるのは、実行前後で同じHEADを保持し、両時点のworking treeがcleanである場合だけです。
+`reproducibleRevision = true`になるのは、実行前後で同じHEADを保持し、両時点のworking treeがcleanであることを**post-run確認まで完了した場合だけ**です。早期失敗ではfalseのままです。
 
 次は保存しません。
 
@@ -205,6 +224,7 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - [x] runner実装で実行後HEAD不変・working tree cleanをfail-closed確認する（PR #321）
 - [x] source revision観測をtool-only共有境界へ収束した（PR #336）
 - [x] Repository source固定境界のpure Conformanceをtargeted checkへ追加した（PR #346）
+- [x] post-run確認前の早期失敗で`reproducibleRevision=true`を残さない（PR #351）
 - [ ] cleanな対象revisionでrunnerを実行する
 - [ ] Canonical Workspace Validation成功Evidenceを取得する
 - [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
@@ -225,11 +245,12 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - synthetic Scenarioをactual external Evidenceへ格上げすること
 - dirty working treeの成功をGate B完了Evidenceとして採用すること
 - 実行中にsource identityが変化したrunを元revisionのEvidenceとして採用すること
+- 開始時cleanだけでrun全体を再現可能と判定すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- PR #281 / #288 / #300 / #304 / #306 / #315 / #321 / #336 / #340 / #346
+- PR #281 / #288 / #300 / #304 / #306 / #315 / #321 / #336 / #340 / #346 / #351 / #352
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
