@@ -80,6 +80,15 @@ runnerは`-write`を呼ばず、次を一つのrunで確認します。
 8. 実行後working tree clean
 9. `reproducibleRevision`判定
 
+PR #398では、`reproducibleRevision`をrepository sourceだけの状態表示ではなく、**このrunnerの必須golden checkも成立した完了Evidence条件**としてfail closedに揃えました。
+
+- 二つのgolden checkが両方成功する
+- post-run repository source確認が完了している（`postRunRepository.checked = true`）
+- 実行前後でHEADが同一
+- 実行後もworking treeがclean
+
+これらを確認した後にだけ`reproducibleRevision = true`にします。どちらかのgolden checkが失敗した場合、sourceが同じclean revisionのままでも、その失敗JSONではfalseを維持します。
+
 したがって、artifactがstaleだった場合は次の二段階で扱います。
 
 ```text
@@ -97,7 +106,7 @@ git diffで意味上の差分を確認
   ↓
 check-only runnerを再実行
   ↓
-実行前後で同じHEAD / clean working tree
+両golden check成功 + post-run source確認済み
   ↓
 reproducibleRevision = true
   ↓
@@ -121,7 +130,7 @@ Repository内の新規fileへ直接redirectしません。shellがcommand開始�
 
 このrunnerには`-allow-dirty`を設けません。dirty treeでの診断は個別golden toolを利用し、完了Evidenceと混同しません。
 
-runner自身のConformanceでは、check-only commandに`-write`を含めないことと、実行前後のrepository stateが再現可能であることを固定しています。
+runner自身のConformanceでは、check-only commandに`-write`を含めないこと、golden check失敗runで`reproducibleRevision=false`を維持すること、post-run source確認済みの同一clean revisionだけを成功Evidence候補にできることを固定しています。
 
 ### `tools/reference-golden`
 
@@ -259,7 +268,7 @@ go run ./tools/reference-generated-artifact-evidence \
 
 成功して`reproducibleRevision = true`なら、そのrevisionを#255 Evidence候補にできます。形式的な`-write`は行いません。
 
-失敗した場合は、runnerが実行した個別golden checkの診断を確認し、必要なartifactだけを修復します。
+失敗した場合は、runnerが実行した個別golden checkの診断を確認し、必要なartifactだけを修復します。PR #398以降、失敗runではsourceが同じclean revisionであっても`reproducibleRevision=false`のままなので、そのJSONを完了Evidenceへ読み替えません。
 
 ### 3. World / Plugin Lock check
 
@@ -310,7 +319,7 @@ go run ./tools/reference-generated-artifact-evidence \
   > /tmp/tei-gate-b-generated-artifact-evidence.json
 ```
 
-実行前後で同じHEADを保持し、両時点のworking treeがcleanで、両golden checkが一致し、`reproducibleRevision = true`になったrunだけを#255の完了Evidence候補とします。
+両golden checkが成功し、`postRunRepository.checked = true`、実行前後で同じHEAD、両時点のworking treeがcleanで、`reproducibleRevision = true`になったrunだけを#255の完了Evidence候補とします。
 
 `-write`直後のdirty treeで個別checkが成功しても、それだけでは#255を完了にしません。
 
@@ -365,6 +374,7 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - [x] #255完了条件を一つのcheck-only Evidence runnerへ集約した（PR #331）
 - [x] Evidence runnerから`-write`を呼ばないConformanceを固定した
 - [x] Evidence runnerで実行前後のHEAD / working treeを確認する境界を固定した
+- [x] golden check失敗時に`reproducibleRevision=false`を維持し、post-run source確認済みの成功runだけを完了候補にする（PR #398）
 - [ ] cleanな通常Go環境でWorkspace Validationを成功させる
 - [ ] `go run ./tools/reference-generated-artifact-evidence`をclean revisionで実行する
 - [ ] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する
@@ -386,13 +396,14 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - 一致済み生成物を形式的に書き換えること
 - dirty working treeのcheck成功をGate B完了Evidenceとして採用すること
 - safe replaceの成功だけをGate B完了Evidenceとして採用すること
+- golden check失敗runをsource固定だけで完了Evidenceとして採用すること
 - Evidence runnerから修復操作を行うこと
 - CIをこのIssueから独断で再有効化すること
 
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #321 / #323 / #326 / #331 / #367 / #369
+- GitHub PR #280 / #294 / #299 / #306 / #315 / #318 / #319 / #321 / #323 / #326 / #331 / #367 / #369 / #398
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
