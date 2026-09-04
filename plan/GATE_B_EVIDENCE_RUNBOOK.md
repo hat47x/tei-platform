@@ -88,6 +88,8 @@ Evidenceを特定revisionへ固定するため、意図しない未commit差分�
 
 #255も最終的な完了Evidenceはclean revisionへ固定します。stale修復のための`-write`で生成物差分が生じた場合、そのdirty tree上のcheck成功だけでは完了とせず、差分を確認・commitした後のclean revisionで`tools/reference-generated-artifact-evidence`を再実行します。
 
+#308と#214のEvidence toolも、Gate Bへ採用するrunでは開始前にclean Repository revisionを要求し、実行後にHEAD / working treeを再確認します。DBやexternal Evidenceの検査が成功していても、source revisionを固定できないrunは完了Evidenceにしません。
+
 ## 1. Canonical WorkspaceをValidationする
 
 ```bash
@@ -178,6 +180,10 @@ go test ./internal/database/externalqueryevidence \
 - read-only mechanism / Evidence参照必須
 - EvidenceからSQL realizationを生成・補完しないこと
 - Workspace Validation Errorがある前提でEvidenceを受理しないこと
+- acceptance receiptへexternal Evidence本文を複製しないこと
+- Evidence artifact fingerprintがexact bytesを識別すること
+
+ここで実行するtestsは受入境界のConformanceです。実際の#214 acceptance receiptやactual Oracle readの代替ではありません。
 
 Evidence formatとfingerprintの意味は`tools/reference-external-query-evidence/README.md`を参照します。
 
@@ -383,11 +389,11 @@ production既存Databaseの実データEvidenceではありません。
 
 ### fail-closed前提
 
-Evidence toolはまず`reference/workspace`をLoadし、通常Validation Errorがないことを確認します。Validation Error時にはPostgreSQLへ接続しません。
-
-その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、接続先が**Evidence専用の空Database**であることをfail closedで検査します。
+Evidence toolはRepository source、Canonical Workspace、Database状態の順にfail closedで確認します。
 
 ```text
+Repository HEAD / working tree確認
+  ↓ dirtyなら停止
 Workspace Load
   ↓
 Canonical Validation
@@ -404,7 +410,17 @@ public.order_lines既存確認
   ↓ 既存なら停止
 Ephemeral fixture作成
   ↓
-Runtime Evidence
+2件 / 0件 Provider runtime Evidence
+  ↓
+fixture DROP
+  ↓
+missing-table Execution Error
+  ↓
+user relation 0件 / public.order_lines不在を再観測
+  ↓
+Repository HEAD / working tree再確認
+  ↓
+JSON Evidence
 ```
 
 `TEI_TEST_POSTGRES_DSN`には、Evidence専用に作成した空PostgreSQL Databaseを指定します。
@@ -414,6 +430,19 @@ export TEI_TEST_POSTGRES_DSN='postgres://...'
 ```
 
 DSN、credential、接続先の実Database名をEvidenceファイルへ保存しません。
+
+### Repository source固定
+
+PR #336以降、toolはDB接続より前にclean Repository revisionを要求し、Provider runtime / cleanup / Database復元確認後にHEAD / working treeを再確認します。
+
+成功Evidenceには少なくとも次を含みます。
+
+- `repositoryRevision`
+- `workingTreeClean = true`
+- `reproducibleRevision = true`
+- post-run Repository revision / `revisionStable` / working tree clean
+
+実行中にHEADが変わったrun、または実行後にtracked / untracked差分が残るrunは成功Evidenceとして出しません。
 
 ### Database側の安全条件
 
@@ -452,6 +481,41 @@ SELECT to_regclass('public.order_lines')::text
 
 これらの検査を通過した場合だけtool-owned fixtureをCREATEします。**既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
+### fixture作成前安全Evidence
+
+PR #335以降、fixture作成前に満たした非機密な安全条件を`fixtureDatabaseSafety`へ残します。
+
+期待値:
+
+```json
+{
+  "guardPassed": true,
+  "databaseIdentityVerified": true,
+  "databaseIdentityPersisted": false,
+  "nonDefaultDatabaseVerified": true,
+  "userRelationsBeforeFixture": 0,
+  "fixtureObjectAbsentBeforeCreate": true
+}
+```
+
+これはDatabase名そのものを保存せず、toolが観測可能なfixture前安全条件をそのrunで満たしたことを示します。「組織運用上Evidence専用であること」の完全証明へ格上げしません。
+
+### cleanup後安全Evidence
+
+PR #341以降、missing-table Execution Error確認後にDatabase catalogを再観測し、成功JSONを出す前に空状態へ戻ったことを確認します。
+
+期待値:
+
+```json
+{
+  "verified": true,
+  "userRelationsAfterCleanup": 0,
+  "fixtureObjectAbsentAfterCleanup": true
+}
+```
+
+終了時にuser relationが残る場合、それがtool由来か並行変更かを推測せずfail closedで停止します。
+
 ### 実行
 
 ```bash
@@ -462,6 +526,10 @@ go run ./tools/reference-postgres-header-detail-runtime \
 期待するEvidence:
 
 - `evidenceNature = real-postgres-ephemeral-fixture`
+- `repositoryRevision`を保持する
+- `workingTreeClean = true`
+- `reproducibleRevision = true`
+- 実行前後でHEAD同一 / working tree clean
 - `fixtureObject = public.order_lines`
 - `preexistingFixtureProtected = true`
 - `fixtureOwnedByTool = true`
@@ -478,6 +546,15 @@ go run ./tools/reference-postgres-header-detail-runtime \
 - `sales.order_line.order_id`がSemantic attributeへ追加されていない
 - Relation Storage column = `order_id`
 - Semantic mapping applied = true
+- `fixtureDatabaseSafety.guardPassed = true`
+- `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`
+- `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`
+- `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`
+- `fixtureDatabaseSafety.databaseIdentityPersisted = false`
+- `fixtureCleanupSafety.verified = true`
+- `fixtureCleanupSafety.userRelationsAfterCleanup = 0`
+- `fixtureCleanupSafety.fixtureObjectAbsentAfterCleanup = true`
+- Database名 / DSN / credentialを保存していない
 
 出力はまず外部Evidence artifactとして確認します。保存先をRepository標準として固定する判断は、このrunbookから先行しません。
 
@@ -505,20 +582,41 @@ go run ./tools/reference-postgres-header-detail-runtime \
 1. 観測事実をEvidence JSONへ記録する
 2. 観測事実を根拠に`ContractQuerySQLRealization`を明示authoringする
 3. native sourceを通常Workspaceから追跡可能にする
-4. 次でEvidenceとauthoringを照合する
+4. authoring差分があればcommitし、clean revisionへ固定する
+5. clean revisionでEvidenceとauthoringを照合し、acceptance receiptを取得する
 
 ```bash
 go run ./tools/reference-external-query-evidence \
   -workspace reference/workspace \
-  -evidence <observed-evidence.json>
+  -evidence <observed-evidence.json> \
+  > /tmp/tei-external-query-evidence-acceptance.json
 ```
 
-このtoolもWorkspace Validation ErrorがあればEvidence照合前に停止します。
+Repository内の新規fileへ直接redirectしません。shellがcommand開始前にfileを作ってworking treeをdirtyにするためです。
 
-SQL realizationがない場合はEvidenceから生成せず停止します。`nativeSource.fingerprint`の作り方やprovenanceとの区別は`tools/reference-external-query-evidence/README.md`を正とします。
+このtoolはEvidenceを読む前にclean Repository revisionを要求し、照合後にもHEAD / working treeを再確認します。Workspace Validation ErrorがあればEvidence照合前に停止し、SQL realizationがなければEvidenceから生成せず停止します。
 
-5. read-onlyを実効強制したOracle connectionでruntime Executorを構成する
-6. Workspace → actual read → Semantic resultを一続きに確認する
+成功receiptで少なくとも次を確認します。
+
+- `evidenceNature = external-query-evidence-acceptance`
+- `repositoryRevision`
+- `workingTreeClean = true`
+- `reproducibleRevision = true`
+- post-run Repository revisionが開始時と同一
+- `evidenceArtifactFingerprint = sha256:<hex>`
+- target / provider
+- `accepted = true`
+
+`evidenceArtifactFingerprint`はEvidence JSONのexact bytesを識別します。`nativeSource.fingerprint`は現在authoring済みSQL本文との一致を確認する別fingerprintであり、相互代替しません。
+
+receiptへphysical object、parameter / raw columns、provenance本文、read-only mechanism本文、Evidence file path、credential / secretを複製しません。
+
+**acceptance receiptはactual Oracle read Evidenceではありません。** 受入照合が成立した後に、actual runtimeを別工程で確認します。
+
+6. read-onlyを実効強制したOracle connectionでruntime Executorを構成する
+7. 採用Oracle driverでnamed parameter / raw result / NULL / error伝播を確認する
+8. Workspace → actual read → Semantic resultを一続きに確認する
+9. 1件 / 0件 / Execution Errorを区別する
 
 ## 8. 最終差分を確認する
 
@@ -537,6 +635,8 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 #255でgenerated artifactを修復した場合は、ここでdirty差分を残したままGate B監査へ進まず、意図したartifactをcommitしてclean revisionへ固定し、`tools/reference-generated-artifact-evidence`を再実行します。
 
+#214でOracle realizationをauthoringした場合も、dirty treeのままacceptance receiptを取得せず、意図したauthoringをcommitしたclean revisionから受入照合します。
+
 ## 9. Gate B監査へ戻す
 
 取得したEvidenceを[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)へ対応付けます。
@@ -547,10 +647,12 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 | --- | --- |
 | #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
-| #308 PostgreSQL tool | real PostgreSQL engine上の専用空Database / fixture runtime |
-| #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
+| #308 PostgreSQL Evidence JSON | real PostgreSQL engine、fixture前安全、runtime、cleanup後空状態、source revision不変性 |
+| #214 observed Evidence + acceptance receipt + actual runtime Evidence | external-observed assetの実物理事実、受入artifact identity、read-only境界、actual read |
 
 #255の個別`reference-golden` / `reference-durable-run-golden`はcheck / repairの正規toolですが、Gate Bへ対応付ける最終Evidenceは`reference-generated-artifact-evidence`のclean check-only runとします。
+
+#214のacceptance receiptは観測Evidenceとauthoringの照合証跡であり、actual Oracle runtime Evidenceを代替しません。
 
 一つのEvidenceが成功したことを、別種類のEvidenceの代替にしません。
 
@@ -564,10 +666,17 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
 - #255 `reference-generated-artifact-evidence`でgolden不一致がある
 - #255 Evidence runner実行前後でHEADが変わった、またはworking treeがdirtyである
+- #308をdirty working treeから開始しようとしている
 - #308で`postgres` / `template0` / `template1`へ接続している
 - #308の接続先にsystem / temporary領域以外のuser relationが1件以上存在する
 - `public.order_lines`が既に存在するPostgreSQL接続先
+- #308 cleanup後にuser relationが0件へ戻らない、または`public.order_lines`が残っている
+- #308実行前後でHEADが変わった、または実行後working treeがdirtyである
+- #214をdirty working treeから受入れようとしている
 - #214でprovenanceのない物理情報しかない
+- #214 acceptance receiptの`reproducibleRevision`がtrueでない
+- #214 Evidence artifactをfingerprintで特定できない
+- acceptance receiptだけをactual Oracle read Evidenceとして扱おうとしている
 - read-only保証をSQL文字列だけで主張している
 - generated artifactがstaleなのにfingerprintやJSON断片だけを手編集しようとしている
 - fixed observed fixtureを生成結果へ合わせて機械的に変更しようとしている
