@@ -25,6 +25,30 @@ Gate B「UIなしで主要Scenarioを再現できる」を、IssueやPRのclose�
 
 ## 結論
 
+### 2026-09-04 scope再監査結果（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380でGate B本来の目的、Product Requirement、Milestoneを再監査した結果、**actual external Oracle E2EをGate Bの必須blockerにはしません**。
+
+Gate Bの必須完了Evidenceは次の三つです。
+
+| Repository / GitHub Issue | Evidence nature | 現在地 |
+| --- | --- | --- |
+| `ISSUE-000032` / #310 | deterministic repository | **Ready to run** — clean checkout / normal Go runner待ち |
+| `ISSUE-000025` / #255 | generated artifact reproducibility | **Ready to check** — clean normal Go environment待ち |
+| `ISSUE-000031` / #308 | real-provider ephemeral fixture | **Ready to run** — Evidence専用空PostgreSQL DB待ち |
+
+最終Ready判定では、この三つのsource-dependent Evidenceを同じcandidate revision `R`へ揃えます。各Evidenceが要求する`reproducibleRevision = true`等の条件を満たさないrunは採用しません。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle Evidenceは、actual external asset / legacy migration / 第二Database Provider圧力試験として継続します。actual Oracle facts / read-only / driver integration / actual readは引き続き**Blocked**であり、成功済みとは扱いません。ただし、その未取得だけでGate B全体をNot Readyにはしません。
+
+Gate Bではexternal-observed assetについて、未観測事実を推測しないこと、external EvidenceをCanonicalへ昇格させないこと、明示authoringとEvidenceを照合することを引き続き要求します。#310にはexternal Evidence intake boundaryのConformanceを含めます。
+
+#214が未完了のままGate Bを通過する場合は、#291 Handover Baselineへ#214 / #371 / #376と未観測事項を`unresolved`として明示します。第一Web Target側でOracle physical facts、SQL、driver、read-only方式を補完せず、#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+**Gate Bの判定は引き続きNot Readyです。** scope再整理だけでReadyにはせず、#310 / #255 / #308のactual run Evidenceと同一revisionへの収束が必要です。
+
+以下の「4 Evidence lane」を必須とする記述は、`ISSUE-000035`以前の監査契約と判断経緯を保持するための履歴です。現行Gate Bの必須範囲と矛盾する場合は、本節を優先します。
+
 Application Driverの主要な意味境界と最終UI-less Scenario構造は成立しています。
 
 現在のGate B残件は「Driverの中心設計が未成立」という種類ではなく、**actual external facts、実provider、generated artifact再現、通常Go runnerによる実Evidence取得**へ収束しています。
