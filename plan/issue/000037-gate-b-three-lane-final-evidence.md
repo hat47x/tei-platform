@@ -1,9 +1,9 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress
+- 状態: In Progress — runner実装 / pure test済み、actual final run待ち
 - GitHub Issue: #387
 - Gate B scope判断: `ISSUE-000035` / #380
-- 文書同期: `ISSUE-000036` / #383
+- 文書同期: `ISSUE-000036` / #383（Done）
 - Gate B監査: `ISSUE-000029` / #273
 
 ## 目的
@@ -33,6 +33,14 @@ Gate Bの完了判定に使う三つのEvidenceが、**同じcandidate repositor
 この三つを人手で「だいたい同じ時期の成功」とまとめると、第一Web Targetへ渡すHandover Baselineのsourceが一意になりません。
 
 そこで、candidate revisionを`R`として固定し、三laneを同じRで実行したことを最後に確認します。
+
+## Runbookとの権威関係
+
+具体的なGate Bの実行順、安全条件、停止条件の正本は引き続き`plan/GATE_B_EVIDENCE_RUNBOOK.md`です。
+
+本toolは、Runbookで定義された三lane最終収束を機械的に実行・照合するための**薄い実行helper**です。各laneの正規runnerやRunbookを置き換える第二の実行契約にはしません。
+
+したがって、toolの実装やREADMEとRunbookが矛盾した場合は、矛盾を解消するまで成功Evidenceへ採用せず、Runbook側の契約を確認します。
 
 ## 正規tool
 
@@ -132,6 +140,25 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 
 本toolの成功をactual Oracle成功Evidenceへ読み替えません。
 
+## 2026-09-04 pure test実績
+
+GitHub上の現行`main.go` / `main_test.go`を用い、Repository観測packageだけを最小stubへ置き換えた隔離Go moduleでpackage-levelのcompile / pure testを実行しました。
+
+```text
+ok  tei/tools/reference-gate-b-final-evidence  0.002s
+```
+
+確認した範囲:
+
+- Evidence nature mismatchをrejectする
+- candidate revision mismatchをrejectする
+- `reproducibleRevision=false`をrejectする
+- 三lane同一revisionの収束条件
+- PostgreSQL laneを最後に実行する順序
+- `-broad`を#310だけへ渡すこと
+
+これは**実Repository checkout上の#310 / #255 / #308 Evidenceではありません**。通常Repository checkoutのpackage test、Evidence専用PostgreSQLを使うactual final run、Gate B Readyの根拠へは格上げしません。
+
 ## 完了条件
 
 - [x] 三laneを順に実行するrunnerを実装した
@@ -139,7 +166,8 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - [x] PostgreSQL laneを最後に実行する順序をtestで固定した
 - [x] `-broad`を#310だけへ渡すことをtestで固定した
 - [x] READMEで事前確認と最終収束を分離した
-- [ ] 通常Go環境でtool package testを実行する
+- [x] 隔離Go moduleでpackage-level compile / pure testを実行した
+- [ ] 実Repository checkoutの通常Go環境でtool package testを実行する
 - [ ] Evidence専用空PostgreSQL Databaseを用意してactual final runを実行する
 - [ ] 三laneが同じcandidate revision Rへ揃ったJSONを取得する
 - [ ] #273のGate B最終監査へ結果を対応付ける
@@ -147,6 +175,7 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 ## 非目標
 
 - 各laneのrunnerを置き換えること
+- Runbookを第二の文書へ複製すること
 - #255の修復を自動実行すること
 - #308のDatabase安全guardを迂回すること
 - #214 actual Oracle Evidenceを代替すること
@@ -161,5 +190,5 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `ISSUE-000029` / #273
 - `ISSUE-000035` / #380
-- `ISSUE-000036` / #383
+- `ISSUE-000036` / #383（Done）
 - #255 / #308 / #310 / #387
