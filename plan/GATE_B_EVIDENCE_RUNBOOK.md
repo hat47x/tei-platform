@@ -59,6 +59,8 @@ TEIが所有していない既存資産の観測事実です。
 - synthetic Evidenceを実外部Evidenceへ格上げしない
 - 失敗を0件・NotSatisfied・denied等の正常業務結果へ変換しない
 - 一致済み生成物を形式的に書き換えない
+- generated artifactの`-write`を完了Evidenceそのものとして扱わない
+- Gate Bへ採用するEvidenceは、後から同じsourceへ戻れるrevisionへ固定する
 - GitHub Actionsをこの手順から再有効化しない
 
 ## 0. 実行前確認
@@ -74,6 +76,8 @@ go version
 Evidenceを特定revisionへ固定するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
 
 #310の完了Evidenceでは、実行前だけでなく**実行後も同じHEADかつclean working tree**であることを要求します。診断目的のdirty実行と、Gate Bへ採用する再現可能Evidenceを混同しません。
+
+#255も最終的な完了Evidenceはclean revisionへ固定します。stale修復のための`-write`で生成物差分が生じた場合、そのdirty tree上のcheck成功だけでは完了とせず、差分を確認・commitした後のclean revisionでcheck-onlyを再実行します。
 
 ## 1. Canonical WorkspaceをValidationする
 
@@ -181,7 +185,7 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
 
 ## 3. #255 World / Plugin Lockの現在差分を確認する
 
-まずRepositoryを書き換えずに確認します。
+clean revisionで、まずRepositoryを書き換えずに確認します。
 
 ```bash
 go run ./tools/reference-golden
@@ -189,9 +193,9 @@ go run ./tools/reference-golden
 
 このtoolはCanonical WorkspaceからWorld / Plugin Lockを生成して保存goldenと比較し、保存Durable RunのPlugin Lock依存も確認します。
 
-一致している場合は、そのrevisionでの再現Evidenceとして記録し、形式的に`-write`しません。
+一致している場合は形式的に`-write`しません。Durable Run全体のcheckも行い、両toolが一致し、実行前後で同じHEADかつcleanであることを確認できれば、そのrevisionを#255 Evidence候補にできます。
 
-不一致の場合は、表示されたpathを記録して次へ進みます。
+不一致の場合は、表示されたpathを記録して次へ進みます。この時点では#255完了Evidenceではなく、staleを検出した診断結果です。
 
 ## 4. World / Plugin Lockを正規再生成する — staleの場合だけ
 
@@ -222,6 +226,8 @@ git diff -- \
 - 並び順やfingerprintだけを人手で合わせていないか
 
 `reference-golden -write`後にDurable Run依存がstaleと表示されても、fingerprintだけを手編集しません。
+
+**この`-write`はstale解消の修復操作です。** この時点でworking treeがdirtyになった場合、その状態でcheckが通っても#255完了Evidenceにはしません。
 
 ## 5. Durable Run全体を正規生成結果と照合する
 
@@ -286,15 +292,41 @@ git diff -- reference/order_rollout.durable-run.m0.21.start.json
 - fixed observed stateを生成結果へ合わせて書き換えていない
 - fingerprintやJSONの一部だけを手編集していない
 
-### #255最終確認
+この`-write`も修復操作です。差分が生じた場合は、#255のfinal Evidenceへ進む前に生成物差分を確定します。
+
+### staleを修復した場合の確定
+
+World / Plugin Lock / Durable Runのいずれかに差分が生じた場合、次を行います。
+
+1. `git diff`で差分が現在のCanonical authoring、Plugin Lock、fixed observed fixtureから説明できることを確認する
+2. 意図したgenerated artifactだけをcommitする
+3. DSN、credential、一時Evidence file、fixed observed fixture等が混入していないことを確認する
+4. 新しいclean revisionからfinal checkをやり直す
+
+`-write`直後のdirty treeを、最終Evidenceのsource revisionとして記録しません。
+
+### #255最終確認 — clean revisionのcheck-only
 
 ```bash
-go run ./tools/reference-golden
+git status --short
+git rev-parse HEAD
 
+go run ./tools/reference-golden
 go run ./tools/reference-durable-run-golden
+
+git rev-parse HEAD
+git status --short
 ```
 
-両方が一致して初めて、World / Plugin Lock / Durable Runのgenerated artifact再現性を#255 Evidenceとして扱います。
+次をすべて満たした場合だけ、World / Plugin Lock / Durable Runのgenerated artifact再現性を#255 Evidence候補として扱います。
+
+- final check開始時のworking treeがclean
+- `reference-golden`が一致
+- `reference-durable-run-golden`が一致
+- final check実行前後でHEADが同一
+- final check終了後もworking treeがclean
+
+両toolがdirty tree上で一致しただけでは#255を完了にしません。
 
 ## 6. #308 実PostgreSQL engineでheader-detailを確認する
 
@@ -425,6 +457,8 @@ commit対象は、正規生成されたartifactと、意味上説明可能なsou
 
 DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommitしません。
 
+#255でgenerated artifactを修復した場合は、ここでdirty差分を残したままGate B監査へ進まず、意図したartifactをcommitしてclean revisionへ固定し、#255 final check-onlyを再実行します。
+
 ## 9. Gate B監査へ戻す
 
 取得したEvidenceを[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)へ対応付けます。
@@ -439,6 +473,8 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 | #308 PostgreSQL tool | real PostgreSQL engine上のfixture runtime |
 | #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
 
+#255については、stale修復後のdirty treeではなく、意図した生成物をcommitした**clean revision上のcheck-only一致**を監査Evidenceへ対応付けます。
+
 一つのEvidenceが成功したことを、別種類のEvidenceの代替にしません。
 
 ## 停止条件
@@ -448,6 +484,8 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 - Workspace Validation Error
 - #310完了Evidenceをdirty working treeから採用しようとしている
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
+- #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
+- #255 final check-only実行前後でHEADが変わった、またはworking treeがdirtyである
 - `public.order_lines`が既に存在するPostgreSQL接続先
 - #214でprovenanceのない物理情報しかない
 - read-only保証をSQL文字列だけで主張している
