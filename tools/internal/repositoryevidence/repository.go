@@ -2,6 +2,7 @@ package repositoryevidence
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -31,15 +32,29 @@ type PostRun struct {
 
 type commandOutputFunc func(name string, args ...string) (string, error)
 
+var gitSourceIdentityOverrideKeys = []string{
+	"GIT_DIR",
+	"GIT_WORK_TREE",
+	"GIT_COMMON_DIR",
+	"GIT_INDEX_FILE",
+	"GIT_OBJECT_DIRECTORY",
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+	"GIT_NAMESPACE",
+}
+
 // InspectStartはEvidence実行開始時のHEADとworking tree状態を取得する。
 // HEADをworking tree観測の前後で確認し、観測中に切り替わった場合はfail closedにする。
 func InspectStart() (Source, error) {
-	return inspectStart(commandOutput)
+	return InspectStartWithEnv(os.Environ())
 }
 
 // InspectStartWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して開始時sourceを観測する。
-// environmentの意味はcaller側が決める。このpackageへProvider固有のsecret名や安全規則は持ち込まない。
+// environmentの意味はcaller側が決める。ただしrepository / work tree / index等を別contextへ差し替える
+// Git identity overrideは、実行sourceとは別のGit状態を誤観測し得るため、このpackage自身がfail closedで拒否する。
 func InspectStartWithEnv(env []string) (Source, error) {
+	if err := validateGitSourceEnvironment(env); err != nil {
+		return Source{}, err
+	}
 	return inspectStart(commandOutputWithEnv(env))
 }
 
@@ -79,12 +94,15 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 
 // InspectPostはEvidence実行後のHEADとworking tree状態を取得し、開始revisionとの同一性を記録する。
 func InspectPost(initialRevision string) (PostRun, error) {
-	return inspectPost(initialRevision, commandOutput)
+	return InspectPostWithEnv(initialRevision, os.Environ())
 }
 
 // InspectPostWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して実行後sourceを観測する。
-// source同一性の判定契約はInspectPostと同じで、environment選択だけをcallerへ委ねる。
+// source同一性の判定契約はInspectPostと同じで、Git identity overrideは開始時と同様に拒否する。
 func InspectPostWithEnv(initialRevision string, env []string) (PostRun, error) {
+	if err := validateGitSourceEnvironment(env); err != nil {
+		return PostRun{}, err
+	}
 	return inspectPost(initialRevision, commandOutputWithEnv(env))
 }
 
@@ -131,6 +149,21 @@ func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, err
 	return result, nil
 }
 
+func validateGitSourceEnvironment(env []string) error {
+	for _, entry := range env {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		for _, forbidden := range gitSourceIdentityOverrideKeys {
+			if strings.EqualFold(key, forbidden) {
+				return fmt.Errorf("repository source観測ではGit identity override %sを使用できません。実行checkoutとは別のrepository / work tree / index等を観測する可能性があるため、環境変数を解除して再実行してください", forbidden)
+			}
+		}
+	}
+	return nil
+}
+
 // IsReproducibleは、実行開始前後が同一のclean revisionへ固定できる場合だけtrueを返す。
 func IsReproducible(initial Source, post PostRun) bool {
 	return initial.RepositoryRevision != "" &&
@@ -139,14 +172,6 @@ func IsReproducible(initial Source, post PostRun) bool {
 		post.RepositoryRevision == initial.RepositoryRevision &&
 		post.RevisionStable &&
 		post.WorkingTreeClean
-}
-
-func commandOutput(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w: %s", strings.Join(append([]string{name}, args...), " "), err, strings.TrimSpace(string(out)))
-	}
-	return string(out), nil
 }
 
 func commandOutputWithEnv(env []string) commandOutputFunc {
