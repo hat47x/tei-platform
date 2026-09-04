@@ -5,6 +5,7 @@
 - 対象: `ISSUE-000006` / GitHub Issue #69
 - 次段: `ISSUE-000007` / GitHub Issue #70
 - Handover: `ISSUE-000030` / GitHub Issue #291
+- Gate B scope再監査: `ISSUE-000035` / GitHub Issue #380
 
 ## 目的
 
@@ -21,6 +22,28 @@ Evidence関連文書の責務は次のように分けます。
 - 本Issue: 4 Evidence laneの進行を監査し、再判定へ戻す
 
 Runbook以外に具体コマンドを重複正本として持ちません。
+
+## 2026-09-04 現行scope（ISSUE-000035 / #380）
+
+`ISSUE-000035` / #380でGate B本来の目的、Product Requirement、Milestoneを再監査し、**actual external Oracle E2EはGate Bの必須blockerから外す**方針を確定しました。
+
+Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
+
+1. `ISSUE-000032` / #310 — deterministic Repository Evidence
+2. `ISSUE-000025` / #255 — generated artifact reproducibility Evidence
+3. `ISSUE-000031` / #308 — real PostgreSQL Provider Evidence
+
+candidate revisionを`R`とする場合、この三つの完了Evidenceを同じ`R`へ揃えます。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376は削除・完了扱いにしません。actual Oracle physical facts / provenance / read-only / driver integration / actual readは引き続きBlockedですが、**その未取得だけではGate B全体をblockしません**。
+
+Gate Bではexternal-observed assetについて、未観測事実を推測しないこと、external EvidenceをCanonicalへ昇格させないこと、明示authoringとEvidenceを照合することを引き続き要求します。#310のtargeted checksにはexternal Evidence intake boundaryを含めます。
+
+#214が未完了のままGate Bを通過する場合、#291 Handover Baselineへ#214 / #371 / #376と未観測事項を`unresolved`として明示します。Web側でOracle物理情報、SQL、driver、read-only方式を推測・補完せず、#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+Gate Bはまだ**Not Ready**です。#310 / #255 / #308のactual run Evidenceが未取得であるためです。
+
+以下の4-lane記述は、`ISSUE-000035`以前の監査契約と判断経緯を保持するための履歴です。現行Gate B必須範囲と矛盾する場合は本節を優先します。
 
 ## 現在の判定
 
@@ -471,6 +494,20 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - [ ] Rを対象にGate BをReady / Not Readyで最終再判定する
 - [ ] Gate B Ready時の第一Handover Baseline Rを発行する
 
+### 現行scopeで追加・置換する完了条件
+
+- [x] actual Oracle E2EのGate B必須性を再監査した（ISSUE-000035 / #380）
+- [x] Gate B必須Evidenceを#310 / #255 / #308の三つへ再整理した
+- [x] #214 / #371 / #376をactual external / legacy / 第二Provider圧力試験として継続する方針を定義した
+- [x] #214未完了時にHandover `unresolved`へ引き継ぐ契約を#291へ同期した
+- [ ] #310をcleanな通常Go runnerで実行する
+- [ ] #255をclean revisionでcheck-only実行する
+- [ ] #308をEvidence専用空PostgreSQL Databaseで実行する
+- [ ] candidate revision Rで#310 / #255 / #308の完了Evidenceを揃える
+- [ ] negative caseと#214 unresolvedの非推測境界を再監査する
+- [ ] Rを対象にGate BをReady / Not Readyで最終再判定する
+- [ ] Gate B Ready時の第一Handover Baseline Rを発行する
+
 ## 非目標
 
 - Gate B前に第一Web Targetを本格実装すること
@@ -507,5 +544,7 @@ Application / Driverの意味が後から変わった場合は既存baselineへ�
 - `plan/issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - `plan/issue/000033-gate-b-oracle-driver-integration.md`
-- GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310 / #371
-- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #351 / #353 / #354 / #364 / #365 / #366 / #367 / #369 / #370 / #372 / #373 / #374 / #375
+- `plan/issue/000034-gate-b-oracle-read-only-evidence.md`
+- `plan/issue/000035-gate-b-external-provider-scope-audit.md`
+- GitHub #69 / #70 / #192 / #214 / #244 / #255 / #266 / #273 / #291 / #308 / #310 / #371 / #376 / #380
+- PR #315 / #318 / #321 / #323 / #324 / #326 / #331 / #334 / #335 / #336 / #340 / #341 / #342 / #343 / #344 / #346 / #351 / #353 / #354 / #364 / #365 / #366 / #367 / #369 / #370 / #372 / #373 / #374 / #375 / #382 / #384
