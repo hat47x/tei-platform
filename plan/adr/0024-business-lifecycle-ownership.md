@@ -2,7 +2,8 @@
 
 - 状態: 提案中
 - 日付: 2026-09-05
-- 関連Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)（要件詳細化と実装順を含む）
+- 関連Issue: [ISSUE-000038](../issue/000038-business-lifecycle-semantics.md)（作業範囲と実装順）
+- 関連設計: [業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)（評価待ち）
 
 この判断は評価待ちです。採用が決まるまで、実装やReference変更の根拠にしません。
 
@@ -30,7 +31,7 @@ Semantic Namespace
     └─ Transition         from / to / capability / requires
 ```
 
-このADRで確定するのは所有境界です。具体的なauthoring構文、診断code、Driver APIはISSUE-000038に置きます。
+このADRで確定するのは所有境界です。具体的なauthoring構文、診断code、Driver APIは[業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)に置きます。
 
 ### 状態のidentityはCanonical IDで表す
 
