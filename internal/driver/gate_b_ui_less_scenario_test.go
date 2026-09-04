@@ -13,6 +13,7 @@ import (
 	"tei/internal/query"
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
+	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/semantic/validationeval"
@@ -214,8 +215,21 @@ func gateBCompositeAdapters(state *syntheticOrderStateStore) driver.BindingAdapt
 				}, nil
 			}), nil
 		case "order_entry/security.authorize":
-			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
-				return capabilityinvoke.BusinessResult{Capability: capability, Mode: capabilityinvoke.ResultOutcome, Outcome: "allowed"}, nil
+			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
+				authorizationInput, ok := input.(legacyauthorization.Input)
+				if !ok {
+					return capabilityinvoke.BusinessResult{}, fmt.Errorf("synthetic Authorization入力型が不正です")
+				}
+				return capabilityinvoke.BusinessResult{
+					Capability: capability,
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "allowed",
+					Payload: legacyauthorization.AuthorizationGrant{
+						SubjectID: authorizationInput.SubjectID,
+						Action:    authorizationInput.Action,
+						Resource:  authorizationInput.Resource,
+					},
+				}, nil
 			}), nil
 		case "order_entry/sales.order.submit":
 			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
