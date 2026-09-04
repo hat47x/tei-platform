@@ -10,13 +10,25 @@ import (
 	"testing"
 )
 
+type runnerTestColumnMetadata struct {
+	databaseTypeName string
+	nullable         bool
+	nullableKnown    bool
+	length           int64
+	lengthKnown      bool
+	precision        int64
+	scale            int64
+	decimalKnown     bool
+}
+
 type runnerTestState struct {
-	query    string
-	args     []sqldriver.NamedValue
-	columns  []string
-	rows     [][]sqldriver.Value
-	queryErr error
-	rowErr   error
+	query          string
+	args           []sqldriver.NamedValue
+	columns        []string
+	columnMetadata []runnerTestColumnMetadata
+	rows           [][]sqldriver.Value
+	queryErr       error
+	rowErr         error
 }
 
 type runnerTestConnector struct {
@@ -65,24 +77,61 @@ func (c *runnerTestConn) QueryContext(
 	for i := range c.state.rows {
 		rows[i] = append([]sqldriver.Value(nil), c.state.rows[i]...)
 	}
+	metadata := append([]runnerTestColumnMetadata(nil), c.state.columnMetadata...)
+	if len(metadata) < len(c.state.columns) {
+		metadata = append(metadata, make([]runnerTestColumnMetadata, len(c.state.columns)-len(metadata))...)
+	}
 	return &runnerTestRows{
-		columns: append([]string(nil), c.state.columns...),
-		rows:    rows,
-		rowErr:  c.state.rowErr,
+		columns:        append([]string(nil), c.state.columns...),
+		columnMetadata: metadata,
+		rows:           rows,
+		rowErr:         c.state.rowErr,
 	}, nil
 }
 
 var _ sqldriver.QueryerContext = (*runnerTestConn)(nil)
 
 type runnerTestRows struct {
-	columns []string
-	rows    [][]sqldriver.Value
-	index   int
-	rowErr  error
+	columns        []string
+	columnMetadata []runnerTestColumnMetadata
+	rows           [][]sqldriver.Value
+	index          int
+	rowErr         error
 }
 
 func (r *runnerTestRows) Columns() []string { return r.columns }
 func (r *runnerTestRows) Close() error      { return nil }
+
+func (r *runnerTestRows) ColumnTypeDatabaseTypeName(index int) string {
+	if index < 0 || index >= len(r.columnMetadata) {
+		return ""
+	}
+	return r.columnMetadata[index].databaseTypeName
+}
+
+func (r *runnerTestRows) ColumnTypeNullable(index int) (bool, bool) {
+	if index < 0 || index >= len(r.columnMetadata) {
+		return false, false
+	}
+	metadata := r.columnMetadata[index]
+	return metadata.nullable, metadata.nullableKnown
+}
+
+func (r *runnerTestRows) ColumnTypeLength(index int) (int64, bool) {
+	if index < 0 || index >= len(r.columnMetadata) {
+		return 0, false
+	}
+	metadata := r.columnMetadata[index]
+	return metadata.length, metadata.lengthKnown
+}
+
+func (r *runnerTestRows) ColumnTypePrecisionScale(index int) (int64, int64, bool) {
+	if index < 0 || index >= len(r.columnMetadata) {
+		return 0, 0, false
+	}
+	metadata := r.columnMetadata[index]
+	return metadata.precision, metadata.scale, metadata.decimalKnown
+}
 
 func (r *runnerTestRows) Next(dest []sqldriver.Value) error {
 	if r.index < len(r.rows) {
@@ -98,6 +147,13 @@ func (r *runnerTestRows) Next(dest []sqldriver.Value) error {
 	return io.EOF
 }
 
+var (
+	_ sqldriver.RowsColumnTypeDatabaseTypeName = (*runnerTestRows)(nil)
+	_ sqldriver.RowsColumnTypeNullable         = (*runnerTestRows)(nil)
+	_ sqldriver.RowsColumnTypeLength           = (*runnerTestRows)(nil)
+	_ sqldriver.RowsColumnTypePrecisionScale   = (*runnerTestRows)(nil)
+)
+
 func openRunnerTestDB(t *testing.T, state *runnerTestState) *sql.DB {
 	t.Helper()
 	db := sql.OpenDB(runnerTestConnector{state: state})
@@ -109,6 +165,23 @@ func TestRunnerExecutesExplicitSQLWithStableNamedParameters(t *testing.T) {
 	bytesValue := []byte("Alice")
 	state := &runnerTestState{
 		columns: []string{"legacy_customer_id", "legacy_name"},
+		columnMetadata: []runnerTestColumnMetadata{
+			{
+				databaseTypeName: "NUMBER",
+				nullable:         false,
+				nullableKnown:    true,
+				precision:        10,
+				scale:            0,
+				decimalKnown:     true,
+			},
+			{
+				databaseTypeName: "VARCHAR2",
+				nullable:         true,
+				nullableKnown:    true,
+				length:           120,
+				lengthKnown:      true,
+			},
+		},
 		rows: [][]sqldriver.Value{
 			{int64(42), bytesValue},
 		},
@@ -161,6 +234,59 @@ func TestRunnerExecutesExplicitSQLWithStableNamedParameters(t *testing.T) {
 	}
 	if !reflect.DeepEqual(payload.RawResultColumns, []string{"legacy_customer_id", "legacy_name"}) {
 		t.Fatalf("Evidenceへ保存するraw result列が変わっています: %#v", payload.RawResultColumns)
+	}
+	wantMetadata := []RawResultColumnMetadata{
+		{
+			Name:             "legacy_customer_id",
+			DatabaseTypeName: ptr("NUMBER"),
+			Nullable:         ptr(false),
+			Precision:        ptr(int64(10)),
+			Scale:            ptr(int64(0)),
+		},
+		{
+			Name:             "legacy_name",
+			DatabaseTypeName: ptr("VARCHAR2"),
+			Nullable:         ptr(true),
+			Length:           ptr(int64(120)),
+		},
+	}
+	if !reflect.DeepEqual(payload.RawResultColumnMetadata, wantMetadata) {
+		t.Fatalf("driverが観測したraw result列metadataをEvidenceへ保持できていません:\n got=%#v\nwant=%#v", payload.RawResultColumnMetadata, wantMetadata)
+	}
+}
+
+func TestRunnerKeepsUnavailableColumnMetadataUnknown(t *testing.T) {
+	state := &runnerTestState{
+		columns: []string{"legacy_optional_value"},
+		rows:    [][]sqldriver.Value{{nil}},
+	}
+	runner := Runner{DB: openRunnerTestDB(t, state)}
+
+	raw, err := runner.ExecuteSQL(
+		context.Background(),
+		"select legacy_optional_value from observed_customer_view where legacy_customer_id = :legacy_id",
+		map[string]any{"legacy_id": int64(42)},
+	)
+	if err != nil {
+		t.Fatalf("metadata未提供のraw resultを実行できません: %v", err)
+	}
+
+	payload, ok := raw.Payload.(Result)
+	if !ok {
+		t.Fatalf("Oracle Runner Evidenceの型が変わっています: %#v", raw.Payload)
+	}
+	if len(payload.RawResultColumnMetadata) != 1 {
+		t.Fatalf("raw result列metadata件数が変わっています: %#v", payload.RawResultColumnMetadata)
+	}
+	metadata := payload.RawResultColumnMetadata[0]
+	if metadata.Name != "legacy_optional_value" {
+		t.Fatalf("raw result列名が変わっています: %#v", metadata)
+	}
+	if metadata.DatabaseTypeName != nil || metadata.Nullable != nil || metadata.Length != nil || metadata.Precision != nil || metadata.Scale != nil {
+		t.Fatalf("driverが提供していないmetadataを推測しています: %#v", metadata)
+	}
+	if len(raw.Result.Rows) != 1 || len(raw.Result.Rows[0]) != 1 || raw.Result.Rows[0][0] != nil {
+		t.Fatalf("DatabaseのNULLを別値へ変換しています: %#v", raw.Result.Rows)
 	}
 }
 

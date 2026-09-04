@@ -11,12 +11,26 @@ import (
 	sqlquery "tei/internal/driver/queryruntime/sql"
 )
 
+// RawResultColumnMetadataは、database/sql driverがactual read時に提供できたraw result列metadataだけを保持する。
+//
+// 取得できない情報をfalseや0へ補完せず、nilのまま「未観測 / driver未提供」として残す。
+// ScanTypeはGo側のscan表現でありexternal Oracleのphysical typeそのものではないためEvidenceへ保存しない。
+type RawResultColumnMetadata struct {
+	Name             string  `json:"name"`
+	DatabaseTypeName *string `json:"databaseTypeName"`
+	Nullable         *bool   `json:"nullable"`
+	Length           *int64  `json:"length"`
+	Precision        *int64  `json:"precision"`
+	Scale            *int64  `json:"scale"`
+}
+
 // Resultは、Oracle固有の実行Evidenceとして、実際にdatabase/sqlへ渡した
-// named parameterの名前と、Databaseから返されたraw result列名だけを保持する。
+// named parameterの名前と、Databaseから観測したraw result列情報だけを保持する。
 // runtime parameter値やraw row値は保存しない。
 type Result struct {
-	ParameterNames   []string `json:"parameterNames,omitempty"`
-	RawResultColumns []string `json:"rawResultColumns,omitempty"`
+	ParameterNames          []string                  `json:"parameterNames,omitempty"`
+	RawResultColumns        []string                  `json:"rawResultColumns,omitempty"`
+	RawResultColumnMetadata []RawResultColumnMetadata `json:"rawResultColumnMetadata,omitempty"`
 }
 
 // Runnerは、既に確定しているnative Oracle SQLとphysical parameterを、
@@ -72,6 +86,14 @@ func (r Runner) ExecuteSQL(
 	if err != nil {
 		return sqlquery.RawExecution{}, fmt.Errorf("Oracle Contract Queryのraw result列を取得できません: %w", err)
 	}
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return sqlquery.RawExecution{}, fmt.Errorf("Oracle Contract Queryのraw result列metadataを取得できません: %w", err)
+	}
+	columnMetadata, err := observedColumnMetadata(columns, columnTypes)
+	if err != nil {
+		return sqlquery.RawExecution{}, err
+	}
 
 	rawRows := make([][]any, 0)
 	for rows.Next() {
@@ -98,10 +120,48 @@ func (r Runner) ExecuteSQL(
 			Rows:    rawRows,
 		},
 		Payload: Result{
-			ParameterNames:   append([]string(nil), parameterNames...),
-			RawResultColumns: append([]string(nil), columns...),
+			ParameterNames:          append([]string(nil), parameterNames...),
+			RawResultColumns:        append([]string(nil), columns...),
+			RawResultColumnMetadata: columnMetadata,
 		},
 	}, nil
+}
+
+func observedColumnMetadata(columns []string, columnTypes []*sql.ColumnType) ([]RawResultColumnMetadata, error) {
+	if len(columnTypes) != len(columns) {
+		return nil, fmt.Errorf("Oracle Contract Queryのraw result列metadata件数=%d、列件数=%dで一致しません", len(columnTypes), len(columns))
+	}
+
+	result := make([]RawResultColumnMetadata, len(columnTypes))
+	for i, columnType := range columnTypes {
+		if columnType == nil {
+			return nil, fmt.Errorf("Oracle Contract Queryのraw result列metadata[%d]がnilです", i)
+		}
+		if columnType.Name() != columns[i] {
+			return nil, fmt.Errorf("Oracle Contract Queryのraw result列metadata[%d]の名前=%q、列名=%qで一致しません", i, columnType.Name(), columns[i])
+		}
+
+		metadata := RawResultColumnMetadata{Name: columns[i]}
+		if databaseTypeName := columnType.DatabaseTypeName(); databaseTypeName != "" {
+			metadata.DatabaseTypeName = ptr(databaseTypeName)
+		}
+		if nullable, ok := columnType.Nullable(); ok {
+			metadata.Nullable = ptr(nullable)
+		}
+		if length, ok := columnType.Length(); ok {
+			metadata.Length = ptr(length)
+		}
+		if precision, scale, ok := columnType.DecimalSize(); ok {
+			metadata.Precision = ptr(precision)
+			metadata.Scale = ptr(scale)
+		}
+		result[i] = metadata
+	}
+	return result, nil
+}
+
+func ptr[T any](value T) *T {
+	return &value
 }
 
 func stabilizeRawValue(value any) any {
