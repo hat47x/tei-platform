@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	deploymentdurable "tei/internal/deployment/durable"
+	"tei/internal/plugin"
 )
 
 func TestEncodeJSONMatchesCLIFormat(t *testing.T) {
@@ -70,5 +73,73 @@ func TestWriteArtifactsMakesGoldenCheckPass(t *testing.T) {
 	}
 	if string(world) != "world\n" || string(lock) != "lock\n" {
 		t.Fatalf("生成内容が変わっています: world=%q lock=%q", world, lock)
+	}
+}
+
+func TestCheckDurableRunPluginLockAcceptsMatchingFingerprint(t *testing.T) {
+	lock := referencePluginLock()
+	fingerprint, err := plugin.EnvironmentLockFingerprint(lock, "production")
+	if err != nil {
+		t.Fatalf("Plugin Lock fingerprintを生成できません: %v", err)
+	}
+
+	runPath := filepath.Join(t.TempDir(), "run.json")
+	runJSON, err := encodeJSON(deploymentdurable.Run{
+		Environment:           "production",
+		PluginLockFingerprint: fingerprint,
+	})
+	if err != nil {
+		t.Fatalf("Durable Run fixtureを生成できません: %v", err)
+	}
+	if err := os.WriteFile(runPath, runJSON, 0o644); err != nil {
+		t.Fatalf("Durable Run fixtureを書き込めません: %v", err)
+	}
+
+	if err := checkDurableRunPluginLock(runPath, lock); err != nil {
+		t.Fatalf("一致するPlugin Lock依存を不一致扱いしています: %v", err)
+	}
+}
+
+func TestCheckDurableRunPluginLockRejectsStaleFingerprint(t *testing.T) {
+	lock := referencePluginLock()
+	runPath := filepath.Join(t.TempDir(), "run.json")
+	runJSON, err := encodeJSON(deploymentdurable.Run{
+		Environment:           "production",
+		PluginLockFingerprint: "stale-fingerprint",
+	})
+	if err != nil {
+		t.Fatalf("Durable Run fixtureを生成できません: %v", err)
+	}
+	if err := os.WriteFile(runPath, runJSON, 0o644); err != nil {
+		t.Fatalf("Durable Run fixtureを書き込めません: %v", err)
+	}
+
+	err = checkDurableRunPluginLock(runPath, lock)
+	if err == nil {
+		t.Fatal("古いPlugin Lock fingerprintを一致扱いしています")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "stale-fingerprint") || !strings.Contains(message, "tei deployment-start") {
+		t.Fatalf("stale依存と正規再生成経路を説明できていません: %s", message)
+	}
+}
+
+func TestCheckDurableRunPluginLockCanBeDisabled(t *testing.T) {
+	if err := checkDurableRunPluginLock("", referencePluginLock()); err != nil {
+		t.Fatalf("空pathでの依存検査無効化に失敗しました: %v", err)
+	}
+}
+
+func referencePluginLock() plugin.Lock {
+	return plugin.Lock{
+		FormatVersion: plugin.LockFormatVersion,
+		Environments: []plugin.EnvironmentLock{
+			{
+				Environment: "production",
+				Plugins: []plugin.LockedPlugin{
+					{ID: "tei.database.postgres", Version: "1.0.0", Fingerprint: "postgres-definition"},
+				},
+			},
+		},
 	}
 }
