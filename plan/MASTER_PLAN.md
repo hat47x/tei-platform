@@ -6,6 +6,8 @@
 
 期限は置きません。優先順位は、実装量ではなく「TEIの中心価値に関する不確実性をどれだけ減らせるか」で見直します。
 
+個別作業の管理先は[`issue/README.md`](issue/README.md)に集約します。既存の未登録課題と根幹機能提案は担当Issueへ統合し、Workstream上のテーマごとに重複した実装Issueを増やしません。
+
 技術リサーチから得た知見は、[`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md)で既存要求へ対応付けます。外部frameworkや研究方式をそのままMilestoneへ昇格させず、Reference / Conformanceで不確実性を減らせる形へ変換して取り込みます。
 
 ## 現在地

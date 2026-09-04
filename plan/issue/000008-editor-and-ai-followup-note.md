@@ -3,7 +3,11 @@
 - 状態: 保留
 - 解除条件: Gate C
 
-## 背景
+## 統合後の担当境界
+
+本IssueはGate C後のEditor / AI着手条件と最小Editor Projectionを管理します。共通機能の実装は[ISSUE-000039](000039-business-change-rehearsal.md)の差分・依存解析、[ISSUE-000040](000040-semantic-component-composition.md)の探索・組み立て、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)のAcceptanceへ接続します。以下の構想に同じ機能が現れても別実装を起票せず、当該Issueの成果を利用します。
+
+## 背景と着手条件の根拠
 
 Product Requirements Gap Auditでは、EditorとAI支援が大きな未実証領域であることを確認しました。
 

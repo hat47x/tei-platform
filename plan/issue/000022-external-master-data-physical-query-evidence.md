@@ -7,7 +7,13 @@
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
 
-## 目的
+## 現行scopeと分担
+
+[ISSUE-000035](000035-gate-b-external-provider-scope-audit.md)のscope判断に従い、actual OracleはGate B必須blockerから外し、既存外部資産・第二Providerの継続検証として扱います。本Issueはphysical facts、sourceとの照合、actual readへの統合を担当し、driver / Host assemblyは[ISSUE-000033](000033-gate-b-oracle-driver-integration.md)、実効read-onlyの確認は[ISSUE-000034](000034-gate-b-oracle-read-only-evidence.md)へ集約します。
+
+未取得の実Oracle Evidenceを完了扱いせず、[ISSUE-000030](000030-gate-b-to-c-handover-baseline.md)のunresolvedへ残します。以下に残るGate Bの4必須laneやcandidateへのOracle必須収束は過去の契約であり、現行scopeと衝突する場合は本節と[Gate B監査](../GATE_B_READINESS_AUDIT.md)を優先します。
+
+## Evidenceの目的
 
 第一Referenceの`master_data`について、TEIが所有していない既存資産の実物理事実、provenance、read-only境界、Oracle driverを通したactual readを確認し、`Order -> Customer` Referenceが実環境でもSemantic meaningを保って動作することをGate B Evidenceとして確定します。
 

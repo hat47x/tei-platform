@@ -205,6 +205,7 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 
 ## 関連文書
 
+- 共通のSemantic差分・依存影響解析は[ISSUE-000039](000039-business-change-rehearsal.md)、意味資産の探索・適用候補作成は[ISSUE-000040](000040-semantic-component-composition.md)が担当します。本Issueはそれらを利用するProposal / Acceptanceの統合を担当し、AI専用の解析器・探索索引・正本変更経路を重複実装しません。
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`

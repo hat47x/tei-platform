@@ -1,8 +1,85 @@
 # TEI Planning Issues
 
-このディレクトリには、TEI（鼎／テイ）の開発で長く残す価値がある作業定義を置きます。
+このディレクトリを、計画上の作業定義と進行確認の入口とします。背景、制約、完了条件、担当境界は各Issueに置き、採用する設計判断は`../adr/`へ記録します。既存GitHub Issueへの参照は履歴・Evidenceを辿るために残しますが、本整理ではGitHubへ新規起票・更新しません。
 
-GitHub Issueは日々の進行やPRとの接続に向いていますが、背景、制約、完了条件、上位要求との関係まで含む作業定義は、Repository側にも残しておく方が別の開発者や生成AIから再利用しやすくなります。
+## 統合の基準と確認範囲
+
+2026-09-04時点の既存計画Issue、Master Planに残る対象、GitHubの未完了16件と直近の関連Issueを照合しました。`origin/main`の計画基線は`a1f7b4a5787518ee3ae29bf216862ad9456a6ce8`です。
+
+ローカルに未反映だった既存Issue 000033〜000037を取り込み、同趣旨のscope再監査（既存GitHub #380 / #381）は000035へまとめました。計画Issueがなかったpartition設計（既存GitHub #43）は000041へ登録しました。本セッションの根幹機能3提案は、既存番号と衝突しない000038〜000040へ移しています。旧`plan/PRODUCT_VALUE_PROPOSALS_2026-09.md`の一覧・優先順・分担は本一覧と各Issueへ統合しました。
+
+一つのIssueを「一つの成果と完了判定を持つ作業」にします。親Issueは横断的な到達条件を持ち、子Issueは実装・接続・Evidenceの担当範囲を持ちます。同じ解析器や採用境界を複数Issueで実装せず、別の環境・別の証明が必要なEvidenceは一つの成功へ畳みません。
+
+今回取り込んだのは計画文書です。上記revisionで記録された実装・テスト実績と、ローカルcheckoutのコード・実行実績は区別します。特に000037のrunner実装記録は上流revisionの記録であり、この整理でコードをマージしたりactual runを行ったりしたという意味ではありません。実装・検証を始める時は対象revisionと必要なsourceの存在を確認します。
+
+## 直近の主線
+
+Gate Bは引き続きNot Readyです。[000035](000035-gate-b-external-provider-scope-audit.md)の判断により、必須Evidenceは000032 / 000025 / 000031の3系統です。actual Oracleの未取得は継続課題として残し、Gate Bの追加blockerへ戻しません。
+
+| 担当Issue | 一つの成果・責務 | 着手・完了の接続 |
+| --- | --- | --- |
+| [000006 Application Driver](000006-application-driver-vertical-slice.md) | Driver全体の到達条件と残件の親 | 主要意味境界の再実装を起票せず、下記Evidenceへ接続 |
+| [000032 Repository Evidence](000032-gate-b-deterministic-repository-evidence.md) | 通常Go runnerでのdeterministic実行Evidence | clean revisionで実行 |
+| [000025 生成物再現性](000025-reference-generated-artifacts-refresh.md) | World / Lock / Durable Runの再生成一致 | 修復があればsource確定後にcheck-only再実行 |
+| [000031 実PostgreSQL](000031-gate-b-postgres-header-detail-evidence.md) | 実engineでのheader-detailとfixture前後の安全性 | 専用空DBと固定revisionが必要 |
+| [000037 三系統の最終収束](000037-gate-b-three-lane-final-evidence.md) | 上記3系統を同じcandidate revisionへ揃える | 個別runnerを再実装せずRunbookどおり照合 |
+| [000029 Gate B監査](000029-gate-b-readiness-audit.md) | Evidenceに基づくReady / Not Ready判定 | runner成功だけで判定を代替しない |
+| [000030 Handover](000030-gate-b-to-c-handover-baseline.md) | Ready revisionと未確認事項の固定 | 000029のReady判定後 |
+| [000007 第一Web Target](000007-first-web-target-projection.md) | 同じApplication meaningのWebへのProjection | Handover固定後 |
+| [000028 Gate C Evidence](000028-first-web-target-conformance-evidence.md) | Semantic / Functional / Visualの独立した証明 | 000007と同じbaselineを使用 |
+
+実行順・安全条件は[Runbook](../GATE_B_EVIDENCE_RUNBOOK.md)、総合判定は[Gate B監査](../GATE_B_READINESS_AUDIT.md)を参照します。本一覧を第二の実行契約にはしません。
+
+## 外部資産・Providerの継続課題
+
+| 担当Issue | 統合した課題 | 分けて扱う理由 |
+| --- | --- | --- |
+| [000022 外部master_data Evidence](000022-external-master-data-physical-query-evidence.md) | actual Oracle facts / acceptance / actual readの統合（既存#214） | 外部観測の親。driverや権限の詳細実装を重複所有しない |
+| [000033 Oracle driver](000033-gate-b-oracle-driver-integration.md) | driver選定・Host assembly・metadata実証（既存#371） | 接続条件と実driverに依存する成果 |
+| [000034 Oracle read-only](000034-gate-b-oracle-read-only-evidence.md) | principal / grant / transaction / runtimeの安全な確認（既存#376） | driverの動作成功と権限保証は別の証明 |
+| [000041 Partition Schema Drift](000041-partition-schema-drift-semantics.md) | 未登録のpartition設計とWorkstream Dの同じ論点（既存#43） | 設計判断と最小再現契約に限定し、DDL実行へ広げない |
+
+000033 / 000034の実Oracle条件は未取得のままです。成果は000022へ合流させ、未完了なら000030の`unresolved`へ残します。新しい第4・第5のGate B必須laneにはしません。
+
+## 根幹機能の3提案
+
+新規の根幹機能は次の優先順とします。業務例と所有境界の設計は並走できますが、本格実装はGate C後を基本とし、現行Gateの完了条件へ追加しません。
+
+| 優先 | 担当Issue | 統合した機能範囲 | 初回の完了単位 |
+| --- | --- | --- | --- |
+| 1 | [000038 業務Lifecycle](000038-business-lifecycle-semantics.md) | 上位計画の最小state transition、既存Validation / Capability / Observationの接続 | 受注確定の一遷移を同じ規則で定義・実行・観測する |
+| 2 | [000039 Semantic差分・依存解析](000039-business-change-rehearsal.md) | source追跡、変更影響、Driver比較、Acceptanceで必要な解析 | Validation / Bindingの2種別で差分からScenarioと検証結果へ辿る |
+| 3 | [000040 意味資産の探索・組み立て](000040-semantic-component-composition.md) | Domain Component / Pattern / Policy等の再利用、AIのknowledge-first探索 | 第二Applicationに少数の既存資産を明示参照で組み込む |
+
+000038は業務意味の表現力、000039は変更時の信頼性、000040は蓄積した知識の再利用を強化します。導入評価や指標整備を別の先行Issueへせず、単一正本の変更伝播、未知の依存の明示、同じidentityの再利用を各受入条件で確認します。
+
+### 共通機能の担当を一つにする
+
+- 既存のSource Index / derived index / Validationは再利用します。
+- 差分と依存経路の共通解析は000039が担当し、000040は候補の探索・適用先の選択を担当します。000040が解析を必要とする場合、000039の最小解析境界を利用し、完全な変更リハーサルの完成までは要求しません。
+- 採用・source反映・stale Proposalの受理境界は[000027](000027-ai-proposal-acceptance-boundary.md)が担当します。000039 / 000040はAI専用の書込経路を作りません。
+- 最小Editorと着手条件は[000008](000008-editor-and-ai-followup-note.md)が担当し、上記機能を利用します。
+- 第二Targetは[000026](000026-target-capability-execution-profile-boundary.md)が担当します。000040の第二Applicationと混同しません。
+- 000038の初回実装は000039 / 000040の完成を待ちません。000040の初回例も新Lifecycleの完成を前提にせず既存資産を使います。
+
+状態は3件ともProposedです。schema、Core primitive、APIの採用は未決定で、必要な判断をADRへ残してから実装します。将来の汎用Workflow、分散transaction、全言語解析、Marketplace、全Provider網羅を、この小さい受入単位の完了で達成済みにしません。
+
+## 既存計画への統合と履歴
+
+| 元の論点・作業 | 管理先 | 扱い |
+| --- | --- | --- |
+| Gate Bのactual Oracle必須性再監査（既存#380 / #381） | [000035](000035-gate-b-external-provider-scope-audit.md) | 同じ設計判断へ統合。判断済みであり再起票しない |
+| 3-lane scopeの長文同期（既存#383） | [000036](000036-gate-b-three-lane-document-sync.md) | 上流でDone。今回の文書取り込みを実行Evidence取得と混同しない |
+| 通常Go / 生成物 / PostgreSQLの最終収束（既存#387） | [000037](000037-gate-b-three-lane-final-evidence.md) | 実装・pure test記録と未取得actual final runを分離して維持 |
+| 最小状態遷移、履歴・Policyの意味知識 | [000038](000038-business-lifecycle-semantics.md) / [000040](000040-semantic-component-composition.md) | 前者は遷移の意味、後者は既存資産の再利用。汎用履歴基盤まで完了範囲を広げない |
+| provenance / change trace、AI Acceptanceのimpact analysis | [000039](000039-business-change-rehearsal.md) / [000027](000027-ai-proposal-acceptance-boundary.md) | 解析は前者、受理は後者 |
+| Editor、Projection、確認提案・判断履歴 | [000008](000008-editor-and-ai-followup-note.md) / [000027](000027-ai-proposal-acceptance-boundary.md) | 既存計画へ接続。Editor / AIの先行実装Issueを増やさない |
+| Targetごとの性能・可読性 | [000028](000028-first-web-target-conformance-evidence.md) / [000026](000026-target-capability-execution-profile-boundary.md) | 各TargetのEvidenceとして扱う |
+| 既存ADR移行（既存#71） | [000004](000004-migrate-existing-adrs.md) | 既存Issueを継続。新提案へ混ぜない |
+
+一人でも維持できる規模を保つため、Master Planに列挙された長期方向を一項目一Issueへ機械的に分解しません。production HA、signed distribution、全Target展開等は、具体的な利用条件・完了Evidenceが定まる時点で既存Workstreamから切り出します。
+
+既存の000010 / 000011には過去から同番号の異なるファイルがあります。本整理で履歴identityを一括変更せず、既存参照はファイル名まで含めて区別します。今回追加・移動した000033〜000041の番号は、確認した上流とローカルの両方で重複しないようにしています。
 
 ## 番号
 

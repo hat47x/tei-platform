@@ -25,7 +25,7 @@
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): CapabilityのBusiness Result / named OutcomeとExecution Errorを分離するv1設計
 - [`adr/`](adr/): 長く残す設計判断
-- [`issue/`](issue/): 調査、実装、Evidence取得、文書整備などの作業単位
+- [`issue/README.md`](issue/README.md): 統合Issue一覧、着手順、既存課題と根幹機能提案の責務分担
 
 ## 現在のv1主線
 
@@ -70,6 +70,28 @@ header-detail
 詳細は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)と[`ISSUE-000005`](issue/000005-application-pattern-reference.md)を参照します。
 
 ## Gate Bの現在地
+
+### 2026-09-04 現行scope（ISSUE-000035 / #380）
+
+Application Driverの主要な意味境界、runtime境界、最終UI-less Scenario構造は成立しています。現在の正式判定は **Gate B: Not Ready** です。
+
+Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
+
+| Repository / GitHub Issue | Evidence nature | 現在地 |
+| --- | --- | --- |
+| `ISSUE-000032` / #310 | deterministic repository | Ready to run — clean checkout / normal Go runner待ち |
+| `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check — clean normal Go environment待ち |
+| `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run — Evidence専用空PostgreSQL DB待ち |
+
+最終Ready判定では、この三つの完了Evidenceを同じclean candidate revision `R`へ揃えます。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle EvidenceはGate B必須blockerではありません。actual external asset / legacy compatibility / 第二Database Provider圧力試験として継続し、未完了なら#291 Handover Baselineの`unresolved`へ明示します。
+
+Gate Bではexternal-observed assetについて未観測事実を推測しない境界を維持し、#310のexternal Evidence intake Conformanceで回帰確認します。#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
+
+**Gate Bはこのscope整理だけではReadyになりません。** #310 / #255 / #308の実runはまだ未取得です。Handover固定前に第一Web Targetへ進みません。
+
+以下の4-lane記述は`ISSUE-000035`以前の計画履歴として保持しています。現行Gate B必須範囲と矛盾する場合は本節を優先します。各Evidence種別の証明範囲と非代替性は引き続き有効です。
 
 Application Driverの主要な意味境界、runtime境界、最終UI-less Scenario構造は成立しています。
 

@@ -35,6 +35,26 @@ Driverは、不足する意味や外部事実を独自規則で補いません�
 
 ## 現在地
 
+### 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
+
+Driverの主要な意味境界、runtime境界、最終UI-less Scenario構造は成立しています。Gate B全体は **Not Ready** ですが、現在の直接Evidence残件は次の三つです。
+
+| Repository / GitHub Issue | Evidence nature | 現在地 |
+| --- | --- | --- |
+| `ISSUE-000032` / #310 | deterministic repository | Ready to run — clean checkout / normal Go runner待ち |
+| `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check — clean normal Go environment待ち |
+| `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run — Evidence専用空PostgreSQL DB待ち |
+
+最終Ready判定では、この三つの完了Evidenceを同じclean candidate revision `R`へ揃えます。
+
+`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle EvidenceはGate B必須blockerではありません。actual Oracle physical facts / provenance / effective read-only / driver integration / actual readは引き続きBlockedであり、完了扱いにはしません。actual external asset / legacy compatibility / 第二Database Provider圧力試験として継続します。
+
+Gate Bではexternal Evidence intakeと未観測事実非推測の境界を#310で検証します。#214未完了時は#291 Handover Baselineの`unresolved`へ明示し、Web側でOracle物理情報やrealizationを補完しません。
+
+**scope再整理だけではGate B Readyではありません。** #310 / #255 / #308のactual run Evidenceはまだ未取得です。
+
+以下の4-lane表、Lane A〜D、旧Phase 1 / Phase 2、旧Ready条件は`ISSUE-000035`以前の設計・計画履歴として保持します。現行Gate B必須範囲と矛盾する場合は本節を優先し、各Evidence種別の非代替性、安全境界、actual Oracle未実証という事実は維持します。
+
 2026-09-04時点で、Driverの主要な意味境界、runtime境界、最終UI-less Scenario構造は成立しています。
 
 Gate B全体は **Not Ready** ですが、残件は新しいDriver抽象の追加ではありません。現在は性質の異なる次の4種類の実行Evidence取得へ収束しています。
