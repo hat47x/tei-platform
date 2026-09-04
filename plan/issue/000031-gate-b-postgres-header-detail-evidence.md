@@ -100,6 +100,8 @@ PR #324では、「`public.order_lines`さえ存在しなければ既存業務DB
 
 PR #365では、user relationが0件でもDDLへ介入し得るEvent TriggerがDatabaseに残る可能性を閉じました。fixtureの`CREATE TABLE` / `DROP TABLE`より前にEvent Trigger件数も確認し、1件でも存在すれば停止します。disabledなEvent Triggerも「存在しない」とは扱いません。既存Event Triggerを削除・無効化して実行を続ける処理は提供しません。
 
+PR #414では、`TEI_TEST_POSTGRES_DSN`にcredentialが含まれ得ることを踏まえ、接続設定初期化と最初の接続確認でunderlying driver error本文をそのままpanic / stderrへ出さない境界を追加しました。malformed URL等でraw DSNがdriver errorへ含まれても、その本文をwrap・複製せず、非機密なstageだけを診断として残します。PR #415で同じ境界をtool READMEへ同期しました。
+
 現在の実行順は次です。
 
 1. repository revision / working tree cleanを確認する
@@ -107,7 +109,7 @@ PR #365では、user relationが0件でもDDLへ介入し得るEvent TriggerがD
 3. WorkspaceをLoadする
 4. 通常`validation.Validate`を実行する
 5. Validation ErrorがあればDB接続前に停止する
-6. Validation成功後にのみPostgreSQLへ接続する
+6. Validation成功後にのみPostgreSQLへ接続する。接続設定初期化または最初の接続確認が失敗した場合、driver error本文をstderrへ複製せず停止する
 7. `current_database()`で接続先Database identityを取得する
 8. `postgres` / `template0` / `template1`なら停止する
 9. system / temporary領域を除くuser relation件数を確認する
@@ -123,6 +125,19 @@ PR #365では、user relationが0件でもDDLへ介入し得るEvent TriggerがD
 19. `public.order_lines`が引き続き存在しないことを再確認する
 20. repository HEAD / working treeを再確認する
 21. Databaseまたはsource状態が期待状態へ戻っていなければ成功JSONを出さず停止する
+
+### 接続失敗時にcredentialをstderrへ露出しない
+
+`TEI_TEST_POSTGRES_DSN`はRepositoryやEvidence JSONへ保存しないだけでなく、接続初期化失敗時のstderrにもそのまま露出させません。
+
+次の段階ではunderlying driver errorをwrap・複製せず、非機密なstageだけを返します。
+
+```text
+PostgreSQL接続設定の初期化
+PostgreSQL接続確認
+```
+
+この境界は接続初期化に限定します。fixture作成後のProvider runtime、専用空Database guard、cleanup、source-fixed Evidenceの診断まで一律に隠すものではありません。
 
 ### 既定Databaseを拒否する
 
@@ -260,6 +275,7 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - `fixtureCleanupSafety.eventTriggersAfterCleanup = 0`
 - `fixtureCleanupSafety.fixtureObjectAbsentAfterCleanup = true`
 - 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
+- 接続設定初期化 / 最初の接続確認のdriver error本文をstderrへ複製しない
 
 ## 完了条件
 
@@ -274,6 +290,7 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - [x] Provider runtime後にHEAD同一 / working tree cleanを再確認する（PR #336）
 - [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
 - [x] cleanup後にuser relation 0件 / Event Trigger 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す（PR #341 / #365）
+- [x] 接続設定初期化 / initial Pingのdriver error本文をcredential-safeに隔離し、READMEへ同期する（PR #414 / #415、GitHub #411）
 - [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
 - [ ] `reproducibleRevision = true`を実runで確認する
@@ -303,8 +320,8 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 
 ## 関連
 
-- GitHub Issue #69 / #244 / #255 / #273 / #308 / #310
-- PR #294 / #300 / #306 / #309 / #324 / #335 / #336 / #341 / #365 / #368
+- GitHub Issue #69 / #244 / #255 / #273 / #308 / #310 / #411
+- PR #294 / #300 / #306 / #309 / #324 / #335 / #336 / #341 / #365 / #368 / #414 / #415
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
