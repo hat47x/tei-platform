@@ -2,261 +2,307 @@
 
 ## 目的
 
-この文書は、Gate Bの残件を「設計をさらに増やす作業」ではなく、既に成立した境界へ不足しているEvidenceを取得する作業として実行できる形へ整理します。
+この文書は、Gate Bを通過するために**何のEvidenceが必要か、各Evidenceが何を証明し、何を証明しないか**を定めます。
 
-Gate Bの正式な判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正とします。この文書はその判定条件を変更せず、残件ごとの入力、実行経路、保存してよいEvidence、完了判定を具体化するrunbookです。
+具体的なコマンド、実行順、保存前の差分確認、fail-closedの停止条件は[`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)を唯一の実行手順として扱います。本書では同じコマンド列を重複して管理しません。
+
+Gate Bの正式なReady / Not Ready判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正とします。
+
+したがって三文書の役割は次です。
+
+```text
+GATE_B_EVIDENCE_ACQUISITION.md
+  └─ 何をEvidenceとして取得するか / 証明範囲 / 完了条件
+
+GATE_B_EVIDENCE_RUNBOOK.md
+  └─ どの順序・コマンド・停止条件で取得するか
+
+GATE_B_READINESS_AUDIT.md
+  └─ 取得済みEvidenceからGate Bをどう判定するか
+```
 
 ## 現在地
 
-PR #285でApplication Driver / Reference data access / header-detail / Observation / 最終UI-less Scenarioの実装・Reference authoring・Conformanceを`main`へ収束しました。
+Application Driverの主要意味境界、最終UI-less Scenario構造、external-observed Query Evidenceの受入境界、header-detail PostgreSQL fixtureの安全境界は成立しています。
 
-したがって、現在のGate B残件は主に次の四系統です。
+2026-09-04時点のGate B残件は、主に次の四系統です。
 
-1. external-observed `master_data`の実物理 / read-only Evidence
-2. header-detailの実PostgreSQL Evidence
-3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence
-4. 最終UI-less Scenarioを通常Go runnerで実行したEvidence
+1. external-observed `master_data`のactual Oracle物理 / read-only Evidence（#214）
+2. header-detailのreal PostgreSQL engine Evidence（#308）
+3. Reference World / Plugin Lock / Durable Runの正規再生成Evidence（#255）
+4. 最終UI-less ScenarioとEvidence受入境界の通常Go runner実行Evidence
 
-GitHub Actionsによる再検証は重要ですが、上記Evidenceと同一ではありません。Actionsが停止していること自体をGate Bの意味設計Gapへ読み替えず、再開後の継続的な再検証経路として別に追跡します。
+GitHub Actionsの再開・継続実行は重要ですが、上記Evidenceそのものとは分けます。Actions停止をSemantic design gapとは扱わず、未実行をgreenとも扱いません。
+
+## Evidenceの分類
+
+Gate BではEvidenceを少なくとも三種類に分けます。
+
+| 種類 | 代表例 | 証明するもの | 代替しないもの |
+| --- | --- | --- | --- |
+| deterministic repository Evidence | Workspace Validation、Go test、Reference golden再生成 | Repository内のauthoring・runtime境界・生成再現性 | 実外部資産の物理事実 |
+| real-provider fixture Evidence | header-detail PostgreSQL tool | 実provider / driver / native SQLを通るruntime | production既存DBの事実、Oracle Evidence |
+| actual external asset Evidence | `master_data` Oracle | TEI非所有資産の実物理・provenance・read-only境界 | synthetic / ephemeral fixture |
+
+一種類の成功を別種類のEvidenceへ格上げしません。
 
 ## Evidence A — external-observed `master_data`
 
 関連: `ISSUE-000022` / GitHub Issue #214
 
-### 取得前に必要な実物理情報
+### 性質
 
-TEI側で名前を推測せず、利用対象から少なくとも次を取得します。
+これは**actual external asset Evidence**です。
 
-- 実際の物理object identity
-  - table / view / API等
-- `customer/find_by_id`へ渡す物理parameter identity
-- raw resultとして返る列identity
-- `customer.customer.customer_id` / `customer.customer.name`への明示mapping
-- native SQLまたはAPI realization source
-- その情報をどこから確認したかというprovenance
-- read-onlyを実効的に保証する境界
+PR #288でEvidence intake boundaryは成立し、PR #304で収束線へ、PR #306で`main`へ、受入前にCanonical Workspaceの通常Validation Errorを拒否するfail-closed境界も成立しました。
 
-### read-onlyのEvidence
+一方、第一Referenceで利用する実Oracle物理事実そのものはまだ未取得です。
 
-`ownership external-observed`という宣言だけでread-onlyを証明したことにはしません。
+### 必要な入力
 
-利用する環境に応じて、少なくとも次のうち実際に効いている境界を記録します。
+TEI側で名前を推測せず、利用対象から少なくとも次を観測します。
 
-- read-only credential / database role
-- session / transaction read-only設定
-- read-only view / API
-- write権限を持たない接続先
-- 外部側の権限制御
+- physical objectのkind / identity
+- Contract input `id`へ対応するphysical parameter identity
+- parameterの実型とNULL上の扱い
+- raw result column identity
+- raw columnの実型とNULL上の扱い
+- raw resultから`customer.customer`の必要なSemantic attributeへの明示mapping
+- native Oracle SQLまたは実際のrealization source
+- 物理情報を確認したsource / provenance
+- 匿名化・縮約等を行った場合の加工内容
+- read-onlyを実効的に保証する境界とそのEvidence参照
 
-SQL文字列が`SELECT`に見えることだけをread-only Evidenceにはしません。
+### read-only Evidence
 
-### 保存しないもの
+次のような、実際にwriteを防ぐ境界を確認します。
 
-通常Evidenceへ次を保存しません。
+- read-only principal / credential / database role
+- Database permission
+- read-only session / transaction
+- write操作を公開しないadapter / API
+- 外部側で強制される同等の制御
 
-- password
-- DSNに含まれるcredential
-- token / secret
-- 実行時parameter valueで保存不要なもの
-- 業務上不要な実データ
+`ownership = external-observed`という宣言や、SQLが`SELECT`に見えることだけをread-only Evidenceにはしません。
 
-### 完了判定
+### Evidence intakeとの関係
 
-少なくとも次を実接続で区別できたら、このEvidence laneを完了候補とします。
+観測事実は非Canonical Evidenceとして保持し、別途明示authoringした`ContractQuerySQLRealization`と照合します。
 
-- 1件取得
-- 0件を正常なnot-foundとして保持
-- 実行失敗をExecution Errorとして保持
-- 明示mappingからSemantic Customerへ変換
-- read-only境界が実効的であることを説明可能
-- Environment / Database instance / executor Capabilityのidentityを保持
+`tools/reference-external-query-evidence`は、対応realizationがなければ停止し、EvidenceからSQL realizationを生成・補完しません。
 
-未観測の物理名をTEI側から補った場合はEvidenceとして採用しません。
+`nativeSource.fingerprint`はraw fileのGit SHAではなく、Workspace Loaderが保持する実行SQL本文とのstale検知に利用します。独立したprovenanceは`nativeSource.evidenceRef` / `provenance.sourceRef`で保持します。
 
-## Evidence B — header-detail実PostgreSQL
+### 完了候補
 
-関連: `ISSUE-000024` / GitHub Issue #244
+少なくとも次を説明・再現できることを求めます。
 
-実行入口は`tools/reference-postgres-header-detail-runtime`です。
+- 実Oracle物理情報が観測sourceへ追跡できる
+- 1件取得をSemantic Customerまで明示mappingできる
+- 0件を正常なnot-foundとして保持できる
+- 実行失敗をExecution Errorとして保持できる
+- read-only強制をSQL文字列以外の実効境界から説明できる
+- Environment / Database instance / executor Capability identityを保持できる
+- credential / secret / 不要な実データを通常Evidenceへ保存していない
 
-### 実行環境
+未観測の物理名をTEI側から補った場合は完了Evidenceとして採用しません。
 
-このtoolはfixtureとして`public.order_lines`を**作成し、Evidence取得途中で削除します**。既存の業務Databaseや共有Schemaでは実行せず、破棄可能な専用PostgreSQL databaseを使用します。
+## Evidence B — header-detail real PostgreSQL engine
 
-接続情報はRepositoryへ保存せず、環境変数から渡します。
+実Provider Evidence: GitHub Issue #308
 
-```bash
-export TEI_TEST_POSTGRES_DSN='postgres://...'
-go run ./tools/reference-postgres-header-detail-runtime
+成立済み設計: `ISSUE-000024` / GitHub Issue #244
+
+### 責務分離
+
+#244では、keyless Relation Storage、`find_by_order` SQL realization、Driver runtime、Evidence toolの安全境界まで成立しており、設計IssueとしてCompletedです。
+
+**実PostgreSQL engine上でEvidenceを取得する作業だけを#308で追跡します。** 実Provider実行が未完了であることを理由に、Relation Storage設計を再びIn Progressへ戻しません。
+
+### 性質
+
+これは**real PostgreSQL engine + ephemeral fixture Evidence**です。
+
+実PostgreSQL provider / driver / native SQL executionを通しますが、tool自身が作る一時fixtureを利用します。production既存Databaseの物理事実を観測するEvidenceではなく、Evidence AのOracle実外部資産を代替しません。
+
+### 安全境界
+
+PR #294以降、既存`public.order_lines`が存在する接続先ではfail closedで停止し、既存tableをfixtureへ置換するoverrideを持ちません。
+
+PR #304で収束線へ、PR #306で`main`へ、**Databaseへ接続する前に**`reference/workspace`を読み込み、通常`validation.Validate`のErrorがあれば停止する境界を追加しました。
+
+したがって順序上の契約は次です。
+
+```text
+Workspace Load
+  ↓
+Canonical Validation
+  ↓ Errorなら停止
+PostgreSQL接続
+  ↓
+既存fixture guard
+  ↓
+tool-owned fixture
+  ↓
+runtime Evidence
 ```
 
-### toolが確認すること
+### 証明対象
 
-- `order_id=1001`で2件取得
-- `order_id=9999`で0件を正常結果として取得
-- table削除後のreadをExecution Errorとして区別
-- physical parameter名は`order_id`
-- parameter valueをEvidenceへ保存しない
-- raw resultを明示mappingからSemantic OrderLineへ変換
+- `order_id=1001`で2件を正常collectionとして取得できる
+- `order_id=9999`で0件を正常な空collectionとして扱える
+- physical table欠落をExecution Errorとして区別できる
+- physical parameter identityを保持できる
+- parameter valueを通常Evidenceへ保存しない
+- raw resultを明示mappingからSemantic OrderLineへ変換する
 - Relation Storageの`order_id` support columnをSemantic attributeへ逆流させない
 - Environment = `development`
 - Database instance = `sales_core.dev`
 - executor Capability = `database.query.postgres`
+- `evidenceNature = real-postgres-ephemeral-fixture`
 
-正常終了時にJSON Evidenceを標準出力へ返します。
+### 完了候補
 
-### 完了判定
+#308の完了条件として、少なくとも次を確認します。
 
-- 実PostgreSQLへ接続してtoolが正常終了する
-- JSON Evidenceを再確認できる
-- credential / DSNをEvidenceへ含めない
-- 2件 / 0件 / Execution Errorの三状態を区別できる
-- physical support columnをSemantic attributeへ格上げしていない
+- Validation成功revisionを記録できる
+- Evidence専用の空PostgreSQL Databaseでtoolが正常終了する
+- 2件 / 0件 / Execution Errorを同一runで区別できる
+- Semantic mapping / support column非露出を確認できる
+- credential / DSN / runtime parameter valueをEvidenceへ含めない
+- Evidence natureを他種別と区別できる
+- 結果を#273 Gate B監査へ対応付けられる
 
-## Evidence C — Reference golden再生成
+## Evidence C — Reference artifact再生成
 
 関連: `ISSUE-000025` / GitHub Issue #255
 
-### 1. 現在差分の検査
+### 責務
 
-まずRepositoryを変更せず、現在のCanonical Workspaceと保存済みgoldenの一致を確認します。
+#255は**generated Reference artifactの再現性だけ**を扱います。
 
-```bash
-go run ./tools/reference-golden
-```
+real PostgreSQL engine Evidenceは#308、actual Oracle Evidenceは#214へ分離します。
 
-一致しない場合、表示されたpathをEvidenceとして記録します。
+### 性質
 
-### 2. 意図したauthoring変更だけを反映
+これは**deterministic repository Evidence**です。
 
-Canonical authoringの変更から説明できる差分であることを確認した場合だけ更新します。
+Canonical Workspaceから派生する生成物をTEI自身の正規経路で再現できることを確認します。
 
-```bash
-go run ./tools/reference-golden -write
+対象は少なくとも次です。
 
-git diff -- \
-  reference/world.json \
-  reference/workspace/.tei/plugin-lock.json
-```
+- `reference/world.json`
+- `reference/workspace/.tei/plugin-lock.json`
+- `reference/order_rollout.durable-run.m0.21.start.json`
 
-生成物を手編集して合わせません。
+`reference/observed/*`やlegacy-auth fixtureは、Canonical authoring変更だけを理由に自動更新しません。
 
-### 3. Durable Runがstaleになった場合
+### 証明対象
 
-Plugin Lock fingerprintが変わった場合は`pluginLockFingerprint`だけを書き換えず、正規の`deployment-start`経路から再生成します。
+- Worldを最新Canonical Workspaceから再生成できる
+- Plugin Lockを同じWorkspaceから再生成できる
+- 保存Durable RunのPlugin Lock依存を正規`deployment-start`から再現できる
+- 差分が現在のauthoring / Plugin Lock / fixed observed fixtureから説明できる
+- fingerprintや生成JSONを人手で合わせていない
 
-```bash
-go run ./cmd/tei deployment-start \
-  -workspace reference/workspace \
-  -solution order_rollout \
-  -version 2026.8.27 \
-  -deployment reference/observed/production.deployment-state.json \
-  -run-id order-rollout-prod-m0.21 \
-  -plugin-lock reference/workspace/.tei/plugin-lock.json \
-  > /tmp/tei-reference-deployment-run.json
+### 完了候補
 
-diff -u \
-  reference/order_rollout.durable-run.m0.21.start.json \
-  /tmp/tei-reference-deployment-run.json
-```
+- 正規生成後に`reference-golden`のcheckが一致する
+- artifact差分を意味上説明できる
+- external-observed `master_data`の未観測物理情報が生成物へ紛れ込んでいない
+- observed fixtureを生成結果へ合わせて書き換えていない
+- 結果を#273 Gate B監査へ対応付けられる
 
-差分が現在のWorkspace / Plugin Lock / fixed observed fixtureから説明できる場合だけ、出力全体をgoldenとして更新します。
+具体的な安全な再生成順序、Durable Runの一時file利用、差分確認は`GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
 
-### 4. 最終確認
+## Evidence D — UI-less Scenario / Evidence境界の通常Go runner
 
-```bash
-go run ./tools/reference-golden
-```
+### 性質
 
-World / Plugin Lock / Durable Runの依存がすべて一致することを確認します。
+これは**deterministic repository Evidence**です。
 
-### 完了判定
+最終UI-less Scenarioはsynthetic adapterを含みます。通常Go runnerで成功しても実Oracle / 実PostgreSQL / 実外部Command Evidenceへ格上げしません。
 
-- 最新authoringからWorldを再現できる
-- 最新authoringからPlugin Lockを再現できる
-- Durable RunのPlugin Lock依存が一致する
-- 更新差分を意味上のauthoring変更から説明できる
-- 手編集によるfingerprint合わせをしていない
+### 証明対象
 
-## Evidence D — 最終UI-less Scenario
-
-正本は`internal/driver/final_gate_b_scenario_test.go`です。
-
-### 最小実行
-
-```bash
-go test ./internal/driver \
-  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$' \
-  -count=1
-```
-
-このテストは次を一つのtest-local Scenarioへ接続します。
+同じ`order_entry` Application / Semantic Order identityから、少なくとも次の境界を一続きに接続できることを確認します。
 
 ```text
 Authentication
   -> browse
   -> record Pattern resolution
-  -> reference Customer
-  -> header-detail OrderLine[]
+  -> reference
+  -> header-detail
   -> Canonical Validation
   -> Authorization
   -> Command Business Result
   -> separate Observation read
 ```
 
-synthetic adapterを含むため、成功しても実Oracle / 実PostgreSQL / 実外部Command Evidenceへ格上げしません。
+加えて、external Evidence intakeのunit/tool testsを通常runnerで実行し、PR #288 / #304 / #306で成立した受入・fail-closed境界がコードとして再現することを確認します。
 
-### Repository全体の通常runner確認
+### 完了候補
 
-実行可能な環境では、個別Scenarioだけでなく通常のGo検証も行います。
-
-```bash
-go test ./...
-```
-
-GitHub Actionsが停止中でも、独立した通常Go runnerで得た結果はGate BのScenario実行Evidenceとして利用できます。逆に、実行していない状態をgreenとは記録しません。
-
-### 完了判定
-
-- 最終Scenario testを通常Go runnerで実行できる
-- testが成功する
-- 使用したrepository revisionを記録できる
-- synthetic Evidenceであることを明示する
+- 最終Scenario testが通常Go runnerで成功する
+- external Evidence intakeの関連testsが成功する
+- repository revisionを記録できる
+- synthetic Evidenceであることを明示できる
 - 実外部Evidenceとの区別を維持する
 
-## Gate BとCIの分離
+## 保存してよいもの / 保存しないもの
 
-Gate Bは、特定のCIサービスがgreenかどうかではなく、Product Value上必要な意味境界とEvidenceが揃ったかで判定します。
+通常Evidenceへ保存してよいのは、再現と監査に必要なidentity、結果分類、provenance参照、fingerprint、非機密metadataです。
 
-したがって次を分けます。
+次は原則として保存しません。
 
-### Gate B判定に直接必要
+- password
+- credentialを含むDSN
+- token / secret
+- 不要なruntime parameter value
+- 業務上不要な実データ
+- temporary fixture data
 
-- external-observed assetを推測していない実物理Evidence
-- 実PostgreSQL header-detail Evidence
-- Reference artifactの再生成性
-- UI-less Scenarioの通常runner実行Evidence
-- Business Result / Execution Error / Observation等の意味境界
-- read-only / secret等の安全境界
+必要な監査証跡とsecretそのものを混同しません。
 
-### CI再開後に継続確認するもの
+## CIとの関係
 
-- `go test ./...`の継続的再実行
-- Reference golden再現性
-- PostgreSQL integrationの継続的再実行
-- 将来のregression検知
+Gate Bは特定CIサービスのgreenをProduct Evidenceの代替にはしません。
 
-CIをGate Bの代替Evidenceにせず、逆にCI停止だけを理由にProduct Gateを永久に止めないようにします。
+GitHub Actionsが再開された場合には、通常Go tests、Reference golden再現性、PostgreSQL integration等を継続的に再実行するregression経路として利用します。
 
-## Evidence取得後の更新順
+CI停止だけを理由に意味設計を未成立とは扱わず、逆に未実行をgreenとも記録しません。
 
-Evidenceを得たら、その都度次を更新します。
+## Evidence取得後
 
-1. 対応するGitHub Issue / Repository Issueの現在地
-2. `GATE_B_READINESS_AUDIT.md`の条件表
-3. synthetic / external-observed / managed-hereのEvidence性質
+Evidenceを取得するたびに、少なくとも次を更新します。
+
+1. 対応するRepository Issue / GitHub Issueの現在地
+2. [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)の条件表
+3. Evidence種別（repository / provider fixture / actual external asset）
 4. unresolved事項
 
 四系統のEvidenceが揃った時点でGate B監査を再実行します。
 
-Gate Bを通過した場合に初めて、第一Web Targetへ「Web側で意味を補わないbaseline」として同じApplication / Driver境界を引き渡します。
+Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)に従ってHandover Baselineを固定し、その後に第一Web Targetへ進みます。
+
+## 非目標
+
+- この文書を第二の実行runbookにすること
+- #244を実Provider Evidence待ちのために再び設計Issueへ戻すこと
+- #255へPostgreSQL / Oracle runtime Evidenceを抱え込むこと
+- Gate B前にWeb実装を開始すること
+- CIをこの文書から再有効化すること
+- external物理情報を推測すること
+- synthetic / fixture Evidenceをactual external asset Evidenceとして扱うこと
+- 生成物やfingerprintを手編集して一致させること
+- Gate Bのために汎用Workflow / Event Sourcing / Presentation IRを先行設計すること
+
+## 関連
+
+- [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): 実行順・具体コマンド・停止条件の正本
+- [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md): Gate B判定の正本
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md): Gate B通過後のbaseline引き渡し
+- `issue/000022-external-master-data-physical-query-evidence.md`
+- `issue/000024-keyless-relation-physical-storage.md`
+- `issue/000025-reference-generated-artifacts-refresh.md`
+- GitHub #214 / #244 / #255 / #273 / #308
