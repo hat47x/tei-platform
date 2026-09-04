@@ -49,6 +49,27 @@ Gate BではEvidenceを少なくとも四種類に分けます。
 
 同じRepository checkoutとGo toolchainだけで再現できるという理由だけで、generated artifact reproducibilityをdeterministic Repository / Driver Evidenceへ畳みません。両者は「何を証明するか」が異なるため、Gate Bでも別laneとして判定します。
 
+## 最終Ready判定では4 laneを同じrevisionへ揃える
+
+四種類のEvidenceがそれぞれ一度でも成功すればGate BをReadyにできる、という意味ではありません。
+
+Gate Bの最終Ready判定では、一つのcleanなcandidate repository revision `R`を定め、**完了判定に用いる4 laneのEvidenceをすべてRへ揃えます**。
+
+少なくとも次を要求します。
+
+- #214 acceptance receiptの`repositoryRevision = R`かつ`reproducibleRevision = true`
+- #214 actual Oracle readがRのruntime / realizationに対して行われている
+- #308 Provider Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
+- #255 generated artifact Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
+- #310 deterministic Repository Evidenceの`repositoryRevision = R`かつ`reproducibleRevision = true`
+- `GATE_B_READINESS_AUDIT.md`がRを対象にReady / Not Readyを判定している
+
+外部観測資料そのものはRより前に取得されていて構いません。ただし、その資料を現在のauthoringへ照合する#214 acceptance receiptとactual readはRへ結び直します。
+
+Rと異なるrevisionでしか成功していないlaneは、「意味は変わっていないはずだ」と推測して流用せず、Rで再実行・再受入れします。
+
+実行順はRunbookの二段階手順を正とします。事前確認の後でsourceやgenerated artifactが変わった場合、それ以前の成功JSONを最終完了Evidenceへ読み替えません。
+
 ## Evidence A — external-observed `master_data`
 
 関連: `ISSUE-000022` / GitHub Issue #214
@@ -156,6 +177,8 @@ PR #336で、#308も#310 / #255と同じ`tools/internal/repositoryevidence`へso
 - Provider runtime、fixture cleanup、Database復元確認後にHEAD / working treeを再確認する
 - 実行前後で同じHEADかつcleanでなければ成功Evidenceを出さない
 - `repositoryRevision` / `reproducibleRevision` / post-run Repository stateをEvidenceへ残す
+
+PR #355以降、post-runの`Checked = true`は、実行後repository revisionとworking tree状態の両方を観測できた後にだけ設定されます。途中で観測に失敗した状態と、「観測した結果cleanではなかった」状態を区別します。
 
 ### fixture作成前の安全境界
 
@@ -288,6 +311,8 @@ PR #331で、#255の完了条件を`tools/reference-generated-artifact-evidence`
 - 実行後もworking tree clean
 - `reproducibleRevision = true`
 
+PR #355以降、post-runの`Checked = true`は、実行後repository revisionとworking tree状態の両方を観測できた後にだけ設定されます。
+
 ### repairとの関係
 
 `reference-golden -write` / `reference-durable-run-golden -write`はstale解消の**修復操作**です。
@@ -329,7 +354,7 @@ PR #331で、#255の完了条件を`tools/reference-generated-artifact-evidence`
 
 ### 正規Evidence
 
-PR #315 / #321 / #336 / #346で`tools/reference-gate-b-repository-evidence`と共通Repository source観測境界を整備しました。
+PR #315 / #321 / #336 / #346 / #351 / #355で`tools/reference-gate-b-repository-evidence`と共通Repository source観測境界を整備しました。
 
 runnerはWorkspace Validation、最終UI-less Scenario、external Evidence intake tests、Repository source境界のpure Conformanceを一つのrunで独立checkとして扱い、実行前後のrepository状態も確認します。
 
@@ -347,6 +372,10 @@ Gate Bへ採用するEvidenceには少なくとも次を要求します。
 - `reproducibleRevision = true`
 
 PR #346でsource-boundary Conformanceをtargeted Evidenceへ独立checkとして追加しています。runner自身のpackageをtargeted testへ含めず、source観測helperのpure契約だけを検証することで自己再帰を避けます。
+
+PR #351以降、開始時working treeがcleanであっても、post-run確認が終わるまでは`reproducibleRevision=false`を維持します。途中失敗を再現可能な成功Evidenceとして扱いません。
+
+PR #355以降、`postRunRepository.checked = true`になるのは、実行後repository revisionとworking tree状態の両方を観測できた後だけです。観測自体に失敗した状態と、観測した結果cleanではなかった状態を分けます。
 
 Test自体が成功しても、実行中にsource revisionが変化したrunや実行後に差分が残るrunは完了Evidenceへ採用しません。
 
@@ -411,9 +440,11 @@ Evidenceを取得するたびに、少なくとも次を更新します。
 3. Evidence種別（deterministic repository / generated artifact reproducibility / provider fixture / actual external asset）
 4. unresolved事項
 
-四laneのEvidenceが揃った時点でGate B監査を再実行します。
+事前確認でsourceやgenerated artifactの変更が必要になった場合は、必要な変更を確定・commitしてから最終判定用のcandidate revision Rを選びます。
 
-Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)に従ってHandover Baselineを固定し、その後に第一Web Targetへ進みます。
+Gate B監査を最終実行するのは、単に四laneの成功履歴が存在するときではなく、**四laneの完了判定に用いるEvidenceがすべて同じRへ揃ったとき**です。
+
+Gate BがRについてReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)に従ってRをHandover Baselineとして固定し、その後に第一Web Targetへ進みます。
 
 ## 非目標
 
@@ -430,6 +461,8 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 - `-write`直後のdirty treeをgenerated artifact完了Evidenceとして採用すること
 - source revisionが実行中に変化したrunを完了Evidenceとして採用すること
 - cleanup後にuser relationが残るPostgreSQL runを成功Evidenceとして採用すること
+- 異なるrevisionで得た4 laneの成功Evidenceを、一つのReady revisionへ読み替えること
+- 事前確認後にsourceが変わったのに、その前の成功JSONを最終完了Evidenceとして流用すること
 - Gate Bのために汎用Workflow / Event Sourcing / Presentation IRを先行設計すること
 
 ## 関連
@@ -442,5 +475,5 @@ Gate BがReadyになった場合は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_T
 - `issue/000025-reference-generated-artifacts-refresh.md`
 - `issue/000031-gate-b-postgres-header-detail-evidence.md`
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
-- GitHub #214 / #244 / #255 / #273 / #308 / #310
-- PR #331 / #335 / #336 / #340 / #341 / #346
+- GitHub #214 / #244 / #255 / #273 / #291 / #308 / #310
+- PR #331 / #335 / #336 / #340 / #341 / #346 / #351 / #354 / #355 / #356
