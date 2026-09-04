@@ -66,14 +66,52 @@ func TestRunWithRechecksSourceAndKeepsReproducibleFalseWhenCheckFails(t *testing
 	if checkCalls != 2 {
 		t.Fatalf("check calls=%d want 2", checkCalls)
 	}
-	if postCalls != 1 {
-		t.Fatalf("post-run source checks=%d want 1", postCalls)
+	if postCalls != 3 {
+		t.Fatalf("post-run source checks=%d want 3 (each check + final)", postCalls)
 	}
 	if !result.PostRunRepository.Checked {
 		t.Fatal("postRunRepository.checked=false after child check failure")
 	}
 	if result.ReproducibleRevision {
 		t.Fatal("reproducibleRevision=true on failed golden check")
+	}
+}
+
+func TestRunWithStopsBeforeNextCheckWhenFirstCheckLeavesDirtyTree(t *testing.T) {
+	postCalls := 0
+	checkCalls := 0
+
+	result, err := runWith(
+		cleanStart,
+		func(initial string) (repositoryevidence.PostRun, error) {
+			postCalls++
+			return repositoryevidence.PostRun{
+				Checked:            true,
+				RepositoryRevision: initial,
+				RevisionStable:     true,
+				WorkingTreeClean:   false,
+			}, nil
+		},
+		func(commandSpec) bool {
+			checkCalls++
+			return true
+		},
+		fakeGoVersion,
+	)
+	if err == nil {
+		t.Fatal("runWith() error=nil, want dirty working tree failure")
+	}
+	if checkCalls != 1 {
+		t.Fatalf("check calls=%d want 1", checkCalls)
+	}
+	if postCalls != 1 {
+		t.Fatalf("post-run source checks=%d want 1", postCalls)
+	}
+	if result.PostRunRepository.WorkingTreeClean {
+		t.Fatal("postRunRepository.workingTreeClean=true, want false")
+	}
+	if result.ReproducibleRevision {
+		t.Fatal("reproducibleRevision=true after check-only tool changed working tree")
 	}
 }
 
@@ -122,11 +160,13 @@ func TestRunWithRejectsSourceDrift(t *testing.T) {
 }
 
 func TestRunWithMarksReproducibleOnlyAfterChecksAndPostRun(t *testing.T) {
+	postCalls := 0
 	checkCalls := 0
 
 	result, err := runWith(
 		cleanStart,
 		func(string) (repositoryevidence.PostRun, error) {
+			postCalls++
 			return cleanPostRun("R"), nil
 		},
 		func(commandSpec) bool {
@@ -140,6 +180,9 @@ func TestRunWithMarksReproducibleOnlyAfterChecksAndPostRun(t *testing.T) {
 	}
 	if checkCalls != 2 {
 		t.Fatalf("check calls=%d want 2", checkCalls)
+	}
+	if postCalls != 3 {
+		t.Fatalf("post-run source checks=%d want 3 (each check + final)", postCalls)
 	}
 	if !result.ReproducibleRevision {
 		t.Fatal("reproducibleRevision=false after all checks and clean post-run")
