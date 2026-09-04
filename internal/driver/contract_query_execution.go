@@ -141,7 +141,10 @@ func (r Resolver) validateContractQuerySemanticRows(query database.QueryContract
 	if err != nil {
 		return fmt.Errorf("Query %sのresult Data %sを解決できません: %w", query.Name, query.Result, err)
 	}
-	attributes := semanticAttributesByID(resultData.Attributes)
+	attributes := map[core.CanonicalID]struct{}{}
+	for _, attribute := range resultData.Attributes {
+		attributes[attribute.ID] = struct{}{}
+	}
 
 	for rowIndex, row := range rows {
 		for attributeID := range row.Attributes {

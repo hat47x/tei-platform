@@ -26,9 +26,8 @@ func TestParseSemanticRelationReadsExplicitKeyMapping(t *testing.T) {
 	ns, err := NewParser(`namespace sales
 
 data Order {
-    relation customer to customer.customer one {
+    relation customer to customer.customer one
         key sales.order.customer_id -> customer.customer.customer_id
-    }
 }
 `).ParseSemanticFile()
 	if err != nil {
@@ -48,10 +47,9 @@ func TestParseSemanticRelationPreservesCompositeKeyOrder(t *testing.T) {
 	ns, err := NewParser(`namespace sample
 
 data Parent {
-    relation children to sample.child many {
+    relation children to sample.child many
         key sample.parent.tenant_id -> sample.child.tenant_id
         key sample.parent.parent_id -> sample.child.parent_id
-    }
 }
 `).ParseSemanticFile()
 	if err != nil {
@@ -84,9 +82,8 @@ func TestParseSemanticRelationRejectsKeyWithoutArrow(t *testing.T) {
 	_, err := NewParser(`namespace sales
 
 data Order {
-    relation customer to customer.customer one {
+    relation customer to customer.customer one
         key sales.order.customer_id customer.customer.customer_id
-    }
 }
 `).ParseSemanticFile()
 	if err == nil {

@@ -15,7 +15,7 @@ func TestBusinessValidationRejectsRelationAttributeOutsideTarget(t *testing.T) {
 			ID: "sales",
 			Data: []semantic.Data{
 				{
-					ID: "sales.order",
+					ID:        "sales.order",
 					Relations: []semantic.Relation{{ID: "sales.order.lines", Target: "sales.order_line", Cardinality: semantic.CardinalityMany}},
 				},
 				{
@@ -29,15 +29,15 @@ func TestBusinessValidationRejectsRelationAttributeOutsideTarget(t *testing.T) {
 			},
 			Validations: []semantic.Validation{{
 				ID:        "sales.order.lines_line_number_unique",
-				Kind:      semantic.ValidationRelationAttributeUnique,
+				Kind:      semantic.ValidationRelationUnique,
 				Relation:  "sales.order.lines",
 				Attribute: "sales.other.line_number",
 			}},
 		}},
 	}
 
-	diagnostics := validateBusinessValidationReferences(world)
-	if !hasDiagnosticCode(diagnostics, "SEMANTIC_VALIDATION_ATTRIBUTE_RELATION_MISMATCH") {
+	diagnostics := Validate(world)
+	if !hasDiagnosticCode(diagnostics, "SEMANTIC_VALIDATION_ATTRIBUTE_OUTSIDE_RELATION_TARGET") {
 		t.Fatalf("Relation target外の属性を拒否していません: %#v", diagnostics)
 	}
 }
@@ -52,7 +52,7 @@ func TestApplicationValidationRequiresExistingRuleFromUsedSemantic(t *testing.T)
 			}},
 			Validations: []semantic.Validation{{
 				ID:        "sales.order_line.quantity_positive",
-				Kind:      semantic.ValidationAttributePositive,
+				Kind:      semantic.ValidationPositive,
 				Attribute: "sales.order_line.quantity",
 			}},
 		}},
@@ -62,7 +62,7 @@ func TestApplicationValidationRequiresExistingRuleFromUsedSemantic(t *testing.T)
 		},
 	}
 
-	diagnostics := validateBusinessValidationReferences(world)
+	diagnostics := Validate(world)
 	if !hasDiagnosticCode(diagnostics, "UNKNOWN_APPLICATION_VALIDATION") {
 		t.Fatalf("未知Validation参照を拒否していません: %#v", diagnostics)
 	}

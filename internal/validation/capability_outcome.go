@@ -36,6 +36,9 @@ func validateCapabilityOutcomes(w ir.World) []Diagnostic {
 
 			seenNames := map[core.LocalName]struct{}{}
 			for _, outcome := range capability.Outcomes {
+				if outcome.Name == "" {
+					out = append(out, errFor(capabilitySubject, "SEMANTIC_CAPABILITY_OUTCOME_NAME_REQUIRED", "capability %s has an outcome without a name", capability.ID))
+				}
 				if _, exists := seenNames[outcome.Name]; exists {
 					out = append(out, errFor(
 						capabilitySubject,
