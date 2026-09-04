@@ -23,7 +23,7 @@ type acceptanceReceipt struct {
 	WorkingTreeClean            bool                       `json:"workingTreeClean"`
 	ReproducibleRevision        bool                       `json:"reproducibleRevision"`
 	PostRunRepository           repositoryevidence.PostRun `json:"postRunRepository"`
-	EvidenceArtifactSHA256      string                     `json:"evidenceArtifactSha256"`
+	EvidenceArtifactFingerprint string                     `json:"evidenceArtifactFingerprint"`
 	Target                      string                     `json:"target"`
 	Provider                    string                     `json:"provider"`
 	Accepted                    bool                       `json:"accepted"`
@@ -68,7 +68,7 @@ func run(workspacePath, evidencePath string) (acceptanceReceipt, error) {
 	if err != nil {
 		return result, fmt.Errorf("external Contract Query Evidence %sを読み込めません: %w", evidencePath, err)
 	}
-	result.EvidenceArtifactSHA256 = evidenceArtifactSHA256(raw)
+	result.EvidenceArtifactFingerprint = evidenceArtifactFingerprint(raw)
 
 	evidence, err := externalqueryevidence.Load(raw)
 	if err != nil {
@@ -121,9 +121,9 @@ func run(workspacePath, evidencePath string) (acceptanceReceipt, error) {
 	return result, nil
 }
 
-func evidenceArtifactSHA256(raw []byte) string {
+func evidenceArtifactFingerprint(raw []byte) string {
 	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func findRealization(definitions []realization.ContractQuerySQLRealization, evidence externalqueryevidence.Evidence) (realization.ContractQuerySQLRealization, error) {
