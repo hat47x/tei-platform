@@ -33,6 +33,7 @@ type Diagnostic struct {
 
 func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
+	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
 
