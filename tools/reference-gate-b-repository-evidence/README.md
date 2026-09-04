@@ -2,7 +2,7 @@
 
 Gate Bのうち、Repository checkoutとGo toolchainだけで再現できる**deterministic Repository Evidence**を一つの入口から実行するtoolです。
 
-GitHub Issue #310の実行補助を目的とします。
+GitHub Issue #310 / `plan/issue/000032-gate-b-deterministic-repository-evidence.md`の実行補助を目的とします。
 
 ## 対象
 
@@ -15,6 +15,7 @@ GitHub Issue #310の実行補助を目的とします。
 5. 最終UI-less Scenario test
 6. external Evidence intake boundary test
 7. 明示指定時だけRepository全体の`go test ./...`
+8. Evidence実行後のHEAD不変・working tree cleanの再確認
 
 次は扱いません。
 
@@ -62,17 +63,31 @@ go test ./...
 
 広いtestはtargeted Gate B Evidenceとは別checkとしてJSONへ記録します。
 
-## clean revisionを要求する理由
+## cleanかつ固定されたrevisionを要求する理由
 
-Gate B完了Evidenceは、後から同じsource revisionへ戻れる必要があります。
+Gate B完了Evidenceは、後から**実際に実行した同じsource revision**へ戻れる必要があります。
 
-そのため既定では次が空でない場合、test実行前にfail closedで停止します。
+そのため実行前に次が空であることを確認します。
 
 ```bash
 git status --porcelain
 ```
 
 working treeがdirtyな状態で`git rev-parse HEAD`だけを記録すると、実際に実行したsourceと記録revisionが一致しません。
+
+さらに、targeted test / broad testの実行後にも次を再確認します。
+
+```bash
+git rev-parse HEAD
+git status --porcelain
+```
+
+次のいずれかが起きた場合は、test自体が成功していてもGate B完了Evidenceとしてfail closedします。
+
+- 実行中にHEADが別commitへ変化した
+- 実行後にtracked / untracked差分が残った
+
+これにより、「実行前はcleanだったがtestや並行操作でsource状態が変化した」runを、元revisionの成功Evidenceとして誤採用しません。
 
 診断目的に限り`-allow-dirty`を指定できます。
 
@@ -100,6 +115,12 @@ stdoutには概ね次の形を出します。
   "repositoryRevision": "<git commit>",
   "workingTreeClean": true,
   "reproducibleRevision": true,
+  "postRunRepository": {
+    "checked": true,
+    "repositoryRevision": "<same git commit>",
+    "revisionStable": true,
+    "workingTreeClean": true
+  },
   "goVersion": "go version ...",
   "workspace": "reference/workspace",
   "workspaceValidation": {
@@ -121,6 +142,13 @@ stdoutには概ね次の形を出します。
 }
 ```
 
+`reproducibleRevision = true`になるには、少なくとも次がすべて必要です。
+
+- 実行前working treeがclean
+- 実行後repository状態を確認済み
+- 実行前後でHEADが同一
+- 実行後working treeもclean
+
 JSONへtest stdout、DSN、credential、runtime parameter valueは保存しません。
 
 ### JSONをファイルへ保存する場合
@@ -138,7 +166,7 @@ EvidenceをRepositoryへ永続保存するか、どのpathを標準とするか�
 
 ## Evidenceの意味
 
-成功しても証明するのは、そのclean repository revisionでdeterministicなGate B境界が通常Go runnerから成立したことだけです。
+成功しても証明するのは、そのcleanかつ実行中に不変だったrepository revisionでdeterministicなGate B境界が通常Go runnerから成立したことだけです。
 
 次へ格上げしません。
 
@@ -152,6 +180,7 @@ EvidenceをRepositoryへ永続保存するか、どのpathを標準とするか�
 ## 関連
 
 - GitHub Issue #310
+- `plan/issue/000032-gate-b-deterministic-repository-evidence.md`
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
