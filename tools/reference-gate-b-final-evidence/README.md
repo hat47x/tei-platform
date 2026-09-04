@@ -79,7 +79,7 @@ final source check
 
 ## JSONへ残すもの
 
-最終JSONには、三laneを再掲せず、照合に必要な最小情報だけを残します。
+最終JSONには、三laneの詳細本文を再掲せず、照合に必要な最小情報だけを残します。
 
 - `evidenceNature = gate-b-three-lane-final-convergence`
 - candidate `repositoryRevision`
@@ -95,7 +95,12 @@ final source check
   - expected / observed Evidence nature
   - repository revision
   - reproducible revision
+  - `evidenceArtifactFingerprint`
   - pass / fail
+
+`evidenceArtifactFingerprint`は、そのlane runnerがstdoutへ出したEvidence JSONの**exact bytes**に対するSHA-256です。空白や改行だけが変わっても別artifactとして扱います。
+
+このfingerprintはEvidence本文の代替ではありません。またfingerprint自体を新しい合格条件にはしません。別途保存したchild Evidenceと、final runnerが実際に読み込んだartifactを後から照合するための追跡点として利用します。
 
 次は保存しません。
 
@@ -106,7 +111,7 @@ final source check
 - test stdout
 - PostgreSQL Database名
 
-三laneそれぞれの詳細Evidenceは、必要に応じて個別runnerから別途保存します。
+三laneそれぞれの詳細Evidenceは、必要に応じて個別runnerから別途保存します。fingerprintだけを根拠に、保存していないEvidence本文を後から推測・再構成しません。
 
 ## 事前確認と最終収束を分ける
 
@@ -137,5 +142,6 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - generated artifactを修復すること
 - PostgreSQLの既存Databaseをfixture用に変更すること
 - actual Oracle Evidenceを代替すること
+- fingerprintだけでchild Evidence本文の存在・真実性を証明したことにすること
 - Gate B Readyをtoolのexit codeだけで自動宣言すること
 - GitHub Actionsを再有効化すること
