@@ -217,13 +217,15 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 }
 
 func environmentForLane(spec laneSpec, base []string) []string {
-	out := append([]string(nil), base...)
 	if spec.Name == "real-postgres-ephemeral-fixture" {
-		return out
+		return append([]string(nil), base...)
 	}
+	return environmentWithoutPostgresDSN(base)
+}
 
-	filtered := out[:0]
-	for _, entry := range out {
+func environmentWithoutPostgresDSN(base []string) []string {
+	filtered := make([]string, 0, len(base))
+	for _, entry := range base {
 		key, _, ok := strings.Cut(entry, "=")
 		if ok && strings.EqualFold(key, postgresDSNEnv) {
 			continue
@@ -276,7 +278,9 @@ func lanesConverge(lanes []laneEvidence, candidateRevision string) bool {
 }
 
 func commandOutput(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).CombinedOutput()
+	cmd := exec.Command(name, args...)
+	cmd.Env = environmentWithoutPostgresDSN(os.Environ())
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%s: %w: %s", strings.Join(append([]string{name}, args...), " "), err, strings.TrimSpace(string(out)))
 	}
