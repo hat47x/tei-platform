@@ -23,17 +23,25 @@ GitHub Actionsが別判断で再開された場合の継続的regression確認�
 
 ### A. deterministic repository Evidence
 
-Repository checkoutとGo toolchainだけで再現できるものです。
+Repository checkoutとGo toolchainだけで再現できるApplication Driver / Evidence intakeのEvidenceです。
 
 - Workspace Validation
 - UI-less synthetic Scenario
 - external Evidence intake tests
-- World / Plugin Lock再生成
-- Durable Run再生成
 
-通常runner Evidenceの一括入口は`tools/reference-gate-b-repository-evidence`です。generated artifactの再現は#255として独立に判定します。
+通常runner Evidenceの一括入口は`tools/reference-gate-b-repository-evidence`です。
 
-### B. real-provider fixture Evidence
+### B. generated artifact reproducibility Evidence
+
+Canonical Workspace等の正規入力から、保存generated artifactを同じclean revisionで再現できることのEvidenceです。
+
+- World / Plugin Lock
+- Durable Run
+- 実行前後のsource revision不変性
+
+#255の最終完了Evidence入口は`tools/reference-generated-artifact-evidence`です。`tools/reference-golden`と`tools/reference-durable-run-golden`は個別check / repairの正規toolとして残します。
+
+### C. real-provider fixture Evidence
 
 実provider engineを使いますが、toolが作るephemeral fixtureに対するEvidenceです。
 
@@ -41,13 +49,13 @@ Repository checkoutとGo toolchainだけで再現できるものです。
 
 これはproduction既存資産の物理事実を観測したEvidenceではありません。
 
-### C. actual external asset Evidence
+### D. actual external asset Evidence
 
 TEIが所有していない既存資産の観測事実です。
 
 - #214 `master_data` Oracle physical object / parameter / raw columns / native source / provenance / read-only proof
 
-これはsynthetic / ephemeral fixtureで代替しません。
+これはsynthetic / generated artifact / ephemeral fixtureで代替しません。
 
 ## 共通原則
 
@@ -56,11 +64,12 @@ TEIが所有していない既存資産の観測事実です。
 - 生成物を手編集しない
 - fingerprintを人手で置換しない
 - runtime credential / DSN / parameter値を通常Evidenceへ保存しない
-- synthetic Evidenceを実外部Evidenceへ格上げしない
+- synthetic / generated artifact / provider fixture / actual external Evidenceを相互代替しない
 - 失敗を0件・NotSatisfied・denied等の正常業務結果へ変換しない
 - 一致済み生成物を形式的に書き換えない
 - generated artifactの`-write`を完了Evidenceそのものとして扱わない
-- Gate Bへ採用するEvidenceは、後から同じsourceへ戻れるrevisionへ固定する
+- Gate Bへ採用するEvidenceは、後から同じsourceへ戻れるclean revisionへ固定する
+- Evidence run実行前後でsource revisionが変化した場合は完了Evidenceとして採用しない
 - GitHub Actionsをこの手順から再有効化しない
 
 ## 0. 実行前確認
@@ -77,7 +86,7 @@ Evidenceを特定revisionへ固定するため、意図しない未commit差分�
 
 #310の完了Evidenceでは、実行前だけでなく**実行後も同じHEADかつclean working tree**であることを要求します。診断目的のdirty実行と、Gate Bへ採用する再現可能Evidenceを混同しません。
 
-#255も最終的な完了Evidenceはclean revisionへ固定します。stale修復のための`-write`で生成物差分が生じた場合、そのdirty tree上のcheck成功だけでは完了とせず、差分を確認・commitした後のclean revisionでcheck-onlyを再実行します。
+#255も最終的な完了Evidenceはclean revisionへ固定します。stale修復のための`-write`で生成物差分が生じた場合、そのdirty tree上のcheck成功だけでは完了とせず、差分を確認・commitした後のclean revisionで`tools/reference-generated-artifact-evidence`を再実行します。
 
 ## 1. Canonical WorkspaceをValidationする
 
@@ -93,7 +102,7 @@ ok
 
 Validation Errorがある場合は、その後のgolden再生成やprovider / external Evidence実行へ進みません。生成物側を手編集して回避しません。
 
-external Evidence tool、PostgreSQL Evidence tool、Repository Evidence runner、Durable Run golden tool自身も通常Validation Errorでfail closedします。ただし、最初の明示Validationは前提不整合を早期に分離するため残します。
+external Evidence tool、PostgreSQL Evidence tool、Repository Evidence runner、generated artifact Evidence runner、Durable Run golden tool自身も通常Validation Errorでfail closedします。ただし、最初の明示Validationは前提不整合を早期に分離するため残します。
 
 ## 2. #310 deterministic Repository Evidenceを取得する
 
@@ -183,9 +192,44 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
 
 これはtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
 
-## 3. #255 World / Plugin Lockの現在差分を確認する
+## 3. #255 generated artifactのcheck-only Evidenceを取得する
 
-clean revisionで、まずRepositoryを書き換えずに確認します。
+clean revisionで、まずRepositoryを書き換えずに最終Evidence runnerを実行します。
+
+```bash
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
+```
+
+Repository内の新規fileへ直接redirectしません。shellがcommand開始前にredirect先を作成し、runnerの開始時clean条件を壊すためです。
+
+このrunnerは**`-write`を呼びません**。一つのrunで次を確認します。
+
+1. 実行前repository revision
+2. 実行前working tree clean
+3. Go toolchain identity
+4. `go run ./tools/reference-golden`
+5. `go run ./tools/reference-durable-run-golden`
+6. 実行後repository revision
+7. 実行前後のHEAD同一性
+8. 実行後working tree clean
+9. `reproducibleRevision`判定
+
+成功条件:
+
+- `reference-golden`が一致する
+- `reference-durable-run-golden`が一致する
+- 実行前後でHEADが同一
+- 実行前後でworking treeがclean
+- `reproducibleRevision = true`
+
+最初から成功した場合は形式的に`-write`しません。このJSONを#255 Evidence候補として扱います。
+
+不一致の場合は#255完了ではなく、staleを検出した診断結果です。runnerがstderrへ流した個別golden toolの診断を確認し、次の修復手順へ進みます。
+
+### 個別診断: World / Plugin Lock
+
+個別に確認する場合は次を実行します。
 
 ```bash
 go run ./tools/reference-golden
@@ -193,7 +237,7 @@ go run ./tools/reference-golden
 
 このtoolはCanonical WorkspaceからWorld / Plugin Lockを生成して保存goldenと比較し、保存Durable RunのPlugin Lock依存も確認します。
 
-一致している場合は形式的に`-write`しません。Durable Run全体のcheckも行い、両toolが一致し、実行前後で同じHEADかつcleanであることを確認できれば、そのrevisionを#255 Evidence候補にできます。
+一致している場合は形式的に`-write`しません。
 
 不一致の場合は、表示されたpathを記録して次へ進みます。この時点では#255完了Evidenceではなく、staleを検出した診断結果です。
 
@@ -271,6 +315,8 @@ Reference Workspace Validation
 
 Plugin Lockが変わっていなくても、Durable Run全体の正規再現性を確認するため、このcheckは実行します。
 
+PR #326以降、`-solution`へ不正なCanonical IDを与えた場合もpanicではなく通常errorでfail closedします。
+
 ### write — staleの場合だけ
 
 ```bash
@@ -305,18 +351,16 @@ World / Plugin Lock / Durable Runのいずれかに差分が生じた場合、�
 
 `-write`直後のdirty treeを、最終Evidenceのsource revisionとして記録しません。
 
-### #255最終確認 — clean revisionのcheck-only
+### #255最終確認 — clean revisionのcheck-only Evidence runner
+
+修復差分をcommitした新しいclean revisionで、次を再実行します。
 
 ```bash
-git status --short
-git rev-parse HEAD
-
-go run ./tools/reference-golden
-go run ./tools/reference-durable-run-golden
-
-git rev-parse HEAD
-git status --short
+go run ./tools/reference-generated-artifact-evidence \
+  > /tmp/tei-gate-b-generated-artifact-evidence.json
 ```
+
+runnerが内部で`reference-golden`と`reference-durable-run-golden`をcheck-only実行し、実行前後のHEAD / working treeも確認します。
 
 次をすべて満たした場合だけ、World / Plugin Lock / Durable Runのgenerated artifact再現性を#255 Evidence候補として扱います。
 
@@ -325,6 +369,7 @@ git status --short
 - `reference-durable-run-golden`が一致
 - final check実行前後でHEADが同一
 - final check終了後もworking treeがclean
+- `reproducibleRevision = true`
 
 両toolがdirty tree上で一致しただけでは#255を完了にしません。
 
@@ -490,7 +535,7 @@ commit対象は、正規生成されたartifactと、意味上説明可能なsou
 
 DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommitしません。
 
-#255でgenerated artifactを修復した場合は、ここでdirty差分を残したままGate B監査へ進まず、意図したartifactをcommitしてclean revisionへ固定し、#255 final check-onlyを再実行します。
+#255でgenerated artifactを修復した場合は、ここでdirty差分を残したままGate B監査へ進まず、意図したartifactをcommitしてclean revisionへ固定し、`tools/reference-generated-artifact-evidence`を再実行します。
 
 ## 9. Gate B監査へ戻す
 
@@ -500,13 +545,12 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 | Evidence lane | 判定対象 |
 | --- | --- |
-| #310 Repository Evidence runner | UI-less Scenario / external Evidence intake / normal Go runner / source revision不変性 |
-| #255 `reference-golden` | World / Plugin LockとCanonical Workspaceの再現性 |
-| #255 `reference-durable-run-golden` | Durable Run全体の正規再現性 |
+| #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake / normal Go runner / source revision不変性 |
+| #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
 | #308 PostgreSQL tool | real PostgreSQL engine上の専用空Database / fixture runtime |
 | #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
 
-#255については、stale修復後のdirty treeではなく、意図した生成物をcommitした**clean revision上のcheck-only一致**を監査Evidenceへ対応付けます。
+#255の個別`reference-golden` / `reference-durable-run-golden`はcheck / repairの正規toolですが、Gate Bへ対応付ける最終Evidenceは`reference-generated-artifact-evidence`のclean check-only runとします。
 
 一つのEvidenceが成功したことを、別種類のEvidenceの代替にしません。
 
@@ -518,7 +562,8 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 - #310完了Evidenceをdirty working treeから採用しようとしている
 - #310 runner実行前後でHEADが変わった、または実行後working treeがdirtyになった
 - #255の`-write`直後のdirty treeを完了Evidenceとして採用しようとしている
-- #255 final check-only実行前後でHEADが変わった、またはworking treeがdirtyである
+- #255 `reference-generated-artifact-evidence`でgolden不一致がある
+- #255 Evidence runner実行前後でHEADが変わった、またはworking treeがdirtyである
 - #308で`postgres` / `template0` / `template1`へ接続している
 - #308の接続先にsystem / temporary領域以外のuser relationが1件以上存在する
 - `public.order_lines`が既に存在するPostgreSQL接続先
