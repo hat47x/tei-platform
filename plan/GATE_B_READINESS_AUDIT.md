@@ -10,22 +10,21 @@ Gate B「UIなしで主要Scenarioを再現できる」を、個別IssueやPRの
 
 Gate Bの目的は、第一Web Targetへ進む前に、Application上の不足をWeb固有コードで補わずに済む状態を確認することです。
 
-この監査では、実装済み境界、未取得Evidence、外部依存、検証保留を分けて扱います。
+この監査では、実装済み境界、synthetic Evidence、未取得の外部Evidence、生成物再現性、通常runner検証を分けて扱います。
 
 ## 結論
 
-Application Driverの**意味境界と主要なruntime接続は大きく前進しており、Gate Bの中心設計はほぼ見えています**。
+Application Driverの**意味境界と主要なruntime接続は大きく前進しており、Command acknowledgementとObservationの分離を含む中心設計はsynthetic Evidence上で成立しています**。
 
 一方、2026-09-04時点では次が残るため、Gate BをReadyとは判定しません。
 
 1. external-observed `master_data`の実物理Evidenceが未確定で、`Order -> Customer`を実readまで通せない
 2. `Order -> OrderLine[]`の実PostgreSQL Evidence toolはあるが、実接続成功をまだ取得していない
-3. Command acknowledgementと外部状態のObservation境界が未実証
-4. Reference World / Plugin Lock等の生成物が最新Canonical Workspaceから再生成・確認されていない
-5. 上記を含む最終UI-less Scenarioを一続きのEvidenceとしてまだ固定していない
-6. GitHub Actionsは明示停止中であり、通常runnerでの再検証は保留されている
+3. Reference World / Plugin Lock等の生成物が最新Canonical Workspaceから再生成・確認されていない
+4. browse -> record -> reference -> header-detail -> Validation -> Authorization -> Command -> Observationを、一つの最終UI-less Scenario Evidenceとしてまだ固定していない
+5. GitHub Actionsは明示停止中であり、通常runnerでの再検証は保留されている
 
-これらは「Application Driverの設計が未成立」という一種類の不足ではありません。**外部事実、実DB Evidence、Observation、生成物再現性、通常runner検証**という異なる残件です。
+これらは「Application Driverの設計が未成立」という一種類の不足ではありません。**外部事実、実DB Evidence、生成物再現性、Scenario統合、通常runner検証**という異なる残件です。
 
 ## 現在までに成立している領域
 
@@ -120,43 +119,53 @@ Command Business Result
 
 Validation不成立、評価不能、Authorization deniedの各場合にCommandへ進まないことも固定しています。
 
-ただし現行ReferenceのCommand adapterは、外部状態変更を確認する実装ではありません。そのためCommand Business Resultだけを「状態変更確認済み」とは扱いません。
+Command Business Resultだけを「外部状態変更を確認済み」とは扱いません。
 
-## Observationの扱い
+### Command acknowledgement -> Observation
 
-Gate BではCommand acknowledgementとObserved stateを分離します。
+**境界はReadyです。ただしEvidenceはsyntheticです。**
 
-v1では新しいObservation Patternや汎用Workflow / Event Sourcing基盤を先に作りません。
-
-最初の方針は次です。
+PR #275以降のReference Scenarioでは、CommandとObservation readを別操作として扱います。
 
 ```text
-Command
+sales.order.submit
   ↓
-Business Result / acknowledgement
-  ↓ 別操作
-明示されたread境界
+Command Business Result / acknowledgement
+
+--- 別操作 ---
+
+synthetic.order_state.read
   ↓
-read result
+Observed state
   ↓
-Observation Evidence
+Expected stateとの評価
 ```
 
-Observation対象をCommand payload、HTTP status、名前の類似等から推測しません。
+次をConformanceで区別します。
 
-第一Referenceでは、既存Query / Contract Query / read adapter等の**明示されたread境界をObservation用途として再利用する**ことを優先します。Observationという役割のためだけに同じread意味を別のCanonical正本へ複製しません。
+- Command実行だけではObservation readを暗黙実行しない
+- Command payloadへObserved stateを混入させない
+- Observation readは明示されたread boundary identityを持つ
+- Observation read成功と、期待状態との一致を別に評価する
+- readが成功しても期待状態と不一致であり得る
+- Observation Execution ErrorをCommand Business Resultへ逆流させない
+- synthetic Evidenceを実外部状態のEvidenceとして扱わない
 
-実外部観測先がない場合、syntheticなstateful adapterでCommandとreadを別境界として実証できます。ただし、そのEvidenceは`synthetic`であることを明示し、実外部状態を確認したEvidenceとは扱いません。
+このEvidenceは、CommandとObservationを分離する設計境界を確認するためのtest-localなstateful adapterによるものです。実外部システムの状態変更精度を証明するものではありません。
 
-詳細判断はADR-0023と#266で扱います。
+v1では新しいObservation Pattern、汎用Observation result schema、Workflow Engine、Event Sourcing基盤を追加していません。既存Query / Contract Query / read adapter等の明示されたread境界をObservation用途でも利用する方針を維持します。
+
+詳細判断はADR-0023と#266を正とします。
 
 ## Reference生成物
 
 Gate Bでは、authoritative sourceから同じCanonical meaningを再構成できる必要があります。
 
-現在、Reference data access / Relation Storage / Plugin Capability等のauthoring更新後、少なくとも`reference/world.json`が現在のCanonical Workspaceより古いことが確認されています。
+Reference data access / Relation Storage / Plugin Capability等のauthoring更新後、少なくとも`reference/world.json`が現在のCanonical Workspaceより古いことが確認されています。
 
-したがって#255で次を正規生成経路から再確認します。
+また、OrderLineのRelation Storage / SQL realizationについてbranch履歴上の正本脱落を検出し、PR #274でPR #251由来の正本authoringを復元しています。この復元をgolden再生成完了とは扱いません。
+
+#255で次を正規生成経路から再確認します。
 
 - `reference/world.json`
 - `reference/workspace/.tei/plugin-lock.json`
@@ -173,7 +182,8 @@ CI停止そのものをApplication意味の設計Gapとは扱いません。一�
 したがってGate B監査では、次を分けます。
 
 - Semantic / architecture readiness
-- local / manual / deterministic Evidence readiness
+- synthetic / local / manual / deterministic Evidence readiness
+- external-system Evidence readiness
 - normal CI verification readiness
 
 CI再開は別の明示判断に従い、この監査から独断で変更しません。
@@ -182,20 +192,21 @@ CI再開は別の明示判断に従い、この監査から独断で変更しま
 
 | 条件 | 状態 | 根拠 / 残件 |
 | --- | --- | --- |
-| 同じApplication定義からScenarioを構成できる | Partial | 個別経路は成立。全Scenario統合は未完 |
-| Pattern / Query / Relation / Datasource / Capability / Bindingを追跡できる | Ready | Driver / Source Index /各Conformance |
+| 同じApplication定義からScenarioを構成できる | Partial | 主要個別経路は成立。最終Scenario統合は未完 |
+| Pattern / Query / Relation / Datasource / Capability / Bindingを追跡できる | Ready | Driver / Source Index / 各Conformance |
 | browseをSemantic resultまで実行できる | Ready | 実PostgreSQL raw result + explicit mapping |
 | referenceを実外部readまで実行できる | Blocked | #214 external `master_data`物理Evidence待ち |
-| header-detailの意味・storage・runtimeが成立 | Ready | PR #235〜#262 |
+| header-detailの意味・storage・runtimeが成立 | Ready | PR #235〜#262および正本復元PR #274 |
 | header-detail実PostgreSQL Evidence | Pending | tool実行待ち |
 | Validation不成立時にCommandへ進まない | Ready | PR #265 |
 | Authorization denied時にCommandへ進まない | Ready | PR #265 |
 | Business ResultとExecution Errorを区別 | Ready | ADR-0020 / Driver Conformance |
-| Command acknowledgementとObservationを分離 | Blocked | #266 |
+| Command acknowledgementとObservationを分離 | Ready (synthetic) | ADR-0023 / #266 / PR #275以降のConformance |
+| Observation read結果と期待状態評価を分離 | Ready (synthetic) | test-local Observation Evidence |
 | read-only `master_data`を実効的に保証 | Blocked | #214 |
 | secret / runtime parameterを通常Evidenceへ保存しない | Ready | 各runtime境界 |
 | 最新authoringからReference生成物を再現 | Pending | #255 |
-| 最終Scenario Evidenceを一続きに再現 | Blocked | 上記blocker解消後 |
+| 最終Scenario Evidenceを一続きに再現 | Blocked | external/read/golden統合後 |
 | 通常runnerで再検証済み | Pending | CI再開判断待ち |
 | 第一Web Targetへ同じ意味を渡せる | Partial | Gate C契約は定義済み。Gate B baseline完成待ち |
 
@@ -214,19 +225,21 @@ CI再開は別の明示判断に従い、この監査から独断で変更しま
 - Event Sourcing基盤
 - physical Foreign Keyの自動生成
 - production HA / Connection Pool一般化
+- production向け汎用Observation schema
 
 ## 次の実行順
 
 Gate Bへ最短で進む順序を、実装量ではなくblocker解消効果から次のように整理します。
 
-1. #266でCommandとObservationの最小境界を実証する
-2. #214でexternal `master_data`の物理Evidenceを得る
-3. `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで実行する
-4. #255でReference World / Plugin Lock等を正規再生成する
-5. browse -> record -> reference -> header-detail -> Validation -> Authorization -> Command -> Observationを一つのUI-less Scenario Evidenceへ統合する
-6. secret / read-only / 0件 / Execution Error等のnegative caseを再監査する
-7. CIが別判断で再開された後、通常runnerで関連Conformanceを再実行する
-8. 本文書を更新し、Gate BをReady / Not Readyで再判定する
+1. #214でexternal `master_data`の物理Evidenceを得る
+2. `tools/reference-postgres-header-detail-runtime`を実PostgreSQLで実行する
+3. #255でReference World / Plugin Lock等を正規再生成する
+4. browse -> record -> reference -> header-detail -> Validation -> Authorization -> Command -> Observationを一つのUI-less Scenario Evidenceへ統合する
+5. secret / read-only / 0件 / Execution Error / Observation期待不一致等のnegative caseを再監査する
+6. CIが別判断で再開された後、通常runnerで関連Conformanceを再実行する
+7. 本文書を更新し、Gate BをReady / Not Readyで再判定する
+
+Observation境界のためだけに新しいproduction schemaを追加する作業は、この実行順には含めません。
 
 ## Gate B Readyの定義
 
@@ -236,6 +249,8 @@ Gate BはIssue close数ではなく、次をEvidenceから説明できるときR
 - すべての重要な意味・実現選択へSource / Bindingを辿れる
 - 外部資産の未観測事実をTEIが推測していない
 - Business Result / Execution Error / Observationを区別できる
+- Observation read結果と期待状態評価を混同しない
+- synthetic Evidenceと実外部Evidenceを区別できる
 - read-only / secret等の安全境界を保持できる
 - 最新authoringからCanonical / Reference artifactを再現できる
 - 第一Web Targetへ、Web側で意味を補わず同じbaselineを渡せる
