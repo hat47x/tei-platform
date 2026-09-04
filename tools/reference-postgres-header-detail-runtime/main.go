@@ -27,30 +27,31 @@ const fixtureObject = "public.order_lines"
 const evidenceNature = "real-postgres-ephemeral-fixture"
 
 type evidence struct {
-	EvidenceNature                        string                        `json:"evidenceNature"`
-	RepositoryRevision                   string                        `json:"repositoryRevision"`
-	WorkingTreeClean                     bool                          `json:"workingTreeClean"`
-	ReproducibleRevision                 bool                          `json:"reproducibleRevision"`
-	PostRunRepository                    repositoryevidence.PostRun    `json:"postRunRepository"`
-	FixtureObject                         string                        `json:"fixtureObject"`
-	PreexistingFixtureProtected           bool                          `json:"preexistingFixtureProtected"`
-	FixtureOwnedByTool                    bool                          `json:"fixtureOwnedByTool"`
-	FixtureDatabaseSafety                 fixtureDatabaseSafetyEvidence `json:"fixtureDatabaseSafety"`
-	Pattern                               core.CanonicalID              `json:"pattern"`
-	Relation                              core.CanonicalID              `json:"relation"`
-	Environment                           core.CanonicalID              `json:"environment"`
-	DatabaseInstance                      core.CanonicalID              `json:"databaseInstance"`
-	ExecutorCapability                    core.CanonicalID              `json:"executorCapability"`
-	ContractQueryTarget                   string                        `json:"contractQueryTarget"`
-	ParameterNames                        []string                      `json:"parameterNames"`
-	ParameterValuesPersisted              bool                          `json:"parameterValuesPersisted"`
-	Rows                                  int                           `json:"rows"`
-	ZeroRows                              int                           `json:"zeroRows"`
-	ExecutionErrorObserved                bool                          `json:"executionErrorObserved"`
-	SemanticAttributes                    []core.CanonicalID            `json:"semanticAttributes"`
-	RelationStorageColumn                 string                        `json:"relationStorageColumn"`
-	SemanticOrderLineParentAttributeAdded bool                          `json:"semanticOrderLineParentAttributeAdded"`
-	SemanticMappingApplied                bool                          `json:"semanticMappingApplied"`
+	EvidenceNature                        string                         `json:"evidenceNature"`
+	RepositoryRevision                   string                         `json:"repositoryRevision"`
+	WorkingTreeClean                     bool                           `json:"workingTreeClean"`
+	ReproducibleRevision                 bool                           `json:"reproducibleRevision"`
+	PostRunRepository                    repositoryevidence.PostRun     `json:"postRunRepository"`
+	FixtureObject                         string                         `json:"fixtureObject"`
+	PreexistingFixtureProtected           bool                           `json:"preexistingFixtureProtected"`
+	FixtureOwnedByTool                    bool                           `json:"fixtureOwnedByTool"`
+	FixtureDatabaseSafety                 fixtureDatabaseSafetyEvidence  `json:"fixtureDatabaseSafety"`
+	FixtureCleanupSafety                  fixtureCleanupSafetyEvidence   `json:"fixtureCleanupSafety"`
+	Pattern                               core.CanonicalID               `json:"pattern"`
+	Relation                              core.CanonicalID               `json:"relation"`
+	Environment                           core.CanonicalID               `json:"environment"`
+	DatabaseInstance                      core.CanonicalID               `json:"databaseInstance"`
+	ExecutorCapability                    core.CanonicalID               `json:"executorCapability"`
+	ContractQueryTarget                   string                         `json:"contractQueryTarget"`
+	ParameterNames                        []string                       `json:"parameterNames"`
+	ParameterValuesPersisted              bool                           `json:"parameterValuesPersisted"`
+	Rows                                  int                            `json:"rows"`
+	ZeroRows                              int                            `json:"zeroRows"`
+	ExecutionErrorObserved                bool                           `json:"executionErrorObserved"`
+	SemanticAttributes                    []core.CanonicalID             `json:"semanticAttributes"`
+	RelationStorageColumn                 string                         `json:"relationStorageColumn"`
+	SemanticOrderLineParentAttributeAdded bool                           `json:"semanticOrderLineParentAttributeAdded"`
+	SemanticMappingApplied                bool                           `json:"semanticMappingApplied"`
 }
 
 func main() {
@@ -207,6 +208,13 @@ func main() {
 		panic("物理table欠落によるPostgreSQL実行失敗を正常な空collectionとして扱っています")
 	}
 
+	// missing-table Error確認まで終えた後、接続先が開始時と同じ空状態へ戻ったことを明示確認する。
+	// tool-owned fixture以外のrelationが残る、または並行変更でrelationが増えたrunは成功Evidenceへ進めない。
+	fixtureCleanupSafety, err := verifyFixtureDatabaseRestored(ctx, db)
+	if err != nil {
+		panic(err)
+	}
+
 	semanticAttributes := semanticAttributeIDs(executed.Execution.Result.Rows)
 	relationStorageColumn, parentAttributeAdded := inspectOrderLineStorage(loaded)
 
@@ -218,6 +226,7 @@ func main() {
 		PreexistingFixtureProtected:           true,
 		FixtureOwnedByTool:                    true,
 		FixtureDatabaseSafety:                 fixtureDatabaseSafety,
+		FixtureCleanupSafety:                  fixtureCleanupSafety,
 		Pattern:                               core.MustCanonicalID("order_entry.order_lines"),
 		Relation:                              core.MustCanonicalID("sales.order.lines"),
 		Environment:                           executed.Environment.ID,
