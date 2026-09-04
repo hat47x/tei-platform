@@ -10,13 +10,14 @@ Evidenceの必要性・証明範囲・完了条件は[`GATE_B_EVIDENCE_ACQUISITI
 
 2026-09-04時点では、Application Driverの主要意味境界、UI-less最終Scenario構造、external-observed Query Evidence受入境界、PostgreSQL fixtureの安全境界まで成立しています。
 
-Gate Bを止めているのは主に次です。
+Gate Bを直接止めているEvidence laneは次の四つです。
 
-1. #214 `master_data`の実Oracle物理Evidence / read-only実証
-2. header-detailの実PostgreSQL engine Evidence
-3. #255 Reference World / Plugin Lock / Durable Runの正規再生成
-4. PR #281 / #288 / #304等の通常Go runner実行Evidence
-5. CIが別判断で再開された場合の通常runner再検証
+1. `ISSUE-000022` / #214: actual Oracle `master_data`物理・provenance・read-only Evidence
+2. `ISSUE-000031` / #308: real PostgreSQL engine + ephemeral fixture Evidence
+3. `ISSUE-000025` / #255: World / Plugin Lock / Durable Runのgenerated artifact再現Evidence
+4. `ISSUE-000032` / #310: deterministic Repository / normal Go runner Evidence
+
+GitHub Actionsが別判断で再開された場合の継続的regression確認は重要ですが、この四laneのProduct Evidenceそのものとは分けます。
 
 ## Evidenceの種類
 
@@ -25,10 +26,12 @@ Gate Bを止めているのは主に次です。
 Repository checkoutとGo toolchainだけで再現できるものです。
 
 - Workspace Validation
-- PR #281 UI-less synthetic Scenario
-- PR #288 / #304 external Evidence intake tests
-- Reference World / Plugin Lock再生成
+- UI-less synthetic Scenario
+- external Evidence intake tests
+- World / Plugin Lock再生成
 - Durable Run再生成
+
+通常runner Evidenceの一括入口は`tools/reference-gate-b-repository-evidence`です。generated artifactの再現は#255として独立に判定します。
 
 ### B. real-provider fixture Evidence
 
@@ -55,6 +58,7 @@ TEIが所有していない既存資産の観測事実です。
 - runtime credential / DSN / parameter値を通常Evidenceへ保存しない
 - synthetic Evidenceを実外部Evidenceへ格上げしない
 - 失敗を0件・NotSatisfied・denied等の正常業務結果へ変換しない
+- 一致済み生成物を形式的に書き換えない
 - GitHub Actionsをこの手順から再有効化しない
 
 ## 0. 実行前確認
@@ -63,21 +67,13 @@ Repository rootで作業します。
 
 ```bash
 git status --short
-```
-
-生成物差分を監査するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
-
-Go toolchainを確認します。
-
-```bash
+git rev-parse HEAD
 go version
 ```
 
-実行revisionも記録できるよう確認します。
+Evidenceを特定revisionへ固定するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
 
-```bash
-git rev-parse HEAD
-```
+#310の完了Evidenceではclean working treeを要求します。診断目的のdirty実行と、Gate Bへ採用する再現可能Evidenceを混同しません。
 
 ## 1. Canonical WorkspaceをValidationする
 
@@ -93,11 +89,33 @@ ok
 
 Validation Errorがある場合は、その後のgolden再生成やprovider / external Evidence実行へ進みません。生成物側を手編集して回避しません。
 
-PR #304以降、external Evidence toolとPostgreSQL Evidence tool自身も通常`validation.Validate`のErrorでfail closedします。ただし、それを理由にこの最初の明示Validationを省略しません。最初に前提不整合を分離するためです。
+external Evidence tool、PostgreSQL Evidence tool、Repository Evidence runner、Durable Run golden tool自身も通常Validation Errorでfail closedします。ただし、最初の明示Validationは前提不整合を早期に分離するため残します。
 
-## 2. Repository内だけで成立するGate B Scenarioを実行する
+## 2. #310 deterministic Repository Evidenceを取得する
 
-### PR #281 UI-less最終Scenario
+### 正規入口
+
+clean revisionで次を実行します。
+
+```bash
+go run ./tools/reference-gate-b-repository-evidence \
+  > /tmp/tei-gate-b-repository-evidence.json
+```
+
+JSON保存先をRepository内の新規fileへ直接redirectしません。shellはcommand開始前にredirect先を作成するため、それ自体がworking treeをdirtyにし、runnerが意図どおりfail closedします。
+
+このrunnerは次を一つのEvidenceへ束ねます。
+
+1. repository revision
+2. clean working tree
+3. Go toolchain identity
+4. Canonical Workspace Validation
+5. 最終UI-less Scenario
+6. external Evidence intake boundary tests
+
+### 最終UI-less Scenario
+
+runnerが実行する等価コマンドは次です。
 
 ```bash
 go test ./internal/driver \
@@ -105,7 +123,7 @@ go test ./internal/driver \
   -count=1
 ```
 
-ここで確認するのは、同じ`order_entry` / 同じSemantic Order rowから次を一続きに接続できることです。
+確認対象:
 
 ```text
 Authentication
@@ -119,9 +137,11 @@ Authentication
  -> separate Observation read
 ```
 
-このtestはsynthetic adapterを含みます。成功しても実Oracle / 実PostgreSQL / 実外部状態のEvidenceにはしません。
+synthetic adapterを含むため、成功してもactual Oracle / real PostgreSQL / 実外部状態のEvidenceにはしません。
 
-### PR #288 / #304 external Evidence intake
+### external Evidence intake
+
+runnerが実行する等価コマンドは次です。
 
 ```bash
 go test ./internal/database/externalqueryevidence \
@@ -141,9 +161,20 @@ go test ./internal/database/externalqueryevidence \
 - EvidenceからSQL realizationを生成・補完しないこと
 - Workspace Validation Errorがある前提でEvidenceを受理しないこと
 
-Evidence formatとfingerprintの意味は`tools/reference-external-query-evidence/README.md`も参照します。
+Evidence formatとfingerprintの意味は`tools/reference-external-query-evidence/README.md`を参照します。
 
-## 3. Reference goldenの現在差分を確認する
+### 広いGo test
+
+横断回帰も同じrunで確認できる環境では`-broad`を指定します。
+
+```bash
+go run ./tools/reference-gate-b-repository-evidence -broad \
+  > /tmp/tei-gate-b-repository-evidence.json
+```
+
+これはtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
+
+## 3. #255 World / Plugin Lockの現在差分を確認する
 
 まずRepositoryを書き換えずに確認します。
 
@@ -151,17 +182,19 @@ Evidence formatとfingerprintの意味は`tools/reference-external-query-evidenc
 go run ./tools/reference-golden
 ```
 
-一致していれば、その時点のWorld / Plugin Lock / Durable Run依存は最新です。
+このtoolはCanonical WorkspaceからWorld / Plugin Lockを生成して保存goldenと比較し、保存Durable RunのPlugin Lock依存も確認します。
+
+一致している場合は、そのrevisionでの再現Evidenceとして記録し、形式的に`-write`しません。
 
 不一致の場合は、表示されたpathを記録して次へ進みます。
 
-## 4. World / Plugin Lockを正規再生成する
+## 4. World / Plugin Lockを正規再生成する — staleの場合だけ
 
 ```bash
 go run ./tools/reference-golden -write
 ```
 
-このtoolが更新するのは、Canonical Workspaceから導出される次のgoldenです。
+このtoolが更新するのは次です。
 
 ```text
 reference/world.json
@@ -179,13 +212,13 @@ git diff -- \
 確認観点:
 
 - 現在のauthoring変更から説明できる差分だけか
-- `database.query.postgres`等、追加済みCapabilityが期待どおり反映されたか
-- 不明なexternal physical情報が混入していないか
+- 追加済みCapability等が期待どおり反映されたか
+- 未観測のexternal physical情報が混入していないか
 - 並び順やfingerprintだけを人手で合わせていないか
 
-`reference-golden -write`後、Durable RunのPlugin Lock fingerprintが古い場合はtoolが明示的に停止します。そのfingerprintを手編集しません。
+`reference-golden -write`後にDurable Run依存がstaleと表示されても、fingerprintだけを手編集しません。
 
-## 5. Durable Runを正規`deployment-start`で再生成する
+## 5. Durable Run全体を正規生成結果と照合する
 
 対象:
 
@@ -193,7 +226,7 @@ git diff -- \
 reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-既存保存runのidentityは次です。
+第一Referenceのidentity:
 
 ```text
 solution: order_rollout
@@ -202,25 +235,40 @@ run-id: order-rollout-prod-m0.21
 environment: production
 ```
 
-一時ファイルへ生成し、コマンド成功後にだけ置換します。
+PR #318以降、Durable Runは`tools/reference-durable-run-golden`を正規入口とします。
+
+### check
+
+Plugin Lock fingerprintだけでなく、Runtime Policyを含む`deployment-start`相当の生成結果全体と比較します。
 
 ```bash
-tmp="$(mktemp)"
-
-go run ./cmd/tei deployment-start \
-  -workspace reference/workspace \
-  -solution order_rollout \
-  -version 2026.8.27 \
-  -deployment reference/observed/production.deployment-state.json \
-  -run-id order-rollout-prod-m0.21 \
-  -plugin-lock reference/workspace/.tei/plugin-lock.json \
-  > "$tmp" && \
-  mv "$tmp" reference/order_rollout.durable-run.m0.21.start.json
+go run ./tools/reference-durable-run-golden
 ```
 
-失敗時に既存保存runを空ファイルで上書きしないため、直接保存pathへredirectしません。
+内部経路:
 
-再生成後:
+```text
+Reference Workspace Validation
+  -> Solution Release exact resolution
+  -> fixed observed deployment state Validation
+  -> releaseplan.CompileWithDeployment
+  -> pluginruntime.BuildPlan
+  -> Plugin Lock / Runtime Policy fingerprint
+  -> deploymentdurable.StartWithRuntimePolicy
+  -> saved Durable Runとの完全一致check
+```
+
+Plugin Lockが変わっていなくても、Durable Run全体の正規再現性を確認するため、このcheckは実行します。
+
+### write — staleの場合だけ
+
+```bash
+go run ./tools/reference-durable-run-golden -write
+```
+
+このtoolは保存pathを先にtruncateしません。同じdirectoryの一時fileへ生成結果全体を書き、Sync / Close後にRenameして置換します。目的は生成途中の失敗で既存goldenを空にしないことであり、OS横断のRename atomicityそのものは契約にしません。
+
+更新後:
 
 ```bash
 git diff -- reference/order_rollout.durable-run.m0.21.start.json
@@ -228,17 +276,22 @@ git diff -- reference/order_rollout.durable-run.m0.21.start.json
 
 確認観点:
 
-- `pluginLockFingerprint`が現在Plugin Lockと一致する
-- `runtimePolicyFingerprint`等、正規生成された依存値の差分を説明できる
-- observed stateを手編集して生成結果へ合わせていない
+- `pluginLockFingerprint`が現在Plugin Lockと整合する
+- `runtimePolicyFingerprint`を含む差分が正規生成入力から説明できる
+- fixed observed stateを生成結果へ合わせて書き換えていない
+- fingerprintやJSONの一部だけを手編集していない
 
-最後に再確認します。
+### #255最終確認
 
 ```bash
 go run ./tools/reference-golden
+
+go run ./tools/reference-durable-run-golden
 ```
 
-## 6. 実PostgreSQL engineでheader-detailを確認する
+両方が一致して初めて、World / Plugin Lock / Durable Runのgenerated artifact再現性を#255 Evidenceとして扱います。
+
+## 6. #308 実PostgreSQL engineでheader-detailを確認する
 
 ### Evidenceの性質
 
@@ -248,9 +301,9 @@ production既存Databaseの実データEvidenceではありません。
 
 ### fail-closed前提
 
-PR #304以降、toolはまず`reference/workspace`をLoadし、通常Validation Errorがないことを確認します。**Validation Error時にはPostgreSQLへ接続しません。**
+Evidence toolはまず`reference/workspace`をLoadし、通常Validation Errorがないことを確認します。Validation Error時にはPostgreSQLへ接続しません。
 
-その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、PR #294の既存object guardを実行します。
+その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、既存object guardを実行します。
 
 ```text
 Workspace Load
@@ -345,24 +398,14 @@ go run ./tools/reference-external-query-evidence \
   -evidence <observed-evidence.json>
 ```
 
-PR #304以降、このtoolもWorkspace Validation ErrorがあればEvidence照合前に停止します。
+このtoolもWorkspace Validation ErrorがあればEvidence照合前に停止します。
 
 SQL realizationがない場合はEvidenceから生成せず停止します。`nativeSource.fingerprint`の作り方やprovenanceとの区別は`tools/reference-external-query-evidence/README.md`を正とします。
 
 5. read-onlyを実効強制したOracle connectionでruntime Executorを構成する
 6. Workspace → actual read → Semantic resultを一続きに確認する
 
-## 8. 広いGo testを実行する
-
-個別Evidenceが成立した後、可能な環境ではRepository全体を確認します。
-
-```bash
-go test ./...
-```
-
-ここで失敗した場合も、生成物・Evidence・test期待値のどこが古いのかを分離して調べます。テストを通すためにCanonical意味を変更しません。
-
-## 9. 最終差分を確認する
+## 8. 最終差分を確認する
 
 ```bash
 git status --short
@@ -377,20 +420,19 @@ commit対象は、正規生成されたartifactと、意味上説明可能なsou
 
 DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommitしません。
 
-## 10. Gate B監査へ戻す
+## 9. Gate B監査へ戻す
 
 取得したEvidenceを[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)へ対応付けます。
 
 少なくとも次を独立に判定します。
 
-| Evidence | 判定対象 |
+| Evidence lane | 判定対象 |
 | --- | --- |
-| PR #281 Go test | UI-less主要Scenarioのsynthetic構造 |
-| PR #288 / #304 Go test | external Evidence intake / fail-closed Validation boundary |
-| World / Plugin Lock / Durable Run | authoritative sourceからのartifact再現性 |
-| PostgreSQL tool | 実PostgreSQL engine上のfixture runtime |
+| #310 Repository Evidence runner | UI-less Scenario / external Evidence intake / normal Go runner |
+| #255 `reference-golden` | World / Plugin LockとCanonical Workspaceの再現性 |
+| #255 `reference-durable-run-golden` | Durable Run全体の正規再現性 |
+| #308 PostgreSQL tool | real PostgreSQL engine上のfixture runtime |
 | #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
-| `go test ./...` | 通常Go runnerでの横断回帰 |
 
 一つのEvidenceが成功したことを、別種類のEvidenceの代替にしません。
 
@@ -399,10 +441,12 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 次の場合はfail closedで止めます。
 
 - Workspace Validation Error
+- #310完了Evidenceをdirty working treeから採用しようとしている
 - `public.order_lines`が既に存在するPostgreSQL接続先
 - #214でprovenanceのない物理情報しかない
 - read-only保証をSQL文字列だけで主張している
-- `reference-golden`がDurable Run staleを検出したのにfingerprintを手編集しようとしている
+- generated artifactがstaleなのにfingerprintやJSON断片だけを手編集しようとしている
+- fixed observed fixtureを生成結果へ合わせて機械的に変更しようとしている
 - EvidenceとSQL realizationが一致しない
 - 実行失敗を0件・正常Business Resultへ変換しないと先へ進めない
 
