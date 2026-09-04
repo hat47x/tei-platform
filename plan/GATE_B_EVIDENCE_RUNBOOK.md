@@ -2,7 +2,11 @@
 
 ## 目的
 
-Gate Bで残っている作業を、設計議論へ戻さず**再現可能なEvidence取得**として実行するための手順です。
+Gate Bで残っている作業を、設計議論へ戻さず**再現可能なEvidence取得**として実行するための正規手順です。
+
+Evidenceの必要性・証明範囲・完了条件は[`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)、Gate BのReady / Not Ready判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正とします。
+
+**具体的なコマンド、実行順、差分確認、fail-closedの停止条件については本書を唯一の正本とします。** 他文書に同じコマンドが残っている場合、本書と矛盾する手順を採用しません。
 
 2026-09-04時点では、Application Driverの主要意味境界、UI-less最終Scenario構造、external-observed Query Evidence受入境界、PostgreSQL fixtureの安全境界まで成立しています。
 
@@ -11,10 +15,8 @@ Gate Bを止めているのは主に次です。
 1. #214 `master_data`の実Oracle物理Evidence / read-only実証
 2. header-detailの実PostgreSQL engine Evidence
 3. #255 Reference World / Plugin Lock / Durable Runの正規再生成
-4. PR #281 / #288等の通常Go runner実行Evidence
+4. PR #281 / #288 / #304等の通常Go runner実行Evidence
 5. CIが別判断で再開された場合の通常runner再検証
-
-このrunbookは、これらを一つの種類の「未完了」に畳まず、Evidenceの性質を区別したまま取得します。
 
 ## Evidenceの種類
 
@@ -24,7 +26,7 @@ Repository checkoutとGo toolchainだけで再現できるものです。
 
 - Workspace Validation
 - PR #281 UI-less synthetic Scenario
-- PR #288 external Evidence intake unit tests
+- PR #288 / #304 external Evidence intake tests
 - Reference World / Plugin Lock再生成
 - Durable Run再生成
 
@@ -42,11 +44,12 @@ TEIが所有していない既存資産の観測事実です。
 
 - #214 `master_data` Oracle physical object / parameter / raw columns / native source / provenance / read-only proof
 
-これはsynthetic fixtureで代替しません。
+これはsynthetic / ephemeral fixtureで代替しません。
 
 ## 共通原則
 
 - 未観測の外部事実を名前や慣習から補完しない
+- Evidence実行前にCanonical WorkspaceのValidityを確認する
 - 生成物を手編集しない
 - fingerprintを人手で置換しない
 - runtime credential / DSN / parameter値を通常Evidenceへ保存しない
@@ -70,6 +73,12 @@ Go toolchainを確認します。
 go version
 ```
 
+実行revisionも記録できるよう確認します。
+
+```bash
+git rev-parse HEAD
+```
+
 ## 1. Canonical WorkspaceをValidationする
 
 ```bash
@@ -82,7 +91,9 @@ go run ./cmd/tei validate -workspace reference/workspace
 ok
 ```
 
-Validation Errorがある場合は、その後のgolden再生成や外部Evidence実行へ進みません。生成物側を手編集して回避しません。
+Validation Errorがある場合は、その後のgolden再生成やprovider / external Evidence実行へ進みません。生成物側を手編集して回避しません。
+
+PR #304以降、external Evidence toolとPostgreSQL Evidence tool自身も通常`validation.Validate`のErrorでfail closedします。ただし、それを理由にこの最初の明示Validationを省略しません。最初に前提不整合を分離するためです。
 
 ## 2. Repository内だけで成立するGate B Scenarioを実行する
 
@@ -90,7 +101,8 @@ Validation Errorがある場合は、その後のgolden再生成や外部Evidenc
 
 ```bash
 go test ./internal/driver \
-  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$'
+  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$' \
+  -count=1
 ```
 
 ここで確認するのは、同じ`order_entry` / 同じSemantic Order rowから次を一続きに接続できることです。
@@ -109,11 +121,12 @@ Authentication
 
 このtestはsynthetic adapterを含みます。成功しても実Oracle / 実PostgreSQL / 実外部状態のEvidenceにはしません。
 
-### PR #288 external Evidence intake
+### PR #288 / #304 external Evidence intake
 
 ```bash
 go test ./internal/database/externalqueryevidence \
-  ./tools/reference-external-query-evidence
+  ./tools/reference-external-query-evidence \
+  -count=1
 ```
 
 確認対象:
@@ -126,6 +139,9 @@ go test ./internal/database/externalqueryevidence \
 - provenance必須
 - read-only mechanism / Evidence参照必須
 - EvidenceからSQL realizationを生成・補完しないこと
+- Workspace Validation Errorがある前提でEvidenceを受理しないこと
+
+Evidence formatとfingerprintの意味は`tools/reference-external-query-evidence/README.md`も参照します。
 
 ## 3. Reference goldenの現在差分を確認する
 
@@ -202,7 +218,7 @@ go run ./cmd/tei deployment-start \
   mv "$tmp" reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-失敗時に既存保存runを空ファイルで上書きしないため、直接`>`で保存pathへ書きません。
+失敗時に既存保存runを空ファイルで上書きしないため、直接保存pathへredirectしません。
 
 再生成後:
 
@@ -230,7 +246,25 @@ go run ./tools/reference-golden
 
 production既存Databaseの実データEvidenceではありません。
 
-### 安全前提
+### fail-closed前提
+
+PR #304以降、toolはまず`reference/workspace`をLoadし、通常Validation Errorがないことを確認します。**Validation Error時にはPostgreSQLへ接続しません。**
+
+その後だけ`TEI_TEST_POSTGRES_DSN`へ接続し、PR #294の既存object guardを実行します。
+
+```text
+Workspace Load
+  ↓
+Canonical Validation
+  ↓ Errorなら停止
+PostgreSQL接続
+  ↓
+public.order_lines既存確認
+  ↓ 既存なら停止
+Ephemeral fixture作成
+  ↓
+Runtime Evidence
+```
 
 `TEI_TEST_POSTGRES_DSN`には、Evidence専用の空PostgreSQL Databaseを指定します。
 
@@ -240,7 +274,7 @@ export TEI_TEST_POSTGRES_DSN='postgres://...'
 
 DSNやcredentialをEvidenceファイルへ保存しません。
 
-PR #294以降のtoolは起動時に次を確認します。
+接続後、toolは次で既存objectを確認します。
 
 ```sql
 SELECT to_regclass('public.order_lines')::text
@@ -311,7 +345,9 @@ go run ./tools/reference-external-query-evidence \
   -evidence <observed-evidence.json>
 ```
 
-SQL realizationがない場合、このtoolはEvidenceから生成せず停止します。
+PR #304以降、このtoolもWorkspace Validation ErrorがあればEvidence照合前に停止します。
+
+SQL realizationがない場合はEvidenceから生成せず停止します。`nativeSource.fingerprint`の作り方やprovenanceとの区別は`tools/reference-external-query-evidence/README.md`を正とします。
 
 5. read-onlyを実効強制したOracle connectionでruntime Executorを構成する
 6. Workspace → actual read → Semantic resultを一続きに確認する
@@ -350,7 +386,7 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 | Evidence | 判定対象 |
 | --- | --- |
 | PR #281 Go test | UI-less主要Scenarioのsynthetic構造 |
-| PR #288 Go test | external Evidence intake boundary |
+| PR #288 / #304 Go test | external Evidence intake / fail-closed Validation boundary |
 | World / Plugin Lock / Durable Run | authoritative sourceからのartifact再現性 |
 | PostgreSQL tool | 実PostgreSQL engine上のfixture runtime |
 | #214 Oracle Evidence | external-observed assetの実物理事実とread-only境界 |
