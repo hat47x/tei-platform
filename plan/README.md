@@ -8,9 +8,7 @@
 - 何を満たすか: `requirements/`
 - 何から進め、何をEvidenceとして確認するか: `plan/`
 
-`plan/`直下には、Master Plan、Milestone、Gateの監査・契約・Runbookのような計画管理文書を置きます。個別機能の要件詳細化は`issue/`、その中で長く残る設計判断は`adr/`が正本です。機能ごとの設計文書を`plan/`直下へ新しく追加しません。
-
-`APPLICATION_PATTERN_V1_DESIGN.md` / `LEGACY_AUTH_V1_DESIGN.md` / `CAPABILITY_OUTCOME_V1_DESIGN.md`は、この整理より前の運用で残っている文書です。
+`plan/`直下には、Master Plan、Milestone、Gateの監査・契約・Runbookのような計画管理文書だけを置きます。機能ごとの設計文書は[`design/`](design/README.md)、作業定義と要件詳細化は[`issue/`](issue/README.md)、長く残る設計判断は[`adr/`](adr/)が正本です。
 
 ## 主な文書
 
@@ -25,9 +23,7 @@
 - [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md): Repository / generated artifact / provider fixture / external asset Evidenceを安全に取得・再現する実行手順
 - [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md): Gate B通過時のDriver baselineをGate Cへ固定して渡す契約
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md): 第一Web TargetでGate Cを判定するSemantic / Functional / Visual Evidence契約
-- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線
-- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計
-- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): CapabilityのBusiness Result / named OutcomeとExecution Errorを分離するv1設計
+- [`design/README.md`](design/README.md): 機能ごとの設計文書
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/README.md`](issue/README.md): 統合Issue一覧、着手順、既存課題と根幹機能提案の責務分担
 
@@ -71,7 +67,7 @@ header-detail
 
 この5分類をTEI全体の永久的な標準語彙として確定したわけではありません。具体的な業務Applicationで、Target固有UIやPersistenceから切り離したApplication上の意図として成立することを確認した段階です。
 
-詳細は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)と[`ISSUE-000005`](issue/000005-application-pattern-reference.md)を参照します。
+詳細は[`APPLICATION_PATTERN_V1_DESIGN.md`](design/APPLICATION_PATTERN_V1_DESIGN.md)と[`ISSUE-000005`](issue/000005-application-pattern-reference.md)を参照します。
 
 ## Gate Bの現在地
 

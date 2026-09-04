@@ -133,7 +133,7 @@ RQ-003に反します。Editor-authored modeが必要になった時点で、正
 
 ## 関連文書
 
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/design/APPLICATION_PATTERN_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/issue/000005-application-pattern-reference.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`

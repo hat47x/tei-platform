@@ -2,7 +2,7 @@
 
 - 状態: 完了
 - GitHub Issue: #68
-- 実装前設計: [`LEGACY_AUTH_V1_DESIGN.md`](../LEGACY_AUTH_V1_DESIGN.md)
+- 実装前設計: [`LEGACY_AUTH_V1_DESIGN.md`](../design/LEGACY_AUTH_V1_DESIGN.md)
 - Gate A判定: Ready
 
 ## 背景
@@ -257,7 +257,7 @@ Driver #69では、その境界を実際に利用して次をConformance化し�
 
 ## 関連文書
 
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0019-authentication-capability-boundary.md`

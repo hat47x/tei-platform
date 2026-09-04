@@ -22,7 +22,7 @@ credentialの不一致やaccount lockは、認証処理を正常に実行した�
 
 ADR-0020では、業務上の複数の結末をSemantic Capabilityの**名前付きOutcome**として表し、Execution ErrorはInvocation境界へ残す方針を採用しました。
 
-詳細な設計は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
+詳細な設計は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../design/CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
 
 ## 関連するProduct Requirement
 
@@ -285,8 +285,8 @@ Gate Aでは、この完了条件のうちDriver開始に必要な範囲だけ�
 ## 関連文書
 
 - `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
