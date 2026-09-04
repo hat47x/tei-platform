@@ -8,9 +8,9 @@ import (
 
 func TestPostgresConnectionErrorDoesNotExposeCredentialBearingDriverError(t *testing.T) {
 	tests := []struct {
-		name  string
-		stage string
-		raw   string
+		name    string
+		stage   string
+		raw     string
 		secrets []string
 	}{
 		{
