@@ -1,7 +1,7 @@
 # ISSUE-000036: Gate B 3-lane scopeを既存長文へ内容保持で同期する
 
-- 状態: In Progress
-- GitHub Issue: #383
+- 状態: Done — 3-lane scope同期完了
+- GitHub Issue: #383（Completed予定）
 - 前段判断: `ISSUE-000035` / GitHub Issue #380（Done）
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
@@ -58,7 +58,7 @@ scope再監査の途中で、複数のGate B長文をまとめて3-lane化する
 
 ### GitHub Issue本文
 
-必要に応じて次を同期します。
+次を監査対象としました。
 
 - #69
 - #214
@@ -66,7 +66,7 @@ scope再監査の途中で、複数のGate B長文をまとめて3-lane化する
 - #291
 - #70
 
-scope判断自体は既にコメントで同期済みです。本文更新は、古い4-lane表現が現在の必須条件として誤読される箇所に限定します。
+scope判断自体は既にコメントで同期済みでした。本文やコメントの追加更新は、古い4-lane表現が現在の必須条件として誤読される箇所へ限定しました。
 
 ## 同期原則
 
@@ -128,21 +128,48 @@ Oracle固有のactual Evidence手順はGate B必須の実行順から分離し�
 
 ただし、自然さのために設計履歴や条件を削りすぎません。
 
-## 作業順
-
-まず判断への影響が大きい文書から進めます。
+## 作業結果
 
 1. `GATE_B_READINESS_AUDIT.md` — PR #386で同期済み
 2. `GATE_B_EVIDENCE_ACQUISITION.md` — PR #388で同期済み
 3. `GATE_B_TO_C_HANDOVER_CONTRACT.md` — PR #384で同期済み
 4. `GATE_B_EVIDENCE_RUNBOOK.md` — PR #388で同期済み
 5. `ISSUE-000029` — PR #386で同期済み
-6. `ISSUE-000006`
-7. `V1_REFERENCE_APPLICATION_PLAN.md`
-8. `plan/README.md`
-9. GitHub Issue本文の残存表現を監査
+6. `ISSUE-000006` — PR #391で同期済み
+7. `V1_REFERENCE_APPLICATION_PLAN.md` — PR #391で同期済み
+8. `plan/README.md` — PR #391で同期済み
+9. GitHub Issue本文 / 導線 — 監査済み
 
-Runbookは長く安全条件が多いため、scope判断だけを理由に全文を短縮しません。
+Runbookは長く安全条件が多いため、scope判断だけを理由に全文を短縮していません。
+
+## GitHub Issue本文の監査結果
+
+### #291
+
+本文を現行3-lane契約へ更新しました。
+
+- #310 / #255 / #308を同一candidate revision `R`へ揃える
+- PR #389 / #387の最終収束runnerを明示する
+- #214 / #371 / #376未完了はHandover `unresolved`へ残す
+
+### #69 / #273 / #214
+
+本文には旧4-lane必須契約の詳細が長く残っています。
+
+これらを短い本文へ丸ごと置換すると、成立済みEvidence境界や設計履歴を破壊的に圧縮するため採用しませんでした。
+
+代わりに各Issueへ、次を明示する現行scopeコメントを追加しました。
+
+- 本文中の4-lane必須表現は現行条件ではなく履歴である
+- 現行必須Evidenceは#310 / #255 / #308の三laneである
+- #214 / #371 / #376は継続Evidenceであり、未完了ならHandover `unresolved`へ残す
+- Gate Bはactual run未取得のためNot Readyである
+
+この扱いにより、設計履歴を残しながら現在の判断を誤読しにくくしています。
+
+### #70
+
+Gate B Ready + Handover Baseline固定後にだけ第一Web Targetへ進む契約であり、現行3-lane scopeとの矛盾はありませんでした。本文変更は不要です。
 
 ## 完了条件
 
@@ -151,20 +178,22 @@ Runbookは長く安全条件が多いため、scope判断だけを理由に全�
 - [x] Handover Contractへ#214 unresolvedを明示した（PR #384）
 - [x] Runbookを内容保持で同期した（PR #388）
 - [x] ISSUE-000029を同期した（PR #386）
-- [ ] ISSUE-000006を同期する
-- [ ] V1 Reference Application Planを同期する
-- [ ] Planning READMEを同期する
-- [ ] GitHub Issue本文に古い必須4-lane表現が残っていないか監査する
-- [ ] #380 / ISSUE-000035のscope判断と矛盾しないことを確認する
+- [x] ISSUE-000006を同期した（PR #391）
+- [x] V1 Reference Application Planを同期した（PR #391）
+- [x] Planning READMEを同期した（PR #391）
+- [x] GitHub Issue本文に古い必須4-lane表現が残っていないか監査した
+- [x] #380 / ISSUE-000035のscope判断と矛盾しないことを確認した
 - [x] Gate Bを実EvidenceなしにReadyへ変更していないことを確認した
 
 ## 現在地
 
-主要なGate B契約文書は3-lane scopeへ同期済みです。
+Gate BのWHAT / HOW / JUDGE / Handover / v1主線 / Planning入口 / Application Driver上位正本は、現行3-lane scopeへ同期済みです。
 
-さらにPR #389 / `ISSUE-000037` / #387で、三laneが同じcandidate revisionへ揃ったことを最終確認する薄いrunnerを追加しました。ただし通常Go環境でのpackage testとactual PostgreSQLを含むfinal runは未実行です。
+PR #389 / `ISSUE-000037` / #387で、三laneが同じcandidate revisionへ揃ったことを最終確認する薄いrunnerも追加されています。
 
-残る文書同期は、v1主線・Planning入口・Application Driver上位正本とGitHub Issue本文です。
+ただし通常Go環境でのpackage test、#310 / #255 / #308のactual run、Evidence専用PostgreSQLを含む`reference-gate-b-final-evidence`のactual final runは未実行です。
+
+したがってGate Bは引き続き **Not Ready** です。
 
 ## 非目標
 
@@ -173,10 +202,11 @@ Runbookは長く安全条件が多いため、scope判断だけを理由に全�
 - Gate B Ready前に第一Web Targetを実装すること
 - GitHub Actionsを再有効化すること
 - 文書を短くすること自体を目的にすること
+- 長いGitHub Issue本文をscope変更だけを理由に破壊的に圧縮すること
 
 ## 関連
 
 - `ISSUE-000035` / #380
 - `ISSUE-000037` / #387
 - #69 / #70 / #214 / #255 / #273 / #291 / #308 / #310 / #371 / #376 / #383
-- PR #379 / #382 / #384 / #385 / #386 / #388 / #389
+- PR #379 / #382 / #384 / #385 / #386 / #388 / #389 / #390 / #391
