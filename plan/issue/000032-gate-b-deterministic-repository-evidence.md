@@ -9,7 +9,7 @@
 
 ## 目的
 
-Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic Evidenceを、cleanかつ実行中に不変なrepository revision上で一つの正規入口から実行し、現在の`main`に成立しているApplication Driver / external Evidence intake境界を再現可能なEvidenceとして確認します。
+Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic Evidenceを、cleanかつ実行中に不変なrepository revision上で一つの正規入口から実行し、現在の`main`に成立しているApplication Driver / external Evidence intake / Repository source固定境界を再現可能なEvidenceとして確認します。
 
 このIssueはCIサービスのgreenを要求するためのものではありません。特定CIサービスとは独立した**normal Go runner Evidence**を取得し、後から実際に実行した同じsource revisionへ戻れることを重視します。
 
@@ -22,6 +22,7 @@ Repository checkoutとGo toolchainだけで再現できるGate Bのdeterministic
 - Canonical Workspace Validation
 - 最終UI-less Scenario
 - external Evidence intake / fail-closed境界
+- Repository source固定境界のpure Conformance
 - 必要に応じた広いRepository test
 - Evidence実行前後のrepository source identity / cleanliness
 
@@ -39,7 +40,11 @@ PR #315で次を`main`へ追加しています。
 tools/reference-gate-b-repository-evidence
 ```
 
-PR #321で、targeted / broad test後にもHEAD不変・working tree cleanを再確認するfail-closed境界を追加しています。
+PR #321で、targeted / broad test後にもHEAD不変・working tree cleanを再確認するfail-closed境界を追加しました。
+
+PR #336で、このsource観測規則を#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しました。
+
+PR #346では、共有helperのpure Conformance testを3本目のtargeted checkへ追加し、`-broad`なしでもsource固定判定そのものの回帰を検知できるようにしました。
 
 既定実行:
 
@@ -55,9 +60,10 @@ go run ./tools/reference-gate-b-repository-evidence
 4. Canonical Workspace Validation
 5. 最終UI-less Scenario test
 6. external Evidence intake test
-7. 必要に応じたbroad test
-8. 実行後HEAD / working treeの再確認
-9. 小さい非Canonical JSON Evidence出力
+7. Repository source固定境界のpure Conformance test
+8. 必要に応じたbroad test
+9. 実行後HEAD / working treeの再確認
+10. 小さい非Canonical JSON Evidence出力
 
 広いtestは明示指定時だけ追加します。
 
@@ -89,7 +95,7 @@ go run ./tools/reference-gate-b-repository-evidence \
 
 ## targeted Evidence
 
-### 最終UI-less Scenario
+### 1. 最終UI-less Scenario
 
 同じ`order_entry` Application / Semantic Order identityから、少なくとも次の境界を一続きに確認します。
 
@@ -107,7 +113,15 @@ Authentication
 
 synthetic adapterを含むため、actual external state Evidenceへ格上げしません。
 
-### external Evidence intake
+等価コマンド:
+
+```bash
+go test ./internal/driver \
+  -run '^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$' \
+  -count=1
+```
+
+### 2. external Evidence intake
 
 少なくとも次を確認します。
 
@@ -120,6 +134,38 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 - effective read-only mechanism / Evidence参照必須
 - EvidenceからSQL realizationを生成・補完しない
 - Invalid Workspaceを受け入れない
+- source-fixed acceptance receiptのpure contractを壊していない
+
+等価コマンド:
+
+```bash
+go test ./internal/database/externalqueryevidence \
+  ./tools/reference-external-query-evidence \
+  -count=1
+```
+
+このtest成功を#214 actual Oracle facts / actual readのEvidenceへ格上げしません。
+
+### 3. Repository source固定境界
+
+PR #346以降、共有helper自体のpure Conformanceをtargeted checkとして独立実行します。
+
+```bash
+go test ./tools/internal/repositoryevidence \
+  -count=1
+```
+
+少なくとも次を固定します。
+
+- 開始revisionが空でない
+- 開始時working treeがclean
+- post-run状態が確認済み
+- post-run revision文字列が開始revisionと同一
+- `revisionStable`がtrue
+- 終了時working treeがclean
+- どれか一つでも欠ける状態を再現可能と判定しない
+
+runner自身のpackageはこのtargeted testへ含めません。将来runner側のtestが`run()`を呼ぶようになっても自己再帰の経路を作らず、共有helperの契約だけを独立して検証します。
 
 ## Evidence JSON
 
@@ -134,7 +180,9 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 - 実行後working tree clean
 - Go version
 - Workspace Validation結果
-- targeted checkごとのcommandとpass / fail
+- `final-ui-less-scenario`のcommand / pass-fail
+- `external-evidence-intake`のcommand / pass-fail
+- `repository-evidence-source-boundary`のcommand / pass-fail
 - broad testを要求したか
 
 `reproducibleRevision = true`になるのは、実行前後で同じHEADを保持し、両時点のworking treeがcleanである場合だけです。
@@ -155,10 +203,13 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 - [x] broad testを明示オプションへ分離した
 - [x] Evidence JSONへsecret / test stdoutを取り込まない境界を定めた
 - [x] runner実装で実行後HEAD不変・working tree cleanをfail-closed確認する（PR #321）
+- [x] source revision観測をtool-only共有境界へ収束した（PR #336）
+- [x] Repository source固定境界のpure Conformanceをtargeted checkへ追加した（PR #346）
 - [ ] cleanな対象revisionでrunnerを実行する
 - [ ] Canonical Workspace Validation成功Evidenceを取得する
 - [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
 - [ ] external Evidence intake testを通常Go runnerで成功させる
+- [ ] Repository source固定境界testを通常Go runnerで成功させる
 - [ ] 実行前後の同一revision / clean状態をJSON Evidenceで再確認する
 - [ ] repository revisionを含むJSON Evidenceを保存・再確認する
 - [ ] 可能なら`-broad`を実行し結果を記録する
@@ -178,11 +229,12 @@ synthetic adapterを含むため、actual external state Evidenceへ格上げし
 ## 関連
 
 - GitHub Issue #69 / #214 / #255 / #273 / #308 / #310
-- PR #281 / #288 / #300 / #304 / #306 / #315 / #321
+- PR #281 / #288 / #300 / #304 / #306 / #315 / #321 / #336 / #340 / #346
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `internal/driver/final_gate_b_scenario_test.go`
 - `internal/database/externalqueryevidence/`
+- `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/`
 - `tools/reference-gate-b-repository-evidence/README.md`
