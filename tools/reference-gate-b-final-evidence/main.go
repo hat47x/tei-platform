@@ -14,6 +14,7 @@ import (
 )
 
 const evidenceNature = "gate-b-three-lane-final-convergence"
+const postgresDSNEnv = "TEI_TEST_POSTGRES_DSN"
 
 type laneSpec struct {
 	Name           string
@@ -105,7 +106,7 @@ func runWith(
 		return result, fmt.Errorf("Gate B最終Evidenceは一つのclean revisionへ固定するため、working treeに未commit差分がある状態では実行しません")
 	}
 
-	if strings.TrimSpace(os.Getenv("TEI_TEST_POSTGRES_DSN")) == "" {
+	if strings.TrimSpace(os.Getenv(postgresDSNEnv)) == "" {
 		return result, fmt.Errorf("TEI_TEST_POSTGRES_DSNが未設定です。#308はEvidence専用の空PostgreSQL Databaseで実行する必要があります")
 	}
 
@@ -183,6 +184,7 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] go %s\n", strings.Join(spec.Args, " "))
 	var stdout bytes.Buffer
 	cmd := exec.Command("go", spec.Args...)
+	cmd.Env = environmentForLane(spec, os.Environ())
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 	runErr := cmd.Run()
@@ -199,6 +201,23 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	}
 	lane.Passed = true
 	return lane, nil
+}
+
+func environmentForLane(spec laneSpec, base []string) []string {
+	out := append([]string(nil), base...)
+	if spec.Name == "real-postgres-ephemeral-fixture" {
+		return out
+	}
+
+	filtered := out[:0]
+	for _, entry := range out {
+		key, _, ok := strings.Cut(entry, "=")
+		if ok && strings.EqualFold(key, postgresDSNEnv) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
 }
 
 func decodeLaneArtifact(content []byte, lane *laneEvidence) (laneEnvelope, error) {
