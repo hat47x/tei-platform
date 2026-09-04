@@ -65,6 +65,7 @@ type Pattern struct {
 type Application struct {
 	ID           core.CanonicalID      `json:"id"`
 	SemanticUses []core.CanonicalID    `json:"semanticUses,omitempty"`
+	Validations  []core.CanonicalID    `json:"validations,omitempty"`
 	Databases    []DatabaseRequirement `json:"databases,omitempty"`
 	Patterns     []Pattern             `json:"patterns,omitempty"`
 }

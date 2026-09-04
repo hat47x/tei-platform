@@ -104,7 +104,8 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 			a.Databases = append(a.Databases, r)
 		case "uses":
 			_, _ = p.next()
-			if _, err := p.expectText("semantic"); err != nil {
+			kind, err := p.expect(TokenIdent)
+			if err != nil {
 				return a, err
 			}
 			v, err := p.expect(TokenIdent)
@@ -115,7 +116,14 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 			if err != nil {
 				return a, p.errAt(v, err.Error())
 			}
-			a.SemanticUses = append(a.SemanticUses, ref)
+			switch kind.Text {
+			case "semantic":
+				a.SemanticUses = append(a.SemanticUses, ref)
+			case "validation":
+				a.Validations = append(a.Validations, ref)
+			default:
+				return a, p.errAt(kind, "expected semantic or validation after uses")
+			}
 		default:
 			return a, p.errAt(t, "expected database or uses")
 		}
