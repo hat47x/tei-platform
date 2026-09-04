@@ -16,6 +16,8 @@
 ## Evidenceの性質
 
 ```text
+clean repository revision
+        +
 Canonical Workspace
         ↓ Validation
 real PostgreSQL engine
@@ -23,6 +25,12 @@ real PostgreSQL engine
 tool-owned ephemeral fixture
         ↓
 header-detail runtime Evidence
+        ↓
+fixture cleanup / missing-table Error
+        ↓
+Database empty-state restoration check
+        ↓
+same clean repository revisionを再確認
 ```
 
 このEvidenceは実PostgreSQL provider / driver / native SQL executionを通しますが、production既存Databaseの物理事実を観測するものではありません。
@@ -63,7 +71,7 @@ PR #336で、#310 deterministic Repository Evidence、#255 generated artifact Ev
 2. `git status --porcelain`でworking tree状態を取得する
 3. dirty working treeならDB接続前に停止する
 
-Provider runtimeとtool-owned fixture cleanupが完了した後にも次を再確認します。
+Provider runtime、tool-owned fixture cleanup、Database復元確認が完了した後にも次を再確認します。
 
 1. `git rev-parse HEAD`を再取得する
 2. 実行前HEADと完全一致することを確認する
@@ -88,7 +96,7 @@ Provider runtimeとtool-owned fixture cleanupが完了した後にも次を再�
 
 PR #294 / #300 / #306で、Workspace Validation、既存fixture保護、tool-owned cleanupの基本境界を成立させました。
 
-PR #324では、「`public.order_lines`さえ存在しなければ既存業務DBでもfixtureを作成できる」という残存リスクを閉じ、**専用空Databaseであることをfail closedに確認する境界**を追加しました。
+PR #324では、「`public.order_lines`さえ存在しなければ既存業務DBでもfixtureを作成できる」という残存リスクを閉じ、専用空Databaseとして扱える最小条件をfail closedに確認する境界を追加しました。
 
 現在の実行順は次です。
 
@@ -105,9 +113,11 @@ PR #324では、「`public.order_lines`さえ存在しなければ既存業務DB
 11. `public.order_lines`の既存有無を再確認し、存在すれば停止する
 12. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
 13. Provider runtime Evidenceを確認する
-14. tool自身がCREATEしたfixtureをcleanupし、missing-table Execution Errorも確認する
-15. repository HEAD / working treeを再確認する
-16. sourceが変化していれば成功JSONを出さず停止する
+14. tool自身がCREATEしたfixtureをcleanupし、missing-table Execution Errorを確認する
+15. system / temporary領域を除くuser relationが0件へ戻ったことを再確認する
+16. `public.order_lines`が引き続き存在しないことを再確認する
+17. repository HEAD / working treeを再確認する
+18. Databaseまたはsource状態が期待状態へ戻っていなければ成功JSONを出さず停止する
 
 ### 既定Databaseを拒否する
 
@@ -146,7 +156,7 @@ SELECT to_regclass('public.order_lines')::text
 
 **既存relationやtableを削除して続行するoverrideはありません。** 別の専用空Databaseを使用します。
 
-## 安全判定をEvidenceへ残す
+## fixture作成前の安全判定をEvidenceへ残す
 
 PR #335以降、fixture作成前の安全guardは、実装されているだけでなく、そのrunで満たした非機密な観測結果を`fixtureDatabaseSafety`としてEvidence JSONへ残します。
 
@@ -174,6 +184,30 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
 
 `guardPassed = true`を「組織運用上、このDatabaseがEvidence専用であることの完全証明」へ格上げしません。toolがそのrunで観測できる安全条件を満たしたことだけを示します。
 
+## cleanup後の空状態をEvidenceへ残す
+
+Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissing-table Execution Errorを確認します。その後、成功Evidenceを出す前にPostgreSQL catalogを再観測します。
+
+期待する`fixtureCleanupSafety`:
+
+```json
+{
+  "verified": true,
+  "userRelationsAfterCleanup": 0,
+  "fixtureObjectAbsentAfterCleanup": true
+}
+```
+
+これは次を示します。
+
+- system / temporary領域を除くuser relationが0件へ戻った
+- `public.order_lines`が存在しない
+- missing-table Execution Error確認後も上記状態が維持された
+
+終了時にuser relationが1件でも残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
+
+このcleanup EvidenceにもDatabase名、DSN、credentialは保存しません。
+
 ## 確認するEvidence
 
 同じrunで少なくとも次を確認します。
@@ -194,11 +228,14 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
 - Relation Storage support column `order_id`をOrderLine Semantic attributeへ漏らさない
 - parameter名だけをEvidenceへ残し、runtime parameter valueを保存しない
 - `evidenceNature = real-postgres-ephemeral-fixture`を保持する
-- `fixtureDatabaseSafety.guardPassed = true`を保持する
-- `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`を保持する
-- `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`を保持する
-- `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`を保持する
-- `fixtureDatabaseSafety.databaseIdentityPersisted = false`を保持する
+- `fixtureDatabaseSafety.guardPassed = true`
+- `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`
+- `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`
+- `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`
+- `fixtureDatabaseSafety.databaseIdentityPersisted = false`
+- `fixtureCleanupSafety.verified = true`
+- `fixtureCleanupSafety.userRelationsAfterCleanup = 0`
+- `fixtureCleanupSafety.fixtureObjectAbsentAfterCleanup = true`
 - 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
 
 ## 完了条件
@@ -208,14 +245,16 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
 - [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
 - [x] `public.order_lines`既存時に停止する
 - [x] tool-owned fixtureだけをcleanupする
-- [x] 安全guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335）
+- [x] fixture作成前guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335）
 - [x] dirty working treeではDB接続前に停止する（PR #336）
 - [x] Provider runtime後にHEAD同一 / working tree cleanを再確認する（PR #336）
 - [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
+- [x] cleanup後にuser relation 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す
 - [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
 - [ ] `reproducibleRevision = true`を実runで確認する
 - [ ] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する
+- [ ] `fixtureCleanupSafety`が期待する終了状態を示すことを実runで確認する
 - [ ] 2件取得を確認する
 - [ ] 0件を正常な空collectionとして確認する
 - [ ] physical table欠落をExecution Errorとして確認する
@@ -235,6 +274,7 @@ PR #335以降、fixture作成前の安全guardは、実装されているだけ�
 - physical schemaからSemantic Relationを逆生成すること
 - PostgreSQL固有仕様をSemantic modelへ逆流させること
 - dirty / source変化中のrunをProvider Evidenceとして採用すること
+- cleanup後にuser relationが残るrunを成功Evidenceとして採用すること
 - GitHub Actionsの再有効化
 
 ## 関連
