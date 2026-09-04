@@ -14,6 +14,7 @@
 - physical execution errorを0 rowへ変換しないこと
 - runtime parameter値を通常Evidenceへ保存しないこと
 - Evidenceを一つのclean repository revisionへ固定できること
+- fixture実行後に接続先をuser relation 0件 / fixture object不在へ戻せたこと
 
 一方、tool自身が一時的にfixture table / rowを作ります。このため、**production既存Databaseの物理事実を観測したEvidenceではありません**。
 
@@ -86,12 +87,14 @@ Provider runtime Evidence
   ↓
 tool-owned fixture cleanup / missing-table Execution Error確認
   ↓
+user relation 0件 / fixture object不在を再確認
+  ↓ 残存があれば停止
 Repository revision / working tree再確認
   ↓ 変化していれば停止
 JSON Evidence
 ```
 
-したがって、dirty source、Workspace authoringが不正な状態、既存資産を含むDatabaseのいずれでもfixture作成へ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+したがって、dirty source、Workspace authoringが不正な状態、既存資産を含むDatabase、cleanup後にuser relationが残るrunのいずれも成功Evidenceへ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
 
 ## Database側の安全条件
 
@@ -178,6 +181,30 @@ SELECT to_regclass('public.order_lines')::text;
 
 `guardPassed = true`は「このDatabaseが組織運用上Evidence専用である」ことまで証明するものではありません。toolが観測できる安全条件を、そのrunで満たしたことを示します。
 
+## cleanup後の空状態をEvidenceへ残す
+
+missing-table Execution Errorを確認した後、成功JSONを出す前に接続先を再検査します。
+
+`fixtureCleanupSafety`の期待値は次です。
+
+```json
+{
+  "verified": true,
+  "userRelationsAfterCleanup": 0,
+  "fixtureObjectAbsentAfterCleanup": true
+}
+```
+
+これは、tool-owned fixtureを削除したという制御フラグだけではなく、終了時のPostgreSQL catalogを再観測して次を確認したことを示します。
+
+- system / temporary領域を除くuser relationが0件へ戻った
+- `public.order_lines`が存在しない
+- missing-table Execution Error確認後も上記状態が維持された
+
+終了時にuser relationが1件でも残っている場合は、それがtool由来か他主体の並行変更かを推測せずfail closedで停止します。
+
+このEvidenceにもDatabase名、DSN、credentialは保存しません。
+
 ## 出力
 
 成功時はJSON Evidenceをstdoutへ出力します。
@@ -187,7 +214,8 @@ SELECT to_regclass('public.order_lines')::text;
 - Evidence nature
 - repository revision / working tree / post-run source stability
 - fixture object / tool ownership / preexisting fixture protection
-- `fixtureDatabaseSafety`の非機密な安全判定結果
+- `fixtureDatabaseSafety`の非機密なfixture前安全判定
+- `fixtureCleanupSafety`の非機密な終了時復元判定
 - Pattern / Relation
 - Environment / Database instance / executor Capability
 - Contract Query target
@@ -212,5 +240,6 @@ SELECT to_regclass('public.order_lines')::text;
 - runtime parameter値やcredentialのEvidence保存
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
 - dirty working tree上の成功をGate B完了Evidenceへ格上げすること
+- cleanup後にuser relationが残るrunを成功Evidenceへ格上げすること
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。
