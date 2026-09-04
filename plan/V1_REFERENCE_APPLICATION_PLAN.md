@@ -71,9 +71,11 @@ Stage 1  Application Pattern                  完了
                ↓
 Gate A   Application上の意味をDriverへ渡せる   Ready
                ↓
-Stage 2  Application Driver #69               In Progress
+Stage 2  Application Driver #69               主要境界は成立
                ↓
-Gate B   UIなしで主要Scenarioを再現できる       Not Ready / 監査中
+Gate B   UIなしで主要Scenarioを再現できる       Not Ready / Evidence取得中
+               ↓
+Handover Gate B → C baseline #291
                ↓
 Stage 3  第一Web Target #70 + Evidence #270
                ↓
@@ -84,7 +86,9 @@ Stage 4  Editor / AI支援 #267
 Stage 5  第二Target #259
 ```
 
-Gate Dという独立した番号付きGateを先に固定するより、第一Web TargetのGate C EvidenceをEditor / AIと第二Targetの入力として明示的に受け渡します。第二Targetで追加のGateが必要かは、実際のTarget差から判断します。
+Handoverは新しい番号付きGateではありません。Gate Bの出力をGate Cの入力へ曖昧なく引き渡すための契約です。
+
+Gate Dのような次の番号付きGateを先に固定するより、第一Web TargetのGate C EvidenceをEditor / AIと第二Targetの入力として明示的に受け渡します。第二Targetで追加のGateが必要かは、実際のTarget差から判断します。
 
 ## Stage 0 — Product Baseline / Gap Audit
 
@@ -147,15 +151,16 @@ Gate A Readyは「Driver実装が完了した」という意味ではありま�
 ## Stage 2 — Application Driver
 
 関連: `ISSUE-000006` / GitHub Issue #69  
-監査: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / `ISSUE-000029` / GitHub Issue #273
+監査: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / `ISSUE-000029` / GitHub Issue #273  
+Evidence取得: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
 
 ### 現在の状態
 
-**In Progressです。Gate BはNot Readyです。**
+**主要な意味境界とScenario構造は成立しています。Gate BはNot Readyで、現在はEvidence取得段階です。**
 
-以前の文書ではGate A Readyを受けてStage 2を「Ready」と表現していましたが、これは「着手可能」と「Gate B通過可能」を混同しやすいため廃止します。
+PR #285でContract Query、header-detail、Relation Storage、Observation、最終UI-less Scenario、Reference authoringを`main`へ収束しました。
 
-現在はDriverの中心設計が大きく成立し、Gate Bを止める要因が外部Evidence、Observation、生成物再現性、最終Scenario統合へ収束しています。
+したがって、Stage 2の中心課題は新しいDriver抽象を増やすことではなく、成立済み境界へ実外部・実DB・生成物再現・通常runnerのEvidenceを揃えることです。
 
 ### 成立している主な境界
 
@@ -175,6 +180,8 @@ Gate A Readyは「Driver実装が完了した」という意味ではありま�
 - explicit Query result mapping
 - Semantic result
 
+raw列名、列順、Persistence MappingからSemantic attributeを推測しません。
+
 #### reference — `Order -> Customer`
 
 構造・runtime境界は成立しています。
@@ -182,21 +189,26 @@ Gate A Readyは「Driver実装が完了した」という意味ではありま�
 - Relation key
 - Reference Contract Query invocation
 - typed Database Contract Query
-- SQL realization model
+- Contract Query SQL realization model
+- explicit input / result mapping
 - Environment / Database instance / executor Capability
 - instance-aware Registry
-- Oracle SQL Runner
+- Oracle向け最小`database/sql` Runner
+- 0件 / Execution Errorの分離
 
-ただし`master_data`はexternal-observedで、実物理object / SQL / raw columns / provenanceが未観測です。#214でEvidenceを得るまでOracle物理情報を推測しません。
+ただし`master_data`はexternal-observedで、実物理object / parameter / raw columns / native realization / provenanceが未観測です。#214でEvidenceを得るまでOracle物理情報を推測しません。
+
+read-onlyについても`ownership external-observed`という宣言だけで済ませず、credential / role / session / view / API等の実効的な強制境界を確認します。
 
 #### header-detail — `Order -> OrderLine[]`
 
 keylessなSemantic Relationを維持したまま次まで成立しています。
 
 - ADR-0021 Pattern外traversal realization
-- HeaderDetailContractQueryBinding
+- `HeaderDetailContractQueryBinding`
 - Database-owned Relation Storage
-- support columnのDesired Physical Schema / migration
+- `sales.order.order_id -> order_id` support column
+- Desired Physical Schema / migration
 - PostgreSQL SQL realization
 - Environment composition
 - 0件 / 複数件 / Execution Error
@@ -206,54 +218,91 @@ keylessなSemantic Relationを維持したまま次まで成立しています�
 
 #### Validation -> Authorization -> Command
 
-PR #265で次をReference Scenarioとして固定しました。
+次を区別し、不成立時にはCommandへ進みません。
 
-```text
-Authentication
-  ↓
-Canonical Validation
-  ↓
-Authorization
-  ↓
-Command
-```
+- Validation `NotSatisfied`
+- Validation評価不能のExecution Error
+- Authorization `denied`
+- Command Business Result
 
-Validation `NotSatisfied`、Validation評価Error、Authorization `denied`、Command Business Resultを区別し、不成立時にはCommandへ進みません。
+最終UI-less Scenarioではheader-detailのSemantic OrderLine resultをValidation inputへ渡し、Authenticationで得たsubjectをAuthorizationへ、browseで得た同じ`order_id`をCommandへ引き継ぎます。
 
 ### Command / Observation
 
-関連: GitHub Issue #266 / ADR-0023
+関連: ADR-0023 / 完了済みGitHub Issue #266
 
 Command Business ResultをObserved stateへ変換しません。
 
-v1では次を採用します。
+v1では次を採用済みです。
 
 ```text
 Command Business Result
         ↓ separate operation
 explicit read boundary
         ↓
-Observation Evidence
+Observation read result / Execution Error
 ```
 
 Query / Contract Query / read adapter等の既存の明示read境界を別操作として利用します。
 
-Command payload、HTTP status、Capability名からObservation対象や結果を推測しません。
+- Observation対象をCommand payload、HTTP status、Capability名から推測しない
+- read resultと期待状態評価を分ける
+- Observation Execution Errorを成功済みCommand結果へ逆流させない
+- synthetic Evidenceと実外部Evidenceを区別する
+- runtime parameter値やcredentialを通常Evidenceへ保存しない
 
 Observation専用Application Pattern、Semantic Capability、Workflow Engine、Event Sourcing基盤は第一Referenceだけから先行導入しません。
 
-### Gate B blocker
+#266は境界設計として完了しており、Gate Bの未設計blockerではありません。
 
-2026-09-04時点の主なblockerは次です。
+### 最終UI-less Scenario
 
-1. #214 external `master_data`実物理Evidence
-2. header-detail実PostgreSQL成功Evidence
-3. #266 Command / Observation最小Reference
-4. #255 World / Plugin Lock等の正規再生成
-5. 最終UI-less Scenario Evidence
-6. CI再開後の通常runner再検証
+`internal/driver/final_gate_b_scenario_test.go`で次を一つのtest-local Scenarioへ構造統合しています。
 
-CI停止そのものをSemantic design gapとは扱いませんが、未実行をgreenとも扱いません。
+```text
+Authentication
+  -> browse
+  -> record Pattern resolution
+  -> reference Customer
+  -> header-detail OrderLine[]
+  -> Canonical Validation
+  -> Authorization
+  -> Command Business Result
+  -> separate Observation read
+```
+
+browseでSemantic mapping済みの同じOrder rowから`customer_id` / `order_id`を後続境界へ引き継ぎます。
+
+このScenarioはsynthetic adapterを含むため、実Oracle / 実PostgreSQL / 実外部Command Evidenceの代替にはしません。
+
+### Gate Bを直接止めているEvidence
+
+現在の直接残件は四系統です。
+
+1. **#214 external `master_data`実物理 / read-only Evidence**
+   - 実object / parameter / raw result identity
+   - native realization source
+   - explicit Semantic mapping
+   - provenance
+   - 実効的なread-only境界
+   - 1件 / 0件 / Execution Error
+2. **header-detail実PostgreSQL Evidence**
+   - `tools/reference-postgres-header-detail-runtime`
+   - 破棄可能な専用DBで2件 / 0件 / Execution Errorを確認
+3. **#255 Reference golden正規再生成Evidence**
+   - World / Plugin Lock / 必要ならDurable Run
+   - 正規コマンドから再生成し、fingerprintや生成物を手編集しない
+4. **最終UI-less Scenarioの通常Go runner Evidence**
+   - `TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI`
+   - repository revisionを記録して実行する
+
+具体的な実行手順と安全条件は`GATE_B_EVIDENCE_ACQUISITION.md`を正とします。
+
+### GitHub Actionsの扱い
+
+GitHub Actionsによる継続的な再検証は重要ですが、上記四系統のProduct Evidenceと同一ではありません。
+
+Actions停止そのものをSemantic design gapへ読み替えず、逆に未実行をgreenとも扱いません。再開後は同じConformanceをregression検知として継続実行します。
 
 ## Gate B — UIなしで主要Scenarioを再現できる
 
@@ -262,52 +311,63 @@ CI停止そのものをSemantic design gapとは扱いませんが、未実行�
 Gate Bは画面がなくても次をEvidenceから説明できることを要求します。
 
 - 同じApplication定義から主要Scenarioを一続きに再現できる
+- 同じ業務identityを重要境界間で明示的に継承できる
 - Pattern / Query / Relation / Contract Query / Datasource / Capability / Bindingを追跡できる
 - external assetの未観測事実を推測していない
 - read-only / secret等の安全境界を保持できる
 - Validation / Authorization不成立時にCommandへ進まない
 - Business Result / Execution Error / Observationを区別できる
+- synthetic Evidenceと実外部Evidenceを区別できる
 - Query 0件とExecution Errorを区別できる
 - 最新authoringからReference artifactを再現できる
 - 第一Web TargetへWeb側の意味補完なしに同じbaselineを渡せる
 
-最新判定は`GATE_B_READINESS_AUDIT.md`を正とします。
+最新判定は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正とします。
 
-## Gate Bから第一Web Targetへ渡すbaseline
+## Gate BからGate CへのHandover Baseline
 
-Gate B通過時には少なくとも次を渡します。
+関連: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / GitHub Issue #291
 
-- browse
-- record
-- reference
-- header-detail
+Gate BがReadyになった後、第一Web Targetへ渡す比較baselineを曖昧な「その時点の最新Driver」にはしません。
+
+Gate B通過時のrevisionを一つのHandover Baselineとして固定し、少なくとも次へ追跡できるようにします。
+
+- repository revision
+- Reference Workspace identity
+- Application: `order_entry`
+- browse / record / reference / header-detail / command
+- Data / Relation / Query / Datasource
 - Canonical Validation
 - Authentication / Authorization
-- command
+- Capability / Binding
 - Business Result / named Outcome
 - Execution Error
-- Observation
-- Datasource read / read-write境界
+- Observationに利用する明示read境界
 - Source / Binding traceability
-- Driver Scenario Evidence
+- Driver Scenario identity
+- Gate B Evidence
+- unresolved
 
-Web側で不足を独自実装して隠しません。不足が見つかった場合はGate B baselineまたは上位の意味境界へ戻します。
+Handover recordは第二の正本ではありません。authoritative source、Canonical ID、Gate B Evidenceへの参照を束ねます。
+
+Web側で不足が見つかった場合は独自fieldやruleで隠さずApplication / Driverへ戻ります。Application / Driverの意味を変更した場合は、必要なGate B Evidenceを再確認し、新しいHandover Baselineを発行します。既存baselineを黙って「最新」へ読み替えません。
 
 ## Stage 3 — 第一Web Target
 
 関連: `ISSUE-000007` / GitHub Issue #70  
 Evidence実証: `ISSUE-000028` / GitHub Issue #270  
-契約: [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
+Gate B→C Handover: `ISSUE-000030` / GitHub Issue #291  
+契約: [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md) / [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
 
 ### 着手条件
 
-Gate B通過後です。
+**Gate B Readyかつ第一Handover Baselineを固定した後**です。
 
 Gate B前にframework、画面構造、Presentation IRを先に固定しません。
 
 ### 目的
 
-Driverで成立した同じApplication上の意味を第一Web TargetへProjectionし、次を実例から分離します。
+Handover Baselineで固定したApplication / Driver上の意味を第一Web TargetへProjectionし、次を実例から分離します。
 
 - Application上の意味
 - Target-neutral Presentation候補
@@ -336,15 +396,19 @@ Driverで成立した同じApplication上の意味を第一Web TargetへProjecti
 - standard Projection
 - Custom UI
 
+各Gate C Evidence runから、どのHandover Baselineと比較したかを辿れる必要があります。
+
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
 第一Web Targetが表示できただけでは通過しません。
 
-`GATE_C_EVIDENCE_CONTRACT.md`に従い、次の三種類を別Evidenceとして扱います。
+[`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)に従い、次の三種類を別Evidenceとして扱います。
 
 1. **Semantic Conformance**
 2. **Interaction / Functional Evidence**
 3. **Visual Fidelity Evidence**
+
+Semantic Conformanceでは、Gate Bから固定したHandover Baselineと同じCanonical Application上の意味をWebが保持しているかを確認します。
 
 Visual evaluator、VLM、screenshot diff、GUI agent等は利用できますが、Visual scoreだけでSemantic / Functionalを合格にしません。
 
@@ -439,12 +503,13 @@ Evidence候補は次です。
 - generated / golden artifact
 - Driver Scenario
 - real external / managed-here observation
+- Handover Baseline
 - Target comparison
 - ADR
 - readiness audit
 - unresolvedを明示したDiagnostic / Evidence
 
-Evidence artifactをCanonicalの第二正本にはしません。
+Evidence artifactやHandover recordをCanonicalの第二正本にはしません。
 
 実験結果が予想と異なる場合、その差を隠して計画へ合わせません。Product Valueに照らし、Requirement / Architecture / Planを修正します。
 
@@ -456,6 +521,7 @@ Evidence artifactをCanonicalの第二正本にはしません。
 - 完全なTarget Capability taxonomy
 - Editor最終UI framework
 - AI provider / Proposal最終schema
+- Handover Baselineの汎用machine-readable schema
 - 第二Targetの種類
 - B2C向け一律性能目標
 - Authentication実装の単一方式
@@ -472,6 +538,7 @@ ReferenceからEvidenceを得る前に固定しません。
 少なくとも次をRepositoryのEvidenceから説明できることを目安とします。
 
 - 一つの現実的なApplicationをSemanticから第一Targetまで一続きに追跡できる
+- Gate B通過時のDriver baselineを固定し、第一TargetのEvidenceからそのrevisionへ戻れる
 - 複数Databaseを自然に利用できる
 - native SQLとCustom implementationを正本のまま利用できる
 - 既存認証仕様を保持したままCapabilityへ接続できる
@@ -494,6 +561,8 @@ Editor / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/APPLICATION_PATTERN_V1_DESIGN.md`
@@ -512,3 +581,4 @@ Editor / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
 - `plan/issue/000029-gate-b-readiness-audit.md`
+- `plan/issue/000030-gate-b-to-c-handover-baseline.md`
