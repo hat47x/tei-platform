@@ -123,6 +123,19 @@ stdoutには概ね次の形を出します。
 
 JSONへtest stdout、DSN、credential、runtime parameter valueは保存しません。
 
+### JSONをファイルへ保存する場合
+
+shellの`>`はコマンド開始前にredirect先を作成します。Repository内の新規pathへ直接redirectすると、そのfile自身を`git status --porcelain`が検出してdirtyとなり、意図どおりfail closedします。
+
+保存する場合は、まずworking tree外へ出します。
+
+```bash
+go run ./tools/reference-gate-b-repository-evidence \
+  > /tmp/tei-gate-b-repository-evidence.json
+```
+
+EvidenceをRepositoryへ永続保存するか、どのpathを標準とするかはこのtoolから先行決定しません。
+
 ## Evidenceの意味
 
 成功しても証明するのは、そのclean repository revisionでdeterministicなGate B境界が通常Go runnerから成立したことだけです。
