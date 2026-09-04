@@ -34,16 +34,19 @@ Driverは不足する意味や外部事実を独自規則で補いません。Ga
 
 2026-09-04時点で、Driverの中心設計と主要runtime境界は大きく成立しています。
 
-一方、**Gate BはNot Ready**です。
+さらに、`internal/driver/gate_b_ui_less_scenario_test.go`で、browse -> record -> reference -> header-detail -> Validation -> Authorization -> Command -> separate Observation readを同じReference World上で接続するtest-localな複合Scenarioを追加しました。
 
-残っているのは、初期段階のようなPattern解決やQuery実行APIの不足ではなく、主に次のEvidence / 統合境界です。
+ただし、**Gate BはNot Ready**です。
+
+残っているのは、初期段階のようなPattern解決やQuery実行APIの不足ではなく、主に次のEvidenceです。
 
 1. external-observed `master_data`の実物理Evidence
 2. header-detailの実PostgreSQL成功Evidence
-3. Command acknowledgementとObservationの分離実証
-4. 最新Canonical WorkspaceからのReference生成物再現
-5. 主要Scenarioを一続きにしたUI-less Evidence
-6. CI再開後の通常runner再検証
+3. 最新Canonical WorkspaceからのReference World / Plugin Lock / Durable Run再現
+4. 新しいUI-less複合ScenarioのGo runner実行Evidence
+5. CI再開後の通常runner再検証
+
+Command acknowledgement / Observationの設計境界は、ADR-0023、production `ExecuteObservationRead`、synthetic Scenarioで成立済みです。最終UI-less Scenarioについても構造統合は実装済みですが、synthetic adapterを含むため外部Evidenceの代替にはしません。
 
 最新判定は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)を正とします。
 
@@ -135,6 +138,8 @@ raw result -> explicit Semantic mapping
 
 Contract Query input / result / cardinality、SQL realization model、Environment composition、Oracle向け最小`database/sql` Runnerまで実装済みです。
 
+UI-less複合Scenarioでは、browseでSemantic mapping済みのOrder rowをそのまま入力にし、Customer Relation keyから`master_data.dev` / `database.query.oracle`の明示Bindingへ接続します。物理列名やFKから補完しません。
+
 ただし`master_data`は`external-observed`です。実際のtable / view / parameter / raw column / native SQL / provenanceをRepositoryからは観測できていません。
 
 未観測の`CUSTOMER`表や`CUSTOMER_ID`列等を推測して埋めません。
@@ -183,6 +188,8 @@ public.order_lines.order_id
 - 0件を正常な空collectionとして扱う
 - 複数件を正常なcollectionとして扱う
 - Execution Errorを0件へ変換しない
+
+UI-less複合Scenarioでも、browseの同じSemantic mapped Order rowから`sales.order.order_id`を明示BindingでOrderLine Contract Queryへ渡します。
 
 `tools/reference-postgres-header-detail-runtime`もありますが、実PostgreSQLへの成功Evidenceはまだ取得していません。
 
@@ -237,7 +244,9 @@ Observation対象やread方法をCommand payload、Capability名、HTTP status�
 
 既存のread意味が使える場合、Observation用途のためだけに第二のCanonical正本を作りません。
 
-現行`sales.order.submit`は実外部状態を書き換えるReferenceではないため、#266の第一実証ではstateful synthetic command/read adapterを利用できます。そのEvidenceは`synethic`ではなく正しく`synthetic`として明示し、実外部Observed stateとは区別します。
+現行`sales.order.submit`は実外部状態を書き換えるReferenceではないため、第一実証ではstateful synthetic command/read adapterを利用しています。そのEvidenceは`synthetic`として明示し、実外部Observed stateとは区別します。
+
+production Driverにも、read identity・Evidence nature・read resultだけを保持する`ExecuteObservationRead`境界を追加済みです。実行時parameter値やcredentialはEvidence構造へ保持しません。
 
 ## Reference生成物
 
@@ -249,25 +258,34 @@ Reference data access / Relation Storage / Plugin Capability等のauthoring更�
 
 - `reference/world.json`
 - `reference/workspace/.tei/plugin-lock.json`
-- Plugin Lock fingerprintへ依存するDurable Run等
+- Plugin Lock fingerprintへ依存する`reference/order_rollout.durable-run.m0.21.start.json`
+
+PR #280では`tools/reference-golden`へDurable RunのPlugin Lock依存stale検知を追加しました。Durable Run自体の生成責務は`tei deployment-start`に残します。
+
+`reference/observed/*`は外部状態を模した固定fixtureであり、Canonical authoring変更だけを理由に自動更新しません。
+
+実再生成は、Go commandを実行できる環境で行う必要があります。
 
 ## 最終UI-less Scenario
 
-Gate Bでは、最終的に次を同じApplicationから一続きに再現します。
+構造統合は実装済みです。
 
-1. Authenticationを実行する
-2. `browse`で受注一覧を取得する
-3. `record`で一件を扱う
-4. `reference`で顧客を解決する
-5. `header-detail`でOrderLineを扱う
-6. Canonical業務Validationを評価する
-7. Authorizationを評価する
-8. `command`で`sales.order.submit`を呼ぶ
-9. Business Result / Execution Errorを区別する
-10. 別の明示read境界からObservationを行う
-11. Scenario EvidenceからSource / Binding / Result分類を追跡する
+`internal/driver/gate_b_ui_less_scenario_test.go`で、次を同じReference Worldから一続きに接続します。
 
-この順序を汎用Workflow Engineへ一般化しません。
+1. `browse`で受注一覧をSemantic mapped resultまで取得する
+2. `record`がData-onlyで解決され、取得方法を暗黙補完しないことを確認する
+3. 同じmapped Order rowから`reference`で顧客を解決する
+4. 同じmapped Order rowから`header-detail`でOrderLineを解決する
+5. Canonical業務Validationを評価する
+6. Authentication / Authorizationを既存Capability Binding境界から通す
+7. `command`で`sales.order.submit`を呼ぶ
+8. Business Resultを得てもObservationを暗黙実行しない
+9. 別の明示read境界からObservationを行う
+10. test-local Evidenceから主要identityを確認する
+
+この順序を汎用Workflow Engineへ一般化しません。production向けのScenario / Evidence schemaも追加しません。
+
+この複合Scenario中の外部依存はsynthetic adapterで代替しているため、構造実証と実外部Evidenceを区別します。現在のチャット実行環境からRepositoryをcheckoutしてGo testを実行できず、GitHub Actionsも停止中なので、**実装済みだが実行成功未確認**として扱います。
 
 ## Gate Bを止めている残件
 
@@ -291,17 +309,17 @@ Gate Bでは、最終的に次を同じApplicationから一続きに再現しま
 - 0件
 - Execution Error
 
-### Blocked — Observation
-
-#266 / ADR-0023に従う最小Reference実証が必要です。
-
 ### Pending — Reference artifact regeneration
 
-#255で最新authoringからWorld / Plugin Lock等を再生成します。
+#255で最新authoringからWorld / Plugin Lock / Durable Runを正規再生成します。
 
-### Blocked — final Scenario Evidence
+依存artifact監査とstale検知実装は済んでいますが、生成コマンド自体の実行は未完です。
 
-上記blockerを解消した後、主要Scenarioを一続きに固定します。
+### Pending — UI-less複合Scenario実行Evidence
+
+構造統合コードは追加済みです。
+
+通常Go runnerで実行し、synthetic構造Evidenceとして成功を確認した後も、#214 / 実PostgreSQL Evidenceの代替にはしません。
 
 ### Pending — normal CI verification
 
@@ -336,12 +354,12 @@ Gate Bはコード量やIssue close数ではなく、Reference Scenarioから次
 
 blocker解消効果の高い順に進めます。
 
-1. #266でCommand / Observationの最小Referenceを実証する
-2. #214でexternal `master_data`の物理Evidenceを得る
-3. header-detail実PostgreSQL Evidenceを取得する
-4. #255でReference生成物を正規再生成する
-5. 最終UI-less Scenarioを統合する
-6. `GATE_B_READINESS_AUDIT.md`を再監査する
+1. #214でexternal `master_data`の物理Evidenceを得る
+2. header-detail実PostgreSQL Evidenceを取得する
+3. #255でReference World / Plugin Lock / Durable Runを正規再生成する
+4. UI-less複合ScenarioをGo runnerで実行する
+5. external / runtime / golden Evidenceを最終Gate B監査へ対応付ける
+6. negative caseを再監査する
 7. CIが別判断で再開された後、通常runnerで関連Conformanceを再検証する
 8. Gate BをReady / Not Readyで再判定する
 
