@@ -2,60 +2,53 @@
 
 - 状態: 保留
 - GitHub Issue: #270
-- 本格着手条件: Gate B
+- 本格着手条件: Gate B Ready + Handover Baseline固定
 
 ## 背景
 
 `ISSUE-000007` / GitHub Issue #70では、第一Web Targetを通してApplication上の意味、Target-neutralなPresentation候補、Web固有差分を分離し、Gate Cを評価します。
 
-技術リサーチからは、UI生成・評価において機能成立と視覚品質を分ける必要があることが確認できました。TEIではさらに上位にCanonical meaningの保持を置き、次の三層を別Evidenceとして扱います。
+TEIでは第一Web Targetの評価を一つの「成功」へ畳まず、次の三層を別Evidenceとして扱います。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
-このIssueでは、Web frameworkを先に決めるのではなく、Gate Cで何をEvidenceとして残すかをReference Scenarioから実証します。
+このIssueではWeb frameworkを先に決めるのではなく、Gate Cで何をEvidenceとして残すかをReference Scenarioから実証します。
 
-契約の基線は[`GATE_C_EVIDENCE_CONTRACT.md`](../GATE_C_EVIDENCE_CONTRACT.md)に置きます。
+契約の基線は[`GATE_C_EVIDENCE_CONTRACT.md`](../GATE_C_EVIDENCE_CONTRACT.md)、Driver baselineの固定規則は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md)に置きます。
 
-## 関連するProduct Requirement
-
-- RQ-011 同じCanonical meaningを複数Projectionで扱えること
-- RQ-012 Driverを設計検証環境として利用できること
-- RQ-013 Target-neutral Presentation / Interaction
-- RQ-018 Command / Observation
-- RQ-021 Reference / Conformance
-- RQ-022 検証段階の明示
-- RQ-024 Target別性能
-
-## Gate Bから受け取るもの
+## Gate Bから受け取るHandover Baseline
 
 本IssueはGate B通過前にWeb実装を開始しません。
 
-Gate Bから少なくとも次をbaselineとして受け取ります。
+Gate B Ready時に`ISSUE-000030` / GitHub Issue #291で第一Handover Baselineを作成し、少なくとも次へ追跡できる状態から開始します。
 
-- browse
-- record
-- reference
-- header-detail
+- repository revision
+- `order_entry` Application
+- browse / record / reference / header-detail / command
+- Data / Relation / Query / Datasource
 - Validation
 - Authentication / Authorization
-- command
+- Capability / Binding
 - Business Result / named Outcome
 - Execution Error
-- Observation
-- Datasource read / read-write境界
-- Scenario Evidence
+- Observationに使う明示read境界
+- Driver Scenario identity
+- Gate B Evidence
+- unresolved
 
-Gate Bの最終形が変わった場合、Web側で独自に補うのではなくbaselineを更新します。
+Handover recordはCanonicalの第二正本ではありません。
+
+Gate C途中にApplication / Driverの意味が変わった場合、既存baselineへ黙って上書きせず、Gate Bに関係するEvidenceを再確認して新しいbaselineを発行します。
 
 ## 実証するEvidenceの三層
 
 ### Semantic Conformance
 
-DriverとWebが同じCanonical subjectを利用していることを確認します。
+Handover BaselineとWebが同じCanonical subjectを利用していることを確認します。
 
-Web固有のcomponent、route、status、message等を業務上の意味の正本にしません。
+Web固有のcomponent、route、HTTP status、message等を業務上の意味の正本にしません。
 
 ### Interaction / Functional Evidence
 
@@ -71,7 +64,7 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 
 ## Scenario Matrix
 
-少なくとも次をDriver baselineと一対一または明示的な合成関係で対応付けます。
+少なくとも次をHandover BaselineのDriver Scenarioと一対一または明示的な合成関係で対応付けます。
 
 - browse
 - record open
@@ -87,7 +80,7 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 - Execution Error
 - Observation
 
-各Scenarioについて、Application Pattern、Canonical subject、Driver baseline、Web interaction、result classificationを追跡します。
+各Scenarioについて、Handover Baseline、Application Pattern、Canonical subject、Driver Scenario、Web interaction、result classificationを追跡します。
 
 ## Architecture negative cases
 
@@ -104,26 +97,28 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 - named OutcomeとExecution Errorを一つのerrorへ畳まない
 - Command acknowledgementだけでObserved state成立としない
 - standard ProjectionとCustom UIが同じCanonical意味へ接続する
+- Handover Baselineに不足した意味をWeb側だけで補わない
 
 ## Evidence artifact
 
 最初から最終schemaを固定しませんが、少なくとも次を復元できる形式を実証します。
 
+- Handover Baseline identity
 - scenario ID
-- repository revision
-- build / run identity
+- repository / build / run revision
 - Application / Pattern ID
 - Canonical references
-- Driver baseline reference
+- Driver Scenario reference
 - Target Adapter / Host
 - Target Capability observations
-- Execution / Trust observations
+- Runtime Binding / Execution / Trust observations
 - interaction steps
+- Business Result / named Outcome / Execution Error / Observation classification
 - semantic result
 - functional result
 - visual artifact reference
-- Business Result / Execution Error / Observation classification
 - performance measurement reference
+- evaluator / automation identity（利用した場合）
 - unresolved / Diagnostic
 
 Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません。
@@ -134,11 +129,11 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 
 利用した場合は、少なくともtool identity / version、入力artifact、何のEvidence種別を評価したかを追跡します。
 
-外部modelのjudge scoreを唯一の合否根拠にはしません。
+外部modelのjudge scoreを唯一の合否根拠にはしません。judge結果より入力artifactを優先して残し、別evaluatorで再評価できるようにします。
 
 ## 第二Targetへの引き継ぎ
 
-第一Web Targetで得た差を次へ分類して`ISSUE-000026` / #259へ渡します。
+第一Web Targetで得た差を次へ分類して`ISSUE-000026` / GitHub Issue #259へ渡します。
 
 1. Application上の意味
 2. Target-neutral Presentation候補
@@ -154,7 +149,10 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 
 ## 完了条件
 
-- [ ] `GATE_C_EVIDENCE_CONTRACT.md`に沿うEvidence形式をReferenceで実証する
+- [x] `GATE_C_EVIDENCE_CONTRACT.md`を定義する
+- [x] Gate B→C Handover baseline契約を定義する
+- [ ] Gate B Ready時に第一Handover Baselineを受け取る
+- [ ] 各Gate C Evidence runからHandover Baselineへ追跡できる
 - [ ] Driver baselineとWeb Scenarioを対応付ける
 - [ ] Semantic / Functional / Visual Evidenceを別々に保存・再確認できる
 - [ ] Business Result / Execution Error / Observationを別々に扱える
@@ -175,13 +173,15 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - pixel-perfect design system
 - VLM / GUI agent標準化
 - 一律のvisual score threshold
+- Handover artifactのCanonical化
 - 第二Target実装
 
 ## 関連文書
 
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
-- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000026-target-capability-execution-profile-boundary.md`
+- `plan/issue/000030-gate-b-to-c-handover-baseline.md`
