@@ -13,13 +13,15 @@ type fixtureDatabaseSafetyEvidence struct {
 	DatabaseIdentityPersisted       bool `json:"databaseIdentityPersisted"`
 	NonDefaultDatabaseVerified      bool `json:"nonDefaultDatabaseVerified"`
 	UserRelationsBeforeFixture      int  `json:"userRelationsBeforeFixture"`
+	EventTriggersBeforeFixture      int  `json:"eventTriggersBeforeFixture"`
 	FixtureObjectAbsentBeforeCreate bool `json:"fixtureObjectAbsentBeforeCreate"`
 }
 
 type fixtureCleanupSafetyEvidence struct {
-	Verified                         bool `json:"verified"`
-	UserRelationsAfterCleanup        int  `json:"userRelationsAfterCleanup"`
-	FixtureObjectAbsentAfterCleanup  bool `json:"fixtureObjectAbsentAfterCleanup"`
+	Verified                        bool `json:"verified"`
+	UserRelationsAfterCleanup       int  `json:"userRelationsAfterCleanup"`
+	EventTriggersAfterCleanup       int  `json:"eventTriggersAfterCleanup"`
+	FixtureObjectAbsentAfterCleanup bool `json:"fixtureObjectAbsentAfterCleanup"`
 }
 
 const userRelationCountQuery = `
@@ -32,11 +34,14 @@ WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
   AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
 `
 
+const eventTriggerCountQuery = `SELECT count(*) FROM pg_catalog.pg_event_trigger`
+
 // ensureDedicatedEmptyFixtureDatabaseは、Evidence toolが既存業務Databaseへfixtureを作成しないため、
 // 接続先が第一ReferenceのEvidence専用空Databaseとして扱える最小条件を確認する。
 //
 // Database名だけで安全性を推測せず、既定管理Databaseを拒否したうえで、system / temporary領域を除く
-// user relationが一つもないことを要求する。既存relationを削除して空にする処理は行わない。
+// user relationとEvent Triggerが一つもないことを要求する。既存objectを削除して空にする処理は行わない。
+// Event Triggerはrelationが0件でもDDLへ介入できるため、fixtureのCREATE / DROPより前に明示確認する。
 //
 // 成功時は、接続先Database名そのものを保持せず、安全判定の非機密な結果だけを返す。
 func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) (fixtureDatabaseSafetyEvidence, error) {
@@ -51,14 +56,19 @@ func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) (fixtu
 	if err != nil {
 		return result, err
 	}
+	eventTriggers, err := countEventTriggers(ctx, db)
+	if err != nil {
+		return result, err
+	}
 
-	if err := validateDedicatedFixtureDatabase(databaseName, userRelations); err != nil {
+	if err := validateDedicatedFixtureDatabase(databaseName, userRelations, eventTriggers); err != nil {
 		return result, err
 	}
 	result.DatabaseIdentityVerified = true
 	result.DatabaseIdentityPersisted = false
 	result.NonDefaultDatabaseVerified = true
 	result.UserRelationsBeforeFixture = userRelations
+	result.EventTriggersBeforeFixture = eventTriggers
 
 	if err := ensureFixtureObjectAbsent(ctx, db); err != nil {
 		return result, err
@@ -69,8 +79,8 @@ func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) (fixtu
 }
 
 // verifyFixtureDatabaseRestoredは、Provider runtimeとmissing-table Error確認後に、
-// toolが接続先を開始時と同じ「user relation 0件 / fixture object不在」へ戻せたことを確認する。
-// 他主体の並行変更を含め、終了時にuser relationが残っていれば成功Evidenceへ進まない。
+// toolが接続先を開始時と同じ「user relation 0件 / Event Trigger 0件 / fixture object不在」へ戻せたことを確認する。
+// 他主体の並行変更を含め、終了時に対象objectが残っていれば成功Evidenceへ進まない。
 func verifyFixtureDatabaseRestored(ctx context.Context, db *sql.DB) (fixtureCleanupSafetyEvidence, error) {
 	result := fixtureCleanupSafetyEvidence{}
 
@@ -79,7 +89,14 @@ func verifyFixtureDatabaseRestored(ctx context.Context, db *sql.DB) (fixtureClea
 		return result, fmt.Errorf("PostgreSQL Evidence終了時の既存user relationを確認できません: %w", err)
 	}
 	result.UserRelationsAfterCleanup = userRelations
-	if err := validateFixtureDatabaseRestored(userRelations); err != nil {
+
+	eventTriggers, err := countEventTriggers(ctx, db)
+	if err != nil {
+		return result, fmt.Errorf("PostgreSQL Evidence終了時のEvent Triggerを確認できません: %w", err)
+	}
+	result.EventTriggersAfterCleanup = eventTriggers
+
+	if err := validateFixtureDatabaseRestored(userRelations, eventTriggers); err != nil {
 		return result, err
 	}
 
@@ -99,7 +116,15 @@ func countUserRelations(ctx context.Context, db *sql.DB) (int, error) {
 	return userRelations, nil
 }
 
-func validateDedicatedFixtureDatabase(databaseName string, userRelations int) error {
+func countEventTriggers(ctx context.Context, db *sql.DB) (int, error) {
+	var eventTriggers int
+	if err := db.QueryRowContext(ctx, eventTriggerCountQuery).Scan(&eventTriggers); err != nil {
+		return 0, fmt.Errorf("PostgreSQL Evidence接続先のEvent Triggerを確認できません: %w", err)
+	}
+	return eventTriggers, nil
+}
+
+func validateDedicatedFixtureDatabase(databaseName string, userRelations, eventTriggers int) error {
 	name := strings.TrimSpace(databaseName)
 	if name == "" {
 		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database identityが空です")
@@ -114,15 +139,27 @@ func validateDedicatedFixtureDatabase(databaseName string, userRelations int) er
 	if userRelations != 0 {
 		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database %qには既存user relationが%d件あります。既存資産を変更せず、Evidence専用の空Databaseを指定してください", name, userRelations)
 	}
+	if eventTriggers < 0 {
+		return fmt.Errorf("安全のためEvidence toolを停止します: Event Trigger件数が不正です: %d", eventTriggers)
+	}
+	if eventTriggers != 0 {
+		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database %qにはEvent Triggerが%d件あります。DDLへ介入し得る既存objectを変更せず、Evidence専用の空Databaseを指定してください", name, eventTriggers)
+	}
 	return nil
 }
 
-func validateFixtureDatabaseRestored(userRelations int) error {
+func validateFixtureDatabaseRestored(userRelations, eventTriggers int) error {
 	if userRelations < 0 {
 		return fmt.Errorf("PostgreSQL Evidence終了時のuser relation件数が不正です: %d", userRelations)
 	}
 	if userRelations != 0 {
 		return fmt.Errorf("PostgreSQL Evidence終了時にuser relationが%d件残っています。tool-owned fixtureまたは並行変更の残存を確認してください", userRelations)
+	}
+	if eventTriggers < 0 {
+		return fmt.Errorf("PostgreSQL Evidence終了時のEvent Trigger件数が不正です: %d", eventTriggers)
+	}
+	if eventTriggers != 0 {
+		return fmt.Errorf("PostgreSQL Evidence終了時にEvent Triggerが%d件存在します。並行変更を含むDDL介入可能なobjectの残存を確認してください", eventTriggers)
 	}
 	return nil
 }
