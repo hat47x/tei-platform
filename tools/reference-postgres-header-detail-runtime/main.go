@@ -83,7 +83,9 @@ func main() {
 		panic(err)
 	}
 
-	if err := ensureFixtureObjectAbsent(ctx, db); err != nil {
+	// #308は「専用の空PostgreSQL Database」を前提とする。
+	// public.order_linesだけが空いている既存業務DBをEvidence fixture先として受け入れない。
+	if err := ensureDedicatedEmptyFixtureDatabase(ctx, db); err != nil {
 		panic(err)
 	}
 	if err := createFixtureTable(ctx, db); err != nil {
@@ -171,7 +173,7 @@ func main() {
 	}
 
 	// Execution Errorの実Provider Evidenceを取るため、ここでツール自身が作成したfixtureを削除する。
-	// 開始時に既存public.order_linesがないことを確認済みなので、利用者既存tableは削除しない。
+	// 開始時に専用空Databaseであることを確認済みなので、利用者既存tableは削除しない。
 	if err := removeFixtureTable(ctx, db); err != nil {
 		panic(err)
 	}

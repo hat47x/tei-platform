@@ -20,7 +20,7 @@ Evidence JSONでは`evidenceNature = real-postgres-ephemeral-fixture`として�
 
 ## 必須環境
 
-`TEI_TEST_POSTGRES_DSN`へ、Evidence専用のPostgreSQL Databaseを指定します。
+`TEI_TEST_POSTGRES_DSN`へ、**Evidence専用に作成した空のPostgreSQL Database**を指定します。
 
 ```sh
 TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runtime
@@ -39,7 +39,13 @@ Canonical Validation
   ↓ Errorがあれば停止
 TEI_TEST_POSTGRES_DSNへ接続
   ↓
-既存fixture object guard
+接続先Database identity確認
+  ↓
+既定postgres/template DBなら停止
+  ↓
+既存user relationが1件でもあれば停止
+  ↓
+public.order_lines既存確認
   ↓
 tool-owned fixture CREATE
   ↓
@@ -52,15 +58,56 @@ Provider runtime Evidence
 
 このtoolは`reference/workspace`のnative SQLが明示参照する`public.order_lines`をfixtureとして利用します。
 
-誤ったDSNによる既存資産破壊を避けるため、接続後、fixture作成前に次を確認します。
+`public.order_lines`だけが未使用の既存業務DBを「空DB」と誤認しないため、fixture作成前に接続先全体を検査します。
 
-```sql
-SELECT to_regclass('public.order_lines')::text
+### 1. 既定Databaseを拒否
+
+次のPostgreSQL既定Databaseはfixture実行先にしません。
+
+```text
+postgres
+template0
+template1
 ```
 
-`public.order_lines`が既に存在する場合、用途や内容を推測せず**fail closedで実行を拒否**します。
+特に`postgres`が偶然空であっても、管理・接続確認等に使われ得る既定Databaseなので拒否します。
 
-既存tableをDROPしてfixtureへ置き換えるオプションは提供しません。専用の空Databaseを利用してください。
+### 2. 既存user relationを拒否
+
+`pg_catalog` / `information_schema` / PostgreSQL内部・temporary領域を除き、次の種類のrelationが一つでも存在すれば停止します。
+
+- table / partitioned table
+- view / materialized view
+- foreign table
+- sequence
+
+概念上は次のcatalog検査を行います。
+
+```sql
+SELECT count(*)
+FROM pg_catalog.pg_class AS c
+JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg_toast%'
+  AND n.nspname NOT LIKE 'pg_temp_%'
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S');
+```
+
+1件以上なら、内容や用途を推測せず**fail closedで実行を拒否**します。既存relationを削除して「空」にする処理はありません。
+
+### 3. fixture objectを再確認
+
+空DB検査後も`public.order_lines`の既存有無を明示確認します。
+
+```sql
+SELECT to_regclass('public.order_lines')::text;
+```
+
+既存objectがあれば停止します。
+
+これらは専用Databaseであることの運用上の意図を完全に証明するものではありませんが、少なくとも「他のuser relationがある既存DB」や「既定postgres DB」を誤ってfixture先にする経路を閉じます。
+
+既存tableをDROPしてfixtureへ置き換えるオプションは提供しません。
 
 実行を継続できる場合だけtool自身が`public.order_lines`をCREATEし、以後そのfixtureだけをtool所有物として扱います。途中失敗時はbest-effort cleanupを行い、Execution Error確認時にはtool自身のfixtureを削除してmissing-table errorを発生させます。
 
@@ -83,9 +130,12 @@ SELECT to_regclass('public.order_lines')::text
 - parent Order identityをOrderLine Semantic attributeへ追加していないこと
 - Semantic mapping適用
 
+接続先の実Database名やDSNを通常Evidenceへ保存することは、このtoolの目的に含めません。
+
 ## 非目標
 
 - production Databaseに対する破壊的fixture作成
+- 既存relationを削除してEvidence用Databaseへ転用すること
 - 既存`public.order_lines`の置換
 - productionの実データ内容の検証
 - #214 external-observed `master_data`の物理Evidence代替
