@@ -1,6 +1,6 @@
 # ISSUE-000021: Oracle Contract Queryの`database/sql` Runner境界を追加する
 
-- 状態: In Progress
+- 状態: Completed
 - GitHub Issue: #224
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
 - 前提Issue: `ISSUE-000020` / GitHub Issue #222
@@ -24,7 +24,7 @@ Semantic attribute
 
 第一Referenceでは`master_data.dev`のproviderがOracleであり、executor Capabilityとして`database.query.oracle`を明示しています。
 
-一方、SQL realizationを実際のDatabase接続へ渡す最下層の`sqlquery.Runner`には、Oracle向けの最小実装がありませんでした。ここでOracleの物理SchemaやSQLをRunner自身に持たせると、realizationとprovider adapterの責務が再び混ざります。
+当初、SQL realizationを実際のDatabase接続へ渡す最下層の`sqlquery.Runner`には、Oracle向けの最小実装がありませんでした。ここでOracleの物理SchemaやSQLをRunner自身に持たせると、realizationとprovider adapterの責務が再び混ざります。
 
 ## 採用した境界
 
@@ -63,7 +63,7 @@ Semantic attributeへの変換は上位の`ContractQuerySQLRealization.ResultCol
 
 `zero-or-one`などのContract cardinality判定は、このRunnerより上位のContract Query実行境界が扱います。
 
-## 現在地
+## 完了判断
 
 PR #225で`internal/driver/queryruntime/oracle`を追加し、標準`database/sql/driver`だけで完結するConformanceを用意しました。
 
@@ -78,11 +78,11 @@ Conformanceでは次を確認しています。
 - Database接続を暗黙生成しない
 - 空のnative SQLを実行しない
 
-実装は`work/reference-data-access-convergence`へ統合済みです。
+この実装はPR #285でApplication Driverの主要境界とともに`main`へ収束しました。
 
-2026年9月3日現在、GitHub Actions workflowはRepositoryから明示的に削除され、収束線にも停止が取り込まれています。そのため、このConformanceは現時点では通常runnerによる実行Evidenceを持ちません。CI未実行をgreenとは扱わず、CIをこの作業線から独断で再有効化もしません。再開後に通常runnerで改めて検証します。
+このIssueの目的は、**Oracle向けの最小`database/sql` Runner境界を追加し、物理意味の決定を上位realizationから奪わないこと**です。この実装・Conformanceは成立したため、本Issueは完了とします。
 
-特定のOracle driver packageはまだ選定していません。実Oracle driverが`database/sql`のnamed argumentと対象SQLをどのように扱うかは、`ISSUE-000022`の物理Evidenceが揃った後のintegrationで確認します。
+採用するOracle driverとのnamed parameter互換性、第一Referenceのactual native SQL、read-only connectionでの実行Evidenceは、Runner境界そのものの未実装ではありません。external-observed `master_data`のactual physical Evidenceは`ISSUE-000022` / GitHub Issue #214、Gate B全体のEvidence判定は`ISSUE-000029` / GitHub Issue #273で追跡します。
 
 ## 完了条件
 
@@ -95,9 +95,18 @@ Conformanceでは次を確認しています。
 - [x] row取得途中の失敗をErrorとして返す
 - [x] `[]byte`をdriver側bufferから切り離す
 - [x] 特定Oracle driver packageをCoreへ固定しない
-- [ ] CIが明示的に再有効化された後、通常runnerでConformanceが実行され、成功する
-- [ ] 採用したOracle driverとのnamed parameter互換性を実接続で確認する
-- [ ] 第一Referenceの実SQLでRunnerを通過するEvidenceを得る
+- [x] 実装を`main`へ収束する
+
+## 後続Evidence
+
+本Issueの完了とは分け、次を後続で確認します。
+
+- #214: 実Oracle driverのnamed parameter / result / NULL / error伝播互換性
+- #214: 第一Referenceのactual SQLをread-only connectionで実行し、Workspace → actual read → Semantic resultを確認すること
+- #273: Gate B Evidenceとしてexternal / runner / generated artifactを総合判定すること
+- #192または後継のCI管理: Actions再開後に通常runnerでConformanceを継続再検証すること
+
+actual Oracle Evidenceが得られるまで、table / view / column名やSQL本文をRunner側から推測・生成しません。
 
 ## 非目標
 
@@ -111,11 +120,12 @@ read-onlyの実効的な保証は、`ISSUE-000022`でcredential / session / tran
 
 ## 関連
 
-- GitHub Issue #179 / #192 / #214 / #222 / #224
-- PR #225
+- GitHub Issue #179 / #192 / #214 / #222 / #224 / #273
+- PR #225 / #285
 - `plan/issue/000018-database-contract-query-execution.md`
 - `plan/issue/000022-external-master-data-physical-query-evidence.md`
 - `plan/issue/000020-contract-query-runtime-instance-identity.md`
+- `plan/issue/000029-gate-b-readiness-audit.md`
 - `internal/driver/queryruntime/sql/executor.go`
 - `internal/driver/queryruntime/oracle/runner.go`
 - `internal/realization/contract_query_sql.go`
