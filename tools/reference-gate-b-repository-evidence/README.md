@@ -14,8 +14,9 @@ GitHub Issue #310 / `plan/issue/000032-gate-b-deterministic-repository-evidence.
 4. `reference/workspace`のCanonical Validation
 5. 最終UI-less Scenario test
 6. external Evidence intake boundary test
-7. 明示指定時だけRepository全体の`go test ./...`
-8. Evidence実行後のHEAD不変・working tree cleanの再確認
+7. Repository source固定境界のpure Conformance test
+8. 明示指定時だけRepository全体の`go test ./...`
+9. Evidence実行後のHEAD不変・working tree cleanの再確認
 
 次は扱いません。
 
@@ -43,7 +44,14 @@ go test ./internal/driver \
 go test ./internal/database/externalqueryevidence \
   ./tools/reference-external-query-evidence \
   -count=1
+
+go test ./tools/internal/repositoryevidence \
+  -count=1
 ```
+
+最後のcheckは、PR #336で#310 / #255 / #308へ共通化したRepository source観測について、開始時clean、post-run確認済み、HEAD同一、終了時cleanをすべて要求するpure Conformanceを`-broad`なしでも確認するものです。
+
+runner自身のpackageはtargeted `go test`へ含めません。将来runner testが`run()`を呼ぶようになった場合の自己再帰余地を作らず、共有helperの契約だけを独立して検証します。
 
 test stdout / stderrは標準エラー側へ流し、最終的な小さいJSON Evidenceだけをstdoutへ出します。
 
@@ -135,6 +143,11 @@ stdoutには概ね次の形を出します。
     {
       "name": "external-evidence-intake",
       "command": ["go", "test", "..."],
+      "passed": true
+    },
+    {
+      "name": "repository-evidence-source-boundary",
+      "command": ["go", "test", "./tools/internal/repositoryevidence", "-count=1"],
       "passed": true
     }
   ],

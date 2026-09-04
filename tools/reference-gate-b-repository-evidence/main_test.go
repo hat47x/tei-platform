@@ -7,8 +7,8 @@ import (
 
 func TestTargetedChecksKeepGateBMinimumEvidenceSeparate(t *testing.T) {
 	got := targetedChecks()
-	if len(got) != 2 {
-		t.Fatalf("targeted checks=%d want=2", len(got))
+	if len(got) != 3 {
+		t.Fatalf("targeted checks=%d want=3", len(got))
 	}
 
 	wantScenario := commandSpec{
@@ -34,6 +34,18 @@ func TestTargetedChecksKeepGateBMinimumEvidenceSeparate(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got[1], wantExternalEvidence) {
 		t.Fatalf("external Evidence intake commandがGate B runbookと一致しません: %#v", got[1])
+	}
+
+	wantRepositoryEvidenceBoundary := commandSpec{
+		Name: "repository-evidence-source-boundary",
+		Args: []string{
+			"test",
+			"./tools/internal/repositoryevidence",
+			"-count=1",
+		},
+	}
+	if !reflect.DeepEqual(got[2], wantRepositoryEvidenceBoundary) {
+		t.Fatalf("Repository Evidence source boundary commandがGate B targeted Evidenceと一致しません: %#v", got[2])
 	}
 }
 
