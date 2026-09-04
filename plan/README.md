@@ -24,6 +24,7 @@
 - [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線
 - [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計
 - [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): CapabilityのBusiness Result / named OutcomeとExecution Errorを分離するv1設計
+- [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md): 業務の状態遷移をCanonicalな意味として定義・実行・観測するv1実装前設計（評価待ち）
 - [`adr/`](adr/): 長く残す設計判断
 - [`issue/README.md`](issue/README.md): 統合Issue一覧、着手順、既存課題と根幹機能提案の責務分担
 
@@ -245,6 +246,10 @@ plan/adr/0016-example.md
 - ADR-0021: keyless header-detail Relation traversalのrealization境界
 - ADR-0022: AI ProposalとCanonical Acceptance Boundary
 - ADR-0023: Command acknowledgementとObservationの明示read境界
+- ADR-0024: 業務Lifecycleの正本をSemanticへ置き、状態identityと物理コードを分離する（提案中）
+- ADR-0025: 遷移の評価順序と、成立しなかった遷移の結果契約（提案中）
+
+ADR-0024 / ADR-0025は[`ISSUE-000038`](issue/000038-business-lifecycle-semantics.md)の実装前設計に伴う提案です。採用前に実装を進めません。
 
 ## Issue文書
 
