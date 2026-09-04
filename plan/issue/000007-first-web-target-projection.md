@@ -2,75 +2,69 @@
 
 - 状態: 提案中
 - GitHub Issue: #70
-- 依存: Gate B
+- 本格着手条件: Gate B Ready + Handover Baseline固定
+- 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 
 ## 背景
 
-Product Requirements Gap Auditでは、RQ-013「Target-neutralなPresentation / Interaction境界を持つこと」が未着手であることを確認しました。
+TEIでは、最初からWeb / Desktop / Mobile / API / MCP / VUIを一つの巨大なPresentation IRへ押し込みません。
 
-ただし、最初からWeb / Desktop / Mobile / API / MCP / VUIを一つの抽象モデルへ押し込むと、実証のない巨大なPresentation IRを作る危険があります。
+まず`order_entry` ApplicationをApplication DriverでUIなしに成立させ、Gate Bを通過した同じ意味を第一TargetであるWebへProjectionします。その過程から、Application上の意味、複数Targetで共有できそうなPresentation / Interaction候補、Web固有実装の境界を抽出します。
 
-そのため、`ISSUE-000005`のApplication Patternと`ISSUE-000006`のDriverを先に成立させ、Gate B「UIなしで主要な業務シナリオを再現できる」を確認してから、その同じ`order_entry`を第一TargetとしてWebへProjectionします。
+Gate CではWebとDriverが同じCanonical Application上の意味を共有していることをSemantic Conformanceとして確認します。
 
-Driver側では、Capabilityが正常に返したBusiness Result、実行そのものを完了できなかったExecution Error、command acknowledgement、observed resultを必要に応じて区別します。結果境界の設計判断は[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)、実装前設計は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](../CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
+## Gate Bから受け取るbaseline
 
-Web Targetはこの意味境界を受け取り、利用者向け表示へ変換しますが、HTTP statusやUI componentの都合から上位の意味を逆定義しません。
+第一Web Targetは、曖昧な「その時点の最新Driver」から開始しません。
 
-## 関連するProduct Requirement
+[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md) / `ISSUE-000030` / GitHub Issue #291に従い、Gate B通過時のHandover Baselineを受け取ります。
 
-- RQ-009 既存認証・認可互換
-- RQ-010 Editor
-- RQ-011 Projection
-- RQ-012 Driver
-- RQ-013 Target-neutral Presentation
-- RQ-014 Application Pattern
-- RQ-017 二重管理の最小化
-- RQ-018 Command / Observation
-- RQ-021 Reference / Conformance
-- RQ-022 検証段階の明示
-- RQ-024 Target別性能
+少なくとも次へ追跡できる必要があります。
+
+- repository revision
+- Application: `order_entry`
+- browse / record / reference / header-detail / command
+- Data / Relation / Query / Datasource
+- Validation
+- Authentication / Authorization
+- Capability / Binding
+- Business Result / named Outcome
+- Execution Error
+- Observationで利用する明示read境界
+- Driver Scenario identity
+- Gate B Evidence
+- unresolved
+
+Handover recordは第二の正本ではありません。authoritative source / Canonical ID / Evidenceへの参照を束ねます。
+
+Gate C進行中にApplication / Driverの意味を変更する必要が生じた場合、旧baselineへ黙って上書きしません。Driver側へ戻って必要なEvidenceを再確認し、新しいHandover Baselineを発行します。
 
 ## 目的
 
-Web画面を作ること自体ではなく、**Application PatternとDriverからWebへ落とすために本当に必要なPresentation / Interaction上の意味を、具体的なReferenceから抽出すること**を目的とします。
+Web画面を作ること自体ではなく、**Gate Bを通過したApplication / Driver baselineをWebへ落とすために本当に必要なPresentation / Interaction上の意味を、具体的なReferenceから抽出すること**を目的とします。
 
-Driverで確認済みのApplication上の意味と結果境界を利用することで、Application側の不足をWeb固有コードで補ったり、Web固有のエラー表現を業務上の意味へ持ち上げたりすることを避けます。
-
-## Gate Bから受け取るもの
-
-第一Web Targetでは、少なくとも次がUIなしで実行・説明できる状態から開始します。
-
-- browse
-- record
-- reference
-- header-detail
-- Validation
-- Authorization
-- command
-- CapabilityのBusiness Result
-  - 既存`output` value、またはnamed Outcomeとpayload
-- Execution Error
-- Observation
-
-Webはこれらの意味を再定義せず、利用者が理解し操作できるPresentation / InteractionへProjectionします。
+Web専用のApplication modelやresult modelを作りません。
 
 ## 対象Scenario
 
-`order_entry`の次の5 PatternをWebへProjectionします。
+少なくとも次をHandover BaselineのDriver Scenarioと対応付けます。
 
 - browse
-- record
-- reference
-- header-detail
-- command
+- record open
+- reference lookup
+- header-detail read / edit
+- Validation satisfied / not satisfied
+- Authorization allowed / denied
+- command invocation
+- Business Result
+- Execution Error
+- Observation
 
-加えて、Driverと同じValidation、Authorization、Capability結果、Observation境界へ接続します。
+Command acknowledgementだけでObserved state成立とはみなしません。
 
-Web Targetだけのために別のApplication modelやresult modelを作りません。
+## 最初に観測するPresentation / Interaction候補
 
-## 最初に扱うPresentation上の意味
-
-具体的なUI部品名をCoreへ固定する前に、少なくとも次の区別が必要かをReferenceから検討します。
+具体的なUI部品名をCoreへ固定する前に、少なくとも次がどの層に属するかをReferenceから観測します。
 
 - collection / item
 - read / edit
@@ -80,83 +74,46 @@ Web Targetだけのために別のApplication modelやresult modelを作りま�
 - validation feedback
 - command invocation
 - authorizationによる利用可否
-- named Outcomeを含むBusiness Resultのfeedback
-- 実行障害のfeedback
+- Business Result / named Outcomeのfeedback
+- Execution Errorのfeedback
 - observed completion / observed state
 - read-only / unavailable
 - navigation / focus target
 
 これらをすべて共通IRへ入れるとは限りません。
 
-Application上の意図、Target-neutralなPresentation候補、Web固有実装のどこに属するかを分けます。
+各差を次へ分類します。
 
-## Custom UI
+1. Application上の意味
+2. Target-neutral Presentation候補
+3. Target Capability候補
+4. Runtime Binding差
+5. Execution / Trust差
+6. Web固有実装
+7. Host control plane固有差
+8. Canonicalへ持ち上げてはいけない差
+9. unresolved
 
-標準Patternから生成できる画面だけをTEIの世界とはしません。
+分類できない差を無理に共通概念へ押し込みません。
 
-第一Web Targetの段階から、少なくとも一箇所はCustom UIを接続できる逃げ道を用意し、標準ProjectionとCustom implementationの境界を確認します。
+## Web Adapterの原則
 
-Custom UIを使う場合も、Application上の意味やValidation、Authorization、Capability、結果境界との接続を維持します。
+Web固有実装はCoreへ入れず、独立したAdapter / Packageとして組み立てます。
 
-## Web Adapter
+- Web frameworkをCanonical meaningへ持ち込まない
+- native SQLをWeb側へ複製しない
+- Capability implementationをWeb側へ複製しない
+- Validation / AuthorizationをWeb固有ruleとして再実装しない
+- read-only DatasourceをTarget都合でwrite可能にしない
+- HTTP statusやUI messageからSemantic Outcomeを逆定義しない
+- `output` valueをWeb都合の暗黙`success` Outcomeへ変換しない
+- Web Adapterを外してもCanonical Worldが変わらない
 
-Web固有の実装はCoreへ入れず、独立したAdapter / Packageとして組み立てます。
+Web側に必要な意味がHandover Baselineに存在しない場合、Web固有fieldやruleで埋めてGate Cを通しません。
 
-具体的なframeworkは、このIssueの着手時点で最新の技術条件と、生成物の検査しやすさ、Wails / WebViewとの再利用可能性などを比較して決めます。
+## Business Result / Execution Error / Observation
 
-frameworkの選定結果をPresentation上の意味の一部にはしません。
-
-### 2026-09 Wails v3調査から得た検証観点
-
-Wails v3の現行ドキュメントでは、Desktopを中心とするGo backend / frontend構成に加えて、Mobile、Server、MCP等へ機能が広がっています。
-
-Target / Hostが変わると、native window、dialog、tray、touch、device access等のCapabilityだけでなく、local bridgeかnetwork越しか、sessionやoriginをどう扱うかといったExecution / Trust境界も変わり得ます。
-
-この構造は、TEIのRQ-013で想定する「同じ上位設計をTargetへProjectionし、Target差を明示する」考え方を検証する材料になります。ただし、WailsのAPIや構成をTEIのCanonicalなPresentation意味へ持ち上げる根拠にはしません。
-
-第一Web Target以降では、少なくとも次の比較をEvidenceとして残します。
-
-- 同じApplication上の意図が、性質の異なるTarget / Hostでどこまで共通に保てるか
-- window、dialog、tray、touch、hardware等、Targetによって存在しないCapabilityをどの層で検出するか
-- Capabilityが存在しない場合を、Application意味の欠落ではなくTarget上の制約として表現できるか
-- Target Adapterを交換してもCanonical WorldやApplication Patternが変化しないか
-- transportとtrust boundaryが変わるHostを、Presentation差だけでなくRuntime Binding上の差として扱えるか
-
-Wails v3は2026年9月時点でもpre-releaseとして継続的に更新され、Mobile等には実験的な位置づけが残ります。そのためWailsをTarget-neutral設計の前提にはせず、**有力なAdapter / Host候補かつ圧力試験対象**として扱います。
-
-Wails等が提供するMCP / control interfaceも、それ自体を業務ApplicationのMCP Targetとはみなしません。Hostのinspection / development control面と、Application自身がMCPをPresentation / Interaction Targetとして公開する場合を分けます。
-
-参考:
-
-- Wails v3 Mobile Overview: https://v3.wails.io/guides/mobile/
-- Wails v3 Server Build: https://v3.wails.io/guides/server-build/
-- Wails v3 Changelog: https://v3.wails.io/changelog/
-
-## Interaction
-
-Web Targetでは、表示だけでなく次の操作をDriverと同じ意味へ接続します。
-
-- search
-- open
-- edit
-- add / remove detail
-- reference lookup
-- validate
-- authorize
-- submit command
-- Business Resultの表示
-- Execution Errorの表示
-- observed completionの表示
-
-Target内で独自の業務ruleや認可ruleを再実装しません。
-
-## Business Result・Execution Error・Observationの表示
-
-Webでは、同じ結果に対してtoast、inline message、dialog、画面遷移、HTTP response等のさまざまな表現を選べます。
-
-しかし、表現方法と意味そのものを同一視しません。
-
-ADR-0020に従い、Capabilityが正常に実行された場合のBusiness Resultには次の二形態があります。
+Webではtoast、inline message、dialog、画面遷移、HTTP response等の表現を選べます。しかし表現と意味を同一視しません。
 
 ```text
 Business Result
@@ -167,82 +124,42 @@ Execution Error
   └─ Capability呼び出しそのものを完了できなかった状態
 
 Observation
-  └─ 外部世界で実際に確認できた状態
+  └─ 明示read境界から観測した外部状態
 ```
 
-たとえばAuthenticationの`denied` OutcomeをHTTP 401等へ、Authorizationの業務上の拒否をHTTP 403等へ写すことはWeb Adapterの判断になり得ます。しかし、「HTTP statusがこの値だからSemantic Outcomeはこれである」という逆向きの定義はしません。
+Observationが必要な処理では、Command Business Resultだけを最終的な外部状態成立へ畳みません。
 
-同様に、CapabilityがBusiness Resultを返したことと、外部状態が最終的に成立したことを同じ「成功表示」へ無条件に畳みません。Observationが必要な処理では、確認中・成立・未成立・観測不能等を区別できる余地を残します。
+また次を一種類のWeb errorへまとめません。
 
-既存の単一`output` Capabilityを、Web側の都合だけで暗黙の`success` Outcomeへ変換することもしません。Outcomeの名前はSemantic Capabilityのauthoring sourceが定義します。
-
-## Error / Diagnostic
-
-次の情報を一つの「エラー」へまとめません。
-
-- end-user向けValidation feedback
-- Authentication / Authorizationや他Capabilityが返す業務上のnamed Outcome
-- 実装や接続のExecution Error
-- Observationで確認した未成立・不明状態
-- developer向けSource / Diagnostic
-
-Webはこれらを利用者向けに分かりやすく表現できますが、Target固有のmessageやstatus codeをCanonicalの正本にはしません。
-
-Developer向けDiagnosticへsecret、credential、不要な内部情報を露出しない原則も維持します。
-
-## Target Conformance Evidence
-
-第一Web Targetでは、「画面が生成できた」ことを一つの合否へまとめません。
-
-技術リサーチで確認したfunctional evaluationとvisual evaluationの分離を参考にしつつ、TEIでは次の三層を明確に区別します。
-
-### Semantic Conformance
-
-同じCanonical Application上の意味を保持しているかを確認します。
-
-少なくとも次を含みます。
-
-- Application Pattern
-- Validation
-- Authorization
-- Capability Binding
-- Business Result / Execution Error
-- Command / Observation
-- Datasourceのread / read-write境界
-- Canonical ID / Source traceability
-
-これは必須です。
-
-### Interaction / Functional Evidence
-
-利用者がReference Scenarioを実際に操作できるかを確認します。
-
-たとえば次をworkflowとして実行します。
-
-- browse → record open
-- reference lookup
-- header-detail edit
 - Validation feedback
-- Authorizationによる許可 / 拒否
-- submit command
-- Business Result / Execution Error表示
-- 必要なObservation確認
+- Authentication / Authorization等のBusiness Outcome
+- Execution Error
+- Observation上の未成立 / 不明
+- developer Diagnostic
 
-browser automationやGUI agentを利用しても構いませんが、評価主体ではなくScenarioを再現する手段として扱います。
+## Custom UI
 
-### Visual Fidelity Evidence
+標準Patternから生成できる画面だけをTEIの世界とはしません。
 
-layout、grouping、readability、visual hierarchy、custom UIの見た目等は、Semantic / Functional Evidenceから独立して記録します。
+第一Web Targetから少なくとも一箇所でCustom UIを接続し、標準ProjectionとCustom implementationが同じApplication / Validation / Authorization / Capability / Result境界へ接続できることを確認します。
 
-screenshot比較、VLM judge、visual regression等を補助Evidenceに利用できます。ただし、visual scoreが高いことからSemantic Conformanceを推定したり、visual judgeが操作Scenarioの成立を代替したりしません。
+Custom UIを新しい業務正本にはしません。
 
-Visual FidelityはTargetや利用形態によって要求水準が異なるため、現時点で一律の数値閾値をProduct Requirementへ固定しません。
+## Gate C Evidence
 
-## 性能
+[`GATE_C_EVIDENCE_CONTRACT.md`](../GATE_C_EVIDENCE_CONTRACT.md) / `ISSUE-000028` / GitHub Issue #270に従い、少なくとも次を別Evidenceとして取得します。
 
-RQ-024の最終contractは第二Target以降で比較して決めますが、第一Web Targetから測定点を用意します。
+1. **Semantic Conformance**
+2. **Interaction / Functional Evidence**
+3. **Visual Fidelity Evidence**
 
-少なくともReference Scenarioについて次を測れる構造を持たせます。
+各Evidence runからHandover Baseline identityへ戻れる必要があります。
+
+browser automation、GUI agent、VLM、screenshot diff等は利用できますが、Visual Evidenceや外部judge scoreだけでSemantic / Functional Conformanceを合格にしません。
+
+## Performance
+
+RQ-024の最終性能contractは第二Target以降で比較して決めますが、第一Web Targetから次の測定点を用意します。
 
 - initial projection / load
 - browse result render
@@ -255,90 +172,41 @@ RQ-024の最終contractは第二Target以降で比較して決めますが、第
 - Execution Error projection
 - observed completion
 
-このIssueでは、根拠のない絶対値を固定しません。
-
-## Gate Cへ進む条件
-
-第一Web Targetが表示できたことだけでは完了としません。
-
-次をEvidenceから確認できたとき、Gate C「第一Targetとの差を説明できる」を通過したとみなします。
-
-- 同じApplication / PatternをDriverとWebで共有する
-- Web固有fieldをCanonical Semantic Modelへ追加しない
-- native SQLやCapability implementationをWeb側へ複製しない
-- read-only Datasource制約をTargetが破らない
-- Validationの意味をWebで再実装しない
-- Authorizationの意味をWebで再実装しない
-- 既存`output`とnamed OutcomeをDriverと同じBusiness Result境界から扱う
-- expectedなnamed OutcomeとExecution ErrorをWeb固有の一種類のerrorへ畳まない
-- command responseとObservationを必要な箇所で区別する
-- HTTP statusやUI messageからCanonical Outcomeを逆定義しない
-- standard ProjectionとCustom UIを併存できる
-- Web Adapterを外してもCanonical Worldが変わらない
-- Source / Application / Targetの来歴を追跡できる
-- 複数Targetで共有できそうなPresentation上の意味と、Web固有差分を明示できる
-- Reference Scenarioの主要な測定点を取得できる
-- Semantic ConformanceとInteraction / Functional Evidenceを別々に再現できる
-- Visual Fidelity EvidenceをSemantic / Functional Evidenceと別に記録できる
-- visual evaluatorの結果だけでSemantic / Functional Conformanceを合格にしない
-- Target Capability候補とExecution / Trust Profile候補を混同せず第二Targetへ引き継げる
-
-## Editor / AIへの引き継ぎ
-
-Gate Cを通過すると、Application上の意味、Driver実行結果、第一Targetとの差分が実資産として揃います。
-
-この時点で`ISSUE-000008`の保留を解除するか判断します。
-
-EditorやAIが何を表示・探索・確認すべきかを、抽象的な想像ではなく、実際のApplication / Driver / Target差から具体化できる状態にします。
-
-結果境界についても、AIがWeb固有のstatusやmessageを業務上の意味と誤認しないよう、Driver側のBusiness Result / Execution Error / Observationへ戻れることが重要です。
-
-AIからCanonical変更へ進む場合は、[ADR-0022](../adr/0022-ai-proposal-canonical-acceptance-boundary.md)のProposal / Acceptance Boundaryを利用し、Web UI固有状態をAIの正本にしません。
+第一Targetだけから根拠のない一律閾値を固定しません。
 
 ## 第二Targetへの引き継ぎ
 
-このIssueの完了時点では「Target-neutral設計が完成した」と主張しません。
+Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二Target / Hostから圧力試験します。
 
-Webで得られた共通候補とWeb固有差分を記録し、第二Targetを実装したときに初めて、何が本当にTarget-neutralだったかを圧力試験します。
-
-結果表示についても、WebのHTTP / DOM中心の表現がAPI、MCP、VUI等でも自然とは限りません。第二Targetから、どこまでが共有可能なPresentation上の意味で、どこからがWeb固有だったかを検証し直します。
-
-第二Targetでは[`ISSUE-000026`](000026-target-capability-execution-profile-boundary.md)を利用し、Target CapabilityとExecution / Trust Profileを分けて比較します。
-
-第二Targetで境界修正が必要になっても、それ自体を失敗とはみなしません。第一Web Targetの都合を誤って共通意味へ持ち上げていなかったかを検査するEvidenceとして扱います。
-
-## 非目標
-
-- 全Target対応
-- design systemの完成
-- pixel-perfectなGUI Editor
-- Web frameworkをTEI標準として固定すること
-- HTTP status codeと業務Outcomeの一対一標準化
-- B2C大規模負荷のproduction保証
-- Custom UIを禁止すること
-- 第一TargetだけでTarget-neutral設計の完成を宣言すること
-- visual scoreをSemantic Conformanceとみなすこと
+第一TargetだけでTarget-neutral設計が完成したとはみなしません。第二Targetで境界修正が必要になった場合も、それ自体を失敗とはせず、第一Targetの都合を共通意味へ持ち上げていなかったかを検証するEvidenceとして扱います。
 
 ## 完了条件
 
-`order_entry`の5 PatternとValidation / Authorization / Commandを、Driverと同じApplication上の意味から第一Web TargetへProjectionできることを完了条件とします。
+- [ ] Gate B Ready後、`ISSUE-000030`の第一Handover Baselineを受け取る
+- [ ] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
+- [ ] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
+- [ ] 各Gate C runからHandover Baselineへ追跡できる
+- [ ] Semantic ConformanceをEvidenceから確認できる
+- [ ] Reference ScenarioのInteraction / Functional Evidenceを再現できる
+- [ ] Visual Fidelityを別Evidenceとして残せる
+- [ ] standard ProjectionとCustom UIを同じ上位意味へ接続できる
+- [ ] Web Adapterを外してもCanonical Worldが変わらない
+- [ ] Target Capability / Execution / Trust差を`ISSUE-000026`へ渡す
+- [ ] Gate CをIssue close状態ではなくEvidenceから判定できる
 
-CapabilityのBusiness Result、Execution Error、Observation、developer Diagnosticを意味の違いとして保ったまま、それぞれをWeb向けに表現できることも確認します。
+## 非目標
 
-その過程で得た「複数Targetで共有できそうなPresentation上の意味」と「Web固有の実装」を明示的に分離し、Semantic / Functional / Visual Evidenceを別々に残します。これをGate C、Editor / AI支援、第二Targetへ引き継ぎます。
+- Gate B前の本格Web実装
+- Web frameworkの先行固定
+- 完全なPresentation IRの先行設計
+- 第一TargetだけでTarget Capability taxonomyを完成させること
+- Webの不足からCanonicalを逆設計すること
+- pixel-perfect design systemの完成
 
-## 関連文書
+## 関連
 
-- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
-- `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
-- `plan/adr/0017-application-pattern-ownership.md`
-- `plan/adr/0019-authentication-capability-boundary.md`
-- `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
-- `plan/issue/000008-editor-and-ai-followup-note.md`
-- `plan/issue/000009-capability-outcome-and-execution-error.md`
-- `plan/issue/000026-target-capability-execution-profile-boundary.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/issue/000028-first-web-target-conformance-evidence.md`
+- `plan/issue/000030-gate-b-to-c-handover-baseline.md`
+- GitHub Issue #70 / #259 / #270 / #291
