@@ -18,6 +18,7 @@ import (
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	sqlquery "tei/internal/driver/queryruntime/sql"
 	"tei/internal/environment"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -25,28 +26,45 @@ const fixtureObject = "public.order_lines"
 const evidenceNature = "real-postgres-ephemeral-fixture"
 
 type evidence struct {
-	EvidenceNature                         string             `json:"evidenceNature"`
-	FixtureObject                          string             `json:"fixtureObject"`
-	PreexistingFixtureProtected            bool               `json:"preexistingFixtureProtected"`
-	FixtureOwnedByTool                     bool               `json:"fixtureOwnedByTool"`
-	Pattern                                core.CanonicalID   `json:"pattern"`
-	Relation                               core.CanonicalID   `json:"relation"`
-	Environment                            core.CanonicalID   `json:"environment"`
-	DatabaseInstance                       core.CanonicalID   `json:"databaseInstance"`
-	ExecutorCapability                     core.CanonicalID   `json:"executorCapability"`
-	ContractQueryTarget                    string             `json:"contractQueryTarget"`
-	ParameterNames                         []string           `json:"parameterNames"`
-	ParameterValuesPersisted               bool               `json:"parameterValuesPersisted"`
-	Rows                                   int                `json:"rows"`
-	ZeroRows                               int                `json:"zeroRows"`
-	ExecutionErrorObserved                 bool               `json:"executionErrorObserved"`
-	SemanticAttributes                     []core.CanonicalID `json:"semanticAttributes"`
-	RelationStorageColumn                  string             `json:"relationStorageColumn"`
-	SemanticOrderLineParentAttributeAdded  bool               `json:"semanticOrderLineParentAttributeAdded"`
-	SemanticMappingApplied                 bool               `json:"semanticMappingApplied"`
+	EvidenceNature                        string             `json:"evidenceNature"`
+	FixtureObject                         string             `json:"fixtureObject"`
+	PreexistingFixtureProtected           bool               `json:"preexistingFixtureProtected"`
+	FixtureOwnedByTool                    bool               `json:"fixtureOwnedByTool"`
+	Pattern                               core.CanonicalID   `json:"pattern"`
+	Relation                              core.CanonicalID   `json:"relation"`
+	Environment                           core.CanonicalID   `json:"environment"`
+	DatabaseInstance                      core.CanonicalID   `json:"databaseInstance"`
+	ExecutorCapability                    core.CanonicalID   `json:"executorCapability"`
+	ContractQueryTarget                   string             `json:"contractQueryTarget"`
+	ParameterNames                        []string           `json:"parameterNames"`
+	ParameterValuesPersisted              bool               `json:"parameterValuesPersisted"`
+	Rows                                  int                `json:"rows"`
+	ZeroRows                              int                `json:"zeroRows"`
+	ExecutionErrorObserved                bool               `json:"executionErrorObserved"`
+	SemanticAttributes                    []core.CanonicalID `json:"semanticAttributes"`
+	RelationStorageColumn                 string             `json:"relationStorageColumn"`
+	SemanticOrderLineParentAttributeAdded bool               `json:"semanticOrderLineParentAttributeAdded"`
+	SemanticMappingApplied                bool               `json:"semanticMappingApplied"`
 }
 
 func main() {
+	// Databaseへ接続・変更する前に、Evidenceの前提となるCanonical Workspace自体を検証する。
+	// 無効なauthoringを前提にfixtureを作成してから失敗する順序を許さない。
+	loaded, err := workspace.Load("reference/workspace")
+	if err != nil {
+		panic(err)
+	}
+	for _, diagnostic := range validation.Validate(loaded.World) {
+		if diagnostic.Severity != validation.Error {
+			continue
+		}
+		panic(fmt.Errorf(
+			"Reference WorkspaceにValidation ErrorがあるためPostgreSQL Evidenceを実行しません: %s: %s",
+			diagnostic.Code,
+			diagnostic.Message,
+		))
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -86,10 +104,6 @@ func main() {
 		panic(err)
 	}
 
-	loaded, err := workspace.Load("reference/workspace")
-	if err != nil {
-		panic(err)
-	}
 	resolver := driver.NewResolver(loaded.World)
 
 	contractExecutor := sqlquery.Executor{
@@ -178,25 +192,25 @@ func main() {
 	relationStorageColumn, parentAttributeAdded := inspectOrderLineStorage(loaded)
 
 	out := evidence{
-		EvidenceNature:                         evidenceNature,
-		FixtureObject:                          fixtureObject,
-		PreexistingFixtureProtected:            true,
-		FixtureOwnedByTool:                     true,
-		Pattern:                                core.MustCanonicalID("order_entry.order_lines"),
-		Relation:                               core.MustCanonicalID("sales.order.lines"),
-		Environment:                            executed.Environment.ID,
-		DatabaseInstance:                       executed.Executor.Instance.ID,
-		ExecutorCapability:                     executed.Executor.Capability.Capability.ID,
-		ContractQueryTarget:                    executed.Execution.Resolution.Binding.Target.Identity(),
-		ParameterNames:                         append([]string(nil), payload.ParameterNames...),
-		ParameterValuesPersisted:               false,
-		Rows:                                   len(executed.Execution.Result.Rows),
-		ZeroRows:                               len(zeroExecuted.Execution.Result.Rows),
-		ExecutionErrorObserved:                 true,
-		SemanticAttributes:                     semanticAttributes,
-		RelationStorageColumn:                  relationStorageColumn,
-		SemanticOrderLineParentAttributeAdded:  parentAttributeAdded,
-		SemanticMappingApplied:                 true,
+		EvidenceNature:                        evidenceNature,
+		FixtureObject:                         fixtureObject,
+		PreexistingFixtureProtected:           true,
+		FixtureOwnedByTool:                    true,
+		Pattern:                               core.MustCanonicalID("order_entry.order_lines"),
+		Relation:                              core.MustCanonicalID("sales.order.lines"),
+		Environment:                           executed.Environment.ID,
+		DatabaseInstance:                      executed.Executor.Instance.ID,
+		ExecutorCapability:                    executed.Executor.Capability.Capability.ID,
+		ContractQueryTarget:                   executed.Execution.Resolution.Binding.Target.Identity(),
+		ParameterNames:                        append([]string(nil), payload.ParameterNames...),
+		ParameterValuesPersisted:              false,
+		Rows:                                  len(executed.Execution.Result.Rows),
+		ZeroRows:                              len(zeroExecuted.Execution.Result.Rows),
+		ExecutionErrorObserved:                true,
+		SemanticAttributes:                    semanticAttributes,
+		RelationStorageColumn:                 relationStorageColumn,
+		SemanticOrderLineParentAttributeAdded: parentAttributeAdded,
+		SemanticMappingApplied:                true,
 	}
 	encoded, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
