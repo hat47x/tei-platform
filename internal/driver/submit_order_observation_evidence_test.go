@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/driver"
 )
 
 // syntheticSubmitOrderObservationEvidenceは、Gate BでCommandとObservationの境界を確認するためだけのtest-local Evidenceです。
 // production向けの汎用Observation schemaではなく、実外部状態を確認したEvidenceでもありません。
 type syntheticSubmitOrderObservationEvidence struct {
-	Nature          string
+	Nature          driver.ObservationEvidenceNature
 	CommandIdentity core.CanonicalID
-	ReadBoundary    core.CanonicalID
+	ReadBoundary    string
 	ObservedState   string
 	ExpectedState   string
 	Matched         bool
@@ -27,17 +28,28 @@ func observeSyntheticSubmitOrderState(
 	expectedState string,
 ) (syntheticSubmitOrderObservationEvidence, error) {
 	evidence := syntheticSubmitOrderObservationEvidence{
-		Nature:          "synthetic",
+		Nature:          driver.ObservationEvidenceSynthetic,
 		CommandIdentity: commandIdentity,
-		ReadBoundary:    reader.Identity(),
+		ReadBoundary:    string(reader.Identity()),
 		ExpectedState:   expectedState,
 	}
 
-	observedState, err := reader.Read(ctx, orderID)
+	execution, err := driver.ExecuteObservationRead(
+		ctx,
+		evidence.ReadBoundary,
+		evidence.Nature,
+		func(ctx context.Context) (any, error) {
+			return reader.Read(ctx, orderID)
+		},
+	)
 	if err != nil {
 		return evidence, err
 	}
 
+	observedState, ok := execution.Result.(string)
+	if !ok {
+		return evidence, fmt.Errorf("Observation read resultの型が不正です: %T", execution.Result)
+	}
 	evidence.ObservedState = observedState
 	evidence.Matched = observedState == expectedState
 	return evidence, nil
@@ -62,7 +74,7 @@ func TestSyntheticSubmitOrderObservationEvidenceSeparatesReadResultFromExpectati
 	if reader.calls != 1 {
 		t.Fatalf("Observation readの呼出回数=%d, want 1", reader.calls)
 	}
-	if evidence.Nature != "synthetic" {
+	if evidence.Nature != driver.ObservationEvidenceSynthetic {
 		t.Fatalf("Evidenceの性質=%q, want synthetic", evidence.Nature)
 	}
 	if evidence.CommandIdentity != "sales.order.submit" {
@@ -98,7 +110,7 @@ func TestSyntheticSubmitOrderObservationEvidenceKeepsReadErrorSeparateFromExpect
 	if err == nil {
 		t.Fatal("Observation Execution Errorが失われています")
 	}
-	if evidence.Nature != "synthetic" || evidence.ReadBoundary != "synthetic.order_state.read" {
+	if evidence.Nature != driver.ObservationEvidenceSynthetic || evidence.ReadBoundary != "synthetic.order_state.read" {
 		t.Fatalf("Observation失敗時のEvidence identity=%#v", evidence)
 	}
 	if evidence.ObservedState != "" || evidence.Matched {
