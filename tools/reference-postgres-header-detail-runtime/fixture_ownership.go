@@ -48,6 +48,19 @@ func validateFixtureOwnershipMarker(marker string) error {
 	return nil
 }
 
+func verifyObservedFixtureOwnership(observed sql.NullString, expectedMarker string) error {
+	if err := validateFixtureOwnershipMarker(expectedMarker); err != nil {
+		return fmt.Errorf("期待ownership markerが不正です: %w", err)
+	}
+	if !observed.Valid || observed.String == "" {
+		return fmt.Errorf("DB側ownership markerを観測できません")
+	}
+	if observed.String != expectedMarker {
+		return fmt.Errorf("DB側ownership markerがtool作成時のmarkerと一致しません")
+	}
+	return nil
+}
+
 func fixtureOwnershipCommentSQL(marker string) (string, error) {
 	if err := validateFixtureOwnershipMarker(marker); err != nil {
 		return "", err
@@ -105,8 +118,8 @@ func removeOwnedFixtureTable(ctx context.Context, db *sql.DB, expectedMarker str
 	if err := tx.QueryRowContext(ctx, fixtureMarkerQuery).Scan(&observed); err != nil {
 		return fmt.Errorf("安全のためfixtureを削除しません: DB側ownership markerを確認できません: %w", err)
 	}
-	if !observed.Valid || observed.String != expectedMarker {
-		return fmt.Errorf("安全のためfixtureを削除しません: DB側ownership markerがtool作成時のmarkerと一致しません")
+	if err := verifyObservedFixtureOwnership(observed, expectedMarker); err != nil {
+		return fmt.Errorf("安全のためfixtureを削除しません: %w", err)
 	}
 
 	if _, err := tx.ExecContext(ctx, fixtureDropSQL); err != nil {
