@@ -76,6 +76,35 @@ func TestWriteArtifactsMakesGoldenCheckPass(t *testing.T) {
 	}
 }
 
+func TestReplaceArtifactSafelyReplacesExistingGoldenWithoutTempResidue(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "world.json")
+	if err := os.WriteFile(path, []byte("old\n"), 0o644); err != nil {
+		t.Fatalf("既存golden fixtureを書き込めません: %v", err)
+	}
+
+	if err := replaceArtifactSafely(path, []byte("new\n")); err != nil {
+		t.Fatalf("既存goldenを安全に置換できません: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("置換後goldenを読み込めません: %v", err)
+	}
+	if string(got) != "new\n" {
+		t.Fatalf("置換後golden=%q want=%q", got, "new\n")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("golden directoryを確認できません: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".world.json.tmp-") {
+			t.Fatalf("safe replace後に一時fileが残っています: %s", entry.Name())
+		}
+	}
+}
+
 func TestCheckDurableRunPluginLockAcceptsMatchingFingerprint(t *testing.T) {
 	lock := referencePluginLock()
 	fingerprint, err := plugin.EnvironmentLockFingerprint(lock, "production")
