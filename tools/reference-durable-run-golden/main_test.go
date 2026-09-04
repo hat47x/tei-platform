@@ -10,7 +10,7 @@ import (
 	"tei/internal/releaseplan"
 )
 
-func TestReplaceFileAtomicallyReplacesWholeFile(t *testing.T) {
+func TestReplaceFileSafelyReplacesWholeFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "durable-run.json")
 	if err := os.WriteFile(path, []byte("old\n"), 0o644); err != nil {
@@ -18,7 +18,7 @@ func TestReplaceFileAtomicallyReplacesWholeFile(t *testing.T) {
 	}
 
 	want := []byte("{\n  \"run\": \"new\"\n}\n")
-	if err := replaceFileAtomically(path, want); err != nil {
+	if err := replaceFileSafely(path, want); err != nil {
 		t.Fatalf("安全な置換に失敗しました: %v", err)
 	}
 	got, err := os.ReadFile(path)
