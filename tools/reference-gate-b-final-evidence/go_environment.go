@@ -9,25 +9,49 @@ import (
 type goEnvironmentEvidence struct {
 	ExternalWorkspaceActive bool `json:"externalWorkspaceActive"`
 	GoFlagsEmpty            bool `json:"goFlagsEmpty"`
+	GoEnvDisabled           bool `json:"goEnvDisabled"`
 }
 
 type setEnvFunc func(string, string) error
+type lookupEnvFunc func(string) (string, bool)
 
-// inspectGoEnvironmentは、candidate revision外のGo workspaceやGOFLAGSが
-// final Evidenceのcompile / test入力へ介入しないことを確認する。
+// inspectGoEnvironmentは、final runner自身をcompileする段階からuser-level Go environment fileを
+// 暗黙入力へしないため、process environmentにGOENV=offが明示されていることを最初に確認する。
 //
-// ambient環境が安全であることを確認した後だけ、final runner自身のprocess environmentを
-// GOWORK=off / GOFLAGS= / GOENV=offへ固定する。これにより、各laneと通常のnested Go commandは
-// Repository外のuser-level Go environment fileを既定経路として読み直さない。
+// GOENVの特殊値offはGo tool側でexact lowercaseとして扱われるため、ここでも完全一致だけを受理する。
+// 大文字小文字の違いや前後空白を正規化して受理すると、compile時にはGOENV fileが有効だった実行を
+// runtime guardだけが安全と誤判定し得るため、その緩和は行わない。
 //
-// GOWORKの実pathやGOFLAGS本文は、local pathや任意の値を含み得るためEvidenceへ保存しない。
+// その後、candidate revision外のGo workspaceやGOFLAGSがcompile / test入力へ介入しないことを確認し、
+// ambient環境が安全である場合だけprocess environmentをGOWORK=off / GOFLAGS= / GOENV=offへ固定する。
+// これにより各laneと通常のnested Go commandも同じ境界を継承する。
+//
+// GOWORKの実pathやGOFLAGS本文、GOENVの実pathはlocal情報を含み得るためEvidenceへ保存しない。
 // 成功・失敗の判定に必要な非機密booleanだけを返す。
 func inspectGoEnvironment(output commandOutputFunc) (goEnvironmentEvidence, error) {
-	return inspectGoEnvironmentWith(output, os.Setenv)
+	return inspectGoEnvironmentForLaunch(output, os.Setenv, os.LookupEnv)
 }
 
+// inspectGoEnvironmentWithは既存pure test用のseamである。
+// launch guardを満たした状態を前提にし、ambient Go command観測とchild environment固定を検証する。
 func inspectGoEnvironmentWith(output commandOutputFunc, setEnv setEnvFunc) (goEnvironmentEvidence, error) {
+	return inspectGoEnvironmentForLaunch(output, setEnv, func(string) (string, bool) {
+		return "off", true
+	})
+}
+
+func inspectGoEnvironmentForLaunch(
+	output commandOutputFunc,
+	setEnv setEnvFunc,
+	lookupEnv lookupEnvFunc,
+) (goEnvironmentEvidence, error) {
 	var result goEnvironmentEvidence
+
+	goEnv, ok := lookupEnv("GOENV")
+	result.GoEnvDisabled = ok && goEnv == "off"
+	if !result.GoEnvDisabled {
+		return result, fmt.Errorf("Gate B最終Evidenceはfinal runner自身のcompile前からuser-level Go environmentを無効化するため、GOENV=offを明示して起動してください")
+	}
 
 	goWork, err := output("go", "env", "GOWORK")
 	if err != nil {
