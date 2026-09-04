@@ -1,6 +1,6 @@
 # ISSUE-000032: Gate Bのdeterministic Repository Evidenceを通常Go runnerで再現する
 
-- 状態: Ready
+- 状態: In Progress
 - GitHub Issue: #310
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
@@ -259,3 +259,28 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/`
 - `tools/reference-gate-b-repository-evidence/README.md`
+
+## 2026-09-05 通常Go環境での修復・検証記録
+
+計画整理commit `89eb739` から通常Repositoryの検証を開始したところ、統合済みのSemantic Validation、Relation key、SourceError、CLIに重複実装があり、Evidence入口のcompileが失敗しました。修復commitは `3b92850` です。
+
+- 現行Referenceの `positive` / `relation-unique` と、Relation直後の `key source -> target` 構文へ定義を一本化しました。
+- ApplicationのValidation参照とCapability Outcome診断を共通Validateへ接続し、Query result mappingの二重検査を解消しました。
+- CLIのsource診断、Contract Query row属性の所属検査、external Evidence intakeの重複処理、既存テストの型名・fixture参照・構文エラーを修復しました。
+
+検証環境はWSL Ubuntu / Go 1.26.5 linux/amd64です。`89eb739` の独立Linux checkoutへ修復差分を適用して検証しました。これは修復中のdirty checkoutでの確認であり、clean candidate revision Rの最終Evidenceではありません。
+
+| 検証 | 結果 |
+| --- | --- |
+| `go test ./... -run '^$'` | 全packageのcompile成功。テスト本体は未実行 |
+| `go test ./internal/semantic/... ./internal/syntax ./internal/validation ./internal/security/legacyauth ./internal/database/providers/postgres ./tools/reference-external-query-evidence` | 8 package成功 |
+| `go test ./...` | 失敗。`cmd/tei`、`internal/driver`、`internal/workspace` に残件 |
+
+次の作業はこのIssueと既存Issueの範囲で継続します。
+
+1. Source IndexのSemantic anchorがRelation直後の `key` を扱えない問題、およびContract内のQueryをトップレベル宣言として探索している問題を修復する。
+2. Referenceに明示的なOrderLine Persistence / SQL realization / executorが追加された後も「未定義」を期待するテストを、現行Referenceの肯定確認と、明示的に実現を除いたfixtureのfail-closed確認へ整理する。認証input名とexecutor件数の古い期待値も現行契約と照合する。
+3. `TestReferenceWorkspaceNormalizesToGoldenWorld` の不一致は [ISSUE-000025](000025-reference-generated-artifacts-refresh.md) で正規生成経路から解決する。手修正や検査の無効化で通さない。
+4. clean revisionでRepository Evidenceを再取得し、[ISSUE-000037](000037-gate-b-three-lane-final-evidence.md) の三lane収束へ進む。
+
+検証logは実行端末の `/tmp/tei-gate-b-build-check.log`、`/tmp/tei-gate-b-targeted-check.log`、`/tmp/tei-gate-b-repair-final-test.log` に保存しました。これらは一時的な修復logであり、配布可能な最終Evidenceではありません。実PostgreSQL / actual OracleのEvidenceはこの検証では取得しておらず、Gate B Ready判定は変更しません。
