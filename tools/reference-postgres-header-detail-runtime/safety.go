@@ -8,13 +8,29 @@ import (
 )
 
 type fixtureDatabaseSafetyEvidence struct {
-	GuardPassed                    bool `json:"guardPassed"`
-	DatabaseIdentityVerified       bool `json:"databaseIdentityVerified"`
-	DatabaseIdentityPersisted      bool `json:"databaseIdentityPersisted"`
-	NonDefaultDatabaseVerified     bool `json:"nonDefaultDatabaseVerified"`
-	UserRelationsBeforeFixture     int  `json:"userRelationsBeforeFixture"`
+	GuardPassed                     bool `json:"guardPassed"`
+	DatabaseIdentityVerified        bool `json:"databaseIdentityVerified"`
+	DatabaseIdentityPersisted       bool `json:"databaseIdentityPersisted"`
+	NonDefaultDatabaseVerified      bool `json:"nonDefaultDatabaseVerified"`
+	UserRelationsBeforeFixture      int  `json:"userRelationsBeforeFixture"`
 	FixtureObjectAbsentBeforeCreate bool `json:"fixtureObjectAbsentBeforeCreate"`
 }
+
+type fixtureCleanupSafetyEvidence struct {
+	Verified                         bool `json:"verified"`
+	UserRelationsAfterCleanup        int  `json:"userRelationsAfterCleanup"`
+	FixtureObjectAbsentAfterCleanup  bool `json:"fixtureObjectAbsentAfterCleanup"`
+}
+
+const userRelationCountQuery = `
+SELECT count(*)
+FROM pg_catalog.pg_class AS c
+JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg_toast%'
+  AND n.nspname NOT LIKE 'pg_temp_%'
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+`
 
 // ensureDedicatedEmptyFixtureDatabaseは、Evidence toolが既存業務Databaseへfixtureを作成しないため、
 // 接続先が第一ReferenceのEvidence専用空Databaseとして扱える最小条件を確認する。
@@ -31,17 +47,9 @@ func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) (fixtu
 		return result, fmt.Errorf("PostgreSQL Evidence接続先Database identityを確認できません: %w", err)
 	}
 
-	var userRelations int
-	if err := db.QueryRowContext(ctx, `
-SELECT count(*)
-FROM pg_catalog.pg_class AS c
-JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
-WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-  AND n.nspname NOT LIKE 'pg_toast%'
-  AND n.nspname NOT LIKE 'pg_temp_%'
-  AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
-`).Scan(&userRelations); err != nil {
-		return result, fmt.Errorf("PostgreSQL Evidence接続先の既存user relationを確認できません: %w", err)
+	userRelations, err := countUserRelations(ctx, db)
+	if err != nil {
+		return result, err
 	}
 
 	if err := validateDedicatedFixtureDatabase(databaseName, userRelations); err != nil {
@@ -60,6 +68,37 @@ WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
 	return result, nil
 }
 
+// verifyFixtureDatabaseRestoredは、Provider runtimeとmissing-table Error確認後に、
+// toolが接続先を開始時と同じ「user relation 0件 / fixture object不在」へ戻せたことを確認する。
+// 他主体の並行変更を含め、終了時にuser relationが残っていれば成功Evidenceへ進まない。
+func verifyFixtureDatabaseRestored(ctx context.Context, db *sql.DB) (fixtureCleanupSafetyEvidence, error) {
+	result := fixtureCleanupSafetyEvidence{}
+
+	userRelations, err := countUserRelations(ctx, db)
+	if err != nil {
+		return result, fmt.Errorf("PostgreSQL Evidence終了時の既存user relationを確認できません: %w", err)
+	}
+	result.UserRelationsAfterCleanup = userRelations
+	if err := validateFixtureDatabaseRestored(userRelations); err != nil {
+		return result, err
+	}
+
+	if err := ensureFixtureObjectAbsent(ctx, db); err != nil {
+		return result, fmt.Errorf("PostgreSQL Evidence終了時にfixture object不在を確認できません: %w", err)
+	}
+	result.FixtureObjectAbsentAfterCleanup = true
+	result.Verified = true
+	return result, nil
+}
+
+func countUserRelations(ctx context.Context, db *sql.DB) (int, error) {
+	var userRelations int
+	if err := db.QueryRowContext(ctx, userRelationCountQuery).Scan(&userRelations); err != nil {
+		return 0, fmt.Errorf("PostgreSQL Evidence接続先の既存user relationを確認できません: %w", err)
+	}
+	return userRelations, nil
+}
+
 func validateDedicatedFixtureDatabase(databaseName string, userRelations int) error {
 	name := strings.TrimSpace(databaseName)
 	if name == "" {
@@ -74,6 +113,16 @@ func validateDedicatedFixtureDatabase(databaseName string, userRelations int) er
 	}
 	if userRelations != 0 {
 		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database %qには既存user relationが%d件あります。既存資産を変更せず、Evidence専用の空Databaseを指定してください", name, userRelations)
+	}
+	return nil
+}
+
+func validateFixtureDatabaseRestored(userRelations int) error {
+	if userRelations < 0 {
+		return fmt.Errorf("PostgreSQL Evidence終了時のuser relation件数が不正です: %d", userRelations)
+	}
+	if userRelations != 0 {
+		return fmt.Errorf("PostgreSQL Evidence終了時にuser relationが%d件残っています。tool-owned fixtureまたは並行変更の残存を確認してください", userRelations)
 	}
 	return nil
 }
