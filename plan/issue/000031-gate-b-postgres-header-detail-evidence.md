@@ -16,6 +16,8 @@
 ## Evidenceの性質
 
 ```text
+clean repository revision
+        +
 Canonical Workspace
         ↓ Validation
 real PostgreSQL engine
@@ -23,6 +25,8 @@ real PostgreSQL engine
 tool-owned ephemeral fixture
         ↓
 header-detail runtime Evidence
+        ↓
+same clean repository revisionを再確認
 ```
 
 このEvidenceは実PostgreSQL provider / driver / native SQL executionを通しますが、production既存Databaseの物理事実を観測するものではありません。
@@ -51,7 +55,30 @@ go run ./tools/reference-postgres-header-detail-runtime
 
 DSN、credential、runtime parameter value、接続先の実Database名をRepositoryや通常Evidenceへ保存しません。
 
-## fail-closed安全境界
+## source revisionのfail-closed境界
+
+Gate Bへ採用するProvider Evidenceは、後から同じsourceへ戻れる必要があります。
+
+そのため、Databaseへ接続する前にrepository revisionとworking treeを確認し、dirtyなら停止します。
+
+Provider実行とfixture cleanupの後にも再確認し、次のいずれかが起きていれば成功Evidenceとして採用しません。
+
+- 実行中にHEADが変化した
+- 実行後にtracked / untracked差分が残った
+
+成功JSONには少なくとも次を含めます。
+
+- `repositoryRevision`
+- `workingTreeClean = true`
+- `reproducibleRevision = true`
+- `postRunRepository.checked = true`
+- `postRunRepository.repositoryRevision = repositoryRevision`
+- `postRunRepository.revisionStable = true`
+- `postRunRepository.workingTreeClean = true`
+
+source状態の観測規則は`tools/internal/repositoryevidence`へ置き、#310と#255のEvidence runnerでも同じ規則を利用します。Provider固有の意味やDB操作はこの共有packageへ持ち込みません。
+
+## Database側のfail-closed安全境界
 
 PR #294 / #300 / #306で、Workspace Validation、既存fixture保護、tool-owned cleanupの基本境界を成立させました。
 
@@ -59,17 +86,20 @@ PR #324では、「`public.order_lines`さえ存在しなければ既存業務DB
 
 現在の実行順は次です。
 
-1. WorkspaceをLoadする
-2. 通常`validation.Validate`を実行する
-3. Validation ErrorがあればDB接続前に停止する
-4. Validation成功後にのみPostgreSQLへ接続する
-5. `current_database()`で接続先Database identityを取得する
-6. `postgres` / `template0` / `template1`なら停止する
-7. system / temporary領域を除くuser relation件数を確認する
-8. user relationが1件でも存在すれば停止する
-9. `public.order_lines`の既存有無を再確認し、存在すれば停止する
-10. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
-11. tool自身がCREATEしたfixtureだけをcleanupする
+1. clean repository revisionを確認する
+2. WorkspaceをLoadする
+3. 通常`validation.Validate`を実行する
+4. Validation ErrorがあればDB接続前に停止する
+5. Validation成功後にのみPostgreSQLへ接続する
+6. `current_database()`で接続先Database identityを取得する
+7. `postgres` / `template0` / `template1`なら停止する
+8. system / temporary領域を除くuser relation件数を確認する
+9. user relationが1件でも存在すれば停止する
+10. `public.order_lines`の既存有無を再確認し、存在すれば停止する
+11. すべての安全条件を満たした場合だけtool-owned fixtureをCREATEする
+12. tool自身がCREATEしたfixtureだけをcleanupする
+13. repository HEAD / working treeを再確認する
+14. 同じclean revisionへ固定できた場合だけJSON Evidenceを出力する
 
 ### 既定Databaseを拒否する
 
@@ -112,6 +142,7 @@ SELECT to_regclass('public.order_lines')::text
 
 同じrunで少なくとも次を確認します。
 
+- cleanかつ実行中に不変なrepository revisionへEvidenceを固定する
 - `order_id=1001`でOrderLineを2件取得する
 - `order_id=9999`で0件を正常な空collectionとして扱う
 - tool-owned fixture table欠落をExecution Errorとして扱う
@@ -132,9 +163,12 @@ SELECT to_regclass('public.order_lines')::text
 - [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
 - [x] `public.order_lines`既存時に停止する
 - [x] tool-owned fixtureだけをcleanupする
-- [ ] 対象repository revisionを記録する
-- [ ] Canonical Workspace Validationが成功する
+- [x] Provider Evidence開始前にclean repository revisionを要求する境界を実装した
+- [x] Provider Evidence終了後にHEAD / working treeを再確認する境界を実装した
+- [x] #310 / #255 / #308で共通利用するtool-only repository source観測packageを用意した
+- [ ] Canonical Workspace Validationが成功するclean revisionで実行する
 - [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
+- [ ] `reproducibleRevision = true`のJSON Evidenceを取得する
 - [ ] 2件取得を確認する
 - [ ] 0件を正常な空collectionとして確認する
 - [ ] physical table欠落をExecution Errorとして確認する
@@ -153,6 +187,7 @@ SELECT to_regclass('public.order_lines')::text
 - actual Oracle Evidenceの代替
 - physical schemaからSemantic Relationを逆生成すること
 - PostgreSQL固有仕様をSemantic modelへ逆流させること
+- source revision規則をCanonical modelへ追加すること
 - GitHub Actionsの再有効化
 
 ## 関連
@@ -163,6 +198,7 @@ SELECT to_regclass('public.order_lines')::text
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/issue/000024-keyless-relation-physical-storage.md`
+- `tools/internal/repositoryevidence/`
 - `tools/reference-postgres-header-detail-runtime/README.md`
 - `tools/reference-postgres-header-detail-runtime/main.go`
 - `tools/reference-postgres-header-detail-runtime/safety.go`
