@@ -7,15 +7,28 @@ import (
 	"strings"
 )
 
+type fixtureDatabaseSafetyEvidence struct {
+	GuardPassed                    bool `json:"guardPassed"`
+	DatabaseIdentityVerified       bool `json:"databaseIdentityVerified"`
+	DatabaseIdentityPersisted      bool `json:"databaseIdentityPersisted"`
+	NonDefaultDatabaseVerified     bool `json:"nonDefaultDatabaseVerified"`
+	UserRelationsBeforeFixture     int  `json:"userRelationsBeforeFixture"`
+	FixtureObjectAbsentBeforeCreate bool `json:"fixtureObjectAbsentBeforeCreate"`
+}
+
 // ensureDedicatedEmptyFixtureDatabaseは、Evidence toolが既存業務Databaseへfixtureを作成しないため、
 // 接続先が第一ReferenceのEvidence専用空Databaseとして扱える最小条件を確認する。
 //
 // Database名だけで安全性を推測せず、既定管理Databaseを拒否したうえで、system / temporary領域を除く
 // user relationが一つもないことを要求する。既存relationを削除して空にする処理は行わない。
-func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) error {
+//
+// 成功時は、接続先Database名そのものを保持せず、安全判定の非機密な結果だけを返す。
+func ensureDedicatedEmptyFixtureDatabase(ctx context.Context, db *sql.DB) (fixtureDatabaseSafetyEvidence, error) {
+	result := fixtureDatabaseSafetyEvidence{}
+
 	var databaseName string
 	if err := db.QueryRowContext(ctx, `SELECT current_database()`).Scan(&databaseName); err != nil {
-		return fmt.Errorf("PostgreSQL Evidence接続先Database identityを確認できません: %w", err)
+		return result, fmt.Errorf("PostgreSQL Evidence接続先Database identityを確認できません: %w", err)
 	}
 
 	var userRelations int
@@ -28,16 +41,23 @@ WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
   AND n.nspname NOT LIKE 'pg_temp_%'
   AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
 `).Scan(&userRelations); err != nil {
-		return fmt.Errorf("PostgreSQL Evidence接続先の既存user relationを確認できません: %w", err)
+		return result, fmt.Errorf("PostgreSQL Evidence接続先の既存user relationを確認できません: %w", err)
 	}
 
 	if err := validateDedicatedFixtureDatabase(databaseName, userRelations); err != nil {
-		return err
+		return result, err
 	}
+	result.DatabaseIdentityVerified = true
+	result.DatabaseIdentityPersisted = false
+	result.NonDefaultDatabaseVerified = true
+	result.UserRelationsBeforeFixture = userRelations
+
 	if err := ensureFixtureObjectAbsent(ctx, db); err != nil {
-		return err
+		return result, err
 	}
-	return nil
+	result.FixtureObjectAbsentBeforeCreate = true
+	result.GuardPassed = true
+	return result, nil
 }
 
 func validateDedicatedFixtureDatabase(databaseName string, userRelations int) error {
