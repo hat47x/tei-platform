@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -29,5 +30,38 @@ func TestValidateDedicatedFixtureDatabaseRejectsEmptyIdentity(t *testing.T) {
 	err := validateDedicatedFixtureDatabase("   ", 0)
 	if err == nil || !strings.Contains(err.Error(), "identityが空") {
 		t.Fatalf("identity不明のDatabaseを受け入れています: %v", err)
+	}
+}
+
+func TestFixtureDatabaseSafetyEvidencePersistsAssertionsWithoutDatabaseIdentity(t *testing.T) {
+	got := fixtureDatabaseSafetyEvidence{
+		GuardPassed:                     true,
+		DatabaseIdentityVerified:        true,
+		DatabaseIdentityPersisted:       false,
+		NonDefaultDatabaseVerified:      true,
+		UserRelationsBeforeFixture:      0,
+		FixtureObjectAbsentBeforeCreate: true,
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(encoded)
+	for _, want := range []string{
+		`"guardPassed":true`,
+		`"databaseIdentityVerified":true`,
+		`"databaseIdentityPersisted":false`,
+		`"nonDefaultDatabaseVerified":true`,
+		`"userRelationsBeforeFixture":0`,
+		`"fixtureObjectAbsentBeforeCreate":true`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("安全判定Evidenceに%sがありません: %s", want, text)
+		}
+	}
+	for _, forbidden := range []string{"databaseName", "dsn", "TEI_TEST_POSTGRES_DSN", "tei_gate_b_evidence"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("安全判定Evidenceへ接続先identityまたはDSN情報を保存しています: %s", text)
+		}
 	}
 }
