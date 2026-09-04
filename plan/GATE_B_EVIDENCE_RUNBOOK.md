@@ -57,6 +57,7 @@ production既存Databaseの物理事実や実データEvidenceではありませ
 TEIが所有していない既存Oracle資産の観測事実とactual readです。
 
 - physical object / parameter / raw columns
+- raw column physical metadata / NULL上の扱い
 - native realization source
 - provenance
 - effective read-only proof
@@ -341,6 +342,8 @@ go run ./tools/reference-golden
 go run ./tools/reference-golden -write
 ```
 
+PR #367以降、World / Plugin Lockの修復writeも既存goldenを最初にtruncateしません。同じdirectoryの一時fileへ全内容を書き込み、Sync / Closeした後にRenameし、一時fileは成功・失敗のどちらでもcleanupします。これは修復途中のwrite失敗で既存artifactを空または途中内容へ壊さないための境界であり、複数artifact全体を一つのtransactionとして扱う契約ではありません。
+
 更新対象:
 
 ```text
@@ -365,7 +368,7 @@ git diff -- \
 
 `reference-golden -write`後にDurable Run依存がstaleと表示されても、fingerprintだけを手編集しません。
 
-**この`-write`は修復操作です。** working treeがdirtyになった場合、その状態でcheckが通っても#255完了Evidenceにはしません。
+**この`-write`は修復操作です。** working treeがdirtyになった場合、その状態でcheckが通っても#255完了Evidenceにはしません。safe replace自体の成功も完了Evidenceへ格上げしません。
 
 ## 5. Durable Run全体を正規生成結果と照合する
 
@@ -495,6 +498,8 @@ postgres / template0 / template1なら停止
   ↓
 system / temporary領域を除くuser relation件数確認
   ↓ 1件以上なら停止
+Event Trigger件数確認
+  ↓ 1件以上なら停止
 public.order_lines既存確認
   ↓ 既存なら停止
 Ephemeral fixture CREATE
@@ -502,7 +507,9 @@ Ephemeral fixture CREATE
 Provider runtime Evidence
 ```
 
-既存relationを削除してEvidence用Databaseへ転用する処理や、既定Databaseで続行するoverrideはありません。
+PR #365以降、Event Triggerはuser relationとは別にDDLへ介入し得るため、relationが0件でもEvent Triggerが1件以上存在するDatabaseはfixture実行先にしません。disabledなEvent Triggerも既存objectとして扱います。
+
+既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用する処理や、既定Databaseで続行するoverrideはありません。
 
 `TEI_TEST_POSTGRES_DSN`には**Evidence専用に作成した空PostgreSQL Database**を指定します。
 
@@ -514,7 +521,7 @@ DSN、credential、接続先の実Database名を通常Evidenceへ保存しませ
 
 ### fixture前安全判定Evidence
 
-PR #335以降、guardを通ったという実装事実だけでなく、そのrunで確認した非機密な結果を`fixtureDatabaseSafety`へ残します。
+PR #335以降、guardを通ったという実装事実だけでなく、そのrunで確認した非機密な結果を`fixtureDatabaseSafety`へ残します。PR #365以降はEvent Trigger件数も含めます。
 
 期待値:
 
@@ -525,6 +532,7 @@ PR #335以降、guardを通ったという実装事実だけでなく、そのru
   "databaseIdentityPersisted": false,
   "nonDefaultDatabaseVerified": true,
   "userRelationsBeforeFixture": 0,
+  "eventTriggersBeforeFixture": 0,
   "fixtureObjectAbsentBeforeCreate": true
 }
 ```
@@ -551,6 +559,7 @@ Repository内へ直接redirectしません。`tee`を使う場合も保存先は
 - `fixtureDatabaseSafety.guardPassed = true`
 - `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`
 - `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`
+- `fixtureDatabaseSafety.eventTriggersBeforeFixture = 0`
 - `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`
 - `fixtureDatabaseSafety.databaseIdentityPersisted = false`
 - Pattern = `order_entry.order_lines`
@@ -571,7 +580,7 @@ Repository内へ直接redirectしません。`tee`を使う場合も保存先は
 
 Providerの2件 / 0件を確認した後、tool自身が作成した`public.order_lines`をDROPし、同じContract Queryを再実行してphysical table欠落をExecution Errorとして観測します。
 
-PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測します。
+PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測します。PR #365以降は、user relationとfixture objectに加えてEvent Triggerも再観測します。
 
 期待値:
 
@@ -579,6 +588,7 @@ PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測しま�
 {
   "verified": true,
   "userRelationsAfterCleanup": 0,
+  "eventTriggersAfterCleanup": 0,
   "fixtureObjectAbsentAfterCleanup": true
 }
 ```
@@ -587,16 +597,17 @@ PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測しま�
 
 ```text
 fixture前 empty-DB guard
+ -> user relation 0件 / Event Trigger 0件 / fixture object不在
  -> fixture CREATE
  -> 2件 / 0件
  -> fixture DROP
  -> missing-table Execution Error
- -> user relation 0件 / fixture object不在を再観測
+ -> user relation 0件 / Event Trigger 0件 / fixture object不在を再観測
  -> Repository HEAD / clean再確認
  -> JSON Evidence
 ```
 
-終了時にuser relationが残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedします。
+終了時にuser relationまたはEvent Triggerが残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedします。
 
 ## 7. #214 actual Oracle Evidenceを受け取る
 
@@ -686,6 +697,10 @@ acceptance receiptが成功しても#214は完了しません。
 3. `development / master_data.dev / database.query.oracle`のruntime Executorを構成する
 4. Workspace → actual Oracle read → explicit Semantic mapping → Customer resultを一続きに確認する
 
+PR #364 / #366以降、Oracle Runner固有Payloadはactual read時にdriverが観測したraw result列名と、driverが提供できた範囲の列metadataを保持できます。metadataは`name`、`databaseTypeName`、`nullable`、`length`、`precision`、`scale`で、driverが提供できない項目はfalseや0へ補完せず未観測のまま保持します。Go側の`ScanType`やraw row値は通常Evidenceへ追加しません。
+
+このruntime metadataは、provenance付きexternal Evidenceの`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。actual read時のdriver観測として照合材料に使います。`PhysicalType`文字列とdriverの`DatabaseTypeName`が同じ表記になるかは実Oracle / 採用driverを観測する前に仮定せず、自動文字列一致規則を先行固定しません。
+
 acceptance receiptをactual Oracle read Evidenceへ格上げしません。
 
 Phase 1でこの工程を通してauthoring変更が必要になった場合は、その変更をcommitしてからPhase 2へ進みます。
@@ -750,7 +765,7 @@ go run ./tools/reference-postgres-header-detail-runtime \
   > /tmp/tei-gate-b-postgres-header-detail.json
 ```
 
-Evidence専用の空PostgreSQL Databaseを使用し、JSONの`repositoryRevision`がRと一致することを確認します。
+Evidence専用の空PostgreSQL Databaseを使用し、JSONの`repositoryRevision`がRと一致することを確認します。fixture前後の`userRelations... = 0`、`eventTriggers... = 0`、fixture object不在も確認します。
 
 ### 9.5 Rで#214 acceptance / actual readを再確認する
 
@@ -763,7 +778,7 @@ go run ./tools/reference-external-query-evidence \
 
 receiptの`repositoryRevision`がRと一致し、`reproducibleRevision = true`であることを確認します。
 
-続いて、Rのruntime / realizationに対してread-only Oracle connectionからactual readを行い、explicit Semantic mappingまで確認します。
+続いて、Rのruntime / realizationに対してread-only Oracle connectionからactual readを行い、explicit Semantic mappingまで確認します。driverが提供したraw列metadataは、external Evidenceと実行時観測の対応確認に使いますが、未提供項目を推測して埋めません。
 
 ### 9.6 4 laneのrevision一致を確認する
 
@@ -789,8 +804,8 @@ Phase 2中にsource変更が必要になった場合はRを破棄し、変更を
 | --- | --- |
 | #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / Repository source固定Conformance / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
-| #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性 / Provider runtime / cleanup後復元 |
-| #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / read-only / Oracle actual read |
+| #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性（user relation / Event Trigger / fixture object）/ Provider runtime / cleanup後復元 |
+| #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / read-only / Oracle actual read / driver観測raw列metadata |
 
 #214 acceptance receiptだけをactual external asset Evidence完了とは扱いません。
 
@@ -806,9 +821,10 @@ negative caseとして少なくとも次を再監査します。
 - Execution Errorが正常業務結果へ化けていない
 - Observation期待不一致とread Execution Errorを混同していない
 - Evidence run実行中にsource revisionが変化していない
-- #308 cleanup後にEvidence専用空DBの観測条件へ戻っている
+- #308 cleanup後にEvidence専用空DBの観測条件（user relation 0件 / Event Trigger 0件 / fixture object不在）へ戻っている
 - generated artifactを手編集していない
 - external EvidenceをCanonical meaningへ昇格していない
+- Oracle driverが提供していない列metadataを推測してEvidenceへ補完していない
 
 ## 停止条件
 
@@ -826,14 +842,17 @@ negative caseとして少なくとも次を再監査します。
 - #308実行前後でHEADが変わる、または実行後working treeがdirtyである
 - #308で`postgres` / `template0` / `template1`へ接続している
 - #308の接続先にsystem / temporary領域以外のuser relationが1件以上存在する
+- #308の接続先にEvent Triggerが1件以上存在する
 - `public.order_lines`が既に存在するPostgreSQL接続先
 - #308 cleanup後にuser relationが残る
+- #308 cleanup後にEvent Triggerが存在する
 - #308 cleanup後に`public.order_lines`が存在する
 - #214 acceptance開始時のworking treeがdirtyである
 - #214 acceptance実行中にHEADが変わる、または実行後working treeがdirtyである
 - #214でprovenanceのない物理情報しかない
 - #214でSQL realizationが存在せず、Evidenceから補完しないと進めない
 - #214 acceptance receiptだけをactual read完了として扱おうとしている
+- #214 actual readでdriverが提供していない型 / NULL metadataを推測して補完しないと進めない
 - read-only保証をSQL文字列だけで主張している
 - generated artifactがstaleなのにfingerprintやJSON断片だけを手編集しようとしている
 - fixed observed fixtureを生成結果へ合わせて機械的に変更しようとしている
