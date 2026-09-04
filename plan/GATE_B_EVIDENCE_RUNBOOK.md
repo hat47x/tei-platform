@@ -10,18 +10,21 @@ Evidenceの必要性・証明範囲・完了条件は[`GATE_B_EVIDENCE_ACQUISITI
 
 2026-09-04時点では、Application Driverの主要意味境界、最終UI-less Scenario構造、external-observed Query Evidence受入境界、PostgreSQL fixtureの安全境界まで成立しています。
 
-Gate Bを直接止めているEvidence laneは次の四つです。
+PR #379を起点とした`ISSUE-000035` / #381の再監査により、Gate Bを直接止める必須Evidenceは次の3本へ収束しました。
 
-1. `ISSUE-000022` / #214: actual Oracle `master_data`物理・provenance・read-only / actual read Evidence
-   - `ISSUE-000033` / #371: Lane A内のactual Oracle driver / Host assembly
-   - `ISSUE-000034` / #376: Lane A内のactual Oracle read-only Evidence
-2. `ISSUE-000031` / #308: real PostgreSQL engine + ephemeral fixture Evidence
-3. `ISSUE-000025` / #255: World / Plugin Lock / Durable Runのgenerated artifact reproducibility Evidence
-4. `ISSUE-000032` / #310: deterministic Repository / normal Go runner Evidence
+1. `ISSUE-000032` / #310: deterministic Repository / normal Go runner Evidence
+2. `ISSUE-000025` / #255: generated artifact reproducibility Evidence
+3. `ISSUE-000031` / #308: real PostgreSQL engine + ephemeral fixture Evidence
 
-#371 / #376は#214の完了条件を具体化する子Issueであり、Gate Bの第五・第六Evidence laneではありません。
+actual external Oracleは継続Evidence trackとして残します。
 
-GitHub Actionsによる継続的なregression確認は重要ですが、この四laneのProduct Evidenceそのものとは分けます。現行RepositoryではActionsを意図的に使用しておらず、本Runbookから再有効化しません。
+- `ISSUE-000022` / #214: actual Oracle `master_data`物理・provenance・actual read
+- `ISSUE-000033` / #371: actual Oracle driver / Host assembly
+- `ISSUE-000034` / #376: actual Oracle read-only Evidence
+
+#214 / #371 / #376は廃止しません。actual Oracle compatibility / actual external asset integrationを主張するために必要ですが、外部環境情報が得られないことだけでGate Bを止めません。
+
+GitHub Actionsによる継続的なregression確認は重要ですが、このProduct Evidenceとは分けます。現行RepositoryではActionsを意図的に使用しておらず、本Runbookから再有効化しません。
 
 ## Evidenceの種類
 
@@ -54,9 +57,9 @@ Canonical Workspace等の正規入力から、保存generated artifactを同じc
 
 - `tools/reference-postgres-header-detail-runtime`
 
-production既存Databaseの物理事実や実データEvidenceではありません。
+production既存Databaseの物理事実やactual Oracle Evidenceではありません。
 
-### D. actual external asset Evidence — #214
+### D. actual external asset Evidence — #214（Gate Bでは継続track）
 
 TEIが所有していない既存Oracle資産の観測事実とactual readです。
 
@@ -64,63 +67,55 @@ TEIが所有していない既存Oracle資産の観測事実とactual readです
 - raw column physical metadata / NULL上の扱い
 - native realization source
 - provenance
-- `ISSUE-000034` / #376で確定するeffective read-only Evidence
-- `ISSUE-000033` / #371で確定するOracle driver / Host assembly
+- #376 effective read-only Evidence
+- #371 Oracle driver / Host assembly
 - Workspace → actual read → Semantic result
 
-synthetic / generated artifact / ephemeral fixtureで代替しません。#371 / #376の完了を別Evidence laneの成功として数えず、#214 actual external asset Evidenceの構成要素として扱います。
+Gate Bの必須完了条件ではありません。未完了ならHandoverへ`unresolved / not verified`として残します。
 
 ## Gate B Evidence取得は二段階で行う
 
-PR #354以降、4 laneが個別にsource-fixedであっても、**別々のrepository revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。**
-
-最終Ready判定では、一つのcandidate repository revision `R`を固定し、4 laneの完了判定に用いるEvidenceをすべてRへ揃えます。
+最終Ready判定では、一つのcandidate repository revision `R`を固定し、**#310 / #255 / #308の3必須EvidenceをRへ揃えます。**
 
 ```text
-#214 acceptance + actual read ─┐
-#308 Provider Evidence        ─┼─ repositoryRevision = R
-#255 generated artifact       ─┤
-#310 deterministic Repository ─┘
-                               ↓
-                        Gate B Ready for R
-                               ↓
-                        Handover Baseline R
+#310 完了Evidence ─┐
+#255 完了Evidence ─┼─ repositoryRevision = R
+#308 完了Evidence ─┘
+                    ↓
+             Gate B Ready for R
+                    ↓
+             Handover Baseline R
 ```
 
-そのため、作業を二段階に分けます。
+#214 actual Oracleはこの必須収束対象ではありません。
 
 ### Phase 1 — 事前確認 / sourceを確定する
-
-目的は、実行可能なlaneを先に動かして不足を露出させ、Gate Bに必要なsource変更とgenerated artifact修復をすべて確定することです。
 
 1. #310をcleanな通常Go runnerで事前実行する
 2. #255をcheck-onlyし、staleなら正規toolで修復する
 3. #308をEvidence専用の空PostgreSQL Databaseで事前実行する
-4. #214のactual Oracle physical facts / provenanceを取得する
-5. `ISSUE-000034` / #376でactual Oracle principal / grant / transaction / query-only runtimeのread-only Evidenceを確定する
-6. `ISSUE-000033` / #371で実Oracle条件に基づくdriver / Host assemblyを確定する
-7. 観測事実を根拠に必要なOracle realization / driver assemblyを明示authoringする
-8. #214 acceptance / Oracle driver / actual readを事前確認する
-9. 必要なsource / generated artifact変更をすべてcommitする
+4. Gate B必須Evidenceの不足からsource / generated artifact変更が必要ならcommitする
+5. working treeをcleanにする
+
+#214 / #371 / #376はactual Oracle環境情報が得られた時点で並行継続します。Gate Bを通すためだけに未観測Oracle情報を仮定しません。
 
 Phase 1で成功JSONを得ても、その後repository sourceが変わった場合、そのJSONを最終完了Evidenceとして流用しません。
 
 ### Phase 2 — 最終収束 / candidate revision Rを固定する
 
-sourceとgenerated artifactを確定したclean revisionをRとして選びます。
+1. sourceとgenerated artifactを確定したclean revisionをRとして選ぶ
+2. Rで#310を実行する
+3. Rで#255をcheck-only実行する
+4. Rで#308を実行する
+5. #310 / #255 / #308の完了EvidenceがRへ揃っていることを確認する
+6. #214 actual Oracleの状態を`verified`または`unresolved / not verified`として明示する
+7. negative caseを再監査する
+8. Rを対象にGate BをReady / Not Readyで判定する
+9. Readyなら#291でRをHandover Baselineとして固定する
 
-1. Rで#310を実行する
-2. Rで#255をcheck-only実行する
-3. Rで#308を実行する
-4. Rで#214 acceptance receiptを再取得し、Rのruntime / realization / driver assemblyと#376のread-only境界でactual Oracle readを行う
-5. 4 laneすべての完了EvidenceがRを参照していることを確認する
-6. negative caseを再監査する
-7. Rを対象にGate BをReady / Not Readyで判定する
-8. Readyなら#291でRをHandover Baselineとして固定する
+Phase 2中に必須Evidenceがsource変更を要求した場合は、その変更をcommitした新revisionを新しいRとして選び直し、3 Evidenceをそのrevisionへもう一度揃えます。
 
-Phase 2中にsource変更が必要になった場合は、その変更をcommitした新revisionを新しいRとして選び直し、4 laneをそのrevisionへもう一度揃えます。
-
-外部観測資料そのものの観測時刻はRより前でも構いません。ただし、その資料を現在authoringへ照合する#214 acceptance receiptとactual readはRへ結び直します。#371 / #376でsource変更が生じた場合もPhase 1で確定・commitし、その後にRを選びます。
+#214がGate B判定前に完了した場合は、actual external Evidence / acceptance receipt / actual readをRへ追跡可能にしてHandoverへ含めます。未完了なら#214 / #371 / #376をunresolvedとして残します。
 
 ## 共通原則
 
@@ -133,13 +128,14 @@ Phase 2中にsource変更が必要になった場合は、その変更をcommit�
 - 失敗を0件・NotSatisfied・denied等の正常業務結果へ変換しない
 - 一致済み生成物を形式的に書き換えない
 - generated artifactの`-write`を完了Evidenceそのものとして扱わない
-- Gate Bへ採用するEvidenceは、後から同じsourceへ戻れるclean revisionへ固定する
+- Gate Bへ採用する必須Evidenceは、後から同じsourceへ戻れるclean revisionへ固定する
 - Evidence run実行前後でsource revisionが変化した場合は完了Evidenceとして採用しない
 - stdoutでEvidenceを保存するとき、Repository内の新規fileをredirect先にして開始前clean条件を壊さない
 - Phase 1の成功Evidenceを、source変更後のPhase 2完了Evidenceへ読み替えない
-- #371 / #376を独立したGate B Evidence laneとして数えない
+- #214未完了をactual Oracle成功へ読み替えない
+- #310 synthetic Scenarioや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしない
+- Web側でunresolved Oracle物理情報を補完しない
 - read-only確認のためだけに実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lock等を試行しない
-- SQLが`SELECT`に見えること、read-only transaction、TEI query-only runtimeの一つだけをread-only保証全体へ格上げしない
 - GitHub Actionsを本手順から再有効化しない
 
 ## 0. 実行前確認
@@ -154,7 +150,7 @@ go version
 
 Evidenceを特定revisionへ固定するため、意図しない未commit差分がある場合は先に識別します。既存差分を機械的に破棄しません。
 
-#310 / #255 / #308 / #214 acceptanceの完了Evidenceは、いずれも開始時cleanだけでなく、toolが要求する範囲で**実行後も同じHEADかつclean working tree**であることを要求します。
+#310 / #255 / #308の完了Evidenceは、開始時cleanだけでなく、toolが要求する範囲で**実行後も同じHEADかつclean working tree**であることを要求します。
 
 Phase 2では、実行前に次も記録します。
 
@@ -177,7 +173,7 @@ go run ./cmd/tei validate -workspace reference/workspace
 ok
 ```
 
-Validation Errorがある場合は、その後のgolden再生成やprovider / external Evidence実行へ進みません。生成物側を手編集して回避しません。
+Validation Errorがある場合は、その後のgolden再生成やprovider Evidence実行へ進みません。生成物側を手編集して回避しません。
 
 external Evidence tool、PostgreSQL Evidence tool、Repository Evidence runner、generated artifact Evidence runner、Durable Run golden tool自身も通常Validation Errorでfail closedします。ただし最初の明示Validationは、前提不整合を早期に分離するため残します。
 
@@ -210,9 +206,7 @@ runnerは次を一つのEvidenceへ束ねます。
 
 PR #336以降、Repository状態観測は#255 / #308と同じ`tools/internal/repositoryevidence`へ収束しています。PR #346以降は、その共有helper自体のpure Conformanceもtargeted Evidenceとして独立実行します。
 
-PR #351以降、開始時working treeがcleanであっても、post-run確認が完了するまでは`reproducibleRevision=false`を維持します。Go toolchain取得、Workspace Load / Validation、targeted test等で途中失敗したJSONを、再現可能な成功Evidenceとして扱いません。
-
-`reproducibleRevision = true`になるには、実行前後でHEADが同一で、両時点のworking treeがcleanである必要があります。test自体が成功していても、並行操作やtest実行でsource状態が変わったrunはGate B完了Evidenceとして採用しません。
+PR #351以降、開始時working treeがcleanであっても、post-run確認が完了するまでは`reproducibleRevision=false`を維持します。
 
 ### 最終UI-less Scenario
 
@@ -238,7 +232,9 @@ Authentication
  -> separate Observation read
 ```
 
-synthetic adapterを含むため、成功してもactual Oracle / real PostgreSQL / 実外部状態のEvidenceにはしません。
+synthetic adapterを含むため、成功してもactual Oracle / real PostgreSQL / 実外部Command Evidenceにはしません。
+
+Customer referenceの意味・identity・result boundaryをRepositoryだけから再現できることを確認しますが、actual Oracle compatibilityは主張しません。
 
 ### external Evidence intake tests
 
@@ -264,11 +260,11 @@ go test ./internal/database/externalqueryevidence \
 - source-fixed acceptance receiptのConformance
 - Evidence artifact fingerprintのConformance
 
+このcheckは、actual Oracleが未取得でも**未観測外部事実を推測しないfail-closed境界**をGate Bの必須Evidenceとして確認するものです。
+
 ここでのtest成功は#214 actual external asset Evidenceではありません。
 
 ### Repository source固定境界
-
-PR #346以降、runnerは共有source観測helperのpure Conformanceを3本目のtargeted Evidenceとして実行します。
 
 ```bash
 go test ./tools/internal/repositoryevidence \
@@ -285,8 +281,6 @@ go test ./tools/internal/repositoryevidence \
 - 終了時working treeがclean
 - どれか一つでも欠ける状態を再現可能と判定しない
 
-runner自身のpackageはこのtargeted `go test`へ含めません。将来runner側のtestが`run()`を呼ぶようになった場合にも自己再帰の経路を作らず、共有helperのpure契約だけを検証します。
-
 ### 広いGo test
 
 横断回帰も同じrunで確認できる環境では`-broad`を指定します。
@@ -296,7 +290,7 @@ go run ./tools/reference-gate-b-repository-evidence -broad \
   > /tmp/tei-gate-b-repository-evidence.json
 ```
 
-これは3本のtargeted Evidence成功後に`go test ./...`を別checkとして実行します。広いtestの失敗をtargeted Evidenceの成功へ畳み込まず、逆に未実行をgreenとも扱いません。
+未実行をgreenとは扱いません。
 
 ## 3. #255 generated artifactのcheck-only Evidenceを取得する
 
@@ -321,8 +315,6 @@ runnerは**`-write`を呼びません**。一つのrunで次を確認します�
 8. 実行後working tree clean
 9. `reproducibleRevision`
 
-PR #336以降、source revision観測は#310 / #308と同じtool-only境界を利用します。
-
 成功条件:
 
 - `reference-golden`が一致する
@@ -331,17 +323,13 @@ PR #336以降、source revision観測は#310 / #308と同じtool-only境界を�
 - 実行前後でworking treeがclean
 - `reproducibleRevision = true`
 
-最初から成功した場合は形式的に`-write`しません。このJSONを#255 Evidence候補として扱います。
-
-不一致の場合は#255完了ではなく、staleを検出した診断結果です。
+最初から成功した場合は形式的に`-write`しません。
 
 ### 個別診断: World / Plugin Lock
 
 ```bash
 go run ./tools/reference-golden
 ```
-
-このtoolはCanonical WorkspaceからWorld / Plugin Lockを生成して保存goldenと比較し、保存Durable RunのPlugin Lock依存も確認します。
 
 一致している場合は形式的に`-write`しません。
 
@@ -351,14 +339,7 @@ go run ./tools/reference-golden
 go run ./tools/reference-golden -write
 ```
 
-PR #367以降、World / Plugin Lockの修復writeも既存goldenを最初にtruncateしません。同じdirectoryの一時fileへ全内容を書き込み、Sync / Closeした後にRenameし、一時fileは成功・失敗のどちらでもcleanupします。これは修復途中のwrite失敗で既存artifactを空または途中内容へ壊さないための境界であり、複数artifact全体を一つのtransactionとして扱う契約ではありません。
-
-更新対象:
-
-```text
-reference/world.json
-reference/workspace/.tei/plugin-lock.json
-```
+PR #367以降、World / Plugin Lockの修復writeも既存goldenを最初にtruncateしません。同じdirectoryの一時fileへ全内容を書き込み、Sync / Closeした後にRenameし、一時fileは成功・失敗のどちらでもcleanupします。
 
 更新後:
 
@@ -374,8 +355,6 @@ git diff -- \
 - 追加済みCapability等が期待どおり反映されたか
 - 未観測のexternal physical情報が混入していないか
 - 並び順やfingerprintだけを人手で合わせていないか
-
-`reference-golden -write`後にDurable Run依存がstaleと表示されても、fingerprintだけを手編集しません。
 
 **この`-write`は修復操作です。** working treeがdirtyになった場合、その状態でcheckが通っても#255完了Evidenceにはしません。safe replace自体の成功も完了Evidenceへ格上げしません。
 
@@ -415,8 +394,6 @@ Reference Workspace Validation
   -> saved Durable Runとの完全一致check
 ```
 
-Plugin Lockが変わっていなくても、Durable Run全体の正規再現性を確認するため、このcheckは実行します。
-
 PR #326以降、不正なSolution Canonical IDもpanicではなく通常errorでfail closedします。
 
 ### write — staleの場合だけ
@@ -433,13 +410,6 @@ go run ./tools/reference-durable-run-golden -write
 git diff -- reference/order_rollout.durable-run.m0.21.start.json
 ```
 
-確認観点:
-
-- `pluginLockFingerprint`が現在Plugin Lockと整合する
-- `runtimePolicyFingerprint`を含む差分が正規生成入力から説明できる
-- fixed observed stateを生成結果へ合わせて書き換えていない
-- fingerprintやJSONの一部だけを手編集していない
-
 ### stale修復後の確定
 
 World / Plugin Lock / Durable Runのいずれかに差分が生じた場合:
@@ -451,13 +421,13 @@ World / Plugin Lock / Durable Runのいずれかに差分が生じた場合:
 
 `-write`直後のdirty treeを最終Evidenceのsource revisionとして記録しません。
 
-Phase 1で修復差分をcommitした後は、そのcommitを含むrevisionをcandidate Rとして選ぶか、さらに#214 authoring等を終えてからRを選びます。
-
 ## 6. #308 実PostgreSQL engineでheader-detailを確認する
 
 ### Evidenceの性質
 
 これは**real PostgreSQL engine + ephemeral fixture runtime Evidence**です。production既存Databaseの物理事実や実データEvidenceではありません。
+
+actual OracleをGate B必須から外しても、この実Provider Evidenceは必須に残します。Gate Bをsynthetic Evidenceだけへ縮退させないためです。
 
 ### source revisionのfail-closed境界
 
@@ -470,23 +440,7 @@ git status --porcelain
 
 working treeがdirtyならWorkspace ValidationやPostgreSQL接続へ進みません。
 
-Provider Evidence、fixture cleanup、Database復元確認の後にもHEAD / working treeを再確認し、次の場合は成功JSONを出しません。
-
-- 実行中にHEADが変化した
-- 実行後にworking tree差分が残った
-- post-run revision文字列が開始revisionと一致しない
-
-成功Evidenceには少なくとも次を要求します。
-
-```text
-repositoryRevision
-workingTreeClean = true
-reproducibleRevision = true
-postRunRepository.checked = true
-postRunRepository.repositoryRevision = repositoryRevision
-postRunRepository.revisionStable = true
-postRunRepository.workingTreeClean = true
-```
+Provider Evidence、fixture cleanup、Database復元確認の後にもHEAD / working treeを再確認します。
 
 ### fixture前のfail-closed安全境界
 
@@ -518,8 +472,6 @@ Provider runtime Evidence
 
 PR #365以降、Event Triggerはuser relationとは別にDDLへ介入し得るため、relationが0件でもEvent Triggerが1件以上存在するDatabaseはfixture実行先にしません。disabledなEvent Triggerも既存objectとして扱います。
 
-既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用する処理や、既定Databaseで続行するoverrideはありません。
-
 `TEI_TEST_POSTGRES_DSN`には**Evidence専用に作成した空PostgreSQL Database**を指定します。
 
 ```bash
@@ -529,8 +481,6 @@ export TEI_TEST_POSTGRES_DSN='postgres://...'
 DSN、credential、接続先の実Database名を通常Evidenceへ保存しません。
 
 ### fixture前安全判定Evidence
-
-PR #335以降、guardを通ったという実装事実だけでなく、そのrunで確認した非機密な結果を`fixtureDatabaseSafety`へ残します。PR #365以降はEvent Trigger件数も含めます。
 
 期待値:
 
@@ -546,8 +496,6 @@ PR #335以降、guardを通ったという実装事実だけでなく、そのru
 }
 ```
 
-`guardPassed = true`を「組織運用上、このDatabaseがEvidence専用であることの完全証明」へ格上げしません。
-
 ### 実行
 
 ```bash
@@ -555,22 +503,14 @@ go run ./tools/reference-postgres-header-detail-runtime \
   > /tmp/tei-gate-b-postgres-header-detail.json
 ```
 
-Repository内へ直接redirectしません。`tee`を使う場合も保存先はRepository外とします。
+Repository内へ直接redirectしません。
 
 期待するProvider Evidence:
 
 - `evidenceNature = real-postgres-ephemeral-fixture`
 - `repositoryRevision`
 - `reproducibleRevision = true`
-- `fixtureObject = public.order_lines`
-- `preexistingFixtureProtected = true`
-- `fixtureOwnedByTool = true`
-- `fixtureDatabaseSafety.guardPassed = true`
-- `fixtureDatabaseSafety.nonDefaultDatabaseVerified = true`
-- `fixtureDatabaseSafety.userRelationsBeforeFixture = 0`
-- `fixtureDatabaseSafety.eventTriggersBeforeFixture = 0`
-- `fixtureDatabaseSafety.fixtureObjectAbsentBeforeCreate = true`
-- `fixtureDatabaseSafety.databaseIdentityPersisted = false`
+- fixture前安全条件
 - Pattern = `order_entry.order_lines`
 - Relation = `sales.order.lines`
 - Environment = `development`
@@ -581,15 +521,15 @@ Repository内へ直接redirectしません。`tee`を使う場合も保存先は
 - rows = 2
 - zeroRows = 0
 - Execution Error observed = true
-- `sales.order_line.order_id`がSemantic attributeへ追加されていない
 - Relation Storage column = `order_id`
 - Semantic mapping applied = true
+- support columnをSemantic attributeへ追加していない
 
 ### fixture cleanup / missing-table Error / 空状態復元
 
 Providerの2件 / 0件を確認した後、tool自身が作成した`public.order_lines`をDROPし、同じContract Queryを再実行してphysical table欠落をExecution Errorとして観測します。
 
-PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測します。PR #365以降は、user relationとfixture objectに加えてEvent Triggerも再観測します。
+その後PostgreSQL catalogを再観測します。
 
 期待値:
 
@@ -602,27 +542,13 @@ PR #341以降、そこで成功扱いせずPostgreSQL catalogを再観測しま�
 }
 ```
 
-つまり成功runでは、少なくとも次を一続きに確認します。
-
-```text
-fixture前 empty-DB guard
- -> user relation 0件 / Event Trigger 0件 / fixture object不在
- -> fixture CREATE
- -> 2件 / 0件
- -> fixture DROP
- -> missing-table Execution Error
- -> user relation 0件 / Event Trigger 0件 / fixture object不在を再観測
- -> Repository HEAD / clean再確認
- -> JSON Evidence
-```
-
 終了時にuser relationまたはEvent Triggerが残る場合、それがtool由来か他主体の並行変更かを推測せずfail closedします。
 
-## 7. #214 actual Oracle Evidenceを受け取る
+## 7. #214 actual Oracle Evidence — 継続track
 
-この工程は実外部事実が得られるまで**Blockedのまま保持**します。
+この工程は実外部事実が得られるまで**Blockedのまま保持して構いません**。Gate B必須Evidenceではありません。
 
-`ISSUE-000033` / #371と`ISSUE-000034` / #376はこの工程の内部分解です。どちらか一方の管理Issueを作成しただけで#214を完了扱いしません。
+#214 / #371 / #376を「Gate Bから外れたので不要」と扱いません。actual Oracle compatibility / actual `master_data` integrationを主張する前に必ず継続します。
 
 最低限必要な観測事実:
 
@@ -634,11 +560,8 @@ fixture前 empty-DB guard
 - raw → `customer.customer` Semantic mapping
 - native Oracle SQLまたは他realization source
 - source / provenance
-- 匿名化・縮約等を行った場合の加工内容
-- #376で確認するprincipal / role / grant等のread-only Evidence
-- 採用する場合のread-only transaction / session境界
-- Reference read pathのquery-only runtime境界
-- #371で確定する採用Oracle driver / Host assemblyのparameter / result / NULL / error伝播Evidence
+- #376 principal / role / grant等のread-only Evidence
+- #371 actual Oracle driver / Host assemblyのparameter / result / NULL / error伝播Evidence
 
 未観測の`CUSTOMER`、`CUSTOMER_ID`等を仮定しません。
 
@@ -655,7 +578,7 @@ read-only保証は、**実外部assetへ試し書きして失敗を確認する�
 5. TEI Reference read pathがwrite用`Exec`を露出させないquery-only runtime境界
 6. actual native Queryが上記境界で成功すること
 
-principal / grant Evidenceを主たるread-only根拠とし、transaction / sessionやTEI側query-only runtimeを追加防御として扱います。一層だけをread-only保証全体へ格上げしません。
+principal / grant Evidenceを主たるread-only根拠とし、transaction / sessionやTEI側query-only runtimeを追加防御として扱います。
 
 次のprobeはread-only確認目的では実行しません。
 
@@ -667,97 +590,40 @@ principal / grant Evidenceを主たるread-only根拠とし、transaction / sess
 - `SELECT ... FOR UPDATE`
 - exclusive `LOCK TABLE`
 
-権限設定が想定より広かった場合に実データ変更・lock・availability影響を生み得るためです。
-
-credential / passwordはEvidenceへ保存しません。principal identity自体を公開できない場合は匿名化・alias化の必要性を確認し、その加工をprovenanceへ残します。
-
 ### #371 actual Oracle driver / Host assemblyを確定する
 
 具体driverの選択・登録、DSN、credential、TLS / TCPS、Wallet、connection設定はHost / Reference assembly側で確定します。Canonical modelやOracle Provider Coreへ具体driverを固定しません。
 
-実Oracle version / authentication / encryption / datatype / NULL / Host制約を観測してから採用driverを決定します。未観測条件をdriver READMEや慣習から補完せず、driver dependencyやGo toolchain変更を先行決定しません。
+実Oracle version / authentication / encryption / datatype / NULL / Host制約を観測してから採用driverを決定します。
 
-#371でsource変更が必要になった場合はPhase 1でcommitし、その後にcandidate Rを固定します。
+### Evidence取得後のauthoring / acceptance / actual read
 
-### Evidence取得後のauthoring
+actual Oracle情報が得られた場合は従来のfail-closed手順を維持します。
 
 1. 観測事実をexternal Evidence JSONへ記録する
 2. 観測事実を根拠に`ContractQuerySQLRealization`を明示authoringする
 3. native sourceを通常Workspaceから追跡可能にする
 4. #371のdriver / Host assemblyにsource変更がある場合は明示authoringする
-
-EvidenceからSQL realizationを生成しません。
-
-### source-fixed acceptance receipt — PR #340
-
-clean revisionで次を実行します。
-
-```bash
-go run ./tools/reference-external-query-evidence \
-  -workspace reference/workspace \
-  -evidence <observed-evidence.json> \
-  > /tmp/tei-external-query-evidence-acceptance.json
-```
-
-**Repository内の新規fileへ直接redirectしません。** shellがcommand開始前にfileを作るとworking treeがdirtyになり、toolのclean revision条件と自己矛盾します。
-
-このtoolはEvidence JSONを読む前にRepository revision / working treeを確認し、dirtyなら受理しません。
-
-external Evidence exact bytesのSHA-256を計算した後、strict load / Workspace Validation / target + provider / ownership / mapping / native source / provenance / read-only Evidenceを照合します。
-
-照合後にもHEAD / working treeを再確認し、同じclean revisionへ固定できた場合だけJSON receiptを出します。
-
-期待する主な項目:
-
-```text
-evidenceNature = external-query-evidence-acceptance
-repositoryRevision
-workingTreeClean = true
-reproducibleRevision = true
-postRunRepository.checked = true
-postRunRepository.repositoryRevision = repositoryRevision
-postRunRepository.revisionStable = true
-postRunRepository.workingTreeClean = true
-evidenceArtifactFingerprint = sha256:<hex>
-target
-provider = oracle
-accepted = true
-```
-
-`evidenceArtifactFingerprint`はtoolが読み込んだexternal Evidence JSONの**exact bytes**を識別します。
-
-既存の`nativeSource.fingerprint`は、観測したnative sourceと現在authoringされている`ContractQuerySQLRealization.Source`が一致するかを確認します。両者は相互代替しません。
-
-receiptへ次を複製しません。
-
-- physical object / parameter / raw columns
-- physical type / NULL情報
-- provenance本文
-- read-only mechanism本文
-- Evidence file path
-- credential / secret
-
-### acceptanceとactual readを分離する
-
-acceptance receiptが成功しても#214は完了しません。
-
-次に:
-
-1. #376で確認したprincipal / grant等のread-only境界からOracle connectionを構成する
-2. #371で確定した採用Oracle driver / Host assemblyでnamed parameter / result / NULL / error伝播を確認する
-3. 採用する場合はread-only transaction / sessionを開始し、Reference read pathのquery-only境界を維持する
-4. `development / master_data.dev / database.query.oracle`のruntime Executorを構成する
-5. Workspace → actual Oracle read → explicit Semantic mapping → Customer resultを一続きに確認する
-
-PR #364 / #366以降、Oracle Runner固有Payloadはactual read時にdriverが観測したraw result列名と、driverが提供できた範囲の列metadataを保持できます。metadataは`name`、`databaseTypeName`、`nullable`、`length`、`precision`、`scale`で、driverが提供できない項目はfalseや0へ補完せず未観測のまま保持します。Go側の`ScanType`やraw row値は通常Evidenceへ追加しません。
-
-このruntime metadataは、provenance付きexternal Evidenceの`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。actual read時のdriver観測として照合材料に使います。`PhysicalType`文字列とdriverの`DatabaseTypeName`が同じ表記になるかは実Oracle / 採用driverを観測する前に仮定せず、自動文字列一致規則を先行固定しません。
+5. clean revisionで`tools/reference-external-query-evidence`を実行する
+6. source-fixed acceptance receiptを取得する
+7. #376のread-only境界からactual Oracle connectionを構成する
+8. #371のdriverでactual readを行う
+9. raw result → Semantic Customerを明示mappingする
 
 acceptance receiptをactual Oracle read Evidenceへ格上げしません。
 
-Phase 1でこの工程を通してauthoring変更が必要になった場合は、その変更をcommitしてからPhase 2へ進みます。
+### Gate B / Handoverとの関係
 
-Phase 2では、同じexternal Evidence artifactを使う場合でも、candidate revision R上でacceptance receiptを再取得し、Rのruntime / realization / driver assemblyと#376のread-only境界に対してactual readを再確認します。
+Gate B判定時点で#214が完了している場合は、candidate Rのauthoring / runtimeへacceptance receiptとactual readを結び付けてHandoverへ含めます。
+
+未完了の場合は、Handoverへ次をunresolvedとして残します。
+
+- #214 actual external Oracle Evidence: not verified
+- #371 actual Oracle driver / Host assembly: 未確定または未検証
+- #376 actual Oracle read-only Evidence: 未取得
+- actual Oracle compatibilityを未検証とするclaim boundary
+
+Web側でこのunresolvedをOracle物理情報の仮置きにより解消しません。
 
 ## 8. Phase 1の最終差分を確認する
 
@@ -776,11 +642,11 @@ DSN、credential、runtime parameter値、一時Evidence fileを誤ってcommit�
 
 #255でgenerated artifactを修復した場合は、dirty差分を残したままPhase 2へ進まず、意図したartifactをcommitします。
 
-#214の観測事実からOracle realization等をauthoringした場合や、#371 / #376のためにHost / transaction setup等のsource変更が必要になった場合も、必要なValidationと差分確認を行い、Phase 2開始前にcommitします。
+#214の継続作業でsource変更が生じても、Gate Cへその変更を取り込むかはHandover契約に従って判断します。Gate Bを通すためだけに未観測Oracle情報をauthoringしません。
 
 Phase 2へ入る時点ではworking treeをcleanにします。
 
-## 9. Phase 2でcandidate revision Rへ4 laneを揃える
+## 9. Phase 2でcandidate revision Rへ3必須Evidenceを揃える
 
 ### 9.1 Rを固定する
 
@@ -819,78 +685,56 @@ go run ./tools/reference-postgres-header-detail-runtime \
 
 Evidence専用の空PostgreSQL Databaseを使用し、JSONの`repositoryRevision`がRと一致することを確認します。fixture前後の`userRelations... = 0`、`eventTriggers... = 0`、fixture object不在も確認します。
 
-### 9.5 Rで#214 acceptance / actual readを再確認する
-
-```bash
-go run ./tools/reference-external-query-evidence \
-  -workspace reference/workspace \
-  -evidence <observed-evidence.json> \
-  > /tmp/tei-external-query-evidence-acceptance.json
-```
-
-receiptの`repositoryRevision`がRと一致し、`reproducibleRevision = true`であることを確認します。
-
-続いて、Rのruntime / realization / driver assemblyに対して、#376で確認したprincipal / grant等のread-only境界からactual readを行い、explicit Semantic mappingまで確認します。driverが提供したraw列metadataはexternal Evidenceと実行時観測の対応確認に使いますが、未提供項目を推測して埋めません。
-
-actual read Evidenceから少なくとも次へ戻れることを確認します。
-
-- candidate repository revision R
-- #371で確定したdriver / Host assembly
-- #376のprincipal / grant / transaction / query-only runtime Evidence参照
-- Environment / Database instance / executor Capability / Contract Query target
-- raw result列名 / driver提供metadata
-- explicit Semantic Customer mapping
-- 成功 / 0件 / Execution Errorの結果分類
-
-### 9.6 4 laneのrevision一致を確認する
-
-少なくとも次を確認します。
+### 9.5 3必須Evidenceのrevision一致を確認する
 
 ```text
 #310 repositoryRevision = R
 #255 repositoryRevision = R
 #308 repositoryRevision = R
-#214 acceptance repositoryRevision = R
-#214 actual read target source = R
 ```
 
-一つでもRと異なる場合、そのlaneの古い成功EvidenceをRへ読み替えません。
-
-#371 / #376のEvidenceがRより前の外部観測を含んでいても構いませんが、Rのactual readがそれらの有効なEvidence参照へ戻れない場合は#214完了Evidenceへ採用しません。
+一つでもRと異なる場合、その古い成功EvidenceをRへ読み替えません。
 
 Phase 2中にsource変更が必要になった場合はRを破棄し、変更をcommitした後、新しいRで9.1からやり直します。
+
+### 9.6 #214 actual Oracle状態を記録する
+
+Gate B最終監査前に、#214を次のどちらかへ分類します。
+
+```text
+verified
+unresolved / not verified
+```
+
+`verified`の場合はactual external Evidence / acceptance receipt / actual readへ戻れることを確認します。
+
+`unresolved`の場合は#214 / #371 / #376とclaim制約をHandoverへ残します。
 
 ## 10. Gate B監査へ戻す
 
 取得したEvidenceを[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)へ対応付けます。
 
-| Evidence lane | 判定対象 |
+| Evidence | 判定対象 |
 | --- | --- |
 | #310 `reference-gate-b-repository-evidence` JSON | UI-less Scenario / external Evidence intake Conformance / Repository source固定Conformance / normal Go runner / source revision不変性 |
 | #255 `reference-generated-artifact-evidence` JSON | World / Plugin Lock / Durable Runのclean revision再現性 |
-| #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性（user relation / Event Trigger / fixture object）/ Provider runtime / cleanup後復元 |
-| #214 external Evidence + acceptance receipt + actual Oracle Evidence | external-observed assetの実物理事実 / artifact identity / #376 read-only Evidence / #371 driver integration / Oracle actual read / driver観測raw列metadata |
+| #308 PostgreSQL tool JSON | source-fixed real PostgreSQL engine / fixture前安全性 / Provider runtime / cleanup後復元 |
+| #214 status | actual external Oracleがverifiedかunresolvedか、Oracle compatibility claim境界 |
 
-#214 acceptance receiptだけをactual external asset Evidence完了とは扱いません。#371 / #376の子Issue完了だけでも#214を完了扱いにしません。
-
-一つのEvidence成功を別種類のEvidenceの代替にしません。
-
-さらに最終Ready判定では、4 laneの完了Evidenceがすべて同じcandidate revision Rへ揃っていることを確認します。
+#214がunresolvedでもGate Bを自動的にNot Readyへ戻しません。ただしunresolvedを隠したり、#310 / #308で代替したりしません。
 
 negative caseとして少なくとも次を再監査します。
 
 - secret / credentialがEvidenceへ混入していない
-- read-onlyがSQL文字列、read-only transaction、TEI query-only runtimeの一層だけではなく、#376のprincipal / grant Evidenceを含む実効境界から説明できる
-- read-only確認のため実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lock等のunsafe probeを行っていない
-- #371で採用したdriver / Host assemblyがRのactual readへ結び付いている
 - 0件がExecution Errorへ化けていない
 - Execution Errorが正常業務結果へ化けていない
 - Observation期待不一致とread Execution Errorを混同していない
 - Evidence run実行中にsource revisionが変化していない
-- #308 cleanup後にEvidence専用空DBの観測条件（user relation 0件 / Event Trigger 0件 / fixture object不在）へ戻っている
+- #308 cleanup後にEvidence専用空DBの観測条件へ戻っている
 - generated artifactを手編集していない
 - external EvidenceをCanonical meaningへ昇格していない
-- Oracle driverが提供していない列metadataを推測してEvidenceへ補完していない
+- #214 unresolvedなのにOracle compatibilityを実証済みと表現していない
+- Web側でOracle object / column / datatype / read-only方式を補う前提をHandoverへ持ち込んでいない
 
 ## 停止条件
 
@@ -910,33 +754,34 @@ negative caseとして少なくとも次を再監査します。
 - #308の接続先にsystem / temporary領域以外のuser relationが1件以上存在する
 - #308の接続先にEvent Triggerが1件以上存在する
 - `public.order_lines`が既に存在するPostgreSQL接続先
-- #308 cleanup後にuser relationが残る
-- #308 cleanup後にEvent Triggerが存在する
-- #308 cleanup後に`public.order_lines`が存在する
-- #214 acceptance開始時のworking treeがdirtyである
-- #214 acceptance実行中にHEADが変わる、または実行後working treeがdirtyである
-- #214でprovenanceのない物理情報しかない
-- #214でSQL realizationが存在せず、Evidenceから補完しないと進めない
-- #214 acceptance receiptだけをactual read完了として扱おうとしている
-- #214 actual readでdriverが提供していない型 / NULL metadataを推測して補完しないと進めない
-- #371でactual Oracle条件を確認せずdriver / Host assemblyを固定しようとしている
-- #376でprincipal / grant Evidenceを確認せず、SQL文字列・read-only transaction・TEI query-only runtimeの一層だけからread-only全体を主張している
-- #376のread-only確認目的で実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lock等を試行しようとしている
-- #214 actual readが#371で確定したdriver / Host assemblyまたは#376のread-only Evidenceへ追跡できない
-- #371 / #376を独立した第五・第六Gate B Evidence laneとして数えようとしている
+- #308 cleanup後にuser relation / Event Trigger / fixture objectが残る
 - generated artifactがstaleなのにfingerprintやJSON断片だけを手編集しようとしている
 - fixed observed fixtureを生成結果へ合わせて機械的に変更しようとしている
-- EvidenceとSQL realizationが一致しない
 - 実行失敗を0件・正常Business Resultへ変換しないと先へ進めない
-- Phase 2で4 laneの`repositoryRevision`がcandidate Rへ揃っていない
+- Phase 2で#310 / #255 / #308の`repositoryRevision`がcandidate Rへ揃っていない
 - Phase 2中にsource変更が生じたのに、古いRの成功Evidenceを流用しようとしている
+- #214 unresolvedなのにactual Oracle compatibility / `master_data` actual integrationを実証済みとして扱おうとしている
+- #310 synthetic Scenarioや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしようとしている
+- Web側でOracle物理情報を仮置きしないと第一Targetへ進めない状態をGate B Readyとみなそうとしている
 
-これらは「作業が止まった」のではなく、Gate Bが意図どおり不足を露出させたEvidenceとして扱います。
+### #214継続trackの停止条件
+
+#214を実行する場合は、従来のfail-closed安全条件を維持します。
+
+- provenanceのない物理情報しかない
+- SQL realizationが存在せず、Evidenceから補完しないと進めない
+- acceptance receiptだけをactual read完了として扱おうとしている
+- driverが提供していない型 / NULL metadataを推測しないと進めない
+- #371でactual Oracle条件を確認せずdriver / Host assemblyを固定しようとしている
+- #376でprincipal / grant Evidenceを確認せずread-only全体を主張している
+- read-only確認目的で実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lock等を試行しようとしている
+
+これらは「作業が止まった」のではなく、不足やunresolvedが意図どおり露出した状態として扱います。
 
 ## Gate B通過後
 
-4 laneの完了Evidenceが同じrevision Rへ揃い、本監査でRについてGate BをReadyと判定した後も、すぐに最新`main`をWeb baselineへしません。
+#310 / #255 / #308の完了Evidenceが同じrevision Rへ揃い、本監査でRについてGate BをReadyと判定した後も、すぐに最新`main`をWeb baselineへしません。
 
-`GATE_B_TO_C_HANDOVER_CONTRACT.md` / #291に従い、RとGate B EvidenceをHandover Baselineとして固定してから第一Web Target #70 / Gate C #270へ進みます。
+`GATE_B_TO_C_HANDOVER_CONTRACT.md` / #291に従い、RとGate B EvidenceをHandover Baselineとして固定し、#214 actual Oracleのverified / unresolved状態を明示してから第一Web Target #70 / Gate C #270へ進みます。
 
-Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認し、4 laneを新しいrevisionへ揃えてから新しいHandover Baselineを発行します。
+Application / Driverの意味が後から変わった場合は既存baselineへ黙って上書きせず、影響するGate B Evidenceを再確認して新しいHandover Baselineを発行します。
