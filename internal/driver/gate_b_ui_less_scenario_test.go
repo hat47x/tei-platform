@@ -208,13 +208,14 @@ func gateBCompositeAdapters(state *syntheticOrderStateStore) driver.BindingAdapt
 			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
 				return capabilityinvoke.BusinessResult{
 					Capability: capability,
+					Mode:       capabilityinvoke.ResultOutcome,
 					Outcome:    "authenticated",
 					Payload:    legacyauth.AuthenticatedSubject{SubjectID: "synthetic-order-editor"},
 				}, nil
 			}), nil
 		case "order_entry/security.authorize":
 			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
-				return capabilityinvoke.BusinessResult{Capability: capability, Outcome: "allowed"}, nil
+				return capabilityinvoke.BusinessResult{Capability: capability, Mode: capabilityinvoke.ResultOutcome, Outcome: "allowed"}, nil
 			}), nil
 		case "order_entry/sales.order.submit":
 			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
