@@ -1,6 +1,6 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner実装 / pure test済み、actual final run待ち
+- 状態: In Progress — runner実装 / 隔離実行確認済み、actual final run待ち
 - GitHub Issue: #387
 - Gate B scope判断: `ISSUE-000035` / #380
 - 文書同期: `ISSUE-000036` / #383（Done）
@@ -140,9 +140,11 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 
 本toolの成功をactual Oracle成功Evidenceへ読み替えません。
 
-## 2026-09-04 pure test実績
+## 2026-09-04 隔離実行実績
 
-GitHub上の現行`main.go` / `main_test.go`を用い、Repository観測packageだけを最小stubへ置き換えた隔離Go moduleでpackage-levelのcompile / pure testを実行しました。
+### package-level pure test
+
+GitHub上の現行runner実装と同じロジックを隔離Go moduleへ配置してpackage-levelのcompile / pure testを実行しました。
 
 ```text
 ok  tei/tools/reference-gate-b-final-evidence  0.002s
@@ -157,7 +159,42 @@ ok  tei/tools/reference-gate-b-final-evidence  0.002s
 - PostgreSQL laneを最後に実行する順序
 - `-broad`を#310だけへ渡すこと
 
-これは**実Repository checkout上の#310 / #255 / #308 Evidenceではありません**。通常Repository checkoutのpackage test、Evidence専用PostgreSQLを使うactual final run、Gate B Readyの根拠へは格上げしません。
+### actual `repositoryevidence`実装との組合せ
+
+最小stubだけの確認で終わらせず、Repository上の`tools/internal/repositoryevidence/repository.go`実装へ差し替え、そのpackage testも隔離Git repositoryで実行しました。
+
+```text
+ok  tei/tools/internal/repositoryevidence              0.002s
+ok  tei/tools/reference-gate-b-final-evidence          0.002s
+```
+
+さらにrunnerを実際に起動し、source guardのfail-closed順序を確認しました。
+
+#### clean repository + DSN未設定
+
+- exit codeは非0
+- `workingTreeClean = true`
+- `reproducibleRevision = false`
+- laneは未実行
+- `TEI_TEST_POSTGRES_DSN`不足としてPostgreSQL接続前に停止
+
+#### dirty repository + DSN設定済み
+
+- exit codeは非0
+- `workingTreeClean = false`
+- `reproducibleRevision = false`
+- laneは未実行
+- DSN利用より先にworking tree guardで停止
+
+いずれも成功Evidenceへ誤昇格しません。
+
+### この確認の限界
+
+これは**TEI本体の実Repository checkout上の#310 / #255 / #308 Evidenceではありません**。
+
+通常のGitHub cloneはこのセッション環境でDNS解決できないため、`main`またはcandidate revision `R`をcheckoutしたactual final runは実行できていません。
+
+したがって、通常Repository checkoutのpackage test、Evidence専用PostgreSQLを使うactual final run、Gate B Readyの根拠へは格上げしません。
 
 ## 完了条件
 
@@ -167,7 +204,9 @@ ok  tei/tools/reference-gate-b-final-evidence  0.002s
 - [x] `-broad`を#310だけへ渡すことをtestで固定した
 - [x] READMEで事前確認と最終収束を分離した
 - [x] 隔離Go moduleでpackage-level compile / pure testを実行した
-- [ ] 実Repository checkoutの通常Go環境でtool package testを実行する
+- [x] actual `repositoryevidence`実装と組み合わせて両package testを実行した
+- [x] 隔離Git repositoryでclean / dirty source guardのfail-closed動作を確認した
+- [ ] 実TEI Repository checkoutの通常Go環境でtool package testを実行する
 - [ ] Evidence専用空PostgreSQL Databaseを用意してactual final runを実行する
 - [ ] 三laneが同じcandidate revision Rへ揃ったJSONを取得する
 - [ ] #273のGate B最終監査へ結果を対応付ける
