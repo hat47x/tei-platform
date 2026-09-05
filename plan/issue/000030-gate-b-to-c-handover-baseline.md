@@ -75,6 +75,8 @@ Rと異なるrevisionの完了EvidenceしかないRequired Evidenceは、「意�
 
 Oracle EvidenceをHandover Baseline `R`に対するverified claimとして扱う場合は、actual observed artifact、acceptance receipt、actual read、対象revision / realizationの関係を明示します。古いrevisionの成功を黙って`R`の成功へ読み替えません。
 
+external observed artifactそのものの`observedAt`が`R`の時点である必要はありません。以前に観測した資料を使えます。ただし、その資料を`R`に対するverified claimとして扱う受入れとactual readのprovenanceは明示します。
+
 `R`への十分な結び付きが確認できない場合、またはactual read自体が未完了なら、その範囲を`unresolved`として残します。#310 synthetic Evidenceや#308 PostgreSQL Evidenceで代替したことにはしません。
 
 ## Gate B Evidenceの参照
