@@ -88,6 +88,8 @@ Rを決めた時点で、Rと異なるrevisionの完了EvidenceしかないRequi
 
 actual Oracle Evidenceはこの三つとは別に扱います。取得済みでHandover Baseline `R`に対するverified claimとして参照する場合は、actual observed artifact、source-fixed acceptance receipt、actual read、対象runtime / realization / repository revisionの関係を明示します。
 
+external observed artifactそのものの`observedAt`が`R`の時点である必要はありません。以前に観測した資料を使えます。ただし、その資料を`R`に対するverified claimとして扱う受入れとactual readのprovenanceは明示します。
+
 古いOracle Evidenceを`R`の成功へ黙って読み替えません。`R`への十分な結び付きがない場合、またはactual readが未完了の場合は、その範囲を`unresolved`として残します。Oracle EvidenceをGate B Readyの第四Required laneにはしません。
 
 ## Handover Baselineに必要な情報
