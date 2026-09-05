@@ -1,180 +1,198 @@
 # TEI（鼎／テイ）
 
-TEIは、**業務上の意味を長く保ちながら、実装・データベース・配備先を必要以上に一体化しないローコード基盤**を目指す実験的なプロジェクトです。
+TEIは、**業務上の意味を長く保ちながら、実装・Database・Target・Runtimeを必要以上に一体化しない業務Application基盤**を目指す実験的なプロジェクトです。
 
-画面やテーブルを素早く作ることだけでなく、「この業務概念は何を意味するのか」「どの実装へ落ちたのか」「本番で実際に何が起きたのか」を、技術が変わっても追跡できる状態を重視しています。
+画面やtableを素早く作ることだけでなく、次を技術変更後も追跡・検証できる状態を重視します。
 
-> **現在地:** M0.35 / architecture & product validation / research implementation  
-> Database / Provider側ではM0.35まで設計境界を検証し、その後のv1主線では`order_entry`を使ったApplication Pattern Stage 1を完了しました。現在はApplication Driverへ進む前のGate Aを監査し、既存認証Compatibility、Capability Outcome、業務Validation、Capability Bindingの残条件を実証している段階です。完成したEditorや本番用Runtimeを提供する段階ではありません。
+- この業務概念は何を意味するか
+- どのauthoring sourceから来たか
+- どの実装 / Provider / TargetへBindingされたか
+- Commandは何を返したか
+- 外部世界で実際に何が観測されたか
+- 何が未検証 / unresolvedか
+
+> **現在地 — 2026-09-05:** architecture & product validation / research implementation  
+> `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は **Gate B: Not Ready** で、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Providerのactual Evidenceを同じclean candidate revisionへ収束する段階です。第一Web Target、Studio / AI、第二TargetはまだProduct Evidence取得前です。
+
+完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 
 ## どこから読むか
 
-目的に応じて入口を分けています。
+### Product / planning
 
-### TEIが何を目指すか
+- **最上位の価値:** [TEI Product Value](product/value/TEI_PRODUCT_VALUE.md)
+- **成熟した姿:** [TEI Product Vision](product/vision/TEI_PRODUCT_VISION.md)
+- **判断原則:** [TEI Product Principles](product/principles/TEI_PRODUCT_PRINCIPLES.md)
+- **Product Requirements:** [TEI Product Requirements](requirements/TEI_PRODUCT_REQUIREMENTS.md)
+- **Requirement → PAS → Evidence:** [Upstream Acceptance Scenario Traceability](plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+- **開発全体:** [TEI Master Plan](plan/MASTER_PLAN.md)
+- **v1主線:** [v1 Reference Application 実証計画](plan/V1_REFERENCE_APPLICATION_PLAN.md)
+- **Requirement Gap:** [Product Requirement Gap Audit](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
+- **Milestones:** [TEI Milestones](plan/MILESTONES.md)
 
-- **最も上位の価値を知る:** [TEI Product Value](product/value/TEI_PRODUCT_VALUE.md)
-- **成熟した姿を知る:** [TEI Product Vision](product/vision/TEI_PRODUCT_VISION.md)
-- **設計判断の基準を知る:** [TEI Product Principles](product/principles/TEI_PRODUCT_PRINCIPLES.md)
-- **プロダクトとして必要なことを確認する:** [TEI Product Requirements](requirements/TEI_PRODUCT_REQUIREMENTS.md)
-- **期限を置かない開発の到達点を確認する:** [TEI Milestones](plan/MILESTONES.md)
-- **開発全体の進め方を確認する:** [TEI Master Plan](plan/MASTER_PLAN.md)
-- **Application Driverへ進めるかを確認する:** [Gate A 到達性監査](plan/GATE_A_READINESS_AUDIT.md)
+### 現在のGate
 
-### TEIを読み、動かす
+- **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
+- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Not Ready
+- **Gate B Evidence:** [Acquisition](plan/GATE_B_EVIDENCE_ACQUISITION.md) / [Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md)
+- **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- **Gate C:** [Gate C Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md)
 
-- **TEIを初めて知る:** [はじめてTEIを知る方へ](docs/for-readers.md)
-- **考え方をもう少し知る:** [TEIの考え方](docs/overview.md)
-- **実際に動かす:** [Getting Started](docs/getting-started.md)
-- **技術構造を追う:** [Architecture](docs/architecture.md)
-- **実装済み／未実装を確認する:** [現在の実装状況](docs/status.md)
+### 技術を読む / 動かす
 
-最初からコードを読む必要はありません。Product Value、一般向けの説明、技術構造、現在の実装状況を分け、必要な深さから読めるようにしています。
+- [はじめてTEIを知る方へ](docs/for-readers.md)
+- [TEIの考え方](docs/overview.md)
+- [Getting Started](docs/getting-started.md)
+- [Architecture](docs/architecture.md)
+- [現在の実装状況](docs/status.md)
 
-## TEIが解こうとしていること
-
-業務システムは、画面やテーブルだけでは表せない多くの意味を持っています。
-
-- 「受注」「顧客」「請求」のような業務概念
-- 有効期間、履歴、承認、状態遷移などの共通パターン
-- 一つのApplicationが複数Databaseを利用する現実
-- Database SchemaとApplication Releaseの独立したライフサイクル
-- SQL、Go、外部ツール、クラウド等の実装方式
-- 本番で何が実際に起きたかというObservation / Evidence
-
-従来は、こうした意味が画面定義、SQL、プログラム、DB制約、運用手順書、担当者の知識へ分散しがちでした。
-
-TEIでは、それらを一つの巨大な独自DSLへ押し込めるのではなく、**意味・実現・実行・観測を分けたまま相互に追跡できる状態**を目指します。
+## 現在のv1主線
 
 ```text
-Intent / Semantic Definition
-        ↓
-Canonical Model
-        ↓
-Realization / Provider Binding
-        ↓
-Application / Database / Query / Deployment
-        ↓
-Observed State + Evidence
-        ↓
-Reconciliation / Recovery
+Application Pattern Stage 1
+        Done
+          ↓
+Gate A
+        Ready
+          ↓
+Application Driver
+  major semantics ready
+          ↓
+Gate B
+  Not Ready / actual Evidence待ち
+  #310 + #255 + #308 same-R
+          ↓
+Handover Baseline B / revision R
+          ↓
+First Web Target / build T1
+          ↓
+Gate C / PAS-04
+          ↓
+   ┌──────┼──────────────┐
+   ↓      ↓              ↓
+Studio  knowledge / AI  Second Target
+PAS-01  PAS-06 / 01     PAS-04
 ```
 
-ここでCanonical Modelは「特定の画面やDB製品に依存しない、基準となる意味表現」、Realization / Bindingは「その意味を具体的な技術や環境へ結び付ける段階」を指します。
+Gate C後のStudio / knowledge-first / AI Proposalと第二Targetは並行可能です。
 
-より上位の定義では、TEIの中心価値を次のように置いています。
+## Gate Bの現在地
 
-> 業務の意味を技術から独立して保ち、現実の複雑さを削らずに実装へ結び付け、その関係を人と生成AIの双方が追跡・検証しながら選び直せる開発基盤を目指す。
+Gate Bで新しいDriver抽象を増やすことが現在の主課題ではありません。
 
-詳しくは [TEI Product Value](product/value/TEI_PRODUCT_VALUE.md) を参照してください。
+Ready判定へ必要なsource-dependent Evidenceは次の三つです。
 
-## 設計上の特徴
+| Evidence | Repository / GitHub Issue | 現在地 |
+| --- | --- | --- |
+| deterministic Repository | `ISSUE-000032` / #310 | runner Ready、actual clean checkout run待ち |
+| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair境界 Ready、actual check-only待ち |
+| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / safety境界 Ready、専用空DB actual run待ち |
 
-### 1. ApplicationとDatabaseを一対一にしない
+三つを同じclean candidate repository revision `R`へ揃え、`ISSUE-000037` / #387のfinal convergenceで確認します。
 
-一つのApplicationが複数Databaseを利用することを通常形として扱います。
+actual Oracle #214 / #371 / #376は重要なactual external asset / legacy compatibility / second-provider Evidenceとして継続しますが、Gate Bの第四Required laneではありません。未完了ならHandoverへ`unresolved`として渡します。
+
+## Gate B → Gate Cでrevisionを分ける
+
+Gate B Ready revisionを`R`、Handover Baselineを`B`、第一Web Targetの実装revisionを`T1`とします。
 
 ```text
-order_entry
-├─ sales  → sales_core   (read-write)
-└─ master → master_data  (read-only)
+Gate B Ready for R
+        ↓
+Handover Baseline B
+  baselineRepositoryRevision = R
+        ↓ meaning baseline
+First Web Target build T1
+        ↓
+Gate C Evidence
 ```
 
-Application Releaseは必要なDatabase Contractの集合を保持し、Database Releaseは独立してversion管理されます。
+通常`T1 != R`です。
 
-Reference Workspaceの`order_entry`も、この2 Database構成を実際に利用しています。
+Target実装中にbaseline Application meaningを変更する必要が生じた場合、Web固有field / ruleで不足を埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認してsuccessor Handoverを発行します。
 
-### 2. SQLやGoを敵にしない
+## 設計上の主要原則
 
-TEI-native DSLは存在しますが、すべての資産を`.tei`へ変換する方針ではありません。
+### Meaningと実装を分ける
 
 ```text
-*.tei   semantic / lifecycle definitions
-*.sql   SQL
+Authoring Source
+      ↓
+Canonical Meaning
+      ↓
+Binding / Realization
+      ↓
+Provider / Target / Runtime
+      ↓
+Execution
+      ↓
+Observation / Evidence
+```
+
+「何で実装するか」を「何を意味するか」へ暗黙に混ぜません。
+
+### file pathをSemantic identityにしない
+
+Source-to-Canonical Traceabilityを持ちつつ、file pathはsemantic identityではありません。
+
+file moveだけでlogical identityが変わらない場合はsemantic no-opになり得ます。logical rename / Canonical identity変更はSemantic changeとして扱います。
+
+### SQLやGoを敵にしない
+
+`.tei`へ全面移植する方針ではありません。
+
+```text
+*.tei   semantic / application / lifecycle definitions
+*.sql   native SQL
 *.go    custom implementation
 *.json  observed / derived artifacts
 *.yaml  workspace / external configuration
 *.md    documentation
 ```
 
-M0.23では、native `.sql`をauthoritative sourceのままQueryへ接続し、physical pathをCanonical QueryやDerived Query IRへ混ぜないことをReferenceとCIで確認しました。
+native assetはauthoritativeなままSource-to-Canonical traceへ接続します。
 
-Workspaceは`tei.workspace.yaml`と管理ディレクトリで識別します。
-
-### 3. 生成AIに「意味の部品」を渡せる構造
-
-AIが毎回ゼロからコードを生成するのではなく、既存の業務概念、意味パターン、Policy、Capabilityを先に探索し、それでも足りない部分だけを実装へ落とす方向を想定しています。
-
-AIが常時本番判断を行うことや、自動的に強い実行権限を持つことを前提にはしていません。採用した規則、Binding、権限、実現方法は、明示的で追跡可能な状態へ固定することを重視します。
-
-現在は、このAI支援より先に、AIやEditorが利用できるApplication上の意味をv1 Referenceから実証しています。Application Pattern Stage 1では`browse`、`record`、`reference`、`command`、`header-detail`の5種類が実Referenceまで成立しました。次は、業務Validation、Authentication / Authorization、Capability BindingなどをGate Aで接続し、Driverへ渡せる状態を確認します。
-
-### 4. 「命令した」と「実際に変わった」を分ける
-
-Deployment Executorが成功を返しても、それだけではAction完了にしません。
+### CommandとObservationを分ける
 
 ```text
-command accepted
-    ≠
-external state changed
-
-accepted
-  ↓
-Observation Provider
-  ↓
-actual state confirmed
-  ↓
-completed
+Command Business Result
+        ↓ separate operation
+explicit read boundary
+        ↓
+Observation / Execution Error
 ```
 
-Canaryのhealth gate、drain、Database migration、rollback / forward-fixも同じ考え方で扱います。
+Command acknowledgementだけでexternal state成立とはみなしません。
 
-M0.31以降では、Database Schemaについて「差がある」と「比較に必要な情報が足りず、まだ確定できない」を分離しています。不明なものを都合よく一致や差分へ丸めません。
+Business Result、Execution Error、Observation、Developer Diagnosticを分離します。
 
-M0.35では、この安全境界を保ったままAdvanced Indexの主要な意味をPostgreSQLのマイグレーションSQLへ戻し、生成したDDLを実DBへ適用して再観測後にDesiredへ収束するところまでCIで確認しています。
+### Studio / AIを第二正本にしない
 
-### 5. Pluginは意味モデルではなく配布単位
+Gate C後のauthoringは次へ収束させます。
 
-Plugin / BundleはExecutor、Database Provider、Migration Provider、Editor Intelligence等を配布するための仕組みです。Business Canonical IDとは分離しています。
+```text
+file-native / Studio / CLI / AI
+          ↓ candidate
+Shared Acceptance Boundary
+          ↓
+authoritative source
+          ↓ reload
+Canonical meaning
+```
 
-Applicationから見たCapability identityと、その実現方法も分離します。現在のGate Aでは、`sales.order.submit`を例に、Capability identityからimplementationへ暗黙推測せず接続できるBinding境界を次の実証対象の一つとしています。
+Preview / Rejectはnon-mutating、stale `baseModelRevision`は明示処理します。
 
-### 6. 実行時権限を最小化する
+Studio / AI都合でmandatory authored Stable ID / UUIDやPatch-only authoringを前提にしません。
 
-process Pluginには、必要なCapabilityへ必要なPermissionだけを明示Grantします。Secret値はCanonical DefinitionやDurable Runへ保存せず、Host Resource Brokerがopaque handleとして解決します。
+### Studio Wails HostとApplication Targetを分ける
 
-Lease renewal、refresh、revoke、Supervisor ownership、fencing、Host takeover、runtime reattachまで、外部Runtimeを安全に扱う境界を実験実装しています。
+Studioがdeveloper-facing desktop hostとしてWailsを使っても、Generated Wails Desktop Application Targetとは別物です。
 
-Application利用者のAuthentication / Authorizationは、このPlugin / Runtime Permissionとは別の意味として扱います。
-
-## 現在の重点
-
-M0.35までに、Source / Meaning、Database、Execution / Observation、Plugin / Runtimeの下部構造にはかなり強いEvidenceが蓄積しました。Database領域では、Actual / Desired / Diff、比較未確定、ProviderExpression、Advanced Index、プロバイダー固有のマイグレーションSQL生成まで一連の境界を実PostgreSQLで検証しています。
-
-その後、v1 Reference Application `order_entry`でApplication Pattern Stage 1を進め、次の5種類を実Referenceまで成立させました。
-
-- `browse`
-- `record`
-- `reference`
-- `command`
-- `header-detail`
-
-この結果により、「standard Application Patternが未実証」という当初の大きなGapは、少なくともv1 Referenceの具体例では一段縮小しました。ただし、この5分類をTEI全体の永久的な標準語彙として確定したわけではありません。
-
-現在の主線はGate Aです。[Gate A 到達性監査](plan/GATE_A_READINESS_AUDIT.md)では、Application Driverへ進む前の主な残条件として次を特定しています。
-
-- 既存認証・認可を保持したCompatibility Reference
-- Capabilityの名前付きOutcomeとExecution Errorの実Reference
-- 業務Validationの正本とidentity
-- `sales.order.submit`の明示的なCapability Binding
-
-これらをDriver専用GoコードやTarget固有設定へ埋め込まず、Application上の意味として成立させたうえで、**Gate A再監査 → Application Driver → 第一Web Target**へ進みます。
-
-Database / Provider側の検証を止めるのではなく、プロダクト全体の空白と比較しながら着手順を判断します。
+Studio GUIの成功を第二Application TargetのSemantic / Functional / Visual Evidenceへ数えません。
 
 ## まず動かす
 
-ここから先は開発者向けです。clone後に必要なのはGo toolchainです。
+clone後、基本的なRepository確認はGo toolchainだけで行えます。
 
 ```bash
 git clone https://github.com/hat47x/tei-platform.git
@@ -184,9 +202,9 @@ go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
 
-Validationでは、参照用のhistorical contractについてWarningが出る場合がありますが、最後に`ok`となればReference Workspaceは整合しています。
+Gate B Product Evidenceの正規取得手順は通常の開発確認とは別です。actual Gate B Evidenceを取得するときは必ず [Gate B Evidence Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md) を参照してください。
 
-Source Indexは次のように確認できます。
+Source Index例:
 
 ```bash
 go run ./cmd/tei source-index \
@@ -195,95 +213,35 @@ go run ./cmd/tei source-index \
   -subject-id order_entry.recent_orders
 ```
 
-Host takeover後のruntime reattachの最小例は次で実行できます。
-
-```bash
-go run ./examples/runtime-reattach
-```
-
-Plugin解決やReference artifactの再生成を含む手順は [Getting Started](docs/getting-started.md) を参照してください。
-
 ## Repository layout
 
 ```text
 product/                 Product Value / Vision / Principles
 requirements/            Product Requirements
-plan/                    Milestones / Master Plan / ADR / Issue
+plan/                    Master / Milestone / PAS / Gate / ADR / Plan Issue
 cmd/tei/                 CLI
-internal/                executable architecture models / validation
-reference/workspace/     small end-to-end TEI workspace
-reference/observed/      deployment observation fixtures
-reference/world.json     golden canonical world snapshot
+internal/                executable architecture / validation / runtime
+reference/workspace/     end-to-end Reference Workspace
+reference/observed/      observed fixtures
+tools/                   Evidence / Reference support tools
 examples/                focused executable examples
-docs/                    public and technical documentation
-.github/workflows/       repository verification
+docs/                    reader / architecture / conformance documentation
 ```
 
-上位・計画文書:
+## 現時点で完成済みとは言わないもの
 
-- [Product文書の入口](product/README.md)
-- [TEI Product Requirements](requirements/TEI_PRODUCT_REQUIREMENTS.md)
-- [TEI Planning](plan/README.md)
-- [Product Requirement Gap Audit](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
-- [Gate A 到達性監査](plan/GATE_A_READINESS_AUDIT.md)
+- Gate B actual Evidence / Ready判定
+- First Web Target / Gate C
+- production-ready Web / Desktop / Mobile Target
+- Studio minimal Authoring Loopのactual Reference
+- production-ready GUI Editor
+- knowledge-first Semantic explorationのactual Reference
+- AI Proposal / Decision UXのactual Reference
+- second Application Target
+- complete Target Capability taxonomy
+- complete Workflow Runtime
+- production durability / HA guarantee
+- generic OS sandbox
+- API compatibility guarantee
 
-技術文書:
-
-- [Architecture](docs/architecture.md)
-- [現在の実装状況](docs/status.md)
-- [既存の設計判断記録（ADR）](docs/adr/README.md)
-- [Plugin / Bundle](docs/plugins.md)
-- [Security / Trust Boundary](docs/security.md)
-- [命名とWorkspace](docs/naming.md)
-- [Community](docs/community.md)
-
-新しい上位・横断的ADRは`plan/adr/`へ置きます。既存の`docs/adr/0001`〜`0015`は参照互換を保ちながら、番号を変えず段階的に移行します。新しい`plan/adr/`の番号は0016以降から継続します。
-
-## 現在の実装範囲
-
-このRepositoryでは、Semantic / WorkspaceからApplication・Database・Query、Release / Deployment、Plugin / Resource authority、Host takeover / runtime reattachまでを、一本の縦切りとしてコードとテストで検証しています。
-
-M0.23以降はSource-to-Canonical Traceability、actual process Plugin、actual PostgreSQL Desired / Actual / Diff、Foreign Key、Unique Constraint、Advanced Index、比較未確定、ProviderExpression representation、オフラインのprovider policy、プロバイダー固有識別子の比較、Advanced IndexのマイグレーションSQL生成まで、個々の境界を段階的に深めています。
-
-M0.35以後はApplication側へ重点を移し、5種類のApplication Patternを`order_entry`で一続きに追跡できるところまで進みました。現在は、その意味をDriverへ渡すためのGate A残条件を実証しています。
-
-個々の実装項目をREADMEへ重複して列挙せず、最新の一覧は [現在の実装状況](docs/status.md) に集約します。
-
-## まだ提供していないもの
-
-- Gate Aを通過したApplication vertical slice
-- 既存認証仕様を保持したAuthentication / Authorization Reference
-- 業務Validationの実Reference
-- `sales.order.submit`の明示的なCapability Binding Reference
-- 完成したGUI Editor / Wails application
-- Application設計を通しで扱う完成Driver
-- production-readyなWeb / Desktop / Mobile Target
-- 本番運用向けの永続Store実装
-- Kubernetes / cloud / Vault / etcd等のproduction adapter一式
-- 完全なSQL dialect対応
-- 本番用Workflow Runtime
-- 署名済み配布物の完全なsupply-chain attestation
-- 万能なOS sandbox
-- production supportや互換性保証
-
-この区別は意図的です。現段階では、完成製品のように見せることより、後から大きく壊れやすい意味境界を実行可能なコードで確かめることを優先しています。
-
-M0.22.1を最初の公開設計チェックポイントとして扱った理由は、[ADR-0002](docs/adr/0002-m0221-public-checkpoint.md) に記録しています。M0.22.1は現在地ではなく、公開設計検証を始めた基準点です。
-
-## 名前について
-
-主名称は **TEI（鼎／テイ）**、CLIは`tei`です。TEIを一つの英語展開へ固定せず、設計の異なる面を説明する読みとして次を併存させています。
-
-- Traceable Execution of Intent
-- Target-neutral Executable Infrastructure
-- Three-Element Integration
-
-詳しくは [docs/naming.md](docs/naming.md) を参照してください。
-
-## License / participation
-
-MIT Licenseです。
-
-積極的なコード貢献だけを参加とは考えていません。実際に試した結果、設計上の違和感、既存業務システムとの適合性、他ツールとの比較、運用上の知見などを公開してもらうことも重要な貢献です。
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/community.md](docs/community.md).
+設計契約やisolated testが存在することを、actual Product Evidence取得済みと読み替えません。
