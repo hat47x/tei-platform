@@ -10,6 +10,8 @@ Gate Cでは、「DriverとWebが同じCanonical Application上の意味を共�
 
 この契約は新しいCanonical schemaを導入するものではありません。Git revision、既存Canonical ID、Reference、Gate B Evidenceへの参照を束ねる、検証上のhandover契約です。
 
+Upstream traceでは、PAS-02をprimary、PAS-03をsecondaryとして扱います。
+
 ## 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
 
 `ISSUE-000035` / #380の再監査により、Gate Bの必須完了Evidenceは次の三つへ整理しました。
@@ -32,8 +34,6 @@ Handover時の扱いは次の二通りです。
 未取得の場合でも、Web側でOracleのphysical object、column、SQL、driver挙動、read-only方式を推測・補完しません。#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
 
 **Gate Bはこのscope変更だけではReadyになりません。** #310 / #255 / #308の実Evidenceを同一candidate revisionへ揃え、最終監査でReadyと判定する必要があります。第一Web Target / Gate Cはその後に開始します。
-
-以下に残る「4 Evidence lane」を前提とした記述は、`ISSUE-000035`以前の契約と判断経緯を保持するための履歴です。現行Gate Bの必須範囲と矛盾する場合は、本節を優先します。
 
 ## 基本原則
 
@@ -64,33 +64,33 @@ Web実装中に必要な意味がHandover Baselineに存在しないと分かっ
 
 必要ならApplication / Driver側へ戻り、authoritative sourceを変更し、ValidationとDriver Scenarioを再確認したうえで、新しいbaselineを発行します。
 
-### 4. Gate Bの4 Evidence laneを一つのbaseline revisionへ揃える
+### 4. Gate Bの3 Required Evidenceを一つのbaseline revisionへ揃える
 
-各Evidence laneが個別にsource-fixedであっても、別々のGit revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。
+各Required Evidenceが個別にsource-fixedであっても、別々のGit revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。
 
-Gate Bの最終Ready判定では、次の4 laneについて、**完了判定に用いるEvidenceを同じrepository revisionへ揃えます**。
+Gate Bの最終Ready判定では、次の三つについて、**完了判定に用いるEvidenceを同じrepository revisionへ揃えます**。
 
-1. #214 actual external Oracle Evidence
-2. #308 real PostgreSQL engine + ephemeral fixture Evidence
-3. #255 generated artifact reproducibility Evidence
-4. #310 deterministic Repository Evidence
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL engine + ephemeral fixture Evidence
 
 ```text
-Lane A 完了Evidence ─┐
-Lane B 完了Evidence ─┼─ repositoryRevision = R
-Lane C 完了Evidence ─┤
-Lane D 完了Evidence ─┘
-                     ↓
-              Gate B Ready for R
-                     ↓
-              Handover Baseline R
+#310 Repository Evidence ─┐
+#255 Artifact Evidence   ─┼─ repositoryRevision = R
+#308 PostgreSQL Evidence ─┘
+                          ↓
+                   Gate B Ready for R
+                          ↓
+                   Handover Baseline R
 ```
 
-外部観測資料そのものの`observedAt`がRの時点である必要はありません。たとえばOracleのschema資料を以前に観測していても構いません。
+Rを決めた時点で、Rと異なるrevisionの完了EvidenceしかないRequired Evidenceは、Rで再実行・再受入れしてからReady判定します。「意味は変わっていないはずだ」と推測して、古い成功EvidenceをRの成功へ読み替えません。
 
-ただし、その資料を現在のauthoringと照合した#214 acceptance receipt、実効的なread-only境界を使ったactual read Evidence、#308 / #255 / #310の最終Evidenceは、Gate B Readyの対象となるRへ結び直します。
+actual Oracle Evidenceはこの三つとは別に扱います。取得済みでHandover Baseline `R`に対するverified claimとして参照する場合は、actual observed artifact、source-fixed acceptance receipt、actual read、対象runtime / realization / repository revisionの関係を明示します。
 
-Rを決めた時点で、Rと異なるrevisionの完了Evidenceしかないlaneは、Rで再実行・再受入れしてからReady判定します。「意味は変わっていないはずだ」と推測して、古い成功EvidenceをRの成功へ読み替えません。
+external observed artifactそのものの`observedAt`が`R`の時点である必要はありません。以前に観測した資料を使えます。ただし、その資料を`R`に対するverified claimとして扱う受入れとactual readのprovenanceは明示します。
+
+古いOracle Evidenceを`R`の成功へ黙って読み替えません。`R`への十分な結び付きがない場合、またはactual readが未完了の場合は、その範囲を`unresolved`として残します。Oracle EvidenceをGate B Readyの第四Required laneにはしません。
 
 ## Handover Baselineに必要な情報
 
@@ -102,7 +102,8 @@ Rを決めた時点で、Rと異なるrevisionの完了Evidenceしかないlane�
 - Reference Workspace path / identity
 - そのrevisionに保存されているgenerated artifact identity
 - Gate B最終監査の対象revision
-- 4 Evidence laneの完了Evidenceが参照するrepository revision
+- 3 Required Evidenceの完了Evidenceが参照するrepository revision
+- actual Oracle等を参照する場合、そのEvidenceが対象とするrevision / realizationとverified / unresolvedの状態
 
 Handover用に`generated artifact revision`という別versionを新設しません。#255の完了Evidenceによって、Handover Baseline revisionに保存されたWorld / Plugin Lock / Durable Runを、その同じrevisionから再現できることを示します。
 
@@ -176,48 +177,9 @@ Target側のHTTP status、DOM、toast、dialog等を、この意味の定義に�
 
 Gate Bを通過させたEvidenceへ戻れる必要があります。
 
-Handover recordではEvidence本文を複製せず、少なくとも次の完了Evidenceを安定参照します。
+Handover recordではEvidence本文を複製せず、Required Evidenceとoptional / unresolved external Evidenceを分離して参照します。
 
-#### Lane A — #214 actual external Oracle
-
-- actual external Evidence artifactの参照
-- `evidenceArtifactFingerprint`
-- Handover Baseline revision上のsource-fixed acceptance receipt
-  - `accepted = true`
-  - `reproducibleRevision = true`
-  - `repositoryRevision = Handover Baseline revision`
-- 実効的なread-only境界を使ったOracle actual read Evidence
-- actual readが、同じHandover Baseline revisionのruntime / realizationに対して行われたこと
-
-acceptance receiptだけをactual read Evidenceへ格上げしません。
-
-#### Lane B — #308 real PostgreSQL engine
-
-`tools/reference-postgres-header-detail-runtime`の成功JSONを参照します。
-
-少なくとも次を、同じrunで確認したEvidenceへ戻れる必要があります。
-
-- `repositoryRevision = Handover Baseline revision`
-- `reproducibleRevision = true`
-- `fixtureDatabaseSafety.guardPassed = true`
-- `fixtureCleanupSafety.verified = true`
-- 2件 / 0件 / Execution Error
-- Semantic mapping / support column非露出
-
-#### Lane C — #255 generated artifact reproducibility
-
-`tools/reference-generated-artifact-evidence`のcheck-only成功JSONを参照します。
-
-少なくとも次を要求します。
-
-- `repositoryRevision = Handover Baseline revision`
-- `reproducibleRevision = true`
-- World / Plugin Lock golden一致
-- Durable Run golden一致
-
-`-write`による修復操作そのものや、修復直後のdirty treeを完了Evidenceには使いません。
-
-#### Lane D — #310 deterministic Repository
+#### Required — #310 deterministic Repository
 
 `tools/reference-gate-b-repository-evidence`の成功JSONを参照します。
 
@@ -230,15 +192,59 @@ acceptance receiptだけをactual read Evidenceへ格上げしません。
 - `external-evidence-intake`成功
 - `repository-evidence-source-boundary`成功
 
+#### Required — #255 generated artifact reproducibility
+
+`tools/reference-generated-artifact-evidence`のcheck-only成功JSONを参照します。
+
+少なくとも次を要求します。
+
+- `repositoryRevision = Handover Baseline revision`
+- `reproducibleRevision = true`
+- World / Plugin Lock golden一致
+- Durable Run golden一致
+
+`-write`による修復操作そのものや、修復直後のdirty treeを完了Evidenceには使いません。
+
+#### Required — #308 real PostgreSQL engine
+
+`tools/reference-postgres-header-detail-runtime`の成功JSONを参照します。
+
+少なくとも次を、同じrunで確認したEvidenceへ戻れる必要があります。
+
+- `repositoryRevision = Handover Baseline revision`
+- `reproducibleRevision = true`
+- `fixtureDatabaseSafety.guardPassed = true`
+- `fixtureCleanupSafety.verified = true`
+- 2件 / 0件 / Execution Error
+- Semantic mapping / support column非露出
+
+#### Optional / unresolved — #214 actual external Oracle
+
+actual Oracle Evidenceが取得済みで、Handover Baselineに対するverified external asset Evidenceとして参照する場合は、少なくとも次へ戻れる必要があります。
+
+- actual external Evidence artifactの参照
+- `evidenceArtifactFingerprint`
+- source-fixed acceptance receipt
+- 実効的なread-only境界を使ったOracle actual read Evidence
+- actual readが対象としたruntime / realization / repository revision
+
+acceptance receiptだけをactual read Evidenceへ格上げしません。
+
+取得済みEvidenceがHandover Baseline revisionに対するverified claimとして不足する場合や、actual read自体が未完了の場合は、その不足を`unresolved`として記録します。#310 synthetic Evidenceや#308 PostgreSQL Evidenceで代替したことにはしません。
+
 #### Gate B最終監査
 
 `GATE_B_READINESS_AUDIT.md`の最終Ready判定も、同じHandover Baseline revisionを対象とした判定として追跡します。
 
-「Lane AはR1、Lane BはR2、Lane CはR3、Lane DはR4で成功した」という集合を、revisionを揃えないままR4のGate B Ready Evidenceとして扱いません。
+「#310はR1、#255はR2、#308はR3で成功した」という集合を、revisionを揃えないままR3のGate B Ready Evidenceとして扱いません。
+
+actual Oracle EvidenceはこのReady判定集合へ加えません。取得済みなら別のverified external asset Evidenceとして、未完了または対象revisionへの結び付きが不足するなら`unresolved`として追跡します。
 
 ### unresolved
 
 Gate B通過を妨げないものの、Gate Cまたは第二Targetで継続確認する事項を列挙します。
+
+actual Oracleの未観測範囲も、Gate B blockerへ戻さずこの欄で保持できます。
 
 unresolvedを空欄にするためだけに、十分なEvidenceのない共通概念へ押し込みません。
 
@@ -259,7 +265,9 @@ Canonical Application / Driver Scenario
        ↓
 Gate B final audit for R
        ↓
-4 lane completion Evidence for R
+3 Required Evidence completion for R
+       ↓
+optional verified external Evidence / unresolved
 ```
 
 これにより、Web Adapterやbrowser automationのrevisionだけでなく、「どの意味baselineに対するConformanceか」を固定できます。
@@ -285,7 +293,9 @@ Canonical / Driver baselineが変わらなければ、Handover Baselineは変更
 
 repository revisionが変わるため、必要なら「baseline source revisionは同じで、evaluator / target revisionだけが変わった」と区別して記録します。
 
-Gate B完了Evidenceの意味または評価方法を変更する場合は、旧Evidenceを新しいbaselineへ黙って読み替えず、影響するlaneを再実行します。
+Gate B完了Evidenceの意味または評価方法を変更する場合は、旧Evidenceを新しいbaselineへ黙って読み替えず、影響するRequired Evidenceを再実行します。
+
+actual Oracle等のexternal Evidenceの評価方法だけを変更した場合も、そのEvidenceのverified / unresolved状態を更新しますが、それだけでGate B Readyを再判定しません。
 
 ### C. Application / Driverの意味変更
 
@@ -302,9 +312,10 @@ Gate B完了Evidenceの意味または評価方法を変更する場合は、旧
 
 1. authoritative sourceを変更する
 2. Driver / Validation / Gate Bに関係するEvidenceを再確認する
-3. 4 laneの完了Evidenceを新しいbaseline revisionへ揃える
-4. 新しいHandover Baselineを発行する
-5. Gate Cで影響するScenarioを再実行する
+3. #310 / #255 / #308の3 Required Evidenceを新しいbaseline revisionへ揃える
+4. actual Oracle等のexternal Evidenceについて、新revisionへ対するverified claimとして再利用できるかを明示的に判定し、不足すれば`unresolved`へ戻す
+5. 新しいHandover Baselineを発行する
+6. Gate Cで影響するScenarioを再実行する
 
 ## Gate B通過時に作るHandover record
 
@@ -315,10 +326,11 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 重要なのは形式ではなく、次を満たすことです。
 
 - 一つのbaseline revisionが固定される
-- 4 laneの完了Evidenceが同じbaseline revisionへ揃っている
+- #310 / #255 / #308の3 Required Evidenceが同じbaseline revisionへ揃っている
 - Canonical IDへ戻れる
 - Driver Scenarioへ戻れる
 - Gate B Evidenceへ戻れる
+- actual Oracle等のexternal EvidenceをRequired Evidenceと分離してverified / unresolvedとして表せる
 - unresolvedを保持できる
 - secretを含まない
 - Target固有情報をCanonical baselineへ混ぜない
@@ -328,11 +340,12 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 第一Web Targetの本格実装は、Gate B Readyに加えて次を満たしてから開始します。
 
 - Handover Baselineのrepository revisionを固定できる
-- 4 laneの完了Evidenceが同じrepository revisionへ揃っている
+- #310 / #255 / #308の3 Required Evidenceが同じrepository revisionへ揃っている
 - Gate C対象のCanonical identityを列挙できる
 - Driver Scenario baselineを再現できる
 - Gate B Evidenceへの参照が揃っている
 - Gate B最終監査が同じrevisionをReadyと判定している
+- actual Oracle等のexternal Evidenceについて、verified / unresolvedを明示できる
 - unresolvedを明示できる
 
 これは新しいGateを追加するものではありません。Gate Bの出力をGate Cの入力へ曖昧なく接続するためのhandover確認です。
@@ -345,6 +358,8 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - Handover artifactからCanonicalへの逆生成
 - Git commitだけをSemantic Conformanceの証明とみなすこと
 - Evidenceの成功revisionが異なるまま一つのbaselineへ読み替えること
+- actual Oracle EvidenceをGate B Readyの第四Required laneへ戻すこと
+- external-observed assetの未観測事実をsynthetic / PostgreSQL Evidenceから推測すること
 - 外部観測資料の観測時刻をGit revision時刻へ無理に合わせること
 - 第一TargetだけでTarget-neutral taxonomyを完成させること
 - Gate C開始前に第二Targetの差を推測すること
@@ -355,6 +370,8 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - `GATE_B_EVIDENCE_ACQUISITION.md`
 - `GATE_B_EVIDENCE_RUNBOOK.md`
 - `GATE_C_EVIDENCE_CONTRACT.md`
+- `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- `UPSTREAM_TRACE_AUDIT_2026-09.md`
 - `V1_REFERENCE_APPLICATION_PLAN.md`
 - `issue/000006-application-driver-vertical-slice.md`
 - `issue/000007-first-web-target-projection.md`
