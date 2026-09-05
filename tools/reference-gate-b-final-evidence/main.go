@@ -85,7 +85,7 @@ func run(broad bool) (evidence, error) {
 		}, goEnvironmentErr
 	}
 
-	postgresDSN, postgresDSNErr := loadPostgresDSNFromEnvironment()
+	postgresDSNFilePath, postgresDSNErr := loadPostgresDSNFilePathFromEnvironment()
 	if postgresDSNErr != nil {
 		return evidence{
 			EvidenceNature: evidenceNature,
@@ -100,7 +100,7 @@ func run(broad bool) (evidence, error) {
 		inspectRepositoryStart,
 		inspectRepositoryPost,
 		func(spec laneSpec, candidateRevision string) (laneEvidence, error) {
-			return runLaneWithPostgresDSN(spec, candidateRevision, postgresDSN)
+			return runLaneWithPostgresDSNFile(spec, candidateRevision, postgresDSNFilePath)
 		},
 		commandOutput,
 	)
@@ -203,7 +203,7 @@ func laneSpecs(broad bool) []laneSpec {
 	}
 }
 
-func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string) (laneEvidence, error) {
+func runLaneWithPostgresDSNFile(spec laneSpec, candidateRevision, postgresDSNFilePath string) (laneEvidence, error) {
 	lane := laneEvidence{
 		Name:           spec.Name,
 		Command:        append([]string{"go"}, spec.Args...),
@@ -213,7 +213,7 @@ func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string
 	fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] go %s\n", strings.Join(spec.Args, " "))
 	var stdout bytes.Buffer
 	cmd := exec.Command("go", spec.Args...)
-	cmd.Env = environmentForLaneWithPostgresDSN(spec, os.Environ(), postgresDSN)
+	cmd.Env = environmentForLaneWithPostgresDSNFile(spec, os.Environ(), postgresDSNFilePath)
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 	runErr := cmd.Run()
@@ -233,7 +233,7 @@ func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string
 }
 
 // environmentForLaneはPR #407以前からのpure test互換helperである。
-// production final runnerはenvironmentForLaneWithPostgresDSNを使い、DSN本文を親process environmentへ戻さない。
+// production final runnerはenvironmentForLaneWithPostgresDSNFileを使い、DSN本文をどのgo run childへも渡さない。
 func environmentForLane(spec laneSpec, base []string) []string {
 	if spec.Name == "real-postgres-ephemeral-fixture" {
 		return append([]string(nil), base...)
@@ -241,10 +241,10 @@ func environmentForLane(spec laneSpec, base []string) []string {
 	return environmentWithoutPostgresDSN(base)
 }
 
-func environmentForLaneWithPostgresDSN(spec laneSpec, base []string, postgresDSN string) []string {
+func environmentForLaneWithPostgresDSNFile(spec laneSpec, base []string, postgresDSNFilePath string) []string {
 	out := environmentWithoutPostgresSecrets(base)
 	if spec.Name == "real-postgres-ephemeral-fixture" {
-		out = append(out, postgresDSNEnv+"="+postgresDSN)
+		out = append(out, postgresDSNFileEnv+"="+postgresDSNFilePath)
 	}
 	return out
 }
