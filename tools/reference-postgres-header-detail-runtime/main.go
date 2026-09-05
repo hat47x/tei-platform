@@ -55,6 +55,18 @@ type evidence struct {
 }
 
 func main() {
+	// DSN本文をGo valueへ取り込んだ後、source probeや後続の不要なsubprocessへ
+	// credential候補 / secret file pathを継承しない。file入力なら#308自身のcompile段階にもDSN本文は存在しない。
+	dsn, err := loadPostgresDSNFromEnvironment()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if err := clearPostgresDSNEnvironment(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+
 	// 実Provider Evidenceは、後から同じsourceへ戻れるclean revisionに固定する。
 	// dirty treeの診断実行をGate B完了Evidenceへ格上げしない。
 	repositorySource, err := repositoryevidence.InspectStart()
@@ -84,12 +96,6 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	dsn := os.Getenv("TEI_TEST_POSTGRES_DSN")
-	if dsn == "" {
-		fmt.Fprintln(os.Stderr, "TEI_TEST_POSTGRES_DSN is required")
-		os.Exit(2)
-	}
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -289,7 +295,7 @@ func ensureFixtureObjectAbsent(ctx context.Context, db *sql.DB) error {
 	}
 	if object.Valid && strings.TrimSpace(object.String) != "" {
 		return fmt.Errorf(
-			"安全のためEvidence toolを停止します: %sが既に存在します。既存tableをDROPせず、専用の空PostgreSQL DatabaseをTEI_TEST_POSTGRES_DSNへ指定してください",
+			"安全のためEvidence toolを停止します: %sが既に存在します。既存tableをDROPせず、専用の空PostgreSQL DatabaseをDSN入力へ指定してください",
 			object.String,
 		)
 	}
