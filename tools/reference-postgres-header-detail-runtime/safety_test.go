@@ -33,6 +33,30 @@ func TestValidateDedicatedFixtureDatabaseRejectsEventTriggers(t *testing.T) {
 	}
 }
 
+func TestValidateDedicatedFixtureDatabaseErrorsDoNotExposeDatabaseIdentity(t *testing.T) {
+	cases := []struct {
+		name          string
+		databaseName  string
+		userRelations int
+		eventTriggers int
+	}{
+		{name: "default database", databaseName: "postgres", userRelations: 0, eventTriggers: 0},
+		{name: "existing relation", databaseName: "sensitive_evidence_database_name", userRelations: 1, eventTriggers: 0},
+		{name: "event trigger", databaseName: "sensitive_evidence_database_name", userRelations: 0, eventTriggers: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateDedicatedFixtureDatabase(tc.databaseName, tc.userRelations, tc.eventTriggers)
+			if err == nil {
+				t.Fatal("安全条件違反を受理しています")
+			}
+			if strings.Contains(err.Error(), tc.databaseName) {
+				t.Fatalf("安全判定errorへactual Database identityを露出しています: %v", err)
+			}
+		})
+	}
+}
+
 func TestValidateDedicatedFixtureDatabaseRejectsInvalidCounts(t *testing.T) {
 	cases := []struct {
 		name          string
