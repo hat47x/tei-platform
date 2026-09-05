@@ -1,7 +1,8 @@
 # ISSUE-000008: Editor / AI支援の着手条件を整理する
 
-- 状態: 保留
-- 解除条件: Gate C
+- 状態: Blocked — Gate C Ready待ち
+- 解除条件: Gate C Ready
+- 関連PAS: PAS-01 / PAS-06
 
 ## 背景
 
@@ -38,6 +39,7 @@ Gate Cでは次が実資産として揃っていることを求めます。
 6. Source / Application / Driver / Targetの来歴を辿れる
 7. Semantic ConformanceとInteraction / Functional Evidenceを分離して確認できる
 8. Visual Fidelity Evidenceを上位の意味から分離して扱える
+9. Handover Baseline revisionとTarget build revisionを混同せず追跡できる
 
 単に`ISSUE-000005`〜`000007`がcloseされたことではなく、これらをEvidenceから説明できることを着手条件とします。
 
@@ -63,6 +65,10 @@ Editor自身をCanonicalの正本にはしません。
 
 Go + Wails/WebViewを利用する場合も、WailsはEditor / Hostの実装候補であり、Canonical ApplicationのPresentation意味にはしません。Editor shellの都合から業務Targetの意味を逆定義しないことを維持します。
 
+最初の具体的なauthoring Referenceは[`ISSUE-000046`](000046-studio-shared-acceptance-authoring-loop.md)で扱います。StudioはProjection / Authoring Clientとして、file-native authoring、CLI、AI等と同じShared Acceptance Boundaryへ収束させます。
+
+Studioのdeveloper-facing Wails Hostは、Generated Wails Desktop Application Targetとは別物です。Studio GUIの成功を第二Target Evidenceへ読み替えません。
+
 ## Gate C後に最初に扱うAI支援
 
 最初から自律agentや大量のコード生成を中心にはしません。
@@ -78,6 +84,8 @@ Go + Wails/WebViewを利用する場合も、WailsはEditor / Hostの実装候�
 - 提案の無視・抑制・無効化
 
 AIが何を知っているかではなく、Repository上のどのEvidenceを根拠に提案したかを追跡できることを重視します。
+
+read-onlyなknowledge-first探索は[`ISSUE-000047`](000047-knowledge-first-semantic-exploration.md)、AI Proposal / Acceptanceは[`ISSUE-000027`](000027-ai-proposal-acceptance-boundary.md)で分離して扱います。
 
 ## 技術リサーチからの設計仮説
 
@@ -211,19 +219,15 @@ raw AI tool callをTEIのauthority modelの代わりにはしません。
 
 EditorとAI支援は強く関係しますが、一つの巨大な機能として同時に設計しません。
 
-Gate C通過後、まず次を分離してIssue化します。
+Gate C後の最初の責務分離は、Repository上で次へ固定します。
 
-1. Editor Projectionとして必要なread / navigate / inspect境界
-2. Editorから安全に正本を変更する境界
-3. AIが既存知識を探索するread-only境界
-4. AIがProposal / Decision候補を作る境界
-5. Proposalを共通Acceptance Boundaryで受理する境界
-6. 採用済みDecisionと履歴を管理する境界
-7. Derived Experience Knowledgeを再利用する境界
+1. **Studioの安全なread / inspect / minimal authoring loop** — `ISSUE-000046`
+2. **Human / AI共通のread-only knowledge-first Semantic探索** — `ISSUE-000047`
+3. **AI Proposal / Shared Acceptance Boundary** — `ISSUE-000027`
 
 最初のread-only Projectionやknowledge searchを、正本の編集や自律実行と切り離して進められる構造を優先します。
 
-AI Proposal / Acceptance BoundaryのReferenceは[`ISSUE-000027`](000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267で扱います。
+採用済みDecision履歴やDerived Experience Knowledgeの具体実装は、上記Referenceから不足が確認された段階でさらに分けます。先に巨大な統合Issueを作りません。
 
 ## 第二Targetとの関係
 
@@ -234,6 +238,8 @@ Editor / AI支援を完成させてから第二Targetへ進む必要はありま
 第二Targetから得られた差分は、Editorが表示すべきProjection差や、AIが判断時に参照すべきEvidenceとしてEditor / AI側へ戻します。
 
 Target CapabilityとExecution / Trust Profileの境界は[`ISSUE-000026`](000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で検証します。
+
+Studioのdeveloper-facing Wails Hostは第二Application Targetには数えません。Generated Wails Desktop Targetを採用する場合は、`ISSUE-000026`のApplication Targetとして別途Semantic / Functional / Visual Evidenceを取得します。
 
 ## 非目標
 
@@ -249,12 +255,19 @@ Target CapabilityとExecution / Trust Profileの境界は[`ISSUE-000026`](000026
 
 ## 完了条件
 
-Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor / AI支援に必要な意味境界を具体的に説明できるようになった時点で、本Issueの保留を解除します。
+Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor / AI支援に必要な意味境界を具体的に説明できるようになった時点で、本IssueのBlockを解除します。
 
-その後、Editor Projection、正本の編集、AI knowledge search、Proposal / Acceptance Boundary、Decision履歴、Derived Experience Knowledge等を、責務が混ざらない複数の実装Issueへ分解します。
+解除後は、まず次の既存plan issueをReadyへ移せるか確認します。
+
+- `ISSUE-000046` Studio minimal authoring loop
+- `ISSUE-000047` knowledge-first Semantic exploration
+- `ISSUE-000027` AI Proposal / Acceptance Boundary
+
+新しい実装Issueは、これらのReferenceで追加責務が確認された場合だけ分解します。
 
 ## 関連文書
 
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
@@ -263,3 +276,5 @@ Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor 
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000026-target-capability-execution-profile-boundary.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
