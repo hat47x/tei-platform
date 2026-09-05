@@ -102,9 +102,11 @@ Acceptance Boundaryでは、変更種類に応じてparse / decode、normalize�
 
 interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
 
+Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
+
 AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
 
-この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置き、Gate C後の実証は[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)で行います。
+この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、一つのAI Issueへ集約せず、[`ISSUE-000046`](../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)でStudioのShared Acceptance loop、[`ISSUE-000047`](../plan/issue/000047-knowledge-first-semantic-exploration.md)でHuman / AI共通のread-only探索、[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)でAI Proposal / Acceptanceをそれぞれ扱います。
 
 ## Semantic kernel
 
@@ -174,7 +176,22 @@ Host / Execution
 
 この二つを分離すべき範囲は、第一Web Targetと第二Targetの差から確定します。現時点で完全なtaxonomyをCoreへ固定しません。
 
+Gate Cでは、意味baselineとTarget実装revisionを同一revisionへ畳みません。Gate B通過時のHandover Baselineを`B`、その`baselineRepositoryRevision`を`R`、Targetのbuild / runtime identityを`T`として別々に追跡します。
+
+```text
+Handover Baseline B
+  baselineRepositoryRevision = R
+             ↓ meaning baseline
+Target build T
+             ↓ target observation
+Gate C Evidence
+```
+
+通常`T != R`です。Target実装中にbaseline subjectのApplication meaningを変更する必要が生じた場合は、Target固有field / ruleで旧baselineを補完せずauthoritative sourceへ戻り、必要なGate B Evidenceを新revisionで再確認してsuccessor Handover Baselineを発行します。
+
 Go + Wails/WebViewはEditor / Hostの有力な実装候補ですが、Wailsのplatform APIをCanonical Presentationへ写しません。Wails等が提供するMCP / control interfaceも、Hostのinspection / development control面と、Application自身がMCPを業務Targetとして公開する場合を区別します。
+
+Developer-facing Studio Wails Hostはauthoring / inspection clientのHostであり、Generated Wails Desktop Application Targetとは別物です。Studio shellがWails上で動いたことをPAS-04の第二Application Target Evidenceへ数えません。Generated Wails DesktopをTargetとして採用する場合は、業務Application Projectionとして独立したSemantic / Functional / Visual Evidenceを取得します。
 
 Target Conformanceでは、少なくとも次を別のEvidenceとして扱います。
 
