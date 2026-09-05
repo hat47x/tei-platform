@@ -1,8 +1,9 @@
 # ISSUE-000028: 第一Web TargetのConformance Evidence契約を実証する
 
-- 状態: 保留
+- 状態: Blocked — Gate B Ready + Handover Baseline固定待ち
 - GitHub Issue: #270
 - 本格着手条件: Gate B Ready + Handover Baseline固定
+- Product Acceptance Scenario: PAS-04 primary
 
 ## 背景
 
@@ -16,15 +17,16 @@ TEIでは第一Web Targetの評価を一つの「成功」へ畳まず、次の�
 
 このIssueではWeb frameworkを先に決めるのではなく、Gate Cで何をEvidenceとして残すかをReference Scenarioから実証します。
 
-契約の基線は[`GATE_C_EVIDENCE_CONTRACT.md`](../GATE_C_EVIDENCE_CONTRACT.md)、Driver baselineの固定規則は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md)に置きます。
+契約の正本は[`GATE_C_EVIDENCE_CONTRACT.md`](../GATE_C_EVIDENCE_CONTRACT.md)、Gate Bからのbaseline固定規則は[`GATE_B_TO_C_HANDOVER_CONTRACT.md`](../GATE_B_TO_C_HANDOVER_CONTRACT.md)です。
 
 ## Gate Bから受け取るHandover Baseline
 
-本IssueはGate B通過前にWeb実装を開始しません。
+Gate B Ready時に`ISSUE-000030` / GitHub Issue #291で第一Handover Baseline `B`を作成します。
 
-Gate B Ready時に`ISSUE-000030` / GitHub Issue #291で第一Handover Baselineを作成し、少なくとも次へ追跡できる状態から開始します。
+少なくとも次へ追跡できる必要があります。
 
-- repository revision
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
 - `order_entry` Application
 - browse / record / reference / header-detail / command
 - Data / Relation / Query / Datasource
@@ -40,19 +42,41 @@ Gate B Ready時に`ISSUE-000030` / GitHub Issue #291で第一Handover Baseline�
 
 Handover recordはCanonicalの第二正本ではありません。
 
-Gate C途中にApplication / Driverの意味が変わった場合、既存baselineへ黙って上書きせず、Gate Bに関係するEvidenceを再確認して新しいbaselineを発行します。
+## Baseline revision RとTarget build revision Tを分ける
+
+第一Web Targetの実装commitを含むため、Gate CのTarget build revision `T`は通常、Gate B baseline revision `R`とは異なります。
+
+```text
+Handover Baseline B at R
+        ↓ meaning baseline
+Web Target build at T
+        ↓ execution
+Gate C Evidence
+```
+
+Gate C Evidenceでは次を別々に残します。
+
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- `targetBuildRevision = T`
+- Target Adapter / Host identity
+- run identity
+
+`T`にWeb Adapter等を追加することは許容しますが、baseline subjectの意味を黙って変更しません。
+
+Application / Driver meaningを変更する必要が生じた場合は、authoritative sourceへ戻って必要なEvidenceを再確認し、新しいHandover Baseline `B'` / `R'`を発行します。旧baselineのGate C Evidenceを新baselineへ黙ってcarry-forwardしません。
 
 ## 実証するEvidenceの三層
 
 ### Semantic Conformance
 
-Handover BaselineとWebが同じCanonical subjectを利用していることを確認します。
+Handover BaselineとWebが同じCanonical subject / meaningを利用していることを確認します。
 
-Web固有のcomponent、route、HTTP status、message等を業務上の意味の正本にしません。
+Web固有component、route、HTTP status、message等を業務上の意味の正本にしません。
 
 ### Interaction / Functional Evidence
 
-利用者がReference ScenarioをWeb上で実行できることを確認します。
+利用者がTarget build `T`上でReference Scenarioを実行できることを確認します。
 
 browser automation、GUI agent、人による手順等は実行手段として交換可能にします。
 
@@ -70,7 +94,7 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 - record open
 - reference lookup
 - header-detail read
-- header-detail edit
+- header-detail edit（baselineがwrite意味を持つ場合）
 - validation satisfied
 - validation not satisfied
 - authorization allowed
@@ -81,6 +105,8 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 - Observation
 
 各Scenarioについて、Handover Baseline、Application Pattern、Canonical subject、Driver Scenario、Web interaction、result classificationを追跡します。
+
+Handover Baselineに存在しない意味をWeb側だけで追加してcoverage不足を隠しません。
 
 ## Architecture negative cases
 
@@ -98,14 +124,17 @@ VLM、screenshot diff等を使っても、そのscoreだけでSemantic / Functio
 - Command acknowledgementだけでObserved state成立としない
 - standard ProjectionとCustom UIが同じCanonical意味へ接続する
 - Handover Baselineに不足した意味をWeb側だけで補わない
+- `targetBuildRevision = T`を`baselineRepositoryRevision = R`へ黙って読み替えない
 
 ## Evidence artifact
 
 最初から最終schemaを固定しませんが、少なくとも次を復元できる形式を実証します。
 
-- Handover Baseline identity
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- `targetBuildRevision = T`
 - scenario ID
-- repository / build / run revision
+- build / run identity
 - Application / Pattern ID
 - Canonical references
 - Driver Scenario reference
@@ -151,8 +180,11 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 
 - [x] `GATE_C_EVIDENCE_CONTRACT.md`を定義する
 - [x] Gate B→C Handover baseline契約を定義する
+- [x] baseline `R`とTarget build `T`を別identityとしてEvidence契約へ定義する
 - [ ] Gate B Ready時に第一Handover Baselineを受け取る
-- [ ] 各Gate C Evidence runからHandover Baselineへ追跡できる
+- [ ] 各Gate C Evidence runからHandover Baseline ID / `R`へ追跡できる
+- [ ] 各runの`targetBuildRevision = T`を追跡できる
+- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
 - [ ] Driver baselineとWeb Scenarioを対応付ける
 - [ ] Semantic / Functional / Visual Evidenceを別々に保存・再確認できる
 - [ ] Business Result / Execution Error / Observationを別々に扱える
@@ -174,6 +206,7 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - VLM / GUI agent標準化
 - 一律のvisual score threshold
 - Handover artifactのCanonical化
+- Target buildをbaseline revisionと同じGit revisionへ固定すること
 - 第二Target実装
 
 ## 関連文書
