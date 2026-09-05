@@ -134,12 +134,17 @@ func run(broad bool, requestedArtifactDir string) (evidence, error) {
 		commandOutput,
 	)
 	result.GoEnvironment = goEnvironment
-	result.ChildArtifactsRetained = allChildArtifactsRetained(result.Lanes)
-	if err == nil && !result.ChildArtifactsRetained {
-		result.ReproducibleRevision = false
-		return result, fmt.Errorf("Gate B最終Evidenceで実際に読んだ3 child Evidence artifactを同一runから保持できません")
+
+	retentionErr := artifactStore.verifyRetainedLanes(result.Lanes)
+	result.ChildArtifactsRetained = retentionErr == nil
+	if err != nil {
+		return result, err
 	}
-	return result, err
+	if retentionErr != nil {
+		result.ReproducibleRevision = false
+		return result, fmt.Errorf("Gate B最終Evidenceでsame-run child Evidence artifactのfinal保持確認に失敗しました: %w", retentionErr)
+	}
+	return result, nil
 }
 
 func inspectRepositoryStart() (repositoryevidence.Source, error) {
