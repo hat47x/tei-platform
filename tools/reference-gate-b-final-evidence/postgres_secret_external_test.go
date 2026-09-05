@@ -44,6 +44,26 @@ func TestReadExternalRegularFileStableAcceptsExternalRegularFileAndSymlink(t *te
 	}
 }
 
+func TestReadExternalRegularFileStableRejectsNonRegularBeforeRead(t *testing.T) {
+	base := t.TempDir()
+	repositoryRoot := filepath.Join(base, "repo")
+	outside := filepath.Join(base, "outside")
+	if err := os.Mkdir(repositoryRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(outside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	nonRegular := filepath.Join(outside, "directory-as-secret")
+	if err := os.Mkdir(nonRegular, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readExternalRegularFileStable(nonRegular, repositoryRoot); err == nil {
+		t.Fatal("non-regular secret inputを受理しています")
+	}
+}
+
 func TestReadExternalRegularFileStableRejectsSymlinkIntoRepository(t *testing.T) {
 	base := t.TempDir()
 	repositoryRoot := filepath.Join(base, "repo")
