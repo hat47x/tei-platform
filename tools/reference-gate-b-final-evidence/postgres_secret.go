@@ -20,7 +20,8 @@ func loadPostgresDSNFromEnvironment() (string, error) {
 
 // loadPostgresDSNFromEnvironmentOutsideRepositoryは、final runner自身のcompile段階へDSN本文を持ち込まず、
 // launch environmentにはRepository外のsecret file pathだけを受け取る。
-// symlink解決後の実fileがRepository内にある場合もfail closedで拒否する。
+// secret fileは一度だけopenし、読込前後ともそのopen済みfileがsymlink解決後も
+// Repository外の同一regular file identityであることを確認する。
 func loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot string) (string, error) {
 	if _, exists := os.LookupEnv(postgresDSNEnv); exists {
 		return "", fmt.Errorf("Gate B最終EvidenceではPostgreSQL DSN本文をlaunch environmentへ設定しません。TEI_TEST_POSTGRES_DSN_FILEでsecret fileを指定してください")
@@ -30,14 +31,10 @@ func loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot string) (str
 	if !exists || path == "" {
 		return "", fmt.Errorf("TEI_TEST_POSTGRES_DSN_FILEが未設定です。#308用DSNを一行だけ保存したRepository外のsecret fileを指定してください")
 	}
-	resolvedPath, err := ensureExternalExistingRegularFile(path, repositoryRoot)
+	content, err := readExternalRegularFileStable(path, repositoryRoot)
 	if err != nil {
-		// local pathやsymlink先を通常診断へ複製しない。
-		return "", fmt.Errorf("PostgreSQL DSN secret fileはRepository外にある既存regular fileでなければなりません")
-	}
-	content, err := os.ReadFile(resolvedPath)
-	if err != nil {
-		return "", fmt.Errorf("PostgreSQL DSN secret fileを読み取れません")
+		// underlying errorはlocal pathやsymlink先を含み得るため通常診断へ複製しない。
+		return "", fmt.Errorf("PostgreSQL DSN secret fileはRepository外にある安定したexisting regular fileとして読み取れなければなりません")
 	}
 	return normalizePostgresDSNSecret(content)
 }
