@@ -1,17 +1,17 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner / fail-closed境界 / Runbook同期済み、実TEI checkoutでのactual final run待ち
+- 状態: In Progress — runner / fail-closed / same-run child artifact保持まで実装、actual final run待ち
 - GitHub Issue: #387
-- Gate B scope判断: `ISSUE-000035` / #380
+- Gate B scope: `ISSUE-000035` / #380
 - Gate B監査: `ISSUE-000029` / #273
 - Handover: `ISSUE-000030` / #291
 - Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
 
 ## 目的
 
-Gate B Ready判定に必要な三つのsource-dependent Evidenceが、**同じclean candidate repository revision `R`**から得られたことを機械的に確認します。
+Gate B Ready判定に必要な三つのRequired Evidenceが、**同じclean candidate repository revision `R`**から得られ、さらにfinal convergenceが実際に読んだ詳細child Evidenceを同一runで再確認できる状態にします。
 
-現行Required Evidenceは次の三つです。
+Required Evidence:
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
@@ -22,22 +22,24 @@ Gate B Ready判定に必要な三つのsource-dependent Evidenceが、**同じcl
 #255 ─┼─ repositoryRevision = R
 #308 ─┘
        ↓
-gate-b-three-lane-final-convergence
+#387 final convergence
        ↓
-Gate B audit for R
+same-run child Evidence artifacts
        ↓
-Handover Baseline R
+Gate B Readiness Audit for R
+       ↓
+Handover Baseline B / R
 ```
 
-actual Oracle #214 / #371 / #376は第四Required laneではありません。取得済みならHandoverでverified external asset Evidenceとして参照でき、未完了またはRへの結び付きが不足する場合は`unresolved`として保持します。
+actual Oracle #214 / #371 / #376は第四Required laneではありません。
 
 ## 権威関係
 
-具体的なコマンド、実行順、安全条件、停止条件の唯一の正本は[`plan/GATE_B_EVIDENCE_RUNBOOK.md`](../GATE_B_EVIDENCE_RUNBOOK.md)です。
+- command / 順序 /停止条件: [`GATE_B_EVIDENCE_RUNBOOK.md`](../GATE_B_EVIDENCE_RUNBOOK.md)
+- Ready判定: [`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)
+- tool固有境界: [`tools/reference-gate-b-final-evidence/README.md`](../../tools/reference-gate-b-final-evidence/README.md)
 
-本Issueは「何を完了させるか」を保持し、Runbookのコマンドを第二の実行契約として複製しません。
-
-final runner固有の実装境界は[`tools/reference-gate-b-final-evidence/README.md`](../../tools/reference-gate-b-final-evidence/README.md)で追跡します。
+本Issueへ第二のRunbookを複製しません。
 
 ## 正規tool
 
@@ -45,101 +47,124 @@ final runner固有の実装境界は[`tools/reference-gate-b-final-evidence/READ
 tools/reference-gate-b-final-evidence
 ```
 
-現行Runbookでは、final runner自身のcompile前から外部Go環境とPostgreSQL DSN本文を暗黙入力へしない形で起動します。
-
-概念上の起動条件は次です。
+概念上のlaunch条件:
 
 ```text
-GOENV = off
-GOWORK = off
+Repository root
+clean candidate R
+GOENV = exact off
+GOWORK = off / external workspaceなし
 GOFLAGS = empty
-TEI_TEST_POSTGRES_DSN_FILE = Repository外の一行secret file
+TEI_TEST_POSTGRES_DSN_FILE = Repository外existing regular file
+TEI_TEST_POSTGRES_DSN = absent
+child Evidence artifact store = Repository外
 ```
 
-実際のshell commandはRunbookを正とします。
+実commandはRunbookを正とします。
 
-final runnerのlaunch environmentへ`TEI_TEST_POSTGRES_DSN`本文を直接設定する経路は現行の正規final runではありません。
-
-## 実行順
+## lane順序
 
 ```text
-clean candidate revision R
-        ↓
-#310 deterministic Repository Evidence
-        ↓ final runner source再確認
-#255 generated artifact reproducibility Evidence
-        ↓ final runner source再確認
-#308 real PostgreSQL Provider Evidence
-        ↓ final runner source再確認
+#310 deterministic Repository
+        ↓ source re-check
+#255 generated artifact reproducibility
+        ↓ source re-check
+#308 real PostgreSQL Provider
+        ↓ source re-check
 final source check
 ```
 
-#310または#255に失敗した場合は#308へ進みません。
+#310または#255失敗時は#308を開始しません。
 
-各laneの成功・失敗後にfinal runner自身がRepository sourceを再確認し、HEAD drift、source観測不能、dirty working tree等を検出した場合は次laneへ進みません。
+## final envelope照合
 
-## final runnerで照合する情報
-
-各child Evidenceから主に次を照合します。
+各child Evidenceから少なくとも次を照合します。
 
 - `evidenceNature`
 - `repositoryRevision`
 - `reproducibleRevision`
 
-成功には少なくとも次を要求します。
+成功には:
 
-- 各正規runnerが正常終了する
-- `evidenceNature`が期待laneと一致する
-- 全laneの`repositoryRevision = R`
-- 全laneの`reproducibleRevision = true`
-- 各lane後のsource再確認が完了している
-- 最終確認時もHEADがR
-- 最終確認時もworking treeがclean
+- 全child runner正常終了
+- expected Evidence nature一致
+- 全lane `repositoryRevision = R`
+- 全lane `reproducibleRevision = true`
+- 各lane後source確認成功
+- final HEAD = R
+- final working tree clean
 - `allLanesSameRevision = true`
-- final runner自身の`reproducibleRevision = true`
+- final `reproducibleRevision = true`
 
-## child Evidence artifact identity
+を要求します。
 
-final runnerが実際に読み込んだ各child Evidence JSONのexact bytesへSHA-256を計算し、`evidenceArtifactFingerprint`として追跡します。
+## same-run child Evidence artifact
 
-このfingerprintは、別途保存したchild Evidenceとfinal runnerが実際に読んだartifactを突き合わせるためのidentityです。
+旧runnerはchild stdout exact bytesのSHA-256だけをfinal summaryへ残し、child本文そのものはmemoryから破棄していました。
 
-次の代替にはしません。
+その状態では、後から同じRで再実行した別artifactを「final convergenceが実際に読んだartifact」と同一だと推測しない限り、Readiness Auditで詳細Evidenceを再確認できません。
 
-- Evidence本文の保存
-- `evidenceNature`確認
-- revision一致確認
-- `reproducibleRevision`確認
-- child runnerの成功
+現行runnerでは、各child runnerのvalid Evidence JSON exact bytesを同一runでRepository外へ保存します。
 
-fingerprintだけから保存していないEvidence本文を推測・再構成しません。
-
-## Repository source観測境界
-
-`tools/internal/repositoryevidence`は、開始時・post-runとも概念上次の順でsourceを観測します。
+filename:
 
 ```text
-HEAD before
-  ↓
-git status --porcelain
-  ↓
-HEAD after
+deterministic-repository.json
+generated-artifact-reproducibility.json
+real-postgres-ephemeral-fixture.json
 ```
 
-観測中にHEADが変わった場合は一つのRepository stateとして扱わずfail closedします。
+各lane summaryへ:
 
-final runnerは開始時、各lane後、最終時にsourceを再確認し、確認済みの同一clean revisionだけを受理します。
+- `artifactFile`
+- `evidenceArtifactFingerprint`
 
-## Go実行環境境界
+を残し、成功final summaryでは:
 
-final runner自身のcompile / test入力をcandidate revisionの外へ広げないため、現行経路では次を要求します。
+```text
+childArtifactsRetained = true
+```
 
-- launch時にexact `GOENV=off`
-- external `GOWORK`を有効にしない
-- effective `GOFLAGS`を空にする
-- ambient確認後、child / nested Go commandへ`GOWORK=off / GOFLAGS= / GOENV=off`を継承する
+を要求します。
 
-成功JSONでは少なくとも次を確認します。
+fingerprintは保存exact bytesのSHA-256です。Evidence本文やlane固有合否の代替にはしません。
+
+既存artifactを上書きしません。
+
+## artifact directory
+
+`-artifact-dir`指定時は、まだ存在しないRepository外directoryをrunnerが新規作成します。
+
+未指定時はRepository外のowner-only temporary directoryを新規作成し、そのlocal pathをstderrへ表示します。path自体はfinal Evidence JSONへ保存しません。
+
+Repository内artifact directoryは拒否します。
+
+## Repository root / source境界
+
+final runnerはDSN本文・secret pathを除いたenvironmentでGit Repository rootを確認し、current working directoryがrootでなければlaneを開始しません。
+
+開始時、各lane後、final時にRepository sourceを再観測します。
+
+- HEAD drift
+- dirty working tree
+- source観測不能
+- post-run未確認
+
+をfail closedで拒否します。
+
+## Go environment境界
+
+final runner自身のcompile前から:
+
+```text
+GOENV=off
+GOWORK=off
+GOFLAGS=
+```
+
+を正規条件にします。
+
+runtime guardでも:
 
 ```text
 goEnvironment.externalWorkspaceActive = false
@@ -147,145 +172,137 @@ goEnvironment.goFlagsEmpty = true
 goEnvironment.goEnvDisabled = true
 ```
 
-外部workspace path、GOFLAGS本文、GOENV path /拒否値を通常Evidenceへ保存しません。
+を確認します。
+
+ambient確認前に値を書き換えて不安全状態を隠しません。
 
 ## PostgreSQL secret境界
 
-final runner自身のouter `go run`、compiler、linker等へcredential候補のDSN本文を継承しません。
+DSN本文をouter `go run` / compiler / linkerへ渡しません。
 
-正規final runではRepository外のsecret file pathだけをlaunch時に渡します。
+`TEI_TEST_POSTGRES_DSN_FILE`は:
+
+- Repository外
+- symlink解決後もRepository外
+- existing regular file
+- 一行DSN
+
+を要求します。
 
 runner起動後:
 
 ```text
-final runner
-  ├─ Go environment probe -> DSN本文なし / file pathなし
-  ├─ Git source probe     -> DSN本文なし / file pathなし
-  ├─ #310                 -> DSN本文なし / file pathなし
-  ├─ #255                 -> DSN本文なし / file pathなし
-  └─ #308                 -> in-memory DSN本文だけ / file pathなし
+Go probe / Git probe / #310 / #255
+  -> DSN本文なし
+  -> secret pathなし
+
+#308
+  -> in-memory DSN本文のみ
+  -> secret pathなし
 ```
 
-secret file、file path、DSN本文、credential、実Database名を通常Evidenceへ保存しません。
+secret file path、DSN本文、credential、実Database名を通常Evidenceへ保存しません。
 
 ## PostgreSQL fixture安全境界
 
 #308はEvidence専用空PostgreSQL Databaseだけを対象にします。
 
-少なくとも次をfixture作成前に確認します。
+fixture前:
 
 - default Databaseではない
 - user relation 0件
 - Event Trigger 0件
-- `public.order_lines`不在
+- fixture object不在
 
-fixture作成時はDB側ownership markerを付与し、cleanupではtable lock後に作成時markerとexact matchした同じobjectだけをDROPします。
+fixture作成時はDB-side ownership markerを付け、cleanupではlock後にmarker exact一致したtool-owned objectだけをDROPします。
 
-同名objectが他主体に置換された疑いがある場合、削除を推測せずfail closedします。
+cleanup後:
 
-cleanup後もuser relation 0件 / Event Trigger 0件 / fixture object不在を再確認します。
+- user relation 0件
+- Event Trigger 0件
+- fixture object不在
 
-## generated artifactとの関係
+を再確認します。
 
-final runnerは#255の修復を自動実行しません。
+## generated artifact
 
-事前checkでstaleが見つかった場合:
+final runnerは#255修復を自動実行しません。
+
+staleなら:
 
 ```text
 check-only
   ↓
-必要なgolden toolだけ -write
+必要な正規generator -write
   ↓
 git diffで意味確認
   ↓
-意図したgenerated artifactをcommit
+commit
   ↓
-新しいclean revision
+新clean revision R'
   ↓
-check-only再実行
+三laneを最初から再実行
 ```
 
-`-write`直後のdirty working treeを#255完了Evidenceやfinal convergenceへ使いません。
+`-write`直後のdirty treeを完了Evidenceにしません。
 
-sourceが変わった場合は新revisionを新しいcandidate Rとして、三lane最終収束を最初からやり直します。
+## actual Oracle
 
-## #214 actual Oracleとの関係
+#214 / #371 / #376を本IssueのRequired laneへ戻しません。
 
-#214 / #371 / #376は本IssueのRequired laneではありません。
+- final runner成功 → actual Oracle成功、とはしない
+- #310 synthetic → actual Oracle、とはしない
+- #308 PostgreSQL → actual Oracle、とはしない
+- 未観測physical factsを補完しない
 
-- final runner成功をactual Oracle成功へ読み替えない
-- #310 synthetic Evidenceをactual Oracleへ格上げしない
-- #308 PostgreSQL Evidenceをactual Oracleへ格上げしない
-- 未観測Oracle physical factsを補完しない
+未完了ならHandover `unresolved`へ明示します。
 
-actual Oracle Evidenceが未完了のままGate B Readyになった場合、その未検証範囲をHandover Baselineの`unresolved`へ明示します。
+## 現在成立している実装境界
 
-## これまでに成立した実装境界
-
-final runnerと関連helperでは、少なくとも次のfail-closed境界がRepositoryへ実装済みです。
-
-- 三lane順序とrevision convergence
-- lane failure後のsource再確認
+- 3-lane順序 / same-R convergence
+- lane failure後source re-check
 - lane間source drift拒否
-- `postRunRepository.checked=true`要求
-- child Evidence exact bytes fingerprint
-- Repository source観測中HEAD drift拒否
-- external GOWORK / non-empty GOFLAGS拒否
+- final source check
+- external GOWORK / GOFLAGS拒否
 - exact `GOENV=off` launch guard
 - child / nested Go environment固定
-- Go utility subprocessからPostgreSQL secret除去
-- Git source probeからPostgreSQL secret除去
+- Go / Git probeからPostgreSQL secret除去
 - direct DSN final launch拒否
-- Repository外DSN secret file入力
+- Repository外DSN secret file
+- symlink解決後Repository内secret拒否
 - #308 childだけへのin-memory DSN注入
-- PostgreSQL fixtureのDB-side ownership marker
-
-個々の設計経緯は`ISSUE-000038`～`ISSUE-000045`を参照します。
+- PostgreSQL DB-side fixture ownership marker
+- child Evidence exact-byte fingerprint
+- same-run child Evidence exact artifact保持
+- Repository外artifact directory
+- existing artifact上書き拒否
 
 ## 現在の未完了条件
 
-設計・runner追加ではなく、actual Evidence取得が残っています。
+残っているのはactual executionです。
 
-- [ ] 実TEI Repository checkoutの通常Go環境で、Runbook指定のfinal runner / shared source helper package testを実行する
-- [ ] Evidence専用空PostgreSQL Databaseを用意する
-- [ ] Repository外DSN secret fileを用意する
-- [ ] source変更が出尽くしたclean candidate revision Rを固定する
-- [ ] Runbookの正規final commandでactual final runを実行する
-- [ ] #310 / #255 / #308が同じRへ揃ったfinal JSONを取得する
-- [ ] `goEnvironment`、source固定、PostgreSQL fixture安全条件をactual JSONで確認する
-- [ ] 必要なchild Evidenceを保存し、final runner fingerprintと照合する
-- [ ] `ISSUE-000029` / #273のGate B最終監査へ結果を対応付ける
-- [ ] Ready判定なら同じRを`ISSUE-000030` / #291のHandover Baselineへ固定する
+- [ ] 実TEI checkoutでfinal runner / repositoryevidence package test
+- [ ] Evidence専用空PostgreSQL Database用意
+- [ ] Repository外DSN secret file用意
+- [ ] source変更が出尽くしたclean R固定
+- [ ] Runbook正規commandでactual final run
+- [ ] #310 / #255 / #308 same-R成功
+- [ ] `childArtifactsRetained = true`
+- [ ] 三つのsame-run child exact artifact保存
+- [ ] child SHA-256とfinal fingerprint一致
+- [ ] child詳細からlane固有安全条件再監査
+- [ ] #273 Gate B Readiness Auditへ対応付け
+- [ ] Readyなら同じRを#291 Handover Baselineへ固定
 
-actual final runは、runner実装やisolated testの成功だけでは代替しません。
+actual final runはrunner実装やisolated testで代替しません。
 
 ## 非目標
 
-- 各laneの正規runnerを置き換えること
-- Runbookを本Issueへ複製すること
-- #255修復をfinal runnerから自動実行すること
-- #308のDatabase安全guardを迂回すること
-- #214 actual Oracle EvidenceをRequired laneへ戻すこと
-- fingerprintだけでchild Evidence本文を証明・再構成すること
-- final runnerのexit codeだけでGate B Readyを自動宣言すること
-- GitHub Actionsを再有効化すること
-
-## 関連
-
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
-- `plan/GATE_B_READINESS_AUDIT.md`
-- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
-- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `ISSUE-000029` / #273
-- `ISSUE-000030` / #291
-- `ISSUE-000035` / #380
-- `ISSUE-000038` / #418
-- `ISSUE-000039` / #421
-- `ISSUE-000040` / #424
-- `ISSUE-000041` / #427
-- `ISSUE-000042` / #430
-- `ISSUE-000043` / #433
-- `ISSUE-000044` / #436
-- `ISSUE-000045` / #441
-- #255 / #308 / #310 / #387
-- PR #419 / #422 / #425 / #428 / #431 / #434 / #437 / #442 / #448
+- child runnerを置換する
+- #255修復を自動化する
+- #308 DB safety guardを迂回する
+- actual OracleをRequired laneへ戻す
+- fingerprintだけでEvidence本文を証明する
+- same-R別runをsame-run artifactへ読み替える
+- final exit codeだけでReady宣言する
+- GitHub Actions greenをProduct Evidenceへする

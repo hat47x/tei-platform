@@ -1,26 +1,18 @@
 # Gate B 3-lane Final Evidence Runner
 
-Gate Bの必須Evidenceを、同じcandidate repository revisionへ揃えたことを最終確認するためのtoolです。
+Gate Bの三つのRequired Evidenceを、**同じclean candidate repository revision `R`**へ最終収束するtoolです。
 
-`ISSUE-000035` / #380以降、Gate Bの必須実行Evidenceは次の三つです。
+現行Required Evidence:
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-このtoolは三つの既存runnerを置き換えません。それぞれを正規入口から実行し、返されたEvidence JSONの最小envelopeを照合します。
+具体的な実行順、安全条件、停止条件の正本は`plan/GATE_B_EVIDENCE_RUNBOOK.md`です。本READMEはtool固有境界だけを説明します。
 
-具体的なGate Bの実行順、安全条件、停止条件の正本は`plan/GATE_B_EVIDENCE_RUNBOOK.md`です。このREADMEはtool固有の利用境界を説明するもので、第二のRunbookにはしません。両者に矛盾が見つかった場合は、矛盾を解消するまで成功Evidenceへ採用しません。
+## 正規起動
 
-## 実行
-
-Evidence専用の空PostgreSQL Databaseを用意し、そのDSNを**Repository外の一行secret file**へ保存します。final runnerのlaunch environmentへDSN本文そのものを設定しません。
-
-```text
-TEI_TEST_POSTGRES_DSN_FILE=/secure/path/to/dsn
-```
-
-final runner自身をcompileする段階からRepository外のGo environment file、Go workspace、暗黙flagsを入力へしないため、正規実行例では`GOENV=off`、`GOWORK=off`、空の`GOFLAGS`を明示します。
+Evidence専用の空PostgreSQL Databaseを用意し、DSN本文を**Repository外の一行secret file**へ保存します。final runnerのlaunch environmentへDSN本文そのものを設定しません。
 
 ```bash
 GOENV=off \
@@ -31,11 +23,7 @@ go run ./tools/reference-gate-b-final-evidence \
   > /tmp/tei-gate-b-final-evidence.json
 ```
 
-`TEI_TEST_POSTGRES_DSN`本文をfinal runnerのlaunch environmentへ直接設定したrunはfail closedで拒否します。secret fileはrunner起動後に一度だけ読み、DSN本文はmemoryで保持して#308 childへだけ渡します。
-
-Repository内の新規fileへstdoutを直接redirectしません。command開始前にshellがfileを作成し、開始時clean条件を壊すためです。
-
-Repository全体の`go test ./...`も#310で実行したい場合だけ`-broad`を付けます。
+#310でRepository全体の`go test ./...`も要求する場合だけ`-broad`を付けます。
 
 ```bash
 GOENV=off \
@@ -46,132 +34,169 @@ go run ./tools/reference-gate-b-final-evidence -broad \
   > /tmp/tei-gate-b-final-evidence.json
 ```
 
-secret fileは一行DSNだけを許容します。末尾の単一LFまたはCRLFは除去しますが、empty、複数行、残存CR/LF、NULは受理しません。file read errorのunderlying本文はlocal pathを含み得るため通常stderrへ複製しません。
+Repository内へstdoutをredirectしません。shellがprocess開始前にfileを作るため、開始時clean条件を壊します。
 
-## Go実行環境をcandidate revisionの外へ広げない
+## same-run child Evidenceを保持する
 
-TEI Repositoryには`go.work`がありません。通常のGo実行では、checkoutの親directoryにある`go.work`が自動的に有効になる場合があります。またeffective `GOFLAGS`には`-overlay`、`-modfile`、`-tags`等を指定でき、cleanなGit revisionの外からcompile / test入力を変えられます。user-level Go environment fileにも`GOTOOLCHAIN`や`GOFLAGS`等を保存できるため、runner自身のcompile前からその暗黙入力を無効化する必要があります。
+final runnerは、各child runnerがstdoutへ出した**exact JSON bytes**を、final convergenceと同じrunのartifactとして保持します。
 
-PR #431以降、final runnerはprocess environmentの`GOENV`が**完全一致で`off`**であることを最初に確認します。未設定、空、path、`OFF`、前後空白付き等は受理しません。Go toolがcompile時に特殊値として解釈する条件とruntime guardを一致させ、runtime側だけが値を正規化して安全と誤判定しないためです。
+保存するfilenameは固定です。
 
-PR #422以降、final runnerはlaneを一つも実行する前に次も確認します。
-
-- `go env GOWORK`が空、または`off`である
-- `go env GOFLAGS`が空である
-
-外部Go workspaceが有効な場合やGOFLAGSが非空の場合はfail closedで停止します。
-
-さらに正規実行例そのものにも`GOENV=off GOWORK=off GOFLAGS=`を明示します。これは、runner内部のguardだけに依存せず、runner自身を`go run`でcompileする前からuser-level Go environment、Go workspace、flagsを固定するためです。
-
-PR #425以降は、このambient確認に成功した**後だけ**、final runner自身のprocess environmentを`GOWORK=off / GOFLAGS= / GOENV=off`へ固定します。これにより、#310 / #255 / #308 childと、それらが通常の環境継承で起動するnested Go commandが、Repository外のuser-level Go environment fileを後から既定入力として読み直さない状態にします。
-
-ambient環境を確認する前に安全値へ書き換えて、もともと不安全だった状態を隠すことはしません。また3変数の固定に失敗した場合はlaneを開始せずfail closedで停止します。この境界はOS process全体のsandboxではなく、正規Evidence経路の暗黙Go入力を狭めるためのものです。
-
-成功・失敗JSONへ外部workspaceのpathやGOFLAGS本文、GOENVのpathや拒否値は保存しません。非機密な判定だけを次の形で残します。
-
-```json
-{
-  "goEnvironment": {
-    "externalWorkspaceActive": false,
-    "goFlagsEmpty": true,
-    "goEnvDisabled": true
-  }
-}
+```text
+deterministic-repository.json
+generated-artifact-reproducibility.json
+real-postgres-ephemeral-fixture.json
 ```
 
-この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspace、GOFLAGS、user-level Go environment fileを持ち込まないためのfail-closed条件です。
+### `-artifact-dir`未指定
 
-## PostgreSQL DSN本文をcompile前から必要なprocessだけへ渡す
+owner-onlyのtemporary directoryをRepository外へ新規作成し、保存先をstderrへ表示します。
 
-実際にPostgreSQLへ接続するのは#308 real PostgreSQL Provider Evidence childだけです。
+final JSONへlocal pathは保存しません。
 
-PR #434 / #437以降、runner起動後のGo probe、Git source probe、#310、#255には`TEI_TEST_POSTGRES_DSN`を渡しませんでした。一方、final runner自身を起動するenvironmentへDSN本文を置く方式では、runner binaryが起動する前のouter `go run`、compiler、linker等へcredential候補が継承されます。
+### `-artifact-dir`指定
 
-PR #442以降、正規final runではlaunch environmentへDSN本文を設定しません。`TEI_TEST_POSTGRES_DSN_FILE`でRepository外のsecret file pathだけを渡し、runner起動後にfile内容をmemoryへ読みます。親final runner processのenvironmentへDSN本文を設定し直しません。
+長期監査用に保存先を明示する場合は、**まだ存在しないRepository外directory**を指定します。parent directoryは既存である必要があります。
 
-production経路では、DSN本文とsecret file pathの双方をbase environmentから除去して各subprocess environmentを組み立てます。
+```bash
+mkdir -m 700 /tmp/tei-gate-b-R
 
-- `go env GOWORK` / `go env GOFLAGS`等のGo環境probeへはDSN本文もfile pathも渡さない
-- `go version`へはDSN本文もfile pathも渡さない
-- runner開始時・各lane後・最終確認の`git rev-parse` / `git status`へはDSN本文もfile pathも渡さない
-- #310 deterministic Repository EvidenceへはDSN本文もfile pathも渡さない
-- #255 generated artifact reproducibility EvidenceへはDSN本文もfile pathも渡さない
-- #308 real PostgreSQL Provider Evidenceへだけ、memory上のDSN本文を`TEI_TEST_POSTGRES_DSN`として渡す
-- #308 childにもsecret file pathは渡さない
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+TEI_TEST_POSTGRES_DSN_FILE='/secure/path/to/dsn' \
+go run ./tools/reference-gate-b-final-evidence \
+  -artifact-dir /tmp/tei-gate-b-R/children \
+  > /tmp/tei-gate-b-R/final.json
+```
+
+runner自身が`children` directoryを新規作成します。既存directoryを再利用せず、既存child artifactを上書きしません。
+
+各child fileは0600で新規作成し、exact stdout bytesを保存します。final JSONには各laneについて次を残します。
+
+- `artifactFile`
+- `evidenceArtifactFingerprint`
+
+`evidenceArtifactFingerprint`は保存したexact bytesに対するSHA-256です。
+
+成功final JSONではさらに:
+
+```text
+childArtifactsRetained = true
+```
+
+を要求します。
+
+これにより、Readiness Auditは「同じRで後から再実行した別artifact」ではなく、**final convergenceが実際に読んだ同一run child Evidence**を再確認できます。
+
+## Repository rootを固定する
+
+正規final runはRepository rootから実行します。
+
+runner起動後、DSN本文やsecret file pathを除いたenvironmentで`git rev-parse --show-toplevel`を確認し、current working directoryがそのrootと一致しなければlaneを開始しません。
+
+これはrelativeな正規tool pathとcandidate source境界を一意にするためです。
+
+## Go実行環境をcandidate revision外へ広げない
+
+final runner自身をcompileする段階から、外部Go environment / workspace / flagsを暗黙入力へしません。
+
+正規起動では次を明示します。
+
+```text
+GOENV=off
+GOWORK=off
+GOFLAGS=
+```
+
+runner起動後もlane開始前に確認します。
+
+- process environmentの`GOENV`がexact `off`
+- `go env GOWORK`が空または`off`
+- `go env GOFLAGS`が空
+
+ambient確認後だけ、parent final runnerのenvironmentを次へ固定します。
+
+```text
+GOENV=off
+GOWORK=off
+GOFLAGS=
+```
+
+#310 / #255 / #308とnested Go commandもこの境界を継承します。
+
+外部workspace path、GOFLAGS本文、GOENV path /拒否値はfinal Evidenceへ保存しません。
+
+## PostgreSQL secret境界
+
+`TEI_TEST_POSTGRES_DSN`がfinal runner launch environmentに存在するrunは、値が空でも拒否します。
+
+`TEI_TEST_POSTGRES_DSN_FILE`は次を要求します。
+
+- Repository外
+- symlink解決後もRepository外
+- existing regular file
+- 一行DSN
+- empty / multiline / NULではない
+
+末尾の単一LFまたはCRLFだけは除去します。
+
+secret file pathやread errorのunderlying local pathはEvidenceへ保存しません。
+
+runner起動後のsecret exposureは次に限定します。
 
 ```text
 outer go run / compiler / linker
   -> DSN本文なし
-  -> secret file pathのみlaunch environmentに存在
+  -> secret file pathのみ
 
-final runner process
-  -> secret fileを一度読む
-  -> DSN本文はmemoryのみ
-  -> parent environmentへDSN本文を設定しない
+Go environment probe
+Git source probe
+#310
+#255
+  -> DSN本文なし
+  -> secret file pathなし
 
-Go / Git probe  -> DSN本文なし / file pathなし
-#310            -> DSN本文なし / file pathなし
-#255            -> DSN本文なし / file pathなし
-#308            -> DSN本文のみ / file pathなし
+#308
+  -> in-memory DSN本文のみ
+  -> secret file pathなし
 ```
 
-DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへsecret候補を露出しないためのleast-exposure境界です。
+parent final runnerのenvironmentへDSN本文を設定し直しません。
 
-環境変数keyの大小文字差に依存せず、DSN本文とDSN file pathの同名keyをすべて除去します。`PATH`等の無関係environmentは通常どおり引き継ぎます。callerから受け取ったenvironment slice自体は破壊しません。
-
-Repository source観測については、共有`repositoryevidence`へProvider固有のDSN名を持ち込まず、callerが明示environmentを渡せるgeneric入口を利用します。source同一性の判定契約は従来どおりです。
-
-この分離はEvidenceの合否条件を増やすものではありません。#310 / #255 / #308の正規runner、lane順序、revision convergence、child artifact fingerprint、source再確認の意味は従来どおりです。
-
-standaloneの#308 toolは引き続き`TEI_TEST_POSTGRES_DSN`を入力とします。本節は#387 final runnerから#308を起動するときのsecret受け渡し境界です。
-
-## 実行順
+## lane順序
 
 ```text
 clean candidate revision R
         ↓
-final runner compile前から exact GOENV=off
-        + GOWORK=off / GOFLAGS=空
-        + DSN本文はlaunch environmentへ置かない
-        ↓
-Go workspace / GOFLAGS確認
-        ↓
-child Go環境をGOWORK=off / GOFLAGS= / GOENV=offへ固定
-        ↓
-Repository外secret fileを読み、DSN本文をmemoryへ保持
-        ↓
 #310 deterministic Repository Evidence
-        ↓ runner自身もsource再確認
+        ↓ source re-check
 #255 generated artifact reproducibility
-        ↓ runner自身もsource再確認
+        ↓ source re-check
 #308 real PostgreSQL Provider Evidence
-  （このchildだけへDSN本文を注入）
-        ↓ runner自身もsource再確認
+        ↓ source re-check
 final source check
 ```
 
 #310または#255が失敗した場合、#308へ進みません。
 
-つまり、deterministic境界やgenerated artifactが壊れている状態で、不要なPostgreSQL fixture操作を開始しません。
-
-各laneのrunnerが失敗した場合も、その失敗を返す前に最終runner自身がRepository sourceを再観測します。lane実行後に次のいずれかを満たせなければ、その時点で停止して次laneへ進みません。
+各lane成功・失敗後にfinal runner自身がRepositoryを再観測し、次を満たさなければ後続laneへ進みません。
 
 - `postRunRepository.checked = true`
-- candidate revisionからHEADが変わっていない
-- working treeがcleanである
+- HEADがcandidate `R`のまま
+- working treeがclean
 
-これにより、「laneは失敗したがsourceも変化していた」「post-run観測が完了していない」といった状態を、後続laneの前提へ持ち越しません。
+## lane Evidenceの採用条件
 
-## 成功条件
+各child JSONについて次を確認します。
 
-各laneについて次を要求します。
-
-- subprocessが正常終了する
-- `evidenceNature`が期待値と一致する
-- `repositoryRevision`がrunner開始時のcandidate revisionと一致する
+- subprocess正常終了
+- `evidenceNature`が期待laneと一致
+- `repositoryRevision = R`
 - `reproducibleRevision = true`
+- exact child JSONをsame-run artifact storeへ保持済み
 
-さらにlane間でも同じrevisionであることを確認します。
+三laneすべてが同じRへ揃うことを要求します。
 
 ```text
 #310.repositoryRevision == R
@@ -179,85 +204,89 @@ final source check
 #308.repositoryRevision == R
 ```
 
-最後にrunner自身もRepository HEAD / working treeを再観測し、`repositoryevidence.IsReproducible`の条件を満たす同じclean revisionに留まっていることを確認します。
+## final success
 
-## JSONへ残すもの
+成功final JSONでは少なくとも次を要求します。
 
-最終JSONには、三laneの詳細本文を再掲せず、照合に必要な最小情報だけを残します。
+```text
+evidenceNature = gate-b-three-lane-final-convergence
+repositoryRevision = R
+workingTreeClean = true
+reproducibleRevision = true
+allLanesSameRevision = true
+childArtifactsRetained = true
+postRunRepository.checked = true
+postRunRepository.revisionStable = true
+postRunRepository.workingTreeClean = true
 
-- `evidenceNature = gate-b-three-lane-final-convergence`
-- candidate `repositoryRevision`
-- `workingTreeClean`
-- `reproducibleRevision`
-- `postRunRepository`
-- Go version
-- `goEnvironment.externalWorkspaceActive`
-- `goEnvironment.goFlagsEmpty`
-- `goEnvironment.goEnvDisabled`
-- `broadRequested`
-- `allLanesSameRevision`
-- laneごとの
-  - name
-  - command
-  - expected / observed Evidence nature
-  - repository revision
-  - reproducible revision
-  - `evidenceArtifactFingerprint`
-  - pass / fail
+goEnvironment.externalWorkspaceActive = false
+goEnvironment.goFlagsEmpty = true
+goEnvironment.goEnvDisabled = true
+```
 
-`evidenceArtifactFingerprint`は、そのlane runnerがstdoutへ出したEvidence JSONの**exact bytes**に対するSHA-256です。空白や改行だけが変わっても別artifactとして扱います。
+各laneには少なくとも次を残します。
 
-このfingerprintはEvidence本文の代替ではありません。またfingerprint自体を新しい合格条件にはしません。別途保存したchild Evidenceと、final runnerが実際に読み込んだartifactを後から照合するための追跡点として利用します。
+- name
+- command
+- expected / observed Evidence nature
+- repository revision
+- reproducible revision
+- `artifactFile`
+- `evidenceArtifactFingerprint`
+- pass / fail
 
-次は保存しません。
+final JSONへchild Evidence本文を重複格納しません。詳細Evidenceはsame-run child artifact fileを正とします。
 
-- `TEI_TEST_POSTGRES_DSN`の値
-- `TEI_TEST_POSTGRES_DSN_FILE`のpath
+## 保存しないもの
+
+- PostgreSQL DSN本文
+- secret file path
 - credential / secret
-- secret file内容
 - runtime parameter値
-- 各laneのEvidence本文
-- test stdout
 - PostgreSQL Database名
-- 外部Go workspaceのpath
+- external Go workspace path
 - GOFLAGS本文
-- GOENV path / 拒否値
+- GOENV path /拒否値
+- child test stdout以外の任意diagnostic dump
 
-三laneそれぞれの詳細Evidenceは、必要に応じて個別runnerから別途保存します。fingerprintだけを根拠に、保存していないEvidence本文を後から推測・再構成しません。
+child Evidence JSON自体にも各child runnerの通常のsecret非保存契約を適用します。
 
-## 事前確認と最終収束を分ける
+## fail closed
 
-このtoolは、Gate B準備中のdiagnostic / repairを一つへまとめるものではありません。
+少なくとも次で成功Evidenceへ採用しません。
 
-事前確認では引き続き各laneの正規toolを個別に使います。
-
-- #310でdeterministic failureを確認する
-- #255がstaleなら個別golden toolの`-write`で修復し、差分を確認してcommitする
-- #308はEvidence専用空DBで安全条件を確認する
-
-source変更が出尽くした後にcandidate revision `R`を固定し、本toolを**最終収束の確認**として利用します。
-
-#255の修復操作やdirty treeを本toolから実行する経路は持ちません。
-
-## #214 actual Oracleとの関係
-
-#214 / #371 / #376は本toolのlaneではありません。
-
-actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の第二Provider圧力試験として継続します。未完了のままGate Bを通過する場合は、Handover Baselineの`unresolved`へ明示します。
-
-本toolの成功をactual Oracle成功Evidenceへ格上げしません。
+- Repository root以外から実行
+- 開始時dirty working tree
+- source観測不能 / HEAD drift
+- lane後dirty / revision drift
+- required lane失敗
+- Evidence nature / revision mismatch
+- `reproducibleRevision != true`
+- external Go workspace有効
+- GOFLAGS非空
+- exact `GOENV=off`でない
+- direct `TEI_TEST_POSTGRES_DSN`設定
+- DSN secret fileがRepository内、symlink先がRepository内、non-regular、empty、multiline、NUL、read不能
+- child Evidence artifactをsame-runで保存できない
+- artifact directoryがRepository内
+- 既存artifactへの上書きが必要になる
+- final source check未完了
 
 ## 非目標
 
-- 三laneの個別runnerを置き換えること
-- `plan/GATE_B_EVIDENCE_RUNBOOK.md`をこのREADMEで置き換えること
-- generated artifactを修復すること
-- PostgreSQLの既存Databaseをfixture用に変更すること
-- DSN secret fileをRepositoryへ保存すること
-- secret manager製品をこのtool内で実装すること
-- actual Oracle Evidenceを代替すること
-- fingerprintだけでchild Evidence本文の存在・真実性を証明したことにすること
-- Go toolchainやmodule cacheをRepositoryへvendoringすること
-- OS process全体をsandbox化すること
-- Gate B Readyをtoolのexit codeだけで自動宣言すること
-- GitHub Actionsを再有効化すること
+- actual OracleをGate Bの第四Required laneへ戻す
+- PostgreSQL Evidenceをactual Oracleへ読み替える
+- final runnerを三つのchild runnerの代替にする
+- child EvidenceをCanonicalへ昇格する
+- secret manager製品を標準化する
+- Go toolchain / module cacheをRepositoryへvendoringする
+- OS process全体をsandbox化する
+- GitHub Actions greenをGate B Product Evidenceへ格上げする
+
+## 関連
+
+- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/issue/000037-gate-b-three-lane-final-evidence.md`
