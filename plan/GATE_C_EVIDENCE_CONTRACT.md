@@ -2,46 +2,101 @@
 
 ## 目的
 
-この文書は、第一Web Targetが「表示できた」ことではなく、TEIのTarget-neutral Presentation / Interaction境界を検証できるEvidenceを残したことをもってGate Cを判定するための契約を定めます。
+この文書は、第一Web Targetが「表示できた」ことではなく、Gate Bを通過したApplication meaningをTargetへProjectionし、その意味・操作・視覚品質を再確認可能なEvidenceとして残せたことをもってGate Cを判定する契約です。
 
-Gate Cでは、Driverと第一Web Targetが同じCanonical Application上の意味を共有し、そのうえでTargetへProjectionした結果として何が共通で、何がWeb固有だったかを説明できる必要があります。
+Gate Cでは、Driverと第一Web Targetが同じCanonical Application上の意味を共有し、そのうえで何がTarget-neutralで、何がWeb固有だったかを説明できる必要があります。
 
-この文書はWeb framework、GUI test tool、VLM、browser automation製品を標準化するものではありません。どの実装技術を選んでも残すべきEvidenceの意味を定めます。
+この文書はWeb framework、browser automation、GUI agent、VLM、visual test製品を標準化しません。どの実装技術を選んでも保持すべきEvidenceの意味を定めます。
+
+- Product Acceptance Scenario: **PAS-04 primary**
+- inherited baseline context: PAS-02 / PAS-03
 
 関連:
 
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
-- GitHub Issue #70
-- GitHub Issue #270
-- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
+- `plan/issue/000026-target-capability-execution-profile-boundary.md`
+- GitHub Issue #70 / #259 / #270 / #291
+
+## Gate CはHandover Baselineから開始する
+
+第一Web Targetは、曖昧な「最新Driver」から開始しません。
+
+Gate B Readyで固定したHandover Baselineを`B`、そのrepository revisionを`R`とします。
+
+```text
+Gate B Ready Evidence
+        ↓
+Handover Baseline B
+  └─ baselineRepositoryRevision = R
+        ↓
+First Web Target implementation
+  └─ targetBuildRevision = T
+        ↓
+Gate C Evidence
+```
+
+通常、Web Targetの実装commitを含むため`T`は`R`より後のrevisionになります。したがって、Gate C Evidenceで`repositoryRevision = R`をTarget buildへ強制しません。
+
+代わりに、次を分けて追跡します。
+
+### Handover Baseline identity
+
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- Application / Pattern / Data / Relation / Query / Capability等のCanonical references
+- Driver Scenario identity
+- Gate B Evidence references
+- unresolved
+
+### Target build identity
+
+- `targetBuildRevision = T`
+- Target Adapter / Host identity
+- build / run identity
+- Targetで実際に利用したCanonical subject
+
+### RとTの関係
+
+`T`にWeb Adapter、Host、Projection等を追加しても、Handover Baselineが表すApplication meaningを黙って変更しません。
+
+Gate C進行中に`order_entry`等のbaseline subjectの意味変更が必要になった場合は:
+
+1. Web固有fieldやruleで不足を補わない
+2. authoritative sourceへ戻って修正する
+3. 必要なDriver / Gate B Evidenceを再確認する
+4. 新しいHandover Baseline `B'` / baseline revision `R'`を発行する
+5. 以後のGate C Evidenceは`B'`へ追跡する
+
+旧`B`のEvidenceを新baselineの成功へ黙って読み替えません。
 
 ## Gate Cで分ける三種類のEvidence
 
 第一Web Targetの評価を一つのscoreや一つの「成功」に畳みません。
 
 ```text
-Canonical Application / Driver baseline
+Handover Baseline B / meaning at R
                 │
                 ├─ Semantic Conformance
                 │
-                ├─ Interaction / Functional Evidence
+Target build T  ├─ Interaction / Functional Evidence
                 │
                 └─ Visual Fidelity Evidence
 ```
 
-### Semantic Conformance
+### 1. Semantic Conformance
 
-Web Targetが、Driverで成立したCanonical Application上の意味を保持しているかを確認します。
+Web TargetがHandover BaselineのCanonical meaningを保持しているかを確認します。
 
 少なくとも次を対象にします。
 
 - Application Pattern identity
-- Data / Relation / Query / Capability identity
-- Datasourceとread / read-write境界
+- Data / Relation / Query / Datasource identity
+- read / read-write境界
 - Validation rule
 - Authentication / Authorization
-- Capability Binding
+- Capability / Binding
 - Business Result / named Outcome
 - Execution Error
 - Command / Observation
@@ -49,39 +104,25 @@ Web Targetが、Driverで成立したCanonical Application上の意味を保持�
 
 Semantic ConformanceはGate Cの必須条件です。
 
-### Interaction / Functional Evidence
+DOM、route、HTTP status、component名等の一致ではなく、Handover Baselineに含まれるApplication meaningとの対応を確認します。
 
-利用者がWeb Target上で必要なReference Scenarioを実行できるかを確認します。
+### 2. Interaction / Functional Evidence
 
-browser automation、GUI agent、人による再現手順等は実行手段です。どの手段を使っても、何のApplication上の意図を実行したかへ戻れる必要があります。
+利用者がTarget build `T`上でReference Scenarioを実行できるかを確認します。
 
-### Visual Fidelity Evidence
+browser automation、GUI agent、人による再現手順等は実行手段です。どの手段でも、何のHandover Baseline / Application intentを実行したかへ戻れる必要があります。
 
-layout、grouping、readability、visual hierarchy、feedbackの見分けやすさ等、Targetとしての視覚品質を記録します。
+### 3. Visual Fidelity Evidence
 
-Visual FidelityはTarget品質として重要ですが、Semantic / Functional Evidenceの代替にはしません。
+layout、grouping、readability、visual hierarchy、feedbackの識別性等、Targetとしての視覚品質を記録します。
 
-VLM、image similarity、screenshot diff等を利用しても、そのscoreだけでSemantic ConformanceやScenario成立を合格にしません。
+Visual Fidelityは重要ですが、Semantic / Functional Evidenceの代替にはしません。
 
-## Driverをbaselineとする
+VLM、image similarity、screenshot diff等を使っても、そのscoreだけでSemantic ConformanceやScenario成立を合格にしません。
 
-Web Target固有の期待値をゼロから作りません。
+## Scenario Matrix
 
-Gate Bを通過したDriver Scenarioを、Web Targetが保持すべき意味のbaselineとして利用します。
-
-```text
-Canonical Application
-      │
-      ├─ Driver Scenario ───── baseline meaning / result
-      │
-      └─ Web Projection ───── target interaction / representation
-```
-
-同じ意味を比較するのであって、Driverのconsole表現とWebのDOM表現を一致させることが目的ではありません。
-
-## 最小Scenario Matrix
-
-第一Web Targetでは、少なくとも次をDriver baselineと対応付けます。
+少なくとも次をHandover BaselineのDriver Scenarioと対応付けます。
 
 | Scenario | Semantic確認 | Functional確認 |
 | --- | --- | --- |
@@ -89,31 +130,31 @@ Canonical Application
 | record open | 同じrecord Pattern / Data | 一件を開ける |
 | reference lookup | 同じRelation / read-only Datasource | 参照候補を検索・選択できる |
 | header-detail read | 同じ1:N Relation | HeaderとDetailを閲覧できる |
-| header-detail edit | 同じRelation / Validation | Detailを追加・変更・削除できる範囲を確認できる |
+| header-detail edit | baselineにwrite意味がある場合、同じRelation / Validation | 許可された範囲だけ編集できる |
 | validation satisfied | 同じCanonical Validation | 正常入力が次へ進める |
-| validation not satisfied | 同じCanonical Validation | 不成立理由を利用者へ返しCommandへ進まない |
+| validation not satisfied | 同じCanonical Validation | 不成立理由を返しCommandへ進まない |
 | authorization allowed | 同じAuthorization Capability | 許可された操作を実行できる |
-| authorization denied | 同じAuthorization Capability / Outcome | 拒否をExecution Errorへ畳まず表示できる |
+| authorization denied | 同じAuthorization意味 / Outcome | Execution Errorへ畳まず扱える |
 | command | 同じcommand Pattern / Capability Binding | 明示Capabilityをinvokeできる |
 | business result | 同じoutput / named Outcome | Target表現へProjectionできる |
 | execution error | 同じInvocation境界 | 業務Outcomeと区別して扱える |
-| observation | 同じObservation意図 /境界 | acknowledgementとObserved stateを区別できる |
+| observation | 同じObservation意図 / read境界 | acknowledgementとObserved stateを区別できる |
 
-Gate BでScenarioが追加・修正された場合、このMatrixもbaselineを追従させます。Web側だけで独自Scenario意味を追加してbaseline不足を隠しません。
+Handover Baselineに存在しないScenario意味をWeb側だけで追加してcoverage不足を隠しません。
 
 ## Negative / Architecture Conformance
 
-正常操作だけでGate Cを判定しません。少なくとも次をnegative caseとして確認します。
+正常操作だけでGate Cを判定しません。
 
 ### Canonical不変
 
 Web Adapterを外してもCanonical Worldが変わらないことを確認します。
 
-Web固有のcomponent、route、HTTP status、DOM selector、CSS class等をCanonical Semantic Layerへ追加しません。
+Web固有component、route、HTTP status、DOM selector、CSS class等をCanonical Semantic Layerへ追加しません。
 
 ### 二重実装を作らない
 
-次をWeb Target内へ複製しません。
+次をWeb Target内へ独立正本として複製しません。
 
 - native SQL
 - Capability implementation
@@ -121,8 +162,6 @@ Web固有のcomponent、route、HTTP status、DOM selector、CSS class等をCano
 - Authorization rule
 - Business Outcome定義
 - Observation対象の意味
-
-Targetはこれらを利用・Projectionしますが、Target固有コードを新しい正本にはしません。
 
 ### Result境界を保つ
 
@@ -135,21 +174,17 @@ Observation
 Developer Diagnostic
 ```
 
-HTTP status、toast、dialog、inline message等は表現方式です。
-
-`HTTP 401だからdenied`、`HTTP 500だからExecution Error`のようにtransport / UI表現からCanonical意味を逆定義しません。
+HTTP status、toast、dialog、inline message等は表現方式です。transport / UI表現からCanonical意味を逆定義しません。
 
 ### Command acknowledgementとObservationを分ける
 
 Commandが正常なBusiness Resultを返しただけで、外部状態が成立済みとみなしません。
 
-Observationが必要なScenarioでは、Command EvidenceとObservation Evidenceを別々に残します。
+Observationが必要なScenarioではCommand EvidenceとObservation Evidenceを別々に残します。
 
 ### Datasource境界を破らない
 
-read-only DatasourceをTarget都合でwrite可能にしません。
-
-Target内のcache、form state、browser storage等も、Canonical Datasourceのwrite authorityとして扱いません。
+read-only DatasourceをTarget都合でwrite可能にしません。browser storageやform stateもCanonical Datasourceのwrite authorityにはしません。
 
 ### Standard ProjectionとCustom UI
 
@@ -159,16 +194,22 @@ Custom UIでもApplication Pattern、Validation、Authorization、Capability、R
 
 ## Evidence Recordの最小項目
 
-具体的なJSON schemaやfile formatは第一実装で決めますが、Evidence artifactから少なくとも次を復元できる必要があります。
+最初から最終JSON schemaを固定しません。ただしEvidence artifactから少なくとも次を復元できる必要があります。
 
-### Provenance
+### Baseline provenance
 
-- scenario ID
-- repository revision / build identity
-- Reference Workspace identity
-- Driver baseline identity
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- Driver Scenario identity
+- Gate B Evidence reference
+- baseline unresolved
+
+### Target provenance
+
+- `targetBuildRevision = T`
 - Target Adapter / Host identity
-- 実行日時またはrun identity
+- build / run identity
+- Reference Workspace / Canonical subject identity
 
 ### Canonical references
 
@@ -191,25 +232,25 @@ Custom UIでもApplication Pattern、Validation、Authorization、Capability、R
 - Functional result
 - Visual Evidence reference
 - performance measurement reference
-- Diagnostic / unresolved事項
+- Diagnostic / unresolved
 
 ### Evaluator information
 
 自動評価を使った場合は少なくとも次を追跡します。
 
-- evaluator / automation tool名
-- versionまたはidentity
+- evaluator / automation tool identity
+- version
 - 入力artifact
 - evaluatorが判定したEvidence種別
 
-model prompt、trajectory、score等を保存する場合もCanonical meaningへ含めません。secret、credential、不要なprivate dataを通常Evidenceへ保存しません。
+prompt、trajectory、score等を保存してもCanonical meaningへ含めません。secret、credential、不要なprivate dataを通常Evidenceへ保存しません。
 
 ## Evidence artifactはCanonicalではない
 
-Gate C Evidenceは検証成果物です。
+Gate C Evidenceはderivedな検証成果物です。
 
 ```text
-Canonical / Authoritative Source
+Authoritative Source / Handover Baseline
           ↓
 Driver / Target execution
           ↓
@@ -218,13 +259,13 @@ Evidence artifact
 
 Evidence artifactからCanonicalへ暗黙に逆書きしません。
 
-Screenshot、DOM snapshot、browser trace、VLM judge結果、GUI agent trajectory、performance trace等は、再確認や比較には利用できますが、Canonical source of truthにはしません。
+Screenshot、DOM snapshot、browser trace、VLM judge結果、GUI agent trajectory、performance trace等は再確認や比較に利用できますが、source of truthにはしません。
 
 ## Target Capability / Execution / Trustの引き継ぎ
 
 第一Web Targetだけで完全なtaxonomyを作りません。
 
-Gate Cでは、観測した差分を次のbucketへ整理し、`ISSUE-000026` / GitHub Issue #259へ渡します。
+Gate Cでは観測した差を次へ整理し、`ISSUE-000026` / GitHub Issue #259へ渡します。
 
 1. Application上の意味
 2. Target-neutral Presentation候補
@@ -234,10 +275,11 @@ Gate Cでは、観測した差分を次のbucketへ整理し、`ISSUE-000026` / 
 6. Web固有実装
 7. Host control plane固有差
 8. Canonicalへ持ち上げてはいけない差
+9. unresolved
 
-分類できないものは無理に既存bucketへ押し込まず、`unresolved`としてEvidenceを残します。
+分類できないものは無理に既存bucketへ押し込まず`unresolved`として残します。
 
-## Visual Fidelityの扱い
+## Visual Fidelity
 
 初期Referenceでは一律の数値閾値を置きません。
 
@@ -248,18 +290,14 @@ Gate Cでは、観測した差分を次のbucketへ整理し、`ISSUE-000026` / 
 - header-detailの局所性
 - validation feedbackの識別性
 - authorization denialとsystem errorの識別性
-- Business Result / Observation状態の識別性
+- Business Result / Observationの識別性
 - standard ProjectionとCustom UIの差
 
-Screenshotまたは同等の再確認可能なartifactを残せるようにします。
-
-VLM evaluator等を利用する場合、同じartifactを別evaluatorで再評価できるよう、judge結果より入力artifactを優先して残します。
+Screenshotまたは同等の再確認可能なartifactを優先して残します。VLM等のjudge結果だけを保存して入力artifactを捨てません。
 
 ## Performance Evidence
 
-RQ-024の最終性能contractは第二Target以降で決めますが、第一Web Targetから測定点を用意します。
-
-少なくとも次を測定可能にします。
+RQ-024の最終performance contractは第二Target以降の比較から決めますが、第一Web Targetから測定点を用意します。
 
 - initial projection / load
 - browse result render
@@ -272,24 +310,27 @@ RQ-024の最終性能contractは第二Target以降で決めますが、第一Web
 - Execution Error projection
 - observed completion
 
-現時点で根拠のない一律の数値閾値は固定しません。
+根拠のない一律閾値は第一Targetだけから固定しません。
 
 ## Gate C判定
 
-Gate CはIssueがcloseされたことやWeb画面が存在することだけでは通過しません。
+Gate CはIssue closeやWeb画面の存在だけでは通過しません。
 
 少なくとも次をEvidenceから説明できることを要求します。
 
-- DriverとWebが同じApplication / Patternを共有している
+- すべてのGate C runが明示Handover Baseline `B` / revision `R`へ追跡できる
+- Target build revision `T`をbaseline `R`と混同していない
+- `T`でbaseline subjectの意味を変更した場合、新Handover Baselineへ切り替えている
+- DriverとWebが同じApplication / Pattern meaningを共有している
 - Semantic Conformanceが成立している
 - Reference ScenarioのFunctional Evidenceが揃っている
 - Visual Fidelityが別Evidenceとして残っている
-- Result / Execution Error / Observationの意味境界が保たれている
+- Result / Execution Error / Observationの境界が保たれている
 - Web固有実装をCanonicalへ逆流させていない
 - Web Adapterを除去してもCanonical Worldが変わらない
 - standard ProjectionとCustom UIが同じ上位意味へ接続できる
 - Target Capability / Execution / Trust差を第二Targetへ渡せる
-- unresolvedな境界を未解決のまま明示できる
+- unresolvedを成功へ読み替えず明示できる
 
 Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000026`の第二Target圧力試験を判断します。
 
@@ -303,3 +344,4 @@ Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000
 - visual scoreによる単一合否
 - 第二Targetの実装
 - Evidence artifactのCanonical化
+- Target build revisionをHandover Baseline revisionと同一に固定すること
