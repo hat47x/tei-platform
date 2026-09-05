@@ -3,8 +3,8 @@
 - 状態: Ready
 - GitHub Issue: #308
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
-- 前提Issue: `ISSUE-000024` / #244（Completed）
-- Gate B監査: `ISSUE-000029` / #273
+- 前提Issue: `ISSUE-000024` / GitHub Issue #244（Completed）
+- Gate B監査: `ISSUE-000029` / GitHub Issue #273
 - 関連RQ: RQ-009 / RQ-012 / RQ-014
 
 ## 目的
@@ -102,8 +102,6 @@ PR #365では、user relationが0件でもDDLへ介入し得るEvent TriggerがD
 
 PR #414では、`TEI_TEST_POSTGRES_DSN`にcredentialが含まれ得ることを踏まえ、接続設定初期化と最初の接続確認でunderlying driver error本文をそのままpanic / stderrへ出さない境界を追加しました。malformed URL等でraw DSNがdriver errorへ含まれても、その本文をwrap・複製せず、非機密なstageだけを診断として残します。PR #415で同じ境界をtool READMEへ同期しました。
 
-専用空Database guardの失敗診断も、actual Database identityをstderrへ複製しません。既定Database / 既存user relation / Event Triggerという**安全条件違反の種類と非機密な件数だけ**を返し、接続先の実Database名は通常diagnosticへ持ち出しません。
-
 現在の実行順は次です。
 
 1. repository revision / working tree cleanを確認する
@@ -139,7 +137,7 @@ PostgreSQL接続設定の初期化
 PostgreSQL接続確認
 ```
 
-この境界は接続初期化に限定します。fixture作成後のProvider runtime、専用空Database guard、cleanup、source-fixed Evidenceの診断まで一律に隠すものではありません。ただし専用空Database guardではactual Database identity自体は診断へ含めません。
+この境界は接続初期化に限定します。fixture作成後のProvider runtime、専用空Database guard、cleanup、source-fixed Evidenceの診断まで一律に隠すものではありません。
 
 ### 既定Databaseを拒否する
 
@@ -276,32 +274,59 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - `fixtureCleanupSafety.userRelationsAfterCleanup = 0`
 - `fixtureCleanupSafety.eventTriggersAfterCleanup = 0`
 - `fixtureCleanupSafety.fixtureObjectAbsentAfterCleanup = true`
-- 接続先Database名 / DSN / credential / parameter値を通常Evidenceへ保存しない
-- 専用空Database guardの失敗診断にもactual Database名を含めない
-- post-run source確認済みであること
-
-## Gate B final convergenceでの扱い
-
-#387 final runnerでは、standalone #308へ直接指定する`TEI_TEST_POSTGRES_DSN`をouter launch environmentへ置きません。
-
-final runner自身はRepository外の`TEI_TEST_POSTGRES_DSN_FILE`からDSNをmemoryへ読み、#308 child processへだけ`TEI_TEST_POSTGRES_DSN`として注入します。Go probe / Git probe / #310 / #255へはDSN本文もsecret file pathも渡しません。
-
-#308 child Evidenceは、#387が実際に読んだexact JSON bytesをsame-run artifactとして保持します。Readiness Auditではそのsame-run artifactを独立再照合し、別runの同じRを代替にしません。
+- 接続先Database名 / DSN / credentialを通常Evidenceへ保存しない
+- 接続設定初期化 / 最初の接続確認のdriver error本文をstderrへ複製しない
 
 ## 完了条件
 
-- [x] real PostgreSQL runnerを実装
-- [x] clean source固定境界を実装
-- [x] Workspace ValidationをDB接続前に実行
-- [x] 専用空Database safety guardを実装
-- [x] Event Trigger guardを実装
-- [x] DB-side fixture ownership marker / cleanup guardを実装
-- [x] connection driver error本文のcredential非露出境界を実装
-- [x] fixture安全判定Evidence / cleanup Evidenceを実装
-- [x] safety failure diagnosticからactual Database identityを除外
-- [ ] 実TEI checkoutでpackage testを再確認
-- [ ] Evidence専用空PostgreSQLでactual #308 run
-- [ ] #387 same-R final convergenceへ取り込む
-- [ ] #273でsame-run child詳細を再監査
+- [x] Workspace Validation Error時にDB接続前に停止する
+- [x] PostgreSQL既定Databaseをfixture先として拒否する（PR #324）
+- [x] 既存user relationがあるDatabaseをfixture先として拒否する（PR #324）
+- [x] Event TriggerがあるDatabaseをfixture先として拒否する（PR #365）
+- [x] `public.order_lines`既存時に停止する
+- [x] tool-owned fixtureだけをcleanupする
+- [x] fixture作成前guardの非機密な判定結果をEvidence JSONへ残し、Database名 / DSNを保存しない（PR #335 / #365）
+- [x] dirty working treeではDB接続前に停止する（PR #336）
+- [x] Provider runtime後にHEAD同一 / working tree cleanを再確認する（PR #336）
+- [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
+- [x] cleanup後にuser relation 0件 / Event Trigger 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す（PR #341 / #365）
+- [x] 接続設定初期化 / initial Pingのdriver error本文をcredential-safeに隔離し、READMEへ同期する（PR #414 / #415、GitHub #411）
+- [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
+- [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
+- [ ] `reproducibleRevision = true`を実runで確認する
+- [ ] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する
+- [ ] `fixtureCleanupSafety`が期待する終了状態を示すことを実runで確認する
+- [ ] 2件取得を確認する
+- [ ] 0件を正常な空collectionとして確認する
+- [ ] physical table欠落をExecution Errorとして確認する
+- [ ] Semantic mappingとsupport column非露出を確認する
+- [ ] parameter value / credential / DSN / Database名が通常Evidenceへ残っていないことを確認する
+- [ ] Evidence natureが`real-postgres-ephemeral-fixture`であることを確認する
+- [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
 
-actual run前の実装・isolated testだけで#308のRequired Evidence取得済みとはしません。
+## 非目標
+
+- keyless Relation Storage境界の再設計
+- header-detail PatternのUI layout設計
+- production既存Databaseをfixtureで置換すること
+- 既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用すること
+- production PostgreSQL schemaの観測Evidence
+- actual Oracle Evidenceの代替
+- physical schemaからSemantic Relationを逆生成すること
+- PostgreSQL固有仕様をSemantic modelへ逆流させること
+- dirty / source変化中のrunをProvider Evidenceとして採用すること
+- cleanup後にuser relationまたはEvent Triggerが残るrunを成功Evidenceとして採用すること
+- GitHub Actionsの再有効化
+
+## 関連
+
+- GitHub Issue #69 / #244 / #255 / #273 / #308 / #310 / #411
+- PR #294 / #300 / #306 / #309 / #324 / #335 / #336 / #341 / #365 / #368 / #414 / #415
+- `plan/GATE_B_EVIDENCE_ACQUISITION.md`
+- `plan/GATE_B_EVIDENCE_RUNBOOK.md`
+- `plan/GATE_B_READINESS_AUDIT.md`
+- `plan/issue/000024-keyless-relation-physical-storage.md`
+- `tools/internal/repositoryevidence/`
+- `tools/reference-postgres-header-detail-runtime/README.md`
+- `tools/reference-postgres-header-detail-runtime/main.go`
+- `tools/reference-postgres-header-detail-runtime/safety.go`
