@@ -23,9 +23,7 @@ func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryAcceptsExternalFile(t *t
 	}
 
 	t.Setenv(postgresDSNFileEnv, secret)
-	if err := os.Unsetenv(postgresDSNEnv); err != nil {
-		t.Fatal(err)
-	}
+	unsetEnvForTest(t, postgresDSNEnv)
 	got, err := loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot)
 	if err != nil {
 		t.Fatalf("loadPostgresDSNFromEnvironmentOutsideRepository() error=%v", err)
@@ -47,9 +45,7 @@ func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryRejectsInsideFileWithout
 	}
 
 	t.Setenv(postgresDSNFileEnv, secret)
-	if err := os.Unsetenv(postgresDSNEnv); err != nil {
-		t.Fatal(err)
-	}
+	unsetEnvForTest(t, postgresDSNEnv)
 	_, err := loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot)
 	if err == nil {
 		t.Fatal("Repository内secret fileを受理しています")
@@ -57,4 +53,19 @@ func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryRejectsInsideFileWithout
 	if strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), "very-secret-dsn") {
 		t.Fatalf("errorへlocal secret pathを漏らしています: %v", err)
 	}
+}
+
+func unsetEnvForTest(t *testing.T, name string) {
+	t.Helper()
+	old, existed := os.LookupEnv(name)
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if existed {
+			_ = os.Setenv(name, old)
+			return
+		}
+		_ = os.Unsetenv(name)
+	})
 }
