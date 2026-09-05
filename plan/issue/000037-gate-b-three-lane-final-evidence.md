@@ -1,6 +1,6 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner / fail-closed / same-run artifact最終再検証まで実装、actual final run待ち
+- 状態: In Progress — runner / fail-closed / same-run artifact / secret stable-readまで実装、actual final run待ち
 - GitHub Issue: #387
 - Gate B監査: `ISSUE-000029` / #273
 - Handover: `ISSUE-000030` / #291
@@ -190,6 +190,54 @@ DSN本文をouter `go run` / compiler / linkerへ渡しません。
 
 を要求します。
 
+### secret read前のclean-source preflight
+
+PR #466以降、DSN secret fileをopen / readする前に、PostgreSQL secretを除いたenvironmentでRepository sourceを観測します。
+
+```text
+HEAD before
+  ↓
+git status --porcelain
+  ↓
+HEAD after
+  ↓
+HEAD stable && working tree clean
+  ↓ only then
+secret file open / read
+```
+
+次の場合はsecret loaderを呼ばずfail closedします。
+
+- Repository source観測不能
+- source観測中のHEAD drift
+- dirty working tree
+
+このpreflightは後段のlane開始時source確認を置き換えません。secret読込後も改めてsourceを確認し、preflight後のdriftを拒否します。
+
+### stable single-open read
+
+PR #465以降、path検証後に別の`os.ReadFile`で再openしません。
+
+```text
+secret path
+  ↓ symlink resolve
+Repository外existing regular file
+  ↓
+validated resolved pathをsingle-open
+  ↓
+事前identity == open済みfile identity
+  ↓
+元pathを再resolveして同一identityを確認
+  ↓
+exact bytesをopen済みdescriptorからread
+  ↓
+元pathを再resolveして同一identityを再確認
+```
+
+non-regular input、Repository内target、別fileへのpath replacement、symlink target replacement、読込後のidentity不一致をfail closedで拒否します。
+
+Repository外regular fileへ向くstableなRepository外symlinkは、読込前後とも同じexternal file identityを指す場合に限り許容します。
+
 runner起動後:
 
 ```text
@@ -267,8 +315,10 @@ new clean R'
 - child / nested Go environment固定
 - Go / Git probeからPostgreSQL secret除去
 - direct DSN final launch拒否
+- secret read前clean-source preflight
 - Repository外DSN secret file
 - symlink解決後Repository内secret拒否
+- secret file stable single-open / read前後identity再確認
 - #308 childだけへのin-memory DSN注入
 - PostgreSQL DB-side fixture ownership marker
 - same-run child exact artifact保存
