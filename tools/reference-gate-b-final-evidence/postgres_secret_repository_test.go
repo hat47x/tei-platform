@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryAcceptsExternalFile(t *testing.T) {
+func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflightAcceptsExternalFile(t *testing.T) {
 	base := t.TempDir()
 	repositoryRoot := filepath.Join(base, "repo")
 	outside := filepath.Join(base, "outside")
@@ -24,16 +24,16 @@ func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryAcceptsExternalFile(t *t
 
 	t.Setenv(postgresDSNFileEnv, secret)
 	unsetEnvForTest(t, postgresDSNEnv)
-	got, err := loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot)
+	got, err := loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight(repositoryRoot)
 	if err != nil {
-		t.Fatalf("loadPostgresDSNFromEnvironmentOutsideRepository() error=%v", err)
+		t.Fatalf("loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight() error=%v", err)
 	}
 	if got != "postgres://user:secret@example.invalid/evidence" {
 		t.Fatalf("DSN=%q", got)
 	}
 }
 
-func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryRejectsInsideFileWithoutLeakingPath(t *testing.T) {
+func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflightRejectsInsideFileWithoutLeakingPath(t *testing.T) {
 	base := t.TempDir()
 	repositoryRoot := filepath.Join(base, "repo")
 	if err := os.Mkdir(repositoryRoot, 0o700); err != nil {
@@ -46,7 +46,7 @@ func TestLoadPostgresDSNFromEnvironmentOutsideRepositoryRejectsInsideFileWithout
 
 	t.Setenv(postgresDSNFileEnv, secret)
 	unsetEnvForTest(t, postgresDSNEnv)
-	_, err := loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot)
+	_, err := loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight(repositoryRoot)
 	if err == nil {
 		t.Fatal("Repository内secret fileを受理しています")
 	}

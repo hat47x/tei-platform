@@ -1,6 +1,6 @@
 # ISSUE-000045: Gate B final runnerのcompile段階からPostgreSQL DSN本文を隔離する
 
-- 状態: Ready to verify — secret-file入力 / stable-read hardening実装済み、actual checkout / final run待ち
+- 状態: Ready to verify — secret-file入力 / stable-read / pre-secret clean-source hardening実装済み、actual checkout / final run待ち
 - GitHub Issue: #441
 - 親: `ISSUE-000037` / #387
 - 関連: `ISSUE-000043` / #433、`ISSUE-000044` / #436、`ISSUE-000042` / #430
@@ -10,7 +10,7 @@
 
 final runner自身を`go run`でcompileする段階から、credentialを含み得るPostgreSQL DSN本文をGo compiler / linker等へ継承しません。
 
-launch environmentにはRepository外secret file pathだけを渡し、runner起動後にDSN本文をmemoryへ読み込みます。
+launch environmentにはRepository外secret file pathだけを渡し、runner起動後も**clean Repository sourceを確認できるまでDSN fileをopen / readしません**。
 
 ## 現行入力契約
 
@@ -24,6 +24,30 @@ TEI_TEST_POSTGRES_DSN_FILE = Repository外existing regular file
 具体的な正規commandは`plan/GATE_B_EVIDENCE_RUNBOOK.md`を唯一の正本とします。
 
 standalone #308 toolの`TEI_TEST_POSTGRES_DSN`入力契約は変更しません。
+
+## secret read前のsource preflight
+
+final runnerはDSN本文をmemoryへ読み込む前に、PostgreSQL secretを除いたenvironmentでRepository sourceを観測します。
+
+```text
+HEAD before
+  ↓
+git status --porcelain
+  ↓
+HEAD after
+  ↓
+HEAD stable && working tree clean
+  ↓ only then
+open / read DSN secret file
+```
+
+次の場合はsecret loaderへ進みません。
+
+- Repository sourceを観測できない
+- source観測中にHEADが変化する
+- working treeがdirty
+
+これは後段の`runWith`開始時source確認を置き換えません。secret読込後も、lane開始前に改めてcandidate sourceを確認するため、preflight後のsource driftは従来どおりfail closedです。
 
 ## secret file guard
 
@@ -86,6 +110,7 @@ outer go run / compiler / linker
   -> secret file pathのみ
 
 final runner runtime
+  -> secretを除いたenvironmentでclean source preflight
   -> external secret fileをsingle-open
   -> identityを読込前後に確認
   -> DSN本文はmemoryのみ
@@ -124,9 +149,10 @@ secret取得方式自体を新しいProduct Evidence natureへしません。Gat
 - [x] Go utility / Git / #310 / #255からDSN本文とsecret file pathを除去
 - [x] tool README / Runbook / Readiness Auditへsecret-file契約を同期
 - [x] PR #458でRepository外 / symlink解決後Repository外 / regular-file guardを追加
-- [x] secret fileをsingle-openし、読込前後のfile identityを再確認するhardeningを実装
+- [x] PR #465でsecret fileをsingle-openし、読込前後のfile identityを再確認
 - [x] external regular file / external symlink受理、Repository内symlink拒否、path replacement拒否のpure testを追加
-- [x] stable-read helperを隔離Go moduleでcompile / test
+- [x] dirty / source観測失敗時にsecret loaderを呼ばないclean-source preflightを実装
+- [x] clean / dirty / source観測失敗のpreflight pure testを追加
 
 ## 残作業
 
@@ -140,7 +166,7 @@ go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
 - [ ] actual #387 final runでRepository外secret file経路を利用
-- [ ] actual run中にsecret-file guardが成立したことを確認
+- [ ] actual run中にpre-secret clean-source / stable-read guardが成立したことを確認
 - [ ] same-run child Evidenceにsecret本文 / file pathが混入していないことを#273で監査
 
 actual final runは#387の完了条件です。本Issue単独の成功をGate B Readyへ格上げしません。
