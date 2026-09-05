@@ -256,7 +256,7 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 少なくとも次で成功Evidenceへ採用しません。
 
 - Repository root以外から実行
--開始時dirty working tree
+- 開始時dirty working tree
 - source観測不能 / HEAD drift
 - lane後dirty / revision drift
 - required lane失敗
@@ -269,7 +269,7 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 - DSN secret fileがRepository内、symlink先がRepository内、non-regular、empty、multiline、NUL、read不能
 - child Evidence artifactをsame-runで保存できない
 - artifact directoryがRepository内
--既存artifactへの上書きが必要になる
+- 既存artifactへの上書きが必要になる
 - final source check未完了
 
 ## 非目標
