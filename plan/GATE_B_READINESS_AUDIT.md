@@ -3,93 +3,66 @@
 - 判定日: 2026-09-05
 - 対象: `order_entry` Application Driver / Gate B
 - 判定: **Not Ready**
-- Evidence取得計画: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
-- 再現手順: [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)
+- Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
+- Evidence要求: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
+- 実行手順: [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)
 - Repository Issue: [`issue/000029-gate-b-readiness-audit.md`](issue/000029-gate-b-readiness-audit.md) / GitHub #273
 - Handover: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
-- Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
 
 ## 目的
 
-Gate B「UIなしで主要Scenarioを再現できる」を、IssueやPRのclose数ではなく、現在のReference / Conformance / 実行Evidenceから判定します。
+Gate B「UIなしで主要Scenarioを再現できる」を、Issue close数や設計済みという主張ではなく、**actual source-fixed Evidence**から判定します。
 
-第一Web Targetへ進む前に、Application上の意味不足をWeb固有コードで補わなくてもよい状態か、Required Evidenceが同じsourceへ固定されているかを確認します。
+第一Web Targetへ進む前に、Application上の意味をWeb固有コードで補わなくてもよいことと、Required Evidenceを一つのclean revisionへ固定できることを確認します。
 
-この監査では次を混同しません。
+## 現行scope
 
-- Semantic / architecture readiness
-- syntheticな構造Evidence
-- deterministic Repository Evidence
-- generated artifact reproducibility Evidence
-- real-provider ephemeral fixture Evidence
-- actual external asset Evidence
-- CIによる継続的regression検知
+Gate B Readyへ必須のsource-dependent Evidenceは次の三つです。
 
-## 現行Gate B scope
+| Evidence | Repository / GitHub Issue | nature | 現在地 |
+| --- | --- | --- | --- |
+| #310 | `ISSUE-000032` / #310 | deterministic repository | Ready to run / actual clean checkout待ち |
+| #255 | `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check / actual clean Go environment待ち |
+| #308 | `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run / Evidence専用空PostgreSQL待ち |
 
-`ISSUE-000035` / #380以降、Gate B Ready判定へ必須とするsource-dependent実行Evidenceは次の三つです。
-
-| Repository / GitHub Issue | Evidence nature | 現在地 |
-| --- | --- | --- |
-| `ISSUE-000032` / #310 | deterministic repository | **Ready to run** — actual clean checkout / normal Go runner待ち |
-| `ISSUE-000025` / #255 | generated artifact reproducibility | **Ready to check** — actual clean Go environmentでのcheck-only待ち |
-| `ISSUE-000031` / #308 | real-provider ephemeral fixture | **Ready to run** — Evidence専用空PostgreSQL Databaseでのactual run待ち |
-
-三つを同じclean candidate repository revision `R`へ揃えます。
+三つを同じclean candidate revision `R`へ揃えます。
 
 ```text
 #310 ─┐
 #255 ─┼─ repositoryRevision = R
 #308 ─┘
        ↓
-final 3-lane convergence
+#387 final convergence
        ↓
-Gate B audit for R
+Readiness Audit for R
 ```
 
-`ISSUE-000037` / #387のfinal runnerは、この三つの正規runnerを同じRで実行し、lane間・各lane後・最終source確認まで収束したことを機械的に確認します。
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。
 
 ## 現在の結論
 
 **Gate B: Not Ready**です。
 
-理由は、中心設計が未成立だからではありません。現時点でReady判定に必要なactual execution Evidenceがまだ取得されていないためです。
+中心設計が未成立だからではありません。Ready判定に必要なactual execution Evidenceがまだ取得されていないためです。
 
-具体的には次が未完了です。
+未完了:
 
-- 実TEI checkoutで#310を成功させる
-- 実TEI checkoutで#255 check-onlyを成功させる。staleなら正規修復後の新しいclean revisionで再実行する
-- Evidence専用空PostgreSQL Databaseで#308を成功させる
-- #310 / #255 / #308を同じcandidate Rへ最終収束する
-- Rについて本監査を再実行する
+- #310 actual run
+- #255 actual check-only run
+- #308 actual real PostgreSQL run
+- 三つのsame-R final convergence
+- final convergenceが実際に読んだsame-run child Evidence artifact保持
+- Rについて本監査を再実施
 
-scope整理、isolated test、runner実装、文書整備だけでReadyへ格上げしません。
+runner実装、isolated test、文書整備だけではReadyへ格上げしません。
 
-## 成立済みの意味・architecture基線
+## 成立済みの意味基線
 
-次はGate Bの主要な未設計blockerではありません。
+次は主要な未設計blockerではありません。
 
-### Application Pattern / Canonical resolution
+### Application / Driver
 
-`browse / record / reference / header-detail / command`を同じ`order_entry` ApplicationからCanonical identityで解決できます。
-
-この5分類をTEI全体の永久的な標準語彙へ固定したとはみなしません。
-
-### Capability / Authentication / Authorization / Command
-
-Application + Capability identityからBindingを明示解決し、Authentication / Authorization / Commandを同じ上位意味へ接続できます。
-
-legacy schemaやprovider固有return codeをDriver Coreの意味へ逆流させません。
-
-### Data access / Relation / mapping
-
-Contract Query、explicit input / raw result / Semantic mapping、Environment / Database instance / executor Capability、keyless Relation Storage等の主要境界は成立しています。
-
-raw column名やphysical storageからSemantic meaningを暗黙推測しません。
-
-### UI-less Reference Scenario
-
-少なくとも次の統合Scenarioを#310のtargeted Evidenceで再現する構造が成立しています。
+`browse / record / reference / header-detail / command`を同じ`order_entry` Applicationから解決し、少なくとも次を一続きに接続する構造が成立しています。
 
 ```text
 Authentication
@@ -103,13 +76,20 @@ Authentication
  -> separate Observation read
 ```
 
-Command acknowledgementとObserved external stateを同一視しません。
+Command acknowledgementとObserved stateを同一視しません。
 
-### external-observed Evidence intake
+### Data / Capability / authority
 
-external EvidenceをCanonical Worldへ昇格させず、明示authoring済みrealizationと照合する境界は成立しています。
+- logical Datasource / read-read-write境界
+- Contract Query
+- explicit input / raw result / Semantic mapping
+- Relation Storage
+- Capability Binding
+- Authentication / Authorization
+- Business Result / named Outcome / Execution Error
+- external Evidence intake
 
-未観測のphysical object / column / SQL / datatype / read-only方式を名前や慣習から補完しません。
+raw physical factsやProvider固有return codeからCanonical meaningを逆定義しません。
 
 ## Required Evidence 1 — #310 deterministic Repository
 
@@ -119,20 +99,20 @@ external EvidenceをCanonical Worldへ昇格させず、明示authoring済みrea
 tools/reference-gate-b-repository-evidence
 ```
 
-Ready判定に採用するrunには少なくとも次を要求します。
+Ready判定には少なくとも次を要求します。
 
-- clean Repository sourceから開始
-- Canonical Workspace Validation成功
-- `final-ui-less-scenario`成功
-- `external-evidence-intake`成功
-- `repository-evidence-source-boundary`成功
+- clean sourceから開始
+- Workspace Validation成功
+- final UI-less Scenario成功
+- external Evidence intake成功
+- repository source-boundary Conformance成功
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - post-run source確認済み
-- 実行前後HEAD同一
-- 終了時working tree clean
+- 実行前後同一HEAD
+- 終了時clean
 
-synthetic ScenarioやEvidence-intake Conformanceの成功をactual Oracle Evidenceへ読み替えません。
+synthetic Evidenceをactual external Evidenceへ読み替えません。
 
 ## Required Evidence 2 — #255 generated artifact reproducibility
 
@@ -142,36 +122,20 @@ synthetic ScenarioやEvidence-intake Conformanceの成功をactual Oracle Eviden
 tools/reference-generated-artifact-evidence
 ```
 
-最終Evidenceはcheck-onlyです。
+Ready判定には少なくとも次を要求します。
 
-少なくとも次を要求します。
-
-- World / Plugin Lock golden一致
-- Durable Run golden一致
+- World / Plugin Lock一致
+- Durable Run一致
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - post-run source確認済み
 - 同一clean revision
 
-staleが見つかった場合だけ正規golden toolの`-write`を修復に利用します。
+staleの場合だけ正規generatorで修復し、差分を確認してcommitした新しいclean revisionでcheck-onlyを再実行します。
 
-```text
-check-only
-  ↓ stale
-正規 -write
-  ↓
-git diffで意味確認
-  ↓
-commit
-  ↓
-新しいclean revision R'
-  ↓
-check-only再実行
-```
+`-write`直後のdirty treeは完了Evidenceではありません。
 
-`-write`直後のdirty treeやsafe replace成功だけを完了Evidenceにはしません。
-
-## Required Evidence 3 — #308 real PostgreSQL Provider
+## Required Evidence 3 — #308 real PostgreSQL
 
 正規runner:
 
@@ -179,71 +143,116 @@ check-only再実行
 tools/reference-postgres-header-detail-runtime
 ```
 
-これはproduction既存Databaseの観測Evidenceではなく、**real PostgreSQL engine + tool-owned ephemeral fixture Evidence**です。
+これはproduction既存Database Evidenceではなく、real PostgreSQL engine + tool-owned ephemeral fixture Evidenceです。
 
-Ready判定へ採用するrunには少なくとも次を要求します。
+Ready判定には少なくとも次を要求します。
 
 ### source
 
-- clean Repositoryから開始
+- clean source
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - post-run source確認済み
 
 ### fixture前
 
-- Canonical Workspace Validation成功
-- default Databaseではない
+- default DBではない
 - user relation 0件
 - Event Trigger 0件
-- `public.order_lines`不在
+- fixture object不在
 - `fixtureDatabaseSafety.guardPassed = true`
 
 ### runtime
 
-- `order_id=1001`で2件
-- `order_id=9999`で0件を正常な空collectionとして扱う
-- raw result → Semantic OrderLine mappingが明示される
-- Relation Storage support columnをSemantic attributeへ漏らさない
-- physical table欠落をExecution Errorとして扱う
+- 2件取得
+- 正常0件
+- missing-table Execution Error
+- explicit raw → Semantic mapping
+- support column非露出
 
 ### cleanup
 
-- DB-side ownership markerが作成時markerと一致したtool-owned objectだけを削除する
+- DB-side ownership marker exact一致
 - cleanup後user relation 0件
-- cleanup後Event Trigger 0件
+- Event Trigger 0件
 - fixture object不在
 - `fixtureCleanupSafety.verified = true`
 
-DSN、credential、runtime parameter値、実Database名を通常Evidenceへ保存しません。
+DSN、credential、parameter値、実Database名を通常Evidenceへ保存しません。
 
-## 最終3-lane convergence — #387
+## #387 final convergence
 
-candidate `R`のsource変更が出尽くした後、`ISSUE-000037` / #387のfinal runnerを`GATE_B_EVIDENCE_RUNBOOK.md`の正規条件で実行します。
+candidate `R`のsource変更が出尽くした後、`GATE_B_EVIDENCE_RUNBOOK.md`の正規条件でfinal runnerを実行します。
 
-最終JSONには少なくとも次を要求します。
+成功summaryには少なくとも次を要求します。
 
 ```text
 evidenceNature = gate-b-three-lane-final-convergence
 repositoryRevision = R
+workingTreeClean = true
 reproducibleRevision = true
 allLanesSameRevision = true
+childArtifactsRetained = true
 postRunRepository.checked = true
 postRunRepository.revisionStable = true
 postRunRepository.workingTreeClean = true
 ```
 
-各laneについても期待する`evidenceNature`、`repositoryRevision = R`、`reproducibleRevision = true`を要求します。
+各lane:
 
-final runnerが実際に読み込んだchild Evidence exact bytesの`evidenceArtifactFingerprint`を追跡します。fingerprintはEvidence本文や合否の代替ではありません。
+```text
+passed = true
+repositoryRevision = R
+reproducibleRevision = true
+artifactFile != empty
+evidenceArtifactFingerprint != empty
+```
 
-## final runner実行環境の監査
+Evidence nature:
 
-candidate revisionだけではcompile / test入力全体を固定したことにならないため、現行final runnerはGo環境とsecret exposureもfail closedで確認します。
+```text
+#310 deterministic-repository
+#255 generated-artifact-reproducibility
+#308 real-postgres-ephemeral-fixture
+```
 
-### Go環境
+## same-run child Evidenceを監査する
 
-少なくとも次を確認します。
+final summaryだけでReadyにしません。
+
+final runnerが実際に読んだ三つのchild JSON exact bytesを、同一runのRepository外artifactとして保持していることを要求します。
+
+保存artifact:
+
+```text
+deterministic-repository.json
+generated-artifact-reproducibility.json
+real-postgres-ephemeral-fixture.json
+```
+
+Ready判定では:
+
+1. final summaryの`artifactFile`が対応するsame-run fileを指すこと
+2. file exact bytesのSHA-256が`evidenceArtifactFingerprint`と一致すること
+3. child JSON本文から#310 / #255 / #308固有の詳細安全条件を確認できること
+4. final summaryのlane envelopeとchild JSONが一致すること
+
+を確認します。
+
+**同じRで後から再実行した別artifactを、final convergenceが読んだartifactと同一だと推測しません。**
+
+## final runner実行環境
+
+### Repository
+
+- Repository rootから起動
+- clean candidate R
+- 各lane後source再確認
+- final source再確認
+
+### Go environment
+
+actual runで:
 
 ```text
 goEnvironment.externalWorkspaceActive = false
@@ -251,170 +260,111 @@ goEnvironment.goFlagsEmpty = true
 goEnvironment.goEnvDisabled = true
 ```
 
-正規起動はRunbookを正とし、runner自身のcompile前からexact `GOENV=off`、external GOWORK無効、GOFLAGS空を要求します。
+を要求します。
 
-### Repository source観測
-
-Repository source helperはHEADをworking tree観測の前後で確認し、観測中HEAD driftを拒否します。
-
-各lane後もfinal runner自身がsourceを再確認します。
+runner自身のcompile前からexact `GOENV=off`、external GOWORK無効、GOFLAGS emptyを要求します。
 
 ### PostgreSQL secret
 
-final runnerのouter `go run`へDSN本文を渡しません。
+- final launch environmentへdirect `TEI_TEST_POSTGRES_DSN`を置かない
+- `TEI_TEST_POSTGRES_DSN_FILE`はRepository外existing regular file
+- symlink解決後もRepository外
+- Go / Git probe、#310、#255へDSN本文・secret pathを渡さない
+- #308 childへだけin-memory DSN本文を渡す
+- secret path / DSN本文をEvidenceへ保存しない
 
-Repository外の一行secret fileをfinal runner起動後に読み、#308 childだけへin-memory DSN本文を渡します。
+### child Evidence artifact store
 
-Go / Git probe、#310、#255にはDSN本文もsecret file pathも渡しません。
+- Repository外
+- owner-only directory
+- child fileは新規作成
+- 既存fileを上書きしない
+- exact child stdout bytesを保持
 
-これらの境界自体のisolated test成功をGate B Product Evidenceへ格上げせず、actual final runでも成立を確認します。
+## actual Oracle
 
-## actual Oracle Evidenceの扱い
+#214 / #371 / #376は削除・完了扱いにしません。
 
-`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376は削除・完了扱いにしません。
+actual physical facts / provenance / effective read-only / concrete driver integration / actual readが未完了なら、そのまま未完了として保持します。
 
-actual Oracle physical facts / provenance / effective read-only / concrete driver integration / actual readは、未完了なら未完了のまま保持します。
+Gate B Readyの第四Required laneにはしません。
 
-ただしGate B Readyの第四Required laneにはしません。
+Handover時:
 
-### Gate B通過時
+- 十分なactual Oracle Evidenceがあれば追加verified external Evidenceとして参照
+- 未取得・actual read未完了・Rへの結び付き不足なら`unresolved`
 
-actual Oracle Evidenceが取得済みで、candidate Rに対するverified claimとして十分なら、Handoverで追加のverified external asset Evidenceとして参照できます。
+第一Web Target側でOracle physical factsを補完しません。
 
-未取得、actual read未完了、またはRへの結び付き不足なら、少なくともその未検証範囲を`unresolved`として引き渡します。
+## candidate revision
 
-第一Web Target側でOracleのphysical object、column、SQL、datatype、driver behavior、read-only方式を補完しません。
-
-#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle成功へ格上げしません。
-
-external observed artifactそのものの`observedAt`がRの時点である必要はありません。ただし、そのartifactをRに対するverified claimとして扱うacceptance / actual read provenanceは明示します。
-
-## candidate Ready revision
-
-Gate B Ready判定では、一つのclean Repository revisionをcandidate `R`として固定します。
-
-必須条件は次です。
+Required Evidenceは一つのRへ固定します。
 
 ```text
 #310.repositoryRevision = R
 #255.repositoryRevision = R
 #308.repositoryRevision = R
 final.repositoryRevision = R
-final.allLanesSameRevision = true
 ```
-
-Repository revisionを持つRequired Evidenceでは`reproducibleRevision = true`を要求します。
 
 異なるrevisionの成功を寄せ集めません。
 
-```text
-#310 -> R1
-#255 -> R2
-#308 -> R3
-```
+source変更が必要ならcycleを停止し、修正をcommitして新Rを選び、三laneとfinal convergenceを最初からやり直します。
 
-この状態はNot Readyです。
+mainが進んでもcandidate Rを暗黙に最新mainへ移しません。
 
-### candidate中にsource変更が必要になった場合
+## Ready条件
 
-1. final cycleを停止する
-2. 必要なsource / generated artifactを修正する
-3. 意味を確認してcommitする
-4. 新しいclean revisionをR'として選ぶ
-5. #310 / #255 / #308をR'で最初から再実行する
-6. final convergenceをR'で再実行する
-7. R'を本監査で再判定する
-
-以前の成功EvidenceをR'へ黙ってcarry-forwardしません。
-
-### mainとの関係
-
-candidate Rを選んだ後にmainが進んでも、candidateを暗黙に最新mainへ移動しません。
-
-- Rをそのまま監査するなら、RとEvidenceを固定する
-- 後続commitをbaselineへ含めるなら、新candidateを選びRequired Evidenceを取り直す
-
-Readyと判定したRが、そのままHandover Baseline revisionになります。
-
-## Ready判定条件
-
-Gate BをReadyとするには、少なくとも次をEvidenceから説明できる必要があります。
+Gate BをReadyとするには、少なくとも次をすべてEvidenceから説明できる必要があります。
 
 - [ ] #310 actual EvidenceがRで成立
 - [ ] #255 actual EvidenceがRで成立
 - [ ] #308 actual EvidenceがRで成立
 - [ ] #387 final convergenceがRで成立
 - [ ] `allLanesSameRevision = true`
-- [ ] final run終了時もR / clean working tree
-- [ ] Go実行環境のfail-closed条件がactual runで成立
-- [ ] PostgreSQL fixture前後安全性がactual runで成立
-- [ ] secret / credential / DSN本文 /実Database名を通常Evidenceへ保存していない
-- [ ] synthetic / generated / PostgreSQL / actual external Evidenceを相互代替していない
-- [ ] Command Business Result / Execution Error / Observation境界が維持されている
-- [ ] 未観測external factsを推測していない
-- [ ] actual Oracle未完了範囲を必要に応じてHandover `unresolved`へ列挙できる
-- [ ] Gate B監査結果をRへ固定できる
+- [ ] `childArtifactsRetained = true`
+- [ ] 三つのsame-run child exact artifactを保存済み
+- [ ] 各artifact fingerprintがfinal summaryと一致
+- [ ] child詳細から各lane固有安全条件を再確認できる
+- [ ] final run終了時もR / clean
+- [ ] Go実行環境fail-closed条件成立
+- [ ] Repository root / source observation条件成立
+- [ ] PostgreSQL fixture前後安全性成立
+- [ ] DSN / credential / secret /実Database名を通常Evidenceへ保存していない
+- [ ] Evidence natureを相互代替していない
+- [ ] Business Result / Execution Error / Observation境界維持
+- [ ] external未観測事項を推測していない
+- [ ] actual Oracle未完了範囲をHandover `unresolved`へ列挙可能
+- [ ] 監査結果をRへ固定可能
 
-一つでも満たせない場合はNot Readyを維持します。
+一つでも満たさなければNot Readyです。
 
-## Handover条件
+## 次の行動
 
-Gate BがRについてReadyとなった後、`GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030`に従い同じRをHandover Baselineへ固定します。
+現時点では設計拡張ではなくactual Evidence取得を優先します。
 
-Handoverは第二のCanonical正本ではなく、少なくとも次への参照を束ねます。
-
-- repository revision R
-- Canonical Application / Pattern / Data / Relation / Query / Capability identity
-- Driver Scenario identity
-- Business Result / Execution Error / Observation境界
-- Datasource / authority境界
-- #310 / #255 / #308 Required Evidence
-- Gate B final audit for R
-- optional verified external Evidence
-- unresolved
-
-Handover固定前に第一Web Target / Gate Cへ本格着手しません。
-
-## 現在の再判定トリガー
-
-次のEvidenceが揃った時点で本監査を更新します。
-
-1. 実TEI checkout上のfinal runner関連package test結果
-2. Evidence専用空PostgreSQL Databaseを使った#387 actual final JSON
-3. #310 / #255 / #308 child Evidence
-4. candidate Rの最終source状態
-5. actual Oracleが取得済みならそのverified / unresolved判定
-
-現時点ではこれらactual Evidenceが未取得なので**Not Ready**を維持します。
+```text
+actual checkout preflight
+        ↓
+#310 / #255 / #308 pre-check
+        ↓ source変更があればcommit
+candidate R固定
+        ↓
+#387 final convergence
+        ↓
+same-run child artifact + fingerprint監査
+        ↓
+Gate B Readiness Audit for R
+        ↓ Ready only
+Handover Baseline B / revision R
+        ↓
+First Web Target
+```
 
 ## 非目標
 
-- actual OracleをGate Bの第四Required laneへ戻すこと
-- CI greenをGate B Product Evidenceへ読み替えること
-- Issue close数でReadyを決めること
-- synthetic Evidenceをactual provider / external asset Evidenceへ昇格すること
-- first Web Targetの実装をGate B不足の補完に使うこと
-- Gate BだけでTarget-neutral Presentationを完成させること
-- unverifiedな外部事実を`unresolved`から消すこと
-
-## 関連
-
-- `GATE_B_EVIDENCE_ACQUISITION.md`
-- `GATE_B_EVIDENCE_RUNBOOK.md`
-- `GATE_B_TO_C_HANDOVER_CONTRACT.md`
-- `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `issue/000025-reference-generated-artifacts-refresh.md`
-- `issue/000029-gate-b-readiness-audit.md`
-- `issue/000030-gate-b-to-c-handover-baseline.md`
-- `issue/000031-gate-b-postgres-header-detail-evidence.md`
-- `issue/000032-gate-b-deterministic-repository-evidence.md`
-- `issue/000035-gate-b-external-provider-scope-audit.md`
-- `issue/000037-gate-b-three-lane-final-evidence.md`
-- `issue/000038-gate-b-repository-source-observation-stability.md`
-- `issue/000039-gate-b-final-go-environment-isolation.md`
-- `issue/000040-gate-b-child-go-environment-isolation.md`
-- `issue/000041-gate-b-postgres-fixture-ownership-marker.md`
-- `issue/000042-gate-b-final-goenv-launch-guard.md`
-- `issue/000043-gate-b-probe-postgres-dsn-isolation.md`
-- `issue/000044-gate-b-git-probe-postgres-dsn-isolation.md`
-- `issue/000045-gate-b-final-postgres-dsn-secret-file.md`
+- actual Oracleを第四Required laneへ戻す
+- final runner成功だけで自動Ready宣言する
+- 同じRの別runをsame-run artifactへ読み替える
+- GitHub Actions greenをProduct Evidenceへ格上げする
+- 第一Web Target側で不足meaningを補完する
