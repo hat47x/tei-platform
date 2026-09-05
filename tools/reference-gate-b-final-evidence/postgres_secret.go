@@ -10,6 +10,7 @@ const postgresDSNFileEnv = "TEI_TEST_POSTGRES_DSN_FILE"
 
 type secretLookupEnvFunc func(string) (string, bool)
 type readSecretFileFunc func(string) ([]byte, error)
+type externalPostgresSecretLoaderFunc func(string) (string, error)
 
 // loadPostgresDSNFromEnvironmentは、既存pure test互換のproduction wrapperである。
 // Repository外pathの強制が必要なfinal runner本体では
@@ -20,9 +21,36 @@ func loadPostgresDSNFromEnvironment() (string, error) {
 
 // loadPostgresDSNFromEnvironmentOutsideRepositoryは、final runner自身のcompile段階へDSN本文を持ち込まず、
 // launch environmentにはRepository外のsecret file pathだけを受け取る。
-// secret fileは一度だけopenし、読込前後ともそのopen済みfileがsymlink解決後も
-// Repository外の同一regular file identityであることを確認する。
+// secret fileへ触る前にRepository sourceがcleanであることを確認し、その後だけ
+// Repository外の同一regular file identityからDSN本文をsingle-openで読み取る。
 func loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot string) (string, error) {
+	return loadPostgresDSNAfterCleanRepositoryPreflight(
+		repositoryRoot,
+		inspectRepositoryStart,
+		loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight,
+	)
+}
+
+// loadPostgresDSNAfterCleanRepositoryPreflightは、dirty / source観測不能なcheckoutで
+// secret fileをopen/readしないためのpure test seamである。
+func loadPostgresDSNAfterCleanRepositoryPreflight(
+	repositoryRoot string,
+	inspect inspectStartFunc,
+	load externalPostgresSecretLoaderFunc,
+) (string, error) {
+	source, err := inspect()
+	if err != nil {
+		return "", fmt.Errorf("PostgreSQL DSN secret fileを読む前にclean Repository sourceを確認できません")
+	}
+	if !source.WorkingTreeClean {
+		return "", fmt.Errorf("PostgreSQL DSN secret fileを読む前にworking treeをcleanにしてください")
+	}
+	return load(repositoryRoot)
+}
+
+// loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflightは、
+// clean-source preflight後のsecret-file boundaryだけを検証するpure seamである。
+func loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight(repositoryRoot string) (string, error) {
 	if _, exists := os.LookupEnv(postgresDSNEnv); exists {
 		return "", fmt.Errorf("Gate B最終EvidenceではPostgreSQL DSN本文をlaunch environmentへ設定しません。TEI_TEST_POSTGRES_DSN_FILEでsecret fileを指定してください")
 	}
