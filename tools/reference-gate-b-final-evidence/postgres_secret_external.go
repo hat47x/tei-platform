@@ -8,13 +8,14 @@ import (
 )
 
 func readExternalRegularFileStable(path, repositoryRoot string) ([]byte, error) {
-	if path == "" {
-		return nil, fmt.Errorf("pathが空です")
+	resolvedPath, expectedInfo, err := resolveExternalRegularFile(path, repositoryRoot)
+	if err != nil {
+		return nil, err
 	}
 
-	file, err := os.Open(path)
+	file, err := os.Open(resolvedPath)
 	if err != nil {
-		return nil, fmt.Errorf("fileをopenできません: %w", err)
+		return nil, fmt.Errorf("validated fileをopenできません: %w", err)
 	}
 	closed := false
 	defer func() {
@@ -27,8 +28,8 @@ func readExternalRegularFileStable(path, repositoryRoot string) ([]byte, error) 
 	if err != nil {
 		return nil, fmt.Errorf("openしたfileをstatできません: %w", err)
 	}
-	if !openedInfo.Mode().IsRegular() {
-		return nil, fmt.Errorf("openしたfileがregular fileではありません")
+	if !openedInfo.Mode().IsRegular() || !os.SameFile(expectedInfo, openedInfo) {
+		return nil, fmt.Errorf("secret fileが事前確認したregular file identityから置き換わりました")
 	}
 	if err := validateOpenedExternalFile(path, repositoryRoot, openedInfo); err != nil {
 		return nil, err
@@ -49,25 +50,35 @@ func readExternalRegularFileStable(path, repositoryRoot string) ([]byte, error) 
 	return content, nil
 }
 
-func validateOpenedExternalFile(path, repositoryRoot string, openedInfo os.FileInfo) error {
+func resolveExternalRegularFile(path, repositoryRoot string) (string, os.FileInfo, error) {
+	if path == "" {
+		return "", nil, fmt.Errorf("pathが空です")
+	}
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return fmt.Errorf("pathを解決できません: %w", err)
+		return "", nil, fmt.Errorf("pathを解決できません: %w", err)
 	}
 	resolved, err = filepath.Abs(resolved)
 	if err != nil {
-		return fmt.Errorf("resolved pathを絶対pathへ解決できません: %w", err)
+		return "", nil, fmt.Errorf("resolved pathを絶対pathへ解決できません: %w", err)
 	}
 	if pathWithinRepository(repositoryRoot, resolved) {
-		return fmt.Errorf("Repository内のfileはsecret inputとして受理しません")
+		return "", nil, fmt.Errorf("Repository内のfileはsecret inputとして受理しません")
 	}
-
-	currentInfo, err := os.Stat(resolved)
+	info, err := os.Stat(resolved)
 	if err != nil {
-		return fmt.Errorf("resolved fileをstatできません: %w", err)
+		return "", nil, fmt.Errorf("resolved fileをstatできません: %w", err)
 	}
-	if !currentInfo.Mode().IsRegular() {
-		return fmt.Errorf("resolved fileがregular fileではありません")
+	if !info.Mode().IsRegular() {
+		return "", nil, fmt.Errorf("resolved fileがregular fileではありません")
+	}
+	return resolved, info, nil
+}
+
+func validateOpenedExternalFile(path, repositoryRoot string, openedInfo os.FileInfo) error {
+	_, currentInfo, err := resolveExternalRegularFile(path, repositoryRoot)
+	if err != nil {
+		return err
 	}
 	if !os.SameFile(openedInfo, currentInfo) {
 		return fmt.Errorf("secret file pathがopen済みfileとは別identityへ置き換わりました")
