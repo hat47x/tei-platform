@@ -11,13 +11,39 @@ const postgresDSNFileEnv = "TEI_TEST_POSTGRES_DSN_FILE"
 type secretLookupEnvFunc func(string) (string, bool)
 type readSecretFileFunc func(string) ([]byte, error)
 
-// loadPostgresDSNFromEnvironmentは、final runner自身のcompile段階へDSN本文を持ち込まないため、
-// launch environmentにはsecret file pathだけを受け取り、runner起動後に内容をmemoryへ読み込む。
-// direct DSN環境変数が存在するrunは、値が空でも正規経路から外れているためfail closedで拒否する。
+// loadPostgresDSNFromEnvironmentは、既存pure test互換のproduction wrapperである。
+// Repository外pathの強制が必要なfinal runner本体では
+// loadPostgresDSNFromEnvironmentOutsideRepositoryを利用する。
 func loadPostgresDSNFromEnvironment() (string, error) {
 	return loadPostgresDSNSecret(os.LookupEnv, os.ReadFile)
 }
 
+// loadPostgresDSNFromEnvironmentOutsideRepositoryは、final runner自身のcompile段階へDSN本文を持ち込まず、
+// launch environmentにはRepository外のsecret file pathだけを受け取る。
+// symlink解決後の実fileがRepository内にある場合もfail closedで拒否する。
+func loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot string) (string, error) {
+	if _, exists := os.LookupEnv(postgresDSNEnv); exists {
+		return "", fmt.Errorf("Gate B最終EvidenceではPostgreSQL DSN本文をlaunch environmentへ設定しません。TEI_TEST_POSTGRES_DSN_FILEでsecret fileを指定してください")
+	}
+
+	path, exists := os.LookupEnv(postgresDSNFileEnv)
+	if !exists || path == "" {
+		return "", fmt.Errorf("TEI_TEST_POSTGRES_DSN_FILEが未設定です。#308用DSNを一行だけ保存したRepository外のsecret fileを指定してください")
+	}
+	resolvedPath, err := ensureExternalExistingRegularFile(path, repositoryRoot)
+	if err != nil {
+		// local pathやsymlink先を通常診断へ複製しない。
+		return "", fmt.Errorf("PostgreSQL DSN secret fileはRepository外にある既存regular fileでなければなりません")
+	}
+	content, err := os.ReadFile(resolvedPath)
+	if err != nil {
+		return "", fmt.Errorf("PostgreSQL DSN secret fileを読み取れません")
+	}
+	return normalizePostgresDSNSecret(content)
+}
+
+// loadPostgresDSNSecretはpure test seamである。
+// direct DSN環境変数が存在するrunは、値が空でも正規経路から外れているためfail closedで拒否する。
 func loadPostgresDSNSecret(lookupEnv secretLookupEnvFunc, readFile readSecretFileFunc) (string, error) {
 	if _, exists := lookupEnv(postgresDSNEnv); exists {
 		return "", fmt.Errorf("Gate B最終EvidenceではPostgreSQL DSN本文をlaunch environmentへ設定しません。TEI_TEST_POSTGRES_DSN_FILEでsecret fileを指定してください")
