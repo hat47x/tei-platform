@@ -85,11 +85,23 @@ func run(broad bool) (evidence, error) {
 		}, goEnvironmentErr
 	}
 
+	postgresDSN, postgresDSNErr := loadPostgresDSNFromEnvironment()
+	if postgresDSNErr != nil {
+		return evidence{
+			EvidenceNature: evidenceNature,
+			GoEnvironment:  goEnvironment,
+			BroadRequested: broad,
+			Lanes:          []laneEvidence{},
+		}, postgresDSNErr
+	}
+
 	result, err := runWith(
 		broad,
 		inspectRepositoryStart,
 		inspectRepositoryPost,
-		runLane,
+		func(spec laneSpec, candidateRevision string) (laneEvidence, error) {
+			return runLaneWithPostgresDSN(spec, candidateRevision, postgresDSN)
+		},
 		commandOutput,
 	)
 	result.GoEnvironment = goEnvironment
@@ -97,11 +109,11 @@ func run(broad bool) (evidence, error) {
 }
 
 func inspectRepositoryStart() (repositoryevidence.Source, error) {
-	return repositoryevidence.InspectStartWithEnv(environmentWithoutPostgresDSN(os.Environ()))
+	return repositoryevidence.InspectStartWithEnv(environmentWithoutPostgresSecrets(os.Environ()))
 }
 
 func inspectRepositoryPost(initialRevision string) (repositoryevidence.PostRun, error) {
-	return repositoryevidence.InspectPostWithEnv(initialRevision, environmentWithoutPostgresDSN(os.Environ()))
+	return repositoryevidence.InspectPostWithEnv(initialRevision, environmentWithoutPostgresSecrets(os.Environ()))
 }
 
 func runWith(
@@ -125,10 +137,6 @@ func runWith(
 	result.WorkingTreeClean = source.WorkingTreeClean
 	if !source.WorkingTreeClean {
 		return result, fmt.Errorf("Gate B最終Evidenceは一つのclean revisionへ固定するため、working treeに未commit差分がある状態では実行しません")
-	}
-
-	if strings.TrimSpace(os.Getenv(postgresDSNEnv)) == "" {
-		return result, fmt.Errorf("TEI_TEST_POSTGRES_DSNが未設定です。#308はEvidence専用の空PostgreSQL Databaseで実行する必要があります")
 	}
 
 	goVersion, err := output("go", "version")
@@ -195,7 +203,7 @@ func laneSpecs(broad bool) []laneSpec {
 	}
 }
 
-func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
+func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string) (laneEvidence, error) {
 	lane := laneEvidence{
 		Name:           spec.Name,
 		Command:        append([]string{"go"}, spec.Args...),
@@ -205,7 +213,7 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] go %s\n", strings.Join(spec.Args, " "))
 	var stdout bytes.Buffer
 	cmd := exec.Command("go", spec.Args...)
-	cmd.Env = environmentForLane(spec, os.Environ())
+	cmd.Env = environmentForLaneWithPostgresDSN(spec, os.Environ(), postgresDSN)
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 	runErr := cmd.Run()
@@ -224,6 +232,8 @@ func runLane(spec laneSpec, candidateRevision string) (laneEvidence, error) {
 	return lane, nil
 }
 
+// environmentForLaneはPR #407以前からのpure test互換helperである。
+// production final runnerはenvironmentForLaneWithPostgresDSNを使い、DSN本文を親process environmentへ戻さない。
 func environmentForLane(spec laneSpec, base []string) []string {
 	if spec.Name == "real-postgres-ephemeral-fixture" {
 		return append([]string(nil), base...)
@@ -231,11 +241,31 @@ func environmentForLane(spec laneSpec, base []string) []string {
 	return environmentWithoutPostgresDSN(base)
 }
 
+func environmentForLaneWithPostgresDSN(spec laneSpec, base []string, postgresDSN string) []string {
+	out := environmentWithoutPostgresSecrets(base)
+	if spec.Name == "real-postgres-ephemeral-fixture" {
+		out = append(out, postgresDSNEnv+"="+postgresDSN)
+	}
+	return out
+}
+
 func environmentWithoutPostgresDSN(base []string) []string {
 	filtered := make([]string, 0, len(base))
 	for _, entry := range base {
 		key, _, ok := strings.Cut(entry, "=")
 		if ok && strings.EqualFold(key, postgresDSNEnv) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
+func environmentWithoutPostgresSecrets(base []string) []string {
+	filtered := make([]string, 0, len(base))
+	for _, entry := range base {
+		key, _, ok := strings.Cut(entry, "=")
+		if ok && (strings.EqualFold(key, postgresDSNEnv) || strings.EqualFold(key, postgresDSNFileEnv)) {
 			continue
 		}
 		filtered = append(filtered, entry)
@@ -287,7 +317,7 @@ func lanesConverge(lanes []laneEvidence, candidateRevision string) bool {
 
 func commandOutput(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
-	cmd.Env = environmentWithoutPostgresDSN(os.Environ())
+	cmd.Env = environmentWithoutPostgresSecrets(os.Environ())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%s: %w: %s", strings.Join(append([]string{name}, args...), " "), err, strings.TrimSpace(string(out)))
