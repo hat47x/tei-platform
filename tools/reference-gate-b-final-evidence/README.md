@@ -14,7 +14,11 @@ Gate Bの必須Evidenceを、同じcandidate repository revisionへ揃えたこ�
 
 ## 実行
 
-Evidence専用の空PostgreSQL Databaseを用意し、`TEI_TEST_POSTGRES_DSN`を設定します。
+Evidence専用の空PostgreSQL Databaseを用意し、そのDSNを**Repository外の一行secret file**へ保存します。final runnerのlaunch environmentへDSN本文そのものを設定しません。
+
+```text
+TEI_TEST_POSTGRES_DSN_FILE=/secure/path/to/dsn
+```
 
 final runner自身をcompileする段階からRepository外のGo environment file、Go workspace、暗黙flagsを入力へしないため、正規実行例では`GOENV=off`、`GOWORK=off`、空の`GOFLAGS`を明示します。
 
@@ -22,10 +26,12 @@ final runner自身をcompileする段階からRepository外のGo environment fil
 GOENV=off \
 GOWORK=off \
 GOFLAGS= \
-TEI_TEST_POSTGRES_DSN='...' \
+TEI_TEST_POSTGRES_DSN_FILE='/secure/path/to/dsn' \
 go run ./tools/reference-gate-b-final-evidence \
   > /tmp/tei-gate-b-final-evidence.json
 ```
+
+`TEI_TEST_POSTGRES_DSN`本文をfinal runnerのlaunch environmentへ直接設定したrunはfail closedで拒否します。secret fileはrunner起動後に一度だけ読み、DSN本文はmemoryで保持して#308 childへだけ渡します。
 
 Repository内の新規fileへstdoutを直接redirectしません。command開始前にshellがfileを作成し、開始時clean条件を壊すためです。
 
@@ -35,10 +41,12 @@ Repository全体の`go test ./...`も#310で実行したい場合だけ`-broad`�
 GOENV=off \
 GOWORK=off \
 GOFLAGS= \
-TEI_TEST_POSTGRES_DSN='...' \
+TEI_TEST_POSTGRES_DSN_FILE='/secure/path/to/dsn' \
 go run ./tools/reference-gate-b-final-evidence -broad \
   > /tmp/tei-gate-b-final-evidence.json
 ```
+
+secret fileは一行DSNだけを許容します。末尾の単一LFまたはCRLFは除去しますが、empty、複数行、残存CR/LF、NULは受理しません。file read errorのunderlying本文はlocal pathを含み得るため通常stderrへ複製しません。
 
 ## Go実行環境をcandidate revisionの外へ広げない
 
@@ -73,26 +81,49 @@ ambient環境を確認する前に安全値へ書き換えて、もともと不�
 
 この境界はGo toolchainやmodule cacheをRepositoryへvendoringするものではありません。また個別laneのEvidence契約を置き換えません。Gate B最終収束のcompile / test入力へ、明示していない外部workspace、GOFLAGS、user-level Go environment fileを持ち込まないためのfail-closed条件です。
 
-## PostgreSQL DSNを必要なsubprocessだけへ渡す
+## PostgreSQL DSN本文をcompile前から必要なprocessだけへ渡す
 
-`TEI_TEST_POSTGRES_DSN`はfinal runnerの起動時には必要ですが、実際にPostgreSQLへ接続するのは#308 real PostgreSQL Provider Evidence childだけです。
+実際にPostgreSQLへ接続するのは#308 real PostgreSQL Provider Evidence childだけです。
 
-PR #434以降、final runnerはDSNを利用しないsubprocessへ一律に継承しません。PR #437以降は、runner自身のRepository source観測で起動するGit subprocessにも同じleast-exposure境界を適用します。
+PR #434 / #437以降、runner起動後のGo probe、Git source probe、#310、#255には`TEI_TEST_POSTGRES_DSN`を渡しませんでした。一方、final runner自身を起動するenvironmentへDSN本文を置く方式では、runner binaryが起動する前のouter `go run`、compiler、linker等へcredential候補が継承されます。
 
-- `go env GOWORK` / `go env GOFLAGS`等のGo環境probeへは渡さない
-- `go version`へは渡さない
-- runner開始時・各lane後・最終確認の`git rev-parse` / `git status`へは渡さない
-- #310 deterministic Repository Evidenceへは渡さない
-- #255 generated artifact reproducibility Evidenceへは渡さない
-- #308 real PostgreSQL Provider Evidenceへだけ渡す
+PR #442以降、正規final runではlaunch environmentへDSN本文を設定しません。`TEI_TEST_POSTGRES_DSN_FILE`でRepository外のsecret file pathだけを渡し、runner起動後にfile内容をmemoryへ読みます。親final runner processのenvironmentへDSN本文を設定し直しません。
 
-DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへそもそもsecret候補を露出しないためのleast-exposure境界です。
+production経路では、DSN本文とsecret file pathの双方をbase environmentから除去して各subprocess environmentを組み立てます。
 
-DSN除去はfinal runner側の共通helperで行い、keyの大小文字差に依存せず同名keyをすべて除去します。`PATH`等、DSN以外のenvironmentは通常どおり引き継ぎます。#308 laneだけはDSNを必要とするため、base environmentのcopyを維持します。
+- `go env GOWORK` / `go env GOFLAGS`等のGo環境probeへはDSN本文もfile pathも渡さない
+- `go version`へはDSN本文もfile pathも渡さない
+- runner開始時・各lane後・最終確認の`git rev-parse` / `git status`へはDSN本文もfile pathも渡さない
+- #310 deterministic Repository EvidenceへはDSN本文もfile pathも渡さない
+- #255 generated artifact reproducibility EvidenceへはDSN本文もfile pathも渡さない
+- #308 real PostgreSQL Provider Evidenceへだけ、memory上のDSN本文を`TEI_TEST_POSTGRES_DSN`として渡す
+- #308 childにもsecret file pathは渡さない
+
+```text
+outer go run / compiler / linker
+  -> DSN本文なし
+  -> secret file pathのみlaunch environmentに存在
+
+final runner process
+  -> secret fileを一度読む
+  -> DSN本文はmemoryのみ
+  -> parent environmentへDSN本文を設定しない
+
+Go / Git probe  -> DSN本文なし / file pathなし
+#310            -> DSN本文なし / file pathなし
+#255            -> DSN本文なし / file pathなし
+#308            -> DSN本文のみ / file pathなし
+```
+
+DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへsecret候補を露出しないためのleast-exposure境界です。
+
+環境変数keyの大小文字差に依存せず、DSN本文とDSN file pathの同名keyをすべて除去します。`PATH`等の無関係environmentは通常どおり引き継ぎます。callerから受け取ったenvironment slice自体は破壊しません。
 
 Repository source観測については、共有`repositoryevidence`へProvider固有のDSN名を持ち込まず、callerが明示environmentを渡せるgeneric入口を利用します。source同一性の判定契約は従来どおりです。
 
 この分離はEvidenceの合否条件を増やすものではありません。#310 / #255 / #308の正規runner、lane順序、revision convergence、child artifact fingerprint、source再確認の意味は従来どおりです。
+
+standaloneの#308 toolは引き続き`TEI_TEST_POSTGRES_DSN`を入力とします。本節は#387 final runnerから#308を起動するときのsecret受け渡し境界です。
 
 ## 実行順
 
@@ -100,16 +131,21 @@ Repository source観測については、共有`repositoryevidence`へProvider�
 clean candidate revision R
         ↓
 final runner compile前から exact GOENV=off
+        + GOWORK=off / GOFLAGS=空
+        + DSN本文はlaunch environmentへ置かない
         ↓
 Go workspace / GOFLAGS確認
         ↓
 child Go環境をGOWORK=off / GOFLAGS= / GOENV=offへ固定
+        ↓
+Repository外secret fileを読み、DSN本文をmemoryへ保持
         ↓
 #310 deterministic Repository Evidence
         ↓ runner自身もsource再確認
 #255 generated artifact reproducibility
         ↓ runner自身もsource再確認
 #308 real PostgreSQL Provider Evidence
+  （このchildだけへDSN本文を注入）
         ↓ runner自身もsource再確認
 final source check
 ```
@@ -175,8 +211,10 @@ final source check
 
 次は保存しません。
 
-- `TEI_TEST_POSTGRES_DSN`
+- `TEI_TEST_POSTGRES_DSN`の値
+- `TEI_TEST_POSTGRES_DSN_FILE`のpath
 - credential / secret
+- secret file内容
 - runtime parameter値
 - 各laneのEvidence本文
 - test stdout
@@ -215,6 +253,8 @@ actual Oracle EvidenceはMilestone 2の既存外部資産実証、Milestone 8の
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`をこのREADMEで置き換えること
 - generated artifactを修復すること
 - PostgreSQLの既存Databaseをfixture用に変更すること
+- DSN secret fileをRepositoryへ保存すること
+- secret manager製品をこのtool内で実装すること
 - actual Oracle Evidenceを代替すること
 - fingerprintだけでchild Evidence本文の存在・真実性を証明したことにすること
 - Go toolchainやmodule cacheをRepositoryへvendoringすること
