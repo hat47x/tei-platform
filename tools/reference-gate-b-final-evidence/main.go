@@ -35,33 +35,37 @@ type laneEvidence struct {
 	ObservedNature              string   `json:"observedNature,omitempty"`
 	RepositoryRevision          string   `json:"repositoryRevision,omitempty"`
 	ReproducibleRevision        bool     `json:"reproducibleRevision"`
+	ArtifactFile                string   `json:"artifactFile,omitempty"`
 	EvidenceArtifactFingerprint string   `json:"evidenceArtifactFingerprint,omitempty"`
 	Passed                      bool     `json:"passed"`
 }
 
 type evidence struct {
-	EvidenceNature       string                     `json:"evidenceNature"`
-	RepositoryRevision   string                     `json:"repositoryRevision"`
-	WorkingTreeClean     bool                       `json:"workingTreeClean"`
-	ReproducibleRevision bool                       `json:"reproducibleRevision"`
-	PostRunRepository    repositoryevidence.PostRun `json:"postRunRepository"`
-	GoVersion            string                     `json:"goVersion"`
-	GoEnvironment        goEnvironmentEvidence      `json:"goEnvironment"`
-	BroadRequested       bool                       `json:"broadRequested"`
-	AllLanesSameRevision bool                       `json:"allLanesSameRevision"`
-	Lanes                []laneEvidence             `json:"lanes"`
+	EvidenceNature         string                     `json:"evidenceNature"`
+	RepositoryRevision     string                     `json:"repositoryRevision"`
+	WorkingTreeClean       bool                       `json:"workingTreeClean"`
+	ReproducibleRevision   bool                       `json:"reproducibleRevision"`
+	PostRunRepository      repositoryevidence.PostRun `json:"postRunRepository"`
+	GoVersion              string                     `json:"goVersion"`
+	GoEnvironment          goEnvironmentEvidence      `json:"goEnvironment"`
+	BroadRequested         bool                       `json:"broadRequested"`
+	AllLanesSameRevision   bool                       `json:"allLanesSameRevision"`
+	ChildArtifactsRetained bool                       `json:"childArtifactsRetained"`
+	Lanes                  []laneEvidence             `json:"lanes"`
 }
 
 type inspectStartFunc func() (repositoryevidence.Source, error)
 type inspectPostFunc func(string) (repositoryevidence.PostRun, error)
 type laneRunnerFunc func(laneSpec, string) (laneEvidence, error)
 type commandOutputFunc func(string, ...string) (string, error)
+type laneArtifactWriterFunc func(laneSpec, []byte) (string, error)
 
 func main() {
 	broad := flag.Bool("broad", false, "#310 deterministic Repository Evidenceでgo test ./...も実行する")
+	artifactDir := flag.String("artifact-dir", "", "同一runのchild Evidence exact JSONを保持するRepository外directory。未指定時は安全なtemporary directoryを新規作成する")
 	flag.Parse()
 
-	result, err := run(*broad)
+	result, err := run(*broad, *artifactDir)
 	encoded, encodeErr := json.MarshalIndent(result, "", "  ")
 	if encodeErr != nil {
 		fmt.Fprintln(os.Stderr, encodeErr)
@@ -74,7 +78,7 @@ func main() {
 	}
 }
 
-func run(broad bool) (evidence, error) {
+func run(broad bool, requestedArtifactDir string) (evidence, error) {
 	goEnvironment, goEnvironmentErr := inspectGoEnvironment(commandOutput)
 	if goEnvironmentErr != nil {
 		return evidence{
@@ -85,7 +89,32 @@ func run(broad bool) (evidence, error) {
 		}, goEnvironmentErr
 	}
 
-	postgresDSN, postgresDSNErr := loadPostgresDSNFromEnvironment()
+	repositoryRoot, repositoryRootErr := inspectRepositoryRoot(commandOutput)
+	if repositoryRootErr != nil {
+		return evidence{
+			EvidenceNature: evidenceNature,
+			GoEnvironment:  goEnvironment,
+			BroadRequested: broad,
+			Lanes:          []laneEvidence{},
+		}, repositoryRootErr
+	}
+
+	artifactStore, artifactStoreErr := prepareLaneArtifactStore(requestedArtifactDir, repositoryRoot)
+	if artifactStoreErr != nil {
+		return evidence{
+			EvidenceNature: evidenceNature,
+			GoEnvironment:  goEnvironment,
+			BroadRequested: broad,
+			Lanes:          []laneEvidence{},
+		}, artifactStoreErr
+	}
+	if artifactStore.auto {
+		fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] child Evidence artifact directory (temporary): %s\n", artifactStore.dir)
+	} else {
+		fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] child Evidence artifact directory: %s\n", artifactStore.dir)
+	}
+
+	postgresDSN, postgresDSNErr := loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot)
 	if postgresDSNErr != nil {
 		return evidence{
 			EvidenceNature: evidenceNature,
@@ -100,11 +129,16 @@ func run(broad bool) (evidence, error) {
 		inspectRepositoryStart,
 		inspectRepositoryPost,
 		func(spec laneSpec, candidateRevision string) (laneEvidence, error) {
-			return runLaneWithPostgresDSN(spec, candidateRevision, postgresDSN)
+			return runLaneWithPostgresDSNAndArtifactWriter(spec, candidateRevision, postgresDSN, artifactStore.writeLane)
 		},
 		commandOutput,
 	)
 	result.GoEnvironment = goEnvironment
+	result.ChildArtifactsRetained = allChildArtifactsRetained(result.Lanes)
+	if err == nil && !result.ChildArtifactsRetained {
+		result.ReproducibleRevision = false
+		return result, fmt.Errorf("Gate B最終Evidenceで実際に読んだ3 child Evidence artifactを同一runから保持できません")
+	}
 	return result, err
 }
 
@@ -204,6 +238,15 @@ func laneSpecs(broad bool) []laneSpec {
 }
 
 func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string) (laneEvidence, error) {
+	return runLaneWithPostgresDSNAndArtifactWriter(spec, candidateRevision, postgresDSN, nil)
+}
+
+func runLaneWithPostgresDSNAndArtifactWriter(
+	spec laneSpec,
+	candidateRevision,
+	postgresDSN string,
+	artifactWriter laneArtifactWriterFunc,
+) (laneEvidence, error) {
 	lane := laneEvidence{
 		Name:           spec.Name,
 		Command:        append([]string{"go"}, spec.Args...),
@@ -219,6 +262,13 @@ func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string
 	runErr := cmd.Run()
 
 	envelope, decodeErr := decodeLaneArtifact(stdout.Bytes(), &lane)
+	if decodeErr == nil && artifactWriter != nil {
+		artifactFile, artifactErr := artifactWriter(spec, stdout.Bytes())
+		if artifactErr != nil {
+			return lane, fmt.Errorf("%s Evidence artifactを同一runから保持できません: %w", spec.Name, artifactErr)
+		}
+		lane.ArtifactFile = artifactFile
+	}
 	if runErr != nil {
 		return lane, fmt.Errorf("%s Evidence runnerが失敗しました: %w", spec.Name, runErr)
 	}
