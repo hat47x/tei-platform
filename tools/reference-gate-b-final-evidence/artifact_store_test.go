@@ -26,15 +26,19 @@ func TestPrepareLaneArtifactStoreCreatesExplicitDirectoryOutsideRepository(t *te
 	if store.auto {
 		t.Fatal("explicit artifact directoryがauto扱いです")
 	}
-	if store.dir != requested {
-		t.Fatalf("store.dir=%q want=%q", store.dir, requested)
-	}
-	info, err := os.Stat(store.dir)
+	storeInfo, err := os.Stat(store.dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !info.IsDir() {
-		t.Fatalf("artifact store is not directory: %v", info.Mode())
+	requestedInfo, err := os.Stat(requested)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(storeInfo, requestedInfo) {
+		t.Fatalf("store.dir=%q does not identify requested=%q", store.dir, requested)
+	}
+	if !storeInfo.IsDir() {
+		t.Fatalf("artifact store is not directory: %v", storeInfo.Mode())
 	}
 }
 
@@ -140,11 +144,12 @@ func TestAllChildArtifactsRetainedRequiresThreePassedArtifacts(t *testing.T) {
 }
 
 func TestPathWithinRepository(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "repo")
+	base := t.TempDir()
+	root := filepath.Join(base, "repo")
 	if !pathWithinRepository(root, filepath.Join(root, "child", "evidence.json")) {
 		t.Fatal("Repository childをoutside扱いしています")
 	}
-	if pathWithinRepository(root, filepath.Join(filepath.Dir(root), "outside", "evidence.json")) {
+	if pathWithinRepository(root, filepath.Join(base, "outside", "evidence.json")) {
 		t.Fatal("Repository siblingをinside扱いしています")
 	}
 }
