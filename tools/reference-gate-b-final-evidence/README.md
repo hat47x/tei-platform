@@ -87,7 +87,9 @@ childArtifactsRetained = true
 
 を要求します。
 
-これにより、Readiness Auditは「同じRで後から再実行した別artifact」ではなく、**final convergenceが実際に読んだ同一run child Evidence**を再確認できます。
+final success直前には、三つの固定filenameをartifact storeから再openし、regular fileであること、読込中にpath identityが置き換わっていないこと、再読込したexact bytesのSHA-256が各laneの`evidenceArtifactFingerprint`と一致することを再確認します。missing / symlink replacement / fingerprint mismatch等を検出した場合は`childArtifactsRetained=true`へ進まずfail closedします。
+
+これにより、Readiness Auditは「同じRで後から再実行した別artifact」ではなく、**final convergenceが実際に読んだ同一run child Evidence**を再確認できます。Readiness Auditでも保存artifactを独立に再照合し、runner内final確認だけを監査の代替にはしません。
 
 ## Repository rootを固定する
 
@@ -268,6 +270,7 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 - direct `TEI_TEST_POSTGRES_DSN`設定
 - DSN secret fileがRepository内、symlink先がRepository内、non-regular、empty、multiline、NUL、read不能
 - child Evidence artifactをsame-runで保存できない
+- final success直前にchild artifactを再読込できない、regular fileではない、置換を検出した、またはfingerprintが一致しない
 - artifact directoryがRepository内
 - 既存artifactへの上書きが必要になる
 - final source check未完了
