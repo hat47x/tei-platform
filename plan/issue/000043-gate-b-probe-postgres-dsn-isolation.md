@@ -1,21 +1,35 @@
-# ISSUE-000043: Gate B utility subprocessからPostgreSQL DSNを隔離する
+# ISSUE-000043: Gate B utility subprocessからPostgreSQL secretを隔離する
 
-- 状態: Ready to verify
+- 状態: Ready to verify — 実装 / isolated test / tool README / Runbook同期済み、actual checkout / final run待ち
 - GitHub Issue: #433
-- 親Issue: `ISSUE-000037` / GitHub Issue #387
-- 関連Issue: `ISSUE-000031` / #308、`ISSUE-000040` / #424、`ISSUE-000042` / #430、`ISSUE-000029` / #273
+- 親: `ISSUE-000037` / #387
+- 関連: `ISSUE-000044` / #436、`ISSUE-000045` / #441
 
 ## 目的
 
-Gate B final runnerが保持する`TEI_TEST_POSTGRES_DSN`を、実際にPostgreSQLへ接続する#308 child以外のsubprocessへ不要に渡さないようにします。
+final runner内部のGo utility subprocessへ、PostgreSQL接続に不要なsecretを渡しません。
 
-DSNにはcredentialを含み得るため、「通常Evidenceへ値を保存しない」だけでなく、利用しないprocessへそもそも継承しないleast-exposure境界を一貫させます。
+「Evidenceへ値を保存しない」と「利用しないprocessへsecretを継承しない」は別の安全境界です。
 
-## 背景
+## 現行secret model
 
-PR #418以降、final runnerは三laneのうち#308だけへDSNを渡し、#310 / #255 childからは除去していました。
+現行final runではlaunch environmentへDSN本文を置きません。
 
-一方、runner内部では`commandOutput`を通じて次のutility subprocessも起動します。
+```text
+TEI_TEST_POSTGRES_DSN_FILE = Repository外secret file path
+TEI_TEST_POSTGRES_DSN = absent
+```
+
+runner起動後にsecret fileを一度だけ読み、DSN本文はmemoryへ保持します。
+
+production経路ではbase environmentから次の双方を除去してsubprocess environmentを構築します。
+
+- `TEI_TEST_POSTGRES_DSN`
+- `TEI_TEST_POSTGRES_DSN_FILE`
+
+## utility subprocess
+
+少なくとも次へDSN本文もsecret file pathも渡しません。
 
 ```text
 go env GOWORK
@@ -23,107 +37,56 @@ go env GOFLAGS
 go version
 ```
 
-PR #434以前の`commandOutput`は親process environmentを通常継承していたため、これらのGo probeにもDSNが渡っていました。Go probeはDSNを必要としません。
-
-## 実装 — PR #434
-
-DSN除去を`environmentWithoutPostgresDSN`へ共通化しました。
+最終的な露出境界は次です。
 
 ```text
-final runner process
-  ├─ go env / go version probe ─ DSNなし
-  ├─ #310 child              ─ DSNなし
-  ├─ #255 child              ─ DSNなし
-  └─ #308 child              ─ DSNあり
+Go environment / version probe -> DSN本文なし / file pathなし
+#310                           -> DSN本文なし / file pathなし
+#255                           -> DSN本文なし / file pathなし
+#308                           -> in-memory DSN本文のみ / file pathなし
 ```
 
-### 共通helper
+#308は実PostgreSQL接続が必要なので、runner memory上のDSN本文だけをchild environmentへ明示注入します。
 
-`environmentWithoutPostgresDSN`は次を行います。
+## helper contract
 
-- `TEI_TEST_POSTGRES_DSN`をcase-insensitiveに識別する
-- 同名keyが複数あってもすべて除去する
-- PATH等の無関係なenvironmentは保持する
-- 元のenvironment sliceを破壊しない
+secret除去helperは次を満たします。
 
-### #308は維持
+- DSN本文keyをcase-insensitiveに除去
+- DSN file path keyもcase-insensitiveに除去
+- duplicate keyをすべて除去
+- PATH等の無関係environmentを維持
+- callerのenvironment sliceを破壊しない
 
-`real-postgres-ephemeral-fixture` laneだけはDSNを必要とするため、base environmentのcopyをそのまま渡します。
+## 成立済み
 
-本変更は#308接続契約を変更するものではありません。
+- [x] Go utility subprocessからDSN本文を除去（PR #434）
+- [x] non-PostgreSQL laneとleast-exposure helperを共有
+- [x] duplicate / case-insensitive除去test
+- [x] actual child subprocess継承test
+- [x] `ISSUE-000045`でsecret file pathも除去対象へ拡張
+- [x] tool READMEへGo utility least-exposureを同期
+- [x] `plan/GATE_B_EVIDENCE_RUNBOOK.md`へ同期
 
-## actual subprocess test
+## 残作業
 
-PR #434ではpure helper testに加え、実child process継承も確認しました。
+- [ ] 実TEI checkoutで次を再確認する
 
-親test processへ次を設定します。
-
-```text
-TEI_TEST_POSTGRES_DSN=postgres://user:secret@example.invalid/evidence
+```bash
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-その状態で`commandOutput`から現在のtest binaryをchildとして起動し、childで`TEI_TEST_POSTGRES_DSN`が存在しないことを確認します。
+- [ ] actual #387 final runで同じsecret exposure境界を使用する
 
-期待結果:
-
-```text
-dsn-absent
-```
-
-standard-libraryだけの隔離package結果:
-
-```text
-ok  tei-probe-dsn  0.003s
-```
-
-これは通常TEI Repository checkout上のpackage testやactual #387 Evidenceではありません。
-
-## secret非保存との関係
-
-本Issueは新しいEvidence fieldを追加しません。
-
-次は引き続き保存しません。
-
-- `TEI_TEST_POSTGRES_DSN`
-- credential / secret
-- PostgreSQL Database名
-
-「値を保存しない」と「不要なprocessへ渡さない」は別の境界です。本Issueは後者を補強します。
-
-## #424 / #430との関係
-
-```text
-#430 / ISSUE-000042
-  final runner compile前から exact GOENV=off
-
-#424 / ISSUE-000040
-  child / nested Go環境を
-  GOWORK=off / GOFLAGS= / GOENV=offへ固定
-
-#433 / ISSUE-000043
-  DSNを必要な#308 childだけへ露出
-```
-
-Go environmentの再現性境界とsecret exposure境界を混同しません。
-
-## 完了条件
-
-- [x] utility subprocessからDSNを除去する（PR #434）
-- [x] non-PostgreSQL laneと同じ共通helperへ収束する（PR #434）
-- [x] case-insensitive duplicate除去のpure testを追加する
-- [x] actual subprocess継承testを追加する
-- [x] Repository正本を追加する（本書）
-- [ ] tool READMEへutility probeのleast-exposureを同期する
-- [ ] 実TEI checkout上で`go test ./tools/reference-gate-b-final-evidence -count=1`を再確認する
-- [ ] actual #387 final runを同境界で実行する
-
-最後のactual run自体は#387の完了条件です。本Issue単独の成功をGate B Readyへ格上げしません。
+本Issue単独の成功をGate B Readyへ格上げしません。
 
 ## 非目標
 
-- #308からDSNを除去すること
-- DSN値をEvidenceへ追加すること
+- #308から必要なDSN本文を除去すること
+- DSN / secret file pathをEvidence fieldへ追加すること
 - OS process全体のsecret sandbox化
-- Go toolchain / module cacheのvendoring
-- GitHub Actionsの再有効化
-- #308 Provider Evidenceの代替
+- secret manager製品の標準化
+- GitHub Actions再有効化
