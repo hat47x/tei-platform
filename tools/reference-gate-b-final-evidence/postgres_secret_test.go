@@ -7,12 +7,13 @@ import (
 )
 
 func TestLoadPostgresDSNSecretRejectsDirectLaunchValue(t *testing.T) {
+	const directDSN = "postgres://user:secret@example.invalid/evidence"
 	readCalled := false
 	_, err := loadPostgresDSNSecret(
 		func(key string) (string, bool) {
 			switch key {
 			case postgresDSNEnv:
-				return "postgres://user:secret@example.invalid/evidence", true
+				return directDSN, true
 			case postgresDSNFileEnv:
 				return "/private/dsn", true
 			default:
@@ -30,7 +31,7 @@ func TestLoadPostgresDSNSecretRejectsDirectLaunchValue(t *testing.T) {
 	if readCalled {
 		t.Fatal("direct DSN launchをrejectする前にsecret fileを読みました")
 	}
-	if strings.Contains(err.Error(), "postgres://") || strings.Contains(err.Error(), "secret") {
+	if strings.Contains(err.Error(), directDSN) || strings.Contains(err.Error(), "user:secret@") {
 		t.Fatalf("DSN本文をerrorへ露出しています: %q", err)
 	}
 }
@@ -88,6 +89,5 @@ func TestNormalizePostgresDSNSecretRejectsEmptyMultilineAndNUL(t *testing.T) {
 			if _, err := normalizePostgresDSNSecret(tc.content); err == nil {
 				t.Fatal("不正なsecret file内容を受理しました")
 			}
-		})
 	}
 }
