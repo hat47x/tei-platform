@@ -74,6 +74,53 @@ func TestReadAccessBaselineDoesNotConflict(t *testing.T) {
 	}
 }
 
+func TestPatternOwnedMeaningIsDerivedWithoutFixtureDuplication(t *testing.T) {
+	root := repoPath()
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, step := range f.Steps {
+		switch step.ID {
+		case "BP-01":
+			if len(step.Data) != 0 {
+				t.Fatalf("BP-01がPattern-owned Dataをfixtureへ重複保持しています: %+v", step.Data)
+			}
+		case "BP-02", "BP-03":
+			if len(step.Relations) != 0 {
+				t.Fatalf("%sがPattern-owned Relationをfixtureへ重複保持しています: %+v", step.ID, step.Relations)
+			}
+		case "BP-07":
+			if len(step.Capabilities) != 0 {
+				t.Fatalf("BP-07がPattern-owned Capabilityをfixtureへ重複保持しています: %+v", step.Capabilities)
+			}
+		}
+	}
+
+	result := evaluate(loaded.World, f)
+	rows := map[string]patternMeaningRow{}
+	for _, row := range result.BusinessActionPatternMeaningRows {
+		rows[row.StepID] = row
+	}
+	if rows["BP-01"].Data != "sales.order" {
+		t.Fatalf("BP-01 DataがPatternから導出されていません: %+v", rows["BP-01"])
+	}
+	if rows["BP-02"].Relation != "sales.order.customer" || rows["BP-02"].Datasource != "master" {
+		t.Fatalf("BP-02 Relation/DatasourceがPatternから導出されていません: %+v", rows["BP-02"])
+	}
+	if rows["BP-03"].Relation != "sales.order.lines" {
+		t.Fatalf("BP-03 RelationがPatternから導出されていません: %+v", rows["BP-03"])
+	}
+	if rows["BP-07"].Capability != "sales.order.submit" {
+		t.Fatalf("BP-07 CapabilityがPatternから導出されていません: %+v", rows["BP-07"])
+	}
+}
+
 func TestFixtureDecodeRejectsUnknownFields(t *testing.T) {
 	_, err := decodeFixture(strings.NewReader(`{
 		"schemaVersion":"business-procedure-reference-v0",
