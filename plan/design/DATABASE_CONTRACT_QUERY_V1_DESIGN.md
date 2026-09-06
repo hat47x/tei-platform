@@ -1,6 +1,6 @@
 # Database Contract Query v1 設計
 
-- 状態: 実装済みの現行基線（actual Provider Evidenceは取得中）
+- 状態: 実装済みの現行基線
 - 更新日: 2026-09-06
 - 対象Issue: [ISSUE-000018](../issue/000018-database-contract-query-execution.md) / [ISSUE-000019](../issue/000019-reference-contract-query-invocation.md) / [ISSUE-000020](../issue/000020-contract-query-runtime-instance-identity.md) / [ISSUE-000021](../issue/000021-oracle-contract-query-sql-runner.md)
 - 関連ADR: [ADR-0007](../adr/0007-database-driver-assembly.md) / [ADR-0021](../adr/0021-header-detail-relation-traversal-realization.md)
@@ -146,21 +146,23 @@ Driver側の実行と結果検査（cardinality、Semantic row）は[Application
 
 診断はSource Indexを通してauthoring sourceへ戻れます。
 
-## Evidenceと現在地
+## Evidenceの種類と確認先
 
-| Evidence | 何を示すか | 現在地 |
+取得状況そのものはこの設計文書へ複製せず、対応Issueと[`docs/status.md`](../../docs/status.md)を確認します。
+
+| Evidence | 何を示すか | current stateの確認先 |
 | --- | --- | --- |
-| Repository内Conformance（Go test） | 契約・realization・executor選択・runtime変換の決定論的な再現 | 再現可能 |
-| real PostgreSQL ephemeral fixture | 実engineでのheader-detail実行と前後の安全性 | actual run待ち（[ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md)） |
-| actual Oracle | 既存外部資産に対するread、driver統合、read-only強制 | 未取得（[ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md) / [ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md) / [ISSUE-000034](../issue/000034-gate-b-oracle-read-only-evidence.md)） |
+| Repository内Conformance（Go test） | 契約・realization・executor選択・runtime変換の決定論的な再現 | Repository内test / `docs/status.md` |
+| real PostgreSQL ephemeral fixture | 実engineでのheader-detail実行と前後の安全性 | [ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md) / `docs/status.md` |
+| actual Oracle | 既存外部資産に対するread、driver統合、read-only強制 | [ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md) / [ISSUE-000033](../issue/000033-gate-b-oracle-driver-integration.md) / [ISSUE-000034](../issue/000034-gate-b-oracle-read-only-evidence.md) / `docs/status.md` |
 
-`docs/conformance/`にはContract Query専用の説明文書がまだありません。現在のConformanceはGo test（`reference_contract_query_sql_conformance_test.go`等）が正本です。
+Contract Queryの機械検証は`reference_contract_query_sql_conformance_test.go`等のRepository testを正とします。説明文書のcurrent構成は`docs/conformance/`を確認します。
 
 ## 非主張範囲
 
 - Contract Queryにwrite操作やtransaction境界は含みません
 - 複数Contract Queryをまたぐ一貫性やretryは扱いません
-- Oracle Runnerが実driverで動作したことは、まだ主張できません
+- 実driverでのOracle動作はこの設計文書自体からは主張せず、actual Evidenceの現在地は対応Issueと`docs/status.md`を確認します
 - Reference固有のSQLやcolumn名をCanonical schemaへ昇格させません
 - PostgreSQLを深いReference Providerとして使っていることは、provider中立性の証明ではありません
 
