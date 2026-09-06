@@ -43,9 +43,28 @@ trigger / actorの`candidate`を`accepted`へ丸めるとP11に反する。
 
 一方、current Referenceだけからcertainty latticeやapproval state machineを設計する根拠はない。
 
+### 2.5 `realization`は現時点でCore必須と証明されていない
+
+`realization_subtraction_pressure_test.go`では、`realization`をthin candidateから除いても次を保持できるtest-only projectionを追加した。
+
+- Business Action wording
+- explicit semantic refs
+- manual Business Action
+- Business-only meaning change
+
+したがってcurrent複合labelをproduction Core enumへ固定する根拠は弱くなった。
+
+### 2.6 Step body meaningとStep addressabilityは分離できる可能性がある
+
+`step_identity_pressure_test.go`では、Step IDをProcedure body meaningから除いてもordered Business Actionを保持するprojectionを追加した。
+
+一方、handoff relationはexact Step endpointを必要とし、stale keyをfail closedする。
+
+よって「Step bodyにdurable IDが必要」と「外部relationからstableに指せるaddressが必要」は別問題である。
+
 ## 3. Candidate Core meaning
 
-現時点で最も小さいproduction候補は次である。
+現時点で最も小さい**body meaning候補**は次へ縮んだ。
 
 ```text
 BusinessProcedure
@@ -59,13 +78,16 @@ BusinessProcedure
     businessLabel
   orderedSteps
 
-BusinessProcedureStep
-  id
+BusinessProcedureStepBody
   businessAction
   explicitSemanticRefs
 ```
 
-ここで`explicitSemanticRefs`は、Business側が明示的に参照する既存Canonical identityを指す。
+ここではStep durable IDをbody meaningへまだ固定しない。
+
+Stepをhandoff / review / traceから指すstable addressは別の未解決identity concernとして扱う。
+
+`explicitSemanticRefs`は、Business側が明示的に参照する既存Canonical identityを指す。
 
 例:
 
@@ -74,13 +96,21 @@ BusinessProcedureStep
 - Data / Relation（Patternから導けないBusiness上のexplicit refが本当に必要な場合だけ）
 - Capability（同上）
 
-### 3.1 なぜpurposeを残すか
+### 3.1 なぜProcedure identityを残す候補にするか
+
+Procedureはreview / handoff / Shared Acceptanceのtargetとして複数artifactから参照される。
+
+file pathとは独立したstable identityが有用である。
+
+ただしcurrent Reference-local keyがそのままproduction Canonical identityになるとはまだ決めない。
+
+### 3.2 なぜpurposeを残すか
 
 purposeはApplication Patternから導出できず、Business Procedure全体の意味を識別・レビューするために必要である。
 
 purpose wordingのaccepted changeはBusiness semantic changeである。
 
-### 3.2 なぜtrigger / actorのstatusを残すか
+### 3.3 なぜtrigger / actorのstatusを残すか
 
 current Referenceはtrigger / actorをcandidateとして扱っている。
 
@@ -88,13 +118,13 @@ statusをProjection decorationとして捨てると、candidate / unresolvedと�
 
 ただしstatus vocabulary自体はまだ固定しない。
 
-### 3.3 なぜordered stepを残すか
+### 3.4 なぜordered stepを残すか
 
 Business Procedureでは行為の順序そのものが意味を持つ。
 
 set-likeなsemantic refsと異なり、step順をnormalizationでsortしてはならない。
 
-### 3.4 なぜBusiness Actionを残すか
+### 3.5 なぜBusiness Actionを残すか
 
 manual / external / judgment等、Application Functionから導けないBusiness actionが存在する。
 
@@ -107,17 +137,24 @@ handoffはProcedure bodyへruntime control flowとして埋め込むより、独
 ```text
 BusinessHandoff
   from
-    procedure
-    step
+    procedureAddress
+    stepAddress
   to
-    procedure
-    step
+    procedureAddress
+    stepAddress
   condition
 ```
 
-このrelationをproduction Coreへ入れるかはまだ決定しない。
+ここで`procedureAddress / stepAddress`がproduction Canonical IDなのか、accepted Source identity indexなのかはまだ決定しない。
 
-採用条件は、Reference-local relationではcross-view diff / impact / reuseを安全に再構成できないことがEvidenceで示されることである。
+必要なのは次である。
+
+- exact endpoint resolution
+- file move independent
+- stale logical rename fail closed
+- review / cross-revision continuity
+
+このrelationをproduction Coreへ入れる採用条件は、Reference-local relationではcross-view diff / impact / reuseを安全に再構成できないことがEvidenceで示されることである。
 
 ## 5. Derivedであるべきもの
 
@@ -214,7 +251,7 @@ Business Procedure Projectionを表・グラフ・UI・文章のどれで表示�
 
 ## 8. `realization`の再監査
 
-current fixture / test-only probeには次のような`realization` labelがある。
+current fixture / authoring pressureには次のような`realization` labelがある。
 
 ```text
 application-use
@@ -225,46 +262,54 @@ observation-boundary
 manual-external-unresolved
 ```
 
-これは現段階では**便利なBusiness review label**であるが、production Core enumとして採用する根拠はまだ不足している。
+これは現段階では**便利なBusiness review label**であるが、production Core enumとして採用する根拠は不足している。
 
 理由:
 
 1. checkerはFunction有無を`realization`文字列から推論せず、Application Pattern refs等の実体から判定している。
-2. `manual-unresolved`はmanual性とepistemic uncertaintyを一語へ畳んでおり、将来の直交軸を先に固定する危険がある。
+2. `manual-unresolved`はmanual性とepistemic uncertaintyを一語へ畳んでいる。
 3. `security-boundary`はBusiness ProcedureがAuthorization contractを所有することを意味しない。
-4. `observation-boundary`もCommand / Observation分離を示すreview上の意味であり、runtime implementation kindとは限らない。
+4. `observation-boundary`も特定runtime implementation kindとは限らない。
+5. test-only subtraction projectionで、`realization`なしでもBusiness Action / explicit refs / manual workを保持できる候補を作れた。
 
 したがってpre-ADRでは次とする。
 
 ```text
 realization
   retain in Reference authoring / review pressure
+  subtract from minimum production candidate
   do not make authoritative Core enum yet
 ```
 
-Production候補では、Business Action + explicit semantic refsだけで意味を保持できるかを先に検証する。
-
-もしmanual / external / system-use等の区別がBusiness-only semantic diffに不可欠で、refsから安全に導出できないことが現実的Referenceで示された場合だけ、独立したBusiness realization kindを再検討する。
+actual Repository testとより現実的Referenceで不足が出た場合だけ、必要なBusiness distinctionを再抽出する。
 
 ## 9. Step identityの再監査
 
 current Referenceでは`BP-04`等のStep keyがhandoff / review endpointに使われる。
 
-しかしproductionでStep IDをdurable Canonical identityにするかは未決定である。
+しかしtest-only pressureは次を分離した。
 
-必要性を示すpressure:
+```text
+ordered body meaning
+  Step IDなしでも表現候補を作れる
+
+external addressability
+  exact stable Step endpointが必要
+```
+
+### durable identityが必要になり得るpressure
 
 - handoff endpoint
 - review comment target
 - cross-revision diff continuity
 - external trace / link
 
-不要性を示すpressure:
+### Source-local keyで十分かもしれないpressure
 
-- Procedure内部のordered positionだけで安全に再構成できる
-- Step renameがBusiness identity changeではなくauthoring-only changeとして扱える
+- body semantic diffはBusiness Action / refs / orderで成立する
+- Step local key renameだけをbody meaning changeへしなくてよい
 
-ADR前に、Step IDが単なるReference-local keyなのかdurable semantic identityなのかを分けるEvidenceが必要である。
+ADR前に、Step addressをSource identity indexとして維持できるか、Canonical durable identityが必要かを分けるEvidenceが必要である。
 
 ## 10. Handoff conditionの再監査
 
@@ -284,8 +329,6 @@ current handoff `condition`は自然言語Business meaningとしてpressure test
 
 current test-only modelはexplicit statusをlosslessに保持する。
 
-これにより必要条件は確認できる。
-
 一方、次はまだ決めない。
 
 ```text
@@ -299,7 +342,24 @@ trigger / actor以外への一般化
 
 P11を守る最小条件は「明示された不確定性を勝手に既知へ丸めないこと」である。
 
-## 12. Watanabe pressureとの整合
+## 12. multi-Application / social-system pressure
+
+`realistic_multi_application_pressure_test.go`を追加し、temp Workspaceで一つのProcedureへ次を同居させる中間Pressureを作った。
+
+```text
+order_entry Application interaction
+fulfillment_console Application interaction
+manual warehouse coordination
+external delivery continuation
+```
+
+これにより、Business Procedureを一つのApplicationの画面操作列へ縮めないPressureを強めた。
+
+ただし`fulfillment_console`はsyntheticであり、production業務仕様でもdomain review済みReferenceでもない。
+
+したがって「realistic Reference完成」ではなく、pre-ADR Gate 12へ向かう**中間Evidence**とする。
+
+## 13. Watanabe pressureとの整合
 
 本候補は、Data / Function-Interaction / Businessを同一objectへ潰さない。
 
@@ -309,11 +369,11 @@ P11を守る最小条件は「明示された不確定性を勝手に既知へ�
 
 として独立した視点を保ち、explicit identityでcross-checkする。
 
-これによりBusiness Modelを業務マニュアル / social systemとして扱う余地を残しつつ、Data-firstをData-onlyへしない。
+Business Modelを業務マニュアル / social systemとして扱う余地を残しつつ、Data-firstをData-onlyへしない。
 
 またProcedureを実行runtimeへ直結させず、UI / simulator / Reference checker等を通じて設計を批判・修正できる形を優先する。
 
-## 13. ADR作成前の採用Gate
+## 14. ADR作成前の採用Gate
 
 次を満たすまでproduction Canonical contract ADRを作らない。
 
@@ -326,29 +386,45 @@ P11を守る最小条件は「明示された不確定性を勝手に既知へ�
 7. one Procedure -> multiple Applicationsを単一owner fieldなしで保持
 8. actor uncertaintyをAuthorizationへ混ぜない
 9. handoff relationをruntime Workflow化せず保持
-10. `realization`を除いても必要Business meaningを保持できるか検証
-11. Step durable identityの必要性をhandoff / review Evidenceで説明
-12. 少なくともcurrent `order_entry`より一段現実的なmulti-Application / manual / external Reference pressureを得る
+10. `realization`を除いても必要Business meaningを保持できる
+11. Step durable identityの必要性をhandoff / review Evidenceで説明できる
+12. current `order_entry`より一段現実的なmulti-Application / manual / external Reference pressureを得る
 
-## 14. 現時点の判断
+### 現在の到達度
+
+- 2〜10: test-only pressureはRepositoryへ実装済み。actual runner green待ち。
+- 11: body vs addressabilityの分離pressureまで実装。Source-local addressで十分かは未決。
+- 12: synthetic second Applicationを使う中間scenarioまで実装。最終的なrealistic Reference Evidenceではない。
+- 1: GitHub Actionsは最新headでもjob step実行前に終了しており未充足。
+
+## 15. 現時点の判断
 
 ### productionへ今入れない
 
 - Canonical `BusinessProcedure` schema
 - Canonical `BusinessHandoff` schema
 - `realization` enum
+- durable Canonical Step ID
 - generic Uncertainty framework
 - Workflow Engine
 
-### Candidateとして残す
+### minimum candidateとして残す
 
 ```text
-Procedure identity
+Procedure address/identity candidate
 purpose
 trigger status + meaning
 actor status + business label
-ordered Business Action
+ordered Business Action body
 explicit semantic refs
+```
+
+### separate unresolved addressability
+
+```text
+handoff / review target
+  Procedure address
+  Step address
 ```
 
 ### Derived / externalへ残す
@@ -359,20 +435,24 @@ Application association
 Projection matrix
 Diagnostics
 source locator / fingerprint / revision
+realization review label
 runtime realization
 Authorization realization
 ```
 
-## 15. 次のLane C作業
+## 16. 次のLane C作業
 
-ADRへ進む前に、次の二つをReference pressureで閉じる。
+ADRへ進む前の主残件は次へ絞られた。
 
-1. **realization subtraction pressure**
-   - thin Canonical candidateから`realization`を外してもBusiness-only diff / cross-view reviewが成立するか
-   - 不足する場合、必要なBusiness distinctionだけを抽出する
+1. **actual test execution**
+   - `gofmt / go vet / go test / checker`をactual Repository runnerで実行しgreen Evidenceを取る
 
-2. **durable Step identity pressure**
-   - handoff / review / cross-revision continuityにStep durable identityが本当に必要か
-   - position / content fingerprint / local keyとの差を比較する
+2. **Step address identity pressureの継続**
+   - accepted handoff / review / cross-revision continuityをReference-local Step keyだけで安全に維持できるか
+   - Source identity indexとCanonical durable IDの比較を行う
 
-この二つとactual test executionが揃うまで、PR #482はDraft、Issue 000042はIn Progressを維持する。
+3. **realistic Reference pressureの継続**
+   - synthetic second Applicationを超える既存scenario再利用または小さなReference拡張が本当に必要かを判断する
+   - production Referenceを増やすこと自体は目的化しない
+
+この三点が閉じるまで、PR #482はDraft、Issue 000042はIn Progressを維持する。
