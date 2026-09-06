@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"tei/internal/ir"
 	"tei/internal/workspace"
 )
 
@@ -76,10 +77,10 @@ func TestBusinessProcedureCanSpanTwoApplicationsManualAndExternalWork(t *testing
 		}
 	}
 
-	applications := applicationIDsFromPatternRefs(meaning)
+	applications := applicationIDsFromPatternRefs(t, loaded.World, meaning)
 	wantApplications := []string{"fulfillment_console", "order_entry"}
 	if !reflect.DeepEqual(applications, wantApplications) {
-		t.Fatalf("Procedureが参照するApplication集合をqualified Pattern refsから導出できません: got=%v want=%v", applications, wantApplications)
+		t.Fatalf("Procedureが参照するApplication集合をnormalized Pattern ownershipから導出できません: got=%v want=%v", applications, wantApplications)
 	}
 }
 
@@ -105,18 +106,16 @@ func TestRealisticCrossApplicationPressureKeepsBusinessActorSeparateFromSecurity
 	}
 }
 
-func applicationIDsFromPatternRefs(meaning canonicalBusinessProcedureMeaningWithoutRealizationProbe) []string {
+func applicationIDsFromPatternRefs(t *testing.T, world ir.World, meaning canonicalBusinessProcedureMeaningWithoutRealizationProbe) []string {
+	t.Helper()
 	set := map[string]struct{}{}
 	for _, item := range meaning.Steps {
 		for _, ref := range item.ApplicationPatterns {
-			for i := 0; i < len(ref); i++ {
-				if ref[i] == '.' {
-					if i > 0 {
-						set[ref[:i]] = struct{}{}
-					}
-					break
-				}
+			app, _, ok := findPatternOwner(world, ref)
+			if !ok {
+				t.Fatalf("Application Pattern %qのownerをnormalized Worldでexactに解決できません", ref)
 			}
+			set[string(app.ID)] = struct{}{}
 		}
 	}
 	result := make([]string, 0, len(set))
