@@ -26,6 +26,9 @@ func TestExperimentLocalProcedureRenameDoesNotChangeCrossViewResolution(t *testi
 	if !reflect.DeepEqual(before.BusinessActionFunctionRows, after.BusinessActionFunctionRows) {
 		t.Fatalf("experiment-local Procedure renameでFunction cross-viewが変わりました\nbefore=%+v\nafter=%+v", before.BusinessActionFunctionRows, after.BusinessActionFunctionRows)
 	}
+	if !reflect.DeepEqual(before.BusinessActionPatternMeaningRows, after.BusinessActionPatternMeaningRows) {
+		t.Fatalf("experiment-local Procedure renameでPattern-derived meaningが変わりました\nbefore=%+v\nafter=%+v", before.BusinessActionPatternMeaningRows, after.BusinessActionPatternMeaningRows)
+	}
 	if !reflect.DeepEqual(before.ExplicitBusinessMeaningRows, after.ExplicitBusinessMeaningRows) {
 		t.Fatalf("experiment-local Procedure renameでexplicit semantic referenceが変わりました\nbefore=%+v\nafter=%+v", before.ExplicitBusinessMeaningRows, after.ExplicitBusinessMeaningRows)
 	}
