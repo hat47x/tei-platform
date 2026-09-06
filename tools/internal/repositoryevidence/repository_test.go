@@ -90,7 +90,68 @@ func TestIsReproducibleRequiresSameCleanRevisionBeforeAndAfter(t *testing.T) {
 	}
 }
 
-func TestInspectPostMarksCheckedOnlyAfterBothObservationsSucceed(t *testing.T) {
+func TestInspectStartRequiresStableHeadAroundWorkingTreeObservation(t *testing.T) {
+	t.Run("head drifts while observing", func(t *testing.T) {
+		calls := 0
+		source, err := inspectStart(func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1:
+				return "abc123\n", nil
+			case 2:
+				return "", nil
+			default:
+				return "def456\n", nil
+			}
+		})
+		if err == nil {
+			t.Fatal("観測中のHEAD driftをerrorにしていません")
+		}
+		if source.RepositoryRevision != "" || source.WorkingTreeClean {
+			t.Fatalf("混成観測を開始時sourceとして返しています: %#v", source)
+		}
+	})
+
+	t.Run("stable clean head succeeds", func(t *testing.T) {
+		calls := 0
+		source, err := inspectStart(func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1, 3:
+				return "abc123\n", nil
+			default:
+				return "", nil
+			}
+		})
+		if err != nil {
+			t.Fatalf("安定した開始時source観測に失敗しました: %v", err)
+		}
+		if source.RepositoryRevision != "abc123" || !source.WorkingTreeClean {
+			t.Fatalf("開始時source観測が不正です: %#v", source)
+		}
+	})
+
+	t.Run("stable dirty head succeeds as observation", func(t *testing.T) {
+		calls := 0
+		source, err := inspectStart(func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1, 3:
+				return "abc123\n", nil
+			default:
+				return " M changed.go\n", nil
+			}
+		})
+		if err != nil {
+			t.Fatalf("dirty working treeの観測自体は成功するはずです: %v", err)
+		}
+		if source.RepositoryRevision != "abc123" || source.WorkingTreeClean {
+			t.Fatalf("dirty開始状態を誤判定しました: %#v", source)
+		}
+	})
+}
+
+func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *testing.T) {
 	t.Run("revision observation fails", func(t *testing.T) {
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 			return "", errors.New("rev-parse failed")
@@ -123,20 +184,67 @@ func TestInspectPostMarksCheckedOnlyAfterBothObservationsSucceed(t *testing.T) {
 		}
 	})
 
-	t.Run("both observations succeed", func(t *testing.T) {
+	t.Run("second revision observation fails", func(t *testing.T) {
 		calls := 0
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 			calls++
-			if calls == 1 {
+			switch calls {
+			case 1:
 				return "abc123\n", nil
+			case 2:
+				return "", nil
+			default:
+				return "", errors.New("second rev-parse failed")
 			}
-			return "", nil
+		})
+		if err == nil {
+			t.Fatal("working tree観測後のrevision取得失敗をerrorにしていません")
+		}
+		if post.Checked {
+			t.Fatalf("HEAD二重確認を完了していないのにChecked=trueです: %#v", post)
+		}
+	})
+
+	t.Run("head drifts while observing", func(t *testing.T) {
+		calls := 0
+		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1:
+				return "abc123\n", nil
+			case 2:
+				return "", nil
+			default:
+				return "def456\n", nil
+			}
+		})
+		if err == nil {
+			t.Fatal("post-run観測中のHEAD driftをerrorにしていません")
+		}
+		if post.Checked {
+			t.Fatalf("HEAD drift中の混成観測をChecked=trueにしています: %#v", post)
+		}
+		if post.RepositoryRevision != "def456" || post.RevisionStable {
+			t.Fatalf("drift後の状態記録が不正です: %#v", post)
+		}
+	})
+
+	t.Run("all observations succeed", func(t *testing.T) {
+		calls := 0
+		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1, 3:
+				return "abc123\n", nil
+			default:
+				return "", nil
+			}
 		})
 		if err != nil {
 			t.Fatalf("post-run観測に失敗しました: %v", err)
 		}
 		if !post.Checked || !post.RevisionStable || !post.WorkingTreeClean {
-			t.Fatalf("両観測成功後の状態が不正です: %#v", post)
+			t.Fatalf("安定したHEAD上での観測成功後の状態が不正です: %#v", post)
 		}
 	})
 
@@ -144,16 +252,18 @@ func TestInspectPostMarksCheckedOnlyAfterBothObservationsSucceed(t *testing.T) {
 		calls := 0
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 			calls++
-			if calls == 1 {
+			switch calls {
+			case 1, 3:
 				return "abc123\n", nil
+			default:
+				return " M changed.go\n", nil
 			}
-			return " M changed.go\n", nil
 		})
 		if err != nil {
 			t.Fatalf("dirty working treeの観測自体は成功するはずです: %v", err)
 		}
 		if !post.Checked {
-			t.Fatalf("両観測が成功しているのにChecked=falseです: %#v", post)
+			t.Fatalf("安定したHEAD上で全観測が成功しているのにChecked=falseです: %#v", post)
 		}
 		if post.WorkingTreeClean {
 			t.Fatalf("dirty working treeをcleanと判定しました: %#v", post)

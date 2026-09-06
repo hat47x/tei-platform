@@ -131,19 +131,19 @@ func validateDedicatedFixtureDatabase(databaseName string, userRelations, eventT
 	}
 	switch name {
 	case "postgres", "template0", "template1":
-		return fmt.Errorf("安全のためEvidence toolを停止します: PostgreSQL既定Database %qはfixture実行先にできません。Evidence専用の空Databaseを指定してください", name)
+		return fmt.Errorf("安全のためEvidence toolを停止します: PostgreSQL既定Databaseはfixture実行先にできません。Evidence専用の空Databaseを指定してください")
 	}
 	if userRelations < 0 {
 		return fmt.Errorf("安全のためEvidence toolを停止します: 既存user relation件数が不正です: %d", userRelations)
 	}
 	if userRelations != 0 {
-		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database %qには既存user relationが%d件あります。既存資産を変更せず、Evidence専用の空Databaseを指定してください", name, userRelations)
+		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Databaseには既存user relationが%d件あります。既存資産を変更せず、Evidence専用の空Databaseを指定してください", userRelations)
 	}
 	if eventTriggers < 0 {
 		return fmt.Errorf("安全のためEvidence toolを停止します: Event Trigger件数が不正です: %d", eventTriggers)
 	}
 	if eventTriggers != 0 {
-		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先Database %qにはEvent Triggerが%d件あります。DDLへ介入し得る既存objectを変更せず、Evidence専用の空Databaseを指定してください", name, eventTriggers)
+		return fmt.Errorf("安全のためEvidence toolを停止します: 接続先DatabaseにはEvent Triggerが%d件あります。DDLへ介入し得る既存objectを変更せず、Evidence専用の空Databaseを指定してください", eventTriggers)
 	}
 	return nil
 }

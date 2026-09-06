@@ -93,11 +93,11 @@ func main() {
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		panic(err)
+		panic(postgresConnectionError("PostgreSQL接続設定の初期化", err))
 	}
 	defer db.Close()
 	if err := db.PingContext(ctx); err != nil {
-		panic(err)
+		panic(postgresConnectionError("PostgreSQL接続確認", err))
 	}
 
 	// #308は「専用の空PostgreSQL Database」を前提とする。
@@ -106,7 +106,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := createFixtureTable(ctx, db); err != nil {
+
+	// CREATEとDB側ownership marker付与を同一transactionで確定する。
+	// Go側booleanだけを根拠に後から同名objectをDROPしない。
+	fixtureOwnershipMarker, err := createOwnedFixtureTable(ctx, db)
+	if err != nil {
 		panic(err)
 	}
 	fixtureOwned := true
@@ -116,7 +120,7 @@ func main() {
 		}
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cleanupCancel()
-		if err := removeFixtureTable(cleanupCtx, db); err != nil {
+		if err := removeOwnedFixtureTable(cleanupCtx, db, fixtureOwnershipMarker); err != nil {
 			fmt.Fprintf(os.Stderr, "header-detail fixture cleanup warning: %v\n", err)
 		}
 	}()
@@ -190,9 +194,9 @@ func main() {
 		panic(fmt.Errorf("order_id=9999のOrderLine件数=%d want=0", len(zeroExecuted.Execution.Result.Rows)))
 	}
 
-	// Execution Errorの実Provider Evidenceを取るため、ここでツール自身が作成したfixtureを削除する。
-	// 開始時に専用空Databaseであることを確認済みなので、利用者既存tableは削除しない。
-	if err := removeFixtureTable(ctx, db); err != nil {
+	// Execution Errorの実Provider Evidenceを取るため、ここでtool自身が作成したfixtureを削除する。
+	// 削除transaction内でACCESS EXCLUSIVE lockを取得し、DB側ownership markerが作成時と一致する場合だけDROPする。
+	if err := removeOwnedFixtureTable(ctx, db, fixtureOwnershipMarker); err != nil {
 		panic(err)
 	}
 	fixtureOwned = false
@@ -292,22 +296,6 @@ func ensureFixtureObjectAbsent(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func createFixtureTable(ctx context.Context, db *sql.DB) error {
-	if _, err := db.ExecContext(ctx, `
-CREATE TABLE public.order_lines (
-    order_line_id bigint PRIMARY KEY,
-    order_id bigint NOT NULL,
-    line_number bigint NOT NULL,
-    item_code varchar(64) NOT NULL,
-    quantity numeric(12, 2) NOT NULL,
-    unit_price numeric(12, 2) NOT NULL
-);
-`); err != nil {
-		return fmt.Errorf("header-detail用fixture tableを作成できません: %w", err)
-	}
-	return nil
-}
-
 func insertFixtureRows(ctx context.Context, db *sql.DB) error {
 	rows := []struct {
 		orderLineID int64
@@ -334,13 +322,6 @@ func insertFixtureRows(ctx context.Context, db *sql.DB) error {
 		); err != nil {
 			return fmt.Errorf("header-detail用fixture rowを追加できません: %w", err)
 		}
-	}
-	return nil
-}
-
-func removeFixtureTable(ctx context.Context, db *sql.DB) error {
-	if _, err := db.ExecContext(ctx, `DROP TABLE public.order_lines;`); err != nil {
-		return fmt.Errorf("ツール所有のheader-detail fixture tableを削除できません: %w", err)
 	}
 	return nil
 }

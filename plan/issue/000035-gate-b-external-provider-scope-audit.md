@@ -2,7 +2,6 @@
 
 - 状態: Done — scope判断完了
 - GitHub Issue: #380（Completed）
-- 統合元: 既存GitHub #381の同趣旨の再監査論点も本Issueへ集約する。安全条件・未確認事項・Handoverへの引継ぎを別の再監査Issueへ複製しない。
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
 - 文書同期follow-up: `ISSUE-000036` / GitHub Issue #383

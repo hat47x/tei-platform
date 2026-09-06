@@ -1,4 +1,4 @@
-# ISSUE-000033: actual Oracle driver integrationを確定する
+# ISSUE-000033: Gate Bでactual Oracle driver integrationを確定する
 
 - 状態: Blocked
 - GitHub Issue: #371
@@ -8,13 +8,7 @@
 - 関連Issue: `ISSUE-000006` / #69、`ISSUE-000032` / #310
 - 関連RQ: RQ-009 / RQ-012 / RQ-014
 
-## 現行scope
-
-[ISSUE-000035](000035-gate-b-external-provider-scope-audit.md)の判断に従い、本Issueは[ISSUE-000022](000022-external-master-data-physical-query-evidence.md)配下の外部資産・第二Provider検証として継続します。Gate B必須laneではありません。実Oracle条件が未取得のためBlockedを維持し、未完了事項は[ISSUE-000030](000030-gate-b-to-c-handover-baseline.md)へ引き継ぎます。
-
-以下に残るGate B Phase 1 / 2の記述はscope変更前の経緯です。actual Oracleのsource-dependent Evidenceを同じ検証revisionへ固定する条件は維持しますが、Gate Bのcandidateと常に同じrevisionへ揃えることや、Gate B前のdriver確定は要求しません。
-
-## 検証の目的
+## 目的
 
 `master_data`のactual Oracle readに利用する具体driverとHost / Reference assemblyを、実Oracleの接続条件に基づいて確定し、named parameter、result、NULL、error伝播、raw column metadata、read-only境界を実接続で確認します。
 
