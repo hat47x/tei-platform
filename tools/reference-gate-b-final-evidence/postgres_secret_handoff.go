@@ -9,10 +9,15 @@ import (
 
 // loadPostgresDSNFilePathFromEnvironmentは、final runner launch environmentから
 // DSN本文を受理せず、secret file pathだけを取得する。
-// 大小文字違いを含むduplicate keyは曖昧な入力としてfail closedにする。
 func loadPostgresDSNFilePathFromEnvironment() (string, error) {
+	return loadPostgresDSNFilePathFromEntries(os.Environ())
+}
+
+// loadPostgresDSNFilePathFromEntriesは、大小文字違いを含むdirect DSN / duplicate file keyを
+// secret fileへ触る前にfail closedで拒否するpure seamである。
+func loadPostgresDSNFilePathFromEntries(environment []string) (string, error) {
 	var filePaths []string
-	for _, entry := range os.Environ() {
+	for _, entry := range environment {
 		key, value, ok := strings.Cut(entry, "=")
 		if !ok {
 			continue
