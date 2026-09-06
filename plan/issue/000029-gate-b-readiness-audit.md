@@ -215,7 +215,7 @@ Gate B通過時にverified claimとして十分なら追加Evidenceとして参�
 - [x] Handoverをsame-run Evidence provenanceへ固定（PR #462）
 - [x] same-run child独立再監査toolを実装・strict化（PR #489 / #493）
 - [x] Readiness artifact auditを正規Runbookへ接続（PR #495）
-- [ ] 実TEI full checkoutでfinal runner / repositoryevidence / Readiness artifact audit package test成功
+- [ ] 実TEI full checkoutでfinal runner / repositoryevidence / real PostgreSQL Evidence runner / Readiness artifact audit package test成功
 - [ ] Evidence専用空PostgreSQL Database用意
 - [ ] clean candidate R固定
 - [ ] #387 actual final run成功
