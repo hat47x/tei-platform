@@ -21,9 +21,51 @@
 
 - Business ActionとApplication Functionを同一視しない
 - manual / external / unresolved stepにfake Capabilityを要求しない
-- Application Pattern / Data / Relation / Validation / Capabilityをidentityで参照する
-- Business Action × Application Pattern viewをderivedできる
-- explicit Data / Relation referenceだけをderivedし、名称類似から推測しない
+- Application Patternをexact identityで参照する
+- Patternがすでに所有するData / Relation / Query / Capability / DatasourceをBusiness Procedureへ重複記述しない
+- Pattern-owned meaningはnormalized WorldからBusiness Action × Pattern meaning viewへderivedする
+- Procedure側で独自に必要なValidation等のexplicit referenceだけを別に保持する
+- 名称類似からmissing relationやCapabilityを推測しない
+
+### 三視点は三重管理ではない
+
+Business ProcedureからApplication Patternを参照した場合、次の意味はPattern側を正とします。
+
+```text
+Application Pattern
+  ├─ Data
+  ├─ Relation
+  ├─ Query
+  ├─ Capability
+  └─ Datasource
+```
+
+したがって、たとえばBP-02は次だけを保持します。
+
+```text
+Business Action:
+  confirm the customer associated with the order
+
+Application Pattern:
+  order_entry.customer_reference
+
+Business-side access expectation:
+  master = read
+```
+
+`customer_reference`が`relation=sales.order.customer`、`datasource=master`であることはfixtureへ再記述せず、`workspace.Load()`後のnormalized Application Patternから導出します。
+
+同様に、BP-07が`order_entry.submit_order`を参照するとき、`capability=sales.order.submit`はPatternから導出します。
+
+これはData / Function / Businessの視点を分離するために、同じ意味を三箇所へコピーする設計を避けるためです。
+
+### direct semantic reference
+
+Patternから導けない意味をBusiness Procedure側が明示的に要求する場合だけ、Data / Relation / Validation / Capabilityのdirect referenceを持てます。
+
+現在のfixtureではBP-03 / BP-05のValidationがこれに該当します。
+
+checkerはdirect referenceもexact identityで解決し、似た名称から補完しません。
 
 baseline確認:
 
@@ -33,7 +75,15 @@ go run ./tools/reference-business-procedure-check
 
 成功時はJSON reportを出力し、blocking diagnosticなしで終了します。
 
-出力には各Business Actionについて、Application Pattern参照または`noApplicationFunction: true`が含まれます。
+出力には少なくとも次が含まれます。
+
+- `businessActionFunctionRows`
+  - 各Business ActionのApplication Pattern参照
+  - Patternを持たない場合は`noApplicationFunction: true`
+- `businessActionPatternMeaningRows`
+  - PatternからderivedしたData / Relation / Query / Capability / Datasource
+- `explicitBusinessMeaningRows`
+  - Business Procedure fixture自身が明示したdirect semantic reference
 
 ## `order-entry-customer-edit-conflict.json`
 
@@ -46,6 +96,9 @@ probeはBP-02へexperiment-onlyの`read-write`要求を重ねます。
 ```text
 Business / Function candidate
   edit customer through order_entry.customer_reference
+        ↓
+Pattern-derived datasource
+  master
         ↓
 Application contract
   datasource master = read
@@ -77,9 +130,12 @@ go test ./tools/reference-business-procedure-check
 
 1. baseline fixtureのexplicit referenceがnormalized Worldへresolveする
 2. BP-04 / BP-09がApplication Functionなしで正常に残る
-3. baselineの`master=read`はconflictにならない
-4. edit probeの`read-write`要求はaccess conflictになる
-5. fixtureの未知fieldを黙って受理しない
+3. Pattern-owned Data / Relation / Capabilityをfixtureが二重管理せず、normalized Patternから導出する
+4. baselineの`master=read`はconflictにならない
+5. edit probeの`read-write`要求はaccess conflictになる
+6. experiment-local Procedure IDをrenameしてもcross-view resolution結果は変わらない
+7. 類似名称からRelationを推測しない
+8. fixtureの未知field、未対応schemaVersion、別artifact roleを黙って受理しない
 
 ## Authority boundary
 
@@ -93,4 +149,8 @@ go test ./tools/reference-business-procedure-check
 - retry / timer / queue / scheduler
 - Business actorからAuthorization Roleへの自動mapping
 
-Procedure identityのdurabilityは、impact analysis、review history、reuse、regenerationで意味が失われるかを別Evidenceとして確認してから判断します。
+現時点のrename experimentでは、experiment-local Procedure IDを変更してもApplication PatternおよびPattern-derived semantic meaningへのcross-view解決は変化しません。
+
+これは**基本的なcross-view参照のためだけなら、durable Canonical Procedure identityを直ちに要求するEvidenceはまだない**ことを示します。
+
+一方、impact analysis、review history、reuse、regeneration、複数Procedure間の参照にdurable identityが必要かはまだ未検証です。そこを別Evidenceとして確認するまでCanonical化を決定しません。
