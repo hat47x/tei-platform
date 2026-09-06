@@ -1,0 +1,41 @@
+name: Verify business-procedure cross-view reference
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/business-procedure-cross-view-reference.yml
+      - tools/reference-business-procedure-check/**
+      - reference/business-system-design/**
+      - reference/workspace/**
+      - internal/application/**
+      - internal/database/**
+      - internal/semantic/**
+      - internal/workspace/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check formatting
+        run: test -z "$(gofmt -l tools/reference-business-procedure-check)"
+      - name: Vet checker
+        run: go vet ./tools/reference-business-procedure-check
+      - name: Test checker
+        run: go test ./tools/reference-business-procedure-check
+      - name: Verify clean baseline
+        run: go run ./tools/reference-business-procedure-check >/tmp/business-procedure-baseline.json
+      - name: Reproduce read-only cross-view conflict
+        run: |
+          go run ./tools/reference-business-procedure-check \
+            -probe reference/business-system-design/order-entry-customer-edit-conflict.json \
+            -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT \
+            >/tmp/business-procedure-conflict.json
