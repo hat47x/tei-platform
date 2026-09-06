@@ -16,6 +16,9 @@ import (
 )
 
 const (
+	fixtureSchemaVersion       = "business-procedure-reference-v0"
+	probeSchemaVersion         = "business-procedure-access-probe-v0"
+	fixtureArtifactRole        = "derived-reference-fixture"
 	severitySemanticError      = "semantic-error"
 	severityArchitecturePolicy = "architecture-policy"
 )
@@ -170,6 +173,12 @@ func decodeFixture(r io.Reader) (fixture, error) {
 	if err := requireEOF(decoder); err != nil {
 		return fixture{}, err
 	}
+	if f.SchemaVersion != fixtureSchemaVersion {
+		return fixture{}, fmt.Errorf("unsupported schemaVersion %q; expected %q", f.SchemaVersion, fixtureSchemaVersion)
+	}
+	if f.ArtifactRole != fixtureArtifactRole {
+		return fixture{}, fmt.Errorf("unsupported artifactRole %q; expected %q", f.ArtifactRole, fixtureArtifactRole)
+	}
 	return f, nil
 }
 
@@ -187,6 +196,9 @@ func readProbe(path string) (accessProbe, error) {
 	}
 	if err := requireEOF(decoder); err != nil {
 		return accessProbe{}, fmt.Errorf("Business Procedure probe %sが不正です: %w", path, err)
+	}
+	if p.SchemaVersion != probeSchemaVersion {
+		return accessProbe{}, fmt.Errorf("Business Procedure probe %sのschemaVersion %qは未対応です; expected %q", path, p.SchemaVersion, probeSchemaVersion)
 	}
 	return p, nil
 }
