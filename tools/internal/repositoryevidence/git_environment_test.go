@@ -62,10 +62,10 @@ func TestIndexStateHasOnlyDefaultFlags(t *testing.T) {
 
 func TestInspectStartObservesUntrackedIgnoredAndIndexLocalState(t *testing.T) {
 	cases := []struct {
-		name        string
-		status      string
-		indexState  string
-		wantClean   bool
+		name       string
+		status     string
+		indexState string
+		wantClean  bool
 	}{
 		{name: "clean", status: "", indexState: "H tracked.go\x00", wantClean: true},
 		{name: "untracked", status: "?? untracked.txt\n", indexState: "H tracked.go\x00", wantClean: false},
@@ -112,10 +112,10 @@ func TestInspectStartObservesUntrackedIgnoredAndIndexLocalState(t *testing.T) {
 
 func TestInspectPostObservesUntrackedIgnoredAndIndexLocalState(t *testing.T) {
 	cases := []struct {
-		name        string
-		status      string
-		indexState  string
-		wantClean   bool
+		name       string
+		status     string
+		indexState string
+		wantClean  bool
 	}{
 		{name: "clean", status: "", indexState: "H tracked.go\x00", wantClean: true},
 		{name: "untracked", status: "?? untracked.txt\n", indexState: "H tracked.go\x00", wantClean: false},
