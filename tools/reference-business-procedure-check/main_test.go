@@ -92,6 +92,40 @@ func TestFixtureDecodeRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestFixtureDecodeRejectsUnsupportedSchemaVersion(t *testing.T) {
+	_, err := decodeFixture(strings.NewReader(`{
+		"schemaVersion":"business-procedure-reference-v1",
+		"artifactRole":"derived-reference-fixture",
+		"canonical":false,
+		"application":"order_entry",
+		"procedure":{"id":"p","identityStatus":"experiment-local","purpose":"p","trigger":{"status":"candidate"},"actor":{"status":"candidate"}},
+		"steps":[]
+	}`))
+	if err == nil {
+		t.Fatal("unsupported schemaVersionを黙って受理しました")
+	}
+	if !strings.Contains(err.Error(), "unsupported schemaVersion") {
+		t.Fatalf("schemaVersion以外の理由で失敗しました: %v", err)
+	}
+}
+
+func TestFixtureDecodeRejectsWrongArtifactRole(t *testing.T) {
+	_, err := decodeFixture(strings.NewReader(`{
+		"schemaVersion":"business-procedure-reference-v0",
+		"artifactRole":"canonical-authority",
+		"canonical":false,
+		"application":"order_entry",
+		"procedure":{"id":"p","identityStatus":"experiment-local","purpose":"p","trigger":{"status":"candidate"},"actor":{"status":"candidate"}},
+		"steps":[]
+	}`))
+	if err == nil {
+		t.Fatal("別artifact roleを黙って受理しました")
+	}
+	if !strings.Contains(err.Error(), "unsupported artifactRole") {
+		t.Fatalf("artifactRole以外の理由で失敗しました: %v", err)
+	}
+}
+
 func repoPath() string {
 	return filepath.Clean(filepath.Join("..", ".."))
 }
