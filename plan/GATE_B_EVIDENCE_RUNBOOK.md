@@ -330,10 +330,11 @@ GOFLAGS= \
 go test \
   ./tools/internal/repositoryevidence \
   ./tools/reference-gate-b-final-evidence \
+  ./tools/reference-gate-b-readiness-artifact-audit \
   -count=1
 ```
 
-これはProduct Evidenceそのものではありません。actual checkoutでfinal runnerとshared source helperがcompile / testできることの直前検査です。
+これはProduct Evidenceそのものではありません。actual checkoutでfinal runner、shared source helper、Readiness artifact auditがcompile / testできることの直前検査です。
 
 sourceを変更した、またはworking treeがdirtyになった場合はfinal runへ進みません。
 
@@ -548,7 +549,31 @@ Expected Evidence nature:
 
 final convergence成功だけでGate B Readyを自動宣言しません。
 
-`GATE_B_READINESS_AUDIT.md`へ戻り、Rについて少なくとも次を監査します。
+まず、#387 final summaryと、そのrunが保持したsame-run child artifact directoryをread-only補助toolで独立再監査します。
+
+```bash
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go run ./tools/reference-gate-b-readiness-artifact-audit \
+  -final /tmp/tei-gate-b-R/final.json \
+  -artifact-dir /tmp/tei-gate-b-R/children \
+  > /tmp/tei-gate-b-R/readiness-artifact-audit.json
+```
+
+成功補助JSONでは少なくとも:
+
+```text
+evidenceNature = gate-b-readiness-artifact-audit
+artifactAuditPassed = true
+repositoryRevision = R
+```
+
+を要求します。
+
+このtoolはfinal summaryと保存child exact bytesのfingerprint、same-R / post-run source、#310 / #255のexact check集合、#308のCanonical target identity / parameter / deterministic Semantic attribute集合とfixture前後安全条件を再照合し、secret / physical identity fieldの混入もfail closedで拒否します。
+
+これは第四Required Evidence laneではありません。`artifactAuditPassed = true`だけでGate B Readyを宣言せず、続けて`GATE_B_READINESS_AUDIT.md`へ戻り、Rについて少なくとも次を監査します。
 
 - #310 detailed same-run Evidence成立
 - #255 detailed same-run Evidence成立
@@ -609,6 +634,7 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - artifact directoryがRepository内
 - child artifact既存fileへの上書きが必要
 - final source確認未完了
+- Readiness artifact audit失敗
 - external Go workspace有効
 - effective GOFLAGS非empty
 - exact `GOENV=off`で起動されていない
@@ -650,3 +676,4 @@ source修正が必要ならcommitし、新しいclean revisionを新Rとしてcy
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
 - `issue/000037-gate-b-three-lane-final-evidence.md`
 - `tools/reference-gate-b-final-evidence/README.md`
+- `tools/reference-gate-b-readiness-artifact-audit/README.md`
