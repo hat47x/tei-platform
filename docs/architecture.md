@@ -1,6 +1,6 @@
 # Architecture
 
-この文書は、TEIの実装構造と技術境界を追う開発者向けです。概念を先に把握したい場合は、[TEIの考え方](overview.md) を先に読む方が自然です。
+この文書は、TEIの実装構造と技術境界を追う開発者向けです。概念を先に把握したい場合は、[TEIの考え方](overview.md) を先に読む方が自然です。業務システム設計上の境界は [Business-System Design](business-system-design.md) も参照してください。
 
 ## レイヤ
 
@@ -21,6 +21,28 @@ Implementation & Execution Layer
 ```
 
 「何で実装するか」は、「何を意味するか」の一部にはしません。
+
+## Authoring DSL / Canonical IR / Runtime
+
+Authoring形式、Canonical meaning、Runtime objectを同一視しません。
+
+```text
+TEI DSL / native SQL / Editor / AI candidate
+        ↓ parse / resolve / accept
+Canonical Semantic meaning / IR
+        ↓ bind / compile / realize
+Runtime Model / Execution Plan / Target Projection
+        ↓
+Go / SQL / Plugin / external system / generated application
+```
+
+`.tei`はTEI-native meaningを記述する主要なauthoring front-endですが、`.tei`のsyntax tree自体がCanonical Modelではありません。
+
+Canonical Semantic Layerは、authoring形式やfile pathから独立したidentityと意味を保持します。Runtimeは、その意味を特定Environment / Provider / Targetへrealizeした実行形です。
+
+GoはParser / Resolver / Validator / Analyzer / Compiler / Runtime / Plugin Host等を支えるTEI platformの主要実装基盤ですが、個別業務システムの意味をGoの型、framework API、Wails等のHost APIへ固定しません。
+
+この分離により、業務Applicationは原則としてDSL / native asset中心で記述しつつ、Coreの決定論的な検証・実行境界をGoで提供できます。
 
 ## Repository / Workspace
 
@@ -113,6 +135,69 @@ AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等�
 Coreへ無制限に専用kindを追加しない方針です。概念上のMicro / Semantic Kernelは、Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい集合を中心にします。
 
 Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
+
+## Business Action / Application Function / Capability / Realization
+
+業務上の行為とApplication / Runtimeの実現を分離します。
+
+```text
+Business Action
+    ↓ zero or more system realizations
+Application Function / Application Pattern / Action
+    ↓ invokes or requires
+Capability
+    ↓ Environment Binding
+Realization
+  builtin / generated / Plugin / existing implementation / external system
+```
+
+Business ActionはApplication Functionを持たなくても成立します。人間、AI、外部組織、SaaS、物理作業等を、実行可能に見せるためだけに架空のCapabilityへ変換しません。
+
+Application Functionは、View / Application Pattern / Query / Action / Capability等からFunction / Interaction viewとして再構成できます。歴史的なX-TEAに`Function` objectが存在したことだけを理由に、対称なCanonical `Function` kindを追加しません。
+
+Business Procedureは、purpose / trigger / actor / manual or external work / Application Function usageを説明する業務マニュアルの視点です。Runtime Workflow Engineとは分離します。
+
+現時点ではBusiness ProcedureのProduct Requirementを固定しますが、`Procedure`をdurable top-level Canonical identityにするかはReference Evidenceが出るまで固定しません。
+
+## Three-view cross-validation
+
+Data、Function / Interaction、Business Procedureは、別々の正本ではなく同じCanonical meaningを検査する異なる視点です。
+
+```text
+Data / Relation / Validation / lifecycle
+          ↕
+View / Pattern / Query / Action / Capability
+          ↕
+Business Procedure / actor / manual / trigger
+```
+
+一つの視点で発見した矛盾はauthoritative sourceへ戻して修正します。
+
+たとえばread-only datasourceに対する編集UI、Business Procedureが要求するのにDataに存在しない情報、Business Actionが期待するのに観測不能な完了状態等はcross-view diagnosticの対象です。
+
+CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
+
+詳細は [Business-System Design](business-system-design.md) と RQ-025 / RQ-026を参照してください。
+
+## Authorization semantic boundary
+
+Authentication / Organization / Authorizationを一つの固定organization schemaへ畳みません。
+
+```text
+credential / external identity
+        ↓ authenticate
+Principal
+        ↓ resolve facts
+membership / attribute / relation / resource facts
+        ↓ authorize
+entry / action / resource / subject decision
+```
+
+RBAC / ReBAC / ABAC等の方式はProvider / Policy側で差し替えられるようにし、一方式をCanonical business modelへ固定しません。
+
+Business ProcedureのactorはAuthorization Roleではありません。actor labelや業務上の責任主体をpermission identityへ暗黙変換せず、必要な場合だけexplicit mapping / resolverを通します。
+
+Capabilityの意味的存在と、そのCapabilityをinvokeできるauthorityも別です。
 
 ## Database lifecycle
 
