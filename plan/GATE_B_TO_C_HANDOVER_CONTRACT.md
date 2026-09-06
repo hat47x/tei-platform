@@ -2,117 +2,123 @@
 
 ## 目的
 
-この文書は、Gate Bを通過したApplication Driverの何を、第一Web Targetで比較する基準としてGate Cへ引き渡すかを定めます。
+Gate Bを通過したApplication / Driverの意味baselineを、第一Web Target / Gate Cへ曖昧なく引き渡します。
 
-Gate Cでは、「DriverとWebが同じCanonical Application上の意味を共有している」ことをSemantic Conformanceとして確認します。しかし、Web実装中にもDriverやReferenceは変化し得ます。比較対象を曖昧な「最新Driver」にすると、どの意味に対してConformanceを確認したのかを後から説明できません。
+Gate Cの比較対象を「最新Driver」にせず、Gate B Readyと判定した単一repository revision `R`をHandover Baseline `B`として固定します。
 
-そのため、Gate B通過時に**Handover Baseline**を一つのrepository revisionへ固定し、Gate CのEvidenceから必ずそのbaselineへ戻れるようにします。
+```text
+Gate B Ready for R
+        ↓
+Handover Baseline B
+  baselineRepositoryRevision = R
+        ↓
+Target build T
+        ↓
+Gate C Evidence
+```
 
-この契約は新しいCanonical schemaを導入するものではありません。Git revision、既存Canonical ID、Reference、Gate B Evidenceへの参照を束ねる、検証上のhandover契約です。
+Handoverは新しいCanonical schemaや第二の正本ではありません。Git revision、既存Canonical identity、Driver Scenario、Gate B Evidence、unresolvedへの参照を束ねる検証上のcontractです。
 
-## 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
+Product Acceptance ScenarioはPAS-02 primary / PAS-03 secondaryです。
 
-`ISSUE-000035` / #380の再監査により、Gate Bの必須完了Evidenceは次の三つへ整理しました。
+## 現行Gate B scope
+
+Gate B Required Evidenceは次の三つです。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider Evidence
+3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-Gate Bのcandidate revisionを`R`とする場合、この三つのsource-dependent Evidenceを同じ`R`へ揃え、各Evidenceが要求する`reproducibleRevision = true`等の条件を満たしたうえで最終監査を行います。
+三つを同じclean candidate revision `R`へ揃えます。
 
-external-observed assetについて、未観測事実を推測しないこと、external EvidenceをCanonicalへ昇格させないこと、明示authoringとEvidenceを照合することはGate Bの意味境界として引き続き必須です。#310にはexternal Evidence intake boundaryのConformanceを含めます。
+```text
+#310 ─┐
+#255 ─┼─ repositoryRevision = R
+#308 ─┘
+       ↓
+#387 final convergence
+       ↓
+same-run child Evidence artifacts
+       ↓
+#273 Gate B Readiness Audit for R
+       ↓ Ready only
+Handover Baseline B / R
+```
 
-`ISSUE-000022` / #214、`ISSUE-000033` / #371、`ISSUE-000034` / #376のactual Oracle Evidenceは削除しませんが、Gate B Readyの必須blockerにはしません。
-
-Handover時の扱いは次の二通りです。
-
-- actual Oracle Evidenceが取得済みなら、追加のverified external asset Evidenceとして参照する
-- 未取得なら、`unresolved`として#214 / #371 / #376と未観測事項を明示する
-
-未取得の場合でも、Web側でOracleのphysical object、column、SQL、driver挙動、read-only方式を推測・補完しません。#310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle Evidenceへ格上げしません。
-
-**Gate Bはこのscope変更だけではReadyになりません。** #310 / #255 / #308の実Evidenceを同一candidate revisionへ揃え、最終監査でReadyと判定する必要があります。第一Web Target / Gate Cはその後に開始します。
-
-以下に残る「4 Evidence lane」を前提とした記述は、`ISSUE-000035`以前の契約と判断経緯を保持するための履歴です。現行Gate Bの必須範囲と矛盾する場合は、本節を優先します。
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。未完了なら`unresolved`としてHandoverへ渡します。
 
 ## 基本原則
 
-### 1. baselineは「その時点の正本」への参照であり、第二の正本ではない
-
-Handover record自体へApplicationの意味を複製しません。
+### Handoverは参照であり第二の正本ではない
 
 ```text
 Authoritative Source / Canonical Application
                  │
                  ├─ Driver execution / Evidence
                  │
-                 └─ Handover record
-                       └─ source revision / Canonical ID / Evidence reference
+                 └─ Handover Baseline B
+                       └─ revision / Canonical identity / Evidence reference
 ```
 
-Handover recordからCanonicalへ逆書きしません。
+Handover recordへApplication meaningを複製し、そこからCanonicalへ逆書きしません。
 
-### 2. Gate Cの比較対象を途中で黙って差し替えない
+### 一つのbaseline revisionへ揃える
 
-Gate C開始後にDriverやCanonical Applicationが変わっても、既存のGate C runが参照するHandover Baselineを暗黙に「最新」へ読み替えません。
+異なるrevisionの成功Evidenceを寄せ集めて一つのReady revisionへ読み替えません。
 
-意味上の変更をGate Cへ取り込みたい場合は、新しいrepository revisionを持つHandover Baselineとして発行し直し、旧baselineとのSemantic Diffと影響範囲を記録します。
+- #310 `repositoryRevision = R`
+- #255 `repositoryRevision = R`
+- #308 `repositoryRevision = R`
+- 全lane `reproducibleRevision = true`
+- #273が同じRをReadyと判定
 
-### 3. Web側の不足をbaselineへ逆輸入しない
+source変更が必要になった場合、旧Rの成功を新revisionへcarry-forwardせず、新しいRで必要なEvidenceを取り直します。
 
-Web実装中に必要な意味がHandover Baselineに存在しないと分かった場合、Web固有fieldや独自ruleで補ってGate Cを通しません。
+### same-Rだけでなくsame-run provenanceを要求する
 
-必要ならApplication / Driver側へ戻り、authoritative sourceを変更し、ValidationとDriver Scenarioを再確認したうえで、新しいbaselineを発行します。
+Handoverへ使う#310 / #255 / #308 detailed Evidenceは、単に同じRで成功した任意の三つのJSONではありません。
 
-### 4. Gate Bの4 Evidence laneを一つのbaseline revisionへ揃える
-
-各Evidence laneが個別にsource-fixedであっても、別々のGit revisionで成功したEvidenceを寄せ集めてGate B Readyにはしません。
-
-Gate Bの最終Ready判定では、次の4 laneについて、**完了判定に用いるEvidenceを同じrepository revisionへ揃えます**。
-
-1. #214 actual external Oracle Evidence
-2. #308 real PostgreSQL engine + ephemeral fixture Evidence
-3. #255 generated artifact reproducibility Evidence
-4. #310 deterministic Repository Evidence
+**#387 final convergenceが実際に同一runで読み、保持したexact child Evidence artifacts**をRequired Evidenceとして参照します。
 
 ```text
-Lane A 完了Evidence ─┐
-Lane B 完了Evidence ─┼─ repositoryRevision = R
-Lane C 完了Evidence ─┤
-Lane D 完了Evidence ─┘
-                     ↓
-              Gate B Ready for R
-                     ↓
-              Handover Baseline R
+#387 final summary
+  repositoryRevision = R
+  allLanesSameRevision = true
+  childArtifactsRetained = true
+        │
+        ├─ deterministic-repository.json
+        ├─ generated-artifact-reproducibility.json
+        └─ real-postgres-ephemeral-fixture.json
+              ↓
+        #273 Ready Audit for R
+              ↓
+        Handover B / R
 ```
 
-外部観測資料そのものの`observedAt`がRの時点である必要はありません。たとえばOracleのschema資料を以前に観測していても構いません。
+同じRで後から再実行した別artifactを、#387が実際に読んだartifactと同一だと推測しません。
 
-ただし、その資料を現在のauthoringと照合した#214 acceptance receipt、実効的なread-only境界を使ったactual read Evidence、#308 / #255 / #310の最終Evidenceは、Gate B Readyの対象となるRへ結び直します。
+### Target側の不足をbaselineへ逆輸入しない
 
-Rを決めた時点で、Rと異なるrevisionの完了Evidenceしかないlaneは、Rで再実行・再受入れしてからReady判定します。「意味は変わっていないはずだ」と推測して、古い成功EvidenceをRの成功へ読み替えません。
+Web実装中に必要なApplication meaningがB / Rに存在しない場合、Web固有fieldや独自ruleで補ってGate Cを通しません。
 
-## Handover Baselineに必要な情報
+Application / Driverへ戻り、authoritative sourceを変更し、必要なGate B Evidenceを新revisionで再確認してsuccessor Handoverを発行します。
 
-具体的なJSON schemaやfile formatはGate B通過時に決めても構いませんが、少なくとも次を復元できる必要があります。
+## Handover Baseline Bに必要な情報
 
-### Repository / Reference identity
+具体的JSON schemaやfile formatはGate B通過前に固定しません。ただし、少なくとも次を復元できる必要があります。
 
-- Handover Baselineとなる単一repository revision
-- Reference Workspace path / identity
-- そのrevisionに保存されているgenerated artifact identity
-- Gate B最終監査の対象revision
-- 4 Evidence laneの完了Evidenceが参照するrepository revision
+### Baseline identity
 
-Handover用に`generated artifact revision`という別versionを新設しません。#255の完了Evidenceによって、Handover Baseline revisionに保存されたWorld / Plugin Lock / Durable Runを、その同じrevisionから再現できることを示します。
-
-独自のWorkspace fingerprintも、この契約のためだけには先行導入しません。Git revisionと既存artifact identityだけでは再現性が足りないことがEvidenceから確認された場合に検討します。
+- Handover Baseline identity `B`
+- `baselineRepositoryRevision = R`
+- Reference Workspace identity
+- Gate B Readiness Audit対象revision
 
 ### Canonical Application baseline
 
-少なくとも第一ReferenceでGate Cへ渡すものをCanonical IDで列挙します。
+第一Referenceでは少なくとも次のidentityへ戻れるようにします。
 
-- Application: `order_entry`
+- Application `order_entry`
 - Application Pattern
   - browse
   - record
@@ -122,24 +128,23 @@ Handover用に`generated artifact revision`という別versionを新設しませ
 - Data / Relation / Query
 - Datasource
 - Validation
-- Authentication / Authorization Capability
-- Command Capability
-- Capability Binding
+- Authentication / Authorization
+- Capability / Binding
 - Business Result / named Outcome
-- Observationで利用する明示read境界
+- Execution Error
+- Observationに使う明示read境界
+- Source / Binding traceability
 
-この列挙は意味の複製ではなく、「このGate Cで比較対象に含めるCanonical identity」のmanifestです。
+Handoverの列挙はmanifestであり、意味本文の複製ではありません。
 
 ### Driver Scenario baseline
 
-Gate Bで成立したScenario identityを記録します。
-
-第一Referenceでは少なくとも次を含みます。
+少なくとも次のScenarioへ戻れるようにします。
 
 ```text
 Authentication
   -> browse
-  -> record Pattern resolution
+  -> record
   -> reference Customer
   -> header-detail OrderLine[]
   -> Canonical Validation
@@ -148,206 +153,204 @@ Authentication
   -> separate Observation read
 ```
 
-Scenarioのtest名、再現手順、または安定したScenario IDのいずれかから、対象Scenarioへ戻れる必要があります。
-
-### Result boundary
-
-Gate Cへ、次の意味の区別を明示的に引き渡します。
-
-- Business Result
-- named Outcome
-- Execution Error
-- Observation read result
-- Observationの期待状態評価
-- developer Diagnostic
-
-Target側のHTTP status、DOM、toast、dialog等を、この意味の定義には使いません。
+Business Result、named Outcome、Execution Error、Observation、Diagnosticの区別をTarget側へ引き渡します。
 
 ### Datasource / authority boundary
 
-少なくとも次を引き渡します。
+少なくとも次を保持します。
 
-- read / read-writeの区別
+- read / read-write
 - external-observed / managed-here等、Evidence上必要なownership性質
-- Database instance / executor Capabilityの明示Binding
+- Database instance / executor Capability Binding
 - secret / credential / runtime parameterを通常Evidenceへ保存しない制約
 
-### Gate B Evidence references
+## Gate B Evidence provenance
 
-Gate Bを通過させたEvidenceへ戻れる必要があります。
+Handover recordへEvidence本文を複製しません。stable reference / identity / fingerprintから実artifactへ戻れるようにします。
 
-Handover recordではEvidence本文を複製せず、少なくとも次の完了Evidenceを安定参照します。
+### #387 final convergence
 
-#### Lane A — #214 actual external Oracle
+Handoverから、Ready判定へ利用した#387 final convergence artifactへ戻れる必要があります。
 
-- actual external Evidence artifactの参照
+少なくとも:
+
+- `evidenceNature = gate-b-three-lane-final-convergence`
+- `repositoryRevision = R`
+- `reproducibleRevision = true`
+- `allLanesSameRevision = true`
+- `childArtifactsRetained = true`
+- final source check成功
+- Go environment安全条件成立
+
+を確認済みのartifactを参照します。
+
+### same-run child exact artifacts
+
+#387が保持した三つのchild artifactをRequired Evidenceとして参照します。
+
+- `deterministic-repository.json`
+- `generated-artifact-reproducibility.json`
+- `real-postgres-ephemeral-fixture.json`
+
+各artifactについて少なくとも:
+
+- artifact stable reference
+- fixed filename / lane identity
 - `evidenceArtifactFingerprint`
-- Handover Baseline revision上のsource-fixed acceptance receipt
-  - `accepted = true`
-  - `reproducibleRevision = true`
-  - `repositoryRevision = Handover Baseline revision`
-- 実効的なread-only境界を使ったOracle actual read Evidence
-- actual readが、同じHandover Baseline revisionのruntime / realizationに対して行われたこと
-
-acceptance receiptだけをactual read Evidenceへ格上げしません。
-
-#### Lane B — #308 real PostgreSQL engine
-
-`tools/reference-postgres-header-detail-runtime`の成功JSONを参照します。
-
-少なくとも次を、同じrunで確認したEvidenceへ戻れる必要があります。
-
-- `repositoryRevision = Handover Baseline revision`
+- `repositoryRevision = R`
 - `reproducibleRevision = true`
-- `fixtureDatabaseSafety.guardPassed = true`
-- `fixtureCleanupSafety.verified = true`
-- 2件 / 0件 / Execution Error
-- Semantic mapping / support column非露出
 
-#### Lane C — #255 generated artifact reproducibility
+へ戻れる必要があります。
 
-`tools/reference-generated-artifact-evidence`のcheck-only成功JSONを参照します。
+#387 runnerはfinal success直前にも保存fileを再読込してfingerprintを確認しますが、#273 Readiness Auditでも保存artifactを独立に再照合します。runner内検証だけでReadyを宣言しません。
 
-少なくとも次を要求します。
+### #310 deterministic Repository
 
-- `repositoryRevision = Handover Baseline revision`
-- `reproducibleRevision = true`
-- World / Plugin Lock golden一致
-- Durable Run golden一致
+same-run `deterministic-repository.json`から少なくとも次へ戻ります。
 
-`-write`による修復操作そのものや、修復直後のdirty treeを完了Evidenceには使いません。
-
-#### Lane D — #310 deterministic Repository
-
-`tools/reference-gate-b-repository-evidence`の成功JSONを参照します。
-
-少なくとも次へ戻れる必要があります。
-
-- `repositoryRevision = Handover Baseline revision`
-- `reproducibleRevision = true`
-- Canonical Workspace Validation成功
+- Workspace Validation成功
 - `final-ui-less-scenario`成功
 - `external-evidence-intake`成功
 - `repository-evidence-source-boundary`成功
 
-#### Gate B最終監査
+synthetic Evidenceをactual external Evidenceへ格上げしません。
 
-`GATE_B_READINESS_AUDIT.md`の最終Ready判定も、同じHandover Baseline revisionを対象とした判定として追跡します。
+### #255 generated artifact reproducibility
 
-「Lane AはR1、Lane BはR2、Lane CはR3、Lane DはR4で成功した」という集合を、revisionを揃えないままR4のGate B Ready Evidenceとして扱いません。
+same-run `generated-artifact-reproducibility.json`から少なくとも次へ戻ります。
 
-### unresolved
+- World / Plugin Lock golden一致
+- Durable Run golden一致
 
-Gate B通過を妨げないものの、Gate Cまたは第二Targetで継続確認する事項を列挙します。
+`-write`修復操作や修復直後のdirty treeを完了Evidenceにしません。
 
-unresolvedを空欄にするためだけに、十分なEvidenceのない共通概念へ押し込みません。
+### #308 real PostgreSQL Provider
 
-## Gate C Evidenceからの参照
+same-run `real-postgres-ephemeral-fixture.json`から少なくとも次へ戻ります。
 
-`GATE_C_EVIDENCE_CONTRACT.md`で要求する`Driver baseline identity`は、このHandover Baselineを指します。
+- fixture前安全guard
+- 2件 / 正常0件 / missing-table Execution Error
+- explicit Semantic mapping
+- support column非露出
+- DB-side ownership-protected cleanup
+- cleanup後user relation 0 / Event Trigger 0 / fixture object不在
 
-各Gate C Evidence runから、少なくとも次の経路を辿れるようにします。
+production既存Database Evidenceへ読み替えません。
+
+### #273 Gate B Readiness Audit
+
+#273 / `GATE_B_READINESS_AUDIT.md`が同じRについて、#387 final summaryとsame-run child exact artifactsを監査し、Readyと判定したことを参照します。
+
+final runner exit codeだけをReady判定にはしません。
+
+## actual Oracleの扱い
+
+#214 / #371 / #376はRequired Evidence集合へ加えません。
+
+取得済みでB / Rに対するverified external asset Evidenceとして十分なら追加参照します。少なくとも:
+
+- actual observed artifact
+- evidence fingerprint
+- source-fixed acceptance receipt
+- actual read Evidence
+- runtime / realization / repository revisionとの関係
+
+を区別します。
+
+未取得、actual read未完了、Rへの結び付き不足なら`unresolved`として残します。
+
+第一Web Target側でOracle physical object / column / SQL / datatype / driver behavior / read-only方式を推測・補完しません。
+
+## Gate C Evidenceからのtrace
+
+Gate C Evidenceでは意味baselineとTarget build identityを分けます。
 
 ```text
-Gate C Evidence run
-       ↓
-Handover Baseline identity
-       ↓
-repository revision R
-       ↓
-Canonical Application / Driver Scenario
-       ↓
-Gate B final audit for R
-       ↓
-4 lane completion Evidence for R
+Gate C Evidence
+  ├─ Handover Baseline B
+  │    └─ baselineRepositoryRevision = R
+  │         └─ #273 Ready Audit
+  │              └─ #387 final convergence
+  │                   └─ same-run #310 / #255 / #308 exact artifacts
+  │
+  └─ Target build identity T
 ```
 
-これにより、Web Adapterやbrowser automationのrevisionだけでなく、「どの意味baselineに対するConformanceか」を固定できます。
+通常`T != R`です。
 
-## baseline変更時の扱い
+Gate C Evidenceから少なくともB / R / Tへ戻れる必要があります。
 
-Gate C進行中にApplication / Driverを変更する場合、変更を次の三種類へ分けます。
+## baseline変更時
 
-### A. Target実装だけの変更
+### Target実装だけの変更
 
-例:
+CSS、DOM、Web Adapter、browser automation等だけが変わり、Canonical / Driver meaningが変わらない場合はB / Rを維持できます。
 
-- CSS
-- DOM構造
-- Web Adapter内部実装
-- browser automation
+### Evidence / Diagnosticだけの変更
 
-Canonical / Driver baselineが変わらなければ、Handover Baselineは変更しません。
+評価方法やDiagnostic変更がGate B completion Evidenceの意味へ影響する場合は、影響するRequired Evidenceを再実行します。旧Evidenceを新baselineへ黙って読み替えません。
 
-### B. Evidence / Diagnosticだけの変更
+### Application / Driver meaning変更
 
-意味を変えないEvidence metadataやDiagnosticの改善であれば、元のCanonical / Driver baselineを維持できるか確認します。
+Validation、Relation / Query / Datasource、Capability / Binding、Business Result / Outcome、Observation read境界、Pattern intent等を変える場合:
 
-repository revisionが変わるため、必要なら「baseline source revisionは同じで、evaluator / target revisionだけが変わった」と区別して記録します。
+1. authoritative sourceを変更
+2. Driver / Validationを再確認
+3. 必要なGate B Evidenceを新revision `R2`で取得
+4. #387を`R2`で再実行しsame-run child artifactsを取得
+5. #273で`R2`を再監査
+6. Readyならsuccessor Handover `B2 / R2`を発行
+7. Gate Cの影響Scenarioを再実行
 
-Gate B完了Evidenceの意味または評価方法を変更する場合は、旧Evidenceを新しいbaselineへ黙って読み替えず、影響するlaneを再実行します。
+旧B / Rへ意味変更を黙って上書きしません。
 
-### C. Application / Driverの意味変更
+## Handover record
 
-例:
+Gate B Ready後に第一Handover recordを作成します。
 
-- Validation rule変更
-- Relation / Query / Datasource変更
-- Capability / Binding変更
-- Business Result / Outcome変更
-- Observation read境界変更
-- Pattern上の意図変更
+最初から大きな汎用schemaへしません。Markdown + stable referencesでも、必要性が確認できれば小さいmachine-readable artifactでも構いません。
 
-この場合は旧baselineへ黙って上書きしません。
+最低条件:
 
-1. authoritative sourceを変更する
-2. Driver / Validation / Gate Bに関係するEvidenceを再確認する
-3. 4 laneの完了Evidenceを新しいbaseline revisionへ揃える
-4. 新しいHandover Baselineを発行する
-5. Gate Cで影響するScenarioを再実行する
-
-## Gate B通過時に作るHandover record
-
-Gate BがReadyになった時点で、Repositoryへ保存する必要があるかを判断します。
-
-保存する場合も、最初から大きな汎用schemaにはしません。第一Referenceで必要な最小項目を持つmachine-readable artifact、またはMarkdown + stable referencesから開始できます。
-
-重要なのは形式ではなく、次を満たすことです。
-
-- 一つのbaseline revisionが固定される
-- 4 laneの完了Evidenceが同じbaseline revisionへ揃っている
-- Canonical IDへ戻れる
+- `B / R`を固定
+- Canonical identityへ戻れる
 - Driver Scenarioへ戻れる
-- Gate B Evidenceへ戻れる
-- unresolvedを保持できる
+- #387 final convergenceへ戻れる
+- #387 same-run #310 / #255 / #308 exact artifactへ戻れる
+- child fingerprintを再照合できる
+- #273 Ready Auditへ戻れる
+- optional actual external Evidenceと`unresolved`をRequired Evidenceから分離
 - secretを含まない
 - Target固有情報をCanonical baselineへ混ぜない
 
 ## Gate C開始条件
 
-第一Web Targetの本格実装は、Gate B Readyに加えて次を満たしてから開始します。
+第一Web Targetの本格実装は、少なくとも次を満たしてから開始します。
 
-- Handover Baselineのrepository revisionを固定できる
-- 4 laneの完了Evidenceが同じrepository revisionへ揃っている
-- Gate C対象のCanonical identityを列挙できる
+- Gate B Ready
+- Handover Baseline `B / R`を固定
+- #310 / #255 / #308 same-run Required EvidenceがRへ揃っている
+- #387 final convergenceとsame-run child artifactsへ追跡できる
+- #273が同じRをReadyと判定
+- Gate C対象Canonical identityを列挙できる
 - Driver Scenario baselineを再現できる
-- Gate B Evidenceへの参照が揃っている
-- Gate B最終監査が同じrevisionをReadyと判定している
+- actual Oracle等のexternal Evidenceをverified / unresolvedとして明示できる
 - unresolvedを明示できる
 
-これは新しいGateを追加するものではありません。Gate Bの出力をGate Cの入力へ曖昧なく接続するためのhandover確認です。
+Handover確認は新しい番号付きGateではありません。Gate Bの出力をGate Cの入力へ固定するcontractです。
 
 ## 非目標
 
 - 新しいCanonical Application schema
+- Handover machine-readable schemaの先行固定
 - Presentation IRの先行設計
 - Web frameworkの選定
 - Handover artifactからCanonicalへの逆生成
-- Git commitだけをSemantic Conformanceの証明とみなすこと
-- Evidenceの成功revisionが異なるまま一つのbaselineへ読み替えること
-- 外部観測資料の観測時刻をGit revision時刻へ無理に合わせること
+- Git commitだけをSemantic Conformanceの証明とすること
+- same-R別runを#387 same-run Evidenceへ読み替えること
+- actual Oracleを第四Required laneへ戻すこと
+- external-observed未観測事実をsynthetic / PostgreSQL Evidenceから推測すること
 - 第一TargetだけでTarget-neutral taxonomyを完成させること
-- Gate C開始前に第二Targetの差を推測すること
 
 ## 関連
 
@@ -355,10 +358,11 @@ Gate BがReadyになった時点で、Repositoryへ保存する必要がある�
 - `GATE_B_EVIDENCE_ACQUISITION.md`
 - `GATE_B_EVIDENCE_RUNBOOK.md`
 - `GATE_C_EVIDENCE_CONTRACT.md`
+- `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `V1_REFERENCE_APPLICATION_PLAN.md`
-- `issue/000006-application-driver-vertical-slice.md`
 - `issue/000007-first-web-target-projection.md`
 - `issue/000028-first-web-target-conformance-evidence.md`
 - `issue/000029-gate-b-readiness-audit.md`
 - `issue/000030-gate-b-to-c-handover-baseline.md`
 - `issue/000035-gate-b-external-provider-scope-audit.md`
+- `issue/000037-gate-b-three-lane-final-evidence.md`

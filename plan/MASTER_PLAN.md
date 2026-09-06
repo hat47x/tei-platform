@@ -2,395 +2,372 @@
 
 ## 目的
 
-この文書は、TEI（鼎／テイ）のProduct ValueとProduct Requirementsを開発上のworkstreamへ分解し、どこを並行して進め、どこで合流させるかを示します。
+この文書は、TEI（鼎／テイ）のProduct Value / Requirementsを開発workstreamへ分解し、現在の主線と並行可能な作業を示すための上位計画です。
 
-期限は置きません。優先順位は、実装量ではなく「TEIの中心価値に関する不確実性をどれだけ減らせるか」で見直します。
+期限は置きません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**で見直します。
 
-個別作業の管理先は[`issue/README.md`](issue/README.md)に集約します。既存の未登録課題と根幹機能提案は担当Issueへ統合し、Workstream上のテーマごとに重複した実装Issueを増やしません。
+履歴の蓄積ではなく、現在のplanning baselineを保持します。過去の判断経緯はGit history、ADR、Repository Issueから追跡します。
 
-技術リサーチから得た知見は、[`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md)で既存要求へ対応付けます。外部frameworkや研究方式をそのままMilestoneへ昇格させず、Reference / Conformanceで不確実性を減らせる形へ変換して取り込みます。
-
-## 現在地
-
-Repositoryは、M0.22.1までにSemantic / Application / Database / Release / Deployment / Plugin / Runtimeを一本のvertical sliceとして接続しました。その後、M0.23でSource-to-Canonical Traceability、M0.24〜M0.25でactual process boundary、M0.26以降でactual PostgreSQLとPhysical SchemaのDesired / Actual / Diffを段階的に検証してきました。
-
-M0.35までにDatabase / Provider側では、比較未確定の分離、ProviderExpression、offline provider policy、Advanced Indexの識別子比較、PostgreSQL向けマイグレーションSQLの生成と実DBでの再観測まで、一連の意味境界を深く検証しています。
-
-一方、Product Vision全体から見ると、Application Pattern、既存システム移行、Editor、AI支援、Target-neutral Presentation、Driverなどは、Database領域ほど実証が進んでいません。
-
-今後はDatabase検証を止めるのではなく、**一つの技術領域だけがプロダクト全体の進路を決めないよう、上位のworkstreamを並走させます。**
-
-## Workstream A: Product Baseline
-
-### 目的
-
-Product Value、Vision、Principles、Requirements、Milestone、ADR / Issue運用を、Repository上の基準として成立させます。
-
-### 主な成果物
+関連:
 
 - `product/`
 - `requirements/`
-- `plan/`
-- 上位文書からREADME / Architecture / Issueへ辿れる導線
-- 実装と要求のGap Audit
+- `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- `plan/V1_REFERENCE_APPLICATION_PLAN.md`
+- `plan/MILESTONES.md`
 
-### 完了の考え方
+## 現在の主線
 
-上位文書が「理念だけの文書」ではなく、個別Issueがどの要求を確かめるものか判断できる状態になったら、基線として扱います。
+v1 Reference Application `order_entry`を中心に、現在は次の順で進めます。
 
-## Workstream B: Semantic / Authoring / Knowledge
+```text
+Product Value / Requirements
+        ↓
+Application Pattern
+        ↓
+Gate A — Ready
+        ↓
+Application Driver
+        ↓
+Gate B — 3 Required Evidence / Not Ready
+        ↓
+Handover Baseline B at revision R
+        ↓
+First Web Target build T1
+        ↓
+Gate C — PAS-04 Evidence
+        ↓
+        ├──────── Authoring / Knowledge lane
+        │           ├─ Studio minimal loop — PAS-01
+        │           ├─ knowledge-first exploration — PAS-06
+        │           └─ AI Proposal / Acceptance — PAS-01 / PAS-06
+        │
+        └──────── Second Target pressure-test lane — PAS-04 / RQ-024
+```
 
-### 目的
+Gate C後のAuthoring / Knowledgeと第二Targetは、互いの完成待ちにはしません。第一Targetから得た差とEvidenceを共有しながら並行できます。
 
-業務上の意味を表し、sourceから意味へ戻り、複数のProjectionから同じ内容を扱える基盤を育てます。
+## 現在のGate / Handover
 
-### 対象
+### Gate A — Application上の意味をDriverへ渡せる
 
-- Semantic Kernel
-- Source Index / Diagnostic
-- native source integration
-- Domain Component
-- Semantic Pattern / Facet
-- Policy / Variation
-- provenance / change trace
-- Applicationから再利用できる意味知識の探索・参照基盤
+**Ready**です。
 
-### 重点
+Application Pattern、Datasource、Validation、Authentication / Authorization、Capability Binding、Business Result / Execution Error等を、UI固有定義なしでDriverへ接続できる意味基線が成立しています。
 
-Source-to-Canonical Traceabilityの次は、**「業務システムで再利用可能な意味知識をどう持つか」**を実証する必要があります。
+### Gate B — UIなしで主要Scenarioを再現できる
 
-単にprimitiveを増やすのではなく、受注、参照、履歴、状態遷移などの小さい具体例を通して、Micro Kernelと再利用可能な意味知識の境界を確認します。
+**Not Ready**です。
 
-Application Patternそのものは、v1ではこのworkstreamの所有物にはしません。ADR-0017に従い、Applicationが所有するCanonicalな意図としてWorkstream Cで実証します。その結果から、複数Applicationで再利用すべき部分が見つかった場合に、Workstream BのDomain Component、Semantic Pattern、Policy等とどのように接続するかを判断します。
+中心設計の不足ではなく、actual execution Evidenceが未取得だからです。
 
-この順序により、一つのApplicationで便利だった分類を、十分なEvidenceなしにSemantic Kernelや標準知識へ持ち上げることを避けます。
+Required Evidenceは次の三つだけです。
 
-AIが利用するSkill、探索ヒント、過去Proposal / trajectory等も、このCanonicalな意味知識と同一視しません。必要な場合はderived knowledgeとしてprovenanceとrevisionを持たせ、第二の正本を作らないことを優先します。
+1. #310 deterministic Repository Evidence
+2. #255 generated artifact reproducibility Evidence
+3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-## Workstream C: Application / Legacy Compatibility
+三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387のfinal convergenceで確認します。
 
-### 目的
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了ならHandoverへ`unresolved`として渡します。
 
-TEIが新規の理想形だけでなく、実際の業務システムを受け止められることを確かめます。
+### Handover Baseline — Gate B → Gate C
 
-### 対象
+Handoverは新しい番号付きGateではありません。
 
-- Application PatternとApplication上の利用意図
-- Application ↔ Database N:M
-- Database Contract
-- read / read-write Binding
-- transaction / failure boundary
-- existing authentication / authorization
-- existing SQL / batch / external API
-- Capability Mapping
-- incremental replacement
+Gate B Readyのcandidate revision `R`を、第一Web Targetの意味baselineとして固定します。
 
-### 重点
+```text
+Gate B Ready for R
+        ↓
+Handover Baseline B
+  baselineRepositoryRevision = R
+```
 
-v1では、Application PatternをApplicationが所有するCanonicalな意図として扱います。`browse`、`record`、`reference`、`header-detail`、`command`を最初のReferenceとして実証しますが、この分類を直ちにTEI全体の標準Catalogへ固定しません。
+Handover recordはCanonicalの第二正本ではありません。
 
-Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、正本の配置は[ADR-0018](adr/0018-application-pattern-authoring-source.md)、具体的な実証順は[`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md)を参照します。
+### Gate C — 第一Targetとの差をEvidenceで説明できる
 
-既存認証のように、標準化するとかえって移行できなくなる領域も並行して検証します。「TEI標準へ作り直してから移行」ではなく、既存仕様を保持したまま取り込み、後からCapability単位で置き換えられることをReferenceで確認します。
+第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
 
-Authentication / Authorizationの意味境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)、実装前設計は[`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md)を参照します。
+Web実装revisionは`T1`として別に追跡します。
 
-## Workstream D: Database / Provider Lifecycle
+```text
+Baseline meaning B at R
+        ↓
+First Web Target build T1
+        ↓
+Semantic / Functional / Visual Evidence
+```
 
-### 目的
+`T1`でbaseline subjectの意味を変更した場合、黙って継続せず新しいHandover Baselineを発行します。
 
-DatabaseのDesired / Actual / Diff / Migration / Contract lifecycleを、Provider固有知識をCoreへ漏らさず成立させます。
-
-### 現在の主な論点
-
-M0.35までに、provider default / identifier comparison、offline provider policy、Advanced Index migration renderingの主要な安全境界は実装とConformanceまで進みました。
-
-今後の主な論点は次です。
-
-- partition semantics
-- PostgreSQL以外のProviderによる抽象境界の圧力試験
-- production環境でのonline index build / recovery policy
-- provider versionや拡張catalogを含むnormalization authorityの高度化
-
-### 進め方
-
-PostgreSQLは深い実証Providerとして継続利用します。ただし、PostgreSQL固有機能を網羅すること自体を目的にはしません。
-
-Provider-neutralな境界の妥当性を確認するため、一定の時点でOracleなど異なるProviderへ小さいReferenceを接続し、PostgreSQLで偶然成立している抽象がないか検査します。
-
-## Workstream E: Driver / Execution
-
-### 目的
-
-設計内容を、実装後まで待たずに動かして検証できるDriverを成立させます。
-
-### 対象
-
-- closed simulation
-- data / rule / validation execution
-- capability invocation
-- database binding
-- deterministic test scenario
-- runtime observation
-- production runtimeとの境界
-
-### 重点
-
-Driverを本番Runtimeの簡易版だけにはしません。
-
-開発中に「この設計は整合しているか」を確かめる設計検証環境として成立させ、Editorと往復できることを重視します。
-
-UIより先にDriverを成立させることで、Application上の不足をWeb固有コードで補ってしまうことを避けます。
-
-AI支援を後から加えた場合にも、AIが生成したProposalやTarget固有の見た目ではなく、Driverで同じCanonical Application上の意味を再現できることを基準線にします。
-
-## Workstream F: Target-neutral Presentation
-
-### 目的
-
-ApplicationのPresentation / Interactionを、一つのWeb frameworkへ固定せず複数TargetへProjectionできることを実証します。
-
-### 対象
-
-- target-neutral Presentation候補
-- Target Capability
-- Execution / Trust Profile候補
-- Runtime Binding
-- Web Adapter
-- Desktop Adapter
-- Mobile Adapter
-- API / MCP / VUI Adapter
-- Target Conformance
-
-### 境界仮説
-
-Target差は少なくとも次の二種類を分けて観測します。
-
-- **Target Capability**: window、dialog、touch、notification、device access等、そのTargetで利用可能なPresentation / Interaction能力
-- **Execution / Trust Profile**: local / network、transport、origin、identity / session、Authorization、Resource、secret、lifecycle等の実行・信頼境界
-
-最初からこの二つを完全なCore schemaにはしません。第一Web Targetと第二Targetの差から必要な分離を決めます。
-
-Wails等がHost inspection / development controlのためにMCPを公開しても、それを自動的にApplicationの業務MCP Targetとはみなしません。
-
-### Conformance Evidence
-
-interactive Targetでは少なくとも次を区別します。
+Gate Cでは次を分離します。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
-GUI agentやVLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
+Visual evaluator / VLM / screenshot scoreだけでSemantic / Functionalを合格にしません。
 
-### 着手順
-
-最初から全Targetを同じ深さで作りません。
-
-1. Application PatternとDriverでTarget非依存の意味を確かめる
-2. 標準的な業務Applicationを第一Web TargetへProjectionする
-3. Semantic / Functional / Visual Evidenceを分けて取得する
-4. Webで必要になった共通候補、Target Capability候補、Execution / Trust差、Web固有差分を記録する
-5. 同じ上位設計を第二TargetへProjectionする
-6. 第二Targetとの差からTarget-neutralな境界を修正する
-7. Coreを変更せず第三Targetを追加できるか確認する
-
-第一Targetだけで「Target-neutral設計が完成した」とは判断しません。
-
-第二TargetでのTarget Capability / Execution / Trust境界は[`ISSUE-000026`](issue/000026-target-capability-execution-profile-boundary.md) / GitHub Issue #259で検証します。
-
-## Workstream G: Editor / Developer Experience
+## Workstream A: Product Baseline / Traceability
 
 ### 目的
 
-TEIの厳格な意味モデルを、開発者が実用上軽く扱えるEditorへつなぎます。
-
-### 対象
-
-- high-density design view
-- table / graph / flow / UI projection
-- 3階層以上の関係を保った局所表示
-- Database Workbench
-- Source / Diagnostic navigation
-- decision history
-- reversible choices
-- Wails / WebView based desktop shell
-- shared Acceptance Boundary
+Product Value、Requirements、PAS、ADR、Plan Issue、Reference、Evidence、Gateを一続きに追跡できる状態を維持します。
 
 ### 重点
 
-EditorはCanonicalを所有しません。Projectionと編集支援を担います。
+```text
+Product Requirement
+        ↓
+Product Acceptance Scenario
+        ↓
+ADR / Plan Issue
+        ↓
+Reference / Fixture
+        ↓
+Evidence
+        ↓
+Gate / Product claim
+```
 
-また、単純なno-code UIを目指すのではなく、複雑な業務システムを扱う開発者が高い情報密度で全体を追えることを優先します。
+PASはcoverage scoreではなく、Requirementと実証をつなぐtrace単位として扱います。
 
-Application Pattern、Driver、第一Targetの実証から意味境界が見えるまでは、Editorの詳細interfaceを先に固定しません。
+## Workstream B: Semantic / Authoring / Knowledge
 
-Editorがauthoritative sourceを変更する場合も、file-native / CLI / AI等と共有するAcceptance Boundaryを通します。Editor内部状態を別のCanonical正本にはしません。
+### 目的
 
-Go + Wails/WebViewは有力なEditor / Host実装候補ですが、WailsのAPIやwindow modelをCanonical Applicationの意味へ持ち上げません。生成業務ApplicationのTargetとEditor shellも別の関心事として扱います。
+業務上の意味をauthoring sourceから再構成し、複数Projectionから同じCanonical meaningを扱える基盤を育てます。
+
+### 対象
+
+- Semantic Kernel
+- Source Index / Diagnostic
+- Source-to-Canonical Traceability
+- Domain Component / Semantic Pattern / Policy候補
+- provenance / revision
+- reusable semantic knowledge exploration
+
+Application Patternはv1ではApplication所有です。第一ReferenceだけからSemantic Kernelの標準Catalogへ持ち上げません。
+
+AI向けKnowledge、検索index、embedding、trajectory等はderivedとして扱い、Canonicalの第二正本にはしません。
+
+Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
+
+## Workstream C: Application / Legacy Compatibility
+
+### 目的
+
+新規理想形だけでなく、既存業務資産を保持しながら段階移行できることを確認します。
+
+### 対象
+
+- Application Pattern / intent
+- Application ↔ Database
+- Database Contract / native Query
+- Datasource read / write
+- existing authentication / authorization
+- existing SQL / external API
+- Capability Mapping
+- incremental replacement
+
+actual external assetは、観測事実とCanonical contractを分離します。
+
+未観測のphysical object / column / SQL / datatypeを推測しません。
+
+## Workstream D: Database / Provider Lifecycle
+
+### 目的
+
+Desired / Actual / Diff / Migration / Provider境界を、Provider固有知識をCoreへ漏らさず成立させます。
+
+PostgreSQLは深い実証Providerとして利用します。
+
+Oracle等の異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。
+
+actual Oracle Evidence未完了をGate B blockerへ戻しません。
+
+## Workstream E: Driver / Execution
+
+### 目的
+
+設計内容をUI実装前に動かし、Application meaningを検証できるDriverを維持します。
+
+### 重点
+
+- browse / record / reference / header-detail / command
+- Validation
+- Authentication / Authorization
+- Capability invocation
+- Business Result / Execution Error
+- separate Observation read
+- deterministic Scenario
+
+Driverは本番Runtimeの簡易版ではなく、設計検証の基準線です。
+
+## Workstream F: Target-neutral Presentation
+
+### 目的
+
+同じCanonical Applicationを複数TargetへProjectionし、共通意味とTarget差をEvidenceから分離します。
+
+### 第一Target
+
+第一Web TargetはPAS-04の最初の実証です。
+
+Gate C EvidenceではHandover baseline `R`とWeb build `T1`を分けて追跡します。
+
+### 第二Target
+
+Gate C後、`ISSUE-000026`で第二Targetを選びます。
+
+比較軸:
+
+- Canonical Application meaning
+- Target Capability
+- Runtime Binding
+- Execution / Trust Profile
+- Target固有実装
+- Host control plane
+- Observation
+- Semantic / Functional / Visual Evidence
+- RQ-024 performance measurement
+
+第一TargetだけでTarget-neutral taxonomyを完成扱いしません。
+
+### Studio HostとApplication Targetを分ける
+
+Studio / Editorがdeveloper-facing desktop hostとしてWailsを利用しても、それを第二Application Target Evidenceへ数えません。
+
+Generated Wails Desktop Application Targetを採用する場合は、別のTargetとしてSemantic / Functional / Visual Evidenceを取得します。
+
+## Workstream G: Studio / Developer Experience
+
+### 目的
+
+厳格な意味モデルを、高密度かつ安全に扱えるdeveloper-facing Studioへ接続します。
+
+### 原則
+
+StudioはCanonicalを所有しません。
+
+```text
+Studio / file-native / CLI / AI
+        ↓ candidate
+Shared Acceptance Boundary
+        ↓
+authoritative source
+        ↓ reload
+Canonical meaning
+```
+
+Gate C後の最初の実証は`ISSUE-000046`です。
+
+最小loop:
+
+```text
+Select
+  ↓
+Propose
+  ↓
+Preview Semantic Diff / impact
+  ↓
+Accept / Reject
+  ↓ Accept only
+Shared Acceptance Boundary
+  ↓
+reload / Conformance
+```
+
+mandatory authored Stable IDやStudio専用Acceptance engineを導入しません。
 
 ## Workstream H: AI-assisted Engineering
 
 ### 目的
 
-生成AIを、コード生成器だけでなく、既存知識の探索、設計検査、実装候補作成へ使います。
+AIを大量生成器ではなく、既存知識探索、変更候補、検査、Decision支援へ接続します。
 
-AIの非決定性をCanonical authorityから分離し、TEI自身のValidation / Conformance / Permission境界へ接続することを中心にします。
+### 二段階
 
-### 対象
+1. `ISSUE-000047` — Human / AI共通のknowledge-first Semantic exploration（PAS-06）
+2. `ISSUE-000027` — AI Proposal / Shared Acceptance Boundary（PAS-01 / PAS-06）
 
-- component / pattern search
-- requirement suggestion
-- relation / functional dependency check
-- history / audit / lifecycle suggestion
-- implementation mapping generation
-- natural-language projection
-- Proposal / Structured Intent candidate
-- shared Acceptance Boundary
-- choice history
-- suggestion suppression
-- AI assistance profile
-- Derived Experience Knowledge
+AI ProposalはCanonical authorityではありません。
 
-### UX原則
+search ranking、similarity、model confidenceもSemantic Evidenceではありません。
 
-AIは、使えるからといって常時話しかけません。
-
-- 既回答を再質問しない
-- 重要性の高い論点を優先する
-- 提案を無視できる
-- 同種提案を抑制できる
-- AI Proposalと採用済みDecisionを区別する
-- 採用済み判断を明示する
-- 後から判断理由と履歴へ戻れる
-- staleなProposalを黙って適用しない
-
-このUXはAI機能の付加価値ではなく、TEIの「厳格だが軽い」を成立させる主要要件として扱います。
-
-### Acceptance / Authority原則
-
-AIが生成した内容は直接Canonicalへせず、Proposal / Structured Intent candidateとして扱います。
-
-採用時はEditor / CLI等と共有するAcceptance Boundaryを通し、authoritative sourceへ反映した後にreload / Conformanceで確認します。この判断は[ADR-0022](adr/0022-ai-proposal-canonical-acceptance-boundary.md)へ置きます。
-
-AI支援機能について、少なくともpurpose、target activity / artifact、AI mechanism / type、autonomy levelを比較可能にします。
-
-ただしautonomyとauthorityは別です。AI actorであることや自律度から、write、Capability invocation、Resource / secret access等を暗黙付与しません。
-
-過去の成功Proposalやtrajectoryを再利用する場合もDerived Experience Knowledgeとして扱い、Canonicalの第二正本にはしません。
-
-AI支援の詳細は、実在するPattern、Driver Scenario、Projection差、Decision履歴を入力として扱えるGate C後に具体化します。最初のProposal / Acceptance Referenceは[`ISSUE-000027`](issue/000027-ai-proposal-acceptance-boundary.md) / GitHub Issue #267で扱います。
+autonomyとauthorityを分け、raw AI tool callをCapability / Permission modelの代替にはしません。
 
 ## Workstream I: Ecosystem / Production Boundary
 
 ### 目的
 
-Coreと外部世界の境界を、実際の利用に耐える形へ段階的に広げます。
+Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に広げます。
 
 ### 対象
 
 - Plugin distribution / trust
-- signed artifact
-- remote registry
 - production Provider adapters
 - durable store / HA
 - observability
 - deployment integrations
-- supply-chain evidence
+- supply-chain Evidence
 - compatibility policy
 
-### 進め方
-
-外部orchestratorやworkflow engineが既に提供している機能は、TEI固有の価値でない限り積極的に再実装しません。
-
-TEIは、意味、Binding、Evidence、Conformanceを保持し、実行手段は外部Capabilityへ委譲できることを基本とします。
-
-AI agent frameworkについても同様です。agent loopやworkflow engine自体をTEI固有価値として再実装するのではなく、必要なら外部Capabilityとして利用し、Canonical authority、Acceptance、Permission、ObservationをTEI側で保持します。
+外部orchestrator / agent frameworkが提供する一般機能をTEI固有価値として再実装しません。
 
 ## Workstream間の依存
-
-大まかな関係は次のとおりです。
 
 ```text
 A Product Baseline
       ↓
 B Semantic / Knowledge ───┬── C Application / Legacy
-                          │
                           ├── D Database / Provider
-                          │
                           └── E Driver
                                ↓
-                    F Target-neutral Presentation
-                               ↓
-                    G Editor / Developer Experience
-                               ↕
-                    H AI-assisted Engineering
-
-D / E / F / G ───────────────→ I Ecosystem / Production
+                    F First Target / Gate C
+                       ┌───────┴────────┐
+                       ↓                ↓
+                 G Studio          F Second Target
+                       ↕                │
+                 H AI / Knowledge ──────┘
+                       ↓
+                 I Production Boundary
 ```
 
-実際には完全な直列ではありません。B〜Hは小さいvertical sliceを共有しながら並走します。
+完全な直列ではありません。Gate C後はStudio / AI / knowledge-firstと第二Targetを並行できます。
 
-## v1 Reference Applicationでworkstreamを合流させる
+## 現在の優先順
 
-上記のworkstreamを抽象的な並行作業のままにせず、v1では既存の`order_entry`へ合流させます。
+1. Gate B actual final Evidenceを同一revisionへ収束する
+2. Gate B ReadyならHandover Baseline `B` / revision `R`を固定する
+3. 第一Web Targetをbuild revision `T1`として実装し、Gate C Evidenceを取得する
+4. Gate C Ready後、次を並行開始する
+   - `ISSUE-000046` Studio minimal Authoring Loop
+   - `ISSUE-000047` knowledge-first Semantic exploration
+   - `ISSUE-000027` AI Proposal / Acceptance
+   - `ISSUE-000026` 第二Target pressure test
+5. 第二TargetとAuthoring / AIのEvidenceを相互に戻し、Target-neutral / authoring境界を再評価する
+6. production / ecosystem境界を必要なEvidenceとともに広げる
 
-詳細な実証順とEvidence Gateは[`V1_REFERENCE_APPLICATION_PLAN.md`](V1_REFERENCE_APPLICATION_PLAN.md)にまとめています。
+現在、actual Gate B final runは実TEI checkout + Evidence専用PostgreSQL環境待ちです。環境待ちを理由にGate C以後の契約を前倒し実装しませんが、planning / traceabilityは先に矛盾なく固定します。
 
-主線は次のとおりです。
+## 先に固定しないもの
 
-```text
-Application Pattern ────────┐
-      ↓                     │
-Application Driver     既存認証Compatibility
-      ↓                     │
-第一Web Target ─────────────┘
-      ↓
-Editor / AI支援
-      ↓
-第二Target
-```
+- 第一Web Target framework
+- 完全なPresentation IR
+- 完全なTarget Capability taxonomy
+- Editor最終UI
+- AI provider
+- vector database
+- Proposal最終schema
+- mandatory authored Stable ID / UUID
+- Patch-only authoring model
+- WailsのTEI標準Runtime化
+- 第二Targetの種類
+- 一律performance threshold
+- 汎用Workflow Engine
+- production HA一般化
 
-この流れでは、日付ではなく次のEvidence Gateで進行を判断します。
-
-### Gate A — Application上の意味をDriverへ渡せる
-
-WebやEditorを見なくても、何をbrowseし、何をreferenceし、どのValidationとCommandを使い、誰が操作でき、どのDatasourceへwriteできるかを説明できることを確認します。
-
-### Gate B — UIなしで主要シナリオを再現できる
-
-Driverだけでbrowse → record → reference → header-detail → validation → authorization → command → observationを再現できることを確認します。
-
-### Gate C — 第一Targetとの差を説明できる
-
-WebとDriverが同じApplication上の意味を共有し、共通Presentation候補とWeb固有差分を追跡できることを確認します。
-
-加えて、Semantic Conformance、Interaction / Functional Evidence、Visual Fidelity Evidenceを混同せず、Target Capability候補とExecution / Trust差を第二Targetへ引き継げる状態にします。
-
-### Gate D — 第二Targetで圧力試験できる
-
-第一Targetで共通とみなした部分とTarget固有とみなした部分が追跡可能で、第二Targetから検証し直せる状態を確認します。
-
-Target Capability、Execution / Trust Profile、Runtime Binding、Target固有実装を区別できることをGate Dの主要Evidenceとします。
-
-Gateを設ける目的は手続きを増やすことではありません。実装しやすい層の都合で、未実証の意味を上位モデルへ固定することを避けるためです。
-
-## 次に優先して不確実性を減らす領域
-
-M0.35以降は、次の順を基本とします。
-
-1. Product BaselineをRepositoryへ定着させる
-2. 現在の実装をProduct Requirementsへ逆マッピングし、空白を明示する
-3. Application Patternと既存認証Compatibilityを`order_entry`周辺の小さいReferenceで実証する
-4. Gate Aを確認する
-5. DriverでApplication設計を動かす最小vertical sliceを作る
-6. Gate Bを確認する
-7. 同じ設計を第一Web TargetへProjectionし、Semantic / Functional / Visual Evidenceを分けて取得する
-8. Gate Cを確認してEditor / AI支援の具体化へ進む
-9. AI Proposal / Acceptance Boundaryを小さいReferenceで実証する
-10. 第二Targetを追加し、Target CapabilityとExecution / Trust Profileを含むTarget-neutral境界を圧力試験する
-11. Database / Provider側は、上記を支える範囲とprovider-neutral境界の検証を中心に継続する
-
-Application Patternについては、最初から「標準Pattern Catalogの完成」を目標にしません。v1 ReferenceでApplication上の意図として実証し、複数Applicationや複数Targetから再利用Evidenceが得られた段階で、どこまでを標準知識として共有するかを判断します。
-
-既存のDatabase関連Issueは捨てません。ただし、緊急な安全境界や他workstreamの前提でないものは、プロダクト全体の空白と比較しながら着手順を決めます。
+Reference / Evidenceから必要性が確認される前に固定しません。

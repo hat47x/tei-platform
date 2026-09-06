@@ -2,29 +2,28 @@
 
 - 状態: Proposed
 - GitHub Issue: #259
-- 本格着手条件: Gate C
+- 本格着手条件: Gate C Ready
+- Product Acceptance Scenario: PAS-04 primary
 
 ## 背景
 
 TEIはRQ-013で、Web、Desktop、Mobile、API、MCP、VUI等を同じ上位設計から扱い、Targetごとの差をCapability negotiationやRuntime Bindingで明示する方針を置いています。
 
-`ISSUE-000007`では、第一Web Targetを通してApplication上の意味、Target-neutralなPresentation候補、Web固有差分を分離し、Gate Cでその差を説明できる状態を目指しています。
+`ISSUE-000007`では、第一Web Targetを通してApplication上の意味、Target-neutralなPresentation候補、Web固有差分を分離し、Gate Cでその差を説明できる状態を目指します。
 
-一方、2026年9月時点のWails v3を調査すると、Target差には少なくとも二種類あることが分かります。
+一方、Target差には少なくとも二種類あります。
 
 1. **Target Capabilityの差**
    - native window、menu、tray、dialog、touch、haptics、geolocation等の有無
-   - Desktop / Mobile / Serverで利用可能な操作や入出力が異なる
+   - Desktop / Mobile / Server等で利用可能な操作・入出力が異なる
 2. **Execution / Trust Profileの差**
-   - Desktop / Mobileでは主にlocal / in-processのWebView bridgeとして実行される
-   - ServerではHTTP / WebSocket等を介して複数clientから利用され得る
-   - network越しではTLS、origin、identity / session、input validation、Resource境界等を明示する必要がある
+   - local / in-processかnetwork越しか
+   - single-user / single-clientか複数clientか
+   - TLS、origin、identity / session、Resource、並行性等の境界が異なる
 
-この二つを一つの「Target差」へ畳むと、UI機能の不足と、認証・認可・通信・並行性・Resource境界の違いが混同される可能性があります。
+この二つを一つの「Target差」へ畳むと、UI機能差とsecurity / runtime差が混同されます。
 
-本Issueでは、特定frameworkのAPIをTEIへ写すのではなく、複数Targetの実証から、**何がTarget Capabilityで、何がExecution / Trust Profileとして独立して扱うべきか**を確認します。
-
-このRepository内Issueは、main側で先行起票されていた`ISSUE-000020`と、収束branchで既に利用されていた別の`ISSUE-000020`の番号衝突を解消するため、`000026`へ統一します。GitHub Issueは引き続き#259を利用します。
+本Issueでは特定frameworkのAPIをTEIへ写すのではなく、複数Targetの実証から、**何がTarget Capabilityで、何がExecution / Trust Profileとして独立して扱うべきか**を確認します。
 
 ## 関連するProduct Requirement
 
@@ -38,6 +37,28 @@ TEIはRQ-013で、Web、Desktop、Mobile、API、MCP、VUI等を同じ上位設�
 - RQ-021 ReferenceとConformanceで再現可能性を示すこと
 - RQ-022 完成製品と設計検証段階を明確に区別すること
 - RQ-024 性能要求をTargetごとに検証可能にすること
+
+## 第一Targetから受け取る比較baseline
+
+第二Targetは曖昧な「最新Web」や「最新Canonical」と比較しません。
+
+Gate Cで使ったHandover Baseline `B`と、そのbaseline revision `R`を比較の意味基準として保持します。
+
+各Targetの実装revisionは別に追跡します。
+
+```text
+Application meaning baseline B at R
+        │
+        ├─ Web Target build T1
+        │    └─ Gate C Evidence
+        │
+        └─ Second Target build T2
+             └─ comparison Evidence
+```
+
+第二Target着手時にApplication meaningが既に更新されている場合、旧`B`へ無理に合わせず、明示的なsuccessor Handover Baseline `B'` / `R'`を選びます。
+
+Web `T1`、第二Target `T2`、baseline `R`を同じrevisionとして扱いません。
 
 ## 現時点の設計仮説
 
@@ -59,43 +80,70 @@ Target Capabilityは、あるTarget / Hostで利用可能なPresentation、Inter
 - geolocation
 - camera等のdevice access
 
-Canonical Applicationが個々のframework APIを直接要求するのではなく、必要な意味上のCapabilityを要求し、Target Adapter / Host側が提供可能な集合を提示する形を比較します。
+Canonical Applicationがframework APIを直接要求するのではなく、必要な上位Capabilityを要求し、Target Adapter / Host側が提供可能な集合を示す形を比較します。
 
 Capabilityが存在しない場合も、直ちにApplication意味の欠落とはみなしません。代替Projection、利用不可表示、別Targetへの委譲等を選べる余地を残します。
 
 ### Execution / Trust Profile
 
-Execution / Trust Profileは、「何を表示できるか」ではなく、実行環境と信頼境界の性質を表す候補とします。
+Execution / Trust Profileは「何を表示できるか」ではなく、実行環境と信頼境界の性質を表す候補とします。
 
-たとえば次の差を検討します。
-
-- local / in-processか、network越しか
-- single-user / single-clientか、複数clientを扱うか
-- transportが内部bridgeか、HTTP / WebSocket等か
-- originや接続元を検証する必要があるか
+- local / in-processかnetwork越しか
+- single-user / single-clientか複数clientか
+- transportが内部bridgeかHTTP / WebSocket等か
+- origin / connection sourceを検証する必要があるか
 - TLS等のtransport protectionが必要か
 - clientごとのidentity / session / authorizationが必要か
-- Resourceやsecretをどの境界で解決するか
+- Resource / secretをどこで解決するか
 - 並行実行やbroadcast eventをどう扱うか
 - process / device / browser tab等のlifecycleをどう観測するか
 
 これらをPresentation Capabilityへ押し込まず、Runtime BindingやSecurity / Resource境界と接続できる別軸として扱う必要があるかを実証します。
 
-## Wails v3を使う場合の検証材料
+## Wailsを使う場合の境界
 
-Wails v3はこの境界を考えるための有力な圧力試験材料ですが、Wails自体をTEI仕様の根拠にはしません。
+WailsはDesktop / WebView host等の圧力試験材料になり得ますが、Wails自体をTEI仕様の根拠にはしません。
 
-2026年9月時点の公式資料から、Desktopを中心とするGo backend / frontendの構成に加えて、Mobile、Server、MCP等へ機能が広がっていることを確認できます。
+### Studio Wails HostとGenerated Wails Targetを分ける
 
-この差を利用し、同じCanonical Applicationを異なるHostへProjectionしたとき、Capability差とExecution / Trust差を別々に説明できるか確認します。
+TEI Studio / Editorがdeveloper-facing desktop authoring clientとしてWailsを使う場合でも、それをApplication Target Evidenceへ数えません。
 
-Mobile等には実験的な位置づけが残るため、現時点ではWailsをTarget-neutral設計の前提にはせず、Adapter / Host候補かつarchitecture probeとして扱います。
+```text
+Studio / Editor
+  frontend
+    ↓
+Wails developer host
+    ↓
+adapters/studiowails
+    ↓
+app/studio
+    ↓
+shared Acceptance Boundary
+    ↓
+Canonical Source
+```
+
+これは**authoring toolのHost**です。
+
+一方、将来のGenerated Wails Desktop Targetは、Canonical Applicationをend-user向けDesktop ApplicationとしてProjectionする別のTargetです。
+
+```text
+Canonical Application
+    ↓
+Desktop Target Adapter
+    ↓
+Wails end-user Host
+    ↓
+Business Application interaction
+```
+
+StudioのWails採用・動作・GUI Evidenceを、第二TargetのSemantic / Functional / Visual Evidenceへ読み替えません。
+
+Wails Host外層にbusiness validation、Authorization rule、Persistence semantics、Canonical mutation authorityを持たせない方針も維持します。
 
 ### MCP / control面をApplication Targetと混同しない
 
-Wails等がHost inspectionやcontrolのためにMCP interfaceを提供しても、それだけでTEI ApplicationがMCP Targetを持つことにはなりません。
-
-次を区別します。
+Host inspectionやdevelopment controlのMCP interfaceを持っても、それだけでTEI ApplicationがMCP Targetを持つことにはなりません。
 
 ```text
 Host / Tool Control Plane
@@ -105,22 +153,25 @@ Application Target
   └─ 業務上のPresentation / InteractionをMCPとして公開
 ```
 
-同じprotocolを利用していても、authority、subject、lifecycle、Conformanceの対象が異なります。
-
-第二Target候補としてMCPを選ぶ場合は、どちらの意味でMCPを利用するのかを明示します。
+同じprotocolでもauthority、subject、lifecycle、Conformance対象が異なります。
 
 ## 実証の進め方
 
 ### Gate Cまで
 
-`ISSUE-000007`の第一Web Targetで、次のEvidenceを残します。
+`ISSUE-000007`の第一Web Targetで次をEvidenceとして残します。
 
+- Handover Baseline ID / revision `R`
+- Web Target build revision `T1`
 - Web固有Capability
-- 上位Presentation候補
-- Runtime Bindingで吸収している差
+- Target-neutral Presentation候補
+- Runtime Binding差
 - HTTP / browser由来の差
+- Execution / Trust差
 - Canonicalへ持ち上げるべきでない実装都合
-- Semantic / Functional / Visual Evidenceのどこに属する差か
+- Semantic / Functional / Visual Evidenceの分類
+- performance measurement
+- unresolved
 
 この段階ではTarget Capability schemaやExecution / Trust Profile schemaを固定しません。
 
@@ -128,31 +179,36 @@ Application Target
 
 第一Targetとの差を説明できるようになったら、第二Target候補を選びます。
 
-第二Targetは、第一Targetと十分に異なる圧力を与えられるものを優先します。たとえば次の候補があります。
+第二Targetは、第一Targetと十分に異なる圧力を与えられるものを優先します。
 
-- Wails Desktop / WebView host
-- Wails Mobile
-- Wails Server
+候補例:
+
+- Generated Wails Desktop Target
+- Mobile
+- Server
 - API
 - MCP Application Target
 
-単に実装が容易という理由だけで選ばず、RQ-013の不確実性を最も減らせるTarget / Hostを選びます。
+単に実装が容易という理由だけで選ばず、RQ-013 / RQ-024の不確実性を最も減らせるTarget / Hostを選びます。
+
+Studio developer hostを「すでにDesktop Targetがある」という理由には使いません。
 
 ### 比較軸
 
-同じReference Applicationについて、少なくとも次を比較します。
+同じReference Applicationについて少なくとも次を比較します。
 
-1. Canonical Application上の意味
-2. 必須 / 任意のTarget Capability
-3. Targetが提供するCapability
-4. Projection差
-5. Runtime Binding差
-6. Execution / Trust Profile
-7. Authorization / Resource境界
-8. Observation方法
-9. 性能測定点
-10. Semantic / Functional / Visual Evidence
-11. Target固有コードを削除したときCanonicalが変化しないこと
+1. Handover Baseline / Canonical Application上の意味
+2. Target build revision `T1` / `T2`
+3. 必須 / 任意のTarget Capability
+4. Targetが提供するCapability
+5. Projection差
+6. Runtime Binding差
+7. Execution / Trust Profile
+8. Authorization / Resource境界
+9. Observation方法
+10. 性能測定点
+11. Semantic / Functional / Visual Evidence
+12. Target固有コードを削除したときCanonicalが変化しないこと
 
 ## Conformance候補
 
@@ -166,7 +222,9 @@ Application Target
 - Target固有transportからBusiness Result / Execution Error / Observationを逆定義しない
 - secret、endpoint、filesystem path等のHost materialをCanonicalへ不要に保存しない
 - Host control planeとApplication Targetを区別できる
+- Studio Wails HostとGenerated Wails Desktop Targetを区別できる
 - 同じScenarioの意味上の結果を複数Targetで比較できる
+- RQ-024の測定値をTarget / Host / runtime条件と一緒に比較できる
 
 ## 非目標
 
@@ -177,11 +235,14 @@ Application Target
 - Security policyをPresentation modelへ埋め込むこと
 - 一つのTargetだけからTarget-neutral境界を確定すること
 - HostのMCP control interfaceを無条件に業務MCP Targetとみなすこと
+- Studio / Editorのdeveloper-facing hostを第二Application Target Evidenceへ数えること
 
 ## 完了条件
 
-少なくとも二つの性質が異なるTarget / Hostを同じReference Applicationへ接続し、次をEvidenceから説明できることを完了条件とします。
+少なくとも二つの性質が異なるApplication Target / Hostを同じ明示baselineへ接続し、次をEvidenceから説明できることを完了条件とします。
 
+- 比較に使ったHandover Baseline ID / revision
+- 各Target build revision
 - Targetが変わっても残るCanonical Application上の意味
 - Target Capabilityとして扱うべき差
 - Execution / Trust Profileとして扱うべき差
@@ -189,15 +250,19 @@ Application Target
 - Target固有実装へ残す差
 - Host control planeに残す差
 - Canonicalへ持ち上げてはいけない差
+- performance差と測定条件
+- Studio developer hostがApplication Target比較へ混入していないこと
 
-その結果から、Target CapabilityとExecution / Trust Profileを正式な別概念として採用するか、既存のRuntime Binding / Capabilityモデルへ統合するかをADRで判断します。
+その結果から、Target CapabilityとExecution / Trust Profileを正式な別概念として採用するか、既存Runtime Binding / Capabilityモデルへ統合するかをADRで判断します。
 
 ## 関連文書
 
+- `plan/GATE_C_EVIDENCE_CONTRACT.md`
+- `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/MASTER_PLAN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
+- `plan/issue/000028-first-web-target-conformance-evidence.md`

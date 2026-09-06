@@ -1,7 +1,7 @@
 # ISSUE-000036: Gate B 3-lane scopeを既存長文へ内容保持で同期する
 
 - 状態: Done — 3-lane scope同期完了
-- GitHub Issue: #383（履歴参照。計画上の状態は本Issue冒頭を参照）
+- GitHub Issue: #383（Completed予定）
 - 前段判断: `ISSUE-000035` / GitHub Issue #380（Done）
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273

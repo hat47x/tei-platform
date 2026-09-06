@@ -1,4 +1,4 @@
-# ISSUE-000034: actual Oracle read-only Evidenceを確定する
+# ISSUE-000034: Gate Bでactual Oracle read-only Evidenceを確定する
 
 - 状態: Blocked
 - GitHub Issue: #376
@@ -7,13 +7,7 @@
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
 - 関連RQ: RQ-009 / RQ-012 / RQ-014
 
-## 現行scope
-
-[ISSUE-000035](000035-gate-b-external-provider-scope-audit.md)の判断に従い、本Issueは[ISSUE-000022](000022-external-master-data-physical-query-evidence.md)配下の外部資産検証です。Gate Bの第4・第5laneではありません。driver・接続確認は[ISSUE-000033](000033-gate-b-oracle-driver-integration.md)、本Issueは実効権限と安全な確認を担当します。実Oracleの権限条件が未取得である限りBlockedを維持します。
-
-以下のGate B Phase 1 / 2に関する記述はscope変更前の経緯です。権限Evidenceとactual readを外部資産検証の対象revisionへ追跡可能にする条件は維持し、Gate B前の実Oracle検証を再び必須にはしません。
-
-## 検証の目的
+## 目的
 
 第一Referenceの`master_data`へのactual Oracle readについて、**実効的にread-onlyであることを、実外部assetへ試し書きせず安全にEvidence化する**ための条件を確定します。
 
