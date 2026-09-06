@@ -331,20 +331,50 @@ Pure file moveでBusiness meaningを変えない。
 
 Table / graph / screen layoutはEditor / Target Projection concernである。
 
-## 12. multi-Application / social-system pressure
+## 12. Gate 15 — multi-Application structural pressureとsocial-system realismを分離する
 
-Temp Workspaceで:
+Gate 15はApplication数と業務realismを同じ条件へ畳まない。
 
 ```text
-order_entry interaction
-fulfillment_console interaction
-manual warehouse coordination
-external delivery continuation
+15a synthetic multi-Application structural pressure
+  temp Workspaceで:
+    order_entry interaction
+    fulfillment_console interaction
+    manual warehouse coordination
+    external delivery continuation
+  を同一Procedureへ共存させる
+
+15b current order_entry social-system realism pressure
+  production Referenceのorder_entryだけで:
+    managed-here sales data
+    external-observed customer master
+    read-write / read-only policy差
+    human judgment
+    Authorization
+    Application Command
+    separate Observation intention
+    manual / external continuation
+  を同一Business Procedure文脈に保持する
+
+15c realistic second-Application / broader corpus pressure
+  15a + 15bでminimum contract sufficiencyを説明できない不足が出た場合だけ追加する
 ```
 
-を同一Procedureへ共存させる中間Pressureを実装済み。
+15aはBusiness Procedureを一つのApplication画面操作列へ縮めない構造Pressureであり、synthetic second Applicationをproduction業務仕様とはみなさない。
 
-Business ProcedureをApplication画面操作列へ縮めないEvidenceになるが、synthetic second Applicationなので「realistic Reference完成」とはみなさない。
+15bはcurrent production Reference内で社会システムとしての境界をPressureするが、provenance-backed realistic Business corpusの幅広さを証明するものではない。
+
+したがって:
+
+```text
+minimum Canonical contract sufficiency
+  !=
+realistic Reference maturity / breadth
+```
+
+を維持する。
+
+15cを無条件のADR blockerにはしない。15a + 15bで説明できない具体的な意味欠落が出た場合だけreopenする。
 
 ## 13. Watanabe / X-TEAとの整合
 
@@ -377,7 +407,7 @@ X-TEAの存在はR3を巨大なBusiness graphへ拡張する根拠ではなく�
 12. global Step IDなしで必要addressabilityを説明
 13. H1/R3をhandoff-onlyとして保ち、Business Flow surfaceを混ぜない
 14. current Handoff EvidenceをBusiness Flow / DFD Conformanceへ過大主張しない
-15. current `order_entry`より一段現実的なmulti-App / manual / external Reference pressure
+15. Gate 15a structural pressureと15b social-system realism pressureをactual testsで確認し、15cは両者で説明できない不足が出た場合だけ追加する
 16. Lane B再監査と矛盾しない
 17. D3 + H1 + R3 + S4-A + C1が最小十分である理由を説明
 
@@ -388,9 +418,17 @@ Gate 2-14
   Repositoryへtest-only pressureは概ね実装済み
   actual execution未取得
 
-Gate 15
-  synthetic multi-Application intermediate pressureまで
-  realistic Reference最終Evidenceではない
+Gate 15a
+  synthetic multi-Application structural pressureをsource/test levelで実装済み
+  actual execution未取得
+
+Gate 15b
+  current order_entry social-system realism pressureをsource/test levelで実装済み
+  actual execution未取得
+
+Gate 15c
+  conditional
+  15a + 15bで説明できない不足が出ない限り追加しない
 
 Gate 1
   unresolved
@@ -427,8 +465,9 @@ D3 thin Business Procedure meaning
 ### 次のLane C作業
 
 1. actual execution Evidenceを得る経路が利用可能になれば最優先で実行
-2. realistic Referenceを無理に増やさず、既存corpus / scenarioから再利用可能なmulti-system Business Procedure圧力を探す
-3. D3 candidateが別scenarioでも崩れないかPressure
-4. full Business FlowはT-GAP-06として分離し、Procedure ADRのためだけに実装しない
+2. BP-06の`supporting semantic authority` / `protected Application target` / `Application Function realization`を混同しないtest-only cross-view ref pressureを追加する
+3. 15a + 15bでminimum contract sufficiencyを説明できるか確認し、15cを概念追加の口実にしない
+4. D3 candidateが別scenarioでも崩れないかPressureする
+5. full Business FlowはT-GAP-06として分離し、Procedure ADRのためだけに実装しない
 
 この条件が閉じるまでPR #482はDraft、Issue 000042はIn Progressを維持する。
