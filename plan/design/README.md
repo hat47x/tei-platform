@@ -7,6 +7,7 @@
 - 何から進め、何をEvidenceとするか: [`../README.md`](../README.md)
 - 実装構造と技術境界のcurrent説明: [`../../docs/architecture.md`](../../docs/architecture.md)
 - 実装・Evidenceの現在地: [`../../docs/status.md`](../../docs/status.md)
+- 画面モック: [`mockups/`](mockups/README.md)
 
 設計文書はIssueとADRの代わりではありません。作業の進行はIssue、採用した判断はADRが正本です。ここに置くのは、その二つだけでは分断される機能単位の設計本文です。小さい機能では新しい文書を作らず、Issue本文へ書きます。
 

@@ -9,6 +9,7 @@ product/          守る価値・原則・Vision
 requirements/     満たすべきProduct Requirement（RQ-001〜）
 plan/             計画管理（Master Plan、Milestone、Gateの監査・契約・Runbook）
   design/         機能ごとの設計文書
+    mockups/      画面モック（単体で開けるHTML。正本ではない）
   issue/          作業定義と要件詳細化（000001-*.md）
   adr/            長く残る設計判断（0001-*.md）
 docs/             利用者向け文書（overview / status / architecture / naming / security）
