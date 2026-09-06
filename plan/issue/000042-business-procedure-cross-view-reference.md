@@ -21,6 +21,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_IDENTITY_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_CANONICAL_MEANING_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_HANDOFF_CANONICAL_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_MULTI_APPLICATION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_UNCERTAINTY_PRESSURE_2026-09.md`
 
 ## Lane境界
 
@@ -253,6 +255,42 @@ from/toが同じでもcondition変更をBusiness meaning changeとして観測�
 
 thin Procedure / Step / handoff probeへretry / timer / queue / saga / scheduler / runtime stateを入れないことをfield guardで固定する。
 
+### A25 one Procedure can cross Applications
+
+一つのBusiness Procedureがqualified Application Pattern identityを使って2つ以上のApplicationを参照できることをtest-onlyで確認する。
+
+thin Canonical候補へ必須の単一`Application` owner fieldを置かない。
+
+### A26 multi-Application pressure is realization-independent
+
+multi-Application pressure用の第二ApplicationはPattern identityに必要な最小fixtureとし、無関係なDatabase / Contract / datasource / provider readinessへ依存させない。
+
+Business Procedureの上流意味検証をGate B Evidenceへ結合しない。
+
+### A27 preserve epistemic status
+
+trigger / actorの`status`をthin normalized Business meaningでもlosslessに保持する。
+
+現在Referenceの`candidate`をnormalization / Projection都合でaccepted factへ丸めない。
+
+### A28 uncertainty change is Business semantic change
+
+trigger / actorの`candidate -> unresolved`等、確定度の変更はProcedure identityやPattern refsが同一でもBusiness meaning changeとして観測可能にする。
+
+Business-only semantic diff / impactがこの変更を見失わないことをPressureとする。
+
+### A29 actor uncertainty != Authorization change
+
+Business actorのlabel / uncertainty変更をAuthorization Role / Principal / Permission / Credential / Authority policy変更へ暗黙変換しない。
+
+業務上の担当文脈とsecurity realizationの境界を維持する。
+
+### A30 do not freeze uncertainty vocabulary prematurely
+
+current Referenceに`candidate`が現れることだけを根拠に、status vocabulary全体やmissing / unknown statusのvalidation severityをproduction Core contractへ固定しない。
+
+まずReference Evidenceでlossless preservationを確認する。
+
 ## Identity pressureの更新
 
 前段では、review / handoffのために安定したauthoring-level keyが有用であり、Canonical Procedure identityはまだ不要と判断した。
@@ -297,6 +335,43 @@ D: identity + thin Business residual meaning + thin handoff relation
 
 production `ir.World`へはまだどちらも統合しない。
 
+## multi-Application pressure
+
+Business Procedureを単一Applicationの子要素として固定しない。
+
+Applicationとの関係はqualified Application Pattern refs等の明示参照から形成する。
+
+これにより、一つのBusiness Procedureが次を同時に含める余地を残す。
+
+```text
+Application Aの操作
+Application Bの操作
+manual work
+external organization / physical work
+```
+
+この圧力はDatabase / Provider realizationとは独立して確認する。
+
+## uncertainty preservation pressure
+
+P11「分からない状態を、分かったことにしない」をBusiness Procedureにも適用する。
+
+thin candidateがtrigger / actorを保持するなら、少なくとも現在のReferenceでは次を別々にlosslessに保つ必要がある。
+
+```text
+trigger
+  epistemic status
+  business meaning
+
+actor
+  epistemic status
+  business/job label
+```
+
+statusはUI decorationではなく、statementの確定度としてBusiness meaning差へ参加する。
+
+ただし汎用Uncertainty framework、certainty lattice、approval state machineは導入しない。
+
 ## 000039 / Shared Acceptanceとの境界
 
 `ISSUE-000039`は共通revision-aware semantic diff / dependency propagationを将来所有する。
@@ -312,6 +387,7 @@ Shared Acceptanceについてもproduction APIを完成させず、target resolu
 - production Canonical Procedure schemaの採用確定
 - Workflow Engine / retry / timer / queue / saga / scheduler
 - actor -> Authorization Role自動mapping
+- 汎用Uncertainty framework / certainty lattice / approval state machine
 - Business Lifecycle 000038のstate transition実装
 - 000039共通change graph実装
 - PAS-07 trace正本統合
@@ -334,6 +410,8 @@ Repository上には次を実装済み。
 - ID-only identity shell pressure
 - thin Canonical Business meaning pressure
 - thin Canonical handoff relation pressure
+- multi-Application pressure
+- uncertainty preservation pressure
 - PR pathに連動したGitHub Actions workflow
 
 GitHub-hosted Actionsは現時点まで`runner_id=0` / `steps=[]`でcheckout前に終了している。
@@ -354,6 +432,9 @@ Remote Desktop経由のlocal executionも試みたが、オンライン端末が
 6. manual workをfake Functionなしで保持
 7. Pattern-owned meaningを重複しない
 8. handoffをruntime Workflow化せずsemantic relationとして保持
-9. identity-onlyとthin meaningのどちらがproduction Canonical contractとして最小十分かをReference Evidenceから説明できる
+9. one Procedure -> multiple Applicationsを単一owner fieldなしで保持
+10. trigger / actor uncertaintyをlosslessに保持し、uncertainty changeをBusiness semantic diffとして観測
+11. actor uncertaintyをAuthorization meaningへ混ぜない
+12. identity-onlyとthin meaningのどちらがproduction Canonical contractとして最小十分かをReference Evidenceから説明できる
 
 この完了後に初めてADR候補を作る。
