@@ -52,6 +52,11 @@ type laneSummary struct {
 	Passed                      bool
 }
 
+type expectedCheck struct {
+	Name    string
+	Command []string
+}
+
 func main() {
 	finalPath := flag.String("final", "", "#387 final convergence JSON file")
 	artifactDir := flag.String("artifact-dir", "", "same-run child Evidence artifact directory")
@@ -270,6 +275,9 @@ func verifyChild(name string, obj map[string]any, revision string, broad bool) e
 }
 
 func verifyRepositoryChild(obj map[string]any, broad bool) error {
+	if err := requireStringEquals(obj, "workspace", "reference/workspace"); err != nil {
+		return err
+	}
 	validation, err := requireObject(obj, "workspaceValidation")
 	if err != nil {
 		return err
@@ -290,15 +298,39 @@ func verifyRepositoryChild(obj map[string]any, broad bool) error {
 	if childBroad != broad {
 		return fmt.Errorf("#310 broadRequested=%v want final=%v", childBroad, broad)
 	}
-	required := []string{"final-ui-less-scenario", "external-evidence-intake", "repository-evidence-source-boundary"}
+	required := []expectedCheck{
+		{
+			Name:    "final-ui-less-scenario",
+			Command: []string{"go", "test", "./internal/driver", "-run", "^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$", "-count=1"},
+		},
+		{
+			Name: "external-evidence-intake",
+			Command: []string{
+				"go", "test",
+				"./internal/database/externalqueryevidence",
+				"./tools/reference-external-query-evidence",
+				"-count=1",
+			},
+		},
+		{
+			Name:    "repository-evidence-source-boundary",
+			Command: []string{"go", "test", "./tools/internal/repositoryevidence", "-count=1"},
+		},
+	}
 	if broad {
-		required = append(required, "repository-wide-go-test")
+		required = append(required, expectedCheck{
+			Name:    "repository-wide-go-test",
+			Command: []string{"go", "test", "./..."},
+		})
 	}
 	return requireExactPassedChecks(obj, required)
 }
 
 func verifyGeneratedChild(obj map[string]any) error {
-	return requireExactPassedChecks(obj, []string{"world-plugin-lock-golden", "durable-run-golden"})
+	return requireExactPassedChecks(obj, []expectedCheck{
+		{Name: "world-plugin-lock-golden", Command: []string{"go", "run", "./tools/reference-golden"}},
+		{Name: "durable-run-golden", Command: []string{"go", "run", "./tools/reference-durable-run-golden"}},
+	})
 }
 
 func verifyPostgresChild(obj map[string]any) error {
@@ -392,7 +424,7 @@ func verifyPostgresChild(obj map[string]any) error {
 	return nil
 }
 
-func requireExactPassedChecks(obj map[string]any, required []string) error {
+func requireExactPassedChecks(obj map[string]any, required []expectedCheck) error {
 	items, err := requireArray(obj, "checks")
 	if err != nil {
 		return err
@@ -400,12 +432,12 @@ func requireExactPassedChecks(obj map[string]any, required []string) error {
 	if len(items) != len(required) {
 		return fmt.Errorf("checks=%d want=%d", len(items), len(required))
 	}
-	expected := make(map[string]struct{}, len(required))
-	for _, name := range required {
-		if _, duplicate := expected[name]; duplicate {
-			return fmt.Errorf("required check=%qが重複しています", name)
+	expected := make(map[string]expectedCheck, len(required))
+	for _, check := range required {
+		if _, duplicate := expected[check.Name]; duplicate {
+			return fmt.Errorf("required check=%qが重複しています", check.Name)
 		}
-		expected[name] = struct{}{}
+		expected[check.Name] = check
 	}
 	seen := make(map[string]struct{}, len(required))
 	for i, raw := range items {
@@ -417,11 +449,15 @@ func requireExactPassedChecks(obj map[string]any, required []string) error {
 		if err != nil {
 			return err
 		}
-		if _, ok := expected[name]; !ok {
+		want, ok := expected[name]
+		if !ok {
 			return fmt.Errorf("unexpected check=%qがあります", name)
 		}
 		if _, duplicate := seen[name]; duplicate {
 			return fmt.Errorf("check=%qが重複しています", name)
+		}
+		if err := requireStringArrayEquals(check, "command", want.Command); err != nil {
+			return fmt.Errorf("check=%q command: %w", name, err)
 		}
 		okPassed, err := requireBool(check, "passed")
 		if err != nil {
@@ -432,9 +468,9 @@ func requireExactPassedChecks(obj map[string]any, required []string) error {
 		}
 		seen[name] = struct{}{}
 	}
-	for _, name := range required {
-		if _, exists := seen[name]; !exists {
-			return fmt.Errorf("required check=%qがありません", name)
+	for _, check := range required {
+		if _, exists := seen[check.Name]; !exists {
+			return fmt.Errorf("required check=%qがありません", check.Name)
 		}
 	}
 	return nil
