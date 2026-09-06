@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"tei/internal/application"
 	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/workspace"
@@ -82,10 +83,13 @@ func TestOrderEntryReferenceExercisesSocialSystemBoundaryWithoutSyntheticSecondA
 	}
 }
 
-func databaseRequirementByAlias(requirements []struct {
-	Alias             interface{} // compile-time guard: intentionally unused helper shape must not be used
-}, alias string) (struct{}, bool) {
-	panic("unreachable")
+func databaseRequirementByAlias(requirements []application.DatabaseRequirement, alias string) (application.DatabaseRequirement, bool) {
+	for _, item := range requirements {
+		if string(item.Alias) == alias {
+			return item, true
+		}
+	}
+	return application.DatabaseRequirement{}, false
 }
 
 func databaseByID(world ir.World, id string) (database.Database, bool) {
