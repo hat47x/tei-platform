@@ -23,6 +23,9 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_HANDOFF_CANONICAL_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_MULTI_APPLICATION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_UNCERTAINTY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_REALIZATION_SUBTRACTION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_STEP_IDENTITY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`
 
 ## Lane境界
 
@@ -135,82 +138,60 @@ explicit referenceはexact identityでのみ解決し、名称類似から補完
 ## Acceptance / Evidence pressure
 
 ### A1 exact reference resolution
-
 Application Pattern / direct semantic referenceをnormalized Worldでexact解決する。
 
 ### A2 no fake Function
-
 manual / external Business ActionはApplication Pattern / Capabilityなしでも正常状態とする。
 
 ### A3 Pattern-owned meaning is derived
-
 Data / Relation / Query / Capability / DatasourceをBusiness Procedureへ二重記述しない。
 
 ### A4 Procedure-side explicit refs
-
 Patternから導けないValidation等だけをexplicit refとして保持する。
 
 ### A5 intentional access conflict
-
 read-only datasourceへのcandidate write要求をarchitecture-policy diagnosticとして検出する。
 
 ### A6 baseline clean
-
 accepted baselineでは同diagnosticを出さない。
 
 ### A7 fail-closed decode
-
 未知field / unsupported schemaVersion / stale targetを黙って受理しない。
 
 ### A8 Business authoring residual
-
 purpose / trigger / actor / manual actionをPattern-derived projectionから再生成可能とみなさない。
 
 ### A9 Business-only change separation
-
 Business wording changeはBusiness-side diffとして現れ、Pattern-owned Application meaningを偽って変えない。
 
 ### A10 multiple Procedure -> same Pattern
-
 同じPatternを異なるBusiness文脈から利用できる。
 
 ### A11 Reference-local stable key
-
 review / handoff targetをfile pathから分離する。
 
 ### A12 file move invariance
-
 pure file moveではProcedure key / handoff endpoint / thin Business meaningを変えない。
 
 ### A13 logical rename fail closed
-
 Procedure key rename後のstale linkを名称類似で補修しない。
 
 ### A14 review continuity
-
 同じProcedure keyを保つcontent changeではreview target continuityを保つ。
 
 ### A15 approval is snapshot-bound
-
 approvalはrevision / fingerprintへ束縛し、新sourceへ暗黙carry-forwardしない。
 
 ### A16 file-native accepted source pressure
-
 forward-compatible `procedures/` source rootをtemp Workspaceで読み、ManagedFilesへ載せながら既存`ir.World`を変えない経路を確認する。
 
 ### A17 Shared Acceptance target pressure
-
 Preview / Reject / stale detection / Accept / reloadをReference-local key + fingerprintで圧力試験する。
 
 ### A18 identity shell pressure
-
-ID-onlyのpath-independent targetをtest-onlyで確認する。
-
-ただしID-onlyを最小十分contractとはみなさない。
+ID-onlyのpath-independent targetをtest-onlyで確認する。ただしID-onlyを最小十分contractとはみなさない。
 
 ### A19 thin Canonical Business meaning pressure
-
-次のBusiness residual meaningをtest-onlyでnormalized modelへ投影する。
 
 ```text
 Procedure
@@ -230,75 +211,73 @@ Step
 Business-only accepted changeがidentity不変でもmeaning changeになることを確認する。
 
 ### A20 Pattern-owned meaning non-duplication in Canonical candidate
-
 thin Business meaning側でもPattern-owned Data / Relation / Query / Capability / Datasourceをコピーしない。
 
 ### A21 manual action in Canonical candidate
-
 BP-04をfake Function / Capabilityなしでthin Business meaningへ保持する。
 
 ### A22 thin handoff relation pressure
-
-handoffをProcedure bodyのruntime control flowではなく、
 
 ```text
 Procedure/Step -> Procedure/Step + condition
 ```
 
-のBusiness semantic relationとしてtest-only正規化する。
+handoffをProcedure bodyのruntime control flowではなくBusiness semantic relationとしてtest-only正規化する。
 
 ### A23 handoff condition is semantic change
-
 from/toが同じでもcondition変更をBusiness meaning changeとして観測する。
 
 ### A24 no runtime workflow creep
-
-thin Procedure / Step / handoff probeへretry / timer / queue / saga / scheduler / runtime stateを入れないことをfield guardで固定する。
+thin Procedure / Step / handoff probeへretry / timer / queue / saga / scheduler / runtime stateを入れない。
 
 ### A25 one Procedure can cross Applications
-
-一つのBusiness Procedureがqualified Application Pattern identityを使って2つ以上のApplicationを参照できることをtest-onlyで確認する。
-
-thin Canonical候補へ必須の単一`Application` owner fieldを置かない。
+一つのBusiness Procedureがqualified Application Pattern identityを使って2つ以上のApplicationを参照できる。thin Canonical候補へ必須の単一`Application` owner fieldを置かない。
 
 ### A26 multi-Application pressure is realization-independent
-
-multi-Application pressure用の第二ApplicationはPattern identityに必要な最小fixtureとし、無関係なDatabase / Contract / datasource / provider readinessへ依存させない。
-
-Business Procedureの上流意味検証をGate B Evidenceへ結合しない。
+第二ApplicationはPattern identityに必要な最小fixtureとし、無関係なDatabase / Contract / datasource / provider readinessへ依存させない。
 
 ### A27 preserve epistemic status
-
-trigger / actorの`status`をthin normalized Business meaningでもlosslessに保持する。
-
-現在Referenceの`candidate`をnormalization / Projection都合でaccepted factへ丸めない。
+trigger / actorの`status`をthin normalized Business meaningでもlosslessに保持し、`candidate`をaccepted factへ丸めない。
 
 ### A28 uncertainty change is Business semantic change
-
-trigger / actorの`candidate -> unresolved`等、確定度の変更はProcedure identityやPattern refsが同一でもBusiness meaning changeとして観測可能にする。
-
-Business-only semantic diff / impactがこの変更を見失わないことをPressureとする。
+trigger / actorの`candidate -> unresolved`等をProcedure identityやPattern refsが同一でもBusiness meaning changeとして観測可能にする。
 
 ### A29 actor uncertainty != Authorization change
-
 Business actorのlabel / uncertainty変更をAuthorization Role / Principal / Permission / Credential / Authority policy変更へ暗黙変換しない。
 
-業務上の担当文脈とsecurity realizationの境界を維持する。
-
 ### A30 do not freeze uncertainty vocabulary prematurely
+current Referenceだけを根拠にstatus vocabulary全体やmissing / unknown statusのvalidation severityをproduction Core contractへ固定しない。
 
-current Referenceに`candidate`が現れることだけを根拠に、status vocabulary全体やmissing / unknown statusのvalidation severityをproduction Core contractへ固定しない。
+### A31 realization subtraction pressure
+thin Canonical candidateから`step.realization`を除いたprojectionをtest-onlyで比較する。
 
-まずReference Evidenceでlossless preservationを確認する。
+`realization`を削ることでBusiness Action wording、explicit semantic refs、manual actionが失われないかを確認する。
+
+### A32 realization-only label change need not be Canonical change
+Business Action / refsが同一で`realization` review labelだけが変わった場合、subtracted Canonical candidateを変化させない。
+
+current複合labelをproduction Core enumへ先回りして固定しない。
+
+### A33 manual action survives realization subtraction
+BP-04は`realization` fieldなしでもBusiness Actionとして残り、fake Application Pattern / Capabilityを要求しない。
+
+### A34 Step body meaning can be ID-free
+Procedure body projectionからStep IDを除いてもordered Business Actionとexplicit refsを保持できるかtest-onlyで確認する。
+
+Reference-local Step key renameだけをbody semantic changeへ自動昇格しない。
+
+### A35 handoff still requires exact Step addressability
+body meaningがStep IDなしで成立しても、handoff relationのstale Step keyはfail closedする。
+
+位置や名称類似からendpointを補完しない。
+
+### A36 Step addressability != runtime workflow identity
+handoff / reviewのstable endpointが必要でも、Runtime Execution / Instance / Token / State identityをBusiness Procedureへ導入しない。
 
 ## Identity pressureの更新
 
-前段では、review / handoffのために安定したauthoring-level keyが有用であり、Canonical Procedure identityはまだ不要と判断した。
-
-さらにfile-native source / Acceptance / formal architectureを照合した結果、次へ更新する。
-
 ```text
-Reference-local stable key
+Reference-local stable Procedure key
   useful / required for review + handoff
 
 ID-only Canonical shell
@@ -306,10 +285,15 @@ ID-only Canonical shell
   but insufficient as standalone accepted Business meaning
 
 thin normalized Business meaning
-  now the primary comparison target
+  primary comparison target
+
+Step local key
+  body meaningとexternal addressabilityを分離して再評価
 ```
 
-理由は、同じProcedure IDのBusiness-only accepted changeをID-only shellではCanonical semantic diffとして観測できないためである。
+同じProcedure IDのBusiness-only accepted changeをID-only shellではCanonical semantic diffとして観測できない。
+
+一方、Step IDについてはordered body meaningそのものとhandoff / review addressabilityの必要性を分離して検証する。
 
 ## Canonical meaning pressure
 
@@ -323,40 +307,26 @@ Authoring
 
 を基線とする。
 
-三視点が同じaccepted meaningを検査するなら、Business-only accepted changeをCanonical側がIDしか保持しない状態は不十分な可能性が高い。
-
-したがって現在の第一比較は次である。
+現在の比較は次へ細分化した。
 
 ```text
 A: identity-only
-vs
-D: identity + thin Business residual meaning + thin handoff relation
+D1: identity + thin Business residual meaning + handoff
+D2: D1 - realization review label
+D3: D2 with Step body identity separated from Step addressability
 ```
 
-production `ir.World`へはまだどちらも統合しない。
+production `ir.World`へはいずれもまだ統合しない。
 
 ## multi-Application pressure
 
-Business Procedureを単一Applicationの子要素として固定しない。
-
-Applicationとの関係はqualified Application Pattern refs等の明示参照から形成する。
-
-これにより、一つのBusiness Procedureが次を同時に含める余地を残す。
-
-```text
-Application Aの操作
-Application Bの操作
-manual work
-external organization / physical work
-```
+Business Procedureを単一Applicationの子要素として固定しない。Applicationとの関係はqualified Application Pattern refs等から形成し、一つのProcedureが複数Application操作、manual work、external workを同時に含める余地を残す。
 
 この圧力はDatabase / Provider realizationとは独立して確認する。
 
 ## uncertainty preservation pressure
 
 P11「分からない状態を、分かったことにしない」をBusiness Procedureにも適用する。
-
-thin candidateがtrigger / actorを保持するなら、少なくとも現在のReferenceでは次を別々にlosslessに保つ必要がある。
 
 ```text
 trigger
@@ -368,25 +338,37 @@ actor
   business/job label
 ```
 
-statusはUI decorationではなく、statementの確定度としてBusiness meaning差へ参加する。
+statusはstatementの確定度としてBusiness meaning差へ参加する。ただし汎用Uncertainty framework、certainty lattice、approval state machineは導入しない。
 
-ただし汎用Uncertainty framework、certainty lattice、approval state machineは導入しない。
+## realization subtraction pressure
+
+current `realization`はReference authoring / reviewでは有用だが、`manual-unresolved`のようにrealization axisとepistemic axisを混ぜる値もある。
+
+checkerはFunction存在をこの文字列から推論していない。
+
+したがってproduction候補からはいったんsubtractし、Business Action + explicit refsで必要意味を保てるかを先に確認する。
+
+## Step identity pressure
+
+ordered Procedure bodyはStep IDを必須としない可能性がある。
+
+一方、handoff / review / cross-revision linkにはstable exact endpointが必要である。
+
+この二つを同じidentity concernとして固定せず、Source-local keyで十分か、durable semantic addressが必要かをReference Evidenceから決める。
 
 ## 000039 / Shared Acceptanceとの境界
 
-`ISSUE-000039`は共通revision-aware semantic diff / dependency propagationを将来所有する。
+`ISSUE-000039`は共通revision-aware semantic diff / dependency propagationを将来所有する。本Issueは共通change graphを先取り実装しない。
 
-本Issueは共通change graphを先取り実装しない。
-
-ただし000039がBusiness changeを見失わないために必要なmeaning粒度をReferenceで明らかにする。
-
-Shared Acceptanceについてもproduction APIを完成させず、target resolution / stale rejection / reload invariantsだけをpressure testする。
+ただし000039がBusiness changeを見失わないために必要なmeaning粒度をReferenceで明らかにする。Shared Acceptanceについてもproduction APIを完成させず、target resolution / stale rejection / reload invariantsだけをpressure testする。
 
 ## 非対象
 
-- production Canonical Procedure schemaの採用確定
+- production Canonical Procedure / Handoff schemaの採用確定
 - Workflow Engine / retry / timer / queue / saga / scheduler
 - actor -> Authorization Role自動mapping
+- `realization`のproduction enum固定
+- Step durable Canonical identityの採用確定
 - 汎用Uncertainty framework / certainty lattice / approval state machine
 - Business Lifecycle 000038のstate transition実装
 - 000039共通change graph実装
@@ -400,23 +382,22 @@ Repository上には次を実装済み。
 - primary / follow-up Procedure fixture
 - Reference set / handoff
 - intentional access-conflict probe
-- cross-view checker
-- strict decoder
+- cross-view checker / strict decoder
 - Pattern-owned meaning derivation
 - authoring residual / Business-only change tests
 - review / handoff identity pressure
 - file-native accepted source pressure
 - Shared Acceptance target pressure
 - ID-only identity shell pressure
-- thin Canonical Business meaning pressure
-- thin Canonical handoff relation pressure
+- thin Canonical Business meaning / handoff relation pressure
 - multi-Application pressure
 - uncertainty preservation pressure
+- realization subtraction pressure
+- Step identity / addressability pressure
+- pre-ADR Canonical contract audit
 - PR pathに連動したGitHub Actions workflow
 
-GitHub-hosted Actionsは現時点まで`runner_id=0` / `steps=[]`でcheckout前に終了している。
-
-Remote Desktop経由のlocal executionも試みたが、オンライン端末が接続されていなかった。
+GitHub-hosted Actionsは現時点まで`runner_id=0` / `steps=[]`でcheckout前に終了している。Remote Desktop経由のlocal executionもオンライン端末不在で実行できなかった。
 
 したがって新しいGo testsはRepositoryへ実装済みだが、actual `go test` greenとはまだ主張しない。
 
@@ -435,6 +416,9 @@ Remote Desktop経由のlocal executionも試みたが、オンライン端末が
 9. one Procedure -> multiple Applicationsを単一owner fieldなしで保持
 10. trigger / actor uncertaintyをlosslessに保持し、uncertainty changeをBusiness semantic diffとして観測
 11. actor uncertaintyをAuthorization meaningへ混ぜない
-12. identity-onlyとthin meaningのどちらがproduction Canonical contractとして最小十分かをReference Evidenceから説明できる
+12. `realization`をsubtractしても必要Business meaningが保てるかactual Evidenceで確認
+13. Step body meaningとhandoff/review addressabilityを分離できるかactual Evidenceで確認
+14. productionでdurable Step identityが必要かSource-local keyで十分か説明できる
+15. identity-only / thin meaning / realization-subtracted candidateのどれが最小十分かReference Evidenceから説明できる
 
 この完了後に初めてADR候補を作る。
