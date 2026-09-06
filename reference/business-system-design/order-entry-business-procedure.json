@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "derived-reference-fixture",
+  "canonical": false,
+  "application": "order_entry",
+  "procedure": {
+    "id": "order-entry.order-handling",
+    "identityStatus": "experiment-local",
+    "purpose": "inspect and prepare an order, submit it when acceptable, and keep application result separate from observed external state",
+    "trigger": {
+      "status": "candidate",
+      "text": "an order-handling need enters the sales work context"
+    },
+    "actor": {
+      "status": "candidate",
+      "label": "sales operator"
+    }
+  },
+  "steps": [
+    {
+      "id": "BP-00",
+      "businessAction": "determine which order requires attention",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.recent_orders"
+      ]
+    },
+    {
+      "id": "BP-01",
+      "businessAction": "inspect or prepare the selected order",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.order_record"
+      ],
+      "data": [
+        "sales.order"
+      ]
+    },
+    {
+      "id": "BP-02",
+      "businessAction": "confirm the customer associated with the order",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.customer_reference"
+      ],
+      "relations": [
+        "sales.order.customer"
+      ],
+      "applicationAccess": [
+        {
+          "datasource": "master",
+          "required": "read"
+        }
+      ]
+    },
+    {
+      "id": "BP-03",
+      "businessAction": "review the items and quantities represented by the order lines",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.order_lines"
+      ],
+      "relations": [
+        "sales.order.lines"
+      ],
+      "validations": [
+        "sales.order_line.quantity_positive",
+        "sales.order.lines.line_number_unique"
+      ]
+    },
+    {
+      "id": "BP-04",
+      "businessAction": "decide whether the order is ready to submit in the surrounding business context",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "BP-05",
+      "businessAction": "establish whether accepted deterministic order constraints are satisfied",
+      "realization": "validation-support",
+      "validations": [
+        "sales.order_line.quantity_positive",
+        "sales.order.lines.line_number_unique"
+      ]
+    },
+    {
+      "id": "BP-06",
+      "businessAction": "determine whether the authenticated subject may execute the submit application action",
+      "realization": "security-boundary"
+    },
+    {
+      "id": "BP-07",
+      "businessAction": "request the accepted application command",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.submit_order"
+      ],
+      "capabilities": [
+        "sales.order.submit"
+      ]
+    },
+    {
+      "id": "BP-08",
+      "businessAction": "verify relevant external state when business continuation depends on actual state",
+      "realization": "observation-boundary"
+    },
+    {
+      "id": "BP-09",
+      "businessAction": "continue the surrounding business work after the application interaction",
+      "realization": "manual-external-unresolved"
+    }
+  ]
+}
