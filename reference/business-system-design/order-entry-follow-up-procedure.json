@@ -1,6 +1,6 @@
 {
   "schemaVersion": "business-procedure-reference-v0",
-  "artifactRole": "derived-reference-fixture",
+  "artifactRole": "reference-authoring-fixture",
   "canonical": false,
   "application": "order_entry",
   "procedure": {
