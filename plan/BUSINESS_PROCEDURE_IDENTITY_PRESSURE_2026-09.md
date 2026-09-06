@@ -121,6 +121,57 @@ Reference
 
 Business Procedure authoring artifactそのもののcross-revision identityは、これでは解決していない。
 
+## Pressure 5: Business authoring residualはPatternから再生成できるか
+
+### 5A manual / external residual
+
+primary fixtureにはApplication Patternを持たないBP-04 / BP-09がある。
+
+```text
+BP-04
+  decide whether the order is ready in surrounding business context
+  realization = manual-unresolved
+
+BP-09
+  continue surrounding business work
+  realization = manual-external-unresolved
+```
+
+これらはauthoring fixtureには存在するが、`businessActionPatternMeaningRows`には存在しない。
+
+### 観測
+
+Pattern-owned meaningだけからBusiness Procedureを再構成すると、manual / external / unresolved Business Actionを失う。
+
+したがってBusiness Procedure authoring fixtureはApplication Patternから再生成可能なderived cacheではない。
+
+この結論はCanonical Procedureを要求するものではない。少なくともauthoring sourceとしてBusiness側のhuman residual meaningを保持する必要がある、という境界を固定する。
+
+### 5B Business wordingだけを変更する
+
+BP-04のBusiness Action文言だけを変更し、Pattern referenceやApplication / Semantic Worldを変えない。
+
+期待する差分:
+
+```text
+Business-side Projection
+  changed
+
+Pattern-derived Application meaning
+  unchanged
+
+cross-view diagnostic
+  unchanged
+```
+
+### 観測
+
+Business authoringの文言変更をApplication semantic changeへ偽装しない一方、Business側では差分として保持できる。
+
+これはBusiness視点がFunction/Data視点の単なる表示ではなく、独自のreview対象であることを示す。
+
+purpose / trigger / actor candidateも同じくauthoring fixtureにしかない意味として保持する。
+
 ## 000039との境界
 
 `plan/issue/000039-business-change-rehearsal.md`は、将来の共通change analysisについて次を既に完了条件としている。
@@ -138,6 +189,7 @@ Source locatorだけ変更
 - existing Source IndexのArtifact / Subject分離がBusiness Procedure圧力でも有効か
 - Pattern subjectへのreverse referenceが可能か
 - fingerprintで解けないsemantic continuityがどこに残るか
+- Business-only authoring changeとApplication semantic changeを混同しないこと
 
 Validation / Bindingを含むrevision-aware impact、Scenario propagationは000039の責務に残す。
 
@@ -152,12 +204,16 @@ Validation / Bindingを含むrevision-aware impact、Scenario propagationは0000
 - Matrix / diagnosticはderived Projectionとする
 - manual / external Business Actionへfake Function / Capabilityを要求しない
 - Source Index Artifact fingerprintをsemantic Procedure identityとして流用しない
+- Business-only wording changeをApplication semantic changeとして扱わない
 
 ### 残るidentity問題
 
-pure file moveはArtifact fingerprintで補助でき、Pattern側のreverse impactは既存Pattern Subjectで辿れる。
+pure file moveはArtifact fingerprintで補助でき、Pattern側のreverse impactは既存Pattern Subjectで辿れる。manual residualがauthoring sourceに必要なことも確認できた。
 
-残る圧力は、**内容が変わりつつ同じBusiness Procedure authoring artifactとしてreview historyを継続したい場合**と、**Procedure間handoff / reuseがBusiness semantic identityを本当に要求する場合**である。
+残る中心圧力は次の二つへ絞られる。
+
+1. **内容が変わりつつ同じBusiness Procedure authoring artifactとしてreview / approval historyを継続する必要があるか**
+2. **Procedure間handoff / reuseがBusiness semantic identityを本当に要求するか**
 
 候補は混同しない。
 
@@ -172,11 +228,9 @@ A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の�
 
 ## 次のPressure
 
-1. instruction wording changeとsemantic impactの区別
-2. Pattern accepted source change時のreverse impact
-3. manual residual explanationの再生成耐性
-4. 内容変更＋file moveを越えるreview anchor
-5. 二つのProcedure間handoffでstable semantic Procedure identityが本当に必要になるか
+1. 内容変更＋file moveを越えるreview / approval anchor
+2. Pattern accepted source change時のreverse impactを000039へ接続する最小Evidence
+3. 二つのProcedure間handoffでstable semantic Procedure identityが本当に必要になるか
 
 既存Subject / Source Index / revision provenanceでは不足する反復Evidenceが得られた場合だけ、Canonical Procedureの最小contractをADR候補として再検討する。
 
@@ -194,5 +248,8 @@ go test ./tools/reference-business-procedure-check
 - `TestSourceIndexArtifactFingerprintSurvivesPureFileMove`
 - `TestSourceIndexArtifactFingerprintIsContentIdentityNotSemanticIdentity`
 - `TestCanonicalPatternSubjectRemainsPathIndependentAcrossProcedureArtifacts`
+- `TestPatternDerivedProjectionCannotReplaceManualBusinessAuthoring`
+- `TestBusinessWordingChangeDoesNotPretendApplicationMeaningChanged`
+- `TestPurposeAndActorCandidatesRemainAuthoringMeaning`
 
 actual Repository runnerによるgreen確認まではEvidence in progressとする。
