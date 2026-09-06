@@ -15,9 +15,9 @@ import (
 const auditNature = "gate-b-readiness-artifact-audit"
 
 var laneFiles = map[string]string{
-	"deterministic-repository":            "deterministic-repository.json",
+	"deterministic-repository":           "deterministic-repository.json",
 	"generated-artifact-reproducibility": "generated-artifact-reproducibility.json",
-	"real-postgres-ephemeral-fixture":     "real-postgres-ephemeral-fixture.json",
+	"real-postgres-ephemeral-fixture":    "real-postgres-ephemeral-fixture.json",
 }
 
 var forbiddenEvidenceKeys = map[string]struct{}{
@@ -294,14 +294,29 @@ func verifyRepositoryChild(obj map[string]any, broad bool) error {
 	if broad {
 		required = append(required, "repository-wide-go-test")
 	}
-	return requirePassedChecks(obj, required)
+	return requireExactPassedChecks(obj, required)
 }
 
 func verifyGeneratedChild(obj map[string]any) error {
-	return requirePassedChecks(obj, []string{"world-plugin-lock-golden", "durable-run-golden"})
+	return requireExactPassedChecks(obj, []string{"world-plugin-lock-golden", "durable-run-golden"})
 }
 
 func verifyPostgresChild(obj map[string]any) error {
+	for _, identity := range []struct {
+		key  string
+		want string
+	}{
+		{key: "pattern", want: "order_entry.order_lines"},
+		{key: "relation", want: "sales.order.lines"},
+		{key: "environment", want: "development"},
+		{key: "databaseInstance", want: "sales_core.dev"},
+		{key: "executorCapability", want: "database.query.postgres"},
+		{key: "contractQueryTarget", want: "find_by_order"},
+	} {
+		if err := requireStringEquals(obj, identity.key, identity.want); err != nil {
+			return err
+		}
+	}
 	for _, key := range []string{"preexistingFixtureProtected", "fixtureOwnedByTool", "executionErrorObserved", "semanticMappingApplied"} {
 		if err := requireBoolEquals(obj, key, true); err != nil {
 			return err
@@ -362,31 +377,37 @@ func verifyPostgresChild(obj map[string]any) error {
 		return err
 	}
 
-	params, err := requireStringArray(obj, "parameterNames")
-	if err != nil {
+	if err := requireStringArrayEquals(obj, "parameterNames", []string{"order_id"}); err != nil {
 		return err
 	}
-	if len(params) != 1 || params[0] != "order_id" {
-		return fmt.Errorf("parameterNames=%v want=[order_id]", params)
-	}
-	attrs, err := requireStringArray(obj, "semanticAttributes")
-	if err != nil {
+	if err := requireStringArrayEquals(obj, "semanticAttributes", []string{
+		"sales.order_line.item_code",
+		"sales.order_line.line_number",
+		"sales.order_line.order_line_id",
+		"sales.order_line.quantity",
+		"sales.order_line.unit_price",
+	}); err != nil {
 		return err
-	}
-	for _, attr := range attrs {
-		if attr == "sales.order_line.order_id" {
-			return fmt.Errorf("support column order_idがSemantic attributeとして露出しています")
-		}
 	}
 	return nil
 }
 
-func requirePassedChecks(obj map[string]any, required []string) error {
+func requireExactPassedChecks(obj map[string]any, required []string) error {
 	items, err := requireArray(obj, "checks")
 	if err != nil {
 		return err
 	}
-	passed := map[string]bool{}
+	if len(items) != len(required) {
+		return fmt.Errorf("checks=%d want=%d", len(items), len(required))
+	}
+	expected := make(map[string]struct{}, len(required))
+	for _, name := range required {
+		if _, duplicate := expected[name]; duplicate {
+			return fmt.Errorf("required check=%qが重複しています", name)
+		}
+		expected[name] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(required))
 	for i, raw := range items {
 		check, ok := raw.(map[string]any)
 		if !ok {
@@ -396,19 +417,24 @@ func requirePassedChecks(obj map[string]any, required []string) error {
 		if err != nil {
 			return err
 		}
+		if _, ok := expected[name]; !ok {
+			return fmt.Errorf("unexpected check=%qがあります", name)
+		}
+		if _, duplicate := seen[name]; duplicate {
+			return fmt.Errorf("check=%qが重複しています", name)
+		}
 		okPassed, err := requireBool(check, "passed")
 		if err != nil {
 			return err
 		}
-		if _, duplicate := passed[name]; duplicate {
-			return fmt.Errorf("check=%qが重複しています", name)
+		if !okPassed {
+			return fmt.Errorf("required check=%qが成功していません", name)
 		}
-		passed[name] = okPassed
+		seen[name] = struct{}{}
 	}
 	for _, name := range required {
-		ok, exists := passed[name]
-		if !exists || !ok {
-			return fmt.Errorf("required check=%qが成功していません", name)
+		if _, exists := seen[name]; !exists {
+			return fmt.Errorf("required check=%qがありません", name)
 		}
 	}
 	return nil
@@ -640,4 +666,20 @@ func requireStringArray(obj map[string]any, key string) ([]string, error) {
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+func requireStringArrayEquals(obj map[string]any, key string, want []string) error {
+	got, err := requireStringArray(obj, key)
+	if err != nil {
+		return err
+	}
+	if len(got) != len(want) {
+		return fmt.Errorf("%s=%v want=%v", key, got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			return fmt.Errorf("%s=%v want=%v", key, got, want)
+		}
+	}
+	return nil
 }
