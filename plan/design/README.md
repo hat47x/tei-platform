@@ -5,12 +5,43 @@
 - 何を行うかと完了条件: [`../issue/`](../issue/README.md)
 - なぜその方針を採ったか: [`../adr/`](../adr/)
 - 何から進め、何をEvidenceとするか: [`../README.md`](../README.md)
+- 実装構造と技術境界のcurrent説明: [`../../docs/architecture.md`](../../docs/architecture.md)
+- 実装・Evidenceの現在地: [`../../docs/status.md`](../../docs/status.md)
+- 画面モック: [`mockups/`](mockups/README.md)
 
 設計文書はIssueとADRの代わりではありません。作業の進行はIssue、採用した判断はADRが正本です。ここに置くのは、その二つだけでは分断される機能単位の設計本文です。小さい機能では新しい文書を作らず、Issue本文へ書きます。
 
+Architecture文書の第二正本にもしません。`docs/architecture.md`が層と境界の全体像を示し、ここでは一機能の内部設計を扱います。
+
+## 体裁
+
+新規追加時は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に従い、冒頭で役割、正本との関係、対象範囲、現在の結論、根拠、非主張範囲を明らかにします。項目を埋めること自体を目的にはしません。
+
+状態は次のいずれかを冒頭に書きます。
+
+- `実装済みの現行基線` — 実装があり、Repository内で再現できる範囲を記述したもの
+- `評価待ち` — まだ採用しておらず、実装やReference変更の根拠にしないもの
+
 ## 一覧
 
-- [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md): Application Patternの設計・実装基線（[ISSUE-000005](../issue/000005-application-pattern-reference.md) / ADR-0017 / ADR-0018）
-- [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md): 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計（[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md) / ADR-0019）
-- [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md): CapabilityのBusiness Result / named OutcomeとExecution Errorを分離するv1設計（[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / ADR-0020）
-- [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md): 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（[ISSUE-000038](../issue/000038-business-lifecycle-semantics.md) / ADR-0024 / ADR-0025、**評価待ち**）
+| 文書 | 対象 | 状態 |
+| --- | --- | --- |
+| [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | Application Patternの設計・実装基線（[ISSUE-000005](../issue/000005-application-pattern-reference.md) / ADR-0017 / ADR-0018） | 実装済みの現行基線 |
+| [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計（[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md) / ADR-0019） | 実装済みの現行基線 |
+| [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | CapabilityのBusiness Result / named OutcomeとExecution Errorの分離（[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / ADR-0020） | 実装済みの現行基線 |
+| [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界（[ISSUE-000006](../issue/000006-application-driver-vertical-slice.md) / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） | 実装済みの現行基線 |
+| [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | Contract Query signature、SQL realization、executor Binding、provider runtimeの四層（[ISSUE-000018](../issue/000018-database-contract-query-execution.md)〜[ISSUE-000021](../issue/000021-oracle-contract-query-sql-runner.md) / ADR-0007 / ADR-0021） | 実装済みの現行基線 |
+| [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（[ISSUE-000038](../issue/000038-business-lifecycle-semantics.md) / ADR-0024 / ADR-0025） | **評価待ち** |
+
+## まだ設計文書を置いていない領域
+
+実装とADR、Conformanceは存在しますが、機能単位の設計本文をまだ置いていない領域です。必要になった時点で追加し、それまでは各ADRとConformanceを正本とします。
+
+| 領域 | 現在の正本 |
+| --- | --- |
+| Source-to-Canonical Traceability / Source Index | [ADR-0004](../adr/0004-source-to-canonical-traceability.md)、[`docs/conformance/source-traceability-m0.23.md`](../../docs/conformance/source-traceability-m0.23.md) |
+| Database物理schemaのDesired / Actual / Diff / Unresolved、Advanced Index、Migration rendering | ADR-0008〜ADR-0015、`docs/conformance/`のm0.26〜m0.35 |
+| Plugin / Process Runtime、Permission、Resource Broker、fencing / takeover | [ADR-0005](../adr/0005-supervisor-and-runtime-fencing-authority.md)、[ADR-0006](../adr/0006-process-command-and-argv.md)、`docs/conformance/`のm0.22.1 / m0.24 / m0.25 |
+| Target / Presentation境界 | Gate C前のため未確定。[Gate C Evidence契約](../GATE_C_EVIDENCE_CONTRACT.md)と[ISSUE-000026](../issue/000026-target-capability-execution-profile-boundary.md) |
+
+Gate前に確定していない領域へ、先回りして設計文書を作りません。
