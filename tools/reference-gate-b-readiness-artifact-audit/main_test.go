@@ -133,6 +133,53 @@ func TestAuditRejectsUnexpectedRepositoryCheck(t *testing.T) {
 	}
 }
 
+func TestAuditRejectsRepositoryWorkspaceMismatch(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["deterministic-repository"])
+	obj := repositoryChild("R", false)
+	obj["workspace"] = "reference/other-workspace"
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "deterministic-repository", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "workspace") {
+		t.Fatalf("err=%v, want workspace identity failure", err)
+	}
+}
+
+func TestAuditRejectsRepositoryCommandMismatch(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["deterministic-repository"])
+	obj := repositoryChild("R", false)
+	checks := obj["checks"].([]any)
+	checks[0].(map[string]any)["command"] = []any{"go", "test", "./other"}
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "deterministic-repository", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "command") {
+		t.Fatalf("err=%v, want command binding failure", err)
+	}
+}
+
+func TestAuditRejectsGeneratedCommandMismatch(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["generated-artifact-reproducibility"])
+	obj := generatedChild("R")
+	checks := obj["checks"].([]any)
+	checks[1].(map[string]any)["command"] = []any{"go", "run", "./tools/other"}
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "generated-artifact-reproducibility", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "command") {
+		t.Fatalf("err=%v, want generated command binding failure", err)
+	}
+}
+
 func TestAuditRejectsPostgresIdentityMismatch(t *testing.T) {
 	finalPath, dir := writeFixture(t, "R")
 	path := filepath.Join(dir, laneFiles["real-postgres-ephemeral-fixture"])
@@ -222,12 +269,28 @@ func postRun(revision string) map[string]any {
 
 func repositoryChild(revision string, broad bool) map[string]any {
 	checks := []any{
-		map[string]any{"name": "final-ui-less-scenario", "passed": true},
-		map[string]any{"name": "external-evidence-intake", "passed": true},
-		map[string]any{"name": "repository-evidence-source-boundary", "passed": true},
+		map[string]any{
+			"name":    "final-ui-less-scenario",
+			"command": []any{"go", "test", "./internal/driver", "-run", "^TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI$", "-count=1"},
+			"passed":  true,
+		},
+		map[string]any{
+			"name":    "external-evidence-intake",
+			"command": []any{"go", "test", "./internal/database/externalqueryevidence", "./tools/reference-external-query-evidence", "-count=1"},
+			"passed":  true,
+		},
+		map[string]any{
+			"name":    "repository-evidence-source-boundary",
+			"command": []any{"go", "test", "./tools/internal/repositoryevidence", "-count=1"},
+			"passed":  true,
+		},
 	}
 	if broad {
-		checks = append(checks, map[string]any{"name": "repository-wide-go-test", "passed": true})
+		checks = append(checks, map[string]any{
+			"name":    "repository-wide-go-test",
+			"command": []any{"go", "test", "./..."},
+			"passed":  true,
+		})
 	}
 	return map[string]any{
 		"evidenceNature": "deterministic-repository", "repositoryRevision": revision,
@@ -242,8 +305,16 @@ func generatedChild(revision string) map[string]any {
 		"evidenceNature": "generated-artifact-reproducibility", "repositoryRevision": revision,
 		"workingTreeClean": true, "reproducibleRevision": true, "postRunRepository": postRun(revision),
 		"checks": []any{
-			map[string]any{"name": "world-plugin-lock-golden", "passed": true},
-			map[string]any{"name": "durable-run-golden", "passed": true},
+			map[string]any{
+				"name":    "world-plugin-lock-golden",
+				"command": []any{"go", "run", "./tools/reference-golden"},
+				"passed":  true,
+			},
+			map[string]any{
+				"name":    "durable-run-golden",
+				"command": []any{"go", "run", "./tools/reference-durable-run-golden"},
+				"passed":  true,
+			},
 		},
 	}
 }
