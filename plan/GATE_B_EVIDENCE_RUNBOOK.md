@@ -330,11 +330,12 @@ GOFLAGS= \
 go test \
   ./tools/internal/repositoryevidence \
   ./tools/reference-gate-b-final-evidence \
+  ./tools/reference-postgres-header-detail-runtime \
   ./tools/reference-gate-b-readiness-artifact-audit \
   -count=1
 ```
 
-これはProduct Evidenceそのものではありません。actual checkoutでfinal runner、shared source helper、Readiness artifact auditがcompile / testできることの直前検査です。
+これはProduct Evidenceそのものではありません。actual checkoutでfinal runner、shared source helper、real PostgreSQL Evidence runner、Readiness artifact auditがcompile / testできることの直前検査です。
 
 sourceを変更した、またはworking treeがdirtyになった場合はfinal runへ進みません。
 
