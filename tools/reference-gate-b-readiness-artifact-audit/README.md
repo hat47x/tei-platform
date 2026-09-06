@@ -46,12 +46,15 @@ real-postgres-ephemeral-fixture.json
 
 ### #310
 
+- `workspace = reference/workspace`
 - Workspace Validation success
 - final UI-less Scenario success
 - external Evidence intake success
 - Repository source-boundary Conformance success
 - `-broad` final run の場合だけ repository-wide Go test success も要求
 - `checks` はその run に必要な正規 check 集合と exact 一致
+- 各 check は `name + command + passed` を正規 producer contract と exact 照合
+- correct labelでも別commandなら fail closed
 - unknown / duplicate / failed / missing check は fail closed
 - post-run same clean `R`
 
@@ -60,6 +63,8 @@ real-postgres-ephemeral-fixture.json
 - World / Plugin Lock golden success
 - Durable Run golden success
 - `checks` はこの2 checkと exact 一致
+- 各 check は `name + command + passed` を正規 producer contract と exact 照合
+- correct labelでも別commandなら fail closed
 - unknown / duplicate / failed / missing check は fail closed
 - post-run same clean `R`
 
