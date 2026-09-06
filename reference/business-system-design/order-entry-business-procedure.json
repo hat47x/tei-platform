@@ -47,10 +47,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.order_lines"
-      ],
-      "validations": [
-        "sales.order_line.quantity_positive",
-        "sales.order.lines.line_number_unique"
       ]
     },
     {
