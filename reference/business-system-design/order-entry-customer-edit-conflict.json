@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "business-procedure-access-probe-v0",
+  "procedure": "order-entry.order-handling",
+  "step": "BP-02",
+  "applicationPattern": "order_entry.customer_reference",
+  "requestedAccess": {
+    "required": "read-write"
+  },
+  "reason": "experiment-only candidate interaction offers customer editing from order_entry"
+}
