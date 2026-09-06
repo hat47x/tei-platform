@@ -1,6 +1,6 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner / fail-closed / same-run artifact / secret stable-readまで実装、actual final run待ち
+- 状態: In Progress — runner / fail-closed / same-run artifact / secret stable-read / #308 path-only handoffまで実装、actual final run待ち
 - GitHub Issue: #387
 - Gate B監査: `ISSUE-000029` / #273
 - Handover: `ISSUE-000030` / #291
@@ -190,6 +190,8 @@ DSN本文をouter `go run` / compiler / linkerへ渡しません。
 
 を要求します。
 
+PR #473以降、direct DSN keyは大小文字違いでも拒否し、`TEI_TEST_POSTGRES_DSN_FILE`が大小文字違いを含め複数存在する曖昧なlaunch environmentもsecret fileへ触る前にfail closedします。
+
 ### secret read前のclean-source preflight
 
 PR #466以降、DSN secret fileをopen / readする前に、PostgreSQL secretを除いたenvironmentでRepository sourceを観測します。
@@ -238,19 +240,33 @@ non-regular input、Repository内target、別fileへのpath replacement、symlin
 
 Repository外regular fileへ向くstableなRepository外symlinkは、読込前後とも同じexternal file identityを指す場合に限り許容します。
 
-runner起動後:
+### #308 path-only handoff
+
+PR #473以降、stable single-openで確定したnormalized DSNを、Repository外owner-only temporary handoff fileへ複製します。
 
 ```text
-Go probe / Git probe / #310 / #255
-  -> DSN本文なし
-  -> secret pathなし
-
-#308
-  -> in-memory DSN本文のみ
-  -> secret pathなし
+original external secret file
+  ↓ stable single-open
+normalized DSN in final-runner memory
+  ↓
+Repository外 0700 temporary directory
+  ↓
+0600 handoff file
+  ↓ path only
+#308 go run / compiler / linker
+  ↓ runtime read
+DSN in #308 memory
+  ↓
+DSN / file path envをsource probe前に消去
 ```
 
-DSN本文、secret path、credential、実Database名を通常Evidenceへ保存しません。
+Go probe / Git probe / #310 / #255には、DSN本文・original secret path・handoff pathのいずれも渡しません。
+
+#308の`go run` / compiler / linkerにはDSN本文を渡さず、temporary handoff pathだけを渡します。#308 runtimeはhandoff fileを読み、その後source probe前にDSN / file path environmentを消去します。
+
+handoff directoryはnormal final-runner return時にcleanupします。process強制kill / host停止等に対するOS-level完全消去までは保証せず、存在中はRepository外owner-only temporary scopeへ限定します。
+
+DSN本文、original secret path、handoff path、credential、実Database名を通常Evidenceへ保存しません。
 
 ## PostgreSQL fixture安全境界
 
@@ -314,12 +330,15 @@ new clean R'
 - exact `GOENV=off` launch guard
 - child / nested Go environment固定
 - Go / Git probeからPostgreSQL secret除去
-- direct DSN final launch拒否
+- direct DSN final launch拒否（大小文字違いを含む）
+- duplicate DSN file key曖昧性拒否
 - secret read前clean-source preflight
 - Repository外DSN secret file
 - symlink解決後Repository内secret拒否
 - secret file stable single-open / read前後identity再確認
-- #308 childだけへのin-memory DSN注入
+- Repository外owner-only temporary handoff file
+- #308 compile環境へDSN本文を渡さないpath-only handoff
+- #310 / #255へhandoff pathを渡さない
 - PostgreSQL DB-side fixture ownership marker
 - same-run child exact artifact保存
 - child exact-byte fingerprint

@@ -131,7 +131,7 @@ GOFLAGS=
 
 ## PostgreSQL secret境界
 
-`TEI_TEST_POSTGRES_DSN`がfinal runner launch environmentに存在するrunは、値が空でも拒否します。
+`TEI_TEST_POSTGRES_DSN`がfinal runner launch environmentに存在するrunは、値が空でも拒否します。大小文字違いのdirect DSN keyも拒否します。
 
 `TEI_TEST_POSTGRES_DSN_FILE`は次を要求します。
 
@@ -140,31 +140,49 @@ GOFLAGS=
 - existing regular file
 - 一行DSN
 - empty / multiline / NULではない
+- 大小文字違いを含めduplicate keyがない
 
 末尾の単一LFまたはCRLFだけは除去します。
 
-secret file pathやread errorのunderlying local pathはEvidenceへ保存しません。
+original secret file path、temporary handoff path、read errorのunderlying local pathはEvidenceへ保存しません。
 
 runner起動後のsecret exposureは次に限定します。
 
 ```text
 outer go run / compiler / linker
   -> DSN本文なし
-  -> secret file pathのみ
+  -> original secret file pathのみ
+
+final runner runtime
+  -> secret-free environmentでclean-source preflight
+  -> original external secret fileをstable single-open
+  -> 読込前後で同一file identityを再確認
+  -> normalized DSN本文をmemoryへ保持
+  -> Repository外0700 temporary directoryへ0600 handoff fileを作成
 
 Go environment probe
 Git source probe
 #310
 #255
   -> DSN本文なし
-  -> secret file pathなし
+  -> original secret file pathなし
+  -> handoff file pathなし
 
-#308
-  -> in-memory DSN本文のみ
-  -> secret file pathなし
+#308 go run / compiler / linker
+  -> DSN本文なし
+  -> original secret file pathなし
+  -> temporary handoff file pathのみ
+
+#308 runtime
+  -> handoff fileからDSN本文を読込
+  -> DSN / file path environmentをsource probe前に消去
+  -> 以後DSN本文はmemoryのみ
+
+final runner return
+  -> temporary handoff directoryをcleanup
 ```
 
-parent final runnerのenvironmentへDSN本文を設定し直しません。
+parent final runnerのenvironmentへDSN本文を設定し直しません。handoff fileはnormal final-runner return時に削除します。process強制kill / host停止等に対するOS-level完全消去までは保証せず、存在中はRepository外owner-only temporary scopeへ限定します。
 
 ## lane順序
 
@@ -173,7 +191,7 @@ clean candidate revision R
         ↓
 #310 deterministic Repository Evidence
         ↓ source re-check
-#255 generated artifact reproducibility
+#255 generated artifact reproducibility Evidence
         ↓ source re-check
 #308 real PostgreSQL Provider Evidence
         ↓ source re-check
@@ -242,7 +260,8 @@ final JSONへchild Evidence本文を重複格納しません。詳細Evidenceは
 ## 保存しないもの
 
 - PostgreSQL DSN本文
-- secret file path
+- original secret file path
+- temporary handoff file path
 - credential / secret
 - runtime parameter値
 - PostgreSQL Database名
@@ -267,8 +286,10 @@ child Evidence JSON自体にも各child runnerの通常のsecret非保存契約�
 - external Go workspace有効
 - GOFLAGS非空
 - exact `GOENV=off`でない
-- direct `TEI_TEST_POSTGRES_DSN`設定
+- direct `TEI_TEST_POSTGRES_DSN`設定（大小文字違いを含む）
+- `TEI_TEST_POSTGRES_DSN_FILE`の大小文字違いを含むduplicate key
 - DSN secret fileがRepository内、symlink先がRepository内、non-regular、empty、multiline、NUL、read不能
+- temporary handoff fileをRepository外owner-only scopeへ作成できない
 - child Evidence artifactをsame-runで保存できない
 - final success直前にchild artifactを再読込できない、regular fileではない、置換を検出した、またはfingerprintが一致しない
 - artifact directoryがRepository内
