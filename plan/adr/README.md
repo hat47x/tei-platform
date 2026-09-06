@@ -40,6 +40,14 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0015: マイグレーションSQLの文法責務をデータベースプロバイダー側に置く](0015-provider-owned-migration-sql-rendering.md)
 - [ADR-0016: 上位文書と計画文書の権威関係を分離する](0016-document-authority-and-planning-structure.md)
 - [ADR-0017: Application PatternをApplicationが所有する意味として検証する](0017-application-pattern-ownership.md)
+- [ADR-0018: Application Patternの正本をApplication配下の独立した定義ファイルに置く](0018-application-pattern-authoring-source.md)
+- [ADR-0019: Application利用者の認証・認可をSemantic Capabilityとして扱う](0019-authentication-capability-boundary.md)
+- [ADR-0020: Capabilityの業務Outcomeと実行エラーを分離する](0020-capability-business-outcome-boundary.md)
+- [ADR-0021: keylessなheader-detail Relation traversalはPattern外のrealizationで実現する](0021-header-detail-relation-traversal-realization.md)
+- [ADR-0022: AI ProposalとCanonical受入境界を分離する](0022-ai-proposal-canonical-acceptance-boundary.md)
+- [ADR-0023: Command後のObservationは明示的なread境界として分離する](0023-command-observation-explicit-read-boundary.md)
+- [ADR-0024: 業務Lifecycleの正本をSemanticへ置き、状態identityと物理コードを分離する](0024-business-lifecycle-ownership.md)（提案中）
+- [ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す](0025-transition-evaluation-and-conflict-result.md)（提案中）
 
 ## `docs/adr/`について
 

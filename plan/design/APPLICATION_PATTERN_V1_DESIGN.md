@@ -18,7 +18,7 @@ v1ではReference Application `order_entry`を使い、具体的な業務シナ�
 
 5種類はすべて実Referenceまで成立しています。ただし、これをTEI全体の永久的な標準語彙として確定したわけではありません。Driver、第一Target、第二Targetから得られるEvidenceによって、分類や所有境界は今後も見直します。
 
-Patternの所有境界は[ADR-0017](adr/0017-application-pattern-ownership.md)、authoring sourceとfile pathからのidentity分離は[ADR-0018](adr/0018-application-pattern-authoring-source.md)に従います。
+Patternの所有境界は[ADR-0017](../adr/0017-application-pattern-ownership.md)、authoring sourceとfile pathからのidentity分離は[ADR-0018](../adr/0018-application-pattern-authoring-source.md)に従います。
 
 ## 現在地
 
@@ -430,8 +430,8 @@ Gate AではApplication Patternに加えてAuthentication / Authorization、read
 ## 関連文書
 
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/adr/0017-application-pattern-ownership.md`
 - `plan/adr/0018-application-pattern-authoring-source.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`

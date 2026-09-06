@@ -4,7 +4,7 @@
 
 この文書は、`ISSUE-000009` / GitHub Issue #77で扱う「Capabilityの業務結果と実行エラーの分離」を、最初の実装へ渡せる粒度まで具体化するものです。
 
-中心となる判断は[ADR-0020](adr/0020-capability-business-outcome-boundary.md)に置きます。この文書では、その判断を現在のSemantic model、Parser、Plugin Runtime、Driver計画、第一Web Target計画へどのように接続するかを整理します。
+中心となる判断は[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)に置きます。この文書では、その判断を現在のSemantic model、Parser、Plugin Runtime、Driver計画、第一Web Target計画へどのように接続するかを整理します。
 
 v1では一般的な例外体系やsum typeを作りません。既存の仕組みをできるだけ保ったまま、業務上の分岐だけを明示できる最小拡張を行います。
 
@@ -594,7 +594,7 @@ C. どちらも持たないno-output Capability
 
 - `plan/adr/0020-capability-business-outcome-boundary.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
-- `plan/LEGACY_AUTH_V1_DESIGN.md`
+- `plan/design/LEGACY_AUTH_V1_DESIGN.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000007-first-web-target-projection.md`

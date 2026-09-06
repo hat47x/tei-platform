@@ -4,7 +4,7 @@
 - GitHub Issue: #110（完了）
 - 実装PR: #114 / #116
 - 上位Issue: `ISSUE-000005` / GitHub Issue #67
-- 関連設計: [`APPLICATION_PATTERN_V1_DESIGN.md`](../APPLICATION_PATTERN_V1_DESIGN.md)
+- 関連設計: [`APPLICATION_PATTERN_V1_DESIGN.md`](../design/APPLICATION_PATTERN_V1_DESIGN.md)
 - Capability結果境界: [ADR-0020](../adr/0020-capability-business-outcome-boundary.md)
 
 ## 目的

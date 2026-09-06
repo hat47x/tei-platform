@@ -8,9 +8,9 @@ TEIが既存業務システムの移行に使えるためには、「標準的�
 
 v1では、こうした既存仕様を失わずにAuthentication / Authorization Capabilityへ接続し、ApplicationやDriverが物理的な認証schemaを直接知らなくても利用できる境界を実証します。
 
-Application利用者の認証・認可と、Plugin / Runtimeに与えるPermissionやResource Leaseは別の責務です。この境界は[ADR-0019](adr/0019-authentication-capability-boundary.md)で固定します。
+Application利用者の認証・認可と、Plugin / Runtimeに与えるPermissionやResource Leaseは別の責務です。この境界は[ADR-0019](../adr/0019-authentication-capability-boundary.md)で固定します。
 
-Authenticationを含むCapabilityの業務Outcomeと実行エラーの境界は、[ADR-0020](adr/0020-capability-business-outcome-boundary.md)で固定します。具体的なv1実装順は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
+Authenticationを含むCapabilityの業務Outcomeと実行エラーの境界は、[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)で固定します。具体的なv1実装順は[`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md)に置きます。
 
 ## 現行実装から確認できる前提
 
@@ -294,7 +294,7 @@ Authenticationでは、`authenticated` / `denied`の業務OutcomeとExecution Er
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/adr/0019-authentication-capability-boundary.md`
 - `plan/adr/0020-capability-business-outcome-boundary.md`
-- `plan/CAPABILITY_OUTCOME_V1_DESIGN.md`
+- `plan/design/CAPABILITY_OUTCOME_V1_DESIGN.md`
 - `plan/issue/000003-legacy-authentication-compatibility-reference.md`
 - `plan/issue/000009-capability-outcome-and-execution-error.md`
 - `plan/issue/000005-application-pattern-reference.md`
