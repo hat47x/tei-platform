@@ -35,12 +35,12 @@ actual Gate B runでは専用の固定checkoutを使う運用が前提ですが�
 
 ## 採用する観測境界
 
-PR #419以降、開始時・終了時とも次の順で観測します。
+PR #419以降、開始時・終了時ともHEADをworking tree観測の前後で確認します。PR #477以降、working tree観測はuntracked fileをambient Git configで隠せないよう明示します。
 
 ```text
 HEAD before
   ↓
-git status --porcelain
+git status --porcelain --untracked-files=all
   ↓
 HEAD after
 ```
@@ -62,13 +62,59 @@ HEADが安定している場合は、従来どおりclean / dirtyを観測でき
 `postRunRepository.checked = true`にするのは、次をすべて完了した場合だけです。
 
 1. 最初のHEADを取得できた
-2. working tree状態を取得できた
+2. `--untracked-files=all`を明示したworking tree状態を取得できた
 3. 二回目のHEADを取得できた
 4. 二つのHEADが一致した
 
 観測中にHEADが変わった場合はerrorとし、`Checked=false`のままにします。最終的に観測したHEADを`RepositoryRevision`へ残し、`RevisionStable=false`とします。
 
 これにより、#255 / #308 / #310だけでなく、#387 final runnerが各lane後に行うsource再確認でも、観測中driftを「確認済み」と誤認しません。
+
+## Git environmentによる観測意味の差し替えを拒否する
+
+HEAD二重確認だけでは、Git subprocessへ渡るambient environment自体が観測対象を差し替える場合を閉じられません。
+
+共有helperは、実行checkoutとは別のrepository / work tree / index等を観測し得る次のGit identity overrideをfail closedで拒否します。
+
+```text
+GIT_DIR
+GIT_WORK_TREE
+GIT_COMMON_DIR
+GIT_INDEX_FILE
+GIT_OBJECT_DIRECTORY
+GIT_ALTERNATE_OBJECT_DIRECTORIES
+GIT_NAMESPACE
+```
+
+さらにPR #477では、Gitのcommand-scope configをenvironmentから注入する次のkeyも、大小文字違いを含め拒否します。
+
+```text
+GIT_CONFIG_COUNT
+GIT_CONFIG_PARAMETERS
+GIT_CONFIG_KEY_*
+GIT_CONFIG_VALUE_*
+```
+
+一時Git repositoryでuntracked fileだけを作った状態について、次を実測しました。
+
+```text
+git status --porcelain
+=> ?? untracked.txt
+```
+
+一方、ambient environmentへ:
+
+```text
+GIT_CONFIG_COUNT=1
+GIT_CONFIG_KEY_0=status.showUntrackedFiles
+GIT_CONFIG_VALUE_0=no
+```
+
+を設定すると、同じ`git status --porcelain`がemptyになりました。
+
+したがってGate Bのsource-fixed Evidenceでは、runtime config injectionを単に「通常は設定されない」と仮定せず、helperで拒否します。同時にstatus command自身も`--untracked-files=all`を明示し、`status.showUntrackedFiles`へ依存しません。
+
+`GIT_PAGER`や`GIT_TERMINAL_PROMPT`等、source identity / command-scope configを変更しないGit environmentまで一律禁止するものではありません。
 
 ## 再現可能判定との関係
 
@@ -83,26 +129,31 @@ HEADが安定している場合は、従来どおりclean / dirtyを観測でき
 - `RevisionStable=true`
 - 終了時working treeがclean
 
-PR #419は、この判定へ渡す開始時 / post-run観測自体の整合性を一段強くする変更です。
+PR #419 / #477は、この判定へ渡す開始時 / post-run観測自体の整合性を強くする変更です。
 
 ## 検証
 
-PR #419のbranch上にある次の二fileとGit blob SHAが一致するsourceを隔離Go moduleへ配置し、共有package testを実行しました。
-
-```text
-repository.go       5a69ec380c45feb41e1fb14732f4e396bebb18ba
-repository_test.go  4f0484fef3089ad2961cfec0c4d44ad37c4ff10c
-```
-
-結果:
+PR #419では、branch上の共有sourceを隔離Go moduleへ配置し、HEAD drift境界のpackage testを実行しました。
 
 ```text
 ok  tei/tools/internal/repositoryevidence  0.002s
 ```
 
-`gofmt -d`にも差分はありませんでした。
+PR #477では、変更した`repository.go`と新しい`git_environment_test.go`を隔離Go moduleへ同内容で配置し、次を確認しました。
 
-pure testでは少なくとも次を固定しています。
+```text
+ok  isolated/repositoryevidence  0.002s
+```
+
+PR #477のpure testでは少なくとも次を固定しています。
+
+- `GIT_CONFIG_COUNT` / `GIT_CONFIG_PARAMETERS` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`を大小文字違いも含め拒否する
+- source観測意味を変更しない`GIT_PAGER` / `GIT_TERMINAL_PROMPT`は一律拒否しない
+- start観測のstatus commandが`--untracked-files=all`を明示する
+- post-run観測のstatus commandも`--untracked-files=all`を明示する
+- 明示観測したuntracked fileをcleanへ格上げしない
+
+既存pure testでは引き続き次を固定しています。
 
 - start観測中にHEADが変わればerror
 - post-run観測中にHEADが変わればerrorかつ`Checked=false`
@@ -110,7 +161,7 @@ pure testでは少なくとも次を固定しています。
 - HEADが前後同一ならclean / dirtyを従来どおり観測できる
 - status取得失敗を確認済み状態へ昇格させない
 
-これは**実TEI Repository checkout上の通常Go testではありません**。また、#255 / #308 / #310のactual Evidenceや#387 final convergence Evidenceの代替でもありません。
+これらは**実TEI Repository checkout上の通常Go testではありません**。また、#255 / #308 / #310のactual Evidenceや#387 final convergence Evidenceの代替でもありません。
 
 ## この境界の限界
 
@@ -125,15 +176,19 @@ pure testでは少なくとも次を固定しています。
 - 並行操作でworking treeを変更しない
 - Evidence出力をRepository内へ直接redirectしない
 
-PR #419はこの運用を置き換えるのではなく、明確に観測できるHEAD切替TOCTOUをhelper側でもfail closedにする補強です。
+PR #419 / #477はこの運用を置き換えるのではなく、観測可能なHEAD切替やambient Git environmentによる誤観測をhelper側でもfail closedにする補強です。
 
 ## 完了条件
 
 - [x] `InspectStart`をHEAD二重確認へ変更する（PR #419）
 - [x] `InspectPost`をHEAD二重確認へ変更する（PR #419）
 - [x] 観測中HEAD driftのpure testを追加する（PR #419）
-- [x] 隔離Go moduleで共有package testを実行する
-- [x] #387とRepository正本へ境界を同期する
+- [x] Git identity overrideを共有source helperで拒否する
+- [x] `git status --porcelain --untracked-files=all`へ固定する（PR #477）
+- [x] `GIT_CONFIG_*` command-scope config injectionを拒否する（PR #477）
+- [x] Git runtime config guardのpure testを追加する（PR #477）
+- [x] 隔離Go moduleで共有package / pure testを実行する
+- [x] #418へPR #477の再現条件と隔離test結果を記録する
 - [ ] 実TEI Repository checkoutの通常Go環境で`go test ./tools/internal/repositoryevidence -count=1`を再確認する
 
 最後の通常checkout testが完了するまで、GitHub #418は完了扱いにしません。
@@ -142,6 +197,7 @@ PR #419はこの運用を置き換えるのではなく、明確に観測でき�
 
 - Git working tree全体のtransactional snapshot化
 - 瞬間的なfile変更と復元を含むあらゆる並行変更の検出
+- Gitの全config sourceを独自sandboxへ置き換えること
 - Repository source観測概念をCanonical modelへ追加すること
 - #255 / #308 / #310 / #387の個別Evidence契約を置き換えること
 - 本pure testをactual Gate B Evidenceへ格上げすること
@@ -151,7 +207,7 @@ PR #419はこの運用を置き換えるのではなく、明確に観測でき�
 
 - GitHub Issue #418
 - GitHub Issue #255 / #308 / #310 / #387 / #273
-- PR #336 / #355 / #409 / #412 / #419
+- PR #336 / #355 / #409 / #412 / #419 / #477
 - `tools/internal/repositoryevidence/`
 - `plan/issue/000037-gate-b-three-lane-final-evidence.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
