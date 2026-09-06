@@ -127,9 +127,9 @@ func writeFixture(t *testing.T, revision string) (string, string) {
 	}
 
 	children := map[string]map[string]any{
-		"deterministic-repository":            repositoryChild(revision, false),
+		"deterministic-repository":           repositoryChild(revision, false),
 		"generated-artifact-reproducibility": generatedChild(revision),
-		"real-postgres-ephemeral-fixture":     postgresChild(revision),
+		"real-postgres-ephemeral-fixture":    postgresChild(revision),
 	}
 	lanes := make([]any, 0, 3)
 	for _, name := range []string{"deterministic-repository", "generated-artifact-reproducibility", "real-postgres-ephemeral-fixture"} {
@@ -145,10 +145,10 @@ func writeFixture(t *testing.T, revision string) (string, string) {
 		})
 	}
 	final := map[string]any{
-		"evidenceNature": "gate-b-three-lane-final-convergence",
+		"evidenceNature":     "gate-b-three-lane-final-convergence",
 		"repositoryRevision": revision, "workingTreeClean": true, "reproducibleRevision": true,
 		"postRunRepository": postRun(revision), "goVersion": "go version go1.23.2 linux/amd64",
-		"goEnvironment": map[string]any{"externalWorkspaceActive": false, "goFlagsEmpty": true, "goEnvDisabled": true},
+		"goEnvironment":  map[string]any{"externalWorkspaceActive": false, "goFlagsEmpty": true, "goEnvDisabled": true},
 		"broadRequested": false, "allLanesSameRevision": true, "childArtifactsRetained": true,
 		"lanes": lanes,
 	}
@@ -207,8 +207,8 @@ func postgresChild(revision string) map[string]any {
 		"databaseInstance": "sales_core.dev", "executorCapability": "database.query.postgres", "contractQueryTarget": "find_by_order",
 		"parameterNames": []any{"order_id"}, "parameterValuesPersisted": false, "rows": 2, "zeroRows": 0,
 		"executionErrorObserved": true,
-		"semanticAttributes": []any{"sales.order_line.order_line_id", "sales.order_line.line_number", "sales.order_line.item_code", "sales.order_line.quantity", "sales.order_line.unit_price"},
-		"relationStorageColumn": "order_id", "semanticOrderLineParentAttributeAdded": false, "semanticMappingApplied": true,
+		"semanticAttributes":     []any{"sales.order_line.order_line_id", "sales.order_line.line_number", "sales.order_line.item_code", "sales.order_line.quantity", "sales.order_line.unit_price"},
+		"relationStorageColumn":  "order_id", "semanticOrderLineParentAttributeAdded": false, "semanticMappingApplied": true,
 	}
 }
 
