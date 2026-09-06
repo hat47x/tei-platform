@@ -64,6 +64,8 @@ Gate Bは引き続きNot Readyです。[000035](000035-gate-b-external-provider-
 
 状態は3件ともProposedです。schema、Core primitive、APIの採用は未決定で、必要な判断をADRへ残してから実装します。将来の汎用Workflow、分散transaction、全言語解析、Marketplace、全Provider網羅を、この小さい受入単位の完了で達成済みにしません。
 
+000038については、2026-09-05に要件の詳細化を[業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)としてまとめ、所有境界と実行境界の判断を[ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)として提案しました。いずれも評価待ちであり、採用前に実装へ進みません。詳細化の結論として、`sales.order.submit`のCapability契約変更はGate B Ready判定と000030のHandover Baseline固定より前に入れない扱いです。
+
 ## 既存計画への統合と履歴
 
 | 元の論点・作業 | 管理先 | 扱い |
