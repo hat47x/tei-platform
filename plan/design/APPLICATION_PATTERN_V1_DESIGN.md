@@ -22,7 +22,7 @@ v1ではReference Application `order_entry`を使い、具体的な業務シナ�
 
 Patternの所有境界は[ADR-0017](../adr/0017-application-pattern-ownership.md)、authoring sourceとfile pathからのidentity分離は[ADR-0018](../adr/0018-application-pattern-authoring-source.md)に従います。
 
-## 現在地
+## Application Pattern Stage完了時点の記録
 
 Application Pattern Stage #67は完了しています。
 
@@ -54,7 +54,7 @@ pattern order_entry.order_lines header-detail {
 
 Application Pattern側から後続Driverへ渡すTarget非依存の意味は揃いました。
 
-ただし、Gate Aはまだ完了していません。既存認証Compatibility #68とCapability Outcome / Execution Error #77のEvidenceを合流させてから評価します。
+Stage完了時点では、次段のGate A評価へ既存認証Compatibility #68とCapability Outcome / Execution Error #77のEvidenceを合流させる計画でした。GateとEvidenceの現在地は[`plan/README.md`](../README.md)と[`docs/status.md`](../../docs/status.md)を正とします。
 
 ## Canonical model
 
@@ -406,11 +406,9 @@ Application Pattern Stageでは、次をRepository上のEvidenceから説明で�
 
 これらはDriverと複数TargetからEvidenceを得てから判断します。
 
-## Gate Aへの引き継ぎ
+## 当時のGate Aへの引き継ぎ
 
-Application Pattern側のStage 1は完了しましたが、Gate Aは未完了です。
-
-次は既存認証Compatibility #68を進めます。Authenticationで必要となるnamed OutcomeとExecution Errorの共通境界はIssue #77 / ADR-0020で先に実装・検証します。
+Application Pattern側のStage 1完了時点では、既存認証Compatibility #68とCapability Outcome / Execution Error #77を次段へ合流させる計画を置いていました。Authenticationで必要となるnamed OutcomeとExecution Errorの共通境界をIssue #77 / ADR-0020で先に実装・検証する、という順序です。
 
 ```text
 Application Pattern #67  完了
@@ -427,7 +425,7 @@ Application Pattern #67  完了
                      Driver #69
 ```
 
-Gate AではApplication Patternに加えてAuthentication / Authorization、read/write境界、CapabilityのBusiness Result / Execution Errorを一続きに説明できることを確認します。
+当時のGate A評価では、Application Patternに加えてAuthentication / Authorization、read/write境界、CapabilityのBusiness Result / Execution Errorを一続きに説明できることを確認する構成でした。現在のGate判定はこの節ではなく、`plan/README.md`と`docs/status.md`を確認します。
 
 ## 関連文書
 
