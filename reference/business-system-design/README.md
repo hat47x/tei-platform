@@ -6,13 +6,13 @@
 
 ## `order-entry-business-procedure.json`
 
-`order_entry`の既存Application / Semantic identityを参照するderived Business Procedure fixtureです。
+`order_entry`の既存Application / Semantic identityを参照しつつ、Business側でしか持てないpurpose / trigger / actor候補 / manual actionを保持するReference authoring fixtureです。
 
-このfixture自身はCanonical authorityではありません。
+このfixture自身はCanonical World authorityではありません。一方、Business Procedure側の固有意味まで「derived」とみなすこともしません。
 
 ```json
 {
-  "artifactRole": "derived-reference-fixture",
+  "artifactRole": "reference-authoring-fixture",
   "canonical": false
 }
 ```
@@ -27,9 +27,21 @@
 - Procedure側で独自に必要なValidation等のexplicit referenceだけを別に保持する
 - 名称類似からmissing relationやCapabilityを推測しない
 
-### 三視点は三重管理ではない
+### Authoring inputとderived Projectionを分ける
 
-Business ProcedureからApplication Patternを参照した場合、次の意味はPattern側を正とします。
+Business Procedure fixtureには、Application / Semantic Worldからは導出できない意味があります。
+
+```text
+purpose
+trigger / event candidate
+actor / job context candidate
+manual / external / unresolved Business Action
+judgment / continuation
+```
+
+これらはReference実験のauthoring inputです。
+
+一方、Business ProcedureからApplication Patternを参照した場合、次の意味はPattern側を正とします。
 
 ```text
 Application Pattern
@@ -40,7 +52,7 @@ Application Pattern
   └─ Datasource
 ```
 
-したがって、たとえばBP-02は次だけを保持します。
+したがって、たとえばBP-02は次だけをauthoring inputとして保持します。
 
 ```text
 Business Action:
@@ -48,16 +60,13 @@ Business Action:
 
 Application Pattern:
   order_entry.customer_reference
-
-Business-side access expectation:
-  master = read
 ```
 
 `customer_reference`が`relation=sales.order.customer`、`datasource=master`であることはfixtureへ再記述せず、`workspace.Load()`後のnormalized Application Patternから導出します。
 
 同様に、BP-07が`order_entry.submit_order`を参照するとき、`capability=sales.order.submit`はPatternから導出します。
 
-これはData / Function / Businessの視点を分離するために、同じ意味を三箇所へコピーする設計を避けるためです。
+三視点を分離することと、同じ意味を三箇所へコピーすることを混同しません。
 
 ### direct semantic reference
 
@@ -84,6 +93,14 @@ go run ./tools/reference-business-procedure-check
   - PatternからderivedしたData / Relation / Query / Capability / Datasource
 - `explicitBusinessMeaningRows`
   - Business Procedure fixture自身が明示したdirect semantic reference
+
+これらのMatrix / diagnostic出力はderived Projectionです。Reference authoring fixtureへ逆書きしません。
+
+## `order-entry-follow-up-procedure.json`
+
+同じ`order_entry.order_record`を別のBusiness Procedure文脈から利用するReference authoring fixtureです。
+
+primary Procedureと同じPatternを再利用してもBusiness Actionを一つへ畳まず、multiple Procedure -> same Patternのtraceabilityを圧力試験します。
 
 ## `order-entry-customer-edit-conflict.json`
 
@@ -134,8 +151,10 @@ go test ./tools/reference-business-procedure-check
 4. baselineの`master=read`はconflictにならない
 5. edit probeの`read-write`要求はaccess conflictになる
 6. experiment-local Procedure IDをrenameしてもcross-view resolution結果は変わらない
-7. 類似名称からRelationを推測しない
-8. fixtureの未知field、未対応schemaVersion、別artifact roleを黙って受理しない
+7. multiple Procedure -> same Patternを区別してtraceできる
+8. 類似名称からRelationを推測しない
+9. Source Index Artifact fingerprintはpure file moveでは保たれるがsemantic identityとしては使わない
+10. fixtureの未知field、未対応schemaVersion、別artifact roleを黙って受理しない
 
 ## Authority boundary
 
@@ -149,8 +168,6 @@ go test ./tools/reference-business-procedure-check
 - retry / timer / queue / scheduler
 - Business actorからAuthorization Roleへの自動mapping
 
-現時点のrename experimentでは、experiment-local Procedure IDを変更してもApplication PatternおよびPattern-derived semantic meaningへのcross-view解決は変化しません。
+現時点のrename / multiple-Procedure / Source Index experimentsでは、基本的なcross-view参照のためだけならdurable Canonical Procedure identityを直ちに要求するEvidenceはまだありません。
 
-これは**基本的なcross-view参照のためだけなら、durable Canonical Procedure identityを直ちに要求するEvidenceはまだない**ことを示します。
-
-一方、impact analysis、review history、reuse、regeneration、複数Procedure間の参照にdurable identityが必要かはまだ未検証です。そこを別Evidenceとして確認するまでCanonical化を決定しません。
+一方、内容変更を伴うcross-revision review history、Procedure間handoff、reuse、accepted authoring sourceへの昇格でstable semantic identityが必要かは未検証です。そこをReference Evidenceで確認するまでCanonical化を決定しません。
