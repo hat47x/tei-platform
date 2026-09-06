@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -128,39 +126,12 @@ func runLaneWithPostgresDSNFileAndArtifactWriter(
 	postgresDSNFilePath string,
 	artifactWriter laneArtifactWriterFunc,
 ) (laneEvidence, error) {
-	lane := laneEvidence{
-		Name:           spec.Name,
-		Command:        append([]string{"go"}, spec.Args...),
-		ExpectedNature: spec.ExpectedNature,
-	}
-
-	fmt.Fprintf(os.Stderr, "[Gate B Final Evidence] go %s\n", strings.Join(spec.Args, " "))
-	var stdout bytes.Buffer
-	cmd := exec.Command("go", spec.Args...)
-	cmd.Env = environmentForLaneWithPostgresDSNFile(spec, os.Environ(), postgresDSNFilePath)
-	cmd.Stdout = &stdout
-	cmd.Stderr = os.Stderr
-	runErr := cmd.Run()
-
-	envelope, decodeErr := decodeLaneArtifact(stdout.Bytes(), &lane)
-	if decodeErr == nil && artifactWriter != nil {
-		artifactFile, artifactErr := artifactWriter(spec, stdout.Bytes())
-		if artifactErr != nil {
-			return lane, fmt.Errorf("%s Evidence artifactを同一runから保持できません: %w", spec.Name, artifactErr)
-		}
-		lane.ArtifactFile = artifactFile
-	}
-	if runErr != nil {
-		return lane, fmt.Errorf("%s Evidence runnerが失敗しました: %w", spec.Name, runErr)
-	}
-	if decodeErr != nil {
-		return lane, fmt.Errorf("%s Evidence JSONを解析できません: %w", spec.Name, decodeErr)
-	}
-	if err := verifyLaneEnvelope(envelope, spec.ExpectedNature, candidateRevision); err != nil {
-		return lane, fmt.Errorf("%s EvidenceをGate B最終判定へ採用できません: %w", spec.Name, err)
-	}
-	lane.Passed = true
-	return lane, nil
+	return runLaneWithEnvironmentAndArtifactWriter(
+		spec,
+		candidateRevision,
+		environmentForLaneWithPostgresDSNFile(spec, os.Environ(), postgresDSNFilePath),
+		artifactWriter,
+	)
 }
 
 func environmentForLaneWithPostgresDSNFile(spec laneSpec, base []string, postgresDSNFilePath string) []string {
