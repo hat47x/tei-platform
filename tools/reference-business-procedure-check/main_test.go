@@ -37,7 +37,7 @@ func TestBaselineReferenceResolvesAndKeepsManualActions(t *testing.T) {
 	}
 
 	if result.CanonicalProcedureIdentityUsed {
-		t.Fatal("derived ReferenceがCanonical Procedure identityを使用しています")
+		t.Fatal("Reference authoring fixtureがCanonical Procedure identityを使用しています")
 	}
 }
 
@@ -124,7 +124,7 @@ func TestPatternOwnedMeaningIsDerivedWithoutFixtureDuplication(t *testing.T) {
 func TestFixtureDecodeRejectsUnknownFields(t *testing.T) {
 	_, err := decodeFixture(strings.NewReader(`{
 		"schemaVersion":"business-procedure-reference-v0",
-		"artifactRole":"derived-reference-fixture",
+		"artifactRole":"reference-authoring-fixture",
 		"canonical":false,
 		"application":"order_entry",
 		"procedure":{"id":"p","identityStatus":"experiment-local","purpose":"p","trigger":{"status":"candidate"},"actor":{"status":"candidate"}},
@@ -142,7 +142,7 @@ func TestFixtureDecodeRejectsUnknownFields(t *testing.T) {
 func TestFixtureDecodeRejectsUnsupportedSchemaVersion(t *testing.T) {
 	_, err := decodeFixture(strings.NewReader(`{
 		"schemaVersion":"business-procedure-reference-v1",
-		"artifactRole":"derived-reference-fixture",
+		"artifactRole":"reference-authoring-fixture",
 		"canonical":false,
 		"application":"order_entry",
 		"procedure":{"id":"p","identityStatus":"experiment-local","purpose":"p","trigger":{"status":"candidate"},"actor":{"status":"candidate"}},
