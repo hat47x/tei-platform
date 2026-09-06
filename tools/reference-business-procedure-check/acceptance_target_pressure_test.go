@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/internal/sourceindex"
@@ -20,11 +21,11 @@ type procedureAcceptanceCandidate struct {
 }
 
 type procedureAcceptancePreview struct {
-	TargetProcedure string
-	SourcePath      string
-	BeforeArtifact  sourceindex.Artifact
-	BeforeFixture   fixture
-	AfterFixture    fixture
+	TargetProcedure  string
+	SourcePath       string
+	BeforeArtifact   sourceindex.Artifact
+	BeforeFixture    fixture
+	AfterFixture     fixture
 	BeforeProjection report
 	AfterProjection  report
 }
@@ -325,11 +326,11 @@ func previewProcedureAcceptance(root string, registry map[string]string, candida
 		return procedureAcceptancePreview{}, err
 	}
 	return procedureAcceptancePreview{
-		TargetProcedure: candidate.TargetProcedure,
-		SourcePath:      relativePath,
-		BeforeArtifact:  artifact,
-		BeforeFixture:   f,
-		AfterFixture:    changed,
+		TargetProcedure:  candidate.TargetProcedure,
+		SourcePath:       relativePath,
+		BeforeArtifact:   artifact,
+		BeforeFixture:    f,
+		AfterFixture:     changed,
 		BeforeProjection: evaluate(loaded.World, f),
 		AfterProjection:  evaluate(loaded.World, changed),
 	}, nil
