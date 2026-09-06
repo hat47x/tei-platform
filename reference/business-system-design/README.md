@@ -1,6 +1,6 @@
 # Business-system design Reference
 
-このdirectoryは、`reference/workspace`のCanonical meaningを変更せずに、Data / Function-Interaction / Businessのcross-view設計境界を再現するためのexperiment fixtureを保持します。
+このdirectoryは、`reference/workspace`のCanonical meaningを変更せずに、Data / Function-Interaction / Businessのcross-view設計境界を再現するためのReference fixtureを保持します。
 
 現時点ではBusiness ProcedureをCanonical Workspaceのsource rootへ追加しません。
 
@@ -13,9 +13,14 @@
 ```json
 {
   "artifactRole": "reference-authoring-fixture",
-  "canonical": false
+  "canonical": false,
+  "procedure": {
+    "identityStatus": "reference-local-stable"
+  }
 }
 ```
+
+`procedure.id`はReference corpus内でreview target、handoff endpoint、cross-referenceを安定して指すためのauthoring keyです。top-level Canonical `Procedure`を採用したことを意味しません。
 
 主な圧力は次です。
 
@@ -102,6 +107,57 @@ go run ./tools/reference-business-procedure-check
 
 primary Procedureと同じPatternを再利用してもBusiness Actionを一つへ畳まず、multiple Procedure -> same Patternのtraceabilityを圧力試験します。
 
+このfixtureも`identityStatus=reference-local-stable`であり、Reference内のlogical authoring keyを持ちます。
+
+## `order-entry-procedure-reference-set.json`
+
+二つのProcedure authoring fixtureとProcedure間handoffを同じReference setとして束ねます。
+
+Procedure keyとartifact locatorを分離します。
+
+```text
+order-entry.order-handling
+  -> order-entry-business-procedure.json
+
+order-entry.follow-up
+  -> order-entry-follow-up-procedure.json
+```
+
+handoffはfile pathではなくProcedure key + Step keyを参照します。
+
+```text
+order-entry.order-handling / BP-09
+  -> order-entry.follow-up / FU-00
+```
+
+そのため、pure file moveではlocator mappingだけを更新し、handoff semantic endpointは変えません。
+
+一方、Procedure key自体をlogical renameしたのにhandoff linkを更新しなければfail closedにします。類似名称から接続し直しません。
+
+このReferenceはhandoffをruntime Workflowへ変換しません。retry / timer / queue / scheduler等を含意しません。
+
+## Review / approval continuity
+
+Reference-local Procedure keyはreview historyのtargetを束ねるためにも使います。
+
+ただしapproval Evidenceは次のsource snapshotへ束縛します。
+
+```text
+Procedure key
+Repository revision
+Artifact fingerprint
+Source locator
+Decision
+```
+
+同じProcedure keyを保ってBusiness Action文言を変更した場合、review targetの連続性は保ちますがfingerprint / revisionが変わるため旧approvalを自動carry-forwardしません。
+
+pure file moveでbytesが同じ場合も、Procedure key / fingerprintは保てますがsource-dependent Evidenceを別revisionへ黙って継承しません。
+
+Procedure key自体のrenameはlogical identity changeとして扱います。
+
+詳細は`plan/BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`を参照します。
+
 ## `order-entry-customer-edit-conflict.json`
 
 最初の意図的cross-view defectです。
@@ -150,15 +206,21 @@ go test ./tools/reference-business-procedure-check
 3. Pattern-owned Data / Relation / Capabilityをfixtureが二重管理せず、normalized Patternから導出する
 4. baselineの`master=read`はconflictにならない
 5. edit probeの`read-write`要求はaccess conflictになる
-6. experiment-local Procedure IDをrenameしてもcross-view resolution結果は変わらない
+6. Procedure keyだけの変更ではPattern-derived cross-view meaning自体は変わらない
 7. multiple Procedure -> same Patternを区別してtraceできる
 8. 類似名称からRelationを推測しない
 9. Source Index Artifact fingerprintはpure file moveでは保たれるがsemantic identityとしては使わない
-10. fixtureの未知field、未対応schemaVersion、別artifact roleを黙って受理しない
+10. manual / external Business ActionはPattern-derived Projectionから再生成できない
+11. Business-only wording changeをApplication semantic changeと混同しない
+12. Reference-local stable keyでProcedure間handoffを解決できる
+13. artifact moveでhandoff semantic endpointを変えない
+14. logical Procedure rename後のstale handoffをfail closedにする
+15. review target continuityとapproval snapshot validityを分離する
+16. fixtureの未知field、未対応schemaVersion、別artifact roleを黙って受理しない
 
 ## Authority boundary
 
-このReferenceで証明するのはBusiness Procedure**viewpointとcross-view diagnosticの必要性**です。
+このReferenceで証明するのはBusiness Procedure viewpoint、authoring residual、cross-view diagnostic、Reference-local identity pressureです。
 
 このartifactの存在だけを根拠に、次を採用しません。
 
@@ -168,6 +230,8 @@ go test ./tools/reference-business-procedure-check
 - retry / timer / queue / scheduler
 - Business actorからAuthorization Roleへの自動mapping
 
-現時点のrename / multiple-Procedure / Source Index experimentsでは、基本的なcross-view参照のためだけならdurable Canonical Procedure identityを直ちに要求するEvidenceはまだありません。
+review continuityとhandoffを加えた結果、安定した**authoring-level Procedure key**には具体的価値があることが確認できました。
 
-一方、内容変更を伴うcross-revision review history、Procedure間handoff、reuse、accepted authoring sourceへの昇格でstable semantic identityが必要かは未検証です。そこをReference Evidenceで確認するまでCanonical化を決定しません。
+ただし現時点で必要なのはReference-local stable keyであり、Canonical World上のProcedure identityではありません。
+
+次に残る圧力は、Business Procedureをfile-native accepted authoring sourceへ進めた場合のreload / Source Index / Shared Acceptance、複数Subject Area / Subsystemを跨ぐhandoff、外部contractや長期reuseでCanonical Procedure subjectが必要になる具体例です。
