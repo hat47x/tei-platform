@@ -36,56 +36,64 @@ func TestValidateGitSourceEnvironmentDoesNotRejectUnrelatedGitEnvironment(t *tes
 	}
 }
 
-func TestInspectStartForcesAllUntrackedFiles(t *testing.T) {
-	calls := 0
-	source, err := inspectStart(func(name string, args ...string) (string, error) {
-		calls++
-		switch calls {
-		case 1, 3:
-			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
-				return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
+func TestInspectStartObservesUntrackedAndIgnoredLocalState(t *testing.T) {
+	for _, statusOutput := range []string{"?? untracked.txt\n", "!! ignored.local.go\n"} {
+		t.Run(statusOutput[:2], func(t *testing.T) {
+			calls := 0
+			source, err := inspectStart(func(name string, args ...string) (string, error) {
+				calls++
+				switch calls {
+				case 1, 3:
+					if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
+						return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
+					}
+					return "abc123\n", nil
+				case 2:
+					if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all", "--ignored=matching"}) {
+						return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
+					}
+					return statusOutput, nil
+				default:
+					return "", fmt.Errorf("unexpected call=%d", calls)
+				}
+			})
+			if err != nil {
+				t.Fatalf("inspectStart() error=%v", err)
 			}
-			return "abc123\n", nil
-		case 2:
-			if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all"}) {
-				return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
+			if source.WorkingTreeClean {
+				t.Fatalf("local source stateをcleanと判定しました: status=%q source=%#v", statusOutput, source)
 			}
-			return "?? untracked.txt\n", nil
-		default:
-			return "", fmt.Errorf("unexpected call=%d", calls)
-		}
-	})
-	if err != nil {
-		t.Fatalf("inspectStart() error=%v", err)
-	}
-	if source.WorkingTreeClean {
-		t.Fatalf("明示的に観測したuntracked fileをcleanと判定しました: %#v", source)
+		})
 	}
 }
 
-func TestInspectPostForcesAllUntrackedFiles(t *testing.T) {
-	calls := 0
-	post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
-		calls++
-		switch calls {
-		case 1, 3:
-			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
-				return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
+func TestInspectPostObservesUntrackedAndIgnoredLocalState(t *testing.T) {
+	for _, statusOutput := range []string{"?? untracked.txt\n", "!! ignored.local.go\n"} {
+		t.Run(statusOutput[:2], func(t *testing.T) {
+			calls := 0
+			post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
+				calls++
+				switch calls {
+				case 1, 3:
+					if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
+						return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
+					}
+					return "abc123\n", nil
+				case 2:
+					if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all", "--ignored=matching"}) {
+						return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
+					}
+					return statusOutput, nil
+				default:
+					return "", fmt.Errorf("unexpected call=%d", calls)
+				}
+			})
+			if err != nil {
+				t.Fatalf("inspectPost() error=%v", err)
 			}
-			return "abc123\n", nil
-		case 2:
-			if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all"}) {
-				return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
+			if !post.Checked || !post.RevisionStable || post.WorkingTreeClean {
+				t.Fatalf("post-run local source state観測が不正です: status=%q post=%#v", statusOutput, post)
 			}
-			return "?? untracked.txt\n", nil
-		default:
-			return "", fmt.Errorf("unexpected call=%d", calls)
-		}
-	})
-	if err != nil {
-		t.Fatalf("inspectPost() error=%v", err)
-	}
-	if !post.Checked || !post.RevisionStable || post.WorkingTreeClean {
-		t.Fatalf("post-run untracked file観測が不正です: %#v", post)
+		})
 	}
 }
