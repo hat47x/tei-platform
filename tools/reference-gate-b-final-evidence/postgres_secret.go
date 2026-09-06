@@ -21,13 +21,19 @@ func loadPostgresDSNFromEnvironment() (string, error) {
 
 // loadPostgresDSNFromEnvironmentOutsideRepositoryは、final runner自身のcompile段階へDSN本文を持ち込まず、
 // launch environmentにはRepository外のsecret file pathだけを受け取る。
-// secret fileへ触る前にRepository sourceがcleanであることを確認し、その後だけ
-// Repository外の同一regular file identityからDSN本文をsingle-openで読み取る。
+// direct DSNや大小文字違いを含む曖昧なduplicate keyをsecret read前に拒否し、
+// Repository sourceがcleanであることを確認した後だけ同一regular file identityをsingle-openで読む。
 func loadPostgresDSNFromEnvironmentOutsideRepository(repositoryRoot string) (string, error) {
+	path, err := loadPostgresDSNFilePathFromEnvironment()
+	if err != nil {
+		return "", err
+	}
 	return loadPostgresDSNAfterCleanRepositoryPreflight(
 		repositoryRoot,
 		inspectRepositoryStart,
-		loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight,
+		func(root string) (string, error) {
+			return loadPostgresDSNFromPathOutsideRepositoryAfterSourcePreflight(path, root)
+		},
 	)
 }
 
@@ -49,16 +55,19 @@ func loadPostgresDSNAfterCleanRepositoryPreflight(
 }
 
 // loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflightは、
-// clean-source preflight後のsecret-file boundaryだけを検証するpure seamである。
+// 既存pure test互換のclean-source preflight後seamである。
 func loadPostgresDSNFromEnvironmentOutsideRepositoryAfterSourcePreflight(repositoryRoot string) (string, error) {
 	if _, exists := os.LookupEnv(postgresDSNEnv); exists {
 		return "", fmt.Errorf("Gate B最終EvidenceではPostgreSQL DSN本文をlaunch environmentへ設定しません。TEI_TEST_POSTGRES_DSN_FILEでsecret fileを指定してください")
 	}
-
 	path, exists := os.LookupEnv(postgresDSNFileEnv)
 	if !exists || path == "" {
 		return "", fmt.Errorf("TEI_TEST_POSTGRES_DSN_FILEが未設定です。#308用DSNを一行だけ保存したRepository外のsecret fileを指定してください")
 	}
+	return loadPostgresDSNFromPathOutsideRepositoryAfterSourcePreflight(path, repositoryRoot)
+}
+
+func loadPostgresDSNFromPathOutsideRepositoryAfterSourcePreflight(path, repositoryRoot string) (string, error) {
 	content, err := readExternalRegularFileStable(path, repositoryRoot)
 	if err != nil {
 		// underlying errorはlocal pathやsymlink先を含み得るため通常診断へ複製しない。
