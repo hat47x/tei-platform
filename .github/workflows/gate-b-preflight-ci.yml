@@ -1,0 +1,41 @@
+name: Gate B preflight current-main package tests
+
+on:
+  push:
+    branches:
+      - work/gate-b-preflight-ci-20260906
+    paths:
+      - .github/workflows/gate-b-preflight-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package-tests:
+    runs-on: ubuntu-latest
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+      TARGET_SHA: b1250fedce4f87515be25e225575b2fccec2152b
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: b1250fedce4f87515be25e225575b2fccec2152b
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify exact source and clean tree
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain)"
+          go version
+      - name: Run Gate B preflight package tests
+        run: |
+          go test \
+            ./tools/internal/repositoryevidence \
+            ./tools/reference-gate-b-final-evidence \
+            ./tools/reference-postgres-header-detail-runtime \
+            -count=1
