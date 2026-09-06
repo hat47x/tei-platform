@@ -61,18 +61,31 @@ Primary Business Procedureは次を同じordered Procedureに保持する。
 
 ```text
 BP-04  manual-unresolved
-BP-06  security-boundary
-BP-07  application-use -> order_entry.submit_order
+BP-06  security-boundary -> security.authorize
+BP-07  application-use   -> order_entry.submit_order
 BP-08  observation-boundary
 BP-09  manual-external-unresolved
 ```
 
-`order_entry.submit_order`は`sales.order.submit` Capabilityへtraceする。
+`order_entry.submit_order`は`sales.order.submit` CapabilityへPatternからtraceする。
+
+一方BP-06にはApplication Patternがなく、Business Action自体がAuthorizationを明示している。Reference Workspaceには既存`security.authorize` Capabilityがあるため、BP-06からこれをexplicit semantic refとして保持するようReferenceを補強した。
+
+これはBusiness ProcedureへSecurity定義を複製することではない。
+
+```text
+Business Procedure BP-06
+  -> explicit Capability ref security.authorize
+  -> existing Semantic authority
+```
+
+とするcross-view linkである。
 
 重要なのは:
 
 ```text
-Command
+Authorization
+  -> Command
   -> separate Observation
   -> manual / external continuation
 ```
@@ -92,9 +105,10 @@ Command
 3. `sales` -> `sales_core`がread-write + managed-here
 4. `master` -> `master_data`がread-only + external-observed
 5. customer reference Patternがexplicit datasource + Contract Query traceを持つ
-6. submit Patternがaccepted Command Capabilityへtraceする
-7. manual / security / observation / external stepsへfake Application Pattern / Capabilityを要求しない
-8. Command -> Observation -> external continuationのBusiness順序を保持する
+6. BP-06がApplication Patternを捏造せず`security.authorize`へexplicitにtraceする
+7. submit Patternがaccepted Command Capabilityへtraceする
+8. manual / observation / external residual stepsへfake Application Pattern / Capabilityを要求しない
+9. Authorization -> Command -> Observation -> external continuationのBusiness順序を保持する
 
 このtestはtest-only Evidenceであり、`ir.World`へBusiness Procedureを追加しない。
 
@@ -132,7 +146,7 @@ current production `order_entry` Referenceだけを使う。
 
 - managed-hereとexternal-observedの共存
 - human judgment
-- security
+- existing Authorization semantic authorityへのexplicit cross-view trace
 - Command / Observation separation
 - manual / external continuation
 
@@ -158,7 +172,7 @@ Application数を成熟度KPIにしない。
 Business Procedure
   keeps residual social/business meaning
 
-Function-Interaction / Data
+Function-Interaction / Data / Security
   remain independently authoritative where they own meaning
 
 cross-view validation
@@ -171,13 +185,14 @@ Gate 15bはBusiness Flow schemaの必要性を証明するものではない。
 
 ## 6. D3 / H1 / R3 / S4-Aへの影響
 
-15bから新しいproduction fieldは要求されない。
+15bから新しいproduction kindはまだ要求されない。
 
 現時点の主候補:
 
 ```text
 D3
   thin Business Procedure residual meaning
+  + explicit semantic refs
   + Step body / addressability separation
 
 H1
@@ -193,27 +208,60 @@ C1
   optional fixture Application context
 ```
 
-で、current social-system realismを説明できる。
+でcurrent social-system meaningを保持できるPressureを追加した。
+
+特にBP-06は、`security-boundary`というauthoring labelをproduction enumへ昇格させず、existing `security.authorize` identityへのexplicit refでcross-view意味を保持できる。
+
+ただしBP-08 Observationには、current Business Procedure fixtureからexplicitに参照できる同等のSemantic identityをまだ置いていない。
+
+したがってD3について現在主張できるのは:
+
+```text
+Business wording preservation        yes
+explicit Authorization trace         yes
+machine-readable Observation kind    not proven
+```
+
+である。
+
+Observationを文字列解釈や`realization` labelでCanonical判定しない。
 
 特に次は追加しない。
 
 - single Application owner
+- generic `StepKind` enum
 - Business Flow / DFD graph
 - Workflow runtime state
 - external organization runtime abstraction
 - fake Capability for manual work
 - generic Core Edge
 
-## 7. Evidence level
+## 7. D3 social meaning Pressure
+
+`tools/reference-business-procedure-check/d3_social_system_meaning_pressure_test.go`を追加した。
+
+確認すること:
+
+- `realization`をsubtractしたD3でもBP-04 / BP-06 / BP-08 / BP-09のBusiness wordingを保持
+- BP-06の`security.authorize` explicit refを保持
+- BP-07の`order_entry.submit_order` explicit Pattern refを保持
+- manual / observation / external residual stepへfake Capabilityを足さない
+- `security-boundary` / `observation-boundary`等のauthoring label変更だけではD3 meaningを変えない
+- current D3がtyped `SecurityBoundary` / `ObservationBoundary` Conformanceを持つと過大主張しない
+
+これはD3を完成扱いするtestではなく、**何を保持でき、何をまだtypedに検証できないか**を固定するPressureである。
+
+## 8. Evidence level
 
 現在確認できたのはRepository source / Reference構造とtest実装である。
 
-actual `gofmt / go vet / go test`は、この作業時点でRemote Desktop実行端末が接続されていないため未実行。
+actual `gofmt / go vet / go test`は、この作業時点でもRemote Desktop実行端末が接続されていないため未実行。
 
 したがって:
 
 ```text
 Gate 15b source-level Pressure: Implemented
+D3 social meaning source-level Pressure: Implemented
 Gate 15b actual execution Evidence: Pending
 Pre-ADR: Not Ready
 PR: Draft維持
@@ -221,9 +269,10 @@ PR: Draft維持
 
 とする。
 
-## 8. 次のPressure
+## 9. 次のPressure
 
 1. actual Repository environmentで`gofmt / go vet / go test`を取得する
-2. 15b testがgreenなら、D3がcurrent social-system Referenceで不足を出すか再監査する
-3. 不足がなければrealistic second Applicationを概念追加の口実にしない
-4. Procedure / Handoffだけでは保持できない具体的Business Flow meaningが出た場合のみBusiness Flow pressureを別途reopenする
+2. `security.authorize` explicit refを含む15b / D3 testsをgreenにする
+3. Observationについてtyped cross-view identityが本当に必要か、既存Driver / Observation authorityからderiveできるかを確認する
+4. 不足がなければrealistic second Applicationやgeneric StepKindを概念追加の口実にしない
+5. Procedure / Handoffだけでは保持できない具体的Business Flow meaningが出た場合のみBusiness Flow pressureを別途reopenする
