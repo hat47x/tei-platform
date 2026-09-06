@@ -47,20 +47,18 @@ type candidateRef struct {
 }
 
 type step struct {
-	ID                  string         `json:"id"`
-	BusinessAction      string         `json:"businessAction"`
-	Realization         string         `json:"realization"`
-	ApplicationPatterns []string       `json:"applicationPatterns,omitempty"`
-	Data                []string       `json:"data,omitempty"`
-	Relations           []string       `json:"relations,omitempty"`
-	Validations         []string       `json:"validations,omitempty"`
-	Capabilities        []string       `json:"capabilities,omitempty"`
-	ApplicationAccess   []accessIntent `json:"applicationAccess,omitempty"`
+	ID                  string   `json:"id"`
+	BusinessAction      string   `json:"businessAction"`
+	Realization         string   `json:"realization"`
+	ApplicationPatterns []string `json:"applicationPatterns,omitempty"`
+	Data                []string `json:"data,omitempty"`
+	Relations           []string `json:"relations,omitempty"`
+	Validations         []string `json:"validations,omitempty"`
+	Capabilities        []string `json:"capabilities,omitempty"`
 }
 
 type accessIntent struct {
-	Datasource string          `json:"datasource"`
-	Required   database.Access `json:"required"`
+	Required database.Access `json:"required"`
 }
 
 type accessProbe struct {
@@ -242,7 +240,7 @@ func evaluate(world ir.World, f fixture) report {
 		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_PROCEDURE_ID_MISSING", Severity: severitySemanticError, Message: "experiment-local Procedure IDがありません"})
 	}
 
-	app, appFound := findApplication(world, f.Application)
+	_, appFound := findApplication(world, f.Application)
 	if !appFound {
 		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_APPLICATION_NOT_FOUND", Severity: severitySemanticError, Message: fmt.Sprintf("Application %qがnormalized Worldに存在しません", f.Application)})
 	}
@@ -297,12 +295,6 @@ func evaluate(world ir.World, f fixture) report {
 		}
 		for _, ref := range s.Capabilities {
 			checkReference(&result, s.ID, "CAPABILITY", ref, capabilities[ref])
-		}
-
-		if appFound {
-			for _, intent := range s.ApplicationAccess {
-				checkAccessIntent(&result, app, s, intent)
-			}
 		}
 	}
 
@@ -377,27 +369,27 @@ func checkReference(result *report, stepID, kind, ref string, count int) {
 	result.Diagnostics = append(result.Diagnostics, diagnostic{Code: code, Severity: severitySemanticError, Step: stepID, Message: message})
 }
 
-func checkAccessIntent(result *report, app application.Application, s step, intent accessIntent) {
+func checkAccessIntent(result *report, app application.Application, s step, pattern application.Pattern, intent accessIntent) {
 	if !intent.Required.Valid() {
 		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_ACCESS_INTENT_INVALID", Severity: severitySemanticError, Step: s.ID, Message: fmt.Sprintf("requested access %qは不正です", intent.Required)})
 		return
 	}
-	requirement, found := findDatasource(app, intent.Datasource)
-	if !found {
-		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_DATASOURCE_NOT_FOUND", Severity: severitySemanticError, Step: s.ID, Message: fmt.Sprintf("Application %sにdatasource %qがありません", app.ID, intent.Datasource)})
+
+	datasource := string(pattern.Datasource)
+	if strings.TrimSpace(datasource) == "" {
+		result.Diagnostics = append(result.Diagnostics, diagnostic{
+			Code:     "BUSINESS_FUNCTION_DATASOURCE_TRACE_MISSING",
+			Severity: severityArchitecturePolicy,
+			Step:     s.ID,
+			Message:  fmt.Sprintf("Application Pattern %sからdatasourceをtraceできません", pattern.ID),
+		})
 		return
 	}
 
-	if len(s.ApplicationPatterns) > 0 {
-		if !stepPatternUsesDatasource(app, s, intent.Datasource) {
-			result.Diagnostics = append(result.Diagnostics, diagnostic{
-				Code:     "BUSINESS_FUNCTION_DATASOURCE_TRACE_MISSING",
-				Severity: severityArchitecturePolicy,
-				Step:     s.ID,
-				Message:  fmt.Sprintf("stepが要求するdatasource %qを明示Application Patternからtraceできません", intent.Datasource),
-			})
-			return
-		}
+	requirement, found := findDatasource(app, datasource)
+	if !found {
+		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_DATASOURCE_NOT_FOUND", Severity: severitySemanticError, Step: s.ID, Message: fmt.Sprintf("Application %sにPattern %sが参照するdatasource %qがありません", app.ID, pattern.ID, datasource)})
+		return
 	}
 
 	if !allowsAccess(requirement.Access, intent.Required) {
@@ -406,9 +398,10 @@ func checkAccessIntent(result *report, app application.Application, s step, inte
 			Severity: severityArchitecturePolicy,
 			Step:     s.ID,
 			Message: fmt.Sprintf(
-				"Application %s datasource %sのaccepted accessは%sですが、Business/Function viewは%sを要求しています。Projectionだけでaccessを拡張してはいけません",
+				"Application %s Pattern %sから導出したdatasource %sのaccepted accessは%sですが、Business/Function probeは%sを要求しています。Projectionだけでaccessを拡張してはいけません",
 				app.ID,
-				intent.Datasource,
+				pattern.ID,
+				datasource,
 				requirement.Access,
 				intent.Required,
 			),
@@ -423,20 +416,6 @@ func findDatasource(app application.Application, alias string) (application.Data
 		}
 	}
 	return application.DatabaseRequirement{}, false
-}
-
-func stepPatternUsesDatasource(app application.Application, s step, datasource string) bool {
-	patterns := map[string]application.Pattern{}
-	for _, p := range app.Patterns {
-		patterns[string(p.ID)] = p
-	}
-	for _, ref := range s.ApplicationPatterns {
-		p, ok := patterns[ref]
-		if ok && string(p.Datasource) == datasource {
-			return true
-		}
-	}
-	return false
 }
 
 func allowsAccess(granted, required database.Access) bool {
@@ -471,9 +450,13 @@ func applyAccessProbe(result *report, world ir.World, f fixture, probe accessPro
 			sortDiagnostics(result.Diagnostics)
 			return
 		}
-		probeStep := s
-		probeStep.ApplicationPatterns = []string{probe.ApplicationPattern}
-		checkAccessIntent(result, app, probeStep, probe.RequestedAccess)
+		pattern, ok := findPattern(world, probe.ApplicationPattern)
+		if !ok {
+			result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND", Severity: severitySemanticError, Step: s.ID, Message: fmt.Sprintf("probe pattern %qをnormalized Worldでexactに1件解決できません", probe.ApplicationPattern)})
+			sortDiagnostics(result.Diagnostics)
+			return
+		}
+		checkAccessIntent(result, app, s, pattern, probe.RequestedAccess)
 		sortDiagnostics(result.Diagnostics)
 		return
 	}
