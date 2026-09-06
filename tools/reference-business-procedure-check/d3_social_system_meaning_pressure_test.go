@@ -31,9 +31,18 @@ func TestD3PreservesSocialBusinessWordingWithoutRealizationKind(t *testing.T) {
 		if body.BusinessAction != source.BusinessAction || body.BusinessAction == "" {
 			t.Fatalf("%sのaccepted Business wordingをrealization subtractionで失いました: source=%q body=%q", id, source.BusinessAction, body.BusinessAction)
 		}
-		if len(body.ApplicationPatterns) != 0 || len(body.Capabilities) != 0 {
-			t.Fatalf("%sへfake Application Pattern / Capabilityを補いました: %+v", id, body)
+		if len(body.ApplicationPatterns) != 0 {
+			t.Fatalf("%sへfake Application Patternを補いました: %+v", id, body)
 		}
+	}
+
+	for _, id := range []string{"BP-04", "BP-08", "BP-09"} {
+		if len(modelSteps[id].Capabilities) != 0 {
+			t.Fatalf("residual Business step %sへfake Capabilityを補いました: %+v", id, modelSteps[id])
+		}
+	}
+	if !reflect.DeepEqual(modelSteps["BP-06"].Capabilities, []string{"security.authorize"}) {
+		t.Fatalf("security boundaryからexisting semantic Capabilityへのexplicit refがD3で失われました: %+v", modelSteps["BP-06"])
 	}
 
 	submit, ok := modelSteps["BP-07"]
