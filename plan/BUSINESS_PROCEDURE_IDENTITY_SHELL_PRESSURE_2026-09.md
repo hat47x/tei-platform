@@ -1,10 +1,10 @@
 # Business Procedure Minimal Identity Shell Pressure — 2026-09
 
-Status: Test-only Evidence in progress / no Core adoption
+Status: Test-only Evidence in progress / useful identity primitive / insufficient as standalone Canonical meaning
 
 ## 目的
 
-`BUSINESS_PROCEDURE_IDENTITY_OPTION_AUDIT_2026-09.md`で第一候補となったOption Aについて、production `ir.World`を変更する前に、identity-only contractがReference圧力を満たせるかtest-onlyで確認する。
+Business Procedureのpath-independent identityを、source pathやruntime semanticsから分離できるか確認する。
 
 このPressureはCanonical `Procedure`採用ではない。
 
@@ -16,8 +16,6 @@ probe typeは意図的に次だけを持つ。
 CanonicalProcedureIdentityShellProbe
   ID
 ```
-
-reflect testでfield数を1に固定する。
 
 次は持たせない。
 
@@ -39,176 +37,167 @@ reflect testでfield数を1に固定する。
 - Source range
 - runtime orchestration
 
-Business meaning本体とSource metadataをidentity shellへ侵入させない。
-
 ## 2. authoritative sourceから導出する
 
-identity shell用に別のID fileを作らない。
-
-現在のBusiness Procedure authoring sourceから
-
-```text
-procedure.id
-```
-
-だけを導出する。
+identity shell用の第二ID fileは作らない。
 
 ```text
 file-native Business Procedure source
   ↓ strict decode
-reference-local stable ID
-  ↓ derived
+procedure.id
+  ↓ normalized
 identity shell
 ```
 
-したがってidentity shellは第二authoritative sourceではない。
+同一IDを複数authoritative sourceが宣言した場合はfail closedにする。
 
-## 3. duplicate identity
+## 3. 成立したidentity性質
 
-同じBusiness Procedure IDを複数sourceが宣言した場合はfail closedにする。
+### pure file move
 
-```text
-source A -> order-entry.order-handling
-source B -> order-entry.order-handling
-```
+source bytes / Procedure IDが同じならidentity shellは不変。
 
-をheuristic mergeしない。
+### Business wording change
 
-これはRQ-003の単一正本境界と整合する。
+purpose / Business Action等が変わってもProcedure IDが同じならidentity shellは不変。
 
-## 4. pure file move
+### logical rename
 
-同じsource bytesを別pathへ移した場合、identity shellは不変である。
-
-```text
-path
-  changed
-
-Business Procedure ID
-  same
-
-identity shell
-  same
-```
-
-source locatorをCanonical identityへ混ぜない。
-
-## 5. Business wording change
-
-BP-04等のBusiness Action文言だけを変更してもidentity shellは変わらない。
-
-Business source fingerprint / Business Projectionは変わるが、path-independent identityは同じである。
-
-```text
-same Procedure identity
-changed Business source snapshot
-```
-
-を表現できる。
-
-## 6. logical rename
-
-`procedure.id`自体を変更した場合はidentity shell changeになる。
-
-```text
-order-entry.order-handling
-  -> order-entry.order-handling-renamed
-```
-
-はfile moveではなくlogical identity changeとして扱う。
+`procedure.id`変更はidentity change。
 
 名称類似からrenameを推測しない。
 
-## 7. Source Index target
-
-probe shellから次のSubjectを構成する。
+### Source Index target
 
 ```text
 kind = business-procedure
-id   = identity shell ID
+id   = Procedure ID
 ```
 
-Business Procedure source Artifactからwhole-file Rangeを作り、`RoleDefinition`のReferenceとしてSource Indexへ登録するpressure testを追加した。
+というpath-independent Subject候補を作れ、Artifact path / fingerprint / rangeはSource Index側へ残せる。
 
-確認する性質:
+## 4. 重要な追加反証
 
-- Subject IDはpathではない
-- Subject IDはfingerprintではない
-- Artifact path / fingerprintはSource Index側に残る
-- identity shellとsource locatorを分離できる
+前段では、このidentity shellだけでRQ-002のCanonical trace targetを作れれば最小十分かもしれないと考えた。
 
-現時点ではJSON identifier用exact Range parserを作らずwhole-file Rangeでpressureを確認する。
-
-production採用時にexact anchorが必要なら別に実証する。
-
-## 8. RQ-002に対する意味
-
-このshellがproduction Worldへ統合されれば、概念上次が成立する。
+その後の`BUSINESS_PROCEDURE_CANONICAL_MEANING_PRESSURE_2026-09.md`で、次の不足が明確になった。
 
 ```text
-Business Procedure authoring source
-   ↓
-Canonical Business Procedure identity
-   ↓
-Source Index Subject
+same Procedure ID
++
+changed accepted Business meaning
 ```
 
-これによりRQ-002のCanonical trace targetを、full Procedure modelなしで作れる可能性がある。
+ではidentity shellは変わらない。
 
-重要なのは、Canonical化するのがBusiness Procedureの全内容ではなく**identityだけ**という点である。
+したがってIDだけでは、
 
-## 9. まだ実証していないこと
+- Business-only Semantic Diff
+- Business change -> Data / Function impact
+- accepted Business meaningのCanonical exploration
+- reload後Business Conformance
+- 000039 change graph上のcontent change
 
-本Pressureはtest-only typeであり、まだ次を変更していない。
+を表現できない。
 
-- `internal/ir.World`
-- production workspace loader
-- production `procedures` source root
-- Normalize
-- World validation
-- golden World
-- Source Index production subject kind
-- Shared Acceptance production API
-- 000039 impact graph
+## 5. 更新後の位置づけ
 
-したがって「Option Aのbehavioral contract候補」を検査しているだけである。
+identity shellは不要ではない。
 
-## 10. Core integration前の停止条件
+むしろ、thin Canonical Business Procedure meaningの
 
-次のいずれかが成立したらOption AをCoreへ入れず比較へ戻る。
+```text
+ID部分
+```
 
-- test-only shellでもBusiness detailが必要になる
-- identityをsourceから一意に導出できない
-- file moveでidentity維持ができない
-- duplicate authorityを許容しないと成立しない
-- Source Indexへ結ぶためsource metadataをshellへ入れる必要が出る
-- Shared Acceptance targetとしてReference-local keyとの差が説明できない
+として有用である可能性が高い。
 
-## 11. Core integrationへ進める条件
+ただし、**ID-onlyをproduction `ir.World`へ先行導入する判断は停止する。**
 
-actual Repository testがgreenになり、かつ次が成立する場合だけ、次段でproduction integration pressureを検討する。
+比較対象は次とする。
 
-1. shellはID-onlyを保つ
-2. authoritative Business sourceからderivedできる
-3. duplicate IDをfail closedにできる
-4. file move / wording change / logical renameを期待どおり分離できる
-5. Source Index subjectとしてpath-independentに利用できる
-6. RQ-002のCanonical trace targetとして明確な追加価値がある
+```text
+A: identity only
+vs
+D: identity + cross-viewに必要な薄いBusiness residual meaning
+```
 
-その場合も最初のproduction experimentでは`purpose` / `step`等をWorldへ追加しない。
+現時点のEvidenceはD側を支持し始めている。
 
-## Verification
+## 6. Option Dとの境界
+
+thin Business meaning候補は次を保持する。
+
+```text
+Procedure
+  id
+  purpose
+  trigger
+  actor
+  ordered steps
+
+Step
+  id
+  businessAction
+  realization
+  explicit semantic refs
+```
+
+一方、identity shellで排除したruntime semanticsはOption Dでも排除する。
+
+- retry
+- timer
+- queue
+- saga
+- scheduler
+- runtime state
+- Authorization Role
+
+したがって「identity-onlyでは足りない」ことを理由にWorkflow Engineへ飛ばない。
+
+## 7. handoffとの関係
+
+handoffはProcedure bodyへ埋め込むのではなく、
+
+```text
+Procedure/Step -> Procedure/Step
+```
+
+のthin Business semantic relationとして別Pressureを行っている。
+
+詳細:
+
+- `BUSINESS_PROCEDURE_HANDOFF_CANONICAL_PRESSURE_2026-09.md`
+- `canonical_handoff_pressure_test.go`
+
+## 8. Verification
 
 `tools/reference-business-procedure-check/identity_shell_pressure_test.go`
 
 主なtest:
 
-- `TestCanonicalProcedureIdentityShellProbeContainsOnlyID`
-- `TestCanonicalProcedureIdentityShellProbeDerivesFromAuthoritativeSource`
-- `TestCanonicalProcedureIdentityShellProbeRejectsDuplicateSourceIdentity`
-- `TestCanonicalProcedureIdentityShellProbeSurvivesPureFileMove`
-- `TestCanonicalProcedureIdentityShellProbeIgnoresBusinessWordingChange`
-- `TestCanonicalProcedureIdentityShellProbeTreatsLogicalRenameAsIdentityChange`
-- `TestCanonicalProcedureIdentityShellProbeCanBackWorldStyleSourceSubjectWithoutSourceMetadata`
+- ID-only field guard
+- authoritative sourceからidentity導出
+- duplicate ID reject
+- pure file move不変
+- Business wording changeでidentity不変
+- logical renameでidentity change
+- Source Index Subject候補
 
-actual Repository runnerがcheckout / Go testへ到達するまではEvidence in progressとする。
+actual Repository runnerがcheckout / Go testへ到達するまではgreen Evidenceとは数えない。
+
+## 9. production判断
+
+identity shell単独ではCore integrationへ進めない。
+
+次の全体Pressureを先に満たす必要がある。
+
+1. thin Procedure body meaning
+2. thin handoff relation
+3. Pattern-owned meaningの非重複
+4. manual / external work保持
+5. Business-only semantic diff / impact
+6. file move / logical rename
+7. actual Repository test green
+
+その結果、full Business contentをCanonical layerへ置かずとも同等のdiff / impact / explorationが成立すると実証できた場合だけ、identity-only案を再評価する。
