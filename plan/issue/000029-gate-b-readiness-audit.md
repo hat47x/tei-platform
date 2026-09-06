@@ -116,7 +116,7 @@ Ready判定では少なくとも:
 - final UI-less Scenario成功
 - external Evidence intake成功
 - Repository source-boundary Conformance成功
-- post-run同一clean R
+- post-run同一clean source/index state
 
 synthetic Evidenceをactual Oracleへ格上げしません。
 
@@ -127,7 +127,7 @@ synthetic Evidenceをactual Oracleへ格上げしません。
 - World / Plugin Lock golden一致
 - Durable Run golden一致
 - check-only run
-- post-run同一clean R
+- post-run同一clean source/index state
 
 stale修復が必要なら正規generatorで修復し、diffを意味上確認してcommitした新revisionをcandidateにし、三laneを最初から取り直します。
 
@@ -143,7 +143,7 @@ stale修復が必要なら正規generatorで修復し、diffを意味上確認�
 - DB-side ownership marker exact一致objectだけをcleanup
 - cleanup後: user relation 0 / Event Trigger 0 / fixture不在
 - DSN / credential / parameter値 /実Database名を通常Evidenceへ保存しない
-- post-run同一clean R
+- post-run同一clean source/index state
 
 ## actual final run環境の監査
 
@@ -152,6 +152,10 @@ stale修復が必要なら正規generatorで修復し、diffを意味上確認�
 ### Repository source
 
 - Repository rootから起動
+- Gate B Evidence専用full checkout
+- tracked / untracked / ignored local stateなし
+- tracked Git index entryが通常`H`のみ
+- `assume-unchanged` / `skip-worktree`なし
 - 開始時clean R
 - source観測中HEAD driftをfail closed
 - 各lane後同一clean R
@@ -172,13 +176,17 @@ runner compile前から`GOENV=off` / external GOWORK無効 / GOFLAGS emptyを要
 - final launch時direct `TEI_TEST_POSTGRES_DSN`不存在
 - `TEI_TEST_POSTGRES_DSN_FILE`はRepository外existing regular file
 - symlink解決後もRepository外
-- Go / Git probe、#310、#255へDSN本文・secret pathを渡さない
-- #308 childへだけin-memory DSN本文を渡す
-- secret / credentialを通常Evidenceへ保存しない
+- final runnerがoriginal secret fileをstable single-openし、normalized DSNをRepository外owner-only temporary handoff fileへ複製する
+- Go / Git probe、#310、#255へDSN本文・original secret path・handoff pathを渡さない
+- #308 `go run` / compiler / linkerへDSN本文を渡さずtemporary handoff pathだけを渡す
+- #308 runtimeがhandoff fileからDSN本文を読み、DSN / file path environmentをsource probe前に消去する
+- secret / credential / original secret path / handoff pathを通常Evidenceへ保存しない
 
 ## candidate revision
 
 異なるrevisionの成功を寄せ集めません。
+
+candidate `R`はfull checkoutから選び、tracked / untracked / ignored local stateなし、tracked Git index entryが通常`H`のみを要求します。
 
 source変更が必要ならfinal cycleを停止し、変更をcommitした新candidate `R'`で#310 / #255 / #308 / #387を最初から再実行します。
 
@@ -201,7 +209,7 @@ Gate B通過時にverified claimとして十分なら追加Evidenceとして参�
 - [x] same-run child exact artifact保持を実装（PR #458）
 - [x] final success直前のartifact再読込 / fingerprint再照合を実装（PR #461）
 - [x] Handoverをsame-run Evidence provenanceへ固定（PR #462）
-- [ ] 実TEI checkoutでfinal runner / repositoryevidence package test成功
+- [ ] 実TEI full checkoutでfinal runner / repositoryevidence package test成功
 - [ ] Evidence専用空PostgreSQL Database用意
 - [ ] clean candidate R固定
 - [ ] #387 actual final run成功
