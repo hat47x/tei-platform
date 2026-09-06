@@ -6,7 +6,7 @@ Status: **Lane C / Pre-ADR audit / Not Ready / no production Core adoption**
 
 Business Procedure Reference pressureからproduction Canonical contractを判断する前に、accepted Business meaning、derived meaning、Authoring/Source metadata、Projection/Diagnostic、Runtime/Provider、別Reference pressureを分離する。
 
-本監査はADRではない。Production `ir.World`変更、`BusinessProcedure` / `BusinessHandoff` kind採用、Business Flow schema、Workflow Engine導入を決定しない。
+本監査はADRではない。Production `ir.World`変更、`BusinessProcedure` / `BusinessHandoff` kind採用、Business Flow schema、generic ref-role model、Workflow Engine導入を決定しない。
 
 ## 2. 主要な反証
 
@@ -19,12 +19,13 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - authoring-only Handoff H0はcondition / endpoint changeをnormalized meaningから失う。
 - Data Relation / generic Core EdgeはBusiness Handoffの器ではない。
 - Business Handoffはfull Business Flow / DFDではない。
+- ref kind separationだけではref role separationを表せない。
 
 ## 3. Explicit ref authority
 
 Current `order_entry`では、既存authorityがあるだけではdirect refを保持しない。Business Action自身がそのauthorityを直接必要とし、既存Pattern refからlosslessにderiveできない場合だけBusiness sourceへ置く。
 
-### Application Pattern
+### Application Pattern — direct realization
 
 ```text
 BP-00 -> order_entry.recent_orders
@@ -88,9 +89,13 @@ R3
 
 C1
   fixture Applicationはoptional reporting context
+
+O1
+  Application Pattern protected-target role overlay pressure
+  D4 direct realization refとは独立
 ```
 
-D3 / D4はいずれもproduction採用ではない。
+D3 / D4 / O1はいずれもproduction採用ではない。
 
 ## 5. D4 body candidate
 
@@ -102,7 +107,7 @@ Procedure body
   actor   { epistemicStatus, businessLabel }
   ordered step bodies[]
     businessAction
-    applicationPatternRefs[]
+    applicationPatternRefs[]   // direct realization only
     validationRefs[]
     capabilityRefs[]
 ```
@@ -128,11 +133,52 @@ Capability
 
 は異なるauthority kindである。literal identity textが同じでも同一refとして扱わない。
 
-RQ-026のcross-view correctionでは、どのviewpoint / authorityへ戻るべきかを失わないことが重要である。
-
 Generic `semanticRefs[]` / kind-less `[]CanonicalID`はcurrent Evidenceから採用しない。
 
-## 7. D4 + S4-A + H1/R3 composition
+## 7. O1 — ref role separation
+
+Application Patternという同じauthority kindでも、current Referenceでは少なくとも二つのrole pressureがある。
+
+```text
+BP-07 -> order_entry.submit_order
+  direct Function realization
+
+BP-06 -> order_entry.submit_order
+  protected target / concern
+  not realization
+```
+
+BP-06は同時に:
+
+```text
+supporting semantic authority -> security.authorize
+protected Application target  -> order_entry.submit_order
+direct Function realization   -> none
+```
+
+を保持する必要がある。
+
+`applicationPatterns[]`をprotected targetにも流用すると、target relationをFunction realizationへ誤変換する。
+
+O1ではtest-only overlay:
+
+```text
+D4TargetAwareStep
+  Body: D4 Step body
+  ApplicationPatternTargets[]
+```
+
+を比較し、target-only changeをD4 bodyから独立したcross-view meaning差として保持する。
+
+ただしgeneric:
+
+```text
+ExplicitSemanticRef { Kind, Role, Target }
+```
+
+はまだ採用しない。current strong role pressureはBP-06中心であり、`supports / concerns / protects / checks / realizes` taxonomy全体は未証明である。
+
+## 8. D4 + S4-A + H1/R3 composition
 
 ```text
 D4 Step body
@@ -152,9 +198,26 @@ Normalized Business model pressure
 - Handoff condition changeをbodyから独立したBusiness meaning差として保持
 - new direct Data / Relation refはaddress/handoff layerで隠さずD4でfail closed
 
-`d4_normalized_composition_pressure_test.go`でtest-only Pressureを置く。
+## 9. D4 + O1 composition
 
-## 8. Derivedであるべきもの
+```text
+D4 body
+  applicationPatterns[] = direct realization only
+
+O1 overlay
+  applicationPatternTargets[] = protected target / concern
+```
+
+Pressure:
+
+- BP-06のD4 bodyにApplication Pattern realizationを追加しない
+- `security.authorize` Capability refを保持
+- `order_entry.submit_order`をtarget overlayでexact resolution
+- target-only changeはD4 body不変・overlay meaning変更
+- BP-07隣接realizationからtargetをderiveしない
+- Authorization policy shapeをBusiness Procedureへ逆流させない
+
+## 10. Derived / externalへ残すもの
 
 PatternからderiveできるData / Relation / Query / Capability / Datasource / owner Application / datasource policyをBusiness sourceへコピーしない。
 
@@ -162,49 +225,38 @@ Procedureにmandatory single Application ownerを置かない。
 
 Matrix、CRUD / impact view、graph、checker diagnosticsをaccepted Business meaningの第二正本にしない。
 
-## 9. Authoring / Source infrastructureへ残すもの
+Source path / fingerprint / revision / ETag / ManagedFiles / approval snapshotはAuthoring/Source infrastructureへ残す。
 
-- file path / artifact locator
-- source range / fingerprint
-- schemaVersion / artifactRole
-- Git revision / ETag
-- approval snapshot metadata
-- ManagedFiles entry
-
-Pure file moveでBusiness meaningを変えない。
-
-## 10. Coreへ入れないもの
+## 11. Coreへ入れないもの
 
 - Runtime Workflow state / retry / timer / queue / scheduler / saga
-- Authorization Role / Principal / Permission / Credential
+- Authorization Role / Principal / Permission / Credential / policy effect
 - Provider / deployment Evidence
 - UI layout
 - generic Core / Business Edge
 - generic `semanticRefs[]`
+- generic explicit-ref Role taxonomy
 - Observation専用Canonical identityの先行導入
 - global Canonical Step ID
 
-## 11. Business Flow / DFDは別pressure
+## 12. Business Flow / DFDは別pressure
 
 Current Handoff modelへProcess node、ExternalParty / Role participant、Information / Document / Data flow、Store、Payload / FlowType等を入れない。
 
 Current handoff validation PASSをBusiness Flow / DFD Conformanceとはみなさない。
 
-## 12. Gate 15
+## 13. Gate 15
 
 ### 15a multi-Application structural pressure
-
 Synthetic second Applicationで`Business Procedure != single Application child`を確認する。
 
 ### 15b social-system realism pressure
-
 Current `order_entry`だけでもmanaged-here sales data、external-observed customer master、human judgment、Authorization、Command、Observation intention、manual/external continuationが同一Procedure文脈に共存する。
 
 ### 15c conditional broader realistic pressure
-
 15a + 15bで説明できない具体的不足が出た場合だけ追加する。Application数をrealism KPIにしない。
 
-## 13. ADR作成前Gate
+## 14. ADR作成前Gate
 
 次を満たすまでproduction Canonical contract ADRを作らない。
 
@@ -228,13 +280,16 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 18. D4 future Data / Relation ref fail-closedをactual testsで確認
 19. authority kindをgeneric ref bagへ失わない
 20. D4 + S4-A + H1/R3 compositionをactual testsで確認
-21. Lane B再監査と矛盾しない
+21. O1 target != realizationをactual testsで確認
+22. D4 + O1 compositionをactual testsで確認
+23. generic ref-role taxonomyが必要か複数realistic pressureから判断
+24. Lane B再監査と矛盾しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
 したがって**Pre-ADR Status = Not Ready**を維持する。
 
-## 14. 現時点の判断
+## 15. 現時点の判断
 
 ### productionへ今入れない
 
@@ -244,6 +299,7 @@ GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowは
 - full Business Flow / DFD schema
 - generic Core / Business Edge
 - generic `semanticRefs[]`
+- generic explicit-ref Role enum
 - `realization` enum
 - global/durable Canonical Step ID
 - generic Uncertainty framework
@@ -258,6 +314,7 @@ S4-A Procedure-scoped Step local address
 H1 thin normalized handoff
 R3 handoff-only Business relation boundary
 C1 optional Reference Application context
+O1 target-role overlay pressure
 ```
 
-Actual greenと次のrealistic Referenceから、D3/D4の最小十分性を判断する。
+Actual greenと次のrealistic Referenceから、D3/D4/O1の最小十分性を判断する。
