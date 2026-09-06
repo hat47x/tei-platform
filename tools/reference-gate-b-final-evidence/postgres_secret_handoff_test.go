@@ -3,8 +3,49 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestLoadPostgresDSNFilePathFromEntriesRejectsDirectDSNCaseInsensitively(t *testing.T) {
+	const directDSN = "postgres://user:secret@example.invalid/evidence"
+	_, err := loadPostgresDSNFilePathFromEntries([]string{
+		"PATH=/usr/bin",
+		"tei_test_postgres_dsn=" + directDSN,
+		"TEI_TEST_POSTGRES_DSN_FILE=/private/dsn",
+	})
+	if err == nil {
+		t.Fatal("大小文字違いのdirect DSN launchを受理しました")
+	}
+	if strings.Contains(err.Error(), directDSN) || strings.Contains(err.Error(), "user:secret@") {
+		t.Fatalf("DSN本文をerrorへ露出しています: %q", err)
+	}
+}
+
+func TestLoadPostgresDSNFilePathFromEntriesRejectsCaseInsensitiveDuplicateFileKeys(t *testing.T) {
+	_, err := loadPostgresDSNFilePathFromEntries([]string{
+		"TEI_TEST_POSTGRES_DSN_FILE=/private/first",
+		"tei_test_postgres_dsn_file=/private/second",
+	})
+	if err == nil {
+		t.Fatal("大小文字違いのduplicate DSN file keyを受理しました")
+	}
+}
+
+func TestLoadPostgresDSNFilePathFromEntriesAcceptsSingleFilePath(t *testing.T) {
+	const path = "/private/postgres-dsn"
+	got, err := loadPostgresDSNFilePathFromEntries([]string{
+		"PATH=/usr/bin",
+		"TEI_TEST_POSTGRES_DSN_FILE=" + path,
+		"OTHER=value",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != path {
+		t.Fatalf("path=%q want=%q", got, path)
+	}
+}
 
 func TestPreparePostgresDSNHandoffCreatesExternalOwnerOnlyFileAndCleansUp(t *testing.T) {
 	base := t.TempDir()
