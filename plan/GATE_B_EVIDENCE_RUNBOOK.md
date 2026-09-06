@@ -55,7 +55,7 @@ Business Result / Execution Error / Observation / Diagnosticも相互に読み�
 専用checkoutのRepository rootから開始します。
 
 ```bash
-git status --short
+git status --short --untracked-files=all
 git rev-parse HEAD
 go version
 ```
@@ -98,7 +98,7 @@ PR #466以降、runnerは**DSN secret fileをopen / readする前**に、Postgre
 ```text
 HEAD before
   ↓
-git status --porcelain
+git status --porcelain --untracked-files=all
   ↓
 HEAD after
   ↓
@@ -108,6 +108,8 @@ secret file open / read
 ```
 
 source観測不能、観測中のHEAD drift、dirty working treeではsecret loaderへ進みません。このpreflightは後段のcandidate source確認を置き換えません。secret読込後にsourceが変化した場合も、lane開始前の再確認でfail closedします。
+
+PR #477以降、共有`tools/internal/repositoryevidence`はuntracked fileをambient Git configで隠せないよう、開始時・終了時とも`--untracked-files=all`を明示します。さらに、実行checkoutとは別のrepository / work tree / index等を観測し得るGit identity overrideに加え、`GIT_CONFIG_COUNT` / `GIT_CONFIG_PARAMETERS` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`によるcommand-scope config injectionを大小文字違いも含めfail closedで拒否します。
 
 PR #465以降、secret fileはsymlink解決後もRepository外のexisting regular fileであることを確認したうえで、**検証済みのresolved pathを一度だけopen**します。
 
@@ -301,11 +303,11 @@ cleanupではtableをlockし、DB上markerが作成時markerとexact一致した
 最終収束前に:
 
 ```bash
-git status --short
+git status --short --untracked-files=all
 git rev-parse HEAD
 ```
 
-`git status --short`が空であることを要求します。
+`git status --short --untracked-files=all`が空であることを要求します。
 
 このclean revisionをcandidate `R`とします。
 
@@ -583,6 +585,7 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - Repository root以外からのfinal run
 - 開始時dirty working tree
 - secret read前にRepository sourceをcleanかつ安定して観測できない
+- Repository source観測environmentにGit identity overrideまたは`GIT_CONFIG_*` command-scope config injectionが存在する
 - source観測不能 / HEAD drift
 - lane後dirty / revision drift
 - required lane失敗
