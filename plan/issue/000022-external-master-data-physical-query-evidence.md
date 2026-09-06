@@ -1,11 +1,11 @@
 # ISSUE-000022: external-observed `master_data`の物理Query Evidenceを確定する
 
-- 状態: In Progress
+- 状態: Blocked — actual Oracle実環境情報待ち / Gate Bではunresolved可
 - GitHub Issue: #214
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
-- 関連Issue: `ISSUE-000020` / `ISSUE-000021`
+- 関連Issue: `ISSUE-000020` / `ISSUE-000021` / `ISSUE-000033` / `ISSUE-000034` / `ISSUE-000035`
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
-- 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014
+- 関連RQ: RQ-004 / RQ-005 / RQ-007 / RQ-009 / RQ-012 / RQ-014
 
 ## 現行scopeと分担
 
@@ -15,23 +15,48 @@
 
 ## Evidenceの目的
 
-第一Referenceの`master_data`について、TEIが所有していない既存資産の実物理事実、provenance、read-only境界、Oracle driverを通したactual readを確認し、`Order -> Customer` Referenceが実環境でもSemantic meaningを保って動作することをGate B Evidenceとして確定します。
+第一Referenceの`master_data`について、TEIが所有していない既存資産の実物理事実、provenance、read-only境界、Oracle driverを通したactual readを確認し、`Order -> Customer` Referenceが実環境でもSemantic meaningを保って動作することをEvidenceとして確定します。
 
 `master_data`は`external-observed` Databaseです。`development`では`master_data.dev`としてBindingされ、providerはOracleです。
 
 このIssueでは、未観測の物理SchemaをTEI側から生成・推測しません。`CUSTOMER`、`CUSTOMER_ID`等を命名慣習から仮置きすると、既存資産受入れのReferenceがTEI都合の架空Schemaへ変質するためです。
 
+## Gate Bとの関係
+
+PR #379を起点とした`ISSUE-000035` / #381の再監査により、**本Issueのactual Oracle EvidenceはGate Bの必須完了条件ではなくなりました。**
+
+これはactual Oracle Evidenceが不要になったという意味ではありません。
+
+本Issueは次を主張するための継続actual external asset Evidenceです。
+
+- actual Oracle compatibility
+- actual `master_data` integration
+- actual Oracle driver / Host assembly
+- actual read-only principal / grant / transaction境界
+- actual read → Semantic Customer
+
+Gate B判定時点で未完了の場合は、#214 / #371 / #376をHandover Baselineへ`unresolved / not verified`として明示します。
+
+その状態で第一Web Targetへ進んでも、次は主張しません。
+
+- Oracle Providerがactual環境で確認済み
+- `master_data` actual assetが接続済み
+- Oracle datatype / NULL / named bind挙動が確認済み
+- Oracle read-only principal / grantが確認済み
+
+Web側で未観測Oracle物理情報やread-only方式を補完しません。
+
 ## 現在の判定
 
 **external Evidenceを受け入れる非Canonical境界はReadyですが、第一Referenceのactual physical facts / read-only / Oracle actual readは未取得です。**
 
-したがって本IssueはGate B blockerのままです。
+したがって本Issue自体はBlockedのままです。ただし、このBlocked状態だけでGate BをNot Readyにはしません。
 
 PR #340以降、Evidence受入れの成功は単なる人向けメッセージではなく、**どのexternal Evidence artifactを、どのclean Repository revisionで照合したか**を示す機械可読receiptとして残します。
 
-PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。ただし、これはactual physical factsを取得済みという意味ではなく、実Oracle readで観測した事実を失わないためのruntime境界です。
+PR #364 / #366以降、Oracle Runnerはactual read時にdriverが実際に返したraw result列名と、driverが提供できた範囲の列metadataをOracle固有Payloadへ保持できます。ただし、これはactual physical factsを取得済みという意味ではありません。
 
-ただし、acceptance receiptはactual Oracle read Evidenceではありません。
+PR #372で具体Oracle driver / Host assemblyの確定作業を`ISSUE-000033` / #371へ、PR #378でactual read-only Evidenceの確定作業を`ISSUE-000034` / #376へ分離しました。
 
 ## 既に成立している実行境界
 
@@ -122,6 +147,8 @@ Evidenceが正しくても、無効なCanonical authoringを前提に受理し�
 
 該当realizationが存在しなければ停止し、Evidenceに書かれたtable名、column名、parameter名、SQL等から不足authoringを生成・補完しません。
 
+このintake境界のConformanceは#310 deterministic Repository Evidenceの必須checkとしてGate Bに残ります。
+
 ## source-fixed acceptance receipt
 
 PR #340で、受入れrun自体を一つのclean Repository revisionへ固定し、実際に検査したEvidence artifactをfingerprintで識別する境界を追加しました。
@@ -137,9 +164,9 @@ git status --porcelain
 
 working treeがdirtyなら受入れを停止します。
 
-Repository状態の観測には`tools/internal/repositoryevidence`を利用し、#310 deterministic Repository Evidence、#255 generated artifact Evidence、#308 PostgreSQL Provider Evidenceと同じsource再現性規則へ揃えます。
+Repository状態の観測には`tools/internal/repositoryevidence`を利用します。
 
-PR #355以降、`postRunRepository.checked=true`になるのは、実行後repository revisionとworking tree状態の両方を観測できた後だけです。観測自体に失敗した状態と、観測した結果cleanではなかった状態を区別します。
+PR #355以降、`postRunRepository.checked=true`になるのは、実行後repository revisionとworking tree状態の両方を観測できた後だけです。
 
 ### Evidence artifact fingerprint
 
@@ -149,7 +176,7 @@ Evidence fileをexact bytesで読み、SHA-256を計算します。
 evidenceArtifactFingerprint = sha256:<hex>
 ```
 
-これは、意味的に近い別fileではなく、**toolが実際に読み込んだexternal Evidence JSON artifactそのもの**を識別します。空白や改行だけを変更した場合も別artifactとして別fingerprintになります。
+これは、**toolが実際に読み込んだexternal Evidence JSON artifactそのもの**を識別します。
 
 ### 受入れ照合
 
@@ -199,7 +226,7 @@ evidenceArtifactFingerprint = sha256:<hex>
 }
 ```
 
-Gate B用にreceiptを保存する場合、Repository内へstdoutを直接redirectしません。command開始前に新規fileが作成されるとworking treeがdirtyになり、clean revision要件と自己矛盾するためです。working tree外の一時領域等へ保存します。
+Gate B用にreceiptを保存する場合、Repository内へstdoutを直接redirectしません。
 
 ## 二つのfingerprintを分離する
 
@@ -207,13 +234,9 @@ Gate B用にreceiptを保存する場合、Repository内へstdoutを直接redire
 
 external Evidence JSON exact bytesを識別します。
 
-証明するのは「どのEvidence artifactを実際に受理検査したか」です。
-
 ### `nativeSource.fingerprint`
 
 Evidenceが観測したnative sourceと、現在authoringされている`ContractQuerySQLRealization.Source`が一致するかを確認します。
-
-証明するのは「観測対象native sourceと現在の実行authoringが同じか」です。
 
 両者は相互代替しません。また、fingerprint一致だけでEvidence記載内容の真実性や独立性を自動証明しません。
 
@@ -238,10 +261,6 @@ Evidenceが観測したnative sourceと、現在authoringされている`Contrac
 
 ## receiptへ保存しない情報
 
-acceptance receiptは照合追跡用の小さい非Canonical Evidenceです。
-
-次はreceiptへ複製しません。
-
 - physical object identity
 - physical parameter / raw result columns
 - physical type / NULL情報
@@ -253,8 +272,6 @@ acceptance receiptは照合追跡用の小さい非Canonical Evidenceです。
 actual physical factsそのものは、元のexternal Evidence artifactと、そのprovenance / Evidence参照で追跡します。
 
 ## まだ必要なactual physical Evidence
-
-受入境界が成立しても、第一Referenceの外部事実は実対象から得る必要があります。
 
 ### physical object
 
@@ -296,35 +313,40 @@ Oracle SQLを利用する場合は、実際に利用するnative SQL sourceをEv
 
 `find_by_id`がQueryであることやnative SQLが`SELECT`に見えることだけではread-only保証としません。
 
-実環境に応じ、たとえば次のいずれかで書込み不能を確認します。
+read-only Evidenceの取得・判定は`ISSUE-000034` / #376で具体化します。
 
-- read-only権限だけを持つDatabase principal / credential
-- Database側permissions
-- read-only session / transaction
-- write APIを公開しないReference adapter
+第一Referenceでは、実Oracle versionと権限構成に応じて、少なくとも次を分離して確認します。
 
-Evidenceにはmechanism名だけでなく、その事実を再確認できるEvidence参照も要求します。
+- 専用のleast-privilege principal / roleと対象objectへのquery privilege
+- system / object privilege、role、必要に応じてPUBLIC等を再確認できるgrant Evidence
+- 採用する場合の`SET TRANSACTION READ ONLY`等のtransaction境界
+- write用`Exec`をReference read pathへ露出させないquery-only runtime境界
+- actual Queryが上記境界の中で成功したこと
 
-ただし、mechanism文字列の記載だけをTEIが真実と判定するわけではありません。実接続・権限Evidenceによる確認が必要です。
+principal / grant Evidenceを主たるread-only根拠とし、transactionやTEI側のquery-only境界を追加防御として扱います。
+
+read-only確認のためだけに、実外部assetへ`INSERT` / `UPDATE` / `DELETE` / `MERGE` / DDL、`SELECT ... FOR UPDATE`、exclusive `LOCK TABLE`等を試行して失敗確認する方法は採りません。
+
+Evidenceにはmechanism名だけでなく、その事実を再確認できるEvidence参照を要求します。credential / passwordは保存しません。
 
 ## Oracle driver integration
 
 特定Oracle driverに依存しない`database/sql` Runner境界までは成立しています。
 
+具体driverの選択・登録、DSN / credential、TLS / TCPS、Wallet等のHost / Reference assemblyは`ISSUE-000033` / #371で確定します。
+
 PR #364 / #366以降、actual read時のdriver観測をSemantic mapping後に失わないため、Oracle Runner固有Payloadへ次を保持できます。
 
 - 実際に`database/sql`へ渡したnamed parameterの名前
 - Databaseから実際に返されたraw result列名
-- `database/sql.Rows.ColumnTypes()`からdriverが提供できた範囲の`databaseTypeName`
+- driverが提供できた範囲の`databaseTypeName`
 - driverが提供できた場合だけの`nullable`
 - driverが提供できた場合だけの`length`
 - driverが提供できた場合だけの`precision` / `scale`
 
-`database/sql.ColumnType`が情報を提供できない場合、falseや0を推測せず未観測として保持します。`DatabaseTypeName()`が空文字なら型名未提供として扱います。Go側の`ScanType`はexternal Oracleのphysical typeそのものではないため通常Evidenceへ保存しません。raw row値もOracle固有Payloadへ複製しません。
+`database/sql.ColumnType`が情報を提供できない場合、falseや0を推測せず未観測として保持します。Go側の`ScanType`やraw row値も通常Evidenceへ保存しません。
 
-このruntime metadataは、provenance付きexternal Evidenceに記録した`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。actual read時のdriver観測として、外部観測事実と実行時挙動の対応を確認する材料にします。
-
-`PhysicalType`の記述形式とdriverの`DatabaseTypeName`が同一文字列表現になる保証は、実Oracle / 採用driverを観測するまで仮定しません。実対象を見ずに自動文字列一致規則を先行固定しません。
+このruntime metadataは、provenance付きexternal Evidenceに記録した`PhysicalType` / `Nullable`を置き換える第二の物理正本ではありません。
 
 actual physical Evidence取得後、採用driverについて少なくとも次を確認します。
 
@@ -343,56 +365,50 @@ actual physical Evidence取得後、採用driverについて少なくとも次�
 
 ```text
 1. 実physical object / parameter / raw columns / native sourceを観測
-2. provenance / read-only根拠を確認
-3. external Evidence JSONを作成
-4. 観測事実を根拠にContractQuerySQLRealizationを明示authoring
-5. clean revisionでreference-external-query-evidenceを実行
-6. source-fixed acceptance receiptを取得
-7. read-onlyを強制したOracle接続境界を用意
-8. 採用Oracle driverでparameter / result / NULL / error伝播を確認
-9. development / master_data.dev / database.query.oracleからactual read
-10. actual readでraw result列名 / driver-reported metadataを観測
-11. raw resultを明示mappingしてSemantic Customerを得る
-12. Workspace -> actual read -> Semantic resultを一続きに確認
-13. actual readが参照したrepository source identityをEvidenceへ残す
-14. #273 Gate B監査へactual external asset Evidenceとして対応付ける
+2. provenanceを確認
+3. ISSUE-000034 / #376でread-only grant / transaction / query-only runtime境界を確認
+4. ISSUE-000033 / #371でactual Oracle driver / Host assemblyを確定
+5. external Evidence JSONを作成
+6. 観測事実を根拠にContractQuerySQLRealizationを明示authoring
+7. clean revisionでreference-external-query-evidenceを実行
+8. source-fixed acceptance receiptを取得
+9. read-onlyを強制したOracle接続境界を用意
+10. 採用Oracle driverでparameter / result / NULL / error伝播を確認
+11. development / master_data.dev / database.query.oracleからactual read
+12. actual readでraw result列名 / driver-reported metadataを観測
+13. raw resultを明示mappingしてSemantic Customerを得る
+14. Workspace -> actual read -> Semantic resultを一続きに確認
+15. actual readが参照したrepository source identityをEvidenceへ残す
+16. #273へactual external asset Evidenceとして対応付ける
 ```
 
 acceptance receiptとactual read Evidenceは別工程です。
 
-## actual read EvidenceをGate Bのcandidate revisionへ固定する
+## Gate B / Handover Baselineとの関係
 
-PR #354以降、Gate Bの最終Ready判定では4 Evidence laneを同じcandidate repository revision `R`へ揃えます。
+### Gate B判定前に完了した場合
 
-したがって#214でも、次を別々に追跡できる必要があります。
+#214をGate B判定前に完了させる場合は、candidate Rのauthoring / runtimeへacceptance receiptとactual readを結び付け、Handoverへ`verified`として含めます。
 
-1. external Evidence artifactをRのauthoringへ照合したacceptance receipt
-2. RのWorkspace / SQL realization / runtime境界を使って行ったactual Oracle read
+### Gate B判定時点で未完了の場合
 
-外部観測資料そのものはRより前に取得されていて構いません。ただし、acceptance receiptとactual readはRへ結び直します。
+Gate Bを自動的にNot Readyへ戻しません。
 
-actual read Evidenceから、少なくとも次へ戻れるようにします。
+Handoverへ次を明示します。
 
-- repository revision R
-- Environment / Database instance / executor Capability identity
-- Database / Contract / Query target identity
-- actual readが成功・0件・Execution Errorのどの結果だったか
-- actual readでdriverが観測したraw result列名
-- driverが提供できた範囲のraw result列metadata
-- raw resultからSemantic Customerへの明示mappingを確認したこと
-- read-onlyを実効強制した境界のEvidence参照
+- #214 actual external Oracle Evidence = unresolved / not verified
+- #371 actual Oracle driver / Host assembly = 未確定または未検証
+- #376 actual Oracle read-only Evidence = 未取得
+- Oracle compatibility / actual `master_data` integrationを実証済みとは主張しない
+- Web側でOracle固有事実を補わない
 
-一方、通常Evidenceへ次を保存しません。
+### Gate B通過後に完了する場合
 
-- credential / secret
-- credentialを含むDSN
-- 不要なruntime parameter value
-- 業務上不要な実データ
-- driverが提供していない型 / NULL metadataを推測した値
+既存Handover Baselineを黙って`verified`へ書き換えません。
 
-actual Oracle driverと実物理事実が未確定な現段階では、専用JSON schemaや新しい汎用Evidence modelを先行固定しません。実対象を確認した後、上記の追跡性を満たす最小の取得方法を決めます。
+actual Oracle作業がCanonical / Driver sourceへ意味上の変更を加えず、Gate C baselineへ影響しない場合は、別Evidenceとして継続追跡できます。
 
-Rと異なるrevisionで得たactual readを、「意味は変わっていないはずだ」と推測してRの完了Evidenceへ読み替えません。
+Gate Cへ取り込むApplication / Driver meaningやsource-dependent境界が変わる場合は、影響するGate B Evidenceを再確認し、新しいHandover Baselineを発行します。
 
 ## 完了条件
 
@@ -416,6 +432,9 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [x] receiptへEvidence本文 / path / credential / secretを複製しない（PR #340）
 - [x] `evidenceArtifactFingerprint`と`nativeSource.fingerprint`を別責務として扱う（PR #340）
 - [x] post-run観測が完了した場合だけ`postRunRepository.checked = true`にする（PR #355）
+- [x] actual Oracle driver integrationを`ISSUE-000033` / #371へ分離した（PR #372）
+- [x] actual Oracle read-only Evidenceを`ISSUE-000034` / #376へ分離した（PR #378）
+- [x] actual OracleをGate B必須blockerから継続Evidenceへ再分類した（ISSUE-000035 / #381）
 
 ### 第一Referenceのactual Evidence
 
@@ -425,10 +444,10 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - [ ] raw resultから必要なSemantic attributeへの対応が明示されている
 - [ ] 実native SQL / API / adapter等のrealization sourceを追跡できる
 - [ ] 物理情報のsource / provenanceを追跡できる
-- [ ] actual Evidence artifactをcandidate revision Rで受理し`reproducibleRevision = true`のsource-fixed receiptを取得できる
-- [ ] `master_data`を実効的にread-onlyのまま実行できる
-- [ ] 採用Oracle driverとのintegration Evidenceがある
-- [ ] RのWorkspace / realization / runtimeを使ったactual readであることを追跡できる
+- [ ] actual Evidence artifactをclean sourceで受理し`reproducibleRevision = true`のreceiptを取得できる
+- [ ] `ISSUE-000034` / #376のEvidenceに基づき`master_data`を実効的にread-onlyのまま実行できる
+- [ ] `ISSUE-000033` / #371で確定した採用Oracle driverとのintegration Evidenceがある
+- [ ] actual readが参照したRepository sourceを追跡できる
 - [ ] actual readでraw result列名 / driver-reported metadataを観測できる
 - [ ] actual readの結果分類とSemantic Customerへの明示mappingを追跡できる
 - [ ] actual read Evidenceへcredential / secret / 不要なparameter value / 推測metadataを保存していない
@@ -454,23 +473,27 @@ Rと異なるrevisionで得たactual readを、「意味は変わっていない
 - acceptance receiptをactual Oracle read Evidenceとして扱うこと
 - actual Oracle driver未確定の段階で汎用Evidence schemaを先行固定すること
 - driverが提供していないraw列metadataをfalse / 0 / 慣習的Oracle型から推測すること
-- 実Oracle観測前にexternal Evidenceの`PhysicalType`とdriverの`DatabaseTypeName`の文字列一致規則を固定すること
 - 汎用ORMの導入
 - Oracle固有の高度なHA / Connection Poolを本Issueだけで完成させること
 - synthetic Conformance SQLを第一Referenceの実native sourceへ流用すること
 - SQL文字列だけでread-onlyを推論すること
+- read-only確認のため実外部assetへDML / DDL / `SELECT ... FOR UPDATE` / exclusive lockを試行すること
+- #310 synthetic Evidenceや#308 PostgreSQL Evidenceを本Issueのactual Oracle Evidenceへ読み替えること
+- Gate B Readyをactual Oracle Readyへ読み替えること
 - external Evidence本文やcredentialをacceptance receiptへ複製すること
-- 異なるrevisionのactual readをcandidate RのEvidenceへ読み替えること
 - GitHub Actionsを再有効化すること
 
 ## 関連
 
-- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310
-- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358 / #360 / #364 / #366 / #369
+- GitHub Issue #69 / #179 / #185 / #214 / #222 / #224 / #255 / #273 / #291 / #308 / #310 / #371 / #376 / #381
+- PR #288 / #300 / #306 / #340 / #342 / #354 / #355 / #356 / #358 / #360 / #364 / #366 / #369 / #372 / #374 / #378 / #379
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `plan/issue/000033-gate-b-oracle-driver-integration.md`
+- `plan/issue/000034-gate-b-oracle-read-only-evidence.md`
+- `plan/issue/000035-gate-b-actual-oracle-blocker-reaudit.md`
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/README.md`
 - `tools/reference-external-query-evidence/main.go`
