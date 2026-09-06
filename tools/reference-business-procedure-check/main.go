@@ -21,12 +21,12 @@ const (
 )
 
 type fixture struct {
-	SchemaVersion string      `json:"schemaVersion"`
-	ArtifactRole  string      `json:"artifactRole"`
-	Canonical     bool        `json:"canonical"`
-	Application   string      `json:"application"`
-	Procedure     procedure   `json:"procedure"`
-	Steps         []step      `json:"steps"`
+	SchemaVersion string    `json:"schemaVersion"`
+	ArtifactRole  string    `json:"artifactRole"`
+	Canonical     bool      `json:"canonical"`
+	Application   string    `json:"application"`
+	Procedure     procedure `json:"procedure"`
+	Steps         []step    `json:"steps"`
 }
 
 type procedure struct {
@@ -84,20 +84,20 @@ type functionRow struct {
 }
 
 type dataRow struct {
-	StepID         string   `json:"step"`
-	Data           []string `json:"data,omitempty"`
-	Relations      []string `json:"relations,omitempty"`
-	Validations    []string `json:"validations,omitempty"`
-	Capabilities   []string `json:"capabilities,omitempty"`
+	StepID       string   `json:"step"`
+	Data         []string `json:"data,omitempty"`
+	Relations    []string `json:"relations,omitempty"`
+	Validations  []string `json:"validations,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 type report struct {
-	Procedure                       string        `json:"procedure"`
-	Application                     string        `json:"application"`
-	CanonicalProcedureIdentityUsed  bool          `json:"canonicalProcedureIdentityUsed"`
-	BusinessActionFunctionRows      []functionRow `json:"businessActionFunctionRows"`
-	ExplicitBusinessMeaningRows     []dataRow     `json:"explicitBusinessMeaningRows"`
-	Diagnostics                     []diagnostic  `json:"diagnostics"`
+	Procedure                      string        `json:"procedure"`
+	Application                    string        `json:"application"`
+	CanonicalProcedureIdentityUsed bool          `json:"canonicalProcedureIdentityUsed"`
+	BusinessActionFunctionRows     []functionRow `json:"businessActionFunctionRows"`
+	ExplicitBusinessMeaningRows    []dataRow     `json:"explicitBusinessMeaningRows"`
+	Diagnostics                    []diagnostic  `json:"diagnostics"`
 }
 
 func main() {
