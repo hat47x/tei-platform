@@ -1,6 +1,6 @@
 # Application Driver v1 設計
 
-- 状態: 実装済みの現行基線（actual Evidenceは取得中）
+- 状態: 実装済みの現行基線
 - 更新日: 2026-09-06
 - 対象Issue: [ISSUE-000006](../issue/000006-application-driver-vertical-slice.md)
 - 関連ADR: [ADR-0019](../adr/0019-authentication-capability-boundary.md) / [ADR-0020](../adr/0020-capability-business-outcome-boundary.md) / [ADR-0021](../adr/0021-header-detail-relation-traversal-realization.md) / [ADR-0023](../adr/0023-command-observation-explicit-read-boundary.md)
@@ -139,13 +139,13 @@ read結果そのものと「期待状態に一致したか」というScenario�
 
 Driver境界を一続きに接続したScenarioは[`gate_b_ui_less_scenario_test.go`](../../internal/driver/gate_b_ui_less_scenario_test.go)と[`final_gate_b_scenario_test.go`](../../internal/driver/final_gate_b_scenario_test.go)にあります。これらはtest-localなReference Scenarioであり、production契約ではありません。
 
-Evidenceは性質ごとに分けます。
+Evidenceは性質ごとに分けます。取得状況そのものはこの文書へ複製せず、対応Issueと[`docs/status.md`](../../docs/status.md)を確認します。
 
-| 種別 | 何を示すか | 現在地 |
+| 種別 | 何を示すか | current stateの確認先 |
 | --- | --- | --- |
-| synthetic fixture | 意味境界の接続と決定論的な再現 | Repository内で再現可能 |
-| real-provider ephemeral fixture | 実PostgreSQL engineでの動作 | actual run待ち（[ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md)） |
-| actual external asset | 既存Oracle資産の観測 | 未取得（[ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md)） |
+| synthetic fixture | 意味境界の接続と決定論的な再現 | Repository内Scenario / `docs/status.md` |
+| real-provider ephemeral fixture | 実PostgreSQL engineでの動作 | [ISSUE-000031](../issue/000031-gate-b-postgres-header-detail-evidence.md) / `docs/status.md` |
+| actual external asset | 既存Oracle資産の観測 | [ISSUE-000022](../issue/000022-external-master-data-physical-query-evidence.md) / `docs/status.md` |
 
 synthetic Scenarioの成功を、実Database、既存外部資産、本番運用の保証へ昇格させません。Gate Bの必須Evidence三系統と判定は[`plan/README.md`](../README.md)が正本です。
 

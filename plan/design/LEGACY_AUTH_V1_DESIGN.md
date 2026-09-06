@@ -1,5 +1,9 @@
 # 既存認証Compatibility v1 実装前設計
 
+- 状態: 実装前設計
+
+この文書は実装前に置いた設計を保持する文書です。実装・Evidenceの現在地は[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md)と[`docs/status.md`](../../docs/status.md)を正とし、この文書の将来形表現をcurrent progressの主張として読み替えません。
+
 ## 目的
 
 この文書は、`ISSUE-000003` / GitHub Issue #68で進める既存認証Compatibilityについて、v1 Referenceで何を実証し、どの境界をまだ固定しないかを整理するものです。

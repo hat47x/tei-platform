@@ -1,5 +1,9 @@
 # Capability Outcome v1 実装前設計
 
+- 状態: 実装前設計
+
+この文書は最初の実装へ渡した設計を保持する文書です。本文には実装前時点の「現行実装」や候補表現が残ります。実装済み範囲・残条件・Evidenceの現在地は[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md)と[`docs/status.md`](../../docs/status.md)を正とし、この文書だけからcurrent implementation stateを判定しません。
+
 ## 目的
 
 この文書は、`ISSUE-000009` / GitHub Issue #77で扱う「Capabilityの業務結果と実行エラーの分離」を、最初の実装へ渡せる粒度まで具体化するものです。
