@@ -18,7 +18,7 @@ import (
 const (
 	fixtureSchemaVersion       = "business-procedure-reference-v0"
 	probeSchemaVersion         = "business-procedure-access-probe-v0"
-	fixtureArtifactRole        = "derived-reference-fixture"
+	fixtureArtifactRole        = "reference-authoring-fixture"
 	severitySemanticError      = "semantic-error"
 	severityArchitecturePolicy = "architecture-policy"
 )
