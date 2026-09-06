@@ -39,12 +39,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.customer_reference"
-      ],
-      "applicationAccess": [
-        {
-          "datasource": "master",
-          "required": "read"
-        }
       ]
     },
     {
