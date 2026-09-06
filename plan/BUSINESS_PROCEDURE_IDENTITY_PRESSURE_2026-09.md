@@ -4,9 +4,11 @@ Status: Evidence in progress
 
 ## 目的
 
-`Procedure`をtop-level Canonical identityへ昇格させる前に、現在のBusiness Procedure Reference authoring fixtureで何が追跡でき、どこからstable identityが必要になるかを具体的な圧力で確認する。
+`Procedure`をtop-level Canonical identityへ昇格させる前に、Business Procedure Referenceでどのidentityが本当に必要かを段階的に確認する。
 
 この文書はCanonical schema追加の提案ではない。
+
+review / approval continuityとProcedure間handoffの追加圧力は、`BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`へ分離して記録する。
 
 ## Authoring / Derivedの前提
 
@@ -15,13 +17,15 @@ Status: Evidence in progress
 - `reference/business-system-design/order-entry-business-procedure.json`
 - `reference/business-system-design/order-entry-follow-up-procedure.json`
 
-どちらも次を明示する。
+現在は次を明示する。
 
 ```text
 artifactRole = reference-authoring-fixture
 canonical = false
-Procedure identityStatus = experiment-local
+Procedure identityStatus = reference-local-stable
 ```
+
+`reference-local-stable`はReference corpus内のauthoring keyであり、Canonical World identityではない。
 
 fixtureにはApplication / Semantic Worldから導出できないBusiness側の意味を保持する。
 
@@ -30,6 +34,7 @@ purpose
 trigger / event candidate
 actor / job context candidate
 manual / external / unresolved Business Action
+judgment / continuation
 ```
 
 一方、Application Patternから得られるData / Relation / Query / Capability / Datasource、Business Action × Pattern Matrix、diagnosticはderived Projectionとして扱う。
@@ -55,40 +60,37 @@ order-entry.follow-up / FU-01
 
 ### 観測
 
-このtraceabilityには現時点でCanonical Procedure identityは不要である。
+基本的なmultiple Procedure -> same Pattern traceabilityにはCanonical Procedure identityは不要である。
 
-Reference artifact、experiment-local Procedure ID、step ID、explicit Pattern identityを組み合わせれば、同じPatternを利用する複数のBusiness Actionを区別できる。
+Reference-local Procedure key、step key、explicit Pattern identityで区別できる。
 
-## Pressure 2: experiment-local Procedure rename
+## Pressure 2: Procedure key renameとcross-view meaning
 
-`order-entry.follow-up`を`order-entry.follow-up-local-rename`へ変更し、Business Action / step / Pattern referenceは変えない。
+Procedure keyだけを変更し、Business Action / step / Pattern referenceを変えない場合、Pattern-derived cross-view meaningは変化しない。
 
-確認対象:
+これはProcedure keyがApplication Pattern meaningのauthorityではないことを示す。
 
-- Business Action -> Pattern
-- Pattern-derived Data / Relation / Query / Capability / Datasource
-- diagnostics
-- artifact + step + Patternで構成したEvidence locator
+一方、review / handoffでstable authoring keyとして使う段階では、key renameはlogical authoring identity changeとなる。
 
-### 観測
+つまり次を分ける。
 
-Procedure local IDだけのrenameでは、cross-view meaningと`artifact + step + Pattern` locatorは変化しない。
+```text
+Pattern-derived meaning
+  Procedure key renameだけでは不変
 
-したがって、基本的な三視点cross-checkと局所impact traceだけを理由に、Procedure IDをCanonical World identityへ直ちに昇格させるEvidenceはまだない。
+review / handoff target
+  Procedure key renameで変化
+```
 
 ## Pressure 3: artifact path rename
 
-同じProcedure / step / PatternであってもReference authoring fixtureのpath自体をrenameすると、`artifact + step + Pattern`で構成した非Canonical locatorは変化する。
+同じProcedure / step / PatternでもReference authoring fixtureのpathを変えると、pathを含むlocatorは変化する。
 
-これは実装不具合ではなく、locatorがfile provenanceに依存していることの観測である。
-
-長期review history、comment anchor、外部Evidence、cross-revision approval等がfile renameを越えて同じBusiness Procedure authoring artifactを指す必要があるなら、stable identityが必要になる可能性がある。
-
-ただし、そのidentityを直ちにCanonical `Procedure`にする必要はない。
+file pathをBusiness semantic identityとして使わない。
 
 ## Pressure 4: 既存Source Indexでどこまで足りるか
 
-TEIにはすでに`internal/sourceindex`とneutralな`subject.Subject`がある。
+TEIには`internal/sourceindex`とneutralな`subject.Subject`がある。
 
 ```text
 Subject
@@ -103,55 +105,47 @@ Reference
 
 ### 4A pure file move
 
-同一bytesのBusiness Procedure authoring fixtureを別pathへ移した場合、Pathは変わるがArtifact Fingerprintは一致する。
+同一bytesを別pathへ移した場合、Pathは変わるがArtifact Fingerprintは一致する。
 
-内容非変更のpure moveをcontent identityとして検出する用途には既存Fingerprintを使える。
+pure moveのcontent continuityには既存Fingerprintを利用できる。
 
-### 4B semantic-equivalent formatting change
+### 4B formatting-only change
 
-同じJSON meaningへwhitespaceだけを追加した場合、fixture decode結果は同一でもArtifact Fingerprintは変化する。
+同じJSON meaningでもbytesを変えればFingerprintは変化する。
 
-したがってFingerprintはsemantic identityではない。stable Business Procedure IDとして流用しない。
+したがってFingerprintはsemantic identityではない。
 
 ### 4C existing Pattern Subject
 
-二つのBusiness Procedure authoring fixtureが同じ`order_entry.order_record`を参照する場合、既存のpath-independent `application-pattern` Subjectへ二つのderived Referenceを結び付けられる。
+複数Business Procedureが同じApplication Patternを参照しても、既存path-independent Pattern Subjectへ複数Referenceを結び付けられる。
 
-つまりPattern変更から「どのBusiness Procedure artifactがそのPatternを参照しているか」を辿るために、新しいCanonical Procedure kindは必須ではない。
-
-Business Procedure authoring artifactそのもののcross-revision identityは、これでは解決していない。
+Pattern変更からBusiness Procedure利用箇所を辿るためだけなら、新しいCanonical Procedure kindは不要である。
 
 ## Pressure 5: Business authoring residualはPatternから再生成できるか
 
-### 5A manual / external residual
-
-primary fixtureにはApplication Patternを持たないBP-04 / BP-09がある。
+primary fixtureにはPatternを持たないBP-04 / BP-09がある。
 
 ```text
 BP-04
-  decide whether the order is ready in surrounding business context
-  realization = manual-unresolved
+  manual-unresolved
 
 BP-09
-  continue surrounding business work
-  realization = manual-external-unresolved
+  manual-external-unresolved
 ```
 
-これらはauthoring fixtureには存在するが、`businessActionPatternMeaningRows`には存在しない。
+これらはauthoring fixtureには存在するがPattern-derived meaning rowsには存在しない。
 
 ### 観測
 
-Pattern-owned meaningだけからBusiness Procedureを再構成すると、manual / external / unresolved Business Actionを失う。
+Pattern-owned meaningだけからBusiness Procedureを再構成するとmanual / external / unresolved Business Actionを失う。
 
-したがってBusiness Procedure authoring fixtureはApplication Patternから再生成可能なderived cacheではない。
+したがってBusiness Procedure authoring sourceはPattern-derived cacheではない。
 
-この結論はCanonical Procedureを要求するものではない。少なくともauthoring sourceとしてBusiness側のhuman residual meaningを保持する必要がある、という境界を固定する。
+purpose / trigger / actor candidateも同じくBusiness側のauthoring meaningである。
 
-### 5B Business wordingだけを変更する
+### Business-only wording change
 
-BP-04のBusiness Action文言だけを変更し、Pattern referenceやApplication / Semantic Worldを変えない。
-
-期待する差分:
+manual Business Action文言だけを変更した場合:
 
 ```text
 Business-side Projection
@@ -161,78 +155,77 @@ Pattern-derived Application meaning
   unchanged
 
 cross-view diagnostic
-  unchanged
+  unchanged unless a real cross-view conflict changes
 ```
 
-### 観測
+Business視点をFunction/Data視点の単なる表示へ還元しない。
 
-Business authoringの文言変更をApplication semantic changeへ偽装しない一方、Business側では差分として保持できる。
+## Pressure 6: review / handoffによるstable authoring keyの必要性
 
-これはBusiness視点がFunction/Data視点の単なる表示ではなく、独自のreview対象であることを示す。
+前段のPressure 1〜5では、Canonical Procedure identityは不要というEvidenceが中心だった。
 
-purpose / trigger / actor candidateも同じくauthoring fixtureにしかない意味として保持する。
+review history continuityとProcedure間handoffを加えると、安定したauthoring-level logical keyには具体的な価値が出る。
+
+そのためReferenceでは`procedure.id`を次として扱う。
+
+```text
+identityStatus = reference-local-stable
+```
+
+ただしこれはCanonical `Procedure`への昇格ではない。
+
+詳細:
+
+- `plan/BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`
+- `reference/business-system-design/order-entry-procedure-reference-set.json`
+- `tools/reference-business-procedure-check/review_handoff_pressure_test.go`
 
 ## 000039との境界
 
-`plan/issue/000039-business-change-rehearsal.md`は、将来の共通change analysisについて次を既に完了条件としている。
+`plan/issue/000039-business-change-rehearsal.md`は将来のrevision-aware semantic diff / dependency propagationを所有する。
+
+レーンCはそのgraphを先取り実装しない。
+
+今回固定するidentity区別は000039の入力として利用できる。
 
 ```text
-Canonical IDを保ったfile rename / moveだけなら
-Semantic差分なし
-Source locatorだけ変更
+same Procedure key + changed revision/fingerprint
+  = same review target, changed source snapshot
+
+changed Procedure key
+  = logical authoring identity change
 ```
-
-レーンCは000039のchange graphを先取り実装しない。
-
-本Referenceでは次だけを確認する。
-
-- existing Source IndexのArtifact / Subject分離がBusiness Procedure圧力でも有効か
-- Pattern subjectへのreverse referenceが可能か
-- fingerprintで解けないsemantic continuityがどこに残るか
-- Business-only authoring changeとApplication semantic changeを混同しないこと
-
-Validation / Bindingを含むrevision-aware impact、Scenario propagationは000039の責務に残す。
 
 ## 現時点の判断
 
 ### 維持する境界
 
-- `Procedure` / `Step`はCanonical Worldへ追加しない
-- Business ProcedureはReference実験では`reference-authoring-fixture`として扱う
-- authoring fixtureにしかないmanual / trigger / actor候補をderived扱いしない
-- Pattern-owned Data / Relation / Query / Capability / Datasourceはnormalized Patternから導出する
-- Matrix / diagnosticはderived Projectionとする
-- manual / external Business Actionへfake Function / Capabilityを要求しない
+- Business Procedure fixtureはReference authoring input
+- Matrix / diagnosticはderived Projection
+- manual / external Business Actionをfake Functionへ変換しない
+- Pattern-owned meaningをBusiness Procedureへ重複記述しない
 - Source Index Artifact fingerprintをsemantic Procedure identityとして流用しない
-- Business-only wording changeをApplication semantic changeとして扱わない
+- `procedure.id`はReference-local stable authoring keyとして使う
+- `Procedure` / `Step`はCanonical Worldへ追加しない
 
-### 残るidentity問題
-
-pure file moveはArtifact fingerprintで補助でき、Pattern側のreverse impactは既存Pattern Subjectで辿れる。manual residualがauthoring sourceに必要なことも確認できた。
-
-残る中心圧力は次の二つへ絞られる。
-
-1. **内容が変わりつつ同じBusiness Procedure authoring artifactとしてreview / approval historyを継続する必要があるか**
-2. **Procedure間handoff / reuseがBusiness semantic identityを本当に要求するか**
-
-候補は混同しない。
+### identityを混同しない
 
 ```text
 A. Canonical business semantic identity
-B. authoring Source identity
-C. Evidence / review anchor identity
-D. Repository path + revision provenance
+B. Reference-local authoring identity
+C. Source / Evidence locator
+D. Repository revision provenance
 ```
 
-A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の履歴identityが再結合する。
+現在Bの必要性にはEvidenceが出たが、Aの必要性はまだ実証されていない。
 
 ## 次のPressure
 
-1. 内容変更＋file moveを越えるreview / approval anchor
-2. Pattern accepted source change時のreverse impactを000039へ接続する最小Evidence
-3. 二つのProcedure間handoffでstable semantic Procedure identityが本当に必要になるか
+1. Business Procedureをfile-native accepted authoring sourceへ進めた場合、Bだけでreload / Source Index / Shared Acceptanceが成立するか
+2. multiple Subject Area / Subsystemを跨ぐhandoffでもBで十分か
+3. external contract / 長期reuseでAが必要になる具体例が出るか
 
-既存Subject / Source Index / revision provenanceでは不足する反復Evidenceが得られた場合だけ、Canonical Procedureの最小contractをADR候補として再検討する。
+不足が反復して実証されるまではCanonical Procedureの最小contractをADR候補へ上げない。
 
 ## Verification
 
@@ -240,7 +233,7 @@ A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の�
 go test ./tools/reference-business-procedure-check
 ```
 
-主要test:
+主なtest:
 
 - `TestMultipleProceduresCanReferenceSamePatternWithoutCanonicalProcedureIdentity`
 - `TestArtifactAndStepEvidenceLocatorSurvivesExperimentLocalProcedureRename`
@@ -251,5 +244,6 @@ go test ./tools/reference-business-procedure-check
 - `TestPatternDerivedProjectionCannotReplaceManualBusinessAuthoring`
 - `TestBusinessWordingChangeDoesNotPretendApplicationMeaningChanged`
 - `TestPurposeAndActorCandidatesRemainAuthoringMeaning`
+- review / handoff pressure tests
 
 actual Repository runnerによるgreen確認まではEvidence in progressとする。
