@@ -66,16 +66,21 @@ func preparePostgresDSNHandoff(postgresDSN, repositoryRoot string) (string, func
 		cleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff directoryを絶対pathへ解決できません: %w", err)
 	}
-	if pathWithinRepository(repositoryRoot, absDir) {
+	resolvedDir, err := filepath.EvalSymlinks(absDir)
+	if err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("PostgreSQL DSN handoff directoryを解決できません: %w", err)
+	}
+	if pathWithinRepository(repositoryRoot, resolvedDir) {
 		cleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff directoryがRepository内に作成されたため受理しません")
 	}
-	if err := os.Chmod(absDir, 0o700); err != nil {
+	if err := os.Chmod(resolvedDir, 0o700); err != nil {
 		cleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff directoryをowner-onlyにできません: %w", err)
 	}
 
-	path := filepath.Join(absDir, "dsn")
+	path := filepath.Join(resolvedDir, "dsn")
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		cleanup()
@@ -87,16 +92,24 @@ func preparePostgresDSNHandoff(postgresDSN, repositoryRoot string) (string, func
 			_ = file.Close()
 		}
 	}()
+	closeBeforeCleanup := func() {
+		if !closed {
+			_ = file.Close()
+			closed = true
+		}
+		cleanup()
+	}
 
 	if _, err := file.WriteString(postgresDSN); err != nil {
-		cleanup()
+		closeBeforeCleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff fileへ書き込めません: %w", err)
 	}
 	if err := file.Sync(); err != nil {
-		cleanup()
+		closeBeforeCleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff fileを同期できません: %w", err)
 	}
 	if err := file.Close(); err != nil {
+		closed = true
 		cleanup()
 		return "", nil, fmt.Errorf("PostgreSQL DSN handoff fileをcloseできません: %w", err)
 	}
