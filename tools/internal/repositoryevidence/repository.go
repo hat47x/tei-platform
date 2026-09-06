@@ -50,7 +50,8 @@ func InspectStart() (Source, error) {
 
 // InspectStartWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して開始時sourceを観測する。
 // environmentの意味はcaller側が決める。ただしrepository / work tree / index等を別contextへ差し替える
-// Git identity overrideは、実行sourceとは別のGit状態を誤観測し得るため、このpackage自身がfail closedで拒否する。
+// Git identity overrideやcommand-scope config injectionは、実行sourceとは異なる状態を誤観測し得るため、
+// このpackage自身がfail closedで拒否する。
 func InspectStartWithEnv(env []string) (Source, error) {
 	if err := validateGitSourceEnvironment(env); err != nil {
 		return Source{}, err
@@ -70,7 +71,7 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 		return result, fmt.Errorf("repository revisionが空です")
 	}
 
-	status, err := output("git", "status", "--porcelain")
+	status, err := output("git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return result, fmt.Errorf("working tree状態を取得できません: %w", err)
 	}
@@ -98,7 +99,8 @@ func InspectPost(initialRevision string) (PostRun, error) {
 }
 
 // InspectPostWithEnvは、callerが明示したenvironmentだけをGit subprocessへ渡して実行後sourceを観測する。
-// source同一性の判定契約はInspectPostと同じで、Git identity overrideは開始時と同様に拒否する。
+// source同一性の判定契約はInspectPostと同じで、Git identity overrideとcommand-scope config injectionは
+// 開始時と同様に拒否する。
 func InspectPostWithEnv(initialRevision string, env []string) (PostRun, error) {
 	if err := validateGitSourceEnvironment(env); err != nil {
 		return PostRun{}, err
@@ -122,7 +124,7 @@ func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, err
 	}
 	result.RevisionStable = result.RepositoryRevision == initialRevision
 
-	status, err := output("git", "status", "--porcelain")
+	status, err := output("git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
 	}
@@ -160,8 +162,19 @@ func validateGitSourceEnvironment(env []string) error {
 				return fmt.Errorf("repository source観測ではGit identity override %sを使用できません。実行checkoutとは別のrepository / work tree / index等を観測する可能性があるため、環境変数を解除して再実行してください", forbidden)
 			}
 		}
+		if isGitCommandScopeConfigOverrideKey(key) {
+			return fmt.Errorf("repository source観測ではGit command-scope config override %sを使用できません。git status等の観測意味をambient environmentから変更できるため、環境変数を解除して再実行してください", key)
+		}
 	}
 	return nil
+}
+
+func isGitCommandScopeConfigOverrideKey(key string) bool {
+	upper := strings.ToUpper(key)
+	return upper == "GIT_CONFIG_COUNT" ||
+		upper == "GIT_CONFIG_PARAMETERS" ||
+		strings.HasPrefix(upper, "GIT_CONFIG_KEY_") ||
+		strings.HasPrefix(upper, "GIT_CONFIG_VALUE_")
 }
 
 // IsReproducibleは、実行開始前後が同一のclean revisionへ固定できる場合だけtrueを返す。
