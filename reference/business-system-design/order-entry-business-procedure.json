@@ -70,7 +70,10 @@
     {
       "id": "BP-06",
       "businessAction": "determine whether the authenticated subject may execute the submit application action",
-      "realization": "security-boundary"
+      "realization": "security-boundary",
+      "capabilities": [
+        "security.authorize"
+      ]
     },
     {
       "id": "BP-07",
