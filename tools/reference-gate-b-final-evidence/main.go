@@ -124,12 +124,23 @@ func run(broad bool, requestedArtifactDir string) (evidence, error) {
 		}, postgresDSNErr
 	}
 
+	postgresDSNHandoffPath, cleanupPostgresDSNHandoff, postgresDSNHandoffErr := preparePostgresDSNHandoff(postgresDSN, repositoryRoot)
+	if postgresDSNHandoffErr != nil {
+		return evidence{
+			EvidenceNature: evidenceNature,
+			GoEnvironment:  goEnvironment,
+			BroadRequested: broad,
+			Lanes:          []laneEvidence{},
+		}, postgresDSNHandoffErr
+	}
+	defer cleanupPostgresDSNHandoff()
+
 	result, err := runWith(
 		broad,
 		inspectRepositoryStart,
 		inspectRepositoryPost,
 		func(spec laneSpec, candidateRevision string) (laneEvidence, error) {
-			return runLaneWithPostgresDSNAndArtifactWriter(spec, candidateRevision, postgresDSN, artifactStore.writeLane)
+			return runLaneWithPostgresDSNFileAndArtifactWriter(spec, candidateRevision, postgresDSNHandoffPath, artifactStore.writeLane)
 		},
 		commandOutput,
 	)
@@ -242,6 +253,9 @@ func laneSpecs(broad bool) []laneSpec {
 	}
 }
 
+// runLaneWithPostgresDSNは旧pure test互換helperである。
+// production final runnerはrunLaneWithPostgresDSNFileAndArtifactWriterを使い、
+// #308のgo run compile environmentへDSN本文を渡さない。
 func runLaneWithPostgresDSN(spec laneSpec, candidateRevision, postgresDSN string) (laneEvidence, error) {
 	return runLaneWithPostgresDSNAndArtifactWriter(spec, candidateRevision, postgresDSN, nil)
 }
@@ -288,7 +302,7 @@ func runLaneWithPostgresDSNAndArtifactWriter(
 }
 
 // environmentForLaneはPR #407以前からのpure test互換helperである。
-// production final runnerはenvironmentForLaneWithPostgresDSNを使い、DSN本文を親process environmentへ戻さない。
+// production final runnerはenvironmentForLaneWithPostgresDSNFileを使う。
 func environmentForLane(spec laneSpec, base []string) []string {
 	if spec.Name == "real-postgres-ephemeral-fixture" {
 		return append([]string(nil), base...)
@@ -296,6 +310,8 @@ func environmentForLane(spec laneSpec, base []string) []string {
 	return environmentWithoutPostgresDSN(base)
 }
 
+// environmentForLaneWithPostgresDSNは旧pure test互換helperである。
+// production final runnerでは使用しない。
 func environmentForLaneWithPostgresDSN(spec laneSpec, base []string, postgresDSN string) []string {
 	out := environmentWithoutPostgresSecrets(base)
 	if spec.Name == "real-postgres-ephemeral-fixture" {
