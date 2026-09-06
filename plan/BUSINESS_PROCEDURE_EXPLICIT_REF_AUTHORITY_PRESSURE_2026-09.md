@@ -87,7 +87,7 @@ current `order_entry` Referenceには、Patternから独立してBusiness Action
 したがってcurrent Evidenceから言えることは次までとする。
 
 ```text
-D3 minimumで実証済みのexplicit ref categories
+D3/D4 current Referenceで実証済みのexplicit ref categories
   Application Pattern
   Validation
   Capability
@@ -104,38 +104,39 @@ Direct Data / Relation
 
 BP-07は`order_entry.submit_order` Patternだけで`sales.order.submit` Capabilityへtraceできる。
 
-ここへ同CapabilityをBusiness sourceへコピーすると、実際のBusiness decisionを増やしていないのにD3 Business meaningだけが変化する。
+ここへ同CapabilityをBusiness sourceへコピーすると、実際のBusiness decisionを増やしていないのにBusiness meaningだけが変化する。
 
-```text
-before
-  BP-07 -> Pattern order_entry.submit_order
+これは有益なcross-view差ではなく、二重authoringによるdrift surfaceである。
 
-redundant copy
-  BP-07 -> Pattern order_entry.submit_order
-        -> Capability sales.order.submit
-```
-
-この差は有益なcross-view差ではなく、二重authoringによるdrift surfaceである。
-
-`explicit_ref_authority_pressure_test.go`でこの性質をnegative Pressureとして固定する。
+`explicit_ref_authority_pressure_test.go`でnegative Pressureとして固定する。
 
 ## 6. realizationとの関係
 
 explicit refの有無は`realization` labelから導出しない。
 
-- `security-boundary`だからCapabilityを推測するのではない
-- `observation-boundary`だからObservation Capabilityを捏造するのではない
-- `validation-support`だからValidation名を名称規則で推測するのではない
+- `security-boundary`だからCapabilityを推測しない
+- `observation-boundary`だからObservation Capabilityを捏造しない
+- `validation-support`だからValidation名を名称規則で推測しない
 
 explicit refはBusiness authoring sourceに明示され、normalized Worldでexact resolutionされる。
 
-`realization_diagnostic_independence_pressure_test.go`で、realization-only変更がchecker report/diagnosticsへ影響せず、壊れたexplicit refはrealization wordingに関係なくfail closedするPressureを持つ。
+## 7. D4への接続
 
-## 7. pre-ADR判断
+D4はcurrent Evidenceから未証明のdirect Data / Relation slotをminimum candidateから除き、次だけをtyped refとして比較する。
 
-current D3 candidateの`explicit semantic refs`は、万能な`[]CanonicalID` surfaceを先に固定するための根拠ではない。
+```text
+Application Pattern
+Validation
+Capability
+```
 
-Referenceから現在実証できているのは、異なるauthority kindへの薄いcross-view linksである。
+ただしfuture sourceにdirect Data / Relation refが現れた場合は黙ってdropせずfail closedして設計をreopenする。
+
+refはgeneric `semanticRefs[]` / kind-less CanonicalID bagへ畳まずauthority kindを保持する。
+
+詳細は`BUSINESS_PROCEDURE_D4_REF_KIND_PRESSURE_2026-09.md`を参照する。
+
+## 8. pre-ADR判断
 
 production contractでは次を満たす必要がある。
 
@@ -145,5 +146,6 @@ production contractでは次を満たす必要がある。
 4. 別Business Actionのauthorityを重複しない
 5. missing authorityを名称類似で補完しない
 6. future Referenceで必要になったref kindをEvidenceなしに先取りしない
+7. future accepted meaningをprojectionで黙ってdropしない
 
 actual Repository runnerでPressure testsがgreenになるまではproduction Canonical採用へ進めない。
