@@ -100,6 +100,8 @@ func TestInspectStartRequiresStableHeadAroundWorkingTreeObservation(t *testing.T
 				return "abc123\n", nil
 			case 2:
 				return "", nil
+			case 3:
+				return "H tracked.go\x00", nil
 			default:
 				return "def456\n", nil
 			}
@@ -117,10 +119,14 @@ func TestInspectStartRequiresStableHeadAroundWorkingTreeObservation(t *testing.T
 		source, err := inspectStart(func(name string, args ...string) (string, error) {
 			calls++
 			switch calls {
-			case 1, 3:
+			case 1, 4:
 				return "abc123\n", nil
-			default:
+			case 2:
 				return "", nil
+			case 3:
+				return "H go.mod\x00H main.go\x00", nil
+			default:
+				return "", errors.New("unexpected call")
 			}
 		})
 		if err != nil {
@@ -136,10 +142,14 @@ func TestInspectStartRequiresStableHeadAroundWorkingTreeObservation(t *testing.T
 		source, err := inspectStart(func(name string, args ...string) (string, error) {
 			calls++
 			switch calls {
-			case 1, 3:
+			case 1, 4:
 				return "abc123\n", nil
-			default:
+			case 2:
 				return " M changed.go\n", nil
+			case 3:
+				return "H changed.go\x00", nil
+			default:
+				return "", errors.New("unexpected call")
 			}
 		})
 		if err != nil {
@@ -147,6 +157,27 @@ func TestInspectStartRequiresStableHeadAroundWorkingTreeObservation(t *testing.T
 		}
 		if source.RepositoryRevision != "abc123" || source.WorkingTreeClean {
 			t.Fatalf("dirty開始状態を誤判定しました: %#v", source)
+		}
+	})
+
+	t.Run("index observation fails", func(t *testing.T) {
+		calls := 0
+		source, err := inspectStart(func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1:
+				return "abc123\n", nil
+			case 2:
+				return "", nil
+			default:
+				return "", errors.New("ls-files failed")
+			}
+		})
+		if err == nil {
+			t.Fatal("Git index source state観測失敗をerrorにしていません")
+		}
+		if source.RepositoryRevision != "" || source.WorkingTreeClean {
+			t.Fatalf("index観測不成立なのにclean sourceを返しています: %#v", source)
 		}
 	})
 }
@@ -184,6 +215,27 @@ func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *
 		}
 	})
 
+	t.Run("index observation fails", func(t *testing.T) {
+		calls := 0
+		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
+			calls++
+			switch calls {
+			case 1:
+				return "abc123\n", nil
+			case 2:
+				return "", nil
+			default:
+				return "", errors.New("ls-files failed")
+			}
+		})
+		if err == nil {
+			t.Fatal("Git index source state観測失敗をerrorにしていません")
+		}
+		if post.Checked || post.WorkingTreeClean {
+			t.Fatalf("index観測不成立を確認済みcleanへ格上げしています: %#v", post)
+		}
+	})
+
 	t.Run("second revision observation fails", func(t *testing.T) {
 		calls := 0
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
@@ -193,6 +245,8 @@ func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *
 				return "abc123\n", nil
 			case 2:
 				return "", nil
+			case 3:
+				return "H tracked.go\x00", nil
 			default:
 				return "", errors.New("second rev-parse failed")
 			}
@@ -214,6 +268,8 @@ func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *
 				return "abc123\n", nil
 			case 2:
 				return "", nil
+			case 3:
+				return "H tracked.go\x00", nil
 			default:
 				return "def456\n", nil
 			}
@@ -234,10 +290,14 @@ func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 			calls++
 			switch calls {
-			case 1, 3:
+			case 1, 4:
 				return "abc123\n", nil
-			default:
+			case 2:
 				return "", nil
+			case 3:
+				return "H go.mod\x00H main.go\x00", nil
+			default:
+				return "", errors.New("unexpected call")
 			}
 		})
 		if err != nil {
@@ -253,10 +313,14 @@ func TestInspectPostMarksCheckedOnlyAfterStableHeadAndWorkingTreeObservation(t *
 		post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 			calls++
 			switch calls {
-			case 1, 3:
+			case 1, 4:
 				return "abc123\n", nil
-			default:
+			case 2:
 				return " M changed.go\n", nil
+			case 3:
+				return "H changed.go\x00", nil
+			default:
+				return "", errors.New("unexpected call")
 			}
 		})
 		if err != nil {

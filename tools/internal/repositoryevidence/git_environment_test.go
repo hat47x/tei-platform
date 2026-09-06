@@ -36,14 +36,52 @@ func TestValidateGitSourceEnvironmentDoesNotRejectUnrelatedGitEnvironment(t *tes
 	}
 }
 
-func TestInspectStartObservesUntrackedAndIgnoredLocalState(t *testing.T) {
-	for _, statusOutput := range []string{"?? untracked.txt\n", "!! ignored.local.go\n"} {
-		t.Run(statusOutput[:2], func(t *testing.T) {
+func TestIndexStateHasOnlyDefaultFlags(t *testing.T) {
+	cases := []struct {
+		name       string
+		indexState string
+		wantClean  bool
+	}{
+		{name: "empty repository", indexState: "", wantClean: true},
+		{name: "default tracked entries", indexState: "H go.mod\x00H main.go\x00", wantClean: true},
+		{name: "assume unchanged", indexState: "h main.go\x00", wantClean: false},
+		{name: "skip worktree", indexState: "S main.go\x00", wantClean: false},
+		{name: "assume and skip", indexState: "s main.go\x00", wantClean: false},
+		{name: "unexpected nondefault tag", indexState: "M conflicted.go\x00", wantClean: false},
+		{name: "malformed output", indexState: "main.go\x00", wantClean: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := indexStateHasOnlyDefaultFlags(tc.indexState); got != tc.wantClean {
+				t.Fatalf("indexStateHasOnlyDefaultFlags(%q)=%v want=%v", tc.indexState, got, tc.wantClean)
+			}
+		})
+	}
+}
+
+func TestInspectStartObservesUntrackedIgnoredAndIndexLocalState(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      string
+		indexState  string
+		wantClean   bool
+	}{
+		{name: "clean", status: "", indexState: "H tracked.go\x00", wantClean: true},
+		{name: "untracked", status: "?? untracked.txt\n", indexState: "H tracked.go\x00", wantClean: false},
+		{name: "ignored", status: "!! ignored.local.go\n", indexState: "H tracked.go\x00", wantClean: false},
+		{name: "assume unchanged", status: "", indexState: "h tracked.go\x00", wantClean: false},
+		{name: "skip worktree", status: "", indexState: "S tracked.go\x00", wantClean: false},
+		{name: "assume and skip", status: "", indexState: "s tracked.go\x00", wantClean: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			calls := 0
 			source, err := inspectStart(func(name string, args ...string) (string, error) {
 				calls++
 				switch calls {
-				case 1, 3:
+				case 1, 4:
 					if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
 						return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
 					}
@@ -52,7 +90,12 @@ func TestInspectStartObservesUntrackedAndIgnoredLocalState(t *testing.T) {
 					if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all", "--ignored=matching"}) {
 						return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
 					}
-					return statusOutput, nil
+					return tc.status, nil
+				case 3:
+					if name != "git" || !reflect.DeepEqual(args, []string{"ls-files", "-v", "-z"}) {
+						return "", fmt.Errorf("unexpected index command: %s %#v", name, args)
+					}
+					return tc.indexState, nil
 				default:
 					return "", fmt.Errorf("unexpected call=%d", calls)
 				}
@@ -60,21 +103,35 @@ func TestInspectStartObservesUntrackedAndIgnoredLocalState(t *testing.T) {
 			if err != nil {
 				t.Fatalf("inspectStart() error=%v", err)
 			}
-			if source.WorkingTreeClean {
-				t.Fatalf("local source stateをcleanと判定しました: status=%q source=%#v", statusOutput, source)
+			if source.WorkingTreeClean != tc.wantClean {
+				t.Fatalf("WorkingTreeClean=%v want=%v source=%#v", source.WorkingTreeClean, tc.wantClean, source)
 			}
 		})
 	}
 }
 
-func TestInspectPostObservesUntrackedAndIgnoredLocalState(t *testing.T) {
-	for _, statusOutput := range []string{"?? untracked.txt\n", "!! ignored.local.go\n"} {
-		t.Run(statusOutput[:2], func(t *testing.T) {
+func TestInspectPostObservesUntrackedIgnoredAndIndexLocalState(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      string
+		indexState  string
+		wantClean   bool
+	}{
+		{name: "clean", status: "", indexState: "H tracked.go\x00", wantClean: true},
+		{name: "untracked", status: "?? untracked.txt\n", indexState: "H tracked.go\x00", wantClean: false},
+		{name: "ignored", status: "!! ignored.local.go\n", indexState: "H tracked.go\x00", wantClean: false},
+		{name: "assume unchanged", status: "", indexState: "h tracked.go\x00", wantClean: false},
+		{name: "skip worktree", status: "", indexState: "S tracked.go\x00", wantClean: false},
+		{name: "assume and skip", status: "", indexState: "s tracked.go\x00", wantClean: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			calls := 0
 			post, err := inspectPost("abc123", func(name string, args ...string) (string, error) {
 				calls++
 				switch calls {
-				case 1, 3:
+				case 1, 4:
 					if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
 						return "", fmt.Errorf("unexpected revision command: %s %#v", name, args)
 					}
@@ -83,7 +140,12 @@ func TestInspectPostObservesUntrackedAndIgnoredLocalState(t *testing.T) {
 					if name != "git" || !reflect.DeepEqual(args, []string{"status", "--porcelain", "--untracked-files=all", "--ignored=matching"}) {
 						return "", fmt.Errorf("unexpected status command: %s %#v", name, args)
 					}
-					return statusOutput, nil
+					return tc.status, nil
+				case 3:
+					if name != "git" || !reflect.DeepEqual(args, []string{"ls-files", "-v", "-z"}) {
+						return "", fmt.Errorf("unexpected index command: %s %#v", name, args)
+					}
+					return tc.indexState, nil
 				default:
 					return "", fmt.Errorf("unexpected call=%d", calls)
 				}
@@ -91,8 +153,8 @@ func TestInspectPostObservesUntrackedAndIgnoredLocalState(t *testing.T) {
 			if err != nil {
 				t.Fatalf("inspectPost() error=%v", err)
 			}
-			if !post.Checked || !post.RevisionStable || post.WorkingTreeClean {
-				t.Fatalf("post-run local source state観測が不正です: status=%q post=%#v", statusOutput, post)
+			if !post.Checked || !post.RevisionStable || post.WorkingTreeClean != tc.wantClean {
+				t.Fatalf("post-run local source state観測が不正です: wantClean=%v post=%#v", tc.wantClean, post)
 			}
 		})
 	}
