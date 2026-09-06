@@ -56,11 +56,12 @@ Business Result / Execution Error / Observation / Diagnosticも相互に読み�
 
 ```bash
 git status --short --untracked-files=all --ignored=matching
+git ls-files -v
 git rev-parse HEAD
 go version
 ```
 
-tracked / untracked / ignoredを含むlocal stateが一つでも表示された場合は停止します。既存差分やignored fileを機械的に破棄しません。Gate B Evidence専用checkoutから除去するか、必要なlocal stateをcheckout外へ移してから再確認します。
+tracked / untracked / ignoredを含むlocal stateが一つでも表示された場合は停止します。加えて、`git ls-files -v`の全tracked entryが通常の`H` tagであることを要求し、`h`（assume-unchanged）/ `S`（skip-worktree）/ `s`（両方）その他の非`H` tagがあるcheckoutはEvidenceに使いません。Gate B Evidence専用checkoutはfull checkoutとし、既存差分・ignored file・index flagを機械的に破棄せず、必要なlocal stateをcheckout外へ移すか専用checkoutを作り直してから再確認します。
 
 ### Go environment
 
@@ -100,18 +101,22 @@ HEAD before
   ↓
 git status --porcelain --untracked-files=all --ignored=matching
   ↓
+git ls-files -v -z
+  ↓
 HEAD after
   ↓
-HEAD stable && working tree clean
+HEAD stable && local source/index state clean
   ↓ only then
 secret file open / read
 ```
 
-source観測不能、観測中のHEAD drift、tracked / untracked / ignored local stateが存在するworking treeではsecret loaderへ進みません。このpreflightは後段のcandidate source確認を置き換えません。secret読込後にsourceが変化した場合も、lane開始前の再確認でfail closedします。
+source観測不能、観測中のHEAD drift、tracked / untracked / ignored local state、または非標準Git index stateが存在するcheckoutではsecret loaderへ進みません。このpreflightは後段のcandidate source確認を置き換えません。secret読込後にsourceが変化した場合も、lane開始前の再確認でfail closedします。
 
 PR #477以降、共有`tools/internal/repositoryevidence`はuntracked fileをambient Git configで隠せないよう、開始時・終了時とも`--untracked-files=all`を明示します。さらに、実行checkoutとは別のrepository / work tree / index等を観測し得るGit identity overrideに加え、`GIT_CONFIG_COUNT` / `GIT_CONFIG_PARAMETERS` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`によるcommand-scope config injectionを大小文字違いも含めfail closedで拒否します。
 
 PR #479以降は`--ignored=matching`も明示し、`.gitignore` / `.git/info/exclude`等でignoredになっているlocal stateもcandidate `R`外の入力として`WorkingTreeClean=false`にします。ignored Go sourceが通常の`git status --porcelain --untracked-files=all`では見えないまま`go list`へ入るケースが実測されているため、Evidence専用checkoutでは`.idea` / `.vscode` / `.DS_Store` / `.tei` cache等を含むignored local stateも残しません。
+
+PR #483以降は`git ls-files -v -z`も同じHEAD観測窓の内側で取得します。tracked sourceに`assume-unchanged`または`skip-worktree`を設定すると、変更後sourceがGo入力へ入る一方で通常statusがemptyのままになるケースを実測したためです。全tracked entryが通常の`H` tagの場合だけindex stateをcleanとし、`h` / `S` / `s`、malformed / 想定外の非`H` tag、index state取得失敗はいずれも成功Evidenceへ進めません。sparse checkout由来の`skip-worktree`も許容せず、Evidence専用checkoutはfull checkoutとします。
 
 PR #465以降、secret fileはsymlink解決後もRepository外のexisting regular fileであることを確認したうえで、**検証済みのresolved pathを一度だけopen**します。
 
@@ -306,10 +311,11 @@ cleanupではtableをlockし、DB上markerが作成時markerとexact一致した
 
 ```bash
 git status --short --untracked-files=all --ignored=matching
+git ls-files -v
 git rev-parse HEAD
 ```
 
-`git status --short --untracked-files=all --ignored=matching`が空であることを要求します。tracked / untracked / ignored local stateのいずれかが残るcheckoutをcandidate `R`へ固定しません。
+`git status --short --untracked-files=all --ignored=matching`が空であり、`git ls-files -v`の全tracked entryが通常の`H` tagであることを要求します。tracked / untracked / ignored local state、または非標準index stateが残るcheckoutをcandidate `R`へ固定しません。
 
 このclean revisionをcandidate `R`とします。
 
@@ -379,6 +385,7 @@ secret read / lane開始までに少なくとも次を確認します。
 - direct `TEI_TEST_POSTGRES_DSN`不存在
 - DSN secret fileがRepository外regular file
 - child Evidence保存先がRepository外
+- Repository source観測でtracked / untracked / ignored local stateがなく、tracked index entryが通常`H`のみ
 
 現行実装の順序は概念上次です。
 
@@ -586,6 +593,8 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - Workspace Validation Error
 - Repository root以外からのfinal run
 - 開始時dirty working tree（tracked / untracked / ignored local stateを含む）
+- Git indexに`assume-unchanged` / `skip-worktree`またはその他の非標準tagがあり、全tracked entryを通常`H`へ固定できない
+- sparse checkout等により`skip-worktree`を持つfull checkoutでない状態
 - secret read前にRepository sourceをcleanかつ安定して観測できない
 - Repository source観測environmentにGit identity overrideまたは`GIT_CONFIG_*` command-scope config injectionが存在する
 - source観測不能 / HEAD drift
