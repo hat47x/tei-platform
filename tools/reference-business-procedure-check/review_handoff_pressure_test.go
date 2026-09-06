@@ -43,7 +43,7 @@ type referenceSetEndpoint struct {
 
 type reviewStamp struct {
 	TargetProcedure     string
-	RepositoryRevision string
+	RepositoryRevision  string
 	ArtifactPath        string
 	ArtifactFingerprint string
 	Decision            string
