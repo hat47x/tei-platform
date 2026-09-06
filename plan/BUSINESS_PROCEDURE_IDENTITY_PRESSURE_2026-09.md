@@ -92,6 +92,76 @@ D. Repository path + revision provenance
 
 A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の履歴identityが再び結合する。
 
+## Pressure 4: 既存Source Indexでどこまで足りるか
+
+TEIにはすでに`internal/sourceindex`とneutralな`subject.Subject`がある。
+
+既存Source Indexの性質は次である。
+
+```text
+Subject
+  = path-independent semantic / logical target
+
+Artifact
+  = path + format + content fingerprint
+
+Reference
+  = Subject -> ArtifactPath + Range + Role
+```
+
+また、既存Workspace Source IndexはCanonical subjectとsource locatorを分離しており、file moveではsubjectを保ったままlocatorだけを変更する方針を持つ。
+
+Business Procedure Referenceで新しいidentity機構を設計する前に、この既存モデルを圧力テストする。
+
+### Pressure 4A: pure file move
+
+同一bytesのBusiness Procedure fixtureを別pathへ移した場合、`sourceindex.NewArtifact`で生成されるPathは変わるがFingerprintは一致する。
+
+これは**内容非変更のpure moveをcontent identityとして検出する**用途には既存Artifact fingerprintが使えることを示す。
+
+### Pressure 4B: semantic-equivalent formatting change
+
+同じJSON meaningへwhitespaceだけを追加した場合、fixture decode結果は同一でもArtifact fingerprintは変化する。
+
+したがってArtifact fingerprintはsemantic identityではない。
+
+```text
+same semantic fixture
+  + whitespace-only content change
+        ↓
+Source Index Artifact fingerprint changes
+```
+
+これは期待どおりであり、fingerprintをstable Business Procedure identityとして流用してはいけない。
+
+### Pressure 4C: existing Pattern Subject
+
+二つのBusiness Procedure artifactが同じ`order_entry.order_record`を参照する場合、既存のpath-independent `application-pattern` Subjectへ二つのderived Referenceを結び付けることはできる。
+
+つまりPattern変更から「どのBusiness Procedure artifactがそのPatternを参照しているか」を辿るために、新しいCanonical Procedure kindは必須ではない。
+
+ただし、Business Procedureそのもののcross-revision identityはこれでは解決していない。
+
+## 000039との境界
+
+`plan/issue/000039-business-change-rehearsal.md`は、将来の共通change analysisについて次を既に完了条件としている。
+
+```text
+Canonical IDを保ったfile rename / moveだけなら
+Semantic差分なし
+Source locatorだけ変更
+```
+
+レーンCはこの共通解析器を先取り実装しない。
+
+本Referenceでは次だけを確認する。
+
+- existing Source IndexのArtifact / Subject分離がBusiness Procedure圧力でも有効か
+- Pattern subjectへのreverse referenceが可能か
+- fingerprintで解けないsemantic continuityがどこに残るか
+
+Validation / Bindingを含む本格的なchange graph、revision-aware impact、Scenario propagationは000039の責務に残す。
+
 ## 現時点の判断
 
 ### 維持
@@ -100,6 +170,7 @@ A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の�
 - Business Procedure fixtureはderived Referenceのままにする
 - Pattern-owned Data / Relation / Query / Capability / Datasourceはnormalized Patternから導出する
 - manual / external Business Actionへfake Function / Capabilityを要求しない
+- Source Index Artifact fingerprintをsemantic Procedure identityとして流用しない
 
 ### 新しく絞れた未解決点
 
@@ -109,21 +180,23 @@ A〜Dを同じIDで兼用すると、Business meaningとRepository運用上の�
 
 ではなく、
 
-> cross-revision review / impact / Evidenceがfile moveや再生成を越えて同じartifactを指す必要があるか。その場合、Source/Evidence identityで足りるか
+> Source Indexの既存Subject / Artifact / Referenceモデルとrevision provenanceだけでは、Business Procedure自身のcross-revision review identityに何が不足するか
 
 である。
 
-Source/Evidence identityで足りるなら、Business ProcedureをCanonical semantic kindへ増やさずにdurable traceabilityを得られる可能性がある。
+pure file moveはArtifact fingerprintで補助でき、Pattern側のreverse impactは既存Pattern Subjectで辿れる。
+
+残る圧力は、**内容が変わりつつ同じBusiness Procedureとしてreview historyを継続したい場合**、および**Procedure間handoff / reuseがBusiness semantic identityを本当に要求する場合**である。
 
 ## 次のPressure
 
-1. 同一fixtureを内容非変更で移動した場合のreview / Evidence anchor
-2. step reorder / instruction wording changeとsemantic impactの区別
-3. Pattern renameまたはaccepted source change時のreverse impact
-4. manual residual explanationの再生成耐性
+1. step reorder / instruction wording changeとsemantic impactの区別
+2. Pattern renameまたはaccepted source change時のreverse impact
+3. manual residual explanationの再生成耐性
+4. 内容変更＋file moveを越えるreview anchor
 5. 二つのProcedure間でhandoffを表現したとき、stable semantic Procedure identityが本当に必要になるか
 
-これらでSource/Evidence identityでは不足する反復Evidenceが得られた場合だけ、Canonical Procedureの最小contractをADR候補として再検討する。
+これらで既存Subject / Source Index / revision provenanceでは不足する反復Evidenceが得られた場合だけ、Canonical Procedureの最小contractをADR候補として再検討する。
 
 ## Verification
 
@@ -138,5 +211,8 @@ identity pressureの主要test:
 - `TestMultipleProceduresCanReferenceSamePatternWithoutCanonicalProcedureIdentity`
 - `TestArtifactAndStepEvidenceLocatorSurvivesExperimentLocalProcedureRename`
 - `TestArtifactRenameStillChangesNonCanonicalEvidenceLocator`
+- `TestSourceIndexArtifactFingerprintSurvivesPureFileMove`
+- `TestSourceIndexArtifactFingerprintIsContentIdentityNotSemanticIdentity`
+- `TestCanonicalPatternSubjectRemainsPathIndependentAcrossProcedureArtifacts`
 
 actual Repository runnerによるgreen確認まではEvidence in progressとする。
