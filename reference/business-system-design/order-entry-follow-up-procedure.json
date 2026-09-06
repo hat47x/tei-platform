@@ -5,7 +5,7 @@
   "application": "order_entry",
   "procedure": {
     "id": "order-entry.follow-up",
-    "identityStatus": "experiment-local",
+    "identityStatus": "reference-local-stable",
     "purpose": "review an order after an earlier interaction and decide whether surrounding follow-up work is needed",
     "trigger": {
       "status": "candidate",
