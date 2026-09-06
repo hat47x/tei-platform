@@ -148,10 +148,11 @@ First TargetだけでTarget-neutral taxonomyを完成させず、第二Targetで
 
 Studioのdeveloper-facing Wails HostをApplication Target Evidenceへ数えません。
 
-## ADR / Plan Issue
+## ADR / Plan Issue / 機能設計
 
 - [`adr/`](adr/) — 長く残す設計判断
 - [`issue/`](issue/) — 複数PR / Reference / Evidenceへまたがる作業定義
+- [`design/`](design/README.md) — 機能単位の設計本文。Architectureの第二正本にはしない
 
 planning-onlyの将来作業まで不要にGitHub Issueへ二重起票することを目的にはしません。
 
