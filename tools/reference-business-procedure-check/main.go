@@ -27,7 +27,7 @@ type fixture struct {
 	SchemaVersion string    `json:"schemaVersion"`
 	ArtifactRole  string    `json:"artifactRole"`
 	Canonical     bool      `json:"canonical"`
-	Application   string    `json:"application"`
+	Application   string    `json:"application,omitempty"`
 	Procedure     procedure `json:"procedure"`
 	Steps         []step    `json:"steps"`
 }
@@ -104,7 +104,7 @@ type patternMeaningRow struct {
 
 type report struct {
 	Procedure                        string              `json:"procedure"`
-	Application                      string              `json:"application"`
+	Application                      string              `json:"application,omitempty"`
 	CanonicalProcedureIdentityUsed   bool                `json:"canonicalProcedureIdentityUsed"`
 	BusinessActionFunctionRows       []functionRow       `json:"businessActionFunctionRows"`
 	BusinessActionPatternMeaningRows []patternMeaningRow `json:"businessActionPatternMeaningRows"`
@@ -240,11 +240,9 @@ func evaluate(world ir.World, f fixture) report {
 		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_PROCEDURE_ID_MISSING", Severity: severitySemanticError, Message: "experiment-local Procedure IDがありません"})
 	}
 
-	_, appFound := findApplication(world, f.Application)
-	if !appFound {
-		result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_APPLICATION_NOT_FOUND", Severity: severitySemanticError, Message: fmt.Sprintf("Application %qがnormalized Worldに存在しません", f.Application)})
-	}
-
+	// fixture.Application is optional Reference/reporting context. It is not a
+	// Business Procedure owner and is not an authority for Pattern policy.
+	// Cross-view semantics must resolve from the explicit references below.
 	patterns := patternCounts(world)
 	data, relations, validations, capabilities := semanticCounts(world)
 	stepIDs := map[string]struct{}{}
