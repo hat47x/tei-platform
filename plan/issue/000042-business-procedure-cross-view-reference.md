@@ -30,6 +30,7 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_HANDOFF_VS_BUSINESS_FLOW_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_MULTI_APPLICATION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_REALISTIC_MULTI_APPLICATION_SCENARIO_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_SOCIAL_SYSTEM_REALISM_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_UNCERTAINTY_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_REALIZATION_SUBTRACTION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_STEP_IDENTITY_PRESSURE_2026-09.md`
@@ -37,6 +38,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_STEP_ADDRESS_LAYER_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_APPLICATION_CONTEXT_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_NORMALIZED_MODEL_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_EXPLICIT_REF_AUTHORITY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_OBSERVATION_CROSS_VIEW_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`
 
 ## Lane境界
@@ -55,6 +58,7 @@ Business Flow != Procedure != Runtime Workflow Orchestration
 Business Handoff != full Business Flow / DFD
 Business Actor / Job != Authentication Principal != Authorization Role / Policy
 Business Procedure != single Application child
+Runtime Observation operation != Business / Semantic identity
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 ```
 
@@ -79,6 +83,9 @@ Pattern-owned Data / Relation / Query / Capability / Datasource / Application ow
 
 - BP-00〜BP-09
 - BP-04 / BP-09はPatternなしのmanual / external Business Action
+- BP-05だけがaccepted deterministic Validationをdirect refとして保持し、BP-03へ同じValidation authorityを重複しない
+- BP-06は既存Semantic authority `security.authorize`をdirect refとして保持する
+- BP-08はObservation intentionをBusiness wordingとして保持し、runtime Observation identityをfake Semantic refへ昇格しない
 
 ### Follow-up
 
@@ -108,7 +115,7 @@ BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 severity = architecture-policy
 ```
 
-### Intermediate multi-Application scenario
+### Gate 15a — multi-Application structural pressure
 
 temp Workspaceで次を同一Procedureへ共存させる。
 
@@ -119,7 +126,36 @@ order_entry interaction
   -> external delivery continuation
 ```
 
-synthetic second Applicationのためproduction業務仕様とはみなさず、中間Pressureとする。
+synthetic second Applicationのためproduction業務仕様とはみなさず、Business Procedureを単一Application画面操作列へ縮めない構造Pressureとする。
+
+### Gate 15b — social-system realism pressure
+
+current production `order_entry`だけで、同一Business Procedure文脈に次を保持する。
+
+```text
+sales_core
+  read-write / managed-here
+
+master_data
+  read-only / external-observed
+
+customer reference
+  explicit datasource + Contract Query
+
+BP-04 human judgment
+BP-06 Authorization
+BP-07 Application Command
+BP-08 separate Observation intention
+BP-09 manual / external continuation
+```
+
+これはcurrent Referenceを社会システムとしてPressureするが、provenance-backed realistic Business corpusの幅広さを証明するものではない。
+
+### Gate 15c — conditional broader realistic pressure
+
+15a + 15bでminimum Canonical contract sufficiencyを説明できない具体的な不足が出た場合だけ、realistic second Application / broader corpus pressureを追加する。
+
+15cを無条件のADR blockerや、新しいApplication概念を増やす口実にはしない。
 
 ## Cross-view checker原則
 
@@ -136,6 +172,7 @@ Matrix / diagnostics / semantic pressure
 ```
 
 - explicit referenceはexact identityで解決
+- explicit refsはEvidence-backedなBusiness dependencyだけを保持し、関連性や対称性だけで増やさない
 - 名称類似で補完しない
 - Pattern ID文字列からownerを推測しない
 - Pattern + owner Applicationをnormalized Worldからexact解決
@@ -181,7 +218,7 @@ Matrix / diagnostics / semantic pressure
 | A34 | Step body meaning can be ID-free | test-only実装済み |
 | A35 | handoffはexact Step addressabilityを要求 | 実装済み |
 | A36 | Step addressability != runtime identity | 方針固定 |
-| A37 | realistic multi-App + manual + external coexistence | 中間Pressure実装済み |
+| A37 | realistic multi-App + manual + external coexistence | Gate 15a構造Pressureとして実装済み |
 | A38 | Application associationはWorld解決でderiveし、名前からguessしない | 実装済み |
 | A39 | access policyはPattern owner Applicationを使う | checker修正 + 回帰Pressure実装済み |
 | A40 | fixture Application context != Procedure owner | 実装済み |
@@ -198,6 +235,8 @@ Matrix / diagnostics / semantic pressure
 | A51 | R3をhandoff-only relationへ限定し、full Business Flowを所有しない | negative Pressure実装済み |
 | A52 | normalized handoff validation PASSをBusiness Flow / DFD Conformanceと呼ばない | test-only境界固定 |
 | A53 | full Business Flowはrealistic Referenceで別pressureが出た場合だけreopen | 方針固定 |
+
+Gate 15a / 15b / 15cはA54以降の新しいAcceptance IDではなく、上記Pressureを評価するReference/Evidence分類として扱う。
 
 ## 現在のCanonical候補比較
 
@@ -358,6 +397,24 @@ fixture Application
 
 C2（fixture field完全除去）はcurrent Evidenceから必要性がないため保留する。
 
+## Gate 15 current status
+
+```text
+15a synthetic multi-Application structural pressure
+  source/test level implemented
+  actual execution pending
+
+15b current order_entry social-system realism pressure
+  source/test level implemented
+  actual execution pending
+
+15c realistic second-Application / broader corpus pressure
+  conditional
+  15a + 15bで説明できない不足が出た場合だけ追加
+```
+
+`social-system realism pressure`と`provenance-backed realistic Reference maturity / breadth`を同一視しない。
+
 ## Lane B独立監査との整合
 
 latest mainのLane B RQ-002監査も独立に次を確認した。
@@ -432,7 +489,7 @@ PR #482はDraftを維持する。
 14. H0 semantic-loss / H1 relation preservationをactual testsで確認
 15. R3 + S4-A normalized modelをactual testsで確認
 16. dedicated production kindなしでどこまでBusiness boundaryを表現できるか説明
-17. current `order_entry`より一段現実的なmulti-App / manual / external Pressureをactual Evidenceで確認
+17. Gate 15a structural pressureと15b social-system realism pressureをactual Evidenceで確認し、15cは両者で説明できない不足が出た場合だけ追加する
 18. A / D1 / D2 / D3の最小十分性を説明
 19. Lane B再監査と矛盾しないproduction ADR候補を作れる状態にする
 20. H1/R3をhandoff-onlyとしてactual testsで確認し、Business Flow surfaceを混入させない
