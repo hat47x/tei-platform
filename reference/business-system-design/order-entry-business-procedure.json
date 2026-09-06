@@ -31,9 +31,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.order_record"
-      ],
-      "data": [
-        "sales.order"
       ]
     },
     {
@@ -42,9 +39,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.customer_reference"
-      ],
-      "relations": [
-        "sales.order.customer"
       ],
       "applicationAccess": [
         {
@@ -59,9 +53,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.order_lines"
-      ],
-      "relations": [
-        "sales.order.lines"
       ],
       "validations": [
         "sales.order_line.quantity_positive",
@@ -93,9 +84,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.submit_order"
-      ],
-      "capabilities": [
-        "sales.order.submit"
       ]
     },
     {
