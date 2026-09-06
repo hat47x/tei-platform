@@ -361,7 +361,120 @@ Gate C Ready後:
 
 最初から巨大Knowledge Graph、vector database、AI専用Knowledge Storeを作りません。
 
-## 9. Cross-cutting Requirements
+## 9. PAS-07 — 手作業を失わずData / Function / Businessを相互検証して設計修正できる
+
+### 利用者価値
+
+開発者は、業務をApplication内部の実行手順へ還元せず、人・外部作業を含むBusiness Procedureを確認しながらData / Function-Interaction / Businessの三視点から矛盾・不足・過剰な仮定を見つけ、Projectionだけを補修するのではなくauthoritative sourceへ戻って設計を修正できます。
+
+### 代表Scenario
+
+```text
+accepted Data / Relation / Application meaningを読む
+        ↓
+Business固有meaningをaccepted authoring sourceとして保持する
+        ↓
+manual / external Actionをfake Functionへ変換しない
+        ↓
+existing Application / Semantic identityをexplicitに参照する
+        ↓
+derived cross-view Projectionで相互検証する
+        ↓
+contradiction / omission / unknown / impactを発見する
+        ↓
+correction candidateをauthoritative source側へ返す
+        ↓
+Shared Acceptance Boundary
+        ↓
+reload / regenerate / reviewする
+```
+
+### 壊してはいけない境界
+
+```text
+Business Action != Application Function
+Business Flow != Procedure != Runtime Workflow Orchestration
+Business Actor / Job != Authentication Principal != Authorization Role / Policy
+Validation PASS != whole-business approval
+Application Business Result != external-world Observation
+Projection != second source of truth
+```
+
+Application Patternの並びやPAS-02のDriver validation sequenceを、accepted Business Procedureなしに利用者の業務手順へ読み替えません。
+
+### 主なRequirement
+
+- RQ-025 業務上の行為・手順をApplication Functionから独立して設計
+- RQ-026 Data / Function-Interaction / Business Procedureの相互検証
+- RQ-021 Reference / Conformance
+- RQ-022 設計検証段階と完成製品の区別
+
+RQ-025はPAS-07 primary / PAS-02・PAS-04 secondaryです。
+
+RQ-026はPAS-07 primary / PAS-01・PAS-02・PAS-04 secondaryです。
+
+### 現在のPlan / Evidence位置
+
+Reference / Evidence実装はLane C `ISSUE-000042` / PR #482が所有します。Lane BはReference fixture / checkerを複製せず、EvidenceをPAS-07 claimへ対応付けます。
+
+現時点では次を分離します。
+
+```text
+E7-01〜09
+  Lane C fixture / checker / pressure tests implementation exists
+  actual Repository runner Evidence unresolved
+
+E7-10
+  file-native accepted-source pressure exists
+  production Shared Acceptance end-to-end Evidence unresolved
+```
+
+したがって:
+
+```text
+implementation exists
+  !=
+PAS-07 execution Evidence accepted
+```
+
+です。GitHub-hosted runnerがcheckout前に終了する状態やCI表示だけをcode failure / PAS failureへ読み替えません。
+
+Business-side Representation EvidenceとPAS-02 Runtime Evidenceも分けます。
+
+```text
+Lane C Business Procedure Reference
+  -> manual / external Action
+  -> Business judgment / Validation separation
+  -> actor / authority separation
+  -> Command / Observation separation
+  -> cross-view reference / diagnostic
+
+PAS-02 Driver Evidence
+  -> Validation execution
+  -> Authentication / Authorization decision
+  -> Capability execution
+  -> Business Result
+  -> separate explicit read / Observation
+```
+
+片方をもう片方の代替にしません。
+
+また、Reference-local stable Procedure keyはreview / handoff / stale detection / file move分離に具体的価値がありますが、それだけでCanonical `Procedure` / `Step`を採用しません。
+
+file-native Business Procedure sourceのShared Acceptanceを安全に行う機械的pressureはCanonical Procedureなしでも成立しており、現在残るidentity論点は主にRQ-002のCanonical trace targetです。minimal Canonical identity shell、Subject contract拡張、formal Authoring identity等の比較はArchitecture pressureとして別に扱い、PAS-07成立条件からfull Workflow modelを逆導出しません。
+
+### Gateへの影響
+
+PAS-07は新Gateではありません。
+
+- Gate B Required Evidence 3 laneへ追加しない
+- Gate C First Web Target Required Evidenceへ追加しない
+- Lane C actual runner greenはPAS-07 Evidence statusを更新するが、それだけでPAS-07全体を`accepted`へ上げない
+- end-to-end correction / acceptance / reloadはPAS-01 Shared Acceptance Evidenceとcross-checkする
+
+詳細なE7 mappingは `RQ025_RQ026_ACCEPTANCE_TRACE.md` をsupporting Evidence contractとして参照します。
+
+## 10. Cross-cutting Requirements
 
 ### RQ-021 — Reference / Conformance
 
@@ -389,7 +502,7 @@ PAS-04で具体化します。
 
 根拠のない一律thresholdを第一Targetだけから固定しません。
 
-## 10. Requirement → Primary PAS mapping
+## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
 | --- | --- | --- |
@@ -417,10 +530,12 @@ PAS-04で具体化します。
 | RQ-022 | cross-cutting | all PAS |
 | RQ-023 | cross-cutting | PAS-01 / PAS-06 |
 | RQ-024 | PAS-04 | - |
+| RQ-025 | PAS-07 | PAS-02 / PAS-04 |
+| RQ-026 | PAS-07 | PAS-01 / PAS-02 / PAS-04 |
 
 Primaryは最初に具体化する代表PASであり、coverage scoreではありません。
 
-## 11. 現行Gate / Stageとの関係
+## 12. 現行Gate / Stageとの関係
 
 ```text
 Gate A
@@ -441,11 +556,17 @@ Gate C後 — 並行可能
   -> PAS-06: ISSUE-000047 knowledge-first exploration
   -> PAS-01 / PAS-06: ISSUE-000027 AI Proposal / Acceptance
   -> PAS-04: ISSUE-000026 second Target pressure test
+
+Gate非依存のparallel Reference pressure
+  -> PAS-07: ISSUE-000042 Business Procedure cross-view Reference
+  -> Gate B / Gate C Required Evidenceへ追加しない
 ```
 
 PAS-05はruntime / deployment workstreamへ接続します。現行Gate B必須scopeを本書から拡張しません。
 
-## 12. 新しいADR / Plan Issueへ要求する最小Trace
+PAS-07のReference runnerがgreenになってもGate B / CのReady条件は変わりません。greenはPAS-07 Evidence statusへ記録し、Shared AcceptanceやPAS-02 Runtime Evidenceを自動代替しません。
+
+## 13. 新しいADR / Plan Issueへ要求する最小Trace
 
 新しい上流設計・機能提案では、必要に応じて次を明示します。
 
@@ -463,7 +584,7 @@ PAS-05はruntime / deployment workstreamへ接続します。現行Gate B必須s
 
 実装が先に存在する場合でも、この欄を埋めるためだけに架空Requirementを作りません。
 
-## 13. 現行Authoring基線
+## 14. 現行Authoring基線
 
 PAS-01 / PAS-06では次を現行前提とします。
 
@@ -476,6 +597,10 @@ PAS-01 / PAS-06では次を現行前提とします。
 - stale base revisionは明示処理
 - derived index / AI Knowledge / trajectoryは第二正本ではない
 
+PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native authoring sourceへ保持し、Pattern-owned Data / Relation / Query / Capability / DatasourceやMatrix / diagnostic等のderived Projectionと分離します。
+
+現時点でReference-local stable Procedure keyの有用性は確認していますが、accepted Business sourceをRQ-002上どのCanonical trace targetへ接続するかは`unresolved`です。この一点からfull Canonical Procedure modelやRuntime Workflowを先に固定しません。
+
 次を現行前提にはしません。
 
 - Semantic Patchだけを唯一のauthoring経路にすること
@@ -483,10 +608,12 @@ PAS-01 / PAS-06では次を現行前提とします。
 - mandatory authored Stable ID / UUID
 - Studio独自semantic authority
 - AI独自Canonical Knowledge Store
+- Canonical `Procedure` / `Step`の先行採用
+- Business ProcedureからRuntime Workflow Orchestrationへの自動変換
 
 optional Patchを利用する場合も、file-native / Studio / CLI / AIと同じAcceptance原則へ接続します。
 
-## 14. 非目標
+## 15. 非目標
 
 - Product Requirementsの置換
 - Canonical object `ProductAcceptanceScenario`の追加
@@ -495,3 +622,4 @@ optional Patchを利用する場合も、file-native / Studio / CLI / AIと同�
 - Gate B / Gate Cのscopeを本書だけで変更すること
 - 第一Targetだけから完全なPresentation IRを固定すること
 - Gate C前にStudio / AIの詳細interfaceを固定すること
+- PAS-07を理由にCanonical `Procedure` / `Step`、Workflow Engine、新Gateを自動導入すること
