@@ -14,8 +14,8 @@ jobs:
   package-tests:
     runs-on: ubuntu-latest
     env:
-      GOENV: off
-      GOWORK: off
+      GOENV: "off"
+      GOWORK: "off"
       GOFLAGS: ""
       TARGET_SHA: b1250fedce4f87515be25e225575b2fccec2152b
     steps:
