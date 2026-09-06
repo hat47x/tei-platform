@@ -30,39 +30,41 @@ func TestEnvironmentWithoutPostgresSecretsRemovesDSNAndFilePath(t *testing.T) {
 	}
 }
 
-func TestEnvironmentForLaneWithPostgresDSNInjectsSecretOnlyIntoPostgresLane(t *testing.T) {
-	const secret = "postgres://user:password@example.invalid/evidence"
+func TestEnvironmentForLaneWithPostgresDSNFilePassesPathOnlyToPostgresLane(t *testing.T) {
+	const path = "/private/postgres-dsn"
 	base := []string{
 		"PATH=/usr/bin",
-		"TEI_TEST_POSTGRES_DSN_FILE=/private/dsn",
+		"TEI_TEST_POSTGRES_DSN=postgres://must-not-leak",
+		"TEI_TEST_POSTGRES_DSN_FILE=/private/old-dsn",
 		"OTHER=value",
 	}
 
 	for _, spec := range laneSpecs(false)[:2] {
-		got := environmentForLaneWithPostgresDSN(spec, base, secret)
+		got := environmentForLaneWithPostgresDSNFile(spec, base, path)
 		if !reflect.DeepEqual(got, []string{"PATH=/usr/bin", "OTHER=value"}) {
 			t.Fatalf("%s environment=%#v", spec.Name, got)
 		}
 	}
 
 	postgres := laneSpecs(false)[2]
-	got := environmentForLaneWithPostgresDSN(postgres, base, secret)
-	want := []string{"PATH=/usr/bin", "OTHER=value", postgresDSNEnv + "=" + secret}
+	got := environmentForLaneWithPostgresDSNFile(postgres, base, path)
+	want := []string{"PATH=/usr/bin", "OTHER=value", postgresDSNFileEnv + "=" + path}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("PostgreSQL lane environment=%#v want=%#v", got, want)
 	}
 }
 
-func TestPostgresSecretEnvironmentIsolatedInActualChildProcess(t *testing.T) {
-	const secret = "postgres://user:password@example.invalid/evidence"
+func TestPostgresSecretFileEnvironmentIsolatedInActualChildProcess(t *testing.T) {
+	const path = "/private/postgres-dsn"
 	base := append([]string(nil), os.Environ()...)
 	base = append(base,
-		postgresDSNFileEnv+"=/private/secret-path-must-not-leak",
+		postgresDSNEnv+"=postgres://must-not-leak",
+		postgresDSNFileEnv+"=/private/old-path-must-not-leak",
 		"TEI_GATE_B_SECRET_ENV_HELPER=1",
 	)
 
 	for _, spec := range laneSpecs(false) {
-		env := environmentForLaneWithPostgresDSN(spec, base, secret)
+		env := environmentForLaneWithPostgresDSNFile(spec, base, path)
 		cmd := exec.Command(os.Args[0], "-test.run=^TestPostgresSecretEnvironmentHelper$")
 		cmd.Env = env
 		out, err := cmd.CombinedOutput()
@@ -71,7 +73,7 @@ func TestPostgresSecretEnvironmentIsolatedInActualChildProcess(t *testing.T) {
 		}
 		got := strings.TrimSpace(string(out))
 		if spec.Name == "real-postgres-ephemeral-fixture" {
-			if got != "postgres-secret-only" {
+			if got != "postgres-file-only" {
 				t.Fatalf("%s child result=%q", spec.Name, got)
 			}
 			continue
@@ -86,17 +88,17 @@ func TestPostgresSecretEnvironmentHelper(t *testing.T) {
 	if os.Getenv("TEI_GATE_B_SECRET_ENV_HELPER") != "1" {
 		return
 	}
-	if _, exists := os.LookupEnv(postgresDSNFileEnv); exists {
-		fmt.Fprint(os.Stdout, "file-path-present")
+	if _, exists := os.LookupEnv(postgresDSNEnv); exists {
+		fmt.Fprint(os.Stdout, "dsn-present")
 		os.Exit(17)
 	}
-	secret, hasSecret := os.LookupEnv(postgresDSNEnv)
-	if hasSecret {
-		if secret == "postgres://user:password@example.invalid/evidence" {
-			fmt.Fprint(os.Stdout, "postgres-secret-only")
+	path, hasPath := os.LookupEnv(postgresDSNFileEnv)
+	if hasPath {
+		if path == "/private/postgres-dsn" {
+			fmt.Fprint(os.Stdout, "postgres-file-only")
 			os.Exit(0)
 		}
-		fmt.Fprint(os.Stdout, "unexpected-secret")
+		fmt.Fprint(os.Stdout, "unexpected-file-path")
 		os.Exit(18)
 	}
 	fmt.Fprint(os.Stdout, "no-postgres-secret")
