@@ -1,6 +1,6 @@
 # Business Procedure Application Context Pressure — 2026-09
 
-Status: **Lane C / test-only architecture pressure / no Core adoption**
+Status: **Lane C / test-only architecture pressure / C1 implemented in experiment checker / no Core adoption**
 
 ## 1. 問い
 
@@ -12,9 +12,9 @@ application = order_entry
 
 を持つ。
 
-Business Procedureがone Procedure -> multiple Applications、manual work、external workを跨げることがPressureで示された後も、このfieldをBusiness Procedureのowner / authorityとして扱う必要があるかを再監査する。
+Business Procedureがone Procedure -> multiple Applications、manual work、external workを跨げることがPressureで示された後も、このfieldをBusiness Procedureのowner / authorityとして扱う必要があるかを再監査した。
 
-## 2. すでに確認できたこと
+## 2. 確認できたこと
 
 ### 2.1 thin Canonical meaningには不要
 
@@ -41,9 +41,9 @@ Procedureが関係するApplication集合は、explicit Application Pattern refs
 
 Pattern ID文字列のprefix分解やfixture-level owner fieldをauthorityにしない。
 
-## 3. 発見した旧前提
+## 3. 旧前提と修正
 
-current `evaluate()`にはまだ次の検査が残る。
+旧`evaluate()`には次の検査が残っていた。
 
 ```text
 fixture.Application
@@ -51,40 +51,44 @@ fixture.Application
   -> missingなら BUSINESS_APPLICATION_NOT_FOUND
 ```
 
-これはcross-view access判定にはもう使われない。
+これはcross-view access判定には使われず、one Procedure -> multiple Applications pressureとも緊張していた。
 
-したがって現在の`application` fieldは二つの意味が混ざった過渡状態にある。
+実験checkerではこの存在必須checkを除去し、`fixture.Application`をoptional reporting metadataへ下げた。
 
 ```text
-A. Reference reporting / scenario context
-B. semantic owner / authority
+fixture.Application
+  -> reportへ表示してよい
+  -> absentでもよい
+  -> unknownでもsemantic ownerとはみなさない
+  -> Pattern / policy authorityには使わない
 ```
 
-Bは現在のPressureでは不要になった。
+## 4. Option比較
 
-## 4. 次の比較
-
-### Option C1 — optional reporting context
+### C1 — optional reporting context
 
 ```text
 reference fixture
-  primaryApplicationContext?  // authoring/reporting only
+  application?  // authoring/reporting only
 
 Canonical Business Procedure
   no application owner
 ```
 
-- contextはUI / report / Reference説明にのみ使う
-- absentでもexplicit Pattern refsが解決すればcross-view evaluation可能
+実験checkerで採用した。
+
+確認Pressure:
+
+- context absentでもexplicit Pattern refsだけでbaseline cross-view evaluationが成立
 - unknown contextをblocking semantic errorにしない
+- reportにはcontext labelをそのまま残せる
+- thin Canonical Business meaningは不変
 
-### Option C2 — reporting context自体をfixtureから除去
+### C2 — reporting context自体をfixtureから除去
 
-Referenceの説明はProcedure purpose / explicit refs / surrounding corpusから行い、単一primary contextを持たない。
+まだ採用しない。
 
-- schemaは薄くなる
-- true multi-Application Procedureに自然
-- 一方、Reference reportの入口や人間向け説明が弱くならないか確認が必要
+Referenceの入口や人間向け説明にprimary contextが有用な場合があるため、authoring metadataまで削る必要性はcurrent Evidenceからは出ていない。
 
 ### 採らない案
 
@@ -92,26 +96,23 @@ Referenceの説明はProcedure purpose / explicit refs / surrounding corpusか�
 BusinessProcedure.application = required owner
 ```
 
-これはone Procedure -> multiple Applications pressureと整合しない。
+one Procedure -> multiple Applications pressureと整合しないため採らない。
 
 ## 5. test / implementation pressure
 
-既存testsで次は実装済み。
+Repository上では次をtest-onlyで固定した。
 
 1. fixture Application変更でthin meaning不変
 2. cross-Application accessはPattern owner Applicationを使用
 3. fixture primary contextが存在してもProcedure ownerへ昇格しない
+4. fixture Applicationが空でもbaseline cross-view evaluationを継続
+5. explicit Pattern refからData meaningを導出
+6. unknown reporting contextをsemantic ownerとしてblocking validationしない
+7. reporting labelを別Applicationへ暗黙補完しない
 
-次に閉じるPressureは以下。
-
-4. fixture Applicationを空 / absentにしてもexplicit refsだけでbaseline cross-view evaluationが成立するか
-5. report上のcontextが必要ならsemantic validationと分離できるか
-6. contextが未知でもPattern refsがexact解決する場合、blocking semantic errorにする根拠があるか
-7. current JSON fieldをrename / optional化 / 除去する場合のReference source compatibility
+actual Repository runnerでgreenになるまでは実行Evidenceとは数えない。
 
 ## 6. pre-ADR判断
-
-現時点では次を固定する。
 
 ```text
 single Application owner
@@ -121,11 +122,13 @@ Pattern owner Application
   -> cross-view realization / policy traceのauthority
 
 fixture Application
-  -> authoring/reporting context候補
+  -> optional authoring/reporting context
   -> semantic ownership authorityではない
 ```
 
-`fixture.Application`のoptional化 / 除去は、actual testsとReference source compatibilityを確認してから決める。
+C1でcurrent Pressureは閉じる。
+
+C2のfield完全除去は、実際にauthoring surfaceを設計するときに必要性が出た場合だけ再検討する。
 
 ## 7. Watanabe pressureとの関係
 
@@ -137,6 +140,7 @@ Business Modelを社会的な業務手順として扱うなら、一つの手順
 
 - production DSL syntax確定
 - Reference fixture schemaVersion更新
+- reporting field正式名称
 - Application Pattern ownership modelの変更
 - Authorization owner model
 - Runtime Workflow ownership
