@@ -133,11 +133,20 @@ PR #419 / #477は、この判定へ渡す開始時 / post-run観測自体の整�
 
 ## 検証
 
-PR #419では、branch上の共有sourceを隔離Go moduleへ配置し、HEAD drift境界のpackage testを実行しました。
+PR #419では、branch上の共有sourceを隔離Go moduleへ配置し、HEAD drift境界のpackage testを実行しました。元の検証で固定したGit blob SHAも履歴として残します。
+
+```text
+repository.go       5a69ec380c45feb41e1fb14732f4e396bebb18ba
+repository_test.go  4f0484fef3089ad2961cfec0c4d44ad37c4ff10c
+```
+
+結果:
 
 ```text
 ok  tei/tools/internal/repositoryevidence  0.002s
 ```
+
+`gofmt -d`にも差分はありませんでした。
 
 PR #477では、変更した`repository.go`と新しい`git_environment_test.go`を隔離Go moduleへ同内容で配置し、次を確認しました。
 
@@ -188,6 +197,7 @@ PR #419 / #477はこの運用を置き換えるのではなく、観測可能な
 - [x] `GIT_CONFIG_*` command-scope config injectionを拒否する（PR #477）
 - [x] Git runtime config guardのpure testを追加する（PR #477）
 - [x] 隔離Go moduleで共有package / pure testを実行する
+- [x] #387とRepository正本へHEAD drift境界を同期する（PR #420）
 - [x] #418へPR #477の再現条件と隔離test結果を記録する
 - [ ] 実TEI Repository checkoutの通常Go環境で`go test ./tools/internal/repositoryevidence -count=1`を再確認する
 
@@ -207,7 +217,7 @@ PR #419 / #477はこの運用を置き換えるのではなく、観測可能な
 
 - GitHub Issue #418
 - GitHub Issue #255 / #308 / #310 / #387 / #273
-- PR #336 / #355 / #409 / #412 / #419 / #477
+- PR #336 / #355 / #409 / #412 / #419 / #420 / #477
 - `tools/internal/repositoryevidence/`
 - `plan/issue/000037-gate-b-three-lane-final-evidence.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
