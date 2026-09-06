@@ -120,7 +120,7 @@ explicit refの有無は`realization` labelから導出しない。
 
 explicit refはBusiness authoring sourceに明示され、normalized Worldでexact resolutionされる。
 
-## 7. D4への接続
+## 7. D4への接続 — ref kindを最小化する
 
 D4はcurrent Evidenceから未証明のdirect Data / Relation slotをminimum candidateから除き、次だけをtyped refとして比較する。
 
@@ -134,9 +134,57 @@ Capability
 
 refはgeneric `semanticRefs[]` / kind-less CanonicalID bagへ畳まずauthority kindを保持する。
 
+`d4_ref_kind_pressure_test.go`ではcurrent Referenceのref kindを保持しつつ、future direct Data / Relation refを黙って捨てないPressureをsource-levelに実装した。
+
 詳細は`BUSINESS_PROCEDURE_D4_REF_KIND_PRESSURE_2026-09.md`を参照する。
 
-## 8. pre-ADR判断
+## 8. O1への接続 — ref roleをkindと分ける
+
+D4でauthority kindを分けても、BP-06には別の問題が残る。
+
+```text
+BP-06
+  supporting semantic authority = security.authorize
+  protected Application target  = order_entry.submit_order
+  direct Application Function realization = none
+```
+
+`order_entry.submit_order`はApplication Patternというkindを持つが、BP-07のPattern refとはroleが違う。
+
+```text
+BP-07 Application Pattern ref
+  = direct realization
+
+BP-06 Application Pattern target candidate
+  = protected target / concern
+  != realization
+```
+
+したがって:
+
+```text
+ref kind separation
+  !=
+ref role separation
+```
+
+である。
+
+O1ではgeneric role enumへ進まず、test-only `applicationPatternTargets`比較語彙を使って次をPressureする。
+
+1. BP-06 targetをexactに解決できる
+2. targetを持っても`NoApplicationFunction = true`を維持できる
+3. `security.authorize` supporting authorityとtargetを区別できる
+4. missing / ambiguous targetをfail closedする
+5. target-only changeをcross-view meaning差として観測する
+6. BP-07 adjacency、Business wording、Legacy policyからtargetをderiveしない
+7. Authorization role / organization / allow-deny policyをBusiness candidateへ逆流させない
+
+`application_pattern_target_pressure_test.go`へsource-level test-only Pressureを実装済み。ただしcurrent fixture schemaやproduction Canonical fieldへはまだ採用していない。
+
+詳細は`BUSINESS_PROCEDURE_APPLICATION_PATTERN_TARGET_PRESSURE_2026-09.md`を参照する。
+
+## 9. pre-ADR判断
 
 production contractでは次を満たす必要がある。
 
@@ -147,5 +195,6 @@ production contractでは次を満たす必要がある。
 5. missing authorityを名称類似で補完しない
 6. future Referenceで必要になったref kindをEvidenceなしに先取りしない
 7. future accepted meaningをprojectionで黙ってdropしない
+8. same kindへのrefでも、accepted meaningに影響するrole差をrealizationへ誤変換しない
 
-actual Repository runnerでPressure testsがgreenになるまではproduction Canonical採用へ進めない。
+現時点ではD4もO1もsource/test implementationであり、actual Repository runnerでPressure testsがgreenになるまではproduction Canonical採用へ進めない。
