@@ -17,21 +17,21 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 
 新規追加時は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に従い、冒頭で役割、正本との関係、対象範囲、現在の結論、根拠、非主張範囲を明らかにします。項目を埋めること自体を目的にはしません。
 
-状態は次のいずれかを冒頭に書きます。
+状態は各設計文書の冒頭に書き、その文書自身をcurrent stateの正とします。この索引には可変な状態を重複記載しません。
 
 - `実装済みの現行基線` — 実装があり、Repository内で再現できる範囲を記述したもの
 - `評価待ち` — まだ採用しておらず、実装やReference変更の根拠にしないもの
 
 ## 一覧
 
-| 文書 | 対象 | 状態 |
-| --- | --- | --- |
-| [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | Application Patternの設計・実装基線（[ISSUE-000005](../issue/000005-application-pattern-reference.md) / ADR-0017 / ADR-0018） | 実装済みの現行基線 |
-| [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計（[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md) / ADR-0019） | 実装済みの現行基線 |
-| [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | CapabilityのBusiness Result / named OutcomeとExecution Errorの分離（[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / ADR-0020） | 実装済みの現行基線 |
-| [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界（[ISSUE-000006](../issue/000006-application-driver-vertical-slice.md) / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） | 実装済みの現行基線 |
-| [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | Contract Query signature、SQL realization、executor Binding、provider runtimeの四層（[ISSUE-000018](../issue/000018-database-contract-query-execution.md)〜[ISSUE-000021](../issue/000021-oracle-contract-query-sql-runner.md) / ADR-0007 / ADR-0021） | 実装済みの現行基線 |
-| [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（[ISSUE-000038](../issue/000038-business-lifecycle-semantics.md) / ADR-0024 / ADR-0025） | **評価待ち** |
+| 文書 | 対象 |
+| --- | --- |
+| [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | Application Patternの設計・実装基線（[ISSUE-000005](../issue/000005-application-pattern-reference.md) / ADR-0017 / ADR-0018） |
+| [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存認証仕様を保持してAuthentication / Authorization Capabilityへ接続する設計（[ISSUE-000003](../issue/000003-legacy-authentication-compatibility-reference.md) / ADR-0019） |
+| [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | CapabilityのBusiness Result / named OutcomeとExecution Errorの分離（[ISSUE-000009](../issue/000009-capability-outcome-and-execution-error.md) / ADR-0020） |
+| [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | Pattern解決からCapability実行、Query / Contract Query実行、Observationまでの実行境界（[ISSUE-000006](../issue/000006-application-driver-vertical-slice.md) / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
+| [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | Contract Query signature、SQL realization、executor Binding、provider runtimeの四層（[ISSUE-000018](../issue/000018-database-contract-query-execution.md)〜[ISSUE-000021](../issue/000021-oracle-contract-query-sql-runner.md) / ADR-0007 / ADR-0021） |
+| [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移をCanonicalな意味として定義・実行・観測する設計（[ISSUE-000038](../issue/000038-business-lifecycle-semantics.md) / ADR-0024 / ADR-0025） |
 
 ## まだ設計文書を置いていない領域
 
