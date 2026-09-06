@@ -11,7 +11,14 @@ permissions:
   contents: read
 
 jobs:
+  runner-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Runner smoke
+        run: echo "runner-started"
+
   package-tests:
+    needs: runner-smoke
     runs-on: ubuntu-latest
     env:
       GOENV: "off"
