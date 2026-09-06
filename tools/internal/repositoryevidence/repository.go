@@ -71,7 +71,7 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 		return result, fmt.Errorf("repository revisionが空です")
 	}
 
-	status, err := output("git", "status", "--porcelain", "--untracked-files=all")
+	status, err := output("git", "status", "--porcelain", "--untracked-files=all", "--ignored=matching")
 	if err != nil {
 		return result, fmt.Errorf("working tree状態を取得できません: %w", err)
 	}
@@ -124,7 +124,7 @@ func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, err
 	}
 	result.RevisionStable = result.RepositoryRevision == initialRevision
 
-	status, err := output("git", "status", "--porcelain", "--untracked-files=all")
+	status, err := output("git", "status", "--porcelain", "--untracked-files=all", "--ignored=matching")
 	if err != nil {
 		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
 	}
