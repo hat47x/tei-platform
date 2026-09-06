@@ -14,6 +14,9 @@ Status: In Progress
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
 - `docs/architecture.md`
 - `docs/business-system-design.md`
+- `plan/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md`
+- `plan/LANE_B_RQ025_RQ026_TRACE_AUDIT_2026-09.md`
+- `plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`
 - `plan/BUSINESS_PROCEDURE_IDENTITY_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_FILE_NATIVE_SOURCE_PRESSURE_2026-09.md`
@@ -21,6 +24,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_IDENTITY_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_CANONICAL_MEANING_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_HANDOFF_CANONICAL_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_HANDOFF_CANONICAL_NECESSITY_AUDIT_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_HANDOFF_REPRESENTATION_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_MULTI_APPLICATION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_REALISTIC_MULTI_APPLICATION_SCENARIO_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_UNCERTAINTY_PRESSURE_2026-09.md`
@@ -29,6 +34,7 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_STEP_ADDRESS_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_STEP_ADDRESS_LAYER_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_APPLICATION_CONTEXT_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_NORMALIZED_MODEL_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`
 
 ## Lane境界
@@ -180,6 +186,11 @@ Matrix / diagnostics / semantic pressure
 | A42 | Step local key renameをBodyMeaningChangedと分離 | test-only実装済み |
 | A43 | global Canonical Step IDをdefault導入しない | 方針固定 |
 | A44 | primary Application contextをsemantic prerequisiteからsubtract | C1をcheckerへ実装済み、actual runner待ち |
+| A45 | authoring-only H0ではhandoff condition / endpoint changeをnormalized diffから失う | 反証Pressure実装済み |
+| A46 | thin normalized handoff H1でaccepted relation changeを保持 | primary candidate / test-only |
+| A47 | Data `semantic.Relation`流用 / generic Core Edge新設を避ける | R1 reject / R2 defer |
+| A48 | Business-side thin relation R3 | primary pre-ADR candidate |
+| A49 | R3 + S4-Aをnormalized Business modelとしてSource Index非依存validate | test-only実装済み |
 
 ## 現在のCanonical候補比較
 
@@ -215,9 +226,34 @@ BusinessProcedure
 
 `realization`はReference authoring / review labelとして残せるが、production Core enumにはしない。
 
-## Step address
+## Handoff necessity / representation
 
 比較:
+
+```text
+H0
+  handoff authoring-only
+
+H1
+  accepted handoffのthin normalized meaningを保持
+```
+
+current ReferenceではH0だとcondition / endpoint changeをProcedure body snapshotから観測できない。
+
+したがってH1をprimary candidateとする。ただし専用production `BusinessHandoff` kind採用はまだ決めない。
+
+representation比較:
+
+```text
+R1  semantic.Data.Relation再利用   reject
+R2  generic Core Edge新設           defer / reject for now
+R3  Business semantic boundaryのthin relation  primary
+R4  future Business Flowへ統合      later concern
+```
+
+既存`semantic.Relation`はData配下でData target / cardinality / semantic attribute keysを持つData Relation専用contractであり、Business handoffを混ぜない。
+
+## Step address
 
 ```text
 S4-A
@@ -231,11 +267,37 @@ S4-B
   Step local keyはSource Indexだけ
 ```
 
-Canonical handoffをsemantic relationとして採用するなら、Semantic validationをSource Index依存にしないためS4-Aが有力。
-
-handoffをauthoring-onlyに留めるならS4-Bへ戻れる。
+H1 + R3を採用候補とする現在、Semantic validationをSource Index依存にしないためS4-Aが有力。
 
 local keyはglobal identityでもruntime identityでもない。
+
+## Normalized Business model pressure
+
+R3 + S4-Aを次のtest-only modelへ統合した。
+
+```text
+NormalizedBusinessModel
+  Procedures[]
+    thin Business meaning
+    ordered Step { localKey, body }
+  Handoffs[]
+    from Procedure/localKey
+    to Procedure/localKey
+    condition
+```
+
+normalize後のreferential validationはこのmodelだけを入力とし、Source Index / file path / fingerprint / Workspaceへ戻らない。
+
+Pressure:
+
+- artifact locator moveでmodel不変
+- stale local keyでhandoff fail closed
+- local key + endpoint協調renameは成立
+- missing endpointをnormalized modelだけでreject
+- natural-language condition変更をBusiness semantic relation差として保持
+- source/runtime container fieldsを持たない
+
+production `ir.World.Business`等はまだ導入しない。
 
 ## Application context
 
@@ -256,6 +318,28 @@ fixture Application
 
 C2（fixture field完全除去）はcurrent Evidenceから必要性がないため保留する。
 
+## Lane B独立監査との整合
+
+latest mainのLane B RQ-002監査も独立に次を確認した。
+
+```text
+identity-only shell
+  insufficient as complete Business meaning
+
+thin normalized Business residual meaning
+  strongest current production candidate pressure
+  not adopted
+
+Step body meaning
+  != Step addressability
+
+thin Business handoff relation
+  useful independent semantic pressure
+  not adopted
+```
+
+Lane Cはこの監査をproduction adoption理由として使わず、Reference Evidenceのcross-lane整合確認として扱う。
+
 ## 000039 / Shared Acceptanceとの境界
 
 `ISSUE-000039`は共通revision-aware semantic diff / dependency propagationを将来所有する。
@@ -265,11 +349,14 @@ C2（fixture field完全除去）はcurrent Evidenceから必要性がないた�
 ## 非対象
 
 - production Canonical Procedure / Handoff schema採用
+- `ir.World.Business`採用
 - Workflow Engine / retry / timer / queue / saga / scheduler
+- generic Core Edge / graph engine
 - global / durable Canonical Step ID
 - actor -> Authorization Role自動mapping
 - `realization` production enum
 - generic Uncertainty framework / certainty lattice / approval state machine
+- Business Flow / DFD schema確定
 - Business Lifecycle 000038実装
 - 000039共通change graph実装
 - PAS-07 trace正本統合
@@ -302,9 +389,11 @@ PR #482はDraftを維持する。
 11. `realization` subtractionをactual testsで確認
 12. Step body meaningとhandoff / review addressabilityを分離
 13. global Step IDなしで必要addressabilityを説明
-14. Canonical handoffが本当に必要かをReference Evidenceから決める
-15. その結果としてS4-A / S4-Bを選択
-16. current `order_entry`より一段現実的なmulti-App / manual / external Pressureをactual Evidenceで確認
-17. A / D1 / D2 / D3の最小十分性を説明
+14. H0 semantic-loss / H1 relation preservationをactual testsで確認
+15. R3 + S4-A normalized modelをactual testsで確認
+16. dedicated production kindなしでどこまでBusiness boundaryを表現できるか説明
+17. current `order_entry`より一段現実的なmulti-App / manual / external Pressureをactual Evidenceで確認
+18. A / D1 / D2 / D3の最小十分性を説明
+19. Lane B再監査と矛盾しないproduction ADR候補を作れる状態にする
 
 この完了後に初めてproduction Canonical contract ADR候補を作る。
