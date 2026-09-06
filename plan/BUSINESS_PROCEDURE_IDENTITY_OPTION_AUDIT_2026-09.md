@@ -1,22 +1,23 @@
-# Business Procedure Identity Option Audit — 2026-09
+# Business Procedure Identity / Canonical Meaning Option Audit — 2026-09
 
-Status: Design pressure audit / no ADR yet
+Status: Design pressure audit / no ADR yet / identity-only adoption suspended
 
 ## 目的
 
-Business Procedureのfile-native accepted sourceをRQ-002 / Source Index / Shared Acceptanceへ接続する際に残ったidentity問題について、次の三案を比較する。
+Business Procedureのfile-native accepted sourceをSource Index / Shared Acceptance / cross-view diffへ接続する最小contractを比較する。
+
+比較対象は次の四案である。
 
 - A. minimal Canonical Procedure identity shell
 - B. Subject contractをWorld外accepted design targetへ拡張
 - C. Authoring identity registryを別層として正式化
+- D. thin normalized Canonical Business Procedure meaning
 
-full Canonical Procedure modelは比較の基準外とし、必要性が出るまで採用しない。
+full Runtime Workflow modelは比較対象外とする。
 
 ## 1. 前段Evidence
 
-すでにReferenceで次を確認した。
-
-### Canonical Procedureなしで成立したもの
+Canonical Procedure modelなしでもReferenceで次は成立した。
 
 - Business Action -> Application Pattern cross-view
 - manual / external Business Action
@@ -25,119 +26,110 @@ full Canonical Procedure modelは比較の基準外とし、必要性が出る�
 - cross-view diagnostic
 - Reference-local stable Procedure key
 - Procedure間handoff
-- review history target continuity
+- review target continuity
 - source fingerprintによるstale検出
 - file move / logical rename分離
 - Preview / Reject / Accept / reloadの機械的安全性
 
-### 未解決として残ったもの
+したがってWorkflow Engineやfull Procedure objectを先に導入する必要はない。
 
-RQ-002の
+## 2. identity-only仮説に対する新しい反証
 
-> authoring sourceから、どのCanonical subjectへ寄与したか
+前段では残件を主にRQ-002の
 
-というtrace targetだけである。
+```text
+authoring source -> Canonical subject
+```
 
-現行`subject.Subject`もTEI World内のsemantic / logical targetを指す契約である。
+と捉え、Option Aを第一候補とした。
 
-したがって、単にSource Index APIへReference-local keyを入れられることと、RQ-002を満たすことは同じではない。
+しかしformal architectureは、
 
-## 2. 評価基準
+```text
+Authoring
+  -> parse / resolve / accept
+  -> Canonical Semantic meaning / IR
+```
 
-各案を少なくとも次で比較する。
+を基線とし、Data / Function-Interaction / Businessを同じaccepted meaningの異なる視点として扱う。
 
-1. RQ-002を文言どおり満たす
-2. RQ-003の単一正本を保つ
-3. RQ-017の二重管理を増やさない
-4. RQ-023のone-maintainer性を保つ
-5. RQ-025のBusiness Action / Procedure独立性を保つ
-6. RQ-026の三視点cross-checkへ利用できる
-7. existing Source Indexを再利用できる
-8. Shared Acceptance targetとして使える
-9. 000039 impact analysisへ伸ばせる
-10. file move / logical renameを区別できる
-11. concept creepを抑えられる
-12. Business Procedure詳細をCoreへ過剰吸収しない
+現在のfile-native source pressureでは、BP-04等のBusiness-only wordingをAcceptしても`ir.World`は不変である。
 
-## 3. Option A — minimal Canonical Procedure identity shell
+Option Aの
 
-### 概念
+```text
+BusinessProcedureIdentity{id}
+```
 
-Business Procedureのauthoritative fileから、World側へpath-independent identityだけを正規化する。
+を追加しても、同じProcedure IDの内容変更ではidentity shellは変わらない。
 
-最小形の候補:
+したがってIDだけでは次を表せない。
+
+- Business-only Semantic Diff
+- Business change -> Data / Function impact
+- accepted Business meaningのread-only exploration
+- reload後のBusiness Conformance
+- 000039 change graph上のBusiness meaning change
+
+**Canonical trace targetが存在することと、accepted Business meaningがCanonical側で保持されることは別問題である。**
+
+## 3. 評価基準
+
+1. RQ-002のSource-to-Canonical trace
+2. RQ-003の単一正本
+3. RQ-017の二重管理最小化
+4. RQ-023のone-maintainer性
+5. RQ-025のmanual / external Business Action保持
+6. RQ-026の三視点cross-check
+7. Business-only Semantic Diff / impact
+8. Source Index reuse
+9. Shared Acceptance target
+10. 000039への拡張
+11. file move / logical rename分離
+12. concept creep抑制
+13. Pattern-owned meaningの非重複
+14. Runtime Workflow semanticsの非侵入
+
+## 4. Option A — minimal Canonical Procedure identity shell
+
+### 形
 
 ```text
 BusinessProcedureIdentity
   id
 ```
 
-Reference-local sourceがauthorityであり、World identityはloaderが同じsourceから導出する。
+file-native sourceの`procedure.id`からnormalized resultとして導出する。
 
-人が同じIDを別fileへ二重入力する構成にはしない。
+### 強み
 
-### RQ-002
+- RQ-002のCanonical Subjectを作りやすい
+- Source Index targetへ直接使える
+- Shared Acceptance targetをpathから分離できる
+- duplicate IDをfail closedにできる
+- file move / logical renameを自然に区別できる
+- source path / fingerprintをWorldへ入れずに済む
 
-強い。
+### 限界
+
+Business Procedureのaccepted contentが変わってもIDが同じならCanonical meaning差を表せない。
 
 ```text
-Business Procedure source
-  -> Canonical BusinessProcedureIdentity
-  -> Source Index Subject
+same ID
+changed purpose / Business Action / trigger / actor
 ```
 
-を既存Source Index原則へ直接接続できる。
+をidentity shellだけでは区別できない。
 
-### RQ-003 / RQ-017
+### 現在の位置づけ
 
-source fileを唯一のauthoritative inputとし、identity shellをnormalized resultとして生成するなら二重正本にはならない。
+**必要なidentity primitive候補ではあるが、最小十分contractとはみなさない。**
 
-World identityからsourceへ逆書きしない。
+ID-onlyをproductionへ先行導入する判断は保留する。
 
-### Shared Acceptance
+## 5. Option B — Subject contract拡張
 
-candidate targetをCanonical identityとして解決できる。
-
-source locatorはSource Indexへ残し、file moveでidentityを変えない。
-
-### 000039
-
-将来、Business Procedure change / Pattern impactのnodeとして既存Subject方式を利用しやすい。
-
-### 実装波及
-
-identityだけでも少なくとも次を検討する必要がある。
-
-- domain type / package
-- `ir.World` field
-- normalize / deterministic ordering
-- procedures source loader
-- identity uniqueness validation
-- Source Index Subject / source anchor
-- World serialization / Reference goldenへの影響
-- Conformance
-
-production Reference Workspaceに`procedures` rootを追加しない限り、existing World outputを変えない形でpressure testは可能である。
-
-### 最大のリスク
-
-identity shellが入口となり、
-
-- steps
-- actor
-- branch
-- timer
-- retry
-- Workflow state
-- authorization role
-
-等をCoreへ吸収し始めること。
-
-採用する場合はidentity-only上限をtest / ADRで明示する必要がある。
-
-## 4. Option B — Subject contract拡張
-
-### 概念
+### 形
 
 現行Subjectの
 
@@ -145,168 +137,196 @@ identity shellが入口となり、
 inside a TEI World
 ```
 
-を広げ、World外のaccepted file-native design targetもSubjectにする。
+を広げ、World外accepted design targetもSubjectにする。
 
-### 利点
+### 強み
 
 - `ir.World`へProcedure fieldを追加しなくてよい
-- Reference-local Procedure keyをそのままSource Index targetへ使える
-- file move / locator分離は自然
+- Reference-local keyをSource Index targetへ使える
 
 ### 問題
 
-RQ-002は`Canonical subject`へのtraceを要求する。
+- RQ-002の`Canonical subject`意味を変える
+- SubjectにあることとCanonicalであることが混線しやすい
+- Business-only meaning自体をどこに正規化するかは解決しない
 
-Subjectだけを広げると、
+したがってidentity-only問題の回避にはなるが、Canonical meaning問題の解答ではない。
 
-```text
-Canonical Subject
-Authoring Subject
-Evidence Subject
-```
+## 6. Option C — Authoring identity registry
 
-の境界が曖昧になりやすい。
-
-「SubjectにあるからCanonical」という逆転を起こす危険がある。
-
-### 影響範囲
-
-コード差分は小さく見えても、Subject / Source Indexの意味契約とRQ-002解釈を広範囲に変える。
-
-conceptual blast radiusはOption Aより大きい可能性がある。
-
-## 5. Option C — Authoring identity registry
-
-### 概念
-
-World Canonical identityとは別に、file-native accepted design targetを扱うformal registryを持つ。
+### 形
 
 ```text
 AuthoringTarget
   key
-  source locator(s)
+  locator(s)
   fingerprint
   role
 ```
 
-Business ProcedureはまずAuthoringTargetとなる。
+### 強み
 
-### 利点
-
-- WorldへProcedureを追加しない
-- authoring identity / review / handoffを明示的に扱える
-- Source locatorとlogical keyを分離できる
+- review / handoff / file move targetを明示しやすい
+- WorldへProcedureを追加しなくてよい
 
 ### 問題
 
-RQ-002のCanonical linkは別途必要である。
+- `AuthoringTarget -> Canonical meaning`のlinkが別途必要
+- Source Index / Registry / Acceptanceの三層化
+- RQ-023上の保守負担
+- Business-only semantic diffのCanonical representationは依然未解決
+
+現時点で新registryをproductionへ追加する根拠は弱い。
+
+## 7. Option D — thin normalized Canonical Business Procedure meaning
+
+### 形
+
+full Workflow modelではなく、Business Procedure sourceのうちaccepted Business residual meaningだけを正規化する。
 
 ```text
-AuthoringTarget -> ? Canonical Subject
-```
-
-を解けなければ、identity問題を一段追加しただけになる。
-
-Source Index / Authoring Registry / Shared Acceptanceの三層を一人で保守することになり、RQ-023上も不利になり得る。
-
-## 6. 比較表
-
-| 基準 | A: identity shell | B: Subject拡張 | C: Authoring registry |
-|---|---|---|---|
-| RQ-002をそのまま満たす | **強い** | 要求解釈変更が必要 | Canonical linkが別途必要 |
-| RQ-003 | source-derivedなら良 | 境界曖昧化に注意 | registryが第二正本化し得る |
-| RQ-017 | ID導出なら良 | 良 | mapping管理が増える |
-| RQ-023 | 中 | 表面上小、概念影響大 | 三層化で不利 |
-| RQ-025 | identity-onlyなら保てる | 保てる | 保てる |
-| RQ-026 | Subject nodeとして強い | 表現可能 | mapping経由 |
-| Source Index reuse | **直接** | 契約変更して直接 | adapter必要 |
-| Shared Acceptance target | **直接** | 非Canonical targetとして再定義 | registry target |
-| 000039 reuse | **直接** | graph意味変更が必要 | graph adapter必要 |
-| file move耐性 | 強い | 強い | 強い |
-| concept creep | 要guard | Subject意味膨張 | identity層膨張 |
-| Core詳細吸収リスク | identity-onlyなら抑制可能 | 低 | 低 |
-
-## 7. 現時点の優先順位
-
-### 第一候補: Aをexperiment-onlyでpressure test
-
-理由:
-
-1. RQ-002を再解釈せず満たせる唯一の案
-2. Source Index / Shared Acceptance / 000039の既存target modelを再利用できる
-3. source fileをauthorityとし、identity shellをderived normalized resultにすればRQ-003 / RQ-017と両立できる
-4. identity-only上限を守ればRQ-025が明示する「full top-level Procedure modelは必須ではない」という余白を壊さない
-
-これは採用決定ではない。
-
-### 第二候補: B
-
-Aのidentity shellが実装波及に対して過大であることが実証された場合に比較する。
-
-Subject contract / RQ-002の意味を変えるため、コード行数だけで小さいとは判断しない。
-
-### 第三候補: C
-
-A/Bのどちらでもauthoring identityの実務要件を扱えない場合に検討する。
-
-現時点で新registryを増やす根拠は弱い。
-
-## 8. Option A experimentの厳しい上限
-
-次のpressure testを行う場合、Canonical側へ許すのはidentityだけとする。
-
-```text
-allowed
+BusinessProcedureMeaning
   id
-
-not allowed
   purpose
   trigger
   actor
-  step
-  instruction
-  handoff
-  branch
-  lifecycle
-  state
-  timer
-  retry
-  authorization mapping
-  runtime orchestration
+  ordered steps
+
+BusinessProcedureStep
+  id
+  businessAction
+  realization
+  explicit Application Pattern refs
+  explicit Data refs
+  explicit Relation refs
+  explicit Validation refs
+  explicit Capability refs
 ```
 
-Business meaning本体はfile-native authoring sourceに残す。
+### 入れないもの
 
-World identity shellはSource Index / target resolution / impact nodeとしてのみ使う。
+- source path / fingerprint / range
+- schemaVersion / artifactRole
+- experimental identityStatus
+- Target UI detail
+- runtime branch / timer / retry / queue / saga / scheduler
+- runtime state
+- Authorization Role
 
-## 9. Option Aで必ず確認するnegative case
+### Pattern-owned meaning
 
-- source fileなしにWorld identityだけを手編集できない
--同一IDを複数Procedure sourceが宣言したらfail closed
-- file moveでCanonical identity不変
-- logical ID renameはCanonical change
-- Business wording editでidentity shell不変
-- identity shellからBusiness detailsを再構成しようとしない
-- Source Index locator / fingerprintをWorldへ混ぜない
-- actorからAuthorization Roleを作らない
-- Procedure handoffからruntime Workflowを生成しない
+Procedureが`order_entry.customer_reference`を参照しても、そのPatternが所有するData / Relation / Query / Capability / DatasourceをProcedureへコピーしない。
 
-## 10. 判断Gate
+Procedure側はexplicit Pattern refだけを持つ。
 
-Option A pressure testの結果、
+Business側でPatternから導けないValidation等を明示した場合だけdirect refを保持する。
+
+### 強み
+
+- Business-only changeをCanonical semantic changeとして扱える
+- IDはpath-independent targetとして同時に使える
+- manual / external actionをfake Capabilityなしで保持できる
+- Studio / AI / Matrix / impact analysisがsource parser専用経路だけに依存しなくてよい
+- Source IndexはProcedure Subjectへ接続できる
+
+### リスク
+
+- dedicated Business semantic modelがCoreへ増える
+- current `order_entry`だけから過度にsingle-Application前提を固定する危険
+- handoffが別Reference setにあるためProcedure bodyだけではBusiness meaning全体を覆わない
+- 「Canonical Procedure」からRuntime Workflowへ概念が膨張する危険
+
+このためfield上限とnon-goalをtest / ADRで固定する必要がある。
+
+## 8. test-only Pressure
+
+### Option A
+
+`identity_shell_pressure_test.go`
+
+- ID-only field guard
+- source-derived identity
+- duplicate ID rejection
+- file move不変
+- wording changeでidentity不変
+- logical renameでidentity change
+- Source Index Subject候補
+
+### Option D
+
+`canonical_meaning_pressure_test.go`
+
+- thin Business semantic field guard
+- Business-only wording changeをmeaning差として観測
+- pure file moveではmeaning不変
+- manual BP-04保持
+- Pattern-owned meaning非重複
+- explicit Validation ref保持
+- set-like ref order normalization
+
+actual Repository runnerがGo testへ到達するまではどちらもtest-only specificationでありgreen Evidenceではない。
+
+## 9. 比較表
+
+| 基準 | A: ID shell | B: Subject拡張 | C: Authoring registry | D: thin Canonical meaning |
+|---|---|---|---|---|
+| RQ-002 trace | 強い | 要再解釈 | 別link必要 | **強い** |
+| 単一正本 | source-derivedなら良 | 良 | registry第二正本化注意 | source-derivedなら良 |
+| Business-only diff | **不可** | 未解決 | 未解決 | **可能** |
+| RQ-025 manual meaning | IDしか保持しない | World外で保持 | registry外で保持 | **直接保持** |
+| RQ-026 cross-view | target nodeのみ | target nodeのみ | mapping経由 | **meaning + refs** |
+| Source Index reuse | 直接 | 契約変更して直接 | adapter必要 | **直接** |
+| Shared Acceptance target | 直接 | 非Canonical target | registry target | **IDで直接** |
+| 000039 | identity nodeのみ | graph意味変更 | adapter必要 | **meaning change node** |
+| file move耐性 | 強い | 強い | 強い | 強い |
+| concept creep | 要guard | Subject意味膨張 | identity層膨張 | **semantic field guard必須** |
+| runtime Workflow化リスク | 低 | 低 | 低 | 中・明示guard必要 |
+
+## 10. 更新後の優先順位
+
+### 第一比較対象: D と A をセットで検証
+
+Option DのID部分はOption Aを包含する。
+
+したがってproductionへAだけを先に入れるのではなく、
 
 ```text
-small implementation surface
-+
-RQ-002 exact trace
-+
-no duplicate authority
-+
-no Business detail creep
+A: identityだけで十分か
+vs
+D: cross-viewに必要なBusiness residual meaningまで必要か
 ```
 
-が成立する場合だけ、minimal Canonical Procedure identity contractをADR候補にする。
+を同じReference Evidenceで比較する。
 
-identity-onlyでもCore / loader / Conformanceの波及が大きすぎる場合は、採用せずOption Bとの比較へ戻る。
+現時点のEvidenceはD側を支持し始めている。
 
-full Canonical Procedure modelへ直接進まない。
+### 第二候補: B
+
+DのCore blast radiusが過大で、かつCanonical meaningをWorld外へ正式化する設計原則が別Evidenceから成立した場合のみ再検討する。
+
+### 第三候補: C
+
+review / handoff identityを既存Source Index / Acceptanceで扱えない反復Evidenceが出た場合のみ検討する。
+
+## 11. production integration前の停止条件
+
+次のいずれかならCoreへ進めない。
+
+- actual Repository testが未実行
+- Business detailとruntime Workflow semanticsの境界が曖昧
+- Pattern-owned meaningをProcedureへ複製しないと成立しない
+- source path / fingerprintをCanonical modelへ入れる必要がある
+- actorからAuthorization Roleを導出する必要がある
+- current Referenceだけではhandoff / multi-Application pressureが不足している
+
+## 12. 次のPressure
+
+次はhandoffをBusiness semantic relationとして扱う場合に、
+
+- Procedure body内へ押し込むべきか
+- separate Business relationとして正規化すべきか
+- file-native reference setをどうaccept / traceするか
+
+を確認する。
+
+これが成立するまでproduction `ir.World`へProcedure fieldを追加しない。
