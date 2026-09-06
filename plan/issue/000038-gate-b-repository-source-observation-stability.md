@@ -35,12 +35,12 @@ actual Gate B runでは専用の固定checkoutを使う運用が前提ですが�
 
 ## 採用する観測境界
 
-PR #419以降、開始時・終了時ともHEADをworking tree観測の前後で確認します。PR #477以降、working tree観測はuntracked fileをambient Git configで隠せないよう明示します。
+PR #419以降、開始時・終了時ともHEADをworking tree観測の前後で確認します。PR #477でuntracked local stateを明示観測し、PR #479でignored local stateもclean判定から除外しました。
 
 ```text
 HEAD before
   ↓
-git status --porcelain --untracked-files=all
+git status --porcelain --untracked-files=all --ignored=matching
   ↓
 HEAD after
 ```
@@ -53,7 +53,7 @@ HEAD after
 
 観測中にHEADが変わった場合はerrorとし、切替前revisionと切替後statusを組み合わせた`Source`を返しません。
 
-HEADが安定している場合は、従来どおりclean / dirtyを観測できます。dirtyであること自体を観測不能とはしません。各runnerが自身の用途に応じて、通常Evidenceでは拒否し、診断モードがある場合はその契約に従います。
+HEADが安定している場合は、tracked / untracked / ignored local stateを含めてclean / dirtyを観測します。dirtyであること自体を観測不能とはしません。各runnerが自身の用途に応じて、通常Evidenceでは拒否し、診断モードがある場合はその契約に従います。
 
 ### 終了時・中間確認
 
@@ -62,7 +62,7 @@ HEADが安定している場合は、従来どおりclean / dirtyを観測でき
 `postRunRepository.checked = true`にするのは、次をすべて完了した場合だけです。
 
 1. 最初のHEADを取得できた
-2. `--untracked-files=all`を明示したworking tree状態を取得できた
+2. `--untracked-files=all --ignored=matching`を明示したworking tree状態を取得できた
 3. 二回目のHEADを取得できた
 4. 二つのHEADが一致した
 
@@ -116,6 +116,32 @@ GIT_CONFIG_VALUE_0=no
 
 `GIT_PAGER`や`GIT_TERMINAL_PROMPT`等、source identity / command-scope configを変更しないGit environmentまで一律禁止するものではありません。
 
+## ignored local stateもcleanへ含めない
+
+PR #477後も、`.gitignore` / `.git/info/exclude` / global ignore等でignoreされたR外fileは`--untracked-files=all`だけでは通常statusに出ません。
+
+一時repositoryで次を実測しました。
+
+```text
+.git/info/exclude: *.local.go
+p/hidden.local.go を作成
+
+git status --porcelain --untracked-files=all
+=> empty
+
+git status --porcelain --untracked-files=all --ignored=matching
+=> !! p/hidden.local.go
+
+go list -f '{{join .GoFiles ","}}' ./p
+=> base.go,hidden.local.go
+```
+
+このため、Git上はcleanに見えるR外ignored fileがactual Go Evidence入力へ入る経路がありました。
+
+PR #479以降、共有helperはstart / post-runとも`--ignored=matching`を明示します。`!!`として観測されるignored local stateも`WorkingTreeClean=false`です。
+
+Gate B Evidenceは専用checkoutで取得するため、`.idea` / `.vscode` / `.DS_Store` / `.tei` cache等、Repositoryの`.gitignore`上は正当なlocal stateであってもactual Evidence checkoutには残しません。これは`.gitignore`設計を変更するものではなく、source-fixed EvidenceにR外local inputを持ち込まないための実行境界です。
+
 ## 再現可能判定との関係
 
 `IsReproducible`の上位契約は変更しません。
@@ -129,7 +155,7 @@ GIT_CONFIG_VALUE_0=no
 - `RevisionStable=true`
 - 終了時working treeがclean
 
-PR #419 / #477は、この判定へ渡す開始時 / post-run観測自体の整合性を強くする変更です。
+PR #419 / #477 / #479は、この判定へ渡す開始時 / post-run観測自体の整合性を強くする変更です。
 
 ## 検証
 
@@ -162,6 +188,18 @@ PR #477のpure testでは少なくとも次を固定しています。
 - post-run観測のstatus commandも`--untracked-files=all`を明示する
 - 明示観測したuntracked fileをcleanへ格上げしない
 
+PR #479では、共有helperとtestを隔離moduleへ同内容で配置し、次を確認しました。
+
+```text
+ok  isolated/repositoryevidence  0.003s
+```
+
+PR #479のpure testでは少なくとも次を固定しています。
+
+- start / post-run双方が`--untracked-files=all --ignored=matching`を明示する
+- `?? untracked`をdirtyとして扱う
+- `!! ignored`もdirtyとして扱う
+
 既存pure testでは引き続き次を固定しています。
 
 - start観測中にHEADが変わればerror
@@ -183,9 +221,10 @@ PR #477のpure testでは少なくとも次を固定しています。
 - 専用のcheckoutを使う
 - candidate revisionを実行中に切り替えない
 - 並行操作でworking treeを変更しない
+- ignored local stateを残さない
 - Evidence出力をRepository内へ直接redirectしない
 
-PR #419 / #477はこの運用を置き換えるのではなく、観測可能なHEAD切替やambient Git environmentによる誤観測をhelper側でもfail closedにする補強です。
+PR #419 / #477 / #479はこの運用を置き換えるのではなく、観測可能なHEAD切替やambient Git environment / local ignoreによる誤観測をhelper側でもfail closedにする補強です。
 
 ## 完了条件
 
@@ -196,9 +235,11 @@ PR #419 / #477はこの運用を置き換えるのではなく、観測可能な
 - [x] `git status --porcelain --untracked-files=all`へ固定する（PR #477）
 - [x] `GIT_CONFIG_*` command-scope config injectionを拒否する（PR #477）
 - [x] Git runtime config guardのpure testを追加する（PR #477）
+- [x] `--ignored=matching`でignored local stateも観測する（PR #479）
+- [x] ignored local state観測のpure testを追加する（PR #479）
 - [x] 隔離Go moduleで共有package / pure testを実行する
 - [x] #387とRepository正本へHEAD drift境界を同期する（PR #420）
-- [x] #418へPR #477の再現条件と隔離test結果を記録する
+- [x] #418へPR #477 / #479の再現条件と隔離test結果を記録する
 - [ ] 実TEI Repository checkoutの通常Go環境で`go test ./tools/internal/repositoryevidence -count=1`を再確認する
 
 最後の通常checkout testが完了するまで、GitHub #418は完了扱いにしません。
@@ -208,6 +249,7 @@ PR #419 / #477はこの運用を置き換えるのではなく、観測可能な
 - Git working tree全体のtransactional snapshot化
 - 瞬間的なfile変更と復元を含むあらゆる並行変更の検出
 - Gitの全config sourceを独自sandboxへ置き換えること
+- `.gitignore`内容そのものの変更
 - Repository source観測概念をCanonical modelへ追加すること
 - #255 / #308 / #310 / #387の個別Evidence契約を置き換えること
 - 本pure testをactual Gate B Evidenceへ格上げすること
@@ -217,7 +259,7 @@ PR #419 / #477はこの運用を置き換えるのではなく、観測可能な
 
 - GitHub Issue #418
 - GitHub Issue #255 / #308 / #310 / #387 / #273
-- PR #336 / #355 / #409 / #412 / #419 / #420 / #477
+- PR #336 / #355 / #409 / #412 / #419 / #420 / #477 / #479
 - `tools/internal/repositoryevidence/`
 - `plan/issue/000037-gate-b-three-lane-final-evidence.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
