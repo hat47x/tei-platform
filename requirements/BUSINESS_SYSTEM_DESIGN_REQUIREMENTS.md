@@ -1,286 +1,289 @@
-# TEI Business-System Design Requirement Interpretation
+# TEI 業務システム設計 要求解釈基線
 
 Status: current requirement interpretation baseline
 
-## 1. Position of this document
+## 1. この文書の位置づけ
 
-This document formalizes the business-system design interpretation developed in the "渡辺幸三の業務システム設計" discussion series and connects it to the existing `TEI_PRODUCT_REQUIREMENTS.md`.
+この文書は、「渡辺幸三の業務システム設計」シリーズで深めてきた検討を、現行の `TEI_PRODUCT_REQUIREMENTS.md` に接続するための要求解釈基線です。
 
-It does **not** create new Product Requirement IDs. The authoritative Product Requirement identifiers remain `RQ-001` through `RQ-024` in `TEI_PRODUCT_REQUIREMENTS.md`.
+新しいProduct Requirement IDは追加しません。正式な要求IDは引き続き `RQ-001` 〜 `RQ-024` とし、この文書では、TEIを業務システム設計へ用いるときに既存Requirementをどう読むかを固定します。
 
-This document fixes how the existing Requirements are to be read when TEI is used for business-system design, especially where Data, Function / Interaction, Business Procedure, Editor, Driver, Reference Model, and cross-view validation interact.
+判断に迷う場合は、次の順で設計原点へ立ち返ります。
 
-When a design choice is ambiguous, use the following fallback order:
+1. 渡辺幸三氏の業務システム設計・三要素分析法に関する言説
+2. 公開されているX-TEA Modeler / Driverのマニュアル・ソース
+3. X-TEA / CONCEPTWARE系リファレンスモデルから得られるEvidence
+4. TEI固有のProduct Requirements / Reference / Evidence
 
-1. the design intent expressed by Kozo Watanabe around business-system design and the three-element analysis method,
-2. public X-TEA Modeler / Driver manuals and source code,
-3. X-TEA / CONCEPTWARE-style reference-model evidence,
-4. TEI-specific Product Requirements, Reference scenarios, and observed Evidence.
+これはX-TEAの実装を再現するための互換規則ではありません。TEIの命名、authority境界、Target-neutral性、Provider分離、現行Evidenceを維持したまま、設計上の意図を取り戻すためのfallbackです。
 
-The fallback is a design-origin check, not an instruction to reproduce X-TEA implementation details. TEI naming, authority boundaries, Target-neutrality, Provider isolation, and current Evidence remain controlling constraints.
+## 2. 三要素は三つの正本ではなく、同じ業務システムを相互牽制する三視点とする
 
-## 2. Three viewpoints are required, but must not become three sources of truth
-
-The same business system must be reviewable from at least the following three viewpoints.
+TEIでは、同じ業務システムを少なくとも次の三視点から確認できる必要があります。
 
 ```text
-Data viewpoint
-Function / Interaction viewpoint
-Business viewpoint
+Data
+Function / Interaction
+Business
 ```
 
-These correspond to the historical data model, function model, and business model viewpoints.
+これは三要素分析法のデータモデル・機能モデル・業務モデルに対応する視点です。
 
-They are not three independent semantic authorities. TEI must preserve one accepted meaning graph and allow the three viewpoints to constrain and criticize each other through explicit references and derived projections.
+ただし、三つの独立したsemantic source of truthを作って後からmergeすることはしません。同じaccepted meaningを複数Projectionから確認し、相互に不備を露出させます。
 
-This requirement interprets primarily:
+主に次のRequirementをこの意味で解釈します。
 
-- `RQ-001` implementation-independent business meaning,
-- `RQ-003` no implicit multiple authorities,
-- `RQ-010` high-density Editor,
-- `RQ-011` multiple Projections,
-- `RQ-017` minimize human double-entry,
-- `RQ-021` Reference / Conformance.
+- RQ-001 業務上の意味を実装技術から独立して保持
+- RQ-003 暗黙の複数正本を作らない
+- RQ-010 Editor
+- RQ-011 複数Projection
+- RQ-017 人の二重管理を最小化
+- RQ-021 Reference / Conformance
 
-A matrix, business manual, UI, diagram, generated document, or AI summary must not silently become a second source of truth when the same facts can be derived from accepted identities and relations.
+Matrix、業務マニュアル、UI、生成文書、AI要約等は、accepted meaningから導出できる部分について第二正本になってはいけません。
 
-## 3. Data viewpoint
+## 3. Data視点
 
-The Data viewpoint represents stable business meaning around data, relationships, types, constraints, and lifecycle independently of physical storage.
+Data視点では、物理DBとは独立して、業務上の事実、型、identity、Relation、cardinality、Constraint、lifecycleを扱います。
 
-It must support cross-checking such questions as:
+少なくとも次を確認できる必要があります。
 
-- What business facts exist?
-- Which facts identify or relate business subjects?
-- Which relationships are one-to-one, one-to-many, or otherwise constrained?
-- Which constraints are semantic and which are physical realization details?
-- Which Application / Function / Procedure depends on the meaning?
+- どの業務上の事実が存在するか
+- 何が何を識別・参照するか
+- Relationとcardinalityはどうなっているか
+- semantic constraintとphysical realizationを区別できるか
+- どのFunction / Procedureがその意味へ依存しているか
 
-Physical table names, foreign keys, indexes, provider catalogs, and migration mechanics remain realization concerns unless explicitly accepted as business meaning.
+physical table名、FK、index、Provider catalog、Migration mechanicsは、それ自体が業務意味として受理されない限りrealization側に置きます。
 
-The historical preference for data-first design is retained, but **data-first must not become data-only**. A data model that cannot explain the work and interactions around it is incomplete as a business-system design.
+Data-firstの考え方は維持しますが、Data-onlyにはしません。Data Modelだけでは、業務の進め方や人とシステムのinteractionを十分に設計したことにはなりません。
 
-## 4. Function / Interaction viewpoint
+## 4. Function / Interaction視点
 
-The Function viewpoint includes the human- and machine-visible interaction needed to understand system behavior. It is not limited to a list of backend procedures.
+機能モデルはbackend function一覧だけではなく、人・マシンとのinteractionを含みます。
 
-Depending on the system, it may include:
+対象には必要に応じて次を含みます。
 
-- screen / form interaction,
-- report or document output,
-- input / output definitions,
-- browse / record / reference / header-detail / command Application intent,
-- query and capability use,
-- batch or API interaction,
-- function-to-function invocation relationships,
-- target-specific UI projections.
+- 画面 / form
+- 帳票 / document
+- input / output
+- browse / record / reference / header-detail / command
+- Query / Capability
+- batch / API
+- Function間呼出し
+- Target固有UI Projection
 
-This viewpoint interprets primarily `RQ-012`, `RQ-013`, and `RQ-014`.
+UIは、利用者が具体的な操作像からDataや業務の不備を指摘できる重要な設計レビューProjectionです。
 
-UI is especially important as a design-review Projection because a user can criticize a visible interaction more easily than an abstract model. However, UI layout, widget choice, Web framework, Wails API, or another concrete Target mechanism must not become the Canonical authority for business meaning.
+一方で、Web widget、Wails API、HTML、特定frameworkのlayout等をCanonicalな業務意味へ昇格させません。
 
-A Function or Application Pattern may realize part of a business action, but the two are not identical.
+また、次を明確に分けます。
 
 ```text
-Business action != Application Function
+Business Action != Application Function
 ```
 
-A valid business action may have no direct Application Pattern or Capability realization.
+業務行為の一部をApplication Functionが実現することはあっても、両者を同一視しません。
 
-TEI must not invent fake executable Functions merely to make every business step look automated.
+Application Pattern / Capabilityを直接持たない手作業・外部作業も、正当な業務意味として保持できなければなりません。
 
-## 5. Business viewpoint
+## 5. Business視点
 
-The Business viewpoint describes how work is undertaken in the surrounding social system, including work that remains manual, conversational, physical, external, or unresolved.
+Business視点では、システムの外側を含む社会的な仕事の進み方を扱います。
 
-At minimum, a sufficient business-work description may need to distinguish:
+業務を十分に説明するため、必要に応じて次を区別できる必要があります。
 
-- purpose,
-- trigger / event,
-- actor or job responsibility,
-- business action / step,
-- order or presentation of steps where order matters,
-- decision or judgment,
-- manual instruction,
-- use of Application Function / View / Pattern,
-- handoff,
-- exception,
-- completion or continuation condition,
-- unresolved information.
+- purpose
+- trigger / event
+- actor / job responsibility
+- business action / step
+- sequence（順序に意味がある場合）
+- decision / judgment
+- manual instruction
+- Function / View / Pattern利用
+- handoff
+- exception
+- completion / continuation
+- unresolved
 
-These fields are conceptual requirements for review. This document does **not** require each field to become a dedicated Canonical primitive or `.tei` syntax.
+これらは設計上区別すべき概念ですが、この文書だけを根拠に各概念を専用Canonical primitiveや `.tei` syntaxへ固定しません。
 
-The following separation is normative:
+次の分離は必須です。
 
 ```text
-business actor / job label != authentication principal != authorization role / policy
+Business Actor / Job
+    != Authentication Principal
+    != Authorization Role / Policy
 ```
 
-Describing a person as a "sales operator" or equivalent business actor must never grant execution authority by itself.
+業務上の「担当者」というラベルだけで実行authorityを与えてはいけません。
 
-Likewise:
+同様に、
 
 ```text
-business judgment != deterministic Validation
+Validation PASS != Business Judgment / Approval
 ```
 
-A set of machine-checkable constraints passing must not be promoted to a whole-business approval unless an accepted semantic contract explicitly says so.
+です。accepted semantic contractが明示しない限り、機械判定可能なValidationの成功だけで業務上の判断全体を置き換えません。
 
-## 6. Business flow and Procedure are related but different
+## 6. Business Flow / Procedure / Runtime Workflowを分離する
 
-TEI must not reduce the Business viewpoint to a simple sequence of screen transitions or to a runtime Workflow Engine.
+業務モデルを、画面遷移や単純な処理順序へ還元してはいけません。
 
-The historical business-flow view is closer to a DFD-like representation of business processes / jobs, information or data sources, and flows between them. Business work is initiated by events / circumstances and should be capable of loose coupling through information and events rather than requiring one monolithic end-to-end execution graph.
+三要素分析法での業務フローは、業務ノードと情報・データソース等のノードの間をデータ／情報が流れるDFD型の見方を含みます。各業務はEvent / 契機を持ち、業務同士は情報やEventを介して疎結合に扱える必要があります。
 
-A Procedure is the closer-grained description of how a particular business activity is carried out, including manual work and Function / UI use.
+一方、Procedureは一つの業務をどのように行うかを、手作業やFunction / UI利用を含めてより細かく説明する視点です。
 
-Therefore:
+したがって次を同一視しません。
 
 ```text
 Business Flow != Procedure != Runtime Workflow Orchestration
 ```
 
-TEI may eventually provide Projections for all three, but it must not collapse them prematurely.
+ProcedureやBusiness Flowがあることから、retry、timer、queue、saga、lease等のruntime orchestrationを自動的に導入してはいけません。
 
-Retry, timer, queue, distributed saga, process lease, and other runtime orchestration mechanics are not implied merely because a business Procedure or Business Flow exists.
+## 7. 時間軸は必要な業務へ適用し、全体前提にはしない
 
-## 7. Time must be modeled where the business needs it, not imposed globally
+時間軸は、履歴、Event順序、validity、lead time、待ち時間、bottleneck、resource利用等の業務解像度を高めます。
 
-Time is important for many business questions: event order, validity, history, lead time, bottleneck discovery, and temporal resource use.
+ただし、一般的な業務システムへ一律にEvent Sourcing、Bitemporal、append-only ledger、distributed eventual consistencyを要求しません。
 
-However, ordinary business systems must not be forced into event sourcing, bitemporal storage, eventually consistent distributed workflows, or append-only ledgers merely because TEI can express time.
+通常のtransactional DBで正確に扱える業務は、その前提を維持できます。
 
-Use time-related semantics when the domain and Reference evidence require them. Preserve conventional transactional database semantics where they are sufficient.
+時間に関する意味は、domainとReference Evidenceが要求するときに導入します。
 
-This keeps the business model richer without turning a specialized temporal architecture into a universal Core assumption.
+## 8. 三視点の相互牽制をRequirement成立の一部とする
 
-## 8. Cross-view criticism is part of requirement satisfaction
-
-The three viewpoints must be able to expose defects in each other.
-
-Representative checks include:
+TEIは、三視点間で少なくとも次のような矛盾を発見できる構造を目指します。
 
 ```text
 Business -> Function
-  a required business action has no supported interaction or intentional manual path
+  必要な業務行為に、意図した手作業経路もsystem interactionも存在しない
 
 Business -> Data
-  a step requires information not represented in accepted Data meaning
+  業務に必要な情報がaccepted Data meaningに存在しない
 
 Function -> Data
-  a visible editable concept has no accepted write meaning
+  UI上は編集可能だが、accepted write meaningが存在しない
 
 Data -> Function
-  important Data or Relation meaning is never exposed where users must inspect or maintain it
+  重要なData / Relationを業務上必要な場所で確認・維持できない
 
-Function / Business -> Authorization
-  a convenient UI or actor label would exceed accepted authority
+Business / Function -> Authorization
+  actor labelや便利なUIがaccepted authorityを越える
 ```
 
-The correct response to a discovered contradiction is to return to the authoritative source and Shared Acceptance Boundary, not to patch a derived Projection until the contradiction disappears visually.
+矛盾が見つかった場合は、Projection側だけを修正して見えなくするのではなく、authoritative sourceとShared Acceptance Boundaryへ戻ります。
 
-## 9. Matrix and manual outputs are derived review instruments by default
+## 9. MatrixとManualは原則derivedとする
 
-The historical X-TEA practice of matrices such as Business × Function, Business × Table, and Table × Function is retained as an important review technique.
+X-TEAで重視されてきたBusiness × Function、Business × Table、Table × Function等のMatrixは、TEIでも重要なレビュー手段とします。
 
-TEI should derive such matrices from explicit references wherever possible.
+可能な限りexplicit referenceから導出します。
 
-Examples include:
+例:
 
-- Business Action × Application Pattern,
-- Business Action × Data / Relation,
-- Procedure Step × View / Action,
-- Application Pattern × Data / Query / Capability,
-- Data / Relation × affected Procedure / View / Function.
+- Business Action × Application Pattern
+- Business Action × Data / Relation
+- Procedure Step × View / Action
+- Application Pattern × Query / Capability
+- Data / Relation × impacted Procedure / View
 
-Unknown relationships must remain unknown rather than being inferred from names for presentation convenience.
+不明な関係は、名称から推測して埋めずunknownのまま残します。
 
-A manually enriched explanation may exist, but generated facts and human residual explanation must remain distinguishable.
+生成可能なfactと、人が補う説明は区別します。
 
-## 10. Editor interpretation
+## 10. RQ-010 Editorの解釈
 
-`RQ-010` must be read as a requirement for a dense business-system design environment, not a wizard that serializes one small form at a time.
+Editorは単純なform wizardではなく、複雑な業務システムを高密度に確認する設計環境として解釈します。
 
-The Editor should allow a developer to inspect locally connected meaning across multiple levels, including Data, Relation, Rule, View, Application intent, Procedure / business context, source, and Evidence.
+Data、Relation、Rule、View、Application intent、Procedure、Source、Evidence等を、必要に応じて3階層以上の関連を保ちながら確認できることを目指します。
 
-At least three levels of relationship must be inspectable without forcing every relationship into separate isolated screens.
+EditorはProjection / Authoring Clientであり、第二のCanonical authorityにはしません。
 
-The Editor remains a Projection / authoring client. It must not become a second Canonical authority.
+また、自動生成で矛盾を隠すのではなく、三視点間の緊張を見つけやすくすることを重視します。
 
-A useful Editor should make the three-viewpoint tensions visible rather than hiding them behind automatic generation.
+## 11. RQ-012 Driverの解釈
 
-## 11. Driver interpretation
+Driverは「実行可能な仕様」の系譜にある設計検証環境として解釈します。
 
-`RQ-012` must be read in the lineage of an executable specification environment.
+最終Targetのコード生成・手実装を待たず、accepted Application meaningを実行・観測して整合性を確認できる必要があります。
 
-The Driver should make accepted Application meaning inspectable and executable early enough to test model coherence before a final production Target is generated or hand-coded.
+少なくとも次を区別します。
 
-This does not mean all business work is executable. The Driver validates the system-realizable portion while preserving manual / external business actions as business meaning outside direct execution.
+- Semantic meaning
+- Validation
+- Authorization
+- Command request
+- Business Result
+- Execution Error
+- explicit read
+- Observation
 
-Driver evidence must therefore distinguish at least:
+Driverが実行するのはsystem-realizableな部分です。周辺の手作業まで無理に実行可能なWorkflowへ変換することは要求しません。
 
-- semantic meaning,
-- deterministic validation,
-- authorization,
-- command request and Business Result,
-- execution error,
-- separately observed external state.
+## 12. RQ-014 Application Patternの解釈
 
-## 12. Application Pattern interpretation
+`browse`、`record`、`reference`、`header-detail`、`command`等のApplication Patternは、Target非依存のApplication intentであり、Function / Interaction視点の再利用単位です。
 
-`RQ-014` Application Patterns represent reusable target-independent Application intent such as `browse`, `record`, `reference`, `header-detail`, and `command`.
+Pattern集合だけでは、周辺のBusiness Procedureは定義されません。
 
-They are part of the Function / Interaction viewpoint. They do not by themselves define the surrounding business Procedure.
+```text
+Procedure -> multiple Patterns
+multiple Procedures -> same Pattern
+Business Action -> no Pattern
+```
 
-A Procedure may reference multiple Application Patterns; multiple Procedures may reuse one Pattern; a business action may reference none.
+はいずれも許容します。
 
-Pattern ordering must not silently be treated as a business procedure unless an accepted business model explicitly establishes that ordering.
+Patternの並びを、accepted Business Modelなしに業務手順として解釈してはいけません。
 
-## 13. Reference Models are executable design content, not only fixtures
+## 13. Reference Modelはfixtureだけでなく実行可能な設計コンテンツとする
 
-`RQ-021` Reference / Conformance must eventually cover realistic business-system design pressure, not only technical fixtures.
+RQ-021は技術fixtureの再現性だけで終わらせません。
 
-A Reference Model should be able to serve simultaneously as:
+Reference Modelは将来的に次の役割を兼ねられることを目指します。
 
-- a reproducible Conformance input,
-- an example from which a developer can learn business-system modeling,
-- a pressure test for Editor / Driver / Target boundaries,
-- a way to improve both the platform and the model through cross-view criticism.
+- reproducible Conformance input
+- 業務システムモデリングの学習例
+- Editor / Driver / Targetへのpressure test
+- modelとplatformを相互改善する設計対象
+- regression Evidence
 
-CONCEPTWARE-style reference models are historical design evidence. Their structure and pressure should be studied, but their content must not be copied into TEI until licensing and provenance permit it.
+CONCEPTWARE系モデルは歴史的な設計Evidenceとして構造を調査しますが、ライセンスとprovenanceが確認できるまでは内容をTEIへコピーしません。
 
-Before claiming broad business-system design maturity, TEI should be tested with a reference larger than a toy form: multiple subject areas / subsystems and enough Data, business actions, Functions, and cross-relations to expose locality and traceability problems.
+業務システム設計の成熟を主張する前には、toy exampleを越える複数Subject Area / Subsystem・複数Data・複数Business Action / Functionを持つReferenceで圧力試験する必要があります。
 
-The exact gate and size remain planning decisions, not fixed numerical Product Requirements in this document.
+具体的な規模やGateは、この文書では固定しません。
 
-## 14. AI assistance follows the same design authority
+## 14. AI支援も同じauthority境界に従う
 
-AI may help explore existing semantic knowledge, propose a Procedure, produce a matrix, draft a UI, or point out three-viewpoint inconsistencies.
+AIは既存知識の探索、Procedure候補、Matrix、UI Projection、三視点の不足指摘等を支援できます。
 
-It must not create a separate semantic authority.
+ただしAI固有のsemantic authorityを作りません。
 
-AI proposals must cite or structurally reference the accepted identities they use, distinguish known facts from assumptions / unresolved points, and pass the same Shared Acceptance Boundary as human or Editor changes.
+AI Proposalは、利用したCanonical ID / Source / Evidenceを追跡可能にし、accepted fact / inference / proposal / unresolvedを区別し、Human / Studio / CLIと同じShared Acceptance Boundaryを通します。
 
-This interprets `RQ-015`, `RQ-016`, `RQ-017`, and `RQ-021`.
+これはRQ-015 / RQ-016 / RQ-017 / RQ-021の解釈です。
 
-## 15. Historical X-TEA naming is provenance, not current TEI product naming
+## 15. X-TEA名称はprovenanceとして扱う
 
-X-TEA, XEAD, XeadModeler, XeadDriver, and related names are used as historical and architectural provenance.
+X-TEA、XEAD、XeadModeler、XeadDriver等の名称は、歴史的・設計系譜上のprovenanceとして扱います。
 
-New TEI implementation symbols, file formats, namespaces, generated artifacts, and public product naming continue to use TEI naming.
+新しいTEIの実装symbol、file format、namespace、generated artifact、public product namingはTEI名を使います。
 
-The goal is to preserve and advance the design knowledge, not to recreate the historical product surface.
+目的は過去製品のsurfaceを再現することではなく、設計知識を継承・発展させることです。
 
-## 16. Explicitly unresolved architecture questions
+## 16. Evidence待ちとして残す論点
 
-The following questions remain open and must be decided from Reference evidence rather than terminology preference:
+次は、名称の好みではなくReference Evidenceから判断します。
 
-1. whether Business Procedure requires a durable Canonical identity or can remain a derived / traceable design artifact,
-2. which parts of actor, event, handoff, decision, and manual instruction require structured semantics,
-3. how a DFD-like Business Flow should relate to Procedure, Data, Application Pattern, and Event without becoming a runtime Workflow Engine,
-4. which Subject Area / Subsystem concepts deserve durable identity in the TEI model,
-5. how much target-neutral View / Interaction structure is needed before Target adapters,
-6. how realistic Reference Models should be packaged, versioned, and licensed,
-7. where temporal semantics become part of accepted domain meaning versus optional analysis / realization.
+1. Business Procedureをdurable Canonical identityにするか、traceable derived artifactで足りるか
+2. actor / event / handoff / decision / manual instructionのどこまでをstructured semanticsにするか
+3. DFD型Business FlowをProcedure / Data / Pattern / Eventへどう接続するか
+4. Subject Area / Subsystemにdurable identityが必要か
+5. Target Adapter前にどの程度のTarget-neutral View / Interaction構造が必要か
+6. realistic Reference Modelをどうpackage / version / licenseするか
+7. temporal semanticsのどこまでをdomain meaningとし、どこからをanalysis / realizationとするか
 
-Until evidence resolves these points, documentation and experiments may name them, but Core schema and Product Requirement IDs must not be expanded merely to mirror X-TEA vocabulary.
+Evidenceが揃うまでは、X-TEAに同名概念があることだけを理由にCore schemaやProduct Requirement IDを追加しません。
