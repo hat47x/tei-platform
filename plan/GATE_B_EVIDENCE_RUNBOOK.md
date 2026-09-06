@@ -387,6 +387,8 @@ PostgreSQL secretを除いたenvironmentでclean-source preflight
         ↓
 Repository外secret fileをstable single-openで読込
         ↓
+Repository外owner-only temporary handoff file作成
+        ↓
 candidate sourceを再確認
         ↓
 #310 → #255 → #308
@@ -409,22 +411,36 @@ GOFLAGS=
 ```text
 outer go run / compiler / linker
   -> DSN本文なし
-  -> secret file pathのみ
+  -> original secret file pathのみ
 
 final runner runtime
   -> secret-free environmentでclean-source preflight
-  -> external secret fileをsingle-open
+  -> original external secret fileをstable single-open
   -> 読込前後で同一file identityを再確認
-  -> DSN本文はmemoryのみ
+  -> normalized DSN本文をmemoryへ保持
+  -> Repository外の0700 temporary directoryへ0600 handoff fileを作成
+  -> handoff fileにはnormalized DSN本文だけを保存
 
 Go environment probe / Git probe / #310 / #255
   -> DSN本文なし
-  -> secret file pathなし
+  -> original secret file pathなし
+  -> handoff file pathなし
 
-#308
-  -> in-memory DSN本文のみ
-  -> secret file pathなし
+#308 go run / compiler / linker
+  -> DSN本文なし
+  -> original secret file pathなし
+  -> temporary handoff file pathのみ
+
+#308 runtime
+  -> handoff fileからDSN本文を読込
+  -> DSN / file path environmentをsource probe前に消去
+  -> 以後DSN本文はmemoryのみ
+
+final runner return
+  -> temporary handoff directoryをcleanup
 ```
+
+handoff fileは通常のfinal runner return時に削除します。processの強制kill・host停止等に対するOS-levelの完全消去までは保証せず、作成中はRepository外のowner-only temporary scopeに限定します。original secret file・handoff fileのpathやDSN本文を通常Evidenceへ保存しません。
 
 ## 8. same-run child Evidence retention
 
@@ -585,6 +601,7 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - direct `TEI_TEST_POSTGRES_DSN`設定
 - DSN secret fileがRepository内 / symlink先Repository内 / non-regular / empty / multiline / NUL / read不能
 - DSN secret fileのpath / symlink target / file identityが読込前後で変化する
+- PostgreSQL handoff fileをRepository外owner-only temporary scopeへ作成できない
 - PostgreSQLがdefault DB
 - PostgreSQLに既存user relation / Event Triggerがある
 - fixture objectが事前存在
