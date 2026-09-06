@@ -5,7 +5,7 @@
   "application": "order_entry",
   "procedure": {
     "id": "order-entry.order-handling",
-    "identityStatus": "experiment-local",
+    "identityStatus": "reference-local-stable",
     "purpose": "inspect and prepare an order, submit it when acceptable, and keep application result separate from observed external state",
     "trigger": {
       "status": "candidate",
