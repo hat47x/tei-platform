@@ -1,5 +1,7 @@
 # Application Pattern v1 設計・実装基線
 
+- 状態: 実装済みの現行基線
+
 ## 目的
 
 この文書は、`ISSUE-000005` / GitHub Issue #67で実証したApplication Patternについて、v1で成立した設計境界とRepository上のEvidenceを、後続DriverやTargetへ引き継げる形で整理するものです。
