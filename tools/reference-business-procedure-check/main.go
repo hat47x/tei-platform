@@ -322,17 +322,24 @@ func patternCounts(world ir.World) map[string]int {
 }
 
 func findPattern(world ir.World, id string) (application.Pattern, bool) {
-	var found application.Pattern
+	_, pattern, ok := findPatternOwner(world, id)
+	return pattern, ok
+}
+
+func findPatternOwner(world ir.World, id string) (application.Application, application.Pattern, bool) {
+	var foundApp application.Application
+	var foundPattern application.Pattern
 	count := 0
 	for _, app := range world.Applications {
 		for _, pattern := range app.Patterns {
 			if string(pattern.ID) == id {
-				found = pattern
+				foundApp = app
+				foundPattern = pattern
 				count++
 			}
 		}
 	}
-	return found, count == 1
+	return foundApp, foundPattern, count == 1
 }
 
 func semanticCounts(world ir.World) (map[string]int, map[string]int, map[string]int, map[string]int) {
@@ -437,10 +444,6 @@ func applyAccessProbe(result *report, world ir.World, f fixture, probe accessPro
 		sortDiagnostics(result.Diagnostics)
 		return
 	}
-	app, found := findApplication(world, f.Application)
-	if !found {
-		return
-	}
 	for _, s := range f.Steps {
 		if s.ID != probe.Step {
 			continue
@@ -450,7 +453,7 @@ func applyAccessProbe(result *report, world ir.World, f fixture, probe accessPro
 			sortDiagnostics(result.Diagnostics)
 			return
 		}
-		pattern, ok := findPattern(world, probe.ApplicationPattern)
+		app, pattern, ok := findPatternOwner(world, probe.ApplicationPattern)
 		if !ok {
 			result.Diagnostics = append(result.Diagnostics, diagnostic{Code: "BUSINESS_APPLICATION_PATTERN_REF_NOT_FOUND", Severity: severitySemanticError, Step: s.ID, Message: fmt.Sprintf("probe pattern %qをnormalized Worldでexactに1件解決できません", probe.ApplicationPattern)})
 			sortDiagnostics(result.Diagnostics)
