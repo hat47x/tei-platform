@@ -118,6 +118,65 @@ func TestAuditRejectsSensitiveEvidenceField(t *testing.T) {
 	}
 }
 
+func TestAuditRejectsUnexpectedRepositoryCheck(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["deterministic-repository"])
+	obj := repositoryChild("R", false)
+	obj["checks"] = append(obj["checks"].([]any), map[string]any{"name": "unexpected-check", "passed": true})
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "deterministic-repository", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "checks=4 want=3") {
+		t.Fatalf("err=%v, want exact check-set failure", err)
+	}
+}
+
+func TestAuditRejectsPostgresIdentityMismatch(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["real-postgres-ephemeral-fixture"])
+	obj := postgresChild("R")
+	obj["contractQueryTarget"] = "other_query"
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "real-postgres-ephemeral-fixture", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "contractQueryTarget") {
+		t.Fatalf("err=%v, want PostgreSQL identity failure", err)
+	}
+}
+
+func TestAuditRejectsPostgresSemanticAttributeMismatch(t *testing.T) {
+	finalPath, dir := writeFixture(t, "R")
+	path := filepath.Join(dir, laneFiles["real-postgres-ephemeral-fixture"])
+	obj := postgresChild("R")
+	obj["semanticAttributes"] = []any{"sales.order_line.order_line_id"}
+	content := mustJSON(t, obj)
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updateFinalLaneFingerprint(t, finalPath, "real-postgres-ephemeral-fixture", content)
+	if _, err := audit(finalPath, dir); err == nil || !strings.Contains(err.Error(), "semanticAttributes") {
+		t.Fatalf("err=%v, want Semantic attribute failure", err)
+	}
+}
+
+func updateFinalLaneFingerprint(t *testing.T, finalPath, laneName string, content []byte) {
+	t.Helper()
+	final := readObject(t, finalPath)
+	for _, raw := range final["lanes"].([]any) {
+		lane := raw.(map[string]any)
+		if lane["name"] == laneName {
+			lane["evidenceArtifactFingerprint"] = fingerprint(content)
+			writeJSON(t, finalPath, final)
+			return
+		}
+	}
+	t.Fatalf("lane=%s not found", laneName)
+}
+
 func writeFixture(t *testing.T, revision string) (string, string) {
 	t.Helper()
 	base := t.TempDir()
@@ -207,8 +266,14 @@ func postgresChild(revision string) map[string]any {
 		"databaseInstance": "sales_core.dev", "executorCapability": "database.query.postgres", "contractQueryTarget": "find_by_order",
 		"parameterNames": []any{"order_id"}, "parameterValuesPersisted": false, "rows": 2, "zeroRows": 0,
 		"executionErrorObserved": true,
-		"semanticAttributes":     []any{"sales.order_line.order_line_id", "sales.order_line.line_number", "sales.order_line.item_code", "sales.order_line.quantity", "sales.order_line.unit_price"},
-		"relationStorageColumn":  "order_id", "semanticOrderLineParentAttributeAdded": false, "semanticMappingApplied": true,
+		"semanticAttributes": []any{
+			"sales.order_line.item_code",
+			"sales.order_line.line_number",
+			"sales.order_line.order_line_id",
+			"sales.order_line.quantity",
+			"sales.order_line.unit_price",
+		},
+		"relationStorageColumn": "order_id", "semanticOrderLineParentAttributeAdded": false, "semanticMappingApplied": true,
 	}
 }
 
