@@ -96,16 +96,10 @@ func addSyntheticSecondApplication(t *testing.T, workspaceRoot string) {
 	if err := os.MkdirAll(patterns, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// This pressure is only about qualified cross-Application Pattern identity.
+	// Keep the synthetic Application free of Database/Contract configuration so
+	// unrelated Gate B realization constraints cannot affect the test.
 	applicationSource := `application fulfillment_console {
-    uses semantic sales
-
-    database sales {
-        target sales_core
-        access read
-        requires {
-            contract sales_core.order ^4
-        }
-    }
 }
 `
 	if err := os.WriteFile(filepath.Join(unit, "application.tei"), []byte(applicationSource), 0o600); err != nil {
