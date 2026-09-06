@@ -94,13 +94,24 @@ type dataRow struct {
 	Capabilities []string `json:"capabilities,omitempty"`
 }
 
+type patternMeaningRow struct {
+	StepID     string `json:"step"`
+	Pattern    string `json:"pattern"`
+	Data       string `json:"data,omitempty"`
+	Relation   string `json:"relation,omitempty"`
+	Query      string `json:"query,omitempty"`
+	Capability string `json:"capability,omitempty"`
+	Datasource string `json:"datasource,omitempty"`
+}
+
 type report struct {
-	Procedure                      string        `json:"procedure"`
-	Application                    string        `json:"application"`
-	CanonicalProcedureIdentityUsed bool          `json:"canonicalProcedureIdentityUsed"`
-	BusinessActionFunctionRows     []functionRow `json:"businessActionFunctionRows"`
-	ExplicitBusinessMeaningRows    []dataRow     `json:"explicitBusinessMeaningRows"`
-	Diagnostics                    []diagnostic  `json:"diagnostics"`
+	Procedure                        string              `json:"procedure"`
+	Application                      string              `json:"application"`
+	CanonicalProcedureIdentityUsed   bool                `json:"canonicalProcedureIdentityUsed"`
+	BusinessActionFunctionRows       []functionRow       `json:"businessActionFunctionRows"`
+	BusinessActionPatternMeaningRows []patternMeaningRow `json:"businessActionPatternMeaningRows"`
+	ExplicitBusinessMeaningRows      []dataRow           `json:"explicitBusinessMeaningRows"`
+	Diagnostics                      []diagnostic        `json:"diagnostics"`
 }
 
 func main() {
@@ -263,6 +274,17 @@ func evaluate(world ir.World, f fixture) report {
 
 		for _, ref := range s.ApplicationPatterns {
 			checkReference(&result, s.ID, "APPLICATION_PATTERN", ref, patterns[ref])
+			if pattern, ok := findPattern(world, ref); ok {
+				result.BusinessActionPatternMeaningRows = append(result.BusinessActionPatternMeaningRows, patternMeaningRow{
+					StepID:     s.ID,
+					Pattern:    ref,
+					Data:       string(pattern.Data),
+					Relation:   string(pattern.Relation),
+					Query:      string(pattern.Query),
+					Capability: string(pattern.Capability),
+					Datasource: string(pattern.Datasource),
+				})
+			}
 		}
 		for _, ref := range s.Data {
 			checkReference(&result, s.ID, "DATA", ref, data[ref])
@@ -305,6 +327,20 @@ func patternCounts(world ir.World) map[string]int {
 		}
 	}
 	return counts
+}
+
+func findPattern(world ir.World, id string) (application.Pattern, bool) {
+	var found application.Pattern
+	count := 0
+	for _, app := range world.Applications {
+		for _, pattern := range app.Patterns {
+			if string(pattern.ID) == id {
+				found = pattern
+				count++
+			}
+		}
+	}
+	return found, count == 1
 }
 
 func semanticCounts(world ir.World) (map[string]int, map[string]int, map[string]int, map[string]int) {
