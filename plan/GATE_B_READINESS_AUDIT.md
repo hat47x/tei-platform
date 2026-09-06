@@ -101,7 +101,9 @@ tools/reference-gate-b-repository-evidence
 
 Ready判定には少なくとも次を要求します。
 
-- clean sourceから開始
+- Gate B Evidence専用full checkout
+- tracked / untracked / ignored local stateなし
+- tracked Git index entryが通常`H`のみ（`assume-unchanged` / `skip-worktree`なし）
 - Workspace Validation成功
 - final UI-less Scenario成功
 - external Evidence intake成功
@@ -110,7 +112,7 @@ Ready判定には少なくとも次を要求します。
 - `reproducibleRevision = true`
 - post-run source確認済み
 - 実行前後同一HEAD
-- 終了時clean
+- 終了時clean source/index state
 
 synthetic Evidenceをactual external Evidenceへ読み替えません。
 
@@ -129,7 +131,7 @@ Ready判定には少なくとも次を要求します。
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - post-run source確認済み
-- 同一clean revision
+- 同一clean source/index state
 
 staleの場合だけ正規generatorで修復し、差分を確認してcommitした新しいclean revisionでcheck-onlyを再実行します。
 
@@ -149,7 +151,9 @@ Ready判定には少なくとも次を要求します。
 
 ### source
 
-- clean source
+- Gate B Evidence専用full checkout
+- tracked / untracked / ignored local stateなし
+- tracked Git index entryが通常`H`のみ
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - post-run source確認済み
@@ -246,6 +250,10 @@ Ready判定では:
 ### Repository
 
 - Repository rootから起動
+- Gate B Evidence専用full checkout
+- tracked / untracked / ignored local stateなし
+- tracked Git index entryが通常`H`のみ
+- `assume-unchanged` / `skip-worktree`なし
 - clean candidate R
 - 各lane後source再確認
 - final source再確認
@@ -269,9 +277,11 @@ runner自身のcompile前からexact `GOENV=off`、external GOWORK無効、GOFLA
 - final launch environmentへdirect `TEI_TEST_POSTGRES_DSN`を置かない
 - `TEI_TEST_POSTGRES_DSN_FILE`はRepository外existing regular file
 - symlink解決後もRepository外
-- Go / Git probe、#310、#255へDSN本文・secret pathを渡さない
-- #308 childへだけin-memory DSN本文を渡す
-- secret path / DSN本文をEvidenceへ保存しない
+- final runnerがoriginal secret fileをstable single-openし、normalized DSNをRepository外owner-only temporary handoff fileへ複製する
+- Go / Git probe、#310、#255へDSN本文・original secret path・handoff pathを渡さない
+- #308 `go run` / compiler / linkerへDSN本文を渡さずtemporary handoff pathだけを渡す
+- #308 runtimeがhandoff fileからDSN本文を読み、DSN / file path environmentをsource probe前に消去する
+- DSN本文・original secret path・handoff pathをEvidenceへ保存しない
 
 ### child Evidence artifact store
 
@@ -307,6 +317,8 @@ Required Evidenceは一つのRへ固定します。
 final.repositoryRevision = R
 ```
 
+Rを固定するcheckoutはfull checkoutとし、tracked / untracked / ignored local stateなし、tracked Git index entryが通常`H`のみを要求します。
+
 異なるrevisionの成功を寄せ集めません。
 
 source変更が必要ならcycleを停止し、修正をcommitして新Rを選び、三laneとfinal convergenceを最初からやり直します。
@@ -326,7 +338,7 @@ Gate BをReadyとするには、少なくとも次をすべてEvidenceから説�
 - [ ] 三つのsame-run child exact artifactを保存済み
 - [ ] 各artifact fingerprintがfinal summaryと一致
 - [ ] child詳細から各lane固有安全条件を再確認できる
-- [ ] final run終了時もR / clean
+- [ ] final run終了時もR / clean source/index state
 - [ ] Go実行環境fail-closed条件成立
 - [ ] Repository root / source observation条件成立
 - [ ] PostgreSQL fixture前後安全性成立
@@ -344,7 +356,7 @@ Gate BをReadyとするには、少なくとも次をすべてEvidenceから説�
 現時点では設計拡張ではなくactual Evidence取得を優先します。
 
 ```text
-actual checkout preflight
+actual full checkout preflight
         ↓
 #310 / #255 / #308 pre-check
         ↓ source変更があればcommit
