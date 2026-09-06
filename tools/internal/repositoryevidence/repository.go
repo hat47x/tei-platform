@@ -76,6 +76,12 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 		return result, fmt.Errorf("working tree状態を取得できません: %w", err)
 	}
 
+	indexState, err := output("git", "ls-files", "-v", "-z")
+	if err != nil {
+		return result, fmt.Errorf("Git index source stateを取得できません: %w", err)
+	}
+	localStateClean := strings.TrimSpace(status) == "" && indexStateHasOnlyDefaultFlags(indexState)
+
 	revisionAfter, err := output("git", "rev-parse", "HEAD")
 	if err != nil {
 		return result, fmt.Errorf("working tree観測後のrepository revisionを取得できません: %w", err)
@@ -89,7 +95,7 @@ func inspectStart(output commandOutputFunc) (Source, error) {
 	}
 
 	result.RepositoryRevision = revisionAfter
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
+	result.WorkingTreeClean = localStateClean
 	return result, nil
 }
 
@@ -128,7 +134,12 @@ func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, err
 	if err != nil {
 		return result, fmt.Errorf("Evidence実行後のworking tree状態を取得できません: %w", err)
 	}
-	result.WorkingTreeClean = strings.TrimSpace(status) == ""
+
+	indexState, err := output("git", "ls-files", "-v", "-z")
+	if err != nil {
+		return result, fmt.Errorf("Evidence実行後のGit index source stateを取得できません: %w", err)
+	}
+	localStateClean := strings.TrimSpace(status) == "" && indexStateHasOnlyDefaultFlags(indexState)
 
 	revisionAfter, err := output("git", "rev-parse", "HEAD")
 	if err != nil {
@@ -147,8 +158,24 @@ func inspectPost(initialRevision string, output commandOutputFunc) (PostRun, err
 
 	result.RepositoryRevision = revisionAfter
 	result.RevisionStable = result.RepositoryRevision == initialRevision
+	result.WorkingTreeClean = localStateClean
 	result.Checked = true
 	return result, nil
+}
+
+// indexStateHasOnlyDefaultFlagsは、tracked entryが通常のH tagだけである場合にtrueを返す。
+// git ls-files -vではassume-unchangedがlower-case tag、skip-worktreeがS、両方がsとして現れる。
+// Gate B Evidence専用checkoutではこれらを含む非標準index stateをR外local inputとしてcleanへ格上げしない。
+func indexStateHasOnlyDefaultFlags(indexState string) bool {
+	for _, entry := range strings.Split(indexState, "\x00") {
+		if entry == "" {
+			continue
+		}
+		if len(entry) < 2 || entry[0] != 'H' || entry[1] != ' ' {
+			return false
+		}
+	}
+	return true
 }
 
 func validateGitSourceEnvironment(env []string) error {
