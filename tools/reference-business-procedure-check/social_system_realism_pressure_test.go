@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/application"
@@ -72,14 +73,14 @@ func TestOrderEntryReferenceExercisesSocialSystemBoundaryWithoutSyntheticSecondA
 	}
 
 	steps := stepsByID(f)
-	assertBoundaryStep(t, steps, "BP-04", "manual-unresolved", true)
-	assertBoundaryStep(t, steps, "BP-06", "security-boundary", true)
-	assertBoundaryStep(t, steps, "BP-08", "observation-boundary", true)
-	assertBoundaryStep(t, steps, "BP-09", "manual-external-unresolved", true)
-	assertBoundaryStep(t, steps, "BP-07", "application-use", false)
+	assertResidualBoundaryStep(t, steps, "BP-04", "manual-unresolved")
+	assertExplicitCapabilityBoundaryStep(t, steps, "BP-06", "security-boundary", "security.authorize")
+	assertResidualBoundaryStep(t, steps, "BP-08", "observation-boundary")
+	assertResidualBoundaryStep(t, steps, "BP-09", "manual-external-unresolved")
+	assertApplicationUseStep(t, steps, "BP-07")
 
-	if !stepOccursBefore(f, "BP-07", "BP-08") || !stepOccursBefore(f, "BP-08", "BP-09") {
-		t.Fatal("Command -> separate Observation -> manual/external continuationのBusiness順序をReferenceから確認できません")
+	if !stepOccursBefore(f, "BP-06", "BP-07") || !stepOccursBefore(f, "BP-07", "BP-08") || !stepOccursBefore(f, "BP-08", "BP-09") {
+		t.Fatal("Authorization -> Command -> separate Observation -> manual/external continuationのBusiness順序をReferenceから確認できません")
 	}
 }
 
@@ -109,7 +110,7 @@ func stepsByID(f fixture) map[string]step {
 	return result
 }
 
-func assertBoundaryStep(t *testing.T, steps map[string]step, id, realization string, mustRemainNonApplication bool) {
+func assertResidualBoundaryStep(t *testing.T, steps map[string]step, id, realization string) {
 	t.Helper()
 	item, ok := steps[id]
 	if !ok {
@@ -118,11 +119,36 @@ func assertBoundaryStep(t *testing.T, steps map[string]step, id, realization str
 	if item.Realization != realization {
 		t.Fatalf("Business Procedure step %s realization=%q want=%q", id, item.Realization, realization)
 	}
-	if mustRemainNonApplication && (len(item.ApplicationPatterns) != 0 || len(item.Capabilities) != 0) {
-		t.Fatalf("%s stepへfake Application Function / Capabilityを要求しました: %+v", realization, item)
+	if len(item.ApplicationPatterns) != 0 || len(item.Capabilities) != 0 {
+		t.Fatalf("%s residual stepへfake Application Pattern / Capabilityを要求しました: %+v", realization, item)
 	}
-	if !mustRemainNonApplication && len(item.ApplicationPatterns) == 0 {
-		t.Fatalf("application-use step %sからexplicit Application Pattern refが失われました", id)
+}
+
+func assertExplicitCapabilityBoundaryStep(t *testing.T, steps map[string]step, id, realization, capability string) {
+	t.Helper()
+	item, ok := steps[id]
+	if !ok {
+		t.Fatalf("Business Procedure step %sがありません", id)
+	}
+	if item.Realization != realization {
+		t.Fatalf("Business Procedure step %s realization=%q want=%q", id, item.Realization, realization)
+	}
+	if len(item.ApplicationPatterns) != 0 {
+		t.Fatalf("%s stepへApplication Patternを捏造しました: %+v", realization, item)
+	}
+	if !reflect.DeepEqual(item.Capabilities, []string{capability}) {
+		t.Fatalf("%s stepからexisting semantic Capabilityへのexplicit refが失われました: got=%v want=%s", realization, item.Capabilities, capability)
+	}
+}
+
+func assertApplicationUseStep(t *testing.T, steps map[string]step, id string) {
+	t.Helper()
+	item, ok := steps[id]
+	if !ok {
+		t.Fatalf("Business Procedure step %sがありません", id)
+	}
+	if item.Realization != "application-use" || len(item.ApplicationPatterns) == 0 {
+		t.Fatalf("application-use step %sからexplicit Application Pattern refが失われました: %+v", id, item)
 	}
 }
 
