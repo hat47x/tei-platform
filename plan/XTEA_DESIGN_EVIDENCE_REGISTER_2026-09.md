@@ -423,6 +423,63 @@ Both public repositories contain BSD-3-Clause-style redistribution / modificatio
 
 ---
 
+## E-014 — X-TEA Business Flow is a separate data-flow model, not Procedure handoff shorthand
+
+**Grade:** W1 + M1 + S1
+
+**Sources:**
+- X-TEA HOME / Three-Element Analysis portal: X-TEA Modeler is described as supporting business flows, ER diagrams, business manuals, and other design drawings
+- Kozo Watanabe, 「データ、UI、業務手順の『3要素』をとらえる」, 2006, part 3/3
+- public repository `xead/XeadModeler`
+  - `src/xeadModeler/DialogDataflowNode.java`
+  - `src/xeadModeler/DialogDataflowLine.java`
+  - `src/xeadModeler/DialogMatrixList.java`
+
+**Observed source structure:**
+
+XeadModeler treats Dataflow nodes / lines as their own model structure.
+
+A Dataflow node whose `Type` is `Process` is tied to a `TaskID`. The source also distinguishes multiple non-Process node types and role-linked nodes rather than modeling every node as a software function.
+
+`DataflowLine` separately connects Dataflow nodes and carries its own line-level meaning / presentation attributes.
+
+Conceptually:
+
+```text
+Task / Process node
+External / role / storage-like node
+        ↕
+DataflowLine
+```
+
+This is different from a lightweight Procedure handoff such as:
+
+```text
+Procedure/Step
+  -> Procedure/Step
+  + condition
+```
+
+**TEI pressure:**
+
+- Keep `Business Flow != Procedure Handoff`.
+- Do not promote current H1/R3 handoff pressure into a complete Business Flow / DFD model.
+- A future Business Flow model must be able to express information / document / business-data flow and non-Procedure participants when Reference Evidence requires them.
+- Do not introduce a generic Core `Edge` merely to make handoff and Business Flow share one storage shape.
+
+**What this evidence does not prove:**
+
+- It does not prove TEI needs a production `BusinessFlow` Canonical kind now.
+- It does not require cloning X-TEA DataflowNode / DataflowLine XML or icon vocabulary.
+- It does not prove the current X-TEA node taxonomy is the right TEI taxonomy.
+- It does not make every historical flow line a durable semantic identity.
+
+**Current TEI decision:**
+
+Current H1/R3 remains **handoff-only**. Full Business Flow / DFD remains a separate unresolved design pressure and will not be smuggled into the Business Procedure contract.
+
+---
+
 # 2. Current conclusions supported by the register
 
 ## C-A — Preserve the Business Procedure viewpoint unconditionally
@@ -483,6 +540,20 @@ X-TEA Script     -> Capability
 
 Each historical noun carried more than one pressure or was used in more than one way.
 
+## C-E — Keep Procedure handoff narrower than Business Flow
+
+Supported by E-001 and E-014.
+
+Current thin handoff pressure solves a specific accepted-meaning problem:
+
+```text
+Procedure/Step -> Procedure/Step + condition
+```
+
+It must not silently become the general Business Flow / DFD abstraction.
+
+A future flow representation needs its own Reference pressure for activities, external parties, information / document / data movement, and any stable identities required by review or impact analysis.
+
 # 3. Open evidence gaps
 
 The following still need TEI-local proof:
@@ -502,9 +573,12 @@ Can current namespaces / ownership / Application boundaries produce a useful Sub
 
 T-GAP-05
 At realistic scale, do effective CUD and call dependencies remain understandable without an explicit Subsystem semantic contract?
+
+T-GAP-06
+What is the minimum TEI Business Flow / DFD representation, if any, once a realistic Reference requires information flow across activities, external parties, and stores without collapsing it into Procedure handoff or Runtime Workflow?
 ```
 
-`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first.
+`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first. T-GAP-06 stays separate from the current handoff contract pressure.
 
 # 4. Update rule
 
