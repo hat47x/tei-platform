@@ -224,6 +224,32 @@ Target / Driver / Providerごとに必要な性能条件を定義し、測定・
 
 現時点で根拠のない一律の数値目標は固定しません。
 
+## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
+
+TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。
+
+Business ActionはApplication FunctionやCapabilityと同一視しません。人間、AI、外部組織、SaaS、物理作業、既存システム等による行為は、TEI Applicationによる実現を持たなくても正当な業務設計情報として保持できる必要があります。
+
+Business Procedure上のactorをAuthorization Roleへ暗黙変換してはいけません。
+
+この要求は、`Procedure`を必ずtop-level Canonical objectにすることや、Workflow Engine、branch、timer、retry、scheduler、orchestration semanticsをCoreへ導入することを要求しません。最小表現はReference Evidenceから決めます。
+
+## RQ-026 Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること
+
+TEIは、Data、Function / Interaction、Business Procedureを同じ業務システムの異なる視点として扱い、一つの視点で見つかった欠落や矛盾を他の視点とauthoritative sourceへ戻して修正できなければなりません。
+
+少なくとも次を検証・診断できる構造を目指します。
+
+- Business Procedureが参照するView / Application Pattern / Action / Capabilityの存在とtraceability
+- View / Actionが利用・変更するData / Relation / Validationとの整合
+- read-only / ownership / subsystem等の境界を越える操作
+- Data / Relation変更によるView / Procedureへの影響
+- ApplicationのBusiness Resultと、外部世界で観測される業務完了の混同
+
+Matrix、CRUD表、flow、graph等をこの相互検証に利用できますが、それらを独立した第二の正本として人が二重管理することを要求しません。
+
+三つの視点を同型のCanonical top-level objectへすることも要求しません。hard semantic error、architecture / policy violation、review diagnostic、design question、informational impact等のseverityは、現実的なReferenceでdefect classを再現してから確定します。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。
