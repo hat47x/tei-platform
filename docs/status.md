@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-05
+- 更新日: 2026-09-07
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -27,10 +27,11 @@ TEIは完成したlow-code製品ではありません。
 - generated artifact Evidence runner
 - deterministic Repository Evidence runner
 - real PostgreSQL ephemeral fixture Evidence runner / safety boundary
+- Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
 
 ただし、**Gate Bのactual Product Evidenceはまだ揃っていません。**
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させることです。
+現在必要なのは、新しいDriver abstractionを増やすことではなく、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
 
 ## 現在のv1主線
 
@@ -66,6 +67,8 @@ Ready判定へ必須とするsource-dependent Evidenceは次の三つです。
 | real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 未取得 |
 
 三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387のfinal runnerで収束確認します。
+
+#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。
 
 actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gate Bの第四Required laneではありません。
 
