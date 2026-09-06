@@ -46,27 +46,44 @@ real-postgres-ephemeral-fixture.json
 
 ### #310
 
+- `workspace = reference/workspace`
 - Workspace Validation success
 - final UI-less Scenario success
 - external Evidence intake success
 - Repository source-boundary Conformance success
 - `-broad` final run の場合だけ repository-wide Go test success も要求
+- `checks` はその run に必要な正規 check 集合と exact 一致
+- 各 check は `name + command + passed` を正規 producer contract と exact 照合
+- correct labelでも別commandなら fail closed
+- unknown / duplicate / failed / missing check は fail closed
 - post-run same clean `R`
 
 ### #255
 
 - World / Plugin Lock golden success
 - Durable Run golden success
+- `checks` はこの2 checkと exact 一致
+- 各 check は `name + command + passed` を正規 producer contract と exact 照合
+- correct labelでも別commandなら fail closed
+- unknown / duplicate / failed / missing check は fail closed
 - post-run same clean `R`
 
 ### #308
 
+- `pattern = order_entry.order_lines`
+- `relation = sales.order.lines`
+- `environment = development`
+- `databaseInstance = sales_core.dev`
+- `executorCapability = database.query.postgres`
+- `contractQueryTarget = find_by_order`
 - preexisting fixture protection
 - tool-owned fixture
 - dedicated non-default empty Database guard
 - fixture 前 user relation 0 / Event Trigger 0 / fixture absent
 - 2 rows / normal 0 rows / missing-table Execution Error
 - explicit Semantic mapping
+- `parameterNames = [order_id]`
+- Semantic attribute は現行 #308 producer の deterministic 5属性集合と exact 一致
 - support column `order_id` 非露出
 - parameter value 非保存
 - cleanup verified

@@ -97,6 +97,10 @@ PR #461以降、runner自身もfinal success直前に三つのartifactを再open
 
 ただしrunner内確認だけではReadyにしません。本Issue / `GATE_B_READINESS_AUDIT.md`でもsame-run artifactを独立に再照合します。
 
+PR #489 / #493以降、read-only補助tool `tools/reference-gate-b-readiness-artifact-audit` がこの独立再監査を機械化しています。final summary / fixed 3 lane / same-R / exact child SHA-256 / post-run sourceに加え、#310 / #255のcheck集合をexact照合し、#308のCanonical target identity / parameter / deterministic Semantic attribute集合 / fixture前後安全条件も再照合します。通常Evidenceへ保存してはいけないsecret / physical identity fieldもfail closedで拒否します。
+
+このtoolは第四Required laneではなく、`artifactAuditPassed=true`だけでReadyを宣言しません。実行command / 順序はPR #495以降の`GATE_B_EVIDENCE_RUNBOOK.md`を正とします。
+
 Ready判定では少なくとも:
 
 1. final summaryの`artifactFile`と固定child filenameの対応
@@ -209,7 +213,9 @@ Gate B通過時にverified claimとして十分なら追加Evidenceとして参�
 - [x] same-run child exact artifact保持を実装（PR #458）
 - [x] final success直前のartifact再読込 / fingerprint再照合を実装（PR #461）
 - [x] Handoverをsame-run Evidence provenanceへ固定（PR #462）
-- [ ] 実TEI full checkoutでfinal runner / repositoryevidence package test成功
+- [x] same-run child独立再監査toolを実装・strict化（PR #489 / #493）
+- [x] Readiness artifact auditを正規Runbookへ接続（PR #495）
+- [ ] 実TEI full checkoutでfinal runner / repositoryevidence / real PostgreSQL Evidence runner / Readiness artifact audit package test成功
 - [ ] Evidence専用空PostgreSQL Database用意
 - [ ] clean candidate R固定
 - [ ] #387 actual final run成功
@@ -241,6 +247,7 @@ Gate B通過時にverified claimとして十分なら追加Evidenceとして参�
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
 - `plan/GATE_B_EVIDENCE_RUNBOOK.md`
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
+- `tools/reference-gate-b-readiness-artifact-audit/README.md`
 - `ISSUE-000025` / #255
 - `ISSUE-000030` / #291
 - `ISSUE-000031` / #308
