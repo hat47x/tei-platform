@@ -1,5 +1,9 @@
 # Security / Trust Boundary
 
+この文書は、TEIのSecurity / Resource Authority / Runtime Trust Boundaryを説明する**current technical boundary**です。
+
+Product Requirementや個別ProviderのSecurity仕様を第二正本として定義する文書ではありません。ここに記す設計境界が実装でどこまで成立しているかは、対応するConformance / Reference / Evidenceで確認します。
+
 TEIのSemantic ModelにCapabilityが存在することと、そのCapabilityをあるPluginが実行してよいことは別です。
 
 ## Capability is not permission

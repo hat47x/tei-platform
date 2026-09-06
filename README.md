@@ -40,6 +40,7 @@ TEIは、**業務上の意味を長く保ちながら、実装・Database・Targ
 
 ### 技術を読む / 動かす
 
+- [設計文書の案内](docs/README.md)
 - [はじめてTEIを知る方へ](docs/for-readers.md)
 - [TEIの考え方](docs/overview.md)
 - [Getting Started](docs/getting-started.md)
