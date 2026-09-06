@@ -8,120 +8,117 @@ Status: In Progress
 
 正式基線:
 
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md` — RQ-025 / RQ-026
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
 - `docs/business-system-design.md`
 - `plan/ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md`
+- `plan/BUSINESS_PROCEDURE_IDENTITY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_REVIEW_HANDOFF_PRESSURE_2026-09.md`
 - `plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`
 - `plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`
-- `plan/BUSINESS_PROCEDURE_IDENTITY_PRESSURE_2026-09.md`
 
-## 背景
+## Lane境界
 
-現行基線は次を固定している。
+本IssueはレーンCのReference / Evidenceを所有する。
+
+RQ-025 / RQ-026はmainのProduct Requirementとしてすでに採用済みである。一方、PAS-07のAcceptance trace統合はレーンB側で扱う。
+
+本IssueではRequirement / PAS正本を追加・再定義せず、Referenceで要求の設計圧力を実証する。
+
+## 固定する境界
 
 ```text
 Business Action != Application Function
 Business Flow != Procedure != Runtime Workflow Orchestration
 Business Actor / Job != Authentication Principal != Authorization Role / Policy
-Data / Function-Interaction / Business = same accepted meaningを相互牽制する視点
+Data / Function-Interaction / Business = 同じ業務システムを相互牽制する視点
 ```
 
-Procedureにはpurpose / trigger / actor context / manual action / judgment等、Application Patternから導出できないBusiness側の意味がある。
+Business ProcedureにはApplication / Semantic Worldから導出できない意味がある。
 
-したがって、Reference実験のBusiness Procedure fixture全体を`derived artifact`とはみなさない。
+```text
+purpose
+trigger / event
+actor / job context
+manual / external / unresolved Business Action
+judgment / continuation
+handoff
+```
 
-一方、`Procedure`をdurable Canonical World identityにするかは未決である。このIssueではschema追加ではなくReference Evidenceから判断する。
+したがってBusiness Procedure fixture全体をderived artifactとは扱わない。
 
-## 一つの成果
+## Authoring / Derived boundary
 
-次を同じReferenceで再現できること。
-
-1. `order_entry`の既存Application / Semantic identityを再定義せず参照するBusiness Procedure **Reference authoring fixture**
-2. Application Patternを持たないmanual / external Business Actionが正常に残る
-3. Business Action × Application Pattern Matrixをderivedできる
-4. Patternが所有するData / Relation / Query / Capability / Datasourceをfixtureへ重複記述せずnormalized Worldからderivedできる
-5. Procedure側で独自に明示されたValidation等のsemantic referenceをexact identityで解決できる
-6. `customer_reference`を利用しながらread-only `master` datasourceへwriteを要求する意図的defectを検出できる
-7. multiple Procedure -> same PatternをBusiness Actionを畳まずtraceできる
-8. existing Source Index / Subjectで解けるidentity圧力と、まだ解けないcross-revision identityを分離できる
-
-## Authoring / Derived境界
-
-Business Procedure fixtureは次を明示する。
+Reference Business Procedure fixtureは次を明示する。
 
 ```text
 artifactRole = reference-authoring-fixture
 canonical = false
-identityStatus = experiment-local
+procedure.identityStatus = reference-local-stable
 ```
 
-fixtureにしかない意味:
+`procedure.id`はReference corpus内でreview target、handoff endpoint、cross-referenceを安定して指すauthoring keyである。
+
+top-level Canonical `Procedure`を採用したことを意味しない。
+
+一方、Application Patternが所有する次の意味はnormalized Worldからderivedする。
 
 ```text
-purpose
-trigger / event candidate
-actor / job context candidate
-manual / external / unresolved Business Action
+Data
+Relation
+Query
+Capability
+Datasource
 ```
 
-これらはReference authoring inputであり、Patternから再生成できる派生情報ではない。
+Business Action × Pattern Matrix、Pattern-owned meaning rows、cross-view diagnosticはderived Projectionとし、authoring fixtureへ逆書きしない。
 
-一方、次はderived Projectionである。
+## Reference構成
+
+### Primary Business Procedure
+
+`reference/business-system-design/order-entry-business-procedure.json`
+
+BP-00〜BP-09を持つ。
+
+少なくともBP-04 / BP-09はApplication Patternを持たないmanual / external Business Actionとして保持する。
+
+### Follow-up Business Procedure
+
+`reference/business-system-design/order-entry-follow-up-procedure.json`
+
+別Business文脈から同じ`order_entry.order_record`を利用する。
+
+multiple Procedure -> same Patternを一つのBusiness Actionへ畳まない。
+
+### Reference set / handoff
+
+`reference/business-system-design/order-entry-procedure-reference-set.json`
+
+Procedure keyとartifact locatorを分離し、次のhandoffを保持する。
 
 ```text
-Business Action × Application Pattern
-Business Action × Pattern-owned Data / Relation / Query / Capability / Datasource
-cross-view diagnostics
+order-entry.order-handling / BP-09
+  -> order-entry.follow-up / FU-00
 ```
 
-checkerはauthoring fixtureへderived結果を逆書きしない。
+handoffはfile pathではなくProcedure key + Step keyを参照する。
 
-## 実装境界
+pure file moveではlocator mappingだけを更新し、handoff semantic endpointを変えない。
 
-実験toolは既存`workspace.Load()`が返すnormalized `ir.World`を読み、独自に`.tei`をparseしない。
+logical Procedure rename後にlinkを更新しなければfail closedとする。
 
-```text
-Business Procedure Reference authoring fixture
-                 +
-reference/workspace
-                 ↓
-          workspace.Load()
-                 ↓
-        normalized World
-                 ↓
- experiment-only cross-view checker
-                 ↓
- derived Matrix / diagnostics
-```
+### Intentional cross-view defect
 
-Business Procedure fixtureはCanonical Workspaceのsource rootへ追加しない。
-
-## 三視点は三重管理ではない
-
-Business ProcedureがApplication Patternを参照する場合、Patternがすでに所有する意味をfixtureへコピーしない。
+`reference/business-system-design/order-entry-customer-edit-conflict.json`
 
 ```text
-Business Action
-  ↓ explicit Pattern identity
-Application Pattern
-  ├─ Data
-  ├─ Relation
-  ├─ Query
-  ├─ Capability
-  └─ Datasource
-```
-
-Procedure自身がPatternとは独立に必要とするValidation等だけをdirect semantic referenceとして保持する。
-
-## 最初のdefect
-
-```text
-BP-02 customer reference
+BP-02
   Pattern = order_entry.customer_reference
   Pattern-derived datasource = master
   accepted Application access = read
 
-experiment probe:
+experiment probe
   requested access = read-write
 ```
 
@@ -132,29 +129,45 @@ BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 severity = architecture-policy
 ```
 
-意味は、現在の`order_entry` Application contractではそのinteractionを実現できないため、Projectionだけでwriteを生やしてはいけない、である。
+このdiagnosticはCustomer更新を永久に禁止するBusiness ruleではない。
 
-Customer更新が本当に必要なら、別Application / accepted Capabilityへ接続するかauthoritative Application / Database Contractへ戻る。
+現在acceptedされているApplication contractとcandidate Interactionが矛盾するため、Projectionだけでwrite authorityを拡張してはいけないことを示す。
+
+## Cross-view checker
+
+`tools/reference-business-procedure-check`は独自に`.tei`をparseせず、既存`workspace.Load()`が返すnormalized `ir.World`を利用する。
+
+```text
+Business Procedure Reference authoring fixture
+                  +
+          reference/workspace
+                  ↓
+           workspace.Load()
+                  ↓
+          normalized ir.World
+                  ↓
+       experiment-only checker
+                  ↓
+ derived Matrix / diagnostics
+```
+
+explicit referenceはexact identityでのみ解決する。
+
+名称類似からRelation / Capability / Procedure linkを補完しない。
 
 ## Acceptance
 
-### A1 authoring residual is preserved
+### A1 exact reference resolution
 
-purpose / trigger / actor candidate / manual or external Business ActionをReference authoring fixtureに保持できる。
+Application Pattern / direct semantic referenceをnormalized Worldでexactに解決する。
 
-Patternを持たないBP-04 / BP-09を欠陥扱いしない。
+### A2 no fake Function
 
-### A2 exact reference reuse
+manual / external Business ActionはApplication Pattern / Capabilityなしでも正常状態とする。
 
-fixtureが参照するApplication Patternとdirect semantic referenceはnormalized World上のidentityへexactにresolveする。名称類似だけでmissing referenceを補完しない。
+### A3 Pattern-owned meaning is derived
 
-### A3 derived Function Matrix
-
-Business ActionごとにApplication Pattern参照または`noApplicationFunction=true`をderived出力できる。
-
-### A4 Pattern-owned meaning is derived
-
-Pattern-owned Data / Relation / Query / Capability / Datasourceをfixtureへ重複記述せずnormalized Patternからderived出力する。
+少なくとも次をfixtureへ二重記述せずPatternから導出する。
 
 ```text
 BP-01 order_entry.order_record
@@ -171,87 +184,157 @@ BP-07 order_entry.submit_order
   -> Capability sales.order.submit
 ```
 
-### A5 direct Procedure semantic reference
+### A4 Procedure-side explicit semantic reference
 
-Patternから導けないProcedure-side explicit semantic referenceはexact identityで解決する。初回はBP-03 / BP-05のValidationを対象とする。
+Patternから導けないProcedure-side Validation等はexplicit referenceとしてexactに解決する。
 
-### A6 read-only conflict
+### A5 read-only conflict
 
-intentional probeが`BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT`を再現し、Projectionがauthorityを拡張しない。
+intentional probeが`BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT`を再現する。
 
-### A7 baseline clean
+### A6 baseline clean
 
-probeなしbaselineにはblocking diagnosticがない。
+同じaccepted `master=read`を利用するbaselineではaccess conflictを発生させない。
 
-### A8 fail closed
+### A7 fail closed decode
 
-fixture / probe JSONの未知field、未対応schemaVersion、別artifact roleを黙って解釈しない。
+fixture / probeの未知field、未対応schemaVersion、別artifact roleを黙って解釈しない。
 
-### A9 multiple Procedure pressure
+### A8 Business authoring residual
 
-primary Procedureとfollow-up Procedureが同じ`order_entry.order_record`を参照しても、二つのBusiness Action usageとして区別できる。
+BP-04 / BP-09、purpose、trigger、actor候補等をPattern-derived Projectionから再生成できるものとして扱わない。
 
-### A10 identity pressure remains layered
+### A9 Business-only change separation
 
-- experiment-local Procedure ID renameだけではcross-view meaningを変えない
-- pure file moveではSource Index Artifact fingerprintを保てる
-- whitespace-only changeではfingerprintが変わるため、fingerprintをsemantic Procedure identityとして流用しない
-- existing path-independent Pattern Subjectから複数Procedure artifactへのderived referenceを表現できる
+Business Action文言だけを変更した場合、Business-side Projectionには差分を出すがPattern-derived Application meaningを偽って変更しない。
 
-### A11 no Canonical expansion
+### A10 multiple Procedure -> same Pattern
 
-このIssue完了だけを根拠に`Procedure` / `Step`をCanonical Worldへ追加しない。
+同じPatternを利用する複数Procedureを区別してtraceできる。
 
-## Procedure identity判定へのEvidence
+### A11 Reference-local stable key
 
-現時点では、基本cross-view、multiple Procedure -> same Pattern、pure file move、Pattern reverse referenceのためだけならCanonical Procedure identityを要求するEvidenceはない。
+review / handoff用に`procedure.id`をReference-local stable authoring keyとして使える。
 
-残る圧力は次である。
+このkeyはCanonical World identityではない。
 
-- 内容変更を伴うcross-revision review history
-- instruction wording changeとsemantic impactの区別
-- manual residual explanationのregeneration耐性
-- Procedure間handoff / reuse
-- accepted authoring sourceへ昇格するときのstable identity
+### A12 handoff survives source move
 
-既存Subject / Source Index / revision provenanceで不足する反復Evidenceが得られた場合だけ、別ADRで最小durable contractを検討する。
+Procedure keyを保ったpure file moveではhandoff semantic endpointを保つ。
 
-## 000039との境界
+### A13 logical rename fails closed
 
-000039が将来所有するrevision-aware semantic diff / dependency graph / Scenario propagationを本Issueへ実装しない。
+Procedure keyをlogical renameしてlinkを更新しなかった場合、stale handoffを類似名称から自動修復しない。
 
-本IssueはReference fixture内のexplicit relationと既存Source Indexの性質を使う局所pressure testに限定する。
+### A14 review target continuity
+
+同じProcedure keyを保ったcontent changeではreview target continuityを保つ。
+
+### A15 approval remains snapshot-bound
+
+approval Evidenceは少なくとも次へ束縛する。
+
+```text
+Procedure key
+Repository revision
+Artifact fingerprint
+Source locator
+Decision
+```
+
+同じProcedureでも別revision / fingerprintへ旧approvalを暗黙carry-forwardしない。
+
+pure file moveでfingerprintが同じでも別revisionへ自動継承しない。
+
+### A16 no Canonical expansion by assumption
+
+本Issueの成功だけを根拠にCanonical `Procedure` / `Step`を追加しない。
+
+## Identity pressureの現在地
+
+最初のReferenceでは、基本cross-viewだけならdurable Procedure identityは不要だった。
+
+review continuity / handoffを加えた結果、安定した**authoring-level logical key**には具体的価値があることが確認できた。
+
+現時点の判断:
+
+```text
+Reference-local stable Procedure key
+  required/useful for review + handoff
+
+Canonical Procedure identity
+  not yet required by Evidence
+```
+
+identityの責務を混同しない。
+
+```text
+A. Canonical business semantic identity
+B. Reference-local authoring identity
+C. Source / Evidence locator
+D. Repository revision provenance
+```
+
+## 000039 / Shared Acceptanceとの境界
+
+`ISSUE-000039`は将来のrevision-aware semantic diff / dependency propagationを所有する。
+
+本Issueはchange graphを先取り実装しない。
+
+今回固定するのは、000039が利用できるidentity区別である。
+
+```text
+same Procedure key + changed revision/fingerprint
+  = same review target, changed source snapshot
+
+changed Procedure key
+  = logical authoring identity change
+```
+
+Shared Acceptanceの実装も本Issueでは完成させない。
+
+次段ではBusiness Procedureをfile-native accepted authoring sourceへ進めた場合に、Reference-local keyでreload / Source Index / Acceptanceが成立するかを圧力試験する。
+
+## 非対象
+
+- Canonical `Procedure` / `Step`
+- Workflow Engine / retry / timer / queue / saga / scheduler
+- Business actorからAuthorization Roleへの自動mapping
+- Business Lifecycle 000038のstate transition実装
+- 000039の共通change graph実装
+- PAS-07 trace正本の統合
+- Gate B / Gate C完了条件の変更
 
 ## 現在のVerification status
 
 Repository上には次を実装済み。
 
-- primary / follow-up Reference authoring fixture
+- primary / follow-up Business Procedure authoring fixture
+- Procedure Reference set / handoff
 - intentional access-conflict probe
 - cross-view checker
 - Pattern-owned meaning derivation
 - strict decoder
-- baseline / conflict / no-fake-function / non-duplication / local-rename / multiple-Procedure / Source Index pressure tests
+- baseline / conflict / no-fake-function / non-duplication / no-name-guess tests
+- Source Index pressure tests
+- authoring residual / Business-only change tests
+- review continuity / handoff identity pressure tests
 - PR pathに連動したGitHub Actions workflow
 
-GitHub-hosted Actionsはrunnerが割り当てられず、`runner_id=0` / `steps=[]`のまま終了している。checkoutやGo testへ到達する前なのでコードのPASS / FAIL Evidenceには数えない。
+GitHub-hosted Actionsは現時点までrunnerが割り当てられず、`runner_id=0` / `steps=[]`でcheckout前に終了している。
 
-接続済み開発端末もofflineである。
+これはコードのPASS / FAIL Evidenceには数えない。
 
-したがって本Issueは`In Progress`、PRはDraftのまま維持し、actual Repository runnerでの`gofmt / go vet / go test / baseline / conflict`成功を完了Evidenceとする。
-
-## 他Issueとの境界
-
-- 000038: Business Lifecycle / state transitionを所有。本IssueはProcedure cross-viewのみ。
-- 000039: 共通change / dependency analysisを所有。本Issueは局所pressure testのみ。
-- 000040: semantic component reuseを所有。本IssueはPattern libraryを実装しない。
-- 000008 / 000027: Editor / AI authoring acceptance。本IssueはUI authoringを実装しない。
+したがって本Issueは`In Progress`、PRはDraftのまま維持する。
 
 ## 完了時のEvidence
 
 - Reference authoring fixtures
+- Procedure Reference set / handoff
 - intentional conflict probe
 - checker source
-- baseline / conflict / strict-decode / Pattern-derived / Procedure identity / Source Index pressure unit tests
-- Reference READMEへの再現手順
-- actual Repository runnerによるgreen verification
+- cross-view / identity / review / handoff tests
+- Reference README / pressure documents
+- actual Repository runnerによる`gofmt / go vet / go test / baseline / conflict` green verification
+
+actual runner green後も、Canonical Procedure採用は別判断とする。
