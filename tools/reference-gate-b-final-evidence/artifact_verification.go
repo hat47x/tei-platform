@@ -16,9 +16,9 @@ func (s laneArtifactStore) verifyRetainedLanes(lanes []laneEvidence) error {
 	}
 
 	expectedFiles := map[string]string{
-		"deterministic-repository":              "deterministic-repository.json",
-		"generated-artifact-reproducibility":   "generated-artifact-reproducibility.json",
-		"real-postgres-ephemeral-fixture":      "real-postgres-ephemeral-fixture.json",
+		"deterministic-repository":           "deterministic-repository.json",
+		"generated-artifact-reproducibility": "generated-artifact-reproducibility.json",
+		"real-postgres-ephemeral-fixture":    "real-postgres-ephemeral-fixture.json",
 	}
 	seen := make(map[string]struct{}, len(expectedFiles))
 	for _, lane := range lanes {
