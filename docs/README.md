@@ -12,6 +12,7 @@
 | --- | --- | --- |
 | TEIが何を目指すか | [はじめてTEIを知る方へ](for-readers.md) | [TEIの考え方](overview.md) |
 | 技術的な全体構造 | [Architecture](architecture.md) | [Business-System Design](business-system-design.md) |
+| 機能ごとの内部設計 | [機能設計文書](../plan/design/README.md) | 対応するADR / Plan Issue |
 | 業務システム設計としての境界 | [Business-System Design](business-system-design.md) | [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) |
 | 正式なProduct Requirement | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
 | RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
@@ -46,7 +47,7 @@ Gate / Product claim
 | --- | --- | --- |
 | `product/` | 何を価値として守るか | Product Value / Vision / Principlesの正本 |
 | `requirements/` | 何を満たすか | Product Requirementの正本 |
-| `plan/` | PAS、Gate、ADR、Issue、Evidence取得計画 | planning / decision / Gateの各正本 |
+| `plan/` | PAS、Gate、ADR、Issue、機能設計、Evidence取得計画 | planning / decision / Gate / 機能設計の各正本 |
 | `docs/architecture.md` | 実装構造と技術境界を説明する | Architectureのcurrent説明基線。Requirement第二正本ではない |
 | `docs/business-system-design.md` | Data / Function / Businessをまたぐ業務設計境界を説明する | 業務システム設計のcurrent architecture baseline |
 | `docs/status.md` | 現在の実装・Evidence状態を示す | 可変のcurrent snapshot |
