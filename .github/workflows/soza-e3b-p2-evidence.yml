@@ -3,14 +3,14 @@ name: SOZA E3b-P2 TEI Evidence
 on:
   push:
     branches:
-      - evidence/soza-e3b-p2-2026-09-02
+      - evidence/soza-e3b-p2-version-exchange-2026-09-05
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  TEI_SOURCE_COMMIT: 48a7ca1fe8a9538e9e9be3e1ee08ef14804c8f67
+  TEI_SOURCE_COMMIT: 1a7028d444fcae60a1c4f2f2d247456f4c7c35be
 
 jobs:
   actual-tei-cli:
@@ -99,38 +99,6 @@ jobs:
           plan_sha256="$(sha256sum "${RUNNER_TEMP}/tei-e3b-p2/provider-plan.json" | awk '{print $1}')"
           go_version="$(go version)"
 
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path(os.environ['RUNNER_TEMP']) / 'tei-e3b-p2'
-          metadata = {
-              'schema': 'tei.soza-e3b-p2-evidence/v1',
-              'repository': 'hat47x/tei-platform',
-              'source_commit': os.environ['TEI_SOURCE_COMMIT'],
-              'entry_point': 'cmd/tei deployment-provider-plan',
-              'binary_sha256': os.environ['BINARY_SHA256'],
-              'provider_plan_sha256': os.environ['PLAN_SHA256'],
-              'go_version': os.environ['GO_VERSION'],
-          }
-          (root / 'metadata.json').write_text(
-              json.dumps(metadata, ensure_ascii=False, indent=2) + '\n',
-              encoding='utf-8',
-          )
-          PY
-        env:
-          BINARY_SHA256: ${{ env.BINARY_SHA256 }}
-          PLAN_SHA256: ${{ env.PLAN_SHA256 }}
-          GO_VERSION: ${{ env.GO_VERSION }}
-
-      - name: Evidence metadataを確定
-        shell: bash
-        run: |
-          set -euo pipefail
-          binary_sha256="$(sha256sum "${RUNNER_TEMP}/tei-e3b-p2/bin/tei" | awk '{print $1}')"
-          plan_sha256="$(sha256sum "${RUNNER_TEMP}/tei-e3b-p2/provider-plan.json" | awk '{print $1}')"
-          go_version="$(go version)"
           python3 - "${RUNNER_TEMP}/tei-e3b-p2/metadata.json" "${TEI_SOURCE_COMMIT}" "${binary_sha256}" "${plan_sha256}" "${go_version}" <<'PY'
           import json
           import sys
@@ -145,6 +113,7 @@ jobs:
               'binary_sha256': sys.argv[3],
               'provider_plan_sha256': sys.argv[4],
               'go_version': sys.argv[5],
+              'comparison_role': 'revision-b',
           }
           path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print(path.read_text(encoding='utf-8'))
@@ -155,13 +124,13 @@ jobs:
         run: |
           set -euo pipefail
           tar -C "${RUNNER_TEMP}/tei-e3b-p2" \
-            -czf "${RUNNER_TEMP}/tei-e3b-p2-linux-amd64.tar.gz" \
+            -czf "${RUNNER_TEMP}/tei-e3b-p2-version-b-linux-amd64.tar.gz" \
             .
-          sha256sum "${RUNNER_TEMP}/tei-e3b-p2-linux-amd64.tar.gz"
+          sha256sum "${RUNNER_TEMP}/tei-e3b-p2-version-b-linux-amd64.tar.gz"
 
       - name: Evidence artifactを保存
         uses: actions/upload-artifact@v4
         with:
-          name: tei-soza-e3b-p2-linux-amd64
-          path: ${{ runner.temp }}/tei-e3b-p2-linux-amd64.tar.gz
+          name: tei-soza-e3b-p2-version-b-linux-amd64
+          path: ${{ runner.temp }}/tei-e3b-p2-version-b-linux-amd64.tar.gz
           retention-days: 14
