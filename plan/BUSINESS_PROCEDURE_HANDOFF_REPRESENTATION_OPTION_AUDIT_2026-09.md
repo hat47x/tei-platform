@@ -1,30 +1,12 @@
 # Business Procedure Handoff Representation Option Audit — 2026-09
 
-Status: **Lane C / pre-ADR option audit / no production Core adoption**
+Status: **Lane C / pre-ADR option audit / R3 handoff-only primary / no production Core adoption**
 
 ## 1. 前提
 
-`BUSINESS_PROCEDURE_HANDOFF_CANONICAL_NECESSITY_AUDIT_2026-09.md`では、current Referenceでhandoffをaccepted Business meaningとして扱う限り、authoring-only H0ではsemantic diff / impactからrelation changeを失うため、薄いnormalized handoff meaning H1を主候補とした。
+current Referenceのaccepted handoffをAuthoringだけへ残すH0では、condition / endpoint changeをnormalized semantic diffから失う。
 
-次に問うのはH1をどの既存 / 新規boundaryへ置くかである。
-
-## 2. Option R1 — existing `semantic.Relation`を再利用
-
-現行`internal/semantic.Relation`はData配下にあり、次の意味を持つ。
-
-```text
-Data
-  Relations[]
-    id
-    symbol
-    target Data
-    cardinality
-    semantic attribute keys
-```
-
-これはData instance間の関係である。
-
-Business handoffは:
+したがってH1として次の薄いnormalized meaningを保持するPressureを置いている。
 
 ```text
 Procedure/Step
@@ -32,19 +14,19 @@ Procedure/Step
   + Business condition
 ```
 
-であり、Data cardinality / RelationKeyとは意味が異なる。
+本監査は、このH1をどのboundaryへ置くかを比較する。
 
-### 判定
+## 2. R1 — existing `semantic.Relation` reuse
 
-**Reject for current pressure.**
+現行`semantic.Relation`はData配下にあり、Data target / cardinality / semantic attribute keysを持つData instance relationである。
 
-専用kind追加を避けるためだけにBusiness handoffをData Relationへ押し込むと、三視点の境界を崩す。
+Business handoffはData cardinality / RelationKeyとは別意味である。
 
-## 3. Option R2 — generic Core `Edge` / `Relation` primitiveを新設
+**判定: reject.**
 
-現行`internal/core`はIdentity / Version等の小さいprimitiveに留まり、汎用graph edge primitiveを持たない。
+専用kind追加を避けるためだけにBusiness handoffをData Relationへ押し込まない。
 
-Handoff一件を表現するために:
+## 3. R2 — generic Core Edge
 
 ```text
 CoreEdge
@@ -54,160 +36,160 @@ CoreEdge
   metadata
 ```
 
-のような万能edgeを導入すると、
+のような万能edgeをHandoff一件のために導入すると、Data Relation、Application dependency、Business relation、Source trace、release dependency等を一つの抽象へ早期統合する圧力が生まれる。
 
-- Data Relation
-- Application dependency
-- Business handoff
-- Source trace
-- release dependency
+**判定: reject / defer.**
 
-等を一つの抽象へ早期統合する圧力が生まれる。
+複数domainから独立に必要性が出るまでMicro Kernelへ追加しない。
 
-### 判定
-
-**Reject / defer.**
-
-複数domain relationから同じprimitive必要性が独立に出るまでMicro Kernelへ追加しない。
-
-## 4. Option R3 — Business semantic boundaryのthin relation
-
-Procedure bodyと同じBusiness normalized boundaryへ、bodyとは別collection / relationとして保持する。
-
-概念形:
+## 4. R3 — Business semantic boundaryのthin handoff relation
 
 ```text
-BusinessModel
+NormalizedBusinessModel
   Procedures[]
   Handoffs[]
 
 Handoff
-  from Procedure/StepAddress
-  to Procedure/StepAddress
+  from Procedure/StepLocalAddress
+  to   Procedure/StepLocalAddress
   condition
 ```
 
-ここで`BusinessModel` / `Handoff`はarchitecture vocabularyであり正式type名ではない。
+`BusinessModel` / `Handoff`は現段階ではarchitecture / test vocabularyであり、正式production type名ではない。
 
-### 利点
+利点:
 
 - Data Relationと混ざらない
 - Procedure bodyへruntime control flowを埋め込まない
-- Handoff changeをnormalized semantic diffで観測できる
+- accepted handoff changeをnormalized semantic diffで観測できる
 - Source path / fingerprintを含めない
 - S4-AのProcedure-scoped Step local addressと整合する
-- 将来Business Flowと分離したまま接続可能
+- Handoff以外のBusiness Flow意味を所有しない
 
-### 判定
+**判定: primary pre-ADR candidate.**
 
-**Primary pre-ADR candidate.**
+## 5. R4 — full Business Flow / DFD
 
-## 5. Option R4 — future Business Flow graphへ先送り
+R4をR3の「将来格納先」とは扱わない。
 
-DFD型Business Flowは、Procedure handoffより広い。
-
-```text
-Event / circumstance
-Business Activity
-information / document / data source
-external party
-flow
-```
-
-current handoffをすべて将来Business Flowへ先送りすると、current accepted Procedure relationをnormalized layerから失う期間が生じる。
-
-逆にhandoffのためだけにBusiness Flow全体を今実装すると過剰である。
-
-### 判定
-
-**Do not block H1 on future Business Flow.**
-
-thin handoff relationをBusiness Flow全体と同一objectへ畳まない。
-
-## 6. `ir.World`への意味
-
-現行`ir.World`はSemantics / Applications / Databases等の領域集合を明示的に持ち、汎用edge bagを持たない。
-
-したがってproduction採用時の自然な圧力は:
+X-TEA fallbackで確認したBusiness Flow pressureはHandoffより広い。
 
 ```text
-World
-  ...
-  Business ?
+Business Activity / Process
+external party / role / participant
+information / document / business-data flow
+data source / store-like participant
+flow direction / semantics
 ```
 
-または同等のBusiness normalized unitを検討することである。
+XeadModeler sourceでも`Process` DataflowNodeはTaskへ参照し、他のDataflow node typeとDataflowLineから独立したflow modelを形成する。
 
-ただし本監査から`ir.World.Business`追加を決定しない。
+したがって:
 
-Procedure production adoption自体が未決だからである。
+```text
+R3 thin handoff relation
+  !=
+R4 full Business Flow / DFD
+```
+
+**判定: separate unresolved pressure.**
+
+Business Flowはrealistic Referenceが必要性を示した場合だけ別途reopenする。R3を後からR4へ「統合する」ことを前提にしない。
+
+## 6. X-TEA fallbackからのguardrail
+
+`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md` E-014を根拠に次を固定する。
+
+```text
+Business Handoff != Business Flow
+Business Flow != Procedure
+Business Handoff != Runtime Workflow transition
+Business Flow != Data Relation
+```
+
+一つのEditor graphへProjectionすることは可能でも、一つのCanonical object / generic edgeへ畳む根拠にはしない。
 
 ## 7. Step addressとの接続
 
-R3 + H1を採用する場合:
+H1 + R3をnormalized semantic meaningとして扱う場合、handoff endpointはnormalize後にSource Indexへ戻らずexact解決できる必要がある。
+
+現在の主候補:
 
 ```text
-normalized Procedure
-  ordered Step
-    Procedure-scoped local address
-    body meaning
-
-normalized Business relation
-  Handoff
-    from local address
-    to local address
-    condition
+S4-A
+  normalized Procedure
+    ordered Step
+      Procedure-scoped local address
+      body meaning
 ```
-
-となるS4-Aが有力になる。
 
 local addressは:
 
-- path independent
 - Procedure scoped
-- runtime identityではない
-- source fingerprintではない
+- file path independent
+- Source fingerprintではない
+- global Step identityではない
+- runtime instance / token / state identityではない
 
-を維持する。
+Step body meaningとreferential address changeを分ける。
 
 ## 8. conditionの扱い
 
-current Referenceの自然言語conditionをaccepted Business meaningとして保持する。
+current Referenceでは自然言語conditionをaccepted Business relation meaningとして保持する。
 
 まだ次へ変換しない。
 
 - Boolean expression
 - executable predicate
 - branch DSL
-- runtime event condition
+- runtime event guard
 - state machine guard
 
 condition wording changeをsemantic diffとして観測できることを先に満たす。
 
-## 9. 現時点の順位
+## 9. 現在の順位
 
 ```text
-R3 Business-boundary thin relation   1st
-R4 future Business Flow              later integration concern
-R2 generic Core Edge                 defer / reject for now
-R1 semantic.Data.Relation reuse      reject
+R3  Business-boundary thin handoff relation  primary
+R4  full Business Flow / DFD                 separate pressure
+R2  generic Core Edge                        reject / defer
+R1  semantic.Data.Relation reuse             reject
 ```
 
-## 10. ADR前に必要なEvidence
+R3は**handoff-only**であり、generic Business relation bagではない。
 
-1. actual testsでH0 semantic-loss pressureがgreen
-2. H1 thin relationでcondition / endpoint changeを観測
-3. S4-Aだけでhandoff referential integrityを検査
-4. source moveでrelation meaning不変
+## 10. test-only Evidence
+
+関連tests:
+
+- `canonical_handoff_pressure_test.go`
+- `handoff_canonical_necessity_pressure_test.go`
+- `step_address_layer_pressure_test.go`
+- `normalized_business_model_pressure_test.go`
+- `business_flow_scope_pressure_test.go`
+
+Pressure:
+
+1. H0ではrelation changeをbody-only snapshotから失う
+2. H1ではcondition / endpoint changeを保持
+3. S4-Aだけでendpoint integrityを検査
+4. source locator moveでrelation meaning不変
 5. global Step IDなしで成立
 6. runtime Workflow fieldなしで成立
-7. realistic multi-Procedure Referenceでhandoffが実際に設計価値を持つ
+7. Handoff typeへBusiness Flow participant / payload意味を混ぜない
+8. current validator PASSをBusiness Flow / DFD Conformanceと呼ばない
 
-## 11. 非対象
+actual Repository runnerでgreenになるまではexecution Evidenceではない。
+
+## 11. ADR前にまだ決めないもの
 
 - production Go package / field名
 - `ir.World.Business`採用
-- Business Flow schema
+- production `BusinessHandoff` kind
+- Business Flow / DFD schema
 - generic graph engine
-- runtime Workflow Engine
-- 000039 change graph実装
+- condition expression language
+- Step local address syntax / generation rule
+- 000039 change graph integration
+
+Production採用はactual green、より現実的なReference、Lane B再監査を経て判断する。
