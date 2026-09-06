@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "business-procedure-reference-set-v0",
+  "artifactRole": "reference-authoring-set-fixture",
+  "procedures": [
+    {
+      "id": "order-entry.order-handling",
+      "artifact": "order-entry-business-procedure.json"
+    },
+    {
+      "id": "order-entry.follow-up",
+      "artifact": "order-entry-follow-up-procedure.json"
+    }
+  ],
+  "handoffs": [
+    {
+      "from": {
+        "procedure": "order-entry.order-handling",
+        "step": "BP-09"
+      },
+      "to": {
+        "procedure": "order-entry.follow-up",
+        "step": "FU-00"
+      },
+      "condition": "follow-up is required after the earlier order interaction"
+    }
+  ]
+}
