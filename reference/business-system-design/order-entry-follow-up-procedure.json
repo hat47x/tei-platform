@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "application": "order_entry",
+  "procedure": {
+    "id": "order-entry.follow-up",
+    "identityStatus": "reference-local-stable",
+    "purpose": "review an order after an earlier interaction and decide whether surrounding follow-up work is needed",
+    "trigger": {
+      "status": "candidate",
+      "text": "an earlier order interaction has completed and follow-up may be required"
+    },
+    "actor": {
+      "status": "candidate",
+      "label": "sales operator"
+    }
+  },
+  "steps": [
+    {
+      "id": "FU-00",
+      "businessAction": "find the order that requires follow-up",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.recent_orders"
+      ]
+    },
+    {
+      "id": "FU-01",
+      "businessAction": "inspect the current order information",
+      "realization": "application-use",
+      "applicationPatterns": [
+        "order_entry.order_record"
+      ]
+    },
+    {
+      "id": "FU-02",
+      "businessAction": "decide and continue the surrounding follow-up work",
+      "realization": "manual-external-unresolved"
+    }
+  ]
+}
