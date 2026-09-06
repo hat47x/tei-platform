@@ -93,7 +93,31 @@ final convergenceではDSN本文をlaunch environmentへ置きません。
 
 Repository外のexisting regular fileへ一行DSNだけを保存し、`TEI_TEST_POSTGRES_DSN_FILE`で指定します。
 
-runnerはsymlink解決後もRepository外であることを確認します。
+PR #466以降、runnerは**DSN secret fileをopen / readする前**に、PostgreSQL secretを除いたenvironmentでRepository sourceを観測します。
+
+```text
+HEAD before
+  ↓
+git status --porcelain
+  ↓
+HEAD after
+  ↓
+HEAD stable && working tree clean
+  ↓ only then
+secret file open / read
+```
+
+source観測不能、観測中のHEAD drift、dirty working treeではsecret loaderへ進みません。このpreflightは後段のcandidate source確認を置き換えません。secret読込後にsourceが変化した場合も、lane開始前の再確認でfail closedします。
+
+PR #465以降、secret fileはsymlink解決後もRepository外のexisting regular fileであることを確認したうえで、**検証済みのresolved pathを一度だけopen**します。
+
+- 事前に確認したfile identityとopen済みdescriptorを`os.SameFile`で照合する
+- 元の指定pathを読込前に再解決し、open済みfileと同じexternal file identityであることを確認する
+- DSN exact bytesはそのopen済みdescriptorから読む
+- 読込後にも元pathを再解決し、同じexternal file identityであることを確認する
+- path replacement / symlink target replacement / Repository内target / non-regular fileはfail closedにする
+
+Repository外regular fileへ向くRepository外symlinkは、読込前後とも同一external file identityを指す場合だけ受理します。
 
 受理する内容:
 
@@ -109,6 +133,7 @@ runnerはsymlink解決後もRepository外であることを確認します。
 - Repository内file
 - symlink解決後にRepository内へ入るfile
 - non-regular file
+- 読込前後でidentityが変化するfile / path
 
 DSN本文、secret file path、credentialを通常Evidenceへ保存しません。
 
@@ -341,7 +366,7 @@ go run ./tools/reference-gate-b-final-evidence \
 
 ### final runner launch guard
 
-lane開始前に少なくとも次を確認します。
+secret read / lane開始までに少なくとも次を確認します。
 
 - current working directory = Git Repository root
 - process `GOENV` = exact `off`
@@ -350,6 +375,24 @@ lane開始前に少なくとも次を確認します。
 - direct `TEI_TEST_POSTGRES_DSN`不存在
 - DSN secret fileがRepository外regular file
 - child Evidence保存先がRepository外
+
+現行実装の順序は概念上次です。
+
+```text
+Go environment / Repository root確認
+        ↓
+Repository外child artifact store準備
+        ↓
+PostgreSQL secretを除いたenvironmentでclean-source preflight
+        ↓
+Repository外secret fileをstable single-openで読込
+        ↓
+candidate sourceを再確認
+        ↓
+#310 → #255 → #308
+```
+
+secret read前preflightとlane開始時source確認は別です。前者の成功後にsourceが変化しても、後者で停止します。
 
 ambient確認後だけchild environmentを:
 
@@ -367,6 +410,12 @@ GOFLAGS=
 outer go run / compiler / linker
   -> DSN本文なし
   -> secret file pathのみ
+
+final runner runtime
+  -> secret-free environmentでclean-source preflight
+  -> external secret fileをsingle-open
+  -> 読込前後で同一file identityを再確認
+  -> DSN本文はmemoryのみ
 
 Go environment probe / Git probe / #310 / #255
   -> DSN本文なし
@@ -517,6 +566,7 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - Workspace Validation Error
 - Repository root以外からのfinal run
 - 開始時dirty working tree
+- secret read前にRepository sourceをcleanかつ安定して観測できない
 - source観測不能 / HEAD drift
 - lane後dirty / revision drift
 - required lane失敗
@@ -534,6 +584,7 @@ actual Oracle未完了なら#214 / #371 / #376をblockerへ戻さず、未観測
 - exact `GOENV=off`で起動されていない
 - direct `TEI_TEST_POSTGRES_DSN`設定
 - DSN secret fileがRepository内 / symlink先Repository内 / non-regular / empty / multiline / NUL / read不能
+- DSN secret fileのpath / symlink target / file identityが読込前後で変化する
 - PostgreSQLがdefault DB
 - PostgreSQLに既存user relation / Event Triggerがある
 - fixture objectが事前存在
