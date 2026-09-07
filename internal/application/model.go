@@ -70,9 +70,18 @@ type Application struct {
 	Patterns     []Pattern             `json:"patterns,omitempty"`
 }
 
-// DatabaseByAlias resolves an Application-local datasource alias only when it is unique.
-// Missing or duplicate aliases are both unresolved so callers cannot silently select one match.
 func (a Application) DatabaseByAlias(alias core.LocalName) (DatabaseRequirement, bool) {
+	for _, d := range a.Databases {
+		if d.Alias == alias {
+			return d, true
+		}
+	}
+	return DatabaseRequirement{}, false
+}
+
+// DatabaseByAliasExactは、Application-localなdatasource aliasがちょうど一件だけ定義されている場合に解決する。
+// 実行・authority境界では曖昧なCanonical宣言から一件を黙って選ばないため、このresolverを利用する。
+func (a Application) DatabaseByAliasExact(alias core.LocalName) (DatabaseRequirement, bool) {
 	var match DatabaseRequirement
 	found := false
 	for _, d := range a.Databases {
