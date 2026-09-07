@@ -30,6 +30,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_HANDOFF_INFERENCE_PRESSURE_2026-09.md`
 - `plan/BUSINESS_ACTION_DATA_PROJECTION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_ACTION_CRUD_PROJECTION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_ACTION_CRUD_OPERATION_GAP_AUDIT_2026-09.md`
 
 ## Lane境界
 
@@ -52,6 +54,10 @@ Step order / adjacency != accepted responsibility Handoff
 Application Function sequence != accepted responsibility Handoff
 Data trace projection != complete Data dependency authority
 no current Data trace != no Data dependency
+semantic Data trace != persistence CRUD operation trace
+no current CRUD trace != no persistence operation
+Database write authority != Business Action CRUD attribution
+Business Lifecycle transition != persistence CRUD U
 ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 ```
@@ -97,7 +103,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 ### 15c — conditional broader realistic pressure
 15a + 15bでminimum contract sufficiencyを説明できない具体的不足が出た場合だけbroader realistic pressureを追加する。Application数を成熟度KPIにしない。
 
-Manufacturing / inventory second-corpus outlineではphysical-world `Command != actual completion`をtest-only Pressureまで進めた。さらにH1/R3について、Step adjacencyやpositive physical ObservationからHandoffを生成せず、explicit Handoff sourceだけをnormalized relationのauthorityとするnegative Pressureを追加した。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、new production contract不足はまだ証明されない。したがってGate 15cは**未起動**を維持する。
+Manufacturing / inventory second-corpus outlineではphysical-world `Command != actual completion`をtest-only Pressureまで進めた。H1/R3についてはStep adjacencyやpositive physical ObservationからHandoffを生成せず、explicit Handoff sourceだけをnormalized relationのauthorityとする。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、new production contract不足はまだ証明されない。Gate 15cは**未起動**を維持する。
 
 ## Cross-view checker原則
 
@@ -109,7 +115,12 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 - Projectionだけでaccepted authorityを拡張しない
 - Business Action × Data projectionはevidence pathだけを表示し、complete dependencyを主張しない
 - current refsからData traceがない行を`No Data`へ丸めない
-- `realization` labelからref kind / roleを推測しない
+- Business Action × CRUDはoperation authorityまで辿れたcellだけを埋める
+- Data identityが見えるだけでCRUD letterを付与しない
+- `record` / `command` Pattern kindだけからCRUDを推測しない
+- Database Contract writeをBusiness Actionへ暗黙帰属しない
+- Lifecycle transitionをCRUD Uへ短絡しない
+- `realization` labelからref kind / role / CRUD effectを推測しない
 - runtime Observation APIをSemantic identityへ昇格しない
 - Command acceptanceからphysical completionを推測しない
 - physical ObservationからHandoff endpoint / conditionを生成しない
@@ -208,6 +219,13 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 | A81 | current sourceにData/Relationを重複authorせず有用なtrace rowsを得る | test-only Evidence |
 | A82 | current refsからtraceがないStepを`No Data`へ丸めず`NoDataTraceFromCurrentRefs`として保持する | test-only unresolved preservation |
 | A83 | BP-06 protected-target DataをO1 test helper / adjacent BP-07 / wordingから推測せず、security traceだけをnon-exhaustiveに保持する | test-only partial-coverage Evidence |
+| A84 | Business Action × CRUDをexact accepted operation authorityからpartial deriveする | test-only projection実装済み |
+| A85 | BP-00 / BP-02 / BP-03のRをQuery / Contract Query / Database Contract readからderiveする | test-only Evidence |
+| A86 | semantic Data traceとCRUD operation traceを分離し、Relation両端が見えるだけでCRUD letterを付けない | test-only negative Pressure実装済み |
+| A87 | `record` / `command` Pattern kindだけからR/U/C/Dを推測しない | test-only negative Pressure実装済み |
+| A88 | `sales_core.order write sales.order.status`をaccepted action linkなしにBP-07=Uへ帰属させない | test-only negative Pressure実装済み |
+| A89 | Business Lifecycle transitionをCRUD Uへ短絡せずBusiness state meaningとphysical mutationを分離する | gap audit固定 |
+| A90 | current C/U/D attribution不足をBusiness Procedure field不足と断定せずCapability / realization / Database effect boundaryのpressureとして保持する | pre-contract gap audit / generic CRUD field defer |
 
 ## Candidate stack
 
@@ -255,9 +273,47 @@ BP-07 -> sales.order
 BP-04 / BP-08 / BP-09 -> no current Data trace
 ```
 
-最後の3件をNo Dataとは扱わない。さらにBP-06のsecurity traceが存在してもData dependency completenessを主張せず、authoritative sourceにないO1 protected-target Dataを隣接BP-07等から補完しない。
+最後の3件をNo Dataとは扱わない。BP-06のsecurity traceが存在してもData dependency completenessを主張せず、authoritative sourceにないO1 protected-target Dataを隣接BP-07等から補完しない。
 
 この結果はT-GAP-03へ構造上の回答を与えるがactual runner green待ちである。D4へData/Relation slotを戻す根拠にはならない。
+
+### Business Action × CRUD partial projection
+
+`business_action_crud_projection_pressure_test.go`では、Data traceとoperation traceを分離する。
+
+Current exact rows:
+
+```text
+BP-00 -> R sales.order
+  browse Pattern + Query execution + readable datasource
+
+BP-02 -> R customer.customer
+  reference Pattern + readable datasource + master_data.customer/find_by_id + contract read
+
+BP-03 -> R sales.order_line
+  header-detail binding + sales_core.order_line/find_by_order + contract read
+```
+
+Current no-operation-trace rows:
+
+```text
+BP-01 / BP-04 / BP-05 / BP-06 / BP-07 / BP-08 / BP-09
+```
+
+これは`no persistence operation`を意味しない。
+
+Current Database Contractには:
+
+```text
+sales_core.order
+  write sales.order.status
+```
+
+があるが、BP-07 / `sales.order.submit`へそのwriteを帰属させるaccepted linkはない。Capability realizationも`realize sales.order.submit with custom go`までで、Database mutationを宣言しない。
+
+したがってBP-07=Uを生成しない。Business Lifecycle proposalの`pending -> submitted`もBusiness transition meaningであり、physical mutation / CRUD Uへ自動変換しない。
+
+このC/U/D不足はBusiness Procedure schema不足とは限らず、Capability / realization / Database effect boundaryのpressureである可能性が高い。一例だけでgeneric mutation/effect modelを決めない。
 
 ### O1 target-role overlay
 
@@ -273,9 +329,7 @@ BP-06
 
 BP-06 target refを`applicationPatterns[]`へ流用するとdirect Function realizationへ意味を誤変換するためrejectする。
 
-Target-only changeはD4 bodyを変えずcross-view meaningを変える。BP-07隣接realizationからtargetをderiveしない。
-
-Legacy Authorization policyの`execute / order_entry.submit_order / allow`はO1 targetのcross-view corroborationには使えるが、policyからO1 targetを生成・補完しない。Policy側の変更はBusiness targetを書き換えず、不一致をreview / diagnostic pressureとして露出させる。
+Legacy Authorization policyの`execute / order_entry.submit_order / allow`はO1 targetのcross-view corroborationには使えるが、policyからO1 targetを生成・補完しない。
 
 Manufacturing / inventory second-corpus outlineにはexact Application Pattern realization / policyがまだないため、O1と同じprotected-target roleをsyntheticに作らない。Generic `ExplicitSemanticRef{Kind,Role,Target}` taxonomyは引き続きcurrent一例から先行採用しない。
 
@@ -294,8 +348,6 @@ Business Flow / DFD
 Current Handoff validator PASSをBusiness Flow / DFD Conformanceとはみなさない。
 
 Second corpusではphysical factの観測がresponsibility continuationの前提になり得るが、exact Procedure/Step endpointとaccepted conditionがないためH1/R3を生成しない。
-
-`second_corpus_handoff_inference_pressure_test.go`では、explicit Handoff sourceを除去した状態でStep order / adjacencyを残してもnormalized Handoffs=0、positive physical Observationがあっても0、explicit relationを与えた場合だけ1件になることをPressureする。
 
 Authority direction:
 
@@ -356,6 +408,10 @@ manufacturing / inventory pressure
 - second-corpus synthetic Data ownership / Application Pattern
 - inferred Handoff from adjacency / Observation / Function sequence
 - Business Action × Data projectionのCanonical化 / completeness claim
+- Business Action × CRUD projectionのCanonical化 / completeness claim
+- Business Procedure / Pattern / Capabilityへのgeneric CRUD/effect field
+- Database Contract write -> CRUD U自動変換
+- Lifecycle transition -> CRUD U自動変換
 - Gate B / Gate C完了条件変更
 
 ## Verification status
@@ -398,6 +454,10 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 28. Step order / adjacencyからresponsibility Handoffを自動生成しない
 29. explicit Handoff sourceだけがnormalized H1/R3 relationをauthorすることをactual runnerで確認する
 30. Business Action × Data/Relation trace projectionをactual runnerで確認する
-31. no-trace rowsをNo Dataへ丸めず、projection completenessを主張しない
+31. no-trace Data rowsをNo Dataへ丸めず、projection completenessを主張しない
+32. Business Action × CRUD partial projectionをactual runnerで確認する
+33. Data traceとCRUD operation traceを混同しない
+34. record / command kind、Database write、Lifecycle transitionからCRUDを暗黙補完しない
+35. C/U/D operation attribution gapが複数realistic domainで反復するまでgeneric mutation/effect contractを採用しない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
