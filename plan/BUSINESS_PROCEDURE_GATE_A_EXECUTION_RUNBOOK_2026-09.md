@@ -215,16 +215,22 @@ Current intentional conflict:
 order-entry-customer-edit-conflict.json
 ```
 
-Expected diagnostic codeはcurrent checker / existing test contractから確認し、hard-code before inspectionしない。
+Existing `main_test.go`の`TestCustomerEditConflictIsDetected`が要求するexpected diagnosticは:
 
-Run shape:
+```text
+BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
+```
+
+である。
+
+Run:
 
 ```bash
 go run ./tools/reference-business-procedure-check \
   -workspace reference/workspace \
   -fixture reference/business-system-design/order-entry-business-procedure.json \
   -probe reference/business-system-design/order-entry-customer-edit-conflict.json \
-  -expect-diagnostic <CURRENT_EXPECTED_CODE>
+  -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 ```
 
 重要:
@@ -238,6 +244,8 @@ defect accepted silently
 ```
 
 である。
+
+Expected codeはcurrent test contractから取得した値であり、将来diagnostic contractを意図的にrenameした場合はtestとrunbookを同じaccepted changeとして更新する。
 
 ## 11. Step A7 — Focused new Pressure names
 
