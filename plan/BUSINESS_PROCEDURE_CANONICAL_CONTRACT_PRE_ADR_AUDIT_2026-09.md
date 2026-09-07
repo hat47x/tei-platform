@@ -22,6 +22,9 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - ref kind separationだけではref role separationを表せない。
 - Authorization policyとBusiness protected targetは別Authorityであり、policyからBusiness targetを逆導出してはならない。
 - manufacturing / inventory outlineはphysical-world非対称性を再現するが、O1 generic roleやD4/H1/R3拡張をまだ要求しない。
+- physical-world Command / Observation separationはtest-onlyで機械化できるが、新しいCanonical Observation identityは不要である。
+- second-corpus Data authorityは重要でも、exact TEI Data / Pattern / Database identityなしにsynthetic ownershipを作ってはならない。
+- physical factの観測だけではaccepted responsibility Handoffを導出できない。
 
 ## 3. Explicit ref authority
 
@@ -58,6 +61,8 @@ BP-07の`sales.order.submit`はPattern-owned meaningなのでBusiness sourceへ�
 ### Observation
 
 BP-08はBusiness intentionを保持するが、runtime `ExecuteObservationRead` / `ReadIdentity`をSemantic identityへ昇格しない。
+
+Second-corpus physical-world Pressureでも同じ境界を利用し、Command acceptanceやread transport successをphysical completionへ丸めない。
 
 原則:
 
@@ -124,6 +129,8 @@ D4 body meaning
 Current Referenceでminimum必要性が未証明のdirect Data / Relation refsは入れない。
 
 将来sourceにdirect Data / Relation refが現れた場合、D4 projectionは黙ってdropせずfail closedし、explicit-ref designをreopenする。
+
+Second-corpus physical stateのrelevanceだけではData / Relation slotを追加しない。Exact TEI-original Data authorityがない状態でownershipを作ることもしない。
 
 ## 6. ref kindをgeneric bagへ畳まない
 
@@ -200,6 +207,8 @@ Normalized Business model pressure
 - Handoff condition changeをbodyから独立したBusiness meaning差として保持
 - new direct Data / Relation refはaddress/handoff layerで隠さずD4でfail closed
 
+Second-corpusではphysical factがresponsibility continuationの前提になり得るが、exact Procedure/Step/conditionがない限りH1/R3 relationを生成しない。
+
 ## 9. D4 + O1 composition
 
 ```text
@@ -262,6 +271,8 @@ Matrix、CRUD / impact view、graph、checker diagnosticsをaccepted Business me
 
 Source path / fingerprint / revision / ETag / ManagedFiles / approval snapshotはAuthoring/Source infrastructureへ残す。
 
+Second-corpus physical Observationのruntime ReadIdentity / Evidence natureもCanonical Business meaningへ昇格させない。
+
 ## 11. Coreへ入れないもの
 
 - Runtime Workflow state / retry / timer / queue / scheduler / saga
@@ -272,6 +283,8 @@ Source path / fingerprint / revision / ETag / ManagedFiles / approval snapshot�
 - generic `semanticRefs[]`
 - generic explicit-ref Role taxonomy
 - Observation専用Canonical identityの先行導入
+- physical-world state engine
+- second-corpus synthetic Data ownership / Database / Pattern
 - global Canonical Step ID
 
 ## 12. Business Flow / DFDは別pressure
@@ -279,6 +292,8 @@ Source path / fingerprint / revision / ETag / ManagedFiles / approval snapshot�
 Current Handoff modelへProcess node、ExternalParty / Role participant、Information / Document / Data flow、Store、Payload / FlowType等を入れない。
 
 Current handoff validation PASSをBusiness Flow / DFD Conformanceとはみなさない。
+
+Physical fact observedだけでもBusiness Flow / DFD conformanceやresponsibility Handoff成立とはみなさない。
 
 ## 13. Gate 15
 
@@ -313,15 +328,23 @@ H1 / R3
 Observation boundary
   command accepted != physical actuality
   を別domainから強く再現
+  -> test-only mechanical pressureへ進展
+  -> no observation / observed=falseをblocking diagnosticで区別
+  -> Canonical Observation identityは追加しない
+
+Data authority
+  physical state authorityのrelevanceは強い
+  exact TEI-original Data / Pattern / Database identityは未証明
+  -> synthetic ownership禁止
 
 Business Flow / DFD
   material / information movementのrelevanceはある
   Procedure/Handoffではmeaningを失うexact caseは未証明
 ```
 
-したがってcurrent candidate stackの具体的contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
+したがってcurrent candidate stackのproduction contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
 
-このoutline-level negative Evidenceは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
+このoutline-level Evidenceとtest-only Observation pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
 
 ## 14. ADR作成前Gate
 
@@ -329,7 +352,7 @@ Business Flow / DFD
 
 本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A72 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
+- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A76 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
 - 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
 - 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
 
@@ -361,6 +384,9 @@ Business Flow / DFD
 24. Legacy Authorization policyをO1 targetのauthor / backfill sourceにせず、corroboration-onlyとしてactual testsで確認
 25. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
 26. Lane B再監査と矛盾しない
+27. physical-world Command acceptanceだけでcompletionを成立させず、explicit Observationなし / observed=false / positive external Observationをactual testsで区別する
+28. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
+29. physical ObservationからH1/R3 responsibility Handoffを自動生成しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -378,6 +404,8 @@ GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowは
 - generic `semanticRefs[]`
 - generic explicit-ref Role enum
 - `realization` enum
+- Observation Canonical kind / physical-world state engine
+- synthetic second-corpus Data ownership model
 - global/durable Canonical Step ID
 - generic Uncertainty framework
 - Workflow Engine
@@ -394,4 +422,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界を強く補強した一方、O1 role反復やD4/H1/R3不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界をtest-only mechanical pressureまで進めた一方、O1 role反復、exact Data authority、accepted Handoff relation、D4/H1/R3 production contract不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
