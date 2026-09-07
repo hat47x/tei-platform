@@ -43,3 +43,37 @@ func TestResolverFailsClosedWhenDatasourceAliasIsAmbiguous(t *testing.T) {
 		t.Fatalf("duplicate datasource aliasをmissingとして診断しました: %v", err)
 	}
 }
+
+func TestResolverReportsMissingDatasourceAliasSeparatelyFromAmbiguity(t *testing.T) {
+	world := ir.World{
+		Applications: []application.Application{
+			{
+				ID: "app_a",
+				Databases: []application.DatabaseRequirement{
+					{Alias: "master", TargetDatabase: "master_data", Access: database.AccessRead},
+				},
+				Patterns: []application.Pattern{
+					{ID: "app_a.browse", Kind: application.PatternBrowse, Data: "sales.order", Query: "app_a.query"},
+				},
+			},
+		},
+		Queries: []query.EmbeddedSQL{
+			{ID: "app_a.query", Application: "app_a", Datasource: "sales"},
+		},
+		Semantics: []semantic.Namespace{
+			{ID: "sales", Data: []semantic.Data{{ID: "sales.order"}}},
+		},
+	}
+
+	resolver := driver.NewResolver(world)
+	_, err := resolver.ResolvePattern("app_a", "app_a.browse")
+	if err == nil {
+		t.Fatal("missing datasource aliasを解決済みとして扱いました")
+	}
+	if !strings.Contains(err.Error(), "定義されていません") {
+		t.Fatalf("missing datasource aliasの診断が失われました: %v", err)
+	}
+	if strings.Contains(err.Error(), "複数定義されています") {
+		t.Fatalf("missing datasource aliasをambiguityとして診断しました: %v", err)
+	}
+}
