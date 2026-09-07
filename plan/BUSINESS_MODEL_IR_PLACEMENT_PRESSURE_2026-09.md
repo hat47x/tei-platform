@@ -69,7 +69,7 @@ Business model側にも:
 - Business Action meaning
 - actor / trigger uncertainty
 - exact Application / Validation / Capability refs
-- protected Application target
+- singular protected Application target
 - local Step address
 - Handoff relation
 
@@ -98,9 +98,17 @@ security boundary
 
 したがってDriver executionのために`ir.World`へ入れる必要性は未証明である。
 
-### 4.2 Business-only change should not pretend runtime meaning changed
+### 4.2 Business-only changes should not pretend runtime meaning changed
 
-BP-04のBusiness wordingだけを変えても:
+Current Pressureでは少なくとも次を独立したBusiness semantic changeとして観測できる。
+
+```text
+BP-04 Business wording change
+BP-06 protected Application target change
+Handoff condition change
+```
+
+いずれも:
 
 ```text
 Business semantic revision changes
@@ -109,6 +117,8 @@ ir.World stays unchanged
 
 でよい。
 
+`business_model_ir_placement_pressure_test.go`では、これらのchange後もcurrent `ir.World`をmutationせずcross-view validationできることをPressureする。
+
 Business design reviewとruntime/application compilation revisionを不必要に同一revisionへ丸めない。
 
 ### 4.3 Cross-view validation still fails closed
@@ -116,6 +126,20 @@ Business design reviewとruntime/application compilation revisionを不必要に
 Separate planeでもprotected target `order_entry.submit_order`がApplication Worldから消えればBusiness model validationはfail closedできる。
 
 つまりseparateであることはcross-view integrityを弱めない。
+
+### 4.4 Handoff integrity does not require runtime IR ownership
+
+Handoff endpoint / conditionはBusiness plane内でreferential validationできる。
+
+```text
+Procedure-scoped Step local address
+  + explicit Handoff relation
+  -> normalized Business integrity
+```
+
+をSource Indexやruntime workflow stateへ依存せず検査できる。
+
+したがってHandoff meaningのfirst-class性だけを理由に`ir.World`へ埋め込む必要も未証明である。
 
 ## 5. Relation to X-TEA three-element design
 
@@ -154,9 +178,9 @@ workspace.Business
 
 - production Canonical contract自体がPre-ADR Not Ready
 - actual runner green未取得
-- O1 source placement未確定
-- Handoff production placement未確定
-- Shared Acceptanceとの接続未確定
+- O1 production source syntax未確定
+- Handoff production source / placement未確定
+- Shared Acceptance / semantic revision API未確定
 - Business Flow / DFDとの境界を広げるべきでない
 
 Current test-only typesでplacement pressureだけを確認する。
@@ -170,6 +194,7 @@ Current test-only typesでplacement pressureだけを確認する。
 3. one atomic accepted revisionでApplication/Data/Businessを必ずcommitしなければ整合性を保てない実例が出る。
 4. separate Business modelではcross-view Conformanceをlosslessに実装できない。
 5. Target projection / Editor reloadでseparate planeが二重SOTを生む。
+6. Business model changeとruntime/application revisionを分離するとactual operational inconsistencyが発生する。
 
 Current Referenceではどれも未証明である。
 
@@ -187,6 +212,8 @@ Procedure identity where Business-owned
 Business planeが独自にApplication/Data identityを複製・renameしない。
 
 Cross-view linkはexact existing identityを参照する。
+
+Authorization policy、Database ownership、Data/Relation trace、CRUD matrix等のderived/corroborating情報をBusiness planeの第二SOTにしない。
 
 ## 9. Acceptance implication
 
@@ -207,16 +234,19 @@ both
   -> cross-view Conformance
 ```
 
-これにより:
+Current test-only semantic fingerprintでは:
 
 ```text
-Business-only wording change
-  != forced runtime release
+Business wording change             -> changes
+protected target change             -> changes
+Handoff condition change            -> changes
+pure Procedure artifact move        -> unchanged
+source Procedure ordering only      -> unchanged
 ```
 
-を維持できる可能性がある。
+をPressureしている。
 
-ただしproduction revision modelは未決であり、本書はAPI採用を決めない。
+このfingerprintはproduction hash/revision APIではないが、**semantic revisionの対象をraw file layoutではなくnormalized Business meaningに置く**方向を支持する。
 
 ## 10. Current decision
 
@@ -233,6 +263,9 @@ Separate normalized Business plane
 Cross-view validation against ir.World
   -> required
 
+Business semantic revision separate from runtime/application revision
+  -> strong current pressure
+
 production internal/business package
   -> deferred
 
@@ -242,6 +275,11 @@ runtime workflow execution
 
 Pre-ADRでは:
 
-> 「BusinessProcedureを採用するか」と「Business meaningをir.Worldへ埋め込むか」を別Decisionとして扱う。
+> 「BusinessProcedureを採用するか」
+> 「Business meaningをどのauthoring syntaxで記述するか」
+> 「normalized Business planeをどのproduction packageへ置くか」
+> 「Business meaningをir.Worldへ埋め込むか」
 
-これをcurrent architecture pressureとする。
+を別Decisionとして扱う。
+
+Current Evidenceでは最後のDecisionを急ぐ理由がない。
