@@ -23,6 +23,7 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_D4_REF_KIND_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_APPLICATION_PATTERN_TARGET_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_D4_APPLICATION_PATTERN_TARGET_ROLE_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`
 
 ## Lane境界
 
@@ -95,6 +96,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 - `realization` labelからref kind / roleを推測しない
 - runtime Observation APIをSemantic identityへ昇格しない
 - adjacencyからprotected targetを推測しない
+- Authorization policyはprotected targetをcorroborateできるが、Business targetをauthor / backfillしない
 
 ## Acceptance / Evidence Pressure matrix
 
@@ -171,6 +173,8 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 | A67 | BP-06 protected target != direct Function realization | test-only実装済み |
 | A68 | protected targetをexact resolutionしadjacencyからderiveしない | test-only実装済み |
 | A69 | D4 + O1 target-role composition、generic Role taxonomyはdefer | test-only実装済み |
+| A70 | Legacy Authorization policyはO1 targetをcorroborateできるがauthor / backfillしない | test-only実装済み |
+| A71 | X-TEA TaskAction / TaskFunctionIO分離はAction/Function分離を支持するがgeneric protected-target roleは証明しない | E-015固定 |
 
 ## Candidate stack
 
@@ -211,6 +215,8 @@ BP-06 target refを`applicationPatterns[]`へ流用するとdirect Function real
 
 Target-only changeはD4 bodyを変えずcross-view meaningを変える。BP-07隣接realizationからtargetをderiveしない。
 
+Legacy Authorization policyの`execute / order_entry.submit_order / allow`はO1 targetのcross-view corroborationには使えるが、policyからO1 targetを生成・補完しない。Policy側の変更はBusiness targetを書き換えず、不一致をreview / diagnostic pressureとして露出させる。
+
 Generic `ExplicitSemanticRef{Kind,Role,Target}` taxonomyはcurrent一例から先行採用しない。
 
 Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけfile-native source / decode / reload / Shared Acceptance pressureを追加する。残さない場合はproduction source fieldを追加しない。
@@ -234,6 +240,11 @@ BP-06 Authorization
   supporting authority -> security.authorize
   protected target     -> order_entry.submit_order (O1 pressure)
   direct Function      -> none
+
+Legacy Authorization policy
+  security-side authority
+  may corroborate protected target
+  must not author / backfill protected target
 
 BP-08 Observation
   Business intentionあり
@@ -289,5 +300,6 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 20. Lane B再監査と矛盾しない
 21. H1/R3をhandoff-onlyとして保ちBusiness Flow surfaceを混入させない
 22. O1をproduction accepted meaningとして残す場合はauthoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
+23. Legacy Authorization policyをO1 protected targetのauthor / backfill sourceにしない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
