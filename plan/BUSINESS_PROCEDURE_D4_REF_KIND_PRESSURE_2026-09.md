@@ -176,13 +176,28 @@ D4 body
   + H1/R3 handoff-only normalized relation
 ```
 
-この合成がcurrent Reference meaningを保てるかは別testで確認する。
+`d4_normalized_composition_pressure_test.go`でsource-level compositionを実装済み。
+
+合成後も:
+
+- D4 bodyへStep local addressを混ぜない
+- stale handoff endpointをfail closed
+- address + endpoint協調renameを許容
+- Handoff condition changeをbodyから独立したBusiness meaning差として保持
+- future direct Data / Relation refをaddress/handoff layerで隠さずD4 derivationでfail closed
+- normalize後のmodelへduplicate Handoff relationが混入してもnormalized validator自身がfail closed
+
+をPressureする。
+
+最後のduplicate検査はsource-side `deriveCanonicalBusinessHandoffProbes()`の事前検査だけに依存しない。normalized modelだけでH1/R3 integrityを閉じるという契約を維持するためである。
 
 D4からgeneric Business Flow / Edge / Runtime Workflowを導かない。
 
 ## 10. Repository Pressure
 
-`tools/reference-business-procedure-check/d4_ref_kind_pressure_test.go`で次を固定する。
+`tools/reference-business-procedure-check/d4_ref_kind_pressure_test.go`でD4 body単体を、`d4_normalized_composition_pressure_test.go`でS4-A/H1/R3との合成をPressureする。
+
+D4 body単体:
 
 1. D4 bodyがBusiness Action / Pattern / Validation / Capabilityだけを持つ
 2. D4 bodyはData / Relation / Realization / Role / Kindを持たない
@@ -193,6 +208,15 @@ D4からgeneric Business Flow / Edge / Runtime Workflowを導かない。
 7. direct Data refが現れたらfail closed
 8. direct Relation refが現れたらfail closed
 9. literal identity textが同じでもauthority kindを区別
+
+Composition:
+
+10. D4 bodyとS4-A address layerを分離
+11. stale / missing Handoff endpointをfail closed
+12. address + Handoff endpoint協調renameを許容
+13. condition changeをHandoff meaning差として保持
+14. duplicate Handoff relationをnormalized layerでfail closed
+15. new ref kindをcomposition layerで隠さない
 
 actual Repository runnerでgreenになるまではexecution Evidenceとは数えない。
 
@@ -218,8 +242,8 @@ current Evidenceだけを理由にgeneric `semanticRefs[]`やdirect Data / Relat
 
 ## 12. 次
 
-1. D4 Pressureをactual testsで確認
-2. D4 + S4-A + H1/R3の合成Pressureを追加
-3. second realistic Referenceが必要な理由をApplication数ではなくdirect authority / Business meaning不足から判断
-4. direct Data / Relation requirementが現れた場合はD4をfail closedさせ設計をreopen
+1. D4 / D4+S4-A+H1/R3 Pressureをactual testsで確認
+2. second realistic Referenceが必要な理由をApplication数ではなくdirect authority / Business meaning不足から判断
+3. direct Data / Relation requirementが現れた場合はD4をfail closedさせ設計をreopen
+4. normalized duplicate Handoff invariantをactual testsで確認
 5. actual greenまでproduction Canonical ADRを作らない
