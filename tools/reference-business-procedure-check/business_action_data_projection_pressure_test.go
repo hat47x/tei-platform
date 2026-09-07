@@ -269,8 +269,8 @@ func findSemanticAttributeOwnerExactlyOnce(world ir.World, attributeID string) (
 					owner = string(data.ID)
 					count++
 				}
+			}
 		}
-	}
 	}
 	return owner, count == 1
 }
