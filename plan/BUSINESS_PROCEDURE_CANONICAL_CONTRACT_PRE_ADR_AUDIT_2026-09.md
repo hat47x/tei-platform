@@ -20,6 +20,7 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - Data Relation / generic Core EdgeはBusiness Handoffの器ではない。
 - Business Handoffはfull Business Flow / DFDではない。
 - ref kind separationだけではref role separationを表せない。
+- Authorization policyとBusiness protected targetは別Authorityであり、policyからBusiness targetを逆導出してはならない。
 
 ## 3. Explicit ref authority
 
@@ -219,6 +220,37 @@ Pressure:
 
 Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけ、file-native source / decode / reload / Shared Acceptanceまで同じtarget roleを保持するpressureを追加する。O1を残さない場合はfixture fieldを増やさない。
 
+### 9.1 O1 authority direction
+
+`security.authorize`は`subject / action / resource`を扱う汎用Semantic Authorization contractであり、BP-06や`order_entry.submit_order`というBusiness-side protected-target relationを所有しない。
+
+Legacy Authorization Referenceにはcurrent caseとして:
+
+```text
+ORDER_EDITOR
+execute
+order_entry.submit_order
+allow
+```
+
+が存在するため、O1 targetとのcross-view corroborationには使える。
+
+ただしauthority directionは次に限定する。
+
+```text
+explicit Business protected target
+  + security-side Authorization policy
+  -> corroboration / contradiction diagnostic
+
+Authorization policy
+  -X-> author Business protected target
+  -X-> backfill missing O1 target
+```
+
+Policy changeはBusiness targetそのものを暗黙変更せず、不一致をreview pressureとして露出させる。
+
+X-TEA fallbackで確認したTaskAction / TaskFunctionIO分離はBusiness ActionとFunction利用の分離を支持するが、generic protected-target role taxonomyまでは証明しない。この限界をE-015として`BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`へ記録した。
+
 ## 10. Derived / externalへ残すもの
 
 PatternからderiveできるData / Relation / Query / Capability / Datasource / owner Application / datasource policyをBusiness sourceへコピーしない。
@@ -264,7 +296,7 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 
 本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A69 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
+- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A71 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
 - 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
 - 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
 
@@ -293,8 +325,9 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 21. O1 target != realizationをactual testsで確認
 22. D4 + O1 compositionをactual testsで確認
 23. generic ref-role taxonomyが必要か複数realistic pressureから判断
-24. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
-25. Lane B再監査と矛盾しない
+24. Legacy Authorization policyをO1 targetのauthor / backfill sourceにせず、corroboration-onlyとしてactual testsで確認
+25. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
+26. Lane B再監査と矛盾しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -328,4 +361,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-Actual greenと次のrealistic Referenceから、D3/D4/O1の最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Actual greenと次のrealistic Referenceから、D3/D4/O1の最小十分性を判断する。
