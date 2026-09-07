@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -128,20 +129,11 @@ func writeBusinessWorkspaceDiscoveryFileProbe(t *testing.T, path string, content
 	}
 }
 
-func businessWorkspaceDiscoveryArtifactProbe(values []struct {
-	Path        string `json:"path"`
-	Fingerprint string `json:"fingerprint"`
-}, path string) (struct {
-	Path        string `json:"path"`
-	Fingerprint string `json:"fingerprint"`
-}, bool) {
+func businessWorkspaceDiscoveryArtifactProbe(values []sourceindex.Artifact, path string) (sourceindex.Artifact, bool) {
 	for _, value := range values {
 		if value.Path == path {
 			return value, true
 		}
 	}
-	return struct {
-		Path        string `json:"path"`
-		Fingerprint string `json:"fingerprint"`
-	}{}, false
+	return sourceindex.Artifact{}, false
 }
