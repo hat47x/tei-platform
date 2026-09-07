@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
@@ -65,6 +66,16 @@ func TestBusinessActionDataProjectionFailsClosedWhenCapabilityPayloadTypeIdentit
 	}
 }
 
-func setCapabilityOutputForProjectionPressure(world interface{ getSemantics() }, capabilityID, output string) bool {
+func setCapabilityOutputForProjectionPressure(world *ir.World, capabilityID, output string) bool {
+	for namespaceIndex := range world.Semantics {
+		for capabilityIndex := range world.Semantics[namespaceIndex].Capabilities {
+			capability := &world.Semantics[namespaceIndex].Capabilities[capabilityIndex]
+			if string(capability.ID) != capabilityID {
+				continue
+			}
+			capability.Output = core.CanonicalID(output)
+			return true
+		}
+	}
 	return false
 }
