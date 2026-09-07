@@ -8,7 +8,7 @@ import (
 	"tei/internal/validation"
 )
 
-func TestDuplicateDatasourceAliasIsReportedWithoutUnknownAliasCascade(t *testing.T) {
+func TestDuplicateDatasourceAliasIsReportedWithoutDerivedBindingCascade(t *testing.T) {
 	w := referenceWorld()
 	w.Applications[0].Databases = append(w.Applications[0].Databases, w.Applications[0].Databases[0])
 
@@ -22,6 +22,8 @@ func TestDuplicateDatasourceAliasIsReportedWithoutUnknownAliasCascade(t *testing
 			}
 		case "UNKNOWN_DATASOURCE_ALIAS", "UNKNOWN_BINDING_DATASOURCE_ALIAS":
 			t.Fatalf("duplicate datasource aliasをunknown aliasとして重複診断しました: %#v", diagnostics)
+		case "DATABASE_BINDING_TARGET_MISMATCH":
+			t.Fatalf("duplicate datasource aliasの非authoritative lookup値からbinding target mismatchを派生しました: %#v", diagnostics)
 		}
 	}
 	if !foundDuplicate {
