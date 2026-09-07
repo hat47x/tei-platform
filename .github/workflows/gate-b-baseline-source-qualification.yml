@@ -3,9 +3,7 @@ name: Gate B baseline source qualification
 on:
   pull_request:
     paths:
-      - internal/application/**
-      - internal/driver/**
-      - internal/validation/**
+      - internal/**
       - go.mod
       - go.sum
       - .github/workflows/gate-b-baseline-source-qualification.yml
@@ -24,15 +22,24 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: false
-      - name: Record Go toolchain
-        run: go version
+      - name: Record checkout and Go toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          go version
+          test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | grep -Ev '^H ' || true)"
       - name: Check formatting
         run: test -z "$(gofmt -l internal/application internal/driver internal/validation)"
       - name: Vet affected packages
         run: go vet ./internal/application ./internal/driver ./internal/validation
       - name: Test affected packages
         run: go test ./internal/application ./internal/driver ./internal/validation -count=1
+      - name: Verify source remains clean
+        run: test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
