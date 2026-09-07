@@ -262,7 +262,7 @@ func (r Resolver) capabilityByID(id core.CanonicalID) (semantic.Capability, erro
 }
 
 func readableDatasource(app application.Application, alias core.LocalName) (application.DatabaseRequirement, error) {
-	datasource, ok := app.DatabaseByAlias(alias)
+	datasource, ok := app.DatabaseByAliasExact(alias)
 	if !ok {
 		return application.DatabaseRequirement{}, fmt.Errorf("Datasource %sはApplication %sに定義されていません", alias, app.ID)
 	}
