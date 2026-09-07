@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"tei/internal/driver"
@@ -14,6 +15,22 @@ type physicalWorldCompletionPressure struct {
 	BusinessFact      string
 	CommandAccepted   bool
 	ObservationResult *driver.ObservationReadExecution
+}
+
+func TestSecondCorpusPhysicalObservationProbeDoesNotSmuggleDataAuthorityOrHandoffShape(t *testing.T) {
+	probeType := reflect.TypeOf(physicalWorldCompletionPressure{})
+	want := []string{"BusinessFact", "CommandAccepted", "ObservationResult"}
+	if got := fieldNames(probeType); !reflect.DeepEqual(got, want) {
+		t.Fatalf("physical-world Observation pressureが未証明meaningへ膨張しました: got=%v want=%v", got, want)
+	}
+	for _, forbidden := range []string{
+		"Data", "Relation", "Database", "Datasource", "Ownership", "ApplicationPattern",
+		"From", "To", "Procedure", "Step", "Condition", "Handoff",
+	} {
+		if _, found := probeType.FieldByName(forbidden); found {
+			t.Fatalf("physical-world Observation pressureへ未証明のData authority / Handoff field %qを混入しました", forbidden)
+		}
+	}
 }
 
 func physicalWorldCompletionDiagnostics(stepID string, pressure physicalWorldCompletionPressure) []diagnostic {
