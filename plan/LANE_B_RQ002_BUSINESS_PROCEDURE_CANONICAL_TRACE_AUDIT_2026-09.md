@@ -220,7 +220,9 @@ Step addressability / relation endpoint identity
 
 を分けて検討する。
 
-Step IDがdurable Canonical semantic identityなのか、relation addressing用のstable local keyなのかは未決である。
+current pressureでは、Step bodyからIDを外しつつ、normalized handoff endpointのためにProcedure-scoped local address metadataを保持するS4-Aが有力である。
+
+local keyはglobal Canonical Step identityでもRuntime execution identityでもない。
 
 ## 7. Business Handoffを独立relationとして扱うpressure
 
@@ -244,9 +246,133 @@ Procedure/Step
 
 これはX-TEAでBusiness definitionとBusiness Flowを分けてcross-referenceする設計原点とも整合する。
 
-ただしproduction `BusinessHandoff`採用は未決である。
+### H0 / H1 necessity pressure
 
-## 8. B-F13 — ISSUE-000039再利用をCanonical採用理由へ先取りしない
+current Referenceでhandoffをaccepted Business meaningとして扱う場合:
+
+```text
+H0  handoff authoring-only
+  -> condition / endpointだけの変更をnormalized semantic diffから失う
+
+H1  thin normalized handoff meaning
+  -> from / to / conditionをnormalized Business meaningとして保持
+```
+
+となる。
+
+したがってH1がcurrent primary candidate pressureである。
+
+ただしproduction `BusinessHandoff`専用kindの採用とは別問題である。
+
+### Representation R1〜R4
+
+Lane Cの比較は次である。
+
+```text
+R1  existing semantic.Data.Relation reuse
+    -> reject
+
+R2  generic Core Edge / Relation
+    -> defer / reject for now
+
+R3  Business semantic boundaryのthin relation
+    -> primary pre-ADR candidate
+
+R4  future Business Flowへ統合
+    -> later integration concern
+```
+
+R1はData RelationとBusiness handoffの意味を混ぜるため不適切である。
+
+R2はhandoff一件のために万能edgeをMicro Kernelへ持ち込むため過剰である。
+
+R4について、DFD型Business FlowはEvent / Business Activity / information source / external party / flowを含みhandoffより広い。Business Flow全体を今実装する必要はない一方、将来接続できる余地を残す。
+
+このためcurrent pressureではR3 + S4-Aが最も説明力を持つ。
+
+### test-only normalized model
+
+```text
+NormalizedBusinessModel
+  Procedures[]
+    id / purpose / trigger / actor
+    ordered Steps[]
+      localKey
+      body
+        businessAction
+        explicit semantic refs
+
+  Handoffs[]
+    from Procedure/localKey
+    to   Procedure/localKey
+    condition
+```
+
+normalize後のreferential validationをSource Index / file path / fingerprint / Workspaceへ戻らず、このmodelだけで閉じられるかをpressureする。
+
+production `ir.World.Business`や専用Go type名は未採用である。
+
+## 8. B-F17 — handoff normalization necessityと専用kind / Business Flow adoptionを混同しない
+
+### 判定
+
+Confirmed semantic-preservation pressure; representation still unresolved.
+
+### 発見
+
+H0への反証から得られるのは:
+
+```text
+accepted handoff meaningをnormalized semantic layerから失わない必要
+```
+
+であって:
+
+```text
+専用production BusinessHandoff kindが必要
+Business Flow全体を今model化する必要
+```
+
+ではない。
+
+### Lane B判定
+
+次を分離する。
+
+```text
+semantic necessity
+  handoff relation-only changeをnormalized diff / impactから失わない
+
+representation choice
+  R3 thin Business relation
+  future Business Flow integration
+  production package / field / type
+```
+
+したがってLane BはH1 / R3 / S4-Aをcurrent strongest pressureとして認識するが、ADR採用とはしない。
+
+## 9. B-F18 — Reference Application contextをsemantic prerequisiteへ戻さない
+
+### 判定
+
+Confirmed subtraction result at implementation/specification level; actual runner unresolved.
+
+Lane Cではfixture-level `Application`をoptional reporting contextへ縮退し、空またはWorldに存在しないlabelでもexplicit Pattern refsが解決できる限りcross-view evaluationをblockしないpressureへ進んでいる。
+
+```text
+fixture Application
+  -> optional reporting / authoring context
+  -> semantic ownerではない
+  -> datasource policy authorityではない
+
+Pattern owner Application
+  -> normalized Worldからexact解決
+  -> realization / datasource policy authority
+```
+
+残る論点はfieldをreporting用途で残すか完全除去するかというrepresentation compatibilityであり、Business semantic prerequisiteかどうかではない。
+
+## 10. B-F13 — ISSUE-000039再利用をCanonical採用理由へ先取りしない
 
 ### 判定
 
@@ -264,20 +390,20 @@ ISSUE-000039の初期supported kindsは:
 したがって:
 
 ```text
-Option Dなら将来000039へ接続しやすい
+Option D / R3なら将来000039へ接続しやすい
 ```
 
 は利点であって、
 
 ```text
-000039があるから今Canonical Business Procedureが必須
+000039があるから今Canonical Business Procedure / Handoffが必須
 ```
 
 という採用理由にはしない。
 
 将来、Business-only changeからData / Function / Scenarioへimpactを伝播するProduct Valueを実装するとき、file-native key /別normalized modelでは安全に扱えないEvidenceが出た場合にreopenする。
 
-## 9. Option A / B / C / DのLane B比較
+## 11. Option A / B / C / DのLane B比較
 
 | Option | 現行contractとの整合 | 主な強み | 主な未解決 / risk | Lane B位置づけ |
 | --- | --- | --- | --- | --- |
@@ -290,7 +416,9 @@ Option Dなら将来000039へ接続しやすい
 
 Option Dが現時点で相対的に強く見えることと、production採用決定は同じではない。
 
-## 10. D候補へ要求するhard guard
+Dの内部でも現在は、thin Procedure body + Procedure-scoped local address + thin handoff relationというD3 / H1 / R3 / S4-Aの組合せを主pressureとしている。
+
+## 12. D候補へ要求するhard guard
 
 production ADR候補へ進む前に、少なくとも次を守る。
 
@@ -307,15 +435,20 @@ production ADR候補へ進む前に、少なくとも次を守る。
 - explicit uncertaintyを既知へ丸めない
 - ordered Business Actionの順序をset sortしない
 - set-like semantic refsだけをdeterministically normalizeする
+- accepted handoff endpoint / condition changeをnormalized layerから失わない
 
 ### Boundary
 
 - Business ActorからAuthorization Roleを生成しない
-- Business Procedureからruntime Workflow / retry / timer / queue / sagaを生成しない
+- Business Procedure / Handoffからruntime Workflow / retry / timer / queue / sagaを生成しない
 - single Application ownerを必須にしない
+- optional reporting Application contextをsemantic prerequisiteにしない
 - source path / fingerprint / revisionをCanonical Business meaningへ混ぜない
 - `realization` review vocabularyをCore enumへ先取りしない
-- Step addressabilityをruntime workflow identityへ昇格しない
+- Step addressabilityをglobal / runtime identityへ昇格しない
+- Data `semantic.Relation`へBusiness handoffを押し込まない
+- generic Core Edgeをhandoffのためだけに導入しない
+- Business Flow全体をhandoffのためだけに先取り実装しない
 
 ### Evidence
 
@@ -324,17 +457,20 @@ production ADR候補へ進む前に、少なくとも次を守る。
 - logical Procedure rename fail-closed
 - Business-only semantic diff
 - multiple Application pressure
+- optional / unknown reporting Application context pressure
 - manual / external pressure
+- H0 semantic-loss / H1 preservation pressure
+- normalized-only handoff referential validation
 - handoff endpoint / condition pressure
 - realistic Referenceがcurrent `order_entry`より一段広いこと
 
-## 11. PAS-01 / PAS-07との関係
+## 13. PAS-01 / PAS-07との関係
 
 ### PAS-07
 
 PAS-07の利用者価値は、Business meaningをFunctionへ還元せず三視点から矛盾を見つけ、authoritative sourceへ戻して修正することである。
 
-Option DはこのValueを実装する候補だが、PAS-07の定義そのものではない。
+Option D / H1 / R3 / S4-AはこのValueを実装する候補だが、PAS-07の定義そのものではない。
 
 したがってPAS-07主Traceはtechnology-neutralのまま維持する。
 
@@ -344,9 +480,9 @@ Business-only changeをShared Acceptanceへ通す場合、candidate target ident
 
 Lane Cのfile-native helperは機械的Acceptance pressureを示すが、production PAS-01 Shared Acceptanceは未完了である。
 
-Option Dが採用される場合でも、PAS-01 actual Shared Acceptance Evidenceを自動代替しない。
+Option D等が採用される場合でも、PAS-01 actual Shared Acceptance Evidenceを自動代替しない。
 
-## 12. Gate / Lane境界
+## 14. Gate / Lane境界
 
 - Gate B Required Evidence 3 lane: 変更しない
 - Gate C First Web Target Evidence: 変更しない
@@ -357,7 +493,7 @@ Option Dが採用される場合でも、PAS-01 actual Shared Acceptance Evidenc
 
 Lane BからCanonical schemaや新Gateを追加しない。
 
-## 13. Reopen / decision conditions
+## 15. Reopen / decision conditions
 
 Architecture decisionへ進めるのは、少なくとも次が揃ったときとする。
 
@@ -365,15 +501,19 @@ Architecture decisionへ進めるのは、少なくとも次が揃ったとき�
 2. thin candidateでBusiness-only diffが成立
 3. Pattern-owned meaning非重複が維持
 4. realization subtraction後も必要Business meaningが維持
-5. Step identity / addressabilityの責務が説明可能
-6. handoffをruntime Workflow化せず扱える
-7. multi-Application / manual / external pressureが成立
-8. source / Canonical / Projection authority境界が明確
-9. current Referenceだけへの過適合でないと説明できる
+5. Step body / local addressabilityの責務が説明可能
+6. H0 semantic-loss / H1 normalized preservationをactual Evidenceで確認
+7. R3 + S4-A normalized modelだけでhandoff integrityを検証可能
+8. handoffをruntime Workflow化せず扱える
+9. multi-Application / manual / external pressureが成立
+10. optional / unknown reporting Application contextでcross-view evaluationが成立
+11. source / Canonical / Projection authority境界が明確
+12. current Referenceだけへの過適合でないと説明できる
+13. realistic cross-subject-area / multi-subsystem Referenceで設計価値を確認
 
 その時点でLane Bは、ADR候補がRQ-001 / RQ-002 / RQ-003 / RQ-025 / RQ-026とPAS-01 / PAS-07を同時に満たすか再監査する。
 
-## 14. 現時点の結論
+## 16. 現時点の結論
 
 ```text
 Reference-local Procedure key
@@ -389,11 +529,20 @@ thin normalized Business residual meaning
   strongest current production candidate pressure
   but not adopted
 
-thin Business handoff relation
-  useful independent semantic pressure
-  but not adopted
+accepted handoff normalized meaning
+  necessary pressure is strengthening
+  H1 / R3 / S4-A is current strongest representation pressure
+  dedicated production kind not adopted
 
-production Canonical Procedure / Handoff
+Business Flow
+  broader than Procedure handoff
+  do not implement whole flow merely to preserve current handoff
+
+fixture Application context
+  optional reporting context candidate
+  not a semantic prerequisite / owner / policy authority
+
+production Canonical Procedure / Handoff / BusinessModel
   unresolved
 ```
 
