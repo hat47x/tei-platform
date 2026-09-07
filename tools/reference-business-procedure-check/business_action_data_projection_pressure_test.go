@@ -249,15 +249,17 @@ func addCapabilityProjectionEvidence(world ir.World, dataSet, evidenceSet map[st
 			addProjectionEvidence(dataSet, evidenceSet, id, path)
 			return nil
 		}
+		if dataCount == 0 && typeCount == 1 {
+			// exactにSemantic Typeへ解決できるpayloadはData projectionへ含めない。
+			return nil
+		}
+		if dataCount == 0 && typeCount == 0 {
+			return fmt.Errorf("Capability %s payload identityをexactに解決できません: id=%s (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
+		}
 		if dataCount > 0 && typeCount > 0 {
 			return fmt.Errorf("Capability %s payload %s has Data/Type kind ambiguity (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
 		}
-		if dataCount > 1 {
-			return fmt.Errorf("Capability %s payload Data %sをexactに解決できません (count=%d)", capabilityID, id, dataCount)
-		}
-		// Dataとして解決されないIDはSemantic Type等のnon-Data payloadであり得る。
-		// Data projectionはそれをDataへ推測変換しない。
-		return nil
+		return fmt.Errorf("Capability %s payload identity ambiguity: id=%s (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
 	}
 	for _, input := range capability.Inputs {
 		if err := addIfSemanticData(string(input.Type), prefix+"/capability:"+capabilityID+"/input:"+string(input.Type)); err != nil {
