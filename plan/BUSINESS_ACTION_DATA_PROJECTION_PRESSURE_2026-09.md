@@ -46,6 +46,21 @@ Business Step
      -> Data payload contract
 ```
 
+Capabilityのinput/output/outcome payload IDはSemantic DataだけでなくSemantic Typeも指し得るため、Data projectionではkindを推測しない。
+
+```text
+payload ID -> exact Data 1件 / Type 0件
+  -> Data traceとして採用
+
+payload ID -> DataとTypeの両方に存在
+  -> kind ambiguityとしてfail closed
+
+payload ID -> Data 0件
+  -> Type等のnon-Data payloadであり得るためDataへ変換しない
+```
+
+したがって「Dataとして1件見つかった」という理由だけで、同じCanonicalIDの別kindを無視してData authorityを確定しない。
+
 使わない:
 
 - Business Action wordingからのentity name抽出
@@ -244,7 +259,7 @@ Data projection
 
 とする。
 
-またmissing / ambiguous referenced identityは名称推測で補わずfail closedする。
+またmissing / ambiguous referenced identityは名称推測で補わずfail closedする。Capability payloadのように複数semantic kindを取り得る参照では、Data/Type kind ambiguityもfail closed対象とする。
 
 このboundaryは「Data projectionを豊かにしたい」という理由だけでBusiness sourceへdirect Data refやO1 targetを追加することも禁止する。
 
@@ -294,7 +309,7 @@ Current D4のままでも、Pattern / Validation / CapabilityからかなりのD
 
 Repository上へ`business_action_data_projection_pressure_test.go`を追加した。
 
-Derived-only change boundaryは追加testでPressureする。
+Derived-only change boundaryに加え、Capability payloadのData/Type kind ambiguityをDataへ暗黙解決しないtest-only Pressureを追加した。
 
 actual Repository runnerでの:
 
