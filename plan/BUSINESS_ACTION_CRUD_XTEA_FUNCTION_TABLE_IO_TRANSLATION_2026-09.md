@@ -237,21 +237,107 @@ Currentはdeferする。
 
 X-TEAのCRUDを一般化して`effect`へ広げるのは、current C/U/D exampleが0の段階では抽象化が強すぎる。
 
-## 6. Current ranking
+## 6. Predecessor mutation-boundary comparison
+
+Current TEIの前身設計であるSemantic PlatformのAction execution draftでは、Actionは必要に応じてsubject Dataを持ち、internal Action callを明示し、runtime execution中の`create / update / delete` stepごとにownershipを再検査していた。
+
+概念上は:
+
+```text
+Action
+  subject Data
+  explicit internal call
+  create/update/delete step
+        ↓
+Runtime mutation gate
+  owner/subsystem check
+        ↓
+commit
+```
+
+である。
+
+さらにexternal implementationへ無制限なbusiness DB commit権限を渡さず、result / `MutationIntent`を返してRuntime側でvalidate / commitする方向が検討されていた。Detailed MutationIntent schemaは当時もopenだった。
+
+このpredecessor designをcurrent TEIへそのまま戻さない。特にAction Script、Subsystem、MutationIntentをcurrent Canonical kindとして復活させる根拠にはしない。
+
+一方、設計圧力としては重要である。
+
+### 6.1 X2との整合
+
+Predecessor boundaryは:
+
+```text
+Semantic/Business Function meaning
+  != unrestricted physical DB mutation
+```
+
+を明確に分けていた。
+
+External / custom implementationが直接DB authorityになるのではなく、mutationをRuntime-controlled authorityへ戻す方向は、X2の:
+
+```text
+Application + Capability realization
+  -> explicit mutation authority
+```
+
+と整合する。
+
+したがってX2は単なる新規抽象化案ではなく、TEI系譜内でも「実装をauthorityにしない」という既存設計原則の延長として比較できる。
+
+### 6.2 X3との整合
+
+Predecessor `MutationIntent`は詳細schema未確定だったため、current Database Contract / Query Contract分離を踏まえると、mutationをDatabase-owned contractとして明示しFunction realizationからbindするX3も自然な比較候補になる。
+
+ただし:
+
+```text
+old MutationIntent
+  != current Database Mutation Contract
+```
+
+であり、名前やshapeを継承しない。
+
+### 6.3 Direct / effective operationとの関係
+
+Predecessor Action modelではinternal callが明示され、旧Reference/Studioではdirect CUDとsame-Subsystem call propagationによるeffective CUDを別表示していた。
+
+したがってfuture mutation attribution modelは、少なくとも:
+
+```text
+direct mutation authority
+explicit Function call dependency
+effective operation projection
+published / ownership boundary
+```
+
+を区別できる必要がある。
+
+Flattened CRUD cellだけをCanonical SOTにしない。
+
+### 6.4 Current TEIとの差
+
+Current `semantic.Capability`はinput / output / outcomeのみを持ち、call/effect/mutationを所有しない。
+
+Current `Application Pattern command`もCapability identityだけを参照し、persistence effectを所有しない。
+
+そのためpredecessor boundaryをcurrentへ適用するには、まずrealistic C/U/D caseから「何を失っているか」を証明する必要がある。
+
+## 7. Current ranking
 
 Current Evidenceだけなら:
 
 ```text
 X0 Business Procedure CRUD     -> reject
 X1 Function/Data-I/O relation  -> plausible, responsibility risk
-X2 realization effect binding  -> plausible, current TEI separationに適合しやすい
-X3 mutation contract + binding -> plausible, realistic C/U/D example待ち
+X2 realization effect binding  -> plausible, current TEI separation + predecessor mutation gateに整合しやすい
+X3 mutation contract + binding -> plausible, Query Contract分離 + predecessor MutationIntent pressureと比較可能
 X4 generic Effect              -> defer
 ```
 
 X2 / X3のどちらがよいかは、Create / Delete / non-state UpdateのTEI-original realistic Referenceがないため決めない。
 
-## 7. Required future pressure
+## 8. Required future pressure
 
 Qualifying C/U/D exampleが自然に現れた場合、少なくとも次を比較する。
 
@@ -261,8 +347,11 @@ Qualifying C/U/D exampleが自然に現れた場合、少なくとも次を比�
 4. non-state UpdateとBusiness Lifecycle transitionをどう分離するか。
 5. external-observed Databaseに対するwrite prohibitionをoperation relationからcross-checkできるか。
 6. operation projectionをBusiness Procedure / Function / Dataの三視点reviewへどう戻すか。
+7. direct mutationとexplicit Function-call由来のeffective mutationを分離できるか。
+8. published / cross-boundary Function内部mutationをcallerのdirect CUDへ誤帰属しないか。
+9. custom / external implementationにunrestricted DB authorityを渡さず、accepted mutation authorityを検査できるか。
 
-## 8. Current production boundary
+## 9. Current production boundary
 
 今は追加しない。
 
@@ -271,11 +360,14 @@ Qualifying C/U/D exampleが自然に現れた場合、少なくとも次を比�
 - Semantic Capability generic Effect
 - Database Contract C/U/D enum
 - mutation binding
+- MutationIntent
 - Function/Data-I-O canonical kind
+- direct/effective CRUD production fields
+- Action Script / generic call DSL
 
 Current partial R projectionを維持し、C/U/Dはunknownを保持する。
 
-## 9. X-TEA fallback result
+## 10. X-TEA fallback result
 
 Historical shapeをそのまま移植しない翻訳結果は:
 
@@ -284,14 +376,27 @@ X-TEA
   Function/Table I/O owns explicit CRUD marks
   -> matrix derived
 
+TEI predecessor
+  Action subject + explicit call + mutation gate
+  -> direct/effective CUDを分離
+  -> external implementationはunrestricted DB authorityではない
+
 TEI current
   R meaning is distributed but exact-link recoverable
   C/U/D attribution link is missing
+  Capabilityにはcall/effect/mutation authorityがない
 
 TEI direction
   keep Business Procedure thin
   investigate Function / realization / mutation-authority boundary when realistic C/U/D evidence appears
+  preserve direct/effective distinction as future guardrail
   derive matrix; do not author matrix
 ```
 
-この結論は`BUSINESS_ACTION_CUD_TEI_ORIGINAL_REFERENCE_SEARCH_2026-09.md`の「qualifying C/U/D example = none yet」と組み合わせて扱う。
+この結論は:
+
+- `BUSINESS_ACTION_CUD_TEI_ORIGINAL_REFERENCE_SEARCH_2026-09.md`
+- `BUSINESS_ACTION_CRUD_DIRECT_EFFECTIVE_BOUNDARY_PRESSURE_2026-09.md`
+- `BUSINESS_PROCEDURE_BP01_PREPARE_OPERATION_AMBIGUITY_PRESSURE_2026-09.md`
+
+と組み合わせて扱う。
