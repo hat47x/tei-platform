@@ -14,7 +14,7 @@ func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAliasWithoutReturningF
 	if !ok {
 		t.Fatal("存在するdatasource aliasを未定義として扱いました")
 	}
-	if got != (DatabaseRequirement{}) {
+	if got.Alias != "" || got.TargetDatabase != "" || got.Access != "" || got.RequiredContracts != nil {
 		t.Fatalf("duplicate datasource aliasから一件目の内容を返しました: %#v", got)
 	}
 }
