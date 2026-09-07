@@ -337,13 +337,25 @@ func businessActionDataRowsByStep(rows []businessActionDataProjectionRowProbe) m
 
 func assertBusinessActionDataProjection(t *testing.T, row businessActionDataProjectionRowProbe, data, relations []string, unresolved bool) {
 	t.Helper()
-	if !reflect.DeepEqual(row.Data, data) {
+	if !equalProjectionStringSlice(row.Data, data) {
 		t.Fatalf("step %s Data=%v want=%v evidence=%v", row.StepID, row.Data, data, row.EvidencePaths)
 	}
-	if !reflect.DeepEqual(row.Relations, relations) {
+	if !equalProjectionStringSlice(row.Relations, relations) {
 		t.Fatalf("step %s Relations=%v want=%v evidence=%v", row.StepID, row.Relations, relations, row.EvidencePaths)
 	}
 	if row.UnresolvedFromCurrentRefs != unresolved {
 		t.Fatalf("step %s UnresolvedFromCurrentRefs=%v want=%v evidence=%v", row.StepID, row.UnresolvedFromCurrentRefs, unresolved, row.EvidencePaths)
 	}
+}
+
+func equalProjectionStringSlice(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
