@@ -21,6 +21,7 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - Business Handoffはfull Business Flow / DFDではない。
 - ref kind separationだけではref role separationを表せない。
 - Authorization policyとBusiness protected targetは別Authorityであり、policyからBusiness targetを逆導出してはならない。
+- manufacturing / inventory outlineはphysical-world非対称性を再現するが、O1 generic roleやD4/H1/R3拡張をまだ要求しない。
 
 ## 3. Explicit ref authority
 
@@ -247,7 +248,7 @@ Authorization policy
   -X-> backfill missing O1 target
 ```
 
-Policy changeはBusiness targetそのものを暗黙変更せず、不一致をreview pressureとして露出させる。
+Policy changeはBusiness targetそのものを暗黙変更せず、不一致を`BUSINESS_APPLICATION_PATTERN_TARGET_AUTHORIZATION_POLICY_MISMATCH`等のtest-only cross-view diagnosticとして露出させる。
 
 X-TEA fallbackで確認したTaskAction / TaskFunctionIO分離はBusiness ActionとFunction利用の分離を支持するが、generic protected-target role taxonomyまでは証明しない。この限界をE-015として`BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`へ記録した。
 
@@ -290,13 +291,45 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 ### 15c conditional broader realistic pressure
 15a + 15bで説明できない具体的不足が出た場合だけ追加する。Application数をrealism KPIにしない。
 
+### 13.1 manufacturing / inventory second-corpus outline
+
+`BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`でprovenance-backed outlineをcandidate stackへ当てた。
+
+結果:
+
+```text
+D4
+  manual / physical / external Business Action pressureを再現
+  direct Data / Relation ref necessityは未証明
+
+O1
+  protected-target roleのsecond cross-domain exampleは未証明
+  generic Role taxonomyを強める根拠なし
+
+H1 / R3
+  responsibility continuation pressureは自然に存在
+  exact accepted Procedure/Step/condition relationは未証明
+
+Observation boundary
+  command accepted != physical actuality
+  を別domainから強く再現
+
+Business Flow / DFD
+  material / information movementのrelevanceはある
+  Procedure/Handoffではmeaningを失うexact caseは未証明
+```
+
+したがってcurrent candidate stackの具体的contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
+
+このoutline-level negative Evidenceは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
+
 ## 14. ADR作成前Gate
 
 ### Readiness authority
 
 本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A71 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
+- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A72 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
 - 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
 - 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
 
@@ -315,16 +348,16 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 11. S4-AでSource Index非依存のhandoff integrityをactual testsで確認
 12. global Step IDなしで必要addressabilityを説明
 13. H1/R3をhandoff-onlyとして保ちBusiness Flow surfaceを混ぜない
-14. Gate 15a / 15bをactual testsで確認し15cは不足時だけ追加
+14. Gate 15a / 15bをactual testsで確認し15cは具体的contract不足時だけ起動
 15. Authorization / Observation非対称境界をactual testsで確認
 16. BP-03 / BP-05 authority separationをactual testsで確認
-17. D3 / D4のどちらがcurrent + next realistic Referenceで最小十分か説明
+17. D3 / D4のどちらがcurrent + next TEI-original realistic Referenceで最小十分か説明。outline-level corpus breadthはfixture Evidenceと同一視しない
 18. D4 future Data / Relation ref fail-closedをactual testsで確認
 19. authority kindをgeneric ref bagへ失わない
 20. D4 + S4-A + H1/R3 compositionをactual testsで確認
 21. O1 target != realizationをactual testsで確認
 22. D4 + O1 compositionをactual testsで確認
-23. generic ref-role taxonomyが必要か複数realistic pressureから判断
+23. generic ref-role taxonomyが必要か複数realistic pressureから判断。manufacturing / inventory outlineだけではO1反復を証明したとみなさない
 24. Legacy Authorization policyをO1 targetのauthor / backfill sourceにせず、corroboration-onlyとしてactual testsで確認
 25. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
 26. Lane B再監査と矛盾しない
@@ -361,4 +394,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Actual greenと次のrealistic Referenceから、D3/D4/O1の最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界を強く補強した一方、O1 role反復やD4/H1/R3不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
