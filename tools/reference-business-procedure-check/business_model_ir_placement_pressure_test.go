@@ -86,6 +86,74 @@ func TestBusinessMeaningCanChangeWithoutPretendingRuntimeIRChanged(t *testing.T)
 	}
 }
 
+func TestProtectedTargetMeaningCanChangeWithoutPretendingRuntimeIRChanged(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	setRoot := filepath.Join(root, "reference", "business-system-design")
+	set, fixtures := currentReferenceSetAndFixturesD4O1Probe(t, setRoot)
+
+	before, err := deriveD4O1NormalizedBusinessModelProbe(set, fixtures, currentProtectedTargetsD4O1Probe())
+	if err != nil {
+		t.Fatal(err)
+	}
+	changedTargets := currentProtectedTargetsD4O1Probe()
+	changedTargets["order-entry.order-handling/BP-06"] = []string{"order_entry.order_record"}
+	after, err := deriveD4O1NormalizedBusinessModelProbe(set, fixtures, changedTargets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if semanticFingerprintD4O1Probe(t, before) == semanticFingerprintD4O1Probe(t, after) {
+		t.Fatal("protected-target-only changeをBusiness semantic revisionが見逃しました")
+	}
+
+	beforeWorld := loaded.World
+	if err := validateD4O1NormalizedBusinessModelProbe(loaded.World, after); err != nil {
+		t.Fatalf("exactな別Application Pattern targetへのBusiness-only changeをcross-view validateできません: %v", err)
+	}
+	if !reflect.DeepEqual(beforeWorld, loaded.World) {
+		t.Fatal("protected-target-only changeをir.World changeへ誤変換しました")
+	}
+}
+
+func TestHandoffMeaningCanChangeWithoutPretendingRuntimeIRChanged(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	setRoot := filepath.Join(root, "reference", "business-system-design")
+	set, fixtures := currentReferenceSetAndFixturesD4O1Probe(t, setRoot)
+
+	before, err := deriveD4O1NormalizedBusinessModelProbe(set, fixtures, currentProtectedTargetsD4O1Probe())
+	if err != nil {
+		t.Fatal(err)
+	}
+	changedSet := set
+	changedSet.Handoffs = append([]referenceSetHandoff(nil), set.Handoffs...)
+	if len(changedSet.Handoffs) == 0 {
+		t.Fatal("test setup: Handoffがありません")
+	}
+	changedSet.Handoffs[0].Condition = "follow-up is required because unresolved external work remains"
+	after, err := deriveD4O1NormalizedBusinessModelProbe(changedSet, fixtures, currentProtectedTargetsD4O1Probe())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if semanticFingerprintD4O1Probe(t, before) == semanticFingerprintD4O1Probe(t, after) {
+		t.Fatal("handoff-only changeをBusiness semantic revisionが見逃しました")
+	}
+
+	beforeWorld := loaded.World
+	if err := validateD4O1NormalizedBusinessModelProbe(loaded.World, after); err != nil {
+		t.Fatalf("handoff-only Business meaning change後のcross-view validationが不正です: %v", err)
+	}
+	if !reflect.DeepEqual(beforeWorld, loaded.World) {
+		t.Fatal("handoff-only Business meaning changeをir.World changeへ誤変換しました")
+	}
+}
+
 func TestSeparateBusinessPlaneStillFailsClosedAgainstStaleApplicationTarget(t *testing.T) {
 	root := repoPath()
 	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
