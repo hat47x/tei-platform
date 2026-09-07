@@ -98,6 +98,8 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 
 ## Acceptance / Evidence Pressure matrix
 
+このmatrixはLane Cの**Evidence / Pressure inventory**であり、独立したReady / Not Ready判定を所有しない。production Canonical contract ADR readinessの判定正本は`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`の「ADR作成前Gate」とする。
+
 | ID | Pressure | 現在の扱い |
 | --- | --- | --- |
 | A1 | exact semantic / Pattern reference resolution | test-only実装済み |
@@ -164,7 +166,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 | A62 | future direct Data / Relation refをD4がfail closed / reopen | test-only実装済み |
 | A63 | ref authority kindをkind-less bagへ畳まない | test-only実装済み |
 | A64 | D4 bodyとS4-A addressabilityを分離 | test-only構造固定 |
-| A65 | D4 + S4-A + H1/R3 composition | test-only実装済み |
+| A65 | D4 + S4-A + H1/R3 composition、normalized duplicate Handoffもfail closed | test-only実装済み |
 | A66 | Application Pattern ref kindとref roleを分離 | O1 source-level Pressure実装済み |
 | A67 | BP-06 protected target != direct Function realization | test-only実装済み |
 | A68 | protected targetをexact resolutionしadjacencyからderiveしない | test-only実装済み |
@@ -210,6 +212,8 @@ BP-06 target refを`applicationPatterns[]`へ流用するとdirect Function real
 Target-only changeはD4 bodyを変えずcross-view meaningを変える。BP-07隣接realizationからtargetをderiveしない。
 
 Generic `ExplicitSemanticRef{Kind,Role,Target}` taxonomyはcurrent一例から先行採用しない。
+
+Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけfile-native source / decode / reload / Shared Acceptance pressureを追加する。残さない場合はproduction source fieldを追加しない。
 
 ## Handoff / Business Flow boundary
 
@@ -259,7 +263,9 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 
 したがってactual `gofmt / go vet / go test` greenとはまだ主張しない。PR #482はDraftを維持する。
 
-## 完了条件
+## Operational completion checklist
+
+この一覧はLane Cの実行・整合確認用checklistであり、独立したReady / Not Ready stateを所有しない。production Canonical contract ADR readinessはPre-ADR Gateを正とする。
 
 1. actual Repository environmentで`gofmt / go vet / go test`がgreen
 2. baseline checker / intentional defectを再現
@@ -276,11 +282,12 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 13. D3 / D4の最小十分性をcurrent + next realistic Referenceで説明
 14. D4 future Data / Relation fail-closedをactual testsで確認
 15. authority kindをgeneric ref bagへ失わない
-16. D4 + S4-A + H1/R3 compositionをactual testsで確認
+16. D4 + S4-A + H1/R3 compositionをactual testsで確認し、normalized duplicate Handoffをfail closed
 17. O1 protected target != realizationをactual testsで確認
 18. D4 + O1 compositionをactual testsで確認
 19. generic ref-role taxonomyの必要性を複数realistic pressureから判断
 20. Lane B再監査と矛盾しない
 21. H1/R3をhandoff-onlyとして保ちBusiness Flow surfaceを混入させない
+22. O1をproduction accepted meaningとして残す場合はauthoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
 
-この完了後に初めてproduction Canonical contract ADR候補を作る。
+このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
