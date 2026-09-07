@@ -23,11 +23,10 @@ func TestBusinessCandidateOnlyDiskReloadPreservesNormalizedMeaningWithoutLegacyR
 
 	diskRoot := t.TempDir()
 	procedurePaths := make([]string, 0, len(candidate.Procedures))
-	for i, procedure := range candidate.Procedures {
+	for _, procedure := range candidate.Procedures {
 		path := filepath.Join(diskRoot, "business", "procedures", procedure.Procedure.ID+".json")
 		writeBusinessCandidateDiskSourceProbe(t, path, procedure)
 		procedurePaths = append(procedurePaths, path)
-		_ = i
 	}
 	handoffPath := filepath.Join(diskRoot, "business", "handoffs.json")
 	writeBusinessCandidateDiskSourceProbe(t, handoffPath, candidate.Handoffs)
