@@ -9,8 +9,8 @@ import (
 )
 
 type d4O1StepProbe struct {
-	Body                               d4BusinessProcedureStepProbe `json:"body"`
-	ProtectedApplicationPatternTargets []string                     `json:"protectedApplicationPatternTargets,omitempty"`
+	Body                        d4BusinessProcedureStepProbe `json:"body"`
+	ProtectedApplicationPattern string                       `json:"protectedApplicationPattern,omitempty"`
 }
 
 type d4O1ProcedureProbe struct {
@@ -37,27 +37,29 @@ func TestD4AloneIsLossyForAcceptedProtectedTargetOnlyChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	beforeTarget := []string{"order_entry.submit_order"}
-	afterTarget := []string{"order_entry.order_record"}
-	if reflect.DeepEqual(beforeTarget, afterTarget) {
+	beforeTarget := "order_entry.submit_order"
+	afterTarget := "order_entry.order_record"
+	if beforeTarget == afterTarget {
 		t.Fatal("test setup: protected target changeがありません")
 	}
 	if !reflect.DeepEqual(beforeD4, afterD4) {
 		t.Fatal("test setup: target-only pressureなのにD4 bodyまで変化しました")
 	}
 
-	before, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": beforeTarget})
+	before, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": {beforeTarget}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": afterTarget})
+	after, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": {afterTarget}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if reflect.DeepEqual(before, after) {
 		t.Fatal("D4 + narrow O1でもprotected target-only meaning差を失いました")
 	}
-	if !reflect.DeepEqual(before.Steps[6].Body, after.Steps[6].Body) {
+	beforeSteps := d4O1StepsBySourceLocalKeyProbe(f, before)
+	afterSteps := d4O1StepsBySourceLocalKeyProbe(f, after)
+	if !reflect.DeepEqual(beforeSteps["BP-06"].Body, afterSteps["BP-06"].Body) {
 		t.Fatal("protected target-only changeをBusiness Action body / realization changeへ変換しました")
 	}
 }
@@ -86,17 +88,17 @@ func TestD4O1PreservesBP06TargetWithoutInventingApplicationRealization(t *testin
 	if !reflect.DeepEqual(bp06.Body.Capabilities, []string{"security.authorize"}) {
 		t.Fatalf("supporting Authorization Capabilityを失いました: %+v", bp06.Body.Capabilities)
 	}
-	if !reflect.DeepEqual(bp06.ProtectedApplicationPatternTargets, []string{"order_entry.submit_order"}) {
-		t.Fatalf("protected target exact identityを保持できません: %+v", bp06.ProtectedApplicationPatternTargets)
+	if bp06.ProtectedApplicationPattern != "order_entry.submit_order" {
+		t.Fatalf("protected target exact identityを保持できません: %q", bp06.ProtectedApplicationPattern)
 	}
-	if err := checkExpectedDiagnostics(applicationPatternTargetDiagnostics(loaded.World, "BP-06", bp06.ProtectedApplicationPatternTargets), ""); err != nil {
+	if err := checkExpectedDiagnostics(applicationPatternTargetDiagnostics(loaded.World, "BP-06", []string{bp06.ProtectedApplicationPattern}), ""); err != nil {
 		t.Fatalf("protected targetをnormalized Worldでexact resolutionできません: %v", err)
 	}
 }
 
 func TestD4O1NarrowAxisDoesNotBecomeGenericRoleReferenceModel(t *testing.T) {
 	typ := reflect.TypeOf(d4O1StepProbe{})
-	want := []string{"Body", "ProtectedApplicationPatternTargets"}
+	want := []string{"Body", "ProtectedApplicationPattern"}
 	if got := fieldNames(typ); !reflect.DeepEqual(got, want) {
 		t.Fatalf("D4 + O1 minimum candidateが膨張しました: got=%v want=%v", got, want)
 	}
@@ -107,7 +109,7 @@ func TestD4O1NarrowAxisDoesNotBecomeGenericRoleReferenceModel(t *testing.T) {
 	}
 }
 
-func TestD4O1FailsClosedOnUnknownStepOrDuplicateTarget(t *testing.T) {
+func TestD4O1FailsClosedOnUnknownStepOrUnprovenMultipleTargets(t *testing.T) {
 	root := repoPath()
 	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
 	if err != nil {
@@ -117,8 +119,8 @@ func TestD4O1FailsClosedOnUnknownStepOrDuplicateTarget(t *testing.T) {
 	if _, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-missing": {"order_entry.submit_order"}}); err == nil {
 		t.Fatal("unknown Stepへのprotected targetを黙ってdropしました")
 	}
-	if _, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": {"order_entry.submit_order", "order_entry.submit_order"}}); err == nil {
-		t.Fatal("duplicate protected targetを黙ってnormalizeしました")
+	if _, err := deriveD4O1ProcedureProbe(f, map[string][]string{"BP-06": {"order_entry.submit_order", "order_entry.order_record"}}); err == nil {
+		t.Fatal("current Evidenceで未証明のmultiple protected targetsを先回りして受理しました")
 	}
 }
 
@@ -134,8 +136,8 @@ func TestD4O1DoesNotRequireTargetsForUnrelatedSteps(t *testing.T) {
 	}
 	steps := d4O1StepsBySourceLocalKeyProbe(f, model)
 	for _, stepID := range []string{"BP-00", "BP-01", "BP-02", "BP-03", "BP-04", "BP-05", "BP-07", "BP-08", "BP-09"} {
-		if len(steps[stepID].ProtectedApplicationPatternTargets) != 0 {
-			t.Fatalf("unrelated Step %sへsymmetry目的のprotected targetを要求しました: %+v", stepID, steps[stepID].ProtectedApplicationPatternTargets)
+		if steps[stepID].ProtectedApplicationPattern != "" {
+			t.Fatalf("unrelated Step %sへsymmetry目的のprotected targetを要求しました: %q", stepID, steps[stepID].ProtectedApplicationPattern)
 		}
 	}
 }
@@ -156,17 +158,20 @@ func deriveD4O1ProcedureProbe(f fixture, targetsByStep map[string][]string) (d4O
 	for i, body := range base.Steps {
 		stepID := f.Steps[i].ID
 		known[stepID] = struct{}{}
-		targets := append([]string(nil), targetsByStep[stepID]...)
-		seen := map[string]struct{}{}
-		for _, target := range targets {
-			if _, duplicate := seen[target]; duplicate {
-				return d4O1ProcedureProbe{}, errProcedureMeaning("duplicate protected Application Pattern target at step " + stepID + ": " + target)
+		targets := targetsByStep[stepID]
+		if len(targets) > 1 {
+			return d4O1ProcedureProbe{}, errProcedureMeaning("multiple protected Application Pattern targets are not proven at step " + stepID)
+		}
+		target := ""
+		if len(targets) == 1 {
+			target = targets[0]
+			if target == "" {
+				return d4O1ProcedureProbe{}, errProcedureMeaning("protected Application Pattern target is empty at step " + stepID)
 			}
-			seen[target] = struct{}{}
 		}
 		result.Steps = append(result.Steps, d4O1StepProbe{
-			Body:                               body,
-			ProtectedApplicationPatternTargets: normalizedMeaningRefs(targets),
+			Body:                        body,
+			ProtectedApplicationPattern: target,
 		})
 	}
 	for stepID := range targetsByStep {
