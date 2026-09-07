@@ -423,6 +423,135 @@ Both public repositories contain BSD-3-Clause-style redistribution / modificatio
 
 ---
 
+## E-014 — X-TEA Business Flow is a separate data-flow model, not Procedure handoff shorthand
+
+**Grade:** W1 + M1 + S1
+
+**Sources:**
+- X-TEA HOME / Three-Element Analysis portal: X-TEA Modeler is described as supporting business flows, ER diagrams, business manuals, and other design drawings
+- Kozo Watanabe, 「データ、UI、業務手順の『3要素』をとらえる」, 2006, part 3/3
+- public repository `xead/XeadModeler`
+  - `src/xeadModeler/DialogDataflowNode.java`
+  - `src/xeadModeler/DialogDataflowLine.java`
+  - `src/xeadModeler/DialogMatrixList.java`
+
+**Observed source structure:**
+
+XeadModeler treats Dataflow nodes / lines as their own model structure.
+
+A Dataflow node whose `Type` is `Process` is tied to a `TaskID`. The source also distinguishes multiple non-Process node types and role-linked nodes rather than modeling every node as a software function.
+
+`DataflowLine` separately connects Dataflow nodes and carries its own line-level meaning / presentation attributes.
+
+Conceptually:
+
+```text
+Task / Process node
+External / role / storage-like node
+        ↕
+DataflowLine
+```
+
+This is different from a lightweight Procedure handoff such as:
+
+```text
+Procedure/Step
+  -> Procedure/Step
+  + condition
+```
+
+**TEI pressure:**
+
+- Keep `Business Flow != Procedure Handoff`.
+- Do not promote current H1/R3 handoff pressure into a complete Business Flow / DFD model.
+- A future Business Flow model must be able to express information / document / business-data flow and non-Procedure participants when Reference Evidence requires them.
+- Do not introduce a generic Core `Edge` merely to make handoff and Business Flow share one storage shape.
+
+**What this evidence does not prove:**
+
+- It does not prove TEI needs a production `BusinessFlow` Canonical kind now.
+- It does not require cloning X-TEA DataflowNode / DataflowLine XML or icon vocabulary.
+- It does not prove the current X-TEA node taxonomy is the right TEI taxonomy.
+- It does not make every historical flow line a durable semantic identity.
+
+**Current TEI decision:**
+
+Current H1/R3 remains **handoff-only**. Full Business Flow / DFD remains a separate unresolved design pressure and will not be smuggled into the Business Procedure contract.
+
+---
+
+## E-015 — Task/Function separation does not prove a generic protected-target role taxonomy
+
+**Grade:** S1 + T1
+
+**Sources:**
+- public repository `xead/XeadModeler`
+  - TaskAction handling
+  - TaskFunctionIO handling with `FunctionID` / `IOID`
+- `BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`
+- `authorization_target_authority_direction_pressure_test.go`
+
+**Observed X-TEA source structure:**
+
+Historical XeadModeler distinguishes Business-side `TaskAction` from associated `TaskFunctionIO`. The latter points to `FunctionID` / `IOID` rather than collapsing the business action and software function into one identity.
+
+This supports:
+
+```text
+Business Action != Application Function
+Business Action may use / refer to Function or IO
+```
+
+**What this evidence does not prove:**
+
+It does **not** prove a generic TEI role taxonomy such as:
+
+```text
+realizes
+protects
+supports
+concerns
+checks
+...
+```
+
+In particular, the historical Task/Function usage relation is not evidence that every TEI cross-view concern should become `ExplicitSemanticRef { Kind, Role, Target }`.
+
+**TEI-local pressure:**
+
+Current `order_entry` BP-06 exposes a real local distinction:
+
+```text
+supporting authority   = security.authorize
+protected target       = order_entry.submit_order
+direct Function        = none
+```
+
+Legacy Authorization Reference also contains an `execute / order_entry.submit_order / allow` rule, but this is security-side authority only.
+
+Therefore:
+
+```text
+Authorization policy may corroborate Business protected target
+Authorization policy must not author/backfill Business protected target
+```
+
+Policy drift is exposed as a test-only cross-view diagnostic rather than silently rewriting Business meaning.
+
+**Second-corpus result:**
+
+The provenance-backed manufacturing / inventory outline strongly repeats `Command != physical actuality`, but does not yet provide a second exact Application Pattern case where target / concern differs from direct realization.
+
+**Current TEI decision:**
+
+- keep O1 narrow and test-only
+- do not infer O1 target from Authorization policy
+- do not add production `applicationPatternTargets` yet
+- do not generalize a ref-role enum from one exact case
+- require further realistic Evidence before role taxonomy promotion
+
+---
+
 # 2. Current conclusions supported by the register
 
 ## C-A — Preserve the Business Procedure viewpoint unconditionally
@@ -483,6 +612,28 @@ X-TEA Script     -> Capability
 
 Each historical noun carried more than one pressure or was used in more than one way.
 
+## C-E — Keep Procedure handoff narrower than Business Flow
+
+Supported by E-001 and E-014.
+
+Current thin handoff pressure solves a specific accepted-meaning problem:
+
+```text
+Procedure/Step -> Procedure/Step + condition
+```
+
+It must not silently become the general Business Flow / DFD abstraction.
+
+A future flow representation needs its own Reference pressure for activities, external parties, information / document / data movement, and any stable identities required by review or impact analysis.
+
+## C-F — Keep ref-role generalization evidence-driven
+
+Supported by E-005, E-006, and E-015.
+
+`Business Action != Function` is strongly supported. A generic `protected/supports/concerns/...` role taxonomy is not.
+
+Current O1 is a real TEI-local cross-view pressure, but remains one exact protected-target case. The manufacturing / inventory outline does not yet convert it into a repeated cross-domain role pattern.
+
 # 3. Open evidence gaps
 
 The following still need TEI-local proof:
@@ -502,9 +653,15 @@ Can current namespaces / ownership / Application boundaries produce a useful Sub
 
 T-GAP-05
 At realistic scale, do effective CUD and call dependencies remain understandable without an explicit Subsystem semantic contract?
+
+T-GAP-06
+What is the minimum TEI Business Flow / DFD representation, if any, once a realistic Reference requires information flow across activities, external parties, and stores without collapsing it into Procedure handoff or Runtime Workflow?
+
+T-GAP-07
+Does protected-target / concern-vs-realization meaning recur across realistic domains strongly enough to justify any generic ref-role taxonomy, or should O1 remain a field-specific/local relation?
 ```
 
-`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first.
+`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first. T-GAP-06 stays separate from the current handoff contract pressure. T-GAP-07 remains open after the manufacturing / inventory outline audit because that outline does not yet contain exact Application identities sufficient to prove a second protected-target case.
 
 # 4. Update rule
 
