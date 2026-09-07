@@ -29,6 +29,7 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_HANDOFF_INFERENCE_PRESSURE_2026-09.md`
+- `plan/BUSINESS_ACTION_DATA_PROJECTION_PRESSURE_2026-09.md`
 
 ## Lane境界
 
@@ -49,6 +50,8 @@ Command accepted != physical-world fact observed
 physical-world fact observed != accepted responsibility Handoff
 Step order / adjacency != accepted responsibility Handoff
 Application Function sequence != accepted responsibility Handoff
+Data trace projection != complete Data dependency authority
+no current Data trace != no Data dependency
 ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 ```
@@ -104,6 +107,8 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 - Pattern ID文字列からownerを推測しない
 - Pattern + owner Applicationをnormalized Worldからexact解決
 - Projectionだけでaccepted authorityを拡張しない
+- Business Action × Data projectionはevidence pathだけを表示し、complete dependencyを主張しない
+- current refsからData traceがない行を`No Data`へ丸めない
 - `realization` labelからref kind / roleを推測しない
 - runtime Observation APIをSemantic identityへ昇格しない
 - Command acceptanceからphysical completionを推測しない
@@ -199,6 +204,10 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 | A77 | Procedure Step順序 / adjacencyからresponsibility Handoffを生成しない | test-only negative Pressure実装済み |
 | A78 | positive physical Observationからresponsibility Handoffを生成しない | test-only negative Pressure実装済み |
 | A79 | normalized H1/R3 relationはexplicit Handoff sourceだけから生成する | test-only authority Pressure実装済み |
+| A80 | Business Action × Data/Relation traceをPattern / Validation / Capabilityのexact refsからderiveする | test-only projection実装済み |
+| A81 | current sourceにData/Relationを重複authorせず有用なtrace rowsを得る | test-only Evidence |
+| A82 | current refsからtraceがないStepを`No Data`へ丸めず`NoDataTraceFromCurrentRefs`として保持する | test-only unresolved preservation |
+| A83 | BP-06 protected-target DataをO1 test helper / adjacent BP-07 / wordingから推測せず、security traceだけをnon-exhaustiveに保持する | test-only partial-coverage Evidence |
 
 ## Candidate stack
 
@@ -222,6 +231,33 @@ capabilityRefs[]
 ```
 
 D4自身はStep local addressを持たない。S4-Aを別layerとして合成する。Current Referenceで未証明のdirect Data / Relation refsはminimumへ入れず、future sourceに現れた場合はfail closedして設計をreopenする。
+
+### Business Action × Data projection
+
+`business_action_data_projection_pressure_test.go`では、D4 / current authoring sourceへData/Relationを複製せず、existing refsから次をderiveする。
+
+```text
+Application Pattern -> Data / Relation / Capability data payload
+Validation -> Attribute owner Data / Relation source+target
+explicit Capability -> Data payload
+```
+
+Current主要結果:
+
+```text
+BP-00 -> sales.order
+BP-01 -> sales.order
+BP-02 -> sales.order + customer.customer / sales.order.customer
+BP-03 -> sales.order + sales.order_line / sales.order.lines
+BP-05 -> sales.order + sales.order_line / sales.order.lines
+BP-06 -> security.authenticated_subject + authorization grant/denial
+BP-07 -> sales.order
+BP-04 / BP-08 / BP-09 -> no current Data trace
+```
+
+最後の3件をNo Dataとは扱わない。さらにBP-06のsecurity traceが存在してもData dependency completenessを主張せず、authoritative sourceにないO1 protected-target Dataを隣接BP-07等から補完しない。
+
+この結果はT-GAP-03へ構造上の回答を与えるがactual runner green待ちである。D4へData/Relation slotを戻す根拠にはならない。
 
 ### O1 target-role overlay
 
@@ -319,6 +355,7 @@ manufacturing / inventory pressure
 - Observation専用Canonical identity
 - second-corpus synthetic Data ownership / Application Pattern
 - inferred Handoff from adjacency / Observation / Function sequence
+- Business Action × Data projectionのCanonical化 / completeness claim
 - Gate B / Gate C完了条件変更
 
 ## Verification status
@@ -360,5 +397,7 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 27. physical Observationからresponsibility Handoffを自動生成しない
 28. Step order / adjacencyからresponsibility Handoffを自動生成しない
 29. explicit Handoff sourceだけがnormalized H1/R3 relationをauthorすることをactual runnerで確認する
+30. Business Action × Data/Relation trace projectionをactual runnerで確認する
+31. no-trace rowsをNo Dataへ丸めず、projection completenessを主張しない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
