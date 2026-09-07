@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"tei/internal/application"
-	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/workspace"
@@ -122,22 +121,111 @@ func TestBusinessActionOwnershipBoundaryProjectionKeepsNoCRUDTraceStepsUnknown(t
 	}
 }
 
+func TestBusinessActionOwnershipBoundaryProjectionFailsClosedWithCRUDReadAuthority(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changed := cloneWorldDatabaseContractsCRUDProbe(loaded.World)
+	removed := false
+	for databaseIndex := range changed.Databases {
+		if string(changed.Databases[databaseIndex].ID) != "master_data" {
+			continue
+		}
+		for contractIndex := range changed.Databases[databaseIndex].Contracts {
+			contract := &changed.Databases[databaseIndex].Contracts[contractIndex]
+			if string(contract.ID) == "master_data.customer" {
+				contract.Reads = nil
+				removed = true
+			}
+		}
+	}
+	if !removed {
+		t.Fatal("test setup: master_data.customer contractがありません")
+	}
+	if _, err := deriveBusinessActionOwnershipBoundaryProjectionProbe(changed, f); err == nil {
+		t.Fatal("CRUD read authorityが失われたのにownership boundary rowを保持しました")
+	}
+}
+
+func TestBusinessActionOwnershipBoundaryProjectionDerivesOwnershipInsteadOfCopyingItIntoBusinessSource(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changed := loaded.World
+	changed.Databases = append([]database.Database(nil), loaded.World.Databases...)
+	changedOwnership := false
+	for i := range changed.Databases {
+		if string(changed.Databases[i].ID) == "master_data" {
+			changed.Databases[i].Ownership = database.OwnershipManagedHere
+			changedOwnership = true
+		}
+	}
+	if !changedOwnership {
+		t.Fatal("test setup: master_data databaseがありません")
+	}
+
+	rows, err := deriveBusinessActionOwnershipBoundaryProjectionProbe(changed, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows {
+		if row.StepID == "BP-02" {
+			if row.Ownership != database.OwnershipManagedHere {
+				t.Fatalf("Database authority変更がderived ownership viewへ反映されません: %+v", row)
+			}
+			return
+		}
+	}
+	t.Fatal("BP-02 ownership boundary rowがありません")
+}
+
 func deriveBusinessActionOwnershipBoundaryProjectionProbe(world ir.World, f fixture) ([]businessActionOwnershipBoundaryRowProbe, error) {
-	rows := []businessActionOwnershipBoundaryRowProbe{}
+	crudRows, err := deriveBusinessActionCRUDProjectionProbe(world, f)
+	if err != nil {
+		return nil, err
+	}
+	crudByStep := businessActionCRUDRowsByStep(crudRows)
+
+	rowByKey := map[string]businessActionOwnershipBoundaryRowProbe{}
 	for _, step := range f.Steps {
+		accepted := crudByStep[step.ID]
 		for _, patternID := range step.ApplicationPatterns {
 			owner, pattern, ok := findPatternOwner(world, patternID)
 			if !ok {
 				return nil, fmt.Errorf("step %s Application Pattern %sをexactに解決できません", step.ID, patternID)
 			}
-			row, ok, err := ownershipBoundaryRowForPatternProbe(world, step.ID, owner, pattern)
+			candidate, ok, err := ownershipBoundaryCandidateForPatternProbe(world, step.ID, owner, pattern)
 			if err != nil {
 				return nil, err
 			}
-			if ok {
-				rows = append(rows, row)
+			if !ok {
+				continue
 			}
+			if !crudProjectionContainsCellProbe(accepted, candidate.Data, candidate.Operation) {
+				return nil, fmt.Errorf("step %s ownership candidate %s/%s lacks accepted CRUD authority", step.ID, candidate.Data, candidate.Operation)
+			}
+			key := candidate.StepID + "\x00" + candidate.Data + "\x00" + string(candidate.Operation) + "\x00" + candidate.Database
+			rowByKey[key] = candidate
 		}
+	}
+
+	rows := make([]businessActionOwnershipBoundaryRowProbe, 0, len(rowByKey))
+	for _, row := range rowByKey {
+		rows = append(rows, row)
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].StepID != rows[j].StepID {
@@ -151,17 +239,21 @@ func deriveBusinessActionOwnershipBoundaryProjectionProbe(world ir.World, f fixt
 	return rows, nil
 }
 
-func ownershipBoundaryRowForPatternProbe(world ir.World, stepID string, owner application.Application, pattern application.Pattern) (businessActionOwnershipBoundaryRowProbe, bool, error) {
-	resolveDatabase := func(alias core.LocalName) (application.DatabaseRequirement, database.Database, error) {
-		requirement, ok := owner.DatabaseByAlias(alias)
+func ownershipBoundaryCandidateForPatternProbe(world ir.World, stepID string, owner application.Application, pattern application.Pattern) (businessActionOwnershipBoundaryRowProbe, bool, error) {
+	resolve := func(requirement application.DatabaseRequirement, dataID, evidence string) (businessActionOwnershipBoundaryRowProbe, bool, error) {
+		db, ok := findDatabaseExactlyOnceCRUDProbe(world, string(requirement.TargetDatabase))
 		if !ok {
-			return application.DatabaseRequirement{}, database.Database{}, fmt.Errorf("Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, alias, owner.ID)
+			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("Database %sをexactに解決できません", requirement.TargetDatabase)
 		}
-		db, ok := findDatabaseExactlyOnceOwnershipProbe(world, requirement.TargetDatabase)
-		if !ok {
-			return application.DatabaseRequirement{}, database.Database{}, fmt.Errorf("Database %sをexactに解決できません", requirement.TargetDatabase)
-		}
-		return requirement, db, nil
+		return businessActionOwnershipBoundaryRowProbe{
+			StepID:       stepID,
+			Data:         dataID,
+			Operation:    crudReadProbe,
+			Database:     string(db.ID),
+			Ownership:    db.Ownership,
+			Access:       requirement.Access,
+			EvidencePath: evidence + "/database:" + string(db.ID),
+		}, true, nil
 	}
 
 	switch pattern.Kind {
@@ -170,74 +262,40 @@ func ownershipBoundaryRowForPatternProbe(world ir.World, stepID string, owner ap
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("browse Pattern %s Query %sをexactに解決できません", pattern.ID, pattern.Query)
 		}
-		requirement, db, err := resolveDatabase(q.Datasource)
-		if err != nil {
-			return businessActionOwnershipBoundaryRowProbe{}, false, err
+		requirement, ok := owner.DatabaseByAlias(q.Datasource)
+		if !ok {
+			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("browse Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, q.Datasource, owner.ID)
 		}
-		if requirement.Access == database.AccessWrite {
-			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("browse Pattern %s datasource is not readable", pattern.ID)
-		}
-		return businessActionOwnershipBoundaryRowProbe{
-			StepID:       stepID,
-			Data:         string(pattern.Data),
-			Operation:    crudReadProbe,
-			Database:     string(db.ID),
-			Ownership:    db.Ownership,
-			Access:       requirement.Access,
-			EvidencePath: "application-pattern:" + string(pattern.ID) + "/query:" + string(q.ID) + "/database:" + string(db.ID),
-		}, true, nil
+		return resolve(requirement, string(pattern.Data), "application-pattern:"+string(pattern.ID)+"/query:"+string(q.ID))
 
 	case application.PatternReference:
-		requirement, db, err := resolveDatabase(pattern.Datasource)
-		if err != nil {
-			return businessActionOwnershipBoundaryRowProbe{}, false, err
-		}
 		_, relation, ok := findSemanticRelationExactlyOnce(world, string(pattern.Relation))
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s Relation %sをexactに解決できません", pattern.ID, pattern.Relation)
 		}
-		if pattern.ContractQuery == nil {
-			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s lacks ContractQuery", pattern.ID)
+		requirement, ok := owner.DatabaseByAlias(pattern.Datasource)
+		if !ok {
+			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, pattern.Datasource, owner.ID)
 		}
-		_, queryContract, err := resolveContractQueryReadCRUDProbe(world, string(db.ID), string(pattern.ContractQuery.Contract), string(pattern.ContractQuery.Query))
-		if err != nil {
-			return businessActionOwnershipBoundaryRowProbe{}, false, err
-		}
-		if string(queryContract.Result) != string(relation.Target) {
-			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s result/target mismatch", pattern.ID)
-		}
-		return businessActionOwnershipBoundaryRowProbe{
-			StepID:       stepID,
-			Data:         string(queryContract.Result),
-			Operation:    crudReadProbe,
-			Database:     string(db.ID),
-			Ownership:    db.Ownership,
-			Access:       requirement.Access,
-			EvidencePath: "application-pattern:" + string(pattern.ID) + "/contract-query:" + string(pattern.ContractQuery.Contract) + "/database:" + string(db.ID),
-		}, true, nil
+		return resolve(requirement, string(relation.Target), "application-pattern:"+string(pattern.ID)+"/relation:"+string(pattern.Relation))
 
 	case application.PatternHeaderDetail:
 		binding, ok := findHeaderDetailBindingExactlyOnceCRUDProbe(world, string(owner.ID), string(pattern.ID))
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("header-detail Pattern %s realization bindingをexactに解決できません", pattern.ID)
 		}
-		requirement, db, err := resolveDatabase(binding.Datasource)
+		requirement, ok := owner.DatabaseByAlias(binding.Datasource)
+		if !ok {
+			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("header-detail Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, binding.Datasource, owner.ID)
+		}
+		if requirement.TargetDatabase != binding.Target.Database {
+			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("header-detail Pattern %s datasource database %s != binding database %s", pattern.ID, requirement.TargetDatabase, binding.Target.Database)
+		}
+		_, queryContract, err := resolveContractQueryReadCRUDProbe(world, string(binding.Target.Database), string(binding.Target.Contract), string(binding.Target.Query))
 		if err != nil {
 			return businessActionOwnershipBoundaryRowProbe{}, false, err
 		}
-		_, queryContract, err := resolveContractQueryReadCRUDProbe(world, string(db.ID), string(binding.Target.Contract), string(binding.Target.Query))
-		if err != nil {
-			return businessActionOwnershipBoundaryRowProbe{}, false, err
-		}
-		return businessActionOwnershipBoundaryRowProbe{
-			StepID:       stepID,
-			Data:         string(queryContract.Result),
-			Operation:    crudReadProbe,
-			Database:     string(db.ID),
-			Ownership:    db.Ownership,
-			Access:       requirement.Access,
-			EvidencePath: "application-pattern:" + string(pattern.ID) + "/header-detail-binding/database:" + string(db.ID),
-		}, true, nil
+		return resolve(requirement, string(queryContract.Result), "application-pattern:"+string(pattern.ID)+"/header-detail-binding:"+binding.Target.Identity())
 
 	case application.PatternRecord, application.PatternCommand:
 		return businessActionOwnershipBoundaryRowProbe{}, false, nil
@@ -246,14 +304,11 @@ func ownershipBoundaryRowForPatternProbe(world ir.World, stepID string, owner ap
 	}
 }
 
-func findDatabaseExactlyOnceOwnershipProbe(world ir.World, id core.CanonicalID) (database.Database, bool) {
-	var found database.Database
-	count := 0
-	for _, db := range world.Databases {
-		if db.ID == id {
-			found = db
-			count++
+func crudProjectionContainsCellProbe(row businessActionCRUDProjectionRowProbe, dataID string, operation crudOperationProbe) bool {
+	for _, cell := range row.Cells {
+		if cell.Data == dataID && cell.Operation == operation {
+			return true
 		}
 	}
-	return found, count == 1
+	return false
 }
