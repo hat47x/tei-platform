@@ -217,6 +217,8 @@ Pressure:
 - BP-07隣接realizationからtargetをderiveしない
 - Authorization policy shapeをBusiness Procedureへ逆流させない
 
+Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけ、file-native source / decode / reload / Shared Acceptanceまで同じtarget roleを保持するpressureを追加する。O1を残さない場合はfixture fieldを増やさない。
+
 ## 10. Derived / externalへ残すもの
 
 PatternからderiveできるData / Relation / Query / Capability / Datasource / owner Application / datasource policyをBusiness sourceへコピーしない。
@@ -283,7 +285,8 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 21. O1 target != realizationをactual testsで確認
 22. D4 + O1 compositionをactual testsで確認
 23. generic ref-role taxonomyが必要か複数realistic pressureから判断
-24. Lane B再監査と矛盾しない
+24. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
+25. Lane B再監査と矛盾しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -314,7 +317,7 @@ S4-A Procedure-scoped Step local address
 H1 thin normalized handoff
 R3 handoff-only Business relation boundary
 C1 optional Reference Application context
-O1 target-role overlay pressure
+O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
 Actual greenと次のrealistic Referenceから、D3/D4/O1の最小十分性を判断する。
