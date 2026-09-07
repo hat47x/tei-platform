@@ -1,274 +1,254 @@
 # Business Procedure Manufacturing / Inventory Corpus Pressure Outline — 2026-09
 
-Status: **Lane C / provenance-backed TEI-original pressure outline / no Reference fixture / Gate 15c not activated / no production schema adoption**
+Status: **Lane C / second-corpus integration pressure / no Reference fixture / Gate 15c not activated / no production schema adoption**
 
-## 1. 目的
+## 1. 役割
 
-B-F19b `TEI-native provenance-backed realistic Reference corpus breadth`を将来閉じるため、外部Reference artifactをコピーせず、公開sourceから確認できる高水準factだけを起点にTEI-original second corpusのpressure outlineを作る。
+本書はLane B PR #500のprovenance / acceptance情報を複製しない。
 
-本書はReference fixtureではない。
+Cross-lane authority:
 
 ```text
-public provenance source
-  -> high-level business facts / design pressure
-  -> TEI-original outline
-  != copied external model
-  != accepted Business truth
-  != Gate 15c activation
+Lane B
+  LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md
+    -> external provenance / reuse boundary
+
+  LANE_B_SECOND_REALISTIC_REFERENCE_PRESSURE_SEED_2026-09.md
+    -> fact / candidate / unresolved pressure seed
+
+  LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md
+    -> B-F19b RRB-P1 / P2 / P3 claim boundary
+
+Lane C (this file)
+  -> seedをcurrent D3 / D4 / O1 / H1 / R3 / S4-A / C1へ
+     どう当てるかだけを所有
 ```
 
-Current `order_entry`へApplication数だけを足すことを目的にしない。
+Lane B filesがmainへ未mergeの間も、PR #500をcross-lane sourceとして扱い、本書へ同じprovenance inventoryを第二正本化しない。
 
-## 2. Provenance source
+## 2. 現在の入力pressure
 
-Access / verification date: **2026-09-07**
+Lane B seedから受け取る最小candidateは、広い生産管理systemの再現ではない。
 
-### X-TEA HOME
-
-- https://dbc.in.coocan.jp/
-- X-TEA / Three-Element Analysis portal
-- CONCEPTWAREを業種・業態別のReference Model群として説明
-- 一部modelには実動実装があると説明
-
-### Kozo Watanabe / ITmedia
-
-- 「“実行可能な仕様書のライブラリ”を知的社会資本に」, 2011-09-28
-- https://www.itmedia.co.jp/im/articles/1109/28/news134_3.html
-- `CONCEPTWARE／販売管理`をDriver実装のpressureとして用いたこと、Reference Modelと実装が相互に改善を促す考えを確認
-
-### TALON — カスタマイズ放題生産管理
-
-- https://talon.jp/products/businesspackage/businesspackage-mfs/
-- https://talon.jp/manual/10.TALON_MPS_Manual.pdf
-
-公開ページ / Ver.1.3 manualから確認できる高水準fact:
+概念上:
 
 ```text
-CONCEPTWARE／受注生産をTALONで再現したsystem
-150 functions on product page
+manufacturing / inventory continuation
 
-8 subsystem contexts in manual
-  system administration
-  master management
-  purchasing
-  manufacturing
-  inventory
-  sales
-  accounting
-  statistics
-
-business / physical-world pressure examples
-  purchase / receipt
+small action pressure
   material issue
-  manufacturing instruction / completion
-  warehouse stock / transfer
-  stocktaking
-  shipment
-  accounts payable / receivable continuation
-  payment approval / receipt
+  manufacturing completion
+  stock continuation
 ```
 
-Manualは同時に、TALON版でCONCEPTWAREの一部機能を統廃合し、仕様にも変更があることを明記している。
+程度から始める。
 
-したがってTALON版をoriginal CONCEPTWAREとbit-identicalなsourceとは扱わない。
-
-## 3. License / copying boundary
-
-確認済み:
-
-- `xead/XeadModeler` repository sourceはBSD-3-Clause
-- そのlicenseをCONCEPTWARE model artifactやTALON package / manualへ自動適用しない
-- TALON manualは利用規約への同意が必要であることを明記
-
-本outlineでは外部artifactをRepositoryへ取り込まない。
-
-避ける:
-
-- `.xeaf` / DB / package / manual図表の転載
-- external table / function inventoryの逐語転写
-- screen / flow図の再配布
-- 「free / public = OSS / redistributable」という推定
-- TALON固有の実装shapeをTEI Canonical shapeへ移植
-
-## 4. Fact / candidate / unresolvedの分離
-
-### Fact-level pressureとして利用可能
-
-公開sourceから確認できるのは少なくとも次である。
+重要なのは具体的な外部画面・table・function inventoryではなく:
 
 ```text
-multiple subsystem contexts exist
-multiple responsibility contexts exist
-purchasing / manufacturing / inventory / sales / accounting are separated concerns
-material receipt / issue and manufacturing completion affect physical world
-inventory transfer / stocktaking affect warehouse state
-shipment continues beyond a software command acknowledgement
+manual / physical completion
+state / ownership boundary
+Command result != Observation
+Business handoff != Runtime Workflow
+multiple responsibility / subsystem context
 ```
 
-### TEI candidate — sourceから逐語導出しない
+でcurrent TEI candidateを壊せるかである。
 
-次はTEIが比較用に置くcandidateであり、外部sourceの正確なProcedure sequenceを主張しない。
+Exact trigger / actor / action order / handoff condition / Data entity / Application owner / authorization rule等は、Lane B seedが`candidate / unresolved`としている限りLane Cでもaccepted factへ昇格しない。
+
+## 3. D3 / D4へ当てるPressure
+
+Second corpusで最初に問う。
 
 ```text
-Candidate Business context
-  manufacturing / inventory continuation
+manual / physical Business Action wording
+  -> current thin bodyで保持できるか
 
-Candidate business need
-  accepted demand requires material and physical completion before shipment can be considered complete
-
-Candidate ordered pressure
-  determine required material
-  request or receive material
-  issue material to work
-  recognize manufacturing completion
-  recognize finished-goods stock
-  prepare / perform shipment
+current D4 ref kinds
+  Application Pattern
+  Validation
+  Capability
+  -> minimumとして足りるか
 ```
 
-これらの順序・actor・trigger・conditionを外部sourceの確定事実として扱わない。
-
-### Unresolved
+Patternから独立したdirect Data / Relation refがaccepted Business meaningとして不可欠になった場合:
 
 ```text
-exact actor / responsibility for each action
-exact trigger identity
-exact order among exceptional paths
-approval rules
-material shortage policy
-inventory valuation / accounting rule
-exact Application Function realization
-exact Data ownership split in TEI
-exact Observation contract
+D4
+  -> fail closed
+  -> ref-kind design reopen
 ```
 
-sourceで確定できないものを、もっともらしさだけでacceptedへ丸めない。
+とする。
 
-## 5. Current candidate stackへ当てる問い
+Address / Handoff layerでその不足を隠さない。
 
-### D3 / D4 — residual Business meaning
+## 4. O1へ当てるPressure
 
-このpressureで次が必要になるかを確認する。
-
-- Business Action wordingだけでmanual / physical workを保持できるか
-- current D4のApplication Pattern / Validation / Capability refsだけでminimum bodyが足りるか
-- Patternから独立したdirect Data / Relation refが本当に必要になるか
-
-もしdirect Data / Relationがaccepted Business meaningとして不可欠ならD4をfail closedしてreopenする。
-
-### O1 — ref role
-
-Authorizationだけでなく、manufacturing / inventory側で:
+Current O1はBP-06の:
 
 ```text
-same authority kind
-  but target / concern != direct realization
+protected target / concern
+  != direct Application Function realization
 ```
 
-が反復するかを確認する。
+から生じたfield-specific pressureである。
 
-反復しなければgeneric Role taxonomyを作らない。
-
-### H1 / R3 — Business Handoff
-
-次のようなrelation-only meaningがProcedure bodyと独立して必要かを確認する。
+Second corpusでは、このrole差が自然に反復するかを見る。
 
 ```text
-material available / physical completion confirmed
-  -> next Business responsibility may continue
+repeated independent role pressure exists
+  -> O1 authoritative-source necessityを強め得る
+
+not repeated
+  -> generic Role taxonomyのEvidenceにしない
 ```
 
-ただしRuntime Workflow transitionへ変換しない。
+Second corpusを作るために`ExplicitSemanticRef{Kind,Role,Target}`を先行導入しない。
 
-### Observation boundary
+## 5. H1 / R3 / S4-Aへ当てるPressure
 
-特に次をPressureする。
+Procedure bodyとは独立したBusiness continuation meaningが必要かを見る。
+
+Candidate example:
 
 ```text
-application command accepted
+physical completion / stock fact is available
+  -> another Business responsibility may continue
+```
+
+必要なら:
+
+```text
+S4-A Procedure-scoped Step local address
+H1/R3 handoff-only relation
+```
+
+でlosslessに保持できるか確認する。
+
+次へ短絡しない。
+
+```text
+Handoff PASS
+  != full Business Flow / DFD Conformance
+  != Runtime Workflow transition
+```
+
+## 6. Command / Observation physical-world Pressure
+
+Second corpusで特に強く確認したい境界:
+
+```text
+Application Command accepted
   != material physically received
+  != material physically issued
   != manufacturing physically completed
   != stock physically present
   != shipment physically completed
 ```
 
-Command resultからexternal-world completionを推測しない。
+具体的なread contractがsource / TEI authorityから確定しない限り、Observation identityやCapabilityを捏造しない。
 
-### Business Flow / DFD
+Business Procedureはphysical completionを必要とするBusiness intentionを保持し、実際のObservationは既存Driver / Query / Provider boundaryへ残す。
 
-Procedure/Handoffだけでは情報・物・document movementのaccepted meaningを失う具体例が出た場合だけT-GAP-06をreopenする。
+## 7. Cross-view contradiction opportunities
 
-外部sourceにBusiness Flowがあることだけを理由にfull Business Flow schemaを導入しない。
-
-## 6. Cross-view contradiction opportunities
-
-Second corpusが価値を持つにはhappy-path説明だけでなく、少なくとも次の矛盾を作れる余地が必要である。
+Lane Cでsource/testへ昇格する価値があるのは、少なくとも次のような反証を作れる場合である。
 
 ```text
-Business says physical completion is required
-  but Function only records a command / acknowledgement
+A. Business requires physical completion
+   but Function only records Command acknowledgement
 
-Business needs external-observed state
-  but Application assumes managed-here write authority
+B. Business needs external-observed state
+   but Application assumes managed-here write authority
 
-Business handoff depends on actual stock / completion
-  but source only preserves screen adjacency
+C. Business continuation depends on actual stock/completion
+   but representation derives relation only from adjacency
 
-Business action is manual / physical
-  but projection invents a Capability to make it executable
+D. Business Action is manual / physical
+   but projection invents Capability to make it executable
 
-Business meaning needs a direct authority ref
-  but D4 would silently drop it
+E. accepted Business meaning needs a direct authority ref
+   but D4 would silently drop it
 ```
 
-これらを将来TEI-native fixtureへ落とす際はintentional defectとbaselineを分ける。
+将来fixtureを作る場合、baselineとintentional defectを分ける。
 
-## 7. B-F19bを閉じる条件
+## 8. Lane CでRRB-P1 / P2へ進む順序
 
-このoutlineだけではB-F19bを閉じない。
+Lane B Acceptance ContractのP1/P2/P3を正とする。
 
-少なくとも:
+Lane Cでは:
 
-1. provenance sourceを明示する
-2. external artifactをコピーしないTEI-original authoring sourceを作る
-3. fact / candidate / unresolvedをsource上でも区別する
-4. `order_entry`のrename/copyではない独立meaningを持つ
-5. multiple responsibility / subsystem contextをPressureする
-6. manual / physical / external actionをfake Functionなしで保持する
-7. Data-state authority / ownershipをcross-viewで検査できる
-8. Command / Observation separationをphysical-world caseで検査する
-9. D3 / D4 / O1 / H1 / R3の不足があれば具体的に記録する
-10. actual Repository runnerでRelevant testsを実行する
+```text
+current #482 actual green
+  ↓
+second corpus workを続ける価値を再確認
+  ↓
+RRB-P1
+  small TEI-original authoring source
+  provenance link
+  fact / candidate / unresolved preserved
+  no copied external artifact
+  ↓
+RRB-P2
+  checker / test-only pressure integration
+  ↓
+RRB-P3
+  actual Repository execution green
+```
 
-ことを必要とする。
+とする。
 
-## 8. Gate 15との関係
+本書自体はP1ではない。
+
+## 9. Gate 15との関係
 
 ```text
 B-F19b breadth work
   != Gate 15c automatically open
 ```
 
-このoutlineからD3 / D4 / O1 / H1 / R3の具体的contract insufficiencyが見つかるまでは15cを開かない。
+Second corpusのoutline / P1 / P2を進めても、それだけで15cを開かない。
 
-一方、B-F19bはReference maturity / breadth claimとして独立に未解消のままである。
+D3 / D4 / O1 / H1 / R3等に**具体的なminimum-contract insufficiency**が見つかった場合だけ、15cまたは該当candidateをreopenする。
+
+一方B-F19bはReference maturity / breadth claimとして、Lane B RRB-P3まで未解消のままである。
+
+## 10. 現時点の判断
 
 ```text
-scoped minimum contract pressure may become sufficient
-  while
-realistic Reference maturity remains unresolved
+external provenance source
+  available (Lane B B-F19a)
+
+Lane B pressure seed / acceptance contract
+  available in PR #500
+
+Lane C integration outline
+  this document
+
+TEI-native second Business authoring source
+  not created
+
+RRB-P1 / P2 / P3
+  not achieved by this document
+
+Gate 15c
+  not activated
+
+new ref kind / role taxonomy / Business Flow schema necessity
+  not proven
 ```
 
-を許容する。
+## 11. 次
 
-## 9. 次の作業
+1. `HAT47X`等actual Repository execution経路が戻れば、まずcurrent #482 pressure testsをgreenにする。
+2. actual green前にsecond corpusをfixture schemaへ昇格しない。
+3. actual green後、B-F19bを進める価値がある場合だけRRB-P1の小型TEI-original sourceを作る。
+4. RRB-P1から具体的不足が出たところだけD4 / O1 / H1-R3 / T-GAP-06をreopenする。
 
-1. actual Repository execution経路が戻れば、まずcurrent #482 pressure testsをgreenにする。
-2. actual green前に本outlineをfixture schemaへ昇格しない。
-3. actual green後、B-F19bを進める価値がある場合だけ小さなTEI-original sourceを作る。
-4. 最初のsourceではfact / candidate / unresolvedを明示し、外部modelのexact sequenceを再現しない。
-5. 新しい意味不足が出た場合だけD4 ref kind / O1 role / H1-R3 / T-GAP-06をreopenする。
-
-## 10. 非対象
+## 12. 非対象
 
 - external Reference artifact import
 - CONCEPTWARE / TALON reproduction
