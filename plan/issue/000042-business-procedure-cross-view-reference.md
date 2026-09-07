@@ -24,6 +24,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_APPLICATION_PATTERN_TARGET_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_D4_APPLICATION_PATTERN_TARGET_ROLE_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_MANUFACTURING_INVENTORY_CORPUS_PRESSURE_OUTLINE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`
 
 ## Lane境界
 
@@ -84,6 +86,8 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 
 ### 15c — conditional broader realistic pressure
 15a + 15bでminimum contract sufficiencyを説明できない具体的不足が出た場合だけbroader realistic pressureを追加する。Application数を成熟度KPIにしない。
+
+Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当てたoutline-level監査では、physical-worldで`Command != actual completion`が強く再現した一方、current candidate stackの具体的contract insufficiencyはまだ出ていない。特にO1 protected-target roleはsecond domainで反復したとは証明できない。したがってGate 15cは**未起動**を維持する。
 
 ## Cross-view checker原則
 
@@ -175,6 +179,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 | A69 | D4 + O1 target-role composition、generic Role taxonomyはdefer | test-only実装済み |
 | A70 | Legacy Authorization policyはO1 targetをcorroborateできるがauthor / backfillしない | test-only実装済み |
 | A71 | X-TEA TaskAction / TaskFunctionIO分離はAction/Function分離を支持するがgeneric protected-target roleは証明しない | E-015固定 |
+| A72 | manufacturing / inventory second-corpus outlineではO1 role反復・D4/H1/R3不足をまだ証明せず、Command/Observation境界だけを強く再現 | outline-level negative Evidence / Gate 15c未起動 |
 
 ## Candidate stack
 
@@ -217,7 +222,7 @@ Target-only changeはD4 bodyを変えずcross-view meaningを変える。BP-07�
 
 Legacy Authorization policyの`execute / order_entry.submit_order / allow`はO1 targetのcross-view corroborationには使えるが、policyからO1 targetを生成・補完しない。Policy側の変更はBusiness targetを書き換えず、不一致をreview / diagnostic pressureとして露出させる。
 
-Generic `ExplicitSemanticRef{Kind,Role,Target}` taxonomyはcurrent一例から先行採用しない。
+Manufacturing / inventory second-corpus outlineにはexact Application Pattern realization / policyがまだないため、O1と同じprotected-target roleをsyntheticに作らない。Generic `ExplicitSemanticRef{Kind,Role,Target}` taxonomyは引き続きcurrent一例から先行採用しない。
 
 Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけfile-native source / decode / reload / Shared Acceptance pressureを追加する。残さない場合はproduction source fieldを追加しない。
 
@@ -251,6 +256,10 @@ BP-08 Observation
   independent Semantic authority未証明
   -> Business wordingを保持
   -> runtime ReadIdentityをrefにしない
+
+manufacturing / inventory pressure
+  command accepted != material received / manufacturing completed / stock present / shipment completed
+  -> Command / Observation separationを別domainから支持
 ```
 
 ## 非対象
@@ -287,10 +296,10 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 7. multi-Application / Application owner boundaryをactual testsで確認
 8. `realization` subtraction / diagnostic independenceをactual testsで確認
 9. S4-A / H1 / R3をactual testsで確認
-10. Gate 15a / 15bをactual Evidenceで確認し15cは不足時だけ追加
+10. Gate 15a / 15bをactual Evidenceで確認し15cは具体的不足時だけ起動
 11. Authorization / Observation非対称境界をactual testsで確認
 12. BP-03 / BP-05 authority separationをactual testsで確認
-13. D3 / D4の最小十分性をcurrent + next realistic Referenceで説明
+13. D3 / D4の最小十分性をcurrent Reference + provenance-backed second-corpus Evidenceで説明し、fixture成熟度とは分離する
 14. D4 future Data / Relation fail-closedをactual testsで確認
 15. authority kindをgeneric ref bagへ失わない
 16. D4 + S4-A + H1/R3 compositionをactual testsで確認し、normalized duplicate Handoffをfail closed
@@ -301,5 +310,6 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 21. H1/R3をhandoff-onlyとして保ちBusiness Flow surfaceを混入させない
 22. O1をproduction accepted meaningとして残す場合はauthoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
 23. Legacy Authorization policyをO1 protected targetのauthor / backfill sourceにしない
+24. second-corpus outlineからexact identity / actor / sequenceを発明せず、fixture化はactual green後に必要性がある場合だけ行う
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
