@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,8 +40,8 @@ func TestO1ProtectedTargetCanBeCorroboratedByLegacyPolicyWithoutMakingPolicyAuth
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !legacyAuthorizationAllowsTarget(policy, "execute", target) {
-		t.Fatalf("current Legacy Authorization policy does not corroborate O1 protected target %q", target)
+	if diagnostics := authorizationTargetCorroborationDiagnostics("BP-06", candidate.ApplicationPatternTargets, policy); len(diagnostics) != 0 {
+		t.Fatalf("current Legacy Authorization policy should corroborate O1 target: %+v", diagnostics)
 	}
 
 	changedPolicy := policy
@@ -50,8 +51,9 @@ func TestO1ProtectedTargetCanBeCorroboratedByLegacyPolicyWithoutMakingPolicyAuth
 			changedPolicy.Rules[i].Resource = "order_entry.order_record"
 		}
 	}
-	if legacyAuthorizationAllowsTarget(changedPolicy, "execute", target) {
-		t.Fatalf("test setup failed: changed policy still corroborates O1 target %q", target)
+	diagnostics := authorizationTargetCorroborationDiagnostics("BP-06", candidate.ApplicationPatternTargets, changedPolicy)
+	if err := checkExpectedDiagnostics(diagnostics, "BUSINESS_APPLICATION_PATTERN_TARGET_AUTHORIZATION_POLICY_MISMATCH"); err != nil {
+		t.Fatalf("Authorization policy driftをcross-view diagnosticへ露出できません: %v\n%+v", err, diagnostics)
 	}
 	if candidate.ApplicationPatternTargets[0] != target {
 		t.Fatalf("Legacy Authorization policy change rewrote Business protected target: got=%q want=%q", candidate.ApplicationPatternTargets[0], target)
@@ -79,6 +81,9 @@ func TestLegacyAuthorizationPolicyCannotBackfillMissingO1ProtectedTarget(t *test
 	if !legacyAuthorizationAllowsTarget(policy, "execute", "order_entry.submit_order") {
 		t.Fatal("test setup failed: Legacy Authorization policy lacks the submit target rule")
 	}
+	if diagnostics := authorizationTargetCorroborationDiagnostics("BP-06", candidate.ApplicationPatternTargets, policy); len(diagnostics) != 0 {
+		t.Fatalf("missing Business targetをpolicy-only mismatchとして扱いました: %+v", diagnostics)
+	}
 	if len(candidate.ApplicationPatternTargets) != 0 {
 		t.Fatalf("Legacy Authorization policy backfilled Business protected target: %v", candidate.ApplicationPatternTargets)
 	}
@@ -103,4 +108,21 @@ func legacyAuthorizationAllowsTarget(fixture legacyAuthorizationFixtureProbe, ac
 		}
 	}
 	return false
+}
+
+func authorizationTargetCorroborationDiagnostics(stepID string, targets []string, fixture legacyAuthorizationFixtureProbe) []diagnostic {
+	result := report{}
+	for _, target := range targets {
+		if legacyAuthorizationAllowsTarget(fixture, "execute", target) {
+			continue
+		}
+		result.Diagnostics = append(result.Diagnostics, diagnostic{
+			Code:     "BUSINESS_APPLICATION_PATTERN_TARGET_AUTHORIZATION_POLICY_MISMATCH",
+			Severity: severityArchitecturePolicy,
+			Step:     stepID,
+			Message:  fmt.Sprintf("Business protected target %q is not corroborated by the current Legacy Authorization execute/allow policy", target),
+		})
+	}
+	sortDiagnostics(result.Diagnostics)
+	return result.Diagnostics
 }
