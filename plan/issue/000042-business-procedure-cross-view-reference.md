@@ -28,6 +28,7 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_HANDOFF_INFERENCE_PRESSURE_2026-09.md`
 
 ## Lane境界
 
@@ -46,6 +47,8 @@ Business Procedure != single Application child
 Runtime Observation operation != Business / Semantic identity
 Command accepted != physical-world fact observed
 physical-world fact observed != accepted responsibility Handoff
+Step order / adjacency != accepted responsibility Handoff
+Application Function sequence != accepted responsibility Handoff
 ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 ```
@@ -91,7 +94,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 ### 15c — conditional broader realistic pressure
 15a + 15bでminimum contract sufficiencyを説明できない具体的不足が出た場合だけbroader realistic pressureを追加する。Application数を成熟度KPIにしない。
 
-Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当てた監査では、physical-worldで`Command != actual completion`が強く再現しtest-only Pressureまで進んだ。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、accepted Handoff relationはまだ証明されない。したがってGate 15cは**未起動**を維持する。
+Manufacturing / inventory second-corpus outlineではphysical-world `Command != actual completion`をtest-only Pressureまで進めた。さらにH1/R3について、Step adjacencyやpositive physical ObservationからHandoffを生成せず、explicit Handoff sourceだけをnormalized relationのauthorityとするnegative Pressureを追加した。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、new production contract不足はまだ証明されない。したがってGate 15cは**未起動**を維持する。
 
 ## Cross-view checker原則
 
@@ -105,6 +108,8 @@ Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当�
 - runtime Observation APIをSemantic identityへ昇格しない
 - Command acceptanceからphysical completionを推測しない
 - physical ObservationからHandoff endpoint / conditionを生成しない
+- Step order / adjacencyからHandoffを生成しない
+- Application Function sequenceからHandoffを生成しない
 - exact TEI Data / Pattern identityなしにsecond-corpus ownershipをsyntheticに作らない
 - adjacencyからprotected targetを推測しない
 - Authorization policyはprotected targetをcorroborateできるが、Business targetをauthor / backfillしない
@@ -191,6 +196,9 @@ Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当�
 | A74 | Observation read成功とphysical completionを分離し、positive external Observationだけをtest-local fact成立として扱う | test-only Pressure実装済み |
 | A75 | exact second-corpus TEI Data / Pattern identityなしにownershipをsynthetic化しない | deferral boundary固定 |
 | A76 | physical fact observedだけからH1/R3 Handoffを生成しない | boundary固定 |
+| A77 | Procedure Step順序 / adjacencyからresponsibility Handoffを生成しない | test-only negative Pressure実装済み |
+| A78 | positive physical Observationからresponsibility Handoffを生成しない | test-only negative Pressure実装済み |
+| A79 | normalized H1/R3 relationはexplicit Handoff sourceだけから生成する | test-only authority Pressure実装済み |
 
 ## Candidate stack
 
@@ -251,6 +259,24 @@ Current Handoff validator PASSをBusiness Flow / DFD Conformanceとはみなさ�
 
 Second corpusではphysical factの観測がresponsibility continuationの前提になり得るが、exact Procedure/Step endpointとaccepted conditionがないためH1/R3を生成しない。
 
+`second_corpus_handoff_inference_pressure_test.go`では、explicit Handoff sourceを除去した状態でStep order / adjacencyを残してもnormalized Handoffs=0、positive physical Observationがあっても0、explicit relationを与えた場合だけ1件になることをPressureする。
+
+Authority direction:
+
+```text
+explicit accepted Handoff source
+  -> normalized H1/R3 relation
+
+Step order / adjacency
+  -X-> Handoff
+
+physical Observation
+  -X-> Handoff
+
+Application Function sequence
+  -X-> Handoff
+```
+
 ## Authorization / Observation boundary
 
 ```text
@@ -292,6 +318,7 @@ manufacturing / inventory pressure
 - `realization` production enum
 - Observation専用Canonical identity
 - second-corpus synthetic Data ownership / Application Pattern
+- inferred Handoff from adjacency / Observation / Function sequence
 - Gate B / Gate C完了条件変更
 
 ## Verification status
@@ -331,5 +358,7 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 25. physical-world Command/Observation test-only Pressureをactual runnerで確認する
 26. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
 27. physical Observationからresponsibility Handoffを自動生成しない
+28. Step order / adjacencyからresponsibility Handoffを自動生成しない
+29. explicit Handoff sourceだけがnormalized H1/R3 relationをauthorすることをactual runnerで確認する
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
