@@ -27,6 +27,9 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - physical factの観測だけではaccepted responsibility Handoffを導出できない。
 - Procedure Step順序 / adjacencyやApplication Function sequenceからaccepted responsibility Handoffを導出してはならない。
 - normalized H1/R3 relationのauthorityはexplicit Business Handoff sourceに限定する。
+- Business Action × Data / Relationはexisting Pattern / Validation / Capability refsからderived projectionできる範囲が広く、Business sourceへData / Relationを複製する理由にはならない。
+- current refsからData traceがないことは`no Data dependency`を意味せず、unknown / no-traceとして保持する。
+- derived Data traceが存在することもdependency listの完全性を意味しない。
 
 ## 3. Explicit ref authority
 
@@ -133,6 +136,34 @@ Current Referenceでminimum必要性が未証明のdirect Data / Relation refs�
 将来sourceにdirect Data / Relation refが現れた場合、D4 projectionは黙ってdropせずfail closedし、explicit-ref designをreopenする。
 
 Second-corpus physical stateのrelevanceだけではData / Relation slotを追加しない。Exact TEI-original Data authorityがない状態でownershipを作ることもしない。
+
+### 5.1 Business Action × Data / Relation derived projection
+
+`business_action_data_projection_pressure_test.go`では、Business sourceのaccepted refsとnormalized Worldから次を名称推測なしにderiveする。
+
+```text
+Application Pattern
+  -> Data
+  -> Relation source / target Data
+  -> Pattern-owned Capability input/output/outcome Data
+
+Validation
+  -> Attribute owner Data
+  -> Relation source / target Data
+
+Business explicit Capability
+  -> input/output/outcome Data
+```
+
+Current `order_entry`では、BP-00〜BP-03 / BP-05〜BP-07に有用なData traceを作れる。
+
+一方、BP-04 / BP-08 / BP-09はcurrent accepted refsからData traceを作れないため、名称・隣接Step・Business wordingから補完せず`NoDataTraceFromCurrentRefs=true`として残す。
+
+このflagは`no Data dependency`を意味しない。またfalseも`all Data dependencies resolved`を意味しない。Derived projectionはreview / impact補助であり第二正本ではない。
+
+BP-06は`security.authorize`からsecurity-side Dataをtraceできるが、O1 protected targetはauthoritative Business sourceにpersistしていないため、隣接BP-07から`sales.order`を補わない。この部分traceはO1 persistence判断のEvidenceにはなるが、O1 source採用を自動決定しない。
+
+以上から、current EvidenceはD4へData / Relation slotを戻すより、existing refsからderived projectionを作る方を支持する。ただし将来Business Action自身がdirect Data / Relation authorityを必要とするaccepted sourceが現れた場合はD4 fail-closed ruleでreopenする。
 
 ## 6. ref kindをgeneric bagへ畳まない
 
@@ -305,6 +336,8 @@ X-TEA fallbackで確認したTaskAction / TaskFunctionIO分離はBusiness Action
 
 PatternからderiveできるData / Relation / Query / Capability / Datasource / owner Application / datasource policyをBusiness sourceへコピーしない。
 
+Business Action × Data / Relation projectionもaccepted Business meaningの第二正本にしない。Projection rowはData/Relation traceとEvidence pathを表すだけで、Ownership / Access / WritePolicy / Canonical authorityを所有しない。
+
 Procedureにmandatory single Application ownerを置かない。
 
 Matrix、CRUD / impact view、graph、checker diagnosticsをaccepted Business meaningの第二正本にしない。
@@ -325,6 +358,7 @@ Second-corpus physical Observationのruntime ReadIdentity / Evidence natureもCa
 - Observation専用Canonical identityの先行導入
 - physical-world state engine
 - second-corpus synthetic Data ownership / Database / Pattern
+- Business Action × Data / Relation derived projectionをCanonical authority化すること
 - inferred Handoff from adjacency / Observation / Function sequence
 - global Canonical Step ID
 
@@ -357,10 +391,13 @@ Current `order_entry`だけでもmanaged-here sales data、external-observed cus
 D4
   manual / physical / external Business Action pressureを再現
   direct Data / Relation ref necessityは未証明
+  current order_entryではexisting refsからderived Data projectionが有用に成立
+  -> Data / Relation slotを戻す圧力は弱まった
 
 O1
   protected-target roleのsecond cross-domain exampleは未証明
   generic Role taxonomyを強める根拠なし
+  BP-06 Data projectionはsecurity-side部分traceに留まり、O1 persistence判断のpressureになる
 
 H1 / R3
   responsibility continuation pressureは自然に存在
@@ -387,7 +424,7 @@ Business Flow / DFD
 
 したがってcurrent candidate stackのproduction contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
 
-このoutline-level Evidence、Observation pressure、Handoff inference pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
+このoutline-level Evidence、Observation pressure、Handoff inference pressure、Data projection pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
 
 ## 14. ADR作成前Gate
 
@@ -395,7 +432,7 @@ Business Flow / DFD
 
 本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A79 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
+- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A83 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
 - 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
 - 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
 
@@ -431,6 +468,10 @@ Business Flow / DFD
 28. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
 29. physical ObservationからH1/R3 responsibility Handoffを自動生成しない
 30. Procedure Step順序 / adjacency / Application Function sequenceからH1/R3を自動生成せず、explicit Handoff sourceだけがnormalized relationをauthorすることをactual testsで確認する
+31. Business Action × Data / Relation projectionをactual testsで確認し、Pattern / Validation / Capabilityからexact identity traceを導出できることを示す
+32. Data traceがないStepを`no Data dependency`へ丸めず、no-trace / unknownとして保持する
+33. derived Data traceが存在しても完全性を主張せず、projectionをOwnership / Access / Canonical authorityの第二正本にしない
+34. BP-06 Data projectionがO1未persist時にはsecurity-side部分traceに留まることを確認し、O1 persistence判断とData projectionを相互に誤補完しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -450,6 +491,7 @@ GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowは
 - `realization` enum
 - Observation Canonical kind / physical-world state engine
 - synthetic second-corpus Data ownership model
+- Business Action × Data / Relation projectionのCanonical authority化
 - inferred Handoff from adjacency / Observation / Function sequence
 - global/durable Canonical Step ID
 - generic Uncertainty framework
@@ -467,4 +509,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた一方、O1 role反復、exact Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた。一方、current `order_entry`のBusiness Action × Data / Relation derived projectionは、D4へData / Relation slotを戻さずともかなりのreview traceを得られることを示した。No-traceはunknown、traceありもcompleteではない。O1 role反復、exact second-corpus Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足はなお未証明である。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
