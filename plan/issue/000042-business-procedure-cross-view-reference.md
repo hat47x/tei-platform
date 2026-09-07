@@ -26,6 +26,8 @@ Status: In Progress
 - `plan/BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_MANUFACTURING_INVENTORY_CORPUS_PRESSURE_OUTLINE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`
 
 ## Lane境界
 
@@ -42,6 +44,8 @@ Business Handoff != full Business Flow / DFD
 Business Actor / Job != Authentication Principal != Authorization Role / Policy
 Business Procedure != single Application child
 Runtime Observation operation != Business / Semantic identity
+Command accepted != physical-world fact observed
+physical-world fact observed != accepted responsibility Handoff
 ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 ```
@@ -87,7 +91,7 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 ### 15c — conditional broader realistic pressure
 15a + 15bでminimum contract sufficiencyを説明できない具体的不足が出た場合だけbroader realistic pressureを追加する。Application数を成熟度KPIにしない。
 
-Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当てたoutline-level監査では、physical-worldで`Command != actual completion`が強く再現した一方、current candidate stackの具体的contract insufficiencyはまだ出ていない。特にO1 protected-target roleはsecond domainで反復したとは証明できない。したがってGate 15cは**未起動**を維持する。
+Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当てた監査では、physical-worldで`Command != actual completion`が強く再現しtest-only Pressureまで進んだ。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、accepted Handoff relationはまだ証明されない。したがってGate 15cは**未起動**を維持する。
 
 ## Cross-view checker原則
 
@@ -99,6 +103,9 @@ Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当�
 - Projectionだけでaccepted authorityを拡張しない
 - `realization` labelからref kind / roleを推測しない
 - runtime Observation APIをSemantic identityへ昇格しない
+- Command acceptanceからphysical completionを推測しない
+- physical ObservationからHandoff endpoint / conditionを生成しない
+- exact TEI Data / Pattern identityなしにsecond-corpus ownershipをsyntheticに作らない
 - adjacencyからprotected targetを推測しない
 - Authorization policyはprotected targetをcorroborateできるが、Business targetをauthor / backfillしない
 
@@ -180,6 +187,10 @@ Manufacturing / inventory second-corpus outlineをD4 / S4-A / H1-R3 / O1へ当�
 | A70 | Legacy Authorization policyはO1 targetをcorroborateできるがauthor / backfillしない | test-only実装済み |
 | A71 | X-TEA TaskAction / TaskFunctionIO分離はAction/Function分離を支持するがgeneric protected-target roleは証明しない | E-015固定 |
 | A72 | manufacturing / inventory second-corpus outlineではO1 role反復・D4/H1/R3不足をまだ証明せず、Command/Observation境界だけを強く再現 | outline-level negative Evidence / Gate 15c未起動 |
+| A73 | Command acceptanceだけではphysical completionを成立させない | second-corpus test-only Pressure実装済み |
+| A74 | Observation read成功とphysical completionを分離し、positive external Observationだけをtest-local fact成立として扱う | test-only Pressure実装済み |
+| A75 | exact second-corpus TEI Data / Pattern identityなしにownershipをsynthetic化しない | deferral boundary固定 |
+| A76 | physical fact observedだけからH1/R3 Handoffを生成しない | boundary固定 |
 
 ## Candidate stack
 
@@ -238,6 +249,8 @@ Business Flow / DFD
 
 Current Handoff validator PASSをBusiness Flow / DFD Conformanceとはみなさない。
 
+Second corpusではphysical factの観測がresponsibility continuationの前提になり得るが、exact Procedure/Step endpointとaccepted conditionがないためH1/R3を生成しない。
+
 ## Authorization / Observation boundary
 
 ```text
@@ -259,7 +272,10 @@ BP-08 Observation
 
 manufacturing / inventory pressure
   command accepted != material received / manufacturing completed / stock present / shipment completed
-  -> Command / Observation separationを別domainから支持
+  -> no observation: BUSINESS_PHYSICAL_COMPLETION_REQUIRES_OBSERVATION
+  -> observed=false: BUSINESS_PHYSICAL_COMPLETION_NOT_OBSERVED
+  -> positive external observation only: test-local physical fact may be observed
+  -> no Canonical Observation identity
 ```
 
 ## 非対象
@@ -275,6 +291,7 @@ manufacturing / inventory pressure
 - global Canonical Step ID
 - `realization` production enum
 - Observation専用Canonical identity
+- second-corpus synthetic Data ownership / Application Pattern
 - Gate B / Gate C完了条件変更
 
 ## Verification status
@@ -311,5 +328,8 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 22. O1をproduction accepted meaningとして残す場合はauthoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
 23. Legacy Authorization policyをO1 protected targetのauthor / backfill sourceにしない
 24. second-corpus outlineからexact identity / actor / sequenceを発明せず、fixture化はactual green後に必要性がある場合だけ行う
+25. physical-world Command/Observation test-only Pressureをactual runnerで確認する
+26. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
+27. physical Observationからresponsibility Handoffを自動生成しない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
