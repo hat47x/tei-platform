@@ -10,8 +10,8 @@ BusinessModel
     Procedure
       id
       purpose
-      trigger
-      actor
+      trigger { epistemicStatus, meaning }
+      actor   { epistemicStatus, businessLabel }
       Steps[]
         localKey
         Body
@@ -47,12 +47,16 @@ normalized Business model
 
 Business meaning does not need to be embedded in `ir.World` merely because it is first-class design meaning.
 
+Current tests pressure Business wording change、protected-target-only change、Handoff condition-only change as Business semantic revision changes while leaving `ir.World` unchanged. Stale Application target still fails closed through cross-view validation.
+
 ## Current decisions
 
 - D3 remains subtraction/history evidence, not the preferred minimum candidate.
 - D4 alone is insufficient if exact protected-target trace is retained.
-- O1 production sidecar is not preferred because it requires composite Acceptance machinery for one Step-local relation.
 - O1 minimum cardinality is zero-or-one; multi-target future cases fail closed and reopen design.
+- Production O1 sidecar is not preferred because it requires composite Acceptance machinery for one Step-local relation.
+- Test-only inline `protectedApplicationPattern?` source candidate round-trips losslessly and normalizes to the same D4+O1 meaning as the sidecar pressure.
+- Therefore same Business source内のsingular narrow O1 field is the current strongest authoring candidate, but production source syntax is not adopted yet.
 - Handoff remains separate from Procedure body because it is genuinely cross-Procedure meaning.
 - Handoff normalized meaning is required for the current accepted Reference Set, but a standalone top-level Canonical `BusinessHandoff` kind is not yet proven.
 - Generic ref-role taxonomy remains deferred.
@@ -80,9 +84,9 @@ The current fingerprint experiments are pressure vocabulary only, not a producti
 ## Current unresolved gates
 
 1. actual Repository runner green (`gofmt`, `go vet`, `go test`, checker).
-2. production authoring representation for singular narrow O1.
-3. production placement of H1/R3 set-level relation.
-4. production Shared Acceptance / semantic revision mechanism.
+2. production adoption/migration strategy for the inline singular O1 field; test-only shape itself is now demonstrated.
+3. production placement / authoring representation of H1/R3 set-level relation.
+4. production Shared Acceptance / Business semantic revision mechanism.
 5. second realistic Handoff pressure to confirm thin relation sufficiency.
 6. next TEI-original C/U/D case before mutation/effect contract design.
 7. evidence that separate Business plane is insufficient before considering `ir.World` embedding.
