@@ -11,6 +11,7 @@ Status: **Lane C / sole Pre-ADR readiness authority / Not Ready / no production 
 - `plan/issue/000042-business-procedure-cross-view-reference.md` — A-series Pressure inventory
 - `plan/BUSINESS_MODEL_CURRENT_MINIMUM_CANDIDATE_2026-09.md` — current minimum比較基線
 - `plan/BUSINESS_MODEL_SHARED_ACCEPTANCE_BUNDLE_PRESSURE_2026-09.md` — multi-source Acceptance / freshness / atomicity pressure
+- `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md` — production Shared Acceptanceで分離すべきsource / semantic / Conformance base境界
 - 各`BUSINESS_PROCEDURE_*` / `BUSINESS_ACTION_*` Pressure文書
 - X-TEA Evidence Register / E-015 / E-016
 
@@ -203,6 +204,22 @@ logical source key
 
 Semantic revisionとsource freshnessを同一視しません。
 
+さらにproduction Acceptanceでは、Business source freshnessだけでは不足します。Preview後に`ir.World`側のApplication Pattern等が変化した場合、Business sourcesとBusiness semantic meaningが同一でもcross-view Conformanceの根拠はstaleになります。
+
+したがって概念上は少なくとも:
+
+```text
+Business source freshness
+  != Business semantic revision
+  != cross-view Conformance base
+```
+
+を分離します。
+
+`business_model_conformance_base_freshness_pressure_test.go`では、Business sourceを変えずに`order_entry.submit_order`をWorldから除去した場合にPreview baseをstaleとしてrejectするtest-only Pressureを追加しました。
+
+Production hash / ETag / revision algorithmはまだ採用しません。既存の`ISSUE-000027` / `ISSUE-000046`が持つ`baseModelRevision` / shared Acceptance原則と接続し、Lane C独自のgeneric transaction engineは作りません。read-only Semantic diff / impactは`ISSUE-000039`へ委譲します。
+
 ### Atomicity
 
 Current coordinated case:
@@ -292,6 +309,7 @@ Manufacturing / inventory second-corpus outlineはこの非対称性を別domain
 - Database Contract C/U/D enum
 - mutation binding / MutationIntent / Function-Data-I/O Canonical kind
 - synthetic second-corpus Data ownership
+- Business専用generic transaction / revision subsystem
 
 ## 11. ADR readiness gates
 
@@ -332,18 +350,20 @@ Actual testsでmanual/external Action、uncertainty、multi-Application、D4 ref
 
 ### Gate E — placement / Shared Acceptance
 
-Conceptual multi-source normalization / freshness / referential atomicityはsource-level test-only Pressureで前進済みです。
+Conceptual multi-source normalization / Business source freshness / referential atomicityはsource-level test-only Pressureで前進済みです。さらにWorld / Conformance base freshnessをBusiness source freshnessから分離するPressureを追加しました。
 
 Production ADR前に残るのは:
 
-1. source freshness token / base revisionをどのproduction contractで表すか
-2. candidate change-setをどのAPI / repository transactionでatomicにapplyするか
-3. Accept後に全Business sourceをreloadしてsame normalized revisionを再現するproduction flow
+1. existing shared Acceptance boundaryがBusiness source baseとcross-view Conformance baseをどのproduction contractで固定・再確認するか
+2. candidate change-setをどのrepository transaction boundaryでatomicにapplyするか
+3. Accept後に全Business sourceをreloadしてsame normalized Business revisionを再現するproduction flow
 4. cross-view Conformance失敗時にpartial writeを残さないcommit boundary
-5. semantic revision identity / hash / ETag等のproduction contract
-6. actual Repository testsでmulti-source bundle / freshness / coordinated renameをgreenにする
+5. semantic revision identity / source freshness / conformance baseを物理的に一つのrevision tokenへ束ねるか分離するか
+6. actual Repository testsでmulti-source bundle / source freshness / conformance-base freshness / coordinated renameをgreenにする
 7. separate Business planeでactual Conformanceがlosslessであること
 8. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
+
+Lane Cはplatform-wide `baseModelRevision`、hash / ETag algorithm、Studio / AI専用Acceptance APIを決めません。shared Acceptance原則は`ISSUE-000027` / `ISSUE-000046`へ接続し、Semantic diff / impact解析は`ISSUE-000039`へ委譲します。
 
 ### Gate F — derived projections / mutation gap
 
@@ -375,8 +395,14 @@ Handoff authoring candidate
 placement candidate
   = separate normalized Business semantic plane
 
-multi-source semantic bundling / freshness / atomicity
+multi-source semantic bundling / source freshness / atomicity
   = source-level test-only Pressureで有力
+
+cross-view Conformance base freshness
+  = test-only Pressure追加
+
+shared Acceptance implementation
+  = existing cross-lane acceptance workへ接続
 
 ir.World.Business
   = current Evidenceでは不要
@@ -389,7 +415,7 @@ Production ADR
 
 1. actual Repository runner green未取得。
 2. inline O1 / standalone Handoff production adoption・migration未確定。
-3. production freshness / atomic apply / semantic revision API未確定。
+3. production shared AcceptanceでBusiness source base / Conformance base / atomic apply / reload Evidenceをどう実装するか未確定。
 4. second realistic Handoff不足。
 5. qualifying TEI-original C/U/D case不足。
 6. separate Business plane不足を示すEvidenceはなく、`ir.World` integrationはまだ不要。
