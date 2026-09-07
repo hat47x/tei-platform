@@ -17,6 +17,4 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| [`tei-projection-design-sketch.html`](tei-projection-design-sketch.html) | 第一Web Target、Command / Observation、Editor、Studio、既存認証、Database Workbench、Gate Evidence、Runtime観測、CLI出力体裁、同時編集、キーボード操作、移行者向けの対照、1280幅の折り畳みの13フレームと、決定すべき論点22件 |
-
-`tei-projection-design-sketch.html`の前提は、業務端末（1280〜1920のデスクトップ、キーボード中心）、移行元は一般的なローコード開発ツール、Editorは複数人での同時編集を視野に入れる、静的モックとして描く、の4点です。
+| [`tei-projection-design-sketch.html`](tei-projection-design-sketch.html) | 第一Web Target、Command / Observation、Editor、Studio、既存認証、Database Workbench、Gate Evidence、Runtime観測、CLI出力体裁、同時編集、キーボード操作、移行者向けの対照、1280幅の折り畳み、Coreとプラグインの拡張境界。前提と決定すべき論点もモック内に含みます |
