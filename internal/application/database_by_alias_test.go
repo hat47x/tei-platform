@@ -2,7 +2,20 @@ package application
 
 import "testing"
 
-func TestDatabaseByAliasResolvesUniqueAlias(t *testing.T) {
+func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAlias(t *testing.T) {
+	app := Application{
+		Databases: []DatabaseRequirement{
+			{Alias: "sales", TargetDatabase: "sales_core"},
+			{Alias: "sales", TargetDatabase: "archive_sales"},
+		},
+	}
+
+	if _, ok := app.DatabaseByAlias("sales"); !ok {
+		t.Fatal("存在するdatasource aliasを未定義として扱いました")
+	}
+}
+
+func TestDatabaseByAliasExactResolvesUniqueAlias(t *testing.T) {
 	app := Application{
 		Databases: []DatabaseRequirement{
 			{Alias: "sales", TargetDatabase: "sales_core"},
@@ -10,7 +23,7 @@ func TestDatabaseByAliasResolvesUniqueAlias(t *testing.T) {
 		},
 	}
 
-	got, ok := app.DatabaseByAlias("sales")
+	got, ok := app.DatabaseByAliasExact("sales")
 	if !ok {
 		t.Fatal("unique datasource aliasを解決できません")
 	}
@@ -19,19 +32,19 @@ func TestDatabaseByAliasResolvesUniqueAlias(t *testing.T) {
 	}
 }
 
-func TestDatabaseByAliasFailsClosedWhenAliasIsMissing(t *testing.T) {
+func TestDatabaseByAliasExactFailsClosedWhenAliasIsMissing(t *testing.T) {
 	app := Application{
 		Databases: []DatabaseRequirement{
 			{Alias: "sales", TargetDatabase: "sales_core"},
 		},
 	}
 
-	if _, ok := app.DatabaseByAlias("master"); ok {
+	if _, ok := app.DatabaseByAliasExact("master"); ok {
 		t.Fatal("存在しないdatasource aliasを解決済みとして扱いました")
 	}
 }
 
-func TestDatabaseByAliasFailsClosedWhenAliasIsAmbiguous(t *testing.T) {
+func TestDatabaseByAliasExactFailsClosedWhenAliasIsAmbiguous(t *testing.T) {
 	app := Application{
 		Databases: []DatabaseRequirement{
 			{Alias: "sales", TargetDatabase: "sales_core"},
@@ -39,7 +52,7 @@ func TestDatabaseByAliasFailsClosedWhenAliasIsAmbiguous(t *testing.T) {
 		},
 	}
 
-	if _, ok := app.DatabaseByAlias("sales"); ok {
-		t.Fatal("duplicate datasource aliasから先頭要素を黙って選択しました")
+	if _, ok := app.DatabaseByAliasExact("sales"); ok {
+		t.Fatal("duplicate datasource aliasから一件を黙って選択しました")
 	}
 }
