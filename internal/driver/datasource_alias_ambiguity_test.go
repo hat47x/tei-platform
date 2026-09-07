@@ -1,6 +1,7 @@
 package driver_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/application"
@@ -34,7 +35,11 @@ func TestResolverFailsClosedWhenDatasourceAliasIsAmbiguous(t *testing.T) {
 	}
 
 	resolver := driver.NewResolver(world)
-	if _, err := resolver.ResolvePattern("app_a", "app_a.browse"); err == nil {
+	_, err := resolver.ResolvePattern("app_a", "app_a.browse")
+	if err == nil {
 		t.Fatal("duplicate datasource aliasから先頭要素を黙って選択しました")
+	}
+	if !strings.Contains(err.Error(), "複数定義されています") {
+		t.Fatalf("duplicate datasource aliasをmissingとして診断しました: %v", err)
 	}
 }
