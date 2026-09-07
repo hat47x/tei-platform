@@ -12,6 +12,7 @@ Status: **Lane C / sole Pre-ADR readiness authority / Not Ready / no production 
 - `plan/BUSINESS_MODEL_CURRENT_MINIMUM_CANDIDATE_2026-09.md` — current minimum比較基線
 - `plan/BUSINESS_MODEL_SHARED_ACCEPTANCE_BUNDLE_PRESSURE_2026-09.md` — multi-source Acceptance / freshness / atomicity pressure
 - `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md` — production Shared Acceptanceで分離すべきsource / semantic / Conformance base境界
+- `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md` — legacy O1 / Reference Set Handoffからcandidate authorityへのone-time cutover pressure
 - 各`BUSINESS_PROCEDURE_*` / `BUSINESS_ACTION_*` Pressure文書
 - X-TEA Evidence Register / E-015 / E-016
 
@@ -75,6 +76,18 @@ Test-only inline candidateで:
 
 Production sidecarは一つのStep-local relationのためにcomposite source machineryを要求するため第一候補から下げます。
 
+Migrationについては:
+
+```text
+legacy O1 sidecar
+  -> migration input / Reference Evidence
+
+inline singular O1
+  -> accepted candidate authority after cutover
+```
+
+を第一候補とします。Migration previewでlegacy sidecarを読むことは許可しますが、inline O1とlegacy sidecarを同時authorityとして有効化しません。
+
 ### Handoff
 
 Current strongest candidate:
@@ -97,6 +110,18 @@ Test-only candidateで:
 をPressure済みです。
 
 Reference Set manifest内Handoffはfixture assemblyには便利ですが、locator metadataとBusiness meaningを混在させるためproduction source候補としては弱いです。
+
+Migrationについては:
+
+```text
+Reference Set Handoff
+  -> fixture assembly / migration input / Reference Evidence
+
+standalone Handoff source
+  -> accepted candidate authority after cutover
+```
+
+を第一候補とし、両者をpermanent dual-read authorityにしません。
 
 ## 4. Authority boundaries
 
@@ -122,6 +147,21 @@ Function sequence        -X-> Handoff
 ```
 
 H1/R3はhandoff-onlyです。Business Flow / DFD / Workflow runtimeへ拡張しません。
+
+### Migration authority
+
+```text
+legacy sourceをmigration previewで読む
+  -> allowed
+
+candidate objectが存在する
+  -> non-authoritative previewならallowed
+
+legacy + candidateを同時にaccepted authorityとして読む
+  -> reject
+```
+
+Same meaningを二sourceに重複させても安全なduplicateとはみなしません。Same Procedure/Step O1またはsame Handoff endpointで旧・新sourceが競合する場合、自動merge / last-writer-winsを行わずfail closedします。
 
 ### Step address
 
@@ -239,6 +279,20 @@ both in same bundle       -> normalize succeeds / new Business revision
 
 まで進んでいます。
 
+Migration時はさらに:
+
+```text
+legacy authority fresh
+candidate lossless / conformant
+no legacy+candidate dual authority
+        ↓
+one atomic authority cutover
+        ↓
+candidate-only reload / Conformance
+```
+
+を必要条件とします。
+
 したがってGate Eの概念的問いはかなり閉じ、残るのはproduction implementation contractです。
 
 ## 7. Derived views
@@ -310,6 +364,7 @@ Manufacturing / inventory second-corpus outlineはこの非対称性を別domain
 - mutation binding / MutationIntent / Function-Data-I/O Canonical kind
 - synthetic second-corpus Data ownership
 - Business専用generic transaction / revision subsystem
+- old/new Business authoring sourceのpermanent dual-read / merge-priority contract
 
 ## 11. ADR readiness gates
 
@@ -337,6 +392,9 @@ Actual testsでmanual/external Action、uncertainty、multi-Application、D4 ref
 - explicit Handoff authority only
 - standalone Handoff candidate = current normalized meaning
 - Handoff-only boundary維持
+- migration previewではReference Set Handoffをinput / Evidenceとして読める
+- accepted cutover後はReference Set Handoffとstandalone Handoffを同時authorityにしない
+- candidate-only reload / normalizeをactual確認
 - second realistic Handoffで`from/to/condition` sufficiency確認
 
 ### Gate D — O1
@@ -345,21 +403,25 @@ Actual testsでmanual/external Action、uncertainty、multi-Application、D4 ref
 - singular narrow O1 lossless
 - inline candidate strict decode / round-trip / sidecar-equivalent normalization
 - Authorization policy corroboration-only
-- production migration/versioning説明
+- migration previewではlegacy sidecarをinput / Evidenceとして読める
+- accepted cutover後はlegacy sidecarとinline O1を同時authorityにしない
+- same-step conflicting targetを自動mergeしない
+- candidate-only reload / normalizeをactual確認
+- production cutover/versioning説明
 - multi-targetを先取りしない
 
 ### Gate E — placement / Shared Acceptance
 
-Conceptual multi-source normalization / Business source freshness / referential atomicityはsource-level test-only Pressureで前進済みです。さらにWorld / Conformance base freshnessをBusiness source freshnessから分離するPressureを追加しました。
+Conceptual multi-source normalization / Business source freshness / referential atomicityはsource-level test-only Pressureで前進済みです。さらにWorld / Conformance base freshnessをBusiness source freshnessから分離するPressureを追加し、migration authority cutoverではold/new dual authorityをrejectするPressureも追加しました。
 
 Production ADR前に残るのは:
 
 1. existing shared Acceptance boundaryがBusiness source baseとcross-view Conformance baseをどのproduction contractで固定・再確認するか
-2. candidate change-setをどのrepository transaction boundaryでatomicにapplyするか
-3. Accept後に全Business sourceをreloadしてsame normalized Business revisionを再現するproduction flow
-4. cross-view Conformance失敗時にpartial writeを残さないcommit boundary
+2. candidate change-setとmigration authority cutoverをどのrepository transaction boundaryでatomicにapplyするか
+3. Accept後にcandidate-only Business sourceをreloadしてsame normalized Business revisionを再現するproduction flow
+4. cross-view Conformance失敗時にpartial write / partial authority switchを残さないcommit boundary
 5. semantic revision identity / source freshness / conformance baseを物理的に一つのrevision tokenへ束ねるか分離するか
-6. actual Repository testsでmulti-source bundle / source freshness / conformance-base freshness / coordinated renameをgreenにする
+6. actual Repository testsでmulti-source bundle / source freshness / conformance-base freshness / coordinated rename / authority cutoverをgreenにする
 7. separate Business planeでactual Conformanceがlosslessであること
 8. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
 
@@ -392,6 +454,10 @@ Procedure authoring candidate
 Handoff authoring candidate
   = standalone set-level Handoff source
 
+migration authority cutover
+  = legacy-read preview -> one accepted cutover -> candidate-only authority
+  = test-only Pressure追加
+
 placement candidate
   = separate normalized Business semantic plane
 
@@ -414,8 +480,8 @@ Production ADR
 主要blocker:
 
 1. actual Repository runner green未取得。
-2. inline O1 / standalone Handoff production adoption・migration未確定。
-3. production shared AcceptanceでBusiness source base / Conformance base / atomic apply / reload Evidenceをどう実装するか未確定。
+2. inline O1 / standalone Handoffのproduction authority cutover / loader / versioning実装未確定。
+3. production shared AcceptanceでBusiness source base / Conformance base / atomic apply / candidate-only reload Evidenceをどう実装するか未確定。
 4. second realistic Handoff不足。
 5. qualifying TEI-original C/U/D case不足。
 6. separate Business plane不足を示すEvidenceはなく、`ir.World` integrationはまだ不要。
