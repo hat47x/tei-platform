@@ -2,7 +2,7 @@ package application
 
 import "testing"
 
-func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAlias(t *testing.T) {
+func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAliasWithoutReturningFirstMatch(t *testing.T) {
 	app := Application{
 		Databases: []DatabaseRequirement{
 			{Alias: "sales", TargetDatabase: "sales_core"},
@@ -10,8 +10,29 @@ func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAlias(t *testing.T) {
 		},
 	}
 
-	if _, ok := app.DatabaseByAlias("sales"); !ok {
+	got, ok := app.DatabaseByAlias("sales")
+	if !ok {
 		t.Fatal("存在するdatasource aliasを未定義として扱いました")
+	}
+	if got != (DatabaseRequirement{}) {
+		t.Fatalf("duplicate datasource aliasから一件目の内容を返しました: %#v", got)
+	}
+}
+
+func TestDatabaseByAliasKeepsUniqueLookupValue(t *testing.T) {
+	app := Application{
+		Databases: []DatabaseRequirement{
+			{Alias: "sales", TargetDatabase: "sales_core"},
+			{Alias: "master", TargetDatabase: "master_data"},
+		},
+	}
+
+	got, ok := app.DatabaseByAlias("sales")
+	if !ok {
+		t.Fatal("unique datasource aliasを未定義として扱いました")
+	}
+	if got.TargetDatabase != "sales_core" {
+		t.Fatalf("unique datasource aliasの既存lookup値が変わりました: got=%s want=sales_core", got.TargetDatabase)
 	}
 }
 
