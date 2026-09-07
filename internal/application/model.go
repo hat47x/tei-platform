@@ -70,15 +70,24 @@ type Application struct {
 	Patterns     []Pattern             `json:"patterns,omitempty"`
 }
 
-// DatabaseByAliasは、alias宣言の存在確認を含む既存のdeclaration lookupである。
-// duplicateを一意解決したものとは扱わない。実行・authority境界ではDatabaseByAliasExactを利用する。
+// DatabaseByAliasは、alias宣言の存在確認を含むdeclaration lookupである。
+// uniqueなら従来どおり宣言内容を返す。duplicateでは宣言の存在だけをtrueで返し、
+// 一件目の内容をauthorityとして漏らさないためzero valueを返す。
+// 実行・authority境界ではDatabaseByAliasExactを利用する。
 func (a Application) DatabaseByAlias(alias core.LocalName) (DatabaseRequirement, bool) {
+	var match DatabaseRequirement
+	found := false
 	for _, d := range a.Databases {
-		if d.Alias == alias {
-			return d, true
+		if d.Alias != alias {
+			continue
 		}
+		if found {
+			return DatabaseRequirement{}, true
+		}
+		match = d
+		found = true
 	}
-	return DatabaseRequirement{}, false
+	return match, found
 }
 
 // DatabaseByAliasExactは、Application-localなdatasource aliasがちょうど一件だけ定義されている場合に解決する。
