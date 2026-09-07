@@ -10,7 +10,7 @@ Status: **Lane C / sole Pre-ADR readiness authority / Not Ready / no production 
 
 - `plan/issue/000042-business-procedure-cross-view-reference.md` — A-series Pressure inventory
 - `plan/BUSINESS_MODEL_CURRENT_MINIMUM_CANDIDATE_2026-09.md` — current minimum比較基線
-- `plan/BUSINESS_MODEL_SHARED_ACCEPTANCE_BUNDLE_PRESSURE_2026-09.md` — multi-source Acceptance pressure
+- `plan/BUSINESS_MODEL_SHARED_ACCEPTANCE_BUNDLE_PRESSURE_2026-09.md` — multi-source Acceptance / freshness / atomicity pressure
 - 各`BUSINESS_PROCEDURE_*` / `BUSINESS_ACTION_*` Pressure文書
 - X-TEA Evidence Register / E-015 / E-016
 
@@ -25,15 +25,15 @@ BusinessModel
       trigger { epistemicStatus, meaning }
       actor   { epistemicStatus, businessLabel }
       Steps[]
-        localKey                         // S4-A
-        Body                             // D4
+        localKey
+        Body
           businessAction
-          applicationPatterns[]          // direct realization
+          applicationPatterns[]
           validations[]
           capabilities[]
-        protectedApplicationPattern?     // singular narrow O1
+        protectedApplicationPattern?
 
-  Handoffs[]                              // H1/R3
+  Handoffs[]
     from { procedure, step }
     to   { procedure, step }
     condition
@@ -68,11 +68,11 @@ Test-only inline candidateで:
 - zero-or-one
 - multi-target fail closed
 - generic role field fail closed
-- previous O1 sidecarと同じnormalized meaning
+- prior sidecar pressureと同じnormalized D4+O1 meaning
 
 をPressure済みです。
 
-Production sidecarは一つのStep-local relationのためにcomposite source Acceptanceを必要とするため第一候補から下げます。
+Production sidecarは一つのStep-local relationのためにcomposite source machineryを要求するため第一候補から下げます。
 
 ### Handoff
 
@@ -88,14 +88,14 @@ standalone Handoff source
 
 Test-only candidateで:
 
-- current Reference Setと同じnormalized meaning
+- current Reference Setと同じnormalized Handoff meaning
 - Procedure artifact locatorを保持しない
 - stale endpoint fail closed
 - Workflow field拒否
 
 をPressure済みです。
 
-Reference Set manifestのHandoffはfixture assemblyには便利ですが、locator metadataとBusiness meaningを混在させるためproduction source候補としては弱いです。
+Reference Set manifest内Handoffはfixture assemblyには便利ですが、locator metadataとBusiness meaningを混在させるためproduction source候補としては弱いです。
 
 ## 4. Authority boundaries
 
@@ -142,12 +142,14 @@ normalized Business model
   <-> exact cross-view validation <-> ir.World
 ```
 
-Current Pressureでは次が成立します。
+Current source-level Pressureでは:
 
 - Business wording change -> Business semantic revision changes / `ir.World` unchanged
 - protected-target-only change -> Business semantic revision changes / `ir.World` unchanged
 - Handoff condition-only change -> Business semantic revision changes / `ir.World` unchanged
 - stale Application target -> separate Business planeでもfail closed
+
+が成立します。
 
 したがってfirst-class Business meaningと`ir.World`埋め込みは同義ではありません。
 
@@ -157,9 +159,9 @@ ir.World.Business                  -> current Evidenceでは不要
 production internal/business       -> deferred
 ```
 
-## 6. Multi-source Shared Acceptance pressure
+## 6. Multi-source Shared Acceptance
 
-Test-only `BusinessAuthoringBundle`で:
+Current test-only `BusinessAuthoringBundle`は:
 
 ```text
 inline Procedure source A
@@ -172,42 +174,59 @@ normalize
 one BusinessModel
 ```
 
-をPressureしました。
+をPressureします。
 
-現在確認しているconceptual properties:
+Source-level Evidenceでは:
 
-- new source decompositionでもcurrent normalized meaningと同値
-- Procedure wording change -> semantic revision changes
-- O1 target change -> same semantic revision changes
-- Handoff condition change -> same semantic revision changes
-- Procedure source ordering only -> semantic no-op
-- bundle semantic fieldsへpath / artifact / runtime metadataを持ち込まない
+- current normalized Business meaningと同値
+- Procedure wording / O1 target / Handoff conditionのいずれでもsame Business semantic revisionが変化
+- Procedure source orderingだけではsemantic no-op
+- semantic bundleへpath / artifact / runtime metadataを持ち込まない
 
-したがってGate Eの問いは:
+まで進んでいます。
 
-```text
-multiple source kindsをone Business semantic unitへ束ねられるか
-```
+### Freshness
 
-から:
+Test-only source snapshot:
 
 ```text
-productionでfreshness / coordinated atomic acceptance /
-semantic revision identity / reloadをどう実装するか
+logical source key
++ content fingerprint
 ```
 
-へ進みました。
+でPreview対象sourceのfreshnessを分離してPressureします。
 
-Test fingerprintは比較語彙でありproduction hash APIではありません。
+- Procedure source change -> stale
+- inline O1 source change -> stale
+- Handoff source change -> stale
+- source enumeration orderだけ -> same snapshot
+
+Semantic revisionとsource freshnessを同一視しません。
+
+### Atomicity
+
+Current coordinated case:
+
+```text
+Procedure BP-09 -> BP-09-renamed
+Handoff from.step BP-09 -> BP-09-renamed
+```
+
+Source-level Pressureでは:
+
+```text
+Procedure sideだけrename -> fail closed
+Handoff sideだけrename   -> fail closed
+both in same bundle       -> normalize succeeds / new Business revision
+```
+
+まで進んでいます。
+
+したがってGate Eの概念的問いはかなり閉じ、残るのはproduction implementation contractです。
 
 ## 7. Derived views
 
-Business sourceへ次を重複authorしません。
-
-- Data / Relation
-- CRUD matrix
-- Database ownership/access
-- Semantic Namespace / SubjectArea approximation
+Business sourceへData / Relation / CRUD / ownership / Namespaceを重複authorしません。
 
 ### Data
 
@@ -218,7 +237,7 @@ trace exists != complete dependency set
 
 ### CRUD
 
-Current exact operation Evidenceで安全な主要cellは:
+Current exact operation Evidenceで安全な主要cell:
 
 ```text
 BP-00 -> R sales.order
@@ -313,17 +332,18 @@ Actual testsでmanual/external Action、uncertainty、multi-Application、D4 ref
 
 ### Gate E — placement / Shared Acceptance
 
-Conceptual multi-source normalizationはtest-onlyで前進済み。
+Conceptual multi-source normalization / freshness / referential atomicityはsource-level test-only Pressureで前進済みです。
 
 Production ADR前に残るのは:
 
-1. source freshnessをaccept直前に確認する方法
-2. Procedure Step rename + Handoff endpoint rename等を一つのatomic change-setとして扱う方法
-3. accept後のall-source reloadとsame Business semantic revision再現
-4. cross-view Conformance失敗時のpartial accept防止
+1. source freshness token / base revisionをどのproduction contractで表すか
+2. candidate change-setをどのAPI / repository transactionでatomicにapplyするか
+3. Accept後に全Business sourceをreloadしてsame normalized revisionを再現するproduction flow
+4. cross-view Conformance失敗時にpartial writeを残さないcommit boundary
 5. semantic revision identity / hash / ETag等のproduction contract
-6. separate Business planeでactual Conformanceがlosslessであること
-7. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
+6. actual Repository testsでmulti-source bundle / freshness / coordinated renameをgreenにする
+7. separate Business planeでactual Conformanceがlosslessであること
+8. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
 
 ### Gate F — derived projections / mutation gap
 
@@ -355,8 +375,8 @@ Handoff authoring candidate
 placement candidate
   = separate normalized Business semantic plane
 
-multi-source semantic bundling
-  = test-onlyで概念実証が前進
+multi-source semantic bundling / freshness / atomicity
+  = source-level test-only Pressureで有力
 
 ir.World.Business
   = current Evidenceでは不要
@@ -369,7 +389,7 @@ Production ADR
 
 1. actual Repository runner green未取得。
 2. inline O1 / standalone Handoff production adoption・migration未確定。
-3. production freshness / atomic Acceptance / semantic revision API未確定。
+3. production freshness / atomic apply / semantic revision API未確定。
 4. second realistic Handoff不足。
 5. qualifying TEI-original C/U/D case不足。
 6. separate Business plane不足を示すEvidenceはなく、`ir.World` integrationはまだ不要。
