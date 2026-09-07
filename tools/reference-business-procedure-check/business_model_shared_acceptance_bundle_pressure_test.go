@@ -118,6 +118,56 @@ func TestBusinessAuthoringBundleSemanticRevisionChangesForAnyAcceptedBusinessSou
 	})
 }
 
+func TestBusinessAuthoringBundleRequiresCoordinatedStepAndHandoffRename(t *testing.T) {
+	root := repoPath()
+	baseline, err := deriveBusinessAuthoringBundleProbe(currentBusinessAuthoringBundleProbe(t, root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baselineFingerprint := semanticFingerprintD4O1Probe(t, baseline)
+
+	t.Run("procedure-only rename fails closed", func(t *testing.T) {
+		bundle := currentBusinessAuthoringBundleProbe(t, root)
+		if !renameInlineO1StepProbe(&bundle, "order-entry.order-handling", "BP-09", "BP-09-renamed") {
+			t.Fatal("test setup: BP-09がありません")
+		}
+		if _, err := deriveBusinessAuthoringBundleProbe(bundle); err == nil {
+			t.Fatal("Procedure Stepだけのrenameでstale Handoff endpointを黙って受理しました")
+		}
+	})
+
+	t.Run("handoff-only rename fails closed", func(t *testing.T) {
+		bundle := currentBusinessAuthoringBundleProbe(t, root)
+		if len(bundle.Handoffs.Handoffs) == 0 {
+			t.Fatal("test setup: Handoffがありません")
+		}
+		bundle.Handoffs.Handoffs = append([]referenceSetHandoff(nil), bundle.Handoffs.Handoffs...)
+		bundle.Handoffs.Handoffs[0].From.Step = "BP-09-renamed"
+		if _, err := deriveBusinessAuthoringBundleProbe(bundle); err == nil {
+			t.Fatal("Handoff endpointだけのrenameでmissing Procedure Stepを黙って受理しました")
+		}
+	})
+
+	t.Run("coordinated rename forms one new semantic revision", func(t *testing.T) {
+		bundle := currentBusinessAuthoringBundleProbe(t, root)
+		if !renameInlineO1StepProbe(&bundle, "order-entry.order-handling", "BP-09", "BP-09-renamed") {
+			t.Fatal("test setup: BP-09がありません")
+		}
+		if len(bundle.Handoffs.Handoffs) == 0 {
+			t.Fatal("test setup: Handoffがありません")
+		}
+		bundle.Handoffs.Handoffs = append([]referenceSetHandoff(nil), bundle.Handoffs.Handoffs...)
+		bundle.Handoffs.Handoffs[0].From.Step = "BP-09-renamed"
+		model, err := deriveBusinessAuthoringBundleProbe(bundle)
+		if err != nil {
+			t.Fatalf("協調renameを一つのBusiness change-setとしてnormalizeできません: %v", err)
+		}
+		if semanticFingerprintD4O1Probe(t, model) == baselineFingerprint {
+			t.Fatal("協調Step/Handoff renameを新しいBusiness semantic revisionとして観測できません")
+		}
+	})
+}
+
 func TestBusinessAuthoringBundleNormalizesProcedureSourceOrdering(t *testing.T) {
 	root := repoPath()
 	beforeBundle := currentBusinessAuthoringBundleProbe(t, root)
@@ -198,4 +248,19 @@ func deriveBusinessAuthoringBundleProbe(bundle businessAuthoringBundleProbe) (d4
 	}
 	set := referenceSet{Handoffs: append([]referenceSetHandoff(nil), bundle.Handoffs.Handoffs...)}
 	return deriveD4O1NormalizedBusinessModelProbe(set, fixtures, targets)
+}
+
+func renameInlineO1StepProbe(bundle *businessAuthoringBundleProbe, procedureID, from, to string) bool {
+	for p := range bundle.Procedures {
+		if bundle.Procedures[p].Procedure.ID != procedureID {
+			continue
+		}
+		for s := range bundle.Procedures[p].Steps {
+			if bundle.Procedures[p].Steps[s].ID == from {
+				bundle.Procedures[p].Steps[s].ID = to
+				return true
+			}
+		}
+	}
+	return false
 }
