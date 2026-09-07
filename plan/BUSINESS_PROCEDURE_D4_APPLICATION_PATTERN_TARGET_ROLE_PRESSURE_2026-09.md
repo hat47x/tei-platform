@@ -199,7 +199,50 @@ O1
 
 actual Repository runnerでgreenになるまではexecution Evidenceとは数えない。
 
-## 11. pre-ADR判断
+## 11. authoritative source boundary — deferred
+
+Current O1 / D4+O1 testsではprotected targetをtest helper引数として与えている。
+
+したがって現在証明しているのは:
+
+```text
+protected target role separation is representable
+```
+
+までであり、次とは同一ではない。
+
+```text
+protected target is persisted in authoritative Business source
+protected target survives decode / reload as the same accepted meaning
+protected target participates in Shared Acceptance / stale detection
+```
+
+Primary `business-procedure-reference-v0` fixtureへ`applicationPatternTargets`等を追加することは、actual green前には行わない。
+
+O1 actual green後、protected-target relationそのものをproduction候補のaccepted Business meaningとして残す場合だけauthoritative sourceをreopenする。その場合は少なくとも:
+
+1. file-native authoring sourceからtarget roleを明示できる
+2. decode / normalize / reload後も同じApplication Pattern identityとroleを保持する
+3. source revision / fingerprint変更時にShared Acceptanceを暗黙carry-forwardしない
+4. missing / ambiguous targetをfail closedする
+5. pure source locator moveだけではtarget meaningを変えない
+6. RQ-002 / RQ-003 / Shared Acceptanceのauthority境界と矛盾しない
+
+ことをPressureする。
+
+逆にactual greenと次のrealistic ReferenceからO1をproduction accepted meaningとして保持する必要性が出なければ、fixture fieldを追加する理由にはしない。
+
+したがって:
+
+```text
+O1 representation feasibility
+  !=
+O1 authoritative-source adoption
+```
+
+を固定する。
+
+## 12. pre-ADR判断
 
 ```text
 D4 ref kind separation
@@ -209,13 +252,18 @@ O1 Application Pattern target role
   separate representation pressure
   source-level test-only
 
+O1 authoritative source
+  intentionally deferred until actual green + necessity decision
+
 Generic role-qualified ref model
   defer
 ```
 
 D4 + O1をactual greenと次のrealistic Referenceへ当て、field-specific target relationで十分か、role-qualified ref abstractionが本当に必要かを決める。
 
-## 12. 非対象
+O1をproduction accepted meaningとして残す場合は、authoritative source / reload / Shared Acceptance boundaryを閉じるまでproduction Canonical contract ADRへ進めない。
+
+## 13. 非対象
 
 - production `applicationPatternTargets` field採用
 - generic explicit-ref Role enum
