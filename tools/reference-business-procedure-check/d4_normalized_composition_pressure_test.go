@@ -78,6 +78,18 @@ func TestD4CompositionKeepsHandoffConditionAsIndependentMeaning(t *testing.T) {
 	}
 }
 
+func TestD4CompositionRejectsDuplicateHandoffAtNormalizedLayer(t *testing.T) {
+	model := currentD4NormalizedBusinessModelProbe(t)
+	if len(model.Handoffs) == 0 {
+		t.Fatal("test setupにhandoffがありません")
+	}
+	changed := cloneD4NormalizedBusinessModelProbe(model)
+	changed.Handoffs = append(changed.Handoffs, changed.Handoffs[0])
+	if err := validateD4NormalizedBusinessModelProbe(changed); err == nil {
+		t.Fatal("normalize後に混入したduplicate Business handoff relationを受理しました")
+	}
+}
+
 func TestD4CompositionStillFailsClosedBeforeAddressLayerWhenNewRefKindAppears(t *testing.T) {
 	root := filepath.Join(repoPath(), "reference", "business-system-design")
 	set, err := readReferenceSet(filepath.Join(root, "order-entry-procedure-reference-set.json"))
@@ -183,6 +195,8 @@ func validateD4NormalizedBusinessModelProbe(model d4NormalizedBusinessModelProbe
 		}
 		addresses[procedure.ID] = steps
 	}
+
+	seenHandoffs := map[string]struct{}{}
 	for _, handoff := range model.Handoffs {
 		if !d4EndpointExists(addresses, handoff.From) {
 			return fmt.Errorf("D4 handoff source %q/%q not found", handoff.From.Procedure, handoff.From.Step)
@@ -193,6 +207,11 @@ func validateD4NormalizedBusinessModelProbe(model d4NormalizedBusinessModelProbe
 		if strings.TrimSpace(handoff.Condition) == "" {
 			return fmt.Errorf("D4 handoff condition is empty")
 		}
+		key := normalizedHandoffKey(handoff)
+		if _, duplicate := seenHandoffs[key]; duplicate {
+			return fmt.Errorf("duplicate D4 normalized Business handoff %s", key)
+		}
+		seenHandoffs[key] = struct{}{}
 	}
 	return nil
 }
