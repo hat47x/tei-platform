@@ -340,7 +340,7 @@ func findSemanticAttributeOwnerExactlyOnce(world ir.World, attributeID string) (
 					owner = string(data.ID)
 					count++
 				}
-		}
+			}
 		}
 	}
 	return owner, count == 1
@@ -358,6 +358,7 @@ func findSemanticRelationExactlyOnce(world ir.World, relationID string) (string,
 					found = relation
 					count++
 				}
+			}
 		}
 	}
 	return owner, found, count == 1
@@ -372,6 +373,7 @@ func findSemanticValidationExactlyOnce(world ir.World, validationID string) (sem
 				found = validation
 				count++
 			}
+		}
 	}
 	return found, count == 1
 }
@@ -386,6 +388,7 @@ func findSemanticCapabilityExactlyOnce(world ir.World, capabilityID string) (sem
 				count++
 			}
 		}
+	}
 	return found, count == 1
 }
 
