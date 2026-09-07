@@ -104,6 +104,35 @@ read errorはphysical completionへ変換しない。
 
 Commandが成功済みでもObservation失敗をCommand Business Resultへ畳まない。
 
+### P-OBS-05 — Data authority / Handoff shapeをObservation probeへ混入しない
+
+`physicalWorldCompletionPressure`は構造上も次の三fieldだけを持つ。
+
+```text
+BusinessFact
+CommandAccepted
+ObservationResult
+```
+
+Testでは少なくとも次のfieldがprobeへ入らないことを固定する。
+
+```text
+Data / Relation / Database / Datasource / Ownership / ApplicationPattern
+From / To / Procedure / Step / Condition / Handoff
+```
+
+これは:
+
+```text
+physical fact observed
+  != exact TEI Data authority selected
+  != accepted responsibility Handoff created
+```
+
+というA75 / A76境界の**representation pressure**である。
+
+ただし、このreflection testだけで「将来どのコード経路からもHandoff推論が絶対に起こり得ない」と主張しない。意味するのは、このphysical Observation pressure surface自身が未証明Data authority / Handoff meaningを所有しないことだけである。
+
 ## 4. Data / state authorityとの境界
 
 本Pressureは「physical factがどのData objectを正本に持つか」を決めない。
@@ -144,6 +173,8 @@ H1/R3へ必要なのはexact Procedure/Step endpointsとaccepted conditionであ
 
 Second corpus outlineにはまだそれがないため、Observation pressureからHandoffを自動生成しない。
 
+P-OBS-05は、この非導出境界をtest-only probe shapeでも保持する。Observation probeへHandoff endpoint / condition fieldを追加しない。
+
 ## 6. X-TEA fallbackとの整合
 
 X-TEA / Three-Element Analysisへ立ち返ると、Business側の行為・手順とApplication Functionは同一ではなく、Business Modelは社会システムとしての手順を保持する。
@@ -157,6 +188,9 @@ X-TEA / Three-Element Analysisへ立ち返ると、Business側の行為・手順
 ```text
 Command / Observation separation
   second domainでもmechanical pressureへ進めた
+
+Observation pressure surface
+  Data authority / Handoff shapeを持たない
 
 Observation Canonical identity
   still unproven
