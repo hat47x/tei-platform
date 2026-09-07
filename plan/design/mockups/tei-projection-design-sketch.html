@@ -373,6 +373,37 @@
   .compare > div { padding: 8px 14px; border-bottom: 1px solid var(--u-rule-soft); font-size: 12px; }
   .compare > div:nth-child(odd) { border-right: 1px solid var(--u-rule); color: var(--u-ink2); }
   .compare .ch { background: var(--u-bg); font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--u-ink3); }
+  /* plugin frames */
+  .code-t {
+    background: var(--u-bg); border: 1px solid var(--u-rule-soft); padding: 10px 12px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; line-height: 1.65;
+    white-space: pre; overflow-x: auto; color: var(--u-ink2); margin: 0;
+  }
+  .code-t .kw { color: var(--u-accent); }
+  .code-t .new { color: var(--u-bronze); font-weight: 500; }
+  .code-t .cm { color: var(--u-ink3); }
+  .layer { display: grid; gap: 7px; }
+  .layer-item {
+    display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 10px;
+    font-size: 11.5px; align-items: baseline;
+  }
+  .layer-item > span:first-child {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--u-ink3);
+  }
+  .layer-item.proposed > span:first-child { color: var(--u-bronze); }
+  .guard { display: grid; grid-template-columns: 16px minmax(0,1fr); gap: 8px; font-size: 11.5px; padding: 4px 0; }
+  .guard > span:first-child { color: var(--u-accent); font-family: "IBM Plex Mono", monospace; }
+  .absent {
+    border: 1px dashed var(--u-rule); background: var(--u-bg); padding: 14px;
+    display: grid; gap: 8px; place-items: start; color: var(--u-ink2); font-size: 11.5px;
+  }
+  .plugin-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 7px 12px; background: var(--u-bronze-soft); border-bottom: 1px solid var(--u-rule);
+    font-size: 11.5px;
+  }
+
   .settled { display: grid; gap: 10px; }
   .settled-item { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: 12px 16px; }
   .settled-item h4 { margin: 0 0 3px; font-size: 14.5px; }
@@ -400,9 +431,9 @@
   <div class="eyebrow">TEI — First Web Target / Editor Projection</div>
   <h1>同じCanonicalな意味を、二つのProjectionへ</h1>
   <p class="lede">
-    TEIが利用者と開発者へ向ける面を、13のフレームとして描いたスケッチです。第一Web Target、Editor、既存認証、Database Workbench、
-    Gate Evidence、Runtime観測、CLI、同時編集、キーボード操作まで、意味・実現・実行結果・観測結果の境界が画面上でも保たれるかを確かめるために描きました。
-    業務端末（1280〜1920、キーボード中心）を前提とし、静的モックとして描いています。
+    TEIが利用者と開発者へ向ける面を、15のフレームとして描いたスケッチです。第一Web Target、Editor、既存認証、Database Workbench、
+    Gate Evidence、Runtime観測、CLI、同時編集、キーボード操作、そしてCoreとプラグインの拡張境界まで、意味・実現・実行結果・観測結果の境界が画面上でも保たれるかを確かめるために描きました。
+    業務端末（1280〜1920、キーボード中心）を前提とし、既定のUIはプラグインでカスタムされるものとして、静的モックで描いています。
   </p>
   <div class="meta-row">
     <span class="chip pending">状態: 評価待ち / 未採用</span>
@@ -1348,7 +1379,7 @@
           <div class="keyrow"><span><span class="kbd">F1</span></span><span>この画面の意味の出所を開く</span></div>
         </div>
         <div style="margin-top:10px; font-size:11.5px; color:var(--u-ink2)">
-          既存の業務端末に合わせ、確定操作は<span class="m">Ctrl+S</span>のような保存系に寄せます。単独のFキーは既存システムの割り当てと衝突しやすいため既定にしません。
+          移行元に引き継ぐべき割り当てが無いため、既定はこちらで決めます。確定操作は<span class="m">Ctrl+S</span>のような保存系に寄せ、単独のFキーは既定にしません。ブラウザやOSの割り当てと衝突しにくいためです。
         </div>
       </div>
 
@@ -1364,7 +1395,7 @@
         <div class="card" style="margin-top:12px; padding:10px 12px">
           <div class="aside-title" style="padding:0 0 6px">まだ決めていない</div>
           <div style="font-size:11.5px; color:var(--u-ink2)">
-            日本語入力中のショートカット抑止、テンキー主体の入力運用、既存システムのキー割り当てとの整合。
+            日本語入力中のショートカット抑止、テンキー主体の入力運用、そしてプラグインが追加するUIへどこまで割り当てを開くか。Coreが予約するキーはプラグインが奪えないものとします。
           </div>
         </div>
       </div>
@@ -1508,6 +1539,211 @@
         ① 右レール（意味の出所）をドロワーへ　② 左レールのCanonical ID併記を省く　③ 明細の金額列を落とす　④ 日付を月日のみにする。
         Canonical IDそのものと状態は最後まで残します。
       </span>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="frame-head">
+    <h3>Frame 14 — 拡張境界: Coreとプラグイン</h3>
+    <span class="dims">1140 × 452</span>
+    <p>Driverのコアを最小のメタ制御に留め、物理レイヤーをプラグインで実現する方針を、UIまで広げたときの境界です。左がCoreの持ち分、中央がプラグインの持ち分（既存の種別＋UI向けの提案）、右がプラグインでも変えられないこと。既存の<span class="mono">plugin</span>宣言と<span class="mono">grant</span>の書式に合わせています。</p>
+  </div>
+  <div class="scroller">
+  <div class="ui">
+    <div class="ui-top">
+      <span class="brand">TEI</span><span class="sep"></span>
+      <span class="app-id">environment development</span>
+      <span class="tag">plugin lock 74d225e9…</span>
+      <span class="tag">feature editor.sql_analysis</span>
+      <span class="spacer"></span>
+      <span class="tag ext">UI向け種別は提案</span>
+    </div>
+    <div class="cols3" style="grid-template-columns: 300px minmax(0,1fr) 300px">
+      <div class="col">
+        <div class="aside-title">Coreが持つ最小のメタ制御</div>
+        <div class="layer" style="margin-top:10px">
+          <div class="layer-item"><span>identity</span><span>Canonical ID と Source Index</span></div>
+          <div class="layer-item"><span>pattern</span><span>Pattern kindと解決規則。推測で補わない</span></div>
+          <div class="layer-item"><span>validation</span><span>業務Validationの評価入口</span></div>
+          <div class="layer-item"><span>capability</span><span>Business Result / Outcome / Execution Error の契約</span></div>
+          <div class="layer-item"><span>binding</span><span>明示Bindingの一意解決</span></div>
+          <div class="layer-item"><span>observation</span><span>Commandと別操作のread境界</span></div>
+          <div class="layer-item"><span>acceptance</span><span>authoritative sourceへの唯一の書込み経路</span></div>
+          <div class="layer-item"><span>authority</span><span>Permission / Resource / Plugin Lock</span></div>
+        </div>
+        <div style="margin-top:12px; font-size:11.5px; color:var(--u-ink2)">
+          この一覧が長くなるほど、プラグインの自由度は下がります。増やすときはReferenceで必要性を確認します。
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="aside-title">プラグインが実現する物理レイヤー</div>
+        <div class="layer" style="margin-top:10px">
+          <div class="layer-item"><span>database</span><span>database-provider · contract-query-executor（tei.database.postgres / oracle）</span></div>
+          <div class="layer-item"><span>migration</span><span>deployment-executor（tei.migration.atlas）</span></div>
+          <div class="layer-item"><span>runtime</span><span>deployment-executor · observation-provider（tei.runtime.reference）</span></div>
+          <div class="layer-item"><span>evidence</span><span>evidence-provider（tei.health.reference）</span></div>
+          <div class="layer-item"><span>editor</span><span>editor-intelligence（tei.editor.intelligence.sql）</span></div>
+          <div class="layer-item proposed"><span>提案 ui</span><span>target-renderer — Patternの描画をTargetごとに差し替える</span></div>
+          <div class="layer-item proposed"><span>提案 ui</span><span>editor-projection — flow / graph / workbench等の投影を足す</span></div>
+          <div class="layer-item proposed"><span>提案 ui</span><span>editor-panel — 特定subjectの検査面を足す</span></div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="aside-title" style="padding-left:0">UI提供プラグインのauthoring案</div>
+<pre class="code-t"><span class="kw">plugin</span> acme.editor.orderdesk v1.0.0 {
+    <span class="kw">runtime</span> process "node" args "server.js" sandbox required
+
+    <span class="kw">artifact</span> {
+        digest "sha256:…"
+        provenance "source://acme/orderdesk/1.0.0"
+    }
+
+    <span class="new">provides editor-projection</span> editor.flow {
+        feature editor.flow_view
+        subject-kind semantic-data
+    }
+
+    <span class="new">provides target-renderer</span> target.web.grid {
+        pattern browse
+        pattern header-detail
+    }
+}
+
+<span class="cm"># environment側で有効化と権限を明示する</span>
+<span class="kw">plugin</span> acme.editor.orderdesk ^1
+<span class="kw">feature</span> editor.flow_view
+<span class="kw">grant</span> editor-projection editor.flow permission network connect docs-endpoint</pre>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="aside-title">プラグインでも変えられないこと</div>
+        <div style="margin-top:10px">
+          <div class="guard"><span>—</span><span>Canonicalな意味を分岐させない。描画のために第二の正本を持たない</span></div>
+          <div class="guard"><span>—</span><span>Acceptance Boundaryを迂回してauthoritative sourceへ書かない</span></div>
+          <div class="guard"><span>—</span><span>権限は明示grantの範囲だけ。UIだからという理由でsecret / network / filesystemを暗黙に得ない</span></div>
+          <div class="guard"><span>—</span><span>Business Result・Execution Error・Observationの区別を描画側で畳まない</span></div>
+          <div class="guard"><span>—</span><span>診断はSource Indexを通してauthoring sourceへ戻れる</span></div>
+          <div class="guard"><span>—</span><span>Coreが予約したキー操作を奪わない</span></div>
+        </div>
+        <div class="card" style="margin-top:14px; padding:10px 12px">
+          <div class="aside-title" style="padding:0 0 6px">Plugin Lockとの関係</div>
+          <div style="font-size:11.5px; color:var(--u-ink2)">
+            UIを提供するプラグインもLockの対象です。差し替えたら、Conformanceは同じrevisionで取り直します。
+            「画面が変わっただけ」を検証の免除理由にしません。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="frame-head">
+    <h3>Frame 15 — 既定Editorからのカスタム</h3>
+    <span class="dims">1140 × 420</span>
+    <p>既定のEditorを土台に、プラグインが投影と検査面を足した状態です。プラグイン提供部分は出所と権限を明示し、Coreが描く部分と混ぜません。右下は、同じ画面をプラグイン無しで開いたときの表示です。</p>
+  </div>
+  <div class="scroller">
+  <div class="ui">
+    <div class="ui-top">
+      <span class="brand">TEI</span><span class="sep"></span>
+      <span class="app-id">workspace: reference</span>
+      <span class="tag">namespace sales</span>
+      <span class="spacer"></span>
+      <div class="seg">
+        <span class="on">table</span><span>dsl</span><span>diagnostic</span><span class="on" style="color:var(--u-bronze)">flow ＋</span><span class="on" style="color:var(--u-bronze)">lineage ＋</span>
+      </div>
+      <span class="tag ext">＋ = プラグイン提供</span>
+    </div>
+    <div class="ed-body" style="grid-template-columns: 236px minmax(0,1fr) 308px">
+      <nav class="rail">
+        <div class="rail-title">Canonical World</div>
+        <div class="tree">
+          <div class="lvl1">sales</div>
+          <div class="lvl2 is-active">data Order</div>
+          <div class="lvl3">relation lines → sales.order_line</div>
+          <div class="lvl2">capability sales.order.submit</div>
+          <div class="lvl2">validation quantity_positive</div>
+        </div>
+        <div class="rail-title" style="padding-top:14px">有効なプラグイン</div>
+        <div class="claim" style="grid-template-columns: minmax(0,1fr) 62px">
+          <span><span class="sub">tei.editor.intelligence.sql</span><br><span class="pid">editor-intelligence v1.0.0</span></span>
+          <span class="who">sandbox</span>
+        </div>
+        <div class="claim" style="grid-template-columns: minmax(0,1fr) 62px; border-bottom:0">
+          <span><span class="sub">acme.editor.orderdesk</span><br><span class="pid">editor-projection / panel v1.0.0</span></span>
+          <span class="who">sandbox</span>
+        </div>
+      </nav>
+
+      <div class="work">
+        <div class="card">
+          <div class="plugin-head">
+            <span class="tag ext">プラグイン提供</span>
+            <span class="m">acme.editor.orderdesk v1.0.0 · editor-projection editor.flow</span>
+            <span class="spacer"></span>
+            <span class="tag">granted: network docs-endpoint</span>
+          </div>
+          <div style="padding:14px; display:grid; gap:10px">
+            <div style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; align-items:center">
+              <div class="card" style="padding:10px 12px; text-align:center"><span class="m" style="font-size:11.5px">受注登録</span></div>
+              <div class="card" style="padding:10px 12px; text-align:center"><span class="m" style="font-size:11.5px">明細追加</span></div>
+              <div class="card" style="padding:10px 12px; text-align:center; border-color:var(--u-accent)"><span class="m" style="font-size:11.5px">受注確定</span></div>
+              <div class="card" style="padding:10px 12px; text-align:center"><span class="m" style="font-size:11.5px">状態確認</span></div>
+            </div>
+            <div style="font-size:11.5px; color:var(--u-ink2)">
+              この投影はプラグインが描いています。参照しているCanonical IDと診断はCoreが供給し、プラグインは配置と表現だけを決めます。
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h4>Coreが描く部分</h4><span class="tag ok">差し替え不可</span></div>
+          <div style="padding:10px 12px">
+            <div class="rowset">
+              <div class="rowline"><span>identity</span><span>sales.order · semantic/sales/order.tei L7–L18</span></div>
+              <div class="rowline"><span>diagnostic</span><span>0件（Source Indexへ戻れる状態）</span></div>
+              <div class="rowline"><span>受理</span><span>変更はShared Acceptance Boundaryを通る</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="aside">
+        <div class="aside-title">プラグインが無い環境で開くと</div>
+        <div class="aside-sec">
+          <div class="absent">
+            <span class="tag warn">未提供</span>
+            <div><strong>flow投影はこの環境で提供されていません。</strong></div>
+            <div>
+              必要な feature: <span class="m">editor.flow_view</span><br>
+              提供するプラグイン: <span class="m">acme.editor.orderdesk ^1</span>
+            </div>
+            <div style="color:var(--u-ink3)">
+              近い投影へ自動で切り替えることはしません。表示できない事実を残します。
+            </div>
+          </div>
+        </div>
+        <div class="aside-sec">
+          <div class="aside-title" style="padding-left:0">カスタムの単位</div>
+          <div class="rowset">
+            <div class="rowline"><span>足す</span><span>投影・検査面・Target描画を追加する</span></div>
+            <div class="rowline"><span>差し替える</span><span>既定の描画をPattern単位で置き換える</span></div>
+            <div class="rowline"><span>変えない</span><span>identity表示・診断・受理導線はCoreのまま</span></div>
+          </div>
+        </div>
+        <div class="aside-sec">
+          <div class="aside-title" style="padding-left:0">未確定</div>
+          <div style="font-size:11.5px; color:var(--u-ink2)">
+            UI提供プラグインの実行形態（in-process / process / ブラウザ内）と、描画に渡すデータの粒度。
+            Targetごとに別のプラグインが要るのか、一つで複数Targetを賄えるのかも未決です。
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
   </div>
@@ -1671,9 +1907,37 @@
       <tr>
         <td>D-21</td>
         <td>キー割り当ての既定</td>
-        <td class="opts">保存系に寄せる（Ctrl+S） / 単独Fキー / 既存システムに合わせる</td>
-        <td class="rec"><b>保存系に寄せる。</b>単独Fキーは既存端末の割り当てと衝突しやすいため既定にしない。日本語入力中の抑止は未決。</td>
+        <td class="opts">保存系に寄せる（Ctrl+S） / 単独Fキー</td>
+        <td class="rec"><b>保存系に寄せる。</b>引き継ぐ制約が無いため、ブラウザ・OSと衝突しにくい側を既定とする。日本語入力中の抑止は未決。</td>
         <td class="ref">Frame 11</td>
+      </tr>
+      <tr>
+        <td>D-23</td>
+        <td>UIをどこまでプラグインへ開くか</td>
+        <td class="opts">描画の追加のみ / Pattern単位の差し替えも許す / 画面全体の置換も許す</td>
+        <td class="rec"><b>追加とPattern単位の差し替えまで。</b>identity表示・診断・受理導線はCoreが描き続ける。画面全体の置換は、Coreの保証が消える境界なので別判断とする。</td>
+        <td class="ref">Frame 14 / 15<br>RQ-008 / 013</td>
+      </tr>
+      <tr>
+        <td>D-24</td>
+        <td>UI提供プラグインの権限</td>
+        <td class="opts">描画用途として緩める / 他Capabilityと同じ明示grantのみ</td>
+        <td class="rec"><b>同じ明示grantのみ。</b>UIだからという理由でsecret / network / filesystemを暗黙に与えない。sandboxも同条件。</td>
+        <td class="ref">RQ-019<br>environment grant</td>
+      </tr>
+      <tr>
+        <td>D-25</td>
+        <td>プラグインが無い・未認可のときの表示</td>
+        <td class="opts">近い表示へ自動切替 / 空にする / 未提供として明示</td>
+        <td class="rec"><b>未提供として明示する。</b>必要なfeatureと提供元を示し、暗黙のfallbackで「動いているように見える」状態を作らない。</td>
+        <td class="ref">Frame 15<br>RQ-022</td>
+      </tr>
+      <tr>
+        <td>D-26</td>
+        <td>UIプラグインとPlugin Lock / Conformanceの関係</td>
+        <td class="opts">UIは検証対象外 / 他Capabilityと同じくLock対象</td>
+        <td class="rec"><b>同じくLock対象。</b>描画の差し替えでもConformanceは同じrevisionで取り直す。「画面が変わっただけ」を免除理由にしない。</td>
+        <td class="ref">RQ-021<br>Plugin Lock</td>
       </tr>
       <tr>
         <td>D-22</td>
@@ -1728,6 +1992,14 @@
       <h4>当面は静的モックのまま画面数を増やす</h4>
       <p>クリックで動く試作へは進めません。Gate CのInteraction / Functional Evidenceをどう取るかは別途決めます。</p>
     </div>
+    <div class="settled-item">
+      <h4>UIを含む物理レイヤーはプラグインで実現する</h4>
+      <p>Driverのコアは必要最小限のメタ制御に留め、Editor / Driver間の挙動は動的に拡張できるものとします。既定のEditorはカスタムされる前提で、UI提供もプラグインの一種として扱います（Frame 14・15）。プラグイン体系そのものは別途整理中です。</p>
+    </div>
+    <div class="settled-item">
+      <h4>引き継ぐべきキー割り当ては無い</h4>
+      <p>既存システム側の制約がないため、Frame 11の割り当てはこちらの既定として決めます。制約はブラウザ・OSとの衝突回避と、Coreの予約キーをプラグインが奪わないことです。</p>
+    </div>
   </div>
 </section>
 
@@ -1741,9 +2013,9 @@
       <p class="why">Repository内にデザイン資産が無いため、現在は仮置きです。</p>
     </div>
     <div class="ask-item">
-      <h4>既存システムのキー割り当て</h4>
-      <p>移行対象の端末で既に体に入っているキー操作（テンキー中心の入力、確定キーの位置など）があれば、Frame 11の既定を合わせます。</p>
-      <p class="why">キーボード中心の前提では、割り当ての衝突が移行の負担に直結します。</p>
+      <h4>UI提供プラグインの実行形態</h4>
+      <p>描画を担うプラグインを、in-process・別プロセス・ブラウザ内のどれで動かす想定か。整理中のプラグイン体系が決まった時点で、Frame 14・15の権限とsandboxの表現を合わせます。</p>
+      <p class="why">実行形態によって、渡せるデータの粒度と権限の既定が変わります。</p>
     </div>
   </div>
 </section>
