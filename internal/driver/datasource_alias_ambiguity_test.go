@@ -77,3 +77,43 @@ func TestResolverReportsMissingDatasourceAliasSeparatelyFromAmbiguity(t *testing
 		t.Fatalf("missing datasource aliasをambiguityとして診断しました: %v", err)
 	}
 }
+
+func TestReferencePatternFailsClosedWhenDatasourceAliasIsAmbiguous(t *testing.T) {
+	world := ir.World{
+		Applications: []application.Application{
+			{
+				ID: "app_a",
+				Databases: []application.DatabaseRequirement{
+					{Alias: "master", TargetDatabase: "master_data", Access: database.AccessRead},
+					{Alias: "master", TargetDatabase: "archive_master", Access: database.AccessRead},
+				},
+				Patterns: []application.Pattern{
+					{ID: "app_a.reference", Kind: application.PatternReference, Relation: "sales.order.customer", Datasource: "master"},
+				},
+			},
+		},
+		Semantics: []semantic.Namespace{
+			{
+				ID: "sales",
+				Data: []semantic.Data{
+					{
+						ID: "sales.order",
+						Relations: []semantic.Relation{
+							{ID: "sales.order.customer", Target: "customer.customer", Cardinality: semantic.CardinalityOne},
+						},
+					},
+				},
+			},
+			{ID: "customer", Data: []semantic.Data{{ID: "customer.customer"}}},
+		},
+	}
+
+	resolver := driver.NewResolver(world)
+	_, err := resolver.ResolvePattern("app_a", "app_a.reference")
+	if err == nil {
+		t.Fatal("reference Patternがduplicate datasource aliasから一件を黙って選択しました")
+	}
+	if !strings.Contains(err.Error(), "複数定義されています") {
+		t.Fatalf("reference Patternのduplicate datasource aliasをmissingとして診断しました: %v", err)
+	}
+}
