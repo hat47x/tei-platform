@@ -1,0 +1,38 @@
+name: Gate B baseline source qualification
+
+on:
+  pull_request:
+    paths:
+      - internal/application/**
+      - internal/driver/**
+      - internal/validation/**
+      - go.mod
+      - go.sum
+      - .github/workflows/gate-b-baseline-source-qualification.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-qualification:
+    runs-on: ubuntu-latest
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Record Go toolchain
+        run: go version
+      - name: Check formatting
+        run: test -z "$(gofmt -l internal/application internal/driver internal/validation)"
+      - name: Vet affected packages
+        run: go vet ./internal/application ./internal/driver ./internal/validation
+      - name: Test affected packages
+        run: go test ./internal/application ./internal/driver ./internal/validation -count=1
