@@ -13,11 +13,11 @@ import (
 )
 
 type businessActionDataProjectionRowProbe struct {
-	StepID                    string   `json:"step"`
-	Data                      []string `json:"data,omitempty"`
-	Relations                 []string `json:"relations,omitempty"`
-	EvidencePaths             []string `json:"evidencePaths,omitempty"`
-	UnresolvedFromCurrentRefs bool     `json:"unresolvedFromCurrentRefs"`
+	StepID                     string   `json:"step"`
+	Data                       []string `json:"data,omitempty"`
+	Relations                  []string `json:"relations,omitempty"`
+	EvidencePaths              []string `json:"evidencePaths,omitempty"`
+	NoDataTraceFromCurrentRefs bool     `json:"noDataTraceFromCurrentRefs"`
 }
 
 func TestBusinessActionDataProjectionDerivesUsefulRowsFromExactAcceptedRefs(t *testing.T) {
@@ -64,8 +64,8 @@ func TestBusinessActionDataProjectionKeepsNoTraceStepsUnresolvedInsteadOfClaimin
 
 	for _, stepID := range []string{"BP-04", "BP-08", "BP-09"} {
 		row := byStep[stepID]
-		if !row.UnresolvedFromCurrentRefs {
-			t.Fatalf("%sをcurrent refsだけでData-resolvedと誤認しました: %+v", stepID, row)
+		if !row.NoDataTraceFromCurrentRefs {
+			t.Fatalf("%sにcurrent refsからData traceがないことを保持できません: %+v", stepID, row)
 		}
 		if len(row.Data) != 0 || len(row.Relations) != 0 || len(row.EvidencePaths) != 0 {
 			t.Fatalf("%sへ名称・順序等からData/Relationを推測しました: %+v", stepID, row)
@@ -97,17 +97,20 @@ func TestBusinessActionDataProjectionDoesNotInferSubmitTargetDataForAuthorizatio
 			t.Fatalf("BP-06へauthoritative refのないprotected-target Dataを推測しました: %+v", row)
 		}
 	}
+	if row.NoDataTraceFromCurrentRefs {
+		t.Fatalf("BP-06のsecurity.authorize Data contractまで失いました: %+v", row)
+	}
 }
 
 func TestBusinessActionDataProjectionIsAProjectionNotASecondAuthority(t *testing.T) {
 	projectionType := reflect.TypeOf(businessActionDataProjectionRowProbe{})
-	want := []string{"StepID", "Data", "Relations", "EvidencePaths", "UnresolvedFromCurrentRefs"}
+	want := []string{"StepID", "Data", "Relations", "EvidencePaths", "NoDataTraceFromCurrentRefs"}
 	if got := fieldNames(projectionType); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Business Action x Data projectionが別authority modelへ膨張しました: got=%v want=%v", got, want)
 	}
-	for _, forbidden := range []string{"Access", "Ownership", "Datasource", "WritePolicy", "Canonical", "Authoritative", "BusinessFlow", "Workflow"} {
+	for _, forbidden := range []string{"Access", "Ownership", "Datasource", "WritePolicy", "Canonical", "Authoritative", "Complete", "BusinessFlow", "Workflow"} {
 		if _, found := projectionType.FieldByName(forbidden); found {
-			t.Fatalf("derived Data projectionへauthority field %qを追加しました", forbidden)
+			t.Fatalf("derived Data projectionへauthority/completeness field %qを追加しました", forbidden)
 		}
 	}
 }
@@ -166,11 +169,11 @@ func deriveBusinessActionDataProjectionProbe(world ir.World, f fixture) ([]busin
 		}
 
 		row := businessActionDataProjectionRowProbe{
-			StepID:                    step.ID,
-			Data:                      sortedProjectionKeys(dataSet),
-			Relations:                 sortedProjectionKeys(relationSet),
-			EvidencePaths:             sortedProjectionKeys(evidenceSet),
-			UnresolvedFromCurrentRefs: len(dataSet) == 0 && len(relationSet) == 0,
+			StepID:                     step.ID,
+			Data:                       sortedProjectionKeys(dataSet),
+			Relations:                  sortedProjectionKeys(relationSet),
+			EvidencePaths:              sortedProjectionKeys(evidenceSet),
+			NoDataTraceFromCurrentRefs: len(dataSet) == 0 && len(relationSet) == 0,
 		}
 		rows = append(rows, row)
 	}
@@ -266,8 +269,8 @@ func findSemanticAttributeOwnerExactlyOnce(world ir.World, attributeID string) (
 					owner = string(data.ID)
 					count++
 				}
-			}
 		}
+	}
 	}
 	return owner, count == 1
 }
@@ -335,7 +338,7 @@ func businessActionDataRowsByStep(rows []businessActionDataProjectionRowProbe) m
 	return result
 }
 
-func assertBusinessActionDataProjection(t *testing.T, row businessActionDataProjectionRowProbe, data, relations []string, unresolved bool) {
+func assertBusinessActionDataProjection(t *testing.T, row businessActionDataProjectionRowProbe, data, relations []string, noTrace bool) {
 	t.Helper()
 	if !equalProjectionStringSlice(row.Data, data) {
 		t.Fatalf("step %s Data=%v want=%v evidence=%v", row.StepID, row.Data, data, row.EvidencePaths)
@@ -343,8 +346,8 @@ func assertBusinessActionDataProjection(t *testing.T, row businessActionDataProj
 	if !equalProjectionStringSlice(row.Relations, relations) {
 		t.Fatalf("step %s Relations=%v want=%v evidence=%v", row.StepID, row.Relations, relations, row.EvidencePaths)
 	}
-	if row.UnresolvedFromCurrentRefs != unresolved {
-		t.Fatalf("step %s UnresolvedFromCurrentRefs=%v want=%v evidence=%v", row.StepID, row.UnresolvedFromCurrentRefs, unresolved, row.EvidencePaths)
+	if row.NoDataTraceFromCurrentRefs != noTrace {
+		t.Fatalf("step %s NoDataTraceFromCurrentRefs=%v want=%v evidence=%v", row.StepID, row.NoDataTraceFromCurrentRefs, noTrace, row.EvidencePaths)
 	}
 }
 
