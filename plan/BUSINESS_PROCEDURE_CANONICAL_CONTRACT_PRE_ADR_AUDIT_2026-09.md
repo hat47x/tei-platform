@@ -30,6 +30,9 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - Business Action × Data / Relationはexisting Pattern / Validation / Capability refsからderived projectionできる範囲が広く、Business sourceへData / Relationを複製する理由にはならない。
 - current refsからData traceがないことは`no Data dependency`を意味せず、unknown / no-traceとして保持する。
 - derived Data traceが存在することもdependency listの完全性を意味しない。
+- Business Action × CRUDはcurrent structured meaningから部分的にのみ導出でき、現時点で安全に確定できるoperationは主にRである。
+- Database Contract `Writes[]`はwrite authorityを示すが、Business Action単位のC/U/D attributionを所有しない。
+- `record` / `command` Pattern kind、Capability input/output、Lifecycle transitionからCRUD letterを推測してはならない。
 
 ## 3. Explicit ref authority
 
@@ -164,6 +167,75 @@ Current `order_entry`では、BP-00〜BP-03 / BP-05〜BP-07に有用なData trac
 BP-06は`security.authorize`からsecurity-side Dataをtraceできるが、O1 protected targetはauthoritative Business sourceにpersistしていないため、隣接BP-07から`sales.order`を補わない。この部分traceはO1 persistence判断のEvidenceにはなるが、O1 source採用を自動決定しない。
 
 以上から、current EvidenceはD4へData / Relation slotを戻すより、existing refsからderived projectionを作る方を支持する。ただし将来Business Action自身がdirect Data / Relation authorityを必要とするaccepted sourceが現れた場合はD4 fail-closed ruleでreopenする。
+
+### 5.2 Business Action × CRUD partial projection
+
+`business_action_crud_projection_pressure_test.go`では、Data traceそのものからCRUD letterを付けず、operation authorityまで辿れるcellだけを埋める。
+
+Current `order_entry`で安全に導出する主要cellは:
+
+```text
+BP-00 -> R sales.order
+  browse Pattern + Query read boundary
+
+BP-02 -> R customer.customer
+  reference Pattern + readable datasource + Database Contract Query read
+
+BP-03 -> R sales.order_line
+  header-detail realization binding + Database Contract Query read
+```
+
+一方:
+
+```text
+BP-01 record
+BP-04 manual judgment
+BP-05 validation
+BP-06 authorization
+BP-07 command
+BP-08 observation intention
+BP-09 manual/external continuation
+```
+
+はcurrent refsからCRUD operationを確定しない。
+
+特にDatabase Contractには:
+
+```text
+sales_core.order
+  read sales.order
+  write sales.order.status
+```
+
+があるが、`sales.order.submit` Capability / BP-07とこのwriteを結ぶaccepted semantic relationはない。
+
+したがって:
+
+```text
+Database write authority
+  != BP-07 = U
+```
+
+である。
+
+`record`はone-record intentでありR/Uを意味しない。`command`はCapability invocationでありC/U/Dを意味しない。Capability input/outputはpayload contractでありpersistence effectではない。
+
+Business Lifecycle proposalの`pending -> submitted` transitionもBusiness state meaningであり、physical mutation / CRUD Uとは分離する。Lifecycle transitionからUを自動生成しない。
+
+Current answer:
+
+```text
+Business Action × CRUD
+  partially derivable
+
+R
+  some exact rows available
+
+C/U/D
+  operation attribution contract insufficient
+```
+
+この不足はBusiness Procedure schemaより、Capability / realization / Database effect boundaryのpressureである可能性が高い。CRUD matrixを埋める目的だけでD4へCRUD fieldを追加しない。
 
 ## 6. ref kindをgeneric bagへ畳まない
 
@@ -338,6 +410,8 @@ PatternからderiveできるData / Relation / Query / Capability / Datasource / 
 
 Business Action × Data / Relation projectionもaccepted Business meaningの第二正本にしない。Projection rowはData/Relation traceとEvidence pathを表すだけで、Ownership / Access / WritePolicy / Canonical authorityを所有しない。
 
+Business Action × CRUD projectionも第二正本にしない。Current R cellはApplication / Contract Query / Database Contractのaccepted authorityからderiveし、C/U/D未解決をmatrix側で補完しない。
+
 Procedureにmandatory single Application ownerを置かない。
 
 Matrix、CRUD / impact view、graph、checker diagnosticsをaccepted Business meaningの第二正本にしない。
@@ -359,6 +433,9 @@ Second-corpus physical Observationのruntime ReadIdentity / Evidence natureもCa
 - physical-world state engine
 - second-corpus synthetic Data ownership / Database / Pattern
 - Business Action × Data / Relation derived projectionをCanonical authority化すること
+- Business Action / ProcedureへのCRUD letter / generic CRUD field
+- Database Contract write -> U自動変換
+- Lifecycle transition -> U自動変換
 - inferred Handoff from adjacency / Observation / Function sequence
 - global Canonical Step ID
 
@@ -424,7 +501,7 @@ Business Flow / DFD
 
 したがってcurrent candidate stackのproduction contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
 
-このoutline-level Evidence、Observation pressure、Handoff inference pressure、Data projection pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
+このoutline-level Evidence、Observation pressure、Handoff inference pressure、Data projection pressure、CRUD projection pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
 
 ## 14. ADR作成前Gate
 
@@ -472,6 +549,13 @@ Business Flow / DFD
 32. Data traceがないStepを`no Data dependency`へ丸めず、no-trace / unknownとして保持する
 33. derived Data traceが存在しても完全性を主張せず、projectionをOwnership / Access / Canonical authorityの第二正本にしない
 34. BP-06 Data projectionがO1未persist時にはsecurity-side部分traceに留まることを確認し、O1 persistence判断とData projectionを相互に誤補完しない
+35. Business Action × CRUD partial projectionをactual testsで確認し、BP-00 / BP-02 / BP-03のRをexact authorityからderiveする
+36. Data traceとCRUD operation traceを分離し、Relation source/target Dataが見えるだけでR/U等を付与しない
+37. `record` / `command` Pattern kindだけからR/U/C/Dを推測しない
+38. Database Contract `write sales.order.status`をaccepted action linkなしにBP-07=Uへ帰属させない
+39. Capability input/outputやCustom Go realizationをpersistence mutation contractへ読み替えない
+40. Business Lifecycle transitionをCRUD Uへ短絡せず、Business state meaningとpersistence mutationを分離する
+41. C/U/D不足が複数realistic domainで反復するまでBusiness Procedure / Pattern / Capabilityへgeneric CRUD/effect fieldを追加しない
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -492,6 +576,9 @@ GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowは
 - Observation Canonical kind / physical-world state engine
 - synthetic second-corpus Data ownership model
 - Business Action × Data / Relation projectionのCanonical authority化
+- Business Procedure / Pattern / Capability generic CRUD/effect field
+- Database Contract write -> CRUD U自動変換
+- Lifecycle transition -> CRUD U自動変換
 - inferred Handoff from adjacency / Observation / Function sequence
 - global/durable Canonical Step ID
 - generic Uncertainty framework
@@ -509,4 +596,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた。一方、current `order_entry`のBusiness Action × Data / Relation derived projectionは、D4へData / Relation slotを戻さずともかなりのreview traceを得られることを示した。No-traceはunknown、traceありもcompleteではない。O1 role反復、exact second-corpus Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足はなお未証明である。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた。一方、current `order_entry`のBusiness Action × Data / Relation derived projectionは、D4へData / Relation slotを戻さずともかなりのreview traceを得られることを示した。Business Action × CRUD projectionはさらに、Rの一部だけをexactに導出でき、C/U/D attribution contractがcurrent meaningに不足していることを示した。この不足はBusiness Procedure schemaではなくCapability / realization / Database effect boundary側のpressureである可能性が高い。No-traceはunknown、traceありもcompleteではない。O1 role反復、exact second-corpus Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足はなお未証明である。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
