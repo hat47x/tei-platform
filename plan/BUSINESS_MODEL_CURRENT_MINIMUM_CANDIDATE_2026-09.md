@@ -93,6 +93,43 @@ Business meaning does not need to be embedded in `ir.World` merely because it is
 
 Current tests pressure Business wording change、protected-target-only change、Handoff condition-only change as Business semantic revision changes while leaving `ir.World` unchanged. Stale Application target still fails closed through cross-view validation.
 
+## Shared Acceptance pressure
+
+Current test-only bundle combines:
+
+```text
+inline Procedure source A
+inline Procedure source B
+...
+standalone Handoff source
+```
+
+into one normalized Business model.
+
+The bundle pressure establishes that:
+
+- the new source decomposition normalizes to the same current Business meaning
+- Procedure wording change changes the Business semantic revision
+- protected-target change changes the same Business semantic revision
+- Handoff condition change changes the same Business semantic revision
+- Procedure source ordering alone does not change the semantic revision
+- semantic bundle fields do not carry path / artifact / runtime metadata
+
+Therefore the unresolved question is no longer whether multiple Business source kinds can form one semantic review unit.
+
+The remaining production question is:
+
+```text
+how to implement source freshness
++ coordinated / atomic acceptance
++ semantic revision identity
++ reload / cross-view Conformance
+```
+
+without turning raw file layout into authority.
+
+The current fingerprint is pressure vocabulary only, not a production hash/revision API.
+
 ## Current decisions
 
 - D3 remains subtraction/history evidence, not the preferred minimum candidate.
@@ -103,6 +140,7 @@ Current tests pressure Business wording change、protected-target-only change、
 - Handoff remains separate from Procedure body because it is genuinely cross-Procedure meaning.
 - Reference Set manifest内Handoffはfixtureには便利だが、artifact locator metadataとmeaningを混在させるためproduction authoring candidateとしては弱い。
 - Standalone Handoff relation source is the current strongest H1/R3 authoring candidate.
+- Inline Procedure source(s) + standalone Handoff source can form one normalized Business semantic review unit in current test-only pressure.
 - Handoff normalized meaning is required for the current accepted Reference Set, but a standalone top-level Canonical `BusinessHandoff` kind is not yet proven.
 - Generic ref-role taxonomy remains deferred.
 - Generic Business Edge / full Business Flow / Workflow runtime remain out of scope.
@@ -124,14 +162,22 @@ pure artifact locator move            -> semantic meaning unchanged
 source ordering only                  -> semantic meaning unchanged
 ```
 
-The current fingerprint experiments are pressure vocabulary only, not a production hash/revision API.
+A production Shared Acceptance design must additionally handle:
+
+```text
+source freshness at accept time
+coordinated Step/address + Handoff endpoint changes
+all-source reload after accept
+cross-view validation against current ir.World
+no partial acceptance on broken referential integrity
+```
 
 ## Current unresolved gates
 
 1. actual Repository runner green (`gofmt`, `go vet`, `go test`, checker).
 2. production adoption/migration strategy for inline singular O1; test-only shape itself is demonstrated.
 3. production adoption/migration strategy for standalone Handoff source; test-only shape itself is demonstrated.
-4. production Shared Acceptance / Business semantic revision mechanism spanning Procedure source(s) + Handoff source.
+4. production freshness / atomicity / semantic revision API for the demonstrated multi-source normalized Business review unit.
 5. second realistic Handoff pressure to confirm `from / to / condition` sufficiency.
 6. next TEI-original C/U/D case before mutation/effect contract design.
 7. evidence that separate Business plane is insufficient before considering `ir.World` embedding.
