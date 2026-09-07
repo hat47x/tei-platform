@@ -36,6 +36,50 @@ D4 body
 + H1/R3 thin set-level Handoff
 ```
 
+## Current authoring candidates
+
+### Procedure / O1
+
+Current strongest authoring candidate is the same Business Procedure source with a singular optional field:
+
+```text
+protectedApplicationPattern?
+```
+
+Test-only inline candidate:
+
+- strict-decodes
+- round-trips losslessly
+- keeps zero-or-one cardinality
+- rejects multi-target / generic role fields
+- normalizes to the same D4+O1 meaning as the previous sidecar pressure
+
+Production syntax is not adopted yet.
+
+### Handoff
+
+Current strongest authoring candidate is a standalone set-level Business relation source:
+
+```text
+Handoffs[]
+  from { procedure, step }
+  to   { procedure, step }
+  condition
+```
+
+It intentionally does not carry Procedure artifact locators.
+
+This keeps:
+
+```text
+Business Handoff meaning
+  != Reference Set / file assembly metadata
+```
+
+and avoids rewriting Handoff source merely because a Procedure file moved.
+
+Production syntax is not adopted yet.
+
 ## Placement
 
 Current strongest placement candidate is a **separate normalized Business semantic plane** validated against `ir.World`.
@@ -55,9 +99,10 @@ Current tests pressure Business wording change、protected-target-only change、
 - D4 alone is insufficient if exact protected-target trace is retained.
 - O1 minimum cardinality is zero-or-one; multi-target future cases fail closed and reopen design.
 - Production O1 sidecar is not preferred because it requires composite Acceptance machinery for one Step-local relation.
-- Test-only inline `protectedApplicationPattern?` source candidate round-trips losslessly and normalizes to the same D4+O1 meaning as the sidecar pressure.
-- Therefore same Business source内のsingular narrow O1 field is the current strongest authoring candidate, but production source syntax is not adopted yet.
+- Same Business source内のsingular narrow O1 field is the current strongest Procedure authoring candidate.
 - Handoff remains separate from Procedure body because it is genuinely cross-Procedure meaning.
+- Reference Set manifest内Handoffはfixtureには便利だが、artifact locator metadataとmeaningを混在させるためproduction authoring candidateとしては弱い。
+- Standalone Handoff relation source is the current strongest H1/R3 authoring candidate.
 - Handoff normalized meaning is required for the current accepted Reference Set, but a standalone top-level Canonical `BusinessHandoff` kind is not yet proven.
 - Generic ref-role taxonomy remains deferred.
 - Generic Business Edge / full Business Flow / Workflow runtime remain out of scope.
@@ -84,10 +129,10 @@ The current fingerprint experiments are pressure vocabulary only, not a producti
 ## Current unresolved gates
 
 1. actual Repository runner green (`gofmt`, `go vet`, `go test`, checker).
-2. production adoption/migration strategy for the inline singular O1 field; test-only shape itself is now demonstrated.
-3. production placement / authoring representation of H1/R3 set-level relation.
-4. production Shared Acceptance / Business semantic revision mechanism.
-5. second realistic Handoff pressure to confirm thin relation sufficiency.
+2. production adoption/migration strategy for inline singular O1; test-only shape itself is demonstrated.
+3. production adoption/migration strategy for standalone Handoff source; test-only shape itself is demonstrated.
+4. production Shared Acceptance / Business semantic revision mechanism spanning Procedure source(s) + Handoff source.
+5. second realistic Handoff pressure to confirm `from / to / condition` sufficiency.
 6. next TEI-original C/U/D case before mutation/effect contract design.
 7. evidence that separate Business plane is insufficient before considering `ir.World` embedding.
 
