@@ -21,10 +21,12 @@ Business Procedure Reference pressureからproduction Canonical contractを判�
 - Business Handoffはfull Business Flow / DFDではない。
 - ref kind separationだけではref role separationを表せない。
 - Authorization policyとBusiness protected targetは別Authorityであり、policyからBusiness targetを逆導出してはならない。
-- manufacturing / inventory outlineはphysical-world非対称性を再現するが、O1 generic roleやD4/H1/R3拡張をまだ要求しない。
+- manufacturing / inventory outlineはphysical-world非対称性を再現するが、O1 generic roleやD4/H1/R3 production拡張をまだ要求しない。
 - physical-world Command / Observation separationはtest-onlyで機械化できるが、新しいCanonical Observation identityは不要である。
 - second-corpus Data authorityは重要でも、exact TEI Data / Pattern / Database identityなしにsynthetic ownershipを作ってはならない。
 - physical factの観測だけではaccepted responsibility Handoffを導出できない。
+- Procedure Step順序 / adjacencyやApplication Function sequenceからaccepted responsibility Handoffを導出してはならない。
+- normalized H1/R3 relationのauthorityはexplicit Business Handoff sourceに限定する。
 
 ## 3. Explicit ref authority
 
@@ -209,6 +211,44 @@ Normalized Business model pressure
 
 Second-corpusではphysical factがresponsibility continuationの前提になり得るが、exact Procedure/Step/conditionがない限りH1/R3 relationを生成しない。
 
+### 8.1 H1/R3 authority direction
+
+`second_corpus_handoff_inference_pressure_test.go`で次をPressureする。
+
+```text
+Procedure bodies + ordered steps
+explicit Handoff source absent
+  -> normalized Handoffs = 0
+
+positive physical Observation
+explicit Handoff source absent
+  -> normalized Handoffs = 0
+
+explicit Handoff source present
+  -> normalized Handoffs = 1
+  -> exact endpoint + condition validation
+```
+
+したがってauthority directionは:
+
+```text
+explicit accepted Handoff source
+  -> normalized H1/R3 relation
+
+Step order / adjacency
+  -X-> Handoff
+
+physical Observation
+  -X-> Handoff
+
+Application Function sequence
+  -X-> Handoff
+```
+
+とする。
+
+これはproduction `BusinessHandoff` Canonical kindの必要性を証明しない。H1/R3を採用する場合に最低限守るauthority separationを示すEvidenceである。
+
 ## 9. D4 + O1 composition
 
 ```text
@@ -285,6 +325,7 @@ Second-corpus physical Observationのruntime ReadIdentity / Evidence natureもCa
 - Observation専用Canonical identityの先行導入
 - physical-world state engine
 - second-corpus synthetic Data ownership / Database / Pattern
+- inferred Handoff from adjacency / Observation / Function sequence
 - global Canonical Step ID
 
 ## 12. Business Flow / DFDは別pressure
@@ -323,7 +364,9 @@ O1
 
 H1 / R3
   responsibility continuation pressureは自然に存在
-  exact accepted Procedure/Step/condition relationは未証明
+  Step adjacency / positive physical Observationからは生成しない
+  explicit Handoff sourceだけをnormalized relation authorityとするtest-only Pressureへ進展
+  production Canonical kind necessityは未証明
 
 Observation boundary
   command accepted != physical actuality
@@ -344,7 +387,7 @@ Business Flow / DFD
 
 したがってcurrent candidate stackのproduction contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
 
-このoutline-level Evidenceとtest-only Observation pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
+このoutline-level Evidence、Observation pressure、Handoff inference pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
 
 ## 14. ADR作成前Gate
 
@@ -352,7 +395,7 @@ Business Flow / DFD
 
 本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A76 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
+- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A79 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
 - 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
 - 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
 
@@ -387,6 +430,7 @@ Business Flow / DFD
 27. physical-world Command acceptanceだけでcompletionを成立させず、explicit Observationなし / observed=false / positive external Observationをactual testsで区別する
 28. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
 29. physical ObservationからH1/R3 responsibility Handoffを自動生成しない
+30. Procedure Step順序 / adjacency / Application Function sequenceからH1/R3を自動生成せず、explicit Handoff sourceだけがnormalized relationをauthorすることをactual testsで確認する
 
 GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
 
@@ -406,6 +450,7 @@ GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowは
 - `realization` enum
 - Observation Canonical kind / physical-world state engine
 - synthetic second-corpus Data ownership model
+- inferred Handoff from adjacency / Observation / Function sequence
 - global/durable Canonical Step ID
 - generic Uncertainty framework
 - Workflow Engine
@@ -422,4 +467,4 @@ C1 optional Reference Application context
 O1 target-role overlay pressure (authoritative source intentionally deferred)
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界をtest-only mechanical pressureまで進めた一方、O1 role反復、exact Data authority、accepted Handoff relation、D4/H1/R3 production contract不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
+O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた一方、O1 role反復、exact Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
