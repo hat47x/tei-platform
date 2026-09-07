@@ -1,6 +1,6 @@
 # Business Procedure Second Corpus Contract Pressure Audit — 2026-09
 
-Status: **Lane C / outline-level comparison / no Reference fixture / no production schema adoption**
+Status: **Lane C / outline-level comparison + test-only Observation pressure / no Reference fixture / no production schema adoption**
 
 ## 1. 目的
 
@@ -26,6 +26,11 @@ external artifactのexact sequenceを再現しない
 ```
 
 を維持する。
+
+関連:
+
+- `BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`
+- `BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`
 
 ## 2. 比較単位
 
@@ -73,18 +78,22 @@ manual / physical / external action does not require fake Function
 
 を支持する。
 
-### まだ証明しないもの
+### Data authorityは意図的に保留する
 
-Second corpus outlineにはTEI Canonical Data / Relation identityがまだない。
+Second corpus outlineにはTEI Canonical Data / Relation / Database / Pattern identityがまだない。
 
 したがって:
 
 ```text
 direct Data ref is required
 direct Relation ref is required
+physical stock is external-observed
+manufacturing completion is managed-here
 ```
 
 とは言えない。
+
+Current `order_entry`ではexact World identityを通して`managed-here + read-write`と`external-observed + read`をcross-view検査できるが、そのshapeをmanufacturing / inventoryへsyntheticに移植しない。
 
 D4のcurrent minimum:
 
@@ -97,7 +106,7 @@ capabilityRefs[]
 
 をこの段階で拡張しない。
 
-将来TEI-original fixtureでBusiness meaningを保持するためにdirect Data / Relation identityが不可欠になった場合だけfail closedしてreopenする。
+将来TEI-original sourceでBusiness meaningを保持するためにdirect Data / Relation identityが不可欠になった場合だけfail closedしてreopenする。詳細は`BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`を正とする。
 
 ## 4. O1 — protected target role
 
@@ -180,11 +189,20 @@ Procedure A / Step X
 
 というaccepted Handoff relationをまだ作らない。
 
+さらに:
+
+```text
+physical completion observed
+  != accepted responsibility handoff
+```
+
+とする。Observation pressureやscreen adjacencyからH1/R3を自動生成しない。
+
 Current H1/R3を拡張も縮小もしない。
 
 ## 6. Command / Observation separation
 
-ここはsecond corpusで最も強く再現する。
+ここはsecond corpusで最も強く再現し、今回test-only mechanical pressureまで進めた。
 
 ```text
 application command accepted
@@ -194,6 +212,24 @@ application command accepted
   != shipment physically completed
 ```
 
+`physical_world_observation_boundary_pressure_test.go`では:
+
+```text
+Command accepted + no explicit observation
+  -> BUSINESS_PHYSICAL_COMPLETION_REQUIRES_OBSERVATION
+
+Observation read success + observed=false
+  -> BUSINESS_PHYSICAL_COMPLETION_NOT_OBSERVED
+
+Observation read success + external-observed + observed=true
+  -> test-local fact may be treated as observed
+
+Observation read error
+  -> no physical completion result
+```
+
+をPressureする。
+
 これはcurrent `order_entry` BP-08で置いた:
 
 ```text
@@ -202,7 +238,7 @@ Business Result != actual external Observation
 
 の境界を別domainから支持する。
 
-ただし、この再現だけで:
+ただし、この再現から:
 
 ```text
 Observation Canonical identity
@@ -212,7 +248,7 @@ workflow completion state
 
 を導入しない。
 
-Business wording / explicit Observation boundaryを保持し、具体的なruntime / provider identityは別authorityとする。
+既存Driver `ExecuteObservationRead` / `ObservationReadExecution`を利用し、runtime ReadIdentityはEvidence locatorのままとする。詳細は`BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`を正とする。
 
 ## 7. Business Flow / DFD
 
@@ -241,10 +277,12 @@ Second corpusがfixtureへ進む場合、最初に価値があるのはfeature�
 C-01
 Business says physical completion is required
 but Function only records command acknowledgement
+  -> test-only pressureへ進展
 
 C-02
 Business depends on external-observed stock
 but Application claims managed-here write authority
+  -> exact TEI Data / Pattern authority待ち
 
 C-03
 Business action is manual / physical
@@ -259,22 +297,23 @@ Business continuation depends on a real-world condition
 but Handoff is inferred from screen adjacency
 ```
 
-これらはfixture作成時にbaseline / intentional defectを分離して検査する。
+C-01以外はfixture作成時にbaseline / intentional defectを分離して検査する。
 
 ## 9. Current candidate stackへの判定
 
-| Candidate | Second corpus outlineで再現したもの | 現時点で不足と証明したもの | 判断 |
+| Candidate | Second corpusで再現したもの | 現時点で不足と証明したもの | 判断 |
 | --- | --- | --- | --- |
 | D4 | manual / physical / external Business Action | direct Data / Relation ref necessity | keep |
 | S4-A | future exact step addressability question | global Step ID necessity | keep |
 | H1/R3 | responsibility continuation / condition pressure | exact accepted Handoff relation | keep narrow |
 | O1 | role-separationを問う必要性 | second cross-domain protected-target example | do not generalize |
-| Observation boundary | command != physical actuality | new Canonical Observation identity | strongly reinforced, no schema expansion |
+| Observation boundary | command != physical actuality | new Canonical Observation identity | test-only mechanical pressureへ進展、schema expansionなし |
+| Data authority | physical state authority relevance | exact TEI Data / ownership mapping | defer; synthetic ownership禁止 |
 | Business Flow / DFD | material/info movement relevance | Procedure/Handoffではlossyというexact case | defer |
 
 ## 10. Gate 15c
 
-本監査ではcurrent stackの具体的contract insufficiencyをまだ発見していない。
+本監査ではcurrent stackのproduction contract insufficiencyをまだ発見していない。
 
 したがって:
 
@@ -286,12 +325,13 @@ Gate 15c = not activated
 
 これはsecond corpusの価値がないという意味ではない。
 
-むしろ現在の価値は:
+現在の価値は:
 
 1. physical-world caseでもBusiness ActionをFunctionへ還元しない境界が再現した
-2. Command / Observation separationが別domainでも強く再現した
+2. Command / Observation separationを別domainでtest-only mechanical pressureまで進めた
 3. O1 generic role taxonomyの根拠がまだ一例に留まることを明確にした
-4. Handoff / Business Flowを先走って一般化しないためのnegative Evidenceを得た
+4. Data authorityをexact identityなしにsynthetic化しない境界を固定した
+5. physical ObservationからHandoff / Business Flowを先走って一般化しないnegative Evidenceを得た
 
 ことにある。
 
@@ -306,17 +346,20 @@ D4 is sufficient
 O1 remains one-domain special pressure
 H1/R3 remains handoff-only sufficient
 Procedure/Handoff can preserve enough meaning without Business Flow
+current Data authority derivation remains sufficient
 ```
 
 具体的不足が出ない限りproduction schemaを増やさない。
 
 ## 12. 現時点の結論
 
-Second corpus outlineから得られた最も重要な結論は、新しいnounやrole enumではない。
+Second corpusから得られた最も重要な結論は、新しいnounやrole enumではない。
 
 ```text
 physical-world pressure reinforces existing boundaries
-but does not yet require a wider contract
+Command/Observation can be mechanically pressured without new Canonical identity
+Data authority must remain unresolved until exact TEI identities exist
+responsibility continuation does not itself create Handoff
 ```
 
 特にO1について:
