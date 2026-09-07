@@ -480,6 +480,78 @@ Current H1/R3 remains **handoff-only**. Full Business Flow / DFD remains a separ
 
 ---
 
+## E-015 — Task/Function separation does not prove a generic protected-target role taxonomy
+
+**Grade:** S1 + T1
+
+**Sources:**
+- public repository `xead/XeadModeler`
+  - TaskAction handling
+  - TaskFunctionIO handling with `FunctionID` / `IOID`
+- `BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`
+- `authorization_target_authority_direction_pressure_test.go`
+
+**Observed X-TEA source structure:**
+
+Historical XeadModeler distinguishes Business-side `TaskAction` from associated `TaskFunctionIO`. The latter points to `FunctionID` / `IOID` rather than collapsing the business action and software function into one identity.
+
+This supports:
+
+```text
+Business Action != Application Function
+Business Action may use / refer to Function or IO
+```
+
+**What this evidence does not prove:**
+
+It does **not** prove a generic TEI role taxonomy such as:
+
+```text
+realizes
+protects
+supports
+concerns
+checks
+...
+```
+
+In particular, the historical Task/Function usage relation is not evidence that every TEI cross-view concern should become `ExplicitSemanticRef { Kind, Role, Target }`.
+
+**TEI-local pressure:**
+
+Current `order_entry` BP-06 exposes a real local distinction:
+
+```text
+supporting authority   = security.authorize
+protected target       = order_entry.submit_order
+direct Function        = none
+```
+
+Legacy Authorization Reference also contains an `execute / order_entry.submit_order / allow` rule, but this is security-side authority only.
+
+Therefore:
+
+```text
+Authorization policy may corroborate Business protected target
+Authorization policy must not author/backfill Business protected target
+```
+
+Policy drift is exposed as a test-only cross-view diagnostic rather than silently rewriting Business meaning.
+
+**Second-corpus result:**
+
+The provenance-backed manufacturing / inventory outline strongly repeats `Command != physical actuality`, but does not yet provide a second exact Application Pattern case where target / concern differs from direct realization.
+
+**Current TEI decision:**
+
+- keep O1 narrow and test-only
+- do not infer O1 target from Authorization policy
+- do not add production `applicationPatternTargets` yet
+- do not generalize a ref-role enum from one exact case
+- require further realistic Evidence before role taxonomy promotion
+
+---
+
 # 2. Current conclusions supported by the register
 
 ## C-A — Preserve the Business Procedure viewpoint unconditionally
@@ -554,6 +626,14 @@ It must not silently become the general Business Flow / DFD abstraction.
 
 A future flow representation needs its own Reference pressure for activities, external parties, information / document / data movement, and any stable identities required by review or impact analysis.
 
+## C-F — Keep ref-role generalization evidence-driven
+
+Supported by E-005, E-006, and E-015.
+
+`Business Action != Function` is strongly supported. A generic `protected/supports/concerns/...` role taxonomy is not.
+
+Current O1 is a real TEI-local cross-view pressure, but remains one exact protected-target case. The manufacturing / inventory outline does not yet convert it into a repeated cross-domain role pattern.
+
 # 3. Open evidence gaps
 
 The following still need TEI-local proof:
@@ -576,9 +656,12 @@ At realistic scale, do effective CUD and call dependencies remain understandable
 
 T-GAP-06
 What is the minimum TEI Business Flow / DFD representation, if any, once a realistic Reference requires information flow across activities, external parties, and stores without collapsing it into Procedure handoff or Runtime Workflow?
+
+T-GAP-07
+Does protected-target / concern-vs-realization meaning recur across realistic domains strongly enough to justify any generic ref-role taxonomy, or should O1 remain a field-specific/local relation?
 ```
 
-`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first. T-GAP-06 stays separate from the current handoff contract pressure.
+`ORDER_ENTRY_BUSINESS_PROCEDURE_REFERENCE_EXPERIMENT.md` addresses T-GAP-01 through T-GAP-03 first. T-GAP-06 stays separate from the current handoff contract pressure. T-GAP-07 remains open after the manufacturing / inventory outline audit because that outline does not yet contain exact Application identities sufficient to prove a second protected-target case.
 
 # 4. Update rule
 
