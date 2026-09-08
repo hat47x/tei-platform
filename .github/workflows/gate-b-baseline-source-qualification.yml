@@ -1,6 +1,7 @@
 name: Gate B baseline source qualification
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - internal/**
