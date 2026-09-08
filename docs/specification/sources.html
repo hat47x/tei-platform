@@ -22,25 +22,23 @@
       <a href="requirements.html">全26要求</a>
       <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
       <a aria-current="page" href="sources.html">資料・追跡</a>
-      <a href="xtea-review.html">X-TEA／XEADの参照</a>
+      <a href="xtea-review.html">外部設計から得た着想</a>
     </nav>
-    <small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small>
   </aside>
   <main id="main">
     <div class="eyebrow">TEI 想定仕様ガイド</div>
     <h1>資料・出典と仕様の追跡</h1>
-    <p class="lead">外部公開に必要な範囲で、TEIの想定仕様が何を根拠にしているか、どこで採用状態を確認できるかを整理します。</p>
+    <p class="lead">第三者がTEIの現在の仕様と設計判断を追える範囲に絞って、参照先を整理します。</p>
 
     <section>
       <h2>追跡の原則</h2>
-      <p>TEIでは、現在のProduct Requirements、採用済みArchitecture / ADR、実装とEvidenceを、過去の構想や検討記録より優先します。未統合案や研究上の仮説は、採用済み仕様と区別して扱います。</p>
-      <p>このページは調査作業そのものの履歴ではなく、第三者が仕様の根拠を追うための入口です。個々のチャット、作業用ファイル、ローカルな取得手順など、仕様理解に不要な内部過程は掲載しません。</p>
+      <p>現在のProduct Requirements、採用済みArchitecture / ADR、実装、Reference、Evidenceを優先します。調査過程や作業上のやり取りそのものは、仕様の根拠として公開文書へ持ち込みません。</p>
     </section>
 
     <section>
       <h2>TEI内の主要な正本</h2>
       <div class="table-wrap"><table>
-        <thead><tr><th scope="col">種類</th><th scope="col">主な参照先</th><th scope="col">役割</th></tr></thead>
+        <thead><tr><th>種類</th><th>主な参照先</th><th>役割</th></tr></thead>
         <tbody>
           <tr><td>Product</td><td><a href="../../product/value/TEI_PRODUCT_VALUE.md">Value</a> / <a href="../../product/vision/TEI_PRODUCT_VISION.md">Vision</a> / <a href="../../product/principles/TEI_PRODUCT_PRINCIPLES.md">Principles</a></td><td>何を価値とし、何を目指すか。</td></tr>
           <tr><td>Requirements</td><td><a href="../../requirements/TEI_PRODUCT_REQUIREMENTS.md">TEI Product Requirements</a></td><td>満たすべき要求。</td></tr>
@@ -52,27 +50,19 @@
     </section>
 
     <section>
-      <h2>外部の設計参照</h2>
-      <p>TEIの設計検討では、業務システム設計、モデル駆動・メタデータ駆動設計、実行可能仕様、複数Target、AI支援authoring等の公開知見を参照します。参照はTEIの公式な系譜や互換性を意味しません。</p>
-      <div class="table-wrap"><table>
-        <thead><tr><th scope="col">出典</th><th scope="col">参照する観点</th></tr></thead>
-        <tbody>
-          <tr><td><a href="https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html">渡辺幸三：データ、UI、業務手順の「3要素」をとらえる</a></td><td>Data / Function / Businessを複数視点から捉える業務システム設計。</td></tr>
-          <tr><td><a href="https://dbconcept.hatenablog.com/entry/2024/07/05/143207">渡辺幸三：蔓延する「ブルシットエンジニアリング」</a></td><td>構造化された業務・機能・データ定義の関係。</td></tr>
-          <tr><td><a href="https://github.com/xead/XeadModeler">XeadModeler</a> / <a href="https://github.com/xead/XeadDriver">XeadDriver</a></td><td>設計内容を具体的な表現・実行へつなぐ際の参照。</td></tr>
-        </tbody>
-      </table></div>
-      <p>X-TEA／XEADに関するTEI側の整理は<a href="xtea-review.html">X-TEA／XEADから得た設計上の示唆</a>を参照してください。</p>
+      <h2>外部の公開知見</h2>
+      <p>TEIでは、業務システム設計、モデル駆動・メタデータ駆動設計、実行可能仕様、複数Target、AI支援authoring等の公開知見を必要に応じて参照します。X-TEA／XEADを含む既存の手法やソフトウェアから得た着想もありますが、TEIは独立したプロジェクトであり、公式な系譜・互換性・優劣を示すものではありません。</p>
+      <p>外部参照は設計上の問いを考える材料として扱い、TEIの仕様はTEI自身のRequirements、Architecture、Reference、ADR、Evidenceで説明します。</p>
     </section>
 
     <section>
-      <h2>引用・再利用の扱い</h2>
-      <p>外部資料からは、公開範囲で確認できる事実・設計上の考え方を参照します。第三者のモデルや文書の内容を、利用条件が確認できない状態でTEI Repositoryへ複製・再配布しません。必要な検証結果は、可能な限りTEI自身のReferenceや独立した要約・集計として残します。</p>
+      <h2>引用・再利用</h2>
+      <p>第三者の文書、ソースコード、モデル、データ等は、それぞれの公開条件・利用条件に従います。利用条件を確認できない内容をTEI Repositoryへ複製・再配布しません。</p>
     </section>
 
     <section>
       <h2>仕様の状態</h2>
-      <p>この仕様ガイドには、採用済みの境界だけでなく、評価待ちの候補も含まれます。各ページでは、未決事項を完成済みの能力として読めないよう区別します。最終的な現在地はRepositoryの要求・ADR・実装・Evidenceを優先してください。</p>
+      <p>この仕様ガイドには採用済みの境界と評価中の候補が含まれます。現在地はRepositoryの要求・ADR・実装・Reference・Evidenceを優先してください。</p>
     </section>
   </main>
 </div>

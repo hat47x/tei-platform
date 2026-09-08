@@ -1,1 +1,82 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="手作業や判断を含む仕事を保ちながら、Data・Function／Interaction・Businessを相互に検証します。"><title>業務システムを三視点から設計する | TEI</title><link rel="stylesheet" href="style.css"></head><body><a class="skip" href="#main">本文へ</a><div class="layout"><aside class="sidebar"><div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div><div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div><nav aria-label="文書一覧"><a href="index.html">全体像</a><a aria-current="page" href="business.html">業務設計</a><a href="architecture.html">意味と実行</a><a href="authoring.html">Studio・AI・Target</a><a href="decisions.html">整合性・未決事項</a><a href="requirements.html">全26要求</a><a href="../../plan/product-roadmap.html">期限なしロードマップ</a><a href="sources.html">資料・追跡</a><a href="xtea-review.html">X-TEA原資料の照合</a></nav><small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small></aside><main id="main"><div class="eyebrow">TEI 想定仕様ガイド</div><h1>業務システムを三視点から設計する</h1><p class="lead">手作業や判断を含む仕事を保ちながら、Data・Function／Interaction・Businessを相互に検証します。</p><p class="meta">照合基線：main <code>19995a9304a6218c50ed8245ffd44a6403a4cc55</code> ／ 未統合案は別表示</p><div class="toc" aria-label="ページ内目次"><a href="#lineage">継承する設計思想</a><a href="#views">三視点が相互に確かめるもの</a><a href="#action">業務行為とソフトウェア機能</a><a href="#procedure">Procedure・Flow・Workflowを分ける</a><a href="#review">派生Matrixで矛盾と未知を見せる</a><a href="#reference">Referenceを設計知識として育てる</a></div><section id="lineage"><h2>継承する設計思想</h2><p>渡辺幸三氏の三要素分析法では、データ、機能・UI、業務の三つの見方を行き来して業務システムを捉えます。業務モデルには、コンピュータ外の主体がどう働くかという業務マニュアルの視点が含まれます。TEIはこの視点をRQ-025／026として保持しています。</p><p>原典：<a href="https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html">渡辺幸三「データ、UI、業務手順の『3要素』をとらえる」</a>。TEIとしての境界判断は、原典のXML要素やJavaクラスを再現することではなく、具体的なReferenceで理由を確認して採用します。</p><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/docs/business-system-design.md">docs/business-system-design.md</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md">requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md</a></p></section><section id="views"><h2>三視点が相互に確かめるもの</h2><div class="table-wrap"><table><thead><tr><th scope="col">視点</th><th scope="col">保持・確認する内容</th><th scope="col">他の視点から受ける問い</th></tr></thead><tbody><tr><td>Data</td><td>業務の事実、型、identity、Relation、多重度、制約、状態の意味。物理DB設計は別層。</td><td>実際の仕事に必要な情報があるか。利用者が確認・維持する手段があるか。</td></tr><tr><td>Function / Interaction</td><td>画面、帳票、入出力、Query、Capability、Application Pattern、API・batch、呼出関係。</td><td>その操作にはread/writeの契約があるか。仕事のどこで用いるか。</td></tr><tr><td>Business</td><td>仕事の目的、契機、担当・責任文脈、手順、手作業・外部作業、判断、例外、引継ぎ。</td><td>情報や操作が不足していないか。システム上の成功と実際の仕事の完了を混同していないか。</td></tr></tbody></table></div><p>三視点は工程の順番でも独立した三正本でもありません。三つを同じ形のCanonicalオブジェクトへ揃える必要もありません。例えば画面で発見した「顧客を選択できない」という問題は、画面だけで隠さず、Relation、Action入力、参照先、契約を辿って正本を直します。</p></section><section id="action"><h2>業務行為とソフトウェア機能</h2><p>一つの業務行為が複数の機能を使う場合も、一つの機能が複数業務で使われる場合もあります。電話確認、現物検査、会話、外部組織の判断のように、Application Functionを持たない行為も正当な設計情報です。</p><div class="table-wrap"><table><thead><tr><th scope="col">概念</th><th scope="col">例示</th><th scope="col">混同しない対象</th></tr></thead><tbody><tr><td>Business Action</td><td>受注内容を確認する。必要に応じて相手へ電話する。</td><td>画面操作、Capability呼出しそのもの</td></tr><tr><td>Application Function</td><td>受注一覧・受注詳細・顧客参照・確定操作を組み合わせた機能の見方。</td><td>業務全体の責任や手順</td></tr><tr><td>Capability</td><td>明示的な入出力・業務結果契約を持つ処理。</td><td>Go関数名、Plugin、画面のボタン</td></tr><tr><td>Realization</td><td>Capabilityを既存APIやGo実装等へ結び付ける具体方式。</td><td>業務上のidentityや意味</td></tr></tbody></table></div><p>機能がない手順に架空のCapabilityを作って「全て実行可能」に見せません。業務上の担当名から認可Roleを推定しません。Validationの合格だけで担当者の判断や承認が済んだとは扱いません。</p><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/docs/business-system-design.md">docs/business-system-design.md</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/plan/adr/0019-authentication-capability-boundary.md">plan/adr/0019-authentication-capability-boundary.md</a></p></section><section id="procedure"><h2>Procedure・Flow・Workflowを分ける</h2><div class="table-wrap"><table><thead><tr><th scope="col">対象</th><th scope="col">意味</th><th scope="col">現在の扱い</th></tr></thead><tbody><tr><td>Business Procedure</td><td>ある仕事の進め方。目的、契機、担当、行為、判断、例外、引継ぎ等を含む。</td><td>必要な視点として確定。durable表現とCanonical接続は評価待ち。</td></tr><tr><td>Business Flow</td><td>業務と情報源・外部主体の間を情報がどう流れるかという広い見方。</td><td>DFD的な視点を保つ。単なるTask順序へ縮めない。</td></tr><tr><td>Handoff</td><td>誰から誰へ、どの条件で仕事を引き継ぐか。</td><td>最新PRで薄い集合レベルの候補を検討。隣接Stepや観測成功から自動生成しない。</td></tr><tr><td>Runtime Workflow</td><td>timer、retry、queue、scheduler、補償等の実行制御。</td><td>必要な実現層で扱う将来課題。Procedureの導入から自動的に要求しない。</td></tr></tbody></table></div><p>時間軸は必要な業務で利用するdimensionです。履歴・有効期間・待ち時間等を調べられる方向を持ちますが、Event SourcingやBitemporal、分散eventual consistencyを全業務の前提にはしません。</p><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/docs/business-system-design.md">docs/business-system-design.md</a></p></section><section id="review"><h2>派生Matrixで矛盾と未知を見せる</h2><p>業務行為×機能、機能×Data、Data変更×影響を受ける手順、所有境界×操作を、明示参照から派生させます。人が同じCRUDや参照を別表へ入力し続ける方式を避け、導出事実・人の補足説明・unknownを分けます。</p><p>渡辺氏は機能定義をUI・テーブル入出力・呼出関係を含む構造として説明し、業務とテーブルのCRUDをそこから導出する考え方を示しています。<a href="https://dbconcept.hatenablog.com/entry/2024/07/05/143207">原典：蔓延する「ブルシットエンジニアリング」</a>。TEIでも導出に使うoperationの根拠が必要です。</p><aside class="note">現在のData traceを完全なCRUD表と呼ぶことはできません。Dataへの参照が見えることと、Create／Read／Update／Deleteを確定できることは別です。record／commandというPattern名や、文章中の「更新」だけではCUDを導出しません。</aside><div class="table-wrap"><table><thead><tr><th scope="col">確認例</th><th scope="col">期待する診断・表現</th></tr></thead><tbody><tr><td>read-onlyのmaster datasourceを編集する画面案</td><td>操作の契約または画面案を再検討する。UI都合でwrite権限を補わない。</td></tr><tr><td>Procedureの参照Patternを削除</td><td>正確なidentity参照から欠落を検出する。類似名へ付け替えない。</td></tr><tr><td>手作業のData依存を機械的に辿れない</td><td>unknownとして保持する。「依存なし」に変換しない。</td></tr><tr><td>Commandが受理されたが現物の確認が済んでいない</td><td>Application結果と外部観測、責任引継ぎを分けて表示する。</td></tr></tbody></table></div><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md">plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md</a></p><p>最新のCRUD・ownership検討は <a href="https://github.com/hat47x/tei-platform/pull/482">PR #482</a> の評価待ち案です。</p></section><p><a href="xtea-review.html">アップロード済み原資料の再確認と、仕様へ戻す検討</a>も参照してください。</p><section id="reference"><h2>Referenceを設計知識として育てる</h2><p>小さなfixtureで意味境界を再現し、現実的な複数Application・複数業務のReferenceで、手作業、例外、情報の不足、局所性の崩れを発見します。Referenceは学習教材、設計レビュー対象、回帰検証、Platformへの改善材料を兼ねます。</p><p>X-TEAのSubsystemは凝集度や保守性の設計境界として読み、microservice、DB、namespaceへ機械的に対応付けません。SubjectAreaも同じものとは見なしません。外部モデルの内容をそのまま標準化せず、適用条件と不利な条件を持つ再利用知識として検討します。</p><p>過去のコーパス件数・Script数は既存研究記録による報告値です。今回、3系統のアップロード済みモデルを再集計・静的照合しましたが、過去の全コーパスは再解析していません。モデルやマニュアルの再配布条件はソースコードの条件と分け、TEI向けReferenceは出典と再利用条件を確認して作ります。</p><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md">plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/plan/issue/000042-business-procedure-cross-view-reference.md">plan/issue/000042-business-procedure-cross-view-reference.md</a></p></section><footer class="footer">このガイドは既存正本の横断説明です。要求・採用判断・実装状態・Gate条件の正本を複製しません。リンクは原則として照合時のcommitへ固定し、変化はGit履歴と最新正本で確認します。<br><a href="https://github.com/hat47x/tei-platform/blob/main/docs/status.md">最新の実装状況</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/main/plan/MASTER_PLAN.md">最新の開発計画</a> ／ <a href="https://github.com/hat47x/tei-platform/tree/main/docs/specification">GitHubで文書を見る</a></footer></main></div></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="TEIの業務システム設計原則を、Data・Function／Interaction・Businessの相互検証を軸に整理します。">
+  <title>業務システム設計 | TEI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div>
+    <div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div>
+    <nav aria-label="文書一覧">
+      <a href="index.html">全体像</a>
+      <a aria-current="page" href="business.html">業務設計</a>
+      <a href="architecture.html">意味と実行</a>
+      <a href="authoring.html">Studio・AI・Target</a>
+      <a href="decisions.html">整合性・未決事項</a>
+      <a href="requirements.html">全26要求</a>
+      <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
+      <a href="sources.html">資料・追跡</a>
+      <a href="xtea-review.html">外部設計から得た着想</a>
+    </nav>
+  </aside>
+  <main id="main">
+    <div class="eyebrow">TEI 想定仕様ガイド</div>
+    <h1>業務システム設計</h1>
+    <p class="lead">手作業や判断を含む仕事の意味を保ちながら、Data・Function／Interaction・Businessを相互に検証します。</p>
+
+    <section>
+      <h2>三つの視点を相互に確認する</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>視点</th><th>保持する内容</th><th>確認する問い</th></tr></thead>
+        <tbody>
+          <tr><td>Data</td><td>業務の事実、identity、Relation、制約、lifecycle。</td><td>仕事に必要な情報が揃い、利用者が確認・維持できるか。</td></tr>
+          <tr><td>Function / Interaction</td><td>画面、帳票、入出力、Query、Capability、API・batch等。</td><td>操作のread/write契約と業務上の利用位置が明確か。</td></tr>
+          <tr><td>Business</td><td>目的、契機、担当、手順、手作業、判断、例外、引継ぎ。</td><td>システム上の成功と実際の仕事の完了を混同していないか。</td></tr>
+        </tbody>
+      </table></div>
+      <p>三視点は工程順でも別々の正本でもありません。同じaccepted meaningを異なる角度から確認し、不足や矛盾を見つけます。</p>
+    </section>
+
+    <section>
+      <h2>業務行為とソフトウェア機能を分ける</h2>
+      <p>Business ActionとApplication Functionは同一ではありません。電話確認、現物検査、会話、外部組織の判断など、Application Functionを持たない行為も正当な業務設計情報です。</p>
+      <p>一つの業務行為が複数Functionを利用する場合も、一つのFunctionが複数の業務文脈から利用される場合も表現できることを前提とします。</p>
+    </section>
+
+    <section>
+      <h2>ProcedureとRuntime Workflowを分ける</h2>
+      <p>Business Procedureは仕事の進め方を表し、目的、契機、担当、行為、判断、例外、引継ぎなどを含みます。Runtime Workflowはtimer、retry、queue、scheduler、補償等の実行制御です。両者は関連しますが、一つのsemantic objectへ畳みません。</p>
+      <p>手作業を自動化待ちの欠陥として扱わず、Validationの成功をBusiness Approvalと同一視しません。</p>
+    </section>
+
+    <section>
+      <h2>ActorとAuthorityを分ける</h2>
+      <p>業務上のactor、job、department、responsibilityと、認証済みprincipal、membership、scope、policy、authorization decisionを分けます。担当名やUI上の便宜からruntime authorityを推論しません。</p>
+    </section>
+
+    <section>
+      <h2>MatrixとProjectionは検証のために使う</h2>
+      <p>Business Action × Application Pattern、Business Action × Data、Procedure Step × View / ActionなどのMatrixは、明示参照から派生させるcross-check用Projectionとして扱います。Matrix自体を第二のsource of truthにはしません。</p>
+      <p>`derived fact`、人が付与する説明、`unknown`を区別し、名称の類似だけで未知を補完しません。</p>
+    </section>
+
+    <section>
+      <h2>Editor・Driver・Targetの役割</h2>
+      <p>EditorはData、Relation、Rule、View、Application intent、Procedure、Source、Evidenceの関係を高密度に追えるProjectionを提供します。DriverはTEIで採用された設計意味を実行可能な範囲で動かし、境界を検証します。具体的なWeb・Desktop・Mobile・API・MCP・VUIへの表現はTarget側で扱います。</p>
+      <p>Target固有の都合でBusiness meaningやCanonical meaningを黙って変更しません。</p>
+    </section>
+
+    <section>
+      <h2>Referenceで設計を確かめる</h2>
+      <p>Referenceはtechnical fixtureだけでなく、学習例、design-review target、regression Evidence、Platformへのpressure testとして利用します。外部の公開知見から着想を得る場合も、最終的なTEIの仕様判断はTEI自身のRequirements、Reference、ADR、Evidenceによって説明します。</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>
