@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-07
+- 更新日: 2026-09-09
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -29,9 +29,13 @@ TEIは完成したlow-code製品ではありません。
 - real PostgreSQL ephemeral fixture Evidence runner / safety boundary
 - Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
 
+2026-09-08には、datasource aliasのdeclaration existenceとruntime / authority上のexact-one resolutionを分離する#511と、Business Procedure / Handoffのcross-view pressureを扱う#482がmainへ統合されています。
+
+これらのmergeをactual package testやGate B Product Evidenceの成功へ読み替えません。candidate revision `R`はまだ固定しておらず、post-merge mainをactual full checkoutでsource / index preflightし、Gate B pre-checkで追加source修正が不要と確認した後に初めてRを選びます。
+
 ただし、**Gate Bのactual Product Evidenceはまだ揃っていません。**
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
+現在必要なのは、新しいDriver abstractionを増やすことではなく、post-merge mainをactual full checkoutで検証し、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
 
 ## 現在のv1主線
 
