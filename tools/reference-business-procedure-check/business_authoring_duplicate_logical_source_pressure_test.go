@@ -30,6 +30,34 @@ func TestBusinessCandidateDiscoveryRejectsDuplicateLogicalProcedureAcrossDiffere
 	}
 }
 
+func TestBusinessCandidateDiscoveryRejectsConflictingDuplicateLogicalProcedureWithoutPathPrecedence(t *testing.T) {
+	repoRoot := repoPath()
+	candidate, err := migrateCurrentReferenceAuthoringProbe(t, repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(candidate.Procedures) == 0 || len(candidate.Procedures[0].Steps) == 0 {
+		t.Fatal("test setup: candidate Procedure or Step is missing")
+	}
+
+	diskRoot := t.TempDir()
+	first := filepath.Join(diskRoot, "business", "procedures", "a-authority.json")
+	second := filepath.Join(diskRoot, "business", "procedures", "z-authority.json")
+	writeBusinessCandidateDiskSourceProbe(t, first, candidate.Procedures[0])
+
+	// Keep the same logical Procedure identity but change accepted Business meaning.
+	// A loader must reject the duplicate authority instead of resolving the conflict
+	// by lexical path order, first-writer-wins, or last-writer-wins.
+	candidate.Procedures[0].Steps[0].BusinessAction = "conflicting duplicate Business meaning"
+	writeBusinessCandidateDiskSourceProbe(t, second, candidate.Procedures[0])
+
+	for _, paths := range [][]string{{first, second}, {second, first}} {
+		if _, err := loadUniqueBusinessProcedureCandidatesProbe(paths); err == nil {
+			t.Fatalf("conflicting duplicate Business Procedure authority was silently resolved by input/path order: %v", paths)
+		}
+	}
+}
+
 func TestBusinessCandidateDiscoveryDoesNotUsePathAsProcedureIdentity(t *testing.T) {
 	repoRoot := repoPath()
 	candidate, err := migrateCurrentReferenceAuthoringProbe(t, repoRoot)
