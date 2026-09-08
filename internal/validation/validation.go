@@ -50,7 +50,7 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_VERSION", "plugin %s: %v", p.ID, err))
 		}
 		if !p.Runtime.Kind.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Version))
+			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
 		}
 		if p.Runtime.Kind == plugin.RuntimeProcess && strings.TrimSpace(p.Runtime.Command) == "" {
 			out = append(out, errd("PLUGIN_PROCESS_COMMAND_REQUIRED", "plugin %s process runtime requires a command", p.ID))
@@ -207,6 +207,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 		}
 	}
+	// Alias types form a semantic refinement chain and must not recurse.
 	visitState := map[core.CanonicalID]int{}
 	reportedTypeCycles := map[core.CanonicalID]struct{}{}
 	var visitType func(core.CanonicalID)
@@ -262,6 +263,7 @@ func Validate(w ir.World) []Diagnostic {
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
 			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
+
 	}
 
 	apps := map[core.CanonicalID]application.Application{}
