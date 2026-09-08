@@ -8,13 +8,14 @@ Status: **Lane C / sole Pre-ADR readiness authority / Not Ready / no production 
 
 詳細Evidenceは次へ委譲します。
 
-- `plan/issue/000042-business-procedure-cross-view-reference.md` — A-series Pressure inventory（A1〜A110）
+- `plan/issue/000042-business-procedure-cross-view-reference.md` — A-series Pressure inventory（A1〜A114）
 - `plan/BUSINESS_MODEL_CURRENT_MINIMUM_CANDIDATE_2026-09.md` — current minimum比較基線
 - `plan/BUSINESS_MODEL_SHARED_ACCEPTANCE_BUNDLE_PRESSURE_2026-09.md` — multi-source Acceptance / freshness / atomicity pressure
 - `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md` — production Shared Acceptanceで分離すべきsource / semantic / Conformance base境界
 - `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md` — legacy O1 / Reference Set Handoffからcandidate authorityへのone-time cutover pressure
 - `plan/BUSINESS_AUTHORING_PRODUCTION_LOADER_VERSIONING_OPTION_AUDIT_2026-09.md` — migration adapter / candidate-only loader / versioning option audit
 - `plan/BUSINESS_AUTHORING_WORKSPACE_DISCOVERY_BOUNDARY_PRESSURE_2026-09.md` — workspace source-root / Source Index discovery pressure
+- `plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md` — existing implementation primitive / reuse / non-reuse audit
 - `plan/BUSINESS_AUTHORING_PRODUCTION_ADOPTION_EVIDENCE_CONTRACT_2026-09.md` — E-A〜E-J production adoption Evidence contract
 - `plan/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md` — physical baseModelRevision / complete stale-envelope option audit
 - `plan/BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md` — 渡辺幸三氏の三要素分析法からのexternal corroboration
@@ -57,7 +58,7 @@ D4 + singular narrow O1 + S4-A + H1/R3
 - D4単独はBP-06のexact protected targetを失うためlossy。
 - direct Data / Relation refsはcurrent minimum必要性未証明。既存refsからderived viewを作る。
 - HandoffはProcedure bodyから復元できないset-level Business meaning。
-- A91〜A110はこのsemantic candidateを拡張せず、authoring / discovery / freshness / cutover境界を狭めるPressureである。
+- A91〜A114はこのsemantic candidateを拡張せず、authoring / discovery / freshness / cutover / implementation reuse境界を狭めるPressureである。
 
 ## 3. Current authoring candidates
 
@@ -372,7 +373,103 @@ candidate-only reload / Conformance
 
 したがってGate Eの概念的問いはかなり閉じ、残るのはproduction implementation / actual execution Evidenceです。
 
-## 7. Derived views
+## 7. Existing implementation reuse audit
+
+Current audited implementation surfacesから、ゼロから作り直す必要のないprimitive / architectural precedentが確認できました。
+
+### Reusable primitives
+
+```text
+internal/workspace
+  -> workspace source-root discovery
+  -> ManagedFiles
+  -> reload / normalize
+
+internal/sourceindex
+  -> normalized source path
+  -> Artifact fingerprint
+  -> stale fingerprint validation
+```
+
+これはBusiness authoringのphysical source-set / freshness substrateとして再利用候補です。
+
+### Projection precedent
+
+`internal/workbench/database`はUI-oriented projectionをsemantic / query source of truthにしないことをcode commentで明示しています。
+
+`internal/consumerimpact`と`internal/releasegraph`もcurrent accepted state + target/immutable releaseからdeterministic impact / deployability projectionを構成し、authoritative source writeを所有しません。
+
+したがって:
+
+```text
+Preview / review / impact projection
+  != authoritative source
+```
+
+はTEIの既存implementation styleと整合します。
+
+### Stale-reject precedent
+
+`cmd/tei`のdurable deployment commandは`-expected-revision`を受け、run revision mismatchをfail closedします。
+
+さらに`internal/deployment/durable`はPlan / Plugin Lock / Runtime Policy fingerprintをrunへbindし、resume時にcurrent inputとの不一致をrejectします。
+
+ここから借りられるのは:
+
+```text
+expected revision mismatch -> reject
+bound input fingerprint mismatch -> reject
+```
+
+というprincipleです。
+
+ただし:
+
+```text
+Deployment Run.Revision
+  != Business semantic revision
+
+Deployment durable state machine
+  != Business Workflow / Business source transaction
+```
+
+です。Deployment packageへBusiness authoring責務を載せません。
+
+### Current implementation gap
+
+今回直接監査したsurfaceでは、次を一体で担うgeneric source-authoring Shared Acceptance implementationは確立されていません。
+
+- common authoring candidate boundary
+- complete stale-envelope builder spanning Business + World
+- multi-file authoritative source atomic apply
+- authority-discovery cutover
+- production Business candidate decoder / loader
+- fresh-process candidate-only Business reload
+
+これは**implementation gap**であり、Business schema拡張Evidenceではありません。
+
+Current strongest implementation integration directionは:
+
+```text
+Business-specific authoring adapter
+  ├─ workspace / Source Index primitives
+  ├─ strict Business decode
+  └─ normalize candidate
+       ↓
+Shared Acceptance boundary       // cross-lane ownership
+  ├─ complete stale check
+  ├─ Validation / Conformance
+  ├─ Semantic Diff / impact
+  └─ Acceptance Policy
+       ↓ Accept only
+atomic source update + authority discovery switch
+       ↓
+fresh-process candidate-only reload / Conformance
+```
+
+です。Lane Cはgeneric Shared Acceptance substrate自体を新規所有しません。
+
+## 8. Derived views
 
 Business sourceへData / Relation / CRUD / ownership / Namespaceを重複authorしません。
 
@@ -404,7 +501,7 @@ C/U/Dはcurrent TEI-original Referenceでqualifying caseなし。
 
 X-TEA E-016はFunction/Table I/Oのexplicit `OpC/R/U/D`からmatrixをderiveしていたことを示します。将来C/U/D gapが実例で反復してもBusiness Procedure CRUD fieldを第一候補にしません。
 
-## 8. Subsystem / SubjectArea
+## 9. Subsystem / SubjectArea
 
 Current Referenceではderived ownership lens / Namespace lensがかなり有用です。
 
@@ -415,7 +512,7 @@ ownership/access lens != Subsystem
 
 Canonical Subsystem / SubjectAreaは、direct/effective CUD、explicit Function call、published cross-boundary Action encapsulation等でcurrent lensが具体的に破綻した場合だけreopenします。
 
-## 9. Command / Observation
+## 10. Command / Observation
 
 - Command accepted != physical completion
 - transport/read success != observed fact
@@ -424,7 +521,7 @@ Canonical Subsystem / SubjectAreaは、direct/effective CUD、explicit Function 
 
 Manufacturing / inventory second-corpus outlineはこの非対称性を別domainでも補強しましたが、synthetic Data ownership等を追加する根拠にはしていません。
 
-## 10. Coreへ今入れないもの
+## 11. Coreへ今入れないもの
 
 - production `BusinessProcedure` / `BusinessHandoff` kind
 - `ir.World.Business`
@@ -445,8 +542,10 @@ Manufacturing / inventory second-corpus outlineはこの非対称性を別domain
 - Git SHAのplatform-wide `baseModelRevision`固定
 - schemaVersionによるauthority priority
 - mandatory `businessAuthoringMode`
+- Workbench / impact projectionのauthoritative source化
+- Deployment durable state machineのBusiness authoring / Workflowへの流用
 
-## 11. ADR readiness gates
+## 12. ADR readiness gates
 
 ### Gate A — actual execution
 
@@ -500,15 +599,20 @@ Current Repository監査ではBP adjacency、FU adjacency、intentional defect�
 
 Conceptual multi-source normalization / Business source freshness / referential atomicityはsource-level test-only Pressureで前進済みです。World / Conformance base freshnessをBusiness source freshnessから分離し、migration authority cutoverではold/new dual authorityをrejectし、workspace discovery / candidate-only disk reload / complete stale-envelope Pressureまで追加しました。
 
+Existing implementation auditにより、source-root discovery / ManagedFiles / Source Index fingerprints / workspace reloadという**reusable primitives**と、Workbench / impact projection、Deployment expected-revision / bound fingerprintという**architectural precedents**は確認できました。
+
+一方、current audited surfacesでgeneric source-authoring Shared Acceptance / atomic apply / authority cutoverは確立されていません。
+
 Production ADR前に残るのは:
 
-1. existing shared Acceptance boundaryがBusiness source baseとcross-view Conformance baseを**false-negativeなく**固定・再確認できるproduction stale envelopeを実証すること
-2. candidate change-setとmigration authority cutoverをrepository transaction boundaryでatomicにapplyすること
-3. Accept後に**fresh process**でcandidate-only Business sourceをloadし、legacy migration adapterなしにsame normalized Business revisionを再現すること
-4. reload後にcurrent Worldへcross-view Conformanceし、失敗時にpartial write / partial authority switchを残さないこと
-5. actual Repository testsでmulti-source bundle / source freshness / conformance-base freshness / coordinated rename / authority cutover / workspace discovery / candidate disk reloadをgreenにすること
-6. separate Business planeでactual Conformanceがlosslessであること
-7. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
+1. Business-specific authoring adapterがworkspace / Source Index primitiveを再利用してproduction candidate source setをstrict decode / normalizeできること
+2. existing / future shared Acceptance boundaryがBusiness source baseとcross-view Conformance baseを**false-negativeなく**固定・再確認できるproduction stale envelopeを実証すること
+3. candidate change-setとmigration authority cutoverをrepository transaction boundaryでatomicにapplyすること
+4. Accept後に**fresh process**でcandidate-only Business sourceをloadし、legacy migration adapterなしにsame normalized Business revisionを再現すること
+5. reload後にcurrent Worldへcross-view Conformanceし、失敗時にpartial write / partial authority switchを残さないこと
+6. actual Repository testsでmulti-source bundle / source freshness / conformance-base freshness / coordinated rename / authority cutover / workspace discovery / candidate disk reloadをgreenにすること
+7. separate Business planeでactual Conformanceがlosslessであること
+8. `ir.World` embeddingが必要になる具体的Evidenceがない限り配置Decisionを分離すること
 
 **物理revision tokenが一つか複数かは、Lane C Pre-ADR blockerではありません。** One tokenでもcomplete stale envelopeならよく、独立source planeならcomposite/independent checkへreopenします。Token shapeを理由にBusiness Procedure ADRを止め続けません。
 
@@ -529,7 +633,7 @@ Lane Cはplatform-wide `baseModelRevision`、Git SHA固定、hash / ETag algorit
 - exact identitiesなしにsecond-corpus ownershipをsynthetic化しない
 - Subsystem / SubjectAreaはderived lens不足のconcrete caseまでreopenしない
 
-## 12. Current readiness
+## 13. Current readiness
 
 ```text
 minimum semantic candidate
@@ -552,6 +656,11 @@ workspace/source discovery
   = existing source-root + Source Index mechanism再利用がstrongest direction
   = production Business loaderは未採用
 
+existing implementation reuse
+  = workspace / Source Index primitivesあり
+  = projection / stale-reject precedentsあり
+  = generic source-authoring Shared Acceptance implementationはcurrent auditで未確立
+
 placement candidate
   = separate normalized Business semantic plane
 
@@ -570,7 +679,8 @@ candidate-only disk reload
   = actual fresh-process / production Evidenceなし
 
 shared Acceptance implementation
-  = existing cross-lane acceptance workへ接続
+  = design principleはexisting cross-lane workへ接続
+  = production substrateはcurrent audited implementation surfacesでは未確立
 
 second realistic Handoff
   = current TEI-original corpusでは未充足
@@ -585,8 +695,8 @@ Production ADR
 主要blocker:
 
 1. actual Repository runner green未取得。
-2. inline O1 / standalone Handoffのproduction candidate loader / discovery + atomic authority cutover実装Evidence未取得。
-3. production shared Acceptanceでcomplete stale envelope / atomic apply / fresh-process candidate-only reload / reload後Conformance Evidence未取得。
+2. production Business-specific adapter（source discovery reuse + strict candidate decode/normalize）とatomic authority cutover実装Evidence未取得。
+3. cross-lane Shared Acceptance production substrateとしてcomplete stale envelope / atomic apply / fresh-process candidate-only reload / reload後Conformance Evidence未取得。Current auditで再利用primitiveは確認できたがgeneric source-authoring Acceptanceは確立されていない。
 4. second realistic TEI-original Handoff不足。
 5. qualifying TEI-original C/U/D case不足。これはgeneric CRUD/effect contractを採用しない理由でもあり、Business Procedure schemaへC/U/Dを足す理由にはしない。
 6. separate Business plane不足を示すEvidenceはなく、`ir.World` integrationはまだ不要。
