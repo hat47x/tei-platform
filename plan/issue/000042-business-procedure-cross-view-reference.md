@@ -32,6 +32,13 @@ Status: In Progress
 - `plan/BUSINESS_ACTION_DATA_PROJECTION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_ACTION_CRUD_PROJECTION_PRESSURE_2026-09.md`
 - `plan/BUSINESS_ACTION_CRUD_OPERATION_GAP_AUDIT_2026-09.md`
+- `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md`
+- `plan/BUSINESS_AUTHORING_PRODUCTION_LOADER_VERSIONING_OPTION_AUDIT_2026-09.md`
+- `plan/BUSINESS_AUTHORING_WORKSPACE_DISCOVERY_BOUNDARY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`
+- `plan/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md`
+- `plan/BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`
+- `plan/BUSINESS_HANDOFF_TEI_ORIGINAL_SECOND_CASE_SEARCH_2026-09.md`
 
 ## Lane境界
 
@@ -60,6 +67,9 @@ Database write authority != Business Action CRUD attribution
 Business Lifecycle transition != persistence CRUD U
 ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
+Business source freshness != Business semantic revision != cross-view Conformance base
+file exists != authoritative source reachable
+schemaVersion != source authority priority
 ```
 
 Business ProcedureにはApplication / Semantic Worldから機械的に導出できないresidual meaningがある。
@@ -105,6 +115,8 @@ Current `order_entry`だけでmanaged-here sales、external-observed master、hu
 
 Manufacturing / inventory second-corpus outlineではphysical-world `Command != actual completion`をtest-only Pressureまで進めた。H1/R3についてはStep adjacencyやpositive physical ObservationからHandoffを生成せず、explicit Handoff sourceだけをnormalized relationのauthorityとする。一方、exact TEI Data authority、O1 protected-target roleのsecond-domain反復、new production contract不足はまだ証明されない。Gate 15cは**未起動**を維持する。
 
+Current TEI-original Repositoryにはindependent second realistic Handoffを安全に昇格できる既存caseがない。adjacency / intentional defect / Lifecycle / DeploymentをHandoffへ読み替えず、Gate Cのsecond realistic Handoff blockerは未充足として残す。
+
 ## Cross-view checker原則
 
 - explicit referenceはexact identityで解決
@@ -129,6 +141,11 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 - exact TEI Data / Pattern identityなしにsecond-corpus ownershipをsyntheticに作らない
 - adjacencyからprotected targetを推測しない
 - Authorization policyはprotected targetをcorroborateできるが、Business targetをauthor / backfillしない
+- Procedure actorをHandoff endpoint identityへ複製しない
+- Procedure triggerとHandoff conditionを暗黙同期しない
+- legacy + candidateをpermanent dual authorityとしてmergeしない
+- source pathをBusiness semantic identityへしない
+- Git HEADだけを無条件なfreshness proofとしない
 
 ## Acceptance / Evidence Pressure matrix
 
@@ -226,6 +243,28 @@ Manufacturing / inventory second-corpus outlineではphysical-world `Command != 
 | A88 | `sales_core.order write sales.order.status`をaccepted action linkなしにBP-07=Uへ帰属させない | test-only negative Pressure実装済み |
 | A89 | Business Lifecycle transitionをCRUD Uへ短絡せずBusiness state meaningとphysical mutationを分離する | gap audit固定 |
 | A90 | current C/U/D attribution不足をBusiness Procedure field不足と断定せずCapability / realization / Database effect boundaryのpressureとして保持する | pre-contract gap audit / generic CRUD field defer |
+| A91 | inline Procedure複数source + standalone Handoff sourceをone normalized Business semantic revisionへ束ねる | test-only実装済み |
+| A92 | Business source freshnessをsemantic revisionから分離し、logical source key + content stateでstaleを検出する | test-only実装済み / production token未採用 |
+| A93 | Business sourceがfreshでもcross-view Conformance baseが変わればPreviewをstaleとする | test-only実装済み |
+| A94 | Procedure Step rename + Handoff endpoint renameは片側だけならfail closed、coordinated change-setならone new semantic revisionになる | test-only実装済み |
+| A95 | migration previewでlegacy sourceを読めるが、legacy + candidate simultaneous authorityをrejectし、one cutover後candidate-only reloadへ進む | test-only実装済み / production cutover未採用 |
+| A96 | Procedure actor context変更をHandoff endpoint identityへ複製せずProcedure + Step local addressでsame relationをresolveする | test-only structural Pressure |
+| A97 | Procedure triggerとHandoff conditionを別authorityとして扱い、片側変更を他方へ暗黙同期しない | test-only structural Pressure |
+| A98 | Watanabe external evidenceはthree-view mutual constraint / event-driven Business Flowをcorroborateするがactor/event/document field追加authorityにはしない | external corroboration / no schema expansion |
+| A99 | current TEI-original Repositoryにindependent second realistic Handoffはなく、adjacency / defect / Lifecycle / Deploymentをsecond caseへ昇格しない | negative Evidence / Gate C未充足 |
+| A100 | workspace manifestのdeclared source rootをBusiness physical discovery候補にしてもunknown rootは`ir.World` Business embeddingを自動発生させない | test-only実装 / existing loader corroboration |
+| A101 | declared Business root外にlegacy Reference fileが存在してもmanaged authority candidateへ入れず`file exists != authority reachable`を表現する | test-only実装済み |
+| A102 | declared Business managed artifactはSource Index fingerprintを持ち、same bytesのphysical moveではlocatorだけが変わり`ir.World`は変わらない | test-only実装 / Business semantic move invarianceは未証明 |
+| A103 | explicit `businessAuthoringMode`を追加せずmigration adapter + workspace/source-root discovery + candidate-only loaderでcutoverを表現できる可能性が高い | option Pressure / mode marker defer |
+| A104 | candidate Procedure + standalone Handoffをdiskへ書き、legacy inputを読まずstrict decoderだけでsame normalized BusinessModelを再構成しcurrent WorldへConformanceする | test-only disk reload Pressure |
+| A105 | candidate-only disk reloadはunknown compatibility fieldをfail closedしsteady-state loaderへのlegacy fallback再侵入を許さない | test-only negative Pressure |
+| A106 | one physical `baseModelRevision`はBusiness source base + World / Conformance baseをfalse-negativeなくcoverするcomplete stale envelopeなら許容できる | option audit固定 / token schema未採用 |
+| A107 | Git HEAD equalityだけではdirty / untracked authoritative source変更を検出できずunconditional freshness proofにはならない | negative boundary固定 |
+| A108 | unrelated repository changeによるfalse-positive staleは許容できるがrelevant Business / World changeを見逃すfalse-negative staleはrejectする | correctness rule固定 |
+| A109 | physical freshnessはfile contentだけでなくsource add/remove・authoritative source-root membership changeもcoverする | discovery-set boundary固定 |
+| A110 | Business / World source planeが独立versioningされる場合は両stale conditionを独立検出またはcomposite tokenでcoverする | future reopen boundary固定 |
+
+A91〜A110はcurrent minimum semantic candidateを拡張するものではない。主にauthoring representation、source discovery、Shared Acceptance freshness、migration cutoverの**実装境界を狭めるPressure**である。
 
 ## Candidate stack
 
@@ -238,6 +277,14 @@ R3  handoff-only Business relation
 C1  optional Reference Application context
 O1  Application Pattern protected-target overlay pressure
 ```
+
+Current minimum candidateは引き続き:
+
+```text
+D4 + singular narrow O1 + S4-A + H1/R3
+```
+
+であり、A91〜A110から新しいBusiness field / Core kindを追加しない。
 
 ### D4 Step body
 
@@ -365,6 +412,58 @@ Application Function sequence
   -X-> Handoff
 ```
 
+Actor / trigger boundary:
+
+```text
+Procedure.actor
+  != Handoff endpoint identity
+
+Procedure.trigger
+  != Handoff.condition
+```
+
+双方は関連し得るが、Handoffへactor/event fieldを複製する根拠は現在ない。
+
+## Authoring / discovery / freshness boundary
+
+Current strongest physical direction:
+
+```text
+migration adapter
+  -> legacy authorityをpreview inputとしてread-onlyに読む
+
+candidate Procedure + standalone Handoff
+  -> non-authoritative staging
+
+Shared Acceptance
+  -> one atomic authority cutover
+
+steady-state discovery / loader
+  -> candidate-only
+```
+
+Workspaceのdeclared source-rootをphysical discoveryに再利用できる可能性が高く、current Evidenceでは独立`businessAuthoringMode`を要求しない。
+
+```text
+file exists
+  != authoritative source reachable
+
+schemaVersion
+  != source authority priority
+```
+
+Freshnessについては:
+
+```text
+Business source freshness
+  != Business semantic revision
+  != cross-view Conformance base
+```
+
+を維持する。一つのopaque `baseModelRevision`を使う場合も、Business source setとWorld / Conformance baseの双方をfalse-negativeなくcoverするcomplete stale envelopeでなければならない。
+
+Git HEAD単体はdirty / untracked authoritative sourceを見逃し得るため無条件なfreshness proofにはしない。source add/remove・authoritative source-root membership changeもbase stateとして扱う。
+
 ## Authorization / Observation boundary
 
 ```text
@@ -412,13 +511,18 @@ manufacturing / inventory pressure
 - Business Procedure / Pattern / Capabilityへのgeneric CRUD/effect field
 - Database Contract write -> CRUD U自動変換
 - Lifecycle transition -> CRUD U自動変換
+- Business専用transaction / revision subsystem
+- Git SHAのplatform-wide `baseModelRevision`固定
+- permanent legacy/candidate dual-read
+- schemaVersionによるauthority priority
+- mandatory `businessAuthoringMode`
 - Gate B / Gate C完了条件変更
 
 ## Verification status
 
-Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHub Actionsは過去にrunner assignment前で終了し、一時workflowはmerge対象から除去した。Remote Desktopも2026-09-07時点で接続端末がなく実行できない。
+Repository上にはchecker / fixtures / Go pressure testsを実装済み。Remote Desktopは2026-09-08時点でもHAT47Xがofflineで実行できず、PR headにもstatus check / workflow runはない。
 
-したがってactual `gofmt / go vet / go test` greenとはまだ主張しない。PR #482はDraftを維持する。
+したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A110のGo Pressureもsource-level / test-onlyのままであり、actual runner PASSへ読み替えない。PR #482はDraftを維持する。
 
 ## Operational completion checklist
 
@@ -459,5 +563,11 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。GitHu
 33. Data traceとCRUD operation traceを混同しない
 34. record / command kind、Database write、Lifecycle transitionからCRUDを暗黙補完しない
 35. C/U/D operation attribution gapが複数realistic domainで反復するまでgeneric mutation/effect contractを採用しない
+36. multi-source Procedure + standalone Handoffをone normalized Business semantic revisionへactual loadする
+37. Business source freshnessとConformance-base freshnessをactual runner / shared Acceptance prototypeで独立にfail closedする
+38. migration previewのlegacy-readとaccepted authorityを分離し、old/new simultaneous authorityをrejectする
+39. candidate-only sourceをlegacy migration adapterなしでfresh process reloadしsame normalized meaning + Conformanceを再現する
+40. source add/remove / source-root membership changeを含むcomplete stale envelopeをshared Acceptance側で実証する
+41. second realistic TEI-original Handoffで`from/to/condition` sufficiencyを確認するまでactor/event/document等を追加しない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
