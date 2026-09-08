@@ -998,14 +998,17 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("UNKNOWN_BINDING_APPLICATION", "environment %s binding refers to unknown application %s", e.ID, b.Application))
 				continue
 			}
-			req, ok := app.DatabaseByAlias(b.Alias)
-			if !ok {
+			if !app.HasDatabaseAlias(b.Alias) {
 				out = append(out, errd("UNKNOWN_BINDING_DATASOURCE_ALIAS", "environment %s binds unknown datasource alias %s.%s", e.ID, b.Application, b.Alias))
 				continue
 			}
 			inst, ok := e.InstanceByID(b.Instance)
 			if !ok {
 				out = append(out, errd("UNKNOWN_DATABASE_INSTANCE", "environment %s binding %s.%s points to unknown instance %s", e.ID, b.Application, b.Alias, b.Instance))
+				continue
+			}
+			req, ok := app.DatabaseByAliasExact(b.Alias)
+			if !ok {
 				continue
 			}
 			if inst.Definition != req.TargetDatabase {
@@ -1028,8 +1031,7 @@ func Validate(w ir.World) []Diagnostic {
 		if !strings.HasPrefix(string(q.ID), string(q.Application)+".") {
 			out = append(out, errd("QUERY_UNIT_NAMESPACE_MISMATCH", "query %s is declared in application %s but is outside its namespace", q.ID, q.Application))
 		}
-		_, ok = a.DatabaseByAlias(q.Datasource)
-		if !ok {
+		if !a.HasDatabaseAlias(q.Datasource) {
 			out = append(out, errd("UNKNOWN_DATASOURCE_ALIAS", "query %s uses unknown datasource alias %s", q.ID, q.Datasource))
 			continue
 		}
