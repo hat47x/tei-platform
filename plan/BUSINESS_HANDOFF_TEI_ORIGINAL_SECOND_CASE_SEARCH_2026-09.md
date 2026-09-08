@@ -186,6 +186,52 @@ External evidenceには:
 
 Current: **pressure seed only / not TEI-original fixture**。
 
+### Candidate G — RQ-025 / RQ-026 requirement-level handoff allowance
+
+`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`では、RQ-025の解釈としてBusiness Procedureが必要に応じて:
+
+```text
+purpose
+trigger / event
+actor
+business action
+manual / external work
+Application Function利用
+handoff
+completion / continuation
+```
+
+を説明することを明示している。
+
+これはHandoffがBusiness Procedure meaningとして正当であることを支える独立Requirementであり、H1/R3を単なるfixture都合にしない。
+
+しかしRequirementがauthorしているのは**表現可能性・分離原則**であって、第二の具体的Business responsibility chainではない。
+
+Requirementだけから:
+
+```text
+source actor / responsibility
+source Procedure / Step
+target actor / responsibility
+target Procedure / Step
+continuation condition
+```
+
+を生成することはできない。
+
+RQ-026もData / Function-Interaction / Business Procedureを相互検証するviewとして要求するが、特定の責任移譲eventをauthorしない。
+
+したがって:
+
+```text
+Requirement says Handoff may be needed
+  != Requirement authors a concrete Handoff instance
+```
+
+である。
+
+Current: **requirement-level corroboration only / not a second concrete TEI-original Handoff case**。
+
 ## 5. Search result
 
 Current Repositoryでqualifyingなsecond Handoffは:
@@ -203,6 +249,8 @@ TEI-original independent second Handoff case
 
 である。
 
+Requirement-levelにHandoffの必要性が認められていても、concrete actor / responsibility / conditionをRequirementから発明しない。
+
 ## 6. Negative Evidenceとしての価値
 
 Second case不足を埋めるためだけに次を行わない。
@@ -213,6 +261,7 @@ Second case不足を埋めるためだけに次を行わない。
 - Lifecycle transitionをHandoff化
 - Deployment ownershipをBusiness Handoff化
 - Watanabe patternをTEI fixtureへコピー
+- RQ-025の一般的handoff許容から具体的actor / responsibility / conditionを生成
 
 この抑制により:
 
@@ -265,6 +314,7 @@ Current Handoff Evidenceは:
 one explicit current Handoff
   + exact endpoint / condition pressure
   + actor / trigger independence structural pressure
+  + requirement-level Handoff legitimacy
   + Watanabe external corroboration
 ```
 
@@ -286,6 +336,9 @@ second realistic Handoff
 
 existing TEI sourceからのsafe promotion candidate
   = none
+
+Requirement-level general allowance
+  = corroboration only, not concrete authority
 
 synthetic second fixture before actual green
   = reject
