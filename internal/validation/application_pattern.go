@@ -197,7 +197,7 @@ func validateBrowsePattern(
 	}
 
 	if pattern.Datasource != "" {
-		if _, ok := app.DatabaseByAlias(pattern.Datasource); !ok {
+		if !app.HasDatabaseAlias(pattern.Datasource) {
 			out = append(out, errFor(
 				patternSubject,
 				"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
@@ -315,7 +315,7 @@ func validateReferencePattern(
 			"reference pattern %s requires a datasource",
 			pattern.ID,
 		))
-	} else if datasource, ok := app.DatabaseByAlias(pattern.Datasource); !ok {
+	} else if !app.HasDatabaseAlias(pattern.Datasource) {
 		out = append(out, errFor(
 			patternSubject,
 			"UNKNOWN_APPLICATION_PATTERN_DATASOURCE",
@@ -324,7 +324,7 @@ func validateReferencePattern(
 			pattern.Datasource,
 			app.ID,
 		))
-	} else if datasource.Access == database.AccessWrite {
+	} else if datasource, ok := app.DatabaseByAliasExact(pattern.Datasource); ok && datasource.Access == database.AccessWrite {
 		out = append(out, errFor(
 			patternSubject,
 			"APPLICATION_PATTERN_DATASOURCE_NOT_READABLE",
