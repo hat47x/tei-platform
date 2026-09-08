@@ -22,7 +22,7 @@ Business candidate decoder / normalizer
 
 `business_authoring_duplicate_logical_source_pressure_test.go`を追加した。
 
-### P1 — different paths / same logical Procedure
+### P1 — different paths / same logical Procedure / same meaning
 
 ```text
 business/procedures/order-entry.json
@@ -42,9 +42,41 @@ different path
   != different Business source identity
 ```
 
-同じlogical identityを二つのphysical sourceがauthorする状態を、merge / first-wins / last-wins / path precedenceで解決しない。
+同じlogical identityを二つのphysical sourceがauthorする状態を、たとえsource bytes / Business meaningが同じでもduplicate authorityとしてrejectする。
 
-### P2 — arbitrary path / stable logical Procedure
+### P2 — same logical Procedure / conflicting meaning
+
+さらに同じ`Procedure.id`を持つ二つのsourceでBusiness Action meaningを変えたcaseをPressureする。
+
+```text
+same Procedure.id
++ different Business meaning
++ different physical paths
+```
+
+でも:
+
+```text
+merge
+first writer wins
+last writer wins
+lexical path precedence
+```
+
+のいずれにも解決しない。
+
+Testは入力path順を反転してもrejectを要求する。
+
+したがって:
+
+```text
+path order
+  != authority arbitration
+```
+
+である。
+
+### P3 — arbitrary path / stable logical Procedure
 
 同じcandidate sourceを任意のphysical file nameへ置いても:
 
@@ -76,7 +108,8 @@ source authority
 
 - pathをProcedure IDとして採用
 - duplicate logical sourceをpath順でmerge
-- duplicate logical sourceをlast writer winsで解決
+- duplicate logical sourceをfirst / last writer winsで解決
+- conflicting duplicateをlexical path precedenceで解決
 - schemaVersionの大小でduplicate authorityを解決
 - legacy directory / candidate directoryというpath名だけでsemantic priorityを決める
 
@@ -133,23 +166,47 @@ normalize
 
 これはproduction package名、root名、manifest schema、Source Index subject kindを採用する決定ではない。
 
-## 6. Evidence level
+## 6. Source-level mechanical audit
+
+Current branch上の次を直接読み合わせた。
+
+- `business_authoring_candidate_fresh_process_pressure_test.go`
+- `business_authoring_duplicate_logical_source_pressure_test.go`
+- candidate disk reload / migration helpers
+
+Source-level確認では:
+
+```text
+fresh child process
+  -> candidate source paths + World workspaceだけを受領
+  -> migration / legacy locatorを受領しない
+
+duplicate discovery
+  -> strict candidate decode後のProcedure.idで衝突判定
+```
+
+という責務境界に明らかな不整合は見つかっていない。
+
+ただしこれはGo compiler / test runner Evidenceではない。実際のbuild correctnessはactual runnerでのみ確定する。
+
+## 7. Evidence level
 
 現在はsource-level / test-only Pressureでありactual execution Evidenceではない。
 
 HAT47X runnerまたは同等のactual Repository runnerで:
 
 ```text
-gofmt
+test -z "$(gofmt -l cmd internal examples tools)"
 go vet ./...
 go test ./...
-focused Lane C tests
-checker baseline / intentional defect
+go test -count=1 ./tools/reference-business-procedure-check
+checker baseline
+intentional defect checker expected diagnostic
 ```
 
 が同一revisionでgreenになるまでPASSとは主張しない。
 
-## 7. Current decision
+## 8. Current decision
 
 ```text
 path == Business identity
@@ -158,7 +215,10 @@ path == Business identity
 duplicate logical Procedure across paths
   -> fail closed
 
-path-based precedence
+same logical identity + conflicting meaning
+  -> fail closed
+
+path/input-order precedence
   -> reject
 
 schemaVersion-based authority precedence
