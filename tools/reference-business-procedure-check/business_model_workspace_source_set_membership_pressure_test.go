@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -51,9 +52,8 @@ func TestBusinessWorkspaceSourceRootMembershipChangesManagedAuthorityReachabilit
 	if _, ok := businessWorkspaceDiscoveryArtifactProbe(afterIndex.Artifacts, candidateRel); ok {
 		t.Fatalf("physically present but no-longer-declared Business source remained in Source Index: %+v", afterIndex.Artifacts)
 	}
-
-	if _, err := filepath.Abs(candidatePath); err != nil {
-		t.Fatalf("test setup candidate path: %v", err)
+	if _, err := os.Stat(candidatePath); err != nil {
+		t.Fatalf("Business source should remain physically present while authority reachability changes: %v", err)
 	}
 }
 
