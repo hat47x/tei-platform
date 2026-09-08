@@ -1,6 +1,6 @@
 # Business Authoring Production Adoption Evidence Contract — 2026-09
 
-Status: **Lane C / Pre-ADR evidence contract / no production implementation adoption**
+Status: **Lane C / ADR-vs-production adoption Evidence contract / no production implementation adoption**
 
 ## 1. 目的
 
@@ -24,7 +24,9 @@ migration
 
 一方、actual runner未実行のままproduction package / loader / schemaへ進むと、test-only vocabularyを実装都合で固定する危険がある。
 
-本書では「ADR / production adoptionへ進めるために何を実証すべきか」を一つのEvidence contractへまとめる。
+本書では「Contract ADRへ進めるためのEvidence」と「決めたcontractをproduction authorityとして採用するためのEvidence」を分離する。
+
+Readiness分離の正本補助は`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`とする。
 
 ## 2. Evidence natureを分離する
 
@@ -33,12 +35,19 @@ migration
 ```text
 source-level test-only Pressure
   != actual Repository execution Evidence
-  != production loader Evidence
+  != Contract ADR feasibility Evidence
+  != production loader / transaction Evidence
   != PAS-01 Shared Acceptance end-to-end Evidence
   != Product completion claim
 ```
 
-Lane CのADR readinessは最初の三つを中心に判断し、PAS-01全体をLane Cだけでacceptedへ上げない。
+Contract ADR readinessは、contractを反証できるactual Evidenceとfeasibility Evidenceで判断する。
+
+Production adoption readinessは、それに加えてproduction source authority / transaction / reload Evidenceを要求する。
+
+PAS-01全体をLane Cだけでacceptedへ上げない。
+
+また、本書の`Pre-ADR Gate C`はHandoff/addressのlocal audit gateであり、`GATE_C_EVIDENCE_CONTRACT.md`の第一Web Targetを扱う**Product Gate C**とは別物である。
 
 ## 3. E-A — Actual Repository mechanical green
 
@@ -157,7 +166,7 @@ Negative cases:
 
 Production token / hash algorithm自体は、このEvidenceの前提ではない。
 
-## 8. E-F — Coordinated atomicity actual
+## 8. E-F — Coordinated semantic atomicity actual
 
 Current reference case:
 
@@ -182,61 +191,91 @@ both candidate change-set
 
 をactual確認する。
 
-これはrepository transaction implementationの完全証明ではないが、semantic change-set atomicityの最低条件になる。
+これはrepository transaction implementationの完全証明ではないが、Contract ADRに必要なsemantic change-set atomicityの最低条件になる。
 
-## 9. E-G — Migration preview / authority cutover actual
+## 9. E-G — Migration preview / authority cutover
 
-### Preview
+### Contract ADR Evidence
 
-legacy sourcesをread-onlyに読みcandidateを生成する。
+legacy sourcesをread-onlyに読みcandidateを生成できることをactual確認する。
 
 - legacy inputs in-place mutationなし
 - candidate same normalized meaning
 - singular candidateで表現できないlegacy multi-targetはfail closed
 
-### Authority conflict
+さらにauthority semanticsとして:
 
 ```text
 legacy + candidate simultaneous authority
   -> reject
 ```
 
+をactual確認する。
+
 - same Step O1
 - same endpoint Handoff
 - same meaningでもduplicate authorityとしてreject
 - conflicting meaningもauto-mergeしない
 
-### Cutover
+ここまではContract ADR Evidenceである。
 
-Shared Acceptance / testable repository transactionで:
+### Production adoption Evidence
+
+実source authorityとして採用する前には、Shared Acceptance / repository transaction boundaryで:
 
 ```text
 candidate source write
 + authoritative discovery switch
 ```
 
-をpartialに残さない。
+をpartialに残さないことを実証する。
 
-## 10. E-H — Fresh-process candidate-only reload
+**production multi-file writer / final repository transaction APIの完成はContract ADRの前提にしない。**
 
-Production adoption判断で特に重要なEvidence。
+ただしfeasibility spikeでpartial authority switchを原理的に避けられないことが判明した場合はcontractをreopenする。
+
+## 10. E-H — Candidate-only fresh-process reload
+
+### Contract ADR feasibility Evidence
+
+Contract ADR前には少なくとも:
+
+```text
+candidate Procedure sources
++ standalone Handoff source
+  ↓
+legacy migration inputを読まないfresh process / separate executable boundary
+  ↓
+strict decode / normalize
+  ↓
+same expected Business semantic revision
+  ↓
+current World Conformance
+```
+
+を再現できることを要求する。
+
+これはproduction steady-state loader完成を要求するものではない。Test helper / focused executable / prototypeでも、**legacy fallbackなし**とprocess boundaryを実証できればContract feasibility Evidenceになり得る。
+
+### Production adoption Evidence
+
+Production adoption判断では:
 
 ```text
 accepted cutover revision R2
   ↓
-new process
+new production process
   ↓
 legacy migration adapterを呼ばない
   ↓
-load candidate Procedure sources
-  + standalone Handoff source
-  ↓
-normalize
+production candidate-only loader
   ↓
 same accepted Business semantic revision
   ↓
 cross-view Conformance
 ```
+
+を要求する。
 
 旧Reference / migration filesがdisk / repositoryに残っていてもよい。
 
@@ -259,7 +298,7 @@ Actual current structural testsで:
 
 を確認する。
 
-ただしproduction ADR前にはさらに:
+さらにContract ADR前には:
 
 ```text
 second realistic TEI-original Handoff
@@ -267,7 +306,7 @@ second realistic TEI-original Handoff
 
 が必要。
 
-Current Repositoryにはqualifying caseがないため、ここだけは未充足として残す。
+Current Repositoryにはqualifying caseがないため、ここは未充足として残す。
 
 Second caseのためだけにsynthetic workflowを作らない。
 
@@ -282,7 +321,7 @@ Business sourceへData / CRUD authorityを重複追加しない方針をactual t
 - Database writeからBusiness Action Uを推測しない
 - Lifecycle transitionをgeneric Uへ短絡しない
 
-Qualifying C/U/D caseがないこと自体はmechanical failureではない。
+Qualifying C/U/D caseがないこと自体はmechanical failureでもContract ADR blockerでもない。
 
 ```text
 unknown / insufficient authority
@@ -290,9 +329,13 @@ unknown / insufficient authority
 
 を正しく保持することがEvidenceである。
 
-## 13. Production implementation着手条件
+Qualifying C/U/D caseは将来generic mutation/effect contractをreopenするtriggerとして残す。
 
-Production `internal/business` / loader / source schema等へ着手する前に最低限:
+## 13. 二段階readiness
+
+### 13.1 Contract ADR Ready条件
+
+最低限、同じbranch/revision系列で:
 
 ```text
 E-A actual mechanical green
@@ -301,13 +344,42 @@ E-C authoring actual
 E-D multi-source actual
 E-E freshness actual
 E-F semantic atomicity actual
+E-G migration preview / dual-authority reject actual
+E-H candidate-only fresh-process feasibility actual
+E-I second realistic Handoff sufficiency
+E-J derived projection guardrail actual
 ```
 
-を同じbranch/revision系列で確認する。
+を確認する。
 
-E-G / E-Hの物理transaction部分はproduction prototypeと並走してもよいが、ADR Ready判定前にEvidenceを揃える。
+この段階では、production shared Acceptance service / production atomic writer / Studio / AI integration完成を要求しない。
 
-E-I second realistic caseもPre-ADR Gate C blockerとして残す。
+### 13.2 Production implementation着手条件
+
+Production `internal/business` / loader / source schema等へ着手する前に少なくともE-A〜E-Fをactual確認する。
+
+Contract ADRが成立していれば、そのdecisionに従ってproduction adapter / loader prototypeへ進める。
+
+### 13.3 Production adoption Ready条件
+
+Contract ADR Readyに加えて:
+
+- Business-specific production adapter
+- production source discovery / strict decode
+- Business + Worldをfalse-negativeなくcoverするcomplete stale envelope
+- atomic candidate source apply
+- atomic authority-discovery cutover
+- production fresh-process candidate-only reload
+- reload後Conformance
+- failure時にpartial write / partial authority switchを残さない
+
+をactualに実証する。
+
+### 13.4 Product Gate C後のShared Acceptance integration
+
+`ISSUE-000027` / `ISSUE-000046`が待つ`Gate C Ready`は第一Web Targetの**Product Gate C**であり、本書のHandoff Pre-ADR Gate Cとは別である。
+
+Studio / AI end-to-end Shared AcceptanceはProduct Gate C後のworkであり、Business Procedure Contract ADRの前提にしない。
 
 ## 14. Production adoption後に初めて固定する候補
 
@@ -328,6 +400,8 @@ Evidenceが揃った後でも、次を一度に固定する必要はない。
 
 `ir.World.Business`はconcrete insufficiencyが出るまで採用しない。
 
+`ir.World.Business`が必要だというEvidenceがないことはContract ADR blockerではなく、separate Business planeを維持するnegative Evidenceである。
+
 ## 15. No-go conditions
 
 次のいずれかが出た場合はADRを起こす前にcandidateをreopenする。
@@ -336,9 +410,17 @@ Evidenceが揃った後でも、次を一度に固定する必要はない。
 - singular O1でreal current caseを縮退する
 - Handoff `from/to/condition`がsecond realistic caseでlossy
 - separate planeではConformanceをfail closedできない
-- candidate-only fresh reloadがlegacy mergeなしで成立しない
-- multi-source source freshnessを安全に固定できない
-- production cutoverでpartial authority switchを避けられない
+- candidate-only fresh-process feasibilityがlegacy mergeなしでは成立しない
+- multi-source source freshness / Conformance-base freshnessをfail closedできない
+- authority cutover semanticsがold/new simultaneous authorityを避けられない
+
+次はproduction adoption no-goであり、Contract ADRと分離する。
+
+- production cutoverでpartial source write / partial authority switchを避けられない
+- complete stale envelopeをproduction source planeに実装できない
+- production candidate-only loaderがlegacy fallbackなしで成立しない
+
+これらが単なる未実装ではなくcontract自体の不成立を示した場合はADRをreopenする。
 
 ## 16. Current readiness summary
 
@@ -358,11 +440,26 @@ Loader architecture
 Actual Repository Evidence
   -> unresolved
 
+Candidate-only fresh-process feasibility
+  -> unresolved
+
 Second realistic Handoff
   -> unresolved
 
-Production ADR
+Qualifying C/U/D case
+  -> absent, but not Contract ADR blocker
+
+ir.World.Business necessity Evidence
+  -> absent, supports current separate-plane direction
+
+Contract ADR
   -> Not Ready
+
+Production adoption
+  -> Not Ready; stronger post-ADR Evidence required
+
+PAS-01 / Studio / AI end-to-end
+  -> Product Gate C後の別work
 ```
 
-本書はNot Readyを長引かせるためではなく、残るEvidenceを**実行可能な単位へ縮める**ための契約である。
+本書はNot Readyを長引かせるためではなく、残るEvidenceを**decision前 / production採用前 / Product integration後**の実行可能な単位へ縮めるための契約である。
