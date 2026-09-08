@@ -32,6 +32,53 @@ func TestFixtureApplicationContextIsNotThinCanonicalBusinessMeaning(t *testing.T
 	}
 }
 
+func TestFixtureApplicationContextCanBeAbsentWithoutBlockingCrossViewEvaluation(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Application = ""
+
+	result := evaluate(loaded.World, f)
+	if err := checkExpectedDiagnostics(result.Diagnostics, ""); err != nil {
+		t.Fatalf("primary Application contextなしでblocking cross-view diagnosticが出ました: %v\n%+v", err, result.Diagnostics)
+	}
+	if result.Application != "" {
+		t.Fatalf("absent reporting contextを別Applicationへ補完しました: %q", result.Application)
+	}
+
+	rows := patternRowsForStep(result, "BP-01")
+	if len(rows) != 1 || rows[0].Data != "sales.order" {
+		t.Fatalf("primary Application contextなしでexplicit Pattern refからData meaningを導出できません: %+v", rows)
+	}
+}
+
+func TestUnknownFixtureApplicationContextIsNotSemanticOwnershipAuthority(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Application = "reporting-context-not-present-in-world"
+
+	result := evaluate(loaded.World, f)
+	if err := checkExpectedDiagnostics(result.Diagnostics, ""); err != nil {
+		t.Fatalf("reporting contextをsemantic ownerとしてblocking validationしました: %v\n%+v", err, result.Diagnostics)
+	}
+	if result.Application != f.Application {
+		t.Fatalf("reporting context labelを暗黙補正しました: got=%q want=%q", result.Application, f.Application)
+	}
+}
+
 func TestCrossApplicationAccessProbeDoesNotDependOnFixturePrimaryApplication(t *testing.T) {
 	root := repoPath()
 	probeRoot := prepareProcedureAuthoringWorkspace(t, root)
