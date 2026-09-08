@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="X-TEA／XEADの公開資料と参照可能なモデルから得た設計上の示唆を、TEIの要件検討のために独立に整理します。">
-  <title>X-TEA／XEADから得た設計上の示唆 | TEI</title>
+  <meta name="description" content="TEIが参照した外部の業務システム設計上の着想について簡潔に記します。">
+  <title>外部設計から得た着想 | TEI</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,53 +19,23 @@
       <a href="architecture.html">意味と実行</a>
       <a href="authoring.html">Studio・AI・Target</a>
       <a href="decisions.html">整合性・未決事項</a>
-      <a aria-current="page" href="xtea-review.html">X-TEA／XEADの参照</a>
       <a href="requirements.html">全26要求</a>
       <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
       <a href="sources.html">資料・追跡</a>
+      <a aria-current="page" href="xtea-review.html">外部設計から得た着想</a>
     </nav>
-    <small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small>
   </aside>
   <main id="main">
     <div class="eyebrow">TEI 想定仕様ガイド</div>
-    <h1>X-TEA／XEADから得た設計上の示唆</h1>
-    <p class="lead">X-TEA／XEADの公開資料と参照可能なモデルを、TEIの設計要件を検討するための外部参照の一つとして照合しました。</p>
-
+    <h1>外部設計から得た着想</h1>
+    <p class="lead">TEIは独立したプロジェクトです。その設計には、X-TEA／XEADを含む既存の業務システム設計手法やモデル駆動開発から得た着想が含まれています。</p>
     <section>
       <h2>位置づけ</h2>
-      <p>TEIはX-TEA／XEADの公式な後継・派生プロジェクトではありません。本ページは、公開資料等から確認できる設計上の考え方を独立に調査し、TEIの要求と照合した記録です。差異は優劣ではなく、想定する用途・技術環境・責務境界の違いとして扱います。</p>
-      <p>参照対象の実装やモデルをTEIの互換要件として再現することは目的としません。また、参照モデルの内容そのものは、利用条件を確認できない状態で複製・再配布しません。</p>
+      <p>外部の手法やソフトウェアは、TEIの系譜・互換性・優劣を示す対象ではなく、設計上の問いを考えるための参照の一つとして扱います。TEIの仕様と設計判断は、TEI自身のRequirements、Architecture、Reference、ADR、Evidenceによって説明します。</p>
     </section>
-
     <section>
-      <h2>確認できた重要な示唆</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th scope="col">観点</th><th scope="col">参照資料から得た示唆</th><th scope="col">TEIでの扱い</th></tr></thead>
-        <tbody>
-          <tr><td>Data / Function / Business</td><td>一つの業務システムを複数の視点から照合し、単一視点では見落とす不足や矛盾を検討できる。</td><td>三視点を同一のsource of truthへ潰さず、相互参照できるProjectionとして扱う。</td></tr>
-          <tr><td>Business Action</td><td>業務行為にはシステム機能だけでなく、手作業・対話・物理的な受渡し等も含まれ得る。</td><td>Business ActionとApplication Functionを同一視せず、manual / external / unresolvedも表現可能にする。</td></tr>
-          <tr><td>Function / IO</td><td>機能、画面・帳票、データ入出力、機能間の利用関係を横断して確認できる。</td><td>API一覧や画面階層だけに縮約せず、InteractionとDataへの関係を追跡する。</td></tr>
-          <tr><td>Subsystem</td><td>外部データへの操作や外部機能利用を見ながら、凝集・結合の境界を検討する。</td><td>namespaceやdeployment単位だけで境界を決めず、実際の依存関係をEvidenceとして確認する。</td></tr>
-          <tr><td>実行による検証</td><td>設計内容を動かして確かめることで、設計と実現のずれを見つけられる。</td><td>TEIではSemantic / Realization / Runtime / Evidenceの責務を分けたうえで、Referenceを通じて検証する。</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <section>
-      <h2>TEIでそのまま前提にしないもの</h2>
-      <p>参照資料に見られる具体的なXML構造、画面構成、クラス構造、実行方式は、そのままTEIの仕様にはしません。TEIでは複数Target、Provider分離、明示的なauthority、Observation / Evidence、file-native authoring等の現在の要件から責務境界を決めます。</p>
-      <p>同様に、参照資料に特定の表現があることだけを理由に、未決のTEI仕様を確定しません。実際の業務ScenarioとReference Evidenceで必要性を確認します。</p>
-    </section>
-
-    <section>
-      <h2>静的照合で確認した範囲</h2>
-      <p>参照可能なModeler／Driver資料および複数のリファレンスモデルについて、構造・関係・代表的な業務記述を静的に照合しました。たとえば、一つのBusiness Actionが複数のFunction / IOを利用する例や、Function参照を持たずに成立する業務行為が確認でき、TEIでBusiness Actionを単一のApplication Patternへ固定しない判断を支えています。</p>
-      <p>この確認は、すべての画面・実装・実行経路を網羅した製品評価ではありません。実行時の完全な意味互換、性能、品質、保守性等を本ページから推定しません。</p>
-    </section>
-
-    <section>
-      <h2>参照と再現性</h2>
-      <p>公開原典と、TEI側で採用した設計判断の追跡先は<a href="sources.html">資料・出典と仕様の追跡</a>にまとめます。機械的な静的集計値は<a href="xtea-observations.json">xtea-observations.json</a>に分離し、本文では必要な含意だけを記述します。</p>
+      <h2>参照</h2>
+      <p>公開資料への参照は<a href="sources.html">資料・出典と仕様の追跡</a>にまとめます。第三者の資料やモデルについては、それぞれの公開条件・利用条件を尊重します。</p>
     </section>
   </main>
 </div>

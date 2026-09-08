@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "reviewedOn": "2026-09-08",
   "repository": "https://github.com/hat47x/tei-platform",
-  "scope": "Public provenance for the TEI specification guide. Internal chat history, local acquisition steps, temporary handoff material, and unmerged working-state identifiers are intentionally excluded.",
+  "scope": "Public provenance for the TEI specification guide.",
   "teiSources": [
     "README.md",
     "docs/README.md",
@@ -20,34 +20,10 @@
     "plan/MASTER_PLAN.md",
     "plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"
   ],
-  "externalReferences": [
-    {
-      "title": "データ、UI、業務手順の『3要素』をとらえる",
-      "author": "渡辺幸三",
-      "url": "https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html",
-      "purpose": "Reference for multi-view business-system design"
-    },
-    {
-      "title": "蔓延する『ブルシットエンジニアリング』",
-      "author": "渡辺幸三",
-      "url": "https://dbconcept.hatenablog.com/entry/2024/07/05/143207",
-      "purpose": "Reference for relationships among structured business, function, and data definitions"
-    },
-    {
-      "title": "XeadModeler",
-      "url": "https://github.com/xead/XeadModeler",
-      "purpose": "Independent design reference"
-    },
-    {
-      "title": "XeadDriver",
-      "url": "https://github.com/xead/XeadDriver",
-      "purpose": "Independent design and executable-specification reference"
-    }
-  ],
-  "publicationPolicy": {
-    "relationship": "TEI does not claim to be an official successor or derivative of X-TEA/XEAD.",
-    "comparison": "Differences are described in terms of TEI requirements and design choices rather than product superiority.",
-    "reuse": "Third-party model or document contents are not copied or redistributed without confirmed permission.",
-    "workingMaterial": "Internal deliberation, chat excerpts, local file-acquisition details, and temporary handoff notes are not public specification provenance."
+  "externalReferencePolicy": {
+    "scope": "Public knowledge on business-system design, model-driven and metadata-driven development, executable specifications, multi-target applications, and related engineering topics may be consulted when useful.",
+    "independence": "External references are sources of design questions and inspiration, not semantic authority, compatibility commitments, or project lineage.",
+    "decisionBasis": "TEI decisions are documented through TEI Requirements, Architecture, Reference results, ADRs, implementation, and Evidence.",
+    "reuse": "Third-party material is used in accordance with its applicable publication and reuse terms."
   }
 }
