@@ -50,7 +50,7 @@ func Validate(w ir.World) []Diagnostic {
 			out = append(out, errd("INVALID_PLUGIN_VERSION", "plugin %s: %v", p.ID, err))
 		}
 		if !p.Runtime.Kind.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Runtime.Kind))
+			out = append(out, errFor(subject.Subject{Kind: "plugin", ID: string(p.ID) + "@" + p.Version}, "INVALID_PLUGIN_RUNTIME", "plugin %s has invalid runtime %s", p.ID, p.Version))
 		}
 		if p.Runtime.Kind == plugin.RuntimeProcess && strings.TrimSpace(p.Runtime.Command) == "" {
 			out = append(out, errd("PLUGIN_PROCESS_COMMAND_REQUIRED", "plugin %s process runtime requires a command", p.ID))
@@ -207,7 +207,6 @@ func Validate(w ir.World) []Diagnostic {
 			}
 		}
 	}
-	// Alias types form a semantic refinement chain and must not recurse.
 	visitState := map[core.CanonicalID]int{}
 	reportedTypeCycles := map[core.CanonicalID]struct{}{}
 	var visitType func(core.CanonicalID)
@@ -263,7 +262,6 @@ func Validate(w ir.World) []Diagnostic {
 		if c.Output != "" && !semanticValueTypeExists(c.Output) {
 			out = append(out, errd("UNKNOWN_SEMANTIC_CAPABILITY_OUTPUT", "capability %s output refers to unknown semantic value type %s", c.ID, c.Output))
 		}
-
 	}
 
 	apps := map[core.CanonicalID]application.Application{}
@@ -998,14 +996,17 @@ func Validate(w ir.World) []Diagnostic {
 				out = append(out, errd("UNKNOWN_BINDING_APPLICATION", "environment %s binding refers to unknown application %s", e.ID, b.Application))
 				continue
 			}
-			req, ok := app.DatabaseByAlias(b.Alias)
-			if !ok {
+			if !app.HasDatabaseAlias(b.Alias) {
 				out = append(out, errd("UNKNOWN_BINDING_DATASOURCE_ALIAS", "environment %s binds unknown datasource alias %s.%s", e.ID, b.Application, b.Alias))
 				continue
 			}
 			inst, ok := e.InstanceByID(b.Instance)
 			if !ok {
 				out = append(out, errd("UNKNOWN_DATABASE_INSTANCE", "environment %s binding %s.%s points to unknown instance %s", e.ID, b.Application, b.Alias, b.Instance))
+				continue
+			}
+			req, ok := app.DatabaseByAliasExact(b.Alias)
+			if !ok {
 				continue
 			}
 			if inst.Definition != req.TargetDatabase {
@@ -1028,8 +1029,7 @@ func Validate(w ir.World) []Diagnostic {
 		if !strings.HasPrefix(string(q.ID), string(q.Application)+".") {
 			out = append(out, errd("QUERY_UNIT_NAMESPACE_MISMATCH", "query %s is declared in application %s but is outside its namespace", q.ID, q.Application))
 		}
-		_, ok = a.DatabaseByAlias(q.Datasource)
-		if !ok {
+		if !a.HasDatabaseAlias(q.Datasource) {
 			out = append(out, errd("UNKNOWN_DATASOURCE_ALIAS", "query %s uses unknown datasource alias %s", q.ID, q.Datasource))
 			continue
 		}
