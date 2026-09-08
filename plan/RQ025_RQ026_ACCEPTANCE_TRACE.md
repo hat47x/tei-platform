@@ -1,432 +1,348 @@
 # RQ-025 / RQ-026 PAS-07 Evidence Contract
 
-Status: **supporting Lane B Evidence contract / PAS baseline integrated into `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` / Reference implementation owned by Lane C ISSUE-000042**
+Status: **supporting Lane B Evidence contract / PAS baseline is `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` / Lane C Evidence detail is ISSUE-000042**
 
-Canonical PAS summary: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+## 1. 正本関係
 
-## 1. 目的
-
-採用済みの次のProduct Requirementについて、主Traceに統合済みのPAS-07をReference Evidenceへ詳細接続します。
-
-- `RQ-025` — 業務上の行為・手順をApplication Functionから独立して設計できること
-- `RQ-026` — Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること
-
-PAS-07の利用者価値、代表Scenario、Requirement mappingの正本は `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` です。
-
-本書はAcceptance pressure、E7 mapping、Representation / Runtime Evidence境界を詳細化するsupporting contractであり、第二のPAS source of truthではありません。
-
-Business Procedure Reference fixture / checker / handoff / identity pressureも所有しません。実装Evidenceの供給元はLane C `plan/issue/000042-business-procedure-cross-view-reference.md`（PR #482）です。
-
-既存Gate B / Gate C scopeは変更しません。
-
-## 2. PAS-07 — 手作業を失わずData / Function / Businessを相互検証して設計修正できる
-
-### 利用者価値
-
-開発者は、業務をApplication内部の実行手順へ還元せず、人・外部作業を含むBusiness Procedureを確認しながらData / Function-Interaction / Businessの三視点から矛盾・不足・過剰な仮定を見つけ、Projectionだけを補修するのではなくauthoritative sourceへ戻って設計を修正できます。
-
-### 代表Scenario
+本書は採用済みRQ-025 / RQ-026をPAS-07 Evidenceへ接続するsupporting contractである。
 
 ```text
-accepted Data / Relation / Application meaningを読む
-        ↓
-Business固有meaningをaccepted authoring sourceとして保持する
-        ↓
-manual / external Actionをfake Functionへ変換しない
-        ↓
-existing Application / Semantic identityをexplicitに参照する
-        ↓
-derived cross-view Projectionで相互検証する
-        ↓
-contradiction / omission / unknown / impactを発見する
-        ↓
-correction candidateをauthoritative source側へ返す
-        ↓
-Shared Acceptance Boundary
-        ↓
-reload / regenerate / reviewする
+PAS-07 user value / Requirement mapping / Gate relation
+  -> plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md
+
+Lane C detailed Reference Evidence inventory
+  -> plan/issue/000042-business-procedure-cross-view-reference.md A-set
+
+本書
+  -> A-set -> E7 / S7 mapping
+  -> A-set detailを逐語複製しない
 ```
 
-### 壊してはいけない境界
+Reference fixture / checker / Canonical pressureはLane Cが所有する。Gate B / Gate C Required Evidenceは変更しない。
+
+## 2. PAS-07で壊してはいけない境界
 
 ```text
 Business Action != Application Function
 Business Flow != Procedure != Runtime Workflow Orchestration
+Business Handoff != full Business Flow / DFD
 Business Actor / Job != Authentication Principal != Authorization Role / Policy
+Business Procedure != mandatory single Application child / owner
+reference target != Application realization
+ref kind separation != ref role separation
 Validation PASS != whole-business approval
 Application Business Result != external-world Observation
+Command accepted != physical-world fact observed
+physical-world fact observed != accepted responsibility Handoff
+Data trace projection != complete Data dependency authority
+no current Data trace != no Data dependency
 Projection != second source of truth
 ```
 
-この節は主Traceの意味を詳細Evidenceとの対応のため再掲しています。意味の変更は主Traceへ先に反映します。
+利用者価値・代表Scenario・Requirement mappingの正本は主Traceとする。
 
-## 3. Lane ownership
+## 3. Representation pressure
 
-### Lane B — 本文書が所有するもの
-
-```text
-PAS-07 main trace
-      ↓
-Acceptance pressure / Evidence contract
-      ↓
-Reference Evidence -> PAS claim audit
-      ↓
-Evidence status update
-```
-
-Lane BはReference実装を第二正本として持ちません。
-
-### Lane C — Reference / Evidence供給元
-
-Primary implementation issue:
-
-`plan/issue/000042-business-procedure-cross-view-reference.md`
-
-Lane Cは少なくとも次を所有します。
+PAS-07はCanonical `BusinessProcedure` kindを前提にしない。
 
 ```text
-primary / follow-up Business Procedure authoring fixture
-Procedure Reference set / handoff
-intentional access-conflict probe
-cross-view checker
-Pattern-owned meaning derivation
-strict decoder
-Source Index pressure
-review continuity / handoff identity pressure
-approval snapshot binding pressure
-file-native accepted-source pressure
-actual execution Evidence
+V0  derived Projection
+V1  Business固有meaningを持つauthoring source
+V2  durable Canonical Business meaning / identity
 ```
 
-Lane Bはこれらを再実装せず、PAS-07 claimへ対応付けます。
-
-## 4. Representation pressure
-
-PAS-07はCanonical `Procedure` kindを前提にしません。
-
-Acceptance上は次の違いを監視します。
+Lane C current candidate stack:
 
 ```text
-V0  accepted meaningから再生成できるderived Projection
-V1  Business固有meaningを保持するfile-native / authoring source
-V2  durable Canonical Procedure identity
+D3    broader thin Business Step body
+D4    smaller evidence-backed Step body
+S4-A  Procedure-scoped Step local address
+H1/R3 thin normalized Handoff / handoff-only relation
+C1    optional reporting Application context
+O1    Application Pattern protected-target overlay
 ```
 
-このV0 / V1 / V2はLane Bの監査レンズであり、独立したReference schemaではありません。
-
-Lane C ISSUE-000042では現時点で:
+D4 current minimum:
 
 ```text
-Reference-local stable Procedure key
-  useful / required for review + handoff
-
-Canonical Procedure identity
-  not yet required by Evidence
+businessAction
+applicationPatternRefs[]   // direct realization only
+validationRefs[]
+capabilityRefs[]
 ```
 
-という圧力結果を扱っています。
+Direct Data / Relation refはminimum必要性未証明。将来accepted sourceに不可欠ならfail closedしてreopenする。いずれもproduction adoptionではない。
 
-さらにfile-native accepted-source pressureでは、Preview / Reject / stale detection / Accept / reload / file move / logical renameの機械的安全性がReference-local stable keyで成立しています。
+## 4. RQ-025 acceptance pressure
 
-したがって、Canonical Procedure導入の根拠をShared Acceptanceの機械的必要性へ置きません。現在残る強いidentity論点はRQ-002上のCanonical trace targetです。
+- Functionを持たないmanual / external / human judgment / physical Actionを正常なBusiness meaningとして保持する。
+- Business actor / jobからPrincipal / Authorization Role / Permissionを生成しない。
+- `direct realization != protected target / concern`を保持する。
+- Business HandoffをRuntime Workflowへ変換しない。
+- purpose / trigger / actor context / manual action / judgment / continuationをPattern-derived扱いしない。
+- Procedureをsingle Application containerへ閉じ込めない。
 
-Lane Cのidentity option auditでは、少なくとも次を比較しています。
+## 5. RQ-026 acceptance pressure
 
-```text
-A  minimal Canonical Procedure identity shell
-B  Subject contract expansion
-C  formal Authoring identity registry
-```
+- accepted identityをexactに参照し、名称類似やprefixで補完しない。
+- accepted datasource / policy contradictionをdiagnosticとして露出する。
+- Business-only / Handoff / target / actuality changeをApplication-owned meaningの偽変更へ拡大しない。
+- logical address / Handoff endpointをfile pathから分離する。
+- review / approvalをrevision / fingerprintへ束縛する。
+- EvidenceなしにProcedure / Handoff / generic ref-role / graph / global Step ID / Workflow / Business Flowをproductionへ固定しない。
+- Pattern owner / policyを正しいauthorityから解決し、Legacy policyからBusiness targetをbackfillしない。
+- normalized Handoff integrityをSource Index / locatorへ戻さない。
+- physical ObservationだけからData ownership / Application Pattern / responsibility Handoffを生成しない。
+- Data cross-view matrixはevidence-backed traceだけを表示し、trace absenceをdependency absenceへ丸めない。
+- derived projectionはBusiness source / Application / Semantic authorityへ逆流させない。
 
-これはArchitecture pressureであり、PAS-07 Evidence contractからOption Aやfull Canonical Procedureを採用決定しません。
+## 6. PAS-07 Evidence mapping
 
-## 5. RQ-025 acceptance pressure
+Lane Cの詳細statusはISSUE-000042 A-setを正本とする。Current A-setはA1〜A83。
 
-### P25-1 — Functionを持たないBusiness Action
-
-Application Pattern / Capabilityを直接持たないmanual / external Business Actionを正常な状態として扱えること。
-
-### P25-2 — Businessとruntime authorityの分離
-
-Business actor / jobからAuthentication Principal、Authorization Role、permissionを合成しないこと。
-
-### P25-3 — Application利用はexplicit reference
-
-Application / Semantic meaningをBusiness側へ複製せず、既存identityをexplicitに参照できること。
-
-### P25-4 — handoffとRuntime Workflowの分離
-
-Business Procedure間のhandoffをApplication call relation、scheduler、retry、saga等へ自動変換しないこと。
-
-### P25-5 — Business固有meaningをderived扱いしない
-
-purpose / trigger / manual action / judgment / continuation等、Application Patternから再生成できない意味をProjectionへ還元しないこと。
-
-## 6. RQ-026 acceptance pressure
-
-### P26-1 — exact cross-view reference
-
-Data / Relation / Pattern / Validation等を名称類似で補完せず、accepted identityで相互参照できること。
-
-### P26-2 — Function / Data contract contradiction
-
-candidate Interactionがread-only datasource等のaccepted contractに反するとき、Target convenienceで隠さず矛盾として検出できること。
-
-### P26-3 — Business-only change separation
-
-Business Action文言等のBusiness-side変更をApplication-owned meaningの偽変更へ拡大しないこと。
-
-### P26-4 — reuse / handoff identity
-
-複数Procedureから同一Patternを利用する場合もBusiness文脈を畳まず、handoff endpointをlogical authoring keyで追跡できること。
-
-### P26-5 — review / acceptance provenance
-
-同じreview targetでもrevision / fingerprintが変われば旧approvalを暗黙carry-forwardしないこと。
-
-### P26-6 — Canonical expansionをEvidenceなしで行わない
-
-Reference-local identityが有用でも、それだけでCanonical `Procedure` / `Step`を追加しないこと。
-
-## 7. PAS-07 Evidence contract
-
-Lane C ISSUE-000042のAcceptanceをPAS-07へ次のように対応付けます。
-
-| PAS-07 Evidence | Evidence source | Claim |
+| Evidence | Current supporting A-set | Claim |
 | --- | --- | --- |
-| E7-01 | ISSUE-000042 A2 / A8 | manual / external Business ActionとBusiness authoring residualをFunctionへ還元しない |
-| E7-02 | ISSUE-000042 A1 / A3 / A4 | exact reference resolutionとPattern-owned meaningの非重複 |
-| E7-03 | ISSUE-000042 A5 / A6 | read-only contract contradictionをbaselineと区別して検出 |
-| E7-04 | ISSUE-000042 A9 | Business-only changeをApplication meaningの偽変更へ拡大しない |
-| E7-05 | ISSUE-000042 A10 / A11 | multiple Procedure -> same PatternとReference-local stable key |
-| E7-06 | ISSUE-000042 A12 / A13 | source moveでhandoff維持、logical renameはfail closed |
-| E7-07 | ISSUE-000042 A14 / A15 | review target continuityとapproval snapshot binding |
-| E7-08 | ISSUE-000042 A7 | unknown field / schemaを黙って解釈しないfail-closed境界 |
-| E7-09 | ISSUE-000042 A16 | Reference成功からCanonical expansionを自動導出しない |
-| E7-10 | Lane C file-native accepted-source pressure + PAS-01 | authoritative Business sourceをstale baseから守り、fresh acceptance後にreload / re-deriveして設計修正を成立させる |
+| E7-01 | A2 / A8 / A21 / A25 / A33 / A37 / A67 / A71 / A72 | manual / external / physical meaningをFunctionへ還元せず、targetもrealizationへ誤変換しない |
+| E7-02 | A1 / A3 / A4 / A20 / A38 / A39 / A55 / A57〜A59 / A61 / A63 / A66 / A68〜A71 / A75 / A80 / A81 / A83 | exact authority trace、非重複、kind / role / authority direction、synthetic ownership禁止、derived Data trace |
+| E7-03 | A5 / A6 / A39 | accepted datasource policy contradictionをbaselineと区別して検出 |
+| E7-04 | A9 / A19 / A23 / A28 / A31 / A32 / A45 / A46 / A48 / A49 / A51 / A54 / A65〜A67 / A69 / A72〜A74 / A76 / A78 / A80 / A82 | Business / Handoff / target / actuality / responsibility / Data-trace meaningを分離 |
+| E7-05 | A10 / A11 / A25 / A26 / A37 / A38 / A40 / A44 | reuse、multi-Application、single-owner非依存、optional reporting context |
+| E7-06 | A12 / A13 / A22 / A23 / A34〜A36 / A41〜A43 / A45 / A46 / A49 / A64 / A65 / A76〜A79 | source move、Step address、explicit Handoff authority、referential integrity |
+| E7-07 | A14 / A15 / A17 / A35 | review continuity、snapshot-bound approval、Acceptance target |
+| E7-08 | A7 / A27〜A30 / A35 / A44 / A62 / A68 / A70 / A74〜A79 / A82 / A83 | fail closed、unknown保持、policy / Observation / adjacency / partial traceから未証明meaningをbackfillしない |
+| E7-09 | A18 / A20 / A24 / A26 / A30〜A34 / A36 / A40 / A41 / A43〜A64 / A69〜A83 | identity / runtime / enum / ownership / graph / Business Flow / generic ref-role / Data projectionをEvidenceなしでproductionへ固定しない |
+| E7-10 | A16 / A17 + PAS-01 | authoritative file-native sourceをstale baseから守りfresh Accept後にreload / re-deriveする |
 
-### E7-10のEvidence nature
+同じAが複数境界を支える。mappingはcoverage scoreではない。
 
-Lane C `BUSINESS_PROCEDURE_FILE_NATIVE_SOURCE_PRESSURE_2026-09.md` / `accepted_source_pressure_test.go` はBusiness-only source変更について次をpressureしています。
-
-```text
-same Procedure key
-changed source bytes / fingerprint
-old fingerprint acceptance -> stale reject
-fresh fingerprint acceptance -> accepted
-reload
-changed Business-side Projection
-same Pattern-derived Application meaning
-same Canonical World
-```
-
-これはPAS-07の「authoritative sourceへ戻して修正する」に近い重要なEvidenceです。
-
-ただし現在の`acceptProcedureSource`はexperiment helperであり、productionのShared Acceptance Boundaryそのものではありません。
-
-したがってE7-10は:
+## 7. A54〜A83の現在地
 
 ```text
-Lane C accepted-source pressure
-  -> partial / structural correction Evidence
+A54〜A59
+  realization / Authorization / Observation / explicit-ref authority
 
-PAS-01 actual Shared Acceptance
-  -> end-to-end acceptance Evidence
+A60〜A65
+  D4 minimum refs + S4-A + H1/R3 composition
+
+A66〜A69
+  ref kind != ref role / O1 / D4+O1
+
+A70〜A71
+  Authorization policy authority direction / X-TEA negative evidence
+
+A72〜A79
+  manufacturing / inventory outline
+  physical Observation
+  synthetic Data authority deferral
+  Handoff non-inference / explicit-source authority
+
+A80〜A81
+  exact refsからBusiness Action × Data/Relation V0 traceをderive
+  Business sourceへDataを重複authorしない
+
+A82
+  no current Data trace != no Data dependency
+
+A83
+  BP-06 partial security traceをcomplete扱いせず
+  O1 protected-target Dataをhelper / adjacencyから補完しない
 ```
 
-の両方を必要とします。
+A80〜A83内のchange-direction pressure:
 
-Lane C側だけを根拠にPAS-07全体を`accepted`へ上げません。
+```text
+Business wording-only change + refs unchanged
+  -> Data projection unchanged
 
-## 8. Secondary semantic boundaries — Representation EvidenceとRuntime Evidenceを分ける
+referenced Pattern / Validation / Capability authority change
+  -> Business source unchangedでもData projectionは追随
 
-PAS-07のBusiness viewpointには、PAS-02が実行意味を所有する境界も現れます。
+missing / ambiguous referenced identity
+  -> fail closed
+```
 
-これらをLane C ISSUE-000042だけで「runtimeまでverified」と読み替えません。
+新E7は追加しない。
+
+## 8. O1 / B-F27
+
+```text
+role separation is representable
+  != protected target is authoritative Business source meaning
+  != reload / RQ-002 trace / Shared Acceptance preserves it
+```
+
+B-F27はintentionally / conditionally unresolved。
+
+A83により、protected-target relationをaccepted meaningとして将来保持する場合にはData projection / impact-analysis coverageへ具体的に効くことが分かった。ただしcurrent一例だけでO1 persistenceやgeneric Role taxonomyをproductionへ採用しない。
+
+## 9. Secondary semantic boundaries
 
 ### S7-01 — Validation / business judgment
+manual business judgmentとdeterministic Validationを同一Actionへ畳まない。actual execution / approval semanticsはPAS-02側とcross-checkする。
 
-Lane C fixtureでは少なくとも次が別stepです。
-
-```text
-BP-04
-  surrounding business contextでsubmit可否を判断
-  realization = manual-unresolved
-
-BP-05
-  accepted deterministic order constraintsを確認
-  realization = validation-support
-  explicit Validation refs
-```
-
-したがってBusiness judgmentとdeterministic Validationを同一Actionへ畳まないRepresentation Evidenceはあります。
-
-一方、checkerが証明する中心はValidation identityのexact resolutionであり、実際のValidation実行結果や:
+### S7-02 — actor / Authorization
 
 ```text
-all Validation PASS != whole-business approval
+Business actor / job != Principal / Role / Permission
+BP-06 supporting authority -> security.authorize
+BP-06 protected target     -> O1 pressure
+Application Function       -> none
 ```
 
-というruntime / decision意味の完全検証ではありません。
-
-Validation executionはPAS-02側とcross-checkします。
-
-### S7-02 — actor / authority
-
-Lane C fixtureはBusiness actorをcandidate labelとして保持し、ISSUE-000042の固定境界も:
-
-```text
-Business Actor / Job
-  != Authentication Principal
-  != Authorization Role / Policy
-```
-
-としています。
-
-ただしcross-view checkerはactor labelからAuthorization semanticsを実行・検証するものではありません。
-
-したがってISSUE-000042から得るのは「Business actorをruntime authorityへ自動昇格しないauthoring boundary」であり、Authentication / Authorization execution EvidenceはPAS-02が所有します。
+Legacy Authorization policyはtargetをcorroborateできるが、author / backfillしない。actual enforcementはPAS-02が所有する。
 
 ### S7-03 — Business Result / Observation
 
-Lane C fixtureは:
-
 ```text
-BP-07
-  request accepted application command
-
-BP-08
-  verify relevant external state when continuation depends on actual state
+Command accepted
+  != Observation read succeeded
+  != physical fact observed
+  != responsibility Handoff accepted
 ```
 
-を別stepとして保持しています。
+runtime `ExecuteObservationRead` / `ReadIdentity`をBusiness/Semantic identityへ昇格しない。A73/A74はmechanical pressureだがPAS-02全体のRuntime Evidenceを代替しない。
 
-これはCommandとObservationをBusiness Procedure上で同一視しないRepresentation Evidenceです。
-
-一方、checkerはPattern-owned Capability等をresolveしますが、Command resultの後にactual explicit readを実行してObservationを確立するDriver Evidenceまでは所有しません。
-
-PAS-02の代表Scenario:
+### S7-04 — Data trace / dependency completeness / change direction
 
 ```text
-Validation
- -> Authorization
- -> Command
- -> Business Result
- -> separate explicit read
- -> Observation
+evidence-backed Data trace exists
+  != complete Business Data dependency known
+
+NoDataTraceFromCurrentRefs = true
+  != no Data dependency
+
+Business source + referenced accepted authorities
+  -> V0 Data projection
+
+V0 Data projection
+  -X-> author Business source
+  -X-> author Application / Semantic authority
 ```
 
-と組み合わせて初めてruntime意味を評価します。
+Business wording-only changeはref不変ならData projectionへ波及させず、参照authorityの変更はprojectionへ追随させる。missing identityはfail closedする。
 
-### 判定規則
+A80〜A83のprojectionはData authority / ownership / CRUD / completenessを所有しない。
+
+## 10. Gate 15 / RRB
 
 ```text
-Lane C Procedure fixture / checker
-  -> Business-side representation / cross-view Evidence
-
-PAS-02 Driver Evidence
-  -> system-realizable runtime semantic Evidence
+15a synthetic multi-Application structural pressure
+15b current order_entry social-system realism
+15c broader realistic pressure
+    = concrete minimum-contract insufficiencyが出た場合だけopen
 ```
 
-片方を他方の代替にしません。
-
-S7-01〜03のruntime未検証だけを理由にPAS-07 coreを失敗扱いにはしませんが、将来「Business Procedureからruntime境界まで一貫してverified」というProduct claimを置く場合には両方を要求します。
-
-## 9. Evidence状態の読み方
-
-Lane C ISSUE-000042にはfixture / checker / tests等が実装されていますが、GitHub-hosted Actionsは現時点でrunner割当て前に終了しており、actual Repository runnerによるgreen verificationは未取得です。
-
-したがってLane Bも:
+A72〜A83では具体的contract insufficiencyを観測していないため15cは未起動。
 
 ```text
-implementation exists
-  !=
-PAS-07 execution Evidence accepted
+Gate 15c not activated
+  != realistic Reference maturity established
 ```
 
-として扱います。
-
-GitHub Actionsの`failure`表示だけをcode failureまたはPAS-07 failureへ読み替えません。
-
-さらにPAS-07の現在地は:
+B-F19b status:
 
 ```text
-E7-01〜09
-  Lane C implementation exists
-  actual runner Evidence unresolved
-
-E7-10
-  accepted-source pressure exists
-  actual Shared Acceptance end-to-end unresolved
+RRB-P1 provenance-safe TEI-native second Business source exists
+RRB-P2 P1 sourceをsource/test cross-viewへ統合
+RRB-P3 actual execution-qualified breadth Evidence
 ```
 
-と分けます。
+Current outline / physical pressure / Data projectionはP1ではない。P1がないためP2でもない。
 
-この`unresolved`状態はPAS-07を主Traceへ掲載しない理由にはしません。主TraceはRequirementからEvidence状態までを追うplanning baselineであり、未検証事項を明示して保持します。
+## 11. Current findings / status
 
-## 10. Existing PASとの関係
+```text
+Lane C A-set
+  A1〜A83
 
-### PAS-01
+B-F21 / B-F23 / B-F25 / B-F26 / B-F29 / B-F30
+  source/document level Resolved
 
-cross-viewで変更が必要になった後のauthoritative correction / review / approvalはPAS-01 Shared Acceptance Boundaryへ接続します。
+B-F27 authoritative protected target
+  intentionally / conditionally unresolved
+  A83でprojection coverage consequenceは具体化
 
-RQ-026はPAS-07 primary / PAS-01 secondaryです。
+B-F28 candidate composition
+  source-level Confirmed / actual execution pending
 
-E7-10の最終成立にはPAS-01のactual Shared Acceptance Evidenceが必要です。
+B-F32 outline != RRB-P1
+  Confirmed
 
-### PAS-02
+B-F33 O1 generalization evidence insufficient
+  Confirmed negative Evidence
 
-Validation / Authorization / Business Result / Observation等のsystem-realizable意味はPAS-02が所有します。PAS-07はBusiness側へ複製せずcross-checkします。
+B-F34 Data authority relevance != exact authority existence
+  Confirmed deferral boundary
 
-### PAS-04
+B-F35 H1/R3 authority direction = explicit source only
+  source/test-level strengthened
 
-accepted Business / Function / Data meaningをTarget固有UIが壊さないことへ接続します。ただしPAS-07をGate C Required Evidenceへ追加しません。
+B-F36 useful Data projection != source duplication necessity
+  Confirmed
 
-### PAS-06
+B-F37 no current trace != no Data dependency
+  Confirmed
 
-Reference / Pattern Knowledge探索と接続できますが、knowledge-first探索だけでBusiness Procedure成立とはしません。
+B-F38 O1 persistence has concrete Data-projection consequence
+  Confirmed pressure / production adoption still unresolved
 
-## 11. Requirement -> PAS mapping detail
+B-F39 V0 Data projection authority direction is one-way
+  Confirmed source-level boundary
+
+RRB-P1 / P2 / P3
+  not achieved
+
+actual gofmt / go vet / go test / checker green
+  unresolved
+
+production Canonical contract
+  not adopted
+
+Pre-ADR
+  Not Ready
+```
+
+## 12. Existing PASとの関係
+
+- PAS-01: correction / review / Shared Acceptance。E7-10のend-to-end成立にactual Evidenceが必要。
+- PAS-02: Validation / Authorization / Business Result / ObservationのRuntime意味を所有する。
+- PAS-04: Targetがaccepted Business / Function / Data meaningを壊さないことへ接続するがGate C Required EvidenceへPAS-07を追加しない。
+- PAS-06: Reference / Pattern Knowledge探索と接続可能だが、それだけでBusiness Procedure成立とはしない。
+
+## 13. Requirement -> PAS
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
 | --- | --- | --- |
 | RQ-025 | PAS-07 | PAS-02 / PAS-04 |
 | RQ-026 | PAS-07 | PAS-01 / PAS-02 / PAS-04 |
 
-RQ-021 / RQ-022もPAS-07にcross-cuttingします。
+RQ-021 / RQ-022もcross-cuttingする。正本は主Trace。
 
-このmappingの正本は主Traceです。本表はE7との対応確認用です。
+## 14. Gate / Stage
 
-## 12. Gate / Stage
-
-PAS-07を理由に現行Gateを変更しません。
+PAS-07を理由に現行Gateを変更しない。
 
 ```text
-Gate A / B / C mainline
-  existing definition unchanged
+Gate A / B / C
+  existing definitions unchanged
 
 PAS-07 Reference Evidence
-  Lane Cから供給
   Gate B Required Evidenceへ追加しない
   Gate C First Web Target Required Evidenceへ追加しない
 ```
 
-将来「業務システム設計として成熟した」というProduct claimを置く場合には、PAS-07の実行Evidenceとrealistic multi-subsystem Referenceを別途要求し得ますが、新Gateは現時点で作りません。
+将来「業務システム設計として成熟した」というclaimを置く場合、actual PAS-07 execution EvidenceとRRB-P3相当のrealistic breadthを別途要求し得るが、新Gateは現時点で作らない。
 
-## 13. Main trace integration / update rule
+## 15. 更新規則
 
-PAS-07は `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` へ統合済みです。
-
-統合条件をactual execution Evidenceのgreenにはしませんでした。主Traceはverified-only台帳ではなく、Requirement → PAS → Evidence → Gate / claimの計画・追跡基線だからです。
-
-今後Lane Bは次を行います。
-
-1. Lane C ISSUE-000042 A1〜A16についてactual execution Evidenceを確認する
-2. A1〜A16をE7-01〜09へ再監査する
-3. E7-10についてaccepted-source pressureとPAS-01 actual Shared Acceptance Evidenceを分けて確認する
-4. S7-01〜03をPAS-02 Evidenceとcross-checkし、Representation / Runtimeを混同しない
-5. unmet / partial / accepted / unresolvedを本書へ詳細反映する
-6. PAS-07の利用者価値・主要Scenario・Requirement mapping・Gate影響に変更が必要な場合は主Traceへ先に反映する
-7. 本書を第二のTrace source of truthとして並行発展させない
-
-Reference fixture / checkerをLane B側へコピーしません。
+1. Lane C A-setをdetail正本とし、本書はrange/mappingだけを更新する。
+2. 新pressureは新E7を増やす前に既存E7へ吸収できるか確認する。
+3. B-F27はactual Evidenceからauthoritative persistenceが必要になった場合だけreopenする。A83のprojection coverageは判断材料として保持する。
+4. S7-01〜04はPAS-02 / accepted Semantic authorityとcross-checkし、Representation / Runtime / completenessを混同しない。
+5. Pre-ADR readinessはLane C正本からderiveし、Lane Bへ独立Gate inventoryを作らない。
+6. RRB-P1 / P2 / P3とGate 15cを同じstatusへ潰さない。
+7. Observation / adjacency / Function sequenceからData authorityやHandoffを推論しない。
+8. Data trace absenceをdependency absenceへ丸めず、trace projectionをsecond SOTへ昇格しない。
+9. projectionを豊かにする目的だけでV1 authoring sourceへdirect Data ref / O1 targetを追加しない。
+10. CRUD semanticsはoperation authorityをEvidence-backedにderiveできるまで追加しない。
+11. PAS-07 user value / Requirement mapping / Gate影響が変わる場合は主Traceを先に更新する。
