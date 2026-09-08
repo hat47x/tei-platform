@@ -1,1 +1,73 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="アップロード済みのModeler／Driverマニュアルと3系統のリファレンスモデルを読み、未決仕様の検討へ戻しました。"><title>X-TEA／XEAD原資料へ戻った照合 | TEI</title><link rel="stylesheet" href="style.css"></head><body><a class="skip" href="#main">本文へ</a><div class="layout"><aside class="sidebar"><div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div><div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div><nav aria-label="文書一覧"><a href="index.html">全体像</a><a href="business.html">業務設計</a><a href="architecture.html">意味と実行</a><a href="authoring.html">Studio・AI・Target</a><a href="decisions.html">整合性・未決事項</a><a aria-current="page" href="xtea-review.html">X-TEA原資料の照合</a><a href="requirements.html">全26要求</a><a href="../../plan/product-roadmap.html">期限なしロードマップ</a><a href="sources.html">資料・追跡</a></nav><small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small></aside><main id="main"><div class="eyebrow">TEI 想定仕様ガイド</div><h1>X-TEA／XEAD原資料へ戻った照合</h1><p class="lead">アップロード済みのModeler／Driverマニュアルと3系統のリファレンスモデルを読み、未決仕様の検討へ戻しました。</p><p class="meta">照合基線：main <code>19995a9304a6218c50ed8245ffd44a6403a4cc55</code> ／ 未統合案は別表示</p><div class="toc" aria-label="ページ内目次"><a href="#policy">迷ったら原資料へ戻る</a><a href="#manuals">アップロード済みマニュアルの再確認</a><a href="#models">3系統の実モデルを静的に照合</a><a href="#differences">ModelerからDriverへの変形を前提にする</a><a href="#reopen">未決仕様へ戻す具体的な検討</a><a href="#provenance">原資料の識別と再現範囲</a></div><section id="policy"><h2>迷ったら原資料へ戻る</h2><p>仕様判断に迷いがある場合は、渡辺幸三氏の設計意図、アップロード済みX-TEA／XEADマニュアル、リファレンスモデルの具体的な内容へ立ち返ります。今回も原ZIPを読み、既存の要約からでは分からなかったUI・手順・実装上の差を再確認しました。</p><p>原資料はTEIの設計を批判・改善するために使います。旧製品の全仕様を互換要件として取り込むことや、未採用のTEI候補を原典の権威だけで確定することはしません。疑問、原資料の場所、そこから分かること、TEIでの選択肢、残る実証をひと組で記録します。</p></section><section id="manuals"><h2>アップロード済みマニュアルの再確認</h2><div class="table-wrap"><table><thead><tr><th scope="col">原資料内の位置</th><th scope="col">確認した内容の要旨</th><th scope="col">TEI仕様への含意</th></tr></thead><tbody><tr><td>Modeler Role.HTML</td><td>担当業務のeventは実施する行為ではなく、認識される状況。Actionに条件と操作、Function／IOごとの使い方がある。</td><td>TEIのtriggerをcommandと混同しない。Procedureは行為本文と道具の利用方法を保持できるかを確かめる。</td></tr><tr><td>Modeler SubjectArea.HTML</td><td>Flowはデータやモノの流れ。storageには台帳、書類、現金、物品、待つ人等があり、表示順はslide用。</td><td>Business Flowを制御順序へ縮めない。物理的な対象を失わず、スライド順から時間を導出しない。</td></tr><tr><td>Modeler Subsystem.HTML／Driver Subsystem.HTML</td><td>外部tableへのCUDと外部機能利用を見て結合を検査する。凝集度・結合度から分割を考える。</td><td>単なる業務分類やmicroservice分割ではない。TEIのnamespace／DB ownershipだけで説明が足りるかを実例で確かめる。</td></tr><tr><td>Modeler Function.HTML／FunctionIO.HTML</td><td>Functionから使う機能・使われる業務へ移動できる。UI・帳票・table入出力を結ぶ。</td><td>Function視点にUIと呼出関係を残す。API一覧だけへ縮めない。</td></tr><tr><td>Driver Function300.HTML</td><td>見出し＋明細タブの照会に加え、再帰構造の構成ツリーと見出しの連動を持つ。</td><td>X-TEAには階層表示がないと断定しない。TEIの3階層以上・高密度編集要求との差は、実画面と業務Scenarioで比較する。</td></tr><tr><td>Driver Instance.HTML</td><td>TableOperatorとTableEvaluatorでは、結合読取やTable Script実行の有無が異なる。</td><td>同じCRUD呼出しに見えても副作用・制約評価が等しいとは限らない。TEIではCapability／Validation／実現の契約を分けて比較する。</td></tr></tbody></table></div><p>資料：XTeaModelerInstaller1_4_50__Files.zip／XTeaDriverInstaller230127__Files.zipのhelp配下。本文の関連箇所を確認し、元の画面画像すべての視覚監査や実アプリ起動は行っていません。</p></section><section id="models"><h2>3系統の実モデルを静的に照合</h2><div class="table-wrap"><table><thead><tr><th scope="col">アップロード済みZIP</th><th scope="col">Table</th><th scope="col">Function</th><th scope="col">TaskAction</th><th scope="col">IO参照なし</th><th scope="col">IO参照複数</th></tr></thead><tbody><tr><td>MfgDscrt180122.zip</td><td>98</td><td>365</td><td>205</td><td>14</td><td>173</td></tr><tr><td>MfgOrder160627.zip</td><td>56</td><td>227</td><td>148</td><td>6</td><td>132</td></tr><tr><td>SalesOrosi160627.zip</td><td>64</td><td>269</td><td>207</td><td>15</td><td>174</td></tr></tbody></table></div><p>集計対象は各ZIP内の.xead全体です。TaskActionの子孫TaskFunctionIO数が0／2以上のものを数えました。「IO参照なし」には未記入の雛形も含まれるため、件数全てを実質的な手作業と認定しません。ID名の比較やDB実行による意味互換の検証ではありません。</p><p>実際の内容には、書類の保管、調査書の返却、承認済み書類の引渡し、取引先との調整など、Function／IO参照なしで成立する行為がありました。一つのActionが複数IOを使用する例も多数あり、Business Actionを単一Patternへ固定する案は原モデルの表現力を失います。</p></section><section id="differences"><h2>ModelerからDriverへの変形を前提にする</h2><div class="table-wrap"><table><thead><tr><th scope="col">モデル</th><th scope="col">Modeler Table / Function</th><th scope="col">Driver Table / Function</th></tr></thead><tbody><tr><td>MfgDscrt180122.zip</td><td>98 / 365</td><td>99 / 381</td></tr><tr><td>MfgOrder160627.zip</td><td>56 / 227</td><td>58 / 203</td></tr><tr><td>SalesOrosi160627.zip</td><td>64 / 269</td><td>65 / 261</td></tr></tbody></table></div><p>この表はXML要素数の比較です。同名・同数なら意味が一致するとは限りません。また今回の3モデルではTable数も変わっています。過去の「Tableは安定」という要約を完全な同一性と読み替えず、設計のData identityと実装の物理構造を個別に追跡する必要があります。</p><p>IOTableにはOpC／OpR／OpU／OpDの明示属性を確認しました。一方、TaskFunctionIOはFunctionID／IOIDとOperationsを持ちます。CRUDが業務文章から自然に分かるという扱いではなく、実際にどの入出力の操作指定へ辿れるかを確かめます。</p></section><section id="reopen"><h2>未決仕様へ戻す具体的な検討</h2><div class="table-wrap"><table><thead><tr><th scope="col">TEIの問い</th><th scope="col">戻った原資料</th><th scope="col">今回の結論と次の実証</th></tr></thead><tbody><tr><td>Procedureを単一Application配下へ置けるか</td><td>3モデルのTaskAction→複数Function／IO、Roleの業務手順説明。</td><td>複数機能と手作業を保つ必要がある。独立Business意味面の候補は整合的だが、production採用までは証明しない。</td></tr><tr><td>HandoffはStepの並びから導出できるか</td><td>承認書類の引渡し・調査書返却等の行為、Flowの説明。</td><td>並びだけでは相手や条件が落ちる。from／to／conditionで十分かをTEI独自の現実例で試す。</td></tr><tr><td>Subsystemはnamespaceで代用できるか</td><td>外C/R/U/D、外部機能、凝集度・結合度の説明。</td><td>namespaceだけで同じレビューができるとは未確認。published Actionと直接／間接CUDの例から比較する。</td></tr><tr><td>状態は一つのstatus列で足りるか</td><td>MfgOrder.xeafのMT030、MfgDscrt.xeafのJT010、SalesOrosi.xeafのGT012周辺Script。</td><td>状態設定、入力制御、在庫・売掛・関連予定の更新が別の関心として存在する。初回の一遷移案を全業務へ一般化しない。</td></tr><tr><td>階層UIをTEIでどう扱うか</td><td>Driver Function300の構成ツリー、明細タブ、関連機能起動。</td><td>既存の豊かさを踏まえた改善にする。Target-neutralな意味とTarget上の配置・操作を実例で比較する。</td></tr></tbody></table></div><p>状態周辺Scriptは静的に位置と内容を照合した範囲です。実行順、transaction、取消後の完全な整合性を今回の閲覧だけで保証しません。</p></section><section id="provenance"><h2>原資料の識別と再現範囲</h2><div class="table-wrap"><table><thead><tr><th scope="col">原ZIP</th><th scope="col">SHA-256</th></tr></thead><tbody><tr><td>MfgDscrt180122.zip</td><td><code>fddbfce4bdfe325d39c943a415cf9ffa7218d19fecbd58716bded1ac2d4fd328</code></td></tr><tr><td>MfgOrder160627.zip</td><td><code>2e2324ba6e7a2ec3e52f783011bfb655520589483d1f3f5890a932bd6a0e0aec</code></td></tr><tr><td>SalesOrosi160627.zip</td><td><code>b40ad8640ca3999dd2a062d5b1b9e6d902956605bcd691a648da8630c25a70a1</code></td></tr><tr><td>XTeaDriverInstaller230127__Files.zip</td><td><code>f79f6825a6d6dce3c4c41f3c7028b92c3e18fd33f06e9090bee064f79cfbfe32</code></td></tr><tr><td>XTeaModelerInstaller1_4_50__Files.zip</td><td><code>257a333a8db9319fb5da49689751ccb90bbaa384021bf1e6b8e2623ac3cc74bc</code></td></tr></tbody></table></div><p>XMLごとのhashと集計は<a href="xtea-observations.json">xtea-observations.json</a>へ保存しています。元ZIP・マニュアル本文・リファレンスモデル本体はGitHubへ複製せず、今回の観察・判断と所在情報を残します。原モデルの起動、付属DB操作、TEI-native realistic Referenceの実証は行っていません。外部モデルを読んだことをPR #482の次Reference完了へ読み替えません。</p></section><footer class="footer">このガイドは既存正本の横断説明です。要求・採用判断・実装状態・Gate条件の正本を複製しません。リンクは原則として照合時のcommitへ固定し、変化はGit履歴と最新正本で確認します。<br><a href="https://github.com/hat47x/tei-platform/blob/main/docs/status.md">最新の実装状況</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/main/plan/MASTER_PLAN.md">最新の開発計画</a> ／ <a href="https://github.com/hat47x/tei-platform/tree/main/docs/specification">GitHubで文書を見る</a></footer></main></div></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="X-TEA／XEADの公開資料と参照可能なモデルから得た設計上の示唆を、TEIの要件検討のために独立に整理します。">
+  <title>X-TEA／XEADから得た設計上の示唆 | TEI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div>
+    <div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div>
+    <nav aria-label="文書一覧">
+      <a href="index.html">全体像</a>
+      <a href="business.html">業務設計</a>
+      <a href="architecture.html">意味と実行</a>
+      <a href="authoring.html">Studio・AI・Target</a>
+      <a href="decisions.html">整合性・未決事項</a>
+      <a aria-current="page" href="xtea-review.html">X-TEA／XEADの参照</a>
+      <a href="requirements.html">全26要求</a>
+      <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
+      <a href="sources.html">資料・追跡</a>
+    </nav>
+    <small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small>
+  </aside>
+  <main id="main">
+    <div class="eyebrow">TEI 想定仕様ガイド</div>
+    <h1>X-TEA／XEADから得た設計上の示唆</h1>
+    <p class="lead">X-TEA／XEADの公開資料と参照可能なモデルを、TEIの設計要件を検討するための外部参照の一つとして照合しました。</p>
+
+    <section>
+      <h2>位置づけ</h2>
+      <p>TEIはX-TEA／XEADの公式な後継・派生プロジェクトではありません。本ページは、公開資料等から確認できる設計上の考え方を独立に調査し、TEIの要求と照合した記録です。差異は優劣ではなく、想定する用途・技術環境・責務境界の違いとして扱います。</p>
+      <p>参照対象の実装やモデルをTEIの互換要件として再現することは目的としません。また、参照モデルの内容そのものは、利用条件を確認できない状態で複製・再配布しません。</p>
+    </section>
+
+    <section>
+      <h2>確認できた重要な示唆</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">観点</th><th scope="col">参照資料から得た示唆</th><th scope="col">TEIでの扱い</th></tr></thead>
+        <tbody>
+          <tr><td>Data / Function / Business</td><td>一つの業務システムを複数の視点から照合し、単一視点では見落とす不足や矛盾を検討できる。</td><td>三視点を同一のsource of truthへ潰さず、相互参照できるProjectionとして扱う。</td></tr>
+          <tr><td>Business Action</td><td>業務行為にはシステム機能だけでなく、手作業・対話・物理的な受渡し等も含まれ得る。</td><td>Business ActionとApplication Functionを同一視せず、manual / external / unresolvedも表現可能にする。</td></tr>
+          <tr><td>Function / IO</td><td>機能、画面・帳票、データ入出力、機能間の利用関係を横断して確認できる。</td><td>API一覧や画面階層だけに縮約せず、InteractionとDataへの関係を追跡する。</td></tr>
+          <tr><td>Subsystem</td><td>外部データへの操作や外部機能利用を見ながら、凝集・結合の境界を検討する。</td><td>namespaceやdeployment単位だけで境界を決めず、実際の依存関係をEvidenceとして確認する。</td></tr>
+          <tr><td>実行による検証</td><td>設計内容を動かして確かめることで、設計と実現のずれを見つけられる。</td><td>TEIではSemantic / Realization / Runtime / Evidenceの責務を分けたうえで、Referenceを通じて検証する。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>TEIでそのまま前提にしないもの</h2>
+      <p>参照資料に見られる具体的なXML構造、画面構成、クラス構造、実行方式は、そのままTEIの仕様にはしません。TEIでは複数Target、Provider分離、明示的なauthority、Observation / Evidence、file-native authoring等の現在の要件から責務境界を決めます。</p>
+      <p>同様に、参照資料に特定の表現があることだけを理由に、未決のTEI仕様を確定しません。実際の業務ScenarioとReference Evidenceで必要性を確認します。</p>
+    </section>
+
+    <section>
+      <h2>静的照合で確認した範囲</h2>
+      <p>参照可能なModeler／Driver資料および複数のリファレンスモデルについて、構造・関係・代表的な業務記述を静的に照合しました。たとえば、一つのBusiness Actionが複数のFunction / IOを利用する例や、Function参照を持たずに成立する業務行為が確認でき、TEIでBusiness Actionを単一のApplication Patternへ固定しない判断を支えています。</p>
+      <p>この確認は、すべての画面・実装・実行経路を網羅した製品評価ではありません。実行時の完全な意味互換、性能、品質、保守性等を本ページから推定しません。</p>
+    </section>
+
+    <section>
+      <h2>参照と再現性</h2>
+      <p>公開原典と、TEI側で採用した設計判断の追跡先は<a href="sources.html">資料・出典と仕様の追跡</a>にまとめます。機械的な静的集計値は<a href="xtea-observations.json">xtea-observations.json</a>に分離し、本文では必要な含意だけを記述します。</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

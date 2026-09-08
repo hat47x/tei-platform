@@ -61,11 +61,13 @@ TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣�
 - **Sandbox Profile** — 1回のprocess invocationに必要なleast-authority enforcement request。Profileが存在するだけで実際のenforcement済みとはみなしません。
 - **Runtime Policy fingerprint** — Plugin Lock identityとは別のexecution-policy identity。Durable Runが利用するCapability PermissionとResource Bindingを固定します。
 
-## Historical name
+## Historical references
 
-**X-TEA** は現在の製品・プラットフォーム名ではありません。
+**X-TEA / XEAD** は現在の製品・プラットフォーム名ではありません。
 
-設計系譜、過去の参照モデル、provenanceを保つ必要がある古いartifactを指す場合に限って歴史的名称として残します。新しい実装symbol、Repository path、CLI command、generated artifact、Canonical DefinitionではTEIの名称を使います。
+TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するとき、またはprovenanceを保つ必要がある既存artifactを指すときに、独立した参照対象として歴史的名称を用います。
+
+新しい実装symbol、Repository path、CLI command、generated artifact、Canonical DefinitionではTEIの名称を使います。
 
 ## Naming rule
 
