@@ -1,5 +1,7 @@
 # TEI Planning
 
+[プロダクト開発ロードマップ（HTML）](product-roadmap.html)は、期限を設けず、着手依存と完了条件で開発順を整理した横断ガイドです。[想定仕様](../docs/specification/index.html)と相互参照し、正式なGate・採用判断は既存正本に従います。
+
 `plan/`には、Product Value / Requirementsを実際の着手順、Product Acceptance Scenario、ADR、Reference、Evidence、Gateへ接続するplanning文書を置きます。
 
 - 何を守るか: `product/`
@@ -165,3 +167,4 @@ Master Plan、v1 Plan、Milestones、Gap Audit、Gate契約等の上位文書は
 過去の判断経緯はGit history、ADR、完了 / superseded Plan Issueから追跡します。
 
 同じ実行手順やsemantic boundaryを複数文書で競合する正本にしません。
+

@@ -1,0 +1,7 @@
+{
+  "name": "tei-spec-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {"render": "node render-requirements.mjs"},
+  "dependencies": {"marked": "17.0.5"}
+}
