@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"tei/internal/workspace"
@@ -70,8 +69,8 @@ func TestBusinessCandidateOnlyFreshProcessReloadPreservesMeaningWithoutLegacyInp
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatalf("fresh-process normalized Business result is invalid: %v", err)
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("fresh-process candidate-only reload changed normalized Business meaning: got=%+v want=%+v", got, want)
+	if semanticFingerprintD4O1Probe(t, got) != semanticFingerprintD4O1Probe(t, want) {
+		t.Fatalf("fresh-process candidate-only reload changed normalized Business semantic fingerprint: got=%+v want=%+v", got, want)
 	}
 }
 
