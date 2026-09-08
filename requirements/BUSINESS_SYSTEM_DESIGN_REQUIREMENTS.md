@@ -45,6 +45,10 @@ Business ActionはApplication Functionを持たなくても正当です。人間
 
 Business Procedureでは、必要に応じてpurpose、trigger / event、actor、business action、manual / external work、Application Function利用、handoff、completion / continuation等を説明します。
 
+Business Procedureを一つのApplication containerの子へ固定することも要求しません。関係するApplicationは、explicitなApplication Pattern参照等をaccepted / normalized Worldでexactに解決して確認します。Reference fixtureのprimary Applicationやreporting contextを、Business Procedureのsemantic ownerやauthorityへ暗黙昇格させません。
+
+また、Reference / reporting contextとしてApplication labelを持つ場合でも、それはBusiness semantic prerequisiteではありません。explicit referenceが解決できる限り、contextの欠落や未知labelだけでBusiness Procedureをinvalidにしません。
+
 ただしRQ-025は、`Procedure`を必ずtop-level Canonical objectにすることや、Workflow Engine、branch、timer、retry、scheduler、orchestration semanticsをCoreへ追加することを要求しません。
 
 また、
@@ -112,11 +116,12 @@ RQ-025 / RQ-026は独立して追加されましたが、次の既存Requirement
 6. realistic Reference Modelのscale / packaging / licensing
 7. temporal semanticsのdomain meaning境界
 8. cross-view diagnosticのseverityをどこまでdeterministic Conformanceへ昇格するか
+9. optionalなReference / reporting Application contextをfixtureへ残すか完全除去するか、そのcompatibility
 
 これらを埋めるために、X-TEAに同名概念があるという理由だけでCore kindを追加しません。
 
 ## 7. Acceptance Trace
 
-RQ-025 / RQ-026のProduct Acceptance Scenario、Reference、Evidence位置は [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) にまとめます。
+RQ-025 / RQ-026のPrimary PASであるPAS-07は [`plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) へ統合済みです。
 
-最終的には既存の `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md` へ統合し、この索引自体をRequirement正本として拡張しません。
+詳細なReference / Evidence mappingは [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。
