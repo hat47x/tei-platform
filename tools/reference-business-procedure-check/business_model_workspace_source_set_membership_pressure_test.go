@@ -57,6 +57,60 @@ func TestBusinessWorkspaceSourceRootMembershipChangesManagedAuthorityReachabilit
 	}
 }
 
+func TestBusinessWorkspaceSourceAddRemoveChangesManagedSourceSet(t *testing.T) {
+	root := t.TempDir()
+	manifestPath := filepath.Join(root, "tei.workspace.yaml")
+	writeBusinessWorkspaceDiscoveryFileProbe(t, manifestPath, []byte("workspace: business_add_remove_pressure\nsources:\n  - business\n"))
+
+	primaryRel := filepath.ToSlash(filepath.Join("business", "order-entry-procedure.json"))
+	secondaryRel := filepath.ToSlash(filepath.Join("business", "follow-up-procedure.json"))
+	primaryPath := filepath.Join(root, filepath.FromSlash(primaryRel))
+	secondaryPath := filepath.Join(root, filepath.FromSlash(secondaryRel))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, primaryPath, []byte(`{"schemaVersion":"business-authoring-candidate-probe-v0","procedure":"order-entry.order-handling"}`))
+
+	initial, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("initial workspace load: %v", err)
+	}
+	if !businessWorkspaceManagedPathProbe(initial.ManagedFiles, primaryRel) || businessWorkspaceManagedPathProbe(initial.ManagedFiles, secondaryRel) {
+		t.Fatalf("unexpected initial Business source set: %+v", initial.ManagedFiles)
+	}
+
+	writeBusinessWorkspaceDiscoveryFileProbe(t, secondaryPath, []byte(`{"schemaVersion":"business-authoring-candidate-probe-v0","procedure":"order-entry.follow-up"}`))
+	added, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("workspace load after source add: %v", err)
+	}
+	if !businessWorkspaceManagedPathProbe(added.ManagedFiles, secondaryRel) {
+		t.Fatalf("new Business source did not enter managed source set: %+v", added.ManagedFiles)
+	}
+	addedIndex, err := workspace.BuildSourceIndex(root, added)
+	if err != nil {
+		t.Fatalf("source index after source add: %v", err)
+	}
+	if _, ok := businessWorkspaceDiscoveryArtifactProbe(addedIndex.Artifacts, secondaryRel); !ok {
+		t.Fatalf("new Business source did not enter Source Index: %+v", addedIndex.Artifacts)
+	}
+
+	if err := os.Remove(secondaryPath); err != nil {
+		t.Fatalf("remove secondary Business source: %v", err)
+	}
+	removed, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("workspace load after source remove: %v", err)
+	}
+	if businessWorkspaceManagedPathProbe(removed.ManagedFiles, secondaryRel) {
+		t.Fatalf("removed Business source remained in managed source set: %+v", removed.ManagedFiles)
+	}
+	removedIndex, err := workspace.BuildSourceIndex(root, removed)
+	if err != nil {
+		t.Fatalf("source index after source remove: %v", err)
+	}
+	if _, ok := businessWorkspaceDiscoveryArtifactProbe(removedIndex.Artifacts, secondaryRel); ok {
+		t.Fatalf("removed Business source remained in Source Index: %+v", removedIndex.Artifacts)
+	}
+}
+
 func businessWorkspaceManagedPathProbe(values []workspace.ManagedFile, path string) bool {
 	for _, value := range values {
 		if value.Path == path {
