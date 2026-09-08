@@ -35,6 +35,7 @@ Status: In Progress
 - `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md`
 - `plan/BUSINESS_AUTHORING_PRODUCTION_LOADER_VERSIONING_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_AUTHORING_WORKSPACE_DISCOVERY_BOUNDARY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md`
 - `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`
 - `plan/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`
@@ -70,6 +71,9 @@ Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制�
 Business source freshness != Business semantic revision != cross-view Conformance base
 file exists != authoritative source reachable
 schemaVersion != source authority priority
+review / impact projection != authoritative source
+Deployment Run.Revision != Business semantic revision
+existing primitive != Shared Acceptance authority
 ```
 
 Business ProcedureにはApplication / Semantic Worldから機械的に導出できないresidual meaningがある。
@@ -146,6 +150,9 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 - legacy + candidateをpermanent dual authorityとしてmergeしない
 - source pathをBusiness semantic identityへしない
 - Git HEADだけを無条件なfreshness proofとしない
+- Workbench / impact projectionをauthoritative sourceへ昇格しない
+- Deployment revision / fingerprint機構をBusiness semantic revision / source transactionへ読み替えない
+- implementation gapをBusiness schema field追加のEvidenceへしない
 
 ## Acceptance / Evidence Pressure matrix
 
@@ -263,8 +270,12 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 | A108 | unrelated repository changeによるfalse-positive staleは許容できるがrelevant Business / World changeを見逃すfalse-negative staleはrejectする | correctness rule固定 |
 | A109 | physical freshnessはfile contentだけでなくsource add/remove・authoritative source-root membership changeもcoverする | discovery-set boundary固定 |
 | A110 | Business / World source planeが独立versioningされる場合は両stale conditionを独立検出またはcomposite tokenでcoverする | future reopen boundary固定 |
+| A111 | Workspace / Source Indexはsource-root discovery・ManagedFiles・content fingerprint・stale validationのprimitiveを提供するがcandidate authority / Accept / atomic applyを所有しない | existing implementation reuse boundary |
+| A112 | Workbench / Consumer Impact / Release Graphはdeterministic review / impact projectionの先例でありsecond source of truth / authoritative applyへ昇格しない | existing architecture corroboration |
+| A113 | Deployment CLIの`expected-revision`とdurable plan/plugin/runtime fingerprintsはstale-reject先例だがDeployment Run.Revision / state machineをBusiness semantic/source authorityへ流用しない | existing implementation precedent / explicit non-reuse |
+| A114 | current audited implementation surfacesではgeneric source-authoring Shared Acceptance / multi-file atomic apply / authority cutover / fresh-process Business reloadは確立されていない | scoped implementation gap / not schema Evidence |
 
-A91〜A110はcurrent minimum semantic candidateを拡張するものではない。主にauthoring representation、source discovery、Shared Acceptance freshness、migration cutoverの**実装境界を狭めるPressure**である。
+A91〜A114はcurrent minimum semantic candidateを拡張するものではない。主にauthoring representation、source discovery、Shared Acceptance freshness、migration cutover、existing implementation reuseの**実装境界を狭めるPressure**である。
 
 ## Candidate stack
 
@@ -284,7 +295,7 @@ Current minimum candidateは引き続き:
 D4 + singular narrow O1 + S4-A + H1/R3
 ```
 
-であり、A91〜A110から新しいBusiness field / Core kindを追加しない。
+であり、A91〜A114から新しいBusiness field / Core kindを追加しない。
 
 ### D4 Step body
 
@@ -464,6 +475,58 @@ Business source freshness
 
 Git HEAD単体はdirty / untracked authoritative sourceを見逃し得るため無条件なfreshness proofにはしない。source add/remove・authoritative source-root membership changeもbase stateとして扱う。
 
+### Existing implementation reuse boundary
+
+Current audited implementation surfacesから再利用できるprimitive / precedentは次です。
+
+```text
+workspace sources / ManagedFiles
+  -> physical source-set discovery
+
+Source Index Artifact / fingerprint / Validate
+  -> physical source freshness / trace
+
+Workbench / Consumer Impact / Release Graph
+  -> deterministic review / impact projection
+
+Deployment CLI expected-revision
++ durable plan / plugin / runtime fingerprints
+  -> stale-reject precedent
+```
+
+ただし:
+
+```text
+source discovery primitive
+  != candidate authority
+
+fingerprint primitive
+  != complete Shared Acceptance revision
+
+review projection
+  != authoritative apply
+
+Deployment Run.Revision
+  != Business semantic revision
+```
+
+です。
+
+Current audited surfacesではgeneric source-authoring candidate boundary、complete stale-envelope builder、multi-file atomic source update、authority-discovery cutover、production Business loader、fresh-process candidate-only reloadは確立されていません。
+
+したがってcurrent strongest integration directionは:
+
+```text
+Business-specific authoring adapter
+  -> workspace / Source Index primitives
+  -> strict Business decode / normalize
+  -> cross-lane Shared Acceptance
+  -> atomic source update + authority discovery switch
+  -> fresh-process candidate-only reload / Conformance
+```
+
+です。Lane CはShared Acceptance substrate自体を新規所有しません。
+
 ## Authorization / Observation boundary
 
 ```text
@@ -516,13 +579,15 @@ manufacturing / inventory pressure
 - permanent legacy/candidate dual-read
 - schemaVersionによるauthority priority
 - mandatory `businessAuthoringMode`
+- Workbench / impact modelのauthoritative source化
+- Deployment durable state machineのBusiness authoring / Workflowへの流用
 - Gate B / Gate C完了条件変更
 
 ## Verification status
 
 Repository上にはchecker / fixtures / Go pressure testsを実装済み。Remote Desktopは2026-09-08時点でもHAT47Xがofflineで実行できず、PR headにもstatus check / workflow runはない。
 
-したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A110のGo Pressureもsource-level / test-onlyのままであり、actual runner PASSへ読み替えない。PR #482はDraftを維持する。
+したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A114のGo Pressure / implementation auditもsource-level / test-onlyのままであり、actual runner PASSへ読み替えない。PR #482はDraftを維持する。
 
 ## Operational completion checklist
 
@@ -569,5 +634,9 @@ Repository上にはchecker / fixtures / Go pressure testsを実装済み。Remot
 39. candidate-only sourceをlegacy migration adapterなしでfresh process reloadしsame normalized meaning + Conformanceを再現する
 40. source add/remove / source-root membership changeを含むcomplete stale envelopeをshared Acceptance側で実証する
 41. second realistic TEI-original Handoffで`from/to/condition` sufficiencyを確認するまでactor/event/document等を追加しない
+42. production Business adapterではworkspace/Source Index primitiveを再利用し、source discovery / fingerprintを独自再実装しない
+43. Workbench / impact projectionをPreview側へ再利用する場合もauthoritative write authorityを与えない
+44. Deployment `expected-revision` / fingerprint先例を参考にしてもBusiness semantic revision / Workflow / source transactionへ流用しない
+45. cross-lane Shared Acceptance implementationが確立するまでLane C専用generic transaction engineを作らない
 
 このchecklistの充足だけで独立にReadyを宣言しない。ADR候補作成の最終判定はPre-ADR Gateに従う。
