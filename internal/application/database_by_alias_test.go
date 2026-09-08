@@ -2,6 +2,31 @@ package application
 
 import "testing"
 
+func TestHasDatabaseAliasReturnsTrueForDuplicateDeclaration(t *testing.T) {
+	app := Application{
+		Databases: []DatabaseRequirement{
+			{Alias: "sales", TargetDatabase: "sales_core"},
+			{Alias: "sales", TargetDatabase: "archive_sales"},
+		},
+	}
+
+	if !app.HasDatabaseAlias("sales") {
+		t.Fatal("duplicateを含む既存datasource alias宣言を未定義として扱いました")
+	}
+}
+
+func TestHasDatabaseAliasReturnsFalseWhenAliasIsMissing(t *testing.T) {
+	app := Application{
+		Databases: []DatabaseRequirement{
+			{Alias: "sales", TargetDatabase: "sales_core"},
+		},
+	}
+
+	if app.HasDatabaseAlias("master") {
+		t.Fatal("存在しないdatasource alias宣言を存在すると扱いました")
+	}
+}
+
 func TestDatabaseByAliasKeepsDeclarationLookupForDuplicateAliasWithoutReturningFirstMatch(t *testing.T) {
 	app := Application{
 		Databases: []DatabaseRequirement{
