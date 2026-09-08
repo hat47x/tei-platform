@@ -1,14 +1,13 @@
 {
   "reviewedOn": "2026-09-08",
-  "method": "ZIP member bytes parsed with Python xml.etree.ElementTree; all descendants counted; no DB/application execution",
+  "scope": "Independent static research observations used to pressure-test TEI design questions. This dataset is not a product evaluation, compatibility statement, or redistribution of the referenced model contents.",
+  "method": "Reference archive XML was parsed statically; descendants were counted; no DB/application execution or full visual audit was performed.",
   "archives": [
     {
       "archive": "MfgDscrt180122.zip",
-      "sha256": "fddbfce4bdfe325d39c943a415cf9ffa7218d19fecbd58716bded1ac2d4fd328",
       "files": [
         {
           "path": "MfgDscrt/MfgDscrt.xead",
-          "sha256": "d387070b6d504aa67cbb7155017b852809c06b41808e0f708d2bb1a8a60ed866",
           "tables": 98,
           "functions": 365,
           "subsystems": 17,
@@ -19,25 +18,19 @@
         },
         {
           "path": "MfgDscrt/MfgDscrt.xeaf",
-          "sha256": "6997037f806e4d9e9c0bfd99e66f21d7476429587b5f095dafbc88c5dc946027",
           "tables": 99,
           "functions": 381,
           "subsystems": 17,
           "tasks": 0,
-          "taskActions": 0,
-          "actionsWithoutFunctionIO": 0,
-          "actionsWithMultipleFunctionIO": 0
+          "taskActions": 0
         }
-      ],
-      "membersCount": 321
+      ]
     },
     {
       "archive": "MfgOrder160627.zip",
-      "sha256": "2e2324ba6e7a2ec3e52f783011bfb655520589483d1f3f5890a932bd6a0e0aec",
       "files": [
         {
           "path": "MfgOrder/MfgOrder.xead",
-          "sha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
           "tables": 56,
           "functions": 227,
           "subsystems": 12,
@@ -48,25 +41,19 @@
         },
         {
           "path": "MfgOrder/MfgOrder.xeaf",
-          "sha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
           "tables": 58,
           "functions": 203,
           "subsystems": 12,
           "tasks": 0,
-          "taskActions": 0,
-          "actionsWithoutFunctionIO": 0,
-          "actionsWithMultipleFunctionIO": 0
+          "taskActions": 0
         }
-      ],
-      "membersCount": 219
+      ]
     },
     {
       "archive": "SalesOrosi160627.zip",
-      "sha256": "b40ad8640ca3999dd2a062d5b1b9e6d902956605bcd691a648da8630c25a70a1",
       "files": [
         {
           "path": "SalesOrosi/SalesOrosi.xead",
-          "sha256": "692b5ba4b485461093aace95507fec1f590f361b45267585b9ae62b6dee6962c",
           "tables": 64,
           "functions": 269,
           "subsystems": 13,
@@ -77,25 +64,19 @@
         },
         {
           "path": "SalesOrosi/SalesOrosi.xeaf",
-          "sha256": "c92e285ff00cf7872f217937c73d08250047f72b7748019b590263b83eb7b21f",
           "tables": 65,
           "functions": 261,
           "subsystems": 13,
           "tasks": 0,
-          "taskActions": 0,
-          "actionsWithoutFunctionIO": 0,
-          "actionsWithMultipleFunctionIO": 0
+          "taskActions": 0
         }
-      ],
-      "membersCount": 262
+      ]
     },
     {
       "archive": "XTeaDriverInstaller230127__Files.zip",
-      "sha256": "f79f6825a6d6dce3c4c41f3c7028b92c3e18fd33f06e9090bee064f79cfbfe32",
       "files": [
         {
           "path": "XTeaDriverInstaller230127__Files/Skeleton/Skeleton.xead",
-          "sha256": "f8bbaf8a25114caef2d7799b2240906b7fcb5745a8e67dbefeb010eb503b504f",
           "tables": 14,
           "functions": 47,
           "subsystems": 2,
@@ -106,25 +87,19 @@
         },
         {
           "path": "XTeaDriverInstaller230127__Files/Skeleton/Skeleton.xeaf",
-          "sha256": "c3f1399cb7eb8776a1a8e1c6a20735179cfc0d0bd114bb2b4cfb6b734befd156",
           "tables": 15,
           "functions": 38,
           "subsystems": 2,
           "tasks": 0,
-          "taskActions": 0,
-          "actionsWithoutFunctionIO": 0,
-          "actionsWithMultipleFunctionIO": 0
+          "taskActions": 0
         }
-      ],
-      "membersCount": 237
+      ]
     },
     {
       "archive": "XTeaModelerInstaller1_4_50__Files.zip",
-      "sha256": "257a333a8db9319fb5da49689751ccb90bbaa384021bf1e6b8e2623ac3cc74bc",
       "files": [
         {
           "path": "XTeaModelerInstaller1_4_50__Files/MfgOrder.xead",
-          "sha256": "24b718dfea0c1353ce7c5e3e79be52fbc59b57d9bd36042f1e33e601444fd41d",
           "tables": 56,
           "functions": 233,
           "subsystems": 12,
@@ -135,7 +110,6 @@
         },
         {
           "path": "XTeaModelerInstaller1_4_50__Files/Skeleton.xead",
-          "sha256": "f8bbaf8a25114caef2d7799b2240906b7fcb5745a8e67dbefeb010eb503b504f",
           "tables": 14,
           "functions": 47,
           "subsystems": 2,
@@ -144,8 +118,12 @@
           "actionsWithoutFunctionIO": 0,
           "actionsWithMultipleFunctionIO": 50
         }
-      ],
-      "membersCount": 106
+      ]
     }
-  ]
+  ],
+  "publicationPolicy": {
+    "use": "Only independently derived observations and counts are published here.",
+    "limits": "No claim is made that these observations characterize X-TEA/XEAD as a whole.",
+    "reuse": "The underlying third-party model contents are not included; exact reuse terms must be checked separately."
+  }
 }
