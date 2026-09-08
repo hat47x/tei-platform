@@ -1,244 +1,53 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "reviewedOn": "2026-09-08",
   "repository": "https://github.com/hat47x/tei-platform",
-  "baseCommit": "19995a9304a6218c50ed8245ffd44a6403a4cc55",
-  "scope": "current source and selected code; retrieved prior-chat excerpts; draft PR bodies; no actual Go or provider execution in this documentation task; uploaded Modeler/Driver manual sections and three paired xead/xeaf models statically inspected",
-  "sources": [
+  "scope": "Public provenance for the TEI specification guide. Internal chat history, local acquisition steps, temporary handoff material, and unmerged working-state identifiers are intentionally excluded.",
+  "teiSources": [
+    "README.md",
+    "docs/README.md",
+    "docs/architecture.md",
+    "docs/business-system-design.md",
+    "docs/naming.md",
+    "docs/overview.md",
+    "docs/security.md",
+    "docs/status.md",
+    "product/value/TEI_PRODUCT_VALUE.md",
+    "product/vision/TEI_PRODUCT_VISION.md",
+    "product/principles/TEI_PRODUCT_PRINCIPLES.md",
+    "requirements/TEI_PRODUCT_REQUIREMENTS.md",
+    "requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md",
+    "plan/MASTER_PLAN.md",
+    "plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"
+  ],
+  "externalReferences": [
     {
-      "path": "AGENTS.md",
-      "sha256": "2fa10fbfd869c0b2d39cf2b254f735d08a1c00497c99db83be42e320c0c6f16f"
+      "title": "データ、UI、業務手順の『3要素』をとらえる",
+      "author": "渡辺幸三",
+      "url": "https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html",
+      "purpose": "Reference for multi-view business-system design"
     },
     {
-      "path": "CONTRIBUTING.md",
-      "sha256": "b29da86362bf42f7aa8d910d818ac138358c787792a82b33a1282c22985a10b2"
+      "title": "蔓延する『ブルシットエンジニアリング』",
+      "author": "渡辺幸三",
+      "url": "https://dbconcept.hatenablog.com/entry/2024/07/05/143207",
+      "purpose": "Reference for relationships among structured business, function, and data definitions"
     },
     {
-      "path": "README.md",
-      "sha256": "066dc936b299edd4bfb1ff83ba1c03acd80021d378eaa126848ae5bd96e41acc"
+      "title": "XeadModeler",
+      "url": "https://github.com/xead/XeadModeler",
+      "purpose": "Independent design reference"
     },
     {
-      "path": "docs/README.md",
-      "sha256": "2dee3e11fde0d2c63222eb747151ac12fd7a282f84476caf464240208724b51b"
-    },
-    {
-      "path": "docs/architecture.md",
-      "sha256": "f466a1036954a629fda1b35f3854275cab61bdd9d0d0ea408d0779dab3cda366"
-    },
-    {
-      "path": "docs/business-system-design.md",
-      "sha256": "4542d1be4a2927b282ad18f8be1aa03585ac46d89e8e558696b3afb90f3e5dca"
-    },
-    {
-      "path": "docs/naming.md",
-      "sha256": "e730b802f241afefad99cb4feee4e4c399aef613a282d9b9efafefa625d26c9f"
-    },
-    {
-      "path": "docs/overview.md",
-      "sha256": "c8551c874d7c7c95e5a9b911c41c988c7efa8701a2871a1bb054010ec0a302b6"
-    },
-    {
-      "path": "docs/plugins.md",
-      "sha256": "655549117b78d7268dafb4de7154d188ab0581a25bed6f8ac3f0f74f56aa3afe"
-    },
-    {
-      "path": "docs/security.md",
-      "sha256": "70067b5b82d5510079ad2e869b4a0674e21a2299d0e08531d3f54594a45e7c33"
-    },
-    {
-      "path": "docs/status.md",
-      "sha256": "4e2a9367b116994edf53091e84ef51d724a2115ef933bade3e36673f5f072198"
-    },
-    {
-      "path": "go.mod",
-      "sha256": "d3c5a97e53149d647a86e4645f7b5b2ba9db681abd48b60058afbc998b7ebe0f"
-    },
-    {
-      "path": "internal/driver/observation.go",
-      "sha256": "bf7d1554b2f1c239fb2f0ba77ade430ae3cdc175f7866e43c588e546a8c52de5"
-    },
-    {
-      "path": "internal/driver/resolver.go",
-      "sha256": "0794f20ea3b44c77a7097d602854a90179aa67448765f6c0cb59312093f9e9f9"
-    },
-    {
-      "path": "plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md",
-      "sha256": "03840e1491cedfaed0c8b939988d87becfc1c0c56294967e9c6db416e1e14de3"
-    },
-    {
-      "path": "plan/BUSINESS_PROCEDURE_REALISTIC_MULTI_APPLICATION_SCENARIO_PRESSURE_2026-09.md",
-      "sha256": "9072fcfe0e75da1320742e1b9a7a73411d00f19c494f78d86dc99d132c60ca8a"
-    },
-    {
-      "path": "plan/GATE_B_READINESS_AUDIT.md",
-      "sha256": "39ae979f733d5dc575fadc3a09ecb027bd5937451fea77e34ca87a4ecf8c29e7"
-    },
-    {
-      "path": "plan/GATE_C_EVIDENCE_CONTRACT.md",
-      "sha256": "a23cbe5dc70e2384c1aabf2f5d2338a5c02c1aa3d269f5bb47a0b0853ac60a7d"
-    },
-    {
-      "path": "plan/MASTER_PLAN.md",
-      "sha256": "a2a17955e389e7a85cb4e2a055acba2af95f17155ddf6fb4b47767904f62504b"
-    },
-    {
-      "path": "plan/MILESTONES.md",
-      "sha256": "822714b0fa776452a0fde81f1ce53ad3446cae7a333e777f48af00f60555ffd4"
-    },
-    {
-      "path": "plan/README.md",
-      "sha256": "9723ac9b3f919bff6cdf862f20315b9e946a93b691982b337f1c02f681eec523"
-    },
-    {
-      "path": "plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md",
-      "sha256": "6624712eecf8545bc8e4d681a5195cd9675ad3d4cc91b023f5a2fcfe6cf3ba1f"
-    },
-    {
-      "path": "plan/UPSTREAM_BUSINESS_SYSTEM_DESIGN_VITALITY_AUDIT_2026-09.md",
-      "sha256": "0a0dfdab3505747680004bc94f20913ef0812335eb111c793f34910e5866b835"
-    },
-    {
-      "path": "plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md",
-      "sha256": "e15f1682ac691a7675702ac080d034eecc8b0846daefa9de13c7df912b12d198"
-    },
-    {
-      "path": "plan/adr/0017-application-pattern-ownership.md",
-      "sha256": "0c2554a1c345721071083e24a92c736e533c46486bbdce0635cd76f7b7cbb9ca"
-    },
-    {
-      "path": "plan/adr/0018-application-pattern-authoring-source.md",
-      "sha256": "8f8a833f04253fba513c30b9c1fec5fad329164780322881508c38096f35d13b"
-    },
-    {
-      "path": "plan/adr/0019-authentication-capability-boundary.md",
-      "sha256": "4251a662409e6599172091cc0d839733a9ad2674ae5f07b1c355a1e8b7c95623"
-    },
-    {
-      "path": "plan/adr/0020-capability-business-outcome-boundary.md",
-      "sha256": "258ea6b7b2c62174830541cb784193e5ab2947e4c9852ecbc153945a9ea913d0"
-    },
-    {
-      "path": "plan/adr/0021-header-detail-relation-traversal-realization.md",
-      "sha256": "c08cac55352957d62a6eccac0f95860f5627358c1cc526cab528c21950f38ccd"
-    },
-    {
-      "path": "plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md",
-      "sha256": "d45e33c77edc4d1d36abb3ccb7e26f72ef781ec0567881a7aa20fe54b59abbdf"
-    },
-    {
-      "path": "plan/adr/0023-command-observation-explicit-read-boundary.md",
-      "sha256": "f852a7861528476721cdbf1ae4a1f996ccbb4704d17a8bbee1faffbd6616b40a"
-    },
-    {
-      "path": "plan/adr/0024-business-lifecycle-ownership.md",
-      "sha256": "d59f05dfe5c3c2ffa125b4c86ce2e439611a0bbc3e4c4997e29b1905c2533a9f"
-    },
-    {
-      "path": "plan/adr/0025-transition-evaluation-and-conflict-result.md",
-      "sha256": "87184b86f88f5cc4857f187a6d11b0efe947b9ba661a6fa09ee4292784578f51"
-    },
-    {
-      "path": "plan/design/APPLICATION_DRIVER_V1_DESIGN.md",
-      "sha256": "6ccab3f8746d52231c17866113f7cb0460fd529e1a06e230b522e1e8dda53ac4"
-    },
-    {
-      "path": "plan/design/APPLICATION_PATTERN_V1_DESIGN.md",
-      "sha256": "95ebaea28f547df3d08ee75b08591ba35863596497c155144d23c3fc106f3314"
-    },
-    {
-      "path": "plan/design/BUSINESS_LIFECYCLE_V1_DESIGN.md",
-      "sha256": "24c91e029b026f2498df2dffdb71727aa3935104bdaa33fe1d49878992d43fa3"
-    },
-    {
-      "path": "plan/issue/000038-business-lifecycle-semantics.md",
-      "sha256": "dc3e89189d35d0e63b9f2d4cc74a50e06522031eadaded4ec17ae3a859ff87f0"
-    },
-    {
-      "path": "plan/issue/000039-business-change-rehearsal.md",
-      "sha256": "ab0c6a621defd90c43ebfc9c5d3c5cabe1bf753623ebe66cb8638a75b7ec1834"
-    },
-    {
-      "path": "plan/issue/000040-semantic-component-composition.md",
-      "sha256": "3758e271c4f721a1d1729863f5818b5bd9fee941d485ab512f8f4788e4a41ec5"
-    },
-    {
-      "path": "plan/issue/000041-partition-schema-drift-semantics.md",
-      "sha256": "8b6894b2be3104b73353d3f8de61a91d93527943eff3f17af38e435fe59ab34a"
-    },
-    {
-      "path": "plan/issue/000042-business-procedure-cross-view-reference.md",
-      "sha256": "fe5d8612633dd30c64563fbd12bc4c633c1eb8daa90075e1d7fc04ff1f7b8bc3"
-    },
-    {
-      "path": "plan/issue/000046-studio-shared-acceptance-authoring-loop.md",
-      "sha256": "7948c6440c5cebc6f078421fbc513dd1671cec29bcef90aee5f9b4a3ac5e8397"
-    },
-    {
-      "path": "plan/issue/000047-knowledge-first-semantic-exploration.md",
-      "sha256": "ae9fca9ba35bd1c6ba08ca28ae5635e139478952ad0da508aca0c00652d7d4ce"
-    },
-    {
-      "path": "product/principles/TEI_PRODUCT_PRINCIPLES.md",
-      "sha256": "cf2f190bb7b3377c2fdd94288efced587edecad40eed3dfc47a6ede19288115b"
-    },
-    {
-      "path": "product/value/TEI_PRODUCT_VALUE.md",
-      "sha256": "89945b575f9442b446acc28fcb599f1668edf7b19b7c2978dd09fd6372aaae45"
-    },
-    {
-      "path": "product/vision/TEI_PRODUCT_VISION.md",
-      "sha256": "48138d898382a69dc37ebf9d8c7decb7658b540963d38de223ef68126ba02fbe"
-    },
-    {
-      "path": "reference/workspace/tei.workspace.yaml",
-      "sha256": "d604330ce3b3d30f2399425fa12fcae2a5312b166c0ce156eecd6d5c9f8335e1"
-    },
-    {
-      "path": "requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md",
-      "sha256": "8d2ab9c4d4c15d0f7cf59530fc29dd178faf09392c9db5277210f3b9f084e82e"
-    },
-    {
-      "path": "requirements/TEI_PRODUCT_REQUIREMENTS.md",
-      "sha256": "8aca7c7805f848ec7daafd330208c607704e519cd40506305f54747bf1baf259"
+      "title": "XeadDriver",
+      "url": "https://github.com/xead/XeadDriver",
+      "purpose": "Independent design and executable-specification reference"
     }
   ],
-  "drafts": [
-    {
-      "number": 482,
-      "sha": "fb2c10ba5c3965566d2623170abfcf477da18250",
-      "title": "TEI上流工程レーンC: Business Model minimum contractをX-TEA Evidenceで絞り込む"
-    },
-    {
-      "number": 500,
-      "sha": "fa89fa543a7bd17eb68b69436e6955160cc68f2a",
-      "title": "TEI上流工程レーンB: Business Procedure cross-view Evidence境界を同期する"
-    },
-    {
-      "number": 511,
-      "sha": "4d44724c03bb0b5bd927b1efb487d730769e9a06",
-      "title": "application/driver: datasource aliasのauthority解決をexact-oneにする"
-    }
-  ],
-  "uploadedOriginals": [
-    {
-      "archive": "MfgDscrt180122.zip",
-      "sha256": "fddbfce4bdfe325d39c943a415cf9ffa7218d19fecbd58716bded1ac2d4fd328"
-    },
-    {
-      "archive": "MfgOrder160627.zip",
-      "sha256": "2e2324ba6e7a2ec3e52f783011bfb655520589483d1f3f5890a932bd6a0e0aec"
-    },
-    {
-      "archive": "SalesOrosi160627.zip",
-      "sha256": "b40ad8640ca3999dd2a062d5b1b9e6d902956605bcd691a648da8630c25a70a1"
-    },
-    {
-      "archive": "XTeaDriverInstaller230127__Files.zip",
-      "sha256": "f79f6825a6d6dce3c4c41f3c7028b92c3e18fd33f06e9090bee064f79cfbfe32"
-    },
-    {
-      "archive": "XTeaModelerInstaller1_4_50__Files.zip",
-      "sha256": "257a333a8db9319fb5da49689751ccb90bbaa384021bf1e6b8e2623ac3cc74bc"
-    }
-  ]
+  "publicationPolicy": {
+    "relationship": "TEI does not claim to be an official successor or derivative of X-TEA/XEAD.",
+    "comparison": "Differences are described in terms of TEI requirements and design choices rather than product superiority.",
+    "reuse": "Third-party model or document contents are not copied or redistributed without confirmed permission.",
+    "workingMaterial": "Internal deliberation, chat excerpts, local file-acquisition details, and temporary handoff notes are not public specification provenance."
+  }
 }
