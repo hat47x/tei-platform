@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="TEIの業務システム設計原則を、Data・Function／Interaction・Businessの相互検証を軸に整理します。">
+  <title>業務システム設計 | TEI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div>
+    <div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div>
+    <nav aria-label="文書一覧">
+      <a href="index.html">全体像</a>
+      <a aria-current="page" href="business.html">業務設計</a>
+      <a href="architecture.html">意味と実行</a>
+      <a href="authoring.html">Studio・AI・Target</a>
+      <a href="decisions.html">整合性・未決事項</a>
+      <a href="requirements.html">全26要求</a>
+      <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
+      <a href="sources.html">資料・追跡</a>
+      <a href="xtea-review.html">外部設計から得た着想</a>
+    </nav>
+  </aside>
+  <main id="main">
+    <div class="eyebrow">TEI 想定仕様ガイド</div>
+    <h1>業務システム設計</h1>
+    <p class="lead">手作業や判断を含む仕事の意味を保ちながら、Data・Function／Interaction・Businessを相互に検証します。</p>
+
+    <section>
+      <h2>三つの視点を相互に確認する</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>視点</th><th>保持する内容</th><th>確認する問い</th></tr></thead>
+        <tbody>
+          <tr><td>Data</td><td>業務の事実、identity、Relation、制約、lifecycle。</td><td>仕事に必要な情報が揃い、利用者が確認・維持できるか。</td></tr>
+          <tr><td>Function / Interaction</td><td>画面、帳票、入出力、Query、Capability、API・batch等。</td><td>操作のread/write契約と業務上の利用位置が明確か。</td></tr>
+          <tr><td>Business</td><td>目的、契機、担当、手順、手作業、判断、例外、引継ぎ。</td><td>システム上の成功と実際の仕事の完了を混同していないか。</td></tr>
+        </tbody>
+      </table></div>
+      <p>三視点は工程順でも別々の正本でもありません。同じaccepted meaningを異なる角度から確認し、不足や矛盾を見つけます。</p>
+    </section>
+
+    <section>
+      <h2>業務行為とソフトウェア機能を分ける</h2>
+      <p>Business ActionとApplication Functionは同一ではありません。電話確認、現物検査、会話、外部組織の判断など、Application Functionを持たない行為も正当な業務設計情報です。</p>
+      <p>一つの業務行為が複数Functionを利用する場合も、一つのFunctionが複数の業務文脈から利用される場合も表現できることを前提とします。</p>
+    </section>
+
+    <section>
+      <h2>ProcedureとRuntime Workflowを分ける</h2>
+      <p>Business Procedureは仕事の進め方を表し、目的、契機、担当、行為、判断、例外、引継ぎなどを含みます。Runtime Workflowはtimer、retry、queue、scheduler、補償等の実行制御です。両者は関連しますが、一つのsemantic objectへ畳みません。</p>
+      <p>手作業を自動化待ちの欠陥として扱わず、Validationの成功をBusiness Approvalと同一視しません。</p>
+    </section>
+
+    <section>
+      <h2>ActorとAuthorityを分ける</h2>
+      <p>業務上のactor、job、department、responsibilityと、認証済みprincipal、membership、scope、policy、authorization decisionを分けます。担当名やUI上の便宜からruntime authorityを推論しません。</p>
+    </section>
+
+    <section>
+      <h2>MatrixとProjectionは検証のために使う</h2>
+      <p>Business Action × Application Pattern、Business Action × Data、Procedure Step × View / ActionなどのMatrixは、明示参照から派生させるcross-check用Projectionとして扱います。Matrix自体を第二のsource of truthにはしません。</p>
+      <p>`derived fact`、人が付与する説明、`unknown`を区別し、名称の類似だけで未知を補完しません。</p>
+    </section>
+
+    <section>
+      <h2>Editor・Driver・Targetの役割</h2>
+      <p>EditorはData、Relation、Rule、View、Application intent、Procedure、Source、Evidenceの関係を高密度に追えるProjectionを提供します。DriverはTEIで採用された設計意味を実行可能な範囲で動かし、境界を検証します。具体的なWeb・Desktop・Mobile・API・MCP・VUIへの表現はTarget側で扱います。</p>
+      <p>Target固有の都合でBusiness meaningやCanonical meaningを黙って変更しません。</p>
+    </section>
+
+    <section>
+      <h2>Referenceで設計を確かめる</h2>
+      <p>Referenceはtechnical fixtureだけでなく、学習例、design-review target、regression Evidence、Platformへのpressure testとして利用します。外部の公開知見から着想を得る場合も、最終的なTEIの仕様判断はTEI自身のRequirements、Reference、ADR、Evidenceによって説明します。</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

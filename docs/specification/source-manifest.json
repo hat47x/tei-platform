@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "reviewedOn": "2026-09-08",
+  "repository": "https://github.com/hat47x/tei-platform",
+  "scope": "Public provenance for the TEI specification guide.",
+  "teiSources": [
+    "README.md",
+    "docs/README.md",
+    "docs/architecture.md",
+    "docs/business-system-design.md",
+    "docs/naming.md",
+    "docs/overview.md",
+    "docs/security.md",
+    "docs/status.md",
+    "product/value/TEI_PRODUCT_VALUE.md",
+    "product/vision/TEI_PRODUCT_VISION.md",
+    "product/principles/TEI_PRODUCT_PRINCIPLES.md",
+    "requirements/TEI_PRODUCT_REQUIREMENTS.md",
+    "requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md",
+    "plan/MASTER_PLAN.md",
+    "plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"
+  ],
+  "externalReferencePolicy": {
+    "scope": "Public knowledge on business-system design, model-driven and metadata-driven development, executable specifications, multi-target applications, and related engineering topics may be consulted when useful.",
+    "independence": "External references are sources of design questions and inspiration, not semantic authority, compatibility commitments, or project lineage.",
+    "decisionBasis": "TEI decisions are documented through TEI Requirements, Architecture, Reference results, ADRs, implementation, and Evidence.",
+    "reuse": "Third-party material is used in accordance with its applicable publication and reuse terms."
+  }
+}

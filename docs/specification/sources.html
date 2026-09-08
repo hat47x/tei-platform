@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="TEIの想定仕様が依拠する公開資料、Repository内の設計文書、採用状態の追跡方法を整理します。">
+  <title>資料・出典と仕様の追跡 | TEI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div>
+    <div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div>
+    <nav aria-label="文書一覧">
+      <a href="index.html">全体像</a>
+      <a href="business.html">業務設計</a>
+      <a href="architecture.html">意味と実行</a>
+      <a href="authoring.html">Studio・AI・Target</a>
+      <a href="decisions.html">整合性・未決事項</a>
+      <a href="requirements.html">全26要求</a>
+      <a href="../../plan/product-roadmap.html">期限なしロードマップ</a>
+      <a aria-current="page" href="sources.html">資料・追跡</a>
+      <a href="xtea-review.html">外部設計から得た着想</a>
+    </nav>
+  </aside>
+  <main id="main">
+    <div class="eyebrow">TEI 想定仕様ガイド</div>
+    <h1>資料・出典と仕様の追跡</h1>
+    <p class="lead">第三者がTEIの現在の仕様と設計判断を追える範囲に絞って、参照先を整理します。</p>
+
+    <section>
+      <h2>追跡の原則</h2>
+      <p>現在のProduct Requirements、採用済みArchitecture / ADR、実装、Reference、Evidenceを優先します。調査過程や作業上のやり取りそのものは、仕様の根拠として公開文書へ持ち込みません。</p>
+    </section>
+
+    <section>
+      <h2>TEI内の主要な正本</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>種類</th><th>主な参照先</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td>Product</td><td><a href="../../product/value/TEI_PRODUCT_VALUE.md">Value</a> / <a href="../../product/vision/TEI_PRODUCT_VISION.md">Vision</a> / <a href="../../product/principles/TEI_PRODUCT_PRINCIPLES.md">Principles</a></td><td>何を価値とし、何を目指すか。</td></tr>
+          <tr><td>Requirements</td><td><a href="../../requirements/TEI_PRODUCT_REQUIREMENTS.md">TEI Product Requirements</a></td><td>満たすべき要求。</td></tr>
+          <tr><td>Architecture</td><td><a href="../architecture.md">Architecture</a> / <a href="../business-system-design.md">Business System Design</a></td><td>責務境界と意味上の制約。</td></tr>
+          <tr><td>Planning / Evidence</td><td><a href="../../plan/MASTER_PLAN.md">Master Plan</a> / <a href="../../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md">Acceptance Scenario Traceability</a></td><td>能力到達点、受入条件、未解決事項。</td></tr>
+          <tr><td>Implementation</td><td><a href="https://github.com/hat47x/tei-platform">tei-platform Repository</a></td><td>実装とテストによる現在の実証状態。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>外部の公開知見</h2>
+      <p>TEIでは、業務システム設計、モデル駆動・メタデータ駆動設計、実行可能仕様、複数Target、AI支援authoring等の公開知見を必要に応じて参照します。X-TEA／XEADを含む既存の手法やソフトウェアから得た着想もありますが、TEIは独立したプロジェクトであり、公式な系譜・互換性・優劣を示すものではありません。</p>
+      <p>外部参照は設計上の問いを考える材料として扱い、TEIの仕様はTEI自身のRequirements、Architecture、Reference、ADR、Evidenceで説明します。</p>
+    </section>
+
+    <section>
+      <h2>引用・再利用</h2>
+      <p>第三者の文書、ソースコード、モデル、データ等は、それぞれの公開条件・利用条件に従います。利用条件を確認できない内容をTEI Repositoryへ複製・再配布しません。</p>
+    </section>
+
+    <section>
+      <h2>仕様の状態</h2>
+      <p>この仕様ガイドには採用済みの境界と評価中の候補が含まれます。現在地はRepositoryの要求・ADR・実装・Reference・Evidenceを優先してください。</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>
