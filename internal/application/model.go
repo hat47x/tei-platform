@@ -70,11 +70,51 @@ type Application struct {
 	Patterns     []Pattern             `json:"patterns,omitempty"`
 }
 
-func (a Application) DatabaseByAlias(alias core.LocalName) (DatabaseRequirement, bool) {
+// HasDatabaseAliasは、Application-localなdatasource alias宣言が一件以上存在するかだけを返す。
+// Validation等のdeclaration existence確認では返却値を持つlookupを使わず、このAPIを利用する。
+func (a Application) HasDatabaseAlias(alias core.LocalName) bool {
 	for _, d := range a.Databases {
 		if d.Alias == alias {
-			return d, true
+			return true
 		}
 	}
-	return DatabaseRequirement{}, false
+	return false
+}
+
+// DatabaseByAliasは既存caller移行中のcompatibility lookupである。
+// uniqueなら宣言内容を返す。duplicateでは宣言の存在だけをtrueで返し、
+// 一件目の内容をauthorityとして漏らさないためzero valueを返す。
+// declaration existence確認ではHasDatabaseAlias、実行・authority境界ではDatabaseByAliasExactを利用する。
+func (a Application) DatabaseByAlias(alias core.LocalName) (DatabaseRequirement, bool) {
+	var match DatabaseRequirement
+	found := false
+	for _, d := range a.Databases {
+		if d.Alias != alias {
+			continue
+		}
+		if found {
+			return DatabaseRequirement{}, true
+		}
+		match = d
+		found = true
+	}
+	return match, found
+}
+
+// DatabaseByAliasExactは、Application-localなdatasource aliasがちょうど一件だけ定義されている場合に解決する。
+// 実行・authority境界では曖昧なCanonical宣言から一件を黙って選ばないため、このresolverを利用する。
+func (a Application) DatabaseByAliasExact(alias core.LocalName) (DatabaseRequirement, bool) {
+	var match DatabaseRequirement
+	found := false
+	for _, d := range a.Databases {
+		if d.Alias != alias {
+			continue
+		}
+		if found {
+			return DatabaseRequirement{}, false
+		}
+		match = d
+		found = true
+	}
+	return match, found
 }
