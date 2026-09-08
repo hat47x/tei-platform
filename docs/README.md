@@ -1,5 +1,7 @@
 # TEI ドキュメント案内
 
+[想定仕様ガイド（HTML）](specification/index.html)で全体像、業務モデル、実装境界、全26要求、未決事項、X-TEA原典の検討結果を横断できます。[期限なしロードマップ](../plan/product-roadmap.html)も参照してください。既存正本を変更する文書ではありません。
+
 この文書は、TEIの設計・実装・現在地を読むための**案内板**です。
 
 ここに新しいProduct Requirement、Architecture判断、Gate条件、Evidence結論を定義しません。各項目の意味上の正本は、それぞれのリンク先にあります。
@@ -145,3 +147,4 @@ Architecture / Requirement exists
 - Naming: [`naming.md`](naming.md)
 
 この案内板に現在地や設計判断そのものを複製しすぎないようにします。状態や意味が変わった場合は、まず各正本文書を更新し、この文書は読み手導線だけを追随させます。
+

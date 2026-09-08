@@ -1,0 +1,160 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="業務の意味、設計体験、既存資産、実行・観測、三視点検証について、現行の要求をまとめて読めます。"><title>TEI Product Requirements 全26要求 | TEI</title><link rel="stylesheet" href="style.css"></head><body><a class="skip" href="#main">本文へ</a><div class="layout"><aside class="sidebar"><div class="brand">TEI <small style="display:inline;margin:0;font-size:16px">鼎</small></div><div class="subbrand">DESIGN · EXECUTION · EVIDENCE</div><nav aria-label="文書一覧"><a href="index.html">全体像</a><a href="business.html">業務設計</a><a href="architecture.html">意味と実行</a><a href="authoring.html">Studio・AI・Target</a><a href="decisions.html">整合性・未決事項</a><a aria-current="page" href="requirements.html">全26要求</a><a href="../../plan/product-roadmap.html">期限なしロードマップ</a><a href="sources.html">資料・追跡</a><a href="xtea-review.html">X-TEA原資料の照合</a></nav><small>想定仕様と能力到達点<br>整理基準日：2026-09-08<br>日付は期限ではありません</small></aside><main id="main"><div class="eyebrow">TEI 想定仕様ガイド</div><h1>TEI Product Requirements 全26要求</h1><p class="lead">業務の意味、設計体験、既存資産、実行・観測、三視点検証について、現行の要求をまとめて読めます。</p><p class="meta">照合基線：main <code>19995a9304a6218c50ed8245ffd44a6403a4cc55</code> ／ 未統合案は別表示</p><div class="toc" aria-label="ページ内目次"><a href="#authority">要求の正本とHTML投影</a></div><section id="authority"><h2>要求の正本とHTML投影</h2><p>以下は全26要求を、Markdown正本から機械的に生成する閲覧用HTMLです。新しい要求は追加しません。要求番号・本文は元ファイルに従い、実装状態はstatus、依存はロードマップで確認します。</p><p class="refs">参照：<a href="https://github.com/hat47x/tei-platform/blob/19995a9304a6218c50ed8245ffd44a6403a4cc55/requirements/TEI_PRODUCT_REQUIREMENTS.md">requirements/TEI_PRODUCT_REQUIREMENTS.md</a></p></section><!-- REQUIREMENTS:START -->
+<p class="meta">Generated from requirements/TEI_PRODUCT_REQUIREMENTS.md · SHA-256 <code>8aca7c7805f848ec7daafd330208c607704e519cd40506305f54747bf1baf259</code></p>
+<nav class="toc" aria-label="要求一覧"><a href="#RQ-001">RQ-001</a><a href="#RQ-002">RQ-002</a><a href="#RQ-003">RQ-003</a><a href="#RQ-004">RQ-004</a><a href="#RQ-005">RQ-005</a><a href="#RQ-006">RQ-006</a><a href="#RQ-007">RQ-007</a><a href="#RQ-008">RQ-008</a><a href="#RQ-009">RQ-009</a><a href="#RQ-010">RQ-010</a><a href="#RQ-011">RQ-011</a><a href="#RQ-012">RQ-012</a><a href="#RQ-013">RQ-013</a><a href="#RQ-014">RQ-014</a><a href="#RQ-015">RQ-015</a><a href="#RQ-016">RQ-016</a><a href="#RQ-017">RQ-017</a><a href="#RQ-018">RQ-018</a><a href="#RQ-019">RQ-019</a><a href="#RQ-020">RQ-020</a><a href="#RQ-021">RQ-021</a><a href="#RQ-022">RQ-022</a><a href="#RQ-023">RQ-023</a><a href="#RQ-024">RQ-024</a><a href="#RQ-025">RQ-025</a><a href="#RQ-026">RQ-026</a></nav>
+<h2>TEI Product Requirements</h2>
+<h2>この文書の位置づけ</h2>
+<p>この文書は、TEI（鼎／テイ）のProduct Value、Vision、Principlesを、プロダクトとして満たすべき要求へ落とします。</p>
+<p>ここでは「現在すでに実装されているか」と「プロダクトとして必要か」を分けます。実装状況は<code>docs/status.md</code>、個別の設計判断はADR、作業単位はIssueで管理します。</p>
+<p>要求番号は、将来文書が分割されても参照しやすいように固定IDとして扱います。</p>
+<h2 id="RQ-001">RQ-001 業務上の意味を実装技術から独立して保持できること</h2>
+<p>TEIは、業務概念、型、関係、制約、lifecycle等を、特定の画面、Database、言語、配備先と同一視せずに表現できなければなりません。</p>
+<p>Canonical IDはfile pathやphysical object nameから独立し、実装や配置を変更しても意味上のidentityを維持できる必要があります。</p>
+<h2 id="RQ-002">RQ-002 Authoring sourceとCanonical meaningを追跡できること</h2>
+<p><code>.tei</code>、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。</p>
+<p>source locator、fingerprint、range、roleはCanonical Worldへ無条件に混ぜず、source-sideの追跡情報として扱います。</p>
+<p>file moveやrenameだけでCanonical meaningが変わらないことを検証できる必要があります。</p>
+<h2 id="RQ-003">RQ-003 一つの関心事に暗黙の複数正本を作らないこと</h2>
+<p>同じ意味を複数のauthoritative sourceからheuristicにmergeしてはいけません。</p>
+<p>SQL-authored、Graph-authored等、authoring方式ごとに正本を明示でき、derived artifactからauthoritative sourceへ暗黙に逆書きしない必要があります。</p>
+<h2 id="RQ-004">RQ-004 Native assetをnativeなまま利用できること</h2>
+<p>SQL、Go、外部設定、既存実装等を、TEIを利用するためだけに全面的に独自DSLへ移し替えることを要求してはいけません。</p>
+<p>TEIは、それらを意味、Capability、Realization、Source Indexへ接続し、どの役割で使われているかを追跡できる必要があります。</p>
+<h2 id="RQ-005">RQ-005 ApplicationとDatabaseをN:Mで扱えること</h2>
+<p>一つのApplicationは複数Databaseを利用でき、Databaseは複数ApplicationへContractを提供できなければなりません。</p>
+<p>各Database利用について、少なくとも次を独立して扱える必要があります。</p>
+<ul>
+<li>logical datasource</li>
+<li>Database Contract</li>
+<li>Environment Binding</li>
+<li>read / read-write等の利用形態</li>
+<li>release / migration lifecycle</li>
+<li>transaction boundary</li>
+<li>failure boundary</li>
+</ul>
+<p>Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。</p>
+<h2 id="RQ-006">RQ-006 Desired / Actual / Diff / Unresolvedを分離できること</h2>
+<p>Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。</p>
+<p>比較に十分な情報がない場合は、差分なしや破壊的変更へ自動変換せず、Unresolvedとして扱う必要があります。</p>
+<h2 id="RQ-007">RQ-007 Provider固有知識をCoreへ無制限に持ち込まないこと</h2>
+<p>Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Capability等の境界へ置きます。</p>
+<p>provider-neutralな意味とprovider固有の実現・正規化を分離し、offlineで確定できるpolicyとactual connectionが必要な処理も区別できる必要があります。</p>
+<h2 id="RQ-008">RQ-008 Capability単位で標準実装と固有実装を置き換えられること</h2>
+<p>認証、認可、外部連携、帳票、処理等について、TEI標準だけを強制してはいけません。</p>
+<p>Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。</p>
+<p>標準名前空間として<code>std.*</code>を予約し、Plugin / packageの名前衝突を避けられる必要があります。</p>
+<h2 id="RQ-009">RQ-009 既存システムの認証・認可仕様を保持した移行が可能であること</h2>
+<p>ユーザーID、password、無効状態、有効期限、失敗回数、独自ロック、組織情報等を含む既存認証仕様を、移行時にTEI標準へ変更することを必須にしてはいけません。</p>
+<p>認証・認可はCapability契約とMappingを通して既存構造へ接続でき、後から必要な単位で置き換えられる必要があります。</p>
+<h2 id="RQ-010">RQ-010 Editorを開発者向けの高密度な設計環境として提供できること</h2>
+<p>Editorは、簡略化されたフォーム入力だけではなく、複雑な業務システムを一画面で見渡しやすい高密度なProjectionを提供できることを目指します。</p>
+<p>Data、Relation、Rule、View、Procedure等を分断された多数の画面へ追い出すのではなく、必要に応じて3階層以上の関係も局所性を保って確認できる設計を可能にします。</p>
+<p>Editor自身をCanonical source of truthとはしません。</p>
+<h2 id="RQ-011">RQ-011 同じCanonical meaningを複数のProjectionで扱えること</h2>
+<p>少なくとも、次のProjectionを同じ上位設計から扱える構造を持つ必要があります。</p>
+<ul>
+<li>DSL / source view</li>
+<li>table / matrix</li>
+<li>graph</li>
+<li>flow</li>
+<li>UI</li>
+<li>natural language</li>
+<li>database workbench</li>
+<li>diagnostic / evidence view</li>
+</ul>
+<p>Projection間の切り替えで意味が暗黙に変化してはいけません。</p>
+<h2 id="RQ-012">RQ-012 Driverを設計検証用の実行・シミュレーション環境として利用できること</h2>
+<p>Driverは、本番Runtimeだけでなく、設計途中のApplicationを動かし、Data、Rule、UI、Function、Database Contract等の整合性を確認する環境として利用できる必要があります。</p>
+<p>設計内容をコード生成後まで待たずに検証できることを重視します。</p>
+<h2 id="RQ-013">RQ-013 Target-neutralなPresentation / Interaction境界を持つこと</h2>
+<p>Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込まず追加できる必要があります。</p>
+<p>新しいTargetは独立したAdapter / Packageとして追加でき、Core変更なしで接続可能であることを基本とします。</p>
+<p>Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。</p>
+<p>Targetが「何を表示・操作できるか」というTarget Capabilityと、「どのtransport・信頼境界・session・Resource条件で実行されるか」というExecution / Trust Profileを、実装都合だけで一つのTarget差へ畳んではいけません。必要な分離は第一Targetと第二TargetのReferenceから検証します。</p>
+<p>Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。</p>
+<h2 id="RQ-014">RQ-014 標準的なApplication Patternを再利用できること</h2>
+<p>browse、record、reference、header-detail、command等、業務システムで頻出するApplication Patternを再利用可能な知識として保持できることを目指します。</p>
+<p>標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。</p>
+<h2 id="RQ-015">RQ-015 生成AIが既存知識を探索してから新規実装へ進めること</h2>
+<p>生成AI向けの開発支援では、次の順序を基本とします。</p>
+<ol>
+<li>Existing Domain Component</li>
+<li>Existing Semantic Pattern / Facet</li>
+<li>Existing Policy / Variation</li>
+<li>Composition</li>
+<li>Declarative expression / rule</li>
+<li>Capability call</li>
+<li>Custom implementation</li>
+</ol>
+<p>毎回ゼロからコードを生成することを標準経路にはしません。</p>
+<p>AIが作った内容を直接Canonical authorityとせず、まずProposal / Structured Intent等の候補として扱い、採用時にはEditor / CLI等と共有できる決定論的なValidation / Acceptance境界を通す必要があります。</p>
+<p>構造化された候補から決定論的に生成・変換できる部分は、同じ意味を毎回自由生成する方法より優先します。</p>
+<p>過去の成功Proposal、修正trajectory、利用例等を再利用する場合も、Canonical meaningの第二の正本にはせず、元のCanonical ID / Source / Evidenceへ戻れるderived knowledgeとして扱う必要があります。</p>
+<h2 id="RQ-016">RQ-016 AIによる確認提案は控えめで、履歴を持つこと</h2>
+<p>AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属性、認証・認可等の典型論点について、必要な場合に確認を提案できることを目指します。</p>
+<p>ただし、次を満たす必要があります。</p>
+<ul>
+<li>一度回答した質問を理由なく繰り返さない</li>
+<li>過去の選択と理由を後から追跡できる</li>
+<li>選択を後から変更できる</li>
+<li>不要な提案を無視できる</li>
+<li>提案カテゴリを抑制・無効化できる</li>
+<li>AIの提案と採用済み決定を区別する</li>
+<li>提案が参照したCanonical ID / Source / Evidenceを追跡できる</li>
+<li>purpose、target activity / artifact、AI mechanism / type、autonomy levelを比較・監査できる</li>
+<li>autonomy levelとwrite / invoke / Resource authorityを別の軸として扱う</li>
+<li>staleなbase revisionに対する提案を黙って最新版へ適用しない</li>
+</ul>
+<p>model名、prompt、tool trajectory等はEvidenceとして保持できても、それ自体を業務上の意味やauthorityの根拠にはしません。</p>
+<h2 id="RQ-017">RQ-017 人の二重管理を最小化すること</h2>
+<p>Semantic ModelとExecution Mapping、Canonical meaningとderived artifact等について、人が同じ内容を複数箇所へ手入力し続ける設計を避けます。</p>
+<p>機械的に生成・推論できるMappingは生成可能にし、必要な差分や明示的な選択だけを人が管理できることを目指します。</p>
+<p>変更履歴は、独自の履歴機構を無条件にDSLへ埋め込むのではなく、Git等の既存version管理も活用します。</p>
+<h2 id="RQ-018">RQ-018 CommandとObservationを分離すること</h2>
+<p>外部処理へのcommand acknowledgementだけで処理完了とみなしてはいけません。</p>
+<p>必要な処理ではObservation / Evidenceによってactual stateを確認し、期待状態との整合を判定できる必要があります。</p>
+<h2 id="RQ-019">RQ-019 実行時の権限とResourceを明示的に制約できること</h2>
+<p>Pluginや外部Runtimeへ与える権限はCapabilityとPermissionに基づき最小化します。</p>
+<p>secret、network endpoint、filesystem path等のHost materialをCanonical definitionやDurable artifactへ不要に保存せず、Resource Broker等の境界から解決できる必要があります。</p>
+<p>AI、Editor、generated code、automationも同じ権限・Resource境界を迂回してはいけません。AI actorであることや自律度が高いことから、write、Capability invocation、secret / network / filesystem access等のauthorityを暗黙に付与してはいけません。</p>
+<h2 id="RQ-020">RQ-020 再実行・takeover・unknownを安全に扱えること</h2>
+<p>外部Runtimeの状態が不明なときに、同じ副作用を自動replayしてはいけません。</p>
+<p>ownership、fencing、durable handle、observation等を用いて、誰が現在の実行を調停する権限を持つかと、外部Runtimeがどのgenerationを受理したかを区別できる必要があります。</p>
+<h2 id="RQ-021">RQ-021 ReferenceとConformanceで再現可能性を示すこと</h2>
+<p>重要な設計境界は、文書だけでなく、小さいReference Workspace、fixture、実行例、Conformance testから再現できることを基本とします。</p>
+<p>異なるProviderやTargetを追加するときも、「動いた」という事実だけでなく、共通の意味境界を満たしているかを確認できる必要があります。</p>
+<p>AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。</p>
+<p>interactive Targetでは、少なくともSemantic Conformance、利用者ScenarioのInteraction / Functional Evidence、Target固有のVisual Fidelity Evidenceを区別します。GUI agent、VLM、image similarity等のvisual evaluatorを利用しても、その結果だけでSemantic / Functional Conformanceを合格にしてはいけません。</p>
+<h2 id="RQ-022">RQ-022 完成製品と設計検証段階を明確に区別すること</h2>
+<p>研究実装、architecture probe、production-ready機能を同じ表現で扱ってはいけません。</p>
+<p>README、status、release note等から、何が検証済みで、何が未保証かを利用者が判断できる必要があります。</p>
+<p>prerelease / experimentalなframework、AI evaluator、agent方式等を検証に利用する場合も、その技術が動いたこととTEIのProduct Requirementが成立したことを区別します。外部研究のsuccess rate、token削減率、visual score等を、TEI自身のReferenceで検証せず固定KPIやConformance基準へ転記してはいけません。</p>
+<h2 id="RQ-023">RQ-023 一人でも維持可能な開発構造を保つこと</h2>
+<p>初期段階では、一人のmaintainerでも全体を追えることを重視します。</p>
+<p>Repositoryを細かく分割しすぎず、関連する改修が同一Repository内で完結しやすい構造を基本とします。</p>
+<p>一方、CoreとProvider / Adapterの依存境界はコード上で明確にし、将来の分離を妨げない構造を保ちます。</p>
+<h2 id="RQ-024">RQ-024 性能要求をTargetごとに検証可能にすること</h2>
+<p>業務端末のように短い応答時間が重要なTargetと、B2C Webのように異なる負荷特性を持つTargetを同じ固定性能前提へ押し込めません。</p>
+<p>Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。</p>
+<p>現時点で根拠のない一律の数値目標は固定しません。</p>
+<h2 id="RQ-025">RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること</h2>
+<p>TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。</p>
+<p>Business ActionはApplication FunctionやCapabilityと同一視しません。人間、AI、外部組織、SaaS、物理作業、既存システム等による行為は、TEI Applicationによる実現を持たなくても正当な業務設計情報として保持できる必要があります。</p>
+<p>Business Procedure上のactorをAuthorization Roleへ暗黙変換してはいけません。</p>
+<p>この要求は、<code>Procedure</code>を必ずtop-level Canonical objectにすることや、Workflow Engine、branch、timer、retry、scheduler、orchestration semanticsをCoreへ導入することを要求しません。最小表現はReference Evidenceから決めます。</p>
+<h2 id="RQ-026">RQ-026 Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること</h2>
+<p>TEIは、Data、Function / Interaction、Business Procedureを同じ業務システムの異なる視点として扱い、一つの視点で見つかった欠落や矛盾を他の視点とauthoritative sourceへ戻して修正できなければなりません。</p>
+<p>少なくとも次を検証・診断できる構造を目指します。</p>
+<ul>
+<li>Business Procedureが参照するView / Application Pattern / Action / Capabilityの存在とtraceability</li>
+<li>View / Actionが利用・変更するData / Relation / Validationとの整合</li>
+<li>read-only / ownership / subsystem等の境界を越える操作</li>
+<li>Data / Relation変更によるView / Procedureへの影響</li>
+<li>ApplicationのBusiness Resultと、外部世界で観測される業務完了の混同</li>
+</ul>
+<p>Matrix、CRUD表、flow、graph等をこの相互検証に利用できますが、それらを独立した第二の正本として人が二重管理することを要求しません。</p>
+<p>三つの視点を同型のCanonical top-level objectへすることも要求しません。hard semantic error、architecture / policy violation、review diagnostic、design question、informational impact等のseverityは、現実的なReferenceでdefect classを再現してから確定します。</p>
+<h2>要求を実装へ落とすときの原則</h2>
+<p>個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。</p>
+<p>特定Providerの深い実装作業が続く場合でも、プロダクト全体として重要な要求が長期間手つかずになっていないかをMilestoneで確認します。</p>
+
+<!-- REQUIREMENTS:END --><footer class="footer">このガイドは既存正本の横断説明です。要求・採用判断・実装状態・Gate条件の正本を複製しません。リンクは原則として照合時のcommitへ固定し、変化はGit履歴と最新正本で確認します。<br><a href="https://github.com/hat47x/tei-platform/blob/main/docs/status.md">最新の実装状況</a> ／ <a href="https://github.com/hat47x/tei-platform/blob/main/plan/MASTER_PLAN.md">最新の開発計画</a> ／ <a href="https://github.com/hat47x/tei-platform/tree/main/docs/specification">GitHubで文書を見る</a></footer></main></div></body></html>

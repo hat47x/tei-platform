@@ -1,5 +1,8 @@
 # TEI（鼎／テイ）
 
+- **想定仕様（HTML）:** [仕様ガイド](docs/specification/index.html) — 採用済み・評価待ち・X-TEA原典の対応
+- **期限なしロードマップ（HTML）:** [プロダクト開発ロードマップ](plan/product-roadmap.html) — 依存関係と完了条件
+
 TEIは、**業務上の意味を長く保ちながら、実装・Database・Target・Runtimeを必要以上に一体化しない業務Application基盤**を目指す実験的なプロジェクトです。
 
 画面やtableを素早く作ることだけでなく、次を技術変更後も追跡・検証できる状態を重視します。
@@ -246,3 +249,4 @@ docs/                    reader / architecture / conformance documentation
 - API compatibility guarantee
 
 設計契約やisolated testが存在することを、actual Product Evidence取得済みと読み替えません。
+
