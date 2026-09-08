@@ -161,9 +161,20 @@ func TestCanonicalBusinessProcedureMeaningProbeKeepsExplicitRefsWithoutCopyingPa
 	if !ok {
 		t.Fatal("BP-03がありません")
 	}
+	if !reflect.DeepEqual(lineReview.ApplicationPatterns, []string{"order_entry.order_lines"}) {
+		t.Fatalf("BP-03 Pattern referenceが不正です: %+v", lineReview)
+	}
+	if len(lineReview.Data) != 0 || len(lineReview.Relations) != 0 || len(lineReview.Validations) != 0 || len(lineReview.Capabilities) != 0 {
+		t.Fatalf("order-line reviewへ別Business ActionのValidation authorityまたはPattern-owned meaningを重複保持しました: %+v", lineReview)
+	}
+
+	constraintCheck, ok := canonicalMeaningStep(meaning, "BP-05")
+	if !ok {
+		t.Fatal("BP-05がありません")
+	}
 	wantValidations := []string{"sales.order.lines.line_number_unique", "sales.order_line.quantity_positive"}
-	if !reflect.DeepEqual(lineReview.Validations, wantValidations) {
-		t.Fatalf("Business側のexplicit Validation referenceが保持されていません: got=%v want=%v", lineReview.Validations, wantValidations)
+	if !reflect.DeepEqual(constraintCheck.Validations, wantValidations) {
+		t.Fatalf("deterministic constraint Business Actionのexplicit Validation referenceが保持されていません: got=%v want=%v", constraintCheck.Validations, wantValidations)
 	}
 }
 
@@ -180,7 +191,7 @@ func TestCanonicalBusinessProcedureMeaningProbeNormalizesSetLikeReferenceOrder(t
 
 	changed := f
 	for i := range changed.Steps {
-		if changed.Steps[i].ID == "BP-03" {
+		if changed.Steps[i].ID == "BP-05" {
 			for left, right := 0, len(changed.Steps[i].Validations)-1; left < right; left, right = left+1, right-1 {
 				changed.Steps[i].Validations[left], changed.Steps[i].Validations[right] = changed.Steps[i].Validations[right], changed.Steps[i].Validations[left]
 			}

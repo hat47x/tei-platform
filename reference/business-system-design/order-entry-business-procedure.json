@@ -47,10 +47,6 @@
       "realization": "application-use",
       "applicationPatterns": [
         "order_entry.order_lines"
-      ],
-      "validations": [
-        "sales.order_line.quantity_positive",
-        "sales.order.lines.line_number_unique"
       ]
     },
     {
@@ -70,7 +66,10 @@
     {
       "id": "BP-06",
       "businessAction": "determine whether the authenticated subject may execute the submit application action",
-      "realization": "security-boundary"
+      "realization": "security-boundary",
+      "capabilities": [
+        "security.authorize"
+      ]
     },
     {
       "id": "BP-07",
