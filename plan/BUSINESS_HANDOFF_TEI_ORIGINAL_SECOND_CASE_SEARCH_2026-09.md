@@ -1,6 +1,6 @@
 # Business Handoff TEI-original Second Case Search — 2026-09
 
-Status: **Lane C / negative Evidence / no second realistic Handoff fixture yet / no production schema adoption**
+Status: **Lane C / negative Evidence / existing-corpus search closed / no second realistic Handoff fixture yet / no production schema adoption**
 
 ## 1. 目的
 
@@ -28,6 +28,7 @@ Second Handoff caseとして採用するには少なくとも:
 5. exact TEI Procedure / Step addressを持てる、またはその不足自体がEvidenceになる。
 6. intentional defect / negative probeをaccepted Business meaningへ格上げしない。
 7. Deployment / Database schema lifecycle / Runtime takeoverをBusiness Handoffへ読み替えない。
+8. synthetic scenario自身が「production業務仕様ではない」と宣言している場合、そのscenarioからconcrete Handoff authorityを生成しない。
 
 ## 3. Current Reference Application inventory
 
@@ -39,16 +40,26 @@ order-entry
 
 だけである。
 
-Current Business-system-design Referenceも:
+Current `reference/business-system-design/`も:
 
 ```text
-order-entry.order-handling
-order-entry.follow-up
+order-entry-business-procedure.json
+order-entry-follow-up-procedure.json
+order-entry-procedure-reference-set.json
+order-entry-customer-edit-conflict.json
+order-entry-protected-target-overlay.json
 ```
 
-を中心とする。
+を中心とし、独立した別Business domain / responsibility chainをauthorするfixtureはない。
 
-したがって、別Application / 別Business domainに既にacceptedされたsecond responsibility chainはcurrent Referenceにはない。
+同directoryのREADME自身も、今後のpressureとして:
+
+```text
+複数Subject Area / Subsystemを跨ぐhandoff
+外部contractや長期reuse
+```
+
+を挙げている。これはcurrent accepted second caseの存在ではなく、future pressureの明示である。
 
 ## 4. Candidate audit
 
@@ -232,24 +243,83 @@ Requirement says Handoff may be needed
 
 Current: **requirement-level corroboration only / not a second concrete TEI-original Handoff case**。
 
+### Candidate H — realistic multi-Application / fulfillment scenario
+
+`BUSINESS_PROCEDURE_REALISTIC_MULTI_APPLICATION_SCENARIO_PRESSURE_2026-09.md`にはtest-onlyで:
+
+```text
+accepted order interaction
+  ↓
+review whether the accepted order can proceed through fulfillment
+  -> fulfillment_console.order_record
+  ↓
+coordinate physical preparation of the order with warehouse staff
+  -> manual / external
+  ↓
+continue shipment-related work with the external delivery party when required
+  -> manual / external
+```
+
+という、responsibility transferを想起させるscenarioがある。
+
+しかし同文書自身が:
+
+```text
+このscenarioはproduction業務仕様ではない
+第二Applicationはsynthetic
+```
+
+と明記している。
+
+その目的はBusiness Procedureがmulti-Application / manual / physical / external workを保持できるかの構造Pressureであり、warehouse responsibilityやdelivery-party responsibilityの具体的accepted Handoffをauthorすることではない。
+
+したがって、このscenarioから:
+
+```text
+fulfillment review -> warehouse preparation
+warehouse preparation -> external delivery
+```
+
+等のHandoffを新たに切り出すと、test apparatusが自分自身のsecond Handoff Evidenceを生成する循環になる。
+
+Current: **reject as concrete second Handoff authority / structural scenario only**。
+
 ## 5. Search result
 
 Current Repositoryでqualifyingなsecond Handoffは:
 
 ```text
 TEI-original independent second Handoff case
-  = none yet
+  = none
+
+existing accepted corpusからのsafe promotion candidate
+  = none
 ```
+
+ここまでに確認した範囲は:
+
+```text
+current Business-system-design fixtures
+current explicit Handoff / adjacent Steps
+intentional cross-view defect
+Business Lifecycle
+Deployment / runtime scenarios
+RQ-025 / RQ-026
+Watanabe external patterns
+realistic multi-Application synthetic pressure
+```
+
+である。
+
+この探索結果により、**existing-corpus searchは一旦closed**とする。
 
 これはH1/R3が十分だという証明ではない。
 
 意味は:
 
-> current accepted sourceを捻じ曲げずにsecond realistic Handoffへ使える独立caseがまだない。
+> current accepted sourceを捻じ曲げずにsecond realistic Handoffへ使える独立caseはRepository内にまだない。
 
 である。
-
-Requirement-levelにHandoffの必要性が認められていても、concrete actor / responsibility / conditionをRequirementから発明しない。
 
 ## 6. Negative Evidenceとしての価値
 
@@ -262,6 +332,7 @@ Second case不足を埋めるためだけに次を行わない。
 - Deployment ownershipをBusiness Handoff化
 - Watanabe patternをTEI fixtureへコピー
 - RQ-025の一般的handoff許容から具体的actor / responsibility / conditionを生成
+- synthetic fulfillment / warehouse / delivery scenarioからaccepted Handoffを逆生成
 
 この抑制により:
 
@@ -271,23 +342,36 @@ explicit Handoff authority only
 
 というcurrent contractを、テスト件数のために自ら破壊しない。
 
-## 7. Actual green後の次のcase選定規則
+## 7. Actual green後の次のcase authoring protocol
 
-Gate A actual green後、second caseをauthorする場合も次の順序を守る。
+Gate A actual green後は「既存fixtureからsecond caseを探す」ことを繰り返さない。
+
+次の順序で、Handoff検証とは独立した**small TEI-original Business requirement / Reference seed**を先に成立させる。
 
 ```text
-independent Business requirement
+independent Business need / responsibility boundary
   ↓
-separate responsibilities / continuation condition
+Business requirement / Reference seedを先に記述
+  ↓
+source responsibility / target responsibility / continuation conditionをreview
   ↓
 minimal Procedure sources
   ↓
 explicit Handoff candidate
   ↓
-from/to/condition losslessness pressure
+from / to / conditionだけでlosslessかPressure
 ```
 
-逆に:
+候補domainはあらかじめ決定しない。たとえば:
+
+- external/master-data maintenance ownership
+- approval / exception handling
+- fulfillment / physical operation responsibility
+- reporting / work-instruction responsibility
+
+は**探索方向**であってaccepted meaningではない。
+
+特に:
 
 ```text
 Handoff fieldを検証したい
@@ -295,18 +379,25 @@ Handoff fieldを検証したい
 それらしい業務を作る
 ```
 
-とはしない。
+の順序は禁止する。
 
-候補は、将来別作業から自然に生じる:
+Requirement / Reference seedを作った時点で、HandoffなしでもそのBusiness needを説明する独立価値がなければsecond caseとして採用しない。
 
-- external/master-data maintenance ownership
-- approval / exception handling
-- fulfillment / physical operation responsibility
-- reporting / work-instruction responsibility
+## 8. Second-case review questions
 
-等でよいが、どれも独立Requirement / Referenceが成立してから採用する。
+新しいindependent Business seedが成立した場合だけ、次を確認する。
 
-## 8. Current Gate C interpretation
+1. `from {procedure, step}` はsource responsibilityをlosslessに指せるか。
+2. `to {procedure, step}` はtarget responsibilityをlosslessに指せるか。
+3. natural-language `condition`だけでcontinuation conditionを区別できるか。
+4. Procedure `trigger`とHandoff `condition`は別authorityのままでよいか。
+5. actor/job labelが変わってもendpoint identityを保てるか。
+6. event/document identityを追加しないと具体的lossが起きるか。
+7. thin Handoffでは不足しfull Business Flow / DFDが必要になる具体的lossがあるか。
+
+Lossが出た項目だけをschema reopen候補にする。
+
+## 9. Current Gate C interpretation
 
 Current Handoff Evidenceは:
 
@@ -316,6 +407,7 @@ one explicit current Handoff
   + actor / trigger independence structural pressure
   + requirement-level Handoff legitimacy
   + Watanabe external corroboration
+  + exhaustive-enough current-corpus negative search
 ```
 
 まで進んだ。
@@ -323,25 +415,26 @@ one explicit current Handoff
 残るGate C blockerは:
 
 ```text
-second realistic TEI-original Handoff
+actual runner green
++ independent Business requirementから生じたsecond realistic TEI-original Handoff
 ```
 
-そのものだけであり、second caseを探す過程から新しいHandoff field不足はまだ発見されていない。
+であり、second caseを探す過程から新しいHandoff field不足はまだ発見されていない。
 
-## 9. Current decision
+## 10. Current decision
 
 ```text
 second realistic Handoff
   = unresolved
 
-existing TEI sourceからのsafe promotion candidate
-  = none
+existing-corpus search
+  = closed / no qualifying case
 
-Requirement-level general allowance
-  = corroboration only, not concrete authority
+next action before actual green
+  = do not manufacture fixture
 
-synthetic second fixture before actual green
-  = reject
+next action after actual green
+  = author independent small Business requirement / Reference seed first
 
 H1/R3 expansion because second case is absent
   = reject
