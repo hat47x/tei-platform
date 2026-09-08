@@ -1,10 +1,10 @@
 # Business Procedure Main Baseline Re-audit — 2026-09
 
-Status: **Lane C / post-main-merge architecture re-audit / no semantic candidate change / no production Core adoption**
+Status: **Lane C / refreshed-main architecture re-audit / no semantic candidate change / no production Core adoption**
 
 ## 1. 目的
 
-`main`で`docs/business-system-design.md`、`docs/naming.md`、X-TEA Evidence関連文書が再編されたため、Lane Cのcurrent Business Procedure candidateと意味上の矛盾がないかを再監査する。
+`main`の業務システム設計文書・HTML仕様ガイド・外部参照文書が再整理されたため、Lane Cのcurrent Business Procedure candidateと意味上の矛盾がないかを再監査する。
 
 Current Lane C candidate:
 
@@ -25,19 +25,52 @@ normalized Business model
   <-> exact cross-view Conformance <-> ir.World
 ```
 
-本監査はmainのarchitecture baselineをLane C専用schemaへ書き換えるためのものではない。
+本監査はmainのarchitecture baselineをLane C専用schemaへ書き換えるものではない。
 
-## 2. Business Action / Function separation
+## 2. 公開ArchitectureとLane C研究規則の責務分離
 
-Current main baseline:
+Refreshed mainでは`docs/business-system-design.md`をTEI-local Requirement / Reference / Evidence中心の公開architecture文書として簡潔化し、`UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`と`XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`も一般的なExternal Design Reference Noteへ縮約した。
+
+一方、`requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`には引き続き、設計判断に迷う場合の参照順序として:
+
+```text
+渡辺幸三氏の明示的言説
+  -> X-TEA / XEAD manual / model structure
+  -> XeadModeler / Driver public source
+  -> Reference Model usage
+  -> current TEI Requirements / Architecture / Reference / Evidence
+  -> small TEI Reference experiment
+```
+
+が残っている。
+
+したがってcurrent responsibilityは:
+
+```text
+public architecture / specification
+  -> TEI-local accepted meaningを説明
+  -> third-party lineageをsemantic authorityとして前面化しない
+
+Lane C design investigation
+  -> Requirementに従い必要時にX-TEA / XEADへ戻る
+  -> question-specific auditでprovenance / support / non-proofを保持
+```
+
+である。
+
+詳細な外部Evidenceを横断Registerへ再集約しない。Handoff / Business Flow、O1 authority、CRUD等の具体的Evidenceは、それぞれのLane C audit文書へ近接配置する。
+
+## 3. Business Action / Function separation
+
+Main baselineとLane Cはいずれも:
 
 ```text
 Business Action != Application Function
 ```
 
-かつmanual / physical / conversation / external system / Capability / unresolved等を正常なBusiness meaningとして認める。
+を維持する。
 
-Lane C D4も:
+Lane C D4:
 
 ```text
 Body
@@ -47,28 +80,13 @@ Body
   capabilities[]
 ```
 
-としてBusiness ActionをApplication realizationへ還元しない。
+はBusiness ActionをApplication realizationへ還元しないため整合する。
 
-判定:
+## 4. ProcedureのData / Relation意味
 
-```text
-main baseline
-  == Lane C direction
-```
+Architecture vocabularyとしてBusiness ProcedureとData / Relationのcross-viewは存在し得る。
 
-矛盾なし。
-
-## 3. Procedureのoptional Data / Relation reference
-
-Main architecture vocabularyはProcedure stepについて:
-
-```text
-optional Data / Relation reference
-```
-
-を許容する一般形を示している。
-
-一方、Lane C current minimumではorder-entry Referenceのexact Evidenceから:
+しかしcurrent `order_entry` Evidenceでは:
 
 ```text
 Pattern-owned Data / Relation / Query / Datasource meaning
@@ -76,71 +94,40 @@ Pattern-owned Data / Relation / Query / Datasource meaning
   -X-> Business sourceへ重複author
 ```
 
-を採用している。
+を維持する。
 
-これは矛盾ではなく、一般architecture vocabularyをcurrent Reference Evidenceで狭めたspecializationである。
+一般architecture vocabularyはcurrent minimumへのfield追加根拠ではない。Business sourceだけが保持できるData relationがrealistic Referenceで現れた場合だけreopenする。
 
-```text
-main:
-  Data / Relation cross-view referenceは必要に応じて可能
+## 5. Procedure identity
 
-Lane C current candidate:
-  current exact Data dependencyはWorld/Patternから導出できるため
-  authored Procedure fieldには採用しない
-```
-
-将来、Business sourceだけがauthoritativeに保持すべきData relationがrealistic Referenceで現れた場合だけreopenする。
-
-したがってmainの`optional Data / Relation reference`を根拠にcurrent D4へData fieldを追加しない。
-
-## 4. Procedure identityとProcedure.id
-
-Main baselineは:
-
-```text
-Procedureをdurable Canonical identityにするか
-traceable derived artifactで足りるか
-  = unresolved
-```
-
-としている。
-
-Lane C S4-A / authoring candidateには:
+Lane C candidateには:
 
 ```text
 Procedure.id
 Step.localKey
 ```
 
-がある。
+があるが、current `Procedure.id`はまず:
 
-ここでLane C `Procedure.id`はまず:
-
-- candidate source内logical identity
+- source内logical identity
 - duplicate source detection
 - Handoff endpoint addressability
 - path-independent normalization
 
-のために必要なidentityである。
-
-これは:
+のためのidentityである。
 
 ```text
 Procedure.id exists
-  -X-> Micro Kernel Canonical kind adoption
-  -X-> ir.World.Business embedding
-  -X-> platform-wide durable semantic identity contract
+  -X-> durable Canonical Procedure kind
+  -X-> ir.World.Business
+  -X-> platform-wide Canonical identity contract
 ```
 
-である。
+を維持する。
 
-`docs/naming.md`はworkspace identity / semantic identity / physical representationを分離する。Lane Cではproduction Canonical adoption前なので、Procedure.idを**Business candidate logical identity**として扱い、既存`semantic identity = Canonical ID`という用語へ早期昇格しない。
+## 6. Business Flow / Handoff
 
-判定: 矛盾なし。ただし用語上のguardrailとして`logical identity candidate`を維持する。
-
-## 5. Business FlowとHandoff
-
-Main baselineは:
+Main baselineの:
 
 ```text
 Business Flow
@@ -149,9 +136,7 @@ Application Interaction
 Runtime Workflow Orchestration
 ```
 
-を一つのsemantic objectへ畳まない。
-
-Lane C current decisionも:
+を一つへ畳まない方針と、Lane Cの:
 
 ```text
 H1/R3 thin Handoff
@@ -159,15 +144,13 @@ H1/R3 thin Handoff
   != Runtime Workflow
 ```
 
-である。
+は整合する。
 
-mainへ再統合したX-TEA Evidence E-014も同じ境界をcorroborateする。
+X-TEA側のDataflow node / line構造がこの分離を支持する詳細Evidenceは、`BUSINESS_PROCEDURE_HANDOFF_VS_BUSINESS_FLOW_PRESSURE_2026-09.md`等のquestion-specific auditに保持する。公開横断Registerへ戻さない。
 
-判定: strong alignment。
+## 7. Actor / Authorization / O1
 
-## 6. Actor / Authorization boundary
-
-Main baseline:
+Main/Lane Cとも:
 
 ```text
 Business Actor / Job
@@ -175,13 +158,7 @@ Business Actor / Job
   != Authorization Role / Policy
 ```
 
-Lane C:
-
-```text
-Procedure.actor
-  != Handoff endpoint identity
-  != Authorization authority
-```
+を維持する。
 
 BP-06:
 
@@ -191,47 +168,13 @@ protected target              = order_entry.submit_order
 direct realization            = none
 ```
 
-であり、Authorization policyからBusiness protected targetをbackfillしない。
+であり、Authorization policyからBusiness protected targetをauthor/backfillしない。
 
-判定: strong alignment。
+Task/Function分離がgeneric ref-role taxonomyを証明しないという詳細Evidenceは`BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`等へ残す。
 
-## 7. Shared Acceptance wording
+## 8. Matrix / CRUD / derived projection
 
-Main baselineはEditor / Human / CLI / AIが同じShared Acceptance Boundaryへ接続するarchitecture directionを示す。
-
-Lane C readiness splitでは:
-
-```text
-Contract ADR readiness
-Production adoption readiness
-Product Gate C後のStudio / AI shared Acceptance integration
-```
-
-を分離している。
-
-したがってmainの記述を:
-
-```text
-shared Acceptance production substrate is already implemented
-```
-
-とは解釈しない。
-
-Current absence of the production substrate remains implementation / roadmap sequencing gapであり、Business schema expansion Evidenceではない。
-
-## 8. Matrix / derived projection
-
-Main baselineはMatrixをderived Projectionとし、second source of truthへしない。
-
-Lane C Data / CRUD projectionも:
-
-```text
-explicit Evidence pathだけをderive
-unknownはunknownのまま
-Data identityだけからCRUDを推測しない
-```
-
-ため整合する。
+Matrix、CRUD表、graphは可能な限りexplicit accepted sourceからderiveし、第二正本にしない。
 
 Current exact CRUD attribution:
 
@@ -243,27 +186,26 @@ BP-03 -> R sales.order_line
 
 Qualifying C/U/D不足はcurrent Procedure schema blockerではない。
 
-## 9. Current main re-audit result
+## 9. Current result
+
+Refreshed mainはcurrent Lane C minimumをreopenしない。
 
 ```text
 D4
   -> aligned
 
 singular narrow O1
-  -> aligned; main does not require generic ref-role taxonomy
+  -> aligned; generic ref-role taxonomy不要
 
 S4-A
-  -> aligned as Business candidate logical/address identity
-  -> not yet Canonical kind adoption
+  -> logical/address identityとしてaligned
+  -> Canonical kind adoptionではない
 
 H1/R3
-  -> aligned; Business Flow / Workflow separation strengthened
+  -> aligned; full Business Flow / Workflowとは別
 
 separate normalized Business plane
-  -> no contradiction found
-
-Pattern-owned Data derivation
-  -> current Lane C specialization of broader main vocabulary
+  -> contradictionなし
 ```
 
 No current main change requires:
@@ -278,20 +220,18 @@ No current main change requires:
 
 ## 10. Readiness impact
 
-Main re-auditによるsemantic candidate changeはない。
-
-Contract ADR remains:
+Current Contract ADR remains:
 
 ```text
 Not Ready
 ```
 
-material blockers:
+Material blockers:
 
 1. actual Repository runner green未取得
 2. independent Business requirement由来のsecond realistic TEI-original Handoff未取得
 
-Main integration conflictはmerge commitで解消済みであり、current branchはmainに対してbehind 0へ復帰している。
+Main documentation refreshはsemantic blockerではない。Branch同期後もactual runner Evidenceが無い限りPASSは主張しない。
 
 ## 11. Reopen triggers
 
@@ -303,4 +243,4 @@ Main integration conflictはmerge commitで解消済みであり、current branc
 - separate Business planeではcross-view Conformanceをfail closedできない
 - generic protected/support/concern roleが複数domainで独立に反復する
 
-それまではmainの一般architecture vocabularyを理由にLane C minimum contractを膨張させない。
+それまでは公開architectureの一般語彙、または外部参照の存在だけを理由にLane C minimum contractを膨張させない。
