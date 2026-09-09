@@ -129,6 +129,8 @@ Deployment state         -X-> Handoff
 
 Handoffはhandoff-only relationであり、full Business Flow / DFD / Workflow runtimeへ膨張させない。
 
+Current H1/R3にはglobal Handoff IDを追加しない。Exact duplicate relationのsource-authority conflictは既存`from/to/condition` meaningでdetectでき、same endpoints + different conditionをendpoint-only identityで潰す根拠もない。
+
 ## 4. Placement
 
 Current strongest candidateはseparate normalized Business semantic plane。
@@ -186,6 +188,20 @@ standalone Handoff source
 - schemaVersionによるauthority priority
 - source pathをBusiness identityにすること
 - `file exists == authority`とみなすこと
+- duplicate `Procedure.id`を複数managed sourceから受理すること
+- exact duplicate H1/R3 meaningを複数managed standalone Handoff sourceから受理すること
+- path order / input order / first-writer / last-writerでsource authorityを裁定すること
+- Handoff endpoint pairだけを暗黙Handoff identityとして発明すること
+
+```text
+physical source path
+  != Business logical identity
+  != accepted source authority
+```
+
+Procedure sourceでは`Procedure.id`をcurrent logical identity candidateとして使うが、durable Canonical Procedure kind採用を意味しない。
+
+Standalone Handoff sourceではexact H1/R3 tupleをduplicate meaning detectionに使えるが、global Handoff ID採用を意味しない。
 
 Migration adapterとsteady-state candidate loaderを分離する。
 
@@ -205,14 +221,30 @@ Current source-level Pressureでは:
 - Handoff endpointだけrename -> fail closed
 - coordinated Procedure + Handoff rename -> one new candidate revision
 - legacy + candidate simultaneous authority -> reject
+- source add/remove -> freshness対象
+- authoritative source-root membership change -> freshness対象
+- duplicate Procedure logical source -> fail closed
+- duplicate exact standalone Handoff meaning -> fail closed
 
 まで確認対象を作っている。
+
+Complete stale envelopeは少なくとも:
+
+```text
+relevant source bytes
++ source add/remove
++ authoritative source-root membership
++ logical source uniqueness
++ World / Conformance base
+```
+
+をfalse-negativeなくcoverする。
 
 物理token shapeは固定しない。
 
 ```text
 one token
-  -> relevant source-set + World/Conformance baseをfalse-negativeなくcoverすれば可
+  -> complete stale envelopeをfalse-negativeなくcoverすれば可
 
 independent source planes
   -> independent/composite checkへreopen可
@@ -397,6 +429,7 @@ from / to / condition losslessness Pressure
 - full Business Flow / DFD
 - Workflow state / retry / timer / queue / saga
 - global Canonical Step ID
+- global Canonical Handoff ID
 - Observation専用Canonical identity
 - Business Procedure CRUD field
 - Application Pattern generic CRUD field
@@ -446,10 +479,13 @@ Actual testsで:
 - standalone Handoff strict decode / round-trip
 - candidate-only disk reload
 - fresh-process candidate-only reload
+- duplicate Procedure logical source fail closed
+- duplicate exact standalone Handoff source authority fail closed
+- endpoint-only Handoff identityを発明しない
 
 を確認する。
 
-Fresh-process testは既にsource-level実装済みなので、残るのはGate A actual execution Evidenceである。
+Fresh-process / source-uniqueness testsはsource-level実装済みなので、残るのはGate A actual execution Evidenceである。
 
 ### Gate C — address / Handoff sufficiency
 
@@ -457,6 +493,10 @@ Fresh-process testは既にsource-level実装済みなので、残るのはGate 
 - stale endpoint fail closed
 - explicit Handoff authority only
 - standalone Handoff candidate = current normalized meaning
+- exact duplicate H1/R3 across managed standalone sources fail closed
+- path/input orderでHandoff source authorityを裁定しない
+- same endpoint pairだけをimplicit Handoff identityにしない
+- global Handoff IDを先取りしない
 - Handoff-only boundary維持
 - Procedure actorをendpoint identityへ複製しない
 - Procedure triggerとHandoff conditionを別authorityとして扱う
@@ -486,6 +526,9 @@ Contract ADRで必要なのはproduction Shared Acceptance engine完成ではな
 - source freshnessとConformance base freshnessを区別
 - complete stale envelope原則
 - source add/remove / membership changeをcover
+- logical source uniquenessをcover
+- duplicate Procedure logical authorityをfail closed
+- duplicate exact standalone Handoff authorityをfail closed
 - coordinated multi-source changeをone candidate bundleとして扱える
 - legacy + candidate dual authority reject
 - candidate-only fresh-process reload feasibility
@@ -546,6 +589,11 @@ migration
   = migration adapter + candidate-only steady-state loader
   = legacy-read preview -> one cutover -> candidate-only authority
 
+source-authority uniqueness
+  = Procedure duplicate logical source Pressure implemented
+  = exact duplicate standalone Handoff Pressure implemented
+  = actual execution pending
+
 fresh-process feasibility
   = source-level subprocess Pressure implemented
   = actual execution pending
@@ -566,7 +614,7 @@ Production adoption
 ```text
 Blocker A
   actual Repository runner green
-  including fresh-process candidate-only Pressure
+  including source-uniqueness and fresh-process candidate-only Pressure
 
 Blocker B
   independent Business requirementから生じた
@@ -583,10 +631,13 @@ Blocker B
 - qualifying C/U/D case absence
 - `ir.World.Business` necessity Evidence absence
 - Product Gate C後のStudio / AI integration未実装
+- PR #482がmainへmerge済みであること自体
 
 ## 16. Verification status
 
-HAT47Xは2026-09-08時点でもoffline。
+2026-09-09時点でHAT47Xはoffline。
+
+Lane C Reference / Pressure PR #482はmainへmerge済みで、standalone Handoff source uniqueness PressureもPR #520でmainへmerge済みである。ただしRepositoryへのReference / Pressure mergeは、Contract ADR adoption・production Core adoption・Gate A actual greenのいずれも意味しない。
 
 したがってcurrent source-level tests / checkerについて:
 
@@ -596,6 +647,7 @@ go vet PASS -> 未主張
 go test PASS -> 未主張
 checker PASS -> 未主張
 fresh-process PASS -> 未主張
+source-uniqueness PASS -> 未主張
 ```
 
-Contract ADRは**Not Ready**、PRは**Draft**を維持する。
+Contract ADRは**Not Ready**を維持する。次の状態遷移は、同一revisionでのactual Gate A greenとindependent second realistic TEI-original Handoffの両方が揃った場合だけ再判定する。
