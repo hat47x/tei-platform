@@ -112,6 +112,18 @@ actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gat
 - 未完了ならHandover `unresolved`
 - #310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle成功へ読み替えない
 
+### source qualification / GitHub Actions
+
+Gate B Product Evidenceと、補助的なsource qualification CIを分離します。
+
+- #512 `Gate B baseline source qualification` workflowはmainへ統合済み
+- #519でmanual `workflow_dispatch`入口もmainへ統合済み
+- #513ではGitHub-hosted runnerがjob開始前に割り当てられないpre-run blockerを追跡中
+- `runner_id=0 / steps=[]`等、checkout前のfailureをApplication / Driver code failureへ読み替えない
+- source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
+
+したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutで4-package preflightと#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
+
 Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
 
 ## Semantic / Source
