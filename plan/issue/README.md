@@ -37,9 +37,9 @@ Gate Bは引き続きNot Readyです。[000035](000035-gate-b-external-provider-
 | 段 | 担当Issue | 一つの成果・責務 | 判定の正本 |
 | --- | --- | --- | --- |
 | Reference / Evidence | [000042 cross-view Reference](000042-business-procedure-cross-view-reference.md) | checker / Pressure test / A-set / operational checklistの親 | 本Issueは判定stateを持たない |
-| ① Contract ADR | [000048 Contract ADR readiness](000048-business-procedure-contract-adr-readiness.md) | blocker A / B / Cの解消とADR起票 | [Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) |
+| ① Contract ADR | [000048 Contract ADR readiness](000048-business-procedure-contract-adr-readiness.md) | blocker A / Bの解消とADR起票 | [Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) |
 | ② production採用 | [000049 production adoption readiness](000049-business-authoring-production-adoption-readiness.md) | adapter / shared Acceptance / fresh processの3条件 | 000049の完了条件 |
-| Evidence補充 | [000050 second Handoff corpus](000050-second-realistic-handoff-corpus.md) | 二つ目のrealistic corpusでの`from/to/condition` lossless | 000048 blocker Cへ引き渡す |
+| Evidence補充 | [000050 second Handoff corpus](000050-second-realistic-handoff-corpus.md) | 二つ目のrealistic corpusでの`from/to/condition` lossless | 000048 blocker Bへ引き渡す |
 
 ③のStudio / AI統合は[000046](000046-studio-shared-acceptance-authoring-loop.md) / [000027](000027-ai-proposal-acceptance-boundary.md)がProduct Gate C後に担当します。**Lane C Pre-ADR Gate C**と**Product Gate C**は別物です。
 
