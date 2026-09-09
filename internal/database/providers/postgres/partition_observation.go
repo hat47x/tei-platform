@@ -32,14 +32,21 @@ type PartitionCatalogReader interface {
 // with provider-owned realization facts. Snapshot intentionally still contains
 // partition children; ProjectForConvergence decides which relations participate
 // in the generic comparison.
+//
+// PartitionObservationComplete distinguishes an observed empty partition set
+// from a CatalogReader that cannot observe partition relationships at all. That
+// distinction is required before destructive DDL can treat "no child observed"
+// as a safety precondition.
 type SchemaObservation struct {
-	Snapshot   physical.SchemaSnapshot `json:"snapshot"`
-	Partitions []PartitionRelation      `json:"partitions,omitempty"`
+	Snapshot                     physical.SchemaSnapshot `json:"snapshot"`
+	Partitions                   []PartitionRelation      `json:"partitions,omitempty"`
+	PartitionObservationComplete bool                     `json:"partitionObservationComplete"`
 }
 
 // ObserveSchema preserves the existing Introspect contract while adding
 // PostgreSQL-specific partition facts when the configured catalog can provide
-// them.
+// them. PartitionObservationComplete is true only after the partition reader
+// has returned successfully, including when the complete result is an empty set.
 func (p Provider) ObserveSchema(ctx context.Context, instance environment.DatabaseInstance) (SchemaObservation, error) {
 	snapshot, err := p.Introspect(ctx, instance)
 	if err != nil {
@@ -55,6 +62,7 @@ func (p Provider) ObserveSchema(ctx context.Context, instance environment.Databa
 		return SchemaObservation{}, fmt.Errorf("postgres partitions: %w", err)
 	}
 	observation.Partitions = append([]PartitionRelation(nil), partitions...)
+	observation.PartitionObservationComplete = true
 	return observation, nil
 }
 
