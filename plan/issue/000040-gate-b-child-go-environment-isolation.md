@@ -1,9 +1,9 @@
 # ISSUE-000040: Gate B child Go環境をGOENVまで固定する
 
-- 状態: In Progress — 実装 / 隔離test / tool README / Runbook同期済み、実TEI checkout test待ち
+- 状態: Ready to verify — 実装 / 隔離test / tool README / Runbook同期済み、実TEI full checkout / final run待ち
 - GitHub Issue: #424
 - 親: `ISSUE-000037` / #387
-- 関連: `ISSUE-000039` / #421、`ISSUE-000042` / #430
+- 関連: `ISSUE-000039` / #421、`ISSUE-000042` / #430、`ISSUE-000045` / #441、GitHub #444
 
 ## 目的
 
@@ -51,14 +51,29 @@ safeならprocess environment固定
 
 このIssueはGo環境だけを扱います。
 
-現行final runnerではPostgreSQL secretについて別途least-exposure境界を適用します。
+現行final runnerではPostgreSQL secretについて別途least-exposure / path-only handoff境界を適用します。
 
-- Go / Git probe: DSN本文なし / secret file pathなし
-- #310: DSN本文なし / secret file pathなし
-- #255: DSN本文なし / secret file pathなし
-- #308: in-memory DSN本文のみ / secret file pathなし
+```text
+Go environment / version probe
+Git source probe
+#310
+#255
+  -> DSN本文なし
+  -> original secret file pathなし
+  -> temporary handoff pathなし
 
-Go環境固定を理由にsecret exposureを広げません。
+#308 go run / compiler / linker
+  -> DSN本文なし
+  -> original secret file pathなし
+  -> temporary handoff pathのみ
+
+#308 runtime
+  -> handoff fileからDSN本文を読込
+  -> DSN / file path environmentをsource probe前に消去
+  -> 以後DSN本文はmemoryのみ
+```
+
+Go環境固定を理由にsecret exposureを広げません。`GOWORK / GOFLAGS / GOENV`の固定とPostgreSQL secret transportは別の安全境界です。
 
 ## 成立済み
 
@@ -70,10 +85,11 @@ Go環境固定を理由にsecret exposureを広げません。
 - [x] 隔離module test
 - [x] final runner tool READMEへ同期
 - [x] `plan/GATE_B_EVIDENCE_RUNBOOK.md`へ同期
+- [x] #308 compile環境のpath-only secret handoffと両立
 
 ## 残作業
 
-- [ ] 実TEI checkoutで次を再確認する
+- [ ] 実TEI full checkoutで次を再確認する
 
 ```bash
 GOENV=off \
@@ -83,6 +99,7 @@ go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
 - [ ] actual #387 final runで三laneが同じcandidate Rへ収束することを確認する
+- [ ] actual #308 childが同じGo環境固定とpath-only secret handoffを同時に満たすことを確認する
 
 actual runは#387の完了条件です。本IssueだけでGate B Readyを宣言しません。
 
@@ -92,4 +109,4 @@ actual runは#387の完了条件です。本IssueだけでGate B Readyを宣言�
 - Go toolchain / module cacheのvendoring
 - child programが意図的にenvironmentを書き換える全ケースの強制防止
 - #310 / #255 / #308 actual Evidenceの代替
-- GitHub Actions再有効化
+- CI greenをGate B Product Evidenceへ格上げすること
