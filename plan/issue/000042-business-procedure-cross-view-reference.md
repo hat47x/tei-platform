@@ -557,9 +557,9 @@ Manufacturing / inventory pressureでもCommand acceptedとphysical completion�
 
 ## Verification status
 
-Repository上にはchecker / fixtures / Go Pressure testsを実装済み。2026-09-09時点でHAT47Xはofflineのためactual Repository executionは未取得であり、current main `bbc0bff87f6b97a6ec6beae94b6393599db51ae3`にもPR-triggered workflow runはない。
+Repository上にはchecker / fixtures / Go Pressure testsを実装済みだが、actual Repository execution Evidenceは未取得である。Runner availabilityやexecution target revisionは一時状態なので本Issueへ固定せず、`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`に従って実行時にexact revision `R`、runner kind、environmentを記録する。
 
-PR #482は2026-09-09にmainへmerge済みで、PR #520でstandalone Handoff source uniqueness Pressureもmainへ入った。ただしReference / PressureのmergeはContract ADR adoptionやGate A greenを意味しない。
+PR #482は2026-09-09にmainへmerge済みで、PR #520でstandalone Handoff source uniqueness Pressureもmainへ入った。PR #529ではGate A runbookをpost-merge exact-revision execution modelへ更新した。ただしReference / Pressure / runbookのmergeはContract ADR adoptionやGate A greenを意味しない。
 
 したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A124もsource-level / test-only / architecture-boundary Evidenceであり、actual runner PASSへ読み替えない。Contract ADRは引き続きNot Readyで、material blockerはactual Repository runner greenとindependent second realistic TEI-original Handoffの2件である。
 
