@@ -1,0 +1,52 @@
+name: Gate B baseline source qualification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - internal/**
+      - go.mod
+      - go.sum
+      - .github/workflows/gate-b-baseline-source-qualification.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-qualification:
+    runs-on: ubuntu-22.04
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ""
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Record checkout and Go toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/gate-b-source-head"
+          go version
+          test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | grep -Ev '^H ' || true)"
+      - name: Check formatting
+        run: test -z "$(gofmt -l internal/application internal/driver internal/validation)"
+      - name: Vet affected packages
+        run: go vet ./internal/application ./internal/driver ./internal/validation
+      - name: Test affected packages
+        run: go test ./internal/application ./internal/driver ./internal/validation -count=1
+      - name: Verify source remains clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(cat "$RUNNER_TEMP/gate-b-source-head")"
+          test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | grep -Ev '^H ' || true)"

@@ -14,7 +14,7 @@ env:
 
 jobs:
   actual-tei-cli:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Evidence workflowを取得
         uses: actions/checkout@v7

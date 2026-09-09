@@ -20,7 +20,7 @@ Lane C detailed Reference Evidence inventory
 
 Reference fixture / checker / Canonical pressureはLane Cが所有する。Gate B / Gate C Required Evidenceは変更しない。
 
-## 2. PAS-07の壊してはいけない境界
+## 2. PAS-07で壊してはいけない境界
 
 ```text
 Business Action != Application Function
@@ -34,12 +34,14 @@ Validation PASS != whole-business approval
 Application Business Result != external-world Observation
 Command accepted != physical-world fact observed
 physical-world fact observed != accepted responsibility Handoff
+Data trace projection != complete Data dependency authority
+no current Data trace != no Data dependency
 Projection != second source of truth
 ```
 
 利用者価値・代表Scenario・Requirement mappingの正本は主Traceとする。
 
-## 3. Current representation pressure
+## 3. Representation pressure
 
 PAS-07はCanonical `BusinessProcedure` kindを前提にしない。
 
@@ -91,27 +93,29 @@ Direct Data / Relation refはminimum必要性未証明。将来accepted source�
 - Pattern owner / policyを正しいauthorityから解決し、Legacy policyからBusiness targetをbackfillしない。
 - normalized Handoff integrityをSource Index / locatorへ戻さない。
 - physical ObservationだけからData ownership / Application Pattern / responsibility Handoffを生成しない。
+- Data cross-view matrixはevidence-backed traceだけを表示し、trace absenceをdependency absenceへ丸めない。
+- derived projectionはBusiness source / Application / Semantic authorityへ逆流させない。
 
 ## 6. PAS-07 Evidence mapping
 
-Lane Cの詳細statusはISSUE-000042 A-setを正本とする。Current A-setはA1〜A79。
+Lane Cの詳細statusはISSUE-000042 A-setを正本とする。Current A-setはA1〜A83。
 
 | Evidence | Current supporting A-set | Claim |
 | --- | --- | --- |
 | E7-01 | A2 / A8 / A21 / A25 / A33 / A37 / A67 / A71 / A72 | manual / external / physical meaningをFunctionへ還元せず、targetもrealizationへ誤変換しない |
-| E7-02 | A1 / A3 / A4 / A20 / A38 / A39 / A55 / A57〜A59 / A61 / A63 / A66 / A68〜A71 / A75 | exact authority trace、非重複、kind / role / authority direction、synthetic ownership禁止 |
+| E7-02 | A1 / A3 / A4 / A20 / A38 / A39 / A55 / A57〜A59 / A61 / A63 / A66 / A68〜A71 / A75 / A80 / A81 / A83 | exact authority trace、非重複、kind / role / authority direction、synthetic ownership禁止、derived Data trace |
 | E7-03 | A5 / A6 / A39 | accepted datasource policy contradictionをbaselineと区別して検出 |
-| E7-04 | A9 / A19 / A23 / A28 / A31 / A32 / A45 / A46 / A48 / A49 / A51 / A54 / A65〜A67 / A69 / A72〜A74 / A76 / A78 | Business / Handoff / target / actuality / responsibility meaningを分離 |
+| E7-04 | A9 / A19 / A23 / A28 / A31 / A32 / A45 / A46 / A48 / A49 / A51 / A54 / A65〜A67 / A69 / A72〜A74 / A76 / A78 / A80 / A82 | Business / Handoff / target / actuality / responsibility / Data-trace meaningを分離 |
 | E7-05 | A10 / A11 / A25 / A26 / A37 / A38 / A40 / A44 | reuse、multi-Application、single-owner非依存、optional reporting context |
 | E7-06 | A12 / A13 / A22 / A23 / A34〜A36 / A41〜A43 / A45 / A46 / A49 / A64 / A65 / A76〜A79 | source move、Step address、explicit Handoff authority、referential integrity |
 | E7-07 | A14 / A15 / A17 / A35 | review continuity、snapshot-bound approval、Acceptance target |
-| E7-08 | A7 / A27〜A30 / A35 / A44 / A62 / A68 / A70 / A74〜A79 | fail closed、unknown保持、policy / Observation / adjacencyから未証明meaningをbackfillしない |
-| E7-09 | A18 / A20 / A24 / A26 / A30〜A34 / A36 / A40 / A41 / A43〜A64 / A69〜A79 | identity / runtime / enum / ownership / graph / Business Flow / generic ref-roleをEvidenceなしでproductionへ固定しない |
+| E7-08 | A7 / A27〜A30 / A35 / A44 / A62 / A68 / A70 / A74〜A79 / A82 / A83 | fail closed、unknown保持、policy / Observation / adjacency / partial traceから未証明meaningをbackfillしない |
+| E7-09 | A18 / A20 / A24 / A26 / A30〜A34 / A36 / A40 / A41 / A43〜A64 / A69〜A83 | identity / runtime / enum / ownership / graph / Business Flow / generic ref-role / Data projectionをEvidenceなしでproductionへ固定しない |
 | E7-10 | A16 / A17 + PAS-01 | authoritative file-native sourceをstale baseから守りfresh Accept後にreload / re-deriveする |
 
 同じAが複数境界を支える。mappingはcoverage scoreではない。
 
-## 7. A54〜A79の現在地
+## 7. A54〜A83の現在地
 
 ```text
 A54〜A59
@@ -123,27 +127,38 @@ A60〜A65
 A66〜A69
   ref kind != ref role / O1 / D4+O1
 
-A70
-  Authorization policy may corroborate O1 target
-  but must not author / backfill it
+A70〜A71
+  Authorization policy authority direction / X-TEA negative evidence
 
-A71
-  X-TEA supports Action / Function separation
-  but not generic protected-target role taxonomy
+A72〜A79
+  manufacturing / inventory outline
+  physical Observation
+  synthetic Data authority deferral
+  Handoff non-inference / explicit-source authority
 
-A72
-  manufacturing / inventory outline reinforces physical/manual + Observation boundary
-  without proving candidate-stack insufficiency
+A80〜A81
+  exact refsからBusiness Action × Data/Relation V0 traceをderive
+  Business sourceへDataを重複authorしない
 
-A73〜A74
-  Command acceptance / read success / positive Observationを分離
+A82
+  no current Data trace != no Data dependency
 
-A75
-  exact TEI identityなしにsecond-corpus ownershipをsynthetic化しない
+A83
+  BP-06 partial security traceをcomplete扱いせず
+  O1 protected-target Dataをhelper / adjacencyから補完しない
+```
 
-A76〜A79
-  physical fact / Step adjacency / Function sequenceからHandoffを推測せず
-  explicit accepted Handoff sourceだけをH1/R3 authorityとする
+A80〜A83内のchange-direction pressure:
+
+```text
+Business wording-only change + refs unchanged
+  -> Data projection unchanged
+
+referenced Pattern / Validation / Capability authority change
+  -> Business source unchangedでもData projectionは追随
+
+missing / ambiguous referenced identity
+  -> fail closed
 ```
 
 新E7は追加しない。
@@ -158,7 +173,7 @@ role separation is representable
 
 B-F27はintentionally / conditionally unresolved。
 
-A72ではsecond domainでO1 roleの反復は未証明。generic Role taxonomyへ一般化しない。
+A83により、protected-target relationをaccepted meaningとして将来保持する場合にはData projection / impact-analysis coverageへ具体的に効くことが分かった。ただしcurrent一例だけでO1 persistenceやgeneric Role taxonomyをproductionへ採用しない。
 
 ## 9. Secondary semantic boundaries
 
@@ -187,6 +202,27 @@ Command accepted
 
 runtime `ExecuteObservationRead` / `ReadIdentity`をBusiness/Semantic identityへ昇格しない。A73/A74はmechanical pressureだがPAS-02全体のRuntime Evidenceを代替しない。
 
+### S7-04 — Data trace / dependency completeness / change direction
+
+```text
+evidence-backed Data trace exists
+  != complete Business Data dependency known
+
+NoDataTraceFromCurrentRefs = true
+  != no Data dependency
+
+Business source + referenced accepted authorities
+  -> V0 Data projection
+
+V0 Data projection
+  -X-> author Business source
+  -X-> author Application / Semantic authority
+```
+
+Business wording-only changeはref不変ならData projectionへ波及させず、参照authorityの変更はprojectionへ追随させる。missing identityはfail closedする。
+
+A80〜A83のprojectionはData authority / ownership / CRUD / completenessを所有しない。
+
 ## 10. Gate 15 / RRB
 
 ```text
@@ -196,7 +232,7 @@ runtime `ExecuteObservationRead` / `ReadIdentity`をBusiness/Semantic identity�
     = concrete minimum-contract insufficiencyが出た場合だけopen
 ```
 
-A72〜A79では具体的contract insufficiencyを観測していないため15cは未起動。
+A72〜A83では具体的contract insufficiencyを観測していないため15cは未起動。
 
 ```text
 Gate 15c not activated
@@ -211,19 +247,20 @@ RRB-P2 P1 sourceをsource/test cross-viewへ統合
 RRB-P3 actual execution-qualified breadth Evidence
 ```
 
-Current outlineおよびA73〜A79のtest-only pressureはP1ではない。P1がないためP2でもない。
+Current outline / physical pressure / Data projectionはP1ではない。P1がないためP2でもない。
 
 ## 11. Current findings / status
 
 ```text
 Lane C A-set
-  A1〜A79
+  A1〜A83
 
 B-F21 / B-F23 / B-F25 / B-F26 / B-F29 / B-F30
   source/document level Resolved
 
 B-F27 authoritative protected target
   intentionally / conditionally unresolved
+  A83でprojection coverage consequenceは具体化
 
 B-F28 candidate composition
   source-level Confirmed / actual execution pending
@@ -239,6 +276,18 @@ B-F34 Data authority relevance != exact authority existence
 
 B-F35 H1/R3 authority direction = explicit source only
   source/test-level strengthened
+
+B-F36 useful Data projection != source duplication necessity
+  Confirmed
+
+B-F37 no current trace != no Data dependency
+  Confirmed
+
+B-F38 O1 persistence has concrete Data-projection consequence
+  Confirmed pressure / production adoption still unresolved
+
+B-F39 V0 Data projection authority direction is one-way
+  Confirmed source-level boundary
 
 RRB-P1 / P2 / P3
   not achieved
@@ -288,9 +337,12 @@ PAS-07 Reference Evidence
 
 1. Lane C A-setをdetail正本とし、本書はrange/mappingだけを更新する。
 2. 新pressureは新E7を増やす前に既存E7へ吸収できるか確認する。
-3. B-F27はactual Evidenceからauthoritative persistenceが必要になった場合だけreopenする。
-4. S7-01〜03はPAS-02とcross-checkしRepresentation / Runtimeを混同しない。
+3. B-F27はactual Evidenceからauthoritative persistenceが必要になった場合だけreopenする。A83のprojection coverageは判断材料として保持する。
+4. S7-01〜04はPAS-02 / accepted Semantic authorityとcross-checkし、Representation / Runtime / completenessを混同しない。
 5. Pre-ADR readinessはLane C正本からderiveし、Lane Bへ独立Gate inventoryを作らない。
 6. RRB-P1 / P2 / P3とGate 15cを同じstatusへ潰さない。
 7. Observation / adjacency / Function sequenceからData authorityやHandoffを推論しない。
-8. PAS-07 user value / Requirement mapping / Gate影響が変わる場合は主Traceを先に更新する。
+8. Data trace absenceをdependency absenceへ丸めず、trace projectionをsecond SOTへ昇格しない。
+9. projectionを豊かにする目的だけでV1 authoring sourceへdirect Data ref / O1 targetを追加しない。
+10. CRUD semanticsはoperation authorityをEvidence-backedにderiveできるまで追加しない。
+11. PAS-07 user value / Requirement mapping / Gate影響が変わる場合は主Traceを先に更新する。

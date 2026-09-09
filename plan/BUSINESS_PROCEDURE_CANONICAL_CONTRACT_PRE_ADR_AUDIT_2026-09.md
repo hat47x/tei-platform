@@ -1,470 +1,653 @@
 # Business Procedure Canonical Contract Pre-ADR Audit — 2026-09
 
-Status: **Lane C / Pre-ADR audit / Not Ready / no production Core adoption**
+Status: **Lane C / sole Contract ADR readiness authority / Not Ready / no production Core adoption**
 
-## 1. 目的
+## 1. この文書の責務
 
-Business Procedure Reference pressureからproduction Canonical contractを判断する前に、accepted Business meaning、derived meaning、Authoring/Source metadata、Projection/Diagnostic、Runtime/Provider、別Reference pressureを分離する。
+この文書はBusiness Procedure / Handoff production contractについて、**Contract ADRを起こしてよいかだけを判定する正本**です。
 
-本監査はADRではない。Production `ir.World`変更、`BusinessProcedure` / `BusinessHandoff` kind採用、Business Flow schema、generic ref-role model、Workflow Engine導入を決定しない。
+Production adoption readiness、Product Gate C後のStudio / AI shared Acceptance実装は別段階です。
 
-## 2. 主要な反証
-
-- identity-onlyではBusiness-only accepted changeを失う。
-- full Workflow modelは不要。
-- Business Procedureをsingle Application childにしない。
-- trigger / actor uncertaintyはmeaningだがgeneric certainty frameworkは不要。
-- `realization`はauthoring/review labelとして有用でもminimum Core必須とは証明されていない。
-- Step body meaningとStep referential addressは分離できる。
-- authoring-only Handoff H0はcondition / endpoint changeをnormalized meaningから失う。
-- Data Relation / generic Core EdgeはBusiness Handoffの器ではない。
-- Business Handoffはfull Business Flow / DFDではない。
-- ref kind separationだけではref role separationを表せない。
-- Authorization policyとBusiness protected targetは別Authorityであり、policyからBusiness targetを逆導出してはならない。
-- manufacturing / inventory outlineはphysical-world非対称性を再現するが、O1 generic roleやD4/H1/R3 production拡張をまだ要求しない。
-- physical-world Command / Observation separationはtest-onlyで機械化できるが、新しいCanonical Observation identityは不要である。
-- second-corpus Data authorityは重要でも、exact TEI Data / Pattern / Database identityなしにsynthetic ownershipを作ってはならない。
-- physical factの観測だけではaccepted responsibility Handoffを導出できない。
-- Procedure Step順序 / adjacencyやApplication Function sequenceからaccepted responsibility Handoffを導出してはならない。
-- normalized H1/R3 relationのauthorityはexplicit Business Handoff sourceに限定する。
-
-## 3. Explicit ref authority
-
-Current `order_entry`では、既存authorityがあるだけではdirect refを保持しない。Business Action自身がそのauthorityを直接必要とし、既存Pattern refからlosslessにderiveできない場合だけBusiness sourceへ置く。
-
-### Application Pattern — direct realization
+Current minimum candidate:
 
 ```text
-BP-00 -> order_entry.recent_orders
-BP-01 -> order_entry.order_record
-BP-02 -> order_entry.customer_reference
-BP-03 -> order_entry.order_lines
-BP-07 -> order_entry.submit_order
-```
+BusinessModel
+  Procedures[]
+    Procedure
+      id
+      purpose
+      trigger { epistemicStatus, meaning }
+      actor   { epistemicStatus, businessLabel }
+      Steps[]
+        localKey
+        Body
+          businessAction
+          applicationPatterns[]
+          validations[]
+          capabilities[]
+        protectedApplicationPattern?
 
-### Validation
+  Handoffs[]
+    from { procedure, step }
+    to   { procedure, step }
+    condition
+```
 
 ```text
-BP-05
-  -> sales.order_line.quantity_positive
-  -> sales.order.lines.line_number_unique
+D4 + singular narrow O1 + S4-A + H1/R3
 ```
 
-BP-03 line reviewへ同じValidation authorityを重複しない。
-
-### Capability
+## 2. Readiness層を分ける
 
 ```text
-BP-06 -> security.authorize
+Contract ADR readiness
+  -> semantic / authority / freshness contractを決めてよいか
+
+Production adoption readiness
+  -> production source authorityを安全に切替・再読込できるか
+
+PAS-01 / Studio / AI integration
+  -> Product Gate C後のshared Acceptance end-to-end
 ```
 
-BP-07の`sales.order.submit`はPattern-owned meaningなのでBusiness sourceへコピーしない。
+`ISSUE-000027` / `ISSUE-000046`はProduct Gate C Ready後のIssueである。これらのproduction実装が未完成であることをLane C Contract ADR blockerへ循環させない。
 
-### Observation
+詳細は`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`を正とする。
 
-BP-08はBusiness intentionを保持するが、runtime `ExecuteObservationRead` / `ReadIdentity`をSemantic identityへ昇格しない。
+## 3. Current semantic decision
 
-Second-corpus physical-world Pressureでも同じ境界を利用し、Command acceptanceやread transport successをphysical completionへ丸めない。
+### Procedure body
 
-原則:
+Current minimumはD4。
 
 ```text
-explicit refs are evidence-driven, not symmetry-driven
+Body
+  businessAction
+  applicationPatterns[]
+  validations[]
+  capabilities[]
 ```
 
-## 4. Candidate stack
+D3はhistorical/subtraction Evidenceとして残す。
 
-```text
-D3
-  broader thin Business Procedure Step body candidate
-  - realization review label
-  + explicit typed refs including Data/Relation slots
+### O1 protected Application target
 
-D4
-  smaller evidence-backed Step body candidate
-  - current未証明のdirect Data ref slot
-  - current未証明のdirect Relation ref slot
-  + fail-closed reopen rule
-
-S4-A
-  Procedure-scoped Step local address metadata
-  D4 bodyとは独立
-
-H1
-  thin normalized handoff meaning
-
-R3
-  Business semantic boundary内のhandoff-only relation
-
-C1
-  fixture Applicationはoptional reporting context
-
-O1
-  Application Pattern protected-target role overlay pressure
-  D4 direct realization refとは独立
-```
-
-D3 / D4 / O1はいずれもproduction採用ではない。
-
-## 5. D4 body candidate
-
-```text
-Procedure body
-  id
-  purpose
-  trigger { epistemicStatus, meaning }
-  actor   { epistemicStatus, businessLabel }
-  ordered step bodies[]
-    businessAction
-    applicationPatternRefs[]   // direct realization only
-    validationRefs[]
-    capabilityRefs[]
-```
-
-D4 bodyはStep local addressを持たない。
-
-```text
-D4 body meaning
-  != S4-A Step address metadata
-```
-
-Current Referenceでminimum必要性が未証明のdirect Data / Relation refsは入れない。
-
-将来sourceにdirect Data / Relation refが現れた場合、D4 projectionは黙ってdropせずfail closedし、explicit-ref designをreopenする。
-
-Second-corpus physical stateのrelevanceだけではData / Relation slotを追加しない。Exact TEI-original Data authorityがない状態でownershipを作ることもしない。
-
-## 6. ref kindをgeneric bagへ畳まない
-
-```text
-Application Pattern
-Validation
-Capability
-```
-
-は異なるauthority kindである。literal identity textが同じでも同一refとして扱わない。
-
-Generic `semanticRefs[]` / kind-less `[]CanonicalID`はcurrent Evidenceから採用しない。
-
-## 7. O1 — ref role separation
-
-Application Patternという同じauthority kindでも、current Referenceでは少なくとも二つのrole pressureがある。
-
-```text
-BP-07 -> order_entry.submit_order
-  direct Function realization
-
-BP-06 -> order_entry.submit_order
-  protected target / concern
-  not realization
-```
-
-BP-06は同時に:
+BP-06では:
 
 ```text
 supporting semantic authority -> security.authorize
 protected Application target  -> order_entry.submit_order
-direct Function realization   -> none
+direct Application realization -> none
 ```
 
-を保持する必要がある。
+である。
 
-`applicationPatterns[]`をprotected targetにも流用すると、target relationをFunction realizationへ誤変換する。
-
-O1ではtest-only overlay:
+D4だけではprotected targetが失われるためlossy。Current production authoring candidateはsame Procedure source内のsingular narrow:
 
 ```text
-D4TargetAwareStep
-  Body: D4 Step body
-  ApplicationPatternTargets[]
+protectedApplicationPattern?
 ```
 
-を比較し、target-only changeをD4 bodyから独立したcross-view meaning差として保持する。
+である。
 
-ただしgeneric:
+`applicationPatterns[]`へ混ぜてdirect realization扱いしない。Generic `{Kind, Role, Target}` taxonomy、multi-target、sidecar production authorityはEvidenceが出るまで採用しない。
+
+### Step address
+
+S4-A:
 
 ```text
-ExplicitSemanticRef { Kind, Role, Target }
+Procedure-scoped localKey
 ```
 
-はまだ採用しない。current strong role pressureはBP-06中心であり、`supports / concerns / protects / checks / realizes` taxonomy全体は未証明である。
+をcurrent candidateとする。
 
-## 8. D4 + S4-A + H1/R3 composition
+Handoff endpointをexactに指すためのaddressabilityは必要だが、global Canonical Step identityやruntime identityは不要。
+
+### Handoff
+
+H1/R3:
 
 ```text
-D4 Step body
-        +
-S4-A Procedure-scoped local address
-        +
-H1/R3 handoff-only relation
-        ↓
-Normalized Business model pressure
+Handoff
+  from { procedure, step }
+  to   { procedure, step }
+  condition
 ```
 
-合成後も:
+をcurrent candidateとする。
 
-- D4 bodyへLocalKeyを混ぜない
-- stale Step addressをfail closed
-- address + endpoint協調renameを許容
-- Handoff condition changeをbodyから独立したBusiness meaning差として保持
-- new direct Data / Relation refはaddress/handoff layerで隠さずD4でfail closed
-
-Second-corpusではphysical factがresponsibility continuationの前提になり得るが、exact Procedure/Step/conditionがない限りH1/R3 relationを生成しない。
-
-### 8.1 H1/R3 authority direction
-
-`second_corpus_handoff_inference_pressure_test.go`で次をPressureする。
+Authorityはexplicit Handoff sourceだけ。
 
 ```text
-Procedure bodies + ordered steps
-explicit Handoff source absent
-  -> normalized Handoffs = 0
-
-positive physical Observation
-explicit Handoff source absent
-  -> normalized Handoffs = 0
-
-explicit Handoff source present
-  -> normalized Handoffs = 1
-  -> exact endpoint + condition validation
+Step adjacency           -X-> Handoff
+Application Function seq -X-> Handoff
+physical Observation     -X-> Handoff
+Lifecycle transition     -X-> Handoff
+Deployment state         -X-> Handoff
 ```
 
-したがってauthority directionは:
+Handoffはhandoff-only relationであり、full Business Flow / DFD / Workflow runtimeへ膨張させない。
+
+Current H1/R3にはglobal Handoff IDを追加しない。Exact duplicate relationのsource-authority conflictは既存`from/to/condition` meaningでdetectでき、same endpoints + different conditionをendpoint-only identityで潰す根拠もない。
+
+## 4. Placement
+
+Current strongest candidateはseparate normalized Business semantic plane。
 
 ```text
-explicit accepted Handoff source
-  -> normalized H1/R3 relation
+Business authoring sources
+  -> normalized Business model
+  -> Business semantic revision
 
-Step order / adjacency
-  -X-> Handoff
+TEI workspace sources
+  -> ir.World
 
-physical Observation
-  -X-> Handoff
+normalized Business model
+  <-> exact cross-view Conformance <-> ir.World
+```
 
-Application Function sequence
-  -X-> Handoff
+Current Evidenceでは`ir.World.Business` embeddingは不要。
+
+Business-only wording / protected target / Handoff condition changeは`ir.World`を偽変更せずBusiness semantic changeとして扱える。一方World側exact targetが消えればseparate planeでもfail closedする。
+
+`ir.World.Business`必要性Evidenceがないことはblockerではない。
+
+## 5. Authoring / migration direction
+
+```text
+legacy authority
+  -> migration adapterでread
+  -> candidate preview
+
+candidate
+  -> non-authoritative
+  -> normalize / compare / Conformance
+
+Shared Acceptance
+  -> one accepted authority cutover
+
+steady-state
+  -> candidate-only loader
+```
+
+Production candidate:
+
+```text
+Procedure source
+  -> inline singular O1
+
+standalone Handoff source
+  -> H1/R3
+```
+
+禁止:
+
+- permanent legacy + candidate dual-read
+- merge priority / last writer wins
+- schemaVersionによるauthority priority
+- source pathをBusiness identityにすること
+- `file exists == authority`とみなすこと
+- duplicate `Procedure.id`を複数managed sourceから受理すること
+- exact duplicate H1/R3 meaningを複数managed standalone Handoff sourceから受理すること
+- path order / input order / first-writer / last-writerでsource authorityを裁定すること
+- Handoff endpoint pairだけを暗黙Handoff identityとして発明すること
+
+```text
+physical source path
+  != Business logical identity
+  != accepted source authority
+```
+
+Procedure sourceでは`Procedure.id`をcurrent logical identity candidateとして使うが、durable Canonical Procedure kind採用を意味しない。
+
+Standalone Handoff sourceではexact H1/R3 tupleをduplicate meaning detectionに使えるが、global Handoff ID採用を意味しない。
+
+Migration adapterとsteady-state candidate loaderを分離する。
+
+## 6. Freshness / Shared Acceptance contract
+
+```text
+Business source freshness
+  != Business semantic revision
+  != cross-view Conformance base
+```
+
+Current source-level Pressureでは:
+
+- Business source changed after Preview -> stale
+- Business source unchanged but World changed -> stale
+- Procedure Step rename only -> Handoff endpoint stale / fail closed
+- Handoff endpointだけrename -> fail closed
+- coordinated Procedure + Handoff rename -> one new candidate revision
+- legacy + candidate simultaneous authority -> reject
+- source add/remove -> freshness対象
+- authoritative source-root membership change -> freshness対象
+- duplicate Procedure logical source -> fail closed
+- duplicate exact standalone Handoff meaning -> fail closed
+
+まで確認対象を作っている。
+
+Complete stale envelopeは少なくとも:
+
+```text
+relevant source bytes
++ source add/remove
++ authoritative source-root membership
++ logical source uniqueness
++ World / Conformance base
+```
+
+をfalse-negativeなくcoverする。
+
+物理token shapeは固定しない。
+
+```text
+one token
+  -> complete stale envelopeをfalse-negativeなくcoverすれば可
+
+independent source planes
+  -> independent/composite checkへreopen可
+```
+
+Git HEAD equalityだけをunconditional freshness proofとしない。Unrelated changeによるfalse-positive staleより、relevant changeのfalse-negativeを避ける。
+
+## 7. Existing implementation reuse audit
+
+既存TEIから再利用候補:
+
+```text
+workspace / ManagedFiles
+  -> source-root discovery / source set
+
+Source Index
+  -> Artifact fingerprint / source trace / stale validation primitive
+
+Workbench / Consumer Impact / Release Graph
+  -> deterministic Preview / impact projection precedent
+
+Deployment expected-revision / bound fingerprints
+  -> stale-reject architectural precedent
+```
+
+ただし:
+
+```text
+Deployment Run.Revision
+  != Business semantic revision
+
+Deployment durable state machine
+  != Business Workflow / Business source transaction
+```
+
+である。
+
+Current audited implementation surfacesでは、generic source-authoring Shared Acceptance / multi-file authoritative apply / authority cutover / production Business loaderは確立されていない。
+
+これはProduction adoption implementation gapであって、Business schema field追加Evidenceではない。
+
+## 8. Fresh-process feasibility
+
+`business_authoring_candidate_fresh_process_pressure_test.go`はtest-onlyで、parent processがcandidate Procedure / Handoffをdiskへ書き、child processへcandidate paths + World workspaceだけを渡す。
+
+Legacy-looking decoyをdiskへ置いてもchildへlegacy locatorを渡さず:
+
+```text
+candidate Procedure + Handoff
+  -> fresh process
+  -> strict decode
+  -> normalize
+  -> current World Conformance
+  -> same Business semantic fingerprint
+```
+
+をPressureする。
+
+したがってfresh-process candidate-only feasibilityは**source-level implementation済み / actual runner未実行**であり、独立した設計未解決ではない。
+
+## 9. Derived Data / CRUD / ownership
+
+Business sourceへData / Relation / CRUD / ownership / Namespaceを重複authorしない。
+
+```text
+no Data trace != no Data dependency
+trace exists  != complete dependency set
+```
+
+Current exact CRUD operation Evidence:
+
+```text
+BP-00 -> R sales.order
+BP-02 -> R customer.customer
+BP-03 -> R sales.order_line
+```
+
+禁止:
+
+- wordingからCRUDを推測
+- `record` / `command` kindからCRUDを推測
+- Database Contract WritesをBusiness Action Uへ自動帰属
+- Lifecycle transitionをCRUD Uへ短絡
+- Capability payload / Custom Go realizationからgeneric effectを発明
+
+Qualifying C/U/D case absenceはBusiness Procedure Contract ADR blockerではない。Future mutation/effect contract reopen triggerとして残す。
+
+```text
+Namespace != SubjectArea
+Database ownership/access lens != Subsystem
+```
+
+も維持する。
+
+## 10. Command / Observation
+
+- Command accepted != physical completion
+- transport/read success != observed fact
+- runtime Observation identityをBusiness Canonical identityへ昇格しない
+- positive Observationからresponsibility Handoffを生成しない
+
+Manufacturing / inventory synthetic outlineはこの非対称性を別domainでもPressureするが、accepted Business Handoff authorityにはしない。
+
+## 11. Second realistic Handoff audit
+
+Current explicit primary Handoff:
+
+```text
+order-entry.order-handling / BP-09
+  -> order-entry.follow-up / FU-00
+condition = follow-up required after earlier order interaction
+```
+
+Second-case探索では次をrejectした。
+
+- BP-08 -> BP-09 adjacency
+- FU-01 -> FU-02 adjacency
+- customer-edit intentional defectからmaster-data workflowを発明
+- Business Lifecycle state transition
+- Deployment / runtime transition
+- Watanabe external patternの直接fixture化
+- RQ-025 / RQ-026の一般的Handoff allowanceから具体的instanceを生成
+- synthetic `fulfillment_console` / warehouse / external delivery pressureからaccepted Handoffを逆生成
+
+`reference/business-system-design` inventoryもorder-entry / follow-up中心で、別のaccepted Business responsibility chainはない。同directory README自身が複数Subject Area / Subsystem跨ぎやexternal contractをfuture pressureとして挙げる。
+
+したがって:
+
+```text
+TEI-original independent second Handoff
+  = none
+
+existing accepted corpusからのsafe promotion candidate
+  = none
+
+existing-corpus search
+  = closed
 ```
 
 とする。
 
-これはproduction `BusinessHandoff` Canonical kindの必要性を証明しない。H1/R3を採用する場合に最低限守るauthority separationを示すEvidenceである。
+これはH1/R3 sufficiency証明ではない。Test件数のためにsource authorityを発明しないためのnegative Evidenceである。
 
-## 9. D4 + O1 composition
+### Actual green後のauthoring protocol
 
-```text
-D4 body
-  applicationPatterns[] = direct realization only
-
-O1 overlay
-  applicationPatternTargets[] = protected target / concern
-```
-
-Pressure:
-
-- BP-06のD4 bodyにApplication Pattern realizationを追加しない
-- `security.authorize` Capability refを保持
-- `order_entry.submit_order`をtarget overlayでexact resolution
-- target-only changeはD4 body不変・overlay meaning変更
-- BP-07隣接realizationからtargetをderiveしない
-- Authorization policy shapeをBusiness Procedureへ逆流させない
-
-Current O1 / D4+O1 testsのtargetはtest helper引数であり、authoritative Business sourceへpersistした意味ではない。O1をproduction accepted meaningとして残す場合だけ、file-native source / decode / reload / Shared Acceptanceまで同じtarget roleを保持するpressureを追加する。O1を残さない場合はfixture fieldを増やさない。
-
-### 9.1 O1 authority direction
-
-`security.authorize`は`subject / action / resource`を扱う汎用Semantic Authorization contractであり、BP-06や`order_entry.submit_order`というBusiness-side protected-target relationを所有しない。
-
-Legacy Authorization Referenceにはcurrent caseとして:
+Gate A actual green後に第二例を作る場合:
 
 ```text
-ORDER_EDITOR
-execute
-order_entry.submit_order
-allow
+independent Business need / responsibility boundary
+  ↓
+Business requirement / Reference seedを先に成立
+  ↓
+source responsibility / target responsibility / continuation conditionをreview
+  ↓
+minimal Procedure sources
+  ↓
+explicit Handoff candidate
+  ↓
+from / to / condition losslessness Pressure
 ```
 
-が存在するため、O1 targetとのcross-view corroborationには使える。
+とする。
 
-ただしauthority directionは次に限定する。
+`Handoff fieldを検証したい -> それらしい業務を作る`の順序は禁止する。
 
-```text
-explicit Business protected target
-  + security-side Authorization policy
-  -> corroboration / contradiction diagnostic
+新caseでは必要に応じて:
 
-Authorization policy
-  -X-> author Business protected target
-  -X-> backfill missing O1 target
-```
+- natural-language condition sufficiency
+- trigger vs condition separation
+- actor/job change independence
+- event/document identity necessity
+- thin Handoff vs full Business Flow necessity
 
-Policy changeはBusiness targetそのものを暗黙変更せず、不一致を`BUSINESS_APPLICATION_PATTERN_TARGET_AUTHORIZATION_POLICY_MISMATCH`等のtest-only cross-view diagnosticとして露出させる。
+を確認し、具体的lossが出た項目だけcontract reopenする。
 
-X-TEA fallbackで確認したTaskAction / TaskFunctionIO分離はBusiness ActionとFunction利用の分離を支持するが、generic protected-target role taxonomyまでは証明しない。この限界をE-015として`BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`へ記録した。
+## 12. Coreへ今入れないもの
 
-## 10. Derived / externalへ残すもの
-
-PatternからderiveできるData / Relation / Query / Capability / Datasource / owner Application / datasource policyをBusiness sourceへコピーしない。
-
-Procedureにmandatory single Application ownerを置かない。
-
-Matrix、CRUD / impact view、graph、checker diagnosticsをaccepted Business meaningの第二正本にしない。
-
-Source path / fingerprint / revision / ETag / ManagedFiles / approval snapshotはAuthoring/Source infrastructureへ残す。
-
-Second-corpus physical Observationのruntime ReadIdentity / Evidence natureもCanonical Business meaningへ昇格させない。
-
-## 11. Coreへ入れないもの
-
-- Runtime Workflow state / retry / timer / queue / scheduler / saga
-- Authorization Role / Principal / Permission / Credential / policy effect
-- Provider / deployment Evidence
-- UI layout
-- generic Core / Business Edge
-- generic `semanticRefs[]`
-- generic explicit-ref Role taxonomy
-- Observation専用Canonical identityの先行導入
-- physical-world state engine
-- second-corpus synthetic Data ownership / Database / Pattern
-- inferred Handoff from adjacency / Observation / Function sequence
-- global Canonical Step ID
-
-## 12. Business Flow / DFDは別pressure
-
-Current Handoff modelへProcess node、ExternalParty / Role participant、Information / Document / Data flow、Store、Payload / FlowType等を入れない。
-
-Current handoff validation PASSをBusiness Flow / DFD Conformanceとはみなさない。
-
-Physical fact observedだけでもBusiness Flow / DFD conformanceやresponsibility Handoff成立とはみなさない。
-
-## 13. Gate 15
-
-### 15a multi-Application structural pressure
-Synthetic second Applicationで`Business Procedure != single Application child`を確認する。
-
-### 15b social-system realism pressure
-Current `order_entry`だけでもmanaged-here sales data、external-observed customer master、human judgment、Authorization、Command、Observation intention、manual/external continuationが同一Procedure文脈に共存する。
-
-### 15c conditional broader realistic pressure
-15a + 15bで説明できない具体的不足が出た場合だけ追加する。Application数をrealism KPIにしない。
-
-### 13.1 manufacturing / inventory second-corpus outline
-
-`BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`でprovenance-backed outlineをcandidate stackへ当てた。
-
-結果:
-
-```text
-D4
-  manual / physical / external Business Action pressureを再現
-  direct Data / Relation ref necessityは未証明
-
-O1
-  protected-target roleのsecond cross-domain exampleは未証明
-  generic Role taxonomyを強める根拠なし
-
-H1 / R3
-  responsibility continuation pressureは自然に存在
-  Step adjacency / positive physical Observationからは生成しない
-  explicit Handoff sourceだけをnormalized relation authorityとするtest-only Pressureへ進展
-  production Canonical kind necessityは未証明
-
-Observation boundary
-  command accepted != physical actuality
-  を別domainから強く再現
-  -> test-only mechanical pressureへ進展
-  -> no observation / observed=falseをblocking diagnosticで区別
-  -> Canonical Observation identityは追加しない
-
-Data authority
-  physical state authorityのrelevanceは強い
-  exact TEI-original Data / Pattern / Database identityは未証明
-  -> synthetic ownership禁止
-
-Business Flow / DFD
-  material / information movementのrelevanceはある
-  Procedure/Handoffではmeaningを失うexact caseは未証明
-```
-
-したがってcurrent candidate stackのproduction contract insufficiencyはまだ見つかっておらず、**Gate 15cは未起動**を維持する。
-
-このoutline-level Evidence、Observation pressure、Handoff inference pressureは「next realistic Reference fixture完成」ではない。actual green前に外部modelのexact sequenceやsynthetic identitiesをfixtureへ昇格しない。
-
-## 14. ADR作成前Gate
-
-### Readiness authority
-
-本節を**production Canonical contract ADR readinessの唯一の判定正本**とする。
-
-- `plan/issue/000042-business-procedure-cross-view-reference.md` のA1〜A79 matrixはEvidence / Pressure inventoryであり、独立したReady判定ではない。
-- 同Issue末尾の完了条件はLane Cのoperational checklistであり、本節とは別のreadiness stateを所有しない。
-- 両者と本節の表現に差が出た場合、意味を失わないよう同期するが、Ready / Not Ready判定は本節を正とする。
-
-次を満たすまでproduction Canonical contract ADRを作らない。
-
-1. actual Repository environmentで`gofmt / go vet / go test / checker`がgreen
-2. Business-only wording / uncertainty changeをsemantic diffとして観測
-3. pure file move = meaning no-op
-4. logical Procedure / Step address renameをfail closed / coordinated changeとして説明
-5. manual / external Business Actionをfake Functionなしで保持
-6. Pattern-owned meaning非重複
-7. one Procedure -> multiple Applicationsをsingle ownerなしで保持
-8. actor uncertaintyをAuthorizationへ混ぜない
-9. H0 semantic loss / H1 preservationをactual testsで確認
-10. `realization` subtraction / diagnostic independenceをactual testsで確認
-11. S4-AでSource Index非依存のhandoff integrityをactual testsで確認
-12. global Step IDなしで必要addressabilityを説明
-13. H1/R3をhandoff-onlyとして保ちBusiness Flow surfaceを混ぜない
-14. Gate 15a / 15bをactual testsで確認し15cは具体的contract不足時だけ起動
-15. Authorization / Observation非対称境界をactual testsで確認
-16. BP-03 / BP-05 authority separationをactual testsで確認
-17. D3 / D4のどちらがcurrent + next TEI-original realistic Referenceで最小十分か説明。outline-level corpus breadthはfixture Evidenceと同一視しない
-18. D4 future Data / Relation ref fail-closedをactual testsで確認
-19. authority kindをgeneric ref bagへ失わない
-20. D4 + S4-A + H1/R3 compositionをactual testsで確認
-21. O1 target != realizationをactual testsで確認
-22. D4 + O1 compositionをactual testsで確認
-23. generic ref-role taxonomyが必要か複数realistic pressureから判断。manufacturing / inventory outlineだけではO1反復を証明したとみなさない
-24. Legacy Authorization policyをO1 targetのauthor / backfill sourceにせず、corroboration-onlyとしてactual testsで確認
-25. O1をproduction accepted meaningとして残す場合、authoritative source / decode / reload / Shared Acceptance境界を閉じる。残さない場合はproduction source fieldを追加しない
-26. Lane B再監査と矛盾しない
-27. physical-world Command acceptanceだけでcompletionを成立させず、explicit Observationなし / observed=false / positive external Observationをactual testsで区別する
-28. second-corpus Data authorityはexact TEI-original Data / Pattern / Database authorityが揃うまでsynthetic化しない
-29. physical ObservationからH1/R3 responsibility Handoffを自動生成しない
-30. Procedure Step順序 / adjacency / Application Function sequenceからH1/R3を自動生成せず、explicit Handoff sourceだけがnormalized relationをauthorすることをactual testsで確認する
-
-GitHub-hosted Actionsは過去にrunner割当前で終了し、一時workflowはmerge対象から除去済み。Remote Desktopもオンライン端末不在で実行できていない。
-
-したがって**Pre-ADR Status = Not Ready**を維持する。
-
-## 15. 現時点の判断
-
-### productionへ今入れない
-
-- Canonical `BusinessProcedure` schema
-- Canonical `BusinessHandoff` schema
+- production `BusinessProcedure` / `BusinessHandoff` kind
 - `ir.World.Business`
-- full Business Flow / DFD schema
-- generic Core / Business Edge
-- generic `semanticRefs[]`
-- generic explicit-ref Role enum
-- `realization` enum
-- Observation Canonical kind / physical-world state engine
-- synthetic second-corpus Data ownership model
-- inferred Handoff from adjacency / Observation / Function sequence
-- global/durable Canonical Step ID
-- generic Uncertainty framework
-- Workflow Engine
+- production `internal/business`
+- generic SemanticRef / role enum / Core Edge
+- full Business Flow / DFD
+- Workflow state / retry / timer / queue / saga
+- global Canonical Step ID
+- global Canonical Handoff ID
+- Observation専用Canonical identity
+- Business Procedure CRUD field
+- Application Pattern generic CRUD field
+- Semantic Capability generic Effect
+- Database Contract C/U/D enum
+- mutation binding / MutationIntent / Function-Data-I/O Canonical kind
+- synthetic second-corpus Data ownership
+- Business専用generic transaction / revision subsystem
+- old/new Business source permanent dual-read / merge-priority contract
+- Git SHAのplatform-wide `baseModelRevision`固定
+- schemaVersionによるauthority priority
+- mandatory `businessAuthoringMode`
+- Workbench / impact projectionのauthoritative source化
+- Deployment durable state machineのBusiness authoring / Workflowへの流用
 
-### primary comparison pressure
+## 13. Contract ADR readiness gates
+
+### Gate A — actual execution
+
+Actual Repository environmentで同一revisionについて:
 
 ```text
-D3 broader Step body candidate
-D4 smaller evidence-backed Step body candidate
-S4-A Procedure-scoped Step local address
-H1 thin normalized handoff
-R3 handoff-only Business relation boundary
-C1 optional Reference Application context
-O1 target-role overlay pressure (authoritative source intentionally deferred)
+read-only gofmt check
+go vet ./...
+go test ./...
+go test -count=1 ./tools/reference-business-procedure-check
+baseline reference checker
+intentional defect checker
 ```
 
-O1 authority directionはtest-onlyで閉じたが、O1をaccepted Business sourceへpersistすべきかは未決である。Manufacturing / inventory outlineはCommand / Observation境界とH1/R3 authority方向をtest-only pressureまで進めた一方、O1 role反復、exact Data authority、production `BusinessHandoff` kind necessity、D4/H1/R3 production contract不足をまだ示していない。Actual greenと次のTEI-original realistic Referenceから最小十分性を判断する。
+がgreenであること。
+
+`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`を使う。
+
+Fresh-process candidate-only subprocess Pressureもこのactual test runに含める。Source inspectionをactual greenへ読み替えない。
+
+### Gate B — minimum meaning / authoring feasibility
+
+Actual testsで:
+
+- manual / external Action
+- uncertainty
+- multi-Application
+- D4 ref kind separation
+- D4-only loss / D4+O1 losslessness
+- inline O1 strict decode / round-trip
+- standalone Handoff strict decode / round-trip
+- candidate-only disk reload
+- fresh-process candidate-only reload
+- duplicate Procedure logical source fail closed
+- duplicate exact standalone Handoff source authority fail closed
+- endpoint-only Handoff identityを発明しない
+
+を確認する。
+
+Fresh-process / source-uniqueness testsはsource-level実装済みなので、残るのはGate A actual execution Evidenceである。
+
+### Gate C — address / Handoff sufficiency
+
+- Procedure-scoped localKey
+- stale endpoint fail closed
+- explicit Handoff authority only
+- standalone Handoff candidate = current normalized meaning
+- exact duplicate H1/R3 across managed standalone sources fail closed
+- path/input orderでHandoff source authorityを裁定しない
+- same endpoint pairだけをimplicit Handoff identityにしない
+- global Handoff IDを先取りしない
+- Handoff-only boundary維持
+- Procedure actorをendpoint identityへ複製しない
+- Procedure triggerとHandoff conditionを別authorityとして扱う
+- migration previewではlegacy Handoffをinput / Evidenceとして読める
+- accepted cutover後はlegacy + standalone Handoff simultaneous authorityを許さない
+- candidate-only reload / normalize feasibility
+- second realistic **TEI-original independent** Handoffで`from/to/condition` sufficiency確認
+
+Existing-corpus searchはclosed。Gate A actual green後、独立Business requirement / Reference seedを先にauthorしてsecond caseを成立させる。
+
+### Gate D — O1
+
+- D4-only loss actual確認
+- singular narrow O1 lossless
+- inline strict decode / round-trip / sidecar-equivalent normalization
+- Authorization policy corroboration-only
+- migration preview legacy sidecar read可
+- accepted cutover後legacy sidecar + inline O1 dual authority reject
+- same-step conflicting targetを自動mergeしない
+- candidate-only reload / normalize
+- multi-targetを先取りしない
+
+### Gate E — placement / freshness feasibility
+
+Contract ADRで必要なのはproduction Shared Acceptance engine完成ではなく、次のcontract / feasibility Evidence。
+
+- source freshnessとConformance base freshnessを区別
+- complete stale envelope原則
+- source add/remove / membership changeをcover
+- logical source uniquenessをcover
+- duplicate Procedure logical authorityをfail closed
+- duplicate exact standalone Handoff authorityをfail closed
+- coordinated multi-source changeをone candidate bundleとして扱える
+- legacy + candidate dual authority reject
+- candidate-only fresh-process reload feasibility
+- separate Business planeでlossless Conformance可能
+
+Production adapter / atomic write implementationはProduction adoption readinessへ送る。
+
+### Gate F — derived projections
+
+- Data / CRUD projection actual green
+- no-traceをno-dependencyへ丸めない
+- C/U/D gapをBusiness Procedureへ埋めない
+- realistic mutation caseまでgeneric mutation/effect contractを作らない
+
+### Gate G — adjacent domain
+
+- multi-Application / social-system realism actual green
+- Command/Observation boundary actual green
+- synthetic second-corpus ownershipを作らない
+- Subsystem / SubjectAreaはconcrete lens failureまでreopenしない
+
+## 14. Production adoption readiness — Contract ADR後の追加Evidence
+
+Contract ADR Readyになってもproduction authorityへ直ちに昇格しない。
+
+Production adoptionでは別途:
+
+1. Business-specific production authoring adapter
+2. workspace / Source Indexを利用したproduction candidate discovery
+3. complete stale envelope実装
+4. shared Acceptance integration
+5. atomic multi-file source apply
+6. atomic authority-discovery cutover
+7. fresh-process candidate-only production reload
+8. partial failure / crash safety
+9. post-reload cross-view Conformance
+
+を実証する。
+
+`ISSUE-000027` / `ISSUE-000046`のProduct Gate C後shared Acceptance loopと整合させるが、Lane C専用generic transaction subsystemは作らない。
+
+## 15. Current readiness
+
+```text
+minimum semantic candidate
+  = D4 + singular narrow O1 + S4-A + H1/R3
+
+Procedure authoring candidate
+  = inline singular protectedApplicationPattern?
+
+Handoff authoring candidate
+  = standalone set-level Handoff source
+
+placement
+  = separate normalized Business semantic plane
+
+migration
+  = migration adapter + candidate-only steady-state loader
+  = legacy-read preview -> one cutover -> candidate-only authority
+
+source-authority uniqueness
+  = Procedure duplicate logical source Pressure implemented
+  = exact duplicate standalone Handoff Pressure implemented
+  = actual execution pending
+
+fresh-process feasibility
+  = source-level subprocess Pressure implemented
+  = actual execution pending
+
+second realistic Handoff
+  = existing-corpus search closed / none qualifying
+  = after actual green, independent Business requirement first
+
+Contract ADR
+  = Not Ready
+
+Production adoption
+  = Not Ready
+```
+
+### Remaining Contract ADR blockers
+
+```text
+Blocker A
+  actual Repository runner green
+  including source-uniqueness and fresh-process candidate-only Pressure
+
+Blocker B
+  independent Business requirementから生じた
+  second realistic TEI-original Handoffで
+  from / to / condition sufficiency確認
+```
+
+**実質的なContract ADR blockerはこの二つまで縮約した。**
+
+次はblockerではない:
+
+- production shared Acceptance / atomic apply未実装
+- final revision token shape未決定
+- qualifying C/U/D case absence
+- `ir.World.Business` necessity Evidence absence
+- Product Gate C後のStudio / AI integration未実装
+- PR #482がmainへmerge済みであること自体
+
+## 16. Verification status
+
+2026-09-09時点でHAT47Xはoffline。
+
+Lane C Reference / Pressure PR #482はmainへmerge済みで、standalone Handoff source uniqueness PressureもPR #520でmainへmerge済みである。ただしRepositoryへのReference / Pressure mergeは、Contract ADR adoption・production Core adoption・Gate A actual greenのいずれも意味しない。
+
+したがってcurrent source-level tests / checkerについて:
+
+```text
+gofmt PASS  -> 未主張
+go vet PASS -> 未主張
+go test PASS -> 未主張
+checker PASS -> 未主張
+fresh-process PASS -> 未主張
+source-uniqueness PASS -> 未主張
+```
+
+Contract ADRは**Not Ready**を維持する。次の状態遷移は、同一revisionでのactual Gate A greenとindependent second realistic TEI-original Handoffの両方が揃った場合だけ再判定する。

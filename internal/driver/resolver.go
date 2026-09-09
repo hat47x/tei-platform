@@ -262,9 +262,12 @@ func (r Resolver) capabilityByID(id core.CanonicalID) (semantic.Capability, erro
 }
 
 func readableDatasource(app application.Application, alias core.LocalName) (application.DatabaseRequirement, error) {
-	datasource, ok := app.DatabaseByAlias(alias)
-	if !ok {
+	if !app.HasDatabaseAlias(alias) {
 		return application.DatabaseRequirement{}, fmt.Errorf("Datasource %sはApplication %sに定義されていません", alias, app.ID)
+	}
+	datasource, ok := app.DatabaseByAliasExact(alias)
+	if !ok {
+		return application.DatabaseRequirement{}, fmt.Errorf("Datasource %sがApplication %sに複数定義されています", alias, app.ID)
 	}
 	if datasource.Access != database.AccessRead && datasource.Access != database.AccessReadWrite {
 		return application.DatabaseRequirement{}, fmt.Errorf("Datasource %sのaccess %sでは読み取りできません", alias, datasource.Access)
