@@ -48,17 +48,40 @@ func TestBusinessCandidateDiscoveryDoesNotInventEndpointOnlyHandoffIdentity(t *t
 	secondSource.Handoffs[0].Condition = "follow-up remains required because unresolved external work continues"
 
 	diskRoot := t.TempDir()
-	first := filepath.Join(diskRoot, "business", "handoffs", "first.json")
-	second := filepath.Join(diskRoot, "business", "handoffs", "second.json")
+	first := filepath.Join(diskRoot, "business", "handoffs", "a-authority.json")
+	second := filepath.Join(diskRoot, "business", "handoffs", "z-authority.json")
 	writeBusinessCandidateDiskSourceProbe(t, first, firstSource)
 	writeBusinessCandidateDiskSourceProbe(t, second, secondSource)
 
-	loaded, err := loadUniqueStandaloneHandoffSourcesProbe([]string{first, second})
-	if err != nil {
-		t.Fatalf("different H1/R3 meaning sharing endpoints was rejected by invented endpoint-only identity: %v", err)
+	wantConditions := map[string]struct{}{
+		firstSource.Handoffs[0].Condition:  {},
+		secondSource.Handoffs[0].Condition: {},
 	}
-	if len(loaded.Handoffs) != 2 {
-		t.Fatalf("loaded Handoff count=%d want=2", len(loaded.Handoffs))
+	if len(wantConditions) != 2 {
+		t.Fatal("test setup: Handoff conditions must be distinct")
+	}
+
+	for _, paths := range [][]string{{first, second}, {second, first}} {
+		loaded, err := loadUniqueStandaloneHandoffSourcesProbe(paths)
+		if err != nil {
+			t.Fatalf("different H1/R3 meaning sharing endpoints was rejected by invented endpoint-only or path/input-order authority: paths=%v err=%v", paths, err)
+		}
+		if len(loaded.Handoffs) != 2 {
+			t.Fatalf("loaded Handoff count=%d want=2 paths=%v", len(loaded.Handoffs), paths)
+		}
+
+		gotConditions := map[string]int{}
+		for _, item := range loaded.Handoffs {
+			gotConditions[item.Condition]++
+		}
+		if len(gotConditions) != 2 {
+			t.Fatalf("same endpoint pairのcondition meaningをpath/input orderで潰しました: paths=%v conditions=%v", paths, gotConditions)
+		}
+		for condition := range wantConditions {
+			if gotConditions[condition] != 1 {
+				t.Fatalf("expected Handoff condition meaningをexactly once保持できません: paths=%v condition=%q got=%v", paths, condition, gotConditions)
+			}
+		}
 	}
 }
 
