@@ -5,18 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/database/physical"
 	"tei/internal/database/providers/postgres"
 	"tei/internal/database/schemadiff"
 )
 
 func TestDestructiveReadinessBlocksParentWithPartitionDescendants(t *testing.T) {
-	observation := postgres.SchemaObservation{
-		PartitionObservationComplete: true,
-		Partitions: []postgres.PartitionRelation{
-			{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"}},
-			{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026_q1"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}},
-		},
-	}
+	observation := completeObservation(
+		postgres.PartitionRelation{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"}},
+		postgres.PartitionRelation{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026_q1"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}},
+	)
 	diff := dropTableDiff("public.orders")
 
 	readiness, err := observation.AssessDestructiveReadiness(diff)
@@ -48,13 +46,10 @@ func TestDestructiveReadinessBlocksParentWithPartitionDescendants(t *testing.T) 
 }
 
 func TestDestructiveReadinessBlocksTargetThatIsPartitionChild(t *testing.T) {
-	observation := postgres.SchemaObservation{
-		PartitionObservationComplete: true,
-		Partitions: []postgres.PartitionRelation{{
-			Child:  postgres.RelationIdentity{Schema: "public", Name: "orders_2026"},
-			Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"},
-		}},
-	}
+	observation := completeObservation(postgres.PartitionRelation{
+		Child:  postgres.RelationIdentity{Schema: "public", Name: "orders_2026"},
+		Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"},
+	})
 
 	readiness, err := observation.AssessDestructiveReadiness(dropTableDiff("public.orders_2026"))
 	if err != nil {
@@ -84,13 +79,10 @@ func TestDestructiveReadinessBlocksWhenPartitionObservationIsUnavailable(t *test
 }
 
 func TestDestructiveReadinessAllowsOrdinaryTableOnlyWithCompleteObservation(t *testing.T) {
-	observation := postgres.SchemaObservation{
-		PartitionObservationComplete: true,
-		Partitions: []postgres.PartitionRelation{{
-			Child:  postgres.RelationIdentity{Schema: "public", Name: "orders_2026"},
-			Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"},
-		}},
-	}
+	observation := completeObservation(postgres.PartitionRelation{
+		Child:  postgres.RelationIdentity{Schema: "public", Name: "orders_2026"},
+		Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"},
+	})
 	diff := dropTableDiff("public.audit_log")
 
 	readiness, err := observation.AssessDestructiveReadiness(diff)
@@ -113,17 +105,32 @@ func TestDestructiveReadinessAllowsOrdinaryTableOnlyWithCompleteObservation(t *t
 }
 
 func TestDestructiveReadinessRejectsConflictingPartitionParents(t *testing.T) {
-	observation := postgres.SchemaObservation{
-		PartitionObservationComplete: true,
-		Partitions: []postgres.PartitionRelation{
-			{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"}},
-			{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "archive", Name: "orders"}},
-		},
-	}
+	observation := completeObservation(
+		postgres.PartitionRelation{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "public", Name: "orders"}},
+		postgres.PartitionRelation{Child: postgres.RelationIdentity{Schema: "public", Name: "orders_2026"}, Parent: postgres.RelationIdentity{Schema: "archive", Name: "orders"}},
+	)
 
 	_, err := observation.AssessDestructiveReadiness(dropTableDiff("public.orders"))
 	if err == nil || !strings.Contains(err.Error(), "multiple observed parents") {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestDestructiveReadinessRejectsObservationFromAnotherDatabase(t *testing.T) {
+	observation := completeObservation()
+	observation.Snapshot.Database = "inventory"
+
+	_, err := observation.AssessDestructiveReadiness(dropTableDiff("public.audit_log"))
+	if err == nil || !strings.Contains(err.Error(), "diff database sales_core") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func completeObservation(edges ...postgres.PartitionRelation) postgres.SchemaObservation {
+	return postgres.SchemaObservation{
+		Snapshot:                     physical.SchemaSnapshot{Database: "sales_core"},
+		Partitions:                   edges,
+		PartitionObservationComplete: true,
 	}
 }
 
