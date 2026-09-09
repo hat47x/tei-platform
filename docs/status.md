@@ -167,6 +167,10 @@ Command acknowledgementだけでexternal state成立とはみなしません。
 - provider-specific runtime Runner
 - Database-owned Relation Storage
 
+PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
+
+ADR-0027 / #533の`DropTable` destructive readiness planning / rendering incrementはPR #535でDraft中です。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進める実装候補ですが、actual Repository test未取得のためcurrent mainの成立済み基線やGate B Evidenceには数えません。apply-time stale observation再検証は別incrementです。
+
 PostgreSQLは深いReference Providerとして利用しています。
 
 actual second-provider / existing Oracle assetは別Evidenceとして継続します。
