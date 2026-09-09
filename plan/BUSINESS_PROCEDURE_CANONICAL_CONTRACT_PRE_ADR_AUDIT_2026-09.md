@@ -371,7 +371,7 @@ Second-case探索では次をrejectした。
 
 `reference/business-system-design` inventoryもorder-entry / follow-up中心で、別のaccepted Business responsibility chainはない。同directory README自身が複数Subject Area / Subsystem跨ぎやexternal contractをfuture pressureとして挙げる。
 
-したがって:
+したがって既存accepted corpusについては:
 
 ```text
 TEI-original independent second Handoff
@@ -386,7 +386,22 @@ existing-corpus search
 
 とする。
 
-これはH1/R3 sufficiency証明ではない。Test件数のためにsource authorityを発明しないためのnegative Evidenceである。
+その後、ISSUE-000050では**受注生産を背景とする在庫・製造連携の小型TEI-original scenario**をsecond-corpus research targetとして選定し、provenance / reuse boundary / target scope / fact-candidate-unresolved分類まで整理した。
+
+ただし現在も:
+
+```text
+accepted independent Business need / Reference seed
+  = none
+
+accepted second Handoff from / to / condition
+  = none
+
+Blocker B positive Evidence
+  = unresolved
+```
+
+である。Corpus selectionはH1/R3 sufficiency証明ではない。Test件数のためにsource authorityを発明しないためのnegative / preparatory Evidenceとして扱う。
 
 ### Actual green後のauthoring protocol
 
@@ -409,6 +424,8 @@ from / to / condition losslessness Pressure
 とする。
 
 `Handoff fieldを検証したい -> それらしい業務を作る`の順序は禁止する。
+
+ISSUE-000050のcorpus / provenance researchはGate A green前でも継続できるが、accepted Business seed / Procedure / Handoff authoringへは進めない。
 
 新caseでは必要に応じて:
 
@@ -505,7 +522,7 @@ Fresh-process / source-uniqueness testsはsource-level実装済みなので、�
 - candidate-only reload / normalize feasibility
 - second realistic **TEI-original independent** Handoffで`from/to/condition` sufficiency確認
 
-Existing-corpus searchはclosed。Gate A actual green後、独立Business requirement / Reference seedを先にauthorしてsecond caseを成立させる。
+Existing-corpus searchはclosed。ISSUE-000050でsecond-corpus research targetは選定済みだが、accepted Business seed / Handoff authorityは未成立。Gate A actual green後、独立Business requirement / Reference seedを先にauthorしてsecond caseを成立させる。
 
 ### Gate D — O1
 
@@ -599,8 +616,10 @@ fresh-process feasibility
   = actual execution pending
 
 second realistic Handoff
-  = existing-corpus search closed / none qualifying
-  = after actual green, independent Business requirement first
+  = second-corpus research target selected
+  = provenance / reuse / fact-candidate-unresolved boundary established
+  = accepted independent Business seed not yet authored
+  = from / to / condition positive Evidence unresolved
 
 Contract ADR
   = Not Ready
@@ -635,7 +654,7 @@ Blocker B
 
 ## 16. Verification status
 
-2026-09-09時点でHAT47Xはoffline。
+Actual Repository Gate A execution Evidenceは未取得である。Runner availabilityやexecution target revisionは一時状態なので本正本へ固定せず、`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`に従って実行時にexact revision `R`、runner kind、environmentを記録する。
 
 Lane C Reference / Pressure PR #482はmainへmerge済みで、standalone Handoff source uniqueness PressureもPR #520でmainへmerge済みである。ただしRepositoryへのReference / Pressure mergeは、Contract ADR adoption・production Core adoption・Gate A actual greenのいずれも意味しない。
 
