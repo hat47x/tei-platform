@@ -73,7 +73,7 @@ Gate / Product claim
 
 ISSUE-000042との担当境界は次のとおりです。
 
-- ISSUE-000042 が所有: cross-view Reference、checker、Pressure test、A-set、31項目のoperational checklist
+- ISSUE-000042 が所有: cross-view Reference、checker、Pressure test、A-set、operational checklist
 - ISSUE-000042 が所有しない: Contract ADR readinessのReady / Not Ready判定（Pre-ADR Auditが正本）
 - 新規3件が所有: ①②の到達条件と、second corpusという別Evidenceの取得
 
@@ -81,12 +81,14 @@ ISSUE-000042との担当境界は次のとおりです。
 
 | 上流結論 | 出典 | 新しい受け皿 |
 | --- | --- | --- |
-| Contract ADR blocker A / B / C（actual runner green、candidate-only fresh-process feasibility、second realistic Handoff） | 読み替え防止のため readiness split §8 | ISSUE-000048 |
+| Contract ADR blocker A / B（actual runner green。fresh-process/source-uniqueness actualを包含、second realistic Handoff） | Pre-ADR Audit / readiness split §8 | ISSUE-000048 |
 | ADR前に要求する7件のEvidenceと、前提にしないproduction完成6件 | readiness split §3 | ISSUE-000048 |
 | production採用前の3条件（adapter / acceptance / fresh process） | readiness split §4 | ISSUE-000049 |
-| second realistic TEI-original Handoffの`from/to/condition` losslessness | Handoff family / readiness split §8-C | ISSUE-000050 |
+| second realistic TEI-original Handoffの`from/to/condition` losslessness | Handoff family / readiness split §8-B | ISSUE-000050 |
 | C/U/D欠落は契約blockerではない、という判断 | readiness split §6 | ISSUE-000048の非目標 + 本書§6 |
 | `ir.World.Business` embeddingのdefer判断 | readiness split §7 | ISSUE-000048（ADR起票時に記録） + 本書§6 |
+
+Fresh-process feasibilityはADR前に必要なEvidenceである一方、current source-level implementationではGate A actual execution待ちまで縮約している。このためISSUE-000048でmaterial blockerをAとは別の第三blockerとして重複管理しない。
 
 ## 6. reopen triggerの所有先
 
