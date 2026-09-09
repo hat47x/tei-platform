@@ -37,6 +37,38 @@ TEIは完成したlow-code製品ではありません。
 
 現在必要なのは、新しいDriver abstractionを増やすことではなく、post-merge mainをactual full checkoutで検証し、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
 
+## Business Procedure / Lane C Pre-ADR
+
+本status冒頭およびv1主線の`Gate A — Ready`は、Product主線のGate Aを指します。Business Procedure / HandoffのContract ADR readinessで使う**Lane C Pre-ADR Gate A — actual execution**とは別の判定です。
+
+```text
+Product Gate A
+  = Ready
+
+Lane C Pre-ADR Gate A
+  = actual Repository execution Evidence unresolved
+
+Business Procedure Contract ADR
+  = Not Ready
+```
+
+Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは二つです。
+
+```text
+Blocker A
+  actual Gate A green
+  including source-uniqueness / source-root membership /
+  candidate-only fresh-process / second-corpus non-inference Pressure
+
+Blocker B
+  independent second realistic TEI-original Handoff
+  from / to / condition sufficiency
+```
+
+現在のexecution priorityはBlocker Aです。`ISSUE-000050`では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みですが、accepted independent Business seed / Procedure / Handoff positive Evidenceはまだ成立していません。Gate A green前はcorpus / provenance researchまでに留め、second-case検証のためのaccepted Handoff fixtureを作りません。
+
+Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
+
 ## 現在のv1主線
 
 ```text
