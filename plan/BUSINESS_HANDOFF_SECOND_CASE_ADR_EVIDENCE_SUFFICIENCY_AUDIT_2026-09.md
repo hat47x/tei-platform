@@ -220,16 +220,18 @@ second case missing
 
 とする。
 
-## 9. Runnerとの順序
+## 9. Gate Aとの順序
 
-Current Gate A actual runnerは未取得である。
+Current Gate A actual execution Evidenceは未取得である。Runner availability自体は一時状態なので、このauditではavailabilityを固定しない。
 
-既存search正本はactual green前にsecond fixtureを製造しないことを既に固定している。
+既存search正本とISSUE-000050は、actual green前にsecond fixture / accepted Handoffを製造しないことを固定している。
+
+ISSUE-000050では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みだが、accepted independent Business seedや`from/to/condition`は未成立である。
 
 したがって順序は:
 
 ```text
-actual Repository green
+actual Repository Gate A green
   ↓
 source-level Pressureをactual Evidenceへ昇格
   ↓
@@ -244,7 +246,7 @@ Contract ADR readiness再判定
 
 でよい。
 
-Runner unavailable中にsecond caseを埋めるための架空Business requirementを追加しない。
+Gate A未解決中にsecond caseを埋めるための架空Business requirementを追加しない。Corpus / provenance researchは続けられるが、accepted Business seed / Procedure / Handoff authoringへは進めない。
 
 ## 10. Current decision
 
@@ -254,6 +256,10 @@ H1/R3 current minimum candidate
 
 second realistic TEI-original Handoff
   = Contract ADR Required Evidenceのまま
+
+second-corpus research target
+  = selected
+  != accepted positive Handoff Evidence
 
 reason
   = necessityではなくrepresentation generalityを反証可能にするため
@@ -267,4 +273,15 @@ absence of second case
   -X-> schema expansion authority
 ```
 
-Contract ADRはactual green + candidate-only fresh-process feasibility + independent second realistic Handoffが揃うまでNot Readyを維持する。
+Material blockerの数え方はsole Pre-ADR Auditに従う。
+
+```text
+Blocker A
+  = actual Gate A green
+  = source-uniqueness / candidate-only fresh-process actualを含む
+
+Blocker B
+  = independent second realistic TEI-original Handoff
+```
+
+Contract ADRはBlocker A / Bの両方が充足するまでNot Readyを維持する。Fresh-process feasibilityはADR前Required Evidenceのままだが、current material blockerではGate A actual executionへ包含し第三blockerとして二重計上しない。
