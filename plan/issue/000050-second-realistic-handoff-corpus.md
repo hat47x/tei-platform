@@ -186,10 +186,39 @@ Contract ADR blocker B
 
 したがって本incrementはRRB-P1へ向けたsource selectionであり、`Reference breadth Evidence established`やContract ADR readyを主張しない。
 
+### Gate Aとの順序
+
+Corpus selection / provenance整理は、accepted Business meaningをまだauthorしていないresearch incrementなのでGate A actual green前でも行ってよい。
+
+一方、`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`が固定した順序は維持する。
+
+```text
+actual Repository Gate A green
+  ↓
+independent Business need / Reference seed
+  ↓
+minimal Procedure / Step accepted source
+  ↓
+explicit Handoff candidate
+  ↓
+from / to / condition losslessness Pressure
+```
+
+したがってGate A green前には次を行わない。
+
+- candidate Action poolをaccepted Step sequenceへ昇格する
+- exact actor / trigger / responsibility boundaryを補完する
+- accepted Procedure / Step fixtureをsecond-case検証のために作る
+- `from` / `to` / `condition`をauthorする
+- source/test integrationをBlocker Bのpositive Evidenceとして扱う
+
+Gate A green後に最初に作るのはHandoff fixtureではなく、**Handoffが存在しなくても独立した価値を持つsmall Business need / Reference seed**である。そのseedからresponsibility transferが自然に生じた場合だけHandoff candidateへ進む。
+
 ## 完了条件
 
 - [x] `order_entry`と独立したcorpusを1件選定し、出典・利用条件・対象範囲を記録した
-- [ ] `from` / `to` / `condition`が元資料からlosslessに写せることを確認した
+- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedを成立させた
+- [ ] `from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
 - [ ] 元資料に無いidentity / actor / sequenceを補完していないことを確認した
 - [ ] Observationや隣接関係からHandoffを生成していないことをactual testで確認した
 - [ ] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した
@@ -197,11 +226,20 @@ Contract ADR blocker B
 
 ## 次のincrement
 
-1. 上記sourceから、explicit responsibility transferとして引用せずparaphraseできる最小fragmentを選ぶ
-2. `from` / `to` / `condition`のうちsourceで確定できるものだけをTEI-original accepted sourceへauthorする
-3. 確定できない項目はunknownのまま保持するnegative PressureをISSUE-000042側へ渡す
-4. source/test-level integration後、actual Repository runnerでObservation / adjacencyからHandoffを生成しないことを確認する
-5. blocker Bを閉じられるEvidence natureに到達した時だけISSUE-000048へhandoffする
+### Gate A green前
+
+1. corpus / provenance /利用条件の不足だけを補う
+2. candidate / unresolved分類を維持し、accepted Business sourceへ昇格しない
+3. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する
+
+### Gate A green後
+
+1. Handoff検証とは独立したsmall Business need / Reference seedを先にauthorする
+2. そのseedだけからsource responsibility / target responsibility / continuation conditionをreviewする
+3. responsibility transferが成立する場合だけminimal Procedure / Step sourceとexplicit Handoff candidateをauthorする
+4. 確定できない項目はunknownのまま保持するnegative PressureをISSUE-000042側へ渡す
+5. source/test-level integration後、actual Repository runnerでObservation / adjacencyからHandoffを生成しないことを確認する
+6. blocker Bを閉じられるEvidence natureに到達した時だけISSUE-000048へhandoffする
 
 ## 非目標
 
