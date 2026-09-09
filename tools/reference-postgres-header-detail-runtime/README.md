@@ -21,19 +21,45 @@
 
 Evidence JSONでは`evidenceNature = real-postgres-ephemeral-fixture`として区別します。
 
-## 必須環境
+## DSN入力境界
 
-`TEI_TEST_POSTGRES_DSN`へ、**Evidence専用に作成した空のPostgreSQL Database**を指定します。
+Evidence専用に作成した空のPostgreSQL Databaseを、次のどちらか一方で指定します。
+
+### standalone direct入力
 
 ```sh
-TEI_TEST_POSTGRES_DSN='...' go run ./tools/reference-postgres-header-detail-runtime
+TEI_TEST_POSTGRES_DSN='...' \
+go run ./tools/reference-postgres-header-detail-runtime
 ```
 
-DSNやcredentialはEvidence JSONへ保存しません。
+### secret file入力
+
+```sh
+TEI_TEST_POSTGRES_DSN_FILE='/secure/path/to/dsn' \
+go run ./tools/reference-postgres-header-detail-runtime
+```
+
+`TEI_TEST_POSTGRES_DSN`と`TEI_TEST_POSTGRES_DSN_FILE`を同時に設定した場合は曖昧性を避けてfail closedします。
+
+secret file入力では次を要求します。
+
+- emptyではない
+- 一行DSN
+- optionalな末尾単一LF / CRLFのみ許容
+- 残存CR/LFなし
+- NULなし
+
+file read失敗時は、underlying errorに含まれ得るlocal secret pathを通常診断へ複製しません。
+
+#387 final convergenceでは、final runnerがoriginal Repository外secret fileをstable single-openし、normalized DSNをRepository外owner-only temporary handoff fileへ保存します。本toolの`go run` / compiler / linkerにはDSN本文ではなく**temporary handoff file pathだけ**を渡します。
+
+本tool runtimeはDSNをGo valueへ読み込んだ直後に、direct DSN / secret-file pathの両environmentを消去してからRepository sourceを観測します。以後、DSN本文はmemoryだけで利用します。
+
+DSN本文、original secret file path、temporary handoff path、credential、実Database名を通常Evidence JSONへ保存しません。
 
 ### 接続失敗時のcredential保護
 
-`TEI_TEST_POSTGRES_DSN`にはpassword等のcredentialが含まれ得ます。そのため、接続設定の解析または最初の接続確認でdriverが返すerror本文を、そのままpanic / stderrへ出しません。
+DSNにはpassword等のcredentialが含まれ得ます。そのため、接続設定の解析または最初の接続確認でdriverが返すerror本文を、そのままpanic / stderrへ出しません。
 
 次の二段階では、underlying driver errorをwrap・複製せず、非機密なstageだけを診断として残します。
 
@@ -46,23 +72,35 @@ malformed URL等でdriver error本文にraw DSNが含まれる場合でも、そ
 
 この抑制は接続初期化に限定します。fixture作成後のProvider runtime、専用空Database guard、cleanup、source-fixed Evidenceの診断まで一律に隠すものではありません。
 
-## source revisionのfail-closed境界
+## source revision / index stateのfail-closed境界
 
 Gate Bへ採用するProvider Evidenceは、後から実際に実行したsourceへ戻れる必要があります。
 
-そのため、Databaseへ接続する前に次を確認します。
+DSN入力をGo valueへ取り込み、DSN / file path environmentを消去した後、Databaseへ接続する前に共有`tools/internal/repositoryevidence`で概念上次を観測します。
 
-```bash
-git rev-parse HEAD
-git status --porcelain
+```text
+HEAD before
+  ↓
+git status --porcelain --untracked-files=all --ignored=matching
+  ↓
+git ls-files -v -z
+  ↓
+HEAD after
 ```
 
-working treeがdirtyなら、Workspace ValidationやPostgreSQL接続へ進まず停止します。
+Gate B Evidence専用checkoutでは次を要求します。
 
-Provider Evidenceを取得し、tool-owned fixtureを片付けた後にも同じ二点を再確認します。次のいずれかが起きていれば成功Evidenceを出しません。
+- full checkout
+- 観測前後で同一HEAD
+- tracked / untracked / ignored local stateなし
+- tracked entryが通常`H` tagのみ
+- `assume-unchanged` / `skip-worktree`なし
+- sparse checkout由来の非標準index stateなし
+- Git identity override / command-scope config injectionで別sourceを観測し得ないこと
 
-- 実行中にHEADが変化した
-- 実行後にtracked / untracked差分が残った
+一つでも成立しなければ、Workspace ValidationやPostgreSQL接続へ進みません。
+
+Provider Evidenceを取得し、tool-owned fixtureを片付けた後にも同じsource/index境界を再確認します。実行中のrevision driftやlocal source/index stateがあれば成功Evidenceを出しません。
 
 成功JSONには次を含めます。
 
@@ -81,13 +119,17 @@ source状態の観測規則は`tools/internal/repositoryevidence`へ置き、#31
 ## fail-closedの実行順
 
 ```text
-Repository revision / working tree確認
-  ↓ dirtyなら停止
+exactly-one DSN inputをGo valueへ読込
+  ↓
+DSN / secret-file environment消去
+  ↓
+Repository source / index確認
+  ↓ unsafeなら停止
 Reference Workspace load
   ↓
 Canonical Validation
   ↓ Errorがあれば停止
-TEI_TEST_POSTGRES_DSNへ接続
+PostgreSQLへ接続
   ↓
 接続先Database identity確認
   ↓
@@ -99,20 +141,20 @@ Event Triggerが1件でもあれば停止
   ↓
 public.order_lines既存確認
   ↓
-tool-owned fixture CREATE
+tool-owned fixture CREATE + DB-side ownership marker
   ↓
 Provider runtime Evidence
   ↓
-tool-owned fixture cleanup / missing-table Execution Error確認
+ownership確認付きfixture cleanup / missing-table Execution Error確認
   ↓
 user relation 0件 / Event Trigger 0件 / fixture object不在を再確認
   ↓ 残存があれば停止
-Repository revision / working tree再確認
+Repository source / index再確認
   ↓ 変化していれば停止
 JSON Evidence
 ```
 
-したがって、dirty source、Workspace authoringが不正な状態、既存資産やEvent Triggerを含むDatabase、cleanup後に観測条件へ戻っていないrunのいずれも成功Evidenceへ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
+したがって、unsafe source/index state、Workspace authoringが不正な状態、既存資産やEvent Triggerを含むDatabase、cleanup後に観測条件へ戻っていないrunのいずれも成功Evidenceへ進みません。Warningだけで停止条件を増やさず、通常Validationの`Error`をEvidence実行不能条件として扱います。
 
 ## Database側の安全条件
 
@@ -184,7 +226,15 @@ SELECT to_regclass('public.order_lines')::text;
 
 既存tableやEvent Triggerを削除してfixture用Databaseへ転用するオプションは提供しません。
 
-実行を継続できる場合だけtool自身が`public.order_lines`をCREATEし、以後そのfixtureだけをtool所有物として扱います。途中失敗時はbest-effort cleanupを行い、Execution Error確認時にはtool自身のfixtureを削除してmissing-table errorを発生させます。
+## fixture ownership / cleanup
+
+実行を継続できる場合だけtool自身が`public.order_lines`をCREATEし、DB-side ownership markerを同一transactionで付与します。
+
+cleanupではtableをlockし、DB側markerが作成時markerとexact一致した場合だけDROPします。process-localな「自分が作った」という状態だけを削除許可へしません。
+
+markerなし / mismatch / 観測不能 / lock不能等では、同名objectが別主体へ置換された可能性を推測せずDROPしません。
+
+途中失敗時のdeferred cleanupも同じownership確認経路を使います。Execution Error確認時にはownership確認後にtool自身のfixtureを削除し、missing-table errorを発生させます。
 
 ## 安全判定をEvidenceへ残す
 
@@ -279,7 +329,8 @@ missing-table Execution Errorを確認した後、成功JSONを出す前に接�
 - 接続先の実Database名やDSNを安全判定Evidenceへ残すこと
 - 接続設定parse / initial connect失敗時にraw driver errorをcredential込みでstderrへ複製すること
 - Event Trigger名や定義本文を通常Evidenceへ保存すること
-- dirty working tree上の成功をGate B完了Evidenceへ格上げすること
+- unsafe source / index state上の成功をGate B完了Evidenceへ格上げすること
 - cleanup後にuser relationまたはEvent Triggerが残るrunを成功Evidenceへ格上げすること
+- README / source実装の存在だけをactual #308 Evidence成功へ読み替えること
 
 Gate Bでは、本toolのEvidenceを「実PostgreSQLエンジン上のfixture runtime Evidence」として扱い、external-observed assetの実物理Evidenceやproduction data Evidenceとは区別します。

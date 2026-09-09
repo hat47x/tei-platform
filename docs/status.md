@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-09
+- 更新日: 2026-09-10
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -36,6 +36,38 @@ TEIは完成したlow-code製品ではありません。
 ただし、**Gate Bのactual Product Evidenceはまだ揃っていません。**
 
 現在必要なのは、新しいDriver abstractionを増やすことではなく、post-merge mainをactual full checkoutで検証し、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
+
+## Business Procedure / Lane C Pre-ADR
+
+本status冒頭およびv1主線の`Gate A — Ready`は、Product主線のGate Aを指します。Business Procedure / HandoffのContract ADR readinessで使う**Lane C Pre-ADR Gate A — actual execution**とは別の判定です。
+
+```text
+Product Gate A
+  = Ready
+
+Lane C Pre-ADR Gate A
+  = actual Repository execution Evidence unresolved
+
+Business Procedure Contract ADR
+  = Not Ready
+```
+
+Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは二つです。
+
+```text
+Blocker A
+  actual Gate A green
+  including source-uniqueness / source-root membership /
+  candidate-only fresh-process / second-corpus non-inference Pressure
+
+Blocker B
+  independent second realistic TEI-original Handoff
+  from / to / condition sufficiency
+```
+
+現在のexecution priorityはBlocker Aです。`ISSUE-000050`では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みですが、accepted independent Business seed / Procedure / Handoff positive Evidenceはまだ成立していません。Gate A green前はcorpus / provenance researchまでに留め、second-case検証のためのaccepted Handoff fixtureを作りません。
+
+Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
 
 ## 現在のv1主線
 
@@ -166,6 +198,12 @@ Command acknowledgementだけでexternal state成立とはみなしません。
 - Contract Query SQL realization
 - provider-specific runtime Runner
 - Database-owned Relation Storage
+
+PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
+
+ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。
+
+#534 / Draft PR #548では、その別incrementとしてPostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認する実装が進んでいます。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界で、actual Repository testは未取得です。したがって#548はDraft / unmergedを維持し、source実装をactual qualificationやGate B Evidenceへ読み替えません。
 
 PostgreSQLは深いReference Providerとして利用しています。
 
