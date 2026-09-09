@@ -19,7 +19,9 @@ Lane Cの最大blockerは、Repositoryにtest-only Pressureが存在する一方
 
 ## 2. 対象revision
 
-実行前に必ずcurrent PR headを固定する。
+PR #482はmainへmerge済みなので、旧Lane C長期branch名をexecution条件にしない。
+
+実行前に**Pre-ADR判定対象にするexact revision**を固定する。
 
 Conceptual:
 
@@ -39,11 +41,15 @@ git rev-list --left-right --count main...HEAD
 
 期待:
 
-- branch = `work/business-procedure-cross-view-reference-current`
+- Evidenceにはexact `R`を記録する
 - worktreeに意図しない変更がない
-- Evidenceにはexact `R`を記録
+- branch名はmetadataでありPASS条件ではない
+- main上で実行する場合は`R`がその時点のmain headであることを記録する
+- fix / verification branchで実行する場合はmainとの差分とmerge baseを記録する
 
-`main` behind 0は望ましいが、execution PASSの定義そのものではない。behindがある場合はそのrevision条件を明示し、黙ってlatest mainのEvidenceへ読み替えない。
+Contract ADR readinessをmainのaccepted stateについて判定する場合、最終的には**その判定対象treeを含むrevision**でGate Aを実行する。旧PR headやmerge前branchのPASSを、後続main revisionのPASSへ黙って読み替えない。
+
+`main` behind 0は望ましいが、execution PASSの定義そのものではない。behindがある場合はそのrevision条件を明示する。
 
 ## 3. Runbook原則
 
@@ -71,13 +77,26 @@ git push
 
 ```text
 go test PASS
-  != Production ADR Ready
+  != Contract ADR Ready
 
 checker baseline PASS
   != PAS-07 accepted
 ```
 
 Gate Aはmechanical execution Evidenceである。
+
+### Partial CIをGate Aへ合成しない
+
+異なるworkflow / revision / package subsetで得たPASSを寄せ集めてGate A greenにしない。
+
+```text
+Gate B source qualification PASS
++ Issue #50 full compile PASS
++ focused Lane C source inspection
+  != Gate A PASS
+```
+
+Gate A PASSは同一revision `R`について、本runbookの必須command一式をactual executionしたEvidenceから判定する。
 
 ## 4. Step A0 — Environment capture
 
@@ -179,10 +198,15 @@ go test -count=1 ./tools/reference-business-procedure-check
 - Handoff / Step address pressure
 - Data / CRUD projection pressure
 - source freshness
+- source-root membership freshness
+- logical Procedure source uniqueness
+- standalone Handoff source uniqueness
 - Conformance-base freshness
 - multi-source bundle
 - coordinated rename
 - migration preview / authority cutover
+- candidate-only disk reload
+- fresh-process candidate-only reload
 - actor / trigger Handoff independence
 
 が含まれる。
@@ -249,12 +273,16 @@ Expected codeはcurrent test contractから取得した値であり、将来diag
 
 ## 11. Step A7 — Focused new Pressure names
 
-Full package PASSで十分だが、failure triage時は次を個別に実行できる。
+Full package PASSで十分だが、failure triage時は個別test名で再実行してよい。
+
+Current priority examples:
 
 ```bash
 go test -count=1 ./tools/reference-business-procedure-check \
-  -run 'TestBusinessAcceptancePreviewBase|TestBusinessAuthoringAuthorityCutover|TestBusinessHandoffConditionAndTargetProcedureTrigger|TestBusinessHandoffRemainsAddressed'
+  -run 'TestBusinessCandidateDiscoveryRejectsDuplicate|TestBusinessCandidateDiscoveryDoesNotInventEndpointOnlyHandoffIdentity|TestBusinessCandidateOnlyFreshProcess|TestBusinessAuthoringAuthorityCutover|TestBusinessHandoffConditionAndTargetProcedureTrigger|TestBusinessHandoffRemainsAddressed'
 ```
+
+正確なtest名は実行revision `R`のsourceから確認する。Patternが一部にmatchしなかったことをPASSへ読み替えない。
 
 これはdebug aidであり、Evidence suiteをこのsubsetだけへ縮めない。
 
@@ -309,7 +337,7 @@ First actual runでは、Repositoryへ巨大raw logを無条件commitしない�
 
 候補:
 
-1. PR comment + exact revision + concise output
+1. PR / Issue comment + exact revision + concise output
 2. small `plan/evidence/...md` record
 3. CI run URL / artifact reference
 
@@ -325,7 +353,7 @@ Stable Evidenceとして長期保持する必要が確認できた場合だけRe
 
 ```text
 failure
-  -> fix on same branch
+  -> fix on focused branch
   -> new revision R2
   -> rerun all Gate A commands
 ```
@@ -352,11 +380,40 @@ execution Evidence unresolved
 
 ## 15. GitHub Actions利用条件
 
-現在確認できるworkflowはIssue #50専用branch / path trigger等が中心であり、Lane C arbitrary branchのgeneric read-only verification workflowは見つかっていない。
+Current mainで確認した既存workflowには、Lane C Gate Aをそのまま満たすgeneric manual workflowはない。
 
-Issue #50 workflowの一部は`gofmt -w` + auto-commit / pushも行うため、そのままLane C Evidenceへ流用しない。
+### Gate B baseline source qualification
 
-将来generic workflowが独立理由で整備された場合は利用可能だが、Gate AをgreenにするためだけにLane CからCI architectureを新設しない。
+`gate-b-baseline-source-qualification.yml`は`workflow_dispatch`を持つが、format / vet / test対象は:
+
+```text
+internal/application
+internal/driver
+internal/validation
+```
+
+に限定される。
+
+したがって実行できても:
+
+```text
+Gate B source qualification Evidence
+  != Lane C Gate A Evidence
+```
+
+である。
+
+### Issue #50 workflows
+
+Issue #50 workflowは専用branch / path triggerが中心で、一部は`gofmt -w` + auto-commit / pushを行う。
+
+`issue50-full-compile.yml`が`gofmt` / `go vet ./...` / `go test ./...`を含んでも、そのworkflowのtrigger / revision条件を無視してLane C Gate Aへ流用しない。
+
+### Future generic workflow
+
+将来generic read-only verification workflowが**Lane Cとは独立したRepository-wide理由**で整備された場合は利用可能。
+
+ただしGate AをgreenにするためだけにLane CからCI architectureを新設しない。
 
 ## 16. Gate A PASS条件
 
@@ -373,6 +430,8 @@ intentional defect checker = expected diagnostic PASS
 
 をactual runnerから得る。
 
+Focused Lane C testsには、そのrevisionに存在するsource-uniqueness / fresh-process Pressureも含まれる。
+
 この時初めてPre-ADR auditの:
 
 ```text
@@ -387,26 +446,36 @@ Gate A green後の順序:
 
 1. Evidenceをrevision-boundで記録。
 2. Pre-ADR audit Gate A status更新。
-3. A91–A99 test-only Pressureをactual Evidenceへ再分類。
-4. second realistic Handoff authoringへ進む。
+3. source-level / test-only Pressureのうち実行されたものをactual Evidenceへ再分類。
+4. independent Business requirement由来のsecond realistic Handoff authoringへ進む。
 5. production loader / schema prototypeの着手可否を再判定。
 
-Gate A greenを理由に即ADR採用 / PR Readyへしない。
+Gate A greenを理由に即ADR採用へしない。
 
 ## 18. Current state
 
 ```text
-HAT47X
-  = offline
+PR #482
+  = mainへmerge済み
 
-GitHub generic manual read-only verification workflow
+current execution target branch
+  = old Lane C branchへ固定しない
+  = Pre-ADR判定対象のexact revision R
+
+GitHub Gate B manual workflow
+  = available but Lane C Gate A subsetではない
+
+GitHub generic Lane C Gate A manual workflow
   = not found
+
+external actual runner
+  = availability unresolved
 
 Gate A actual Evidence
   = unresolved
 
 Runbook
-  = defined
+  = post-merge execution modelへ更新
 
 Pre-ADR
   = Not Ready
