@@ -49,6 +49,7 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0024: 業務Lifecycleの正本をSemanticへ置き、状態identityと物理コードを分離する](0024-business-lifecycle-ownership.md)（提案中）
 - [ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す](0025-transition-evaluation-and-conflict-result.md)（提案中）
 - [ADR-0026: Partition childをprovider-owned realizationとしてgeneric Schema Driftから分離する](0026-partition-child-provider-realization-boundary.md)
+- [ADR-0027: Partition treeを伴うPostgreSQL DropTableをprovider execution preconditionでfail closedする](0027-postgres-partition-drop-execution-precondition.md)
 
 ## `docs/adr/`について
 
