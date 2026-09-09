@@ -16,6 +16,7 @@
 3. [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) — RQ → PAS → Evidence trace
 4. [`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](PRODUCT_REQUIREMENT_GAP_AUDIT.md) — 現在のRequirement Evidence / Gap
 5. [`MILESTONES.md`](MILESTONES.md) — 期限なしのCapability horizon
+6. [`UPSTREAM_BREAKDOWN_2026-09.md`](UPSTREAM_BREAKDOWN_2026-09.md) — 上流pressure / audit文書の結論を計画と下流の担当へ割り当てた導出表
 
 ## 現在のv1主線
 
