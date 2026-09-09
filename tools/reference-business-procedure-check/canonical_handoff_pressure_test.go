@@ -127,6 +127,44 @@ func TestCanonicalBusinessHandoffProbeSeesConditionChangeWithoutChangingProcedur
 	}
 }
 
+func TestCanonicalBusinessHandoffProbeKeepsSameEndpointsWithDifferentConditionsDistinct(t *testing.T) {
+	root := filepath.Join(repoPath(), "reference", "business-system-design")
+	set, err := readReferenceSet(filepath.Join(root, "order-entry-procedure-reference-set.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtures, err := resolveReferenceSet(root, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(set.Handoffs) == 0 {
+		t.Fatal("test setup: Handoffがありません")
+	}
+
+	second := set.Handoffs[0]
+	second.Condition = "follow-up remains required because unresolved external work continues"
+	expanded := set
+	expanded.Handoffs = append(append([]referenceSetHandoff(nil), set.Handoffs...), second)
+
+	handoffs, err := deriveCanonicalBusinessHandoffProbes(expanded, fixtures)
+	if err != nil {
+		t.Fatalf("same endpoints / different conditionをendpoint-only identityでrejectしました: %v", err)
+	}
+	if len(handoffs) != 2 {
+		t.Fatalf("handoff count=%d; want 2", len(handoffs))
+	}
+
+	conditions := map[string]int{}
+	for _, handoff := range handoffs {
+		conditions[handoff.Condition]++
+	}
+	for _, condition := range []string{set.Handoffs[0].Condition, second.Condition} {
+		if conditions[condition] != 1 {
+			t.Fatalf("distinct H1/R3 condition meaningをexactly once保持できません: condition=%q got=%v", condition, conditions)
+		}
+	}
+}
+
 func TestCanonicalBusinessHandoffProbeRejectsMissingEndpoint(t *testing.T) {
 	root := filepath.Join(repoPath(), "reference", "business-system-design")
 	set, err := readReferenceSet(filepath.Join(root, "order-entry-procedure-reference-set.json"))
