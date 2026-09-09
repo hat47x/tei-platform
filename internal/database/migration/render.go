@@ -9,7 +9,7 @@ import (
 )
 
 // Render delegates SQL generation to the selected database provider. The
-// common migration layer retains only the cross-provider safety boundary and
+// common migration layer retains the cross-provider safety boundary and
 // provider selection; provider-specific SQL grammar lives with each provider.
 func Render(provider environment.DatabaseProvider, diff schemadiff.Diff) ([]string, error) {
 	if len(diff.Unresolved) > 0 {
@@ -17,6 +17,11 @@ func Render(provider environment.DatabaseProvider, diff schemadiff.Diff) ([]stri
 	}
 	switch provider {
 	case environment.ProviderPostgres:
+		for _, change := range diff.Changes {
+			if change.Kind == schemadiff.DropTable {
+				return nil, fmt.Errorf("postgres drop-table rendering requires complete provider partition observation")
+			}
+		}
 		return postgres.RenderMigrationSQL(diff)
 	default:
 		return nil, fmt.Errorf("migration SQL rendering is not implemented for provider %q", provider)
