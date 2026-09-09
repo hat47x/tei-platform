@@ -17,10 +17,10 @@ Status: In Progress
 - `plan/LANE_B_RQ002_BUSINESS_PROCEDURE_CANONICAL_TRACE_AUDIT_2026-09.md`
 - `plan/LANE_B_RQ025_RQ026_TRACE_AUDIT_2026-09.md`
 - `plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`
-- `plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`
 - `plan/BUSINESS_AUTHORING_PRODUCTION_ADOPTION_EVIDENCE_CONTRACT_2026-09.md`
+- `plan/BUSINESS_PROCEDURE_MAIN_BASELINE_REAUDIT_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_EXPLICIT_REF_AUTHORITY_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_D4_REF_KIND_PRESSURE_2026-09.md`
 - `plan/BUSINESS_PROCEDURE_APPLICATION_PATTERN_TARGET_PRESSURE_2026-09.md`
@@ -37,11 +37,15 @@ Status: In Progress
 - `plan/BUSINESS_AUTHORING_AUTHORITY_CUTOVER_PRESSURE_2026-09.md`
 - `plan/BUSINESS_AUTHORING_PRODUCTION_LOADER_VERSIONING_OPTION_AUDIT_2026-09.md`
 - `plan/BUSINESS_AUTHORING_WORKSPACE_DISCOVERY_BOUNDARY_PRESSURE_2026-09.md`
+- `plan/BUSINESS_AUTHORING_LOGICAL_SOURCE_IDENTITY_PRESSURE_2026-09.md`
 - `plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md`
 - `plan/BUSINESS_MODEL_PRODUCTION_ACCEPTANCE_BOUNDARY_AUDIT_2026-09.md`
 - `plan/BUSINESS_MODEL_PHYSICAL_BASE_REVISION_OPTION_AUDIT_2026-09.md`
+- `plan/BUSINESS_HANDOFF_STANDALONE_AUTHORING_PRESSURE_2026-09.md`
 - `plan/BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`
 - `plan/BUSINESS_HANDOFF_TEI_ORIGINAL_SECOND_CASE_SEARCH_2026-09.md`
+
+`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`は現在、公開横断の詳細Evidence正本ではなくExternal Design Reference Noteである。X-TEA / XEAD / 渡辺幸三氏に関する詳細corroborationは、Business Flow / Handoff / O1 / CRUD等のquestion-specific Lane C auditへ近接保持する。
 
 ## Lane境界
 
@@ -72,6 +76,10 @@ ref kind separation != ref role separation
 Data / Function-Interaction / Business = 同じaccepted meaningを相互牽制する視点
 Business source freshness != Business semantic revision != cross-view Conformance base
 file exists != authoritative source reachable
+physical source path != Business logical identity != source authority
+exact duplicate H1/R3 meaning across managed sources = duplicate authority
+Handoff endpoint pair != implicit Handoff identity
+global Handoff ID necessity != proven
 schemaVersion != source authority priority
 review / impact projection != authoritative source
 Deployment Run.Revision != Business semantic revision
@@ -155,6 +163,9 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 - Procedure triggerとHandoff conditionを暗黙同期しない
 - legacy + candidateをpermanent dual authorityとしてmergeしない
 - source pathをBusiness semantic identityへしない
+- duplicate logical Procedure sourceをpath順 / input順 / first-writer / last-writerで解決しない
+- exact duplicate standalone H1/R3 meaningを複数managed sourceから受理しない
+- same Handoff endpoint pairだけを暗黙identityとして発明しない
 - Git HEADだけを無条件なfreshness proofとしない
 - Workbench / impact projectionをauthoritative sourceへ昇格しない
 - Deployment revision / fingerprint機構をBusiness semantic revision / source transactionへ読み替えない
@@ -218,7 +229,7 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 | A47 | Data Relation流用 / generic Core Edge新設を避ける | R1 reject / R2 defer |
 | A48 | Business-side thin relation R3 | primary pre-ADR candidate |
 | A49 | R3 + S4-AをSource Index非依存validate | test-only実装済み |
-| A50 | X-TEA fallbackでBusiness Flow独立pressureを確認 | E-014追加済み |
+| A50 | Business Flowはthin Handoffより広く、外部corroborationはquestion-specific Business Flow / Handoff auditへ保持する | Evidence責務固定 / no cross-register authority |
 | A51 | R3をhandoff-only relationへ限定 | negative Pressure実装済み |
 | A52 | handoff PASSをBusiness Flow / DFD Conformanceと呼ばない | 境界固定 |
 | A53 | full Business Flowは別pressure時だけreopen | 方針固定 |
@@ -239,7 +250,7 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 | A68 | protected targetをexact resolutionしadjacencyからderiveしない | test-only実装済み |
 | A69 | D4 + O1 target-role composition、generic Role taxonomyはdefer | test-only実装済み |
 | A70 | Legacy Authorization policyはO1 targetをcorroborateできるがauthor / backfillしない | test-only実装済み |
-| A71 | X-TEA TaskAction / TaskFunctionIO分離はAction/Function分離を支持するがgeneric protected-target roleは証明しない | E-015固定 |
+| A71 | X-TEA TaskAction / TaskFunctionIO分離はAction/Function分離をcorroborateするがgeneric protected-target roleは証明せず、詳細はO1 / role-specific auditへ保持する | external corroboration / no cross-register authority |
 | A72 | manufacturing / inventory second-corpus outlineではO1 role反復・D4/H1/R3不足をまだ証明せず、Command/Observation境界だけを強く再現 | outline-level negative Evidence / Gate 15c未起動 |
 | A73 | Command acceptanceだけではphysical completionを成立させない | second-corpus test-only Pressure実装済み |
 | A74 | Observation read成功とphysical completionを分離し、positive external Observationだけをtest-local fact成立として扱う | test-only Pressure実装済み |
@@ -289,8 +300,12 @@ Current TEI-original Repositoryにはindependent second realistic Handoffを安�
 | A118 | candidate-only sourceをlegacy inputなしにfresh process / separate executable boundaryで再構成できるfeasibilityはContract ADR Evidenceとして残す | executable feasibility blocker / actual未取得 |
 | A119 | qualifying C/U/D case不存在はBusiness Procedure Contract ADR blockerではなく、unknown operation authorityを推測しないguardrail Evidenceとする | blocker縮約 / future mutation reopen trigger |
 | A120 | `ir.World.Business`必要性Evidence不存在はblockerではなくseparate Business planeを維持するnegative Evidenceとする | placement blocker縮約 |
+| A121 | duplicate `Procedure.id`が異なるcandidate physical pathからauthorされた場合、同一meaningでもconflicting meaningでもfail closedしpath / input orderでauthorityを決めない | source-level / test-only Pressure |
+| A122 | exact same H1/R3 `from/to/condition` meaningが複数managed standalone Handoff sourceからauthorされた場合はduplicate authorityとしてfail closedする | source-level / test-only Pressure |
+| A123 | same Handoff endpoints + different conditionをendpoint-only identityで潰さず、global Handoff IDも先取りしない | identity-boundary Pressure / no new ID |
+| A124 | 公開横断External Design Reference Noteを詳細Evidenceの第二正本にせず、外部corroborationはquestion-specific Lane C auditへ近接保持する | evidence-responsibility boundary |
 
-A91〜A120はcurrent minimum semantic candidateを拡張するものではない。主にauthoring representation、source discovery、freshness、migration cutover、implementation reuse、**ADRとproduction adoptionのreadiness境界**を狭めるPressureである。
+A91〜A124はcurrent minimum semantic candidateを拡張するものではない。主にauthoring representation、source discovery、freshness、migration cutover、implementation reuse、**ADRとproduction adoptionのreadiness境界**を狭めるPressureである。
 
 ## Candidate stack
 
@@ -310,7 +325,7 @@ Current minimum candidateは引き続き:
 D4 + singular narrow O1 + S4-A + H1/R3
 ```
 
-であり、A91〜A120から新しいBusiness field / Core kindを追加しない。
+であり、A91〜A124から新しいBusiness field / Core kindを追加しない。
 
 ### D4 Step body
 
@@ -437,6 +452,7 @@ Workspaceのdeclared source-rootをphysical discoveryに再利用できる可能
 
 ```text
 file exists != authoritative source reachable
+physical source path != Business logical identity != source authority
 schemaVersion != source authority priority
 ```
 
@@ -448,7 +464,17 @@ Business source freshness
   != cross-view Conformance base
 ```
 
-One opaque tokenでもcomplete stale envelopeならよい。Git HEAD単体はdirty / untracked authoritative sourceを見逃し得るため無条件なfreshness proofにはしない。Source add/remove・source-root membership changeも対象にする。
+Complete stale envelopeは少なくとも次をfalse-negativeなくcoverする。
+
+```text
+relevant source bytes
++ source add/remove
++ authoritative source-root membership
++ logical source uniqueness
++ World / Conformance base
+```
+
+One opaque tokenでもこのenvelopeをcoverできればよい。Git HEAD単体はdirty / untracked authoritative sourceを見逃し得るため無条件なfreshness proofにはしない。
 
 ### Existing implementation reuse boundary
 
@@ -512,6 +538,7 @@ Manufacturing / inventory pressureでもCommand acceptedとphysical completion�
 - generic `semanticRefs[]` / kind-less Canonical ID bag
 - generic explicit-ref Role enum
 - global Canonical Step ID
+- global Canonical Handoff ID
 - Observation専用Canonical identity
 - second-corpus synthetic Data ownership / Application Pattern
 - inferred Handoff from adjacency / Observation / Function sequence
@@ -530,9 +557,11 @@ Manufacturing / inventory pressureでもCommand acceptedとphysical completion�
 
 ## Verification status
 
-Repository上にはchecker / fixtures / Go Pressure testsを実装済み。Remote Desktopは2026-09-08時点でもHAT47Xがofflineで実行できず、PR headにもactual status check / workflow runはない。
+Repository上にはchecker / fixtures / Go Pressure testsを実装済み。2026-09-09時点でHAT47Xはofflineのためactual Repository executionは未取得であり、current main `bbc0bff87f6b97a6ec6beae94b6393599db51ae3`にもPR-triggered workflow runはない。
 
-したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A120もsource-level / test-only / architecture-boundary Evidenceであり、actual runner PASSへ読み替えない。PR #482はDraftを維持する。
+PR #482は2026-09-09にmainへmerge済みで、PR #520でstandalone Handoff source uniqueness Pressureもmainへ入った。ただしReference / PressureのmergeはContract ADR adoptionやGate A greenを意味しない。
+
+したがってactual `gofmt / go vet / go test / checker` greenとはまだ主張しない。A91〜A124もsource-level / test-only / architecture-boundary Evidenceであり、actual runner PASSへ読み替えない。Contract ADRは引き続きNot Readyで、material blockerはactual Repository runner greenとindependent second realistic TEI-original Handoffの2件である。
 
 ## Operational completion checklist
 
@@ -587,5 +616,7 @@ Repository上にはchecker / fixtures / Go Pressure testsを実装済み。Remot
 47. Product Gate C後のStudio / AI Shared Acceptance end-to-endをContract ADR blockerにしない
 48. `ir.World.Business`必要性Evidenceがないことをplacement blockerにしない
 49. production atomic source apply / authority-discovery cutover / partial-failure safetyをContract ADR後のProduction adoption Evidenceとして実証する
+50. duplicate logical Procedureが複数managed physical pathから現れた場合、same/conflicting meaningともfail closedしpath/input orderでauthorityを決めない
+51. exact duplicate H1/R3が複数managed standalone Handoff sourceから現れた場合はfail closedし、endpoint-only Handoff identityやglobal Handoff IDを発明しない
 
 このchecklistの充足だけで独立にReadyを宣言しない。Contract ADR候補作成の最終判定はPre-ADR Auditに従う。
