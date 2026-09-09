@@ -11,9 +11,9 @@ import (
 type DropTableReadinessReason string
 
 const (
-	DropTablePartitionTreePresent         DropTableReadinessReason = "partition-tree-present"
-	DropTableTargetIsPartitionChild       DropTableReadinessReason = "target-is-partition-child"
-	DropTablePartitionObservationMissing  DropTableReadinessReason = "partition-observation-unavailable"
+	DropTablePartitionTreePresent        DropTableReadinessReason = "partition-tree-present"
+	DropTableTargetIsPartitionChild      DropTableReadinessReason = "target-is-partition-child"
+	DropTablePartitionObservationMissing DropTableReadinessReason = "partition-observation-unavailable"
 )
 
 type DropTableReadiness struct {
@@ -47,6 +47,19 @@ func (e *DestructiveReadinessError) Error() string {
 // assessed here; non-destructive changes remain the renderer's responsibility.
 func (o SchemaObservation) AssessDestructiveReadiness(diff schemadiff.Diff) (DestructiveReadiness, error) {
 	readiness := DestructiveReadiness{Executable: true}
+	hasDropTable := false
+	for _, change := range diff.Changes {
+		if change.Kind == schemadiff.DropTable {
+			hasDropTable = true
+			break
+		}
+	}
+	if !hasDropTable {
+		return readiness, nil
+	}
+	if o.PartitionObservationComplete && string(o.Snapshot.Database) != diff.Database {
+		return DestructiveReadiness{}, fmt.Errorf("postgres partition observation database %s differs from diff database %s", o.Snapshot.Database, diff.Database)
+	}
 
 	childToParent := map[string]PartitionRelation{}
 	parentToChildren := map[string][]RelationIdentity{}
@@ -127,7 +140,7 @@ func relationIdentityFromQualifiedName(value string) (RelationIdentity, error) {
 }
 
 func partitionDescendants(root string, byParent map[string][]RelationIdentity) []RelationIdentity {
-	seen := map[string]struct{}{}
+	seen := map[string]struct{}{root: {}}
 	queue := []string{root}
 	var out []RelationIdentity
 	for len(queue) > 0 {
