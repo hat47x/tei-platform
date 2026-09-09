@@ -321,6 +321,129 @@ realistic multi-Application synthetic pressure
 
 である。
 
+### 5.1 PR #482 merge後のdelta scan
+
+Existing-corpus searchをclosedした後もRepositoryは進むため、全corpusを毎回再探索するのではなく、**accepted mainへ新しく入った差分だけ**をreopen trigger候補として確認する。
+
+PR #482 merge commit:
+
+```text
+29674c63583065086258ab53d7e8fc2a46717a17
+```
+
+から2026-09-09のpost-merge Lane C follow-upを含むmainまでのdeltaを確認した。
+
+この期間のmeaningful non-Lane-C changesは主に:
+
+```text
+Gate B baseline source qualification
+  -> workflow_dispatch追加
+
+ADR-0026
+  -> PostgreSQL partition childをprovider-owned realizationとして
+     generic Schema Driftから分離
+
+ADR / status maintenance
+```
+
+である。
+
+#### Gate B workflow delta
+
+Gate B workflowはsource qualificationの実行経路を追加するが、Business requirement / responsibility boundaryをauthorしない。
+
+```text
+execution capability
+  != Business responsibility Handoff
+```
+
+Current: **not qualifying**。
+
+#### ADR-0026 partition realization delta
+
+ADR-0026は:
+
+```text
+provider-owned partition realization
+  != generic Physical Schema convergence subject
+```
+
+というPhysical Schema / provider boundaryをauthorする。
+
+そこにはparent / child relation、provider ownership、destructive DDL safety等があるが、それを:
+
+```text
+source Business responsibility
+  -> target Business responsibility
+```
+
+へ読み替える根拠はない。
+
+```text
+provider relation edge
+  != Business Procedure Handoff
+
+schema lifecycle / realization responsibility
+  != Business responsibility transfer
+```
+
+Current: **reject as second Business Handoff authority**。
+
+#### Lane C follow-up delta
+
+Standalone Handoff source uniqueness、inventory/readiness/runbook更新は、既存H1/R3 contractをPressure / documentするLane C自身の成果物である。
+
+これらから第二のHandoff instanceを作ると:
+
+```text
+Handoff contract work
+  -> second Handoff Evidence
+```
+
+という循環になるため、当然ながらindependent Business requirementには数えない。
+
+Current delta result:
+
+```text
+new independent Business requirement
+  = none
+
+new accepted Business responsibility chain
+  = none
+
+new qualifying second Handoff candidate
+  = none
+```
+
+したがってBlocker Bは未充足のままである。
+
+### 5.2 Existing-corpus search reopen trigger
+
+今後mainが進むたびに全Repositoryを無条件再探索しない。
+
+次のいずれかがaccepted mainへ入った場合だけ、second-case searchをdelta reopenする。
+
+```text
+new / changed Business requirement
+new Business Procedure / Reference seed
+new accepted manual / external responsibility boundary
+new actor/job responsibility separation
+new external contract / continuation responsibility
+new domain scenario that is explicitly production/reference meaning rather than synthetic Pressure
+```
+
+一方、次だけではreopenしない。
+
+```text
+docs formatting / status maintenance
+CI / workflow execution changes
+Physical Schema / Deployment / Runtime lifecycle changes
+Lane C Handoff tests / Pressure自身の追加
+synthetic scenarioの拡張
+```
+
+これは探索を省略するためではなく、**Evidence acquisition blockerと一般Repository churnを分離するため**の運用境界である。
+
 ## 6. Negative Evidenceとしての価値
 
 Second case不足を埋めるためだけに次を行わない。
@@ -333,6 +456,7 @@ Second case不足を埋めるためだけに次を行わない。
 - Watanabe patternをTEI fixtureへコピー
 - RQ-025の一般的handoff許容から具体的actor / responsibility / conditionを生成
 - synthetic fulfillment / warehouse / delivery scenarioからaccepted Handoffを逆生成
+- provider-owned Physical Schema relation / lifecycleをBusiness Handoffへ読み替える
 
 この抑制により:
 
@@ -407,7 +531,8 @@ one explicit current Handoff
   + actor / trigger independence structural pressure
   + requirement-level Handoff legitimacy
   + Watanabe external corroboration
-  + exhaustive-enough current-corpus negative search
+  + existing-corpus negative search
+  + post-merge Business-delta reopen rule
 ```
 
 まで進んだ。
@@ -430,8 +555,15 @@ second realistic Handoff
 existing-corpus search
   = closed / no qualifying case
 
+post-merge delta scan
+  = no qualifying Business delta
+
+reopen trigger
+  = accepted Business requirement / Reference / responsibility delta only
+
 next action before actual green
   = do not manufacture fixture
+  = inspect only qualifying Business deltas when they appear
 
 next action after actual green
   = author independent small Business requirement / Reference seed first
