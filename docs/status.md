@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-09
+- 更新日: 2026-09-10
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -169,7 +169,7 @@ Command acknowledgementだけでexternal state成立とはみなしません。
 
 PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
 
-ADR-0027 / #533の`DropTable` destructive readiness planning / rendering incrementはPR #535でDraft中です。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進める実装候補ですが、actual Repository test未取得のためcurrent mainの成立済み基線やGate B Evidenceには数えません。apply-time stale observation再検証は別incrementです。
+ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。apply-time stale observation再検証は別incrementです。
 
 PostgreSQLは深いReference Providerとして利用しています。
 
