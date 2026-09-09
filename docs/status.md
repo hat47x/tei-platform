@@ -201,7 +201,9 @@ Command acknowledgementだけでexternal state成立とはみなしません。
 
 PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
 
-ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。apply-time stale observation再検証は別incrementです。
+ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。
+
+#534 / Draft PR #548では、その別incrementとしてPostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認する実装が進んでいます。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界で、actual Repository testは未取得です。したがって#548はDraft / unmergedを維持し、source実装をactual qualificationやGate B Evidenceへ読み替えません。
 
 PostgreSQLは深いReference Providerとして利用しています。
 
