@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
@@ -115,6 +117,38 @@ func TestBusinessActionDataProjectionIsAProjectionNotASecondAuthority(t *testing
 	}
 }
 
+func TestBusinessActionDataProjectionFailsClosedWhenCapabilityPayloadKindIsAmbiguous(t *testing.T) {
+	root := repoPath()
+	loaded, err := workspace.Load(filepath.Join(root, "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := readFixture(filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.World.Semantics) == 0 {
+		t.Fatal("Semantic namespaceがありません")
+	}
+
+	// Capability payload IDs may point either to Semantic Data or Semantic Type.
+	// If the same CanonicalID exists in both kinds, the Data projection must not
+	// silently choose Data and claim an exact authority trace.
+	loaded.World.Semantics[0].Types = append(loaded.World.Semantics[0].Types, semantic.Type{
+		ID:     core.CanonicalID("security.authenticated_subject"),
+		Symbol: "ambiguous authenticated subject",
+		Kind:   semantic.TypePrimitive,
+	})
+
+	_, err = deriveBusinessActionDataProjectionProbe(loaded.World, f)
+	if err == nil {
+		t.Fatal("Capability payloadのData/Type kind ambiguityをDataへ暗黙解決しました")
+	}
+	if !strings.Contains(err.Error(), "Data/Type kind ambiguity") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func deriveBusinessActionDataProjectionProbe(world ir.World, f fixture) ([]businessActionDataProjectionRowProbe, error) {
 	rows := make([]businessActionDataProjectionRowProbe, 0, len(f.Steps))
 	for _, step := range f.Steps {
@@ -205,17 +239,40 @@ func addCapabilityProjectionEvidence(world ir.World, dataSet, evidenceSet map[st
 	if !ok {
 		return fmt.Errorf("Capability %sをexactに解決できません", capabilityID)
 	}
-	addIfSemanticData := func(id string, path string) {
-		if id != "" && semanticDataExistsExactlyOnce(world, id) {
-			addProjectionEvidence(dataSet, evidenceSet, id, path)
+	addIfSemanticData := func(id string, path string) error {
+		if id == "" {
+			return nil
 		}
+		dataCount := semanticDataMatchCount(world, id)
+		typeCount := semanticTypeMatchCount(world, id)
+		if dataCount == 1 && typeCount == 0 {
+			addProjectionEvidence(dataSet, evidenceSet, id, path)
+			return nil
+		}
+		if dataCount == 0 && typeCount == 1 {
+			// exactにSemantic Typeへ解決できるpayloadはData projectionへ含めない。
+			return nil
+		}
+		if dataCount == 0 && typeCount == 0 {
+			return fmt.Errorf("Capability %s payload identityをexactに解決できません: id=%s (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
+		}
+		if dataCount > 0 && typeCount > 0 {
+			return fmt.Errorf("Capability %s payload %s has Data/Type kind ambiguity (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
+		}
+		return fmt.Errorf("Capability %s payload identity ambiguity: id=%s (data=%d type=%d)", capabilityID, id, dataCount, typeCount)
 	}
 	for _, input := range capability.Inputs {
-		addIfSemanticData(string(input.Type), prefix+"/capability:"+capabilityID+"/input:"+string(input.Type))
+		if err := addIfSemanticData(string(input.Type), prefix+"/capability:"+capabilityID+"/input:"+string(input.Type)); err != nil {
+			return err
+		}
 	}
-	addIfSemanticData(string(capability.Output), prefix+"/capability:"+capabilityID+"/output:"+string(capability.Output))
+	if err := addIfSemanticData(string(capability.Output), prefix+"/capability:"+capabilityID+"/output:"+string(capability.Output)); err != nil {
+		return err
+	}
 	for _, outcome := range capability.Outcomes {
-		addIfSemanticData(string(outcome.Payload), prefix+"/capability:"+capabilityID+"/outcome:"+string(outcome.Payload))
+		if err := addIfSemanticData(string(outcome.Payload), prefix+"/capability:"+capabilityID+"/outcome:"+string(outcome.Payload)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -248,6 +305,10 @@ func addProjectionEvidence(dataSet, evidenceSet map[string]struct{}, dataID, evi
 }
 
 func semanticDataExistsExactlyOnce(world ir.World, id string) bool {
+	return semanticDataMatchCount(world, id) == 1
+}
+
+func semanticDataMatchCount(world ir.World, id string) int {
 	count := 0
 	for _, namespace := range world.Semantics {
 		for _, data := range namespace.Data {
@@ -256,7 +317,19 @@ func semanticDataExistsExactlyOnce(world ir.World, id string) bool {
 			}
 		}
 	}
-	return count == 1
+	return count
+}
+
+func semanticTypeMatchCount(world ir.World, id string) int {
+	count := 0
+	for _, namespace := range world.Semantics {
+		for _, semanticType := range namespace.Types {
+			if string(semanticType.ID) == id {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 func findSemanticAttributeOwnerExactlyOnce(world ir.World, attributeID string) (string, bool) {

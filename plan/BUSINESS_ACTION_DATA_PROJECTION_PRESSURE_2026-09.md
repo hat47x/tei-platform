@@ -46,6 +46,21 @@ Business Step
      -> Data payload contract
 ```
 
+Capabilityのinput/output/outcome payload IDはSemantic DataだけでなくSemantic Typeも指し得るため、Data projectionではkindを推測しない。
+
+```text
+payload ID -> exact Data 1件 / Type 0件
+  -> Data traceとして採用
+
+payload ID -> DataとTypeの両方に存在
+  -> kind ambiguityとしてfail closed
+
+payload ID -> Data 0件
+  -> Type等のnon-Data payloadであり得るためDataへ変換しない
+```
+
+したがって「Dataとして1件見つかった」という理由だけで、同じCanonicalIDの別kindを無視してData authorityを確定しない。
+
 使わない:
 
 - Business Action wordingからのentity name抽出
@@ -216,7 +231,39 @@ Business Action × Data/Relation trace matrix
 
 Data identityが見えたことだけでCRUD operationを推測しない。
 
-## 10. T-GAP-03の現在回答
+## 10. Derived-only change boundary
+
+Projectionが第二正本ではなくderived viewであることを次でPressureする。
+
+```text
+Business wording-only change
+explicit refs unchanged
+  -> Business accepted meaning may change
+  -> Data projection unchanged
+
+Application Pattern / Validation / Capability authority change
+Business source unchanged
+  -> Data projection changes when referenced meaning changes
+```
+
+したがって依存方向は:
+
+```text
+Business source + normalized referenced authorities
+  -> derived Data projection
+
+Data projection
+  -X-> author Business source
+  -X-> author Application / Semantic meaning
+```
+
+とする。
+
+またmissing / ambiguous referenced identityは名称推測で補わずfail closedする。Capability payloadのように複数semantic kindを取り得る参照では、Data/Type kind ambiguityもfail closed対象とする。
+
+このboundaryは「Data projectionを豊かにしたい」という理由だけでBusiness sourceへdirect Data refやO1 targetを追加することも禁止する。
+
+## 11. T-GAP-03の現在回答
 
 問い:
 
@@ -244,7 +291,7 @@ actual runner green
 
 したがってT-GAP-03は「構造上の回答を得た / actual Evidence待ち」とする。
 
-## 11. Production contractへの影響
+## 12. Production contractへの影響
 
 現時点で不要:
 
@@ -258,9 +305,11 @@ Current D4のままでも、Pattern / Validation / CapabilityからかなりのD
 
 将来current refsでは失われるaccepted Business dependencyが具体的に出た場合だけ、direct Data / Relation refをreopenする。
 
-## 12. Verification status
+## 13. Verification status
 
 Repository上へ`business_action_data_projection_pressure_test.go`を追加した。
+
+Derived-only change boundaryに加え、Capability payloadのData/Type kind ambiguityをDataへ暗黙解決しないtest-only Pressureを追加した。
 
 actual Repository runnerでの:
 

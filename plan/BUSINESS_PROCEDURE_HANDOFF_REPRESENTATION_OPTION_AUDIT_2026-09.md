@@ -109,7 +109,61 @@ Business Flow != Data Relation
 
 一つのEditor graphへProjectionすることは可能でも、一つのCanonical object / generic edgeへ畳む根拠にはしない。
 
-## 7. Step addressとの接続
+## 7. Watanabe external evidenceからのcorroboration
+
+`BUSINESS_HANDOFF_WATANABE_SECOND_REALISTIC_EVIDENCE_PRESSURE_2026-09.md`では、渡辺幸三氏の公開されている三要素分析法資料をexternal design evidenceとして確認した。
+
+Relevant source meaning:
+
+```text
+Data model
+Function model
+Business model
+  -> independent views with mutual constraint
+
+Business model
+  -> work / role / procedure / social-system meaning
+
+Business Flow
+  -> three viewsを広く俯瞰する別view
+  -> extended DFD
+  -> process activation eventを含む
+```
+
+特に、現場の仕事が単純な業務間logicではなくevent-drivenに配置されるという説明は:
+
+```text
+Step adjacency
+  -X-> responsibility Handoff
+
+Application Function sequence
+  -X-> responsibility Handoff
+```
+
+というcurrent authority boundaryを外部からcorroborateする。
+
+同時にBusiness Flowがevent / process / broader flowを持つことは:
+
+```text
+R3 handoff-only
+  != R4 Business Flow
+```
+
+を補強する。
+
+ただしexternal conceptual evidenceだけで:
+
+- Handoff `eventId`
+- document / payload field
+- participant taxonomy
+- full DFD
+- SubjectArea Canonical kind
+
+を採用しない。
+
+Watanabe evidenceはcurrent H1/R3 insufficiencyをまだ証明しない。
+
+## 8. Step addressとの接続
 
 H1 + R3をnormalized semantic meaningとして扱う場合、handoff endpointはnormalize後にSource Indexへ戻らずexact解決できる必要がある。
 
@@ -133,7 +187,7 @@ local addressは:
 
 Step body meaningとreferential address changeを分ける。
 
-## 8. conditionの扱い
+## 9. conditionの扱い
 
 current Referenceでは自然言語conditionをaccepted Business relation meaningとして保持する。
 
@@ -145,9 +199,30 @@ current Referenceでは自然言語conditionをaccepted Business relation meanin
 - runtime event guard
 - state machine guard
 
+Watanabe external evidenceはBusiness workにevent contextがあることを補強するが、Handoff condition自体をruntime event guardへ変換する根拠にはならない。
+
 condition wording changeをsemantic diffとして観測できることを先に満たす。
 
-## 9. 現在の順位
+## 10. Handoff conditionとProcedure trigger
+
+Current Procedure trigger:
+
+```text
+trigger { epistemicStatus, meaning }
+```
+
+とHandoff conditionは別authorityとして維持する。
+
+```text
+Handoff condition
+  != target Procedure trigger by definition
+```
+
+Handoff以外のeventからProcedureが始まる場合もあり得るため、一方から他方を自動deriveしない。
+
+Actual green後のsecond realistic Handoffでは、両者が同じcase / 異なるcaseをTEI-original sourceでPressureする価値がある。
+
+## 11. 現在の順位
 
 ```text
 R3  Business-boundary thin handoff relation  primary
@@ -158,7 +233,9 @@ R1  semantic.Data.Relation reuse             reject
 
 R3は**handoff-only**であり、generic Business relation bagではない。
 
-## 10. test-only Evidence
+X-TEAに加えてWatanabe三要素分析法の公開資料からもR3/R4 separationへのcorroborationが得られたが、production adoption条件は変えない。
+
+## 12. test-only Evidence
 
 関連tests:
 
@@ -167,6 +244,8 @@ R3は**handoff-only**であり、generic Business relation bagではない。
 - `step_address_layer_pressure_test.go`
 - `normalized_business_model_pressure_test.go`
 - `business_flow_scope_pressure_test.go`
+- `handoff_standalone_authoring_pressure_test.go`
+- `business_authoring_authority_cutover_pressure_test.go`
 
 Pressure:
 
@@ -178,10 +257,12 @@ Pressure:
 6. runtime Workflow fieldなしで成立
 7. Handoff typeへBusiness Flow participant / payload意味を混ぜない
 8. current validator PASSをBusiness Flow / DFD Conformanceと呼ばない
+9. legacy Reference Set Handoffとstandalone Handoffをaccepted dual authorityにしない
+10. migration previewでlegacy sourceを読んでもcandidate非authoritativeならmultiple SOTとはみなさない
 
 actual Repository runnerでgreenになるまではexecution Evidenceではない。
 
-## 11. ADR前にまだ決めないもの
+## 13. ADR前にまだ決めないもの
 
 - production Go package / field名
 - `ir.World.Business`採用
@@ -191,5 +272,30 @@ actual Repository runnerでgreenになるまではexecution Evidenceではない
 - condition expression language
 - Step local address syntax / generation rule
 - 000039 change graph integration
+- permanent old/new Handoff dual-read
+- Handoff event/document/payload fields
 
 Production採用はactual green、より現実的なReference、Lane B再監査を経て判断する。
+
+## 14. Current Gate C implication
+
+Watanabe external evidenceにより:
+
+```text
+Handoff non-inference boundary
+R3 / R4 separation
+Business / Function / Data cross-view structure
+```
+
+は強くなった。
+
+一方Pre-ADR Gate Cの:
+
+```text
+second realistic Handoffで
+from / to / condition sufficiencyを確認
+```
+
+は未充足である。
+
+External patternをTEI fixtureへコピーせず、actual Repository green後にTEI-original small realistic caseをauthorして判断する。

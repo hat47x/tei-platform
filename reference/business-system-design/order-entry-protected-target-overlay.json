@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "business-procedure-pattern-target-overlay-v0",
+  "artifactRole": "reference-pressure-overlay",
+  "canonical": false,
+  "procedure": "order-entry.order-handling",
+  "steps": [
+    {
+      "step": "BP-06",
+      "applicationPatternTargets": [
+        "order_entry.submit_order"
+      ]
+    }
+  ]
+}

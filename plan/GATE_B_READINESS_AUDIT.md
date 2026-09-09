@@ -52,6 +52,7 @@ actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとし
 - #308 actual real PostgreSQL run
 - 三つのsame-R final convergence
 - final convergenceが実際に読んだsame-run child Evidence artifact保持
+- same-run child exact artifactへの独立artifact audit
 - Rについて本監査を再実施
 
 runner実装、isolated test、文書整備だけではReadyへ格上げしません。
@@ -234,14 +235,20 @@ generated-artifact-reproducibility.json
 real-postgres-ephemeral-fixture.json
 ```
 
+Ready判定では、read-only補助tool `tools/reference-gate-b-readiness-artifact-audit` を使い、final summaryとsame-run child exact artifactsを独立に再照合します。実行command / 順序は `GATE_B_EVIDENCE_RUNBOOK.md` を唯一の実行正本とし、本書へcommand本文を複製しません。
+
+このartifact auditは第四Required laneではなく、`artifactAuditPassed = true`だけでGate B Readyにはしません。
+
 Ready判定では:
 
-1. final summaryの`artifactFile`が対応するsame-run fileを指すこと
+1. final summaryの`artifactFile`が対応するfixed same-run fileを指すこと
 2. file exact bytesのSHA-256が`evidenceArtifactFingerprint`と一致すること
-3. child JSON本文から#310 / #255 / #308固有の詳細安全条件を確認できること
-4. final summaryのlane envelopeとchild JSONが一致すること
+3. child JSON本文とfinal lane envelopeのnature / revision / reproducibleが一致すること
+4. #310のWorkspace identityと#310 / #255各checkのproducer commandが正規contractとexact一致すること
+5. child JSON本文から#310 / #255 / #308固有の詳細安全条件を確認できること
+6. secret / credential / DSN / physical identity等の禁止fieldを通常Evidenceへ保存していないこと
 
-を確認します。
+を確認します。check名だけ一致してproducer commandが異なるartifactを同じEvidenceへ読み替えません。
 
 **同じRで後から再実行した別artifactを、final convergenceが読んだartifactと同一だと推測しません。**
 
@@ -337,6 +344,8 @@ Gate BをReadyとするには、少なくとも次をすべてEvidenceから説�
 - [ ] `childArtifactsRetained = true`
 - [ ] 三つのsame-run child exact artifactを保存済み
 - [ ] 各artifact fingerprintがfinal summaryと一致
+- [ ] 独立artifact auditをsame-run artifactsへ実行し `artifactAuditPassed = true`
+- [ ] #310 Workspace identity / #310・#255 producer commandが正規contractと一致
 - [ ] child詳細から各lane固有安全条件を再確認できる
 - [ ] final run終了時もR / clean source/index state
 - [ ] Go実行環境fail-closed条件成立
@@ -364,7 +373,7 @@ candidate R固定
         ↓
 #387 final convergence
         ↓
-same-run child artifact + fingerprint監査
+same-run child exact artifact independent audit
         ↓
 Gate B Readiness Audit for R
         ↓ Ready only
@@ -377,6 +386,7 @@ First Web Target
 
 - actual Oracleを第四Required laneへ戻す
 - final runner成功だけで自動Ready宣言する
+- artifact audit成功だけで自動Ready宣言する
 - 同じRの別runをsame-run artifactへ読み替える
 - GitHub Actions greenをProduct Evidenceへ格上げする
 - 第一Web Target側で不足meaningを補完する
