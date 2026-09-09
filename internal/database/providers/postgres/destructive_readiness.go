@@ -47,17 +47,27 @@ func (e *DestructiveReadinessError) Error() string {
 // assessed here; non-destructive changes remain the renderer's responsibility.
 func (o SchemaObservation) AssessDestructiveReadiness(diff schemadiff.Diff) (DestructiveReadiness, error) {
 	readiness := DestructiveReadiness{Executable: true}
-	hasDropTable := false
+	var drops []schemadiff.Change
 	for _, change := range diff.Changes {
 		if change.Kind == schemadiff.DropTable {
-			hasDropTable = true
-			break
+			drops = append(drops, change)
 		}
 	}
-	if !hasDropTable {
+	if len(drops) == 0 {
 		return readiness, nil
 	}
-	if o.PartitionObservationComplete && string(o.Snapshot.Database) != diff.Database {
+	if !o.PartitionObservationComplete {
+		readiness.Executable = false
+		for _, change := range drops {
+			readiness.DropTables = append(readiness.DropTables, DropTableReadiness{
+				Table:      change.Table,
+				Executable: false,
+				Reason:     DropTablePartitionObservationMissing,
+			})
+		}
+		return readiness, nil
+	}
+	if string(o.Snapshot.Database) != diff.Database {
 		return DestructiveReadiness{}, fmt.Errorf("postgres partition observation database %s differs from diff database %s", o.Snapshot.Database, diff.Database)
 	}
 
@@ -76,19 +86,8 @@ func (o SchemaObservation) AssessDestructiveReadiness(diff schemadiff.Diff) (Des
 		parentToChildren[parentKey] = append(parentToChildren[parentKey], edge.Child)
 	}
 
-	for _, change := range diff.Changes {
-		if change.Kind != schemadiff.DropTable {
-			continue
-		}
+	for _, change := range drops {
 		assessment := DropTableReadiness{Table: change.Table, Executable: true}
-		if !o.PartitionObservationComplete {
-			assessment.Executable = false
-			assessment.Reason = DropTablePartitionObservationMissing
-			readiness.Executable = false
-			readiness.DropTables = append(readiness.DropTables, assessment)
-			continue
-		}
-
 		target, err := relationIdentityFromQualifiedName(change.Table)
 		if err != nil {
 			return DestructiveReadiness{}, fmt.Errorf("drop-table %s: %w", change.Table, err)
