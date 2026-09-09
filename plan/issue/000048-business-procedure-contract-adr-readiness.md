@@ -34,23 +34,22 @@ ADR前に必要なのは**contractを反証できるEvidence**であり、最終
 
 | 所有する | 所有しない |
 | --- | --- |
-| blocker A / B / Cの解消 | cross-view Reference・checker・Pressure testの実装（[ISSUE-000042](000042-business-procedure-cross-view-reference.md)） |
+| blocker A / Bの解消 | cross-view Reference・checker・Pressure testの実装（[ISSUE-000042](000042-business-procedure-cross-view-reference.md)） |
 | ADR起票と、そこへ記録する判断 | Ready / Not Ready判定そのもの（Pre-ADR Auditが正本） |
 | defer判断のADRへの記録 | production採用条件（[ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)） |
 | — | second corpusの取得（[ISSUE-000050](000050-second-realistic-handoff-corpus.md)） |
 | — | Studio / AIへの接続（[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md) / [ISSUE-000046](000046-studio-shared-acceptance-authoring-loop.md)） |
 
-ISSUE-000042の31項目checklistを本Issueへ再掲しない。checklistの消化はISSUE-000042、判定はPre-ADR Audit、起票は本Issueが持つ。
+ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの消化はISSUE-000042、判定はPre-ADR Audit、起票は本Issueが持つ。
 
 ## 現在のblocker
 
-readiness split §8のContract ADR blockerをそのまま担当する。
+Pre-ADR Auditのcurrent判定をそのまま担当する。
 
-- **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerのactual実行Evidence。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
-- **B. candidate-only fresh-process feasibility actual未取得** — legacy migration inputなしにcandidate-only sourceを別process相当で再構成できること
-- **C. second realistic TEI-original Handoff未充足** — ISSUE-000050の成果を待つ
+- **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerに加え、source-uniquenessとcandidate-only fresh-process Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
+- **B. second realistic TEI-original Handoff未充足** — ISSUE-000050の成果を待つ
 
-AとBはactual runnerが利用可能になった時点で**同一revision系列**で検証する。
+Candidate-only fresh-process feasibilityはADR前に必要なEvidence項目だが、現在はsource-level実装済みであり、独立したmaterial blockerとしてAと二重計上しない。Blocker Aのactual executionで同じrevision上にEvidenceを得る。
 
 ## ADR前に要求するEvidence
 
@@ -83,7 +82,7 @@ AとBはactual runnerが利用可能になった時点で**同一revision系列*
 
 ## 完了条件
 
-- [ ] blocker A / B / Cが解消し、Pre-ADR AuditがContract ADR readyと判定した
+- [ ] blocker A / Bが解消し、Pre-ADR AuditがContract ADR readyと判定した
 - [ ] 上記7件のEvidenceを、取得revisionとEvidence natureつきで参照できる
 - [ ] ADRを起票し、採用したcontractとdefer判断（C/U/D、placement、taxonomy）を記録した
 - [ ] Lane C Pre-ADR Gate CとProduct Gate Cを混同しない記述になっている

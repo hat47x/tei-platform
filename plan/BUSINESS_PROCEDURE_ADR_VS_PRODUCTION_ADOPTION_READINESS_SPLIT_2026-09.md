@@ -187,24 +187,28 @@ Concrete insufficiencyが出た場合だけplacementをreopenする。
 
 ### Contract ADR blocker
 
+Pre-ADR Auditのcurrent判定に合わせ、material blockerは二つに縮約する。
+
 ```text
 A. actual Repository runner green未取得
-B. candidate-only fresh-process feasibility actual未取得
-C. second realistic TEI-original Handoff未充足
+   - source-uniqueness Pressureを含む
+   - candidate-only fresh-process feasibility actualを含む
+
+B. second realistic TEI-original Handoff未充足
 ```
 
-Actual runnerが戻ればAとBは同一revision系列で検証する。
+Fresh-process feasibilityはADR前に必要な独立Evidence項目であるが、source-level実装済みであり、現在はGate A actual executionで同じrevision上に実行Evidenceを得る課題である。このためmaterial blockerを別立てして三重管理しない。
 
 ### Production adoption blocker
 
 Contract ADR blockersに加えて:
 
 ```text
-D. production Business-specific adapter未実装
-E. complete production stale envelope未実装
-F. atomic source apply / authority cutover未実証
-G. production fresh-process candidate-only reload未実証
-H. partial failure safety未実証
+C. production Business-specific adapter未実装
+D. complete production stale envelope未実装
+E. atomic source apply / authority cutover未実証
+F. production fresh-process candidate-only reload未実証
+G. partial failure safety未実証
 ```
 
 ### Blockerではないもの
@@ -240,7 +244,7 @@ Readinessだけを次へ分離する。
 ```text
 Contract ADR
   = Not Ready
-  reason = actual green + fresh-process feasibility + second realistic Handoff
+  reason = actual Gate A green（fresh-process feasibilityを含む） + second realistic Handoff
 
 Production adoption
   = Not Ready
