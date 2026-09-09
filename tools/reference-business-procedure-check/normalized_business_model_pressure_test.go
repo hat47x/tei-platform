@@ -134,6 +134,48 @@ func TestNormalizedBusinessModelKeepsHandoffConditionAsSemanticRelationMeaning(t
 	}
 }
 
+func TestNormalizedBusinessModelHandoffOrderIsIndependentFromReferenceInputOrder(t *testing.T) {
+	root := filepath.Join(repoPath(), "reference", "business-system-design")
+	set, err := readReferenceSet(filepath.Join(root, "order-entry-procedure-reference-set.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtures, err := resolveReferenceSet(root, set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(set.Handoffs) == 0 {
+		t.Fatal("test setup: Handoffがありません")
+	}
+
+	first := set.Handoffs[0]
+	second := first
+	second.Condition = "follow-up remains required because unresolved external work continues"
+
+	forward := set
+	forward.Handoffs = []referenceSetHandoff{first, second}
+	reverse := set
+	reverse.Handoffs = []referenceSetHandoff{second, first}
+
+	forwardModel, err := deriveNormalizedBusinessModelProbe(forward, fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reverseModel, err := deriveNormalizedBusinessModelProbe(reverse, fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(forwardModel, reverseModel) {
+		t.Fatalf("Handoff input orderだけでnormalized Business meaningが変化しました: forward=%+v reverse=%+v", forwardModel.Handoffs, reverseModel.Handoffs)
+	}
+	if err := validateNormalizedBusinessModelProbe(forwardModel); err != nil {
+		t.Fatalf("forward normalized modelが不正です: %v", err)
+	}
+	if err := validateNormalizedBusinessModelProbe(reverseModel); err != nil {
+		t.Fatalf("reverse normalized modelが不正です: %v", err)
+	}
+}
+
 func currentNormalizedBusinessModelProbe(t *testing.T) normalizedBusinessModelProbe {
 	t.Helper()
 	root := filepath.Join(repoPath(), "reference", "business-system-design")
