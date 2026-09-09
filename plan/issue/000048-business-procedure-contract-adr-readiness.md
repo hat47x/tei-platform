@@ -1,6 +1,6 @@
 # 000048 Business Procedure Contract ADR readiness
 
-Status: Proposed
+Status: In Progress
 
 ## 目的
 
@@ -46,10 +46,42 @@ ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの
 
 Pre-ADR Auditのcurrent判定をそのまま担当する。
 
-- **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerに加え、source-uniquenessとcandidate-only fresh-process Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
-- **B. second realistic TEI-original Handoff未充足** — ISSUE-000050の成果を待つ
+- **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
+- **B. second realistic TEI-original Handoff未充足** — ISSUE-000050では製造・在庫連携のsecond-corpus research targetとprovenance / fact-candidate-unresolved boundaryまで選定済み。ただしaccepted independent Business seed、Procedure / Step、`from/to/condition` positive Evidenceは未成立
 
 Candidate-only fresh-process feasibilityはADR前に必要なEvidence項目だが、現在はsource-level実装済みであり、独立したmaterial blockerとしてAと二重計上しない。Blocker Aのactual executionで同じrevision上にEvidenceを得る。
+
+## 現在の作業順序
+
+Material blockerはA / Bの二つだが、positive Evidence取得の順序は独立ではない。
+
+```text
+Blocker A
+  actual Gate A green
+  ↓
+Blocker B
+  Handoff検証とは独立したBusiness need / Reference seed
+  ↓
+  minimal accepted Procedure / Step
+  ↓
+  responsibility transferが自然に成立した場合だけ
+  explicit second Handoff
+  ↓
+  from / to / condition losslessness
+  ↓
+Pre-ADR readiness再判定
+```
+
+Gate A green前にISSUE-000050で進めてよいのはcorpus / provenance /利用条件 / candidate-unresolved researchまでである。
+
+Gate A green前には:
+
+- candidate Action poolをaccepted Step sequenceへ昇格しない
+- exact actor / trigger / responsibility boundaryを補完しない
+- second-case検証のためにaccepted Procedure / Handoff fixtureを作らない
+- `from/to/condition`をpositive Evidenceとしてauthorしない
+
+したがってcurrent execution priorityは**Blocker A**である。Actual runnerが利用可能になった時点で、second Handoff authoringより先にGate Aを同一revisionで実行する。
 
 ## ADR前に要求するEvidence
 
