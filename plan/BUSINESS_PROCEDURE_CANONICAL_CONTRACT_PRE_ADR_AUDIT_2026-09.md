@@ -513,6 +513,8 @@ Fresh-process / source-uniqueness testsはsource-level実装済みなので、�
 - exact duplicate H1/R3 across managed standalone sources fail closed
 - path/input orderでHandoff source authorityを裁定しない
 - same endpoint pairだけをimplicit Handoff identityにしない
+- same endpoints + different conditionはdistinct H1/R3 meaningとして併存できる
+- 同一H1/R3 meaning集合のnormalized resultはReference / input列挙順に依存しない
 - global Handoff IDを先取りしない
 - Handoff-only boundary維持
 - Procedure actorをendpoint identityへ複製しない
