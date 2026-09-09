@@ -42,6 +42,7 @@ BusinessHandoffSource
 - Business Flow / DFD node
 - generic Edge type
 - Data / payload flow
+- global Handoff ID
 
 ## 3. Mechanical Pressure
 
@@ -73,6 +74,39 @@ Stale Step addressはfail closedする。
 
 Strict decodeにより`retry`等のWorkflow fieldを黙って受理しない。
 
+`business_authoring_duplicate_handoff_source_pressure_test.go`では、複数のmanaged standalone sourceを束ねる際のauthority境界を追加Pressureする。
+
+### Duplicate source authority boundary
+
+同一のH1/R3 tuple:
+
+```text
+from { procedure, step }
+to   { procedure, step }
+condition
+```
+
+が異なるphysical sourceから複数回authorされた場合はduplicate authorityとしてfail closedする。
+
+```text
+same H1/R3 meaning
++ different paths
+  -> reject
+```
+
+入力順、lexical path、first-writer / last-writerでauthorityを解決しない。
+
+一方、current H1/R3にはglobal Handoff IDがないため、endpoint pairだけを暗黙identityとして発明しない。
+
+```text
+same from/to
++ different condition
+  -> distinct H1/R3 meaning candidates
+  -> endpoint-only identityを発明してrejectしない
+```
+
+これは同じendpoint間の複数relationをproductionで必ず許可するという契約採用ではない。Current representationのidentityをpathやendpoint pairへ勝手に縮めないためのtest-only Pressureである。
+
 ## 4. Relation to S4-A
 
 Handoff endpointは:
@@ -87,6 +121,8 @@ Procedure identity
 Global Canonical Step IDは要求しない。
 
 Standalone sourceでもS4-A addressabilityで十分なPressureになっている。
+
+Handoff source自身についてもphysical pathをlogical identityへ昇格しない。
 
 ## 5. Relation to Reference Set
 
@@ -130,7 +166,26 @@ Procedure artifact move  -> Business semantic meaning unchanged
 
 を保持できる。
 
+Physical source discovery側ではさらに:
+
+```text
+source path
+  -> locator / discovery metadata
+
+exact H1/R3 tuple
+  -> current relation meaning key for duplicate detection
+
+source authority
+  -> accepted managed source-set boundary
+```
+
+を分離する。
+
 したがってHandoff source file自身の物理配置をBusiness identityへしない。
+
+Duplicate exact relationを複数sourceから受理すると、同じaccepted meaningを複数sourceがauthorするため、Procedure duplicate logical sourceと同様にauthority ambiguityになる。これはfreshness envelopeのsource-set membership / logical uniqueness Pressureとも整合する。
+
+ただしfinal production source key、revision token、Handoff durable identityはここでは決めない。
 
 ## 8. Current decision
 
@@ -144,6 +199,18 @@ Handoff authority
 production authoring candidate
   -> standalone set-level relation sourceが現在最有力
 
+physical path
+  -> Handoff identityではない
+
+exact duplicate H1/R3 meaning across managed sources
+  -> fail closed
+
+endpoint pair only
+  -> implicit Handoff identityにしない
+
+global Handoff ID
+  -> not introduced
+
 Reference Set manifest shape
   -> production schemaとしては未採用
 
@@ -155,6 +222,7 @@ BusinessHandoff Canonical top-level kind
 
 1. standalone sourceをproduction Business authoring syntaxとして採るか。
 2. Business semantic revision / Shared Acceptanceへどう接続するか。
-3. second realistic Handoffで`from / to / condition`だけで十分か。
+3. production source discoveryでHandoff source-set uniquenessをどのphysical token / indexで検証するか。
+4. second realistic Handoffで`from / to / condition`だけで十分か。
 
 Actual Repository runner greenまではproduction contractへ進めない。
