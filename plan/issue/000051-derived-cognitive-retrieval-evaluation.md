@@ -343,7 +343,7 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 次のいずれかがReferenceから必要になった場合にだけ、長期判断をADRへ切り出します。
 
 - derived cognitive indexに共通して守るrevision / regeneration contractをArchitectureとして固定する必要がある
--複数のcandidate mechanismを交換可能にする共通interfaceが複数Issueにまたがって必要になる
+- 複数のcandidate mechanismを交換可能にする共通interfaceが複数Issueにまたがって必要になる
 - learned associationの永続化、更新、忘却、rollbackに長期のauthority境界が必要になる
 - Cognitive Layerという独立architecture layerを`docs/architecture.md`へ追加するEvidenceが得られる
 
