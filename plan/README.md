@@ -130,11 +130,15 @@ StudioはCanonicalの第二正本ではありません。
 
 ### knowledge-first / PAS-06
 
-- [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md)
+この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
-Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けます。
+1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
+2. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
+3. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
+4. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
+5. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
 
-search ranking / similarityをSemantic Evidenceへ格上げしません。
+Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることがProduct上の中心です。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを後段で比較する方式であり、search ranking / similarityをSemantic Evidenceへ格上げしません。
 
 ### AI Proposal / PAS-01 / PAS-06
 
@@ -168,4 +172,3 @@ Master Plan、v1 Plan、Milestones、Gap Audit、Gate契約等の上位文書は
 過去の判断経緯はGit history、ADR、完了 / superseded Plan Issueから追跡します。
 
 同じ実行手順やsemantic boundaryを複数文書で競合する正本にしません。
-
