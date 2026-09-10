@@ -179,6 +179,133 @@ file path、生成物の一時的な配置、secret、connection string、runtim
 
 feature extractionは同じCanonical revisionから同じ結果になることを必須にします。
 
+### 現行コードから抽出できるfeature sourceの棚卸し
+
+2026-09-10時点の実装を見ると、Phase 0の最初のcorpusは新しいCanonical schemaを追加せず構成できます。ただし、既存`index.Build`の出力だけを認知入力の正本にせず、必要なrole情報はnormalized `ir.World`のCanonical objectから抽出します。
+
+現行`internal/semantic/model.go`からは、少なくとも次をlosslessに観測できます。
+
+```text
+Namespace
+  ├─ Type(kind, underlying)
+  ├─ Data
+  │   ├─ Attribute(type-ref)
+  │   └─ Relation(target, cardinality, ordered relation keys)
+  ├─ Validation(kind, attribute, optional relation)
+  └─ Capability(inputs, output, named outcomes)
+```
+
+現行`internal/application/model.go`からは次を観測できます。
+
+```text
+Application
+  ├─ semantic uses
+  ├─ validation references
+  ├─ database requirements(alias, access, required contracts)
+  └─ Pattern
+       ├─ kind
+       ├─ data / relation / query / capability references
+       ├─ datasource role
+       └─ contract-query binding
+```
+
+また`internal/index/index.go`には、既に次の再生成可能なderived projectionがあります。
+
+- Semantic elementのkind / Canonical ID / namespace / parent
+- semantic dependencyのfrom / relation / to
+- ApplicationやDatabaseが宣言するdependency
+- ApplicationとDatabaseのedge / access
+- QueryのApplication / Datasource / dialect
+- Environment Binding、Capability Binding、Persistence Mapping等のrealization側index
+
+`index.Build`は主要entryを明示的にsortしているため、Phase 0のdeterministic corpus構築では、この既存の安定化方法を再利用候補にできます。ただし`Derived`全体をそのまま一つのfeature vectorへserializeしません。Semantic、Application intent、Realization / Environmentの境界を保ったままfeature familyへ分けます。
+
+### 初回feature contract候補
+
+最初のprobeではfeatureを少なくとも次の四群へ分けます。
+
+#### F0 — locator / identity
+
+候補をCanonicalへ戻すための情報です。similarityの主要特徴にはしません。
+
+- subject kind
+- Canonical ID
+- namespace
+- parent Canonical ID
+- Application / Database等のownership identity
+
+`F0`は検索結果のidentityとtraceabilityを保つために必要ですが、ID文字列が似ていることをSemantic similarityの根拠へ格上げしません。
+
+#### F1 — intrinsic semantic structure
+
+対象自身の意味構造です。初回の主要feature familyとします。
+
+- Type kind / underlying relation
+- AttributeのTypeRef
+- Relationのtarget / cardinality / key role・key数
+- Validation kind / target Attribute / Relation有無
+- Capabilityのinput signature / output / named Outcome structure
+
+値を単なるbagへ落とす方式と、`relation.target`、`capability.input`のようにroleを保持する方式を比較できる形で抽出します。
+
+#### F2 — application-use context
+
+同じSemantic資産がどのApplication文脈でどう使われるかを表します。
+
+- SemanticUses / Validation reference
+- Pattern kind
+- PatternからData / Relation / Query / Capabilityへのrole付き参照
+- Datasourceの存在とApplication-local role
+- Database access mode / required Contract
+- Contract Query input binding
+
+Application-local aliasの文字列そのものはdomain meaningと同一視せず、原則として「aliasを介したdatasource roleがある」という構造を優先します。
+
+#### F3 — derived structural neighborhood
+
+既存`SemanticDependencies` / `DeclaredDependencies`等から、対象の近傍構造を再生成します。
+
+```text
+subject
+  --relation-role--> target-kind
+  <--relation-role-- source-kind
+```
+
+この群はweighted set比較、FlyHash系の高次元展開、HDC/VSAのrole bindingを同じ入力意味から比較する主要材料になります。
+
+### Realization / Evidenceは初回similarityへ無条件に混ぜない
+
+現行indexにはProvider、Environment Binding、Permission、Resource、Persistence Mapping、physical table、custom adapter / hook等もあります。これらは適用可能性のqualificationや`capability-context`の専用fieldには重要ですが、初回のgeneral semantic similarityへ無条件に混ぜません。
+
+```text
+Canonical / Application meaning
+          !=
+Provider / Environment / physical realization
+```
+
+たとえば同じ業務意味がPostgreSQLから別Providerへ移っただけで別Semantic Patternと認識される設計は避けます。一方、「この候補は現在のEnvironmentでは利用できない」という判断にはBindingやCapability条件が必要です。したがってRealization情報は、**候補発見の意味距離**と**候補適用のqualification context**を分けて扱います。
+
+Source locator、file path、physical table名、adapter filename、hook nameも同様です。必要なtraceabilityには保持しますが、名前の偶然な一致をmeaning similarityへ持ち込みません。
+
+### Phase 0の最小出力形
+
+実装時のschemaは未確定ですが、benchmarkを比較可能にする論理出力は次程度で足ります。
+
+```text
+FeatureDocument
+  subject: Canonical reference
+  revision: source/model revision
+  groups:
+    identity:    F0
+    intrinsic:   F1
+    application: F2
+    structural:  F3
+```
+
+各アルゴリズムは同じ`FeatureDocument`から必要な群だけを選んでencoderへ渡します。アルゴリズム固有のpreprocessing結果をfeature sourceの正本にはしません。
+
+この分離により、後からFlyHashをVSAへ替えても、評価対象が「別の意味入力へ変わったため良く見えた」のか「encoderが良かった」のかを区別しやすくします。
+
 ## Phase 1: baseline比較
 
 最初の比較では、外部AI serviceやGPUを必須にしません。CPU上で再現可能な方式を使います。
