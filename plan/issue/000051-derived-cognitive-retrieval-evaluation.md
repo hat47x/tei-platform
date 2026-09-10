@@ -1,0 +1,361 @@
+# ISSUE-000051: 非LLM認知方式をSemantic探索の候補生成器として比較する
+
+- 状態: Blocked — Product Gate C Ready待ち
+- 提案日: 2026-09-10
+- 性格: Architecture probe / Reference evaluation
+- 主担当要求: RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-022
+- 関連: [ISSUE-000047](000047-knowledge-first-semantic-exploration.md) / [ISSUE-000040](000040-semantic-component-composition.md) / [ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)
+
+## 目的
+
+TEIのknowledge-first探索で、LLMやembeddingだけへ依存せず、Canonical Worldから導出した構造特徴を使う軽量な認知方式が、既存Semantic資産の**候補生成・注意制御・新奇性の示唆**に有効かをReferenceで比較します。
+
+本IssueはFlyHash等の特定アルゴリズムをTEIへ採用するためのIssueではありません。外部研究から得た着想を、TEI自身のReferenceとConformanceで評価し、採用・限定採用・不採用を判断するためのarchitecture probeです。
+
+最も重要な境界は次です。
+
+```text
+activation / similarity / novelty
+            !=
+Semantic applicability / Evidence / Decision / Authority
+```
+
+認知方式が返すのは候補です。既存資産が現在のintentへ適用可能かは、`ISSUE-000047`が要求するCanonical identity、dependency、scope、constraint、Source、Evidence、current revision等の決定論的な照合で判定します。
+
+## 背景
+
+### ハエ嗅覚系由来の高次元疎表現
+
+Dasgupta, Stevens, Navlakha (Science, 2017) は、ショウジョウバエ嗅覚回路を類似検索の計算問題として捉え、従来の低次元LSHとは異なる、疎なランダム射影による高次元展開とsparsificationを組み合わせた方式を示しました。
+
+- DOI: <https://doi.org/10.1126/science.aam9868>
+- PubMed: <https://pubmed.ncbi.nlm.nih.gov/29123069/>
+
+この研究からTEIへそのまま移植するのは「FlyHash」という名称ではなく、次の計算上の仮説です。
+
+```text
+small explicit feature set
+        ↓
+expanded distributed representation
+        ↓
+sparse activation
+        ↓
+small candidate neighborhood
+```
+
+### data-dependentな疎表現
+
+Ryali et al. (ICML 2020) のBioHashは、FlyHashのランダム射影を固定前提とせず、局所的な学習則によりdata-dependentな疎高次元表現を得る方式を提示しています。
+
+- PMLR: <https://proceedings.mlr.press/v119/ryali20a.html>
+
+このためTEIでは、random projectionをarchitecture contractにしません。Referenceでは固定seedのdata-independent方式から始め、必要なら学習可能な方式を比較します。
+
+### associative continual learning
+
+Shen, Dasgupta, Navlakha (Neural Computation, 2023) は、疎な高次元表現と、活動した表現から対象outputへの局所的associationだけを更新する構成が、継続学習時の干渉低減に有効であることを理論・実験の両面から検討しています。
+
+- DOI: <https://doi.org/10.1162/neco_a_01615>
+
+TEIで直ちに学習機構を導入する根拠にはしませんが、将来Derived Experience Knowledgeを扱う場合に、全履歴や全表現を書き換えるのではなく、**task-local / outcome-localなassociation更新**を比較する根拠になります。
+
+### HDC / VSA
+
+Hyperdimensional Computing / Vector Symbolic Architecture (HDC/VSA) は、高次元distributed representationに対してbinding、bundling、permutation等を用い、roleや順序を保った構造表現を扱えます。Kleyko et al. のreviewは、graphを含むdata structureのdistributed representationを整理しています。
+
+- Open review article: <https://pmc.ncbi.nlm.nih.gov/articles/PMC10588678/>
+
+2025年のConfiGRはHDCによるgraph representationを構造・taskに応じて構成可能にする必要性を示し、2026年のdirected weighted graph研究ではhard-routing型の階層分類がflat modelより悪化する例も報告されています。
+
+- ConfiGR: <https://doi.org/10.1016/j.artint.2025.104384>
+- directed weighted graph study: <https://doi.org/10.1186/s13040-026-00561-1>
+
+TEIにとっての示唆は、Canonical graphをvectorへ置き換えることではありません。**exact graphを正本として保持しつつ、role-awareな曖昧検索や構造類似の候補生成へHDC/VSAを使えるか**を比較することです。
+
+## TEIで固定する仮説と固定しないもの
+
+### 固定する仮説
+
+Referenceでは次を検証します。
+
+1. LLMなしでも、既存Canonical featureから有用な候補集合を高速に作れる可能性がある。
+2. lexical similarityだけでは拾いにくい、名前の異なる同型・近接構造を回収できる可能性がある。
+3. similarityが高くてもSemanticに不適合なnear-matchを決定論的qualificationで落とせる必要がある。
+4. 「既存類例が見つからない」を無理にnearest resultへ変換せず、低activation / low margin等を注意信号として保持できる必要がある。
+5. 一つのglobal similarity spaceへ全意味を畳まず、task-specificな特徴集合・candidate fieldを比較できる必要がある。
+
+### 固定しないもの
+
+- FlyHash / DenseFly / BioHash / HDC / VSAの採用
+- embeddingやvector databaseの排除
+- 一つのembedding / hashをRepository全体で共有すること
+- model dimension、sparsity、projection density、distance metric
+- learned projectionやonline learning
+- `internal/cognitive`等のpackage名
+- Cognitive LayerをCanonical architectureの新しい正本層として追加すること
+- similarity scoreをconfidence / probability / Evidenceと呼ぶこと
+
+## Architecture上の位置
+
+初回Referenceでは、認知indexをSource Index等と同様の**derived / regeneratable / revision-bound resource**として扱います。
+
+```text
+Authoritative Source
+        ↓ reload
+Canonical World
+        │
+        ├── exact index / dependency projection
+        ├── Source Index
+        └── derived cognitive representation
+                    │
+                    ↓
+             candidate retrieval
+                    │
+                    ↓
+      deterministic semantic qualification
+        applicable / incompatible / unknown
+                    │
+                    ↓
+         explicit-reference candidate
+                    │
+                    ↓
+        Shared Acceptance Boundary
+```
+
+次を不変条件とします。
+
+```text
+Sparse Code       != Canonical Identity
+Activation        != Semantic Fact
+Similarity        != Applicability
+Novelty Signal    != Unknown
+Association       != Dependency
+Candidate Rank    != Recommendation authority
+Learned Memory    != Decision history
+Cognitive Index   != Canonical source of truth
+```
+
+indexを削除してもCanonical Worldは変化してはいけません。source / model revisionが変わった場合、staleを判定できるか、安全に再生成できる必要があります。
+
+## 一つのglobal similarityへ畳まない
+
+TEIはData、Function / Interaction、Businessを同じaccepted meaningへの異なるviewとしてcross-checkします。またSource、Evidence、Capability、Target等も意味上の役割が異なります。
+
+そのため初回probeでは、全subjectを一つの意味距離へ畳む方式だけを評価しません。少なくとも次の二案を比較可能にします。
+
+```text
+A. one representation / multiple feature groups
+
+B. task-specific candidate fields
+   - reuse-discovery
+   - structural-analogy
+   - missing-concern
+   - interaction-pattern
+   - capability-context
+```
+
+Bでも最初に一つのfieldへhard routeしません。複数fieldからtop-k候補を保持し、後段のqualificationへ渡します。上流分類の誤りを下流へ固定伝播させないためです。
+
+## Phase 0: deterministic feature corpus
+
+最初に認知アルゴリズムを実装するのではなく、同じReference subjectから比較可能なfeature corpusを作ります。
+
+候補featureは次です。
+
+- subject kind
+- qualified logical identityの構成要素。ただしidentityそのものをsimilarityの唯一根拠にはしない
+- Type / Attribute role
+- Relation source / target / cardinality / traversal role
+- Validation / Constraintの種類と対象
+- lifecycle / mutability
+- Query / Datasource relation
+- Capability requirement / Binding presence
+- Application Pattern内のrole
+- Business Action / Procedureとの参照関係がReferenceで成立している場合のcross-view relation
+- Source / Evidenceの存在状態
+- Application / scope
+
+file path、生成物の一時的な配置、secret、connection string、runtime credentialはfeatureへ入れません。
+
+feature extractionは同じCanonical revisionから同じ結果になることを必須にします。
+
+## Phase 1: baseline比較
+
+最初の比較では、外部AI serviceやGPUを必須にしません。CPU上で再現可能な方式を使います。
+
+少なくとも次を比較候補にします。
+
+1. exact / inverted index
+2. weighted set similarity（Jaccard等）
+3. SimHash系の低次元hash
+4. FlyHash型のexpand + sparse k-WTA
+5. DenseFly型の高次元hash
+6. role-awareなHDC/VSA encodingの小さいprobe
+
+BioHash等のlearned representationはPhase 1の必須対象にしません。
+
+各方式は同じcorpus、同じquery case、同じcandidate poolで比較します。方式固有の前処理が必要な場合はEvidenceへ記録します。
+
+## Phase 2: TEI特有のnegative case
+
+一般的なnearest-neighbor benchmarkではなく、TEIで危険な誤りを中心に検査します。
+
+### same meaning / source move
+
+file pathだけ変更しCanonical identityとmeaningが同じ場合、認知結果が意味上の別物として大きく変わらないことを確認します。
+
+### lexical near-match / semantic incompatible
+
+名前や語彙が近いが、scope、Datasource、Capability、Validation、Target条件等が合わない資産を検索上位へ意図的に置きます。認知層が候補へ入れても構いませんが、qualificationは`incompatible`にできなければなりません。
+
+### structurally similar / lexically different
+
+名称が異なってもRelation / Pattern / Constraint構造が近い資産を用意し、set similarity、FlyHash系、VSA系の回収差を比較します。
+
+### partial cue
+
+Featureの一部を欠落させたintent / editing contextから、既存資産をcandidate setへ回収できるかを確認します。
+
+### true novel / no good match
+
+実際に適切な既存資産がないcaseを作り、必ず何かを「最も近い候補」としてsuccess扱いしないことを確認します。low activation、top-1/top-k margin等はheuristic signalとして記録できますが、`unknown`判定の代替にはしません。
+
+### stale representation
+
+Canonical revision更新後に旧indexを読むnegative caseを作り、stale検出または安全な再生成を確認します。
+
+## 評価指標
+
+単一のaccuracyだけで採否を決めません。少なくとも次を記録します。
+
+- Recall@k / relevant candidate inclusion
+- candidate set size
+- incompatible near-match混入率
+- partial cue recovery
+- novel caseでのfalse-familiar rate
+- seed感度
+- feature ablation感度
+- index build / incremental update cost
+- p50 / p95 retrieval latency
+- memory footprint
+- deterministic rebuildの可否
+- stale detection / revision traceability
+- qualification後に`applicable / incompatible / unknown`がどのように変化したか
+
+最終的なProduct価値は「hash精度」ではなく、既存意味の再利用漏れを減らし、不適合候補をauthorityへ昇格させず、開発者またはAIが調べる範囲を小さくできるかで判断します。
+
+## Phase 3: Derived Experience Knowledgeは別判定
+
+Phase 1/2で静的な候補生成に価値が確認できるまで、online learningを導入しません。
+
+将来評価する場合も、Acceptance結果を単純なrewardへ変換しません。少なくとも次を区別します。
+
+```text
+semantic-reuse-success
+incompatible
+unknown / insufficient evidence
+stale-revision
+policy-reject
+acceptance-failure
+ignored / no decision
+```
+
+学習対象にするoutcomeと、単に監査へ残すoutcomeを分けます。Decision historyそのものは既存の明示履歴が正であり、association weightへ置き換えません。
+
+局所更新を試す場合は、活動したfeature / candidate fieldに関係するassociationだけを変更し、無関係なfieldやCanonical feature extractorへ副作用を与えないことを最初の安全条件にします。
+
+## LLMとの関係
+
+本IssueはLLM代替を目的にしません。
+
+理想的な探索cascadeの仮説は次です。
+
+```text
+exact identity / symbol lookup
+          ↓
+structural / graph lookup
+          ↓
+lightweight associative retrieval
+          ↓
+optional embedding retrieval
+          ↓
+optional LLM interpretation / composition
+```
+
+実際には各段を必ず直列実行する必要はありません。重要なのは、簡単な候補探索まで毎回LLMへ委譲することをarchitecture requirementにせず、LLMもSparse / VSA等も非権威的なcandidate mechanismとして扱えることです。
+
+LLMがintent解釈や説明、新規compositionを行っても、`ISSUE-000027`のShared Acceptance Boundaryを迂回しません。
+
+## ISSUE-000047 / 000040との責務分離
+
+- `ISSUE-000047`はknowledge-first read-only探索と`applicable / incompatible / unknown`へのqualificationのProduct Referenceを担当します。
+- `ISSUE-000040`は既存意味資産を第二Applicationへ明示参照で組み立てる根幹機能を担当します。
+- 本Issueは、その探索前段に使える**candidate retrieval方式の比較評価**だけを担当します。
+- `ISSUE-000027`はProposalからauthoritative sourceへ進むShared Acceptance Boundaryを担当します。
+
+本Issueが不採用になっても000047 / 000040はexact / graph / lexical等の別方式で成立できなければなりません。逆に本Issueのbenchmarkが良くても、000047のqualificationや000027のAcceptanceを省略しません。
+
+## 着手条件
+
+本格着手はProduct Gate C Ready後です。
+
+ただし、Gate C前に次のread-only設計準備は可能です。
+
+- Referenceで利用可能なCanonical feature候補の棚卸し
+- benchmark caseの設計
+- 外部研究の追跡
+- deterministic feature extractionの境界検討
+
+Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targetの実装をこのprobeのために遅らせません。
+
+## 完了条件
+
+- [ ] Gate C Ready後のReference revisionを固定した。
+- [ ] deterministic feature corpusをCanonical Worldから再生成できる。
+- [ ] exact / set similarityを含むbaselineを用意した。
+- [ ] FlyHash型のsparse expansive方式を少なくとも一つ比較した。
+- [ ] role-awareなstructural encodingを少なくとも一つ比較するか、比較しない理由をEvidenceとして残した。
+- [ ] same-meaning source move、lexical near-match、structural near-match、partial cue、true novel、stale representationのnegative / pressure caseを実行した。
+- [ ] similarityやactivationをSemantic Evidenceへ昇格させず、000047のqualification結果を別に記録した。
+- [ ] index削除・再生成後もCanonical Worldが変わらないことを確認した。
+- [ ] latency / memory / rebuild costを含む運用コストを記録した。
+- [ ] 採用、限定採用、不採用のいずれかをReference Evidenceから判断した。
+- [ ] 採用する場合もalgorithm名をCanonical vocabularyへ追加せず、交換可能なderived mechanismとして扱った。
+- [ ] learned associationへ進む場合は別Issue / ADRの必要性を判断した。
+
+## 非目標
+
+- Gate C前の実装
+- LLMの置換
+- vector databaseの排除
+- TEI専用の巨大Knowledge Graph
+- 全Repository文書やGit履歴の一括embedding
+- similarity scoreによる自動採用
+- novelty scoreによる自動`unknown`判定
+- online learningの先行実装
+- AI / cognitive subsystemへのruntime authority付与
+- cognitive representationをCanonical identity、Decision history、Evidenceへ転用すること
+
+## 判断をADRへ昇格させる条件
+
+現段階ではADRを作りません。
+
+次のいずれかがReferenceから必要になった場合にだけ、長期判断をADRへ切り出します。
+
+- derived cognitive indexに共通して守るrevision / regeneration contractをArchitectureとして固定する必要がある
+-複数のcandidate mechanismを交換可能にする共通interfaceが複数Issueにまたがって必要になる
+- learned associationの永続化、更新、忘却、rollbackに長期のauthority境界が必要になる
+- Cognitive Layerという独立architecture layerを`docs/architecture.md`へ追加するEvidenceが得られる
+
+それまでは「評価待ちの候補方式」であり、現在のArchitecture baselineを変更しません。
+
+## 関連文書
+
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md`
+- `docs/architecture.md`
+- `docs/business-system-design.md`
+- `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
+- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000040-semantic-component-composition.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
