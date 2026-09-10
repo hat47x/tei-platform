@@ -127,6 +127,24 @@ vector databaseやembeddingを初回Referenceの必須要件にはしません�
 
 まずRepositoryのread-only探索とidentity / dependency / Evidence照合を成立させます。
 
+### 非LLMのcandidate retrieval方式を比較する
+
+探索方式はlexical searchやembeddingへ固定しません。Canonical Worldから決定論的に抽出したfeatureを用い、sparse expansive representation、high-dimensional hashing、role-awareなHDC / VSA等がcandidate生成に有効かは、[ISSUE-000051](000051-derived-cognitive-retrieval-evaluation.md)でarchitecture probeとして比較します。
+
+ここで比較対象となるactivation、similarity、novelty等は、すべて探索前段のheuristic signalです。
+
+```text
+candidate mechanism
+      ↓
+candidate identities
+      ↓
+このIssueのdeterministic qualification
+      ↓
+applicable / incompatible / unknown
+```
+
+したがって000051の方式が高い検索性能を示しても、本Issueのqualificationを置き換えません。逆に000051が不採用でも、本Issueはexact / graph / lexical等の方式で成立できる必要があります。
+
 ## AI Knowledgeとの関係
 
 AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、それらは補助的なDerived Knowledgeです。
@@ -236,3 +254,4 @@ Gate Cから次を受け取ります。
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
+- `plan/issue/000051-derived-cognitive-retrieval-evaluation.md`
