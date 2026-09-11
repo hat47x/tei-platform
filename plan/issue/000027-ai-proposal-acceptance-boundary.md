@@ -19,6 +19,8 @@ AI支援をTEIへ接続する際に先に固定すべきなのはmodel provider�
 
 read-onlyな既存Semantic資産探索そのものは`ISSUE-000047`で扱い、Studioの最小Authoring Loopは`ISSUE-000046`で扱います。本Issueはその探索結果・変更候補を**AI Proposalとしてshared Acceptance Boundaryへ接続する部分**に集中します。
 
+より広い設計では、[`../../docs/definition-centered-feedback-loop.md`](../../docs/definition-centered-feedback-loop.md)に従い、AIを「definition generator」ではなく、**intent解釈・候補比較・説明・minimum semantic delta提案**を担う一つの認知方式として位置づけます。
+
 ## 関連するProduct Requirement
 
 - RQ-002 Authoring sourceとCanonical meaningを追跡できること
@@ -54,9 +56,11 @@ Gate C後のReferenceを作るIssueですが、最初から完成形のAI subsys
 AIが新しい変更候補を作る前に、`ISSUE-000047`のread-only explorationで既存Semantic資産を確認します。
 
 ```text
-intent
+intent / selected local context
   ↓
 read-only semantic exploration
+  ↓
+exact assets + Reference pattern candidates + optional cognition
   ↓
 applicable / incompatible / unknown
   ↓
@@ -65,20 +69,76 @@ explicit references
 AI Proposal candidate
 ```
 
-検索順位、類似度、AI内部記憶だけをProposalのSemantic根拠にはしません。
+検索順位、類似度、pattern frequency、AI内部記憶だけをProposalのSemantic根拠にはしません。
 
 既存資産を再利用できる場合は、qualified logical key / Canonical reference / Source / Evidenceを明示してProposalへ接続します。
 
+## AI ProposalはMinimum Semantic Deltaを基本にする
+
+生成AIはwhole fileやwhole modelを容易に生成できますが、それをTEIの標準authoring単位にはしません。
+
+Referenceで優先するのは、current accepted revisionに対する**review可能な最小meaning change**です。
+
+```text
+base revision
+  + purpose / problem
+  + exact target identities
+  + minimum proposed meaning change
+  + Source / Evidence / candidate rationale
+        ↓
+Proposal
+```
+
+### なぜwhole regenerationを標準にしないか
+
+- 本質的な差分が大量のgenerated wordingに埋もれる
+- AIが未要求の意味を補完しやすい
+- stale conflict範囲が広がる
+- file formatting / comment等の非Semantic差分を増やしやすい
+- 人間reviewが「何を決めたか」より「生成物全体の査読」になる
+
+新規artifactや大規模変換など、whole-artifact generationが合理的な場合は否定しません。その場合でもSemantic Diff / accepted meaningを局所的に説明できることを要求します。
+
+### Minimum Semantic DeltaはPatch DSLではない
+
+file edit、Studio action、CLI refactor、AI structured proposalが同じsemantic deltaへ収束できればよく、このIssueで一つのPatch languageを固定しません。
+
+## feedbackはmeaning-owning layerへrouteする
+
+AIが問題を見つけても、すべてをCanonical Semantic sourceへ提案しません。
+
+```text
+Business relation / constraint missing
+  -> semantic / business authoring candidate
+
+Target-only UI friction
+  -> target / projection candidate
+
+Provider mismatch
+  -> binding / realization candidate
+
+actual DB drift
+  -> observation / mapping / migration candidate
+
+retrieval miss
+  -> derived cognition / index candidate
+```
+
+AIの役割はvisible symptomをもっともらしく直すことではなく、**どのconcernがmeaningを所有するかを明示し、候補を正しいAcceptance経路へ送ること**です。
+
+Routing自体が不明なら`unknown`として人へ返し、最も書きやすいfileへ変更案を作りません。
+
 ## 最初のReference
 
-最初のReferenceでは、同じ`order_entry`について小さいCanonical change candidateを扱います。
+最初のReferenceでは、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)に従い、同じ`order_entry`について小さいCanonical change candidateを扱います。
 
 候補例はGate C後に実資産から決めますが、次のような範囲を想定します。
 
 - Validation ruleの小さい追加・修正候補
 - 既存Capability Bindingの明示化候補
 - Relation等の小さいauthoring変更候補
-- Presentation / Interaction Projection hint候補
+- Business Procedure / Application cross-view contradictionの修正候補
+- Presentation / Interaction Projection hint候補。ただしTarget-onlyならSemantic sourceへ押し込まない
 
 既存のauthoritative sourceをAI固有形式へ移し替える作業は選びません。
 
@@ -89,11 +149,14 @@ AIが提案する変更と、`ISSUE-000046`のStudio操作、file-native edit、
 Proposal schemaは未確定ですが、Referenceでは少なくとも次を保持できる必要があります。
 
 - proposal identity
-- purpose
+- purpose / observed problem
 - target activity / artifact
 - referenced qualified logical keys / Canonical IDs
 - Source / Evidence references
-- proposed change
+- proposal generation source: exact / Reference pattern / cognition / LLM / human
+- proposed minimum semantic change
+- unchanged assumptions / unresolved where relevant
+- feedback routing target concern
 - `baseModelRevision`
 - AI mechanism / type
 - autonomy level
@@ -163,19 +226,28 @@ AI Proposalを生成した時点ではauthoritative sourceを変更しません�
 - affected Canonical subjects
 - source / dependency impact
 - Driver / Target impact
+- persistence / realization impact where relevant
 - Validation / Architecture Diagnostic
+- unresolved / contradiction
+- why each derived effect follows from the proposed definition change
+
+PreviewではAIによる自然言語説明を補助的に使えますが、impact setそのものは可能な限りexact dependency / deterministic projectionから得ます。
 
 ### Reject
 
 Rejectではauthoritative sourceを変更しません。
 
-AI固有store、chat履歴、trajectory等を削除してもCanonical Worldが変わらないことを維持します。
+AI固有store、chat履歴、trajectory、cognitive index等を削除してもCanonical Worldが変わらないことを維持します。
+
+Reject理由をexperience memoryとして保持する場合も、次回のcandidate rankingを助けるhintであってsemantic ruleではありません。
 
 ### Accept
 
 Accept時だけshared Acceptance Boundaryを通り、authoritative sourceを更新します。
 
 受理後はAIなしでsourceをreloadし、同じCanonical meaning / Validation / Conformanceを再確認できることを要求します。
+
+受理後のUI / index / matrix / generated artifactはaccepted sourceから再生成可能でなければなりません。
 
 ## revision conflict
 
@@ -207,13 +279,28 @@ AI Proposalのstale判定やtarget解決をfile pathだけへ依存させませ�
 
 初回Referenceで必須実装にはしませんが、利用する場合は少なくとも次を要求します。
 
-- 元のCanonical ID / Source / Evidenceへ戻れる
-- dependency / revision fingerprintを持てる
-- stale経験を無条件に直接再生しない
-- direct reuse / rewrite / new proposalの選択をheuristicとして扱う
-- どの経路でもShared Acceptance Boundaryを通す
+- 元のCanonical ID / Source / Evidenceへのprovenance
+- dependency / revision fingerprint
+- invalidationまたは再評価可能性
+- similarity / routing結果とauthoritative Decisionの分離
+- 再利用候補もAcceptance Boundaryを通ること
 
 Derived Experience KnowledgeはCanonical Knowledgeの第二正本ではありません。
+
+### local learningを先に比較する
+
+将来学習を導入する場合、いきなりglobal policyをlearnしません。
+
+先に比較するのは:
+
+- task-local candidate association
+- known false-positive suppression
+- accepted / rejected patternの局所ranking hint
+- outcome-local retrieval weight
+
+です。
+
+これらを削除してもaccepted semanticsが変わらないことを要求します。
 
 ## Authority / Runtime境界
 
@@ -223,14 +310,20 @@ Runtime操作が必要なReferenceを将来追加する場合も、Semantic Capa
 
 raw tool callをTEIのauthority modelの代わりにはしません。
 
+Observationから変更候補を作る場合も、`Observation -> semantic write`へ直結せず、feedback routing / Proposal / Acceptanceを通します。
+
 ## Evidence
 
 完了時には少なくとも次を残します。
 
 - Proposal input / normalized representation
+- selected definition / local context
 - Proposalが参照したqualified logical key / Canonical ID / Source / Evidence
+- candidate mechanism / Reference pattern provenance where used
+- feedback routing target
 - `baseModelRevision`
-- Preview Semantic Diff / impact
+- minimum semantic delta
+- Preview Semantic Diff / impact / derivation reason
 - Accept / Reject結果
 - authoritative source変更の有無
 - source / model revision after
@@ -238,7 +331,7 @@ raw tool callをTEIのauthority modelの代わりにはしません。
 - Validation / Conformance結果
 - stale Proposal negative case
 - AI経路を外した同一Acceptance Boundaryの利用例
-- AI固有Evidence削除後もCanonical meaningが変わらないこと
+- AI / derived memory削除後もCanonical meaningが変わらないこと
 
 AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、secretや不要なprivate dataを保存しません。
 
@@ -255,6 +348,8 @@ Gate Cから少なくとも次を受け取ります。
 
 Proposal schema、API、AI provider、Editor UI、承認UXは、その実資産から決めます。
 
+Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合流し、AIだけ別scenarioで検証しません。
+
 ## 完了条件
 
 次をReferenceとConformanceから説明できることを完了条件とします。
@@ -262,16 +357,20 @@ Proposal schema、API、AI provider、Editor UI、承認UXは、その実資産�
 1. `ISSUE-000047`のknowledge-first探索結果からexplicit-reference Proposalを作れる
 2. ProposalそのものはCanonical authorityではない
 3. Proposalがqualified logical key / Canonical ID / Source / Evidenceへtraceできる
-4. AI ProposalとStudio / file-native / CLI候補が同じAcceptance原則へ収束できる
-5. Preview / Rejectではauthoritative sourceを変更しない
-6. stale `baseModelRevision`を検出できる
-7. 受理後のauthoritative sourceをAIなしで再読込できる
-8. reload後のCanonical meaningがValidation / Conformanceを満たす
-9. file moveとlogical renameを区別できる
-10. AI都合でmandatory authored Stable IDを導入しない
-11. AIのautonomyとwrite / invoke / Resource authorityを分離できる
-12. AI固有EvidenceやDerived Experience Knowledgeを削除してもCanonical Worldが変わらない
-13. ProposalからRuntimeへ無権限に直接到達できない
+4. AIがwhole model regenerationを標準にせずminimum semantic deltaを提案できる
+5. AI ProposalとStudio / file-native / CLI候補が同じAcceptance原則へ収束できる
+6. feedbackをmeaning-owning concernへrouteし、Target / Provider問題をSemanticへ誤投入しない
+7. Preview / Rejectではauthoritative sourceを変更しない
+8. Preview impactが可能な範囲でexact dependency / deterministic derivationへtraceできる
+9. stale `baseModelRevision`を検出できる
+10. 受理後のauthoritative sourceをAIなしで再読込できる
+11. reload後のCanonical meaningがValidation / Conformanceを満たす
+12. derived projection / indexをaccepted sourceから再生成できる
+13. file moveとlogical renameを区別できる
+14. AI都合でmandatory authored Stable IDを導入しない
+15. AIのautonomyとwrite / invoke / Resource authorityを分離できる
+16. AI固有EvidenceやDerived Experience Knowledgeを削除してもCanonical Worldが変わらない
+17. ProposalからRuntimeへ無権限に直接到達できない
 
 ## 非目標
 
@@ -281,14 +380,18 @@ Proposal schema、API、AI provider、Editor UI、承認UXは、その実資産�
 - vector databaseの標準化
 - AIによる無確認自動変更
 - AIによる無確認のside effect実行
+- whole-model regenerationを標準authoring経路にすること
 - prompt / model metadataのCanonical化
 - AI専用Acceptance engine
 - mandatory UUID / Stable IDの導入
 - Patch-only authoring modelの固定
+- global online learning
 - 外部研究のsuccess rateやtoken削減率をTEIの固定KPIにすること
 
 ## 関連文書
 
+- `docs/definition-centered-feedback-loop.md`
+- `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
