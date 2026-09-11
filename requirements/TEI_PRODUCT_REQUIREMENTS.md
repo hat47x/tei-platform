@@ -250,6 +250,89 @@ Matrix、CRUD表、flow、graph等をこの相互検証に利用できますが�
 
 三つの視点を同型のCanonical top-level objectへすることも要求しません。hard semantic error、architecture / policy violation、review diagnostic、design question、informational impact等のseverityは、現実的なReferenceでdefect classを再現してから確定します。
 
+## RQ-027 Failure / degraded / unknownを意味・実行境界を越えて診断できること
+
+TEIは、失敗や不確実性を一種類の`error`へ畳まず、利用者・開発者・運用者が何が起きたかを必要な範囲で追跡できなければなりません。
+
+少なくとも次を区別します。
+
+- Business Result
+- named Outcome
+- Execution Error
+- Observation
+- Developer Diagnostic
+- Operational Telemetry
+
+Target / Driver / Capability / Provider / Runtime等の境界を越える場合も、診断から可能な範囲でApplication / Pattern / Capability / Source / runtime component等の安全なidentityへ戻れる必要があります。
+
+dependency unavailable、degraded、timeout、unknown等を黙ってsuccessへ丸めたり、別Provider / Capability / authorityへsilent fallbackしてはいけません。fallbackを行う場合は、明示contractと観測可能な結果を持つ必要があります。
+
+診断可能性のためにcredential、secret、DSN、不要なphysical identityや業務データを通常ログへ複製してはいけません。
+
+Operational Telemetryは運用上のProjectionであり、それ自体をCanonical business meaning、Business Result、Semantic Evidenceの第二正本にはしません。
+
+## RQ-028 変更の影響・互換性・破壊性を適用前に検査できること
+
+TEIは、変更を単なるfile diffとして扱わず、変更対象のmeaning / Binding / realization / runtime / Targetに応じて、適用前に影響と危険性を検査できる必要があります。
+
+必要な領域では少なくとも次を区別できることを目指します。
+
+- semantic no-op
+- compatible change
+- incompatible change
+- destructive change
+- unresolved / insufficient observation
+
+外部状態に依存するdestructive operationでは、planning時の古い観測だけを実行許可へ再利用してはいけません。必要に応じてapply直前のfresh observation、precondition、revision / identity照合等を用い、前提が崩れていればfail closedします。
+
+retry、fallback、CASCADE等によって作用範囲を暗黙に広げてはいけません。より強い作用へ進む場合は明示contractと別の受入判断を必要とします。
+
+rollback / recoveryが完全には成立しない変更では、その制約を隠さず、必要なprecondition、backup / restore、forward recovery、manual intervention等の境界を説明できる必要があります。
+
+impact reportやdeployment planはauthoritative sourceから導出できる情報として扱い、それ自体を業務意味の第二正本にはしません。
+
+## RQ-029 Interactionのoperability / accessibilityをTarget条件付きで検証できること
+
+TEIは、高密度な情報提示や多Target対応を、操作可能性・理解可能性・accessibilityを犠牲にして実現してはいけません。
+
+interactive Targetでは、Target / Host / input modality等の条件に応じて、少なくとも次を検証可能にします。
+
+- keyboard / pointer / touch / voice等、対象Targetで必要な入力経路
+- focus / navigation / operation order
+- validation / error feedbackとrecovery
+- 色や位置だけへ依存しない重要情報の伝達
+- state / progress / disabled / unavailable等の識別
+- assistive technologyまたはplatform相当機能との両立
+- high-density表示における局所性と操作対象の判別
+
+Web Targetでは、適用可能なWCAG 2.2 success criteriaを外部のtestable referenceとして利用できます。ただし、Reference / actual Target Evidenceを取得せず「WCAG準拠」を宣言してはいけません。
+
+Desktop、Mobile、API、MCP、VUI等へWeb固有のUI semanticsをそのまま強制しません。それぞれのTargetで同じ利用目的をどのinteraction contractで満たすかを明示します。
+
+Visual Fidelityやscreenshot scoreだけでoperability / accessibilityを合格にしてはいけません。
+
+## RQ-030 品質主張をContext / Measure / Evidenceへ束縛できること
+
+TEIは、「高速」「安全」「信頼できる」「accessibilityが高い」「保守しやすい」等の品質主張を、対象や条件のない形で固定してはいけません。
+
+重要なquality claimは、必要な粒度で少なくとも次へ戻れる必要があります。
+
+- subject identity
+- repository / build / Handover等のrevision identity
+- Target / Host / Provider / Runtime等のcontext
+- Scenario / workload / precondition
+- quality property
+- measure / probe / observation method
+- acceptance conditionまたは判断理由
+- Evidence artifact / reference
+- observed / unresolved / not-applicable等のstatus
+
+この組合せを設計上`Quality Envelope`と呼びますが、現時点で固定schemaや新しいCanonical kindを要求しません。Quality Envelopeはderivedな監査・Evidence単位であり、Canonical business meaningの第二正本ではありません。
+
+一律の閾値を先に固定せず、まずReferenceでbaselineを測定し、Target / Host / Provider等の条件と利用目的に基づいて必要なacceptance thresholdを定めます。
+
+ISO/IEC 25010等の外部quality model、WCAG、OpenTelemetry semantic conventions、secure-development guideline等は、抜け漏れ確認やProjection / evaluationの外部referenceとして利用できます。ただし、明示的な採用判断とEvidenceなしにTEIの準拠・認証・Product claimへ格上げしてはいけません。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。
