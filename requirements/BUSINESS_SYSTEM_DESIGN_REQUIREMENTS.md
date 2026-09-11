@@ -13,7 +13,7 @@ Status: current interpretation index
 - `RQ-025` — 業務上の行為・手順をApplication Functionから独立して設計できること
 - `RQ-026` — Data / Function-Interaction / Business Procedureの異なる視点から相互検証できること
 
-詳細な概念・Architecture境界は [`docs/business-system-design.md`](../docs/business-system-design.md) を参照します。
+詳細な概念・Architecture境界は [`docs/business-system-design.md`](../docs/business-system-design.md) を参照します。Business Procedure authoring / reviewの品質モデルは [`plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) に置きます。
 
 ## 2. 設計原点へ立ち返る順序
 
@@ -26,7 +26,7 @@ Status: current interpretation index
 5. 現行TEI Product Requirements / Architecture / Reference / Evidence
 6. 小さいTEI Reference実験
 
-作業規則は [`plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`](../plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md)、調査Evidenceは [`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`](../plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md) に置きます。
+[`plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md`](../plan/UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md) と [`plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md`](../plan/XTEA_DESIGN_EVIDENCE_REGISTER_2026-09.md) は、現在は既存linkを保つためのcross-cutting External Design Reference Noteとして扱います。個別設計判断を支える詳細な外部provenance / corroboration / non-proofは、Business Flow、Handoff、O1、CRUD等の**question-specific audit / Plan Issueへ近接保持**し、横断registerを詳細Evidenceの第二正本へ戻しません。
 
 このfallbackは歴史的shapeをそのままTEIへ移植するための規則ではありません。歴史的概念が防いでいた設計上の失敗を確認し、現行TEIのmeaning / authority / Provider / Target境界へ翻訳します。
 
@@ -45,6 +45,18 @@ Business ActionはApplication Functionを持たなくても正当です。人間
 
 Business Procedureでは、必要に応じてpurpose、trigger / event、actor、business action、manual / external work、Application Function利用、handoff、completion / continuation等を説明します。
 
+ただし設計品質を「すべての項目が埋まっていること」とは定義しません。sourceから確定できないactor、trigger、sequence、realization、actuality、responsibility boundary等は、推測で埋めずunresolvedとして保持できる必要があります。
+
+```text
+explicit unresolved
+  = knowledge boundaryがreview可能
+  != design failure
+
+unsupported completion
+  = false completeness
+  = design quality defect
+```
+
 Business Procedureを一つのApplication containerの子へ固定することも要求しません。関係するApplicationは、explicitなApplication Pattern参照等をaccepted / normalized Worldでexactに解決して確認します。Reference fixtureのprimary Applicationやreporting contextを、Business Procedureのsemantic ownerやauthorityへ暗黙昇格させません。
 
 また、Reference / reporting contextとしてApplication labelを持つ場合でも、それはBusiness semantic prerequisiteではありません。explicit referenceが解決できる限り、contextの欠落や未知labelだけでBusiness Procedureをinvalidにしません。
@@ -60,6 +72,8 @@ Business Actor / Job
 ```
 
 を維持します。
+
+Responsibility Handoffについても、actor変更やStep adjacencyをrelationの根拠にしません。actor差はcorroborationになり得ますが、Business responsibilityのcontinuationはexplicit accepted meaningから判断します。
 
 ## 4. RQ-026の解釈
 
@@ -77,16 +91,44 @@ Business Procedure / actor / manual / trigger
 
 一つの視点で見つかった矛盾を、他の視点とauthoritative sourceへ戻して修正できることがProduct Valueです。
 
+Cross-view reviewは単純なPASS / FAILへ潰さず、少なくともreview上は次を区別します。
+
+```text
+supported
+  exact accepted authoritiesがcorroborateする
+
+contradiction
+  accepted authorities間に具体的な不整合がある
+
+unresolved
+  exact identity / authority / actuality等が不足し、肯定も否定もできない
+```
+
+これは新しい永続enumやdiagnostic severityを要求するものではありません。特に、あるviewでtraceが見つからないことを他viewの不存在事実へ変換してはいけません。
+
 代表的なcross-view pressureは次です。
 
-- Business Procedureが必要とする情報がDataにない
+- Business Procedureが必要とする情報がDataにない、または必要性自体がまだunresolved
 - UI / Functionがread-only datasourceへwriteを要求する
 - Business ActionがApplication Functionへ過剰に還元される
 - actor labelがAuthorization Roleへ暗黙変換される
 - Data / Relation変更がProcedure / Viewへ与える影響を追えない
 - Application Business Resultを外部世界の業務完了と混同する
+- physical factを観測しただけでresponsibility Handoffを成立させる
+- Handoff conditionと、そのcondition成立を支えるEvidence / Observationを同一視する
 
 Matrix、CRUD表、flow、graph等は可能な限りexplicit referenceからderivedし、第二正本として二重管理しません。
+
+また、Business / Function / external actualityを次のように短絡しません。
+
+```text
+Business instruction
+  != system result
+  != physical / external fact
+  != Business acceptance / continuation
+```
+
+domain contractによって一致が証明された範囲だけを同じmeaningとして扱います。
 
 ## 5. 関連する既存Requirement
 
@@ -94,6 +136,7 @@ RQ-025 / RQ-026は独立して追加されましたが、次の既存Requirement
 
 - RQ-001 — 業務意味と実装技術の分離
 - RQ-003 — 暗黙の複数正本を作らない
+- RQ-006 — Desired / Actual / Diff / Unresolved
 - RQ-010 — 高密度Editor
 - RQ-011 — 複数Projection
 - RQ-012 — Driverによる設計検証
@@ -103,6 +146,8 @@ RQ-025 / RQ-026は独立して追加されましたが、次の既存Requirement
 - RQ-019 — authority / Resource境界
 - RQ-021 — Reference / Conformance
 - RQ-022 — 設計検証段階と完成製品の区別
+
+RQ-006の`Unresolved`は主に外部状態比較のRequirementですが、「情報不足を成功や差分なしへ丸めない」という姿勢はBusiness cross-view reviewにも整合させます。これだけを根拠にRQ-006の永続表現をBusiness Procedureへ流用しません。
 
 ## 6. Evidence待ちとして残す論点
 
@@ -117,11 +162,15 @@ RQ-025 / RQ-026は独立して追加されましたが、次の既存Requirement
 7. temporal semanticsのdomain meaning境界
 8. cross-view diagnosticのseverityをどこまでdeterministic Conformanceへ昇格するか
 9. optionalなReference / reporting Application contextをfixtureへ残すか完全除去するか、そのcompatibility
+10. source-backed fact / accepted Business meaning / derived / proposal / unresolvedのnatureを、どこまでdurable metadataとして保持する必要があるか
+11. Handoff condition成立を支えるEvidence traceを、既存Provenance / Evidence mechanismだけで十分にreviewできるか
 
-これらを埋めるために、X-TEAに同名概念があるという理由だけでCore kindを追加しません。
+これらを埋めるために、外部参照に同名概念があるという理由だけでCore kindやschema fieldを追加しません。
 
 ## 7. Acceptance Trace
 
 RQ-025 / RQ-026のPrimary PASであるPAS-07は [`plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) へ統合済みです。
 
 詳細なReference / Evidence mappingは [`plan/RQ025_RQ026_ACCEPTANCE_TRACE.md`](../plan/RQ025_RQ026_ACCEPTANCE_TRACE.md) をsupporting Evidence contractとして参照します。この索引自体をRequirementまたはPASの第二正本として拡張しません。
+
+Business Procedureの設計品質reviewは [`plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../plan/BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) を参照し、そこから新しいRequirement / Gate / production schemaを自動導出しません。
