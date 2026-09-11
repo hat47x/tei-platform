@@ -8,6 +8,8 @@
 
 この文書は新しいArchitecture Layer、Canonical schema、runtime subsystemの採用を意味しません。Gate C前に実装を始める根拠でもありません。詳細なalgorithm、feature、benchmarkから読み始めなくても、まずTEI上の問題と判断原則を理解できることを目的とします。
 
+Definition Bodyとのauthority境界は[`../docs/definition-body-architecture.md`](../docs/definition-body-architecture.md)、そのReference pressureは[`CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md`](CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md)を参照します。
+
 ## 根幹の問題
 
 TEIは、業務の意味をCanonical Worldとして明示し、Source、Validation、Capability、Application Pattern、Evidence等へ追跡できることを重視します。
@@ -23,6 +25,31 @@ TEIは、業務の意味をCanonical Worldとして明示し、Source、Validati
 したがって必要なのは「LLMを置き換える別のAI」ではありません。
 
 必要なのは、**Canonical Worldをauthorityのまま保ちつつ、次に確認すべき既存資産を軽量・局所的・再生成可能な方法で候補化できるか**を検討することです。
+
+## Definition Bodyとの境界
+
+認知方式の価値を高めるために、authoritative sourceへ検索専用metadataを足し続けてはいけません。
+
+```text
+Authoritative Definition Body
+        ↓ deterministic reconstruction
+Canonical / accepted meaning
+        ↓ derived feature / graph / index
+Cognitive representation
+        ↓
+candidate identities
+```
+
+原則:
+
+- cognitionのためだけのtag / synonym / embedding text / feature vectorをmandatory authoringにしない
+- business meaningとして必要な語彙・descriptionは通常どおりauthorできる
+- feature corpusは可能な限りaccepted meaningと既存traceからderiveする
+- cognition indexを全削除してもCanonical Worldは変わらない
+- algorithmを交換してもsource schema変更を要求しないことを目指す
+- retrieval改善のためにunknown / ambiguityを勝手に補完しない
+
+したがって、**sourceを認知engineへ合わせるのではなく、認知engineがTEIのaccepted meaningを観測する**方向を基本とします。
 
 ## 目指す認知の役割
 
@@ -151,6 +178,34 @@ reuse / reject / unknown
 
 これらを最初から一つの巨大Cognitive subsystemへ統合しません。
 
+## Reference Model knowledgeとの接続
+
+realistic Referenceはtest fixtureだけでなく、既存設計知識のsourceにもなります。
+
+ただしReference全体をtemplateとして丸ごとコピーするのではなく、反復構造をderived Pattern candidateとして取り出し、現在のintentへ適用できるかを再評価します。
+
+```text
+Reference / accepted source
+       ↓
+derived pattern inventory
+       ↓
+exact / associative retrieval
+       ↓
+Candidate A / B / C
+  - structure
+  - source / Evidence
+  - applicability
+  - incompatibility
+  - unresolved
+  - example Dataset / Scenario
+       ↓
+Proposal / selection
+       ↓
+Shared Acceptance Boundary
+```
+
+頻出だけで`std.*`やCanonical standardへ昇格しません。
+
 ## 根幹から個別課題へ展開する順序
 
 文書と開発課題は、次の順序で深くします。
@@ -163,6 +218,7 @@ reuse / reject / unknown
 - Canonical / Evidence / Authorityとの境界は何か
 - LLMと何を分担するか
 - 採用しなかった場合でもTEI本体が成立するか
+- Definition Bodyを認知都合で肥大化させないか
 
 本書がこの入口です。
 
@@ -218,10 +274,11 @@ Reference EvidenceなしにLevel 5から逆算してArchitectureを固定しま�
 
 ```text
 1. 上位のProduct目的は既に説明されているか
-2. どのReference Scenarioで価値を確認するか
-3. どのIssueが責務を所有するか
-4. 評価契約は必要か
-5. その後にfeature / schema / API / algorithmへ降りる
+2. Definition Body / derived / realization / Evidenceのどこに属するか
+3. どのReference Scenarioで価値を確認するか
+4. どのIssueが責務を所有するか
+5. 評価契約は必要か
+6. その後にfeature / schema / API / algorithmへ降りる
 ```
 
 上位の説明が不足している場合は、詳細文書を先に増やさず、まず上位文書を補います。
@@ -241,6 +298,7 @@ Reference EvidenceなしにLevel 5から逆算してArchitectureを固定しま�
 5. Source revisionとstalenessを追跡できる。
 6. LLMを使わないこと自体ではなく、latency / cost / locality / explainability等の実用価値がある。
 7. 複雑な新subsystemを維持するコストを上回る価値がある。
+8. retrieval改善のためにmandatory authored metadataを増やさない、または増加がbusiness meaningとして独立に正当化できる。
 
 この条件を満たさなければ、exact / graph / lexical探索だけで進める判断も正当です。
 
@@ -274,12 +332,15 @@ Cognitive Layerを独立Architecture Layerへ昇格するか、共通interface�
 - online learning
 - learned associationの永続化
 - similarity / activation scoreの共通尺度
+- cognition専用mandatory authored metadata
 
 これらは根幹原則から導出される個別課題であり、先に固定しません。
 
 ## 関連する上位・隣接文書
 
 - [`README.md`](README.md) — TEI Planning全体の入口
+- [`../docs/definition-body-architecture.md`](../docs/definition-body-architecture.md) — concise authority / rich derived intelligenceのArchitecture
+- [`CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md`](CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md) — Definition Body / derived境界のpressure
 - [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md) — 外部研究をTEIの境界へ翻訳する統合方針
 - [`issue/000040-semantic-component-composition.md`](issue/000040-semantic-component-composition.md) — 意味資産の探索・組み立て
 - [`issue/000027-ai-proposal-acceptance-boundary.md`](issue/000027-ai-proposal-acceptance-boundary.md) — ProposalとShared Acceptance Boundary
