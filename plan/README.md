@@ -137,6 +137,39 @@ second corpusもHandoff fixtureから始めず、Handoffが無くても価値を
 
 ここでいうLane C Business Procedure Gate Aは、本README前半のApplication Pattern **Gate A — Ready**とは別のPre-ADR execution gateです。名称を理由に両者のEvidence statusを混同しません。
 
+## Concise Definition Body / derived intelligence
+
+この領域は、X-TEA/XEAD系Reference Modelに見られる「端的な定義から豊かな設計lensを立ち上げる」性質を、現在のTEIのSource / Canonical / Projection / AI境界へ翻訳します。
+
+根幹から次の順で読みます。
+
+1. [`../docs/definition-body-architecture.md`](../docs/definition-body-architecture.md) — 何をauthoritative Definition Bodyへ置き、何をderiveするか
+2. [`CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md`](CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md) — realistic Referenceでのcold reconstruction / Function lens / Business preservation / complexity-rent Pressure
+3. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — exact / associative / LLM cognitionのProduct上の役割
+
+中心原則:
+
+```text
+消すとmaterial business distinctionが失われるもの
+  -> authorする
+
+accepted sourceから一意に再構成できるもの
+  -> deriveする
+
+Provider / Target / Runtime固有差
+  -> realization / Bindingへ置く
+
+actual state
+  -> Observation / Evidenceへ置く
+
+similarity / retrieval / AI candidate
+  -> non-authoritative derived cognitionへ置く
+```
+
+端的さを実現するためにAIへmeaning推測を委ねません。逆に、AI / embedding / FlyHash / HDC等のためにmandatory metadataをDefinition Bodyへ追加しません。
+
+このworkstreamは新しいGate / PAS / Product Requirementを追加せず、Reference Evidenceがmaterial defectを示した場合だけauthoring surfaceの追加を再検討します。
+
 ## Gate C後のplanning
 
 ### Studio / PAS-01
@@ -159,7 +192,7 @@ StudioはCanonicalの第二正本ではありません。
 
 この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
-1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
+1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Definition Body / Canonical / LLM / Authorityとの境界、個別課題への展開順
 2. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
 3. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
 4. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
