@@ -110,6 +110,30 @@ Gate Cでは次を分離します。
 
 Target側でbaseline meaningを変更する必要がある場合、Web固有field / ruleで埋めず、successor Handoverを発行します。
 
+## Business system design / PAS-07
+
+この領域はGate B / Gate C Required Evidenceへ追加する新しいGateではなく、RQ-025 / RQ-026を現実的なBusiness Referenceで圧力試験するparallel workstreamです。
+
+根幹から次の順で読みます。
+
+1. [`../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) — RQ-025 / RQ-026の要求解釈
+2. [`../docs/business-system-design.md`](../docs/business-system-design.md) — Data / Function-Interaction / BusinessのArchitecture境界
+3. [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) — false completenessを避け、meaning / evidence / authority / actuality / responsibilityをreviewする品質モデル
+4. [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Pressure inventory
+5. [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) / [`issue/000048-business-procedure-contract-adr-readiness.md`](issue/000048-business-procedure-contract-adr-readiness.md) — Contract ADR readiness
+6. [`issue/000050-second-realistic-handoff-corpus.md`](issue/000050-second-realistic-handoff-corpus.md) — independent manufacturing / inventory Business seedからsecond realistic Handoffを取得する計画
+
+現在の品質上の中心は、Business Procedureを「完全に埋めたflow」として作ることではありません。
+
+```text
+known / accepted meaningをexactに保つ
++ derived / proposal / unresolvedを混同しない
++ Business instruction / system result / external actuality / Business acceptanceを短絡しない
++ responsibility Handoffをchronologyやactor差から発明しない
+```
+
+second corpusもHandoff fixtureから始めず、Handoffが無くても価値を持つindependent Business need / seedを先に成立させます。Actual Gate A green前はprovenance / candidate design questionまでに留め、accepted Procedure / HandoffをBlocker解消のために捏造しません。
+
 ## Gate C後のplanning
 
 ### Studio / PAS-01
