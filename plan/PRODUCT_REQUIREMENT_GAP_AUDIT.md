@@ -1,7 +1,7 @@
 # Product Requirement Gap Audit
 
 - 監査日: 2026-09-11
-- 対象: RQ-001〜RQ-030
+- 対象: RQ-001〜RQ-026
 - 上流Trace: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - Quality設計: `../docs/product-quality-architecture.md`
 - Quality実証計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
@@ -19,10 +19,9 @@
 - synthetic / generated / real-provider / actual-external / Target Evidenceを混同していないか
 - Provider / Target / Host / build条件を説明できるか
 - failure / degraded / unknownを成功へ読み替えていないか
-- quality claimがContext / Measure / Evidenceへ戻れるか
 - unresolvedを成功へ丸めていないか
 
-本書は現在断面だけを保持します。旧評価はGit historyから追跡します。
+Product Qualityは新しいRequirement群として追加せず、既存RQを横断するEvidence観点として監査します。
 
 ## 2. 評価区分
 
@@ -37,7 +36,7 @@
 
 ## 3. 現在のProduct主線
 
-現在最大の直列blockerは引き続き**Gate B actual Evidence**です。
+最大の直列blockerは引き続き**Gate B actual Evidence**です。
 
 ```text
 Gate A — Ready
@@ -57,15 +56,7 @@ Gate C — PAS-04
    └─ Second Target — PAS-04 / RQ-024
 ```
 
-Cross-cutting Product Qualityは、この主線へ新しいGateを挿入しません。
-
-```text
-Requirements / Quality Architecture
-      ├─ Gate B既存Evidenceを再利用
-      ├─ First Targetでinteraction / accessibility / performanceを具体化
-      ├─ Studio / AI / Second TargetをQuality Envelopeで比較
-      └─ productionでoperational / compatibility / supply-chainへ拡張
-```
+Cross-cutting Product Qualityは新しいGateを挿入しません。
 
 actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceとして継続しますが、Gate Bの第四Required laneではありません。
 
@@ -73,21 +64,21 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 
 | RQ | 評価 | 主PAS / scope | 現在成立していること | 主な残Gap |
 | --- | --- | --- | --- | --- |
-| RQ-001 | **Strong Evidence** | PAS-01 | Canonical ID / source path分離、Semantic Data / Relation / Capability、Application-owned Pattern、Provider / Target固有実装の隔離 | 第一・第二Targetを通したmeaning安定性、複数Application再利用 |
+| RQ-001 | **Strong Evidence** | PAS-01 | Canonical ID / source path分離、Semantic Data / Relation / Capability、Provider / Target固有実装の隔離 | First / Second Targetを通したmeaning安定性、複数Application再利用 |
 | RQ-002 | **Strong Evidence** | PAS-01 | Source Index、Source Diagnostic、native source trace、file move / source trace基盤 | Studio / AIからauthoritative sourceへ戻るE2E |
-| RQ-003 | **Strong Evidence** | PAS-01 | native source / derived IR、Evidence / Handover非Canonical、AI / Studio非authority方針 | Studio / AI authoring E2E |
+| RQ-003 | **Strong Evidence** | PAS-01 | native source / derived IR、Evidence / Handover非Canonical、AI / Studio非authority | Studio / AI authoring E2E |
 | RQ-004 | **Partial Evidence** | PAS-03 | native SQL、CustomGoBinding、Plugin、legacy auth、external-observed Contract Query | existing batch / API / config、actual external migration Evidence |
-| RQ-005 | **Partial Evidence** | PAS-02 | Application DatabaseRequirement、logical Datasource、`sales_core` / `master_data`、Driver data access | multi-DB transaction / failure、actual external E2E |
+| RQ-005 | **Partial Evidence** | PAS-02 | Application DatabaseRequirement、logical Datasource、multi-DB Driver access | multi-DB transaction / failure、actual external E2E |
 | RQ-006 | **Strong Evidence** | PAS-03 | Desired / Actual / Diff / Unresolved、PostgreSQL observation、ProviderExpression | Database外のchange / actual-state領域での実証 |
 | RQ-007 | **Partial Evidence** | PAS-03 | Provider SPI、driver assembly分離、provider-specific normalization / Runner | actual second Database Provider圧力試験 |
 | RQ-008 | **Partial Evidence** | PAS-02 | Semantic Capability、Binding、Environment、Plugin、legacy auth compatibility | builtin / generated / plugin / existingの同一Capability比較 |
 | RQ-009 | **Partial Evidence** | PAS-02 | legacy Authentication / Authorization Reference、Gate A、Driver subject継承 | actual migration target、段階置換Evidence |
 | RQ-010 | **Design Only** | PAS-01 | Studio非Canonical、high-density方針、Shared Acceptance、`ISSUE-000046` | Gate C後のStudio actual Reference、operability / accessibility |
-| RQ-011 | **Partial Evidence** | PAS-04 | Source / Diagnostic / Workbench / Driver / Handover等の複数Projection | First Web Target、Studio authoring、second Target |
+| RQ-011 | **Partial Evidence** | PAS-04 | Source / Diagnostic / Workbench / Driver / Handover等の複数Projection | First Web Target、Studio authoring、Second Target |
 | RQ-012 | **Partial Evidence** | PAS-02 | Driver主要Scenario、Validation / Auth / Command / Observation、#310 runner | Gate B actual #310/#255/#308 same-R Evidence |
-| RQ-013 | **Design Only** | PAS-04 | Gate C contract、baseline `R` / Target build `T`分離、Target Capability / Execution-Trust仮説 | First Web Target、second Target比較 |
+| RQ-013 | **Design Only** | PAS-04 | Gate C contract、baseline `R` / Target build `T`分離、Target Capability / Execution-Trust仮説 | First Web Target、Second Target比較 |
 | RQ-014 | **Partial Evidence** | PAS-02 | browse / record / reference / header-detail / commandをApplication intentとして実証 | 複数Application / Targetでの再利用Evidence |
-| RQ-015 | **Design Only** | PAS-06 | knowledge-first原則、read-only exploration計画、derived cognition research境界 | Gate C後のexploration actual Reference |
+| RQ-015 | **Design Only** | PAS-06 | knowledge-first原則、read-only exploration計画、derived cognition研究境界 | Gate C後のexploration actual Reference |
 | RQ-016 | **Design Only** | PAS-06 | Proposal / Decision分離、suppression方針、autonomy / authority分離 | Proposal / Decision / suppressionの実UX / Evidence |
 | RQ-017 | **Partial Evidence** | PAS-01 | deterministic generated artifact、native source authority、Shared Acceptance設計 | Studio / AI / Target間で二重管理を作らないE2E |
 | RQ-018 | **Strong Evidence** | PAS-02 | Business Result / Execution Error / separate Observation read | Target Projectionで同境界を維持するEvidence |
@@ -99,10 +90,6 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T trace | actual Target measurement、context-specific threshold |
 | RQ-025 | **Partial Evidence** | PAS-07 | Business Action != Application Function、manual / external Action、actor / authority分離、Business Procedure Reference / Pressure | Lane C actual execution、独立second corpus、Canonical identity最終判断 |
 | RQ-026 | **Partial Evidence** | PAS-07 | Data / Function / Business cross-view Reference、Handoff identity Pressure、derived Projection原則 | realistic second-case actual Evidence、diagnostic severityの確定 |
-| RQ-027 | **Partial Evidence** | cross | Result / Error / Observation分離、source Diagnostic、secret-safe provider failure、runtime unknown / recovery境界 | Target / Runtime横断diagnostic correlation、degraded-mode actual Evidence |
-| RQ-028 | **Partial Evidence** | PAS-01 / PAS-03 | Desired/Actual/Diff、generated check/repair分離、migration readiness、fresh-observation destructive apply、stale-base設計 | Database外を含むimpact / compatibility / recoveryの一貫したEvidence |
-| RQ-029 | **Design Only** | PAS-04 / PAS-01 | high-density原則、Target-neutral interaction、Semantic/Functional/Visual分離、quality architecture | First Web Targetのkeyboard / focus / recovery / accessibility actual Evidence |
-| RQ-030 | **Design Only** | cross | source-fixed Evidence、B/R/T identity、RQ-024 context方針、Quality Envelope設計 | actual Quality Envelope artifact、threshold rationale、cross-Target比較 |
 
 ## 5. 評価集約
 
@@ -118,7 +105,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-021
 - RQ-022
 
-### Partial Evidence — 14
+### Partial Evidence — 12
 
 - RQ-004
 - RQ-005
@@ -132,46 +119,44 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-023
 - RQ-025
 - RQ-026
-- RQ-027
-- RQ-028
 
-### Design Only — 7
+### Design Only — 5
 
 - RQ-010
 - RQ-013
 - RQ-015
 - RQ-016
 - RQ-024
-- RQ-029
-- RQ-030
 
 ### Not Started — 0
 
-新Requirementを追加したことで「Not Startedを0に保つ」ことが目的ではありません。RQ-029 / RQ-030は設計正本があるためDesign Onlyですが、actual Product Evidenceはまだありません。
+## 6. Cross-cutting Product Quality監査
 
-## 6. Product Gapの再統合
+Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
 
-30 RQを30本の独立workstreamにしません。現在の不確実性を次へ束ねます。
+| Quality concern | 現在の強み | 主な残Gap |
+| --- | --- | --- |
+| Meaning stability | Source / Canonical / Projection / Evidence非同一性が強い | multi-Target / Studio / AI E2E |
+| Change safety | Desired/Actual/Diff、stale rejection、Provider preconditionがある | Database外を含むchange impact / recovery Evidence |
+| Execution / diagnosability | Result / Error / Observation、unknown / no-auto-replayがある | Target / production横断diagnostic correlation |
+| Interaction / accessibility | Target-neutral / high-density / Semantic-Functional-Visual分離がある | First Target actual operability / accessibility |
+| Performance / resource | RQ-024とR/T traceがある | First / Second Target actual baseline / threshold rationale |
+| Security / authority | Permission / Resource / secret境界が強い | effect-time current authority / production enforcement |
+| Maintainability | monorepo、derived artifact非authority、deterministic generation | Studio / AI / quality docs追加後の管理負担 |
+| Business completeness | RQ-025 / 026、manual / external Action、cross-view Pressure | actual execution / second corpus |
 
-### Gap A — Gate B actual Evidenceを閉じる
+詳細は`docs/product-quality-architecture.md`を参照します。
 
-主に:
+## 7. Product Gapの再統合
 
-- RQ-005
-- RQ-009
-- RQ-012
-- RQ-014
-- RQ-021
-- RQ-027 / RQ-028の既存境界の一部
+### Gap A — Gate B actual Evidence
 
-現在必要なのは新しいDriver abstractionやquality laneではありません。
+主にRQ-005 / 009 / 012 / 014 / 021。
 
 ```text
 actual full checkout preflight
         ↓
-#310 deterministic Repository
-#255 generated artifact reproducibility
-#308 real PostgreSQL Provider
+#310 / #255 / #308
         ↓
 same clean candidate R
         ↓
@@ -180,47 +165,24 @@ same clean candidate R
 #273 Gate B audit
 ```
 
-RQ-027〜030を理由に第四Required laneを追加しません。
+新しいquality laneを追加しません。
 
-### Gap B — Application meaningをFirst Targetへ出す
+### Gap B — First Target
 
-主に:
+主にRQ-011 / 013 / 018 / 021 / 024。
 
-- RQ-011
-- RQ-013
-- RQ-018
-- RQ-024
-- RQ-027
-- RQ-029
-- RQ-030
+Gate CではSemantic / Functional / Visual分離を維持しつつ、First TargetのReference Scenarioから:
 
-Gate B Ready後、Handover Baseline `B / R`を固定し、First Web Target build `T1`を別identityとして追跡します。
+- operability / accessibility
+- failure / recovery
+- performance / resource
+- context-bound quality claim
 
-Gate Cでは既存のSemantic / Functional / Visual分離を維持しつつ、次をEvidence計画へ加えます。
+を観測します。
 
-- Interaction / Operability
-- applicable accessibility checks
-- failure / degraded / recovery
-- performance / resource context
-- Quality Envelope provenance
+### Gap C — safe authoring
 
-一つの総合scoreへ畳みません。
-
-### Gap C — 安全なdeveloper authoring
-
-主に:
-
-- RQ-002
-- RQ-003
-- RQ-010
-- RQ-011
-- RQ-017
-- RQ-023
-- RQ-028
-- RQ-029
-- RQ-030
-
-Gate C後の最初のReferenceは`ISSUE-000046`です。
+主にRQ-002 / 003 / 010 / 011 / 017 / 021 / 023。
 
 ```text
 Select
@@ -232,160 +194,55 @@ Select
  -> reload / Conformance
 ```
 
-追加quality Pressure:
+Studioは第二正本になりません。
 
-- Preview / Reject non-mutating
-- stale base conflict
-- partial write / recovery
-- high-density + keyboard / navigation
-- failureからsource / subjectへ戻れる診断
+### Gap D — knowledge-first / AI / derived cognition
 
-### Gap D — knowledge-first reuse / AI / derived cognition
-
-主に:
-
-- RQ-014
-- RQ-015
-- RQ-016
-- RQ-017
-- RQ-023
-- RQ-027
-- RQ-030
-
-Gate C後のread-only exploration / AI Proposalへ、derived cognition researchを必要な場合だけ接続します。
+主にRQ-014 / 015 / 016 / 017 / 021 / 023。
 
 ```text
-retrieval candidate quality
+retrieval candidate
   != semantic applicability
   != accepted decision
+  != execution authority
 ```
 
-candidate recall、irrelevant candidate、latency、memory / index size等を評価しても、ranking scoreやmodel confidenceをSemantic Evidenceへ格上げしません。
+Derived Knowledge / index / trajectoryは削除・再生成可能に保ちます。
 
-### Gap E — multi-Target pressure / performance / interaction quality
+### Gap E — Business / cross-view
 
-主に:
+主にRQ-025 / 026。
 
-- RQ-011
-- RQ-013
-- RQ-024
-- RQ-029
-- RQ-030
+Data / Function / Businessの異なる視点を同型のCanonical objectへ増やすのではなく、realistic contentで矛盾を相互検査します。
 
-`ISSUE-000026`で第一Target `T1`と第二Target `T2`を明示baselineに対して比較します。
+### Gap F — Provider / production breadth
 
-- Target Capability
-- Runtime Binding
-- Execution / Trust
-- Host control plane
-- Semantic / Functional / Visual / Interaction Evidence
-- performance / resource
-- failure presentation
+主にRQ-004 / 005 / 007 / 008 / 009 / 019 / 020 / 024。
 
-T1とT2へ同じ数値を強制するのではなく、同じApplication meaningに必要なTarget別quality conditionを説明します。
-
-### Gap F — actual external asset / Provider breadth
-
-主に:
-
-- RQ-004
-- RQ-005
-- RQ-007
-- RQ-008
-- RQ-009
-- RQ-027
-- RQ-028
-
-actual Oracle #214 / #371 / #376を含む既存外部資産Evidenceを継続します。
-
-Gate B第四Required laneへ戻しません。未完了ならHandover unresolvedとして追跡し、Provider作業だけで他Product laneを停止しません。
-
-### Gap G — Cross-cutting Product Quality Envelope
-
-主に:
-
-- RQ-022
-- RQ-024
-- RQ-027
-- RQ-028
-- RQ-029
-- RQ-030
-
-最大の不足は「quality subsystemがない」ことではありません。
-
-各領域に散在する品質主張を、次へ戻せる形でEvidence化することです。
-
-```text
-subject
-+ revision / build
-+ Target / Host / Provider / Runtime context
-+ Scenario / precondition
-+ property
-+ measure / probe
-+ acceptance rationale
-+ artifact
-+ status
-```
-
-最初のactual Quality EnvelopeはFirst Targetで具体化し、その後Studio / AI / Second Target / productionへ広げます。
-
-## 7. 外部quality modelの利用
-
-ISO/IEC 25010:2023、WCAG 2.2、OpenTelemetry semantic conventions、NIST SSDF 1.1等は、TEIのRequirementを置き換える正本にはしません。
-
-用途を限定します。
-
-- ISO/IEC 25010: product quality characteristicの抜け漏れ監査
-- WCAG 2.2: Web Target accessibilityのtestable external reference
-- OpenTelemetry: Operational Telemetry Projectionのinteroperability候補
-- NIST SSDF: secure development / supply-chain processのchecklist
-
-明示採用とactual Evidenceなしに準拠claimへ格上げしません。
+actual Oracle等のexternal Evidence、second Provider、production operational boundaryを必要な範囲で継続します。
 
 ## 8. 現在の優先順位
 
-1. **Gate B actual final Evidenceを取得する**
-   - #310 / #255 / #308
-   - same candidate `R`
-   - #387 final convergence
-2. **Gate B ReadyならHandover Baseline `B / R`を固定する**
-3. **First Web Target `T1`を実装しGate C Evidenceを取得する**
-   - Semantic / Functional / Visualを維持
-   - Interaction / accessibility / performance / failure qualityをcontext付きで観測
-4. **Gate C Ready後、次を並行する**
-   - Studio minimal Authoring Loop
-   - knowledge-first / derived cognition exploration
-   - AI Proposal / Acceptance
-   - second Target pressure test
-5. **各laneのQuality Envelopeを比較し、Requirement / Architectureへ反証を戻す**
-6. **actual external asset / Provider / production qualityを必要な範囲で継続する**
+1. Gate B actual final Evidenceを取得する
+2. Gate B ReadyならHandover Baseline `B / R`を固定する
+3. First Web Target `T1`でGate C Evidenceとquality baselineを取得する
+4. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する
+5. RQ-025 / 026のBusiness Procedure / cross-view actual Evidenceを継続する
+6. Provider / production境界を必要なEvidenceとともに広げる
 
-quality planningを理由にGate B actual executionを後回しにしません。逆に、Gate B環境blockerを理由にFirst Targetを先行実装せず、上流quality contractだけを先に整備します。
+## 9. 維持コスト監査
 
-## 9. 維持コストの監査
-
-RQ-023 / RQ-030の観点から、品質管理そのものが負債にならないようにします。
+RQ-023の観点から、上流整理自体が過剰な管理負担にならないようにします。
 
 - current snapshot文書へ履歴を無制限追記しない
+- 同じ意味のRequirementを重複追加しない
 - 実行手順の正本を複数作らない
-- quality characteristicごとにGate / PASを増やさない
-- planning-onlyの将来作業を不要にIssueへ二重起票しない
-- 同じsemantic boundaryを複数planで別表現の正本にしない
-- metricが増えたことを品質向上とみなさない
-- Evidence toolを「安心のため」だけに増やさない
-- 一つの総合scoreでunresolvedを隠さない
+- Gate / PAS / Evidence laneを安易に増やさない
+- Quality characteristicごとに専用schema / tool / Issueを作らない
+- Evidence nature / failure modeが異なる場合だけartifactを分ける
 
 ## 10. 結論
 
-現在のTEIは、Application / Driverの中心meaningを作る段階から、**そのmeaningをactual Evidenceで閉じ、Handoverを経てFirst TargetへProjectionする段階**にあります。
+現在のTEIは、Application / Driverの主要meaningをactual Evidenceで閉じ、明示Handoverを経てFirst TargetへProjectionする段階です。
 
-今回の再監査で、次のquality gapを上流Requirementとして明示しました。
-
-```text
-failureを説明できる
-changeを適用前に検査できる
-interactionをTarget条件で操作・accessibility検証できる
-quality claimをContext / Measure / Evidenceへ戻せる
-```
-
-これらは新しい巨大subsystemではありません。既存のSource / Canonical / Binding / Runtime / Target / Evidence境界を横断して、TEIのProduct claimをより厳密にするための設計基線です。
+Product Qualityはこの主線と競合する別workstreamではなく、**既存RequirementがTarget / Provider / Runtime / Studio / AIへ渡っても壊れないことをEvidenceで確認する横断軸**として扱います。
