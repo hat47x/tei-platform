@@ -25,6 +25,7 @@ ADR前に必要なのは**contractを反証できるEvidence**であり、最終
 - 三段readinessの原典: [`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`](../BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md)
 - 判定の正本: [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)
 - 設計品質: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
+- second Reference acceptance: [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - 担当割り当て: [`UPSTREAM_BREAKDOWN_2026-09.md`](../UPSTREAM_BREAKDOWN_2026-09.md) §4
 - 関連RQ: RQ-002 / RQ-003 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-025 / RQ-026
 - PAS: PAS-07
@@ -48,7 +49,7 @@ ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの
 Pre-ADR Auditのcurrent判定をそのまま担当する。
 
 - **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
-- **B. independent second realistic TEI-original responsibility transfer未充足** — ISSUE-000050では製造・在庫連携のsecond-corpus research target、provenance、Evidence nature、Business Seed Acceptance Contractまで整理済み。ただしaccepted independent Business seed、Procedure / Step、自然に生じたresponsibility transfer、`from/to/condition` positive Evidenceは未成立
+- **B. independent second realistic TEI-original responsibility transfer未充足** — ISSUE-000050では製造・在庫連携のsecond-corpus research target、provenance、Evidence nature、RRB-P1 acceptance適用方法まで整理済み。ただしRRB-P1を満たすaccepted independent Business source、Procedure / Step、自然に生じたresponsibility transfer、`from/to/condition` positive Evidenceは未成立
 
 Blocker Bは「Handoff fixtureが二つあること」ではない。Handoff検証を目的に業務を逆算せず、独立したBusiness needから自然に生じた責任継続でcurrent H1/R3の一般性をpressureできることを要求する。
 
@@ -65,7 +66,7 @@ Blocker A
 Blocker B
   Handoff検証とは独立したBusiness need / Reference seed
   ↓
-  ISSUE-000050 S1〜S8 quality review
+  Lane B RRB-P1 acceptance review
   ↓
   minimal accepted Procedure / Step
   ↓
@@ -77,7 +78,7 @@ Blocker B
 Pre-ADR readiness再判定
 ```
 
-Gate A green前にISSUE-000050で進めてよいのはcorpus / provenance /利用条件 / Evidence nature / candidate design question / seed acceptance criteriaまでである。
+Gate A green前にISSUE-000050で進めてよいのはcorpus / provenance /利用条件 / Evidence nature / candidate design question / RRB-P1適用準備までである。
 
 Gate A green前には:
 
@@ -91,16 +92,18 @@ Gate A green前には:
 
 ## ADR前に要求するEvidence
 
+Pre-ADR AuditのGateを詳細化する作業チェックとして、次を追う。**この一覧は新しいmaterial blockerを追加せず、Ready / Not Ready判定はPre-ADR Auditを正とする。**
+
 1. actual Repository mechanical green
 2. D4 + singular O1 / S4-A / H1/R3のactual losslessness / fail-closed
 3. multi-source normalization、source freshness、Conformance-base freshness、coordinated change-setのactual test
 4. legacy + candidate simultaneous authority rejectのactual test
 5. candidate-only sourceのfresh-process再構成feasibility
-6. independent Business needから成立したsecond realistic TEI-original responsibility transferで`from/to/condition`がlossless
-7. second caseでsystem result / external actuality / Business continuationを短絡せず、unknownを推測で埋めないこと
+6. RRB-P1を満たすindependent Business sourceから自然に成立したsecond realistic TEI-original responsibility transferで`from/to/condition`がlossless
+7. Blocker BのEvidence record上、system result / external actuality / Business continuationを短絡せず、unknownを推測で埋めていないことを説明できる
 8. derived Data / CRUD guardrailがactualに推測を抑制すること
 
-6 / 7は同じsecond corpusから取得できるが、Handoff fieldの形式確認とBusiness design qualityを同じclaimへ潰さない。
+6 / 7はBlocker Bの同じEvidence packageを形式と品質の別観点からreviewするもので、第三のmaterial blockerではない。
 
 ## ADRの前提にしないもの
 
@@ -129,7 +132,7 @@ Gate A green前には:
 
 - [ ] blocker A / Bが解消し、Pre-ADR AuditがContract ADR readyと判定した
 - [ ] 上記Evidenceを、取得revisionとEvidence natureつきで参照できる
-- [ ] second corpusがISSUE-000050 S1〜S8を満たし、Handoff testのためにBusiness meaningを捏造していない
+- [ ] second corpusがLane B RRB-P1 acceptance条件を満たし、Handoff testのためにBusiness meaningを捏造していない
 - [ ] ADRを起票し、採用したcontractとdefer判断（C/U/D、placement、taxonomy、Evidence nature、Handoff Evidence）を記録した
 - [ ] Lane C Pre-ADR Gate CとProduct Gate Cを混同しない記述になっている
 - [ ] Gate B必須Evidence三系統をLane Cのactual runner greenで代替していない
@@ -145,6 +148,7 @@ Gate A green前には:
 ## 関連
 
 - [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
+- [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - [ISSUE-000042](000042-business-procedure-cross-view-reference.md): Lane C Reference / Evidenceの親
 - [ISSUE-000049](000049-business-authoring-production-adoption-readiness.md) / [ISSUE-000050](000050-second-realistic-handoff-corpus.md)
 - [`RQ025_RQ026_ACCEPTANCE_TRACE.md`](../RQ025_RQ026_ACCEPTANCE_TRACE.md) / [`SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md`](../SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md)
