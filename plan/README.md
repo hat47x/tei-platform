@@ -137,6 +137,41 @@ second corpusもHandoff fixtureから始めず、Handoffが無くても価値を
 
 ここでいうLane C Business Procedure Gate Aは、本README前半のApplication Pattern **Gate A — Ready**とは別のPre-ADR execution gateです。名称を理由に両者のEvidence statusを混同しません。
 
+## Definition-centered feedback / AI era
+
+Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI機能として育てず、**端的なauthoritative definitionを中心にした一つのfeedback loop**へ接続します。
+
+設計本文:
+
+- [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — concise definition / three-memory separation / feedback routing / minimum semantic delta / Reference Modelの役割
+- [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
+
+中心flow:
+
+```text
+concise authoritative definition
+  ↓
+Canonical meaning
+  ↓
+derived projection / runtime / simulator / index
+  ↓
+human review / Observation / Reference pressure
+  ↓
+route feedback to owning concern
+  ↓
+exact / pattern / cognition / LLM candidates
+  ↓
+deterministic qualification + Preview
+  ↓
+Shared Acceptance Boundary
+  ↓ accepted minimum semantic delta
+authoritative source → reload / regenerate
+```
+
+ここで、LLMやcognitive indexを新しいauthorityにしません。Reference Modelはanswer libraryではなく、worked example・実行可能content・Conformance pressure・pattern evidence・Platform feedback sourceとして扱います。
+
+Gate C前はdefinition inventory、feedback routing、memory separation、Reference pattern provenance等のread-only設計準備までです。Gate C後、`ISSUE-000046` / `000047` / `000027`を一つの小さいsemantic changeで合流させ、その後に`ISSUE-000051`のnon-LLM cognition比較へ進みます。
+
 ## Gate C後のplanning
 
 ### Studio / PAS-01
@@ -153,7 +188,7 @@ Select → Propose → Preview → Accept / Reject
           authoritative source → reload
 ```
 
-StudioはCanonicalの第二正本ではありません。
+StudioはCanonicalの第二正本ではありません。Definition-centered loopでは、whole-model editingよりselected definition / local neighborhoodを基本にし、AIを使う場合もwhole file再生成ではなくreview可能なminimum semantic deltaを優先します。
 
 ### knowledge-first / PAS-06
 
@@ -172,7 +207,7 @@ Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索
 - [`adr/0022-ai-proposal-canonical-acceptance-boundary.md`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)
 - [`issue/000027-ai-proposal-acceptance-boundary.md`](issue/000027-ai-proposal-acceptance-boundary.md)
 
-AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等とShared Acceptance Boundaryへ収束します。
+AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等とShared Acceptance Boundaryへ収束します。AIの標準的な価値はwhole modelを再生成することではなく、current revision・explicit refs・Evidenceに基づく**小さい意味差分、比較、説明**を作ることです。
 
 ### Second Target / PAS-04
 
