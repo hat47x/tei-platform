@@ -279,7 +279,7 @@ func addBrowseReadCRUDProbe(world ir.World, owner application.Application, patte
 	if q.Datasource == "" {
 		return fmt.Errorf("browse Pattern %s Query %s lacks datasource", pattern.ID, pattern.Query)
 	}
-	datasource, ok := owner.DatabaseByAlias(q.Datasource)
+	datasource, ok := owner.DatabaseByAliasExact(q.Datasource)
 	if !ok || datasource.Access == database.AccessWrite {
 		return fmt.Errorf("browse Pattern %s Query datasource %s is not readable", pattern.ID, q.Datasource)
 	}
@@ -296,7 +296,7 @@ func addReferenceReadCRUDProbe(world ir.World, owner application.Application, pa
 	if !ok {
 		return fmt.Errorf("reference Pattern %s Relation %sをexactに解決できません", pattern.ID, pattern.Relation)
 	}
-	datasource, ok := owner.DatabaseByAlias(pattern.Datasource)
+	datasource, ok := owner.DatabaseByAliasExact(pattern.Datasource)
 	if !ok || datasource.Access == database.AccessWrite {
 		return fmt.Errorf("reference Pattern %s datasource %s is not readable", pattern.ID, pattern.Datasource)
 	}
@@ -321,7 +321,7 @@ func addHeaderDetailReadCRUDProbe(world ir.World, owner application.Application,
 	if !ok {
 		return fmt.Errorf("header-detail Pattern %s realization bindingをexactに解決できません", pattern.ID)
 	}
-	datasource, ok := owner.DatabaseByAlias(binding.Datasource)
+	datasource, ok := owner.DatabaseByAliasExact(binding.Datasource)
 	if !ok || datasource.Access == database.AccessWrite {
 		return fmt.Errorf("header-detail Pattern %s datasource %s is not readable", pattern.ID, binding.Datasource)
 	}

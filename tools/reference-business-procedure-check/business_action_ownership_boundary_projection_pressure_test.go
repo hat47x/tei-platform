@@ -262,7 +262,7 @@ func ownershipBoundaryCandidateForPatternProbe(world ir.World, stepID string, ow
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("browse Pattern %s Query %sをexactに解決できません", pattern.ID, pattern.Query)
 		}
-		requirement, ok := owner.DatabaseByAlias(q.Datasource)
+		requirement, ok := owner.DatabaseByAliasExact(q.Datasource)
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("browse Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, q.Datasource, owner.ID)
 		}
@@ -273,7 +273,7 @@ func ownershipBoundaryCandidateForPatternProbe(world ir.World, stepID string, ow
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s Relation %sをexactに解決できません", pattern.ID, pattern.Relation)
 		}
-		requirement, ok := owner.DatabaseByAlias(pattern.Datasource)
+		requirement, ok := owner.DatabaseByAliasExact(pattern.Datasource)
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("reference Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, pattern.Datasource, owner.ID)
 		}
@@ -284,7 +284,7 @@ func ownershipBoundaryCandidateForPatternProbe(world ir.World, stepID string, ow
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("header-detail Pattern %s realization bindingをexactに解決できません", pattern.ID)
 		}
-		requirement, ok := owner.DatabaseByAlias(binding.Datasource)
+		requirement, ok := owner.DatabaseByAliasExact(binding.Datasource)
 		if !ok {
 			return businessActionOwnershipBoundaryRowProbe{}, false, fmt.Errorf("header-detail Pattern %s datasource %sをApplication %sで解決できません", pattern.ID, binding.Datasource, owner.ID)
 		}
