@@ -10,14 +10,6 @@
 
 過去のscopeや旧Evidence laneは本文へ履歴として重ねず、Git history / ADR / Issueから追跡します。
 
-Product Qualityは新しい直列Stageではなく、各StageのclaimをMeaning / Change / Execution / Interaction / Performance / Evidenceの観点から再確認する横断軸です。
-
-関連:
-
-- `../requirements/TEI_PRODUCT_REQUIREMENTS.md`
-- `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
-- `../docs/product-quality-architecture.md`
-
 ## v1 Reference Application
 
 v1では、新しい理想化sampleを別に作らず、`reference/workspace/applications/order-entry`を育てます。
@@ -66,8 +58,6 @@ Observation
 
 この意味をDriver、Web、Studio、AIごとに作り直しません。同じCanonical meaningを共有し、それぞれの層ではProjection / Binding / Evidenceだけを追加します。
 
-failure / degraded / unknownもTargetごとに別の意味へ作り直さず、各実行境界のError / Diagnostic / Observationとして扱います。
-
 ## PASとの対応
 
 | PAS | v1での主な実証 |
@@ -77,8 +67,7 @@ failure / degraded / unknownもTargetごとに別の意味へ作り直さず、�
 | PAS-03 | external asset / Provider / Handover unresolved |
 | PAS-04 | 第一Web Target / Gate C / 第二Target |
 | PAS-05 | Runtime / deployment recovery系で継続。Gate B blockerへ追加しない |
-| PAS-06 | Gate C後のknowledge-first Semantic exploration / derived cognition evaluation |
-| PAS-07 | Business Procedure cross-view Referenceをparallel pressureとして継続。Gate B/C blockerへ追加しない |
+| PAS-06 | Gate C後のknowledge-first Semantic exploration |
 
 ## 全体の進行
 
@@ -98,13 +87,12 @@ Handover Baseline B / revision R
 Stage 3  First Web Target / build revision T1
                ↓
 Gate C   Semantic / Functional / Visual Evidence
-         + context-bound Product Quality Evidence
                ↓
         ┌───────────────┴────────────────┐
         ↓                                ↓
 Stage 4A Authoring / Knowledge        Stage 4B Second Target
   - Studio PAS-01                       - PAS-04
-  - knowledge PAS-06                    - RQ-024 / 029 / 030
+  - knowledge PAS-06                    - RQ-024
   - AI Proposal PAS-01/06
 ```
 
@@ -112,15 +100,11 @@ Stage 4Aと4Bは並行できます。Studio / AI完成を第二Targetの前提�
 
 Handoverは新しい番号付きGateではありません。Gate Bの出力をGate Cの入力へ固定する契約です。
 
-PAS-07のBusiness Procedure pressureも新しいProduct Gateではありません。
-
 ## Stage 0 — Product Baseline / Gap Audit
 
 **Done**です。
 
 Product Value / Vision / Principles / Requirements / PAS / Master Plan / Gap AuditをRepository基線として扱います。
-
-RQ-027〜RQ-030でProduct Qualityの横断要求も基線化しましたが、これ自体はactual Evidence成立を意味しません。
 
 ## Stage 1 — Application Pattern
 
@@ -196,8 +180,6 @@ actual Oracle #214 / #371 / #376は第四Required laneではありません。
 
 actual physical facts、provenance、effective read-only、driver integration、actual readは重要なPAS-03 / external asset Evidenceとして継続します。未完了ならHandoverへ`unresolved`として渡します。
 
-RQ-027〜RQ-030を理由にGate B Required Evidenceを増やしません。
-
 ### Driverで成立している主な境界
 
 - Application Pattern resolution
@@ -213,7 +195,7 @@ RQ-027〜RQ-030を理由にGate B Required Evidenceを増やしません。
 - Execution Error
 - separate Observation read
 
-### Command / Observation / Diagnostic
+### Command / Observation
 
 Command acknowledgementをObserved external stateへ変換しません。
 
@@ -225,7 +207,7 @@ explicit read boundary
 Observation / Execution Error
 ```
 
-Business Result、named Outcome、Execution Error、Observation、Developer Diagnostic、Operational Telemetryを一種類の`error / result`へ畳みません。
+Business Result、Execution Error、Observation、Diagnosticを別々に扱います。
 
 ### Gate B current blocker
 
@@ -236,8 +218,6 @@ Business Result、named Outcome、Execution Error、Observation、Developer Diag
 - Evidence専用空PostgreSQLで#308
 - #387でsame-R final convergence
 - #273でReady再監査
-
-Product Quality planningを理由にこのactual executionを後回しにしません。
 
 ## Gate B — UIなしで主要Scenarioを再現できる
 
@@ -291,8 +271,7 @@ Oracle未完了範囲をWeb側で推測・補完しません。
 
 関連: `ISSUE-000007` / #70  
 Evidence: `ISSUE-000028` / #270  
-契約: `GATE_C_EVIDENCE_CONTRACT.md`  
-Quality計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
+契約: `GATE_C_EVIDENCE_CONTRACT.md`
 
 ### 着手条件
 
@@ -330,8 +309,6 @@ Gate C Evidence
 - standard Projection
 - Custom UI
 
-baselineにないwrite意味をWeb都合で補いません。
-
 ### 観測する差
 
 1. Application meaning
@@ -341,58 +318,35 @@ baselineにないwrite意味をWeb都合で補いません。
 5. Execution / Trust差
 6. Web固有実装
 7. Host control plane差
-8. interaction / accessibility条件
-9. performance / resource条件
-10. failure / degraded / recovery表現
-11. Canonicalへ持ち上げてはいけない差
-12. unresolved
+8. Canonicalへ持ち上げてはいけない差
+9. unresolved
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
 第一Web Targetが表示できただけでは通過しません。
 
-### Core Evidenceを分ける
-
-既存Gate C contractの中心は次の三種類です。
+Evidenceを三種類へ分けます。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
-これらを維持し、visual score / VLM judgeだけでSemantic / Functionalを合格にしません。
+すべてのrunからHandover Baseline `B` / revision `R`とTarget build `T1`へ戻れる必要があります。
 
-### Cross-cutting Product Qualityを重ねる
-
-Quality EvidenceはCore Evidenceを置き換えず、同じScenarioへ次の観測を重ねます。
-
-4. Interaction / Operability profile
-5. applicable Accessibility checks
-6. Performance / Resource measurement
-7. Failure / degraded / recovery observation
-8. Quality Envelope provenance
-
-すべてのrunからHandover Baseline `B / R`とTarget build `T1`へ戻れる必要があります。
-
-Web accessibilityでは適用可能なWCAG 2.2 criteriaをexternal testable referenceとして利用できますが、actual Evidenceなしに適合claimを行いません。
-
-### Gate Cで確認すること
+Gate Cで確認すること:
 
 - DriverとWebが同じApplication meaningを共有する
 - baseline `R`とTarget build `T1`を混同しない
 - Semantic Conformance成立
 - Reference Scenario Functional Evidence成立
 - Visual Evidenceを別に保持
-- keyboard / focus / validation recovery等、必要なoperabilityを確認できる
-- applicable accessibility failureをvisual fidelityへ隠さない
-- performance measurementがTarget / Host / Scenario条件へ戻れる
-- failure / degraded / unknownをsuccessへ丸めない
 - Business Result / Execution Error / Observationを維持
 - Web Adapter除去でCanonicalが変わらない
 - standard Projection / Custom UIが同じ上位意味へ接続
-- Target Capability / Execution / Trust / Quality差を第二Targetへ渡せる
+- Target Capability / Execution / Trust差を第二Targetへ渡せる
 - unresolvedを成功扱いしない
 
-Quality Envelopeを一つのuniversal scoreへしません。
+visual score / VLM judgeだけでSemantic / Functionalを合格にしません。
 
 ## Stage 4A — Authoring / Knowledge / AI
 
@@ -423,14 +377,6 @@ file-native / CLI / AIと同じAcceptance原則へ収束します。
 
 Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application Targetと混同しません。
 
-Quality Pressure:
-
-- Preview / Reject non-mutating
-- stale `baseModelRevision` conflict
-- failure / partial changeの説明
-- high-density + keyboard / focus / navigation
-- diagnosticからsource / subjectへ戻れること
-
 ### knowledge-first Semantic exploration — `ISSUE-000047`
 
 Product Acceptance Scenario: PAS-06
@@ -443,13 +389,7 @@ Human / AIが新規authoring前に既存Data / Relation / Validation / Capabilit
 - incompatible
 - unknown
 
-search ranking、similarity、embedding、derived cognition activation、AI confidenceはSemantic Evidenceではありません。
-
-### derived cognition evaluation
-
-algorithm-neutral researchは、候補探索を軽量化できるかを評価します。
-
-candidate recall、irrelevant candidate、latency、memory / index size等を測っても、それをSemantic applicabilityやDecision authorityへ自動変換しません。
+search ranking、similarity、embedding、AI confidenceはSemantic Evidenceではありません。
 
 ### AI Proposal / Acceptance — `ISSUE-000027` / #267
 
@@ -487,29 +427,14 @@ Stage 4Aの完成を待たず、Gate C Ready後に並行開始できます。
 - Execution / Trust Profile
 - Authorization / Resource
 - Observation
-- Semantic / Functional / Visual / Interaction Evidence
+- Semantic / Functional / Visual Evidence
 - RQ-024 performance measurement
-- RQ-027 failure presentation
-- RQ-029 operability / accessibility
-- RQ-030 Quality Envelope context
 
 Generated Wails Desktop、Mobile、Server、API、MCP Application Target等が候補です。
 
 Studio Wails Hostは第二Application Target Evidenceへ数えません。
 
 第二Targetで境界修正が必要になっても、それ自体を失敗とはみなしません。第一Targetの都合を共通意味へ誤昇格していなかったかを確認します。
-
-## PAS-07 — Business Procedure cross-view parallel pressure
-
-Business Procedure / Data / Function-Interaction相互検証はv1主線と並行して進めます。
-
-- Business Action != Application Function
-- Business Actor != Authorization Role
-- manual / external workをfake Capabilityへ変換しない
-- cross-view Projectionを第二正本にしない
-- actual execution Evidence未取得をacceptedへ読み替えない
-
-PAS-07の進捗を理由にGate B / Gate C Required Evidenceを増やしません。
 
 ## Evidenceの原則
 
@@ -527,16 +452,13 @@ Evidence候補:
 - actual external asset observation
 - Handover Baseline
 - Target build / run identity
-- Semantic / Functional / Visual / Interaction Evidence
-- performance / resource measurement
-- failure / recovery observation
-- Quality Envelope
+- Semantic / Functional / Visual Evidence
 - Target comparison
 - ADR
 - readiness audit
 - unresolved Diagnostic
 
-Evidence artifact、Quality Envelope、Handover recordをCanonicalの第二正本にはしません。
+Evidence artifactやHandover recordをCanonicalの第二正本にはしません。
 
 実験結果が予想と異なる場合、その差を隠して計画へ合わせずRequirement / Architecture / Planを再評価します。
 
@@ -555,10 +477,6 @@ Evidence artifact、Quality Envelope、Handover recordをCanonicalの第二正�
 - Handover汎用schema
 - 第二Target種類
 - B2C向け一律performance threshold
-- 全Target共通のavailability / reliability threshold
-- Quality Envelopeの固定schema
-- universal quality score
-- OpenTelemetry必須dependency
 - Authentication単一方式
 - 汎用Workflow Engine
 - Event Sourcing標準
@@ -579,11 +497,7 @@ v1のApplication / first-target成立判断では少なくとも次をRepository
 - standard Projection / Custom UIを同じ上位意味から利用できる
 - Business Result / Execution Error / Observationを分離できる
 - Semantic / Functional / Visual Evidenceを混同しない
-- First Target主要Scenarioを必要なinput modalityで操作・復旧できる
-- accessibility claimをactual Evidenceなしに行わない
-- performance claimをTarget / Host / Scenario条件から切り離さない
-- failure / degraded / unknownをsuccessへ丸めない
-- 何が未保証かをaudit / Quality Envelope / unresolvedから判断できる
+- 何が未保証かをaudit / unresolvedから判断できる
 
 Studio / AI支援の完成、第二Target、production HAは第一Web Targetまでのv1成立条件にはしません。ただし、それらをGate C後に検証できる境界とplan issueは保持します。
 
@@ -594,8 +508,6 @@ Studio / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/MASTER_PLAN.md`
 - `plan/MILESTONES.md`
-- `docs/product-quality-architecture.md`
-- `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
 - `plan/GATE_A_READINESS_AUDIT.md`
 - `plan/GATE_B_READINESS_AUDIT.md`
 - `plan/GATE_B_EVIDENCE_ACQUISITION.md`
@@ -606,3 +518,12 @@ Studio / AI支援の完成、第二Target、production HAは第一Web Targetま�
 - `plan/adr/0023-command-observation-explicit-read-boundary.md`
 - `plan/issue/000006-application-driver-vertical-slice.md`
 - `plan/issue/000007-first-web-target-projection.md`
+- `plan/issue/000008-editor-and-ai-followup-note.md`
+- `plan/issue/000026-target-capability-execution-profile-boundary.md`
+- `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000028-first-web-target-conformance-evidence.md`
+- `plan/issue/000029-gate-b-readiness-audit.md`
+- `plan/issue/000030-gate-b-to-c-handover-baseline.md`
+- `plan/issue/000037-gate-b-three-lane-final-evidence.md`
+- `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
