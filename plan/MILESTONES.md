@@ -10,11 +10,15 @@ Milestone番号は、特にGate C後では厳密な直列依存を意味しま�
 
 個別のM0.xxは細かなarchitecture checkpointとして継続利用できますが、本書ではProduct全体の能力到達点を扱います。
 
+Product Qualityは独立した番号付きMilestoneにはせず、各MilestoneのclaimをContext / Measure / Evidenceへ戻せる横断条件として扱います。
+
 関連:
 
 - `plan/MASTER_PLAN.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
+- `docs/product-quality-architecture.md`
+- `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
 
 ## v1 Reference Applicationとの対応
 
@@ -37,12 +41,13 @@ Milestone 4
 First Web Target / build T1
         ↓
 Gate C — PAS-04 Evidence
+        + Product Quality Evidence
         ↓
    ┌────┴──────────────┐
    ↓                   ↓
 Milestone 6 / 7     Milestone 5
 Studio / AI         Second Target
-PAS-01 / PAS-06     PAS-04 / RQ-024
+PAS-01 / PAS-06     PAS-04 / RQ-024 / 029 / 030
 ```
 
 Handoverは番号付きGateではありません。Gate B Readyの意味baselineをGate Cへ固定して渡す契約です。
@@ -55,11 +60,12 @@ Handoverは番号付きGateではありません。Gate B Readyの意味baseline
 - Product Requirementsが固定IDで参照できる
 - Product Acceptance ScenarioからRequirement → Plan → Evidenceへ追跡できる
 - Master Plan / Milestones / ADR / Plan Issueの役割が分離されている
+- Product Quality claimをContext / Measure / Evidenceへ束縛する設計基線がある
 - unresolvedを成功へ読み替えない
 
 ### 意味
 
-今後の作業が「何を確かめるためか」を判断できる地図がある状態です。
+今後の作業が「何を確かめるためか」「どの条件で品質を主張できるか」を判断できる地図がある状態です。
 
 ## Milestone 1 — Meaningを作り、追跡し、検査できる
 
@@ -71,6 +77,7 @@ Handoverは番号付きGateではありません。Gate B Readyの意味baseline
 - Diagnosticからsourceへ戻れる
 - Application PatternをApplication所有の意図として扱える
 - file moveとlogical rename等の意味差を区別できる
+- ambiguity / insufficient informationをsilent meaning driftへ変換しない
 
 ### 意味
 
@@ -88,6 +95,7 @@ v1の5 PatternをTEI全体の永久標準Catalogにはしません。
 - Capability単位でstandard / existing implementationを交換できる
 - external-observed assetの未観測事実を推測しない
 - actual external Evidenceとsynthetic / fixture Evidenceを区別できる
+- provider / external failureをsuccessへ丸めず、必要なdiagnosticへ戻れる
 
 ### 意味
 
@@ -106,6 +114,7 @@ Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
 - Validation / Authentication / Authorizationを実行できる
 - Capability invocationのBusiness ResultとExecution Errorを区別できる
 - Command acknowledgementとObservationを分けられる
+- failure / degraded / unknownをsuccessへ丸めない
 - same-source Reference Scenarioを再現できる
 - generated artifact / real-provider / deterministic Evidenceを相互代替しない
 
@@ -121,22 +130,29 @@ Gate B Required Evidenceは次の三つです。
 
 Gate B Ready後、その`R`をHandover Baselineへ固定します。
 
+RQ-027〜RQ-030を理由にGate Bへ第四Required laneを追加しません。
+
 ## Milestone 4 — 一つの実用TargetでApplicationを通せる
 
 Product Acceptance Scenario: PAS-04 primary
 
 ### 到達条件
 
-- Handover Baseline `B` / revision `R`から第一Web TargetへProjectionできる
+- Handover Baseline `B / R`から第一Web TargetへProjectionできる
 - Web build revision `T1`をbaseline `R`と別に追跡できる
 - browse / record / reference / header-detail / commandを同じApplication meaningへ接続できる
 - Validation / Authorization / Capability / Result / ObservationをTarget側で再定義しない
 - standard ProjectionとCustom UIを同じ上位意味へ接続できる
 - Web Adapterを除去してもCanonical Worldが変わらない
+- Reference Scenarioを必要なinput modalityで操作でき、validation / errorから復旧できる
+- applicable accessibility checkをVisual Fidelityと分けて確認できる
+- performance / resource measurementをTarget / Host / Scenario条件と一緒に記録できる
+- failure / degraded / unknownのTarget表現をsuccessと区別できる
+- quality claimを`B / R / T1`とEvidenceへ戻せる
 
 ### Gate C
 
-Gate Cでは次を別Evidenceとして扱います。
+Gate CのCore Evidenceでは次を別々に扱います。
 
 1. Semantic Conformance
 2. Interaction / Functional Evidence
@@ -144,7 +160,15 @@ Gate Cでは次を別Evidenceとして扱います。
 
 VLM / screenshot scoreだけでSemantic / Functionalを合格にしません。
 
-Gate CではTarget Capability / Execution / Trust / Web固有差を第二Targetへ渡せることも確認します。
+Product Quality Evidenceはこれらを置き換えず、同じScenarioへ次を重ねます。
+
+- Interaction / Operability
+- applicable Accessibility
+- Performance / Resource
+- Failure / degraded / recovery
+- Quality Envelope provenance
+
+Gate CではTarget Capability / Execution / Trust / Web固有差に加え、quality差も第二Targetへ渡せることを確認します。
 
 ## Milestone 5 — 同じ意味を複数Application Targetへ展開できる
 
@@ -159,10 +183,15 @@ Product Acceptance Scenario: PAS-04 primary
 - Execution / Trust Profile差を説明できる
 - Target固有実装をCanonicalへ逆流させない
 - RQ-024のperformance measurementをTarget / Host条件付きで比較できる
+- RQ-027のfailure / degraded表現をTarget間で比較できる
+- RQ-029のoperability / accessibilityをTarget固有interactionとして説明できる
+- RQ-030のQuality EnvelopeからT1 / T2の条件差へ戻れる
 
 ### 意味
 
 Target-neutralが第一Web Targetだけからの仮説ではなく、性質の異なる第二Targetで圧力試験された状態です。
+
+T1とT2へ同じ性能値やUI規則を強制することが目的ではありません。同じApplication meaningを満たすためにTargetごとに必要なquality conditionを説明できることが目的です。
 
 Studio / Editorのdeveloper-facing Wails HostはApplication Target Evidenceへ数えません。
 
@@ -179,6 +208,9 @@ Product Acceptance Scenario: PAS-01 primary
 - Preview / Rejectでauthoritative sourceを変更しない
 - Accept後にsourceをStudioなしでreloadできる
 - stale `baseModelRevision`を黙って適用しない
+- change impact / incompatible / unresolvedを必要な粒度で表示できる
+- failure / partial writeが起きた場合にauthority状態を説明できる
+- high-densityでもkeyboard / focus / navigation / diagnostic locationを失わない
 - Studio都合でmandatory authored Stable IDを導入しない
 
 ### 意味
@@ -195,19 +227,21 @@ Product Acceptance Scenario: PAS-06 primary / PAS-01 secondary
 
 - Human / AIが既存Semantic資産をread-only探索できる
 - applicable / incompatible / unknownを区別できる
-- search ranking / similarityをSemantic Evidenceへ格上げしない
+- search ranking / similarity / derived activationをSemantic Evidenceへ格上げしない
 - AI Proposalとaccepted Decision / source changeを区別できる
 - ProposalがCanonical / Source / Evidenceへtraceできる
 - AI ProposalもShared Acceptance Boundaryを通る
 - stale Proposalを黙って適用しない
 - autonomyとauthorityを分ける
 - Derived Knowledgeを削除してもCanonical Worldが変わらない
+- candidate recall / irrelevant candidate / latency / resource等をbenchmark contextへ戻せる
+- candidate qualityをsemantic correctnessへ読み替えない
 
 ### 意味
 
 AI機能が追加されたというだけでなく、既存知識探索・変更候補・検証を通して利用者負担を減らせる状態です。
 
-read-only探索は`ISSUE-000047`、AI Proposal / Acceptanceは`ISSUE-000027`で扱います。
+read-only探索は`ISSUE-000047`、AI Proposal / Acceptanceは`ISSUE-000027`で扱います。algorithm-neutral derived cognitionは必要な範囲で別research incrementとして評価します。
 
 ## Gate C後のMilestone 5〜7の関係
 
@@ -225,6 +259,7 @@ Gate C Ready
 - 第二Target差 → Studioが表示すべきTarget差 / AIが参照すべきEvidence
 - Studio authoring Evidence → Target-neutral source / acceptance境界
 - knowledge-first / AI Evidence → reusable meaning / traceability不足
+- Quality Envelope差 → Requirement / threshold / failure handlingの見直し
 
 一つのlaneの完成を他laneの開始条件にしません。
 
@@ -238,6 +273,7 @@ Gate C Ready
 - external Runtime / orchestratorをCapabilityとして接続できる
 - Plugin / Bundle / trust boundaryを説明できる
 - unknown / takeover / fencing / recoveryをProvider差を超えて扱える
+- provider-specific failure / change-safety Evidenceをcommon meaningへ無理に畳まず比較できる
 
 ### 意味
 
@@ -252,11 +288,16 @@ Gate C Ready
 - signed artifact / registry / supply-chain Evidenceを扱える
 - compatibility / upgrade policyがある
 - observability / audit / failure analysisに必要なEvidenceを取得できる
+- operational telemetryから安全なlogical identityへ相関できる
+- telemetry data modelがCanonical business meaningのauthorityにならない
+- production quality claimが対象version / Host / Provider / known limit / Evidenceへ戻れる
 - production adapterとConformanceを持つ
 
 ### 意味
 
 architecture validationを越え、限定された実利用へ責任を持って進められる状態です。
+
+OpenTelemetry、NIST SSDF等の外部標準は必要に応じてinteroperability / process checklistとして利用できますが、Evidenceなしに準拠claimへしません。
 
 ## Version Horizon
 
@@ -269,6 +310,8 @@ Product Valueと境界を実行可能Referenceで検証する期間です。
 ### v1 — Practical Developer Platform vertical slice
 
 少なくともMilestone 0〜4を満たし、一つの現実的Applicationを設計・Driver・Database接続・第一Targetまで一続きに扱える状態を目安とします。
+
+v1の第一Targetではfull production maturityを要求しませんが、少なくとも主要Scenarioについてoperability / applicable accessibility / performance context / failure behaviorをEvidenceから説明できる必要があります。
 
 Studio / AIの完成、第二Target、production HAはv1 first-target成立の前提にはしません。
 
@@ -295,6 +338,10 @@ Milestone 9を中心に、production運用、互換性、供給網、組織規�
 - Patch-only authoring model
 - 第二Targetの種類
 - 一律performance threshold
+- 一律availability / reliability threshold
+- Quality Envelopeの固定schema
+- universal quality score
+- OpenTelemetry必須dependency
 - production HA一般化
 
 Reference / Evidenceが必要性を示す前に固定しません。
