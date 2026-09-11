@@ -8,6 +8,8 @@
 
 この文書は新しいArchitecture Layer、Canonical schema、runtime subsystemの採用を意味しません。Gate C前に実装を始める根拠でもありません。詳細なalgorithm、feature、benchmarkから読み始めなくても、まずTEI上の問題と判断原則を理解できることを目的とします。
 
+より広いProduct設計上の位置づけは [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) と [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) を参照します。Derived cognitionは独立した「第二の頭脳」ではなく、端的なauthoritative definitionを中心にしたfeedback loopの**attention / association / candidate-memory側**を担う候補です。
+
 ## 根幹の問題
 
 TEIは、業務の意味をCanonical Worldとして明示し、Source、Validation、Capability、Application Pattern、Evidence等へ追跡できることを重視します。
@@ -23,6 +25,39 @@ TEIは、業務の意味をCanonical Worldとして明示し、Source、Validati
 したがって必要なのは「LLMを置き換える別のAI」ではありません。
 
 必要なのは、**Canonical Worldをauthorityのまま保ちつつ、次に確認すべき既存資産を軽量・局所的・再生成可能な方法で候補化できるか**を検討することです。
+
+## Definition-centered feedback loop内での役割
+
+TEI全体のloopでは、認知方式は次の一部分だけを担います。
+
+```text
+concise authoritative definition
+        ↓
+Canonical World
+        ↓ derive / execute
+projection / simulator / runtime
+        ↓
+feedback / intent / local editing context
+        │
+        ├─ exact / graph retrieval
+        ├─ Reference pattern recall
+        ├─ derived associative cognition  ← 本検討の中心
+        └─ LLM reasoning / explanation
+                ↓
+           candidate space
+                ↓
+ deterministic qualification
+                ↓
+ proposal / preview
+                ↓
+ Shared Acceptance Boundary
+                ↓ accepted only
+authoritative definition
+```
+
+認知方式はfeedbackを受け取って候補を作れますが、**どのmeaning-owning layerを直すべきかというroutingや、最終受理authorityまで自動的に所有しません**。
+
+例えばUI上の違和感を見つけても、認知方式がSemantic Dataを変更するとは限りません。Target固有問題ならTarget / Projectionへ、Provider問題ならBinding / Realizationへ、検索取りこぼしならderived cognition自身へ戻します。
 
 ## 目指す認知の役割
 
@@ -69,6 +104,37 @@ Candidate    != Decision
 Cognition    != Authority
 ```
 
+## 三種類のmemoryとの関係
+
+Definition-centered設計では、knowledgeを一つのstoreへ畳まず、少なくとも次を区別します。
+
+```text
+authoritative semantic memory
+  accepted definitions / source / Canonical meaning
+
+derived associative / structural memory
+  exact index / graph / lexical / pattern / sparse code / embedding
+
+episodic / experience memory
+  proposal / decision / run / Observation / correction trajectory
+```
+
+Derived cognitionは第二のmemoryへ属します。
+
+将来、過去の成功・失敗からassociationを更新する場合でも、そのlearned stateは第三のexperienceを入力にして第二のderived memoryを改善するのであり、第一のauthoritative semantic memoryを暗黙に書き換えません。
+
+```text
+experience
+   ↓ optional learning
+associative memory
+   ↓ candidate generation
+qualification / proposal
+   ↓ explicit Acceptance only
+authoritative meaning
+```
+
+これにより「学習したから仕様が変わった」という不可視のauthority移動を避けます。
+
 ## なぜLLMだけにしないか
 
 LLMには、自然言語intentの解釈、曖昧な要求の整理、説明、仮説生成、新しいcompositionなどの強みがあります。
@@ -102,6 +168,38 @@ LLMには、自然言語intentの解釈、曖昧な要求の整理、説明、�
                        ↓
              Acceptance / Evidence
 ```
+
+## Reference Model Pattern Memory
+
+過去のX-TEA / XEAD Reference Model群やTEI自身のrealistic Referenceから抽出したpatternは、LLMの内部記憶とは別にprovenance付きcandidate memoryとして利用できます。
+
+想定する情報:
+
+```text
+pattern identity / label
+observed or candidate nature
+structural signature
+provenance Reference / source
+examples
+applicability question
+known non-proof / caveat
+```
+
+利用方向:
+
+```text
+current intent / local structure
+       ↓
+Reference pattern candidates
+       ↓
+multiple hypotheses
+       ↓
+exact qualification / simulation / review
+```
+
+Referenceに頻出することはRequirementを意味しません。pattern matchはapplicabilityを意味しません。
+
+このmemoryは、語彙の違う構造を想起するderived cognitionのcorpusにもできます。たとえばheader-detail、conditional subtype、self-reference、plan/actual/ledger、composition、summary等の構造を、名前を変えたTEI-native caseで回収できるかを比較できます。
 
 ## ハエ脳の着想をどう扱うか
 
@@ -161,10 +259,11 @@ reuse / reject / unknown
 
 - TEIのどのProduct問題を解くか
 - Canonical / Evidence / Authorityとの境界は何か
+- Definition-centered feedback loopのどこを担うか
 - LLMと何を分担するか
 - 採用しなかった場合でもTEI本体が成立するか
 
-本書がこの入口です。
+本書がこの認知側の入口です。全体loopは`docs/definition-centered-feedback-loop.md`を参照します。
 
 ### Level 1 — Product Referenceとして何を成立させるか
 
@@ -218,10 +317,11 @@ Reference EvidenceなしにLevel 5から逆算してArchitectureを固定しま�
 
 ```text
 1. 上位のProduct目的は既に説明されているか
-2. どのReference Scenarioで価値を確認するか
-3. どのIssueが責務を所有するか
-4. 評価契約は必要か
-5. その後にfeature / schema / API / algorithmへ降りる
+2. Definition-centered loopのどの役割を担うか
+3. どのReference Scenarioで価値を確認するか
+4. どのIssueが責務を所有するか
+5. 評価契約は必要か
+6. その後にfeature / schema / API / algorithmへ降りる
 ```
 
 上位の説明が不足している場合は、詳細文書を先に増やさず、まず上位文書を補います。
@@ -240,7 +340,8 @@ Reference EvidenceなしにLevel 5から逆算してArchitectureを固定しま�
 4. indexを削除・再生成してもCanonical Worldが変わらない。
 5. Source revisionとstalenessを追跡できる。
 6. LLMを使わないこと自体ではなく、latency / cost / locality / explainability等の実用価値がある。
-7. 複雑な新subsystemを維持するコストを上回る価値がある。
+7. Reference Pattern Memoryやexperience memoryを使ってもprovenanceを失わない。
+8. 複雑な新subsystemを維持するコストを上回る価値がある。
 
 この条件を満たさなければ、exact / graph / lexical探索だけで進める判断も正当です。
 
@@ -255,12 +356,14 @@ First Web Target
   ↓
 Gate C
   ↓
+definition-centered one-change loop
+  ↓
 knowledge-first Product Reference
   ↓
 derived cognition comparison
 ```
 
-Gate C前に行うのは、根幹趣旨、評価課題、feature source、benchmark contract等のread-onlyな設計準備までです。
+Gate C前に行うのは、根幹趣旨、Reference pattern provenance、評価課題、feature source、benchmark contract等のread-onlyな設計準備までです。
 
 Cognitive Layerを独立Architecture Layerへ昇格するか、共通interfaceや永続indexを設けるか、learned associationを導入するかは、Reference Evidenceの後に判断します。
 
@@ -274,12 +377,16 @@ Cognitive Layerを独立Architecture Layerへ昇格するか、共通interface�
 - online learning
 - learned associationの永続化
 - similarity / activation scoreの共通尺度
+- Reference Pattern Memoryのproduction store形式
+- experience memoryの統合Event Store
 
 これらは根幹原則から導出される個別課題であり、先に固定しません。
 
 ## 関連する上位・隣接文書
 
 - [`README.md`](README.md) — TEI Planning全体の入口
+- [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — AI / cognition / Reference / feedbackをdefinition中心へ統合する設計
+- [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — 既存Issueを一つのclosed loopへ接続する実証順
 - [`TECH_RESEARCH_INTEGRATION_2026-09.md`](TECH_RESEARCH_INTEGRATION_2026-09.md) — 外部研究をTEIの境界へ翻訳する統合方針
 - [`issue/000040-semantic-component-composition.md`](issue/000040-semantic-component-composition.md) — 意味資産の探索・組み立て
 - [`issue/000027-ai-proposal-acceptance-boundary.md`](issue/000027-ai-proposal-acceptance-boundary.md) — ProposalとShared Acceptance Boundary
