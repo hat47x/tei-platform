@@ -2,11 +2,17 @@
 
 Status: current planning baseline
 
+関連:
+
+- `requirements/TEI_PRODUCT_REQUIREMENTS.md`
+- `docs/product-quality-architecture.md`
+- `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
+
 ## 1. 目的
 
 この文書は、TEIのProduct Value / Product Requirementsを、利用者レベルのProduct Acceptance Scenario、設計判断、Plan Issue、Reference、Evidence、Gate / Product claimへ接続する追跡基線です。
 
-新しいProduct Requirement、Canonical schema、Gate、coverage率を追加する文書ではありません。
+新しいCanonical schema、Gate、coverage率を追加する文書ではありません。
 
 ```text
 Product Value / Vision / Principles
@@ -26,7 +32,7 @@ Gate / Product claim
 
 Requirementだけから実装を直接導出せず、利用者やmaintainerにとって何が成立すれば要求の意味を確認できるかをScenarioで束ねます。
 
-Scenarioが通ったことだけで関連Requirement全体を自動的に`verified`へ引き上げません。Evidence nature、source revision、Provider / Target / Host、未解決事項を分離して扱います。
+Scenarioが通ったことだけで関連Requirement全体を自動的に`verified`へ引き上げません。Evidence nature、source revision、Provider / Target / Host、quality context、未解決事項を分離して扱います。
 
 ## 2. 追跡原則
 
@@ -35,13 +41,15 @@ Scenarioが通ったことだけで関連Requirement全体を自動的に`verifi
 3. 一つのPASは複数Requirementを束ねてよい。
 4. PASは利用者またはmaintainerが観測できる結果で記述する。
 5. ADRはPASを満たすための設計判断でありRequirementそのものではない。
-6. Issue close、test pass、CI green、visual scoreだけでPAS成立とは扱わない。
-7. synthetic / deterministic / generated-artifact / real-provider / actual-external等のEvidence natureを混同しない。
+6. Issue close、test pass、CI green、visual score、quality scoreだけでPAS成立とは扱わない。
+7. synthetic / deterministic / generated-artifact / real-provider / actual-external / Target等のEvidence natureを混同しない。
 8. source-dependent Evidenceは取得したrevisionへ固定し、後続revisionへ黙ってcarry-forwardしない。
 9. Target Evidenceではmeaning baseline revisionとTarget build revisionを分ける。
 10. 不足情報は`unresolved`として残し、成功へ丸めない。
 11. Gateを増やすより、既存Gateが何を証明するかを明確にする。
 12. Human / Studio / CLI / AI等の入口ごとに第二のsemantic authorityを作らない。
+13. performance / reliability / accessibility等のquality claimは、対象・条件・measure・Evidenceから切り離さない。
+14. operational telemetryやexternal quality modelをCanonical business meaningの第二正本にしない。
 
 ## 3. PAS-01 — 意味を壊さず設計を変更・再読込できる
 
@@ -75,14 +83,15 @@ Preview / Rejectはauthoritative sourceを変更しません。
 
 candidateは必要に応じて`baseModelRevision`を持ち、staleならreject / re-read / explicit rebase等へ進みます。最新版へ黙って適用しません。
 
-### identityの注意
+### identity / change safety
 
 file pathそのものをSemantic identityにはしません。
 
 - file moveだけでqualified logical identityが変わらない場合: semantic no-opとして扱える
 - logical rename / Canonical identity変更: Semantic changeとして扱う
+- destructive / incompatible / unresolvedな変更: impact / precondition / recoveryを必要な粒度で明示する
 
-したがって、すべての変更後に「同じIDである」ことを要求するのではなく、**変更intentに対してidentity変化が説明可能であること**を要求します。
+すべての変更後に「同じIDである」ことを要求するのではなく、**変更intentに対してidentity変化とimpactが説明可能であること**を要求します。
 
 Studio / AI都合でmandatory authored Stable ID / UUIDを導入しません。
 
@@ -98,6 +107,9 @@ Studio / AI都合でmandatory authored Stable ID / UUIDを導入しません。
 - RQ-017 二重管理の最小化
 - RQ-019 Runtime / Resource authority
 - RQ-021 Reference / Conformance
+- RQ-028 change impact / compatibility / destructiveness
+- RQ-029 Studio interaction quality（secondary）
+- RQ-030 quality claim provenance
 
 ### shared Acceptance Boundary
 
@@ -135,11 +147,8 @@ Gate C Ready後:
 
 - `ISSUE-000046` — Studio minimal Authoring Loop（PAS-01 primary）
 - `ISSUE-000027` — AI Proposal / Shared Acceptance（PAS-01 primary / PAS-06 secondary）
-- ADR-0022 — AI ProposalとCanonical受入境界の分離
 
 StudioはProjection / Authoring Clientであり第二正本ではありません。
-
-Studioのdeveloper-facing Wails HostをGenerated Wails Desktop Application TargetのEvidenceへ読み替えません。
 
 ## 4. PAS-02 — Application上の意味をDriverで実行・検証できる
 
@@ -165,6 +174,8 @@ Authentication
 
 Command acknowledgementだけでObserved state成立とは扱いません。
 
+failure、dependency unavailable、degraded、unknown等もsuccessへ丸めず、意味・実行境界へ戻れるdiagnosticを保持します。
+
 ### 主なRequirement
 
 - RQ-005 Application / Database N:M
@@ -174,6 +185,9 @@ Command acknowledgementだけでObserved state成立とは扱いません。
 - RQ-014 Application Pattern再利用
 - RQ-018 Command / Observation分離
 - RQ-021 Reference / Conformance
+- RQ-027 failure / degraded / unknown diagnosability
+- RQ-028 change safety（secondary）
+- RQ-030 quality claim provenance（secondary）
 
 ### 現在のEvidence位置
 
@@ -188,6 +202,8 @@ Required Evidenceは次の三つです。
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
 三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387でfinal convergenceを確認します。
+
+RQ-027〜RQ-030を理由に第四Required laneを追加しません。
 
 ## 5. PAS-03 — Native / external assetを壊さず段階移行・置換できる
 
@@ -211,6 +227,8 @@ Evidence / Observation
 
 未観測のexternal physical factsを生成・推測しません。Provider固有知識はProvider / Adapter側に残し、Canonical Contractをprovider都合で変更しません。
 
+change / migrationではplanning時観測をapply-time safetyへ無条件carry-forwardせず、必要なfresh observation / preconditionでfail closedします。
+
 ### 主なRequirement
 
 - RQ-004 Native asset利用
@@ -222,6 +240,9 @@ Evidence / Observation
 - RQ-018 Command / Observation分離
 - RQ-019 Permission / Resource制約
 - RQ-021 Reference / Conformance
+- RQ-027 provider failure diagnosability
+- RQ-028 change / migration safety
+- RQ-030 context-bound quality claim（secondary）
 
 ### 現在のEvidence位置
 
@@ -254,7 +275,7 @@ Target execution / Evidence
 
 通常`T != R`です。
 
-Target buildでbaseline subjectのmeaningを変更する必要が生じた場合、Target固有field / ruleで埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認し、successor Handover Baseline `B'` / `R'`を発行します。
+Target buildでbaseline subjectのmeaningを変更する必要が生じた場合、Target固有field / ruleで埋めません。authoritative sourceへ戻り、必要なDriver / Gate B Evidenceを再確認し、successor Handover Baseline `B' / R'`を発行します。
 
 旧baseline Evidenceを新baselineへ黙ってcarry-forwardしません。
 
@@ -265,7 +286,11 @@ Target buildでbaseline subjectのmeaningを変更する必要が生じた場合
 1. Semantic Conformance
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
-4. 必要に応じたPerformance Evidence
+4. Interaction / Operability / applicable Accessibility Evidence
+5. Performance / Resource Evidence
+6. Failure / degraded / recovery Evidence
+
+4〜6を既存1〜3へ置き換える一つの総合scoreにはしません。
 
 ### 主なRequirement
 
@@ -276,6 +301,9 @@ Target buildでbaseline subjectのmeaningを変更する必要が生じた場合
 - RQ-017 二重管理の最小化
 - RQ-021 Reference / Conformance
 - RQ-024 Target別性能要求
+- RQ-027 failure / degraded / unknown diagnosability
+- RQ-029 Target-conditioned operability / accessibility
+- RQ-030 Context / Measure / Evidence-bound quality claim
 
 ### 現在のPlan / Evidence位置
 
@@ -284,16 +312,19 @@ Gate B Ready + Handover固定後:
 - `ISSUE-000007` — First Web Target Projection
 - `ISSUE-000028` — Gate C Conformance Evidence
 - `GATE_C_EVIDENCE_CONTRACT.md`
+- `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — quality Evidence progression
 
-Gate CではすべてのrunからHandover `B` / baseline `R`とWeb build `T1`へ追跡します。
+Gate CではすべてのrunからHandover `B / R`とWeb build `T1`へ追跡します。
+
+Web Targetのaccessibilityでは適用可能なWCAG 2.2 criteriaをexternal testable referenceとして利用できますが、actual Evidenceなしに準拠claimを行いません。
 
 Gate C Ready後:
 
 - `ISSUE-000026` — second Target pressure test
 
-第一Targetだけで完全なPresentation IR / Target Capability taxonomyを固定しません。
+第一Targetだけで完全なPresentation IR / Target Capability taxonomy / universal quality thresholdを固定しません。
 
-StudioがWailsを使うことと、Generated Wails Desktop Application Targetは別です。Studio HostをPAS-04のTarget成功Evidenceへ数えません。
+Studio HostをPAS-04のTarget成功Evidenceへ数えません。
 
 ## 7. PAS-05 — 外部状態が不確かな場合でも安全に実行・再開できる
 
@@ -308,6 +339,9 @@ StudioがWailsを使うことと、Generated Wails Desktop Application Targetは
 - RQ-019 Permission / Resource制約
 - RQ-020 再実行 / takeover / unknown
 - RQ-021 Reference / Conformance
+- RQ-027 failure / degraded / unknown diagnosability
+- RQ-028 change / recovery safety（secondary）
+- RQ-030 quality claim provenance（secondary）
 
 ### Evidence位置
 
@@ -337,7 +371,7 @@ explicit-reference candidate
 Shared Acceptance Boundary
 ```
 
-検索順位、文字列類似度、embedding similarity、AI confidenceだけをSemantic Evidenceにしません。
+検索順位、文字列類似度、embedding similarity、derived cognition activation、AI confidenceだけをSemantic Evidenceにしません。
 
 AI Knowledge、index、cache、過去trajectoryはderivedでありCanonicalの第二正本ではありません。
 
@@ -351,6 +385,8 @@ AI Knowledge、index、cache、過去trajectoryはderivedでありCanonicalの�
 - RQ-017 二重管理最小化
 - RQ-021 Reference / Conformance
 - RQ-023 一人でも維持可能な構造
+- RQ-027 derived mechanism failureのdiagnosability（secondary）
+- RQ-030 benchmark / resource claim provenance
 
 ### 現在のPlan / Evidence位置
 
@@ -358,8 +394,11 @@ Gate C Ready後:
 
 - `ISSUE-000047` — Human / AI共通read-only Semantic exploration（PAS-06 primary）
 - `ISSUE-000027` — exploration結果からAI Proposal / Acceptanceへ接続
+- `ISSUE-000051` — algorithm-neutral derived cognition evaluation
 
 最初から巨大Knowledge Graph、vector database、AI専用Knowledge Storeを作りません。
+
+candidate qualityとsemantic applicability / accepted decisionを分離して評価します。
 
 ## 9. PAS-07 — 手作業を失わずData / Function / Businessを相互検証して設計修正できる
 
@@ -408,6 +447,8 @@ Application Patternの並びやPAS-02のDriver validation sequenceを、accepted
 - RQ-026 Data / Function-Interaction / Business Procedureの相互検証
 - RQ-021 Reference / Conformance
 - RQ-022 設計検証段階と完成製品の区別
+- RQ-028 cross-view impact / change safety（secondary）
+- RQ-030 Evidence-bound quality claim（secondary）
 
 RQ-025はPAS-07 primary / PAS-02・PAS-04 secondaryです。
 
@@ -415,29 +456,17 @@ RQ-026はPAS-07 primary / PAS-01・PAS-02・PAS-04 secondaryです。
 
 ### 現在のPlan / Evidence位置
 
-Reference / Evidence実装はLane C `ISSUE-000042` / PR #482が所有します。Lane BはReference fixture / checkerを複製せず、EvidenceをPAS-07 claimへ対応付けます。
+Reference / Evidence実装はLane C `ISSUE-000042` / PR #482系のmain統合実装が所有します。Lane BはReference fixture / checkerを複製せず、EvidenceをPAS-07 claimへ対応付けます。
 
 現時点では次を分離します。
 
 ```text
-E7-01〜09
-  Lane C fixture / checker / pressure tests implementation exists
-  actual Repository runner Evidence unresolved
-
-E7-10
-  file-native accepted-source pressure exists
-  production Shared Acceptance end-to-end Evidence unresolved
+Lane C fixture / checker / pressure implementation exists
+        !=
+actual Repository runner Evidence accepted
+        !=
+PAS-07 whole-product claim accepted
 ```
-
-したがって:
-
-```text
-implementation exists
-  !=
-PAS-07 execution Evidence accepted
-```
-
-です。GitHub-hosted runnerがcheckout前に終了する状態やCI表示だけをcode failure / PAS failureへ読み替えません。
 
 Business-side Representation EvidenceとPAS-02 Runtime Evidenceも分けます。
 
@@ -459,16 +488,14 @@ PAS-02 Driver Evidence
 
 片方をもう片方の代替にしません。
 
-また、Reference-local stable Procedure keyはreview / handoff / stale detection / file move分離に具体的価値がありますが、それだけでCanonical `Procedure` / `Step`を採用しません。
-
-file-native Business Procedure sourceのShared Acceptanceを安全に行う機械的pressureはCanonical Procedureなしでも成立しており、現在残るidentity論点は主にRQ-002のCanonical trace targetです。minimal Canonical identity shell、Subject contract拡張、formal Authoring identity等の比較はArchitecture pressureとして別に扱い、PAS-07成立条件からfull Workflow modelを逆導出しません。
+Reference-local stable Procedure keyはreview / handoff / stale detection / file move分離に価値がありますが、それだけでCanonical `Procedure` / `Step`を採用しません。
 
 ### Gateへの影響
 
 PAS-07は新Gateではありません。
 
 - Gate B Required Evidence 3 laneへ追加しない
-- Gate C First Web Target Required Evidenceへ追加しない
+- Gate C First Web Target Required Evidenceへ自動追加しない
 - Lane C actual runner greenはPAS-07 Evidence statusを更新するが、それだけでPAS-07全体を`accepted`へ上げない
 - end-to-end correction / acceptance / reloadはPAS-01 Shared Acceptance Evidenceとcross-checkする
 
@@ -492,7 +519,7 @@ architecture probe、local fixture、synthetic adapter、beta framework、actual
 
 主にPAS-01 / PAS-06へ関係しますが全体の作業分割へ横断します。
 
-同じRepository内でRequirement → PAS → Decision → Reference → Evidenceを追えることを優先し、不要な第二正本 /巨大subsystemを増やしません。
+同じRepository内でRequirement → PAS → Decision → Reference → Evidenceを追えることを優先し、不要な第二正本 / 巨大subsystemを増やしません。
 
 ### RQ-024 — Target別性能
 
@@ -501,6 +528,44 @@ PAS-04で具体化します。
 第一Target `T1`と第二Target `T2`の実測を、Handover baseline、Target / Host、Runtime / Provider条件と一緒に比較します。
 
 根拠のない一律thresholdを第一Targetだけから固定しません。
+
+### RQ-027 — failure / degraded / unknown diagnosability
+
+PAS-02 / PAS-03 / PAS-05を中心に、全実行surfaceへ横断します。
+
+Business Result、Execution Error、Observation、Developer Diagnostic、Operational Telemetryを同一視しません。
+
+### RQ-028 — change impact / compatibility / destructiveness
+
+PAS-01 / PAS-03をprimaryな実証面とし、PAS-07 cross-view impactへも接続します。
+
+planning時の観測をapply時へ無条件carry-forwardせず、必要なfresh observation / precondition / stale detectionを要求します。
+
+### RQ-029 — Target-conditioned operability / accessibility
+
+PAS-04をprimary、PAS-01 Studioをsecondaryとします。
+
+high-densityとoperability / accessibilityを対立させず、Target固有input modalityでReference Scenarioを完遂できることをEvidence化します。
+
+### RQ-030 — Context / Measure / Evidence-bound quality claim
+
+すべてのPASに横断します。
+
+quality claimを概念上次へ戻します。
+
+```text
+subject
++ revision / build
++ Target / Host / Provider / Runtime context
++ Scenario / precondition
++ property
++ measure / probe
++ acceptance rationale
++ Evidence
++ status
+```
+
+Quality Envelopeはderivedな監査単位でありCanonical authorityではありません。
 
 ## 11. Requirement → Primary PAS mapping
 
@@ -532,6 +597,10 @@ PAS-04で具体化します。
 | RQ-024 | PAS-04 | - |
 | RQ-025 | PAS-07 | PAS-02 / PAS-04 |
 | RQ-026 | PAS-07 | PAS-01 / PAS-02 / PAS-04 |
+| RQ-027 | cross-cutting | PAS-02 / PAS-03 / PAS-05 / PAS-04 |
+| RQ-028 | PAS-01 / PAS-03 | PAS-07 / PAS-05 |
+| RQ-029 | PAS-04 | PAS-01 |
+| RQ-030 | cross-cutting | all PAS |
 
 Primaryは最初に具体化する代表PASであり、coverage scoreではありません。
 
@@ -543,6 +612,7 @@ Gate A
 
 Gate B
   -> PAS-02中心 + PAS-03のreal-provider境界を含む3 Required Evidenceをsame-Rへ収束
+  -> RQ-027〜030を理由にlaneを追加しない
 
 Gate B → C Handover
   -> PAS-02 / PAS-03で確認したbaseline revision RとunresolvedをBとして固定
@@ -550,6 +620,7 @@ Gate B → C Handover
 Gate C
   -> PAS-04をFirst Web Target build T1で実証
   -> baseline RとTarget build T1を分離
+  -> Semantic / Functional / Visualを維持しつつquality contextを観測
 
 Gate C後 — 並行可能
   -> PAS-01: ISSUE-000046 Studio minimal authoring loop
@@ -558,13 +629,11 @@ Gate C後 — 並行可能
   -> PAS-04: ISSUE-000026 second Target pressure test
 
 Gate非依存のparallel Reference pressure
-  -> PAS-07: ISSUE-000042 Business Procedure cross-view Reference
+  -> PAS-07: Business Procedure cross-view Reference
   -> Gate B / Gate C Required Evidenceへ追加しない
 ```
 
 PAS-05はruntime / deployment workstreamへ接続します。現行Gate B必須scopeを本書から拡張しません。
-
-PAS-07のReference runnerがgreenになってもGate B / CのReady条件は変わりません。greenはPAS-07 Evidence statusへ記録し、Shared AcceptanceやPAS-02 Runtime Evidenceを自動代替しません。
 
 ## 13. 新しいADR / Plan Issueへ要求する最小Trace
 
@@ -578,6 +647,7 @@ PAS-07のReference runnerがgreenになってもGate B / CのReady条件は変�
 - baseline / source / build identity
 - Reference / fixture
 - 必要なEvidence nature
+- quality claimがある場合のContext / Measure / acceptance rationale
 - 既存Gateへ影響するか否か
 - unresolved
 - reopen condition
@@ -610,6 +680,8 @@ PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native
 - AI独自Canonical Knowledge Store
 - Canonical `Procedure` / `Step`の先行採用
 - Business ProcedureからRuntime Workflow Orchestrationへの自動変換
+- Quality Envelopeの固定Canonical schema
+- 一つのuniversal quality score
 
 optional Patchを利用する場合も、file-native / Studio / CLI / AIと同じAcceptance原則へ接続します。
 
@@ -623,3 +695,5 @@ optional Patchを利用する場合も、file-native / Studio / CLI / AIと同�
 - 第一Targetだけから完全なPresentation IRを固定すること
 - Gate C前にStudio / AIの詳細interfaceを固定すること
 - PAS-07を理由にCanonical `Procedure` / `Step`、Workflow Engine、新Gateを自動導入すること
+- RQ-027〜030を理由にquality専用Gateや万能scoreを導入すること
+- external standardへの準拠をTrace表だけで宣言すること
