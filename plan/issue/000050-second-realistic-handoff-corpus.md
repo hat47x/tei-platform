@@ -15,8 +15,9 @@ Contract ADR blocker Bを解消する。`order_entry`とは独立した二つ目
 - blocker定義: [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) Remaining Contract ADR blockers
 - readiness境界: [`BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md`](../BUSINESS_PROCEDURE_ADR_VS_PRODUCTION_ADOPTION_READINESS_SPLIT_2026-09.md) §8-B
 - 設計品質: [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
+- 第二Reference受入条件の正本: [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - 十分性監査: [`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`](../BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md)
-- corpus候補: [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md) / [`LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`](../LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md)
+- corpus provenance: [`LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md`](../LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md)
 - 担当割り当て: [`UPSTREAM_BREAKDOWN_2026-09.md`](../UPSTREAM_BREAKDOWN_2026-09.md) §5
 - 関連RQ: RQ-002 / RQ-003 / RQ-018 / RQ-021 / RQ-022 / RQ-025 / RQ-026
 
@@ -24,10 +25,12 @@ Contract ADR blocker Bを解消する。`order_entry`とは独立した二つ目
 
 | 所有する | 所有しない |
 | --- | --- |
-| 二つ目のcorpusの選定とBusiness seed受け入れ条件 | Handoff表現そのものの決定（[ISSUE-000048](000048-business-procedure-contract-adr-readiness.md)） |
-| `from` / `to` / `condition`のlossless確認 | cross-view checkerの実装（[ISSUE-000042](000042-business-procedure-cross-view-reference.md)） |
-| 推測で埋めないことの実証 | production採用（[ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)） |
-| provenance-safe TEI-original seed取得計画 | external model / manualの再配布や互換実装 |
+| 二つ目のcorpusの選定と取得作業 | 第二Reference acceptance / maturity条件の正本（Lane B Acceptance Contract） |
+| accepted seed成立後の`from` / `to` / `condition` lossless確認 | Handoff表現そのものの決定（[ISSUE-000048](000048-business-procedure-contract-adr-readiness.md)） |
+| 推測で埋めないことの具体的適用 | cross-view checkerの実装（[ISSUE-000042](000042-business-procedure-cross-view-reference.md)） |
+| provenance-safe TEI-original seedのauthoring計画 | production採用（[ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)） |
+
+本IssueはRRB-P1 / P2 / P3を再定義しない。statusとacceptance条件はLane B Acceptance Contractを正とする。
 
 ## 守る境界
 
@@ -43,6 +46,8 @@ Contract ADR blocker Bを解消する。`order_entry`とは独立した二つ目
 - second-corpusのData authorityを**synthetic化しない**
 - Referenceを動かせるように見せるためだけのApplication Pattern / Capabilityを作らない
 - 出典と利用条件を記録する（public sourceを使う場合はライセンスと引用範囲を明示）
+
+これらはDesign Quality ModelとLane B Acceptance Contractの具体適用であり、本Issue固有の第二contractではない。
 
 ## corpus選定 — 2026-09-10
 
@@ -112,7 +117,7 @@ physical / external-world pressureとして
 multiple responsibility contextが存在する
 ```
 
-さらに公開manual / flowは、設計pressureとして次の分離が実在することを示す。
+さらに公開manual / flowは、design pressureとして次の分離が実在することを示す。
 
 - instruction / entryの段階と、在庫や会計上のactual changeが同時とは限らない
 - manufacturing instruction、physical manufacturing / completion、systemへのcompletion / receipt記録、shipment workは一つのsystem commandへ必ずしも畳めない
@@ -156,7 +161,7 @@ prepare / perform shipment
 | Nature | Current second corpusでの扱い |
 | --- | --- |
 | source-backed fact | 上記public sourceから高水準に確認できる業務concern / physical pressure / instructionとactualityの分離pressure |
-| accepted TEI Business meaning | **まだ無い**。Gate A green後に独立Business seedからauthorする |
+| accepted TEI Business meaning | **まだ無い**。Gate A green後にRRB-P1を満たすindependent Business seedとしてauthorする |
 | derived cross-view fact | accepted seedが無いため、second corpusとしてはまだauthoritative projectionを作らない |
 | proposal / candidate | TEI-original小型scenarioのbusiness need / Action composition / cross-view question |
 | unresolved | exact actor、trigger、Step sequence、responsibility boundary、Handoff condition、Data identity、Application realization、actuality evidence |
@@ -185,47 +190,42 @@ Business上の受入・次責任へのcontinuationは
 
 この問いはHandoffの存在を前提にしない。
 
-## Business Seed Acceptance Contract
+## RRB-P1 acceptanceの本Issueへの適用
 
-Gate A green後にsecond corpusをaccepted sourceへ進める前に、次を満たすBusiness seedを先に成立させる。
+第二Reference acceptance条件の正本は`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`であり、本Issueでは再定義しない。
 
-### S1 — independent business need
+製造・在庫候補へ適用する際は、特に次を確認する。
 
-Handoff fieldを検証したいから作るのではなく、Handoffを取り除いてもdomain上説明できるpurpose / problemを持つ。
+```text
+independent Business need
+  Handoff testを除いても価値がある
 
-### S2 — bounded scope
+bounded scope
+  full manufacturing systemを再現しない
 
-full manufacturing / inventory systemを再現しない。扱うbusiness need、扱わない隣接領域、外部境界を明示する。
+provenance / non-copying
+  external factとTEI-original decisionを混ぜない
 
-### S3 — provenance-safe known facts
+explicit unresolved
+  actor / trigger / sequence / Data / realization / actuality / responsibilityを捏造しない
 
-public sourceから確認したfactと、TEIが独自に採用するBusiness meaningを混ぜない。外部modelのactor / sequence / table / function inventoryを写さない。
+actuality boundary
+  system resultとmanual / physical factを短絡すると意味が壊れるpressureがある
 
-### S4 — explicit unresolved
+meaningful cross-view question
+  Data / Function / Businessを相互に見ないと判断できない
 
-actor、trigger、sequence、Data、realization、actuality、responsibility boundary等の未確定点をseed authoring前に列挙する。unknownを埋めるための架空detailを作らない。
+no forced Handoff / no fake realization
+  responsibility transferやApplication refをtest都合で作らない
+```
 
-### S5 — actuality boundary
-
-少なくとも一つ、system action / resultとmanual / physical / external actualityを同一視すると設計が壊れる箇所を持つ。ただし具体的なObservation identityを証拠なしに発明しない。
-
-### S6 — meaningful cross-view question
-
-Data / Function / Businessの少なくとも二視点から見ないと判断できない設計問題を持つ。単にProcedureの文章量を増やすseedは採らない。
-
-### S7 — no forced Handoff
-
-seedがHandoffなしでもReferenceとして価値を持つ。accepted Business meaningからresponsibility transferが自然に生じた場合だけHandoff candidateへ進む。
-
-### S8 — no fake realization
-
-Referenceを動かせるように見せるためだけのApplication Pattern / Capability / Data identityを作らない。existing TEI identityにexactに接続できるものだけref候補とする。
-
-S1〜S8はproduction schema fieldではなく、second-corpus authoring前reviewの品質条件である。
+これらはRRB-P1の本Issue固有の読み方であり、独立したS1〜S8 contractや新Gateを作らない。
 
 ## Responsibility transfer / Handoff受け入れ条件
 
-Business seed成立後、次の3点が**同じaccepted Business change-setから整合的に説明できる場合だけ**Handoff candidateを受理する。一つのphysical fileや一つの文だけに同居することは要求しない。
+RRB-P1 source成立後、responsibility transferが自然に存在する場合だけHandoff candidateを検討する。
+
+次の3点が**同じaccepted Business change-setから整合的に説明できる場合**に、current H1/R3のpositive pressureへ進む。一つのphysical fileや一つの文だけに同居することは要求しない。
 
 ```text
 from
@@ -251,18 +251,20 @@ condition
 
 一つでもaccepted sourceから確定できない場合はunresolvedを保持し、Step adjacency・物理Observation・Application execution順から補完しない。
 
+Handoffが自然に存在しない場合、そのseedはH1/R3 generality Evidenceにはならない。seedを変形してHandoffを作らずnegative resultとして記録する。
+
 ## Authoring sequence — Gateではない
 
 Corpus selection / provenance整理はaccepted Business meaningをまだauthorしていないresearch incrementなのでGate A actual green前でも行ってよい。
 
-一方、`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`が固定した順序は維持する。
+一方、`BUSINESS_HANDOFF_SECOND_CASE_ADR_EVIDENCE_SUFFICIENCY_AUDIT_2026-09.md`とISSUE-000048が固定した順序は維持する。
 
 ```text
 provenance pressure selection
   ↓
-non-authoritative Business seed proposal
+non-authoritative Business seed proposal / design question
   ↓ actual Repository Gate A green後
-accepted independent Business need / seed
+RRB-P1を満たすaccepted independent Business source
   ↓
 minimal Procedure / Step accepted meaning
   ↓ responsibility transferが自然に成立した場合だけ
@@ -270,10 +272,10 @@ explicit Handoff candidate
   ↓
 from / to / condition losslessness Pressure
   ↓
-actual execution Evidence
+RRB-P2 source/test integration
+  ↓
+actual execution Evidence / RRB-P3
 ```
-
-Handoff candidateが自然に成立しない場合、seedを失敗扱いしてHandoffを捏造しない。「このseedはH1/R3 generality Evidenceにならない」というnegative resultを残し、別のindependent Business seedを探索する。
 
 したがってGate A green前には次を行わない。
 
@@ -294,33 +296,34 @@ provenance source set
 reuse / non-copying boundary
 target scope
 Evidence nature boundary
-Business Seed Acceptance Contract
+candidate design question
+RRB-P1 acceptance criteriaの製造・在庫候補への適用方法
 responsibility-transfer review rules
-Gate A green前のcandidate design question
 ```
 
 閉じない:
 
 ```text
-accepted Business seed
+RRB-P1 accepted Business source
 accepted Procedure / Step
 RRB-P2 source/test integration
 from / to / condition losslessness
 actual negative test
 Handoff fail-closed actual Evidence
+RRB-P3
 Contract ADR blocker B
 ```
 
-したがって現時点はRRB-P1へ向けたsource / quality-contract preparationであり、`Reference breadth Evidence established`やContract ADR readyを主張しない。
+したがって現時点はRRB-P1へ向けたsource / review preparationであり、`Reference breadth Evidence established`やContract ADR readyを主張しない。
 
 ## 完了条件
 
 - [x] `order_entry`と独立したcorpusを1件選定し、出典・利用条件・対象範囲を記録した
-- [x] accepted seed前の品質条件（S1〜S8）とEvidence natureを定義した
-- [x] Gate A green前に検討可能なcandidate design questionを定義した
-- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedを成立させた
+- [x] Evidence natureとcandidate design questionを整理した
+- [x] Lane B RRB-P1 acceptance条件を製造・在庫候補へどう適用するか整理した
+- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた
 - [ ] seedのknown / accepted / derived / proposal / unresolvedをreviewできる形で記録した
-- [ ] `from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
+- [ ] responsibility transferが自然に存在する場合、`from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
 - [ ] 元資料に無いidentity / actor / sequenceを補完していないことを確認した
 - [ ] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した
 - [ ] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した
@@ -332,20 +335,20 @@ Contract ADR blocker B
 
 1. candidate design questionを、accepted meaningへ昇格させずにreviewする
 2. public-source auditでinstruction / system entry / physical actualityの分離pressureに不足がないか確認する
-3. S1〜S8で将来seedのacceptance review templateを準備する
+3. RRB-P1の各acceptance条件に対して、将来authorするseedで何を示す必要があるかをissue-local checklistとして準備する
 4. candidate / unresolved分類を維持し、accepted Business sourceへ昇格しない
 5. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する
 
 ### Gate A green後
 
-1. Handoff検証とは独立したsmall Business need / Reference seedをS1〜S8でreviewしてauthorする
+1. Handoff検証とは独立したsmall Business need / Reference seedをRRB-P1条件でreviewしてauthorする
 2. seedだけからminimal Procedure / Step meaningを成立させる
 3. source responsibility / target responsibility / continuation conditionをreviewする
 4. responsibility transferが成立する場合だけexplicit Handoff candidateをauthorする
 5. condition成立Evidenceが必要な場合、まず既存Source / Provenance / Evidence mechanismでtrace可能か確認する
 6. 確定できない項目はunresolvedのまま保持するnegative PressureをISSUE-000042側へ渡す
 7. source/test-level integration後、actual Repository runnerでsystem result / Observation / adjacency / actor差からHandoffを生成しないことを確認する
-8. blocker Bを閉じられるEvidence natureに到達した時だけISSUE-000048へhandoffする
+8. RRB-P2 / P3とblocker Bを閉じられるEvidence natureに到達した時だけISSUE-000048へhandoffする
 
 ## Reopen trigger
 
@@ -372,5 +375,6 @@ second corpusで具体的lossが出た場合だけcurrent minimum contractをreo
 ## 関連
 
 - [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](../BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md)
+- [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](../LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md)
 - [ISSUE-000048](000048-business-procedure-contract-adr-readiness.md) / [ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)
 - [ISSUE-000042](000042-business-procedure-cross-view-reference.md)
