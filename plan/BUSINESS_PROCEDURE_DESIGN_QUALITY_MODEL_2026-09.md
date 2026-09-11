@@ -287,11 +287,13 @@ Business Procedureは「全fieldが埋まったら完成」ではなく、対象
 
 対象domainで「不明」が正しい答えならunresolvedでよい。レビューの目的は空欄をなくすことではなく、**現在のknowledge boundaryを正しくすること**である。
 
-## 11. Realistic Reference seedの品質契約
+## 11. Realistic Reference seedのreview原則
 
 第二・第三のReferenceは既存contractを通すためのfixtureではなく、Handoff等を取り除いても独立したBusiness設計価値を持つseedから始める。
 
-accepted seedへ進める前に、少なくとも次をreviewする。
+ここではBusiness Procedure一般のdesign-quality review原則だけを示す。**second realistic Referenceのacceptance / maturity条件（RRB-P1 / P2 / P3）の正本は `LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`** とし、本節を別のacceptance contractにしない。
+
+accepted seedへ進める前のreviewでは、少なくとも次を見る。
 
 ### 11.1 independent business need
 
@@ -348,14 +350,14 @@ exact actor、accepted Step sequence、Handoff conditionは引き続きunresolve
 
 ## 13. Authoring sequence — Gateではない
 
-second realistic corpusでは次の順序を使う。これは新しいGate / state machineではない。
+second realistic corpusでは次の順序を使う。これは新しいGate / state machineではない。second Referenceのformal maturity判定はLane B Acceptance Contractに従う。
 
 ```text
 provenance pressure selection
   ↓
 non-authoritative Business seed proposal
-  ↓  actual Gate A green後
-accepted independent Business need / seed
+  ↓  Lane C Business Procedure Gate A actual green後
+RRB-P1を満たすaccepted independent Business source
   ↓
 minimal Procedure / Step meaning
   ↓  responsibility transferが自然に成立した場合のみ
@@ -363,7 +365,7 @@ explicit Handoff candidate
   ↓
 D4 / O1 / S4-A / H1/R3 cross-view Pressure
   ↓
-actual execution Evidence
+RRB-P2 / actual RRB-P3 Evidence
 ```
 
 Handoff candidateが自然に成立しない場合、second corpusを失敗扱いしてHandoffを捏造しない。その場合は「このseedはH1/R3 generality Evidenceにならない」というnegative resultを記録し、別のindependent seedを探す。
@@ -398,6 +400,9 @@ docs/business-system-design.md
 本書
   -> Business Procedure design-quality review model
 
+plan/LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md
+  -> second realistic Reference acceptance / maturity条件
+
 plan/issue/000042...
   -> Lane C detailed Reference / Pressure inventory
 
@@ -405,7 +410,7 @@ plan/issue/000048...
   -> Contract ADR readiness work ownership
 
 plan/issue/000050...
-  -> second realistic corpus acquisition / acceptance plan
+  -> manufacturing / inventory second-corpus acquisition / application plan
 ```
 
 外部知見はquestion-specific research / provenance documentへ近接保持し、public cross-cutting reference noteを第三者Evidenceの第二正本へ戻さない。
@@ -425,6 +430,7 @@ Current Handoff
 second realistic corpus
   = Handoff fixtureから始めない
   = independent Business seedから始める
+  = acceptance / maturityはLane B Acceptance Contractを正とする
 
 unknown
   = preserve
