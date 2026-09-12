@@ -22,6 +22,7 @@
 | 実際に動かしたい | [Getting Started](getting-started.md) | [現在の実装状況](status.md) |
 | Security / Authority境界 | [Security](security.md) | [Architecture](architecture.md) |
 | 用語・命名を確認したい | [Naming](naming.md) | [TEIの考え方](overview.md) |
+| 文書を書きたい・レビューしたい | [TEI 文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
 
 ## 文書の役割
 
@@ -94,6 +95,14 @@ Requirementだけから実装を直接導出せず、PAS、設計判断、Refere
 
 `status.md`は現在地の入口であり、Gate判定そのものの正本は`plan/`側にあります。
 
+### 5. 文書を書く・レビューする
+
+1. [TEI 文書品質ガイド](documentation-quality.md)
+2. [`AGENTS.md`](../AGENTS.md)
+3. 対象文書の上位正本 / Reference / Evidence
+
+TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では十分ではありません。文書側で背景、前提、用語、失敗例、設計理由を引き受け、**主担当より一段浅い知識の読者でも、目的・境界・判断理由をレビューできる状態**を目指します。
+
 ## 設計文書を読むときの区別
 
 ### 「設計として決めた」と「実装で確認した」を分ける
@@ -131,6 +140,8 @@ Architecture / Requirement exists
 5. **根拠** — Reference、Conformance、Evidence、関連ADR / Issue
 6. **非主張範囲** — test PASSやReference成立から何を一般化しないか
 
+さらに、内容が難しいほど「なぜ必要か」「どんな失敗を防ぐか」「具体例ではどう見えるか」を先に説明します。詳細な執筆方針は[TEI 文書品質ガイド](documentation-quality.md)を参照してください。
+
 すべての文書へ同じ固定テンプレートを強制するものではありません。文書の種類に応じて必要な項目だけを使い、形式を守ること自体を目的にしません。
 
 ## Repository内の主な入口
@@ -145,6 +156,6 @@ Architecture / Requirement exists
 - 実行開始: [`getting-started.md`](getting-started.md)
 - Security: [`security.md`](security.md)
 - Naming: [`naming.md`](naming.md)
+- 文書品質: [`documentation-quality.md`](documentation-quality.md)
 
 この案内板に現在地や設計判断そのものを複製しすぎないようにします。状態や意味が変わった場合は、まず各正本文書を更新し、この文書は読み手導線だけを追随させます。
-
