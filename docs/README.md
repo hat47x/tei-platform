@@ -15,7 +15,8 @@
 | TEIが何を目指すか | [はじめてTEIを知る方へ](for-readers.md) | [TEIの考え方](overview.md) |
 | 技術的な全体構造 | [Architecture 読み方ガイド](architecture-reading-guide.md) | [Architecture](architecture.md) |
 | 機能ごとの内部設計 | [機能設計文書](../plan/design/README.md) | 対応するADR / Plan Issue |
-| 業務システム設計としての境界 | [Business-System Design](business-system-design.md) | [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) |
+| 業務システム設計としての境界 | [業務システム設計 読み方ガイド](business-system-design-reading-guide.md) | [Business-System Design](business-system-design.md) |
+| AI / local cognition / Design Synthesis | [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) | [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) |
 | 正式なProduct Requirement | [Product Requirements 読み方ガイド](../requirements/README.md) | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
 | RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
 | 現在どこまで成立しているか | [現在の実装状況](status.md) | [TEI Planning](../plan/README.md) |
@@ -58,7 +59,7 @@ Gate / Product claim
 | `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとのConformance説明 |
 | `docs/audits/` | 特定時点の監査結果を残す | 監査記録。current architectureの第二正本ではない |
 
-`architecture-reading-guide.md`と`requirements/README.md`は、正本の内容を置き換える文書ではありません。前提知識の少ない読者が、背景・失敗例・要求群のつながりを理解してから正本へ進むための補助入口です。
+`architecture-reading-guide.md`、`business-system-design-reading-guide.md`、`design-synthesis-reading-guide.md`、`requirements/README.md`は、正本の内容を置き換える文書ではありません。前提知識の少ない読者が、背景・失敗例・要求群のつながりを理解してから正本やplanning文書へ進むための補助入口です。
 
 ## おすすめの読み順
 
@@ -75,10 +76,11 @@ Gate / Product claim
 1. [TEIの考え方](overview.md)
 2. [Architecture 読み方ガイド](architecture-reading-guide.md)
 3. [Architecture](architecture.md)
-4. [Business-System Design](business-system-design.md)
-5. 必要なADR / Conformance / Reference
+4. [業務システム設計 読み方ガイド](business-system-design-reading-guide.md)
+5. [Business-System Design](business-system-design.md)
+6. 必要なADR / Conformance / Reference
 
-`architecture-reading-guide.md`で、各境界がどんな失敗を防ぐのかを把握してから、`architecture.md`の詳細へ進みます。
+`architecture-reading-guide.md`で、各技術境界がどんな失敗を防ぐのかを把握してから、`architecture.md`の詳細へ進みます。Business側のactor、manual work、Handoff、actuality等が難しい場合は、`business-system-design-reading-guide.md`で一つの業務例を追ってから正本へ進みます。
 
 `architecture.md`は主に技術境界、`business-system-design.md`は主に業務設計上の境界を扱います。両者は競合する二つのArchitectureではなく、同じTEIを異なる焦点から説明します。
 
@@ -93,7 +95,18 @@ Gate / Product claim
 
 Requirementだけから実装を直接導出せず、PAS、設計判断、Reference、Evidenceを通して成立範囲を確認します。
 
-### 4. 現在のGateを確認する
+### 4. AI / local cognition / Design Synthesisを追う
+
+1. [TEIの考え方](overview.md) — TEI全体におけるAIの位置を確認する
+2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) — 人の作業を何へ圧縮したいのかを具体例から理解する
+3. [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上位Product GoalとDSR候補
+4. [Derived Cognitive Exploration Overview](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — 非LLM認知を検討する理由
+5. [Derived Cognitive Requirement Draft](../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — TEIへ求める性質
+6. 対応するPlan Issue / Benchmark / Feature Contract
+
+FlyHash、HDC、embedding、feature atom等の詳細から読み始めず、「既知の事実で候補空間を狭め、人は残った意味判断を行う」というProduct Goalから下へ降ります。
+
+### 5. 現在のGateを確認する
 
 1. [現在の実装状況](status.md)
 2. [TEI Planning](../plan/README.md)
@@ -101,7 +114,7 @@ Requirementだけから実装を直接導出せず、PAS、設計判断、Refere
 
 `status.md`は現在地の入口であり、Gate判定そのものの正本は`plan/`側にあります。
 
-### 5. 文書を書く・レビューする
+### 6. 文書を書く・レビューする
 
 1. [TEI 文書品質ガイド](documentation-quality.md)
 2. [`AGENTS.md`](../AGENTS.md)
@@ -133,7 +146,7 @@ Architecture / Requirement exists
 
 ### 「説明」と「正本」を分ける
 
-`for-readers.md`、`overview.md`、`architecture-reading-guide.md`、`requirements/README.md`は理解のための説明・案内です。読みやすく言い換えても、Product RequirementやArchitecture boundaryの意味を独自に増減させません。
+`for-readers.md`、`overview.md`、各reading guide、`requirements/README.md`は理解のための説明・案内です。読みやすく言い換えても、Product RequirementやArchitecture boundaryの意味を独自に増減させません。
 
 ## 設計文書の基本体裁
 
@@ -160,7 +173,9 @@ Architecture / Requirement exists
 - 技術Architecture: [`architecture.md`](architecture.md)
 - Product Requirements読み方: [`../requirements/README.md`](../requirements/README.md)
 - Product Requirements正本: [`../requirements/TEI_PRODUCT_REQUIREMENTS.md`](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
-- 業務システム設計: [`business-system-design.md`](business-system-design.md)
+- 業務システム設計読み方: [`business-system-design-reading-guide.md`](business-system-design-reading-guide.md)
+- 業務システム設計正本: [`business-system-design.md`](business-system-design.md)
+- Design Synthesis / 認知支援読み方: [`design-synthesis-reading-guide.md`](design-synthesis-reading-guide.md)
 - 現在地: [`status.md`](status.md)
 - 実行開始: [`getting-started.md`](getting-started.md)
 - Security: [`security.md`](security.md)
