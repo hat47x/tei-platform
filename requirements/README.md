@@ -51,7 +51,7 @@ Web画面で登録するという実現方法
 - fileを移動しただけで別の業務概念になってしまう
 - generated artifactがいつの間にか第二の正本になる
 - SQLや既存Go実装をTEI利用のためだけに書き直す
--同じ意味を複数sourceからheuristicにmergeし、どれが正しいかわからなくなる
+- 同じ意味を複数sourceからheuristicにmergeし、どれが正しいかわからなくなる
 
 対応する主なRequirement:
 
