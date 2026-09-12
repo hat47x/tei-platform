@@ -144,6 +144,7 @@ Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI�
 設計本文:
 
 - [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — concise definition / three-memory separation / feedback routing / minimum semantic delta / Reference Modelの役割
+- [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上流の複数設計案をローカル認知で縮約し、local LLMとsemantic-to-implementation/test derivationへ接続する上位Product Goal
 - [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
 
 中心flow:
@@ -170,6 +171,8 @@ authoritative source → reload / regenerate
 
 ここで、LLMやcognitive indexを新しいauthorityにしません。Reference Modelはanswer libraryではなく、worked example・実行可能content・Conformance pressure・pattern evidence・Platform feedback sourceとして扱います。
 
+Design Synthesisの長期目標は、上流purposeから複数のstructured design candidateを作り、exact / constraint / pattern / cross-view / associative cognitionで候補空間を狭め、local LLMには少数案の比較・統合・minimum semantic delta提案を担わせることです。accepted meaningからimplementationとtestをできる限り再生成し、人間の反復authoringをmeaning selection / Acceptanceへ圧縮します。
+
 Gate C前はdefinition inventory、feedback routing、memory separation、Reference pattern provenance等のread-only設計準備までです。Gate C後、`ISSUE-000046` / `000047` / `000027`を一つの小さいsemantic changeで合流させ、その後に`ISSUE-000051`のnon-LLM cognition比較へ進みます。
 
 ## Gate C後のplanning
@@ -194,14 +197,15 @@ StudioはCanonicalの第二正本ではありません。Definition-centered loo
 
 この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
-1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
-2. [`DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — SEI Cognition / SUI / ハエ脳等の関連検討からTEIへ取り込む性質を抽出した要件素案と所有境界
-3. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
-4. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
-5. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
-6. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
+1. [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 複数設計案、proposal-space contraction、local-first認知、local LLM、semantic-to-code/test derivationという上位Product Goal
+2. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
+3. [`DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — SEI Cognition / SUI / ハエ脳等の関連検討からTEIへ取り込む性質を抽出した要件素案と所有境界
+4. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
+5. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
+6. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
+7. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
 
-Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることがProduct上の中心です。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを後段で比較する方式であり、search ranking / similarityをSemantic Evidenceへ格上げしません。
+Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることは最初の実証スライスです。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを比較する方式であり、最終目標はretrieval単体ではなく、設計候補の生成・縮約・Acceptance・implementation/test derivationまでfeedback loopを閉じることです。
 
 ### AI Proposal / PAS-01 / PAS-06
 
