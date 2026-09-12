@@ -13,14 +13,14 @@
 | 知りたいこと | 最初に読む文書 | 次に読む文書 |
 | --- | --- | --- |
 | TEIが何を目指すか | [はじめてTEIを知る方へ](for-readers.md) | [TEIの考え方](overview.md) |
-| 技術的な全体構造 | [Architecture](architecture.md) | [Business-System Design](business-system-design.md) |
+| 技術的な全体構造 | [Architecture 読み方ガイド](architecture-reading-guide.md) | [Architecture](architecture.md) |
 | 機能ごとの内部設計 | [機能設計文書](../plan/design/README.md) | 対応するADR / Plan Issue |
 | 業務システム設計としての境界 | [Business-System Design](business-system-design.md) | [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md) |
-| 正式なProduct Requirement | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
+| 正式なProduct Requirement | [Product Requirements 読み方ガイド](../requirements/README.md) | [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md) |
 | RequirementからEvidenceまでのつながり | [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEI Planning](../plan/README.md) |
 | 現在どこまで成立しているか | [現在の実装状況](status.md) | [TEI Planning](../plan/README.md) |
 | 実際に動かしたい | [Getting Started](getting-started.md) | [現在の実装状況](status.md) |
-| Security / Authority境界 | [Security](security.md) | [Architecture](architecture.md) |
+| Security / Authority境界 | [Security](security.md) | [Architecture 読み方ガイド](architecture-reading-guide.md) |
 | 用語・命名を確認したい | [Naming](naming.md) | [TEIの考え方](overview.md) |
 | 文書を書きたい・レビューしたい | [TEI 文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
 
@@ -58,6 +58,8 @@ Gate / Product claim
 | `docs/conformance/` | 実装と設計上の不変条件の対応を示す | 対象範囲ごとのConformance説明 |
 | `docs/audits/` | 特定時点の監査結果を残す | 監査記録。current architectureの第二正本ではない |
 
+`architecture-reading-guide.md`と`requirements/README.md`は、正本の内容を置き換える文書ではありません。前提知識の少ない読者が、背景・失敗例・要求群のつながりを理解してから正本へ進むための補助入口です。
+
 ## おすすめの読み順
 
 ### 1. 初めてTEIを読む
@@ -71,19 +73,23 @@ Gate / Product claim
 ### 2. Architectureを追う
 
 1. [TEIの考え方](overview.md)
-2. [Architecture](architecture.md)
-3. [Business-System Design](business-system-design.md)
-4. 必要なADR / Conformance / Reference
+2. [Architecture 読み方ガイド](architecture-reading-guide.md)
+3. [Architecture](architecture.md)
+4. [Business-System Design](business-system-design.md)
+5. 必要なADR / Conformance / Reference
+
+`architecture-reading-guide.md`で、各境界がどんな失敗を防ぐのかを把握してから、`architecture.md`の詳細へ進みます。
 
 `architecture.md`は主に技術境界、`business-system-design.md`は主に業務設計上の境界を扱います。両者は競合する二つのArchitectureではなく、同じTEIを異なる焦点から説明します。
 
 ### 3. Requirementから実証まで追う
 
-1. [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
-2. [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
-3. [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-4. [TEI Planning](../plan/README.md)
-5. 対応するPlan Issue / Reference / Evidence
+1. [Product Requirements 読み方ガイド](../requirements/README.md)
+2. [TEI Product Requirements](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
+3. [業務システム設計 要求解釈基線](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
+4. [Upstream Acceptance Scenario Traceability](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+5. [TEI Planning](../plan/README.md)
+6. 対応するPlan Issue / Reference / Evidence
 
 Requirementだけから実装を直接導出せず、PAS、設計判断、Reference、Evidenceを通して成立範囲を確認します。
 
@@ -127,7 +133,7 @@ Architecture / Requirement exists
 
 ### 「説明」と「正本」を分ける
 
-`for-readers.md`や`overview.md`は理解のための説明です。読みやすく言い換えても、Product RequirementやArchitecture boundaryの意味を独自に増減させません。
+`for-readers.md`、`overview.md`、`architecture-reading-guide.md`、`requirements/README.md`は理解のための説明・案内です。読みやすく言い換えても、Product RequirementやArchitecture boundaryの意味を独自に増減させません。
 
 ## 設計文書の基本体裁
 
@@ -150,7 +156,10 @@ Architecture / Requirement exists
 - Planning正本への案内: [`../plan/README.md`](../plan/README.md)
 - 初心者向け: [`for-readers.md`](for-readers.md)
 - 概念説明: [`overview.md`](overview.md)
+- Architecture読み方: [`architecture-reading-guide.md`](architecture-reading-guide.md)
 - 技術Architecture: [`architecture.md`](architecture.md)
+- Product Requirements読み方: [`../requirements/README.md`](../requirements/README.md)
+- Product Requirements正本: [`../requirements/TEI_PRODUCT_REQUIREMENTS.md`](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 - 業務システム設計: [`business-system-design.md`](business-system-design.md)
 - 現在地: [`status.md`](status.md)
 - 実行開始: [`getting-started.md`](getting-started.md)
