@@ -195,10 +195,11 @@ StudioはCanonicalの第二正本ではありません。Definition-centered loo
 この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
 1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
-2. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
-3. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
-4. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
-5. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
+2. [`DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — SEI Cognition / SUI / ハエ脳等の関連検討からTEIへ取り込む性質を抽出した要件素案と所有境界
+3. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
+4. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
+5. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
+6. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
 
 Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることがProduct上の中心です。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを後段で比較する方式であり、search ranking / similarityをSemantic Evidenceへ格上げしません。
 
