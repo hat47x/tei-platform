@@ -5,6 +5,60 @@
 - 本格着手条件: Gate C Ready
 - Product Acceptance Scenario: **PAS-01 primary / PAS-06 secondary**
 
+## このIssueを最初に読むときの要点
+
+このIssueは、AIに設計を任せるための仕組みを作るものではありません。
+
+中心となる問いは、**AIや他の認知方式が有用な変更候補を作っても、その候補をCanonical authorityへ直接昇格させず、file edit・Studio・CLIと同じ受理境界へ通せるか**です。
+
+```text
+既存資産探索 / 設計候補
+        ↓
+minimum semantic deltaを持つProposal
+        ↓
+Preview / deterministic checks
+        ↓
+Reject / Accept
+        ↓ Accept時だけ
+Shared Acceptance Boundary
+        ↓
+authoritative source
+```
+
+AIが賢いことと、AIにauthorityがあることは別です。
+
+```text
+proposal quality
+      !=
+write authority
+      !=
+runtime authority
+```
+
+### このIssueが減らす不確実性
+
+主に次の問いへ答えます。
+
+1. AIの非決定的な提案を、第二の正本を作らず既存authoring経路へ接続できるか。
+2. AIがwhole file / whole modelを再生成するのではなく、人が意味上の差分をreviewできる最小変更として提示できるか。
+3. Proposal作成後にsourceが変わった場合、staleな提案を黙って最新版へ適用せず止められるか。
+4. Reject / Preview段階ではauthoritative sourceを一切変更せず、Accept後はAIなしでも同じCanonical meaningを再構成できるか。
+5. AIのautonomy、Proposal生成能力、write authority、Runtime実行権限を別々に保てるか。
+
+### 完了すると何を判断できるか
+
+このIssueが完了すると、**AIをTEIのauthoring支援へ接続しても、AIだけに特別な正本変更経路やauthorityを与えず、他のauthoring手段と同じAcceptance原則で扱える**と判断できます。
+
+一方、次はこのIssueの完了だけでは言えません。
+
+- AIが自動で変更を採用してよい
+- AIがRuntime Commandを直接実行してよい
+- 特定のLLM / prompt / vector storeが標準である
+- Studio UIが完成している
+- Derived Experience KnowledgeがSemantic authorityを持つ
+
+read-only探索と適用可能性判定は[ISSUE-000047](000047-knowledge-first-semantic-exploration.md)、Studioの最小Authoring Loopは[ISSUE-000046](000046-studio-shared-acceptance-authoring-loop.md)が担当します。
+
 ## 背景
 
 RQ-015では、生成AIが既存知識を探索してから新規実装へ進むことを要求しています。RQ-016では、AIの提案と採用済みDecisionを区別し、履歴・抑制・変更可能性を持つことを要求しています。
