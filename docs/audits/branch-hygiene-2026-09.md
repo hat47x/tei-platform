@@ -33,6 +33,8 @@ conflicting branches requiring separate review: 8
 
 ただしPR #578には、8本のconflicting branch名が記録されていません。このため「8本残っている」という数だけを根拠にbranchを削除してはいけません。残存branchは再監査してidentityを確定する必要があります。
 
+2026-09-14にGitHub上のbranch inventoryを再取得すると、**mainを含め531本、non-main 530本**でした。これはcleanup目標ではなく、以後の「増えたかどうか」を観測するためのsoft baselineとして使います。
+
 ## 3. PR #578 / #569の整理結果
 
 PR #578は当初7 branch分の統合を目的としていましたが、その後mainへ関連文書が別PRで統合されたため、2026-09-13時点のnet diffは次の2 file / 6 substitutionsだけになっていました。
@@ -64,6 +66,8 @@ go test ./tools/reference-business-procedure-check/... \
 - `fix/lane-c-exact-datasource-authority-probes`
 
 これはbranch削除の代替ではありません。Repositoryからbranch名を除去する場合は、別途remote ref deletionが必要です。
+
+2026-09-14の確認時点ではopen PRは0件でした。したがって、少なくとも「open PRに紐付くbranchを誤ってcleanupする」危険はその時点ではありませんでした。ただし、この事実は時点依存なので、実際の削除判断時には必ず再確認します。
 
 ## 4. Branchを分類する基準
 
@@ -135,7 +139,56 @@ remote branchを削除する前に、最低限次を確認します。
 
 安全性が十分に確認できてから、明示的なbranch listを入力するcleanup commandを別途検討します。
 
-## 7. 今後の運用
+## 7. 再発防止の機械的guard
+
+既存branchのcleanupだけでは不十分なので、2026-09-14から新規branchの増殖を抑えるguardを追加します。
+
+### PR時のbranch naming policy
+
+[`tools/repository-branch-policy.sh`](../../tools/repository-branch-policy.sh)は、新しいPRのhead branchについて次を検査します。
+
+- 標準prefixを使っているか
+- `-final` / `-sync` / `-current` / `-rebased`等の一時状態suffixを付けていないか
+- 日付や`-v2`等で同じworkstreamを世代化していないか
+- `tmp` / `noop`をremote branchとして使っていないか
+
+このguardの目的は命名美ではありません。
+
+```text
+same workstream
+   ↓
+new suffix branchを作る
+```
+
+ではなく、
+
+```text
+same workstream
+   ↓
+previous PR merge済みを確認
+   ↓
+existing workstream branchをmainへ戻す
+   ↓
+再利用
+```
+
+を通常経路にするためです。
+
+### 定期read-only audit
+
+`.github/workflows/repository-branch-hygiene.yml`は週次および手動実行で全remote branchをread-only監査し、分類結果をJob Summaryとartifactへ残します。
+
+workflow自身はbranchをdelete / resetしません。
+
+また、non-main branch数がsoft baselineの530本を超えた場合はwarningを出します。既存530本の多さ自体を成功条件にはせず、まず**これ以上の無意識な増加を検知する**ためのguardです。cleanupが進めばbaselineも引き下げます。
+
+```text
+scheduled observation != cleanup authority
+```
+
+これはTEI本体で守っている`Observation != Authority`と同じ発想をRepository運用にも適用したものです。
+
+## 8. 今後の運用
 
 新しいbranchについては、監査で後から掃除することより、そもそも増やさないことを優先します。
 
@@ -154,12 +207,12 @@ merge
 
 Repository hygiene自体は`work/repository-hygiene`を継続branchとし、一度に一つのPRだけを扱います。
 
-## 8. 未解決事項
+## 9. 未解決事項
 
 - PR #578で「conflict」とされた8 branchのidentity再確定
 - 全remote branchをcurrent mainに対して再分類したcurrent report
 - `PATCH_EQUIVALENT_REVIEW`のうちmerge-only固有変更を持つbranchの確認
 - remote refを実際に削除する安全な手順の確定
-- 将来branch数が再増加した際のCI / scheduled auditの要否
+- 定期auditを数回運用した後、削除候補をどこまで自動提示してよいかの再評価
 
 これらを解決するまで、branch数だけを減らす目的で一括force-reset / 一括削除は行いません。
