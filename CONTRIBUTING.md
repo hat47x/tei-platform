@@ -173,9 +173,13 @@ tools/repository-branch-audit.sh
 
 2026年9月の既存branch棚卸しについては[`docs/audits/branch-hygiene-2026-09.md`](docs/audits/branch-hygiene-2026-09.md)を参照してください。
 
-### 10. 新しいPRはbranch naming policyを通す
+### 10. 新しいbranchはpolicy scriptで確認する
 
-新しいPRでは[`tools/repository-branch-policy.sh`](tools/repository-branch-policy.sh)をCIから実行します。
+新しいPRを作る前に、[`tools/repository-branch-policy.sh`](tools/repository-branch-policy.sh)でbranch名を確認します。
+
+```bash
+tools/repository-branch-policy.sh "$(git branch --show-current)"
+```
 
 次を新規branch名として使いません。
 
@@ -186,23 +190,27 @@ tools/repository-branch-audit.sh
 
 目的は名前を形式的に揃えることではなく、**同じworkstreamに新しい世代branchを作る代わりに、既存branchを安全に再利用する習慣を機械的に支えること**です。
 
-### 11. 定期監査は削除ではなく可視化を行う
+2026-09-14時点ではGitHub-hosted runnerがjob step開始前に割り当てられない状態を観測しているため、PRへの自動checkは一時停止しています。自動checkの有無にかかわらず、このRepositoryルールとpolicy scriptは有効です。
 
-`.github/workflows/repository-branch-hygiene.yml`は週次および手動実行でread-only監査を行い、分類結果をartifactとJob Summaryへ残します。
+### 11. GitHub Actionsは現在、手動診断だけに使う
 
-定期workflow自身はbranchを削除・resetしません。
+`.github/workflows/repository-branch-hygiene.yml`は、runner利用可能性を再確認するための`workflow_dispatch`だけを残しています。
+
+自動PR check / weekly auditは、少なくとも一度manual runがrunner上で正常に開始・完了できることを確認してから再有効化します。
 
 ```text
-scheduled audit
+runner unavailable
    ↓
-classification report
+automatic hygiene checks suspended
    ↓
-UNMERGED_REVIEW / PATCH_EQUIVALENT_REVIEWを確認
+local policy / read-only auditを継続
    ↓
-明示的なcleanup判断
+manual workflowでrunner復旧を確認
+   ↓
+automatic triggerを再有効化
 ```
 
-「branch数が多い」ことだけを理由に自動削除しないことを維持します。
+workflowが実行可能になっても、branchを自動削除・resetするauthorityは与えません。
 
 ## Development
 
