@@ -1,6 +1,6 @@
 # Definition-Centered Feedback Loop Plan — 2026-09
 
-Status: **planning / existing RQ-PAS-Gate composition / no new Gate / no new production schema**
+Status: **planning baseline / Phase 0 static baseline complete / Gate C-dependent execution pending / no new Gate / no new production schema**
 
 ## 1. 目的
 
@@ -14,7 +14,7 @@ Status: **planning / existing RQ-PAS-Gate composition / no new Gate / no new pro
   -> human / runtime / external feedback
   -> correct ownership routing
   -> candidate / preview
-  -> shared Acceptance
+  -> Shared Acceptance
   -> minimum accepted semantic delta
   -> reload / regeneration
 ```
@@ -72,15 +72,13 @@ PAS-07
 
 各Issueへ別々のKnowledge Store、Acceptance engine、definition formatを作らない。
 
-## 4. 現行Referenceから確認するdefinition baseline
+## 4. 現行Referenceのdefinition baseline
 
-現在の`reference/workspace`には、すでに「短いauthoring + derived structure」の方向がある。
+`reference/workspace`には、すでに「短いauthoring + derived structure」の方向がある。
 
-例としてSemantic definitionは、namespace / type / data / relation / capability等を必要な範囲で直接表し、Application、Database、Environment等は別concernのsourceへ分離されている。
+Semantic definitionはnamespace / type / data / relation / capability等を必要な範囲で直接表し、Application、Database、Environment等は別concernのsourceへ分離されている。
 
-このincrementでは新syntaxを設計しない。
-
-まず次をinventoryする。
+Phase 0では新syntaxを設計せず、現行Referenceを次へ分類して監査した。
 
 ```text
 A. human-authored irreducible meaning
@@ -91,7 +89,17 @@ E. observed / runtime-only information
 F. proposal / evidence / episodic information
 ```
 
-目的は「すべてをもっと短いDSLへ押し込む」ことではなく、**現在どこに重複authoringやderived情報の手書きが残っているか**を把握することにある。
+正本は`DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`とする。
+
+主要結論:
+
+- 広範な重複正本を解消するための大規模DSL再設計は現時点で不要
+- 見かけ上の重複には、boundary mapping、Environment choice、promoted Release等、独立authorityとして必要なものがある
+- `world.json`、Plugin Lock、Source Index、cross-view matrix等はderivedとして扱う
+- native SQLはnative authorityを保つ
+- ObservationをSemantic / Desiredへ自動backfillしない
+- Business Procedure Reference fixtureをaccepted Canonical authoring量へ数えない
+- AI時代の削減余地は、意味を消すよりsafe default / proposal / Previewで入力boilerplateを減らす側にある
 
 ## 5. Reference Modelから継承する開発方法
 
@@ -116,83 +124,114 @@ ownership routing
 Platform / Reference both improve
 ```
 
-### ReferenceにPlatform都合を押し付けない
-
 Referenceに必要なmeaningが既存Surfaceで表せない場合、fixtureを不自然に変形してPASSさせない。
 
-### Platformを一つのReferenceへ過適合させない
+一方、一つのReferenceだけが要求するdetailは、まずlocal authoring / Projection / Providerで表現できるか確認する。複数domainでdurable semantic needが観測されるまでCore kindを増やさない。
 
-一つのReferenceだけが要求するdetailは、まずlocal authoring / Projection / Providerで表現できるか確認する。複数domainでdurable semantic needが観測されるまでCore kindを増やさない。
+## 6. Phase 0 — Gate C前の設計準備
 
-## 6. Phase 0 — Gate C前に行う設計準備
+**Status: static / planning baseline complete.**
 
 Product Gate C Readyまではproduction AI / Studio implementationへ進まない。
 
-### P0-1 Definition inventory
+Phase 0の完了はactual closed-loop Evidenceの取得を意味しない。cold reconstruction、cognitive index削除不変性、AI provider無しE2E、actual Observationからのcorrection loop等は後続Referenceで実証する。
 
-現行`order_entry`を対象に、authoritative sourceとderived artifactを分類する。
+### P0-1 Definition / Derived Artifact Inventory — Complete
 
-Minimum output:
+正本:
 
-- Data / Relation / Validation / Capabilityのauthoring source
-- Application Pattern / Query / Datasource source
-- Binding / Realization source
-- Business Procedure reference fixture
-- Source Index / dependency / matrix等のderived artifact
-- Runtime / Observation artifact
+- `DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
+- merged via PR #587
 
-確認点:
+現行`order_entry`を中心に、authoritative source、native asset、realization、derived golden/index、observed fixture、Business Procedure Reference等をA〜Fへ分類した。
 
-```text
-same meaningの手入力重複があるか
-mechanically derived可能な情報をauthorしていないか
-逆にderivedへ追い出すとmeaning lossになる情報は何か
-```
+残るreduction候補は「今すぐ削除する項目」ではない。safe defaultやmechanical derivationがlosslessであることをReferenceで証明できた場合だけreopenする。
 
-このinventoryはschema変更を伴わない。
+### P0-2 Feedback Routing Catalog — Complete
 
-### P0-2 Feedback routing catalog
+正本:
 
-少なくとも次のfeedback classを例で整理する。
+- `DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
+- merged via PR #589
 
-- semantic/business-definition defect
-- cross-view contradiction
-- realization/provider mismatch
-- target/presentation problem
-- actual-state drift
-- runtime/resource failure
-- retrieval/cognition miss
-- unsupported inference / false completeness
-
-category enumをproduction採用せず、Reference review vocabularyとして使う。
-
-### P0-3 Memory separation audit
-
-現在のSource Index、AI Proposal、Evidence、future cognitive indexを次へ分類する。
+中心原則:
 
 ```text
-authoritative semantic memory
-derived associative / structural memory
-episodic / experience memory
+feedback source != author
+contradiction != patch instruction
+unresolved != false
+actual != desired
+similarity != applicability
+quality failure != requirement rewrite
 ```
 
-同じmeaningが複数memoryへauthorityとして重複していないか確認する。
+FeedbackはまずEvidenceとして扱い、meaning-owning concernを解決してからcandidate / Preview / Shared Acceptanceへ進む。
 
-### P0-4 X-TEA / XEAD pattern evidence handoff
+### P0-3 Memory Separation Audit — Complete
 
-過去に抽出したReference patternを、現行TEIの自動ruleへ変換せず、次の最低情報を持つderived candidate corpusとして扱う方法を整理する。
+正本:
 
-- pattern id / label
-- provenance models / source
-- observed vs candidate nature
-- structural signature
-- examples
-- applicability question
-- known non-proof
+- `DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
+- merged via PR #591
 
-この段階ではpattern importerやvector indexを作らない。
+三種類のmemoryをauthority roleとして分離した。
+
+```text
+M1 authoritative accepted memory
+M2 derived associative / structural memory
+M3 episodic / experience memory
+```
+
+これは三つのDB / serviceを意味しない。
+
+主要guard:
+
+- M2を削除してもaccepted system meaningは変わらない
+- M3のpast success / acceptanceをcurrent applicability / authorityへ昇格しない
+- Proposal Accept後のmeaningはM1 owner sourceへ残す
+- Source Index / embedding / sparse code / learned associationをhidden semantic authorityにしない
+- promoted Releaseのようなtemporal authorityを単なるepisodeへ降格しない
+
+### P0-4 X-TEA / XEAD Reference Pattern Handoff — Complete
+
+正本:
+
+- `REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md`
+- merged via PR #593
+
+Reference patternを自動ruleではなくprovenance-bound candidate knowledgeとして整理した。
+
+```text
+Reference observation
+      ↓
+M3 provenance evidence
+      ↓ curate / abstract
+Pattern evidence
+      ↓ derive
+M2 retrieval representation
+      ↓ retrieve
+current M1 qualification
+      ↓
+M3 Proposal / comparison
+      ↓ Shared Acceptance only
+M1 owner source
+```
+
+主要guard:
+
+```text
+Reference frequency != Product Requirement
+pattern match        != semantic applicability
+similarity           != accepted relation
+retrieval rank       != Decision
+candidate            != authority
+```
+
+Function viewはlosslessに可能ならView / read-CUD / Action-Capability / call / input-outputからderiveする。Task / Business ActionをApplication Functionへ畳まない。
 
 ## 7. Phase 1 — Gate C後の最初のclosed loop
+
+**Status: Not Started — Gate C Ready dependency.**
 
 最初に一つの小さい変更だけを通す。
 
@@ -200,7 +239,7 @@ episodic / experience memory
 
 Gate C後の`order_entry`から、実際にReference上価値のある小さいsemantic changeを一件選ぶ。
 
-変更内容を先に固定しない。以下は候補にすぎない。
+変更内容を先に固定しない。候補例:
 
 - missing Relation / requiredness
 - Validationの不足
@@ -250,13 +289,11 @@ Gate C後の`order_entry`から、実際にReference上価値のある小さいs
 
 ## 8. Phase 2 — Reference Pattern Memoryをcandidate sourceへ加える
 
-Phase 1が成立した後、過去X-TEA/XEAD Reference Modelから抽出したpattern knowledgeをcandidate generationへ加える。
+**Status: Not Started — Phase 1 dependency.**
 
-### 目的
+Phase 1が成立した後、P0-4でcurateしたpattern evidenceをcandidate generationへ加える。
 
-LLMのpretraining記憶だけに依存せず、**どのReferenceでどの構造が観測されたかをprovenance付きで提示できる**ようにする。
-
-### Flow
+目的は、LLMのpretraining記憶だけに依存せず、**どのReferenceでどの構造が観測されたかをprovenance付きで提示できる**ようにすることにある。
 
 ```text
 current intent / local model context
@@ -266,37 +303,24 @@ exact / graph search
 Reference Pattern Memory
   ↓
 multiple candidates
-  ├─ candidate A: exact existing asset
-  ├─ candidate B: observed Reference pattern
-  └─ candidate C: no safe match / unknown
+  ├─ exact existing asset
+  ├─ provenance-bound Reference pattern
+  └─ no safe match / unknown
   ↓
 qualification / simulation / review
 ```
 
-### 必須negative case
-
-名称や構造が似ていてもBusiness requirementに合わないReference patternを用意し、候補上位でも`incompatible`へ落とせることを確認する。
-
-### authority boundary
-
-```text
-Reference frequency
-  != requirement
-
-Reference pattern
-  != accepted design
-
-pattern match
-  != semantic applicability
-```
+名称や構造が似ていてもBusiness requirementに合わないnegative caseを必ず含め、候補上位でも`incompatible`へ落とせることを確認する。
 
 ## 9. Phase 3 — Derived cognitionをcandidate generationへ比較導入
+
+**Status: Not Started — Phase 1 / 2 dependency.**
 
 `ISSUE-000051`でexact / graph / lexical / weighted set / sparse expansive representation / HDC-VSA / embedding等を比較する。
 
 このPhaseではfeedback loopのauthority構造を変えない。
 
-### 評価対象
+評価対象:
 
 - candidate recall
 - incompatible near-matchの混入
@@ -306,22 +330,11 @@ pattern match
 - index rebuildability
 - revision staleness
 
-### Reference patternとの関係
-
-Reference patternはlabelとして正解を与えるのではなく、構造類似探索のcorpus / evaluation caseとして使える。
-
-例えば:
-
-- header-detail構造
-- conditional subtype / role
-- self-reference hierarchy
-- plan / actual / consequence / ledger
-- composition / BOM
-- derived summary
-
-を、名前を変えたTEI-native caseでretrievalできるか比較する。
+Reference patternはlabelとして正解を与えるのではなく、構造類似探索のcorpus / evaluation caseとして使う。
 
 ## 10. Phase 4 — Actual Observationをfeedbackへ接続する
+
+**Status: Not Started — design-time closed loop dependency.**
 
 Design-time closed loopが成立した後、Runtime / external actual stateからのfeedbackを接続する。
 
@@ -340,7 +353,7 @@ route / proposal
 
 Observationをsemantic sourceへ自動backfillしない。
 
-### candidate cases
+Candidate cases:
 
 - Database desired vs actual drift
 - Command accepted vs external completion
@@ -348,15 +361,15 @@ Observationをsemantic sourceへ自動backfillしない。
 - Capability execution error / resource denial
 - Business Procedureで必要なactualityが観測不能
 
-### feedback ownership
-
-各caseで「どのsource/layerが直るべきか」をまず判定する。
+各caseで「どのsource / layerが直るべきか」をまず判定する。
 
 ## 11. Phase 5 — Derived Experience Knowledge / local learning
 
+**Status: Not Started — sufficient actual correction history dependency.**
+
 Phase 1〜4で十分なactual correction historyが得られた場合だけ、経験再利用を比較する。
 
-### first candidates
+First candidates:
 
 - repeated accepted pattern candidate
 - known false-positive suppression
@@ -364,7 +377,7 @@ Phase 1〜4で十分なactual correction historyが得られた場合だけ、�
 - outcome-local retrieval weight
 - context-specific ranking preference
 
-### invariants
+Invariants:
 
 - Canonical / accepted Decisionはmodel weightだけへ保存しない
 - source revision / dependency fingerprintへtraceできる
@@ -397,59 +410,40 @@ Semantic Diff
 
 ただし一画面へ全情報を常時表示することは要求しない。progressive disclosureとlocalityを保つ。
 
-### AI UX
-
-AI chatを主画面にしない。
-
-AIは選択中のdefinition / local contextに対して:
-
-- explain
-- find analogues
-- identify unresolved
-- compare candidates
-- propose minimum delta
-- summarize impact
-
-を行える。
-
-利用者は最終的にsource / diff / evidenceを確認できる。
+AI chatを主画面にはしない。AIは選択中のdefinition / local contextに対してexplain、analogue探索、unresolved検出、candidate比較、minimum delta proposal、impact summary等を支援し、利用者は最終的にsource / diff / evidenceを確認できる。
 
 ## 13. Definition authoringの改善仮説
 
-Reference実験を通して次を評価する。
+Reference実験を通して次を評価する。いずれも採用前提ではない。
 
-### H1 — derived defaultを減らさず、authored boilerplateを減らせるか
+### H1 — authored boilerplateを減らせるか
 
-既知のstandard patternを自動導出し、明示override / business-specific meaningだけを書く。
+既知のstandard patternを安全に導出し、明示override / business-specific meaningだけを書く。
 
-### H2 — full file generationよりminimum deltaがreviewしやすいか
+### H2 — minimum deltaはwhole artifact generationよりreviewしやすいか
 
-AIがwhole artifactを再生成した場合と、targeted semantic proposalをした場合を比較する。
+AIによるfull regenerationとtargeted semantic proposalを比較する。
 
-### H3 — local contextでlarge modelを扱えるか
+### H3 — local contextでrealistic scaleを扱えるか
 
-whole-model graphなしに、検索 + selected neighborhood + cross-view lensesで現実規模Referenceを扱えるか。
+whole-model graphなしに、検索 + selected neighborhood + cross-view lensesで重要依存を見落とさず扱えるか。
 
-### H4 — Reference patternがLLM hallucinationを減らせるか
+### H4 — provenance-bound Reference patternがunsupported generationを減らせるか
 
-「過去Referenceに類例がある」ときだけprovenance付きcandidateを提示し、類例がない場合はunknownを維持できるか。
+Reference類例がある場合だけ根拠付きcandidateを提示し、類例がない場合はunknownを維持できるか。
 
-### H5 — cognitionがLLM callを代替すべき部分を特定できるか
+### H5 — LLM reasoningが必要な範囲を限定できるか
 
-exact/graph/associative retrievalで十分な処理と、LLM reasoningが必要な処理をReferenceから分けられるか。
-
-これらは採用前提ではなくevaluation hypothesisである。
+exact / graph / associative retrievalで十分な処理と、LLM reasoningが必要な処理をReferenceから分けられるか。
 
 ## 14. Feedback record
 
-全feedbackを一つの巨大Event Storeへ保存することを要求しない。
+全feedbackを一つの巨大Event Storeへ保存することは要求しない。
 
-Referenceで最低限追いたいrecord:
+Referenceで最低限追いたい情報:
 
 ```text
 feedback source
-  human / reference review / simulator / runtime / external observation
-
 base revision
 selected / affected identities
 observed problem or intent
@@ -472,7 +466,7 @@ AI prompt / model / trajectoryは必要な評価Evidenceとして別管理でき
 - concise definitionでは必要meaningをlosslessに保持できない
 - current Shared Acceptanceでは複数authoring sourceのcorrectionを安全に扱えない
 - local neighborhoodだけではrealistic scaleで重要依存を見落とす
-- derived pattern/cognitionのprovenanceを既存Source/Evidence構造で追えない
+- derived pattern / cognitionのprovenanceを既存Source / Evidence構造で追えない
 - actual Observationからcorrect ownership layerを決めるのにdurable semantic conceptが不足する
 - learned associationを削除するとaccepted meaningまで失われる設計しか成立しない
 
@@ -494,28 +488,43 @@ AI prompt / model / trajectoryは必要な評価Evidenceとして別管理でき
 
 ## 17. 現在の作業順
 
-```text
-NOW / Gate C前
-  1. design docsを正規化
-  2. current definition / derived artifact inventory
-  3. feedback routing examples
-  4. X-TEA/XEAD pattern evidenceをderived candidateとして整理
+Phase 0のstatic / planning baselineは完了した。
 
-Product Gate C Ready後
-  5. ISSUE-000046 + 000047 + 000027でone-change closed loop
-  6. Reference Pattern Memoryをcandidate sourceへ追加
-  7. ISSUE-000051でnon-LLM cognition比較
-  8. actual Observation feedback
-  9. sufficient experience後のみlocal learning比較
+現在の直列Product主線は変更しない。
+
+```text
+NOW
+  Gate B actual Evidence
+    ↓ Ready only
+  Handover B / R
+    ↓
+  First Target / Gate C
+
+Gate C Ready後
+  Phase 1: ISSUE-000046 + 000047 + 000027 one-change closed loop
+    ↓
+  Phase 2: provenance-bound Reference Pattern Memory
+    ↓
+  Phase 3: ISSUE-000051 non-LLM cognition comparison
+    ↓
+  Phase 4: actual Observation feedback
+    ↓
+  Phase 5: sufficient experience後のみlocal learning比較
 ```
 
-順序は期限ではなくdependencyを表す。
+Gate C前にDefinition-centered workstreamを理由とする新しいimplementation branchを増やさない。
+
+Phase 0文書はcurrent baselineの保守だけを行い、P1以後の責務は既存owner Issueへ戻す。
 
 ## 18. 関連
 
 - `docs/definition-centered-feedback-loop.md`
 - `docs/architecture.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
+- `plan/DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`
+- `plan/DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`
+- `plan/DEFINITION_MEMORY_SEPARATION_AUDIT_2026-09.md`
+- `plan/REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md`
 - `plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
