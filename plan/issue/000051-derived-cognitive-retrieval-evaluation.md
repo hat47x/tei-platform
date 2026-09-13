@@ -6,6 +6,65 @@
 - 主担当要求: RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-022
 - 関連: [ISSUE-000047](000047-knowledge-first-semantic-exploration.md) / [ISSUE-000040](000040-semantic-component-composition.md) / [ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)
 
+## このIssueを最初に読むときの要点
+
+このIssueは、FlyHashやHDC/VSAをTEIへ導入するためのIssueではありません。
+
+確かめたいのは、**LLMを呼ぶ前に、既存Canonical構造から「次に確認すべき候補」を軽量・ローカル・再生成可能な方法で十分に絞れるか**です。
+
+```text
+Canonical / Applicationの既知構造
+        ↓
+軽量なcandidate retrieval
+        ↓
+少数の候補
+        ↓
+ISSUE-000047でdeterministic qualification
+        ↓
+必要ならISSUE-000027のProposal / LLMへ
+```
+
+したがって評価の中心は「どのアルゴリズムが賢いか」ではありません。
+
+```text
+候補を見つける性能
+      +
+誤った候補をauthorityへ昇格させない境界
+      +
+CPU / memory / rebuild cost
+      +
+交換・削除可能性
+```
+
+を合わせて見ます。
+
+### このIssueが減らす不確実性
+
+主に次の問いへ答えます。
+
+1. exact / graph / lexicalだけでは拾いにくい構造類似やpartial cueを、非LLM方式で有用に回収できるか。
+2. LLMや外部AI serviceを毎回呼ばなくても、候補空間を十分に縮められるか。
+3. lexical near-match、true novel、stale representation等で、もっともらしい誤候補をsuccess扱いしない評価ができるか。
+4. FlyHash、weighted set、HDC/VSA等を同じdeterministic feature corpusで比較し、方式固有の入力差を性能差と取り違えずに済むか。
+5. derived cognitive representationを交換・削除・再生成してもCanonical Worldを変えずに済むか。
+6. local LLM等の重い認知へ進む前段として、CPU中心の軽量処理が実用的なlatency / memory / rebuild costに収まるか。
+
+### 完了すると何を判断できるか
+
+このIssueが完了すると、Reference Evidenceに基づいて候補生成方式を**採用 / 限定採用 / 不採用**のいずれかへ判断できます。
+
+採用する場合でも、言えるのは「この方式をderived candidate mechanismとして使う価値がある」までです。
+
+次を意味しません。
+
+- similarityがSemantic applicabilityを証明した
+- novelty scoreが`unknown`を決定した
+- Cognitive IndexがCanonical source of truthになった
+- LLMが不要になった
+- 特定algorithm名をCanonical vocabularyへ追加すべきである
+
+適用可能性は[ISSUE-000047](000047-knowledge-first-semantic-exploration.md)、Proposal / Acceptanceは[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)が別に担当します。
+
 ## 目的
 
 TEIのknowledge-first探索で、LLMやembeddingだけへ依存せず、Canonical Worldから導出した構造特徴を使う軽量な認知方式が、既存Semantic資産の**候補生成・注意制御・新奇性の示唆**に有効かをReferenceで比較します。
