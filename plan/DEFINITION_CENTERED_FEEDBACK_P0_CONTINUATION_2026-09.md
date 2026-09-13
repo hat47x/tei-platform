@@ -113,7 +113,7 @@ delete derived memory
 - input revisionへ戻れる
 - generation pathを説明できる
 - staleを検出できる
--削除・再構築できる
+- 削除・再構築できる
 - ranking / similarityをFactへ昇格しない
 
 ### 4.2 AIのためにDefinitionを肥大化させない
