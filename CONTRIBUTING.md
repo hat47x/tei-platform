@@ -151,6 +151,27 @@ merge
 
 緊急のRepository復旧等を除き、通常作業でmainへ直接file updateを行いません。
 
+### 9. branch数が増えたらread-only監査から始める
+
+remote branchを整理するときは、名前だけを見て削除しません。
+
+```bash
+tools/repository-branch-audit.sh
+```
+
+このtoolはrefを削除・変更せず、current `origin/main`に対してbranchを次のように分類します。
+
+- `MERGED_ANCESTRY` — branch tipがmainのancestor
+- `IDENTICAL_TREE` — branch tipとmainのtreeが同一
+- `PATCH_EQUIVALENT_REVIEW` — 固有non-merge patchは見つからないが、merge topology等の確認が必要
+- `UNMERGED_REVIEW` — mainにない固有patchを持つため個別reviewが必要
+
+`MERGED_ANCESTRY`や`IDENTICAL_TREE`であっても、open PR、release、external integration等でbranch refを必要としていないことを削除前に確認します。
+
+`PATCH_EQUIVALENT_REVIEW`を自動削除してはいけません。squash merge後のstale branchであることが多い一方、merge-onlyの固有変更を持つ可能性を安全側に残しています。
+
+2026年9月の既存branch棚卸しについては[`docs/audits/branch-hygiene-2026-09.md`](docs/audits/branch-hygiene-2026-09.md)を参照してください。
+
 ## Development
 
 ```bash
