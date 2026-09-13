@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-10
+- 更新日: 2026-09-14
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -119,10 +119,11 @@ Gate B Product Evidenceと、補助的なsource qualification CIを分離しま�
 - #512 `Gate B baseline source qualification` workflowはmainへ統合済み
 - #519でmanual `workflow_dispatch`入口もmainへ統合済み
 - #513ではGitHub-hosted runnerがjob開始前に割り当てられないpre-run blockerを追跡中
+- 2026-09-14 03:20 JST相当の最新再観測でも`runner_id=0 / runner_name="" / steps=[]`でstep executionへ到達していない
 - `runner_id=0 / steps=[]`等、checkout前のfailureをApplication / Driver code failureへ読み替えない
 - source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
 
-したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutで4-package preflightと#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
+したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
 
 Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
 
@@ -215,7 +216,7 @@ PostgreSQL partitionについては、ADR-0026のprovider-owned partition observ
 
 ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。
 
-#534 / Draft PR #548では、その別incrementとしてPostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認する実装が進んでいます。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界で、actual Repository testは未取得です。したがって#548はDraft / unmergedを維持し、source実装をactual qualificationやGate B Evidenceへ読み替えません。
+#534 / PR #548の別incrementもcurrent mainへ統合済みです。PostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認します。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界です。**actual Repository testは未取得のため、merge済みsourceをactual qualificationやGate B Evidenceへ読み替えません。**
 
 PostgreSQLは深いReference Providerとして利用しています。
 
