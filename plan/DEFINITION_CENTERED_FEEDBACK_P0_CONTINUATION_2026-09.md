@@ -1,87 +1,50 @@
 # Definition-Centered Feedback Loop — P0 Continuation 2026-09
 
-Status: **supporting static audit / P0-2〜P0-4 / no new Architecture / no actual Product Evidence**
+Status: **supporting static audit / P0-3〜P0-4 only / no new Architecture / no actual Product Evidence**
 
 Primary Architecture: `../docs/definition-centered-feedback-loop.md`  
 Primary Plan: `DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`  
 P0-1 Inventory: `DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`  
+P0-2 Routing: `DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md`  
 Issue: GitHub #570
 
 ## 1. 位置づけ
 
-この文書は、mainへ統合済みのDefinition-centered feedback loopのPhase 0について、P0-1 inventoryの後続であるP0-2〜P0-4だけを具体化するsupporting auditです。
+この文書は、Definition-centered feedback loopのPhase 0でmain上に未配置だった次の二点だけを補完するsupporting auditです。
 
-新しいArchitecture、Plan、Product Requirement、Gate、PAS、production schemaを追加しません。
+- P0-3 authoritative / derived / episodic memory separation
+- P0-4 X-TEA / XEAD Reference Pattern provenance handoff
 
-P0-1のA〜F inventoryは`DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md`を正とし、ここへ複製しません。
+P0-1とP0-2は既にmain上の専用文書を正とするため、本書へ複製しません。
 
 ```text
 P0-1 Definition / Derived Artifact Inventory
         ↓
-P0-2 feedback routing
-P0-3 memory separation
-P0-4 Reference Pattern provenance handoff
+P0-2 Feedback Routing Catalog
+        ↓
+P0-3 Memory Separation   ← this document
+P0-4 Pattern Handoff     ← this document
 ```
 
-すべてstatic source / artifact reviewです。actual executionやGate readinessを示すものではありません。
+本書は新しいArchitecture、Plan、Product Requirement、Gate、PAS、production schemaではありません。
 
-## 2. P0-2 — Feedback routing catalog
+すべてstatic source / artifact reviewです。actual executionやGate readinessを示しません。
 
-Feedbackを見つけたsurfaceへそのまま書き戻さず、まずownershipを判定します。
+## 2. P0-3 — Memory separation audit
+
+Definition-centered loopでは、Repository・Editor・AI・Runtimeが利用する「記憶」を一つのKnowledge Storeへ畳みません。
+
+最低限、次の三つを分けます。
 
 ```text
-visible symptom
-  ↓
-identify owner
-  ├─ authoritative definition
-  ├─ derived projection
-  ├─ native asset / mapping
-  ├─ realization / environment
-  ├─ actual observation
-  └─ proposal / cognition / reference
-  ↓
-change owner only
-  ↓
-regenerate / reobserve downstream
+1. authoritative memory
+2. derived structural / associative memory
+3. episodic / experience memory
 ```
 
-### 2.1 Review vocabulary
+この三分離はproduction storage topologyを固定するものではなく、authorityを混同しないためのreview modelです。
 
-これはproduction enumではありません。Reference review用のvocabularyです。
-
-| Feedback example | Nature | Primary owner | Avoid |
-| --- | --- | --- | --- |
-| Relation cardinalityが業務意味と違う | semantic contradiction | authoritative Semantic Definition | Target UIだけを補正 |
-| Function lensにread targetが現れない | sourceは正しいがProjection欠落 | derived Function / dependency projection | Definitionへ重複field追加 |
-| native SQL resultとSemantic mappingが一致しない | native / semantic boundary contradiction | native asset + explicit mapping boundary | 名前一致によるimplicit補完 |
-| PostgreSQL storage mappingが不正 | Provider realization mismatch | Persistence / Provider realization | business typeをphysical都合へ変更 |
-| Web focus orderが不自然 | Target interaction defect | Target realization | Canonical DataへUI field追加 |
-| desired Databaseとactual stateが違う | actual-state drift | Observation → owner-specific Proposal | ActualからDesiredへautomatic backfill |
-| dependency unavailable | runtime / Resource failure | execution / Resource boundary | Business Resultをsuccessへ丸める |
-| relevant existing patternを取得できない | retrieval miss | derived cognition / retrieval | Canonicalへ検索専用tagを追加 |
-| similar patternが業務要件に適用不能 | qualification failure | candidate qualification / unresolved | top-1をautomatic Accept |
-| Business Procedure fixtureがsystem resultをactualityとみなす | false completeness | Business Reference / evidence boundary | missing Observationを捏造 |
-
-### 2.2 Routing invariant
-
-```text
-where detected != where corrected
-```
-
-例:
-
-- Studioで見つかったsemantic defectはStudio metadataへ閉じない。
-- AIが見つけたRelation defectはprompt memoryへ閉じない。
-- Runtimeが検出したactual driftをSemantic sourceへ自動反映しない。
-- Cross-view matrixの欠落を、matrix手編集で修正しない。
-
-最終的なaccepted changeは、そのmeaningを所有するsource / native asset / Bindingへ戻します。
-
-## 3. P0-3 — Memory separation audit
-
-Definition-centered loopでは、記憶を一つのKnowledge Storeへ畳みません。
-
-### 3.1 Authoritative memory
+## 3. Authoritative memory
 
 accepted meaning / contract / realization choiceを、それぞれのowner sourceで保持します。
 
@@ -91,13 +54,36 @@ accepted meaning / contract / realization choiceを、それぞれのowner sourc
 - Application intent / Pattern
 - Database Contract
 - native SQL等のauthoritative asset
-- Persistence / Realization mapping
+- Persistence / Query / Capability realization mapping
 - Environment / Resource / Permission choice
 - promoted Release snapshot
 
-重要なのは、これらを一つの巨大semantic fileへ集約することではなく、concern-owned authorityをexact linkで接続することです。
+重要なのは一つの巨大semantic fileへ集約することではありません。
 
-### 3.2 Derived structural / associative memory
+```text
+small concern-owned authorities
+        +
+exact references / mappings
+        ↓
+accepted system meaning
+```
+
+を維持します。
+
+### 3.1 Authorityはconcernごとに異なる
+
+P0-1のA〜F分類でいうAだけがRepository内の唯一のauthorityではありません。
+
+- Semantic / Application meaningではA
+- native assetではC
+- realization / environment selectionではD
+- promoted Releaseではtime-frozen accepted snapshot
+
+が各concernのauthorityになり得ます。
+
+ただしC / D / ReleaseがAのsemantic meaningを複製する第二semantic正本になってはいけません。
+
+## 4. Derived structural / associative memory
 
 代表:
 
@@ -106,6 +92,7 @@ accepted meaning / contract / realization choiceを、それぞれのowner sourc
 - Data / Function / Business matrix
 - normalized lookup index
 - Reference Pattern inventory
+- derived feature corpus
 - FlyHash / HDC / embedding representation
 - retrieval ranking cache
 
@@ -113,13 +100,39 @@ accepted meaning / contract / realization choiceを、それぞれのowner sourc
 
 ```text
 delete derived memory
-  -> authoritative meaning remains
+  -> authoritative sources remain sufficient
   -> derived memory can be rebuilt from identified inputs
 ```
 
-現行RepositoryではSource IndexをReference snapshotとして保存せず、必要時にCanonical sourceから導出します。この性質を将来のcognitive indexにも維持します。
+### 4.1 Source Indexから継承する性質
 
-### 3.3 Episodic / experience memory
+現行RepositoryではSource Index自体をReference snapshotとして保存せず、必要時にCanonical sourceから導出します。
+
+将来のcognitive indexも同じ性質を基本とします。
+
+- input revisionへ戻れる
+- generation pathを説明できる
+- staleを検出できる
+-削除・再構築できる
+- ranking / similarityをFactへ昇格しない
+
+### 4.2 AIのためにDefinitionを肥大化させない
+
+次をcognitionの都合だけでmandatory authoringにしません。
+
+- embedding専用description
+- prompt hint
+- synonym list
+- search-only tag
+- model-specific annotation
+- feature vector
+- nearest-neighbor label
+
+business meaningとして独立に必要ならauthorできます。
+
+判断基準は「AIに便利か」ではなく、accepted meaningとして必要かです。
+
+## 5. Episodic / experience memory
 
 代表:
 
@@ -127,38 +140,64 @@ delete derived memory
 - accepted / rejected candidate trajectory
 - Durable Run / execution episode
 - quality / evaluation Evidence
-- correction history
+- actual correction history
+- AI tool / reasoning trajectory when evaluation上必要
 
-過去の成功trajectoryは候補rankや説明へ利用できますが、それだけでcurrent meaning / applicability / execution authorityにはなりません。
+過去の成功や失敗はcandidate generation / ranking / explanationへ利用できますが、それだけでcurrent authorityにはなりません。
 
 ```text
-past success != current applicability
-past acceptance != current execution authority
-trajectory != Business Procedure
+past success     != current applicability
+past acceptance  != current execution authority
+trajectory       != Business Procedure
+model confidence != semantic evidence
 ```
 
-### 3.4 Static audit result
+### 5.1 accepted changeの残り方
 
-現時点の`order_entry` authoritative definitionへ、FlyHash / embedding / LLM prompt等のcognition専用metadataがmandatoryに混入している状態は確認していません。
+ProposalがAcceptされた後、accepted meaningは正しいowner sourceへ残します。
+
+```text
+Proposal / episode
+   ↓ Accept
+owner source update
+   ↓
+reload / validation
+```
+
+F側のProposal historyだけをaccepted meaningの唯一のdurable recordにしません。
+
+## 6. P0-3 static result
+
+現時点の`order_entry` authoritative sourceへ、FlyHash / embedding / LLM prompt等のcognition専用mandatory metadataが混入している状態は確認していません。
 
 また、Source Index等のderived structureが第二semantic sourceとして保存されている状態もありません。
 
-今後のpressure:
+今後のinvariant:
+
+```text
+delete derived / episodic memory
+  -> accepted meaning remains reconstructable
+```
+
+後続Referenceで確認すべきpressure:
 
 - derived / associative index削除後のcold rebuild
 - AI provider無しでのsource reload / validation
 - stale indexの検出
 - episodic memory削除時のaccepted meaning invariance
+- algorithm交換時のsource schema invariance
 
-これらのactual EvidenceはGate C前の本auditでは取得しません。
+これらのactual Evidenceは本static auditでは未取得です。
 
-## 4. P0-4 — X-TEA / XEAD Reference Pattern handoff
+## 7. P0-4 — X-TEA / XEAD Reference Pattern provenance handoff
 
-X-TEA / XEAD系Reference Modelから得た反復構造は、TEIの自動ruleやCore primitiveへ直接変換しません。
+X-TEA / XEAD系Reference Modelから得た反復構造は、TEIの自動rule、Core primitive、`std.*`へ直接変換しません。
 
-利用目的は、**provenance付きの比較可能なcandidateを表面化すること**です。
+利用目的は、**どのReferenceで何が観測されたかを失わず、比較可能なcandidateとして表面化すること**です。
 
-### 4.1 Candidate corpusの最低情報
+## 8. Candidate corpusの最低情報
+
+production schemaは固定せず、conceptually少なくとも次へ戻れることを要求します。
 
 ```text
 pattern identity / label
@@ -170,11 +209,21 @@ applicability question
 known non-proof / counter-condition
 ```
 
-具体的なproduction schemaはまだ固定しません。
+### 8.1 provenanceが必要な理由
 
-### 4.2 Candidate presentation
+「よくあるPattern」だけでは次を区別できません。
 
-自然言語intentやcurrent local contextに対して、単一の「正解」を返すより複数候補を比較可能にします。
+- どのdomain / Referenceで観測されたか
+- 一回の事例か複数事例か
+- sourceで明示されていたか分析からderiveしたか
+- 現在のrequirementへ適用できるか
+- counterexampleがあるか
+
+したがってPattern knowledgeをLLMのpretraining memoryだけへ委ねません。
+
+## 9. Candidate presentation
+
+自然言語intentやlocal model contextに対して、単一の「正解」を返すより複数候補を比較可能にします。
 
 ```text
 Candidate A / B / C
@@ -186,13 +235,13 @@ Candidate A / B / C
   └─ example Dataset / Scenario where useful
 ```
 
-rankingはAcceptanceではありません。
+candidate rankingはAcceptanceではありません。
 
-### 4.3 Function viewの継承
+## 10. Function viewのhandoff
 
 X-TEA / XEADから継承するのは、独立`Function` nounを必ず持つことではありません。
 
-現TEIでは、可能な範囲で:
+現TEIで既存sourceからlosslessに再構成できる範囲は:
 
 ```text
 View / interaction
@@ -204,19 +253,32 @@ View / interaction
 derived Function lens
 ```
 
-を再構成します。
+として扱います。
 
-realistic ReferenceでFunction固有meaningがlosslessに保持できないことが示された場合だけauthoring surfaceをreopenします。
+realistic ReferenceでFunction固有meaningが失われることが示された場合だけauthoring surfaceをreopenします。
 
-### 4.4 Business viewの継承
+`Function`という歴史的conceptが存在すること自体は新しいCanonical kindの採用理由になりません。
+
+## 11. Business viewのhandoff
 
 Task / Business ActionはApplication Functionと同一ではありません。
 
-manual / external work、judgment、Business acceptance、responsibility Handoff等は、実在するなら「端的さ」のために削除しません。
+Referenceで次が実在するなら、端的さを理由に消しません。
 
-一方、現在のBusiness Procedure Reference fixtureは`canonical=false`であり、RQ-025 / RQ-026 workstreamのauthority判断を先回りしてCanonicalへ昇格しません。
+- manual work
+- external organization / system work
+- human judgment
+- Business acceptance
+- responsibility Handoff
+- unresolved realization
 
-### 4.5 Standard adoption guard
+一方、現在のBusiness Procedure Reference fixtureは`canonical=false`です。
+
+RQ-025 / RQ-026 workstreamのProcedure identity / authority判断を、このPattern handoffから先回りしてCanonicalへ昇格しません。
+
+## 12. Standard adoption guard
+
+Reference knowledgeの採用判断では次を維持します。
 
 ```text
 Reference frequency != Product Requirement
@@ -226,49 +288,49 @@ retrieval rank       != Decision
 candidate            != authority
 ```
 
-複数domainでdurable semantic needが再現され、既存mechanism / derived lensではlosslessに表せない場合だけ、Core / `std.*` / authoring syntax追加を別判断します。
+Core / `std.*` / authoring syntax追加を検討できるのは、少なくとも:
 
-## 5. P0-2〜P0-4 status
+1. 複数のrealistic domainでdurable semantic needが再現される
+2. 現行Definition / Relation / Projection / Bindingではlosslessに表せない
+3. derived-only approachではdefectを防げない
+4. 追加するauthoring burdenを上回るdeterministic benefitがある
+5. AI / Provider / Target固有都合ではなくProduct meaningとして残る
 
-### P0-2 Feedback routing catalog
+場合です。
 
-**Static review vocabulary complete.**
-
-production enum / event schemaは未採用です。
+## 13. P0-3 / P0-4 status
 
 ### P0-3 Memory separation audit
 
 **Static architecture audit complete.**
 
-cold reconstruction / deletion invarianceのactual execution Evidenceは未取得です。
+Cold reconstruction / deletion invarianceのactual execution Evidenceは未取得です。
 
-### P0-4 X-TEA / XEAD pattern evidence handoff
+### P0-4 X-TEA / XEAD Pattern handoff
 
-**Planning-level handoff boundary complete.**
+**Planning-level provenance / authority boundary complete.**
 
 pattern importer、vector index、Pattern Card production schema、特定cognitive algorithmは未実装・未採用です。
 
-## 6. P0全体の収束
+## 14. Phase 0の収束
 
-P0-1は既存inventory、P0-2〜P0-4は本auditでstatic baselineを持ちます。
+main上のP0成果を次のように一意にします。
 
 ```text
-P0-1 current inventory
-  -> complete at static baseline
+P0-1 Definition / artifact inventory
+  -> DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md
 
-P0-2 routing vocabulary
-  -> complete at static baseline
+P0-2 Feedback routing
+  -> DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md
 
-P0-3 memory separation
-  -> complete at static baseline
-
-P0-4 Reference Pattern handoff
-  -> complete at planning baseline
+P0-3 Memory separation
+P0-4 X-TEA / XEAD Pattern handoff
+  -> this document
 ```
 
-ここで「complete」はGate C後のactual closed-loop Evidenceが成立した意味ではありません。
+同じ内容を別Architecture /別inventoryへ複製しません。
 
-## 7. 次のownership
+## 15. 次のownership
 
 このP0 completionを理由に、新しいDefinition / AI / cognition workstream branchを増やしません。
 
@@ -296,10 +358,10 @@ non-LLM cognition comparison
 actual Observation feedback
 ```
 
-## 8. Branch convergence
+## 16. Branch convergence
 
 本auditは既存#570 branch上で行い、新branchを作りません。
 
-PR merge後は`CONTRIBUTING.md`のBranch / PR運用に従い、#570 branchを履歴保管場所として残さず、必要ならcurrent mainへ戻します。
+PR merge後は`CONTRIBUTING.md`のBranch / PR運用に従い、#570 branchを履歴保管場所として放置せず、必要ならcurrent mainへ戻します。
 
-Definition-centered Architecture / Primary Plan / P0-1 Inventoryを本書へ複製しないことも、document-sideのconvergence ruleとします。
+Definition-centered Architecture / Primary Plan / P0-1 / P0-2を本書へ複製しないことも、document-sideのconvergence ruleとします。
