@@ -188,23 +188,24 @@ D execution authority / environment realization
 
 代表:
 
-- `reference/observed/production.deployment-state.json`
-- `reference/observed/production.canary.deployment-state.json`
 - actual Provider observation
 - runtime execution state / actual completion observation
 
-Repository内の`reference/observed/*`はactual production snapshotではなく、外部状態を模した固定fixtureです。
+Repository内の:
 
-したがってnatureをより正確に表すと:
+- `reference/observed/production.deployment-state.json`
+- `reference/observed/production.canary.deployment-state.json`
+
+はEそのもののactual production observationではなく、**Eのshapeを再現する固定Reference fixture**です。
+
+したがって:
 
 ```text
-content semantics: E-like observed state
-artifact nature: synthetic/fixed Reference fixture
+actual Observation        -> E
+observed-state fixture     -> F (E semanticsを再現するReference Evidence/fixture)
 ```
 
-です。
-
-これを「現在のproduction actual」と読み替えません。
+と区別します。
 
 `environment.tei`にobservation executorが定義されていることもactual observationそのものではありません。
 
@@ -220,6 +221,7 @@ observation capability / wiring (D)
 代表:
 
 - Business Procedure Reference authoring fixture
+- observed-state fixture
 - Proposal / Preview / Semantic Diff
 - AI / human correction candidate
 - Evidence artifact
@@ -244,12 +246,12 @@ canonical = false
 
 一つのfileを必ず一classへ固定しません。
 
-たとえばQuery sourceは:
+たとえばQuery concernは:
 
 ```text
 TEI-side semantic mapping -> A
 native SQL              -> C
-runtime result           -> E
+actual runtime result   -> E
 query execution evidence -> F
 ```
 
