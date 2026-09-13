@@ -46,7 +46,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          persist-credentials: false
+          # private repositoryのremote branchを追加fetchするため、
+          # contents: readだけのGITHUB_TOKEN資格情報を保持する。
+          persist-credentials: true
       - name: Remote branchをread-only監査
         shell: bash
         run: |
