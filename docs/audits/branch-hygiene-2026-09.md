@@ -141,11 +141,7 @@ remote branchを削除する前に、最低限次を確認します。
 
 ## 7. 再発防止の機械的guard
 
-既存branchのcleanupだけでは不十分なので、2026-09-14から新規branchの増殖を抑えるguardを追加します。
-
-### PR時のbranch naming policy
-
-[`tools/repository-branch-policy.sh`](../../tools/repository-branch-policy.sh)は、新しいPRのhead branchについて次を検査します。
+既存branchのcleanupだけでは不十分なので、新しいbranchを作る前に[`tools/repository-branch-policy.sh`](../../tools/repository-branch-policy.sh)で命名を検査します。
 
 - 標準prefixを使っているか
 - `-final` / `-sync` / `-current` / `-rebased`等の一時状態suffixを付けていないか
@@ -174,19 +170,35 @@ existing workstream branchをmainへ戻す
 
 を通常経路にするためです。
 
-### 定期read-only audit
+### GitHub Actions自動化の現状
 
-`.github/workflows/repository-branch-hygiene.yml`は週次および手動実行で全remote branchをread-only監査し、分類結果をJob Summaryとartifactへ残します。
+PR #584 / #586でPR時checkと定期read-only auditの自動化を試しましたが、2026-09-14時点のjobは**runnerが割り当てられる前**にfailureとなりました。
 
-workflow自身はbranchをdelete / resetしません。
-
-また、non-main branch数がsoft baselineの530本を超えた場合はwarningを出します。既存530本の多さ自体を成功条件にはせず、まず**これ以上の無意識な増加を検知する**ためのguardです。cleanupが進めばbaselineも引き下げます。
+観測されたjob metadataは次です。
 
 ```text
-scheduled observation != cleanup authority
+runner_id: 0
+runner_name: ""
+steps: []
 ```
 
-これはTEI本体で守っている`Observation != Authority`と同じ発想をRepository運用にも適用したものです。
+checkoutを完全に除いたbranch-name-policy jobでも同じ状態だったため、branch policy scriptやprivate repositoryのfetch処理に入る前の失敗です。
+
+比較対象として、2026-09-01の既存workflowではGitHub-hosted runnerが割り当てられ、checkout / setup-go / go vet / go test等のstepが実際に開始されていました。また2026-09-02にはsuccess runも記録されています。
+
+このEvidenceから言えるのは、**現在のhygiene workflowを自動guardとして成立済みとは扱えない**ことまでです。runnerが割り当てられない原因をbilling、quota、Repository設定等の特定要因へ断定しません。
+
+全PRへ無意味なfailure checkを付け続けないため、`.github/workflows/repository-branch-hygiene.yml`の自動PR / push / schedule triggerは一時停止し、`workflow_dispatch`だけを残します。
+
+```text
+manual policy / audit scripts
+        = 現在利用可能
+
+GitHub Actions automation
+        = runner利用可能性の再確認待ち
+```
+
+manual workflowで一度正常なrunner executionを確認してから、自動triggerを再有効化します。
 
 ## 8. 今後の運用
 
@@ -213,6 +225,7 @@ Repository hygiene自体は`work/repository-hygiene`を継続branchとし、一�
 - 全remote branchをcurrent mainに対して再分類したcurrent report
 - `PATCH_EQUIVALENT_REVIEW`のうちmerge-only固有変更を持つbranchの確認
 - remote refを実際に削除する安全な手順の確定
-- 定期auditを数回運用した後、削除候補をどこまで自動提示してよいかの再評価
+- GitHub-hosted runner利用可能性の回復確認
+- runner回復後、PR / scheduled auditをどこまで再有効化するか
 
 これらを解決するまで、branch数だけを減らす目的で一括force-reset / 一括削除は行いません。
