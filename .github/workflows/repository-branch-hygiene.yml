@@ -1,0 +1,75 @@
+name: Repository branch hygiene
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/repository-branch-hygiene.yml
+      - tools/repository-branch-audit.sh
+      - tools/repository-branch-policy.sh
+      - docs/audits/branch-hygiene-2026-09.md
+      - CONTRIBUTING.md
+  workflow_dispatch:
+  schedule:
+    - cron: '23 18 * * 0'
+
+permissions:
+  contents: read
+
+env:
+  # 2026-09-14 current inventory: 531 branches including main.
+  # This is a soft no-growth baseline, not a cleanup target.
+  NON_MAIN_BRANCH_SOFT_BASELINE: '530'
+
+jobs:
+  branch-name-policy:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      # pull_request_targetではbase側のtrusted scriptだけを実行する。
+      # PR headのcodeはcheckoutしない。
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Branch名の運用規則を確認
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: bash tools/repository-branch-policy.sh "$HEAD_REF"
+
+  inventory:
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Remote branchをread-only監査
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/repository-branch-audit.sh origin main | tee branch-audit.txt
+      - name: 分類件数とbranch数増加を表示
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '### Branch hygiene summary' >> "$GITHUB_STEP_SUMMARY"
+          for state in MERGED_ANCESTRY IDENTICAL_TREE PATCH_EQUIVALENT_REVIEW UNMERGED_REVIEW; do
+            count=$(grep -c "^${state}[[:space:]]" branch-audit.txt || true)
+            echo "- ${state}: ${count}" >> "$GITHUB_STEP_SUMMARY"
+          done
+          total=$(grep -Ec '^(MERGED_ANCESTRY|IDENTICAL_TREE|PATCH_EQUIVALENT_REVIEW|UNMERGED_REVIEW)[[:space:]]' branch-audit.txt || true)
+          echo "- NON_MAIN_TOTAL: ${total}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SOFT_BASELINE: ${NON_MAIN_BRANCH_SOFT_BASELINE}" >> "$GITHUB_STEP_SUMMARY"
+
+          if (( total > NON_MAIN_BRANCH_SOFT_BASELINE )); then
+            echo "::warning::remote non-main branch count increased from soft baseline ${NON_MAIN_BRANCH_SOFT_BASELINE} to ${total}. Confirm whether an existing workstream branch should have been reused."
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repository-branch-audit
+          path: branch-audit.txt
+          if-no-files-found: error
