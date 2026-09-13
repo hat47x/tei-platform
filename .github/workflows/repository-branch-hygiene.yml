@@ -1,0 +1,52 @@
+name: Repository branch hygiene
+
+# 2026-09-14時点ではGitHub-hosted runnerが割り当てられる前にjobがfailureとなるため、
+# 自動triggerは一時停止しています。runner利用可能性を手動実行で再確認し、
+# successful runを得てからPR / scheduled triggerを再有効化します。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # 2026-09-14 current inventory: 531 branches including main.
+  # This is a soft no-growth baseline, not a cleanup target.
+  NON_MAIN_BRANCH_SOFT_BASELINE: '530'
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # private repositoryのremote branchを追加fetchするため、
+          # contents: readだけのGITHUB_TOKEN資格情報を保持する。
+          persist-credentials: true
+      - name: Remote branchをread-only監査
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/repository-branch-audit.sh origin main | tee branch-audit.txt
+      - name: 分類件数とbranch数増加を表示
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '### Branch hygiene summary' >> "$GITHUB_STEP_SUMMARY"
+          for state in MERGED_ANCESTRY IDENTICAL_TREE PATCH_EQUIVALENT_REVIEW UNMERGED_REVIEW; do
+            count=$(grep -c "^${state}[[:space:]]" branch-audit.txt || true)
+            echo "- ${state}: ${count}" >> "$GITHUB_STEP_SUMMARY"
+          done
+          total=$(grep -Ec '^(MERGED_ANCESTRY|IDENTICAL_TREE|PATCH_EQUIVALENT_REVIEW|UNMERGED_REVIEW)[[:space:]]' branch-audit.txt || true)
+          echo "- NON_MAIN_TOTAL: ${total}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SOFT_BASELINE: ${NON_MAIN_BRANCH_SOFT_BASELINE}" >> "$GITHUB_STEP_SUMMARY"
+
+          if (( total > NON_MAIN_BRANCH_SOFT_BASELINE )); then
+            echo "::warning::remote non-main branch count increased from soft baseline ${NON_MAIN_BRANCH_SOFT_BASELINE} to ${total}. Confirm whether an existing workstream branch should have been reused."
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repository-branch-audit
+          path: branch-audit.txt
+          if-no-files-found: error

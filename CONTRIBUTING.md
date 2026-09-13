@@ -119,6 +119,7 @@ work/<issue-or-workstream>      実装・Reference・横断作業
 docs/<workstream>               文書品質・説明・文書構造
 research/<workstream>           未採用方式の比較・architecture probe
 evidence/<issue-or-gate>        actual Evidence取得が主目的の作業
+fix/<workstream>                 狭い修正
 ```
 
 prefixを細分化すること自体を目的にしません。同じ責務なら同じbranchを使います。
@@ -171,6 +172,45 @@ tools/repository-branch-audit.sh
 `PATCH_EQUIVALENT_REVIEW`を自動削除してはいけません。squash merge後のstale branchであることが多い一方、merge-onlyの固有変更を持つ可能性を安全側に残しています。
 
 2026年9月の既存branch棚卸しについては[`docs/audits/branch-hygiene-2026-09.md`](docs/audits/branch-hygiene-2026-09.md)を参照してください。
+
+### 10. 新しいbranchはpolicy scriptで確認する
+
+新しいPRを作る前に、[`tools/repository-branch-policy.sh`](tools/repository-branch-policy.sh)でbranch名を確認します。
+
+```bash
+tools/repository-branch-policy.sh "$(git branch --show-current)"
+```
+
+次を新規branch名として使いません。
+
+- `-final` / `-sync` / `-current` / `-rebased` / `-latest` / `-done` / `-ready`
+- 日付suffix
+- `-v2` / `-v3`等の世代suffix
+- remote上の`tmp` / `noop` branch
+
+目的は名前を形式的に揃えることではなく、**同じworkstreamに新しい世代branchを作る代わりに、既存branchを安全に再利用する習慣を機械的に支えること**です。
+
+2026-09-14時点ではGitHub-hosted runnerがjob step開始前に割り当てられない状態を観測しているため、PRへの自動checkは一時停止しています。自動checkの有無にかかわらず、このRepositoryルールとpolicy scriptは有効です。
+
+### 11. GitHub Actionsは現在、手動診断だけに使う
+
+`.github/workflows/repository-branch-hygiene.yml`は、runner利用可能性を再確認するための`workflow_dispatch`だけを残しています。
+
+自動PR check / weekly auditは、少なくとも一度manual runがrunner上で正常に開始・完了できることを確認してから再有効化します。
+
+```text
+runner unavailable
+   ↓
+automatic hygiene checks suspended
+   ↓
+local policy / read-only auditを継続
+   ↓
+manual workflowでrunner復旧を確認
+   ↓
+automatic triggerを再有効化
+```
+
+workflowが実行可能になっても、branchを自動削除・resetするauthorityは与えません。
 
 ## Development
 

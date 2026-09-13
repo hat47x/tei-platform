@@ -33,6 +33,8 @@ conflicting branches requiring separate review: 8
 
 ただしPR #578には、8本のconflicting branch名が記録されていません。このため「8本残っている」という数だけを根拠にbranchを削除してはいけません。残存branchは再監査してidentityを確定する必要があります。
 
+2026-09-14にGitHub上のbranch inventoryを再取得すると、**mainを含め531本、non-main 530本**でした。これはcleanup目標ではなく、以後の「増えたかどうか」を観測するためのsoft baselineとして使います。
+
 ## 3. PR #578 / #569の整理結果
 
 PR #578は当初7 branch分の統合を目的としていましたが、その後mainへ関連文書が別PRで統合されたため、2026-09-13時点のnet diffは次の2 file / 6 substitutionsだけになっていました。
@@ -64,6 +66,8 @@ go test ./tools/reference-business-procedure-check/... \
 - `fix/lane-c-exact-datasource-authority-probes`
 
 これはbranch削除の代替ではありません。Repositoryからbranch名を除去する場合は、別途remote ref deletionが必要です。
+
+2026-09-14の確認時点ではopen PRは0件でした。したがって、少なくとも「open PRに紐付くbranchを誤ってcleanupする」危険はその時点ではありませんでした。ただし、この事実は時点依存なので、実際の削除判断時には必ず再確認します。
 
 ## 4. Branchを分類する基準
 
@@ -135,7 +139,68 @@ remote branchを削除する前に、最低限次を確認します。
 
 安全性が十分に確認できてから、明示的なbranch listを入力するcleanup commandを別途検討します。
 
-## 7. 今後の運用
+## 7. 再発防止の機械的guard
+
+既存branchのcleanupだけでは不十分なので、新しいbranchを作る前に[`tools/repository-branch-policy.sh`](../../tools/repository-branch-policy.sh)で命名を検査します。
+
+- 標準prefixを使っているか
+- `-final` / `-sync` / `-current` / `-rebased`等の一時状態suffixを付けていないか
+- 日付や`-v2`等で同じworkstreamを世代化していないか
+- `tmp` / `noop`をremote branchとして使っていないか
+
+このguardの目的は命名美ではありません。
+
+```text
+same workstream
+   ↓
+new suffix branchを作る
+```
+
+ではなく、
+
+```text
+same workstream
+   ↓
+previous PR merge済みを確認
+   ↓
+existing workstream branchをmainへ戻す
+   ↓
+再利用
+```
+
+を通常経路にするためです。
+
+### GitHub Actions自動化の現状
+
+PR #584 / #586でPR時checkと定期read-only auditの自動化を試しましたが、2026-09-14時点のjobは**runnerが割り当てられる前**にfailureとなりました。
+
+観測されたjob metadataは次です。
+
+```text
+runner_id: 0
+runner_name: ""
+steps: []
+```
+
+checkoutを完全に除いたbranch-name-policy jobでも同じ状態だったため、branch policy scriptやprivate repositoryのfetch処理に入る前の失敗です。
+
+比較対象として、2026-09-01の既存workflowではGitHub-hosted runnerが割り当てられ、checkout / setup-go / go vet / go test等のstepが実際に開始されていました。また2026-09-02にはsuccess runも記録されています。
+
+このEvidenceから言えるのは、**現在のhygiene workflowを自動guardとして成立済みとは扱えない**ことまでです。runnerが割り当てられない原因をbilling、quota、Repository設定等の特定要因へ断定しません。
+
+全PRへ無意味なfailure checkを付け続けないため、`.github/workflows/repository-branch-hygiene.yml`の自動PR / push / schedule triggerは一時停止し、`workflow_dispatch`だけを残します。
+
+```text
+manual policy / audit scripts
+        = 現在利用可能
+
+GitHub Actions automation
+        = runner利用可能性の再確認待ち
+```
+
+manual workflowで一度正常なrunner executionを確認してから、自動triggerを再有効化します。
+
+## 8. 今後の運用
 
 新しいbranchについては、監査で後から掃除することより、そもそも増やさないことを優先します。
 
@@ -154,12 +219,13 @@ merge
 
 Repository hygiene自体は`work/repository-hygiene`を継続branchとし、一度に一つのPRだけを扱います。
 
-## 8. 未解決事項
+## 9. 未解決事項
 
 - PR #578で「conflict」とされた8 branchのidentity再確定
 - 全remote branchをcurrent mainに対して再分類したcurrent report
 - `PATCH_EQUIVALENT_REVIEW`のうちmerge-only固有変更を持つbranchの確認
 - remote refを実際に削除する安全な手順の確定
-- 将来branch数が再増加した際のCI / scheduled auditの要否
+- GitHub-hosted runner利用可能性の回復確認
+- runner回復後、PR / scheduled auditをどこまで再有効化するか
 
 これらを解決するまで、branch数だけを減らす目的で一括force-reset / 一括削除は行いません。
