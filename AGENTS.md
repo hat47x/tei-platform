@@ -48,11 +48,11 @@ examples/ bootstrap/
 - 新しいremote branchを作る前に、同じIssue / lane / workstreamの既存branchがないか確認する。
 - 同じworkstreamで`-final`、`-sync`、`-current`、`-rebased`、日付suffix等の派生branchを増やさない。
 - 一つのbranchから同時に複数のopen PRを作らない。PRをmergeしてから次の変更へ進む。
-- 継続workstreamでは、merge済みbranchをcurrent `main`へfast-forwardして再利用する。一回限りのbranchはmerge後に削除する。
-- 未merge変更を持つbranchをforce resetして再利用しない。
+- 継続workstreamでは、PRがmerge済みで未merge変更がないことを確認したうえで、branchをcurrent `main`と同じcommitへ戻して再利用する。squash merge後は必要に応じてこのresetにforce updateを使ってよい。一回限りのbranchはmerge後に削除する。
+- open PRまたは未merge変更を持つbranchをforce resetして再利用しない。
 - `tmp-*` / `noop-*`等の確認専用branchは原則localに留める。remoteへ出す実験は`research/<workstream>`として目的と終了条件を明示する。
 - branch名の`ready` / `final`等をIssue stateやGate stateの代わりに使わない。
-- 通常作業では`main`へ直接commit / file updateせず、`current main → branch → commit → PR → check / review → merge`を守る。
+- 通常作業では`main`へ直接commit / file updateせず、`current main → branch → commit → PR → check / review → merge → branchをmainへ戻す`を守る。
 - Branch運用の詳細は[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照する。
 
 コードの検証手順も[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照します。

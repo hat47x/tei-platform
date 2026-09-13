@@ -6,6 +6,62 @@
 - Product Acceptance Scenario: **PAS-06 primary**
 - 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023
 
+## このIssueを最初に読むときの要点
+
+このIssueの目的は、高性能な検索engineを作ることではありません。
+
+TEIで新しい定義や実装を作ろうとしたとき、まず既存資産を探し、見つかった候補について**「現在の目的へ本当に使えるか」を決定論的に確認する境界**を成立させることが中心です。
+
+```text
+既存資産を探す
+  ↓
+候補が見つかる
+  ↓
+identity / dependency / scope / Source / Evidence / revisionを確認
+  ↓
+applicable / incompatible / unknown
+  ↓
+明示参照を持つProposal候補へ渡す
+```
+
+ここで重要なのは、検索順位や類似度と、Semanticな適用可能性を分けることです。
+
+```text
+見つけやすい
+  !=
+現在の業務文脈で使える
+```
+
+### このIssueが減らす不確実性
+
+主に次の問いへ答えます。
+
+1. 既存資産を見つけられず、同じ意味を重複authoringしてしまわないか。
+2. 名前や構造が似ているだけのnear-matchを、誤って「使える」と判定しないか。
+3. Evidence不足やstaleな候補を`unknown`のまま保持できるか。
+4. Human / Studio / AIが別々のKnowledge正本を持たず、同じCanonical / Source / Evidenceへ戻れるか。
+5. derived indexや認知方式を削除・交換しても、Canonical Worldが変わらないか。
+
+### 完了すると何を判断できるか
+
+このIssueが完了すると、**既存資産探索から得た候補を、現在のintentへ再利用可能かどうか安全に分類し、明示参照付きの変更候補へ渡してよい**と判断できます。
+
+ただし、ここで`applicable`になったことは、その変更が採用されたことを意味しません。
+
+```text
+retrieval
+  ↓
+qualification        ← このIssue
+  ↓
+Proposal
+  ↓
+Shared Acceptance    ← ISSUE-000027 / 000046
+  ↓
+authoritative source
+```
+
+また、どのcandidate retrieval方式が優れているかの比較は[ISSUE-000051](000051-derived-cognitive-retrieval-evaluation.md)が担当します。本Issueは000051の方式が不採用でも成立する必要があります。
+
 ## 目的
 
 Gate C通過後、開発者やAIが新しい実装・定義を作る前に、Repositoryに既に存在するSemantic資産を**read-onlyで探索し、適用可能 / 不適合 / 不明を区別できること**をReferenceで実証します。
