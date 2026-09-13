@@ -250,9 +250,9 @@ canonical = false
 
 ```text
 TEI-side semantic mapping -> A
-native SQL              -> C
-actual runtime result   -> E
-query execution evidence -> F
+native SQL                -> C
+actual runtime result     -> E
+query execution evidence  -> F
 ```
 
 へ分かれます。
