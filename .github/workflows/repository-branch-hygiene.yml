@@ -28,16 +28,37 @@ jobs:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
-      # pull_request_targetではbase側のtrusted scriptだけを実行する。
-      # PR headのcodeはcheckoutしない。
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          persist-credentials: false
+      # pull_request_targetではPR headのcodeをcheckoutしない。
+      # trustedなbase workflowだけで、eventから得たbranch名を検査する。
       - name: Branch名の運用規則を確認
+        shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: bash tools/repository-branch-policy.sh "$HEAD_REF"
+        run: |
+          set -euo pipefail
+          branch="$HEAD_REF"
+
+          if [[ ! "$branch" =~ ^(work|docs|research|evidence|fix)/[a-z0-9][a-z0-9._/-]*$ ]]; then
+            echo "::error::branch name must use one of: work/, docs/, research/, evidence/, fix/"
+            exit 1
+          fi
+
+          if [[ "$branch" =~ -(final|sync|current|rebased|latest|done|ready)(-[0-9]+)?$ ]]; then
+            echo "::error::branch name must not encode transient state with -final/-sync/-current/-rebased/-latest/-done/-ready"
+            exit 1
+          fi
+
+          if [[ "$branch" =~ -20[0-9]{6}$ ]] || [[ "$branch" =~ -v[0-9]+$ ]]; then
+            echo "::error::branch name must not create a new generation with a date or -vN suffix"
+            exit 1
+          fi
+
+          if [[ "$branch" =~ (^|/)(tmp|noop)(-|/|$) ]]; then
+            echo "::error::tmp/noop branches should remain local"
+            exit 1
+          fi
+
+          echo "branch policy: OK ($branch)"
 
   inventory:
     if: github.event_name != 'pull_request_target'
