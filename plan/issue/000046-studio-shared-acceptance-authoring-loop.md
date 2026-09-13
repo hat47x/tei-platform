@@ -33,6 +33,8 @@ authoritative file-native source
 Canonical meaning / Conformance
 ```
 
+より広い設計上、このIssueは [`../../docs/definition-centered-feedback-loop.md`](../../docs/definition-centered-feedback-loop.md) の**local authoring / Preview / Accept-Reject**を担当します。Studioにknowledge storeや独立したAI memoryを持たせず、`ISSUE-000047`の探索、`ISSUE-000027`のProposal、将来のderived cognitionを同じselected-definition contextへ接続します。
+
 ## Studioの位置づけ
 
 Studioは**Projection / Authoring Client**です。
@@ -57,6 +59,68 @@ Studio自身を次にはしません。
 
 Studioを削除しても、accepted authoring sourceとCanonical meaningを再読込できることを要求します。
 
+## Definition-centered authoring
+
+Studioの役割は「定義体をGUIへ置き換えること」ではありません。
+
+原則は、**authoritative sourceに必要なirreducible meaningだけを変更し、そこから派生する結果をPreviewすること**です。
+
+```text
+selected concise definition
+      ↓
+minimum semantic delta
+      ↓
+Preview causal consequences
+      ↓
+Accept / Reject
+```
+
+### Minimum Semantic Delta
+
+AI、Studio form、drag-and-drop、CLI等の入口にかかわらず、初回Referenceではwhole file / whole modelの再生成より、現在revisionに対する小さいmeaning changeを優先します。
+
+candidateには少なくとも次を説明できることを求めます。
+
+- 何を直したいか
+- exact target identityは何か
+- accepted baselineから何が意味上変わるか
+- 何は変わらないか
+- どのSource / Evidenceが根拠か
+
+これはplatform-wide Patch DSLを固定する要求ではありません。
+
+### Derived defaultをEditorへ再authorしない
+
+標準CRUD、derived View、dependency matrix、reverse cross-reference等をEditor上で見せても、それを利用者へ再入力させません。
+
+```text
+derived Projection is visible
+  != user must author it
+```
+
+利用者がoverrideする理由が生じた場合だけ、どのmeaningを明示化するかを別candidateとして扱います。
+
+## Local-first workspace
+
+realistic Reference規模ではwhole-model graphを常設編集面にしません。
+
+selected definitionを中心に次を局所的に辿れることを目指します。
+
+```text
+selected definition
+  ├─ authored local meaning
+  ├─ incoming / outgoing exact refs
+  ├─ Data / Function / Business lenses
+  ├─ Source / Evidence
+  ├─ affected derived projections
+  ├─ applicable / incompatible / unknown candidates
+  └─ diagnostics / unresolved
+```
+
+全体graph / matrixは必要に応じたProjectionです。検索・scope・local neighborhoodで認知負荷を抑えます。
+
+AIを利用する場合も、原則としてこのlocal contextとexplicit referencesを渡し、Repository全体を暗黙に再解釈させることを標準にはしません。
+
 ## 最小Authoring Loop
 
 ### 1. Select
@@ -68,6 +132,8 @@ Studioを削除しても、accepted authoring sourceとCanonical meaningを再�
 UI上の選択は、既存authoring sourceへ解決可能なqualified logical key / Canonical identityを利用します。
 
 file pathそのものを業務identityにはしません。
+
+Select時には、`ISSUE-000047`のread-only exploration結果やReference pattern candidateを表示できても、それらをselected authorityへ自動昇格しません。
 
 ### 2. Propose
 
@@ -83,6 +149,8 @@ candidateには必要に応じて次を保持します。
 
 candidateの具体schemaを最初からplatform-wide標準へ固定しません。
 
+AIが候補を作る場合も`ISSUE-000027`のProposalとして扱い、Studio internal stateへmeaningを隠しません。
+
 ### 3. Preview
 
 Accept前に少なくとも次を確認できるようにします。
@@ -96,11 +164,27 @@ Accept前に少なくとも次を確認できるようにします。
 
 Preview自体はauthoritative sourceを変更しません。
 
+さらにDefinition-centered loopでは、**結果だけでなく因果を表示できること**を目指します。
+
+例:
+
+```text
+required Relation added
+  -> Action input requirement changes
+  -> reference selector candidate appears
+  -> persistence migration classification changes
+  -> Runtime referential-integrity guard changes
+```
+
+各edgeはexact dependency / deterministic derivationへ追跡できる必要があります。AI explanationだけをimpact authorityにはしません。
+
 ### 4. Reject
 
 Rejectではauthoritative sourceを変更しません。
 
 Studio session / layout / selection等の非Semantic stateだけが変化してもCanonical meaningへ影響しないことを確認します。
+
+candidate cognition、AI chat、Preview cacheを削除しても同じaccepted stateへ戻れることも維持します。
 
 ### 5. Accept
 
@@ -140,6 +224,32 @@ Conformance
 ```
 
 入口ごとに別のsemantic validationやauthority modelを作りません。
+
+Accept後、derived UI / matrix / index / cognition等はaccepted sourceから再生成します。Studio stateを次revisionのsemantic prerequisiteにしません。
+
+## feedback routing
+
+Studioで問題を発見しても、常にselected Semantic definitionを直すとは限りません。
+
+例:
+
+```text
+business relation missing
+  -> Semantic source candidate
+
+Web-only interaction friction
+  -> Target / Presentation candidate
+
+PostgreSQL realization mismatch
+  -> Mapping / Provider candidate
+
+search candidate missed
+  -> derived retrieval / cognition candidate
+```
+
+利用者が最も目につく場所ではなく、meaningを所有する最小concernへ変更をrouteします。
+
+初回Referenceでは少なくとも一つ、UI symptomをSemantic sourceへ誤修正しないnegative caseを持つことを検討します。
 
 ## revision conflict
 
@@ -210,9 +320,12 @@ Studio GUIが動作したことを、第二Application TargetのSemantic / Funct
 
 - source / model revision before
 - selected logical identity
+- local neighborhood / exact refs used for review
 - candidate intent
+- minimum semantic delta
 - Preview Semantic Diff
-- impact / Diagnostic
+- impact / Diagnostic and derivation reason
+- feedback routing result
 - Accept / Reject result
 - source revision after
 - reload result
@@ -238,16 +351,21 @@ Gate Cから少なくとも次を受け取ってから着手します。
 
 これにより、Studio UI都合からApplication meaningを先行固定しません。
 
+Gate C後の最初のReferenceでは、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)に従い、`ISSUE-000047`の探索と`ISSUE-000027`のProposalを同じone-change loopへ接続します。
+
 ## 完了条件
 
 - [ ] Gate C Ready後に着手する
 - [ ] Studioから既存Data / RelationをSource-to-Canonical trace付きで選択できる
-- [ ] small Relation changeをcandidateとして作れる
-- [ ] PreviewでSemantic Diff / impactを確認できる
+- [ ] selected definition / local neighborhoodだけで初回changeをreviewできる
+- [ ] small Relation change等をminimum semantic delta candidateとして作れる
+- [ ] PreviewでSemantic Diff / impact / derivation reasonを確認できる
 - [ ] Preview / Rejectでauthoritative sourceを変更しない
+- [ ] feedbackをvisible symptomではなくmeaning-owning concernへrouteできる
 - [ ] Acceptがfile-native / CLI / AIと同じshared Acceptance原則へ接続する
 - [ ] accepted sourceをStudioなしでreloadできる
 - [ ] reload後CanonicalがValidation / Conformanceを満たす
+- [ ] derived projection / indexをaccepted sourceから再生成できる
 - [ ] stale `baseModelRevision`を黙って適用しない
 - [ ] file moveをsemantic no-op、logical renameをsemantic changeとして区別できる
 - [ ] mandatory authored Stable IDをStudio都合で導入しない
@@ -262,14 +380,20 @@ Gate Cから少なくとも次を受け取ってから着手します。
 - YAML / file-native sourceの廃止
 - mandatory UUID / authored Stable IDの導入
 - Studio専用Acceptance engine
+- whole-model graphを必須authoring surfaceにすること
+- AI chatをStudioの主authoring modelにすること
+- derived CRUD / matrix等の人手再authoring
 - WailsをTEI全体の標準Target / Runtimeへ固定すること
 - Generated Wails Desktop Application Targetの実装
 
 ## 関連文書
 
+- `docs/definition-centered-feedback-loop.md`
+- `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000026-target-capability-execution-profile-boundary.md`

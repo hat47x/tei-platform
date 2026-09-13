@@ -2,6 +2,124 @@
 
 このディレクトリを、計画上の作業定義と進行確認の入口とします。背景、制約、完了条件、担当境界は各Issueに置き、採用する設計判断は`../adr/`へ記録します。既存GitHub Issueへの参照は履歴・Evidenceを辿るために残しますが、本整理ではGitHubへ新規起票・更新しません。
 
+TEIのIssueは、単なるTODO一覧ではありません。**どのProduct上の不確実性を減らし、その結果として次に何を判断できるようにするか**を残すための文書です。
+
+## Issueを読むときの四つの問い
+
+技術詳細やチェックリストへ入る前に、まず次を確認します。
+
+1. **何に困っているのか** — どの失敗や不確実性を減らす作業か
+2. **このIssueは何を所有するのか** — 隣接Issueとどこで責務を分けるか
+3. **何が分かれば完了なのか** — 実装量ではなく、どのEvidenceで判断可能になるか
+4. **完了後に何を決められるのか** — ADR、次のReference、production採用等のどこへ接続するか
+
+たとえば「AI探索」という名前だけでは、検索器を作るIssueなのか、意味上の適用可否を判定するIssueなのか、Proposalを受理するIssueなのかが分かりません。TEIでは、それらを別の責務として分けます。
+
+```text
+候補を見つける
+  !=
+意味上使えると確認する
+  !=
+変更案として受理する
+  !=
+production authorityへ採用する
+```
+
+この区別を保つことで、一つの大きなAI / Business / Runtime Issueへ責務が集まりすぎることを避けます。
+
+## 現在の重要な二つの読み筋
+
+### 1. Design Synthesis / knowledge-first探索
+
+Design Synthesis全体の説明は[`../../docs/design-synthesis-reading-guide.md`](../../docs/design-synthesis-reading-guide.md)から読みます。個別Issueは次のように役割が分かれています。
+
+```text
+既存資産を思い出す候補を作る
+        ↓
+000051 derived cognitive retrieval evaluation
+        ↓ candidate identities
+000047 knowledge-first semantic exploration
+        ↓ applicable / incompatible / unknown
+000027 AI Proposal / Acceptance Boundary
+        ↓ accepted change only
+Shared Acceptance Boundary / authoritative source
+```
+
+| Issue | 減らす不確実性 | このIssueが決めないこと | 完了後にできる判断 |
+| --- | --- | --- | --- |
+| [000051 非LLM認知方式の比較](000051-derived-cognitive-retrieval-evaluation.md) | exact / lexicalだけでは拾いにくい候補を、軽量なlocal方式で有用に増やせるか | Semantic applicability、採用、write authority | どのcandidate mechanismを000047の前段へ残す価値があるか |
+| [000047 knowledge-first探索](000047-knowledge-first-semantic-exploration.md) | 見つかった既存資産が現在のintentへ本当に使えるか | AI Proposalの採用、Canonical書込み | `applicable / incompatible / unknown`を理由付きで返し、明示参照candidateへ進めるか |
+| [000027 AI Proposal / Acceptance](000027-ai-proposal-acceptance-boundary.md) | 非決定的なAI Proposalを、AI専用authorityを作らず正本へ反映できるか | read-only探索そのもの、Studio UI | shared Acceptance Boundaryを通したminimum semantic deltaを安全に受理できるか |
+| [000046 Studio Shared Acceptance](000046-studio-shared-acceptance-authoring-loop.md) | Studio経路もfile / CLI / AIと同じ受理境界へ接続できるか | AI固有の推論方式 | Authoring surfaceが増えてもauthorityを増やさずに済むか |
+| [000040 Semantic component composition](000040-semantic-component-composition.md) | 見つけた既存資産を第二Application等へ安全に組み立てられるか | candidate retrieval algorithmの優劣 | knowledge-firstな再利用が実際の設計作業を減らすか |
+
+この系列で最も重要なのは、`000051`のscoreが高くても`000047`のqualificationを飛ばさず、`000047`で`applicable`でも`000027`のAcceptanceを飛ばさないことです。
+
+```text
+Similarity != Applicability
+Applicability != Acceptance
+Acceptance != Execution Authority
+```
+
+Gate C前は、これらの本格runtime実装へ進みません。Benchmark、feature contract、Reference Scenario等のpre-design preparationと、Product上の問いの整理を進めます。
+
+### 2. Business Procedure / cross-view readiness
+
+Business System Design全体は[`../../docs/business-system-design-reading-guide.md`](../../docs/business-system-design-reading-guide.md)から読みます。Lane Cでは「Referenceが動いた」ことと「contractを決めてよい」ことと「production authorityへ採用してよい」ことを分けています。
+
+```text
+000042 cross-view Reference / pressure
+        ↓
+000050 independent second realistic corpus
+        ↓ supplies missing Evidence
+000048 Contract ADR readiness
+        ↓ ADR adopted
+000049 production adoption readiness
+        ↓ production authority cutover
+000046 / 000027 Studio・AI authoring integration
+```
+
+| Issue | 減らす不確実性 | 主な出口 |
+| --- | --- | --- |
+| [000042 cross-view Reference](000042-business-procedure-cross-view-reference.md) | Data / Function / Businessを横断した最小contract候補が現実的な業務で壊れないか | Pressure / checker / Evidence。判定state自体は持たない |
+| [000050 second Handoff corpus](000050-second-realistic-handoff-corpus.md) | 現行Handoffが一つの受注例だけへの過適合ではないか | 000048 blocker Bを判断する独立Evidence |
+| [000048 Contract ADR readiness](000048-business-procedure-contract-adr-readiness.md) | 最小production Canonical contractをADRで固定してよいだけの反証可能Evidenceが揃ったか | ADR起票・採用判断へ接続 |
+| [000049 production adoption readiness](000049-business-authoring-production-adoption-readiness.md) | 採用済みcontractを実際のsource authorityへ切り替えて安全か | production authoring / authority cutover |
+
+`000042`のrunnerがgreenでも`000048`が自動的にReadyにはなりません。`000048`でADRが採用されても`000049`のproduction採用条件を満たしたことにはなりません。
+
+## Issueを書くときの文書品質
+
+重要なIssueでは、チェックリストより前に次を自然な文章で説明します。
+
+```text
+背景 / 防ぎたい失敗
+        ↓
+減らすProduct上の不確実性
+        ↓
+担当境界
+        ↓
+現在分かっていること / 未解決
+        ↓
+Reference・Evidenceの取り方
+        ↓
+完了後に可能になる判断
+        ↓
+非目標
+```
+
+特に次を重視します。
+
+- 「実装するもの」ではなく「何を明らかにする作業か」を先に書く
+- Product Requirementとの関係を、RQ番号だけでなく理由でも説明する
+- 隣接Issueとの責務境界を示す
+- `unknown / unresolved / blocked`を、未完成だからという理由だけで埋めない
+- synthetic fixture、actual external Evidence、production adoptionを同じ成功へ畳まない
+- algorithm名やpackage名を、Product上の問いより先に固定しない
+- 完了条件は作業量ではなく、次の判断を可能にするEvidenceへ結び付ける
+
+短いIssueでは全見出しを機械的に設ける必要はありません。ただし、読者が「なぜこの作業が必要で、終わると何が変わるのか」を推測しなければならない状態は避けます。
+
 ## 統合の基準と確認範囲
 
 2026-09-04時点の既存計画Issue、Master Planに残る対象、GitHubの未完了16件と直近の関連Issueを照合しました。`origin/main`の計画基線は`a1f7b4a5787518ee3ae29bf216862ad9456a6ce8`です。

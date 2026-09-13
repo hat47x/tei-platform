@@ -2,6 +2,46 @@
 
 Status: In Progress
 
+## このIssueを最初に読むときの要点
+
+このIssueは、Business Procedureの実装を完成させるための作業ではありません。
+
+ここで確かめたいのは、**現在検討している最小contractを長く残るArchitecture判断としてADRへ固定してよいだけの反証可能なEvidenceがそろったか**です。
+
+```text
+Reference / pressure test
+        ↓
+「このcontractで説明できない現実が残っていないか」を確認
+        ↓
+Pre-ADR Audit
+        ↓
+ADRへ固定してよい / まだ早い
+```
+
+したがって、runnerが動いた、schema候補が書けた、Handoff fixtureが二つになった、といった個別の達成だけでは完了しません。
+
+### このIssueが減らす不確実性
+
+主に次の問いへ答えます。
+
+1. 現在のBusiness Procedure最小contractは、実際のRepository上でlosslessかつfail-closedに扱えるか。
+2. 最初の`order_entry`だけに過適合せず、独立した二つ目の現実的なBusiness caseでも責任移譲を説明できるか。
+3. まだEvidenceがない概念を、将来必要そうという理由だけでCanonical fieldへ入れていないか。
+4. ADRへ固定する判断と、production source authorityへ採用する判断を分離できているか。
+
+### 完了すると何を判断できるか
+
+このIssueが完了すると、**Business Procedureの最小contractをADRへ記録し、そのcontractを前提にproduction adoptionの検証へ進んでよい**と判断できます。
+
+逆に、このIssueが完了しても次はまだ言えません。
+
+- production authoringへ切り替えてよい
+- Studio / AIからBusiness sourceを書き換えてよい
+- Product Gate CがReadyである
+- Workflow Engineやfull Procedure schemaが必要である
+
+production採用は[ISSUE-000049](000049-business-authoring-production-adoption-readiness.md)、Studio / AI接続は[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md) / [ISSUE-000046](000046-studio-shared-acceptance-authoring-loop.md)が別に扱います。
+
 ## 目的
 
 Business Procedureの最小production Canonical contractについて、**ADRを起票してよい状態**へ到達させる。

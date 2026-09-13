@@ -6,6 +6,62 @@
 - Product Acceptance Scenario: **PAS-06 primary**
 - 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023
 
+## このIssueを最初に読むときの要点
+
+このIssueの目的は、高性能な検索engineを作ることではありません。
+
+TEIで新しい定義や実装を作ろうとしたとき、まず既存資産を探し、見つかった候補について**「現在の目的へ本当に使えるか」を決定論的に確認する境界**を成立させることが中心です。
+
+```text
+既存資産を探す
+  ↓
+候補が見つかる
+  ↓
+identity / dependency / scope / Source / Evidence / revisionを確認
+  ↓
+applicable / incompatible / unknown
+  ↓
+明示参照を持つProposal候補へ渡す
+```
+
+ここで重要なのは、検索順位や類似度と、Semanticな適用可能性を分けることです。
+
+```text
+見つけやすい
+  !=
+現在の業務文脈で使える
+```
+
+### このIssueが減らす不確実性
+
+主に次の問いへ答えます。
+
+1. 既存資産を見つけられず、同じ意味を重複authoringしてしまわないか。
+2. 名前や構造が似ているだけのnear-matchを、誤って「使える」と判定しないか。
+3. Evidence不足やstaleな候補を`unknown`のまま保持できるか。
+4. Human / Studio / AIが別々のKnowledge正本を持たず、同じCanonical / Source / Evidenceへ戻れるか。
+5. derived indexや認知方式を削除・交換しても、Canonical Worldが変わらないか。
+
+### 完了すると何を判断できるか
+
+このIssueが完了すると、**既存資産探索から得た候補を、現在のintentへ再利用可能かどうか安全に分類し、明示参照付きの変更候補へ渡してよい**と判断できます。
+
+ただし、ここで`applicable`になったことは、その変更が採用されたことを意味しません。
+
+```text
+retrieval
+  ↓
+qualification        ← このIssue
+  ↓
+Proposal
+  ↓
+Shared Acceptance    ← ISSUE-000027 / 000046
+  ↓
+authoritative source
+```
+
+また、どのcandidate retrieval方式が優れているかの比較は[ISSUE-000051](000051-derived-cognitive-retrieval-evaluation.md)が担当します。本Issueは000051の方式が不採用でも成立する必要があります。
+
 ## 目的
 
 Gate C通過後、開発者やAIが新しい実装・定義を作る前に、Repositoryに既に存在するSemantic資産を**read-onlyで探索し、適用可能 / 不適合 / 不明を区別できること**をReferenceで実証します。
@@ -14,12 +70,17 @@ AI専用Knowledge Storeや巨大なretrieval基盤を先に作ることが目的
 
 最初の価値は、既存の意味を見つけられず重複authoringすること、名前が似ているだけの資産を誤用すること、過去の古い知識を現在の正本として扱うことを減らすことです。
 
+Definition-centered feedback loopでは、このIssueは**attention / retrieval後のdeterministic qualification**を所有します。探索対象はcurrent authoritative definitionそのものだけでなく、provenance付きReference patternやderived structural memoryへ広げられますが、どの経路もcurrent Source / Canonical / Evidenceへ戻って確認します。
+
 ## 基本flow
 
 ```text
-purpose / intent
+purpose / intent / selected local context
     ↓
 explore existing Semantic assets
+    + exact / graph neighborhood
+    + provenance-bound Reference patterns
+    + optional derived cognition
     ↓
 inspect identity / dependency / source / evidence
     ↓
@@ -52,12 +113,31 @@ v1 Referenceで少なくとも次を横断して検索・参照できること�
 
 最初から全Repository文書、全履歴、外部Knowledgeを一つの検索体系へ統合しません。
 
-## 検索結果とSemantic適用可能性を分ける
+## 三種類のmemoryを区別する
 
-検索順位、文字列類似度、embedding similarity、LLMの確信度等は**探索候補の順位**であってSemantic Evidenceではありません。
+探索Productではknowledge sourceを一つへ畳みません。
 
 ```text
-search / retrieval result
+1. authoritative semantic memory
+   authoritative source / Canonical meaning / accepted Decision
+
+2. derived associative / structural memory
+   Source Index / dependency index / lexical / graph / pattern / embedding / sparse code
+
+3. episodic / experience memory
+   Proposal / accept-reject / run / Observation / correction trajectory
+```
+
+このIssueは主に1を確認し、2から候補を受け取ります。3は「以前この候補が役立った」というrouting hintにはできますが、current applicabilityのEvidenceにはしません。
+
+derived / episodic memoryを削除してもCanonical Worldが変わらないことを要求します。
+
+## 検索結果とSemantic適用可能性を分ける
+
+検索順位、文字列類似度、embedding similarity、Reference pattern frequency、LLMの確信度等は**探索候補の順位**であってSemantic Evidenceではありません。
+
+```text
+search / retrieval / pattern match
         ≠
 applicable semantic asset
 ```
@@ -73,7 +153,7 @@ applicable semantic asset
 - Evidence / Conformance
 - current revisionとの整合
 
-名前が似ている、過去に使われた、AIが推奨した、という理由だけで既存資産を採用しません。
+名前が似ている、Referenceに頻出する、過去に使われた、AIが推奨した、という理由だけで既存資産を採用しません。
 
 ## applicable / incompatible / unknown
 
@@ -127,7 +207,59 @@ vector databaseやembeddingを初回Referenceの必須要件にはしません�
 
 まずRepositoryのread-only探索とidentity / dependency / Evidence照合を成立させます。
 
-### 非LLMのcandidate retrieval方式を比較する
+## Reference Pattern Memory
+
+過去のX-TEA / XEAD Reference ModelやTEI自身のrealistic Referenceから抽出したpatternを、**provenance-bound derived candidate source**として利用する余地を持ちます。
+
+これは「Reference Modelをテンプレートlibraryとして自動適用する」ことではありません。
+
+最小record候補:
+
+```text
+pattern id / label
+nature: observed / candidate
+structural signature
+provenance source / model
+examples
+applicability question
+known non-proof / caveat
+```
+
+候補利用:
+
+```text
+intent / local structure
+  ↓
+multiple Reference patterns
+  ↓
+compare applicability / differences
+  ↓
+applicable / incompatible / unknown
+```
+
+### first pattern pressure
+
+既に過去分析で観測・候補化された、たとえば次の構造をReference caseへ使えます。
+
+- header-detail transaction
+- conditional subtype / role
+- self-referential hierarchy / chain
+- plan / actual / consequence / ledger
+- derived summary
+- composition / BOM-like structure
+
+ただし名称やpattern IDをcurrent modelへそのまま移植しません。TEI-nativeで語彙を変えたcaseに対し、構造candidateとして思い出せるかを確認します。
+
+### negative case
+
+Reference群に頻出するpatternでもcurrent Business requirementには合わないcaseを必須にし、`incompatible`へ落とせることを確認します。
+
+```text
+frequency != requirement
+pattern match != applicability
+```
+
+## 非LLMのcandidate retrieval方式を比較する
 
 探索方式はlexical searchやembeddingへ固定しません。Canonical Worldから決定論的に抽出したfeatureを用い、sparse expansive representation、high-dimensional hashing、role-awareなHDC / VSA等がcandidate生成に有効かは、[ISSUE-000051](000051-derived-cognitive-retrieval-evaluation.md)でarchitecture probeとして比較します。
 
@@ -136,7 +268,7 @@ vector databaseやembeddingを初回Referenceの必須要件にはしません�
 ```text
 candidate mechanism
       ↓
-candidate identities
+candidate identities / pattern candidates
       ↓
 このIssueのdeterministic qualification
       ↓
@@ -147,11 +279,24 @@ applicable / incompatible / unknown
 
 ## AI Knowledgeとの関係
 
-AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、それらは補助的なDerived Knowledgeです。
+AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、それらは補助的なDerived / Experience Knowledgeです。
 
 新しいSemantic資産を提案する前に、現在のRepository上で同等・近接・関連する資産を探索します。
 
 過去trajectoryが「以前これを使った」と示しても、現在revisionで有効とは限りません。current Source / Evidenceへ戻って再確認します。
+
+### experienceからのlocal learning
+
+将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
+
+- task-local association
+- known false-positive suppression
+- frequently useful Reference pattern hint
+- outcome-local ranking weight
+
+それでもrevision / provenance / outcomeへtraceでき、learned stateを無効化できる必要があります。
+
+accepted semantic ruleをlearned weightだけへ保存しません。
 
 ## explicit-reference candidateへ進む
 
@@ -173,7 +318,9 @@ authoritative source
 
 ## 最初のReference Scenario
 
-Gate C後の`order_entry`を使い、少なくとも次を比較します。
+Gate C後の`order_entry`を使い、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)のone-change loopへ参加します。
+
+少なくとも次を比較します。
 
 ### 1. existing asset reuse
 
@@ -183,23 +330,29 @@ intentに対して既存Application Pattern / Capability / Relation等を発見�
 
 名前や用途が近いがscope / Capability / Datasource条件が合わない資産を用意し、検索上位でも`incompatible`として拒否できることを確認します。
 
-### 3. unknown
+### 3. Reference pattern candidate
+
+local modelと構造的に近いReference patternをprovenance付きで提示し、直接採用せずdifferences / applicabilityをreviewできることを確認します。
+
+### 4. unknown
 
 Evidence不足で適用可否を断定できない資産を`unknown`として保持し、推測で採用しないことを確認します。
 
-### 4. stale derived index
+### 5. stale derived index
 
-source revision更新後に古いindex / cacheを利用しようとした場合、staleを検出して再読込・再生成へ進めることを確認します。
+source revision更新後に古いindex / cache / pattern-derived featureを利用しようとした場合、staleを検出して再読込・再生成へ進めることを確認します。
 
 ## Evidence
 
 初回Referenceでは少なくとも次を残します。
 
 - user / task intent
+- selected definition / local context
 - query / exploration input
 - source / repository revision
-- returned candidate identities
-- Source / Evidence references
+- candidate mechanism（exact / lexical / pattern / cognition / AI等）
+- returned candidate identities / pattern identities
+- Source / Evidence / provenance references
 - applicable / incompatible / unknown分類
 - 分類理由
 - explicit-reference candidateへ進んだか
@@ -222,32 +375,42 @@ Gate Cから次を受け取ります。
 
 これにより、「何を再利用すべきか」を抽象語彙だけから決めず、実在するReference資産で検証します。
 
+Gate C前にはReference pattern provenanceの整理やbenchmark設計までを行えますが、production index / learned memoryは導入しません。
+
 ## 完了条件
 
 - [ ] Gate C Ready後に着手する
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
-- [ ] search ranking / similarityとSemantic適用可能性を分離できる
+- [ ] authoritative / derived associative / episodic memoryを混同しない
+- [ ] search ranking / similarity / pattern frequencyとSemantic適用可能性を分離できる
 - [ ] applicable / incompatible / unknownを明示できる
 - [ ] unknownを推測でsuccessへ変換しない
+- [ ] provenance付きReference patternをcandidate sourceとして扱える
+- [ ] Reference patternのincompatible negative caseを拒否できる
 - [ ] existing asset reuseをexplicit-reference candidateへ接続できる
 - [ ] candidateがShared Acceptance Boundaryを通る
 - [ ] stale derived index / cacheを検出または再生成できる
-- [ ] index / embedding / trajectoryを削除してもCanonical Worldが変わらない
-- [ ] AI Knowledgeを第二のCanonical正本にしない
+- [ ] index / embedding / trajectory / learned rankingを削除してもCanonical Worldが変わらない
+- [ ] AI KnowledgeやReference pattern memoryを第二のCanonical正本にしない
 
 ## 非目標
 
 - Gate C前の本格Knowledge subsystem
 - 全文書を統合する巨大Knowledge Graph
 - vector databaseの必須化
+- Reference patternの自動適用
+- pattern frequencyによる自動採用
 - embedding similarityによる自動採用
 - AI内部記憶をSemantic authorityにすること
 - search resultからauthoritative sourceへ直接writeすること
+- global online learning
 - Derived Experience Knowledgeの完成形
 
 ## 関連文書
 
+- `docs/definition-centered-feedback-loop.md`
+- `plan/DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`

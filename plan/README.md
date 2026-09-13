@@ -137,38 +137,43 @@ second corpusもHandoff fixtureから始めず、Handoffが無くても価値を
 
 ここでいうLane C Business Procedure Gate Aは、本README前半のApplication Pattern **Gate A — Ready**とは別のPre-ADR execution gateです。名称を理由に両者のEvidence statusを混同しません。
 
-## Concise Definition Body / derived intelligence
+## Definition-centered feedback / AI era
 
-この領域は、X-TEA/XEAD系Reference Modelに見られる「端的な定義から豊かな設計lensを立ち上げる」性質を、現在のTEIのSource / Canonical / Projection / AI境界へ翻訳します。
+Studio、knowledge-first探索、AI Proposal、非LLM認知方式を別々のAI機能として育てず、**端的なauthoritative definitionを中心にした一つのfeedback loop**へ接続します。
 
-根幹から次の順で読みます。
+設計本文:
 
-1. [`../docs/definition-body-architecture.md`](../docs/definition-body-architecture.md) — 何をauthoritative Definition Bodyへ置き、何をderiveするか
-2. [`CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md`](CONCISE_DEFINITION_BODY_REFERENCE_PRESSURE_2026-09.md) — realistic Referenceでのcold reconstruction / Function lens / Business preservation / complexity-rent Pressure
-3. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — exact / associative / LLM cognitionのProduct上の役割
+- [`../docs/definition-centered-feedback-loop.md`](../docs/definition-centered-feedback-loop.md) — concise definition / three-memory separation / feedback routing / minimum semantic delta / Reference Modelの役割
+- [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上流の複数設計案をローカル認知で縮約し、local LLMとsemantic-to-implementation/test derivationへ接続する上位Product Goal
+- [`DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md) — Gate C前後の実証順と既存Issueの責務統合
 
-中心原則:
+中心flow:
 
 ```text
-消すとmaterial business distinctionが失われるもの
-  -> authorする
-
-accepted sourceから一意に再構成できるもの
-  -> deriveする
-
-Provider / Target / Runtime固有差
-  -> realization / Bindingへ置く
-
-actual state
-  -> Observation / Evidenceへ置く
-
-similarity / retrieval / AI candidate
-  -> non-authoritative derived cognitionへ置く
+concise authoritative definition
+  ↓
+Canonical meaning
+  ↓
+derived projection / runtime / simulator / index
+  ↓
+human review / Observation / Reference pressure
+  ↓
+route feedback to owning concern
+  ↓
+exact / pattern / cognition / LLM candidates
+  ↓
+deterministic qualification + Preview
+  ↓
+Shared Acceptance Boundary
+  ↓ accepted minimum semantic delta
+authoritative source → reload / regenerate
 ```
 
-端的さを実現するためにAIへmeaning推測を委ねません。逆に、AI / embedding / FlyHash / HDC等のためにmandatory metadataをDefinition Bodyへ追加しません。
+ここで、LLMやcognitive indexを新しいauthorityにしません。Reference Modelはanswer libraryではなく、worked example・実行可能content・Conformance pressure・pattern evidence・Platform feedback sourceとして扱います。
 
-このworkstreamは新しいGate / PAS / Product Requirementを追加せず、Reference Evidenceがmaterial defectを示した場合だけauthoring surfaceの追加を再検討します。
+Design Synthesisの長期目標は、上流purposeから複数のstructured design candidateを作り、exact / constraint / pattern / cross-view / associative cognitionで候補空間を狭め、local LLMには少数案の比較・統合・minimum semantic delta提案を担わせることです。accepted meaningからimplementationとtestをできる限り再生成し、人間の反復authoringをmeaning selection / Acceptanceへ圧縮します。
+
+Gate C前はdefinition inventory、feedback routing、memory separation、Reference pattern provenance等のread-only設計準備までです。Gate C後、`ISSUE-000046` / `000047` / `000027`を一つの小さいsemantic changeで合流させ、その後に`ISSUE-000051`のnon-LLM cognition比較へ進みます。
 
 ## Gate C後のplanning
 
@@ -186,26 +191,28 @@ Select → Propose → Preview → Accept / Reject
           authoritative source → reload
 ```
 
-StudioはCanonicalの第二正本ではありません。
+StudioはCanonicalの第二正本ではありません。Definition-centered loopでは、whole-model editingよりselected definition / local neighborhoodを基本にし、AIを使う場合もwhole file再生成ではなくreview可能なminimum semantic deltaを優先します。
 
 ### knowledge-first / PAS-06
 
 この領域は、個別algorithmやfeature設計からではなく、Product上の趣旨から順に読みます。
 
-1. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Definition Body / Canonical / LLM / Authorityとの境界、個別課題への展開順
-2. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
-3. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
-4. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
-5. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
+1. [`DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 複数設計案、proposal-space contraction、local-first認知、local LLM、semantic-to-code/test derivationという上位Product Goal
+2. [`DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md`](DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — なぜ非LLM認知方式を検討するか、Canonical / LLM / Authorityとの境界、個別課題への展開順
+3. [`DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md`](DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — SEI Cognition / SUI / ハエ脳等の関連検討からTEIへ取り込む性質を抽出した要件素案と所有境界
+4. [`issue/000047-knowledge-first-semantic-exploration.md`](issue/000047-knowledge-first-semantic-exploration.md) — Human / AI共通のknowledge-first Product Reference
+5. [`issue/000051-derived-cognitive-retrieval-evaluation.md`](issue/000051-derived-cognitive-retrieval-evaluation.md) — candidate retrieval方式を比較するarchitecture probe
+6. [`DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_BENCHMARK_CONTRACT_2026-09.md) — 共通の評価問題とoracle
+7. [`DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md`](DERIVED_COGNITIVE_FEATURE_EXTRACTION_CONTRACT_2026-09.md) — algorithm-neutralなfeature抽出詳細
 
-Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることがProduct上の中心です。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを後段で比較する方式であり、search ranking / similarityをSemantic Evidenceへ格上げしません。
+Human / AIが同じauthoritative Source / Canonical / Evidenceをread-only探索し、`applicable / incompatible / unknown`を分けることは最初の実証スライスです。FlyHash、HDC/VSA等はその候補生成部分に価値があるかを比較する方式であり、最終目標はretrieval単体ではなく、設計候補の生成・縮約・Acceptance・implementation/test derivationまでfeedback loopを閉じることです。
 
 ### AI Proposal / PAS-01 / PAS-06
 
 - [`adr/0022-ai-proposal-canonical-acceptance-boundary.md`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)
 - [`issue/000027-ai-proposal-acceptance-boundary.md`](issue/000027-ai-proposal-acceptance-boundary.md)
 
-AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等とShared Acceptance Boundaryへ収束します。
+AI ProposalはCanonical authorityではなく、file-native / Studio / CLI等とShared Acceptance Boundaryへ収束します。AIの標準的な価値はwhole modelを再生成することではなく、current revision・explicit refs・Evidenceに基づく**小さい意味差分、比較、説明**を作ることです。
 
 ### Second Target / PAS-04
 
