@@ -61,9 +61,9 @@ branch名は「今回の一回の作業」ではなく、継続して同じ責�
 
 1. open PRや未merge commitを持っていないか
 2. 以前の作業がすでにmainへmerge済みか
-3. 現在のmainへfast-forwardできるか
+3. branch上の変更がPR / mainへすべて取り込まれているか
 
-安全に再利用できる場合、新しいsuffix付きbranchを作らず、既存branchをcurrent mainへ追随させます。
+安全に再利用できる場合、新しいsuffix付きbranchを作らず、既存branchをcurrent mainへ戻してから次の変更を始めます。
 
 未mergeの変更が残るbranchをforce resetしてはいけません。
 
@@ -82,7 +82,7 @@ review / check
   ↓
 merge
   ↓
-branchをmainへ追随
+branchをcurrent mainへ戻す
   ↓
 次の変更
 ```
@@ -94,11 +94,15 @@ branchをmainへ追随
 PRをmergeした後は、次のどちらかにします。
 
 - 一回限りのbranchならremote branchを削除する
-- 継続workstream branchなら、次の作業を始める前にcurrent `main`へfast-forwardして再利用する
+- 継続workstream branchなら、次の作業を始める前にcurrent `main`と同じcommitへ戻して再利用する
+
+通常のmerge / rebase mergeでfast-forward可能ならfast-forwardします。**squash mergeでは元branchのcommit列がmainの祖先にならないため、PRがmerge済みで未merge変更がないことを確認した場合に限り、継続branchをcurrent mainへresetしてよい**ものとします。
+
+このresetは履歴破壊を目的とするforce pushではなく、merge済みworkstream branchを再利用可能な空の作業面へ戻すための操作です。open PRや未merge commitが一つでも残る場合は行いません。
 
 merge済みbranchを過去のsnapshotとして残す必要はありません。必要な履歴はPRとGit historyから辿れます。
 
-接続tool等の制約でremote branchを削除できない場合も、同じ目的の新branchを増やさず、継続branchをmainへ追随させて再利用します。
+接続tool等の制約でremote branchを削除できない場合も、同じ目的の新branchを増やさず、上記条件を満たす継続branchをmainへ戻して再利用します。
 
 ### 5. temporary branchをremoteへ残さない
 
