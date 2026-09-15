@@ -403,6 +403,29 @@ Blocker B positive Evidence
 
 である。Corpus selectionはH1/R3 sufficiency証明ではない。Test件数のためにsource authorityを発明しないためのnegative / preparatory Evidenceとして扱う。
 
+PR #596 / `DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`では、このsecond-corpus pressureへP5 / P6のnegative proofを適用した。ここで確認できたのは、**Handoff positive Evidenceではなく、authorityを越えた導出規則を除外できること**である。
+
+```text
+Command accepted -> physical completion
+  = contradiction as derivation rule
+
+Observation execution success -> physical completion
+  = contradiction as derivation rule
+
+explicit external Observation Result=true
+  -> observed physical fact only
+  = supported at that limited scope
+
+Step adjacency / actor change / Function sequence / positive Observation
+  -> Handoff
+  = contradiction as derivation rule
+
+second-corpus Handoff existence / from / to / condition
+  = unresolved
+```
+
+したがってR2 negative proofは、Gate A green前に許されるnon-inference / candidate-contraction Evidenceを強めるが、accepted independent Business seed、second Handoff authority、Blocker B positive Evidenceのいずれにも昇格しない。Actual green後のauthoring protocolも変更しない。
+
 ### Actual green後のauthoring protocol
 
 Gate A actual green後に第二例を作る場合:
@@ -620,6 +643,7 @@ fresh-process feasibility
 second realistic Handoff
   = second-corpus research target selected
   = provenance / reuse / fact-candidate-unresolved boundary established
+  = P5/P6 negative proof confirms non-inference / actuality boundary
   = accepted independent Business seed not yet authored
   = from / to / condition positive Evidence unresolved
 
