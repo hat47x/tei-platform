@@ -67,6 +67,34 @@ Handoff meaningをnormalized Business modelに保持する必要がある
 
 これはauthority boundaryを強くする。
 
+PR #596 / `DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`では、製造・在庫second-corpus pressureへP5 / P6を適用し、この境界をさらにnegative proofとして確認した。
+
+```text
+Command accepted -> physical completion
+  = contradiction as derivation rule
+
+Observation execution success -> physical completion
+  = contradiction as derivation rule
+
+explicit external Observation Result=true
+  -> observed physical fact only
+  = supported at that limited scope
+
+Step adjacency / actor change / Function sequence / positive Observation
+  -> Handoff
+  = contradiction as derivation rule
+```
+
+ここで重要なのは、導出規則を`contradiction`として除外できても、domain側のHandoff不存在まで証明したわけではないことである。
+
+```text
+invalid inference rejected
+  != Handoff proven absent
+  != Handoff proven present
+```
+
+したがってE2は強化されたが、E4を代替しない。
+
 ### E3 — external / requirement corroboration
 
 RQ-025 / RQ-026およびWatanabe external evidenceは、Business Procedure / Business responsibility / Business Flow separationの妥当性を補強する。
@@ -86,6 +114,21 @@ condition
 だけでaccepted meaningをlosslessに保持できるか。
 
 Current missing Evidenceは主にこれである。
+
+R2 negative proof後も:
+
+```text
+accepted independent Business seed
+  = none
+
+accepted second Handoff
+  = none
+
+second Handoff from / to / condition
+  = unresolved
+```
+
+なのでE4は未取得のままである。
 
 ## 3. Option S0 — second caseを不要とし今ADRへ進む
 
@@ -141,9 +184,19 @@ Current Lane Cはまだproduction adoptionを急いでいないため、この�
 
 判定: **defer / current primaryではない**。
 
-## 6. Negative searchはsecond positive caseの代替ではない
+## 6. Negative search / negative proofはsecond positive caseの代替ではない
 
 `BUSINESS_HANDOFF_TEI_ORIGINAL_SECOND_CASE_SEARCH_2026-09.md`はcurrent accepted corpusを捻じ曲げないために重要である。
+
+さらにR2 negative proofにより、製造・在庫pressureについても:
+
+```text
+physical fact supported
++
+Handoff unresolved
+```
+
+を同時に保持でき、adjacency / actor差 / Function sequence / ObservationからHandoffを補完する候補を除外できることが確認できた。
 
 しかし:
 
@@ -151,17 +204,25 @@ Current Lane Cはまだproduction adoptionを急いでいないため、この�
 qualifying existing caseがない
   !=
 current representationが別caseでも十分
+
+invalid inferenceを除外できる
+  !=
+current H1/R3がindependent positive caseでlossless
 ```
 
 である。
 
-Negative searchが証明するのは:
+Negative search / negative proofが証明するのは:
 
 - fixtureを発明しないこと
 - non-inference boundaryを守ること
+- unsupported actualityを発明しないこと
+- physical factとBusiness continuation / Handoff authorityを分離すること
 - current corpusからschema expansionを導かないこと
 
 までであり、representation generalityではない。
+
+したがってR2をBlocker B positive Evidenceへ読み替えない。
 
 ## 7. External evidenceもsecond positive caseの代替ではない
 
@@ -196,6 +257,8 @@ H1/R3 from/to/condition
 
 であり、追加fieldのconcrete loss Evidenceはない。
 
+R2 negative proofも、現在のthin authority boundaryに新しいfieldが必要だというlossを示していない。
+
 不足しているのは:
 
 ```text
@@ -228,6 +291,8 @@ Current Gate A actual execution Evidenceは未取得である。Runner availabil
 
 ISSUE-000050では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みだが、accepted independent Business seedや`from/to/condition`は未成立である。
 
+PR #596のR2は、この順序を崩さずに実施できるnegative proofである。Gate A green前に許されるのは、accepted Handoffを作ることではなく、既存authorityから不正な導出を除外し、candidate / unresolved境界を明確にすることまでである。
+
 したがって順序は:
 
 ```text
@@ -246,7 +311,7 @@ Contract ADR readiness再判定
 
 でよい。
 
-Gate A未解決中にsecond caseを埋めるための架空Business requirementを追加しない。Corpus / provenance researchは続けられるが、accepted Business seed / Procedure / Handoff authoringへは進めない。
+Gate A未解決中にsecond caseを埋めるための架空Business requirementを追加しない。Corpus / provenance researchとnegative proofは続けられるが、accepted Business seed / Procedure / Handoff authoringへは進めない。
 
 ## 10. Current decision
 
@@ -260,6 +325,11 @@ second realistic TEI-original Handoff
 second-corpus research target
   = selected
   != accepted positive Handoff Evidence
+
+R2 P5/P6 negative proof
+  = E2 non-inference / actuality boundaryを強化
+  != E4 representation generality
+  != Blocker B positive Evidence
 
 reason
   = necessityではなくrepresentation generalityを反証可能にするため
