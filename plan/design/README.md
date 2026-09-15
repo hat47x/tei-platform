@@ -39,6 +39,7 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 - [`../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md) — Manufacturing / inventory pressureへP5 / P6を適用し、Command / Observation / actuality / Business acceptance / Handoffの非短絡を確認するR2 negative評価
 - [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md) — R1 / R2のproof結果をbounded `DesignContextPacket`へ渡すときのauthority、candidate contraction、unresolved、LLM残余判断の境界を整理するR3評価
 - [`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md) — candidate-local proof選択、compact elimination certificate、trace-preserving unresolved集約をR1 / R2へ当てるR4 read-only評価
+- [`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md) — exact existing asset、Reference Pattern、associative retrieval等のdiscovery経路とcandidate meaning / current qualificationを分離するR5 read-only評価
 
 ## まだ設計文書を置いていない領域
 
