@@ -190,6 +190,47 @@ Business上の受入・次責任へのcontinuationは
 
 この問いはHandoffの存在を前提にしない。
 
+### R2 negative proofで確認済みの範囲 — 2026-09
+
+PR #596 / `DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`で、上記1〜4・6のうちauthority短絡に関する主要部分をnegative proofとして確認した。
+
+```text
+Command accepted -> physical completion
+  = contradiction as derivation rule
+
+Observation execution success -> physical completion
+  = contradiction as derivation rule
+
+explicit external Observation Result=true
+  -> observed physical fact only
+  = supported at that limited scope
+
+observed physical fact -> Business acceptance / continuation
+  = unresolved
+
+Step adjacency / actor change / Function sequence / positive Observation
+  -> Handoff
+  = contradiction as derivation rule
+
+second-corpus Handoff existence / from / to / condition
+  = unresolved
+```
+
+この結果により、Gate A green前のcandidate-design researchで同型の「もっともらしいHandoff短絡」を追加し続ける必要はない。
+
+```text
+R2 negative proof
+  -> non-inference / actuality boundaryを強化
+  -> false candidateを縮約
+
+R2 negative proof
+  != accepted Business seed
+  != positive Handoff Evidence
+  != RRB-P1 / P2 / P3
+```
+
+今後Gate A前にnegative caseを追加するのは、既存R2では説明できない**具体的なprovenance gap / contradiction class**が見つかった場合だけとする。
+
 ## RRB-P1 acceptanceの本Issueへの適用
 
 第二Reference acceptance条件の正本は`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`であり、本Issueでは再定義しない。
@@ -220,6 +261,32 @@ no forced Handoff / no fake realization
 ```
 
 これらはRRB-P1の本Issue固有の読み方であり、独立したS1〜S8 contractや新Gateを作らない。
+
+### Gate A green後のRRB-P1 seed review checklist — 事前準備
+
+このchecklistはauthoring内容を先に決めるものではない。Gate A green後にseed candidateをreviewするとき、false completenessやHandoff test由来の逆算を防ぐための**review順序**だけを準備する。
+
+1. **Independent value**
+   - Handoff検証を完全に外しても、このBusiness needをReferenceへ置く価値があるか。
+2. **Provenance**
+   - source-backed factとTEI-original design decisionを別々に示せるか。
+   - 外部model / manualの構造や語彙を無断で複製していないか。
+3. **Bounded scope**
+   - full manufacturing / inventory systemへ膨張せず、一つのBusiness needとして閉じているか。
+4. **Meaning / unknown ledger**
+   - known / accepted / derived / proposal / unresolvedを区別できるか。
+   - actor / trigger / sequence / Data / realizationを「埋めるため」に発明していないか。
+5. **Actuality boundary**
+   - instruction / system result / physical fact / Business acceptanceを短絡していないか。
+6. **Cross-view value**
+   - Business / Function / Dataの複数viewを照合しないと見えない意味上の問いがあるか。
+7. **No fake realization**
+   - Application Pattern / Capability / Data identityをReferenceを動かすためだけに作っていないか。
+8. **No forced Handoff**
+   - seed単独で成立した後に責任移転が自然に現れるか。
+   - 現れなければHandoffを作らずnegative resultとして受理できるか。
+
+Gate A green前には、この各欄の**回答内容を固定しない**。将来candidateをreviewするための観点だけを固定する。
 
 ## Responsibility transfer / Handoff受け入れ条件
 
@@ -296,8 +363,9 @@ provenance source set
 reuse / non-copying boundary
 target scope
 Evidence nature boundary
-candidate design question
+candidate design questionの主要negative proof
 RRB-P1 acceptance criteriaの製造・在庫候補への適用方法
+RRB-P1 seed review checklistのreview順序
 responsibility-transfer review rules
 ```
 
@@ -321,6 +389,8 @@ Contract ADR blocker B
 - [x] `order_entry`と独立したcorpusを1件選定し、出典・利用条件・対象範囲を記録した
 - [x] Evidence natureとcandidate design questionを整理した
 - [x] Lane B RRB-P1 acceptance条件を製造・在庫候補へどう適用するか整理した
+- [x] R2 negative proofでsystem result / actuality / Handoff non-inferenceの主要short-circuitをreviewした
+- [x] Gate A green後にseed candidateをreviewするissue-local checklistを準備した
 - [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた
 - [ ] seedのknown / accepted / derived / proposal / unresolvedをreviewできる形で記録した
 - [ ] responsibility transferが自然に存在する場合、`from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
@@ -333,11 +403,14 @@ Contract ADR blocker B
 
 ### Gate A green前
 
-1. candidate design questionを、accepted meaningへ昇格させずにreviewする
-2. public-source auditでinstruction / system entry / physical actualityの分離pressureに不足がないか確認する
-3. RRB-P1の各acceptance条件に対して、将来authorするseedで何を示す必要があるかをissue-local checklistとして準備する
+1. R2で未説明の**具体的なprovenance gap / contradiction class**が見つかった場合だけcandidate-design researchを追加する
+2. public-source auditに不足がある場合だけ、instruction / system entry / physical actualityの分離pressureを追加確認する
+3. RRB-P1 seed review checklistの観点を維持するが、回答内容やBusiness meaningは先に固定しない
 4. candidate / unresolved分類を維持し、accepted Business sourceへ昇格しない
-5. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する
+5. 同型negative Handoff caseやsynthetic sequenceを増やして「準備が進んだ」ことにしない
+6. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する
+
+Gate A前のresearchに具体的gapが無ければ、**追加文書を作らず待つこと自体を正しい停止条件**とする。
 
 ### Gate A green後
 
