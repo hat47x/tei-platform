@@ -297,3 +297,101 @@ Relation traversal key、Contract Query signature、Reference invocation、Drive
 - delete可能refの明示list作成
 
 したがって、次もbranch数そのものを減らす一括操作ではなく、**current mainにない固有patchを持つbranchを先に特定して保護する**ことを優先します。
+
+## 10. 2026-09-16 legacy suffix / snapshot normalization
+
+このpassでも新しいcleanup branchは作成せず、既存の`work/repository-hygiene`を再利用しました。開始時点のcurrent `main`は`34e75e8de0e853f88a4dda41a77c82a241a8bea3`で、`work/repository-hygiene`も同じSHAに揃っていることを確認しています。
+
+open PRは#606の1本だけで、そのhead `work/postgres-partition-drop-readiness-533`は作業中branchとして保護し、今回のnormalization対象から除外しました。
+
+今回の対象は、過去の作業過程で残った`-final`、`-current`、`-v2`、`-baseline`、`-snapshot`、`-scratch`、`-unused`等のgeneration / state suffixを持つlegacy refを中心としています。名前だけでは判断せず、各tipをcurrent `main`と比較し、**`ahead_by = 0`を確認できた52本だけ**をmain系へ正規化しました。この集合では`ahead_by > 0`のbranchは見つかっていません。
+
+### Gate B generation / readiness
+
+- `work/gate-b-v1-driver-scope-sync`
+- `work/gate-b-v1-driver-scope-sync-final`
+- `work/gate-b-v1-driver-scope-sync-mergecheck`
+- `work/gate-b-v1-driver-scope-sync-r2`
+- `work/gate-b-generated-artifact-clean-revision`
+- `work/gate-b-generated-artifact-clean-revision-v2`
+- `work/gate-b-post-300-plan-sync`
+- `work/gate-b-post-300-plan-sync-v2`
+- `work/gate-b-readiness-main-sync`
+- `work/gate-b-readiness-main-sync-2`
+
+### Lane C generation
+
+- `work/lane-c-issue-inventory-sync`
+- `work/lane-c-issue-inventory-sync-2`
+- `work/lane-c-issue-inventory-sync-final`
+- `work/lane-c-two-blocker-ownership-sync`
+- `work/lane-c-two-blocker-ownership-sync-v2`
+- `work/lane-c-pre-adr-current-state-sync`
+
+### Business / Reference
+
+- `work/business-validation-reference`
+- `work/business-validation-reference-v2`
+- `work/business-validation-reference-v3`
+- `work/business-validation-reference-v4`
+- `work/business-procedure-physical-observation-pressure`
+- `work/business-procedure-physical-observation-pressure-actual`
+- `work/business-procedure-physical-observation-pressure-final`
+- `work/business-procedure-physical-observation-pressure-unused`
+
+### Application Pattern / planning / current-state
+
+- `work/application-pattern-header-detail-kind`
+- `work/application-pattern-header-detail-kind-current`
+- `work/application-datasource-alias-exact-resolution-scratch`
+- `docs/readme-gate-a-current`
+- `docs/status-gate-a-current`
+- `plan/gate-a-readiness-current`
+- `plan/application-pattern-command-current`
+- `plan/header-detail-stage-current`
+- `plan/v1-current-state-final`
+- `work/application-pattern-docs-current`
+- `work/architecture-current-boundaries`
+- `work/business-procedure-cross-view-reference-current`
+
+### Gate B current / baseline / snapshot
+
+- `work/application-driver-gate-b-current-sync`
+- `work/gate-b-audit-issue-current-sync`
+- `work/gate-b-evidence-acquisition-current-baseline`
+- `work/gate-b-evidence-acquisition-current-contract-sync`
+- `work/gate-b-final-issue-current-baseline`
+- `work/gate-b-final-issue-current-snapshot`
+- `work/gate-b-readiness-audit-current-baseline`
+- `work/gate-b-readiness-current-evidence-sync`
+- `work/gate-b-readiness-issue-current-snapshot`
+- `work/current-entrypoint-baseline`
+- `work/gate-b-runbook-current-baseline`
+- `work/gate-b-runbook-secret-read-current-sync`
+
+### その他のcurrent / baseline
+
+- `work/master-v1-plan-current-baseline`
+- `work/product-gap-audit-current-baseline`
+- `work/query-result-mapping-runtime-current`
+- `work/upstream-trace-current-baseline`
+
+### Branch fragmentation ruleとの整合
+
+このpassで`-final`、`-current`、`-v2`、`-baseline`、`-snapshot`、`-scratch`、`-unused`を含むbranchを**新規作成していません**。既存legacy refの安全性を確認し、main系へ正規化しただけです。
+
+また、この作業はref deletionではありません。したがって52本を正規化してもremote branch countそのものは減少していません。削除候補の確定と実際のref deletionは、固有patch・Evidence用途・外部参照の有無を別途確認した後の作業です。
+
+PR #578で名前が保存されなかった「conflict 8本」については、今回も記録からidentityを確定できていません。候補名を推測してresetすることはせず、**未特定のまま保護対象として扱います**。
+
+### 次の監査対象
+
+次の優先順位は変えません。
+
+1. current全branchから`ahead_by > 0`を抽出し、固有patchを持つbranchを保護する
+2. PR #578の「conflict 8本」を履歴Evidenceから再特定する
+3. `PATCH_EQUIVALENT_REVIEW`のmerge-only固有変更を確認する
+4. open PR branchを継続して保護する
+5. ancestry / Evidence確認済みのdelete可能refを明示listへ落とす
+
+branch数を機械的に減らすことよりも、**mainにない固有作業を失わないことを先に保証する**方針を維持します。
