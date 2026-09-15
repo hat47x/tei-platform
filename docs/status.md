@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-14
+- 更新日: 2026-09-15
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -118,8 +118,9 @@ Gate B Product Evidenceと、補助的なsource qualification CIを分離しま�
 
 - #512 `Gate B baseline source qualification` workflowはmainへ統合済み
 - #519でmanual `workflow_dispatch`入口もmainへ統合済み
+- PR #599でbaseline qualification対象を`internal/database/migration` / `internal/database/providers/postgres` / `internal/database/schemadiff`まで拡張済み
 - #513ではGitHub-hosted runnerがjob開始前に割り当てられないpre-run blockerを追跡中
-- 2026-09-14 03:20 JST相当の最新再観測でも`runner_id=0 / runner_name="" / steps=[]`でstep executionへ到達していない
+- 2026-09-15T10:01ZのPR #599 runでも`runner_id=0 / runner_name="" / steps=[]`でstep executionへ到達していない
 - `runner_id=0 / steps=[]`等、checkout前のfailureをApplication / Driver code failureへ読み替えない
 - source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
 
@@ -214,9 +215,9 @@ Command acknowledgementだけでexternal state成立とはみなしません。
 
 PostgreSQL partitionについては、ADR-0026のprovider-owned partition observation incrementがPR #528でmainへ統合済みです。partition childをgeneric Schema Driftの独立convergence subjectとして扱わず、provider observationとして保持する境界までがcurrent baselineです。
 
-ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在しますが、actual Repository qualificationは未取得です。したがってsourceの存在をactual greenやGate B Evidenceへ読み替えず、#533をqualification trackerとして継続します。
+ADR-0027 / #533の`DropTable` destructive readiness planning / rendering sourceもcurrent mainへ既に含まれています。旧stacked PR #535 head `17e80473adbc2b0cbe7ea213123c9b4296efe79e`がmainの祖先になったため、#535自体はintegration vehicleとして不要となりclosedされました。partition tree / target child / observation unavailableをfail closedし、complete observationを伴うordinary tableだけplain `DROP TABLE`へ進めるsourceは存在します。#533はsource implementation taskとして2026-09-15にcompleted closeし、actual Repository qualificationはPR #599で拡張したbaseline source qualificationと#273へ集約しました。sourceの存在やIssue closeをactual greenやGate B Evidenceへ読み替えません。
 
-#534 / PR #548の別incrementもcurrent mainへ統合済みです。PostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認します。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界です。**actual Repository testは未取得のため、merge済みsourceをactual qualificationやGate B Evidenceへ読み替えません。**
+#534 / PR #548の別incrementもcurrent mainへ統合済みです。PostgreSQL destructive `DropTable`のapply直前にfresh `SchemaObservation`を取得し、fresh observation-aware renderingとplanned statementsのexact一致を再確認します。stale / incomplete observation、新しいpartition child / descendant、realization差分ではexecutorを呼ばずfail closedします。これはgeneric migration revision protocolではなくPostgreSQL apply safetyの最小境界です。#534もsource implementation taskとしてcompletedであり、**actual Repository testは未取得のため、merge済みsourceをactual qualificationやGate B Evidenceへ読み替えません。**
 
 PostgreSQLは深いReference Providerとして利用しています。
 
