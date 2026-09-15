@@ -42,6 +42,72 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 - [`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md) — exact existing asset、Reference Pattern、associative retrieval等のdiscovery経路とcandidate meaning / current qualificationを分離するR5 read-only評価
 - [`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md) — Design Synthesis LoopのS1〜S5について、Gate C前後を分けたAcceptance素案とR1〜R5からのEvidence接続を整理するLane D scenario draft
 
+## Design Synthesisのpre-Gate-C停止点
+
+Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R5とS1〜S5 Acceptance素案まで実施した。
+
+ここで得たcurrent boundaryは次である。
+
+```text
+candidate discovery
+  -> exact / Pattern / associative provenanceを分離
+
+candidate qualification
+  -> current accepted authorityへ戻る
+
+cross-view proof
+  -> supported / contradiction / unresolvedを分離
+
+candidate contraction
+  -> exact scopeのcontradictionだけを決定論的に除外
+  -> unresolvedは残余dimensionとして保持
+
+LLM boundary
+  -> bounded residualをProposalとして扱う
+  -> Acceptance / authorityを所有しない
+```
+
+Gate C前には、これらを根拠として次をproduction contractへ先行固定しない。
+
+- `DesignCandidate`のCanonical kind
+- production `DesignContextPacket` schema
+- candidate originの排他的enum
+- persisted proof lifecycle / result enum
+- production Pattern Memory schema
+- local / remote LLM provider contract
+- vector DB / graph DB / generic solver
+- automatic Shared Acceptance
+- semantic-delta persistence model
+- feedback event ontology
+
+新しいread-only作業を追加するのは、R1〜R5では説明できない具体的なinformation loss、authority contradiction、provenance gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
+
+### 再開条件
+
+通常の再開点はProduct Gate C後とする。少なくとも次が実在してから、S1〜S5のactual Referenceへ進む。
+
+```text
+Gate B Ready
+  -> Handover Baseline B / baseline revision R
+  -> First Web Target build T1
+  -> Gate C Evidence
+```
+
+再開後の最初の順序は[`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md)に従う。
+
+```text
+S1 realistic intent / candidate frontier
+  -> S2 incremental cross-view contraction
+  -> actual information-lossを見てbounded packetを調整
+  -> S3 local LLM / minimum semantic delta
+  -> Shared Acceptanceで小さいsemantic changeを1件Accept
+  -> S4 implementation / test derivation
+  -> S5 one observable feedbackをmeaning ownerへroute
+  -> closed loopを1周
+```
+
+このclosed loopのactual Evidenceを得る前に、R1〜R5のtest-only shapeをproduction schemaへ昇格しない。
+
 ## まだ設計文書を置いていない領域
 
 実装とADR、Conformanceは存在しますが、機能単位の設計本文をまだ置いていない領域です。必要になった時点で追加し、それまでは各ADRとConformanceを正本とします。
