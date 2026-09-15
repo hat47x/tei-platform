@@ -22,8 +22,8 @@ type proofEvaluationStampSnapshotProbe struct {
 }
 
 type proofFreshnessSnapshotProbe struct {
-	Fresh                bool
-	ChangedAuthorities   []string
+	Fresh                 bool
+	ChangedAuthorities    []string
 	UnresolvedAuthorities []string
 }
 
@@ -325,10 +325,22 @@ func assertProofFreshnessSnapshotProbe(
 	if got.Fresh != wantFresh {
 		t.Fatalf("fresh=%v want=%v: %+v", got.Fresh, wantFresh, got)
 	}
-	if !reflect.DeepEqual(got.ChangedAuthorities, wantChanged) {
+	if !equalStringSlicesSnapshotProbe(got.ChangedAuthorities, wantChanged) {
 		t.Fatalf("changed authorities=%v want=%v", got.ChangedAuthorities, wantChanged)
 	}
-	if !reflect.DeepEqual(got.UnresolvedAuthorities, wantUnresolved) {
+	if !equalStringSlicesSnapshotProbe(got.UnresolvedAuthorities, wantUnresolved) {
 		t.Fatalf("unresolved authorities=%v want=%v", got.UnresolvedAuthorities, wantUnresolved)
 	}
+}
+
+func equalStringSlicesSnapshotProbe(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
