@@ -37,12 +37,40 @@ jobs:
           go version
           test -z "$(git status --porcelain --untracked-files=all --ignored=matching)"
           test -z "$(git ls-files -v | grep -Ev '^H ' || true)"
-      - name: Check formatting
-        run: test -z "$(gofmt -l internal/application internal/driver internal/validation)"
-      - name: Vet affected packages
-        run: go vet ./internal/application ./internal/driver ./internal/validation
-      - name: Test affected packages
-        run: go test ./internal/application ./internal/driver ./internal/validation -count=1
+      - name: Check Gate B baseline formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l \
+            internal/application \
+            internal/driver \
+            internal/validation \
+            internal/database/migration \
+            internal/database/providers/postgres \
+            internal/database/schemadiff)"
+      - name: Vet Gate B baseline packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          go vet \
+            ./internal/application \
+            ./internal/driver \
+            ./internal/validation \
+            ./internal/database/migration \
+            ./internal/database/providers/postgres \
+            ./internal/database/schemadiff
+      - name: Test Gate B baseline packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test \
+            ./internal/application \
+            ./internal/driver \
+            ./internal/validation \
+            ./internal/database/migration \
+            ./internal/database/providers/postgres \
+            ./internal/database/schemadiff \
+            -count=1
       - name: Verify source remains clean
         shell: bash
         run: |
