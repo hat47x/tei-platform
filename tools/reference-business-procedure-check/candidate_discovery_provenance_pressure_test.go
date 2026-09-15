@@ -36,7 +36,7 @@ type candidateDiscoveryProjectionProbe struct {
 	CandidateKey      string
 	TargetIdentity    string
 	DiscoveryTraces   []candidateDiscoveryTraceProbe
-	PatternProvenance *referencePatternProvenanceProbe
+	PatternProvenance []referencePatternProvenanceProbe
 }
 
 type currentCandidateQualificationProbe struct {
@@ -120,16 +120,16 @@ func TestReferencePatternProvenanceDoesNotBecomeCurrentProofEvidence(t *testing.
 			ProvenanceRef: "pattern-evidence:header_detail_transaction",
 			BaseRevision:  "research-v1",
 		}},
-		PatternProvenance: &referencePatternProvenanceProbe{
+		PatternProvenance: []referencePatternProvenanceProbe{{
 			PatternKey:       "header_detail_transaction",
 			Nature:           "observed",
 			SourceCount:      8,
 			CorpusSize:       12,
 			ResearchArtifact: "REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md",
-		},
+		}},
 	}
 
-	if candidate.PatternProvenance.SourceCount != 8 || candidate.PatternProvenance.CorpusSize != 12 {
+	if len(candidate.PatternProvenance) != 1 || candidate.PatternProvenance[0].SourceCount != 8 || candidate.PatternProvenance[0].CorpusSize != 12 {
 		t.Fatalf("Pattern support breadth was not preserved as provenance: %+v", candidate.PatternProvenance)
 	}
 	projectionType := reflect.TypeOf(candidateDiscoveryProjectionProbe{})
@@ -137,6 +137,48 @@ func TestReferencePatternProvenanceDoesNotBecomeCurrentProofEvidence(t *testing.
 		if _, found := projectionType.FieldByName(forbidden); found {
 			t.Fatalf("Pattern discovery projection promoted provenance into current authority field %q", forbidden)
 		}
+	}
+}
+
+func TestSameCandidateCanPreserveMultipleReferencePatternProvenances(t *testing.T) {
+	inputs := []candidateDiscoveryProjectionProbe{
+		{
+			CandidateKey: "proposal:composed-order-structure",
+			DiscoveryTraces: []candidateDiscoveryTraceProbe{{
+				Mechanism:     discoveryReferencePatternProbe,
+				ProvenanceRef: "pattern-evidence:header_detail_transaction",
+				BaseRevision:  "research-v1",
+			}},
+			PatternProvenance: []referencePatternProvenanceProbe{{
+				PatternKey:       "header_detail_transaction",
+				Nature:           "observed",
+				SourceCount:      8,
+				CorpusSize:       12,
+				ResearchArtifact: "REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md",
+			}},
+		},
+		{
+			CandidateKey: "proposal:composed-order-structure",
+			DiscoveryTraces: []candidateDiscoveryTraceProbe{{
+				Mechanism:     discoveryReferencePatternProbe,
+				ProvenanceRef: "pattern-evidence:composition_bom_bundle",
+				BaseRevision:  "research-v1",
+			}},
+			PatternProvenance: []referencePatternProvenanceProbe{{
+				PatternKey:       "composition_bom_bundle",
+				Nature:           "candidate",
+				SourceCount:      6,
+				CorpusSize:       12,
+				ResearchArtifact: "REFERENCE_PATTERN_EVIDENCE_HANDOFF_2026-09.md",
+			}},
+		},
+	}
+	merged, err := mergeCandidateDiscoveryProjectionsProbe(inputs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(merged) != 1 || len(merged[0].PatternProvenance) != 2 || len(merged[0].DiscoveryTraces) != 2 {
+		t.Fatalf("multiple Reference Pattern provenances were flattened: %+v", merged)
 	}
 }
 
@@ -206,15 +248,19 @@ func mergeCandidateDiscoveryProjectionsProbe(inputs []candidateDiscoveryProjecti
 		current, exists := byKey[input.CandidateKey]
 		if !exists {
 			current = candidateDiscoveryProjectionProbe{
-				CandidateKey:      input.CandidateKey,
-				TargetIdentity:    input.TargetIdentity,
-				PatternProvenance: input.PatternProvenance,
+				CandidateKey:   input.CandidateKey,
+				TargetIdentity: input.TargetIdentity,
 			}
 		} else if current.TargetIdentity != input.TargetIdentity {
 			return nil, errProcedureMeaning("same candidate key has conflicting target identity")
 		}
 		current.DiscoveryTraces = append(current.DiscoveryTraces, input.DiscoveryTraces...)
 		current.DiscoveryTraces = uniqueSortedDiscoveryTracesProbe(current.DiscoveryTraces)
+		mergedPatternProvenance, err := mergeReferencePatternProvenanceProbe(current.PatternProvenance, input.PatternProvenance)
+		if err != nil {
+			return nil, err
+		}
+		current.PatternProvenance = mergedPatternProvenance
 		byKey[input.CandidateKey] = current
 	}
 
@@ -224,6 +270,29 @@ func mergeCandidateDiscoveryProjectionsProbe(inputs []candidateDiscoveryProjecti
 	}
 	sort.Strings(keys)
 	result := make([]candidateDiscoveryProjectionProbe, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, byKey[key])
+	}
+	return result, nil
+}
+
+func mergeReferencePatternProvenanceProbe(existing, incoming []referencePatternProvenanceProbe) ([]referencePatternProvenanceProbe, error) {
+	byKey := map[string]referencePatternProvenanceProbe{}
+	for _, item := range append(append([]referencePatternProvenanceProbe(nil), existing...), incoming...) {
+		if item.PatternKey == "" {
+			return nil, errProcedureMeaning("Reference Pattern key is required")
+		}
+		if previous, found := byKey[item.PatternKey]; found && !reflect.DeepEqual(previous, item) {
+			return nil, errProcedureMeaning("same Reference Pattern key has conflicting provenance")
+		}
+		byKey[item.PatternKey] = item
+	}
+	keys := make([]string, 0, len(byKey))
+	for key := range byKey {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]referencePatternProvenanceProbe, 0, len(keys))
 	for _, key := range keys {
 		result = append(result, byKey[key])
 	}
