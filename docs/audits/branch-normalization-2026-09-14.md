@@ -221,3 +221,79 @@ GitHub Actionsの自動guardは、runner上で実際にstepが開始・完了す
 一方で、Repository全体のremote branch数を減らしたわけではなく、古いbranchすべてを安全確認したわけでもありません。
 
 次段階では、**branch数を減らすこと自体ではなく、main未包含の固有作業を持つbranchを少数へ絞り込むこと**を先に完了させます。
+
+## 9. 2026-09-16 follow-up
+
+2026-09-16は、新しいcleanup用branchを作らず、既存の`work/repository-hygiene`を安全確認後にcurrent `main`へ戻して再利用しました。監査開始時と記録直前にopen PRを確認し、作業中のPR #605が使用する`work/second-realistic-handoff-corpus-selection-050`はcleanup対象から除外しています。
+
+このfollow-upでも、branch名やclose理由だけではresetしていません。closed-unmerged PRのheadをcurrent `main`と比較し、**確認時点で`ahead_by = 0`となったbranchだけ**をmain系へ戻しました。`ahead_by > 0`や`PATCH_EQUIVALENT_REVIEW`に相当するbranchを、この手順だけでresetする扱いには変更していません。
+
+### M0.27 / Application Driver / Contract Query
+
+- `claude/merge-unmerged-branches-main-po0ixx`
+- `work/semantic-relation-traversal-keys`
+- `work/semantic-relation-key-authoring`
+- `work/database-contract-query-signature-model`
+- `work/database-contract-query-signature-validation`
+- `work/database-contract-query-signature-syntax`
+- `work/reference-contract-query-invocation-model`
+- `work/reference-contract-query-invocation-validation`
+- `work/reference-contract-query-invocation-authoring`
+- `work/reference-contract-query-resolution`
+- `work/reference-contract-query-target-validation`
+- `work/semantic-relation-key-target-uniqueness`
+- `plan/driver-relation-data-access-gaps`
+- `plan/reference-contract-query-invocation`
+- `plan/application-driver-reference-progress`
+- `work/remove-duplicate-applicationdriver-current`
+
+Relation traversal key、Contract Query signature、Reference invocation、Driver resolution、旧`internal/applicationdriver`整理等を含むため、文書branchより先に固有実装の残存有無を確認しました。上記はすべて確認時点で`ahead_by = 0`でした。
+
+### Evidence / Gate B
+
+- `work/postgres-evidence-source-revision-doc-sync`
+- `work/gate-b-final-scenario-audit-sync`
+
+いずれも後続のEvidence正本・監査文書へ収束済みで、確認時点ではmain未包含commitを持っていませんでした。
+
+### Runtime / Authenticationの差し替え・重複PR
+
+- `work/native-query-postgres-reference`
+- `work/native-query-postgres-execution-reference`
+- `work/driver-pattern-resolution`
+- `work/legacy-auth-function-adapter`
+- `work/legacy-auth-compatibility-reference`
+- `work/security-authentication-reference-v2`
+
+これらはPR本文で後継PRまたは正本PRへの差し替え・重複整理が明示されていたbranchですが、close理由だけに依存せず、現在のGit ancestryでも`ahead_by = 0`を確認してから正規化しました。
+
+### Application Pattern / v1 planning
+
+- `plan/application-pattern-stage-complete`
+- `work/header-detail-pattern-contract`
+- `work/header-detail-semantic-substrate`
+- `work/application-pattern-doc-sync`
+- `work/application-pattern-diagnostic-projection`
+- `plan/v1-current-state-sync`
+- `plan/application-pattern-progress-sync`
+
+一部先行反映、重複PR、GitHub側のPR head追跡不整合による載せ替え等、close理由は異なりますが、上記もすべて確認時点で`ahead_by = 0`でした。
+
+### Branch ruleとの整合
+
+このfollow-upでは、`-sync`等を含む古いbranch名を新しく作成していません。既存のlegacy refを監査してmain系へ戻しただけです。今後のworkstream名としてこれらを再採用する意図もありません。
+
+また、`work/repository-hygiene`自体も、PR #592がmerge済みで未merge変更を持たないことと`ahead_by = 0`を確認してからcurrent `main`へ戻し、この記録更新に再利用しました。
+
+### 残件
+
+今回確認した集合では、新たな`ahead_by > 0` branchは見つかりませんでした。ただし、これはRepository全remote branchの再分類完了を意味しません。
+
+特に次は引き続き未解決です。
+
+- PR #578で名前が保存されなかった「conflict 8本」のidentity再確定
+- `PATCH_EQUIVALENT_REVIEW`のmerge-only固有変更確認
+- closed PRを持たないremote branchを含むcurrent全branch report
+- delete可能refの明示list作成
+
+したがって、次もbranch数そのものを減らす一括操作ではなく、**current mainにない固有patchを持つbranchを先に特定して保護する**ことを優先します。
