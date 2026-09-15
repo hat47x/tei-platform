@@ -40,11 +40,14 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 - [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md) — R1 / R2のproof結果をbounded `DesignContextPacket`へ渡すときのauthority、candidate contraction、unresolved、LLM残余判断の境界を整理するR3評価
 - [`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md) — candidate-local proof選択、compact elimination certificate、trace-preserving unresolved集約をR1 / R2へ当てるR4 read-only評価
 - [`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md) — exact existing asset、Reference Pattern、associative retrieval等のdiscovery経路とcandidate meaning / current qualificationを分離するR5 read-only評価
+- [`../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md) — proofをrequired accepted authorityのfingerprintへ束縛し、selective stale再評価とstale contradictionのcandidate elimination禁止を確認するR6 read-only評価
 - [`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md) — Design Synthesis LoopのS1〜S5について、Gate C前後を分けたAcceptance素案とR1〜R5からのEvidence接続を整理するLane D scenario draft
+
+`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の初期評価計画に残る`R4 — change / stale再評価`は、R3〜R5の後続評価を先に実施したため、merge済み文書をrenumberせずR6で扱う。
 
 ## Design Synthesisのpre-Gate-C停止点
 
-Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R5とS1〜S5 Acceptance素案まで実施した。
+Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R6とS1〜S5 Acceptance素案まで実施した。
 
 ここで得たcurrent boundaryは次である。
 
@@ -62,6 +65,10 @@ candidate contraction
   -> exact scopeのcontradictionだけを決定論的に除外
   -> unresolvedは残余dimensionとして保持
 
+proof freshness
+  -> required accepted authorityのsemantic fingerprintへ束縛
+  -> stale contradictionをcandidate eliminationへ使わない
+
 LLM boundary
   -> bounded residualをProposalとして扱う
   -> Acceptance / authorityを所有しない
@@ -73,6 +80,7 @@ Gate C前には、これらを根拠として次をproduction contractへ先行�
 - production `DesignContextPacket` schema
 - candidate originの排他的enum
 - persisted proof lifecycle / result enum
+- persisted `AcceptanceSnapshot` / proof evaluation stamp
 - production Pattern Memory schema
 - local / remote LLM provider contract
 - vector DB / graph DB / generic solver
@@ -80,7 +88,7 @@ Gate C前には、これらを根拠として次をproduction contractへ先行�
 - semantic-delta persistence model
 - feedback event ontology
 
-新しいread-only作業を追加するのは、R1〜R5では説明できない具体的なinformation loss、authority contradiction、provenance gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
+新しいread-only作業を追加するのは、R1〜R6では説明できない具体的なinformation loss、authority contradiction、provenance / freshness gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
 
 ### 再開条件
 
@@ -106,7 +114,7 @@ S1 realistic intent / candidate frontier
   -> closed loopを1周
 ```
 
-このclosed loopのactual Evidenceを得る前に、R1〜R5のtest-only shapeをproduction schemaへ昇格しない。
+このclosed loopのactual Evidenceを得る前に、R1〜R6のtest-only shapeをproduction schemaへ昇格しない。
 
 ## まだ設計文書を置いていない領域
 
