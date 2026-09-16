@@ -111,6 +111,7 @@ LOCAL CONTRACTION
   qualification
   dependency closure
   capability / target feasibility
+  reason / owner / scope classification
   Reference comparison
   simulation / static checks where possible
   unresolved dimension extraction
@@ -174,6 +175,8 @@ LLMへ渡す前に、Repository全体を自由探索させる代わりに、TEI�
 - provider / binding feasibility
 - authorization / resource boundary
 - cross-view required reference
+
+ただしTarget / Provider feasibilityは、そのまま上位semantic meaningの真偽を表しません。provider-specific contradictionは原則としてmatching realization / binding scopeへ閉じ、missing Evidenceは`unresolved`として残し、accepted hard Target / Provider constraintがある場合だけcomposite candidateの除外へ拡張します。
 
 実装候補はrule engine、constraint propagation、CSP / SAT / SMT等を比較できますが、特定solverはProduct contractにしません。
 
@@ -281,15 +284,18 @@ LLMへ次のような問いを丸投げしません。
   C. Order + external line capability
 
 除外:
-  B: line identity / uniqueness / update semanticsを保持できない
-  C: current business requirementに外部ownership根拠なし
+  B: accepted line identity / uniqueness / update semanticsとexactに両立しない
 
 残候補:
-  A
+  A: current factsと両立
+  C: external ownershipを必要とするproposalとして残す
 
 未解決:
+  Cを正当化するexternal ownership authorityがcurrent accepted sourceにない
   lineNumberをbusiness identityとするか単なるpresentation orderとするか
 ```
+
+ここでCは、根拠不足だから除外するのではありません。missing authority / Evidenceは`false`ではなく、S2では`unresolved`としてfrontierへ残します。
 
 この状態で初めてLLMに比較・質問生成・proposal deltaを依頼します。
 
@@ -305,10 +311,12 @@ LLMへ次のような問いを丸投げしません。
 - semantic simplicity
 - cross-view consistency
 - implementation derivation leverage
-- target / provider feasibility
+- target / provider feasibility（realization scope）
 - unresolved assumption count
 - novelty / unfamiliarity
 - evidence strength
+
+これらの軸はcandidateの説明・比較に利用できますが、scoreやEvidence量をそのままcontradiction / Acceptanceへ変換しません。
 
 上位数案をPareto-like frontierとして残し、人間またはLLMがtrade-offを確認できる構造を優先します。
 
@@ -316,25 +324,31 @@ LLMへ次のような問いを丸投げしません。
 
 local LLMを実用化するには、大規模Repositoryを毎回promptへ入れるのではなく、前段認知から**bounded context packet**を作ることが重要です。
 
-例:
+現時点のconceptual shapeは、後続R3〜R6のread-only Evidenceに合わせて次のように読む。
 
 ```text
 DesignContextPacket
   purpose
-  base_revision
   target_scope
+  accepted_snapshot / required authority fingerprints
   exact_facts[]
-  existing_assets[]
-  candidate_patterns[]
-  hard_constraints[]
   candidate_designs[]
+    + semantic subject
+    + current qualification
+    + discovery traces / provenance
+    + realization / binding variants where relevant
+  proof_results[]
+    + candidate-local scope
   eliminated_candidates[]
-    + reason
+    + decisive contradiction / scope / reason
   unresolved_dimensions[]
-  evidence_refs[]
+    + missing authority / Evidence
+    + owner / scope
   authority_limits
   requested_output_schema
 ```
+
+これはproduction JSON schemaではありません。repository-wideな単一`base_revision`、排他的`candidate.origin`、generic provider failure enum等を先行固定する根拠にはしません。
 
 local LLMの性能不足を、無制限contextと自由推論で補おうとしません。
 
@@ -375,7 +389,7 @@ L5: generate constrained custom implementation / tests
 - structured outputを返せる
 - exact refsを勝手に作らない
 - unknown / unresolvedを返せる
-- current revisionをinputとして持つ
+- current accepted snapshotと必要なauthority fingerprintをinputとして持つ
 - authority limitsを守る
 - proposalとaccepted meaningを区別する
 - model差し替えでCanonical schemaを変えない
@@ -468,13 +482,30 @@ Accept
 
 既存定義、constraint、Reference、cross-view relation、Target / Provider capability等を使い、候補空間を段階的に削減できること。
 
+ただしconstraintは適用scopeとauthorityへ戻れなければならない。Target / Providerの不適合は原則としてmatching realization / binding candidateへ適用し、上位semantic candidateの否定へ短絡しないこと。
+
 LLMの主観的rankingだけで候補を除外しないこと。
 
 ### DSR-03 Explainable Elimination — Must
 
-除外された候補について、少なくともhard constraint violation、missing Evidence、scope mismatch、unsupported capability等の理由へ戻れること。
+除外されたcandidateまたはcandidate claimについて、**current accepted authorityとexact scopeで両立しないdecisive contradiction**へ戻れること。
 
-「AI scoreが低い」だけを除外理由にしないこと。
+例:
+
+- accepted hard constraint violation
+- exact scopeのcross-view contradiction
+- current provider realizationとの構造的不適合（matching realization scope）
+- accepted hard Target / Provider requirementとrealizationの不適合（composite candidate scope）
+
+一方、次はそれだけでは除外理由にしない。
+
+- missing Evidence / missing authority
+- no corroboration
+- operational recovery required
+- low retrieval / AI score
+- provider supportが未確認
+
+これらは`unresolved`、owner-routing、追加Evidence要求として保持すること。generic `error` surfaceだけをcontradictionへ変換しないこと。
 
 ### DSR-04 Preserve Real Alternatives — Must
 
@@ -524,11 +555,15 @@ Data、Function / Interaction、Business Procedure等の他設計要素を、後
 
 ### DSR-14 Structured Unresolved State — Must
 
-判断材料が不足する場合、LLMやsolverが勝手に補完せず、unresolved dimension / unknown / required human choiceをfirst-classに保持できること。
+判断材料が不足する場合、LLMやsolverが勝手に補完せず、unresolved dimension / unknown / required human choice / missing authority / missing Evidenceをfirst-classに保持できること。
+
+不足していること自体をcandidate contradictionへ変換しないこと。
 
 ### DSR-15 Feedback Closure — Must
 
 生成されたimplementation / test / runtime / simulationの結果を、visible symptomではなく意味所有層へroutingし、次のcandidate designへ反映できること。
+
+provider / runtime failureについても、missing Evidence、observed incompatibility、structurally unsupported、operational recovery required等の意味差を失わずownerへ戻せること。
 
 ### DSR-16 Manual-Work Reduction Evidence — Should
 
@@ -599,7 +634,9 @@ S1の候補へ、Business Procedure、Target、Datasource、Validation等の追�
 
 - 候補空間が再評価される
 - unrelatedな設計を全再生成しない
-- 除外理由が追跡できる
+- 除外理由がexact authority / scopeへ追跡できる
+- missing Evidence / authorityは除外せず`unresolved`として残る
+- Target / Provider failureはsemantic meaning、realization、operationsのowner / scopeを混同しない
 - 本当に複数解なら複数のまま残る
 
 ### Scenario S3 — local LLM synthesis
@@ -630,12 +667,14 @@ accepted candidateから、standard UI / persistence / capability binding / test
 期待:
 
 - feedbackが正しいmeaning-owning layerへ戻る
+- provider / runtime limitationをBusiness meaningへ逆authorしない
+- operational recoveryをstructural incompatibilityへ誤変換しない
 - next proposalはminimum semantic deltaになる
 - derived artifactsを直接authority化しない
 
 ## 13. 直近の開発順
 
-このRequirement Draftを起点とするpre-Gate-Cのread-only workは、Acceptance素案、S1 semantic candidate diversity、R1〜R6 cross-view / provenance / freshness pressureまで進んでいる。
+このRequirement Draftを起点とするpre-Gate-Cのread-only workは、Acceptance素案、S1 semantic candidate diversity、R1〜R6 cross-view / provenance / freshness pressureに加え、S1→S2 frontier、mixed-frontier context、provider feasibility scope / outcome classificationまで進んでいる。
 
 完了済みのpre-Gate-C範囲:
 
@@ -650,9 +689,13 @@ S1〜S5 Acceptance draft
        R4 candidate-local contraction
        R5 discovery provenance
        R6 snapshot / stale invalidation
+  -> order-entry S1 / S2 mixed frontier pressure
+  -> R3 mixed-frontier context refinement
+  -> S2 provider feasibility scope pressure
+  -> S2 / S5 provider feasibility outcome classification pressure
 ```
 
-ここまでを理由に、Gate C前にproduction `DesignCandidate`、`DesignContextPacket`、proof lifecycle、Pattern Memory、LLM provider contract、vector / graph storage等を先行固定しない。
+ここまでを理由に、Gate C前にproduction `DesignCandidate`、`DesignContextPacket`、proof lifecycle、Pattern Memory、LLM provider contract、vector / graph storage、provider outcome taxonomy等を先行固定しない。
 
 現在の通常の待ち条件は次である。
 
@@ -668,14 +711,15 @@ Gate C後の最初のactual sequence:
 ```text
 1. realistic S1 intentからcandidate frontierを作る
 2. S2でincremental cross-view contractionを行う
-3. actual information lossを測ってbounded contextを調整する
-4. ISSUE-000047のdeterministic qualificationへ接続する
-5. 必要ならISSUE-000051でpre-LLM retrieval方式を比較する
-6. S3 local LLMでminimum semantic deltaを比較する
-7. Shared Acceptance経由でsmall semantic changeを1件Acceptする
-8. S4 implementation / test derivationを行う
-9. S5 observable feedbackをmeaning ownerへ戻し、closed loopを1周する
-10. このactual Evidenceからのみproduction schema / provider / learned cognitionを再検討する
+3. Target / Provider constraintをrealization scopeへ当て、failure reason / owner / scopeを保持する
+4. actual information lossを測ってbounded contextを調整する
+5. ISSUE-000047のdeterministic qualificationへ接続する
+6. 必要ならISSUE-000051でpre-LLM retrieval方式を比較する
+7. S3 local LLMでminimum semantic deltaを比較する
+8. Shared Acceptance経由でsmall semantic changeを1件Acceptする
+9. S4 implementation / test derivationを行う
+10. S5 observable feedbackをmeaning ownerへ戻し、closed loopを1周する
+11. このactual Evidenceからのみproduction schema / provider / learned cognitionを再検討する
 ```
 
 GitHub-hosted runnerのpre-run blocker等によりtest-only pressureのactual execution Evidenceが得られていない場合、source-level EvidenceをA2やProduct Acceptanceへ読み替えない。
