@@ -79,7 +79,7 @@ activation / similarity / novelty
 Semantic applicability / Evidence / Decision / Authority
 ```
 
-認知方式が返すのは候補です。既存資産が現在のintentへ適用可能かは、`ISSUE-000047`が要求するCanonical identity、dependency、scope、constraint、Source、Evidence、current revision等の決定論的な照合で判定します。
+認知方式が返すのは候補です。既存資産が現在のintentへ適用可能かは、`ISSUE-000047`が要求するCanonical identity、dependency、scope、constraint、Source、Evidence、current accepted authority等の決定論的な照合で判定します。
 
 ## 背景
 
@@ -153,10 +153,11 @@ Referenceでは次を検証します。
 - `internal/cognitive`等のpackage名
 - Cognitive LayerをCanonical architectureの新しい正本層として追加すること
 - similarity scoreをconfidence / probability / Evidenceと呼ぶこと
+- repository-wideなglobal revision counterを認知indexやM1 authority freshnessの共通正本にすること
 
 ## Architecture上の位置
 
-初回Referenceでは、認知indexをSource Index等と同様の**derived / regeneratable / revision-bound resource**として扱います。
+初回Referenceでは、認知indexをSource Index等と同様の**derived / regeneratable / build-input-bound resource**として扱います。
 
 ```text
 Authoritative Source
@@ -194,7 +195,21 @@ Learned Memory    != Decision history
 Cognitive Index   != Canonical source of truth
 ```
 
-indexを削除してもCanonical Worldは変化してはいけません。source / model revisionが変わった場合、staleを判定できるか、安全に再生成できる必要があります。
+indexを削除してもCanonical Worldは変化してはいけません。index自身のstale判定は、実際にその表現を作ったfeature corpus / extractor / model / seed等のbuild inputへ束縛します。これらの入力が変わった場合はstaleを判定できるか、安全に再生成できる必要があります。
+
+このderived-index freshnessは、R6で扱ったM1 accepted authority / proof freshnessとは別の問題です。
+
+```text
+derived index freshness
+  -> indexを再生成すべきか
+  -> build-input fingerprint / scoped snapshotへ戻る
+
+M1 qualification / proof freshness
+  -> current semantic claimを根拠付けられるか
+  -> required accepted authorityのsemantic fingerprintへ戻る
+```
+
+したがって、認知indexのstale検出を理由にrepository全体のglobal revision counterを導入したり、indexのbase revision一致をSemantic applicabilityのEvidenceへ格上げしたりしません。
 
 ## 一つのglobal similarityへ畳まない
 
@@ -236,7 +251,7 @@ Bでも最初に一つのfieldへhard routeしません。複数fieldからtop-k
 
 file path、生成物の一時的な配置、secret、connection string、runtime credentialはfeatureへ入れません。
 
-feature extractionは同じCanonical revisionから同じ結果になることを必須にします。
+feature extractionは、同じfeature-extraction input snapshot / fingerprintから同じ結果になることを必須にします。ここで必要なのはreproducible build inputであり、Repository全体の単一global revision counterではありません。
 
 ### 現行コードから抽出できるfeature sourceの棚卸し
 
@@ -353,13 +368,15 @@ Source locator、file path、physical table名、adapter filename、hook nameも
 ```text
 FeatureDocument
   subject: Canonical reference
-  revision: source/model revision
+  build_input: feature corpus / source-model fingerprint or scoped snapshot ref
   groups:
     identity:    F0
     intrinsic:   F1
     application: F2
     structural:  F3
 ```
+
+`build_input`はproduction fieldを先取りする意図ではありません。derived representationを同じ意味入力から再構築したかを比較するためのconceptual traceであり、M1 semantic freshnessやAcceptance revisionの代替ではありません。
 
 各アルゴリズムは同じ`FeatureDocument`から必要な群だけを選んでencoderへ渡します。アルゴリズム固有のpreprocessing結果をfeature sourceの正本にはしません。
 
@@ -408,7 +425,7 @@ Featureの一部を欠落させたintent / editing contextから、既存資産�
 
 ### stale representation
 
-Canonical revision更新後に旧indexを読むnegative caseを作り、stale検出または安全な再生成を確認します。
+認知indexが実際に依存するfeature input / extractor / model等のbuild inputを変更した後に旧indexを読むnegative caseを作り、stale検出または安全な再生成を確認します。無関係なaccepted changeまで全indexをstale化することは要件にしません。
 
 ## 評価指標
 
@@ -425,7 +442,7 @@ Canonical revision更新後に旧indexを読むnegative caseを作り、stale検
 - p50 / p95 retrieval latency
 - memory footprint
 - deterministic rebuildの可否
-- stale detection / revision traceability
+- stale detection / build-input traceability
 - qualification後に`applicable / incompatible / unknown`がどのように変化したか
 
 最終的なProduct価値は「hash精度」ではなく、既存意味の再利用漏れを減らし、不適合候補をauthorityへ昇格させず、開発者またはAIが調べる範囲を小さくできるかで判断します。
@@ -440,7 +457,7 @@ Phase 1/2で静的な候補生成に価値が確認できるまで、online lear
 semantic-reuse-success
 incompatible
 unknown / insufficient evidence
-stale-revision
+stale-derived-representation
 policy-reject
 acceptance-failure
 ignored / no decision
@@ -496,7 +513,7 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 
 ## 完了条件
 
-- [ ] Gate C Ready後のReference revisionを固定した。
+- [ ] Gate C Ready後のReference input snapshot / fingerprintを固定した。
 - [ ] deterministic feature corpusをCanonical Worldから再生成できる。
 - [ ] exact / set similarityを含むbaselineを用意した。
 - [ ] FlyHash型のsparse expansive方式を少なくとも一つ比較した。
@@ -521,6 +538,7 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 - online learningの先行実装
 - AI / cognitive subsystemへのruntime authority付与
 - cognitive representationをCanonical identity、Decision history、Evidenceへ転用すること
+- derived indexのstale管理を根拠にrepository-wide global revision counterを導入すること
 
 ## 判断をADRへ昇格させる条件
 
@@ -528,7 +546,7 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 
 次のいずれかがReferenceから必要になった場合にだけ、長期判断をADRへ切り出します。
 
-- derived cognitive indexに共通して守るrevision / regeneration contractをArchitectureとして固定する必要がある
+- derived cognitive indexに共通して守るbuild-input / regeneration contractをArchitectureとして固定する必要がある
 - 複数のcandidate mechanismを交換可能にする共通interfaceが複数Issueにまたがって必要になる
 - learned associationの永続化、更新、忘却、rollbackに長期のauthority境界が必要になる
 - Cognitive Layerという独立architecture layerを`docs/architecture.md`へ追加するEvidenceが得られる
@@ -541,6 +559,8 @@ Gate B / Gate Cの完了条件へ本Issueを追加しません。第一Web Targe
 - `docs/architecture.md`
 - `docs/business-system-design.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
+- `plan/DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`
+- `plan/design/README.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000040-semantic-component-composition.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
