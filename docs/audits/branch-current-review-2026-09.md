@@ -551,7 +551,49 @@ new cleanup branches: 0
 
 文書品質・読み順改善の成果はすでにmainへ包含されており、今回の操作は旧tipを作業候補として誤認しにくくするためのref normalizationだけです。
 
-## 12. 次の監査順序
+## 12. 2026-09-16 current-state pass 9 — Lane C Business Procedure observation-pressure refs
+
+Lane Cのsecond-corpus / actuality境界を検証した際に派生した、Business Procedureのphysical observation Pressure周辺の旧work refを確認しました。
+
+対象:
+
+- `work/business-procedure-cross-view-reference-current`
+- `work/business-procedure-physical-observation-pressure`
+- `work/business-procedure-physical-observation-pressure-actual`
+- `work/business-procedure-physical-observation-pressure-final`
+- `work/business-procedure-physical-observation-pressure-unused`
+
+確認時点のcurrent `main`:
+
+```text
+05827eb3bdcbcacc48cf29539c69f1db056ef4e8
+```
+
+5本はいずれも比較時点で:
+
+```text
+ahead_by = 0
+behind_by = 27
+files = []
+```
+
+で、同じhistorical tip `34e75e8de0e853f88a4dda41a77c82a241a8bea3` を指していました。open PR headではなく、bootstrap / Evidence用途のrefでもありません。
+
+これらの成果はすでにmainへ取り込まれており、branch名だけが`pressure` → `actual` → `final` → `unused`と世代化して残っていました。未統合作業候補と誤認しないよう、5本とも**forceを使わず**current `main`へfast-forward normalizationしました。
+
+今回のnormalizationはBusiness Procedure semantics、second Handoffのpositive / negative Evidence、Pre-ADR readinessのいずれも変更しません。過去work refのtipだけをcurrent mainへ揃えるRepository hygieneです。
+
+### pass 9結果
+
+```text
+reviewed refs:        5
+normalized:           5
+ahead_by > 0 found:   0
+force updates:        0
+new cleanup branches: 0
+```
+
+## 13. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
