@@ -227,17 +227,60 @@ ref updates:             0
 new cleanup branches:    0
 ```
 
+## 7. 2026-09-16 candidate pass 6 — Source-to-Canonical Traceability refs
+
+Source-to-Canonical Traceabilityの基礎、Diagnostic projection、native SQL authoring、Application Pattern Source Indexに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/issue-14-source-traceability-adr`
+- `work/issue-16-source-index-foundation`
+- `work/issue-19-source-index-cli`
+- `work/application-pattern-source-index`
+- `work/issue-17-diagnostic-subject-projection`
+- `work/issue-17-parse-diagnostic-cli`
+- `work/issue-17-parse-diagnostics-cli`
+- `work/issue-18-native-sql-foundation`
+- `work/issue-18-reference-native-sql`
+
+確認時点のcurrent `main`:
+
+```text
+05827eb3bdcbcacc48cf29539c69f1db056ef4e8
+```
+
+9本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headは存在せず、`bootstrap-source`のようなpush-triggered historical execution contextでも、Evidence refでもありません。
+
+このため9本を`DELETE_CANDIDATE`へ追加します。新方針に従い、候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 6結果
+
+```text
+reviewed refs:         9
+DELETE_CANDIDATE:      9
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
 ### 累計
 
 ```text
-DELETE_CANDIDATE: 50
+DELETE_CANDIDATE: 59
 ```
 
-## 7. 現在の削除実行状態
+## 8. 現在の削除実行状態
 
-上記50本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+上記59本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。50本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。59本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -251,19 +294,20 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 8. KEEP / FROZENとの分離
+## 9. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
 - `bootstrap-source`
 - `evidence/soza-e3b-p2-2026-09-02`
 - `evidence/soza-e3b-p2-version-exchange-2026-09-05`
-- open PR #606 head `work/postgres-partition-drop-readiness-533`
 - 継続監査branch `work/repository-hygiene`
 
-前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、#606 headは現在進行中作業、`work/repository-hygiene`は継続workstreamです。
+前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、`work/repository-hygiene`は継続workstreamです。
 
-## 9. 次の追加方針
+PR #606は現在openではありません。その旧head `work/postgres-partition-drop-readiness-533` は、open PR保護対象から外れましたが、この事実だけでDELETE_CANDIDATEへ昇格させず、current `main`との比較とref用途確認を別passで行います。
+
+## 10. 次の追加方針
 
 今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
