@@ -330,7 +330,80 @@ force updates:       0
 new cleanup branches: 0
 ```
 
-## 8. 次の監査順序
+## 8. 2026-09-16 current-state pass 5 — Application Driver / Application Pattern refs
+
+通常の`work/*` branchから、Application DriverとApplication Patternの旧work refを小集合で確認しました。open PR #606のhead `work/postgres-partition-drop-readiness-533`は引き続き保護し、今回の対象から除外しています。
+
+### 8.1 Application Driver
+
+対象:
+
+- `work/application-driver-evidence-stage-latest-sync`
+- `work/application-driver-final-revision-sync`
+- `work/application-driver-gate-b-current-sync`
+- `work/application-driver-gate-b-execution-status-69`
+- `work/application-driver-pattern-scenario`
+- `work/application-driver-plan-sync-after-reference-data-access`
+- `work/application-driver-resource-resolution`
+
+確認時点のcurrent `main`:
+
+```text
+5b6f9fb7b3618d9f3196013674fc172b68ec6b9b
+```
+
+7本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。固有未統合作業を持たないことを確認したため、7本とも**forceなし**でcurrent `main`へfast-forward normalizationしました。
+
+### 8.2 Application Pattern
+
+次に、Application Patternの基礎work refを確認しました。
+
+対象:
+
+- `work/application-pattern-browse`
+- `work/application-pattern-command-kind`
+- `work/application-pattern-command-reference`
+- `work/application-pattern-header-detail-kind`
+- `work/application-pattern-header-detail-reference`
+- `work/application-pattern-loader`
+- `work/application-pattern-record-kind`
+- `work/application-pattern-record-reference`
+
+並行workstreamによりcurrent `main`が次へ進んだ後に比較しました。
+
+```text
+894417a52485d758e7516ea8b9f2eaaf5f8516e6
+```
+
+8本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。このため8本とも**forceなし**でcurrent `main`へfast-forward normalizationしました。
+
+### pass 5結果
+
+```text
+reviewed refs:        15
+normalized:           15
+ahead_by > 0 found:    0
+force updates:         0
+new cleanup branches:  0
+```
+
+Application Driver / Patternの過去成果はすでにmainへ包含されており、今回確認した集合では未救済の固有patchは見つかりませんでした。
+
+## 9. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
