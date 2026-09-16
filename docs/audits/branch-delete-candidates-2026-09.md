@@ -102,17 +102,55 @@ ref updates:            0
 new cleanup branches:   0
 ```
 
+## 4. 2026-09-16 candidate pass 3 — Semantic Relation refs
+
+Semantic Relation key / traversalに関する次の6本をcurrent `main`と比較しました。
+
+- `work/semantic-relation-key-authoring`
+- `work/semantic-relation-key-parser`
+- `work/semantic-relation-key-syntax`
+- `work/semantic-relation-key-target-uniqueness`
+- `work/semantic-relation-key-validation`
+- `work/semantic-relation-traversal-keys`
+
+確認時点のcurrent `main`:
+
+```text
+201cc06859418e06c51688ee77f68da6dcf578af
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、Evidence / bootstrap等のref固有用途もありません。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。ref自体は動かしていません。
+
+### candidate pass 3結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
 ### 累計
 
 ```text
-DELETE_CANDIDATE: 21
+DELETE_CANDIDATE: 27
 ```
 
-## 4. 現在の削除実行状態
+## 5. 現在の削除実行状態
 
-上記21本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+上記27本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。21本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。27本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -126,7 +164,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 5. KEEP / FROZENとの分離
+## 6. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
@@ -138,7 +176,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、#606 headは現在進行中作業、`work/repository-hygiene`は継続workstreamです。
 
-## 6. 次の追加方針
+## 7. 次の追加方針
 
 今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
