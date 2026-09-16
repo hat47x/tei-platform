@@ -446,19 +446,22 @@ unresolved
 - 相反するInterpretationをidentity付きで保持しないとreviewできない
 - Evidence更新後もClaim continuityを維持する必要がある
 
-## 12. Referenceで検証する順序
+## 12. Reference / Evaluationで確認した順序
 
-### R1 — order entryでproof familyを通す
+当初の設計案ではR3をcandidate contraction、R4をchange / stale再評価としていたが、その後のread-only評価でContext Packet境界、candidate-local縮約、discovery provenanceを先に独立してPressureした。現在のR番号は、実際にmergeされた評価成果へ合わせて次で固定する。
 
-既存Referenceを使い、P1〜P4の基本挙動を確認します。
+### R1 — order entry proof reference
 
-目的は新しいBusiness meaningを発明することではなく、既存accepted refsからproof resultを機械的に再現できるかを見ることです。
+[`../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_PROOF_REFERENCE_2026-09.md)で、既存`order_entry`へP1〜P4を適用した。
 
-### R2 — manufacturing / inventoryでactualityとHandoffを通す
+- `supported / contradiction / unresolved`の三状態を保持できる
+- no traceをnegative factへ変換しない
+- DB writeをCapability mutation authorityへ短絡しない
+- Security policyをBusiness protected target authorityへ逆流させない
 
-[`../issue/000050-second-realistic-handoff-corpus.md`](../issue/000050-second-realistic-handoff-corpus.md)のsecond realistic corpus候補を使い、P5 / P6を重点的に検証します。
+### R2 — manufacturing / inventory actuality / Handoff pressure
 
-ここでは特に、
+[`../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`](../DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md)でP5 / P6をnegative pressureした。
 
 ```text
 Command success
@@ -468,21 +471,48 @@ Handoff condition
 responsibility continuation
 ```
 
-を一つへ畳まないことを確認します。
+を一つへ畳まないことを確認した。
 
-### R3 — candidate contractionへ接続する
+この評価はaccepted second Business Handoff sourceの成立を主張しない。second realistic corpus側のpositive Handoff Evidenceは別途未解決である。
 
-同じ入力に対して複数候補を作り、proof結果によって、
+### R3 — proof-to-context boundary
 
-- contradictionだけを安全に除外できるか
-- unresolvedを残せるか
-- supportedを過大評価しないか
+[`../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_PROOF_BOUNDARY_2026-09.md)で、proof結果をbounded contextへ渡す際のauthority boundaryを確認した。
 
-を確認します。
+- packetはdisposable / snapshot-bound projection
+- `supported`はwhole candidate acceptanceではない
+- `unresolved`はcandidate frontierへ残す
+- local LLMはmissing authorityを発明しない
 
-### R4 — change / stale再評価
+### R4 — candidate-local proof contraction
 
-accepted sourceを一箇所変更し、影響するproofだけがstaleになるかを確認します。
+[`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md)で、candidate claimに必要なproof subsetだけを選ぶPressureを行った。
+
+- unrelated contradictionでcandidateを除外しない
+- decisive contradictionはcompact elimination certificateへ戻れる
+- unresolved aggregationでもmember proof / missing authorityを失わない
+- required proof欠落はfail closedする
+
+### R5 — candidate discovery provenance
+
+[`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md)で、candidate meaningとdiscovery mechanismを分離した。
+
+- exact / Pattern / associative discoveryをauthority上で区別する
+- 同一candidateが複数経路で見つかってもcandidateを重複させない
+- retrieval score / Pattern frequencyをsemantic Evidenceへ昇格しない
+- existing candidateはcurrent M1 identityへ再qualificationする
+
+### R6 — accepted snapshot / stale再評価
+
+[`../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md)で、当初R4として予定していたchange / stale再評価を、R3〜R5実績の後段としてPressureした。
+
+- proofが依存するaccepted authority fingerprintだけでfreshnessを見る
+- unrelated changeで全proofを一律staleにしない
+- locator-only changeとsemantic changeを分離する
+- missing / ambiguous required authorityはfail closedする
+- stale `contradiction`をcandidate eliminationへ使わない
+
+R1〜R6はいずれもProduct Gateやproduction proof lifecycleの採用ではない。actual runner greenが得られていないtest-only pressureについては、source-level Evidenceをactual executionへ読み替えない。
 
 ## 13. 最小評価指標
 
