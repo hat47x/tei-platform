@@ -445,7 +445,66 @@ new cleanup branches: 0
 
 これでApplication Patternの主要な旧work refについて、少なくとも今回監査した範囲ではmain未包含の固有patchを持たないことを確認できました。
 
-## 10. 次の監査順序
+## 10. 2026-09-16 current-state pass 7 — Capability / Business Validation / Contract Query refs
+
+次に、Semantic Capability・Business Validation・Contract Queryに関する通常の旧`work/*` refを確認しました。open PR #606のheadは引き続き対象外です。
+
+### 10.1 Capability / Business Validation
+
+対象:
+
+- `work/capability-business-result-boundary`
+- `work/capability-named-outcome`
+- `work/capability-outcome-core`
+- `work/capability-outcome-semantic-anchor`
+- `work/business-validation-evaluator`
+- `work/business-validation-reference`
+- `work/business-validation-semantic-contract`
+
+### 10.2 Contract Query
+
+対象:
+
+- `work/contract-query-ci-status-sync`
+- `work/contract-query-diagnostic-source`
+- `work/contract-query-executor-binding-authoring`
+- `work/contract-query-executor-capability`
+- `work/contract-query-no-realization-fallback-conformance`
+- `work/contract-query-plan-sync`
+- `work/contract-query-realization-identity`
+- `work/contract-query-runtime-instance-key`
+- `work/contract-query-sql-executor-adapter`
+- `work/contract-query-sql-loader-integration`
+- `work/contract-query-sql-realization`
+
+確認時点のcurrent `main`:
+
+```text
+37a1e672ace1838354af592f8aebfde62596ea51
+```
+
+18本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、bootstrap / Evidence用途のrefでもありません。したがって18本とも**forceを使わず**current `main`へfast-forward normalizationしました。
+
+### pass 7結果
+
+```text
+reviewed refs:        18
+normalized:           18
+ahead_by > 0 found:    0
+force updates:         0
+new cleanup branches:  0
+```
+
+Capability outcome、Business Validation、Contract Query realization / executor / runtime identity等の過去成果は、今回確認した範囲ではすでにmainへ完全に包含されています。
+
+## 11. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
