@@ -403,7 +403,49 @@ new cleanup branches:  0
 
 Application Driver / Patternの過去成果はすでにmainへ包含されており、今回確認した集合では未救済の固有patchは見つかりませんでした。
 
-## 9. 次の監査順序
+## 9. 2026-09-16 current-state pass 6 — Application Pattern remaining refs
+
+Application Patternのうち、pass 5でまだ確認していなかったReference・Source Index・stage completion・Validation系の旧work refを確認しました。
+
+対象:
+
+- `work/application-pattern-reference`
+- `work/application-pattern-reference-kind`
+- `work/application-pattern-reference-reference`
+- `work/application-pattern-reference-rename-invariance`
+- `work/application-pattern-source-index`
+- `work/application-pattern-stage-complete-docs`
+- `work/application-pattern-validation`
+- `work/application-pattern-validation-integration`
+
+確認時点のcurrent `main`:
+
+```text
+f267d735ff3767fde1f9ace4196ce4fa99ce4311
+```
+
+8本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、bootstrap / Evidence用途のrefでもないため、8本とも**forceを使わず**current `main`へfast-forward normalizationしました。
+
+### pass 6結果
+
+```text
+reviewed refs:        8
+normalized:           8
+ahead_by > 0 found:   0
+force updates:        0
+new cleanup branches: 0
+```
+
+これでApplication Patternの主要な旧work refについて、少なくとも今回監査した範囲ではmain未包含の固有patchを持たないことを確認できました。
+
+## 10. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
