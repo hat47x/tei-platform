@@ -171,6 +171,20 @@ tools/repository-branch-audit.sh
 
 `PATCH_EQUIVALENT_REVIEW`を自動削除してはいけません。squash merge後のstale branchであることが多い一方、merge-onlyの固有変更を持つ可能性を安全側に残しています。
 
+一度、`MERGED_ANCESTRY` / `IDENTICAL_TREE`相当でmain包含済み、open PRなし、ref固有用途なしと確認した一回限りのstale branchは、監査記録上の`DELETE_CANDIDATE`として固定します。**mainが前進するたびに、そのbranchを新しいmainへfast-forwardし直しません。**
+
+繰り返しrefを更新してもbranch数は減らず、push-triggered workflowを不要に起動する可能性があります。remote ref削除の操作手段や権限がその場で利用できない場合は、候補refを動かさず監査済みとして次回passから除外し、削除可能になった時点で明示された候補リストから一度だけ削除します。
+
+```text
+main包含済み + ref用途なし
+        ↓
+DELETE_CANDIDATEとして記録
+        ↓
+再同期しない / 再監査しない
+        ↓
+削除可能になった時点で一度だけ削除
+```
+
 2026年9月の既存branch棚卸しについては[`docs/audits/branch-hygiene-2026-09.md`](docs/audits/branch-hygiene-2026-09.md)を参照してください。
 
 ### 10. 新しいbranchはpolicy scriptで確認する
