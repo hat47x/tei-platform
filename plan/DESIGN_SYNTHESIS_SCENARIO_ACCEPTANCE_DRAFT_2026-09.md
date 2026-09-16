@@ -39,6 +39,12 @@ proof unresolved
 proof contradiction
   != unrelated candidate contradiction
 
+candidate survived contraction
+  != candidate supported
+
+supported existing candidate
+  != preferred / winner / accepted candidate
+
 Reference Pattern frequency
   != current applicability
 
@@ -85,7 +91,7 @@ Design Synthesis Loopの価値は、一つのAIが一つの答えを返すこと
 
 この区分は、Gate C前の思考停止を意味しない。
 
-S1 / S2については、production AIなしでもcandidate / proof / provenance / freshness境界をPressureできる。実際にR1〜R6とS1 semantic candidate diversityのtest-only pressureで、その基礎Evidenceを得ている。
+S1 / S2については、production AIなしでもcandidate / proof / provenance / freshness境界をPressureできる。実際にR1〜R6、S1 semantic candidate diversityのtest-only pressure、および`order_entry` accepted sourceを使ったS1 / S2 frontier pressureで、その基礎Evidenceを得ている。
 
 一方S3〜S5は、actual local LLM、accepted candidate、generated artifact、runtime observationが存在しないまま詳細schemaを先に固定すると、架空の実装契約を増やす危険が大きい。
 
@@ -255,7 +261,9 @@ R5のcandidate discovery / provenance pressureに加え、`tools/reference-busin
 - ownership / identity等の意味差があれば別candidateとして保持する
 - `1案しか生成されなかった`と`複数案がconstraintで1案へ縮約された`を区別する
 
-ただしこれはcandidate generatorのactual能力試験ではない。「実際の上流設計で有用な複数案を生成できた」というProduct Evidenceにはしない。
+さらに`DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md`では、current `order_entry`のaccepted sourceをauthorityとして、existing read-only reuse / new snapshot proposal / master mutation proposalというmeaning-different frontierをread-onlyでPressureしている。
+
+ただしこれらはcandidate generatorのactual能力試験ではない。「実際の上流設計で有用な複数案を生成できた」というProduct Evidenceにはしない。
 
 ## 6. S2 — 他設計要素による縮約
 
@@ -362,6 +370,30 @@ aggregate
 
 であり、member proofとproofごとのmissing authorityを保持する。
 
+S2後のfrontierは、一つのqualification stateへ揃っている必要はない。
+
+```text
+supported existing candidate
+  +
+unresolved proposal candidate
+```
+
+が同時に残ることは正しい結果になり得る。
+
+ここで:
+
+```text
+survived
+  != supported
+
+supported
+  != preferred / winner / accepted
+```
+
+を維持する。
+
+S2はfrontierを必ず1 candidateへ縮約するScenarioではない。根拠不足のproposalを「1案化」のためだけに落とさない。
+
 ### 6.7 S2 Acceptance
 
 1. S1の候補に対し、少なくとも一つの追加cross-view constraintを与える。
@@ -372,6 +404,9 @@ aggregate
 6. eliminated candidateはdecisive contradictionへ戻れる。
 7. unresolved aggregation後もmissing authority traceを失わない。
 8. input snapshot変更時、旧proofをcurrent resultとして使わない。
+9. contraction後に複数candidateが残るcaseを許容し、1 candidateへの強制縮約をAcceptance条件にしない。
+10. `supported existing`と`unresolved proposal`が同時に残る場合、そのqualification差を保持する。
+11. existing reuse / minimum semantic delta等のpreferenceを、accepted constraintでない限りcontradictionとして扱わない。
 
 ### 6.8 S2 Negative Acceptance
 
@@ -383,12 +418,17 @@ aggregate
 - Command successからphysical completionをauthorする
 - positive ObservationからHandoffをauthorする
 - stale contradictionをcurrent contradictionとして再利用する
+- proofのsupported数でwinnerを決める
+- unresolved candidateをfrontierの1案化だけを目的として捨てる
+- existing assetが存在するという理由だけでnew proposalをcontradiction扱いする
 
 ### 6.9 Gate C前にできること
 
 R1〜R6とtest-only pressureにより、S2のauthority / contraction / freshness boundaryはかなりPressureできている。
 
 特にR6では、proofが実際に依存するaccepted authority fingerprintへfreshnessを束縛し、unrelated changeで全proofをstale化せず、missing / ambiguous authorityではfail closedし、stale contradictionをcandidate eliminationへ流さない境界を確認している。
+
+加えて`DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md`では、customer確認のsynthetic partial intentへcurrent accepted sourceを当て、read-only existing candidateをretainし、master mutation proposalをP3-02 contradictionで除外し、order-owned snapshot proposalを`unresolved`のまま残すcaseを確認している。これはS2がwinner selectionではなく、異なるepistemic statusを保ったfrontier contractionであることを具体化する。
 
 しかしactual Design Synthesis engineの性能、人間のreview工数削減、actual incremental re-evaluation costまでは未評価である。
 
@@ -464,6 +504,13 @@ good
   candidate value = order_entry.submit_order
   supporting corroboration = legacy policy
   current status = proposal, not accepted
+```
+
+minimum semantic deltaはS3の比較上のpreferenceであり、S2のproof resultではない。
+
+```text
+existing reuseの方が変更量が小さい
+  != accepted authorityがnew proposalをcontradictした
 ```
 
 ### 7.6 S3 Acceptance
@@ -669,8 +716,8 @@ A4  cross-scenario closed loop exists
 現在のLane Dはおおむね:
 
 ```text
-S1  A1相当 — provenance / semantic candidate diversity pressureあり
-S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness pressureあり
+S1  A1相当 — provenance / semantic candidate diversity / order-entry frontier pressureあり
+S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness / order-entry frontier pressureあり
 S3  A0 — bounded packet / output boundaryまで
 S4  A0 — derivation / oracle boundaryまで
 S5  A0 — feedback routing boundaryまで
@@ -693,8 +740,9 @@ S1 / S2のA1相当にはsource/test-only Evidenceを含むが、actual `go test`
 | R5 candidate discovery provenance | S1 / S2 | exact / Pattern / associative discoveryのprovenance分離 |
 | R6 snapshot invalidation | S2 / S3 | proof freshness、selective invalidation、stale contradictionの除外 |
 | S1 semantic candidate diversity pressure | S1 | surface variantとsemantic alternativeの分離、生成1案と縮約後1案の区別 |
+| order-entry S1 / S2 frontier pressure | S1 / S2 / S3 | existing supported candidateとunresolved proposalの共存、exact contradictionによる縮約、winner selectionとの分離 |
 
-R1〜R6およびS1 semantic candidate diversity pressureは、S1〜S5そのもののProduct Acceptanceではない。
+R1〜R6、S1 semantic candidate diversity pressure、およびorder-entry S1 / S2 frontier pressureは、S1〜S5そのもののProduct Acceptanceではない。
 
 とくにS3〜S5のactual executionを証明していない。またS1 / S2についてもactual candidate generator / contraction engineの性能を証明していない。
 
@@ -743,7 +791,17 @@ Gate C Ready後、いきなりS1〜S5全部を実装しない。
 
 Lane Dのpre-Gate-C read-only workとしては、S1〜S5のAcceptance素案をここまで定義できる。
 
-特にS1 / S2はR1〜R6とS1 semantic candidate diversity pressureにより、production implementation前でも誤った短絡をかなり除外できた。
+特にS1 / S2はR1〜R6、S1 semantic candidate diversity pressure、およびcurrent `order_entry` sourceを使ったfrontier pressureにより、production implementation前でも誤った短絡をかなり除外できた。
+
+今回のfrontier pressureからは、S2が「best candidate selector」ではないことも明確になった。
+
+```text
+supported existing candidate
+  +
+unresolved proposal candidate
+```
+
+が残る場合、S2はその差を保持してS3 / human reviewへ渡す。minimum semantic deltaやexisting reuse preferenceを、accepted constraintなしにproofへ昇格しない。
 
 次の境界は明確である。
 
