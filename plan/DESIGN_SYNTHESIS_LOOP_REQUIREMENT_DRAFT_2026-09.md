@@ -574,6 +574,8 @@ DCR benchmarkが良くてもDSRの価値が自動的に成立するわけでは�
 
 feature atomやlocal model比較へ進む前に、まずProduct Scenarioを作ります。
 
+ScenarioごとのAcceptance詳細とGate C前後の評価境界は[`DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md)を参照する。
+
 ### Scenario S1 — 上流モデリングの複数案提案
 
 入力:
@@ -633,17 +635,51 @@ accepted candidateから、standard UI / persistence / capability binding / test
 
 ## 13. 直近の開発順
 
+このRequirement Draftを起点とするpre-Gate-Cのread-only workは、Acceptance素案、S1 semantic candidate diversity、R1〜R6 cross-view / provenance / freshness pressureまで進んでいる。
+
+完了済みのpre-Gate-C範囲:
+
 ```text
-1. DSR Scenario S1〜S5のAcceptance素案
-2. S1でexisting asset recallをISSUE-000047へ接続
-3. S2でRQ-026 cross-view constraintを接続
-4. DCR benchmarkでpre-LLM retrieval / contraction部品を比較
-5. local LLM task contractを固定
-6. realistic Referenceでlocal-complete pathを試験
-7. accepted semanticsからimplementation / test derivation率を測る
-8. 必要な箇所だけremote LLM / learned cognitionを比較
+S1〜S5 Acceptance draft
+  -> S1 candidate meaning / discovery provenance pressure
+  -> S1 semantic candidate diversity test-only pressure
+  -> S2 R1〜R6
+       R1 order-entry proof
+       R2 actuality / Handoff negative pressure
+       R3 bounded context authority boundary
+       R4 candidate-local contraction
+       R5 discovery provenance
+       R6 snapshot / stale invalidation
 ```
+
+ここまでを理由に、Gate C前にproduction `DesignCandidate`、`DesignContextPacket`、proof lifecycle、Pattern Memory、LLM provider contract、vector / graph storage等を先行固定しない。
+
+現在の通常の待ち条件は次である。
+
+```text
+Product Gate B Ready
+  -> Handover Baseline B / revision R
+  -> First Web Target build T1
+  -> Product Gate C Evidence
+```
+
+Gate C後の最初のactual sequence:
+
+```text
+1. realistic S1 intentからcandidate frontierを作る
+2. S2でincremental cross-view contractionを行う
+3. actual information lossを測ってbounded contextを調整する
+4. ISSUE-000047のdeterministic qualificationへ接続する
+5. 必要ならISSUE-000051でpre-LLM retrieval方式を比較する
+6. S3 local LLMでminimum semantic deltaを比較する
+7. Shared Acceptance経由でsmall semantic changeを1件Acceptする
+8. S4 implementation / test derivationを行う
+9. S5 observable feedbackをmeaning ownerへ戻し、closed loopを1周する
+10. このactual Evidenceからのみproduction schema / provider / learned cognitionを再検討する
+```
+
+GitHub-hosted runnerのpre-run blocker等によりtest-only pressureのactual execution Evidenceが得られていない場合、source-level EvidenceをA2やProduct Acceptanceへ読み替えない。
 
 この順序により、モデル選定やvector index実装から開始しません。
 
-まず「人間の設計・実装・テスト作業をどのようにsemantic decisionへ圧縮するか」をReferenceで確認します。
+まず「人間の設計・実装・テスト作業をどのようにsemantic decisionへ圧縮するか」をactual Referenceで確認します。
