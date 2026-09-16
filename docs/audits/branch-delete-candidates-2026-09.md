@@ -387,17 +387,53 @@ ref updates:            0
 new cleanup branches:   0
 ```
 
+## 11. 2026-09-16 candidate pass 10 — Business Validation reference generation refs
+
+Business Validation Referenceの世代branchとして残っている次の3本をcurrent `main`と比較しました。
+
+- `work/business-validation-reference-v2`
+- `work/business-validation-reference-v3`
+- `work/business-validation-reference-v4`
+
+確認時点のcurrent `main`:
+
+```text
+ffe0b633d07ddcb0e4f16db0a6d830fb92e46bd3
+```
+
+3本はいずれも:
+
+```text
+ahead_by = 0
+behind_by = 33
+files = []
+```
+
+で、merge baseは同じhistorical tip `34e75e8de0e853f88a4dda41a77c82a241a8bea3` でした。open PR headではなく、Evidence / bootstrap等のref固有用途も確認されていません。
+
+このため3本を`DELETE_CANDIDATE`へ追加します。候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 10結果
+
+```text
+reviewed refs:         3
+DELETE_CANDIDATE:      3
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
 ### 累計
 
 ```text
-DELETE_CANDIDATE: 74
+DELETE_CANDIDATE: 77
 ```
 
-## 11. 現在の削除実行状態
+## 12. 現在の削除実行状態
 
-上記74本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+上記77本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。74本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。77本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -411,7 +447,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 12. KEEP / FROZENとの分離
+## 13. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
@@ -422,7 +458,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、`work/repository-hygiene`は継続workstreamです。
 
-## 13. 次の追加方針
+## 14. 次の追加方針
 
 今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
