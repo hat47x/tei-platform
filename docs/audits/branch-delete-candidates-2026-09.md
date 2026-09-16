@@ -224,7 +224,7 @@ reviewed refs:         13
 DELETE_CANDIDATE:      13
 ahead_by > 0 found:     0
 ref updates:             0
-new cleanup branches:   0
+new cleanup branches:    0
 ```
 
 ## 7. 2026-09-16 candidate pass 6 — Source-to-Canonical Traceability refs
@@ -349,17 +349,55 @@ ref updates:            0
 new cleanup branches:   0
 ```
 
+## 10. 2026-09-16 candidate pass 9 — Native Query / PostgreSQL execution refs
+
+Native QueryのPostgreSQL Reference・executor・parameter handlingに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/native-query-postgres-execution-reference`
+- `work/native-query-postgres-reference`
+- `work/postgres-native-query-executor`
+- `work/postgres-native-query-parameters`
+
+確認時点のcurrent `main`:
+
+```text
+ffe0b633d07ddcb0e4f16db0a6d830fb92e46bd3
+```
+
+4本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、Evidence / bootstrap等のref固有用途もありません。
+
+このため4本を`DELETE_CANDIDATE`へ追加します。候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 9結果
+
+```text
+reviewed refs:         4
+DELETE_CANDIDATE:      4
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
 ### 累計
 
 ```text
-DELETE_CANDIDATE: 70
+DELETE_CANDIDATE: 74
 ```
 
-## 10. 現在の削除実行状態
+## 11. 現在の削除実行状態
 
-上記70本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+上記74本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。70本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。74本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -373,7 +411,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 11. KEEP / FROZENとの分離
+## 12. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
@@ -384,7 +422,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、`work/repository-hygiene`は継続workstreamです。
 
-## 12. 次の追加方針
+## 13. 次の追加方針
 
 今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
