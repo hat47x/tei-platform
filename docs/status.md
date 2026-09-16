@@ -1,6 +1,6 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-15
+- 更新日: 2026-09-16
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Not Ready**
@@ -120,9 +120,11 @@ Gate B Product Evidenceと、補助的なsource qualification CIを分離しま�
 - #519でmanual `workflow_dispatch`入口もmainへ統合済み
 - PR #599でbaseline qualification対象を`internal/database/migration` / `internal/database/providers/postgres` / `internal/database/schemadiff`まで拡張済み
 - #513ではGitHub-hosted runnerがjob開始前に割り当てられないpre-run blockerを追跡中
-- 2026-09-15T10:01ZのPR #599 runでも`runner_id=0 / runner_name="" / steps=[]`でstep executionへ到達していない
-- `runner_id=0 / steps=[]`等、checkout前のfailureをApplication / Driver code failureへ読み替えない
+- 2026-09-16にPR #606 head `f6d78986fa7bfd35c4f7a82e0930c2c5c2b44d0d`で自動起動したrun `35048191177` / job `104642573551`も`steps=[]`のままfailureとなり、checkout / setup-go / gofmt / vet / go testへ到達していない
+- 同日の直前head `7b4398b97d4b44bbb1ddaab763f0134ea86d7af2`でもrun `35047855214`が`steps=[]`のままfailureで、runner復旧を示す観測はない
+- `runner_id=0 / steps=[]`、またはstep配列自体が空のcheckout前failureをApplication / Driver code failureへ読み替えない
 - source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
+- 環境変化を示す観測がない間、同一classのfailed jobを機械的にrerunしない
 
 したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
 
