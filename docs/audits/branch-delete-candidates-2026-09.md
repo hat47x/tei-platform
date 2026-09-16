@@ -78,11 +78,41 @@ ref updates:            0
 new cleanup branches:   0
 ```
 
-## 3. 現在の削除実行状態
+## 3. 2026-09-16 candidate pass 2 — Documentation quality refs
 
-上記16本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+`branch-current-review-2026-09.md`のpass 8で、文書品質・読み順改善に関する次の5本もmain包含済みと確認しました。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。16本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+- `docs/document-quality-rollout`
+- `docs/documentation-quality-guidance`
+- `docs/improve-business-ai-reading-path`
+- `docs/improve-core-reading-path`
+- `docs/improve-plan-issue-reading`
+
+5本は同じhistorical tip `b7de002a02eac2979c3fbf0fd8e5e2e05890e4c9` を指しており、確認時点のcurrent `main` `e197e997b5e6c7116a85ff64e946e78b6a58054f` に完全包含されていました。open PR headでもなく、Evidence / bootstrap等のref固有用途もありません。
+
+このため、この5本も`DELETE_CANDIDATE`へ移します。mainが前進しても再同期しません。
+
+### candidate pass 2結果
+
+```text
+reviewed refs:         5
+DELETE_CANDIDATE:      5
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+### 累計
+
+```text
+DELETE_CANDIDATE: 21
+```
+
+## 4. 現在の削除実行状態
+
+上記21本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。21本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -96,7 +126,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 4. KEEP / FROZENとの分離
+## 5. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
@@ -108,9 +138,9 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、#606 headは現在進行中作業、`work/repository-hygiene`は継続workstreamです。
 
-## 5. 次の追加方針
+## 6. 次の追加方針
 
-今後のbranch監査では、未監査の通常`work/*`を小集合ずつ比較し、次のどちらかへ送ります。
+今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
 ```text
 ahead_by = 0 + ref用途なし
