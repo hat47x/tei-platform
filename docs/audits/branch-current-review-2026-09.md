@@ -219,7 +219,7 @@ issue-inventory-sync
   -> issue-inventory-sync-2
   -> issue-inventory-sync-final
 
- two-blocker-ownership-sync
+two-blocker-ownership-sync
   -> two-blocker-ownership-sync-v2
 ```
 
@@ -235,7 +235,48 @@ force updates:       0
 new cleanup branches: 0
 ```
 
-## 6. 次の監査順序
+## 6. 2026-09-16 current-state pass 3 — Lane C Gate A / runbook refs
+
+次に、Lane CのGate A実行準備・runbook・verification stateに関する旧work refを小集合で確認しました。
+
+対象:
+
+- `work/lane-c-gate-a-focused-test-manifest`
+- `work/lane-c-gate-a-semantic-guard-manifest`
+- `work/lane-c-gate-a-authority-transition-manifest`
+- `work/lane-c-gate-a-post-merge-runbook`
+- `work/lane-c-verification-state-depin`
+
+確認時点のcurrent `main`:
+
+```text
+83f24fe563aac79c497d7a1260ba28e2e543e815
+```
+
+比較結果はすべて:
+
+```text
+ahead_by = 0
+files = []
+```
+
+で、behindは142〜211 commitでした。いずれも現在のopen PR headではなく、bootstrap / Evidence refでもありません。
+
+このため、5本すべてを**forceなし**でcurrent `main`へfast-forward normalizationしました。
+
+これらは過去にGate A exact manifest、semantic guard、authority transition、post-merge runbook、verification-state depinをそれぞれ完結させたbranchですが、その成果はすでにmainへ含まれており、旧tipを作業branchとして保持する必要はありません。
+
+### pass 3結果
+
+```text
+reviewed refs:       5
+normalized:          5
+ahead_by > 0 found:  0
+force updates:       0
+new cleanup branches: 0
+```
+
+## 7. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
