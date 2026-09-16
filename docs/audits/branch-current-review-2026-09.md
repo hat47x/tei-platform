@@ -167,7 +167,7 @@ Issue / PR conversation commentにもidentityを補う記録はなく、PR commi
 
 したがって、現時点では「おそらくこの8本」という推定を監査Evidenceへ昇格させません。
 
-## 4. このpassの結果
+## 4. pass 1の結果
 
 ```text
 reviewed refs:       11
@@ -180,16 +180,70 @@ new cleanup branches: 0
 
 これはRepository全branchのcurrent再分類完了を意味しません。
 
-今回の価値は、一時・integration・audit系の明確な集合で固有patch残存がないことを確認し、同時にbootstrap / Evidence系を「ancestryだけでは動かさない」から、**push-triggered historical execution contextなので保持する**という確定分類へ進めたことです。
+pass 1の価値は、一時・integration・audit系の明確な集合で固有patch残存がないことを確認し、同時にbootstrap / Evidence系を「ancestryだけでは動かさない」から、**push-triggered historical execution contextなので保持する**という確定分類へ進めたことです。
 
-## 5. 次の監査順序
+## 5. 2026-09-16 current-state pass 2 — Lane C stale sync refs
 
-次は、新しいhygiene branchを作らず、`work/repository-hygiene`を再利用して次の順に進めます。
+既存`work/repository-hygiene`をcurrent `main`へ戻したうえで、Lane Cの古い同期branchから、同一目的の名前違い・世代違いが目立つ小集合を確認しました。
+
+対象:
+
+- `work/lane-c-issue-inventory-sync`
+- `work/lane-c-issue-inventory-sync-2`
+- `work/lane-c-issue-inventory-sync-final`
+- `work/lane-c-two-blocker-ownership-sync`
+- `work/lane-c-two-blocker-ownership-sync-v2`
+
+確認時点のcurrent `main`:
+
+```text
+7ae67a9d0bc77220bb5f3fa57984695b37aed8f4
+```
+
+5本はいずれもcurrent `main`との比較で:
+
+```text
+ahead_by = 0
+behind_by = 11
+files = []
+```
+
+でした。open PR headは#606のみであり、この5本はopen PR headではありません。Evidence / bootstrap用refでもありません。
+
+したがって、固有未統合作業を持たないstale work refとして、**forceを使わず**current `main`へfast-forward normalizationしました。
+
+この操作で、特に次のような名称世代だけが残る状態を解消しています。
+
+```text
+issue-inventory-sync
+  -> issue-inventory-sync-2
+  -> issue-inventory-sync-final
+
+ two-blocker-ownership-sync
+  -> two-blocker-ownership-sync-v2
+```
+
+branch名自体を削除したわけではありませんが、5本とも作業固有tipを持たずcurrent main同値となるため、過去の同期branchを「未統合作業候補」と誤認しにくくなります。
+
+### pass 2結果
+
+```text
+reviewed refs:       5
+normalized:          5
+ahead_by > 0 found:  0
+force updates:       0
+new cleanup branches: 0
+```
+
+## 6. 次の監査順序
+
+次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
 1. closed PRを持たない通常`work/*` branchを小集合ずつcurrent `main`と比較する
-2. `ahead_by > 0`を検出した時点でresetせず、patch-equivalenceとmerge-only changeを確認する
-3. `bootstrap-source` / `evidence/*` 2本はKEEP / FROZENとして通常cleanupから除外する
-4. PR #578 conflict 8本は履歴Evidenceが得られた場合だけidentityを更新する
-5. deletion可能refは、normalizationとは別の明示listとして確定する
+2. 同一責務の世代branchが複数ある場合は優先して比較する
+3. `ahead_by > 0`を検出した時点でresetせず、patch-equivalenceとmerge-only changeを確認する
+4. `bootstrap-source` / `evidence/*` 2本はKEEP / FROZENとして通常cleanupから除外する
+5. PR #578 conflict 8本は履歴Evidenceが得られた場合だけidentityを更新する
+6. deletion可能refは、normalizationとは別の明示listとして確定する
 
 branch数を減らすことより、**mainにない固有作業と、ref名に残る必要なprovenanceを失わないこと**を優先します。
