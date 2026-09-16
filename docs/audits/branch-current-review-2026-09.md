@@ -504,11 +504,58 @@ new cleanup branches:  0
 
 Capability outcome、Business Validation、Contract Query realization / executor / runtime identity等の過去成果は、今回確認した範囲ではすでにmainへ完全に包含されています。
 
-## 11. 次の監査順序
+## 11. 2026-09-16 current-state pass 8 — Documentation quality / reading-path refs
+
+文書品質・読み順改善に関する旧`docs/*` refのうち、同じhistorical tipを共有していた小集合を確認しました。
+
+対象:
+
+- `docs/document-quality-rollout`
+- `docs/documentation-quality-guidance`
+- `docs/improve-business-ai-reading-path`
+- `docs/improve-core-reading-path`
+- `docs/improve-plan-issue-reading`
+
+5本はいずれも監査開始時点で同じtip:
+
+```text
+b7de002a02eac2979c3fbf0fd8e5e2e05890e4c9
+```
+
+を指していました。このtipをcurrent `main`:
+
+```text
+e197e997b5e6c7116a85ff64e946e78b6a58054f
+```
+
+と比較したところ、`b7de002...`はcurrent mainのancestorで、比較結果は:
+
+```text
+current main ahead_by = 51
+historical tip behind_by = 0
+```
+
+でした。つまり5本は固有未統合commitを持たず、open PR headでもなく、bootstrap / Evidence用途のrefでもありません。
+
+このため5本とも**forceを使わず**current `main`へfast-forward normalizationしました。
+
+### pass 8結果
+
+```text
+reviewed refs:        5
+normalized:           5
+ahead_by > 0 found:   0
+force updates:        0
+new cleanup branches: 0
+```
+
+文書品質・読み順改善の成果はすでにmainへ包含されており、今回の操作は旧tipを作業候補として誤認しにくくするためのref normalizationだけです。
+
+## 12. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
-1. closed PRを持たない通常`work/*` branchを小集合ずつcurrent `main`と比較する
+1. closed PRを持たない通常`work/*` / `docs/*` / `plan/*` branchを小集合ずつcurrent `main`と比較する
 2. 同一責務の世代branchが複数ある場合は優先して比較する
 3. `ahead_by > 0`を検出した時点でresetせず、patch-equivalenceとmerge-only changeを確認する
 4. `bootstrap-source` / `evidence/*` 2本はKEEP / FROZENとして通常cleanupから除外する
