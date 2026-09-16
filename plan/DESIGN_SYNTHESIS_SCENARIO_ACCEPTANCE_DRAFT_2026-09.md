@@ -45,6 +45,18 @@ candidate survived contraction
 supported existing candidate
   != preferred / winner / accepted candidate
 
+missing Evidence / authority
+  != contradiction
+
+provider / runtime failure surface
+  != semantic contradiction
+
+provider realization supported
+  != semantic Acceptance
+
+operational recovery required
+  != structural provider incompatibility
+
 Reference Pattern frequency
   != current applicability
 
@@ -84,14 +96,14 @@ Design Synthesis Loopの価値は、一つのAIが一つの答えを返すこと
 | Scenario | Gate C前 | Gate C後 |
 | --- | --- | --- |
 | S1 Multiple Design Proposal | read-only / synthetic candidate pressure可 | realistic intentで本評価 |
-| S2 Cross-view Contraction | R1〜R6を使ったread-only pressure可 | realistic candidate frontierで本評価 |
+| S2 Cross-view Contraction | R1〜R6 + frontier / provider pressure可 | realistic candidate frontierで本評価 |
 | S3 local LLM synthesis | packet / output contractの設計まで | local modelを使ったactual evaluation |
 | S4 implementation / test derivation | derivation source / oracle境界の設計まで | accepted candidateからactual生成 |
-| S5 feedback closure | routing ruleの設計まで | generated artifact / runtime observationでactual loop |
+| S5 feedback closure | routing rule / provider outcome owner boundaryの設計まで | generated artifact / runtime observationでactual loop |
 
 この区分は、Gate C前の思考停止を意味しない。
 
-S1 / S2については、production AIなしでもcandidate / proof / provenance / freshness境界をPressureできる。実際にR1〜R6、S1 semantic candidate diversityのtest-only pressure、および`order_entry` accepted sourceを使ったS1 / S2 frontier pressureで、その基礎Evidenceを得ている。
+S1 / S2については、production AIなしでもcandidate / proof / provenance / freshness / provider scope境界をPressureできる。実際にR1〜R6、S1 semantic candidate diversityのtest-only pressure、`order_entry` accepted sourceを使ったS1 / S2 frontier pressure、provider feasibility scope / outcome classification pressureで、その基礎Evidenceを得ている。
 
 一方S3〜S5は、actual local LLM、accepted candidate、generated artifact、runtime observationが存在しないまま詳細schemaを先に固定すると、架空の実装契約を増やす危険が大きい。
 
@@ -124,17 +136,20 @@ Gate C前のread-only pressureではGを満たしたと主張しない。
 - 候補同士の意味差が説明できるか
 - supported / contradiction / unresolvedを保持できるか
 - exact identityへ戻れるか
+- semantic candidateとrealization / binding variantを必要なcaseで区別できるか
 
 ### C. Authority discipline
 
 - M2 / M3 / LLM / runtime artifactをM1へ暗黙昇格していないか
 - missing authorityを補完していないか
+- provider / runtime limitationからBusiness / Canonical meaningを逆authorしていないか
 - Shared Acceptanceを飛ばしていないか
 
 ### D. Reproducibility / traceability
 
 - candidateや除外理由をaccepted source / Evidenceまで辿れるか
 - snapshot変更時にstaleを検知または再評価できるか
+- provider / runtime outcomeのreason / owner / scopeへ戻れるか
 
 ### E. Human reviewability
 
@@ -145,6 +160,7 @@ Gate C前のread-only pressureではGを満たしたと主張しない。
 
 - もっともらしい誤候補を落とせるか
 - unresolvedを誤ってsafe / trueへ丸めないか
+- generic failure surfaceだけで意味を誤縮約しないか
 
 ### G. Actual execution evidence
 
@@ -271,9 +287,9 @@ R5のcandidate discovery / provenance pressureに加え、`tools/reference-busin
 
 S2はcandidateをAI scoreで順位付けするScenarioではない。
 
-Business / Data / Function / Interaction / Security / Actuality / Handoff等から得られるexact constraintを使い、**説明可能にcandidate spaceを縮約し、本当に残るunresolvedを保持すること**を確認する。
+Business / Data / Function / Interaction / Security / Actuality / Handoff / Target / Provider等から得られるexact constraintを使い、**説明可能にcandidate spaceを縮約し、本当に残るunresolvedを保持すること**を確認する。
 
-### 6.2 R1〜R6から既に得ている境界
+### 6.2 R1〜R6と後続Pressureから得ている境界
 
 ```text
 same proof family
@@ -288,14 +304,21 @@ unresolved
 supported
   -> whole candidate Acceptanceではない
 
-missing required proof
+missing required proof / Evidence
   -> safeではない
+  -> falseでもない
 
 fresh proof
   != stale proof
 
 stale contradiction
   -> current candidate eliminationには使わない
+
+semantic candidate
+  != realization / binding variant
+
+provider failure surface
+  != one generic contradiction
 ```
 
 ### 6.3 Incremental input
@@ -323,6 +346,26 @@ step 5
 
 追加情報のたびにRepository全candidateを自由再生成するのではなく、影響scopeへ閉じて再評価する。
 
+Target / Provider feasibilityでは、少なくとも次を区別する。
+
+```text
+missing provider Evidence
+  -> unresolved
+
+observed unsafe realization
+  -> matching realization contradiction
+
+current provider structurally unsupported
+  -> current provider capability claimへのcontradiction
+
+operational recovery required
+  -> runtime / operations unresolved
+
+supported realization
+  -> feasibility support
+  != semantic Acceptance
+```
+
 ### 6.4 Candidate-local proof selection
 
 candidate claimへ関係するproofだけを適用する。
@@ -340,22 +383,28 @@ irrelevant
 
 無関係なcontradictionでcandidateを除外してはならない。
 
+同様に、provider-specific contradictionを上位semantic candidate全体へ無条件に伝播させない。accepted hard Target / Provider constraintがある場合だけ、そのsemantic meaningとmatching realizationを組み合わせたcomposite candidateの除外へ拡張できる。
+
 ### 6.5 Explainable elimination
 
 candidateを除外する場合、最低限:
 
 ```text
-candidate
+candidate / candidate claim
 contradicted claim
 decisive proof
 accepted authority / evidence
 snapshot
 reason
+owner
+scope
 ```
 
 へ戻れること。
 
 full proof logを保持すること自体は要求しない。
+
+missing Evidenceやoperational recoveryは、除外certificateではなく`unresolved` / owner-routingとして保持する。
 
 ### 6.6 Unresolved frontier
 
@@ -376,6 +425,8 @@ S2後のfrontierは、一つのqualification stateへ揃っている必要はな
 supported existing candidate
   +
 unresolved proposal candidate
+  +
+semantic candidate with unresolved realization Evidence
 ```
 
 が同時に残ることは正しい結果になり得る。
@@ -400,13 +451,20 @@ S2はfrontierを必ず1 candidateへ縮約するScenarioではない。根拠不
 2. 一つ以上のcandidateまたはcandidate claimを説明可能に縮約できるcaseを含む。
 3. 一つ以上の`unresolved`を正しく残すcaseを含む。
 4. unrelated contradictionがcandidate eliminationへ流入しない。
-5. required proof欠落を`no contradiction`としてsafe扱いしない。
+5. required proof / Evidence欠落を`no contradiction`としてsafe扱いせず、同時に`false` / contradictionへ変換しない。
 6. eliminated candidateはdecisive contradictionへ戻れる。
 7. unresolved aggregation後もmissing authority traceを失わない。
 8. input snapshot変更時、旧proofをcurrent resultとして使わない。
 9. contraction後に複数candidateが残るcaseを許容し、1 candidateへの強制縮約をAcceptance条件にしない。
 10. `supported existing`と`unresolved proposal`が同時に残る場合、そのqualification差を保持する。
 11. existing reuse / minimum semantic delta等のpreferenceを、accepted constraintでない限りcontradictionとして扱わない。
+12. semantic candidateとrealization / binding variantを必要なcaseで区別する。
+13. missing provider Evidenceはrealization contradictionにせず`unresolved`として残す。
+14. observed / structural provider incompatibilityはmatching realization scopeへ閉じる。
+15. accepted hard Target / Provider constraintがある場合だけcomposite candidate eliminationへ拡張し、semantic subject自体を消さない。
+16. provider / runtime outcomeをsurface `error`だけで分類せず、reason / owner / scopeへ戻れる。
+17. operational recovery requiredをstructural provider incompatibilityへ変換しない。
+18. provider realization supportをsemantic Acceptanceへ短絡しない。
 
 ### 6.8 S2 Negative Acceptance
 
@@ -421,6 +479,11 @@ S2はfrontierを必ず1 candidateへ縮約するScenarioではない。根拠不
 - proofのsupported数でwinnerを決める
 - unresolved candidateをfrontierの1案化だけを目的として捨てる
 - existing assetが存在するという理由だけでnew proposalをcontradiction扱いする
+- missing provider observation / Evidenceをprovider contradictionとしてcandidateを落とす
+- current provider limitationからBusiness / Canonical meaningを否定する
+- generic `error`だけを見てmissing Evidence / observed unsafe / structural unsupported / operational recoveryを同じ結果へ畳む
+- hard provider requirementを理由にoperational recoveryまでpermanent incompatibilityへ変換する
+- provider supportをsemantic Acceptanceとして扱う
 
 ### 6.9 Gate C前にできること
 
@@ -430,7 +493,11 @@ R1〜R6とtest-only pressureにより、S2のauthority / contraction / freshness
 
 加えて`DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md`では、customer確認のsynthetic partial intentへcurrent accepted sourceを当て、read-only existing candidateをretainし、master mutation proposalをP3-02 contradictionで除外し、order-owned snapshot proposalを`unresolved`のまま残すcaseを確認している。これはS2がwinner selectionではなく、異なるepistemic statusを保ったfrontier contractionであることを具体化する。
 
-しかしactual Design Synthesis engineの性能、人間のreview工数削減、actual incremental re-evaluation costまでは未評価である。
+`DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_SCOPE_PRESSURE_2026-09.md`では、current PostgreSQL fail-closed sourceを使い、semantic candidateとrealization / binding variantを分離し、missing provider Evidenceをsemantic contradictionへ変換せず、provider-specific incompatibilityをmatching realization scopeへ閉じることをPressureした。
+
+さらに`DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_OUTCOME_CLASSIFICATION_PRESSURE_2026-09.md`では、同じfailure surfaceへ現れるmissing Evidence、observed unsafe、structural unsupported、operational recovery、supported realizationをreason / owner / scopeで分離し、generic provider failureだけからcontractionを決めないことをPressureしている。
+
+しかしactual Design Synthesis engineの性能、人間のreview工数削減、actual incremental re-evaluation cost、actual provider evaluation loopまでは未評価である。
 
 ## 7. S3 — local LLM synthesis
 
@@ -465,6 +532,7 @@ exact accepted facts
 selected supported proof
 unresolved dimensions
 missing authorities
+realization / provider unresolved where relevant
 representative elimination reasons
 authority limits
 requested structured output
@@ -522,10 +590,11 @@ actual local LLM評価では少なくとも:
 3. `unresolved`をtrue / falseへ勝手に丸めない。
 4. accepted factとproposalを区別する。
 5. missing authorityを明示できる。
-6. whole-model rewriteではなくminimum deltaを返せるcaseを含む。
-7. eliminated candidateを根拠なく復活させない。
-8. model差し替えでM1 schema / identityが変わらない。
-9. outputがShared Acceptance前にowner sourceへwrite-backされない。
+6. realization / provider unresolvedをsemantic factへ書き換えない。
+7. whole-model rewriteではなくminimum deltaを返せるcaseを含む。
+8. eliminated candidateを根拠なく復活させない。
+9. model差し替えでM1 schema / identityが変わらない。
+10. outputがShared Acceptance前にowner sourceへwrite-backされない。
 
 ### 7.7 比較Evidence
 
@@ -622,9 +691,10 @@ S5はruntime errorをLLMへ投げて自動修正するScenarioではない。
 semantic inconsistency
 implementation defect
 Target projection defect
-provider / runtime limitation
+provider realization incompatibility
+provider / runtime Evidence不足
+operational recovery required
 physical actuality mismatch
-Evidence不足
 visual / interaction concern
 performance concern
 ```
@@ -646,9 +716,17 @@ CSS groupingが読みにくい
   -> Target visual concern
   != Data model defect
 
-providerがCapabilityを実現できない
+providerがcurrent operationを構造的にrealizeできない
   -> Binding / provider feasibility concern
   != Business intent rewrite
+
+provider observationが不足している
+  -> Evidence acquisition / unresolved
+  != realization contradiction
+
+runtimeがoperational recoveryを要求する
+  -> Runtime / Operations owner
+  != permanent provider incompatibility
 ```
 
 ### 9.4 S5 Acceptance
@@ -656,11 +734,12 @@ providerがCapabilityを実現できない
 1. generated artifactまたはruntime / simulationから一つのobservable feedbackを得る。
 2. feedbackのEvidence artifactを保持する。
 3. symptomからowner layerを決定論的またはreviewableに特定する。
-4. derived artifactへ直接patchしてauthorityを分岐させない。
-5. semantic changeが必要ならminimum semantic delta Proposalへ戻す。
-6. implementation-only defectならsemantic owner sourceを偽変更しない。
-7. Proposalは再びShared Acceptanceを通る。
-8. Accept後にaffected implementation / testを再deriveし、loopを一周できる。
+4. provider / runtime failureではreason / owner / scopeを保持する。
+5. derived artifactへ直接patchしてauthorityを分岐させない。
+6. semantic changeが必要ならminimum semantic delta Proposalへ戻す。
+7. implementation-only / operational-only defectならsemantic owner sourceを偽変更しない。
+8. Proposalは再びShared Acceptanceを通る。
+9. Accept後にaffected implementation / testを再deriveし、loopを一周できる。
 
 ### 9.5 S5 Negative Acceptance
 
@@ -670,6 +749,9 @@ providerがCapabilityを実現できない
 - LLM patch成功をAcceptanceとみなす
 - visual problemをData schema変更で隠す
 - provider limitationをBusiness requirementとして固定する
+- missing provider Evidenceをsemantic contradictionへ変換する
+- operational recovery requiredをstructural incompatibilityとして固定する
+- surface `error`だけでownerを決める
 
 ## 10. Scenario間の依存
 
@@ -680,7 +762,7 @@ S1
   candidate meaning / provenance
    ↓
 S2
-  exact contraction / unresolved
+  exact contraction / unresolved / realization scope
    ↓
 S3
   bounded residual synthesis
@@ -691,7 +773,7 @@ S4
   deterministic derivation
    ↓
 S5
-  observation / routing / next proposal
+  observation / owner routing / next proposal
    ↺
 ```
 
@@ -717,19 +799,19 @@ A4  cross-scenario closed loop exists
 
 ```text
 S1  A1相当 — provenance / semantic candidate diversity / order-entry frontier pressureあり
-S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness / order-entry frontier pressureあり
+S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness / order-entry frontier / provider feasibility scope + outcome pressureあり
 S3  A0 — bounded packet / output boundaryまで
 S4  A0 — derivation / oracle boundaryまで
-S5  A0 — feedback routing boundaryまで
+S5  A1未満 — routing boundary + provider outcome test-only pressureあり、actual feedbackなし
 ```
 
 と評価する。
 
-S1 / S2のA1相当にはsource/test-only Evidenceを含むが、actual `go test` greenを意味しない。GitHub-hosted runnerのpre-run allocation blockerが継続している期間はA2へ進めない。
+S1 / S2およびS5の一部にsource/test-only Evidenceを含むが、actual `go test` greenを意味しない。GitHub-hosted runnerのpre-run allocation blockerが継続している期間はA2へ進めない。
 
 これはGateや正式なmaturity levelではない。
 
-## 12. R1〜R6との対応
+## 12. R1〜R6と後続Pressureとの対応
 
 | Evidence | 主に支えるScenario | 内容 |
 | --- | --- | --- |
@@ -741,8 +823,11 @@ S1 / S2のA1相当にはsource/test-only Evidenceを含むが、actual `go test`
 | R6 snapshot invalidation | S2 / S3 | proof freshness、selective invalidation、stale contradictionの除外 |
 | S1 semantic candidate diversity pressure | S1 | surface variantとsemantic alternativeの分離、生成1案と縮約後1案の区別 |
 | order-entry S1 / S2 frontier pressure | S1 / S2 / S3 | existing supported candidateとunresolved proposalの共存、exact contradictionによる縮約、winner selectionとの分離 |
+| mixed-frontier context refinement | S2 / S3 | semantic subject / discovery trace / proof qualificationをflattenせずS3へ渡す |
+| provider feasibility scope pressure | S2 / S5 | semantic candidateとrealization variantを分離し、provider contradictionをmatching scopeへ閉じる |
+| provider feasibility outcome classification pressure | S2 / S5 | missing Evidence / observed unsafe / structural unsupported / operational recovery / supportのreason・owner・scope分離 |
 
-R1〜R6、S1 semantic candidate diversity pressure、およびorder-entry S1 / S2 frontier pressureは、S1〜S5そのもののProduct Acceptanceではない。
+これらはS1〜S5そのもののProduct Acceptanceではない。
 
 とくにS3〜S5のactual executionを証明していない。またS1 / S2についてもactual candidate generator / contraction engineの性能を証明していない。
 
@@ -755,6 +840,7 @@ R1〜R6、S1 semantic candidate diversity pressure、およびorder-entry S1 / S
 - candidate origin enum
 - persisted proof result enum
 - `EliminationCertificate` production schema
+- `ProviderFeasibility` production enum / generic provider outcome taxonomy
 - Pattern Memory production schema
 - LLM provider / model family
 - prompt contractの細部
@@ -776,13 +862,14 @@ Gate C Ready後、いきなりS1〜S5全部を実装しない。
 ```text
 1. S1 realistic intent / candidate frontier
 2. S2 incremental cross-view contraction
-3. bounded packet固定ではなくactual information-loss測定
-4. S3 local LLM comparison / minimum delta
-5. Shared Acceptance経由で一つのsmall semantic changeをAccept
-6. S4 standard artifact / test derivation
-7. S5 one observable feedbackをmeaning ownerへ返す
-8. 1つのclosed loopを完走
-9. そのEvidenceからproduction schemaを決める
+3. Target / Provider constraintをrealization scopeへ当て、failure reason / owner / scopeを保持する
+4. bounded packet固定ではなくactual information-loss測定
+5. S3 local LLM comparison / minimum delta
+6. Shared Acceptance経由で一つのsmall semantic changeをAccept
+7. S4 standard artifact / test derivation
+8. S5 one observable feedbackをmeaning ownerへ返す
+9. 1つのclosed loopを完走
+10. そのEvidenceからproduction schemaを決める
 ```
 
 最初の価値は「高度なAI」ではなく、**一つの意味変更を、候補化・縮約・受理・生成・観測・再提案までauthorityを崩さず一周できること**に置く。
@@ -791,17 +878,21 @@ Gate C Ready後、いきなりS1〜S5全部を実装しない。
 
 Lane Dのpre-Gate-C read-only workとしては、S1〜S5のAcceptance素案をここまで定義できる。
 
-特にS1 / S2はR1〜R6、S1 semantic candidate diversity pressure、およびcurrent `order_entry` sourceを使ったfrontier pressureにより、production implementation前でも誤った短絡をかなり除外できた。
+特にS1 / S2はR1〜R6、S1 semantic candidate diversity pressure、current `order_entry` sourceを使ったfrontier pressure、provider feasibility scope / outcome classification pressureにより、production implementation前でも誤った短絡をかなり除外できた。
 
-今回のfrontier pressureからは、S2が「best candidate selector」ではないことも明確になった。
+現在のS2 frontierは、epistemic statusだけでなくrealization statusも一つへ揃える必要がない。
 
 ```text
 supported existing candidate
   +
 unresolved proposal candidate
+  +
+semantic candidate with unresolved / incompatible realization variant
 ```
 
-が残る場合、S2はその差を保持してS3 / human reviewへ渡す。minimum semantic deltaやexisting reuse preferenceを、accepted constraintなしにproofへ昇格しない。
+が残る場合、S2はその差を保持してS3 / human reviewへ渡す。minimum semantic deltaやexisting reuse preference、provider failure surfaceを、accepted constraintなしにproofへ昇格しない。
+
+S5でも同じ境界を守り、runtime / provider symptomを正しいownerへ戻す。とくにoperational recovery requiredをsemantic defectやpermanent provider incompatibilityへ固定しない。
 
 次の境界は明確である。
 
