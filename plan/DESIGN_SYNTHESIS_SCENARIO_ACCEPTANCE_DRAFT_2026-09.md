@@ -78,14 +78,14 @@ Design Synthesis Loopの価値は、一つのAIが一つの答えを返すこと
 | Scenario | Gate C前 | Gate C後 |
 | --- | --- | --- |
 | S1 Multiple Design Proposal | read-only / synthetic candidate pressure可 | realistic intentで本評価 |
-| S2 Cross-view Contraction | R1〜R5を使ったread-only pressure可 | realistic candidate frontierで本評価 |
+| S2 Cross-view Contraction | R1〜R6を使ったread-only pressure可 | realistic candidate frontierで本評価 |
 | S3 local LLM synthesis | packet / output contractの設計まで | local modelを使ったactual evaluation |
 | S4 implementation / test derivation | derivation source / oracle境界の設計まで | accepted candidateからactual生成 |
 | S5 feedback closure | routing ruleの設計まで | generated artifact / runtime observationでactual loop |
 
 この区分は、Gate C前の思考停止を意味しない。
 
-S1 / S2については、production AIなしでもcandidate / proof / provenance境界を十分にPressureできる。実際にR1〜R5ではその基礎Evidenceを得ている。
+S1 / S2については、production AIなしでもcandidate / proof / provenance / freshness境界をPressureできる。実際にR1〜R6とS1 semantic candidate diversityのtest-only pressureで、その基礎Evidenceを得ている。
 
 一方S3〜S5は、actual local LLM、accepted candidate、generated artifact、runtime observationが存在しないまま詳細schemaを先に固定すると、架空の実装契約を増やす危険が大きい。
 
@@ -248,9 +248,14 @@ S1を成立とみなす最低条件:
 
 ### 5.8 Gate C前にできること
 
-R5のcandidate discovery / provenance pressureを用い、synthetic candidate setで上記境界をtest-onlyにPressureできる。
+R5のcandidate discovery / provenance pressureに加え、`tools/reference-business-procedure-check/design_synthesis_s1_candidate_diversity_pressure_test.go`で、synthetic candidate setについて次をtest-onlyにPressureしている。
 
-ただし「実際の上流設計で有用な複数案が生成できた」というProduct Evidenceにはしない。
+- surface wordingの違いだけを独立candidateとして水増ししない
+- surface variantを一つのsemantic alternativeへ畳んでもprovenanceを失わない
+- ownership / identity等の意味差があれば別candidateとして保持する
+- `1案しか生成されなかった`と`複数案がconstraintで1案へ縮約された`を区別する
+
+ただしこれはcandidate generatorのactual能力試験ではない。「実際の上流設計で有用な複数案を生成できた」というProduct Evidenceにはしない。
 
 ## 6. S2 — 他設計要素による縮約
 
@@ -260,7 +265,7 @@ S2はcandidateをAI scoreで順位付けするScenarioではない。
 
 Business / Data / Function / Interaction / Security / Actuality / Handoff等から得られるexact constraintを使い、**説明可能にcandidate spaceを縮約し、本当に残るunresolvedを保持すること**を確認する。
 
-### 6.2 R1〜R4から既に得ている境界
+### 6.2 R1〜R6から既に得ている境界
 
 ```text
 same proof family
@@ -277,6 +282,12 @@ supported
 
 missing required proof
   -> safeではない
+
+fresh proof
+  != stale proof
+
+stale contradiction
+  -> current candidate eliminationには使わない
 ```
 
 ### 6.3 Incremental input
@@ -371,12 +382,15 @@ aggregate
 - policyからBusiness protected targetをauthorする
 - Command successからphysical completionをauthorする
 - positive ObservationからHandoffをauthorする
+- stale contradictionをcurrent contradictionとして再利用する
 
 ### 6.9 Gate C前にできること
 
-R1〜R4とtest-only pressureにより、S2のauthority / contraction boundaryはかなりPressureできている。
+R1〜R6とtest-only pressureにより、S2のauthority / contraction / freshness boundaryはかなりPressureできている。
 
-しかしactual Design Synthesis engineの性能や、人間のreview工数削減までは未評価である。
+特にR6では、proofが実際に依存するaccepted authority fingerprintへfreshnessを束縛し、unrelated changeで全proofをstale化せず、missing / ambiguous authorityではfail closedし、stale contradictionをcandidate eliminationへ流さない境界を確認している。
+
+しかしactual Design Synthesis engineの性能、人間のreview工数削減、actual incremental re-evaluation costまでは未評価である。
 
 ## 7. S3 — local LLM synthesis
 
@@ -655,8 +669,8 @@ A4  cross-scenario closed loop exists
 現在のLane Dはおおむね:
 
 ```text
-S1  A1相当のprovenance / candidate boundary pressureあり
-S2  A1相当のcross-view / contraction pressureあり
+S1  A1相当 — provenance / semantic candidate diversity pressureあり
+S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness pressureあり
 S3  A0 — bounded packet / output boundaryまで
 S4  A0 — derivation / oracle boundaryまで
 S5  A0 — feedback routing boundaryまで
@@ -664,9 +678,11 @@ S5  A0 — feedback routing boundaryまで
 
 と評価する。
 
+S1 / S2のA1相当にはsource/test-only Evidenceを含むが、actual `go test` greenを意味しない。GitHub-hosted runnerのpre-run allocation blockerが継続している期間はA2へ進めない。
+
 これはGateや正式なmaturity levelではない。
 
-## 12. R1〜R5との対応
+## 12. R1〜R6との対応
 
 | Evidence | 主に支えるScenario | 内容 |
 | --- | --- | --- |
@@ -675,10 +691,12 @@ S5  A0 — feedback routing boundaryまで
 | R3 Context Packet boundary | S2 / S3 | bounded packet、authority limit、minimum residual |
 | R4 candidate-local proof packet | S2 / S3 | scope-local proof、elimination certificate、unresolved aggregation |
 | R5 candidate discovery provenance | S1 / S2 | exact / Pattern / associative discoveryのprovenance分離 |
+| R6 snapshot invalidation | S2 / S3 | proof freshness、selective invalidation、stale contradictionの除外 |
+| S1 semantic candidate diversity pressure | S1 | surface variantとsemantic alternativeの分離、生成1案と縮約後1案の区別 |
 
-R1〜R5はS1〜S5そのもののProduct Acceptanceではない。
+R1〜R6およびS1 semantic candidate diversity pressureは、S1〜S5そのもののProduct Acceptanceではない。
 
-とくにS3〜S5のactual executionを証明していない。
+とくにS3〜S5のactual executionを証明していない。またS1 / S2についてもactual candidate generator / contraction engineの性能を証明していない。
 
 ## 13. Gate C前にこれ以上固定しないもの
 
@@ -725,7 +743,7 @@ Gate C Ready後、いきなりS1〜S5全部を実装しない。
 
 Lane Dのpre-Gate-C read-only workとしては、S1〜S5のAcceptance素案をここまで定義できる。
 
-特にS1 / S2はR1〜R5により、production implementation前でも誤った短絡をかなり除外できた。
+特にS1 / S2はR1〜R6とS1 semantic candidate diversity pressureにより、production implementation前でも誤った短絡をかなり除外できた。
 
 次の境界は明確である。
 

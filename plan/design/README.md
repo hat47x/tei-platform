@@ -41,9 +41,9 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 - [`../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_LOCAL_PROOF_PACKET_PRESSURE_2026-09.md) — candidate-local proof選択、compact elimination certificate、trace-preserving unresolved集約をR1 / R2へ当てるR4 read-only評価
 - [`../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md`](../DESIGN_SYNTHESIS_CANDIDATE_DISCOVERY_PROVENANCE_BOUNDARY_2026-09.md) — exact existing asset、Reference Pattern、associative retrieval等のdiscovery経路とcandidate meaning / current qualificationを分離するR5 read-only評価
 - [`../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_SNAPSHOT_INVALIDATION_PRESSURE_2026-09.md) — proofをrequired accepted authorityのfingerprintへ束縛し、selective stale再評価とstale contradictionのcandidate elimination禁止を確認するR6 read-only評価
-- [`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md) — Design Synthesis LoopのS1〜S5について、Gate C前後を分けたAcceptance素案とR1〜R5からのEvidence接続を整理するLane D scenario draft
+- [`../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md`](../DESIGN_SYNTHESIS_SCENARIO_ACCEPTANCE_DRAFT_2026-09.md) — Design Synthesis LoopのS1〜S5について、Gate C前後を分けたAcceptance素案、R1〜R6、およびS1 semantic candidate diversity pressureからのEvidence接続を整理するLane D scenario draft
 
-`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の初期評価計画に残る`R4 — change / stale再評価`は、R3〜R5の後続評価を先に実施したため、merge済み文書をrenumberせずR6で扱う。
+`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順は、後続のread-only実績に合わせてR1〜R6へ同期済みである。当初change / stale再評価として想定した論点は、R3〜R5を先に独立評価した後、R6 snapshot invalidationとして扱う。
 
 ## Design Synthesisのpre-Gate-C停止点
 
