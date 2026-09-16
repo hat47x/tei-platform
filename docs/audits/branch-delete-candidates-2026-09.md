@@ -224,7 +224,7 @@ reviewed refs:         13
 DELETE_CANDIDATE:      13
 ahead_by > 0 found:     0
 ref updates:             0
-new cleanup branches:    0
+new cleanup branches:   0
 ```
 
 ## 7. 2026-09-16 candidate pass 6 — Source-to-Canonical Traceability refs
@@ -507,3 +507,55 @@ ahead_by > 0
 ```
 
 すでにこの文書へ入ったbranchを、mainの前進だけを理由に再監査しません。
+
+## 16. 2026-09-16 candidate pass 12 — Application Datasource / Gate B source-state refs
+
+Application Datasource aliasのexact resolutionと、Gate Bのsource/index state・source observation・source qualificationに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/application-datasource-alias-exact-resolution`
+- `work/application-datasource-alias-exact-resolution-scratch`
+- `work/gate-b-readiness-source-index-sync`
+- `work/gate-b-source-qualification-dispatch`
+- `work/gate-b-ignored-source-state-guard`
+- `work/gate-b-index-source-state-doc-sync`
+- `work/gate-b-index-source-state-guard`
+- `work/gate-b-git-config-source-observation-guard`
+
+確認時点のcurrent `main`:
+
+```text
+e4eda37b973d75ea229131ac66ce788ae878591c
+```
+
+8本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、`evidence/*`や`bootstrap-source`のようなref固有用途もありません。`-scratch`を含むbranchについても名称だけで判定せず、current mainとの比較結果で固有patchがないことを確認しています。
+
+このため8本を`DELETE_CANDIDATE`へ追加します。候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 12結果
+
+```text
+reviewed refs:         8
+DELETE_CANDIDATE:      8
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 17. current summary
+
+candidate pass 12までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 88
+```
+
+上記88本は削除条件を満たしていますが、remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。既存のKEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
