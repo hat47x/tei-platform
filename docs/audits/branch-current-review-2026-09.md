@@ -56,23 +56,99 @@ open PRは#606のみで、そのhead `work/postgres-partition-drop-readiness-533
 
 いずれもcurrent `main`のancestorであり、open PRはありません。branch名を正本として扱わない現行ruleに従い、forceを使わずcurrent `main`へfast-forward normalizationしました。
 
-### 2.3 ancestryは安全でもref用途を未確認のため保護したbranch
+### 2.3 ref identityを保持すると確定したbootstrap / Evidence branch
 
-次の3本も`ahead_by = 0`でしたが、今回はrefを動かしていません。
+次の3本も`ahead_by = 0`ですが、**normalization / deletion対象にはしません**。
 
 - `bootstrap-source`
 - `evidence/soza-e3b-p2-2026-09-02`
 - `evidence/soza-e3b-p2-version-exchange-2026-09-05`
 
-理由は、`ahead_by = 0`が示すのは「固有commitがない」ことまでであり、ref名そのものをbootstrap provenanceやEvidence参照に利用していないことまでは証明しないためです。
+参照元を再確認した結果、これらは通常のmerged work branchではなく、branch ref自体がpush-triggered workflowのhistorical execution contextに含まれています。
+
+#### `bootstrap-source`
+
+current tip:
+
+```text
+95f2f0d077c0e9251e12352e4e54b9b76f368e25
+Push normalized source without workflow mutation
+```
+
+`.github/workflows/normalize-source.yml`は現在も:
+
+```yaml
+on:
+  push:
+    branches:
+      - bootstrap-source
+```
+
+を持ちます。
+
+このrefでは少なくともrun `33290738775`が:
+
+```text
+workflow: Normalize TEI M0.22.1 source
+event: push
+head_branch: bootstrap-source
+head_sha: 95f2f0d077c0e9251e12352e4e54b9b76f368e25
+conclusion: success
+```
+
+として保存されています。
+
+したがって、current `main`へrefを動かすことは単なるancestry整理ではなく、新しい`push` event / normalization executionを発生させ得ます。過去runの`head_branch` / `head_sha`と現在refの対応関係も変えるため、通常のstale work branchと同じnormalization規則を適用しません。
+
+#### `evidence/soza-e3b-p2-2026-09-02`
+
+branch上のEvidence workflow自身が:
+
+```yaml
+on:
+  push:
+    branches:
+      - evidence/soza-e3b-p2-2026-09-02
+```
+
+を持ちます。
+
+Actions履歴には同branch名を`head_branch`として持つSOZA E3b-P2 Evidence runが保存されており、run `33589084290`はsuccessです。後続runも同じbranch identityで保存されています。
+
+Evidenceの正本はbranch名だけではなくexact run / `head_sha` / artifact / outputですが、branch refを後からcurrent mainへ移動する積極的理由もありません。移動自体が新しいpush-triggered Evidence executionを作り得るため、historical Evidence refとしてfreezeします。
+
+#### `evidence/soza-e3b-p2-version-exchange-2026-09-05`
+
+current mainの`.github/workflows/soza-e3b-p2-evidence.yml`は現在も:
+
+```yaml
+on:
+  push:
+    branches:
+      - evidence/soza-e3b-p2-version-exchange-2026-09-05
+  workflow_dispatch:
+```
+
+を持ちます。
+
+Actions履歴にはrun `33913500170`、`34112936976`等がこのbranch identityで保存されています。これらはrunner allocation問題を含むversion-exchange / runner-image再観測の履歴でもあります。
+
+したがって、このrefもhistorical Evidence execution contextとしてfreezeします。
+
+#### 判定
 
 ```text
 commit ancestry safe
   !=
 ref identity disposable
+
+push-triggered bootstrap / Evidence ref
+  -> KEEP / FROZEN
+  -> no normalization
+  -> no deletion
 ```
 
-この3本は、参照元を確認するまで保護対象とします。
+この3本は今後の通常branch cleanup対象から除外し、変更が必要な場合はbootstrap / Evidence experimentとして明示的に扱います。
 
 ## 3. PR #578 conflict 8本のidentity再調査
 
@@ -96,7 +172,7 @@ Issue / PR conversation commentにもidentityを補う記録はなく、PR commi
 ```text
 reviewed refs:       11
 normalized:           8
-protected by ref use: 3
+KEEP / FROZEN:        3
 ahead_by > 0 found:   0
 force updates:        0
 new cleanup branches: 0
@@ -104,7 +180,7 @@ new cleanup branches: 0
 
 これはRepository全branchのcurrent再分類完了を意味しません。
 
-今回の価値は、一時・integration・audit系の明確な集合で固有patch残存がないことを確認し、同時にEvidence / bootstrap系を「ancestryだけでは動かさない」保護境界として明示したことです。
+今回の価値は、一時・integration・audit系の明確な集合で固有patch残存がないことを確認し、同時にbootstrap / Evidence系を「ancestryだけでは動かさない」から、**push-triggered historical execution contextなので保持する**という確定分類へ進めたことです。
 
 ## 5. 次の監査順序
 
@@ -112,7 +188,7 @@ new cleanup branches: 0
 
 1. closed PRを持たない通常`work/*` branchを小集合ずつcurrent `main`と比較する
 2. `ahead_by > 0`を検出した時点でresetせず、patch-equivalenceとmerge-only changeを確認する
-3. Evidence / bootstrap refの参照元を確認し、ref identity保持要否を判定する
+3. `bootstrap-source` / `evidence/*` 2本はKEEP / FROZENとして通常cleanupから除外する
 4. PR #578 conflict 8本は履歴Evidenceが得られた場合だけidentityを更新する
 5. deletion可能refは、normalizationとは別の明示listとして確定する
 
