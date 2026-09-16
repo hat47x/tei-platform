@@ -655,3 +655,53 @@ DELETE_CANDIDATE: 96
 ```
 
 上記96本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+## 22. 2026-09-17 candidate pass 15 — Query Runtime / Contract Query / PostgreSQL Runtime refs
+
+Query Runtime、Contract Queryのruntime instance key、PostgreSQL DSN file runtime、runtime hardening文書同期、header-detail Contract Query runtime準備、PostgreSQL header-detail Reference runtimeに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/close-implemented-query-runtime-boundaries`
+- `work/contract-query-runtime-instance-key`
+- `work/gate-b-postgres-dsn-file-runtime`
+- `work/gate-b-runtime-hardening-doc-sync`
+- `work/header-detail-contract-query-runtime-prepare`
+- `work/reference-postgres-header-detail-runtime`
+
+確認時点のcurrent `main`:
+
+```text
+e9e5cf3baf3b9622b3f82b108fcd7b9e0cbff726
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、Evidence / bootstrap等のref固有用途も確認されていません。`work/observation-runtime-evidence` / `-v2` はEvidence用途の可能性を別途確認する必要があるため、このpassからは除外しています。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 15結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 23. current summary — pass 15
+
+candidate pass 15までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 102
+```
+
+上記102本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
