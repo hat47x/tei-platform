@@ -45,6 +45,7 @@ Architecture文書の第二正本にもしません。`docs/architecture.md`が�
 - [`../DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_ORDER_ENTRY_S1_S2_FRONTIER_PRESSURE_2026-09.md) — current `order_entry` sourceを使い、existing supported candidate / unresolved proposal / contradicted proposalが同時に存在するS1→S2 frontierをPressureし、contractionとwinner selectionを分離するread-only評価
 - [`../DESIGN_SYNTHESIS_CONTEXT_PACKET_MIXED_FRONTIER_REFINEMENT_2026-09.md`](../DESIGN_SYNTHESIS_CONTEXT_PACKET_MIXED_FRONTIER_REFINEMENT_2026-09.md) — R3の初期`proposal_origin`表現をR5とS1→S2 frontier Evidenceで補正し、candidate subject / discovery trace / current proof qualificationを分離したままmixed frontierをS3へ渡すR3 refinement
 - [`../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_SCOPE_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_SCOPE_PRESSURE_2026-09.md) — current PostgreSQL fail-closed sourceを使い、Target / Provider feasibility contradictionがsemantic candidateではなくmatching realization variantへ向くこと、hard provider constraint時だけcomposite candidateへ拡張できることをPressureするS2 refinement
+- [`../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_OUTCOME_CLASSIFICATION_PRESSURE_2026-09.md`](../DESIGN_SYNTHESIS_PROVIDER_FEASIBILITY_OUTCOME_CLASSIFICATION_PRESSURE_2026-09.md) — generic provider failure surfaceをmissing Evidence / observed incompatibility / structural unsupported / operational recovery / supportedへ分け、S2 contractionとS5 owner routingでreason / owner / scopeを失わないことをPressureするS2-S5 refinement
 
 `DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`の評価順は、後続のread-only実績に合わせてR1〜R6へ同期済みである。当初change / stale再評価として想定した論点は、R3〜R5を先に独立評価した後、R6 snapshot invalidationとして扱う。
 
@@ -52,7 +53,7 @@ R3の初期conceptual shapeにある`proposal_origin`はcurrent production field
 
 ## Design Synthesisのpre-Gate-C停止点
 
-Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope pressure、S1〜S5 Acceptance素案まで実施した。
+Design Synthesis / local cognitionのLane Dでは、Gate C前に安全に進められるread-only設計評価をR1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope / outcome-classification pressure、S1〜S5 Acceptance素案まで実施した。
 
 ここで得たcurrent boundaryは次である。
 
@@ -79,6 +80,9 @@ provider feasibility
   -> provider-specific incompatibilityはmatching realization variantへ閉じる
   -> hard Target / Provider requirement時だけcomposite candidate eliminationへ拡張する
   -> provider limitationからBusiness / Canonical meaningを逆authorしない
+  -> same error surfaceをsame resultへ畳まず、reason / owner / scopeへ戻す
+  -> missing Evidence / operational recoveryはunresolvedとして保持する
+  -> observed incompatibility / structural unsupportedだけをexact realization claimへ縮約する
 
 context packet
   -> candidate subject != discovery trace != candidate-local proof / qualification
@@ -109,8 +113,9 @@ Gate C前には、これらを根拠として次をproduction contractへ先行�
 - semantic-delta persistence model
 - feedback event ontology
 - `ProviderFeasibility` production enum / candidate hierarchy
+- provider error / outcome taxonomyのproduction固定
 
-新しいread-only作業を追加するのは、R1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope pressureでも説明できない具体的なinformation loss、authority contradiction、provenance / freshness / scope gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
+新しいread-only作業を追加するのは、R1〜R6、S1 / S2 frontier pressure、mixed-frontier context refinement、provider feasibility scope / outcome-classification pressureでも説明できない具体的なinformation loss、authority contradiction、provenance / freshness / scope / owner-routing gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
 
 ### Gate C後のdownstream handoff guard
 
@@ -173,7 +178,7 @@ S1 realistic intent / candidate frontier
   -> closed loopを1周
 ```
 
-このclosed loopのactual Evidenceを得る前に、R1〜R6のtest-only shapeやS1 / S2 frontier pressure / mixed-frontier refinement / provider feasibility scope pressureのconceptual shapeをproduction schemaへ昇格しない。
+このclosed loopのactual Evidenceを得る前に、R1〜R6のtest-only shapeやS1 / S2 frontier pressure / mixed-frontier refinement / provider feasibility pressureのconceptual shapeをproduction schemaへ昇格しない。
 
 ## まだ設計文書を置いていない領域
 
