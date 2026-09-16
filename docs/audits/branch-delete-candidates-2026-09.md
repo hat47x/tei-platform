@@ -705,3 +705,53 @@ DELETE_CANDIDATE: 102
 ```
 
 上記102本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+## 24. 2026-09-17 candidate pass 16 — Observation Runtime Evidence refs
+
+`work/observation-runtime-evidence` と `work/observation-runtime-evidence-v2` について、名称に`evidence`を含むためref固有用途の可能性を保留していましたが、branch自体の用途を追加確認しました。
+
+対象:
+
+- `work/observation-runtime-evidence`
+- `work/observation-runtime-evidence-v2`
+
+確認時点のcurrent `main`:
+
+```text
+7e938e995120e7ee21cb4929bbf2d1016f3b0bcc
+```
+
+2本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。
+
+追加確認では、`work/observation-runtime-evidence-v2` はPR #278「Observationのexplicit read runtime境界をDriverへ追加する」のheadとして使用され、そのPRは2026-09-04にmerge済みでした。PR本文上の`Evidence`は、Command Business ResultとObservation readを分離し、Observation結果と期待状態評価を分けるための設計・Conformance上の概念を指しています。branch ref自体をhistorical execution contextや外部Evidence identityとして保持する要件は確認されませんでした。
+
+`work/observation-runtime-evidence` もtip commitが `test: Observation read Evidence境界を固定する` であり、保存用`evidence/*` refではなく、同じObservation runtime実装・検証workstreamの通常`work/*` branchでした。default branch上から両branch名を参照するworkflow / code参照も確認されませんでした。
+
+したがって、名称中の`Evidence`だけを理由にKEEP / FROZENとせず、2本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 16結果
+
+```text
+reviewed refs:         2
+DELETE_CANDIDATE:      2
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 25. current summary — pass 16
+
+candidate pass 16までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 104
+```
+
+上記104本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
