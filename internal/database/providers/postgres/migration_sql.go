@@ -9,19 +9,44 @@ import (
 	"tei/internal/environment"
 )
 
-// RenderMigrationSQL renders one fully resolved Schema Diff as PostgreSQL DDL.
+// RenderMigrationSQL renders one fully resolved Schema Diff as PostgreSQL DDL
+// when it contains no DropTable. DropTable requires provider-owned partition
+// observation and must use RenderMigrationSQLWithObservation instead.
+//
 // Provider-native expressions are treated as trusted database-owned source
 // fragments. This renderer validates their provenance, but deliberately does
 // not rewrite or heuristically sanitize SQL text.
 func RenderMigrationSQL(diff schemadiff.Diff) ([]string, error) {
-	if len(diff.Unresolved) > 0 {
-		return nil, fmt.Errorf("migration SQL rendering requires a fully resolved schema diff: %d unresolved comparison(s)", len(diff.Unresolved))
+	if err := validateResolvedMigrationDiff(diff); err != nil {
+		return nil, err
 	}
+	for _, change := range diff.Changes {
+		if change.Kind == schemadiff.DropTable {
+			return nil, fmt.Errorf("postgres drop-table rendering requires complete provider partition observation")
+		}
+	}
+	return renderResolvedMigrationSQL(diff)
+}
 
+func validateResolvedMigrationDiff(diff schemadiff.Diff) error {
+	if len(diff.Unresolved) > 0 {
+		return fmt.Errorf("migration SQL rendering requires a fully resolved schema diff: %d unresolved comparison(s)", len(diff.Unresolved))
+	}
+	return nil
+}
+
+// renderResolvedMigrationSQL is package-private because it can emit destructive
+// DROP TABLE after its caller has established the provider-specific safety
+// preconditions. Exported callers must go through RenderMigrationSQL or
+// RenderMigrationSQLWithObservation.
+func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 	var out []string
 	for _, change := range diff.Changes {
 		switch change.Kind {
 		case schemadiff.CreateTable:
+			if len(change.PrimaryKey) > 0 {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support primary key on newly created table %s until constraint identity is realizable", change.Table)
+			}
 			// Columns are emitted by following AddColumn changes to retain one common change model.
 			out = append(out, fmt.Sprintf("CREATE TABLE %s ();", quoteQualifiedName(change.Table)))
 		case schemadiff.DropTable:
@@ -47,6 +72,12 @@ func RenderMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			if change.Column == nil {
 				return nil, fmt.Errorf("alter-column %s has no target column", change.Table)
 			}
+			if change.BeforeColumn == nil {
+				return nil, fmt.Errorf("alter-column %s has no before column", change.Table)
+			}
+			if strings.TrimSpace(change.Column.Default) != strings.TrimSpace(change.BeforeColumn.Default) {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support column default change on %s.%s", change.Table, change.Column.Name)
+			}
 			out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s TYPE %s;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name), change.Column.PhysicalType))
 			if change.Column.Nullable {
 				out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name)))
@@ -54,8 +85,7 @@ func RenderMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 				out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name)))
 			}
 		case schemadiff.ChangePrimaryKey:
-			// Constraint names are not yet canonicalized in Physical Schema IR; emit a marked manual step rather than guessing a destructive constraint name.
-			out = append(out, fmt.Sprintf("-- TEI: primary key change required on %s to (%s); constraint-name resolution required", quoteQualifiedName(change.Table), joinQuotedIdentifiers(change.PrimaryKey)))
+			return nil, fmt.Errorf("postgres migration SQL rendering does not support primary-key change on %s until constraint identity is realizable", change.Table)
 		case schemadiff.AddIndex:
 			if change.Index == nil {
 				return nil, fmt.Errorf("add-index %s has no index", change.Table)
@@ -76,6 +106,8 @@ func RenderMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			out = append(out, "DROP INDEX "+name+";")
 		case schemadiff.IndexStateDrift:
 			return nil, fmt.Errorf("index-state-drift on %s requires an operational recovery decision; migration SQL is not generated automatically", change.Table)
+		default:
+			return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s", change.Kind, change.Table)
 		}
 	}
 	return out, nil

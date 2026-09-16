@@ -116,10 +116,13 @@ func (o SchemaObservation) AssessDestructiveReadiness(diff schemadiff.Diff) (Des
 }
 
 // RenderMigrationSQLWithObservation is the destructive-safe PostgreSQL render
-// entry point. A DropTable reaches the existing SQL renderer only after a
-// complete provider-owned partition observation proves that the target is not
-// a partition child and has no attached descendants.
+// entry point. A DropTable reaches the package-private raw SQL renderer only
+// after a complete provider-owned partition observation proves that the target
+// is not a partition child and has no attached descendants.
 func RenderMigrationSQLWithObservation(diff schemadiff.Diff, observation SchemaObservation) ([]string, error) {
+	if err := validateResolvedMigrationDiff(diff); err != nil {
+		return nil, err
+	}
 	readiness, err := observation.AssessDestructiveReadiness(diff)
 	if err != nil {
 		return nil, err
@@ -127,7 +130,7 @@ func RenderMigrationSQLWithObservation(diff schemadiff.Diff, observation SchemaO
 	if !readiness.Executable {
 		return nil, &DestructiveReadinessError{Readiness: readiness}
 	}
-	return RenderMigrationSQL(diff)
+	return renderResolvedMigrationSQL(diff)
 }
 
 func relationIdentityFromQualifiedName(value string) (RelationIdentity, error) {
