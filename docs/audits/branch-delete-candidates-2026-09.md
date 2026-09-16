@@ -559,3 +559,51 @@ DELETE_CANDIDATE: 88
 ```
 
 上記88本は削除条件を満たしていますが、remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。既存のKEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+## 18. 2026-09-16 candidate pass 13 — Per-check source guard refs
+
+Generated Artifact / Repository Evidenceのper-check source guardと、その文書同期に関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/generated-artifact-per-check-source-doc`
+- `work/generated-artifact-per-check-source-guard`
+- `work/repository-evidence-per-check-source-doc`
+- `work/repository-evidence-per-check-source-guard`
+
+確認時点のcurrent `main`:
+
+```text
+b4b5b836ca3831aa9bf6e3afbeb96e6a497f5fdd
+```
+
+4本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、Evidence / bootstrap等のref固有用途もありません。
+
+このため4本を`DELETE_CANDIDATE`へ追加します。候補確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 13結果
+
+```text
+reviewed refs:         4
+DELETE_CANDIDATE:      4
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 19. current summary — pass 13
+
+candidate pass 13までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 92
+```
+
+上記92本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
