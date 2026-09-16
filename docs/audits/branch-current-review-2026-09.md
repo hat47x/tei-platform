@@ -276,7 +276,61 @@ force updates:       0
 new cleanup branches: 0
 ```
 
-## 7. 次の監査順序
+## 7. 2026-09-16 current-state pass 4 — Lane C Handoff identity / order refs
+
+Lane CでHandoff relationのidentity・condition distinction・normalized order invariance・Pre-ADR反映・Gate A triageを順に完結させた旧work refを確認しました。
+
+対象:
+
+- `work/lane-c-handoff-endpoint-condition-order-pressure`
+- `work/lane-c-handoff-normalized-condition-distinction-pressure`
+- `work/lane-c-normalized-handoff-order-invariance-pressure`
+- `work/lane-c-pre-adr-handoff-order-invariants`
+- `work/lane-c-gate-a-normalized-handoff-identity-manifest`
+
+確認時点のcurrent `main`:
+
+```text
+894417a52485d758e7516ea8b9f2eaaf5f8516e6
+```
+
+5本はいずれも比較時点で:
+
+```text
+ahead_by = 0
+files = []
+```
+
+で、42〜142 commit behindでした。いずれもopen PR headではなく、bootstrap / Evidence用途のrefでもありません。
+
+これらの成果はすでにmainへ取り込まれており、旧tipを独立した作業候補として残す意味はありません。このため5本とも**forceを使わず**current `main`へfast-forward normalizationしました。
+
+今回のnormalizationはHandoff semanticsを変更するものではありません。既存の:
+
+```text
+exact same from/to/condition
+  -> duplicate authorityとしてreject
+
+same endpoints + different condition
+  -> distinct H1/R3 meaningとして保持
+
+same meaning set
+  -> normalized resultはinput order invariant
+```
+
+というmain上の設計・Pressureを保持したまま、過去work refのtipだけをcurrent mainへ揃えています。
+
+### pass 4結果
+
+```text
+reviewed refs:       5
+normalized:          5
+ahead_by > 0 found:  0
+force updates:       0
+new cleanup branches: 0
+```
+
+## 8. 次の監査順序
 
 次も新しいhygiene branchを作らず、`work/repository-hygiene`を再利用します。
 
