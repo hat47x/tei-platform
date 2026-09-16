@@ -90,6 +90,43 @@ Gate C前には、これらを根拠として次をproduction contractへ先行�
 
 新しいread-only作業を追加するのは、R1〜R6では説明できない具体的なinformation loss、authority contradiction、provenance / freshness gapがcurrent Referenceで見つかった場合に限る。単に将来必要そうという理由で抽象化やtest-only shapeを増やさない。
 
+### Gate C後のdownstream handoff guard
+
+Gate C後に[`ISSUE-000047`](../issue/000047-knowledge-first-semantic-exploration.md) / [`ISSUE-000051`](../issue/000051-derived-cognitive-retrieval-evaluation.md)を再開するとき、R5 / R6で確認済みの境界を別のschemaや認知層として再設計しない。
+
+`ISSUE-000047`へ渡す既知条件は次である。
+
+- semantic candidateとdiscovery mechanism / discovery traceを分離する
+- 同一candidateがexact / Pattern / associative等の複数経路で見つかっても、candidateを複製せず複数traceを保持できる
+- Reference Patternのprovenance、associative retrievalのbase revision、current M1 qualificationを別物として扱う
+- retrieval score / similarity / 過去利用回数をapplicability / Evidence / Acceptanceへ変換しない
+- exact existing assetも「存在する」だけでapplicableとせず、current identity / dependency / scope / Source / Evidence / revisionへ戻ってqualifyする
+
+`ISSUE-000051`へ渡す既知条件は次である。
+
+- derived cognitive representationはM2のregeneratable resourceであり、M1 authorityではない
+- candidate retrieval方式を変えてもsemantic candidate identityやaccepted meaningを変えない
+- derived indexのbase revision / stale判定と、M1 accepted authorityのfreshnessを混同しない
+- R6のproof freshnessは「proofが依存するaccepted authority fingerprint」の問題であり、cognitive index用のglobal revision counter導入根拠にはしない
+- index削除・方式差し替え後もCanonical Worldが変わらないことを維持する
+
+したがって再開時に、次を改めて導入するところから始めない。
+
+```text
+candidate.origin = exact | pattern | associative
+という排他的origin enum
+
+retrieval score -> confidence / evidence strength
+というauthority変換
+
+repository全体のglobal revision counter
+
+cognitive index / pattern memoryを
+accepted semantic sourceとする構造
+```
+
+actual Gate C Referenceでこれらの境界では情報が失われることが観測された場合にだけreopenする。Gate C後の最初の仕事は境界の再設計ではなく、実在するS1 candidate frontierへ000047のcurrent qualificationを当て、必要性が出たときだけ000051のretrieval方式を比較することである。
+
 ### 再開条件
 
 通常の再開点はProduct Gate C後とする。少なくとも次が実在してから、S1〜S5のactual Referenceへ進む。
