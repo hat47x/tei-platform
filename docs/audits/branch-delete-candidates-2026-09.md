@@ -140,17 +140,59 @@ ref updates:            0
 new cleanup branches:   0
 ```
 
+## 5. 2026-09-16 candidate pass 4 — Application Pattern planning refs
+
+Application Patternの計画・進捗同期・stage completionに関する次の10本をcurrent `main`と比較しました。
+
+- `plan/application-pattern-command-current`
+- `plan/application-pattern-command-sync`
+- `plan/application-pattern-next-evidence`
+- `plan/application-pattern-next-evidence-final`
+- `plan/application-pattern-progress-final`
+- `plan/application-pattern-progress-sync`
+- `plan/application-pattern-stage-complete`
+- `plan/application-pattern-stage-complete-followup`
+- `plan/application-pattern-v1-design`
+- `plan/application-pattern-v1-design-rebased`
+
+確認時点のcurrent `main`:
+
+```text
+2c6ca29ad780705fe9026287d7d28d5a53126d8f
+```
+
+10本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。`-final`、`-followup`、`-rebased`等の世代名を根拠にせず、各refをcurrent mainと個別比較しています。いずれもopen PR headではなく、Evidence / bootstrap等のref固有用途もありません。
+
+このため10本を`DELETE_CANDIDATE`へ追加します。新方針に従い、candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 4結果
+
+```text
+reviewed refs:         10
+DELETE_CANDIDATE:      10
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
 ### 累計
 
 ```text
-DELETE_CANDIDATE: 27
+DELETE_CANDIDATE: 37
 ```
 
-## 5. 現在の削除実行状態
+## 6. 現在の削除実行状態
 
-上記27本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
+上記37本は削除条件を満たしていますが、現在この作業で利用しているGitHub接続面にはremote branch refを削除する操作が公開されていません。
 
-この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。27本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
+この制約を理由に、候補branchをcurrent mainへ何度もfast-forwardして代替しません。37本はこの文書上で`DELETE_CANDIDATE`としてfreezeし、以後の通常current-state監査から除外します。
 
 ```text
 DELETE_CANDIDATE確定
@@ -164,7 +206,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 削除実行後は、branchが実際に存在しないことを確認したうえで、この文書に実行結果を追記します。
 
-## 6. KEEP / FROZENとの分離
+## 7. KEEP / FROZENとの分離
 
 少なくとも次は、この削除候補一覧へ入れません。
 
@@ -176,7 +218,7 @@ remote ref削除が実行可能になった時点で一度だけ削除
 
 前3本はpush-triggered workflowのhistorical execution contextとしてKEEP / FROZEN、#606 headは現在進行中作業、`work/repository-hygiene`は継続workstreamです。
 
-## 7. 次の追加方針
+## 8. 次の追加方針
 
 今後のbranch監査では、未監査の通常`work/*` / `docs/*` / `plan/*`を小集合ずつ比較し、次のどちらかへ送ります。
 
