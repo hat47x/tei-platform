@@ -17,7 +17,7 @@ TEIで新しい定義や実装を作ろうとしたとき、まず既存資産�
   ↓
 候補が見つかる
   ↓
-identity / dependency / scope / Source / Evidence / revisionを確認
+identity / dependency / scope / Source / Evidence / current authorityを確認
   ↓
 applicable / incompatible / unknown
   ↓
@@ -151,7 +151,7 @@ applicable semantic asset
 - Source reference
 - Validation / Capability条件
 - Evidence / Conformance
-- current revisionとの整合
+- required accepted authority / Evidenceとのcurrent整合
 
 名前が似ている、Referenceに頻出する、過去に使われた、AIが推奨した、という理由だけで既存資産を採用しません。
 
@@ -197,11 +197,21 @@ UI、検索index、ranking、要約は異なっても構いません。
 
 少なくとも次を要求します。
 
-- source revision / dependencyへ追跡できる
-- staleかどうかを判定または再生成できる
+- 実際に表現生成へ使ったscoped build input / dependencyへ追跡できる
+- 実依存build inputが変わった場合にstaleを判定または安全に再生成できる
+- 無関係なaccepted changeだけで全derived representationを一律staleにしない
 - indexを削除してもCanonical Worldが変わらない
 - indexだけに存在する業務meaningを作らない
 - similarity scoreをDecisionへ格上げしない
+
+さらに、derived representationのfreshnessとcurrent applicabilityのfreshnessを同一視しません。
+
+```text
+derived representation freshness
+  != current semantic qualification / proof freshness
+```
+
+retrievalに使ったindexがfreshでも、`applicable / incompatible / unknown`の判定はrequired accepted authority / Evidenceへ独立に戻って確認します。cognitive freshnessのためにrepository-wideなglobal revision counterを要求しません。
 
 vector databaseやembeddingを初回Referenceの必須要件にはしません。
 
@@ -283,7 +293,7 @@ AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、�
 
 新しいSemantic資産を提案する前に、現在のRepository上で同等・近接・関連する資産を探索します。
 
-過去trajectoryが「以前これを使った」と示しても、現在revisionで有効とは限りません。current Source / Evidenceへ戻って再確認します。
+過去trajectoryが「以前これを使った」と示しても、current accepted authority / Evidenceの下で現在も有効とは限りません。current Source / Evidenceへ戻って再確認します。
 
 ### experienceからのlocal learning
 
@@ -294,7 +304,7 @@ AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、�
 - frequently useful Reference pattern hint
 - outcome-local ranking weight
 
-それでもrevision / provenance / outcomeへtraceでき、learned stateを無効化できる必要があります。
+それでもbuild-input provenance / current qualification authority / outcomeへtraceでき、learned stateを無効化できる必要があります。
 
 accepted semantic ruleをlearned weightだけへ保存しません。
 
@@ -340,7 +350,7 @@ Evidence不足で適用可否を断定できない資産を`unknown`として保
 
 ### 5. stale derived index
 
-source revision更新後に古いindex / cache / pattern-derived featureを利用しようとした場合、staleを検出して再読込・再生成へ進めることを確認します。
+representation生成に使ったscoped build input更新後に古いindex / cache / pattern-derived featureを利用しようとした場合、staleを検出して再読込・再生成へ進めることを確認します。無関係なaccepted changeだけで全indexをstale扱いにはしません。
 
 ## Evidence
 
@@ -349,7 +359,7 @@ source revision更新後に古いindex / cache / pattern-derived featureを利�
 - user / task intent
 - selected definition / local context
 - query / exploration input
-- source / repository revision
+- current qualificationに使ったaccepted authority / Evidence references、および必要な場合のbaseline repository revision
 - candidate mechanism（exact / lexical / pattern / cognition / AI等）
 - returned candidate identities / pattern identities
 - Source / Evidence / provenance references
@@ -357,7 +367,7 @@ source revision更新後に古いindex / cache / pattern-derived featureを利�
 - 分類理由
 - explicit-reference candidateへ進んだか
 - Shared Acceptance結果へのreference
-- derived indexを使った場合のrevision / fingerprint
+- derived indexを使った場合のscoped build-input provenance / fingerprints
 - stale negative case
 
 AIを使った場合、model名やpromptは補助Evidenceになり得ますが、Semantic適用可能性の根拠そのものにはしません。
@@ -390,7 +400,7 @@ Gate C前にはReference pattern provenanceの整理やbenchmark設計までを�
 - [ ] Reference patternのincompatible negative caseを拒否できる
 - [ ] existing asset reuseをexplicit-reference candidateへ接続できる
 - [ ] candidateがShared Acceptance Boundaryを通る
-- [ ] stale derived index / cacheを検出または再生成できる
+- [ ] stale derived index / cacheをscoped build inputから検出または再生成できる
 - [ ] index / embedding / trajectory / learned rankingを削除してもCanonical Worldが変わらない
 - [ ] AI KnowledgeやReference pattern memoryを第二のCanonical正本にしない
 
@@ -404,6 +414,7 @@ Gate C前にはReference pattern provenanceの整理やbenchmark設計までを�
 - embedding similarityによる自動採用
 - AI内部記憶をSemantic authorityにすること
 - search resultからauthoritative sourceへ直接writeすること
+- cognitive freshnessのためのrepository-wide global revision counter
 - global online learning
 - Derived Experience Knowledgeの完成形
 
