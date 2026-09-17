@@ -125,15 +125,16 @@ Gate C後に[`ISSUE-000047`](../issue/000047-knowledge-first-semantic-exploratio
 
 - semantic candidateとdiscovery mechanism / discovery traceを分離する
 - 同一candidateがexact / Pattern / associative等の複数経路で見つかっても、candidateを複製せず複数traceを保持できる
-- Reference Patternのprovenance、associative retrievalのbase revision、current M1 qualificationを別物として扱う
+- Reference Patternのprovenance、associative retrieval representationのbuild-input provenance / scoped freshness trace、current M1 qualificationを別物として扱う
 - retrieval score / similarity / 過去利用回数をapplicability / Evidence / Acceptanceへ変換しない
-- exact existing assetも「存在する」だけでapplicableとせず、current identity / dependency / scope / Source / Evidence / revisionへ戻ってqualifyする
+- exact existing assetも「存在する」だけでapplicableとせず、current identity / dependency / scopeとrequired accepted authority / Evidenceへ戻ってqualifyする
 
 `ISSUE-000051`へ渡す既知条件は次である。
 
 - derived cognitive representationはM2のregeneratable resourceであり、M1 authorityではない
 - candidate retrieval方式を変えてもsemantic candidate identityやaccepted meaningを変えない
-- derived indexのbase revision / stale判定と、M1 accepted authorityのfreshnessを混同しない
+- derived indexのbuild-input provenance / freshness / stale判定と、M1 accepted authority / proof freshnessを混同しない
+- derived representationがfreshでも、current applicabilityやcross-view proofはrequired accepted authority / Evidenceへ独立に戻って確認する
 - R6のproof freshnessは「proofが依存するaccepted authority fingerprint」の問題であり、cognitive index用のglobal revision counter導入根拠にはしない
 - index削除・方式差し替え後もCanonical Worldが変わらないことを維持する
 
