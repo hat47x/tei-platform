@@ -148,7 +148,7 @@ Gate C前のread-only pressureではGを満たしたと主張しない。
 ### D. Reproducibility / traceability
 
 - candidateや除外理由をaccepted source / Evidenceまで辿れるか
-- snapshot変更時にstaleを検知または再評価できるか
+- candidate / proofが実際に依存するrequired accepted authority fingerprintが変わった場合にstaleを検知または再評価できるか。無関係なaccepted changeだけで一律staleにしない
 - provider / runtime outcomeのreason / owner / scopeへ戻れるか
 
 ### E. Human reviewability
@@ -394,7 +394,7 @@ candidate / candidate claim
 contradicted claim
 decisive proof
 accepted authority / evidence
-snapshot
+accepted snapshot / required authority fingerprints
 reason
 owner
 scope
@@ -454,7 +454,7 @@ S2はfrontierを必ず1 candidateへ縮約するScenarioではない。根拠不
 5. required proof / Evidence欠落を`no contradiction`としてsafe扱いせず、同時に`false` / contradictionへ変換しない。
 6. eliminated candidateはdecisive contradictionへ戻れる。
 7. unresolved aggregation後もmissing authority traceを失わない。
-8. input snapshot変更時、旧proofをcurrent resultとして使わない。
+8. proofが依存するrequired accepted authority fingerprintが変わった場合、旧proofをcurrent resultとして使わない。無関係なaccepted changeだけでは当該proofをstaleにしない。
 9. contraction後に複数candidateが残るcaseを許容し、1 candidateへの強制縮約をAcceptance条件にしない。
 10. `supported existing`と`unresolved proposal`が同時に残る場合、そのqualification差を保持する。
 11. existing reuse / minimum semantic delta等のpreferenceを、accepted constraintでない限りcontradictionとして扱わない。
@@ -799,7 +799,7 @@ A4  cross-scenario closed loop exists
 
 ```text
 S1  A1相当 — provenance / semantic candidate diversity / order-entry frontier pressureあり
-S2  A1相当 — cross-view / candidate-local contraction / snapshot freshness / order-entry frontier / provider feasibility scope + outcome pressureあり
+S2  A1相当 — cross-view / candidate-local contraction / selective proof freshness / order-entry frontier / provider feasibility scope + outcome pressureあり
 S3  A0 — bounded packet / output boundaryまで
 S4  A0 — derivation / oracle boundaryまで
 S5  A1未満 — routing boundary + provider outcome test-only pressureあり、actual feedbackなし
