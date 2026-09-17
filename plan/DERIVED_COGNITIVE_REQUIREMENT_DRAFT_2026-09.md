@@ -242,7 +242,12 @@ Data、Relation、Validation、Capability、Application Pattern、Business Proce
 
 ### DCR-10 candidateからCanonical / Source / Evidenceへ戻れること — Must
 
-候補は少なくとも、元のCanonical identity、source/model revision、必要に応じてSource / Evidence referenceへ追跡可能でなければなりません。
+候補は少なくとも、元のCanonical identity、current qualificationへ戻るSource / Evidence referenceへ追跡可能でなければなりません。derived representationから発見した場合は、そのrepresentationを生成したbuild input / extractor / model等のprovenanceも別に辿れることを要求します。
+
+```text
+discovery provenance
+  != current semantic qualification authority
+```
 
 認知indexだけにしか存在しない業務意味を作りません。
 
@@ -250,11 +255,23 @@ Data、Relation、Validation、Capability、Application Pattern、Business Proce
 
 ### DCR-11 derived cognitive memoryは再生成可能・stale検出可能であること — Must
 
-index、sparse code、embedding、association等はderived resourceとして扱い、source revision / model revisionとの対応を保持します。
+index、sparse code、embedding、association等はderived resourceとして扱い、**実際にその表現生成へ使ったbuild input**との対応を保持します。
+
+build inputには対象に応じて、feature sourceのsemantic fingerprint / scoped source snapshot、extractor version / configuration、encoder / model configuration、seed等を含められます。repository全体へ一つのglobal revision counterを導入することは要求しません。
 
 - 削除して再生成できる
-- staleを検出できる
+- 実依存build inputが変わった場合にstaleを検出または安全に再生成できる
+- 無関係なaccepted changeだけで全cognitive representationを一律staleにすることを要求しない
 - stale representationを黙ってcurrent qualificationへ渡さない
+
+さらに:
+
+```text
+derived representation freshness
+  != M1 accepted authority / proof freshness
+```
+
+である。retrieval時点でrepresentationがfreshでも、`ISSUE-000047`のcurrent applicability判定やcross-view proofは、必要なcurrent accepted authority / Evidenceへ独立に戻って確認しなければならない。
 
 対応RQ: RQ-003 / RQ-015 / RQ-016 / RQ-020 / RQ-021
 
@@ -336,15 +353,15 @@ neural habituationやactivation decayをDecision historyの正本にしません
 semantic-reuse-success
 incompatible
 unknown / insufficient evidence
-stale-revision
+stale-derived-representation
 policy-reject
 acceptance-failure
 ignored / no decision
 ```
 
-`Accept = reward`、`Reject = punishment`へ単純化しません。
+学習対象にするoutcomeと、単に監査へ残すoutcomeを分けます。Decision historyそのものは既存の明示履歴が正であり、association weightへ置き換えません。
 
-学習stateはderivedであり、rollback / rebuild可能で、CanonicalやDecision historyを書き換えません。
+局所更新を試す場合は、活動したfeature / candidate fieldに関係するassociationだけを変更し、無関係なfieldやCanonical feature extractorへ副作用を与えないことを最初の安全条件にします。
 
 対応RQ: RQ-015 / RQ-016 / RQ-021 / RQ-022
 
@@ -450,7 +467,7 @@ TEI
   Canonical semantic inputs
   TEI-specific Feature Corpus adapter
   candidate family / qualification context
-  Source / Evidence / revision trace
+  Source / Evidence / scoped freshness trace
   Product Reference / Acceptance boundary
 
 shared or external provider
@@ -464,8 +481,10 @@ SEI-like cognition may say:
   "these structures are close"
 
 TEI must still say:
-  "this candidate refers to X at revision R,
-   and it is applicable / incompatible / unknown for this TEI context"
+  "this candidate refers to X,
+   its discovery representation came from build input B,
+   and X is currently applicable / incompatible / unknown
+   under the required accepted authority / Evidence"
 ```
 
 ## 次に分解するIssue
