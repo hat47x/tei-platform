@@ -10,7 +10,15 @@ import (
 	"strings"
 )
 
-const supportedFixtureSchema = "sei.decision-continuity-comparison-fixture/v0"
+const (
+	supportedFixtureSchema   = "sei.decision-continuity-comparison-fixture/v0"
+	sourceRepository         = "hat47x/sei-cognition"
+	sourceRevision           = "e943683fbd71ea689bf40fb4c7009531fe98ece5"
+	sourcePath               = "evaluation/personal-inquiry-decision/decision_continuity_counterfactual_001.json"
+	sourceBlob               = "6354fce0a01093cb5545ed6bb9730aceb3b20023"
+	sourceAuthorityScope     = "pinned-revision-only"
+	currentSourceConformance = "not-claimed"
+)
 
 type fixture struct {
 	Schema              string                     `json:"schema"`
@@ -93,8 +101,18 @@ type semanticAudit struct {
 	TemporalSeparation          bool `json:"temporal_separation"`
 }
 
+type sourceBaseline struct {
+	Repository               string `json:"repository"`
+	Revision                 string `json:"revision"`
+	Path                     string `json:"path"`
+	Blob                     string `json:"blob"`
+	AuthorityScope           string `json:"authority_scope"`
+	CurrentSourceConformance string `json:"current_source_conformance"`
+}
+
 type report struct {
 	FixtureID     string           `json:"fixture_id"`
+	Source        sourceBaseline   `json:"source"`
 	InitialResume resumeProjection `json:"initial_resume"`
 	PostDecision  resumeProjection `json:"post_decision_review"`
 	SemanticAudit semanticAudit    `json:"semantic_audit"`
@@ -224,7 +242,15 @@ func projectFixture(f fixture) (report, error) {
 	}
 
 	return report{
-		FixtureID:     f.FixtureID,
+		FixtureID: f.FixtureID,
+		Source: sourceBaseline{
+			Repository:               sourceRepository,
+			Revision:                 sourceRevision,
+			Path:                     sourcePath,
+			Blob:                     sourceBlob,
+			AuthorityScope:           sourceAuthorityScope,
+			CurrentSourceConformance: currentSourceConformance,
+		},
 		InitialResume: initial,
 		PostDecision:  post,
 		SemanticAudit: audit,

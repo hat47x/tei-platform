@@ -1,0 +1,114 @@
+{
+  "schema": "tei.sei-reference-adoption.change1-authority-restored-execution/v1",
+  "recorded_at": "2026-09-18",
+  "authority": "reference-evidence-only",
+  "purpose": "Revalidate Change 1 after restoring pinned SEI source authority metadata lost during concurrent integration.",
+  "tei": {
+    "repository": "hat47x/tei-platform",
+    "branch": "docs/design-synthesis-local-cognition",
+    "head_at_reconstruction": "8a4eae124470130e46f76d63468fafc1ad298b75",
+    "head_after_main_merge": "263a6bcf0086c5b5c9800e186167a5fcd3203e4b",
+    "files": {
+      "implementation": {
+        "path": "tools/sei-resume-reference/main.go",
+        "git_blob_sha1": "52a53930ceae1c5c173a020d7d3834fe08940bb3",
+        "sha256": "d4ffcd0c89886c36b2176a12bfd59b9a50ce4be7e77809de4efef8c46693816d"
+      },
+      "test": {
+        "path": "tools/sei-resume-reference/main_test.go",
+        "git_blob_sha1": "8288d3ab7b81942626b6cbb992a971475675b0ec",
+        "sha256": "8739ff0a7b7135dc371311805ed754c8220baa3133c410c4b217d5ae7ffc5f28"
+      },
+      "fixture": {
+        "path": "reference/sei-adoption/decision-continuity-counterfactual-001.json",
+        "git_blob_sha1": "6354fce0a01093cb5545ed6bb9730aceb3b20023",
+        "sha256": "43ce2ead3e7861835570297063d0287799adc15cdba4590f857cb4f25e66b63e"
+      }
+    }
+  },
+  "source_baseline": {
+    "repository": "hat47x/sei-cognition",
+    "revision": "e943683fbd71ea689bf40fb4c7009531fe98ece5",
+    "path": "evaluation/personal-inquiry-decision/decision_continuity_counterfactual_001.json",
+    "blob": "6354fce0a01093cb5545ed6bb9730aceb3b20023",
+    "authority_scope": "pinned-revision-only",
+    "current_source_conformance": "not-claimed"
+  },
+  "execution": {
+    "environment": "isolated reconstructed package",
+    "go_version": "go1.23.2 linux/amd64",
+    "goos": "linux",
+    "goarch": "amd64",
+    "module_note": "minimal temporary go.mod; implementation and tests import only Go standard library",
+    "exact_git_blob_identity_verified_before_execution": true,
+    "exact_git_blob_identity_unchanged_after_main_merge": true,
+    "gofmt": {
+      "command": "gofmt -d tools/sei-resume-reference/main.go tools/sei-resume-reference/main_test.go",
+      "diff_bytes": 0
+    },
+    "go_test": {
+      "command": "go test -v ./tools/sei-resume-reference",
+      "result": "pass",
+      "passed_tests": 10,
+      "failed_tests": 0,
+      "authority_test": "TestReferenceSnapshotMatchesPinnedSourceGitBlob",
+      "change1_test": "TestReferenceChangeOneAddsOnlyPostDecisionObservation"
+    },
+    "go_vet": {
+      "command": "go vet ./tools/sei-resume-reference",
+      "result": "pass"
+    },
+    "go_run": {
+      "command": "go run ./tools/sei-resume-reference",
+      "result": "pass",
+      "source": {
+        "authority_scope": "pinned-revision-only",
+        "current_source_conformance": "not-claimed"
+      },
+      "initial_changes_since_decision_count": 0,
+      "post_decision_change_ids": [
+        "obs-b-429",
+        "obs-a-maintenance"
+      ],
+      "historical_basis_ids": [
+        "obs-a-timeout",
+        "obs-b-synthetic"
+      ],
+      "unresolved_ids": [
+        "unk-b-rate-limit",
+        "unk-rollback"
+      ],
+      "semantic_audit": {
+        "recommendation_separated": true,
+        "decision_matches_oracle": true,
+        "recommendation_matches_oracle": true,
+        "historical_basis_matches": true,
+        "unresolved_matches": true,
+        "post_decision_matches": true,
+        "temporal_separation": true
+      }
+    }
+  },
+  "relationship_to_previous_receipt": {
+    "previous_receipt": "reference/sei-adoption/change1-execution-20260918.json",
+    "previous_implementation_blob": "a62c0a10ac32d3c84156b74cec57b83f12866dfb",
+    "previous_test_blob": "7e06b9e289fa00bb19345240146844abad8a5989",
+    "status": "historical-valid-for-recorded-blobs",
+    "note": "The previous receipt remains valid for its exact blobs but does not establish current-source green after authority metadata was restored."
+  },
+  "interpretation": {
+    "change1_semantic_compatibility": "observed",
+    "pinned_source_authority_and_change1_coexist": "observed",
+    "tei_core_gap": "not-observed",
+    "current_sei_source_conformance": "not-claimed",
+    "tei_product_leverage": "not-established",
+    "human_usability": "not-observed"
+  },
+  "stop_lines": [
+    "isolated exact-blob package PASS is not full-repository verification",
+    "pinned-baseline conformance is not current SEI source conformance",
+    "native SEI execution was not rerun by this receipt",
+    "Reference-local semantic compatibility is not TEI Product Value",
+    "no new TEI Core, Application Pattern, or Product Requirement is authorized by this Evidence"
+  ]
+}

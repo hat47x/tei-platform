@@ -53,13 +53,20 @@ Stage 0 checkerのPASSを、Gate C、production Application Plane、SEI human us
 - TEI snapshot: `reference/sei-adoption/decision-continuity-counterfactual-001.json`
 
 ```text
-SEI source
-  = authority
+SEI pinned revision/blob
+  = this Stage 0 authority baseline
 
 TEI reference snapshot
   = frozen experiment input
   != second authority
+
+pinned-baseline conformance
+  != current source conformance
 ```
+
+TEI snapshotのGit blobは固定SEI source blobと一致する。2026-09-18の再確認時点ではSEI current `main`は固定revisionより前の祖先へ位置し、fixture pathを含まない一方、`develop/v0.2.0`等のactive refは固定revisionを祖先として保持している。
+
+したがってこのIssueではbranch refをauthorityにせず、pinned revision/blobへの適合だけをScoped Evidenceとして扱う。checker reportも`authority_scope = pinned-revision-only`、`current_source_conformance = not-claimed`を返し、current SEI sourceへの適合を暗黙に主張しない。
 
 ## 入力とoracle
 
@@ -121,19 +128,37 @@ go vet ./tools/sei-resume-reference
 
 ### Exact-blob再実行
 
-2026-09-18、current GitHub blobを隔離環境へ再構成し、次を再確認した。
+2026-09-18の最初のChange 1実行では、当時のexact blob:
 
 - `tools/sei-resume-reference/main.go`: `a62c0a10ac32d3c84156b74cec57b83f12866dfb`
 - `tools/sei-resume-reference/main_test.go`: `7e06b9e289fa00bb19345240146844abad8a5989`
 - fixture: `6354fce0a01093cb5545ed6bb9730aceb3b20023`
+
+について9/9 test PASSを取得し、`reference/sei-adoption/change1-execution-20260918.json`へ固定した。このreceiptはそのexact sourceに対する履歴Evidenceとして残す。
+
+その後、Change 1統合で#689のpinned-source authority metadata / snapshot identity pressureが後退したことを検出し、Change 1 testを保持したままauthority境界を復元した。
+
+復元後のcurrent exact blob:
+
+- `tools/sei-resume-reference/main.go`: `52a53930ceae1c5c173a020d7d3834fe08940bb3`
+- `tools/sei-resume-reference/main_test.go`: `8288d3ab7b81942626b6cbb992a971475675b0ec`
+- fixture: `6354fce0a01093cb5545ed6bb9730aceb3b20023`
+
+を隔離再構成し、Go 1.23.2 / linux/amd64で次を確認した。
+
 - `gofmt -d`: 0 bytes
-- `go test -v ./tools/sei-resume-reference`: 9/9 PASS
+- `go test -v ./tools/sei-resume-reference`: 10/10 PASS
 - `go vet ./tools/sei-resume-reference`: PASS
-- `go run ./tools/sei-resume-reference`: semantic audit全項目true
+- `go run ./tools/sei-resume-reference`: PASS
+- pinned fixture Git blob identity test: PASS
+- Change 1 temporal projection test: PASS
+- report `authority_scope`: `pinned-revision-only`
+- report `current_source_conformance`: `not-claimed`
+- semantic audit: 全項目true
 
-machine-readable receiptは `reference/sei-adoption/change1-execution-20260918.json` に保存する。
+新しいmachine-readable receiptは `reference/sei-adoption/change1-authority-restored-execution-20260918.json` に保存する。
 
-ただし実行は、上記exact blobとfixtureをminimal temporary `go.mod`へ置いたisolated packageで行った。したがってfull repository verificationやnative SEI側の再実行を主張しない。
+したがって、**Change 1 compatibilityとsource authority境界はcurrent Reference sourceで同時に成立**している。ただし実行はminimal temporary `go.mod`のisolated packageであり、full repository verification、native SEI側再実行、current SEI source conformanceは主張しない。
 
 
 ```text
