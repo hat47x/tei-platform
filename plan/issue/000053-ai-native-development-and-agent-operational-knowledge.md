@@ -1604,15 +1604,70 @@ Gate outcome:
 
 ```text
 insufficient-evidence
+same-source-compatibility-unresolved
 synthetic-conflict-pressure
 precedence-mechanism-pressure-qualified
 ```
+
+same tuple / same scopeで両directiveが同一sourceから出る場合は、cross-authority precedence conflictへ昇格させず、source内compatibility semanticsをunresolvedとして保持する。
 
 ただしqualifiedでもWinner / precedence rule / syntaxは選ばない。
 
 current Referenceにはaccepted production freshness directiveがなく、R3Y explicit directiveはtest-only comparison inputであるため、current Gateは `insufficient-evidence` のままとする。
 
 provider policy revisionもexplicit freshness directiveへ昇格させず、priority / override / nearest-scope-wins / last-writer-wins / TTL precedenceは追加しない。
+
+
+
+### R3AA — Authorization freshness authority operational stop / handoff
+
+R3Zでfreshness precedence Evidence Gateを未充足のまま止めた後、current read-only AI Business Actor本線へ戻り、same-tupleのfreshness authority unresolvedを既存R3M〜R3PのOperational stop / handoff projectionへ接続する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aa_authorization_freshness_stop_handoff_pressure_test.go`
+
+test-only taxonomy:
+
+```text
+stage = authorization-evaluation-freshness-authority
+class = evaluation-freshness-authority-unresolved
+reason = authorization-evaluation-freshness-authority-unresolved
+resolution need = authorization-evaluation-freshness-authority
+```
+
+を追加する。
+
+これは:
+
+```text
+freshness authority unresolved
+  != evaluated denied
+  != evaluation not attempted
+  != Observation tuple mismatch
+  != current-context reuse unresolved
+```
+
+という意味差を保持するためであり、production API vocabulary採用ではない。
+
+R3M explanationではresolutionをrequestしてもhandoff recipientを発明せず、R3Nではearlier requirement / principal / target / tuple mismatch blockerをfreshness stopで上書きしない。
+
+R3O common coreとR3P Human / Agent bounded projectionをそのまま再利用し、Human / Agentでdetail disclosureが異なってもmachine reason / resolution need / source refsは同じcoreへ戻る。
+
+```text
+freshness authority unresolved
+  -> explainable stop
+  != denied
+  != retry-required
+  != human-approval-required
+  != hidden cache decision
+```
+
+を維持し、Retry / Approval / CacheValid / ShouldReevaluate / HandoffOwner / NextAction等は導入しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
