@@ -221,6 +221,34 @@ model名、prompt、trajectory等をCanonical subjectのidentityへ含めませ�
 
 AIのautonomy levelとauthorityも分けます。Proposal metadata上の自律度から、write / invoke / Resource permissionを自動導出しません。
 
+## Replaceable Decision PolicyのPressure
+
+本IssueでAIを使う場合も、AI専用のRuntime action semanticsを作りません。
+
+```text
+Rule policy ----┐
+                ├-> same validated semantic action
+AI policy ------┘
+                       ↓
+              same Validation / Authorization
+                       ↓
+              same Capability / Result / Observation
+```
+
+Referenceでは、少なくとも一つの既知operationについてRule / deterministic pathとAI-assisted pathが同じsemantic action boundaryへ収束できるかを比較します。
+
+次を禁止方向とします。
+
+- AI policy専用Capability
+- AI policy専用Permission semantics
+- raw tool callをApplication Action identityにすること
+- policy固有のBusiness Outcome / Observation model
+- policy selection scoreをexecution authorityへ昇格すること
+
+Rule / AIのどちらがactionを選んでも、effect時点のcurrent authority checkを通ります。
+
+これは汎用Planner / Policy Engine / Action Catalog schemaを先行実装する要求ではありません。Gate C後のsmall Referenceで二重化が発生するかをPressureし、必要なformal conceptはEvidence後に判断します。
+
 ### mandatory authored Stable IDを要求しない
 
 AI Proposalを識別・適用するためだけに、すべてのauthoring sourceへUUIDやmandatory authored Stable IDを追加しません。
@@ -385,6 +413,8 @@ Observationから変更候補を作る場合も、`Observation -> semantic write
 - Proposal input / normalized representation
 - selected definition / local context
 - Proposalが参照したqualified logical key / Canonical ID / Source / Evidence
+- decision policy / selection path（Rule / deterministic / AI等、比較する場合）
+- selected semantic action / Capability reference（Runtime actionを扱う場合）
 - candidate mechanism / Reference pattern provenance where used
 - feedback routing target
 - `baseModelRevision`
@@ -441,6 +471,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 17. ProposalからRuntimeへ無権限に直接到達できない
 18. Runtime操作を扱う場合、Proposal acceptance /過去approvalではなくeffect直前のcurrent authorityで許可可否を判定できる
 19. acceptance後にauthorityがrevoked / stale / missing / ambiguousになったnegative caseで、副作用前にfail closedできる
+20. Rule / deterministic pathとAI-assisted pathを比較する場合、同じvalidated semantic action / Capability / Result / Observation境界へ収束できる
+21. policyごとに別Capability / Permission semantics / Business Outcome / Observation modelを作らない
 
 ## 非目標
 
