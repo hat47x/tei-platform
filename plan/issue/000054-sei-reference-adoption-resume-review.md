@@ -53,13 +53,20 @@ Stage 0 checkerのPASSを、Gate C、production Application Plane、SEI human us
 - TEI snapshot: `reference/sei-adoption/decision-continuity-counterfactual-001.json`
 
 ```text
-SEI source
-  = authority
+SEI pinned revision/blob
+  = this Stage 0 authority baseline
 
 TEI reference snapshot
   = frozen experiment input
   != second authority
+
+pinned-baseline conformance
+  != current source conformance
 ```
+
+TEI snapshotのGit blobは固定SEI source blobと一致する。2026-09-18の再確認時点ではSEI current `main`は固定revisionより前の祖先へ位置し、fixture pathを含まない一方、`develop/v0.2.0`等のactive refは固定revisionを祖先として保持している。
+
+したがってこのIssueではbranch refをauthorityにせず、pinned revision/blobへの適合だけをScoped Evidenceとして扱う。checker reportも`authority_scope = pinned-revision-only`、`current_source_conformance = not-claimed`を返し、current SEI sourceへの適合を暗黙に主張しない。
 
 ## 入力とoracle
 
