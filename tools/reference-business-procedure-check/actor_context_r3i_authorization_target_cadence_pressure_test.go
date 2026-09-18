@@ -86,7 +86,16 @@ func TestActorContextR3ILegacyPolicyDoesNotBackfillMissingAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !legacyAuthorizationAllowsTarget(policy, "execute", "order_entry.submit_order") {
+	hasLegacyRule := false
+	for _, rule := range policy.Rules {
+		if rule.Action == "execute" &&
+			rule.Resource == "order_entry.submit_order" &&
+			rule.Effect == "allow" {
+			hasLegacyRule = true
+			break
+		}
+	}
+	if !hasLegacyRule {
 		t.Fatal("test setup changed: legacy execute/submit_order allow rule missing")
 	}
 
