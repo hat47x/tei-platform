@@ -421,6 +421,17 @@ planning portability relation
 - [ ] Gate C後の最小Proposal shapeを説明できる
 - [ ] AI BuilderがGateを越えてauthoringしない境界を示した
 
+## 17. Executable Evidence runner
+
+Pre-Gate pressureの実行経路は、
+
+- `plan/KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md`
+- `.github/workflows/knowledge-portability-reference-evidence.yml`
+
+へ接続する。
+
+successful focused CI runはPre-Gate contractのExecutable Evidenceにはなるが、Gate C Ready、第二Application Acceptance、Environment Binding、Target Evidenceにはならない。
+
 ## 17. Gate C後の着手順
 
 \`\`\`text
