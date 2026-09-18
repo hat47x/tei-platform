@@ -1,0 +1,71 @@
+{
+  "schema": "sei.decision-continuity-comparison-fixture/v0",
+  "status": "evaluation-only",
+  "issue": "ISSUE-000073",
+  "fixture_id": "e73-decision-continuity-001-provider-pilot",
+  "title": "外部通知Providerを全面切替せず限定pilotする判断へ戻る",
+  "purpose": [
+    "H2: simple external memoryとSEI Resume Projectionの再開品質を比較する",
+    "RecommendationとDecisionを混同しないか確認する",
+    "post-decision Observationをhistorical basisへ遡及混入しないか確認する"
+  ],
+  "scenario": {
+    "initial_question": "通知Provider Aのtimeoutが増えたためProvider Bへ移行すべきか。",
+    "phase_1": [
+      {"role":"observation","id":"obs-a-timeout","text":"直近7日でProvider Aの送信timeoutが3回発生した。"},
+      {"role":"observation","id":"obs-b-synthetic","text":"Provider Bのsynthetic testは20/20成功したが、本番相当負荷は未確認。"},
+      {"role":"recommendation","id":"rec-full-switch","text":"AIはProvider Bへ全面切替する案を提案した。"},
+      {"role":"unknown","id":"unk-b-rate-limit","text":"Provider Bの本番負荷時rate-limit挙動は未確認。"},
+      {"role":"unknown","id":"unk-rollback","text":"全面切替後のrollback所要時間は未確認。"},
+      {"role":"decision","id":"dec-pilot","text":"全面切替はせず、送信量10%だけProvider Bへpilotし、Provider Aをfallbackとして維持する。","basis_refs":["obs-a-timeout","obs-b-synthetic"],"recommendation_refs":["rec-full-switch"],"unresolved_refs":["unk-b-rate-limit","unk-rollback"]}
+    ],
+    "interruption_point": "Decision記録直後",
+    "post_decision_evidence": [
+      {"role":"observation","id":"obs-b-429","text":"pilot開始2日後、高負荷帯でProvider Bから429が観測された。"},
+      {"role":"observation","id":"obs-a-maintenance","text":"Decisionの3日後、Provider Aが翌月のmaintenance予定を公表した。Decision時点では未公表だった。"}
+    ]
+  },
+  "conditions": {
+    "A_raw_chat": {
+      "surface_text": [
+        "利用者: Provider Aで直近7日にtimeoutが3回ありました。Bも試したいです。",
+        "AI: Bへ全面切替するのがよさそうです。synthetic testはどうでしたか。",
+        "利用者: 20回中20回成功しました。ただ本番相当負荷は未確認で、rate limitもrollback時間も分かりません。",
+        "AI: ではBへの切替を進めますか。",
+        "利用者: 全面切替はしません。まず10%だけpilotし、Aはfallbackとして残します。"
+      ]
+    },
+    "B_chronological_note": {
+      "surface_text": [
+        "Provider A: 直近7日でtimeout 3回。",
+        "Provider B: synthetic test 20/20成功。本番相当負荷、rate-limit挙動は未確認。",
+        "提案: Bへ全面切替。",
+        "判断: 全面切替せず10% pilot。Aをfallbackとして維持。",
+        "未解決: Bの本番rate-limit、rollback所要時間。"
+      ]
+    },
+    "C_sei_resume": {
+      "surface_text": {
+        "question":"Provider Aのtimeout増加に対しBへどの範囲で移行するか。",
+        "recommendation":{"id":"rec-full-switch","text":"Provider Bへ全面切替する。"},
+        "decision":{"id":"dec-pilot","text":"10% pilotに限定しProvider Aをfallbackとして維持する。"},
+        "historical_basis":["Provider Aで直近7日にtimeout 3回。","Provider B synthetic test 20/20成功。本番相当負荷は未確認。"],
+        "unresolved":["Provider Bの本番rate-limit挙動。","rollback所要時間。"],
+        "changes_since_decision":[]
+      }
+    }
+  },
+  "reference_state": {
+    "decision":"全面切替ではなく10% pilot。Aをfallbackとして維持。",
+    "recommendation":"Bへの全面切替。",
+    "historical_basis_ids":["obs-a-timeout","obs-b-synthetic"],
+    "unresolved_ids":["unk-b-rate-limit","unk-rollback"],
+    "post_decision_ids":["obs-b-429","obs-a-maintenance"],
+    "temporal_stopline":"429観測とAのmaintenance公表を、dec-pilot当時のbasisだったと答えてはいけない。"
+  },
+  "human_review_template": {
+    "before_post_decision_evidence":["何を決めたか。","AI/他者の提案とDecisionは同じだったか。","Decisionのbasisは何か。","何が未解決か。","次に何を確認すべきか。"],
+    "after_post_decision_evidence":["新情報は何か。","どの新情報がDecision見直しに関係するか。","新情報のうちDecision当時のbasisではなかったものは何か。","Decisionをreopenするなら何を再評価するか。"],
+    "operator_metrics":["time_to_orientation","source_reopen_count","mental_effort_1_to_5","historical_misattribution_count","recommendation_decision_confusion","correction_burden"]
+  }
+}
