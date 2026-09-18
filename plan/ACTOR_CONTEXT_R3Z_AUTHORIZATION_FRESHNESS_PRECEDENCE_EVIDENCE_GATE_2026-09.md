@@ -98,11 +98,24 @@ without a new evaluation
 
 これがなければE2とのsemantic contradictionは成立しない。
 
-### E4 — explicit provenance
+### E4 — explicit provenance / provenance relation
 
 両directiveにsource provenanceが必要。
 
 inferred hint / wording / policy similarityは認めない。
+
+さらに:
+
+```text
+same source dual directive
+  != cross-authority precedence conflict
+```
+
+を維持する。
+
+同一sourceがreevaluationとbypass-capable reuseを同時に表現する場合は、source内compatibility semanticsが未解決である可能性があるため `same-source-compatibility-unresolved` とする。
+
+production cross-authority precedence pressureにはdistinct authority provenanceを要求する。
 
 ### E5 — same applicability scope
 
@@ -122,6 +135,7 @@ R3Zでは三状態を区別する。
 
 ```text
 insufficient-evidence
+same-source-compatibility-unresolved
 synthetic-conflict-pressure
 precedence-mechanism-pressure-qualified
 ```
@@ -135,9 +149,13 @@ precedence-mechanism-pressure-qualified
 
 等。
 
+### same-source-compatibility-unresolved
+
+same tuple / same scopeで両directiveが明示されても、同一source由来ならcross-authority precedence conflictとは数えない。
+
 ### synthetic-conflict-pressure
 
-E1〜E5を満たす明示的なcontradictionをtest-onlyに作れるが、repository-backed Business needがない。
+E1〜E5を満たし、distinct authority provenanceを持つ明示的なcontradictionをtest-onlyに作れるが、repository-backed Business needがない。
 
 ### precedence-mechanism-pressure-qualified
 
@@ -228,12 +246,13 @@ conflict pressure absent
 Pressureするcase:
 
 1. reevaluation-required + generic reuse-permitted -> contradiction未成立
-2. explicit reuse-without-reevaluation + reevaluation-required + synthetic -> synthetic-conflict-pressure
-3. same conflict + repository-backed + same scope + provenance -> qualified
-4. tuple mismatch -> insufficient
-5. scope mismatch -> insufficient
-6. provider policy revisionだけではdirectiveを補完しない
-7. Gate resultにWinner / Priority / EffectiveDirectiveを持たせない
+2. explicit reuse-without-reevaluation + reevaluation-required + same source -> same-source-compatibility-unresolved
+3. distinct-source explicit conflict + synthetic -> synthetic-conflict-pressure
+4. same conflict + repository-backed + same scope + distinct provenance -> qualified
+5. tuple mismatch -> insufficient
+6. scope mismatch -> insufficient
+7. provider policy revisionだけではdirectiveを補完しない
+8. Gate resultにWinner / Priority / EffectiveDirectiveを持たせない
 
 ## 9. current conclusion
 
