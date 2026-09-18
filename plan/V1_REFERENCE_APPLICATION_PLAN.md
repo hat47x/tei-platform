@@ -340,6 +340,7 @@ Gate Cで確認すること:
 - baseline `R`とTarget build `T1`を混同しない
 - Semantic Conformance成立
 - Reference Scenario Functional Evidence成立
+- replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtrace可能
 - Visual Evidenceを別に保持
 - Business Result / Execution Error / Observationを維持
 - Web Adapter除去でCanonicalが変わらない
