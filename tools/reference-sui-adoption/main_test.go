@@ -74,6 +74,34 @@ func TestStage0ReferenceFixtures(t *testing.T) {
 	}
 }
 
+func TestShadowValidatorDoesNotInventIslandIDRequirement(t *testing.T) {
+	doc := hierarchyDocument{
+		SchemaVersion: "2.0.0",
+		Islands: []hierIsland{
+			{ID: "", ParentIslandID: nil, ChildIslandIDs: []string{}},
+		},
+	}
+
+	if diagnostics := validateHierarchy(doc); len(diagnostics) != 0 {
+		t.Fatalf("validateHierarchy() diagnostics = %v; source IslandHierarchyContractV1 does not define an ID-required constraint", diagnostics)
+	}
+}
+
+func TestReadHierarchyFixtureAllowsWhitespaceSchemaVersionLikeSourceContract(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fixture.json")
+	if err := os.WriteFile(path, []byte(`{
+  "schemaVersion": "   ",
+  "islands": []
+}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := readHierarchyFixture(path); err != nil {
+		t.Fatalf("readHierarchyFixture() error = %v; source contract rejects only an empty schemaVersion", err)
+	}
+}
+
 func TestReadHierarchyFixtureRejectsUnknownFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "fixture.json")

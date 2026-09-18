@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 
 	"tei/internal/ir"
 	"tei/internal/workspace"
@@ -148,7 +147,7 @@ func readHierarchyFixture(path string) (hierarchyDocument, error) {
 	if err := requireEOF(decoder); err != nil {
 		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %sが不正です: %w", path, err)
 	}
-	if strings.TrimSpace(doc.SchemaVersion) == "" {
+	if doc.SchemaVersion == "" {
 		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %s: schemaVersion is required", path)
 	}
 	return doc, nil
@@ -170,13 +169,6 @@ func validateHierarchy(doc hierarchyDocument) []diagnostic {
 	duplicateID := false
 
 	for _, island := range doc.Islands {
-		if strings.TrimSpace(island.ID) == "" {
-			diagnostics = append(diagnostics, diagnostic{
-				Code:    "SUI_HIERARCHY_ID_REQUIRED",
-				Message: "island id is required",
-			})
-			continue
-		}
 		if _, exists := islandByID[island.ID]; exists {
 			duplicateID = true
 			diagnostics = append(diagnostics, diagnostic{
