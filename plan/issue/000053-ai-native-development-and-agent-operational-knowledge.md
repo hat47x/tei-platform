@@ -595,6 +595,43 @@ Application access = read
 
 Operational prerequisiteはrequirementに条件づけ、requirementがrequiredの場合だけAuthorization用principal / target/action / evaluationを必須として扱う。requirementがunresolvedならそこでfail closedし、absenceから `not-required` を生成しない。
 
+### R3D — Authorization requirement authoring scope
+
+R3Cでrequirementを独立authorityにした後、authoring locusを選ぶ前にapplicability scopeを分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3D_AUTHORIZATION_REQUIREMENT_AUTHORING_SCOPE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3d_authorization_requirement_scope_pressure_test.go`
+
+R3Dでは:
+
+```text
+Business Step scoped requirement
+  != Application Pattern scoped requirement
+```
+
+をPressureする。
+
+current BP-02ではcustomer_reference Patternの利用が1件しかないため、両候補のaffected setが偶然一致する。test-onlyに同Patternを使う第二Business Actionを追加すると、Business Step scopeは元Stepだけ、Pattern scopeは両Stepへ適用され、意味差が明示される。
+
+また:
+
+```text
+uses semantic security
+  != Authorization applicability
+
+realize security.authorize
+  != Authorization applicability
+```
+
+として、Semantic namespace availability / Capability realization / requirement applicabilityを分離する。
+
+current ReferenceだけではBusiness Step側・Application Pattern側のどちらをproduction authorityにするか選ばない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
