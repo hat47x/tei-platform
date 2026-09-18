@@ -3,13 +3,16 @@ package main
 import (
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 
 	"tei/internal/workspace"
 )
 
 type actorContextR2HumanReviewProbe struct {
-	Intent                       string   `json:"intent"`
+	Intent                       string                           `json:"intent"`
+	ReferenceFingerprint         string                           `json:"referenceFingerprint"`
+	RequiredInputFingerprints    []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	CurrentMeaning               []string `json:"currentMeaning"`
 	ConflictCodes                []string `json:"conflictCodes,omitempty"`
 	UnresolvedDimensions         []string `json:"unresolvedDimensions,omitempty"`
@@ -40,6 +43,12 @@ func TestActorContextR2BuildsHighDensityHumanReviewWithoutChoosingResolution(t *
 
 	got := deriveActorContextR2HumanReviewProbe(r1)
 
+	if got.ReferenceFingerprint != r1.ReferenceFingerprint {
+		t.Fatalf("R2 did not preserve the R1 Business Reference fingerprint: R1=%s R2=%s", r1.ReferenceFingerprint, got.ReferenceFingerprint)
+	}
+	if len(got.RequiredInputFingerprints) != len(r1.RequiredInputFingerprints) {
+		t.Fatalf("R2 changed the R1 freshness dependency set: R1=%+v R2=%+v", r1.RequiredInputFingerprints, got.RequiredInputFingerprints)
+	}
 	if !actorContextR0Contains(got.ConflictCodes, "BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT") {
 		t.Fatalf("R2 lost the decisive current-path conflict: %+v", got)
 	}
@@ -105,7 +114,9 @@ func TestActorContextR2MarksPotentialAuthorityAsConditionalRatherThanMustChange(
 
 func deriveActorContextR2HumanReviewProbe(r1 actorContextR1ConstraintProbe) actorContextR2HumanReviewProbe {
 	return actorContextR2HumanReviewProbe{
-		Intent: r1.ChangeRequest,
+		Intent:                    r1.ChangeRequest,
+		ReferenceFingerprint:      r1.ReferenceFingerprint,
+		RequiredInputFingerprints: append([]actorContextR0InputFingerprint(nil), r1.RequiredInputFingerprints...),
 		CurrentMeaning: []string{
 			"business:" + r1.BusinessStep + ":" + r1.BusinessAction,
 			"pattern:" + r1.Pattern + ":" + r1.PatternKind,
@@ -128,13 +139,7 @@ func deriveActorContextR2HumanReviewProbe(r1 actorContextR1ConstraintProbe) acto
 			"Which accepted Contract or Capability would authorize mutation?",
 			"What Observation or Evidence would establish that the update actually completed?",
 		},
-		DrillDownRefs: []string{
-			"reference/workspace/applications/order-entry/application.tei",
-			"reference/workspace/applications/order-entry/patterns/customer-reference.tei",
-			"reference/workspace/databases/master-data/contracts/customer.tei",
-			"reference/business-system-design/order-entry-business-procedure.json",
-			"reference/business-system-design/order-entry-customer-edit-conflict.json",
-		},
+		DrillDownRefs: actorContextR2InputArtifacts(r1.RequiredInputFingerprints),
 		AuthorityLimits: []string{
 			"human-review-projection-is-derived",
 			"potentially-affected-does-not-mean-must-change",
@@ -142,6 +147,23 @@ func deriveActorContextR2HumanReviewProbe(r1 actorContextR1ConstraintProbe) acto
 			"summary-does-not-replace-authoritative-source",
 		},
 	}
+}
+
+func actorContextR2InputArtifacts(values []actorContextR0InputFingerprint) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value.Artifact == "" {
+			continue
+		}
+		if _, ok := seen[value.Artifact]; ok {
+			continue
+		}
+		seen[value.Artifact] = struct{}{}
+		out = append(out, value.Artifact)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func assertActorContextR2NoReviewDecisionShortcut(t *testing.T, typ reflect.Type) {
