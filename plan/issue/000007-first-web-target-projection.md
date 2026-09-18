@@ -193,6 +193,10 @@ Custom UIを新しい業務正本にはしません。
 
 browser automation、GUI agent、VLM、screenshot diff等は利用できますが、Visual Evidenceや外部judge scoreだけでSemantic / Functional Conformanceを合格にしません。
 
+Functional Evidenceをreplayable behaviorとして残す場合は、少なくともHandover Scenario / semantic operation、behavior precondition、Target-specific interaction realization、Result / Observation、raw Target Evidenceへ戻れるようにします。selector、coordinate、route等をCanonical interaction identityへ昇格しません。
+
+Replayable Behaviorは任意のEvidence形式です。Gate Cのためだけに専用automation frameworkやUniversal Event Modelを導入しません。
+
 ## Performance
 
 RQ-024の最終性能contractは第二Target以降で比較して決めますが、第一Web Targetから次の測定点を用意します。
@@ -226,6 +230,7 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
 - [ ] Semantic ConformanceをEvidenceから確認できる
 - [ ] Reference ScenarioのInteraction / Functional Evidenceを再現できる
+- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる
 - [ ] Visual Fidelityを別Evidenceとして残せる
 - [ ] standard ProjectionとCustom UIを同じ上位意味へ接続できる
 - [ ] Web Adapterを外してもCanonical Worldが変わらない

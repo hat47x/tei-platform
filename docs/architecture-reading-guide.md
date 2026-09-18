@@ -255,6 +255,20 @@ Target
 
 Target Capability / Execution / Trust Profile / artifact・ABI差のtaxonomyは第一Targetだけで固定せず、第二Targetとの差からpressure-testします。
 
+### Targetの操作記録も業務意味そのものではない
+
+browser automationやGUI agentで同じScenarioを再実行するため、selector、coordinate、route、component identity、normalized event等をEvidenceへ残すことがあります。
+
+しかし、
+
+```text
+semantic operation
+  != Target-specific event
+  != replay artifact
+```
+
+です。Replayable BehaviorはFunctional Evidenceを再確認しやすくする派生物であり、そこからCanonical actionやBusiness Procedureを逆定義しません。異なるTargetのeventを正規化する場合も、raw Evidenceへ戻れることを優先します。
+
 ## 10. Deploymentは「命令」と「実際」を分ける
 
 Deploymentでは、
