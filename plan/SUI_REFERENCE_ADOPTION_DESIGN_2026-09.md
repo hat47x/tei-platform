@@ -194,6 +194,23 @@ current `semantic.Data / Attribute / Relation / Validation`を読む限り、初
 
 この表のDは不足確定ではない。current modelで表しにくいという観測だけでProduct Requirementへ上げない。
 
+### 4.3 Stage 0 constraint coverageを分離して記録する
+
+Stage 0では、SUI正本のhierarchy constraintを一括して「TEIで表現できた」と判定しない。
+
+report schema v2の`constraintCoverage`で、少なくとも次を分離する。
+
+- `parent-single-valued`: current Relation `one`でsingle-valued shapeだけを観測する
+- `parent-presence`: rootのnullable parentはcurrent Relationから独立に表現できず`unresolved`
+- duplicate island / duplicate child
+- parent / child existence
+- parent-child consistency
+- acyclic hierarchy
+
+後者の整合性constraintはSUI正本をReference-local validatorがshadowしているだけであり、TEI native Validationとしては数えない。
+
+この分類を次のReferenceにも持ち込み、同じconstraint familyが複数Applicationで反復して初めてreusable extension / Product gap候補として扱う。SUI一件だけを根拠にValidationKindやRelation optionality fieldを増やさない。
+
 ## 5. SUI責務の初期マッピング
 
 | SUI concern | 現行の主な表現 | TEI初期分類 | 理由 |

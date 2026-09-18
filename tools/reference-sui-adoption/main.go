@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	reportSchemaVersion         = "sui-reference-adoption-stage0/v1"
+	reportSchemaVersion         = "sui-reference-adoption-stage0/v2"
 	sourceRepository            = "hat47x/sui-sensemaking"
 	sourceRevision              = "725e9d9c8958e63c18d8edca94f19c4b98db0dde"
 	sourceContractBlob          = "5d63cbec446abf0dd8054a5c498f726377c51a9f"
@@ -53,26 +53,35 @@ type mappingSummary struct {
 	Lossless                bool   `json:"lossless"`
 }
 
+type constraintCoverage struct {
+	ID                string `json:"id"`
+	SourceConstraint  string `json:"sourceConstraint"`
+	TEIRepresentation string `json:"teiRepresentation"`
+	Status            string `json:"status"`
+	ProbeEnforcement  string `json:"probeEnforcement"`
+}
+
 type report struct {
-	SchemaVersion          string         `json:"schemaVersion"`
-	SourceContract         string         `json:"sourceContract"`
-	SourceAuthority        string         `json:"sourceAuthority"`
-	SourceRepository       string         `json:"sourceRepository"`
-	SourceRevision         string         `json:"sourceRevision"`
-	SourceContractBlob     string         `json:"sourceContractBlob"`
-	SourceHandoffBlob      string         `json:"sourceHandoffBlob"`
-	SourceContractTestBlob string         `json:"sourceContractTestBlob"`
-	SourceHandoffTestBlob  string         `json:"sourceHandoffTestBlob"`
-	TEIAuthority      string         `json:"teiAuthority"`
-	Fixture           string         `json:"fixture"`
-	FixtureValid      bool           `json:"fixtureValid"`
-	InstanceCount     int            `json:"instanceCount"`
-	RootIslandIDs     []string       `json:"rootIslandIds,omitempty"`
-	ParentLinks       []parentLink   `json:"parentLinks,omitempty"`
-	Diagnostics       []diagnostic   `json:"diagnostics,omitempty"`
-	Mapping           mappingSummary `json:"mapping"`
-	WriteAttempted    bool           `json:"writeAttempted"`
-	CanonicalizedData bool           `json:"canonicalizedInstanceData"`
+	SchemaVersion          string               `json:"schemaVersion"`
+	SourceContract         string               `json:"sourceContract"`
+	SourceAuthority        string               `json:"sourceAuthority"`
+	SourceRepository       string               `json:"sourceRepository"`
+	SourceRevision         string               `json:"sourceRevision"`
+	SourceContractBlob     string               `json:"sourceContractBlob"`
+	SourceHandoffBlob      string               `json:"sourceHandoffBlob"`
+	SourceContractTestBlob string               `json:"sourceContractTestBlob"`
+	SourceHandoffTestBlob  string               `json:"sourceHandoffTestBlob"`
+	TEIAuthority           string               `json:"teiAuthority"`
+	Fixture                string               `json:"fixture"`
+	FixtureValid           bool                 `json:"fixtureValid"`
+	InstanceCount          int                  `json:"instanceCount"`
+	RootIslandIDs          []string             `json:"rootIslandIds,omitempty"`
+	ParentLinks            []parentLink         `json:"parentLinks,omitempty"`
+	Diagnostics            []diagnostic         `json:"diagnostics,omitempty"`
+	Mapping                mappingSummary       `json:"mapping"`
+	ConstraintCoverage     []constraintCoverage `json:"constraintCoverage"`
+	WriteAttempted         bool                 `json:"writeAttempted"`
+	CanonicalizedData      bool                 `json:"canonicalizedInstanceData"`
 }
 
 func main() {
@@ -141,14 +150,15 @@ func run(workspacePath, fixturePath string) (report, error) {
 		SourceContractTestBlob: sourceContractTestBlob,
 		SourceHandoffTestBlob:  sourceHandoffTestBlob,
 		TEIAuthority:           "definition-only",
-		Fixture:           fixturePath,
-		FixtureValid:      len(diagnostics) == 0,
-		InstanceCount:     len(doc.Islands),
-		RootIslandIDs:     roots,
-		ParentLinks:       links,
-		Diagnostics:       diagnostics,
-		Mapping:           mapping,
-		WriteAttempted:    false,
+		Fixture:                fixturePath,
+		FixtureValid:           len(diagnostics) == 0,
+		InstanceCount:          len(doc.Islands),
+		RootIslandIDs:          roots,
+		ParentLinks:            links,
+		Diagnostics:            diagnostics,
+		Mapping:            mapping,
+		ConstraintCoverage: stage0ConstraintCoverage(),
+		WriteAttempted:     false,
 		CanonicalizedData: false,
 	}, nil
 }
@@ -314,6 +324,67 @@ func projectInstanceSummary(doc hierarchyDocument) ([]string, []parentLink) {
 		return links[i].Child < links[j].Child
 	})
 	return roots, links
+}
+
+func stage0ConstraintCoverage() []constraintCoverage {
+	return []constraintCoverage{
+		{
+			ID:                "parent-single-valued",
+			SourceConstraint:  "parentIslandId is a single scalar reference",
+			TEIRepresentation: "relation cardinality one",
+			Status:            "shape-only",
+			ProbeEnforcement:  "tei-definition",
+		},
+		{
+			ID:                "parent-presence",
+			SourceConstraint:  "parentIslandId may be null for root islands",
+			TEIRepresentation: "none",
+			Status:            "unresolved",
+			ProbeEnforcement:  "source-contract",
+		},
+		{
+			ID:                "duplicate-island-id",
+			SourceConstraint:  "duplicate island id is invalid",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+		{
+			ID:                "duplicate-child-reference",
+			SourceConstraint:  "duplicate child reference is invalid",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+		{
+			ID:                "parent-exists",
+			SourceConstraint:  "non-null parent must reference an existing island",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+		{
+			ID:                "child-exists",
+			SourceConstraint:  "child reference must identify an existing island",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+		{
+			ID:                "parent-child-consistency",
+			SourceConstraint:  "parent and child references must agree",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+		{
+			ID:                "acyclic-hierarchy",
+			SourceConstraint:  "island hierarchy must be acyclic",
+			TEIRepresentation: "none",
+			Status:            "shadow-only",
+			ProbeEnforcement:  "reference-local-shadow",
+		},
+	}
 }
 
 func resolveStage0Mapping(world ir.World) (mappingSummary, error) {
