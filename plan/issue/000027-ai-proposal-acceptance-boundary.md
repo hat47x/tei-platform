@@ -249,6 +249,29 @@ Rule / AIのどちらがactionを選んでも、effect時点のcurrent authority
 
 これは汎用Planner / Policy Engine / Action Catalog schemaを先行実装する要求ではありません。Gate C後のsmall Referenceで二重化が発生するかをPressureし、必要なformal conceptはEvidence後に判断します。
 
+### Hybrid Intent FulfillmentのPressure
+
+同じknown operationを毎回AIへ送ることも標準にはしません。
+
+Referenceでは、少なくとも一つのintentについて次を比較できる余地を残します。
+
+```text
+A: exact / deterministic path
+B: AI-assisted path
+C: hybrid routing
+```
+
+期待する境界は次です。
+
+- exact identity / known rule /既知operationで解ける場合はdeterministic pathを利用できる
+- ambiguous / compositional intentだけをAI reasoning候補へ送れる
+- A / B / Cのどの経路でも同じsemantic action / Validation / Authorization / Capability / Result境界へ戻る
+- routing choiceやrouting scoreをSemantic applicability / Acceptance / execution authorityへ昇格しない
+- AI call count削減だけを目的化せず、success / semantic correctness / latency / cost / retry / authority rejection等を分けて観測する
+- 外部研究の固定比率やthresholdをTEIのKPIへ輸入しない
+
+この比較のためにproduction routerや固定heuristicを先行実装しません。
+
 ### mandatory authored Stable IDを要求しない
 
 AI Proposalを識別・適用するためだけに、すべてのauthoring sourceへUUIDやmandatory authored Stable IDを追加しません。
@@ -413,7 +436,8 @@ Observationから変更候補を作る場合も、`Observation -> semantic write
 - Proposal input / normalized representation
 - selected definition / local context
 - Proposalが参照したqualified logical key / Canonical ID / Source / Evidence
-- decision policy / selection path（Rule / deterministic / AI等、比較する場合）
+- decision policy / selection path（Rule / deterministic / AI / hybrid等、比較する場合）
+- routing reason / candidate mechanism（hybrid比較を行う場合）
 - selected semantic action / Capability reference（Runtime actionを扱う場合）
 - candidate mechanism / Reference pattern provenance where used
 - feedback routing target
@@ -473,6 +497,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 19. acceptance後にauthorityがrevoked / stale / missing / ambiguousになったnegative caseで、副作用前にfail closedできる
 20. Rule / deterministic pathとAI-assisted pathを比較する場合、同じvalidated semantic action / Capability / Result / Observation境界へ収束できる
 21. policyごとに別Capability / Permission semantics / Business Outcome / Observation modelを作らない
+22. known operationをdeterministic pathで処理できるcaseとAI-assisted pathを必要とするcaseを区別できる
+23. hybrid routingを比較する場合、routing choice / scoreがSemantic applicability・Acceptance・execution authorityを上書きしない
 
 ## 非目標
 
