@@ -137,10 +137,18 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 
 func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, error) {
 	var anchors []SubjectAnchor
+	var pending *Token
 	for {
-		t, err := lx.Next()
-		if err != nil {
-			return nil, err
+		var t Token
+		if pending != nil {
+			t = *pending
+			pending = nil
+		} else {
+			next, err := lx.Next()
+			if err != nil {
+				return nil, err
+			}
+			t = next
 		}
 		if t.Kind == TokenRBrace {
 			return anchors, nil
@@ -187,8 +195,38 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 			if _, err := expectLexerIdent(lx, "semantic relation cardinality"); err != nil {
 				return nil, err
 			}
+			next, err := skipSemanticRelationKeys(lx)
+			if err != nil {
+				return nil, err
+			}
+			pending = &next
 		default:
 			return nil, fmt.Errorf("unexpected semantic data member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
+		}
+	}
+}
+
+// skipSemanticRelationKeysは、relation宣言直後に続く任意個のkey対応（構文はparseSemanticRelationKeysと同じ）を
+// Subject Anchorを増やさずに読み飛ばす。key対応はrelation自身の複合キーを表す修飾であり、
+// 新しいanchor付きsubjectを導入しないため、attribute/relation/capability/validationと同じ扱いにしない。
+// 呼び出し側はこの関数が返す次のsemantic data memberトークンをそのまま処理へ回す。
+func skipSemanticRelationKeys(lx *Lexer) (Token, error) {
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return Token{}, err
+		}
+		if t.Kind != TokenIdent || t.Text != "key" {
+			return t, nil
+		}
+		if _, err := expectLexerIdent(lx, "semantic relation key source attribute"); err != nil {
+			return Token{}, err
+		}
+		if err := expectLexerKind(lx, TokenArrow, "semantic relation key arrow"); err != nil {
+			return Token{}, err
+		}
+		if _, err := expectLexerIdent(lx, "semantic relation key target attribute"); err != nil {
+			return Token{}, err
 		}
 	}
 }

@@ -26,6 +26,13 @@
       "artifact": {},
       "provides": [
         {
+          "kind": "contract-query-executor",
+          "id": "database.query.oracle",
+          "databaseProviders": [
+            "oracle"
+          ]
+        },
+        {
           "kind": "database-provider",
           "id": "database.oracle",
           "databaseProviders": [
@@ -42,6 +49,13 @@
       },
       "artifact": {},
       "provides": [
+        {
+          "kind": "contract-query-executor",
+          "id": "database.query.postgres",
+          "databaseProviders": [
+            "postgres"
+          ]
+        },
         {
           "kind": "database-provider",
           "id": "database.postgres",
@@ -650,6 +664,10 @@
             {
               "contract": "sales_core.order",
               "compatibleMajor": 4
+            },
+            {
+              "contract": "sales_core.order_line",
+              "compatibleMajor": 1
             }
           ]
         }
@@ -670,11 +688,6 @@
               }
             ]
           }
-        },
-        {
-          "id": "order_entry.order_lines",
-          "kind": "header-detail",
-          "relation": "sales.order.lines"
         },
         {
           "id": "order_entry.order_lines",
@@ -759,6 +772,29 @@
               "name": "find_by_id"
             }
           ]
+        },
+        {
+          "id": "sales_core.order_line",
+          "version": {
+            "major": 1,
+            "minor": 0
+          },
+          "reads": [
+            "sales.order_line"
+          ],
+          "queries": [
+            {
+              "name": "find_by_order",
+              "inputs": [
+                {
+                  "name": "order_id",
+                  "type": "sales.order_id"
+                }
+              ],
+              "result": "sales.order_line",
+              "resultCardinality": "many"
+            }
+          ]
         }
       ]
     }
@@ -817,6 +853,60 @@
             "sales.order.customer_id"
           ]
         }
+      ]
+    },
+    {
+      "id": "sales_core.order_line",
+      "database": "sales_core",
+      "semanticData": "sales.order_line",
+      "table": "public.order_lines",
+      "columns": [
+        {
+          "attribute": "sales.order_line.order_line_id",
+          "column": "order_line_id",
+          "storage": "int64",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order_line.line_number",
+          "column": "line_number",
+          "storage": "int64",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order_line.item_code",
+          "column": "item_code",
+          "storage": "varchar",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order_line.quantity",
+          "column": "quantity",
+          "storage": "decimal",
+          "nullability": "required"
+        },
+        {
+          "attribute": "sales.order_line.unit_price",
+          "column": "unit_price",
+          "storage": "decimal",
+          "nullability": "required"
+        }
+      ],
+      "relationStorage": [
+        {
+          "relation": "sales.order.lines",
+          "components": [
+            {
+              "sourceAttribute": "sales.order.order_id",
+              "column": "order_id",
+              "storage": "int64",
+              "nullability": "required"
+            }
+          ]
+        }
+      ],
+      "primaryKey": [
+        "sales.order_line.order_line_id"
       ]
     }
   ],
@@ -1393,6 +1483,85 @@
     {
       "application": "order_entry",
       "capability": "security.authorize"
+    }
+  ],
+  "headerDetailContractQueryBindings": [
+    {
+      "application": "order_entry",
+      "pattern": "order_entry.order_lines",
+      "datasource": "sales",
+      "target": {
+        "database": "sales_core",
+        "contract": "sales_core.order_line",
+        "query": "find_by_order"
+      },
+      "inputs": [
+        {
+          "sourceAttribute": "sales.order.order_id",
+          "input": "order_id"
+        }
+      ]
+    }
+  ],
+  "contractQueryExecutorBindings": [
+    {
+      "environment": "development",
+      "instance": "master_data.dev",
+      "target": {
+        "database": "master_data",
+        "contract": "master_data.customer",
+        "query": "find_by_id"
+      },
+      "executor": "database.query.oracle"
+    },
+    {
+      "environment": "development",
+      "instance": "sales_core.dev",
+      "target": {
+        "database": "sales_core",
+        "contract": "sales_core.order_line",
+        "query": "find_by_order"
+      },
+      "executor": "database.query.postgres"
+    }
+  ],
+  "contractQuerySQLRealizations": [
+    {
+      "target": {
+        "database": "sales_core",
+        "contract": "sales_core.order_line",
+        "query": "find_by_order"
+      },
+      "provider": "postgres",
+      "source": "SELECT\n    order_line_id,\n    line_number,\n    item_code,\n    quantity,\n    unit_price\nFROM public.order_lines\nWHERE order_id = :order_id\nORDER BY line_number, order_line_id;",
+      "inputs": [
+        {
+          "input": "order_id",
+          "parameter": "order_id"
+        }
+      ],
+      "resultColumns": [
+        {
+          "column": "order_line_id",
+          "attribute": "sales.order_line.order_line_id"
+        },
+        {
+          "column": "line_number",
+          "attribute": "sales.order_line.line_number"
+        },
+        {
+          "column": "item_code",
+          "attribute": "sales.order_line.item_code"
+        },
+        {
+          "column": "quantity",
+          "attribute": "sales.order_line.quantity"
+        },
+        {
+          "column": "unit_price",
+          "attribute": "sales.order_line.unit_price"
+        }
+      ]
     }
   ]
 }

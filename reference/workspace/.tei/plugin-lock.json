@@ -12,12 +12,12 @@
         {
           "id": "tei.database.oracle",
           "version": "1.0.0",
-          "fingerprint": "26045b36a9192e191d5305008ab6f8353ffc336d24d5667a3286c038bebcac7c"
+          "fingerprint": "3313b8c1959a63ba8983718f18c75ed2d057507ebb3cd22401da012405966cfc"
         },
         {
           "id": "tei.database.postgres",
           "version": "1.0.0",
-          "fingerprint": "1e2db2065b8594c9557aa83e27486d5867ff6ce09f9035c277189023924679a2"
+          "fingerprint": "c65392bbeaeb2a69db6ecc18f6f41ee58fefddaf2060124071b1a640a7985c7a"
         },
         {
           "id": "tei.editor.intelligence.sql",
@@ -59,12 +59,12 @@
         {
           "id": "tei.database.oracle",
           "version": "1.0.0",
-          "fingerprint": "26045b36a9192e191d5305008ab6f8353ffc336d24d5667a3286c038bebcac7c"
+          "fingerprint": "3313b8c1959a63ba8983718f18c75ed2d057507ebb3cd22401da012405966cfc"
         },
         {
           "id": "tei.database.postgres",
           "version": "1.0.0",
-          "fingerprint": "1e2db2065b8594c9557aa83e27486d5867ff6ce09f9035c277189023924679a2"
+          "fingerprint": "c65392bbeaeb2a69db6ecc18f6f41ee58fefddaf2060124071b1a640a7985c7a"
         },
         {
           "id": "tei.health.reference",
