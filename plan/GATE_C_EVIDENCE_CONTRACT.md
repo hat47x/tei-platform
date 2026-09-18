@@ -222,6 +222,7 @@ Custom UIでもApplication Pattern、Validation、Authorization、Capability、R
 
 - observed Target Capability
 - observed Runtime Binding
+- execution artifact / ABI / Host identity / observations（適用可能な範囲）
 - observed Execution / Trust条件
 - interaction steps
 - Business Result / Execution Error / Observationの分類
@@ -261,7 +262,7 @@ Evidence artifactからCanonicalへ暗黙に逆書きしません。
 
 Screenshot、DOM snapshot、browser trace、VLM judge結果、GUI agent trajectory、performance trace等は再確認や比較に利用できますが、source of truthにはしません。
 
-## Target Capability / Execution / Trustの引き継ぎ
+## Target / Runtime Binding差の引き継ぎ
 
 第一Web Targetだけで完全なtaxonomyを作りません。
 
@@ -271,13 +272,16 @@ Gate Cでは観測した差を次へ整理し、`ISSUE-000026` / GitHub Issue #2
 2. Target-neutral Presentation候補
 3. Target Capability候補
 4. Runtime Binding差
-5. Execution / Trust差
-6. Web固有実装
-7. Host control plane固有差
-8. Canonicalへ持ち上げてはいけない差
-9. unresolved
+5. execution artifact / ABI / Host差（観測可能な範囲）
+6. Execution / Trust差
+7. Web固有実装
+8. Host control plane固有差
+9. Canonicalへ持ち上げてはいけない差
+10. unresolved
 
 分類できないものは無理に既存bucketへ押し込まず`unresolved`として残します。
+
+Gate Cでは、複数execution artifactを実装・比較すること自体は要求しません。第一Web Targetで実際に使ったartifact / ABI / Host identityと、観測できた実現差をEvidenceへ残せればよく、native Go対Wasm等の比較はGate C後のportable artifact ReferenceでPressureします。
 
 ## Visual Fidelity
 
@@ -329,7 +333,7 @@ Gate CはIssue closeやWeb画面の存在だけでは通過しません。
 - Web固有実装をCanonicalへ逆流させていない
 - Web Adapterを除去してもCanonical Worldが変わらない
 - standard ProjectionとCustom UIが同じ上位意味へ接続できる
-- Target Capability / Execution / Trust差を第二Targetへ渡せる
+- Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
 - unresolvedを成功へ読み替えず明示できる
 
 Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000026`の第二Target圧力試験を判断します。
@@ -339,6 +343,8 @@ Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000
 - 第一TargetだけでTarget-neutral Presentation modelを完成させること
 - Web frameworkをTEI標準として固定すること
 - 完全なTarget Capability taxonomy
+- Gate Cのためだけに複数execution artifactやWasmを実装・比較すること
+- execution artifact / ABI / Hostのproduction taxonomy / schema
 - pixel-perfect design system
 - VLM / GUI agentの標準化
 - visual scoreによる単一合否
