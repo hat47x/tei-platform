@@ -1089,6 +1089,53 @@ prior-context reuse unresolved
 resolution need classは示してもmissing valueやresolution ownerを推測せず、handoff owner / next action / Authorized / CanExecute等のshortcutを追加しない。
 
 
+### R3O — Audience-neutral stop projection core
+
+R3Mのprovenance付きstop explanationとR3Nのstage-aware taxonomyから、Human / Agent surfaceが共有できるtest-only semantic coreをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3O_STOP_PROJECTION_CORE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3o_stop_projection_core_pressure_test.go`
+
+共通candidateは:
+
+```text
+Business address
+stop stage / class
+machine reasons
+known authority facts + provenance
+resolution need classes
+runtime outcome
+downstream not attempted
+source refs
+resolution requested
+handoff recipient status
+authority limits
+```
+
+である。
+
+Human表示文はderived renderer detailとし、文言が変わってもsemantic coreを変えない。Agent viewにはHuman display textやNextAction / HandoffOwner / CanExecute等をauthorityとして持ち込まない。
+
+```text
+shared semantic core
+  != shared presentation
+  != stable production API
+
+human wording
+  != machine reason
+  != agent directive
+```
+
+exact current `denied` Observationはruntime outcomeとして保持し、resolution needを生成しない。R3M / R3NがBusiness address・reason・resolution needで矛盾する場合はsilent mergeせずfail closedする。
+
+production `ActorContext` schema / UI message schema / Agent protocolは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。

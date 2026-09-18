@@ -239,7 +239,7 @@ current BP-06はR3Mどおり:
 stop stage = authorization-action-authority
 stop class = authority-unresolved
 reason = authorization-action-authority-unresolved
-missing authority class = authorization-action-authority
+resolution need class = authorization-action-authority
 ```
 
 となる。
@@ -266,7 +266,7 @@ Pressureする不変条件:
 - distinct stop statesをgeneric errorへ潰さない
 - authority unresolvedとruntime deniedを分離する
 - earliest blockerを保持する
-- missing authority classからmissing valueを推測しない
+- resolution need classからmissing valueやresolution ownerを推測しない
 - mismatchをdeniedへ変換しない
 - prior-context reuse unresolvedをnot-evaluatedへ丸めない
 - downstream not-attemptedをcurrent blockerへ昇格しない
@@ -304,7 +304,7 @@ production Agent protocol、UI message schema、ticket taxonomy、telemetry cont
 - short human explanation
 - drill-down refs
 - known facts
-- missing authority class
+- resolution need class
 - runtime outcome
 
 のうち、どれを共通最小shapeにするかをPressureする。
