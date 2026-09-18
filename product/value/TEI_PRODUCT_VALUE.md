@@ -64,13 +64,34 @@ TEIでは、設計内容を一つの画面形式やDSL形式へ固定せず、�
 
 これにより、設計と実装が別々に陳腐化する状態を減らします。
 
-## 7. 生成AIを、知識探索と設計支援へ使う
+## 7. 認知機能を、曖昧さの解消と設計支援へ使う
 
-生成AIの価値を、毎回大量のコードを一から生成することだけに置きません。
+TEIが扱う業務上の意味は厳格である必要がありますが、そこへ至る入力は必ずしも厳格ではありません。既存のExcel設計書、自然言語、ソースコード、命名揺れ、古い仕様書、運用上の例外などには、人間なら文脈から判断できても、単純な規則だけでは確定しにくい部分があります。
 
-TEIでは、AIがまず既存のDomain Component、Semantic Pattern、Policy、Capability、過去の選択を探索し、それらを組み合わせ、それでも不足する部分だけを新しく実装する流れを重視します。
+TEIでは、こうした曖昧な境界へ、生成AIだけでなく、規則、embedding、分類器、ローカル軽量モデル、外部の認知基盤など、性質の異なる認知手段を利用できることを重視します。
 
-AIの提案は便利である一方、採用された規則、Binding、権限、実現方法は明示的な状態へ落とし、後から人が追跡できる必要があります。
+ただし、認知結果とCanonicalな意味は同じではありません。
+
+```text
+cognitive observation / mapping candidate
+  != canonical business meaning
+  != accepted binding
+```
+
+たとえば「顧客番号」と「CUST_ID」が同じ業務概念らしいと認知系が判断しても、それだけでCanonical modelを書き換えません。既存の制約、Evidence、利用者の判断、検証可能な規則と照合し、採用された対応だけを明示的な意味へ昇格させます。
+
+AIや認知系が担える範囲が将来広がっても、この境界は維持します。人間が逐次すべてを入力することを前提にはしませんが、**どの認知から、どの根拠で、何が正式なモデルへ採用されたかを追えること**を優先します。
+
+## 8. SUI・SEI・EKIとの境界
+
+TEIは、SUI Sensemaking、SEI Cognition、EKI Fabricと組み合わせて利用できますが、それらをTEI内部の必須moduleとはみなしません。
+
+- **SUI Sensemaking** は、未整理な材料から関係・仮説・構造・統合を形成し、意味を成熟させるsensemaking lifecycleを主に扱います。SUIで安定してきた意味構造はTEIへのformalization candidateになり得ますが、自動的にTEIのCanonical meaningへ昇格しません。
+- **SEI Cognition** は、認知・問い・不確実性・根拠・判断・Capability・Provenanceの継続性を主に扱います。TEIは曖昧なmapping、候補探索、例外検知などでSEIのCapabilityを利用できますが、SEIのDecisionやRecommendationをTEIのCanonical modelや実行権限と同一視しません。
+- **EKI Fabric** は、異質で一時的な計算資源を安全に利用し、計算をどこで実行するかを主に扱います。TEIのValidation、Generation、Simulation、認知処理等をEKI上で実行できても、計算配置は業務上の意味の正本にはなりません。
+- **TEI** は、十分に明確化された業務上の意味をCanonicalなformal modelとして保持し、検証・実装・実行可能な形へ接続する責務を持ちます。
+
+この関係を固定pipelineにはしません。TEI単独でも成立し、必要なときだけ隣接Productや他のOSS・Providerを利用できることを重視します。
 
 ## 価値が衝突したときの優先順位
 
