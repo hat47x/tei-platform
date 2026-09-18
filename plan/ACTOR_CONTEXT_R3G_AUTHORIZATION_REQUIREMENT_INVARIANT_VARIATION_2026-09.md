@@ -244,7 +244,7 @@ R3Gはwinnerを選ばない。
 
 ## 8. test-only source
 
-- `tools/reference-business-procedure-check/actor_context_r3f_authorization_invariant_variation_pressure_test.go`
+- `tools/reference-business-procedure-check/actor_context_r3g_authorization_invariant_variation_pressure_test.go`
 
 Pressureする不変条件:
 
