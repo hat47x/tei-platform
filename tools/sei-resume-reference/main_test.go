@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -83,6 +84,47 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 		!result.SemanticAudit.PostDecisionMatches ||
 		!result.SemanticAudit.TemporalSeparation {
 		t.Fatalf("semantic audit not fully satisfied: %#v", result.SemanticAudit)
+	}
+}
+
+func TestReferenceChangeOneAddsOnlyPostDecisionObservation(t *testing.T) {
+	f := loadReferenceFixture(t)
+	baseline, err := projectFixture(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	change := item{
+		Role: "observation",
+		ID:   "obs-b-delivery-latency",
+		Text: "pilot開始3日後、高負荷帯でProvider Bの配送遅延が観測された。",
+	}
+	f.Scenario.PostDecisionEvidence = append(f.Scenario.PostDecisionEvidence, change)
+	f.ReferenceState.PostDecisionIDs = append(f.ReferenceState.PostDecisionIDs, change.ID)
+
+	changed, err := projectFixture(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(changed.InitialResume, baseline.InitialResume) {
+		t.Fatalf("Change 1 rewrote initial Resume:\nbaseline=%#v\nchanged=%#v", baseline.InitialResume, changed.InitialResume)
+	}
+	if !reflect.DeepEqual(changed.PostDecision.HistoricalBasis, baseline.PostDecision.HistoricalBasis) {
+		t.Fatalf("Change 1 rewrote historical basis: baseline=%#v changed=%#v", baseline.PostDecision.HistoricalBasis, changed.PostDecision.HistoricalBasis)
+	}
+	if !reflect.DeepEqual(changed.PostDecision.Unresolved, baseline.PostDecision.Unresolved) {
+		t.Fatalf("Change 1 rewrote unresolved: baseline=%#v changed=%#v", baseline.PostDecision.Unresolved, changed.PostDecision.Unresolved)
+	}
+	if got, want := len(changed.PostDecision.ChangesSinceDecision), len(baseline.PostDecision.ChangesSinceDecision)+1; got != want {
+		t.Fatalf("changes_since_decision length = %d, want %d", got, want)
+	}
+	gotChanges := ids(changed.PostDecision.ChangesSinceDecision)
+	if gotChanges[len(gotChanges)-1] != change.ID {
+		t.Fatalf("last change id = %q, want %q", gotChanges[len(gotChanges)-1], change.ID)
+	}
+	if !changed.SemanticAudit.TemporalSeparation || !changed.SemanticAudit.HistoricalBasisMatches || !changed.SemanticAudit.UnresolvedMatches || !changed.SemanticAudit.PostDecisionMatches {
+		t.Fatalf("Change 1 semantic audit not satisfied: %#v", changed.SemanticAudit)
 	}
 }
 
