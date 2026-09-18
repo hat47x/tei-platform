@@ -204,6 +204,18 @@ decision policy
 
 として読みます。policyを交換するたびに別のtool semanticsやpermission modelを作らず、既知操作をdeterministic pathで選んでもAIが選んでも、同じ意味・authority境界へ収束させます。
 
+また、AIを利用可能にしたからといって全操作でAIを呼ぶ必要はありません。
+
+```text
+known / exact
+  -> deterministic path
+
+ambiguous / compositional
+  -> AI-assisted candidate
+```
+
+というroutingを許します。重要なのはどちらの経路でも同じsemantic actionへ戻ることであり、「AIを使ったかどうか」を業務意味へしないことです。
+
 ## 7. ApplicationとDatabaseを分ける
 
 ### 防ぎたい失敗
