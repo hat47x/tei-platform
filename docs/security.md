@@ -245,7 +245,30 @@ takeover後にruntimeが`running`なら、新しいfencing tokenでreattachで�
 
 そのため、状態を`unknown`としてRecovery判断へ送ります。
 
-## 8. CommandとObservationを分ける
+## 8. Approval / Acceptanceとeffect-time authorityを分ける
+
+Authoring Proposalや操作候補が人またはShared Acceptance Boundaryで受理されたことと、その後に副作用を実行してよいことは同じではありません。
+
+```text
+proposal / plan approved at t0
+        ↓
+authority may change at t1
+        ↓
+effect attempted at t2
+
+approval at t0
+  != authority at t2
+```
+
+Capability invocationやResource accessを実行する場合は、effect直前のcurrent Permission / Resource authority / Lease / ownership / fencing条件を検査します。
+
+たとえばProposal受理後にpermissionがrevokedされた、Leaseが失効した、ownership generationが進んだ、必要なauthorityが曖昧になった場合、古いapprovalを根拠に副作用へ進みません。missing / stale / ambiguousなauthorityは副作用前にfail closedし、必要なowner / recovery / re-authorizationへ送ります。
+
+この判定をAIへ再質問して補完することも前提にしません。current authorityを決定論的に検査できる境界を優先します。
+
+これは新しい万能approval tokenを導入する設計ではありません。既存のPermission、Resource Broker、Lease、fencing等が、それぞれeffect時点のcurrent authorityを担保するよう接続するための境界です。
+
+## 9. CommandとObservationを分ける
 
 Security / Trust Boundaryでは、権限だけでなく「何が実際に起きたか」の確認も重要です。
 
@@ -261,7 +284,7 @@ TEIでは、必要な処理についてObservationを取り、次へ進む根拠
 
 これは「AIやRuntimeが成功と言ったから成功」としないための境界でもあります。
 
-## 9. 一つのtakeover例で全体を見る
+## 10. 一つのtakeover例で全体を見る
 
 ここまでの境界を一つの例へつなぐと、次のようになります。
 
@@ -289,7 +312,7 @@ TEIでは、必要な処理についてObservationを取り、次へ進む根拠
 
 この流れで重要なのは、「一つの万能Security機構」が守っているのではなく、**Permission、Resource解決、Lease、fencing、Durable identity、Observationが異なる失敗をそれぞれ防いでいる**ことです。
 
-## 10. 現在どこまで確認しているか
+## 11. 現在どこまで確認しているか
 
 M0.22.1でコードとテストから直接追跡できる保証範囲は、[Plugin / Runtime境界のConformance](conformance/plugin-runtime-m0.22.1.md) に整理しています。
 
@@ -297,7 +320,7 @@ M0.22.1でコードとテストから直接追跡できる保証範囲は、[Plu
 
 Architecture上の境界、Reference実装、isolated test、actual external Evidence、本番運用保証はそれぞれ別です。
 
-## 11. 現時点で保証しないもの
+## 12. 現時点で保証しないもの
 
 このRepositoryのReference実装は、次をproduction-gradeとして提供するものではありません。
 
@@ -311,7 +334,7 @@ Architecture上の境界、Reference実装、isolated test、actual external Evi
 
 **後から適切なHost / Provider / external systemを接続しても、Capability、Permission、Resource authority、ownership、実行identity、Observationの境界が崩れない契約を先に実行可能にすること**を目的としています。
 
-## 12. 次に読むもの
+## 13. 次に読むもの
 
 - 全体Architectureとの関係: [Architecture](architecture.md)
 - 現在の実装・Evidence状態: [現在の実装状況](status.md)
