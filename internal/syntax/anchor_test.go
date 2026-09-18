@@ -57,6 +57,60 @@ func TestParseQueryAnchoredDoesNotTokenizeRawSQLBody(t *testing.T) {
 	}
 }
 
+func TestContractQueryDeclarationAnchorFindsQueryNestedInContractWrapper(t *testing.T) {
+	src := `contract master_data.customer v2.4 {
+    read customer.customer
+    query find_by_id {
+        input id type customer.customer_id
+        result customer.customer zero-or-one
+    }
+}
+`
+	anchor, err := syntax.ContractQueryDeclarationAnchor(src, "find_by_id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAnchorText(t, src, anchor, "find_by_id")
+}
+
+func TestContractQueryDeclarationAnchorSkipsPrecedingQueriesAndLegacyNameOnlyQuery(t *testing.T) {
+	src := `contract sales_core.order v4.1 {
+    read sales.order
+    write sales.order.status
+    query find_by_id
+    query find_by_customer {
+        input customerId type customer.customer_id
+        result sales.order many
+    }
+}
+`
+	first, err := syntax.ContractQueryDeclarationAnchor(src, "find_by_id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAnchorText(t, src, first, "find_by_id")
+
+	second, err := syntax.ContractQueryDeclarationAnchor(src, "find_by_customer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAnchorText(t, src, second, "find_by_customer")
+}
+
+func TestContractQueryDeclarationAnchorRejectsUnknownQueryName(t *testing.T) {
+	src := `contract master_data.customer v2.4 {
+    query find_by_id {
+        input id type customer.customer_id
+        result customer.customer zero-or-one
+    }
+}
+`
+	_, err := syntax.ContractQueryDeclarationAnchor(src, "does_not_exist")
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestDeclarationIdentifierAnchorRejectsDifferentSubject(t *testing.T) {
 	_, err := syntax.DeclarationIdentifierAnchor("application order_entry {}", "application", "other")
 	if err == nil || !strings.Contains(err.Error(), "does not match expected subject") {

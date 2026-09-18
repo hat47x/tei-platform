@@ -205,7 +205,7 @@ func declarationIdentifierRange(content []byte, subject sourceindex.Subject) (so
 		if !ok || strings.TrimSpace(queryName) == "" {
 			return sourceindex.Range{}, true, fmt.Errorf("database-contract-query subject %q must contain contract/query identity", subject.ID)
 		}
-		anchor, err := syntax.DeclarationIdentifierAnchor(string(content), "query", queryName)
+		anchor, err := syntax.ContractQueryDeclarationAnchor(string(content), queryName)
 		if err != nil {
 			return sourceindex.Range{}, true, err
 		}
