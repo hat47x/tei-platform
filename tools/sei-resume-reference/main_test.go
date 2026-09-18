@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,15 +86,15 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 	}
 }
 
-func jsonUnmarshal(data []byte, v any) error { return json.Unmarshal(data, v) }\n\nfunc jsonMarshal(v any) ([]byte, error) { return json.Marshal(v) }\n\nfunc TestReferenceProjectionDoesNotUseOracleQuestionAsInput(t *testing.T) {
+func TestReferenceProjectionDoesNotUseOracleQuestionAsInput(t *testing.T) {
 	f := loadReferenceFixture(t)
 	raw := f.Conditions["C_sei_resume"]
 	var condition resumeCondition
-	if err := jsonUnmarshal(raw, &condition); err != nil {
+	if err := json.Unmarshal(raw, &condition); err != nil {
 		t.Fatal(err)
 	}
 	condition.SurfaceText.Question = "oracle-only question that must not drive projection"
-	changed, err := jsonMarshal(condition)
+	changed, err := json.Marshal(condition)
 	if err != nil {
 		t.Fatal(err)
 	}
