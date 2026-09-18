@@ -1325,3 +1325,73 @@ DELETE_CANDIDATE: 220
 ```
 
 上記220本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 45. 2026-09-18 candidate pass 27 — Final Gate B inventory refs
+
+Gate Bの全remote inventoryをページング込みで再棚卸しし、DELETE_CANDIDATE未登録として残っていた最後の23本をcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-reference-path-consistency`
+- `work/gate-b-repository-evidence-doc-sync-346`
+- `work/gate-b-repository-evidence-targeted-source-conformance`
+- `work/gate-b-repository-issue-latest-evidence-safety`
+- `work/gate-b-repositoryevidence-gofmt`
+- `work/gate-b-reproducible-revision-fail-closed`
+- `work/gate-b-retained-artifact-final-verification`
+- `work/gate-b-runbook-current-baseline`
+- `work/gate-b-runbook-receipt-cleanup-sync`
+- `work/gate-b-runbook-secret-read-current-sync`
+- `work/gate-b-scope-followup-plan`
+- `work/gate-b-scope-followup-plan-r2`
+- `work/gate-b-secret-exposure-doc-sync-424-433-436`
+- `work/gate-b-secret-file-stable-read`
+- `work/gate-b-three-lane-doc-sync-complete`
+- `work/gate-b-three-lane-final-evidence`
+- `work/gate-b-ui-less-composite-scenario`
+- `work/gate-b-unified-synthetic-scenario`
+- `work/gate-b-upper-evidence-contract-sync`
+- `work/gate-b-v1-driver-scope-sync`
+- `work/gate-b-v1-driver-scope-sync-final`
+- `work/gate-b-v1-driver-scope-sync-mergecheck`
+- `work/gate-b-v1-driver-scope-sync-r2`
+
+確認時点のcurrent `main`:
+
+```text
+08783607ef08e5eea59f7acf1f58db6d9a677ffc
+```
+
+23本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、保存用Evidence / bootstrap ref等の固有用途も確認されていません。`baseline` / `final` / `evidence` / `mergecheck` / `r2`等の名称を状態の正本とはみなさず、current mainへの完全包含を比較結果で確認しています。
+
+このため23本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 27結果
+
+```text
+reviewed refs:         23
+DELETE_CANDIDATE:      23
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
+## 46. current summary — pass 27
+
+candidate pass 27までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 243
+```
+
+Gate B inventoryについては、ページング込みで取得できた145本を今回までに全て監査済みです。少なくともこのinventoryでは`ahead_by > 0`のbranchは検出されませんでした。
+
+上記243本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
