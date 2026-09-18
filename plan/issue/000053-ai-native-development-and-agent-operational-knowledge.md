@@ -287,6 +287,75 @@ change request
 
 token量だけをProduct KPIにはしない。
 
+## Phase 1 first challenge — customer_referenceを編集可能にする要求
+
+最初のAI Builder re-entry challengeは `plan/ACTOR_CONTEXT_R1_AI_BUILDER_CHANGE_CHALLENGE_2026-09.md` を正本とする。
+
+変更要求:
+
+> 注文画面で参照している顧客情報を、その場で編集・更新できるようにする。
+
+current accepted / Reference facts:
+
+- `order_entry.customer_reference` は `reference` Pattern
+- Relation = `sales.order.customer`
+- datasource = `master`
+- `order_entry.master access = read`
+- Contract = `master_data.customer`
+- Query = `find_by_id`
+- Contractは `read customer.customer` を持ち、writeを持たない
+- BP-02 Reference meaningは「associated customerをconfirmする」であり、customer maintenance authorityではない
+- 既存intentional conflict fixtureはread-write要求に対し `BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT` を再現する
+
+R1で確定してよいのは、
+
+```text
+current customer_reference path
+  + direct customer mutation
+  -> accepted designとconflict
+```
+
+までとする。
+
+次は自動決定しない。
+
+- read-only境界を維持して別ownerへhandoffする
+- order_entryへ明示的write pathを追加する
+- customer ownerのCapabilityを呼ぶ
+- その他の設計へ変更する
+
+これらはProposal / design alternativeであり、current conflictからwinnerを導かない。
+
+比較はRepository free exploration / code-first baselineと、TEI structured context firstを同一change requestで行う。
+
+観測の中心はcode generation速度ではなく、
+
+- conflict発見前に実装へ進んだか
+- exact authorityへ到達できたか
+- ownership / write authority / Capabilityを発明したか
+- contradictionとunresolvedを分けたか
+- source / evidenceへ逆追跡できたか
+- 一つのstructured constraintを複数Projectionへ再利用できたか
+
+とする。
+
+### R1 source status
+
+2026-09-18、最初のchange challengeについてtest-only sourceを追加した。
+
+- `tools/reference-business-procedure-check/actor_context_r1_builder_pressure_test.go`
+
+source上では、current Pattern / datasource access / Database Contract / Business Reference / intentional conflictを一つのbounded constraint projectionへ集める。
+
+重要な停止線:
+
+- Contract writesが空であることから架空のwrite Capabilityを作らない
+- current path conflictをfeature-wide impossibilityへ一般化しない
+- ownership / authority / Business responsibilityを要求文から推測しない
+- resolution candidateをAccepted / Winnerへ昇格しない
+
+actual `go test` PASSおよびfree-exploration vs structured-context比較runは未取得であり、Source Evidence以上へは昇格させない。
+
 ## Phase 2 — Human Review Projection
 
 同じchange challengeから、
