@@ -2,11 +2,11 @@
 
 ## 目指す姿
 
-TEI（鼎／テイ）が十分に成熟したとき、業務システム開発は「設計書を書く工程」「コードへ翻訳する工程」「実装後に設計書を追従させる工程」に分断されません。
+TEI（鼎／テイ）が十分に成熟したとき、ソフトウェア開発は「人が設計書を書く工程」「人がコードへ翻訳する工程」「実装後に人が設計書を追従させる工程」に分断されません。
 
-業務の意味を表す設計内容が基準として存在し、その同じ内容を人が読みやすい詳細設計書として見たり、生成AIが検査したり、実装へRealizeしたり、Driverで動かして確かめたりできます。
+ソフトウェアと業務の意味を表す構造化知識が基準として存在し、その同じ内容を人が高密度な図表として理解したり、生成AIがApplicationを構築・変更したり、Driverで検証したり、必要に応じてAIエージェントが業務遂行のために読んだりできます。
 
-**設計内容が、そのまま検証・実装・実行へつながり、しかも特定の実装技術には閉じないこと。**
+**意味を一度構造化すれば、人間の理解、AIによる継続開発、Application実行、AIエージェントの業務遂行、別システムへの知識移植へ再利用できること。**
 
 これがTEIの長期的なプロダクト像です。
 
@@ -25,6 +25,25 @@ TEI（鼎／テイ）が十分に成熟したとき、業務システム開発�
 - Source / Diagnostic / Evidenceの追跡ビュー
 
 表示形式は正本ではありません。編集しやすいProjectionとして存在し、同じ意味を別の見方へ切り替えられます。
+
+## 人間から見たTEI
+
+人間の主な仕事は、すべてのコードを書くことではなく、Domain、制約、例外、優先順位、変更影響、Evidenceを理解し、必要な判断を行うことへ移っていきます。
+
+TEIはそのために、実装詳細の総量を人へ提示するのではなく、同じCanonical meaningを高密度な表、graph、flow、UI、diff、impact、diagnostic、Evidence等へProjectionします。
+
+人間は用途に応じて、
+
+- 全体構造を見る
+- 一つの変更だけを見る
+- 影響範囲だけを見る
+- unresolvedや例外だけを見る
+- AIが変更した差分と理由を見る
+- 元Evidenceへ掘り下げる
+
+ことができます。
+
+したがってTEI Editorは「人間がコードを書くためのIDE」よりも、**人間がAIと巨大なソフトウェアを共同管理するための高密度な認知面**へ近づきます。
 
 ## AI・認知機能から見たTEI
 
@@ -51,6 +70,40 @@ Capability
 ただし、認知結果はCanonicalな意味そのものではありません。どの入力と根拠から何が提案され、どの検証を経て正式なモデルへ採用されたかを追跡できる必要があります。AIの能力が高まっても、会話状態やProvider固有の内部表現を暗黙の正本にはしません。
 
 何でも人に質問するのではなく、既に回答済みの問い、過去の選択、類似システムの知識、決定論的に導出できる情報を再利用し、必要な場面だけ確認することも重要です。
+
+## AIエージェントから見たTEI
+
+AIエージェントは、TEIを単なるcode generation contextとして読むだけではありません。
+
+Business Procedure、Action、Data、Constraint、Policy、Capability、Authorization、Binding、Evidence requirement等が十分に構造化されていれば、AIエージェントはそれらを**業務遂行のためのmachine-readable operational knowledge**として利用できます。
+
+たとえば、
+
+```text
+Business Procedure
+  ↓
+現在のBusiness Action
+  ↓
+必要Data / Constraint
+  ↓
+利用可能Capability
+  ↓
+Authorization / Resource check
+  ↓
+Command / external action
+  ↓
+Observation / Evidence
+  ↓
+next Action / completion / unresolved
+```
+
+という経路です。
+
+この経路では、画面操作を模倣することが標準ではありません。CapabilityやBusiness Actionとして明示された境界があれば、AIエージェントはより直接的に利用できます。
+
+一方で、TEI上の知識を理解できることと、実行Authorityは別です。AIエージェントが高い推論能力や自律性を持っていても、write、Capability invocation、secret、network、filesystem、external side effect等の権限を自動的には得ません。
+
+またBusiness Procedureは、すべてを機械実行可能なworkflowへ落とすことを要求しません。人間判断、物理作業、外部組織、未自動化業務を含んだまま、AIが「どこまで自分が実行可能か」「どこで人へ渡すべきか」を理解できる状態を目指します。
 
 ## 隣接Productとの協調
 
