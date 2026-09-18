@@ -28,9 +28,28 @@ repeated development benefit
 
 を分離する。
 
-## 2. Workflow
+## 2. Portable runner / Workflow
 
-`.github/workflows/knowledge-portability-reference-evidence.yml`
+portable entry point:
+
+- `tools/run-knowledge-portability-reference-evidence.sh`
+
+GitHub Actions wrapper:
+
+- `.github/workflows/knowledge-portability-reference-evidence.yml`
+
+local / compatible runnerでは次で同じcheckを実行できる。
+
+```bash
+bash tools/run-knowledge-portability-reference-evidence.sh
+```
+
+Evidence logを保存する場合:
+
+```bash
+TEI_REFERENCE_EVIDENCE_OUT=knowledge-portability-reference-test.txt \
+  bash tools/run-knowledge-portability-reference-evidence.sh
+```
 
 対象test prefix:
 
@@ -62,18 +81,32 @@ Goの`-run`で実行対象を絞るが、package全体はcompileされる。
 
 runner安定後に対象拡張を検討する。
 
-## 4. Trigger
+## 4. Trigger / current runner availability
 
-pull request to `main`で、次の変更がある場合に実行する。
+当初はpull request triggerを設定したが、PR #744 headで作成されたrun `35385856132` はattempt 1 / 2とも約数秒でfailureとなった。
 
-- Workflow自身
-- Knowledge Portability / second Application pressure source
-- `reference/workspace/**`
-- `reference/business-system-design/**`
-- 関連するApplication / Database / Environment / IR / Source Index / Syntax / Workspace model
-- `go.mod` / `go.sum`
+raw job metadataでは両attemptとも、
 
-さらに`workflow_dispatch`を残す。
+```text
+steps = []
+runner_id = 0
+runner_name = ""
+labels = ["ubuntu-latest"]
+```
+
+であり、test stepは開始されていない。
+
+このため、現時点ではtest failureとして扱わず、GitHub-hosted runner allocation未成立として扱う。
+
+既存のRepository branch hygiene Workflowでも同種のrunner制約が記録されているため、不要なPR failureを常態化させないよう、本Workflowは一時的に`workflow_dispatch`のみとする。
+
+```text
+runner allocation unavailable
+  != test failure
+  != Executable Evidence PASS
+```
+
+successful hosted-runner allocationが一度得られた後、関連pathsへのpull_request trigger再有効化を検討する。
 
 ## 5. Evidence artifact
 
@@ -91,6 +124,7 @@ artifactはCanonical sourceではない。
 
 ## 6. 成功条件
 
+- runnerが実際に割り当てられる
 - focused Go filesが`gofmt`済み
 - package compileが成立
 - targeted testsがPASS
@@ -108,6 +142,23 @@ artifactはCanonical sourceではない。
 - production runtime validation
 
 ## 8. Evidenceの扱い
+
+2026-09-19時点ではGitHub-hosted runner上のsuccessful runは未取得である。
+
+したがって現状は、
+
+```text
+runner contract / script
+  -> Source Evidence
+
+GitHub Actions attempts 1 / 2
+  -> runner allocation failure Evidence
+
+Executable Evidence
+  -> not acquired
+```
+
+と記録する。
 
 successful runを得た場合にのみ、
 
