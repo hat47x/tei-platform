@@ -2,7 +2,7 @@
 
 - Status: ISSUE-000053 / Phase 3 exception-evidence pressure / Reference-only
 - Date: 2026-09-18
-- Parent: `plan/ACTOR_CONTEXT_R3G_AUTHORIZATION_REQUIREMENT_COMPOSITION_2026-09.md`
+- Parent: `plan/ACTOR_CONTEXT_R3G_AUTHORIZATION_REQUIREMENT_INVARIANT_VARIATION_2026-09.md`
 - Related:
   - `plan/ACTOR_CONTEXT_R3F_REPOSITORY_BACKED_AUTHORIZATION_SCOPE_2026-09.md`
   - `reference/business-system-design/order-entry-business-procedure.json`
@@ -19,7 +19,8 @@ R3Gでは、Pattern minimum invariant候補とBusiness Step requirementが食い
 
 ```text
 required vs not-required
-  -> explicit-exception-authority-required
+  + precedence unresolved
+  -> conflict-unresolved
 ```
 
 として停止し、silent overrideを禁止した。
@@ -224,7 +225,7 @@ production override / precedence mechanism
 
 とする。
 
-R3Gの `explicit-exception-authority-required` は、現時点では**将来のqualifying caseに対する停止線**として保持し、機構設計へ進めない。
+R3Gの `conflict-unresolved` は、現時点では**将来のqualifying caseに対する停止線**として保持し、機構設計へ進めない。
 
 ## 8. 次
 
