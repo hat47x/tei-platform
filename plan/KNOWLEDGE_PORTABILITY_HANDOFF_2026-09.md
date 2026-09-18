@@ -307,7 +307,27 @@ AIが組み立てた候補も同じ境界を通す。
 - destination source auto patch
 - cross-repository distribution protocol
 
-## 14. Gate C後の最初の実Reference
+## 14. Pre-Gate second Application contract
+
+Gate C後の実Referenceへ進む前の着手条件は、
+
+- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
+
+へ固定する。
+
+この契約はsynthetic destinationだけを使い、
+
+- shared authority
+- destination-owned Application meaning
+- Environment-owned configuration
+- unresolved destination choices
+- expected change propagation
+
+を分離する。
+
+Canonical Application source、Environment binding、Target implementationは作らない。
+
+## 15. Gate C後の最初の実Reference
 
 ISSUE-000040で予定されている第二Applicationを使う。
 
@@ -332,7 +352,7 @@ customer lookup
 
 この構成で、shared / local / environment-specificの三層を同時に検証できる。
 
-## 15. Handoff完了条件
+## 16. Handoff完了条件
 
 - [ ] 000047 candidateがauthority sourceとdiscovery provenanceを混同しない
 - [ ] Phase 5がqualificationとreuse relationを別軸で保持する
