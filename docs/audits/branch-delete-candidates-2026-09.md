@@ -948,3 +948,56 @@ DELETE_CANDIDATE: 128
 ```
 
 上記128本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 33. 2026-09-18 candidate pass 21 — Remaining Gate B final refs
+
+未監査だったGate Bの`final-*` refについて、artifact verification、child artifact retention、convergence runbook、Evidence issue sync、issue snapshot、scenario audit、UI-less scenarioの旧work branchをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-final-artifact-verification-gofmt`
+- `work/gate-b-final-child-artifact-retention`
+- `work/gate-b-final-convergence-runbook-sync`
+- `work/gate-b-final-evidence-issue-sync`
+- `work/gate-b-final-issue-current-baseline`
+- `work/gate-b-final-issue-current-snapshot`
+- `work/gate-b-final-scenario-audit-sync`
+- `work/gate-b-final-ui-less-scenario`
+
+確認時点のcurrent `main`:
+
+```text
+1b8e3e681aec720cb246229562fd8e164206a131
+```
+
+8本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、Evidence / bootstrap等のref固有用途も確認されていません。`Evidence`や`snapshot`を名称に含むbranchもありますが、保存用refとして扱う根拠はなく、current mainに成果が完全包含された通常のGate B work branchです。
+
+このため8本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 21結果
+
+```text
+reviewed refs:         8
+DELETE_CANDIDATE:      8
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 34. current summary — pass 21
+
+candidate pass 21までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 136
+```
+
+上記136本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
