@@ -1470,6 +1470,46 @@ dependency keyが異なるreasonは、category / change class / wordingが同じ
 UniversalPacket / PreferredAudience / Winner / StrongerAuthority / NextAction等は導入しない。
 
 
+### R3W — Re-evaluation reason / category value change boundary
+
+R3T / R3U / R3Vのreason集合を、actual selected category value changeと分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3W_CATEGORY_VALUE_CHANGE_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3w_category_value_change_pressure_test.go`
+
+```text
+re-evaluation reason
+  -> what to recompute
+
+R3Q fingerprint comparison
+  -> whether selected meaning actually changed
+```
+
+とする。
+
+reasonが存在しても再構成後のcategory fingerprintが同一なら `unchanged-after-reevaluation`、異なれば `changed-after-reevaluation` とする。one categoryへ複数reasonがある場合も一つのcategory resultへreason集合を保持する。
+
+selected category fingerprintが変わったのにtracked reasonがない場合はfail closedし、missing dependency / incomplete observation / derivation-rule freshness gapを露出させる。
+
+Human viewでomittedされたcategory変更はselected resultへ昇格させず、profile-changedはsame-profile比較へ混ぜない。
+
+```text
+reason exists
+  != value changed
+
+value changed
+  != automatic rebuild
+  != runtime Authorization reevaluation authority
+```
+
+を維持し、production rebuild engine / invalidation schedulerは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
