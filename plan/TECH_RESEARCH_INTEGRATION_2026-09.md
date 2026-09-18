@@ -660,6 +660,55 @@ routing score / confidence / winnerは導入しない。embedding、model-native
 
 R7 / R8はここで擬似実装しない。R7はFirst Web Targetのactual interaction Evidence、R8はactual Execution / Observationを入力として必要とするため、R6のstatic Source Evidenceから成功扱いへ昇格させない。
 
+#### R6B heterogeneous knowledge pressure — 2026-09-19
+
+R6の候補集合をApplication Patternだけに閉じず、用途ごとに異なるknowledge kindを同じrouting / qualification境界へ載せる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6b_heterogeneous_knowledge_routing_pressure_test.go`
+
+候補poolには少なくとも次を含める。
+
+- Business Procedure Reference
+- Application Pattern
+- Semantic Validation
+- Semantic Capability
+- task-specific probe Evidence
+
+Pressure対象:
+
+```text
+BP-02 read-only
+  -> Procedure + customer_reference Pattern
+  -> customer-edit conflict Evidenceはinjectしない
+
+BP-05 validation
+  -> Procedure + exact Validation subjects
+
+BP-06 authorization boundary
+  -> Procedure + security.authorize Capability
+
+R1 customer-edit review
+  -> Procedure + customer_reference Pattern
+  -> explicit customer-edit conflict probe Evidence
+```
+
+exact task routerと、全候補を返すbroad heterogeneous routerを比較し、deterministic qualification後のidentity集合とdisclosure集合が一致することを要求する。
+
+重要なのは全knowledge kindを一つのauthorityへflattenしないことである。
+
+```text
+Procedure Reference != Semantic Capability
+Semantic subject    != probe Evidence
+probe Evidence      != runtime authority
+qualified context   != executable context
+```
+
+Evidenceはtask-specific provenanceとして選択できるが、Operational taskへ無関係なreview Evidenceを注入しない。Capabilityがselected / qualifiedでもAuthorization成立やinvoke authorityを意味しない。
+
+この段階でもuniversal Context Packet、共通score、knowledge-kind横断confidence、production disclosure schemaは追加しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

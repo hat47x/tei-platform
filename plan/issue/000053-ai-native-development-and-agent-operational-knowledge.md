@@ -1247,6 +1247,53 @@ routing方式はSemantic authorityを所有しない。routing score / confidenc
 
 R7 Replayable Behavior EvidenceはFirst Web Targetのactual Functional Evidenceへ、R8 Verified Experienceはactual Execution / Observationへ接続してから進める。static R6 sourceからR7 / R8の成功を捏造しない。
 
+### R6B — heterogeneous knowledge candidate routing
+
+R6の次段では、Application Patternだけでなく異なるauthority / evidence kindを候補poolへ共存させる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6b_heterogeneous_knowledge_routing_pressure_test.go`
+
+current sourceから次のtask scopeを使う。
+
+```text
+BP-02
+  Procedure Reference
+  + order_entry.customer_reference
+
+BP-05
+  Procedure Reference
+  + exact Semantic Validation subjects
+
+BP-06
+  Procedure Reference
+  + security.authorize Semantic Capability
+
+R1 customer-edit review
+  Procedure Reference
+  + order_entry.customer_reference
+  + order-entry-customer-edit-conflict probe Evidence
+```
+
+exact routerとbroad routerは異なるcandidate集合を返してよいが、current task relation / Source Index / exact Evidence scopeでqualificationした後の集合は一致しなければならない。
+
+特に、R1のcustomer-edit conflict probeはBP-02のread-only Operational contextへ自動注入しない。逆にR1 reviewではexplicit Evidenceとしてtrace可能に保持する。
+
+```text
+available kind diversity
+  != authority flattening
+
+Evidence relevant to review
+  != Evidence relevant to operation
+
+Capability qualified
+  != Authorization evaluated
+  != Capability invocation authorized
+```
+
+R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
+
 
 ### R3R — Projection dependency provenance / freshness planes
 
