@@ -69,6 +69,9 @@ retrieval similarity
 LLM output
   != authority
 
+Proposal / semantic change accepted
+  != current execution authority
+
 generated implementation
   != test oracle
 
