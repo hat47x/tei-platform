@@ -92,25 +92,42 @@ downstream not attempted
 
 として別に示す。
 
-## 4. missing authority classとmissing valueを分離する
+## 4. resolution need classとmissing valueを分離する
+
+R3Nではauthority gapだけでなくruntime Evidence不足も同じprojection familyで扱うため、共通語彙を `resolution need class` とする。
 
 authority未解決stateでは:
 
 ```text
-missing authority class = authorization-action-authority
+resolution need class = authorization-action-authority
 ```
 
-までは説明できる。
+runtime evaluation未実施では:
+
+```text
+resolution need class = authorization-evaluation
+```
+
+まで説明できる。
 
 しかし:
 
 ```text
 missing action value = execute
+resolution owner = security team
 ```
 
-を推測しない。
+のような値・ownerは推測しない。
 
 同様にresource authority未解決でも、Pattern identityやLegacy policy resourceをmissing valueとして補わない。
+
+```text
+resolution need class
+  != missing authority value
+  != resolution owner
+```
+
+を維持する。
 
 ## 5. evaluation not attemptedとdeniedを分離する
 

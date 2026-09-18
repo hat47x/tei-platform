@@ -99,7 +99,7 @@ func TestActorContextR3MExplainsCurrentBP06ActionAuthorityStopWithoutInventingVa
 		t.Fatalf("R3M blurred the exact blocker vocabulary: %+v", got.BlockingReasons)
 	}
 	if !reflect.DeepEqual(got.ResolutionNeedClasses, []string{"authorization-action-authority"}) {
-		t.Fatalf("R3M did not expose the missing authority class precisely: %+v", got.ResolutionNeedClasses)
+		t.Fatalf("R3M did not expose the resolution need class precisely: %+v", got.ResolutionNeedClasses)
 	}
 	if got.HandoffRecipientStatus != actorContextR3MHandoffRecipientUnresolved || !got.ResolutionRequested {
 		t.Fatalf("R3M should request resolution without inventing a recipient: %+v", got)
@@ -165,7 +165,7 @@ func TestActorContextR3MEarliestBlockerDoesNotBecomeDeferredAuthorizationBlocker
 		t.Fatalf("R3M promoted downstream gaps into current blockers: %+v", requirementStop.BlockingReasons)
 	}
 	if !reflect.DeepEqual(requirementStop.ResolutionNeedClasses, []string{"authorization-requirement-authority"}) {
-		t.Fatalf("R3M mapped the requirement stop to the wrong missing authority class: %+v", requirementStop)
+		t.Fatalf("R3M mapped the requirement stop to the wrong resolution need class: %+v", requirementStop)
 	}
 }
 
@@ -213,59 +213,59 @@ func actorContextR3MBuildStopExplanation(
 		},
 	}
 
-	missing := []string{}
+	needs := []string{}
 	downstream := []string{}
 	for _, reason := range result.BlockingReasons {
 		switch reason {
 		case "authorization-requirement-unresolved":
-			missing = append(missing, "authorization-requirement-authority")
+			needs = append(needs, "authorization-requirement-authority")
 			downstream = append(downstream,
 				"authorization-invocation",
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "actor-principal-unresolved":
-			missing = append(missing, "runtime-principal")
+			needs = append(needs, "runtime-principal")
 			downstream = append(downstream,
 				"authorization-invocation",
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "authorization-resource-unresolved", "authorization-resource-authority-unresolved":
-			missing = append(missing, "authorization-resource-authority")
+			needs = append(needs, "authorization-resource-authority")
 			downstream = append(downstream,
 				"authorization-invocation",
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "authorization-action-unresolved", "authorization-action-authority-unresolved":
-			missing = append(missing, "authorization-action-authority")
+			needs = append(needs, "authorization-action-authority")
 			downstream = append(downstream,
 				"authorization-invocation",
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "authorization-not-evaluated":
-			missing = append(missing, "authorization-evaluation")
+			needs = append(needs, "authorization-evaluation")
 			downstream = append(downstream,
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "authorization-evaluation-observation-mismatch":
-			missing = append(missing, "authorization-evaluation-observation")
+			needs = append(needs, "authorization-evaluation-observation")
 			downstream = append(downstream,
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		case "authorization-current-context-evaluation-unresolved":
-			missing = append(missing, "authorization-current-context-evaluation")
+			needs = append(needs, "authorization-current-context-evaluation")
 			downstream = append(downstream,
 				"protected-operation-invocation",
 				"business-completion",
 			)
 		}
 	}
-	result.ResolutionNeedClasses = actorContextR0SortedUnique(missing)
+	result.ResolutionNeedClasses = actorContextR0SortedUnique(needs)
 	result.DownstreamNotAttempted = actorContextR0SortedUnique(downstream)
 
 	sort.Slice(result.KnownAuthorityFacts, func(i, j int) bool {

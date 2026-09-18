@@ -158,7 +158,7 @@ func TestActorContextR3NDeniedObservationIsRuntimeOutcomeNotMissingAuthority(t *
 		t.Fatalf("R3N did not preserve evaluated denial as a distinct runtime outcome: %+v", got)
 	}
 	if len(got.ResolutionNeedClasses) != 0 {
-		t.Fatalf("evaluated denial was misrepresented as missing authority: %+v", got.ResolutionNeedClasses)
+		t.Fatalf("evaluated denial was misrepresented as a resolution need: %+v", got.ResolutionNeedClasses)
 	}
 	if !reflect.DeepEqual(got.MachineReasons, []string{"authorization-evaluation-denied"}) {
 		t.Fatalf("R3N lost the derived denial reason: %+v", got.MachineReasons)
@@ -180,8 +180,14 @@ func TestActorContextR3NObservationMismatchAndCrossContextReuseRemainDistinct(t 
 	if mismatch.StopClass != actorContextR3NClassEvaluationObservationMismatch {
 		t.Fatalf("Observation mismatch was collapsed: %+v", mismatch)
 	}
+	if !reflect.DeepEqual(mismatch.ResolutionNeedClasses, []string{"authorization-evaluation-observation"}) {
+		t.Fatalf("Observation mismatch lost its resolution need: %+v", mismatch)
+	}
 	if reuse.StopClass != actorContextR3NClassCurrentContextEvaluationUnresolved {
 		t.Fatalf("cross-context reuse uncertainty was collapsed: %+v", reuse)
+	}
+	if !reflect.DeepEqual(reuse.ResolutionNeedClasses, []string{"authorization-current-context-evaluation"}) {
+		t.Fatalf("cross-context reuse uncertainty lost its resolution need: %+v", reuse)
 	}
 	if mismatch.StopClass == reuse.StopClass {
 		t.Fatalf("distinct runtime evaluation states became the same taxonomy class")
