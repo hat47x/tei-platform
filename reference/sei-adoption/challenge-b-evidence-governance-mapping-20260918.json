@@ -1,0 +1,133 @@
+{
+  "schema": "tei.sei-reference-adoption.evidence-governance-mapping/v1",
+  "recorded_at": "2026-09-18",
+  "authority": "reference-planning-evidence-only",
+  "issue": "ISSUE-000054",
+  "tei_repository_revision": "1683182b730a41120f56da00e396220c6d5f7a13",
+  "source_bindings": {
+    "sei_review_evidence": {
+      "path": "hat47x/sei-cognition:evaluation/personal-inquiry-decision/inquiry_continuity_review_evidence.py",
+      "git_blob_sha1": "3f81d5041a4c6ad3ec25197b576623c2c1d555ef"
+    },
+    "sei_summary_distortion_evidence": {
+      "path": "hat47x/sei-cognition:evaluation/personal-inquiry-decision/inquiry_continuity_summary_distortion_evidence.py",
+      "git_blob_sha1": "ebad7e5b4f0332097abfe89f09371c49d93aac83"
+    },
+    "tei_quality_evidence_plan": {
+      "path": "plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md",
+      "git_blob_sha1": "93677786ef91d842dc47dfd735d7dbd62639881f"
+    },
+    "tei_gate_c_evidence_contract": {
+      "path": "plan/GATE_C_EVIDENCE_CONTRACT.md",
+      "git_blob_sha1": "714a8580c10516dc4b51dc75c8cb77dfbeb0a5ea"
+    },
+    "tei_artifact_verification": {
+      "path": "tools/reference-gate-b-final-evidence/artifact_verification.go",
+      "git_blob_sha1": "ea6e5058f247dc06b9e52605405d3dd2228d695b"
+    },
+    "tei_secret_boundary": {
+      "path": "tools/reference-gate-b-final-evidence/postgres_secret.go",
+      "git_blob_sha1": "cebe2e193531fa2797d30c04cdb2a44de28b22c1"
+    },
+    "tei_external_observed_evidence": {
+      "path": "internal/database/externalqueryevidence/evidence.go",
+      "git_blob_sha1": "3bc72955dfb402542ddb41e595be2be6182efca7"
+    }
+  },
+  "mappings": [
+    {
+      "concern": "Evidence artifact is derived and non-Canonical",
+      "classification": "existing-tei",
+      "basis": "Gate C and external-observed Evidence explicitly keep Evidence outside Canonical authority"
+    },
+    {
+      "concern": "subject / revision / build / scenario / context traceability",
+      "classification": "existing-tei",
+      "basis": "Quality Envelope and Gate C provenance already require contextual traceability"
+    },
+    {
+      "concern": "artifact digest / fingerprint and retained artifact identity",
+      "classification": "existing-tei",
+      "basis": "Gate B final Evidence verifies exact retained files and SHA-256 fingerprints"
+    },
+    {
+      "concern": "source provenance and processing description",
+      "classification": "existing-tei",
+      "basis": "external-observed Evidence keeps SourceRef / ObservedAt / Processing without rewriting Canonical meaning"
+    },
+    {
+      "concern": "secret-safe evidence collection",
+      "classification": "existing-tei",
+      "basis": "Gate B secret boundary keeps secret payload outside normal repository Evidence and sanitizes diagnostics"
+    },
+    {
+      "concern": "different evidence natures must not substitute for one another",
+      "classification": "existing-tei-design",
+      "basis": "Product Quality Evidence Plan separates deterministic/synthetic/generated/real-provider/external/interactive/production evidence"
+    },
+    {
+      "concern": "SEI evidence height labels such as Design / Executable / Release / Operational / Adoption-Outcome",
+      "classification": "native-sei-governance",
+      "basis": "TEI has contextual evidence natures but no justified universal hierarchy matching SEI; do not import SEI labels into TEI Core"
+    },
+    {
+      "concern": "human reviewer observation vs semantic audit separation",
+      "classification": "native-sei-governance",
+      "basis": "SEI review bundles explicitly preserve separate layers; TEI may later display them but should not reinterpret or merge them"
+    },
+    {
+      "concern": "review-start fixation, reveal ordering, human authorship / prior-exposure declaration",
+      "classification": "native-sei-governance",
+      "basis": "these are evaluation protocol semantics owned by SEI rather than generic TEI Evidence semantics"
+    },
+    {
+      "concern": "Product Value / Stable Requirement authorization stopline",
+      "classification": "native-sei-governance",
+      "basis": "TEI Evidence cannot authorize SEI Product Value or Stable Requirement changes"
+    },
+    {
+      "concern": "Review / Diff Visualization across SUI and SEI",
+      "classification": "reusable-extension-candidate-only",
+      "basis": "cross-application demand exists conceptually, but no Gate C Target evidence establishes a reusable component yet"
+    },
+    {
+      "concern": "Evidence / Governance interactive surface",
+      "classification": "deferred-target-behavior",
+      "basis": "Gate C is blocked and First Web Target is not implemented; mapping can proceed but interactive leverage cannot yet be measured"
+    }
+  ],
+  "conclusion": {
+    "new_tei_core_kind_required": false,
+    "new_application_pattern_kind_required": false,
+    "new_universal_evidence_schema_required": false,
+    "reusable_plugin_required_now": false,
+    "mapping_sufficient_for_stage0": true,
+    "interactive_surface_executable_evidence": false,
+    "product_leverage_established": false
+  },
+  "implementation_boundary": {
+    "tei_may_own": [
+      "generic artifact integrity and provenance mechanics",
+      "Target-side projection of already-classified Evidence",
+      "generic source/revision/build/run traceability"
+    ],
+    "sei_must_continue_to_own": [
+      "meaning of reviewer response and semantic audit",
+      "review/reveal stage order",
+      "reviewer provenance declarations",
+      "SEI evidence-height interpretation",
+      "Product Value and Stable Requirement authorization"
+    ]
+  },
+  "next_reentry": [
+    "Gate C-capable Target exists for an actual Evidence/Governance interaction surface",
+    "or a reusable Review/Diff component emerges independently and can be pressure-tested by both SUI and SEI"
+  ],
+  "stop_lines": [
+    "mapping reuse is not interactive Surface Evidence",
+    "TEI artifact integrity does not prove SEI human provenance",
+    "TEI evidence nature must not flatten SEI evidence height",
+    "cross-application Review/Diff demand remains a candidate, not a Plugin or Core requirement",
+    "no Product Value or Stable Requirement change is authorized"
+  ]
+}
