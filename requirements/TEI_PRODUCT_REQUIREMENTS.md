@@ -76,13 +76,22 @@ Capabilityごとにbuiltin、generated implementation、plugin、既存実装等
 
 認証・認可はCapability契約とMappingを通して既存構造へ接続でき、後から必要な単位で置き換えられる必要があります。
 
-## RQ-010 Editorを開発者向けの高密度な設計環境として提供できること
+## RQ-010 人間向けの高密度な設計・運用認知環境を提供できること
 
-Editorは、簡略化されたフォーム入力だけではなく、複雑な業務システムを一画面で見渡しやすい高密度なProjectionを提供できることを目指します。
+Editor / Review Surfaceは、簡略化されたフォーム入力だけではなく、複雑な業務システムを高い情報密度で理解できるProjectionを提供できなければなりません。
 
 Data、Relation、Rule、View、Procedure等を分断された多数の画面へ追い出すのではなく、必要に応じて3階層以上の関係も局所性を保って確認できる設計を可能にします。
 
-Editor自身をCanonical source of truthとはしません。
+生成AIがApplicationを構築・変更した場合、人間がgenerated code全体を読まなくても、少なくとも次を確認できる必要があります。
+
+- semantic diff
+- impact
+- unresolved / exception
+- decision / approval
+- provenance / Evidence
+- native custom implementationへ残る箇所
+
+Editor / Review Surface自身をCanonical source of truthとはしません。
 
 ## RQ-011 同じCanonical meaningを複数のProjectionで扱えること
 
@@ -123,7 +132,7 @@ browse、record、reference、header-detail、command等、業務システムで
 
 標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。
 
-## RQ-015 生成AIが既存知識を探索してから新規実装へ進めること
+## RQ-015 生成AIが既存知識から継続的にApplicationを構築・変更できること
 
 生成AI向けの開発支援では、次の順序を基本とします。
 
@@ -135,7 +144,11 @@ browse、record、reference、header-detail、command等、業務システムで
 6. Capability call
 7. Custom implementation
 
-毎回ゼロからコードを生成することを標準経路にはしません。
+毎回ゼロからRepositoryとコードを読み直してApplicationの意味を再構成したり、毎回ゼロからコードを生成したりすることを標準経路にはしません。
+
+生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
+
+既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
 
 AIが作った内容を直接Canonical authorityとせず、まずProposal / Structured Intent等の候補として扱い、採用時にはEditor / CLI等と共有できる決定論的なValidation / Acceptance境界を通す必要があります。
 
@@ -228,7 +241,11 @@ Target / Driver / Providerごとに必要な性能条件を定義し、測定・
 
 TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。
 
-Business ActionはApplication FunctionやCapabilityと同一視しません。人間、AI、外部組織、SaaS、物理作業、既存システム等による行為は、TEI Applicationによる実現を持たなくても正当な業務設計情報として保持できる必要があります。
+Business ActionはApplication FunctionやCapabilityと同一視しません。人間、AIエージェント、外部組織、SaaS、物理作業、既存システム等による行為は、TEI Applicationによる実現を持たなくても正当な業務設計情報として保持できる必要があります。
+
+AIエージェントがBusiness Actionのactorである場合、必要なData / Constraint / Capability / Authorization / Resource / expected Evidenceを機械可読な形で取得し、許可された範囲でApplication UIを介さず業務を遂行できる余地を持つ必要があります。
+
+ただし、actorとしてAIが指定されていることをAuthorization Roleや実行権限へ暗黙変換してはいけません。
 
 Business Procedure上のactorをAuthorization Roleへ暗黙変換してはいけません。
 
@@ -249,6 +266,70 @@ TEIは、Data、Function / Interaction、Business Procedureを同じ業務シス
 Matrix、CRUD表、flow、graph等をこの相互検証に利用できますが、それらを独立した第二の正本として人が二重管理することを要求しません。
 
 三つの視点を同型のCanonical top-level objectへすることも要求しません。hard semantic error、architecture / policy violation、review diagnostic、design question、informational impact等のseverityは、現実的なReferenceでdefect classを再現してから確定します。
+
+## RQ-027 AIが長期間にわたりApplicationへ再入場できる開発contextを提供できること
+
+生成AIが数日後、数か月後、別model、別agentとして開発へ再入場しても、会話履歴だけに依存せず現在のApplicationを理解できなければなりません。
+
+少なくとも次へ機械的に到達できる必要があります。
+
+- Canonical meaning
+- authoritative source
+- accepted Decision / Variation
+- Capability / Binding
+- native asset
+- generated / derived artifact
+- unresolved concern
+- validation / conformance
+- Evidence / provenance
+- dependency / impact
+
+過去のchat transcriptや特定agentのmemoryをApplication知識の唯一の容器にしてはいけません。
+
+## RQ-028 人間が実装詳細を全面的に読まずに変更を理解・承認できること
+
+生成AIによる継続開発では、人間のreviewをsource code全量の精読だけへ依存させてはいけません。
+
+少なくとも、意味差分、影響、例外、未解決点、権限変更、native custom code、Evidenceを高密度なProjectionで確認し、必要な場合だけsource / runtime detailへ掘り下げられる必要があります。
+
+人間向けProjectionは要約だけでなく、Canonical ID / Source / Evidenceへ逆追跡できなければなりません。
+
+## RQ-029 Domain・Infrastructure知識を適用条件付きで再利用・移植できること
+
+TEIは、Domain model、Pattern、Procedure、Policy、Validation、Capability contract、Database / Infrastructure mapping等を、元Applicationのsource codeへ閉じ込めず再利用可能な知識として扱える必要があります。
+
+再利用時には、少なくとも次を追跡できる必要があります。
+
+- origin
+- dependency
+- assumption / precondition
+- Variation
+- Provider / Target constraint
+- Evidence / Decision
+- destination-specific override
+
+同じ知識を別Applicationへ適用したとき、copy元とcopy先が黙って分岐するだけの再利用を標準にはしません。
+
+## RQ-030 AIエージェントがTEI成果物を業務遂行のOperational Knowledgeとして利用できること
+
+AIエージェントは、TEI成果物からBusiness Procedure、Business Action、Data、Constraint、Policy、Capability、Authorization requirement、Runtime Binding、Evidence requirement等を取得し、許可された範囲で業務を直接遂行できる構造を持つ必要があります。
+
+この要求は、すべてのBusiness Procedureをworkflow engineへ変換することを意味しません。
+
+AIエージェントは、少なくとも次を区別できなければなりません。
+
+- 自分が実行可能なAction
+- 人間判断が必要なAction
+- 外部組織・物理作業等へhandoffすべきAction
+- 実行前に必要なConstraint / Authorization
+- 利用可能なCapability / Resource
+- Command acknowledgement
+- actual Observation / Evidence
+- completion / failure / unresolved
+
+TEI成果物を読めること、Business Procedureを理解できること、AIのautonomy levelが高いことは、それだけでwrite / invoke / secret / network / external side effect authorityを与えません。
+
+Agentが行った業務もRQ-018〜RQ-020のCommand / Observation / Resource / retry / unknown境界を迂回してはいけません。
 
 ## 要求を実装へ落とすときの原則
 

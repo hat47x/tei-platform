@@ -72,13 +72,23 @@ ObservationとEvidenceを用い、実際の状態を確認してから完了と�
 
 自動化の都合で成功、差分なし、安全などへ丸めません。
 
-## P12. AIは提案者であり、暗黙のAuthorityではない
+## P12. AIは構築主体・業務Actorになり得るが、暗黙のAuthorityではない
 
-生成AIは、既存知識の探索、設計候補の作成、矛盾検査、典型的な確認事項の提示に積極的に使います。
+生成AIは、既存知識の探索や設計候補の作成だけでなく、Applicationの構築・変更、検証、必要に応じた業務遂行まで担い得ます。
 
-一方、採用された規則、Binding、権限、実装方式は、AIの会話状態だけに置かず明示的な成果物へ固定します。
+ただし、**autonomy、intelligence、authorityを同一視しません。**
 
-AIがその場で出した答えを、暗黙の本番Policyとして扱いません。
+- authoritative sourceを変更できること
+- Capabilityをinvokeできること
+- Resource / secretへアクセスできること
+- external side effectを起こせること
+- 人間承認済みのDecisionとして扱われること
+
+は、それぞれ明示的な境界で決まります。
+
+設計変更はShared Acceptance Boundaryを通し、業務遂行はBusiness Action / Semantic Capability / Authorization / Resource / Observationの境界を通します。
+
+AIの会話状態や推論能力を、暗黙の本番Policyや権限根拠にはしません。
 
 ## P13. 厳格な内部規則と、軽い利用体験を両立する
 
@@ -94,11 +104,22 @@ AIがその場で出した答えを、暗黙の本番Policyとして扱いませ
 
 まず既存仕様を保ったまま表現・接続でき、その後必要な箇所を段階的に置き換えられることを重視します。
 
-## P15. 設計と実装の距離を短くする
+## P15. 設計・実装・運用を継続的な循環にする
 
 設計内容を、納品後に陳腐化する文書だけにはしません。
 
-同じ意味からValidation、Simulation、Generation、Runtime Bindingへ接続できるようにし、設計変更が実装へ、実装上の発見が検証可能な形で設計へ戻る循環を作ります。
+同じ意味からValidation、Simulation、Generation、Runtime Bindingへ接続し、生成AIが継続的にApplicationを構築・変更できるようにします。
+
+さらに、運用中のObservation / Evidenceから必要な変更を検出し、AIや人がCanonicalな意味へ戻って設計を更新し、再度Realizationへつなげられる循環を作ります。
+
+```text
+Canonical meaning
+  -> realization / application
+  -> operation
+  -> observation / evidence
+  -> change proposal / decision
+  -> canonical meaning
+```
 
 ただし、derivedな実行結果を無条件にCanonicalへ逆流させません。
 
@@ -119,3 +140,30 @@ Reference Workspace、fixture、Conformance、Evidenceを、単なるテスト�
 一つのProviderや一つの技術で深い検証を行うことは重要ですが、その実装課題だけでプロダクト全体の優先順位を決めません。
 
 Database、Application、Editor、AI支援、Target、Runtimeの各面が、Product Valueに対してどの不確実性を減らすかを見ながら進めます。
+
+## P19. 人間の認知帯域を希少Resourceとして扱う
+
+生成AIが実装の多くを担うほど、人間へ大量のコードや設定を読ませることは品質保証の主要手段になりません。
+
+人が確認すべき意味、差分、影響、例外、未確定、Evidenceを高密度なProjectionとして提示し、必要な箇所へ掘り下げられる構造を優先します。
+
+人間の注意を、機械的に検証可能な詳細へ消費させず、意味上の判断へ集中させます。
+
+## P20. Knowledge reuseはcode reuseより広く捉える
+
+再利用対象をlibraryやsource codeだけに限定しません。
+
+Domain model、Relation、Constraint、Procedure、Policy、Variation、Capability contract、Infrastructure binding knowledge、Decision、Evidenceを、適用条件とprovenanceを保ったまま別Applicationへ移植可能な資産として扱います。
+
+copy-pasteによる再利用ではなく、元の意味と移植先との差分を理解できる再利用を重視します。
+
+## P21. TEI成果物を人間・Application・AIエージェントの共通知識面にする
+
+TEI成果物は、人間が読む設計書と、Application生成用metadataを別々に持つことを前提にしません。
+
+同じCanonical meaningから、人間向けProjection、生成AI向けcontext、Runtime Binding、AIエージェント向けOperational Projectionを導出できる構造を目指します。
+
+AIエージェントが業務を直接遂行する場合も、画面操作の模倣より、Business Action / Capability / Authorization等の明示境界を優先します。
+
+ただし、全てのBusiness Procedureをmachine-executable workflowへ変換することは要求しません。人間判断や外部作業を含んだまま、何が機械実行可能で何がhandoff対象かを理解できることを重視します。
+
