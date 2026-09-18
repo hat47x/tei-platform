@@ -1,6 +1,6 @@
 # ISSUE-000006: Application Driverの最小vertical sliceを実装する
 
-- 状態: In Progress — 主要境界は成立、Gate B Evidence取得中
+- 状態: In Progress — 主要境界成立、Gate B Evidence成立（R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`）、第一Web Target着手待ち
 - GitHub Issue: #69
 - 前段: `ISSUE-000013` / GitHub Issue #124（Gate A Ready）
 - 次のGate: Gate B「UIなしで主要Scenarioを再現できる」
@@ -34,6 +34,14 @@ Observation / Evidence
 Driverは、不足する意味や外部事実を独自規則で補いません。Gapが見つかった場合は、その意味や事実を所有するApplication / Semantic / Database Contract / Realization / Binding / external Evidenceへ戻します。
 
 ## 現在地
+
+### 2026-09-19 Gate B Ready（ISSUE-000029 / #273）
+
+Gate Bの必須3-lane Evidence（#310 / #255 / #308）が、同じclean candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`のsame-runで成立し、`#387` final convergenceと`#273`独立artifact auditも通過しました。Gate Bは**Ready**です。判定の詳細は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)、Handover Baselineは[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
+
+actual Evidence取得の過程で、以下2件のsource-navigation bug（Driverではなくsyntax anchor / source index scannerの不具合）と、独立artifact auditの期待値staleさ1件を検出・修正しました（PR [#726](https://github.com/hat47x/tei-platform/pull/726) / [#727](https://github.com/hat47x/tei-platform/pull/727)）。Driver自体の意味境界に変更はありません。
+
+以下の2026-09-04時点の記述は、Ready到達までの設計・計画履歴として保持します。
 
 ### 2026-09-04 現行Gate B scope（ISSUE-000035 / #380）
 

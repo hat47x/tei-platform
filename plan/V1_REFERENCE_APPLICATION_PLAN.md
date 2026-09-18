@@ -80,11 +80,11 @@ Gate A   Application meaning → Driver                 Ready
                ↓
 Stage 2  Application Driver                           major semantics ready
                ↓
-Gate B   3 Required Evidence same-R convergence       Not Ready
+Gate B   3 Required Evidence same-R convergence       Ready
                ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R                      固定済み
                ↓
-Stage 3  First Web Target / build revision T1
+Stage 3  First Web Target / build revision T1         未着手
                ↓
 Gate C   Semantic / Functional / Visual Evidence
                ↓
@@ -156,24 +156,22 @@ Evidence要求: `GATE_B_EVIDENCE_ACQUISITION.md`
 
 主要な意味境界とScenario構造は成立しています。
 
-Gate Bは**Not Ready**で、actual Evidence取得待ちです。
+Gate Bは**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
 
 ### Gate B Required Evidence
 
-Required Evidenceは次の三つです。
+Required Evidenceは次の三つで、いずれも同じclean candidate revision `R`のsame-runで成立しています。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-三つを同じclean candidate revision `R`へ揃えます。
-
 ```text
 #310 ─┐
-#255 ─┼─ repositoryRevision = R
+#255 ─┼─ repositoryRevision = R  ← e5231839a5dcc62cce1181a2731fcb7c70d16736
 #308 ─┘
        ↓
-#387 final convergence
+#387 final convergence  ← 成立
 ```
 
 actual Oracle #214 / #371 / #376は第四Required laneではありません。
@@ -209,21 +207,23 @@ Observation / Execution Error
 
 Business Result、Execution Error、Observation、Diagnosticを別々に扱います。
 
-### Gate B current blocker
+### Gate B blocker（解消済み）
 
-現在の直接blockerは新しい抽象設計ではなく、actual executionです。
+actual executionが直接blockerでしたが、2026-09-19に解消しました。
 
-- actual TEI checkoutで#310
-- clean check-only #255
-- Evidence専用空PostgreSQLで#308
-- #387でsame-R final convergence
-- #273でReady再監査
+- [x] actual TEI checkoutで#310
+- [x] clean check-only #255
+- [x] Evidence専用空PostgreSQLで#308
+- [x] #387でsame-R final convergence
+- [x] #273でReady再監査
+
+過程で2件のsource-navigation bugと1件の独立artifact audit期待値のstaleさを検出・修正しました（PR [#726](https://github.com/hat47x/tei-platform/pull/726) / [#727](https://github.com/hat47x/tei-platform/pull/727)）。
 
 ## Gate B — UIなしで主要Scenarioを再現できる
 
-現在: **Not Ready**
+現在: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
 
-Readyには少なくとも次を要求します。
+Readyには少なくとも次を要求し、すべて満たしています。
 
 - #310 / #255 / #308が同じcandidate `R`
 - 各Evidenceの`reproducibleRevision = true`
@@ -239,7 +239,7 @@ Ready判定の正本は`GATE_B_READINESS_AUDIT.md`です。
 
 関連: `GATE_B_TO_C_HANDOVER_CONTRACT.md` / `ISSUE-000030` / #291
 
-Gate B Ready時、candidate revision `R`をHandover Baseline `B`へ固定します。
+Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
 
 ```text
 Gate B Ready for R
@@ -275,7 +275,7 @@ Evidence: `ISSUE-000028` / #270
 
 ### 着手条件
 
-**Gate B Ready + Handover Baseline固定後**です。
+**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立しており、着手可能です。
 
 ### baseline RとTarget build T1
 

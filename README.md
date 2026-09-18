@@ -14,8 +14,8 @@ TEIは、**業務上の意味を長く保ちながら、実装・Database・Targ
 - 外部世界で実際に何が観測されたか
 - 何が未検証 / unresolvedか
 
-> **現在地 — 2026-09-05:** architecture & product validation / research implementation  
-> `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は **Gate B: Not Ready** で、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Providerのactual Evidenceを同じclean candidate revisionへ収束する段階です。第一Web Target、Studio / AI、第二TargetはまだProduct Evidence取得前です。
+> **現在地 — 2026-09-19:** architecture & product validation / research implementation  
+> `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は **Gate B: Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）で、Handover Baseline `B / R`も固定済みです。第一Web Target、Studio / AI、第二TargetはまだProduct Evidence取得前です。
 
 完成したlow-code製品、production-ready Editor、production-ready multi-Target Runtimeを提供する段階ではありません。
 
@@ -36,9 +36,9 @@ TEIは、**業務上の意味を長く保ちながら、実装・Database・Targ
 ### 現在のGate
 
 - **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
-- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Not Ready
+- **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Ready
 - **Gate B Evidence:** [Acquisition](plan/GATE_B_EVIDENCE_ACQUISITION.md) / [Runbook](plan/GATE_B_EVIDENCE_RUNBOOK.md)
-- **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- **Gate B → C:** [Handover Contract](plan/GATE_B_TO_C_HANDOVER_CONTRACT.md) / [Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
 - **Gate C:** [Gate C Evidence Contract](plan/GATE_C_EVIDENCE_CONTRACT.md)
 
 ### 技術を読む / 動かす
