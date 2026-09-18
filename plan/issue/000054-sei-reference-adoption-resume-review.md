@@ -1,6 +1,6 @@
 # ISSUE-000054: SEI Resume / Reviewを第二ApplicationのReference Adoptionとして圧力試験する
 
-- 状態: In Progress
+- 状態: In Progress — Change 2 Product behavior probeはGate B / C境界でdeferred
 - 提案日: 2026-09-18
 - 性格: Reference adoption / cross-application pressure / implementation strategy validation
 - 主担当要求: RQ-003 / RQ-004 / RQ-010 / RQ-011 / RQ-021 / RQ-022 / RQ-023
@@ -269,6 +269,43 @@ Change 1
 
 Change 1は両方式にとって容易すぎて差別化力が低いことも分かった。次は、Presentation / Projection concernだけを変更するChallenge 2、またはEvidence / Governance Surfaceへ進む前に、TEI current Gateで実際にPressureできる範囲を再監査する。
 
+## Change 2 gate-aware boundary — 2026-09-18
+
+次の候補だった「Resumeの表示順・progressive disclosureだけを変える」Change 2について、current TEI Gateを再監査した。
+
+current stateは次である。
+
+```text
+Gate B = Not Ready
+Gate C = Blocked
+First Web Target = Not Implemented
+complete Target-neutral Presentation IR = Not Established
+```
+
+この状態でSEI Reference専用の`display_order`、`resume-layout`、独自Presentation model等を作ると、既存TEI能力のleverageではなく、このReferenceのために新設したsurrogate infrastructureを評価することになる。
+
+そのためChange 2の**Product behavior probeはdefer**する。これはTEIが失敗したという判定ではなく、比較の妥当性を守る停止線である。
+
+再開条件は次のいずれかとする。
+
+1. Gate B Ready後、Handover Baseline `B` / revision `R`が固定され、First Web Target workへ正式に進む。
+2. またはSEIとは独立した根拠でtarget-neutral Presentation機構が成立し、SEI固有概念を追加せずPressureできる。
+
+machine-readable boundaryは`reference/sei-adoption/change2-presentation-gate-boundary-20260918.json`へ保存する。
+
+```text
+Change 2 deferred
+  != TEI failure
+
+custom Reference presentation helper PASS
+  != TEI Presentation leverage
+
+current action
+  = do not invent surrogate layer
+```
+
+この間に進められるのは、Target behaviorを要求しないEvidence / Governance Surfaceのmapping等に限る。
+
 ## 非目標
 
 - SEIのdomain vocabularyをTEI Coreへ取り込む
@@ -288,9 +325,9 @@ Change 1は両方式にとって容易すぎて差別化力が低いことも分
 - [x] Go 1.23.2でfixture-local `go test`を実行する
 - [x] `go vet`を実行する
 - [x] representative Change 1についてnative / TEI Referenceのchange amplificationを比較する
-- [ ] gapをExisting / reusable extension / Native / Product gap candidateへ再分類する
-- [ ] SEI側ISSUE-000079へEvidence高さを返す
-- [ ] broad / incremental / limited / deferredの判断に必要な次Evidenceを明示する
+- [x] Change 1とChange 2 Gate監査から、Existing / reusable extension / Native / Product gap candidateを再分類する
+- [x] SEI側ISSUE-000079へChange 1のEvidence高さを返す
+- [x] broader adoption判断に必要な次EvidenceとChange 2再開条件を明示する
 
 ## Natural Japanese review
 
