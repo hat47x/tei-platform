@@ -60,6 +60,9 @@ operational recovery required
 Reference Pattern frequency
   != current applicability
 
+past successful composition / experience memory
+  != current applicability
+
 retrieval similarity
   != semantic evidence
 
@@ -253,9 +256,10 @@ S1を成立とみなす最低条件:
 2. 意味の異なるcandidateを最低2案保持する。最大数を固定KPIにはしない。
 3. existing asset candidateはcurrent M1へexactに戻る。
 4. proposal candidateは存在しないCanonical IDをaccepted refとして持たない。
-5. Reference Pattern / associative retrievalのprovenanceをcurrent semantic Evidenceへ変換しない。
-6. 各candidateでassumption / unresolvedが区別される。
-7. 「候補が一つしか残らない」場合も、生成器が一つしか出さなかったのか、constraintで縮約されたのかを区別できる。
+5. Reference Pattern / associative retrieval / experience memoryのprovenanceをcurrent semantic Evidenceへ変換しない。
+6. past successful composition / experience candidateを利用する場合、元Execution / Observation / Evidenceへ戻れ、current accepted authority / dependency / Target条件で再qualificationされる。
+7. 各candidateでassumption / unresolvedが区別される。
+8. 「候補が一つしか残らない」場合も、生成器が一つしか出さなかったのか、constraintで縮約されたのかを区別できる。
 
 ### 5.7 S1 Negative Acceptance
 
@@ -264,6 +268,8 @@ S1を成立とみなす最低条件:
 - 言い換えだけを複数案として数える
 - Pattern名をcurrent requirementへ自動適用する
 - retrieval scoreをapplicabilityと呼ぶ
+- 過去の成功trajectory / compositionをcurrent applicabilityやaccepted meaningとして扱う
+- stale experienceをcurrent accepted authority / Target条件の再確認なしに適用する
 - missing identityをLLMが補完する
 - unresolvedをcandidateから隠す
 - existing assetとnew proposalを同じauthorityとして表示する

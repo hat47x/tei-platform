@@ -180,16 +180,24 @@ LLMへ渡す前に、Repository全体を自由探索させる代わりに、TEI�
 
 実装候補はrule engine、constraint propagation、CSP / SAT / SMT等を比較できますが、特定solverはProduct contractにしません。
 
-### C2 — pattern / Reference cognition
+### C2 — pattern / Reference / experience cognition
 
 - Application Pattern
 - Reference Model pattern
 - accepted design precedent
-- past successful composition
+- past successful composition / verified experience candidate
 
 をprovenance付き候補として呼び戻します。
 
-patternの存在を正解とはみなしません。
+patternの存在や過去の成功を正解とはみなしません。past successful composition / experience candidateはcandidate sourceであり、current applicabilityのEvidenceではありません。利用時は元Execution / Observation / Evidenceへ戻れるprovenanceを保持し、current accepted authority / dependency / Target条件でqualificationします。
+
+```text
+past success
+  != current applicability
+  != semantic Acceptance
+```
+
+experience memory / learned rankingを削除してもaccepted meaningが変わらないことを維持します。
 
 ### C3 — associative / structural cognition
 

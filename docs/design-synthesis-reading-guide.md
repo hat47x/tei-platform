@@ -178,6 +178,7 @@ derived cognitive memory
 
 experience memory
   proposal / decision / run / correction history
+  + condition / action / observed outcome / failure / boundary等のverified local relation候補
 ```
 
 Derived Cognitionは二番目です。
@@ -187,6 +188,16 @@ indexを削除しても、Canonical meaningは失われてはいけません。
 algorithmをFlyHashから別方式へ変えても、業務意味が変わってはいけません。
 
 学習によってcandidate rankingが変わっても、それだけで仕様が変わってはいけません。
+
+experience memoryも同じです。過去に成功したcompositionやtrajectoryは、現在の設計で使える候補を呼び戻すhintにはできますが、current applicabilityのEvidenceではありません。
+
+```text
+past success
+  != current applicability
+  != accepted meaning
+```
+
+再利用する場合は、元のExecution / Observation / Evidenceへ戻れるprovenanceを保ち、current accepted authority / dependency / Target条件で再qualificationします。experience memoryを削除してもCanonical Worldは変わってはいけません。
 
 ## 6. local LLMは何を担当するのか
 
@@ -208,7 +219,7 @@ LLMへ渡す情報も、Repository全部ではなくboundedなcontextにしま�
 
 ```text
 目的
-現在revision
+accepted snapshot / required authority fingerprints
 既知のfact
 既存資産
 hard constraint
