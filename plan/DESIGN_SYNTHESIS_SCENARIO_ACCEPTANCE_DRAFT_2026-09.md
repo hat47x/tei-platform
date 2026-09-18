@@ -72,6 +72,10 @@ LLM output
 Proposal / semantic change accepted
   != current execution authority
 
+decision policy / routing choice
+  != semantic action contract
+  != current execution authority
+
 generated implementation
   != test oracle
 
