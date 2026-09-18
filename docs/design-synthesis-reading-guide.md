@@ -210,6 +210,24 @@ same accepted meaning
 
 共通なのはpayload形ではなく、同じCanonical / Source / Evidence / accepted Decisionへ戻れることです。Design SynthesisのContext Packetは候補比較のために小さく保ち、AI-native開発全体のKnowledge Storeへ成長させません。
 
+### Patternを思い出すことと、Knowledgeを移植することは別
+
+Reference Patternは「この構造が役立つかもしれない」というcandidate sourceです。
+
+一方、あるApplicationで受入済みのPolicy、Validation、Capability contract、Infrastructure mapping等を別Applicationへ再利用する場合は、origin側の前提まで含めて扱います。
+
+```text
+origin knowledge
+  + assumption / dependency / Variation
+  + destination context
+  -> applicability / mismatch / override
+  -> destination Acceptance
+```
+
+originで成立したからdestinationでも成立する、とはしません。またoriginが後で変わったからdestinationも自動更新する、ともしません。
+
+destinationがoriginへlinked dependencyを持つのか、origin provenanceを残したlocal variationとして独立するのかを区別できることが重要です。具体的なpackage / inheritance機構はReference前に固定しません。
+
 ## 5. Derived Cognitionは第二の正本ではない
 
 この領域で特に避けたいのは、検索indexやAI memoryの中にしか存在しない業務意味を作ることです。
