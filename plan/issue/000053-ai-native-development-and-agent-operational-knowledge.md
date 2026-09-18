@@ -724,6 +724,46 @@ policy target exists
 
 なおR3Fは同一 `order_entry` Reference family内のcross-Procedure reuseであり、独立second corpusではない。ISSUE-000048 / ISSUE-000050のPre-ADR blocker Bを解消したとは扱わない。
 
+
+### R3G — Authorization invariant / variation precedence
+
+R3Fのrepository-backed cross-Procedure reuseを踏まえ、Pattern共通requirement候補とBusiness context固有variationを同じauthorityへ潰さないため、minimum invariant / additional requirement / exception intent / precedenceを分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3G_AUTHORIZATION_REQUIREMENT_INVARIANT_VARIATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3g_authorization_invariant_variation_pressure_test.go`
+
+R3Gでは:
+
+```text
+Pattern minimum invariant
+  != duplicated Business requirements
+
+Business Step additional requirement
+  != Pattern authority copy
+
+explicit exception intent
+  != accepted override
+
+more specific scope
+  != automatic precedence
+
+applicability authority
+  != precedence authority
+```
+
+をPressureする。
+
+Pattern minimum `required` とBusiness Step `not-required` が衝突しても、より具体的なscopeだからStepが勝つとは扱わない。explicit exception intentがあってもprecedence authorityが未解決ならconflictのままfail closedする。
+
+test-onlyには `pattern-minimum` / `step-exception` のprecedence候補を比較用に置くが、production ruleとして採用したとは扱わない。
+
+この段階でもproduction Business Procedure schema、Application Pattern grammar、override relation、precedence ruleは固定しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
