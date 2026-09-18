@@ -1,0 +1,36 @@
+name: Knowledge portability reference evidence
+
+# 2026-09-19:
+# GitHub-hosted runner allocation is currently unavailable for this repository.
+# PR run 35385856132 failed twice before any step was created (runner_id=0).
+# Keep the reusable workflow manual-only until a successful hosted-runner
+# allocation is observed; the same check remains runnable through the script.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run focused Knowledge Portability Reference Evidence
+        shell: bash
+        env:
+          TEI_REFERENCE_EVIDENCE_OUT: knowledge-portability-reference-test.txt
+        run: bash tools/run-knowledge-portability-reference-evidence.sh
+
+      - name: Upload Reference Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-portability-reference-evidence
+          path: knowledge-portability-reference-test.txt
+          if-no-files-found: warn
