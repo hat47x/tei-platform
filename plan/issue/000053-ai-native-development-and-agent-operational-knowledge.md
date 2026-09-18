@@ -1347,6 +1347,61 @@ static source current
 production invalidation engine / runtime Observation store / Business Source Index extension / global revision protocolは追加しない。
 
 
+
+### R3S — Projection dependency reason boundary
+
+R3Rでprojection dependencyをprofile / Source Index subject / Reference artifact / runtime Observation / locator integrityへ分離した後、selected categoryが**なぜそのdependencyを必要とするか**をreason付きでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3S_PROJECTION_DEPENDENCY_REASON_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3s_projection_dependency_reason_pressure_test.go`
+
+R3Sでは:
+
+```text
+selected projection category
+  -> dependency key
+  -> reason code
+```
+
+をderived relationとして保持する。
+
+current BP-06では、たとえば:
+
+```text
+machine-reasons
+  <- Business Procedure Reference
+     reason = authorization-requirement-source
+
+machine-reasons
+  <- protected-target overlay
+     reason = protected-resource-source
+
+source-refs
+  <- current locator
+     reason = drill-down-locator
+```
+
+のように、同じartifactでもProjection上の役割を区別する。
+
+Human bounded viewでomittedされたcategoryのreason edgeはrequired dependencyへ混ぜず、Agent full viewではselected categoryとして保持できる。
+
+runtime outcomeがnon-emptyならexact current Observation reasonを要求し、static sourceだけでruntime outcomeを説明しない。
+
+```text
+dependency reason
+  != authority edge
+  != next action
+  != handoff owner
+```
+
+を維持し、production dependency graph / impact engine / incremental build engineは追加しない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
