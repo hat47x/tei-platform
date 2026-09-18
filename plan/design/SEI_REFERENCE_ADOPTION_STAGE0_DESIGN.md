@@ -340,6 +340,36 @@ SEIはtemporal integrity、Decision memory、Evidence / GovernanceをPressureし
 
 ただし二Applicationで使えただけでCore primitiveにはしません。Target component、Plugin、Adapterで意味追加なしに扱えるかを先に比較します。
 
+## 11.1 Challenge B — Evidence / Governance mapping
+
+Change 2のProduct behaviorをGate-awareにdeferした後、Target実装なしでも検証できるChallenge Bの意味所有境界を監査した。
+
+既存TEIはgenericなEvidence mechanicsとして、
+
+- non-Canonical artifact
+- subject / revision / build / context trace
+- fingerprint / retained artifact verification
+- provenance
+- secret-safe collection
+- Evidence natureの非代替性
+
+を既に持つ、または設計基線として保持している。
+
+一方、SEIのreview bundleが持つ、
+
+- reviewer observation / semantic auditの分離
+- review開始条件の固定
+- reveal順序
+- authorship / prior exposure declaration
+- Evidence高さ
+- Product Value / Stable Requirement stopline
+
+はSEI Product / evaluation semanticsであり、TEIへ移す必要はない。
+
+このためStage 0では新しいEvidence schema、Application Pattern、Pluginを追加しない。TEIが将来担うとしても、既存SEI Evidenceを意味変更せずProjectionするSurface側に限定する。
+
+mapping artifactは`reference/sei-adoption/challenge-b-evidence-governance-mapping-20260918.json`とする。
+
 ## 12. 次段への条件
 
 TEI Application / Projectionへの本格接続へ進む前に、
