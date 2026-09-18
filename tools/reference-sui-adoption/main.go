@@ -62,26 +62,26 @@ type constraintCoverage struct {
 }
 
 type report struct {
-	SchemaVersion          string         `json:"schemaVersion"`
-	SourceContract         string         `json:"sourceContract"`
-	SourceAuthority        string         `json:"sourceAuthority"`
-	SourceRepository       string         `json:"sourceRepository"`
-	SourceRevision         string         `json:"sourceRevision"`
-	SourceContractBlob     string         `json:"sourceContractBlob"`
-	SourceHandoffBlob      string         `json:"sourceHandoffBlob"`
-	SourceContractTestBlob string         `json:"sourceContractTestBlob"`
-	SourceHandoffTestBlob  string         `json:"sourceHandoffTestBlob"`
-	TEIAuthority      string         `json:"teiAuthority"`
-	Fixture           string         `json:"fixture"`
-	FixtureValid      bool           `json:"fixtureValid"`
-	InstanceCount     int            `json:"instanceCount"`
-	RootIslandIDs     []string       `json:"rootIslandIds,omitempty"`
-	ParentLinks       []parentLink   `json:"parentLinks,omitempty"`
-	Diagnostics       []diagnostic       `json:"diagnostics,omitempty"`
-	Mapping           mappingSummary     `json:"mapping"`
-	ConstraintCoverage []constraintCoverage `json:"constraintCoverage"`
-	WriteAttempted    bool               `json:"writeAttempted"`
-	CanonicalizedData bool           `json:"canonicalizedInstanceData"`
+	SchemaVersion          string               `json:"schemaVersion"`
+	SourceContract         string               `json:"sourceContract"`
+	SourceAuthority        string               `json:"sourceAuthority"`
+	SourceRepository       string               `json:"sourceRepository"`
+	SourceRevision         string               `json:"sourceRevision"`
+	SourceContractBlob     string               `json:"sourceContractBlob"`
+	SourceHandoffBlob      string               `json:"sourceHandoffBlob"`
+	SourceContractTestBlob string               `json:"sourceContractTestBlob"`
+	SourceHandoffTestBlob  string               `json:"sourceHandoffTestBlob"`
+	TEIAuthority           string               `json:"teiAuthority"`
+	Fixture                string               `json:"fixture"`
+	FixtureValid           bool                 `json:"fixtureValid"`
+	InstanceCount          int                  `json:"instanceCount"`
+	RootIslandIDs          []string             `json:"rootIslandIds,omitempty"`
+	ParentLinks            []parentLink         `json:"parentLinks,omitempty"`
+	Diagnostics            []diagnostic         `json:"diagnostics,omitempty"`
+	Mapping                mappingSummary       `json:"mapping"`
+	ConstraintCoverage     []constraintCoverage `json:"constraintCoverage"`
+	WriteAttempted         bool                 `json:"writeAttempted"`
+	CanonicalizedData      bool                 `json:"canonicalizedInstanceData"`
 }
 
 func main() {
@@ -150,12 +150,12 @@ func run(workspacePath, fixturePath string) (report, error) {
 		SourceContractTestBlob: sourceContractTestBlob,
 		SourceHandoffTestBlob:  sourceHandoffTestBlob,
 		TEIAuthority:           "definition-only",
-		Fixture:           fixturePath,
-		FixtureValid:      len(diagnostics) == 0,
-		InstanceCount:     len(doc.Islands),
-		RootIslandIDs:     roots,
-		ParentLinks:       links,
-		Diagnostics:        diagnostics,
+		Fixture:                fixturePath,
+		FixtureValid:           len(diagnostics) == 0,
+		InstanceCount:          len(doc.Islands),
+		RootIslandIDs:          roots,
+		ParentLinks:            links,
+		Diagnostics:            diagnostics,
 		Mapping:            mapping,
 		ConstraintCoverage: stage0ConstraintCoverage(),
 		WriteAttempted:     false,
