@@ -117,6 +117,101 @@ Builder re-entry context
 
 を説明できるかを確認する。ただしこれをproduction `ApplicationContext` schemaとして先に固定しない。
 
+## Phase 0 findings — Actor Context Projection
+
+Phase 0の設計基線は `plan/ACTOR_CONTEXT_PROJECTIONS_2026-09.md` とする。
+
+current TEIの棚卸しから、次を確認した。
+
+### F0-1 — 新しいAI専用Knowledge Storeは不要
+
+AI Builder / Human Review / AI Business Actorは、同じAuthoritative Source / Canonical Meaning / Accepted Decisionをauthority rootとして利用できる。
+
+必要なのはactor別のderived contextであり、第二の正本ではない。
+
+### F0-2 — 一つの万能Context Packetへ統合しない
+
+少なくとも次は用途が異なる。
+
+```text
+Builder Re-entry Context
+Human Review Projection
+Operational Projection
+```
+
+既存Design Synthesisの`DesignContextPacket`はBuilder系の一Projectionとして再利用できるが、Operational Agentまで含む万能schemaへ拡張しない。
+
+### F0-3 — Operational Projectionはcross-viewである
+
+Business Procedureだけでは、actual invocationに必要な情報が足りない。
+
+Operational Projectionには必要に応じて、
+
+- Business Action / Procedure
+- Application Pattern / Semantic Capability
+- Validation / Constraint
+- Binding
+- Permission / Authorization
+- Resource
+- Environment
+- Observation / Evidence
+
+をauthorityを混同せず束ねる必要がある。
+
+### F0-4 — `canExecute`一値を導入しない
+
+Agentに対しては少なくとも、
+
+```text
+defined
+  -> resolvable
+  -> bound
+  -> authorized
+  -> resource-ready
+  -> invokable
+  -> command acknowledged
+  -> observed
+  -> business continuation satisfied
+```
+
+を区別する必要がある。
+
+この段階列をproduction enumとして固定はしないが、一つのboolean / confidenceへ畳まない。
+
+### F0-5 — current order_entryはread-only Agent pressureへ利用可能
+
+current Business Procedure Referenceのうち、
+
+- BP-00〜BP-03
+- BP-05
+- BP-06
+- BP-08
+
+は、side effectを起こさず、Procedure理解、Pattern / Validation / Capability trace、Authorization boundary、Observation boundary、human / unresolved handoffをPressureできる。
+
+BP-07 submit commandのside-effect Referenceは後段へdeferする。
+
+## R0 — Static actor context derivation
+
+Phase 1へ進む前に、同一accepted snapshotから次の3 Projectionを静的に組み、情報の重なりと差を確認する。
+
+1. Builder Re-entry Context
+2. Human Review Projection
+3. read-only Operational Projection
+
+R0で確認する項目:
+
+- 同じCanonical / Source / Evidenceへ逆追跡できる
+- actorごとに不要な情報を無制限dumpしない
+- omitted / unresolvedを「存在しない」へ変換しない
+- stale / fingerprintを追える
+- Projection削除でaccepted meaningが変わらない
+- Human向け要約をAgent authorityへ流用しない
+- Agent向けruntime resolutionをCanonical truthへ逆流させない
+- DesignContextPacketを万能schemaへ昇格させない
+
+R0ではproduction schema、Agent framework、Runtime invocationを追加しない。
+
 ## Phase 1 — AI Builder re-entry Reference
 
 既存Reference Applicationへ小さいchange challengeを設定する。
