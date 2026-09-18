@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -9,7 +10,21 @@ import (
 	"tei/internal/workspace"
 )
 
+const (
+	actorContextR3BAuthorizationRequired   = "required"
+	actorContextR3BAuthorizationNotRequired = "not-required"
+	actorContextR3BAuthorizationUnresolved = "unresolved"
+)
+
+type actorContextR3BAuthorizationRequirementProbe struct {
+	Step                 string `json:"step"`
+	Status               string `json:"status"`
+	RequirementSource    string `json:"requirementSource,omitempty"`
+	SupportingCapability string `json:"supportingCapability,omitempty"`
+}
+
 type actorContextR3BInvocationBoundaryProbe struct {
+	AuthorizationRequirementStatus   string   `json:"authorizationRequirementStatus"`
 	PrincipalResolved                bool     `json:"principalResolved"`
 	AuthorizationTargetResolved      bool     `json:"authorizationTargetResolved"`
 	AuthorizationEvaluated           bool     `json:"authorizationEvaluated"`
@@ -17,11 +32,12 @@ type actorContextR3BInvocationBoundaryProbe struct {
 	ContractQueryInvocationAttempted bool     `json:"contractQueryInvocationAttempted"`
 	ObservationReceived              bool     `json:"observationReceived"`
 	CompletionUnresolved             bool     `json:"completionUnresolved"`
-	StopReasons                      []string `json:"stopReasons"`
+	BlockingReasons                  []string `json:"blockingReasons"`
+	DeferredRuntimeGaps              []string `json:"deferredRuntimeGaps"`
 	AuthorityLimits                  []string `json:"authorityLimits"`
 }
 
-func TestActorContextR3BStopsBeforeAuthorizationWhenBP02TargetIsUnresolved(t *testing.T) {
+func TestActorContextR3BStopsAtAuthorizationRequirementBeforeTargetInference(t *testing.T) {
 	root := repoPath()
 	workspacePath := filepath.Join(root, "reference", "workspace")
 	fixturePath := filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json")
@@ -52,46 +68,101 @@ func TestActorContextR3BStopsBeforeAuthorizationWhenBP02TargetIsUnresolved(t *te
 			SubjectID:  "subject-order-viewer",
 		},
 	)
-	if !principal.PrincipalResolved {
-		t.Fatalf("test setup failed to resolve explicit authenticated subject: %+v", principal)
+	requirement, err := deriveActorContextR3BAuthorizationRequirementProbe(f, "BP-02")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if principal.AuthorizationTargetResolved ||
-		principal.AuthorizationAction != "" ||
-		principal.AuthorizationResource != "" {
-		t.Fatalf("test setup unexpectedly has an explicit BP-02 Authorization target: %+v", principal)
+	if requirement.Status != actorContextR3BAuthorizationUnresolved {
+		t.Fatalf("BP-02 Authorization requirement must remain unresolved without explicit authority: %+v", requirement)
+	}
+	if requirement.Status == actorContextR3BAuthorizationNotRequired {
+		t.Fatalf("absence of security.authorize was treated as explicit not-required authority: %+v", requirement)
 	}
 
-	got := deriveActorContextR3BInvocationBoundaryProbe(principal)
-	if !got.PrincipalResolved {
-		t.Fatalf("R3B lost the resolved authenticated principal boundary: %+v", got)
+	got := deriveActorContextR3BInvocationBoundaryProbe(principal, requirement)
+	if got.AuthorizationRequirementStatus != actorContextR3BAuthorizationUnresolved {
+		t.Fatalf("R3B lost Authorization requirement uncertainty: %+v", got)
 	}
-	if got.AuthorizationTargetResolved || got.AuthorizationEvaluated {
-		t.Fatalf("R3B promoted unresolved Authorization into target/evaluation state: %+v", got)
+	if !actorContextR0Contains(got.BlockingReasons, "authorization-requirement-unresolved") {
+		t.Fatalf("R3B did not stop at the earliest unresolved Authorization prerequisite: %+v", got.BlockingReasons)
 	}
-	if got.AuthorizationInvocationAttempted {
-		t.Fatalf("R3B invoked security.authorize without explicit action/resource authority: %+v", got)
+	if actorContextR0Contains(got.BlockingReasons, "authorization-action-resource-unresolved") {
+		t.Fatalf("R3B promoted target/action into a required blocker before requirement authority exists: %+v", got.BlockingReasons)
 	}
-	if got.ContractQueryInvocationAttempted {
-		t.Fatalf("R3B invoked the Contract Query before Authorization was resolved/evaluated: %+v", got)
+	if actorContextR0Contains(got.BlockingReasons, "authorization-not-evaluated") {
+		t.Fatalf("R3B treated unevaluated Authorization as a blocker before knowing Authorization is required: %+v", got.BlockingReasons)
 	}
-	if got.ObservationReceived {
-		t.Fatalf("R3B fabricated an Observation without invocation: %+v", got)
+	if got.AuthorizationInvocationAttempted || got.ContractQueryInvocationAttempted {
+		t.Fatalf("R3B crossed unresolved Authorization requirement boundary: %+v", got)
 	}
-	if !got.CompletionUnresolved {
-		t.Fatalf("R3B treated a blocked runtime path as Business Action completion: %+v", got)
+	if got.ObservationReceived || !got.CompletionUnresolved {
+		t.Fatalf("R3B fabricated downstream outcome across an unresolved prerequisite: %+v", got)
 	}
-	for _, reason := range []string{
-		"authorization-action-resource-unresolved",
+	for _, deferred := range []string{
 		"authorization-not-evaluated",
 		"input-instance-value-unresolved",
 		"resource-provider-not-evaluated",
 	} {
-		if !actorContextR0Contains(got.StopReasons, reason) {
-			t.Fatalf("R3B did not surface stop reason %q: %+v", reason, got.StopReasons)
+		if !actorContextR0Contains(got.DeferredRuntimeGaps, deferred) {
+			t.Fatalf("R3B lost deferred runtime context %q: %+v", deferred, got.DeferredRuntimeGaps)
 		}
 	}
 
 	assertActorContextR3BNoAuthorityShortcut(t, reflect.TypeOf(actorContextR3BInvocationBoundaryProbe{}))
+}
+
+func TestActorContextR3BRequirementGatesWhetherPrincipalAndTargetArePrerequisites(t *testing.T) {
+	basePrincipal := actorContextR3APrincipalAuthorizationProbe{
+		PrincipalResolved: false,
+		RuntimeGaps: []string{
+			"actor-principal-unresolved",
+			"authorization-not-evaluated",
+		},
+	}
+
+	unresolved := deriveActorContextR3BInvocationBoundaryProbe(
+		basePrincipal,
+		actorContextR3BAuthorizationRequirementProbe{Step: "BP-02", Status: actorContextR3BAuthorizationUnresolved},
+	)
+	if !reflect.DeepEqual(unresolved.BlockingReasons, []string{"authorization-requirement-unresolved"}) {
+		t.Fatalf("unresolved requirement should be the current blocker before principal necessity is known: %+v", unresolved.BlockingReasons)
+	}
+	if actorContextR0Contains(unresolved.DeferredRuntimeGaps, "authorization-requirement-unresolved") {
+		t.Fatalf("current blocker leaked into deferred runtime gaps: %+v", unresolved.DeferredRuntimeGaps)
+	}
+
+	required := deriveActorContextR3BInvocationBoundaryProbe(
+		basePrincipal,
+		actorContextR3BAuthorizationRequirementProbe{
+			Step:                 "BP-06",
+			Status:               actorContextR3BAuthorizationRequired,
+			RequirementSource:    "business-procedure-security-boundary",
+			SupportingCapability: "security.authorize",
+		},
+	)
+	for _, reason := range []string{"actor-principal-unresolved", "authorization-action-resource-unresolved"} {
+		if !actorContextR0Contains(required.BlockingReasons, reason) {
+			t.Fatalf("required Authorization did not expose prerequisite %q: %+v", reason, required.BlockingReasons)
+		}
+	}
+
+	notRequired := deriveActorContextR3BInvocationBoundaryProbe(
+		basePrincipal,
+		actorContextR3BAuthorizationRequirementProbe{
+			Step:              "hypothetical-explicit-negative",
+			Status:            actorContextR3BAuthorizationNotRequired,
+			RequirementSource: "hypothetical-explicit-authority",
+		},
+	)
+	if actorContextR0Contains(notRequired.BlockingReasons, "actor-principal-unresolved") ||
+		actorContextR0Contains(notRequired.BlockingReasons, "authorization-action-resource-unresolved") ||
+		actorContextR0Contains(notRequired.BlockingReasons, "authorization-not-evaluated") {
+		t.Fatalf("explicit not-required Authorization still required Authorization-specific runtime prerequisites: %+v", notRequired.BlockingReasons)
+	}
+	if actorContextR0Contains(notRequired.DeferredRuntimeGaps, "authorization-requirement-unresolved") ||
+		actorContextR0Contains(notRequired.DeferredRuntimeGaps, "authorization-not-evaluated") {
+		t.Fatalf("explicit not-required Authorization retained obsolete Authorization-specific deferred gaps: %+v", notRequired.DeferredRuntimeGaps)
+	}
 }
 
 func TestActorContextR3BDoesNotBorrowBP06ProtectedTargetOrPolicyForBP02(t *testing.T) {
@@ -155,32 +226,90 @@ func TestActorContextR3BDoesNotBorrowBP06ProtectedTargetOrPolicyForBP02(t *testi
 		t.Fatal("test setup failed to add policy-only BP-02 resource")
 	}
 	if actorContextR3ACorroboratesExplicitAuthorizationTarget(principal, policyOnly) {
-		t.Fatalf("R3B allowed policy-only target to become BP-02 Business/Application authority: %+v", principal)
+		t.Fatalf("policy-only target became BP-02 Business/Application authority: %+v", principal)
 	}
 
-	got := deriveActorContextR3BInvocationBoundaryProbe(principal)
+	requirement, err := deriveActorContextR3BAuthorizationRequirementProbe(f, "BP-02")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := deriveActorContextR3BInvocationBoundaryProbe(principal, requirement)
+	if got.AuthorizationRequirementStatus != actorContextR3BAuthorizationUnresolved {
+		t.Fatalf("policy/adjacent target evidence changed BP-02 Authorization requirement: %+v", got)
+	}
 	if got.AuthorizationInvocationAttempted || got.ContractQueryInvocationAttempted {
-		t.Fatalf("R3B crossed the fail-closed boundary after unrelated/policy-only target evidence: %+v", got)
+		t.Fatalf("R3B crossed fail-closed boundary after unrelated/policy-only evidence: %+v", got)
 	}
-	if !actorContextR0Contains(got.StopReasons, "authorization-action-resource-unresolved") {
-		t.Fatalf("R3B lost the missing explicit target stop reason: %+v", got.StopReasons)
+}
+
+func deriveActorContextR3BAuthorizationRequirementProbe(
+	f fixture,
+	stepID string,
+) (actorContextR3BAuthorizationRequirementProbe, error) {
+	var match *step
+	for i := range f.Steps {
+		if f.Steps[i].ID != stepID {
+			continue
+		}
+		if match != nil {
+			return actorContextR3BAuthorizationRequirementProbe{}, fmt.Errorf("Authorization requirement Step %q is ambiguous", stepID)
+		}
+		match = &f.Steps[i]
 	}
+	if match == nil {
+		return actorContextR3BAuthorizationRequirementProbe{}, fmt.Errorf("Authorization requirement Step %q not found", stepID)
+	}
+
+	result := actorContextR3BAuthorizationRequirementProbe{
+		Step:   stepID,
+		Status: actorContextR3BAuthorizationUnresolved,
+	}
+	hasAuthorize := false
+	for _, capability := range match.Capabilities {
+		if capability == "security.authorize" {
+			hasAuthorize = true
+			break
+		}
+	}
+	if match.Realization == "security-boundary" && hasAuthorize {
+		result.Status = actorContextR3BAuthorizationRequired
+		result.RequirementSource = "business-procedure-security-boundary"
+		result.SupportingCapability = "security.authorize"
+	}
+	return result, nil
 }
 
 func deriveActorContextR3BInvocationBoundaryProbe(
 	principal actorContextR3APrincipalAuthorizationProbe,
+	requirement actorContextR3BAuthorizationRequirementProbe,
 ) actorContextR3BInvocationBoundaryProbe {
-	reasons := append([]string(nil), principal.RuntimeGaps...)
-	if !principal.PrincipalResolved {
-		reasons = append(reasons, "authenticated-subject-unresolved")
+	blockers := []string{}
+	switch requirement.Status {
+	case actorContextR3BAuthorizationRequired:
+		if !principal.PrincipalResolved {
+			blockers = append(blockers, "actor-principal-unresolved")
+		}
+		if !principal.AuthorizationTargetResolved ||
+			strings.TrimSpace(principal.AuthorizationAction) == "" ||
+			strings.TrimSpace(principal.AuthorizationResource) == "" {
+			blockers = append(blockers, "authorization-action-resource-unresolved")
+		} else if !principal.AuthorizationEvaluated {
+			blockers = append(blockers, "authorization-not-evaluated")
+		}
+	case actorContextR3BAuthorizationNotRequired:
+		// Explicit negative authority would bypass Authorization-specific prerequisites.
+	default:
+		blockers = append(blockers, "authorization-requirement-unresolved")
 	}
-	if !principal.AuthorizationTargetResolved ||
-		strings.TrimSpace(principal.AuthorizationAction) == "" ||
-		strings.TrimSpace(principal.AuthorizationResource) == "" {
-		reasons = append(reasons, "authorization-action-resource-unresolved")
+
+	deferred := append([]string(nil), principal.RuntimeGaps...)
+	deferred = actorContextR3ARemoveGap(deferred, "authorization-requirement-unresolved")
+	if requirement.Status == actorContextR3BAuthorizationNotRequired {
+		deferred = actorContextR3ARemoveGap(deferred, "authorization-not-evaluated")
 	}
 
 	return actorContextR3BInvocationBoundaryProbe{
+		AuthorizationRequirementStatus:   requirement.Status,
 		PrincipalResolved:                principal.PrincipalResolved,
 		AuthorizationTargetResolved:      principal.AuthorizationTargetResolved,
 		AuthorizationEvaluated:           principal.AuthorizationEvaluated,
@@ -188,12 +317,14 @@ func deriveActorContextR3BInvocationBoundaryProbe(
 		ContractQueryInvocationAttempted: false,
 		ObservationReceived:              false,
 		CompletionUnresolved:             true,
-		StopReasons:                      actorContextR0SortedUnique(reasons),
+		BlockingReasons:                  actorContextR0SortedUnique(blockers),
+		DeferredRuntimeGaps:              actorContextR0SortedUnique(deferred),
 		AuthorityLimits: []string{
-			"stop-reason-does-not-author-missing-target",
+			"absence-of-authorization-declaration-does-not-mean-not-required",
+			"policy-rule-does-not-author-authorization-requirement",
+			"application-access-does-not-author-authorization-requirement",
+			"requirement-gates-principal-target-and-evaluation-prerequisites",
 			"bp06-protected-target-does-not-apply-to-bp02",
-			"policy-rule-does-not-author-business-application-target",
-			"authorization-must-precede-read-invocation-when-required",
 		},
 	}
 }

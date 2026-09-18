@@ -3,6 +3,7 @@
 - Status: ISSUE-000053 / Phase 3 follow-up pressure / Reference-only
 - Date: 2026-09-18
 - Parent: `plan/ACTOR_CONTEXT_R3A_PRINCIPAL_AUTHORIZATION_BOUNDARY_2026-09.md`
+- Refined by: `plan/ACTOR_CONTEXT_R3C_AUTHORIZATION_REQUIREMENT_AUTHORITY_2026-09.md`
 - Related: `plan/LANE_B_AUTHORIZATION_TARGET_AUTHORITY_AUDIT_2026-09.md`
 - Side effect: None
 - Product Gate impact: None
@@ -10,23 +11,30 @@
 
 ## 1. 目的
 
-R3Aでは、explicit Authentication Observationからruntime principalを解決できても、BP-02のAuthorization action/resource authorityは解決しないことを確認した。
+R3Bは、read-only Operational Projectionが未解決のAuthorization前提をAgent推論で埋めず、actual invocationより前でfail closedできるかをPressureする。
 
-R3Bでは、この不足をAgentが推論で埋めず、actual invocationより前でfail closedできるかをPressureする。
+重要な順序は次である。
 
 ```text
-authenticated subject
-  + understood read route
-  + missing explicit Authorization target
-  -> stop before security.authorize
-  -> stop before Contract Query
+Authorization requirement?
+  unresolved -> stop here
+
+  required
+    -> principal?
+    -> action/resource target?
+    -> Authorization evaluation?
+    -> downstream runtime prerequisites
+
+  explicitly not-required
+    -> Authorization-specific prerequisitesを要求しない
+    -> downstream runtime prerequisitesへ
 ```
 
-R3Bはactual Authorization / Query invocationを実装しない。
+この段階列はtest-only pressureであり、production enum / workflow engineではない。
 
-## 2. current BP-02に存在するもの
+## 2. BP-02ではrequirement自体が未解決
 
-BP-02についてcurrent Referenceから静的に解決できるもの:
+BP-02から静的に解決できるもの:
 
 - Business Action
 - `order_entry.customer_reference`
@@ -34,146 +42,169 @@ BP-02についてcurrent Referenceから静的に解決できるもの:
 - Application access `read`
 - Contract `master_data.customer`
 - Query `find_by_id`
-- input semantic mapping
-- result cardinality
 
-R3Aを通じてruntimeで追加できるもの:
-
-- explicit authenticated `subjectId`
-
-一方、current Business/Application authorityにはBP-02用の明示的な:
-
-- Authorization action
-- Authorization resource / protected target
-
-がない。
-
-したがって `read -> browse`、Pattern identity -> policy resourceという補完は行わない。
-
-## 3. BP-06 protected-target pressureとの関係
-
-既存のtest-only protected-target overlayには、BP-06について:
+一方、current Business ProcedureではBP-02は:
 
 ```text
-BP-06
-  supporting capability = security.authorize
-  protected target      = order_entry.submit_order
+realization = application-use
+applicationPatterns = [order_entry.customer_reference]
 ```
 
-が明示されている。
+であり、`security.authorize` requirementを明示していない。
 
-これは、
-
-```text
-supporting semantic capability
-  != protected application target
-  != Application Function realization
-```
-
-をPressureする既存Evidenceである。
-
-しかし同overlayにはBP-02 targetがない。
-
-したがってR3Bでは:
+ここから:
 
 ```text
-BP-06 explicit target
-  != BP-02 target
+security.authorize absent
+  != Authorization not required
 
-adjacent / same Procedure target
-  != reusable authorization authority
-```
-
-として扱う。
-
-## 4. Legacy Authorization policyはstop reasonを解消しない
-
-current policyにはBP-02 `order_entry.customer_reference` ruleがない。
-
-さらにtest-onlyで:
-
-```text
-browse / order_entry.customer_reference / allow
-```
-
-を追加しても、それだけではBusiness/Application target authorityにならない。
-
-policyは明示targetをcorroborateできても、missing targetをauthor/backfillしない。
-
-## 5. R3B test-only projection
-
-`InvocationBoundaryProbe`は結果を一つの `canExecute` に畳まない。
-
-保持するのは:
-
-- principal resolved?
-- Authorization target resolved?
-- Authorization evaluated?
-- Authorization invocation attempted?
-- Contract Query invocation attempted?
-- Observation received?
-- completion unresolved?
-- stop reasons
-- authority limits
-
-current BP-02では:
-
-```text
-principal resolved                  = true
-authorization target resolved       = false
-authorization evaluated             = false
-authorization invocation attempted  = false
-contract query invocation attempted = false
-observation received                = false
-completion unresolved               = true
+Application access = read
+  != Authorization required
+  != Authorization not required
 ```
 
 とする。
 
-## 6. stop / handoffの意味
-
-R3Bで確定するのは「ここでは進めない」という境界までである。
+したがってcurrent BP-02の最初のblocking reasonは:
 
 ```text
-stop reason
-  = authorization-action-resource-unresolved
+authorization-requirement-unresolved
 ```
 
-から、
+である。
 
-- どの人へhandoffするか
-- どのteamがtargetをauthorするか
-- targetをBusiness ProcedureとApplicationのどちらへ永続化するか
+## 3. BP-06は対照例
+
+BP-06は:
+
+```text
+realization = security-boundary
+capabilities = [security.authorize]
+```
+
+を明示する。
+
+このBusiness Step自身については、Authorization requirementを `required` と扱える。
+
+さらにtest-only protected-target overlayはBP-06のtargetとして `order_entry.submit_order` を明示する。
+
+ただし:
+
+```text
+BP-06 requirement / target
+  != BP-02 requirement / target
+```
+
+であり、同一Procedure内だからといって流用しない。
+
+## 4. principalはrequirementに従属する
+
+R3Aは、explicit authenticated subjectからprincipalを安全に解決する方法をPressureした。
+
+しかし:
+
+```text
+principal can be resolved
+  != principal is required for every Action
+```
+
+である。
+
+Authorization requirementが `required` と確定した場合にだけ、Authorization用principalをprerequisiteとして要求する。
+
+requirementが未解決なら、まずrequirement authorityを解決する。
+
+将来explicit `not-required` authorityが成立した場合は、Authorization用principal / target / evaluationをその経路の必須条件にはしない。
+
+## 5. target/action/evaluationもrequirementに従属する
+
+R3Aで確認した:
+
+- `read -> browse` を生成しない
+- Pattern identityをresource authorityへしない
+- policyだけでtargetをbackfillしない
+
+という境界は維持する。
+
+さらにR3Bでは、requirement自体が未解決の段階で:
+
+```text
+authorization-action-resource-unresolved
+authorization-not-evaluated
+```
+
+を**現在のblocking reason**へ昇格させない。
+
+それらはruntime contextとして保持できるが、Authorizationがrequiredと判明した後にprerequisiteとして評価する。
+
+## 6. policyはrequirement authorityではない
+
+Legacy policyにresource ruleが:
+
+- あること
+- ないこと
+
+のどちらもBusiness/Application側のAuthorization requirementをauthorしない。
+
+```text
+policy rule present
+  != Authorization required
+
+policy rule absent
+  != Authorization not required
+```
+
+policyはaccepted target/actionがある場合のrealization / corroboration Evidenceである。
+
+## 7. test-only projection
+
+`InvocationBoundaryProbe`では:
+
+- Authorization requirement status
+- principal resolved
+- target resolved
+- evaluated
+- invocation attempted
+- query invocation attempted
+- Observation received
+- completion unresolved
+- current blocking reasons
+- deferred runtime gaps
+- authority limits
+
+を分ける。
+
+一つの `canExecute` / `ready` / confidenceには畳まない。
+
+current BP-02では:
+
+```text
+authorization requirement     = unresolved
+principal resolved             = true  // explicit Authentication Observationを与えたpressure case
+current blocker                = authorization-requirement-unresolved
+authorization invocation       = not attempted
+Contract Query invocation      = not attempted
+Observation                    = none
+Business completion            = unresolved
+```
+
+principalが解決済みでも、それがAuthorization applicabilityを決めないことが重要である。
+
+## 8. stop / handoff
+
+stop reasonから:
+
+- handoff owner
+- authoring owner
+- production field
+- policy role
 
 を推論しない。
 
-既存Lane B auditが示す候補を比較し、accepted authorityが得られた時点で次段へ進む。
+R3Bは「現在のauthorityではここから先へ進まない」ことだけを示す。
 
-## 7. Source Index追随
+## 9. Evidence
 
-R3 sourceがSource Index subject resolutionへ移行したため、R3A/R3Bも同じread-route derivationを利用する。
+Design / Source Evidence。
 
-```text
-semantic subject identity
-  -> Source Index definition
-  -> current locator
-
-runtime Authentication Observation
-  != static Source Index definition
-```
-
-principal/runtime contextをstatic freshness fingerprintへ混ぜない。
-
-## 8. Evidence高さ
-
-この段階はDesign / Source Evidenceである。
-
-actual `security.authorize` invocation、Contract Query invocation、Observation、Business continuationはまだ存在しない。
-
-actual runnerでtest PASSを取得するまではExecutable Evidenceとも呼ばない。
-
-## 9. 次
-
-次段では、BP-02にAuthorizationが本当に必要かを含め、protected-target/action authorityをどのaccepted sourceへ置くべきかを既存Lane Bのpressureと統合して比較する。
-
-authorityが成立するまではinvokeしない。
+actual `go test` PASS、Authorization invocation、Query invocation、Observationはまだ主張しない。

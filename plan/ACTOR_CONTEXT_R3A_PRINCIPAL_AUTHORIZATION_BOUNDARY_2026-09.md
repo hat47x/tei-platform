@@ -237,3 +237,20 @@ Operational Evidence
 ```
 
 R3AではDesign / Sourceまでを対象とする。
+
+## R3C refinement — requirement precedes target
+
+R3B/R3Cの追加pressureにより、BP-02についてはAuthorization action/resource以前に、Authorization requirement自体がcurrent accepted sourceから確定していないことを明示する。
+
+したがってR3Aで保持する最初のAuthorization gapは `authorization-requirement-unresolved` とする。
+
+```text
+security.authorize not declared
+  != authorization not-required
+
+Application access = read
+  != authorization required
+  != authorization not-required
+```
+
+R3Aのprincipal resolutionは「認証済みsubjectが与えられた場合にprincipalを捏造せず解決できる」ことを示す独立pressureであり、全Actionでprincipalが必須であることを意味しない。
