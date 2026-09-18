@@ -61,7 +61,33 @@ TEI repositoryには、SEI fixtureの固定snapshotをReference inputとして�
 - source Git blob: `6354fce0a01093cb5545ed6bb9730aceb3b20023`
 - TEI snapshot: `reference/sei-adoption/decision-continuity-counterfactual-001.json`
 
-TEI snapshotは固定実験入力であり、第二正本ではありません。
+TEI snapshotは固定実験入力であり、第二正本ではありません。TEI側snapshot自身のGit blobも`6354fce0a01093cb5545ed6bb9730aceb3b20023`で、固定SEI sourceと同一bytesである。
+
+### 3.1 pinned baselineとcurrent sourceを分ける
+
+このReferenceのauthorityはbranch名ではなく、上記の**pinned revision / source blob**へ束縛する。
+
+```text
+pinned revision/blob conformance
+  != current SEI main conformance
+
+branch reachability
+  != semantic authority
+```
+
+2026-09-18のcross-repository再確認では、
+
+- SEI current `main`: `a485a658ee622433990dcb7323859a70f4be6f49`
+- pinned `e943683f...`はcurrent `main`の254 commit後の子孫
+- current `main`には固定fixture pathが存在しない
+- `develop/v0.2.0`、ISSUE-000073 runtime branch、一部evaluation branchはpinned revisionを祖先として保持
+- `develop/v0.2.0`上のfixture blobは固定blobと同一
+
+を確認した。
+
+この状態を理由にcurrent `main`を「古い」「誤り」と評価しない。Stage 0 reportは`authority_scope = pinned-revision-only`、`current_source_conformance = not-claimed`として、固定実験baselineとcurrent Product sourceを混同しない。
+
+将来current sourceへの適合を主張する場合は、その時点のactual dependency blobを別途固定・比較する。repository-wide revision変化だけでStage 0をstaleにするglobal freshnessへは戻さない。
 
 ## 4. input / oracle分離
 
