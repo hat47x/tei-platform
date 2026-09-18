@@ -199,7 +199,7 @@ func projectFixture(f fixture) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	basis, err := resolveRefs(decision.BasisRefs, phaseIndex, nil, "basis_refs")
+	basis, err := resolveRefs(decision.BasisRefs, phaseIndex, map[string]bool{"observation": true}, "basis_refs")
 	if err != nil {
 		return report{}, err
 	}
