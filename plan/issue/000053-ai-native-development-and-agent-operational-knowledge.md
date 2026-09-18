@@ -1047,6 +1047,63 @@ next authority needed = Authorization action authority
 
 として、projection自身もauthority sourceへ昇格させない。
 
+
+### R3M — Operational stop explanation / handoff boundary
+
+R3Lでaction-locus Evidence不足のためproduction locus選択を停止した後、AI Business Actorが未解決authorityで止まった事実を、別authorityを発明せず外部へ説明するProjectionをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3m_operational_stop_explanation_pressure_test.go`
+
+current BP-06では:
+
+```text
+requirement = required
+resource = order_entry.submit_order
+action authority = unresolved
+```
+
+なので、explanationは:
+
+```text
+stop stage = authorization-action-authority
+blocking reason = authorization-action-authority-unresolved
+missing authority class = authorization-action-authority
+```
+
+までを提示できる。
+
+一方:
+
+```text
+missing action value = execute
+handoff owner = security team / sales operator
+next action = BP-07
+```
+
+などは生成しない。
+
+```text
+explain missing authority class
+  != infer missing authority value
+
+resolution requested
+  != handoff recipient known
+
+downstream not attempted
+  != downstream gap promoted to current blocker
+```
+
+を維持する。
+
+Projectionはderived / non-authoritativeで、known requirement / protected resourceにはprovenanceを保持し、machine-readable blocker vocabularyを自然言語要約で失わない。production ticket routing / human task assignment / notification transportは追加しない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
