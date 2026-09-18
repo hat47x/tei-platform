@@ -324,6 +324,46 @@ current action
 
 この間に進められるのは、Target behaviorを要求しないEvidence / Governance Surfaceのmapping等に限る。
 
+## Challenge B mapping — Evidence / Governance
+
+Target behaviorを要求しない範囲で、SEI Evidence bundleとTEI current Evidence / Provenance境界を対応付けた。
+
+結果は、すべてをTEIへ寄せる構造ではない。
+
+### Existing TEIとして再利用できる境界
+
+- Evidence artifactをCanonical authorityにしない
+- subject / revision / build / Scenario / contextへのtrace
+- exact artifact fingerprint / retained-file integrity
+- source provenance / processing
+- secret-safe Evidence採取
+- deterministic / synthetic / external / interactive / production等のEvidence natureを相互代替しない
+
+### Native SEI Governanceとして残す境界
+
+- human reviewer observationとsemantic auditの意味分離
+- review開始時の条件固定、reference reveal順序
+- reviewer authorship / prior exposure declaration
+- SEI固有のEvidence高さの解釈
+- Product Value / Stable Requirementへの昇格可否
+
+TEIは将来これらを表示・traceできても、意味authorityを取得しない。
+
+Review / Diff VisualizationはSUIとSEIの双方で需要が見えるためreusable extension候補ではあるが、Gate C Target Evidenceがない現時点ではcandidateに留める。
+
+machine-readable mappingは`reference/sei-adoption/challenge-b-evidence-governance-mapping-20260918.json`へ保存する。
+
+```text
+generic Evidence integrity / provenance
+  -> Existing TEI
+
+SEI review semantics / evidence-height authority
+  -> Native SEI Governance
+
+interactive Review / Diff Surface
+  -> Deferred / candidate only
+```
+
 ## 非目標
 
 - SEIのdomain vocabularyをTEI Coreへ取り込む
