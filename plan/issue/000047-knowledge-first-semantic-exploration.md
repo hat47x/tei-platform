@@ -347,6 +347,18 @@ routing score、model内部signal、検索順位はcandidate generationのsignal
 過去の成功関係が現在も成立するとは限らないため、current Source / dependency / authority / Target条件へ戻って再評価します。memoryを無効化・削除してもCanonical Worldが変化しないことを維持します。
 
 
+## Gate C後のsecond Application起動
+
+第二Application Referenceの最初の探索は、Gate C Readyを明示Evidenceで確認した後、
+
+- `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+
+のS1として実行する。
+
+本Issueはcandidate discovery / qualificationを担当し、Application source authoringやEnvironment Bindingを所有しない。
+
+qualification結果は同じISSUE-000040 primary workstreamへhandoffし、探索専用branchを長期正本にしない。
+
 ## Knowledge Portabilityへのhandoff
 
 candidate qualification後、別Applicationで再利用する場合のauthority / provenance / freshnessはISSUE-000053 Phase 5へ渡す。
