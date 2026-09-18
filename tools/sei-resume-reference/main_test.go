@@ -121,6 +121,18 @@ func TestReferenceRejectsMissingHistoricalBasisReference(t *testing.T) {
 	}
 }
 
+func TestReferenceRejectsHistoricalBasisRoleConfusion(t *testing.T) {
+	f := loadReferenceFixture(t)
+	for i := range f.Scenario.Phase1 {
+		if f.Scenario.Phase1[i].Role == "decision" {
+			f.Scenario.Phase1[i].BasisRefs = []string{"unk-b-rate-limit"}
+		}
+	}
+	if _, err := projectFixture(f); err == nil || !strings.Contains(err.Error(), "basis_refs") || !strings.Contains(err.Error(), "resolves role") {
+		t.Fatalf("expected historical basis role rejection, got %v", err)
+	}
+}
+
 func TestReferenceRejectsRecommendationRoleConfusion(t *testing.T) {
 	f := loadReferenceFixture(t)
 	for i := range f.Scenario.Phase1 {
