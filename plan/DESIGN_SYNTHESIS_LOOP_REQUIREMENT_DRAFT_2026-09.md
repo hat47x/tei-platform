@@ -348,6 +348,19 @@ routing score / retrieval rank / model内部signalだけで`applicable`へ進め
 
 ただし、current decisionに必要な`unknown`、missing authority、contradiction reason等をcontext削減のために落としません。
 
+このContext PacketはDesign Synthesis S3用のtask-scoped projectionであり、RQ-027のAI Builder re-entry context、RQ-028のHuman Review Projection、RQ-030のOperational Projectionを一つへ統合するproduction contractではない。
+
+```text
+shared authority roots
+  Canonical / Source / Evidence / Decision
+        ├─> Builder re-entry context
+        ├─> S3 DesignContextPacket
+        ├─> Human Review Projection
+        └─> Operational Projection
+```
+
+必要なfactやtraceは共有できても、用途ごとのdisclosure・authority limit・freshness scopeを保つ。DesignContextPacketをRepository-wide Knowledge Storeや万能Application contextへ拡張しない。
+
 現時点のconceptual shapeは、後続R3〜R6のread-only Evidenceに合わせて次のように読む。
 
 ```text
