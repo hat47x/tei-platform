@@ -8,6 +8,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/database"
 	"tei/internal/ir"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -49,8 +50,12 @@ func TestActorContextR3DerivesReadIntentWithoutInventingRuntimeAuthority(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	got, err := deriveActorContextR3ReadIntentProbe(loaded.World, f, workspacePath, fixturePath)
+	got, err := deriveActorContextR3ReadIntentProbe(loaded.World, sourceIdx, f, fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,15 +63,20 @@ func TestActorContextR3DerivesReadIntentWithoutInventingRuntimeAuthority(t *test
 	if got.ReferenceFingerprint == "" {
 		t.Fatal("R3 lost the Business Procedure Reference fingerprint")
 	}
-	for _, artifact := range []string{
-		actorContextR1ApplicationArtifact,
-		actorContextR1PatternArtifact,
-		actorContextR1ContractArtifact,
-		actorContextR0ProcedureArtifact,
+	for _, subject := range []struct {
+		kind string
+		id   string
+	}{
+		{kind: "application", id: actorContextR1ApplicationSubject},
+		{kind: "application-pattern", id: actorContextR1PatternSubject},
+		{kind: "database-contract", id: actorContextR1ContractSubject},
 	} {
-		if !actorContextR1HasInputArtifact(got.RequiredInputFingerprints, artifact) {
-			t.Fatalf("R3 freshness set does not include decisive read-route input %q: %+v", artifact, got.RequiredInputFingerprints)
+		if !actorContextR0HasInputSubject(got.RequiredInputFingerprints, subject.kind, subject.id) {
+			t.Fatalf("R3 freshness set does not include decisive read-route subject %s:%s: %+v", subject.kind, subject.id, got.RequiredInputFingerprints)
 		}
+	}
+	if !actorContextR1HasInputArtifact(got.RequiredInputFingerprints, actorContextR0ProcedureArtifact) {
+		t.Fatalf("R3 freshness set lost the Business Procedure Reference: %+v", got.RequiredInputFingerprints)
 	}
 	if actorContextR1HasInputArtifact(got.RequiredInputFingerprints, actorContextR0ConflictArtifact) {
 		t.Fatalf("R3 must not depend on R1 conflict Evidence that is irrelevant to the read route: %+v", got.RequiredInputFingerprints)
@@ -121,7 +131,7 @@ func TestActorContextR3DerivesReadIntentWithoutInventingRuntimeAuthority(t *test
 	assertActorContextR3NoRuntimeAuthorityShortcut(t, reflect.TypeOf(actorContextR3ReadIntentProbe{}))
 }
 
-func deriveActorContextR3ReadIntentProbe(world ir.World, f fixture, workspacePath, fixturePath string) (actorContextR3ReadIntentProbe, error) {
+func deriveActorContextR3ReadIntentProbe(world ir.World, sourceIdx sourceindex.Index, f fixture, fixturePath string) (actorContextR3ReadIntentProbe, error) {
 	if f.Canonical {
 		return actorContextR3ReadIntentProbe{}, errProcedureMeaning("R3 Business Procedure fixture must remain non-canonical")
 	}
@@ -187,7 +197,7 @@ func deriveActorContextR3ReadIntentProbe(world ir.World, f fixture, workspacePat
 	if err != nil {
 		return actorContextR3ReadIntentProbe{}, err
 	}
-	inputs, err := actorContextR3InputFingerprints(workspacePath, fixturePath)
+	inputs, err := actorContextR3InputFingerprints(sourceIdx, fixturePath)
 	if err != nil {
 		return actorContextR3ReadIntentProbe{}, err
 	}
@@ -229,25 +239,28 @@ func deriveActorContextR3ReadIntentProbe(world ir.World, f fixture, workspacePat
 	}, nil
 }
 
-func actorContextR3InputFingerprints(workspacePath, fixturePath string) ([]actorContextR0InputFingerprint, error) {
+func actorContextR3InputFingerprints(sourceIdx sourceindex.Index, fixturePath string) ([]actorContextR0InputFingerprint, error) {
 	specs := []struct {
-		scope    string
-		artifact string
-		path     string
+		kind string
+		id   string
 	}{
-		{scope: "source-definition", artifact: actorContextR1ApplicationArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "application.tei")},
-		{scope: "source-definition", artifact: actorContextR1PatternArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "patterns", "customer-reference.tei")},
-		{scope: "source-definition", artifact: actorContextR1ContractArtifact, path: filepath.Join(workspacePath, "databases", "master-data", "contracts", "customer.tei")},
-		{scope: "business-procedure-reference", artifact: actorContextR0ProcedureArtifact, path: fixturePath},
+		{kind: "application", id: actorContextR1ApplicationSubject},
+		{kind: "application-pattern", id: actorContextR1PatternSubject},
+		{kind: "database-contract", id: actorContextR1ContractSubject},
 	}
-	inputs := make([]actorContextR0InputFingerprint, 0, len(specs))
+	var inputs []actorContextR0InputFingerprint
 	for _, spec := range specs {
-		input, err := actorContextR0FileInputFingerprint(spec.scope, spec.artifact, spec.path)
+		input, err := actorContextR1SourceIndexInputFingerprint(sourceIdx, spec.kind, spec.id)
 		if err != nil {
 			return nil, err
 		}
 		inputs = append(inputs, input)
 	}
+	procedureInput, err := actorContextR0FileInputFingerprint("business-procedure-reference", actorContextR0ProcedureArtifact, fixturePath)
+	if err != nil {
+		return nil, err
+	}
+	inputs = append(inputs, procedureInput)
 	return actorContextR0NormalizeInputFingerprints(inputs), nil
 }
 

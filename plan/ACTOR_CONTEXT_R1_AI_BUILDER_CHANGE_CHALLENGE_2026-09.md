@@ -281,6 +281,16 @@ R1はR0のBusiness Procedure Reference fingerprintだけを持ち越して「cur
 
 test-only probeはこれら5 inputのcontent fingerprintを保持する。
 
+Application / Pattern / Database Contractは固定pathから直接読むのではなく、
+
+```text
+Canonical subject
+  -> Source Index definition reference
+  -> current artifact locator + content fingerprint
+```
+
+で解決する。Business Procedure Reference / conflict Evidenceは現時点でSource Index管理外の固定Reference inputとして直接fingerprintする。
+
 ```text
 R0 shared baseline
   + R1 challenge-local decisive inputs
@@ -288,6 +298,8 @@ R0 shared baseline
 ```
 
 したがってBusiness Procedure Referenceが同一でも、Application access、Pattern、Contract、conflict Evidenceのいずれかが変わればR1を再評価対象にできる。一方、無関係なRepository変更だけでR1をstale-allにはしない。
+
+Source-managed fileがlocatorだけ移動し内容とsubject identityが不変なら、R1意味の変更とはしない。drill-down pathはSource Indexのcurrent locatorへ追随する。
 
 ## 7. 成功条件
 

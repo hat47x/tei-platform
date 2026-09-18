@@ -116,6 +116,22 @@ unrelated accepted change
 
 staleなcontextをcurrent authorityとして利用しない一方、実際に依存していない変更だけで全Projectionをstale扱いにしない。
 
+また、Source Index管理下のinputではsemantic subject identityとsource locatorを分ける。
+
+```text
+subject identity + content fingerprint
+  = freshness dependency
+
+artifact path
+  = current drill-down locator
+
+locator-only move
+  != semantic change
+  != content freshness change
+```
+
+file move後はSource Indexから新しいlocatorを再解決する。固定pathをsemantic identityやfreshness authorityへ昇格させない。
+
 ### 3.4 Omissionを隠さない
 
 bounded contextである以上、含まれない情報がある。

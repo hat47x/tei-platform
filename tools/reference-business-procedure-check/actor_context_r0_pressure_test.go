@@ -22,6 +22,8 @@ const (
 
 type actorContextR0InputFingerprint struct {
 	Scope       string `json:"scope"`
+	SubjectKind string `json:"subjectKind,omitempty"`
+	SubjectID   string `json:"subjectId,omitempty"`
 	Artifact    string `json:"artifact"`
 	Fingerprint string `json:"fingerprint"`
 }
@@ -123,8 +125,8 @@ func TestActorContextR0DerivesPurposeSpecificProjectionsFromSameReference(t *tes
 		if !actorContextR0HasInputScope(inputs, "source-definition") {
 			t.Fatalf("%s projection did not bind freshness to selected workspace source definitions: %+v", name, inputs)
 		}
-		if !actorContextR0HasInputArtifact(inputs, "applications/order-entry/application.tei") {
-			t.Fatalf("%s projection lost the Application source that owns datasource access: %+v", name, inputs)
+		if !actorContextR0HasInputSubject(inputs, "application", "order_entry") {
+			t.Fatalf("%s projection lost the Application subject that owns datasource access: %+v", name, inputs)
 		}
 	}
 	if !actorContextR0HasInputScope(human.RequiredInputFingerprints, "review-evidence") {
@@ -430,6 +432,8 @@ func actorContextR0SourceInputFingerprints(world ir.World, idx sourceindex.Index
 			}
 			out = append(out, actorContextR0InputFingerprint{
 				Scope:       "source-definition",
+				SubjectKind: "application",
+				SubjectID:   string(app.ID),
 				Artifact:    artifact.Path,
 				Fingerprint: artifact.Fingerprint,
 			})
@@ -449,6 +453,8 @@ func actorContextR0SourceInputFingerprints(world ir.World, idx sourceindex.Index
 				}
 				out = append(out, actorContextR0InputFingerprint{
 					Scope:       "source-definition",
+					SubjectKind: group.kind,
+					SubjectID:   id,
 					Artifact:    artifact.Path,
 					Fingerprint: artifact.Fingerprint,
 				})
@@ -474,7 +480,7 @@ func actorContextR0NormalizeInputFingerprints(values []actorContextR0InputFinger
 	seen := map[string]struct{}{}
 	out := make([]actorContextR0InputFingerprint, 0, len(values))
 	for _, value := range values {
-		key := value.Scope + "\x00" + value.Artifact + "\x00" + value.Fingerprint
+		key := value.Scope + "\x00" + value.SubjectKind + "\x00" + value.SubjectID + "\x00" + value.Artifact + "\x00" + value.Fingerprint
 		if _, ok := seen[key]; ok {
 			continue
 		}
@@ -484,6 +490,12 @@ func actorContextR0NormalizeInputFingerprints(values []actorContextR0InputFinger
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Scope != out[j].Scope {
 			return out[i].Scope < out[j].Scope
+		}
+		if out[i].SubjectKind != out[j].SubjectKind {
+			return out[i].SubjectKind < out[j].SubjectKind
+		}
+		if out[i].SubjectID != out[j].SubjectID {
+			return out[i].SubjectID < out[j].SubjectID
 		}
 		if out[i].Artifact != out[j].Artifact {
 			return out[i].Artifact < out[j].Artifact
@@ -505,6 +517,15 @@ func actorContextR0ArtifactByPath(idx sourceindex.Index, path string) (sourceind
 func actorContextR0HasInputScope(values []actorContextR0InputFingerprint, scope string) bool {
 	for _, value := range values {
 		if value.Scope == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func actorContextR0HasInputSubject(values []actorContextR0InputFingerprint, kind, id string) bool {
+	for _, value := range values {
+		if value.SubjectKind == kind && value.SubjectID == id {
 			return true
 		}
 	}

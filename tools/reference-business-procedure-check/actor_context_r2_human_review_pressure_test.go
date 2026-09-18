@@ -36,7 +36,11 @@ func TestActorContextR2BuildsHighDensityHumanReviewWithoutChoosingResolution(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	r1, err := deriveActorContextR1ConstraintProbe(loaded.World, f, workspacePath, fixturePath, conflictPath)
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r1, err := deriveActorContextR1ConstraintProbe(loaded.World, sourceIdx, f, workspacePath, fixturePath, conflictPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,15 +66,12 @@ func TestActorContextR2BuildsHighDensityHumanReviewWithoutChoosingResolution(t *
 			t.Fatalf("R2 lost unresolved dimension %q: %+v", unresolved, got)
 		}
 	}
-	for _, source := range []string{
-		"reference/workspace/applications/order-entry/application.tei",
-		"reference/workspace/applications/order-entry/patterns/customer-reference.tei",
-		"reference/workspace/databases/master-data/contracts/customer.tei",
-		"reference/business-system-design/order-entry-business-procedure.json",
-		"reference/business-system-design/order-entry-customer-edit-conflict.json",
-	} {
+	if !reflect.DeepEqual(got.DrillDownRefs, actorContextR2InputArtifacts(r1.RequiredInputFingerprints)) {
+		t.Fatalf("R2 drill-down refs diverged from the R1 provenance inputs: inputs=%+v refs=%+v", r1.RequiredInputFingerprints, got.DrillDownRefs)
+	}
+	for _, source := range []string{actorContextR0ProcedureArtifact, actorContextR0ConflictArtifact} {
 		if !actorContextR0Contains(got.DrillDownRefs, source) {
-			t.Fatalf("R2 cannot drill down to decisive source %q: %+v", source, got.DrillDownRefs)
+			t.Fatalf("R2 cannot drill down to decisive Reference input %q: %+v", source, got.DrillDownRefs)
 		}
 	}
 	if len(got.ReviewQuestions) < 4 {
@@ -91,8 +92,13 @@ func TestActorContextR2MarksPotentialAuthorityAsConditionalRatherThanMustChange(
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceIdx, err := workspace.BuildSourceIndex(filepath.Join(root, "reference", "workspace"), loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
 	r1, err := deriveActorContextR1ConstraintProbe(
 		loaded.World,
+		sourceIdx,
 		f,
 		filepath.Join(root, "reference", "workspace"),
 		fixturePath,
