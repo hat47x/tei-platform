@@ -210,6 +210,38 @@ Business ProcedureのactorはAuthorization Roleではありません。actor lab
 
 Capabilityの意味的存在と、そのCapabilityをinvokeできるauthorityも別です。
 
+## Decision Policy / Action Contract / Authorityを分ける
+
+Rule、AI、Human-assisted policy等が「次に何をするか」を選ぶことと、その操作の意味や実行権限を定義することを分けます。
+
+```text
+Decision Policy
+  Rule / AI / Human-assisted
+        ↓ selects or proposes
+Validated Semantic Action / Application Action
+        ↓ may invoke
+Capability
+        ↓ current authority check
+Permission / Resource / Runtime Binding
+```
+
+したがって、
+
+```text
+Decision Policy
+  != Action Contract
+  != Capability semantics
+  != current execution authority
+```
+
+です。
+
+Rule policyとAI policyを交換しても、同じsemantic action / Validation / Authorization / Capability / Result / Observation境界へ収束できることを優先します。policyごとに別のCapability、Permission semantics、Business Outcome、Observation modelを作りません。
+
+AI policyがraw tool callを生成できても、それを新しいAction Contractやauthorityとして扱いません。逆にdeterministic Ruleが選んだ操作も、current authority checkを迂回しません。
+
+現時点では汎用Decision Policy interfaceやAction Catalog schemaをCoreへ固定しません。Gate C後のsmall Referenceで、Rule / AIの差し替えがRuntime意味を二重化しないことをPressureします。
+
 ## Database lifecycle
 
 DatabaseはApplicationから独立したUnitです。

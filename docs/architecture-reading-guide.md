@@ -183,6 +183,27 @@ Realization
 
 この境界は[`business-system-design.md`](business-system-design.md)で詳しく説明しています。
 
+### Policyが操作を選ぶことと、操作の意味を定義することは別
+
+AIやRuleが「次にこの操作を使う」と選べても、そのpolicy自身がApplication Action、Capability、Permission、Resultの意味を所有するわけではありません。
+
+```text
+Rule / AI / Human policy
+  -> selects / proposes
+semantic action
+  -> existing Validation / Authorization / Capability / Result boundary
+```
+
+したがって、
+
+```text
+decision policy
+  != action contract
+  != execution authority
+```
+
+として読みます。policyを交換するたびに別のtool semanticsやpermission modelを作らず、既知操作をdeterministic pathで選んでもAIが選んでも、同じ意味・authority境界へ収束させます。
+
 ## 7. ApplicationとDatabaseを分ける
 
 ### 防ぎたい失敗
