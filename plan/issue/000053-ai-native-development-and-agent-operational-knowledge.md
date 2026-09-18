@@ -1312,6 +1312,109 @@ dependency reason
 を維持し、production dependency graph / impact engine / incremental build engineは追加しない。
 
 
+### R3T — Projection re-evaluation reason / impact explanation
+
+R3Sでselected categoryからdependency / reasonへ戻れるようにした後、actual input changeが起きたときに「どのcategoryが、なぜ再評価対象になったか」を説明するtest-only pressureへ進む。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3T_PROJECTION_REEVALUATION_REASON_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3t_projection_reevaluation_reason_pressure_test.go`
+
+R3Tでは少なくとも:
+
+```text
+semantic-source-changed
+reference-input-changed
+locator-refresh-required
+runtime-observation-changed
+profile-changed
+```
+
+を別のchange classとして扱う。
+
+```text
+stale = true
+```
+
+だけへ畳まない。
+
+R3S reason edgeを使い、changeがselected categoryへ実際に接続される場合だけre-evaluation reasonを生成する。
+
+Human bounded viewでomittedされたdependency changeは:
+
+```text
+no selected-category re-evaluation reason
+```
+
+とし、「globally irrelevant」とは扱わない。
+
+locator-only moveでは `source-refs / locator-refresh-required` だけを説明し、semantic machine reasonをstaleへしない。
+
+runtime Observation変化は `runtime-outcome / runtime-observation-changed` へ接続し、static source changeへ読み替えない。
+
+selected / omitted partition変更は `profile-changed` として独立に説明する。
+
+```text
+affected
+  != automatically rebuilt
+```
+
+を維持し、ISSUE-000039のproduction impact engine / invalidation graph / event routingは前倒ししない。
+
+
+
+### R3U — Multi-reason re-evaluation aggregation boundary
+
+R3Tでbounded projectionのre-evaluation reasonをchange class / dependency / reason付きで説明できるようにした後、複数changeが同時に発生した場合のaggregationをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3U_MULTI_REASON_AGGREGATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3u_multi_reason_aggregation_pressure_test.go`
+
+R3Uでは:
+
+```text
+multiple changes
+  -> multiple independent reasons
+  -> exact duplicate normalization
+  != one winning reason
+```
+
+を固定する。
+
+同じcategoryに複数の独立reasonが存在することを許し、semantic source / locator / runtime Observation / profile changeを一つのpriorityへ畳まない。
+
+exact duplicateは:
+
+```text
+category
++ change class
++ dependency key
++ dependency reason
+```
+
+が完全一致する場合だけ統合する。
+
+また、selected reasonとして説明できたchangeをUnselectedChangeへ二重計上しない。一方、bounded projectionで選択されていないchangeは保持し、「globally irrelevant」へ変換しない。
+
+stable sortはrepresentationの決定性だけに用いる。
+
+```text
+stable order
+  != priority
+  != precedence
+```
+
+とし、Winner / PrimaryReason / Severity / FirstCause / AutoRebuild等は導入しない。
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
@@ -1401,60 +1504,6 @@ Capability qualified
 
 R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
 
-
-
-### R3T — Projection re-evaluation reason / impact explanation
-
-R3Sでselected categoryからdependency / reasonへ戻れるようにした後、actual input changeが起きたときに「どのcategoryが、なぜ再評価対象になったか」を説明するtest-only pressureへ進む。
-
-正本:
-
-- `plan/ACTOR_CONTEXT_R3T_PROJECTION_REEVALUATION_REASON_2026-09.md`
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r3t_projection_reevaluation_reason_pressure_test.go`
-
-R3Tでは少なくとも:
-
-```text
-semantic-source-changed
-reference-input-changed
-locator-refresh-required
-runtime-observation-changed
-profile-changed
-```
-
-を別のchange classとして扱う。
-
-```text
-stale = true
-```
-
-だけへ畳まない。
-
-R3S reason edgeを使い、changeがselected categoryへ実際に接続される場合だけre-evaluation reasonを生成する。
-
-Human bounded viewでomittedされたdependency changeは:
-
-```text
-no selected-category re-evaluation reason
-```
-
-とし、「globally irrelevant」とは扱わない。
-
-locator-only moveでは `source-refs / locator-refresh-required` だけを説明し、semantic machine reasonをstaleへしない。
-
-runtime Observation変化は `runtime-outcome / runtime-observation-changed` へ接続し、static source changeへ読み替えない。
-
-selected / omitted partition変更は `profile-changed` として独立に説明する。
-
-```text
-affected
-  != automatically rebuilt
-```
-
-を維持し、ISSUE-000039のproduction impact engine / invalidation graph / event routingは前倒ししない。
 
 
 ## Phase 4 — side-effect Action
