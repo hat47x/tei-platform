@@ -632,6 +632,52 @@ realize security.authorize
 
 current ReferenceだけではBusiness Step側・Application Pattern側のどちらをproduction authorityにするか選ばない。
 
+
+### R3E — second-use-case scope pressure
+
+R3Dのscope差をsingle-use fixtureだけで終わらせず、同じApplication Patternを異なるBusiness contextから利用する第二use caseへ広げる。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3E_AUTHORIZATION_REQUIREMENT_SECOND_USE_CASE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3e_authorization_second_use_case_pressure_test.go`
+
+R3Eでは二つのcaseを分ける。
+
+```text
+Case A
+  one Business context = explicit required
+  second Business context = unresolved
+  same Application Pattern reused
+
+  -> Pattern reuseだけで第二contextをrequiredへしない
+
+Case B
+  two Business contexts = independently explicit required
+  same Application Pattern reused
+
+  -> duplication pressure
+  != Pattern authority proven
+```
+
+また:
+
+```text
+unresolved
+  != not-required
+  != inherited required
+
+Authorization applicable here
+  != Authorization must be re-evaluated here
+```
+
+として、requirement applicabilityとevaluation cadenceを分離する。
+
+この段階でもBusiness Step / Application Patternのproduction authoring locus、override / precedence rule、Application-wide profileは固定しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
