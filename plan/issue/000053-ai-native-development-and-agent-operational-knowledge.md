@@ -374,6 +374,36 @@ actual `go test` PASSおよびfree-exploration vs structured-context比較runは
 
 成功条件は、**sourceを見る前に、どこを見るべきかを正しく絞れること**である。
 
+### R2 first challenge — human review projection
+
+R1と同じcustomer edit要求を使い、生成AIの変更をコード精読前に人間が理解するためのchallengeは `plan/ACTOR_CONTEXT_R2_HUMAN_REVIEW_CHALLENGE_2026-09.md` を正本とする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r2_human_review_pressure_test.go`
+
+R1 constraint projectionから、
+
+- intent
+- current Business / Pattern / Relation / datasource / Contract meaning
+- conflict
+- unresolved dimensions
+- potentially affected authority
+- review questions
+- exact drill-down refs
+- authority limits
+
+を組み立てる。
+
+停止線:
+
+- `potentially affected`を`must change`へ変換しない
+- review questionをanswer / Decisionへ変換しない
+- `Approved` / `Rejected` / `Safe` / `Score` / `Confidence`等をProjectionへ持ち込まない
+- summaryをauthoritative sourceの代替にしない
+
+source追加時点ではHuman Outcome Evidenceではない。actual human reviewでorientation / irrelevant reading / semantic misread等を比較するまではSource Evidenceに留める。
+
 ## Phase 3 — read-only AI Business Actor
 
 Business Procedure Referenceが十分に安定した段階で、最初は副作用のないActionを選ぶ。
