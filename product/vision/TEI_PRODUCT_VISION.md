@@ -60,6 +60,25 @@ TEIは、意味探索を担うSUI Sensemaking、認知・判断の継続性を�
 
 同様に、各ProductがTEIを利用するときも、TEIの内部モデルを相手側のUniversal Coreへ複製することを前提にしません。交換に必要な意味だけを明示的なContractやAdapterで接続できる状態を目指します。
 
+## 自作OSS群から見たTEI
+
+TEIは、個別の業務システムだけでなく、UI・Interaction・domain logic・Validation・Application lifecycleを持つ自作OSSの**Application Implementation Layer**として利用できることを長期的な実証対象とします。
+
+これは、他のProductをTEIの下位moduleへすることを意味しません。Product Value、Domain、Evidence claimは各Repositoryが正本を持ちます。TEIが担うのは、その意味を実装・Projection・Target・Capabilityへ接続するApplication側の共通基盤です。
+
+最初のReference AdoptionとしてSUI Sensemakingを扱います。SUIはspatial canvas、複雑Interaction、review / approval、安全境界、AI / Cognitive Capability等を持つため、TEIが単純なCRUD以外でも開発負荷を下げられるかをPressureできます。
+
+不足が見つかった場合は、次の順で対応します。
+
+1. 既存のTEI model / Pattern / Projection / Capabilityで表現する
+2. reusable Plugin / Adapter / Capabilityとして切り出す
+3. native asset / custom implementationとして接続する
+4. 複数Applicationに共通する意味上の欠落がReferenceで確認できた場合だけCore / Product Requirement候補にする
+
+一方、scheduler、worker、protocol、sandbox、model runtime、認知アルゴリズム本体等のKernel / Infrastructure PlaneまでTEIで実装することは既定としません。SEI CognitionやEKI Fabric等では、管理UI・設定・Projection・業務surfaceはTEI-firstの候補になりますが、専門kernelは各Productのnative implementationを維持できます。
+
+SUIでのReference Adoptionは、TEI利用率ではなく、**同じ意味変更に必要な手書き実装・検証・同期負荷が減るか**で評価します。これにより、TEIが自身のOSS群でも実際に使える開発基盤であるかをdogfoodします。
+
 ## 既存システムから見たTEI
 
 TEIは、新規開発だけを前提にしません。
