@@ -47,6 +47,40 @@
 
 `Domain Component`の専用schemaが必要か、既存Namespaceと明示参照で足りるかはReferenceから決めます。導出できる一覧を人に二重管理させません。
 
+## Knowledge Portabilityから受け取る境界
+
+別Applicationへの組み立てでは、ISSUE-000053 Phase 5のauthority / provenance境界を利用する。
+
+詳細は `plan/KNOWLEDGE_PORTABILITY_HANDOFF_2026-09.md` を参照する。
+
+組み立て時は次を区別する。
+
+```text
+shared authority reference
+  Semantic / compatible Contract / Capability等
+
+destination-owned choice
+  Application Pattern / datasource alias / Binding / Environment binding等
+
+provenance-only relation
+  origin Application / Patternを参考にした履歴
+```
+
+Application-owned Patternをoriginからshared authorityとして継承せず、destinationが自分のPattern identityをauthorする。
+
+同様に、originのdatasource aliasやEnvironment bindingをdestinationへ暗黙copyしない。
+
+第二Application Referenceでは、通常の適合性検査に加え、少なくとも次のchange propagationを確認する。
+
+- shared Semantic changeは実依存consumerをrequalification対象にする
+- Contract major changeはcompatible-major dependencyを再評価する
+- origin Pattern changeはdestination local variationへauto-applyしない
+- destination Pattern changeはoriginへback-propagateしない
+- origin datasource alias / Environment binding changeはdestinationへ伝播しない
+- unrelated origin Application changeでdestinationをstale-allにしない
+
+これらを検証する前にinheritance / override graphやauto-sync protocolをproduction化しない。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
