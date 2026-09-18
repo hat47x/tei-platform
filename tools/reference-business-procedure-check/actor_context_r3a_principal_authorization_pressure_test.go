@@ -46,7 +46,11 @@ func TestActorContextR3AResolvesPrincipalOnlyFromAuthenticatedSubjectObservation
 	if err != nil {
 		t.Fatal(err)
 	}
-	readIntent, err := deriveActorContextR3ReadIntentProbe(loaded.World, f, workspacePath, fixturePath)
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readIntent, err := deriveActorContextR3ReadIntentProbe(loaded.World, sourceIdx, f, fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +132,11 @@ func TestActorContextR3AAuthorizationPolicyCannotBackfillMissingBP02Target(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	readIntent, err := deriveActorContextR3ReadIntentProbe(loaded.World, f, workspacePath, fixturePath)
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readIntent, err := deriveActorContextR3ReadIntentProbe(loaded.World, sourceIdx, f, fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
