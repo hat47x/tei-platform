@@ -257,6 +257,12 @@ func actorContextR3MBuildStopExplanation(
 				"protected-operation-invocation",
 				"business-completion",
 			)
+		case "authorization-evaluation-freshness-authority-unresolved":
+			needs = append(needs, "authorization-evaluation-freshness-authority")
+			downstream = append(downstream,
+				"protected-operation-invocation",
+				"business-completion",
+			)
 		case "authorization-current-context-evaluation-unresolved":
 			needs = append(needs, "authorization-current-context-evaluation")
 			downstream = append(downstream,

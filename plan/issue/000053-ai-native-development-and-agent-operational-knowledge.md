@@ -1558,6 +1558,66 @@ production TTL / Authorization cache / revocation watcher / reevaluation schedul
 
 
 
+### R3Y — Authorization re-evaluation / prior Observation reuse authority
+
+R3XでAuthorization Observationのtuple identityとfreshness authorityを分離した後、tuple match時に残る二つのauthorityを別軸としてPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3Y_AUTHORIZATION_REEVALUATION_REUSE_AUTHORITY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3y_authorization_reevaluation_reuse_authority_pressure_test.go`
+
+R3Yでは:
+
+```text
+reevaluation authority
+  != prior Observation reuse authority
+```
+
+を固定する。
+
+test-only axisは:
+
+```text
+reevaluation:
+  unresolved
+  explicit-reevaluation-required
+
+reuse:
+  unresolved
+  explicit-reuse-permitted
+```
+
+とし、negative/default ruleは作らない。
+
+```text
+no reevaluation directive
+  != reevaluation not required
+
+no reuse directive
+  != reuse prohibited
+```
+
+である。
+
+same-tuple static semantic change、target authority revision、provider policy revisionはfreshness pressureとして保持できるが、それだけではreevaluation / reuseのどちらもauthorしない。
+
+requirement applicability transitionはfreshness authorityで解決せず、locator / presentation-only changeをAuthorization freshnessへ逆流させない。
+
+explicit reevaluation directiveとexplicit reuse permissionが同時に存在する場合も、双方のprovenanceを保持してprecedenceをunresolvedとする。
+
+```text
+both explicit
+  != last-writer-wins
+  != more-specific-wins
+```
+
+production Authorization cache / TTL / revocation watcher / automatic reevaluation schedulerは追加しない。
+
+
 ### R3Z — Authorization freshness precedence Evidence Gate
 
 R3Yでreevaluation authorityとprior Observation reuse authorityを分離した後、production precedence mechanismを必要とするqualifying conflict Evidenceが実際に存在するかをGateにする。
@@ -1604,15 +1664,112 @@ Gate outcome:
 
 ```text
 insufficient-evidence
+same-source-compatibility-unresolved
 synthetic-conflict-pressure
 precedence-mechanism-pressure-qualified
 ```
+
+same tuple / same scopeで両directiveが同一sourceから出る場合は、cross-authority precedence conflictへ昇格させず、source内compatibility semanticsをunresolvedとして保持する。
 
 ただしqualifiedでもWinner / precedence rule / syntaxは選ばない。
 
 current Referenceにはaccepted production freshness directiveがなく、R3Y explicit directiveはtest-only comparison inputであるため、current Gateは `insufficient-evidence` のままとする。
 
 provider policy revisionもexplicit freshness directiveへ昇格させず、priority / override / nearest-scope-wins / last-writer-wins / TTL precedenceは追加しない。
+
+
+
+### R3AA — Authorization freshness authority operational stop / handoff
+
+R3Zでfreshness precedence Evidence Gateを未充足のまま止めた後、current read-only AI Business Actor本線へ戻り、same-tupleのfreshness authority unresolvedを既存R3M〜R3PのOperational stop / handoff projectionへ接続する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aa_authorization_freshness_stop_handoff_pressure_test.go`
+
+test-only taxonomy:
+
+```text
+stage = authorization-evaluation-freshness-authority
+class = evaluation-freshness-authority-unresolved
+reason = authorization-evaluation-freshness-authority-unresolved
+resolution need = authorization-evaluation-freshness-authority
+```
+
+を追加する。
+
+これは:
+
+```text
+freshness authority unresolved
+  != evaluated denied
+  != evaluation not attempted
+  != Observation tuple mismatch
+  != current-context reuse unresolved
+```
+
+という意味差を保持するためであり、production API vocabulary採用ではない。
+
+R3M explanationではresolutionをrequestしてもhandoff recipientを発明せず、R3Nではearlier requirement / principal / target / tuple mismatch blockerをfreshness stopで上書きしない。
+
+R3O common coreとR3P Human / Agent bounded projectionをそのまま再利用し、Human / Agentでdetail disclosureが異なってもmachine reason / resolution need / source refsは同じcoreへ戻る。
+
+```text
+freshness authority unresolved
+  -> explainable stop
+  != denied
+  != retry-required
+  != human-approval-required
+  != hidden cache decision
+```
+
+を維持し、Retry / Approval / CacheValid / ShouldReevaluate / HandoffOwner / NextAction等は導入しない。
+
+
+### R3AA — Authorization freshness authority operational stop / handoff
+
+R3Zのfreshness precedence Gateがcurrent Repositoryでは `insufficient-evidence` のままであるため、same-tuple prior Observationのfreshness authority unresolvedをhidden cache decisionにせずOperational stop / handoffへ戻す。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aa_authorization_freshness_stop_handoff_pressure_test.go`
+
+test-only taxonomy:
+
+```text
+stage = authorization-evaluation-freshness-authority
+class = evaluation-freshness-authority-unresolved
+reason = authorization-evaluation-freshness-authority-unresolved
+resolution need = authorization-evaluation-freshness-authority
+```
+
+prior Observationが `allowed` / `denied` でも、current decision evidenceとして利用できるfreshness authorityが未解決ならcurrent runtime outcomeへ昇格させない。
+
+```text
+freshness authority unresolved
+  -> explainable stop
+  -> explicit resolution need
+  -> unresolved handoff recipient
+
+  != denied
+  != retry-required
+  != human-approval-required
+  != hidden cache decision
+```
+
+R3M explanation / R3N taxonomy / R3O common core / R3P Human・Agent bounded projectionを再利用し、別packetは作らない。
+
+requirement transition unresolvedやObservation tuple mismatch等のearlier / more specific blockerがある場合はfreshness stopへ昇格させない。
+
+production Agent protocol、notification transport、ticket routing、automatic reevaluation schedulerは追加しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
@@ -1802,66 +1959,6 @@ origin classification
 R6DはR3 dependency key / reasonを変更せず、そのinputがroutingから来たかconsumer側の直接入力かだけを説明する。
 
 
-
-
-### R3Y — Authorization re-evaluation / prior Observation reuse authority
-
-R3XでAuthorization Observationのtuple identityとfreshness authorityを分離した後、tuple match時に残る二つのauthorityを別軸としてPressureする。
-
-正本:
-
-- `plan/ACTOR_CONTEXT_R3Y_AUTHORIZATION_REEVALUATION_REUSE_AUTHORITY_2026-09.md`
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r3y_authorization_reevaluation_reuse_authority_pressure_test.go`
-
-R3Yでは:
-
-```text
-reevaluation authority
-  != prior Observation reuse authority
-```
-
-を固定する。
-
-test-only axisは:
-
-```text
-reevaluation:
-  unresolved
-  explicit-reevaluation-required
-
-reuse:
-  unresolved
-  explicit-reuse-permitted
-```
-
-とし、negative/default ruleは作らない。
-
-```text
-no reevaluation directive
-  != reevaluation not required
-
-no reuse directive
-  != reuse prohibited
-```
-
-である。
-
-same-tuple static semantic change、target authority revision、provider policy revisionはfreshness pressureとして保持できるが、それだけではreevaluation / reuseのどちらもauthorしない。
-
-requirement applicability transitionはfreshness authorityで解決せず、locator / presentation-only changeをAuthorization freshnessへ逆流させない。
-
-explicit reevaluation directiveとexplicit reuse permissionが同時に存在する場合も、双方のprovenanceを保持してprecedenceをunresolvedとする。
-
-```text
-both explicit
-  != last-writer-wins
-  != more-specific-wins
-```
-
-production Authorization cache / TTL / revocation watcher / automatic reevaluation schedulerは追加しない。
 
 
 ## Phase 4 — side-effect Action
