@@ -75,7 +75,11 @@ Stage 0では新しいSUI↔TEI共通schemaを発明せず、SUIが既に持つd
 
 次の実装probeへ進む場合も、最初はfixture inputを変更せず、TEI Product codeやCapabilityKindを変更しない隔離されたReference tool / testとして開始する。
 
-current TEI標準Validationは`positive` / `relation-unique`の最小集合であり、SUI hierarchyのcycleやparent/child整合をそのまま表現できるとはまだ言えない。これを理由にValidationKindを先に追加せず、
+current TEI標準Validationは`positive` / `relation-unique`の最小集合であり、SUI hierarchyのcycleやparent/child整合をそのまま表現できるとはまだ言えない。
+
+加えて、current Semantic Relationは`one | many` cardinalityを持つが、SUIのnullable `parentIslandId`が必要とする0..1 presence semanticsを独立表現するcontractは確認できていない。Stage 0 reportではこの点を`unresolved`かつ`lossless = false`として残す。
+
+これらを理由にValidationKindやRelation optionality fieldを先に追加せず、
 
 - Reference-local validationで十分か
 - reusable extensionが必要か
