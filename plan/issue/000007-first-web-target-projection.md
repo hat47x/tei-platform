@@ -117,11 +117,12 @@ Handover Baselineに存在しない意味をWeb側だけで追加してScenario 
 2. Target-neutral Presentation候補
 3. Target Capability候補
 4. Runtime Binding差
-5. Execution / Trust差
-6. Web固有実装
-7. Host control plane固有差
-8. Canonicalへ持ち上げてはいけない差
-9. unresolved
+5. execution artifact / ABI / Host差（観測可能な範囲）
+6. Execution / Trust差
+7. Web固有実装
+8. Host control plane固有差
+9. Canonicalへ持ち上げてはいけない差
+10. unresolved
 
 分類できない差を無理に共通概念へ押し込みません。
 
@@ -228,7 +229,7 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - [ ] Visual Fidelityを別Evidenceとして残せる
 - [ ] standard ProjectionとCustom UIを同じ上位意味へ接続できる
 - [ ] Web Adapterを外してもCanonical Worldが変わらない
-- [ ] Target Capability / Execution / Trust差を`ISSUE-000026`へ渡す
+- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す
 - [ ] Gate CをIssue close状態ではなくEvidenceから判定できる
 
 ## 非目標
@@ -237,6 +238,8 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - Web frameworkの先行固定
 - 完全なPresentation IRの先行設計
 - 第一TargetだけでTarget Capability taxonomyを完成させること
+- Gate Cのためだけに複数execution artifactやWasm実装を用意すること
+- 第一Targetだけでexecution artifact / ABI / Host taxonomyを完成させること
 - Webの不足からCanonicalを逆設計すること
 - pixel-perfect design systemの完成
 - Target build revisionをHandover Baseline revisionと同一に固定すること
