@@ -327,6 +327,69 @@ AI policyがraw tool callを生成できても、それを新しいAction Contra
 
 現時点では汎用Decision Policy interfaceやAction Catalog schemaをCoreへ固定しません。Gate C後のsmall Referenceで、Rule / AIの差し替えがRuntime意味を二重化しないことをPressureします。
 
+### AI BuilderとAI Business Actorを分ける
+
+AIがTEI knowledgeを利用する場合も、**Application definitionを変更する主体**と、**受入済みBusiness / Application knowledgeに従って業務Actionを実行する主体**を分けます。
+
+```text
+Authoring Plane
+
+Canonical / Source / Evidence
+        ↓
+AI Builder
+        ↓
+Proposal / Structured Intent
+        ↓
+Shared Acceptance
+        ↓
+authoritative source update
+```
+
+```text
+Operational Plane
+
+accepted Business / Application knowledge
+        ↓
+Business Procedure / Action
+        ↓
+Semantic Capability
+        ↓
+current Authorization / Resource / Binding
+        ↓
+Command
+        ↓
+Observation / Evidence
+        ↓
+Business Result / unresolved
+```
+
+したがって、
+
+```text
+AI can understand
+  != AI can execute
+
+AI can execute accepted Action
+  != AI can modify its definition
+
+read authority
+  != invoke authority
+  != side-effect authority
+  != authoring authority
+```
+
+です。
+
+AI Business Actorが受入済みAction / Capabilityを選択・invokeすること自体にはCanonical変更Proposalを要求しません。ただしCapability invocationは通常のcurrent Authorization / Permission / Resource / Binding境界を通り、Command successをBusiness completionへ短絡しません。
+
+Semantic Capabilityが存在する場合、AI Business Actorへ人間向けGUIのclick操作を標準境界として強制しません。既存systemにUIしかない場合はcomputer-use / adapterを利用できますが、そのUI操作もTarget-specific realizationであり、Business ResultはObservation / Evidenceへ戻って確認します。
+
+Business Procedureにhuman judgment、physical work、external organization、SaaS等が含まれる場合、それらをAIが実行可能に見せるためだけにCapabilityへ変換しません。AI Actorは必要なhandoff / escalationを保持します。
+
+AI向けにCanonical Worldを複製した第二のKnowledge Baseを正本化しません。必要なOperational Projection / index / bounded contextはderivedでよく、Canonical / Source / Evidenceへ戻れることを要求します。
+
+現時点ではAI Actor専用Runtime、Agent Framework、Agent-only Capability taxonomy、machine-executable Procedure schemaをCoreへ追加しません。RQ-030 / ADR-0028 / ISSUE-000053のReferenceから最小contractを決めます。
+
 ### known operationはAI呼び出しを必須にしない
 
 Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。
