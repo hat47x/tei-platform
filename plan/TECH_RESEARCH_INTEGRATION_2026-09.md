@@ -765,6 +765,54 @@ qualified
 
 R6CはR3S/R3Vのreason identity、R3Wのvalue-change判定、R3XのAuthorization freshness authorityを所有しない。
 
+#### R6D dependency origin classification — 2026-09-19
+
+R6Cでqualified knowledgeからR3 dependencyへlinkできるようになったが、projection dependencyの全てがrouting由来とは限らない。
+
+current BP-06では少なくとも:
+
+```text
+Business Procedure Reference
+  -> routed-qualified-knowledge
+
+protected-target overlay
+  -> consumer-reference-input
+
+runtime Authorization Observation
+  -> consumer-runtime-observation
+```
+
+を分離する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6d_dependency_origin_classification_pressure_test.go`
+
+R6Dは各R3 dependency reasonについて、出所を:
+
+- routed qualified knowledge
+- consumer-local Reference input
+- consumer-local Runtime Observation
+- consumer-local Semantic subject
+
+のいずれかとして明示する。
+
+同じdependencyをroutingとconsumer-localの両方がclaimした場合、またはいずれにも分類できない場合はfail closedする。
+
+```text
+routing available
+  != routing owns every dependency
+
+consumer-local input
+  != routed knowledge
+
+origin class
+  != authority
+  != freshness
+```
+
+これによりR6を万能input registryへ拡張せず、R3側が直接必要とするReference / Runtime / Semantic dependencyを保持できる。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
