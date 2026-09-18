@@ -157,6 +157,14 @@ go run ./tools/reference-deployment-attempt
 
 この実行例の出力には実行時刻に由来する値が含まれるため、出力全体をgoldenとして固定するのではなく、実行が正常に完了することをCIで確認します。
 
+## SUI Reference Adoption fixture
+
+`reference/sui-adoption/` は、SUI SensemakingをTEI上へ段階移管できるかを検証するためのStage 0 fixtureです。
+
+現時点ではSUI既存の `IslandHierarchyContractV1` に対応するM1〜M4だけを固定しています。TEIのCanonical WorkspaceやProduct Requirementの正本ではなく、Gateを飛び越えずread-only mapping / validationを試すためのhand-written fixtureです。
+
+設計は `../plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
+
 ## Reference artifactを追加・更新するとき
 
 Reference artifactは、生成できるから保存するのではなく、設計境界を再現するための共有基準として必要かどうかで判断します。
