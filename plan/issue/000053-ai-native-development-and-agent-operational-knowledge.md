@@ -1722,45 +1722,60 @@ requirement transition unresolvedやObservation tuple mismatch等のearlier / mo
 production Agent protocol、notification transport、ticket routing、automatic reevaluation schedulerは追加しない。
 
 
-### R3AB — Freshness stop drill-down provenance boundary
+### R3AB — Cross-audience freshness drill-down provenance
 
-R3AAでfreshness authority unresolvedをOperational stopへ接続した後、Human / Agentのどちらからdrill downしても同じprovenance chainへ戻れることをPressureする。
+R3AAでfreshness authority unresolvedをOperational stopへ接続した後、Human / Agentが同じshared reasonをdrill downしたときに、同じderived analysis chainとprovenance root identityへ戻れることをPressureする。
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AB_FRESHNESS_STOP_DRILLDOWN_PROVENANCE_2026-09.md`
+- `plan/ACTOR_CONTEXT_R3AB_CROSS_AUDIENCE_FRESHNESS_DRILLDOWN_PROVENANCE_2026-09.md`
 
 test-only source:
 
-- `tools/reference-business-procedure-check/actor_context_r3ab_freshness_stop_drilldown_provenance_pressure_test.go`
+- `tools/reference-business-procedure-check/actor_context_r3ab_cross_audience_freshness_drilldown_provenance_pressure_test.go`
 
-freshness stopのsource refsはtest-onlyに次のroleへ分類する。
-
-```text
-R3X -> authorization-context-identity-boundary
-R3Y -> evaluation-freshness-authority-boundary
-R3Z -> freshness-precedence-evidence-gate
-```
-
-これらを一つの「Authorization authority source」へ平坦化しない。
+R3X / R3Y / R3Z / R3AAのplan/test artifact自体はauthority rootではなく、derived analysis nodeとして扱う。
 
 ```text
-same stop reason
-  + same source refs
-  -> same drill-down provenance roots
-
-same provenance roots
-  != same disclosure set
-  != same presentation
+freshness stop reason
+  -> R3AA Operational stop projection
+     -> R3X context identity analysis
+     -> R3Y freshness authority analysis
+     -> R3Z precedence Evidence Gate
+        -> provenance roots
 ```
 
-Human orientationとAgent resolution-inspectionはdetail disclosureが異なっても、selected `source-refs` から同じroot identityへ戻る。
+provenance rootはtest-onlyに少なくとも次へ分離する。
 
-Human表示文のvariantをprovenance identityへ含めず、unknown source refはauthority / policy / ownerへ推測分類せずfail closedする。
+```text
+Reference Evidence
+runtime Observation
+test-only Authorization context
+Legacy policy corroboration
+```
 
-R3X context identity boundaryをfreshness directive authorityへ、R3Z Evidence GateをAuthorization decision authorityへ昇格させない。
+Business Procedure Reference / protected-target overlayはReference pressure inputでありproduction Canonical authorityへ昇格させない。prior Authorization Observationはruntime Evidenceであり、freshness authority unresolved中のcurrent RuntimeOutcomeへ昇格させない。R3Xのexplicit action contextはtest-only inputのままにし、Legacy policyはcorroborationに留める。
 
-Truth / EffectiveDecision / ReevaluationRequired / ReusePermitted / HandoffOwner / NextAction等はdrill-down projectionへ追加しない。
+```text
+shared reason identity
+  -> same derived chain
+  -> same provenance root identity
+
+audience-specific disclosure
+  != audience-specific truth
+
+derived analysis
+  != authority root
+
+corroboration
+  != authority
+```
+
+Human compact viewとAgent resolution viewはinline disclosure量が異なってよいが、shared root setを別rootへ差し替えない。
+
+root identityとcurrent locatorも分離し、locator-only moveをdifferent truth rootへ変換しない。
+
+TrustedRoot / CanonicalTruth / PreferredSource / Winner / NextAction / HandoffOwner等は追加しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
