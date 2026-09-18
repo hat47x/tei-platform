@@ -1,0 +1,8 @@
+namespace sui
+
+type IslandId from std.identifier
+
+data Island {
+    attribute islandId type sui.island_id
+    relation parent to sui.island one
+}
