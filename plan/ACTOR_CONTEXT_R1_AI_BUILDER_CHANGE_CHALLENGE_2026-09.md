@@ -265,6 +265,30 @@ AI Builderへ変更要求とRepositoryを渡し、特別なTEI structured contex
 
 その後AI Builderへ同じ変更要求を渡す。
 
+### R1 freshness / provenance
+
+R1はR0のBusiness Procedure Reference fingerprintだけを持ち越して「current」とみなさない。
+
+このchallengeで実際に判断へ使うdecisive inputは少なくとも、
+
+- `order_entry/application.tei`
+- `customer-reference.tei`
+- `master_data/customer.tei`
+- Business Procedure Reference
+- customer-edit conflict Evidence
+
+である。
+
+test-only probeはこれら5 inputのcontent fingerprintを保持する。
+
+```text
+R0 shared baseline
+  + R1 challenge-local decisive inputs
+  -> R1 freshness dependency set
+```
+
+したがってBusiness Procedure Referenceが同一でも、Application access、Pattern、Contract、conflict Evidenceのいずれかが変わればR1を再評価対象にできる。一方、無関係なRepository変更だけでR1をstale-allにはしない。
+
 ## 7. 成功条件
 
 R1の成功は「AIが正解コードを書いた」ではない。
@@ -312,7 +336,7 @@ Candidate Bのようにauthorityを広げる案なら、少なくともApplicati
 
 ### S7 — Source / Evidenceへdrill-downできる
 
-自然言語summaryだけで終わらず、元のTEI sourceへ戻れる。
+自然言語summaryだけで終わらず、元のTEI sourceへ戻れる。drill-down locatorだけでなく、今回実際に使ったdecisive inputのcontent fingerprintへ戻れることをPressureする。
 
 ## 8. 観測指標
 
@@ -392,6 +416,7 @@ R1 sourceでは、少なくとも次を固定する。
 7. read-write candidateは既存access conflictを生む
 8. conflictから自動的にCandidate A/B/CのいずれかをAcceptedへしない
 9. direct write conflictをfeature-wide impossibilityへ一般化しない
+10. decisive source / Reference / Evidence inputのfingerprintを保持し、single snapshotだけでfreshnessを表さない
 
 ## 12. Test-only implementation source
 
