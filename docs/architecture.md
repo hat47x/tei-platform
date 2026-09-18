@@ -288,6 +288,22 @@ Target Conformanceでは、少なくとも次を別のEvidenceとして扱いま
 2. Interaction / Functional Evidence
 3. Visual Fidelity Evidence
 
+Interaction / Functional Evidenceは、必要に応じて再実行可能なbehaviorとして残せます。ただし、Target固有selector、coordinate、route、component identity、normalized event等は**derived Evidence / realization**であり、Canonical interaction identityではありません。
+
+```text
+Scenario / Semantic Operation
+        ↓
+Target-specific interaction realization
+        ↓
+Replayable Behavior / raw Target Evidence
+        ↓
+Result / Observation
+        ↓
+Functional Evidence
+```
+
+Replayable Behaviorを利用しても、単一behaviorの成功で複数stepのBusiness Procedureやcumulative workflow全体の成立を代替しません。normalized evidenceを作る場合もraw Target Evidenceへ戻れるprovenanceを保持します。Gate C前にUniversal Event Modelを固定しません。
+
 Visual evaluator、GUI agent、VLM等を利用しても、Visual EvidenceだけでSemantic / Functional Conformanceを成立させません。
 
 第二Targetでの圧力試験は[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)で扱います。
