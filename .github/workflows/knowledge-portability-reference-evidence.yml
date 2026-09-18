@@ -1,24 +1,11 @@
 name: Knowledge portability reference evidence
 
+# 2026-09-19:
+# GitHub-hosted runner allocation is currently unavailable for this repository.
+# PR run 35385856132 failed twice before any step was created (runner_id=0).
+# Keep the reusable workflow manual-only until a successful hosted-runner
+# allocation is observed; the same check remains runnable through the script.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - .github/workflows/knowledge-portability-reference-evidence.yml
-      - tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go
-      - tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
-      - tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
-      - reference/workspace/**
-      - reference/business-system-design/**
-      - internal/application/**
-      - internal/database/**
-      - internal/environment/**
-      - internal/ir/**
-      - internal/sourceindex/**
-      - internal/syntax/**
-      - internal/workspace/**
-      - go.mod
-      - go.sum
   workflow_dispatch:
 
 permissions:
@@ -34,28 +21,11 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Check focused Reference pressure formatting
+      - name: Run focused Knowledge Portability Reference Evidence
         shell: bash
-        run: |
-          set -euo pipefail
-          files=(
-            tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go
-            tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
-            tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
-          )
-          unformatted="$(gofmt -l "${files[@]}")"
-          if [[ -n "$unformatted" ]]; then
-            printf 'Unformatted Go files:\n%s\n' "$unformatted"
-            exit 1
-          fi
-
-      - name: Run Knowledge Portability and second Application pressure tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          go test -count=1 -v ./tools/reference-business-procedure-check \
-            -run '^(TestKnowledgePortabilityR0|TestSecondApplication)' \
-            | tee knowledge-portability-reference-test.txt
+        env:
+          TEI_REFERENCE_EVIDENCE_OUT: knowledge-portability-reference-test.txt
+        run: bash tools/run-knowledge-portability-reference-evidence.sh
 
       - name: Upload Reference Evidence
         if: always()
