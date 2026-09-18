@@ -308,6 +308,45 @@ AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、�
 
 accepted semantic ruleをlearned weightだけへ保存しません。
 
+### Knowledge routingとselective disclosure
+
+Knowledge資産が利用可能であることと、現在のtaskでAIへ渡すことを同一視しません。
+
+```text
+available knowledge
+      ↓ routing / shortlist
+selected candidates
+      ↓ deterministic qualification
+applicable / incompatible / unknown
+      ↓
+必要な範囲だけdisclose
+```
+
+routing方式は、exact、lexical、graph、embedding、Derived Cognitive Retrieval、model-native routing等を比較可能にします。特定方式を本Issueの前提にはしません。
+
+routing score、model内部signal、検索順位はcandidate generationのsignalであり、Semantic適用可能性のEvidenceそのものではありません。selected candidateも既存のidentity / dependency / Source / Evidence / current accepted authorityによるqualificationを通します。
+
+全Skill / 全Knowledge metadataを毎回promptへ投入することをarchitecture要件にはしません。必要なKnowledgeだけを選択し、何を選び、何を選ばなかったかを必要に応じてprovenanceとして残せることを優先します。
+
+### Verified Experience Memoryの候補
+
+過去trajectoryを再利用する場合、単なる会話履歴や操作列だけでなく、検証済みの局所関係へ圧縮する余地を残します。
+
+候補例:
+
+- condition
+- action / semantic operation
+- observed outcome
+- failure mode
+- boundary condition
+- source Target / Driver / build input
+- Observation / Evidence reference
+
+このmemoryはDerived Experience Knowledgeであり、accepted Semantic RuleやBusiness Procedureではありません。
+
+過去の成功関係が現在も成立するとは限らないため、current Source / dependency / authority / Target条件へ戻って再評価します。memoryを無効化・削除してもCanonical Worldが変化しないことを維持します。
+
+
 ## explicit-reference candidateへ進む
 
 探索後に既存資産を利用する場合、暗黙の名前解決やAI内部記憶だけで変更しません。
@@ -360,7 +399,9 @@ representation生成に使ったscoped build input更新後に古いindex / cach
 - selected definition / local context
 - query / exploration input
 - current qualificationに使ったaccepted authority / Evidence references、および必要な場合のbaseline repository revision
-- candidate mechanism（exact / lexical / pattern / cognition / AI等）
+- candidate mechanism（exact / lexical / pattern / cognition / model-native routing / AI等）
+- selected / disclosed knowledge identities（利用した場合）
+- routing / shortlist理由またはprovenance（利用した場合）
 - returned candidate identities / pattern identities
 - Source / Evidence / provenance references
 - applicable / incompatible / unknown分類
@@ -393,7 +434,9 @@ Gate C前にはReference pattern provenanceの整理やbenchmark設計までを�
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない
-- [ ] search ranking / similarity / pattern frequencyとSemantic適用可能性を分離できる
+- [ ] search ranking / similarity / pattern frequency / routing signalとSemantic適用可能性を分離できる
+- [ ] available Knowledgeとselected / disclosed Knowledgeを分離できる
+- [ ] routing mechanismを交換してもqualification / Canonical meaningが変化しない
 - [ ] applicable / incompatible / unknownを明示できる
 - [ ] unknownを推測でsuccessへ変換しない
 - [ ] provenance付きReference patternをcandidate sourceとして扱える
@@ -401,7 +444,8 @@ Gate C前にはReference pattern provenanceの整理やbenchmark設計までを�
 - [ ] existing asset reuseをexplicit-reference candidateへ接続できる
 - [ ] candidateがShared Acceptance Boundaryを通る
 - [ ] stale derived index / cacheをscoped build inputから検出または再生成できる
-- [ ] index / embedding / trajectory / learned rankingを削除してもCanonical Worldが変わらない
+- [ ] index / embedding / trajectory / learned ranking / experience memoryを削除してもCanonical Worldが変わらない
+- [ ] verified experience candidateを元Execution / Observation / revisionへtraceできる
 - [ ] AI KnowledgeやReference pattern memoryを第二のCanonical正本にしない
 
 ## 非目標

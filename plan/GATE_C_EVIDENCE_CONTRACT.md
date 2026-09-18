@@ -112,6 +112,28 @@ DOM、route、HTTP status、component名等の一致ではなく、Handover Base
 
 browser automation、GUI agent、人による再現手順等は実行手段です。どの手段でも、何のHandover Baseline / Application intentを実行したかへ戻れる必要があります。
 
+#### Replayable Behavior
+
+Functional Evidenceは、一回のscreen snapshotや最終DOMだけでなく、必要に応じて再実行可能なbehaviorとして残せます。
+
+```text
+Handover Scenario / Semantic Operation
+        ↓
+behavior precondition
+        ↓
+Target-specific interaction realization
+        ↓
+Business Result / Execution Error / Observation
+        ↓
+Functional conformance result
+```
+
+behaviorをTarget固有のselector、route、coordinate、component identity等で実現しても、それらをCanonical interaction identityへ昇格しません。
+
+単一behaviorの成功で、複数featureにまたがるcumulative workflow全体の成立を代替しません。Reference Scenarioが複数段の操作を要求する場合は、その深さを保ったreplayもEvidenceとして確認します。
+
+異なるbrowser automation / GUI agent / Targetから得たeventを比較するため、derivedなnormalized event / behavior recordを作ることはできます。ただしraw Target Evidenceへ戻れるprovenanceを保持し、normalizationで失われるTarget固有差を成功へ畳みません。Universal Event ModelをGate C前提にはしません。
+
 ### 3. Visual Fidelity Evidence
 
 layout、grouping、readability、visual hierarchy、feedbackの識別性等、Targetとしての視覚品質を記録します。
@@ -225,6 +247,9 @@ Custom UIでもApplication Pattern、Validation、Authorization、Capability、R
 - execution artifact / ABI / Host identity / observations（適用可能な範囲）
 - observed Execution / Trust条件
 - interaction steps
+- replayable behavior identity / precondition / expected semantic operation（利用する場合）
+- raw Target Evidence reference
+- normalized event / behavior Evidence referenceとraw provenance（利用する場合）
 - Business Result / Execution Error / Observationの分類
 
 ### Conformance result
@@ -328,6 +353,7 @@ Gate CはIssue closeやWeb画面の存在だけでは通過しません。
 - DriverとWebが同じApplication / Pattern meaningを共有している
 - Semantic Conformanceが成立している
 - Reference ScenarioのFunctional Evidenceが揃っている
+- replay可能なbehaviorを利用する場合、behaviorがHandover Scenario / semantic operation / raw Target Evidenceへ追跡できる
 - Visual Fidelityが別Evidenceとして残っている
 - Result / Execution Error / Observationの境界が保たれている
 - Web固有実装をCanonicalへ逆流させていない
