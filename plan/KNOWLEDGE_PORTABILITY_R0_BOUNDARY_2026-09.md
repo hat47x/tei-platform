@@ -640,7 +640,7 @@ portabilityは一値ではなく、subjectごとのauthority / dependency / dest
 
 最初のR0 pressure sourceは次へ置く。
 
-- `internal/workspace/knowledge_portability_r0_test.go`
+- `tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go`
 
 current RepositoryからSource Indexを構築し、test-only destination profileに対して次を確認する。
 
