@@ -124,6 +124,17 @@ Acceptance Boundaryでは、変更種類に応じてparse / decode、normalize�
 
 interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
 
+Shared Acceptanceは**意味変更をauthoritative sourceへ受理する境界**であり、将来のRuntime副作用を無条件に許可する境界ではありません。
+
+```text
+Proposal accepted
+  != current execution authority
+```
+
+accepted meaningから後でCapability invocationやResource accessが発生する場合、effect直前のcurrent Authorization / Permission / Resource Lease / ownership / fencing等で実行可能性を再確認します。Proposal受理時点のapproval、planner-visible state、過去のpermission snapshotをRuntime authorityとして再利用しません。current authorityがmissing / stale / ambiguousなら、副作用前にfail closedし、必要ならunresolved / recovery /再認可へ送ります。
+
+この境界はRQ-019の既存Security mechanismをAuthoring / Proposal側から読んだArchitecture解釈です。外部研究だけを理由に新しいRequirementやpermission schemaを追加しません。
+
 Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
 
 AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。

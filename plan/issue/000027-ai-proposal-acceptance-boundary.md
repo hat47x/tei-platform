@@ -360,6 +360,18 @@ Derived Experience KnowledgeはCanonical Knowledgeの第二正本ではありま
 
 AIがProposalを生成できることと、RuntimeへCommandを送れることを同じauthorityにしません。
 
+さらに、ProposalがShared Acceptance Boundaryを通ってaccepted meaningになったことも、その後のeffectful operationに対する継続的なRuntime authorityではありません。
+
+```text
+t0: Proposal accepted
+t1: Permission / Resource authority changes
+t2: effectful operation attempts execution
+```
+
+ReferenceでRuntime操作まで扱う場合は、t2でcurrent Authorization / Permission / Resource Lease / ownership / fencing等を決定論的に再評価します。t0のapprovalやProposal metadataをcurrent authorityの代わりにしません。revoked / stale / missing / ambiguousなら副作用前にfail closedし、reasonとcurrent authority referenceをEvidenceへ残します。
+
+このpressureはRQ-019 refinement候補ですが、本Issueだけを根拠にRequirement正本や新しいapproval token / permission schemaを追加しません。
+
 Runtime操作が必要なReferenceを将来追加する場合も、Semantic Capability、Authorization、Runtime Binding、Resource Permission、Business Result / Execution Error / Observation境界を利用します。
 
 raw tool callをTEIのauthority modelの代わりにはしません。
@@ -384,6 +396,8 @@ Observationから変更候補を作る場合も、`Observation -> semantic write
 - reload後のCanonical結果
 - Validation / Conformance結果
 - stale Proposal negative case
+- Runtime操作を扱う場合のeffect-time authority reference / rejection reason
+- Proposal acceptance後にauthorityを変化させるnegative case（扱う場合）
 - AI経路を外した同一Acceptance Boundaryの利用例
 - AI / derived memory削除後もCanonical meaningが変わらないこと
 
@@ -425,6 +439,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 15. AIのautonomyとwrite / invoke / Resource authorityを分離できる
 16. AI固有EvidenceやDerived Experience Knowledgeを削除してもCanonical Worldが変わらない
 17. ProposalからRuntimeへ無権限に直接到達できない
+18. Runtime操作を扱う場合、Proposal acceptance /過去approvalではなくeffect直前のcurrent authorityで許可可否を判定できる
+19. acceptance後にauthorityがrevoked / stale / missing / ambiguousになったnegative caseで、副作用前にfail closedできる
 
 ## 非目標
 
