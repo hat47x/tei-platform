@@ -988,7 +988,7 @@ current Referenceで最初にPressureする対象:
 
 test-only source:
 
-- `internal/workspace/knowledge_portability_r0_test.go`
+- `tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go`
 
 synthetic destination labelは`repair_intake-test-only`とし、第二ApplicationのProduct採用やCanonical authoringを意味しない。
 
