@@ -199,6 +199,8 @@ R1 conflict Evidence changed
 
 test-only probeは4 inputのcontent fingerprintを保持し、SourceRefsも同じ集合からderiveする。固定source一覧とfreshness一覧を別管理しない。
 
+Application / Pattern / Database ContractはCanonical subjectからSource Indexのdefinition referenceを解決し、current locatorとcontent fingerprintを得る。locator-only moveではsubject / content fingerprintが変わらないため、R3 read-route meaningをstale扱いにせずSourceRefsだけをcurrent locatorへ追随させる。
+
 ## 5. input mappingの意味
 
 Patternには、
