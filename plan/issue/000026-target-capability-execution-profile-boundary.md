@@ -38,6 +38,33 @@ TEIはRQ-013で、Web、Desktop、Mobile、API、MCP、VUI等を同じ上位設�
 - RQ-022 完成製品と設計検証段階を明確に区別すること
 - RQ-024 性能要求をTargetごとに検証可能にすること
 
+## Portable execution artifact / ABIを第三の観測軸としてPressureする
+
+2026-09の技術リサーチで、Hikeのような極小freestanding WebAssembly、WebAssembly Component Model / WASI 0.3、agent-friendly UI、replayable interaction Evidence等を現行境界へ当てた結果、Target CapabilityとExecution / Trust Profileだけでは説明を省略しやすい差が一つ見えている。
+
+```text
+Target
+  != execution artifact
+  != execution host
+```
+
+WasmはWeb / Desktop / Mobile / API / MCP / VUIと同列のTargetではない。同じWeb Targetでもremote/native runtime、freestanding Wasm、Worker-hosted Wasm等を取り得て、同じWasm artifactもbrowser / desktop host / standalone runtime等で再利用できる可能性がある。
+
+現時点では新しいproduction conceptを追加せず、Runtime Bindingの内部差として少なくとも次を観測する。
+
+- execution host family
+- execution artifact form（native Go / freestanding Wasm / Wasm Component / external process等）
+- ABI / interface contract（native API / WIT / C ABI / JS bridge / RPC等）
+- host imports / exports
+- scheduling / concurrency mode
+- execution / trust / resource condition
+
+この差が第二Target実証後も独立したidentity / lifecycle / Conformanceを必要とする場合にだけ、Target Capability / Execution Profileとは別のformal conceptが必要かをADRで判断する。
+
+Hikeは任意のGo sourceをWasmへ変換するcompilerではなく、Go風の別言語からLLVM IR等へ下ろす実装であるため、TEI Go Coreの置換候補とは扱わない。検討対象は「accepted meaningから小さいtyped execution subsetを導出し、portable artifact providerへ下ろせるか」である。
+
+詳細なread-only Pressureは[`PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md`](../PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md)に置く。
+
 ## 第一Targetから受け取る比較baseline
 
 第二Targetは曖昧な「最新Web」や「最新Canonical」と比較しません。
