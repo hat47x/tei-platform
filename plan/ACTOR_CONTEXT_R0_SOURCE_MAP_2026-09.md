@@ -361,6 +361,25 @@ R0 test-only typeへ、次のような総合判定fieldを置かない。
 
 「同じsourceだから同じcontextを渡す」設計にしない。
 
+## 10. Test-only implementation source
+
+最初のsourceは次へ隔離する。
+
+`tools/reference-business-procedure-check/actor_context_r0_pressure_test.go`
+
+このtest sourceはproduction package / schemaを追加せず、同package内の既存Reference helperを再利用する。
+
+現在のPressure:
+
+1. BP-02からread-only Operational Projectionを導出
+2. 同じfixture fingerprintからBuilder / Human / Operationalを分ける
+3. Human側では既存customer-edit conflictを保持
+4. Builder側ではexact dependencyをderive
+5. BP-04 / BP-08をunresolvedのまま保持
+6. authority shortcut fieldをreflectionで拒否
+
+sourceの存在はtest PASSを意味しない。actual `go test`結果は別Evidenceとして取得する。
+
 ## 10. R0完了条件
 
 - [ ] 三Projectionを同じsnapshotから再構築できる
