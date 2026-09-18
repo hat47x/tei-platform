@@ -2,7 +2,7 @@
 
 - Status: ISSUE-000053 / Phase 3 stop-taxonomy pressure / Reference-only
 - Date: 2026-09-18
-- Parent: `plan/ACTOR_CONTEXT_R3M_AUTHORIZATION_STOP_HANDOFF_EXPLANATION_2026-09.md`
+- Parent: `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
 - Related:
   - `plan/ACTOR_CONTEXT_R3B_AUTHORIZATION_PREREQUISITE_BOUNDARY_2026-09.md`
   - `plan/ACTOR_CONTEXT_R3I_AUTHORIZATION_TARGET_EVALUATION_CADENCE_2026-09.md`
@@ -194,7 +194,7 @@ stop stage
 stop class
 machine-readable reasons
 known authority facts + provenance
-missing authority classes
+resolution need classes
 runtime outcome if observed
 downstream not attempted
 source refs
@@ -235,13 +235,14 @@ Legacy policy `execute` やBusiness wordingからmissing valueを補わない。
 
 Pressureするcase:
 
-1. requirement unresolved
+1. requirement authority unresolved
 2. principal unresolved
-3. action authority unresolved
-4. evaluation not attempted
-5. exact current Observation denied
-6. Observation tuple mismatch
-7. prior-context reuse unresolved
+3. resource authority unresolved
+4. action authority unresolved
+5. evaluation not attempted
+6. exact current Observation denied
+7. Observation tuple mismatch
+8. prior-context reuse unresolved
 
 Pressureする不変条件:
 

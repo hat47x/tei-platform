@@ -1003,6 +1003,45 @@ action-locus-pressure-qualified
 
 
 
+### R3M — Operational stop explanation / handoff boundary
+
+R3Lでaction-locus Evidence不足のためproduction locus選択を停止した後、AI Business Actorが未解決authorityで止まった事実を、別authorityを発明せず外部へ説明するProjectionをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3m_operational_stop_explanation_pressure_test.go`
+
+current BP-06では:
+
+```text
+requirement = required
+resource = order_entry.submit_order
+action authority = unresolved
+```
+
+なので、exact blocker、known factsとprovenance、drill-down refs、downstream not-attemptedを保持する。
+
+```text
+resolution need class
+  != missing value
+  != resolution owner
+
+resolution requested
+  != handoff recipient known
+
+downstream not attempted
+  != downstream gap promoted to current blocker
+```
+
+を維持し、Business wording / Pattern kind / Legacy policyから `execute` を補完せず、security team / sales operator / application owner等をhandoff ownerとして推論しない。
+
+R3M Projectionはderived / non-authoritativeであり、production ticket routing / human task assignment / notification transportは追加しない。
+
+
 ### R3N — Stage-aware operational stop taxonomy
 
 R3Mでcurrent BP-06のaction-authority stopを正確に説明できることを確認した後、異なる停止状態を一つのgeneric Authorization errorへ潰さないtaxonomyをPressureする。
@@ -1047,7 +1086,7 @@ prior-context reuse unresolved
 
 上流blockerが残る場合はearliest blockerだけをcurrent reasonとして保持し、後段は `downstream not attempted` として分離する。
 
-missing authority classは示してもmissing valueを推測せず、handoff owner / next action / Authorized / CanExecute等のshortcutを追加しない。
+resolution need classは示してもmissing valueやresolution ownerを推測せず、handoff owner / next action / Authorized / CanExecute等のshortcutを追加しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
