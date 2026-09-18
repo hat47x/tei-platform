@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -55,6 +58,18 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 	if result.FixtureID != "e73-decision-continuity-001-provider-pilot" {
 		t.Fatalf("fixture id = %q", result.FixtureID)
 	}
+	if result.Source.Repository != sourceRepository ||
+		result.Source.Revision != sourceRevision ||
+		result.Source.Path != sourcePath ||
+		result.Source.Blob != sourceBlob {
+		t.Fatalf("source baseline = %#v", result.Source)
+	}
+	if result.Source.AuthorityScope != sourceAuthorityScope {
+		t.Fatalf("authority scope = %q, want %q", result.Source.AuthorityScope, sourceAuthorityScope)
+	}
+	if result.Source.CurrentSourceConformance != currentSourceConformance {
+		t.Fatalf("current source conformance = %q, want %q", result.Source.CurrentSourceConformance, currentSourceConformance)
+	}
 	if result.InitialResume.CurrentQuestion != "通知Provider Aのtimeoutが増えたためProvider Bへ移行すべきか。" {
 		t.Fatalf("current question must come from scenario, got %q", result.InitialResume.CurrentQuestion)
 	}
@@ -85,6 +100,23 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 		!result.SemanticAudit.TemporalSeparation {
 		t.Fatalf("semantic audit not fully satisfied: %#v", result.SemanticAudit)
 	}
+}
+
+func TestReferenceSnapshotMatchesPinnedSourceGitBlob(t *testing.T) {
+	data, err := os.ReadFile(referenceFixturePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := gitBlobSHA(data); got != sourceBlob {
+		t.Fatalf("reference snapshot git blob = %s, want pinned SEI source blob %s", got, sourceBlob)
+	}
+}
+
+func gitBlobSHA(data []byte) string {
+	h := sha1.New()
+	_, _ = fmt.Fprintf(h, "blob %d\x00", len(data))
+	_, _ = h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func TestReferenceChangeOneAddsOnlyPostDecisionObservation(t *testing.T) {
