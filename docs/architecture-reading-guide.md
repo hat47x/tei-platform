@@ -234,16 +234,26 @@ Query IR = derived representation
 
 ### 防ぎたい失敗
 
-「Web」「Desktop」といったTarget差の中には、二種類の違いが混ざっています。
+「Web」「Desktop」といったTarget差の中には、少なくとも二種類の違いが混ざっています。
 
 1. 利用できるinteraction / device能力
 2. 実行場所・transport・identity・secret等のtrust条件
 
 TEIでは、この二つをTarget CapabilityとExecution / Trust Profileとして分けて検討します。
 
-たとえばDesktopだから必ずlocal executionとは限りませんし、Webだから同じsession / network条件とも限りません。
+さらにportable execution artifactのPressureから、同じTargetの内部でも**何を実行artifactにするか、どのABI / Hostで動かすか**は別の実現差になり得ることが見えています。
 
-このtaxonomyは第一Targetだけで固定せず、第二Targetとの差からpressure-testします。
+```text
+Target
+  != execution artifact
+  != execution host
+```
+
+たとえばWeb Targetだから実行artifactが必ずJavaScriptとは限らず、freestanding WasmやWorker-hosted Wasm等も取り得ます。逆に同じportable artifactをWebとDesktop Hostの双方で使える可能性もあります。
+
+このためWasmを新しいTarget種別として扱わず、現時点ではRuntime Binding内部の観測軸としてPressureします。独立schemaが必要かは第二Targetとportable artifact ReferenceのEvidence後に判断します。
+
+Target Capability / Execution / Trust Profile / artifact・ABI差のtaxonomyは第一Targetだけで固定せず、第二Targetとの差からpressure-testします。
 
 ## 10. Deploymentは「命令」と「実際」を分ける
 
