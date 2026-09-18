@@ -254,6 +254,8 @@ rollback
 
 「TEIでも読める」ことと「TEIが正本になった」ことを同一視しない。
 
+このStage 0 / Stage 1のauthority transitionは、TEI一般Architectureの[Native asset adoption / authority migration](../docs/architecture.md)境界に従う。SUI固有のcutover規則を第二のArchitecture正本にはしない。
+
 ## 7. Baseline Challenge mapping
 
 ### Challenge A — hierarchy / placard
