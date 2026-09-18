@@ -43,7 +43,7 @@ R0では、同一のshared accepted / reference baselineから次の三つを静
 - Business Procedure Reference fingerprint
 - Projectionごとのactual selected input fingerprint集合
 
-R0では一つのBusiness Procedure fingerprintを三Projectionで共有するが、それだけをProjection全体のfreshness authorityにはしない。Builder / Operationalは選択したworkspace subjectのsource artifactにも依存し、Human Reviewはさらにconflict Evidence inputへ依存する。
+R0では一つのBusiness Procedure fingerprintを三Projectionで共有するが、それだけをProjection全体のfreshness authorityにはしない。Builder / Operationalは選択したworkspace subjectのsource artifactにも依存し、Datasource / accepted accessをProjectionする場合はその値を所有するApplication sourceにも依存する。Human Reviewはさらにconflict Evidence inputへ依存する。
 
 ```text
 same Business Reference baseline
@@ -284,6 +284,7 @@ R0では対象challengeに必要な差分だけをderiveする。
 R0 sourceの初版はBusiness Procedure Reference fingerprintを三Projectionへ共通保持したが、各Projectionはそれ以外にも依存する。
 
 - Builder / Operational: selected Pattern / Data / Relation / Validation / Capabilityのworkspace source
+- Builder / Operational: Datasource / accepted accessを読む場合、そのowner Application source
 - Human Review: 上記に加えてcustomer-edit conflict Evidence
 
 したがって、
@@ -296,7 +297,7 @@ same reference fingerprint
 
 である。
 
-test-only pressureでは、shared Business Reference fingerprintを残しつつ、Source Indexからselected subjectのartifact fingerprintを集め、Human Reviewではconflict fixture fingerprintも追加する。production global revisionや万能Snapshot IDは導入しない。
+test-only pressureでは、shared Business Reference fingerprintを残しつつ、Source Indexからselected subjectのartifact fingerprintを集める。PatternからDatasource / accepted accessを読む経路ではPattern owner Applicationのsource fingerprintも必須とし、Human Reviewではconflict fixture fingerprintも追加する。production global revisionや万能Snapshot IDは導入しない。
 
 ## 7. R0 test-only shape
 
