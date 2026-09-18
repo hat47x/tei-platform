@@ -340,6 +340,35 @@ Capability outcome
 
 実装とテストが同じaccepted meaningを別経路から参照することで、自己追認を減らします。
 
+### 生成量より「変更増幅」を減らす
+
+Design Synthesisの価値は、generated fileを大量に作ることではありません。
+
+たとえば一つのaccepted semantic definitionから、
+
+```text
+Validation
+Projection
+Target configuration
+test / fixture
+documentation
+bounded AI context
+```
+
+を必要に応じて派生できれば、同じ意味変更を各surfaceへ人が転記する必要を減らせます。
+
+重要なのは、
+
+```text
+one semantic change
+  -> one authority change
+  -> affected derived surfaces rebuild / stale
+```
+
+という方向です。
+
+そのためReferenceでは、「何個生成できたか」より、同じchange challengeで**何箇所の重複authoring・manual synchronization・handwritten residualが残ったか**を見ます。特殊Interactionやalgorithm等がnative codeとして残ること自体は失敗ではなく、意味の重複が局所化されているかを確認します。
+
 ## 9. 人に残す仕事
 
 この構想で、人から取り除きたいのは判断そのものではなく、**再生成可能な転記と反復作業**です。

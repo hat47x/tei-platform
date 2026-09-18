@@ -565,7 +565,11 @@ remote LLMは難問時のoptional providerであり、TEIの基本的なDesign S
 
 accepted semantic designから、既存component、binding、generator、compilerを優先してimplementation artifactを導出できること。
 
+同じaccepted meaningから、適用可能な範囲でValidation、Projection / Target configuration、documentation、structured AI context等の下流surfaceも再入力なしでderive / rebuildできることをPressureする。
+
 custom code generation / handwritten codeはderivationできない残余へ限定する方向を目指すこと。
+
+ここでの価値は生成物の個数や「TEI化率」ではなく、**一つの意味変更を複数surfaceへ一貫して伝播でき、同じ意味の重複authoringを減らせること**に置く。
 
 ### DSR-11 Semantic-to-Test Derivation — Must
 
@@ -579,7 +583,9 @@ Data、Function / Interaction、Business Procedure等の他設計要素を、後
 
 ### DSR-13 Minimum Irreducible Authoring — Must
 
-人間にauthorさせる内容を、機械的に安全に再生成できない業務意味・選択・例外へ寄せ、standard CRUD、projection、binding、test等の二重入力を減らすこと。
+人間にauthorさせる内容を、機械的に安全に再生成できない業務意味・選択・例外へ寄せ、standard CRUD、projection、binding、test、documentation等の二重入力を減らすこと。
+
+同一semantic changeについて、触るauthoritative source、手動同期箇所、derived artifactの再生成箇所を区別できること。derived surfaceが増えたこと自体をauthoring負荷増加として数えず、**手動で同じ意味を何度書き直す必要があるか**を確認する。
 
 ### DSR-14 Structured Unresolved State — Must
 
