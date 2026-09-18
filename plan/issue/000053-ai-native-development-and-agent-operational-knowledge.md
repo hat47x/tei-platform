@@ -1001,6 +1001,52 @@ action-locus-pressure-qualified
 も維持する。
 
 
+### R3M — Authorization stop / handoff explanation projection
+
+R3Lでaction-locus Evidence Gateを未充足として停止した後、AI Business Actorがmissing authorityを推測せず、どこで停止したかを正確に説明できるかをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3M_AUTHORIZATION_STOP_HANDOFF_EXPLANATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3m_authorization_stop_explanation_pressure_test.go`
+
+current BP-06は:
+
+```text
+requirement = required
+protected resource = order_entry.submit_order
+Authorization action authority = unresolved
+evaluation = not attempted
+invocation = not attempted
+```
+
+である。
+
+R3Mでは:
+
+```text
+unresolved authority
+  != denied
+  != unauthorized
+
+not attempted
+  != failed
+```
+
+を維持し、known requirement / resource、exact blocking reason、drill-down refsを保持する。
+
+stop reasonだけからsecurity team / application owner / business owner / approver等のhandoff ownerは推論しない。
+
+```text
+next authority needed = Authorization action authority
+  != handoff owner identified
+```
+
+として、projection自身もauthority sourceへ昇格させない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
