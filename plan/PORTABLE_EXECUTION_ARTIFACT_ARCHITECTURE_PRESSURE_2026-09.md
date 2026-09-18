@@ -12,6 +12,24 @@ Status: **architecture pressure / pre-Gate-C / 未採用**
 
 本書はProduct Requirement、ADR、production schema、Target Pack定義ではない。
 
+## 1.1 外部観測の再確認先
+
+本Pressureで参照した主要な一次資料・projectは次である。
+
+- FlowGen / Relationally Guided Use Case Modeling with LLMs: https://arxiv.org/abs/2609.18291
+- Affora: https://arxiv.org/abs/2609.19125
+- ProgramDistill: https://arxiv.org/abs/2609.18805
+- Compositional Policy Violations: https://arxiv.org/abs/2609.18820
+- HazardAuditor: https://arxiv.org/abs/2609.15134
+- The Router Within: https://arxiv.org/abs/2609.15982
+- Agora: https://arxiv.org/abs/2609.18094
+- Hike: https://github.com/kanryu/hike-lang
+- WebAssembly Component Model: https://github.com/WebAssembly/component-model
+- WASI releases: https://wasi.dev/releases
+- Wails v3 changelog: https://v3.wails.io/changelog/
+
+Wails v3.0.0-beta.23（2026-09-16）はLinux custom-scheme request abortやsingle-instance周辺の修正を含むが、TEI側でWailsをCanonical / Runtime authorityへ昇格させる根拠になる変更ではない。current architecture通りStudio / Desktop Host adapter候補として隔離する。
+
 ## 2. 結論
 
 今回のArchitecture上の中心示唆は次である。
