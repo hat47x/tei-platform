@@ -1,0 +1,66 @@
+name: Knowledge portability reference evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/knowledge-portability-reference-evidence.yml
+      - tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go
+      - tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
+      - tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
+      - reference/workspace/**
+      - reference/business-system-design/**
+      - internal/application/**
+      - internal/database/**
+      - internal/environment/**
+      - internal/ir/**
+      - internal/sourceindex/**
+      - internal/syntax/**
+      - internal/workspace/**
+      - go.mod
+      - go.sum
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Check focused Reference pressure formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go
+            tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
+            tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
+          )
+          unformatted="$(gofmt -l "${files[@]}")"
+          if [[ -n "$unformatted" ]]; then
+            printf 'Unformatted Go files:\n%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Run Knowledge Portability and second Application pressure tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -v ./tools/reference-business-procedure-check \
+            -run '^(TestKnowledgePortabilityR0|TestSecondApplication)' \
+            | tee knowledge-portability-reference-test.txt
+
+      - name: Upload Reference Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-portability-reference-evidence
+          path: knowledge-portability-reference-test.txt
+          if-no-files-found: warn
