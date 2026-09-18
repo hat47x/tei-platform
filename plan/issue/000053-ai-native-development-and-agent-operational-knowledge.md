@@ -1247,6 +1247,59 @@ routing方式はSemantic authorityを所有しない。routing score / confidenc
 
 R7 Replayable Behavior EvidenceはFirst Web Targetのactual Functional Evidenceへ、R8 Verified Experienceはactual Execution / Observationへ接続してから進める。static R6 sourceからR7 / R8の成功を捏造しない。
 
+
+### R3R — Projection dependency provenance / freshness planes
+
+R3Qでpurpose-bound projectionのfreshnessをselected semantic categoryへ絞った後、そのcategoryが何へ依存したかをactual source / runtime Evidenceまで逆追跡する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3R_PROJECTION_DEPENDENCY_PROVENANCE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3r_projection_dependency_provenance_pressure_test.go`
+
+R3Rではfreshnessを一つのhashへ潰さず、少なくとも:
+
+```text
+projection profile
+semantic Source Index subject
+Reference artifact input
+runtime Observation
+drill-down locator integrity
+```
+
+を別planeとして扱う。
+
+Source Index管理下では:
+
+```text
+subject identity + content fingerprint
+  = semantic freshness dependency
+
+artifact path
+  = current drill-down locator
+```
+
+とし、locator-only moveではsemantic meaningをstaleにせずlocator refreshだけを要求する。
+
+一方、same subjectでもcontent fingerprintが変わればsemantic staleとする。
+
+Business Procedure Reference / protected-target overlayのようなcurrent Source Index外のReference inputはReference artifact dependencyとして保持し、架空のCanonical / Source Index subjectを発明しない。
+
+また:
+
+```text
+static source current
+  != runtime Authorization Observation current
+```
+
+として、allowed / denied等のruntime outcomeをRepository fingerprintへ混ぜない。
+
+production invalidation engine / runtime Observation store / Business Source Index extension / global revision protocolは追加しない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
