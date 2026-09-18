@@ -29,11 +29,11 @@ Gate A — Ready
         ↓
 Application Driver
         ↓
-Gate B — 3 Required Evidence / Not Ready
+Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B at revision R
+Handover Baseline B at revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T1 — 未着手
         ↓
 Gate C — PAS-04 Evidence
         ↓

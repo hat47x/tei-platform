@@ -132,7 +132,7 @@ Reference・Evidenceの取り方
 
 ## 直近の主線
 
-Gate Bは引き続きNot Readyです。[000035](000035-gate-b-external-provider-scope-audit.md)の判断により、必須Evidenceは000032 / 000025 / 000031の3系統です。actual Oracleの未取得は継続課題として残し、Gate Bの追加blockerへ戻しません。
+Gate Bは2026-09-19にReadyへ到達しました（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。[000035](000035-gate-b-external-provider-scope-audit.md)の判断どおり、必須Evidenceは000032 / 000025 / 000031の3系統で、いずれも同じRのsame-runで成立しています。actual Oracleの未取得は継続課題として残り、Handoverへ`unresolved`として渡していますが、Gate Bの追加blockerへは戻しません。000030のHandover Baseline `B / R`も固定済みで、直近の主線は000007（第一Web Target）です。
 
 | 担当Issue | 一つの成果・責務 | 着手・完了の接続 |
 | --- | --- | --- |

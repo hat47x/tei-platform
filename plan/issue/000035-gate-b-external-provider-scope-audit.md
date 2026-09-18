@@ -43,7 +43,7 @@ Gate Bの必須Evidenceは次の三つです。
 #308 -> R
 ```
 
-現時点では三laneの実runが未取得なので、Gate Bは引き続き **Not Ready** です。
+2026-09-19に三laneの実runがすべて同じ`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`で成立し、Gate Bは **Ready** です（[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)参照）。
 
 ## external-observed assetについてGate Bに残す境界
 

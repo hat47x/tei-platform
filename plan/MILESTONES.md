@@ -29,9 +29,9 @@ Gate A — Ready
 Milestone 3
 Driver
         ↓
-Gate B — 3 Required Evidence / Not Ready
+Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R — 固定済み
         ↓
 Milestone 4
 First Web Target / build T1

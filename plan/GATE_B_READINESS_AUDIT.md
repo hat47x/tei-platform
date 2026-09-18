@@ -1,13 +1,13 @@
 # Gate B Readiness Audit
 
-- 判定日: 2026-09-05
+- 判定日: 2026-09-05（初回 Not Ready）/ 2026-09-19（再監査 Ready）
 - 対象: `order_entry` Application Driver / Gate B
-- 判定: **Not Ready**
+- 判定: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
 - Product Acceptance Scenario: PAS-02 primary / PAS-03 secondary
 - Evidence要求: [`GATE_B_EVIDENCE_ACQUISITION.md`](GATE_B_EVIDENCE_ACQUISITION.md)
 - 実行手順: [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)
 - Repository Issue: [`issue/000029-gate-b-readiness-audit.md`](issue/000029-gate-b-readiness-audit.md) / GitHub #273
-- Handover: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- Handover: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) / Baseline記録: [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)
 
 ## 目的
 
@@ -21,9 +21,9 @@ Gate B Readyへ必須のsource-dependent Evidenceは次の三つです。
 
 | Evidence | Repository / GitHub Issue | nature | 現在地 |
 | --- | --- | --- | --- |
-| #310 | `ISSUE-000032` / #310 | deterministic repository | Ready to run / actual clean checkout待ち |
-| #255 | `ISSUE-000025` / #255 | generated artifact reproducibility | Ready to check / actual clean Go environment待ち |
-| #308 | `ISSUE-000031` / #308 | real-provider ephemeral fixture | Ready to run / Evidence専用空PostgreSQL待ち |
+| #310 | `ISSUE-000032` / #310 | deterministic repository | 成立（R = `e5231839`） |
+| #255 | `ISSUE-000025` / #255 | generated artifact reproducibility | 成立（R = `e5231839`） |
+| #308 | `ISSUE-000031` / #308 | real-provider ephemeral fixture | 成立（R = `e5231839`） |
 
 三つを同じclean candidate revision `R`へ揃えます。
 
@@ -37,25 +37,36 @@ Gate B Readyへ必須のsource-dependent Evidenceは次の三つです。
 Readiness Audit for R
 ```
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、第四Required laneではありません。取得状況はGate Bの現在判定に影響していません（下記「actual Oracle」節を参照）。
 
 ## 現在の結論
 
-**Gate B: Not Ready**です。
+**Gate B: Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-中心設計が未成立だからではありません。Ready判定に必要なactual execution Evidenceがまだ取得されていないためです。
+### 実行経緯
 
-未完了:
+2026-09-05時点のNot Ready判定後、actual Evidence取得（Gate B Evidence専用full checkout、Evidence専用空PostgreSQL、DSN secret file分離）を実施したところ、`#310`の事前確認である`go run ./cmd/tei validate -workspace reference/workspace`が2件の既存source-navigation bugで失敗しました。
 
-- #310 actual run
-- #255 actual check-only run
-- #308 actual real PostgreSQL run
-- 三つのsame-R final convergence
-- final convergenceが実際に読んだsame-run child Evidence artifact保持
-- same-run child exact artifactへの独立artifact audit
-- Rについて本監査を再実施
+1. `internal/syntax/semantic_anchor.go`の`semanticDataAnchors`が、relation宣言に続く`key <source> -> <target>`句（`reference/workspace/semantic/sales/order.tei`）を未知のmemberとして拒否していた。
+2. `internal/workspace/source_index.go`の`database-contract-query` subject lookupが、`contract <id> <version> { ... }`でwrapされたquery宣言に対して top-level専用のanchor helperを誤用していた。
 
-runner実装、isolated test、文書整備だけではReadyへ格上げしません。
+両方とも軽量なanchor/index scannerが、main parserの文法拡張に追従していなかったことが原因で、Canonical meaningやCore schemaの変更ではありません。修正はPR [#726](https://github.com/hat47x/tei-platform/pull/726)（`internal/syntax/semantic_anchor.go`へ`skipSemanticRelationKeys`、`internal/syntax/anchor.go`へ`ContractQueryDeclarationAnchor`を追加、対応するunit testを追加）で行い、Validationが通るようになったことで判明した`reference/world.json` / `reference/workspace/.tei/plugin-lock.json` / durable-run goldenのstaleさを、同PR内で正規generator（`tools/reference-golden -write` / `tools/reference-durable-run-golden -write`）で再生成しました（差分は新規contract-query-executor provider、`sales_core.order_line` contract追加、`order_entry.order_lines`の重複entry除去という実際のCanonical Workspace進展を反映）。
+
+修正後の`#387` final convergence実行で、独立artifact audit（`tools/reference-gate-b-readiness-artifact-audit`）が3件目のバグを検出しました。
+
+3. `tools/reference-gate-b-readiness-artifact-audit/main.go`が`#308`の`contractQueryTarget`期待値をbare query name（`find_by_order`）でhardcodeしていましたが、`internal/realization/contract_query.go`の`ContractQueryTarget.Identity()`は意図的に`Database/Contract/Query`の三つ組（`sales_core/sales_core.order_line/find_by_order`）を返す設計であり、audit tool側の期待値が古い形式のまま残っていました。修正はPR [#727](https://github.com/hat47x/tei-platform/pull/727)（audit toolの期待値と対応するtest fixtureを三つ組形式へ更新）で行いました。
+
+PR #726・#727とも、squash mergeで`main`へ統合しました（`main`のmerge commit: `bba97e21`, `e5231839`）。統合後の`main` HEAD（`e5231839a5dcc62cce1181a2731fcb7c70d16736`）をclean checkoutし、Canonical Workspace Validation・final runner package pre-check・`#387` final convergence・独立artifact auditを最初から再実行し、すべて成功しました。
+
+### 満たされた条件
+
+- #310 / #255 / #308 actual run（same R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`）
+- 三つのsame-R final convergence（`#387`）
+- final convergenceが実際に読んだsame-run child Evidence artifact保持（`childArtifactsRetained = true`）
+- same-run child exact artifactへの独立artifact audit（`artifactAuditPassed = true`）
+- Rについて本監査を再実施（本ファイル、判定日2026-09-19）
+
+詳細な条件充足は下記「Ready条件」チェックリストを参照してください。
 
 ## 成立済みの意味基線
 
@@ -336,33 +347,31 @@ mainが進んでもcandidate Rを暗黙に最新mainへ移しません。
 
 Gate BをReadyとするには、少なくとも次をすべてEvidenceから説明できる必要があります。
 
-- [ ] #310 actual EvidenceがRで成立
-- [ ] #255 actual EvidenceがRで成立
-- [ ] #308 actual EvidenceがRで成立
-- [ ] #387 final convergenceがRで成立
-- [ ] `allLanesSameRevision = true`
-- [ ] `childArtifactsRetained = true`
-- [ ] 三つのsame-run child exact artifactを保存済み
-- [ ] 各artifact fingerprintがfinal summaryと一致
-- [ ] 独立artifact auditをsame-run artifactsへ実行し `artifactAuditPassed = true`
-- [ ] #310 Workspace identity / #310・#255 producer commandが正規contractと一致
-- [ ] child詳細から各lane固有安全条件を再確認できる
-- [ ] final run終了時もR / clean source/index state
-- [ ] Go実行環境fail-closed条件成立
-- [ ] Repository root / source observation条件成立
-- [ ] PostgreSQL fixture前後安全性成立
-- [ ] DSN / credential / secret /実Database名を通常Evidenceへ保存していない
-- [ ] Evidence natureを相互代替していない
-- [ ] Business Result / Execution Error / Observation境界維持
-- [ ] external未観測事項を推測していない
-- [ ] actual Oracle未完了範囲をHandover `unresolved`へ列挙可能
-- [ ] 監査結果をRへ固定可能
-
-一つでも満たさなければNot Readyです。
+- [x] #310 actual EvidenceがRで成立 — `deterministic-repository.json`、`repositoryRevision = e5231839a5dcc62cce1181a2731fcb7c70d16736`、`passed = true`
+- [x] #255 actual EvidenceがRで成立 — `generated-artifact-reproducibility.json`、同revision、`passed = true`
+- [x] #308 actual EvidenceがRで成立 — `real-postgres-ephemeral-fixture.json`、同revision、`passed = true`
+- [x] #387 final convergenceがRで成立 — `evidenceNature = gate-b-three-lane-final-convergence`、`repositoryRevision = e5231839a5dcc62cce1181a2731fcb7c70d16736`
+- [x] `allLanesSameRevision = true`
+- [x] `childArtifactsRetained = true`
+- [x] 三つのsame-run child exact artifactを保存済み（`deterministic-repository.json` / `generated-artifact-reproducibility.json` / `real-postgres-ephemeral-fixture.json`、Repository外owner-only directoryへ保存）
+- [x] 各artifact fingerprintがfinal summaryと一致（`evidenceArtifactFingerprint`と`reference-gate-b-readiness-artifact-audit`のlane別fingerprintが一致）
+- [x] 独立artifact auditをsame-run artifactsへ実行し `artifactAuditPassed = true` — `finalFingerprint = sha256:3bfcdc459f9e3dd77019e1b9ae368a64bad760f65917c44e1d7d533b6a1f5f97`
+- [x] #310 Workspace identity / #310・#255 producer commandが正規contractと一致（`reference-gate-b-readiness-artifact-audit`のcommand-exact-binding checkが`passed = true`）
+- [x] child詳細から各lane固有安全条件を再確認できる（`fixtureDatabaseSafety.guardPassed = true`、`fixtureCleanupSafety.verified = true`、`contractQueryTarget = sales_core/sales_core.order_line/find_by_order`ほか）
+- [x] final run終了時もR / clean source/index state — `postRunRepository.revisionStable = true` / `workingTreeClean = true`
+- [x] Go実行環境fail-closed条件成立 — `goEnvironment.externalWorkspaceActive = false` / `goFlagsEmpty = true` / `goEnvDisabled = true`
+- [x] Repository root / source observation条件成立 — Gate B Evidence専用full checkout、`git status --short --untracked-files=all --ignored=matching`空、`git ls-files -v`全`H`を実行前後で確認
+- [x] PostgreSQL fixture前後安全性成立 — fixture前`userRelationsBeforeFixture = 0` / `eventTriggersBeforeFixture = 0`、cleanup後`userRelationsAfterCleanup = 0` / `eventTriggersAfterCleanup = 0` / `fixtureObjectAbsentAfterCleanup = true`
+- [x] DSN / credential / secret /実Database名を通常Evidenceへ保存していない（`reference-gate-b-readiness-artifact-audit`のsensitive-field拒否checkが`passed = true`、目視でもchild JSONにDSN/secret文字列なしを確認）
+- [x] Evidence natureを相互代替していない — 各lane `evidenceNature`が`deterministic-repository` / `generated-artifact-reproducibility` / `real-postgres-ephemeral-fixture`のまま
+- [x] Business Result / Execution Error / Observation境界維持 — `#308` child JSONで`executionErrorObserved = true`（missing-table Execution Error）とnormalなrow取得が別fieldとして区別されている
+- [x] external未観測事項を推測していない — #310/#255/#308はいずれもsynthetic/PostgreSQL fixture Evidenceのままで、actual Oracleへ格上げしていない
+- [x] actual Oracle未完了範囲をHandover `unresolved`へ列挙可能 — 下記「actual Oracle」節、Handover Baseline記録にも反映
+- [x] 監査結果をRへ固定可能 — 本ファイルの判定はすべて`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`に紐づく
 
 ## 次の行動
 
-現時点では設計拡張ではなくactual Evidence取得を優先します。
+Gate B Readyの確定後、Handover Baseline `B`をRepository revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`へ固定しました。記録は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)です。
 
 ```text
 actual full checkout preflight
@@ -375,11 +384,11 @@ candidate R固定
         ↓
 same-run child exact artifact independent audit
         ↓
-Gate B Readiness Audit for R
+Gate B Readiness Audit for R  ← 完了（本ファイル、2026-09-19、Ready）
         ↓ Ready only
-Handover Baseline B / revision R
+Handover Baseline B / revision R  ← 完了（GATE_B_TO_C_HANDOVER_BASELINE_B.md）
         ↓
-First Web Target
+First Web Target  ← 次のIssue（`ISSUE-000007` / #70）
 ```
 
 ## 非目標

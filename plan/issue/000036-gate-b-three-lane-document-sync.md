@@ -191,9 +191,9 @@ Gate BのWHAT / HOW / JUDGE / Handover / v1主線 / Planning入口 / Application
 
 PR #389 / `ISSUE-000037` / #387で、三laneが同じcandidate revisionへ揃ったことを最終確認する薄いrunnerも追加されています。
 
-ただし通常Go環境でのpackage test、#310 / #255 / #308のactual run、Evidence専用PostgreSQLを含む`reference-gate-b-final-evidence`のactual final runは未実行です。
+2026-09-19に、通常Go環境でのpackage test、#310 / #255 / #308のactual run、Evidence専用PostgreSQLを含む`reference-gate-b-final-evidence`のactual final runをすべて実行し、独立artifact auditも成立しました（`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-したがってGate Bは引き続き **Not Ready** です。
+したがってGate Bは **Ready** です（[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)参照）。
 
 ## 非目標
 

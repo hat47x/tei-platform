@@ -36,17 +36,16 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 
 ## 3. 現在のProduct主線
 
-最大の直列blockerは引き続き**Gate B actual Evidence**です。
+Gate Bは2026-09-19にReadyへ到達しました。最大の直列blockerは**First Web Target build T1のactual Evidence取得**です。
 
 ```text
 Gate A — Ready
    ↓
-Gate B — Not Ready
-  #310 / #255 / #308 same-R actual Evidence待ち
+Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
    ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R — 固定済み
    ↓
-First Web Target build T1
+First Web Target build T1 — 未着手
    ↓
 Gate C — PAS-04
    ↓
@@ -75,7 +74,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-009 | **Partial Evidence** | PAS-02 | legacy Authentication / Authorization Reference、Gate A、Driver subject継承 | actual migration target、段階置換Evidence |
 | RQ-010 | **Design Only** | PAS-01 | Studio非Canonical、high-density方針、Shared Acceptance、`ISSUE-000046` | Gate C後のStudio actual Reference、operability / accessibility |
 | RQ-011 | **Partial Evidence** | PAS-04 | Source / Diagnostic / Workbench / Driver / Handover等の複数Projection | First Web Target、Studio authoring、Second Target |
-| RQ-012 | **Partial Evidence** | PAS-02 | Driver主要Scenario、Validation / Auth / Command / Observation、#310 runner | Gate B actual #310/#255/#308 same-R Evidence |
+| RQ-012 | **Partial Evidence** | PAS-02 | Driver主要Scenario、Validation / Auth / Command / Observation、Gate B actual #310/#255/#308 same-R Evidence（2026-09-19成立） | First Web Target `T1`でのDriver meaning再現Evidence |
 | RQ-013 | **Design Only** | PAS-04 | Gate C contract、baseline `R` / Target build `T`分離、Target Capability / Execution-Trust仮説 | First Web Target、Second Target比較 |
 | RQ-014 | **Partial Evidence** | PAS-02 | browse / record / reference / header-detail / commandをApplication intentとして実証 | 複数Application / Targetでの再利用Evidence |
 | RQ-015 | **Design Only** | PAS-06 | knowledge-first原則、read-only exploration計画、derived cognition研究境界 | Gate C後のexploration actual Reference |
@@ -84,7 +83,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-018 | **Strong Evidence** | PAS-02 | Business Result / Execution Error / separate Observation read | Target Projectionで同境界を維持するEvidence |
 | RQ-019 | **Strong Evidence** | PAS-05 | Permission Grant、Resource Broker / Lease、Sandbox Profile、Host material分離 | production-grade enforcementの拡張 |
 | RQ-020 | **Strong Evidence** | PAS-05 | ownership / heartbeat / fencing / durable handle / no-auto-replay / unknown保持 | 複数production Runtimeでの圧力試験 |
-| RQ-021 | **Strong Evidence** | cross | Reference Workspace、Conformance、golden、source-fixed runners、Provider Evidence tools | Gate B actual run、Gate C Target Evidence |
+| RQ-021 | **Strong Evidence** | cross | Reference Workspace、Conformance、golden、source-fixed runners、Provider Evidence tools、Gate B actual run（2026-09-19成立） | Gate C Target Evidence |
 | RQ-022 | **Strong Evidence** | cross | architecture probe / actual Evidence / production claimを分離 | v1以後のsupport / compatibility level整理 |
 | RQ-023 | **Partial Evidence** | cross | monorepo、Go中心、ADR / Plan / Reference、Provider / Target分離 | Studio / Target / AI追加後の保守量、文書 / Evidence tool増加 |
 | RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T trace | actual Target measurement、context-specific threshold |
@@ -149,7 +148,7 @@ Quality concernを新しいRequirementへ分割せず、既存RequirementのEvid
 
 ## 7. Product Gapの再統合
 
-### Gap A — Gate B actual Evidence
+### Gap A — Gate B actual Evidence（2026-09-19解消）
 
 主にRQ-005 / 009 / 012 / 014 / 021。
 
@@ -158,12 +157,14 @@ actual full checkout preflight
         ↓
 #310 / #255 / #308
         ↓
-same clean candidate R
+same clean candidate R  ← e5231839a5dcc62cce1181a2731fcb7c70d16736
         ↓
-#387 final convergence
+#387 final convergence  ← 成立
         ↓
-#273 Gate B audit
+#273 Gate B audit  ← Ready（artifactAuditPassed = true）
 ```
+
+Gate BはReadyへ到達し、Handover Baseline `B / R`も固定済みです（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。RQ-005 / 009 / 014はGate B以外のPartial Evidence理由（multi-DB / actual migration / 複数Application再利用等）が残るため、引き続きPartial Evidenceのままです。
 
 新しいquality laneを追加しません。
 
@@ -223,8 +224,8 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 
 ## 8. 現在の優先順位
 
-1. Gate B actual final Evidenceを取得する
-2. Gate B ReadyならHandover Baseline `B / R`を固定する
+1. ~~Gate B actual final Evidenceを取得する~~ — 完了（2026-09-19、R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`）
+2. ~~Gate B ReadyならHandover Baseline `B / R`を固定する~~ — 完了
 3. First Web Target `T1`でGate C Evidenceとquality baselineを取得する
 4. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する
 5. RQ-025 / 026のBusiness Procedure / cross-view actual Evidenceを継続する

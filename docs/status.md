@@ -1,10 +1,10 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-16
+- 更新日: 2026-09-19
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
-- Gate B: **Not Ready**
-- Gate C: **Blocked — Gate B Ready + Handover待ち**
+- Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
+- Gate C: **未着手 — First Web Target build `T1`待ち**
 
 TEIは完成したlow-code製品ではありません。
 
@@ -28,14 +28,16 @@ TEIは完成したlow-code製品ではありません。
 - deterministic Repository Evidence runner
 - real PostgreSQL ephemeral fixture Evidence runner / safety boundary
 - Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
+- Gate B actual #310 / #255 / #308 final Evidence（candidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）
+- Gate B → Gate C Handover Baseline `B / R`固定（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）
 
 2026-09-08には、datasource aliasのdeclaration existenceとruntime / authority上のexact-one resolutionを分離する#511と、Business Procedure / Handoffのcross-view pressureを扱う#482がmainへ統合されています。
 
-これらのmergeをactual package testやGate B Product Evidenceの成功へ読み替えません。candidate revision `R`はまだ固定しておらず、post-merge mainをactual full checkoutでsource / index preflightし、Gate B pre-checkで追加source修正が不要と確認した後に初めてRを選びます。
+2026-09-19には、actual Evidence取得中に見つかった2件のsource-navigation bug（`semanticDataAnchors`のrelation `key`句未対応、`database-contract-query`のcontract wrapper未対応）をPR [#726](https://github.com/hat47x/tei-platform/pull/726)で、独立artifact auditが検出した`contractQueryTarget`期待値のstaleさをPR [#727](https://github.com/hat47x/tei-platform/pull/727)で修正し、両PRのsquash-merge後の`main` HEAD（`e5231839a5dcc62cce1181a2731fcb7c70d16736`）をclean checkoutして#310 / #255 / #308 / #387 / 独立artifact auditを最初から再実行しました。**Gate Bのactual Product Evidenceは、この`R`についてすべて揃っています。**
 
-ただし、**Gate Bのactual Product Evidenceはまだ揃っていません。**
+判定の詳細は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)、Handoverは[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、post-merge mainをactual full checkoutで検証し、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
+現在必要なのは、新しいDriver abstractionを増やすことではなく、Handover Baseline `B / R`を比較対象として第一Web Target（`ISSUE-000007` / #70）のbuild `T1`を実装し、Gate C Evidenceを取得することです。
 
 ## Business Procedure / Lane C Pre-ADR
 
@@ -78,11 +80,11 @@ Gate A — Ready
         ↓
 Application Driver — major semantics ready
         ↓
-Gate B — Not Ready
+Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T1 — 未着手
         ↓
 Gate C
         ↓
@@ -92,19 +94,19 @@ Studio  knowledge / AI  Second Target
 PAS-01  PAS-06 / 01     PAS-04
 ```
 
-## Gate B — actual Evidence待ち
+## Gate B — actual Evidence成立
 
-Ready判定へ必須とするsource-dependent Evidenceは次の三つです。
+Ready判定へ必須とするsource-dependent Evidenceは次の三つで、いずれもcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`のsame-runで成立しています（2026-09-19）。
 
 | Evidence | Issue | 実装状態 | actual Evidence |
 | --- | --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | runner / source guard Ready | 未取得 |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair / source guard Ready | 未取得 |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 未取得 |
+| deterministic Repository | `ISSUE-000032` / #310 | runner / source guard Ready | 成立 |
+| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair / source guard Ready | 成立 |
+| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 成立 |
 
-三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387のfinal runnerで収束確認します。
+三つは`ISSUE-000037` / #387のfinal runnerでsame-Rの収束を確認済みです。
 
-#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。
+#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`に対する独立監査は`artifactAuditPassed = true`でした。
 
 actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gate Bの第四Required laneではありません。
 
@@ -126,7 +128,7 @@ Gate B Product Evidenceと、補助的なsource qualification CIを分離しま�
 - source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
 - 環境変化を示す観測がない間、同一classのfailed jobを機械的にrerunしない
 
-したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
+current restart pointは「Actionsを再有効化するか」ではありませんでした。実際には、利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更（2件のsource-navigation bug fix、PR #726 / #727）を出し切った上でcandidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を固定し、Gate B Readyへ到達しました。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceの代わりにはならず、今回のGate B Ready判定もlocal actual executionのみを根拠としています。
 
 Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
 
@@ -248,14 +250,14 @@ Application userのAuthentication / Authorizationと、Plugin / Runtime Permissi
 
 ## Handover / Target
 
-Gate B Ready後、candidate revision `R`をHandover Baseline `B`として固定します。
+Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定しました（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
 First Web Targetの実装revisionは`T1`として別に追跡します。
 
 ```text
-Handover B at R
+Handover B at R  ← 固定済み
       ↓ meaning baseline
-Web build T1
+Web build T1  ← 未着手
       ↓
 Gate C Evidence
 ```
@@ -267,7 +269,7 @@ Gate Cでは次を別Evidenceとして扱います。
 3. Visual Fidelity Evidence
 4. 必要に応じたPerformance Evidence
 
-First Targetはまだ実装 / Evidence取得前です。
+First Targetはまだ実装 / Evidence取得前です。次のIssueは`ISSUE-000007`（GitHub #70）です。
 
 ## Studio / Authoring
 
@@ -340,8 +342,6 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 
 ## 現時点で完成済みとは言わないもの
 
-- Gate B Ready
-- Gate B actual #310 / #255 / #308 final Evidence
 - actual Oracle E2E
 - First Web Target / Gate C
 - complete Target-neutral Presentation IR
@@ -366,6 +366,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 - [Gate B Readiness Audit](../plan/GATE_B_READINESS_AUDIT.md)
 - [Gate B Evidence Runbook](../plan/GATE_B_EVIDENCE_RUNBOOK.md)
 - [Gate B → C Handover Contract](../plan/GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- [Gate B → C Handover Baseline B](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
 - [Gate C Evidence Contract](../plan/GATE_C_EVIDENCE_CONTRACT.md)
 - [Architecture](architecture.md)
 
