@@ -15,10 +15,22 @@ import (
 	"tei/internal/workspace"
 )
 
+const (
+	actorContextR0ProcedureArtifact = "reference/business-system-design/order-entry-business-procedure.json"
+	actorContextR0ConflictArtifact  = "reference/business-system-design/order-entry-customer-edit-conflict.json"
+)
+
+type actorContextR0InputFingerprint struct {
+	Scope       string `json:"scope"`
+	Artifact    string `json:"artifact"`
+	Fingerprint string `json:"fingerprint"`
+}
+
 type actorContextR0BuilderProbe struct {
-	Purpose             string   `json:"purpose"`
-	SnapshotFingerprint string   `json:"snapshotFingerprint"`
-	SourceArtifact      string   `json:"sourceArtifact"`
+	Purpose                   string                           `json:"purpose"`
+	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
+	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
+	SourceArtifact            string                           `json:"sourceArtifact"`
 	Subjects            []string `json:"subjects,omitempty"`
 	Dependencies        []string `json:"dependencies,omitempty"`
 	EvidencePaths       []string `json:"evidencePaths,omitempty"`
@@ -26,8 +38,9 @@ type actorContextR0BuilderProbe struct {
 }
 
 type actorContextR0HumanReviewProbe struct {
-	Purpose             string   `json:"purpose"`
-	SnapshotFingerprint string   `json:"snapshotFingerprint"`
+	Purpose                   string                           `json:"purpose"`
+	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
+	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	DiagnosticCodes     []string `json:"diagnosticCodes,omitempty"`
 	ImpactSubjects      []string `json:"impactSubjects,omitempty"`
 	EvidencePaths       []string `json:"evidencePaths,omitempty"`
@@ -36,8 +49,9 @@ type actorContextR0HumanReviewProbe struct {
 }
 
 type actorContextR0OperationalProbe struct {
-	Purpose             string   `json:"purpose"`
-	SnapshotFingerprint string   `json:"snapshotFingerprint"`
+	Purpose                   string                           `json:"purpose"`
+	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
+	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	Procedure           string   `json:"procedure"`
 	Step                string   `json:"step"`
 	BusinessAction      string   `json:"businessAction"`
@@ -72,27 +86,46 @@ func TestActorContextR0DerivesPurposeSpecificProjectionsFromSameReference(t *tes
 		t.Fatal("R0 must not promote the Business Procedure Reference to Canonical authority")
 	}
 
-	snapshot, err := actorContextR0Fingerprint(fixturePath)
+	referenceFingerprint, err := actorContextR0Fingerprint(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	builder, err := deriveActorContextR0Builder(loaded.World, f, "BP-02", fixturePath, snapshot)
+	builder, err := deriveActorContextR0Builder(loaded.World, sourceIdx, f, "BP-02", fixturePath, referenceFingerprint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	human, err := deriveActorContextR0HumanReview(loaded.World, f, workspacePath, fixturePath, conflictPath, snapshot)
+	human, err := deriveActorContextR0HumanReview(loaded.World, sourceIdx, f, workspacePath, fixturePath, conflictPath, referenceFingerprint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operational, err := deriveActorContextR0Operational(loaded.World, f, "BP-02", snapshot)
+	operational, err := deriveActorContextR0Operational(loaded.World, sourceIdx, f, "BP-02", fixturePath, referenceFingerprint)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if builder.SnapshotFingerprint != human.SnapshotFingerprint || builder.SnapshotFingerprint != operational.SnapshotFingerprint {
-		t.Fatalf("three R0 projections did not preserve the same Business Reference snapshot: builder=%s human=%s operational=%s",
-			builder.SnapshotFingerprint, human.SnapshotFingerprint, operational.SnapshotFingerprint)
+	if builder.ReferenceFingerprint != human.ReferenceFingerprint || builder.ReferenceFingerprint != operational.ReferenceFingerprint {
+		t.Fatalf("three R0 projections did not preserve the same Business Reference baseline: builder=%s human=%s operational=%s",
+			builder.ReferenceFingerprint, human.ReferenceFingerprint, operational.ReferenceFingerprint)
+	}
+	for name, inputs := range map[string][]actorContextR0InputFingerprint{
+		"builder":     builder.RequiredInputFingerprints,
+		"human":       human.RequiredInputFingerprints,
+		"operational": operational.RequiredInputFingerprints,
+	} {
+		if !actorContextR0HasInputScope(inputs, "business-procedure-reference") {
+			t.Fatalf("%s projection lost the shared Business Procedure input fingerprint: %+v", name, inputs)
+		}
+		if !actorContextR0HasInputScope(inputs, "source-definition") {
+			t.Fatalf("%s projection did not bind freshness to selected workspace source definitions: %+v", name, inputs)
+		}
+	}
+	if !actorContextR0HasInputScope(human.RequiredInputFingerprints, "review-evidence") {
+		t.Fatalf("Human Review projection did not bind freshness to the conflict Evidence input: %+v", human.RequiredInputFingerprints)
 	}
 
 	if operational.AcceptedAccess != "read" {
@@ -128,12 +161,16 @@ func TestActorContextR0OperationalKeepsManualAndObservationStepsUnresolved(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := actorContextR0Fingerprint(fixturePath)
+	referenceFingerprint, err := actorContextR0Fingerprint(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceIdx, err := workspace.BuildSourceIndex(filepath.Join(root, "reference", "workspace"), loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	manual, err := deriveActorContextR0Operational(loaded.World, f, "BP-04", snapshot)
+	manual, err := deriveActorContextR0Operational(loaded.World, sourceIdx, f, "BP-04", fixturePath, referenceFingerprint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +181,7 @@ func TestActorContextR0OperationalKeepsManualAndObservationStepsUnresolved(t *te
 		t.Fatalf("BP-04 missing current Data trace was not preserved as unresolved: %+v", manual)
 	}
 
-	observation, err := deriveActorContextR0Operational(loaded.World, f, "BP-08", snapshot)
+	observation, err := deriveActorContextR0Operational(loaded.World, sourceIdx, f, "BP-08", fixturePath, referenceFingerprint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,8 +193,8 @@ func TestActorContextR0OperationalKeepsManualAndObservationStepsUnresolved(t *te
 	}
 }
 
-func deriveActorContextR0Builder(world ir.World, f fixture, stepID, fixturePath, snapshot string) (actorContextR0BuilderProbe, error) {
-	operational, err := deriveActorContextR0Operational(world, f, stepID, snapshot)
+func deriveActorContextR0Builder(world ir.World, sourceIdx sourceindex.Index, f fixture, stepID, fixturePath, referenceFingerprint string) (actorContextR0BuilderProbe, error) {
+	operational, err := deriveActorContextR0Operational(world, sourceIdx, f, stepID, fixturePath, referenceFingerprint)
 	if err != nil {
 		return actorContextR0BuilderProbe{}, err
 	}
@@ -201,9 +238,10 @@ func deriveActorContextR0Builder(world ir.World, f fixture, stepID, fixturePath,
 	sort.Strings(dependencies)
 
 	return actorContextR0BuilderProbe{
-		Purpose:             "re-enter development around " + stepID,
-		SnapshotFingerprint: snapshot,
-		SourceArtifact:      fixturePath,
+		Purpose:                   "re-enter development around " + stepID,
+		ReferenceFingerprint:      referenceFingerprint,
+		RequiredInputFingerprints: append([]actorContextR0InputFingerprint(nil), operational.RequiredInputFingerprints...),
+		SourceArtifact:            fixturePath,
 		Subjects:            subjects,
 		Dependencies:        dependencies,
 		EvidencePaths:       append([]string(nil), operational.EvidencePaths...),
@@ -217,17 +255,18 @@ func deriveActorContextR0Builder(world ir.World, f fixture, stepID, fixturePath,
 
 func deriveActorContextR0HumanReview(
 	world ir.World,
+	sourceIdx sourceindex.Index,
 	f fixture,
 	workspacePath,
 	fixturePath,
 	conflictPath,
-	snapshot string,
+	referenceFingerprint string,
 ) (actorContextR0HumanReviewProbe, error) {
 	result, err := run(workspacePath, fixturePath, conflictPath)
 	if err != nil {
 		return actorContextR0HumanReviewProbe{}, err
 	}
-	operational, err := deriveActorContextR0Operational(world, f, "BP-02", snapshot)
+	operational, err := deriveActorContextR0Operational(world, sourceIdx, f, "BP-02", fixturePath, referenceFingerprint)
 	if err != nil {
 		return actorContextR0HumanReviewProbe{}, err
 	}
@@ -248,9 +287,17 @@ func deriveActorContextR0HumanReview(
 	}
 	sort.Strings(evidence)
 
+	conflictInput, err := actorContextR0FileInputFingerprint("review-evidence", actorContextR0ConflictArtifact, conflictPath)
+	if err != nil {
+		return actorContextR0HumanReviewProbe{}, err
+	}
+	inputs := append([]actorContextR0InputFingerprint(nil), operational.RequiredInputFingerprints...)
+	inputs = actorContextR0NormalizeInputFingerprints(append(inputs, conflictInput))
+
 	return actorContextR0HumanReviewProbe{
-		Purpose:             "review intentional customer-edit access conflict",
-		SnapshotFingerprint: snapshot,
+		Purpose:                   "review intentional customer-edit access conflict",
+		ReferenceFingerprint:      referenceFingerprint,
+		RequiredInputFingerprints: inputs,
 		DiagnosticCodes:     codes,
 		ImpactSubjects:      impact,
 		EvidencePaths:       evidence,
@@ -263,7 +310,7 @@ func deriveActorContextR0HumanReview(
 	}, nil
 }
 
-func deriveActorContextR0Operational(world ir.World, f fixture, stepID, snapshot string) (actorContextR0OperationalProbe, error) {
+func deriveActorContextR0Operational(world ir.World, sourceIdx sourceindex.Index, f fixture, stepID, fixturePath, referenceFingerprint string) (actorContextR0OperationalProbe, error) {
 	var selected *step
 	for i := range f.Steps {
 		if f.Steps[i].ID == stepID {
@@ -285,8 +332,8 @@ func deriveActorContextR0Operational(world ir.World, f fixture, stepID, snapshot
 	}
 
 	out := actorContextR0OperationalProbe{
-		Purpose:             "read-only operational context for " + stepID,
-		SnapshotFingerprint: snapshot,
+		Purpose:              "read-only operational context for " + stepID,
+		ReferenceFingerprint: referenceFingerprint,
 		Procedure:           f.Procedure.ID,
 		Step:                stepID,
 		BusinessAction:      selected.BusinessAction,
@@ -330,7 +377,106 @@ func deriveActorContextR0Operational(world ir.World, f fixture, stepID, snapshot
 		out.Unresolved = append(out.Unresolved, "observation-realization-not-semantic-capability")
 	}
 	sort.Strings(out.Unresolved)
+
+	sourceInputs, err := actorContextR0SourceInputFingerprints(sourceIdx, out)
+	if err != nil {
+		return actorContextR0OperationalProbe{}, err
+	}
+	procedureInput, err := actorContextR0FileInputFingerprint("business-procedure-reference", actorContextR0ProcedureArtifact, fixturePath)
+	if err != nil {
+		return actorContextR0OperationalProbe{}, err
+	}
+	out.RequiredInputFingerprints = actorContextR0NormalizeInputFingerprints(append(sourceInputs, procedureInput))
 	return out, nil
+}
+
+func actorContextR0SourceInputFingerprints(idx sourceindex.Index, probe actorContextR0OperationalProbe) ([]actorContextR0InputFingerprint, error) {
+	type subjectGroup struct {
+		kind string
+		ids  []string
+	}
+	groups := []subjectGroup{
+		{kind: "application-pattern", ids: probe.PatternRefs},
+		{kind: "semantic-validation", ids: probe.ValidationRefs},
+		{kind: "semantic-capability", ids: probe.CapabilityRefs},
+		{kind: "semantic-data", ids: probe.DataRefs},
+		{kind: "semantic-relation", ids: probe.RelationRefs},
+	}
+
+	var out []actorContextR0InputFingerprint
+	for _, group := range groups {
+		for _, id := range group.ids {
+			refs := idx.ReferencesFor(sourceindex.Subject{Kind: group.kind, ID: id})
+			if len(refs) == 0 {
+				return nil, fmt.Errorf("R0 selected subject %s:%s has no Source Index reference", group.kind, id)
+			}
+			for _, ref := range refs {
+				artifact, ok := actorContextR0ArtifactByPath(idx, ref.ArtifactPath)
+				if !ok {
+					return nil, fmt.Errorf("R0 Source Index reference %s:%s points to missing artifact %s", group.kind, id, ref.ArtifactPath)
+				}
+				out = append(out, actorContextR0InputFingerprint{
+					Scope:       "source-definition",
+					Artifact:    artifact.Path,
+					Fingerprint: artifact.Fingerprint,
+				})
+			}
+		}
+	}
+	return actorContextR0NormalizeInputFingerprints(out), nil
+}
+
+func actorContextR0FileInputFingerprint(scope, artifact, path string) (actorContextR0InputFingerprint, error) {
+	fingerprint, err := actorContextR0Fingerprint(path)
+	if err != nil {
+		return actorContextR0InputFingerprint{}, err
+	}
+	return actorContextR0InputFingerprint{
+		Scope:       scope,
+		Artifact:    artifact,
+		Fingerprint: fingerprint,
+	}, nil
+}
+
+func actorContextR0NormalizeInputFingerprints(values []actorContextR0InputFingerprint) []actorContextR0InputFingerprint {
+	seen := map[string]struct{}{}
+	out := make([]actorContextR0InputFingerprint, 0, len(values))
+	for _, value := range values {
+		key := value.Scope + "\x00" + value.Artifact + "\x00" + value.Fingerprint
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Scope != out[j].Scope {
+			return out[i].Scope < out[j].Scope
+		}
+		if out[i].Artifact != out[j].Artifact {
+			return out[i].Artifact < out[j].Artifact
+		}
+		return out[i].Fingerprint < out[j].Fingerprint
+	})
+	return out
+}
+
+func actorContextR0ArtifactByPath(idx sourceindex.Index, path string) (sourceindex.Artifact, bool) {
+	for _, artifact := range idx.Artifacts {
+		if artifact.Path == path {
+			return artifact, true
+		}
+	}
+	return sourceindex.Artifact{}, false
+}
+
+func actorContextR0HasInputScope(values []actorContextR0InputFingerprint, scope string) bool {
+	for _, value := range values {
+		if value.Scope == scope {
+			return true
+		}
+	}
+	return false
 }
 
 func actorContextR0Fingerprint(path string) (string, error) {
