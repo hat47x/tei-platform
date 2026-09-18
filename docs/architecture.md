@@ -242,6 +242,27 @@ AI policyがraw tool callを生成できても、それを新しいAction Contra
 
 現時点では汎用Decision Policy interfaceやAction Catalog schemaをCoreへ固定しません。Gate C後のsmall Referenceで、Rule / AIの差し替えがRuntime意味を二重化しないことをPressureします。
 
+### known operationはAI呼び出しを必須にしない
+
+Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。
+
+```text
+known / exact / deterministic operation
+  -> deterministic path
+
+ambiguous / compositional intent
+  -> AI reasoning candidate
+
+both
+  -> same semantic action / authority boundary
+```
+
+exact identity、既知rule、明示済みCapability、決定論的変換等で十分に解ける場合は、AIを呼ばない経路を標準候補として保持します。AIを呼ばないことを「低機能」とみなしません。
+
+逆に曖昧なpurpose、複数candidateの比較、説明・統合、semantic residual等ではAI reasoningを利用できます。ただしAI routing scoreや「AIを使う」という選択自体はSemantic applicability・Acceptance・execution authorityにはなりません。
+
+このroutingは性能最適化だけでなく、同じsemantic contractをよりpredictable / local / low-costに満たせる範囲を保つための境界です。現時点でrouter implementationや固定thresholdはArchitectureへ採用しません。
+
 ## Database lifecycle
 
 DatabaseはApplicationから独立したUnitです。
