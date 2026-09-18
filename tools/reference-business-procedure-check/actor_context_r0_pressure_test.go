@@ -236,11 +236,18 @@ func deriveActorContextR0Builder(world ir.World, sourceIdx sourceindex.Index, f 
 		dependencies = append(dependencies, fmt.Sprintf("%s:%s --%s--> %s:%s", dep.FromKind, from, dep.Relation, dep.ToKind, to))
 	}
 	sort.Strings(dependencies)
+	inputs := append([]actorContextR0InputFingerprint(nil), operational.RequiredInputFingerprints...)
+	inputs = append(inputs, actorContextR0InputFingerprint{
+		Scope:       "derived-dependency-set",
+		Artifact:    "internal/index.Build:selected-dependencies",
+		Fingerprint: sourceindex.Fingerprint([]byte(strings.Join(dependencies, "\n"))),
+	})
+	inputs = actorContextR0NormalizeInputFingerprints(inputs)
 
 	return actorContextR0BuilderProbe{
 		Purpose:                   "re-enter development around " + stepID,
 		ReferenceFingerprint:      referenceFingerprint,
-		RequiredInputFingerprints: append([]actorContextR0InputFingerprint(nil), operational.RequiredInputFingerprints...),
+		RequiredInputFingerprints: inputs,
 		SourceArtifact:            fixturePath,
 		Subjects:            subjects,
 		Dependencies:        dependencies,
