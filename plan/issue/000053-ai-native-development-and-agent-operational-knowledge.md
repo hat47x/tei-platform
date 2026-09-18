@@ -1001,60 +1001,53 @@ action-locus-pressure-qualified
 も維持する。
 
 
-### R3M — Operational stop explanation / handoff boundary
 
-R3Lでaction-locus Evidence不足のためproduction locus選択を停止した後、AI Business Actorが未解決authorityで止まった事実を、別authorityを発明せず外部へ説明するProjectionをPressureする。
+
+### R3N — Stage-aware operational stop taxonomy
+
+R3Mでcurrent BP-06のaction-authority stopを正確に説明できることを確認した後、異なる停止状態を一つのgeneric Authorization errorへ潰さないtaxonomyをPressureする。
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
+- `plan/ACTOR_CONTEXT_R3N_STAGE_AWARE_OPERATIONAL_STOP_TAXONOMY_2026-09.md`
 
 test-only source:
 
-- `tools/reference-business-procedure-check/actor_context_r3m_operational_stop_explanation_pressure_test.go`
+- `tools/reference-business-procedure-check/actor_context_r3n_operational_stop_taxonomy_pressure_test.go`
 
-current BP-06では:
-
-```text
-requirement = required
-resource = order_entry.submit_order
-action authority = unresolved
-```
-
-なので、explanationは:
+R3Nでは少なくとも:
 
 ```text
-stop stage = authorization-action-authority
-blocking reason = authorization-action-authority-unresolved
-missing authority class = authorization-action-authority
+requirement authority unresolved
+principal unresolved
+resource authority unresolved
+action authority unresolved
+evaluation not attempted
+evaluation observation mismatch
+evaluation denied
+current-context evaluation unresolved
 ```
 
-までを提示できる。
+を別のstop meaningとして保持する。
 
-一方:
+特に:
 
 ```text
-missing action value = execute
-handoff owner = security team / sales operator
-next action = BP-07
+authority unresolved
+  != evaluated denied
+
+observation mismatch
+  != denied
+
+prior-context reuse unresolved
+  != not evaluated
 ```
 
-などは生成しない。
+を固定する。
 
-```text
-explain missing authority class
-  != infer missing authority value
+上流blockerが残る場合はearliest blockerだけをcurrent reasonとして保持し、後段は `downstream not attempted` として分離する。
 
-resolution requested
-  != handoff recipient known
-
-downstream not attempted
-  != downstream gap promoted to current blocker
-```
-
-を維持する。
-
-Projectionはderived / non-authoritativeで、known requirement / protected resourceにはprovenanceを保持し、machine-readable blocker vocabularyを自然言語要約で失わない。production ticket routing / human task assignment / notification transportは追加しない。
+missing authority classは示してもmissing valueを推測せず、handoff owner / next action / Authorized / CanExecute等のshortcutを追加しない。
 
 
 ## Phase 4 — side-effect Action
