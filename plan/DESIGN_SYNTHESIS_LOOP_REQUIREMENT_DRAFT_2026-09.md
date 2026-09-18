@@ -191,11 +191,24 @@ LLMへ渡す前に、Repository全体を自由探索させる代わりに、TEI�
 
 patternの存在や過去の成功を正解とはみなしません。past successful composition / experience candidateはcandidate sourceであり、current applicabilityのEvidenceではありません。利用時は元Execution / Observation / Evidenceへ戻れるprovenanceを保持し、current accepted authority / dependency / Target条件でqualificationします。
 
+RQ-029のcross-Application knowledge portabilityは、このPattern recallとは分けます。origin ApplicationでacceptedなDomain / Infrastructure knowledgeをdestinationへ再利用する場合は、origin / dependency / assumption / Variation / Provider・Target constraint / Evidence / destination overrideを保持し、destination contextで再qualificationしてからProposal / explicit referenceへ進めます。
+
 ```text
 past success
   != current applicability
   != semantic Acceptance
+
+origin accepted
+  != destination applicable
+
+origin change
+  != destination auto-change
+
+destination override
+  != origin mutation
 ```
+
+linked reuseとdestination-owned local variationのどちらを採るかはReferenceで判断し、production inheritance / sync mechanismを先行固定しません。
 
 experience memory / learned rankingを削除してもaccepted meaningが変わらないことを維持します。
 
