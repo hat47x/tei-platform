@@ -424,6 +424,64 @@ AI Business Actorが、
 
 GUI click imitationはbaseline比較に使っても、標準経路にはしない。
 
+### R3 first challenge — read-only Business Actor
+
+最初のread-only Agent challengeは `plan/ACTOR_CONTEXT_R3_READ_ONLY_BUSINESS_ACTOR_CHALLENGE_2026-09.md` を正本とする。
+
+対象はBP-02:
+
+```text
+confirm the customer associated with the order
+```
+
+current Referenceから、
+
+```text
+BP-02
+  -> order_entry.customer_reference
+  -> sales.order.customer
+  -> master
+  -> master_data.customer
+  -> find_by_id
+  -> customer.customer.customer_id -> id
+  -> customer.customer zero-or-one
+```
+
+までをstaticに解決する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3_read_only_agent_pressure_test.go`
+
+保持するruntime gap:
+
+- actor principal unresolved
+- input instance value unresolved
+- Authorization not evaluated
+- Resource / Provider not evaluated
+
+Source Evidenceでは、
+
+- invocation attempted = false
+- Observation received = false
+- Business completion unresolved = true
+
+を固定する。
+
+これにより、
+
+```text
+read route understood
+  != agent authorized
+  != input value available
+  != query succeeded
+  != Business Action complete
+```
+
+をPressureする。
+
+R3ではMCP / API等のtransport contract、Agent principal mapping、actual query invocationをまだ追加しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
