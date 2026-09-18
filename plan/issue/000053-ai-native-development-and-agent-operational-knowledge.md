@@ -861,6 +861,41 @@ R3I refinementとして、evaluation ObservationはBusiness addressだけでは�
 
 またBP-06のBusiness Action本文に `execute` が現れ、Legacy policyにも `execute / order_entry.submit_order` が存在しても、その語彙一致からmissing Authorization action authorityを生成しない。current `denied` Observationは「評価済み」と「許可」を分離してoutcomeを保持する。
 
+### R3J — Authorization action authority Evidence Gate
+
+R3Iで `requirement=required` とprotected resourceまで解決してもAuthorization actionが独立authorityであることを確認したため、current Repositoryにaccepted action authorityが存在するかを監査する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3J_AUTHORIZATION_ACTION_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3j_authorization_action_authority_gate_pressure_test.go`
+
+current BP-06周辺には:
+
+```text
+Business wording contains "execute"
+submit Pattern kind = command
+Legacy policy action = execute
+```
+
+という相互に整合するhintがある。
+
+しかし:
+
+```text
+multiple corroborating hints
+  != accepted AuthorizationAction authority
+```
+
+として、`execute` を補完しない。current action authority Evidence Gateは未充足であり、`security.authorize` invocationは引き続きblockedとする。
+
+test-only explicit action candidateにはprovenanceを要求し、それを与えてactionを解決しても次の状態は `authorization-not-evaluated` である。
+
+production action field / generic relation / `command -> execute` convention / policy backfillは追加しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
