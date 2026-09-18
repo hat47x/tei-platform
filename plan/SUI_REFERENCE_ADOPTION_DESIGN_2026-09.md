@@ -355,6 +355,24 @@ source contract validity
 
 Stage 0で両者を混ぜて「TEIの方が厳しいので正しい」としない。差が必要ならSUI source contract変更、TEI consumer policy、TEI Product gapのどれなのかを明示する。
 
+### Stage 0 provenance / freshness
+
+cross-repository Referenceでは、単に`SourceContract = IslandHierarchyContractV1`と書くだけでは、後からどのsource実装をshadowしたか再現できない。
+
+Stage 0ではSUI repository revisionをnavigation provenanceとして記録し、freshness dependencyはactual contract / handoff / test blob SHAへ束縛する。
+
+```text
+repository revision
+  = navigation provenance
+
+contract / handoff / test blobs
+  = actual Stage 0 source dependencies
+```
+
+したがってSUI repositoryの無関係なcommitだけでStage 0をstaleにしない。一方、依存blobが変化した場合は、fixture / shadow validator / mapping assumptionを再確認するまでcurrent-source conformanceを主張しない。
+
+これはDesign Synthesis R6 / Derived Cognitionで採用したselective freshnessと同じ方向であり、cross-repositoryだからrepository-wide revision counterへ戻さない。
+
 ### Stage 0の入力をこの契約にする理由
 
 移管専用の新しいJSON schemaを先に作ると、SUIとTEIの間に第三の意味表現を増やす。
