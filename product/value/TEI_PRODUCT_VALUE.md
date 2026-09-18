@@ -10,7 +10,7 @@ TEI（鼎／テイ）は、単に画面やテーブルを速く作るための�
 
 ## 一文で表す価値
 
-**TEIは、業務の意味を技術から独立して保ち、現実の複雑さを削らずに実装へ結び付け、その関係を人と生成AIの双方が追跡・検証しながら選び直せる開発基盤を目指します。**
+**TEIは、ソフトウェアと業務の意味を技術から独立して保ち、生成AIがその意味から継続的にApplicationを構築・変更し、必要に応じてAIエージェントが業務遂行にも利用でき、人間が高密度なProjectionから理解・判断・再利用できる基盤を目指します。**
 
 ## 1. 業務の意味を失わない
 
@@ -83,6 +83,124 @@ TEIの価値は、ApplicationにUIや業務ロジックがある場合だけに�
 
 したがってTEI適用判断では、**Application Planeの大きさ**と同時に、**設計知識を構造化して外在化し、そこから実装を導きたい度合い**を独立した軸として見るべきです。
 
+## 6.2 生成AIが継続的にApplicationを構築・変更できること
+
+TEIは、生成AIが一度だけコードを生成するための入力形式ではありません。
+
+生成AIが実装作業の大部分を担う開発形態では、重要なのは「コードを書けること」よりも、
+
+- 何を意味するApplicationか
+- 何が既存知識として再利用できるか
+- どこが今回の変更対象か
+- 何を壊してはいけないか
+- どの実装がderivedで再生成可能か
+- どこがnative assetで慎重に扱うべきか
+- 変更後に何を検証すればよいか
+
+を機械可読な形で継続的に取り出せることです。
+
+TEIでは、生成AIがRepository全体を毎回読み直して暗黙知を再構成するのではなく、Canonical meaning、Source、Pattern、Policy、Capability、Binding、Evidence、Decision history等から必要なcontextを取得し、変更を構成できる状態を目指します。
+
+コードは重要な実行資産ですが、Application知識の唯一の容器にはしません。生成・再生成可能な実装はderived realizationとして扱い、native codeにしか存在しない重要な意味はSource Indexや明示的なContractへ接続します。
+
+また、Applicationは完成して終わるものではありません。運用、制度、利用者要求、Provider、Targetの変化に応じて継続的に変更されます。TEIは、AIが過去の判断と現在の意味を読み直し、局所的な変更を安全に積み重ねられる基盤であることを重視します。
+
+## 6.3 人間の認知効率を最大化すること
+
+生成AIが実装を担うほど、人間にとって希少になるのはcoding throughputではなく、**複雑なApplicationを理解し、重要な判断へ注意を配分する認知帯域**です。
+
+TEIは、人間へ大量のgenerated codeを読ませることを主要な確認方法にはしません。
+
+同じCanonical meaningを、
+
+- 高密度な表
+- graph
+- flow
+- UI Projection
+- dependency / impact view
+- semantic diff
+- diagnostic
+- Evidence / provenance
+- natural language
+
+へ切り替え、目的に応じて必要な情報だけを圧縮して見られることを重視します。
+
+人間が確認すべき対象も、全面的な実装詳細ではなく、
+
+- 何が変わったか
+- なぜ変わったか
+- 何に影響するか
+- どこが未確定か
+- どの例外があるか
+- 何をAIが判断し、何を人間が承認したか
+- どのEvidenceから再確認できるか
+
+へ寄せます。
+
+TEIにおけるEditor / Projectionの価値は、単なるvisual authoringではなく、**人間が少ない認知負荷で大きなソフトウェア構造を理解・判断できること**にあります。
+
+## 6.4 Domain・Infrastructure知識を移植可能な資産にすること
+
+継続的なApplication開発では、一つのシステムで得た知識を次のシステムでも再利用できることが重要です。
+
+TEIでは再利用対象をsource codeだけに限定しません。
+
+- Domain type / relation / constraint
+- Business Procedure / Pattern
+- Policy / Variation
+- Validation
+- Capability contract
+- Authorization rule
+- Database contract / mapping
+- deployment / runtime bindingの知識
+- Provider固有の制約や適合条件
+- 過去のDecision / Evidence
+
+などを、実装技術と適切に分離したうえで再利用・移植できる状態を目指します。
+
+再利用とは、別Applicationへ無条件にcopyすることではありません。元の意味、前提、依存、適用条件、Variation、Evidenceを追跡でき、移植先との差分を明示して再適用できることを重視します。
+
+これによりTEIは、一つのApplicationを作る道具だけでなく、**Application開発を重ねるほどDomain知識とInfrastructure知識が蓄積し、次のApplicationへ移植しやすくなる基盤**になります。
+
+## 6.5 AIエージェントが業務知識を読んで直接仕事を遂行できること
+
+TEI成果物の利用者は、人間とApplication builderだけに限定しません。
+
+場合によってはAIエージェントが、
+
+- Business Procedure
+- Business Action
+- Data / Relation
+- Policy / Constraint
+- Semantic Capability
+- Authorization
+- Runtime Binding
+- Evidence requirement
+
+を読み、許可された範囲で業務を直接遂行できます。
+
+この場合、従来のUIは業務遂行の唯一の入口ではありません。
+
+```text
+TEI business / system knowledge
+        ↓
+AI agent understanding / planning
+        ↓
+authorized Capability / Business Action
+        ↓
+Command
+        ↓
+Observation / Evidence
+        ↓
+business result / unresolved
+```
+
+ただし、TEIを読めること自体は実行権限を意味しません。AIエージェントのautonomy、Capability invocation authority、Resource access、side-effect authorityは独立して制御します。
+
+また、AIが業務を行ったことと、業務上期待された結果が実世界で成立したことも分けます。Command、acknowledgement、Observation、Evidence、reconciliationの境界は、人間や通常Applicationが実行主体の場合と同様に維持します。
+
+このためTEI成果物は、**Applicationの設計資料**であると同時に、**人間・Application・AIエージェントが共有して利用できる運用可能な知識基盤**であることを目指します。
+
 ## 7. 認知機能を、曖昧さの解消と設計支援へ使う
 
 TEIが扱う業務上の意味は厳格である必要がありますが、そこへ至る入力は必ずしも厳格ではありません。既存のExcel設計書、自然言語、ソースコード、命名揺れ、古い仕様書、運用上の例外などには、人間なら文脈から判断できても、単純な規則だけでは確定しにくい部分があります。
@@ -132,7 +250,7 @@ TEIは、次の状態を目的にはしません。
 
 - すべての業務資産を独自DSLへ移し替えること
 - 特定のUI、DB、クラウド、workflow engineへ利用者を閉じ込めること
-- 生成AIへ恒常的な強い本番権限を与えること
+- 生成AIやAIエージェントへ、TEIを読めることや自律度の高さだけを理由に強い本番権限を与えること
 - 「簡単に見えること」のために業務上の例外や不確実性を隠すこと
 - 派生物を正本へ格上げし、どこがauthoritativeなのか分からなくすること
 - 画面数やコード生成量そのものをプロダクト価値とすること
@@ -149,6 +267,9 @@ TEIは、次の状態を目的にはしません。
 - 分からない状態を、誤って一致・成功・安全とみなしていないか
 - 厳格な規則のために、人へ不要な二重管理を要求していないか
 - AIの提案と、採用済みの決定を区別できるか
+- AIエージェントが業務Actorになる場合、理解・自律度・実行権限・Resource権限・観測Evidenceを分離できるか
+- 人がgenerated codeを読まなくても、意味・差分・影響・例外・Evidenceを十分に理解できるProjectionがあるか
+- Domain / Infrastructure知識を別Applicationへ移植するとき、前提・Variation・Evidenceまで追跡できるか
 - 将来別のProviderやTargetへ移るとき、業務の意味を作り直さずに済むか
 
 これらに答えられない変更は、機能として便利でもTEIの中心価値から外れている可能性があります。
