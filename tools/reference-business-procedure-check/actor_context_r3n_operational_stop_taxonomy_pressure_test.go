@@ -12,6 +12,7 @@ const (
 	actorContextR3NClassEvaluationObservationMismatch     = "evaluation-observation-mismatch"
 	actorContextR3NClassEvaluatedDenied                   = "evaluated-denied"
 	actorContextR3NClassCurrentContextEvaluationUnresolved = "current-context-evaluation-unresolved"
+	actorContextR3NClassEvaluationFreshnessAuthorityUnresolved = "evaluation-freshness-authority-unresolved"
 )
 
 type actorContextR3NStopInputProbe struct {
@@ -310,6 +311,16 @@ func actorContextR3NClassifyStop(input actorContextR3NStopInputProbe) actorConte
 			stage:   "authorization-evaluation",
 			class:   actorContextR3NClassEvaluationObservationMismatch,
 			missing: "authorization-evaluation-observation",
+			downstream: []string{
+				"protected-operation-invocation",
+				"business-completion",
+			},
+		},
+		{
+			reason:  "authorization-evaluation-freshness-authority-unresolved",
+			stage:   "authorization-evaluation-freshness-authority",
+			class:   actorContextR3NClassEvaluationFreshnessAuthorityUnresolved,
+			missing: "authorization-evaluation-freshness-authority",
 			downstream: []string{
 				"protected-operation-invocation",
 				"business-completion",
