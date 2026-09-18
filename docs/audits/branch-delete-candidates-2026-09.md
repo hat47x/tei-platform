@@ -897,3 +897,54 @@ DELETE_CANDIDATE: 122
 ```
 
 上記122本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 31. 2026-09-18 candidate pass 20 — Gate B final runner refs
+
+Gate B final runnerのfail-closed、child fingerprint、control-flow test、interface contract、isolated Evidence同期に関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-final-runner-checked-fail-closed`
+- `work/gate-b-final-runner-child-fingerprint`
+- `work/gate-b-final-runner-control-flow-tests`
+- `work/gate-b-final-runner-doc-sync`
+- `work/gate-b-final-runner-interface-contract-test`
+- `work/gate-b-final-runner-isolated-evidence-sync`
+
+確認時点のcurrent `main`:
+
+```text
+f79e35ddd4403a6a40ae78259ac353eca0a7c3f6
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、Evidence / bootstrap等のref固有用途も確認されていません。名称に`Evidence`を含むbranchもありますが、保存用`evidence/*` refではなく、Gate B runner実装・検証workstreamの通常`work/*` branchです。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 20結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 32. current summary — pass 20
+
+candidate pass 20までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 128
+```
+
+上記128本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
