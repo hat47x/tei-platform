@@ -1,0 +1,76 @@
+{
+  "schema": "tei.sei-reference-adoption.change2-gate-boundary/v1",
+  "recorded_at": "2026-09-18",
+  "authority": "reference-planning-evidence-only",
+  "issue": "ISSUE-000054",
+  "tei_repository_revision": "981c93bc5f3455476885f1c34ec0f9af8b2667c3",
+  "challenge": {
+    "id": "change-2-projection-only-ordering",
+    "intent": "change Resume ordering / progressive disclosure without changing SEI canonical meaning",
+    "invariants": [
+      "SEI semantic authority remains unchanged",
+      "Decision and Recommendation identities remain unchanged",
+      "historical basis references remain unchanged",
+      "unresolved references remain unchanged",
+      "post-Decision changes remain temporally separate"
+    ]
+  },
+  "current_gate_snapshot": {
+    "gate_a": "ready",
+    "gate_b": "not-ready",
+    "gate_c": "blocked",
+    "first_web_target": "not-implemented",
+    "complete_target_neutral_presentation_ir": "not-established",
+    "sources": [
+      {
+        "path": "plan/README.md",
+        "git_blob_sha1": "956e03c001c8bf09c2ded51d3e7a4d973d630d96"
+      },
+      {
+        "path": "docs/status.md",
+        "git_blob_sha1": "0949cef1a7de34633badfc9fdba5431ae531eb29"
+      },
+      {
+        "path": "plan/issue/000007-first-web-target-projection.md",
+        "git_blob_sha1": "1a17f2719a8f54f7a3aadccc8dbee46ca81cbc1d"
+      },
+      {
+        "path": "plan/GATE_C_EVIDENCE_CONTRACT.md",
+        "git_blob_sha1": "714a8580c10516dc4b51dc75c8cb77dfbeb0a5ea"
+      }
+    ]
+  },
+  "decision": {
+    "disposition": "defer-product-behavior-probe",
+    "reason": "A bespoke Reference-local presentation-order abstraction would test newly invented surrogate infrastructure rather than an existing TEI Application/Target capability.",
+    "do_not_add": [
+      "resume or review Application Pattern kind",
+      "SEI-specific Presentation IR",
+      "Reference-only display_order schema presented as TEI capability",
+      "Target implementation before Gate B handover",
+      "TEI Core field or Product Requirement based only on this challenge"
+    ]
+  },
+  "reentry_conditions": [
+    "Gate B is Ready and a Handover Baseline B / revision R is fixed, and First Web Target work is authorized",
+    "or an independently justified target-neutral Presentation mechanism lands in TEI before Gate C and can be pressure-tested without SEI-specific invention"
+  ],
+  "current_classification": {
+    "existing_tei_reference_local": "sufficient for semantic decomposition only",
+    "target_neutral_presentation": "not yet available for valid Change 2 leverage measurement",
+    "reusable_extension": "not justified by Change 2 before product surface exists",
+    "native_sei": "remains valid implementation path",
+    "tei_core_gap_candidate": "not established",
+    "adoption_posture": "keep TEI-first as a candidate; do not broaden SEI migration from Stage 0 evidence"
+  },
+  "next_allowed_work": [
+    "mapping-only Evidence/Governance Surface analysis that does not require Target behavior",
+    "re-enter Change 2 when the gate conditions above are satisfied"
+  ],
+  "stop_lines": [
+    "defer is not a failed TEI Product Evidence result",
+    "a Reference-local ordering helper would not establish TEI Presentation leverage",
+    "Gate B/C status must not be bypassed for SEI convenience",
+    "no new TEI Core, Application Pattern, Stable Requirement, or Universal schema is authorized"
+  ]
+}
