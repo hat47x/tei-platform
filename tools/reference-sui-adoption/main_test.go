@@ -92,6 +92,43 @@ func TestStage0ReferenceFixtures(t *testing.T) {
 	}
 }
 
+func TestStage0ConstraintCoverageDoesNotOverclaimTEISemantics(t *testing.T) {
+	got := stage0ConstraintCoverage()
+	want := map[string]struct {
+		status           string
+		probeEnforcement string
+	}{
+		"parent-single-valued":     {status: "shape-only", probeEnforcement: "tei-definition"},
+		"parent-presence":          {status: "unresolved", probeEnforcement: "source-contract"},
+		"duplicate-island-id":      {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"duplicate-child-reference": {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"parent-exists":            {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"child-exists":             {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"parent-child-consistency": {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"acyclic-hierarchy":        {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("constraint coverage count = %d, want %d: %+v", len(got), len(want), got)
+	}
+
+	for _, coverage := range got {
+		expected, ok := want[coverage.ID]
+		if !ok {
+			t.Fatalf("unexpected constraint coverage id %q", coverage.ID)
+		}
+		if coverage.Status != expected.status {
+			t.Fatalf("%s status = %q, want %q", coverage.ID, coverage.Status, expected.status)
+		}
+		if coverage.ProbeEnforcement != expected.probeEnforcement {
+			t.Fatalf("%s probeEnforcement = %q, want %q", coverage.ID, coverage.ProbeEnforcement, expected.probeEnforcement)
+		}
+		if coverage.ID != "parent-single-valued" && coverage.TEIRepresentation != "none" {
+			t.Fatalf("%s TEIRepresentation = %q; Stage 0 must not invent native coverage", coverage.ID, coverage.TEIRepresentation)
+		}
+	}
+}
+
 func TestShadowValidatorDoesNotInventIslandIDRequirement(t *testing.T) {
 	doc := hierarchyDocument{
 		SchemaVersion: "2.0.0",
