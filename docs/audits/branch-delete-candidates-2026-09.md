@@ -755,3 +755,94 @@ DELETE_CANDIDATE: 104
 ```
 
 上記104本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 26. 2026-09-18 candidate pass 17 — Environment composition / Go environment refs
+
+Environment compositionとGate Bのchild / final Go environment境界に関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-child-go-environment-doc`
+- `work/gate-b-child-go-environment-isolation`
+- `work/gate-b-final-go-environment-doc`
+- `work/gate-b-final-go-environment-guard`
+- `work/header-detail-contract-query-environment`
+- `work/reference-contract-query-environment-composition`
+
+確認時点のcurrent `main`:
+
+```text
+869470505e400f604b17a0883a4dcfc0bdca1297
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、Evidence / bootstrap等のref固有用途も確認されていません。Environment / Go execution境界に関わるbranchであるため名称だけでは判断せず、current mainとの比較で固有patchが残っていないことを確認しています。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 17結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 27. 2026-09-18 candidate pass 18 — Gate B Go launch / DSN secret refs
+
+Gate BのGo child launch isolationとDSN secret exposure境界に関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-final-goenv-launch-doc`
+- `work/gate-b-final-goenv-launch-guard`
+- `work/gate-b-final-dsn-secret-doc`
+- `work/gate-b-final-dsn-secret-file`
+- `work/gate-b-final-runner-dsn-doc-sync`
+- `work/gate-b-final-runner-dsn-least-exposure`
+
+確認時点のcurrent `main`:
+
+```text
+869470505e400f604b17a0883a4dcfc0bdca1297
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、Evidence / bootstrap等のref固有用途もありません。DSN / secretに近いbranchについても、名称上のSecurity重要度を理由に残すのではなく、current mainへ成果が完全包含されていることを比較結果で確認しています。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 18結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 28. current summary — pass 18
+
+candidate pass 18までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 116
+```
+
+上記116本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
