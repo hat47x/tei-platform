@@ -846,3 +846,54 @@ DELETE_CANDIDATE: 116
 ```
 
 上記116本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 29. 2026-09-18 candidate pass 19 — Gate B DSN probe / secret handoff refs
+
+Gate BのDSN probe isolation、secret boundary、DSN path handoffに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-final-secret-boundary-sync`
+- `work/gate-b-git-probe-dsn-doc`
+- `work/gate-b-git-probe-dsn-isolation`
+- `work/gate-b-probe-dsn-doc`
+- `work/gate-b-probe-dsn-isolation`
+- `work/gate-b-final-dsn-path-handoff-sync-441`
+
+確認時点のcurrent `main`:
+
+```text
+a0bb2ed7d21c9889c538090ab68c00b78892ec24
+```
+
+6本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、Evidence / bootstrap等のref固有用途もありません。DSNやsecret boundaryに近いbranchであるため、名称だけではなくcurrent mainとの比較結果を根拠に、未統合のSecurity修正が残っていないことを確認しています。
+
+このため6本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 19結果
+
+```text
+reviewed refs:         6
+DELETE_CANDIDATE:      6
+ahead_by > 0 found:    0
+ref updates:            0
+new cleanup branches:   0
+```
+
+## 30. current summary — pass 19
+
+candidate pass 19までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 122
+```
+
+上記122本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
