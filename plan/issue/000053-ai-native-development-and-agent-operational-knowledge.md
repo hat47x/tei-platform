@@ -1136,6 +1136,44 @@ exact current `denied` Observationはruntime outcomeとして保持し、resolut
 production `ActorContext` schema / UI message schema / Agent protocolは追加しない。
 
 
+### R3P — Purpose-bound stop projection / explicit omission boundary
+
+R3Oのaudience-neutral semantic coreから、Human / Agent向けにpurpose-boundなbounded projectionを作る際のomission boundaryをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3P_PURPOSE_BOUND_STOP_PROJECTION_OMISSION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3p_stop_projection_omission_pressure_test.go`
+
+R3Pでは:
+
+```text
+omitted
+  != absent
+
+selected empty
+  != omitted
+
+unresolved
+  != omitted
+```
+
+を固定する。
+
+Human orientation viewはstop identity / machine reason / resolution need / runtime outcome / source refsを選択し、known facts / downstream detail / handoff status / authority limits等をinlineから省略できる。ただし `OmittedCategories` と `DrillDownRefs` を保持し、detailが存在しない意味へ変換しない。
+
+Agent resolution-inspection viewはtest-onlyにfull machine coreを保持するが、Human `DisplaySummary` やNextAction / HandoffOwner / CanExecute等は持たない。
+
+BP-06 action-authority stopでは `runtime-outcome` はselectedだが値は空であり、これはomittedではない。exact denied caseでは `resolution-needs` はselected + emptyであり、runtime denialをmissing authorityへ変換しない。
+
+selected / omitted category partitionは完全かつ排他的であることを要求し、unknown / overlap / missing categoryをfail closedする。
+
+production audience profile / disclosure policy / wire schema / UI layoutは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
