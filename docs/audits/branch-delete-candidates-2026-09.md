@@ -1111,3 +1111,76 @@ DELETE_CANDIDATE: 156
 ```
 
 上記156本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 39. 2026-09-18 candidate pass 24 — Gate B acquisition / Evidence convergence refs
+
+Gate BのEvidence acquisition、audit / convergence、fail-closed validation、repository issue / runbook同期に関する旧work refをcurrent `main`と比較しました。
+
+### 39.1 Acquisition
+
+- `work/gate-b-acquisition-final-revision-sync`
+- `work/gate-b-acquisition-receipt-cleanup-source-conformance`
+- `work/gate-b-acquisition-runbook-scope-sync`
+- `work/gate-b-evidence-acquisition`
+- `work/gate-b-evidence-acquisition-current-baseline`
+- `work/gate-b-evidence-acquisition-current-contract-sync`
+- `work/gate-b-evidence-acquisition-four-natures`
+
+### 39.2 Audit / convergence
+
+- `work/gate-b-audit-issue-current-sync`
+- `work/gate-b-audit-main-sync-2`
+- `work/gate-b-audit-post-evidence-convergence`
+- `work/gate-b-audit-post-main-convergence`
+- `work/gate-b-cross-lane-revision-convergence`
+- `work/gate-b-evidence-authority-convergence`
+- `work/gate-b-evidence-main-convergence`
+
+### 39.3 Evidence validation / runbook
+
+- `work/gate-b-evidence-audit-latest-sync`
+- `work/gate-b-evidence-audit-main-sync`
+- `work/gate-b-evidence-fail-closed-validation`
+- `work/gate-b-evidence-fail-closed-validation-review`
+- `work/gate-b-evidence-repository-issues`
+- `work/gate-b-evidence-runbook`
+- `work/gate-b-evidence-source-and-cleanup-doc-sync`
+- `work/gate-b-evidence-validation-main-convergence`
+
+確認時点のcurrent `main`:
+
+```text
+164d66e12e26302746dbf090b0c5b14dcc03f9d6
+```
+
+22本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、保存用`evidence/*`や`bootstrap-source`のようなref固有用途も確認されていません。名称に`Evidence`、`current`、`latest`、`convergence`を含んでいても、それ自体を現在状態やEvidence identityの正本とはみなさず、current mainへの完全包含を比較結果で確認しています。
+
+このため22本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 24結果
+
+```text
+reviewed refs:         22
+DELETE_CANDIDATE:      22
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
+## 40. current summary — pass 24
+
+candidate pass 24までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 178
+```
+
+上記178本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
