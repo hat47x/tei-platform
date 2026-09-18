@@ -1,6 +1,22 @@
-# Business Procedure Second Corpus Contract Pressure Audit — 2026-09
+# Business Procedure Second-Corpus Pressure — 2026-09
 
-Status: **Lane C / outline-level comparison / no Reference fixture / no production schema adoption**
+Status: **Lane C / outline-level comparison + test-only negative pressure / no Reference fixture / no production schema adoption**
+
+## この文書について
+
+本書は、manufacturing / inventory second-corpus outlineをcurrent candidate stack（D4 / S4-A / H1・R3 / O1）へ当てた調査を1本へ統合したものである。
+
+1. `BUSINESS_PROCEDURE_SECOND_CORPUS_CONTRACT_PRESSURE_AUDIT_2026-09.md`（元・全candidateを横断する監査、他2文書が掘り下げる論点をここで提起）
+2. `BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`（元・Data authorityの先走り禁止を掘り下げ）
+3. `BUSINESS_PROCEDURE_SECOND_CORPUS_HANDOFF_INFERENCE_PRESSURE_2026-09.md`（元・H1/R3のadjacency/Observation推論禁止を掘り下げ）
+
+Part 1（監査）がData authorityとHandoff inferenceそれぞれの論点を提起し、Part 2・3がその詳細pressureを行うという親子関係にあるため統合した。個別ファイルの履歴はGit historyから追跡できる。
+
+外部から旧ファイル名を参照していた文書（`plan/issue/000042-business-procedure-cross-view-reference.md`、`plan/BUSINESS_ACTION_DATA_PROJECTION_PRESSURE_2026-09.md`、`plan/LANE_B_A70_A72_SECOND_CORPUS_OUTLINE_AUDIT_2026-09.md`、`plan/LANE_B_A73_A79_PHYSICAL_OBSERVATION_HANDOFF_AUTHORITY_AUDIT_2026-09.md`、`plan/DESIGN_SYNTHESIS_MANUFACTURING_ACTUALITY_HANDOFF_PROOF_REFERENCE_2026-09.md`）は本統合と同じPRで本ファイル名へ参照を更新した。
+
+---
+
+# Part 1 — Second Corpus Contract Pressure Audit（横断監査）
 
 ## 1. 目的
 
@@ -258,6 +274,8 @@ Current `order_entry`でmanaged-here/read-writeとexternal-observed/readをcross
 
 Business Action × Data derived projectionもownershipを所有しない。Data identityがtraceできてもAccess / Ownership / WritePolicyをprojectionへ移さない。
 
+Data authorityの詳細な扱いは Part 2 を参照する。
+
 ## 8. Business Flow / DFD
 
 Manufacturing / inventoryでは物・document・情報のmovementが重要になる可能性が高い。
@@ -321,7 +339,7 @@ Derived Data trace is treated as complete / authoritative ownership
 | H1/R3 | responsibility continuation / explicit relation authority | production Canonical Handoff kind necessity | keep narrow |
 | O1 | role-separationを問う必要性、partial Data projectionへの影響 | second cross-domain protected-target example | do not generalize |
 | Observation boundary | command != physical actuality、mechanical negative pressure | new Canonical Observation identity | strongly reinforced, no schema expansion |
-| Data authority | exact authorityが必要という境界 | second-corpus exact ownership | defer |
+| Data authority | exact authorityが必要という境界 | second-corpus exact ownership | defer（→ Part 2） |
 | Business Flow / DFD | material/info movement relevance | Procedure/Handoffではlossyというexact case | defer |
 
 ## 11. Gate 15c
@@ -343,9 +361,9 @@ Gate 15c = not activated
 1. physical-world caseでもBusiness ActionをFunctionへ還元しない境界が再現した
 2. Command / Observation separationが別domainでも強く再現しtest-onlyで機械化した
 3. O1 generic role taxonomyの根拠がまだ一例に留まることを明確にした
-4. Handoff authorityをexplicit sourceへ限定できた
+4. Handoff authorityをexplicit sourceへ限定できた（→ Part 3）
 5. current existing refsからderived Data traceがかなり得られ、D4 Data/Relation slot再追加の必要性が弱まった
-6. Data authorityはexact identity不足のためsynthetic化すべきでないことを固定した
+6. Data authorityはexact identity不足のためsynthetic化すべきでないことを固定した（→ Part 2）
 
 ことにある。
 
@@ -365,7 +383,7 @@ existing refs can derive enough Data trace without authored Data duplication
 
 具体的不足が出ない限りproduction schemaを増やさない。
 
-## 13. 現時点の結論
+## Part 1 現時点の結論
 
 Second corpusとcurrent Data projectionから得られた結論は、新しいnounやrole enumではない。
 
@@ -390,3 +408,308 @@ D4 direct Data/Relation slots         = still unproven
 である。
 
 したがってO1はnarrow / test-only / source-persistence deferred、D4はsmaller shapeを維持する。
+
+---
+
+# Part 2 — Second-Corpus Data Authority Deferral（Data authorityの先走り禁止）
+
+## 1. 目的
+
+manufacturing / inventory second-corpus outlineには、physical-world stateを扱う必要性が強く現れる。
+
+一方で、現時点のprovenance-backed outlineにはTEI-originalのexact identityとして次がまだない。
+
+```text
+Data
+Relation
+Database
+Datasource
+Application Pattern
+Query / Contract Query
+Capability
+ownership boundary
+```
+
+この状態で「在庫はexternal-observed」「生産完了はmanaged-here」等をTEIのaccepted authorityとして作ると、公開sourceから確認できる高水準factを超えて設計者側が正本を発明する。
+
+本書は、その先走りを禁止するためのdeferral recordである。
+
+## 2. Current order_entryから既に証明されていること
+
+Current Referenceではexact normalized World identityがあるため、次をcross-viewで検査できる。
+
+```text
+sales_core
+  ownership = managed-here
+
+order_entry / datasource sales
+  access = read-write
+
+master_data
+  ownership = external-observed
+
+order_entry / datasource master
+  access = read
+
+order_entry.customer_reference
+  -> master datasource
+  -> Contract Query
+```
+
+このためcustomer masterへwrite intentを持ち込めば、Business / Function probeとaccepted datasource policyの矛盾として検出できる。
+
+ここで重要なのは、Business Procedure sourceがownershipやdatasource accessを複製していないことである。
+
+## 3. Second corpusへそのまま移植しないもの
+
+Manufacturing / inventory outlineに次を機械的にコピーしない。
+
+```text
+physical stock -> external-observed
+manufacturing completion -> managed-here
+shipment state -> external-observed
+warehouse -> one Database
+subsystem -> ownership boundary
+```
+
+これらはもっともらしくても、current outlineからaccepted TEI authorityとしては導けない。
+
+X-TEAのSubsystemもdeployment / Databaseと一対一ではないため、歴史的namingからownershipを推測しない。
+
+## 4. Reopen条件
+
+Second corpus Data authority pressureをcode / fixtureへ進めるのは、TEI-original source上で少なくとも次がexactに与えられた場合だけとする。
+
+1. Business Actionが依存するbusiness factが明示される
+2. そのfactを読む／変更するApplication Patternまたはexplicit semantic authorityがある
+3. Pattern owner Applicationをnormalized Worldからexact解決できる
+4. datasource / target Databaseをtraceできる
+5. Database ownershipとApplication accessがaccepted sourceから得られる
+6. Business-side要求とaccepted authorityを比較できる
+
+そのとき初めて次のようなdiagnostic pressureを作る。
+
+```text
+Business depends on externally observed state
+  but Function attempts managed-here write
+
+or
+
+Business requires managed-here mutation
+  but Application only has external-observed/read authority
+```
+
+## 5. D4との関係
+
+Second corpus outlineだけではdirect Data / Relation refのminimum必要性も証明されない。
+
+したがってD4は現在のまま:
+
+```text
+businessAction
+applicationPatternRefs[]
+validationRefs[]
+capabilityRefs[]
+```
+
+を維持する。
+
+将来、PatternやCapabilityからlosslessにderiveできないaccepted Business dependencyとしてData / Relation identityが必要になった場合は、D4が黙ってdropせずfail closedしexplicit-ref designをreopenする。
+
+## 6. Physical Observationとの関係
+
+`BUSINESS_PROCEDURE_PHYSICAL_OBSERVATION_PRESSURE_2026-09.md`は、Data authorityを決めずに:
+
+```text
+Command accepted != physical fact observed
+```
+
+だけをtest-onlyでPressureする。
+
+これは意図的な段階分離である。
+
+```text
+Observation boundaryを守る
+  !=
+physical factのCanonical Data authorityを決める
+```
+
+## 7. Handoffとの関係
+
+同様に、physical factが存在／観測されたことだけからH1/R3 relationを作らない。
+
+```text
+physical fact observed
+  != responsibility transfer accepted
+```
+
+Handoffにはexact Procedure / Step endpointとaccepted conditionが別途必要である。詳細は Part 3 を参照する。
+
+## Part 2 現時点の判断
+
+```text
+Data authority relevance
+  strong
+
+exact second-corpus TEI authority
+  absent
+
+synthetic ownership assignment
+  prohibited
+
+D4 Data/Relation expansion
+  not justified
+
+Gate 15c
+  not activated
+```
+
+これはEvidence不足を埋めるための保留ではなく、P11の「unresolved remains unresolved」とX-TEA fallbackの「historical nounをTEI nounへ一対一変換しない」を守る設計判断である。
+
+---
+
+# Part 3 — Second-Corpus Handoff Inference Pressure（adjacency/Observation推論の禁止）
+
+## 1. 目的
+
+manufacturing / inventory second-corpus outlineでは、physical completionやstock availabilityがresponsibility continuationの前提になり得る。
+
+しかし次を区別する必要がある。
+
+```text
+Business fact observed
+  != responsibility transferred
+
+Procedure Step adjacency
+  != accepted Handoff
+```
+
+本Pressureは、H1/R3をscreen / Step順 / Observationから推測せず、explicit Business Handoff authorityだけからnormalized relationを作ることを固定する。
+
+## 2. Current H1/R3 derivation
+
+Current test-only normalized Business modelはHandoffを次からだけ構成する。
+
+```text
+referenceSet.Handoffs[]
+  -> From { Procedure, Step }
+  -> To   { Procedure, Step }
+  -> Condition
+```
+
+Procedure body、Step adjacency、Application Pattern、Observation resultはHandoff generation inputではない。
+
+これはcurrent implementation detailとして偶然残すのではなく、authority directionとしてPressureする。
+
+## 3. H-INF-01 — adjacency does not author Handoff
+
+Primary ProcedureではBP-08がBP-09より前にある。
+
+Explicit Handoff sourceを除去してもProcedure bodyとStep orderは残る。
+
+期待:
+
+```text
+ordered steps exist
+BP-08 before BP-09
+explicit Handoff source absent
+  -> normalized Handoffs = 0
+```
+
+Step隣接からresponsibility transferを推測しない。
+
+## 4. H-INF-02 — positive physical Observation does not author Handoff
+
+Second-corpus test-local external Observationがpositiveでも:
+
+```text
+physical fact observed = true
+explicit Handoff source absent
+  -> normalized Handoffs = 0
+```
+
+とする。
+
+ObservationはBusiness continuationの前提事実を確認できても、誰から誰へ、どのStepからどのStepへ、どのconditionでresponsibilityが移るかを所有しない。
+
+## 5. H-INF-03 — explicit relation is required
+
+同じProcedure fixturesで:
+
+```text
+referenceSet.Handoffs = []
+  -> normalized Handoffs = 0
+
+referenceSet.Handoffs = [explicit relation]
+  -> normalized Handoffs = 1
+  -> exact endpoint + condition validation
+```
+
+をPressureする。
+
+したがってH1/R3 relationのauthority directionは:
+
+```text
+explicit accepted Handoff source
+  -> normalized H1/R3 relation
+
+Step order / adjacency
+  -X-> Handoff
+
+physical Observation
+  -X-> Handoff
+
+Application Function sequence
+  -X-> Handoff
+```
+
+である。
+
+## 6. Business Flowとの境界
+
+この結果はH1/R3がBusiness Flow全体を表すことを意味しない。
+
+H1/R3は依然として:
+
+```text
+Procedure/Step -> Procedure/Step + condition
+```
+
+だけを扱う。
+
+material / document / information movementやexternal participantが必要になれば、T-GAP-06を別pressureとしてreopenする。
+
+## 7. X-TEA fallbackとの整合
+
+X-TEAではBusiness Model / Business Flow / Function利用が一つのruntime sequenceへ潰されていない。
+
+TEIでも、Application操作順や観測結果からBusiness責任移管を自動推定せず、Business側でacceptされたrelationを独立して保持する方が三視点の相互批判性を保つ。
+
+ただしこのEvidenceはproduction `BusinessHandoff` Canonical kindの採用を証明しない。
+
+## Part 3 現時点の判断
+
+```text
+H1/R3 explicit authority direction
+  test-onlyで明確化
+
+adjacency inference
+  reject
+
+Observation inference
+  reject
+
+production Handoff Canonical kind
+  still unproven
+
+Gate 15c
+  not activated
+```
+
+H1/R3は引き続きnarrow relation pressureとして維持する。
+
+## Verification status
+
+Repository上へ`second_corpus_handoff_inference_pressure_test.go`を追加したがactual runner greenは未取得である。
+
+`gofmt / go vet / go test / checker` PASSはまだ主張しない。
