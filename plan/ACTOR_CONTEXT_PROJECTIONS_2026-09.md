@@ -465,7 +465,58 @@ Agent Plan
 
 Agentがplanを最適化・省略・並べ替える場合、それがaccepted Procedure meaningへ抵触するなら別途Proposal / Acceptanceまたは明示Policyが必要になる。
 
-## 9. SEIとの接続
+## 9. AI Business ActorをPresentation Targetへ自動分類しない
+
+AI Business Actorは、Web / Desktop / Mobile等の人間向けPresentation Targetと同じ役割とは限らない。
+
+典型的には、
+
+```text
+Canonical / Business knowledge
+       │
+       ├── Application Presentation
+       │      -> Human
+       │
+       └── Operational Projection
+              -> AI Business Actor
+                     ↓
+                 Capability
+```
+
+となる。
+
+AI Business Actorが必要とするのは、
+
+- Business Actionの意味
+- Capability contract
+- Constraint / Authorization
+- Resource / Binding
+- Observation / Evidence
+- handoff
+
+であり、画面構造そのものではない。
+
+したがって、
+
+```text
+AI Business Actor
+  != Presentation Target by default
+```
+
+とする。
+
+MCP / API / message protocol等は、Operational ProjectionやCapability invocationを運ぶtransport / interface候補になり得るが、そのprotocolを使うことだけでTEI Application Targetへ分類しない。
+
+RQ-013で既に区別している、
+
+- Application自身のPresentation / Interaction Target
+- Host / development control interface
+
+とも混同しない。
+
+将来Agent向けmachine interfaceをformalizeする場合も、Presentation Target、control interface、Operational Consumer interfaceのどれに当たるかをReference Evidenceから判断する。
+
+## 11. SEIとの接続
 
 TEI Operational ProjectionへSEIの認知・判断文脈をoptionalに接続できる。
 
@@ -523,7 +574,7 @@ Operational Agentでは、
 
 したがって一つの万能`ContextPacket`へ統一しない。
 
-## 11. Knowledge portabilityとの関係
+## 12. Knowledge portabilityとの関係
 
 Actor Context Projectionはknowledge portabilityの正本ではない。
 
@@ -542,7 +593,7 @@ Actor Context Projectionはknowledge portabilityの正本ではない。
 
 再利用時に採用されたmeaningはdestination側のappropriate authorityへAcceptanceする。
 
-## 12. Phase 0で新設しないもの
+## 13. Phase 0で新設しないもの
 
 - production `ActorContext` schema
 - production `OperationalProjection` schema
@@ -557,7 +608,7 @@ Actor Context Projectionはknowledge portabilityの正本ではない。
 - Agent専用Permission bypass
 - Business Procedureのproduction authority前倒し
 
-## 13. Phase 0 findings
+## 14. Phase 0 findings
 
 ### F1 — AI Builder contextの土台はすでにある
 
@@ -602,7 +653,7 @@ BP-00〜BP-03 / BP-05 / BP-06 / BP-08は、side effectを起こさず、
 
 BP-07は将来有力だが、Business Procedure production authority、Capability invocation、Authorization / Resource / retry境界を先に満たす必要がある。
 
-## 14. 次のReference
+## 15. 次のReference
 
 ISSUE-000053 Phase 1〜3では次の順を推奨する。
 
@@ -640,7 +691,7 @@ BP-00〜BP-06 / BP-08を使い、
 
 R3と必要Authorityが成立した後のみBP-07等で検討する。
 
-## 15. 成功の見方
+## 16. 成功の見方
 
 TEIがAgent向けに大量のtextを出せることは成功ではない。
 
