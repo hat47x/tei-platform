@@ -298,6 +298,15 @@ Product Evidence
 
 各段階を分ける。
 
+## 11. Executable Evidence runner
+
+schema sufficiency pressureはfocused GitHub Actions runnerで実行する。
+
+- `plan/KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md`
+- `.github/workflows/knowledge-portability-reference-evidence.yml`
+
+successful runで確認できるのはcurrent parser / model / Referenceに対するtest実行までであり、actual second Applicationが既存grammarだけで十分だったというReference Evidenceとは区別する。
+
 ## 11. Gate C後の判断
 
 actual second Applicationを実装した結果、
