@@ -50,6 +50,7 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0025: 遷移の評価順序を固定し、成立しなかった遷移を業務結果として返す](0025-transition-evaluation-and-conflict-result.md)（提案中）
 - [ADR-0026: Partition childをprovider-owned realizationとしてgeneric Schema Driftから分離する](0026-partition-child-provider-realization-boundary.md)
 - [ADR-0027: Partition treeを伴うPostgreSQL DropTableをprovider execution preconditionでfail closedする](0027-postgres-partition-drop-execution-precondition.md)
+- [ADR-0028: TEI成果物を人間・AI Builder・AI Business Actorの共通知識面として扱う](0028-human-ai-builder-agent-shared-knowledge-plane.md)
 
 ## `docs/adr/`について
 
