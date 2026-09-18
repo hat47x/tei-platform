@@ -193,6 +193,7 @@ Application Target
 - Web固有Capability
 - Target-neutral Presentation候補
 - Runtime Binding差
+- execution artifact / ABI / Host差（観測できる範囲）
 - HTTP / browser由来の差
 - Execution / Trust差
 - Canonicalへ持ち上げるべきでない実装都合
@@ -200,7 +201,7 @@ Application Target
 - performance measurement
 - unresolved
 
-この段階ではTarget Capability schemaやExecution / Trust Profile schemaを固定しません。
+この段階ではTarget Capability schema、Execution / Trust Profile schema、portable execution artifact / ABI用の独立schemaを固定しません。
 
 ### Gate C後
 
@@ -230,12 +231,13 @@ Studio developer hostを「すでにDesktop Targetがある」という理由に
 4. Targetが提供するCapability
 5. Projection差
 6. Runtime Binding差
-7. Execution / Trust Profile
-8. Authorization / Resource境界
-9. Observation方法
-10. 性能測定点
-11. Semantic / Functional / Visual Evidence
-12. Target固有コードを削除したときCanonicalが変化しないこと
+7. execution artifact form / ABI / Host差
+8. Execution / Trust Profile
+9. Authorization / Resource境界
+10. Observation方法
+11. 性能測定点
+12. Semantic / Functional / Visual Evidence
+13. Target固有コードやartifact実現を削除・交換したときCanonicalが変化しないこと
 
 ## Conformance候補
 
@@ -245,6 +247,9 @@ Studio developer hostを「すでにDesktop Targetがある」という理由に
 - Application側のrequired Capability不足を実行前に検出できる
 - optional Capability不足をApplication意味の破損として扱わない
 - Target Adapterを交換してもCanonical IDやApplication Patternが変わらない
+- execution artifact / ABI / Hostを交換しても、それだけでCanonical Application meaningが変わらない
+- Wasm等のartifact形式をApplication Target kindへ短絡しない
+- artifact / ABI側の制約をBusiness / Canonical meaningの否定へ短絡しない
 - network越しのExecution / Trust Profileをlocal profileと同じ暗黙trustで扱わない
 - Target固有transportからBusiness Result / Execution Error / Observationを逆定義しない
 - secret、endpoint、filesystem path等のHost materialをCanonicalへ不要に保存しない
@@ -258,6 +263,9 @@ Studio developer hostを「すでにDesktop Targetがある」という理由に
 - WailsをTEI標準Runtimeとして確定すること
 - Wailsのplatform APIをそのままTEI Capability名へ写すこと
 - Gate C前に完全なCapability taxonomyを設計すること
+- `WasmTarget`等のartifact形式をTarget kindとして固定すること
+- `ExecutionArtifactProfile`等のproduction schemaを先行固定すること
+- Hike / LLVM / WIT / WASIをTEI Coreの必須実装へすること
 - Desktop / Mobile / Server / API / MCPを最初から同じ深さで実装すること
 - Security policyをPresentation modelへ埋め込むこと
 - 一つのTargetだけからTarget-neutral境界を確定すること
@@ -272,6 +280,7 @@ Studio developer hostを「すでにDesktop Targetがある」という理由に
 - 各Target build revision
 - Targetが変わっても残るCanonical Application上の意味
 - Target Capabilityとして扱うべき差
+- execution artifact / ABI / Hostとして観測すべき差
 - Execution / Trust Profileとして扱うべき差
 - Runtime Bindingで扱う差
 - Target固有実装へ残す差
@@ -280,7 +289,7 @@ Studio developer hostを「すでにDesktop Targetがある」という理由に
 - performance差と測定条件
 - Studio developer hostがApplication Target比較へ混入していないこと
 
-その結果から、Target CapabilityとExecution / Trust Profileを正式な別概念として採用するか、既存Runtime Binding / Capabilityモデルへ統合するかをADRで判断します。
+その結果から、Target Capability、Execution / Trust Profile、portable execution artifact / ABI差のどこまでを正式な別概念として採用するか、既存Runtime Binding / Capabilityモデルへ統合するかをADRで判断します。
 
 ## 関連文書
 
