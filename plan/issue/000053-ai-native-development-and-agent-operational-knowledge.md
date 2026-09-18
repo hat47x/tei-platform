@@ -1648,6 +1648,67 @@ R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、�
 
 
 
+
+### R3Y — Authorization re-evaluation / prior Observation reuse authority
+
+R3XでAuthorization Observationのtuple identityとfreshness authorityを分離した後、tuple match時に残る二つのauthorityを別軸としてPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3Y_AUTHORIZATION_REEVALUATION_REUSE_AUTHORITY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3y_authorization_reevaluation_reuse_authority_pressure_test.go`
+
+R3Yでは:
+
+```text
+reevaluation authority
+  != prior Observation reuse authority
+```
+
+を固定する。
+
+test-only axisは:
+
+```text
+reevaluation:
+  unresolved
+  explicit-reevaluation-required
+
+reuse:
+  unresolved
+  explicit-reuse-permitted
+```
+
+とし、negative/default ruleは作らない。
+
+```text
+no reevaluation directive
+  != reevaluation not required
+
+no reuse directive
+  != reuse prohibited
+```
+
+である。
+
+same-tuple static semantic change、target authority revision、provider policy revisionはfreshness pressureとして保持できるが、それだけではreevaluation / reuseのどちらもauthorしない。
+
+requirement applicability transitionはfreshness authorityで解決せず、locator / presentation-only changeをAuthorization freshnessへ逆流させない。
+
+explicit reevaluation directiveとexplicit reuse permissionが同時に存在する場合も、双方のprovenanceを保持してprecedenceをunresolvedとする。
+
+```text
+both explicit
+  != last-writer-wins
+  != more-specific-wins
+```
+
+production Authorization cache / TTL / revocation watcher / automatic reevaluation schedulerは追加しない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
