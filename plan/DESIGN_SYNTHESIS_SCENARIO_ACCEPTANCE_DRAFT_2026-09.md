@@ -656,6 +656,8 @@ S4はLLM code generationの能力試験ではない。
 
 **accepted semantic meaningを人が再入力せず、standard implementation / testをどこまでdeterministically deriveできるか**を評価する。
 
+加えて、Product Valueでいう`structure-to-application leverage`を、単なる生成率ではなく「一つのstructured meaningから複数の下流surfaceへどこまで一貫して波及でき、change amplificationと重複authoringを減らせるか」というReference Evidenceとして扱う。
+
 ### 8.2 Precondition
 
 ```text
@@ -701,8 +703,37 @@ Validation、Relation、Capability Outcome、Authorization、Pattern、Handoff�
 6. generated artifactをCanonicalへ逆書きしない。
 7. accepted meaning変更時にaffected artifactを再生成またはstale判定できる。
 8. Target固有差をCanonical business meaningへ持ち上げない。
+9. 同じaccepted meaningからderiveできるProjection / Target configuration / documentation / structured AI context等がある場合、別のauthoritative meaningを作らず再生成できる。
+10. 同一change challengeで、manual duplicate authoring / manual synchronizationがどこに残るかを説明できる。
+11. native / custom residualが特殊Interaction・algorithm・provider固有処理等へ局所化されているかを確認できる。
 
-### 8.6 Gate Cとの関係
+### 8.6 Structure-to-application leverageの比較Evidence
+
+S4のReference比較では、単一の総合scoreを先に固定しない。
+
+同じsemantic change challengeについて、少なくとも次を観測候補にする。
+
+- authoritative meaningを変更する箇所数
+- derived / regenerated surfaceの種類
+- 手動で同期する必要があるsurface数
+- 同じsemantic factの重複記述箇所
+- stale判定 / regenerationで追随できるartifact
+- handwritten / custom residualのscope
+- before / afterで触るlayer・file・test・documentationの広がり
+
+```text
+high leverage
+  != generated file count is large
+  != TEI-owned code percentage is high
+
+high leverage
+  = one accepted meaning change
+    -> multiple downstream surfaces follow without duplicate authority
+```
+
+SUI等のReference Adoptionでは既存Applicationのhistorical change challengeと比較できるが、その数値をRepository全体の固定KPIや採用閾値にはしない。
+
+### 8.7 Gate Cとの関係
 
 第一Web Target / Gate Cでは、baseline meaningとTarget projectionの分離、Semantic / Functional / Visual Evidence分離、Command / Observation境界等を実証する。
 
