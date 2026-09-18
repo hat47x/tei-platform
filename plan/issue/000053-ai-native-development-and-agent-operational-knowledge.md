@@ -764,6 +764,50 @@ test-onlyには `pattern-minimum` / `step-exception` のprecedence候補を比�
 
 この段階でもproduction Business Procedure schema、Application Pattern grammar、override relation、precedence ruleは固定しない。
 
+
+### R3H — Authorization exception Evidence Gate
+
+R3GでPattern minimum / Business Step variation / exception intent / precedenceを分離した後、production exception mechanismを必要とするrepository-backed caseがcurrent Referenceに存在するかを監査する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3H_AUTHORIZATION_EXCEPTION_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3h_authorization_exception_evidence_gate_pressure_test.go`
+
+current Referenceでは:
+
+```text
+BP-00 / FU-00
+  same Pattern reuse
+  -> requirement = unresolved
+
+BP-06
+  security-boundary + security.authorize
+  -> requirement = required
+```
+
+までは存在するが、repository-backedなexplicit `not-required` requirementは観測されない。
+
+Legacy policyのallow/deny ruleもrequirement / Pattern minimum / exception authorityへ昇格させない。
+
+したがってcurrent exception Evidence Gateは未充足とし、`override` / `exclude` / `inherit` / priority / nearest-scope-wins等のproduction mechanismは追加しない。
+
+synthetic required/not-required conflictはsemantic pressureとして保持できるが、repository-backed Business needなしにはproduction mechanism adoptionの根拠にしない。
+
+qualifying caseが将来現れた場合でも:
+
+```text
+exception mechanism pressure qualified
+  != precedence winner known
+  != override syntax chosen
+```
+
+を維持する。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
