@@ -61,6 +61,8 @@ probeは次を確認する。
 
 - TEI Workspaceに`sui.island` definitionが一意に存在する
 - `sui.island.parent`が`sui.island`へのone relationとして解決できる
+- ただしSUIの`parentIslandId: string | null`に対するrootのparent不在意味は、current TEI Relationの`one | many`だけではlosslessと証明しない
+- reportでは`parentPresenceSemantics = unresolved`、`lossless = false`を明示する
 - SUI既存handoff fixtureのM1〜M4をread-onlyで検査できる
 - fixture内のIsland instanceをTEI Canonical objectへ昇格しない
 - Product runtimeやfixtureを書き換えない
