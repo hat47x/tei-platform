@@ -169,11 +169,35 @@ ReadIntentProbe
     observation received = false
     business completion = unresolved
 
+  reference fingerprint
+  required input fingerprints[]
   source / evidence refs
   authority limits
 ```
 
 これをproduction typeへ固定しない。
+
+### R3 freshness / provenance
+
+R3のstatic read routeは、少なくとも次の4 inputに依存する。
+
+- order_entry Application datasource definition
+- customer_reference Pattern
+- master_data.customer Contract
+- BP-02 Business Procedure Reference
+
+R1のcustomer-edit conflict Evidenceはread route解決には不要なのでR3 freshness dependencyへ含めない。
+
+```text
+shared BP-02 baseline
+  + R3 read-route inputs
+  -> R3 freshness dependency set
+
+R1 conflict Evidence changed
+  != R3 automatically stale
+```
+
+test-only probeは4 inputのcontent fingerprintを保持し、SourceRefsも同じ集合からderiveする。固定source一覧とfreshness一覧を別管理しない。
 
 ## 5. input mappingの意味
 
@@ -314,6 +338,10 @@ R3 Source Evidenceではexternal callを行わない。
 
 route resolutionだけでBP-02 completeにしない。
 
+### S9 — read routeのactual inputsへfreshnessを束縛する
+
+Business Procedure fingerprintだけでcurrentを主張せず、Application / Pattern / Contract / Procedureのcontent fingerprintを保持する。R1固有のconflict Evidenceなど無関係な入力を依存へ追加しない。
+
 ## 10. test-only pressure
 
 test-only typeには概念的に次を持つ。
@@ -328,6 +356,7 @@ test-only typeには概念的に次を持つ。
 - InvocationAttempted
 - ObservationReceived
 - CompletionUnresolved
+- ReferenceFingerprint / RequiredInputFingerprints
 - SourceRefs / AuthorityLimits
 
 `InvocationAttempted`と`ObservationReceived`は必ずfalse。
