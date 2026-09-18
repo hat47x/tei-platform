@@ -49,6 +49,18 @@ func TestStage0ReferenceFixtures(t *testing.T) {
 			if got.InstanceCount != tc.wantInstances {
 				t.Fatalf("InstanceCount = %d, want %d", got.InstanceCount, tc.wantInstances)
 			}
+			if got.SourceRepository != sourceRepository {
+				t.Fatalf("SourceRepository = %q, want %q", got.SourceRepository, sourceRepository)
+			}
+			if got.SourceRevision != sourceRevision {
+				t.Fatalf("SourceRevision = %q, want %q", got.SourceRevision, sourceRevision)
+			}
+			if got.SourceContractBlob != sourceContractBlob ||
+				got.SourceHandoffBlob != sourceHandoffBlob ||
+				got.SourceContractTestBlob != sourceContractTestBlob ||
+				got.SourceHandoffTestBlob != sourceHandoffTestBlob {
+				t.Fatalf("source blob provenance mismatch: %+v", got)
+			}
 			if got.Mapping.DataDefinition != "sui.island" {
 				t.Fatalf("DataDefinition = %q", got.Mapping.DataDefinition)
 			}

@@ -12,7 +12,15 @@ import (
 	"tei/internal/workspace"
 )
 
-const reportSchemaVersion = "sui-reference-adoption-stage0/v1"
+const (
+	reportSchemaVersion         = "sui-reference-adoption-stage0/v1"
+	sourceRepository            = "hat47x/sui-sensemaking"
+	sourceRevision              = "725e9d9c8958e63c18d8edca94f19c4b98db0dde"
+	sourceContractBlob          = "5d63cbec446abf0dd8054a5c498f726377c51a9f"
+	sourceHandoffBlob           = "9bf17490a8d5936b4b7679370da861439e90a8ab"
+	sourceContractTestBlob      = "4c91399cbc2da4526171812178ecdf98f9272027"
+	sourceHandoffTestBlob       = "e069871a13c932dbb1c11cbed5e08e318f93be8c"
+)
 
 type hierarchyDocument struct {
 	SchemaVersion string       `json:"schemaVersion"`
@@ -44,9 +52,15 @@ type mappingSummary struct {
 }
 
 type report struct {
-	SchemaVersion     string         `json:"schemaVersion"`
-	SourceContract    string         `json:"sourceContract"`
-	SourceAuthority   string         `json:"sourceAuthority"`
+	SchemaVersion          string         `json:"schemaVersion"`
+	SourceContract         string         `json:"sourceContract"`
+	SourceAuthority        string         `json:"sourceAuthority"`
+	SourceRepository       string         `json:"sourceRepository"`
+	SourceRevision         string         `json:"sourceRevision"`
+	SourceContractBlob     string         `json:"sourceContractBlob"`
+	SourceHandoffBlob      string         `json:"sourceHandoffBlob"`
+	SourceContractTestBlob string         `json:"sourceContractTestBlob"`
+	SourceHandoffTestBlob  string         `json:"sourceHandoffTestBlob"`
 	TEIAuthority      string         `json:"teiAuthority"`
 	Fixture           string         `json:"fixture"`
 	FixtureValid      bool           `json:"fixtureValid"`
@@ -115,10 +129,16 @@ func run(workspacePath, fixturePath string) (report, error) {
 	roots, links := projectInstanceSummary(doc)
 
 	return report{
-		SchemaVersion:     reportSchemaVersion,
-		SourceContract:    "IslandHierarchyContractV1",
-		SourceAuthority:   "sui-sensemaking",
-		TEIAuthority:      "definition-only",
+		SchemaVersion:          reportSchemaVersion,
+		SourceContract:         "IslandHierarchyContractV1",
+		SourceAuthority:        "sui-sensemaking",
+		SourceRepository:       sourceRepository,
+		SourceRevision:         sourceRevision,
+		SourceContractBlob:     sourceContractBlob,
+		SourceHandoffBlob:      sourceHandoffBlob,
+		SourceContractTestBlob: sourceContractTestBlob,
+		SourceHandoffTestBlob:  sourceHandoffTestBlob,
+		TEIAuthority:           "definition-only",
 		Fixture:           fixturePath,
 		FixtureValid:      len(diagnostics) == 0,
 		InstanceCount:     len(doc.Islands),
