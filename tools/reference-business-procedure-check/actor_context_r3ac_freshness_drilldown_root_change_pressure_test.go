@@ -50,7 +50,7 @@ func TestActorContextR3ACClassifiesContentChangeByRootRole(t *testing.T) {
 			after[idx].Fingerprint = after[idx].Fingerprint + ":changed"
 
 			got := actorContextR3ACClassifyRootChanges(base.Roots, after)
-			if !actorContextR3ACHasChange(got.Changes, actorContextR3ABRootIdentity(base.Roots[idx]), tc.want) {
+			if !actorContextR3ACHasChange(got.Changes, actorContextR3ACRootAddress(base.Roots[idx]), tc.want) {
 				t.Fatalf("%s content change was misclassified: %+v", tc.role, got)
 			}
 			for _, change := range got.Changes {
@@ -66,11 +66,20 @@ func TestActorContextR3ACRuntimeObservationChangeDoesNotBecomeReferenceChange(t 
 	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
 	after := actorContextR3ACCloneRoots(base.Roots)
 	idx := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleRuntimeObservation)
+	beforeAddress := actorContextR3ACRootAddress(base.Roots[idx])
 	after[idx].Fingerprint += ":new-observation"
+	after[idx].ClaimKind = "prior-authorization-observation:denied"
+
+	if actorContextR3ACRootAddress(after[idx]) != beforeAddress {
+		t.Fatalf("runtime outcome revision changed stable root address: before=%q after=%q", beforeAddress, actorContextR3ACRootAddress(after[idx]))
+	}
 
 	got := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	if !actorContextR3ACHasChange(got.Changes, actorContextR3ABRootIdentity(base.Roots[idx]), actorContextR3ACChangeRuntimeObservation) {
+	if !actorContextR3ACHasChange(got.Changes, beforeAddress, actorContextR3ACChangeRuntimeObservation) {
 		t.Fatalf("runtime Observation change lost runtime plane: %+v", got)
+	}
+	if actorContextR3ACHasChange(got.Changes, beforeAddress, actorContextR3ACChangeRootSet) {
+		t.Fatalf("same-tuple runtime outcome revision became root-set change: %+v", got)
 	}
 	for _, change := range got.Changes {
 		if change.ChangeClass == actorContextR3ACChangeReferenceEvidence {
@@ -86,7 +95,7 @@ func TestActorContextR3ACLocatorOnlyMoveDoesNotBecomeContentChange(t *testing.T)
 	after[idx].Locator = after[idx].Locator + ".moved"
 
 	got := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	identity := actorContextR3ABRootIdentity(base.Roots[idx])
+	identity := actorContextR3ACRootAddress(base.Roots[idx])
 	if !actorContextR3ACHasChange(got.Changes, identity, actorContextR3ACChangeLocatorRefresh) {
 		t.Fatalf("locator move did not produce locator refresh reason: %+v", got)
 	}
@@ -105,7 +114,7 @@ func TestActorContextR3ACContentAndLocatorChangePreserveBothReasons(t *testing.T
 	after[idx].Locator += ".moved"
 
 	got := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	identity := actorContextR3ABRootIdentity(base.Roots[idx])
+	identity := actorContextR3ACRootAddress(base.Roots[idx])
 	if !actorContextR3ACHasChange(got.Changes, identity, actorContextR3ACChangeCorroboration) ||
 		!actorContextR3ACHasChange(got.Changes, identity, actorContextR3ACChangeLocatorRefresh) {
 		t.Fatalf("combined content/locator delta lost an independent reason: %+v", got)
@@ -119,7 +128,7 @@ func TestActorContextR3ACRootSetChangeDoesNotInferAuthorityMigration(t *testing.
 	after = after[:len(after)-1]
 
 	got := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	if !actorContextR3ACHasChange(got.Changes, actorContextR3ABRootIdentity(removed), actorContextR3ACChangeRootSet) {
+	if !actorContextR3ACHasChange(got.Changes, actorContextR3ACRootAddress(removed), actorContextR3ACChangeRootSet) {
 		t.Fatalf("removed provenance root was not preserved as root-set change: %+v", got)
 	}
 }
@@ -209,7 +218,7 @@ func actorContextR3ACClassifyRootChanges(
 			continue
 		}
 
-		if left.Fingerprint != right.Fingerprint {
+		if left.Fingerprint != right.Fingerprint || left.ClaimKind != right.ClaimKind {
 			if changeClass := actorContextR3ACContentChangeClass(left.Role); changeClass != "" {
 				result.Changes = append(result.Changes, actorContextR3ACRootChangeProbe{
 					RootIdentity: identity,
@@ -251,12 +260,18 @@ func actorContextR3ACContentChangeClass(role string) string {
 	}
 }
 
+func actorContextR3ACRootAddress(
+	value actorContextR3ABProvenanceRootProbe,
+) string {
+	return value.Identity + "|" + value.Role
+}
+
 func actorContextR3ACRootsByIdentity(
 	values []actorContextR3ABProvenanceRootProbe,
 ) map[string]actorContextR3ABProvenanceRootProbe {
 	out := make(map[string]actorContextR3ABProvenanceRootProbe, len(values))
 	for _, value := range values {
-		out[actorContextR3ABRootIdentity(value)] = value
+		out[actorContextR3ACRootAddress(value)] = value
 	}
 	return out
 }

@@ -1813,7 +1813,9 @@ Reference delta
 
 である。
 
-同じroot identityでfingerprintとlocatorが同時に変わった場合は両reasonを保持し、一方へ丸めない。root追加 / 削除もauthority migrationへ推測変換せず `provenance-root-set-changed` とする。
+R3ACのsame-root比較addressは `Identity + Role` とし、ClaimKind / fingerprintをrevision側へ置く。same Authorization tupleでObservation claimが `allowed -> denied` へ変わってもroot-set changeへせずruntime Observation changeとして扱う。
+
+同じroot addressでcontent revisionとlocatorが同時に変わった場合は両reasonを保持し、一方へ丸めない。root追加 / 削除もauthority migrationへ推測変換せず `provenance-root-set-changed` とする。
 
 Human / AgentはR3ABのshared root setを使うため、同一root deltaは同じclassificationへ戻る。inline disclosure差をfreshness semanticsへ逆流させない。
 
