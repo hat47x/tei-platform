@@ -307,6 +307,8 @@ production schemaではなく、test-only構造として最小限次をPressure�
 ```text
 BuilderContextProbe
   Purpose
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   Subjects[]
   SourceRefs[]
   Dependencies[]
@@ -321,6 +323,8 @@ BuilderContextProbe
 ```text
 HumanReviewProbe
   Purpose
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   MeaningDelta[]
   ImpactedSubjects[]
   PermissionResourceDelta[]
@@ -334,6 +338,8 @@ HumanReviewProbe
 
 ```text
 OperationalContextProbe
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   ProcedureRef
   StepRef
   BusinessAction
@@ -375,7 +381,7 @@ R0 test-only typeへ、次のような総合判定fieldを置かない。
 
 ## 9. R0 comparison
 
-同じ`order_entry` snapshotから三Projectionを作り、次を比較する。
+同じ`order_entry` shared reference baselineから三Projectionを作り、purpose-specificなrequired input fingerprintsと情報内容を比較する。
 
 | Concern | Builder | Human | Operational |
 |---|---|---|---|
@@ -405,10 +411,11 @@ R0 test-only typeへ、次のような総合判定fieldを置かない。
 1. BP-02からread-only Operational Projectionを導出
 2. 同じBusiness Procedure Reference fingerprintを保持しつつ、三Projectionのactual selected input fingerprint集合を分ける
 3. Builder / Operationalではselected workspace source definition fingerprintへtraceする
-4. Human側では既存customer-edit conflictとそのEvidence fingerprintを保持
-5. Builder側ではexact dependencyをderive
-6. BP-04 / BP-08をunresolvedのまま保持
-7. authority shortcut fieldをreflectionで拒否
+4. Builderではselected dependency集合そのものもderived build inputとしてfingerprintする
+5. Human側では既存customer-edit conflictとそのEvidence fingerprintを保持
+6. Builder側ではexact dependencyをderive
+7. BP-04 / BP-08をunresolvedのまま保持
+8. authority shortcut fieldをreflectionで拒否
 
 sourceの存在はtest PASSを意味しない。actual `go test`結果は別Evidenceとして取得する。
 
