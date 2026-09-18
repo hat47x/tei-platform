@@ -1,0 +1,113 @@
+{
+  "schema": "tei.sei-reference-adoption.change1-execution/v1",
+  "recorded_at": "2026-09-18",
+  "authority": "reference-evidence-only",
+  "tei": {
+    "repository": "hat47x/tei-platform",
+    "branch": "research/sei-reference-adoption",
+    "head_at_recording": "0271b3345a2677e2663c1f9b80333b2727f89b5a",
+    "files": {
+      "implementation": {
+        "path": "tools/sei-resume-reference/main.go",
+        "git_blob_sha1": "a62c0a10ac32d3c84156b74cec57b83f12866dfb"
+      },
+      "test": {
+        "path": "tools/sei-resume-reference/main_test.go",
+        "git_blob_sha1": "7e06b9e289fa00bb19345240146844abad8a5989"
+      },
+      "fixture": {
+        "path": "reference/sei-adoption/decision-continuity-counterfactual-001.json",
+        "git_blob_sha1": "6354fce0a01093cb5545ed6bb9730aceb3b20023"
+      }
+    }
+  },
+  "native_sei_comparison": {
+    "repository": "hat47x/sei-cognition",
+    "branch": "develop/v0.2.0",
+    "head_at_comparison": "e866367f687f88ee7b6f365daa6221343f3ab248",
+    "change_review_implementation": {
+      "path": "runtime/go/interactionprobe/review.go",
+      "git_blob_sha1": "7da9ae682ed1fe00809576762a9923b64c18a266"
+    },
+    "change_review_test": {
+      "path": "runtime/go/interactionprobe/review_test.go",
+      "git_blob_sha1": "1d7768400b22ffbfbe15030d07dd0f21e3e39af1"
+    },
+    "actual_execution_in_this_receipt": "not-run"
+  },
+  "execution": {
+    "environment": "isolated reconstructed package",
+    "go_version": "go1.23.2 linux/amd64",
+    "module_note": "minimal temporary go.mod; implementation and tests import only Go standard library",
+    "exact_git_blob_identity_verified_before_execution": true,
+    "gofmt_diff_bytes": 0,
+    "go_test": {
+      "command": "go test -v ./tools/sei-resume-reference",
+      "result": "pass",
+      "passed_tests": 9,
+      "failed_tests": 0,
+      "change1_test": "TestReferenceChangeOneAddsOnlyPostDecisionObservation"
+    },
+    "go_vet": {
+      "command": "go vet ./tools/sei-resume-reference",
+      "result": "pass"
+    },
+    "go_run": {
+      "command": "go run ./tools/sei-resume-reference",
+      "result": "pass",
+      "fixture_id": "e73-decision-continuity-001-provider-pilot",
+      "initial_changes_since_decision_count": 0,
+      "post_decision_change_ids": [
+        "obs-b-429",
+        "obs-a-maintenance"
+      ],
+      "historical_basis_ids": [
+        "obs-a-timeout",
+        "obs-b-synthetic"
+      ],
+      "unresolved_ids": [
+        "unk-b-rate-limit",
+        "unk-rollback"
+      ],
+      "semantic_audit": {
+        "recommendation_separated": true,
+        "decision_matches_oracle": true,
+        "recommendation_matches_oracle": true,
+        "historical_basis_matches": true,
+        "unresolved_matches": true,
+        "post_decision_matches": true,
+        "temporal_separation": true
+      }
+    }
+  },
+  "change_1": {
+    "challenge": "append one post-Decision Observation while preserving Decision-time meaning",
+    "implementation_file_changes_required": 0,
+    "new_semantic_kinds_required": 0,
+    "new_application_pattern_kinds_required": 0,
+    "regression_test_file_changes": 1,
+    "regression_test_added_lines": 42,
+    "observed_invariants": [
+      "initial Resume unchanged",
+      "historical basis unchanged",
+      "unresolved unchanged",
+      "changes since decision grows by one",
+      "temporal separation remains true"
+    ],
+    "stage0_snapshot_sync_overhead": "still present and must not be ignored"
+  },
+  "interpretation": {
+    "semantic_compatibility": "observed",
+    "tei_core_gap": "not-observed",
+    "tei_change_amplification_reduction_vs_native_sei": "not-observed",
+    "tei_product_leverage": "not-established",
+    "human_usability": "not-observed"
+  },
+  "stop_lines": [
+    "isolated exact-blob package PASS is not full-repository verification",
+    "native SEI comparison in this receipt is source-level; it was not re-executed here",
+    "Reference-local semantic compatibility is not TEI Product Value",
+    "Stage 0 frozen snapshot synchronization is evaluation overhead and must not be hidden",
+    "no new TEI Core or Application Pattern primitive is authorized by this Evidence"
+  ]
+}

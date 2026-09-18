@@ -24,3 +24,11 @@ TEI reference copy
 fixtureのschemaをTEIのCanonical schemaへ昇格させません。変更が必要な場合はSEI側source revisionを先に固定し、別revisionのReferenceとして明示的に更新します。
 
 最初のprobeではfixtureの`scenario`を入力とし、`conditions.C_sei_resume.surface_text`は期待Projectionのoracle、`reference_state`はsemantic audit oracleとして扱います。既に生成済みのResume Projectionを入力にして再表示するだけの自己循環は避けます。
+
+## Change 1 execution Evidence
+
+2026-09-18のChange 1実行結果は `change1-execution-20260918.json` に固定しています。
+
+GitHub current blobと一致する `main.go` / `main_test.go` / fixtureを隔離再構成し、Go 1.23.2で `gofmt` 0差分、`go test` 9/9 PASS、`go vet` PASS、Reference tool実行時のsemantic audit全項目trueを確認しました。
+
+これはexact sourceに対するReference-local Executable Evidenceです。ただしminimal temporary `go.mod`を使うisolated package実行であり、TEI repository全体のverificationではありません。

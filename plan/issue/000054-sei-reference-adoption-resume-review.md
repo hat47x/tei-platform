@@ -119,6 +119,23 @@ go vet ./tools/sei-resume-reference
 
 これは**Stage 0 Reference mappingのScoped Executable Evidence**です。
 
+### Exact-blob再実行
+
+2026-09-18、current GitHub blobを隔離環境へ再構成し、次を再確認した。
+
+- `tools/sei-resume-reference/main.go`: `a62c0a10ac32d3c84156b74cec57b83f12866dfb`
+- `tools/sei-resume-reference/main_test.go`: `7e06b9e289fa00bb19345240146844abad8a5989`
+- fixture: `6354fce0a01093cb5545ed6bb9730aceb3b20023`
+- `gofmt -d`: 0 bytes
+- `go test -v ./tools/sei-resume-reference`: 9/9 PASS
+- `go vet ./tools/sei-resume-reference`: PASS
+- `go run ./tools/sei-resume-reference`: semantic audit全項目true
+
+machine-readable receiptは `reference/sei-adoption/change1-execution-20260918.json` に保存する。
+
+ただし実行は、上記exact blobとfixtureをminimal temporary `go.mod`へ置いたisolated packageで行った。したがってfull repository verificationやnative SEI側の再実行を主張しない。
+
+
 ```text
 Reference checker PASS
   != Gate B / Gate C
