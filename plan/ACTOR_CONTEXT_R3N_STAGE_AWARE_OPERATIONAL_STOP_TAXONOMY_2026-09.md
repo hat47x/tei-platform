@@ -2,7 +2,7 @@
 
 - Status: ISSUE-000053 / Phase 3 stop-taxonomy pressure / Reference-only
 - Date: 2026-09-18
-- Parent: `plan/ACTOR_CONTEXT_R3M_AUTHORIZATION_STOP_HANDOFF_EXPLANATION_2026-09.md`
+- Parent: `plan/ACTOR_CONTEXT_R3M_OPERATIONAL_STOP_EXPLANATION_HANDOFF_2026-09.md`
 - Related:
   - `plan/ACTOR_CONTEXT_R3B_AUTHORIZATION_PREREQUISITE_BOUNDARY_2026-09.md`
   - `plan/ACTOR_CONTEXT_R3I_AUTHORIZATION_TARGET_EVALUATION_CADENCE_2026-09.md`
@@ -92,25 +92,42 @@ downstream not attempted
 
 として別に示す。
 
-## 4. missing authority classとmissing valueを分離する
+## 4. resolution need classとmissing valueを分離する
+
+R3Nではauthority gapだけでなくruntime Evidence不足も同じprojection familyで扱うため、共通語彙を `resolution need class` とする。
 
 authority未解決stateでは:
 
 ```text
-missing authority class = authorization-action-authority
+resolution need class = authorization-action-authority
 ```
 
-までは説明できる。
+runtime evaluation未実施では:
+
+```text
+resolution need class = authorization-evaluation
+```
+
+まで説明できる。
 
 しかし:
 
 ```text
 missing action value = execute
+resolution owner = security team
 ```
 
-を推測しない。
+のような値・ownerは推測しない。
 
 同様にresource authority未解決でも、Pattern identityやLegacy policy resourceをmissing valueとして補わない。
+
+```text
+resolution need class
+  != missing authority value
+  != resolution owner
+```
+
+を維持する。
 
 ## 5. evaluation not attemptedとdeniedを分離する
 
@@ -194,7 +211,7 @@ stop stage
 stop class
 machine-readable reasons
 known authority facts + provenance
-missing authority classes
+resolution need classes
 runtime outcome if observed
 downstream not attempted
 source refs
@@ -235,13 +252,14 @@ Legacy policy `execute` やBusiness wordingからmissing valueを補わない。
 
 Pressureするcase:
 
-1. requirement unresolved
+1. requirement authority unresolved
 2. principal unresolved
-3. action authority unresolved
-4. evaluation not attempted
-5. exact current Observation denied
-6. Observation tuple mismatch
-7. prior-context reuse unresolved
+3. resource authority unresolved
+4. action authority unresolved
+5. evaluation not attempted
+6. exact current Observation denied
+7. Observation tuple mismatch
+8. prior-context reuse unresolved
 
 Pressureする不変条件:
 

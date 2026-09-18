@@ -26,7 +26,7 @@ type actorContextR3NStopTaxonomyProbe struct {
 	StopStage               string
 	StopClass               string
 	MachineReasons          []string
-	MissingAuthorityClasses []string
+	ResolutionNeedClasses []string
 	RuntimeOutcome          string
 	DownstreamNotAttempted  []string
 	AuthorityLimits         []string
@@ -38,7 +38,7 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 		input        actorContextR3NStopInputProbe
 		wantStage    string
 		wantClass    string
-		wantMissing  []string
+		wantNeeds  []string
 		wantReason   string
 	}{
 		{
@@ -49,7 +49,7 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 			},
 			wantStage:   "authorization-requirement-authority",
 			wantClass:   actorContextR3NClassAuthorityUnresolved,
-			wantMissing: []string{"authorization-requirement-authority"},
+			wantNeeds: []string{"authorization-requirement-authority"},
 			wantReason:  "authorization-requirement-unresolved",
 		},
 		{
@@ -60,8 +60,19 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 			},
 			wantStage:   "actor-principal",
 			wantClass:   actorContextR3NClassRuntimeContextUnresolved,
-			wantMissing: []string{"runtime-principal"},
+			wantNeeds: []string{"runtime-principal"},
 			wantReason:  "actor-principal-unresolved",
+		},
+		{
+			name: "resource-authority",
+			input: actorContextR3NStopInputProbe{
+				BusinessAddress: "order-entry.order-handling/BP-06",
+				BlockingReasons: []string{"authorization-resource-authority-unresolved"},
+			},
+			wantStage:   "authorization-resource-authority",
+			wantClass:   actorContextR3NClassAuthorityUnresolved,
+			wantNeeds:   []string{"authorization-resource-authority"},
+			wantReason:  "authorization-resource-authority-unresolved",
 		},
 		{
 			name: "action-authority",
@@ -71,7 +82,7 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 			},
 			wantStage:   "authorization-action-authority",
 			wantClass:   actorContextR3NClassAuthorityUnresolved,
-			wantMissing: []string{"authorization-action-authority"},
+			wantNeeds: []string{"authorization-action-authority"},
 			wantReason:  "authorization-action-authority-unresolved",
 		},
 		{
@@ -83,6 +94,7 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 			},
 			wantStage:  "authorization-evaluation",
 			wantClass:  actorContextR3NClassEvaluationNotAttempted,
+			wantNeeds:  []string{"authorization-evaluation"},
 			wantReason: "authorization-not-evaluated",
 		},
 	}
@@ -95,9 +107,9 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 				t.Fatalf("R3N collapsed distinct stop semantics: got=%+v wantStage=%q wantClass=%q",
 					got, tc.wantStage, tc.wantClass)
 			}
-			if !reflect.DeepEqual(got.MissingAuthorityClasses, tc.wantMissing) {
-				t.Fatalf("R3N mapped missing authority incorrectly: got=%v want=%v",
-					got.MissingAuthorityClasses, tc.wantMissing)
+			if !reflect.DeepEqual(got.ResolutionNeedClasses, tc.wantNeeds) {
+				t.Fatalf("R3N mapped resolution need incorrectly: got=%v want=%v",
+					got.ResolutionNeedClasses, tc.wantNeeds)
 			}
 			if !reflect.DeepEqual(got.MachineReasons, []string{tc.wantReason}) {
 				t.Fatalf("R3N lost exact machine-readable reason: %+v", got.MachineReasons)
@@ -128,7 +140,7 @@ func TestActorContextR3NEarliestBlockerWinsWithoutPromotingDeferredStages(t *tes
 	if !reflect.DeepEqual(got.MachineReasons, []string{"authorization-requirement-unresolved"}) {
 		t.Fatalf("R3N promoted deferred blockers into the current stop reason: %+v", got.MachineReasons)
 	}
-	if !reflect.DeepEqual(got.MissingAuthorityClasses, []string{"authorization-requirement-authority"}) {
+	if !reflect.DeepEqual(got.ResolutionNeedClasses, []string{"authorization-requirement-authority"}) {
 		t.Fatalf("R3N inferred downstream missing authority from an earlier stop: %+v", got)
 	}
 }
@@ -145,8 +157,8 @@ func TestActorContextR3NDeniedObservationIsRuntimeOutcomeNotMissingAuthority(t *
 		got.RuntimeOutcome != "denied" {
 		t.Fatalf("R3N did not preserve evaluated denial as a distinct runtime outcome: %+v", got)
 	}
-	if len(got.MissingAuthorityClasses) != 0 {
-		t.Fatalf("evaluated denial was misrepresented as missing authority: %+v", got.MissingAuthorityClasses)
+	if len(got.ResolutionNeedClasses) != 0 {
+		t.Fatalf("evaluated denial was misrepresented as a resolution need: %+v", got.ResolutionNeedClasses)
 	}
 	if !reflect.DeepEqual(got.MachineReasons, []string{"authorization-evaluation-denied"}) {
 		t.Fatalf("R3N lost the derived denial reason: %+v", got.MachineReasons)
@@ -168,8 +180,14 @@ func TestActorContextR3NObservationMismatchAndCrossContextReuseRemainDistinct(t 
 	if mismatch.StopClass != actorContextR3NClassEvaluationObservationMismatch {
 		t.Fatalf("Observation mismatch was collapsed: %+v", mismatch)
 	}
+	if !reflect.DeepEqual(mismatch.ResolutionNeedClasses, []string{"authorization-evaluation-observation"}) {
+		t.Fatalf("Observation mismatch lost its resolution need: %+v", mismatch)
+	}
 	if reuse.StopClass != actorContextR3NClassCurrentContextEvaluationUnresolved {
 		t.Fatalf("cross-context reuse uncertainty was collapsed: %+v", reuse)
+	}
+	if !reflect.DeepEqual(reuse.ResolutionNeedClasses, []string{"authorization-current-context-evaluation"}) {
+		t.Fatalf("cross-context reuse uncertainty lost its resolution need: %+v", reuse)
 	}
 	if mismatch.StopClass == reuse.StopClass {
 		t.Fatalf("distinct runtime evaluation states became the same taxonomy class")
@@ -203,7 +221,7 @@ func actorContextR3NClassifyStop(input actorContextR3NStopInputProbe) actorConte
 		BusinessAddress: input.BusinessAddress,
 		AuthorityLimits: []string{
 			"distinct-stop-states-do-not-collapse-into-generic-authorization-error",
-			"missing-authority-class-does-not-imply-missing-value",
+			"resolution-need-class-does-not-imply-missing-value-or-owner",
 			"authority-unresolved-does-not-equal-runtime-denied",
 			"observation-mismatch-does-not-equal-denied",
 			"prior-context-reuse-unresolved-does-not-equal-not-evaluated",
@@ -288,27 +306,30 @@ func actorContextR3NClassifyStop(input actorContextR3NStopInputProbe) actorConte
 			},
 		},
 		{
-			reason: "authorization-evaluation-observation-mismatch",
-			stage:  "authorization-evaluation",
-			class:  actorContextR3NClassEvaluationObservationMismatch,
+			reason:  "authorization-evaluation-observation-mismatch",
+			stage:   "authorization-evaluation",
+			class:   actorContextR3NClassEvaluationObservationMismatch,
+			missing: "authorization-evaluation-observation",
 			downstream: []string{
 				"protected-operation-invocation",
 				"business-completion",
 			},
 		},
 		{
-			reason: "authorization-current-context-evaluation-unresolved",
-			stage:  "authorization-evaluation",
-			class:  actorContextR3NClassCurrentContextEvaluationUnresolved,
+			reason:  "authorization-current-context-evaluation-unresolved",
+			stage:   "authorization-evaluation",
+			class:   actorContextR3NClassCurrentContextEvaluationUnresolved,
+			missing: "authorization-current-context-evaluation",
 			downstream: []string{
 				"protected-operation-invocation",
 				"business-completion",
 			},
 		},
 		{
-			reason: "authorization-not-evaluated",
-			stage:  "authorization-evaluation",
-			class:  actorContextR3NClassEvaluationNotAttempted,
+			reason:  "authorization-not-evaluated",
+			stage:   "authorization-evaluation",
+			class:   actorContextR3NClassEvaluationNotAttempted,
+			missing: "authorization-evaluation",
 			downstream: []string{
 				"protected-operation-invocation",
 				"business-completion",
@@ -328,7 +349,7 @@ func actorContextR3NClassifyStop(input actorContextR3NStopInputProbe) actorConte
 		result.StopClass = rule.class
 		result.MachineReasons = []string{rule.reason}
 		if rule.missing != "" {
-			result.MissingAuthorityClasses = []string{rule.missing}
+			result.ResolutionNeedClasses = []string{rule.missing}
 		}
 		result.DownstreamNotAttempted = actorContextR0SortedUnique(rule.downstream)
 		return result
