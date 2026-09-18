@@ -1646,6 +1646,64 @@ Capability qualified
 
 R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
 
+### R6C — qualified knowledge / projection dependency handoff
+
+R6Bのqualified knowledgeと、R3R以降のprojection dependency provenanceを直接同一視しないためのhandoffをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6c_projection_dependency_handoff_pressure_test.go`
+
+責務分離:
+
+```text
+R6 / R6B
+  available / selected / qualified knowledge
+
+R6C
+  qualified knowledge
+    -> current consumerが実際に利用するR3 dependencyへのlink
+
+R3R〜R3X
+  dependency provenance
+  dependency reason
+  re-evaluation reason
+  category value change
+  Authorization context / freshness authority
+```
+
+current BP-06では、Business Procedure Referenceと`security.authorize`がどちらもtask knowledgeとしてqualifiedになり得る。
+
+しかしcurrent Human orientation / Agent resolution-inspection stop projectionがR3Sで実際に説明しているdependencyへだけlinkする。
+
+Business Procedure Referenceは既存のR3 dependency key / reasonを再利用する。
+
+```text
+dependency key
+  = reference:business-procedure-reference:<locator>
+
+reason
+  = authorization-requirement-source
+```
+
+Human / Agentでselected categoryが異なる場合もdependency provenanceを作り直さない。Agentだけが`known-authority-facts`を選べても、Humanへ強制開示しない。
+
+一方、`security.authorize`がqualifiedであるという理由だけでR3 semantic dependencyを追加しない。
+
+```text
+qualified knowledge
+  != selected projection dependency
+
+qualified Capability
+  != Capability source required by this projection
+  != Authorization evaluated
+  != invocation authorized
+```
+
+projection reasonが、どのqualified knowledge bindingからも説明できない場合はfail closedする。
+
+R6C自身にはFresh / Stale / Changed / ChangeClass / Authorized / Rebuild等を持たせず、R3のfreshness / impact / authority semanticsを重複所有しない。
+
 
 
 

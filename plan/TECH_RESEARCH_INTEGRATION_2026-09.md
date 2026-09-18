@@ -709,6 +709,62 @@ Evidenceはtask-specific provenanceとして選択できるが、Operational tas
 
 この段階でもuniversal Context Packet、共通score、knowledge-kind横断confidence、production disclosure schemaは追加しない。
 
+#### R6C projection dependency handoff — 2026-09-19
+
+R6Bでqualifiedになったknowledgeを、R3のbounded projectionへ渡すときの境界をPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6c_projection_dependency_handoff_pressure_test.go`
+
+R6Cはfreshness判定を新設しない。R3R〜R3Xが所有するdependency / reason / change / context identityを再実装せず、routing側では次だけを扱う。
+
+```text
+qualified knowledge
+  -> consumer-specific projection selection
+  -> existing R3 dependency key / reason
+```
+
+current BP-06ではR6Bから:
+
+```text
+Business Procedure Reference
+Semantic Capability: security.authorize
+```
+
+がqualifiedになるが、これだけで両方をcurrent stop projection dependencyへ昇格させない。
+
+Business Procedure Referenceは既存R3Sの:
+
+```text
+reference:business-procedure-reference:<locator>
+reason = authorization-requirement-source
+```
+
+へ接続できる。
+
+一方 `security.authorize` がR6Bでqualifiedであることだけから、新しいsemantic dependency edgeを発明しない。current R3 projectionがそのCapability sourceをdependencyとして選択していなければ:
+
+```text
+qualified-not-selected-by-consumer
+```
+
+として保持する。
+
+Human / Agentでprojection category集合が異なっても、同じBusiness Procedure dependencyを利用する場合はdependency key / reason provenanceを変えない。
+
+```text
+consumer-specific category
+  != new dependency identity
+
+qualified
+  != projection dependency
+  != fresh
+  != authorized
+```
+
+R6CはR3S/R3Vのreason identity、R3Wのvalue-change判定、R3XのAuthorization freshness authorityを所有しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
