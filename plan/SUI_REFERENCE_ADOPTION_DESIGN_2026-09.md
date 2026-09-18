@@ -307,7 +307,85 @@ TEIで確認すること:
 
 このchallengeは、TEIの共通Application基盤としての価値を最も直接Pressureする。
 
-## 8. 最初のvertical slice
+## 8. 既存SUI契約をStage 0 handoffに再利用する
+
+SUIには既に、`DocumentV1`からIsland hierarchyだけを決定論的に切り出す契約がある。
+
+- `03_Implement/frontend/src/domain/contracts/island_contracts.ts`
+- `03_Implement/frontend/src/domain/contracts/island_hierarchy_handoff.ts`
+
+`projectIslandHierarchyContractV1()` は、Documentから次だけを投影する。
+
+```text
+schemaVersion
+islands[]
+  id
+  parentIslandId
+  childIslandIds
+```
+
+このprojectionはCanvas座標、polygon、title、AI state等を含まない。
+
+またSUI側validatorは少なくとも次を検査する。
+
+- duplicate island id
+- duplicate child reference
+- missing parent
+- missing child
+- parent / child mismatch
+- cycle
+
+既存testのM1〜M4は、
+
+- M1 root only — pass
+- M2 3-level hierarchy — pass
+- M3 missing parent — fail
+- M4 cyclic hierarchy — fail
+
+を固定している。
+
+### Stage 0の入力をこの契約にする理由
+
+移管専用の新しいJSON schemaを先に作ると、SUIとTEIの間に第三の意味表現を増やす。
+
+そこで最初のprobeでは、SUIがすでに利用している`IslandHierarchyContractV1`を**handoff projection**として再利用する。
+
+```text
+DocumentV1
+  ↓ SUI-owned deterministic projection
+IslandHierarchyContractV1
+  ↓ read-only
+TEI Reference probe
+```
+
+この時点ではTEIがDocumentV1 parserを所有しない。
+
+これにより、
+
+- SUI source contractの解釈はSUI側に残る
+- TEIはhandoffされた意味を受け取ることに集中できる
+- full DocumentV1との密結合を避けられる
+- Stage 0が失敗してもproduct runtimeへ影響しない
+
+という性質を持たせる。
+
+### placardはStage 0へ混ぜない
+
+`IslandHierarchyContractV1`には`placardCardId`が含まれない。
+
+Challenge A全体ではplacardも対象だが、最初のread-only probeではhierarchyだけを扱う。
+
+hierarchyでTEIのData / Relation / Validation境界を確認した後に、
+
+- existing SUI contractを拡張すべきか
+- 別projectionにすべきか
+- placardがdomain meaningかProjection metadataか
+
+を決める。
+
+移管都合だけでSUI既存contractへfieldを追加しない。
+
+## 9. 最初のvertical slice
 
 Gate C前にWeb UIの完成を要求しない。
 
@@ -348,7 +426,7 @@ derived Reference output
 
 である。
 
-## 9. Plugin discoveryの判定
+## 10. Plugin discoveryの判定
 
 SUI固有componentをPlugin候補にする条件:
 
@@ -400,7 +478,7 @@ TEI Shared AcceptanceとStudioで一般需要が確認できる場合に有力�
 
 ただしTEI自身のArtifact概念との重複を先に確認する。
 
-## 10. TEI Coreへ追加しないもの
+## 11. TEI Coreへ追加しないもの
 
 Reference開始時点では次を追加しない。
 
@@ -415,7 +493,7 @@ Reference開始時点では次を追加しない。
 
 必要ならSUI source / metadata / extension / native assetとして保持する。
 
-## 11. SUI以外への横展開
+## 12. SUI以外への横展開
 
 SUIでReference Adoptionが成立した後、次の順で知見を再利用する。
 
@@ -453,7 +531,7 @@ native維持:
 - resource governor
 - verification kernel
 
-## 12. 次の実装開始条件
+## 13. 次の実装開始条件
 
 actual adapter / fixture codeへ進む前に、
 
