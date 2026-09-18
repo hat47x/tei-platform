@@ -522,6 +522,39 @@ policy rule
 
 Authentication Observationはruntime contextであり、R3 static source freshnessのcontent fingerprint集合へ混ぜない。
 
+### R3B — Authorization prerequisite / fail-closed boundary
+
+R3Aでauthenticated subjectを解決した後も、BP-02の明示的なAuthorization action/resource authorityは未解決である。
+
+次段は `plan/ACTOR_CONTEXT_R3B_AUTHORIZATION_PREREQUISITE_BOUNDARY_2026-09.md` を正本とする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3b_authorization_prerequisite_pressure_test.go`
+
+R3Bでは、
+
+- BP-02の `Application access=read` から `browse` を生成しない
+- Pattern identityだけからAuthorization resourceを生成しない
+- BP-06に明示されたprotected targetをBP-02へ流用しない
+- Legacy Authorization policyだけでmissing targetをbackfillしない
+- action/resource authorityが未解決なら `security.authorize` をinvokeしない
+- Authorization未評価のままContract Queryをinvokeしない
+- stop reasonからhandoff ownerを推論しない
+
+ことをPressureする。
+
+```text
+authenticated subject
+  + read route understood
+  + Authorization target unresolved
+  -> authorization invocation attempted = false
+  -> query invocation attempted = false
+  -> completion unresolved
+```
+
+R3 sourceのSource Index移行に追随し、R3Aもsubject identity -> current locator解決を利用する。runtime Authentication Observationはstatic source freshnessへ混ぜない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
