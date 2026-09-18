@@ -84,6 +84,29 @@ current TEI標準Validationは`positive` / `relation-unique`の最小集合で�
 
 を順に判断する。
 
+## Stage 0 read-only probe
+
+Stage 0の最小実装を`tools/reference-sui-adoption`として隔離する。
+
+実装範囲:
+
+- `reference/sui-adoption/workspace`に`sui.island`とself-parent relationだけを定義
+- SUI既存`IslandHierarchyContractV1` fixtureをread-only入力として利用
+- M1 / M2をvalid、M3 / M4をinvalidとしてconsumer-side shadow validation
+- TEI definitionとSUI instance dataをレポート上で分離
+- write / canonicalizationは行わない
+
+このprobeはProduct Gate Evidenceではなく、Reference Adoptionのmapping hypothesisを実行可能にするresearch Evidenceである。
+
+次の判断は、probe結果を見てから行う。
+
+1. hierarchy定義だけで十分にTEIへ意味を寄せられるか
+2. cycle / parent-child consistencyをApplication-native validationとして残すべきか
+3. reusable validation extensionが必要か
+4. placardを次のhandoffへ追加する価値があるか
+
+この時点ではValidationKindやPlugin CapabilityKindを増やさない。
+
 ## 最初のReference slice候補
 
 最初からSUI全体を移しません。少なくとも次の性質を一つの小さいsliceでPressureできるものを選びます。
