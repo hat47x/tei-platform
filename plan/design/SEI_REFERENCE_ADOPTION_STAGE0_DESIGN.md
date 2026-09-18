@@ -300,6 +300,36 @@ therefore:
 
 のように、Application Planeそのものへ圧力をかけるchangeを優先する。ただしGate B / C未成立の機能をproduction-readyとして先取りしない。
 
+## 10.2 Change 2はGate-awareにdeferする
+
+Change 1の次候補として、canonical meaningを変えず表示順やprogressive disclosureだけを変更するChange 2を検討した。
+
+しかしcurrent TEIはGate B Not Ready、Gate C Blockedであり、First Web Targetとcomplete Target-neutral Presentation IRは未成立である。第一Web Targetの計画自体も、Gate B前に完全なPresentation IRを先行設計しないことを明示している。
+
+このため、Stage 0 Referenceへ専用のordering schemaやPresentation helperを追加しない。
+
+```text
+SEI-specific presentation surrogate
+  -> easy to test
+  -> but does not test existing TEI leverage
+  -> therefore do not implement
+```
+
+Change 2の再開条件は、Gate B Ready + Handover Baseline固定 + First Web Target着手、またはSEIと独立した理由で既存target-neutral Presentation機構が成立することとする。
+
+この判断は`reference/sei-adoption/change2-presentation-gate-boundary-20260918.json`へmachine-readableに固定する。
+
+現時点では、
+
+- Reference-local semantic decomposition: 成立
+- Change 1 semantic compatibility: 成立
+- native SEI比のleverage: 未観測
+- Stage 0 snapshot sync overhead: あり
+- Change 2 Presentation leverage: validな測定面がまだないためdeferred
+- new Pattern / Core gap: 未観測
+
+と整理する。
+
 ## 11. SUIとのcross-application pressure
 
 SUI Reference Adoptionはspatial canvas、hierarchy、proposal / merge reviewをPressureしています。
