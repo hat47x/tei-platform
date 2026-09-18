@@ -10,15 +10,7 @@ import (
 	"strings"
 )
 
-const (
-	supportedFixtureSchema    = "sei.decision-continuity-comparison-fixture/v0"
-	sourceRepository          = "hat47x/sei-cognition"
-	sourceRevision            = "e943683fbd71ea689bf40fb4c7009531fe98ece5"
-	sourcePath                = "evaluation/personal-inquiry-decision/decision_continuity_counterfactual_001.json"
-	sourceBlob                = "6354fce0a01093cb5545ed6bb9730aceb3b20023"
-	sourceAuthorityScope      = "pinned-revision-only"
-	currentSourceConformance  = "not-claimed"
-)
+const supportedFixtureSchema = "sei.decision-continuity-comparison-fixture/v0"
 
 type fixture struct {
 	Schema              string                     `json:"schema"`
@@ -92,7 +84,7 @@ type resumeProjection struct {
 }
 
 type semanticAudit struct {
-	RecommendationSeparated    bool `json:"recommendation_separated"`
+	RecommendationSeparated     bool `json:"recommendation_separated"`
 	DecisionMatchesOracle       bool `json:"decision_matches_oracle"`
 	RecommendationMatchesOracle bool `json:"recommendation_matches_oracle"`
 	HistoricalBasisMatches      bool `json:"historical_basis_matches"`
@@ -101,18 +93,8 @@ type semanticAudit struct {
 	TemporalSeparation          bool `json:"temporal_separation"`
 }
 
-type sourceBaseline struct {
-	Repository               string `json:"repository"`
-	Revision                 string `json:"revision"`
-	Path                     string `json:"path"`
-	Blob                     string `json:"blob"`
-	AuthorityScope           string `json:"authority_scope"`
-	CurrentSourceConformance string `json:"current_source_conformance"`
-}
-
 type report struct {
 	FixtureID     string           `json:"fixture_id"`
-	Source        sourceBaseline   `json:"source"`
 	InitialResume resumeProjection `json:"initial_resume"`
 	PostDecision  resumeProjection `json:"post_decision_review"`
 	SemanticAudit semanticAudit    `json:"semantic_audit"`
@@ -242,15 +224,7 @@ func projectFixture(f fixture) (report, error) {
 	}
 
 	return report{
-		FixtureID: f.FixtureID,
-		Source: sourceBaseline{
-			Repository:               sourceRepository,
-			Revision:                 sourceRevision,
-			Path:                     sourcePath,
-			Blob:                     sourceBlob,
-			AuthorityScope:           sourceAuthorityScope,
-			CurrentSourceConformance: currentSourceConformance,
-		},
+		FixtureID:     f.FixtureID,
 		InitialResume: initial,
 		PostDecision:  post,
 		SemanticAudit: audit,
@@ -340,7 +314,7 @@ func auditProjection(f fixture, initial, post resumeProjection) (semanticAudit, 
 	}
 
 	audit := semanticAudit{
-		RecommendationSeparated:    len(initial.Recommendations) > 0 && allRecommendationIDsDifferFromDecision(initial.Recommendations, initial.Decision.ID),
+		RecommendationSeparated:     len(initial.Recommendations) > 0 && allRecommendationIDsDifferFromDecision(initial.Recommendations, initial.Decision.ID),
 		DecisionMatchesOracle:       initial.Decision.ID == condition.SurfaceText.Decision.ID,
 		RecommendationMatchesOracle: containsProjectedID(initial.Recommendations, condition.SurfaceText.Recommendation.ID),
 		HistoricalBasisMatches:      equalStringSlices(ids(initial.HistoricalBasis), f.ReferenceState.HistoricalBasisIDs),

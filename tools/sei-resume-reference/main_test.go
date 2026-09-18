@@ -1,12 +1,10 @@
 package main
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -57,18 +55,6 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 	if result.FixtureID != "e73-decision-continuity-001-provider-pilot" {
 		t.Fatalf("fixture id = %q", result.FixtureID)
 	}
-	if result.Source.Repository != sourceRepository ||
-		result.Source.Revision != sourceRevision ||
-		result.Source.Path != sourcePath ||
-		result.Source.Blob != sourceBlob {
-		t.Fatalf("source baseline = %#v", result.Source)
-	}
-	if result.Source.AuthorityScope != "pinned-revision-only" {
-		t.Fatalf("authority scope = %q", result.Source.AuthorityScope)
-	}
-	if result.Source.CurrentSourceConformance != "not-claimed" {
-		t.Fatalf("current source conformance = %q", result.Source.CurrentSourceConformance)
-	}
 	if result.InitialResume.CurrentQuestion != "通知Provider Aのtimeoutが増えたためProvider Bへ移行すべきか。" {
 		t.Fatalf("current question must come from scenario, got %q", result.InitialResume.CurrentQuestion)
 	}
@@ -101,21 +87,45 @@ func TestReferenceFixtureProjectsDecisionContinuityWithoutTemporalLeak(t *testin
 	}
 }
 
-func TestReferenceSnapshotMatchesPinnedSourceGitBlob(t *testing.T) {
-	data, err := os.ReadFile(referenceFixturePath(t))
+func TestReferenceChangeOneAddsOnlyPostDecisionObservation(t *testing.T) {
+	f := loadReferenceFixture(t)
+	baseline, err := projectFixture(f)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := gitBlobSHA(data); got != sourceBlob {
-		t.Fatalf("reference snapshot git blob = %s, want pinned SEI source blob %s", got, sourceBlob)
-	}
-}
 
-func gitBlobSHA(data []byte) string {
-	h := sha1.New()
-	_, _ = fmt.Fprintf(h, "blob %d\x00", len(data))
-	_, _ = h.Write(data)
-	return hex.EncodeToString(h.Sum(nil))
+	change := item{
+		Role: "observation",
+		ID:   "obs-b-delivery-latency",
+		Text: "pilot開始3日後、高負荷帯でProvider Bの配送遅延が観測された。",
+	}
+	f.Scenario.PostDecisionEvidence = append(f.Scenario.PostDecisionEvidence, change)
+	f.ReferenceState.PostDecisionIDs = append(f.ReferenceState.PostDecisionIDs, change.ID)
+
+	changed, err := projectFixture(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(changed.InitialResume, baseline.InitialResume) {
+		t.Fatalf("Change 1 rewrote initial Resume:\nbaseline=%#v\nchanged=%#v", baseline.InitialResume, changed.InitialResume)
+	}
+	if !reflect.DeepEqual(changed.PostDecision.HistoricalBasis, baseline.PostDecision.HistoricalBasis) {
+		t.Fatalf("Change 1 rewrote historical basis: baseline=%#v changed=%#v", baseline.PostDecision.HistoricalBasis, changed.PostDecision.HistoricalBasis)
+	}
+	if !reflect.DeepEqual(changed.PostDecision.Unresolved, baseline.PostDecision.Unresolved) {
+		t.Fatalf("Change 1 rewrote unresolved: baseline=%#v changed=%#v", baseline.PostDecision.Unresolved, changed.PostDecision.Unresolved)
+	}
+	if got, want := len(changed.PostDecision.ChangesSinceDecision), len(baseline.PostDecision.ChangesSinceDecision)+1; got != want {
+		t.Fatalf("changes_since_decision length = %d, want %d", got, want)
+	}
+	gotChanges := ids(changed.PostDecision.ChangesSinceDecision)
+	if gotChanges[len(gotChanges)-1] != change.ID {
+		t.Fatalf("last change id = %q, want %q", gotChanges[len(gotChanges)-1], change.ID)
+	}
+	if !changed.SemanticAudit.TemporalSeparation || !changed.SemanticAudit.HistoricalBasisMatches || !changed.SemanticAudit.UnresolvedMatches || !changed.SemanticAudit.PostDecisionMatches {
+		t.Fatalf("Change 1 semantic audit not satisfied: %#v", changed.SemanticAudit)
+	}
 }
 
 func TestReferenceProjectionDoesNotUseOracleQuestionAsInput(t *testing.T) {
