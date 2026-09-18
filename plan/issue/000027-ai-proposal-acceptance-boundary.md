@@ -384,6 +384,8 @@ Observationから変更候補を作る場合も、`Observation -> semantic write
 - reload後のCanonical結果
 - Validation / Conformance結果
 - stale Proposal negative case
+- Runtime操作を扱う場合のeffect-time authority reference / rejection reason
+- Proposal acceptance後にauthorityを変化させるnegative case（扱う場合）
 - AI経路を外した同一Acceptance Boundaryの利用例
 - AI / derived memory削除後もCanonical meaningが変わらないこと
 
@@ -425,6 +427,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 15. AIのautonomyとwrite / invoke / Resource authorityを分離できる
 16. AI固有EvidenceやDerived Experience Knowledgeを削除してもCanonical Worldが変わらない
 17. ProposalからRuntimeへ無権限に直接到達できない
+18. Runtime操作を扱う場合、Proposal acceptance /過去approvalではなくeffect直前のcurrent authorityで許可可否を判定できる
+19. acceptance後にauthorityがrevoked / stale / missing / ambiguousになったnegative caseで、副作用前にfail closedできる
 
 ## 非目標
 
