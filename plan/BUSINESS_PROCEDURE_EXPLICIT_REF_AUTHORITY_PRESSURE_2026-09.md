@@ -136,7 +136,7 @@ refはgeneric `semanticRefs[]` / kind-less CanonicalID bagへ畳まずauthority 
 
 `d4_ref_kind_pressure_test.go`ではcurrent Referenceのref kindを保持しつつ、future direct Data / Relation refを黙って捨てないPressureをsource-levelに実装した。
 
-詳細は`BUSINESS_PROCEDURE_D4_REF_KIND_PRESSURE_2026-09.md`を参照する。
+詳細は`BUSINESS_PROCEDURE_D4_O1_2026-09.md`（Part 1、旧`D4_REF_KIND_PRESSURE`）を参照する。
 
 ## 8. O1への接続 — ref roleをkindと分ける
 

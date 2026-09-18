@@ -170,7 +170,7 @@ direct realization            = none
 
 であり、Authorization policyからBusiness protected targetをauthor/backfillしない。
 
-Task/Function分離がgeneric ref-role taxonomyを証明しないという詳細Evidenceは`BUSINESS_PROCEDURE_O1_AUTHORITY_DIRECTION_PRESSURE_2026-09.md`等へ残す。
+Task/Function分離がgeneric ref-role taxonomyを証明しないという詳細Evidenceは`BUSINESS_PROCEDURE_D4_O1_2026-09.md`（Part 3、旧`O1_AUTHORITY_DIRECTION_PRESSURE`）等へ残す。
 
 ## 8. Matrix / CRUD / derived projection
 
