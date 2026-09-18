@@ -372,7 +372,42 @@ AIはGate C Readyを観測していない状態でApplication sourceをauthorし
 7. expected change propagationを分類する
 8. one boolean \`Ready\` / \`Portable\` / \`AutoCreate\`へ畳まない
 
-## 15. Pre-Gate完了条件
+## 15. Existing schema sufficiency pressure
+
+第二Applicationの最小構成が既存grammarだけで表現できるかは、
+
+- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go`
+
+でPressureする。
+
+current hypothesis:
+
+```text
+existing Application grammar
++ existing reference Pattern grammar
++ existing Environment binding grammar
+  -> first read-only second Applicationを表現可能
+```
+
+この仮説が崩れるEvidenceが得られるまでは、
+
+- Knowledge Package
+- `portable` declaration
+- Pattern inheritance
+- override DSL
+- auto-sync directive
+
+をCanonical grammarへ追加しない。
+
+```text
+planning portability relation
+  != Canonical portability syntax
+```
+
+を維持する。
+
+## 16. Pre-Gate完了条件
 
 - [ ] shared / destination-owned / Environment-ownedを分離した
 - [ ] Gate C Readyを実装着手前提として明示した
@@ -386,7 +421,7 @@ AIはGate C Readyを観測していない状態でApplication sourceをauthorし
 - [ ] Gate C後の最小Proposal shapeを説明できる
 - [ ] AI BuilderがGateを越えてauthoringしない境界を示した
 
-## 16. Gate C後の着手順
+## 17. Gate C後の着手順
 
 \`\`\`text
 Gate C Ready
