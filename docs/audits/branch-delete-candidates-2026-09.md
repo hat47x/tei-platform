@@ -1247,3 +1247,81 @@ DELETE_CANDIDATE: 193
 ```
 
 上記193本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 43. 2026-09-18 candidate pass 26 — Remaining Gate B refs
+
+Gate B inventoryでDELETE_CANDIDATE未登録だったsource / artifact / handover / revision / git / external / status / plan / preflight等の旧work refをcurrent `main`と比較しました。
+
+### 43.1 Source / artifact
+
+- `work/gate-b-310-source-conformance-doc-sync`
+- `work/gate-b-ignored-source-snapshot-sync`
+- `work/gate-b-index-source-snapshot-sync`
+- `work/gate-b-presecret-clean-source-preflight`
+- `work/gate-b-artifact-audit-command-binding-doc-sync`
+- `work/gate-b-generated-artifact-clean-revision`
+- `work/gate-b-generated-artifact-clean-revision-v2`
+
+### 43.2 Handover / revision / git
+
+- `work/gate-b-c-handover-contract`
+- `work/gate-b-handover-scope-sync`
+- `work/gate-b-candidate-ready-revision-contract`
+- `work/gate-b-git-config-runbook-sync`
+- `work/gate-b-git-identity-override-guard`
+
+### 43.3 Remaining sync / status / plan / preflight
+
+- `work/gate-b-310-pr351-doc-sync`
+- `work/gate-b-actions-state-sync-69`
+- `work/gate-b-child-fingerprint-valid-json-only`
+- `work/gate-b-doc-sync-progress`
+- `work/gate-b-external-evidence-intake-sync`
+- `work/gate-b-external-provider-rescope`
+- `work/gate-b-four-evidence-lanes-sync`
+- `work/gate-b-hardening-status-sync`
+- `work/gate-b-issue-000029-command-binding-sync`
+- `work/gate-b-observation-evidence-sync`
+- `work/gate-b-path-only-snapshot-sync`
+- `work/gate-b-post-300-plan-sync`
+- `work/gate-b-post-300-plan-sync-v2`
+- `work/gate-b-post-merge-baseline-sync`
+- `work/gate-b-preflight-ci-20260906`
+
+確認時点のcurrent `main`:
+
+```text
+5fbb8b9cb84c8f0dacfef2462ad25b3c517fd291
+```
+
+27本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、保存用Evidence / bootstrap ref等の固有用途も確認されていません。`snapshot` / `baseline` / `final` / `v2`等の名称を状態の正本とはみなさず、current mainへの完全包含を比較結果で確認しています。
+
+このため27本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 26結果
+
+```text
+reviewed refs:         27
+DELETE_CANDIDATE:      27
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
+## 44. current summary — pass 26
+
+candidate pass 26までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 220
+```
+
+上記220本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
