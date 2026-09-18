@@ -1174,6 +1174,37 @@ selected / omitted category partitionは完全かつ排他的であることを�
 production audience profile / disclosure policy / wire schema / UI layoutは追加しない。
 
 
+### R3Q — Purpose-bound projection selective freshness
+
+R3Pのselected / omitted category boundaryをbounded projectionのfreshness dependencyへ接続する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3Q_PROJECTION_SELECTIVE_FRESHNESS_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3q_projection_selective_freshness_pressure_test.go`
+
+test-onlyではselected categoryごとにsemantic fingerprintを作り、RequiredCategoryFingerprintsへ含める。
+
+```text
+projection freshness
+  = profile identity
+  + selected semantic dependencies
+
+  != all upstream artifact bytes
+```
+
+Human orientationでomitされた `known-authority-facts` / `authority-limits` だけが変化してもHuman viewをstaleにしない。一方、それらをselectedするAgent resolution viewではstaleになる。
+
+Humanでもmachine reason / resolution need / runtime outcome / SourceRefs等のselected meaningが変わればstaleになる。SourceRefsはdrill-down integrityの一部としてselected dependencyに残す。
+
+selected / omitted partition自体はProfileFingerprintへ含め、selected-but-empty categoryをomittedへ変えた場合も別profileとして扱う。
+
+semantic category fingerprintはproduction cache key / Canonical versionではなく、production invalidation engineやwatcherは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
