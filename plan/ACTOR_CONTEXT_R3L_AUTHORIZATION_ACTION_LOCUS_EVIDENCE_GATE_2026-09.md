@@ -154,11 +154,12 @@ Legacy policy providerを取り除いても:
 
 ## 5. Gate outcome
 
-R3Lでは三状態を区別する。
+R3Lでは四状態を区別する。
 
 ```text
 insufficient-evidence
 single-qualifying-interaction
+multiple-nondiscriminating-interactions
 action-locus-pressure-qualified
 ```
 
@@ -171,6 +172,12 @@ qualifying interactionが0件、またはrecord自体にE1〜E4 / E6の不足が
 一つのinteractionだけがE1〜E4 / E6を満たす。
 
 これはaction authorityの存在をPressureするには有効だが、authoring locus比較には不足する。
+
+### multiple-nondiscriminating-interactions
+
+二つ以上のqualifying interactionがあっても、Pattern kind / action語彙 / reuse shape / Business固有性が実質的に同じならここに留まる。
+
+単なる複製からproduction locusを一般化しない。
 
 ### action-locus-pressure-qualified
 
