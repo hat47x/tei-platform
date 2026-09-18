@@ -13,6 +13,9 @@ const (
 	actorContextR3XStatusRequirementTransitionUnresolved     = "requirement-transition-authority-unresolved"
 	actorContextR3XStatusTupleCompatibleFreshnessUnresolved  = "tuple-compatible-freshness-authority-unresolved"
 	actorContextR3XStatusRuntimeOutcomeChanged               = "runtime-outcome-changed-same-context"
+
+	actorContextR3XObservationTupleMatch    = "observation-tuple-match"
+	actorContextR3XObservationTupleMismatch = "observation-tuple-mismatch"
 )
 
 type actorContextR3XAuthorizationContextProbe struct {
@@ -37,7 +40,7 @@ type actorContextR3XContextImpactProbe struct {
 	ChangedTupleComponents           []string
 	RequirementApplicabilityChanged  bool
 	RuntimeOutcomeChanged            bool
-	ObservationStatus                string
+	ObservationTupleStatus                string
 	FreshnessAuthorityStatus         string
 	AuthorityLimits                  []string
 }
@@ -56,13 +59,13 @@ func TestActorContextR3XActionChangeMakesPriorObservationContextMismatch(t *test
 	}
 	if got.Status != actorContextR3XStatusObservationContextMismatch ||
 		!reflect.DeepEqual(got.ChangedTupleComponents, []string{"action"}) ||
-		got.ObservationStatus != actorContextR3IEvaluationObservationMismatch {
+		got.ObservationTupleStatus != actorContextR3XObservationTupleMismatch {
 		t.Fatalf("R3X action change did not invalidate prior Observation context: %+v", got)
 	}
 }
 
 func TestActorContextR3XOtherTupleComponentChangesRemainExplicit(t *testing.T) {
-	for name, mutate, want := range map[string]struct {
+	cases := map[string]struct {
 		mutate func(*actorContextR3XAuthorizationContextProbe)
 		want   string
 	}{
@@ -84,11 +87,12 @@ func TestActorContextR3XOtherTupleComponentChangesRemainExplicit(t *testing.T) {
 			},
 			want: "resource",
 		},
-	} {
+	}
+	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			before := actorContextR3XBaseContext()
 			after := before
-			mutate(&after)
+			tc.mutate(&after)
 			got, err := actorContextR3XAnalyzeContextChange(
 				actorContextR3XBaseObservation("allowed"),
 				actorContextR3XContextDeltaProbe{Before: before, After: after},
@@ -97,7 +101,7 @@ func TestActorContextR3XOtherTupleComponentChangesRemainExplicit(t *testing.T) {
 				t.Fatal(err)
 			}
 			if got.Status != actorContextR3XStatusObservationContextMismatch ||
-				!reflect.DeepEqual(got.ChangedTupleComponents, []string{want}) {
+				!reflect.DeepEqual(got.ChangedTupleComponents, []string{tc.want}) {
 				t.Fatalf("%s change was not preserved as tuple mismatch: %+v", name, got)
 			}
 		})
@@ -121,7 +125,7 @@ func TestActorContextR3XRequirementChangeIsNotTupleMismatch(t *testing.T) {
 		len(got.ChangedTupleComponents) != 0 {
 		t.Fatalf("R3X requirement transition was confused with tuple change: %+v", got)
 	}
-	if got.ObservationStatus == actorContextR3IEvaluationObservationMismatch {
+	if got.ObservationTupleStatus == actorContextR3XObservationTupleMismatch {
 		t.Fatalf("R3X requirement transition fabricated Observation tuple mismatch: %+v", got)
 	}
 }
@@ -275,27 +279,27 @@ func actorContextR3XAnalyzeContextChange(
 
 	if len(changed) > 0 {
 		result.Status = actorContextR3XStatusObservationContextMismatch
-		result.ObservationStatus = actorContextR3IEvaluationObservationMismatch
+		result.ObservationTupleStatus = actorContextR3XObservationTupleMismatch
 		return result, nil
 	}
 	if result.RequirementApplicabilityChanged {
 		result.Status = actorContextR3XStatusRequirementTransitionUnresolved
-		result.ObservationStatus = actorContextR3IEvaluationPriorContextReuseUnresolved
+		result.ObservationTupleStatus = actorContextR3XObservationTupleMatch
 		return result, nil
 	}
 	if result.RuntimeOutcomeChanged {
 		result.Status = actorContextR3XStatusRuntimeOutcomeChanged
-		result.ObservationStatus = actorContextR3IEvaluationCurrentObserved
+		result.ObservationTupleStatus = actorContextR3XObservationTupleMatch
 		return result, nil
 	}
 	if delta.StaticSemanticChanged || len(delta.ChangedProjectionCategories) > 0 {
 		result.Status = actorContextR3XStatusTupleCompatibleFreshnessUnresolved
-		result.ObservationStatus = actorContextR3IEvaluationPriorContextReuseUnresolved
+		result.ObservationTupleStatus = actorContextR3XObservationTupleMatch
 		return result, nil
 	}
 
 	result.Status = actorContextR3XStatusNoContextIdentityChange
-	result.ObservationStatus = actorContextR3IEvaluationCurrentObserved
+	result.ObservationTupleStatus = actorContextR3XObservationTupleMatch
 	return result, nil
 }
 
