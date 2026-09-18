@@ -73,6 +73,12 @@ func TestStage0ReferenceFixtures(t *testing.T) {
 			if got.Mapping.RelationCardinal != "one" {
 				t.Fatalf("RelationCardinality = %q", got.Mapping.RelationCardinal)
 			}
+			if got.Mapping.ParentPresenceSemantics != "unresolved" {
+				t.Fatalf("ParentPresenceSemantics = %q, want unresolved", got.Mapping.ParentPresenceSemantics)
+			}
+			if got.Mapping.Lossless {
+				t.Fatal("Stage 0 mapping must not claim lossless parent semantics while optionality is unrepresented")
+			}
 			if got.WriteAttempted {
 				t.Fatal("Stage 0 probe must remain read-only")
 			}

@@ -181,7 +181,7 @@ current `semantic.Data / Attribute / Relation / Validation`を読む限り、初
 |---|---|---|
 | Card / Islandというdata kind | Data definitionで表現候補 | A |
 | scalar attribute | Attributeで表現候補 | A |
-| parent relation | self RelationでPressure可能 | A候補 |
+| parent relation | self Relationでsingle-valued shapeはPressure可能。rootのnullable parent（0..1）意味はcurrent `one | many`だけでは未表現 | A候補 / optionality unresolved |
 | placard reference | RelationでPressure可能だが意味分類が先 | A / C |
 | member cards | many RelationでPressure可能 | A候補 |
 | optional / unionの豊富なfields | current minimal modelでは不足可能性 | C / D未確定 |
@@ -269,6 +269,7 @@ Historical SUI PR #235:
 TEIで確認すること:
 
 - parent relationをSemantic Relationとして一度だけ表現できるか
+- `parentIslandId: string | null`の0..1 presence semanticsを、current Relation modelでlosslessに表現できるか。現時点では`one | many`しかなくunresolvedとする
 - placard referenceをdomain meaningとして表現する必要があるか、Projection metadataで十分か
 - overview / mid / detailをProjectionだけで変えられるか
 - validationをsource / UIごとに重複せず一か所へ寄せられるか
@@ -447,7 +448,7 @@ derived Reference output
 
 得たいEvidenceは、
 
-1. SUI sourceから意味をlosslessに読めるか
+1. SUI sourceから意味をlosslessに読めるか。Stage 0ではparent optionalityが未表現なため、現時点でlossless達成とはしない
 2. TEI側で同じ意味を一度だけ表現できるか
 3. hierarchy等のValidationを共通化できるか
 4. file pathやCanvas座標をsemantic identityへ混ぜずに済むか
