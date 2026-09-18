@@ -299,6 +299,8 @@ same reference fingerprint
 
 test-only pressureでは、shared Business Reference fingerprintを残しつつ、Source Indexからselected subjectのartifact fingerprintを集める。PatternからDatasource / accepted accessを読む経路ではPattern owner Applicationのsource fingerprintも必須とし、Human Reviewではconflict fixture fingerprintも追加する。production global revisionや万能Snapshot IDは導入しない。
 
+Source Index管理下のinput recordでは`subjectKind / subjectID`とartifact locatorを分けて保持する。freshnessはsubject + content fingerprintへ束縛し、artifact pathはdrill-down locatorとして扱う。source-only moveでWorld / subject / content fingerprintが不変なら、それだけをsemantic staleとは扱わない。
+
 ## 7. R0 test-only shape
 
 production schemaではなく、test-only構造として最小限次をPressureする。
