@@ -45,10 +45,12 @@ type parentLink struct {
 }
 
 type mappingSummary struct {
-	DataDefinition   string `json:"dataDefinition"`
-	ParentRelation   string `json:"parentRelation"`
-	RelationTarget   string `json:"relationTarget"`
-	RelationCardinal string `json:"relationCardinality"`
+	DataDefinition          string `json:"dataDefinition"`
+	ParentRelation          string `json:"parentRelation"`
+	RelationTarget          string `json:"relationTarget"`
+	RelationCardinal        string `json:"relationCardinality"`
+	ParentPresenceSemantics string `json:"parentPresenceSemantics"`
+	Lossless                bool   `json:"lossless"`
 }
 
 type report struct {
@@ -350,6 +352,12 @@ func resolveStage0Mapping(world ir.World) (mappingSummary, error) {
 	if result.RelationCardinal != "one" {
 		return mappingSummary{}, fmt.Errorf("sui.island.parent must have cardinality one; got %s", result.RelationCardinal)
 	}
+
+	// SUI parentIslandId is nullable for root islands. Current TEI Relation only
+	// exposes one|many cardinality, so Stage 0 has not proven the 0..1 presence
+	// semantics lossless. Keep this unresolved instead of inventing optionality.
+	result.ParentPresenceSemantics = "unresolved"
+	result.Lossless = false
 
 	return result, nil
 }
