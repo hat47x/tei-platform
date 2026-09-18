@@ -1,7 +1,7 @@
 # TEI 技術リサーチ統合方針 — 2026-09
 
 Status: **current research-integration plan**  
-Last updated: **2026-09-11**
+Last updated: **2026-09-18**
 
 ## 1. 位置づけ
 
@@ -108,7 +108,7 @@ WailsはStudio / HostやTarget Adapterのarchitecture probeとして有用です
 - Host inspection / control plane
 - Application Presentation / Interaction Target
 
-## 4. 2026-09-11短報から新たに深める知見
+## 4. 9月中旬短報から新たに深める知見
 
 ### 4.1 Beyond Agent Harnesses — authorityはplanner-visible stateだけには存在しない
 
@@ -245,6 +245,108 @@ Wails v3.0.0-beta.19では、MCP origin / remote accessのhardeningとtoken auth
 これはWails採用理由ではなく、既存RQ-013 / RQ-019の圧力です。
 
 Host control interfaceをnetwork越しに公開する場合、origin、token、transport、request limit等はExecution / Trust Profileです。これらをApplicationの業務意味やMCP TargetのCanonical contractへ混ぜません。
+
+### 4.7 The Router Within — Knowledge available と Knowledge injected を分ける
+
+*The Router Within: Eliciting Native Skill Routing from a Frozen LLM* は、Skill library全体のmetadataを毎回contextへ載せるのではなく、frozen LLM内部の中間状態からrouting signalを読み出し、候補Skillだけを後段へ渡す方式を示しています。
+
+TEIが取り込むべき点はmodel-native routerそのものではなく、次の非同一性です。
+
+```text
+Knowledge available
+        !=
+Knowledge selected
+        !=
+Knowledge injected
+        !=
+Semantic applicability
+```
+
+Knowledge / Skill / Reference patternが存在することだけで、毎回AI contextへ全量投入する必要はありません。まずtask / intentに対して候補を絞り、その後にCanonical identity、dependency、Source、Evidence、current revisionから適用可能性を判定します。
+
+routing実装はexact lookup、graph、lexical、embedding、Derived Cognitive Retrieval、model-native routing等を交換可能にします。routing scoreやmodel内部signalは候補生成Evidenceであり、Semantic authorityではありません。
+
+### 4.8 ProgramDistill — Targetの振る舞いをreplay可能なEvidenceへ分解する
+
+*ProgramDistill: From Interactive Web Apps to Verifiable Reference-Guided SWE Tasks* は、完成済みWeb applicationを操作してfeatureを発見し、featureごとにreplay可能なbehaviorを構成して検証する方法を示しています。
+
+TEIへの圧力は、Target評価をscreen / DOM snapshotへ閉じないことです。
+
+```text
+Canonical Scenario / Semantic Operation
+        ↓
+Target-specific interaction realization
+        ↓
+Replayable Behavior
+        ↓
+Result / Observation
+        ↓
+Functional Evidence
+```
+
+replay behaviorはTarget Evidenceとして有用ですが、Canonical business meaningの正本にはしません。DOM selector、coordinate、route、component identity等はTarget realizationとして保持し、behaviorから上位meaningを逆定義しません。
+
+複数featureをまたぐ深いworkflowほど復元が難しくなるという結果も、単一画面の一致だけではTarget Conformanceを評価できないことを補強します。
+
+### 4.9 RSIAgent — experienceをcondition / action / consequenceへ圧縮する余地
+
+*RSIAgent: Autonomous Exploration for Recursive Self-improvement in New Environments* は、環境探索からaction、condition、consequence、failure、boundary condition等の関係を検証し、model parameterを更新せず再利用できるmemoryへまとめます。
+
+TEIではこれをself-improving Canonical Knowledgeとして採用しません。一方、Derived Experience Knowledgeを単なるtrajectory logより一段構造化する候補になります。
+
+```text
+Execution / Observation
+        ↓
+verified experience candidate
+  condition / action / outcome / boundary
+        ↓
+Derived Experience Knowledge
+        ↓
+future exploration / Proposal guidance
+```
+
+experienceは作成時のCanonical / Target / Driver / Resource / revisionへtraceでき、current authority / dependencyが変われば再評価できる必要があります。過去に成功した因果候補を現在のBusiness Ruleへ自動昇格しません。
+
+### 4.10 HazardAuditor — 異種Runtimeのevent正規化はEvidence側で試す
+
+*HazardAuditor: From Executable Threats to Safer Computer-Use Agents* は、複数のcomputer-use agent frameworkをcontrolled environmentで実行し、異種interactionをcanonical event representationへ正規化して横断評価します。
+
+TEIで有用なのは、各Target / Agent固有eventを比較可能なEvidenceへ変換する発想です。ただし、ここでいうevent normalizationをCanonical Semantic Modelへ直結しません。
+
+```text
+Target / Agent native events
+        ↓
+derived normalized evidence
+        ↓
+cross-target / cross-runtime comparison
+```
+
+raw Evidenceへ戻れるprovenanceを保持し、正規化で失われたTarget固有差をunresolvedとして残せることを優先します。Universal Event Modelを先に設計しません。
+
+### 4.11 Agora — Git lineageはDerived Knowledgeの再現性に使える
+
+*Agora: Git as Shared Memory for Collective AutoResearch* は、result、hypothesis、verification等をappend-onlyなGit DAGとして記録し、親commitを知識の系譜として利用します。
+
+TEIではGit commitをSemantic Knowledge nodeへ一対一対応させる必要はありません。一方、AI / Humanが作るDerived Knowledgeや検証成果について、immutable lineage、再現可能なparent relation、derived indexを分ける考え方は既存のGit活用方針と整合します。
+
+重要なのは次です。
+
+- authoritative sourceのversion historyとDerived Knowledgeを混同しない
+- derived indexを削除しても履歴・正本を復元できる
+- claim / experienceのprovenanceを保存しても、それだけでCanonical authorityにしない
+- 複数agentの共有memoryを中央の不可視stateだけへ閉じ込めない
+
+### 4.12 Wails v3 beta.20〜23 — Host lifecycleとbinding dependencyをTarget meaningから分ける
+
+Wails v3はbeta.20〜23で、Windows / Linuxのaborted request処理、pure Go WebView2 loaderへの整理、single-instance application ID、generic model creatorの依存順序や相互依存によるstack overflow等を修正しています。
+
+TEIの上位設計を変える内容ではありませんが、二つのnegative pressureとして保持します。
+
+1. WebView request cancellation / navigation lifecycleはHost / Adapter lifecycleで扱い、Application business outcomeへ短絡しない
+2. generated bindingは個々の型だけでなく、型依存graph、宣言順、cycleを含めて検証する
+
+Wails固有のbuild / binding事情をCanonical Presentation vocabularyへ持ち込みません。
+
 
 ## 5. 今回の統合仮説
 
@@ -505,6 +607,69 @@ C: hybrid routing
 
 外部研究の36.4%等の数値をTEIの閾値にはしません。
 
+### R6 — Selective Knowledge Routing
+
+目的:
+
+- availableなKnowledge / Skill / Reference patternを毎回全量contextへ投入せず、必要候補だけを選べるか比較する
+
+比較候補:
+
+```text
+A: exact / deterministic selection
+B: lexical / graph / embedding retrieval
+C: cognitive / model-native routing
+D: hybrid routing
+```
+
+最低条件:
+
+- routing mechanismを交換してもCanonical / accepted meaningが変わらない
+- selected knowledge identity / provenanceを追跡できる
+- routing scoreをSemantic applicabilityやDecisionへ自動昇格しない
+- selection後にdeterministic qualificationを通す
+- all-skill metadata preloadを必須architectureにしない
+
+### R7 — Replayable Behavior Evidence
+
+目的:
+
+- First Web TargetのFunctional Evidenceを、再実行可能な小さいbehavior単位でも説明できるか確認する
+
+最低trace:
+
+```text
+Scenario / Semantic Operation
+  -> behavior precondition
+  -> Target interaction realization
+  -> observed Result / Observation
+  -> conformance result
+```
+
+期待:
+
+- screenshot / DOM snapshotだけではFunctional successにしない
+- replay用selector / coordinate等をCanonical identityにしない
+- behaviorを複数回再実行して同じ意味上の結果を確認できる
+- raw Target evidenceとnormalized evidenceの両方へ戻れる
+- deeper cumulative workflowを単一behavior成功で代替しない
+
+### R8 — Verified Experience Memory / Evidence Normalization
+
+目的:
+
+- Runtime経験を再利用しても第二正本やUniversal Event Modelを作らずに済むか確認する
+
+最低条件:
+
+- condition / action / outcome / failure / boundary candidateを元Execution / Observationへtraceできる
+- build-input / Target / Driver / authority revisionを保持または再評価できる
+- stale experienceを現在のruleへ無条件適用しない
+- heterogeneous event normalizationをderived Evidenceとして扱う
+- normalized eventからraw evidenceへ戻れる
+- memory / normalized indexを削除してもCanonical Worldが変わらない
+
+
 ## 9. Requirementへ昇格する条件
 
 研究の面白さだけでRequirementを増やしません。
@@ -582,5 +747,15 @@ Gate B環境待ちを理由にagent / cognitive subsystemを前倒し実装し�
 - Xiaolei Li et al., *GraphDroid: Asynchronous LLM-Based Mobile App GUI Testing via History-Aware Exploration and Hybrid Intent Fulfillment*, arXiv:2609.10031, 2026
 - Rui Xie, Lu Chen, *ASIL: Replacing Screenshot-and-Click with Structured State and Semantic Actions*, arXiv:2608.26991, Findings of EMNLP 2026
 - Wails v3.0.0-beta.19 changelog, 2026-09-09
+
+
+2026-09-18短報で重点再評価:
+
+- Ruishuo Chen et al., *The Router Within: Eliciting Native Skill Routing from a Frozen LLM*, arXiv:2609.15982, 2026
+- Jeonghye Kim et al., *ProgramDistill: From Interactive Web Apps to Verifiable Reference-Guided SWE Tasks*, arXiv:2609.18805, 2026
+- Sibo Zhu et al., *RSIAgent: Autonomous Exploration for Recursive Self-improvement in New Environments*, arXiv:2609.15364, 2026
+- Yunhao Feng et al., *HazardAuditor: From Executable Threats to Safer Computer-Use Agents*, arXiv:2609.15134, 2026
+- Yifan Zhang et al., *Agora: Git as Shared Memory for Collective AutoResearch*, arXiv:2609.18094, 2026
+- Wails v3.0.0-beta.20〜beta.23 changelog, 2026-09-10〜2026-09-16
 
 外部資料の更新によって実装候補は変わり得ますが、この文書で抽出したTEI固有の境界はTEI自身のReference / Conformanceから再評価します。
