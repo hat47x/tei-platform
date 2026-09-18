@@ -163,6 +163,37 @@ candidate  != decision
 
 「近そう」「珍しそう」「確認した方がよさそう」という信号として使い、最終判断はdeterministic qualificationや人のAcceptanceへ渡します。
 
+### Knowledgeが存在することとLLMへ渡すことも別
+
+RepositoryやSkill群にKnowledgeが存在しても、現在taskのLLM contextへ全量投入する必要はありません。
+
+```text
+available knowledge
+      ↓ routing / shortlist
+selected candidate
+      ↓ deterministic qualification
+applicable / incompatible / unknown
+      ↓ disclosure decision
+bounded context
+```
+
+ここでは次を同一視しません。
+
+```text
+available
+  != selected
+
+selected
+  != currently applicable
+
+currently applicable
+  != automatically disclosed
+```
+
+routing scoreやmodel-native signalはshortlistを作るためのsignalであり、current applicabilityのEvidenceではありません。また、qualification済みでも現在taskに不要なKnowledgeを無条件にpromptへ入れません。
+
+一方、`unknown`やmissing authorityが現在の判断に重要なら、削除せずunresolvedとしてbounded contextへ含めます。context削減のために不確実性を隠すことはしません。
+
 ## 5. Derived Cognitionは第二の正本ではない
 
 この領域で特に避けたいのは、検索indexやAI memoryの中にしか存在しない業務意味を作ることです。
