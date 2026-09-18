@@ -81,6 +81,44 @@ Application-owned Patternをoriginからshared authorityとして継承せず、
 
 これらを検証する前にinheritance / override graphやauto-sync protocolをproduction化しない。
 
+## 第二Application Pre-Gate Contract
+
+Gate C前に第二Application sourceを先取りせず、着手時に必要な意味境界だけを固定する。
+
+正本:
+
+- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go`
+
+最初のscenario labelは `repair_intake-test-only` とするが、これはApplication名の採用ではない。
+
+Pre-Gateでは必ず、
+
+```text
+requiredGate = Gate C Ready
+
+canonicalApplicationCreated = false
+sourceAuthoringAttempted = false
+acceptanceAttempted = false
+environmentBindingCreated = false
+targetImplementationStarted = false
+```
+
+を維持する。
+
+Gate C後の最初のread-only Referenceでは、
+
+- shared authority: `customer.customer`, `master_data.customer ^2`
+- destination-owned: Application identity / Business Relation / Application Pattern / datasource alias
+- Environment-owned: development / production binding
+
+を分離する。
+
+また、shared dependency change / origin provenance drift / destination-local change / unrelated origin changeの期待値をPre-Gateで固定するが、ISSUE-000039のimpact engineを前倒し実装しない。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
