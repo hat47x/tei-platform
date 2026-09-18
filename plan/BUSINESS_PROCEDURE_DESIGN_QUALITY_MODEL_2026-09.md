@@ -114,6 +114,25 @@ fact / accepted meaning / derived / proposal / unresolvedのnatureをreview時�
 
 Business meaning change、source locator change、derived projection change、World / Conformance base changeを区別できるか。stale candidateを最新版へ黙って適用していないか。
 
+### Derived procedural candidateを使う場合の追加確認
+
+trajectory、agent exploration、過去のsuccessful composition等からprocedural candidateを作る場合も、Business Procedure品質の判定をその候補へ委譲しない。
+
+```text
+past execution order
+  != accepted Procedure order
+
+successful trajectory
+  != correct Business Procedure
+
+derived procedural graph
+  != Business authority
+```
+
+利用する場合は、少なくとも元Execution / Observation / Evidenceへtraceでき、current Business context / accepted authorityで再確認できることを求める。derived graph / indexを削除してもaccepted Business meaningが失われないことを維持する。
+
+この確認は新しい品質scoreやpersisted statusを追加するものではない。
+
 ## 5. Intention / system result / actuality / Business acceptanceを分ける
 
 製造、物流、外部承認、SaaS連携等では次が同時に現れやすい。

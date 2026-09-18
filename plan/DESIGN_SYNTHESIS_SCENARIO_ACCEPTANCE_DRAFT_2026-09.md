@@ -63,6 +63,9 @@ Reference Pattern frequency
 past successful composition / experience memory
   != current applicability
 
+derived procedural knowledge
+  != Business Procedure authority
+
 retrieval similarity
   != semantic evidence
 

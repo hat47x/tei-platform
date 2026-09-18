@@ -114,6 +114,27 @@ Procedureをdurable Canonical identityにするか、traceable derived artifact�
 
 Procedure品質は「すべての要素を埋めること」ではなく、scope内でknown / accepted / unresolvedの境界を説明できることを重視します。
 
+### Derived Procedural KnowledgeはBusiness Procedureではない
+
+成功 / 失敗trajectory、agent exploration、過去の実行順、developer guidance等から、再利用可能なprocedural candidateを導出することはできます。
+
+ただし、
+
+```text
+Derived Procedural Knowledge
+  != Business Procedure
+  != accepted Business Action sequence
+  != Runtime Workflow authority
+```
+
+です。
+
+「以前この順序で成功した」「agentがこの近傍をよく辿った」という経験は、Business Procedureを検討する候補やreview hintにはできますが、業務上の正しい手順・責任・Handoff・Authorization・Capability authorityを自動的には確定しません。
+
+derived procedural candidateをBusiness meaningへ反映する場合は、元trajectory / Execution / Observation / Evidenceへ戻れるprovenanceを保ち、current accepted authority / Business contextで再確認したうえでProposalとしてShared Acceptance Boundaryへ送ります。
+
+Derived Procedural Knowledgeやそのgraph / indexを削除・再生成しても、accepted Business meaningとCanonical Worldは変わってはいけません。Procedural Graphを理由にBusiness Procedure schema、Runtime Workflow Engine、top-level Canonical kindを先行追加しません。
+
 ## 8. Manual workをfirst-classな業務意味として残す
 
 電話、対話、現物確認、組織判断、外部承認等が実際の業務に含まれるなら、それを直接表現できる必要があります。手作業をmodel上の欠陥や自動化待ちの穴とはみなしません。
