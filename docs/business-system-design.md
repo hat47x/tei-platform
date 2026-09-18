@@ -161,6 +161,8 @@ Derived Procedural Knowledgeやそのgraph / indexを削除・再生成しても
 
 Business視点のactor、job、department、responsibilityと、Security architectureのauthenticated principal、membership、scope、policy、authorization decisionを分けます。
 
+AI Business ActorもBusiness側ではactor候補になり得ますが、「AIである」こと自体はAuthorization RoleでもCapability authorityでもありません。
+
 ```text
 Business Responsibility / Actor / Job
         !=
@@ -172,6 +174,16 @@ Application owner
 ```
 
 actor labelやUI convenienceからruntime authorityを推論しません。
+
+同様に、
+
+```text
+AI understands Procedure
+  != AI owns Procedure
+  != AI is authorized to execute every Step
+```
+
+です。AI Actorが実行できないhuman judgment / physical / external Stepは、そのままhandoff / unresolved boundaryとして残します。AIへ実行可能に見せるためだけにBusiness meaningを書き換えません。
 
 また、Business Handoffはactor changeそのものではありません。
 

@@ -264,6 +264,32 @@ decision policy
 
 として読みます。policyを交換するたびに別のtool semanticsやpermission modelを作らず、既知操作をdeterministic pathで選んでもAIが選んでも、同じ意味・authority境界へ収束させます。
 
+### AIが「作る」とAIが「仕事をする」は別
+
+AIには少なくとも二つの利用形があります。
+
+```text
+AI Builder
+  Application definitionを変更する
+  -> Proposal / Shared Acceptance
+
+AI Business Actor
+  accepted Actionを実行する
+  -> Capability / current Authorization / Observation
+```
+
+AI Business Actorが受入済みCapabilityを利用するたびにApplication definition変更Proposalを作る必要はありません。一方、業務を実行できることから、そのAction定義を変更するauthoring authorityを得ることもありません。
+
+```text
+understand
+  != execute
+  != modify definition
+```
+
+また、Semantic Capabilityがある場合はAIへGUI clickを真似させるより、そのCapability境界を利用する方を標準にします。UIしかない既存systemではcomputer-useを使えますが、click成功をBusiness completionとはみなしません。
+
+AI向けのOperational Projectionは作れても、それをCanonicalのコピーとして第二の正本にはしません。
+
 また、AIを利用可能にしたからといって全操作でAIを呼ぶ必要はありません。
 
 ```text
