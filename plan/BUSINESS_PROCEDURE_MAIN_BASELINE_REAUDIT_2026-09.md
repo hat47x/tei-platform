@@ -146,7 +146,7 @@ H1/R3 thin Handoff
 
 は整合する。
 
-X-TEA側のDataflow node / line構造がこの分離を支持する詳細Evidenceは、`BUSINESS_PROCEDURE_HANDOFF_VS_BUSINESS_FLOW_PRESSURE_2026-09.md`等のquestion-specific auditに保持する。公開横断Registerへ戻さない。
+X-TEA側のDataflow node / line構造がこの分離を支持する詳細Evidenceは、`BUSINESS_PROCEDURE_HANDOFF_2026-09.md`（Part 4、旧`HANDOFF_VS_BUSINESS_FLOW_PRESSURE`）等のquestion-specific auditに保持する。公開横断Registerへ戻さない。
 
 ## 7. Actor / Authorization / O1
 
