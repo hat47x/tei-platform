@@ -196,6 +196,27 @@ Identity、Type、Relation、Expression、Constraint、Lifecycle等の小さいm
 
 専用primitiveが必要かは、Referenceで「既存mechanismでは意味が失われる」と確認してから判断します。
 
+### 型や関係の定義と、実データの一件一件は別
+
+たとえばTEIで`Card`というData definitionを持てても、利用者が作った`card-001`まで自動的にCanonical semantic objectになるわけではありません。
+
+```text
+Card definition
+  != card-001
+
+Customer definition
+  != customer-123
+
+Relation definition
+  != edge-019
+```
+
+Canonical側は主に「どんな意味・構造・制約か」を保持し、Application instance dataはDatabaseやApplication store等でその定義に従って存在します。
+
+個々のrecordをObservation / Evidenceとして参照することはできますが、traceabilityのためだけに全instanceをCanonicalへ複製すると、design meaningとoperational dataが混ざります。
+
+reference dataやconfigurationのようにinstance集合自体をauthoritative assetとして扱いたい場合は例外的にあり得ます。その場合も、誰がownerで、どこから変更され、何がruntime dataなのかを明示して扱います。
+
 ## 6. BusinessとApplication実装を分ける
 
 ### 防ぎたい失敗
