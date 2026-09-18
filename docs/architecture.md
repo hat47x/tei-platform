@@ -238,7 +238,9 @@ M0.23ではQuery declarationからnative `.sql`を参照できます。Workspace
 
 ApplicationのPresentation / InteractionをTargetへProjectionするとき、Target差を一つのframework差へまとめません。
 
-少なくとも次の二軸をReferenceから検証します。
+少なくともTarget CapabilityとExecution / Trust Profileの二軸をReferenceから検証します。
+
+加えて、2026-09のportable execution artifact Pressureでは、同じTargetでも実行artifact / ABI / Hostを差し替えられる可能性が明確になったため、**Runtime Binding内部の第三の観測軸**としてPressureします。
 
 ```text
 Canonical Application
@@ -249,17 +251,19 @@ Target Adapter
   ├─ Target Capability
   │    window / dialog / touch / notification / ...
   └─ Runtime Binding
-        ↓
-Host / Execution
-  └─ Execution / Trust Profile
-       local / network / transport / origin / session / resource / ...
+       ├─ execution artifact / ABI / host   [Pressure中]
+       │    native Go / freestanding Wasm / Wasm Component / process / ...
+       └─ Execution / Trust Profile
+            local / network / transport / origin / session / resource / ...
 ```
 
 **Target Capability**は、そのTarget / Hostで利用できる入出力・interaction・device機能です。
 
 **Execution / Trust Profile**は、local / network、transport、identity / session、authorization、Resource、secret、lifecycle等、実行環境と信頼境界の性質です。
 
-この二つを分離すべき範囲は、第一Web Targetと第二Targetの差から確定します。現時点で完全なtaxonomyをCoreへ固定しません。
+**execution artifact / ABI / host**は、現時点では独立したCanonical kindやproduction schemaではありません。同じWeb Targetがnative / remote runtime、freestanding Wasm、Worker-hosted Wasm等を取り得ることや、同じportable artifactを複数Hostへ載せ得ることを説明するため、Runtime Binding内部の実現差として観測します。WasmをWeb / Desktop / Mobile / API / MCP / VUIと同列のTarget kindにはしません。
+
+これらをどこまで独立概念として分離すべきかは、第一Web Targetと第二Target、およびportable artifact ReferenceのEvidenceから確定します。現時点で完全なtaxonomyをCoreへ固定しません。詳細は[Portable Execution Artifact Architecture Pressure](../plan/PORTABLE_EXECUTION_ARTIFACT_ARCHITECTURE_PRESSURE_2026-09.md)と[`ISSUE-000026`](../plan/issue/000026-target-capability-execution-profile-boundary.md)を参照してください。
 
 Gate Cでは、意味baselineとTarget実装revisionを同一revisionへ畳みません。Gate B通過時のHandover Baselineを`B`、その`baselineRepositoryRevision`を`R`、Targetのbuild / runtime identityを`T`として別々に追跡します。
 
