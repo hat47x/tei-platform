@@ -228,6 +228,33 @@ R0で確認する項目:
 
 R0ではproduction schema、Agent framework、Runtime invocationを追加しない。
 
+## R0 implementation source status
+
+2026-09-18、test-onlyの最初のstatic pressure sourceを追加した。
+
+- `tools/reference-business-procedure-check/actor_context_r0_pressure_test.go`
+
+対象:
+
+- Builder Re-entry Context — BP-02周辺のPattern / Data / Relation / dependency
+- Human Review Projection — customer edit intentional conflict
+- Operational Projection — BP-02 read-only Action
+- unresolved preservation — BP-04 manual judgement / BP-08 Observation boundary
+
+source上では次を固定している。
+
+- 同じBusiness Procedure Reference fingerprintを三Projectionで保持
+- `canonical=false`を維持
+- BP-02 datasource accessを`read`のまま保持
+- read/write conflictをHuman Reviewへ露出
+- BP-04をmachine executableへ昇格させない
+- BP-08へfake Semantic Capabilityを追加しない
+- `CanExecute` / `Executable` / `Authorized` / `Complete` / `Confidence`等の総合authority shortcut fieldをtest-only typeへ置かない
+
+**この時点ではimplementation sourceであり、actual `go test` PASS Evidenceではない。**
+
+actual runner / local executionが得られるまで、R0をExecutable Evidenceへ昇格させない。
+
 ## Phase 1 — AI Builder re-entry Reference
 
 既存Reference Applicationへ小さいchange challengeを設定する。
