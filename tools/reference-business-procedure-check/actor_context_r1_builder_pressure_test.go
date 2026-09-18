@@ -12,8 +12,16 @@ import (
 	"tei/internal/workspace"
 )
 
+const (
+	actorContextR1ApplicationArtifact = "reference/workspace/applications/order-entry/application.tei"
+	actorContextR1PatternArtifact     = "reference/workspace/applications/order-entry/patterns/customer-reference.tei"
+	actorContextR1ContractArtifact    = "reference/workspace/databases/master-data/contracts/customer.tei"
+)
+
 type actorContextR1ConstraintProbe struct {
-	ChangeRequest        string   `json:"changeRequest"`
+	ChangeRequest             string                           `json:"changeRequest"`
+	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
+	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	BusinessStep         string   `json:"businessStep"`
 	BusinessAction       string   `json:"businessAction"`
 	BusinessRealization  string   `json:"businessRealization"`
@@ -49,6 +57,21 @@ func TestActorContextR1FindsCustomerEditConflictBeforeInventingWriteAuthority(t 
 	got, err := deriveActorContextR1ConstraintProbe(loaded.World, f, workspacePath, fixturePath, conflictPath)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if got.ReferenceFingerprint == "" {
+		t.Fatal("R1 lost the Business Procedure Reference fingerprint")
+	}
+	for _, artifact := range []string{
+		actorContextR1ApplicationArtifact,
+		actorContextR1PatternArtifact,
+		actorContextR1ContractArtifact,
+		actorContextR0ProcedureArtifact,
+		actorContextR0ConflictArtifact,
+	} {
+		if !actorContextR1HasInputArtifact(got.RequiredInputFingerprints, artifact) {
+			t.Fatalf("R1 freshness set does not include decisive input %q: %+v", artifact, got.RequiredInputFingerprints)
+		}
 	}
 
 	if got.BusinessStep != "BP-02" ||
@@ -160,8 +183,19 @@ func deriveActorContextR1ConstraintProbe(
 	sort.Strings(reads)
 	sort.Strings(writes)
 
+	referenceFingerprint, err := actorContextR0Fingerprint(fixturePath)
+	if err != nil {
+		return actorContextR1ConstraintProbe{}, err
+	}
+	inputs, err := actorContextR1InputFingerprints(workspacePath, fixturePath, conflictPath)
+	if err != nil {
+		return actorContextR1ConstraintProbe{}, err
+	}
+
 	return actorContextR1ConstraintProbe{
-		ChangeRequest:       "allow editing and updating the customer referenced from order_entry",
+		ChangeRequest:             "allow editing and updating the customer referenced from order_entry",
+		ReferenceFingerprint:      referenceFingerprint,
+		RequiredInputFingerprints: inputs,
 		BusinessStep:        businessStep.ID,
 		BusinessAction:      businessStep.BusinessAction,
 		BusinessRealization: businessStep.Realization,
@@ -187,6 +221,39 @@ func deriveActorContextR1ConstraintProbe(
 			"design-alternatives-remain-proposals-until-accepted",
 		},
 	}, nil
+}
+
+func actorContextR1InputFingerprints(workspacePath, fixturePath, conflictPath string) ([]actorContextR0InputFingerprint, error) {
+	specs := []struct {
+		scope    string
+		artifact string
+		path     string
+	}{
+		{scope: "source-definition", artifact: actorContextR1ApplicationArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "application.tei")},
+		{scope: "source-definition", artifact: actorContextR1PatternArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "patterns", "customer-reference.tei")},
+		{scope: "source-definition", artifact: actorContextR1ContractArtifact, path: filepath.Join(workspacePath, "databases", "master-data", "contracts", "customer.tei")},
+		{scope: "business-procedure-reference", artifact: actorContextR0ProcedureArtifact, path: fixturePath},
+		{scope: "review-evidence", artifact: actorContextR0ConflictArtifact, path: conflictPath},
+	}
+
+	inputs := make([]actorContextR0InputFingerprint, 0, len(specs))
+	for _, spec := range specs {
+		input, err := actorContextR0FileInputFingerprint(spec.scope, spec.artifact, spec.path)
+		if err != nil {
+			return nil, err
+		}
+		inputs = append(inputs, input)
+	}
+	return actorContextR0NormalizeInputFingerprints(inputs), nil
+}
+
+func actorContextR1HasInputArtifact(values []actorContextR0InputFingerprint, artifact string) bool {
+	for _, value := range values {
+		if value.Artifact == artifact {
+			return true
+		}
+	}
+	return false
 }
 
 func actorContextR1ResolveContractQuery(
