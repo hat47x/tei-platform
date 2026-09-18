@@ -90,7 +90,111 @@ CanvasをTEIのPluginとして扱うには、まず次を比較する必要が�
 
 SUI一件だけを根拠に新しい`CapabilityKind`を追加しない。
 
-## 4. SUI責務の初期マッピング
+## 4. Canonical definitionとSUI instance dataを混同しない
+
+SUI移管で最も重要な境界の一つは、TEI Canonical Worldと、SUI利用者が作る実データを分けることである。
+
+たとえば、
+
+```text
+TEI Canonical definition
+  sui.card
+    id
+    text
+    x
+    y
+
+SUI application instance data
+  card-001 = "..."
+  card-002 = "..."
+```
+
+という関係になる。
+
+**card-001やisland-003そのものをTEI Canonical objectにしない。**
+
+同様に、将来SUIが扱うObservation / Hypothesis / Synthesis等も、SUIというApplicationのbusiness data instanceであり得る。TEIのSemantic Coreに`Hypothesis` kindを追加することとは別である。
+
+```text
+SUI domain vocabulary
+  -> Application data schema / rule
+
+TEI semantic vocabulary
+  -> schemaやApplication intentを表現するためのplatform meaning
+```
+
+この分離により、SUIのdomain語彙をTEI Universal Coreへ流入させずに、TEIでSUIを実装できる可能性を評価する。
+
+### 4.1 初回schema mapping仮説
+
+最初のChallenge Aでは、次の最小schemaをPressureする。
+
+#### Card
+
+最低限:
+
+- id
+- text
+- x
+- y
+
+`x / y`はSUI上ではinstance dataだが、sensemaking上の意味そのものではなくProjection / Interaction寄りのdataである。TEI Canonical semantic definitionに属性として見える場合でも、domain identityや業務Truthと同列には扱わない。
+
+#### Island
+
+最低限:
+
+- id
+- title
+- parent island reference
+- placard card reference
+
+ここで、
+
+- parent relation
+- placard reference
+- member cards
+
+をどこまでSemantic Relationとして定義するかはReferenceで確認する。
+
+特に、`placardCardId`が「SUI domain上の意味」なのか「現在のKJ Canvas Projection上の代表表示」なのかを先に分解する。Projection concernならTEI Canonical business meaningへ上げない。
+
+#### Relation / Edge
+
+初回Challenge Aでは全面対応しない。
+
+現行SUI Edgeは、
+
+- card / islandのheterogeneous endpoint
+- relation type vocabulary
+- directed / undirected semantics
+
+を持つ。
+
+TEI current `semantic.Relation` はData definition間のrelationであり、SUIの利用者が作る1本のEdge instanceとは役割が異なる。したがってSUI Edge instanceをTEI Semantic Relation objectへ一対一変換しない。
+
+### 4.2 current TEI modelで早期に見えるPressure
+
+current `semantic.Data / Attribute / Relation / Validation`を読む限り、初回SUI sliceは次を明らかにできる。
+
+| SUI要求 | current TEIでの見込み | 初期分類 |
+|---|---|---|
+| Card / Islandというdata kind | Data definitionで表現候補 | A |
+| scalar attribute | Attributeで表現候補 | A |
+| parent relation | self RelationでPressure可能 | A候補 |
+| placard reference | RelationでPressure可能だが意味分類が先 | A / C |
+| member cards | many RelationでPressure可能 | A候補 |
+| optional / unionの豊富なfields | current minimal modelでは不足可能性 | C / D未確定 |
+| polygon points | specialized instance payload | C |
+| arbitrary Edge type | instance-level domain data | C / extension |
+| acyclic hierarchy validation | current ValidationKindでは直接不足 | B / C / DをReferenceで判定 |
+| placardがmemberである制約 | current ValidationKindでは直接不足 | B / C / DをReferenceで判定 |
+| proposal / review state | Application data + Acceptance境界 | A / B |
+| DocumentV1全体 | native application asset | Cから開始 |
+
+この表のDは不足確定ではない。current modelで表しにくいという観測だけでProduct Requirementへ上げない。
+
+## 5. SUI責務の初期マッピング
 
 | SUI concern | 現行の主な表現 | TEI初期分類 | 理由 |
 |---|---|---|---|
@@ -116,7 +220,7 @@ A/B/C/DはSUI側の分類に合わせる。
 - C: Native SUI
 - D: TEI Product gap candidate
 
-## 5. 初期Authority戦略
+## 6. 初期Authority戦略
 
 ### 5.1 Stage 0
 
@@ -150,7 +254,7 @@ rollback
 
 「TEIでも読める」ことと「TEIが正本になった」ことを同一視しない。
 
-## 6. Baseline Challenge mapping
+## 7. Baseline Challenge mapping
 
 ### Challenge A — hierarchy / placard
 
@@ -203,7 +307,7 @@ TEIで確認すること:
 
 このchallengeは、TEIの共通Application基盤としての価値を最も直接Pressureする。
 
-## 7. 最初のvertical slice
+## 8. 最初のvertical slice
 
 Gate C前にWeb UIの完成を要求しない。
 
@@ -244,7 +348,7 @@ derived Reference output
 
 である。
 
-## 8. Plugin discoveryの判定
+## 9. Plugin discoveryの判定
 
 SUI固有componentをPlugin候補にする条件:
 
@@ -296,7 +400,7 @@ TEI Shared AcceptanceとStudioで一般需要が確認できる場合に有力�
 
 ただしTEI自身のArtifact概念との重複を先に確認する。
 
-## 9. TEI Coreへ追加しないもの
+## 10. TEI Coreへ追加しないもの
 
 Reference開始時点では次を追加しない。
 
@@ -311,7 +415,7 @@ Reference開始時点では次を追加しない。
 
 必要ならSUI source / metadata / extension / native assetとして保持する。
 
-## 10. SUI以外への横展開
+## 11. SUI以外への横展開
 
 SUIでReference Adoptionが成立した後、次の順で知見を再利用する。
 
@@ -349,7 +453,7 @@ native維持:
 - resource governor
 - verification kernel
 
-## 11. 次の実装開始条件
+## 12. 次の実装開始条件
 
 actual adapter / fixture codeへ進む前に、
 
