@@ -123,6 +123,9 @@ func TestActorContextR0DerivesPurposeSpecificProjectionsFromSameReference(t *tes
 		if !actorContextR0HasInputScope(inputs, "source-definition") {
 			t.Fatalf("%s projection did not bind freshness to selected workspace source definitions: %+v", name, inputs)
 		}
+		if !actorContextR0HasInputArtifact(inputs, "applications/order-entry/application.tei") {
+			t.Fatalf("%s projection lost the Application source that owns datasource access: %+v", name, inputs)
+		}
 	}
 	if !actorContextR0HasInputScope(human.RequiredInputFingerprints, "review-evidence") {
 		t.Fatalf("Human Review projection did not bind freshness to the conflict Evidence input: %+v", human.RequiredInputFingerprints)
@@ -385,7 +388,7 @@ func deriveActorContextR0Operational(world ir.World, sourceIdx sourceindex.Index
 	}
 	sort.Strings(out.Unresolved)
 
-	sourceInputs, err := actorContextR0SourceInputFingerprints(sourceIdx, out)
+	sourceInputs, err := actorContextR0SourceInputFingerprints(world, sourceIdx, out)
 	if err != nil {
 		return actorContextR0OperationalProbe{}, err
 	}
@@ -397,7 +400,7 @@ func deriveActorContextR0Operational(world ir.World, sourceIdx sourceindex.Index
 	return out, nil
 }
 
-func actorContextR0SourceInputFingerprints(idx sourceindex.Index, probe actorContextR0OperationalProbe) ([]actorContextR0InputFingerprint, error) {
+func actorContextR0SourceInputFingerprints(world ir.World, idx sourceindex.Index, probe actorContextR0OperationalProbe) ([]actorContextR0InputFingerprint, error) {
 	type subjectGroup struct {
 		kind string
 		ids  []string
@@ -411,6 +414,28 @@ func actorContextR0SourceInputFingerprints(idx sourceindex.Index, probe actorCon
 	}
 
 	var out []actorContextR0InputFingerprint
+	for _, patternID := range probe.PatternRefs {
+		app, _, ok := findPatternOwner(world, patternID)
+		if !ok {
+			return nil, fmt.Errorf("R0 Application Pattern %s did not resolve exactly once while collecting freshness inputs", patternID)
+		}
+		refs := idx.ReferencesFor(sourceindex.Subject{Kind: "application", ID: string(app.ID)})
+		if len(refs) == 0 {
+			return nil, fmt.Errorf("R0 Application %s has no Source Index reference", app.ID)
+		}
+		for _, ref := range refs {
+			artifact, ok := actorContextR0ArtifactByPath(idx, ref.ArtifactPath)
+			if !ok {
+				return nil, fmt.Errorf("R0 Application %s points to missing source artifact %s", app.ID, ref.ArtifactPath)
+			}
+			out = append(out, actorContextR0InputFingerprint{
+				Scope:       "source-definition",
+				Artifact:    artifact.Path,
+				Fingerprint: artifact.Fingerprint,
+			})
+		}
+	}
+
 	for _, group := range groups {
 		for _, id := range group.ids {
 			refs := idx.ReferencesFor(sourceindex.Subject{Kind: group.kind, ID: id})
@@ -480,6 +505,15 @@ func actorContextR0ArtifactByPath(idx sourceindex.Index, path string) (sourceind
 func actorContextR0HasInputScope(values []actorContextR0InputFingerprint, scope string) bool {
 	for _, value := range values {
 		if value.Scope == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func actorContextR0HasInputArtifact(values []actorContextR0InputFingerprint, artifact string) bool {
+	for _, value := range values {
+		if value.Artifact == artifact {
 			return true
 		}
 	}
