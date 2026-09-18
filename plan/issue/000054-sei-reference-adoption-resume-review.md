@@ -178,6 +178,73 @@ TEI Core gap
 
 この比較で負担が減らない、あるいは第二の正本が増えるなら、TEI-first適用範囲を狭めるEvidenceとして扱います。
 
+## Change 1 comparison — 2026-09-18
+
+Decision後Observationを一件追加するchallengeをTEI Reference checkerへ追加した。
+
+TEI側では、fixtureをin-memoryで複製し、
+
+- `scenario.post_decision_evidence`へ新Observationを1件追加
+- semantic audit oracleの`reference_state.post_decision_ids`へ同じIDを追加
+
+しただけで、Projection implementationは変更していない。
+
+結果:
+
+```text
+gofmt -d
+  -> 0 bytes
+
+go test ./tools/sei-resume-reference
+  -> PASS
+
+go vet ./tools/sei-resume-reference
+  -> PASS
+```
+
+testでは次を確認した。
+
+- initial Resumeは完全不変
+- historical basisは不変
+- unresolvedは不変
+- changes since decisionだけが1件増える
+- temporal separationを含むsemantic auditはPASS
+
+### native SEIとの比較
+
+SEI current `runtime/go/interactionprobe/review.go`は、Decisionと同時に保存したreview checkpointとcurrent canonical recordsの差から`CanonicalChanges`を導く。
+
+existing `review_test.go`には、Decision後にObservation / Conflict / Recommendationを追加してもhistorical basis / unresolvedを変更せず、後続recordだけを`CanonicalChanges`へ出す同型test sourceが既にある。
+
+このためChange 1に対する実装変更増幅は次のように整理できる。
+
+| 観測 | native SEI | TEI Stage 0 Reference |
+|---|---|---|
+| authoritative semantic source owner | SEI canonical state | SEI source |
+| Projection implementation変更 | 0 | 0 |
+| later Observationを扱うための新semantic kind | 0 | 0 |
+| historical basis rule変更 | 0 | 0 |
+| unresolved rule変更 | 0 | 0 |
+| test challenge追加 | existing同型testあり | 1 test追加 |
+| cross-repo frozen snapshot同期 | なし | Stage 0では必要 |
+| current executable verification | Go 1.25環境で未再実行 | Go 1.23.2 targeted PASS |
+
+したがって、
+
+```text
+Change 1
+  -> TEIのchange-amplification reductionは未観測
+  -> TEI Core gapも未観測
+  -> semantic compatibilityは確認
+  -> Stage 0 snapshot同期は追加負担
+```
+
+である。
+
+これはTEI-first仮説の失敗を意味しない。現在のReference snapshotはauthority migration前の安全な実験境界であり、production pathではない。ただし、この追加同期を無視してTEIの優位を主張してはいけない。
+
+Change 1は両方式にとって容易すぎて差別化力が低いことも分かった。次は、Presentation / Projection concernだけを変更するChallenge 2、またはEvidence / Governance Surfaceへ進む前に、TEI current Gateで実際にPressureできる範囲を再監査する。
+
 ## 非目標
 
 - SEIのdomain vocabularyをTEI Coreへ取り込む
@@ -196,7 +263,7 @@ TEI Core gap
 - [x] Recommendation / Decision、historical basis、unresolved、post-decision temporal boundaryをtestする
 - [x] Go 1.23.2でfixture-local `go test`を実行する
 - [x] `go vet`を実行する
-- [ ] representative changeについてnative / TEI Referenceのchange amplificationを比較する
+- [x] representative Change 1についてnative / TEI Referenceのchange amplificationを比較する
 - [ ] gapをExisting / reusable extension / Native / Product gap candidateへ再分類する
 - [ ] SEI側ISSUE-000079へEvidence高さを返す
 - [ ] broad / incremental / limited / deferredの判断に必要な次Evidenceを明示する
