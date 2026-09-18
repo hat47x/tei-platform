@@ -1778,6 +1778,49 @@ root identityとcurrent locatorも分離し、locator-only moveをdifferent trut
 TrustedRoot / CanonicalTruth / PreferredSource / Winner / NextAction / HandoffOwner等は追加しない。
 
 
+### R3AC — Freshness drill-down root change classification
+
+R3ABでfreshness stopのderived analysisとprovenance rootを分離した後、rootの変更自体も一つのgeneric `source changed` へ潰さずrole-awareに分類する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AC_FRESHNESS_DRILLDOWN_ROOT_CHANGE_CLASSIFICATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ac_freshness_drilldown_root_change_pressure_test.go`
+
+R3ACでは少なくとも:
+
+```text
+reference-evidence-content-changed
+runtime-observation-content-changed
+test-only-context-changed
+corroboration-changed
+locator-refresh-required
+provenance-root-set-changed
+```
+
+を別change classとして保持する。
+
+```text
+Reference delta
+  != runtime Observation delta
+  != test-only context delta
+  != corroboration delta
+  != locator delta
+```
+
+である。
+
+同じroot identityでfingerprintとlocatorが同時に変わった場合は両reasonを保持し、一方へ丸めない。root追加 / 削除もauthority migrationへ推測変換せず `provenance-root-set-changed` とする。
+
+Human / AgentはR3ABのshared root setを使うため、同一root deltaは同じclassificationへ戻る。inline disclosure差をfreshness semanticsへ逆流させない。
+
+change classは観測分類に留め、ShouldReevaluate / ReusePermitted / RetryRequired / CacheValid / AutoRefresh / HandoffOwner等を生成しない。
+
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
