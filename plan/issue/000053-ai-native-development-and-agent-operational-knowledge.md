@@ -191,6 +191,22 @@ current Business Procedure Referenceのうち、
 
 BP-07 submit commandのside-effect Referenceは後段へdeferする。
 
+### F0-6 — AI Business ActorをPresentation Targetへ自動分類しない
+
+Operational Projectionを読むAI Agentは、Web / Desktop等と同じPresentation Targetとは限らない。
+
+MCP / API等はmachine-readable interface候補になり得るが、
+
+```text
+transport choice
+  != Presentation semantics
+  != execution authority
+```
+
+である。
+
+R0 / R3では、Application UI経由とCapability直結のmachine consumer経路を区別し、Target CoreをAgent都合で拡張しない。
+
 ## R0 — Static actor context derivation
 
 Phase 1へ進む前に、同一accepted snapshotから次の3 Projectionを静的に組み、情報の重なりと差を確認する。
