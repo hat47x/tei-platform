@@ -193,6 +193,22 @@ func TestActorContextR3ORejectsR3MAndR3NDisagreement(t *testing.T) {
 	}
 }
 
+
+func TestActorContextR3ORejectsMissingResolutionNeedFromEitherProjection(t *testing.T) {
+	explanation, taxonomy := actorContextR3OCurrentBP06ActionStop(t)
+
+	explanation.ResolutionNeedClasses = nil
+	if _, err := actorContextR3OBuildCommonStopCore(explanation, taxonomy); err == nil {
+		t.Fatal("R3O accepted an R3M projection that dropped the current resolution need")
+	}
+
+	explanation, taxonomy = actorContextR3OCurrentBP06ActionStop(t)
+	taxonomy.ResolutionNeedClasses = nil
+	if _, err := actorContextR3OBuildCommonStopCore(explanation, taxonomy); err == nil {
+		t.Fatal("R3O accepted an R3N projection that dropped the current resolution need")
+	}
+}
+
 func actorContextR3OCurrentBP06ActionStop(
 	t *testing.T,
 ) (actorContextR3MOperationalStopExplanationProbe, actorContextR3NStopTaxonomyProbe) {
@@ -277,11 +293,10 @@ func actorContextR3OBuildCommonStopCore(
 		) {
 		return actorContextR3OStopProjectionCoreProbe{}, fmt.Errorf("R3O machine reason mismatch")
 	}
-	if len(explanation.ResolutionNeedClasses) > 0 &&
-		!reflect.DeepEqual(
-			actorContextR0SortedUnique(explanation.ResolutionNeedClasses),
-			actorContextR0SortedUnique(taxonomy.ResolutionNeedClasses),
-		) {
+	if !actorContextR3OSameStringSet(
+		explanation.ResolutionNeedClasses,
+		taxonomy.ResolutionNeedClasses,
+	) {
 		return actorContextR3OStopProjectionCoreProbe{}, fmt.Errorf("R3O resolution need mismatch")
 	}
 
@@ -307,6 +322,21 @@ func actorContextR3OBuildCommonStopCore(
 		HandoffRecipientStatus: explanation.HandoffRecipientStatus,
 		AuthorityLimits:        actorContextR0SortedUnique(limits),
 	}, nil
+}
+
+
+func actorContextR3OSameStringSet(left []string, right []string) bool {
+	l := actorContextR0SortedUnique(append([]string(nil), left...))
+	r := actorContextR0SortedUnique(append([]string(nil), right...))
+	if len(l) != len(r) {
+		return false
+	}
+	for i := range l {
+		if l[i] != r[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func actorContextR3ORenderHumanStop(
