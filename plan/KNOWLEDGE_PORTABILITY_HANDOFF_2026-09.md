@@ -327,6 +327,16 @@ Gate C後の実Referenceへ進む前の着手条件は、
 
 Canonical Application source、Environment binding、Target implementationは作らない。
 
+## 15. Gate C start packet
+
+Gate C Ready後の実Reference開始順序とbranch収束規則は、
+
+- `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+
+を正本とする。
+
+Knowledge Portabilityは同じprimary second-Application workstream内の一段階として扱い、独立した長期implementation branchへ分離しない。
+
 ## 15. Gate C後の最初の実Reference
 
 ISSUE-000040で予定されている第二Applicationを使う。
