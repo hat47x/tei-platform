@@ -144,6 +144,43 @@ test-only source:
 
 追加schemaの必要性は、actual second ApplicationのAcceptance / reload / change propagationからEvidenceが出た場合に再評価する。
 
+## Gate C後の開始パケット
+
+Gate C Ready後の第二Application Referenceは、探索・Portability・composition・Acceptanceを別branchへ分裂させず、一つのISSUE-000040 workstreamとして開始する。
+
+開始契約:
+
+- `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+
+開始時にはGate Cの、
+
+- Handover Baseline `B`
+- baseline revision `R`
+- First Web Target build `T1`
+- Semantic Conformance Evidence
+- Interaction / Functional Evidence
+- Visual Fidelity Evidence
+- Target差分 / unresolved
+
+をentry recordへ固定する。
+
+その後、
+
+```text
+ISSUE-000047 qualification
+  -> ISSUE-000053 Phase 5 portability relation
+  -> ISSUE-000040 composition candidate
+  -> Shared Acceptance
+  -> destination source
+  -> Environment Binding Proposal
+  -> Driver / First Web Target
+  -> change propagation Evidence
+```
+
+の順で進める。
+
+同じ第二Applicationについてexploration / Pattern / Environment / Driverを長期branchへ分割せず、意味単位のcommitを一つのprimary workstream branchへ収束させる。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
