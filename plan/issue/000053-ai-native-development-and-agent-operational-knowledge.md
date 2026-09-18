@@ -724,6 +724,90 @@ policy target exists
 
 なおR3Fは同一 `order_entry` Reference family内のcross-Procedure reuseであり、独立second corpusではない。ISSUE-000048 / ISSUE-000050のPre-ADR blocker Bを解消したとは扱わない。
 
+
+### R3G — Authorization invariant / variation precedence
+
+R3Fのrepository-backed cross-Procedure reuseを踏まえ、Pattern共通requirement候補とBusiness context固有variationを同じauthorityへ潰さないため、minimum invariant / additional requirement / exception intent / precedenceを分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3G_AUTHORIZATION_REQUIREMENT_INVARIANT_VARIATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3g_authorization_invariant_variation_pressure_test.go`
+
+R3Gでは:
+
+```text
+Pattern minimum invariant
+  != duplicated Business requirements
+
+Business Step additional requirement
+  != Pattern authority copy
+
+explicit exception intent
+  != accepted override
+
+more specific scope
+  != automatic precedence
+
+applicability authority
+  != precedence authority
+```
+
+をPressureする。
+
+Pattern minimum `required` とBusiness Step `not-required` が衝突しても、より具体的なscopeだからStepが勝つとは扱わない。explicit exception intentがあってもprecedence authorityが未解決ならconflictのままfail closedする。
+
+test-onlyには `pattern-minimum` / `step-exception` のprecedence候補を比較用に置くが、production ruleとして採用したとは扱わない。
+
+この段階でもproduction Business Procedure schema、Application Pattern grammar、override relation、precedence ruleは固定しない。
+
+
+### R3H — Authorization exception Evidence Gate
+
+R3GでPattern minimum / Business Step variation / exception intent / precedenceを分離した後、production exception mechanismを必要とするrepository-backed caseがcurrent Referenceに存在するかを監査する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3H_AUTHORIZATION_EXCEPTION_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3h_authorization_exception_evidence_gate_pressure_test.go`
+
+current Referenceでは:
+
+```text
+BP-00 / FU-00
+  same Pattern reuse
+  -> requirement = unresolved
+
+BP-06
+  security-boundary + security.authorize
+  -> requirement = required
+```
+
+までは存在するが、repository-backedなexplicit `not-required` requirementは観測されない。
+
+Legacy policyのallow/deny ruleもrequirement / Pattern minimum / exception authorityへ昇格させない。
+
+したがってcurrent exception Evidence Gateは未充足とし、`override` / `exclude` / `inherit` / priority / nearest-scope-wins等のproduction mechanismは追加しない。
+
+synthetic required/not-required conflictはsemantic pressureとして保持できるが、repository-backed Business needなしにはproduction mechanism adoptionの根拠にしない。
+
+qualifying caseが将来現れた場合でも:
+
+```text
+exception mechanism pressure qualified
+  != precedence winner known
+  != override syntax chosen
+```
+
+を維持する。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。

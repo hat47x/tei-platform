@@ -1,8 +1,8 @@
-# Actor Context R3F — Authorization Requirement Invariant / Variation Precedence Pressure
+# Actor Context R3G — Authorization Requirement Invariant / Variation Precedence Pressure
 
 - Status: ISSUE-000053 / Phase 3 invariant-variation pressure / Reference-only
 - Date: 2026-09-18
-- Parent: `plan/ACTOR_CONTEXT_R3E_AUTHORIZATION_REQUIREMENT_SECOND_USE_CASE_2026-09.md`
+- Parent: `plan/ACTOR_CONTEXT_R3F_REPOSITORY_BACKED_AUTHORIZATION_SCOPE_2026-09.md`
 - Side effect: None
 - Product Gate impact: None
 - Production schema impact: None
@@ -24,7 +24,7 @@ multiple independent explicit requirements
 
 次に分離すべきなのは、Pattern側へminimum invariantを置く候補と、Business Step側のvariationをどう共存させるかである。
 
-R3Fではproduction relation / precedence ruleを決めず、少なくとも次の四つを別authorityとしてPressureする。
+R3Gではproduction relation / precedence ruleを決めず、少なくとも次の四つを別authorityとしてPressureする。
 
 ```text
 Pattern minimum invariant
@@ -59,7 +59,7 @@ supporting capability = security.authorize
 
 この候補がaccepted authorityになった場合、そのPatternを利用するBusiness contextは、Business Step側に同じ記述がなくてもminimum applicabilityを受ける。
 
-ただしR3Fは、このcandidateがcurrent Referenceですでに成立したとは扱わない。
+ただしR3Gは、このcandidateがcurrent Referenceですでに成立したとは扱わない。
 
 Pattern minimum invariantの成立には少なくとも、
 
@@ -82,7 +82,7 @@ repeated Business requirements
 
 Pattern minimum invariant候補がある場合でも、Business Stepは別のBusiness concernを追加し得る。
 
-R3Fでは、Business Step側の記述をPattern authorityのコピーとして扱わない。
+R3Gでは、Business Step側の記述をPattern authorityのコピーとして扱わない。
 
 ```text
 Pattern minimum
@@ -137,7 +137,7 @@ explicit exception intent
 
 が必要になる。
 
-R3Fではそのproduction表現を追加しない。
+R3Gではそのproduction表現を追加しない。
 
 ## 5. precedenceをapplicabilityから分離する
 
@@ -157,7 +157,7 @@ closer file
   != precedence winner
 ```
 
-R3F test-only evaluatorでは、precedenceを明示的な入力として扱い、未解決ならfail closedする。
+R3G test-only evaluatorでは、precedenceを明示的な入力として扱い、未解決ならfail closedする。
 
 候補state:
 
@@ -238,13 +238,13 @@ not-required
 
 などへ分岐し得る。
 
-R3Fはwinnerを選ばない。
+R3Gはwinnerを選ばない。
 
 重要なのはvariationを隠してPattern共通化を先行させないことである。
 
 ## 8. test-only source
 
-- `tools/reference-business-procedure-check/actor_context_r3f_authorization_invariant_variation_pressure_test.go`
+- `tools/reference-business-procedure-check/actor_context_r3g_authorization_invariant_variation_pressure_test.go`
 
 Pressureする不変条件:
 
@@ -258,7 +258,7 @@ Pressureする不変条件:
 
 ## 9. current conclusion
 
-R3Fで確定するのは次までである。
+R3Gで確定するのは次までである。
 
 ```text
 Pattern minimum invariant
@@ -277,26 +277,28 @@ applicability authority
   != precedence authority
 ```
 
-したがって、R3Fでもproduction Business Procedure schema、Application Pattern grammar、override relation、precedence ruleは追加しない。
+したがって、R3Gでもproduction Business Procedure schema、Application Pattern grammar、override relation、precedence ruleは追加しない。
 
-## 10. 次
+## 10. 次 — R3H Evidence Gate
 
-次段では、Authorization requirementが `required` と確定した後の
+R3Gで例外・precedenceのsemantic possibilityはPressureできたが、production mechanismの必要性はまだ証明していない。
+
+次段R3Hでは、current Repositoryに実際のexception requirement Evidenceがあるかを監査する。
 
 ```text
-requirement applicability
-  -> protected target/action authority
+semantic conflict can be represented
+  != repository-backed exception need exists
+  != production override mechanism justified
+```
+
+R3Hでqualifying Evidenceが不足していることを確認した場合、exception mechanism lineは保留し、read-only AI Business Actorの本線である:
+
+```text
+Authorization requirement = required
+  -> protected target / action authority
   -> evaluation cadence
 ```
 
-を再接続する。
-
-特に、
-
-- Pattern minimumが成立した場合にtarget/actionまでPatternから継承してよいか
-- Business Step variationがtarget/action variationも意味するか
-- 一度のAuthorization evaluationをどのscopeで再利用できるか
-
-を分離してPressureする。
+へ戻る。
 
 requirement scopeをtarget authorityやevaluation cache scopeへ自動伝播させない。
