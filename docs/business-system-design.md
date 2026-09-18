@@ -45,6 +45,22 @@ physical schema / Provider
 
 Data traceが見つからないことを、その業務にData dependencyが存在しないというnegative factへ変換しません。
 
+### Data meaningとrecord instanceを分ける
+
+Data視点でいう`Customer`、`Order`、`Card`等のbusiness meaningと、Applicationが実際に保持する個々のrecordを同一視しません。
+
+```text
+Data definition / business meaning
+  != persisted record instance
+  != current runtime state
+```
+
+Relationについても、`Order refers to Customer`というrelation definitionと、ある`order-2026-001 -> customer-123`というinstance-level factは別です。
+
+instance-level factはApplication data、Database、external system、Observation等で扱えます。Business design上必要ならEvidenceとして参照しますが、個々のinstanceをすべてCanonical Business designへ持ち込むことを要求しません。
+
+ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
+
 ## 4. Function / InteractionはUIを含むが、UIはauthorityではない
 
 Function / Interaction視点には、利用者が具体的に理解できるUI、帳票、入出力、query、command、batch、API、function call relationshipを含みます。
