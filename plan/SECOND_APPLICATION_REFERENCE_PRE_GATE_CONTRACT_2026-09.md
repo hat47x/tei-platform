@@ -432,6 +432,16 @@ Pre-Gate pressureの実行経路は、
 
 successful focused CI runはPre-Gate contractのExecutable Evidenceにはなるが、Gate C Ready、第二Application Acceptance、Environment Binding、Target Evidenceにはならない。
 
+## 17. Gate C start packetへの移行
+
+Gate C Readyが明示Evidenceで成立した後は、本Pre-Gate契約から、
+
+- `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+
+へ移行する。
+
+Pre-Gateで使用したsynthetic destination labelを、そのままCanonical Application IDへ自動採用しない。
+
 ## 17. Gate C後の着手順
 
 \`\`\`text
