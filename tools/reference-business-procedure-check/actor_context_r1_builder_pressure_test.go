@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -9,13 +10,14 @@ import (
 	"tei/internal/application"
 	"tei/internal/database"
 	"tei/internal/ir"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
 const (
-	actorContextR1ApplicationArtifact = "reference/workspace/applications/order-entry/application.tei"
-	actorContextR1PatternArtifact     = "reference/workspace/applications/order-entry/patterns/customer-reference.tei"
-	actorContextR1ContractArtifact    = "reference/workspace/databases/master-data/contracts/customer.tei"
+	actorContextR1ApplicationSubject = "order_entry"
+	actorContextR1PatternSubject     = "order_entry.customer_reference"
+	actorContextR1ContractSubject    = "master_data.customer"
 )
 
 type actorContextR1ConstraintProbe struct {
@@ -53,8 +55,12 @@ func TestActorContextR1FindsCustomerEditConflictBeforeInventingWriteAuthority(t 
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceIdx, err := workspace.BuildSourceIndex(workspacePath, loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	got, err := deriveActorContextR1ConstraintProbe(loaded.World, f, workspacePath, fixturePath, conflictPath)
+	got, err := deriveActorContextR1ConstraintProbe(loaded.World, sourceIdx, f, workspacePath, fixturePath, conflictPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,15 +68,21 @@ func TestActorContextR1FindsCustomerEditConflictBeforeInventingWriteAuthority(t 
 	if got.ReferenceFingerprint == "" {
 		t.Fatal("R1 lost the Business Procedure Reference fingerprint")
 	}
-	for _, artifact := range []string{
-		actorContextR1ApplicationArtifact,
-		actorContextR1PatternArtifact,
-		actorContextR1ContractArtifact,
-		actorContextR0ProcedureArtifact,
-		actorContextR0ConflictArtifact,
+	for _, subject := range []struct {
+		kind string
+		id   string
+	}{
+		{kind: "application", id: actorContextR1ApplicationSubject},
+		{kind: "application-pattern", id: actorContextR1PatternSubject},
+		{kind: "database-contract", id: actorContextR1ContractSubject},
 	} {
+		if !actorContextR0HasInputSubject(got.RequiredInputFingerprints, subject.kind, subject.id) {
+			t.Fatalf("R1 freshness set does not include decisive subject %s:%s: %+v", subject.kind, subject.id, got.RequiredInputFingerprints)
+		}
+	}
+	for _, artifact := range []string{actorContextR0ProcedureArtifact, actorContextR0ConflictArtifact} {
 		if !actorContextR1HasInputArtifact(got.RequiredInputFingerprints, artifact) {
-			t.Fatalf("R1 freshness set does not include decisive input %q: %+v", artifact, got.RequiredInputFingerprints)
+			t.Fatalf("R1 freshness set does not include decisive Reference input %q: %+v", artifact, got.RequiredInputFingerprints)
 		}
 	}
 
@@ -127,6 +139,7 @@ func TestActorContextR1DoesNotGeneralizeCurrentPathConflictToFeatureWideImpossib
 
 func deriveActorContextR1ConstraintProbe(
 	world ir.World,
+	sourceIdx sourceindex.Index,
 	f fixture,
 	workspacePath,
 	fixturePath,
@@ -187,7 +200,7 @@ func deriveActorContextR1ConstraintProbe(
 	if err != nil {
 		return actorContextR1ConstraintProbe{}, err
 	}
-	inputs, err := actorContextR1InputFingerprints(workspacePath, fixturePath, conflictPath)
+	inputs, err := actorContextR1InputFingerprints(sourceIdx, fixturePath, conflictPath)
 	if err != nil {
 		return actorContextR1ConstraintProbe{}, err
 	}
@@ -223,21 +236,32 @@ func deriveActorContextR1ConstraintProbe(
 	}, nil
 }
 
-func actorContextR1InputFingerprints(workspacePath, fixturePath, conflictPath string) ([]actorContextR0InputFingerprint, error) {
+func actorContextR1InputFingerprints(sourceIdx sourceindex.Index, fixturePath, conflictPath string) ([]actorContextR0InputFingerprint, error) {
 	specs := []struct {
+		kind string
+		id   string
+	}{
+		{kind: "application", id: actorContextR1ApplicationSubject},
+		{kind: "application-pattern", id: actorContextR1PatternSubject},
+		{kind: "database-contract", id: actorContextR1ContractSubject},
+	}
+
+	var inputs []actorContextR0InputFingerprint
+	for _, spec := range specs {
+		input, err := actorContextR1SourceIndexInputFingerprint(sourceIdx, spec.kind, spec.id)
+		if err != nil {
+			return nil, err
+		}
+		inputs = append(inputs, input)
+	}
+	for _, spec := range []struct {
 		scope    string
 		artifact string
 		path     string
 	}{
-		{scope: "source-definition", artifact: actorContextR1ApplicationArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "application.tei")},
-		{scope: "source-definition", artifact: actorContextR1PatternArtifact, path: filepath.Join(workspacePath, "applications", "order-entry", "patterns", "customer-reference.tei")},
-		{scope: "source-definition", artifact: actorContextR1ContractArtifact, path: filepath.Join(workspacePath, "databases", "master-data", "contracts", "customer.tei")},
 		{scope: "business-procedure-reference", artifact: actorContextR0ProcedureArtifact, path: fixturePath},
 		{scope: "review-evidence", artifact: actorContextR0ConflictArtifact, path: conflictPath},
-	}
-
-	inputs := make([]actorContextR0InputFingerprint, 0, len(specs))
-	for _, spec := range specs {
+	} {
 		input, err := actorContextR0FileInputFingerprint(spec.scope, spec.artifact, spec.path)
 		if err != nil {
 			return nil, err
@@ -245,6 +269,35 @@ func actorContextR1InputFingerprints(workspacePath, fixturePath, conflictPath st
 		inputs = append(inputs, input)
 	}
 	return actorContextR0NormalizeInputFingerprints(inputs), nil
+}
+
+func actorContextR1SourceIndexInputFingerprint(idx sourceindex.Index, kind, id string) (actorContextR0InputFingerprint, error) {
+	refs := idx.ReferencesFor(sourceindex.Subject{Kind: kind, ID: id})
+	var definitionRefs []sourceindex.Reference
+	for _, ref := range refs {
+		if ref.Role == sourceindex.RoleDefinition {
+			definitionRefs = append(definitionRefs, ref)
+		}
+	}
+	if len(definitionRefs) != 1 {
+		return actorContextR0InputFingerprint{}, errProcedureMeaning(
+			fmt.Sprintf("R1 source subject %s:%s requires exactly one definition reference; got %d", kind, id, len(definitionRefs)),
+		)
+	}
+	ref := definitionRefs[0]
+	artifact, ok := actorContextR0ArtifactByPath(idx, ref.ArtifactPath)
+	if !ok {
+		return actorContextR0InputFingerprint{}, errProcedureMeaning(
+			fmt.Sprintf("R1 source subject %s:%s points to missing artifact %s", kind, id, ref.ArtifactPath),
+		)
+	}
+	return actorContextR0InputFingerprint{
+		Scope:       "source-definition",
+		SubjectKind: kind,
+		SubjectID:   id,
+		Artifact:    "reference/workspace/" + artifact.Path,
+		Fingerprint: artifact.Fingerprint,
+	}, nil
 }
 
 func actorContextR1HasInputArtifact(values []actorContextR0InputFingerprint, artifact string) bool {
