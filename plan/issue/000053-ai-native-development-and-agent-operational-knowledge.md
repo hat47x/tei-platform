@@ -1205,6 +1205,113 @@ selected / omitted partition自体はProfileFingerprintへ含め、selected-but-
 semantic category fingerprintはproduction cache key / Canonical versionではなく、production invalidation engineやwatcherは追加しない。
 
 
+### R3R — Projection dependency provenance / freshness planes
+
+R3Qでpurpose-bound projectionのfreshnessをselected semantic categoryへ絞った後、そのcategoryが何へ依存したかをactual source / runtime Evidenceまで逆追跡する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3R_PROJECTION_DEPENDENCY_PROVENANCE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3r_projection_dependency_provenance_pressure_test.go`
+
+R3Rではfreshnessを一つのhashへ潰さず、少なくとも:
+
+```text
+projection profile
+semantic Source Index subject
+Reference artifact input
+runtime Observation
+drill-down locator integrity
+```
+
+を別planeとして扱う。
+
+Source Index管理下では:
+
+```text
+subject identity + content fingerprint
+  = semantic freshness dependency
+
+artifact path
+  = current drill-down locator
+```
+
+とし、locator-only moveではsemantic meaningをstaleにせずlocator refreshだけを要求する。
+
+一方、same subjectでもcontent fingerprintが変わればsemantic staleとする。
+
+Business Procedure Reference / protected-target overlayのようなcurrent Source Index外のReference inputはReference artifact dependencyとして保持し、架空のCanonical / Source Index subjectを発明しない。
+
+また:
+
+```text
+static source current
+  != runtime Authorization Observation current
+```
+
+として、allowed / denied等のruntime outcomeをRepository fingerprintへ混ぜない。
+
+production invalidation engine / runtime Observation store / Business Source Index extension / global revision protocolは追加しない。
+
+
+
+### R3S — Projection dependency reason boundary
+
+R3Rでprojection dependencyをprofile / Source Index subject / Reference artifact / runtime Observation / locator integrityへ分離した後、selected categoryが**なぜそのdependencyを必要とするか**をreason付きでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3S_PROJECTION_DEPENDENCY_REASON_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3s_projection_dependency_reason_pressure_test.go`
+
+R3Sでは:
+
+```text
+selected projection category
+  -> dependency key
+  -> reason code
+```
+
+をderived relationとして保持する。
+
+current BP-06では、たとえば:
+
+```text
+machine-reasons
+  <- Business Procedure Reference
+     reason = authorization-requirement-source
+
+machine-reasons
+  <- protected-target overlay
+     reason = protected-resource-source
+
+source-refs
+  <- current locator
+     reason = drill-down-locator
+```
+
+のように、同じartifactでもProjection上の役割を区別する。
+
+Human bounded viewでomittedされたcategoryのreason edgeはrequired dependencyへ混ぜず、Agent full viewではselected categoryとして保持できる。
+
+runtime outcomeがnon-emptyならexact current Observation reasonを要求し、static sourceだけでruntime outcomeを説明しない。
+
+```text
+dependency reason
+  != authority edge
+  != next action
+  != handoff owner
+```
+
+を維持し、production dependency graph / impact engine / incremental build engineは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
@@ -1293,58 +1400,6 @@ Capability qualified
 ```
 
 R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
-
-
-### R3R — Projection dependency provenance / freshness planes
-
-R3Qでpurpose-bound projectionのfreshnessをselected semantic categoryへ絞った後、そのcategoryが何へ依存したかをactual source / runtime Evidenceまで逆追跡する。
-
-正本:
-
-- `plan/ACTOR_CONTEXT_R3R_PROJECTION_DEPENDENCY_PROVENANCE_2026-09.md`
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r3r_projection_dependency_provenance_pressure_test.go`
-
-R3Rではfreshnessを一つのhashへ潰さず、少なくとも:
-
-```text
-projection profile
-semantic Source Index subject
-Reference artifact input
-runtime Observation
-drill-down locator integrity
-```
-
-を別planeとして扱う。
-
-Source Index管理下では:
-
-```text
-subject identity + content fingerprint
-  = semantic freshness dependency
-
-artifact path
-  = current drill-down locator
-```
-
-とし、locator-only moveではsemantic meaningをstaleにせずlocator refreshだけを要求する。
-
-一方、same subjectでもcontent fingerprintが変わればsemantic staleとする。
-
-Business Procedure Reference / protected-target overlayのようなcurrent Source Index外のReference inputはReference artifact dependencyとして保持し、架空のCanonical / Source Index subjectを発明しない。
-
-また:
-
-```text
-static source current
-  != runtime Authorization Observation current
-```
-
-として、allowed / denied等のruntime outcomeをRepository fingerprintへ混ぜない。
-
-production invalidation engine / runtime Observation store / Business Source Index extension / global revision protocolは追加しない。
 
 
 ## Phase 4 — side-effect Action
