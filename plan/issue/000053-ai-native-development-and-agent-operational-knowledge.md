@@ -349,7 +349,7 @@ current customer_reference path
 
 - `tools/reference-business-procedure-check/actor_context_r1_builder_pressure_test.go`
 
-source上では、current Pattern / datasource access / Database Contract / Business Reference / intentional conflictを一つのbounded constraint projectionへ集める。R1 probeはこれらdecisive inputのcontent fingerprintを保持し、Business Procedure fingerprintだけをfreshness authorityにはしない。
+source上では、current Pattern / datasource access / Database Contract / Business Reference / intentional conflictを一つのbounded constraint projectionへ集める。R1 probeはこれらdecisive inputのcontent fingerprintを保持し、Business Procedure fingerprintだけをfreshness authorityにはしない。Application / Pattern / ContractはCanonical subjectからSource Indexでcurrent locatorを解決し、固定file pathをsemantic identityへしない。
 
 重要な停止線:
 
@@ -429,7 +429,7 @@ GUI click imitationはbaseline比較に使っても、標準経路にはしな�
 
 最初のread-only Agent challengeは `plan/ACTOR_CONTEXT_R3_READ_ONLY_BUSINESS_ACTOR_CHALLENGE_2026-09.md` を正本とする。
 
-R3 sourceはApplication / Pattern / Contract / Business Procedureというread-routeのactual decisive inputだけをfingerprintし、R1固有のcustomer-edit conflict Evidenceをfreshness dependencyへ持ち込まない。SourceRefsも同じfingerprint input集合からderiveする。
+R3 sourceはApplication / Pattern / Contract / Business Procedureというread-routeのactual decisive inputだけをfingerprintし、R1固有のcustomer-edit conflict Evidenceをfreshness dependencyへ持ち込まない。Application / Pattern / Contractはsubject identityからSource Indexでcurrent locatorを解決し、SourceRefsも同じfingerprint input集合からderiveする。
 
 対象はBP-02:
 
