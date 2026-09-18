@@ -100,6 +100,50 @@ go run ./cmd/tei source-index \
 
 M0.23で直接検証している不変条件と実装・テストの対応は、[Source-to-Canonical TraceabilityのConformance](conformance/source-traceability-m0.23.md) に整理しています。
 
+## Native asset adoption / authority migration
+
+既存Applicationや外部toolのnative assetをTEIから読めることと、その意味のauthoritative sourceをTEIへ移したことは別です。
+
+```text
+read / parse / project successfully
+  != authority transferred
+```
+
+段階移管では、まずnative assetをauthoritative sourceとして残し、TEI側のmapping / projection / diagnosticsをderived・read-onlyに保つことを許容します。
+
+```text
+before cutover
+
+native source
+  = authoritative
+
+TEI mapping / projection
+  = derived / reference
+```
+
+TEI側で対象意味をlosslessに表現できるEvidenceが揃っても、それだけでsource ownershipを自動変更しません。authorityを移す場合は、少なくとも対象scopeごとに次を明示します。
+
+- source owner before cutover
+- source owner after cutover
+- migration / translation transform
+- semantic equivalence / roundtrip Evidence
+- unresolved / unsupported fields
+- rollback path
+
+cutoverはShared Acceptanceや明示的なmigration decisionを通す**authority transition**として扱います。import成功、最新writer、file timestamp、TEIでのparse成功、生成物の存在だけから推測しません。
+
+partial migrationも許容します。同じApplication全体へ一つの`tei-native` flagを付けるのではなく、subject / concern単位でownerが異なり得ます。ただし同一concernに二つの暗黙正本を作りません。
+
+```text
+native source authoritative
+  -> explicit migration evidence / decision
+  -> TEI source authoritative for scoped concern
+```
+
+cutover後に旧native assetをcompatibility / export / generated artifactとして残す場合も、そのartifactを第二のauthoritative sourceへ戻しません。
+
+現時点では`AuthorityMigration`等のproduction schemaやglobal cutover protocolをCoreへ固定しません。SUI Reference Adoption等の実Referenceで、scope・equivalence・rollback情報のどれがdurable contractとして必要かを確認します。
+
 ## Authoring candidate / Acceptance Boundary
 
 Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する経路をそれぞれ独立したauthorityとして増やしません。
