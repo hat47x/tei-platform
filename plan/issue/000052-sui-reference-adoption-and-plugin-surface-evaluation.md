@@ -73,6 +73,24 @@ SUI側で不足が見つかった場合は、次の順で分類します。
 
 初回sliceの具体的な対象は、TEIのsupported scopeとSUI側の比較基線を見て決めます。
 
+## 固定済みのReference設計
+
+TEI側の移管設計基線は `plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md` を参照する。
+
+SUI側では実履歴から次の3 challengeを固定済みである。
+
+| Challenge | Historical SUI PR | Changed files | Changed lines |
+|---|---:|---:|---:|
+| hierarchy / placard | #235 | 11 | 338 |
+| polygon vertex editing | #286 | 5 | 219 |
+| explicit merge apply transaction | #2849 | 3 | 465 |
+
+補助Evidenceとして、hierarchy concernがexport / import / view metadataへ横断したSUI PR #241（10 files / 260 changed lines）も用いる。
+
+初期移管戦略は **encapsulation before translation** とする。現行SUI `DocumentV1`を当面のauthoritative native assetとして保持し、TEI側はread-only mapping / projectionから開始する。二つのauthoritative sourceを作らない。
+
+また、current TEI Pluginの`CapabilityKind`にはspatial canvas / presentation専用種別は存在しない。この一件だけを根拠にkindを追加せず、Target Adapter、native component、既存Capability、将来のreusable extensionのどれが自然かをReferenceから判断する。
+
 ## 開発負荷の比較
 
 SUI側の同一change challengeと比較し、TEIで次がどう変わるかを記録します。
