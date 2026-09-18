@@ -128,6 +128,8 @@ production schemaではない。
 HumanReviewProjection
 
   intent
+  reference_fingerprint
+  required_input_fingerprints[]
 
   current_meaning[]
     business
@@ -152,6 +154,16 @@ HumanReviewProjection
 ```
 
 重要なのは、summary文そのものではなく各項目がauthority / Evidenceへ戻れること。
+
+R2ではR1が確定したchallenge-local `required_input_fingerprints[]`をそのまま継承する。Human Review用にsource pathを別管理して第二のfreshness基線を作らない。
+
+```text
+R1 decisive inputs
+  -> R2 review drill-down
+
+review summary
+  != independent source inventory
+```
 
 ## 5. potentially affected authorityと「変更必須」を分ける
 
@@ -257,8 +269,10 @@ testでは少なくとも次を守る。
 4. review questionをanswer / decisionへ変換しない
 5. potentially affected authorityをmust-changeへ変換しない
 6. exact sourceへdrill-downできる
-7. Approved / Rejected / Safe / Score等を持たない
-8. generated codeをreview authorityにしない
+7. R1のReference / input fingerprintsを失わず継承する
+8. drill-down refsを同じfingerprint input集合から導出し、固定文字列の第二source一覧を作らない
+9. Approved / Rejected / Safe / Score等を持たない
+10. generated codeをreview authorityにしない
 
 ## 9. R2で新設しないもの
 
