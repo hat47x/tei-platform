@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -126,6 +127,9 @@ func TestActorContextR3BRequirementGatesWhetherPrincipalAndTargetArePrerequisite
 	if !reflect.DeepEqual(unresolved.BlockingReasons, []string{"authorization-requirement-unresolved"}) {
 		t.Fatalf("unresolved requirement should be the current blocker before principal necessity is known: %+v", unresolved.BlockingReasons)
 	}
+	if actorContextR0Contains(unresolved.DeferredRuntimeGaps, "authorization-requirement-unresolved") {
+		t.Fatalf("current blocker leaked into deferred runtime gaps: %+v", unresolved.DeferredRuntimeGaps)
+	}
 
 	required := deriveActorContextR3BInvocationBoundaryProbe(
 		basePrincipal,
@@ -154,6 +158,10 @@ func TestActorContextR3BRequirementGatesWhetherPrincipalAndTargetArePrerequisite
 		actorContextR0Contains(notRequired.BlockingReasons, "authorization-action-resource-unresolved") ||
 		actorContextR0Contains(notRequired.BlockingReasons, "authorization-not-evaluated") {
 		t.Fatalf("explicit not-required Authorization still required Authorization-specific runtime prerequisites: %+v", notRequired.BlockingReasons)
+	}
+	if actorContextR0Contains(notRequired.DeferredRuntimeGaps, "authorization-requirement-unresolved") ||
+		actorContextR0Contains(notRequired.DeferredRuntimeGaps, "authorization-not-evaluated") {
+		t.Fatalf("explicit not-required Authorization retained obsolete Authorization-specific deferred gaps: %+v", notRequired.DeferredRuntimeGaps)
 	}
 }
 
@@ -244,12 +252,12 @@ func deriveActorContextR3BAuthorizationRequirementProbe(
 			continue
 		}
 		if match != nil {
-			return actorContextR3BAuthorizationRequirementProbe{}, errProcedureMeaning("Authorization requirement Step is ambiguous")
+			return actorContextR3BAuthorizationRequirementProbe{}, fmt.Errorf("Authorization requirement Step %q is ambiguous", stepID)
 		}
 		match = &f.Steps[i]
 	}
 	if match == nil {
-		return actorContextR3BAuthorizationRequirementProbe{}, errProcedureMeaning("Authorization requirement Step not found")
+		return actorContextR3BAuthorizationRequirementProbe{}, fmt.Errorf("Authorization requirement Step %q not found", stepID)
 	}
 
 	result := actorContextR3BAuthorizationRequirementProbe{
@@ -294,6 +302,12 @@ func deriveActorContextR3BInvocationBoundaryProbe(
 		blockers = append(blockers, "authorization-requirement-unresolved")
 	}
 
+	deferred := append([]string(nil), principal.RuntimeGaps...)
+	deferred = actorContextR3ARemoveGap(deferred, "authorization-requirement-unresolved")
+	if requirement.Status == actorContextR3BAuthorizationNotRequired {
+		deferred = actorContextR3ARemoveGap(deferred, "authorization-not-evaluated")
+	}
+
 	return actorContextR3BInvocationBoundaryProbe{
 		AuthorizationRequirementStatus:   requirement.Status,
 		PrincipalResolved:                principal.PrincipalResolved,
@@ -304,7 +318,7 @@ func deriveActorContextR3BInvocationBoundaryProbe(
 		ObservationReceived:              false,
 		CompletionUnresolved:             true,
 		BlockingReasons:                  actorContextR0SortedUnique(blockers),
-		DeferredRuntimeGaps:              actorContextR0SortedUnique(append([]string(nil), principal.RuntimeGaps...)),
+		DeferredRuntimeGaps:              actorContextR0SortedUnique(deferred),
 		AuthorityLimits: []string{
 			"absence-of-authorization-declaration-does-not-mean-not-required",
 			"policy-rule-does-not-author-authorization-requirement",
