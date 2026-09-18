@@ -1380,6 +1380,53 @@ provenance drift
 
 actual second-Application compositionはISSUE-000040のGate / Referenceへ接続してから行う。
 
+### Phase 5 Pre-Gate — second Application Reference contract
+
+Knowledge Portability R0 / handoffの次に、Gate C後の第二Application着手条件だけを先に固定する。
+
+正本:
+
+- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go`
+
+このPressureではcurrent Repositoryから、
+
+- shared Customer Semantic
+- compatible Customer Contract
+- origin Application Pattern provenance
+- origin Environment Binding Evidence
+
+を読むが、第二Canonical Applicationを作らない。
+
+```text
+qualified reusable knowledge
+  != destination source authored
+  != Shared Acceptance
+  != Environment binding created
+```
+
+を固定する。
+
+Gate C後の着手順は、
+
+```text
+ISSUE-000047 qualification
+  -> Phase 5 portability relation
+  -> ISSUE-000040 composition candidate
+  -> Shared Acceptance
+  -> destination source
+  -> Environment Binding Proposal
+  -> Driver / First Web Target
+  -> change propagation Evidence
+```
+
+とする。
+
+Pre-GateではISSUE-000039のimpact engine、第一Web Target、second Target、write Capabilityを前倒ししない。
+
 ## 不変条件
 
 ```text
