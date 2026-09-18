@@ -84,7 +84,7 @@ type resumeProjection struct {
 }
 
 type semanticAudit struct {
-	RecommendationSeparated    bool `json:"recommendation_separated"`
+	RecommendationSeparated     bool `json:"recommendation_separated"`
 	DecisionMatchesOracle       bool `json:"decision_matches_oracle"`
 	RecommendationMatchesOracle bool `json:"recommendation_matches_oracle"`
 	HistoricalBasisMatches      bool `json:"historical_basis_matches"`
@@ -314,7 +314,7 @@ func auditProjection(f fixture, initial, post resumeProjection) (semanticAudit, 
 	}
 
 	audit := semanticAudit{
-		RecommendationSeparated:    len(initial.Recommendations) > 0 && allRecommendationIDsDifferFromDecision(initial.Recommendations, initial.Decision.ID),
+		RecommendationSeparated:     len(initial.Recommendations) > 0 && allRecommendationIDsDifferFromDecision(initial.Recommendations, initial.Decision.ID),
 		DecisionMatchesOracle:       initial.Decision.ID == condition.SurfaceText.Decision.ID,
 		RecommendationMatchesOracle: containsProjectedID(initial.Recommendations, condition.SurfaceText.Recommendation.ID),
 		HistoricalBasisMatches:      equalStringSlices(ids(initial.HistoricalBasis), f.ReferenceState.HistoricalBasisIDs),
