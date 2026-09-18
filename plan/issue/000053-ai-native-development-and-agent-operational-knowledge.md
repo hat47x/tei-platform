@@ -1415,6 +1415,61 @@ stable order
 
 とし、Winner / PrimaryReason / Severity / FirstCause / AutoRebuild等は導入しない。
 
+
+### R3V — Cross-audience re-evaluation reason identity
+
+R3Uで一つのbounded projection内のmulti-reason aggregationをlosslessに扱えるようにした後、Human orientation / Agent resolution-inspection間で共有されるreason identityをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3V_CROSS_AUDIENCE_REASON_IDENTITY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3v_cross_audience_reason_identity_pressure_test.go`
+
+R3Vではreason identityを:
+
+```text
+category
++ change class
++ dependency key
++ dependency reason
+```
+
+で構成し、audience / purpose / Human display wording / rendering orderを含めない。
+
+同じBusiness Procedure changeについて:
+
+```text
+Human:
+  machine-reasons -> affected
+
+Agent:
+  machine-reasons -> affected
+  known-authority-facts -> affected
+```
+
+となる場合、共有されたmachine-reasonsは同じdependency provenance identityへ戻る。一方Agent-only reasonをHumanへ強制開示しない。
+
+```text
+shared reason identity
+  -> same dependency provenance
+
+different disclosure set
+  != inconsistent reason
+
+cross-audience agreement
+  != stronger authority
+```
+
+を維持する。
+
+dependency keyが異なるreasonは、category / change class / wordingが同じでも同一化しない。
+
+UniversalPacket / PreferredAudience / Winner / StrongerAuthority / NextAction等は導入しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
