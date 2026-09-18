@@ -98,14 +98,14 @@ func TestStage0ConstraintCoverageDoesNotOverclaimTEISemantics(t *testing.T) {
 		status           string
 		probeEnforcement string
 	}{
-		"parent-single-valued":     {status: "shape-only", probeEnforcement: "tei-definition"},
-		"parent-presence":          {status: "unresolved", probeEnforcement: "source-contract"},
-		"duplicate-island-id":      {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"parent-single-valued":      {status: "shape-only", probeEnforcement: "tei-definition"},
+		"parent-presence":           {status: "unresolved", probeEnforcement: "source-contract"},
+		"duplicate-island-id":       {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
 		"duplicate-child-reference": {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
-		"parent-exists":            {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
-		"child-exists":             {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
-		"parent-child-consistency": {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
-		"acyclic-hierarchy":        {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"parent-exists":             {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"child-exists":              {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"parent-child-consistency":  {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
+		"acyclic-hierarchy":         {status: "shadow-only", probeEnforcement: "reference-local-shadow"},
 	}
 
 	if len(got) != len(want) {
