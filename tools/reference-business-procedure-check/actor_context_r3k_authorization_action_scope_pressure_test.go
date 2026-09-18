@@ -17,13 +17,18 @@ const (
 )
 
 type actorContextR3KActionScopeCandidateProbe struct {
-	Locus               string
-	Action              string
-	SourceRef           string
-	Procedure           string
-	Step                string
-	ApplicationPattern  string
-	BusinessAddresses   []string
+	Locus              string
+	Action             string
+	SourceRef          string
+	Procedure          string
+	Step               string
+	ApplicationPattern string
+	BusinessAddresses  []string
+}
+
+type actorContextR3KCorroboratingActionHintsProbe struct {
+	PatternKind        string
+	LegacyPolicyAction string
 }
 
 func TestActorContextR3KCurrentRecentOrdersCaseIsScopePressureNotActionAuthority(t *testing.T) {
@@ -82,18 +87,20 @@ func TestActorContextR3KCurrentRecentOrdersCaseIsScopePressureNotActionAuthority
 		t.Fatal("test setup changed: legacy browse/recent_orders allow rule missing")
 	}
 
-	// Both hints corroborate a likely value, but neither authors AuthorizationAction.
-	actionAuthority := actorContextR3JDeriveActionAuthorityGate(
-		actorContextR3BAuthorizationUnresolved,
-		"order_entry.recent_orders",
-		"test-only:resource-candidate",
-		false,
-		true,
-		true,
-		nil,
-	)
-	if actionAuthority.Action != "" {
-		t.Fatalf("Pattern kind + Legacy policy generated Authorization action authority: %+v", actionAuthority)
+	// Both hints corroborate a likely value, but the hint projection itself carries no
+	// AuthorizationAction authority field.
+	hints := actorContextR3KCorroboratingActionHintsProbe{
+		PatternKind:        "browse",
+		LegacyPolicyAction: "browse",
+	}
+	if hints.PatternKind != hints.LegacyPolicyAction {
+		t.Fatalf("test setup changed: expected matching browse hints: %+v", hints)
+	}
+	hintType := reflect.TypeOf(hints)
+	for _, forbidden := range []string{"Action", "AuthorizationAction", "ActionSource", "AuthorityStatus"} {
+		if _, found := hintType.FieldByName(forbidden); found {
+			t.Fatalf("R3K corroborating hints introduced action authority field %q", forbidden)
+		}
 	}
 }
 
