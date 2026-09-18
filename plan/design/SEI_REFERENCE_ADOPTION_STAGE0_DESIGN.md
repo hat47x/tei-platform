@@ -247,6 +247,42 @@ TEI側で追加code/config変更なしにderived Projectionへ追随できるな
 
 反対に、同じ一件のObservation追加のために複数TEI assetを手動同期する必要があるなら、TEI-firstを狭めるEvidenceです。
 
+## 10.1 Change 1 actual comparison result
+
+Change 1を実装・実行した結果、TEI Reference checkerはProjection codeを変更せず、後続Observationだけを`changes since decision`へ追加できた。
+
+ただしnative SEIもcurrent `ChangeReviewProjection`で同型の性質を既に持つ。
+
+このためChange 1で得られたEvidenceは、TEIがnative SEIより優れていることではなく、**TEI Reference-local mappingが追加semantic primitiveなしに同じ不変条件を保持できること**である。
+
+一方、Stage 0ではSEI authoritative sourceをTEI repositoryへ固定snapshotとして同期している。このmanual cross-repo syncはnative SEIにはない追加負担である。
+
+```text
+projection implementation change
+  native SEI = 0
+  TEI Reference = 0
+
+manual cross-repo snapshot sync
+  native SEI = 0
+  TEI Stage 0 = 1
+
+therefore:
+  no observed TEI leverage yet
+```
+
+この結果から、新Pattern Kind、Plugin、Core fieldを増やす理由は生じない。
+
+また、Change 1は「後続recordを追加する」という両方式の得意なchangeであり、Application Planeの構造化leverageを測るには差別化力が弱い。
+
+次のchallengeを選ぶ際は、
+
+- Projection-only変更
+- Evidence / Governance表示
+- review / diff visualization
+- progressive disclosure
+
+のように、Application Planeそのものへ圧力をかけるchangeを優先する。ただしGate B / C未成立の機能をproduction-readyとして先取りしない。
+
 ## 11. SUIとのcross-application pressure
 
 SUI Reference Adoptionはspatial canvas、hierarchy、proposal / merge reviewをPressureしています。
