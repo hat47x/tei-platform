@@ -91,6 +91,22 @@ SUI側では実履歴から次の3 challengeを固定済みである。
 
 また、current TEI Pluginの`CapabilityKind`にはspatial canvas / presentation専用種別は存在しない。この一件だけを根拠にkindを追加せず、Target Adapter、native component、既存Capability、将来のreusable extensionのどれが自然かをReferenceから判断する。
 
+## TEI適性の第二軸 — structure-to-application leverage
+
+SUI Reference Adoptionでは、Application Planeの共通化だけでなく、SUIの図表的・構造的な設計資産からApplicationをどこまで導けるかを検証する。
+
+比較では、次を観測する。
+
+- 一つのstructured definitionから何個のValidation / Projection / Target / documentation / AI contextを導けるか
+- 同じ意味の重複記述が何箇所減るか
+- view変更でdomain definitionを書き換えずに済むか
+- domain意味変更が複数UI / export / validationへ自動的または機械的に伝播できるか
+- native codeへ残る部分が、特殊Interaction / algorithm等へ局所化するか
+
+これは **structure-to-application leverage** のEvidenceとして記録する。
+
+TEI利用率が高くても、構造化した意味から派生物を導けず二重管理が増えるならReference Adoptionは成功としない。
+
 ## 開発負荷の比較
 
 SUI側の同一change challengeと比較し、TEIで次がどう変わるかを記録します。
