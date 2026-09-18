@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -80,7 +81,7 @@ func TestActorContextR3DCapabilityAvailabilityAndRealizationDoNotAuthorApplicabi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !actorContextR0ContainsText(string(applicationSource), "uses semantic security") {
+	if !strings.Contains(string(applicationSource), "uses semantic security") {
 		t.Fatalf("test setup changed: Application no longer imports security semantics")
 	}
 
@@ -88,7 +89,7 @@ func TestActorContextR3DCapabilityAvailabilityAndRealizationDoNotAuthorApplicabi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !actorContextR0ContainsText(string(realizationSource), "realize security.authorize with custom go") {
+	if !strings.Contains(string(realizationSource), "realize security.authorize with custom go") {
 		t.Fatalf("test setup changed: security.authorize realization is no longer present")
 	}
 
@@ -187,16 +188,3 @@ func actorContextR3DAffectedSteps(
 	return actorContextR0SortedUnique(affected), nil
 }
 
-func actorContextR0ContainsText(value, target string) bool {
-	return len(value) >= len(target) && reflect.ValueOf(value).String() != "" &&
-		len(target) > 0 && containsExactText(value, target)
-}
-
-func containsExactText(value, target string) bool {
-	for i := 0; i+len(target) <= len(value); i++ {
-		if value[i:i+len(target)] == target {
-			return true
-		}
-	}
-	return false
-}
