@@ -502,7 +502,7 @@ R3Aでは、
 - authenticated subjectだけではAuthorizationを成立させない
 - `Application access=read` からAuthorization action `browse` を生成しない
 - Legacy Authorization policyだけからmissing Business/Application targetをbackfillしない
-- BP-02のaction/resource authorityが未解決な間はAuthorizationをinvokeしない
+- BP-02ではAuthorization requirement自体を未解決として保持し、requirement確定前にaction/resource不足を必須前提として扱わない
 
 ことをPressureする。
 
@@ -524,7 +524,7 @@ Authentication Observationはruntime contextであり、R3 static source freshne
 
 ### R3B — Authorization prerequisite / fail-closed boundary
 
-R3Aでauthenticated subjectを解決した後も、BP-02の明示的なAuthorization action/resource authorityは未解決である。
+R3Aでauthenticated subjectを安全に解決できても、BP-02ではAuthorization requirement自体がcurrent accepted sourceから確定していない。
 
 次段は `plan/ACTOR_CONTEXT_R3B_AUTHORIZATION_PREREQUISITE_BOUNDARY_2026-09.md` を正本とする。
 
@@ -547,13 +547,53 @@ R3Bでは、
 ```text
 authenticated subject
   + read route understood
-  + Authorization target unresolved
+  + Authorization requirement unresolved
   -> authorization invocation attempted = false
   -> query invocation attempted = false
   -> completion unresolved
 ```
 
 R3 sourceのSource Index移行に追随し、R3Aもsubject identity -> current locator解決を利用する。runtime Authentication Observationはstatic source freshnessへ混ぜない。
+
+### R3C — Authorization requirement authority
+
+R3Bをさらに精査すると、BP-02ではtarget/action以前に「このActionでAuthorizationが必要か」自体が未解決である。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3C_AUTHORIZATION_REQUIREMENT_AUTHORITY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3c_authorization_requirement_pressure_test.go`
+
+current Referenceでは:
+
+```text
+BP-06 security-boundary + security.authorize
+  -> Authorization requirement = required
+
+BP-02 application-use
+  -> Authorization requirement = unresolved
+  != not-required
+```
+
+また、
+
+```text
+policy rule present
+  != requirement required
+
+policy rule absent
+  != requirement not-required
+
+Application access = read
+  != requirement decision
+```
+
+をPressureする。
+
+Operational prerequisiteはrequirementに条件づけ、requirementがrequiredの場合だけAuthorization用principal / target/action / evaluationを必須として扱う。requirementがunresolvedならそこでfail closedし、absenceから `not-required` を生成しない。
 
 ## Phase 4 — side-effect Action
 

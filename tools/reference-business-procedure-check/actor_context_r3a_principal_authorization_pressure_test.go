@@ -106,7 +106,7 @@ func TestActorContextR3AResolvesPrincipalOnlyFromAuthenticatedSubjectObservation
 		t.Fatalf("R3A inferred Authorization target/evaluation from read access or principal alone: %+v", authenticated)
 	}
 	for _, gap := range []string{
-		"authorization-action-resource-unresolved",
+		"authorization-requirement-unresolved",
 		"authorization-not-evaluated",
 		"input-instance-value-unresolved",
 		"resource-provider-not-evaluated",
@@ -190,6 +190,7 @@ func deriveActorContextR3APrincipalAuthorizationProbe(
 		AuthorityLimits: []string{
 			"business-actor-label-does-not-equal-runtime-principal",
 			"authenticated-subject-does-not-equal-authorization",
+			"application-read-access-does-not-imply-authorization-requirement",
 			"application-read-access-does-not-imply-authorization-action",
 			"authorization-policy-does-not-author-business-target",
 		},
@@ -205,7 +206,7 @@ func deriveActorContextR3APrincipalAuthorizationProbe(
 		gaps = actorContextR3ARemoveGap(gaps, "actor-principal-unresolved")
 	}
 
-	gaps = append(gaps, "authorization-action-resource-unresolved")
+	gaps = append(gaps, "authorization-requirement-unresolved")
 	result.RuntimeGaps = actorContextR0SortedUnique(gaps)
 	return result
 }
