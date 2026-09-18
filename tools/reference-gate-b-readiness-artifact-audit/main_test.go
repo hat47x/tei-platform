@@ -334,7 +334,7 @@ func postgresChild(revision string) map[string]any {
 			"fixtureObjectAbsentAfterCleanup": true,
 		},
 		"pattern": "order_entry.order_lines", "relation": "sales.order.lines", "environment": "development",
-		"databaseInstance": "sales_core.dev", "executorCapability": "database.query.postgres", "contractQueryTarget": "find_by_order",
+		"databaseInstance": "sales_core.dev", "executorCapability": "database.query.postgres", "contractQueryTarget": "sales_core/sales_core.order_line/find_by_order",
 		"parameterNames": []any{"order_id"}, "parameterValuesPersisted": false, "rows": 2, "zeroRows": 0,
 		"executionErrorObserved": true,
 		"semanticAttributes": []any{
