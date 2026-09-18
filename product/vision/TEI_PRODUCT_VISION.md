@@ -79,6 +79,77 @@ TEIは、個別の業務システムだけでなく、UI・Interaction・domain 
 
 SUIでのReference Adoptionは、TEI利用率ではなく、**同じ意味変更に必要な手書き実装・検証・同期負荷が減るか**で評価します。これにより、TEIが自身のOSS群でも実際に使える開発基盤であるかをdogfoodします。
 
+## TEI適用判断の二つの軸
+
+TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だけでは決めない。
+
+もう一つ重要なのは、
+
+> **そのソフトウェアの意味・関係・制約・状態・変換を、図・表・グラフ・モデル等の構造化された情報群として整理統合し、その設計資産から実装を導きたいか**
+
+という軸である。
+
+ここでは前者を **Application Plane強度**、後者を **Structured Design Affinity（構造化設計適性）** と呼ぶ。
+
+### Axis A — Application Plane強度
+
+高いほど、次の共通化価値が大きい。
+
+- UI / Interaction
+- domain / business rule
+- Validation
+- Workflow / lifecycle
+- Projection
+- Authorization / acceptance
+- Target realization
+
+### Axis B — Structured Design Affinity
+
+高いほど、実装より前に次を外在化して保持する価値が大きい。
+
+- Data / type
+- Relation
+- state / transition
+- rule / constraint
+- input / output
+- transformation
+- capability
+- dependency
+- permission
+- deployment / runtime binding
+
+この軸は「図を描くかどうか」そのものではない。  
+**実装知識をコードだけに閉じず、複数の図表・表・グラフ・自然言語Projectionから同じ構造化された意味へ戻れる状態を作りたいか**を問う。
+
+したがって、UIをほとんど持たないCLIやheadless serviceでも、定義・関係・変換・制約を構造化設計資産として管理し、そこからValidationや実装を導きたい場合はTEIの射程に入り得る。
+
+逆に、UIを持っていても価値の大半が特殊描画engine、数値kernel、compiler、認知algorithm等の手続き的・性能依存な実装そのものにある場合、TEIの役割はApplication shellや周辺設計へ限定され得る。
+
+### 二軸による基本分類
+
+| | Structured Design Affinity 高 | Structured Design Affinity 低 |
+|---|---|---|
+| **Application Plane 高** | **Broad TEI-first** — 意味モデル、Validation、Projection、Target、Capabilityまで広くTEIで構成する有力候補 | **TEI shell + native domain engine** — UI、権限、設定、周辺workflow等はTEI、専門挙動はnative |
+| **Application Plane 低** | **TEI design / definition plane** — headlessでもschema、relation、rule、mapping、generation、validationにTEIを使う余地が大きい | **Native-first** — TEI導入の利益が小さく、必要な管理面だけ個別評価 |
+
+この分類は採用の自動判定ではない。性能、安全、device constraint、既存資産、移行費用、Product Valueを上位条件として扱う。
+
+### 図表とCanonical meaningの関係
+
+図、表、グラフは非常に重要なauthoring / understanding surfaceになり得るが、見た目そのものを暗黙の正本にはしない。
+
+```text
+diagram / table / graph / natural language
+        ↓ author / inspect
+Canonical meaning
+        ↓
+validation / simulation / realization / generation
+```
+
+同じ意味を複数Projectionで編集・検証できることが、TEIの価値である。
+
+このため「図表で整理した情報群からApplicationを作りたい」という要求は、TEIとの適合性を強く示すが、「一つの図ファイルをそのまま唯一の正本にする」ことを意味しない。
+
 ## 既存システムから見たTEI
 
 TEIは、新規開発だけを前提にしません。
