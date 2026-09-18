@@ -79,6 +79,8 @@ current TEI標準Validationは`positive` / `relation-unique`の最小集合で�
 
 加えて、current Semantic Relationは`one | many` cardinalityを持つが、SUIのnullable `parentIslandId`が必要とする0..1 presence semanticsを独立表現するcontractは確認できていない。Stage 0 reportではこの点を`unresolved`かつ`lossless = false`として残す。
 
+Stage 0 report schema v2では、この不足を単独のbooleanだけで扱わず`constraintCoverage`として機械可読化する。parentのsingle-valued shapeだけを`shape-only / tei-definition`、nullable presenceを`unresolved / source-contract`、duplicate / existence / parent-child consistency / cycleを`shadow-only / reference-local-shadow`として分離する。これにより、SUI正本のconstraintをReference toolが再現しただけのものをTEI native機能へ誤って格上げしない。
+
 これらを理由にValidationKindやRelation optionality fieldを先に追加せず、
 
 - Reference-local validationで十分か
