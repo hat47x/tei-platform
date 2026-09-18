@@ -1557,6 +1557,64 @@ static semantic change / SourceRefs changeでtupleが同じ場合は `tuple-comp
 production TTL / Authorization cache / revocation watcher / reevaluation schedulerは追加しない。
 
 
+
+### R3Z — Authorization freshness precedence Evidence Gate
+
+R3Yでreevaluation authorityとprior Observation reuse authorityを分離した後、production precedence mechanismを必要とするqualifying conflict Evidenceが実際に存在するかをGateにする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3Z_AUTHORIZATION_FRESHNESS_PRECEDENCE_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3z_freshness_precedence_evidence_gate_pressure_test.go`
+
+重要な境界は:
+
+```text
+prior-observation-reuse-permitted
+  != prior-observation-reuse-sufficient-without-reevaluation
+```
+
+である。
+
+したがって:
+
+```text
+reevaluation-required
+  + generic reuse-permitted
+  != proven contradiction
+```
+
+とする。
+
+precedence mechanism比較を開くには少なくとも:
+
+- same Authorization tuple
+- explicit reevaluation directive
+- explicit reuse-without-reevaluation directive
+- explicit provenance
+- same applicability scope
+- repository-backed Business need
+
+を要求する。
+
+Gate outcome:
+
+```text
+insufficient-evidence
+synthetic-conflict-pressure
+precedence-mechanism-pressure-qualified
+```
+
+ただしqualifiedでもWinner / precedence rule / syntaxは選ばない。
+
+current Referenceにはaccepted production freshness directiveがなく、R3Y explicit directiveはtest-only comparison inputであるため、current Gateは `insufficient-evidence` のままとする。
+
+provider policy revisionもexplicit freshness directiveへ昇格させず、priority / override / nearest-scope-wins / last-writer-wins / TTL precedenceは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
