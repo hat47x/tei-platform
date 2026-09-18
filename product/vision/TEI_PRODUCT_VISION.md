@@ -45,9 +45,11 @@ TEIはそのために、実装詳細の総量を人へ提示するのではな�
 
 したがってTEI Editorは「人間がコードを書くためのIDE」よりも、**人間がAIと巨大なソフトウェアを共同管理するための高密度な認知面**へ近づきます。
 
-## AI・認知機能から見たTEI
+## AI Builder・認知機能から見たTEI
 
-AIや認知系は、いきなりコードを書く前に、TEI内の既存知識とCanonicalな意味を探索します。
+生成AIは、TEIにおいて単なる設計支援者ではなく、**継続的なApplication Builder**になり得ます。
+
+新規構築でも既存Applicationの変更でも、いきなりRepository全体のコードを自由に書き換える前に、TEI内の既存知識とCanonicalな意味を探索します。
 
 ```text
 既存の業務部品
@@ -70,6 +72,10 @@ Capability
 ただし、認知結果はCanonicalな意味そのものではありません。どの入力と根拠から何が提案され、どの検証を経て正式なモデルへ採用されたかを追跡できる必要があります。AIの能力が高まっても、会話状態やProvider固有の内部表現を暗黙の正本にはしません。
 
 何でも人に質問するのではなく、既に回答済みの問い、過去の選択、類似システムの知識、決定論的に導出できる情報を再利用し、必要な場面だけ確認することも重要です。
+
+理想的には、AI Builderは毎回「このRepositoryは何をするものか」をソースコードから再推測しません。変更要求から関連するCanonical subject、依存、Decision、Pattern、Capability、native asset、Evidenceへ辿り、変更impactを把握してから作業します。
+
+これにより、AI modelやagentが交代しても、Application理解を一から作り直す量を減らします。生成AIの長いcontext windowや会話memoryは有用ですが、それらをApplication知識の唯一の保存場所にはしません。
 
 ## AIエージェントから見たTEI
 
