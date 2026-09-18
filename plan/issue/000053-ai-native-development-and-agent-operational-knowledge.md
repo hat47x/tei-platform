@@ -1510,6 +1510,53 @@ value changed
 を維持し、production rebuild engine / invalidation schedulerは追加しない。
 
 
+### R3X — Authorization Observation context identity / freshness authority boundary
+
+R3Wでactual selected category changeを確定した後、そのchangeとR3I Authorization Observationのcontext identityを分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3X_AUTHORIZATION_CONTEXT_IDENTITY_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3x_authorization_context_identity_pressure_test.go`
+
+R3Iのcurrent Observation tuple:
+
+```text
+Business address
+subject id
+action
+resource
+```
+
+のいずれかが変われば、prior Observationはcurrent-context evidenceではない。
+
+一方、tupleが同じでもprior Observationのfreshness / reuseは自動承認しない。requirement applicability transitionもtuple mismatchとは分離する。
+
+```text
+projection category changed
+  != Authorization tuple component changed
+
+tuple mismatch
+  -> prior Observation is not current-context evidence
+
+tuple match
+  != freshness proven
+  != reuse authorized
+
+runtime outcome changed
+  != context identity changed
+```
+
+を維持する。
+
+static semantic change / SourceRefs changeでtupleが同じ場合は `tuple-compatible-freshness-authority-unresolved` とし、prior decision invalidation / reuse / automatic reauthorizationのいずれも選ばない。
+
+production TTL / Authorization cache / revocation watcher / reevaluation schedulerは追加しない。
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
