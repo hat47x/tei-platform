@@ -1762,6 +1762,45 @@ projection reasonが、どのqualified knowledge bindingからも説明できな
 
 R6C自身にはFresh / Stale / Changed / ChangeClass / Authorized / Rebuild等を持たせず、R3のfreshness / impact / authority semanticsを重複所有しない。
 
+### R6D — routed / consumer-local dependency origin
+
+R6Cのhandoffをfull projection reason集合へ適用するには、全dependencyをrouted knowledgeへ要求しない。
+
+current BP-06 Human orientationでは、Business Procedure Reference由来のdependencyはR6B qualified knowledgeへlinkできる。一方、protected-target overlayはcurrent consumerが直接使うReference inputであり、R6 candidate poolへ無理に追加しない。
+
+runtime denied caseのexact Authorization Observationも同様にconsumer-local runtime dependencyとして扱う。
+
+```text
+routed-qualified-knowledge
+consumer-reference-input
+consumer-runtime-observation
+consumer-semantic-subject
+```
+
+をdependency origin classとしてPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6d_dependency_origin_classification_pressure_test.go`
+
+重要な境界:
+
+```text
+qualified knowledge
+  != all projection dependencies
+
+consumer-local dependency
+  != missing routing knowledge
+
+origin classification
+  != authority ownership
+  != freshness evaluation
+```
+
+一つのdependency keyをroutingとconsumer-localの双方がclaimする場合はambiguousとしてfail closedする。どちらにも分類できないdependencyもfail closedする。
+
+R6DはR3 dependency key / reasonを変更せず、そのinputがroutingから来たかconsumer側の直接入力かだけを説明する。
+
 
 
 
