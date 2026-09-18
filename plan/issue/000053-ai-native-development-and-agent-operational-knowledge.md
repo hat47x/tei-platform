@@ -1205,96 +1205,6 @@ selected / omitted partition自体はProfileFingerprintへ含め、selected-but-
 semantic category fingerprintはproduction cache key / Canonical versionではなく、production invalidation engineやwatcherは追加しない。
 
 
-## Cross-cutting R6 — Selective Knowledge Routing
-
-最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r6_selective_knowledge_routing_pressure_test.go`
-
-対象はBP-02のread-only knowledge pathとし、current Business Procedure Referenceに存在するApplication Pattern群をavailable knowledgeとして扱う。
-
-最初の比較:
-
-```text
-exact deterministic router
-  -> BP-02参照Patternだけをselect
-
-broad test router
-  -> available Patternを広くselect
-
-both
-  -> current task reference + Source Indexでdeterministic qualification
-  -> 同じqualified identity
-  -> qualified subsetだけをdisclose
-```
-
-これにより、
-
-```text
-Knowledge available
-  != Knowledge selected
-  != Knowledge qualified
-  != Knowledge disclosed
-```
-
-をSource levelでPressureする。
-
-routing方式はSemantic authorityを所有しない。routing score / confidence、類似度、model内部signalをSemantic applicability、Accepted Decision、Authorizationへ昇格させない。
-
-このR6 sourceは、R3のprincipal / Authorization / action-locus Evidence Gateを迂回しない。qualified knowledge identityが得られても、それだけではAgent invocation authorityにならない。
-
-R7 Replayable Behavior EvidenceはFirst Web Targetのactual Functional Evidenceへ、R8 Verified Experienceはactual Execution / Observationへ接続してから進める。static R6 sourceからR7 / R8の成功を捏造しない。
-
-### R6B — heterogeneous knowledge candidate routing
-
-R6の次段では、Application Patternだけでなく異なるauthority / evidence kindを候補poolへ共存させる。
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r6b_heterogeneous_knowledge_routing_pressure_test.go`
-
-current sourceから次のtask scopeを使う。
-
-```text
-BP-02
-  Procedure Reference
-  + order_entry.customer_reference
-
-BP-05
-  Procedure Reference
-  + exact Semantic Validation subjects
-
-BP-06
-  Procedure Reference
-  + security.authorize Semantic Capability
-
-R1 customer-edit review
-  Procedure Reference
-  + order_entry.customer_reference
-  + order-entry-customer-edit-conflict probe Evidence
-```
-
-exact routerとbroad routerは異なるcandidate集合を返してよいが、current task relation / Source Index / exact Evidence scopeでqualificationした後の集合は一致しなければならない。
-
-特に、R1のcustomer-edit conflict probeはBP-02のread-only Operational contextへ自動注入しない。逆にR1 reviewではexplicit Evidenceとしてtrace可能に保持する。
-
-```text
-available kind diversity
-  != authority flattening
-
-Evidence relevant to review
-  != Evidence relevant to operation
-
-Capability qualified
-  != Authorization evaluated
-  != Capability invocation authorized
-```
-
-R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
-
-
 ### R3R — Projection dependency provenance / freshness planes
 
 R3Qでpurpose-bound projectionのfreshnessをselected semantic categoryへ絞った後、そのcategoryが何へ依存したかをactual source / runtime Evidenceまで逆追跡する。
@@ -1400,6 +1310,96 @@ dependency reason
 ```
 
 を維持し、production dependency graph / impact engine / incremental build engineは追加しない。
+
+
+## Cross-cutting R6 — Selective Knowledge Routing
+
+最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6_selective_knowledge_routing_pressure_test.go`
+
+対象はBP-02のread-only knowledge pathとし、current Business Procedure Referenceに存在するApplication Pattern群をavailable knowledgeとして扱う。
+
+最初の比較:
+
+```text
+exact deterministic router
+  -> BP-02参照Patternだけをselect
+
+broad test router
+  -> available Patternを広くselect
+
+both
+  -> current task reference + Source Indexでdeterministic qualification
+  -> 同じqualified identity
+  -> qualified subsetだけをdisclose
+```
+
+これにより、
+
+```text
+Knowledge available
+  != Knowledge selected
+  != Knowledge qualified
+  != Knowledge disclosed
+```
+
+をSource levelでPressureする。
+
+routing方式はSemantic authorityを所有しない。routing score / confidence、類似度、model内部signalをSemantic applicability、Accepted Decision、Authorizationへ昇格させない。
+
+このR6 sourceは、R3のprincipal / Authorization / action-locus Evidence Gateを迂回しない。qualified knowledge identityが得られても、それだけではAgent invocation authorityにならない。
+
+R7 Replayable Behavior EvidenceはFirst Web Targetのactual Functional Evidenceへ、R8 Verified Experienceはactual Execution / Observationへ接続してから進める。static R6 sourceからR7 / R8の成功を捏造しない。
+
+### R6B — heterogeneous knowledge candidate routing
+
+R6の次段では、Application Patternだけでなく異なるauthority / evidence kindを候補poolへ共存させる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6b_heterogeneous_knowledge_routing_pressure_test.go`
+
+current sourceから次のtask scopeを使う。
+
+```text
+BP-02
+  Procedure Reference
+  + order_entry.customer_reference
+
+BP-05
+  Procedure Reference
+  + exact Semantic Validation subjects
+
+BP-06
+  Procedure Reference
+  + security.authorize Semantic Capability
+
+R1 customer-edit review
+  Procedure Reference
+  + order_entry.customer_reference
+  + order-entry-customer-edit-conflict probe Evidence
+```
+
+exact routerとbroad routerは異なるcandidate集合を返してよいが、current task relation / Source Index / exact Evidence scopeでqualificationした後の集合は一致しなければならない。
+
+特に、R1のcustomer-edit conflict probeはBP-02のread-only Operational contextへ自動注入しない。逆にR1 reviewではexplicit Evidenceとしてtrace可能に保持する。
+
+```text
+available kind diversity
+  != authority flattening
+
+Evidence relevant to review
+  != Evidence relevant to operation
+
+Capability qualified
+  != Authorization evaluated
+  != Capability invocation authorized
+```
+
+R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
 
 
 ## Phase 4 — side-effect Action
