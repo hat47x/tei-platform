@@ -12,14 +12,23 @@
 
 このcopyはTEI側の正本ではありません。SEI sourceをReference runごとにnetwork越しで取得する必要をなくし、同一bytesに対する再現可能なprobeを行うための固定snapshotです。
 
+TEI側snapshotのGit blobも`6354fce0a01093cb5545ed6bb9730aceb3b20023`であり、固定SEI source blobと同一bytesです。
+
 ```text
-SEI source
-  = authority
+SEI pinned revision/blob
+  = this Stage 0 authority baseline
 
 TEI reference copy
   = frozen experiment input
   != second authority
+
+pinned-baseline conformance
+  != current SEI main conformance
 ```
+
+2026-09-18のcross-repository再確認では、SEI current `main`は`a485a658ee622433990dcb7323859a70f4be6f49`で、固定revision `e943683f...`はその254 commit後の子孫です。current `main`にはfixture pathがありません。一方、`develop/v0.2.0`等のactive refは固定revisionを祖先として保持し、`develop/v0.2.0`上でも同じsource path / blobを確認できました。
+
+branch refはnavigation情報でありauthority fingerprintにはしません。このStage 0が主張するのは固定revision/blobへの適合だけで、current source conformanceは`not-claimed`とします。
 
 fixtureのschemaをTEIのCanonical schemaへ昇格させません。変更が必要な場合はSEI側source revisionを先に固定し、別revisionのReferenceとして明示的に更新します。
 
