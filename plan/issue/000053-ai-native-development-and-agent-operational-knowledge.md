@@ -678,6 +678,52 @@ Authorization applicable here
 
 この段階でもBusiness Step / Application Patternのproduction authoring locus、override / precedence rule、Application-wide profileは固定しない。
 
+### R3F — repository-backed cross-Procedure scope pressure
+
+R3Eのsynthetic second-use-caseを、current Repositoryに既に存在するPattern reuseでcorroborateする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3F_REPOSITORY_BACKED_AUTHORIZATION_SCOPE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3f_repository_backed_scope_pressure_test.go`
+
+current Referenceには:
+
+```text
+order-entry.order-handling/BP-00
+  -> order_entry.recent_orders
+
+order-entry.follow-up/FU-00
+  -> order_entry.recent_orders
+```
+
+が存在する。
+
+二つは異なるBusiness Action文脈なので:
+
+```text
+Business Step scope
+  -> one Procedure/Step address
+
+Application Pattern scope
+  -> both Procedure/Step addresses
+```
+
+というreach差をsynthetic Stepなしで観測できる。
+
+さらにLegacy policyには `browse / order_entry.recent_orders / allow` が存在するが、BP-00 / FU-00のAuthorization requirementはcurrent Business source上ではどちらも `unresolved` のままとする。
+
+```text
+policy target exists
+  != Authorization applicability authority
+  != Pattern scope authority
+```
+
+なおR3Fは同一 `order_entry` Reference family内のcross-Procedure reuseであり、独立second corpusではない。ISSUE-000048 / ISSUE-000050のPre-ADR blocker Bを解消したとは扱わない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
