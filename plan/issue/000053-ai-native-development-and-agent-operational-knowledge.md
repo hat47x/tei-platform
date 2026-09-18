@@ -94,6 +94,29 @@ accepted Business Procedure / Action / Capabilityを読み、
 
 不足があっても、ただちにCanonical kindを増やさない。
 
+Phase 0では、既存のDesign Synthesis `DesignContextPacket`をAI-native開発全体の万能contextへ拡張しない。
+
+```text
+Builder re-entry context
+  != Design Synthesis Context Packet
+  != Human Review Projection
+  != Operational Projection
+```
+
+これらは同じCanonical / Source / Evidence / accepted Decisionをauthority rootとして共有しつつ、用途ごとに必要情報とdisclosure範囲を変えるderived projectionとして比較する。
+
+最低限、各projectionについて、
+
+- current task / audience
+- selected subjects
+- authority / Source / Evidence trace
+- freshness / accepted snapshot dependency
+- unresolved / omitted detail
+- drill-down先
+- authority limit
+
+を説明できるかを確認する。ただしこれをproduction `ApplicationContext` schemaとして先に固定しない。
+
 ## Phase 1 — AI Builder re-entry Reference
 
 既存Reference Applicationへ小さいchange challengeを設定する。
@@ -191,12 +214,37 @@ copy-pasteではなく、
 
 ```text
 origin knowledge
+  + origin dependency / assumption / Variation
   + destination context
   -> applicability / mismatch / override
   -> accepted reused knowledge
 ```
 
 を確認する。
+
+Phase 5では少なくとも二つのauthority形を比較対象にする。
+
+```text
+A. linked reuse
+   destinationがorigin knowledgeへのexplicit dependencyを保持
+   origin change時はsilent updateせずrequalification / stale判定
+
+B. adopted local variation
+   destinationがscoped meaningを自分のauthorityとしてAcceptance
+   origin provenanceは保持
+   origin changeはdestination authorityを自動変更しない
+```
+
+どちらの場合も、
+
+- origin assumptionsをdestinationへ暗黙継承しない
+- destination overrideをoriginへ暗黙back-propagateしない
+- copy-pasteでorigin / Evidenceを失わない
+- origin updateをdestinationへの無条件auto-applyにしない
+
+ことをPressureする。
+
+この比較前にKnowledge Package、inheritance graph、override schema、cross-repository auto-sync protocolをproduction contractとして固定しない。
 
 ## 不変条件
 

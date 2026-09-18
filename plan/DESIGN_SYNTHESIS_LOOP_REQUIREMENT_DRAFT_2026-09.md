@@ -191,11 +191,24 @@ LLMへ渡す前に、Repository全体を自由探索させる代わりに、TEI�
 
 patternの存在や過去の成功を正解とはみなしません。past successful composition / experience candidateはcandidate sourceであり、current applicabilityのEvidenceではありません。利用時は元Execution / Observation / Evidenceへ戻れるprovenanceを保持し、current accepted authority / dependency / Target条件でqualificationします。
 
+RQ-029のcross-Application knowledge portabilityは、このPattern recallとは分けます。origin ApplicationでacceptedなDomain / Infrastructure knowledgeをdestinationへ再利用する場合は、origin / dependency / assumption / Variation / Provider・Target constraint / Evidence / destination overrideを保持し、destination contextで再qualificationしてからProposal / explicit referenceへ進めます。
+
 ```text
 past success
   != current applicability
   != semantic Acceptance
+
+origin accepted
+  != destination applicable
+
+origin change
+  != destination auto-change
+
+destination override
+  != origin mutation
 ```
+
+linked reuseとdestination-owned local variationのどちらを採るかはReferenceで判断し、production inheritance / sync mechanismを先行固定しません。
 
 experience memory / learned rankingを削除してもaccepted meaningが変わらないことを維持します。
 
@@ -347,6 +360,19 @@ bounded context packet
 routing score / retrieval rank / model内部signalだけで`applicable`へ進めず、selected candidateはcurrent accepted authority / Evidenceへ戻ってqualificationします。qualification後も、現在taskに不要なKnowledgeを全量discloseする必要はありません。
 
 ただし、current decisionに必要な`unknown`、missing authority、contradiction reason等をcontext削減のために落としません。
+
+このContext PacketはDesign Synthesis S3用のtask-scoped projectionであり、RQ-027のAI Builder re-entry context、RQ-028のHuman Review Projection、RQ-030のOperational Projectionを一つへ統合するproduction contractではない。
+
+```text
+shared authority roots
+  Canonical / Source / Evidence / Decision
+        ├─> Builder re-entry context
+        ├─> S3 DesignContextPacket
+        ├─> Human Review Projection
+        └─> Operational Projection
+```
+
+必要なfactやtraceは共有できても、用途ごとのdisclosure・authority limit・freshness scopeを保つ。DesignContextPacketをRepository-wide Knowledge Storeや万能Application contextへ拡張しない。
 
 現時点のconceptual shapeは、後続R3〜R6のread-only Evidenceに合わせて次のように読む。
 

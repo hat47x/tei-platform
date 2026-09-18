@@ -54,6 +54,10 @@ probeは次を確認する。
 
 consumer-side validatorはSUI contractを置き換える正本ではない。SUI側の既存契約に対する**shadow conformance probe**としてのみ扱う。
 
+shadow validatorはSUI正本のcontract validatorより新しいdomain constraintを追加してはいけない。たとえば現行`IslandHierarchyContractV1`はhierarchy側でisland IDの非空性を検査しておらず、`schemaVersion`も空文字だけをrejectするため、TEI probeもそのpass / fail semanticsを独自に厳しくしない。
+
+一方、JSON consumerとしてunknown fieldをfail closedすることは**consumer compatibility / transport guard**として別に扱う。これはSUI domain constraintが増えたことを意味しない。source contractが変わった場合は、SUI側を正本としてfixture / shadow probeを再確認する。
+
 ## Stage 0 rules
 
 - inputを変更しない

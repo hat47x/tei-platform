@@ -194,6 +194,40 @@ routing scoreやmodel-native signalはshortlistを作るためのsignalであり
 
 一方、`unknown`やmissing authorityが現在の判断に重要なら、削除せずunresolvedとしてbounded contextへ含めます。context削減のために不確実性を隠すことはしません。
 
+### Context Packetを万能Knowledge Baseにしない
+
+AI BuilderがApplicationへ再入場するとき、人間が変更をreviewするとき、AI Business Actorが業務Actionを選ぶときでは必要情報が異なります。
+
+```text
+same accepted meaning
+  -> Builder context
+  -> Synthesis context
+  -> Human review
+  -> Operational context
+```
+
+という複数projectionを許します。
+
+共通なのはpayload形ではなく、同じCanonical / Source / Evidence / accepted Decisionへ戻れることです。Design SynthesisのContext Packetは候補比較のために小さく保ち、AI-native開発全体のKnowledge Storeへ成長させません。
+
+### Patternを思い出すことと、Knowledgeを移植することは別
+
+Reference Patternは「この構造が役立つかもしれない」というcandidate sourceです。
+
+一方、あるApplicationで受入済みのPolicy、Validation、Capability contract、Infrastructure mapping等を別Applicationへ再利用する場合は、origin側の前提まで含めて扱います。
+
+```text
+origin knowledge
+  + assumption / dependency / Variation
+  + destination context
+  -> applicability / mismatch / override
+  -> destination Acceptance
+```
+
+originで成立したからdestinationでも成立する、とはしません。またoriginが後で変わったからdestinationも自動更新する、ともしません。
+
+destinationがoriginへlinked dependencyを持つのか、origin provenanceを残したlocal variationとして独立するのかを区別できることが重要です。具体的なpackage / inheritance機構はReference前に固定しません。
+
 ## 5. Derived Cognitionは第二の正本ではない
 
 この領域で特に避けたいのは、検索indexやAI memoryの中にしか存在しない業務意味を作ることです。
