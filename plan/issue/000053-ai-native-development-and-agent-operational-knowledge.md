@@ -808,6 +808,54 @@ exception mechanism pressure qualified
 を維持する。
 
 
+
+### R3I — Authorization target / evaluation cadence boundary
+
+R3Hでexception mechanism lineをEvidence不足として保留し、read-only AI Business Actorの本線へ戻る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3I_AUTHORIZATION_TARGET_EVALUATION_CADENCE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3i_authorization_target_cadence_pressure_test.go`
+
+R3Iでは:
+
+```text
+Authorization requirement
+  != protected target/action authority
+  != Authorization evaluation
+  != evaluation reuse authority
+```
+
+をPressureする。
+
+current BP-06は `security.authorize` によりrequirementは `required` で、protected-target overlayから `order_entry.submit_order` resource候補まで得られる。しかしoverlayはAuthorization actionをauthorしない。
+
+Legacy policyに `execute / order_entry.submit_order` が存在してもmissing action authorityをbackfillしない。
+
+したがって:
+
+```text
+requirement = required
+resource resolved
+action unresolved
+  -> authorization-action-unresolved
+```
+
+で停止する。
+
+またaction/resourceが明示され、prior Authorization evaluationが存在しても、別Step / Procedureへは暗黙reuseしない。
+
+```text
+evaluation observed once
+  != evaluation reusable elsewhere
+```
+
+test-only reuse authorityは意味差比較にだけ利用し、production cache/session cadence、TTL、revocation modelは固定しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
