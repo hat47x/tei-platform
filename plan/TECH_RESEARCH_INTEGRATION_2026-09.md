@@ -630,6 +630,36 @@ D: hybrid routing
 - selection後にdeterministic qualificationを通す
 - all-skill metadata preloadを必須architectureにしない
 
+#### R6 first Reference pressure — 2026-09-18
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6_selective_knowledge_routing_pressure_test.go`
+
+current Business Procedure ReferenceのBP-02を使い、次を最小Pressureする。
+
+```text
+available Application Pattern knowledge
+  -> router-specific selected candidates
+  -> deterministic qualification against current task / Source Index
+  -> task-scoped disclosed knowledge
+```
+
+最初の比較では、exact deterministic routerと、意図的に候補を広く返すtest routerを使う。routing方式が異なっても、deterministic qualification後のqualified identityが同じになることを要求する。
+
+このReferenceで固定する非同一性:
+
+```text
+available != selected
+selected != qualified
+qualified != execution authority
+routing mechanism != semantic authority
+```
+
+routing score / confidence / winnerは導入しない。embedding、model-native routing、Derived Cognitive Retrievalもこの段階では実装せず、後からrouterを交換しても同じqualification boundaryを通せる形だけをPressureする。
+
+R7 / R8はここで擬似実装しない。R7はFirst Web Targetのactual interaction Evidence、R8はactual Execution / Observationを入力として必要とするため、R6のstatic Source Evidenceから成功扱いへ昇格させない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
