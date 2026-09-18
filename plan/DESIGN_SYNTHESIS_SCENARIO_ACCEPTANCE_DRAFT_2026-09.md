@@ -79,6 +79,11 @@ decision policy / routing choice
   != semantic action contract
   != current execution authority
 
+knowledge available
+  != selected candidate
+  != current applicability
+  != disclosed context
+
 generated implementation
   != test oracle
 
@@ -558,6 +563,17 @@ requested structured output
 
 Repository全dumpやhidden exploration historyは標準入力にしない。
 
+routing / retrievalを使う場合、LLMへ渡すKnowledgeは次の段階を区別する。
+
+```text
+available
+  -> selected by routing
+  -> deterministically qualified
+  -> intentionally disclosed
+```
+
+selectedであることだけを`applicable`とせず、routing score / retrieval rank / model内部signalをSemantic Evidenceへ変換しない。qualification済みでもcurrent taskに不要ならdiscloseしなくてよい。一方、current判断に必要なunknown / missing authority / unresolvedは削らない。
+
 ### 7.4 LLM出力
 
 少なくとも次を区別できること。
@@ -611,6 +627,9 @@ actual local LLM評価では少なくとも:
 8. eliminated candidateを根拠なく復活させない。
 9. model差し替えでM1 schema / identityが変わらない。
 10. outputがShared Acceptance前にowner sourceへwrite-backされない。
+11. routing / retrievalを使う場合、disclosed itemをselected candidate / qualification / Source・Evidenceへtraceできる。
+12. routing scoreやselected statusだけをapplicabilityとしてLLMへ提示しない。
+13. context削減のためにcurrent decisionに必要なunknown / missing authorityを隠さない。
 
 ### 7.7 比較Evidence
 

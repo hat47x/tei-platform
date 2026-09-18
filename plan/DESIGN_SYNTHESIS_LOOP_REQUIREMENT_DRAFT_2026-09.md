@@ -332,6 +332,22 @@ LLMへ次のような問いを丸投げしません。
 
 local LLMを実用化するには、大規模Repositoryを毎回promptへ入れるのではなく、前段認知から**bounded context packet**を作ることが重要です。
 
+Knowledge / Skill / Referenceがavailableであること、routingでshortlistされたこと、current taskへ適用可能であること、LLMへ実際にdiscloseすることは別段階として扱います。
+
+```text
+available knowledge
+      ↓ routing / shortlist
+selected candidate
+      ↓ deterministic qualification
+applicable / incompatible / unknown
+      ↓ task-scoped disclosure
+bounded context packet
+```
+
+routing score / retrieval rank / model内部signalだけで`applicable`へ進めず、selected candidateはcurrent accepted authority / Evidenceへ戻ってqualificationします。qualification後も、現在taskに不要なKnowledgeを全量discloseする必要はありません。
+
+ただし、current decisionに必要な`unknown`、missing authority、contradiction reason等をcontext削減のために落としません。
+
 現時点のconceptual shapeは、後続R3〜R6のread-only Evidenceに合わせて次のように読む。
 
 ```text
@@ -521,11 +537,15 @@ LLMの主観的rankingだけで候補を除外しないこと。
 
 ### DSR-05 Local Pre-LLM Cognition — Must
 
-LLM呼び出し前に、exact / graph / constraint / pattern / associative / cross-view cognitionをローカルで実行し、bounded candidate spaceとEvidence packetを構成できること。
+LLM呼び出し前に、exact / graph / constraint / pattern / associative / cross-view cognitionをローカルで実行し、routing / shortlistとcurrent authorityに基づくdeterministic qualificationを分離したうえで、bounded candidate spaceとEvidence packetを構成できること。
+
+retrieval / routing scoreだけをSemantic applicabilityへ昇格しないこと。
 
 ### DSR-06 Bounded LLM Context — Must
 
-LLMへRepository全体を無制限に渡すことを標準とせず、current taskに必要なexact fact、candidate、constraint、Evidence、unresolvedを構造化して渡せること。
+LLMへRepository全体や全Skill / 全Knowledge metadataを無制限に渡すことを標準とせず、current taskに必要なexact fact、qualified candidate、constraint、Evidence、unresolvedを構造化して渡せること。
+
+available knowledge、selected candidate、current applicability、disclosed contextを区別し、qualification済みでもtaskに不要なKnowledgeを自動discloseしないこと。一方、判断に必要なunknown / missing authorityをcontext削減のために隠さないこと。
 
 ### DSR-07 LLM as Synthesis, not Authority — Must
 
