@@ -112,14 +112,24 @@ locator-refresh-required
 
 ## 3. identityとdeltaを分ける
 
-R3AB root identityはlocatorを含めない。
+R3ACのsame-root比較addressは:
 
-したがって同一root identityに対する:
+```text
+Identity + Role
+```
 
-- fingerprint delta
+とする。
+
+locatorだけでなく、観測値を表すClaimKindもaddressへ含めない。ClaimKind / fingerprintはroot revision側として扱う。
+
+したがって同一root addressに対する:
+
+- ClaimKind / fingerprint delta
 - locator delta
 
 を独立に観測する。
+
+same Authorization tupleでprior Observationが `allowed -> denied` へ変わる場合も、root replacementではなくruntime Observation revisionとして分類する。
 
 同時に起きた場合は二つのchange reasonを保持し、一方へ丸めない。
 
@@ -185,7 +195,7 @@ root delta classified
 Pressureするcase:
 
 1. Reference Evidence content変更を専用classにする
-2. runtime Observation変更をReference変更へ潰さない
+2. same runtime tupleのObservation claim / fingerprint変更をruntime changeとし、root-set changeやReference変更へ潰さない
 3. test-only context変更をproduction authority変更へしない
 4. corroboration変更をauthority変更へしない
 5. locator-only moveをcontent changeへしない
