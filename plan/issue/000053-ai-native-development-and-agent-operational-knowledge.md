@@ -485,6 +485,43 @@ read route understood
 
 R3ではMCP / API等のtransport contract、Agent principal mapping、actual query invocationをまだ追加しない。
 
+### R3A — principal / Authorization target boundary
+
+R3 static read routeの次段は `plan/ACTOR_CONTEXT_R3A_PRINCIPAL_AUTHORIZATION_BOUNDARY_2026-09.md` を正本とする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3a_principal_authorization_pressure_test.go`
+
+既存 `security.authenticate` / `security.authorize` を再利用し、新しいPrincipal / Role / Permission体系は作らない。
+
+R3Aでは、
+
+- Business Procedureのcandidate actor labelをruntime principalへ変換しない
+- 明示的な `security.authenticate / authenticated` subjectだけでprincipal gapを解消する
+- authenticated subjectだけではAuthorizationを成立させない
+- `Application access=read` からAuthorization action `browse` を生成しない
+- Legacy Authorization policyだけからmissing Business/Application targetをbackfillしない
+- BP-02のaction/resource authorityが未解決な間はAuthorizationをinvokeしない
+
+ことをPressureする。
+
+```text
+Business actor label
+  != authenticated subject
+
+authenticated subject
+  != authorized
+
+Application read access
+  != Authorization browse action
+
+policy rule
+  != Business/Application target authority
+```
+
+Authentication Observationはruntime contextであり、R3 static source freshnessのcontent fingerprint集合へ混ぜない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
