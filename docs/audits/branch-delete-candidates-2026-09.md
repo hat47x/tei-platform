@@ -1184,3 +1184,66 @@ DELETE_CANDIDATE: 178
 ```
 
 上記178本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 41. 2026-09-18 candidate pass 25 — Gate B PostgreSQL / runner refs
+
+Gate BのPostgreSQL hardeningとrunner / post-run stabilityに関する旧work refをcurrent `main`と比較しました。
+
+### 41.1 PostgreSQL
+
+- `work/gate-b-postgres-database-name-redaction`
+- `work/gate-b-postgres-event-trigger-doc-sync`
+- `work/gate-b-postgres-event-trigger-upper-sync`
+- `work/gate-b-postgres-evidence-safety-doc-sync`
+- `work/gate-b-postgres-main-gofmt`
+- `work/gate-b-postgres-package-preflight-sync`
+- `work/gate-b-postgres-path-only-reconcile`
+
+### 41.2 Runner / post-run
+
+- `work/gate-b-repository-evidence-runner`
+- `work/gate-b-runbook-final-runner-sync`
+- `work/gate-b-runbook-generated-artifact-evidence-runner`
+- `work/gate-b-runbook-generated-artifact-runner-minimal`
+- `work/gate-b-runner-post-run-plan-sync`
+- `work/gate-b-runner-post-run-stability`
+- `work/gate-b-runner-post-run-stability-main-sync`
+- `work/gate-b-runner-post-run-stability-v2`
+
+確認時点のcurrent `main`:
+
+```text
+ae675c376f3f0f1249bb5fdd43b349b0561a3905
+```
+
+15本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PR headではなく、保存用Evidence / bootstrap ref等の固有用途も確認されていません。PostgreSQL / runner / Evidenceという名称だけを理由に保持せず、current mainへ成果が完全包含されていることを比較結果で確認しています。
+
+このため15本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 25結果
+
+```text
+reviewed refs:         15
+DELETE_CANDIDATE:      15
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
+## 42. current summary — pass 25
+
+candidate pass 25までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 193
+```
+
+上記193本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
