@@ -144,6 +144,9 @@ Handover Baselineに存在しない意味をWeb側だけで追加してcoverage�
 - execution artifact / ABI / Host identity / observations（適用可能な範囲）
 - Execution / Trust observations
 - interaction steps
+- replayable behavior identity / precondition / expected semantic operation（利用する場合）
+- raw Target Evidence reference（replay / normalized Evidenceを利用する場合）
+- normalized event / behavior Evidence referenceとraw provenance（利用する場合）
 - Business Result / named Outcome / Execution Error / Observation classification
 - semantic result
 - functional result
@@ -190,6 +193,8 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
 - [ ] Driver baselineとWeb Scenarioを対応付ける
 - [ ] Semantic / Functional / Visual Evidenceを別々に保存・再確認できる
+- [ ] replayable behaviorを利用する場合、Handover Scenario / semantic operation / raw Target Evidenceへtraceできる
+- [ ] normalized Evidenceを利用する場合、raw Target Evidenceへ戻れる
 - [ ] Business Result / Execution Error / Observationを別々に扱える
 - [ ] architecture negative casesを再現可能に確認できる
 - [ ] Web Adapter除去時のCanonical不変を確認できる
@@ -209,6 +214,8 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - execution artifact / ABI / Hostのproduction taxonomy / schema
 - pixel-perfect design system
 - VLM / GUI agent標準化
+- Replayable Behavior / normalized event形式のproduction標準化
+- Universal Event Modelの先行設計
 - 一律のvisual score threshold
 - Handover artifactのCanonical化
 - Target buildをbaseline revisionと同じGit revisionへ固定すること
