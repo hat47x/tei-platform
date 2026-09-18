@@ -1582,6 +1582,32 @@ ISSUE-000047 qualification
 
 Pre-GateではISSUE-000039のimpact engine、第一Web Target、second Target、write Capabilityを前倒ししない。
 
+### Phase 5 Pre-Gate — schema sufficiency
+
+second Application Pre-Gate contractに対し、新しいPortability schemaを追加せず既存TEI grammarで表現可能かをPressureする。
+
+正本:
+
+- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go`
+
+current hypothesis:
+
+```text
+Portability planning context
+  -> existing Canonical Application / Pattern / Environment source
+
+Portability planning context
+  != new Canonical declaration kind
+```
+
+AI Builder向けのorigin provenance / reuse relation / unresolvedはderived contextとして保持し、生成されるauthoritative sourceは通常のTEI sourceとする。
+
+actual second Applicationで不足が観測されるまで、Knowledge Package / inherit / override / sync grammarをproduction化しない。
+
 ## 不変条件
 
 ```text
