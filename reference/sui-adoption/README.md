@@ -26,6 +26,34 @@ TEI側でfixtureを変更してSUI contractの意味を拡張してはいけま�
 | `M3-missing-parent.invalid.json` | fail | 欠損parentを拒否 |
 | `M4-cycle.invalid.json` | fail | cycleを拒否 |
 
+## Read-only Reference probe
+
+Stage 0のconsumer-side probeは `tools/reference-sui-adoption` に置く。
+
+```bash
+go test ./tools/reference-sui-adoption
+
+go run ./tools/reference-sui-adoption \
+  -workspace reference/sui-adoption/workspace \
+  -fixture reference/sui-adoption/M2-three-level.valid.json \
+  -expect valid
+
+go run ./tools/reference-sui-adoption \
+  -workspace reference/sui-adoption/workspace \
+  -fixture reference/sui-adoption/M4-cycle.invalid.json \
+  -expect invalid
+```
+
+probeは次を確認する。
+
+- TEI Workspaceに`sui.island` definitionが一意に存在する
+- `sui.island.parent`が`sui.island`へのone relationとして解決できる
+- SUI既存handoff fixtureのM1〜M4をread-onlyで検査できる
+- fixture内のIsland instanceをTEI Canonical objectへ昇格しない
+- Product runtimeやfixtureを書き換えない
+
+consumer-side validatorはSUI contractを置き換える正本ではない。SUI側の既存契約に対する**shadow conformance probe**としてのみ扱う。
+
 ## Stage 0 rules
 
 - inputを変更しない
