@@ -1402,6 +1402,61 @@ Capability qualified
 R6BはR3N以降のstop / disclosure / freshness semanticsを置き換えず、どのknowledgeをそのProjectionへ渡す候補にするかという一段手前のrouting boundaryだけをPressureする。
 
 
+
+### R3T — Projection re-evaluation reason / impact explanation
+
+R3Sでselected categoryからdependency / reasonへ戻れるようにした後、actual input changeが起きたときに「どのcategoryが、なぜ再評価対象になったか」を説明するtest-only pressureへ進む。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3T_PROJECTION_REEVALUATION_REASON_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3t_projection_reevaluation_reason_pressure_test.go`
+
+R3Tでは少なくとも:
+
+```text
+semantic-source-changed
+reference-input-changed
+locator-refresh-required
+runtime-observation-changed
+profile-changed
+```
+
+を別のchange classとして扱う。
+
+```text
+stale = true
+```
+
+だけへ畳まない。
+
+R3S reason edgeを使い、changeがselected categoryへ実際に接続される場合だけre-evaluation reasonを生成する。
+
+Human bounded viewでomittedされたdependency changeは:
+
+```text
+no selected-category re-evaluation reason
+```
+
+とし、「globally irrelevant」とは扱わない。
+
+locator-only moveでは `source-refs / locator-refresh-required` だけを説明し、semantic machine reasonをstaleへしない。
+
+runtime Observation変化は `runtime-outcome / runtime-observation-changed` へ接続し、static source changeへ読み替えない。
+
+selected / omitted partition変更は `profile-changed` として独立に説明する。
+
+```text
+affected
+  != automatically rebuilt
+```
+
+を維持し、ISSUE-000039のproduction impact engine / invalidation graph / event routingは前倒ししない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
