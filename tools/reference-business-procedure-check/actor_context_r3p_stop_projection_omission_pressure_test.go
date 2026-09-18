@@ -222,7 +222,7 @@ func TestActorContextR3PDeniedKeepsSelectedEmptyResolutionNeeds(t *testing.T) {
 }
 
 func TestActorContextR3PSelectionPartitionFailsClosed(t *testing.T) {
-	for name, selected, omitted := range map[string]struct {
+	cases := map[string]struct {
 		selected []string
 		omitted  []string
 	}{
@@ -247,10 +247,11 @@ func TestActorContextR3PSelectionPartitionFailsClosed(t *testing.T) {
 			selected: actorContextR3PAllCategoriesCopy()[:len(actorContextR3PAllCategories)-1],
 			omitted:  nil,
 		},
-	} {
+	}
+	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			if err := actorContextR3PValidateCategoryPartition(selected, omitted); err == nil {
-				t.Fatalf("R3P accepted invalid selected/omitted partition: selected=%v omitted=%v", selected, omitted)
+			if err := actorContextR3PValidateCategoryPartition(tc.selected, tc.omitted); err == nil {
+				t.Fatalf("R3P accepted invalid selected/omitted partition: selected=%v omitted=%v", tc.selected, tc.omitted)
 			}
 		})
 	}
