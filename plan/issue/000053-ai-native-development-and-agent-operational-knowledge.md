@@ -246,6 +246,7 @@ source上では次を固定している。
 
 - 同じBusiness Procedure Reference fingerprintを三Projectionで保持
 - そのfingerprintだけをprojection freshness authorityにせず、selected workspace source definition fingerprintを各Projectionへ保持
+- Datasource / accepted accessを含むProjectionでは、そのauthorityを所有するApplication source fingerprintも保持
 - Human Reviewではcustomer-edit conflict Evidence fingerprintも追加
 - `canonical=false`を維持
 - BP-02 datasource accessを`read`のまま保持
