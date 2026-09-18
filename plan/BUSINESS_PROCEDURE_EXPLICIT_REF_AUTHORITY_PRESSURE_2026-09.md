@@ -182,7 +182,7 @@ O1ではgeneric role enumへ進まず、test-only `applicationPatternTargets`比
 
 `application_pattern_target_pressure_test.go`へsource-level test-only Pressureを実装済み。ただしcurrent fixture schemaやproduction Canonical fieldへはまだ採用していない。
 
-詳細は`BUSINESS_PROCEDURE_APPLICATION_PATTERN_TARGET_PRESSURE_2026-09.md`を参照する。
+詳細は`BUSINESS_PROCEDURE_D4_O1_2026-09.md`（Part 2、旧`APPLICATION_PATTERN_TARGET_PRESSURE`）を参照する。
 
 ## 9. pre-ADR判断
 
