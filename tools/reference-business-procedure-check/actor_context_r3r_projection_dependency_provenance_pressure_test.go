@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -141,11 +143,11 @@ func TestActorContextR3RReferenceArtifactsStaySeparateFromSourceIndexSubjects(t 
 	businessPath := filepath.Join(root, "reference", "business-system-design", "order-entry-business-procedure.json")
 	overlayPath := filepath.Join(root, "reference", "business-system-design", "order-entry-protected-target-overlay.json")
 
-	businessBytes, err := osReadFileForR3R(businessPath)
+	businessBytes, err := os.ReadFile(businessPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlayBytes, err := osReadFileForR3R(overlayPath)
+	overlayBytes, err := os.ReadFile(overlayPath)
 	if err != nil {
 		t.Fatal(err)
 	}
