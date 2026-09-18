@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	actorContextR3ZGateInsufficient = "insufficient-evidence"
-	actorContextR3ZGateSynthetic    = "synthetic-conflict-pressure"
-	actorContextR3ZGateQualified    = "precedence-mechanism-pressure-qualified"
+	actorContextR3ZGateInsufficient             = "insufficient-evidence"
+	actorContextR3ZGateSameSourceCompatibility = "same-source-compatibility-unresolved"
+	actorContextR3ZGateSynthetic                = "synthetic-conflict-pressure"
+	actorContextR3ZGateQualified                = "precedence-mechanism-pressure-qualified"
 )
 
 type actorContextR3ZConflictEvidenceProbe struct {
@@ -63,6 +64,25 @@ func TestActorContextR3YGenericReusePermissionDoesNotProvePrecedenceConflict(t *
 	}
 	if !actorContextR0Contains(gate.BlockingReasons, "reuse-bypass-semantics-unresolved") {
 		t.Fatalf("R3Z lost the distinction between generic reuse and no-reevaluation reuse: %+v", gate)
+	}
+}
+
+func TestActorContextR3ZSameSourceConflictKeepsCompatibilityUnresolved(t *testing.T) {
+	got := actorContextR3ZEvaluateGate(actorContextR3ZConflictEvidenceProbe{
+		SameAuthorizationTuple:        true,
+		ExplicitReevaluationDirective: true,
+		ExplicitReuseBypassDirective:  true,
+		ExplicitReevaluationSource:    "test-only:freshness-authority/same-source",
+		ExplicitReuseSource:           "test-only:freshness-authority/same-source",
+		SameApplicabilityScope:        true,
+		RepositoryBacked:              true,
+	})
+
+	if got.Status != actorContextR3ZGateSameSourceCompatibility {
+		t.Fatalf("same-source coexistence was misclassified as cross-authority precedence conflict: %+v", got)
+	}
+	if !actorContextR0Contains(got.BlockingReasons, "cross-authority-provenance-unresolved") {
+		t.Fatalf("R3Z lost same-source compatibility blocker: %+v", got)
 	}
 }
 
@@ -197,6 +217,7 @@ func actorContextR3ZEvaluateGate(
 	result := actorContextR3ZGateResultProbe{
 		AuthorityLimits: []string{
 			"generic-reuse-permission-is-not-reevaluation-bypass-authority",
+			"same-source-coexistence-does-not-imply-cross-authority-precedence",
 			"provider-policy-revision-is-not-freshness-directive-authority",
 			"synthetic-conflict-does-not-justify-production-precedence",
 			"qualified-conflict-does-not-select-precedence-winner",
@@ -227,6 +248,12 @@ func actorContextR3ZEvaluateGate(
 	if len(blockers) > 0 {
 		result.Status = actorContextR3ZGateInsufficient
 		result.BlockingReasons = blockers
+		return result
+	}
+
+	if evidence.ExplicitReevaluationSource == evidence.ExplicitReuseSource {
+		result.Status = actorContextR3ZGateSameSourceCompatibility
+		result.BlockingReasons = []string{"cross-authority-provenance-unresolved"}
 		return result
 	}
 
