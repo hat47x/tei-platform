@@ -423,6 +423,59 @@ Operational ProjectionはAI Business Actorがcurrent Procedure / Action / Capabi
 
 現時点では汎用`ApplicationContext` / `KnowledgePacket` schemaをCoreへ固定しません。ISSUE-000053 Phase 0〜2で、既存assetからどこまで再構築できるかを先にPressureします。
 
+### Knowledge portabilityはpattern recallと分ける
+
+別Applicationの知識を再利用するとき、Reference Patternとして「似た構造を思い出す」ことと、origin Applicationで受入済みのDomain / Infrastructure knowledgeをdestinationへ持ち込むことを同一視しません。
+
+```text
+pattern recall
+  -> candidate source / hint
+
+knowledge portability
+  -> origin accepted knowledge
+  + dependency / assumption / Variation
+  + destination context
+  -> qualification / mismatch / override
+  -> destination Acceptance
+```
+
+したがって、
+
+```text
+knowledge exists at origin
+  != applicable at destination
+
+knowledge reused
+  != origin assumptions automatically valid
+
+origin updated
+  != destination silently updated
+
+destination override
+  != origin knowledge changed
+```
+
+です。
+
+cross-Application reuseでは、少なくともorigin、dependency、assumption / precondition、Variation、Provider / Target constraint、Evidence / Decision、destination-specific overrideへ戻れることを優先します。
+
+reuse後のauthorityには複数形があり得ます。たとえばconceptually:
+
+```text
+linked reuse
+  destination remains explicitly dependent on origin knowledge
+
+adopted local variation
+  destination accepts its own scoped meaning
+  while retaining origin provenance
+```
+
+のような差です。どちらを採る場合も、origin側の更新をdestinationへ無条件auto-applyしません。linked dependencyなら再qualification / stale判定対象にでき、local variationならorigin changeはcurrent destination authorityを自動変更しません。
+
+destination overrideをoriginへ暗黙back-propagateせず、copy-pasteだけでprovenanceを失ったforkを標準経路にしません。
+
+現時点ではKnowledge Package、inheritance graph、override schema、cross-repository auto-sync protocolをCoreへ固定しません。RQ-029 / ISSUE-000053 Phase 5のReferenceから、どのdependency / invalidation / override traceがdurable contractとして必要かを確認します。
+
 ### known operationはAI呼び出しを必須にしない
 
 Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。
