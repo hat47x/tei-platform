@@ -119,6 +119,31 @@ Gate C後の最初のread-only Referenceでは、
 
 また、shared dependency change / origin provenance drift / destination-local change / unrelated origin changeの期待値をPre-Gateで固定するが、ISSUE-000039のimpact engineを前倒し実装しない。
 
+### Pre-Gate schema sufficiency
+
+第二Application専用schemaを先に作らず、既存Application / Pattern / Environment grammarで最小構成を表現できるかをtest-onlyにPressureする。
+
+正本:
+
+- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go`
+
+初回read-only Referenceについてcurrent grammarで、
+
+- shared Semantic
+- compatible Database Contract requirement
+- destination-owned datasource alias
+- destination-owned reference Pattern
+- shared Contract Query / input mapping
+- destination Environment binding
+
+を表現できるなら、専用Knowledge Package / inheritance / override / sync構文は追加しない。
+
+追加schemaの必要性は、actual second ApplicationのAcceptance / reload / change propagationからEvidenceが出た場合に再評価する。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
