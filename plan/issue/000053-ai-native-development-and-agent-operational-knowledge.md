@@ -896,6 +896,111 @@ test-only explicit action candidateにはprovenanceを要求し、それを与�
 
 production action field / generic relation / `command -> execute` convention / policy backfillは追加しない。
 
+
+### R3K — Authorization action authoring scope pressure
+
+R3Jでcurrent action authority Evidence Gateを未充足として保持したまま、production locusを選ぶ前にaction authorityのscope差をtest-onlyにPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3K_AUTHORIZATION_ACTION_AUTHORING_SCOPE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3k_authorization_action_scope_pressure_test.go`
+
+current Repositoryの `order_entry.recent_orders` は:
+
+```text
+order-entry.order-handling/BP-00
+order-entry.follow-up/FU-00
+```
+
+から再利用され、Pattern kindは `browse`、Legacy policy actionも `browse` である。
+
+しかし両StepのAuthorization requirementは `unresolved` のため、`browse` はaccepted AuthorizationAction authorityではなくtest-only candidateとしてのみ扱う。
+
+R3Kでは:
+
+```text
+Business Step scoped action
+  -> selected Procedure/Step only
+
+Application Pattern scoped action
+  -> every use of the Pattern
+
+explicit cross-view action
+  -> explicitly selected Procedure/Step + Pattern edges
+```
+
+のreach差をPressureする。
+
+また:
+
+```text
+Authorization requirement scope
+  != Authorization action scope
+
+Pattern kind = browse
+  + policy action = browse
+  != accepted AuthorizationAction = browse
+```
+
+を維持する。
+
+current `recent_orders` caseはsemantic scope pressureには使えるが、repository-backedな第二のrequired Authorization interactionではないため、production action locusを選ぶEvidenceにはしない。
+
+
+### R3L — Authorization action locus Evidence Gate
+
+R3KでBusiness Step / Application Pattern / explicit cross-viewのaction scope差をPressureした後、production locusを選ぶ前提となるqualifying Evidence条件を明示する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3L_AUTHORIZATION_ACTION_LOCUS_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3l_authorization_action_locus_evidence_gate_pressure_test.go`
+
+qualifying protected interactionには少なくとも:
+
+```text
+Authorization requirement = required
+protected resource = explicit authority
+Authorization action = explicit Business/Application authority
+repository-backed
+provider-independent meaning
+```
+
+を要求する。
+
+さらにproduction locus比較を開くには、二つ以上のqualifying interactionと、異なるPattern kind / action語彙 / reuse shape / Business-context variation等のlocus-discriminating variationが必要とする。
+
+current Referenceでは:
+
+```text
+BP-06
+  required = yes
+  resource authority = yes
+  action authority = unresolved
+
+BP-00 / FU-00
+  requirement = unresolved
+```
+
+なので、Action Locus Evidence Gateは `insufficient-evidence` のままである。
+
+Business wording / Pattern kind / Legacy policyのhintを不足authorityの補完に使わず、一つのprotected interactionだけから再利用可能なproduction locus ruleを作らない。
+
+```text
+action-locus-pressure-qualified
+  != locus winner selected
+```
+
+も維持する。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
