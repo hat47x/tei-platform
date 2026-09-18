@@ -390,6 +390,39 @@ AI向けにCanonical Worldを複製した第二のKnowledge Baseを正本化し�
 
 現時点ではAI Actor専用Runtime、Agent Framework、Agent-only Capability taxonomy、machine-executable Procedure schemaをCoreへ追加しません。RQ-030 / ADR-0028 / ISSUE-000053のReferenceから最小contractを決めます。
 
+### 共通知識面とactor-specific projectionを分ける
+
+人間、AI Builder、AI Business Actorが同じTEI knowledgeへ到達できることは、全員へ同じ巨大payloadを渡すことを意味しません。
+
+```text
+Canonical / Source / Evidence / accepted Decisions
+        ├─> AI Builder re-entry context
+        ├─> Design Synthesis Context Packet
+        ├─> Human Review Projection
+        └─> Operational Projection
+```
+
+これらは同じauthority rootsへ戻れる**用途別のderived projection**として扱います。
+
+```text
+shared knowledge plane
+  != one universal context object
+  != one universal prompt
+  != one replicated knowledge database
+```
+
+AI Builder re-entry contextは、change target、dependency / impact、accepted Decision / Variation、Capability / Binding、native asset、unresolved、Evidence等へ再入場時に到達するためのprojectionです。
+
+Design Synthesis Context Packetは、その中からcurrent synthesis taskに必要なcandidate frontier / proof / unresolved等へさらに狭めたtask-scoped projectionです。RQ-027を理由にS3 packetをRepository全体の永続Knowledge Storeへ拡張しません。
+
+Human Review Projectionはsemantic diff、impact、exception、unresolved、authority change、Evidence等を高密度に見せるためのprojectionです。情報を省略しても、Canonical ID / Source / Evidenceへdrill-downできることを優先します。
+
+Operational ProjectionはAI Business Actorがcurrent Procedure / Action / Capability / Authorization requirement / expected Evidenceを理解するためのprojectionです。そこにCapabilityが表示されること自体をinvoke authorityにはしません。
+
+各projectionは必要に応じて再生成でき、削除してもaccepted meaningが失われてはいけません。同じsemantic factをprojectionごとに独立authoringしません。
+
+現時点では汎用`ApplicationContext` / `KnowledgePacket` schemaをCoreへ固定しません。ISSUE-000053 Phase 0〜2で、既存assetからどこまで再構築できるかを先にPressureします。
+
 ### known operationはAI呼び出しを必須にしない
 
 Decision Policyを交換可能にすることは、すべてのoperationをLLMへ送ることを意味しません。

@@ -94,6 +94,29 @@ accepted Business Procedure / Action / Capabilityを読み、
 
 不足があっても、ただちにCanonical kindを増やさない。
 
+Phase 0では、既存のDesign Synthesis `DesignContextPacket`をAI-native開発全体の万能contextへ拡張しない。
+
+```text
+Builder re-entry context
+  != Design Synthesis Context Packet
+  != Human Review Projection
+  != Operational Projection
+```
+
+これらは同じCanonical / Source / Evidence / accepted Decisionをauthority rootとして共有しつつ、用途ごとに必要情報とdisclosure範囲を変えるderived projectionとして比較する。
+
+最低限、各projectionについて、
+
+- current task / audience
+- selected subjects
+- authority / Source / Evidence trace
+- freshness / accepted snapshot dependency
+- unresolved / omitted detail
+- drill-down先
+- authority limit
+
+を説明できるかを確認する。ただしこれをproduction `ApplicationContext` schemaとして先に固定しない。
+
 ## Phase 1 — AI Builder re-entry Reference
 
 既存Reference Applicationへ小さいchange challengeを設定する。
