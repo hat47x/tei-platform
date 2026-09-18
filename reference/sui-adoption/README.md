@@ -15,6 +15,19 @@ SUI側の既存contract:
 
 2026-09-18時点のSUI test corpusにあるM1〜M4を、TEI側のread-only probe準備用に同じ意味で固定しています。
 
+Stage 0がshadowしているexact baselineは次です。
+
+| Source | Pinned value |
+|---|---|
+| repository | `hat47x/sui-sensemaking` |
+| navigation revision | `725e9d9c8958e63c18d8edca94f19c4b98db0dde` |
+| `island_contracts.ts` blob | `5d63cbec446abf0dd8054a5c498f726377c51a9f` |
+| `island_hierarchy_handoff.ts` blob | `9bf17490a8d5936b4b7679370da861439e90a8ab` |
+| `island_contracts.test.ts` blob | `4c91399cbc2da4526171812178ecdf98f9272027` |
+| `island_hierarchy_handoff.test.ts` blob | `e069871a13c932dbb1c11cbed5e08e318f93be8c` |
+
+revision SHAはbaselineを辿るためのprovenanceです。shadow conformanceのfreshnessはrepository全体のrevisionではなく、上記のactual dependency blobへ束縛します。SUIの無関係なfile変更だけでStage 0をstale扱いにはしません。
+
 TEI側でfixtureを変更してSUI contractの意味を拡張してはいけません。契約変更が必要ならSUI側を正本として判断し、fixtureはその結果へ追随します。
 
 ## Cases
@@ -53,6 +66,8 @@ probeは次を確認する。
 - Product runtimeやfixtureを書き換えない
 
 consumer-side validatorはSUI contractを置き換える正本ではない。SUI側の既存契約に対する**shadow conformance probe**としてのみ扱う。
+
+probe reportにはpinned SUI revisionとactual dependency blob SHAを残し、「何をshadowした結果か」を後から再現できるようにする。
 
 shadow validatorはSUI正本のcontract validatorより新しいdomain constraintを追加してはいけない。たとえば現行`IslandHierarchyContractV1`はhierarchy側でisland IDの非空性を検査しておらず、`schemaVersion`も空文字だけをrejectするため、TEI probeもそのpass / fail semanticsを独自に厳しくしない。
 
