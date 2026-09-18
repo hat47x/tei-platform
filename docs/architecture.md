@@ -191,6 +191,47 @@ Coreへ無制限に専用kindを追加しない方針です。概念上のMicro 
 
 Data、Action、Workflow、StateMachine、Migration等は、すべてをMicro Kernelの専用primitiveにする必要はないと考えています。
 
+### Canonical definitionとApplication instance dataを分ける
+
+Canonical Semantic Layerが扱うData / Relation / Validation等の**定義上の意味**と、Application利用時に生成・保存される個々のrecord / user content / domain instanceを同一視しません。
+
+```text
+Canonical / semantic definition
+  Customer
+  Order
+  Card
+  Relation type / constraint
+
+Application instance data
+  customer-123
+  order-2026-001
+  card-001
+  edge-019
+```
+
+前者は「何を意味し、どの構造・制約を持つか」を表します。後者は、その定義に従ってApplication / Database / external system等が保持する実データです。
+
+したがって、
+
+```text
+Canonical subject identity
+  != application record identity
+
+Relation definition
+  != one relation instance
+
+Lifecycle / state definition
+  != one runtime object's current state
+```
+
+です。
+
+Application instanceがSource / Observation / Evidenceの対象になったり、Validation / Authorization / Capabilityから参照されたりすることはありますが、その存在だけでCanonical Worldへtop-level semantic objectとして取り込みません。traceabilityのためだけに全recordをCanonical object化しないことを優先します。
+
+一方、reference data、policy table、configuration、静的content等で、あるinstance集合そのものをauthoritative authoring assetとして扱うProduct設計もあり得ます。その場合は「instanceだから除外」「dataだからCanonical」と機械的に決めず、source owner / lifecycle / mutation authorityを明示して分類します。
+
+現時点では汎用`Instance` Canonical kindやrecord mirrorをCoreへ追加しません。SUI Reference Adoption等の実Referenceで、definition / instance / projection metadata / observed runtime stateの境界をPressureします。
+
 ## Business Action / Application Function / Capability / Realization
 
 業務上の行為とApplication / Runtimeの実現を分離します。
