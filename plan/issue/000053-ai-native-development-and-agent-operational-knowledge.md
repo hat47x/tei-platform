@@ -1057,6 +1057,48 @@ downstream not attempted
 Projectionはderived / non-authoritativeで、known requirement / protected resourceにはprovenanceを保持し、machine-readable blocker vocabularyを自然言語要約で失わない。production ticket routing / human task assignment / notification transportは追加しない。
 
 
+## Cross-cutting R6 — Selective Knowledge Routing
+
+最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6_selective_knowledge_routing_pressure_test.go`
+
+対象はBP-02のread-only knowledge pathとし、current Business Procedure Referenceに存在するApplication Pattern群をavailable knowledgeとして扱う。
+
+最初の比較:
+
+```text
+exact deterministic router
+  -> BP-02参照Patternだけをselect
+
+broad test router
+  -> available Patternを広くselect
+
+both
+  -> current task reference + Source Indexでdeterministic qualification
+  -> 同じqualified identity
+  -> qualified subsetだけをdisclose
+```
+
+これにより、
+
+```text
+Knowledge available
+  != Knowledge selected
+  != Knowledge qualified
+  != Knowledge disclosed
+```
+
+をSource levelでPressureする。
+
+routing方式はSemantic authorityを所有しない。routing score / confidence、類似度、model内部signalをSemantic applicability、Accepted Decision、Authorizationへ昇格させない。
+
+このR6 sourceは、R3のprincipal / Authorization / action-locus Evidence Gateを迂回しない。qualified knowledge identityが得られても、それだけではAgent invocation authorityにならない。
+
+R7 Replayable Behavior EvidenceはFirst Web Targetのactual Functional Evidenceへ、R8 Verified Experienceはactual Execution / Observationへ接続してから進める。static R6 sourceからR7 / R8の成功を捏造しない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
