@@ -896,6 +896,60 @@ test-only explicit action candidateにはprovenanceを要求し、それを与�
 
 production action field / generic relation / `command -> execute` convention / policy backfillは追加しない。
 
+
+### R3K — Authorization action authoring scope pressure
+
+R3Jでcurrent action authority Evidence Gateを未充足として保持したまま、production locusを選ぶ前にaction authorityのscope差をtest-onlyにPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3K_AUTHORIZATION_ACTION_AUTHORING_SCOPE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3k_authorization_action_scope_pressure_test.go`
+
+current Repositoryの `order_entry.recent_orders` は:
+
+```text
+order-entry.order-handling/BP-00
+order-entry.follow-up/FU-00
+```
+
+から再利用され、Pattern kindは `browse`、Legacy policy actionも `browse` である。
+
+しかし両StepのAuthorization requirementは `unresolved` のため、`browse` はaccepted AuthorizationAction authorityではなくtest-only candidateとしてのみ扱う。
+
+R3Kでは:
+
+```text
+Business Step scoped action
+  -> selected Procedure/Step only
+
+Application Pattern scoped action
+  -> every use of the Pattern
+
+explicit cross-view action
+  -> explicitly selected Procedure/Step + Pattern edges
+```
+
+のreach差をPressureする。
+
+また:
+
+```text
+Authorization requirement scope
+  != Authorization action scope
+
+Pattern kind = browse
+  + policy action = browse
+  != accepted AuthorizationAction = browse
+```
+
+を維持する。
+
+current `recent_orders` caseはsemantic scope pressureには使えるが、repository-backedな第二のrequired Authorization interactionではないため、production action locusを選ぶEvidenceにはしない。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
