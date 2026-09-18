@@ -209,7 +209,7 @@ R0 / R3では、Application UI経由とCapability直結のmachine consumer経路
 
 ## R0 — Static actor context derivation
 
-Phase 1へ進む前に、同一accepted snapshotから次の3 Projectionを静的に組み、情報の重なりと差を確認する。
+Phase 1へ進む前に、同一shared accepted / reference baselineから次の3 Projectionを静的に組み、情報の重なりと差を確認する。
 
 1. Builder Re-entry Context
 2. Human Review Projection
@@ -220,7 +220,8 @@ R0で確認する項目:
 - 同じCanonical / Source / Evidenceへ逆追跡できる
 - actorごとに不要な情報を無制限dumpしない
 - omitted / unresolvedを「存在しない」へ変換しない
-- stale / fingerprintを追える
+- shared baselineだけでなく、actorごとのactual selected input fingerprintを追える
+- unrelated changeでstale-allにせず、actual dependency changeを見逃さない
 - Projection削除でaccepted meaningが変わらない
 - Human向け要約をAgent authorityへ流用しない
 - Agent向けruntime resolutionをCanonical truthへ逆流させない
@@ -244,6 +245,8 @@ R0ではproduction schema、Agent framework、Runtime invocationを追加しな�
 source上では次を固定している。
 
 - 同じBusiness Procedure Reference fingerprintを三Projectionで保持
+- そのfingerprintだけをprojection freshness authorityにせず、selected workspace source definition fingerprintを各Projectionへ保持
+- Human Reviewではcustomer-edit conflict Evidence fingerprintも追加
 - `canonical=false`を維持
 - BP-02 datasource accessを`read`のまま保持
 - read/write conflictをHuman Reviewへ露出
