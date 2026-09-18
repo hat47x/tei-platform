@@ -856,6 +856,11 @@ evaluation observed once
 
 test-only reuse authorityは意味差比較にだけ利用し、production cache/session cadence、TTL、revocation modelは固定しない。
 
+
+R3I refinementとして、evaluation ObservationはBusiness addressだけでは対応づけない。`subject / action / resource` tuple一致を要求し、unknown outcomeやtuple mismatchは `authorization-evaluation-observation-mismatch` として停止する。
+
+またBP-06のBusiness Action本文に `execute` が現れ、Legacy policyにも `execute / order_entry.submit_order` が存在しても、その語彙一致からmissing Authorization action authorityを生成しない。current `denied` Observationは「評価済み」と「許可」を分離してoutcomeを保持する。
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。

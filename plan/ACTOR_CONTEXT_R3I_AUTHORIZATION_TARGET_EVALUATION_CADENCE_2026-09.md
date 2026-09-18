@@ -230,3 +230,40 @@ production target schema、evaluation cache scope、session semantics、TTL / re
 - accepted cross-view target mapping
 
 だが、Legacy policy actionを正本へ昇格させない。
+
+
+## R3I refinement — Observation binding and wording boundary
+
+R3Iのevaluation EvidenceはBusiness addressだけで対応づけない。
+
+少なくともtest-only pressureでは:
+
+```text
+current subject
+current Authorization action
+current Authorization resource
+Observation subject
+Observation action
+Observation resource
+```
+
+が一致し、outcomeが `allowed` / `denied` の既知語彙であることを要求する。
+
+```text
+same Business address
+  + mismatched subject/action/resource
+  != current Authorization evaluation
+```
+
+またBP-06のBusiness Action本文には自然言語として `execute` が現れるが:
+
+```text
+Business wording contains "execute"
+  != AuthorizationAction = execute
+```
+
+とする。
+
+Legacy policyの `execute` とBusiness wordingの `execute` が一致していても、二つの非authoritative手掛かりを組み合わせてmissing action authorityを生成しない。
+
+current-context Observationが `denied` の場合も「評価済み」であることと「許可された」ことを分離し、outcomeをそのまま保持する。test-only reuse候補も、subject/action/resource tupleが一致しないObservationからは生成しない。
