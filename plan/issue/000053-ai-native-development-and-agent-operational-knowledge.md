@@ -958,6 +958,77 @@ B. adopted local variation
 
 この比較前にKnowledge Package、inheritance graph、override schema、cross-repository auto-sync protocolをproduction contractとして固定しない。
 
+### Phase 5 R0 — authority / provenance / variation boundary
+
+Knowledge Portabilityの最初の設計基線は `plan/KNOWLEDGE_PORTABILITY_R0_BOUNDARY_2026-09.md` とする。
+
+R0では、新しいCanonical Applicationを追加せず、current `order_entry`とtest-only destination profileから次を分離する。
+
+```text
+discovery provenance
+  != authority owner
+  != destination dependency
+
+linked reuse
+  != inherited origin Application
+
+adopted local variation
+  != origin Pattern shared authority
+
+provider knowledge
+  != Environment binding
+```
+
+current Referenceで最初にPressureする対象:
+
+- `customer.customer` — linked reuse candidate
+- `master_data.customer` — destination条件付きlinked reuse candidate
+- `order_entry.customer_reference` — adopted local variation candidate
+- `bind order_entry.master -> master_data.dev/prod` — rebind-required
+
+test-only source:
+
+- `internal/workspace/knowledge_portability_r0_test.go`
+
+synthetic destination labelは`repair_intake-test-only`とし、第二ApplicationのProduct採用やCanonical authoringを意味しない。
+
+R0はISSUE-000047のcandidate qualificationやISSUE-000040のApplication compositionを重複実装しない。
+
+責務は、再利用relationのauthority / provenance / freshnessを保持することである。
+
+#### Freshness boundary
+
+linked reuseでは、destinationが実際に依存するshared subjectが変わればrequalification対象になる。
+
+一方、adopted local variationではorigin Pattern変更をdestination authorityのstaleへ自動変換しない。
+
+```text
+linked dependency changed
+  -> dependency requalification
+
+provenance-only origin changed
+  -> provenance drift
+
+provenance drift
+  != destination invalid
+  != auto patch
+```
+
+無関係なorigin Application変更でdestinationをstale-allにしない。
+
+#### R0で追加しないもの
+
+- production Knowledge Package
+- inheritance graph
+- override / precedence DSL
+- cross-repository auto-sync
+- second Canonical Application
+- origin-to-destination auto patch
+- destination-to-origin back propagation
+- `portable=true`の一値判定
+
+actual second-Application compositionはISSUE-000040のGate / Referenceへ接続してから行う。
+
 ## 不変条件
 
 ```text
