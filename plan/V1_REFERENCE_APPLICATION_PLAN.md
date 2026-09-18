@@ -315,11 +315,12 @@ Gate C Evidence
 2. Target-neutral Presentation候補
 3. Target Capability候補
 4. Runtime Binding差
-5. Execution / Trust差
-6. Web固有実装
-7. Host control plane差
-8. Canonicalへ持ち上げてはいけない差
-9. unresolved
+5. execution artifact / ABI / Host差（観測可能な範囲）
+6. Execution / Trust差
+7. Web固有実装
+8. Host control plane差
+9. Canonicalへ持ち上げてはいけない差
+10. unresolved
 
 ## Gate C — 第一Targetの境界をEvidenceで説明できる
 
@@ -343,7 +344,7 @@ Gate Cで確認すること:
 - Business Result / Execution Error / Observationを維持
 - Web Adapter除去でCanonicalが変わらない
 - standard Projection / Custom UIが同じ上位意味へ接続
-- Target Capability / Execution / Trust差を第二Targetへ渡せる
+- Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
 - unresolvedを成功扱いしない
 
 visual score / VLM judgeだけでSemantic / Functionalを合格にしません。
@@ -424,6 +425,7 @@ Stage 4Aの完成を待たず、Gate C Ready後に並行開始できます。
 - Target Capability
 - Projection差
 - Runtime Binding
+- execution artifact / ABI / Host
 - Execution / Trust Profile
 - Authorization / Resource
 - Observation

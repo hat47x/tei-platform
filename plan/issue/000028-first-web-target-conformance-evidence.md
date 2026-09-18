@@ -140,7 +140,9 @@ Handover Baselineに存在しない意味をWeb側だけで追加してcoverage�
 - Driver Scenario reference
 - Target Adapter / Host
 - Target Capability observations
-- Runtime Binding / Execution / Trust observations
+- Runtime Binding observations
+- execution artifact / ABI / Host identity / observations（適用可能な範囲）
+- Execution / Trust observations
 - interaction steps
 - Business Result / named Outcome / Execution Error / Observation classification
 - semantic result
@@ -168,11 +170,12 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 2. Target-neutral Presentation候補
 3. Target Capability候補
 4. Runtime Binding差
-5. Execution / Trust差
-6. Web固有実装
-7. Host control plane固有差
-8. Canonicalへ持ち上げてはいけない差
-9. unresolved
+5. execution artifact / ABI / Host差（観測可能な範囲）
+6. Execution / Trust差
+7. Web固有実装
+8. Host control plane固有差
+9. Canonicalへ持ち上げてはいけない差
+10. unresolved
 
 第一Targetだけでtaxonomyを確定しません。
 
@@ -191,7 +194,7 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - [ ] architecture negative casesを再現可能に確認できる
 - [ ] Web Adapter除去時のCanonical不変を確認できる
 - [ ] standard ProjectionとCustom UIを同じ上位意味から実行できる
-- [ ] Target Capability / Execution / Trust差を第二Targetへ渡せる
+- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
 - [ ] evaluator固有scoreがSemantic / Functional合否を上書きしない
 - [ ] Evidence artifactがCanonicalの第二正本になっていない
 - [ ] Gate CをIssue closeではなくEvidenceから判定できる
@@ -202,6 +205,8 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - Web frameworkの先行固定
 - 完全なPresentation IR
 - 完全なTarget Capability taxonomy
+- Gate Cのためだけの複数execution artifact / Wasm比較
+- execution artifact / ABI / Hostのproduction taxonomy / schema
 - pixel-perfect design system
 - VLM / GUI agent標準化
 - 一律のvisual score threshold
