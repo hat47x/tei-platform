@@ -107,6 +107,45 @@ Canonicalをfile pathから独立させる一方で、「この意味がどのso
 
 という二つを同時に成立させます。
 
+### 読めることと正本になったことは別
+
+既存ApplicationをTEIへ段階移管するとき、最初から元のnative assetを捨てる必要はありません。
+
+```text
+native asset
+  -> TEIがread / map / validateできる
+```
+
+まで進んでも、
+
+```text
+TEI = authoritative source
+```
+
+になったとは限りません。
+
+初期段階では、
+
+```text
+native source = authoritative
+TEI projection = derived
+```
+
+として二重管理を避けます。TEIへauthorityを移す場合は、before / afterのowner、migration transform、equivalence Evidence、未対応情報、rollbackを明示してcutoverします。
+
+特に、
+
+```text
+import success
+latest writer
+file timestamp
+TEI parse success
+```
+
+からsource ownershipを推測しません。
+
+Application全体を一度に切り替える必要もありません。subject / concern単位の段階移管は許容しますが、同じconcernへ二つの暗黙正本を持たせないことが重要です。
+
 ## 4. ProposalとAuthorityを分ける
 
 ### 防ぎたい失敗

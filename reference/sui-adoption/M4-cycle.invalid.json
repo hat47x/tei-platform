@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2.0.0",
+  "islands": [
+    {
+      "id": "a",
+      "parentIslandId": "b",
+      "childIslandIds": ["b"]
+    },
+    {
+      "id": "b",
+      "parentIslandId": "a",
+      "childIslandIds": ["a"]
+    }
+  ]
+}

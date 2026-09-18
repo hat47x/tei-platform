@@ -59,6 +59,31 @@ SUI側で不足が見つかった場合は、次の順で分類します。
 
 4へ進む前に、1〜3で解けない理由を明示します。
 
+## Stage 0準備状況
+
+2026-09-18時点で、実装前の準備として次を固定した。
+
+- TEI側設計基線: `plan/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`
+- SUI側既存handoff: `IslandHierarchyContractV1`
+- TEI側固定fixture: `reference/sui-adoption/`
+  - M1 root — pass
+  - M2 3-level hierarchy — pass
+  - M3 missing parent — fail
+  - M4 cycle — fail
+
+Stage 0では新しいSUI↔TEI共通schemaを発明せず、SUIが既に持つdeterministic projectionをread-only inputとして再利用する。
+
+次の実装probeへ進む場合も、最初はfixture inputを変更せず、TEI Product codeやCapabilityKindを変更しない隔離されたReference tool / testとして開始する。
+
+current TEI標準Validationは`positive` / `relation-unique`の最小集合であり、SUI hierarchyのcycleやparent/child整合をそのまま表現できるとはまだ言えない。これを理由にValidationKindを先に追加せず、
+
+- Reference-local validationで十分か
+- reusable extensionが必要か
+- Application-native ruleとして残すべきか
+- 複数Referenceで共通failureが出てProduct gapになるか
+
+を順に判断する。
+
 ## 最初のReference slice候補
 
 最初からSUI全体を移しません。少なくとも次の性質を一つの小さいsliceでPressureできるものを選びます。
