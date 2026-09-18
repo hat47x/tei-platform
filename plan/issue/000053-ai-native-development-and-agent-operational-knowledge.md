@@ -1679,56 +1679,6 @@ provider policy revisionもexplicit freshness directiveへ昇格させず、prio
 
 
 
-### R3AA — Authorization freshness authority operational stop / handoff
-
-R3Zでfreshness precedence Evidence Gateを未充足のまま止めた後、current read-only AI Business Actor本線へ戻り、same-tupleのfreshness authority unresolvedを既存R3M〜R3PのOperational stop / handoff projectionへ接続する。
-
-正本:
-
-- `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
-
-test-only source:
-
-- `tools/reference-business-procedure-check/actor_context_r3aa_authorization_freshness_stop_handoff_pressure_test.go`
-
-test-only taxonomy:
-
-```text
-stage = authorization-evaluation-freshness-authority
-class = evaluation-freshness-authority-unresolved
-reason = authorization-evaluation-freshness-authority-unresolved
-resolution need = authorization-evaluation-freshness-authority
-```
-
-を追加する。
-
-これは:
-
-```text
-freshness authority unresolved
-  != evaluated denied
-  != evaluation not attempted
-  != Observation tuple mismatch
-  != current-context reuse unresolved
-```
-
-という意味差を保持するためであり、production API vocabulary採用ではない。
-
-R3M explanationではresolutionをrequestしてもhandoff recipientを発明せず、R3Nではearlier requirement / principal / target / tuple mismatch blockerをfreshness stopで上書きしない。
-
-R3O common coreとR3P Human / Agent bounded projectionをそのまま再利用し、Human / Agentでdetail disclosureが異なってもmachine reason / resolution need / source refsは同じcoreへ戻る。
-
-```text
-freshness authority unresolved
-  -> explainable stop
-  != denied
-  != retry-required
-  != human-approval-required
-  != hidden cache decision
-```
-
-を維持し、Retry / Approval / CacheValid / ShouldReevaluate / HandoffOwner / NextAction等は導入しない。
-
 
 ### R3AA — Authorization freshness authority operational stop / handoff
 
@@ -1770,6 +1720,47 @@ R3M explanation / R3N taxonomy / R3O common core / R3P Human・Agent bounded pro
 requirement transition unresolvedやObservation tuple mismatch等のearlier / more specific blockerがある場合はfreshness stopへ昇格させない。
 
 production Agent protocol、notification transport、ticket routing、automatic reevaluation schedulerは追加しない。
+
+
+### R3AB — Freshness stop drill-down provenance boundary
+
+R3AAでfreshness authority unresolvedをOperational stopへ接続した後、Human / Agentのどちらからdrill downしても同じprovenance chainへ戻れることをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AB_FRESHNESS_STOP_DRILLDOWN_PROVENANCE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ab_freshness_stop_drilldown_provenance_pressure_test.go`
+
+freshness stopのsource refsはtest-onlyに次のroleへ分類する。
+
+```text
+R3X -> authorization-context-identity-boundary
+R3Y -> evaluation-freshness-authority-boundary
+R3Z -> freshness-precedence-evidence-gate
+```
+
+これらを一つの「Authorization authority source」へ平坦化しない。
+
+```text
+same stop reason
+  + same source refs
+  -> same drill-down provenance roots
+
+same provenance roots
+  != same disclosure set
+  != same presentation
+```
+
+Human orientationとAgent resolution-inspectionはdetail disclosureが異なっても、selected `source-refs` から同じroot identityへ戻る。
+
+Human表示文のvariantをprovenance identityへ含めず、unknown source refはauthority / policy / ownerへ推測分類せずfail closedする。
+
+R3X context identity boundaryをfreshness directive authorityへ、R3Z Evidence GateをAuthorization decision authorityへ昇格させない。
+
+Truth / EffectiveDecision / ReevaluationRequired / ReusePermitted / HandoffOwner / NextAction等はdrill-down projectionへ追加しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
