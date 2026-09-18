@@ -1054,3 +1054,60 @@ DELETE_CANDIDATE: 144
 ```
 
 上記144本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
+
+
+## 37. 2026-09-18 candidate pass 23 — Remaining Gate B readiness refs
+
+未監査だったGate B readinessのaudit baseline、Evidence safety、Observation、four-lane sync、issue snapshot、main sync、post-composite、scope syncに関する旧work refをcurrent `main`と比較しました。
+
+対象:
+
+- `work/gate-b-readiness-audit-current-baseline`
+- `work/gate-b-readiness-audit-latest-evidence-safety`
+- `work/gate-b-readiness-audit-observation`
+- `work/gate-b-readiness-audit-runbook-sync`
+- `work/gate-b-readiness-current-evidence-sync`
+- `work/gate-b-readiness-four-lanes-latest-sync`
+- `work/gate-b-readiness-issue-current-snapshot`
+- `work/gate-b-readiness-main-sync`
+- `work/gate-b-readiness-main-sync-2`
+- `work/gate-b-readiness-post-composite`
+- `work/gate-b-readiness-scope-sync`
+- `work/gate-b-readiness-scope-sync-r2`
+
+確認時点のcurrent `main`:
+
+```text
+209c6b04592578813ac76a5c7d83b52ab51456cd
+```
+
+12本はいずれも:
+
+```text
+ahead_by = 0
+files = []
+```
+
+でした。open PRは存在せず、Evidence / bootstrap等のref固有用途も確認されていません。`current` / `snapshot` / `latest` / `sync`等の名称を現在状態の正本とはみなさず、current mainへ成果が完全包含されていることを比較結果で確認しています。
+
+このため12本を`DELETE_CANDIDATE`へ追加します。candidate確定後のref自体はcurrent mainへ再同期しません。
+
+### candidate pass 23結果
+
+```text
+reviewed refs:         12
+DELETE_CANDIDATE:      12
+ahead_by > 0 found:     0
+ref updates:             0
+new cleanup branches:    0
+```
+
+## 38. current summary — pass 23
+
+candidate pass 23までの累計は次のとおりです。
+
+```text
+DELETE_CANDIDATE: 156
+```
+
+上記156本は削除条件を満たしています。remote branch ref削除操作が利用可能になるまではこの文書上でfreezeし、通常current-state監査から除外します。KEEP / FROZEN境界と、`ahead_by > 0`をresetしない方針は変更しません。
