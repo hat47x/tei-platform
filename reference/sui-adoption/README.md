@@ -63,6 +63,7 @@ probeは次を確認する。
 - `sui.island.parent`が`sui.island`へのone relationとして解決できる
 - ただしSUIの`parentIslandId: string | null`に対するrootのparent不在意味は、current TEI Relationの`one | many`だけではlosslessと証明しない
 - reportでは`parentPresenceSemantics = unresolved`、`lossless = false`を明示する
+- report schema v2では`constraintCoverage`を出力し、single-valued shapeだけがTEI definitionで観測できることと、nullable presence / hierarchy整合性が未表現またはReference-local shadowであることを分離する
 - SUI既存handoff fixtureのM1〜M4をread-onlyで検査できる
 - fixture内のIsland instanceをTEI Canonical objectへ昇格しない
 - Product runtimeやfixtureを書き換えない
@@ -74,6 +75,21 @@ probe reportにはpinned SUI revisionとactual dependency blob SHAを残し、�
 shadow validatorはSUI正本のcontract validatorより新しいdomain constraintを追加してはいけない。たとえば現行`IslandHierarchyContractV1`はhierarchy側でisland IDの非空性を検査しておらず、`schemaVersion`も空文字だけをrejectするため、TEI probeもそのpass / fail semanticsを独自に厳しくしない。
 
 一方、JSON consumerとしてunknown fieldをfail closedすることは**consumer compatibility / transport guard**として別に扱う。これはSUI domain constraintが増えたことを意味しない。source contractが変わった場合は、SUI側を正本としてfixture / shadow probeを再確認する。
+
+## Constraint coverage inventory
+
+Stage 0 reportの`constraintCoverage`は、SUI正本のconstraintをTEI native機能として誤認しないためのEvidenceです。
+
+| Constraint | Current TEI coverage | Stage 0扱い |
+|---|---|---|
+| parentがsingle-valued | `relation ... one`でshapeのみ観測 | `shape-only` |
+| rootでparent不在を許す | current Relationに独立presence契約なし | `unresolved` |
+| duplicate island / duplicate child | native coverageを主張しない | `reference-local-shadow` |
+| parent / child existence | native coverageを主張しない | `reference-local-shadow` |
+| parent-child consistency | native coverageを主張しない | `reference-local-shadow` |
+| acyclic hierarchy | native coverageを主張しない | `reference-local-shadow` |
+
+ここで`shadow-only`は「TEIにその意味が実装済み」という意味ではありません。SUI正本のpass / fail semanticsをReference toolが比較用に再現しているだけです。このinventoryを第二Referenceでも比較し、同じgapが繰り返し現れた場合にだけreusable extension / Product gap候補へ昇格します。
 
 ## Stage 0 rules
 
