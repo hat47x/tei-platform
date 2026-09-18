@@ -155,7 +155,7 @@ HumanReviewProjection
 
 重要なのは、summary文そのものではなく各項目がauthority / Evidenceへ戻れること。
 
-R2ではR1が確定したchallenge-local `required_input_fingerprints[]`をそのまま継承する。Human Review用にsource pathを別管理して第二のfreshness基線を作らない。
+R2ではR1が確定したchallenge-local `required_input_fingerprints[]`をそのまま継承する。Human Review用にsource pathを別管理して第二のfreshness基線を作らない。Source Index管理下のinputはsubject identityからcurrent locatorを得るため、source-only move時もR2側へ旧pathを固定しない。
 
 ```text
 R1 decisive inputs
