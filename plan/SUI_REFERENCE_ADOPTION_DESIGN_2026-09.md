@@ -346,6 +346,15 @@ islands[]
 
 を固定している。
 
+TEI側で同じcontractをshadow validationする場合、SUI正本validatorに存在しないdomain constraintを追加しない。local diagnostic codeやconsumer-side JSON compatibility checkは追加できるが、source contractのpass / fail意味とconsumer transport policyを分離する。
+
+```text
+source contract validity
+  != consumer compatibility guard
+```
+
+Stage 0で両者を混ぜて「TEIの方が厳しいので正しい」としない。差が必要ならSUI source contract変更、TEI consumer policy、TEI Product gapのどれなのかを明示する。
+
 ### Stage 0の入力をこの契約にする理由
 
 移管専用の新しいJSON schemaを先に作ると、SUIとTEIの間に第三の意味表現を増やす。
