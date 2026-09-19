@@ -2367,6 +2367,62 @@ consumer-local planeにはrouted knowledge identity / content provenanceを載�
 
 R6JはUniversal Context PacketやPrompt payloadを定義しない。assemblyはbounded consumer inputを検証するderived Reference shapeに留め、freshness / retry / authorization / invocation policyを所有しない。
 
+### R6K — explicit bounded input scope
+
+R6Jのassemblyでplaneが空の場合、それをmissing / irrelevant / intentionally excludedのどれかへ暗黙変換しない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6k_explicit_input_scope_expectation_pressure_test.go`
+
+bounded consumerはknown input planeをすべて:
+
+```text
+required
+out-of-scope
+```
+
+のどちらかとして宣言する。
+
+current classes:
+
+1. routed knowledge body
+2. routed use edge
+3. consumer-local Reference use
+4. consumer-local Runtime use
+5. consumer-local Semantic use
+
+validation boundary:
+
+```text
+required plane
+  + zero observed inputs
+  -> fail closed
+
+out-of-scope plane
+  + observed input
+  -> fail closed
+```
+
+一方:
+
+```text
+out-of-scope
+  + zero observed
+  -> intentional bounded absence
+  != missing input
+```
+
+である。
+
+BP-06 Human orientationはProcedure routingとprotected-target Reference inputをrequiredとし、runtime / semantic consumer-local planeをout-of-scopeとする。
+
+runtime Observationだけのsliceではconsumer-runtime planeだけをrequiredとし、routed planeが0件でもrouting failureとは扱わない。この場合でもProcedure / Capabilityの`qualified-not-materialized` identityは別に保持する。
+
+scope witnessにはglobal `Complete` / `Valid` / `Ready` / `Missing`を追加しない。plane-local expectationとobserved countだけをderived witnessとして保持する。
+
+R6KはR3AJ〜R3ALのauthority-information request / response / evidence qualificationへ踏み込まず、knowledge input boundaryのscope declarationだけを担当する。
+
 
 
 
