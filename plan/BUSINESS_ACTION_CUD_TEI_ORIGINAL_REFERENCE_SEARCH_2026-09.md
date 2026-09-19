@@ -4,7 +4,7 @@ Status: **Lane C / negative Evidence / no new production contract**
 
 ## 1. 目的
 
-`BUSINESS_ACTION_CRUD_OPERATION_GAP_AUDIT_2026-09.md`では、current `order_entry`からBusiness Action × CRUDをderived projectionした結果、Rの一部はexactに導出できる一方、C/U/Dはaccepted meaning不足のため安全に帰属できなかった。
+`BUSINESS_ACTION_CRUD_2026-09.md`（Part 2、旧`CRUD_OPERATION_GAP_AUDIT`）では、current `order_entry`からBusiness Action × CRUDをderived projectionした結果、Rの一部はexactに導出できる一方、C/U/Dはaccepted meaning不足のため安全に帰属できなかった。
 
 本監査は、その次のEvidence pressureとして、Repository内の**TEI-original Reference**にCreate / Delete / non-state Updateのqualifying exampleがすでに存在するかを確認する。
 

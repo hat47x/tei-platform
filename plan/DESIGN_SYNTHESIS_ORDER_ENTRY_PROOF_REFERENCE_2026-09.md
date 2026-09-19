@@ -55,7 +55,7 @@ main @ ff9dba8b689b7a46d27ad6e7e2fcd449049c8531
 
 補助的に、既存のPressure / Auditを判断境界として利用する。
 
-- `BUSINESS_ACTION_CRUD_OPERATION_GAP_AUDIT_2026-09.md`
+- `BUSINESS_ACTION_CRUD_2026-09.md`（Part 2、旧`CRUD_OPERATION_GAP_AUDIT`）
 - `BUSINESS_PROCEDURE_D4_O1_2026-09.md`（Part 3、旧`O1_AUTHORITY_DIRECTION_PRESSURE`）
 - `issue/000042-business-procedure-cross-view-reference.md`
 
