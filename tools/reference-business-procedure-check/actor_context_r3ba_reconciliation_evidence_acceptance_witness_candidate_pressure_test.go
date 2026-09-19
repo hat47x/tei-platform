@@ -375,6 +375,65 @@ func TestActorContextR3BAShapeHasNoAppliedAcceptanceSynchronizationOrRetryShortc
 	}
 }
 
+func actorContextR3BAExecutionAuthorityMatchesQualifiedGate(
+	candidate actorContextR3AXReconciliationCandidateProbe,
+	observation actorContextR3AYRawExecutionObservationProbe,
+	authority actorContextR3AZEvidenceProbe,
+) bool {
+	return authority.EvidenceRole == actorContextR3AZRoleExecutionAuthorityCandidate &&
+		authority.RepositoryBacked &&
+		!authority.DerivedOnly &&
+		authority.AuthorityKind == actorContextR3AZExecutionAuthorityKind &&
+		authority.AuthorityDeclarationRef != "" &&
+		actorContextR0Contains(
+			authority.ReconciliationCandidateIdentities,
+			candidate.ReconciliationCandidateIdentity,
+		) &&
+		actorContextR0Contains(
+			authority.ExecutionObservationRefs,
+			observation.ReconciliationExecutionObservationRef,
+		) &&
+		actorContextR0Contains(
+			authority.ReportedExecutionOutcomes,
+			observation.ReportedExecutionOutcome,
+		) &&
+		authority.AcceptedDecisionSinkRef == candidate.AcceptedDecisionSinkRef &&
+		authority.EvidenceDecisionLocusRef != "" &&
+		authority.EvidenceAcceptanceProvenanceRef != ""
+}
+
+func actorContextR3BACurrentStateAuthorityMatchesQualifiedGate(
+	candidate actorContextR3AXReconciliationCandidateProbe,
+	observation actorContextR3AYRawCurrentStateObservationProbe,
+	authority actorContextR3AZEvidenceProbe,
+) bool {
+	return authority.EvidenceRole == actorContextR3AZRoleCurrentStateAuthorityCandidate &&
+		authority.RepositoryBacked &&
+		!authority.DerivedOnly &&
+		authority.AuthorityKind == actorContextR3AZCurrentStateAuthorityKind &&
+		authority.AuthorityDeclarationRef != "" &&
+		actorContextR0Contains(
+			authority.ReconciliationCandidateIdentities,
+			candidate.ReconciliationCandidateIdentity,
+		) &&
+		actorContextR0Contains(
+			authority.CurrentStateObservationRefs,
+			observation.CurrentStateObservationRef,
+		) &&
+		actorContextR0Contains(
+			authority.ObservedDecisionRevisions,
+			observation.ObservedDecisionRevision,
+		) &&
+		actorContextR0Contains(
+			authority.ObservedStateFingerprints,
+			observation.ObservedStateFingerprint,
+		) &&
+		authority.AcceptedDecisionSinkRef == candidate.AcceptedDecisionSinkRef &&
+		authority.RevisionAuthorityRef == candidate.RevisionAuthorityRef &&
+		authority.EvidenceDecisionLocusRef != "" &&
+		authority.EvidenceAcceptanceProvenanceRef != ""
+}
+
 func actorContextR3BASingleQualifiedFixture(
 	t *testing.T,
 ) (
@@ -505,10 +564,10 @@ func actorContextR3BABuildCandidates(
 			}
 			if raw == nil ||
 				raw.ReportedExecutionOutcome != witness.ReportedExecutionOutcome ||
-				!actorContextR3AZExecutionCandidateQualifies(
-					candidate, observations, authority.ScopeValue, authority,
+				!actorContextR3BAExecutionAuthorityMatchesQualifiedGate(
+					candidate, *raw, authority,
 				) {
-				return nil, fmt.Errorf("R3BA execution witness does not bind exact raw Evidence/authority")
+				return nil, fmt.Errorf("R3BA execution witness does not bind exact raw Evidence/qualified authority")
 			}
 
 		case actorContextR3BAPlaneCurrentState:
@@ -529,10 +588,10 @@ func actorContextR3BABuildCandidates(
 				raw.ObservedDecisionRevision != witness.ObservedDecisionRevision ||
 				raw.ObservedStateFingerprint != witness.ObservedStateFingerprint ||
 				raw.RevisionAuthorityRef != witness.RevisionAuthorityRef ||
-				!actorContextR3AZCurrentStateCandidateQualifies(
-					candidate, observations, authority.ScopeValue, authority,
+				!actorContextR3BACurrentStateAuthorityMatchesQualifiedGate(
+					candidate, *raw, authority,
 				) {
-				return nil, fmt.Errorf("R3BA current-state witness does not bind exact raw Evidence/authority")
+				return nil, fmt.Errorf("R3BA current-state witness does not bind exact raw Evidence/qualified authority")
 			}
 
 		default:
