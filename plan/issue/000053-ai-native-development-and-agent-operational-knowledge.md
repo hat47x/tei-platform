@@ -4346,6 +4346,45 @@ StateApplied / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / 
 
 
 
+
+### R3BE — Explicit authoritative-state application witness / candidate boundary
+
+R3BD Gateがsingle-qualifiedでも自動適用せず、explicit witnessが存在する場合だけtest-only state-application candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BE_STATE_APPLICATION_WITNESS_CANDIDATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3be_state_application_witness_candidate_pressure_test.go`
+
+```text
+single-qualified R3BD Gate
+  + exact result candidate
+  + exact application authority
+  + explicit apply / reject decision
+  + StateApplicationProvenanceRef
+  -> test-only state-application candidate
+
+candidate
+  != state applied
+  != revision accepted
+  != CurrentAuthority projected
+```
+
+witnessはexact result candidate identity / authority EvidenceID / StateApplicationLocusRef / RevisionAcceptanceLocusRef / CurrentAuthorityProjectionLocusRef / observed revision / fingerprintへbindingする。
+
+Decisionは `apply-authoritative-state` / `reject-authoritative-state-application` のexplicit witnessだけから取得し、result candidateのaccept、matching revision、fingerprintから推測しない。
+
+multiple-qualified R3BD Gateはwitnessで迂回できない。reject candidateをrollback / retry / compensation / failureへ変換しない。
+
+StateApplied / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+次段ではapply candidateが存在しても実行済みとみなさず、application execution observation / post-application current-authority observationをraw Evidenceとして分離する。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
