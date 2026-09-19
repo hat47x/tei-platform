@@ -1014,6 +1014,84 @@ V2実装時はsynthetic fixtureで少なくとも次をPressureする。
 
 これらのtestはGate C semantic条件のcopyではなく、shared packageを呼ぶintegration pressureとして書く。
 
+#### V2 branchless candidate preflight — 2026-09-20
+
+V1 shared-validator candidateを利用しつつremote branchを増やさないため、V2 replay auditも**unreferenced Git commit**として作成した。main / branch refは動かしていない。
+
+candidate chain:
+
+```text
+main snapshot
+  17acb5ca3679d5931a4522580726fdd9a2ad49c2
+    ↓ E0 branchless candidate
+  c0a8d2c858f338cffd90f86752a21293c391350b
+    ↓ V1 branchless candidate
+  fe627f3cb24a6bbef7cb34ccebd7702ff43ae07a
+    ↓ V2 branchless candidate
+  a5b70735a1b2ebc6b9772908bef7871f9097bd8a
+```
+
+V2 candidateの新規sourceは次の2ファイルである。
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  blob = 521d7c7b9d62e35cef64188810d970fb691c317f
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  blob = 249a335a6ba2c57445bffdc48b68932932790363
+```
+
+candidateは次を実装する。
+
+- replay plan / replay-plan receipt exact bytesへのSHA-256 binding
+- E0後のB / R / T / TargetAdapter / Host exact provenance validation
+- run / Target process instance identity必須化
+- loopback scopeの固定
+- 6 behavior exact set / duplicate / unknown reject
+- expected HTTP boundary照合
+- raw artifact filenameのabsolute path / parent traversal / duplicate mapping reject
+- raw artifactをaudit自身でSHA-256 fingerprint
+- V1 shared validatorによるsemantic validation
+- plan expected Observation classとshared classの一致
+- Reference credential material reject
+- audit-derived `run-observation.json` shape
+
+runner supplied metadataには `ObservationClass` / `SemanticValidationPassed` / `RawArtifactSHA256` をauthorityとして持たせない。これらはV2 auditがraw bytesから導出する。
+
+exact candidate bytesをRepository外のisolated moduleへmaterializeし、GitHub blob identityとの一致を確認したうえで次を実行した。
+
+```text
+git hash-object main.go
+  = 521d7c7b9d62e35cef64188810d970fb691c317f
+
+git hash-object main_test.go
+  = 249a335a6ba2c57445bffdc48b68932932790363
+
+gofmt -l
+  = empty
+
+go vet ./tools/reference-first-web-target-r7b-replay-audit ./tools/internal/firstwebtargetevidence
+  = PASS
+
+go test -count=50 ./tools/reference-first-web-target-r7b-replay-audit ./tools/internal/firstwebtargetevidence
+  = PASS
+```
+
+preflight中、raw artifact filenameのWindows separator rejectが二重backslashではなく**単一backslash**を拒否するexact candidateであることもblob identityを合わせて再確認した。
+
+ただしこれはV1同様focused candidate preflightであり、full Repository qualificationではない。
+
+```text
+V2 focused PASS
+  != E0 integrated
+  != V1 integrated
+  != repository-health-check PASS
+  != V2 integrated
+  != actual replay Evidence
+```
+
+統合sessionはE0をhealth-check済みでmainへ入れ、続いてV1をlatest mainへreconcileしてfull health checkを通した後、V2 candidateをreconcileする。V2もexact candidateを含むfull checkoutで `tools/repository-health-check.sh` がPASSするまでmainへ参照させない。
+
 ### operational runner
 
 新規候補path:
