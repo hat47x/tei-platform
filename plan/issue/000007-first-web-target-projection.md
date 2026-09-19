@@ -390,3 +390,20 @@ auditはScreenshot exact bytesをfingerprintし、評価結果とcapture referen
 全Visual criteriaがpassでも`gateCReady = false`を維持し、最終Gate C判定はSemantic / Functional / Visualを別Evidenceとして揃えた後に行う。
 
 現時点ではVisual auditのSource Evidenceであり、actual Screenshot / evaluator recordは未取得である。
+
+
+## Architecture negative Evidence source
+
+Gate C contractのnegative / architecture conformanceをactual Repository runで再現するため:
+
+- `tools/reference-first-web-target-architecture-evidence`
+
+を追加した。
+
+第一Referenceでは`R → T`間で`reference/workspace/**`と`reference/world.json`が不変であることを要求し、Web Target配下にauthoritative `.tei` / `.sql` / native SQL本文を持ち込まないことをscanする。
+
+さらにactual `T`でstandard / Custom UI shared Command boundary、Validation not-satisfied、Execution Error分離のfocused testを実行し、run前後同一clean revisionを要求する。
+
+これは第一Web Target向けのcoarseなarchitecture Evidenceであり、一般化されたSemantic diff taxonomyではない。
+
+現在はSource Evidenceのみで、actual `architecture-conformance.json`は未取得である。
