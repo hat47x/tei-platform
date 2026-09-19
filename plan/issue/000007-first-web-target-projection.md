@@ -6,7 +6,7 @@
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
 
-## 着手状況 — Driver-backed read-only slice
+## 着手状況 — authenticated Command / Observation slice
 
 Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
 
@@ -49,9 +49,24 @@ browse
 
 reference / header-detailは既存のEnvironment-aware Driver APIを使う。browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Web側でEnvironment instanceを推測せず、その非対称性をunresolvedとして明示する。
 
+さらに`POST /scenario/submit`へ、Gate Bと同じ意味順序を保ったCommand Scenario sourceを接続した。
+
+```text
+Authentication
+  -> read slice
+  -> Canonical Validation
+  -> Authorization
+  -> Command Business Result
+  -> separate explicit Observation
+```
+
+Authentication / Authorizationの`denied`、Validation `not-satisfied`は正常な業務結果として保持し、runnerのExecution Errorへ畳まない。Command acknowledgementだけでObserved state成立とはせず、Observationは`ExecuteObservationRead`の別readで取得する。credentialはruntime inputとしてのみ扱い、responseへ保持しない。
+
+standalone `/scenario/read` はReference診断用で、productionの認証済みread endpointではない。Command flow内部ではAuthentication後に同じread runnerを利用する。
+
 現在もSource Evidenceであり、actual server execution / browser replay / Functional Evidence / Visual Evidenceは未取得である。
 
-次incrementでは同じprimary `ISSUE-000007` workstream上でAuthentication / AuthorizationとCommand / Business Result / Observationの境界へ進む。
+次incrementでは同じprimary `ISSUE-000007` workstream上で、Custom UI接続とGate C Evidence acquisitionの実行入口を詰める。
 
 ## 背景
 
