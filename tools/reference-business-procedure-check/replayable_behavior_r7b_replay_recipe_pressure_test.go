@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"testing"
@@ -146,15 +148,15 @@ func TestReplayableBehaviorR7BRepeatabilityRequiresTwoDistinctSuccessfulRuns(t *
 	recipe := replayableBehaviorR7BTestRecipe(t, "first-web/command-success")
 
 	one := []replayableBehaviorR7BReplayObservation{
-		replayableBehaviorR7BMatchingObservation(recipe, "replay-1", "sha256-replay-1"),
+		replayableBehaviorR7BMatchingObservation(recipe, "replay-1", replayableBehaviorR7BTestSHA256("replay-1")),
 	}
 	if _, err := replayableBehaviorR7BEvaluateRepeatability(recipe, one); err == nil {
 		t.Fatal("one replay pass was treated as repeatability")
 	}
 
 	two := []replayableBehaviorR7BReplayObservation{
-		replayableBehaviorR7BMatchingObservation(recipe, "replay-1", "sha256-replay-1"),
-		replayableBehaviorR7BMatchingObservation(recipe, "replay-2", "sha256-replay-2"),
+		replayableBehaviorR7BMatchingObservation(recipe, "replay-1", replayableBehaviorR7BTestSHA256("replay-1")),
+		replayableBehaviorR7BMatchingObservation(recipe, "replay-2", replayableBehaviorR7BTestSHA256("replay-2")),
 	}
 	assessment, err := replayableBehaviorR7BEvaluateRepeatability(recipe, two)
 	if err != nil {
@@ -174,8 +176,8 @@ func TestReplayableBehaviorR7BRepeatabilityRequiresTwoDistinctSuccessfulRuns(t *
 func TestReplayableBehaviorR7BRepeatabilityComparesMeaningNotExactReplayBytes(t *testing.T) {
 	recipe := replayableBehaviorR7BTestRecipe(t, "first-web/read-only")
 	observations := []replayableBehaviorR7BReplayObservation{
-		replayableBehaviorR7BMatchingObservation(recipe, "replay-a", "sha256-replay-a"),
-		replayableBehaviorR7BMatchingObservation(recipe, "replay-b", "sha256-replay-b"),
+		replayableBehaviorR7BMatchingObservation(recipe, "replay-a", replayableBehaviorR7BTestSHA256("replay-a")),
+		replayableBehaviorR7BMatchingObservation(recipe, "replay-b", replayableBehaviorR7BTestSHA256("replay-b")),
 	}
 	if _, err := replayableBehaviorR7BEvaluateRepeatability(recipe, observations); err != nil {
 		t.Fatalf("different exact replay bytes with the same observed meaning should remain repeatable: %v", err)
@@ -187,8 +189,8 @@ func TestReplayableBehaviorR7BRepeatabilityRejectsSemanticOrTargetDrift(t *testi
 
 	t.Run("semantic-class", func(t *testing.T) {
 		observations := []replayableBehaviorR7BReplayObservation{
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", "sha256-1"),
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", "sha256-2"),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", replayableBehaviorR7BTestSHA256("sha-1")),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", replayableBehaviorR7BTestSHA256("sha-2")),
 		}
 		observations[1].ObservedSemanticClass = "different-meaning"
 		if _, err := replayableBehaviorR7BEvaluateRepeatability(recipe, observations); err == nil {
@@ -198,8 +200,8 @@ func TestReplayableBehaviorR7BRepeatabilityRejectsSemanticOrTargetDrift(t *testi
 
 	t.Run("target-revision", func(t *testing.T) {
 		observations := []replayableBehaviorR7BReplayObservation{
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", "sha256-1"),
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", "sha256-2"),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", replayableBehaviorR7BTestSHA256("sha-1")),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", replayableBehaviorR7BTestSHA256("sha-2")),
 		}
 		observations[1].ReplayTargetBuildRevision = "different-target-revision"
 		if _, err := replayableBehaviorR7BEvaluateRepeatability(recipe, observations); err == nil {
@@ -209,8 +211,8 @@ func TestReplayableBehaviorR7BRepeatabilityRejectsSemanticOrTargetDrift(t *testi
 
 	t.Run("raw-artifact-digest", func(t *testing.T) {
 		observations := []replayableBehaviorR7BReplayObservation{
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", "sha256-1"),
-			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", ""),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-1", replayableBehaviorR7BTestSHA256("sha-1")),
+			replayableBehaviorR7BMatchingObservation(recipe, "replay-2", "not-a-sha256"),
 		}
 		if _, err := replayableBehaviorR7BEvaluateRepeatability(recipe, observations); err == nil {
 			t.Fatal("replay without exact raw artifact identity was treated as repeatable")
@@ -338,8 +340,8 @@ func replayableBehaviorR7BEvaluateRepeatability(
 		if observation.ObservedSemanticClass != recipe.ExpectedObservationClass {
 			return replayableBehaviorR7BRepeatabilityAssessment{}, fmt.Errorf("replay semantic result drifted")
 		}
-		if observation.RawReplayArtifactSHA256 == "" {
-			return replayableBehaviorR7BRepeatabilityAssessment{}, fmt.Errorf("replay raw artifact is not fingerprinted")
+		if !replayableBehaviorR7BIsSHA256(observation.RawReplayArtifactSHA256) {
+			return replayableBehaviorR7BRepeatabilityAssessment{}, fmt.Errorf("replay raw artifact does not have an exact SHA-256 identity")
 		}
 	}
 
@@ -370,6 +372,19 @@ func replayableBehaviorR7BTestRecipe(t *testing.T, behaviorID string) replayable
 	}
 	t.Fatalf("test recipe %q not found", behaviorID)
 	return replayableBehaviorR7BReplayRecipe{}
+}
+
+func replayableBehaviorR7BIsSHA256(value string) bool {
+	if len(value) != sha256.Size*2 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func replayableBehaviorR7BTestSHA256(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
 }
 
 func replayableBehaviorR7BMatchingObservation(
