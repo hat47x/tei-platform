@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -136,7 +137,6 @@ func (s *webTargetServer) handleReadScenario(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-
 func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -153,6 +153,10 @@ func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.R
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&request); err != nil {
 		http.Error(w, "invalid command request", http.StatusBadRequest)
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		http.Error(w, "command request must contain one JSON document", http.StatusBadRequest)
 		return
 	}
 	if request.From == "" {
