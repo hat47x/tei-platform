@@ -243,3 +243,122 @@ request bodyそのものをartifactへ保存しない。
 このrunnerの成功はSemantic / Functional Evidence取得であり、Gate C Readyそのものではない。
 
 Visual Fidelityを別Evidenceとして取得し、`plan/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立監査した後だけGate Cを判定する。
+
+
+## Visual Evidence intake
+
+Semantic / Functional acquisitionとは別に、同じ`targetBuildRevision = T`へScreenshot等のVisual artifactを結び付ける。
+
+capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
+
+監査入口:
+
+```bash
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go run ./tools/reference-first-web-target-visual-evidence-audit \
+  -semantic-functional-summary /tmp/tei-gate-c-first-web-T/semantic-functional-summary.json \
+  -visual-manifest /tmp/tei-gate-c-first-web-T/visual/visual-manifest.json \
+  -artifact-dir /tmp/tei-gate-c-first-web-T/visual \
+  > /tmp/tei-gate-c-first-web-T/visual-audit.json
+```
+
+第一ReferenceではScreenshot artifactを`image/png`で受け入れる。これはCanonicalな画像形式ではなく、第一ReferenceのEvidence formatである。
+
+### 必須capture
+
+Visual manifestには少なくとも次のcaptureを含める。
+
+```text
+projection-index
+custom-submit-initial
+custom-submit-success
+custom-submit-authorization-denied
+custom-submit-validation-not-satisfied
+custom-submit-execution-error
+```
+
+各captureは:
+
+- ID
+- surface
+- state
+- PNG filename
+- media type
+- viewport width / height
+
+を持つ。
+
+filenameはartifact directory直下のbasenameだけを許可し、path traversalやartifact directory外へのsymlink解決を受理しない。
+
+### Visual評価項目
+
+Gate C contractに対応して少なくとも次を評価する。
+
+```text
+field-grouping-readability
+relation-reference-comprehensibility
+header-detail-locality
+validation-feedback-distinguishable
+authorization-denial-vs-system-error-distinguishable
+business-result-vs-observation-distinguishable
+standard-vs-custom-ui-difference-explainable
+```
+
+各項目は:
+
+```text
+pass
+fail
+unresolved
+```
+
+のいずれかとし、評価根拠となるcapture IDを明示する。
+
+特に:
+
+- validation feedback → `custom-submit-validation-not-satisfied`
+- authorization denied vs system error → `custom-submit-authorization-denied` と `custom-submit-execution-error`
+- Business Result vs Observation → `custom-submit-success`
+- standard vs Custom UI → `projection-index` と `custom-submit-initial`
+
+を参照する。
+
+### evaluator provenance
+
+Visual manifestには少なくとも:
+
+- evaluator identity
+- evaluator version
+- evaluation method
+
+を保持する。
+
+人、VLM、image comparison等の方式をCanonical意味へ含めない。
+
+### Visual auditの意味
+
+Visual auditは:
+
+- Semantic / Functional summaryが同じ`B / R / T`で成立済み
+- Screenshot集合が完全
+- ScreenshotがPNG artifactとして存在
+- capture pathが安全
+- exact bytes SHA-256
+- required criterionが存在
+- criterionが必要なcapture stateを参照
+- credential materialがmanifestへ混入していない
+
+ことを確認する。
+
+全criteriaが`pass`でも、Visual audit単独ではGate C Readyを宣言しない。
+
+期待:
+
+```text
+visualFidelityPassed = true   # evaluatorが全項目passの場合
+gateCReady = false
+```
+
+最終Gate C判定はSemantic / Functional / Visualを別Evidenceとして揃えた後、Gate C contract全体へ戻って行う。

@@ -17,6 +17,10 @@ Authentication / AuthorizationのBusiness Outcome、Validation結果、Command B
 
 ただし、runner / audit sourceや`httptest`用test sourceの存在をGate C Evidenceへ読み替えない。actual clean Target build/runに紐づくSemantic / Functional artifactは未取得であり、Visual Fidelity Evidenceも未取得である。Semantic / Functional audit sourceもVisual未取得時は`gateCReady = false`を固定する。
 
+Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加し、同じ`B / R / T`に対するScreenshot集合とattributed evaluator recordを受け入れる。capture toolは固定せず、必須capture state / criterion / artifact fingerprint / provenanceだけをReference pressureとして扱う。Visual criteriaが全passでもaudit単独では`gateCReady = false`のままとする。
+
+actual Screenshot / evaluator Evidenceは未取得である。
+
 ## 背景
 
 `ISSUE-000007` / GitHub Issue #70では、第一Web Targetを通してApplication上の意味、Target-neutralなPresentation候補、Web固有差分を分離し、Gate Cを評価します。

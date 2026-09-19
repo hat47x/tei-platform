@@ -364,3 +364,29 @@ Execution ErrorはBusiness Outcomeへ変換せず、HTTP Target層だけが`B / 
 auditはVisual Fidelityを成功へ読み替えず、Semantic / Functionalが成立しても`gateCReady = false`を返す。
 
 現時点ではrunner / auditの**Source Evidence**であり、actual clean checkout上のrun artifactはまだ取得していない。
+
+
+## Visual Evidence intake source
+
+Semantic / Functional acquisition sourceに続き、同一Target revision `T`のScreenshotと評価記録を受け入れるReference auditを追加した。
+
+- `tools/reference-first-web-target-visual-evidence-audit`
+
+capture toolは固定しない。外部で取得したScreenshotを、Semantic / Functional summaryと同じ`B / R / T`へ明示的に結び付ける。
+
+第一Referenceでは少なくとも次をVisual capture stateとして要求する。
+
+- standard Projection initial
+- Custom UI initial
+- Custom UI success
+- Authorization denied
+- Validation not-satisfied
+- Execution Error
+
+Visual評価はGate C contractのreadability / relation understanding / header-detail locality / feedback distinguishability / Business Result vs Observation / standard vs Custom UI差へ対応する。
+
+auditはScreenshot exact bytesをfingerprintし、評価結果とcapture referenceの完全性を確認するが、evaluator判断をCanonical meaningへ昇格しない。
+
+全Visual criteriaがpassでも`gateCReady = false`を維持し、最終Gate C判定はSemantic / Functional / Visualを別Evidenceとして揃えた後に行う。
+
+現時点ではVisual auditのSource Evidenceであり、actual Screenshot / evaluator recordは未取得である。
