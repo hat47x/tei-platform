@@ -5,78 +5,56 @@ import (
 	"testing"
 )
 
-func TestActorContextR3AERequirementRootReasonCanReevaluateToUnchangedMeaning(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
+func TestActorContextR3AERequirementRootReasonCanReevaluateToUnchangedOrChangedMeaning(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	afterRoots := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ADRootIndexByClaim(afterRoots, "authorization-requirement-source")
 	if idx < 0 {
-		t.Fatal("R3AE setup lost authorization requirement root")
+		t.Fatal("R3AE setup lost Authorization requirement root")
 	}
 	afterRoots[idx].Fingerprint += ":changed"
 
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	bridge := actorContextR3ADExplainRootChanges(view, baseDrill.Roots, assessment)
-	impact := actorContextR3UAggregateImpacts(
-		view.Audience,
-		view.Purpose,
-		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
-	)
+	deltas := actorContextR3ACClassifyRootChanges(base, afterRoots)
+	bridge := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+	view := actorContextR3AEView(t, actorContextR3PAudienceHuman)
 
 	before := actorContextR3ABFreshnessCore(t)
-	after := actorContextR3QCloneCore(before)
-	got, err := actorContextR3WEvaluateSameProfile(before, after, view, impact)
+	unchangedAfter := actorContextR3QCloneCore(before)
+	unchanged, err := actorContextR3AEEvaluate(before, unchangedAfter, view, bridge)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	result := actorContextR3AECategory(got, actorContextR3PCategoryMachineReasons)
-	if result == nil || result.Status != actorContextR3WStatusUnchanged {
-		t.Fatalf("root change reason was equated with changed machine meaning: %+v", got)
+	machine := actorContextR3AECategory(unchanged, actorContextR3PCategoryMachineReasons)
+	if machine == nil || machine.Status != actorContextR3WStatusUnchanged {
+		t.Fatalf("requirement root reason was mistaken for category value change: %+v", unchanged)
 	}
-}
-
-func TestActorContextR3AESameRootReasonCanLeadToChangedMeaningWhenFingerprintActuallyChanges(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
-	idx := actorContextR3ADRootIndexByClaim(afterRoots, "authorization-requirement-source")
-	if idx < 0 {
-		t.Fatal("R3AE setup lost authorization requirement root")
+	stopIdentity := actorContextR3AECategory(unchanged, actorContextR3PCategoryStopIdentity)
+	if stopIdentity == nil || stopIdentity.Status != actorContextR3WStatusUnchanged {
+		t.Fatalf("Business-address dependency did not retain unchanged stop identity: %+v", unchanged)
 	}
-	afterRoots[idx].Fingerprint += ":changed"
 
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	bridge := actorContextR3ADExplainRootChanges(view, baseDrill.Roots, assessment)
-	impact := actorContextR3UAggregateImpacts(
-		view.Audience,
-		view.Purpose,
-		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
+	changedAfter := actorContextR3QCloneCore(before)
+	changedAfter.MachineReasons = append(
+		changedAfter.MachineReasons,
+		"test-only:r3ae-additional-machine-reason",
 	)
-
-	before := actorContextR3ABFreshnessCore(t)
-	after := actorContextR3QCloneCore(before)
-	after.MachineReasons = actorContextR0SortedUnique(append(
-		after.MachineReasons,
-		"test-only:additional-freshness-machine-reason",
-	))
-
-	got, err := actorContextR3WEvaluateSameProfile(before, after, view, impact)
+	changed, err := actorContextR3AEEvaluate(before, changedAfter, view, bridge)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := actorContextR3AECategory(got, actorContextR3PCategoryMachineReasons)
-	if result == nil || result.Status != actorContextR3WStatusChanged {
-		t.Fatalf("actual machine meaning change was not detected: %+v", got)
+	machine = actorContextR3AECategory(changed, actorContextR3PCategoryMachineReasons)
+	if machine == nil || machine.Status != actorContextR3WStatusChanged {
+		t.Fatalf("actual machine-reason meaning change was not detected: %+v", changed)
 	}
-	if result.BeforeFingerprint == result.AfterFingerprint {
-		t.Fatalf("changed category retained identical fingerprint: %+v", result)
+	stopIdentity = actorContextR3AECategory(changed, actorContextR3PCategoryStopIdentity)
+	if stopIdentity == nil || stopIdentity.Status != actorContextR3WStatusUnchanged {
+		t.Fatalf("unrelated stop identity changed with machine-reason value: %+v", changed)
 	}
 }
 
-func TestActorContextR3AEPriorObservationRevisionDoesNotCreateRuntimeOutcomeResult(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
+func TestActorContextR3AEPriorObservationRevisionRemainsResidualWithoutCategoryOutcome(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceAgent)
+	afterRoots := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ACRootIndexByRole(afterRoots, actorContextR3ABRoleRuntimeObservation)
 	if idx < 0 {
 		t.Fatal("R3AE setup lost prior runtime Observation root")
@@ -84,28 +62,26 @@ func TestActorContextR3AEPriorObservationRevisionDoesNotCreateRuntimeOutcomeResu
 	afterRoots[idx].Fingerprint += ":denied"
 	afterRoots[idx].ClaimKind = "prior-authorization-observation:denied"
 
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	bridge := actorContextR3ADExplainRootChanges(view, baseDrill.Roots, assessment)
-	impact := actorContextR3UAggregateImpacts(
-		view.Audience,
-		view.Purpose,
-		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
-	)
+	deltas := actorContextR3ACClassifyRootChanges(base, afterRoots)
+	bridge := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+	if len(bridge.Impact.Reasons) != 0 ||
+		len(bridge.ResidualRootDeltas) != 1 ||
+		bridge.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoBinding {
+		t.Fatalf("prior Observation revision should remain no-binding residual: %+v", bridge)
+	}
 
+	view := actorContextR3AEView(t, actorContextR3PAudienceAgent)
 	before := actorContextR3ABFreshnessCore(t)
 	after := actorContextR3QCloneCore(before)
-	got, err := actorContextR3WEvaluateSameProfile(before, after, view, impact)
+	got, err := actorContextR3AEEvaluate(before, after, view, bridge)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	machine := actorContextR3AECategory(got, actorContextR3PCategoryMachineReasons)
-	if machine == nil || machine.Status != actorContextR3WStatusUnchanged {
-		t.Fatalf("freshness stop did not remain stable after prior Observation revision: %+v", got)
+	if len(got.Categories) != 0 {
+		t.Fatalf("prior Observation residual fabricated selected category outcome: %+v", got)
 	}
 	if actorContextR3AECategory(got, actorContextR3PCategoryRuntimeOutcome) != nil {
-		t.Fatalf("prior Observation revision fabricated runtime-outcome category result: %+v", got)
+		t.Fatalf("prior Observation revision fabricated runtime-outcome result: %+v", got)
 	}
 	if before.RuntimeOutcome != "" || after.RuntimeOutcome != "" {
 		t.Fatalf("R3AE setup fabricated current runtime outcome: before=%q after=%q",
@@ -114,8 +90,8 @@ func TestActorContextR3AEPriorObservationRevisionDoesNotCreateRuntimeOutcomeResu
 }
 
 func TestActorContextR3AELocatorReasonNeedsActualSourceRefValueChange(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	afterRoots := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ADRootIndexByClaim(afterRoots, "protected-resource-source")
 	if idx < 0 {
 		t.Fatal("R3AE setup lost protected-resource root")
@@ -124,18 +100,13 @@ func TestActorContextR3AELocatorReasonNeedsActualSourceRefValueChange(t *testing
 	newLocator := oldLocator + ".moved"
 	afterRoots[idx].Locator = newLocator
 
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	bridge := actorContextR3ADExplainRootChanges(view, baseDrill.Roots, assessment)
-	impact := actorContextR3UAggregateImpacts(
-		view.Audience,
-		view.Purpose,
-		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
-	)
+	deltas := actorContextR3ACClassifyRootChanges(base, afterRoots)
+	bridge := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+	view := actorContextR3AEView(t, actorContextR3PAudienceHuman)
 
 	before := actorContextR3ABFreshnessCore(t)
 	unchangedAfter := actorContextR3QCloneCore(before)
-	unchanged, err := actorContextR3WEvaluateSameProfile(before, unchangedAfter, view, impact)
+	unchanged, err := actorContextR3AEEvaluate(before, unchangedAfter, view, bridge)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +124,7 @@ func TestActorContextR3AELocatorReasonNeedsActualSourceRefValueChange(t *testing
 	if reflect.DeepEqual(before.SourceRefs, changedAfter.SourceRefs) {
 		t.Fatalf("test setup could not replace source ref %q in %+v", oldLocator, before.SourceRefs)
 	}
-	changed, err := actorContextR3WEvaluateSameProfile(before, changedAfter, view, impact)
+	changed, err := actorContextR3AEEvaluate(before, changedAfter, view, bridge)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,15 +134,16 @@ func TestActorContextR3AELocatorReasonNeedsActualSourceRefValueChange(t *testing
 	}
 }
 
-func TestActorContextR3AEAgentOnlyKnownFactChangeDoesNotStaleHumanSelectedResult(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
+func TestActorContextR3AEAgentOnlyKnownFactChangeDoesNotBecomeHumanSelectedResult(t *testing.T) {
+	agentBase, agentReasons, agentBindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceAgent)
+	_, humanReasons, humanBindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	afterRoots := actorContextR3ACCloneRoots(agentBase)
 	idx := actorContextR3ADRootIndexByClaim(afterRoots, "authorization-requirement-source")
 	if idx < 0 {
-		t.Fatal("R3AE setup lost authorization requirement root")
+		t.Fatal("R3AE setup lost Authorization requirement root")
 	}
 	afterRoots[idx].Fingerprint += ":changed"
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
+	deltas := actorContextR3ACClassifyRootChanges(agentBase, afterRoots)
 
 	before := actorContextR3ABFreshnessCore(t)
 	after := actorContextR3QCloneCore(before)
@@ -181,14 +153,13 @@ func TestActorContextR3AEAgentOnlyKnownFactChangeDoesNotStaleHumanSelectedResult
 		SourceRef: "test-only:r3ae",
 	})
 
-	humanView := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	humanBridge := actorContextR3ADExplainRootChanges(humanView, baseDrill.Roots, assessment)
-	humanImpact := actorContextR3UAggregateImpacts(
-		humanView.Audience,
-		humanView.Purpose,
-		[]actorContextR3TImpactExplanationProbe{humanBridge.Impact},
+	humanView := actorContextR3AEView(t, actorContextR3PAudienceHuman)
+	humanBridge := actorContextR3ADExplainBoundRootChanges(
+		humanReasons,
+		deltas.Changes,
+		humanBindings,
 	)
-	humanResult, err := actorContextR3WEvaluateSameProfile(before, after, humanView, humanImpact)
+	humanResult, err := actorContextR3AEEvaluate(before, after, humanView, humanBridge)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,14 +167,13 @@ func TestActorContextR3AEAgentOnlyKnownFactChangeDoesNotStaleHumanSelectedResult
 		t.Fatalf("Human omitted known-authority-facts became selected result: %+v", humanResult)
 	}
 
-	agentView := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
-	agentBridge := actorContextR3ADExplainRootChanges(agentView, baseDrill.Roots, assessment)
-	agentImpact := actorContextR3UAggregateImpacts(
-		agentView.Audience,
-		agentView.Purpose,
-		[]actorContextR3TImpactExplanationProbe{agentBridge.Impact},
+	agentView := actorContextR3AEView(t, actorContextR3PAudienceAgent)
+	agentBridge := actorContextR3ADExplainBoundRootChanges(
+		agentReasons,
+		deltas.Changes,
+		agentBindings,
 	)
-	agentResult, err := actorContextR3WEvaluateSameProfile(before, after, agentView, agentImpact)
+	agentResult, err := actorContextR3AEEvaluate(before, after, agentView, agentBridge)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,37 +183,66 @@ func TestActorContextR3AEAgentOnlyKnownFactChangeDoesNotStaleHumanSelectedResult
 	}
 }
 
-func TestActorContextR3AEResidualRootChangeCannotExplainUnrelatedSelectedValueChange(t *testing.T) {
-	baseDrill := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	afterRoots := actorContextR3ACCloneRoots(baseDrill.Roots)
+func TestActorContextR3AEResidualCorroborationCannotExplainSelectedValueChange(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	afterRoots := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ACRootIndexByRole(afterRoots, actorContextR3ABRoleCorroboration)
 	if idx < 0 {
 		t.Fatal("R3AE setup lost corroboration root")
 	}
 	afterRoots[idx].Fingerprint += ":changed"
-	assessment := actorContextR3ACClassifyRootChanges(baseDrill.Roots, afterRoots)
 
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	bridge := actorContextR3ADExplainRootChanges(view, baseDrill.Roots, assessment)
-	if len(bridge.ResidualRootChanges) != 1 || len(bridge.Impact.Reasons) != 0 {
-		t.Fatalf("test setup requires residual-only root change: %+v", bridge)
+	deltas := actorContextR3ACClassifyRootChanges(base, afterRoots)
+	bridge := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+	if len(bridge.ResidualRootDeltas) != 1 ||
+		bridge.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoBinding ||
+		len(bridge.Impact.Reasons) != 0 {
+		t.Fatalf("test setup requires corroboration residual only: %+v", bridge)
 	}
-	impact := actorContextR3UAggregateImpacts(
-		view.Audience,
-		view.Purpose,
-		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
-	)
 
+	view := actorContextR3AEView(t, actorContextR3PAudienceHuman)
 	before := actorContextR3ABFreshnessCore(t)
 	after := actorContextR3QCloneCore(before)
 	after.MachineReasons = append(after.MachineReasons, "test-only:unexplained-change")
 
-	if _, err := actorContextR3WEvaluateSameProfile(before, after, view, impact); err == nil {
-		t.Fatal("R3AE allowed residual unmapped root change to explain selected category value change")
+	if _, err := actorContextR3AEEvaluate(before, after, view, bridge); err == nil {
+		t.Fatal("R3AE allowed residual corroboration delta to explain selected category change")
 	}
 }
 
-func TestActorContextR3AEUsesExistingR3WOutcomeWithoutAutomaticActionShortcut(t *testing.T) {
+func TestActorContextR3AEBoundRootSetResidualDoesNotBecomeCategoryOutcome(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	afterRoots := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ADRootIndexByClaim(afterRoots, "authorization-requirement-source")
+	if idx < 0 {
+		t.Fatal("R3AE setup lost Authorization requirement root")
+	}
+	afterRoots = append(afterRoots[:idx], afterRoots[idx+1:]...)
+
+	deltas := actorContextR3ACClassifyRootChanges(base, afterRoots)
+	bridge := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+	if len(bridge.ResidualRootDeltas) != 1 ||
+		bridge.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoExactClass {
+		t.Fatalf("bound root-set delta should remain unmapped residual: %+v", bridge)
+	}
+
+	view := actorContextR3AEView(t, actorContextR3PAudienceHuman)
+	before := actorContextR3ABFreshnessCore(t)
+	got, err := actorContextR3AEEvaluate(
+		before,
+		actorContextR3QCloneCore(before),
+		view,
+		bridge,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Categories) != 0 {
+		t.Fatalf("unmapped root-set residual fabricated category outcome: %+v", got)
+	}
+}
+
+func TestActorContextR3AEUsesR3WOutcomeWithoutAutomaticActionShortcut(t *testing.T) {
 	typ := reflect.TypeOf(actorContextR3WResultProbe{})
 	for _, forbidden := range []string{
 		"Stale",
@@ -263,6 +262,37 @@ func TestActorContextR3AEUsesExistingR3WOutcomeWithoutAutomaticActionShortcut(t 
 			t.Fatalf("R3AE/R3W outcome introduced forbidden automatic action %q", forbidden)
 		}
 	}
+}
+
+func actorContextR3AEView(
+	t *testing.T,
+	audience string,
+) actorContextR3PBoundedStopViewProbe {
+	t.Helper()
+	core := actorContextR3ABFreshnessCore(t)
+	purpose := map[string]string{
+		actorContextR3PAudienceHuman: actorContextR3PPurposeOrientation,
+		actorContextR3PAudienceAgent: actorContextR3PPurposeResolutionInspection,
+	}[audience]
+	view, err := actorContextR3PSelectBoundedStopView(core, audience, purpose)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return view
+}
+
+func actorContextR3AEEvaluate(
+	before actorContextR3OStopProjectionCoreProbe,
+	after actorContextR3OStopProjectionCoreProbe,
+	view actorContextR3PBoundedStopViewProbe,
+	bridge actorContextR3ADBridgeResultProbe,
+) (actorContextR3WResultProbe, error) {
+	impact := actorContextR3UAggregateImpacts(
+		view.Audience,
+		view.Purpose,
+		[]actorContextR3TImpactExplanationProbe{bridge.Impact},
+	)
+	return actorContextR3WEvaluateSameProfile(before, after, view, impact)
 }
 
 func actorContextR3AECategory(
