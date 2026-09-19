@@ -190,6 +190,117 @@ fresh Target process
 
 これを最低2 run行う。run 1とrun 2は別process、別run identity、別raw artifact directoryを持つ。
 
+#### 3.1 Gate C fixture replay map
+
+初回R7B operational replayのrequest fixtureは、existing `tools/run-first-web-target-gate-c-evidence.sh` がactual Gate C Evidence取得に使ったJSON Scenarioだけを再利用する。Custom UI / HTML captureはISSUE-000069の対象外とする。
+
+| behavior | Target-local request | synthetic runtime input | expected HTTP |
+| --- | --- | --- | ---: |
+| `first-web/read-only` | `GET /scenario/read` | `from=2026-09-18T08:30:00Z, row=0` | 200 |
+| `first-web/command-success` | `POST /scenario/submit` | editor credential / `from=08:30, row=0` | 200 |
+| `first-web/authentication-denied` | `POST /scenario/submit` | editor identity + wrong credential / `from=08:30, row=0` | 200 |
+| `first-web/authorization-denied` | `POST /scenario/submit` | viewer credential / `from=08:30, row=0` | 200 |
+| `first-web/validation-not-satisfied` | `POST /scenario/submit` | editor credential / `from=08:00, row=1` | 200 |
+| `first-web/execution-error` | `POST /scenario/submit` | editor credential / `from=07:00, row=2` | 422 |
+
+時刻はすべて `2026-09-18T..:..:00Z` で、exact JSON / query encodingはexisting Gate C runnerを実装上の参照元とする。
+
+この表のcredentialはReference synthetic runtime inputであり、replay plan / observation / retained raw response / receiptのidentityへ入れない。
+
+```text
+fixture resolution
+  = Target-local operational input
+
+credential value
+  != replay-plan identity
+  != semantic Observation identity
+  != retained Evidence field
+```
+
+初回runnerではfixture解決を別の新しい設定schemaへ一般化しない。existing Gate C request recipeとR7B replay planの6 fixture identityをexactに対応付け、未知fixtureはfail closedする。
+
+#### 3.2 current-main orchestrator / exact-T Target isolation
+
+operational replay runnerはcurrent `main`側のtoolとして動くが、Target processはplanに固定されたorigin Tから起動する。
+
+最小構造:
+
+```text
+current main checkout
+  owns:
+    replay runner
+    shared semantic validator
+    R7B replay audit / repeatability assessment
+
+Repository-external detached worktree at exact T
+  owns:
+    reference-first-web-target source
+    reference/workspace
+    legacy-auth fixture source
+    live Target process
+```
+
+Target worktreeはconceptually:
+
+```bash
+git worktree add --detach "$target_checkout" \
+  0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+```
+
+で作り、開始前に少なくとも:
+
+- `git -C "$target_checkout" rev-parse HEAD` がplanのReplayTargetBuildRevisionとexact一致
+- worktreeがclean
+- non-standard tracked index stateなし
+- `reference/workspace`
+- `reference/legacy-auth/users.json`
+- `reference/legacy-auth/authorization.json`
+- `tools/reference-first-web-target`
+
+の存在を確認する。
+
+Target起動引数はGate C actual acquisitionと同じ意味境界を使う。
+
+```text
+-workspace reference/workspace
+-application order_entry
+-baseline-id B
+-baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736
+-target-revision 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+-legacy-users reference/legacy-auth/users.json
+-legacy-authorization reference/legacy-auth/authorization.json
+-listen 127.0.0.1:<ephemeral-or-explicit-port>
+```
+
+runner source revisionとTarget build revisionは別identityとしてreceiptへ残す。
+
+```text
+replayRunnerRepositoryRevision
+  != replayTargetBuildRevision
+```
+
+current mainがTより先へ進んでいても、その差をTargetへ混ぜない。
+
+#### 3.3 fresh-process run boundary
+
+run 1 / run 2は同じdetached T worktreeを使ってよいが、Target processは必ず停止して新規起動する。
+
+各run:
+
+1. fresh loopback Target processを起動
+2. `/healthz` 成功を確認
+3. 6 fixtureを一度ずつ実行
+4. raw response bytesとobserved HTTP statusを保存
+5. shared semantic validatorで6件を分類
+6. credential material scan
+7. `run-observation.json` を確定
+8. Target processを停止してwait
+9. 次runへ進む
+
+同じprocessで12 requestを流してrun IDだけ分ける実装はrejectする。
+
+port番号はEvidence identityにしない。runごとに利用可能なloopback portを選べるが、Target bindがloopbackであることはobservationへ残す。
+
 ### 4. repeatability summaryを生成する
 
 各behaviorは、2 run以上について次がすべて成立した場合のみrepeatableとする。
