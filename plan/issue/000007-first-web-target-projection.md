@@ -6,7 +6,7 @@
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
 
-## 着手状況 — standard / Custom UI shared Command boundary
+## 着手状況 — Gate C Evidence acquisition / readiness audit source
 
 Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
 
@@ -80,9 +80,20 @@ Custom UI form
 
 Custom UIは独自のValidation / Authorization / Capability / Result modelを持たず、form / layout / HTML renderingだけをWeb固有差として持つ。
 
-現在もSource Evidenceであり、actual server execution / browser replay / Functional Evidence / Visual Evidenceは未取得である。
+standard / Custom UI shared boundaryの上に、actual Target Evidenceを採取・再監査するsourceまで追加した。
 
-次incrementでは同じprimary `ISSUE-000007` workstream上でGate C Evidence acquisitionの実行入口を整える。
+- `tools/run-first-web-target-gate-c-evidence.sh`
+- `tools/reference-first-web-target-evidence-audit`
+- `tools/reference-first-web-target-visual-evidence-audit`
+- `tools/reference-first-web-target-architecture-evidence`
+- `tools/reference-first-web-target-gate-c-readiness-audit`
+- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
+
+Semantic / Functional runnerはsuccessful pathだけでなく、Authentication denied、Authorization denied、Canonical Validation not-satisfied、Command Invocation Execution Errorを別artifactとして取得する。Execution ErrorはBusiness Outcomeへ変換せず、Target-local 422 envelopeに`B / R / T`とpartial Scenario resultを保持する。
+
+Visual Evidenceは独立capture/audit、Architecture Evidenceは`R → T` Canonical不変・Web authority boundary・shared Command boundaryを独立確認する。最終readiness auditだけが三EvidenceとArchitecture conformanceを同一`B / R / T`で合わせる。
+
+現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
 
 ## 背景
 

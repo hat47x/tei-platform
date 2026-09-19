@@ -31,6 +31,19 @@ func TestAuditArtifactsPassesSemanticFunctionalButNeverVisualOrGateC(t *testing.
 	if !summary.FunctionalEvidence.Passed {
 		t.Fatalf("functional evidence=%+v", summary.FunctionalEvidence)
 	}
+	if summary.TargetDifferenceHandoff.ApplicationID != "order_entry" ||
+		summary.TargetDifferenceHandoff.TargetAdapter != "reference-first-web-target" ||
+		summary.TargetDifferenceHandoff.Host != "go-net-http" ||
+		len(summary.TargetDifferenceHandoff.RuntimeBindings) != 3 ||
+		summary.TargetDifferenceHandoff.ExecutionArtifact != "go-run-native-process" ||
+		summary.TargetDifferenceHandoff.ABI != "linux/amd64" {
+		t.Fatalf("target difference handoff=%+v", summary.TargetDifferenceHandoff)
+	}
+	if len(summary.TargetDifferenceHandoff.TargetCapabilities) == 0 ||
+		len(summary.TargetDifferenceHandoff.DoNotCanonicalize) == 0 ||
+		len(summary.TargetDifferenceHandoff.Unresolved) == 0 {
+		t.Fatalf("target difference handoff is incomplete: %+v", summary.TargetDifferenceHandoff)
+	}
 	if summary.VisualEvidence.Status != "pending" || !summary.VisualEvidence.Required {
 		t.Fatalf("visual evidence=%+v", summary.VisualEvidence)
 	}
@@ -93,6 +106,11 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 		RepositoryPostRunRevision: p.TargetBuildRevision,
 		RepositoryPostRunClean:    true,
 		SourceQualificationPassed: true,
+		GoVersion:                 "go version go1.25.0 linux/amd64",
+		GOOS:                      "linux",
+		GOARCH:                    "amd64",
+		ServerLaunchMode:          "go-run",
+		NetworkBind:               "loopback",
 	})
 	if err := os.WriteFile(filepath.Join(dir, "source-tests.log"), []byte("ok\n"), 0o600); err != nil {
 		t.Fatal(err)

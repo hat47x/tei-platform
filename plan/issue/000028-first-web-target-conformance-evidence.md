@@ -1,6 +1,6 @@
 # ISSUE-000028: 第一Web TargetのConformance Evidence契約を実証する
 
-- 状態: Ready — Gate B Ready / Handover Baseline B固定済み、First Web Target Evidence取得待ち
+- 状態: In Progress — acquisition / Visual / Architecture / final readiness audit source成立、actual Evidence取得待ち
 - GitHub Issue: #270
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - Product Acceptance Scenario: PAS-04 primary
@@ -20,6 +20,10 @@ Authentication / AuthorizationのBusiness Outcome、Validation結果、Command B
 Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加し、同じ`B / R / T`に対するScreenshot集合とattributed evaluator recordを受け入れる。capture toolは固定せず、必須capture state / criterion / artifact fingerprint / provenanceだけをReference pressureとして扱う。Visual criteriaが全passでもaudit単独では`gateCReady = false`のままとする。
 
 actual Screenshot / evaluator Evidenceは未取得である。
+
+Gate C final readiness audit sourceとして`tools/reference-first-web-target-gate-c-readiness-audit`も追加した。Semantic / Functional、Visual、Architectureが同じ`B / R / T`へ揃い、既知unresolvedが明示分類され、blocking unresolvedがない場合だけ最終`gateCReady`を判定する。各下位auditが単独でReadyを宣言しない構造を維持する。
+
+現時点ではfinal audit sourceもSource Evidenceであり、actual `gate-c-readiness-audit.json`は未取得である。
 
 Architecture negative casesについては`tools/reference-first-web-target-architecture-evidence`を追加し、同一clean `T`でHandover `R`からのWorkspace / generated World不変、Web Target authority boundary、standard / Custom UI shared Command boundaryを再確認する。Semantic / Functional acquisition runnerから`architecture-conformance.json`としてsame-run取得する。
 
