@@ -46,6 +46,7 @@ Gate Readyや「pressure testがgreen」という主張が、コンパイルで�
 ## この起票までに実施したこと（2026-09-19）
 
 - main緑化: `tools/reference-business-procedure-check`のコンパイル修正とtest 4件の修正（#828）、Reference前進に追従していないtest 7件の更新（#829）、gofmt差85fileの整形（#830）。`main`（`b0f466c`）で`gofmt -l .`が空、`go vet ./...`がclean、`go test ./...`が64package全てok、`tei validate`がok、Markdown相対リンクの切れ0件。
+- 緑化と同日、`b0f466c`から27commit進んだ`8b964a5`でも、health checkの4ステップすべてがPASSでした。緑化の直後に再発しなかったことの確認であり、gate方式の決定を不要にするものではありません。
 - Read-onlyの`tools/repository-health-check.sh`を追加し、`CONTRIBUTING.md`のDevelopment節へ`gofmt`とscriptを追記（`--fast`で`go test`を省略）。
 
 ## 決めること
