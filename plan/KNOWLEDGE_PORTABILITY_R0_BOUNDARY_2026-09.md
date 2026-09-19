@@ -734,6 +734,17 @@ unrelated origin change
 - [ ] destination variationをoriginへback-propagateしない
 - [ ] test-only destinationをCanonical Applicationへ昇格しない
 
+## 16. Executable Evidence runner
+
+focused runnerは次を正本とする。
+
+- `plan/KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md`
+- `.github/workflows/knowledge-portability-reference-evidence.yml`
+
+successful runがcurrent PR headへ結び付いた場合のみ、R0 pressureをSource EvidenceからExecutable Evidenceへ昇格する。
+
+Workflow未実行 / failure / cancelledではPASSを主張しない。
+
 ## 16. R0後
 
 R0で境界が成立したら、ISSUE-000040の第二Application Referenceへ接続する。

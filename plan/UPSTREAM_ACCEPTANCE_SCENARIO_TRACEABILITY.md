@@ -179,15 +179,15 @@ Command acknowledgementだけでObserved state成立とは扱いません。
 
 Gate AはReadyです。Driverの主要意味境界も成立しています。
 
-Gate BはNot Readyで、理由は新しいDriver抽象不足ではなくactual execution Evidence未取得です。
+Gate BはReadyです（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
 
-Required Evidenceは次の三つです。
+Required Evidenceは次の三つで、いずれも同じclean candidate revision `R`のsame-runで成立しています。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387でfinal convergenceを確認します。
+`ISSUE-000037` / #387のfinal convergenceと`#273`の独立artifact auditも成立済みで、Handover Baseline `B / R`を固定しています（[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
 ## 5. PAS-03 — Native / external assetを壊さず段階移行・置換できる
 

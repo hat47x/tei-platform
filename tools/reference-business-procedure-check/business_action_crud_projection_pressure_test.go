@@ -32,9 +32,9 @@ type businessActionCRUDCellProbe struct {
 }
 
 type businessActionCRUDProjectionRowProbe struct {
-	StepID                       string                        `json:"step"`
-	Cells                        []businessActionCRUDCellProbe `json:"cells,omitempty"`
-	NoCRUDTraceFromCurrentRefs   bool                          `json:"noCRUDTraceFromCurrentRefs"`
+	StepID                     string                        `json:"step"`
+	Cells                      []businessActionCRUDCellProbe `json:"cells,omitempty"`
+	NoCRUDTraceFromCurrentRefs bool                          `json:"noCRUDTraceFromCurrentRefs"`
 }
 
 func TestBusinessActionCRUDProjectionDerivesOnlyEvidenceBackedReads(t *testing.T) {

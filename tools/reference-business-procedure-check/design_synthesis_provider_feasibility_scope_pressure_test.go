@@ -3,7 +3,7 @@ package main
 import "testing"
 
 type providerFeasibilityScopeProbe struct {
-	SemanticCandidate string
+	SemanticCandidate  string
 	RealizationVariant string
 	Provider           string
 	HardProvider       bool
@@ -40,7 +40,7 @@ func contractProviderFeasibilityProbe(p providerFeasibilityScopeProbe) providerC
 
 func TestProviderFeasibilityMissingObservationDoesNotInvalidateSemanticCandidate(t *testing.T) {
 	result := contractProviderFeasibilityProbe(providerFeasibilityScopeProbe{
-		SemanticCandidate: "remove sales.archive_candidate from desired schema",
+		SemanticCandidate:  "remove sales.archive_candidate from desired schema",
 		RealizationVariant: "postgres-current-drop-table",
 		Provider:           "postgres",
 		Result:             providerUnresolvedProbe,
@@ -60,7 +60,7 @@ func TestProviderFeasibilityMissingObservationDoesNotInvalidateSemanticCandidate
 
 func TestProviderContradictionEliminatesOnlyMatchingRealizationVariant(t *testing.T) {
 	result := contractProviderFeasibilityProbe(providerFeasibilityScopeProbe{
-		SemanticCandidate: "change primary key",
+		SemanticCandidate:  "change primary key",
 		RealizationVariant: "postgres-current-change-primary-key",
 		Provider:           "postgres",
 		Result:             providerContradictionProbe,
@@ -80,7 +80,7 @@ func TestProviderContradictionEliminatesOnlyMatchingRealizationVariant(t *testin
 
 func TestHardProviderConstraintMayEliminateCompositeWithoutRewritingMeaning(t *testing.T) {
 	result := contractProviderFeasibilityProbe(providerFeasibilityScopeProbe{
-		SemanticCandidate: "change primary key",
+		SemanticCandidate:  "change primary key",
 		RealizationVariant: "postgres-current-change-primary-key",
 		Provider:           "postgres",
 		HardProvider:       true,
@@ -98,7 +98,7 @@ func TestHardProviderConstraintMayEliminateCompositeWithoutRewritingMeaning(t *t
 
 func TestProviderSupportDoesNotImplySemanticAcceptance(t *testing.T) {
 	result := contractProviderFeasibilityProbe(providerFeasibilityScopeProbe{
-		SemanticCandidate: "remove ordinary table",
+		SemanticCandidate:  "remove ordinary table",
 		RealizationVariant: "postgres-current-drop-table",
 		Provider:           "postgres",
 		Result:             providerSupportedProbe,

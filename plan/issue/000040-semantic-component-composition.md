@@ -81,6 +81,113 @@ Application-owned Patternをoriginからshared authorityとして継承せず、
 
 これらを検証する前にinheritance / override graphやauto-sync protocolをproduction化しない。
 
+## 第二Application Pre-Gate Contract
+
+Gate C前に第二Application sourceを先取りせず、着手時に必要な意味境界だけを固定する。
+
+正本:
+
+- `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go`
+
+最初のscenario labelは `repair_intake-test-only` とするが、これはApplication名の採用ではない。
+
+Pre-Gateでは必ず、
+
+```text
+requiredGate = Gate C Ready
+
+canonicalApplicationCreated = false
+sourceAuthoringAttempted = false
+acceptanceAttempted = false
+environmentBindingCreated = false
+targetImplementationStarted = false
+```
+
+を維持する。
+
+Gate C後の最初のread-only Referenceでは、
+
+- shared authority: `customer.customer`, `master_data.customer ^2`
+- destination-owned: Application identity / Business Relation / Application Pattern / datasource alias
+- Environment-owned: development / production binding
+
+を分離する。
+
+また、shared dependency change / origin provenance drift / destination-local change / unrelated origin changeの期待値をPre-Gateで固定するが、ISSUE-000039のimpact engineを前倒し実装しない。
+
+### Pre-Gate schema sufficiency
+
+第二Application専用schemaを先に作らず、既存Application / Pattern / Environment grammarで最小構成を表現できるかをtest-onlyにPressureする。
+
+正本:
+
+- `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go`
+
+初回read-only Referenceについてcurrent grammarで、
+
+- shared Semantic
+- compatible Database Contract requirement
+- destination-owned datasource alias
+- destination-owned reference Pattern
+- shared Contract Query / input mapping
+- destination Environment binding
+
+を表現できるなら、専用Knowledge Package / inheritance / override / sync構文は追加しない。
+
+追加schemaの必要性は、actual second ApplicationのAcceptance / reload / change propagationからEvidenceが出た場合に再評価する。
+
+## Gate C後の開始パケット
+
+Gate C Ready後の第二Application Referenceは、探索・Portability・composition・Acceptanceを別branchへ分裂させず、一つのISSUE-000040 workstreamとして開始する。
+
+Entry preflight:
+
+- `plan/GATE_C_SECOND_APPLICATION_ENTRY_PREFLIGHT_2026-09.md`
+- `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
+
+Gate CのReady labelだけでは開始せず、`B/R/T1`、Semantic / Functional / Visual Evidence、Target差分が揃っていることを確認する。
+
+開始契約:
+
+- `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
+
+開始時にはGate Cの、
+
+- Handover Baseline `B`
+- baseline revision `R`
+- First Web Target build `T1`
+- Semantic Conformance Evidence
+- Interaction / Functional Evidence
+- Visual Fidelity Evidence
+- Target差分 / unresolved
+
+をentry recordへ固定する。
+
+その後、
+
+```text
+ISSUE-000047 qualification
+  -> ISSUE-000053 Phase 5 portability relation
+  -> ISSUE-000040 composition candidate
+  -> Shared Acceptance
+  -> destination source
+  -> Environment Binding Proposal
+  -> Driver / First Web Target
+  -> change propagation Evidence
+```
+
+の順で進める。
+
+同じ第二Applicationについてexploration / Pattern / Environment / Driverを長期branchへ分割せず、意味単位のcommitを一つのprimary workstream branchへ収束させる。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。

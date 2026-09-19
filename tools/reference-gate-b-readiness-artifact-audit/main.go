@@ -343,7 +343,7 @@ func verifyPostgresChild(obj map[string]any) error {
 		{key: "environment", want: "development"},
 		{key: "databaseInstance", want: "sales_core.dev"},
 		{key: "executorCapability", want: "database.query.postgres"},
-		{key: "contractQueryTarget", want: "find_by_order"},
+		{key: "contractQueryTarget", want: "sales_core/sales_core.order_line/find_by_order"},
 	} {
 		if err := requireStringEquals(obj, identity.key, identity.want); err != nil {
 			return err

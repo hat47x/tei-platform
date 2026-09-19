@@ -19,10 +19,10 @@ type HeaderDetailContractQueryInputBinding struct {
 // このrealization側で明示する。Environment、Database instance、provider、SQL sourceは下位の
 // composition / realization責務に残し、このmodelへ混ぜない。
 type HeaderDetailContractQueryBinding struct {
-	Application core.CanonicalID                         `json:"application"`
-	Pattern     core.CanonicalID                         `json:"pattern"`
-	Datasource  core.LocalName                           `json:"datasource"`
-	Target      ContractQueryTarget                      `json:"target"`
+	Application core.CanonicalID                        `json:"application"`
+	Pattern     core.CanonicalID                        `json:"pattern"`
+	Datasource  core.LocalName                          `json:"datasource"`
+	Target      ContractQueryTarget                     `json:"target"`
 	Inputs      []HeaderDetailContractQueryInputBinding `json:"inputs,omitempty"`
 }
 

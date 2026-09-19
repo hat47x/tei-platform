@@ -16,6 +16,7 @@ Gate Cでは、Driverと第一Web Targetが同じCanonical Application上の意�
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/issue/000007-first-web-target-projection.md`
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
+- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
 - `plan/issue/000026-target-capability-execution-profile-boundary.md`
 - GitHub Issue #70 / #259 / #270 / #291
 
@@ -363,6 +364,8 @@ Gate CはIssue closeやWeb画面の存在だけでは通過しません。
 - unresolvedを成功へ読み替えず明示できる
 
 Gate C通過後、`ISSUE-000008`のEditor / AI支援保留解除と、`ISSUE-000026`の第二Target圧力試験を判断します。
+
+判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)（第一Web Target、2026-09-19、Ready）
 
 ## 非目標
 

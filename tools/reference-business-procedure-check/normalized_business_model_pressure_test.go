@@ -11,7 +11,7 @@ import (
 
 type normalizedBusinessModelProbe struct {
 	Procedures []normalizedBusinessProcedureWithStepAddressProbe `json:"procedures"`
-	Handoffs   []canonicalBusinessHandoffProbe                    `json:"handoffs,omitempty"`
+	Handoffs   []canonicalBusinessHandoffProbe                   `json:"handoffs,omitempty"`
 }
 
 func TestNormalizedBusinessModelProbeKeepsProcedureAndHandoffWithoutSourceInfrastructure(t *testing.T) {

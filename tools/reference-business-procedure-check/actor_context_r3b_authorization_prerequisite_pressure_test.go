@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	actorContextR3BAuthorizationRequired   = "required"
+	actorContextR3BAuthorizationRequired    = "required"
 	actorContextR3BAuthorizationNotRequired = "not-required"
-	actorContextR3BAuthorizationUnresolved = "unresolved"
+	actorContextR3BAuthorizationUnresolved  = "unresolved"
 )
 
 type actorContextR3BAuthorizationRequirementProbe struct {

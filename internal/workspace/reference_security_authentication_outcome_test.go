@@ -25,11 +25,11 @@ func TestReferenceAuthenticationUsesNamedOutcomesWithoutSecretMaterial(t *testin
 	for _, input := range capability.Inputs {
 		inputs[string(input.Name)] = string(input.Type)
 	}
-	if inputs["login"] != "std.identifier" {
-		t.Fatalf("login input=%q want=%q", inputs["login"], "std.identifier")
+	if inputs["login_id"] != "std.identifier" {
+		t.Fatalf("login_id input=%q want=%q", inputs["login_id"], "std.identifier")
 	}
-	if inputs["credential"] != "security.credential_handle" {
-		t.Fatalf("credential input=%q want=%q", inputs["credential"], "security.credential_handle")
+	if inputs["credential"] != "security.credential" {
+		t.Fatalf("credential input=%q want=%q", inputs["credential"], "security.credential")
 	}
 	if len(inputs) != 2 {
 		t.Fatalf("security.authenticate inputs=%#v", inputs)

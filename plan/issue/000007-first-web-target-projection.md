@@ -1,10 +1,117 @@
 # ISSUE-000007: 第一Web TargetへのProjection境界を設計する
 
-- 状態: Proposed
+- 状態: In Progress — Gate C Ready達成（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。残は条件付き項目（Replayable Behavior利用時のtrace等）とISSUE-000026での差分handoff利用
 - GitHub Issue: #70
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
+
+## 2026-09-19 Gate C Ready
+
+clean checkoutの`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`でactual Gate C Evidence（Semantic / Functional、Visual Fidelity、architecture conformance）を取得し、final readiness auditが`gateCReady = true`を返した。判定記録は[`GATE_C_READINESS_AUDIT.md`](../GATE_C_READINESS_AUDIT.md)。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではない。
+
+以下の「着手状況」は、Ready到達までの実装・設計履歴として保持する。
+
+## 着手状況 — Gate C Evidence acquisition / readiness audit source
+
+Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
+
+Reference-specific implementation:
+
+- `tools/reference-first-web-target/projection.go`
+- `tools/reference-first-web-target/server.go`
+- `tools/reference-first-web-target/main.go`
+- `tools/reference-first-web-target/projection_test.go`
+
+方針:
+
+```text
+Canonical / Driver meaning
+  -> reference-specific Web projection
+  -> HTML / JSON
+```
+
+このincrementでは汎用Presentation IRやWeb frameworkを追加しない。Go標準`net/http`で、Driver Resolverが解決したApplication Pattern / Contract Query / Capability参照を薄くProjectionする。
+
+Gate C provenanceとして、
+
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- `targetBuildRevision = T`
+
+を別identityで必須入力にする。
+
+projection shellに加え、`/scenario/read`へread-only Driver Scenarioを接続した。
+
+```text
+browse
+  -> selected sales.order
+  -> record resolution
+  -> customer reference
+     -> development / master_data.dev / oracle
+  -> order-lines header-detail
+     -> development / sales_core.dev / postgres
+```
+
+reference / header-detailは既存のEnvironment-aware Driver APIを使う。browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Web側でEnvironment instanceを推測せず、その非対称性をunresolvedとして明示する。
+
+さらに`POST /scenario/submit`へ、Gate Bと同じ意味順序を保ったCommand Scenario sourceを接続した。
+
+```text
+Authentication
+  -> read slice
+  -> Canonical Validation
+  -> Authorization
+  -> Command Business Result
+  -> separate explicit Observation
+```
+
+Authentication / Authorizationの`denied`、Validation `not-satisfied`は正常な業務結果として保持し、runnerのExecution Errorへ畳まない。Command acknowledgementだけでObserved state成立とはせず、Observationは`ExecuteObservationRead`の別readで取得する。credentialはruntime inputとしてのみ扱い、responseへ保持しない。
+
+standalone `/scenario/read` はReference診断用で、productionの認証済みread endpointではない。Command flow内部ではAuthentication後に同じread runnerを利用する。
+
+さらに`/custom-submit`へCustom HTML UIを追加し、JSON APIと同じ`commandScenarioRunner`を共有するsource pressureを置いた。
+
+```text
+standard JSON interaction
+        ┐
+        ├─> commandScenarioRunner
+        │    -> Authentication
+Custom UI form
+        ┘    -> Validation
+             -> Authorization
+             -> Command
+             -> Observation
+```
+
+Custom UIは独自のValidation / Authorization / Capability / Result modelを持たず、form / layout / HTML renderingだけをWeb固有差として持つ。
+
+standard / Custom UI shared boundaryの上に、actual Target Evidenceを採取・再監査するsourceまで追加した。
+
+- `tools/run-first-web-target-gate-c-evidence.sh`
+- `tools/reference-first-web-target-evidence-audit`
+- `tools/reference-first-web-target-visual-evidence-audit`
+- `tools/reference-first-web-target-architecture-evidence`
+- `tools/reference-first-web-target-gate-c-readiness-audit`
+- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
+
+Semantic / Functional runnerはsuccessful pathだけでなく、Authentication denied、Authorization denied、Canonical Validation not-satisfied、Command Invocation Execution Errorを別artifactとして取得する。Execution ErrorはBusiness Outcomeへ変換せず、Target-local 422 envelopeに`B / R / T`とpartial Scenario resultを保持する。
+
+Visual Evidenceは独立capture/audit、Architecture Evidenceは`R → T` Canonical不変・Web authority boundary・shared Command boundaryを独立確認する。最終readiness auditだけが三EvidenceとArchitecture conformanceを同一`B / R / T`で合わせる。
+
+Custom UIの結果表示もVisual review向けに構造化し、成功時のSelected order / Customer reference / Order lines / Canonical Validation / Command Business Result / separate Observationを分離した。Authorization denied、Validation not-satisfied、Execution Errorも別画面状態として読み取れるようにし、Gate C runnerが各stateのHTML artifactを保存してindependent auditする。
+
+Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再現できる形へRunbookに固定した。さらにSemantic / Functional same-runでTargetが返した`projection-index.html`と各Custom UI state HTMLをraw artifactとしてfingerprintし、Visual manifest scaffoldが各Screenshotへ`sourceArtifact / sourceSHA256`を自動転記するようにした。
+
+これによりVisual reviewerはcredential付き操作を再入力せず、same-run Target-rendered HTMLをbrowserでreplayしてScreenshotを取得できる。
+
+さらに`tools/reference-first-web-target-visual-replay`を追加し、Semantic / Functional summaryのdigestを再確認したうえでrequired HTMLをloopback routeからexact bytesで配信する。replay helperはcredential入力や業務処理を再実行せず、`/capture-manifest.json`へroute / source artifact / source SHA-256 / `B / R / T`を残す。
+
+Visual manifest scaffoldを渡した場合はreview indexも表示し、evaluator provenance / Screenshot filename / criterion / capture referenceを同じ画面で確認できる。これは閲覧補助であり、manifest更新・evaluator判断・Visual auditを代替しない。
+
+ただしHTML state artifactやreplay helper自体をScreenshot / Visual Fidelity Evidenceへ読み替えない。
+
+現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
 
 ## 背景
 
@@ -222,20 +329,20 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 
 ## 完了条件
 
-- [ ] Gate B Ready後、`ISSUE-000030`の第一Handover Baseline `B` / `R`を受け取る
-- [ ] Target build revision `T`をbaseline `R`と別に追跡する
-- [ ] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
-- [ ] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
-- [ ] 各Gate C runからHandover Baselineへ追跡できる
-- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
-- [ ] Semantic ConformanceをEvidenceから確認できる
-- [ ] Reference ScenarioのInteraction / Functional Evidenceを再現できる
-- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる
-- [ ] Visual Fidelityを別Evidenceとして残せる
-- [ ] standard ProjectionとCustom UIを同じ上位意味へ接続できる
-- [ ] Web Adapterを外してもCanonical Worldが変わらない
-- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す
-- [ ] Gate CをIssue close状態ではなくEvidenceから判定できる
+- [x] Gate B Ready後、`ISSUE-000030`の第一Handover Baseline `B` / `R`を受け取る
+- [x] Target build revision `T`をbaseline `R`と別に追跡する
+- [x] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
+- [x] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
+- [x] 各Gate C runからHandover Baselineへ追跡できる
+- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える（条件付き。今回は`R → T`でCanonical不変を確認しており切替は発生していない）
+- [x] Semantic ConformanceをEvidenceから確認できる
+- [x] Reference ScenarioのInteraction / Functional Evidenceを再現できる
+- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる（任意。今回のGate C Evidenceでは未利用）
+- [x] Visual Fidelityを別Evidenceとして残せる
+- [x] standard ProjectionとCustom UIを同じ上位意味へ接続できる
+- [x] Web Adapterを外してもCanonical Worldが変わらない
+- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す（handoff recordは取得済み。`ISSUE-000026`での利用は未着手）
+- [x] Gate CをIssue close状態ではなくEvidenceから判定できる
 
 ## 非目標
 
@@ -256,3 +363,76 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
 - `plan/issue/000030-gate-b-to-c-handover-baseline.md`
 - GitHub Issue #70 / #259 / #270 / #291
+
+
+## Gate C Evidence acquisition source
+
+standard / Custom UI shared boundaryの次incrementとして、actual Target runからSemantic / Functional Evidenceを採取するsourceを追加した。
+
+- `tools/run-first-web-target-gate-c-evidence.sh`
+- `tools/reference-first-web-target-evidence-audit`
+- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
+
+acquisition runnerはclean `targetBuildRevision = T`からserverを起動し、同一runで少なくとも次を保持する。
+
+- manifest
+- read-only Driver Scenario
+- successful Command
+- Authentication denied
+- Authorization denied
+- Canonical Validation not-satisfied
+- Command Invocation Execution Error
+- Custom UI GET / successful POST
+- server / health
+- source qualification
+
+Validation not-satisfied用のorder `1002`、Execution Error用のorder `1003`はReference runtime fixtureでありCanonical dataではない。
+
+Execution ErrorはBusiness Outcomeへ変換せず、HTTP Target層だけが`B / R / T`とpartial Scenario resultを伴う422 envelopeへProjectionする。
+
+auditはVisual Fidelityを成功へ読み替えず、Semantic / Functionalが成立しても`gateCReady = false`を返す。
+
+現時点ではrunner / auditの**Source Evidence**であり、actual clean checkout上のrun artifactはまだ取得していない。
+
+
+## Visual Evidence intake source
+
+Semantic / Functional acquisition sourceに続き、同一Target revision `T`のScreenshotと評価記録を受け入れるReference auditを追加した。
+
+- `tools/reference-first-web-target-visual-evidence-audit`
+
+capture toolは固定しない。外部で取得したScreenshotを、Semantic / Functional summaryと同じ`B / R / T`へ明示的に結び付ける。
+
+第一Referenceでは少なくとも次をVisual capture stateとして要求する。
+
+- standard Projection initial
+- Custom UI initial
+- Custom UI success
+- Authorization denied
+- Validation not-satisfied
+- Execution Error
+
+Visual評価はGate C contractのreadability / relation understanding / header-detail locality / feedback distinguishability / Business Result vs Observation / standard vs Custom UI差へ対応する。
+
+auditはScreenshot exact bytesをfingerprintし、評価結果とcapture referenceの完全性を確認するが、evaluator判断をCanonical meaningへ昇格しない。
+
+全Visual criteriaがpassでも`gateCReady = false`を維持し、最終Gate C判定はSemantic / Functional / Visualを別Evidenceとして揃えた後に行う。
+
+現時点ではVisual auditのSource Evidenceであり、actual Screenshot / evaluator recordは未取得である。
+
+
+## Architecture negative Evidence source
+
+Gate C contractのnegative / architecture conformanceをactual Repository runで再現するため:
+
+- `tools/reference-first-web-target-architecture-evidence`
+
+を追加した。
+
+第一Referenceでは`R → T`間で`reference/workspace/**`と`reference/world.json`が不変であることを要求し、Web Target配下にauthoritative `.tei` / `.sql` / native SQL本文を持ち込まないことをscanする。
+
+さらにactual `T`でstandard / Custom UI shared Command boundary、Validation not-satisfied、Execution Error分離のfocused testを実行し、run前後同一clean revisionを要求する。
+
+これは第一Web Target向けのcoarseなarchitecture Evidenceであり、一般化されたSemantic diff taxonomyではない。
+
+現在はSource Evidenceのみで、actual `architecture-conformance.json`は未取得である。

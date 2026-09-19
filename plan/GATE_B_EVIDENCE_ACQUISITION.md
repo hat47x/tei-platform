@@ -40,7 +40,7 @@ Handover Baseline B / revision R
 
 actual external asset / Oracle Evidenceは重要なEvidence natureとして継続しますが、第四Required laneではありません。取得済みならHandoverへverified external Evidenceとして参照し、未完了なら`unresolved`として渡します。
 
-actual execution Evidenceがまだ揃っていないため、Gate Bは**Not Ready**です。
+actual execution Evidenceが揃ったため、Gate Bは**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。判定の詳細は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)が正本です。
 
 ## Evidence natureを相互代替しない
 

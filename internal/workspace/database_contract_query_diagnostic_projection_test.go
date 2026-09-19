@@ -54,14 +54,14 @@ func TestDatabaseContractQuerySignatureDiagnosticProjectsToContractSource(t *tes
 			if source.ArtifactPath != contractPath || source.Role != sourceindex.RoleDefinition {
 				continue
 			}
-		content := []byte(contractSource)
-		if source.Range.Start.Offset < 0 || source.Range.End.Offset > len(content) || source.Range.Start.Offset >= source.Range.End.Offset {
-			t.Fatalf("Contract Queryのsource rangeが不正です: %+v", source.Range)
-		}
-		if got := string(content[source.Range.Start.Offset:source.Range.End.Offset]); got != "find_by_id" {
-			t.Fatalf("Contract Query Diagnosticのanchor=%q want=%q range=%+v", got, "find_by_id", source.Range)
-		}
-		return
+			content := []byte(contractSource)
+			if source.Range.Start.Offset < 0 || source.Range.End.Offset > len(content) || source.Range.Start.Offset >= source.Range.End.Offset {
+				t.Fatalf("Contract Queryのsource rangeが不正です: %+v", source.Range)
+			}
+			if got := string(content[source.Range.Start.Offset:source.Range.End.Offset]); got != "find_by_id" {
+				t.Fatalf("Contract Query Diagnosticのanchor=%q want=%q range=%+v", got, "find_by_id", source.Range)
+			}
+			return
 		}
 		t.Fatalf("Database Contract Query DiagnosticがContract authoringへ投影されていません: %#v", diagnostic.Sources)
 	}

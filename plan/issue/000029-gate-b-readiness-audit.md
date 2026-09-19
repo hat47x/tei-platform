@@ -1,6 +1,6 @@
 # ISSUE-000029: Gate B readinessをReference / Evidenceから再監査する
 
-- 状態: In Progress — Ready判定契約済み、actual final Evidence待ち
+- 状態: Done — Ready判定済み（R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）
 - GitHub Issue: #273
 - 対象: `ISSUE-000006` / GitHub Issue #69
 - 次段: `ISSUE-000007` / GitHub Issue #70
@@ -49,18 +49,11 @@ actual Oracle #214 / #371 / #376は第四Required laneではありません。�
 
 ## 現在の判定
 
-**Gate B: Not Ready**です。
+**Gate B: Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。
 
-不足しているのは主要意味境界ではなくactual execution Evidenceです。
+actual Evidence取得の過程で3件のsource-navigation bug（PR [#726](https://github.com/hat47x/tei-platform/pull/726)、PR [#727](https://github.com/hat47x/tei-platform/pull/727)）を検出・修正し、修正後のPR統合済み`main` HEADをclean checkoutして#310 / #255 / #308 / #387 / 独立artifact auditを最初から再実行しました。判定の詳細と各Evidence field（fingerprint等）は[`GATE_B_READINESS_AUDIT.md`](../GATE_B_READINESS_AUDIT.md)が正本です。
 
-- #310 actual clean checkout run
-- #255 actual check-only run
-- #308 Evidence専用空PostgreSQLでのactual run
-- #387 actual same-R final convergence
-- same-run child exact artifact監査
-- Rについて本Readiness Auditを再実施
-
-isolated test、runner実装、文書同期、GitHub mergeだけでReadyへ格上げしません。
+Handover Baseline `B / R`は[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../GATE_B_TO_C_HANDOVER_BASELINE_B.md)として固定済みです（`ISSUE-000030` / #291）。
 
 ## Ready判定へ使うEvidence provenance
 
@@ -219,21 +212,21 @@ Gate B通過時にverified claimとして十分なら追加Evidenceとして参�
 - [x] same-run child独立再監査toolを実装・strict化（PR #489 / #493）
 - [x] Readiness artifact auditを正規Runbookへ接続（PR #495）
 - [x] #310 Workspace / #310・#255 producer commandを独立artifact auditへ束縛（PR #498）
-- [ ] 実TEI full checkoutでfinal runner / repositoryevidence / real PostgreSQL Evidence runner / Readiness artifact audit package test成功
-- [ ] Evidence専用空PostgreSQL Database用意
-- [ ] clean candidate R固定
-- [ ] #387 actual final run成功
-- [ ] #310 / #255 / #308がsame-R成功
-- [ ] `childArtifactsRetained = true`
-- [ ] 三つのsame-run child exact artifact保存
-- [ ] child SHA-256とfinal fingerprint一致を本監査でも再確認
-- [ ] child本文からlane固有安全条件を再監査
-- [ ] actual runのGo / source / PostgreSQL / secret境界成立
-- [ ] `GATE_B_READINESS_AUDIT.md`をRについてReady / Not Ready再判定
-- [ ] Readyなら#291 Handover Baseline `B / R`を作成
-- [ ] actual Oracle未完了範囲を必要に応じて`unresolved`へ記録
+- [x] 実TEI full checkoutでfinal runner / repositoryevidence / real PostgreSQL Evidence runner / Readiness artifact audit package test成功
+- [x] Evidence専用空PostgreSQL Database用意
+- [x] clean candidate R固定（`e5231839a5dcc62cce1181a2731fcb7c70d16736`）
+- [x] #387 actual final run成功
+- [x] #310 / #255 / #308がsame-R成功
+- [x] `childArtifactsRetained = true`
+- [x] 三つのsame-run child exact artifact保存
+- [x] child SHA-256とfinal fingerprint一致を本監査でも再確認
+- [x] child本文からlane固有安全条件を再監査
+- [x] actual runのGo / source / PostgreSQL / secret境界成立
+- [x] `GATE_B_READINESS_AUDIT.md`をRについてReady / Not Ready再判定（Ready）
+- [x] Readyなら#291 Handover Baseline `B / R`を作成
+- [x] actual Oracle未完了範囲を必要に応じて`unresolved`へ記録
 
-一つでも満たさなければNot Readyです。
+すべて満たしたためReadyです。
 
 ## 非目標
 

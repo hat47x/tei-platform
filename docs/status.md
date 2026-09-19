@@ -1,10 +1,10 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-16
+- 更新日: 2026-09-19
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
-- Gate B: **Not Ready**
-- Gate C: **Blocked — Gate B Ready + Handover待ち**
+- Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
+- Gate C: **Ready**（First Web Target build `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、Handover Baseline `B / R`。Visual Fidelityは単一のAI評価者による評価 — [`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
 
 TEIは完成したlow-code製品ではありません。
 
@@ -28,14 +28,19 @@ TEIは完成したlow-code製品ではありません。
 - deterministic Repository Evidence runner
 - real PostgreSQL ephemeral fixture Evidence runner / safety boundary
 - Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
+- Gate B actual #310 / #255 / #308 final Evidence（candidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）
+- Gate B → Gate C Handover Baseline `B / R`固定（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）
+- Gate C actual Evidence（Semantic / Functional、Visual Fidelity、architecture conformance、final readiness audit `gateCReady = true`。`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19、[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
 
 2026-09-08には、datasource aliasのdeclaration existenceとruntime / authority上のexact-one resolutionを分離する#511と、Business Procedure / Handoffのcross-view pressureを扱う#482がmainへ統合されています。
 
-これらのmergeをactual package testやGate B Product Evidenceの成功へ読み替えません。candidate revision `R`はまだ固定しておらず、post-merge mainをactual full checkoutでsource / index preflightし、Gate B pre-checkで追加source修正が不要と確認した後に初めてRを選びます。
+2026-09-19には、actual Evidence取得中に見つかった2件のsource-navigation bug（`semanticDataAnchors`のrelation `key`句未対応、`database-contract-query`のcontract wrapper未対応）をPR [#726](https://github.com/hat47x/tei-platform/pull/726)で、独立artifact auditが検出した`contractQueryTarget`期待値のstaleさをPR [#727](https://github.com/hat47x/tei-platform/pull/727)で修正し、両PRのsquash-merge後の`main` HEAD（`e5231839a5dcc62cce1181a2731fcb7c70d16736`）をclean checkoutして#310 / #255 / #308 / #387 / 独立artifact auditを最初から再実行しました。**Gate Bのactual Product Evidenceは、この`R`についてすべて揃っています。**
 
-ただし、**Gate Bのactual Product Evidenceはまだ揃っていません。**
+判定の詳細は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)、Handoverは[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、post-merge mainをactual full checkoutで検証し、#310 / #255 / #308を同じclean candidate revisionへ実際に収束させ、#387 final convergence後にsame-run child exact artifactsを#273で独立再監査することです。
+現在必要なのは、新しいDriver abstractionを増やすことではなく、Gate C通過後の並行lane（Studio / knowledge-first・AI Proposal / 第二Application・第二Target）をどの順で開始するかを、Evidenceに基づいて判断することです。
+
+第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。Custom UIもJSON APIと同じ`commandScenarioRunner`を共有し、form / layout / HTML renderingだけをTarget固有差として持つ。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual Target run用のSemantic / Functional Evidence runner / independent audit sourceに加え、同一`T`のScreenshotと評価記録を受け入れるVisual Evidence audit sourceも追加している。 さらにHandover `R`→Target `T`のWorkspace / generated World不変とWeb Target authority boundaryを確認するarchitecture conformance sourceを追加し、same-run `architecture-conformance.json`として取得する設計にした。Custom UIのsuccess / Authorization denied / Validation not-satisfied / Execution Errorを構造化した画面状態として分離し、Semantic / Functional runnerが各stateのHTML artifactも保存・auditするようにした。Runbookには同じ`T`で各Screenshot stateを再現するdeterministic capture recipeも追加した。さらにstandard Projectionと各Custom UI stateのsame-run Target-rendered HTMLをraw artifactとしてfingerprintし、Visual manifestの各Screenshotへ`sourceArtifact / sourceSHA256`を自動で結び付けるようにした。これによりreviewerはcredential付き操作を再入力せず保存済みHTML replayからcaptureできる。さらに`tools/reference-first-web-target-visual-replay`でsame-run digestを再検証し、required HTMLをloopbackからexact bytesで配信できるようにした。 Visual manifest scaffoldを渡せばcapture route / Screenshot filename / evaluator / criterion-capture対応をreview indexで一覧できるが、この画面は閲覧補助でありVisual evaluatorやauditの代替ではない。HTML artifactをVisual Fidelityへ読み替えず、Visual auditがpassしてもそれだけでGate C Readyにしない。2026-09-19に、clean checkout（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）上でactual server run / Functional artifact / Screenshot / evaluator recordを取得し、final Gate C readiness auditが`gateCReady = true`を返した（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。取得の過程で、Runbookのsource qualificationがuncompilableなtest fileとgofmt差で停止したこと（PR [#815](https://github.com/hat47x/tei-platform/pull/815)）、Visual reviewで標準Projection headerのrevision値が重なる不具合が見つかり修正したこと（PR [#816](https://github.com/hat47x/tei-platform/pull/816)）を、旧`T`のEvidenceをcarry-forwardせず最初から再取得して解消している。Visual Fidelityの評価者は単一のAI評価者（VLM）であり、人による確認ではない。保持したScreenshotは別の評価者が再評価でき、`fail`が出た場合はGate Cを再監査する。
 
 ## Business Procedure / Lane C Pre-ADR
 
@@ -78,13 +83,13 @@ Gate A — Ready
         ↓
 Application Driver — major semantics ready
         ↓
-Gate B — Not Ready
+Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T — 実装・Evidence取得済み（T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe）
         ↓
-Gate C
+Gate C — Ready
         ↓
    ┌──────┼──────────────┐
    ↓      ↓              ↓
@@ -92,19 +97,19 @@ Studio  knowledge / AI  Second Target
 PAS-01  PAS-06 / 01     PAS-04
 ```
 
-## Gate B — actual Evidence待ち
+## Gate B — actual Evidence成立
 
-Ready判定へ必須とするsource-dependent Evidenceは次の三つです。
+Ready判定へ必須とするsource-dependent Evidenceは次の三つで、いずれもcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`のsame-runで成立しています（2026-09-19）。
 
 | Evidence | Issue | 実装状態 | actual Evidence |
 | --- | --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | runner / source guard Ready | 未取得 |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair / source guard Ready | 未取得 |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 未取得 |
+| deterministic Repository | `ISSUE-000032` / #310 | runner / source guard Ready | 成立 |
+| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair / source guard Ready | 成立 |
+| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / DB safety / cleanup境界 Ready | 成立 |
 
-三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387のfinal runnerで収束確認します。
+三つは`ISSUE-000037` / #387のfinal runnerでsame-Rの収束を確認済みです。
 
-#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。
+#273の独立監査は、#387が実際に読んだsame-run 3 child artifactを`tools/reference-gate-b-readiness-artifact-audit`で再確認する形まで機械化し、正規Runbookへ接続済みです。fixed filename / exact bytes SHA-256 / lane identity / repository revision / post-run clean stateに加え、#310はWorkspaceと実行command、#255はgolden check command、#308はSemantic結果・fixture safety・cleanup等を再照合します。このartifact監査は第四Required laneではなく、`artifactAuditPassed=true`だけでGate B Readyにはしません。`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`に対する独立監査は`artifactAuditPassed = true`でした。
 
 actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gate Bの第四Required laneではありません。
 
@@ -126,7 +131,7 @@ Gate B Product Evidenceと、補助的なsource qualification CIを分離しま�
 - source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
 - 環境変化を示す観測がない間、同一classのfailed jobを機械的にrerunしない
 
-したがってcurrent restart pointは「Actionsを再有効化するか」ではありません。利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更を出し切った後にcandidate `R`を固定することです。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceではありません。
+current restart pointは「Actionsを再有効化するか」ではありませんでした。実際には、利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更（2件のsource-navigation bug fix、PR #726 / #727）を出し切った上でcandidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を固定し、Gate B Readyへ到達しました。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceの代わりにはならず、今回のGate B Ready判定もlocal actual executionのみを根拠としています。
 
 Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
 
@@ -248,15 +253,15 @@ Application userのAuthentication / Authorizationと、Plugin / Runtime Permissi
 
 ## Handover / Target
 
-Gate B Ready後、candidate revision `R`をHandover Baseline `B`として固定します。
+Gate B Readyを受けて、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定しました（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。
 
 First Web Targetの実装revisionは`T1`として別に追跡します。
 
 ```text
-Handover B at R
+Handover B at R  ← 固定済み
       ↓ meaning baseline
-Web build T1
-      ↓
+Web build T1  ← source implementation / Evidence tooling成立
+      ↓          actual clean T1 runは未取得
 Gate C Evidence
 ```
 
@@ -267,7 +272,7 @@ Gate Cでは次を別Evidenceとして扱います。
 3. Visual Fidelity Evidence
 4. 必要に応じたPerformance Evidence
 
-First Targetはまだ実装 / Evidence取得前です。
+First Targetは実装済みで、actual clean Target run、Visual capture、final Gate C readiness auditを`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`で取得し、Gate C Readyと判定しました（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。Visual Fidelityの評価者は単一のAI評価者で、人による確認は行っていません。
 
 ## Studio / Authoring
 
@@ -340,10 +345,8 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 
 ## 現時点で完成済みとは言わないもの
 
-- Gate B Ready
-- Gate B actual #310 / #255 / #308 final Evidence
 - actual Oracle E2E
-- First Web Target / Gate C
+- Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
 - complete Target-neutral Presentation IR
 - production-ready Web / Desktop / Mobile Target
 - Studio actual Authoring Reference
@@ -366,7 +369,9 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 - [Gate B Readiness Audit](../plan/GATE_B_READINESS_AUDIT.md)
 - [Gate B Evidence Runbook](../plan/GATE_B_EVIDENCE_RUNBOOK.md)
 - [Gate B → C Handover Contract](../plan/GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- [Gate B → C Handover Baseline B](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)
 - [Gate C Evidence Contract](../plan/GATE_C_EVIDENCE_CONTRACT.md)
+- [Gate C First Web Target Evidence Runbook](../plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - [Architecture](architecture.md)
 
 細かなM0.xxの検証履歴は`docs/conformance/`、ADR、Git historyから追跡します。本statusはcurrent snapshotを優先します。

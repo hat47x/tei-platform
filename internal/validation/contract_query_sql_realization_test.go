@@ -22,9 +22,9 @@ func contractQuerySQLValidationWorld() ir.World {
 						Version: database.ContractVersion{Major: 2, Minor: 4},
 						Queries: []database.QueryContract{
 							{
-								Name: "find_by_id",
-								Inputs: []database.QueryInput{{Name: "id", Type: "customer.customer_id"}},
-								Result: "customer.customer",
+								Name:              "find_by_id",
+								Inputs:            []database.QueryInput{{Name: "id", Type: "customer.customer_id"}},
+								Result:            "customer.customer",
 								ResultCardinality: database.QueryResultZeroOrOne,
 							},
 						},
@@ -48,10 +48,10 @@ func contractQuerySQLValidationWorld() ir.World {
 		},
 		ContractQuerySQLRealizations: []realization.ContractQuerySQLRealization{
 			{
-				Target: realization.ContractQueryTarget{Database: "master_data", Contract: "master_data.customer", Query: "find_by_id"},
+				Target:   realization.ContractQueryTarget{Database: "master_data", Contract: "master_data.customer", Query: "find_by_id"},
 				Provider: environment.ProviderOracle,
-				Source: "select ...",
-				Inputs: []realization.ContractQueryInputParameterMapping{{Input: "id", Parameter: "customer_id"}},
+				Source:   "select ...",
+				Inputs:   []realization.ContractQueryInputParameterMapping{{Input: "id", Parameter: "customer_id"}},
 				ResultColumns: []query.ResultColumnMapping{
 					{Column: "CUSTOMER_ID", Attribute: "customer.customer.customer_id"},
 					{Column: "NAME", Attribute: "customer.customer.name"},

@@ -55,13 +55,13 @@ func TestReferenceOrderLineKeepsSemanticRelationSeparateFromPersistence(t *testi
 
 	for _, mapping := range result.World.Persistence {
 		if mapping.SemanticData == "sales.order_line" {
-			t.Fatalf("Semantic追加だけでOrderLine Persistence Mappingが作られています: %#v", mapping)
+			requireExplicitDatabaseAuthoring(t, result, "persistence:"+string(mapping.ID), "Semanticとは別のOrderLine Persistence Mapping")
 		}
 	}
 	for _, db := range result.World.Databases {
 		for _, contract := range db.Contracts {
 			if containsCanonicalID(contract.Reads, "sales.order_line") || containsCanonicalID(contract.Writes, "sales.order_line") {
-				t.Fatalf("Semantic追加だけでDatabase ContractへOrderLineが公開されています: %#v", contract)
+				requireExplicitDatabaseAuthoring(t, result, "database-contract:"+string(contract.ID), "OrderLineを公開するDatabase Contract")
 			}
 		}
 	}

@@ -24,21 +24,21 @@ type actorContextR1ConstraintProbe struct {
 	ChangeRequest             string                           `json:"changeRequest"`
 	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	BusinessStep         string   `json:"businessStep"`
-	BusinessAction       string   `json:"businessAction"`
-	BusinessRealization  string   `json:"businessRealization"`
-	Pattern              string   `json:"pattern"`
-	PatternKind          string   `json:"patternKind"`
-	Relation             string   `json:"relation"`
-	Datasource           string   `json:"datasource"`
-	ApplicationAccess    string   `json:"applicationAccess"`
-	Contract             string   `json:"contract"`
-	ContractQuery        string   `json:"contractQuery"`
-	ContractReads        []string `json:"contractReads,omitempty"`
-	ContractWrites       []string `json:"contractWrites,omitempty"`
-	ConflictCodes        []string `json:"conflictCodes,omitempty"`
-	UnresolvedDimensions []string `json:"unresolvedDimensions,omitempty"`
-	AuthorityLimits      []string `json:"authorityLimits"`
+	BusinessStep              string                           `json:"businessStep"`
+	BusinessAction            string                           `json:"businessAction"`
+	BusinessRealization       string                           `json:"businessRealization"`
+	Pattern                   string                           `json:"pattern"`
+	PatternKind               string                           `json:"patternKind"`
+	Relation                  string                           `json:"relation"`
+	Datasource                string                           `json:"datasource"`
+	ApplicationAccess         string                           `json:"applicationAccess"`
+	Contract                  string                           `json:"contract"`
+	ContractQuery             string                           `json:"contractQuery"`
+	ContractReads             []string                         `json:"contractReads,omitempty"`
+	ContractWrites            []string                         `json:"contractWrites,omitempty"`
+	ConflictCodes             []string                         `json:"conflictCodes,omitempty"`
+	UnresolvedDimensions      []string                         `json:"unresolvedDimensions,omitempty"`
+	AuthorityLimits           []string                         `json:"authorityLimits"`
 }
 
 func TestActorContextR1FindsCustomerEditConflictBeforeInventingWriteAuthority(t *testing.T) {
@@ -209,19 +209,19 @@ func deriveActorContextR1ConstraintProbe(
 		ChangeRequest:             "allow editing and updating the customer referenced from order_entry",
 		ReferenceFingerprint:      referenceFingerprint,
 		RequiredInputFingerprints: inputs,
-		BusinessStep:        businessStep.ID,
-		BusinessAction:      businessStep.BusinessAction,
-		BusinessRealization: businessStep.Realization,
-		Pattern:             string(pattern.ID),
-		PatternKind:       string(pattern.Kind),
-		Relation:          string(pattern.Relation),
-		Datasource:        string(pattern.Datasource),
-		ApplicationAccess: string(req.Access),
-		Contract:          string(pattern.ContractQuery.Contract),
-		ContractQuery:     queryName,
-		ContractReads:     reads,
-		ContractWrites:    writes,
-		ConflictCodes:     codes,
+		BusinessStep:              businessStep.ID,
+		BusinessAction:            businessStep.BusinessAction,
+		BusinessRealization:       businessStep.Realization,
+		Pattern:                   string(pattern.ID),
+		PatternKind:               string(pattern.Kind),
+		Relation:                  string(pattern.Relation),
+		Datasource:                string(pattern.Datasource),
+		ApplicationAccess:         string(req.Access),
+		Contract:                  string(pattern.ContractQuery.Contract),
+		ContractQuery:             queryName,
+		ContractReads:             reads,
+		ContractWrites:            writes,
+		ConflictCodes:             codes,
 		UnresolvedDimensions: []string{
 			"customer-update-ownership",
 			"write-authority-path",

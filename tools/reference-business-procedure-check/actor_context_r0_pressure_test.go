@@ -33,41 +33,41 @@ type actorContextR0BuilderProbe struct {
 	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	SourceArtifact            string                           `json:"sourceArtifact"`
-	Subjects            []string `json:"subjects,omitempty"`
-	Dependencies        []string `json:"dependencies,omitempty"`
-	EvidencePaths       []string `json:"evidencePaths,omitempty"`
-	AuthorityLimits     []string `json:"authorityLimits"`
+	Subjects                  []string                         `json:"subjects,omitempty"`
+	Dependencies              []string                         `json:"dependencies,omitempty"`
+	EvidencePaths             []string                         `json:"evidencePaths,omitempty"`
+	AuthorityLimits           []string                         `json:"authorityLimits"`
 }
 
 type actorContextR0HumanReviewProbe struct {
 	Purpose                   string                           `json:"purpose"`
 	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	DiagnosticCodes     []string `json:"diagnosticCodes,omitempty"`
-	ImpactSubjects      []string `json:"impactSubjects,omitempty"`
-	EvidencePaths       []string `json:"evidencePaths,omitempty"`
-	DrillDownRefs       []string `json:"drillDownRefs,omitempty"`
-	AuthorityLimits     []string `json:"authorityLimits"`
+	DiagnosticCodes           []string                         `json:"diagnosticCodes,omitempty"`
+	ImpactSubjects            []string                         `json:"impactSubjects,omitempty"`
+	EvidencePaths             []string                         `json:"evidencePaths,omitempty"`
+	DrillDownRefs             []string                         `json:"drillDownRefs,omitempty"`
+	AuthorityLimits           []string                         `json:"authorityLimits"`
 }
 
 type actorContextR0OperationalProbe struct {
 	Purpose                   string                           `json:"purpose"`
 	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	Procedure           string   `json:"procedure"`
-	Step                string   `json:"step"`
-	BusinessAction      string   `json:"businessAction"`
-	Realization         string   `json:"realization"`
-	PatternRefs         []string `json:"patternRefs,omitempty"`
-	ValidationRefs      []string `json:"validationRefs,omitempty"`
-	CapabilityRefs      []string `json:"capabilityRefs,omitempty"`
-	DataRefs            []string `json:"dataRefs,omitempty"`
-	RelationRefs        []string `json:"relationRefs,omitempty"`
-	Datasource          string   `json:"datasource,omitempty"`
-	AcceptedAccess      string   `json:"acceptedAccess,omitempty"`
-	EvidencePaths       []string `json:"evidencePaths,omitempty"`
-	Unresolved          []string `json:"unresolved,omitempty"`
-	AuthorityLimits     []string `json:"authorityLimits"`
+	Procedure                 string                           `json:"procedure"`
+	Step                      string                           `json:"step"`
+	BusinessAction            string                           `json:"businessAction"`
+	Realization               string                           `json:"realization"`
+	PatternRefs               []string                         `json:"patternRefs,omitempty"`
+	ValidationRefs            []string                         `json:"validationRefs,omitempty"`
+	CapabilityRefs            []string                         `json:"capabilityRefs,omitempty"`
+	DataRefs                  []string                         `json:"dataRefs,omitempty"`
+	RelationRefs              []string                         `json:"relationRefs,omitempty"`
+	Datasource                string                           `json:"datasource,omitempty"`
+	AcceptedAccess            string                           `json:"acceptedAccess,omitempty"`
+	EvidencePaths             []string                         `json:"evidencePaths,omitempty"`
+	Unresolved                []string                         `json:"unresolved,omitempty"`
+	AuthorityLimits           []string                         `json:"authorityLimits"`
 }
 
 func TestActorContextR0DerivesPurposeSpecificProjectionsFromSameReference(t *testing.T) {
@@ -254,9 +254,9 @@ func deriveActorContextR0Builder(world ir.World, sourceIdx sourceindex.Index, f 
 		ReferenceFingerprint:      referenceFingerprint,
 		RequiredInputFingerprints: inputs,
 		SourceArtifact:            fixturePath,
-		Subjects:            subjects,
-		Dependencies:        dependencies,
-		EvidencePaths:       append([]string(nil), operational.EvidencePaths...),
+		Subjects:                  subjects,
+		Dependencies:              dependencies,
+		EvidencePaths:             append([]string(nil), operational.EvidencePaths...),
 		AuthorityLimits: []string{
 			"builder-context-is-derived",
 			"business-procedure-reference-not-canonical",
@@ -310,10 +310,10 @@ func deriveActorContextR0HumanReview(
 		Purpose:                   "review intentional customer-edit access conflict",
 		ReferenceFingerprint:      referenceFingerprint,
 		RequiredInputFingerprints: inputs,
-		DiagnosticCodes:     codes,
-		ImpactSubjects:      impact,
-		EvidencePaths:       evidence,
-		DrillDownRefs:       []string{fixturePath, conflictPath},
+		DiagnosticCodes:           codes,
+		ImpactSubjects:            impact,
+		EvidencePaths:             evidence,
+		DrillDownRefs:             []string{fixturePath, conflictPath},
 		AuthorityLimits: []string{
 			"human-review-projection-is-derived",
 			"diagnostic-does-not-author-business-meaning",
@@ -346,16 +346,16 @@ func deriveActorContextR0Operational(world ir.World, sourceIdx sourceindex.Index
 	out := actorContextR0OperationalProbe{
 		Purpose:              "read-only operational context for " + stepID,
 		ReferenceFingerprint: referenceFingerprint,
-		Procedure:           f.Procedure.ID,
-		Step:                stepID,
-		BusinessAction:      selected.BusinessAction,
-		Realization:         selected.Realization,
-		PatternRefs:         append([]string(nil), selected.ApplicationPatterns...),
-		ValidationRefs:      append([]string(nil), selected.Validations...),
-		CapabilityRefs:      append([]string(nil), selected.Capabilities...),
-		DataRefs:            append([]string(nil), dataRow.Data...),
-		RelationRefs:        append([]string(nil), dataRow.Relations...),
-		EvidencePaths:       append([]string(nil), dataRow.EvidencePaths...),
+		Procedure:            f.Procedure.ID,
+		Step:                 stepID,
+		BusinessAction:       selected.BusinessAction,
+		Realization:          selected.Realization,
+		PatternRefs:          append([]string(nil), selected.ApplicationPatterns...),
+		ValidationRefs:       append([]string(nil), selected.Validations...),
+		CapabilityRefs:       append([]string(nil), selected.Capabilities...),
+		DataRefs:             append([]string(nil), dataRow.Data...),
+		RelationRefs:         append([]string(nil), dataRow.Relations...),
+		EvidencePaths:        append([]string(nil), dataRow.EvidencePaths...),
 		AuthorityLimits: []string{
 			"operational-projection-is-derived",
 			"business-procedure-reference-not-canonical",

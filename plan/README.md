@@ -27,14 +27,13 @@ Gate A — Ready
         ↓
 Application Driver — major semantics ready
         ↓
-Gate B — Not Ready
-  #310 + #255 + #308 same-R actual Evidence待ち
+Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B / revision R
+Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
         ↓
-Gate C — PAS-04
+Gate C — PAS-04 — Ready
         ↓
    ┌──────┼──────────────┐
    ↓      ↓              ↓
@@ -62,34 +61,39 @@ Application Pattern、Datasource、Validation、Authentication / Authorization�
 
 ### 現在
 
-**Not Ready**です。
+**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-Required Evidenceは次の三つだけです。
+Required Evidenceは次の三つで、いずれもsame-run same-Rで成立しています。
 
 | Evidence | Issue | 状態 |
 | --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | actual clean checkout run待ち |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | actual clean check-only待ち |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | Evidence専用空PostgreSQL actual run待ち |
+| deterministic Repository | `ISSUE-000032` / #310 | 成立 |
+| generated artifact reproducibility | `ISSUE-000025` / #255 | 成立 |
+| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | 成立 |
 
-三つを同じclean candidate revision `R`へ揃え、#387 final convergenceで確認します。
+#387 final convergenceと独立artifact audit（`artifactAuditPassed = true`）の詳細は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を参照してください。
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneではありません。未完了ならHandover `unresolved`へ渡します。
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneではなく、未完了のままHandoverへ`unresolved`として渡しています。
 
 ## Gate B → Gate C Handover
 
-- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md) — Handoverの規則・原則
+- [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](GATE_B_TO_C_HANDOVER_BASELINE_B.md) — 実際に固定したBaseline `B / R`の記録
 - [`issue/000030-gate-b-to-c-handover-baseline.md`](issue/000030-gate-b-to-c-handover-baseline.md)
 
-Gate B Ready candidate revision `R`をHandover Baseline `B`として固定します。
+Gate B Ready candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`をHandover Baseline `B`として固定済みです。
 
 Handoverは新しい番号付きGateでもCanonicalの第二正本でもありません。
 
 ## Gate C / First Web Target
 
+- [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md) — Ready判定の記録
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
+- [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - [`issue/000007-first-web-target-projection.md`](issue/000007-first-web-target-projection.md)
 - [`issue/000028-first-web-target-conformance-evidence.md`](issue/000028-first-web-target-conformance-evidence.md)
+
+Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
 
 First Web Targetのbuild revision `T1`をbaseline revision `R`と分けて追跡します。
 

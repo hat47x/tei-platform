@@ -311,6 +311,7 @@ func previewProcedureAcceptance(root string, registry map[string]string, candida
 		return procedureAcceptancePreview{}, fmt.Errorf("Business Procedure registry target %q resolves source identity %q", candidate.TargetProcedure, f.Procedure.ID)
 	}
 	changed := f
+	changed.Steps = append(changed.Steps[:0:0], f.Steps...)
 	found := false
 	for i := range changed.Steps {
 		if changed.Steps[i].ID == candidate.Step {
