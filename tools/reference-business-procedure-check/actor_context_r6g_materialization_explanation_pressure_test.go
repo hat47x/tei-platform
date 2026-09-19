@@ -24,11 +24,11 @@ type actorContextR6GMaterializationWitnessProbe struct {
 }
 
 type actorContextR6GMaterializationExplanationProbe struct {
-	Audience                  string                                      `json:"audience"`
-	Purpose                   string                                      `json:"purpose"`
+	Audience                  string                                       `json:"audience"`
+	Purpose                   string                                       `json:"purpose"`
 	Witnesses                 []actorContextR6GMaterializationWitnessProbe `json:"witnesses"`
-	ConsumerLocalDependencies []string                                    `json:"consumerLocalDependencies"`
-	AuthorityLimits           []string                                    `json:"authorityLimits"`
+	ConsumerLocalDependencies []string                                     `json:"consumerLocalDependencies"`
+	AuthorityLimits           []string                                     `json:"authorityLimits"`
 }
 
 func TestActorContextR6GExplainsMaterializedAndOmittedQualifiedKnowledge(t *testing.T) {

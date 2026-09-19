@@ -53,9 +53,15 @@ func TestReferenceCustomerTraversalKeepsThreeLayerMeaningExplicit(t *testing.T) 
 		run  func() []validation.Diagnostic
 	}{
 		{name: "Semantic Relation key", run: func() []validation.Diagnostic { return validation.ValidateSemanticRelationKeys(result.World) }},
-		{name: "Database Contract Query signature", run: func() []validation.Diagnostic { return validation.ValidateDatabaseContractQuerySignatures(result.World) }},
-		{name: "Reference Contract Query invocation", run: func() []validation.Diagnostic { return validation.ValidateReferenceContractQueryInvocations(result.World) }},
-		{name: "Reference Contract Query cross-layer", run: func() []validation.Diagnostic { return validation.ValidateReferenceContractQueryCrossLayer(result.World) }},
+		{name: "Database Contract Query signature", run: func() []validation.Diagnostic {
+			return validation.ValidateDatabaseContractQuerySignatures(result.World)
+		}},
+		{name: "Reference Contract Query invocation", run: func() []validation.Diagnostic {
+			return validation.ValidateReferenceContractQueryInvocations(result.World)
+		}},
+		{name: "Reference Contract Query cross-layer", run: func() []validation.Diagnostic {
+			return validation.ValidateReferenceContractQueryCrossLayer(result.World)
+		}},
 	}
 	for _, validator := range validators {
 		if diagnostics := validator.run(); len(diagnostics) != 0 {

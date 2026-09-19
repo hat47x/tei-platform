@@ -14,10 +14,10 @@ const (
 )
 
 type actorContextR3AOAcceptanceWitnessProbe struct {
-	AssertionIdentity              string
-	AcceptanceAuthorityEvidenceID  string
-	Decision                       string
-	AcceptanceProvenanceRef        string
+	AssertionIdentity             string
+	AcceptanceAuthorityEvidenceID string
+	Decision                      string
+	AcceptanceProvenanceRef       string
 }
 
 type actorContextR3AOObservedAcceptanceWitnessProbe struct {

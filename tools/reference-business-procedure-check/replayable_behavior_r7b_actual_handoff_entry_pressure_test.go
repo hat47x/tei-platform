@@ -38,17 +38,17 @@ type replayableBehaviorR7BHandoffCandidate struct {
 }
 
 type replayableBehaviorR7AHandoffArtifact struct {
-	EvidenceNature                   string
-	HandoverBaselineID               string
-	BaselineRepositoryRevision       string
-	TargetBuildRevision              string
-	TargetAdapter                    string
-	Host                             string
-	SemanticFunctionalRun            string
-	VisualRun                        string
-	GateCReadinessArtifactSHA256     string
-	SemanticFunctionalSummarySHA256  string
-	Candidates                       []replayableBehaviorR7BHandoffCandidate
+	EvidenceNature                  string
+	HandoverBaselineID              string
+	BaselineRepositoryRevision      string
+	TargetBuildRevision             string
+	TargetAdapter                   string
+	Host                            string
+	SemanticFunctionalRun           string
+	VisualRun                       string
+	GateCReadinessArtifactSHA256    string
+	SemanticFunctionalSummarySHA256 string
+	Candidates                      []replayableBehaviorR7BHandoffCandidate
 }
 
 type replayableBehaviorR7BEntry struct {
@@ -387,12 +387,12 @@ func replayableBehaviorR7BTestEntry() replayableBehaviorR7BEntry {
 	return replayableBehaviorR7BEntry{
 		GateCRecord: gate,
 		Handoff: replayableBehaviorR7AHandoffArtifact{
-			EvidenceNature:             "first-web-target-r7a-replayable-behavior-handoff",
-			HandoverBaselineID:         gate.HandoverBaselineID,
-			BaselineRepositoryRevision: gate.BaselineRepositoryRevision,
-			TargetBuildRevision:        gate.TargetBuildRevision,
-			TargetAdapter:              gate.TargetAdapter,
-			Host:                       gate.Host,
+			EvidenceNature:                  "first-web-target-r7a-replayable-behavior-handoff",
+			HandoverBaselineID:              gate.HandoverBaselineID,
+			BaselineRepositoryRevision:      gate.BaselineRepositoryRevision,
+			TargetBuildRevision:             gate.TargetBuildRevision,
+			TargetAdapter:                   gate.TargetAdapter,
+			Host:                            gate.Host,
 			SemanticFunctionalRun:           gate.SemanticFunctionalRun,
 			VisualRun:                       "visual-T",
 			GateCReadinessArtifactSHA256:    gate.GateCReadinessArtifactSHA256,

@@ -15,7 +15,7 @@ func (a Access) Valid() bool { return a == AccessRead || a == AccessWrite || a =
 type Ownership string
 
 const (
-	OwnershipManagedHere       Ownership = "managed-here"
+	OwnershipManagedHere      Ownership = "managed-here"
 	OwnershipExternalObserved Ownership = "external-observed"
 )
 

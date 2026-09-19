@@ -8,55 +8,48 @@ import (
 )
 
 const (
-	actorContextR3BBStatusUnresolved =
-		"reconciliation-result-acceptance-authority-unresolved"
-	actorContextR3BBStatusQualified =
-		"reconciliation-result-acceptance-authority-evidence-qualified"
-	actorContextR3BBStatusMultipleQualified =
-		"reconciliation-result-acceptance-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3BBStatusUnresolved        = "reconciliation-result-acceptance-authority-unresolved"
+	actorContextR3BBStatusQualified         = "reconciliation-result-acceptance-authority-evidence-qualified"
+	actorContextR3BBStatusMultipleQualified = "reconciliation-result-acceptance-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3BBAuthorityKind =
-		"operational-reconciliation-result-acceptance-authority"
+	actorContextR3BBAuthorityKind = "operational-reconciliation-result-acceptance-authority"
 
-	actorContextR3BBRoleDerivedExecutionCandidate =
-		"derived-execution-evidence-acceptance-candidate"
-	actorContextR3BBRoleDerivedCurrentStateCandidate =
-		"derived-current-state-evidence-acceptance-candidate"
-	actorContextR3BBRoleResultAuthorityCandidate =
-		"reconciliation-result-acceptance-authority-candidate"
+	actorContextR3BBRoleDerivedExecutionCandidate    = "derived-execution-evidence-acceptance-candidate"
+	actorContextR3BBRoleDerivedCurrentStateCandidate = "derived-current-state-evidence-acceptance-candidate"
+	actorContextR3BBRoleResultAuthorityCandidate     = "reconciliation-result-acceptance-authority-candidate"
 
 	actorContextR3BBScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3BBScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3BBResultAcceptanceAuthorityEvidenceProbe struct {
-	EvidenceID                                     string
-	EvidenceRole                                   string
-	RepositoryBacked                               bool
-	AuthorityKind                                  string
-	AuthorityDeclarationRef                        string
-	ReconciliationCandidateIdentities              []string
-	ExecutionEvidenceAcceptanceCandidateIdentities []string
+	EvidenceID                                        string
+	EvidenceRole                                      string
+	RepositoryBacked                                  bool
+	AuthorityKind                                     string
+	AuthorityDeclarationRef                           string
+	ReconciliationCandidateIdentities                 []string
+	ExecutionEvidenceAcceptanceCandidateIdentities    []string
 	CurrentStateEvidenceAcceptanceCandidateIdentities []string
-	AcceptedDecisionSinkRef                        string
-	RevisionAuthorityRef                           string
-	ScopeKind                                      string
-	ScopeValue                                     string
-	ReconciliationResultDecisionLocusRef           string
-	CurrentStateAcceptanceLocusRef                 string
-	ResultAcceptanceProvenanceRef                  string
-	DerivedOnly                                    bool
+	AcceptedDecisionSinkRef                           string
+	RevisionAuthorityRef                              string
+	ScopeKind                                         string
+	ScopeValue                                        string
+	ReconciliationResultDecisionLocusRef              string
+	CurrentStateAcceptanceLocusRef                    string
+	ResultAcceptanceProvenanceRef                     string
+	DerivedOnly                                       bool
 }
 
 type actorContextR3BBResultAcceptanceAuthorityGateProbe struct {
-	ReconciliationResultAcceptanceAuthorityStatus string
-	QualifiedEvidenceIDs                          []string
-	ReconciliationResultDecisionLocusRefs         []string
-	CurrentStateAcceptanceLocusRefs               []string
-	ExecutionEvidenceAcceptanceCandidateIdentity  string
+	ReconciliationResultAcceptanceAuthorityStatus   string
+	QualifiedEvidenceIDs                            []string
+	ReconciliationResultDecisionLocusRefs           []string
+	CurrentStateAcceptanceLocusRefs                 []string
+	ExecutionEvidenceAcceptanceCandidateIdentity    string
 	CurrentStateEvidenceAcceptanceCandidateIdentity string
-	InsufficientEvidenceIDs                       []string
-	AuthorityLimits                               []string
+	InsufficientEvidenceIDs                         []string
+	AuthorityLimits                                 []string
 }
 
 func TestActorContextR3BBOnePlaneCannotEnterResultAcceptanceGate(t *testing.T) {
@@ -394,8 +387,8 @@ func actorContextR3BBCurrentInspectedEvidence(
 ) []actorContextR3BBResultAcceptanceAuthorityEvidenceProbe {
 	return []actorContextR3BBResultAcceptanceAuthorityEvidenceProbe{
 		{
-			EvidenceID: execution.EvidenceAcceptanceCandidateIdentity,
-			EvidenceRole: actorContextR3BBRoleDerivedExecutionCandidate,
+			EvidenceID:                        execution.EvidenceAcceptanceCandidateIdentity,
+			EvidenceRole:                      actorContextR3BBRoleDerivedExecutionCandidate,
 			ReconciliationCandidateIdentities: []string{execution.ReconciliationCandidateIdentity},
 			ExecutionEvidenceAcceptanceCandidateIdentities: []string{
 				execution.EvidenceAcceptanceCandidateIdentity,
@@ -403,14 +396,14 @@ func actorContextR3BBCurrentInspectedEvidence(
 			DerivedOnly: true,
 		},
 		{
-			EvidenceID: current.EvidenceAcceptanceCandidateIdentity,
-			EvidenceRole: actorContextR3BBRoleDerivedCurrentStateCandidate,
+			EvidenceID:                        current.EvidenceAcceptanceCandidateIdentity,
+			EvidenceRole:                      actorContextR3BBRoleDerivedCurrentStateCandidate,
 			ReconciliationCandidateIdentities: []string{current.ReconciliationCandidateIdentity},
 			CurrentStateEvidenceAcceptanceCandidateIdentities: []string{
 				current.EvidenceAcceptanceCandidateIdentity,
 			},
 			RevisionAuthorityRef: current.RevisionAuthorityRef,
-			DerivedOnly: true,
+			DerivedOnly:          true,
 		},
 	}
 }
@@ -423,10 +416,10 @@ func actorContextR3BBCompleteEvidence(
 	current actorContextR3BAEvidenceAcceptanceCandidateProbe,
 ) actorContextR3BBResultAcceptanceAuthorityEvidenceProbe {
 	return actorContextR3BBResultAcceptanceAuthorityEvidenceProbe{
-		EvidenceID:                       id,
-		EvidenceRole:                     actorContextR3BBRoleResultAuthorityCandidate,
-		RepositoryBacked:                 true,
-		AuthorityKind:                    actorContextR3BBAuthorityKind,
+		EvidenceID:                        id,
+		EvidenceRole:                      actorContextR3BBRoleResultAuthorityCandidate,
+		RepositoryBacked:                  true,
+		AuthorityKind:                     actorContextR3BBAuthorityKind,
 		AuthorityDeclarationRef:           id + "/authority-declaration",
 		ReconciliationCandidateIdentities: []string{reconciliation.ReconciliationCandidateIdentity},
 		ExecutionEvidenceAcceptanceCandidateIdentities: []string{
@@ -547,13 +540,13 @@ func actorContextR3BBAssessResultAcceptanceAuthority(
 	}
 
 	return actorContextR3BBResultAcceptanceAuthorityGateProbe{
-		ReconciliationResultAcceptanceAuthorityStatus: status,
-		QualifiedEvidenceIDs: actorContextR0SortedUnique(qualifiedIDs),
-		ReconciliationResultDecisionLocusRefs: actorContextR0SortedUnique(resultLoci),
-		CurrentStateAcceptanceLocusRefs: actorContextR0SortedUnique(currentLoci),
-		ExecutionEvidenceAcceptanceCandidateIdentity: execution.EvidenceAcceptanceCandidateIdentity,
+		ReconciliationResultAcceptanceAuthorityStatus:   status,
+		QualifiedEvidenceIDs:                            actorContextR0SortedUnique(qualifiedIDs),
+		ReconciliationResultDecisionLocusRefs:           actorContextR0SortedUnique(resultLoci),
+		CurrentStateAcceptanceLocusRefs:                 actorContextR0SortedUnique(currentLoci),
+		ExecutionEvidenceAcceptanceCandidateIdentity:    execution.EvidenceAcceptanceCandidateIdentity,
 		CurrentStateEvidenceAcceptanceCandidateIdentity: current.EvidenceAcceptanceCandidateIdentity,
-		InsufficientEvidenceIDs: actorContextR0SortedUnique(insufficient),
+		InsufficientEvidenceIDs:                         actorContextR0SortedUnique(insufficient),
 		AuthorityLimits: actorContextR0SortedUnique([]string{
 			"plane-local-acceptance-candidates-do-not-create-result-acceptance-authority",
 			"qualified-result-acceptance-authority-does-not-accept-reconciliation-result",

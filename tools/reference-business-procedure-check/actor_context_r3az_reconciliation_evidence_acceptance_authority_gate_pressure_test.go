@@ -8,68 +8,56 @@ import (
 )
 
 const (
-	actorContextR3AZExecutionStatusUnresolved =
-		"reconciliation-execution-evidence-acceptance-authority-unresolved"
-	actorContextR3AZExecutionStatusQualified =
-		"reconciliation-execution-evidence-acceptance-authority-evidence-qualified"
-	actorContextR3AZExecutionStatusMultipleQualified =
-		"reconciliation-execution-evidence-acceptance-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3AZExecutionStatusUnresolved        = "reconciliation-execution-evidence-acceptance-authority-unresolved"
+	actorContextR3AZExecutionStatusQualified         = "reconciliation-execution-evidence-acceptance-authority-evidence-qualified"
+	actorContextR3AZExecutionStatusMultipleQualified = "reconciliation-execution-evidence-acceptance-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3AZCurrentStateStatusUnresolved =
-		"reconciliation-current-state-evidence-acceptance-authority-unresolved"
-	actorContextR3AZCurrentStateStatusQualified =
-		"reconciliation-current-state-evidence-acceptance-authority-evidence-qualified"
-	actorContextR3AZCurrentStateStatusMultipleQualified =
-		"reconciliation-current-state-evidence-acceptance-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3AZCurrentStateStatusUnresolved        = "reconciliation-current-state-evidence-acceptance-authority-unresolved"
+	actorContextR3AZCurrentStateStatusQualified         = "reconciliation-current-state-evidence-acceptance-authority-evidence-qualified"
+	actorContextR3AZCurrentStateStatusMultipleQualified = "reconciliation-current-state-evidence-acceptance-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3AZExecutionAuthorityKind =
-		"operational-reconciliation-execution-evidence-acceptance-authority"
-	actorContextR3AZCurrentStateAuthorityKind =
-		"operational-reconciliation-current-state-evidence-acceptance-authority"
+	actorContextR3AZExecutionAuthorityKind    = "operational-reconciliation-execution-evidence-acceptance-authority"
+	actorContextR3AZCurrentStateAuthorityKind = "operational-reconciliation-current-state-evidence-acceptance-authority"
 
-	actorContextR3AZRoleDerivedExecutionObservation =
-		"derived-reconciliation-execution-observation"
-	actorContextR3AZRoleDerivedCurrentStateObservation =
-		"derived-reconciliation-current-state-observation"
-	actorContextR3AZRoleExecutionAuthorityCandidate =
-		"reconciliation-execution-evidence-acceptance-authority-candidate"
-	actorContextR3AZRoleCurrentStateAuthorityCandidate =
-		"reconciliation-current-state-evidence-acceptance-authority-candidate"
+	actorContextR3AZRoleDerivedExecutionObservation    = "derived-reconciliation-execution-observation"
+	actorContextR3AZRoleDerivedCurrentStateObservation = "derived-reconciliation-current-state-observation"
+	actorContextR3AZRoleExecutionAuthorityCandidate    = "reconciliation-execution-evidence-acceptance-authority-candidate"
+	actorContextR3AZRoleCurrentStateAuthorityCandidate = "reconciliation-current-state-evidence-acceptance-authority-candidate"
 
 	actorContextR3AZScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3AZScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3AZEvidenceProbe struct {
-	EvidenceID                         string
-	EvidenceRole                       string
-	RepositoryBacked                   bool
-	AuthorityKind                      string
-	AuthorityDeclarationRef            string
-	ReconciliationCandidateIdentities  []string
-	ExecutionObservationRefs           []string
-	ReportedExecutionOutcomes          []string
-	CurrentStateObservationRefs        []string
-	ObservedDecisionRevisions          []string
-	ObservedStateFingerprints          []string
-	AcceptedDecisionSinkRef            string
-	RevisionAuthorityRef               string
-	ScopeKind                          string
-	ScopeValue                         string
-	EvidenceDecisionLocusRef           string
-	EvidenceAcceptanceProvenanceRef    string
-	DerivedOnly                        bool
+	EvidenceID                        string
+	EvidenceRole                      string
+	RepositoryBacked                  bool
+	AuthorityKind                     string
+	AuthorityDeclarationRef           string
+	ReconciliationCandidateIdentities []string
+	ExecutionObservationRefs          []string
+	ReportedExecutionOutcomes         []string
+	CurrentStateObservationRefs       []string
+	ObservedDecisionRevisions         []string
+	ObservedStateFingerprints         []string
+	AcceptedDecisionSinkRef           string
+	RevisionAuthorityRef              string
+	ScopeKind                         string
+	ScopeValue                        string
+	EvidenceDecisionLocusRef          string
+	EvidenceAcceptanceProvenanceRef   string
+	DerivedOnly                       bool
 }
 
 type actorContextR3AZGateProbe struct {
-	ExecutionEvidenceAcceptanceAuthorityStatus string
+	ExecutionEvidenceAcceptanceAuthorityStatus    string
 	CurrentStateEvidenceAcceptanceAuthorityStatus string
-	QualifiedExecutionEvidenceIDs             []string
-	QualifiedCurrentStateEvidenceIDs           []string
-	ExecutionEvidenceDecisionLocusRefs         []string
-	CurrentStateEvidenceDecisionLocusRefs      []string
-	InsufficientEvidenceIDs                    []string
-	AuthorityLimits                            []string
+	QualifiedExecutionEvidenceIDs                 []string
+	QualifiedCurrentStateEvidenceIDs              []string
+	ExecutionEvidenceDecisionLocusRefs            []string
+	CurrentStateEvidenceDecisionLocusRefs         []string
+	InsufficientEvidenceIDs                       []string
+	AuthorityLimits                               []string
 }
 
 func TestActorContextR3AZCurrentInspectedEvidenceKeepsBothPlanesUnresolved(t *testing.T) {
@@ -658,13 +646,13 @@ func actorContextR3AZAssessEvidenceAcceptanceAuthority(
 	}
 
 	return actorContextR3AZGateProbe{
-		ExecutionEvidenceAcceptanceAuthorityStatus: executionStatus,
+		ExecutionEvidenceAcceptanceAuthorityStatus:    executionStatus,
 		CurrentStateEvidenceAcceptanceAuthorityStatus: currentStatus,
-		QualifiedExecutionEvidenceIDs:             actorContextR0SortedUnique(executionIDs),
-		QualifiedCurrentStateEvidenceIDs:           actorContextR0SortedUnique(currentIDs),
-		ExecutionEvidenceDecisionLocusRefs:         actorContextR0SortedUnique(executionLoci),
-		CurrentStateEvidenceDecisionLocusRefs:      actorContextR0SortedUnique(currentLoci),
-		InsufficientEvidenceIDs:                    actorContextR0SortedUnique(insufficient),
+		QualifiedExecutionEvidenceIDs:                 actorContextR0SortedUnique(executionIDs),
+		QualifiedCurrentStateEvidenceIDs:              actorContextR0SortedUnique(currentIDs),
+		ExecutionEvidenceDecisionLocusRefs:            actorContextR0SortedUnique(executionLoci),
+		CurrentStateEvidenceDecisionLocusRefs:         actorContextR0SortedUnique(currentLoci),
+		InsufficientEvidenceIDs:                       actorContextR0SortedUnique(insufficient),
 		AuthorityLimits: actorContextR0SortedUnique([]string{
 			"raw-execution-observation-does-not-create-execution-evidence-acceptance-authority",
 			"raw-current-state-observation-does-not-create-current-state-evidence-acceptance-authority",

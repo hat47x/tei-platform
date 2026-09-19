@@ -9,7 +9,7 @@ import (
 
 type actorContextR3AHReasonTraceProbe struct {
 	ReasonIdentity   string
-	DependencyKey   string
+	DependencyKey    string
 	DependencyReason string
 	RootAddress      string
 	RootIdentity     string
@@ -37,8 +37,8 @@ type actorContextR3AHResidualTraceProbe struct {
 }
 
 type actorContextR3AHTraceEnvelopeProbe struct {
-	Outcome       actorContextR3AHOutcomeTraceProbe
-	Residuals     []actorContextR3AHResidualTraceProbe
+	Outcome         actorContextR3AHOutcomeTraceProbe
+	Residuals       []actorContextR3AHResidualTraceProbe
 	AuthorityLimits []string
 }
 
@@ -414,7 +414,7 @@ func actorContextR3AHDrillDownOutcome(
 				)
 			}
 			reasonTraces = append(reasonTraces, actorContextR3AHReasonTraceProbe{
-				ReasonIdentity:    actorContextR3VReasonIdentity(reason),
+				ReasonIdentity:   actorContextR3VReasonIdentity(reason),
 				DependencyKey:    reason.DependencyKey,
 				DependencyReason: reason.DependencyReason,
 				RootAddress:      address,

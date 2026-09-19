@@ -16,8 +16,8 @@ type actorContextR3VReasonWitnessProbe struct {
 }
 
 type actorContextR3VCrossAudienceComparisonProbe struct {
-	SharedReasons  []actorContextR3VReasonWitnessProbe
-	AudienceOnly   map[string][]actorContextR3TReevaluationReasonProbe
+	SharedReasons   []actorContextR3VReasonWitnessProbe
+	AudienceOnly    map[string][]actorContextR3TReevaluationReasonProbe
 	AuthorityLimits []string
 }
 

@@ -37,10 +37,10 @@ type actorContextR6KPlaneObservationProbe struct {
 }
 
 type actorContextR6KBoundedScopeWitnessProbe struct {
-	Audience        string                                  `json:"audience"`
-	Purpose         string                                  `json:"purpose"`
+	Audience        string                                 `json:"audience"`
+	Purpose         string                                 `json:"purpose"`
 	Planes          []actorContextR6KPlaneObservationProbe `json:"planes"`
-	AuthorityLimits []string                                `json:"authorityLimits"`
+	AuthorityLimits []string                               `json:"authorityLimits"`
 }
 
 func TestActorContextR6KBP06HumanDistinguishesRequiredAndOutOfScopePlanes(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 )
 
 type actorContextR6ERouterOriginSnapshotProbe struct {
-	RoutingMechanism string                                  `json:"routingMechanism"`
-	QualifiedKeys    []string                                `json:"qualifiedKeys"`
-	Dependencies     []actorContextR6DDependencyOriginProbe  `json:"dependencies"`
-	AuthorityLimits  []string                                `json:"authorityLimits"`
+	RoutingMechanism string                                 `json:"routingMechanism"`
+	QualifiedKeys    []string                               `json:"qualifiedKeys"`
+	Dependencies     []actorContextR6DDependencyOriginProbe `json:"dependencies"`
+	AuthorityLimits  []string                               `json:"authorityLimits"`
 }
 
 func TestActorContextR6ERouterSubstitutionPreservesProjectionDependencyOrigins(t *testing.T) {

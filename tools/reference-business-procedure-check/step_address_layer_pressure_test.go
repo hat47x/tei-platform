@@ -7,11 +7,11 @@ import (
 )
 
 type normalizedBusinessProcedureWithStepAddressProbe struct {
-	ID      string                                            `json:"id"`
-	Purpose string                                            `json:"purpose"`
-	Trigger candidateRef                                      `json:"trigger"`
-	Actor   candidateRef                                      `json:"actor"`
-	Steps   []normalizedBusinessProcedureAddressedStepProbe   `json:"steps"`
+	ID      string                                          `json:"id"`
+	Purpose string                                          `json:"purpose"`
+	Trigger candidateRef                                    `json:"trigger"`
+	Actor   candidateRef                                    `json:"actor"`
+	Steps   []normalizedBusinessProcedureAddressedStepProbe `json:"steps"`
 }
 
 type normalizedBusinessProcedureAddressedStepProbe struct {

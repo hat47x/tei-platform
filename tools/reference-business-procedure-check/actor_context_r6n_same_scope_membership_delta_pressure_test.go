@@ -13,11 +13,11 @@ type actorContextR6NPlaneMembershipProbe struct {
 }
 
 type actorContextR6NScopedMembershipProbe struct {
-	Audience       string                                `json:"audience"`
-	Purpose        string                                `json:"purpose"`
-	ScopeIdentity  string                                `json:"scopeIdentity"`
-	PlaneMembers   []actorContextR6NPlaneMembershipProbe `json:"planeMembers"`
-	AuthorityLimits []string                             `json:"authorityLimits"`
+	Audience        string                                `json:"audience"`
+	Purpose         string                                `json:"purpose"`
+	ScopeIdentity   string                                `json:"scopeIdentity"`
+	PlaneMembers    []actorContextR6NPlaneMembershipProbe `json:"planeMembers"`
+	AuthorityLimits []string                              `json:"authorityLimits"`
 }
 
 type actorContextR6NPlaneMembershipDeltaProbe struct {
@@ -27,13 +27,13 @@ type actorContextR6NPlaneMembershipDeltaProbe struct {
 }
 
 type actorContextR6NSameScopeMembershipDeltaProbe struct {
-	ScopeIdentity  string                                     `json:"scopeIdentity"`
-	BeforeAudience string                                     `json:"beforeAudience"`
-	BeforePurpose  string                                     `json:"beforePurpose"`
-	AfterAudience  string                                     `json:"afterAudience"`
-	AfterPurpose   string                                     `json:"afterPurpose"`
-	PlaneDeltas    []actorContextR6NPlaneMembershipDeltaProbe `json:"planeDeltas"`
-	AuthorityLimits []string                                  `json:"authorityLimits"`
+	ScopeIdentity   string                                     `json:"scopeIdentity"`
+	BeforeAudience  string                                     `json:"beforeAudience"`
+	BeforePurpose   string                                     `json:"beforePurpose"`
+	AfterAudience   string                                     `json:"afterAudience"`
+	AfterPurpose    string                                     `json:"afterPurpose"`
+	PlaneDeltas     []actorContextR6NPlaneMembershipDeltaProbe `json:"planeDeltas"`
+	AuthorityLimits []string                                   `json:"authorityLimits"`
 }
 
 func TestActorContextR6NHumanAgentUseExpansionPreservesKnowledgeMembership(t *testing.T) {

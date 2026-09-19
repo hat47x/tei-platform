@@ -10,7 +10,7 @@ import (
 )
 
 type businessAuthoringBundleProbe struct {
-	Procedures []inlineO1FixtureProbe        `json:"procedures"`
+	Procedures []inlineO1FixtureProbe       `json:"procedures"`
 	Handoffs   standaloneHandoffSourceProbe `json:"handoffs"`
 }
 

@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	reportSchemaVersion         = "sui-reference-adoption-stage0/v2"
-	sourceRepository            = "hat47x/sui-sensemaking"
-	sourceRevision              = "725e9d9c8958e63c18d8edca94f19c4b98db0dde"
-	sourceContractBlob          = "5d63cbec446abf0dd8054a5c498f726377c51a9f"
-	sourceHandoffBlob           = "9bf17490a8d5936b4b7679370da861439e90a8ab"
-	sourceContractTestBlob      = "4c91399cbc2da4526171812178ecdf98f9272027"
-	sourceHandoffTestBlob       = "e069871a13c932dbb1c11cbed5e08e318f93be8c"
+	reportSchemaVersion    = "sui-reference-adoption-stage0/v2"
+	sourceRepository       = "hat47x/sui-sensemaking"
+	sourceRevision         = "725e9d9c8958e63c18d8edca94f19c4b98db0dde"
+	sourceContractBlob     = "5d63cbec446abf0dd8054a5c498f726377c51a9f"
+	sourceHandoffBlob      = "9bf17490a8d5936b4b7679370da861439e90a8ab"
+	sourceContractTestBlob = "4c91399cbc2da4526171812178ecdf98f9272027"
+	sourceHandoffTestBlob  = "e069871a13c932dbb1c11cbed5e08e318f93be8c"
 )
 
 type hierarchyDocument struct {
@@ -156,10 +156,10 @@ func run(workspacePath, fixturePath string) (report, error) {
 		RootIslandIDs:          roots,
 		ParentLinks:            links,
 		Diagnostics:            diagnostics,
-		Mapping:            mapping,
-		ConstraintCoverage: stage0ConstraintCoverage(),
-		WriteAttempted:     false,
-		CanonicalizedData: false,
+		Mapping:                mapping,
+		ConstraintCoverage:     stage0ConstraintCoverage(),
+		WriteAttempted:         false,
+		CanonicalizedData:      false,
 	}, nil
 }
 

@@ -19,9 +19,9 @@ type actorContextR3RSemanticSubjectDependencyProbe struct {
 }
 
 type actorContextR3RReferenceArtifactDependencyProbe struct {
-	InputClass          string
+	InputClass         string
 	ContentFingerprint string
-	Locator             string
+	Locator            string
 }
 
 type actorContextR3RRuntimeObservationDependencyProbe struct {
@@ -33,9 +33,9 @@ type actorContextR3RRuntimeObservationDependencyProbe struct {
 }
 
 type actorContextR3RDependencyEnvelopeProbe struct {
-	ProfileFingerprint string
-	SemanticSubjects   []actorContextR3RSemanticSubjectDependencyProbe
-	ReferenceArtifacts []actorContextR3RReferenceArtifactDependencyProbe
+	ProfileFingerprint  string
+	SemanticSubjects    []actorContextR3RSemanticSubjectDependencyProbe
+	ReferenceArtifacts  []actorContextR3RReferenceArtifactDependencyProbe
 	RuntimeObservations []actorContextR3RRuntimeObservationDependencyProbe
 }
 
@@ -154,14 +154,14 @@ func TestActorContextR3RReferenceArtifactsStaySeparateFromSourceIndexSubjects(t 
 
 	deps := []actorContextR3RReferenceArtifactDependencyProbe{
 		{
-			InputClass:          "business-procedure-reference",
+			InputClass:         "business-procedure-reference",
 			ContentFingerprint: sourceindex.Fingerprint(businessBytes),
-			Locator:             "reference/business-system-design/order-entry-business-procedure.json",
+			Locator:            "reference/business-system-design/order-entry-business-procedure.json",
 		},
 		{
-			InputClass:          "protected-target-overlay",
+			InputClass:         "protected-target-overlay",
 			ContentFingerprint: sourceindex.Fingerprint(overlayBytes),
-			Locator:             "reference/business-system-design/order-entry-protected-target-overlay.json",
+			Locator:            "reference/business-system-design/order-entry-protected-target-overlay.json",
 		},
 	}
 
@@ -205,8 +205,8 @@ func TestActorContextR3RRuntimeObservationChangesRuntimePlaneOnly(t *testing.T) 
 	denied.Outcome = "denied"
 
 	before := actorContextR3RDependencyEnvelopeProbe{
-		ProfileFingerprint: "profile:agent-resolution",
-		SemanticSubjects:   []actorContextR3RSemanticSubjectDependencyProbe{static},
+		ProfileFingerprint:  "profile:agent-resolution",
+		SemanticSubjects:    []actorContextR3RSemanticSubjectDependencyProbe{static},
 		RuntimeObservations: []actorContextR3RRuntimeObservationDependencyProbe{allowed},
 	}
 	after := before
@@ -344,7 +344,7 @@ func actorContextR3RCompareEnvelopes(
 		SemanticMeaningStale:    actorContextR3RSemanticDependenciesChanged(before.SemanticSubjects, after.SemanticSubjects),
 		ReferenceContentStale:   actorContextR3RReferenceContentChanged(before.ReferenceArtifacts, after.ReferenceArtifacts),
 		RuntimeObservationStale: !reflect.DeepEqual(before.RuntimeObservations, after.RuntimeObservations),
-		LocatorRefreshRequired:  actorContextR3RLocatorsChanged(before.SemanticSubjects, after.SemanticSubjects) ||
+		LocatorRefreshRequired: actorContextR3RLocatorsChanged(before.SemanticSubjects, after.SemanticSubjects) ||
 			actorContextR3RReferenceLocatorsChanged(before.ReferenceArtifacts, after.ReferenceArtifacts),
 	}
 }

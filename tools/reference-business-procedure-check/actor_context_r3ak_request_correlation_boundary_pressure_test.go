@@ -23,22 +23,22 @@ type actorContextR3AKRequestRecordProbe struct {
 }
 
 type actorContextR3AKResponseWitnessProbe struct {
-	RequestIdentity         string
-	RequestRevisionIdentity string
-	ResponseRef             string
+	RequestIdentity            string
+	RequestRevisionIdentity    string
+	ResponseRef                string
 	ProvidedInformationClasses []string
-	EvidenceRefs            []string
+	EvidenceRefs               []string
 }
 
 type actorContextR3AKCorrelationResultProbe struct {
-	RequestIdentity         string
-	RequestRevisionIdentity string
-	ResponseRef             string
-	CorrelationStatus       string
-	LifecycleState          string
+	RequestIdentity            string
+	RequestRevisionIdentity    string
+	ResponseRef                string
+	CorrelationStatus          string
+	LifecycleState             string
 	ProvidedInformationClasses []string
-	EvidenceRefs            []string
-	AuthorityLimits         []string
+	EvidenceRefs               []string
+	AuthorityLimits            []string
 }
 
 func TestActorContextR3AKBuildsStableRequestAndRevisionIdentity(t *testing.T) {

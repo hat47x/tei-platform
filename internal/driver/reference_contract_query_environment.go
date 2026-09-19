@@ -52,7 +52,7 @@ func (m ContractQueryExecutorMap) ExecutorForContractQuery(
 type ReferenceContractQueryEnvironmentExecution struct {
 	Environment environment.Environment                   `json:"environment"`
 	Executor    realization.ResolvedContractQueryExecutor `json:"executor"`
-	Execution   ReferenceContractQueryExecution            `json:"execution"`
+	Execution   ReferenceContractQueryExecution           `json:"execution"`
 }
 
 // ExecuteReferenceContractQueryInEnvironmentは、reference Patternのlogical datasourceを
