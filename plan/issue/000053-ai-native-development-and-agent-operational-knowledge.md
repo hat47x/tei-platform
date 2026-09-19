@@ -2277,6 +2277,58 @@ actual freshness / category re-evaluation / Authorization freshness authorityは
 
 R6Hはknowledge revisionを追跡可能にするが、global revision token、single current flag、automatic invalidation engineは追加しない。
 
+### R6I — shared knowledge materialization / bounded use edges
+
+R6Hまででqualified knowledgeのmaterialization dispositionとrevision provenanceを分離した。R6Iでは、同じknowledgeが複数のprojection categoryから利用される場合に、knowledge本文を用途ごとに重複materializeしない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6i_shared_materialization_use_edges_pressure_test.go`
+
+構造:
+
+```text
+shared knowledge body
+  knowledge identity
+  knowledge kind
+  input fingerprints
+  source refs
+
+bounded use edge
+  knowledge identity
+  projection category
+  dependency key
+  dependency reason
+```
+
+current BP-06ではHuman / Agentが同じBusiness Procedure Referenceを共有する。
+
+```text
+Human orientation
+  Procedure body x1
+  use: machine-reasons
+
+Agent resolution-inspection
+  same Procedure body x1
+  use: machine-reasons
+  use: known-authority-facts
+```
+
+Agent側で利用categoryが増えてもProcedure bodyやsource revision provenanceを複製しない。
+
+同時に`security.authorize` Capabilityは両consumerで`qualified-not-materialized`を維持し、Agentがより詳細なviewを持つことを理由に自動投入しない。
+
+```text
+more consumer uses
+  != more knowledge authority
+  != more source copies
+  != execution permission
+```
+
+shared knowledge identityからAudience / Purpose / ProjectionCategoryを除外し、consumer-specific useはedgeに閉じ込める。
+
+R6IはR3AG〜R3AIのoutcome materialization / provenance drill-down / read-only Agent consumptionを重複実装しない。R6Iの責務はknowledge input側の重複排除とbounded use provenanceである。
+
 
 
 
