@@ -188,6 +188,32 @@ ISSUE-000047 qualification
 
 同じ第二Applicationについてexploration / Pattern / Environment / Driverを長期branchへ分割せず、意味単位のcommitを一つのprimary workstream branchへ収束させる。
 
+## 第二Application actual progress — S0 / S1 / S2
+
+Gate C Readyを受け、actual second-Application workstreamを開始した。
+
+S0:
+
+- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_gate_c_actual_entry_pressure_test.go`
+
+S1 / S2:
+
+- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
+
+current Source-defined result:
+
+- shared Customer Semantic / Customer ID Type = linked reuse
+- Customer Contract / `find_by_id` Query = conditional linked reuse
+- `order_entry.customer_reference` = adopted local variation provenance
+- origin development / production binding = rebind-required
+- Canonical Application ID / Business Relation / Pattern ID / datasource alias / Authorization / Environment binding = unresolved
+
+`repair_intake-test-only`はscenario labelのままで、Canonical Application identityへ昇格していない。
+
+次はS3 Destination Decision Packetであり、Acceptance前にsource authoringへ進まない。
+
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
