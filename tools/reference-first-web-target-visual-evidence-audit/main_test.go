@@ -7,6 +7,94 @@ import (
 	"testing"
 )
 
+func TestBuildVisualManifestScaffoldCopiesProvenanceAndStartsUnresolved(t *testing.T) {
+	dir := t.TempDir()
+	semanticPath, _ := writeVisualFixture(t, dir, "target-t", "pass")
+
+	var semantic semanticFunctionalSummary
+	readVisualJSON(t, semanticPath, &semantic)
+	manifest, err := buildVisualManifestScaffold(
+		semantic,
+		"visual-scaffold-run",
+		visualEvaluator{
+			Identity: "reference-human-review",
+			Version:  "1",
+			Method:   "screenshot-review",
+		},
+		1280,
+		900,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.SourceSemanticFunctionalRunIdentity != semantic.RunIdentity ||
+		manifest.HandoverBaselineID != semantic.HandoverBaselineID ||
+		manifest.BaselineRepositoryRevision != semantic.BaselineRepositoryRevision ||
+		manifest.TargetBuildRevision != semantic.TargetBuildRevision ||
+		manifest.TargetAdapter != semantic.TargetAdapter ||
+		manifest.Host != semantic.Host {
+		t.Fatalf("scaffold provenance=%+v source=%+v", manifest, semantic)
+	}
+	if len(manifest.Captures) != len(requiredCaptures) {
+		t.Fatalf("scaffold captures=%d want=%d", len(manifest.Captures), len(requiredCaptures))
+	}
+	for _, capture := range manifest.Captures {
+		expected, ok := requiredCaptures[capture.ID]
+		if !ok {
+			t.Fatalf("scaffold contains unexpected capture %s", capture.ID)
+		}
+		if capture.Surface != expected.Surface ||
+			capture.State != expected.State ||
+			capture.File != capture.ID+".png" ||
+			capture.MediaType != "image/png" ||
+			capture.ViewportWidth != 1280 ||
+			capture.ViewportHeight != 900 {
+			t.Fatalf("scaffold capture=%+v", capture)
+		}
+		writeFakePNG(t, filepath.Join(dir, capture.File))
+	}
+	if len(manifest.Criteria) != len(requiredCriteria) {
+		t.Fatalf("scaffold criteria=%d want=%d", len(manifest.Criteria), len(requiredCriteria))
+	}
+	for _, criterion := range manifest.Criteria {
+		if criterion.Result != "unresolved" {
+			t.Fatalf("generated criterion %s result=%q, want unresolved", criterion.ID, criterion.Result)
+		}
+		if len(criterion.CaptureRefs) == 0 {
+			t.Fatalf("generated criterion %s has no capture refs", criterion.ID)
+		}
+	}
+
+	manifestPath := filepath.Join(dir, "visual-scaffold.json")
+	writeVisualJSON(t, manifestPath, manifest)
+	summary, err := auditVisualEvidence(semanticPath, manifestPath, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.AllCriteriaResolved ||
+		summary.VisualFidelityPassed ||
+		summary.GateCReady {
+		t.Fatalf("unreviewed scaffold was upgraded to pass: %+v", summary)
+	}
+}
+
+func TestBuildVisualManifestScaffoldRequiresAttributedEvaluator(t *testing.T) {
+	dir := t.TempDir()
+	semanticPath, _ := writeVisualFixture(t, dir, "target-t", "pass")
+	var semantic semanticFunctionalSummary
+	readVisualJSON(t, semanticPath, &semantic)
+
+	if _, err := buildVisualManifestScaffold(
+		semantic,
+		"visual-scaffold-run",
+		visualEvaluator{},
+		1440,
+		1000,
+	); err == nil {
+		t.Fatal("scaffold without evaluator provenance was accepted")
+	}
+}
+
 func TestAuditVisualEvidencePassesAttributedVisualReviewButNotGateC(t *testing.T) {
 	dir := t.TempDir()
 	semanticPath, manifestPath := writeVisualFixture(t, dir, "target-t", "pass")
