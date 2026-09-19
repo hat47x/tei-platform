@@ -6,7 +6,7 @@
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
 
-## 着手状況 — projection shell
+## 着手状況 — Driver-backed read-only slice
 
 Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
 
@@ -35,9 +35,23 @@ Gate C provenanceとして、
 
 を別identityで必須入力にする。
 
-現在はSource Evidenceであり、actual server execution / Functional Evidence / Visual Evidenceは未取得である。
+projection shellに加え、`/scenario/read`へread-only Driver Scenarioを接続した。
 
-次incrementではprojection shellを捨てず、同じprimary `ISSUE-000007` workstream上でDriver execution境界をWeb interactionへ接続する。
+```text
+browse
+  -> selected sales.order
+  -> record resolution
+  -> customer reference
+     -> development / master_data.dev / oracle
+  -> order-lines header-detail
+     -> development / sales_core.dev / postgres
+```
+
+reference / header-detailは既存のEnvironment-aware Driver APIを使う。browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Web側でEnvironment instanceを推測せず、その非対称性をunresolvedとして明示する。
+
+現在もSource Evidenceであり、actual server execution / browser replay / Functional Evidence / Visual Evidenceは未取得である。
+
+次incrementでは同じprimary `ISSUE-000007` workstream上でAuthentication / AuthorizationとCommand / Business Result / Observationの境界へ進む。
 
 ## 背景
 

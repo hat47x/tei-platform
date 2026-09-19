@@ -45,7 +45,7 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 	if projection.ApplicationID != "order_entry" ||
 		projection.TargetAdapter != "reference-first-web-target" ||
 		projection.Host != "go-net-http" ||
-		projection.Stage != "projection-shell" {
+		projection.Stage != "read-only-driver-slice" {
 		t.Fatalf("target projection identity=%+v", projection)
 	}
 	if len(projection.Patterns) != 5 {
@@ -123,10 +123,11 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 	}
 
 	for _, unresolved := range []string{
-		"runtime-data-execution-not-yet-wired",
+		"browse-environment-instance-binding-not-exposed-by-current-driver-api",
 		"authentication-authorization-web-interaction-not-yet-wired",
+		"command-business-result-execution-error-observation-not-yet-wired",
 		"custom-ui-not-yet-wired",
-		"functional-evidence-not-yet-acquired",
+		"actual-functional-evidence-not-yet-acquired",
 		"visual-evidence-not-yet-acquired",
 	} {
 		if !containsString(projection.Unresolved, unresolved) {
@@ -149,7 +150,7 @@ func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newWebTargetServer(projection)
+	server, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +168,7 @@ func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {
 		testTargetRevision,
 		"order_entry.customer_reference",
 		"master_data.customer",
-		"projection-shell",
+		"read-only-driver-slice",
 	} {
 		if !strings.Contains(htmlBody, want) {
 			t.Fatalf("HTML projection does not contain %q", want)

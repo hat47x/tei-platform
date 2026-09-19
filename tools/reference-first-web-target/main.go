@@ -46,7 +46,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	target, err := newWebTargetServer(projection)
+	target, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
