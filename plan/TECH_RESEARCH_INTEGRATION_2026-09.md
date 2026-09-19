@@ -1532,6 +1532,119 @@ RoutingMechanism / over-selection / rejected candidateは診断情報に留め�
 
 R6QはR3AQ以降のAccepted Decision commit candidate / authority applicationを再実装しない。
 
+#### R6R candidate-pool augmentation invariance — 2026-09-19
+
+R6Qでrouter substitution後のdownstream invarianceを確認した次段として、repository / candidate pool自体が増えた場合でも、current taskに無関係なknowledgeがbounded inputへ侵入しないことをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6r_candidate_pool_augmentation_invariance_pressure_test.go`
+
+test-only unrelated candidate:
+
+```text
+kind = application-pattern
+id   = test-only.unrelated_pattern
+task hint = BP-02
+```
+
+をcurrent BP-06 candidate poolへ追加する。
+
+exact task routerではtask hintが異なるためselected set自体が変化してはならない。
+
+broad heterogeneous routerではcandidateを一旦selectedしてよいが、deterministic qualificationで:
+
+```text
+not-in-deterministic-task-scope
+```
+
+としてrejectし、qualified / disclosed knowledgeを変えてはならない。
+
+その結果:
+
+```text
+candidate pool grows
+  -> available diagnostics may grow
+
+qualified knowledge
+bounded input assembly
+scope identity
+qualified-not-materialized identities
+R6P observation decomposition
+  -> unchanged
+```
+
+を要求する。
+
+broad routerについてもbaseline / augmented bounded assemblyをR6Pで比較し:
+
+```text
+cardinality delta = 0
+membership delta  = 0
+provenance delta  = 0
+```
+
+でなければならない。
+
+CandidatePoolSize / RepositoryKnowledgeCount / RejectedCandidateCount等をbounded input / scope / observation identityへ持ち込まない。
+
+```text
+repository richness
+  != working-context size
+  != scope meaning
+  != authority
+```
+
+R6RはKnowledge Portability relation、R3 authority acceptance、Gate C Evidence acquisitionを再実装しない。
+
+
+#### R6 Source-pressure exit assessment — 2026-09-19
+
+R6A〜R6RでSelective Knowledge RoutingのReference pressureは、Source / Design Evidenceとして一巡したと判断する。R6Rは無関係なcandidate pool growthがtask-scoped meaningへ漏れないことを確認する、具体的な最終closure pressureとして扱う。
+
+成立した境界は次のとおり。
+
+```text
+available
+  != selected
+  != qualified
+  != materialized
+
+router mechanism
+  != qualified meaning
+  != bounded input identity
+
+routed knowledge
+  != consumer-local input
+
+shared knowledge body
+  != consumer-specific use edge
+
+scope identity
+  != observed cardinality
+
+cardinality
+  != membership
+  != retained provenance
+
+router diagnostics
+  != downstream observation meaning
+```
+
+この段階でR6へさらにproduction router、ranking、embedding、model-native routing、Prompt payload、Universal Context Packet、freshness policy、Authorization authorityを追加しない。
+
+またR6は、actual runtimeでのlatency / token / retrieval quality改善、AI Builderでのtask success、Jev等の非LLM認知層、model-native routerの優位性を実証していない。これらはSource pressureとは別Evidenceである。
+
+R6からRequirementへ新しいnormative contractを自動昇格させない。現在の成果は既存の責務分離・traceability・deterministic qualification原則を具体化するReference Evidenceとして扱う。
+
+次の再開条件は次のいずれかとする。
+
+1. actual AI Builder / Agent contextでR6境界を破る具体的defectが観測された
+2. First Web Target / Gate Cのactual EvidenceからR7 Replayable Behavior Evidenceへ進める
+3. production context service / router候補が生まれ、R6 invariantsへの適合Pressureが必要になった
+
+それまではR6を増殖させず、R3のfreshness / acceptance / execution authority、R7のbehavior Evidence、Gate Cのactual acquisitionへ責務を戻す。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

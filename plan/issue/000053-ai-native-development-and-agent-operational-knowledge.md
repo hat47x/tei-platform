@@ -2747,9 +2747,96 @@ router substitution
 
 R3AQ以降のAccepted Decision commit / write authority境界とは独立する。
 
+### R6R — candidate-pool augmentation invariance
+
+R6 selective routingのrich repository / thin bounded context原則を、candidate pool growthに対してPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6r_candidate_pool_augmentation_invariance_pressure_test.go`
+
+current BP-06 poolへ、BP-02向けのtest-only unrelated Application Pattern candidateを1件追加する。
+
+exact router:
+
+```text
+available +1
+selected unchanged
+qualified unchanged
+disclosed unchanged
+```
+
+broad router:
+
+```text
+available +1
+selected +1
+rejected + unrelated candidate
+qualified unchanged
+disclosed unchanged
+```
+
+とする。
+
+broad routerはrepository全体を広く見てもよいが、current deterministic task scopeにないcandidateをbounded contextまで運ばない。
+
+downstreamではbaseline / augmentedについて:
+
+- bounded assembly
+- ScopeIdentity
+- QualifiedNotMaterialized
+- R6P cardinality delta
+- R6P membership delta
+- R6P retained provenance delta
+
+が不変でなければならない。
+
+```text
+repository candidate added
+  != bounded knowledge added
+  != scope changed
+  != source provenance changed
+```
+
+CandidatePoolSize / RepositoryKnowledgeCount / OverSelectionCount等はrouting diagnosticsに留め、bounded consumer shapeへ持ち込まない。
+
+このboundaryは将来repository knowledgeが増えることを許容しつつ、working contextの無条件肥大化を防ぐ。
+
+R6RはPhase 5 Knowledge Portabilityの採否、R3 Accepted Decision、Gate C readinessを決定しない。
 
 
 
+
+
+
+### R6 Source-pressure exit assessment
+
+R6A〜R6RのSelective Knowledge Routingは、ReferenceのSource / Design Evidenceとして次の責務分離を一巡した。R6Rでは無関係なcandidate pool growthまでdownstream meaningから隔離した。
+
+```text
+available != selected != qualified != materialized
+router mechanism != qualified meaning != bounded observation meaning
+routed knowledge != consumer-local input
+knowledge body != use edge
+scope identity != cardinality
+cardinality != membership != retained provenance
+```
+
+R6Qでexact / broad router substitution、R6Rで無関係なcandidate pool augmentationがR6P downstream observationへ漏れないことまで確認したため、具体的defectなしにR6S以降を機械的に増やさない。
+
+未達・非主張:
+
+- actual runtime latency / token / retrieval quality Evidence
+- AI Builder / Agent task success Evidence
+- embedding / model-native / Jev等のrouter比較
+- production Context Packet / prompt serialization
+- freshness / acceptance / execution authority
+- R7 replayable behavior actual Evidence
+- 新Requirementへの昇格
+
+R6再開は、actual consumerで境界違反が観測された場合、production router候補をR6 invariantsへPressureする場合、またはGate C actual EvidenceからR7へ接続する場合に限定する。
+
+現時点ではR6成果を既存原則のReference Evidenceとして保持し、R3 authority chainとFirst Web Target / Gate Cの並行レーンを重複実装しない。
 
 ### R3AF — Category re-evaluation outcome / Operational explanation
 
