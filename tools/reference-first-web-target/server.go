@@ -4,19 +4,30 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"strconv"
 )
 
 type webTargetServer struct {
-	projection webTargetProjection
-	index      *template.Template
+	projection   webTargetProjection
+	readScenario readScenarioRunner
+	index        *template.Template
 }
 
-func newWebTargetServer(projection webTargetProjection) (*webTargetServer, error) {
+type webReadScenarioResponse struct {
+	HandoverBaselineID         string             `json:"handoverBaselineId"`
+	BaselineRepositoryRevision string             `json:"baselineRepositoryRevision"`
+	TargetBuildRevision        string             `json:"targetBuildRevision"`
+	TargetAdapter              string             `json:"targetAdapter"`
+	Host                       string             `json:"host"`
+	Result                     readScenarioResult `json:"result"`
+}
+
+func newWebTargetServer(projection webTargetProjection, readScenario readScenarioRunner) (*webTargetServer, error) {
 	index, err := template.New("index").Parse(indexHTML)
 	if err != nil {
 		return nil, err
 	}
-	return &webTargetServer{projection: projection, index: index}, nil
+	return &webTargetServer{projection: projection, readScenario: readScenario, index: index}, nil
 }
 
 func (s *webTargetServer) Handler() http.Handler {
@@ -24,6 +35,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/manifest.json", s.handleManifest)
 	mux.HandleFunc("/healthz", s.handleHealth)
+	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	return mux
 }
 
@@ -44,6 +56,57 @@ func (s *webTargetServer) handleManifest(w http.ResponseWriter, _ *http.Request)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(s.projection); err != nil {
 		http.Error(w, "encode target manifest", http.StatusInternalServerError)
+	}
+}
+
+
+func (s *webTargetServer) handleReadScenario(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.readScenario == nil {
+		http.Error(w, "read scenario is not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	rowIndex := 0
+	if raw := r.URL.Query().Get("row"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 {
+			http.Error(w, "row must be a non-negative integer", http.StatusBadRequest)
+			return
+		}
+		rowIndex = parsed
+	}
+	from := r.URL.Query().Get("from")
+	if from == "" {
+		from = "2026-09-01T00:00:00Z"
+	}
+
+	result, err := s.readScenario.Run(r.Context(), readScenarioInput{
+		From:     from,
+		RowIndex: rowIndex,
+	})
+	if err != nil {
+		http.Error(w, "execute read scenario: "+err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	response := webReadScenarioResponse{
+		HandoverBaselineID:         s.projection.HandoverBaselineID,
+		BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
+		TargetBuildRevision:        s.projection.TargetBuildRevision,
+		TargetAdapter:              s.projection.TargetAdapter,
+		Host:                       s.projection.Host,
+		Result:                     result,
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(response); err != nil {
+		http.Error(w, "encode read scenario result", http.StatusInternalServerError)
 	}
 }
 
@@ -143,7 +206,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; opacity: .72; 
 <ul class="compact">{{range .AuthorityLimits}}<li><code>{{.}}</code></li>{{end}}</ul>
 </section>
 </main>
-<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · health: <a href="/healthz">/healthz</a></footer>
+<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · health: <a href="/healthz">/healthz</a></footer>
 </body>
 </html>
 `
