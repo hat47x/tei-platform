@@ -91,6 +91,11 @@ type replayableBehaviorCandidate struct {
 	SemanticFunctionalSummarySHA256 string `json:"semanticFunctionalSummarySHA256"`
 }
 
+type entryEvidence struct {
+	GateCReadinessArtifactSHA256    string
+	SemanticFunctionalSummarySHA256 string
+}
+
 type handoffSummary struct {
 	EvidenceNature                   string                        `json:"evidenceNature"`
 	HandoverBaselineID               string                        `json:"handoverBaselineId"`
@@ -117,12 +122,12 @@ func main() {
 	}
 
 	var readiness gateCReadiness
-	readinessDigest, err := readJSONWithDigest(*readinessPath, &readiness)
+	readinessDigest, err := readJSONWithSHA256(*readinessPath, &readiness)
 	if err != nil {
 		fatalf("%v", err)
 	}
 	var semantic semanticFunctionalSummary
-	semanticDigest, err := readJSONWithDigest(*semanticPath, &semantic)
+	semanticDigest, err := readJSONWithSHA256(*semanticPath, &semantic)
 	if err != nil {
 		fatalf("%v", err)
 	}
@@ -130,8 +135,10 @@ func main() {
 	handoff, err := buildHandoff(
 		readiness,
 		semantic,
-		readinessDigest,
-		semanticDigest,
+		entryEvidence{
+			GateCReadinessArtifactSHA256:    readinessDigest,
+			SemanticFunctionalSummarySHA256: semanticDigest,
+		},
 		firstWebBehaviorSpecs(),
 	)
 	if err != nil {
@@ -147,15 +154,11 @@ func main() {
 func buildHandoff(
 	readiness gateCReadiness,
 	semantic semanticFunctionalSummary,
-	readinessDigest,
-	semanticDigest string,
+	evidence entryEvidence,
 	specs []behaviorSpec,
 ) (handoffSummary, error) {
 	if readiness.EvidenceNature != "first-web-target-gate-c-readiness-audit" {
-		return handoffSummary{}, fmt.Errorf(
-			"unexpected Gate C readiness evidenceNature %q",
-			readiness.EvidenceNature,
-		)
+		return handoffSummary{}, fmt.Errorf("unexpected Gate C readiness evidenceNature %q", readiness.EvidenceNature)
 	}
 	if !readiness.GateCReady {
 		return handoffSummary{}, fmt.Errorf("Gate C is not ready")
@@ -169,23 +172,42 @@ func buildHandoff(
 		readiness.VisualRun == "" {
 		return handoffSummary{}, fmt.Errorf("Gate C readiness provenance is incomplete")
 	}
-	if readinessDigest == "" || semanticDigest == "" {
-		return handoffSummary{}, fmt.Errorf("R7A input artifact digest is incomplete")
+	if !isSHA256(evidence.GateCReadinessArtifactSHA256) ||
+		!isSHA256(evidence.SemanticFunctionalSummarySHA256) {
+		return handoffSummary{}, fmt.Errorf("R7A entry artifact identity is incomplete")
 	}
-	if err := validateReadinessChecks(readiness.Checks); err != nil {
-		return handoffSummary{}, err
+
+	expectedChecks := expectedGateCReadinessChecks()
+	if len(readiness.Checks) != len(expectedChecks) {
+		return handoffSummary{}, fmt.Errorf(
+			"Gate C readiness check count=%d, want %d",
+			len(readiness.Checks),
+			len(expectedChecks),
+		)
 	}
+	seenChecks := map[string]struct{}{}
+	for _, check := range readiness.Checks {
+		if check.Name == "" || !check.Passed {
+			return handoffSummary{}, fmt.Errorf("Gate C readiness check is not passed: %+v", check)
+		}
+		if _, required := expectedChecks[check.Name]; !required {
+			return handoffSummary{}, fmt.Errorf("unknown Gate C readiness check %q", check.Name)
+		}
+		if _, duplicate := seenChecks[check.Name]; duplicate {
+			return handoffSummary{}, fmt.Errorf("duplicate Gate C readiness check %q", check.Name)
+		}
+		seenChecks[check.Name] = struct{}{}
+	}
+	if len(seenChecks) != len(expectedChecks) {
+		return handoffSummary{}, fmt.Errorf("Gate C readiness check set is incomplete")
+	}
+
 	for _, unresolved := range readiness.Unresolved {
 		if unresolved.ID == "" {
-			return handoffSummary{}, fmt.Errorf(
-				"Gate C readiness contains unnamed unresolved item",
-			)
+			return handoffSummary{}, fmt.Errorf("Gate C readiness contains unnamed unresolved item")
 		}
 		if unresolved.Blocking {
-			return handoffSummary{}, fmt.Errorf(
-				"blocking unresolved %q remains",
-				unresolved.ID,
-			)
+			return handoffSummary{}, fmt.Errorf("blocking unresolved %q remains", unresolved.ID)
 		}
 	}
 	if readiness.TargetDifferenceHandoff.ApplicationID != "order_entry" ||
@@ -205,9 +227,7 @@ func buildHandoff(
 	if !semantic.SourceQualification.Passed ||
 		!semantic.SemanticConformance.Passed ||
 		!semantic.FunctionalEvidence.Passed {
-		return handoffSummary{}, fmt.Errorf(
-			"Semantic / Functional Evidence is not fully passed",
-		)
+		return handoffSummary{}, fmt.Errorf("Semantic / Functional Evidence is not fully passed")
 	}
 	if semantic.GateCReady {
 		return handoffSummary{}, fmt.Errorf(
@@ -220,14 +240,10 @@ func buildHandoff(
 		semantic.TargetBuildRevision == "" ||
 		semantic.TargetAdapter == "" ||
 		semantic.Host == "" {
-		return handoffSummary{}, fmt.Errorf(
-			"Semantic / Functional provenance is incomplete",
-		)
+		return handoffSummary{}, fmt.Errorf("Semantic / Functional provenance is incomplete")
 	}
 	if readiness.SemanticFunctionalRun != semantic.RunIdentity {
-		return handoffSummary{}, fmt.Errorf(
-			"Semantic / Functional run identity mismatch",
-		)
+		return handoffSummary{}, fmt.Errorf("Semantic / Functional run identity mismatch")
 	}
 	if readiness.HandoverBaselineID != semantic.HandoverBaselineID ||
 		readiness.BaselineRepositoryRevision != semantic.BaselineRepositoryRevision ||
@@ -241,7 +257,7 @@ func buildHandoff(
 
 	digests := make(map[string]string, len(semantic.Artifacts))
 	for _, artifact := range semantic.Artifacts {
-		if artifact.File == "" || artifact.SHA256 == "" {
+		if artifact.File == "" || !isSHA256(artifact.SHA256) {
 			return handoffSummary{}, fmt.Errorf(
 				"Semantic / Functional raw artifact digest is incomplete: %+v",
 				artifact,
@@ -264,23 +280,17 @@ func buildHandoff(
 			spec.TargetRealizationRef == "" ||
 			spec.RawArtifactFile == "" ||
 			spec.ObservationClass == "" {
-			return handoffSummary{}, fmt.Errorf(
-				"incomplete replayable behavior spec: %+v",
-				spec,
-			)
+			return handoffSummary{}, fmt.Errorf("incomplete replayable behavior spec: %+v", spec)
 		}
 		if _, exists := seen[spec.BehaviorID]; exists {
-			return handoffSummary{}, fmt.Errorf(
-				"duplicate behavior identity %q",
-				spec.BehaviorID,
-			)
+			return handoffSummary{}, fmt.Errorf("duplicate behavior identity %q", spec.BehaviorID)
 		}
 		seen[spec.BehaviorID] = struct{}{}
 
 		digest := digests[spec.RawArtifactFile]
-		if digest == "" {
+		if !isSHA256(digest) {
 			return handoffSummary{}, fmt.Errorf(
-				"raw artifact %q has no exact digest",
+				"raw artifact %q has no exact SHA-256 digest",
 				spec.RawArtifactFile,
 			)
 		}
@@ -298,8 +308,8 @@ func buildHandoff(
 			TargetBuildRevision:             readiness.TargetBuildRevision,
 			SemanticFunctionalRun:           readiness.SemanticFunctionalRun,
 			VisualRun:                       readiness.VisualRun,
-			GateCReadinessArtifactSHA256:    readinessDigest,
-			SemanticFunctionalSummarySHA256: semanticDigest,
+			GateCReadinessArtifactSHA256:    evidence.GateCReadinessArtifactSHA256,
+			SemanticFunctionalSummarySHA256: evidence.SemanticFunctionalSummarySHA256,
 		})
 	}
 	sort.Slice(candidates, func(i, j int) bool {
@@ -315,51 +325,22 @@ func buildHandoff(
 		Host:                            readiness.Host,
 		SemanticFunctionalRun:           readiness.SemanticFunctionalRun,
 		VisualRun:                       readiness.VisualRun,
-		GateCReadinessArtifactSHA256:    readinessDigest,
-		SemanticFunctionalSummarySHA256: semanticDigest,
+		GateCReadinessArtifactSHA256:    evidence.GateCReadinessArtifactSHA256,
+		SemanticFunctionalSummarySHA256: evidence.SemanticFunctionalSummarySHA256,
 		Candidates:                      candidates,
 		AuthorityLimits: []string{
 			"handoff-requires-actual-final-gate-c-readiness",
-			"handoff-pins-exact-readiness-and-semantic-summary-bytes",
+			"entry-artifact-sha256-pins-exact-input-bytes",
 			"candidate-replay-status-starts-not-executed",
 			"behavior-unit-does-not-imply-workflow-coverage",
 			"target-realization-ref-is-not-canonical-semantic-identity",
 			"raw-artifact-digest-preserves-evidence-provenance",
-			"visual-run-is-entry-provenance-not-functional-replay-result",
 			"selectors-coordinates-and-click-sequences-are-not-canonicalized",
 		},
 	}, nil
 }
 
-func validateReadinessChecks(checks []readinessCheck) error {
-	expected := expectedReadinessChecks()
-	if len(checks) != len(expected) {
-		return fmt.Errorf(
-			"Gate C readiness check count=%d, want %d",
-			len(checks),
-			len(expected),
-		)
-	}
-	seen := map[string]struct{}{}
-	for _, check := range checks {
-		if check.Name == "" || !check.Passed {
-			return fmt.Errorf(
-				"Gate C readiness check is not passed: %+v",
-				check,
-			)
-		}
-		if _, ok := expected[check.Name]; !ok {
-			return fmt.Errorf("unknown Gate C readiness check %q", check.Name)
-		}
-		if _, duplicate := seen[check.Name]; duplicate {
-			return fmt.Errorf("duplicate Gate C readiness check %q", check.Name)
-		}
-		seen[check.Name] = struct{}{}
-	}
-	return nil
-}
-
-func expectedReadinessChecks() map[string]struct{} {
+func expectedGateCReadinessChecks() map[string]struct{} {
 	return map[string]struct{}{
 		"same-B-R-T-and-target-identity":                          {},
 		"source-semantic-functional-passed":                       {},
@@ -421,17 +402,24 @@ func firstWebBehaviorSpecs() []behaviorSpec {
 	}
 }
 
-func readJSONWithDigest(path string, target any) (string, error) {
+func readJSONWithSHA256(path string, target any) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("read %s: %w", path, err)
 	}
-	sum := sha256.Sum256(data)
-	digest := hex.EncodeToString(sum[:])
 	if err := json.Unmarshal(data, target); err != nil {
 		return "", fmt.Errorf("decode %s: %w", path, err)
 	}
-	return digest, nil
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func isSHA256(value string) bool {
+	if len(value) != sha256.Size*2 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func fatalf(format string, args ...any) {
