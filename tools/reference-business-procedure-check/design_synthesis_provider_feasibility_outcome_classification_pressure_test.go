@@ -16,22 +16,22 @@ type providerOutcomeContractionProbe struct {
 	RealizationEliminated     bool
 	CompositeEliminated       bool
 	Unresolved                bool
-	Owner                      string
-	SemanticAccepted           bool
+	Owner                     string
+	SemanticAccepted          bool
 }
 
 const (
-	providerOutcomeMissingEvidenceProbe       = "missing-evidence"
-	providerOutcomeObservedIncompatibleProbe  = "observed-incompatible"
-	providerOutcomeStructurallyUnsupported    = "structurally-unsupported"
-	providerOutcomeOperationalRecoveryProbe   = "operational-recovery"
-	providerOutcomeSupportedRealizationProbe  = "supported-realization"
+	providerOutcomeMissingEvidenceProbe      = "missing-evidence"
+	providerOutcomeObservedIncompatibleProbe = "observed-incompatible"
+	providerOutcomeStructurallyUnsupported   = "structurally-unsupported"
+	providerOutcomeOperationalRecoveryProbe  = "operational-recovery"
+	providerOutcomeSupportedRealizationProbe = "supported-realization"
 )
 
 func classifyProviderOutcomeContractionProbe(p providerOutcomeClassificationProbe) providerOutcomeContractionProbe {
 	result := providerOutcomeContractionProbe{
 		SemanticCandidateRetained: true,
-		Owner:                      p.Owner,
+		Owner:                     p.Owner,
 	}
 
 	switch p.OutcomeClass {

@@ -7,8 +7,8 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/driver"
-	"tei/internal/environment"
 	sqlquery "tei/internal/driver/queryruntime/sql"
+	"tei/internal/environment"
 )
 
 func headerDetailExecutorRegistry(executor driver.ContractQueryExecutor) driver.ContractQueryExecutorMap {

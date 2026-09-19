@@ -63,6 +63,72 @@ capability sales.order.submit {
 	}
 }
 
+func TestSemanticAnchorsSkipRelationKeyClauseWithoutExtraAnchor(t *testing.T) {
+	src := `namespace sales
+
+data Order {
+    attribute orderId type sales.order_id
+    attribute customerId type customer.customer_id
+    relation customer to customer.customer one
+        key sales.order.customer_id -> customer.customer.customer_id
+    relation lines to sales.order_line many
+}
+`
+	got, err := syntax.ParseSemanticFileAnchored(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"semantic-data:sales.order":               "Order",
+		"semantic-attribute:sales.order.order_id": "orderId",
+		"semantic-relation:sales.order.customer":  "customer",
+		"semantic-relation:sales.order.lines":     "lines",
+	}
+	seen := map[string]bool{}
+	for _, item := range got.Anchors {
+		key := item.Kind + ":" + item.ID
+		if item.Kind == "semantic-relation-key" {
+			t.Fatalf("relation key clause must not become its own Subject Anchor: %+v", item)
+		}
+		if text, ok := want[key]; ok {
+			if gotText := src[item.Anchor.Start.Offset:item.Anchor.End.Offset]; gotText != text {
+				t.Fatalf("anchor %s text=%q want=%q", key, gotText, text)
+			}
+			seen[key] = true
+		}
+	}
+	for key := range want {
+		if !seen[key] {
+			t.Fatalf("missing anchor %s", key)
+		}
+	}
+}
+
+func TestSemanticAnchorsSkipMultipleRelationKeyClauses(t *testing.T) {
+	src := `namespace sales
+
+data OrderLine {
+    attribute orderLineId type sales.order_line_id
+    relation order to sales.order many
+        key sales.order_line.order_id -> sales.order.order_id
+        key sales.order_line.revision -> sales.order.revision
+}
+`
+	got, err := syntax.ParseSemanticFileAnchored(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range got.Anchors {
+		if item.Kind == "semantic-relation" && item.ID == "sales.order_line.order" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected semantic-relation:sales.order_line.order anchor after multiple key clauses, got %+v", got.Anchors)
+	}
+}
+
 func TestSemanticAnchorsFollowCanonicalSymbolNormalization(t *testing.T) {
 	src := `namespace sales
 

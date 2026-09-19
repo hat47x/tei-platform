@@ -50,9 +50,9 @@ func TestCanonicalBusinessHandoffProbeDerivesFromReferenceSetAndResolvesEndpoint
 	}
 	got := handoffs[0]
 	want := canonicalBusinessHandoffProbe{
-		From: canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.order-handling", Step: "BP-09"},
-		To: canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.follow-up", Step: "FU-00"},
-		Condition: "follow-up remains necessary after the primary order interaction",
+		From:      canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.order-handling", Step: "BP-09"},
+		To:        canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.follow-up", Step: "FU-00"},
+		Condition: "follow-up is required after the earlier order interaction",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected canonical handoff: got=%+v want=%+v", got, want)
@@ -208,8 +208,8 @@ func deriveCanonicalBusinessHandoffProbes(set referenceSet, fixtures map[string]
 	seen := map[string]struct{}{}
 	for _, item := range set.Handoffs {
 		probe := canonicalBusinessHandoffProbe{
-			From: canonicalBusinessHandoffEndpointProbe{Procedure: item.From.Procedure, Step: item.From.Step},
-			To: canonicalBusinessHandoffEndpointProbe{Procedure: item.To.Procedure, Step: item.To.Step},
+			From:      canonicalBusinessHandoffEndpointProbe{Procedure: item.From.Procedure, Step: item.From.Step},
+			To:        canonicalBusinessHandoffEndpointProbe{Procedure: item.To.Procedure, Step: item.To.Step},
 			Condition: item.Condition,
 		}
 		key := probe.From.Procedure + "/" + probe.From.Step + "->" + probe.To.Procedure + "/" + probe.To.Step + ":" + probe.Condition

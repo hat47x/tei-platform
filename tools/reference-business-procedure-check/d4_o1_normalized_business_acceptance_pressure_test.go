@@ -21,11 +21,11 @@ type d4O1AddressedBusinessStepProbe struct {
 }
 
 type d4O1AddressedBusinessProcedureProbe struct {
-	ID      string                                 `json:"id"`
-	Purpose string                                 `json:"purpose"`
-	Trigger candidateRef                           `json:"trigger"`
-	Actor   candidateRef                           `json:"actor"`
-	Steps   []d4O1AddressedBusinessStepProbe       `json:"steps"`
+	ID      string                           `json:"id"`
+	Purpose string                           `json:"purpose"`
+	Trigger candidateRef                     `json:"trigger"`
+	Actor   candidateRef                     `json:"actor"`
+	Steps   []d4O1AddressedBusinessStepProbe `json:"steps"`
 }
 
 type d4O1NormalizedBusinessModelProbe struct {

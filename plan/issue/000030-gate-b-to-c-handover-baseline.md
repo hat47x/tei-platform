@@ -1,6 +1,6 @@
 # ISSUE-000030: Gate BからGate Cへ渡すHandover Baselineを固定する
 
-- 状態: Blocked — Gate B Ready待ち
+- 状態: In Progress — Baseline `B / R`固定済み、Gate C側でのtrace実証待ち
 - GitHub Issue: #291
 - Gate B監査: `ISSUE-000029` / #273
 - Gate B final convergence: `ISSUE-000037` / #387
@@ -193,15 +193,15 @@ Gate B Ready前に大きなmachine-readable schemaを固定しません。
 - [x] same-R later rerunをsame-run Evidenceへ読み替えない規則を定義
 - [x] baseline `R`とTarget build `T`を分離
 - [x] meaning変更時のsuccessor Handover規則を定義
-- [ ] 実TEI checkoutで#387 actual final runを取得
-- [ ] #310 / #255 / #308 same-run exact artifactsとfingerprintを#273で監査
-- [ ] #273がRをGate B Readyと判定
-- [ ] 実revision Rから第一Handover Baseline Bを作成
-- [ ] actual Oracle未完了範囲を必要に応じて`unresolved`へ記録
+- [x] 実TEI checkoutで#387 actual final runを取得
+- [x] #310 / #255 / #308 same-run exact artifactsとfingerprintを#273で監査
+- [x] #273がRをGate B Readyと判定
+- [x] 実revision Rから第一Handover Baseline Bを作成（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../GATE_B_TO_C_HANDOVER_BASELINE_B.md)、`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
+- [x] actual Oracle未完了範囲を必要に応じて`unresolved`へ記録（Baseline記録内「actual Oracleの扱い」節）
 - [ ] #70 / #270 Gate C Evidenceから`B / R / T1`へ追跡できる
 - [ ] Gate C中のmeaning変更でsuccessor Handoverを実証
 
-Gate Bはまだ **Not Ready** です。Ready前に第一Web Targetへ本格着手しません。
+Gate Bは **Ready** です（`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。Handover Baseline `B / R`は固定済みで、第一Web Target（`ISSUE-000007` / #70）へ着手可能です。残る2項目はGate C Evidence取得自体に依存するため、Gate C側の進行に伴い充足します。
 
 ## 非目標
 

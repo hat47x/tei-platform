@@ -39,8 +39,8 @@ type PartitionCatalogReader interface {
 // as a safety precondition.
 type SchemaObservation struct {
 	Snapshot                     physical.SchemaSnapshot `json:"snapshot"`
-	Partitions                   []PartitionRelation      `json:"partitions,omitempty"`
-	PartitionObservationComplete bool                     `json:"partitionObservationComplete"`
+	Partitions                   []PartitionRelation     `json:"partitions,omitempty"`
+	PartitionObservationComplete bool                    `json:"partitionObservationComplete"`
 }
 
 // ObserveSchema preserves the existing Introspect contract while adding

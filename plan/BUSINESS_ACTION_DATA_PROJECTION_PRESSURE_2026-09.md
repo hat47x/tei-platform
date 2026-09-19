@@ -213,7 +213,7 @@ no data dependency
 
 それらは既存Application / Database / Provider authorityから別projectionとしてcross-checkする。
 
-`BUSINESS_PROCEDURE_SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL_2026-09.md`で保留したmanufacturing / inventory ownershipを、本projectionを理由にsynthetic化しない。
+`BUSINESS_PROCEDURE_SECOND_CORPUS_PRESSURE_2026-09.md`（Part 2、旧`SECOND_CORPUS_DATA_AUTHORITY_DEFERRAL`）で保留したmanufacturing / inventory ownershipを、本projectionを理由にsynthetic化しない。
 
 ## 9. CRUD matrixへの含意
 

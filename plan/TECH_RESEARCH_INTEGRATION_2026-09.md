@@ -630,6 +630,1021 @@ D: hybrid routing
 - selection後にdeterministic qualificationを通す
 - all-skill metadata preloadを必須architectureにしない
 
+#### R6 first Reference pressure — 2026-09-18
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6_selective_knowledge_routing_pressure_test.go`
+
+current Business Procedure ReferenceのBP-02を使い、次を最小Pressureする。
+
+```text
+available Application Pattern knowledge
+  -> router-specific selected candidates
+  -> deterministic qualification against current task / Source Index
+  -> task-scoped disclosed knowledge
+```
+
+最初の比較では、exact deterministic routerと、意図的に候補を広く返すtest routerを使う。routing方式が異なっても、deterministic qualification後のqualified identityが同じになることを要求する。
+
+このReferenceで固定する非同一性:
+
+```text
+available != selected
+selected != qualified
+qualified != execution authority
+routing mechanism != semantic authority
+```
+
+routing score / confidence / winnerは導入しない。embedding、model-native routing、Derived Cognitive Retrievalもこの段階では実装せず、後からrouterを交換しても同じqualification boundaryを通せる形だけをPressureする。
+
+R7 / R8はここで擬似実装しない。R7はFirst Web Targetのactual interaction Evidence、R8はactual Execution / Observationを入力として必要とするため、R6のstatic Source Evidenceから成功扱いへ昇格させない。
+
+#### R6B heterogeneous knowledge pressure — 2026-09-19
+
+R6の候補集合をApplication Patternだけに閉じず、用途ごとに異なるknowledge kindを同じrouting / qualification境界へ載せる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6b_heterogeneous_knowledge_routing_pressure_test.go`
+
+候補poolには少なくとも次を含める。
+
+- Business Procedure Reference
+- Application Pattern
+- Semantic Validation
+- Semantic Capability
+- task-specific probe Evidence
+
+Pressure対象:
+
+```text
+BP-02 read-only
+  -> Procedure + customer_reference Pattern
+  -> customer-edit conflict Evidenceはinjectしない
+
+BP-05 validation
+  -> Procedure + exact Validation subjects
+
+BP-06 authorization boundary
+  -> Procedure + security.authorize Capability
+
+R1 customer-edit review
+  -> Procedure + customer_reference Pattern
+  -> explicit customer-edit conflict probe Evidence
+```
+
+exact task routerと、全候補を返すbroad heterogeneous routerを比較し、deterministic qualification後のidentity集合とdisclosure集合が一致することを要求する。
+
+重要なのは全knowledge kindを一つのauthorityへflattenしないことである。
+
+```text
+Procedure Reference != Semantic Capability
+Semantic subject    != probe Evidence
+probe Evidence      != runtime authority
+qualified context   != executable context
+```
+
+Evidenceはtask-specific provenanceとして選択できるが、Operational taskへ無関係なreview Evidenceを注入しない。Capabilityがselected / qualifiedでもAuthorization成立やinvoke authorityを意味しない。
+
+この段階でもuniversal Context Packet、共通score、knowledge-kind横断confidence、production disclosure schemaは追加しない。
+
+#### R6C projection dependency handoff — 2026-09-19
+
+R6Bでqualifiedになったknowledgeを、R3のbounded projectionへ渡すときの境界をPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6c_projection_dependency_handoff_pressure_test.go`
+
+R6Cはfreshness判定を新設しない。R3R〜R3Xが所有するdependency / reason / change / context identityを再実装せず、routing側では次だけを扱う。
+
+```text
+qualified knowledge
+  -> consumer-specific projection selection
+  -> existing R3 dependency key / reason
+```
+
+current BP-06ではR6Bから:
+
+```text
+Business Procedure Reference
+Semantic Capability: security.authorize
+```
+
+がqualifiedになるが、これだけで両方をcurrent stop projection dependencyへ昇格させない。
+
+Business Procedure Referenceは既存R3Sの:
+
+```text
+reference:business-procedure-reference:<locator>
+reason = authorization-requirement-source
+```
+
+へ接続できる。
+
+一方 `security.authorize` がR6Bでqualifiedであることだけから、新しいsemantic dependency edgeを発明しない。current R3 projectionがそのCapability sourceをdependencyとして選択していなければ:
+
+```text
+qualified-not-selected-by-consumer
+```
+
+として保持する。
+
+Human / Agentでprojection category集合が異なっても、同じBusiness Procedure dependencyを利用する場合はdependency key / reason provenanceを変えない。
+
+```text
+consumer-specific category
+  != new dependency identity
+
+qualified
+  != projection dependency
+  != fresh
+  != authorized
+```
+
+R6CはR3S/R3Vのreason identity、R3Wのvalue-change判定、R3XのAuthorization freshness authorityを所有しない。
+
+#### R6D dependency origin classification — 2026-09-19
+
+R6Cでqualified knowledgeからR3 dependencyへlinkできるようになったが、projection dependencyの全てがrouting由来とは限らない。
+
+current BP-06では少なくとも:
+
+```text
+Business Procedure Reference
+  -> routed-qualified-knowledge
+
+protected-target overlay
+  -> consumer-reference-input
+
+runtime Authorization Observation
+  -> consumer-runtime-observation
+```
+
+を分離する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6d_dependency_origin_classification_pressure_test.go`
+
+R6Dは各R3 dependency reasonについて、出所を:
+
+- routed qualified knowledge
+- consumer-local Reference input
+- consumer-local Runtime Observation
+- consumer-local Semantic subject
+
+のいずれかとして明示する。
+
+同じdependencyをroutingとconsumer-localの両方がclaimした場合、またはいずれにも分類できない場合はfail closedする。
+
+```text
+routing available
+  != routing owns every dependency
+
+consumer-local input
+  != routed knowledge
+
+origin class
+  != authority
+  != freshness
+```
+
+これによりR6を万能input registryへ拡張せず、R3側が直接必要とするReference / Runtime / Semantic dependencyを保持できる。
+
+#### R6E router substitution invariance — 2026-09-19
+
+R6の最初の目的であるrouter交換可能性を、qualificationだけでなくR6Dのprojection dependency originまで下流へ延長してPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6e_router_substitution_origin_invariance_pressure_test.go`
+
+current BP-06について:
+
+```text
+exact task router
+  -> narrow selected set
+
+broad heterogeneous router
+  -> deliberately over-selected set
+  -> deterministic qualification rejects unrelated knowledge
+```
+
+とした上で、両者が最終的に同じ:
+
+- qualified knowledge identity
+- R3 dependency key / reason
+- routed / consumer-local origin classification
+
+へ到達することを要求する。
+
+特に:
+
+```text
+router choice
+  != dependency identity
+  != dependency reason
+  != origin class
+```
+
+である。
+
+broad routerが余計なValidation / Pattern / Capability等をselectedに含んでも、qualification後のover-selectionをprojectionへ漏らさない。
+
+またconsumer-localなprotected-target overlayやruntime Authorization Observationはrouter交換の影響を受けず、broad routerがそれらをrouted knowledgeとして取り込まない。
+
+```text
+routing mechanism
+  = replaceable discovery/selection implementation detail
+
+deterministic qualification
+  = semantic/task boundary
+
+R3 dependency provenance
+  = consumer projection boundary
+```
+
+を保持する。
+
+PreferredRouter / Winner / Score / Confidenceを追加せず、router比較結果をSemantic authorityやproduction routing policyへ昇格しない。
+
+#### R6F dependency-driven materialization — 2026-09-19
+
+R6Eでrouter交換後もdependency originが一致することを確認した次段として、実際にcontextへmaterializeするknowledge量をprojection dependencyから導く。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6f_dependency_driven_materialization_pressure_test.go`
+
+materialization対象は:
+
+```text
+qualified knowledge
+  + R6D dependency origin
+  -> routed-qualified-knowledgeとして実際に消費されたknowledgeだけ
+```
+
+とする。
+
+current BP-06 Human orientationでは:
+
+```text
+qualified:
+  Business Procedure Reference
+  security.authorize Capability
+
+materialized:
+  Business Procedure Reference
+
+qualified-but-not-materialized:
+  security.authorize Capability
+
+consumer-local:
+  protected-target overlay
+```
+
+となる。
+
+runtime Observationだけをconsumer-local dependencyとして扱うprojection sliceでは、qualified knowledgeが存在していてもrouted materializationを0にできる。
+
+```text
+qualified
+  != materialized
+
+consumer-local dependency
+  != reason to preload routed candidate pool
+
+materialized
+  != authorized
+```
+
+materialization manifestはderived / rebuildableなtest-only一覧であり、Universal Context Packet、Prompt payload、AllKnowledge dumpにはしない。
+
+exact / broad routerの違いはmaterialized resultへ残さず、R6Eと同じくrouter実装差をcontext identityへ混ぜない。
+
+#### R6G explainable non-materialization — 2026-09-19
+
+R6Fでmaterialize対象を最小化した後、materializeされなかったqualified knowledgeを「欠落」として扱わず、identity / provenanceを保持した説明可能な状態としてPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6g_materialization_explanation_pressure_test.go`
+
+R6Gではqualified knowledgeごとに:
+
+```text
+materialized
+  reason = consumed-routed-projection-dependency
+  dependency keys = exact R3 dependency identities
+
+qualified-not-materialized
+  reason = no-consumed-routed-projection-dependency
+  dependency keys = none
+```
+
+をderived witnessとして保持する。
+
+current BP-06では:
+
+```text
+Business Procedure Reference
+  -> materialized
+  -> routed R3 dependencyへ逆追跡可能
+
+security.authorize Capability
+  -> qualified-not-materialized
+  -> SourceRefsは保持
+  -> knowledge contentはcontextへ戻さない
+```
+
+となる。
+
+これにより:
+
+```text
+not materialized
+  != missing source
+  != qualification failure
+  != irrelevant globally
+```
+
+を区別する。
+
+omission witnessはknowledge identity / kind / SourceRefs / reason codeだけを持ち、Body / Content / Prompt / Payload等を持たない。したがってexplainabilityのために未使用knowledge本文を再注入しない。
+
+exact / broad routerで同じqualified / dependency consumptionへ収束する限り、materialization explanationも同一でなければならない。
+
+consumer-local dependencyはknowledge omission理由へ変換せず、別dependency identityとして保持する。
+
+R6G reasonはfreshness / authority / next action / routing preferenceを決定しない。
+
+#### R6H materialization revision provenance — 2026-09-19
+
+R6Gのmaterialization explanationに、qualified knowledgeがどのsource revisionを見ていたかをfingerprint付きprovenanceとして接続する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6h_materialization_revision_provenance_pressure_test.go`
+
+R6Hでは各knowledge witnessに:
+
+- materialization disposition
+- materialization reason
+- exact routed dependency keys
+- RequiredInputFingerprints
+- SourceRefs
+
+を併置する。
+
+ただし:
+
+```text
+input fingerprint changed
+  != materialization disposition changed
+  != freshness decided
+  != reevaluation required
+```
+
+である。
+
+current BP-06で`security.authorize` Capabilityのsource fingerprintだけをtest-onlyに変更しても、current bounded projectionがそのCapabilityをrouted dependencyとして消費していない限り:
+
+```text
+qualified-not-materialized
+reason = no-consumed-routed-projection-dependency
+```
+
+を維持する。
+
+同様にBusiness Procedure Referenceのfingerprint変更を観測しても、current dependency consumption identityが同じならR6H自身はmaterialized dispositionを反転しない。
+
+fingerprint差分は「どのrevisionを見ていたか」を説明するprovenanceであり、Fresh / Stale / ChangeClass / ShouldReevaluate / AutoRefreshへ変換しない。これらはR3R以降のfreshness / reevaluation責務に残す。
+
+exact / broad routerがcurrent qualificationへ収束する場合、revision provenanceも同一でなければならない。
+
+#### R6I shared knowledge materialization / bounded use edges — 2026-09-19
+
+R6Hでknowledge revision provenanceを保持した上で、同じqualified knowledgeをHuman / Agentのbounded consumerが異なるprojection categoryで利用する場合も、knowledge本文自体をconsumerごと・categoryごとに複製しない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6i_shared_materialization_use_edges_pressure_test.go`
+
+R6Iでは次を分離する。
+
+```text
+shared materialized knowledge
+  = knowledge identity
+  + kind
+  + RequiredInputFingerprints
+  + SourceRefs
+
+bounded use edge
+  = knowledge identity
+  + projection category
+  + dependency key
+  + dependency reason
+```
+
+current BP-06ではBusiness Procedure Referenceを:
+
+- Human orientation: `machine-reasons` から1回利用
+- Agent resolution-inspection: `machine-reasons` と `known-authority-facts` から2回利用
+
+するが、materialized knowledge bodyは双方とも同じ1件である。
+
+```text
+one shared knowledge body
+  -> Human use edge x1
+  -> Agent use edge x2
+
+use edge count
+  != knowledge copy count
+  != stronger authority
+```
+
+`security.authorize` Capabilityは両consumerでqualified-not-materializedのまま保持し、Agent側のdetail増加だけで自動materializeしない。
+
+shared materialized knowledge shapeにはAudience / Purpose / ProjectionCategory / DependencyKeyを持たせず、consumer固有情報はuse edgeへ限定する。これによりconsumer presentation差をknowledge identity / revision provenanceへ混ぜない。
+
+R3AG〜R3AIが扱うoutput側のpurpose-bound explanation / drill-down / read-only reasoningは再実装せず、R6Iはその手前のknowledge input materializationだけをPressureする。
+
+#### R6J bounded input plane assembly — 2026-09-19
+
+R6D〜R6Iの責務を一つのbounded input assemblyへ接続する。ただし全入力を一つのgeneric packetへ平坦化せず、input originごとのplaneを保持する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6j_bounded_input_plane_assembly_pressure_test.go`
+
+assemblyは少なくとも次の3 planeを分離する。
+
+```text
+routed knowledge body
+  knowledge identity
+  kind
+  RequiredInputFingerprints
+  SourceRefs
+
+routed use edge
+  knowledge identity
+  projection category
+  dependency key
+  dependency reason
+
+consumer-local use edge
+  origin class
+  projection category
+  dependency key
+  dependency reason
+```
+
+current BP-06 Human orientationでは:
+
+- Business Procedure Reference body: 1件
+- Procedureへのrouted use: 3 edge
+- protected-target overlayへのconsumer-local Reference use: 3 edge
+- `security.authorize` Capability: qualified-not-materialized
+
+となる。
+
+consumer-local planeにはKnowledgeKey / KnowledgeKind / SourceRefsを持たせず、overlayやruntime Observationをrouter knowledgeへ変換しない。
+
+runtime Observationだけを使うsliceでは:
+
+```text
+routed knowledge = 0
+routed use = 0
+consumer-local runtime use = 1
+qualified-not-materialized = Procedure + Capability
+```
+
+を維持する。
+
+これにより:
+
+```text
+bounded input assembly
+  != universal context packet
+
+consumer-local input
+  != missing routed knowledge
+  != routed knowledge
+
+multiple use edges
+  != multiple source bodies
+```
+
+を固定する。
+
+R6JはPrompt serialization、token budget、production packet schema、freshness decision、execution authorityを導入しない。
+
+#### R6K explicit bounded input scope — 2026-09-19
+
+R6Jでbounded inputを複数planeへ分離した次段として、planeが空である理由を暗黙推論しない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6k_explicit_input_scope_expectation_pressure_test.go`
+
+bounded consumerは既知planeごとに:
+
+```text
+required
+out-of-scope
+```
+
+のどちらかを明示する。
+
+current plane classes:
+
+- routed-knowledge-body
+- routed-use-edge
+- consumer-reference-use-edge
+- consumer-runtime-use-edge
+- consumer-semantic-use-edge
+
+BP-06 Human orientationではrouted knowledge / routed use / consumer Reference useをrequiredとし、runtime / semantic consumer-local planeはout-of-scopeとする。
+
+runtime Observationだけのsliceでは逆にconsumer-runtime-use-edgeだけをrequiredとし、routed knowledge / routed use / consumer Reference / consumer Semanticをout-of-scopeとする。
+
+これにより:
+
+```text
+required + observed 0
+  -> fail closed
+
+out-of-scope + observed > 0
+  -> fail closed
+
+out-of-scope + observed 0
+  -> intentional absence
+  != missing input
+```
+
+を区別する。
+
+scope declarationはknown planeをexactly onceで覆う必要があり、未宣言planeや重複宣言を許さない。
+
+ただしglobal `Complete` / `Ready` / `Valid` booleanを導入せず、各planeのbounded expectation / observationだけを保持する。
+
+`qualified-not-materialized`はplane scopeとは別軸に残す。runtime-only sliceでrouted planeをout-of-scopeにしても、Procedure / Capabilityのqualified identityを「存在しない」へ変換しない。
+
+R6KはR3AJ〜R3ALのmissing authority information request / response correlation / evidence qualificationを再実装せず、input assembly scopeだけをPressureする。
+
+#### R6L scope identity / cardinality separation — 2026-09-19
+
+R6Kのexplicit scope declarationについて、scopeの意味とobserved input countを分離する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6l_scope_identity_cardinality_pressure_test.go`
+
+scope identityは:
+
+```text
+plane class
++ required / out-of-scope disposition
+```
+
+だけから導出し、Audience / Purpose / observed countを含めない。
+
+current BP-06のProcedure-only bounded useでは:
+
+```text
+Human orientation
+  routed knowledge body = 1
+  routed use edge       = 1
+
+Agent resolution-inspection
+  routed knowledge body = 1
+  routed use edge       = 2
+```
+
+となるが、両者のsemantic input scope identityは同じである。
+
+```text
+same scope declaration
+  + different use cardinality
+  -> same scope identity
+
+different scope declaration
+  -> different scope identity
+```
+
+とする。
+
+これによりAgent側のdetail増加やcategory追加がinput scopeそのものの意味変更へ誤変換されることを防ぐ。
+
+scope identityはexpectation declarationの順序にも依存させず、known planeをexactly once宣言したnormalized setから導出する。
+
+ただしscope identityはauthority / completeness / freshnessではない。observed countはR6K witnessに残し、identityへ埋め込まない。
+
+R6LはR3AG以降のpresentation差・outcome identityを再実装せず、knowledge input scopeのsemantic identityだけをPressureする。
+
+#### R6M same-scope observation delta — 2026-09-19
+
+R6Lでscope identityとobserved cardinalityを分離した次段として、同一scope identity内の観測件数差だけを比較する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6m_same_scope_observation_delta_pressure_test.go`
+
+comparisonは:
+
+```text
+same ScopeIdentity
+  + before plane observations
+  + after plane observations
+  -> plane-local cardinality delta
+```
+
+として行う。
+
+current BP-06 Procedure-only bounded useでは:
+
+```text
+Human:
+  routed knowledge body = 1
+  routed use edge       = 1
+
+Agent:
+  routed knowledge body = 1
+  routed use edge       = 2
+```
+
+なので同一scope identityのまま:
+
+```text
+routed knowledge body delta = 0
+routed use edge delta       = +1
+```
+
+と観測できる。
+
+これはconsumer-specific category利用数の差であり、scope meaning changeではない。
+
+```text
+cardinality delta
+  != scope declaration change
+  != freshness change
+  != authority change
+```
+
+ScopeIdentityが異なるbefore / afterはR6Mでは比較しない。scope declaration変更はR6Lの別scopeとして扱い、cardinality deltaへ丸めない。
+
+同じScopeIdentityを主張しながらplane dispositionが変わっている場合もfail closedする。
+
+plane observationの入力順序は比較結果へ影響させない。
+
+R6MはR3AM以降のassertion / acceptance boundaryを再実装せず、bounded input observationの差分だけを扱う。
+
+#### R6N same-scope membership delta — 2026-09-19
+
+R6Mでcardinality deltaを観測できるようになった後、countが同じままmemberだけが入れ替わるケースを見落とさないため、同一scope内のmember identity差分を追加する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6n_same_scope_membership_delta_pressure_test.go`
+
+plane member identityは内容本文ではなく、既存のbounded identityだけから構成する。
+
+```text
+routed knowledge member
+  = KnowledgeKey
+
+routed use member
+  = KnowledgeKey
+  + ProjectionCategory
+  + DependencyKey
+  + DependencyReason
+
+consumer-local use member
+  = OriginClass
+  + ProjectionCategory
+  + DependencyKey
+  + DependencyReason
+```
+
+current BP-06 Human -> Agentではshared Procedure knowledge membershipは変わらず、Agent-only `known-authority-facts` use memberだけがaddedになる。
+
+また:
+
+```text
+before use count = 1
+after use count  = 1
+```
+
+でもmemberがmachine-reasonsからknown-authority-factsへ置換された場合:
+
+```text
+added   = 1
+removed = 1
+```
+
+として観測できる。
+
+一方、同じKnowledgeKeyのsource fingerprintだけが変わった場合はmembership changeへ変換しない。revision provenanceはR6Hの責務に残す。
+
+```text
+source revision changed
+  != knowledge membership changed
+
+member substitution
+  != semantic meaning changed
+  != freshness changed
+```
+
+R6NもScopeIdentity一致を必須とし、異なるscope間のmember集合を同一意味上のdeltaとして比較しない。
+
+R6NはR3AM以降のauthority assertion / acceptance処理を再実装しない。
+
+#### R6O retained-member provenance delta — 2026-09-19
+
+R6Nでmembership identityとsource revisionを分離した次段として、同じScopeIdentityかつ同じKnowledgeKeyがbefore / afterの両方に残る場合だけ、knowledge provenanceのbefore / afterを観測する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6o_retained_member_provenance_delta_pressure_test.go`
+
+対象はretained routed knowledgeだけとし、snapshotは:
+
+```text
+KnowledgeKey
+KnowledgeKind
+RequiredInputFingerprints
+SourceRefs
+```
+
+を保持する。
+
+```text
+same ScopeIdentity
+  + same KnowledgeKey retained
+  + provenance differs
+  -> retained-member provenance delta
+```
+
+とする。
+
+同じKnowledgeKeyのfingerprintだけが変わる場合:
+
+```text
+membership delta = none
+provenance delta = before / after retained
+```
+
+となる。
+
+SourceRefsだけが変わる場合もprovenance differenceとして観測するが、それをsemantic change / locator refresh requiredへ分類しない。分類責務はR3R以降へ残す。
+
+一方:
+
+```text
+knowledge member added / removed
+  -> R6N membership delta
+  != R6O revision delta
+```
+
+である。
+
+またrouted use edgeだけが増減してknowledge body provenanceが同一ならR6O deltaは生成しない。
+
+R6Oは`Changed` / `ChangeClass` / `Fresh` / `Stale` / `ShouldReevaluate` / `Authorized`等を持たず、before / after provenanceを観測するだけに留める。
+
+R3AO / R3APのAccepted Decision / write-authority Evidence Gateは再実装しない。
+
+#### R6P orthogonal observation decomposition — 2026-09-19
+
+R6M / R6N / R6Oで分離したsame-scope observationを、一つの比較結果へ束ねても意味を平坦化しないことをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6p_orthogonal_observation_decomposition_pressure_test.go`
+
+R6Pは同一ScopeIdentity上で:
+
+```text
+cardinality delta
+membership delta
+retained-member provenance delta
+```
+
+を別axisとして保持する。
+
+整合条件は:
+
+```text
+CountDelta
+  = len(Added)
+  - len(Removed)
+```
+
+である。
+
+これによりduplicate use observationのように:
+
+```text
+count +1
+membership +0
+```
+
+となる入力をfail closedできる。
+
+一方:
+
+```text
+fingerprint-only change
+  cardinality delta = 0
+  membership delta  = 0
+  provenance delta  = 1
+
+same-count member substitution
+  cardinality delta = 0
+  membership        = Added 1 / Removed 1
+  provenance delta  = 0
+```
+
+として、差分の種類を混ぜない。
+
+knowledge memberのAdded / Removedはretained provenance deltaへ現れてはならない。
+
+R6Pはこれらを`SemanticChanged` / `Fresh` / `ShouldReevaluate`等へ集約せず、input observationの直交分解に留める。
+
+Accepted Decision / authority application / execution responseはR3側の責務のままとする。
+
+#### R6Q router-substitution observation invariance — 2026-09-19
+
+R6Eで確認したrouter substitution invarianceを、R6J〜R6Pのbounded input / observation decompositionまで貫通させる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6q_router_substitution_observation_invariance_pressure_test.go`
+
+exact task routerとbroad heterogeneous routerはselection段階では異なる。
+
+```text
+exact router
+  -> narrow selected set
+
+broad router
+  -> over-selected set
+  -> deterministic rejection
+```
+
+しかしqualification後に同じknowledge identityへ収束するなら:
+
+```text
+bounded input assembly
+scope identity
+cardinality delta
+membership delta
+retained provenance delta
+```
+
+もrouter mechanismに依存してはならない。
+
+current BP-06ではexact / broad router双方から同じHuman bounded assemblyを導出し、router substitutionそのものをbefore / afterとしてR6Pへ渡した場合、全観測deltaは0でなければならない。
+
+またBusiness Procedure Referenceへ同じtest-only fingerprint revisionを与えた場合、exact / broad双方のR6P decompositionは完全一致し:
+
+```text
+cardinality = 0
+membership  = 0
+retained provenance = 1
+```
+
+となることをPressureする。
+
+consumer-local runtime Observationについても、broad routerがcandidate poolを広く見たことを理由にrouted knowledgeへ捕捉してはならず、runtime-only bounded assembly / observationはrouter invariantである。
+
+```text
+router mechanism
+  != bounded input identity
+  != scope identity
+  != observation delta identity
+  != authority
+```
+
+RoutingMechanism / over-selection / rejected candidateは診断情報に留め、R6P observation shapeへ持ち込まない。
+
+R6QはR3AQ以降のAccepted Decision commit candidate / authority applicationを再実装しない。
+
+#### R6R candidate-pool augmentation invariance — 2026-09-19
+
+R6Qでrouter substitution後のdownstream invarianceを確認した次段として、repository / candidate pool自体が増えた場合でも、current taskに無関係なknowledgeがbounded inputへ侵入しないことをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6r_candidate_pool_augmentation_invariance_pressure_test.go`
+
+test-only unrelated candidate:
+
+```text
+kind = application-pattern
+id   = test-only.unrelated_pattern
+task hint = BP-02
+```
+
+をcurrent BP-06 candidate poolへ追加する。
+
+exact task routerではtask hintが異なるためselected set自体が変化してはならない。
+
+broad heterogeneous routerではcandidateを一旦selectedしてよいが、deterministic qualificationで:
+
+```text
+not-in-deterministic-task-scope
+```
+
+としてrejectし、qualified / disclosed knowledgeを変えてはならない。
+
+その結果:
+
+```text
+candidate pool grows
+  -> available diagnostics may grow
+
+qualified knowledge
+bounded input assembly
+scope identity
+qualified-not-materialized identities
+R6P observation decomposition
+  -> unchanged
+```
+
+を要求する。
+
+broad routerについてもbaseline / augmented bounded assemblyをR6Pで比較し:
+
+```text
+cardinality delta = 0
+membership delta  = 0
+provenance delta  = 0
+```
+
+でなければならない。
+
+CandidatePoolSize / RepositoryKnowledgeCount / RejectedCandidateCount等をbounded input / scope / observation identityへ持ち込まない。
+
+```text
+repository richness
+  != working-context size
+  != scope meaning
+  != authority
+```
+
+R6RはKnowledge Portability relation、R3 authority acceptance、Gate C Evidence acquisitionを再実装しない。
+
+
+#### R6 Source-pressure exit assessment — 2026-09-19
+
+R6A〜R6RでSelective Knowledge RoutingのReference pressureは、Source / Design Evidenceとして一巡したと判断する。R6Rは無関係なcandidate pool growthがtask-scoped meaningへ漏れないことを確認する、具体的な最終closure pressureとして扱う。
+
+成立した境界は次のとおり。
+
+```text
+available
+  != selected
+  != qualified
+  != materialized
+
+router mechanism
+  != qualified meaning
+  != bounded input identity
+
+routed knowledge
+  != consumer-local input
+
+shared knowledge body
+  != consumer-specific use edge
+
+scope identity
+  != observed cardinality
+
+cardinality
+  != membership
+  != retained provenance
+
+router diagnostics
+  != downstream observation meaning
+```
+
+この段階でR6へさらにproduction router、ranking、embedding、model-native routing、Prompt payload、Universal Context Packet、freshness policy、Authorization authorityを追加しない。
+
+またR6は、actual runtimeでのlatency / token / retrieval quality改善、AI Builderでのtask success、Jev等の非LLM認知層、model-native routerの優位性を実証していない。これらはSource pressureとは別Evidenceである。
+
+R6からRequirementへ新しいnormative contractを自動昇格させない。現在の成果は既存の責務分離・traceability・deterministic qualification原則を具体化するReference Evidenceとして扱う。
+
+次の再開条件は次のいずれかとする。
+
+1. actual AI Builder / Agent contextでR6境界を破る具体的defectが観測された
+2. First Web Target / Gate Cのactual EvidenceからR7 Replayable Behavior Evidenceへ進める
+3. production context service / router候補が生まれ、R6 invariantsへの適合Pressureが必要になった
+
+それまではR6を増殖させず、R3のfreshness / acceptance / execution authority、R7のbehavior Evidence、Gate Cのactual acquisitionへ責務を戻す。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
@@ -653,6 +1668,253 @@ Scenario / Semantic Operation
 - behaviorを複数回再実行して同じ意味上の結果を確認できる
 - raw Target evidenceとnormalized evidenceの両方へ戻れる
 - deeper cumulative workflowを単一behavior成功で代替しない
+
+
+#### R7A — Gate C actual Evidence entry boundary — 2026-09-19
+
+R7はFirst Web Targetのactual Functional Evidenceへ接続してから進める。actual replay成功を先に作らず、まず**Gate CからR7へ何を受け渡せばreplay candidateを構成してよいか**だけをSource pressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/replayable_behavior_r7a_gate_c_entry_pressure_test.go`
+
+R7Aの入力は少なくとも:
+
+```text
+actual Gate C readiness audit
+  + actual Semantic / Functional summary
+  + exact same B / R / T / Target identity
+  + exact Semantic / Functional run identity
+  + raw artifact SHA-256
+```
+
+を要求する。
+
+`gateCReady=false`、blocking unresolved、B/R/T不一致、Semantic / Functional run不一致、raw artifact digest欠落ではreplay candidateを作らない。
+
+第一Web Targetのcandidate unitは、少なくとも次のraw artifactへtraceする。
+
+```text
+read-only                         -> read.json
+command success                   -> submit-success.json
+authentication denied             -> submit-authentication-denied.json
+authorization denied              -> submit-authorization-denied.json
+validation not satisfied          -> submit-validation-not-satisfied.json
+command invocation execution error -> submit-execution-error.json
+```
+
+各candidateは:
+
+```text
+Semantic Operation identity
+Target realization ref
+raw artifact filename + SHA-256
+Observation class
+B / R / T provenance
+Semantic / Functional run identity
+```
+
+を別々に保持する。
+
+重要:
+
+```text
+Gate C Ready
+  -> R7 entry eligible
+  != replay executed
+  != replay passed
+  != deep workflow covered
+
+Target realization ref
+  != Canonical selector
+  != Canonical DOM / coordinate / click sequence
+```
+
+R7A source pressureでは全candidateを `ReplayStatus = not-executed` / `CoverageClass = behavior-unit` とし、actual replay成功を捏造しない。
+
+Gate CのVisual Evidenceはentry条件の一部だが、Screenshot / HTML / DOM単独からFunctional replay successを導出しない。
+
+actual Gate C Evidenceが取得された後、次段R7Bでreplay execution recipe / repeatability / observed result comparisonをactual artifactへ接続する。それまではR7Aをentry contractに留める。
+
+##### R7A operational handoff hardening — 2026-09-19
+
+First Web Target並行レーンでR7A handoff sourceが具体化されたため、R7A entry contractも実ファイル入力に対して曖昧にならないよう追加Pressureする。
+
+追加条件:
+
+- final Gate C readinessに少なくとも一つ以上のnamed checkがあり、すべてpassしている
+- unresolved itemはidentityを持ち、blocking itemは存在しない
+- Target Difference Handoffが `order_entry` / exact Target Adapter / exact Hostを指す
+- Semantic / Functional summary自身はpre-Visual stateのまま `GateCReady=false`
+- B / R / T / Target / run provenanceはnon-emptyかつexact一致
+- same-run artifact digest recordは、R7 candidateで直接使わないartifactも含めて不完全値を黙って無視しない
+
+このhardeningはFirst Web Target branchの実装をR7 authorityへ昇格させるものではない。First Web Target側はactual Evidenceの生成・handoff sourceを所有し、R7側は受領条件とcandidate意味を所有する。
+
+```text
+Target-side R7A handoff source
+  != actual handoff artifact acquired
+  != replay execution
+  != replay success
+```
+
+R7B開始条件は引き続きactual final Gate C readiness artifactの取得であり、Source実装の存在だけでは満たさない。
+
+##### R7A final-readiness provenance closure — 2026-09-19
+
+final Gate C readiness JSONは外部入力としてR7Aへ渡されるため、`GateCReady=true` と任意の少数checkだけを信頼しない。第一Web Targetのcurrent final readiness auditが生成する10個のcheck identityを完全集合としてPressureし、missing / duplicate / unknown checkをrejectする。
+
+さらにR7A handoff / candidateは、entry判断に使ったfinal Evidence chainを後から特定できるよう、少なくとも次を保持する。
+
+- `VisualRun`
+- final `gate-c-readiness-audit.json` exact-bytes SHA-256
+- `semantic-functional-summary.json` exact-bytes SHA-256
+- 既存のraw Functional artifact SHA-256
+
+```text
+GateCReady boolean
+  != final readiness artifact identity
+
+all supplied checks passed
+  != required readiness check set complete
+
+R7 candidate
+  -> exact final readiness artifact
+  -> exact Semantic / Functional summary
+  -> exact raw Functional artifact
+```
+
+これはVisual EvidenceをR7 behavior meaningへ混ぜるためではない。`VisualRun` は「どのfinal Gate C判定を通ってR7へ入ったか」を復元するprovenanceであり、Functional replay resultやCanonical identityではない。
+
+actual R7A handoff sourceでは入力JSONのfield値だけでなく、入力file exact bytesのdigestを計算してhandoffへ固定することを期待する。R7Bは引き続きactual handoff artifact取得後まで開始しない。
+
+##### R7A actual handoff source integration — 2026-09-19
+
+Gate Cは`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`でReadyが正式記録された。これを受け、First Web Targetのactual Evidence JSONからR7A handoffを生成するCLI sourceを、R7A final-readiness contractへ揃えて統合する。
+
+source:
+
+- `tools/reference-first-web-target-r7a-handoff/main.go`
+- `tools/reference-first-web-target-r7a-handoff/main_test.go`
+
+CLIは入力する:
+
+- final `gate-c-readiness-audit.json`
+- `semantic-functional-summary.json`
+
+のexact bytesを自身でSHA-256 fingerprintし、handoff / candidateへ保持する。
+
+またfinal readinessについて:
+
+- current required 10 check identityの完全集合
+- missing / duplicate / unknown check rejection
+- `VisualRun`
+- non-blocking unresolved
+- exact B / R / T / Target Adapter / Host / Semantic-Functional run
+- Target Difference Handoff
+
+をfail closedで確認する。
+
+出力candidateは引き続き:
+
+```text
+ReplayStatus = not-executed
+CoverageClass = behavior-unit
+```
+
+であり、CLI sourceの統合だけでactual replay executionを主張しない。
+
+```text
+Gate C Ready recorded
+  + R7A handoff CLI integrated
+  != actual R7A handoff artifact acquired
+  != R7B replay executed
+```
+
+R7B開始条件は、actual Gate C Evidence artifactをこのCLIへ入力して生成したhandoff artifactを取得し、そのexact artifact identityを次段へ渡せることとする。
+
+First Web Target側の旧handoff source branchは並行作業の所有物として直接rewriteせず、R7 research lane側でcurrent final contractへ収束させる。
+
+##### R7B actual handoff entry gate — 2026-09-19
+
+First Web TargetはPR #817でactual Gate C Readyへ到達した。
+
+current actual Gate C record:
+
+```text
+Handover Baseline B = B
+R = e5231839a5dcc62cce1181a2731fcb7c70d16736
+T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+Target Adapter = reference-first-web-target
+Host = go-net-http
+Semantic / Functional run = first-web-target-0ba87a4e0a96
+Semantic / Functional summary SHA-256
+  = 78c4c3b1031a70eb62683233fb5f1794cf7f71fd8b420ffa741d5ebe3f649d6b
+final Gate C readiness SHA-256
+  = b796e38db9a249ef98f2cb600eb354afc70f9adf57d2c83d47116f9968a0ff6c
+judgment record repository revision
+  = d34edb9273f5f138abcbc23f4dcb000dcb5cdf20
+Gate C Ready = true
+```
+
+ただしactual EvidenceはRunbookどおりRepository外保持であり、current Repositoryにはactual `semantic-functional-summary.json`、raw Functional artifact、actual R7A handoff artifactそのものは存在しない。
+
+したがってR7BはGate C Readyだけで開始しない。entryにはactual R7A handoff artifact exact SHA-256を要求し、そのhand-offがcurrent actual Gate C recordとexact一致することをPressureする。
+
+第一Web Targetでは次の6 behaviorを完全集合として要求する。
+
+```text
+first-web/read-only
+first-web/command-success
+first-web/authentication-denied
+first-web/authorization-denied
+first-web/validation-not-satisfied
+first-web/execution-error
+```
+
+各behaviorは:
+
+- exact Semantic Operation
+- exact Target realization ref
+- exact raw artifact filename
+- raw artifact exact SHA-256
+- Observation class
+- B / R / T
+- Semantic / Functional run
+- VisualRun
+- final readiness artifact SHA-256
+- Semantic / Functional summary SHA-256
+- `ReplayStatus = not-executed`
+- `CoverageClass = behavior-unit`
+
+を保持する。
+
+missing / duplicate / unknown behavior、wrong raw artifact mapping、provenance mismatch、hand-off artifact digest欠落、source handoff側で既にreplay passed等を自己申告する入力はfail closedする。
+
+R7B execution intakeを作れても:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus = not-observed
+```
+
+から開始する。
+
+```text
+actual Gate C Ready
+  != actual R7A handoff acquired
+
+actual R7A handoff acquired
+  != replay executed
+
+one replay pass
+  != repeatability established
+  != whole workflow covered
+```
+
+current recorded stateはactual Gate C Readyだがactual R7A handoff artifact未取得なので、R7B actual replay executionはまだ開始しない。
+
+
 
 ### R8 — Verified Experience Memory / Evidence Normalization
 

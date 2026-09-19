@@ -29,13 +29,13 @@ Gate A — Ready
         ↓
 Application Driver
         ↓
-Gate B — 3 Required Evidence / Not Ready
+Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
-Handover Baseline B at revision R
+Handover Baseline B at revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
         ↓
-Gate C — PAS-04 Evidence
+Gate C — PAS-04 Evidence — Ready
         ↓
         ├──────── Authoring / Knowledge lane
         │           ├─ Studio minimal loop — PAS-01
@@ -57,25 +57,23 @@ Application Pattern、Datasource、Validation、Authentication / Authorization�
 
 ### Gate B — UIなしで主要Scenarioを再現できる
 
-**Not Ready**です。
+**Ready**です（2026-09-19再監査、candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。
 
-中心設計の不足ではなく、actual execution Evidenceが未取得だからです。
-
-Required Evidenceは次の三つだけです。
+Required Evidenceは次の三つで、同じclean candidate revision `R`のsame-runとして成立しています。
 
 1. #310 deterministic Repository Evidence
 2. #255 generated artifact reproducibility Evidence
 3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
 
-三つを同じclean candidate revision `R`へ揃え、`ISSUE-000037` / #387のfinal convergenceで確認します。
+`#387` final convergenceとsame-run child artifact auditを含むReady判定の正本は `GATE_B_READINESS_AUDIT.md` です。
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了ならHandoverへ`unresolved`として渡します。
+actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
 
 ### Handover Baseline — Gate B → Gate C
 
 Handoverは新しい番号付きGateではありません。
 
-Gate B Readyのcandidate revision `R`を、第一Web Targetの意味baselineとして固定します。
+Gate B Readyのcandidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、Handover Baseline `B`として固定済みです。個別記録の正本は `GATE_B_TO_C_HANDOVER_BASELINE_B.md` です。
 
 ```text
 Gate B Ready for R
@@ -87,6 +85,8 @@ Handover Baseline B
 Handover recordはCanonicalの第二正本ではありません。
 
 ### Gate C — 第一Targetとの差をEvidenceで説明できる
+
+**Not Ready**です。Gate B / Handoverの着手条件は成立していますが、第一Web Target build `T1`とGate C Evidenceはまだ成立していません。
 
 第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
 

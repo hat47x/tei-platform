@@ -92,17 +92,45 @@ ContextはRepository全体の一般的要約ではなく、明示されたtask /
 
 purposeが変わればcontext選択も変わる。
 
-### 3.3 Snapshot / freshnessへ束縛する
+### 3.3 Actual dependency / freshnessへ束縛する
 
 少なくとも、
 
 - authority ref
-- source / revision / fingerprint
-- derived input revision
+- selected authoritative source artifact / content fingerprint
+- Reference / Evidence input fingerprint
+- derived projectionに実際に依存したbuild input
+- extractor / projection logic identity（persisted projectionで必要になる場合）
 
 へ戻れる必要がある。
 
-staleなcontextをcurrent authorityとして利用しない。
+repository全体や一つのcoarse snapshot revisionを、すべてのactor contextのfreshness authorityにはしない。
+
+```text
+shared baseline
+  != identical dependency set
+
+unrelated accepted change
+  != every actor context stale
+```
+
+staleなcontextをcurrent authorityとして利用しない一方、実際に依存していない変更だけで全Projectionをstale扱いにしない。
+
+また、Source Index管理下のinputではsemantic subject identityとsource locatorを分ける。
+
+```text
+subject identity + content fingerprint
+  = freshness dependency
+
+artifact path
+  = current drill-down locator
+
+locator-only move
+  != semantic change
+  != content freshness change
+```
+
+file move後はSource Indexから新しいlocatorを再解決する。固定pathをsemantic identityやfreshness authorityへ昇格させない。
 
 ### 3.4 Omissionを隠さない
 
@@ -665,7 +693,7 @@ current `order_entry`から、
 - Human Review context
 - read-only Operational context
 
-を同じaccepted snapshotからderivedに作り、三者の情報差を比較する。
+を同じshared reference baselineからderivedに作り、三者の情報差とpurpose-specificなactual dependency fingerprint集合を比較する。
 
 ### R1 — Builder re-entry challenge
 

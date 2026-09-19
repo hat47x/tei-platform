@@ -8,7 +8,7 @@
 
 ## 1. 目的
 
-R0では、同一のaccepted / reference snapshotから次の三つを静的に導出する。
+R0では、同一のshared accepted / reference baselineから次の三つを静的に導出する。
 
 1. Builder Re-entry Context
 2. Human Review Projection
@@ -40,6 +40,18 @@ R0では、同一のaccepted / reference snapshotから次の三つを静的に�
 - artifact path
 - content fingerprint
 - subject reference
+- Business Procedure Reference fingerprint
+- Projectionごとのactual selected input fingerprint集合
+
+R0では一つのBusiness Procedure fingerprintを三Projectionで共有するが、それだけをProjection全体のfreshness authorityにはしない。Builder / Operationalは選択したworkspace subjectのsource artifactにも依存し、Datasource / accepted accessをProjectionする場合はその値を所有するApplication sourceにも依存する。Human Reviewはさらにconflict Evidence inputへ依存する。
+
+```text
+same Business Reference baseline
+  + purpose-specific selected inputs
+  -> projection freshness dependencies
+```
+
+無関係なworkspace source変更を理由に全Projectionをstale化せず、逆にactual dependency変更をBusiness Procedure fingerprintだけで見逃さない。
 
 ### 既存test-only cross-view Evidence
 
@@ -267,6 +279,28 @@ actor identityとAuthorization Principalの接続は別Evidenceが必要。
 
 R0では対象challengeに必要な差分だけをderiveする。
 
+### G7 — 一つのsnapshot fingerprintではactual dependency freshnessにならない
+
+R0 sourceの初版はBusiness Procedure Reference fingerprintを三Projectionへ共通保持したが、各Projectionはそれ以外にも依存する。
+
+- Builder / Operational: selected Pattern / Data / Relation / Validation / Capabilityのworkspace source
+- Builder / Operational: Datasource / accepted accessを読む場合、そのowner Application source
+- Human Review: 上記に加えてcustomer-edit conflict Evidence
+
+したがって、
+
+```text
+same reference fingerprint
+  != same dependency set
+  != projection freshness proven
+```
+
+である。
+
+test-only pressureでは、shared Business Reference fingerprintを残しつつ、Source Indexからselected subjectのartifact fingerprintを集める。PatternからDatasource / accepted accessを読む経路ではPattern owner Applicationのsource fingerprintも必須とし、Human Reviewではconflict fixture fingerprintも追加する。production global revisionや万能Snapshot IDは導入しない。
+
+Source Index管理下のinput recordでは`subjectKind / subjectID`とartifact locatorを分けて保持する。freshnessはsubject + content fingerprintへ束縛し、artifact pathはdrill-down locatorとして扱う。source-only moveでWorld / subject / content fingerprintが不変なら、それだけをsemantic staleとは扱わない。
+
 ## 7. R0 test-only shape
 
 production schemaではなく、test-only構造として最小限次をPressureする。
@@ -276,6 +310,8 @@ production schemaではなく、test-only構造として最小限次をPressure�
 ```text
 BuilderContextProbe
   Purpose
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   Subjects[]
   SourceRefs[]
   Dependencies[]
@@ -290,6 +326,8 @@ BuilderContextProbe
 ```text
 HumanReviewProbe
   Purpose
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   MeaningDelta[]
   ImpactedSubjects[]
   PermissionResourceDelta[]
@@ -303,6 +341,8 @@ HumanReviewProbe
 
 ```text
 OperationalContextProbe
+  ReferenceFingerprint
+  RequiredInputFingerprints[]
   ProcedureRef
   StepRef
   BusinessAction
@@ -344,7 +384,7 @@ R0 test-only typeへ、次のような総合判定fieldを置かない。
 
 ## 9. R0 comparison
 
-同じ`order_entry` snapshotから三Projectionを作り、次を比較する。
+同じ`order_entry` shared reference baselineから三Projectionを作り、purpose-specificなrequired input fingerprintsと情報内容を比較する。
 
 | Concern | Builder | Human | Operational |
 |---|---|---|---|
@@ -361,9 +401,31 @@ R0 test-only typeへ、次のような総合判定fieldを置かない。
 
 「同じsourceだから同じcontextを渡す」設計にしない。
 
+## 10. Test-only implementation source
+
+最初のsourceは次へ隔離する。
+
+`tools/reference-business-procedure-check/actor_context_r0_pressure_test.go`
+
+このtest sourceはproduction package / schemaを追加せず、同package内の既存Reference helperを再利用する。
+
+現在のPressure:
+
+1. BP-02からread-only Operational Projectionを導出
+2. 同じBusiness Procedure Reference fingerprintを保持しつつ、三Projectionのactual selected input fingerprint集合を分ける
+3. Builder / Operationalではselected workspace source definition fingerprintへtraceする
+4. Builderではselected dependency集合そのものもderived build inputとしてfingerprintする
+5. Human側では既存customer-edit conflictとそのEvidence fingerprintを保持
+6. Builder側ではexact dependencyをderive
+7. BP-04 / BP-08をunresolvedのまま保持
+8. authority shortcut fieldをreflectionで拒否
+
+sourceの存在はtest PASSを意味しない。actual `go test`結果は別Evidenceとして取得する。
+
 ## 10. R0完了条件
 
-- [ ] 三Projectionを同じsnapshotから再構築できる
+- [ ] 三Projectionを同じshared reference baselineから再構築できる
+- [ ] Projectionごとのactual selected input fingerprintへ逆追跡できる
 - [ ] Source / Evidenceへ逆追跡できる
 - [ ] Business Referenceがcanonical=falseであることを失わない
 - [ ] BP-04 / BP-08 / BP-09のunresolvedを埋めない

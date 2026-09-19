@@ -61,7 +61,7 @@ type ColumnMapping struct {
 // Semantic Relationをmanaged-here Databaseのtableへ保存するための補助列群を表す。
 // physical column名やForeign KeyをSemantic Relationのidentityとして扱わない。
 type RelationStorageMapping struct {
-	Relation   core.CanonicalID                   `json:"relation"`
+	Relation   core.CanonicalID                  `json:"relation"`
 	Components []RelationStorageComponentMapping `json:"components"`
 }
 

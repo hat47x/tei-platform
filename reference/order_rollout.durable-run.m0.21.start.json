@@ -6,8 +6,8 @@
   "solutionVersion": "2026.8.27",
   "environment": "production",
   "planFingerprint": "ee84a63c8f571370ca421181ca30cffc87993f435f85e009f65ebeb55815ed26",
-  "pluginLockFingerprint": "74d225e985ebf68be9d0289f533d6599b7eb17e6757bb4425c1d0b08cfede220",
-  "runtimePolicyFingerprint": "bc67cae4df0f8ad7c9b441c348055f6237433eadfb9ab3654031cef2597a8f3d",
+  "pluginLockFingerprint": "00465ad23d42795ffe3e339f3d43e90f52245047070d2afdb177d4e6275cd6b0",
+  "runtimePolicyFingerprint": "a2f56c978965053b7f9365d0b7f63c1532d4741df3dd203f962364c39eae88a3",
   "status": "ready",
   "initial": {
     "environment": "production",
