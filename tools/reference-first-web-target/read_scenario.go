@@ -196,7 +196,6 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		Unresolved: []string{
 			"standalone-read-endpoint-is-reference-diagnostic-without-authentication-gate",
 			"standalone-read-endpoint-does-not-invoke-command",
-			"custom-ui-not-yet-wired",
 			"actual-functional-evidence-not-yet-acquired",
 			"visual-evidence-not-yet-acquired",
 		},
