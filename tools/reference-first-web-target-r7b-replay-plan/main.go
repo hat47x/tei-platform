@@ -59,6 +59,20 @@ type executionIntake struct {
 	AuthorityLimits                       []string                   `json:"authorityLimits"`
 }
 
+type intakeAcquisitionReceipt struct {
+	EvidenceNature                       string `json:"evidenceNature"`
+	IntakeToolRepositoryRevision         string `json:"intakeToolRepositoryRevision"`
+	RepositoryPostRunRevision            string `json:"repositoryPostRunRevision"`
+	RepositoryPostRunClean               bool   `json:"repositoryPostRunClean"`
+	SourceQualificationPassed            bool   `json:"sourceQualificationPassed"`
+	SourceR7AHandoffSHA256               string `json:"sourceR7AHandoffSHA256"`
+	SourceR7AAcquisitionReceiptSHA256     string `json:"sourceR7AAcquisitionReceiptSHA256"`
+	ExecutionIntakeArtifact              string `json:"executionIntakeArtifact"`
+	ExecutionIntakeArtifactSHA256        string `json:"executionIntakeArtifactSHA256"`
+	ReplayExecuted                       bool   `json:"replayExecuted"`
+	RepeatabilityObserved                bool   `json:"repeatabilityObserved"`
+}
+
 type behaviorSpec struct {
 	SemanticOperation    string
 	TargetRealizationRef string
@@ -88,20 +102,25 @@ type replayUnit struct {
 }
 
 type replayPlan struct {
-	EvidenceNature                    string       `json:"evidenceNature"`
-	SourceExecutionIntakeSHA256       string       `json:"sourceExecutionIntakeSHA256"`
-	SourceR7AHandoffSHA256            string       `json:"sourceR7AHandoffSHA256"`
-	SourceR7AAcquisitionReceiptSHA256 string       `json:"sourceR7AAcquisitionReceiptSHA256"`
-	ReplayTargetBuildRevision         string       `json:"replayTargetBuildRevision"`
-	Units                             []replayUnit `json:"units"`
-	AuthorityLimits                   []string     `json:"authorityLimits"`
+	EvidenceNature                         string       `json:"evidenceNature"`
+	SourceExecutionIntakeSHA256            string       `json:"sourceExecutionIntakeSHA256"`
+	SourceExecutionIntakeReceiptSHA256     string       `json:"sourceExecutionIntakeReceiptSHA256"`
+	SourceR7AHandoffSHA256                 string       `json:"sourceR7AHandoffSHA256"`
+	SourceR7AAcquisitionReceiptSHA256      string       `json:"sourceR7AAcquisitionReceiptSHA256"`
+	IntakeToolRepositoryRevision           string       `json:"intakeToolRepositoryRevision"`
+	ReplayTargetBuildRevision              string       `json:"replayTargetBuildRevision"`
+	Units                                  []replayUnit `json:"units"`
+	AuthorityLimits                        []string     `json:"authorityLimits"`
 }
 
 func main() {
-	intakePath := flag.String("r7b-intake", "", "R7B execution-intake JSON")
+	var (
+		intakePath  = flag.String("r7b-intake", "", "R7B execution-intake JSON")
+		receiptPath = flag.String("r7b-intake-receipt", "", "R7B intake acquisition receipt JSON")
+	)
 	flag.Parse()
-	if *intakePath == "" {
-		fatalf("-r7b-intake is required")
+	if *intakePath == "" || *receiptPath == "" {
+		fatalf("-r7b-intake and -r7b-intake-receipt are required")
 	}
 
 	var intake executionIntake
@@ -109,7 +128,13 @@ func main() {
 	if err != nil {
 		fatalf("%v", err)
 	}
-	plan, err := buildReplayPlan(intake, intakeSHA)
+	var receipt intakeAcquisitionReceipt
+	receiptSHA, err := readJSONWithSHA256(*receiptPath, &receipt)
+	if err != nil {
+		fatalf("%v", err)
+	}
+
+	plan, err := buildReplayPlan(intake, receipt, intakeSHA, receiptSHA)
 	if err != nil {
 		fatalf("%v", err)
 	}
@@ -121,11 +146,19 @@ func main() {
 	}
 }
 
-func buildReplayPlan(intake executionIntake, intakeSHA string) (replayPlan, error) {
-	if !isSHA256(intakeSHA) {
-		return replayPlan{}, fmt.Errorf("R7B execution intake exact-byte identity is invalid")
+func buildReplayPlan(
+	intake executionIntake,
+	receipt intakeAcquisitionReceipt,
+	intakeSHA,
+	receiptSHA string,
+) (replayPlan, error) {
+	if !isSHA256(intakeSHA) || !isSHA256(receiptSHA) {
+		return replayPlan{}, fmt.Errorf("R7B replay-plan source artifact identity is invalid")
 	}
 	if err := validateIntake(intake); err != nil {
+		return replayPlan{}, err
+	}
+	if err := validateIntakeReceipt(receipt, intake, intakeSHA); err != nil {
 		return replayPlan{}, err
 	}
 
@@ -156,8 +189,7 @@ func buildReplayPlan(intake executionIntake, intakeSHA string) (replayPlan, erro
 			candidate.ObservationClass != spec.ObservationClass {
 			return replayPlan{}, fmt.Errorf("behavior %q does not match the R7B intake contract", candidate.BehaviorID)
 		}
-		if !isSHA256(candidate.RawArtifactSHA256) ||
-			candidate.RawArtifactSHA256 == stringsOfZeroes() {
+		if !isSHA256(candidate.RawArtifactSHA256) {
 			return replayPlan{}, fmt.Errorf("behavior %q origin raw artifact identity is invalid", candidate.BehaviorID)
 		}
 		if candidate.ReplayExecutionStatus != "not-executed" ||
@@ -201,12 +233,14 @@ func buildReplayPlan(intake executionIntake, intakeSHA string) (replayPlan, erro
 	})
 
 	return replayPlan{
-		EvidenceNature:                    "first-web-target-r7b-replay-plan",
-		SourceExecutionIntakeSHA256:       intakeSHA,
-		SourceR7AHandoffSHA256:            intake.SourceHandoffArtifactSHA256,
-		SourceR7AAcquisitionReceiptSHA256: intake.AcquisitionReceiptSHA256,
-		ReplayTargetBuildRevision:         intake.TargetBuildRevision,
-		Units:                             units,
+		EvidenceNature:                     "first-web-target-r7b-replay-plan",
+		SourceExecutionIntakeSHA256:        intakeSHA,
+		SourceExecutionIntakeReceiptSHA256: receiptSHA,
+		SourceR7AHandoffSHA256:             intake.SourceHandoffArtifactSHA256,
+		SourceR7AAcquisitionReceiptSHA256:  intake.AcquisitionReceiptSHA256,
+		IntakeToolRepositoryRevision:        receipt.IntakeToolRepositoryRevision,
+		ReplayTargetBuildRevision:           intake.TargetBuildRevision,
+		Units:                               units,
 		AuthorityLimits: []string{
 			"replay-plan-does-not-execute-replay",
 			"request-fixture-id-is-target-local-not-canonical",
@@ -215,6 +249,7 @@ func buildReplayPlan(intake executionIntake, intakeSHA string) (replayPlan, erro
 			"two-required-runs-do-not-imply-they-have-executed",
 			"behavior-unit-does-not-imply-workflow-coverage",
 			"credentials-selectors-coordinates-and-click-sequences-are-not-plan-identity",
+			"intake-receipt-provenance-does-not-grant-execution-authority",
 		},
 	}, nil
 }
@@ -240,6 +275,33 @@ func validateIntake(intake executionIntake) error {
 		intake.GateCReadinessArtifactSHA256 != expectedReadinessSHA256 ||
 		intake.SemanticFunctionalSummarySHA256 != expectedSemanticSHA256 {
 		return fmt.Errorf("R7B intake does not preserve exact recorded Gate C provenance")
+	}
+	return nil
+}
+
+func validateIntakeReceipt(
+	receipt intakeAcquisitionReceipt,
+	intake executionIntake,
+	intakeSHA string,
+) error {
+	if receipt.EvidenceNature != "first-web-target-r7b-intake-acquisition-receipt" {
+		return fmt.Errorf("unexpected R7B intake receipt evidenceNature %q", receipt.EvidenceNature)
+	}
+	if !isGitRevision(receipt.IntakeToolRepositoryRevision) ||
+		receipt.RepositoryPostRunRevision != receipt.IntakeToolRepositoryRevision ||
+		!receipt.RepositoryPostRunClean ||
+		!receipt.SourceQualificationPassed {
+		return fmt.Errorf("R7B intake receipt does not prove a clean qualified acquisition")
+	}
+	if receipt.SourceR7AHandoffSHA256 != intake.SourceHandoffArtifactSHA256 ||
+		receipt.SourceR7AAcquisitionReceiptSHA256 != intake.AcquisitionReceiptSHA256 ||
+		receipt.ExecutionIntakeArtifact != "r7b-execution-intake.json" ||
+		!isSHA256(receipt.ExecutionIntakeArtifactSHA256) ||
+		receipt.ExecutionIntakeArtifactSHA256 != intakeSHA {
+		return fmt.Errorf("R7B intake receipt is not bound to the exact execution-intake bytes")
+	}
+	if receipt.ReplayExecuted || receipt.RepeatabilityObserved {
+		return fmt.Errorf("R7B intake receipt already claims replay or repeatability Evidence")
 	}
 	return nil
 }
@@ -329,10 +391,6 @@ func isGitRevision(value string) bool {
 	}
 	_, err := hex.DecodeString(value)
 	return err == nil
-}
-
-func stringsOfZeroes() string {
-	return "0000000000000000000000000000000000000000000000000000000000000000"
 }
 
 func fatalf(format string, args ...any) {
