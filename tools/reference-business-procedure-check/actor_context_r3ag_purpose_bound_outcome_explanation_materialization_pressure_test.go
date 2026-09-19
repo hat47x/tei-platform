@@ -182,7 +182,7 @@ func TestActorContextR3AGSelectedButEmptyResidualIsDrillDownNotOmitted(t *testin
 	}
 }
 
-func TestActorContextR3AGHumanOmittedUnselectedDoesNotMutateUnderlyingTruth(t *testing.T) {
+func TestActorContextR3AGHumanDrillDownUnselectedKeepsPresenceAndTruth(t *testing.T) {
 	view, explanation := actorContextR3AGRequirementExplanation(t, actorContextR3PAudienceHuman)
 	explanation.UnselectedChanges = []actorContextR3TObservedChangeProbe{{
 		ChangeClass:   actorContextR3TChangeReferenceInput,
@@ -194,12 +194,14 @@ func TestActorContextR3AGHumanOmittedUnselectedDoesNotMutateUnderlyingTruth(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.InlineUnselectedChanges) != 0 ||
-		actorContextR3AGDispositionFor(got, actorContextR3AGDetailUnselectedChanges) != actorContextR3AGDispositionOmitted {
-		t.Fatalf("R3AG Human unselected detail was not purpose-omitted: %+v", got)
+	if got.UnselectedChangeCount != 1 ||
+		len(got.InlineUnselectedChanges) != 0 ||
+		!reflect.DeepEqual(got.DrillDownUnselectedChanges, before) ||
+		actorContextR3AGDispositionFor(got, actorContextR3AGDetailUnselectedChanges) != actorContextR3AGDispositionDrillDown {
+		t.Fatalf("R3AG Human unselected detail lost presence/drill-down separation: %+v", got)
 	}
 	if !reflect.DeepEqual(explanation.UnselectedChanges, before) {
-		t.Fatalf("R3AG materialization mutated omitted upstream truth: before=%+v after=%+v",
+		t.Fatalf("R3AG materialization mutated upstream truth: before=%+v after=%+v",
 			before, explanation.UnselectedChanges)
 	}
 }
