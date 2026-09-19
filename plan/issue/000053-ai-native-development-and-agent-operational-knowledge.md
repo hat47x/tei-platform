@@ -2787,6 +2787,47 @@ production evidence registry / trust store / signature validation / authority ac
 
 
 
+
+### R3AM — Qualified evidence authority assertion / Acceptance boundary
+
+R3ALでexplicitにqualifiedされたEvidenceがauthority valueをassertする場合でも、assertionとAcceptanceを分離する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AM_QUALIFIED_EVIDENCE_AUTHORITY_ASSERTION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3am_qualified_evidence_authority_assertion_pressure_test.go`
+
+```text
+qualified evidence
+  -> provenance-bound authority assertion
+
+asserted authority value
+  != accepted authority value
+  != Accepted Decision
+```
+
+test-only assertion witnessはEvidenceRef / AssertionClass / AssertedValue / AssertionSourceRefを持つ。
+
+R3AMでauthority assertionとしてmaterializeできるのはR3AL `QualificationStatus=explicit-evidence-qualified` のexact EvidenceRefだけとし、`qualification-unresolved + assertion witness` はfail closedする。
+
+asserted valueがR3Yの `explicit-reevaluation-required` / `explicit-reuse-permitted` と同じ語彙でも、R3Y current authority statusへ書き戻さない。
+
+複数のqualified Evidenceが同じAssertionClassについて競合する値をassertしてもwinner / last-writer / quorumを作らず独立保持する。exact duplicate assertionだけnormalizeする。
+
+```text
+assertion provenance available
+  != acceptance authority available
+```
+
+AcceptedAuthorityValue / AcceptedDecision / AcceptanceStatus / CurrentAuthority / ToolCall / Command / NextAction / CanExecute等は追加しない。
+
+次段ではassertionをAccepted authorityへ昇格させるためのRepository-backed acceptance authority / decision locusをEvidence GateとしてPressureし、scope specificity / corroboration count / source locationによる暗黙Acceptanceを禁止する。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
