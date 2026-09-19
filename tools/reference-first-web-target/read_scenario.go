@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -98,13 +99,17 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	if input.RowIndex < 0 {
 		return readScenarioResult{}, fmt.Errorf("row index must be non-negative")
 	}
+	from, err := time.Parse(time.RFC3339, input.From)
+	if err != nil {
+		return readScenarioResult{}, fmt.Errorf("from must be RFC3339: %w", err)
+	}
 
 	browse, err := r.resolver.ExecuteBrowseQuery(
 		ctx,
 		r.applicationID,
 		core.MustCanonicalID("order_entry.recent_orders"),
 		r.browse,
-		map[string]any{"from": input.From},
+		map[string]any{"from": from},
 	)
 	if err != nil {
 		return readScenarioResult{}, err
@@ -273,16 +278,37 @@ func (referenceBrowseExecutor) ExecuteBrowseQuery(
 		datasource.Access != database.AccessReadWrite {
 		return driver.BrowseQueryResult{}, fmt.Errorf("unexpected browse Datasource: %+v", datasource)
 	}
-	if _, ok := parameters["from"]; !ok {
-		return driver.BrowseQueryResult{}, fmt.Errorf("browse parameter from is required")
+	from, ok := parameters["from"].(time.Time)
+	if !ok {
+		return driver.BrowseQueryResult{}, fmt.Errorf("browse parameter from must be time.Time: %T", parameters["from"])
+	}
+	candidates := []struct {
+		orderID    int64
+		customerID int64
+		orderedAt  time.Time
+		status     string
+		total      string
+	}{
+		{1001, 11, time.Date(2026, 9, 18, 9, 30, 0, 0, time.UTC), "draft", "12500.00"},
+		{1002, 12, time.Date(2026, 9, 18, 8, 15, 0, 0, time.UTC), "submitted", "8300.00"},
+	}
+	rows := make([][]any, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.orderedAt.Before(from) {
+			continue
+		}
+		rows = append(rows, []any{
+			candidate.orderID,
+			candidate.customerID,
+			candidate.orderedAt,
+			candidate.status,
+			candidate.total,
+		})
 	}
 	return driver.BrowseQueryResult{
 		Raw: queryresult.RawResult{
 			Columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
-			Rows: [][]any{
-				{"ORD-1001", "CUS-001", "2026-09-18T09:30:00Z", "draft", "12500.00"},
-				{"ORD-1002", "CUS-002", "2026-09-18T08:15:00Z", "submitted", "8300.00"},
-			},
+			Rows:    rows,
 		},
 		Payload: map[string]any{
 			"fixture": "first-web-target-read-only-slice",
@@ -337,14 +363,14 @@ func (e referenceContractQueryExecutor) ExecuteContractQuery(
 		return driver.ContractQueryResult{
 			Rows: []driver.ContractQueryRow{
 				{Attributes: map[core.CanonicalID]any{
-					core.MustCanonicalID("sales.order_line.order_line_id"): "LINE-1",
+					core.MustCanonicalID("sales.order_line.order_line_id"): int64(5001),
 					core.MustCanonicalID("sales.order_line.line_number"):   1,
 					core.MustCanonicalID("sales.order_line.item_code"):     "ITEM-A",
 					core.MustCanonicalID("sales.order_line.quantity"):      "2",
 					core.MustCanonicalID("sales.order_line.unit_price"):    "4000.00",
 				}},
 				{Attributes: map[core.CanonicalID]any{
-					core.MustCanonicalID("sales.order_line.order_line_id"): "LINE-2",
+					core.MustCanonicalID("sales.order_line.order_line_id"): int64(5002),
 					core.MustCanonicalID("sales.order_line.line_number"):   2,
 					core.MustCanonicalID("sales.order_line.item_code"):     "ITEM-B",
 					core.MustCanonicalID("sales.order_line.quantity"):      "1",
