@@ -71,6 +71,7 @@ trap cleanup EXIT
 go_files=(
   tools/reference-first-web-target/*.go
   tools/reference-first-web-target-evidence-audit/*.go
+  tools/reference-first-web-target-visual-evidence-audit/*.go
 )
 unformatted="$(gofmt -l "${go_files[@]}")"
 if [[ -n "$unformatted" ]]; then
@@ -82,6 +83,7 @@ GOENV=off GOWORK=off GOFLAGS= \
   go test -count=1 \
     ./tools/reference-first-web-target \
     ./tools/reference-first-web-target-evidence-audit \
+    ./tools/reference-first-web-target-visual-evidence-audit \
   >"$artifact_dir/source-tests.log" 2>&1
 
 GOENV=off GOWORK=off GOFLAGS= \
