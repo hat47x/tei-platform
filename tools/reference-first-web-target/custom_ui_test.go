@@ -227,6 +227,195 @@ func TestCustomSubmitUIKeepsBusinessDenialAsRenderedResult(t *testing.T) {
 	}
 }
 
+
+func TestCustomSubmitUIStructuresSuccessfulScenarioForVisualReview(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID:         testBaselineID,
+		BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandRunner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := newWebTargetServer(
+		projection,
+		newReferenceReadScenarioRunner(loaded.World),
+		commandRunner,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := postCustomSubmit(t, server.Handler(), url.Values{
+		"loginId":    {"legacy-order-editor"},
+		"credential": {"editor-secret"},
+		"from":       {"2026-09-18T08:30:00Z"},
+		"row":        {"0"},
+	})
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("successful Custom UI status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		"Scenario state",
+		"completed",
+		"Authentication",
+		"Selected order and relations",
+		"Customer reference",
+		"Order lines",
+		"Canonical Validation",
+		"sales.order_line.quantity_positive",
+		"sales.order.lines.line_number_unique",
+		"Authorization",
+		"Command Business Result",
+		"sales.order.submit",
+		"Separate Observation",
+		"synthetic.order_state.read",
+		"submitted",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("successful Custom UI does not contain %q", want)
+		}
+	}
+	if strings.Contains(body, "editor-secret") {
+		t.Fatal("successful Custom UI echoed credential")
+	}
+}
+
+func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID:         testBaselineID,
+		BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandRunner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := newWebTargetServer(
+		projection,
+		newReferenceReadScenarioRunner(loaded.World),
+		commandRunner,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := server.Handler()
+
+	validation := postCustomSubmit(t, handler, url.Values{
+		"loginId":    {"legacy-order-editor"},
+		"credential": {"editor-secret"},
+		"from":       {"2026-09-18T08:00:00Z"},
+		"row":        {"1"},
+	})
+	if validation.Code != http.StatusOK {
+		t.Fatalf("Validation not-satisfied status=%d body=%s", validation.Code, validation.Body.String())
+	}
+	validationBody := validation.Body.String()
+	for _, want := range []string{
+		"validation-not-satisfied",
+		"Canonical Validation",
+		"sales.order_line.quantity_positive",
+		"not-satisfied",
+	} {
+		if !strings.Contains(validationBody, want) {
+			t.Fatalf("Validation state does not contain %q", want)
+		}
+	}
+	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "Execution error"} {
+		if strings.Contains(validationBody, forbidden) {
+			t.Fatalf("Validation state incorrectly contains %q", forbidden)
+		}
+	}
+
+	authorization := postCustomSubmit(t, handler, url.Values{
+		"loginId":    {"legacy-order-viewer"},
+		"credential": {"viewer-secret"},
+		"from":       {"2026-09-18T08:30:00Z"},
+		"row":        {"0"},
+	})
+	if authorization.Code != http.StatusOK {
+		t.Fatalf("Authorization denied status=%d body=%s", authorization.Code, authorization.Body.String())
+	}
+	authorizationBody := authorization.Body.String()
+	for _, want := range []string{
+		"authorization-denied",
+		"Authorization",
+		"security.authorize",
+		"denied",
+		"not_authorized",
+	} {
+		if !strings.Contains(authorizationBody, want) {
+			t.Fatalf("Authorization state does not contain %q", want)
+		}
+	}
+	if strings.Contains(authorizationBody, "Execution error") {
+		t.Fatal("Authorization denial was rendered as Execution Error")
+	}
+
+	execution := postCustomSubmit(t, handler, url.Values{
+		"loginId":    {"legacy-order-editor"},
+		"credential": {"editor-secret"},
+		"from":       {"2026-09-18T07:00:00Z"},
+		"row":        {"2"},
+	})
+	if execution.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("Execution Error status=%d body=%s", execution.Code, execution.Body.String())
+	}
+	executionBody := execution.Body.String()
+	for _, want := range []string{
+		"Scenario state",
+		"command",
+		"Authorization",
+		"allowed",
+		"Execution error",
+		"synthetic submit adapter unavailable for order 1003",
+	} {
+		if !strings.Contains(executionBody, want) {
+			t.Fatalf("Execution Error state does not contain %q", want)
+		}
+	}
+	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "editor-secret"} {
+		if strings.Contains(executionBody, forbidden) {
+			t.Fatalf("Execution Error state incorrectly contains %q", forbidden)
+		}
+	}
+}
+
+func postCustomSubmit(t *testing.T, handler http.Handler, form url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodPost, "/custom-submit", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	return recorder
+}
+
 type recordingCommandScenarioRunner struct {
 	calls  []commandScenarioInput
 	result commandScenarioResult

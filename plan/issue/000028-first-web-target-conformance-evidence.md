@@ -19,6 +19,10 @@ Authentication / AuthorizationのBusiness Outcome、Validation結果、Command B
 
 Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加し、同じ`B / R / T`に対するScreenshot集合とattributed evaluator recordを受け入れる。capture toolは固定せず、必須capture state / criterion / artifact fingerprint / provenanceだけをReference pressureとして扱う。Visual criteriaが全passでもaudit単独では`gateCReady = false`のままとする。
 
+Visual captureに先立ち、Custom UIのsuccess / authorization-denied / validation-not-satisfied / execution-errorを構造化HTMLへ分離し、Semantic / Functional runnerが同じstateのraw HTML artifactを保存・auditするようにした。Runbookには各必須Screenshot stateを再現するdeterministic form input recipeも固定している。
+
+これはVisual captureの準備Evidenceであり、HTML artifactをScreenshotへ読み替えない。
+
 actual Screenshot / evaluator Evidenceは未取得である。
 
 Visual manifestのprovenance / required capture / criterionを手書きで複製しないため、Visual audit toolにmanifest scaffold modeも追加した。scaffoldはSemantic / Functional summaryから同じ`B / R / T`を引き継ぐが、全criterionを`unresolved`で生成するため、生成しただけではVisual passにならない。

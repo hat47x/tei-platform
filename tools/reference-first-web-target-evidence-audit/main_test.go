@@ -320,7 +320,28 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 	}
 	if err := os.WriteFile(
 		filepath.Join(dir, "custom-submit-success.html"),
-		[]byte("<html>order-entry.submit-order-web-slice sales.order.submit synthetic.order_state.read submitted</html>"),
+		[]byte("<html>Scenario state completed Selected order and relations Customer reference Order lines Canonical Validation Command Business Result sales.order.submit Separate Observation synthetic.order_state.read submitted</html>"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(dir, "custom-submit-authorization-denied.html"),
+		[]byte("<html>authorization-denied Authorization security.authorize denied not_authorized</html>"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(dir, "custom-submit-validation-not-satisfied.html"),
+		[]byte("<html>validation-not-satisfied Canonical Validation sales.order_line.quantity_positive not-satisfied</html>"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(dir, "custom-submit-execution-error.html"),
+		[]byte("<html>Scenario state command Authorization allowed Execution error synthetic submit adapter unavailable for order 1003</html>"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)

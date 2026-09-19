@@ -100,6 +100,9 @@ submit-validation-not-satisfied.json
 submit-execution-error.json
 custom-submit-get.html
 custom-submit-success.html
+custom-submit-authorization-denied.html
+custom-submit-validation-not-satisfied.html
+custom-submit-execution-error.html
 semantic-functional-summary.json
 architecture-conformance.json
 ```
@@ -287,8 +290,6 @@ Screenshot取得後、attributed evaluatorが各criterionを`pass / fail / unres
 
 capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
 
-capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
-
 監査入口:
 
 ```bash
@@ -329,6 +330,51 @@ custom-submit-execution-error
 を持つ。
 
 filenameはartifact directory直下のbasenameだけを許可し、path traversalやartifact directory外へのsymlink解決を受理しない。
+
+### Visual capture state recipe
+
+Screenshotは同じ`T`で起動したTargetから取得する。状態再現は次を第一Referenceのdeterministic recipeとする。
+
+```text
+projection-index
+  GET /
+
+custom-submit-initial
+  GET /custom-submit
+
+custom-submit-success
+  POST /custom-submit
+  loginId = legacy-order-editor
+  credential = editor-secret
+  from = 2026-09-18T08:30:00Z
+  row = 0
+
+custom-submit-authorization-denied
+  POST /custom-submit
+  loginId = legacy-order-viewer
+  credential = viewer-secret
+  from = 2026-09-18T08:30:00Z
+  row = 0
+
+custom-submit-validation-not-satisfied
+  POST /custom-submit
+  loginId = legacy-order-editor
+  credential = editor-secret
+  from = 2026-09-18T08:00:00Z
+  row = 1
+
+custom-submit-execution-error
+  POST /custom-submit
+  loginId = legacy-order-editor
+  credential = editor-secret
+  from = 2026-09-18T07:00:00Z
+  row = 2
+  expected HTTP status = 422
+```
+
+これらのcredentialはReference runtime inputであり、Screenshot / manifest / evaluator notesへ値を転記しない。POST後のrendered pageではcredential fieldを再表示しない。
+
+Semantic / Functional runnerは同じ状態のHTML artifactも保存するため、Visual evaluatorはScreenshotで見えているstateがraw functional artifactと対応しているかを照合できる。ただしHTML一致をScreenshot Evidenceの代用にはしない。
 
 ### Visual評価項目
 

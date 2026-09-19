@@ -183,6 +183,34 @@ printf '%s' 'loginId=legacy-order-editor&credential=editor-secret&from=2026-09-1
     "$base_url/custom-submit" \
     >"$artifact_dir/custom-submit-success.html"
 
+printf '%s' 'loginId=legacy-order-viewer&credential=viewer-secret&from=2026-09-18T08%3A30%3A00Z&row=0' | \
+  curl --silent --show-error --fail \
+    -H 'content-type: application/x-www-form-urlencoded' \
+    --data-binary @- \
+    "$base_url/custom-submit" \
+    >"$artifact_dir/custom-submit-authorization-denied.html"
+
+printf '%s' 'loginId=legacy-order-editor&credential=editor-secret&from=2026-09-18T08%3A00%3A00Z&row=1' | \
+  curl --silent --show-error --fail \
+    -H 'content-type: application/x-www-form-urlencoded' \
+    --data-binary @- \
+    "$base_url/custom-submit" \
+    >"$artifact_dir/custom-submit-validation-not-satisfied.html"
+
+custom_execution_status="$(
+  printf '%s' 'loginId=legacy-order-editor&credential=editor-secret&from=2026-09-18T07%3A00%3A00Z&row=2' | \
+    curl --silent --show-error \
+      -o "$artifact_dir/custom-submit-execution-error.html" \
+      -w '%{http_code}' \
+      -H 'content-type: application/x-www-form-urlencoded' \
+      --data-binary @- \
+      "$base_url/custom-submit"
+)"
+if [[ "$custom_execution_status" != "422" ]]; then
+  printf 'Expected Custom UI Execution Error HTTP 422, got %s.\n' "$custom_execution_status" >&2
+  exit 1
+fi
+
 cleanup
 
 post_revision="$(git rev-parse HEAD)"
