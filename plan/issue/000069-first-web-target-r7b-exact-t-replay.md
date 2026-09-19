@@ -71,6 +71,93 @@ R7B用に同じ条件を再記述しない。
 
 この共有化は「Gate C Ready判定」を共有するものではない。共有対象はraw responseのsemantic classificationだけとする。
 
+#### 1.1 current Gate C validator extraction map
+
+current source `tools/reference-first-web-target-evidence-audit/main.go` では、R7Bが再利用すべき判定が一つのAPIとしてまとまっていない。
+
+現状の対応は次である。
+
+| R7B behavior | current Gate C判定 |
+| --- | --- |
+| `first-web/read-only` | `read.json` のexact provenance、Scenario ID / Application ID、`requireRuntimeBindings` |
+| `first-web/command-success` | exact provenance + `requireSuccessfulCommand` |
+| `first-web/authentication-denied` | exact provenance + `authentication-denied` stage / denied Authentication / Command・Observation不在のinline判定 |
+| `first-web/authorization-denied` | exact provenance + `authorization-denied` stage / denied Authorization / Command・Observation不在のinline判定 |
+| `first-web/validation-not-satisfied` | exact provenance + quantity-positive Validation 1件 / not-satisfied / Authorization・Command・Observation不在のinline判定 |
+| `first-web/execution-error` | exact provenance + command stage / Authorization allowed / Command・Observation不在 / synthetic adapter errorのinline判定 |
+
+credential非保持は別途 `requireNoReferenceCredentialMaterial` が担っている。これはsemantic classificationではないが、R7B raw artifact retentionでも同じReference secret setをrejectする必要がある。
+
+初回共有化は判定意味を変更せず、**code motionを先に行う**。
+
+候補配置:
+
+```text
+tools/internal/firstwebtargetevidence
+```
+
+このpackageはFirst Web TargetのEvidence toolからだけ利用するtool-local helperとし、`internal/core` やCanonical modelへ昇格させない。
+
+最小APIはgenericなUniversal Event classifierではなく、behaviorごとの明示関数にする。
+
+概念形:
+
+```go
+ValidateReadArtifact(bytes, expectedProvenance)
+ValidateCommandSuccessArtifact(bytes, expectedProvenance)
+ValidateAuthenticationDeniedArtifact(bytes, expectedProvenance)
+ValidateAuthorizationDeniedArtifact(bytes, expectedProvenance)
+ValidateValidationNotSatisfiedArtifact(bytes, expectedProvenance)
+ValidateExecutionErrorArtifact(bytes, expectedProvenance)
+RejectReferenceCredentialMaterial(bytes)
+```
+
+`Validate(kind, payload)` のような汎用dispatcherを初回から作らない。6 behaviorの存在を新しいCanonical taxonomyへ見せないためである。
+
+read validatorだけはGate C auditorが検証後の `RuntimeBindings` を `TargetDifferenceHandoff` の生成にも使っているため、単なる `error` だけでは不足する。したがってreadについては、検証済みのruntime binding projectionを返せる薄い結果型を許す。
+
+```text
+raw read JSON
+  -> shared validation
+  -> validated runtime bindings
+     -> Gate C TargetDifferenceHandoff
+
+raw replay JSON
+  -> same shared validation
+  -> R7B semantic observation
+```
+
+一方、command系5件はcurrent Gate C auditorが判定後のdecoded payloadを別のsummary意味へ再利用していないため、初回はvalidation resultだけを返せばよい。
+
+#### 1.2 extraction invariants
+
+共有化commitでは次を同時に変えない。
+
+- Gate C required artifact set
+- B / R / T exact provenance equality
+- runtime bindingの期待値
+- successful commandのAuthentication / Validation / Authorization / Command / Observation条件
+- denial時の後続Command / Observation不在条件
+- Validation not-satisfied条件
+- Execution Errorのcurrent synthetic failure条件
+- credential reject set
+- R7Bのexpected HTTP status
+- R7Bのexpected semantic Observation class
+- CoverageClass / DeepWorkflowCovered
+
+特に、Execution Errorのerror文字列条件が将来過度にfixture-specificだと判断されても、validator共有化と同じcommitで緩和しない。まずGate C / R7Bが同じ判定を呼ぶ状態を作り、その後に意味変更を別Evidenceで検討する。
+
+共有化完了の最低検証:
+
+```text
+existing Gate C evidence-audit tests PASS
++ new shared-validator focused tests PASS
++ R7B replay-audit focused tests PASS
++ repository-health-check PASS
+```
+
+Gate C auditorのsummary shapeと既存判定条件を保ったままshared helperへ移せない場合は、R7B側へコピーして先へ進まず停止する。
+
 ### 2. R7B replay audit sourceを追加する
 
 新しいaudit sourceは、各runの6 raw responseを読み、replay planと照合して少なくとも次を記録する。
