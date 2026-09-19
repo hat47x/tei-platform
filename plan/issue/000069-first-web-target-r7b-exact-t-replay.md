@@ -1863,6 +1863,24 @@ git hash-object tools/run-first-web-target-r7b-replay.sh
 
 を確認した。
 
+同じexact bytesをtemporary Git Repositoryへ置いた軽量fail-closed smokeでは、actual Target / Gate C Evidenceへ進む前の次の4条件もすべてexit non-zeroで拒否した。
+
+```text
+required environment variables missing
+  -> reject
+
+replay input path inside Repository
+  -> reject
+
+replay output path inside Repository
+  -> reject
+
+dirty current checkout
+  -> reject
+```
+
+このsmokeはexternal servicesやexact-T processを起動していないため、runner lifecycle correctnessやactual replay PASSのEvidenceには数えない。
+
 candidate diffはparent `a789401c...` に対して:
 
 ```text
