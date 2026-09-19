@@ -1024,6 +1024,53 @@ fingerprint差分は「どのrevisionを見ていたか」を説明するprovena
 
 exact / broad routerがcurrent qualificationへ収束する場合、revision provenanceも同一でなければならない。
 
+#### R6I shared knowledge materialization / bounded use edges — 2026-09-19
+
+R6Hでknowledge revision provenanceを保持した上で、同じqualified knowledgeをHuman / Agentのbounded consumerが異なるprojection categoryで利用する場合も、knowledge本文自体をconsumerごと・categoryごとに複製しない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6i_shared_materialization_use_edges_pressure_test.go`
+
+R6Iでは次を分離する。
+
+```text
+shared materialized knowledge
+  = knowledge identity
+  + kind
+  + RequiredInputFingerprints
+  + SourceRefs
+
+bounded use edge
+  = knowledge identity
+  + projection category
+  + dependency key
+  + dependency reason
+```
+
+current BP-06ではBusiness Procedure Referenceを:
+
+- Human orientation: `machine-reasons` から1回利用
+- Agent resolution-inspection: `machine-reasons` と `known-authority-facts` から2回利用
+
+するが、materialized knowledge bodyは双方とも同じ1件である。
+
+```text
+one shared knowledge body
+  -> Human use edge x1
+  -> Agent use edge x2
+
+use edge count
+  != knowledge copy count
+  != stronger authority
+```
+
+`security.authorize` Capabilityは両consumerでqualified-not-materializedのまま保持し、Agent側のdetail増加だけで自動materializeしない。
+
+shared materialized knowledge shapeにはAudience / Purpose / ProjectionCategory / DependencyKeyを持たせず、consumer固有情報はuse edgeへ限定する。これによりconsumer presentation差をknowledge identity / revision provenanceへ混ぜない。
+
+R3AG〜R3AIが扱うoutput側のpurpose-bound explanation / drill-down / read-only reasoningは再実装せず、R6Iはその手前のknowledge input materializationだけをPressureする。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
