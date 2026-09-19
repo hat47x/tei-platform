@@ -3755,6 +3755,58 @@ AcceptedWriteOutcome / OutcomeAccepted / AcceptedDecision / CurrentAuthority / R
 
 
 
+### R3AW — Post-write authoritative-state reconciliation / revision acceptance Evidence Gate
+
+R3AVの `accept-observed-outcome` candidateが存在しても、outcome evidenceのacceptanceをAccepted Decision state synchronizationへ自動昇格させない。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AW_POST_WRITE_RECONCILIATION_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aw_post_write_reconciliation_authority_gate_pressure_test.go`
+
+```text
+accept-observed-outcome candidate
+  + repository-backed reconciliation authority evidence
+  + exact pre-write revision
+  + exact post-write revision observation
+  -> reconciliation Evidence Gate
+
+Gate qualified
+  != state synchronized
+  != revision applied
+  != current authority applied
+```
+
+とする。
+
+qualifying evidenceはR3AV OutcomeAcceptanceCandidateIdentityだけでなく、R3AT ObservationIdentity、R3AS WriteAttemptCandidateIdentity、R3AQ CommitCandidateIdentity、AcceptedDecisionSinkRef、RevisionAuthorityRef、pre-write revision、PostWriteRevisionObservationRef、post-write revision、BusinessAddressへexact bindingする。
+
+ReconciliationLocusRef / RevisionAcceptanceLocusRef / AuthorityApplicationLocusRefは別々に保持し、一つのauthority shortcutへ畳まない。
+
+current inspected corpusではcomplete reconciliation authority locusを確認していないため:
+
+```text
+post-write-authoritative-state-reconciliation-authority-unresolved
+```
+
+を維持する。
+
+`reject-observed-outcome` candidateはR3AW reconciliation入口にせず、write failed / rollback / retryへ変換しない。
+
+pre→post revisionがchanged / unchangedのどちらでも、そのrevision関係だけからwrite acceptance / state synchronizationを推論しない。
+
+multiple-qualified evidenceはprecedence unresolvedとし、scope specificity / source path / revision値 / raw outcome / corroboration count / latest evidenceからwinnerを選ばない。
+
+StateSynchronized / RevisionAccepted / AcceptedWriteOutcome / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+次段ではsingle-qualified R3AW Gateでも自動reconciliationせず、explicit reconciliation witnessからtest-only reconciliation candidateまでに留める。
+
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
