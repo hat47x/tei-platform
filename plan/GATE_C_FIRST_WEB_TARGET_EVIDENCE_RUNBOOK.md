@@ -91,6 +91,7 @@ run-metadata.json
 source-tests.log
 server.log
 health.txt
+projection-index.html
 manifest.json
 read.json
 submit-success.json
@@ -277,6 +278,13 @@ go run ./tools/reference-first-web-target-visual-evidence-audit \
 
 scaffoldはSemantic / Functional summaryから`B / R / T / Target Adapter / Host / source run identity`を転記し、required captureをdeterministic filenameで列挙する。
 
+さらに各captureへ、
+
+- `sourceArtifact`
+- `sourceSHA256`
+
+を自動設定する。これはsame-runでTarget自身がrenderしたHTML artifactと、そのexact bytes digestである。Screenshotはこのreplay sourceへ明示的に結び付く。
+
 重要:
 
 ```text
@@ -326,6 +334,8 @@ custom-submit-execution-error
 - PNG filename
 - media type
 - viewport width / height
+- source HTML artifact
+- source HTML SHA-256
 
 を持つ。
 
@@ -333,7 +343,46 @@ filenameはartifact directory直下のbasenameだけを許可し、path traversa
 
 ### Visual capture state recipe
 
-Screenshotは同じ`T`で起動したTargetから取得する。状態再現は次を第一Referenceのdeterministic recipeとする。
+第一推奨は、Semantic / Functional same-runで保存した**Target-rendered HTML artifactのreplay**からScreenshotを取得する方法とする。
+
+replay source mapping:
+
+```text
+projection-index
+  <- projection-index.html
+
+custom-submit-initial
+  <- custom-submit-get.html
+
+custom-submit-success
+  <- custom-submit-success.html
+
+custom-submit-authorization-denied
+  <- custom-submit-authorization-denied.html
+
+custom-submit-validation-not-satisfied
+  <- custom-submit-validation-not-satisfied.html
+
+custom-submit-execution-error
+  <- custom-submit-execution-error.html
+```
+
+これらはすべて同じ`T`のactual Target responseから取得され、Semantic / Functional summaryへSHA-256が保存される。Visual manifest scaffoldはそのdigestを自動転記する。
+
+したがってVisual reviewerはcredentialを再入力せず、保存済みHTMLをbrowserでrenderしてScreenshotを取得できる。
+
+```text
+same-run Target response HTML
+  -> exact SHA-256 in Semantic / Functional summary
+  -> sourceArtifact / sourceSHA256 in Visual manifest
+  -> browser render
+  -> PNG Screenshot
+  -> attributed Visual evaluation
+```
+
+live Targetから直接captureする方式も許可するが、その場合もmanifestの`sourceArtifact / sourceSHA256`は同じstateのsame-run HTML responseへ一致させる。
+
+状態をlive Targetで再現する必要がある場合のdeterministic recipeは次とする。
 
 ```text
 projection-index
@@ -373,6 +422,8 @@ custom-submit-execution-error
 ```
 
 これらのcredentialはReference runtime inputであり、Screenshot / manifest / evaluator notesへ値を転記しない。POST後のrendered pageではcredential fieldを再表示しない。
+
+replay captureを使う場合、reviewerはcredentialを再入力する必要がない。
 
 Semantic / Functional runnerは同じ状態のHTML artifactも保存するため、Visual evaluatorはScreenshotで見えているstateがraw functional artifactと対応しているかを照合できる。ただしHTML一致をScreenshot Evidenceの代用にはしない。
 
@@ -429,7 +480,8 @@ Visual auditは:
 - Screenshot集合が完全
 - ScreenshotがPNG artifactとして存在
 - capture pathが安全
-- exact bytes SHA-256
+- Screenshot exact bytes SHA-256
+- 各Screenshotの`sourceArtifact / sourceSHA256`がSemantic / Functional summaryのsame-run raw HTML digestへ一致
 - required criterionが存在
 - criterionが必要なcapture stateを参照
 - credential materialがmanifestへ混入していない

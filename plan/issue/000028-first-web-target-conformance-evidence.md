@@ -19,7 +19,11 @@ Authentication / AuthorizationのBusiness Outcome、Validation結果、Command B
 
 Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加し、同じ`B / R / T`に対するScreenshot集合とattributed evaluator recordを受け入れる。capture toolは固定せず、必須capture state / criterion / artifact fingerprint / provenanceだけをReference pressureとして扱う。Visual criteriaが全passでもaudit単独では`gateCReady = false`のままとする。
 
-Visual captureに先立ち、Custom UIのsuccess / authorization-denied / validation-not-satisfied / execution-errorを構造化HTMLへ分離し、Semantic / Functional runnerが同じstateのraw HTML artifactを保存・auditするようにした。Runbookには各必須Screenshot stateを再現するdeterministic form input recipeも固定している。
+Visual captureに先立ち、Custom UIのsuccess / authorization-denied / validation-not-satisfied / execution-errorを構造化HTMLへ分離し、Semantic / Functional runnerが同じstateのraw HTML artifactを保存・auditするようにした。standard Projectionについても`projection-index.html`をsame-run raw artifactとして保存する。
+
+Visual manifest scaffoldはSemantic / Functional summary内のraw artifact digestから、各required captureへ`sourceArtifact / sourceSHA256`を自動設定する。これによりScreenshotはsame-run Target-rendered HTMLのexact bytesへ追跡でき、reviewerはcredential付き操作を再入力せず保存済みHTML replayからcaptureできる。
+
+Runbookには各必須Screenshot stateを再現するdeterministic form input recipeも残すが、第一推奨はdigest-bound HTML replayとする。
 
 これはVisual captureの準備Evidenceであり、HTML artifactをScreenshotへ読み替えない。
 

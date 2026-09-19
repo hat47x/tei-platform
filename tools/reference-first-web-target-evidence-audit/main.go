@@ -347,6 +347,22 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		return evidenceSummary{}, fmt.Errorf("Command Execution Error boundary is not preserved")
 	}
 
+	projectionIndex, err := os.ReadFile(filepath.Join(dir, "projection-index.html"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read projection-index.html: %w", err)
+	}
+	for _, want := range []string{
+		"TEI / First Web Target Reference",
+		"order_entry",
+		expected.HandoverBaselineID,
+		expected.BaselineRepositoryRevision,
+		expected.TargetBuildRevision,
+	} {
+		if !strings.Contains(string(projectionIndex), want) {
+			return evidenceSummary{}, fmt.Errorf("projection-index.html does not contain %q", want)
+		}
+	}
+
 	customGET, err := os.ReadFile(filepath.Join(dir, "custom-submit-get.html"))
 	if err != nil {
 		return evidenceSummary{}, fmt.Errorf("read custom-submit-get.html: %w", err)
@@ -455,6 +471,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		"source-tests.log",
 		"server.log",
 		"health.txt",
+		"projection-index.html",
 		"manifest.json",
 		"read.json",
 		"submit-success.json",

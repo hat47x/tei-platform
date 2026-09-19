@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"path/filepath"
 	"testing"
 )
@@ -43,12 +44,16 @@ func TestBuildVisualManifestScaffoldCopiesProvenanceAndStartsUnresolved(t *testi
 		if !ok {
 			t.Fatalf("scaffold contains unexpected capture %s", capture.ID)
 		}
+		expectedSource := requiredCaptureSources[capture.ID]
+		expectedDigest := testVisualSourceDigest(expectedSource)
 		if capture.Surface != expected.Surface ||
 			capture.State != expected.State ||
 			capture.File != capture.ID+".png" ||
 			capture.MediaType != "image/png" ||
 			capture.ViewportWidth != 1280 ||
-			capture.ViewportHeight != 900 {
+			capture.ViewportHeight != 900 ||
+			capture.SourceArtifact != expectedSource ||
+			capture.SourceSHA256 != expectedDigest {
 			t.Fatalf("scaffold capture=%+v", capture)
 		}
 		writeFakePNG(t, filepath.Join(dir, capture.File))
@@ -172,6 +177,20 @@ func TestAuditVisualEvidenceRejectsMissingRequiredCapture(t *testing.T) {
 	}
 }
 
+func TestAuditVisualEvidenceRejectsReplaySourceDigestMismatch(t *testing.T) {
+	dir := t.TempDir()
+	semanticPath, manifestPath := writeVisualFixture(t, dir, "target-t", "pass")
+
+	var manifest visualManifest
+	readVisualJSON(t, manifestPath, &manifest)
+	manifest.Captures[0].SourceSHA256 = strings.Repeat("0", 64)
+	writeVisualJSON(t, manifestPath, manifest)
+
+	if _, err := auditVisualEvidence(semanticPath, manifestPath, dir); err == nil {
+		t.Fatal("Visual capture with mismatched replay source digest was accepted")
+	}
+}
+
 func TestAuditVisualEvidenceRejectsUnsafeCapturePath(t *testing.T) {
 	dir := t.TempDir()
 	semanticPath, manifestPath := writeVisualFixture(t, dir, "target-t", "pass")
@@ -219,6 +238,7 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 			Status:   "pending",
 			Required: true,
 		},
+		Artifacts: testVisualSourceArtifacts(),
 		GateCReady: false,
 	})
 
@@ -235,6 +255,7 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 		expected := requiredCaptures[id]
 		file := id + ".png"
 		writeFakePNG(t, filepath.Join(dir, file))
+		sourceArtifact := requiredCaptureSources[id]
 		captures = append(captures, visualCapture{
 			ID:             id,
 			Surface:        expected.Surface,
@@ -243,6 +264,8 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 			MediaType:      "image/png",
 			ViewportWidth:  1440,
 			ViewportHeight: 1000,
+			SourceArtifact: sourceArtifact,
+			SourceSHA256:   testVisualSourceDigest(sourceArtifact),
 		})
 	}
 
@@ -277,6 +300,44 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 	})
 
 	return semanticPath, manifestPath
+}
+
+func testVisualSourceArtifacts() []sourceArtifactDigest {
+	files := []string{
+		"projection-index.html",
+		"custom-submit-get.html",
+		"custom-submit-success.html",
+		"custom-submit-authorization-denied.html",
+		"custom-submit-validation-not-satisfied.html",
+		"custom-submit-execution-error.html",
+	}
+	result := make([]sourceArtifactDigest, 0, len(files))
+	for _, file := range files {
+		result = append(result, sourceArtifactDigest{
+			File:   file,
+			SHA256: testVisualSourceDigest(file),
+		})
+	}
+	return result
+}
+
+func testVisualSourceDigest(file string) string {
+	switch file {
+	case "projection-index.html":
+		return strings.Repeat("1", 64)
+	case "custom-submit-get.html":
+		return strings.Repeat("2", 64)
+	case "custom-submit-success.html":
+		return strings.Repeat("3", 64)
+	case "custom-submit-authorization-denied.html":
+		return strings.Repeat("4", 64)
+	case "custom-submit-validation-not-satisfied.html":
+		return strings.Repeat("5", 64)
+	case "custom-submit-execution-error.html":
+		return strings.Repeat("6", 64)
+	default:
+		return ""
+	}
 }
 
 func writeFakePNG(t *testing.T, path string) {

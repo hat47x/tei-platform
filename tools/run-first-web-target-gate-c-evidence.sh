@@ -123,6 +123,10 @@ if [[ "$healthy" != true ]]; then
 fi
 
 curl --silent --show-error --fail \
+  "$base_url/" \
+  >"$artifact_dir/projection-index.html"
+
+curl --silent --show-error --fail \
   "$base_url/manifest.json" \
   >"$artifact_dir/manifest.json"
 

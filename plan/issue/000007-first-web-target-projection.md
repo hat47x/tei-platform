@@ -95,7 +95,9 @@ Visual Evidenceは独立capture/audit、Architecture Evidenceは`R → T` Canoni
 
 Custom UIの結果表示もVisual review向けに構造化し、成功時のSelected order / Customer reference / Order lines / Canonical Validation / Command Business Result / separate Observationを分離した。Authorization denied、Validation not-satisfied、Execution Errorも別画面状態として読み取れるようにし、Gate C runnerが各stateのHTML artifactを保存してindependent auditする。
 
-Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再現できる形へRunbookに固定した。ただしHTML state artifactはScreenshot / Visual Fidelity Evidenceではない。
+Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再現できる形へRunbookに固定した。さらにSemantic / Functional same-runでTargetが返した`projection-index.html`と各Custom UI state HTMLをraw artifactとしてfingerprintし、Visual manifest scaffoldが各Screenshotへ`sourceArtifact / sourceSHA256`を自動転記するようにした。
+
+これによりVisual reviewerはcredential付き操作を再入力せず、same-run Target-rendered HTMLをbrowserでreplayしてScreenshotを取得できる。ただしHTML state artifactそのものをScreenshot / Visual Fidelity Evidenceへ読み替えない。
 
 現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
 
