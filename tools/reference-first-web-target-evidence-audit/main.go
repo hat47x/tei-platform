@@ -69,6 +69,12 @@ type commandEnvelope struct {
 	Result commandArtifact `json:"result"`
 }
 
+type commandErrorEnvelope struct {
+	Provenance
+	Result         commandArtifact `json:"result"`
+	ExecutionError string          `json:"executionError"`
+}
+
 type commandArtifact struct {
 	ScenarioID     string                       `json:"scenarioId"`
 	ApplicationID  string                       `json:"applicationId"`
@@ -260,6 +266,39 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		return evidenceSummary{}, fmt.Errorf("authorization denial boundary is not preserved")
 	}
 
+	var validationNotSatisfied commandEnvelope
+	if err := readJSONArtifact(dir, "submit-validation-not-satisfied.json", &validationNotSatisfied); err != nil {
+		return evidenceSummary{}, err
+	}
+	if err := requireProvenance("submit-validation-not-satisfied.json", validationNotSatisfied.Provenance, expected); err != nil {
+		return evidenceSummary{}, err
+	}
+	if validationNotSatisfied.Result.Stage != "validation-not-satisfied" ||
+		len(validationNotSatisfied.Result.Validations) != 1 ||
+		validationNotSatisfied.Result.Validations[0].Validation != "sales.order_line.quantity_positive" ||
+		validationNotSatisfied.Result.Validations[0].Result != "not-satisfied" ||
+		validationNotSatisfied.Result.Authorization != nil ||
+		validationNotSatisfied.Result.Command != nil ||
+		validationNotSatisfied.Result.Observation != nil {
+		return evidenceSummary{}, fmt.Errorf("Validation not-satisfied boundary is not preserved")
+	}
+
+	var executionError commandErrorEnvelope
+	if err := readJSONArtifact(dir, "submit-execution-error.json", &executionError); err != nil {
+		return evidenceSummary{}, err
+	}
+	if err := requireProvenance("submit-execution-error.json", executionError.Provenance, expected); err != nil {
+		return evidenceSummary{}, err
+	}
+	if executionError.Result.Stage != "command" ||
+		executionError.Result.Authorization == nil ||
+		executionError.Result.Authorization.Outcome != "allowed" ||
+		executionError.Result.Command != nil ||
+		executionError.Result.Observation != nil ||
+		!strings.Contains(executionError.ExecutionError, "synthetic submit adapter unavailable for order 1003") {
+		return evidenceSummary{}, fmt.Errorf("Command Execution Error boundary is not preserved")
+	}
+
 	customGET, err := os.ReadFile(filepath.Join(dir, "custom-submit-get.html"))
 	if err != nil {
 		return evidenceSummary{}, fmt.Errorf("read custom-submit-get.html: %w", err)
@@ -319,6 +358,8 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		"submit-success.json",
 		"submit-authentication-denied.json",
 		"submit-authorization-denied.json",
+		"submit-validation-not-satisfied.json",
+		"submit-execution-error.json",
 		"custom-submit-get.html",
 		"custom-submit-success.html",
 	}
@@ -370,6 +411,8 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"canonical validations satisfied before allowed command",
 				"authentication denial remained Business Outcome",
 				"authorization denial remained Business Outcome",
+				"Canonical Validation not-satisfied stopped before Authorization and Command",
+				"Command Invocation Execution Error remained distinct from Business Result",
 				"Command Business Result remained distinct from separate Observation",
 				"Custom UI rendered the same Command scenario result without credential material",
 			},
@@ -378,6 +421,8 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"submit-success.json",
 				"submit-authentication-denied.json",
 				"submit-authorization-denied.json",
+				"submit-validation-not-satisfied.json",
+				"submit-execution-error.json",
 				"custom-submit-success.html",
 			},
 		},
