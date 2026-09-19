@@ -1,11 +1,11 @@
 # R7B Replay Recipe / Repeatability Contract
 
-- Status: Source-defined / actual replay not executed
-- Date: 2026-09-19
+- Status: Replay-plan Source-defined / actual replay not executed
+- Date: 2026-09-20
 - Workstream: Selective Knowledge Routing / Replayable Behavior Evidence
-- Branch owner: research/selective-knowledge-routing-r6
-- Input boundary: R7A actual handoff entry
-- Next step: actual R7A handoff acquisition, then operational replay execution
+- Development flow: direct-to-main solo-development flow; do not create a new remote work branch
+- Input boundary: R7A actual handoff -> R7B execution intake -> exact replay plan
+- Next step: operational replay runner against the exact Gate C Target build T
 
 ## 1. Purpose
 
@@ -251,7 +251,205 @@ execution intake
 
 The first replay plan pins `ReplayTargetBuildRevision` to the origin Gate C Target build `T`. A cross-revision replay requires a different explicit plan / Evidence identity.
 
-## 11. Evidence height
+## 11. Origin Gate C Evidence locator
+
+The actual Gate C Evidence used to establish the R7 origin is retained outside the Repository source tree as a GitHub Release artifact.
+
+Current locator:
+
+- Release tag: `gate-c-evidence-T-0ba87a4`
+- Release asset: `tei-gate-c-evidence-T-0ba87a4e.tar.gz`
+- archive SHA-256: `de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`
+- Target build: `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
+- archive manifest: `MANIFEST.sha256`
+
+The archive contains the origin raw Functional artifacts required by the R7B plan, including:
+
+- `read.json`
+- `submit-success.json`
+- `submit-authentication-denied.json`
+- `submit-authorization-denied.json`
+- `submit-validation-not-satisfied.json`
+- `submit-execution-error.json`
+
+The archive also contains the Semantic / Functional summary and final Gate C readiness artifact. Credential material is not part of the retained Evidence archive.
+
+An operational R7B replay run must not trust an arbitrary extracted directory merely because the expected filenames exist. Before replay execution it must:
+
+1. verify the archive exact SHA-256 against the recorded locator,
+2. extract outside the Repository,
+3. verify `MANIFEST.sha256`,
+4. verify the six origin raw Functional artifact exact SHA-256 values against the replay plan,
+5. reject missing, duplicate, replaced, or mismatched origin artifacts.
+
+The GitHub Release is an Evidence locator and retention mechanism. It does not become Canonical Application state.
+
+## 12. Operational replay runner contract
+
+The first operational replay runner should execute against the exact origin Target build `T`, not the current `main` build.
+
+The current Repository can continue to advance independently. Replay execution therefore uses an isolated detached worktree or equivalent clean checkout pinned to the replay plan's `ReplayTargetBuildRevision`.
+
+Conceptually:
+
+```text
+current main
+  -> verify current replay-runner source
+  -> verify replay plan / replay-plan receipt
+  -> verify retained Gate C origin Evidence archive
+  -> create isolated clean checkout at exact T
+  -> replay run 1 against T
+  -> stop Target
+  -> replay run 2 against T
+  -> stop Target
+  -> audit both runs
+  -> repeatability assessment
+```
+
+The isolated Target checkout must not rewrite or temporarily checkout the developer's current `main` worktree. Any temporary worktree and all replay output belong outside the Repository and must be removed or explicitly retained as operational state after the run.
+
+### 12.1 Required operational inputs
+
+The runner contract should require explicit paths for:
+
+- exact `r7b-replay-plan.json`
+- exact `r7b-replay-plan-receipt.json`
+- retained Gate C Evidence archive above
+- a new Repository-external output directory
+
+The replay-plan receipt must bind to the exact replay-plan bytes and must still state:
+
+```text
+replayExecuted = false
+repeatabilityObserved = false
+```
+
+before execution starts.
+
+### 12.2 Independent runs
+
+`RequiredDistinctRuns = 2` means two distinct execution runs, not two copies of one captured response.
+
+For the First Web Target the minimum operational form is:
+
+- fresh Target process for run 1,
+- all six planned behavior units executed,
+- Target process stopped,
+- fresh Target process for run 2,
+- all six planned behavior units executed again.
+
+Each run has its own run identity and raw artifact directory.
+
+A single long-lived server with the same response copied twice is not repeatability Evidence.
+
+### 12.3 Target-local fixture resolution
+
+The replay plan carries named fixture identities rather than credentials or request bodies.
+
+The runner may resolve those fixture identities to the same synthetic Reference inputs used by the Gate C acquisition path. Fixture resolution remains Target-local operational code.
+
+The runner must not:
+
+- serialize credentials into the replay plan,
+- save request credentials in replay artifacts,
+- reinterpret a fixture name as Canonical business meaning,
+- infer current Authorization authority from historical Gate C success.
+
+### 12.4 Observation and semantic validation
+
+Every behavior observation must record at least:
+
+- behavior identity,
+- replay run identity,
+- replay Target build revision,
+- observed HTTP status,
+- raw response artifact filename and exact SHA-256,
+- expected semantic Observation class,
+- semantic validation pass/fail.
+
+Semantic validation should reuse the existing First Web Target Gate C semantic checks rather than introducing a second independent definition of what authentication denial, authorization denial, Validation not-satisfied, Command success, or Execution Error means.
+
+If implementation requires code sharing, factor the existing validation predicates into a reusable helper rather than allowing the Gate C auditor and R7B auditor to drift independently.
+
+### 12.5 Repeatability assessment
+
+For each behavior, repeatability is established only when at least two distinct runs:
+
+- use the same explicit replay Target build,
+- satisfy the planned transport boundary,
+- satisfy the same semantic Observation class,
+- retain an exact SHA-256 for each raw replay artifact.
+
+Exact response bytes may differ. Byte equality is neither required nor sufficient.
+
+The final assessment remains:
+
+```text
+CoverageClass = behavior-unit
+DeepWorkflowCovered = false
+```
+
+even if all six behavior units are repeatable.
+
+### 12.6 Fail-closed conditions
+
+The operational runner must fail closed at least for:
+
+- dirty current source checkout before source qualification,
+- replay plan / receipt digest mismatch,
+- origin Evidence archive digest mismatch,
+- `MANIFEST.sha256` failure,
+- origin raw artifact digest mismatch,
+- replay Target revision different from explicit T,
+- failure to create a clean isolated T checkout,
+- duplicate replay run identity,
+- fewer than two completed runs,
+- missing raw replay artifact,
+- replay raw artifact without a valid SHA-256 identity,
+- HTTP boundary mismatch,
+- semantic classification mismatch,
+- credentials detected in retained replay artifacts,
+- Repository source changes during the operational run.
+
+### 12.7 Expected output shape
+
+A completed operational acquisition should retain, outside the Repository, a structure conceptually equivalent to:
+
+```text
+r7b-replay/
+  source/
+    replay-plan identity
+    origin-evidence identity
+  run-01/
+    <six raw response artifacts>
+    run-observation.json
+  run-02/
+    <six raw response artifacts>
+    run-observation.json
+  repeatability-summary.json
+  r7b-replay-receipt.json
+  source-tests.log
+```
+
+The final receipt records the exact source identities, replay Target build, run identities, raw artifact identities, and whether repeatability was actually observed.
+
+It must not claim whole-workflow coverage or current execution authority.
+
+## 13. Implementation / verification gate
+
+The next code increment is the operational replay runner plus the smallest audit source needed to turn the two raw runs into the observation / repeatability summary above.
+
+Under the current Repository development flow, code is committed directly to `main`; no new remote work branch or PR is created.
+
+Because local health checking is the only pre-push verification path, this code increment is eligible to enter `main` only after:
+
+```text
+tools/repository-health-check.sh
+```
+
+passes in a Go-enabled full checkout. Source-only reasoning is not a substitute for that check.
+
+## 14. Evidence height
 
 This document, the test-only source, the intake CLI source, and the operational intake runner are Source / Design Evidence until the Repository-external artifacts are actually supplied and the runner is executed.
 
@@ -266,19 +464,17 @@ They do not claim:
 
 Actual replay execution remains blocked until the Repository-external R7A handoff and acquisition receipt are supplied, exact-byte verified, and accepted by the R7B intake path.
 
-## 12. Next step
+## 15. Next step
 
-After actual R7A handoff acquisition:
+The Source path through execution intake and replay-plan materialization is defined. The next implementation milestone is now narrower:
 
-1. run the R7B intake acquisition runner,
-2. retain the resulting intake artifact and receipt outside the Repository,
-3. run the replay-plan acquisition runner with the actual intake and intake receipt,
-4. retain the exact replay-plan artifact and replay-plan receipt outside the Repository,
-5. then connect the plan to an operational replay runner that:
+1. implement the operational replay runner against an isolated exact-T checkout,
+2. reuse or factor the existing Gate C semantic validators so R7B does not create a second semantic truth,
+3. verify the retained Gate C Release archive and six origin raw artifact identities,
+4. execute two distinct runs of all six behavior units,
+5. retain every raw replay artifact outside the Repository,
+6. emit per-run observations and a behavior-unit repeatability summary,
+7. run the Repository health check before the code enters `main`,
+8. only after actual artifacts exist, update the recorded Evidence height from Source / Design to actual replay / repeatability Evidence.
 
-- reads the actual R7B execution intake and replay plan,
-- verifies its exact SHA-256 and source provenance,
-- verifies the six origin raw artifact identities,
-- executes at least two distinct replay runs per selected behavior against explicit T,
-- stores every raw replay artifact outside the Repository,
-- produces a repeatability assessment without converting Target-local replay details into Canonical meaning.
+Until those steps are executed, actual replay PASS and repeatability remain unclaimed.
