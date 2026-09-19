@@ -399,55 +399,31 @@ run identityは同一execution内で異なるだけでなく、同じrunner revi
 
 operational runnerの具体化で、current `r7b-replay-plan.json` がTarget起動に必要なprovenanceを完全にはcarryしていないことが分かった。
 
-current top-levelはReplay Target `T` を保持する一方、execution intakeに存在する次の値をplan top-levelへ保持していない。
+execution intakeには既に:
 
 ```text
 HandoverBaselineID
 BaselineRepositoryRevision
+TargetBuildRevision
 TargetAdapter
 Host
 ```
 
-First Web Targetの起動とshared semantic validatorは `B / R / T / TargetAdapter / Host` のexact provenanceを使う。したがってrunnerだけが既知のB/Rをhard-codeすると、replay plan単体では「何をどのprovenanceで再実行するか」をlosslessに表せない。
+が存在し、current Gate C既知値とのexact consistencyは `validateIntake` がfail closedで確認している。
 
-E1へ入る前に、execution intakeの既存値をreplay planへexact carryする。
+E0は新しい意味やauthorityを追加せず、そのvalidated launch provenanceをreplay planへlossless carryする。
 
 ```text
-execution intake
-  HandoverBaselineID
-  BaselineRepositoryRevision
-  TargetBuildRevision
-  TargetAdapter
-  Host
-        ↓ lossless carry
-replay plan
-  HandoverBaselineID
-  BaselineRepositoryRevision
-  ReplayTargetBuildRevision
-  TargetAdapter
-  Host
+recorded Gate C constants
+    ↓ validateIntake: drift reject
+validated execution intake
+    ↓ buildReplayPlan: lossless carry
+replay plan B / R / T / TargetAdapter / Host
 ```
 
-これは新しいauthorityや意味を追加する変更ではなく、すでに受領済みのexecution provenanceを実行planへ保持するだけである。
+##### 3.0.1 exact source delta
 
-実装条件:
-
-- replay-plan builderはintakeの5値をexact carryする
-- replay-plan testはcarryされた値のdrift / 欠落を拒否する
-- operational runnerはB/R/adapter/hostをcompile-time固定値だけから決めず、planをexpected provenanceとして使う
-- replay audit / shared validatorも同じplan provenanceをexpected valueとして使う
-- current Referenceで既知のB/R/Tと矛盾するplanはfail closedする
-- field追加をcross-revision compatibility、current Authorization、production authorityへ読み替えない
-
-既存3.2の起動引数例にあるB/R/Tはcurrent Referenceの具体例として残してよいが、runner実装上の唯一のauthorityにはしない。
-
-E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet Vのshared classifier packageとはfile境界が分かれる。ただしコード変更なので、full `tools/repository-health-check.sh` PASS前にはmainへ入れない。
-
-##### 3.0.1 E0 exact implementation delta
-
-current sourceに対する初回差分は次に限定する。
-
-`replayPlan` top-levelへ追加:
+current `replayPlan` top-levelへ次を追加する。
 
 ```go
 HandoverBaselineID         string `json:"handoverBaselineId"`
@@ -462,15 +438,9 @@ Host                       string `json:"host"`
 ReplayTargetBuildRevision string `json:"replayTargetBuildRevision"`
 ```
 
-と合わせ、plan launch provenanceは:
+と合わせ、launch provenanceのsingle sourceをplan top-levelへ置く。
 
-```text
-B / R / T / TargetAdapter / Host
-```
-
-の5要素になる。
-
-`buildReplayPlan` はaccepted `executionIntake` から次をそのまま代入する。
+`buildReplayPlan` はaccepted `executionIntake` からexact carryする。
 
 ```text
 plan.HandoverBaselineID
@@ -489,13 +459,15 @@ plan.Host
   = intake.Host
 ```
 
-同じ4値を各 `replayUnit` へ複製しない。behavior unitはbehavior-local recipe / raw artifact / Target revision境界を保持し、launch provenanceのsingle sourceはplan top-levelとする。
+B/R/Adapter/Hostを各 `replayUnit` へ複製しない。behavior unitはbehavior-local recipe、origin raw artifact、Target revision境界だけを保持する。
 
-current `validateIntake` が持つknown Gate C exact-value checkはE0で除去しない。これはcurrent adopted Reference inputをfail closedで受ける境界であり、plan carryの代替ではない。
+current `validateIntake` のknown Gate C exact-value checkはE0で変更・除去しない。定数はinput drift rejectを担い、plan outputの別authorityにはしない。
 
-##### 3.0.2 E0 exact test delta
+runner / replay audit / shared semantic validatorは、E0後のplan provenanceをruntime expected valueとして使用する。runnerがB/R/adapter/hostをcompile-time固定値だけから再構成してplanを無視する実装は禁止する。
 
-最低限、既存happy-path testで次を追加確認する。
+##### 3.0.2 test pressure
+
+既存happy pathで少なくとも次を確認する。
 
 ```text
 got.HandoverBaselineID
@@ -514,28 +486,40 @@ got.Host
   == intake.Host
 ```
 
-さらに `TestBuildReplayPlanRejectsGateCOrExecutionStateDrift` 相当へ少なくとも:
+JSON serialization後も5 fieldがexact field name / exact valueで存在することを確認する。
 
-- baseline ID drift
-- baseline revision drift
-- Target Adapter drift
-- Host drift
+`TestBuildReplayPlanRejectsGateCOrExecutionStateDrift` 相当へ少なくとも次の独立subtestを追加する。
 
-を独立subtestとして追加し、current known Gate C Referenceから外れたlaunch provenanceが受理されないことを固定する。
+- HandoverBaselineID empty / drift
+- BaselineRepositoryRevision empty / drift
+- TargetBuildRevision empty / drift
+- TargetAdapter empty / drift
+- Host empty / drift
 
-JSON encoding後のtop-level keyもtestで確認し、fieldをstructへ追加しただけでserializationから落ちる変更を防ぐ。
+candidate側B/R/T provenanceとtop-level intakeの不一致をrejectする既存fail-closedも維持する。
 
-禁止事項:
+既存のcredential / selector / coordinate / execution authority field禁止testを維持する。
 
-- B/R/Adapter/Hostを`replayUnit`ごとへ重複保持
-- runner側だけのcompile-time constantをplan provenanceの代替にする
-- E0と同時にexpected Gate C constantを変更
-- E0と同時にbehavior set / fixture / HTTP status / Observation classを変更
-- E0をcurrent Authorizationやexecution permissionへ読み替える
+生成後planの改ざん・field欠落rejectはbuilderの責務ではなく、V2 replay audit / E1 runnerのinput validationでPressureする。
 
-##### 3.0.3 E0 integration gate
+##### 3.0.3 non-goals
 
-Go-enabled full checkoutでは、変更後に必ず:
+E0と同じincrementで次を行わない。
+
+- expected Gate C constantの変更
+- behavior setの変更
+- fixture mappingの変更
+- expected HTTP statusの変更
+- Observation classの変更
+- cross-revision compatibility追加
+- current Authorization / production execution authorityの導出
+- B/R/Adapter/Hostのunit-level複製
+
+##### 3.0.4 integration gate
+
+E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet V shared classifierとはfile境界が分かれる。
+
+Go-enabled full checkoutで変更後に必ず:
 
 ```bash
 tools/repository-health-check.sh
@@ -543,7 +527,7 @@ tools/repository-health-check.sh
 
 を実行する。
 
-これは実際に:
+このhealth checkは実際に:
 
 ```text
 gofmt -l .
@@ -554,13 +538,9 @@ go run ./cmd/tei validate -workspace reference/workspace
 
 を要求する。
 
-focused replay-plan testだけのPASSではE0をmainへ入れない。health checkが失敗した場合、E0 codeをpushせず原因を修正してから再実行する。
+focused replay-plan testだけのPASSではmain統合条件を満たさない。health checkが失敗した場合はE0 codeをpushせず、原因を修正してから再実行する。
 
-##### 3.0.4 E0 responsibility boundary
-
-E0 testでは、B / R / T / TargetAdapter / Hostについてdriftだけでなくempty valueもfail closedで拒否する。またcandidate側B/R/T provenanceとtop-level intakeの不一致、およびcredential / selector / coordinate / execution authority fieldを追加しない既存negative pressureを維持する。
-
-一方、「生成済みplanを後から改ざん・欠落させた場合のreject」はbuilderの責務ではない。builderはvalidation済みintakeからlosslessにplanを生成する。生成後のplan input validationはV2 replay audit / E1 runnerが担当し、そこでexact provenanceとplan digest bindingをPressureする。
+E0完了判定は、full health check PASS対象のexact commitがそのまま `main` へ入ったことまでを含む。
 
 #### 3.1 Gate C fixture replay map
 
