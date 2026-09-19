@@ -9,7 +9,9 @@
 
 着手条件だったGate B ReadyとHandover Baseline `B / R`固定は成立した。
 
-`ISSUE-000007`では`tools/reference-first-web-target`のprojection shell source実装を開始している。manifestには`B / R / T`を別identityとして保持する。
+`ISSUE-000007`では`tools/reference-first-web-target`を進め、projection shellに加えてread-only Driver sliceとAuthentication / Validation / Authorization / Command / separate ObservationのScenario sourceまで接続している。manifest / HTTP responseには`B / R / T`を別identityとして保持する。
+
+Authentication / AuthorizationのBusiness Outcome、Validation結果、Command Business Result、Observationを別結果として保持するsource pressureも追加した。
 
 ただし、source implementationや`httptest`用test sourceの存在をGate C Evidenceへ読み替えない。actual Target build/runに紐づくSemantic / Functional / Visual Evidenceは未取得である。
 

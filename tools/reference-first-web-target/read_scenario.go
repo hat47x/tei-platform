@@ -194,8 +194,8 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 			"http-interaction-does-not-define-semantic-outcome",
 		},
 		Unresolved: []string{
-			"authentication-authorization-web-interaction-not-yet-wired",
-			"command-business-result-execution-error-observation-not-yet-wired",
+			"standalone-read-endpoint-is-reference-diagnostic-without-authentication-gate",
+			"standalone-read-endpoint-does-not-invoke-command",
 			"custom-ui-not-yet-wired",
 			"actual-functional-evidence-not-yet-acquired",
 			"visual-evidence-not-yet-acquired",
