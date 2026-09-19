@@ -93,6 +93,10 @@ Semantic / Functional runnerはsuccessful pathだけでなく、Authentication d
 
 Visual Evidenceは独立capture/audit、Architecture Evidenceは`R → T` Canonical不変・Web authority boundary・shared Command boundaryを独立確認する。最終readiness auditだけが三EvidenceとArchitecture conformanceを同一`B / R / T`で合わせる。
 
+Custom UIの結果表示もVisual review向けに構造化し、成功時のSelected order / Customer reference / Order lines / Canonical Validation / Command Business Result / separate Observationを分離した。Authorization denied、Validation not-satisfied、Execution Errorも別画面状態として読み取れるようにし、Gate C runnerが各stateのHTML artifactを保存してindependent auditする。
+
+Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再現できる形へRunbookに固定した。ただしHTML state artifactはScreenshot / Visual Fidelity Evidenceではない。
+
 現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
 
 ## 背景
