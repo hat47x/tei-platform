@@ -239,6 +239,47 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 		},
 	})
 
+	writeAuditJSON(t, filepath.Join(dir, "submit-validation-not-satisfied.json"), commandEnvelope{
+		Provenance: p,
+		Result: commandArtifact{
+			ScenarioID:    "order-entry.submit-order-web-slice",
+			ApplicationID: "order_entry",
+			Stage:         "validation-not-satisfied",
+			Authentication: &businessResultArtifact{
+				Capability: "security.authenticate",
+				Mode:       "outcome",
+				Outcome:    "authenticated",
+			},
+			Validations: []validationResultArtifact{
+				{Validation: "sales.order_line.quantity_positive", Result: "not-satisfied"},
+			},
+		},
+	})
+
+	writeAuditJSON(t, filepath.Join(dir, "submit-execution-error.json"), commandErrorEnvelope{
+		Provenance: p,
+		Result: commandArtifact{
+			ScenarioID:    "order-entry.submit-order-web-slice",
+			ApplicationID: "order_entry",
+			Stage:         "command",
+			Authentication: &businessResultArtifact{
+				Capability: "security.authenticate",
+				Mode:       "outcome",
+				Outcome:    "authenticated",
+			},
+			Validations: []validationResultArtifact{
+				{Validation: "sales.order_line.quantity_positive", Result: "satisfied"},
+				{Validation: "sales.order.lines.line_number_unique", Result: "satisfied"},
+			},
+			Authorization: &businessResultArtifact{
+				Capability: "security.authorize",
+				Mode:       "outcome",
+				Outcome:    "allowed",
+			},
+		},
+		ExecutionError: "capability sales.order.submitの実行を完了できませんでした: synthetic submit adapter unavailable for order 1003",
+	})
+
 	if err := os.WriteFile(
 		filepath.Join(dir, "custom-submit-get.html"),
 		[]byte(
