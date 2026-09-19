@@ -101,7 +101,16 @@ test-only profile:
 
 Human inlineではfingerprintやdependency reasonを直接並べなくてもよい。
 
-ただしcategory summaryにはunderlying outcome identityへのtest-only referenceを保持し:
+ただしunselected / residual detailをdrill-downへ送る場合も:
+
+```text
+UnselectedChangeCount
+ResidualRootDeltaCount
+```
+
+相当の存在情報をinlineに残し、detail非表示をabsenceへ変換しない。
+
+category summaryにはunderlying outcome identityへのtest-only referenceを保持し:
 
 ```text
 inline detail omitted
@@ -192,7 +201,7 @@ R3AD ResidualRootDeltaとR3T UnselectedChangesは別概念のまま保持する�
 Human orientationでは:
 
 - residual = drill-down
-- unselected = omitted
+- unselected = drill-down
 
 Agent resolution-inspectionでは:
 
@@ -204,7 +213,7 @@ Agent resolution-inspectionでは:
 ただし:
 
 ```text
-Human omitted unselected
+Human drill-down unselected
   != unselected absent from underlying explanation
 
 Human drill-down residual
@@ -260,15 +269,15 @@ Authorization freshness authorityは引き続き未解決です。
 
 Pressureするcase:
 
-1. Human inlineはsummary + freshness authority + resolution needsだけを持つ
-2. Human fingerprints / reasons / residual / provenanceはdrill-downへ残る
-3. Human unselected changeはomittedでもunderlying explanationから消えない
-4. Agentはexact fingerprints / reasons / residual / unselectedをinlineに持てる
-5. shared machine-reasons outcome identityがHuman / Agentで一致する
-6. selected-but-empty residual detailとomitted detailを区別する
-7. freshness authority unresolvedが両profileで同一
-8. display wording / audience / orderをoutcome identityへ入れない
-9. Fresh / Safe / Reusable / ShouldReevaluate / NextAction等を追加しない
+1. Human unchanged outcomeはcategory/statusをinline、fingerprint / exact reasonをdrill-downへ送る
+2. Humanでもfreshness authority unresolvedをinline保持する
+3. Agentはsame outcome identityのfingerprint / exact reasonをinline保持できる
+4. shared category/statusはHuman / Agentで一致する
+5. Agent-only known-authority-factsをHumanへ強制しない
+6. prior Observation no-binding residualはHumanで存在数を残しdetail drill-down、Agentではdetail inline
+7. unselected detailをHumanで省略しても存在数を0へしない
+8. Human detail omissionにdrill-down locatorがなければfail closed
+9. materializationにaction / authority shortcutを追加しない
 
 ## 11. current conclusion
 
@@ -278,17 +287,14 @@ R3AGで固定するのは:
 one underlying explanation
   -> purpose-bound materialization
 
-inline
-  != complete truth
+inline disclosure
+  != underlying semantic identity
 
-drill-down
-  != omitted
+not inline
+  != absent
 
-omitted
-  != absent from underlying explanation
-
-shared outcome identity
-  != shared presentation
+more detail
+  != stronger authority
 ```
 
 である。
