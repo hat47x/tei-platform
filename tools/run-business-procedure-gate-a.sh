@@ -166,6 +166,10 @@ finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # ---- Evidence summary (Runbook section 12) ----
 gate_a_pass=true
+failed_json=""
+for f in "${failed[@]:-}"; do
+  [[ -n "$f" ]] && failed_json+="${failed_json:+, }\"$f\""
+done
 if [[ "${#failed[@]}" -gt 0 ]]; then
   gate_a_pass=false
 fi
@@ -189,7 +193,7 @@ summary="$artifact_dir/gate-a-summary.json"
       "$id" "$(printf '%s' "$name" | sed 's/"/\\"/g')" "$code" "$secs" "$id.log"
   done <"$steps_file"
   printf '\n  ],\n'
-  printf '  "failedSteps": [%s],\n' "$(printf '"%s",' "${failed[@]:-}" | sed 's/,$//; s/^"",$//')"
+  printf '  "failedSteps": [%s],\n' "$failed_json"
   printf '  "gateAPassed": %s,\n' "$gate_a_pass"
   printf '  "authorityLimits": [\n'
   printf '    "gate-a-is-mechanical-execution-evidence-not-contract-adr-readiness",\n'
