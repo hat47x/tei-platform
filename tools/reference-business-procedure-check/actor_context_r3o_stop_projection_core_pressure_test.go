@@ -193,7 +193,6 @@ func TestActorContextR3ORejectsR3MAndR3NDisagreement(t *testing.T) {
 	}
 }
 
-
 func TestActorContextR3ORejectsMissingResolutionNeedFromEitherProjection(t *testing.T) {
 	explanation, taxonomy := actorContextR3OCurrentBP06ActionStop(t)
 
@@ -323,7 +322,6 @@ func actorContextR3OBuildCommonStopCore(
 		AuthorityLimits:        actorContextR0SortedUnique(limits),
 	}, nil
 }
-
 
 func actorContextR3OSameStringSet(left []string, right []string) bool {
 	l := actorContextR0SortedUnique(append([]string(nil), left...))

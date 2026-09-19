@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	actorContextR3IEvaluationNotEvaluated               = "not-evaluated"
+	actorContextR3IEvaluationNotEvaluated                = "not-evaluated"
 	actorContextR3IEvaluationCurrentObserved             = "current-context-observed"
 	actorContextR3IEvaluationObservationMismatch         = "observation-context-mismatch"
 	actorContextR3IEvaluationPriorContextReuseUnresolved = "prior-context-reuse-authority-unresolved"
@@ -31,7 +31,7 @@ type actorContextR3IEvaluationObservationProbe struct {
 }
 
 type actorContextR3IEvaluationBoundaryProbe struct {
-	RequirementStatus string
+	RequirementStatus  string
 	Target             actorContextR3ITargetProbe
 	EvaluationStatus   string
 	ObservationOutcome string

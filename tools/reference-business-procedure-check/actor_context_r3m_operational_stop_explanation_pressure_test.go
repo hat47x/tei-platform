@@ -22,7 +22,7 @@ type actorContextR3MOperationalStopExplanationProbe struct {
 	StopStage              string
 	BlockingReasons        []string
 	KnownAuthorityFacts    []actorContextR3MAuthorityFactProbe
-	ResolutionNeedClasses []string
+	ResolutionNeedClasses  []string
 	SourceRefs             []string
 	DownstreamNotAttempted []string
 	ResolutionRequested    bool

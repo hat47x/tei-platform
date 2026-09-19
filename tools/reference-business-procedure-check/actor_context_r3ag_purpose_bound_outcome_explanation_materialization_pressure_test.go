@@ -274,8 +274,8 @@ func actorContextR3AGMaterialize(
 	}
 
 	out := actorContextR3AGMaterializedExplanationProbe{
-		UnselectedChangeCount:  len(explanation.UnselectedChanges),
-		ResidualRootDeltaCount: len(explanation.ResidualRootDeltas),
+		UnselectedChangeCount:       len(explanation.UnselectedChanges),
+		ResidualRootDeltaCount:      len(explanation.ResidualRootDeltas),
 		Audience:                    view.Audience,
 		Purpose:                     view.Purpose,
 		FreshnessStopReason:         explanation.FreshnessStopReason,

@@ -122,7 +122,7 @@ func TestActorContextR3AAHumanAndAgentKeepSameFreshnessReasonWithoutUniversalDet
 
 	for name, view := range map[string]actorContextR3PBoundedStopViewProbe{
 		"human": human,
-		"agent":  agent,
+		"agent": agent,
 	} {
 		if !reflect.DeepEqual(view.Payload.MachineReasons, []string{actorContextR3AAFreshnessReason}) ||
 			!reflect.DeepEqual(view.Payload.ResolutionNeedClasses, []string{

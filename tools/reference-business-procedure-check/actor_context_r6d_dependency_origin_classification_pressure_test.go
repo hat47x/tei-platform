@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	actorContextR6DOriginRoutedKnowledge      = "routed-qualified-knowledge"
-	actorContextR6DOriginConsumerReference    = "consumer-reference-input"
-	actorContextR6DOriginConsumerRuntime      = "consumer-runtime-observation"
-	actorContextR6DOriginConsumerSemantic     = "consumer-semantic-subject"
+	actorContextR6DOriginRoutedKnowledge   = "routed-qualified-knowledge"
+	actorContextR6DOriginConsumerReference = "consumer-reference-input"
+	actorContextR6DOriginConsumerRuntime   = "consumer-runtime-observation"
+	actorContextR6DOriginConsumerSemantic  = "consumer-semantic-subject"
 )
 
 type actorContextR6DDependencyOriginProbe struct {
@@ -22,10 +22,10 @@ type actorContextR6DDependencyOriginProbe struct {
 }
 
 type actorContextR6DOriginSetProbe struct {
-	Audience        string                               `json:"audience"`
-	Purpose         string                               `json:"purpose"`
+	Audience        string                                 `json:"audience"`
+	Purpose         string                                 `json:"purpose"`
 	Dependencies    []actorContextR6DDependencyOriginProbe `json:"dependencies"`
-	AuthorityLimits []string                             `json:"authorityLimits"`
+	AuthorityLimits []string                               `json:"authorityLimits"`
 }
 
 func TestActorContextR6DFullBP06HumanReasonsSeparateRoutedAndConsumerLocalInputs(t *testing.T) {
@@ -339,8 +339,8 @@ func actorContextR6DBuildOriginSet(
 	})
 
 	return actorContextR6DOriginSetProbe{
-		Audience: reasons.Audience,
-		Purpose:  reasons.Purpose,
+		Audience:     reasons.Audience,
+		Purpose:      reasons.Purpose,
 		Dependencies: records,
 		AuthorityLimits: []string{
 			"routing-does-not-own-all-projection-inputs",

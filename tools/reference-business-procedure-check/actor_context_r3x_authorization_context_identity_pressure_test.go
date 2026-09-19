@@ -9,10 +9,10 @@ import (
 
 const (
 	actorContextR3XStatusNoContextIdentityChange            = "no-context-identity-change"
-	actorContextR3XStatusObservationContextMismatch          = "observation-context-mismatch"
-	actorContextR3XStatusRequirementTransitionUnresolved     = "requirement-transition-authority-unresolved"
-	actorContextR3XStatusTupleCompatibleFreshnessUnresolved  = "tuple-compatible-freshness-authority-unresolved"
-	actorContextR3XStatusRuntimeOutcomeChanged               = "runtime-outcome-changed-same-context"
+	actorContextR3XStatusObservationContextMismatch         = "observation-context-mismatch"
+	actorContextR3XStatusRequirementTransitionUnresolved    = "requirement-transition-authority-unresolved"
+	actorContextR3XStatusTupleCompatibleFreshnessUnresolved = "tuple-compatible-freshness-authority-unresolved"
+	actorContextR3XStatusRuntimeOutcomeChanged              = "runtime-outcome-changed-same-context"
 
 	actorContextR3XObservationTupleMatch    = "observation-tuple-match"
 	actorContextR3XObservationTupleMismatch = "observation-tuple-mismatch"
@@ -36,13 +36,13 @@ type actorContextR3XContextDeltaProbe struct {
 }
 
 type actorContextR3XContextImpactProbe struct {
-	Status                           string
-	ChangedTupleComponents           []string
-	RequirementApplicabilityChanged  bool
-	RuntimeOutcomeChanged            bool
-	ObservationTupleStatus                string
-	FreshnessAuthorityStatus         string
-	AuthorityLimits                  []string
+	Status                          string
+	ChangedTupleComponents          []string
+	RequirementApplicabilityChanged bool
+	RuntimeOutcomeChanged           bool
+	ObservationTupleStatus          string
+	FreshnessAuthorityStatus        string
+	AuthorityLimits                 []string
 }
 
 func TestActorContextR3XActionChangeMakesPriorObservationContextMismatch(t *testing.T) {
@@ -263,7 +263,7 @@ func actorContextR3XAnalyzeContextChange(
 	result := actorContextR3XContextImpactProbe{
 		ChangedTupleComponents:          changed,
 		RequirementApplicabilityChanged: delta.Before.RequirementStatus != delta.After.RequirementStatus,
-		RuntimeOutcomeChanged:           delta.RuntimeOutcomeBefore != "" &&
+		RuntimeOutcomeChanged: delta.RuntimeOutcomeBefore != "" &&
 			delta.RuntimeOutcomeAfter != "" &&
 			delta.RuntimeOutcomeBefore != delta.RuntimeOutcomeAfter,
 		FreshnessAuthorityStatus: "unresolved",

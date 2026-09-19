@@ -16,25 +16,25 @@ const (
 )
 
 type actorContextR3ATWriterObservationProbe struct {
-	WriteAttemptCandidateIdentity    string
-	AcceptedDecisionSinkRef          string
-	IdempotencyIdentity              string
-	WriterObservationRef             string
-	ReportedOutcome                  string
-	PostWriteRevisionObservationRef  string
+	WriteAttemptCandidateIdentity     string
+	AcceptedDecisionSinkRef           string
+	IdempotencyIdentity               string
+	WriterObservationRef              string
+	ReportedOutcome                   string
+	PostWriteRevisionObservationRef   string
 	PostWriteObservedDecisionRevision string
 }
 
 type actorContextR3ATNormalizedObservationProbe struct {
-	WriteAttemptCandidateIdentity    string
-	AcceptedDecisionSinkRef          string
-	IdempotencyIdentity              string
-	WriterObservationRef             string
-	ReportedOutcome                  string
-	PostWriteRevisionObservationRef  string
+	WriteAttemptCandidateIdentity     string
+	AcceptedDecisionSinkRef           string
+	IdempotencyIdentity               string
+	WriterObservationRef              string
+	ReportedOutcome                   string
+	PostWriteRevisionObservationRef   string
 	PostWriteObservedDecisionRevision string
-	ObservationIdentity              string
-	AuthorityLimits                  []string
+	ObservationIdentity               string
+	AuthorityLimits                   []string
 }
 
 func TestActorContextR3ATExactObservationBindsToWriteAttemptCandidate(t *testing.T) {

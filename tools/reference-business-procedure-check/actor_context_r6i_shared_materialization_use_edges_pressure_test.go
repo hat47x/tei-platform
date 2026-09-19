@@ -21,12 +21,12 @@ type actorContextR6IUseEdgeProbe struct {
 }
 
 type actorContextR6IBoundedMaterializationProbe struct {
-	Audience                 string                                 `json:"audience"`
-	Purpose                  string                                 `json:"purpose"`
+	Audience                 string                                `json:"audience"`
+	Purpose                  string                                `json:"purpose"`
 	MaterializedKnowledge    []actorContextR6ISharedKnowledgeProbe `json:"materializedKnowledge"`
-	UseEdges                 []actorContextR6IUseEdgeProbe          `json:"useEdges"`
-	QualifiedNotMaterialized []string                               `json:"qualifiedNotMaterialized"`
-	AuthorityLimits          []string                               `json:"authorityLimits"`
+	UseEdges                 []actorContextR6IUseEdgeProbe         `json:"useEdges"`
+	QualifiedNotMaterialized []string                              `json:"qualifiedNotMaterialized"`
+	AuthorityLimits          []string                              `json:"authorityLimits"`
 }
 
 func TestActorContextR6IHumanAndAgentShareKnowledgeMaterializationButNotUseEdges(t *testing.T) {

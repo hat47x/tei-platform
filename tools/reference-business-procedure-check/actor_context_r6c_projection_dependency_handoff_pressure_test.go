@@ -16,14 +16,14 @@ const (
 )
 
 type actorContextR6CProjectionHandoffProbe struct {
-	KnowledgeKey     string `json:"knowledgeKey"`
-	KnowledgeKind    string `json:"knowledgeKind"`
-	Audience         string `json:"audience"`
-	Purpose          string `json:"purpose"`
-	Disposition      string `json:"disposition"`
+	KnowledgeKey       string `json:"knowledgeKey"`
+	KnowledgeKind      string `json:"knowledgeKind"`
+	Audience           string `json:"audience"`
+	Purpose            string `json:"purpose"`
+	Disposition        string `json:"disposition"`
 	ProjectionCategory string `json:"projectionCategory,omitempty"`
-	DependencyKey    string `json:"dependencyKey,omitempty"`
-	DependencyReason string `json:"dependencyReason,omitempty"`
+	DependencyKey      string `json:"dependencyKey,omitempty"`
+	DependencyReason   string `json:"dependencyReason,omitempty"`
 }
 
 type actorContextR6CHandoffSetProbe struct {

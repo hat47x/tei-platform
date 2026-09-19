@@ -43,9 +43,9 @@ type actorContextR3YAuthorityResultProbe struct {
 
 func TestActorContextR3YSameTupleStaticChangeWithoutDirectiveKeepsBothAxesUnresolved(t *testing.T) {
 	impact := actorContextR3XContextImpactProbe{
-		Status:                     actorContextR3XStatusTupleCompatibleFreshnessUnresolved,
-		ObservationTupleStatus:     actorContextR3XObservationTupleMatch,
-		FreshnessAuthorityStatus:   "unresolved",
+		Status:                   actorContextR3XStatusTupleCompatibleFreshnessUnresolved,
+		ObservationTupleStatus:   actorContextR3XObservationTupleMatch,
+		FreshnessAuthorityStatus: "unresolved",
 	}
 
 	got := actorContextR3YAnalyzeFreshnessAuthority(
@@ -140,10 +140,10 @@ func TestActorContextR3YBothDirectivesPreserveAxesAndLeavePrecedenceUnresolved(t
 
 func TestActorContextR3YRequirementTransitionIsNotResolvedByFreshnessDirective(t *testing.T) {
 	impact := actorContextR3XContextImpactProbe{
-		Status:                         actorContextR3XStatusRequirementTransitionUnresolved,
-		ObservationTupleStatus:         actorContextR3XObservationTupleMatch,
+		Status:                          actorContextR3XStatusRequirementTransitionUnresolved,
+		ObservationTupleStatus:          actorContextR3XObservationTupleMatch,
 		RequirementApplicabilityChanged: true,
-		FreshnessAuthorityStatus:       "unresolved",
+		FreshnessAuthorityStatus:        "unresolved",
 	}
 
 	got := actorContextR3YAnalyzeFreshnessAuthority(

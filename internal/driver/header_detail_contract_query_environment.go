@@ -19,7 +19,7 @@ import (
 type HeaderDetailContractQueryEnvironmentExecution struct {
 	Environment environment.Environment                   `json:"environment"`
 	Executor    realization.ResolvedContractQueryExecutor `json:"executor"`
-	Execution   HeaderDetailContractQueryExecution         `json:"execution"`
+	Execution   HeaderDetailContractQueryExecution        `json:"execution"`
 }
 
 // ExecuteHeaderDetailContractQueryInEnvironmentは、header-detail traversalのlogical Datasourceを

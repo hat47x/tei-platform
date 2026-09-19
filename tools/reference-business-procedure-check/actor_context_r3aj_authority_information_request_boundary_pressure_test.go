@@ -10,18 +10,18 @@ import (
 const actorContextR3AJRequestClassAuthorityInformation = "authority-information"
 
 type actorContextR3AJAuthorityInformationRequestProbe struct {
-	RequestClass            string
-	BusinessAddress         string
-	StopStage               string
-	StopClass               string
-	MachineReasons          []string
-	InformationNeedClasses  []string
-	EvidenceNeedClasses     []string
-	KnownSourceRefs         []string
-	DrillDownRefs           []string
-	ResolutionRequested     bool
-	HandoffRecipientStatus  string
-	AuthorityLimits         []string
+	RequestClass           string
+	BusinessAddress        string
+	StopStage              string
+	StopClass              string
+	MachineReasons         []string
+	InformationNeedClasses []string
+	EvidenceNeedClasses    []string
+	KnownSourceRefs        []string
+	DrillDownRefs          []string
+	ResolutionRequested    bool
+	HandoffRecipientStatus string
+	AuthorityLimits        []string
 }
 
 func TestActorContextR3AJBuildsScopedAuthorityInformationRequestWithoutOwner(t *testing.T) {

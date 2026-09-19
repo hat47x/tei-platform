@@ -225,15 +225,15 @@ func actorContextR3QBuildFreshnessSnapshot(
 	}
 
 	profilePayload := struct {
-		Audience   string
-		Purpose    string
-		Selected   []string
-		Omitted    []string
+		Audience string
+		Purpose  string
+		Selected []string
+		Omitted  []string
 	}{
 		Audience: view.Audience,
-		Purpose: view.Purpose,
+		Purpose:  view.Purpose,
 		Selected: actorContextR0SortedUnique(append([]string(nil), view.SelectedCategories...)),
-		Omitted: actorContextR0SortedUnique(append([]string(nil), view.OmittedCategories...)),
+		Omitted:  actorContextR0SortedUnique(append([]string(nil), view.OmittedCategories...)),
 	}
 	profileFingerprint, err := actorContextR3QHash(profilePayload)
 	if err != nil {
@@ -251,15 +251,15 @@ func actorContextR3QBuildFreshnessSnapshot(
 			return actorContextR3QFreshnessSnapshotProbe{}, err
 		}
 		required = append(required, actorContextR3QCategoryFingerprintProbe{
-			Category: category,
+			Category:    category,
 			Fingerprint: fingerprint,
 		})
 	}
 
 	return actorContextR3QFreshnessSnapshotProbe{
-		Audience: view.Audience,
-		Purpose: view.Purpose,
-		ProfileFingerprint: profileFingerprint,
+		Audience:                     view.Audience,
+		Purpose:                      view.Purpose,
+		ProfileFingerprint:           profileFingerprint,
 		RequiredCategoryFingerprints: required,
 	}, nil
 }

@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	actorContextR3LGateInsufficientEvidence       = "insufficient-evidence"
+	actorContextR3LGateInsufficientEvidence        = "insufficient-evidence"
 	actorContextR3LGateSingleQualifyingInteraction = "single-qualifying-interaction"
 	actorContextR3LGateMultipleNondiscriminating   = "multiple-nondiscriminating-interactions"
 	actorContextR3LGateQualified                   = "action-locus-pressure-qualified"

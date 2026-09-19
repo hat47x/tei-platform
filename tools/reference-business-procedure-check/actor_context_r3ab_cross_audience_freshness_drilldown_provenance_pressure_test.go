@@ -42,12 +42,12 @@ type actorContextR3ABProvenanceLinkProbe struct {
 }
 
 type actorContextR3ABDrilldownProbe struct {
-	Audience       string
-	ReasonIdentity string
-	DerivedNodes   []actorContextR3ABDerivedNodeProbe
-	Roots          []actorContextR3ABProvenanceRootProbe
-	Links          []actorContextR3ABProvenanceLinkProbe
-	InlineRootIDs  []string
+	Audience        string
+	ReasonIdentity  string
+	DerivedNodes    []actorContextR3ABDerivedNodeProbe
+	Roots           []actorContextR3ABProvenanceRootProbe
+	Links           []actorContextR3ABProvenanceLinkProbe
+	InlineRootIDs   []string
 	AuthorityLimits []string
 }
 

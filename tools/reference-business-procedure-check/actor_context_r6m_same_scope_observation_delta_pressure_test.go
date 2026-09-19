@@ -15,13 +15,13 @@ type actorContextR6MPlaneCardinalityDeltaProbe struct {
 }
 
 type actorContextR6MSameScopeObservationDeltaProbe struct {
-	ScopeIdentity  string                                      `json:"scopeIdentity"`
-	BeforeAudience string                                      `json:"beforeAudience"`
-	BeforePurpose  string                                      `json:"beforePurpose"`
-	AfterAudience  string                                      `json:"afterAudience"`
-	AfterPurpose   string                                      `json:"afterPurpose"`
-	PlaneDeltas    []actorContextR6MPlaneCardinalityDeltaProbe `json:"planeDeltas"`
-	AuthorityLimits []string                                   `json:"authorityLimits"`
+	ScopeIdentity   string                                      `json:"scopeIdentity"`
+	BeforeAudience  string                                      `json:"beforeAudience"`
+	BeforePurpose   string                                      `json:"beforePurpose"`
+	AfterAudience   string                                      `json:"afterAudience"`
+	AfterPurpose    string                                      `json:"afterPurpose"`
+	PlaneDeltas     []actorContextR6MPlaneCardinalityDeltaProbe `json:"planeDeltas"`
+	AuthorityLimits []string                                    `json:"authorityLimits"`
 }
 
 func TestActorContextR6MHumanAgentDifferenceIsSameScopeObservationDelta(t *testing.T) {

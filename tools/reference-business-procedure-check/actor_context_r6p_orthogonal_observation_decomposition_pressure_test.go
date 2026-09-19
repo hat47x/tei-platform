@@ -6,11 +6,11 @@ import (
 )
 
 type actorContextR6PObservationDecompositionProbe struct {
-	ScopeIdentity               string                                      `json:"scopeIdentity"`
-	CardinalityDeltas           []actorContextR6MPlaneCardinalityDeltaProbe `json:"cardinalityDeltas"`
-	MembershipDeltas            []actorContextR6NPlaneMembershipDeltaProbe  `json:"membershipDeltas"`
+	ScopeIdentity               string                                         `json:"scopeIdentity"`
+	CardinalityDeltas           []actorContextR6MPlaneCardinalityDeltaProbe    `json:"cardinalityDeltas"`
+	MembershipDeltas            []actorContextR6NPlaneMembershipDeltaProbe     `json:"membershipDeltas"`
 	RetainedKnowledgeProvenance []actorContextR6OKnowledgeProvenanceDeltaProbe `json:"retainedKnowledgeProvenance"`
-	AuthorityLimits             []string                                    `json:"authorityLimits"`
+	AuthorityLimits             []string                                       `json:"authorityLimits"`
 }
 
 func TestActorContextR6PFingerprintOnlyChangeStaysProvenanceOnly(t *testing.T) {

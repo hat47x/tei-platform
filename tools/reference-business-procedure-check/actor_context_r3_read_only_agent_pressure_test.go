@@ -16,26 +16,26 @@ type actorContextR3ReadIntentProbe struct {
 	ReferenceFingerprint      string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
 	Procedure                 string                           `json:"procedure"`
-	Step                   string   `json:"step"`
-	BusinessAction         string   `json:"businessAction"`
-	Pattern                string   `json:"pattern"`
-	PatternKind            string   `json:"patternKind"`
-	Relation               string   `json:"relation"`
-	Datasource             string   `json:"datasource"`
-	ApplicationAccess      string   `json:"applicationAccess"`
-	Contract               string   `json:"contract"`
-	Query                  string   `json:"query"`
-	InputSemanticAttribute string   `json:"inputSemanticAttribute"`
-	QueryInput             string   `json:"queryInput"`
-	QueryInputType         string   `json:"queryInputType"`
-	Result                 string   `json:"result"`
-	ResultCardinality      string   `json:"resultCardinality"`
-	RuntimeGaps            []string `json:"runtimeGaps"`
-	InvocationAttempted    bool     `json:"invocationAttempted"`
-	ObservationReceived    bool     `json:"observationReceived"`
-	CompletionUnresolved   bool     `json:"completionUnresolved"`
-	SourceRefs             []string `json:"sourceRefs"`
-	AuthorityLimits        []string `json:"authorityLimits"`
+	Step                      string                           `json:"step"`
+	BusinessAction            string                           `json:"businessAction"`
+	Pattern                   string                           `json:"pattern"`
+	PatternKind               string                           `json:"patternKind"`
+	Relation                  string                           `json:"relation"`
+	Datasource                string                           `json:"datasource"`
+	ApplicationAccess         string                           `json:"applicationAccess"`
+	Contract                  string                           `json:"contract"`
+	Query                     string                           `json:"query"`
+	InputSemanticAttribute    string                           `json:"inputSemanticAttribute"`
+	QueryInput                string                           `json:"queryInput"`
+	QueryInputType            string                           `json:"queryInputType"`
+	Result                    string                           `json:"result"`
+	ResultCardinality         string                           `json:"resultCardinality"`
+	RuntimeGaps               []string                         `json:"runtimeGaps"`
+	InvocationAttempted       bool                             `json:"invocationAttempted"`
+	ObservationReceived       bool                             `json:"observationReceived"`
+	CompletionUnresolved      bool                             `json:"completionUnresolved"`
+	SourceRefs                []string                         `json:"sourceRefs"`
+	AuthorityLimits           []string                         `json:"authorityLimits"`
 }
 
 func TestActorContextR3DerivesReadIntentWithoutInventingRuntimeAuthority(t *testing.T) {
@@ -205,21 +205,21 @@ func deriveActorContextR3ReadIntentProbe(world ir.World, sourceIdx sourceindex.I
 	return actorContextR3ReadIntentProbe{
 		ReferenceFingerprint:      referenceFingerprint,
 		RequiredInputFingerprints: inputs,
-		Procedure:              f.Procedure.ID,
-		Step:                   bp02.ID,
-		BusinessAction:         bp02.BusinessAction,
-		Pattern:                string(pattern.ID),
-		PatternKind:            string(pattern.Kind),
-		Relation:               string(pattern.Relation),
-		Datasource:             string(pattern.Datasource),
-		ApplicationAccess:      string(req.Access),
-		Contract:               string(pattern.ContractQuery.Contract),
-		Query:                  queryName,
-		InputSemanticAttribute: string(binding.TargetAttribute),
-		QueryInput:             string(input.Name),
-		QueryInputType:         string(input.Type),
-		Result:                 string(query.Result),
-		ResultCardinality:      string(query.ResultCardinality),
+		Procedure:                 f.Procedure.ID,
+		Step:                      bp02.ID,
+		BusinessAction:            bp02.BusinessAction,
+		Pattern:                   string(pattern.ID),
+		PatternKind:               string(pattern.Kind),
+		Relation:                  string(pattern.Relation),
+		Datasource:                string(pattern.Datasource),
+		ApplicationAccess:         string(req.Access),
+		Contract:                  string(pattern.ContractQuery.Contract),
+		Query:                     queryName,
+		InputSemanticAttribute:    string(binding.TargetAttribute),
+		QueryInput:                string(input.Name),
+		QueryInputType:            string(input.Type),
+		Result:                    string(query.Result),
+		ResultCardinality:         string(query.ResultCardinality),
 		RuntimeGaps: []string{
 			"actor-principal-unresolved",
 			"input-instance-value-unresolved",
@@ -229,7 +229,7 @@ func deriveActorContextR3ReadIntentProbe(world ir.World, sourceIdx sourceindex.I
 		InvocationAttempted:  false,
 		ObservationReceived:  false,
 		CompletionUnresolved: true,
-		SourceRefs: actorContextR3InputArtifacts(inputs),
+		SourceRefs:           actorContextR3InputArtifacts(inputs),
 		AuthorityLimits: []string{
 			"resolved-read-route-does-not-grant-agent-authority",
 			"application-access-does-not-equal-agent-authorization",

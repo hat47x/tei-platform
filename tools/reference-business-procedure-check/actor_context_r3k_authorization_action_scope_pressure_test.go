@@ -43,7 +43,7 @@ func TestActorContextR3KCurrentRecentOrdersCaseIsScopePressureNotActionAuthority
 	}
 
 	for _, item := range []struct {
-		f fixture
+		f    fixture
 		step string
 	}{
 		{primary, "BP-00"},
@@ -117,11 +117,11 @@ func TestActorContextR3KActionLociHaveDifferentReach(t *testing.T) {
 	corpus := []fixture{primary, followUp}
 
 	business, err := actorContextR3KAffectedAddresses(corpus, actorContextR3KActionScopeCandidateProbe{
-		Locus:      actorContextR3KLocusBusinessStep,
-		Action:     "browse",
-		SourceRef:  "test-only:business-step-action",
-		Procedure:  "order-entry.order-handling",
-		Step:       "BP-00",
+		Locus:     actorContextR3KLocusBusinessStep,
+		Action:    "browse",
+		SourceRef: "test-only:business-step-action",
+		Procedure: "order-entry.order-handling",
+		Step:      "BP-00",
 	})
 	if err != nil {
 		t.Fatal(err)

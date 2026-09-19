@@ -23,8 +23,10 @@ func TestReferenceWorkspaceStopsBeforePhysicalReadWithoutObservedSQLRealization(
 	if err != nil {
 		t.Fatalf("Reference Workspaceを読み込めません: %v", err)
 	}
-	if len(loaded.World.ContractQuerySQLRealizations) != 0 {
-		t.Fatalf("観測済みsourceがないReference WorkspaceにSQL realizationが生成されています: %#v", loaded.World.ContractQuerySQLRealizations)
+	for _, sqlRealization := range loaded.World.ContractQuerySQLRealizations {
+		if sqlRealization.Target.Identity() == "master_data/master_data.customer/find_by_id" {
+			t.Fatalf("観測済みsourceがないmaster_data customer QueryにSQL realizationが生成されています: %#v", sqlRealization)
+		}
 	}
 
 	runner := &referenceSQLRunner{}

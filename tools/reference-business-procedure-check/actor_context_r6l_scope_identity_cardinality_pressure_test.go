@@ -8,11 +8,11 @@ import (
 )
 
 type actorContextR6LScopeBindingProbe struct {
-	Audience        string                                  `json:"audience"`
-	Purpose         string                                  `json:"purpose"`
-	ScopeIdentity   string                                  `json:"scopeIdentity"`
+	Audience        string                                 `json:"audience"`
+	Purpose         string                                 `json:"purpose"`
+	ScopeIdentity   string                                 `json:"scopeIdentity"`
 	Planes          []actorContextR6KPlaneObservationProbe `json:"planes"`
-	AuthorityLimits []string                                `json:"authorityLimits"`
+	AuthorityLimits []string                               `json:"authorityLimits"`
 }
 
 func TestActorContextR6LHumanAndAgentCanShareScopeIdentityWithDifferentUseCardinality(t *testing.T) {

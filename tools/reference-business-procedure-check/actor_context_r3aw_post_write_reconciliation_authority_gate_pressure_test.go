@@ -8,22 +8,15 @@ import (
 )
 
 const (
-	actorContextR3AWStatusUnresolved =
-		"post-write-authoritative-state-reconciliation-authority-unresolved"
-	actorContextR3AWStatusQualified =
-		"post-write-authoritative-state-reconciliation-authority-evidence-qualified"
-	actorContextR3AWStatusMultipleQualified =
-		"post-write-reconciliation-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3AWStatusUnresolved        = "post-write-authoritative-state-reconciliation-authority-unresolved"
+	actorContextR3AWStatusQualified         = "post-write-authoritative-state-reconciliation-authority-evidence-qualified"
+	actorContextR3AWStatusMultipleQualified = "post-write-reconciliation-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3AWAuthorityKind =
-		"operational-post-write-state-reconciliation-authority"
+	actorContextR3AWAuthorityKind = "operational-post-write-state-reconciliation-authority"
 
-	actorContextR3AWRoleDerivedOutcomeCandidate =
-		"derived-outcome-acceptance-candidate"
-	actorContextR3AWRoleRevisionAuthorityPrecedent =
-		"revision-authority-precedent"
-	actorContextR3AWRoleReconciliationAuthorityCandidate =
-		"post-write-reconciliation-authority-candidate"
+	actorContextR3AWRoleDerivedOutcomeCandidate          = "derived-outcome-acceptance-candidate"
+	actorContextR3AWRoleRevisionAuthorityPrecedent       = "revision-authority-precedent"
+	actorContextR3AWRoleReconciliationAuthorityCandidate = "post-write-reconciliation-authority-candidate"
 
 	actorContextR3AWScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3AWScopeAnyBusinessAddress   = "any-business-address"

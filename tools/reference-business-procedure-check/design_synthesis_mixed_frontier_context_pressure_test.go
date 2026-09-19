@@ -27,15 +27,15 @@ type mixedFrontierProofProbe struct {
 	Applicable           bool
 	AcceptedAuthorityRef string
 	MissingAuthorities   []string
-	Reason                string
+	Reason               string
 }
 
 type mixedFrontierEliminationProbe struct {
-	CandidateID            string
-	ContradictedClaim      string
-	DecisiveProofID        string
-	AcceptedAuthorityRef   string
-	Reason                  string
+	CandidateID          string
+	ContradictedClaim    string
+	DecisiveProofID      string
+	AcceptedAuthorityRef string
+	Reason               string
 }
 
 type mixedFrontierContextProbe struct {
@@ -62,7 +62,7 @@ func TestMixedFrontierContextPreservesSupportedExistingAndUnresolvedProposal(t *
 					Result:               mixedFrontierSupportedProbe,
 					Applicable:           true,
 					AcceptedAuthorityRef: "relation:sales.order.customer",
-					Reason:                "accepted relation and read path are exact",
+					Reason:               "accepted relation and read path are exact",
 				},
 			},
 		},
@@ -77,7 +77,7 @@ func TestMixedFrontierContextPreservesSupportedExistingAndUnresolvedProposal(t *
 					Result:             mixedFrontierUnresolvedProbe,
 					Applicable:         true,
 					MissingAuthorities: []string{"accepted snapshot requirement", "copy timing authority", "freshness semantics"},
-					Reason:              "current source neither requires nor forbids an order-owned snapshot",
+					Reason:             "current source neither requires nor forbids an order-owned snapshot",
 				},
 			},
 			UnresolvedDimensions: []string{"snapshot necessity", "copy timing", "freshness semantics"},
@@ -93,7 +93,7 @@ func TestMixedFrontierContextPreservesSupportedExistingAndUnresolvedProposal(t *
 					Result:               mixedFrontierContradictionProbe,
 					Applicable:           true,
 					AcceptedAuthorityRef: "application:order_entry/database:master/access:read",
-					Reason:                "master datasource is accepted as read-only",
+					Reason:               "master datasource is accepted as read-only",
 				},
 			},
 		},

@@ -6,41 +6,41 @@ import (
 )
 
 const (
-	actorContextR3NClassAuthorityUnresolved               = "authority-unresolved"
-	actorContextR3NClassRuntimeContextUnresolved          = "runtime-context-unresolved"
-	actorContextR3NClassEvaluationNotAttempted            = "evaluation-not-attempted"
-	actorContextR3NClassEvaluationObservationMismatch     = "evaluation-observation-mismatch"
-	actorContextR3NClassEvaluatedDenied                   = "evaluated-denied"
-	actorContextR3NClassCurrentContextEvaluationUnresolved = "current-context-evaluation-unresolved"
+	actorContextR3NClassAuthorityUnresolved                    = "authority-unresolved"
+	actorContextR3NClassRuntimeContextUnresolved               = "runtime-context-unresolved"
+	actorContextR3NClassEvaluationNotAttempted                 = "evaluation-not-attempted"
+	actorContextR3NClassEvaluationObservationMismatch          = "evaluation-observation-mismatch"
+	actorContextR3NClassEvaluatedDenied                        = "evaluated-denied"
+	actorContextR3NClassCurrentContextEvaluationUnresolved     = "current-context-evaluation-unresolved"
 	actorContextR3NClassEvaluationFreshnessAuthorityUnresolved = "evaluation-freshness-authority-unresolved"
 )
 
 type actorContextR3NStopInputProbe struct {
-	BusinessAddress   string
-	BlockingReasons   []string
-	EvaluationStatus  string
+	BusinessAddress    string
+	BlockingReasons    []string
+	EvaluationStatus   string
 	ObservationOutcome string
 }
 
 type actorContextR3NStopTaxonomyProbe struct {
-	BusinessAddress         string
-	StopStage               string
-	StopClass               string
-	MachineReasons          []string
-	ResolutionNeedClasses []string
-	RuntimeOutcome          string
-	DownstreamNotAttempted  []string
-	AuthorityLimits         []string
+	BusinessAddress        string
+	StopStage              string
+	StopClass              string
+	MachineReasons         []string
+	ResolutionNeedClasses  []string
+	RuntimeOutcome         string
+	DownstreamNotAttempted []string
+	AuthorityLimits        []string
 }
 
 func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistinct(t *testing.T) {
 	cases := []struct {
-		name         string
-		input        actorContextR3NStopInputProbe
-		wantStage    string
-		wantClass    string
+		name       string
+		input      actorContextR3NStopInputProbe
+		wantStage  string
+		wantClass  string
 		wantNeeds  []string
-		wantReason   string
+		wantReason string
 	}{
 		{
 			name: "requirement",
@@ -48,10 +48,10 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 				BusinessAddress: "order-entry.order-handling/BP-02",
 				BlockingReasons: []string{"authorization-requirement-unresolved"},
 			},
-			wantStage:   "authorization-requirement-authority",
-			wantClass:   actorContextR3NClassAuthorityUnresolved,
-			wantNeeds: []string{"authorization-requirement-authority"},
-			wantReason:  "authorization-requirement-unresolved",
+			wantStage:  "authorization-requirement-authority",
+			wantClass:  actorContextR3NClassAuthorityUnresolved,
+			wantNeeds:  []string{"authorization-requirement-authority"},
+			wantReason: "authorization-requirement-unresolved",
 		},
 		{
 			name: "principal",
@@ -59,10 +59,10 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 				BusinessAddress: "order-entry.order-handling/BP-06",
 				BlockingReasons: []string{"actor-principal-unresolved"},
 			},
-			wantStage:   "actor-principal",
-			wantClass:   actorContextR3NClassRuntimeContextUnresolved,
-			wantNeeds: []string{"runtime-principal"},
-			wantReason:  "actor-principal-unresolved",
+			wantStage:  "actor-principal",
+			wantClass:  actorContextR3NClassRuntimeContextUnresolved,
+			wantNeeds:  []string{"runtime-principal"},
+			wantReason: "actor-principal-unresolved",
 		},
 		{
 			name: "resource-authority",
@@ -70,10 +70,10 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 				BusinessAddress: "order-entry.order-handling/BP-06",
 				BlockingReasons: []string{"authorization-resource-authority-unresolved"},
 			},
-			wantStage:   "authorization-resource-authority",
-			wantClass:   actorContextR3NClassAuthorityUnresolved,
-			wantNeeds:   []string{"authorization-resource-authority"},
-			wantReason:  "authorization-resource-authority-unresolved",
+			wantStage:  "authorization-resource-authority",
+			wantClass:  actorContextR3NClassAuthorityUnresolved,
+			wantNeeds:  []string{"authorization-resource-authority"},
+			wantReason: "authorization-resource-authority-unresolved",
 		},
 		{
 			name: "action-authority",
@@ -81,16 +81,16 @@ func TestActorContextR3NRequirementPrincipalActionAndEvaluationStopsRemainDistin
 				BusinessAddress: "order-entry.order-handling/BP-06",
 				BlockingReasons: []string{"authorization-action-authority-unresolved"},
 			},
-			wantStage:   "authorization-action-authority",
-			wantClass:   actorContextR3NClassAuthorityUnresolved,
-			wantNeeds: []string{"authorization-action-authority"},
-			wantReason:  "authorization-action-authority-unresolved",
+			wantStage:  "authorization-action-authority",
+			wantClass:  actorContextR3NClassAuthorityUnresolved,
+			wantNeeds:  []string{"authorization-action-authority"},
+			wantReason: "authorization-action-authority-unresolved",
 		},
 		{
 			name: "evaluation-not-attempted",
 			input: actorContextR3NStopInputProbe{
-				BusinessAddress: "order-entry.order-handling/BP-06",
-				BlockingReasons: []string{"authorization-not-evaluated"},
+				BusinessAddress:  "order-entry.order-handling/BP-06",
+				BlockingReasons:  []string{"authorization-not-evaluated"},
 				EvaluationStatus: actorContextR3IEvaluationNotEvaluated,
 			},
 			wantStage:  "authorization-evaluation",

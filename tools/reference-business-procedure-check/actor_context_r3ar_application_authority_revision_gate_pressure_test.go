@@ -8,61 +8,54 @@ import (
 )
 
 const (
-	actorContextR3ARStatusUnresolved =
-		"accepted-decision-application-authority-unresolved"
-	actorContextR3ARStatusQualified =
-		"accepted-decision-application-authority-evidence-qualified"
-	actorContextR3ARStatusMultipleQualified =
-		"accepted-decision-application-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3ARStatusUnresolved        = "accepted-decision-application-authority-unresolved"
+	actorContextR3ARStatusQualified         = "accepted-decision-application-authority-evidence-qualified"
+	actorContextR3ARStatusMultipleQualified = "accepted-decision-application-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3ARAuthorityKind =
-		"operational-accepted-decision-application-authority"
+	actorContextR3ARAuthorityKind = "operational-accepted-decision-application-authority"
 
-	actorContextR3ARRoleWriteAuthorityPrecedent =
-		"write-authority-only-precedent"
-	actorContextR3ARRoleCommitCandidateProvenance =
-		"derived-commit-candidate-provenance"
-	actorContextR3ARRoleApplicationAuthorityCandidate =
-		"accepted-decision-application-authority-candidate"
+	actorContextR3ARRoleWriteAuthorityPrecedent       = "write-authority-only-precedent"
+	actorContextR3ARRoleCommitCandidateProvenance     = "derived-commit-candidate-provenance"
+	actorContextR3ARRoleApplicationAuthorityCandidate = "accepted-decision-application-authority-candidate"
 
 	actorContextR3ARScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3ARScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3ARApplicationAuthorityEvidenceProbe struct {
-	EvidenceID                 string
-	EvidenceRole               string
-	RepositoryBacked           bool
-	AuthorityKind              string
-	AuthorityDeclarationRef    string
-	CommitCandidateIdentities  []string
-	WriteAuthorityEvidenceIDs  []string
-	ScopeKind                  string
-	ScopeValue                 string
-	AcceptedDecisionSinkRef    string
-	RevisionAuthorityRef       string
-	IdempotencyContractRef     string
-	WriteOutcomeContractRef    string
-	ApplicationProvenanceRef   string
-	DerivedOnly                bool
+	EvidenceID                string
+	EvidenceRole              string
+	RepositoryBacked          bool
+	AuthorityKind             string
+	AuthorityDeclarationRef   string
+	CommitCandidateIdentities []string
+	WriteAuthorityEvidenceIDs []string
+	ScopeKind                 string
+	ScopeValue                string
+	AcceptedDecisionSinkRef   string
+	RevisionAuthorityRef      string
+	IdempotencyContractRef    string
+	WriteOutcomeContractRef   string
+	ApplicationProvenanceRef  string
+	DerivedOnly               bool
 }
 
 type actorContextR3ARSinkRevisionObservationProbe struct {
-	AcceptedDecisionSinkRef string
-	RevisionAuthorityRef    string
+	AcceptedDecisionSinkRef  string
+	RevisionAuthorityRef     string
 	ObservedDecisionRevision string
-	RevisionObservationRef  string
+	RevisionObservationRef   string
 }
 
 type actorContextR3ARApplicationAuthorityGateProbe struct {
 	ApplicationAuthorityStatus string
-	QualifiedEvidenceIDs        []string
-	AcceptedDecisionSinkRefs    []string
-	ObservedDecisionRevision    string
-	IdempotencyContractRefs     []string
-	WriteOutcomeContractRefs    []string
-	InsufficientEvidenceIDs     []string
-	AuthorityLimits             []string
+	QualifiedEvidenceIDs       []string
+	AcceptedDecisionSinkRefs   []string
+	ObservedDecisionRevision   string
+	IdempotencyContractRefs    []string
+	WriteOutcomeContractRefs   []string
+	InsufficientEvidenceIDs    []string
+	AuthorityLimits            []string
 }
 
 func TestActorContextR3ARCurrentInspectedCorpusKeepsApplicationAuthorityUnresolved(t *testing.T) {
@@ -413,20 +406,20 @@ func actorContextR3ARCompleteEvidence(
 	candidate actorContextR3AQCommitCandidateProbe,
 ) actorContextR3ARApplicationAuthorityEvidenceProbe {
 	return actorContextR3ARApplicationAuthorityEvidenceProbe{
-		EvidenceID:                 id,
-		EvidenceRole:               actorContextR3ARRoleApplicationAuthorityCandidate,
-		RepositoryBacked:           true,
-		AuthorityKind:              actorContextR3ARAuthorityKind,
-		AuthorityDeclarationRef:    id + "/authority-declaration",
-		CommitCandidateIdentities:  []string{candidate.CommitCandidateIdentity},
-		WriteAuthorityEvidenceIDs:  []string{candidate.WriteAuthorityEvidenceID},
-		ScopeKind:                  actorContextR3ARScopeExactBusinessAddress,
-		ScopeValue:                 businessAddress,
-		AcceptedDecisionSinkRef:    candidate.AcceptedDecisionSinkRef,
-		RevisionAuthorityRef:       candidate.WriteAuthorityRevisionAuthorityRef,
-		IdempotencyContractRef:     id + "/idempotency-contract",
-		WriteOutcomeContractRef:    id + "/write-outcome-contract",
-		ApplicationProvenanceRef:   id + "/application-provenance",
+		EvidenceID:                id,
+		EvidenceRole:              actorContextR3ARRoleApplicationAuthorityCandidate,
+		RepositoryBacked:          true,
+		AuthorityKind:             actorContextR3ARAuthorityKind,
+		AuthorityDeclarationRef:   id + "/authority-declaration",
+		CommitCandidateIdentities: []string{candidate.CommitCandidateIdentity},
+		WriteAuthorityEvidenceIDs: []string{candidate.WriteAuthorityEvidenceID},
+		ScopeKind:                 actorContextR3ARScopeExactBusinessAddress,
+		ScopeValue:                businessAddress,
+		AcceptedDecisionSinkRef:   candidate.AcceptedDecisionSinkRef,
+		RevisionAuthorityRef:      candidate.WriteAuthorityRevisionAuthorityRef,
+		IdempotencyContractRef:    id + "/idempotency-contract",
+		WriteOutcomeContractRef:   id + "/write-outcome-contract",
+		ApplicationProvenanceRef:  id + "/application-provenance",
 	}
 }
 

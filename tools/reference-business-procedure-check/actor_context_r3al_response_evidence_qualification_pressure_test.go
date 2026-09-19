@@ -13,21 +13,21 @@ const (
 )
 
 type actorContextR3ALEvidenceQualificationWitnessProbe struct {
-	EvidenceRef             string
-	QualificationStatus     string
-	QualificationSourceRef  string
+	EvidenceRef            string
+	QualificationStatus    string
+	QualificationSourceRef string
 }
 
 type actorContextR3ALEvidenceAssessmentProbe struct {
-	RequestIdentity              string
-	RequestRevisionIdentity      string
-	ResponseRef                  string
-	EvidenceRef                  string
-	ProvidedInformationClasses   []string
-	MatchingEvidenceNeedClasses  []string
-	QualificationStatus          string
-	QualificationSourceRefs      []string
-	AuthorityLimits              []string
+	RequestIdentity             string
+	RequestRevisionIdentity     string
+	ResponseRef                 string
+	EvidenceRef                 string
+	ProvidedInformationClasses  []string
+	MatchingEvidenceNeedClasses []string
+	QualificationStatus         string
+	QualificationSourceRefs     []string
+	AuthorityLimits             []string
 }
 
 func TestActorContextR3ALObservedEvidenceStartsQualificationUnresolved(t *testing.T) {
@@ -285,11 +285,11 @@ func actorContextR3ALCurrentCorrelation(
 		t.Fatal(err)
 	}
 	response := actorContextR3AKResponseWitnessProbe{
-		RequestIdentity:             record.RequestIdentity,
-		RequestRevisionIdentity:     record.RequestRevisionIdentity,
-		ResponseRef:                 "test-only:r3al/current-response",
-		ProvidedInformationClasses:  append([]string(nil), providedInformationClasses...),
-		EvidenceRefs:                append([]string(nil), evidenceRefs...),
+		RequestIdentity:            record.RequestIdentity,
+		RequestRevisionIdentity:    record.RequestRevisionIdentity,
+		ResponseRef:                "test-only:r3al/current-response",
+		ProvidedInformationClasses: append([]string(nil), providedInformationClasses...),
+		EvidenceRefs:               append([]string(nil), evidenceRefs...),
 	}
 	result, err := actorContextR3AKCorrelateResponse(record, response)
 	if err != nil {
