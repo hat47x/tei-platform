@@ -1871,6 +1871,56 @@ residual
 production dependency registry / impact graph / watcher / scheduler / cache invalidation / auto reauthorizationは追加しない。
 
 
+
+### R3AE — Root change / category re-evaluation outcome
+
+R3ADでexplicit existing-dependency bindingを通してselected re-evaluation reasonを得た後、そのreasonをR3Uで正規化し、R3Wのsame-profile category fingerprint比較へ渡す。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AE_ROOT_CHANGE_CATEGORY_VALUE_OUTCOME_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ae_root_change_category_value_outcome_pressure_test.go`
+
+```text
+root delta
+  -> explicit existing-dependency binding
+  -> selected re-evaluation reason
+  -> category recomputation
+  -> changed / unchanged after re-evaluation
+```
+
+とする。
+
+```text
+reason exists
+  != category meaning changed
+
+root changed
+  != all bound categories changed
+
+category changed
+  != response action selected
+```
+
+を維持する。
+
+requirement Reference root content changeでfreshness-stop coreのmachine-reasonsが同じままなら `unchanged-after-reevaluation`、実際にcategory fingerprintが変われば `changed-after-reevaluation` とする。
+
+prior Authorization Observationはrefined R3ADでcurrent runtime dependencyへbindingされないため、allowed -> denied revisionも `projection-dependency-binding-unresolved` residualのまま保持し、selected machine-reasons / runtime-outcome resultを生成しない。
+
+locator-only deltaは既存 `source-refs` reasonへbindingされた場合のみR3W比較へ進み、reasonがあってもactual SourceRefs値が不変ならunchanged、actual locatorがprojectionへ反映されればchangedとする。
+
+HumanでomittedされたAgent-only `known-authority-facts` はHuman selected resultへ昇格させない。Agentではselected reasonとactual fingerprint changeがあればchanged resultを持てる。
+
+R3ADのresidual deltaはselected category change authorityではない。ResidualRootDeltaしかないのにselected category fingerprintが変わる場合はR3Wのunexplained category changeとしてfail closedする。
+
+Stale / Fresh / Safe / Reusable / ShouldReevaluate / AutoRebuild / RetryRequired / CacheValid / NextAction等は追加しない。
+
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
