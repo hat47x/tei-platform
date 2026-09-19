@@ -5,6 +5,7 @@ files=(
   tools/reference-business-procedure-check/knowledge_portability_r0_pressure_test.go
   tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
   tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
+  tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go
 )
 
 unformatted="$(gofmt -l "${files[@]}")"
@@ -15,7 +16,7 @@ fi
 
 run_tests() {
   go test -count=1 -v ./tools/reference-business-procedure-check \
-    -run '^(TestKnowledgePortabilityR0|TestSecondApplication)'
+    -run '^(TestKnowledgePortabilityR0|TestSecondApplication|TestGateCSecondApplication)'
 }
 
 if [[ -n "${TEI_REFERENCE_EVIDENCE_OUT:-}" ]]; then

@@ -148,6 +148,13 @@ test-only source:
 
 Gate C Ready後の第二Application Referenceは、探索・Portability・composition・Acceptanceを別branchへ分裂させず、一つのISSUE-000040 workstreamとして開始する。
 
+Entry preflight:
+
+- `plan/GATE_C_SECOND_APPLICATION_ENTRY_PREFLIGHT_2026-09.md`
+- `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
+
+Gate CのReady labelだけでは開始せず、`B/R/T1`、Semantic / Functional / Visual Evidence、Target差分が揃っていることを確認する。
+
 開始契約:
 
 - `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`

@@ -2,7 +2,7 @@
 
 - Status: focused CI runner baseline
 - Date: 2026-09-19
-- Scope: Knowledge Portability R0 / second Application Pre-Gate / schema sufficiency
+- Scope: Knowledge Portability R0 / second Application Pre-Gate / schema sufficiency / Gate C entry preflight
 - Product Gate impact: None
 - Canonical source impact: None
 
@@ -55,6 +55,7 @@ TEI_REFERENCE_EVIDENCE_OUT=knowledge-portability-reference-test.txt \
 
 - `TestKnowledgePortabilityR0`
 - `TestSecondApplication`
+- `TestGateCSecondApplication`
 
 Goの`-run`で実行対象を絞るが、package全体はcompileされる。
 
@@ -166,6 +167,7 @@ successful runを得た場合にのみ、
 Knowledge Portability R0
 second Application Pre-Gate contract
 second Application schema sufficiency
+Gate C second Application entry preflight
 ```
 
 についてExecutable Evidenceが得られたと記録する。
