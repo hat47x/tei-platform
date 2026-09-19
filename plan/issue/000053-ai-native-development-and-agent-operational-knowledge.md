@@ -4214,6 +4214,57 @@ multiple-qualifiedではprecedence unresolvedを維持し、ReconciliationResult
 
 
 
+### R3BC — Explicit reconciliation-result acceptance witness / candidate boundary
+
+R3BB Gateがsingle-qualifiedでもreconciliation resultを自動accept/rejectせず、explicit witnessが存在する場合だけtest-only result acceptance candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BC_RECONCILIATION_RESULT_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3bc_reconciliation_result_acceptance_witness_candidate_pressure_test.go`
+
+```text
+single-qualified R3BB Gate
+  + exact plane-local candidate identities
+  + exact qualified result authority
+  + explicit accept / reject witness
+  + acceptance provenance
+  -> test-only reconciliation-result acceptance candidate
+
+candidate
+  != authoritative result applied
+  != StateSynchronized
+  != CurrentAuthority applied
+```
+
+とする。
+
+witnessはexact:
+
+- ReconciliationCandidateIdentity
+- ResultAcceptanceAuthorityEvidenceID
+- execution EvidenceAcceptanceCandidateIdentity
+- current-state EvidenceAcceptanceCandidateIdentity
+- ReconciliationResultDecisionLocusRef
+- CurrentStateAcceptanceLocusRef
+
+へbindingする。
+
+Decisionは `accept-reconciliation-result` / `reject-reconciliation-result` のexplicit witnessだけから取得し、両planeがaccept candidateであること、matching revision、reported-applied等から推測しない。
+
+reject result candidateをretry / rollback / compensation / failureへ変換しない。
+
+multiple-qualified R3BB Gateはwitnessで迂回できず、exact duplicateはnormalizeできる一方、decision / locus / provenance conflictはfail closedする。
+
+current RepositoryのR3BB production authorityはunresolvedであるため、R3BC candidate caseはsynthetic single-qualified pressureである。Gate C / R7A / R7B EvidenceをOperational result acceptance witnessへ流用しない。
+
+ReconciliationResultAccepted / StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
