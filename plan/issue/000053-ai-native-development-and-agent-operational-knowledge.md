@@ -3033,6 +3033,50 @@ AcceptedAuthorityValue / AcceptedDecision / AcceptanceDecision / SelectedAuthori
 
 
 
+### R3AO — Explicit acceptance witness / exact binding boundary
+
+R3ANでacceptance authority evidenceがqualifyしても、それだけでassertionをaccept / rejectしない。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AO_EXPLICIT_ACCEPTANCE_WITNESS_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ao_explicit_acceptance_witness_boundary_pressure_test.go`
+
+```text
+single-qualified acceptance authority evidence
+  + exact AssertionIdentity
+  + exact AcceptanceAuthorityEvidenceID
+  + explicit accept / reject
+  + AcceptanceProvenanceRef
+  -> provenance-bound acceptance witness observation
+```
+
+とする。
+
+current Repository-backed R3AN stateは `acceptance-authority-unresolved` なので、current corpusだけからacceptance witnessを生成しない。accept/reject caseはsynthetic complete acceptance-authority evidenceによるPressureである。
+
+witnessが一つのcandidateを名指ししてもR3ANの `multiple-qualified-precedence-unresolved` を迂回させない。no witnessではsingle-qualified authorityがあってもdecisionを推測しない。
+
+accept / reject witnessが競合しても両方をattributed observationとして保持し、winner / last-writer / quorumを作らない。exact duplicateだけnormalizeする。
+
+```text
+observed accept witness
+  != Accepted Decision applied
+  != current authority
+
+observed reject witness
+  != Authorization denied
+  != RuntimeOutcome = denied
+```
+
+AcceptedAuthorityValue / AcceptedDecision / CurrentAuthority / R3Y authority rewrite / ToolCall / Command / NextAction / CanExecute等は追加しない。
+
+次段ではwitness observationをAccepted Decisionとしてauthoritative sourceへcommitするためのseparate write authority / provenance Evidence GateをPressureする。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
