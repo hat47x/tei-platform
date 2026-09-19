@@ -3578,6 +3578,62 @@ production writer / transaction / CAS / transport / retry scheduler / idempotenc
 
 
 
+### R3AT — Write-attempt observation / accepted outcome separation
+
+R3AS write-attempt candidateへwriterから返ったと仮定するtest-only observationをbindingしても、raw observationをaccepted write outcomeへ昇格させない。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AT_WRITE_ATTEMPT_OBSERVATION_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3at_write_attempt_observation_pressure_test.go`
+
+```text
+exact write-attempt candidate
+  + attributed writer observation
+  + idempotency identity echo
+  + attributed post-write revision observation
+  -> test-only raw attempt observation
+
+raw attempt observation
+  != accepted write outcome
+  != Accepted Decision committed
+  != current authority applied
+```
+
+raw ReportedOutcomeはtest-onlyに:
+
+- writer-reported-applied
+- writer-reported-not-applied
+- writer-reported-conflict
+- writer-reported-unknown
+
+を区別するが、Accepted Decision write outcomeのauthority enumではない。
+
+```text
+writer-reported-applied
+  != Accepted Decision committed
+
+writer-reported-conflict
+  != retry authorized
+```
+
+とする。
+
+PostWriteObservedDecisionRevisionはReportedOutcomeと独立axisで保持し、revision changed / unchangedからoutcome acceptanceを推論しない。
+
+WriterObservationRef / PostWriteRevisionObservationRefを必須とし、WriteAttemptCandidateIdentity / sink / IdempotencyIdentityへexact bindingする。
+
+exact duplicate observationだけnormalizeし、ReportedOutcome / post-write revision / observation provenanceが競合する場合はaggregation / acceptance authority未解決としてfail closedする。
+
+AcceptedWriteOutcome / OutcomeAccepted / Committed / AcceptedDecision / NewDecisionRevision / CurrentAuthority / RuntimeOutcome / Retry / ToolCall / Command / NextAction等は追加しない。
+
+production writer / transport / signature validation / outcome acceptance engine / decision store mutation / retry schedulerは追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
