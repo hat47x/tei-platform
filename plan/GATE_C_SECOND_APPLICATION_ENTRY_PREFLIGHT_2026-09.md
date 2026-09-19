@@ -151,24 +151,24 @@ blocked
 2026-09-19時点:
 
 - Gate B = Ready
-- Handover Baseline = \`B\`
-- \`R = e5231839a5dcc62cce1181a2731fcb7c70d16736\`
-- First Web Target build \`T1\` = 未成立
-- Gate C = Not Ready
+- Handover Baseline = `B`
+- `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`
+- First Web Target build `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
+- Gate C = Ready
+- actual Semantic / Functional / Visual Evidence = acquired
+- Target Difference Handoff = recorded
 
-したがってcurrent stateはPreflight上も\`blocked\`である。
+actual entry record:
 
-これはGate B未成立によるblockではない。
+- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
 
-\`\`\`text
-Gate B / Handover ready
-  ↓
-First Web Target / Gate C Evidence pending
-  ↓
-second Application entry blocked
-\`\`\`
+actual pressure:
 
-である。
+- `tools/reference-business-procedure-check/second_application_gate_c_actual_entry_pressure_test.go`
+
+current entryは`entry-evidence-complete`として扱える。
+
+これはsecond ApplicationのAcceptanceではない。S3 destination Decisionsは別途必要である。
 
 ## 6. Negative pressure
 
@@ -302,12 +302,13 @@ Preflight PASSだけでS4以降へ飛ばない。
 
 ## 12. 完了条件
 
-- [ ] Gate C authorityとentry completenessを分離した
-- [ ] B / R / T1を別identityとして要求した
-- [ ] Semantic / Functional / Visualを別Evidenceとして要求した
-- [ ] Visual-onlyを拒否した
-- [ ] Target差分recordを必須にした
-- [ ] current pre-target stateをblockedとして説明できる
-- [ ] authoring shortcutをqualificationへ持ち込んでいない
-- [ ] portable runnerへ接続した
-- [ ] Master PlanのGate B stale記述を修正した
+- [x] Gate C authorityとentry completenessを分離した
+- [x] B / R / T1を別identityとして要求した
+- [x] Semantic / Functional / Visualを別Evidenceとして要求した
+- [x] Visual-onlyを拒否した
+- [x] Target差分recordを必須にした
+- [x] pre-target stateをblockedとして説明できる
+- [x] actual Gate C Ready entryを`entry-evidence-complete`として固定した
+- [x] authoring shortcutをqualificationへ持ち込んでいない
+- [x] portable runnerへ接続した
+- [x] Master PlanのGate B stale記述を修正した
