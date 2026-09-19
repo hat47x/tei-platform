@@ -1,64 +1,57 @@
 # Second Application Reference — S5 Freshness / Base Capture
 
-- Status: Historical freshness — captured Proposal superseded before Acceptance
-- Date: 2026-09-19
+- Status: Revised Proposal freshness captured / executable pressure and Acceptance witness pending
+- Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
-- Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base Repository revision: `e2856e6e568b6be966c6b8689ebea479ec184a4a`
+- Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
+- Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
+- Review base Repository revision: `0dd20cf9100823b22499473d26c7caad7881a9dc`
 - Shared Acceptance result: Not established
-- Acceptance witness: Absent / old Proposal no longer eligible
-
-## Supersession notice
-
-このfreshness captureはold Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` に対するhistorical Evidenceである。
-
-current revised Proposal fingerprintは `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` へ変わったため、本captureをそのAcceptanceへ流用しない。
-
-shared Customer authorityのsource fingerprintsはrequalification inputとして保持する。
+- Acceptance witness: Absent
 
 ## 1. 目的
 
-S5 Shared Acceptanceの前提として、Proposalが参照するshared authorityとorigin provenanceをcurrent mainで再解決し、review baseを明示的に固定する。
+revised three-source Proposalが参照するshared authorityとorigin provenanceをcurrent mainで再解決し、S5 review用のfreshness baseを固定する。
 
-このcaptureはAcceptanceそのものではない。
+このcaptureはAcceptanceでもExecutable Validationでもない。
 
 ```text
 freshness captured
+  != validation passed
   != accepted
-
-repository revision captured
-  != runtime authority
 ```
-
-である。
 
 ## 2. Review base
 
-2026-09-19、S5 Proposal merge後のcurrent mainを次で固定した。
+今回実際にshared authority / provenanceとValidation implementationをinspectしたrevision:
 
 ```text
-reviewBaseRepositoryRevision =
-  e2856e6e568b6be966c6b8689ebea479ec184a4a
+0dd20cf9100823b22499473d26c7caad7881a9dc
 ```
 
-S5 Proposalをmainへ統合したrevision:
+このrevisionで次のGit blob identityを確認した。
 
 ```text
-4d4f8acc39a569d0f99c7fc617de30bf11e455f8
+customer semantic source:
+  c348122b33581e450974d23393d98fb8aa838388
+
+customer contract source:
+  c1eea63b053fb936ae7aebbac82180af015b42e1
+
+origin customer-reference pattern:
+  252f6396cbc2394d1f26e748b01d54f49a2e1ecf
+
+application-pattern validation:
+  e137189a5945efaec0c14d82f92c62ba98fa16fd
+
+reference contract-query cross validation:
+  8c2a4b5bd89baf3c4562d62bfed009ce3094bf40
 ```
 
-前回capture後にはR3B authority boundary、solo-development flow、repository health check、Issue番号整理、Gate A runner等の変更が入った。またS4/S5 test-only sourceのcompile / gofmt修正も入った。しかしSecond Applicationが参照する以下のCanonical source blobは今回のreview base `e2856e6e568b6be966c6b8689ebea479ec184a4a` でも不変だった。
+後続の無関係なcommitだけでこのcaptureを自動staleにしない。Acceptance時にはrelevant source identityを再確認する。
 
-- `reference/workspace/semantic/customer/customer.tei`
-- `reference/workspace/databases/master-data/contracts/customer.tei`
-- `reference/workspace/applications/order-entry/patterns/customer-reference.tei`
-
-これは「main上の全変更が無関係なら永久にfresh」という規則ではない。Acceptance時点でbaseが進んでいる場合は再captureする。
-
-## 3. Exact authority source fingerprints
-
-Source Indexのfingerprint contractはraw source bytesのSHA-256である。
+## 3. Exact shared-authority Source Index fingerprints
 
 ### Customer Semantic / Customer ID Type
 
@@ -101,11 +94,9 @@ fingerprint:
   sha256:ae17bb1078c0a27ceeb20a5ece20431d98bee403c28fe7bc468643691263ef21
 ```
 
-origin Patternはprovenanceであり、destination linked authorityではない。
+origin Patternはprovenanceでありdestination authorityではない。
 
 ## 4. Requalification result
-
-current RepositoryからS1/S2 qualificationを再導出した場合、Acceptance前に必要な期待状態は次。
 
 ```text
 semantic-data:customer.customer
@@ -129,96 +120,81 @@ application-pattern:order_entry.customer_reference
   reuse = adopted-local-variation
 ```
 
-source fingerprintが上記captureから変化した場合、silent applyしない。
+shared source fingerprintが変わった場合はsilent applyせず、S1/S2 requalificationへ戻る。
 
-## 5. Proposal freshness
+## 5. Revised Proposal freshness
 
-S4 Application + Pattern sourceのexact Proposal fingerprintは引き続き:
+current exact Proposal:
 
 ```text
-b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
+semantic source
+  + application source
+  + pattern source
+  = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
 ```
 
-である。
+旧two-source fingerprintはsuperseded済みであり、Acceptance対象にしない。
 
-freshness captureはProposal本文を変更しない。
+## 6. Validation source-inspection result
 
-```text
-same Proposal fingerprint
-+ same shared authority fingerprints
-+ explicit review base
-  -> freshness evidence complete
+current implementation inspectionで確認した境界:
 
-freshness evidence complete
-  != Shared Acceptance
-```
+- reference Patternは実在Semantic Relationを要求する
+- Relation keyはsource / target attributeを明示する
+- key両端は同じSemantic type identityを要求する
+- Contract Query resultはRelation targetと一致する
+- Relation `one` とQuery `zero-or-one` は互換
 
-## 6. Acceptance entry state
+revised Proposalはこれらを満たすよう構成した。
 
-このcaptureにより、S5の二つの前提のうちbase/freshness側は満たせる。
+ただしこれはimplementation source inspectionであり、actual loader / validator executionではない。
 
-現在:
+## 7. Acceptance entry state
 
 ```text
-proposalFingerprint = captured
-reviewBase          = captured
-shared freshness    = captured
-acceptanceWitness   = absent
-decision            = pending
+proposalFingerprint       = captured
+reviewBase                = captured
+shared freshness          = captured
+source-inspection preflight = complete
+revised executable pressure = absent
+acceptanceWitness         = absent
+decision                  = pending
 ```
 
 したがって:
 
 ```text
-S5 freshness = complete
-Shared Acceptance = blocked-missing-witness
+S5 freshness = current for inspected inputs
+Shared Acceptance eligibility = blocked
 S6 source authoring = blocked
 ```
 
-である。
+## 8. Drift policy
 
-## 7. Drift policy
-
-explicit Acceptance witnessを取得する前にmainが進んだ場合:
+Acceptance前にmainが進んだ場合:
 
 1. current main revisionを確認する
-2. S5 Proposal自体が変化していないことを確認する
-3. shared authority / provenance source fingerprintを再導出する
-4. relevant fingerprintが同じなら、後続の無関係なcommitだけを理由にProposalをstaleへしない
-5. relevant fingerprintが変わったらS1/S2 requalificationとS4/S5 reviewをやり直す
-6. Acceptance witness取得時には、その時点のcurrent mainと最後に検査したbase revisionの関係を記録する
-
-`reviewBaseRepositoryRevision`は「該当Sourceを実際に検査したrevision」であり、この文書自身のcommitなど無関係な後続commitによって自己無効化しない。commit数やpath名だけでfreshnessを判断しない。
-
-## 8. Test-only Source pressure
-
-- `tools/reference-business-procedure-check/second_application_s5_freshness_capture_pressure_test.go`
-
-確認すること:
-
-1. current S1/S2 packetが引き続きapplicable
-2. shared subjectsがexact source pathへ解決する
-3. exact source SHA-256がcaptureと一致する
-4. origin Patternはprovenanceのままである
-5. S4 Proposal fingerprintが変化していない
-6. freshness completeでもAcceptance witness absentならS6へ進めない
+2. revised Proposal component bytesが変化していないか確認する
+3. shared authority / provenance fingerprintを再確認する
+4. Validation contractに関係するsource変更があればpreflightを再評価する
+5. relevant input不変なら無関係なcommitだけでstale-allしない
+6. relevant input変更ならrequalification / review regenerationへ戻る
 
 ## 9. Evidence height
 
-この文書とtest-only sourceはSource / Design Evidenceである。
+この文書はSource / Design Evidenceである。
 
-focused testのactual PASSが得られた場合のみExecutable Evidenceへ昇格する。
-
-GitHub Actions runner availabilityとは別に、portable runner:
-
-- `tools/run-knowledge-portability-reference-evidence.sh`
-
-で同じtest prefixを実行可能にする。
+revised Proposal向けGo pressureとfull repository health checkのactual PASSはまだ取得していない。
 
 ## 10. Conclusion
 
-S5 Proposalに対するcurrent base / freshnessは、revisionとexact source fingerprintまで固定できた。
+revised Proposalのshared authority / provenance / validation preflight inputsはcurrent mainに対してcaptureできた。
 
-残るShared Acceptanceの前提はexplicit Acceptance witnessである。
+残るpre-Acceptance条件は:
 
-それを取得するまではS6 authoritative source authoringを開始しない。
+```text
+health-checked revised executable pressure
+explicit Acceptance witness
+```
+
+である。

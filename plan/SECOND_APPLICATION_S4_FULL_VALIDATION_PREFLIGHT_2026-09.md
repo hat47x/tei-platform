@@ -1,6 +1,6 @@
 # Second Application Reference — S4 Full-Validation Preflight / Proposal Revision
 
-- Status: Revised Proposal defined / Shared Acceptance not attempted
+- Status: Revised Proposal defined / source-inspection preflight complete / executable pressure pending / Shared Acceptance not attempted
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Trigger: S6 preflight against current workspace Validation
@@ -97,6 +97,8 @@ workspace manifest変更、Persistence Mapping、Environment binding、Provider�
 既存S3/S4/S5 Go pressureは旧2-source Proposalを前提とする部分があり、このrevisionをExecutable Evidenceとして証明しない。Repository policy上、コード変更はlocal `tools/repository-health-check.sh` PASSが必須であるため、health-capable WSL cloneを実行できないこの接続ではGo sourceを変更しない。
 
 次のhealth-capable executionではS3 decision pressure、S4 Semantic/Application/Pattern pressure、temporary workspace full validation、revised fingerprintをS5 pressureへ反映し、Repository health checkを通す。
+
+S5のrevised review contractは `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` に再生成した。ただしExecutable pressure未更新のため、Shared Acceptance eligibilityはまだ成立しない。
 
 ## 8. Acceptance boundary
 

@@ -1,75 +1,81 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Reset — prior Proposal superseded / revised review pending
-- Date: 2026-09-19
+- Status: Revised review defined / executable pressure pending / explicit Acceptance witness pending
+- Date: 2026-09-20
 - Primary workstream: ISSUE-000040
-- Proposal: `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md`
-- Next step: health-checked revised Source pressure / S5 review regeneration
+- Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
+- Revised Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
+- Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
+- Review base inspected at: `0dd20cf9100823b22499473d26c7caad7881a9dc`
 - Shared Acceptance result: Not established
-- Authoritative Application source created: No
+- Authoritative destination source created: No
 - Environment binding created: No
 - Target implementation started: No
 
-## Reset notice
-
-S6 preflightにより、このpacketが対象としたold Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` はShared Acceptance前にsupersededした。
-
-current revised Proposal fingerprintは `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` であり、`plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md` を正本とする。
-
-old fingerprintへのwitnessをrevised Proposalへ流用しない。現在はexplicit witness待ちではなく、まずrevised Source pressure / review packet整合待ちである。
-
 ## 1. 目的
 
-S4 composition candidateをShared Acceptanceで判断できるreview packetへ固定する。
+full workspace Validationのpreflightで修正したthree-source Proposalを、Shared Acceptanceへ渡せるreview contractとして固定する。
 
-この段階ではAI自身がProposalをAcceptedへ昇格させない。
+ただしcurrent Go pressureは旧two-source Proposalを前提としているため、この文書だけでAcceptance eligibilityを成立させない。
 
 ```text
-review packet complete
+revised review defined
+  != executable pressure current
   != accepted
 
-explicit witness observed
-  != runtime authority granted
+explicit witness
+  != runtime authority
 ```
 
 を維持する。
 
-## 2. Exact Proposal identity
+## 2. Exact revised Proposal identity
 
-S4のApplication sourceとPattern sourceを次の順序で結合する。
+exact payloadは次の順で構成する。
 
 ```text
+<Semantic source>
+\n---\n
 <Application source>
 \n---\n
 <Pattern source>
 ```
 
-UTF-8 exact bytesに対するSHA-256:
+各component末尾に追加newlineを含めない。
 
-```text
-b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
-```
+- Semantic SHA-256: `1005c6deb670c277c8b80fb0b353f1eecea690594f2ef4b80df28cc638736e63`
+- Application SHA-256: `f96fdb46f9385c205d360f56d0f91a6e841ff31b348ebf1db2cf03381751772f`
+- Pattern SHA-256: `41c8f81ebab384486d4df6a7cdaade07df8d07c89d22c25c2291d8b71a583ab1`
+- Bundle length: `741 bytes`
+- Bundle SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 
-Acceptance witnessは少なくともこのProposal identityを対象にする。
-
-S4 sourceが変わった場合、旧fingerprintへのAcceptanceを新Proposalへ流用しない。
+旧fingerprintへのAcceptance witnessをrevised Proposalへ流用しない。
 
 ## 3. Semantic Diff
 
 ### Added destination-owned meaning
 
 ```text
-application candidate:
+semantic namespace:
   repair_intake
 
-relation candidate:
+semantic data:
+  repair_intake.intake
+
+semantic attribute:
+  repair_intake.intake.customer_id
+
+semantic relation:
   repair_intake.intake.customer
 
-application pattern candidate:
+application:
+  repair_intake
+
+application pattern:
   repair_intake.customer_reference
 
 datasource alias:
-  customer_master
+  repair_intake/customer_master
 ```
 
 ### Reused shared authority
@@ -81,7 +87,7 @@ database-contract:master_data.customer
 database-contract-query:master_data.customer/find_by_id
 ```
 
-これらshared authority自体は変更しない。
+Customer Data / Customer ID Type / Contract / Queryをdestinationへcopyしない。
 
 ### Provenance only
 
@@ -89,220 +95,182 @@ database-contract-query:master_data.customer/find_by_id
 application-pattern:order_entry.customer_reference
 ```
 
-origin Patternをdestination authorityへ昇格させない。
+origin Pattern / Relation / alias / Environment bindingをdestination authorityとして継承しない。
 
 ### No change
 
-S5 Proposalは次を変更しない。
+このProposalは次を変更しない。
 
-- Customer Semantic / Type
-- Database / Contract / Query
+- shared Customer Semantic / Type
+- `master_data` Database / Customer Contract / Query
 - origin `order_entry` Application / Pattern
+- Persistence Mapping
 - development / production Environment
 - Provider configuration
 - Runtime Permission / Resource grant
-- First Web Target implementation
 - Business Procedure
+- First Web Target implementation
 
-## 4. Persistence impact
+## 4. Validation preflight rationale
 
-Acceptance後に初めて、通常のTEI authoritative sourceとしてApplication / Patternをauthorする。
+current Validation source inspectionでは次を要求する。
 
-S5時点ではfile writeを行わない。
+- reference PatternのRelationがworkspaceに実在する
+- Relation keyのsource / target attributeが実在する
+- key両端のSemantic type identityが一致する
+- Relation targetがContract Query result Dataと一致する
+- Relation cardinality `one` はQuery result `one` または `zero-or-one` と互換
+
+current shared Contractは `find_by_id -> customer.customer zero-or-one` であり、revised Relationは `customer.customer one` なので、この互換規則に合う設計である。
+
+これはSource inspectionによるDesign Evidenceであり、temporary workspaceをactual load / validateしたExecutable Evidenceではない。
+
+## 5. Persistence / authoring impact after Acceptance
+
+Acceptance後に限り、S6で次をauthoritative source candidateとして作成する。
+
+```text
+reference/workspace/semantic/repair-intake/intake.tei
+reference/workspace/applications/repair-intake/application.tei
+reference/workspace/applications/repair-intake/patterns/customer-reference.tei
+```
+
+workspace manifest変更、Persistence Mapping、Environment binding、Provider、Authorization grantは不要である。
 
 ```text
 Accepted semantic change
-  -> S6 source authoring candidate
-  != source already written
+  -> S6 three-source authoring
+  != Environment accepted
+  != runtime authority granted
 ```
-
-authoring file locationはS6でcurrent Repository conventionsに従って決定する。
-
-## 5. UI / Target effect
-
-S5 ProposalそのものはTarget実装を変更しない。
-
-将来のS8ではread-only Customer lookup surfaceを実現するが、Acceptance時点のUI effectは:
-
-```text
-none yet
-```
-
-である。
-
-route / DOM / selector / HTML / CSSはAcceptance対象のCanonical identityではない。
 
 ## 6. Authorization / execution boundary
 
-S3/S4で固定した:
+S3の次を保持する。
 
 ```text
 authorization requirement = required-current-authority-check
 ```
 
-を維持する。
-
-ただしS5 Acceptanceは:
+S5 Acceptanceが成立しても:
 
 - principalをgrantしない
 - Resource / Permissionをgrantしない
 - Lease / ownership / fencingを作らない
 - future executionを恒久許可しない
 
-```text
-Proposal accepted at t0
-  != current execution authority at tN
-```
+effectful operationではeffect直前にcurrent authorityを別途確認する。
 
-である。
-
-effectful operationへ進む場合はeffect直前のcurrent authorityを再評価する。
-
-## 7. Explicit unresolved retained through Acceptance
-
-次はS5 ProposalのSemantic acceptanceを妨げないが、後段ownerへ明示的に残す。
+## 7. Retained unresolved
 
 - exact authorization principal
 - exact Resource / Permission identity
 - development binding target
 - production binding target
 - Provider verification
-- Target realization details
-- actual reload / Validation Evidence
+- actual S6 reload / Validation Evidence
 - Driver / Target Evidence
 - change propagation Evidence
 
-unresolvedを自動補完してAcceptance条件から消さない。
+unresolvedをAcceptance時に推測で埋めない。
 
 ## 8. Acceptance prerequisites
 
-Shared Acceptanceを実際に成立させる前に、少なくとも次を要求する。
-
 ### A. Exact Proposal identity
 
-- S4 Application / Pattern exact source
-- Proposal SHA-256 = `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
+fingerprint:
 
-### B. Freshness / base model capture
+```text
+c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
+```
 
-- current Canonical model revisionまたは同等のaccepted base identityを明示取得
-- S1/S2で参照したshared authoritiesがstaleでないことを再確認
-- staleならsilent applyせずrebase / regenerate / manual reviewへ戻す
+を対象にする。
 
-S5 review packet作成時点ではbase model revisionを捏造しない。
+### B. Current shared-authority freshness
 
-### C. Review of Semantic Diff
+`plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md` のcurrent captureを用い、Customer / Contract / origin provenanceのrelevant sourceが変化していないことを確認する。
 
-reviewerは少なくとも:
+### C. Revised executable pressure
 
-- new destination-owned identities
-- reused shared authority
-- provenance-only origin Pattern
-- no Environment / Runtime grant
-- retained unresolved
+health-capable cloneで少なくとも次を更新・実行する。
 
-を確認できること。
+1. S3 pressureへdestination Semantic owner / keyを反映
+2. S4 pressureをSemantic + Application + Patternのthree-sourceへ更新
+3. temporary workspaceまたは同等fixtureでfull Validationを実行
+4. revised fingerprintをS5 pressureへ反映
+5. `tools/repository-health-check.sh` をPASSさせる
 
-### D. Explicit Acceptance witness
+この条件が未取得の間、Source inspectionだけでAcceptance-readyへ昇格しない。
 
-Acceptance authorityを持つactorによるexplicit witnessを要求する。
+### D. Semantic Diff review
 
-witnessは少なくとも:
+reviewerはdestination-owned Semantic / Application / Patternとshared reuseを区別できること。
 
-- exact Proposal fingerprint
+### E. Explicit Acceptance witness
+
+Acceptance authorityを持つactorのexplicit witnessを要求する。witnessは少なくとも:
+
+- exact revised Proposal fingerprint
 - accepted / rejected decision
 - decision context
-- unresolved retained
+- retained unresolved
 - witness identity / locus
 - decision timeまたはrevision identity
 
-へ結び付けられる形を想定する。
+へ結び付ける。
 
-このSource pressureではwitness schemaを新しいCanonical kindとして追加しない。
-
-一般的な「作業を進める」「次へ進む」という実行指示だけでは、このProposalのaccepted / rejected Decisionを示すwitnessとして扱わない。Acceptanceへ進むには、少なくともexact Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` を対象にしていることが一意に分かる採用判断を要求する。
+一般的な「作業を進める」「次へ進む」という実行指示は、このexact Proposalへのaccepted / rejected Decisionとして扱わない。
 
 ## 9. Current decision state
 
-現在:
-
 ```text
-proposalFingerprint = b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
-baseModelRevision   = e2856e6e568b6be966c6b8689ebea479ec184a4a
-sharedFreshness     = captured
-acceptanceWitness   = absent
-decision            = pending
+proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
+reviewBaseInspected       = 0dd20cf9100823b22499473d26c7caad7881a9dc
+sharedFreshness           = captured
+sourceInspectionPreflight = complete
+revisedExecutablePressure = absent
+acceptanceWitness         = absent
+decision                  = pending
 ```
 
 したがって:
 
 ```text
-S5 review packet = ready
-Shared Acceptance = not yet established
-S6 source authoring = blocked
+S5 review contract = defined
+Shared Acceptance eligibility = blocked
+  - missing revised executable pressure
+  - missing explicit acceptance witness
+S6 authoritative authoring = blocked
 ```
 
 である。
 
 ## 10. Negative cases
 
-### Proposal fingerprint mismatch
+- old fingerprintへのwitnessを新Proposalへ流用しない
+- parser-only successをfull Validation successへ昇格しない
+- Source inspectionをactual test PASSとして扱わない
+- witnessがあってもstale / unverified Proposalをsilent applyしない
+- Semantic AcceptanceをRuntime authorizationへ変換しない
+- AIが自分のProposalをself-acceptしない
 
-旧Proposalへのwitnessを変更後Proposalへ利用しない。
+## 11. Evidence height
 
-### Witness missing
+このpacketはSource / Design Evidenceである。
 
-review packetが完全でもAcceptedにしない。
+current Repositoryには旧two-source Proposal向けGo pressureが残っており、revised three-source Proposalのactual focused `go test` / full repository health PASSはまだ取得していない。
 
-### Base model / shared authority freshness unresolved
+## 12. Conclusion
 
-witnessがあってもsilent applyしない。
+S6 preflightで見つかったRelation source欠落はProposalへ戻して修正した。
 
-### Unresolved Runtime authority
-
-Semantic AcceptanceをRuntime authorizationへ変換しない。
-
-### AI self-acceptance
-
-Proposal生成actorが自分の出力を自動的にAccepted Decisionへ昇格させない。
-
-## 11. Test-only Source pressure
-
-- `tools/reference-business-procedure-check/second_application_s5_shared_acceptance_review_pressure_test.go`
-
-確認すること:
-
-1. exact S4 sourceからProposal fingerprintを再計算できる
-2. Semantic Diffがdestination add / shared reuse / no Environment mutationを分離する
-3. witness absentではAcceptanceを成立させない
-4. base model revision absentではAcceptance-readyにしない
-5. witnessだけでもAcceptedへ自動昇格しない
-6. base model + witnessが揃ってもtest-only qualifierは`eligible-for-shared-acceptance`までに留める
-7. AcceptanceからRuntime authorityを導出しない
-8. S6 source authoringをまだ開始しない
-
-## 12. Evidence height
-
-このS5 packet / test-only sourceはSource / Design Evidenceである。
-
-main上では後続作業によりS4/S5 test-only sourceのcompile / gofmt不整合が修正されたが、このS5 packetに紐づくfocused `go test`実行ログは取得していないため、actual focused PASSはまだ主張しない。
-
-またtest-only qualifierが`eligible-for-shared-acceptance`になっても、それ自体をAcceptance witnessにしない。
-
-## 13. Conclusion
-
-S4 Proposalはexact identityとSemantic Diffを持つreview packetまで進んだ。
-
-現在の停止点は明確である。
+現在の次工程は:
 
 ```text
-current base / freshness capture = complete
-explicit Acceptance witness       = pending
-
-both satisfied
-  -> Shared Acceptance decision
+health-checked revised Source pressure
+  -> current S5 eligibility review
+  -> explicit Acceptance witness
+  -> S6 authoritative source authoring
 ```
 
-freshnessの正本は `plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md` とする。
-
-explicit Acceptance witnessが得られるまではS6 authoritative sourceへ進まない。
+である。

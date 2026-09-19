@@ -241,6 +241,9 @@ application-pattern:order_entry.customer_reference
 
 - Application ID candidate = `repair_intake`
 - Business context = repair intake
+- Semantic namespace candidate = `repair_intake`
+- source Data candidate = `repair_intake.intake`
+- source key attribute = `repair_intake.intake.customer_id`
 - Business Relation candidate = `repair_intake.intake.customer`
 - Pattern candidate = `repair_intake.customer_reference`
 - datasource alias candidate = `customer_master`
@@ -270,7 +273,18 @@ S4 composition candidateは、S3 decisionを通常の既存grammarへ写す。
 概念形:
 
 ```text
+namespace repair_intake
+
+data Intake {
+    attribute customerId type customer.customer_id
+    relation customer to customer.customer one
+        key repair_intake.intake.customer_id -> customer.customer.customer_id
+}
+
+---
+
 application repair_intake {
+    uses semantic repair_intake
     uses semantic customer
 
     database customer_master {
@@ -281,6 +295,8 @@ application repair_intake {
         }
     }
 }
+
+---
 
 pattern repair_intake.customer_reference reference {
     relation repair_intake.intake.customer
