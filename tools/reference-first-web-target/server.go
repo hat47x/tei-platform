@@ -59,7 +59,6 @@ func (s *webTargetServer) handleManifest(w http.ResponseWriter, _ *http.Request)
 	}
 }
 
-
 func (s *webTargetServer) handleReadScenario(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
