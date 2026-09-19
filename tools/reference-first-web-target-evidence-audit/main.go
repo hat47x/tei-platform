@@ -99,6 +99,16 @@ type observationArtifact struct {
 	Result       any    `json:"result"`
 }
 
+type runMetadata struct {
+	RunIdentity                 string `json:"runIdentity"`
+	TargetBuildRevision         string `json:"targetBuildRevision"`
+	RepositoryPreRunRevision    string `json:"repositoryPreRunRevision"`
+	RepositoryPreRunClean       bool   `json:"repositoryPreRunClean"`
+	RepositoryPostRunRevision   string `json:"repositoryPostRunRevision"`
+	RepositoryPostRunClean      bool   `json:"repositoryPostRunClean"`
+	SourceQualificationPassed   bool   `json:"sourceQualificationPassed"`
+}
+
 type evidenceArtifactDigest struct {
 	File   string `json:"file"`
 	SHA256 string `json:"sha256"`
@@ -164,6 +174,20 @@ func main() {
 }
 
 func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, error) {
+	var metadata runMetadata
+	if err := readJSONArtifact(dir, "run-metadata.json", &metadata); err != nil {
+		return evidenceSummary{}, err
+	}
+	if metadata.RunIdentity != runID ||
+		metadata.TargetBuildRevision != expected.TargetBuildRevision ||
+		metadata.RepositoryPreRunRevision != expected.TargetBuildRevision ||
+		metadata.RepositoryPostRunRevision != expected.TargetBuildRevision ||
+		!metadata.RepositoryPreRunClean ||
+		!metadata.RepositoryPostRunClean ||
+		!metadata.SourceQualificationPassed {
+		return evidenceSummary{}, fmt.Errorf("run metadata does not prove one clean Target revision: %+v", metadata)
+	}
+
 	var manifest manifestArtifact
 	if err := readJSONArtifact(dir, "manifest.json", &manifest); err != nil {
 		return evidenceSummary{}, err
@@ -288,6 +312,8 @@ func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, er
 	}
 
 	artifactNames := []string{
+		"run-metadata.json",
+		"source-tests.log",
 		"manifest.json",
 		"read.json",
 		"submit-success.json",
@@ -295,6 +321,9 @@ func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, er
 		"submit-authorization-denied.json",
 		"custom-submit-get.html",
 		"custom-submit-success.html",
+	}
+	if err := requireNoReferenceCredentialMaterial(dir, artifactNames); err != nil {
+		return evidenceSummary{}, err
 	}
 	digests := make([]evidenceArtifactDigest, 0, len(artifactNames))
 	for _, name := range artifactNames {
@@ -313,6 +342,15 @@ func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, er
 		TargetBuildRevision:        expected.TargetBuildRevision,
 		TargetAdapter:              expected.TargetAdapter,
 		Host:                       expected.Host,
+		SourceQualification: evidenceCheck{
+			Passed: true,
+			Checks: []string{
+				"source tests passed with fixed Go environment",
+				"pre-run Repository was clean at targetBuildRevision",
+				"post-run Repository remained clean at the same targetBuildRevision",
+			},
+			Artifacts: []string{"run-metadata.json", "source-tests.log"},
+		},
 		SemanticConformance: evidenceCheck{
 			Passed: true,
 			Checks: []string{
@@ -485,6 +523,27 @@ func readJSONArtifact(dir, name string, target any) error {
 	}
 	if err := json.Unmarshal(data, target); err != nil {
 		return fmt.Errorf("decode %s: %w", name, err)
+	}
+	return nil
+}
+
+func requireNoReferenceCredentialMaterial(dir string, names []string) error {
+	for _, name := range names {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return fmt.Errorf("read %s for credential scan: %w", name, err)
+		}
+		for _, forbidden := range []string{
+			"editor-secret",
+			"viewer-secret",
+			"locked-secret",
+			"disabled-secret",
+			"credential-ref://legacy/",
+		} {
+			if strings.Contains(string(data), forbidden) {
+				return fmt.Errorf("%s contains Reference credential material %q", name, forbidden)
+			}
+		}
 	}
 	return nil
 }
