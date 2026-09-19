@@ -1301,6 +1301,66 @@ plane observationの入力順序は比較結果へ影響させない。
 
 R6MはR3AM以降のassertion / acceptance boundaryを再実装せず、bounded input observationの差分だけを扱う。
 
+#### R6N same-scope membership delta — 2026-09-19
+
+R6Mでcardinality deltaを観測できるようになった後、countが同じままmemberだけが入れ替わるケースを見落とさないため、同一scope内のmember identity差分を追加する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6n_same_scope_membership_delta_pressure_test.go`
+
+plane member identityは内容本文ではなく、既存のbounded identityだけから構成する。
+
+```text
+routed knowledge member
+  = KnowledgeKey
+
+routed use member
+  = KnowledgeKey
+  + ProjectionCategory
+  + DependencyKey
+  + DependencyReason
+
+consumer-local use member
+  = OriginClass
+  + ProjectionCategory
+  + DependencyKey
+  + DependencyReason
+```
+
+current BP-06 Human -> Agentではshared Procedure knowledge membershipは変わらず、Agent-only `known-authority-facts` use memberだけがaddedになる。
+
+また:
+
+```text
+before use count = 1
+after use count  = 1
+```
+
+でもmemberがmachine-reasonsからknown-authority-factsへ置換された場合:
+
+```text
+added   = 1
+removed = 1
+```
+
+として観測できる。
+
+一方、同じKnowledgeKeyのsource fingerprintだけが変わった場合はmembership changeへ変換しない。revision provenanceはR6Hの責務に残す。
+
+```text
+source revision changed
+  != knowledge membership changed
+
+member substitution
+  != semantic meaning changed
+  != freshness changed
+```
+
+R6NもScopeIdentity一致を必須とし、異なるscope間のmember集合を同一意味上のdeltaとして比較しない。
+
+R6NはR3AM以降のauthority assertion / acceptance処理を再実装しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

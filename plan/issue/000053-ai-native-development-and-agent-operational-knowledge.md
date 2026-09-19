@@ -2521,6 +2521,52 @@ R6M observation deltaは`ScopeChanged` / `SemanticChanged` / `Fresh` / `ShouldRe
 
 R3AM以降のqualified assertion / Accepted Decision境界とは独立し、knowledge input observationのみを対象とする。
 
+### R6N — same-scope membership delta
+
+R6Mのcardinality deltaだけでは、countが同じままmember identityが置換されたケースを検出できない。R6Nでは同じScopeIdentity内のmember set差分をPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6n_same_scope_membership_delta_pressure_test.go`
+
+member identity:
+
+```text
+routed knowledge
+  -> KnowledgeKey
+
+routed use
+  -> KnowledgeKey + Category + DependencyKey + DependencyReason
+
+consumer-local use
+  -> OriginClass + Category + DependencyKey + DependencyReason
+```
+
+Human / Agent shared Procedure caseではknowledge memberは同じで、Agent側に追加されたuse edgeだけが`Added`へ現れる。
+
+同数置換も:
+
+```text
+count delta = 0
+added       = 1
+removed     = 1
+```
+
+として保持するため、cardinalityだけでは見えないbounded input composition差を失わない。
+
+ただしKnowledgeKeyが同じままfingerprintだけが変化してもmembership deltaにはしない。
+
+```text
+revision provenance
+  != membership identity
+```
+
+revision差はR6H、scope declaration差はR6L、cardinality差はR6M、member set差はR6Nとして責務を分離する。
+
+R6Nは`SemanticChanged` / `ContentChanged` / `Fresh` / `ShouldReevaluate` / `Authorized`を導入せず、member differenceをauthority/freshness判断へ昇格させない。
+
+R3AM以降のqualified authority assertion / acceptanceとは独立する。
+
 
 
 
