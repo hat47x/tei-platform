@@ -259,8 +259,8 @@ First Web Targetの実装revisionは`T1`として別に追跡します。
 ```text
 Handover B at R  ← 固定済み
       ↓ meaning baseline
-Web build T1  ← 未着手
-      ↓
+Web build T1  ← source implementation / Evidence tooling成立
+      ↓          actual clean T1 runは未取得
 Gate C Evidence
 ```
 
@@ -271,7 +271,7 @@ Gate Cでは次を別Evidenceとして扱います。
 3. Visual Fidelity Evidence
 4. 必要に応じたPerformance Evidence
 
-First Targetはまだ実装 / Evidence取得前です。次のIssueは`ISSUE-000007`（GitHub #70）です。
+First TargetのReference sourceは実装済みで、現在は`ISSUE-000007` / `ISSUE-000028`においてactual clean Target run、Visual capture、final Gate C readiness auditの取得段階です。
 
 ## Studio / Authoring
 
