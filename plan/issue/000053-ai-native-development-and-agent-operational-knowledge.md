@@ -3903,6 +3903,61 @@ StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Ret
 
 
 
+### R3AY — Reconciliation execution observation / current-state Evidence boundary
+
+R3AX reconciliation candidateの後段でも、reconciliation execution observationとpost-reconciliation current-state observationを別Evidence planeとして扱う。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AY_RECONCILIATION_EXECUTION_OBSERVATION_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ay_reconciliation_execution_observation_pressure_test.go`
+
+```text
+reconciliation intent prepared
+  != reconciliation execution observed
+  != post-reconciliation current-state observed
+  != authoritative state current
+```
+
+とする。
+
+execution observationはraw class:
+
+- reconciler-reported-applied
+- reconciler-reported-not-applied
+- reconciler-reported-conflict
+- reconciler-reported-unknown
+
+だけを保持し、reported-appliedをStateSynchronizedへ昇格させない。
+
+current-state observationはCurrentStateObservationRef / ObservedDecisionRevision / ObservedStateFingerprintを保持できるが:
+
+```text
+revision matches candidate context
+  != reconciliation execution proven
+  != RevisionAccepted
+  != Accepted Decision current
+```
+
+である。
+
+execution/current-state observationは互いに独立で、一方から他方を補完しない。
+
+R3AX accept candidateだけをexecution-observation入口にし、reject candidateをrollback / compensation / retryへ変換しない。
+
+両観測はReconciliationCandidateIdentity / AcceptedDecisionSinkRef / RevisionAuthorityRefへexact bindingし、wrong bindingはfail closedする。
+
+exact duplicateはnormalizeできるが、same ObservationRefでoutcome / revision / fingerprintが競合する場合はwinnerを選ばずfail closedする。
+
+current Repositoryではproduction reconciliation executor / current-state observer authorityを確認していないため、R3AY observation caseはsynthetic pressureである。Gate C ReadyやFirst Web Target EvidenceをOperational reconciliation authorityへ転用しない。
+
+StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
