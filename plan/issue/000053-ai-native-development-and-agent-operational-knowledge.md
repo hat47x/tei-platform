@@ -3634,6 +3634,44 @@ production writer / transport / signature validation / outcome acceptance engine
 
 
 
+
+### R3AU — Write outcome acceptance authority Evidence Gate
+
+R3AT raw writer observationをauthoritative write outcomeへ進める前に、outcome acceptance authorityがRepository-backedに存在するかをEvidence GateでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AU_WRITE_OUTCOME_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3au_write_outcome_acceptance_authority_gate_pressure_test.go`
+
+```text
+raw writer observation
+  + repository-backed outcome-acceptance authority evidence
+  -> outcome-acceptance Evidence Gate
+
+Gate qualified
+  != raw outcome accepted
+  != Accepted Decision committed
+  != current authority applied
+```
+
+R3AR WriteOutcomeContractRefやR3AT raw ObservationIdentity自体をacceptance authorityへ昇格させない。
+
+qualifying evidenceはexact WriteAttemptCandidateIdentity / ObservationIdentity / WriteOutcomeContractRef / ReportedOutcome / AcceptedDecisionSinkRef / BusinessAddress scopeへbindingし、OutcomeDecisionLocusRef / OutcomeAcceptanceProvenanceRefを要求する。
+
+writer-reported-applied / not-applied / conflict / unknownはraw classのまま保持し、post-write revision changed / unchangedからacceptanceを推論しない。
+
+multiple-qualified evidenceはprecedence unresolvedとし、scope specificity / source location / corroboration count / revision / raw outcome内容からwinnerを選ばない。
+
+AcceptedWriteOutcome / OutcomeAccepted / AcceptedDecision / CurrentAuthority / RetryEligible / ToolCall / Command / NextAction等は追加しない。
+
+次段ではsingle-qualified outcome-acceptance authorityのsynthetic pressure下でも、explicit outcome acceptance witnessをexact ObservationIdentity + authority + decision + provenanceへbindingし、accepted-outcome candidateまでに留める。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
