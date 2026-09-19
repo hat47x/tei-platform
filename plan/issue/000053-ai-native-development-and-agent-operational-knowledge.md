@@ -3005,6 +3005,47 @@ RepeatabilityStatus = not-observed
 
 current Repository stateからactual raw Functional artifact digestを推測・再構成しない。Repository外Evidenceへアクセスしてactual R7A handoff artifactを生成・fingerprintできた時点でのみ、次のactual replay executionへ進む。
 
+#### R7B — actual handoff execution intake source
+
+PR #824でR7A actual handoff acquisition runnerが統合済みとなったため、handoff取得後のR7B受領sourceを追加する。
+
+source:
+
+- `tools/reference-first-web-target-r7b-intake/main.go`
+- `tools/reference-first-web-target-r7b-intake/main_test.go`
+
+inputはactual R7A handoff artifactとacquisition receiptの2つである。
+
+receipt -> exact handoff bytes -> handoff top-level provenance -> six behavior candidate provenanceをfail closedで照合し、invalid / mismatched / unclean acquisitionを受領しない。
+
+特に:
+
+- receiptのhandoff SHA-256とactual handoff input bytes SHA-256
+- Gate C judgment record revision
+- B / R / T / Target / Host / run / VisualRun
+- final readiness / Semantic-Functional summary SHA-256
+- handoff tool revision = repository post-run revision
+- six behavior完全集合
+- raw behavior artifact SHA-256
+- `ReplayStatus=not-executed`
+- `CoverageClass=behavior-unit`
+
+を要求する。
+
+output candidateは常に:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus = not-observed
+```
+
+から開始する。
+
+したがってR7B intake source統合はactual replay executionではない。actual Gate C Evidence bytesへアクセスしてR7A acquisition runnerを実行し、そのhandoff / receiptをこのsourceへ入力した後にのみ、actual replay executionの次段へ進める。
+
+採用Gate C EvidenceはISSUE-000057記録上Repository外の1台のWSL2へ保持されている。current laneからそのbytesへアクセスしていないため、actual handoff / intake取得成功はまだ主張しない。
+
+
 
 
 ### R3AF — Category re-evaluation outcome / Operational explanation
