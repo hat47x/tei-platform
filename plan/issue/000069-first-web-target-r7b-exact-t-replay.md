@@ -1,6 +1,6 @@
 # ISSUE-000069: First Web TargetのR7B exact-T replayとrepeatability Evidenceを取得する
 
-- 状態: Ready
+- 状態: In Progress
 - 提案日: 2026-09-20
 - 性格: Replayable Behavior Evidence / operational verification / Reference execution
 - 主担当要求: RQ-010 / RQ-021 / RQ-022 / RQ-023 / RQ-025
