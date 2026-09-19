@@ -2567,6 +2567,65 @@ R6Nは`SemanticChanged` / `ContentChanged` / `Fresh` / `ShouldReevaluate` / `Aut
 
 R3AM以降のqualified authority assertion / acceptanceとは独立する。
 
+### R6O — retained-member provenance delta
+
+R6Nまででscope / cardinality / membershipを分離した後、同一memberが残ったままsource provenanceだけが変化するケースを独立して観測する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6o_retained_member_provenance_delta_pressure_test.go`
+
+R6Oは同じScopeIdentity内でbefore / after双方に存在するKnowledgeKeyだけを対象とする。
+
+各retained knowledgeについて:
+
+- KnowledgeKey
+- KnowledgeKind
+- RequiredInputFingerprints
+- SourceRefs
+
+のbefore / after snapshotを保持する。
+
+```text
+same member
+  + fingerprint differs
+  -> provenance delta
+
+same member
+  + SourceRefs differ
+  -> provenance delta
+```
+
+ただし:
+
+```text
+provenance delta
+  != semantic changed
+  != stale
+  != reevaluation required
+```
+
+である。
+
+SourceRefs差をlocator-only change / semantic change等へ分類するのはR6Oの責務ではない。
+
+knowledge memberの追加・削除はR6Nに残し、R6Oはadded / removed memberをrevisionとして扱わない。
+
+routed use memberだけが変化し、knowledge provenanceが同じ場合もR6O deltaは空である。
+
+これにより入力観測の責務は:
+
+```text
+R6L  scope identity
+R6M  cardinality delta
+R6N  membership delta
+R6O  retained-member provenance delta
+```
+
+と分離される。
+
+R6OはR3AO / R3APのAccepted Decision、authority write、current authority applicationを扱わない。
+
 
 
 
