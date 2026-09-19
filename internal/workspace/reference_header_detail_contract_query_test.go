@@ -74,7 +74,7 @@ func TestReferenceWorkspaceDefinesHeaderDetailContractQueryWithoutParentIdentity
 
 	for _, mapping := range loaded.World.Persistence {
 		if mapping.SemanticData == "sales.order_line" {
-			t.Fatalf("Contract Query authoringだけでOrderLine Persistence Mappingを追加しています: %#v", mapping)
+			requireExplicitDatabaseAuthoring(t, loaded, "persistence:"+string(mapping.ID), "Contract Queryとは別のOrderLine Persistence Mapping")
 		}
 	}
 
@@ -85,7 +85,7 @@ func TestReferenceWorkspaceDefinesHeaderDetailContractQueryWithoutParentIdentity
 	}
 	for _, sqlRealization := range loaded.World.ContractQuerySQLRealizations {
 		if sqlRealization.Target == target {
-			t.Fatalf("物理EvidenceなしにOrderLine SQL realizationを追加しています: %#v", sqlRealization)
+			requireExplicitDatabaseAuthoring(t, loaded, "contract-query-sql-realization:"+target.Identity()+"/sql/"+string(sqlRealization.Provider), "OrderLine SQL realization")
 		}
 	}
 

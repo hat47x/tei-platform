@@ -40,13 +40,13 @@ func TestReferenceHeaderDetailPatternReusesManyRelationWithoutPersistenceAssumpt
 
 	for _, mapping := range result.World.Persistence {
 		if mapping.SemanticData == "sales.order_line" {
-			t.Fatalf("header-detail Patternの追加だけでOrderLine Persistence Mappingが作られています: %#v", mapping)
+			requireExplicitDatabaseAuthoring(t, result, "persistence:"+string(mapping.ID), "header-detail Patternとは別のOrderLine Persistence Mapping")
 		}
 	}
 	for _, database := range result.World.Databases {
 		for _, contract := range database.Contracts {
 			if containsCanonicalID(contract.Reads, "sales.order_line") || containsCanonicalID(contract.Writes, "sales.order_line") {
-				t.Fatalf("header-detail Patternの追加だけでDatabase ContractへOrderLineが公開されています: %#v", contract)
+				requireExplicitDatabaseAuthoring(t, result, "database-contract:"+string(contract.ID), "OrderLineを公開するDatabase Contract")
 			}
 		}
 	}
