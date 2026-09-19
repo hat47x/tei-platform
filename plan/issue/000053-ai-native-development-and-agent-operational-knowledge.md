@@ -5,7 +5,7 @@
 - 性格: Product validation / AI-native development / operational agent reference
 - 主担当要求: RQ-010 / RQ-015 / RQ-018〜RQ-021 / RQ-025〜RQ-030
 - 関連ADR: ADR-0022 / ADR-0023 / ADR-0028
-- 関連Issue: ISSUE-000027 / ISSUE-000042 / ISSUE-000047 / ISSUE-000052
+- 関連Issue: ISSUE-000027 / ISSUE-000042 / ISSUE-000047 / ISSUE-000052 / ISSUE-000069
 
 ## 目的
 
@@ -2865,6 +2865,8 @@ Gate C actual Ready
 ```
 
 R7B operational contractの正本は `plan/R7B_REPLAY_RECIPE_REPEATABILITY_CONTRACT_2026-09.md` とする。
+
+actual exact-T replayの実装・検証・完了条件は `ISSUE-000069` を作業正本とする。この節のPacket M/V/E分割は並行sessionのcoordination boundaryであり、実装詳細を000053へ重複定義しない。競合時は000069の実装境界を優先する。
 
 direct-to-mainの単独開発フローへ移行したため、R7専用の新しいremote branch / PRを作らない。並行AI sessionはmainを都度再取得し、次のwork packetを重複所有しない。
 
