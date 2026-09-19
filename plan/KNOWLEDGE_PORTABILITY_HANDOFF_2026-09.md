@@ -337,6 +337,38 @@ Gate C Ready後の実Reference開始順序とbranch収束規則は、
 
 Knowledge Portabilityは同じprimary second-Application workstream内の一段階として扱い、独立した長期implementation branchへ分離しない。
 
+### actual S2 status — 2026-09-19
+
+Gate C Ready後の最初の実Referenceについて、S1 qualificationからS2 portability relationまでをSource-definedにした。
+
+- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
+- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
+
+current relation:
+
+```text
+customer.customer
+  -> linked reuse
+
+customer.customer_id
+  -> linked reuse
+
+master_data.customer ^2
+  -> conditional linked reuse
+
+master_data.customer/find_by_id
+  -> conditional linked reuse
+
+order_entry.customer_reference
+  -> adopted local variation provenance
+
+order_entry.master Environment binding
+  -> rebind-required
+```
+
+destination Application identity / Relation / Pattern ID / alias / Authorization / Environment bindingは未決定であり、S2から自動生成しない。
+
 ## 15. Gate C後の最初の実Reference
 
 ISSUE-000040で予定されている第二Applicationを使う。
