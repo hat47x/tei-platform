@@ -2751,6 +2751,36 @@ R3AQ以降のAccepted Decision commit / write authority境界とは独立する�
 
 
 
+
+### R6 Source-pressure exit assessment
+
+R6A〜R6QのSelective Knowledge Routingは、ReferenceのSource / Design Evidenceとして次の責務分離を一巡した。
+
+```text
+available != selected != qualified != materialized
+router mechanism != qualified meaning != bounded observation meaning
+routed knowledge != consumer-local input
+knowledge body != use edge
+scope identity != cardinality
+cardinality != membership != retained provenance
+```
+
+R6Qでexact / broad router substitutionがR6P downstream observationへ漏れないことまで確認したため、具体的defectなしにR6R以降を機械的に増やさない。
+
+未達・非主張:
+
+- actual runtime latency / token / retrieval quality Evidence
+- AI Builder / Agent task success Evidence
+- embedding / model-native / Jev等のrouter比較
+- production Context Packet / prompt serialization
+- freshness / acceptance / execution authority
+- R7 replayable behavior actual Evidence
+- 新Requirementへの昇格
+
+R6再開は、actual consumerで境界違反が観測された場合、production router候補をR6 invariantsへPressureする場合、またはGate C actual EvidenceからR7へ接続する場合に限定する。
+
+現時点ではR6成果を既存原則のReference Evidenceとして保持し、R3 authority chainとFirst Web Target / Gate Cの並行レーンを重複実装しない。
+
 ### R3AF — Category re-evaluation outcome / Operational explanation
 
 R3AEのcategory fingerprint outcomeとR3YのAuthorization freshness authorityを別軸のままOperational explanationへ戻す。
