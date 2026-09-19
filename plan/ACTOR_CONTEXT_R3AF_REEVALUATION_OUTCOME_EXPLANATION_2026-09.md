@@ -65,7 +65,32 @@ machine-reasons = unchanged-after-reevaluation
 
 これは「再計算したprojection meaningが同じだった」という意味だけである。
 
-## 3. changedもnext actionを決めない
+## 3. outcome identityはfingerprint / reasonを保持する
+
+selected category outcomeはmachine explanation上、少なくとも:
+
+```text
+category
+status
+before fingerprint
+after fingerprint
+exact re-evaluation reasons
+```
+
+を保持する。
+
+Human / Agentで共通selected categoryについては、このunderlying outcome identityを共有する。
+
+presentationでfingerprintをinline省略してもよいが:
+
+```text
+inline omission
+  != underlying outcome identity loss
+```
+
+である。
+
+## 4. changedもnext actionを決めない
 
 categoryが `changed-after-reevaluation` でも:
 
@@ -84,7 +109,7 @@ meaning changed
 
 を維持する。
 
-## 4. residual / unselectedも別に説明する
+## 5. residual / unselectedも別に説明する
 
 R3AD / R3AEで残る:
 
@@ -103,7 +128,7 @@ selected category unchanged
 
 prior Authorization Observation revisionのようなno-binding residualは、current runtime outcomeやcategory changeへ変換せず残す。
 
-## 5. Human / Agent
+## 6. Human / Agent
 
 Human / Agentのshared category resultは同じidentity / statusを持つ。
 
@@ -118,7 +143,7 @@ different disclosed result set
 
 ResidualRootDeltaの詳細開示もpurpose-boundにできるが、Humanでinline省略したことを「residualなし」へ変換しない。
 
-## 6. display wordingはderived
+## 7. display wordingはderived
 
 R3AFはstable API textを作らない。
 
@@ -134,7 +159,7 @@ Authorization freshness authorityは引き続き未解決です。
 
 ただし文言はderived presentationでありauthorityではない。
 
-## 7. test-only source
+## 8. test-only source
 
 - `tools/reference-business-procedure-check/actor_context_r3af_reevaluation_outcome_explanation_pressure_test.go`
 
@@ -142,14 +167,15 @@ Pressureするcase:
 
 1. requirement Reference change + machine-reasons unchanged -> unchanged outcome + freshness authority unresolved
 2. actual machine-reasons change -> changed outcome + freshness authority unresolved
-3. unchanged outcomeからFresh / Safe / Reusableを生成しない
-4. prior Observation no-binding residual -> category outcomeなし / residual保持
-5. Human / Agent shared machine-reasons outcome identityが一致する
-6. Agent-only known-authority-facts outcomeを許す
-7. unselected / residualをresolvedへ丸めない
-8. Retry / Reauthorize / Approval / NextAction / HandoffOwner等を追加しない
+3. changed / unchanged双方でbefore / after fingerprintとexact reason identityを保持する
+4. unchanged outcomeからFresh / Safe / Reusableを生成しない
+5. prior Observation no-binding residual -> category outcomeなし / residual保持
+6. Human / Agent shared machine-reasons outcome identityが一致する
+7. Agent-only known-authority-facts outcomeを許す
+8. unselected / residualをresolvedへ丸めない
+9. Retry / Reauthorize / Approval / NextAction / HandoffOwner等を追加しない
 
-## 8. current conclusion
+## 9. current conclusion
 
 R3AFで固定するのは:
 
@@ -171,7 +197,7 @@ changed category meaning
 
 production UI schema、notification transport、ticket routing、automatic reevaluation schedulerは追加しない。
 
-## 9. 次
+## 10. 次
 
 次段では、このexplanationをHuman / Agentへpurpose-boundにmaterializeするとき:
 

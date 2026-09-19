@@ -2198,7 +2198,7 @@ Prompt本文、token budget、all-skill metadata、routing diagnostics、selecte
 
 ### R3AF — Category re-evaluation outcome / Operational explanation
 
-R3AEでroot deltaからselected reasonを経てactual category fingerprintのchanged / unchangedを確定した後、そのoutcomeをOperational explanationへ戻す。
+R3AEのcategory fingerprint outcomeとR3YのAuthorization freshness authorityを別軸のままOperational explanationへ戻す。
 
 正本:
 
@@ -2208,42 +2208,30 @@ test-only source:
 
 - `tools/reference-business-procedure-check/actor_context_r3af_reevaluation_outcome_explanation_pressure_test.go`
 
-R3AFでは:
-
 ```text
-projection category outcome
-Authorization freshness authority status
+category outcome
+  = changed / unchanged-after-reevaluation
+  + before / after fingerprint
+  + exact reason identity
+
+freshness authority status
+  = separate Authorization authority question
+
+unselected / residual
+  = separately preserved
 ```
 
-を別軸で保持する。
+とする。
 
-current freshness-stopでは:
+`unchanged-after-reevaluation` はtracked reasonでcategoryを再計算しmeaningが同じだったことだけを示し、Fresh / Safe / Reusable / prior Observation reuse authorityを意味しない。
 
-```text
-machine-reasons = unchanged-after-reevaluation
-reevaluation authority = unresolved
-reuse authority = unresolved
-```
+`changed-after-reevaluation` もmeaning changeの説明であり、retry / rebuild / reauthorize / handoff / next actionを選ばない。
 
-が同時に成立し得る。
+Human / Agentの共通selected category outcome identityは一致させ、Agent-only `known-authority-facts` の追加outcomeは許す。
 
-```text
-unchanged category meaning
-  != freshness authority resolved
-  != prior Observation reusable
-  != safe / fresh / authorized
+R3T UnselectedChangesとR3AD ResidualRootDeltasはcategory outcomeへ吸収せず、global stale/freshへ丸めない。
 
-changed category meaning
-  != retry / rebuild / approval / next action
-```
-
-を維持する。
-
-R3T UnselectedChangesとR3AD ResidualRootDeltasもcategory outcomeへ吸収せず、Humanでinline省略した場合も「存在しない」「解決済み」へ変換しない。
-
-Human / Agentのshared category resultは同じidentity / statusを持ち、Agent-only `known-authority-facts` はAgent explanationだけに追加できる。
-
-production UI schema / notification transport / ticket routing / automatic reevaluation schedulerは追加しない。
+production UI schema / notification / routing / scheduler / cache policyは追加しない。
 
 
 ## Phase 4 — side-effect Action
