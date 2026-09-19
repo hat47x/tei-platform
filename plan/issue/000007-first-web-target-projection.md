@@ -97,7 +97,11 @@ Custom UIの結果表示もVisual review向けに構造化し、成功時のSele
 
 Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再現できる形へRunbookに固定した。さらにSemantic / Functional same-runでTargetが返した`projection-index.html`と各Custom UI state HTMLをraw artifactとしてfingerprintし、Visual manifest scaffoldが各Screenshotへ`sourceArtifact / sourceSHA256`を自動転記するようにした。
 
-これによりVisual reviewerはcredential付き操作を再入力せず、same-run Target-rendered HTMLをbrowserでreplayしてScreenshotを取得できる。ただしHTML state artifactそのものをScreenshot / Visual Fidelity Evidenceへ読み替えない。
+これによりVisual reviewerはcredential付き操作を再入力せず、same-run Target-rendered HTMLをbrowserでreplayしてScreenshotを取得できる。
+
+さらに`tools/reference-first-web-target-visual-replay`を追加し、Semantic / Functional summaryのdigestを再確認したうえでrequired HTMLをloopback routeからexact bytesで配信する。replay helperはcredential入力や業務処理を再実行せず、`/capture-manifest.json`へroute / source artifact / source SHA-256 / `B / R / T`を残す。
+
+ただしHTML state artifactやreplay helper自体をScreenshot / Visual Fidelity Evidenceへ読み替えない。
 
 現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
 

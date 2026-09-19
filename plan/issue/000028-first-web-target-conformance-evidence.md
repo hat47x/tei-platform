@@ -25,6 +25,8 @@ Visual manifest scaffoldはSemantic / Functional summary内のraw artifact diges
 
 Runbookには各必須Screenshot stateを再現するdeterministic form input recipeも残すが、第一推奨はdigest-bound HTML replayとする。
 
+その入口として`tools/reference-first-web-target-visual-replay`を追加し、source digest一致・artifact directory境界・credential非混入を確認した上でrequired stateをloopback routeへexact bytesで配信する。helperはTarget runtime再実行でもVisual evaluatorでもない。
+
 これはVisual captureの準備Evidenceであり、HTML artifactをScreenshotへ読み替えない。
 
 actual Screenshot / evaluator Evidenceは未取得である。

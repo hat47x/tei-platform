@@ -382,6 +382,60 @@ same-run Target response HTML
 
 live Targetから直接captureする方式も許可するが、その場合もmanifestの`sourceArtifact / sourceSHA256`は同じstateのsame-run HTML responseへ一致させる。
 
+### digest-verified replay helper
+
+保存済みHTMLを手作業で探さず、安全なloopback routeからrenderするため:
+
+- `tools/reference-first-web-target-visual-replay`
+
+を使える。
+
+```bash
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go run ./tools/reference-first-web-target-visual-replay \
+  -semantic-functional-summary /tmp/tei-gate-c-first-web-T/semantic-functional-summary.json \
+  -artifact-dir /tmp/tei-gate-c-first-web-T \
+  -listen 127.0.0.1:18181
+```
+
+replay helperは起動前に:
+
+- Semantic / Functional source qualification pass
+- Semantic Conformance pass
+- Functional Evidence pass
+- Visual pending
+- Gate C Readyではない
+- required HTML artifactのexact SHA-256一致
+- artifact directory外symlink拒否
+- credential material非混入
+
+を確認する。
+
+capture route:
+
+```text
+http://127.0.0.1:18181/capture/projection-index
+http://127.0.0.1:18181/capture/custom-submit-initial
+http://127.0.0.1:18181/capture/custom-submit-success
+http://127.0.0.1:18181/capture/custom-submit-authorization-denied
+http://127.0.0.1:18181/capture/custom-submit-validation-not-satisfied
+http://127.0.0.1:18181/capture/custom-submit-execution-error
+```
+
+`/capture-manifest.json`には各route、source artifact、source SHA-256、`B / R / T`を保持する。
+
+helperはHTML bytesを起動時にmemoryへ固定してそのまま返す。業務処理やcredential入力を再実行しない。
+
+```text
+Visual replay helper
+  != Target runtime re-execution
+  != Screenshot Evidence
+  != evaluator judgment
+  != Gate C Ready
+```
+
 状態をlive Targetで再現する必要がある場合のdeterministic recipeは次とする。
 
 ```text
