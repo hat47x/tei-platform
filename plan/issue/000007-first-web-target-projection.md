@@ -6,7 +6,7 @@
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
 
-## 着手状況 — authenticated Command / Observation slice
+## 着手状況 — standard / Custom UI shared Command boundary
 
 Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
 
@@ -64,9 +64,25 @@ Authentication / Authorizationの`denied`、Validation `not-satisfied`は正常�
 
 standalone `/scenario/read` はReference診断用で、productionの認証済みread endpointではない。Command flow内部ではAuthentication後に同じread runnerを利用する。
 
+さらに`/custom-submit`へCustom HTML UIを追加し、JSON APIと同じ`commandScenarioRunner`を共有するsource pressureを置いた。
+
+```text
+standard JSON interaction
+        ┐
+        ├─> commandScenarioRunner
+        │    -> Authentication
+Custom UI form
+        ┘    -> Validation
+             -> Authorization
+             -> Command
+             -> Observation
+```
+
+Custom UIは独自のValidation / Authorization / Capability / Result modelを持たず、form / layout / HTML renderingだけをWeb固有差として持つ。
+
 現在もSource Evidenceであり、actual server execution / browser replay / Functional Evidence / Visual Evidenceは未取得である。
 
-次incrementでは同じprimary `ISSUE-000007` workstream上で、Custom UI接続とGate C Evidence acquisitionの実行入口を詰める。
+次incrementでは同じprimary `ISSUE-000007` workstream上でGate C Evidence acquisitionの実行入口を整える。
 
 ## 背景
 

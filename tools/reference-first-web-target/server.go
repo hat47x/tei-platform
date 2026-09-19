@@ -13,6 +13,7 @@ type webTargetServer struct {
 	readScenario    readScenarioRunner
 	commandScenario commandScenarioRunner
 	index           *template.Template
+	customSubmit    *template.Template
 }
 
 type webReadScenarioResponse struct {
@@ -49,11 +50,16 @@ func newWebTargetServer(
 	if err != nil {
 		return nil, err
 	}
+	customSubmit, err := template.New("custom-submit").Parse(customSubmitHTML)
+	if err != nil {
+		return nil, err
+	}
 	return &webTargetServer{
 		projection:      projection,
 		readScenario:    readScenario,
 		commandScenario: commandScenario,
 		index:           index,
+		customSubmit:    customSubmit,
 	}, nil
 }
 
@@ -64,6 +70,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
+	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
 	return mux
 }
 
@@ -286,7 +293,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; opacity: .72; 
 <ul class="compact">{{range .AuthorityLimits}}<li><code>{{.}}</code></li>{{end}}</ul>
 </section>
 </main>
-<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · submit Command: <code>POST /scenario/submit</code> · health: <a href="/healthz">/healthz</a></footer>
+<footer>JSON projection: <a href="/manifest.json">/manifest.json</a> · read-only Driver slice: <a href="/scenario/read">/scenario/read</a> · submit Command: <code>POST /scenario/submit</code> · Custom UI: <a href="/custom-submit">/custom-submit</a> · health: <a href="/healthz">/healthz</a></footer>
 </body>
 </html>
 `

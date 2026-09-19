@@ -4,7 +4,7 @@
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
-- Gate C: **In Progress — First Web Target Command / Observation Scenario source実装中、actual `T1` / Gate C Evidence未取得**
+- Gate C: **In Progress — First Web Target standard / Custom UI shared boundary source実装中、actual `T1` / Gate C Evidence未取得**
 
 TEIは完成したlow-code製品ではありません。
 
@@ -39,7 +39,7 @@ TEIは完成したlow-code製品ではありません。
 
 現在必要なのは、新しいDriver abstractionを増やすことではなく、Handover Baseline `B / R`を比較対象として第一Web Target（`ISSUE-000007` / #70）のbuild `T1`を実装し、Gate C Evidenceを取得することです。
 
-第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual server run / browser replay / Functional / Visual Evidenceはまだ取得していない。
+第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。Custom UIもJSON APIと同じ`commandScenarioRunner`を共有し、form / layout / HTML renderingだけをTarget固有差として持つ。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual server run / browser replay / Functional / Visual Evidenceはまだ取得していない。
 
 ## Business Procedure / Lane C Pre-ADR
 
@@ -86,7 +86,7 @@ Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
 Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1 — Command / Observation Scenario source実装中
+First Web Target build T1 — standard / Custom UI shared boundary source実装中
         ↓
 Gate C
         ↓

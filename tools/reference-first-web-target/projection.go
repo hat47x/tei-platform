@@ -97,13 +97,12 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 		TargetBuildRevision:        cfg.TargetBuildRevision,
 		TargetAdapter:              "reference-first-web-target",
 		Host:                       "go-net-http",
-		Stage:                      "authenticated-command-observation-slice",
+		Stage:                      "standard-and-custom-ui-shared-boundary",
 		ApplicationID:              string(app.ID),
 		SemanticUses:               canonicalIDsToStrings(app.SemanticUses),
 		Validations:                canonicalIDsToStrings(app.Validations),
 		Unresolved: []string{
 			"browse-environment-instance-binding-not-exposed-by-current-driver-api",
-			"custom-ui-not-yet-wired",
 			"actual-functional-evidence-not-yet-acquired",
 			"visual-evidence-not-yet-acquired",
 			"actual-external-command-observation-not-acquired",
@@ -114,6 +113,7 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 			"web-target-does-not-author-validation-or-authorization",
 			"business-result-execution-error-observation-remain-distinct",
 			"target-build-revision-is-recorded-by-evidence-not-baseline",
+			"custom-ui-shares-command-scenario-boundary",
 		},
 	}
 
