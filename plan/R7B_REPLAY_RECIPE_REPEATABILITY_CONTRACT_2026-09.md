@@ -263,6 +263,49 @@ Current locator:
 - Target build: `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
 - archive manifest: `MANIFEST.sha256`
 
+Authenticated GitHub CLIを利用できるclean checkoutでは、採用Evidenceを次の手順でRepository外へ再取得する。
+
+```bash
+evidence_root="$(mktemp -d)"
+archive="$evidence_root/tei-gate-c-evidence-T-0ba87a4e.tar.gz"
+
+gh release download gate-c-evidence-T-0ba87a4 \
+  --pattern 'tei-gate-c-evidence-T-0ba87a4e.tar.gz' \
+  --dir "$evidence_root"
+
+printf '%s  %s\n' \
+  de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3 \
+  "$archive" | sha256sum -c -
+
+tar -xzf "$archive" -C "$evidence_root"
+(
+  cd "$evidence_root/gate-c-T-0ba87a4e"
+  sha256sum -c MANIFEST.sha256
+)
+```
+
+archive SHA-256と内部`MANIFEST.sha256`の両方が一致して初めて、その展開物をadopted Gate C EvidenceとしてR7Aへ渡す。
+
+R7A handoff materialization:
+
+```bash
+TEI_R7A_GATE_C_READINESS="$evidence_root/gate-c-T-0ba87a4e/gate-c-readiness-audit.json" \
+TEI_R7A_SEMANTIC_FUNCTIONAL_SUMMARY="$evidence_root/gate-c-T-0ba87a4e/semantic-functional-summary.json" \
+TEI_R7A_OUTPUT_DIR="$evidence_root/r7a" \
+bash tools/run-first-web-target-r7a-handoff.sh
+```
+
+したがって現在は:
+
+```text
+Gate C adopted Evidence locator known
+  + archive digest known
+  != archive verified in this session
+  != R7A handoff acquired
+  != R7B intake acquired
+  != replay executed
+```
+
 The archive contains the origin raw Functional artifacts required by the R7B plan, including:
 
 - `read.json`
@@ -451,7 +494,7 @@ passes in a Go-enabled full checkout. Source-only reasoning is not a substitute 
 
 ## 14. Evidence height
 
-This document, the test-only source, the intake CLI source, and the operational intake runner are Source / Design Evidence until the Repository-external artifacts are actually supplied and the runner is executed.
+Gate C actual Evidence自体はadopted GitHub Release assetとして保管・再取得可能である。一方、この文書、test-only source、R7A/R7B materialization source、replay-plan source、および未実装のoperational replay runnerは、Release archiveの再取得・manifest照合と各runnerのactual executionが行われるまではSource / Design Evidenceである。
 
 They do not claim:
 
@@ -462,11 +505,21 @@ They do not claim:
 - actual repeatability
 - complete workflow coverage
 
-Actual replay execution remains blocked until the Repository-external R7A handoff and acquisition receipt are supplied, exact-byte verified, and accepted by the R7B intake path.
+Actual replay executionの現在の停止点はGate C Evidenceの所在ではない。adopted Release archiveをこの実行環境で再取得・照合し、actual R7A handoff / receipt、R7B intake / receipt、replay plan / receiptを順にmaterializeしたうえで、health-check済みoperational replay runnerをexact Tに対して実行していないことである。
 
 ## 15. Next step
 
-The Source path through execution intake and replay-plan materialization is defined. The next implementation milestone is now narrower:
+The Source path through execution intake and replay-plan materialization is defined, and the adopted Gate C origin Evidence now has a stable Release locator.
+
+Before the new replay-runner code milestone, the already-integrated operational path can advance through actual input materialization in a GitHub-authenticated Go-enabled checkout:
+
+1. download the adopted Gate C Release archive and verify archive SHA-256 plus `MANIFEST.sha256`,
+2. run the existing R7A handoff acquisition runner,
+3. run the existing R7B intake acquisition runner,
+4. run the existing R7B replay-plan acquisition runner,
+5. retain those derived artifacts and receipts outside the Repository.
+
+The next code milestone is then narrower:
 
 1. implement the operational replay runner against an isolated exact-T checkout,
 2. reuse or factor the existing Gate C semantic validators so R7B does not create a second semantic truth,

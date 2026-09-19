@@ -3043,7 +3043,7 @@ RepeatabilityStatus = not-observed
 
 したがってR7B intake source統合はactual replay executionではない。actual Gate C Evidence bytesへアクセスしてR7A acquisition runnerを実行し、そのhandoff / receiptをこのsourceへ入力した後にのみ、actual replay executionの次段へ進める。
 
-採用Gate C EvidenceはISSUE-000057記録上Repository外の1台のWSL2へ保持されている。current laneからそのbytesへアクセスしていないため、actual handoff / intake取得成功はまだ主張しない。
+採用Gate C EvidenceはISSUE-000057の実行によりGitHub Release `gate-c-evidence-T-0ba87a4` のasset `tei-gate-c-evidence-T-0ba87a4e.tar.gz`（SHA-256 `de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`）として再取得可能になった。したがって「1台のWSL2にしかなくcurrent laneから取得不能」という停止条件は解消した。ただしcurrent sessionではprivate Release asset binaryのdownload / `MANIFEST.sha256`照合 / R7A runner実行は行えていないため、actual handoff / intake取得成功はまだ主張しない。
 
 
 

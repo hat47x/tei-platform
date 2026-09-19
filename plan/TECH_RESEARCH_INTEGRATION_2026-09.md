@@ -1912,13 +1912,13 @@ one replay pass
   != whole workflow covered
 ```
 
-current recorded stateはactual Gate C Readyだがactual R7A handoff artifact未取得なので、R7B actual replay executionはまだ開始しない。
+current recorded stateはactual Gate C Readyである。さらにISSUE-000057の実行により、採用EvidenceはGitHub Release `gate-c-evidence-T-0ba87a4` のasset `tei-gate-c-evidence-T-0ba87a4e.tar.gz`（SHA-256 `de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`）から再取得可能になった。ただしcurrent R7 sessionではarchive binaryの再取得・`MANIFEST.sha256`照合・actual R7A handoff materializationをまだ実行していないため、R7B actual replay executionは開始しない。
 
 ##### R7B actual handoff execution intake source — 2026-09-19
 
 PR #824で、Repository外Gate C Evidenceからactual R7A handoff artifactとacquisition receiptを取得するrunnerが統合された。
 
-ただしrunner統合だけではactual acquisition成功を意味しない。採用Gate C EvidenceはISSUE-000057記録どおりRepository外の1台のWSL2上に保持され、current R7 laneからactual bytesへはアクセスしていない。
+ただしrunner統合だけではactual acquisition成功を意味しない。採用Gate C EvidenceはISSUE-000057の実行により、WSL上の保持に加えてGitHub Release `gate-c-evidence-T-0ba87a4` へarchive + `MANIFEST.sha256`付きで保管された。R7はこのlocatorを再取得入口として使えるが、Release metadataを確認したこと自体をactual archive verification / R7A handoff acquisitionへ読み替えない。
 
 そのためactual replayを先取りせず、次段の受領sourceを追加する。
 

@@ -757,3 +757,34 @@ gh release create <tag> <archive.tar.gz> --target <R/Tの完全なcommit SHA> \
   --title "<title>" --notes-file <notes.md> --prerelease
 ```
 
+現在採用済みの第一Web Target Gate C Evidenceは次のlocatorを使う。
+
+```text
+tag = gate-c-evidence-T-0ba87a4
+asset = tei-gate-c-evidence-T-0ba87a4e.tar.gz
+archive SHA-256 =
+de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3
+```
+
+再取得時はarchiveだけでなく内部manifestも確認する。
+
+```bash
+evidence_root="$(mktemp -d)"
+
+gh release download gate-c-evidence-T-0ba87a4 \
+  --pattern 'tei-gate-c-evidence-T-0ba87a4e.tar.gz' \
+  --dir "$evidence_root"
+
+printf '%s  %s\n' \
+  de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3 \
+  "$evidence_root/tei-gate-c-evidence-T-0ba87a4e.tar.gz" | sha256sum -c -
+
+tar -xzf "$evidence_root/tei-gate-c-evidence-T-0ba87a4e.tar.gz" -C "$evidence_root"
+(
+  cd "$evidence_root/gate-c-T-0ba87a4e"
+  sha256sum -c MANIFEST.sha256
+)
+```
+
+filenameが一致するだけの展開directoryをadopted Evidenceとして扱わない。
+
