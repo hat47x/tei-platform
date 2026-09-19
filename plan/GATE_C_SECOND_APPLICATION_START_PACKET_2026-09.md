@@ -1,6 +1,6 @@
 # Gate C → Second Application Reference Start Packet
 
-- Status: Active — S0 complete / S1-S4 Source-defined / S5 review-ready / explicit Acceptance witness pending
+- Status: Active — S0 complete / S1-S4 Source-defined / S5 review-ready + freshness captured / explicit Acceptance witness pending
 - Date: 2026-09-19
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
@@ -459,7 +459,7 @@ S1 / S2は、
 
 現在も第二Canonical Application source、Shared Acceptance、Environment binding、Target実装は作成していない。
 
-S3 Destination Decision Packetは `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md` でSource-definedまで進んだ。`repair_intake` はS3の明示destination candidateであり、`repair_intake-test-only`からの自動昇格ではない。S4 composition candidateも `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md` でSource-definedまで進んだ。S5は `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` でreview-readyまで進めたが、explicit Acceptance witnessとcurrent base/freshness captureは未取得である。したがってShared Acceptanceはまだ成立しておらず、authoritative Application / Pattern source、Environment binding、Target実装は作成していない。
+S3 Destination Decision Packetは `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md` でSource-definedまで進んだ。`repair_intake` はS3の明示destination candidateであり、`repair_intake-test-only`からの自動昇格ではない。S4 composition candidateも `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md` でSource-definedまで進んだ。S5は `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` でreview-readyまで進み、`plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md` で current base / shared authority freshness も exact source fingerprint付きでcaptureした。残る前提はexplicit Acceptance witnessである。したがってShared Acceptanceはまだ成立しておらず、authoritative Application / Pattern source、Environment binding、Target実装は作成していない。
 
 ## 12. Start Packet完了条件
 

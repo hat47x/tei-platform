@@ -218,7 +218,8 @@ witnessは少なくとも:
 
 ```text
 proposalFingerprint = b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
-baseModelRevision   = unresolved
+baseModelRevision   = 6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
+sharedFreshness     = captured
 acceptanceWitness   = absent
 decision            = pending
 ```
@@ -285,9 +286,13 @@ S4 Proposalはexact identityとSemantic Diffを持つreview packetまで進ん�
 現在の停止点は明確である。
 
 ```text
-explicit Acceptance witness
-+ current base / freshness capture
+current base / freshness capture = complete
+explicit Acceptance witness       = pending
+
+both satisfied
   -> Shared Acceptance decision
 ```
 
-それまではS6 authoritative sourceへ進まない。
+freshnessの正本は `plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md` とする。
+
+explicit Acceptance witnessが得られるまではS6 authoritative sourceへ進まない。

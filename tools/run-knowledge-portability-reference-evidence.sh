@@ -6,6 +6,9 @@ files=(
   tools/reference-business-procedure-check/second_application_reference_pre_gate_pressure_test.go
   tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go
   tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go
+  tools/reference-business-procedure-check/second_application_gate_c_actual_entry_pressure_test.go
+  tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go
+  tools/reference-business-procedure-check/second_application_s5_freshness_capture_pressure_test.go
 )
 
 unformatted="$(gofmt -l "${files[@]}")"
