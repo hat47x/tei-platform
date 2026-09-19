@@ -229,10 +229,13 @@ workflowが実行可能になっても、branchを自動削除・resetするauth
 ## Development
 
 ```bash
-go test ./...
+gofmt -l .   # 出力が空であること
 go vet ./...
+go test ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
+
+上記をまとめて実行するRead-onlyの補助として`tools/repository-health-check.sh`があります（`--fast`で`go test`を省略）。GitHub Actionsが手動診断だけになっている間は、PRを出す前・mainへ統合する前に、手元でこの確認を通してください。背景と今後の扱いは[`ISSUE-000055`](plan/issue/000055-verification-gate-while-ci-suspended.md)にあります。
 
 Reference Workspaceには、過去contractとの互換性を確認するためのwarningが意図的に含まれる場合があります。
 

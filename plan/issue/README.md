@@ -216,6 +216,21 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 
 既存の000010 / 000011には過去から同番号の異なるファイルがあります。本整理で履歴identityを一括変更せず、既存参照はファイル名まで含めて区別します。今回追加・移動した000033〜000041の番号は、確認した上流とローカルの両方で重複しないようにしています。
 
+## Repository健全性・運用の課題
+
+2026-09-19に、Gate B / Gate CのEvidence取得とリポジトリ全体の点検で見つかった、Product Requirement自体ではなく**運用・検証・保管**の課題です。CI（GitHub Actions）が止まっている間に、検証されないまま積み重なった不整合が、実際に実行して初めて見つかりました。
+
+| Issue | 減らす不確実性 | 主な出口 |
+| --- | --- | --- |
+| [000055 検証gate](000055-verification-gate-while-ci-suspended.md) | CI停止中に、未検証の変更（コンパイルできない、testが走らない）がmainへ入り続けないか | gate方式の決定。main緑化とhealth check scriptは実施済み |
+| [000056 Issue番号・状態語彙](000056-issue-numbering-uniqueness-and-status-vocabulary.md) | Issue参照が一意に作業を指し、状態を機械的に集計できるか | 重複8組の解消、状態語彙の統一 |
+| [000057 Evidence artifact保管](000057-gate-evidence-artifact-retention.md) | Ready判定の根拠artifactを、後から再照合できるか | 保管先・locator・再照合手順 |
+| [000058 Gate C Visual再評価](000058-gate-c-visual-independent-reevaluation.md) | 単一のAI評価者によるVisual判定を、別の評価者が追認するか | 独立再評価の記録、視覚課題の扱い |
+| [000059 旧作業branch](000059-unpushed-legacy-consolidation-branches.md) | ローカルだけに残る旧整理作業の扱い | 破棄 / 移植 / 保管の判断 |
+| [000060 旧workflow](000060-legacy-one-shot-workflows-inventory.md) | Actions再開時に、過去の書き込み権限付きworkflowが起動しないか | 棚卸しと削除・無効化の判断 |
+
+これらは既存のGate判定・Product主張を変えません。
+
 ## 番号
 
 Repository内Issueは6桁の連番を使います。
