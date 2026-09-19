@@ -1141,6 +1141,59 @@ multiple use edges
 
 R6JはPrompt serialization、token budget、production packet schema、freshness decision、execution authorityを導入しない。
 
+#### R6K explicit bounded input scope — 2026-09-19
+
+R6Jでbounded inputを複数planeへ分離した次段として、planeが空である理由を暗黙推論しない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6k_explicit_input_scope_expectation_pressure_test.go`
+
+bounded consumerは既知planeごとに:
+
+```text
+required
+out-of-scope
+```
+
+のどちらかを明示する。
+
+current plane classes:
+
+- routed-knowledge-body
+- routed-use-edge
+- consumer-reference-use-edge
+- consumer-runtime-use-edge
+- consumer-semantic-use-edge
+
+BP-06 Human orientationではrouted knowledge / routed use / consumer Reference useをrequiredとし、runtime / semantic consumer-local planeはout-of-scopeとする。
+
+runtime Observationだけのsliceでは逆にconsumer-runtime-use-edgeだけをrequiredとし、routed knowledge / routed use / consumer Reference / consumer Semanticをout-of-scopeとする。
+
+これにより:
+
+```text
+required + observed 0
+  -> fail closed
+
+out-of-scope + observed > 0
+  -> fail closed
+
+out-of-scope + observed 0
+  -> intentional absence
+  != missing input
+```
+
+を区別する。
+
+scope declarationはknown planeをexactly onceで覆う必要があり、未宣言planeや重複宣言を許さない。
+
+ただしglobal `Complete` / `Ready` / `Valid` booleanを導入せず、各planeのbounded expectation / observationだけを保持する。
+
+`qualified-not-materialized`はplane scopeとは別軸に残す。runtime-only sliceでrouted planeをout-of-scopeにしても、Procedure / Capabilityのqualified identityを「存在しない」へ変換しない。
+
+R6KはR3AJ〜R3ALのmissing authority information request / response correlation / evidence qualificationを再実装せず、input assembly scopeだけをPressureする。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
