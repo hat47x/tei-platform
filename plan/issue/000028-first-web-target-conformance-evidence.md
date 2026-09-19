@@ -21,6 +21,10 @@ Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加
 
 actual Screenshot / evaluator Evidenceは未取得である。
 
+Architecture negative casesについては`tools/reference-first-web-target-architecture-evidence`を追加し、同一clean `T`でHandover `R`からのWorkspace / generated World不変、Web Target authority boundary、standard / Custom UI shared Command boundaryを再確認する。Semantic / Functional acquisition runnerから`architecture-conformance.json`としてsame-run取得する。
+
+actual architecture artifactは未取得である。
+
 ## 背景
 
 `ISSUE-000007` / GitHub Issue #70では、第一Web Targetを通してApplication上の意味、Target-neutralなPresentation候補、Web固有差分を分離し、Gate Cを評価します。

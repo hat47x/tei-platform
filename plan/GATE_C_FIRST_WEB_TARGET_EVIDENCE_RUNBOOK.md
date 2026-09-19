@@ -101,6 +101,7 @@ submit-execution-error.json
 custom-submit-get.html
 custom-submit-success.html
 semantic-functional-summary.json
+architecture-conformance.json
 ```
 
 ### read
@@ -362,3 +363,73 @@ gateCReady = false
 ```
 
 最終Gate C判定はSemantic / Functional / Visualを別Evidenceとして揃えた後、Gate C contract全体へ戻って行う。
+
+
+## Architecture negative Evidence
+
+Semantic / Functional acquisition runnerは同じclean `T`で:
+
+```text
+architecture-conformance.json
+```
+
+も生成する。
+
+実装:
+
+- `tools/reference-first-web-target-architecture-evidence`
+
+第一Referenceでは次をfail closedで確認する。
+
+### R → T Canonical不変
+
+```text
+reference/workspace/**
+reference/world.json
+```
+
+について、Handover Baseline revision `R`からTarget revision `T`までGit差分がないことを要求する。
+
+これは第一Referenceのcoarseな不変条件であり、将来のproduction semantic diff taxonomyではない。
+
+差分が存在する場合はWeb側で補完せず、baseline subject変更の可能性としてsuccessor Handoverへ戻る。
+
+### Web Target authority boundary
+
+`tools/reference-first-web-target`配下で:
+
+- `.tei` authoring sourceを持たない
+- `.sql` sourceを持たない
+- `SELECT ... FROM`
+- `INSERT INTO`
+- `UPDATE ... SET`
+- `DELETE FROM`
+- DDL / MERGE
+
+等のnative SQL本文を持たないことを確認する。
+
+これは「すべての業務二重実装が数学的に存在しない」ことの証明ではなく、第一Referenceで観測可能なauthority boundary Pressureである。
+
+### shared Command / Result boundary
+
+actual `T`でfocused source testを実行し:
+
+- standard JSON interactionとCustom UIが同じ`commandScenarioRunner`を利用
+- Validation not-satisfied後にAuthorization / Commandへ進まない
+- Command Execution ErrorがBusiness Result / Observationへ畳まれない
+- Execution Error HTTP envelopeが`B / R / T`を保持
+
+ことを再確認する。
+
+### Repository source
+
+Architecture Evidence自身も:
+
+- clean full checkout
+- fixed `GOENV=off / GOWORK=off / GOFLAGS=`
+- baseline `R`が`T`のancestor
+- run前後同一clean `T`
+
+を要求する。
+
+このEvidenceはVisual Evidenceの代替ではない。
