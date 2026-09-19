@@ -870,6 +870,60 @@ R3 dependency provenance
 
 PreferredRouter / Winner / Score / Confidenceを追加せず、router比較結果をSemantic authorityやproduction routing policyへ昇格しない。
 
+#### R6F dependency-driven materialization — 2026-09-19
+
+R6Eでrouter交換後もdependency originが一致することを確認した次段として、実際にcontextへmaterializeするknowledge量をprojection dependencyから導く。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6f_dependency_driven_materialization_pressure_test.go`
+
+materialization対象は:
+
+```text
+qualified knowledge
+  + R6D dependency origin
+  -> routed-qualified-knowledgeとして実際に消費されたknowledgeだけ
+```
+
+とする。
+
+current BP-06 Human orientationでは:
+
+```text
+qualified:
+  Business Procedure Reference
+  security.authorize Capability
+
+materialized:
+  Business Procedure Reference
+
+qualified-but-not-materialized:
+  security.authorize Capability
+
+consumer-local:
+  protected-target overlay
+```
+
+となる。
+
+runtime Observationだけをconsumer-local dependencyとして扱うprojection sliceでは、qualified knowledgeが存在していてもrouted materializationを0にできる。
+
+```text
+qualified
+  != materialized
+
+consumer-local dependency
+  != reason to preload routed candidate pool
+
+materialized
+  != authorized
+```
+
+materialization manifestはderived / rebuildableなtest-only一覧であり、Universal Context Packet、Prompt payload、AllKnowledge dumpにはしない。
+
+exact / broad routerの違いはmaterialized resultへ残さず、R6Eと同じくrouter実装差をcontext identityへ混ぜない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

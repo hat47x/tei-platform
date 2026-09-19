@@ -2055,6 +2055,45 @@ protected-target overlayはどちらのrouterでもconsumer-reference-inputの�
 
 R6Eではrouting performance / ranking qualityを比較せず、PreferredRouterやproduction router selection policyを決めない。
 
+### R6F — dependency-driven materialization
+
+R6Eまででrouter交換後のqualified / dependency originを安定させた上で、AI / Human consumerへ実際にmaterializeするrouted knowledgeを最小化する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6f_dependency_driven_materialization_pressure_test.go`
+
+materialization rule:
+
+```text
+qualified knowledge
+  -> R6D origin classification
+  -> routed-qualified-knowledgeとしてprojectionが実際に消費
+  -> materialize
+
+qualified but no routed dependency consumption
+  -> keep as audit identity
+  -> do not materialize
+```
+
+current BP-06ではBusiness Procedure Referenceだけがmaterialized対象となり、`security.authorize` Capabilityはqualifiedのままでもcurrent projection payloadへ自動投入しない。
+
+protected-target overlay / runtime Observation等のconsumer-local dependencyは別集合として保持し、router candidate poolを引き込む理由にしない。
+
+```text
+available
+  != selected
+  != qualified
+  != materialized
+
+consumer-local dependency
+  != routed context payload
+```
+
+R6F manifestはUniversal Context Packetではなく、現在のbounded consumerに必要なrouted source identityを再構成するためのderived manifestである。
+
+Prompt本文、token budget、all-skill metadata、routing diagnostics、selected/rejected candidate全量をproduction payload schemaとして固定しない。
+
 
 
 
