@@ -119,3 +119,21 @@ Projection source exists
 ```
 
 を維持します。
+
+
+## Gate C Evidence acquisition
+
+actual Target runからSemantic / Functional raw Evidenceを取得する入口は次です。
+
+```bash
+TEI_GATE_C_ARTIFACT_DIR=/tmp/tei-gate-c-first-web-T \
+bash tools/run-first-web-target-gate-c-evidence.sh
+```
+
+runnerはclean Target revision `T`からserverを起動し、read / successful Command / Authentication denied / Authorization denied / Validation not-satisfied / Command Execution Error / Custom UIをsame-run artifactとして保存します。
+
+その後 `tools/reference-first-web-target-evidence-audit` がraw artifactを再読し、`B / R / T`、Runtime Binding、Result境界、credential非保持を確認します。
+
+このrunnerはVisual Fidelity Evidenceを取得しません。Semantic / Functionalが成功してもsummaryは `visualEvidence.status = pending`、`gateCReady = false` のままです。
+
+手順の正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
