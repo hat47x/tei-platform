@@ -210,6 +210,97 @@ CoverageClass = behavior-unit
 DeepWorkflowCovered = false
 ```
 
+
+#### 4.1 repeatability aggregation contract
+
+Packet Eの集約器は、raw responseそのものを再分類する責務を持たない。各runのobservationはPacket Vのshared validatorを通過した結果として受け取り、集約器はplanとの一致とrun間の独立性だけを判定する。
+
+入力の概念形:
+
+```text
+ReplayPlan
+  - ReplayTargetBuildRevision
+  - Unit[]
+      - BehaviorID
+      - ExpectedHTTPStatus
+      - ExpectedObservationClass
+      - RequiredDistinctRuns
+
+Run[]
+  - RunIdentity
+  - ReplayTargetBuildRevision
+  - Observation[]
+      - BehaviorID
+      - RunIdentity
+      - ReplayTargetBuildRevision
+      - ObservedHTTPStatus
+      - ObservationClass
+      - SemanticValidationPassed
+      - RawArtifactFile
+      - RawArtifactSHA256
+```
+
+集約時は次を要求する。
+
+1. plan内のBehavior IDが一意である。
+2. 全unitのReplay Targetがplan全体のexplicit Tと一致する。
+3. 初回contractでは全unitのRequiredDistinctRunsが2以上で同一である。
+4. run identityが空でなく、run間で一意である。
+5. 各runのTarget revisionがexplicit Tと一致する。
+6. 各runがplanの全behaviorをちょうど1件ずつ持つ。
+7. observationのrun identityが親runと一致する。
+8. observationのTarget revisionがexplicit Tと一致する。
+9. observed HTTP statusがplanのexpected boundaryと一致する。
+10. shared validatorがPASSし、Observation classがplanのexpected classと一致する。
+11. raw artifact filenameが空でなく、SHA-256 identityが有効である。
+
+behavior単位のrepeatable判定は、上記を満たすdistinct runがRequiredDistinctRuns以上存在することだけから導出する。
+
+```text
+same response bytes
+  != repeatability
+
+different response bytes
+  != non-repeatability
+
+same T
+  + distinct runs
+  + same transport boundary
+  + same semantic class
+  + exact raw artifact identities
+  -> behavior-unit repeatability
+```
+
+集約器はraw artifact SHA-256同士の一致を要求しない。digestは各raw artifactのidentityであって、run間の同値判定値ではない。
+
+初回summaryの最低shape:
+
+```text
+ReplayTargetBuildRevision
+RequiredDistinctRuns
+ObservedDistinctRuns
+Behaviors[]
+  - BehaviorID
+  - DistinctRuns
+  - Repeatable
+RepeatabilityObserved
+CoverageClass = behavior-unit
+DeepWorkflowCovered = false
+```
+
+全behaviorがrequired distinct runsを満たした場合だけ `RepeatabilityObserved=true` とする。一部behaviorの成功を全体repeatabilityへ昇格させない。
+
+このaggregation contractについては、Repository外の小さいprototypeで次のfail-closed性を確認済みである。ただしこれはfull RepositoryのSource Evidenceではなく、実装形の事前検証にすぎない。
+
+- 2 distinct runsでraw digestが互いに異なっていても、T / HTTP / semantic classが一致すればrepeatability成立
+- duplicate run identityを拒否
+- HTTP boundary driftを拒否
+- semantic class driftを拒否
+- raw artifact SHA-256不正を拒否
+- Target revision driftを拒否
+
+Repositoryへ実装する際はこのprototypeをそのまま正本化せず、current mainの型・Package境界へ合わせ、full `tools/repository-health-check.sh` を通す。
+
 ## 実装ファイル境界
 
 R7B実装でsemantic判定を複製しないため、初回incrementの責務をファイル単位で次へ固定する。名称は実装時のGo package制約で微修正してよいが、責務を再混合しない。
