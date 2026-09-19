@@ -1194,6 +1194,56 @@ scope declarationはknown planeをexactly onceで覆う必要があり、未宣�
 
 R6KはR3AJ〜R3ALのmissing authority information request / response correlation / evidence qualificationを再実装せず、input assembly scopeだけをPressureする。
 
+#### R6L scope identity / cardinality separation — 2026-09-19
+
+R6Kのexplicit scope declarationについて、scopeの意味とobserved input countを分離する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6l_scope_identity_cardinality_pressure_test.go`
+
+scope identityは:
+
+```text
+plane class
++ required / out-of-scope disposition
+```
+
+だけから導出し、Audience / Purpose / observed countを含めない。
+
+current BP-06のProcedure-only bounded useでは:
+
+```text
+Human orientation
+  routed knowledge body = 1
+  routed use edge       = 1
+
+Agent resolution-inspection
+  routed knowledge body = 1
+  routed use edge       = 2
+```
+
+となるが、両者のsemantic input scope identityは同じである。
+
+```text
+same scope declaration
+  + different use cardinality
+  -> same scope identity
+
+different scope declaration
+  -> different scope identity
+```
+
+とする。
+
+これによりAgent側のdetail増加やcategory追加がinput scopeそのものの意味変更へ誤変換されることを防ぐ。
+
+scope identityはexpectation declarationの順序にも依存させず、known planeをexactly once宣言したnormalized setから導出する。
+
+ただしscope identityはauthority / completeness / freshnessではない。observed countはR6K witnessに残し、identityへ埋め込まない。
+
+R6LはR3AG以降のpresentation差・outcome identityを再実装せず、knowledge input scopeのsemantic identityだけをPressureする。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

@@ -2423,6 +2423,54 @@ scope witnessにはglobal `Complete` / `Valid` / `Ready` / `Missing`を追加し
 
 R6KはR3AJ〜R3ALのauthority-information request / response / evidence qualificationへ踏み込まず、knowledge input boundaryのscope declarationだけを担当する。
 
+### R6L — scope identity / cardinality separation
+
+R6Kでrequired / out-of-scopeを明示した後、そのscope declarationの意味とobserved input countを別軸にする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6l_scope_identity_cardinality_pressure_test.go`
+
+semantic scope identityは各planeの:
+
+- plane class
+- scope disposition
+
+だけから導出する。
+
+Audience / Purposeはscope bindingとして別に保持し、ObservedCountはR6K observationとして別に保持する。
+
+current BP-06のshared Procedure useではHumanが1 use edge、Agentが2 use edgeを持つが:
+
+```text
+required:
+  routed knowledge body
+  routed use edge
+
+out-of-scope:
+  consumer Reference
+  consumer Runtime
+  consumer Semantic
+```
+
+というdeclarationは同じなのでscope identityも同じである。
+
+逆にconsumer Runtimeをout-of-scopeからrequiredへ変更した場合、observed countに関係なくscope identityは変化する。
+
+```text
+cardinality change
+  != scope meaning change
+
+scope declaration change
+  = scope meaning change
+```
+
+scope declarationの入力順序はidentityへ影響させない。
+
+R6L scope identityは`Complete` / `Ready` / `Fresh` / `Authorized`ではなく、bounded consumer input expectationのderived semantic handleに留める。
+
+R3AG〜R3ALのoutput materialization / authority-information lifecycleは再実装しない。
+
 
 
 
