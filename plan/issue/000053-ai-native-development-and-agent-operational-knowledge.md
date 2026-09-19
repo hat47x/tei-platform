@@ -4035,6 +4035,67 @@ StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Ret
 
 
 
+### R3AZ — Post-reconciliation Evidence acceptance authority Gate
+
+R3AYで分離したexecution observation / current-state observationについて、Evidence acceptance authorityを別GateとしてPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AZ_RECONCILIATION_EVIDENCE_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3az_reconciliation_evidence_acceptance_authority_gate_pressure_test.go`
+
+```text
+raw reconciliation execution Evidence
+  != execution Evidence accepted
+
+raw post-reconciliation current-state Evidence
+  != current-state Evidence accepted
+
+acceptance authority qualified
+  != Evidence accepted
+  != authoritative state current
+```
+
+とする。
+
+test-only Gateは少なくとも:
+
+```text
+ExecutionEvidenceAcceptanceAuthorityStatus
+CurrentStateEvidenceAcceptanceAuthorityStatus
+```
+
+を別々に持ち、片方のqualificationを他方へ伝播させない。
+
+execution authority evidenceはexact ReconciliationCandidateIdentity / execution ObservationRef / raw execution outcome / sink / BusinessAddress scopeへbindingする。
+
+current-state authority evidenceはexact ReconciliationCandidateIdentity / current-state ObservationRef / observed revision / observed state fingerprint / sink / RevisionAuthorityRef / BusinessAddress scopeへbindingする。
+
+current Repositoryではproduction post-reconciliation Evidence acceptance authority locusを確認していないため、両Gateはunresolvedを維持する。Gate C Ready / First Web Target EvidenceをOperational acceptance authorityへ転用しない。
+
+```text
+reconciler-reported-applied
+  != accepted execution outcome
+
+current revision == candidate revision
+  != accepted current state
+
+current revision != candidate revision
+  != retry / rollback authority
+```
+
+である。
+
+各planeで複数authority evidenceがqualifyする場合はmultiple-qualified-precedence-unresolvedとし、他planeのsingle-qualified状態やscope specificity / revision / fingerprint / corroboration countでwinnerを選ばない。
+
+ExecutionEvidenceAccepted / CurrentStateEvidenceAccepted / StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
