@@ -3263,6 +3263,59 @@ commit candidate
 
 
 
+### R3AQ — Accepted Decision explicit commit witness / candidate boundary
+
+R3APでAccepted Decision write-authority Evidence Gateがsingle-qualifiedとなるsynthetic pressureでも、それだけではauthoritative writeを実行しない。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AQ_ACCEPTED_DECISION_COMMIT_CANDIDATE_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aq_accepted_decision_commit_candidate_pressure_test.go`
+
+```text
+explicit commit witness
+  + exact R3AO WitnessIdentity
+  + exact single R3AP write authority
+  + exact AcceptedDecisionSinkRef
+  + matching ExpectedDecisionRevision
+  + CommitProvenanceRef
+  -> test-only commit candidate
+
+commit candidate
+  != committed Accepted Decision
+  != authoritative sink mutation
+  != current authority applied
+```
+
+current Repository-backed R3AP stateは `accepted-decision-write-authority-unresolved` のため、current corpusだけからcommit candidateを生成しない。
+
+commit witnessはWitnessIdentity / WriteAuthorityEvidenceID / AcceptedDecisionSinkRef / ExpectedDecisionRevision / CommitProvenanceRefを明示し、R3AO AcceptanceProvenanceRefやR3AP WriteProvenanceRefからcommit intentを補完しない。
+
+write authorityがmultiple-qualifiedならcandidate指定でprecedenceを迂回しない。ExpectedDecisionRevisionがcurrent decision revisionと一致しなければstaleとしてfail closedする。
+
+accept / rejectはR3AO witnessのDecisionをそのまま保持するが:
+
+```text
+accept commit candidate
+  != authority value applied
+
+reject commit candidate
+  != Authorization denied
+```
+
+とする。
+
+exact duplicate commit witnessだけnormalizeし、異なるCommitProvenanceRefやExpectedDecisionRevisionをlast-writer / latest revision / majorityで解決しない。
+
+Committed / CommitSucceeded / AcceptedDecision / NewDecisionRevision / CurrentAuthority / RuntimeOutcome / ToolCall / Command / NextAction / CanExecute / Authorized等は追加しない。
+
+production decision store / transaction / CAS / locking / authority application / Command executionは追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
