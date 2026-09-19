@@ -515,6 +515,38 @@ E0と同じincrementで次を行わない。
 - current Authorization / production execution authorityの導出
 - B/R/Adapter/Hostのunit-level複製
 
+##### 3.0.3 E0 branchless candidate preflight
+
+direct-to-main規則とfull health-check gateを両立するため、E0 sourceをremote branchへ置かず、`main` refを動かさないGit object candidateとして準備した。
+
+検証対象source blob:
+
+```text
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  git blob = 40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  git blob = 704fa68924fb647c59f0ae558a1e41d8ab9f6864
+```
+
+この2 blobについてRepository外の独立Go packageへ同一bytesをmaterializeし、`git hash-object` でGitHub blob identityと一致することを確認した上で次のfocused preflightを実行した。
+
+```text
+gofmt -l .             -> empty
+go vet ./...           -> PASS
+go test -count=50 ./... -> PASS
+```
+
+このpreflightはE0の局所実装健全性を確認するだけで、Repository全体のintegration gateではない。
+
+```text
+focused candidate PASS
+  != repository-health-check PASS
+  != E0 integrated into main
+```
+
+E0を`main`へ入れるsessionは、上記blob内容または同値差分を最新`main`へ適用し、**そのexact candidateを含むfull checkout**で `tools/repository-health-check.sh` を通す。mainが進んで対象2ファイルが変更された場合はblobを機械的に適用せず、current sourceへreconcileしてからhealth checkする。
+
 ##### 3.0.4 integration gate
 
 E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet V shared classifierとはfile境界が分かれる。
