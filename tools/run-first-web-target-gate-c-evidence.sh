@@ -75,6 +75,7 @@ go_files=(
   tools/reference-first-web-target/*.go
   tools/reference-first-web-target-evidence-audit/*.go
   tools/reference-first-web-target-visual-evidence-audit/*.go
+  tools/reference-first-web-target-visual-replay/*.go
   tools/reference-first-web-target-architecture-evidence/*.go
   tools/reference-first-web-target-gate-c-readiness-audit/*.go
 )
@@ -89,6 +90,7 @@ GOENV=off GOWORK=off GOFLAGS= \
     ./tools/reference-first-web-target \
     ./tools/reference-first-web-target-evidence-audit \
     ./tools/reference-first-web-target-visual-evidence-audit \
+    ./tools/reference-first-web-target-visual-replay \
     ./tools/reference-first-web-target-architecture-evidence \
     ./tools/reference-first-web-target-gate-c-readiness-audit \
   >"$artifact_dir/source-tests.log" 2>&1
