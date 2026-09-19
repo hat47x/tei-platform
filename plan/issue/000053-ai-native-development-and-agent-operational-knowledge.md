@@ -4156,6 +4156,64 @@ EvidenceAccepted / StateSynchronized / RevisionAccepted / AcceptedDecision / Cur
 
 
 
+### R3BB — Reconciliation result / current-state join authority Evidence Gate
+
+R3BAのexecution / current-state plane-local Evidence accept candidateが両方存在しても、authoritative reconciliation resultへ自動joinしない。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BB_RECONCILIATION_RESULT_ACCEPTANCE_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3bb_reconciliation_result_acceptance_authority_gate_pressure_test.go`
+
+entryでは同じR3AX ReconciliationCandidateIdentityに属する:
+
+- execution accept candidate
+- current-state accept candidate
+
+がexactly oneずつ必要で、両方とも `accept-reconciliation-evidence` でなければならない。
+
+```text
+execution Evidence accept candidate
+  + current-state Evidence accept candidate
+  != authoritative reconciliation result
+  != StateSynchronized
+  != CurrentAuthority applied
+```
+
+とする。
+
+qualifying authority evidenceはexact ReconciliationCandidateIdentity / execution candidate identity / current-state candidate identity / sink / RevisionAuthorityRef / BusinessAddress scopeへbindingし、さらに:
+
+- ReconciliationResultDecisionLocusRef
+- CurrentStateAcceptanceLocusRef
+- ResultAcceptanceProvenanceRef
+
+を明示する。
+
+result decision locusとcurrent-state acceptance locusをgeneric authority locusへ畳まない。
+
+current Repositoryではproduction authoritative reconciliation-result/current-state acceptance locusを確認していないため、derived R3BA candidatesだけではGateはunresolvedを維持する。R3AW / R3AZ / Gate C / First Web Target EvidenceをR3BB authorityへ暗黙転用しない。
+
+```text
+matching revision
+  != result acceptance authority
+
+reported-applied
+  != result acceptance authority
+
+both plane candidates accepted
+  != result acceptance authority
+```
+
+である。
+
+multiple-qualifiedではprecedence unresolvedを維持し、ReconciliationResultAccepted / StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / NextAction等は追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
