@@ -4306,6 +4306,46 @@ ReconciliationResultAccepted / StateSynchronized / RevisionAccepted / AcceptedDe
 
 
 
+
+### R3BD — Authoritative-state application authority Evidence Gate
+
+R3BC `accept-reconciliation-result` candidateが存在してもauthoritative stateへ自動適用せず、state application authorityを別GateとしてPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BD_AUTHORITATIVE_STATE_APPLICATION_AUTHORITY_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3bd_authoritative_state_application_authority_gate_pressure_test.go`
+
+```text
+R3BC accept result candidate
+  + repository-backed authoritative-state application authority evidence
+  -> authoritative-state application Evidence Gate
+
+Gate qualified
+  != state applied
+  != revision accepted
+  != CurrentAuthority projected
+```
+
+qualifying evidenceはexact ReconciliationCandidateIdentity / ReconciliationResultAcceptanceCandidateIdentity / AcceptedDecisionSinkRef / RevisionAuthorityRef / ObservedDecisionRevision / ObservedStateFingerprint / BusinessAddress scopeへbindingする。
+
+StateApplicationLocusRef / RevisionAcceptanceLocusRef / CurrentAuthorityProjectionLocusRefを別々に要求し、generic authority locusへ畳まない。
+
+R3BC candidate、matching revision、fingerprint presenceだけからstate application authorityを推論しない。reject result candidateをrollback / retry / compensationへ変換しない。
+
+multiple-qualified evidenceはprecedence unresolvedとし、scope specificity / revision / fingerprint / source path / corroboration countからwinnerを選ばない。
+
+current Repositoryではproduction authoritative-state application authority locusを確認していないためGateはunresolvedを維持する。
+
+StateApplied / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+次段ではsingle-qualified R3BD Gateでも自動適用せず、explicit state-application witnessからtest-only state-application candidateまでに留める。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
