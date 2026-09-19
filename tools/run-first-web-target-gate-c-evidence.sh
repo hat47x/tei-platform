@@ -11,6 +11,9 @@ baseline_id="${TEI_GATE_C_BASELINE_ID:-B}"
 baseline_revision="${TEI_GATE_C_BASELINE_REVISION:-e5231839a5dcc62cce1181a2731fcb7c70d16736}"
 target_revision="$(git rev-parse HEAD)"
 run_id="${TEI_GATE_C_RUN_ID:-first-web-target-${target_revision:0:12}}"
+go_version="$(GOENV=off GOWORK=off GOFLAGS= go version)"
+go_os="$(GOENV=off GOWORK=off GOFLAGS= go env GOOS)"
+go_arch="$(GOENV=off GOWORK=off GOFLAGS= go env GOARCH)"
 port="${TEI_GATE_C_PORT:-$((18080 + ($$ % 1000)))}"
 listen="127.0.0.1:${port}"
 base_url="http://127.0.0.1:${port}"
@@ -195,7 +198,12 @@ cat >"$artifact_dir/run-metadata.json" <<EOF
   "repositoryPreRunClean": true,
   "repositoryPostRunRevision": "$post_revision",
   "repositoryPostRunClean": $post_clean,
-  "sourceQualificationPassed": true
+  "sourceQualificationPassed": true,
+  "goVersion": "$go_version",
+  "goOS": "$go_os",
+  "goArch": "$go_arch",
+  "serverLaunchMode": "go-run",
+  "networkBind": "loopback"
 }
 EOF
 
