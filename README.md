@@ -63,12 +63,13 @@ Application Driver
   major semantics ready
           ↓
 Gate B
-  Not Ready / actual Evidence待ち
-  #310 + #255 + #308 same-R
+  Ready / R = e5231839a5dcc62cce1181a2731fcb7c70d16736
           ↓
 Handover Baseline B / revision R
+  fixed
           ↓
 First Web Target / build T1
+  source implementation in progress
           ↓
 Gate C / PAS-04
           ↓
@@ -82,19 +83,13 @@ Gate C後のStudio / knowledge-first / AI Proposalと第二Targetは並行可能
 
 ## Gate Bの現在地
 
-Gate Bで新しいDriver抽象を増やすことが現在の主課題ではありません。
+Gate Bは **Ready** です。candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`について、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Provider + ephemeral fixtureをsame-runで揃え、#387 final convergenceと独立artifact auditまで成立しています。
 
-Ready判定へ必要なsource-dependent Evidenceは次の三つです。
+Handover Baseline `B / R`も固定済みです。判定の正本は[Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md)、第一Web Targetへの引き渡しは[Baseline B](plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
 
-| Evidence | Repository / GitHub Issue | 現在地 |
-| --- | --- | --- |
-| deterministic Repository | `ISSUE-000032` / #310 | runner Ready、actual clean checkout run待ち |
-| generated artifact reproducibility | `ISSUE-000025` / #255 | check / repair境界 Ready、actual check-only待ち |
-| real PostgreSQL Provider + ephemeral fixture | `ISSUE-000031` / #308 | runner / safety境界 Ready、専用空DB actual run待ち |
+現在のProduct主線は、`ISSUE-000007`の第一Web Targetです。Reference-specificなprojection shellから着手し、baseline `R`とTarget build revision `T`を分離したままGate CのSemantic / Functional / Visual Evidenceへ進めます。
 
-三つを同じclean candidate repository revision `R`へ揃え、`ISSUE-000037` / #387のfinal convergenceで確認します。
-
-actual Oracle #214 / #371 / #376は重要なactual external asset / legacy compatibility / second-provider Evidenceとして継続しますが、Gate Bの第四Required laneではありません。未完了ならHandoverへ`unresolved`として渡します。
+actual Oracle #214 / #371 / #376はactual external asset / legacy compatibility / second-provider Evidenceとして継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
 
 ## Gate B → Gate Cでrevisionを分ける
 
@@ -234,7 +229,6 @@ docs/                    reader / architecture / conformance documentation
 
 ## 現時点で完成済みとは言わないもの
 
-- Gate B actual Evidence / Ready判定
 - First Web Target / Gate C
 - production-ready Web / Desktop / Mobile Target
 - Studio minimal Authoring Loopのactual Reference
