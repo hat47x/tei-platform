@@ -2882,6 +2882,25 @@ R7Aのtest-only candidateは常に `not-executed` であり、Source Evidenceを
 
 actual Gate C readiness artifactが存在するまでR7B replay executionへ進めない。
 
+#### R7A operational handoff hardening
+
+First Web Target並行レーンでR7A handoff sourceが具体化されたことを受け、R7A側のtest-only entry helperも同じfail-closed条件へ揃える。
+
+追加Pressure:
+
+- readiness checksが空ならreject
+- unnamed / failed readiness checkをreject
+- blocking unresolvedだけでなくunnamed unresolvedもreject
+- Target Difference Handoffが `order_entry` とexact Target Adapter / Hostを指さない場合reject
+- Semantic / Functional summaryが `GateCReady=true` を自己申告する場合reject
+- B / R / T / Target / run provenanceが空のまま相互一致しているだけの入力をreject
+- same-run artifact digestの不完全recordを黙ってskipしない
+
+これにより、syntheticな「両方空だから一致」「checkが無いから全check pass」「使わないartifactだからdigest不完全でも無視」というshortcutをR7入口から除く。
+
+この変更はR7Aの入口整合性だけであり、R7B actual replay executionを前倒ししない。
+
+
 ### R3AF — Category re-evaluation outcome / Operational explanation
 
 R3AEのcategory fingerprint outcomeとR3YのAuthorization freshness authorityを別軸のままOperational explanationへ戻す。

@@ -17,6 +17,12 @@ type replayableBehaviorR7AUnresolved struct {
 	Blocking bool
 }
 
+type replayableBehaviorR7ATargetDifferenceHandoff struct {
+	ApplicationID string
+	TargetAdapter string
+	Host          string
+}
+
 type replayableBehaviorR7AGateCReadiness struct {
 	EvidenceNature             string
 	HandoverBaselineID         string
@@ -28,6 +34,7 @@ type replayableBehaviorR7AGateCReadiness struct {
 	GateCReady                 bool
 	Checks                     []replayableBehaviorR7ACheck
 	Unresolved                 []replayableBehaviorR7AUnresolved
+	TargetDifferenceHandoff    replayableBehaviorR7ATargetDifferenceHandoff
 }
 
 type replayableBehaviorR7AArtifactDigest struct {
@@ -46,6 +53,7 @@ type replayableBehaviorR7ASemanticFunctionalSummary struct {
 	SourceQualificationPassed  bool
 	SemanticConformancePassed  bool
 	FunctionalEvidencePassed   bool
+	GateCReady                 bool
 	Artifacts                  []replayableBehaviorR7AArtifactDigest
 }
 
@@ -127,6 +135,59 @@ func TestReplayableBehaviorR7ARequiresSameBRTRunAndRawArtifactDigests(t *testing
 			replayableBehaviorR7AFirstWebSpecs(),
 		); err == nil {
 			t.Fatal("R7A accepted behavior without exact raw artifact digest")
+		}
+	})
+}
+
+func TestReplayableBehaviorR7ARejectsIncompleteOperationalHandoffState(t *testing.T) {
+	t.Run("no-readiness-checks", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.Checks = nil
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted Gate C readiness without explicit checks")
+		}
+	})
+
+	t.Run("unnamed-readiness-check", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.Checks[0].Name = ""
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted unnamed Gate C readiness check")
+		}
+	})
+
+	t.Run("semantic-summary-declares-gate-c-ready", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Semantic.GateCReady = true
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted Semantic / Functional summary that bypasses final Gate C readiness")
+		}
+	})
+
+	t.Run("target-difference-handoff-mismatch", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.TargetDifferenceHandoff.ApplicationID = "different_application"
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted Gate C target-difference handoff for a different Application")
+		}
+	})
+
+	t.Run("incomplete-unrelated-artifact-digest", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Semantic.Artifacts = append(bundle.Semantic.Artifacts, replayableBehaviorR7AArtifactDigest{
+			File: "extra-same-run-artifact.json",
+		})
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A silently ignored an incomplete same-run artifact digest")
+		}
+	})
+
+	t.Run("empty-provenance", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.TargetBuildRevision = ""
+		bundle.Semantic.TargetBuildRevision = ""
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted empty provenance merely because both inputs matched")
 		}
 	})
 }
@@ -214,15 +275,34 @@ func replayableBehaviorR7ADeriveCandidates(
 	if !r.GateCReady {
 		return nil, fmt.Errorf("Gate C is not ready")
 	}
+	if r.HandoverBaselineID == "" ||
+		r.BaselineRepositoryRevision == "" ||
+		r.TargetBuildRevision == "" ||
+		r.TargetAdapter == "" ||
+		r.Host == "" ||
+		r.SemanticFunctionalRun == "" {
+		return nil, fmt.Errorf("Gate C readiness provenance is incomplete")
+	}
+	if len(r.Checks) == 0 {
+		return nil, fmt.Errorf("Gate C readiness contains no checks")
+	}
 	for _, check := range r.Checks {
-		if !check.Passed {
-			return nil, fmt.Errorf("Gate C readiness check %q is not passed", check.Name)
+		if check.Name == "" || !check.Passed {
+			return nil, fmt.Errorf("Gate C readiness check is not passed: %+v", check)
 		}
 	}
 	for _, unresolved := range r.Unresolved {
+		if unresolved.ID == "" {
+			return nil, fmt.Errorf("Gate C readiness contains unnamed unresolved item")
+		}
 		if unresolved.Blocking {
 			return nil, fmt.Errorf("blocking unresolved %q remains", unresolved.ID)
 		}
+	}
+	if r.TargetDifferenceHandoff.ApplicationID != "order_entry" ||
+		r.TargetDifferenceHandoff.TargetAdapter != r.TargetAdapter ||
+		r.TargetDifferenceHandoff.Host != r.Host {
+		return nil, fmt.Errorf("Gate C target-difference handoff does not describe the ready First Web Target")
 	}
 
 	if s.EvidenceNature != "first-web-target-semantic-functional-evidence" {
@@ -232,6 +312,17 @@ func replayableBehaviorR7ADeriveCandidates(
 		!s.SemanticConformancePassed ||
 		!s.FunctionalEvidencePassed {
 		return nil, fmt.Errorf("Semantic / Functional Evidence is not fully passed")
+	}
+	if s.GateCReady {
+		return nil, fmt.Errorf("Semantic / Functional summary must remain pre-Visual and must not declare Gate C Ready")
+	}
+	if s.RunIdentity == "" ||
+		s.HandoverBaselineID == "" ||
+		s.BaselineRepositoryRevision == "" ||
+		s.TargetBuildRevision == "" ||
+		s.TargetAdapter == "" ||
+		s.Host == "" {
+		return nil, fmt.Errorf("Semantic / Functional provenance is incomplete")
 	}
 	if r.SemanticFunctionalRun != s.RunIdentity {
 		return nil, fmt.Errorf("Semantic / Functional run identity mismatch")
@@ -247,7 +338,7 @@ func replayableBehaviorR7ADeriveCandidates(
 	digests := map[string]string{}
 	for _, artifact := range s.Artifacts {
 		if artifact.File == "" || artifact.SHA256 == "" {
-			continue
+			return nil, fmt.Errorf("Semantic / Functional raw artifact digest is incomplete: %+v", artifact)
 		}
 		if _, exists := digests[artifact.File]; exists {
 			return nil, fmt.Errorf("duplicate raw artifact digest for %q", artifact.File)
@@ -387,6 +478,11 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 			SemanticFunctionalRun:      run,
 			GateCReady:                 true,
 			Checks:                     checks,
+			TargetDifferenceHandoff: replayableBehaviorR7ATargetDifferenceHandoff{
+				ApplicationID: "order_entry",
+				TargetAdapter: "reference-first-web-target",
+				Host:          "go-net-http",
+			},
 		},
 		Semantic: replayableBehaviorR7ASemanticFunctionalSummary{
 			EvidenceNature:             "first-web-target-semantic-functional-evidence",
@@ -399,6 +495,7 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 			SourceQualificationPassed:  true,
 			SemanticConformancePassed:  true,
 			FunctionalEvidencePassed:   true,
+			GateCReady:                 false,
 			Artifacts:                  artifacts,
 		},
 	}
