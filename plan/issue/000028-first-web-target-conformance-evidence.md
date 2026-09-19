@@ -1,11 +1,13 @@
 # ISSUE-000028: 第一Web TargetのConformance Evidence契約を実証する
 
-- 状態: In Progress — acquisition / Visual / Architecture / final readiness audit source成立、actual Evidence取得待ち
+- 状態: In Progress — actual Evidence取得済み、Gate C Ready（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。残は条件付き項目（baseline変更時の切替 / Replayable Behavior利用時のtrace）
 - GitHub Issue: #270
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - Product Acceptance Scenario: PAS-04 primary
 
 ## 現在の入口
+
+2026-09-19: clean checkoutの`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`でactual Evidenceを取得し、Gate C Readyと判定した（判定記録: [`GATE_C_READINESS_AUDIT.md`](../GATE_C_READINESS_AUDIT.md)）。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではない。以下は、Ready到達までの入口の記述として保持する。
 
 着手条件だったGate B ReadyとHandover Baseline `B / R`固定は成立した。
 
@@ -226,21 +228,21 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - [x] Gate B→C Handover baseline契約を定義する
 - [x] baseline `R`とTarget build `T`を別identityとしてEvidence契約へ定義する
 - [x] Gate B Ready時に第一Handover Baselineを受け取る
-- [ ] 各Gate C Evidence runからHandover Baseline ID / `R`へ追跡できる
-- [ ] 各runの`targetBuildRevision = T`を追跡できる
-- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
-- [ ] Driver baselineとWeb Scenarioを対応付ける
-- [ ] Semantic / Functional / Visual Evidenceを別々に保存・再確認できる
-- [ ] replayable behaviorを利用する場合、Handover Scenario / semantic operation / raw Target Evidenceへtraceできる
-- [ ] normalized Evidenceを利用する場合、raw Target Evidenceへ戻れる
-- [ ] Business Result / Execution Error / Observationを別々に扱える
-- [ ] architecture negative casesを再現可能に確認できる
-- [ ] Web Adapter除去時のCanonical不変を確認できる
-- [ ] standard ProjectionとCustom UIを同じ上位意味から実行できる
-- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
-- [ ] evaluator固有scoreがSemantic / Functional合否を上書きしない
-- [ ] Evidence artifactがCanonicalの第二正本になっていない
-- [ ] Gate CをIssue closeではなくEvidenceから判定できる
+- [x] 各Gate C Evidence runからHandover Baseline ID / `R`へ追跡できる
+- [x] 各runの`targetBuildRevision = T`を追跡できる
+- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える（条件付き。今回は`R → T`でCanonical不変を確認しており切替は発生していない）
+- [x] Driver baselineとWeb Scenarioを対応付ける
+- [x] Semantic / Functional / Visual Evidenceを別々に保存・再確認できる
+- [ ] replayable behaviorを利用する場合、Handover Scenario / semantic operation / raw Target Evidenceへtraceできる（任意。今回のGate C Evidenceでは未利用）
+- [x] normalized Evidenceを利用する場合、raw Target Evidenceへ戻れる
+- [x] Business Result / Execution Error / Observationを別々に扱える
+- [x] architecture negative casesを再現可能に確認できる
+- [x] Web Adapter除去時のCanonical不変を確認できる
+- [x] standard ProjectionとCustom UIを同じ上位意味から実行できる
+- [x] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を第二Targetへ渡せる
+- [x] evaluator固有scoreがSemantic / Functional合否を上書きしない
+- [x] Evidence artifactがCanonicalの第二正本になっていない
+- [x] Gate CをIssue closeではなくEvidenceから判定できる
 
 ## 非目標
 

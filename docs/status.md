@@ -4,7 +4,7 @@
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
-- Gate C: **In Progress — First Web Target Semantic / Functional + Visual + architecture Evidence source実装中、actual `T1` / Gate C Evidence未取得**
+- Gate C: **Ready**（First Web Target build `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、Handover Baseline `B / R`。Visual Fidelityは単一のAI評価者による評価 — [`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
 
 TEIは完成したlow-code製品ではありません。
 
@@ -30,6 +30,7 @@ TEIは完成したlow-code製品ではありません。
 - Gate B final convergenceで保持したsame-run child Evidenceの独立artifact監査tool / Runbook接続
 - Gate B actual #310 / #255 / #308 final Evidence（candidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）
 - Gate B → Gate C Handover Baseline `B / R`固定（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）
+- Gate C actual Evidence（Semantic / Functional、Visual Fidelity、architecture conformance、final readiness audit `gateCReady = true`。`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19、[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
 
 2026-09-08には、datasource aliasのdeclaration existenceとruntime / authority上のexact-one resolutionを分離する#511と、Business Procedure / Handoffのcross-view pressureを扱う#482がmainへ統合されています。
 
@@ -37,9 +38,9 @@ TEIは完成したlow-code製品ではありません。
 
 判定の詳細は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)、Handoverは[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md)を参照してください。
 
-現在必要なのは、新しいDriver abstractionを増やすことではなく、Handover Baseline `B / R`を比較対象として第一Web Target（`ISSUE-000007` / #70）のbuild `T1`を実装し、Gate C Evidenceを取得することです。
+現在必要なのは、新しいDriver abstractionを増やすことではなく、Gate C通過後の並行lane（Studio / knowledge-first・AI Proposal / 第二Application・第二Target）をどの順で開始するかを、Evidenceに基づいて判断することです。
 
-第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。Custom UIもJSON APIと同じ`commandScenarioRunner`を共有し、form / layout / HTML renderingだけをTarget固有差として持つ。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual Target run用のSemantic / Functional Evidence runner / independent audit sourceに加え、同一`T`のScreenshotと評価記録を受け入れるVisual Evidence audit sourceも追加している。 さらにHandover `R`→Target `T`のWorkspace / generated World不変とWeb Target authority boundaryを確認するarchitecture conformance sourceを追加し、same-run `architecture-conformance.json`として取得する設計にした。ただしclean checkout上のactual server run / Functional artifact / Screenshot / evaluator recordはまだ取得していない。Custom UIのsuccess / Authorization denied / Validation not-satisfied / Execution Errorを構造化した画面状態として分離し、Semantic / Functional runnerが各stateのHTML artifactも保存・auditするようにした。Runbookには同じ`T`で各Screenshot stateを再現するdeterministic capture recipeも追加した。さらにstandard Projectionと各Custom UI stateのsame-run Target-rendered HTMLをraw artifactとしてfingerprintし、Visual manifestの各Screenshotへ`sourceArtifact / sourceSHA256`を自動で結び付けるようにした。これによりreviewerはcredential付き操作を再入力せず保存済みHTML replayからcaptureできる。さらに`tools/reference-first-web-target-visual-replay`でsame-run digestを再検証し、required HTMLをloopbackからexact bytesで配信できるようにした。 Visual manifest scaffoldを渡せばcapture route / Screenshot filename / evaluator / criterion-capture対応をreview indexで一覧できるが、この画面は閲覧補助でありVisual evaluatorやauditの代替ではない。ただしclean checkout上のactual server run / Functional artifact / Screenshot / evaluator recordはまだ取得していない。HTML artifactをVisual Fidelityへ読み替えず、Visual auditがpassしてもそれだけでGate C Readyにしない。
+第一Web Targetでは `tools/reference-first-web-target` にReference-specificなprojectionを置き、Driver Resolverが解決した5種類のApplication PatternをHTML / JSONへProjectionしている。read-only sliceとしてbrowse → record → customer reference → order-lines header-detailをDriver executionへ接続し、さらにAuthentication → Canonical Validation → Authorization → Command Business Result → separate ObservationのScenario sourceまで接続した。Business denial / Validation not-satisfied / Execution Error / Observationを同一errorへ畳まない。Custom UIもJSON APIと同じ`commandScenarioRunner`を共有し、form / layout / HTML renderingだけをTarget固有差として持つ。汎用Presentation IRやWeb frameworkをCanonicalへ追加していない。browseのEnvironment instance selectionはcurrent Driver APIに存在しないためWeb側で推測せずunresolvedとして保持する。actual Target run用のSemantic / Functional Evidence runner / independent audit sourceに加え、同一`T`のScreenshotと評価記録を受け入れるVisual Evidence audit sourceも追加している。 さらにHandover `R`→Target `T`のWorkspace / generated World不変とWeb Target authority boundaryを確認するarchitecture conformance sourceを追加し、same-run `architecture-conformance.json`として取得する設計にした。Custom UIのsuccess / Authorization denied / Validation not-satisfied / Execution Errorを構造化した画面状態として分離し、Semantic / Functional runnerが各stateのHTML artifactも保存・auditするようにした。Runbookには同じ`T`で各Screenshot stateを再現するdeterministic capture recipeも追加した。さらにstandard Projectionと各Custom UI stateのsame-run Target-rendered HTMLをraw artifactとしてfingerprintし、Visual manifestの各Screenshotへ`sourceArtifact / sourceSHA256`を自動で結び付けるようにした。これによりreviewerはcredential付き操作を再入力せず保存済みHTML replayからcaptureできる。さらに`tools/reference-first-web-target-visual-replay`でsame-run digestを再検証し、required HTMLをloopbackからexact bytesで配信できるようにした。 Visual manifest scaffoldを渡せばcapture route / Screenshot filename / evaluator / criterion-capture対応をreview indexで一覧できるが、この画面は閲覧補助でありVisual evaluatorやauditの代替ではない。HTML artifactをVisual Fidelityへ読み替えず、Visual auditがpassしてもそれだけでGate C Readyにしない。2026-09-19に、clean checkout（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）上でactual server run / Functional artifact / Screenshot / evaluator recordを取得し、final Gate C readiness auditが`gateCReady = true`を返した（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。取得の過程で、Runbookのsource qualificationがuncompilableなtest fileとgofmt差で停止したこと（PR [#815](https://github.com/hat47x/tei-platform/pull/815)）、Visual reviewで標準Projection headerのrevision値が重なる不具合が見つかり修正したこと（PR [#816](https://github.com/hat47x/tei-platform/pull/816)）を、旧`T`のEvidenceをcarry-forwardせず最初から再取得して解消している。Visual Fidelityの評価者は単一のAI評価者（VLM）であり、人による確認ではない。保持したScreenshotは別の評価者が再評価でき、`fail`が出た場合はGate Cを再監査する。
 
 ## Business Procedure / Lane C Pre-ADR
 
@@ -86,9 +87,9 @@ Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
 Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1 — Semantic / Functional acquisition + Visual intake + architecture conformance source実装中
+First Web Target build T — 実装・Evidence取得済み（T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe）
         ↓
-Gate C
+Gate C — Ready
         ↓
    ┌──────┼──────────────┐
    ↓      ↓              ↓
@@ -271,7 +272,7 @@ Gate Cでは次を別Evidenceとして扱います。
 3. Visual Fidelity Evidence
 4. 必要に応じたPerformance Evidence
 
-First TargetのReference sourceは実装済みで、現在は`ISSUE-000007` / `ISSUE-000028`においてactual clean Target run、Visual capture、final Gate C readiness auditの取得段階です。
+First Targetは実装済みで、actual clean Target run、Visual capture、final Gate C readiness auditを`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`で取得し、Gate C Readyと判定しました（[`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）。Visual Fidelityの評価者は単一のAI評価者で、人による確認は行っていません。
 
 ## Studio / Authoring
 
@@ -345,7 +346,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 ## 現時点で完成済みとは言わないもの
 
 - actual Oracle E2E
-- First Web Target / Gate C
+- Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
 - complete Target-neutral Presentation IR
 - production-ready Web / Desktop / Mobile Target
 - Studio actual Authoring Reference

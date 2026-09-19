@@ -33,9 +33,9 @@ Gate B — 3 Required Evidence / Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d
         ↓
 Handover Baseline B at revision R — 固定済み
         ↓
-First Web Target build T1 — 未着手
+First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
         ↓
-Gate C — PAS-04 Evidence
+Gate C — PAS-04 Evidence — Ready
         ↓
         ├──────── Authoring / Knowledge lane
         │           ├─ Studio minimal loop — PAS-01

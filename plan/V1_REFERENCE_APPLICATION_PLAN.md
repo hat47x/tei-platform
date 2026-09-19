@@ -84,9 +84,9 @@ Gate B   3 Required Evidence same-R convergence       Ready
                ↓
 Handover Baseline B / revision R                      固定済み
                ↓
-Stage 3  First Web Target / build revision T1         未着手
+Stage 3  First Web Target / build revision T1         Evidence取得済み
                ↓
-Gate C   Semantic / Functional / Visual Evidence
+Gate C   Semantic / Functional / Visual Evidence      Ready
                ↓
         ┌───────────────┴────────────────┐
         ↓                                ↓
@@ -275,7 +275,7 @@ Evidence: `ISSUE-000028` / #270
 
 ### 着手条件
 
-**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立しており、着手可能です。
+**Gate B Ready + Handover Baseline固定後**です。2026-09-19時点で両方成立し、着手済みです。同日、actual Gate C Evidenceを取得してGate CをReadyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)）。
 
 ### baseline RとTarget build T1
 

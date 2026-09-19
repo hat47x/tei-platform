@@ -1,10 +1,16 @@
 # ISSUE-000007: 第一Web TargetへのProjection境界を設計する
 
-- 状態: In Progress
+- 状態: In Progress — Gate C Ready達成（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。残は条件付き項目（Replayable Behavior利用時のtrace等）とISSUE-000026での差分handoff利用
 - GitHub Issue: #70
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
+
+## 2026-09-19 Gate C Ready
+
+clean checkoutの`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`でactual Gate C Evidence（Semantic / Functional、Visual Fidelity、architecture conformance）を取得し、final readiness auditが`gateCReady = true`を返した。判定記録は[`GATE_C_READINESS_AUDIT.md`](../GATE_C_READINESS_AUDIT.md)。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではない。
+
+以下の「着手状況」は、Ready到達までの実装・設計履歴として保持する。
 
 ## 着手状況 — Gate C Evidence acquisition / readiness audit source
 
@@ -324,19 +330,19 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 ## 完了条件
 
 - [x] Gate B Ready後、`ISSUE-000030`の第一Handover Baseline `B` / `R`を受け取る
-- [ ] Target build revision `T`をbaseline `R`と別に追跡する
-- [ ] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
-- [ ] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
-- [ ] 各Gate C runからHandover Baselineへ追跡できる
-- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
-- [ ] Semantic ConformanceをEvidenceから確認できる
-- [ ] Reference ScenarioのInteraction / Functional Evidenceを再現できる
-- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる
-- [ ] Visual Fidelityを別Evidenceとして残せる
-- [ ] standard ProjectionとCustom UIを同じ上位意味へ接続できる
-- [ ] Web Adapterを外してもCanonical Worldが変わらない
-- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す
-- [ ] Gate CをIssue close状態ではなくEvidenceから判定できる
+- [x] Target build revision `T`をbaseline `R`と別に追跡する
+- [x] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
+- [x] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
+- [x] 各Gate C runからHandover Baselineへ追跡できる
+- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える（条件付き。今回は`R → T`でCanonical不変を確認しており切替は発生していない）
+- [x] Semantic ConformanceをEvidenceから確認できる
+- [x] Reference ScenarioのInteraction / Functional Evidenceを再現できる
+- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる（任意。今回のGate C Evidenceでは未利用）
+- [x] Visual Fidelityを別Evidenceとして残せる
+- [x] standard ProjectionとCustom UIを同じ上位意味へ接続できる
+- [x] Web Adapterを外してもCanonical Worldが変わらない
+- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す（handoff recordは取得済み。`ISSUE-000026`での利用は未着手）
+- [x] Gate CをIssue close状態ではなくEvidenceから判定できる
 
 ## 非目標
 
