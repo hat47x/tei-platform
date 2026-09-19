@@ -59,8 +59,8 @@ type replayableBehaviorR7ASemanticFunctionalSummary struct {
 }
 
 type replayableBehaviorR7AEntryEvidence struct {
-	GateCReadinessArtifactSHA256       string
-	SemanticFunctionalSummarySHA256    string
+	GateCReadinessArtifactSHA256    string
+	SemanticFunctionalSummarySHA256 string
 }
 
 type replayableBehaviorR7AEntryBundle struct {
@@ -78,19 +78,19 @@ type replayableBehaviorR7ASpec struct {
 }
 
 type replayableBehaviorR7ACandidate struct {
-	BehaviorID                 string
-	SemanticOperation          string
-	TargetRealizationRef       string
-	RawArtifactFile            string
-	RawArtifactSHA256          string
-	ObservationClass           string
-	ReplayStatus               string
-	CoverageClass              string
-	HandoverBaselineID         string
-	BaselineRepositoryRevision string
-	TargetBuildRevision        string
-	SemanticFunctionalRun      string
-	VisualRun                  string
+	BehaviorID                      string
+	SemanticOperation               string
+	TargetRealizationRef            string
+	RawArtifactFile                 string
+	RawArtifactSHA256               string
+	ObservationClass                string
+	ReplayStatus                    string
+	CoverageClass                   string
+	HandoverBaselineID              string
+	BaselineRepositoryRevision      string
+	TargetBuildRevision             string
+	SemanticFunctionalRun           string
+	VisualRun                       string
 	GateCReadinessArtifactSHA256    string
 	SemanticFunctionalSummarySHA256 string
 }
@@ -449,19 +449,19 @@ func replayableBehaviorR7ADeriveCandidates(
 		}
 
 		out = append(out, replayableBehaviorR7ACandidate{
-			BehaviorID:                 spec.BehaviorID,
-			SemanticOperation:          spec.SemanticOperation,
-			TargetRealizationRef:       spec.TargetRealizationRef,
-			RawArtifactFile:            spec.RawArtifactFile,
-			RawArtifactSHA256:          digest,
-			ObservationClass:           spec.ObservationClass,
-			ReplayStatus:               "not-executed",
-			CoverageClass:              "behavior-unit",
-			HandoverBaselineID:         r.HandoverBaselineID,
-			BaselineRepositoryRevision: r.BaselineRepositoryRevision,
-			TargetBuildRevision:        r.TargetBuildRevision,
-			SemanticFunctionalRun:      r.SemanticFunctionalRun,
-			VisualRun:                  r.VisualRun,
+			BehaviorID:                      spec.BehaviorID,
+			SemanticOperation:               spec.SemanticOperation,
+			TargetRealizationRef:            spec.TargetRealizationRef,
+			RawArtifactFile:                 spec.RawArtifactFile,
+			RawArtifactSHA256:               digest,
+			ObservationClass:                spec.ObservationClass,
+			ReplayStatus:                    "not-executed",
+			CoverageClass:                   "behavior-unit",
+			HandoverBaselineID:              r.HandoverBaselineID,
+			BaselineRepositoryRevision:      r.BaselineRepositoryRevision,
+			TargetBuildRevision:             r.TargetBuildRevision,
+			SemanticFunctionalRun:           r.SemanticFunctionalRun,
+			VisualRun:                       r.VisualRun,
 			GateCReadinessArtifactSHA256:    bundle.Evidence.GateCReadinessArtifactSHA256,
 			SemanticFunctionalSummarySHA256: bundle.Evidence.SemanticFunctionalSummarySHA256,
 		})
@@ -477,13 +477,13 @@ func replayableBehaviorR7AExpectedGateCReadinessChecks() map[string]struct{} {
 		"same-B-R-T-and-target-identity":                          {},
 		"source-semantic-functional-passed":                       {},
 		"visual-fidelity-separately-passed":                       {},
-		"canonical-world-invariant-R-to-T":                         {},
-		"web-target-authority-boundary-passed":                     {},
-		"standard-custom-shared-command-boundary-passed":           {},
-		"result-execution-error-observation-boundaries-preserved":  {},
-		"target-difference-handoff-recoverable":                    {},
-		"all-unresolved-explicitly-classified":                     {},
-		"no-blocking-unresolved":                                   {},
+		"canonical-world-invariant-R-to-T":                        {},
+		"web-target-authority-boundary-passed":                    {},
+		"standard-custom-shared-command-boundary-passed":          {},
+		"result-execution-error-observation-boundaries-preserved": {},
+		"target-difference-handoff-recoverable":                   {},
+		"all-unresolved-explicitly-classified":                    {},
+		"no-blocking-unresolved":                                  {},
 	}
 }
 
