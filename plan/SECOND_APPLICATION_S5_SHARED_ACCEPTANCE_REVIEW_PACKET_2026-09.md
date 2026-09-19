@@ -4,6 +4,7 @@
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
+- Executable pressure implementation packet: `plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md`
 - Revised Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
 - Review base inspected at: `0dd20cf9100823b22499473d26c7caad7881a9dc`
@@ -194,11 +195,14 @@ c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
 
 health-capable cloneで少なくとも次を更新・実行する。
 
-1. S3 pressureへdestination Semantic owner / keyを反映
-2. S4 pressureをSemantic + Application + Patternのthree-sourceへ更新
-3. temporary workspaceまたは同等fixtureでfull Validationを実行
-4. revised fingerprintをS5 pressureへ反映
-5. `tools/repository-health-check.sh` をPASSさせる
+1. S3 pressureへdestination Semantic namespace / Data / attribute / type / Relation / keyを反映
+2. S4 pressureへ`SemanticSource`を追加し、`ParseSemanticFile()` + Application + Patternのthree-source identityを検査
+3. `repoPath()` と既存`copyDirectory` helperで`reference/workspace`を`t.TempDir()`配下へcopyし、Proposal 3-sourceだけをtemporary workspaceへ追加
+4. `workspace.Load(probeRoot)` でactual loader pathを通す
+5. `validation.Validate(loaded.World)` でfull Validationを実行し、`validation.Error`が0件であることを要求
+6. revised fingerprint `c18ae0f...` とdestination-owned Semantic subjectsをS5 pressureへ反映
+7. `tools/run-knowledge-portability-reference-evidence.sh` のgofmt対象へS3/S4/S5 pressureを追加
+8. focused Second Application tests、reference evidence script、`tools/repository-health-check.sh` をすべてPASSさせる
 
 この条件が未取得の間、Source inspectionだけでAcceptance-readyへ昇格しない。
 

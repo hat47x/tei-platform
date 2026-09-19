@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — revised S5 review defined / executable pressure pending
+- 状態: In Progress — revised executable-pressure implementation pinned / health execution pending
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -238,7 +238,7 @@ S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relat
 - revised fingerprint: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - revised design: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
 
-revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成せず、次にhealth-capable環境でSource pressureを追随させる。
+revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成しない。`plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md` で、temporary workspaceへのthree-source注入、`workspace.Load`、`validation.Validate`、S3/S4/S5 pressure更新、reference-evidence scriptのgofmt対象追随、repository health checkまでを次のhealth-capable execution契約として固定した。
 
 ## 第二Applicationでの受入検証
 
