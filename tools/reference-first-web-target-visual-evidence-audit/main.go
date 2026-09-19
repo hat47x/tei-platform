@@ -158,12 +158,49 @@ func main() {
 		semanticFunctional = flag.String("semantic-functional-summary", "", "Semantic / Functional summary JSON")
 		manifestPath       = flag.String("visual-manifest", "", "Visual Evidence manifest JSON")
 		artifactDir        = flag.String("artifact-dir", "", "Directory containing screenshot artifacts")
+		emitScaffold       = flag.Bool("emit-manifest-scaffold", false, "Emit a Visual manifest scaffold to stdout")
+		visualRunID        = flag.String("visual-run-id", "", "Visual run identity for scaffold mode")
+		evaluatorIdentity  = flag.String("evaluator-identity", "", "Evaluator identity for scaffold mode")
+		evaluatorVersion   = flag.String("evaluator-version", "", "Evaluator version for scaffold mode")
+		evaluationMethod   = flag.String("evaluation-method", "", "Evaluation method for scaffold mode")
+		viewportWidth      = flag.Int("viewport-width", 1440, "Capture viewport width for scaffold mode")
+		viewportHeight     = flag.Int("viewport-height", 1000, "Capture viewport height for scaffold mode")
 	)
 	flag.Parse()
-	if *semanticFunctional == "" || *manifestPath == "" || *artifactDir == "" {
-		fatalf("-semantic-functional-summary, -visual-manifest and -artifact-dir are required")
+	if *semanticFunctional == "" {
+		fatalf("-semantic-functional-summary is required")
 	}
 
+	if *emitScaffold {
+		var semantic semanticFunctionalSummary
+		if err := readJSON(*semanticFunctional, &semantic); err != nil {
+			fatalf("%v", err)
+		}
+		manifest, err := buildVisualManifestScaffold(
+			semantic,
+			*visualRunID,
+			visualEvaluator{
+				Identity: *evaluatorIdentity,
+				Version:  *evaluatorVersion,
+				Method:   *evaluationMethod,
+			},
+			*viewportWidth,
+			*viewportHeight,
+		)
+		if err != nil {
+			fatalf("%v", err)
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(manifest); err != nil {
+			fatalf("encode Visual manifest scaffold: %v", err)
+		}
+		return
+	}
+
+	if *manifestPath == "" || *artifactDir == "" {
+		fatalf("-visual-manifest and -artifact-dir are required unless -emit-manifest-scaffold is used")
+	}
 	summary, err := auditVisualEvidence(*semanticFunctional, *manifestPath, *artifactDir)
 	if err != nil {
 		fatalf("%v", err)
@@ -184,17 +221,8 @@ func auditVisualEvidence(
 	if err := readJSON(semanticFunctionalPath, &semanticFunctional); err != nil {
 		return visualAuditSummary{}, err
 	}
-	if semanticFunctional.EvidenceNature != "first-web-target-semantic-functional-evidence" ||
-		!semanticFunctional.SourceQualification.Passed ||
-		!semanticFunctional.SemanticConformance.Passed ||
-		!semanticFunctional.FunctionalEvidence.Passed ||
-		semanticFunctional.VisualEvidence.Status != "pending" ||
-		!semanticFunctional.VisualEvidence.Required ||
-		semanticFunctional.GateCReady {
-		return visualAuditSummary{}, fmt.Errorf(
-			"Semantic / Functional summary is not a valid Visual intake source: %+v",
-			semanticFunctional,
-		)
+	if err := validateSemanticFunctionalSource(semanticFunctional); err != nil {
+		return visualAuditSummary{}, err
 	}
 
 	var manifest visualManifest
@@ -422,6 +450,87 @@ func auditVisualEvidence(
 			"screenshot-files-are-derived-evidence-not-source-of-truth",
 			"capture-tool-and-evaluator-remain-exchangeable",
 		},
+	}, nil
+}
+
+func validateSemanticFunctionalSource(source semanticFunctionalSummary) error {
+	if source.EvidenceNature != "first-web-target-semantic-functional-evidence" ||
+		!source.SourceQualification.Passed ||
+		!source.SemanticConformance.Passed ||
+		!source.FunctionalEvidence.Passed ||
+		source.VisualEvidence.Status != "pending" ||
+		!source.VisualEvidence.Required ||
+		source.GateCReady {
+		return fmt.Errorf(
+			"Semantic / Functional summary is not a valid Visual intake source: %+v",
+			source,
+		)
+	}
+	return nil
+}
+
+func buildVisualManifestScaffold(
+	source semanticFunctionalSummary,
+	visualRunID string,
+	evaluator visualEvaluator,
+	viewportWidth int,
+	viewportHeight int,
+) (visualManifest, error) {
+	if err := validateSemanticFunctionalSource(source); err != nil {
+		return visualManifest{}, err
+	}
+	if visualRunID == "" {
+		return visualManifest{}, fmt.Errorf("visualRunIdentity is required")
+	}
+	if evaluator.Identity == "" || evaluator.Version == "" || evaluator.Method == "" {
+		return visualManifest{}, fmt.Errorf("evaluator identity, version and method are required")
+	}
+	if viewportWidth <= 0 || viewportHeight <= 0 {
+		return visualManifest{}, fmt.Errorf("viewport width and height must be positive")
+	}
+
+	captureIDs := make([]string, 0, len(requiredCaptures))
+	for id := range requiredCaptures {
+		captureIDs = append(captureIDs, id)
+	}
+	sort.Strings(captureIDs)
+
+	captures := make([]visualCapture, 0, len(captureIDs))
+	for _, id := range captureIDs {
+		expected := requiredCaptures[id]
+		captures = append(captures, visualCapture{
+			ID:             id,
+			Surface:        expected.Surface,
+			State:          expected.State,
+			File:           id + ".png",
+			MediaType:      "image/png",
+			ViewportWidth:  viewportWidth,
+			ViewportHeight: viewportHeight,
+		})
+	}
+
+	criteria := make([]visualCriterion, 0, len(requiredCriteria))
+	for _, id := range requiredCriteria {
+		criteria = append(criteria, visualCriterion{
+			ID:          id,
+			Result:      "unresolved",
+			CaptureRefs: append([]string(nil), requiredCriterionCaptureRefs[id]...),
+			Notes:       "pending attributed visual review",
+		})
+	}
+
+	return visualManifest{
+		EvidenceNature:                      "first-web-target-visual-evidence",
+		VisualRunIdentity:                   visualRunID,
+		SourceSemanticFunctionalRunIdentity: source.RunIdentity,
+		HandoverBaselineID:                  source.HandoverBaselineID,
+		BaselineRepositoryRevision:          source.BaselineRepositoryRevision,
+		TargetBuildRevision:                 source.TargetBuildRevision,
+		TargetAdapter:                       source.TargetAdapter,
+		Host:                                source.Host,
+		Evaluator:                           evaluator,
+		Captures:                            captures,
+		Criteria:                            criteria,
 	}, nil
 }
 
