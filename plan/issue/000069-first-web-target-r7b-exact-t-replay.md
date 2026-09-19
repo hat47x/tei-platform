@@ -1771,6 +1771,122 @@ V1 pressure focused PASS
 
 実際の統合sessionではunreferenced SHAをmainへfast-forwardせず、latest mainへ `a789401c...` の責務とexact source blobsをreconcileし、そのexact resultをfull `tools/repository-health-check.sh` でqualificationする。
 
+#### E1.1 exact-T operational runner composition candidate
+
+E1 preflight / origin raw identity / exact receipt-bound aggregationを一つの直列candidateへ収束させたうえで、operational runner本体をbranchless candidateとして追加した。
+
+preferred chain:
+
+```text
+a789401cabbd1280100f30de3d94b9154ab26c0d
+  ↓ V2 validated launch provenance output
+  ↓ E1 exact-T orchestration
+73f06bfa2cdceb29c9550604ce2e766e05f2fad5
+```
+
+`73f06bfa...` は `a789401c...` のstrong receipt-bound aggregatorを保持し、V2側へvalidated launch provenance出力を加え、次を追加する。
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  blob = 63da55a8efe07abdf28ab700d4725584c3e23287
+  mode = 100755
+```
+
+V2 launch provenance追加blob:
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  blob = 1d15fde01cf4d1d0fae89c7c01bfe551e19d2903
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  blob = a1cb0495d59e5d850209f044793cac6da5dca73a
+```
+
+runnerはV2 preflightを次の形で呼ぶ。
+
+```text
+-preflight-only
+-origin-artifact-dir <verified Gate C Evidence root>
+-emit-launch-provenance-tsv
+```
+
+V2がplan / receipt / B-R-T-adapter-host / six origin raw artifact identityを検証した後にだけ、validated `B / R / T / TargetAdapter / Host` を1行TSVでrunnerへ返す。runnerはplan JSONをshell側で再解析せず、そのvalidated値からexact-T processを起動する。
+
+runner candidateの主な境界:
+
+1. current checkout clean / non-standard index不在を確認
+2. `tools/repository-health-check.sh` をactual execution前にも実行
+3. plan / receiptをRepository外outputへcopyし、copy後bytesを再fingerprint
+4. adopted Gate C archive exact SHA-256を確認
+5. archive展開後 `MANIFEST.sha256` 全件照合とmanifest file自体のSHA-256を保持
+6. V2 preflightでplan / receipt / origin six raw identitiesをexact照合
+7. planからvalidation済みlaunch provenanceを取得
+8. Repository外detached worktreeをexact Tで作成し、clean / required source pathを確認
+9. exact-T First Web Target source testを実行
+10. fresh Target processでrun 01を起動し6 behaviorを各1回実行、停止 / wait
+11. fresh Target processでrun 02を同様に実行、停止 / wait
+12. 各run raw responseをV2 auditへ渡し、audit-derived `run-observation.json` を取得
+13. 6 raw artifactの `raw-artifacts.sha256` をrunごとに保持
+14. strong repeatability toolへactual plan / actual receipt / 2 run observationを渡す
+15. current source checkout不変を確認
+16. final receiptへarchive / manifest / plan / receipt / launch provenance / 2 run observation / 2 raw manifest / repeatability summary SHA-256をbinding
+17. retained output tree全体をReference credential materialについてscan
+
+run identity defaultは固定T / runner revisionだけにせず:
+
+```text
+UTC timestamp + process id
+```
+
+をacquisition discriminatorに含める。明示上書き `TEI_R7B_REPLAY_ACQUISITION_ID` もsafe character setへ制限する。
+
+request credentialはpipeでruntime inputとして渡し、request bodyは保存しない。final retained-output scanには少なくとも:
+
+- editor-secret
+- viewer-secret
+- wrong-secret
+- locked-secret
+- disabled-secret
+- credential-ref://legacy/
+
+を含める。
+
+runner exact blob `63da55a8...` はRepository外にmaterializeした同一bytesについて:
+
+```text
+bash -n tools/run-first-web-target-r7b-replay.sh
+  -> PASS
+
+git hash-object tools/run-first-web-target-r7b-replay.sh
+  -> 63da55a8efe07abdf28ab700d4725584c3e23287
+```
+
+を確認した。
+
+candidate diffはparent `a789401c...` に対して:
+
+```text
+V2 main.go       +18 / -3
+V2 main_test.go  +18 / -0
+runner           +449 / -0
+```
+
+に限定される。
+
+ただし、これはshell syntaxとexact blob identityまでのpreflightであり、candidate全体のGo focused test、exact-T live replay、full Repository health checkは未実行である。
+
+```text
+runner bash syntax PASS
+  != V2 changed candidate focused PASS
+  != candidate composition package PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+統合sessionではunreferenced candidate SHAをmainへfast-forwardせず、latest mainへ `73f06bfa...` の責務とexact blobsをreconcileする。そのexact resultに対してfull `tools/repository-health-check.sh` を通した後にだけmainへ直接統合する。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
