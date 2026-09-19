@@ -1685,6 +1685,92 @@ origin identity source candidate
 
 統合時はlatest V2 sourceへこの責務をreconcileし、focused testとfull `tools/repository-health-check.sh` の両方を通す。E1 runnerはこのvalidationを通過する前にTarget processを起動しない。
 
+#### E1.0.4 preferred composition candidate — exact receipt-bound aggregation
+
+origin raw Evidence verification candidate `2038948424ab4ccb13dd8e0009beb8baba4864a6` は、親treeにE1 preflight reuseと旧repeatability aggregatorを含む。
+
+旧aggregator `d779f292...` は各runが同じ replay-plan receipt SHA-256を指すことは確認するが、**actual `r7b-replay-plan-receipt.json` bytes自体を入力せず、plan↔receipt exact binding / clean qualified acquisition / pre-execution stateを集約時に再検証しない**。
+
+E1.0 contractとの整合を上げるため、receipt実体を必須入力とする強化aggregatorをRepository外で作成し、focused verificationを行った。
+
+exact source blobs:
+
+```text
+tools/reference-first-web-target-r7b-repeatability/main.go
+  blob = 48c9c595311a4fa8fc7c4e7b2a30c4a4fd999965
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  blob = 1ebe3a7bfed00b38ae7604143ae06f929267f665
+```
+
+focused verification:
+
+```text
+gofmt -l .
+  = empty
+
+go vet ./...
+  = PASS
+
+go test -count=50 ./...
+  = PASS
+```
+
+強化aggregatorは:
+
+- actual replay-plan bytesをSHA-256 fingerprint
+- actual replay-plan receipt bytesをSHA-256 fingerprint
+- receipt `ReplayPlanArtifactSHA256` とactual plan bytesをexact照合
+- receipt source-intake identitiesとplan source identitiesをexact照合
+- clean qualified acquisitionを要求
+- `ReplayExecuted=false`
+- `RepeatabilityObserved=false`
+- run observationの `SourceReplayPlanReceiptSHA256` を**actual receipt bytes digest**へexact binding
+- B / R / T / TargetAdapter / Hostをplanと各runで照合
+- exact six behavior set
+- distinct run identity
+- distinct Target process instance identity
+- expected HTTP / semantic class
+- valid raw artifact SHA-256
+- raw digestのrun間同値を要求しない
+
+を保持する。
+
+枝分かれを残さないため、最終的にorigin raw Evidence preflight candidate `20389484...` のtreeへこの2 blobを置き換えたcomposition candidateを作成した。
+
+```text
+056527b6203feaf3c3830db4d33251d64c475be3
+  ↓ V2 plan/receipt preflight reuse
+ed17d529f605097a2171fc39cfdb5ed9d2c117ac
+  ↓ older repeatability candidate
+d779f292d17b21e01a859fda0e77b2cc44c53371
+  ↓ origin raw Evidence verification
+2038948424ab4ccb13dd8e0009beb8baba4864a6
+  ↓ replace aggregator with exact receipt-bound blobs
+a789401cabbd1280100f30de3d94b9154ab26c0d
+```
+
+統合時の**preferred composition treeは `a789401c...`** とする。
+
+ただしEvidence heightは分離する。
+
+```text
+V1 pressure focused PASS
++ V2 baseline focused PASS
++ strong repeatability focused PASS
++ origin preflight source present
+  != a789401c combined exact candidate PASS
+  != origin preflight exact candidate PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+`d779f292...` / `9adc68a4...` / `f43fb0e3...` はbranch / main refから参照せず、統合候補としては `a789401c...` に収束させる。
+
+実際の統合sessionではunreferenced SHAをmainへfast-forwardせず、latest mainへ `a789401c...` の責務とexact source blobsをreconcileし、そのexact resultをfull `tools/repository-health-check.sh` でqualificationする。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
