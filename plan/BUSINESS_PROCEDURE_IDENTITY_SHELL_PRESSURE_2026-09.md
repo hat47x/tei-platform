@@ -167,7 +167,7 @@ Procedure/Step -> Procedure/Step
 
 詳細:
 
-- `BUSINESS_PROCEDURE_HANDOFF_CANONICAL_PRESSURE_2026-09.md`
+- `BUSINESS_PROCEDURE_HANDOFF_2026-09.md`（Part 1、旧`HANDOFF_CANONICAL_PRESSURE`）
 - `canonical_handoff_pressure_test.go`
 
 ## 8. Verification
