@@ -1014,6 +1014,91 @@ V2実装時はsynthetic fixtureで少なくとも次をPressureする。
 
 これらのtestはGate C semantic条件のcopyではなく、shared packageを呼ぶintegration pressureとして書く。
 
+#### V2.4 branchless prototype preflight
+
+V2 replay auditの責務とfail-closed境界について、Repository外の独立Go moduleでsource prototypeを作成し、V1 candidateと同じshared validator APIへ接続した。
+
+prototype source identity:
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  git blob = 9544b9b0a9d741a9b2b4b67359399287aec008cb
+  size     = 16647 bytes
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  git blob = 8e8ba6b8aff37b53800d18f553cefe7cc70a4cfd
+  size     = 14708 bytes
+```
+
+focused preflight:
+
+```text
+gofmt -l
+  = empty
+
+go vet ./tools/internal/firstwebtargetevidence \
+       ./tools/reference-first-web-target-r7b-replay-audit
+  = PASS
+
+go test -count=50 \
+  ./tools/internal/firstwebtargetevidence \
+  ./tools/reference-first-web-target-r7b-replay-audit
+  = PASS
+```
+
+prototypeはrunnerから次の3値だけをcapture authorityとして受け取る。
+
+```text
+BehaviorID
+ObservedHTTPStatus
+RawArtifactFile
+```
+
+runner suppliedの `ObservationClass` / `SemanticValidationPassed` / `RawArtifactSHA256` は入力shapeへ持たせない。
+
+audit自身が:
+
+1. actual replay-plan / receipt bytesをSHA-256 fingerprintする
+2. plan / receipt / run-metadataのexact bindingを検証する
+3. raw artifact bytesを読み、自身でSHA-256を計算する
+4. V1 shared validatorでB / R / T / adapter / hostとsemantic boundaryを検証する
+5. shared Observation class constantとplan expected classを照合する
+6. Reference credential materialをrejectする
+7. 1 run分の `first-web-target-r7b-run-observation` を生成する
+
+という境界を持つ。
+
+focused prototypeでは少なくとも次をfail closedで確認した。
+
+- replay-plan / receipt / metadata digest mismatch
+- receiptのsource-intake identity drift
+- receiptがreplay済み / repeatability観測済みを主張する状態
+- empty run identity / process instance identity
+- Target revision drift / non-loopback listen scope
+- missing / duplicate / unknown behavior
+- absolute path / parent traversal / wrong raw artifact mapping
+- expected HTTP boundary drift
+- plan expected Observation classとshared validator classのdrift
+- raw ProvenanceのB / R / T / adapter / host drift
+- retained raw artifactへのReference credential material混入
+
+happy pathでは6 behaviorすべてについて、audit-derived raw SHA-256、shared semantic class、`SemanticValidationPassed=true` を持つ1 run observationを生成する。
+
+ただしこのprototype sourceはまだRepository source candidateとして統合されておらず、full Repository qualificationも未実行である。
+
+```text
+V2 focused prototype PASS
+  != V1 integrated
+  != V2 repository candidate qualified
+  != repository-health-check PASS
+  != replay executed
+  != repeatability observed
+```
+
+V2を正本化するsessionは、E0 → V1をhealth-check済みでmainへ統合した後、そのlatest main上でprototype責務をreconcileし、`tools/repository-health-check.sh` を通す。shared semantic predicateをV2側へcopyしない。
+
+
+
 #### V2 branchless candidate preflight — 2026-09-20
 
 V1 shared-validator candidateを利用しつつremote branchを増やさないため、V2 replay auditも**unreferenced Git commit**として作成した。main / branch refは動かしていない。
