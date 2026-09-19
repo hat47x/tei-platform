@@ -28,11 +28,15 @@ func (r *headerDetailMissingRealizationRunner) ExecuteSQL(
 func TestHeaderDetailReferenceWorkspaceStopsBeforePhysicalReadWithoutSQLRealization(t *testing.T) {
 	world := loadHeaderDetailReferenceWorld(t)
 	const targetIdentity = "sales_core/sales_core.order_line/find_by_order"
-	for _, realization := range world.ContractQuerySQLRealizations {
-		if realization.Target.Identity() == targetIdentity && realization.Provider == environment.ProviderPostgres {
-			t.Fatalf("未確定のOrderLine物理SQL realizationがReferenceへ追加されています: %#v", realization)
+	// Referenceは現在このrealizationを明示authoringしている。realizationがない状態は、対象を取り除いたWorldで作る。
+	kept := world.ContractQuerySQLRealizations[:0:0]
+	for _, sqlRealization := range world.ContractQuerySQLRealizations {
+		if sqlRealization.Target.Identity() == targetIdentity && sqlRealization.Provider == environment.ProviderPostgres {
+			continue
 		}
+		kept = append(kept, sqlRealization)
 	}
+	world.ContractQuerySQLRealizations = kept
 
 	runner := &headerDetailMissingRealizationRunner{}
 	executor := sqlquery.Executor{
