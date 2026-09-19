@@ -433,3 +433,105 @@ Architecture Evidence自身も:
 を要求する。
 
 このEvidenceはVisual Evidenceの代替ではない。
+
+
+## Final Gate C Readiness Audit
+
+Semantic / Functional、Visual、Architectureのactual Evidenceが**同じ`B / R / T`**へ揃った後だけ最終監査を実行する。
+
+実装:
+
+- `tools/reference-first-web-target-gate-c-readiness-audit`
+
+例:
+
+```bash
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go run ./tools/reference-first-web-target-gate-c-readiness-audit \
+  -semantic-functional-summary /tmp/tei-gate-c-first-web-T/semantic-functional-summary.json \
+  -architecture-evidence /tmp/tei-gate-c-first-web-T/architecture-conformance.json \
+  -visual-audit /tmp/tei-gate-c-first-web-T/visual-audit.json \
+  > /tmp/tei-gate-c-first-web-T/gate-c-readiness-audit.json
+```
+
+### 最終監査が要求するもの
+
+少なくとも:
+
+- Semantic / Functional source qualification成功
+- Semantic Conformance成功
+- Functional Evidence成功
+- Visual required captures完備
+- Visual criteriaすべてresolved
+- Visual Fidelity pass
+- Architecture Evidenceが同一clean `T`でreproducible
+- `R → T` Canonical World不変
+- Web Target authority boundary成立
+- standard / Custom UI shared Command boundary成立
+- Business Result / Execution Error / Observation境界成立
+- Target差分handoffが復元可能
+- すべてのunresolvedが明示分類済み
+- blocking unresolvedがない
+
+ことを要求する。
+
+Visual auditやSemantic / Functional auditが単独で`gateCReady = false`を返すのは意図した設計である。最終auditだけが三Evidenceとarchitecture conformanceを合わせてGate C判定を行う。
+
+### unresolved分類
+
+第一Referenceで既知の未解決は、黙ってsuccessへ変換しない。
+
+```text
+visual-fidelity-evidence-not-acquired
+  -> 独立Visual Evidenceで解消された場合だけ resolved-by-visual-evidence
+
+browse-environment-instance-binding-not-exposed-by-current-driver-api
+  -> carry-forward / ISSUE-000026
+
+actual-external-command-observation-not-acquired
+  -> carry-forward / external-runtime-evidence
+     synthetic Observationをactual external Evidenceへ格上げしない
+
+target-capability-taxonomy-remains-candidate-until-second-target
+  -> carry-forward / ISSUE-000026
+
+general-target-neutral-presentation-taxonomy-not-yet-defined
+  -> carry-forward / ISSUE-000026
+```
+
+これ以外の未知unresolvedが現れた場合、最終auditはfail closedで停止する。
+
+### 第二Targetへの差分handoff
+
+Semantic / Functional auditはactual runから次をTarget difference handoffへ残す。
+
+- Application
+- Target Adapter / Host
+- observed Target Capability候補
+- Runtime Binding
+- execution artifact
+- host ABI
+- Execution / Trust observation
+- Web固有差
+- Canonicalへ持ち上げてはいけない差
+- carry-forward unresolved
+
+`go run`で起動したactual Evidence runではGo version / GOOS / GOARCH / launch mode / loopback bindをrun metadataから取得し、execution artifact / ABIを推測ではなく観測値としてhandoffする。
+
+これは第一Targetで得た観測recordであり、Target CapabilityやExecution Profileの最終taxonomyではない。第二TargetのPressureを受けて`ISSUE-000026`で再検討する。
+
+### Gate C Readyの意味
+
+最終auditが`gateCReady = true`を返しても、次を意味しない。
+
+- production-ready Web product
+- actual external Oracle / production Command成功
+- Target-neutral Presentation taxonomy完成
+- 第二Target不要
+- unresolved消滅
+
+Gate C contractに定めた第一Targetの意味・操作・視覚・architecture境界が、同一provenanceのEvidenceから再確認できたことだけを意味する。
+
+actual final auditを取得するまでは、source implementationだけからGate C Readyを宣言しない。
