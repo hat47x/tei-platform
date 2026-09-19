@@ -1,6 +1,6 @@
 # ISSUE-000053: AI-native継続開発とAgent Operational KnowledgeをReferenceで検証する
 
-- 状態: Proposed / phased
+- 状態: In Progress
 - 提案日: 2026-09-18
 - 性格: Product validation / AI-native development / operational agent reference
 - 主担当要求: RQ-010 / RQ-015 / RQ-018〜RQ-021 / RQ-025〜RQ-030
@@ -2838,6 +2838,95 @@ R6再開は、actual consumerで境界違反が観測された場合、productio
 
 現時点ではR6成果を既存原則のReference Evidenceとして保持し、R3 authority chainとFirst Web Target / Gate Cの並行レーンを重複実装しない。
 
+
+### R7 — current active execution path / parallel-work boundary — 2026-09-20
+
+R7のSource chainは、R7A handoff、R7B execution intake、machine-readable replay plan、exact-T operational replay contractまでmainへ統合済みである。採用済みGate C origin EvidenceはGitHub Release `gate-c-evidence-T-0ba87a4` に保管されている。
+
+ただし、次は引き続き未実行である。
+
+- Release archive binaryのcurrent-session再取得とarchive SHA-256 / `MANIFEST.sha256`照合
+- actual R7A handoff / receipt materialization
+- actual R7B execution intake / receipt materialization
+- actual replay plan / receipt materialization
+- exact `T` に対するreplay execution
+- 2 distinct runsによるrepeatability observation
+
+したがってcurrent stateは:
+
+```text
+Gate C actual Ready
+  + adopted Evidence locator retained
+  + R7A/R7B source chain defined
+  + exact-T replay contract defined
+  != actual R7 materialization complete
+  != replay executed
+  != repeatability observed
+```
+
+R7B operational contractの正本は `plan/R7B_REPLAY_RECIPE_REPEATABILITY_CONTRACT_2026-09.md` とする。
+
+direct-to-mainの単独開発フローへ移行したため、R7専用の新しいremote branch / PRを作らない。並行AI sessionはmainを都度再取得し、次のwork packetを重複所有しない。
+
+#### Packet M — actual input materialization（Repository source変更なし）
+
+所有対象:
+
+- Gate C Release archive download
+- archive SHA-256 verification
+- `MANIFEST.sha256` verification
+- existing R7A handoff runner actual execution
+- existing R7B intake runner actual execution
+- existing R7B replay-plan runner actual execution
+- Repository-external derived artifacts / receipts
+
+必要環境は、private Release assetを取得できるauthenticated GitHub accessとGo-enabled clean full checkoutである。
+
+Packet MはRepository sourceを変更しない。実行結果がなければ成功を主張しない。
+
+#### Packet V — shared semantic validation source
+
+所有対象:
+
+- Gate C auditorに既に存在するsemantic success / denial / Validation / Execution Error判定の再利用境界
+- R7Bが独立の第二semantic truthを作らないための最小共通化
+- focused unit tests
+
+このpacketは `tools/reference-first-web-target-evidence-audit` 周辺を触るため、同packageを変更する他sessionと同時編集しない。コード変更なのでfull `tools/repository-health-check.sh` 成功前にmainへ入れない。
+
+#### Packet E — exact-T operational replay execution
+
+所有対象:
+
+- replay plan / receipt exact-byte verification
+- adopted origin Evidence archive verification
+- isolated detached worktree / equivalent clean checkout at explicit `T`
+- fresh Target process x 2 distinct runs
+- six behavior-unit raw replay artifacts per run
+- per-run observation
+- repeatability summary / receipt
+- credential leak scan
+- source-worktree unchanged check
+
+Packet EはPacket Vのsemantic validation境界を利用する。Vを同時に別定義で再実装しない。
+
+Integration order:
+
+```text
+Packet M actual inputs
+  ↓
+Packet V shared semantic validator
+  ↓
+Packet E operational replay runner
+  ↓
+full repository-health-check
+  ↓
+actual two-run replay
+  ↓
+Evidence height update
+```
+
+Packet Mはsource変更を伴わないためV/Eとコード上は競合しないが、actual replayはMで生成されたexact artifactsが揃うまで開始しない。
 
 ### R7A — Gate C actual Evidence entry boundary
 
