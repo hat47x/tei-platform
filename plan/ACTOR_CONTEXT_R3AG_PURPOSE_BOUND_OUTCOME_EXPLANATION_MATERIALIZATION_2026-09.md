@@ -61,17 +61,17 @@ provenance-drilldown
 ```text
 inline
 drill-down
-omitted
+not-applicable
 ```
 
 へ属する。
 
 ```text
 drill-down
-  != omitted
+  != not-applicable
 
 selected-but-empty
-  != omitted
+  != not-applicable
 ```
 
 である。
@@ -92,12 +92,9 @@ test-only profile:
 
 - category-outcome-fingerprints
 - category-outcome-reasons
+- unselected-changes
 - residual-root-deltas
 - provenance-drilldown
-
-### omitted
-
-- unselected-changes
 
 Human inlineではfingerprintやdependency reasonを直接並べなくてもよい。
 
@@ -113,7 +110,7 @@ ResidualRootDeltaCount
 category summaryにはunderlying outcome identityへのtest-only referenceを保持し:
 
 ```text
-inline detail omitted
+inline detail not shown
   != underlying identity lost
 ```
 
@@ -141,7 +138,7 @@ test-only profile:
 
 - provenance-drilldown
 
-### omitted
+### not-applicable
 
 - none
 
