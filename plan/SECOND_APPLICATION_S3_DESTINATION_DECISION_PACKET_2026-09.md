@@ -1,6 +1,6 @@
 # Second Application Reference — S3 Destination Decision Packet
 
-- Status: Source-defined / Shared Acceptance not attempted
+- Status: Source-defined with full-validation addendum / Shared Acceptance not attempted
 - Date: 2026-09-19
 - Primary workstream: ISSUE-000040
 - Inputs:
@@ -63,6 +63,26 @@ relation candidate = repair_intake.intake.customer
 > repair intakeが参照するCustomer
 
 originの `sales.order.customer` はコピーしない。
+
+### Full-validation addendum — Relation owner / key
+
+S6 preflightで、Relation identityだけではreference Patternのfull workspace Validationを満たさないことが判明した。
+
+destination decisionへ次を追加する。
+
+```text
+semantic namespace candidate = repair_intake
+source data candidate        = repair_intake.intake
+source key attribute         = repair_intake.intake.customer_id
+source key type              = customer.customer_id
+relation target              = customer.customer
+relation cardinality         = one
+relation key                 = repair_intake.intake.customer_id -> customer.customer.customer_id
+```
+
+Customer Data / Customer ID Typeはshared authorityを参照し、destination copyを作らない。Persistence Mappingやrepair workflow stateを追加する判断ではない。
+
+current revised compositionは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md` を参照する。
 
 ### Application Pattern
 

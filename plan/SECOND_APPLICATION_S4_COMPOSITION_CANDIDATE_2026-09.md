@@ -1,13 +1,23 @@
 # Second Application Reference — S4 Composition Candidate
 
-- Status: Source-defined proposal / Shared Acceptance pending
+- Status: Superseded before Acceptance — full-validation revision defined
 - Date: 2026-09-19
 - Primary workstream: ISSUE-000040
 - Input: `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md`
-- Next step: S5 Shared Acceptance
+- Current revision: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
 - Authoritative Application source created: No
 - Environment binding created: No
 - Target implementation started: No
+
+## Revision notice
+
+この文書のApplication + Pattern 2-source Proposalは、S6 preflightでdestination Semantic Relation source / owner / keyを欠くことが分かったため、Shared Acceptance前にsupersededした。
+
+- historical fingerprint: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
+- revised fingerprint: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
+- revised source: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
+
+authoritative sourceへの昇格やShared Acceptanceは一度も成立していない。以下はhistorical proposal recordとして残す。
 
 ## 1. 目的
 

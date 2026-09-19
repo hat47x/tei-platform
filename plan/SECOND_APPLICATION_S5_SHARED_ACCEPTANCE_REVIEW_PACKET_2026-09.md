@@ -1,14 +1,22 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Review-ready / explicit Acceptance witness pending
+- Status: Reset — prior Proposal superseded / revised review pending
 - Date: 2026-09-19
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md`
-- Next step after explicit Acceptance: S6 authoritative source / reload / validation
-- Shared Acceptance result: Pending
+- Next step: health-checked revised Source pressure / S5 review regeneration
+- Shared Acceptance result: Not established
 - Authoritative Application source created: No
 - Environment binding created: No
 - Target implementation started: No
+
+## Reset notice
+
+S6 preflightにより、このpacketが対象としたold Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` はShared Acceptance前にsupersededした。
+
+current revised Proposal fingerprintは `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` であり、`plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md` を正本とする。
+
+old fingerprintへのwitnessをrevised Proposalへ流用しない。現在はexplicit witness待ちではなく、まずrevised Source pressure / review packet整合待ちである。
 
 ## 1. 目的
 

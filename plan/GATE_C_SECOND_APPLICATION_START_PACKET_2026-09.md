@@ -1,6 +1,6 @@
 # Gate C → Second Application Reference Start Packet
 
-- Status: Active — S0 complete / S1-S4 Source-defined / S5 review-ready + freshness captured / explicit Acceptance witness pending
+- Status: Active — S0-S3 complete / S4 revised after full-validation preflight / S5 review regeneration pending
 - Date: 2026-09-19
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
@@ -457,7 +457,7 @@ S1 / S2は、
 
 現在も第二Canonical Application source、Shared Acceptance、Environment binding、Target実装は作成していない。
 
-S3 Destination Decision Packetは `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md` でSource-definedまで進んだ。`repair_intake` はS3の明示destination candidateであり、`repair_intake-test-only`からの自動昇格ではない。S4 composition candidateも `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md` でSource-definedまで進んだ。S5は `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` でreview-readyまで進み、`plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md` で current base / shared authority freshness も exact source fingerprint付きでcaptureした。残る前提はexplicit Acceptance witnessである。したがってShared Acceptanceはまだ成立しておらず、authoritative Application / Pattern source、Environment binding、Target実装は作成していない。
+S3はSource-defined後、S6 preflightでdestination Relation owner / keyをaddendumした。旧S4 2-source Proposalはparser上成立したがfull workspace Validationに必要なdestination Semantic Relation sourceを欠くためAcceptance前にsupersededした。current revised Proposalは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`、fingerprint `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` である。旧S5 review / freshnessはhistorical recordへ戻した。次はhealth-capable環境でGo Source pressureをrevised Proposalへ追随させ、S5 reviewを再生成する。Shared Acceptance、authoritative destination source、Environment binding、Target実装はいずれも未成立である。
 
 ## 12. Start Packet完了条件
 

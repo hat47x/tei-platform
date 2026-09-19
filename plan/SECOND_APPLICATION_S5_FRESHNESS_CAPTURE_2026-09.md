@@ -1,13 +1,21 @@
 # Second Application Reference — S5 Freshness / Base Capture
 
-- Status: Freshness captured / explicit Acceptance witness pending
+- Status: Historical freshness — captured Proposal superseded before Acceptance
 - Date: 2026-09-19
 - Primary workstream: ISSUE-000040
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
 - Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
 - Review base Repository revision: `e2856e6e568b6be966c6b8689ebea479ec184a4a`
-- Shared Acceptance result: Pending
-- Acceptance witness: Absent
+- Shared Acceptance result: Not established
+- Acceptance witness: Absent / old Proposal no longer eligible
+
+## Supersession notice
+
+このfreshness captureはold Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` に対するhistorical Evidenceである。
+
+current revised Proposal fingerprintは `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` へ変わったため、本captureをそのAcceptanceへ流用しない。
+
+shared Customer authorityのsource fingerprintsはrequalification inputとして保持する。
 
 ## 1. 目的
 

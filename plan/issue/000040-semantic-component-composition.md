@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — Gate C Ready後の第二Application ReferenceをS5まで実施
+- 状態: In Progress — S4 full-validation revision / S5 review regeneration
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -229,6 +229,16 @@ S5:
 でexact Proposal identity、Semantic Diff、current shared-authority freshnessまで固定した。
 
 現在の停止条件はexplicit Acceptance witnessである。Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。一般的な作業継続指示をProposal採用Decisionへ読み替えない。
+
+## S4 full-validation correction
+
+S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relation sourceを欠き、current full workspace Validationへそのまま接続できないことを確認した。
+
+- old fingerprint: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` — superseded before Acceptance
+- revised fingerprint: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
+- revised design: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
+
+revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成せず、次にhealth-capable環境でSource pressureを追随させる。
 
 ## 第二Applicationでの受入検証
 
