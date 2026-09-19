@@ -563,7 +563,11 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 		{Name: "source-semantic-functional-passed", Passed: true},
 		{Name: "visual-fidelity-separately-passed", Passed: true},
 		{Name: "canonical-world-invariant-R-to-T", Passed: true},
+		{Name: "web-target-authority-boundary-passed", Passed: true},
+		{Name: "standard-custom-shared-command-boundary-passed", Passed: true},
 		{Name: "result-execution-error-observation-boundaries-preserved", Passed: true},
+		{Name: "target-difference-handoff-recoverable", Passed: true},
+		{Name: "all-unresolved-explicitly-classified", Passed: true},
 		{Name: "no-blocking-unresolved", Passed: true},
 	}
 
