@@ -160,10 +160,11 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 
 	criteria := make([]visualCriterion, 0, len(requiredCriteria))
 	for _, id := range requiredCriteria {
+		refs := append([]string(nil), requiredCriterionCaptureRefs[id]...)
 		criteria = append(criteria, visualCriterion{
 			ID:          id,
 			Result:      criterionResult,
-			CaptureRefs: []string{"projection-index", "custom-submit-success"},
+			CaptureRefs: refs,
 			Notes:       "Reference evaluator note",
 		})
 	}
