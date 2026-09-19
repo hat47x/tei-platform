@@ -1600,7 +1600,7 @@ R6RはKnowledge Portability relation、R3 authority acceptance、Gate C Evidence
 
 #### R6 Source-pressure exit assessment — 2026-09-19
 
-R6A〜R6QでSelective Knowledge RoutingのReference pressureは、Source / Design Evidenceとして一巡したと判断する。
+R6A〜R6RでSelective Knowledge RoutingのReference pressureは、Source / Design Evidenceとして一巡したと判断する。R6Rは無関係なcandidate pool growthがtask-scoped meaningへ漏れないことを確認する、具体的な最終closure pressureとして扱う。
 
 成立した境界は次のとおり。
 
