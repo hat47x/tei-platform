@@ -2559,6 +2559,74 @@ production Agent protocol / planner / tool router / approval workflow / ticket r
 
 
 
+### R3AJ — Authority-information request / recipient non-inference boundary
+
+R3AIのread-only reasoningから外部情報が必要になっても、問い合わせをremediation / action / owner selectionへ変換しない境界をPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AJ_AUTHORITY_INFORMATION_REQUEST_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3aj_authority_information_request_boundary_pressure_test.go`
+
+R3AJは:
+
+```text
+R3AI read-only reasoning
+  + R3P Agent resolution-inspection view
+  -> scoped authority-information request
+```
+
+として構成し、両者のResolutionNeedClassesをcross-checkする。
+
+current freshness stopでは:
+
+```text
+information need
+  = authorization-evaluation-freshness-authority
+
+evidence need
+  = authorization-evaluation-freshness-authority
+
+resolution requested
+  = true
+
+handoff recipient status
+  = unresolved
+```
+
+を保持する。
+
+ただし:
+
+```text
+request for missing authority information
+  != request to execute remediation
+
+recipient status unresolved
+  != guessed owner
+
+evidence need class known
+  != missing authority value known
+```
+
+である。
+
+BusinessAddress / StopStage / StopClass / MachineReasons / known SourceRefs / DrillDownRefsまでをscopeとして保持できるが、scopeをrouting destinationやworkflow stepへ変換しない。
+
+exact denied Observationではresolution need / resolution requestがないためauthority-information requestを生成しない。
+
+R3AI / R3Pのneed不一致、missing recipient status、missing BusinessAddress、missing source/drill-down contextはfail closedする。
+
+Recipient / HandoffOwner / CandidateValue / ToolCall / InvocationPlan / Command / NextAction / Remediation / Retry / Reauthorize / ApprovalRequest / CanExecute / Authorized / Allowed等は追加しない。
+
+production messaging protocol / ticket creation / notification transport / recipient directory / workflow engine / tool invocationは追加しない。
+
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
