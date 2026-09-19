@@ -470,40 +470,9 @@ execution Evidence unresolved
 
 ## 15. GitHub Actions利用条件
 
-Current mainで確認した既存workflowには、Lane C Gate Aをそのまま満たすgeneric manual workflowはない。
+GitHub Actionsは使えないため、Lane C Gate Aは手元のclean full checkoutで実行する。検証の共通の入口はlocalの`tools/repository-health-check.sh`である。
 
-### Gate B baseline source qualification
-
-`gate-b-baseline-source-qualification.yml`は`workflow_dispatch`を持つが、format / vet / test対象は:
-
-```text
-internal/application
-internal/driver
-internal/validation
-```
-
-に限定される。
-
-したがって実行できても:
-
-```text
-Gate B source qualification Evidence
-  != Lane C Gate A Evidence
-```
-
-である。
-
-### Issue #50 workflows
-
-Issue #50 workflowは専用branch / path triggerが中心で、一部は`gofmt -w` + auto-commit / pushを行う。
-
-`issue50-full-compile.yml`が`gofmt` / `go vet ./...` / `go test ./...`を含んでも、そのworkflowのtrigger / revision条件を無視してLane C Gate Aへ流用しない。
-
-### Future generic workflow
-
-将来generic read-only verification workflowが**Lane Cとは独立したRepository-wide理由**で整備された場合は利用可能。
-
-ただしGate AをgreenにするためだけにLane CからCI architectureを新設しない。
+過去にあったGate B専用のsource qualification workflowや、Issue #50用の一回限りのworkflowは、Lane C Gate A Evidenceを代替しないうえ、既に削除している。それらの実行結果をLane C Gate Aへ流用しない。
 
 ## 16. Gate A PASS条件
 

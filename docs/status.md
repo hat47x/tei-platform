@@ -117,21 +117,13 @@ actual Oracle #214 / #371 / #376は未実証部分が残っていますが、Gat
 - 未完了ならHandover `unresolved`
 - #310 synthetic Evidenceや#308 PostgreSQL Evidenceをactual Oracle成功へ読み替えない
 
-### source qualification / GitHub Actions
+### 検証とGitHub Actions
 
-Gate B Product Evidenceと、補助的なsource qualification CIを分離します。
+GitHub Actionsは月間quotaの都合で使えず、GitHub-hosted runnerがjob開始前に割り当てられない状態が続いています（`runner_id=0` / `steps=[]`のcheckout前failure）。これをApplication / Driverのcode failureへ読み替えません。
 
-- #512 `Gate B baseline source qualification` workflowはmainへ統合済み
-- #519でmanual `workflow_dispatch`入口もmainへ統合済み
-- PR #599でbaseline qualification対象を`internal/database/migration` / `internal/database/providers/postgres` / `internal/database/schemadiff`まで拡張済み
-- #513ではGitHub-hosted runnerがjob開始前に割り当てられないpre-run blockerを追跡中
-- 2026-09-16にPR #606 head `f6d78986fa7bfd35c4f7a82e0930c2c5c2b44d0d`で自動起動したrun `35048191177` / job `104642573551`も`steps=[]`のままfailureとなり、checkout / setup-go / gofmt / vet / go testへ到達していない
-- 同日の直前head `7b4398b97d4b44bbb1ddaab763f0134ea86d7af2`でもrun `35047855214`が`steps=[]`のままfailureで、runner復旧を示す観測はない
-- `runner_id=0 / steps=[]`、またはstep配列自体が空のcheckout前failureをApplication / Driver code failureへ読み替えない
-- source qualificationがgreenになっても、それだけで#310 / #255 / #308 / #387やGate B Readyを代替しない
-- 環境変化を示す観測がない間、同一classのfailed jobを機械的にrerunしない
+検証の正本はlocalの`tools/repository-health-check.sh`（`gofmt -l` / `go vet` / `go test` / `tei validate`）です。2026-09-19にリポジトリ全体を点検し、gofmt差・コンパイルできないpackage・古くなったtestを解消して、mainがすべてgreenであることを確認しました（[`ISSUE-000055`](../plan/issue/000055-verification-gate-while-ci-suspended.md)）。
 
-current restart pointは「Actionsを再有効化するか」ではありませんでした。実際には、利用可能なactual full checkoutでcurrent mainのsource qualification、4-package preflight、#310 / #255 / #308 pre-checkを行い、source変更（2件のsource-navigation bug fix、PR #726 / #727）を出し切った上でcandidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`を固定し、Gate B Readyへ到達しました。GitHub-hosted runnerが復旧すれば#512/#519を補助的qualificationとして利用できますが、CI greenはProduct Evidenceの代わりにはならず、今回のGate B Ready判定もlocal actual executionのみを根拠としています。
+Gate BのProduct Evidenceは、利用可能なactual full checkoutでのlocal actual executionだけを根拠にしています。CI greenはProduct Evidenceの代わりにはならず、今後もそうです。過去のGate B専用source qualification workflowは、health checkに包含されるため削除しました。
 
 Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_AUDIT.md)です。
 
