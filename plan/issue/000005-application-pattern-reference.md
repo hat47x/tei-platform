@@ -1,6 +1,6 @@
 # ISSUE-000005: `order_entry`でApplication Patternを実証する
 
-- 状態: 完了
+- 状態: Done
 - GitHub Issue: #67
 - 設計・実装基線: [`APPLICATION_PATTERN_V1_DESIGN.md`](../design/APPLICATION_PATTERN_V1_DESIGN.md)
 

@@ -1,4 +1,4 @@
-# ISSUE-000010: `sales.order.submit`をcommand Application Patternとして実証する
+# ISSUE-000067: `sales.order.submit`をcommand Application Patternとして実証する
 
 - 状態: Done
 - GitHub Issue: #110（完了）

@@ -493,7 +493,7 @@ Gate Cへ取り込むApplication / Driver meaningやsource-dependent境界が変
 - `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - `plan/issue/000033-gate-b-oracle-driver-integration.md`
 - `plan/issue/000034-gate-b-oracle-read-only-evidence.md`
-- `plan/issue/000035-gate-b-actual-oracle-blocker-reaudit.md`
+- `plan/issue/000066-gate-b-actual-oracle-blocker-reaudit.md`
 - `tools/internal/repositoryevidence/`
 - `tools/reference-external-query-evidence/README.md`
 - `tools/reference-external-query-evidence/main.go`

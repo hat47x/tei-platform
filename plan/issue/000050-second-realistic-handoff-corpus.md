@@ -1,6 +1,6 @@
 # 000050 second realistic TEI-original Handoff corpus
 
-Status: In Progress
+- 状態: In Progress
 
 ## 目的
 

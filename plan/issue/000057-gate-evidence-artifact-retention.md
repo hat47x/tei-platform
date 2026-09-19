@@ -1,6 +1,6 @@
 # ISSUE-000057: Gate Evidence artifactの保管先を決める
 
-- 状態: Proposed
+- 状態: Done — 容量が小さいためGitHub Releaseへ格納し、locatorを文書へ追記した（2026-09-20）
 - 提案日: 2026-09-19
 - 性格: Evidence provenance / operational continuity
 - 主担当要求: RQ-021 / RQ-022
@@ -41,14 +41,26 @@ Gate B / Gate Cは、実際に取得したEvidence artifactのSHA-256を根拠�
 4. 保管したartifactを再照合する手順（fingerprint再計算）と、その頻度。
 5. 今後のGate（Gate B'・Gate C'、successor Handover）でも同じ保管規則を使うか、Runbookへ書くか。
 
+## 決定と実施（2026-09-20）
+
+利用者の方針は、**容量が小さければ圧縮してGitHubへ格納し、大きければWSL上に留める**（WSLは日次バックアップの対象）です。Gate B（約32KB）とGate C（約1.3MB）はどちらも小さいため、GitHubへ格納しました。
+
+- 保管先: このRepository（private）のGitHub Release（prerelease）。Repositoryのtreeや履歴には入れません。tagは`R` / `T`のcommitを指します。
+  - Gate B: [`gate-b-evidence-R-e523183`](https://github.com/hat47x/tei-platform/releases/tag/gate-b-evidence-R-e523183)、`tei-gate-b-evidence-R-e5231839.tar.gz`（SHA-256 `1af53d6e…4395`）
+  - Gate C: [`gate-c-evidence-T-0ba87a4`](https://github.com/hat47x/tei-platform/releases/tag/gate-c-evidence-T-0ba87a4)、`tei-gate-c-evidence-T-0ba87a4e.tar.gz`（SHA-256 `de5f587a…12a3`）
+- 各archiveは、各fileのSHA-256を並べた`MANIFEST.sha256`を同梱しています。展開後に再照合できます。
+- 格納前にDSN・credential・secret pathが含まれないことをgrepで確認し、格納後にassetを再ダウンロードしてSHA-256の一致を確認しました。
+- 置き換えられた古いrun（`run-R` / `run-Rpp` / `run-T`）は採用していないため、格納していません。
+- locatorを`GATE_B_TO_C_HANDOVER_BASELINE_B.md`と`GATE_C_READINESS_AUDIT.md`へ追記し、保管規則を`GATE_B_EVIDENCE_RUNBOOK.md`と`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`へ書きました。今後のGateも同じ規則を使います。
+
 ## 完了条件
 
-- [ ] 保管先と保持期間を決める
-- [ ] Gate BのRequired Evidence（same-run child 3件、final、artifact audit）を保管する
-- [ ] Gate Cの採用run（raw artifact、Screenshot 6枚、manifest、各audit）を保管する
-- [ ] 保管物のSHA-256が文書の記録と一致することを確認する
-- [ ] 文書へlocatorを追記する（過去の判定は書き換えず、追記として残す）
-- [ ] Runbookへ保管規則を追記する
+- [x] 保管先と保持期間を決める（GitHub Release、期限なし。大きい場合はWSL）
+- [x] Gate BのRequired Evidence（same-run child 3件、final、artifact audit）を保管する
+- [x] Gate Cの採用run（raw artifact、Screenshot 6枚、manifest、各audit）を保管する
+- [x] 保管物のSHA-256が文書の記録と一致することを確認する
+- [x] 文書へlocatorを追記する（過去の判定は書き換えず、追記として残す）
+- [x] Runbookへ保管規則を追記する
 
 ## 非目標
 

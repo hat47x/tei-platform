@@ -1,6 +1,6 @@
 # ISSUE-000043: Gate B utility subprocessからPostgreSQL secretを隔離する
 
-- 状態: Ready to verify — 実装 / isolated test / tool README / Runbook同期済み、actual full checkout / final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-20）
 - GitHub Issue: #433
 - 親: `ISSUE-000037` / #387
 - 関連: `ISSUE-000044` / #436、`ISSUE-000045` / #441、GitHub #444
@@ -91,7 +91,7 @@ handoff pathを#308 laneへ追加する処理は、secret-free base environment�
 
 ## 残作業
 
-- [ ] 実TEI full checkoutで次を再確認する
+- [x] 実TEI full checkoutで次を再確認する
 
 ```bash
 GOENV=off \
@@ -100,8 +100,8 @@ GOFLAGS= \
 go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-- [ ] actual #387 final runで同じsecret exposure境界を使用する
-- [ ] actual #308 child compile環境にDSN本文が存在しないことを確認する
+- [x] actual #387 final runで同じsecret exposure境界を使用する
+- [x] actual #308 child compile環境にDSN本文が存在しないことを確認する
 
 本Issue単独の成功をGate B Readyへ格上げしません。
 

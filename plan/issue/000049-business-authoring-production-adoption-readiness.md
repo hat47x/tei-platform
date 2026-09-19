@@ -1,6 +1,6 @@
 # 000049 Business authoring production adoption readiness
 
-Status: Proposed
+- 状態: Proposed
 
 ## 目的
 

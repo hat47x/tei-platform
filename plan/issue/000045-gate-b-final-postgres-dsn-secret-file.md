@@ -1,9 +1,9 @@
 # ISSUE-000045: Gate B final runnerのcompile段階からPostgreSQL DSN本文を隔離する
 
-- 状態: Ready to verify — secret-file入力 / stable-read / pre-secret source guard / #308 path-only handoff実装済み、actual checkout / final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-20）
 - GitHub Issue: #441
 - 親: `ISSUE-000037` / #387
-- 関連: `ISSUE-000043` / #433、`ISSUE-000044` / #436、`ISSUE-000042` / #430、GitHub #444
+- 関連: `ISSUE-000043` / #433、`ISSUE-000044` / #436、`ISSUE-000065` / #430、GitHub #444
 - Gate B監査: `ISSUE-000029` / #273
 
 ## 目的
@@ -187,7 +187,7 @@ secret取得・handoff方式自体を新しいProduct Evidence natureへしま�
 
 ## 残作業
 
-- [ ] 実TEI full checkoutでfinal runner package test
+- [x] 実TEI full checkoutでfinal runner package test
 
 ```bash
 GOENV=off \
@@ -196,10 +196,10 @@ GOFLAGS= \
 go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-- [ ] actual #387 final runでRepository外secret-file + temporary path-only handoff経路を利用
-- [ ] actual run中にpre-secret source guard / stable-read / handoff cleanupが成立したことを確認
-- [ ] #308 compile段階にDSN本文が存在しないことをactual executionで確認
-- [ ] same-run child EvidenceにDSN本文 / original secret path / handoff pathが混入していないことを#273で監査
+- [x] actual #387 final runでRepository外secret-file + temporary path-only handoff経路を利用
+- [x] actual run中にpre-secret source guard / stable-read / handoff cleanupが成立したことを確認
+- [x] #308 compile段階にDSN本文が存在しないことをactual executionで確認
+- [x] same-run child EvidenceにDSN本文 / original secret path / handoff pathが混入していないことを#273で監査
 
 actual final runは#387の完了条件です。本Issue単独の成功をGate B Readyへ格上げしません。
 

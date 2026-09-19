@@ -1,9 +1,9 @@
 # ISSUE-000044: Gate B final runnerのGit source probeからPostgreSQL secretを隔離する
 
-- 状態: Ready to verify — 実装 / isolated test / tool README / Runbook同期済み、actual full checkout / final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-20）
 - GitHub Issue: #436
 - 親: `ISSUE-000037` / #387
-- 関連: `ISSUE-000043` / #433、`ISSUE-000045` / #441、`ISSUE-000038` / #418、GitHub #444
+- 関連: `ISSUE-000043` / #433、`ISSUE-000045` / #441、`ISSUE-000061` / #418、GitHub #444
 
 ## 目的
 
@@ -71,7 +71,7 @@ HEAD after
 - `IsReproducible`は同一clean revisionを要求
 - Gate B Evidenceはfull checkoutを前提とし、sparse由来のskip-worktreeを許容しない
 
-この境界は`ISSUE-000038` / #418と共通です。
+この境界は`ISSUE-000061` / #418と共通です。
 
 ## 成立済み
 
@@ -89,7 +89,7 @@ HEAD after
 
 ## 残作業
 
-- [ ] 実TEI full checkoutで次を再確認する
+- [x] 実TEI full checkoutで次を再確認する
 
 ```bash
 GOENV=off \
@@ -101,8 +101,8 @@ go test \
   -count=1
 ```
 
-- [ ] actual #387 final runで同じGit probe境界を使用する
-- [ ] actual runでGit probeへDSN本文 / original secret path / handoff pathが渡っていないことを確認する
+- [x] actual #387 final runで同じGit probe境界を使用する
+- [x] actual runでGit probeへDSN本文 / original secret path / handoff pathが渡っていないことを確認する
 
 本Issue単独の成功をGate B Readyへ格上げしません。
 

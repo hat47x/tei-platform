@@ -1,9 +1,9 @@
-# ISSUE-000042: Gate B final runner自身のcompile前からGOENVを無効化する
+# ISSUE-000065: Gate B final runner自身のcompile前からGOENVを無効化する
 
-- 状態: Ready to verify — 実装 / isolated test / tool README / Runbook同期済み、actual checkout / final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-20）
 - GitHub Issue: #430
 - 親: `ISSUE-000037` / #387
-- 関連: `ISSUE-000039` / #421、`ISSUE-000040` / #424
+- 関連: `ISSUE-000062` / #421、`ISSUE-000063` / #424
 
 ## 目的
 
@@ -85,7 +85,7 @@ GOENV pathや拒否値を通常Evidenceへ保存しません。
 
 ## 残作業
 
-- [ ] 実TEI checkoutで次を再確認する
+- [x] 実TEI checkoutで次を再確認する
 
 ```bash
 GOENV=off \
@@ -94,7 +94,7 @@ GOFLAGS= \
 go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-- [ ] actual #387 final runで`goEnvironment.goEnvDisabled = true`を確認する
+- [x] actual #387 final runで`goEnvironment.goEnvDisabled = true`を確認する
 
 本Issue単独の成功をGate B Readyへ格上げしません。
 

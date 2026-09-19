@@ -92,6 +92,8 @@ goEnvironment.goEnvDisabled           = true
 
 artifact本文はRunbookの規則によりRepository外へのみ保存し、Repositoryへコミットしません。stable referenceはこのfingerprint（SHA-256）と、同じ`R`に対して`GATE_B_EVIDENCE_RUNBOOK.md`の手順を再実行することによる再生成可能性です（`reproducibleRevision = true`がこれを担保します）。
 
+**保管先（locator）**: GitHub Release [`gate-b-evidence-R-e523183`](https://github.com/hat47x/tei-platform/releases/tag/gate-b-evidence-R-e523183)（tagは`R`を指す）のasset `tei-gate-b-evidence-R-e5231839.tar.gz`、SHA-256 `1af53d6ec1d7d61427d98cd0d8fda655fe0c37bb53927f36440d5e17cfec4395`。展開して`MANIFEST.sha256`で各fileを再照合できます（`ISSUE-000057`、2026-09-20追記）。
+
 #### #310 deterministic Repository（same-run）
 
 - Workspace Validation成功

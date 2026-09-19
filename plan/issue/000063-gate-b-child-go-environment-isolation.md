@@ -1,9 +1,9 @@
-# ISSUE-000040: Gate B child Go環境をGOENVまで固定する
+# ISSUE-000063: Gate B child Go環境をGOENVまで固定する
 
-- 状態: Ready to verify — 実装 / 隔離test / tool README / Runbook同期済み、実TEI full checkout / final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-20）
 - GitHub Issue: #424
 - 親: `ISSUE-000037` / #387
-- 関連: `ISSUE-000039` / #421、`ISSUE-000042` / #430、`ISSUE-000045` / #441、GitHub #444
+- 関連: `ISSUE-000062` / #421、`ISSUE-000065` / #430、`ISSUE-000045` / #441、GitHub #444
 
 ## 目的
 
@@ -11,7 +11,7 @@ final runnerから起動する#310 / #255 / #308 childと、そのchildが通常
 
 ## 現行境界
 
-まず`ISSUE-000039` / #421のambient検査で外部GOWORK /非空GOFLAGSを拒否し、`ISSUE-000042` / #430でfinal runner自身がcompile前からexact `GOENV=off`で起動されたことを確認します。
+まず`ISSUE-000062` / #421のambient検査で外部GOWORK /非空GOFLAGSを拒否し、`ISSUE-000065` / #430でfinal runner自身がcompile前からexact `GOENV=off`で起動されたことを確認します。
 
 その確認に成功した**後だけ**、final runner processを次へ固定します。
 
@@ -89,7 +89,7 @@ Go環境固定を理由にsecret exposureを広げません。`GOWORK / GOFLAGS 
 
 ## 残作業
 
-- [ ] 実TEI full checkoutで次を再確認する
+- [x] 実TEI full checkoutで次を再確認する
 
 ```bash
 GOENV=off \
@@ -98,8 +98,8 @@ GOFLAGS= \
 go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-- [ ] actual #387 final runで三laneが同じcandidate Rへ収束することを確認する
-- [ ] actual #308 childが同じGo環境固定とpath-only secret handoffを同時に満たすことを確認する
+- [x] actual #387 final runで三laneが同じcandidate Rへ収束することを確認する
+- [x] actual #308 childが同じGo環境固定とpath-only secret handoffを同時に満たすことを確認する
 
 actual runは#387の完了条件です。本IssueだけでGate B Readyを宣言しません。
 

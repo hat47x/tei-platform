@@ -26,7 +26,9 @@ Semantic Conformance、Interaction / Functional Evidence、Visual Fidelity Evide
 
 ## Evidence trail
 
-すべてRepository外（Runbookの規則）に保持し、Repositoryへcommitしていません。stable referenceはSHA-256です。
+すべてRepositoryへcommitしていません。stable referenceはSHA-256です。
+
+**保管先（locator）**（2026-09-20追記）: GitHub Release [`gate-c-evidence-T-0ba87a4`](https://github.com/hat47x/tei-platform/releases/tag/gate-c-evidence-T-0ba87a4)（tagは`T`を指す）のasset `tei-gate-c-evidence-T-0ba87a4e.tar.gz`、SHA-256 `de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3`。展開して`MANIFEST.sha256`で各file（Screenshot 6枚を含む）を再照合できます。
 
 | Evidence | nature / tool | 結果 | SHA-256 |
 | --- | --- | --- | --- |

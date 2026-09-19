@@ -1,6 +1,6 @@
 # ISSUE-000020: Contract Query runtime RegistryでDatabase instance identityを保持する
 
-- 状態: Completed
+- 状態: Done
 - GitHub Issue: #222
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
 - 関連RQ: RQ-005 / RQ-009 / RQ-012 / RQ-014

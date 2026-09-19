@@ -222,12 +222,12 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 
 | Issue | 減らす不確実性 | 主な出口 |
 | --- | --- | --- |
-| [000055 検証gate](000055-verification-gate-while-ci-suspended.md) | CI停止中に、未検証の変更（コンパイルできない、testが走らない）がmainへ入り続けないか | gate方式の決定。main緑化とhealth check scriptは実施済み |
-| [000056 Issue番号・状態語彙](000056-issue-numbering-uniqueness-and-status-vocabulary.md) | Issue参照が一意に作業を指し、状態を機械的に集計できるか | 重複8組の解消、状態語彙の統一 |
-| [000057 Evidence artifact保管](000057-gate-evidence-artifact-retention.md) | Ready判定の根拠artifactを、後から再照合できるか | 保管先・locator・再照合手順 |
-| [000058 Gate C Visual再評価](000058-gate-c-visual-independent-reevaluation.md) | 単一のAI評価者によるVisual判定を、別の評価者が追認するか | 独立再評価の記録、視覚課題の扱い |
-| [000059 旧作業branch](000059-unpushed-legacy-consolidation-branches.md) | ローカルだけに残る旧整理作業の扱い | 破棄 / 移植 / 保管の判断 |
-| [000060 旧workflow](000060-legacy-one-shot-workflows-inventory.md) | Actions再開時に、過去の書き込み権限付きworkflowが起動しないか | 棚卸しと削除・無効化の判断 |
+| [000055 検証gate](000055-verification-gate-while-ci-suspended.md) | CI停止中に、未検証の変更（コンパイルできない、testが走らない）がmainへ入り続けないか | 決定済み（script運用・main直接commit）。main緑化・health check・AGENTS.mdでの必須化を実施 |
+| [000056 Issue番号・状態語彙](000056-issue-numbering-uniqueness-and-status-vocabulary.md) | Issue参照が一意に作業を指し、状態を機械的に集計できるか | 解消済み（重複8組、状態語彙21件）。検査を`go test ./...`へ自動化 |
+| [000057 Evidence artifact保管](000057-gate-evidence-artifact-retention.md) | Ready判定の根拠artifactを、後から再照合できるか | GitHub Releaseへ格納済み。locatorを判定文書へ追記 |
+| [000058 Gate C Visual再評価](000058-gate-c-visual-independent-reevaluation.md) | 単一のAI評価者によるVisual判定を、別の評価者が追認するか | 保留。後日、別の生成AIが再評価する |
+| [000059 旧作業branch](000059-unpushed-legacy-consolidation-branches.md) | ローカルだけに残る旧整理作業の扱い | 削除済み（復元用にbundleを退避） |
+| [000060 旧workflow](000060-legacy-one-shot-workflows-inventory.md) | Actions再開時に、過去の書き込み権限付きworkflowが起動しないか | 不要な17本を削除済み |
 
 これらは既存のGate判定・Product主張を変えません。
 
@@ -248,6 +248,21 @@ Repository内Issueは6桁の連番を使います。
 ```
 
 GitHub Issueの番号とは別に管理します。
+
+番号の一意性と状態語彙は、`tools/repository-plan-check`のGo testが検査します（`go test ./...`に含まれます）。
+
+2026-09-20に、重複していた8組の番号のうち、参照の少ない側を新しい番号へ移しました（`ISSUE-000056`）。
+
+| 旧番号のfile | 新番号 | 番号を残した側 |
+| --- | --- | --- |
+| `000010-command-application-pattern` | 000067 | `000010-application-pattern-validation-integration` |
+| `000011-order-entry-browse-reference` | 000068 | `000011-order-line-semantic-reference` |
+| `000035-gate-b-actual-oracle-blocker-reaudit` | 000066 | `000035-gate-b-external-provider-scope-audit` |
+| `000038-gate-b-repository-source-observation-stability` | 000061 | `000038-business-lifecycle-semantics` |
+| `000039-gate-b-final-go-environment-isolation` | 000062 | `000039-business-change-rehearsal` |
+| `000040-gate-b-child-go-environment-isolation` | 000063 | `000040-semantic-component-composition` |
+| `000041-gate-b-postgres-fixture-ownership-marker` | 000064 | `000041-partition-schema-drift-semantics` |
+| `000042-gate-b-final-goenv-launch-guard` | 000065 | `000042-business-procedure-cross-view-reference` |
 
 ## 何をRepository内Issueにするか
 

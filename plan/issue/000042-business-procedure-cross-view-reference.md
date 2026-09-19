@@ -1,6 +1,6 @@
 # 000042 Business Procedure cross-view Reference
 
-Status: In Progress
+- 状態: In Progress
 
 ## 目的
 

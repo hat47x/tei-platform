@@ -541,11 +541,11 @@ Handover recordは第二のCanonical authorityではありません。
 - `issue/000032-gate-b-deterministic-repository-evidence.md`
 - `issue/000035-gate-b-external-provider-scope-audit.md`
 - `issue/000037-gate-b-three-lane-final-evidence.md`
-- `issue/000038-gate-b-repository-source-observation-stability.md`
-- `issue/000039-gate-b-final-go-environment-isolation.md`
-- `issue/000040-gate-b-child-go-environment-isolation.md`
-- `issue/000041-gate-b-postgres-fixture-ownership-marker.md`
-- `issue/000042-gate-b-final-goenv-launch-guard.md`
+- `issue/000061-gate-b-repository-source-observation-stability.md`
+- `issue/000062-gate-b-final-go-environment-isolation.md`
+- `issue/000063-gate-b-child-go-environment-isolation.md`
+- `issue/000064-gate-b-postgres-fixture-ownership-marker.md`
+- `issue/000065-gate-b-final-goenv-launch-guard.md`
 - `issue/000043-gate-b-probe-postgres-dsn-isolation.md`
 - `issue/000044-gate-b-git-probe-postgres-dsn-isolation.md`
 - `issue/000045-gate-b-final-postgres-dsn-secret-file.md`

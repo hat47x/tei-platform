@@ -1,6 +1,6 @@
 # ISSUE-000059: ローカルにだけ残る旧作業branch 2本（3commit）の扱いを決める
 
-- 状態: Proposed — 利用者の判断待ち。branchには何も変更を加えていない
+- 状態: Done — 2本とも不要と判断して削除した。復元用にbundleを退避した（2026-09-20）
 - 提案日: 2026-09-19
 - 性格: Repository hygiene / documentation consolidation follow-up
 - 主担当要求: RQ-023
@@ -44,7 +44,18 @@
 - **`88d074e0`（番号・状態語彙）**: 番号の是正は、改番先が使えないため作り直しになります。状態語彙の正規化とRQ-025 / RQ-026の追加のうち、RQ-025 / RQ-026の行は現在のmainのGap Auditに既にあります。状態語彙は現在も21件が逸脱しており、`ISSUE-000056`で扱います。
 - **`033dec02`（Lane Cの担当）**: 現在の`docs/status.md`は既に「material blockerは二つ」と記述しており、内容は概ね反映済みと見られます。競合するfileも少なく、破棄してよい可能性が高いものです。
 
-## 決めること
+## 決定と実施（2026-09-20）
+
+利用者の方針は「不要なのであれば削除」です。次のとおり判断し、実施しました。
+
+| branch | 判断 | 理由 |
+| --- | --- | --- |
+| `work/lane-c-two-blocker-ownership-sync` | 削除 | 内容は現在の`docs/status.md`等へ反映済み |
+| `docs/business-procedure-design-consolidation-20260909` | 削除 | 改番はADR・Issue番号の衝突で使えず、状態語彙とRQ-025 / 026は別の作業（`ISSUE-000056`、現行のGap Audit）で扱う。80本の吸収は、mainがその後大きく前進して競合し、そのまま適用できない。整理が必要な文書は、最新のmainに対して行う |
+
+削除の前に、3commit（`a08e5793` / `88d074e0` / `033dec02`）を`git bundle`でWSL上（`~/archive/tei-platform-unpushed-legacy-branches-2026-09.bundle`、約64KB、SHA-256は`~/archive/SHA256SUMS`）へ退避しました。WSLは日次バックアップの対象です。必要になった場合は、`git bundle unbundle`または`git fetch <bundle> <branch>`で復元できます。
+
+## 決めること（以下は起票時の選択肢。上のとおり決定済み）
 
 branchごとに、次のいずれかを選びます。
 
@@ -56,10 +67,10 @@ branchごとに、次のいずれかを選びます。
 
 ## 完了条件
 
-- [ ] branchごとの判断（破棄 / 移植 / 保管）を記録する
-- [ ] 移植する場合、最新のmainに対するPRとして作り直す（採番し直す）
-- [ ] 破棄・保管する場合、ローカルbranchの扱いを決める（`git branch -D`は、判断後に行う）
-- [ ] 判断内容を`ISSUE-000056`（番号・状態語彙）と整合させる
+- [x] branchごとの判断（破棄 / 移植 / 保管）を記録する（2本とも破棄。復元用にbundleを退避）
+- [x] 移植する場合、最新のmainに対して作り直す（移植しないため対象なし。整理は最新のmainに対して`ISSUE-000056`等で行う）
+- [x] 破棄・保管する場合、ローカルbranchの扱いを決める（判断後に`git branch -D`した）
+- [x] 判断内容を`ISSUE-000056`（番号・状態語彙）と整合させる
 
 ## 非目標
 

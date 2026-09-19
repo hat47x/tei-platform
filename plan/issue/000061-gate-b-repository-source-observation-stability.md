@@ -1,4 +1,4 @@
-# ISSUE-000038: Gate BのRepository source観測中HEAD driftをfail closedにする
+# ISSUE-000061: Gate BのRepository source観測中HEAD driftをfail closedにする
 
 - 状態: In Progress — HEAD drift / Git environment / untracked / ignored / Git index local state guardまで実装・pure test済み、実TEI checkoutでの通常Go test待ち
 - GitHub Issue: #418

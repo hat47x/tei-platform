@@ -1,6 +1,6 @@
 # ISSUE-000003: 既存認証仕様を保持したCompatibility Referenceを実証する
 
-- 状態: 完了
+- 状態: Done
 - GitHub Issue: #68
 - 実装前設計: [`LEGACY_AUTH_V1_DESIGN.md`](../design/LEGACY_AUTH_V1_DESIGN.md)
 - Gate A判定: Ready

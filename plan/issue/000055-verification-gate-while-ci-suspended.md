@@ -1,6 +1,6 @@
 # ISSUE-000055: CI停止中でも、未検証の変更がmainへ入り続けない仕組みを決める
 
-- 状態: In Progress — main緑化とhealth check scriptは完了。gate化の方式は未決定
+- 状態: Done — main緑化、health check script（`--fix`付き）、`AGENTS.md`での必須化を実施し、方式を決定（2026-09-20）
 - 提案日: 2026-09-19
 - 性格: Repository health / verification gate / Evidence reliability
 - 主担当要求: RQ-021 / RQ-022 / RQ-023
@@ -63,14 +63,27 @@ Gate Readyや「pressure testがgreen」という主張が、コンパイルで�
 
 あわせて、main直接commitについて、§8の運用と実態のどちらを正とするかを決めます（例外条件を明文化するか、抑止するか）。
 
+## 決定（2026-09-20）
+
+利用者は一人で開発しており、人的reviewを介する段階になく、その工数もありません。これを前提に次のとおり決めました。
+
+- **A（script運用）を採用**し、`tools/repository-health-check.sh`をpush前の必須手順にする（`AGENTS.md`）。gofmt差は`--fix`で自動整形できる。並行して動くAI sessionにも同じ規則が適用される。
+- B（pre-push hook）は採用しない。Goが（この環境では）WSL2にだけあるため、Windows側cloneのhookは動かず、cloneごとの設定も要る。
+- C（branch protection）は採用しない。PRを不要とする方針と矛盾する。
+- D・E（self-hosted runner・hosted runnerの再開）は採用しない。単独開発で、CI結果を見る人がいない。
+- **main直接commitを正とする。** `CONTRIBUTING.md`の§8を含むbranch / PR運用を廃止し、`AGENTS.md` / `CONTRIBUTING.md`を「main直接・push前にhealth check」へ改めた。
+- Gate B `#310`の`-broad`は、必要になったときに実行する。Ready判定の`R`は変えない。
+
+決定と同日、並行commitによりmainが再び赤くなること（gofmt差7file、型不一致によるコンパイルエラー）を確認して修正しました。`--fix`と`AGENTS.md`での必須化は、この再発を受けたものです。規則を守るかどうかは各sessionに依存するため、今後も定期的な点検で確認します。
+
 ## 完了条件
 
 - [x] mainをgofmt / vet / test / validateすべてgreenにする（#828 / #829 / #830、`b0f466c`）
 - [x] 手元で再現できる検証scriptを用意し、`CONTRIBUTING.md`へ記載する
-- [ ] gate化の方式（上のA〜E）を決め、必要なら判断をADRへ残す
-- [ ] main直接commitの扱いを決め、`CONTRIBUTING.md`§8と実態を一致させる
-- [ ] 決めた方式を運用した後、mainがhealth checkを通り続けることを、定期的なsweepで確認する手順を残す
-- [ ] Gate B `#310`の`-broad`（`go test ./...`を含む実行）を、現在のmainで実行する方針を決める（Gate B Readyの`R`は変えない）
+- [x] gate化の方式（上のA〜E）を決める（Aを採用。方式の選択はこのIssueへ記録し、ADRにはしない）
+- [x] main直接commitの扱いを決め、`CONTRIBUTING.md` / `AGENTS.md`と実態を一致させる（直接commitを正とした）
+- [x] 決めた方式の運用として、作業の開始時とpush前にhealth checkを実行することを`AGENTS.md` / `CONTRIBUTING.md`へ記載した
+- [x] Gate B `#310`の`-broad`は必要になったときに実行する方針とする（Gate B Readyの`R`は変えない）
 
 ## 非目標
 

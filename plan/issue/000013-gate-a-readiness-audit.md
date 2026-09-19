@@ -1,6 +1,6 @@
 # ISSUE-000013: Gate Aの到達性を横断監査する
 
-- 状態: 完了
+- 状態: Done
 - GitHub Issue: #124
 - 前段: `ISSUE-000005` / GitHub Issue #67（完了）
 - 後段: `ISSUE-000006` / GitHub Issue #69（Application Driver）

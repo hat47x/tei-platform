@@ -1,6 +1,6 @@
 # 000048 Business Procedure Contract ADR readiness
 
-Status: In Progress
+- 状態: In Progress
 
 ## このIssueを最初に読むときの要点
 

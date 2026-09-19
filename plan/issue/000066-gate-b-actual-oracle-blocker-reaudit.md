@@ -1,4 +1,4 @@
-# ISSUE-000035: Gate Bでactual Oracleを必須blockerとする条件を再監査する
+# ISSUE-000066: Gate Bでactual Oracleを必須blockerとする条件を再監査する
 
 - 状態: In Progress — 結論反映中
 - GitHub Issue: #381

@@ -1,6 +1,6 @@
 # ISSUE-000056: Issue番号の重複8組と状態語彙の逸脱を解消し、再発を防ぐ
 
-- 状態: Proposed
+- 状態: Done — 重複8組を解消し、状態語彙を6値へ統一し、一意性の検査を自動化した（2026-09-20）
 - 提案日: 2026-09-19
 - 性格: Planning governance / traceability
 - 主担当要求: RQ-023
@@ -38,7 +38,36 @@
 - 2026-09-09にローカルbranch `docs/business-procedure-design-consolidation-20260909`（commit `88d074e0`）で、Gate B系の参照の少ない側を000048〜000053へ改番し、状態語彙も正規化する是正が作られました。これは未pushのまま、その後mainで000048〜000054が別の作業に使われたため、**改番先がそのままでは使えません**（`ISSUE-000059`で扱います）。
 - 重複はすべて2026-09-02〜06に発生しており、その後の起票は連番を保てています（000043以降に新しい重複はありません）。
 
-## 決めること
+## 決定と実施（2026-09-20）
+
+利用者の方針は「文書の重複や矛盾は一律解消」です。次のとおり実施しました。
+
+**番号の重複8組を解消しました。** 出発点の案（参照の多い側が番号を保持する）を採用しました。`plan/issue/`以外での`ISSUE-NNNNNN`の参照はすべてBusiness / Partition系を指しており、Gate B系（000038〜000042のgate-b-*）への参照は`plan/issue/`のGate B系file内に閉じていたため、Gate B側だけを新番号へ移しました。
+
+| 旧番号のfile | 新番号 | 番号を残した側 |
+| --- | --- | --- |
+| `000010-command-application-pattern` | 000067 | `000010-application-pattern-validation-integration` |
+| `000011-order-entry-browse-reference` | 000068 | `000011-order-line-semantic-reference` |
+| `000035-gate-b-actual-oracle-blocker-reaudit` | 000066 | `000035-gate-b-external-provider-scope-audit` |
+| `000038-gate-b-repository-source-observation-stability` | 000061 | `000038-business-lifecycle-semantics` |
+| `000039-gate-b-final-go-environment-isolation` | 000062 | `000039-business-change-rehearsal` |
+| `000040-gate-b-child-go-environment-isolation` | 000063 | `000040-semantic-component-composition` |
+| `000041-gate-b-postgres-fixture-ownership-marker` | 000064 | `000041-partition-schema-drift-semantics` |
+| `000042-gate-b-final-goenv-launch-guard` | 000065 | `000042-business-procedure-cross-view-reference` |
+
+- 移した各Issueの見出しを新番号へ改め、Gate B系file内の`ISSUE-NNNNNN`参照（000038〜000042の5番号）を新番号へ追従させ、file path参照を更新しました。GitHub Issue番号（`#418`等）は変更していません。
+- 旧番号→新番号の対応は、`plan/issue/README.md`の「番号」節に残しました。
+
+**状態語彙の逸脱21件を6値へ統一しました。**
+
+- `Status:`の英語キー6件を`- 状態:`へ揃えました（000001 / 000002 / 000042 / 000048 / 000049 / 000050）。
+- `完了` / `Completed` 7件と`Resolved` 1件を`Done`へ揃えました。
+- `Ready to verify` 5件（000043 / 000044 / 000045 / 000063 / 000065）は、未確認だったactual `#387` final runがR = `e5231839`で成立しているため`Done`とし、未チェックだったactual run項目をチェックしました。
+- `着手可能` 2件（`000010`のValidation統合、`000068`のbrowse Reference）は、`validation.Validate`がApplication Pattern検証を呼び、`order_entry.recent_orders`がReference Workspaceにauthoring済みであることを確認したうえで`Done`としました。
+
+**再発防止として、検査を自動化しました。** `tools/repository-plan-check`のGo testが、Issue・ADR番号の一意性、Issueの状態語彙（6値）、Markdown相対リンクの解決を検査します。`go test ./...`に含まれるため、`tools/repository-health-check.sh`が違反を検出します（重複番号・不正な状態・リンク切れの各違反で失敗することを確認済み）。
+
+## 決めること（以下は起票時の選択肢。上のとおり決定済み）
 
 1. 各組でどちらが番号を保持するか。参照数の多い側（表のパス参照数）を残す、を出発点にできます。ただし、番号が文書内で`ISSUE-NNNNNN`形式でしか参照されていない場合は、参照が実際にどちらを指すかを文脈から確認する必要があります。
 2. 改番する側の新しい番号。並行して起票が続くため、改番は起票と衝突しない手順（最新mainで最大番号を確認してから割り当てる）で行います。
@@ -48,12 +77,12 @@
 
 ## 完了条件
 
-- [ ] 8組の重複を解消し、旧番号→新番号の対応を残す
-- [ ] 改番に伴い、`ISSUE-NNNNNN`形式とfile path形式の両方の参照を追従させる
-- [ ] 状態語彙の逸脱21件を6値へ揃え、`- 状態:`行がない6件へ状態行を加える
-- [ ] `plan/issue/README.md`の一覧・対応表を更新する
-- [ ] 一意性と状態語彙の検査を自動化するかを決め、採用するなら`ISSUE-000055`のhealth checkへ組み込む
-- [ ] Gate判定・Canonical採用・Evidence主張を変更していないことを確認する
+- [x] 8組の重複を解消し、旧番号→新番号の対応を残す
+- [x] 改番に伴い、`ISSUE-NNNNNN`形式とfile path形式の両方の参照を追従させる
+- [x] 状態語彙の逸脱21件を6値へ揃え、`- 状態:`行がない6件へ状態行を加える
+- [x] `plan/issue/README.md`の一覧・対応表を更新する
+- [x] 一意性と状態語彙の検査を自動化し、`go test ./...`（health check）へ組み込む
+- [x] Gate判定・Canonical採用・Evidence主張を変更していないことを確認する
 
 ## 非目標
 

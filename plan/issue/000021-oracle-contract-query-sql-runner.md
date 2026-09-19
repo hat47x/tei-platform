@@ -1,6 +1,6 @@
 # ISSUE-000021: Oracle Contract Queryの`database/sql` Runner境界を追加する
 
-- 状態: Completed
+- 状態: Done
 - GitHub Issue: #224
 - 親Issue: `ISSUE-000018` / GitHub Issue #179
 - 前提Issue: `ISSUE-000020` / GitHub Issue #222

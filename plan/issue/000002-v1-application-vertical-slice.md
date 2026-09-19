@@ -1,6 +1,6 @@
 # ISSUE-000002: v1へ向けたApplication vertical sliceを定義する
 
-- Status: Done
+- 状態: Done
 
 ## 背景
 

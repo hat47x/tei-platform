@@ -488,6 +488,20 @@ childArtifactsRetained = true
 
 **後から同じRで再実行した別artifactを、final runnerが実際に読んだartifactと同一だと推測しません。** Readiness Auditではsame-run child artifactを参照します。
 
+### 保管（採用したrunのartifact）
+
+Ready判定に採用したrunのartifactは、Repositoryへcommitせず、次のとおり保管する（`ISSUE-000057`）。
+
+- 容量が小さい場合（目安: 数MB以下）: `MANIFEST.sha256`（各fileのSHA-256）を同梱した`tar.gz`へ圧縮し、対象revision（`R` / `T`）を指すtagを付けたGitHub Release（prerelease）のassetとして格納する。tag名は`gate-b-evidence-R-<short>` / `gate-c-evidence-T-<short>`とする。
+- 容量が大きい場合: WSL上に留める（WSLは日次バックアップの対象）。
+- 格納前に、DSN・credential・secret pathが含まれないことを確認する（audit toolの拒否に加え、grepで確認する）。
+- 格納後、assetを再ダウンロードしてSHA-256が一致することを確認し、判定文書へ保管先（locator）とarchiveのSHA-256を追記する。過去の判定は書き換えず、追記する。
+
+```bash
+gh release create <tag> <archive.tar.gz> --target <R/Tの完全なcommit SHA> \
+  --title "<title>" --notes-file <notes.md> --prerelease
+```
+
 ## 9. lane順序
 
 ```text

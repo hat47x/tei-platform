@@ -1,4 +1,4 @@
-# ISSUE-000041: PostgreSQL fixture削除をDB側ownership markerで保護する
+# ISSUE-000064: PostgreSQL fixture削除をDB側ownership markerで保護する
 
 - 状態: In Progress — 実装 / 隔離test / tool README / Runbook / #308同期済み、実PostgreSQL確認待ち
 - GitHub Issue: #427

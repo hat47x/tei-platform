@@ -1,6 +1,6 @@
-# ISSUE-000011: `order_entry.recent_orders`を実Reference Patternとして固定する
+# ISSUE-000068: `order_entry.recent_orders`を実Reference Patternとして固定する
 
-- 状態: 着手可能
+- 状態: Done — 実装済み（`order_entry.recent_orders`はReference Workspaceにauthoring済み。Application Pattern Stage 1 / Gate A Ready）
 - GitHub Issue: #100
 - 上位Issue: [`ISSUE-000005`](000005-application-pattern-reference.md)
 

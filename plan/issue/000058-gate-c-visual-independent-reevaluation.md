@@ -1,6 +1,6 @@
 # ISSUE-000058: Gate C Visual Fidelityの独立再評価と、第一Web Targetの視覚課題を整理する
 
-- 状態: Proposed
+- 状態: Proposed — 保留。後日、別の生成AIが再評価する（2026-09-20）
 - 提案日: 2026-09-19
 - 性格: Evidence confidence / Reference UI quality
 - 主担当要求: RQ-010 / RQ-011 / RQ-013 / RQ-021
@@ -28,6 +28,14 @@ Gate Cは2026-09-19にReadyと判定されました。ただし、Visual Fidelit
 - validationの`satisfied` / `not-satisfied`が文字だけで区別され、視覚的な強調差がない（monochrome Referenceの設計）
 
 Runbookの手順にも課題があります。Visual manifestのscaffoldは既定で`viewport-height 1000`を使いますが、それでは標準ProjectionもCustom UIも下部が切れます。Runbookに注記は追加しましたが、既定値は変えていません。Screenshotの撮影自体は手作業です（固定したcapture toolはありません）。
+
+## 決定（2026-09-20）
+
+- **当面は保留します。** Gate Cの判定（Ready）は変えません。
+- 再評価は、**後日、別の生成AIに見てもらう**想定です。利用者自身による確認は予定していません。
+- 再評価に使うScreenshotとmanifestは、GitHub Releaseに格納済みです（[`gate-c-evidence-T-0ba87a4`](https://github.com/hat47x/tei-platform/releases/tag/gate-c-evidence-T-0ba87a4)、`ISSUE-000057`）。別の生成AIには、これを取得して同じcriteriaで評価してもらいます。
+
+以下の「決めること」のうち、1（誰が再評価するか）は上のとおり決まりました。2〜5は、再評価を実施する時点で扱います。
 
 ## 決めること
 

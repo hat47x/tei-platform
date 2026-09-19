@@ -742,3 +742,18 @@ Semantic / Functional auditはactual runから次をTarget difference handoffへ
 Gate C contractに定めた第一Targetの意味・操作・視覚・architecture境界が、同一provenanceのEvidenceから再確認できたことだけを意味する。
 
 actual final auditを取得するまでは、source implementationだけからGate C Readyを宣言しない。
+
+## Evidence artifactの保管
+
+Ready判定に採用したrunのartifactは、Repositoryへcommitせず、次のとおり保管する（`ISSUE-000057`）。
+
+- 容量が小さい場合（目安: 数MB以下）: `MANIFEST.sha256`（各fileのSHA-256）を同梱した`tar.gz`へ圧縮し、対象revision（`R` / `T`）を指すtagを付けたGitHub Release（prerelease）のassetとして格納する。tag名は`gate-b-evidence-R-<short>` / `gate-c-evidence-T-<short>`とする。
+- 容量が大きい場合: WSL上に留める（WSLは日次バックアップの対象）。
+- 格納前に、DSN・credential・secret pathが含まれないことを確認する（audit toolの拒否に加え、grepで確認する）。
+- 格納後、assetを再ダウンロードしてSHA-256が一致することを確認し、判定文書へ保管先（locator）とarchiveのSHA-256を追記する。過去の判定は書き換えず、追記する。
+
+```bash
+gh release create <tag> <archive.tar.gz> --target <R/Tの完全なcommit SHA> \
+  --title "<title>" --notes-file <notes.md> --prerelease
+```
+

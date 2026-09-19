@@ -1,6 +1,6 @@
 # ISSUE-000001: 現行実装をProduct Requirementsへ逆マッピングする
 
-- Status: Done
+- 状態: Done
 
 ## 背景
 

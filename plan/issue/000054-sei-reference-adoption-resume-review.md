@@ -1,6 +1,6 @@
 # ISSUE-000054: SEI Resume / Reviewを第二ApplicationのReference Adoptionとして圧力試験する
 
-- 状態: Resolved — Stage 0はlimited / Reference-localとして判断完了。Change 2 Product behavior probeはGate B / C境界でdeferred
+- 状態: Done — Stage 0はlimited / Reference-localとして判断完了。Change 2 Product behavior probeはGate B / C境界でdeferred
 - 提案日: 2026-09-18
 - 性格: Reference adoption / cross-application pressure / implementation strategy validation
 - 主担当要求: RQ-003 / RQ-004 / RQ-010 / RQ-011 / RQ-021 / RQ-022 / RQ-023

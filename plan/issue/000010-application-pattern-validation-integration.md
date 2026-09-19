@@ -1,6 +1,6 @@
 # ISSUE-000010: Application Pattern Validationを共通Validateへ統合する
 
-- 状態: 着手可能
+- 状態: Done — 実装済み（`validation.Validate`がApplication Pattern検証を呼ぶ。Application Pattern Stage 1 / Gate A Ready）
 - GitHub Issue: #98
 - 上位Issue: [`ISSUE-000005`](000005-application-pattern-reference.md)
 
@@ -75,7 +75,7 @@ Pattern固有Validationを`validation.Validate(w)`から呼び、Diagnosticを�
 - 実Referenceでのfile rename invariance
 - 後続Pattern Kindの追加
 
-実Referenceは[`ISSUE-000011`](000011-order-entry-browse-reference.md)で扱います。
+実Referenceは[`ISSUE-000068`](000068-order-entry-browse-reference.md)で扱います。
 
 ## 完了条件
 

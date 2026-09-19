@@ -1,6 +1,6 @@
 # ISSUE-000024: keyless header-detail RelationのDatabase-ownedな物理保存境界を定める
 
-- 状態: Completed
+- 状態: Done
 - GitHub Issue: #244
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 前段: `ISSUE-000023` / GitHub Issue #233
