@@ -1532,6 +1532,54 @@ RoutingMechanism / over-selection / rejected candidateは診断情報に留め�
 
 R6QはR3AQ以降のAccepted Decision commit candidate / authority applicationを再実装しない。
 
+
+#### R6 Source-pressure exit assessment — 2026-09-19
+
+R6A〜R6QでSelective Knowledge RoutingのReference pressureは、Source / Design Evidenceとして一巡したと判断する。
+
+成立した境界は次のとおり。
+
+```text
+available
+  != selected
+  != qualified
+  != materialized
+
+router mechanism
+  != qualified meaning
+  != bounded input identity
+
+routed knowledge
+  != consumer-local input
+
+shared knowledge body
+  != consumer-specific use edge
+
+scope identity
+  != observed cardinality
+
+cardinality
+  != membership
+  != retained provenance
+
+router diagnostics
+  != downstream observation meaning
+```
+
+この段階でR6へさらにproduction router、ranking、embedding、model-native routing、Prompt payload、Universal Context Packet、freshness policy、Authorization authorityを追加しない。
+
+またR6は、actual runtimeでのlatency / token / retrieval quality改善、AI Builderでのtask success、Jev等の非LLM認知層、model-native routerの優位性を実証していない。これらはSource pressureとは別Evidenceである。
+
+R6からRequirementへ新しいnormative contractを自動昇格させない。現在の成果は既存の責務分離・traceability・deterministic qualification原則を具体化するReference Evidenceとして扱う。
+
+次の再開条件は次のいずれかとする。
+
+1. actual AI Builder / Agent contextでR6境界を破る具体的defectが観測された
+2. First Web Target / Gate Cのactual EvidenceからR7 Replayable Behavior Evidenceへ進める
+3. production context service / router候補が生まれ、R6 invariantsへの適合Pressureが必要になった
+
+それまではR6を増殖させず、R3のfreshness / acceptance / execution authority、R7のbehavior Evidence、Gate Cのactual acquisitionへ責務を戻す。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
