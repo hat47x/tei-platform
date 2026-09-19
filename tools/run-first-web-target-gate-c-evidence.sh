@@ -47,6 +47,7 @@ if [[ -n "${TEI_GATE_C_ARTIFACT_DIR:-}" ]]; then
 else
   artifact_dir="$(mktemp -d "${TMPDIR:-/tmp}/tei-gate-c-first-web.XXXXXX")"
 fi
+artifact_dir="$(cd "$artifact_dir" && pwd -P)"
 
 case "$artifact_dir" in
   "$repo_root"|"$repo_root"/*)
