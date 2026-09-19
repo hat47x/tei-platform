@@ -2915,20 +2915,22 @@ Packet EはPacket Vのsemantic validation境界を利用する。Vを同時に�
 Integration order:
 
 ```text
-Packet M actual inputs
+E0 replay-plan launch provenance carry
+  ↓ full repository-health-check
+Packet M actual inputs / final replay plan
   ↓
 Packet V shared semantic validator
-  ↓
+  ↓ full repository-health-check
 Packet E operational replay runner
-  ↓
-full repository-health-check
-  ↓
+  ↓ full repository-health-check
 actual two-run replay
   ↓
 Evidence height update
 ```
 
-Packet Mはsource変更を伴わないためV/Eとコード上は競合しないが、actual replayはMで生成されたexact artifactsが揃うまで開始しない。
+E0はPacket Mのfinal replay-plan materializationより先に入れる。E0前に作ったreplay planはfinal Packet M artifactとして採用しない。
+
+Packet Mはsource変更を伴わないためV/Eとコード上は競合しないが、actual replayはE0後に生成されたexact plan / receiptとPacket V/Eのhealth-check済みsourceが揃うまで開始しない。
 
 ### R7A — Gate C actual Evidence entry boundary
 

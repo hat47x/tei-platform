@@ -161,6 +161,12 @@ RepeatabilityStatus   = not-observed
 
 ### M4. actual R7B replay planをmaterializeする
 
+**前提: E0 replay-plan launch provenance carryがhealth-check済みでmainへ入っていること。**
+
+current replay-plan sourceが `HandoverBaselineID / BaselineRepositoryRevision / TargetAdapter / Host` をまだcarryしていないrevisionではM4をfinal Evidenceとして実行しない。
+
+M1〜M3をE0前に予備実行した場合、そのartifactは入力検証には使えるが、final Packet Mとして採用するreplay plan / receiptはE0統合後のclean mainから再生成する。
+
 ```bash
 TEI_R7B_EXECUTION_INTAKE="$root/r7b-intake/r7b-execution-intake.json" \
 TEI_R7B_INTAKE_RECEIPT="$root/r7b-intake/r7b-intake-receipt.json" \
@@ -187,7 +193,9 @@ Packet M完了として記録できるのは、少なくとも次がactual execu
 - `MANIFEST.sha256` 全件PASS
 - R7A handoff runner PASS
 - R7B intake runner PASS
+- E0 launch provenance carryがhealth-check済みmainに統合済み
 - R7B replay-plan runner PASS
+- replay planがB / R / T / TargetAdapter / Hostをlossless carry
 - 各段階のreceipt exact SHA-256取得
 - current source checkoutが各runner前後でclean / same revision
 - derived artifactがすべてRepository外
@@ -872,6 +880,6 @@ actual replay executionはさらに、Release archiveの再取得・digest照合
 
 ## 現在の停止点
 
-Source / Design上の入口は揃っている。actual executionの停止点は、adopted Gate C Release archiveをGo-enabled full checkoutの実行環境で再取得・照合し、R7A handoff、R7B intake、R7B replay planをactual materializeしたうえで、health-check済みのoperational replay runnerをexact Tへ実行していないことである。
+Source / Design上の入口は揃っている。現在の最初のcode stopはE0 replay-plan launch provenance carryであり、これをGo-enabled full checkoutで実装してhealth checkを通す必要がある。その後、adopted Gate C Release archiveを再取得・照合し、R7A handoff、R7B intake、**E0後の**R7B replay planをactual materializeする。actual replay executionはさらにPacket V / Packet Eをhealth-check済みで統合し、exact Tへ2 distinct runsを実行するまで未成立である。
 
 このIssueはその停止点から先を所有する。
