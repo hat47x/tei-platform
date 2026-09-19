@@ -2471,6 +2471,56 @@ R6L scope identityは`Complete` / `Ready` / `Fresh` / `Authorized`ではなく�
 
 R3AG〜R3ALのoutput materialization / authority-information lifecycleは再実装しない。
 
+### R6M — same-scope observation delta
+
+R6Lのsemantic scope identityを前提に、同一scope内でobserved plane cardinalityだけが変化した場合の比較をPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6m_same_scope_observation_delta_pressure_test.go`
+
+R6M comparisonはbefore / afterの`ScopeIdentity`一致を必須とする。
+
+一致する場合だけ、各planeについて:
+
+- ScopeDisposition
+- BeforeObservedCount
+- AfterObservedCount
+- CountDelta
+
+をderived observationとして保持する。
+
+current BP-06のHuman / Agent shared Procedure useでは:
+
+```text
+same scope identity
+
+routed knowledge:
+  1 -> 1
+  delta 0
+
+routed use:
+  1 -> 2
+  delta +1
+```
+
+となる。
+
+```text
+same scope + cardinality delta
+  != scope meaning changed
+  != source meaning changed
+  != authority strengthened
+```
+
+ScopeIdentityが異なる場合はR6M comparisonを拒否し、異なるscope間のcount差を同一意味上のdeltaとして扱わない。
+
+また同一ScopeIdentityにもかかわらず同じplaneのrequired / out-of-scope dispositionが変化していればfail closedする。
+
+R6M observation deltaは`ScopeChanged` / `SemanticChanged` / `Fresh` / `ShouldReevaluate` / `Authorized`等を持たない。
+
+R3AM以降のqualified assertion / Accepted Decision境界とは独立し、knowledge input observationのみを対象とする。
+
 
 
 
