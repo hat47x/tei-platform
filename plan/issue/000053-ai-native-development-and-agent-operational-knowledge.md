@@ -2415,6 +2415,60 @@ traceability
 
 
 
+### R3AI — Read-only Agent consumption / remediation non-selection
+
+R3AGのAgent resolution-inspection materializationとR3AH provenance traceをmachine-readableに消費しても、read-only understandingからremediation / invocationを選ばない境界をPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AI_READ_ONLY_AGENT_CONSUMPTION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ai_read_only_agent_consumption_pressure_test.go`
+
+```text
+purpose-bound materialization
+  + exact provenance trace
+  -> read-only Agent understanding
+
+understand unresolved state
+  != select remediation
+
+resolution need
+  != next action
+```
+
+とする。
+
+Agentはfreshness stop reason、resolution need class、reevaluation / reuse authority status、exact category outcome、unselected change、ResidualRootDelta、dependency / provenance traceを保持できる。
+
+ただし:
+
+```text
+explicit reevaluation-required
+  != this Agent may invoke reevaluation
+
+explicit reuse-permitted
+  != protected operation execution authorized
+
+unchanged-after-reevaluation
+  != reuse / continue / fresh
+
+changed-after-reevaluation
+  != retry / rebuild / escalate
+```
+
+である。
+
+prior Authorization Observation no-binding residualをcurrent runtime decisionへ昇格させず、同じmaterialization / traceの反復消費をauthority strengthやconfidence overrideへ変換しない。
+
+R3AI read-only viewはToolCall / InvocationPlan / Command / NextAction / Remediation / Retry / Reauthorize / ApprovalRequest / HandoffOwner / CanExecute / Authorized / Allowed等を持たない。
+
+production Agent protocol / planner / tool router / approval workflow / ticket routing / Command executionは追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
