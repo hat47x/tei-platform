@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type provenance struct {
+type Provenance struct {
 	HandoverBaselineID         string `json:"handoverBaselineId"`
 	BaselineRepositoryRevision string `json:"baselineRepositoryRevision"`
 	TargetBuildRevision        string `json:"targetBuildRevision"`
@@ -21,7 +21,7 @@ type provenance struct {
 }
 
 type manifestArtifact struct {
-	provenance
+	Provenance
 	Stage         string                    `json:"stage"`
 	ApplicationID string                    `json:"applicationId"`
 	Patterns      []manifestPatternArtifact `json:"patterns"`
@@ -43,7 +43,7 @@ type manifestDatasource struct {
 }
 
 type readEnvelope struct {
-	provenance
+	Provenance
 	Result readArtifact `json:"result"`
 }
 
@@ -66,7 +66,7 @@ type runtimeBindingArtifact struct {
 }
 
 type commandEnvelope struct {
-	provenance
+	Provenance
 	Result commandArtifact `json:"result"`
 }
 
@@ -156,7 +156,7 @@ func main() {
 	if *artifactDir == "" || *runID == "" || *baselineID == "" || *baselineRev == "" || *targetRev == "" {
 		fatalf("-artifact-dir, -run-id, -baseline-id, -baseline-revision and -target-revision are required")
 	}
-	summary, err := auditArtifacts(*artifactDir, *runID, provenance{
+	summary, err := auditArtifacts(*artifactDir, *runID, Provenance{
 		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
 		TargetBuildRevision:        *targetRev,
@@ -173,7 +173,7 @@ func main() {
 	}
 }
 
-func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, error) {
+func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, error) {
 	var metadata runMetadata
 	if err := readJSONArtifact(dir, "run-metadata.json", &metadata); err != nil {
 		return evidenceSummary{}, err
@@ -402,7 +402,7 @@ func auditArtifacts(dir, runID string, expected provenance) (evidenceSummary, er
 	}, nil
 }
 
-func requireProvenance(name string, actual, expected provenance) error {
+func requireProvenance(name string, actual, expected Provenance) error {
 	if actual != expected {
 		return fmt.Errorf("%s provenance=%+v, want %+v", name, actual, expected)
 	}
