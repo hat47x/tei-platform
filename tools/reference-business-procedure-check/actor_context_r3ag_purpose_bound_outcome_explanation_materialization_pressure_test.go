@@ -20,7 +20,7 @@ const (
 
 	actorContextR3AGDispositionInline    = "inline"
 	actorContextR3AGDispositionDrillDown = "drill-down"
-	actorContextR3AGDispositionOmitted   = "omitted"
+	actorContextR3AGDispositionOmitted   = "not-applicable"
 )
 
 var actorContextR3AGAllDetailClasses = []string{
@@ -54,8 +54,12 @@ type actorContextR3AGMaterializedExplanationProbe struct {
 	ReuseAuthorityStatus        string
 	CategorySummaries           []actorContextR3AGOutcomeSummaryProbe
 	DetailedCategoryOutcomes    []actorContextR3AFCategoryOutcomeProbe
+	UnselectedChangeCount       int
+	ResidualRootDeltaCount      int
 	InlineUnselectedChanges     []actorContextR3TObservedChangeProbe
 	InlineResidualRootDeltas    []actorContextR3ADResidualRootDeltaProbe
+	DrillDownUnselectedChanges  []actorContextR3TObservedChangeProbe
+	DrillDownResidualRootDeltas []actorContextR3ADResidualRootDeltaProbe
 	DetailDispositions          []actorContextR3AGDetailDispositionProbe
 	DrillDownRefs               []string
 	DrillDownOutcomeIdentities  []string
@@ -75,7 +79,7 @@ func TestActorContextR3AGHumanProfileSeparatesInlineDrillDownAndOmitted(t *testi
 		actorContextR3AGDetailCategoryReasons:      actorContextR3AGDispositionDrillDown,
 		actorContextR3AGDetailFreshnessAuthority:   actorContextR3AGDispositionInline,
 		actorContextR3AGDetailResolutionNeeds:      actorContextR3AGDispositionInline,
-		actorContextR3AGDetailUnselectedChanges:    actorContextR3AGDispositionOmitted,
+		actorContextR3AGDetailUnselectedChanges:    actorContextR3AGDispositionDrillDown,
 		actorContextR3AGDetailResidualRootDeltas:   actorContextR3AGDispositionDrillDown,
 		actorContextR3AGDetailProvenanceDrilldown:  actorContextR3AGDispositionDrillDown,
 	}
@@ -90,6 +94,10 @@ func TestActorContextR3AGHumanProfileSeparatesInlineDrillDownAndOmitted(t *testi
 		len(got.InlineUnselectedChanges) != 0 ||
 		len(got.InlineResidualRootDeltas) != 0 {
 		t.Fatalf("R3AG Human leaked non-inline detail: %+v", got)
+	}
+	if got.UnselectedChangeCount != len(explanation.UnselectedChanges) ||
+		got.ResidualRootDeltaCount != len(explanation.ResidualRootDeltas) {
+		t.Fatalf("R3AG Human compact view lost hidden-detail presence counts: %+v", got)
 	}
 	if len(got.CategorySummaries) == 0 ||
 		len(got.DrillDownOutcomeIdentities) != len(got.CategorySummaries) {
@@ -264,6 +272,8 @@ func actorContextR3AGMaterialize(
 	}
 
 	out := actorContextR3AGMaterializedExplanationProbe{
+		UnselectedChangeCount:  len(explanation.UnselectedChanges),
+		ResidualRootDeltaCount: len(explanation.ResidualRootDeltas),
 		Audience:                    view.Audience,
 		Purpose:                     view.Purpose,
 		FreshnessStopReason:         explanation.FreshnessStopReason,
@@ -294,7 +304,12 @@ func actorContextR3AGMaterialize(
 	case view.Audience == actorContextR3PAudienceHuman &&
 		view.Purpose == actorContextR3PPurposeOrientation:
 		out.DetailDispositions = actorContextR3AGHumanDetailProfile()
-		if len(explanation.CategoryOutcomes) > 0 && len(out.DrillDownRefs) == 0 {
+		out.DrillDownUnselectedChanges = actorContextR3TUniqueChanges(explanation.UnselectedChanges)
+		out.DrillDownResidualRootDeltas = actorContextR3AGNormalizeResiduals(explanation.ResidualRootDeltas)
+		if (len(explanation.CategoryOutcomes) > 0 ||
+			len(explanation.UnselectedChanges) > 0 ||
+			len(explanation.ResidualRootDeltas) > 0) &&
+			len(out.DrillDownRefs) == 0 {
 			return actorContextR3AGMaterializedExplanationProbe{}, fmt.Errorf(
 				"R3AG Human drill-down detail requires existing provenance refs",
 			)
@@ -332,7 +347,7 @@ func actorContextR3AGHumanDetailProfile() []actorContextR3AGDetailDispositionPro
 		{actorContextR3AGDetailCategoryReasons, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailFreshnessAuthority, actorContextR3AGDispositionInline},
 		{actorContextR3AGDetailResolutionNeeds, actorContextR3AGDispositionInline},
-		{actorContextR3AGDetailUnselectedChanges, actorContextR3AGDispositionOmitted},
+		{actorContextR3AGDetailUnselectedChanges, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailResidualRootDeltas, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailProvenanceDrilldown, actorContextR3AGDispositionDrillDown},
 	}
