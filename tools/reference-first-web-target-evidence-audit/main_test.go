@@ -9,7 +9,7 @@ import (
 
 func TestAuditArtifactsPassesSemanticFunctionalButNeverVisualOrGateC(t *testing.T) {
 	dir := t.TempDir()
-	expected := provenance{
+	expected := Provenance{
 		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: "baseline-r",
 		TargetBuildRevision:        "target-t",
@@ -41,7 +41,7 @@ func TestAuditArtifactsPassesSemanticFunctionalButNeverVisualOrGateC(t *testing.
 
 func TestAuditArtifactsRejectsTargetRevisionMismatch(t *testing.T) {
 	dir := t.TempDir()
-	expected := provenance{
+	expected := Provenance{
 		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: "baseline-r",
 		TargetBuildRevision:        "target-t",
@@ -62,7 +62,7 @@ func TestAuditArtifactsRejectsTargetRevisionMismatch(t *testing.T) {
 
 func TestAuditArtifactsRejectsCredentialMaterialInRawArtifact(t *testing.T) {
 	dir := t.TempDir()
-	expected := provenance{
+	expected := Provenance{
 		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: "baseline-r",
 		TargetBuildRevision:        "target-t",
@@ -83,7 +83,7 @@ func TestAuditArtifactsRejectsCredentialMaterialInRawArtifact(t *testing.T) {
 	}
 }
 
-func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
+func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 	t.Helper()
 	writeAuditJSON(t, filepath.Join(dir, "run-metadata.json"), runMetadata{
 		RunIdentity:               runID,
@@ -99,7 +99,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
 	}
 
 	writeAuditJSON(t, filepath.Join(dir, "manifest.json"), manifestArtifact{
-		provenance:    p,
+		Provenance:    p,
 		Stage:         "standard-and-custom-ui-shared-boundary",
 		ApplicationID: "order_entry",
 		Patterns: []manifestPatternArtifact{
@@ -143,7 +143,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
 	})
 
 	writeAuditJSON(t, filepath.Join(dir, "read.json"), readEnvelope{
-		provenance: p,
+		Provenance: p,
 		Result: readArtifact{
 			ScenarioID:    "order-entry.read-only-web-slice",
 			ApplicationID: "order_entry",
@@ -175,7 +175,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
 	})
 
 	writeAuditJSON(t, filepath.Join(dir, "submit-success.json"), commandEnvelope{
-		provenance: p,
+		Provenance: p,
 		Result: commandArtifact{
 			ScenarioID:    "order-entry.submit-order-web-slice",
 			ApplicationID: "order_entry",
@@ -207,7 +207,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
 	})
 
 	writeAuditJSON(t, filepath.Join(dir, "submit-authentication-denied.json"), commandEnvelope{
-		provenance: p,
+		Provenance: p,
 		Result: commandArtifact{
 			ScenarioID:    "order-entry.submit-order-web-slice",
 			ApplicationID: "order_entry",
@@ -221,7 +221,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p provenance) {
 	})
 
 	writeAuditJSON(t, filepath.Join(dir, "submit-authorization-denied.json"), commandEnvelope{
-		provenance: p,
+		Provenance: p,
 		Result: commandArtifact{
 			ScenarioID:    "order-entry.submit-order-web-slice",
 			ApplicationID: "order_entry",
