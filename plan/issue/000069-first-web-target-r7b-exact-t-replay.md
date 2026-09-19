@@ -1379,7 +1379,112 @@ preflight reuse prototype PASS
 
 統合時はE0 → V1 → V2をhealth-check済みでmainへreconcileした後、この小差分をlatest V2 sourceへ適用し、同じfull `tools/repository-health-check.sh` gateを通す。
 
+#### E1.0.2 repeatability aggregation candidate
 
+2 runの結果集約をshellへ埋め込まず、V2が生成したrun observationだけを入力にする小さいGo toolをbranchless candidateとして追加した。
+
+最初にV2 composition candidate `056527b6...` の子として試作candidate `f180ed04...` を作ったが、その直後にE1 preflight reuse candidate `ed17d529...` が同じ親から追加された。candidate chainを枝分かれさせないため、repeatability sourceを `ed17d529...` の子へ載せ直した。
+
+今後の優先candidateは次である。
+
+```text
+056527b6203feaf3c3830db4d33251d64c475be3
+  ↓ V2 plan/receipt preflight reuse
+ed17d529f605097a2171fc39cfdb5ed9d2c117ac
+  ↓ repeatability aggregation
+d779f292d17b21e01a859fda0e77b2cc44c53371
+```
+
+`f180ed04...` はbranch / main refから参照されておらず、統合候補としては使用しない。
+
+追加source:
+
+```text
+tools/reference-first-web-target-r7b-repeatability/main.go
+  blob = a4510fca4e073eb3a9982b3dfd79d6844b69a2c5
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  blob = 04f6d0fa4339946d4eead6b663f4beb34ea72ce5
+```
+
+集約器はraw responseを再分類しない。入力はexact replay planとV2 audit済みrun observationsだけであり、次を要求する。
+
+- plan内Behavior IDが一意
+- unitの `CoverageClass=behavior-unit`
+- 全unitの `RequiredDistinctRuns >= 2` かつ同一
+- run observationがexact replay-plan SHA-256へbinding
+- 全runが同一 replay-plan receipt SHA-256へbinding
+- run identityが一意
+- Target process instance identityが一意
+- run Target revisionがplan Tとexact一致
+- 各runがplan behavior setをexactに1件ずつ保持
+- expected HTTP boundary一致
+- `SemanticValidationPassed=true`
+- Observation classがplan expectationと一致
+- raw artifact filenameが非空
+- raw artifact SHA-256が有効
+
+raw artifact SHA-256の**run間一致は要求しない**。digestは各artifact bytesのidentityであり、意味的repeatabilityの比較値ではない。
+
+summary shapeは少なくとも:
+
+```text
+EvidenceNature = first-web-target-r7b-repeatability-summary
+SourceReplayPlanSHA256
+SourceReplayPlanReceiptSHA256
+ReplayTargetBuildRevision
+RequiredDistinctRuns
+ObservedDistinctRuns
+RunIdentities[]
+Behaviors[]
+  - BehaviorID
+  - DistinctRuns
+  - Repeatable
+RepeatabilityObserved
+CoverageClass = behavior-unit
+DeepWorkflowCovered = false
+```
+
+を保持する。
+
+Repository外focused preflightではexact source bytesについて:
+
+```text
+git hash-object main.go
+  = a4510fca4e073eb3a9982b3dfd79d6844b69a2c5
+
+git hash-object main_test.go
+  = 04f6d0fa4339946d4eead6b663f4beb34ea72ce5
+
+gofmt -l
+  = empty
+
+go vet ./tools/reference-first-web-target-r7b-repeatability
+  = PASS
+
+go test -count=50 ./tools/reference-first-web-target-r7b-repeatability
+  = PASS
+```
+
+を確認した。
+
+negative pressureでは少なくとも:
+
+- duplicate run identity
+- duplicate Target process identity
+- replay-plan receipt identity drift
+- Target revision drift
+- HTTP boundary drift
+- Observation class drift
+- semantic validation failure
+- invalid raw digest
+- missing / duplicate / unknown behavior
+- required run不足
+- plan内required run count不一致
+
+をrejectする。
+
+ただし `d779f292...` はE1 preflight reuse sourceとrepeatability sourceを同一treeへcompositionした候補であり、**combined full-package test / full repository health checkは未実行**である。統合時はこのtree内容をlatest mainへreconcileし、full `tools/repository-health-check.sh` を通す。
 
 runnerはorchestrationだけを所有する。
 
