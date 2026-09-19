@@ -99,6 +99,26 @@ Web側は次をauthorしません。
 
 `presentationCandidate`（collection / item / relation-selection / detail-collection / command-invocation）はWeb Targetで観測するためのtarget-local labelです。Canonical Pattern kindではありません。
 
+## Visual review states
+
+Custom UIはVisual Evidenceで比較する主要状態を、raw JSON一枚ではなく構造化HTMLとして分離表示します。
+
+- success: Selected order / Customer reference / Order lines / Validation / Command Business Result / separate Observation
+- authorization denied: Business OutcomeとしてAuthorization denialを表示
+- validation not-satisfied: Canonical Validation結果を表示し、Command / Observationを出さない
+- execution error: partial Scenario stateとExecution Errorを表示し、Business Result / Observationと区別
+
+Gate C acquisition runnerは、これらの状態をHTML artifactとしても保存します。
+
+```text
+custom-submit-success.html
+custom-submit-authorization-denied.html
+custom-submit-validation-not-satisfied.html
+custom-submit-execution-error.html
+```
+
+これはFunctional Evidenceの再現性を高めるためのartifactであり、Screenshot / Visual Fidelity Evidenceそのものではありません。Visual capture recipeの正本は `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md` です。
+
 ## Evidence高さ
 
 sourceとtestがRepositoryに存在するだけならSource Evidenceです。
