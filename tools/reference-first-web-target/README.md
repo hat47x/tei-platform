@@ -6,7 +6,7 @@
 
 ## 現在のincrement
 
-現在は **projection shell** です。
+現在は **Driver-backed read-only slice** まで進んでいます。
 
 - `reference/workspace`を通常のWorkspace loaderで読む
 - `driver.Resolver`でApplication Patternを解決する
@@ -14,10 +14,13 @@
 - command PatternのCapability Bindingが解決可能であることを確認する
 - Handover Baseline `B / R`とTarget build revision `T`を別identityとしてmanifestへ保持する
 - 同じProjectionからHTMLとJSON manifestを生成する
+- `/scenario/read`でbrowse → record → customer reference → order-lines header-detailを同じmapped rowから実行する
+- reference / header-detailはDriverのEnvironment-aware Contract Query resolutionを通す
+- synthetic runtime fixtureはCanonical dataと分離する
+- browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Environment instanceをWeb側で推測しない
 
 まだ行いません。
 
-- runtime data query execution
 - Web interactionとしてのAuthentication / Authorization
 - command invocation
 - Business Result / Execution Error / ObservationのWeb interaction
@@ -45,6 +48,7 @@ go run ./tools/reference-first-web-target \
 
 - `/` — minimal HTML projection
 - `/manifest.json` — 同じProjectionのJSON
+- `/scenario/read?from=2026-09-18T08%3A30%3A00Z&row=0` — Driver-backed read-only slice
 - `/healthz` — process health
 
 ## Authority boundary
