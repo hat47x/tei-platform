@@ -21,6 +21,8 @@ Visual側には`tools/reference-first-web-target-visual-evidence-audit`を追加
 
 actual Screenshot / evaluator Evidenceは未取得である。
 
+Visual manifestのprovenance / required capture / criterionを手書きで複製しないため、Visual audit toolにmanifest scaffold modeも追加した。scaffoldはSemantic / Functional summaryから同じ`B / R / T`を引き継ぐが、全criterionを`unresolved`で生成するため、生成しただけではVisual passにならない。
+
 Gate C final readiness audit sourceとして`tools/reference-first-web-target-gate-c-readiness-audit`も追加した。Semantic / Functional、Visual、Architectureが同じ`B / R / T`へ揃い、既知unresolvedが明示分類され、blocking unresolvedがない場合だけ最終`gateCReady`を判定する。各下位auditが単独でReadyを宣言しない構造を維持する。
 
 現時点ではfinal audit sourceもSource Evidenceであり、actual `gate-c-readiness-audit.json`は未取得である。

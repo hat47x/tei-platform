@@ -250,6 +250,43 @@ Visual Fidelityを別Evidenceとして取得し、`plan/GATE_C_EVIDENCE_CONTRACT
 
 Semantic / Functional acquisitionとは別に、同じ`targetBuildRevision = T`へScreenshot等のVisual artifactを結び付ける。
 
+### manifest scaffold
+
+Visual manifestの`B / R / T`、required capture ID、criterion / capture referenceを手作業で複製しないため、audit tool自身からscaffoldを生成する。
+
+```bash
+mkdir -p /tmp/tei-gate-c-first-web-T/visual
+
+GOENV=off \
+GOWORK=off \
+GOFLAGS= \
+go run ./tools/reference-first-web-target-visual-evidence-audit \
+  -semantic-functional-summary /tmp/tei-gate-c-first-web-T/semantic-functional-summary.json \
+  -emit-manifest-scaffold \
+  -visual-run-id visual-T \
+  -evaluator-identity reference-human-review \
+  -evaluator-version 1 \
+  -evaluation-method screenshot-review \
+  -viewport-width 1440 \
+  -viewport-height 1000 \
+  > /tmp/tei-gate-c-first-web-T/visual/visual-manifest.json
+```
+
+scaffoldはSemantic / Functional summaryから`B / R / T / Target Adapter / Host / source run identity`を転記し、required captureをdeterministic filenameで列挙する。
+
+重要:
+
+```text
+generated scaffold
+  -> every criterion = unresolved
+  -> Visual Fidelity passではない
+  -> Gate C Readyではない
+```
+
+Screenshot取得後、attributed evaluatorが各criterionを`pass / fail / unresolved`へ更新し、Notesへ必要な根拠を残す。その後にVisual auditへ進む。
+
+capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
+
 capture tool自体はこのReferenceで固定しない。browser automation、GUI agent、人手captureのいずれでもよいが、Screenshotと評価記録を残す。
 
 監査入口:
