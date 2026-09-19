@@ -832,6 +832,81 @@ R7B実装でsemantic判定を複製しないため、初回incrementの責務を
 
 既存 `tools/reference-first-web-target-evidence-audit` はこのshared classifierを呼ぶ側へ移し、現在の意味判定を変えない。refactorの目的はR7Bのための第二semantic truthを防ぐことであり、Gate C判定を変更することではない。
 
+#### V1 branchless candidate preflight — 2026-09-20
+
+E0とremote branchを競合させず次段を準備するため、V1 shared semantic classifierを**unreferenced Git commit**として作成した。main / branch refは動かしていない。
+
+candidate chain:
+
+```text
+main snapshot
+  17acb5ca3679d5931a4522580726fdd9a2ad49c2
+    ↓ E0 branchless candidate
+  c0a8d2c858f338cffd90f86752a21293c391350b
+    ↓ V1 branchless candidate
+  fe627f3cb24a6bbef7cb34ccebd7702ff43ae07a
+```
+
+V1 candidateの変更は次の3ファイルだけである。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  blob = 46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  blob = b94db230f15871a36151f077be8aab13928b9d06
+
+tools/reference-first-web-target-evidence-audit/main.go
+  blob = eb44ef1d543f0849e424e99ed517492f747d634a
+```
+
+shared packageはgeneric `Validate(kind, payload)` dispatcherを置かず、current six behaviorの明示validatorを公開する。
+
+```text
+ValidateReadArtifact
+ValidateCommandSuccessArtifact
+ValidateAuthenticationDeniedArtifact
+ValidateAuthorizationDeniedArtifact
+ValidateValidationNotSatisfiedArtifact
+ValidateExecutionErrorArtifact
+```
+
+Observation classのexact stringとReference credential reject helperもtool-local packageへ置く。Canonical model / `internal/core` へ昇格させない。
+
+Gate C audit candidateは、current source blob
+`2dd0102a04bdda29dd50dab13ba9a663b8df93d8`
+から6 raw behaviorのacceptance predicateだけをshared validator呼び出しへ移す。Visual / architecture / final readiness / artifact-set / credential-set / Target Difference Handoffの責務は移さない。validated `read.json` は既存Gate C-local型へ再decodeし、Target Difference Handoff生成shapeを変更しない。
+
+shared packageのexact candidate bytesについて、このsessionで次を確認した。
+
+```text
+git hash-object semantics.go
+  = 46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+git hash-object semantics_test.go
+  = b94db230f15871a36151f077be8aab13928b9d06
+
+gofmt -l
+  = empty
+
+go vet ./tools/internal/firstwebtargetevidence
+  = PASS
+
+go test -count=50 ./tools/internal/firstwebtargetevidence
+  = PASS
+```
+
+ただしprivate Repository full checkoutをこのsessionへ取得できないため、candidate Gate C auditを含むfull Repository qualificationは未実行である。
+
+```text
+shared package focused PASS
+  != Gate C audit package full PASS
+  != repository-health-check PASS
+  != V1 integrated
+```
+
+統合sessionはE0を先にhealth-checkしてmainへ入れた後、latest mainへV1 candidateをreconcileし、`tools/repository-health-check.sh` をexact candidate上で通す。PASS前に `fe627f3c...` をmainへ参照させない。
+
 ### R7B replay audit
 
 新規候補path:
