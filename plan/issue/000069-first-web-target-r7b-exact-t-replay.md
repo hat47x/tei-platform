@@ -210,6 +210,123 @@ CoverageClass = behavior-unit
 DeepWorkflowCovered = false
 ```
 
+## 実装ファイル境界
+
+R7B実装でsemantic判定を複製しないため、初回incrementの責務をファイル単位で次へ固定する。名称は実装時のGo package制約で微修正してよいが、責務を再混合しない。
+
+### shared semantic classifier
+
+候補path:
+
+- `tools/internal/firstwebtargetevidence/`
+
+このpackageだけが、First Web Target raw JSONについてGate CとR7Bが共有すべきsemantic classificationを所有する。
+
+最低限共有するもの:
+
+- raw envelope / Provenanceのdecode shape
+- exact expected Provenanceとの照合
+- read result validation
+- command success validation
+- authentication denied validation
+- authorization denied validation
+- Validation not-satisfied validation
+- Command Invocation Execution Error validation
+- semantic Observation class constant / result
+
+共有しないもの:
+
+- Gate C Ready判定
+- Visual Fidelity
+- architecture conformance
+- replay run identity
+- repeatability判定
+- HTTP transportの実行
+- request fixture / credential
+
+既存 `tools/reference-first-web-target-evidence-audit` はこのshared classifierを呼ぶ側へ移し、現在の意味判定を変えない。refactorの目的はR7Bのための第二semantic truthを防ぐことであり、Gate C判定を変更することではない。
+
+### R7B replay audit
+
+新規候補path:
+
+- `tools/reference-first-web-target-r7b-replay-audit/`
+
+このauditは:
+
+1. exact replay planを読む
+2. run metadataと6 raw responseを読む
+3. HTTP status / Target revision / run identityをreplay planと照合する
+4. raw bytesをSHA-256 fingerprintする
+5. shared semantic classifierへraw responseを渡す
+6. expected Observation classとの一致を確認する
+7. per-run observationを生成する
+
+semantic判定条件を自身へcopyしない。
+
+### operational runner
+
+新規候補path:
+
+- `tools/run-first-web-target-r7b-replay.sh`
+
+runnerはorchestrationだけを所有する。
+
+- current source checkout qualification
+- input plan / receipt / origin Evidence verification
+- exact T isolated checkout作成
+- Target process lifecycle
+- named request fixture resolution
+- HTTP status capture
+- raw response保存
+- replay audit呼び出し
+- 2 runの独立性確保
+- repeatability summary生成
+- artifact credential scan
+- current source checkout不変確認
+
+runner内のfixture resolutionではReference credentialをruntime inputとして使ってよいが、request body / credentialをEvidence artifactへ保存しない。
+
+## Observation class mapping
+
+replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
+
+| Behavior | Expected HTTP | Expected Observation class |
+| --- | ---: | --- |
+| `first-web/read-only` | 200 | `read-result` |
+| `first-web/command-success` | 200 | `business-result-plus-separate-observation` |
+| `first-web/authentication-denied` | 200 | `business-denial-authentication` |
+| `first-web/authorization-denied` | 200 | `business-denial-authorization` |
+| `first-web/validation-not-satisfied` | 200 | `validation-not-satisfied` |
+| `first-web/execution-error` | 422 | `command-invocation-execution-error` |
+
+この文字列をR7B側だけで別定義しない。replay planとshared classifierの間でdriftした場合はfail closedする。
+
+HTTP statusはtransport EvidenceでありObservation classそのものではない。特にAuthentication / Authorization denialとValidation not-satisfiedがHTTP 200であることを「成功」と読み替えない。
+
+## incremental integration order
+
+direct-to-main flowでは、remote work branchを新設せず、health-check可能なfull checkoutから小さく統合する。
+
+1. **V1: shared classifier extraction**
+   - Gate C auditのcurrent tests / behaviorを不変に保つ
+   - shared package testsを追加
+   - full repository health check
+2. **V2: R7B replay audit**
+   - synthetic test fixturesでplan binding / classification / fail-closedをPressure
+   - actual replay成功はまだ主張しない
+   - full repository health check
+3. **E1: operational runner**
+   - exact-T isolated checkout / 2 fresh processes / artifact retentionを実装
+   - full repository health check
+4. **M/E actual execution**
+   - adopted Release archiveをactual materialize
+   - R7A -> R7B intake -> replay planをactual materialize
+   - operational runnerをactual実行
+   - repeatability Evidenceを記録
+
+各incrementの直前にmainを再取得する。同じpackageを別sessionが変更していた場合は、その変更を取り込んでから続行し、並行した別semantic classifierを作らない。
+
 ## 対象behavior
 
 replay planに定義された次の6件だけを初回対象とする。
