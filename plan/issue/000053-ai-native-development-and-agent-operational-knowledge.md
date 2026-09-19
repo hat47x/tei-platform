@@ -2236,6 +2236,47 @@ exact / broad routerが同じqualificationとdependency originへ収束すれば
 
 R6GはPreferredRouter / Score / Confidence / Fresh / Authorized / NextActionを追加しない。
 
+### R6H — materialization revision provenance
+
+R6Gでmaterialization / non-materializationを説明可能にした後、その判断時に参照したknowledge revisionもtraceできるようにする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6h_materialization_revision_provenance_pressure_test.go`
+
+各knowledge witnessへR6B qualification時の`RequiredInputFingerprints`を接続し、identity / locatorだけでなくcurrent content revisionへ戻れるようにする。
+
+```text
+materialization explanation
+  + input fingerprints
+  -> revision provenance
+```
+
+ただしfingerprint差分をR6側で:
+
+- Fresh / Stale
+- Changed category
+- ShouldReevaluate
+- AutoRefresh
+- rematerialize / dematerialize decision
+
+へ変換しない。
+
+current BP-06では`security.authorize` Capabilityのfingerprintが変化しても、R3 dependency consumptionが追加されない限り`qualified-not-materialized`のままである。
+
+Business Procedure Referenceのfingerprintが変化した場合も、R6Hはrevision差分を露出するだけで、current routed dependencyが存在するというmaterialization理由自体を自動削除しない。
+
+```text
+source revision changed
+  != routing qualification automatically revoked
+  != materialization decision automatically changed
+  != freshness authority resolved
+```
+
+actual freshness / category re-evaluation / Authorization freshness authorityはR3R〜R3AF側の責務を利用する。
+
+R6Hはknowledge revisionを追跡可能にするが、global revision token、single current flag、automatic invalidation engineは追加しない。
+
 
 
 

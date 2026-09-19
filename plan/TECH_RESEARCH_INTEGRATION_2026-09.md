@@ -980,6 +980,50 @@ consumer-local dependencyはknowledge omission理由へ変換せず、別depende
 
 R6G reasonはfreshness / authority / next action / routing preferenceを決定しない。
 
+#### R6H materialization revision provenance — 2026-09-19
+
+R6Gのmaterialization explanationに、qualified knowledgeがどのsource revisionを見ていたかをfingerprint付きprovenanceとして接続する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6h_materialization_revision_provenance_pressure_test.go`
+
+R6Hでは各knowledge witnessに:
+
+- materialization disposition
+- materialization reason
+- exact routed dependency keys
+- RequiredInputFingerprints
+- SourceRefs
+
+を併置する。
+
+ただし:
+
+```text
+input fingerprint changed
+  != materialization disposition changed
+  != freshness decided
+  != reevaluation required
+```
+
+である。
+
+current BP-06で`security.authorize` Capabilityのsource fingerprintだけをtest-onlyに変更しても、current bounded projectionがそのCapabilityをrouted dependencyとして消費していない限り:
+
+```text
+qualified-not-materialized
+reason = no-consumed-routed-projection-dependency
+```
+
+を維持する。
+
+同様にBusiness Procedure Referenceのfingerprint変更を観測しても、current dependency consumption identityが同じならR6H自身はmaterialized dispositionを反転しない。
+
+fingerprint差分は「どのrevisionを見ていたか」を説明するprovenanceであり、Fresh / Stale / ChangeClass / ShouldReevaluate / AutoRefreshへ変換しない。これらはR3R以降のfreshness / reevaluation責務に残す。
+
+exact / broad routerがcurrent qualificationへ収束する場合、revision provenanceも同一でなければならない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
