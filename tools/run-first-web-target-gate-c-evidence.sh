@@ -141,6 +141,27 @@ printf '%s' '{"loginId":"legacy-order-viewer","credential":"viewer-secret","from
     "$base_url/scenario/submit" \
     >"$artifact_dir/submit-authorization-denied.json"
 
+printf '%s' '{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:00:00Z","row":1}' | \
+  curl --silent --show-error --fail \
+    -H 'content-type: application/json' \
+    --data-binary @- \
+    "$base_url/scenario/submit" \
+    >"$artifact_dir/submit-validation-not-satisfied.json"
+
+execution_status="$(
+  printf '%s' '{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}' | \
+    curl --silent --show-error \
+      -o "$artifact_dir/submit-execution-error.json" \
+      -w '%{http_code}' \
+      -H 'content-type: application/json' \
+      --data-binary @- \
+      "$base_url/scenario/submit"
+)"
+if [[ "$execution_status" != "422" ]]; then
+  printf 'Expected Command Execution Error HTTP 422, got %s.\n' "$execution_status" >&2
+  exit 1
+fi
+
 curl --silent --show-error --fail \
   "$base_url/custom-submit" \
   >"$artifact_dir/custom-submit-get.html"
