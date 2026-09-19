@@ -2900,6 +2900,35 @@ First Web Target並行レーンでR7A handoff sourceが具体化されたこと�
 
 この変更はR7Aの入口整合性だけであり、R7B actual replay executionを前倒ししない。
 
+#### R7A final-readiness provenance closure
+
+R7A entryをfinal Gate C readiness artifactへexactに結び付ける。
+
+追加Pressure:
+
+- current final readiness auditのrequired 10 check identityを完全集合として要求
+- missing / duplicate / unknown readiness checkをreject
+- `VisualRun` をnon-empty provenanceとして要求
+- final readiness artifact exact-bytes SHA-256を要求
+- Semantic / Functional summary exact-bytes SHA-256を要求
+- replay candidateへ上記provenanceを保持
+
+```text
+GateCReady=true
+  != readiness Evidence identity established
+
+VisualRun present
+  != Visual result is Functional replay result
+
+readiness artifact digest
+  + Semantic / Functional summary digest
+  + raw artifact digest
+  -> replay candidate provenance chain
+```
+
+R7A側はfinal readiness判定を再実装せず、第一Web Target final auditが出すcheck contractとartifact identityをfail closedで受領する。actual handoff sourceの統合・actual artifact取得まではR7Bへ進めない。
+
+
 
 ### R3AF — Category re-evaluation outcome / Operational explanation
 

@@ -31,6 +31,7 @@ type replayableBehaviorR7AGateCReadiness struct {
 	TargetAdapter              string
 	Host                       string
 	SemanticFunctionalRun      string
+	VisualRun                  string
 	GateCReady                 bool
 	Checks                     []replayableBehaviorR7ACheck
 	Unresolved                 []replayableBehaviorR7AUnresolved
@@ -57,9 +58,15 @@ type replayableBehaviorR7ASemanticFunctionalSummary struct {
 	Artifacts                  []replayableBehaviorR7AArtifactDigest
 }
 
+type replayableBehaviorR7AEntryEvidence struct {
+	GateCReadinessArtifactSHA256    string
+	SemanticFunctionalSummarySHA256 string
+}
+
 type replayableBehaviorR7AEntryBundle struct {
 	Readiness replayableBehaviorR7AGateCReadiness
 	Semantic  replayableBehaviorR7ASemanticFunctionalSummary
+	Evidence  replayableBehaviorR7AEntryEvidence
 }
 
 type replayableBehaviorR7ASpec struct {
@@ -71,18 +78,21 @@ type replayableBehaviorR7ASpec struct {
 }
 
 type replayableBehaviorR7ACandidate struct {
-	BehaviorID                 string
-	SemanticOperation          string
-	TargetRealizationRef       string
-	RawArtifactFile            string
-	RawArtifactSHA256          string
-	ObservationClass           string
-	ReplayStatus               string
-	CoverageClass              string
-	HandoverBaselineID         string
-	BaselineRepositoryRevision string
-	TargetBuildRevision        string
-	SemanticFunctionalRun      string
+	BehaviorID                      string
+	SemanticOperation               string
+	TargetRealizationRef            string
+	RawArtifactFile                 string
+	RawArtifactSHA256               string
+	ObservationClass                string
+	ReplayStatus                    string
+	CoverageClass                   string
+	HandoverBaselineID              string
+	BaselineRepositoryRevision      string
+	TargetBuildRevision             string
+	SemanticFunctionalRun           string
+	VisualRun                       string
+	GateCReadinessArtifactSHA256    string
+	SemanticFunctionalSummarySHA256 string
 }
 
 func TestReplayableBehaviorR7ARequiresActualGateCReadinessBeforeCandidateDerivation(t *testing.T) {
@@ -192,6 +202,56 @@ func TestReplayableBehaviorR7ARejectsIncompleteOperationalHandoffState(t *testin
 	})
 }
 
+func TestReplayableBehaviorR7ARequiresCompleteFinalReadinessShapeAndArtifactIdentity(t *testing.T) {
+	t.Run("missing-required-readiness-check", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.Checks = bundle.Readiness.Checks[1:]
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted incomplete final Gate C readiness check set")
+		}
+	})
+
+	t.Run("duplicate-readiness-check", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.Checks = append(bundle.Readiness.Checks, bundle.Readiness.Checks[0])
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted duplicate final Gate C readiness check")
+		}
+	})
+
+	t.Run("unknown-readiness-check", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.Checks[0].Name = "test-only-unknown-readiness-check"
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted unknown final Gate C readiness check")
+		}
+	})
+
+	t.Run("missing-visual-run", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Readiness.VisualRun = ""
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted final Gate C readiness without Visual run provenance")
+		}
+	})
+
+	t.Run("missing-readiness-artifact-digest", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Evidence.GateCReadinessArtifactSHA256 = ""
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted unpinned final Gate C readiness artifact")
+		}
+	})
+
+	t.Run("missing-semantic-summary-digest", func(t *testing.T) {
+		bundle := replayableBehaviorR7ATestBundle()
+		bundle.Evidence.SemanticFunctionalSummarySHA256 = ""
+		if _, err := replayableBehaviorR7ADeriveCandidates(bundle, replayableBehaviorR7AFirstWebSpecs()); err == nil {
+			t.Fatal("R7A accepted unpinned Semantic / Functional summary artifact")
+		}
+	})
+}
+
 func TestReplayableBehaviorR7ACandidatesPreserveSemanticAndTargetRealizationSeparately(t *testing.T) {
 	bundle := replayableBehaviorR7ATestBundle()
 	specs := replayableBehaviorR7AFirstWebSpecs()
@@ -219,6 +279,11 @@ func TestReplayableBehaviorR7ACandidatesPreserveSemanticAndTargetRealizationSepa
 		}
 		if got[i].CoverageClass != "behavior-unit" {
 			t.Fatalf("R7A candidate fabricated broader workflow coverage: %+v", got[i])
+		}
+		if got[i].VisualRun != bundle.Readiness.VisualRun ||
+			got[i].GateCReadinessArtifactSHA256 != bundle.Evidence.GateCReadinessArtifactSHA256 ||
+			got[i].SemanticFunctionalSummarySHA256 != bundle.Evidence.SemanticFunctionalSummarySHA256 {
+			t.Fatalf("R7A candidate lost final readiness provenance: %+v", got[i])
 		}
 	}
 }
@@ -280,16 +345,33 @@ func replayableBehaviorR7ADeriveCandidates(
 		r.TargetBuildRevision == "" ||
 		r.TargetAdapter == "" ||
 		r.Host == "" ||
-		r.SemanticFunctionalRun == "" {
+		r.SemanticFunctionalRun == "" ||
+		r.VisualRun == "" {
 		return nil, fmt.Errorf("Gate C readiness provenance is incomplete")
 	}
-	if len(r.Checks) == 0 {
-		return nil, fmt.Errorf("Gate C readiness contains no checks")
+	if bundle.Evidence.GateCReadinessArtifactSHA256 == "" ||
+		bundle.Evidence.SemanticFunctionalSummarySHA256 == "" {
+		return nil, fmt.Errorf("R7A entry artifact identity is incomplete")
 	}
+	expectedChecks := replayableBehaviorR7AExpectedGateCReadinessChecks()
+	if len(r.Checks) != len(expectedChecks) {
+		return nil, fmt.Errorf("Gate C readiness check count=%d, want %d", len(r.Checks), len(expectedChecks))
+	}
+	seenChecks := map[string]struct{}{}
 	for _, check := range r.Checks {
 		if check.Name == "" || !check.Passed {
 			return nil, fmt.Errorf("Gate C readiness check is not passed: %+v", check)
 		}
+		if _, required := expectedChecks[check.Name]; !required {
+			return nil, fmt.Errorf("unknown Gate C readiness check %q", check.Name)
+		}
+		if _, duplicate := seenChecks[check.Name]; duplicate {
+			return nil, fmt.Errorf("duplicate Gate C readiness check %q", check.Name)
+		}
+		seenChecks[check.Name] = struct{}{}
+	}
+	if len(seenChecks) != len(expectedChecks) {
+		return nil, fmt.Errorf("Gate C readiness check set is incomplete")
 	}
 	for _, unresolved := range r.Unresolved {
 		if unresolved.ID == "" {
@@ -367,24 +449,42 @@ func replayableBehaviorR7ADeriveCandidates(
 		}
 
 		out = append(out, replayableBehaviorR7ACandidate{
-			BehaviorID:                 spec.BehaviorID,
-			SemanticOperation:          spec.SemanticOperation,
-			TargetRealizationRef:       spec.TargetRealizationRef,
-			RawArtifactFile:            spec.RawArtifactFile,
-			RawArtifactSHA256:          digest,
-			ObservationClass:           spec.ObservationClass,
-			ReplayStatus:               "not-executed",
-			CoverageClass:              "behavior-unit",
-			HandoverBaselineID:         r.HandoverBaselineID,
-			BaselineRepositoryRevision: r.BaselineRepositoryRevision,
-			TargetBuildRevision:        r.TargetBuildRevision,
-			SemanticFunctionalRun:      r.SemanticFunctionalRun,
+			BehaviorID:                      spec.BehaviorID,
+			SemanticOperation:               spec.SemanticOperation,
+			TargetRealizationRef:            spec.TargetRealizationRef,
+			RawArtifactFile:                 spec.RawArtifactFile,
+			RawArtifactSHA256:               digest,
+			ObservationClass:                spec.ObservationClass,
+			ReplayStatus:                    "not-executed",
+			CoverageClass:                   "behavior-unit",
+			HandoverBaselineID:              r.HandoverBaselineID,
+			BaselineRepositoryRevision:      r.BaselineRepositoryRevision,
+			TargetBuildRevision:             r.TargetBuildRevision,
+			SemanticFunctionalRun:           r.SemanticFunctionalRun,
+			VisualRun:                       r.VisualRun,
+			GateCReadinessArtifactSHA256:    bundle.Evidence.GateCReadinessArtifactSHA256,
+			SemanticFunctionalSummarySHA256: bundle.Evidence.SemanticFunctionalSummarySHA256,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].BehaviorID < out[j].BehaviorID
 	})
 	return out, nil
+}
+
+func replayableBehaviorR7AExpectedGateCReadinessChecks() map[string]struct{} {
+	return map[string]struct{}{
+		"same-B-R-T-and-target-identity":                          {},
+		"source-semantic-functional-passed":                       {},
+		"visual-fidelity-separately-passed":                       {},
+		"canonical-world-invariant-R-to-T":                        {},
+		"web-target-authority-boundary-passed":                    {},
+		"standard-custom-shared-command-boundary-passed":          {},
+		"result-execution-error-observation-boundaries-preserved": {},
+		"target-difference-handoff-recoverable":                   {},
+		"all-unresolved-explicitly-classified":                    {},
+		"no-blocking-unresolved":                                  {},
+	}
 }
 
 func replayableBehaviorR7AFirstWebSpecs() []replayableBehaviorR7ASpec {
@@ -463,7 +563,11 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 		{Name: "source-semantic-functional-passed", Passed: true},
 		{Name: "visual-fidelity-separately-passed", Passed: true},
 		{Name: "canonical-world-invariant-R-to-T", Passed: true},
+		{Name: "web-target-authority-boundary-passed", Passed: true},
+		{Name: "standard-custom-shared-command-boundary-passed", Passed: true},
 		{Name: "result-execution-error-observation-boundaries-preserved", Passed: true},
+		{Name: "target-difference-handoff-recoverable", Passed: true},
+		{Name: "all-unresolved-explicitly-classified", Passed: true},
 		{Name: "no-blocking-unresolved", Passed: true},
 	}
 
@@ -476,6 +580,7 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 			TargetAdapter:              "reference-first-web-target",
 			Host:                       "go-net-http",
 			SemanticFunctionalRun:      run,
+			VisualRun:                  "test-only-visual-run",
 			GateCReady:                 true,
 			Checks:                     checks,
 			TargetDifferenceHandoff: replayableBehaviorR7ATargetDifferenceHandoff{
@@ -497,6 +602,10 @@ func replayableBehaviorR7ATestBundle() replayableBehaviorR7AEntryBundle {
 			FunctionalEvidencePassed:   true,
 			GateCReady:                 false,
 			Artifacts:                  artifacts,
+		},
+		Evidence: replayableBehaviorR7AEntryEvidence{
+			GateCReadinessArtifactSHA256:    "test-only-sha256-gate-c-readiness-audit",
+			SemanticFunctionalSummarySHA256: "test-only-sha256-semantic-functional-summary",
 		},
 	}
 }
