@@ -3,7 +3,7 @@ package main
 import "testing"
 
 const (
-	secondApplicationS5FreshnessBaseRevision    = "bfda34c27f9768ddd744f9acfbb6991d9c104bb4"
+	secondApplicationS5FreshnessBaseRevision    = "6ffaa40ef2872a773baa5e7b127dcb89d94abc5c"
 	secondApplicationS5CustomerFingerprint      = "sha256:d0897ed9ac8ce7e01200b05285e445fa57fa402abd0725542c7cf7ebfa0ad23b"
 	secondApplicationS5ContractFingerprint      = "sha256:bfbc0ed04d258fa05e254dc6b0c6a9779069e98d4f93511d0f062631ddb5fc15"
 	secondApplicationS5OriginPatternFingerprint = "sha256:ae17bb1078c0a27ceeb20a5ece20431d98bee403c28fe7bc468643691263ef21"
