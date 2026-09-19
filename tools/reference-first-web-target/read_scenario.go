@@ -335,6 +335,9 @@ func (e referenceContractQueryExecutor) ExecuteContractQuery(
 		if e.provider != environment.ProviderOracle {
 			return driver.ContractQueryResult{}, fmt.Errorf("customer executor provider=%s", e.provider)
 		}
+		if queryContract.Name != "find_by_id" {
+			return driver.ContractQueryResult{}, fmt.Errorf("unexpected customer Query %s", queryContract.Name)
+		}
 		id, ok := parameters["id"]
 		if !ok {
 			return driver.ContractQueryResult{}, fmt.Errorf("customer id parameter is required")
