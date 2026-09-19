@@ -1,6 +1,6 @@
 # Gate C → Second Application Reference Start Packet
 
-- Status: Prepared / blocked until Gate C Ready
+- Status: Active — S0 complete / S1-S2 Source-defined / S3 pending
 - Date: 2026-09-19
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
@@ -441,21 +441,35 @@ merge後はprimary workstream branchを\`main\`へ戻し、次作業の起点と
 
 ## 11. 現在状態
 
-2026-09-19時点のMaster Planでは第一Web Target / Gate Cは未完了である。
+2026-09-19、第一Web TargetはGate C Readyに到達した。
 
-したがって本Start PacketはPreparedだが、第二Application source authoringはBlockedのままとする。
+actual entry:
 
-Gate C Readyの明示Evidenceを得るまではS0より先へ進まない。
+- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
+- `B / R / T = B / e5231839a5dcc62cce1181a2731fcb7c70d16736 / 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
+
+S0は完了した。
+
+S1 / S2は、
+
+- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
+
+でSource-definedまで進んだ。
+
+現在も第二Canonical Application source、Shared Acceptance、Environment binding、Target実装は作成していない。
+
+次はS3 Destination Decision Packetであり、`repair_intake-test-only`をCanonical Application IDへ自動昇格させない。
 
 ## 12. Start Packet完了条件
 
-- [ ] Gate C entry recordの必須項目を固定した
-- [ ]一つのprimary workstream branchへ収束する規則を固定した
-- [ ] first Reference scopeをread-only customer lookupへ限定した
-- [ ] ISSUE-000047 → Phase 5 → ISSUE-000040 → Acceptanceの順序を固定した
-- [ ] Application / Environment authorityを分離した
-- [ ] unknown / incompatibleのstop条件を固定した
-- [ ] existing grammar firstを維持した
-- [ ] AI Builder / Human Review handoffを定義した
-- [ ] commit / PR / merge規則を定義した
-- [ ] Gate C前にsecond Application sourceを追加していない
+- [x] Gate C entry recordの必須項目を固定した
+- [x] 一つのprimary workstream branchへ収束する規則を固定した
+- [x] first Reference scopeをread-only customer lookupへ限定した
+- [x] ISSUE-000047 → Phase 5 → ISSUE-000040 → Acceptanceの順序を固定した
+- [x] Application / Environment authorityを分離した
+- [x] unknown / incompatibleのstop条件を固定した
+- [x] existing grammar firstを維持した
+- [x] AI Builder / Human Review handoffを定義した
+- [x] commit / PR / merge規則を定義した
+- [x] Gate C前にsecond Application sourceを追加していない
