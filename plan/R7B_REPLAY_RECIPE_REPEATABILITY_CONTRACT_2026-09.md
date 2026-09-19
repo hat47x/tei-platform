@@ -203,6 +203,41 @@ R7A handoff acquired
 
 The runner performs no network replay and starts no First Web Target server.
 
+## 10. Machine-readable replay plan
+
+The execution intake can be converted into a deterministic machine-readable replay plan with:
+
+- `tools/reference-first-web-target-r7b-replay-plan`
+
+The plan pins:
+
+- exact execution-intake SHA-256
+- source R7A handoff / acquisition-receipt SHA-256
+- origin and replay Target build revision
+- one named Target-local request fixture per behavior
+- Target-local interaction description
+- expected HTTP boundary
+- expected semantic Observation class
+- origin raw Functional artifact identity
+- `RequiredDistinctRuns = 2`
+- `ReplayExecutionStatus = not-executed`
+- `RepeatabilityStatus = not-observed`
+- `CoverageClass = behavior-unit`
+
+The plan intentionally does not carry login IDs, credentials, passwords, selectors, DOM coordinates, click sequences, execution authority, or a replay-success field.
+
+```text
+execution intake
+  -> replay plan
+  != credentials
+  != execution authority
+  != replay execution
+```
+
+`RequestFixtureID` and `TargetLocalInteraction` are Target-local operational material. They do not become Canonical Application identity or Semantic Operation authority.
+
+The first replay plan pins `ReplayTargetBuildRevision` to the origin Gate C Target build `T`. A cross-revision replay requires a different explicit plan / Evidence identity.
+
 ## 10. Evidence height
 
 This document, the test-only source, the intake CLI source, and the operational intake runner are Source / Design Evidence until the Repository-external artifacts are actually supplied and the runner is executed.
@@ -224,9 +259,11 @@ After actual R7A handoff acquisition:
 
 1. run the R7B intake acquisition runner,
 2. retain the resulting intake artifact and receipt outside the Repository,
-3. then connect the source-defined replay recipes to an operational replay runner that:
+3. derive the machine-readable replay plan from the actual R7B execution intake,
+4. retain the exact replay-plan artifact identity outside the Repository,
+5. then connect the plan to an operational replay runner that:
 
-- reads the actual R7B execution intake,
+- reads the actual R7B execution intake and replay plan,
 - verifies its exact SHA-256 and source provenance,
 - verifies the six origin raw artifact identities,
 - executes at least two distinct replay runs per selected behavior against explicit T,
