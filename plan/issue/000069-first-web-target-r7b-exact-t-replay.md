@@ -443,6 +443,64 @@ replay plan
 
 E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet Vのshared classifier packageとはfile境界が分かれる。ただしコード変更なので、full `tools/repository-health-check.sh` PASS前にはmainへ入れない。
 
+##### 3.0.1 E0のexact source delta
+
+E0ではschemaを一般化しない。current `replayPlan` top-levelへ、execution intakeですでに検証済みのlaunch provenanceをそのまま追加する。
+
+```go
+type replayPlan struct {
+    // existing exact source identities ...
+    HandoverBaselineID           string `json:"handoverBaselineId"`
+    BaselineRepositoryRevision   string `json:"baselineRepositoryRevision"`
+    ReplayTargetBuildRevision    string `json:"replayTargetBuildRevision"`
+    TargetAdapter                string `json:"targetAdapter"`
+    Host                         string `json:"host"`
+    // Units / AuthorityLimits ...
+}
+```
+
+`buildReplayPlan` では値をcompile-time定数から再構成せず、validation済みintakeからexact carryする。
+
+```text
+plan.HandoverBaselineID         = intake.HandoverBaselineID
+plan.BaselineRepositoryRevision = intake.BaselineRepositoryRevision
+plan.ReplayTargetBuildRevision  = intake.TargetBuildRevision
+plan.TargetAdapter              = intake.TargetAdapter
+plan.Host                       = intake.Host
+```
+
+ここでcurrent Gate C既知値との照合を担当するのは既存 `validateIntake` である。定数は「recorded Gate C provenanceからdriftした入力をrejectする」ために使い、plan出力値の別authorityにはしない。
+
+このためE0後の責務は次の二段になる。
+
+```text
+recorded Gate C constants
+    ↓ validateIntake: drift reject
+validated execution intake
+    ↓ buildReplayPlan: lossless carry
+replay plan B / R / T / adapter / host
+```
+
+runner / replay auditはplanを実行時expected provenanceとして読み、さらにcurrent Referenceで許容されたprovenanceと矛盾する場合はfail closedする。runnerがplanを無視してB/R/adapter/hostを自身の固定値だけから生成する形は禁止する。
+
+##### 3.0.2 E0 test pressure
+
+既存testを壊さず、最低限次を追加・拡張する。
+
+1. happy pathで `HandoverBaselineID / BaselineRepositoryRevision / ReplayTargetBuildRevision / TargetAdapter / Host` がintake値とexact一致する。
+2. JSON serialization後も5 fieldがexact field nameで存在し、値が失われない。
+3. `HandoverBaselineID` の空・driftをrejectする。
+4. `BaselineRepositoryRevision` の空・driftをrejectする。
+5. `TargetBuildRevision` の空・driftをrejectする。
+6. `TargetAdapter` の空・driftをrejectする。
+7. `Host` の空・driftをrejectする。
+8. candidate側B/R/T provenanceとtop-level intakeの不一致は既存fail-closedを維持する。
+9. credential / selector / coordinate / execution authority fieldを追加しない既存negative testを維持する。
+
+「plan生成後にfieldを改ざんしてbuilderがrejectする」という不可能な責務はbuilder testへ置かない。生成済みplanの改ざん・欠落rejectはV2 replay audit / E1 runnerのinput validationでPressureする。
+
+E0完了判定は、focused package testだけでなくfull `tools/repository-health-check.sh` PASSと、そのPASS対象commitがそのまま`main`へ入ったことまでを含む。
+
 #### 3.1 Gate C fixture replay map
 
 初回R7B operational replayのrequest fixtureは、existing `tools/run-first-web-target-gate-c-evidence.sh` がactual Gate C Evidence取得に使ったJSON Scenarioだけを再利用する。Custom UI / HTML captureはISSUE-000069の対象外とする。
