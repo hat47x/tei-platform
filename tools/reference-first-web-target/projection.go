@@ -13,12 +13,14 @@ import (
 type projectionConfig struct {
 	HandoverBaselineID         string
 	BaselineRepositoryRevision string
+	TargetBuildRevision        string
 	ApplicationID              core.CanonicalID
 }
 
 type webTargetProjection struct {
 	HandoverBaselineID         string                 `json:"handoverBaselineId"`
 	BaselineRepositoryRevision string                 `json:"baselineRepositoryRevision"`
+	TargetBuildRevision        string                 `json:"targetBuildRevision"`
 	TargetAdapter              string                 `json:"targetAdapter"`
 	Host                       string                 `json:"host"`
 	ApplicationID              string                 `json:"applicationId"`
@@ -74,6 +76,9 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 	if cfg.BaselineRepositoryRevision == "" {
 		return webTargetProjection{}, fmt.Errorf("baseline repository revision is required")
 	}
+	if cfg.TargetBuildRevision == "" {
+		return webTargetProjection{}, fmt.Errorf("target build revision is required")
+	}
 	if cfg.ApplicationID == "" {
 		return webTargetProjection{}, fmt.Errorf("application ID is required")
 	}
@@ -87,6 +92,7 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 	result := webTargetProjection{
 		HandoverBaselineID:         cfg.HandoverBaselineID,
 		BaselineRepositoryRevision: cfg.BaselineRepositoryRevision,
+		TargetBuildRevision:        cfg.TargetBuildRevision,
 		TargetAdapter:              "reference-first-web-target",
 		Host:                       "go-net-http",
 		ApplicationID:              string(app.ID),
