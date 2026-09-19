@@ -101,6 +101,8 @@ Visual capture recipeはsame `T`上で必要stateをdeterministic inputから再
 
 さらに`tools/reference-first-web-target-visual-replay`を追加し、Semantic / Functional summaryのdigestを再確認したうえでrequired HTMLをloopback routeからexact bytesで配信する。replay helperはcredential入力や業務処理を再実行せず、`/capture-manifest.json`へroute / source artifact / source SHA-256 / `B / R / T`を残す。
 
+Visual manifest scaffoldを渡した場合はreview indexも表示し、evaluator provenance / Screenshot filename / criterion / capture referenceを同じ画面で確認できる。これは閲覧補助であり、manifest更新・evaluator判断・Visual auditを代替しない。
+
 ただしHTML state artifactやreplay helper自体をScreenshot / Visual Fidelity Evidenceへ読み替えない。
 
 現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。

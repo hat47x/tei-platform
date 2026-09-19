@@ -27,6 +27,8 @@ Runbookには各必須Screenshot stateを再現するdeterministic form input re
 
 その入口として`tools/reference-first-web-target-visual-replay`を追加し、source digest一致・artifact directory境界・credential非混入を確認した上でrequired stateをloopback routeへexact bytesで配信する。helperはTarget runtime再実行でもVisual evaluatorでもない。
 
+Visual manifest scaffoldを併用すると、review indexでcapture route / Screenshot filename / source digest / evaluator / criterion-capture対応を一覧できる。review helperは判定を持たず、Visual audit sourceを第二の正本にしない。
+
 これはVisual captureの準備Evidenceであり、HTML artifactをScreenshotへ読み替えない。
 
 actual Screenshot / evaluator Evidenceは未取得である。

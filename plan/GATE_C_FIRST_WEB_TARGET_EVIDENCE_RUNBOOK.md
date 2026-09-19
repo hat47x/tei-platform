@@ -397,6 +397,7 @@ GOFLAGS= \
 go run ./tools/reference-first-web-target-visual-replay \
   -semantic-functional-summary /tmp/tei-gate-c-first-web-T/semantic-functional-summary.json \
   -artifact-dir /tmp/tei-gate-c-first-web-T \
+  -visual-manifest /tmp/tei-gate-c-first-web-T/visual/visual-manifest.json \
   -listen 127.0.0.1:18181
 ```
 
@@ -425,6 +426,19 @@ http://127.0.0.1:18181/capture/custom-submit-execution-error
 ```
 
 `/capture-manifest.json`には各route、source artifact、source SHA-256、`B / R / T`を保持する。
+
+`-visual-manifest`を渡した場合、`http://127.0.0.1:18181/`をVisual review indexとして表示する。ここでは:
+
+- Visual run / evaluator provenance
+- Screenshot filename
+- capture route
+- source artifact / SHA-256
+- criterionのcurrent result
+- criterionが参照するcapture
+
+を一画面で確認できる。
+
+review indexはmanifestを変更せず、評価結果を書き込まない。Visual auditの代替でもない。
 
 helperはHTML bytesを起動時にmemoryへ固定してそのまま返す。業務処理やcredential入力を再実行しない。
 
