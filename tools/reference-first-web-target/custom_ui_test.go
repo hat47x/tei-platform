@@ -227,7 +227,6 @@ func TestCustomSubmitUIKeepsBusinessDenialAsRenderedResult(t *testing.T) {
 	}
 }
 
-
 func TestCustomSubmitUIStructuresSuccessfulScenarioForVisualReview(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {

@@ -65,9 +65,9 @@ type architectureCheck struct {
 }
 
 type postRunRepository struct {
-	Checked          bool   `json:"checked"`
-	RevisionStable   bool   `json:"revisionStable"`
-	WorkingTreeClean bool   `json:"workingTreeClean"`
+	Checked          bool `json:"checked"`
+	RevisionStable   bool `json:"revisionStable"`
+	WorkingTreeClean bool `json:"workingTreeClean"`
 }
 
 type architectureEvidence struct {
@@ -144,9 +144,9 @@ type readinessSummary struct {
 
 func main() {
 	var (
-		semanticPath = flag.String("semantic-functional-summary", "", "Semantic / Functional summary")
+		semanticPath     = flag.String("semantic-functional-summary", "", "Semantic / Functional summary")
 		architecturePath = flag.String("architecture-evidence", "", "Architecture conformance Evidence")
-		visualPath = flag.String("visual-audit", "", "Visual Evidence audit")
+		visualPath       = flag.String("visual-audit", "", "Visual Evidence audit")
 	)
 	flag.Parse()
 	if *semanticPath == "" || *architecturePath == "" || *visualPath == "" {
