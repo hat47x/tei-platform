@@ -6,7 +6,7 @@
 
 ## 現在のincrement
 
-現在は **authenticated Command / Observation slice** まで進んでいます。
+現在は **standard / Custom UI shared Command boundary** まで進んでいます。
 
 - `reference/workspace`を通常のWorkspace loaderで読む
 - `driver.Resolver`でApplication Patternを解決する
@@ -19,13 +19,16 @@
 - `POST /scenario/submit`でAuthentication → read → Canonical Validation → Authorization → Command → separate Observationを実行する
 - Authentication / Authorizationの`denied`をBusiness Outcomeとして保持し、Execution Errorへ変換しない
 - Command Business ResultとObservationを別結果として保持する
+- `/custom-submit`のCustom UIもJSON APIと同じ`commandScenarioRunner`を利用する
+- Custom UI固有差をform / layout / HTML renderingへ閉じる
 - credentialをresult / Evidenceへ保持しない
 - synthetic runtime fixtureはCanonical dataと分離する
 - browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Environment instanceをWeb側で推測しない
 
 まだ行いません。
 
-- Custom UI
+- actual browser replay / Functional Evidence取得
+- screenshot / Visual Fidelity Evidence取得
 - Gate C Functional Evidence
 - Gate C Visual Evidence
 
@@ -51,6 +54,7 @@ go run ./tools/reference-first-web-target \
 - `/manifest.json` — 同じProjectionのJSON
 - `/scenario/read?from=2026-09-18T08%3A30%3A00Z&row=0` — Reference診断用read-only slice
 - `POST /scenario/submit` — Authentication / Validation / Authorization / Command / Observation
+- `/custom-submit` — 同じCommand Scenario境界を使うCustom HTML UI
 - `/healthz` — process health
 
 ### submit Command例
