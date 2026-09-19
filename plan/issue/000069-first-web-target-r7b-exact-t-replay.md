@@ -1609,6 +1609,82 @@ negative pressureでは少なくとも:
 
 ただし `d779f292...` はE1 preflight reuse sourceとrepeatability sourceを同一treeへcompositionした候補であり、**combined full-package test / full repository health checkは未実行**である。統合時はこのtree内容をlatest mainへreconcileし、full `tools/repository-health-check.sh` を通す。
 
+#### E1.0.3 origin raw Evidence identity verification candidate
+
+E1のarchive verificationでは、archive SHA-256と `MANIFEST.sha256` の一致だけでなく、replay planが固定した6 origin raw artifact identityとの一致も確認する必要がある。これをshell側のJSON解析へ複製しないため、repeatability composition candidate `d779f292d17b21e01a859fda0e77b2cc44c53371` の子としてV2 preflightを拡張したbranchless candidateを作成した。
+
+```text
+d779f292d17b21e01a859fda0e77b2cc44c53371
+  ↓ V2 origin Evidence identity verification
+2038948424ab4ccb13dd8e0009beb8baba4864a6
+```
+
+変更対象はV2 replay auditの2ファイルだけである。
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  blob = 720ca6b284ffecf2e813b6fccc3f68e5226a0f68
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  blob = 8825d61068e33fd642c9f758d6774655ff6e93a8
+```
+
+candidateはreplay plan unitから次をdecodeする。
+
+```text
+OriginRawArtifactFile
+OriginRawArtifactSHA256
+```
+
+さらにcurrent six behaviorについてorigin filenameをV2のTarget-local ruleへ固定し、plan側で:
+
+- exact expected filename
+- safe basename-only path
+- valid SHA-256
+
+を要求する。
+
+`-preflight-only` に `-origin-artifact-dir <extracted Gate C Evidence root>` を併用した場合、V2は各origin raw fileをregular fileとして読み、Reference credential materialがないことを確認し、actual bytes SHA-256をplanの `OriginRawArtifactSHA256` とexact照合する。
+
+したがってE1 runnerはconceptually:
+
+```text
+archive exact SHA-256
+  + MANIFEST.sha256 verification
+  ↓
+V2 -preflight-only
+  + -origin-artifact-dir
+  ↓
+plan / receipt exact binding
+  + B / R / T / adapter / host
+  + six origin raw filename / SHA-256 identities
+  ↓
+Target process may start
+```
+
+という順にする。
+
+shell側はplan JSONからorigin file / digestを再抽出しない。archive / manifest verificationは外殻として残し、planが要求するorigin raw identityとの結合をV2へ集約する。
+
+candidate差分監査では親 `d779f292...` に対してV2の2ファイルだけが変更されている。
+
+```text
+main.go      +58 / -3
+main_test.go +72 / -7
+```
+
+ただし `20389484...` のexact candidateについてfocused Go test / full Repository qualificationはまだ実行していない。
+
+```text
+origin identity source candidate
+  != focused exact candidate PASS
+  != repository-health-check PASS
+  != V2 integrated
+  != origin Evidence adopted in an actual E1 run
+```
+
+統合時はlatest V2 sourceへこの責務をreconcileし、focused testとfull `tools/repository-health-check.sh` の両方を通す。E1 runnerはこのvalidationを通過する前にTarget processを起動しない。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
