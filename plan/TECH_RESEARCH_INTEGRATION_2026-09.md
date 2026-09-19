@@ -1532,6 +1532,71 @@ RoutingMechanism / over-selection / rejected candidateは診断情報に留め�
 
 R6QはR3AQ以降のAccepted Decision commit candidate / authority applicationを再実装しない。
 
+#### R6R candidate-pool augmentation invariance — 2026-09-19
+
+R6Qでrouter substitution後のdownstream invarianceを確認した次段として、repository / candidate pool自体が増えた場合でも、current taskに無関係なknowledgeがbounded inputへ侵入しないことをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6r_candidate_pool_augmentation_invariance_pressure_test.go`
+
+test-only unrelated candidate:
+
+```text
+kind = application-pattern
+id   = test-only.unrelated_pattern
+task hint = BP-02
+```
+
+をcurrent BP-06 candidate poolへ追加する。
+
+exact task routerではtask hintが異なるためselected set自体が変化してはならない。
+
+broad heterogeneous routerではcandidateを一旦selectedしてよいが、deterministic qualificationで:
+
+```text
+not-in-deterministic-task-scope
+```
+
+としてrejectし、qualified / disclosed knowledgeを変えてはならない。
+
+その結果:
+
+```text
+candidate pool grows
+  -> available diagnostics may grow
+
+qualified knowledge
+bounded input assembly
+scope identity
+qualified-not-materialized identities
+R6P observation decomposition
+  -> unchanged
+```
+
+を要求する。
+
+broad routerについてもbaseline / augmented bounded assemblyをR6Pで比較し:
+
+```text
+cardinality delta = 0
+membership delta  = 0
+provenance delta  = 0
+```
+
+でなければならない。
+
+CandidatePoolSize / RepositoryKnowledgeCount / RejectedCandidateCount等をbounded input / scope / observation identityへ持ち込まない。
+
+```text
+repository richness
+  != working-context size
+  != scope meaning
+  != authority
+```
+
+R6RはKnowledge Portability relation、R3 authority acceptance、Gate C Evidence acquisitionを再実装しない。
+
 
 #### R6 Source-pressure exit assessment — 2026-09-19
 
