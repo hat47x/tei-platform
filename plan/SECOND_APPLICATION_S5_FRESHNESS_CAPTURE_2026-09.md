@@ -5,7 +5,7 @@
 - Primary workstream: ISSUE-000040
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
 - Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base Repository revision: `bfda34c27f9768ddd744f9acfbb6991d9c104bb4`
+- Review base Repository revision: `6ffaa40ef2872a773baa5e7b127dcb89d94abc5c`
 - Shared Acceptance result: Pending
 - Acceptance witness: Absent
 
@@ -31,7 +31,7 @@ repository revision captured
 
 ```text
 reviewBaseRepositoryRevision =
-  bfda34c27f9768ddd744f9acfbb6991d9c104bb4
+  6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
 ```
 
 S5 Proposalをmainへ統合したrevision:
