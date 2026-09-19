@@ -150,7 +150,7 @@ func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World))
+	server, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
