@@ -3672,6 +3672,45 @@ AcceptedWriteOutcome / OutcomeAccepted / AcceptedDecision / CurrentAuthority / R
 
 
 
+
+### R3AV — Explicit write outcome acceptance witness / candidate boundary
+
+R3AU outcome-acceptance Gateがsingle-qualifiedでも自動accept/rejectせず、explicit witnessが存在する場合だけtest-only candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AV_OUTCOME_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3av_outcome_acceptance_witness_candidate_pressure_test.go`
+
+```text
+single-qualified R3AU Gate
+  + exact raw ObservationIdentity
+  + exact outcome-acceptance authority
+  + explicit accept/reject decision
+  + AcceptanceProvenanceRef
+  -> test-only outcome-acceptance candidate
+
+candidate
+  != authoritative outcome applied
+  != Accepted Decision committed
+  != retry authorized
+```
+
+Decisionは `accept-observed-outcome` / `reject-observed-outcome` をtest-onlyにPressureし、raw writer-reported-applied/conflict/unknownやpost-write revisionから推測しない。
+
+multiple-qualified R3AU Gateはwitness指定で迂回しない。exact duplicate witnessだけnormalizeし、decision / acceptance provenanceの競合はfail closedする。
+
+accept candidateからCurrentAuthority適用へ進まず、reject candidateからwrite failed / RetryEligibleへ進まない。
+
+AcceptedWriteOutcome / OutcomeAccepted / AcceptedDecision / CurrentAuthority / RetryEligible / ToolCall / Command / NextAction等は追加しない。
+
+次段ではaccept-observed-outcome candidateが存在しても、post-write authoritative-state reconciliation / revision acceptance / authority applicationを別Evidence GateとしてPressureする。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
