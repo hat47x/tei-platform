@@ -344,6 +344,54 @@ fresh Target process
 
 run identityは同一execution内で異なるだけでなく、同じrunner revision / 同じTarget Tを後日再実行した場合にも不用意に衝突しないようにする。固定のTとrunner source revisionだけからdefault run IDを作らず、per-acquisition nonce / UTC timestamp等の非semantic discriminatorを含め、採用Evidence側には生成後のexact identityを記録する。
 
+#### 3.0 E0 — replay plan launch provenanceをlosslessにする
+
+operational runnerの具体化で、current `r7b-replay-plan.json` がTarget起動に必要なprovenanceを完全にはcarryしていないことが分かった。
+
+current top-levelはReplay Target `T` を保持する一方、execution intakeに存在する次の値をplan top-levelへ保持していない。
+
+```text
+HandoverBaselineID
+BaselineRepositoryRevision
+TargetAdapter
+Host
+```
+
+First Web Targetの起動とshared semantic validatorは `B / R / T / TargetAdapter / Host` のexact provenanceを使う。したがってrunnerだけが既知のB/Rをhard-codeすると、replay plan単体では「何をどのprovenanceで再実行するか」をlosslessに表せない。
+
+E1へ入る前に、execution intakeの既存値をreplay planへexact carryする。
+
+```text
+execution intake
+  HandoverBaselineID
+  BaselineRepositoryRevision
+  TargetBuildRevision
+  TargetAdapter
+  Host
+        ↓ lossless carry
+replay plan
+  HandoverBaselineID
+  BaselineRepositoryRevision
+  ReplayTargetBuildRevision
+  TargetAdapter
+  Host
+```
+
+これは新しいauthorityや意味を追加する変更ではなく、すでに受領済みのexecution provenanceを実行planへ保持するだけである。
+
+実装条件:
+
+- replay-plan builderはintakeの5値をexact carryする
+- replay-plan testはcarryされた値のdrift / 欠落を拒否する
+- operational runnerはB/R/adapter/hostをcompile-time固定値だけから決めず、planをexpected provenanceとして使う
+- replay audit / shared validatorも同じplan provenanceをexpected valueとして使う
+- current Referenceで既知のB/R/Tと矛盾するplanはfail closedする
+- field追加をcross-revision compatibility、current Authorization、production authorityへ読み替えない
+
+既存3.2の起動引数例にあるB/R/Tはcurrent Referenceの具体例として残してよいが、runner実装上の唯一のauthorityにはしない。
+
+E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet Vのshared classifier packageとはfile境界が分かれる。ただしコード変更なので、full `tools/repository-health-check.sh` PASS前にはmainへ入れない。
+
 #### 3.1 Gate C fixture replay map
 
 初回R7B operational replayのrequest fixtureは、existing `tools/run-first-web-target-gate-c-evidence.sh` がactual Gate C Evidence取得に使ったJSON Scenarioだけを再利用する。Custom UI / HTML captureはISSUE-000069の対象外とする。
