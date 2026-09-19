@@ -264,12 +264,20 @@ func TestReplayableBehaviorR7ACandidatesPreserveSemanticAndTargetRealizationSepa
 		t.Fatalf("R7A candidate count=%d, want %d", len(got), len(specs))
 	}
 
+	specByBehavior := map[string]replayableBehaviorR7ASpec{}
+	for _, spec := range specs {
+		specByBehavior[spec.BehaviorID] = spec
+	}
 	for i := range got {
-		if got[i].SemanticOperation != specs[i].SemanticOperation {
-			t.Fatalf("R7A semantic operation drifted: got=%q want=%q", got[i].SemanticOperation, specs[i].SemanticOperation)
+		spec, ok := specByBehavior[got[i].BehaviorID]
+		if !ok {
+			t.Fatalf("R7A candidate has no source spec: %+v", got[i])
 		}
-		if got[i].TargetRealizationRef != specs[i].TargetRealizationRef {
-			t.Fatalf("R7A target realization drifted: got=%q want=%q", got[i].TargetRealizationRef, specs[i].TargetRealizationRef)
+		if got[i].SemanticOperation != spec.SemanticOperation {
+			t.Fatalf("R7A semantic operation drifted: got=%q want=%q", got[i].SemanticOperation, spec.SemanticOperation)
+		}
+		if got[i].TargetRealizationRef != spec.TargetRealizationRef {
+			t.Fatalf("R7A target realization drifted: got=%q want=%q", got[i].TargetRealizationRef, spec.TargetRealizationRef)
 		}
 		if got[i].RawArtifactSHA256 == "" {
 			t.Fatalf("R7A candidate lost raw artifact fingerprint: %+v", got[i])

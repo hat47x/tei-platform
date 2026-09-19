@@ -52,7 +52,7 @@ func TestCanonicalBusinessHandoffProbeDerivesFromReferenceSetAndResolvesEndpoint
 	want := canonicalBusinessHandoffProbe{
 		From: canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.order-handling", Step: "BP-09"},
 		To: canonicalBusinessHandoffEndpointProbe{Procedure: "order-entry.follow-up", Step: "FU-00"},
-		Condition: "follow-up remains necessary after the primary order interaction",
+		Condition: "follow-up is required after the earlier order interaction",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected canonical handoff: got=%+v want=%+v", got, want)
