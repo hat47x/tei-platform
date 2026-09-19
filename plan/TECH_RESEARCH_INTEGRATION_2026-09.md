@@ -1788,6 +1788,132 @@ R7 candidate
 
 actual R7A handoff sourceでは入力JSONのfield値だけでなく、入力file exact bytesのdigestを計算してhandoffへ固定することを期待する。R7Bは引き続きactual handoff artifact取得後まで開始しない。
 
+##### R7A actual handoff source integration — 2026-09-19
+
+Gate Cは`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`でReadyが正式記録された。これを受け、First Web Targetのactual Evidence JSONからR7A handoffを生成するCLI sourceを、R7A final-readiness contractへ揃えて統合する。
+
+source:
+
+- `tools/reference-first-web-target-r7a-handoff/main.go`
+- `tools/reference-first-web-target-r7a-handoff/main_test.go`
+
+CLIは入力する:
+
+- final `gate-c-readiness-audit.json`
+- `semantic-functional-summary.json`
+
+のexact bytesを自身でSHA-256 fingerprintし、handoff / candidateへ保持する。
+
+またfinal readinessについて:
+
+- current required 10 check identityの完全集合
+- missing / duplicate / unknown check rejection
+- `VisualRun`
+- non-blocking unresolved
+- exact B / R / T / Target Adapter / Host / Semantic-Functional run
+- Target Difference Handoff
+
+をfail closedで確認する。
+
+出力candidateは引き続き:
+
+```text
+ReplayStatus = not-executed
+CoverageClass = behavior-unit
+```
+
+であり、CLI sourceの統合だけでactual replay executionを主張しない。
+
+```text
+Gate C Ready recorded
+  + R7A handoff CLI integrated
+  != actual R7A handoff artifact acquired
+  != R7B replay executed
+```
+
+R7B開始条件は、actual Gate C Evidence artifactをこのCLIへ入力して生成したhandoff artifactを取得し、そのexact artifact identityを次段へ渡せることとする。
+
+First Web Target側の旧handoff source branchは並行作業の所有物として直接rewriteせず、R7 research lane側でcurrent final contractへ収束させる。
+
+##### R7B actual handoff entry gate — 2026-09-19
+
+First Web TargetはPR #817でactual Gate C Readyへ到達した。
+
+current actual Gate C record:
+
+```text
+Handover Baseline B = B
+R = e5231839a5dcc62cce1181a2731fcb7c70d16736
+T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+Target Adapter = reference-first-web-target
+Host = go-net-http
+Semantic / Functional run = first-web-target-0ba87a4e0a96
+Semantic / Functional summary SHA-256
+  = 78c4c3b1031a70eb62683233fb5f1794cf7f71fd8b420ffa741d5ebe3f649d6b
+final Gate C readiness SHA-256
+  = b796e38db9a249ef98f2cb600eb354afc70f9adf57d2c83d47116f9968a0ff6c
+judgment record repository revision
+  = d34edb9273f5f138abcbc23f4dcb000dcb5cdf20
+Gate C Ready = true
+```
+
+ただしactual EvidenceはRunbookどおりRepository外保持であり、current Repositoryにはactual `semantic-functional-summary.json`、raw Functional artifact、actual R7A handoff artifactそのものは存在しない。
+
+したがってR7BはGate C Readyだけで開始しない。entryにはactual R7A handoff artifact exact SHA-256を要求し、そのhand-offがcurrent actual Gate C recordとexact一致することをPressureする。
+
+第一Web Targetでは次の6 behaviorを完全集合として要求する。
+
+```text
+first-web/read-only
+first-web/command-success
+first-web/authentication-denied
+first-web/authorization-denied
+first-web/validation-not-satisfied
+first-web/execution-error
+```
+
+各behaviorは:
+
+- exact Semantic Operation
+- exact Target realization ref
+- exact raw artifact filename
+- raw artifact exact SHA-256
+- Observation class
+- B / R / T
+- Semantic / Functional run
+- VisualRun
+- final readiness artifact SHA-256
+- Semantic / Functional summary SHA-256
+- `ReplayStatus = not-executed`
+- `CoverageClass = behavior-unit`
+
+を保持する。
+
+missing / duplicate / unknown behavior、wrong raw artifact mapping、provenance mismatch、hand-off artifact digest欠落、source handoff側で既にreplay passed等を自己申告する入力はfail closedする。
+
+R7B execution intakeを作れても:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus = not-observed
+```
+
+から開始する。
+
+```text
+actual Gate C Ready
+  != actual R7A handoff acquired
+
+actual R7A handoff acquired
+  != replay executed
+
+one replay pass
+  != repeatability established
+  != whole workflow covered
+```
+
+current recorded stateはactual Gate C Readyだがactual R7A handoff artifact未取得なので、R7B actual replay executionはまだ開始しない。
+
 
 
 ### R8 — Verified Experience Memory / Evidence Normalization
