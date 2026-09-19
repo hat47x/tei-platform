@@ -4385,6 +4385,45 @@ StateApplied / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / 
 
 
 
+
+### R3BF — State-application execution / authority-projection observation boundary
+
+R3BE apply candidateの後段でも、state-application execution observationとpost-application authority-projection/current-state observationを別raw Evidence planeとして扱う。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BF_STATE_APPLICATION_OBSERVATION_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3bf_state_application_observation_pressure_test.go`
+
+```text
+R3BE state-application candidate
+  + attributed execution observation
+  + attributed authority-projection/current-state observation
+  -> raw post-application Evidence
+
+raw Evidence
+  != authoritative state applied
+  != revision accepted
+  != CurrentAuthority current
+```
+
+execution raw classは state-applicator-reported-applied / not-applied / conflict / unknown とし、reported-appliedをStateAppliedへ昇格させない。
+
+authority-projection observationはCurrentAuthorityObservationRef / observed revision / state fingerprint / opaque authority-projection fingerprintを保持するが、CurrentAuthority accepted/currentを意味しない。
+
+execution / projection planeは独立し、一方から他方を補完しない。R3BE reject candidateはobservation入口にしない。
+
+両planeはStateApplicationCandidateIdentity / sink / RevisionAuthorityRefへexact bindingし、projection planeではCurrentAuthorityProjectionLocusRefもexact matchさせる。
+
+matching revision / fingerprintやprojection fingerprint presenceからRevisionAccepted / CurrentAuthorityを推論しない。conflict / unknownからRetryEligibleを生成しない。
+
+次段ではraw post-application Evidenceを受理するauthorityを別Evidence GateとしてPressureする。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
