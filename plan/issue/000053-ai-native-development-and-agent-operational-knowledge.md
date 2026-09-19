@@ -2329,6 +2329,44 @@ shared knowledge identityからAudience / Purpose / ProjectionCategoryを除外�
 
 R6IはR3AG〜R3AIのoutcome materialization / provenance drill-down / read-only Agent consumptionを重複実装しない。R6Iの責務はknowledge input側の重複排除とbounded use provenanceである。
 
+### R6J — bounded input plane assembly
+
+R6Dのorigin分類、R6F〜R6Hのmaterialization / omission / revision provenance、R6Iのshared body / bounded use edgeを一つのderived assemblyへ接続する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6j_bounded_input_plane_assembly_pressure_test.go`
+
+R6J assemblyは:
+
+1. routed knowledge body
+2. routed use edge
+3. consumer-local use edge
+4. qualified-not-materialized identity
+
+を別planeとして保持する。
+
+```text
+routed knowledge body
+  != consumer-local input
+
+consumer-local dependency
+  != router miss
+
+qualified-not-materialized
+  != missing source
+```
+
+current BP-06 Human orientationではBusiness Procedure Reference bodyを1回だけmaterializeし、そのProcedureを説明する3つのrouted use edgeを保持する。
+
+protected-target overlayは3つのconsumer-local Reference use edgeとして保持し、KnowledgeKeyを与えない。
+
+runtime Authorization Observationだけのsliceではrouted knowledge bodyを0件にでき、Procedure / Capabilityはqualified-not-materializedのまま、runtime Observationだけをconsumer-local runtime useとして保持する。
+
+consumer-local planeにはrouted knowledge identity / content provenanceを載せないため、assembly段階でorigin boundaryを再び平坦化しない。
+
+R6JはUniversal Context PacketやPrompt payloadを定義しない。assemblyはbounded consumer inputを検証するderived Reference shapeに留め、freshness / retry / authorization / invocation policyを所有しない。
+
 
 
 
