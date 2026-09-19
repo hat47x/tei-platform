@@ -36,7 +36,7 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 
 ## 3. 現在のProduct主線
 
-Gate Bは2026-09-19にReadyへ到達しました。最大の直列blockerは**First Web Target build T1のactual Evidence取得**です。
+Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。RQ別のEvidence tierは、Gate C Evidenceを踏まえた再監査を別作業で行います。
 
 ```text
 Gate A — Ready
@@ -45,9 +45,9 @@ Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
    ↓
 Handover Baseline B / revision R — 固定済み
    ↓
-First Web Target build T1 — 未着手
+First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
    ↓
-Gate C — PAS-04
+Gate C — PAS-04 — Ready
    ↓
    ├─ Studio minimal loop — PAS-01
    ├─ knowledge-first / derived cognition — PAS-06

@@ -249,6 +249,8 @@ request bodyそのものをartifactへ保存しない。
 
 Visual Fidelityを別Evidenceとして取得し、`plan/GATE_C_EVIDENCE_CONTRACT.md`の全条件を独立監査した後だけGate Cを判定する。
 
+actual runの判定記録: `plan/GATE_C_READINESS_AUDIT.md`
+
 
 ## Visual Evidence intake
 
@@ -277,6 +279,8 @@ go run ./tools/reference-first-web-target-visual-evidence-audit \
 ```
 
 scaffoldはSemantic / Functional summaryから`B / R / T / Target Adapter / Host / source run identity`を転記し、required captureをdeterministic filenameで列挙する。
+
+viewport高さに注意する。上の例の1440x1000では、標準ProjectionもCustom UIも下部が切れる。全体を撮る場合は`-viewport-height`を増やし、申告するviewportと実際に撮影したviewportを一致させる。第一Reference実績は1440x3000で、Playwright同梱の`chrome-headless-shell`を`--window-size=1440,3000 --screenshot=<png>`で使い、replay helperの`/capture/<id>`を撮影した。
 
 さらに各captureへ、
 

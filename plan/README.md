@@ -31,9 +31,9 @@ Gate B — Ready（R = e5231839a5dcc62cce1181a2731fcb7c70d16736）
         ↓
 Handover Baseline B / revision R — 固定済み
         ↓
-First Web Target build T1
+First Web Target build T1 — Evidence取得済み（T = 0ba87a4e0a96…）
         ↓
-Gate C — PAS-04
+Gate C — PAS-04 — Ready
         ↓
    ┌──────┼──────────────┐
    ↓      ↓              ↓
@@ -87,9 +87,13 @@ Handoverは新しい番号付きGateでもCanonicalの第二正本でもあり�
 
 ## Gate C / First Web Target
 
+- [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md) — Ready判定の記録
 - [`GATE_C_EVIDENCE_CONTRACT.md`](GATE_C_EVIDENCE_CONTRACT.md)
+- [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
 - [`issue/000007-first-web-target-projection.md`](issue/000007-first-web-target-projection.md)
 - [`issue/000028-first-web-target-conformance-evidence.md`](issue/000028-first-web-target-conformance-evidence.md)
+
+Gate Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)です。Visual Fidelityの評価者は単一のAI評価者で、人による確認ではありません。
 
 First Web Targetのbuild revision `T1`をbaseline revision `R`と分けて追跡します。
 
