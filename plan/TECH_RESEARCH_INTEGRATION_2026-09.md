@@ -1475,6 +1475,63 @@ R6Pはこれらを`SemanticChanged` / `Fresh` / `ShouldReevaluate`等へ集約�
 
 Accepted Decision / authority application / execution responseはR3側の責務のままとする。
 
+#### R6Q router-substitution observation invariance — 2026-09-19
+
+R6Eで確認したrouter substitution invarianceを、R6J〜R6Pのbounded input / observation decompositionまで貫通させる。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6q_router_substitution_observation_invariance_pressure_test.go`
+
+exact task routerとbroad heterogeneous routerはselection段階では異なる。
+
+```text
+exact router
+  -> narrow selected set
+
+broad router
+  -> over-selected set
+  -> deterministic rejection
+```
+
+しかしqualification後に同じknowledge identityへ収束するなら:
+
+```text
+bounded input assembly
+scope identity
+cardinality delta
+membership delta
+retained provenance delta
+```
+
+もrouter mechanismに依存してはならない。
+
+current BP-06ではexact / broad router双方から同じHuman bounded assemblyを導出し、router substitutionそのものをbefore / afterとしてR6Pへ渡した場合、全観測deltaは0でなければならない。
+
+またBusiness Procedure Referenceへ同じtest-only fingerprint revisionを与えた場合、exact / broad双方のR6P decompositionは完全一致し:
+
+```text
+cardinality = 0
+membership  = 0
+retained provenance = 1
+```
+
+となることをPressureする。
+
+consumer-local runtime Observationについても、broad routerがcandidate poolを広く見たことを理由にrouted knowledgeへ捕捉してはならず、runtime-only bounded assembly / observationはrouter invariantである。
+
+```text
+router mechanism
+  != bounded input identity
+  != scope identity
+  != observation delta identity
+  != authority
+```
+
+RoutingMechanism / over-selection / rejected candidateは診断情報に留め、R6P observation shapeへ持ち込まない。
+
+R6QはR3AQ以降のAccepted Decision commit candidate / authority applicationを再実装しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
