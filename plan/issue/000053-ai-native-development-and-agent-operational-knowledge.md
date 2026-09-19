@@ -2747,6 +2747,63 @@ router substitution
 
 R3AQ以降のAccepted Decision commit / write authority境界とは独立する。
 
+### R6R — candidate-pool augmentation invariance
+
+R6 selective routingのrich repository / thin bounded context原則を、candidate pool growthに対してPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6r_candidate_pool_augmentation_invariance_pressure_test.go`
+
+current BP-06 poolへ、BP-02向けのtest-only unrelated Application Pattern candidateを1件追加する。
+
+exact router:
+
+```text
+available +1
+selected unchanged
+qualified unchanged
+disclosed unchanged
+```
+
+broad router:
+
+```text
+available +1
+selected +1
+rejected + unrelated candidate
+qualified unchanged
+disclosed unchanged
+```
+
+とする。
+
+broad routerはrepository全体を広く見てもよいが、current deterministic task scopeにないcandidateをbounded contextまで運ばない。
+
+downstreamではbaseline / augmentedについて:
+
+- bounded assembly
+- ScopeIdentity
+- QualifiedNotMaterialized
+- R6P cardinality delta
+- R6P membership delta
+- R6P retained provenance delta
+
+が不変でなければならない。
+
+```text
+repository candidate added
+  != bounded knowledge added
+  != scope changed
+  != source provenance changed
+```
+
+CandidatePoolSize / RepositoryKnowledgeCount / OverSelectionCount等はrouting diagnosticsに留め、bounded consumer shapeへ持ち込まない。
+
+このboundaryは将来repository knowledgeが増えることを許容しつつ、working contextの無条件肥大化を防ぐ。
+
+R6RはPhase 5 Knowledge Portabilityの採否、R3 Accepted Decision、Gate C readinessを決定しない。
+
 
 
 
