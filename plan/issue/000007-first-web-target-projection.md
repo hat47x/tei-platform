@@ -334,3 +334,33 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - `plan/issue/000028-first-web-target-conformance-evidence.md`
 - `plan/issue/000030-gate-b-to-c-handover-baseline.md`
 - GitHub Issue #70 / #259 / #270 / #291
+
+
+## Gate C Evidence acquisition source
+
+standard / Custom UI shared boundaryの次incrementとして、actual Target runからSemantic / Functional Evidenceを採取するsourceを追加した。
+
+- `tools/run-first-web-target-gate-c-evidence.sh`
+- `tools/reference-first-web-target-evidence-audit`
+- `plan/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`
+
+acquisition runnerはclean `targetBuildRevision = T`からserverを起動し、同一runで少なくとも次を保持する。
+
+- manifest
+- read-only Driver Scenario
+- successful Command
+- Authentication denied
+- Authorization denied
+- Canonical Validation not-satisfied
+- Command Invocation Execution Error
+- Custom UI GET / successful POST
+- server / health
+- source qualification
+
+Validation not-satisfied用のorder `1002`、Execution Error用のorder `1003`はReference runtime fixtureでありCanonical dataではない。
+
+Execution ErrorはBusiness Outcomeへ変換せず、HTTP Target層だけが`B / R / T`とpartial Scenario resultを伴う422 envelopeへProjectionする。
+
+auditはVisual Fidelityを成功へ読み替えず、Semantic / Functionalが成立しても`gateCReady = false`を返す。
+
+現時点ではrunner / auditの**Source Evidence**であり、actual clean checkout上のrun artifactはまだ取得していない。
