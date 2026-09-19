@@ -1,6 +1,6 @@
 # Gate C → Second Application Reference Start Packet
 
-- Status: Active — S0 complete / S1-S2 Source-defined / S3 pending
+- Status: Active — S0 complete / S1-S2 Source-defined / S3 Source-defined / S4 pending
 - Date: 2026-09-19
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
@@ -459,7 +459,7 @@ S1 / S2は、
 
 現在も第二Canonical Application source、Shared Acceptance、Environment binding、Target実装は作成していない。
 
-次はS3 Destination Decision Packetであり、`repair_intake-test-only`をCanonical Application IDへ自動昇格させない。
+S3 Destination Decision Packetは `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md` でSource-definedまで進んだ。`repair_intake` はS3の明示destination candidateであり、`repair_intake-test-only`からの自動昇格ではない。Shared Acceptanceは未実施である。次はS4 composition candidateへ進む。
 
 ## 12. Start Packet完了条件
 
