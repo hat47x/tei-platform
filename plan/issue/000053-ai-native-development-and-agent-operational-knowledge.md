@@ -3077,6 +3077,69 @@ AcceptedAuthorityValue / AcceptedDecision / CurrentAuthority / R3Y authority rew
 次段ではwitness observationをAccepted Decisionとしてauthoritative sourceへcommitするためのseparate write authority / provenance Evidence GateをPressureする。
 
 
+
+### R3AP — Accepted Decision authoritative write / provenance Evidence Gate
+
+R3AOのprovenance-bound acceptance witness observationをauthoritative Accepted Decisionとしてcommitできるwrite authority / sink / revision boundaryがRepository上に明示されているかをEvidence GateでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AP_ACCEPTED_DECISION_WRITE_AUTHORITY_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ap_accepted_decision_write_authority_evidence_gate_pressure_test.go`
+
+```text
+acceptance witness observed
+  != Accepted Decision committed
+
+acceptance witness observation
+  + repository-backed write authority evidence
+  -> Accepted Decision write authority Gate
+
+Gate qualified
+  != witness committed
+  != Accepted Decision created
+  != current authority applied
+```
+
+一般的なADR-0022 / Shared AcceptanceやBusiness authoringのstale-check precedentを、Operational Authorization assertionのAccepted Decision write authorityへ暗黙転用しない。
+
+qualifying evidenceには少なくとも:
+
+- repository-backed evidence
+- explicit `operational-accepted-decision-write-authority` declaration
+- exact AssertionClass / witness Decision / DecisionLocus applicability
+- explicit BusinessAddress scope
+- explicit authoritative AcceptedDecisionSinkRef
+- explicit RevisionAuthorityRef + CurrentDecisionRevision
+- explicit WriteProvenanceRef
+
+を要求する。
+
+current inspected Repository evidenceではこれらを同時に満たすOperational write locusを確認できないため:
+
+```text
+accepted-decision-write-authority-unresolved
+```
+
+を維持する。これはR3AO witnessがinvalid / rejectedという意味ではない。
+
+complete synthetic candidateでGateをpressure-qualifiedにできるが、複数candidateがqualifyする場合はprecedence unresolvedとし、scope specificity / source location / revision値 / corroboration countからwinnerを選ばない。
+
+AcceptedDecision / CommittedDecision / CurrentAuthority / R3Y authority status / RuntimeOutcome / ToolCall / Command / NextAction等は追加しない。
+
+次段ではsingle-qualified write authorityをsyntheticに与え、explicit commit witness + exact R3AO WitnessIdentity + exact write-authority evidence + expected decision revision + write provenanceからtest-only commit candidateを作る境界をPressureする。
+
+```text
+commit candidate
+  != committed Accepted Decision
+  != current authority applied
+```
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
