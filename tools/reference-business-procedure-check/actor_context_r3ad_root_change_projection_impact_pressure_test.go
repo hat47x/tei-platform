@@ -3,243 +3,270 @@ package main
 import (
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 )
 
 const (
-	actorContextR3ADReasonRequirementRoot       = "freshness-requirement-root"
-	actorContextR3ADReasonProtectedResourceRoot = "freshness-protected-resource-root"
-	actorContextR3ADReasonPriorObservationRoot  = "freshness-prior-observation-root"
-	actorContextR3ADReasonTestContextRoot       = "freshness-test-context-root"
-	actorContextR3ADReasonRootLocator           = "provenance-root-locator"
+	actorContextR3ADResidualNoBinding    = "projection-dependency-binding-unresolved"
+	actorContextR3ADResidualNoExactClass = "r3t-change-class-unmapped"
 )
 
-type actorContextR3ADCategoryBindingProbe struct {
-	Category         string
-	DependencyReason string
+type actorContextR3ADRootDependencyBindingProbe struct {
+	RootAddress   string
+	DependencyKey string
+}
+
+type actorContextR3ADResidualRootDeltaProbe struct {
+	Delta  actorContextR3ACRootChangeProbe
+	Reason string
 }
 
 type actorContextR3ADBridgeResultProbe struct {
-	Impact              actorContextR3TImpactExplanationProbe
-	ResidualRootChanges []actorContextR3ACRootChangeProbe
-	AuthorityLimits     []string
+	Impact             actorContextR3TImpactExplanationProbe
+	ResidualRootDeltas []actorContextR3ADResidualRootDeltaProbe
+	AuthorityLimits    []string
 }
 
-func TestActorContextR3ADRequirementRootChangeKeepsSharedMachineReasonAcrossAudiences(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	after := actorContextR3ACCloneRoots(base.Roots)
+func TestActorContextR3ADBusinessReferenceContentDeltaUsesExistingDependencyReasons(t *testing.T) {
+	base, humanReasons, humanBindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	_, agentReasons, agentBindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceAgent)
+	after := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ADRootIndexByClaim(after, "authorization-requirement-source")
 	if idx < 0 {
-		t.Fatal("R3AD setup lost Authorization requirement provenance root")
+		t.Fatal("R3AD setup lost Authorization requirement root")
 	}
 	after[idx].Fingerprint += ":changed"
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
 
-	human := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	agent := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	human := actorContextR3ADExplainBoundRootChanges(humanReasons, deltas.Changes, humanBindings)
+	agent := actorContextR3ADExplainBoundRootChanges(agentReasons, deltas.Changes, agentBindings)
 
-	humanImpact := actorContextR3ADExplainRootChanges(human, base.Roots, assessment)
-	agentImpact := actorContextR3ADExplainRootChanges(agent, base.Roots, assessment)
-
-	humanMachine := actorContextR3ADReasonsForCategory(
-		humanImpact.Impact.Reasons,
-		actorContextR3PCategoryMachineReasons,
-	)
-	agentMachine := actorContextR3ADReasonsForCategory(
-		agentImpact.Impact.Reasons,
-		actorContextR3PCategoryMachineReasons,
-	)
-	if len(humanMachine) != 1 || !reflect.DeepEqual(humanMachine, agentMachine) {
-		t.Fatalf("Human / Agent shared machine-reason impact diverged: human=%+v agent=%+v",
-			humanMachine, agentMachine)
+	for _, impact := range []actorContextR3ADBridgeResultProbe{human, agent} {
+		if !actorContextR3THasReason(
+			impact.Impact.Reasons,
+			actorContextR3PCategoryMachineReasons,
+			actorContextR3TChangeReferenceInput,
+			actorContextR3SReasonAuthorizationRequirementSource,
+		) {
+			t.Fatalf("R3AD lost shared Authorization requirement reason: %+v", impact)
+		}
+		if !actorContextR3THasReason(
+			impact.Impact.Reasons,
+			actorContextR3PCategoryStopIdentity,
+			actorContextR3TChangeReferenceInput,
+			actorContextR3SReasonBusinessAddressSource,
+		) {
+			t.Fatalf("R3AD lost shared Business address reason: %+v", impact)
+		}
+		if len(impact.ResidualRootDeltas) != 0 {
+			t.Fatalf("bound Reference delta remained residual: %+v", impact.ResidualRootDeltas)
+		}
 	}
-	if humanMachine[0].ChangeClass != actorContextR3ACChangeReferenceEvidence ||
-		humanMachine[0].DependencyReason != actorContextR3ADReasonRequirementRoot {
-		t.Fatalf("R3AD requirement root change lost role-aware identity: %+v", humanMachine[0])
-	}
 
-	if actorContextR3ADHasCategory(humanImpact.Impact.Reasons, actorContextR3PCategoryKnownAuthorityFacts) {
-		t.Fatalf("Human bounded view received omitted known-authority-facts impact: %+v", humanImpact)
+	humanMachine := actorContextR3ADReasonsForCategory(human.Impact.Reasons, actorContextR3PCategoryMachineReasons)
+	agentMachine := actorContextR3ADReasonsForCategory(agent.Impact.Reasons, actorContextR3PCategoryMachineReasons)
+	if !reflect.DeepEqual(humanMachine, agentMachine) {
+		t.Fatalf("shared Human / Agent machine reason identity diverged: human=%+v agent=%+v", humanMachine, agentMachine)
 	}
-	if !actorContextR3ADHasCategory(agentImpact.Impact.Reasons, actorContextR3PCategoryKnownAuthorityFacts) {
-		t.Fatalf("Agent bounded view lost selected known-authority-facts impact: %+v", agentImpact)
+	if actorContextR3THasCategory(human.Impact.Reasons, actorContextR3PCategoryKnownAuthorityFacts) {
+		t.Fatalf("Human impact disclosed omitted known-authority-facts: %+v", human.Impact.Reasons)
 	}
-}
-
-func TestActorContextR3ADPriorObservationChangeDoesNotInventCurrentRuntimeOutcomeImpact(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	after := actorContextR3ACCloneRoots(base.Roots)
-	idx := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleRuntimeObservation)
-	if idx < 0 {
-		t.Fatal("R3AD setup lost prior runtime Observation root")
-	}
-	after[idx].Fingerprint += ":new-observation"
-	after[idx].ClaimKind = "prior-authorization-observation:denied"
-
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
-	got := actorContextR3ADExplainRootChanges(view, base.Roots, assessment)
-
-	if !actorContextR3ADHasReason(
-		got.Impact.Reasons,
-		actorContextR3PCategoryMachineReasons,
-		actorContextR3ACChangeRuntimeObservation,
-		actorContextR3ADReasonPriorObservationRoot,
+	if !actorContextR3THasReason(
+		agent.Impact.Reasons,
+		actorContextR3PCategoryKnownAuthorityFacts,
+		actorContextR3TChangeReferenceInput,
+		actorContextR3SReasonAuthorizationRequirementSource,
 	) {
-		t.Fatalf("prior Observation change did not reach freshness machine-reason re-evaluation: %+v", got)
-	}
-	if actorContextR3ADHasCategory(got.Impact.Reasons, actorContextR3PCategoryRuntimeOutcome) {
-		t.Fatalf("prior Observation revision was promoted to current runtime-outcome impact: %+v", got)
-	}
-
-	core := actorContextR3ABFreshnessCore(t)
-	if core.RuntimeOutcome != "" {
-		t.Fatalf("R3AD setup unexpectedly has current RuntimeOutcome: %+v", core)
+		t.Fatalf("Agent impact lost selected known-authority-facts reason: %+v", agent.Impact.Reasons)
 	}
 }
 
-func TestActorContextR3ADTestOnlyContextChangeAffectsFreshnessStopMeaningWithoutAuthoringProductionAction(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	after := actorContextR3ACCloneRoots(base.Roots)
-	idx := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleTestOnlyContext)
-	if idx < 0 {
-		t.Fatal("R3AD setup lost test-only Authorization context root")
-	}
-	after[idx].Fingerprint += ":changed"
-
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	got := actorContextR3ADExplainRootChanges(view, base.Roots, assessment)
-
-	for _, category := range []string{
-		actorContextR3PCategoryStopIdentity,
-		actorContextR3PCategoryMachineReasons,
-		actorContextR3PCategoryResolutionNeeds,
-	} {
-		if !actorContextR3ADHasCategory(got.Impact.Reasons, category) {
-			t.Fatalf("test-only context change did not re-evaluate selected freshness category %q: %+v",
-				category, got)
-		}
-	}
-	for _, reason := range got.Impact.Reasons {
-		if reason.DependencyReason != actorContextR3ADReasonTestContextRoot {
-			continue
-		}
-		if strings.Contains(reason.DependencyReason, "production-action-authority") {
-			t.Fatalf("R3AD promoted test-only context change to production action authority: %+v", reason)
-		}
-	}
-}
-
-func TestActorContextR3ADCorroborationChangeRemainsUnselectedWithoutAuthorityBinding(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	after := actorContextR3ACCloneRoots(base.Roots)
-	idx := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleCorroboration)
-	if idx < 0 {
-		t.Fatal("R3AD setup lost corroboration root")
-	}
-	after[idx].Fingerprint += ":changed"
-
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
-	got := actorContextR3ADExplainRootChanges(view, base.Roots, assessment)
-
-	if len(got.Impact.Reasons) != 0 || len(got.Impact.UnselectedChanges) != 0 {
-		t.Fatalf("corroboration change was promoted into selected/unselected bounded impact: %+v", got)
-	}
-	if len(got.ResidualRootChanges) != 1 ||
-		got.ResidualRootChanges[0].ChangeClass != actorContextR3ACChangeCorroboration {
-		t.Fatalf("R3AD failed to retain unmapped corroboration delta as residual: %+v", got.ResidualRootChanges)
-	}
-}
-
-func TestActorContextR3ADLocatorOnlyMoveAffectsSourceRefsOnly(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceHuman)
-	after := actorContextR3ACCloneRoots(base.Roots)
+func TestActorContextR3ADOverlayLocatorOnlyDeltaAffectsSourceRefsOnly(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	after := actorContextR3ACCloneRoots(base)
 	idx := actorContextR3ADRootIndexByClaim(after, "protected-resource-source")
 	if idx < 0 {
 		t.Fatal("R3AD setup lost protected-resource root")
 	}
 	after[idx].Locator += ".moved"
 
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceHuman)
-	got := actorContextR3ADExplainRootChanges(view, base.Roots, assessment)
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
 
-	if len(got.Impact.Reasons) != 1 ||
-		got.Impact.Reasons[0].Category != actorContextR3PCategorySourceRefs ||
-		got.Impact.Reasons[0].ChangeClass != actorContextR3ACChangeLocatorRefresh ||
-		got.Impact.Reasons[0].DependencyReason != actorContextR3ADReasonRootLocator {
-		t.Fatalf("locator-only move leaked beyond source-refs: %+v", got)
+	if !actorContextR3THasReason(
+		got.Impact.Reasons,
+		actorContextR3PCategorySourceRefs,
+		actorContextR3TChangeLocatorRefresh,
+		actorContextR3SReasonDrillDownLocator,
+	) {
+		t.Fatalf("R3AD lost overlay locator-refresh reason: %+v", got)
+	}
+	if len(got.Impact.Reasons) != 1 {
+		t.Fatalf("locator-only delta leaked into semantic categories: %+v", got.Impact.Reasons)
 	}
 }
 
-func TestActorContextR3ADUnknownAddedRootDoesNotBecomeGlobalImpact(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	after := actorContextR3ACCloneRoots(base.Roots)
-	after = append(after, actorContextR3ABProvenanceRootProbe{
-		Identity:    "future:unbound-root",
-		Role:        "future-unbound-role",
-		ClaimKind:   "future-unbound-claim",
-		Locator:     "future/unbound",
-		Fingerprint: "sha256:future",
-	})
-
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
-	got := actorContextR3ADExplainRootChanges(view, after, assessment)
-
-	if len(got.Impact.Reasons) != 0 || len(got.Impact.UnselectedChanges) != 0 {
-		t.Fatalf("unbound new root was expanded into bounded-category impact: %+v", got)
+func TestActorContextR3ADOverlayContentAndLocatorDeltaPreservesIndependentReasons(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	after := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ADRootIndexByClaim(after, "protected-resource-source")
+	if idx < 0 {
+		t.Fatal("R3AD setup lost protected-resource root")
 	}
-	if len(got.ResidualRootChanges) != 1 ||
-		got.ResidualRootChanges[0].ChangeClass != actorContextR3ACChangeRootSet {
-		t.Fatalf("unbound root-set change was not retained as residual delta: %+v", got)
+	after[idx].Fingerprint += ":changed"
+	after[idx].Locator += ".moved"
+
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+
+	for _, want := range []struct {
+		category string
+		class    string
+		reason   string
+	}{
+		{actorContextR3PCategoryMachineReasons, actorContextR3TChangeReferenceInput, actorContextR3SReasonProtectedResourceSource},
+		{actorContextR3PCategoryResolutionNeeds, actorContextR3TChangeReferenceInput, actorContextR3SReasonUnresolvedClassification},
+		{actorContextR3PCategorySourceRefs, actorContextR3TChangeLocatorRefresh, actorContextR3SReasonDrillDownLocator},
+	} {
+		if !actorContextR3THasReason(got.Impact.Reasons, want.category, want.class, want.reason) {
+			t.Fatalf("R3AD lost independent bounded reason %+v: %+v", want, got)
+		}
 	}
 }
 
-func TestActorContextR3ADInputOrderDoesNotChangeNormalizedImpact(t *testing.T) {
-	base := actorContextR3ABBuildFreshnessDrilldown(t, actorContextR3PAudienceAgent)
-	after := actorContextR3ACCloneRoots(base.Roots)
-
-	req := actorContextR3ADRootIndexByClaim(after, "authorization-requirement-source")
-	runtime := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleRuntimeObservation)
-	if req < 0 || runtime < 0 {
-		t.Fatal("R3AD setup lost required roots")
+func TestActorContextR3ADPriorObservationDeltaRemainsNoBindingResidual(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceAgent)
+	after := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleRuntimeObservation)
+	if idx < 0 {
+		t.Fatal("R3AD setup lost prior Observation root")
 	}
-	after[req].Fingerprint += ":changed"
-	after[runtime].Fingerprint += ":changed"
+	after[idx].Fingerprint += ":new-observation"
+	after[idx].ClaimKind = "prior-authorization-observation:denied"
 
-	assessment := actorContextR3ACClassifyRootChanges(base.Roots, after)
-	reversed := assessment
-	reversed.Changes = append([]actorContextR3ACRootChangeProbe(nil), assessment.Changes...)
-	for i, j := 0, len(reversed.Changes)-1; i < j; i, j = i+1, j-1 {
-		reversed.Changes[i], reversed.Changes[j] = reversed.Changes[j], reversed.Changes[i]
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+
+	if actorContextR3THasCategory(got.Impact.Reasons, actorContextR3PCategoryRuntimeOutcome) {
+		t.Fatalf("R3AD promoted prior Observation delta to current runtime-outcome: %+v", got)
 	}
+	if len(got.ResidualRootDeltas) != 1 ||
+		got.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoBinding ||
+		got.ResidualRootDeltas[0].Delta.RootRole != actorContextR3ABRoleRuntimeObservation {
+		t.Fatalf("R3AD did not preserve prior Observation as no-binding residual: %+v", got.ResidualRootDeltas)
+	}
+}
 
-	view := actorContextR3ADFreshnessView(t, actorContextR3PAudienceAgent)
-	left := actorContextR3ADExplainRootChanges(view, base.Roots, assessment)
-	right := actorContextR3ADExplainRootChanges(view, base.Roots, reversed)
-	if !reflect.DeepEqual(left, right) {
-		t.Fatalf("R3AD impact explanation became input-order dependent: left=%+v right=%+v", left, right)
+func TestActorContextR3ADTestContextAndCorroborationRemainNoBindingResiduals(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceAgent)
+	after := actorContextR3ACCloneRoots(base)
+	contextIndex := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleTestOnlyContext)
+	policyIndex := actorContextR3ACRootIndexByRole(after, actorContextR3ABRoleCorroboration)
+	if contextIndex < 0 || policyIndex < 0 {
+		t.Fatal("R3AD setup lost context/corroboration roots")
+	}
+	after[contextIndex].Fingerprint += ":changed"
+	after[policyIndex].Fingerprint += ":changed"
+
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+
+	if len(got.Impact.Reasons) != 0 {
+		t.Fatalf("R3AD invented bounded reasons for unbound context/corroboration: %+v", got.Impact.Reasons)
+	}
+	if len(got.ResidualRootDeltas) != 2 {
+		t.Fatalf("R3AD lost context/corroboration residuals: %+v", got.ResidualRootDeltas)
+	}
+	for _, residual := range got.ResidualRootDeltas {
+		if residual.Reason != actorContextR3ADResidualNoBinding {
+			t.Fatalf("R3AD misclassified unbound residual: %+v", residual)
+		}
+	}
+}
+
+func TestActorContextR3ADBoundReferenceRootSetChangeRemainsUnmappedResidual(t *testing.T) {
+	base, reasons, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	after := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ADRootIndexByClaim(after, "authorization-requirement-source")
+	if idx < 0 {
+		t.Fatal("R3AD setup lost Authorization requirement root")
+	}
+	after = append(after[:idx], after[idx+1:]...)
+
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, bindings)
+
+	if len(got.ResidualRootDeltas) != 1 ||
+		got.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoExactClass ||
+		got.ResidualRootDeltas[0].Delta.ChangeClass != actorContextR3ACChangeRootSet {
+		t.Fatalf("R3AD coerced root-set change to nearest R3T class: %+v", got)
+	}
+}
+
+func TestActorContextR3ADReferenceRoleWithoutBindingDoesNotInferDependency(t *testing.T) {
+	base, reasons, _ := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	after := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ADRootIndexByClaim(after, "authorization-requirement-source")
+	if idx < 0 {
+		t.Fatal("R3AD setup lost Authorization requirement root")
+	}
+	after[idx].Fingerprint += ":changed"
+
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(reasons, deltas.Changes, nil)
+
+	if len(got.Impact.Reasons) != 0 ||
+		len(got.ResidualRootDeltas) != 1 ||
+		got.ResidualRootDeltas[0].Reason != actorContextR3ADResidualNoBinding {
+		t.Fatalf("R3AD inferred dependency from root role without explicit binding: %+v", got)
+	}
+}
+
+func TestActorContextR3ADBindingWithoutSelectedReasonEdgeRemainsR3TUnselected(t *testing.T) {
+	base, _, bindings := actorContextR3ADFreshnessFixture(t, actorContextR3PAudienceHuman)
+	after := actorContextR3ACCloneRoots(base)
+	idx := actorContextR3ADRootIndexByClaim(after, "authorization-requirement-source")
+	if idx < 0 {
+		t.Fatal("R3AD setup lost Authorization requirement root")
+	}
+	after[idx].Fingerprint += ":changed"
+
+	deltas := actorContextR3ACClassifyRootChanges(base, after)
+	got := actorContextR3ADExplainBoundRootChanges(
+		actorContextR3SReasonEnvelopeProbe{
+			Audience: actorContextR3PAudienceHuman,
+			Purpose:  actorContextR3PPurposeOrientation,
+		},
+		deltas.Changes,
+		bindings,
+	)
+
+	if len(got.Impact.Reasons) != 0 ||
+		len(got.Impact.UnselectedChanges) != 1 ||
+		len(got.ResidualRootDeltas) != 0 {
+		t.Fatalf("R3AD binding without selected edge invented/dropped impact: %+v", got)
 	}
 }
 
 func TestActorContextR3ADBridgeHasNoAutomaticResponseShortcut(t *testing.T) {
 	typ := reflect.TypeOf(actorContextR3ADBridgeResultProbe{})
 	for _, forbidden := range []string{
+		"Stale",
+		"Fresh",
+		"RebuildAll",
+		"AutoRebuild",
+		"AutoRefresh",
 		"ShouldReevaluate",
 		"ReevaluationRequired",
-		"AutoReauthorize",
+		"ReusePermitted",
 		"RetryRequired",
-		"CacheValid",
-		"AutoRefresh",
-		"Winner",
 		"NextAction",
 		"HandoffOwner",
 		"Authorized",
 		"Allowed",
+		"CanExecute",
+		"Winner",
+		"Priority",
 		"Confidence",
 	} {
 		if _, found := typ.FieldByName(forbidden); found {
@@ -248,11 +275,17 @@ func TestActorContextR3ADBridgeHasNoAutomaticResponseShortcut(t *testing.T) {
 	}
 }
 
-func actorContextR3ADFreshnessView(
+func actorContextR3ADFreshnessFixture(
 	t *testing.T,
 	audience string,
-) actorContextR3PBoundedStopViewProbe {
+) (
+	[]actorContextR3ABProvenanceRootProbe,
+	actorContextR3SReasonEnvelopeProbe,
+	[]actorContextR3ADRootDependencyBindingProbe,
+) {
 	t.Helper()
+
+	drilldown := actorContextR3ABBuildFreshnessDrilldown(t, audience)
 	core := actorContextR3ABFreshnessCore(t)
 	purpose := map[string]string{
 		actorContextR3PAudienceHuman: actorContextR3PPurposeOrientation,
@@ -262,149 +295,160 @@ func actorContextR3ADFreshnessView(
 	if err != nil {
 		t.Fatal(err)
 	}
-	return view
+	deps := actorContextR3SCurrentBP06ReferenceEnvelope(t, repoPath())
+	businessDep := actorContextR3ADReferenceDepByClass(t, deps, "business-procedure-reference")
+	overlayDep := actorContextR3ADReferenceDepByClass(t, deps, "protected-target-overlay")
+	businessKey := actorContextR3SReferenceKey(businessDep)
+	overlayKey := actorContextR3SReferenceKey(overlayDep)
+
+	edges := []actorContextR3SDependencyReasonEdgeProbe{
+		{Category: actorContextR3PCategoryStopIdentity, DependencyKey: businessKey, ReasonCode: actorContextR3SReasonBusinessAddressSource},
+		{Category: actorContextR3PCategoryMachineReasons, DependencyKey: businessKey, ReasonCode: actorContextR3SReasonAuthorizationRequirementSource},
+		{Category: actorContextR3PCategoryMachineReasons, DependencyKey: overlayKey, ReasonCode: actorContextR3SReasonProtectedResourceSource},
+		{Category: actorContextR3PCategoryResolutionNeeds, DependencyKey: overlayKey, ReasonCode: actorContextR3SReasonUnresolvedClassification},
+		{Category: actorContextR3PCategorySourceRefs, DependencyKey: businessKey, ReasonCode: actorContextR3SReasonDrillDownLocator},
+		{Category: actorContextR3PCategorySourceRefs, DependencyKey: overlayKey, ReasonCode: actorContextR3SReasonDrillDownLocator},
+	}
+	if audience == actorContextR3PAudienceAgent {
+		edges = append(edges,
+			actorContextR3SDependencyReasonEdgeProbe{
+				Category: actorContextR3PCategoryKnownAuthorityFacts,
+				DependencyKey: businessKey,
+				ReasonCode: actorContextR3SReasonAuthorizationRequirementSource,
+			},
+			actorContextR3SDependencyReasonEdgeProbe{
+				Category: actorContextR3PCategoryKnownAuthorityFacts,
+				DependencyKey: overlayKey,
+				ReasonCode: actorContextR3SReasonProtectedResourceSource,
+			},
+		)
+	}
+	reasons, err := actorContextR3SBuildReasonEnvelope(core, view, deps, edges)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	businessRoot := actorContextR3ADRootByClaim(t, drilldown.Roots, "authorization-requirement-source")
+	overlayRoot := actorContextR3ADRootByClaim(t, drilldown.Roots, "protected-resource-source")
+	bindings := []actorContextR3ADRootDependencyBindingProbe{
+		{RootAddress: actorContextR3ACRootAddress(businessRoot), DependencyKey: businessKey},
+		{RootAddress: actorContextR3ACRootAddress(overlayRoot), DependencyKey: overlayKey},
+	}
+	sort.Slice(bindings, func(i, j int) bool { return bindings[i].RootAddress < bindings[j].RootAddress })
+
+	return drilldown.Roots, reasons, bindings
 }
 
-func actorContextR3ADExplainRootChanges(
-	view actorContextR3PBoundedStopViewProbe,
-	roots []actorContextR3ABProvenanceRootProbe,
-	assessment actorContextR3ACAssessmentProbe,
+func actorContextR3ADExplainBoundRootChanges(
+	reasons actorContextR3SReasonEnvelopeProbe,
+	rootChanges []actorContextR3ACRootChangeProbe,
+	bindings []actorContextR3ADRootDependencyBindingProbe,
 ) actorContextR3ADBridgeResultProbe {
-	result := actorContextR3ADBridgeResultProbe{
+	bindingByRoot := map[string]string{}
+	for _, binding := range bindings {
+		if binding.RootAddress != "" && binding.DependencyKey != "" {
+			bindingByRoot[binding.RootAddress] = binding.DependencyKey
+		}
+	}
+
+	var observed []actorContextR3TObservedChangeProbe
+	var residual []actorContextR3ADResidualRootDeltaProbe
+	for _, change := range rootChanges {
+		dependencyKey, bound := bindingByRoot[change.RootIdentity]
+		if !bound {
+			residual = append(residual, actorContextR3ADResidualRootDeltaProbe{
+				Delta:  change,
+				Reason: actorContextR3ADResidualNoBinding,
+			})
+			continue
+		}
+		changeClass, mapped := actorContextR3ADToR3TChangeClass(change.ChangeClass)
+		if !mapped {
+			residual = append(residual, actorContextR3ADResidualRootDeltaProbe{
+				Delta:  change,
+				Reason: actorContextR3ADResidualNoExactClass,
+			})
+			continue
+		}
+		observed = append(observed, actorContextR3TObservedChangeProbe{
+			ChangeClass:   changeClass,
+			DependencyKey: dependencyKey,
+		})
+	}
+	sort.Slice(residual, func(i, j int) bool {
+		if residual[i].Delta.RootIdentity != residual[j].Delta.RootIdentity {
+			return residual[i].Delta.RootIdentity < residual[j].Delta.RootIdentity
+		}
+		if residual[i].Delta.ChangeClass != residual[j].Delta.ChangeClass {
+			return residual[i].Delta.ChangeClass < residual[j].Delta.ChangeClass
+		}
+		return residual[i].Reason < residual[j].Reason
+	})
+
+	return actorContextR3ADBridgeResultProbe{
+		Impact:             actorContextR3TExplainChanges(reasons, actorContextR3TUniqueChanges(observed)),
+		ResidualRootDeltas: residual,
 		AuthorityLimits: []string{
-			"root-change-does-not-imply-all-categories-affected",
-			"prior-observation-change-does-not-imply-current-runtime-outcome-change",
-			"test-only-context-change-does-not-author-production-action",
-			"corroboration-change-does-not-author-authority",
-			"locator-change-does-not-imply-semantic-change",
-			"affected-category-does-not-select-response-action",
+			"root-delta-does-not-imply-projection-dependency-change",
+			"existing-r3r-r3s-dependency-key-is-reused-rather-than-parallel-root-key",
+			"prior-observation-root-is-not-current-runtime-outcome-dependency",
+			"test-only-context-and-corroboration-are-not-auto-bound",
+			"unsupported-change-class-is-preserved-not-coerced",
+			"binding-does-not-select-category-without-r3s-reason-edge",
+			"residual-root-delta-does-not-mean-globally-irrelevant",
 		},
 	}
-	result.Impact.AuthorityLimits = append([]string(nil), result.AuthorityLimits...)
-
-	selected := map[string]bool{}
-	for _, category := range view.SelectedCategories {
-		selected[category] = true
-	}
-
-	rootByAddress := map[string]actorContextR3ABProvenanceRootProbe{}
-	for _, root := range roots {
-		rootByAddress[actorContextR3ACRootAddress(root)] = root
-	}
-
-	for _, change := range assessment.Changes {
-		root, found := rootByAddress[change.RootIdentity]
-		if !found {
-			result.ResidualRootChanges = append(result.ResidualRootChanges, change)
-			continue
-		}
-
-		bindings := actorContextR3ADBindings(root, change.ChangeClass)
-		if len(bindings) == 0 {
-			result.ResidualRootChanges = append(result.ResidualRootChanges, change)
-			continue
-		}
-		matched := false
-		for _, binding := range bindings {
-			if !selected[binding.Category] {
-				continue
-			}
-			matched = true
-			result.Impact.Reasons = append(result.Impact.Reasons, actorContextR3TReevaluationReasonProbe{
-				Category:         binding.Category,
-				ChangeClass:      change.ChangeClass,
-				DependencyKey:    actorContextR3ADDependencyKey(change.RootIdentity),
-				DependencyReason: binding.DependencyReason,
-			})
-		}
-		if !matched {
-			result.Impact.UnselectedChanges = append(result.Impact.UnselectedChanges, actorContextR3TObservedChangeProbe{
-				ChangeClass:   change.ChangeClass,
-				DependencyKey: actorContextR3ADDependencyKey(change.RootIdentity),
-			})
-		}
-	}
-
-	result.Impact.Reasons = actorContextR3TUniqueReasons(result.Impact.Reasons)
-	result.Impact.UnselectedChanges = actorContextR3TUniqueChanges(result.Impact.UnselectedChanges)
-	sort.Slice(result.ResidualRootChanges, func(i, j int) bool {
-		if result.ResidualRootChanges[i].RootIdentity != result.ResidualRootChanges[j].RootIdentity {
-			return result.ResidualRootChanges[i].RootIdentity < result.ResidualRootChanges[j].RootIdentity
-		}
-		if result.ResidualRootChanges[i].RootRole != result.ResidualRootChanges[j].RootRole {
-			return result.ResidualRootChanges[i].RootRole < result.ResidualRootChanges[j].RootRole
-		}
-		return result.ResidualRootChanges[i].ChangeClass < result.ResidualRootChanges[j].ChangeClass
-	})
-	sort.Strings(result.AuthorityLimits)
-	sort.Strings(result.Impact.AuthorityLimits)
-	return result
 }
 
-func actorContextR3ADBindings(
-	root actorContextR3ABProvenanceRootProbe,
-	changeClass string,
-) []actorContextR3ADCategoryBindingProbe {
-	if changeClass == actorContextR3ACChangeLocatorRefresh {
-		switch root.ClaimKind {
-		case "authorization-requirement-source",
-			"protected-resource-source",
-			"prior-authorization-observation:allowed",
-			"prior-authorization-observation:denied":
-			return []actorContextR3ADCategoryBindingProbe{{
-				Category:         actorContextR3PCategorySourceRefs,
-				DependencyReason: actorContextR3ADReasonRootLocator,
-			}}
-		default:
-			return nil
-		}
-	}
-
-	contentLike := changeClass == actorContextR3ACChangeReferenceEvidence ||
-		changeClass == actorContextR3ACChangeRuntimeObservation ||
-		changeClass == actorContextR3ACChangeTestOnlyContext ||
-		changeClass == actorContextR3ACChangeRootSet
-	if !contentLike {
-		return nil
-	}
-
-	switch {
-	case root.ClaimKind == "authorization-requirement-source":
-		return []actorContextR3ADCategoryBindingProbe{
-			{Category: actorContextR3PCategoryMachineReasons, DependencyReason: actorContextR3ADReasonRequirementRoot},
-			{Category: actorContextR3PCategoryKnownAuthorityFacts, DependencyReason: actorContextR3SReasonAuthorizationRequirementSource},
-		}
-	case root.ClaimKind == "protected-resource-source":
-		return []actorContextR3ADCategoryBindingProbe{
-			{Category: actorContextR3PCategoryMachineReasons, DependencyReason: actorContextR3ADReasonProtectedResourceRoot},
-			{Category: actorContextR3PCategoryResolutionNeeds, DependencyReason: actorContextR3ADReasonProtectedResourceRoot},
-			{Category: actorContextR3PCategoryKnownAuthorityFacts, DependencyReason: actorContextR3SReasonProtectedResourceSource},
-		}
-	case root.Role == actorContextR3ABRoleRuntimeObservation:
-		return []actorContextR3ADCategoryBindingProbe{
-			{Category: actorContextR3PCategoryMachineReasons, DependencyReason: actorContextR3ADReasonPriorObservationRoot},
-		}
-	case root.Role == actorContextR3ABRoleTestOnlyContext:
-		return []actorContextR3ADCategoryBindingProbe{
-			{Category: actorContextR3PCategoryStopIdentity, DependencyReason: actorContextR3ADReasonTestContextRoot},
-			{Category: actorContextR3PCategoryMachineReasons, DependencyReason: actorContextR3ADReasonTestContextRoot},
-			{Category: actorContextR3PCategoryResolutionNeeds, DependencyReason: actorContextR3ADReasonTestContextRoot},
-		}
+func actorContextR3ADToR3TChangeClass(changeClass string) (string, bool) {
+	switch changeClass {
+	case actorContextR3ACChangeReferenceEvidence:
+		return actorContextR3TChangeReferenceInput, true
+	case actorContextR3ACChangeLocatorRefresh:
+		return actorContextR3TChangeLocatorRefresh, true
+	case actorContextR3ACChangeRuntimeObservation:
+		return actorContextR3TChangeRuntimeObservation, true
 	default:
-		return nil
+		return "", false
 	}
 }
 
-func actorContextR3ADDependencyKey(rootAddress string) string {
-	return "provenance-root:" + rootAddress
+func actorContextR3ADReferenceDepByClass(
+	t *testing.T,
+	deps actorContextR3RDependencyEnvelopeProbe,
+	inputClass string,
+) actorContextR3RReferenceArtifactDependencyProbe {
+	t.Helper()
+	for _, dep := range deps.ReferenceArtifacts {
+		if dep.InputClass == inputClass {
+			return dep
+		}
+	}
+	t.Fatalf("R3AD setup missing Reference dependency class %q", inputClass)
+	return actorContextR3RReferenceArtifactDependencyProbe{}
+}
+
+func actorContextR3ADRootByClaim(
+	t *testing.T,
+	roots []actorContextR3ABProvenanceRootProbe,
+	claim string,
+) actorContextR3ABProvenanceRootProbe {
+	t.Helper()
+	for _, root := range roots {
+		if root.ClaimKind == claim {
+			return root
+		}
+	}
+	t.Fatalf("R3AD setup missing root claim %q", claim)
+	return actorContextR3ABProvenanceRootProbe{}
 }
 
 func actorContextR3ADRootIndexByClaim(
-	values []actorContextR3ABProvenanceRootProbe,
+	roots []actorContextR3ABProvenanceRootProbe,
 	claim string,
 ) int {
-	for i := range values {
-		if values[i].ClaimKind == claim {
+	for i := range roots {
+		if roots[i].ClaimKind == claim {
 			return i
 		}
 	}
@@ -423,32 +467,4 @@ func actorContextR3ADReasonsForCategory(
 	}
 	actorContextR3TSortReasons(out)
 	return out
-}
-
-func actorContextR3ADHasReason(
-	values []actorContextR3TReevaluationReasonProbe,
-	category string,
-	changeClass string,
-	dependencyReason string,
-) bool {
-	for _, value := range values {
-		if value.Category == category &&
-			value.ChangeClass == changeClass &&
-			value.DependencyReason == dependencyReason {
-			return true
-		}
-	}
-	return false
-}
-
-func actorContextR3ADHasCategory(
-	values []actorContextR3TReevaluationReasonProbe,
-	category string,
-) bool {
-	for _, value := range values {
-		if value.Category == category {
-			return true
-		}
-	}
-	return false
 }

@@ -1,338 +1,279 @@
-# Actor Context R3AD — Provenance Root Change / Bounded Re-evaluation Explanation
+# Actor Context R3AD — Provenance Root Delta / Existing Projection Dependency Binding
 
-- Status: ISSUE-000053 / Phase 3 root-to-projection impact explanation pressure / Reference-only
+- Status: ISSUE-000053 / Phase 3 root-delta handoff pressure / Reference-only
 - Date: 2026-09-19
 - Parent: `plan/ACTOR_CONTEXT_R3AC_FRESHNESS_DRILLDOWN_ROOT_CHANGE_CLASSIFICATION_2026-09.md`
 - Related:
+  - `plan/ACTOR_CONTEXT_R3S_PROJECTION_DEPENDENCY_REASON_2026-09.md`
   - `plan/ACTOR_CONTEXT_R3T_PROJECTION_REEVALUATION_REASON_2026-09.md`
   - `plan/ACTOR_CONTEXT_R3U_MULTI_REASON_AGGREGATION_2026-09.md`
-  - `plan/ACTOR_CONTEXT_R3V_CROSS_AUDIENCE_REASON_IDENTITY_2026-09.md`
-  - `plan/ACTOR_CONTEXT_R3AA_AUTHORIZATION_FRESHNESS_STOP_HANDOFF_2026-09.md`
 - Side effect: None
 - Product Gate impact: None
 - Production schema impact: None
 
 ## 1. 目的
 
-R3ACではfreshness drill-downのprovenance root変更を:
+R3ACではprovenance root deltaをrole-awareに分類した。
 
-```text
-reference-evidence-content-changed
-runtime-observation-content-changed
-test-only-context-changed
-corroboration-changed
-locator-refresh-required
-provenance-root-set-changed
-```
-
-へ分離した。
-
-R3ADではそのchangeをbounded projectionへ接続し:
-
-```text
-what root changed
-  -> what selected category is affected
-  -> why
-```
-
-をR3T型のre-evaluation explanationとして保持する。
+R3ADでは、そのdeltaをR3Tのbounded category re-evaluation reasonへ接続する。
 
 ただし:
 
 ```text
-affected category
-  != action to execute
-  != Authorization reevaluation directive
+provenance root changed
+  != projection dependency changed
 ```
 
 である。
 
-## 2. R3AC change classをgeneric classへ潰さない
-
-R3TにはReference / runtime / locator等のchange classがあるが、R3ACはさらに:
-
-- test-only context
-- corroboration
-- root-set
-
-を区別している。
-
-R3ADではR3Tのreason tuple:
+R3ADで許すのは:
 
 ```text
-category
-change class
-dependency key
-dependency reason
+root delta
+  + explicit root-to-existing-dependency binding
+  + selected R3S dependency reason edge
+  -> R3T bounded re-evaluation reason
 ```
 
-を再利用する一方、`change class` にはR3ACのrole-aware classを保持してよい。
+だけである。
+
+## 2. parallel dependency keyを作らない
+
+R3R / R3Sは既にprojection dependency keyを持つ。
+
+Reference inputなら:
+
+```text
+reference:<input-class>:<locator>
+```
+
+である。
+
+R3ADは新しい `provenance-root:<root-address>` をparallel dependency graphとして作らない。
+
+R3AB root identityとR3R dependency identityは別なので、explicit bindingで接続する。
+
+```text
+root identity
+  != dependency identity
+```
+
+である。
+
+## 3. current freshness stopでbindingできるroot
+
+current BP-06 freshness stopで、既存R3R Reference dependencyへbindingできるrootは:
+
+```text
+Business Procedure Reference root
+  -> reference:business-procedure-reference:<locator>
+
+protected-target overlay root
+  -> reference:protected-target-overlay:<locator>
+```
+
+である。
+
+bindingはroot roleやlocator類似から自動推測せず、test-only fixtureで明示する。
+
+## 4. R3ACからR3Tへはlosslessなchange classだけを写す
+
+explicit dependency bindingがあるrootについてのみ:
+
+```text
+reference-evidence-content-changed
+  -> reference-input-changed
+
+locator-refresh-required
+  -> locator-refresh-required
+
+runtime-observation-content-changed
+  -> runtime-observation-changed
+```
+
+を許す。
+
+ただしruntime mappingはexact runtime dependency bindingが存在する場合だけである。
+
+current R3Tに同値classがない:
 
 ```text
 test-only-context-changed
-  != semantic-source-changed
-
 corroboration-changed
-  != reference-input-changed
+provenance-root-set-changed
 ```
 
-を維持する。
+は近いclassへ強制変換しない。
 
-## 3. explicit root-to-category binding
+## 5. residualを二種類に分ける
 
-root roleだけから全categoryを推論しない。
+selected impactへ変換できないroot deltaを消さない。
 
-test-only bindingはroot identity / claim meaningに基づいて明示する。
+### A. dependency binding unresolved
 
-### Authorization requirement Reference root
-
-content / root-set change:
-
-- `machine-reasons`
-- Agentでselectedなら `known-authority-facts`
-
-locator change:
-
-- `source-refs`
-
-### protected resource Reference root
-
-content / root-set change:
-
-- `machine-reasons`
-- `resolution-needs`
-- Agentでselectedなら `known-authority-facts`
-
-locator change:
-
-- `source-refs`
-
-### prior Authorization Observation root
-
-content / root-set change:
-
-- `machine-reasons`
-
-locator change:
-
-- `source-refs`
-
-重要:
+current projection dependencyへのexplicit bindingがない場合:
 
 ```text
-prior Observation changed
-  != current runtime-outcome changed
-  != known-authority-facts changed
+projection-dependency-binding-unresolved
 ```
 
-である。
+として保持する。
 
-R3AA freshness stopではcurrent `RuntimeOutcome` は空のため、prior Observation revisionから `runtime-outcome` categoryを自動impact対象へしない。
+### B. R3T change class unmapped
 
-### R3X test-only context root
-
-content / root-set change:
-
-- `stop-identity`
-- `machine-reasons`
-- `resolution-needs`
-
-これはtuple identity / freshness-stop成立条件を再確認するためのbindingである。
+bindingは存在してもexact R3T classがない場合:
 
 ```text
-test-only context changed
-  != production action authority changed
-```
-
-を維持する。
-
-### Legacy policy corroboration root
-
-current freshness stop coreではcorroborationはselected authority categoryを所有しない。
-
-したがってcontent / locator changeは:
-
-```text
-observed root change
-  + no selected category binding
-  -> UnselectedChange
+r3t-change-class-unmapped
 ```
 
 として保持する。
 
 ```text
-corroboration changed
-  != machine reason changed automatically
+residual
+  != globally irrelevant
 ```
 
 である。
 
-## 4. Human / Agent差
+## 6. R3S reason edgeがselected impactを決める
 
-R3ABとR3Vに従い、Human / Agentで共有されるselected categoryのreason identityは同じにする。
+root-to-dependency bindingだけではcategory impactを作らない。
 
-Agentだけが `known-authority-facts` をselectedする場合:
+既存R3S reason edgeを通し、current bounded viewでselectedされたcategoryだけをR3T reasonへする。
+
+Business Procedure Reference content deltaなら:
 
 ```text
-shared machine-reasons impact
-  = same provenance identity
+Human
+  stop-identity
+  machine-reasons
 
-Agent-only known-authority-facts impact
-  != Human inconsistency
+Agent
+  stop-identity
+  machine-reasons
+  known-authority-facts
 ```
 
-である。
+となり得る。
 
-audienceをdependency reason identityへ含めない。
+Human / Agent共通categoryのreason identityは同じdependency key / reason codeへ戻る。
 
-## 5. locator-only change
+## 7. locator-only change
 
-R3ACの `locator-refresh-required` は、explicit locator bindingがあるrootについて `source-refs` だけへ接続する。
+Reference rootのlocator-only deltaはsame dependency bindingを使い:
+
+```text
+source-refs
+  -> locator-refresh-required
+```
+
+だけへ接続する。
 
 ```text
 locator moved
-  -> source-refs affected
-
-  != machine-reasons affected
-  != authority meaning changed
+  != machine-reasons semantic change
 ```
 
 を維持する。
 
-## 6. root-set change
+content + locatorが同時に変われば両reasonを保持する。
 
-known rootの削除 / 追加がexplicit binding対象なら、同じmeaning categoryの再評価理由を作れる。
+## 8. prior Observationをcurrent runtime dependencyへ昇格させない
 
-ただしbindingのない新rootをglobal dependencyへ推測しない。
+R3AB runtime rootはprior Authorization Observationである。
+
+R3AA freshness authority unresolved中:
 
 ```text
-unknown root added
-  != all categories affected
+core.RuntimeOutcome = empty
+```
+
+であるため、current freshness-stop binding setにはruntime-outcome dependencyを置かない。
+
+prior Observationが `allowed -> denied` へ変化しても:
+
+```text
+runtime root delta
+  -> residual: projection-dependency-binding-unresolved
+
+  != current runtime-outcome changed
 ```
 
 である。
 
-binding不明のchangeはUnselectedChangeへ残す。
+actual current Authorization Observationを扱うR3R/R3S denied caseとは別である。
 
-## 7. dependency key
+## 9. test-only context / corroborationも自動bindingしない
 
-R3ADのtest-only dependency keyは:
+R3ABの:
 
-```text
-provenance-root:<root address>
-```
+- test-only Authorization context
+- Legacy policy corroboration
 
-とする。
+はcurrent freshness-stop R3R dependency envelopeへ存在しない。
 
-root addressはR3ACどおり:
+したがってroleだけでbounded categoryへbindingしない。
 
-```text
-Identity + Role
-```
+将来consumer dependencyがexplicitに成立した場合にのみ別途bindingを検討する。
 
-であり、locator / ClaimKindをidentityへ混ぜない。
+## 10. bindingあり / selected reasonなし
 
-これはproduction dependency graph keyの採用ではない。
-
-## 8. R3T / R3Uとの関係
-
-R3ADはR3Tのreason tuple構造:
-
-- category
-- change class
-- dependency key
-- dependency reason
-
-を再利用するが、R3Tの既存change-class vocabularyをclosed enumとは扱わない。
-
-R3ACでより精密になった:
-
-- test-only-context-changed
-- corroboration-changed
-- provenance-root-set-changed
-
-をnearest generic classへ強制変換しない。
-
-outputは次を分ける。
-
-- selected re-evaluation reasons
-- explicit bindingはあるがbounded viewで選ばれない UnselectedChanges
-- binding / semantic mapping自体がない ResidualRootChanges
+explicit dependency bindingが存在しても、current R3S reason envelopeにselected edgeがない場合はR3Tの `UnselectedChanges` へ残す。
 
 ```text
-unselected
-  != unmapped
-  != ignored
+bound dependency
+  != selected category
 ```
 
 である。
 
-同一reasonが複数経路から出る場合はR3Uどおりexact identityだけをdeduplicateする。
-
-```text
-root delta explanation
-  != rebuild plan
-  != scheduler instruction
-```
-
-である。
-
-## 9. test-only source
+## 11. test-only source
 
 - `tools/reference-business-procedure-check/actor_context_r3ad_root_change_projection_impact_pressure_test.go`
 
 Pressureするcase:
 
-1. requirement Reference changeがHuman / Agent共通のmachine-reasonsへ同じidentityで接続する
-2. Agentだけknown-authority-facts detailを追加できる
-3. prior Observation changeがmachine-reasonsへ接続してもruntime-outcomeを捏造しない
-4. test-only context changeがstop-identity / machine-reasons / resolution-needsへ接続する
-5. corroboration changeはbindingなしのResidualRootChangeとして保持する
-6. locator-only changeはsource-refsだけへ接続する
-7. explicit bindingのないroot-set changeをResidualRootChangeとして保持し、global impactへしない
-8. UnselectedChangeとResidualRootChangeを混同しない
-9. audience / input orderでshared reason identityを変えない
-10. ShouldReevaluate / AutoReauthorize / Retry / CacheValid / Winner等を追加しない
+1. Business Procedure content delta -> existing Reference dependency -> Human / Agent共通reason
+2. Agentだけknown-authority-facts reasonを追加できる
+3. overlay locator-only delta -> source-refsだけへ接続
+4. overlay content + locator delta -> semantic / locator reasonをlosslessに保持
+5. prior Observation delta -> current runtime-outcomeへbindingせずresidual保持
+6. test-only context / corroboration delta -> binding unresolved residual
+7. bound Reference root-set change -> exact R3T classがないためunmapped residual
+8. bindingなしReference delta -> role推測せずresidual保持
+9. bindingあり / selected R3S edgeなし -> R3T UnselectedChangesへ保持
+10. Stale / RebuildAll / AutoRefresh / ShouldReevaluate / Authorized等を追加しない
 
-## 10. current conclusion
+## 12. current conclusion
 
 R3ADで固定するのは:
 
 ```text
-role-aware provenance delta
-  + explicit bounded-category binding
-  -> explainable re-evaluation reason
+root delta
+  != projection impact
 
-root changed
-  != all categories changed
+root delta
+  + explicit existing-dependency binding
+  + selected dependency reason
+  -> bounded re-evaluation reason
 
-prior Observation changed
-  != current runtime outcome changed
-
-corroboration changed
-  != authority changed
-
-unselected
-  != unmapped
-
-affected category
-  != response action selected
+no binding / no exact class
+  -> residual preserved
 ```
 
 である。
 
-production impact graph、watcher、scheduler、cache invalidation、runtime Observation storeは追加しない。
+production dependency registry、impact graph、watcher、scheduler、cache invalidation、auto reauthorizationは追加しない。
 
-## 11. 次
+## 13. 次
 
-次段ではR3ADのre-evaluation reasonとR3Wのcategory fingerprint比較を接続し:
+次段ではR3AD outputをR3Uへ渡し:
 
 ```text
-root changed
-  -> category re-evaluated
-  -> category meaning unchanged / changed
+selected reasons
++ R3T unselected changes
++ R3AD residual root deltas
 ```
 
-を確認する。
-
-特にfreshness stop reasonが再評価対象になっても、同じ `evaluation-freshness-authority-unresolved` に留まるcaseを正常系として扱う。
+を複数root deltaのaggregationでもlosslessに保持できるかをPressureする。
