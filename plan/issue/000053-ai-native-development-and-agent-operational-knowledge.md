@@ -4096,6 +4096,66 @@ ExecutionEvidenceAccepted / CurrentStateEvidenceAccepted / StateSynchronized / R
 
 
 
+### R3BA — Explicit post-reconciliation Evidence acceptance witness / candidate boundary
+
+R3AZのexecution/current-state Evidence acceptance authority Gateがsingle-qualifiedでも、自動accept/rejectせずexplicit witnessが存在する場合だけplane-localなtest-only candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3BA_RECONCILIATION_EVIDENCE_ACCEPTANCE_WITNESS_CANDIDATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ba_reconciliation_evidence_acceptance_witness_candidate_pressure_test.go`
+
+witness / candidateはEvidencePlaneを明示し:
+
+- `execution`
+- `current-state`
+
+を別々に扱う。
+
+```text
+single-qualified plane Gate
+  + exact R3AY raw Evidence
+  + explicit accept / reject witness
+  + acceptance provenance
+  -> plane-local Evidence acceptance candidate
+
+candidate
+  != Evidence accepted authoritatively
+  != StateSynchronized
+  != CurrentAuthority applied
+```
+
+とする。
+
+execution witnessはexact execution authority EvidenceID / execution ObservationRef / raw outcomeへbindingする。
+
+current-state witnessはexact current-state authority EvidenceID / current-state ObservationRef / observed revision / observed fingerprint / RevisionAuthorityRefへbindingする。
+
+wrong plane / authority / observation / raw value / revision / fingerprintはfail closedし、qualified Gateだけではcandidateを自動生成しない。
+
+```text
+reconciler-reported-applied
+  != accept Evidence
+
+matching current revision
+  != accept current-state Evidence
+```
+
+Decisionはexplicit witnessだけから取得する。
+
+execution / current-state両方にaccept candidateが存在してもStateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthorityへ進めない。
+
+reject Evidence candidateをretry / rollback / compensation / failureへ変換しない。
+
+current RepositoryのR3AZ production acceptance authorityはunresolvedのため、candidate caseはsynthetic single-qualified GateによるPressureである。
+
+EvidenceAccepted / StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
