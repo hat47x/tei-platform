@@ -2876,6 +2876,67 @@ AcceptedAuthorityValue / AcceptedDecision / AcceptanceStatus / CurrentAuthority 
 
 
 
+
+### R3AN — Assertion acceptance authority / decision locus Evidence Gate
+
+R3AMのqualified authority assertionをAccepted Decision候補へ進める前に、Repository-backedなacceptance authority / decision locusが存在するかをEvidence GateでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AN_ACCEPTANCE_AUTHORITY_EVIDENCE_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3an_acceptance_authority_evidence_gate_pressure_test.go`
+
+```text
+assertion provenance available
+  != acceptance authority available
+
+qualified assertion
+  + repository-backed acceptance authority evidence
+  -> acceptance authority evidence qualified
+
+acceptance authority evidence qualified
+  != assertion accepted
+  != Accepted Decision
+```
+
+qualifying evidenceには少なくとも:
+
+- repository-backed evidence
+- explicit `assertion-acceptance-authority` declaration
+- exact AssertionClass coverage
+- explicit BusinessAddress scope coverage
+- explicit DecisionLocusRef
+- explicit accept / reject semantics
+
+を要求する。
+
+AssertionSourceRefやqualification provenance、Business Procedureのoperational need、一般的Shared Acceptance概念だけからacceptance authorityを推測しない。
+
+current inspected corpusではこれらを同時に満たすsourceを確認できないため:
+
+```text
+acceptance-authority-unresolved
+```
+
+を維持する。これはassertion rejected / incorrectを意味しない。
+
+exact-business-addressとany-business-addressの双方がqualifyしても:
+
+```text
+acceptance-authority-multiple-qualified-precedence-unresolved
+```
+
+とし、scope specificityをwinner / precedence authorityへ変換しない。
+
+AcceptedAuthorityValue / AcceptedDecision / AcceptanceDecision / SelectedAuthority / Winner / CurrentAuthority / ToolCall / Command / NextAction / CanExecute等は追加しない。
+
+次段ではacceptance authority evidenceがqualifyしたという仮定の下で、explicit acceptance witnessをexact AssertionIdentity + exact acceptance authority evidence + acceptance provenanceへbindingし、accept / rejectをassertion内容やscope specificityから推測しない境界をPressureする。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
