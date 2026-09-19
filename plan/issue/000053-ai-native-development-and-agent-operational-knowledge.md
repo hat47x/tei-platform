@@ -3375,6 +3375,68 @@ production decision store / transaction / CAS / locking / authority application 
 
 
 
+### R3AR — Accepted Decision application authority / current revision Evidence Gate
+
+R3AQ commit candidateをauthoritative sinkへ適用する前に、application authority / current sink revision / idempotency contract / write outcome contractがexplicitに揃っているかをEvidence GateでPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AR_APPLICATION_AUTHORITY_REVISION_GATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ar_application_authority_revision_gate_pressure_test.go`
+
+```text
+commit candidate prepared
+  != write authorized now
+
+R3AQ commit candidate
+  + explicit repository-backed application authority
+  + exact current sink revision observation
+  + idempotency contract locus
+  + write outcome contract locus
+  -> application-authority Evidence Gate
+
+Gate qualified
+  != write attempt
+  != Accepted Decision committed
+```
+
+R3AP write-authority evidenceやR3AQ CommitProvenanceRefをapplication authorityへ暗黙転用しない。
+
+current inspected corpusではcomplete production application-authority locusを確認していないため:
+
+```text
+accepted-decision-application-authority-unresolved
+```
+
+を維持する。
+
+qualifying evidenceはexact CommitCandidateIdentity / WriteAuthorityEvidenceID / AcceptedDecisionSinkRef / RevisionAuthorityRefへbindingし、BusinessAddress scope、IdempotencyContractRef、WriteOutcomeContractRef、ApplicationProvenanceRefを要求する。
+
+R3AQ ExpectedDecisionRevisionとattributed current sink revision observationのObservedDecisionRevisionが一致しなければfail closedする。
+
+```text
+idempotency contract exists
+  != idempotency key assigned
+  != duplicate write prevented
+
+write outcome contract exists
+  != write outcome observed
+```
+
+とする。
+
+multiple-qualified application authorityはprecedence unresolvedとし、scope specificity / revision / source location / corroboration countからwinnerを選ばない。
+
+WriteAttempt / CommitCommand / IdempotencyKey / WriteOutcome / CommitSucceeded / NewDecisionRevision / AcceptedDecision / CurrentAuthority / ToolCall / Command / NextAction等は追加しない。
+
+production transaction / CAS / locking / idempotency implementation / write executor / decision store mutationは追加しない。
+
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
