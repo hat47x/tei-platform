@@ -3080,7 +3080,7 @@ AcceptedAuthorityValue / AcceptedDecision / CurrentAuthority / R3Y authority rew
 
 ### R3AP — Accepted Decision authoritative write / provenance Evidence Gate
 
-R3AOのtest-only acceptance decision recordをauthoritative Accepted Decisionとしてcommitできるwrite authority / sink / revision boundaryがRepository上に明示されているかをEvidence GateでPressureする。
+R3AOのprovenance-bound acceptance witness observationをauthoritative Accepted Decisionとしてcommitできるwrite authority / sink / revision boundaryがRepository上に明示されているかをEvidence GateでPressureする。
 
 正本:
 
@@ -3091,15 +3091,15 @@ test-only source:
 - `tools/reference-business-procedure-check/actor_context_r3ap_accepted_decision_write_authority_evidence_gate_pressure_test.go`
 
 ```text
-acceptance decision recorded
+acceptance witness observed
   != Accepted Decision committed
 
-acceptance decision record
+acceptance witness observation
   + repository-backed write authority evidence
   -> Accepted Decision write authority Gate
 
 Gate qualified
-  != decision record committed
+  != witness committed
   != Accepted Decision created
   != current authority applied
 ```
@@ -3110,7 +3110,7 @@ qualifying evidenceには少なくとも:
 
 - repository-backed evidence
 - explicit `operational-accepted-decision-write-authority` declaration
-- exact AssertionClass / Decision / DecisionLocus applicability
+- exact AssertionClass / witness Decision / DecisionLocus applicability
 - explicit BusinessAddress scope
 - explicit authoritative AcceptedDecisionSinkRef
 - explicit RevisionAuthorityRef + CurrentDecisionRevision
@@ -3124,7 +3124,7 @@ current inspected Repository evidenceではこれらを同時に満たすOperati
 accepted-decision-write-authority-unresolved
 ```
 
-を維持する。これはR3AO decision recordがinvalid / rejectedという意味ではない。
+を維持する。これはR3AO witnessがinvalid / rejectedという意味ではない。
 
 complete synthetic candidateでGateをpressure-qualifiedにできるが、複数candidateがqualifyする場合はprecedence unresolvedとし、scope specificity / source location / revision値 / corroboration countからwinnerを選ばない。
 
@@ -3132,7 +3132,7 @@ revision evidenceを保持してもcompare-and-write / locking / transactionは�
 
 AcceptedDecision / CommittedDecision / CurrentAuthority / R3Y authority status / RuntimeOutcome / ToolCall / Command / NextAction等は追加しない。
 
-次段ではsingle-qualified write authorityをsyntheticに与え、explicit commit witness + exact R3AO DecisionIdentity + exact write-authority evidence + expected decision revision + write provenanceからtest-only commit candidateを作る境界をPressureする。
+次段ではsingle-qualified write authorityをsyntheticに与え、explicit commit witness + exact R3AO WitnessIdentity + exact write-authority evidence + expected decision revision + write provenanceからtest-only commit candidateを作る境界をPressureする。
 
 ```text
 commit candidate
