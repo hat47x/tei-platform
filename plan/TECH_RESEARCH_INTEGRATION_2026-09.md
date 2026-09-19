@@ -1244,6 +1244,63 @@ scope identityはexpectation declarationの順序にも依存させず、known p
 
 R6LはR3AG以降のpresentation差・outcome identityを再実装せず、knowledge input scopeのsemantic identityだけをPressureする。
 
+#### R6M same-scope observation delta — 2026-09-19
+
+R6Lでscope identityとobserved cardinalityを分離した次段として、同一scope identity内の観測件数差だけを比較する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6m_same_scope_observation_delta_pressure_test.go`
+
+comparisonは:
+
+```text
+same ScopeIdentity
+  + before plane observations
+  + after plane observations
+  -> plane-local cardinality delta
+```
+
+として行う。
+
+current BP-06 Procedure-only bounded useでは:
+
+```text
+Human:
+  routed knowledge body = 1
+  routed use edge       = 1
+
+Agent:
+  routed knowledge body = 1
+  routed use edge       = 2
+```
+
+なので同一scope identityのまま:
+
+```text
+routed knowledge body delta = 0
+routed use edge delta       = +1
+```
+
+と観測できる。
+
+これはconsumer-specific category利用数の差であり、scope meaning changeではない。
+
+```text
+cardinality delta
+  != scope declaration change
+  != freshness change
+  != authority change
+```
+
+ScopeIdentityが異なるbefore / afterはR6Mでは比較しない。scope declaration変更はR6Lの別scopeとして扱い、cardinality deltaへ丸めない。
+
+同じScopeIdentityを主張しながらplane dispositionが変わっている場合もfail closedする。
+
+plane observationの入力順序は比較結果へ影響させない。
+
+R6MはR3AM以降のassertion / acceptance boundaryを再実装せず、bounded input observationの差分だけを扱う。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
