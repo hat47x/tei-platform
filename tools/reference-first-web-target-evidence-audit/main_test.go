@@ -97,6 +97,14 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 	if err := os.WriteFile(filepath.Join(dir, "source-tests.log"), []byte("ok\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "health.txt"), []byte("ok\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	serverLog := "TEI first Web Target projection: http://127.0.0.1:18080/ application=order_entry baseline=" +
+		p.HandoverBaselineID + " R=" + p.BaselineRepositoryRevision + " T=" + p.TargetBuildRevision + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "server.log"), []byte(serverLog), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	writeAuditJSON(t, filepath.Join(dir, "manifest.json"), manifestArtifact{
 		Provenance:    p,
