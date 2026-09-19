@@ -5,7 +5,7 @@
 - Primary workstream: ISSUE-000040
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
 - Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base Repository revision: `6ffaa40ef2872a773baa5e7b127dcb89d94abc5c`
+- Review base Repository revision: `e2856e6e568b6be966c6b8689ebea479ec184a4a`
 - Shared Acceptance result: Pending
 - Acceptance witness: Absent
 
@@ -31,7 +31,7 @@ repository revision captured
 
 ```text
 reviewBaseRepositoryRevision =
-  6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
+  e2856e6e568b6be966c6b8689ebea479ec184a4a
 ```
 
 S5 Proposalをmainへ統合したrevision:
@@ -40,7 +40,7 @@ S5 Proposalをmainへ統合したrevision:
 4d4f8acc39a569d0f99c7fc617de30bf11e455f8
 ```
 
-この間に入った変更はR7B replay planning / intake / research integrationのみであり、Second Applicationが参照する以下のCanonical sourceには変更がなかった。
+前回capture後にはR3B authority boundary、solo-development flow、repository health check、Issue番号整理、Gate A runner等の変更が入った。またS4/S5 test-only sourceのcompile / gofmt修正も入った。しかしSecond Applicationが参照する以下のCanonical source blobは今回のreview base `e2856e6e568b6be966c6b8689ebea479ec184a4a` でも不変だった。
 
 - `reference/workspace/semantic/customer/customer.tei`
 - `reference/workspace/databases/master-data/contracts/customer.tei`
@@ -176,10 +176,11 @@ explicit Acceptance witnessを取得する前にmainが進んだ場合:
 1. current main revisionを確認する
 2. S5 Proposal自体が変化していないことを確認する
 3. shared authority / provenance source fingerprintを再導出する
-4. fingerprintが同じならnew base revisionへcaptureを更新できる
-5. fingerprintが変わったらS1/S2 requalificationとS4/S5 reviewをやり直す
+4. relevant fingerprintが同じなら、後続の無関係なcommitだけを理由にProposalをstaleへしない
+5. relevant fingerprintが変わったらS1/S2 requalificationとS4/S5 reviewをやり直す
+6. Acceptance witness取得時には、その時点のcurrent mainと最後に検査したbase revisionの関係を記録する
 
-commit数やpath名だけでfreshnessを判断しない。
+`reviewBaseRepositoryRevision`は「該当Sourceを実際に検査したrevision」であり、この文書自身のcommitなど無関係な後続commitによって自己無効化しない。commit数やpath名だけでfreshnessを判断しない。
 
 ## 8. Test-only Source pressure
 

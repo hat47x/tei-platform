@@ -1,6 +1,6 @@
 # ISSUE-000047: 既存Semantic資産を探索してから変更候補へ進む
 
-- 状態: Blocked — Gate C Ready待ち
+- 状態: In Progress — Gate C Ready後のactual S1 qualificationを実施中
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-06 primary**
@@ -357,7 +357,7 @@ routing score、model内部signal、検索順位はcandidate generationのsignal
 
 本Issueはcandidate discovery / qualificationを担当し、Application source authoringやEnvironment Bindingを所有しない。
 
-qualification結果は同じISSUE-000040 primary workstreamへhandoffし、探索専用branchを長期正本にしない。
+qualification結果は同じISSUE-000040 workstreamへhandoffする。Repositoryの現在のsolo-development flowに従い、remote exploration branchを新設せず、進行状態はIssueとEvidenceで管理する。
 
 ### actual S1 status — 2026-09-19
 
@@ -500,7 +500,7 @@ Gate C前にはReference pattern provenanceの整理やbenchmark設計までを�
 
 ## 完了条件
 
-- [ ] Gate C Ready後に着手する
+- [x] Gate C Ready後に着手する
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない

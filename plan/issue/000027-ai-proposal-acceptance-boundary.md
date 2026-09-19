@@ -1,6 +1,6 @@
 # ISSUE-000027: AI Proposal / Acceptance Boundaryをv1 Referenceで実証する
 
-- 状態: Blocked — Gate C Ready待ち
+- 状態: Ready — Gate C Ready確認済み / Reference着手可能
 - GitHub Issue: #267
 - 本格着手条件: Gate C Ready
 - Product Acceptance Scenario: **PAS-01 primary / PAS-06 secondary**

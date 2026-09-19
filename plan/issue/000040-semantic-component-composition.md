@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: Proposed
+- 状態: In Progress — Gate C Ready後の第二Application ReferenceをS5まで実施
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -186,9 +186,9 @@ ISSUE-000047 qualification
 
 の順で進める。
 
-同じ第二Applicationについてexploration / Pattern / Environment / Driverを長期branchへ分割せず、意味単位のcommitを一つのprimary workstream branchへ収束させる。
+同じ第二Applicationについてexploration / Pattern / Environment / Driverを別remote branchへ分割せず、意味単位のcommitをmainへ収束させる。branch / PRの有無をProduct / Issue / Acceptance状態として扱わない。
 
-## 第二Application actual progress — S0 / S1 / S2
+## 第二Application actual progress — S0〜S5
 
 Gate C Readyを受け、actual second-Application workstreamを開始した。
 
@@ -202,17 +202,33 @@ S1 / S2:
 - `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
 - `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
 
-current Source-defined result:
+current qualification / portability result:
 
 - shared Customer Semantic / Customer ID Type = linked reuse
 - Customer Contract / `find_by_id` Query = conditional linked reuse
 - `order_entry.customer_reference` = adopted local variation provenance
 - origin development / production binding = rebind-required
-- Canonical Application ID / Business Relation / Pattern ID / datasource alias / Authorization / Environment binding = unresolved
 
-`repair_intake-test-only`はscenario labelのままで、Canonical Application identityへ昇格していない。
+S3:
 
-次はS3 Destination Decision Packetであり、Acceptance前にsource authoringへ進まない。
+- `plan/SECOND_APPLICATION_S3_DESTINATION_DECISION_PACKET_2026-09.md`
+
+でdestination-owned candidateとして `repair_intake` / `repair_intake.intake.customer` / `repair_intake.customer_reference` / `customer_master` を明示した。これは `repair_intake-test-only` scenario labelからの自動昇格ではない。
+
+S4:
+
+- `plan/SECOND_APPLICATION_S4_COMPOSITION_CANDIDATE_2026-09.md`
+
+でexisting Application / Pattern grammarだけを使うcomposition Proposalを固定した。
+
+S5:
+
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
+- `plan/SECOND_APPLICATION_S5_FRESHNESS_CAPTURE_2026-09.md`
+
+でexact Proposal identity、Semantic Diff、current shared-authority freshnessまで固定した。
+
+現在の停止条件はexplicit Acceptance witnessである。Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。一般的な作業継続指示をProposal採用Decisionへ読み替えない。
 
 ## 第二Applicationでの受入検証
 

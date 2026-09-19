@@ -212,13 +212,15 @@ witnessは少なくとも:
 
 このSource pressureではwitness schemaを新しいCanonical kindとして追加しない。
 
+一般的な「作業を進める」「次へ進む」という実行指示だけでは、このProposalのaccepted / rejected Decisionを示すwitnessとして扱わない。Acceptanceへ進むには、少なくともexact Proposal fingerprint `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2` を対象にしていることが一意に分かる採用判断を要求する。
+
 ## 9. Current decision state
 
 現在:
 
 ```text
 proposalFingerprint = b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
-baseModelRevision   = 6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
+baseModelRevision   = e2856e6e568b6be966c6b8689ebea479ec184a4a
 sharedFreshness     = captured
 acceptanceWitness   = absent
 decision            = pending
@@ -275,7 +277,7 @@ Proposal生成actorが自分の出力を自動的にAccepted Decisionへ昇格�
 
 このS5 packet / test-only sourceはSource / Design Evidenceである。
 
-actual focused `go test` PASSはまだ主張しない。
+main上では後続作業によりS4/S5 test-only sourceのcompile / gofmt不整合が修正されたが、このS5 packetに紐づくfocused `go test`実行ログは取得していないため、actual focused PASSはまだ主張しない。
 
 またtest-only qualifierが`eligible-for-shared-acceptance`になっても、それ自体をAcceptance witnessにしない。
 

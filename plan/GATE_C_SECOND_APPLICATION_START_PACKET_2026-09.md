@@ -12,7 +12,7 @@
 
 ## 1. 目的
 
-Gate C Ready後に第二Application Referenceへ着手するとき、探索・Knowledge Portability・composition・Acceptanceを別々のbranchや別々のKnowledge正本へ分裂させず、一つのworkstreamとして開始できる状態を用意する。
+Gate C Ready後に第二Application Referenceへ着手するとき、探索・Knowledge Portability・composition・Acceptanceを別々の作業正本へ分裂させず、一つのISSUE-000040 workstreamとして継続できる状態を用意する。
 
 この文書は第二Application sourceではない。
 
@@ -72,43 +72,41 @@ unresolved:
 
 Visual Evidenceだけで開始条件を満たしたとは扱わない。
 
-## 3. Branch policy
+## 3. Development-flow / workstream continuity
 
-Gate C Ready後の第二Application Referenceは、一つのprimary workstream branchへ収束する。
+Repositoryの現在のsolo-development flowでは、branch / PRをProduct状態やreview境界として使わず、mainへ直接commitする。
+
+第二Application Referenceの継続性はbranchではなく、ISSUE-000040、Proposal fingerprint、Source / Evidence、Acceptance状態で管理する。
 
 原則:
 
-\`\`\`text
-main
+```text
+current main
   ↓
-one ISSUE-000040 workstream branch
-  ↓
-qualification
-  ↓
-portability
+ISSUE-000040 qualification / portability
   ↓
 composition proposal
   ↓
-acceptance-related source change
+Shared Acceptance boundary
+  ↓ Accept後のみ
+authoritative source
   ↓
 reload / validation
   ↓
 Environment / Driver / Target evidence
   ↓
-PR
-  ↓
-main
-\`\`\`
+change propagation Evidence
+```
 
 ### 禁止
 
-- exploration用branchを長期残存させる
-- portability用branchを別系列として残す
-- Pattern用 / Environment用 / Driver用にbranchを恒常分割する
-- merge済みworkstreamから新しい枝を無制限に増やす
-- 同じ第二Applicationの正本候補を複数branchで並行authorする
+- exploration / portability / Pattern / Environment / Driverごとにremote branchを作る
+- 同じ第二Applicationの正本候補を複数系列で並行authorする
+- branch名やPR状態をAcceptance / Canonical authorityとみなす
+- concurrent sessionの古いmain snapshotからそのまま変更を適用する
+- health checkなしにコード変更をmainへ入れる
 
-補助的な短命branchが必要になった場合も、同じprimary workstreamへ直ちに戻し、単独の長期系統にしない。
+各作業はpush直前にcurrent mainへrebase / freshness確認し、コード変更時はRepository正本のhealth checkを通す。文書だけの変更でも、link、状態、Gate / Evidence claim、正本性を確認する。
 
 ## 4. First Reference scope
 
@@ -406,7 +404,7 @@ less code reading
 
 ## 9. Commit granularity
 
-primary workstream内では、意味の境界に沿ってcommitする。
+ISSUE-000040 workstream内では、意味の境界に沿ってmainへcommitする。
 
 推奨単位:
 
@@ -420,11 +418,11 @@ primary workstream内では、意味の境界に沿ってcommitする。
 
 「ファイルごと」ではなく「検証可能な意味単位」でcommitする。
 
-一つの意味変更を複数branchへ分けない。
+一つの意味変更を複数の作業系列へ分けず、並行sessionがある場合はcurrent mainと関連Source / Evidenceを直前に再確認する。
 
-## 10. PR / merge completion
+## 10. main commit completion
 
-第二Application workstreamのPRは、最低限次を説明する。
+各意味単位のcommitは、最低限次のうち該当する情報を正本文書またはEvidenceへ残す。
 
 - Gate C entry Evidence
 - shared / local / Environment boundary
@@ -435,9 +433,9 @@ primary workstream内では、意味の境界に沿ってcommitする。
 - reload / Validation Evidence
 - Driver / Target Evidence
 - propagation Evidence
--追加schemaを導入したか / 見送ったか、その理由
+- 追加schemaを導入したか / 見送ったか、その理由
 
-merge後はprimary workstream branchを\`main\`へ戻し、次作業の起点として枝を残さない。
+branch / PRを完了条件にはしない。コードを変更した場合はpush前のRepository health checkを必須とし、文書だけの場合もリンク・状態・Gate / Evidence claimを確認する。
 
 ## 11. 現在状態
 
@@ -464,12 +462,12 @@ S3 Destination Decision Packetは `plan/SECOND_APPLICATION_S3_DESTINATION_DECISI
 ## 12. Start Packet完了条件
 
 - [x] Gate C entry recordの必須項目を固定した
-- [x] 一つのprimary workstream branchへ収束する規則を固定した
+- [x] 一つのISSUE-000040 workstreamへ収束し、remote branchを増やさない規則へ更新した
 - [x] first Reference scopeをread-only customer lookupへ限定した
 - [x] ISSUE-000047 → Phase 5 → ISSUE-000040 → Acceptanceの順序を固定した
 - [x] Application / Environment authorityを分離した
 - [x] unknown / incompatibleのstop条件を固定した
 - [x] existing grammar firstを維持した
 - [x] AI Builder / Human Review handoffを定義した
-- [x] commit / PR / merge規則を定義した
+- [x] direct-to-main / health-check / concurrent freshness規則へ更新した
 - [x] Gate C前にsecond Application sourceを追加していない
