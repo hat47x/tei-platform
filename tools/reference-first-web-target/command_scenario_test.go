@@ -211,6 +211,157 @@ func TestReferenceCommandScenarioStopsOnCanonicalValidationNotSatisfied(t *testi
 	}
 }
 
+func TestReferenceCommandScenarioUsesRuntimeFixtureForValidationNotSatisfied(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID:    "legacy-order-editor",
+		Credential: "editor-secret",
+		From:       "2026-09-18T08:00:00Z",
+		RowIndex:   1,
+	})
+	if err != nil {
+		t.Fatalf("Validation not-satisfied became Execution Error: %v", err)
+	}
+	if result.Read == nil {
+		t.Fatal("runtime read result is missing")
+	}
+	if got, ok := semanticRowValueByAttribute(result.Read.SelectedOrder, "sales.order.order_id"); !ok || got != int64(1002) {
+		t.Fatalf("selected order=%#v ok=%v", got, ok)
+	}
+	if result.Stage != "validation-not-satisfied" ||
+		len(result.Validations) != 1 ||
+		result.Validations[0].Validation != "sales.order_line.quantity_positive" ||
+		result.Validations[0].Result != "not-satisfied" {
+		t.Fatalf("validation result=%+v", result)
+	}
+	if result.Authorization != nil || result.Command != nil || result.Observation != nil {
+		t.Fatalf("Validation not-satisfied continued downstream: %+v", result)
+	}
+}
+
+func TestReferenceCommandScenarioPreservesCommandInvocationExecutionError(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID:    "legacy-order-editor",
+		Credential: "editor-secret",
+		From:       "2026-09-18T07:00:00Z",
+		RowIndex:   2,
+	})
+	if err == nil {
+		t.Fatal("synthetic Command adapter failure was converted into a normal Business Result")
+	}
+	if !strings.Contains(err.Error(), "synthetic submit adapter unavailable for order 1003") {
+		t.Fatalf("Execution Error=%v", err)
+	}
+	if result.Read == nil {
+		t.Fatal("pre-Command read result is missing")
+	}
+	if got, ok := semanticRowValueByAttribute(result.Read.SelectedOrder, "sales.order.order_id"); !ok || got != int64(1003) {
+		t.Fatalf("selected order=%#v ok=%v", got, ok)
+	}
+	if result.Stage != "command" ||
+		result.Authentication == nil ||
+		result.Authentication.Outcome != "authenticated" ||
+		len(result.Validations) != 2 ||
+		result.Authorization == nil ||
+		result.Authorization.Outcome != "allowed" {
+		t.Fatalf("partial Scenario result=%+v", result)
+	}
+	if result.Command != nil || result.Observation != nil {
+		t.Fatalf("Execution Error produced Command/Observation result: %+v", result)
+	}
+}
+
+func TestSubmitScenarioHTTPPreservesExecutionErrorProvenanceAndPartialStage(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID:         testBaselineID,
+		BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandRunner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := newWebTargetServer(
+		projection,
+		newReferenceReadScenarioRunner(loaded.World),
+		commandRunner,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(
+		recorder,
+		httptest.NewRequest(
+			http.MethodPost,
+			"/scenario/submit",
+			strings.NewReader(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T07:00:00Z","row":2}`),
+		),
+	)
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("Execution Error status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), "editor-secret") {
+		t.Fatal("credential leaked into Execution Error response")
+	}
+
+	var response webCommandScenarioErrorResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.HandoverBaselineID != testBaselineID ||
+		response.BaselineRepositoryRevision != testBaselineRevision ||
+		response.TargetBuildRevision != testTargetRevision ||
+		response.TargetAdapter != "reference-first-web-target" ||
+		response.Host != "go-net-http" {
+		t.Fatalf("Execution Error provenance=%+v", response)
+	}
+	if response.Result.Stage != "command" ||
+		response.Result.Command != nil ||
+		response.Result.Observation != nil ||
+		!strings.Contains(response.ExecutionError, "synthetic submit adapter unavailable for order 1003") {
+		t.Fatalf("Execution Error envelope=%+v", response)
+	}
+}
+
 func TestSubmitScenarioHTTPKeepsGateCProvenanceAndDoesNotEchoCredential(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {
