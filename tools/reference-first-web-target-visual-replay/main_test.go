@@ -88,6 +88,83 @@ func TestReplayHandlerExposesManifestAndRejectsUnknownCapture(t *testing.T) {
 	}
 }
 
+func TestVisualReviewIndexUsesValidatedManifestAndCaptureRoutes(t *testing.T) {
+	dir := t.TempDir()
+	summaryPath, _ := writeReplayFixture(t, dir)
+	bundle, err := loadReplayBundle(summaryPath, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(dir, "visual-manifest.json")
+	writeReplayVisualManifest(t, manifestPath, bundle.manifest)
+	review, err := loadVisualReviewManifest(manifestPath, bundle.manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle.review = &review
+
+	recorder := httptest.NewRecorder()
+	newReplayHandler(bundle).ServeHTTP(
+		recorder,
+		httptest.NewRequest(http.MethodGet, "/", nil),
+	)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("review index status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		"Gate C Visual Review",
+		"visual-run-1",
+		"reference-human-review",
+		"custom-submit-success.png",
+		"/capture/custom-submit-success",
+		"business-result-vs-observation-distinguishable",
+		"unresolved",
+		"target-t",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("review index does not contain %q", want)
+		}
+	}
+}
+
+func TestLoadVisualReviewManifestRejectsReplaySourceMismatch(t *testing.T) {
+	dir := t.TempDir()
+	summaryPath, _ := writeReplayFixture(t, dir)
+	bundle, err := loadReplayBundle(summaryPath, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(dir, "visual-manifest.json")
+	manifest := writeReplayVisualManifest(t, manifestPath, bundle.manifest)
+	manifest.Captures[0].SourceSHA256 = strings.Repeat("0", 64)
+	writeReplayJSON(t, manifestPath, manifest)
+
+	if _, err := loadVisualReviewManifest(manifestPath, bundle.manifest); err == nil {
+		t.Fatal("Visual manifest with mismatched replay source digest was accepted")
+	}
+}
+
+func TestLoadVisualReviewManifestRejectsProvenanceMismatch(t *testing.T) {
+	dir := t.TempDir()
+	summaryPath, _ := writeReplayFixture(t, dir)
+	bundle, err := loadReplayBundle(summaryPath, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(dir, "visual-manifest.json")
+	manifest := writeReplayVisualManifest(t, manifestPath, bundle.manifest)
+	manifest.TargetBuildRevision = "other-target"
+	writeReplayJSON(t, manifestPath, manifest)
+
+	if _, err := loadVisualReviewManifest(manifestPath, bundle.manifest); err == nil {
+		t.Fatal("Visual manifest from another Target revision was accepted")
+	}
+}
+
 func TestLoadReplayBundleRejectsTamperedSource(t *testing.T) {
 	dir := t.TempDir()
 	summaryPath, _ := writeReplayFixture(t, dir)
@@ -184,6 +261,49 @@ func writeReplayFixture(t *testing.T, dir string) (string, map[string]string) {
 	path := filepath.Join(dir, "semantic-functional-summary.json")
 	writeReplayJSON(t, path, summary)
 	return path, sources
+}
+
+func writeReplayVisualManifest(
+	t *testing.T,
+	path string,
+	replay replayManifest,
+) visualReviewManifest {
+	t.Helper()
+	captures := make([]visualReviewCapture, 0, len(replay.Captures))
+	for _, capture := range replay.Captures {
+		captures = append(captures, visualReviewCapture{
+			ID:             capture.ID,
+			File:           capture.ID + ".png",
+			SourceArtifact: capture.SourceArtifact,
+			SourceSHA256:   capture.SourceSHA256,
+		})
+	}
+	manifest := visualReviewManifest{
+		EvidenceNature:                      "first-web-target-visual-evidence",
+		VisualRunIdentity:                   "visual-run-1",
+		SourceSemanticFunctionalRunIdentity: replay.SourceRunIdentity,
+		HandoverBaselineID:                  replay.HandoverBaselineID,
+		BaselineRepositoryRevision:          replay.BaselineRepositoryRevision,
+		TargetBuildRevision:                 replay.TargetBuildRevision,
+		TargetAdapter:                       replay.TargetAdapter,
+		Host:                                replay.Host,
+		Evaluator: visualReviewEvaluator{
+			Identity: "reference-human-review",
+			Version:  "1",
+			Method:   "screenshot-review",
+		},
+		Captures: captures,
+		Criteria: []visualReviewCriterion{
+			{
+				ID:          "business-result-vs-observation-distinguishable",
+				Result:      "unresolved",
+				CaptureRefs: []string{"custom-submit-success"},
+				Notes:       "pending attributed visual review",
+			},
+		},
+	}
+	writeReplayJSON(t, path, manifest)
+	return manifest
 }
 
 func digestString(value string) string {
