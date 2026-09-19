@@ -6,7 +6,7 @@
 
 ## 現在のincrement
 
-現在は **Driver-backed read-only slice** まで進んでいます。
+現在は **authenticated Command / Observation slice** まで進んでいます。
 
 - `reference/workspace`を通常のWorkspace loaderで読む
 - `driver.Resolver`でApplication Patternを解決する
@@ -16,14 +16,15 @@
 - 同じProjectionからHTMLとJSON manifestを生成する
 - `/scenario/read`でbrowse → record → customer reference → order-lines header-detailを同じmapped rowから実行する
 - reference / header-detailはDriverのEnvironment-aware Contract Query resolutionを通す
+- `POST /scenario/submit`でAuthentication → read → Canonical Validation → Authorization → Command → separate Observationを実行する
+- Authentication / Authorizationの`denied`をBusiness Outcomeとして保持し、Execution Errorへ変換しない
+- Command Business ResultとObservationを別結果として保持する
+- credentialをresult / Evidenceへ保持しない
 - synthetic runtime fixtureはCanonical dataと分離する
 - browseはcurrent Driver APIにEnvironment-aware executor selectionがないため、Environment instanceをWeb側で推測しない
 
 まだ行いません。
 
-- Web interactionとしてのAuthentication / Authorization
-- command invocation
-- Business Result / Execution Error / ObservationのWeb interaction
 - Custom UI
 - Gate C Functional Evidence
 - Gate C Visual Evidence
@@ -48,8 +49,26 @@ go run ./tools/reference-first-web-target \
 
 - `/` — minimal HTML projection
 - `/manifest.json` — 同じProjectionのJSON
-- `/scenario/read?from=2026-09-18T08%3A30%3A00Z&row=0` — Driver-backed read-only slice
+- `/scenario/read?from=2026-09-18T08%3A30%3A00Z&row=0` — Reference診断用read-only slice
+- `POST /scenario/submit` — Authentication / Validation / Authorization / Command / Observation
 - `/healthz` — process health
+
+### submit Command例
+
+credentialはReference専用のsynthetic verifierへ渡すruntime inputであり、responseへは残しません。
+
+```bash
+curl -sS -X POST http://127.0.0.1:8080/scenario/submit \
+  -H 'content-type: application/json' \
+  -d '{
+    "loginId":"legacy-order-editor",
+    "credential":"editor-secret",
+    "from":"2026-09-18T08:30:00Z",
+    "row":0
+  }'
+```
+
+`editor-secret`はReference fixture用のsynthetic値であり、production credentialではありません。
 
 ## Authority boundary
 
