@@ -53,6 +53,158 @@ Gate C archiveは次を両方通したものだけを採用する。
 
 replay plan receiptはexact replay-plan bytesへbindingされ、実行前には `replayExecuted=false` / `repeatabilityObserved=false` でなければならない。
 
+## Packet M actual materialization runbook
+
+Packet MはRepository sourceを変更しない。authenticated GitHub accessとGo-enabled clean full checkoutがある実行環境で、採用済みGate C Evidenceからactual R7B replay planまでをRepository外にmaterializeする。
+
+前提:
+
+```text
+current checkout = clean main
+gh auth          = private Release asset download可能
+Go               = repository runner実行可能
+output root      = Repository外の新規directory
+```
+
+current adopted origin:
+
+```text
+Release tag:
+  gate-c-evidence-T-0ba87a4
+
+asset:
+  tei-gate-c-evidence-T-0ba87a4e.tar.gz
+
+archive SHA-256:
+  de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3
+```
+
+### M1. adopted Gate C archiveを再取得する
+
+```bash
+set -euo pipefail
+
+root="$(mktemp -d)"
+archive="$root/tei-gate-c-evidence-T-0ba87a4e.tar.gz"
+
+gh release download gate-c-evidence-T-0ba87a4 \
+  --pattern 'tei-gate-c-evidence-T-0ba87a4e.tar.gz' \
+  --dir "$root"
+
+printf '%s  %s\n' \
+  de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3 \
+  "$archive" | sha256sum -c -
+
+tar -xzf "$archive" -C "$root"
+
+origin="$root/gate-c-T-0ba87a4e"
+(
+  cd "$origin"
+  sha256sum -c MANIFEST.sha256
+)
+```
+
+archive digestまたはmanifestが1件でも不一致なら以後へ進まない。
+
+### M2. actual R7A handoffをmaterializeする
+
+```bash
+TEI_R7A_GATE_C_READINESS="$origin/gate-c-readiness-audit.json" \
+TEI_R7A_SEMANTIC_FUNCTIONAL_SUMMARY="$origin/semantic-functional-summary.json" \
+TEI_R7A_OUTPUT_DIR="$root/r7a" \
+bash tools/run-first-web-target-r7a-handoff.sh
+```
+
+期待出力:
+
+```text
+$r7a/
+  r7a-replayable-behavior-handoff.json
+  r7a-handoff-receipt.json
+  source-tests.log
+```
+
+この時点では:
+
+```text
+R7A handoff acquired
+  != replay executed
+  != repeatability observed
+```
+
+### M3. actual R7B execution intakeをmaterializeする
+
+```bash
+TEI_R7B_R7A_HANDOFF="$root/r7a/r7a-replayable-behavior-handoff.json" \
+TEI_R7B_R7A_RECEIPT="$root/r7a/r7a-handoff-receipt.json" \
+TEI_R7B_OUTPUT_DIR="$root/r7b-intake" \
+bash tools/run-first-web-target-r7b-intake.sh
+```
+
+期待出力:
+
+```text
+$r7b-intake/
+  r7b-execution-intake.json
+  r7b-intake-receipt.json
+  source-tests.log
+```
+
+intake / receiptはexact R7A source identityへbindingされ、依然:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus   = not-observed
+```
+
+でなければならない。
+
+### M4. actual R7B replay planをmaterializeする
+
+```bash
+TEI_R7B_EXECUTION_INTAKE="$root/r7b-intake/r7b-execution-intake.json" \
+TEI_R7B_INTAKE_RECEIPT="$root/r7b-intake/r7b-intake-receipt.json" \
+TEI_R7B_REPLAY_PLAN_OUTPUT_DIR="$root/r7b-plan" \
+bash tools/run-first-web-target-r7b-replay-plan.sh
+```
+
+期待出力:
+
+```text
+$r7b-plan/
+  r7b-replay-plan.json
+  r7b-replay-plan-receipt.json
+  source-tests.log
+```
+
+replay planはorigin TをReplayTargetBuildRevisionとして保持し、6 behaviorをexact setで持つ。
+
+### M5. Packet M completion boundary
+
+Packet M完了として記録できるのは、少なくとも次がactual execution resultとして確認できた場合だけである。
+
+- Release archive exact SHA-256 PASS
+- `MANIFEST.sha256` 全件PASS
+- R7A handoff runner PASS
+- R7B intake runner PASS
+- R7B replay-plan runner PASS
+- 各段階のreceipt exact SHA-256取得
+- current source checkoutが各runner前後でclean / same revision
+- derived artifactがすべてRepository外
+
+Packet Mが成功しても:
+
+```text
+actual replay plan acquired
+  != replay executed
+  != replay passed
+  != repeatability observed
+```
+
+である。
+
+Packet Mのartifact rootは、後続Packet Eへpathだけでなくexact digest群としてhandoffする。filenameだけ一致する別artifactへの差し替えを許さない。
+
 ## 実装単位
 
 ### 1. semantic validatorを共有化する
