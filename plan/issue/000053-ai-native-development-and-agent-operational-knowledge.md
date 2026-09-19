@@ -2689,6 +2689,48 @@ production messaging / delivery tracking / recipient directory / ticketing / aut
 
 
 
+
+### R3AL — Correlated response evidence qualification
+
+R3AKでcurrent request revisionへcorrelateしたresponseのEvidenceRefをqualification入口へ渡す。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AL_RESPONSE_EVIDENCE_QUALIFICATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3al_response_evidence_qualification_pressure_test.go`
+
+```text
+response evidence observed
+  != authority evidence qualified
+  != Accepted Decision
+```
+
+R3AJ requestのEvidenceNeedClassesとresponseのProvidedInformationClassesのoverlapは記録できるが、class一致だけではevidenceをqualifiedへ昇格させない。
+
+no witnessでは `qualification-unresolved`、explicit test-only qualification witnessがexact EvidenceRefへ存在する場合だけ `explicit-evidence-qualified` とする。
+
+```text
+explicit-evidence-qualified
+  != authority accepted
+  != asserted authority value accepted
+  != stop resolved
+```
+
+qualification witnessはexact EvidenceRefへだけ適用し、SourceRef欠落、current responseに存在しないEvidenceRef、request identity / revision mismatchはfail closedする。
+
+複数EvidenceRefは独立assessmentとして保持し、一つのqualified evidenceを他へ伝播させない。response correlationが成立してもEvidenceRefsが空ならassessmentは空でよく、generic success / resolvedへ丸めない。
+
+AuthorityValue / AcceptedDecision / Approved / Sufficient / Resolved / Apply / ToolCall / Command / NextAction等は追加しない。
+
+production evidence registry / trust store / signature validation / authority acceptance workflowは追加しない。
+
+次段ではqualified evidenceがauthority valueをassertする場合でも、`asserted authority value != accepted authority value` を維持し、assertion provenanceとAccepted Decisionを分離する。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
