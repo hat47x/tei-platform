@@ -208,10 +208,22 @@ The runner performs no network replay and starts no First Web Target server.
 The execution intake can be converted into a deterministic machine-readable replay plan with:
 
 - `tools/reference-first-web-target-r7b-replay-plan`
+- `tools/run-first-web-target-r7b-replay-plan.sh`
+
+The plan source requires both the exact `r7b-execution-intake.json` and the exact `r7b-intake-receipt.json`. The receipt must bind to the exact intake bytes, preserve the R7A source identities, record a clean qualified acquisition, and still state that replay / repeatability have not occurred.
+
+The operational replay-plan runner requires:
+
+- `TEI_R7B_EXECUTION_INTAKE`
+- `TEI_R7B_INTAKE_RECEIPT`
+- `TEI_R7B_REPLAY_PLAN_OUTPUT_DIR`
+
+All source and output artifacts remain outside the Repository. The runner source-qualifies the replay-plan tool, derives `r7b-replay-plan.json`, fingerprints it, and writes `r7b-replay-plan-receipt.json` with `replayExecuted=false` and `repeatabilityObserved=false`.
 
 The plan pins:
 
 - exact execution-intake SHA-256
+- exact execution-intake receipt SHA-256
 - source R7A handoff / acquisition-receipt SHA-256
 - origin and replay Target build revision
 - one named Target-local request fixture per behavior
@@ -228,6 +240,7 @@ The plan intentionally does not carry login IDs, credentials, passwords, selecto
 
 ```text
 execution intake
+  + exact intake receipt
   -> replay plan
   != credentials
   != execution authority
@@ -238,7 +251,7 @@ execution intake
 
 The first replay plan pins `ReplayTargetBuildRevision` to the origin Gate C Target build `T`. A cross-revision replay requires a different explicit plan / Evidence identity.
 
-## 10. Evidence height
+## 11. Evidence height
 
 This document, the test-only source, the intake CLI source, and the operational intake runner are Source / Design Evidence until the Repository-external artifacts are actually supplied and the runner is executed.
 
@@ -253,14 +266,14 @@ They do not claim:
 
 Actual replay execution remains blocked until the Repository-external R7A handoff and acquisition receipt are supplied, exact-byte verified, and accepted by the R7B intake path.
 
-## 11. Next step
+## 12. Next step
 
 After actual R7A handoff acquisition:
 
 1. run the R7B intake acquisition runner,
 2. retain the resulting intake artifact and receipt outside the Repository,
-3. derive the machine-readable replay plan from the actual R7B execution intake,
-4. retain the exact replay-plan artifact identity outside the Repository,
+3. run the replay-plan acquisition runner with the actual intake and intake receipt,
+4. retain the exact replay-plan artifact and replay-plan receipt outside the Repository,
 5. then connect the plan to an operational replay runner that:
 
 - reads the actual R7B execution intake and replay plan,
