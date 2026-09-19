@@ -7,9 +7,11 @@ import (
 )
 
 type actorContextR3AFCategoryOutcomeProbe struct {
-	Category string
-	Status   string
-	Reasons  []actorContextR3TReevaluationReasonProbe
+	Category          string
+	Status            string
+	BeforeFingerprint string
+	AfterFingerprint  string
+	Reasons           []actorContextR3TReevaluationReasonProbe
 }
 
 type actorContextR3AFExplanationProbe struct {
@@ -59,6 +61,14 @@ func TestActorContextR3AFUnchangedCategoryDoesNotResolveFreshnessAuthority(t *te
 	if machine == nil || machine.Status != actorContextR3WStatusUnchanged {
 		t.Fatalf("R3AF lost unchanged category outcome: %+v", explanation)
 	}
+	if machine.BeforeFingerprint == "" || machine.AfterFingerprint == "" ||
+		machine.BeforeFingerprint != machine.AfterFingerprint {
+		t.Fatalf("R3AF unchanged outcome lost exact fingerprint identity: %+v", machine)
+	}
+	if len(machine.Reasons) == 0 ||
+		machine.Reasons[0].DependencyReason != actorContextR3SReasonAuthorizationRequirementSource {
+		t.Fatalf("R3AF unchanged outcome lost exact reason identity: %+v", machine)
+	}
 	if explanation.ReevaluationAuthorityStatus != actorContextR3YReevaluationUnresolved ||
 		explanation.ReuseAuthorityStatus != actorContextR3YReuseUnresolved {
 		t.Fatalf("unchanged category outcome resolved freshness authority: %+v", explanation)
@@ -102,6 +112,10 @@ func TestActorContextR3AFChangedCategoryStillDoesNotSelectResponseAction(t *test
 	machine := actorContextR3AFCategory(explanation, actorContextR3PCategoryMachineReasons)
 	if machine == nil || machine.Status != actorContextR3WStatusChanged {
 		t.Fatalf("R3AF lost changed category outcome: %+v", explanation)
+	}
+	if machine.BeforeFingerprint == "" || machine.AfterFingerprint == "" ||
+		machine.BeforeFingerprint == machine.AfterFingerprint {
+		t.Fatalf("R3AF changed outcome lost before/after fingerprint delta: %+v", machine)
 	}
 	if explanation.ReevaluationAuthorityStatus != actorContextR3YReevaluationUnresolved ||
 		explanation.ReuseAuthorityStatus != actorContextR3YReuseUnresolved {
@@ -209,6 +223,27 @@ func TestActorContextR3AFHumanAndAgentShareMachineOutcomeWhileAgentMayAddFacts(t
 	}
 }
 
+func TestActorContextR3AFKeepsUnselectedChangesSeparateFromCategoryOutcome(t *testing.T) {
+	view := actorContextR3AEView(t, actorContextR3PAudienceHuman)
+	unselected := actorContextR3TObservedChangeProbe{
+		ChangeClass:   actorContextR3TChangeReferenceInput,
+		DependencyKey: "reference:test-only:r3af-unselected",
+	}
+	result := actorContextR3WResultProbe{
+		UnselectedChanges: []actorContextR3TObservedChangeProbe{unselected},
+	}
+	explanation := actorContextR3AFBuildExplanation(
+		view,
+		result,
+		actorContextR3ADBridgeResultProbe{},
+		actorContextR3AFFreshnessAuthority(),
+	)
+	if len(explanation.CategoryOutcomes) != 0 ||
+		!reflect.DeepEqual(explanation.UnselectedChanges, []actorContextR3TObservedChangeProbe{unselected}) {
+		t.Fatalf("R3AF collapsed unselected change into category outcome: %+v", explanation)
+	}
+}
+
 func TestActorContextR3AFExplanationHasNoFreshSafeReuseOrActionShortcut(t *testing.T) {
 	typ := reflect.TypeOf(actorContextR3AFExplanationProbe{})
 	for _, forbidden := range []string{
@@ -271,9 +306,11 @@ func actorContextR3AFBuildExplanation(
 
 	for _, category := range categoryResult.Categories {
 		out.CategoryOutcomes = append(out.CategoryOutcomes, actorContextR3AFCategoryOutcomeProbe{
-			Category: category.Category,
-			Status:   category.Status,
-			Reasons:  append([]actorContextR3TReevaluationReasonProbe(nil), category.Reasons...),
+			Category:          category.Category,
+			Status:            category.Status,
+			BeforeFingerprint: category.BeforeFingerprint,
+			AfterFingerprint:  category.AfterFingerprint,
+			Reasons:           actorContextR3TUniqueReasons(category.Reasons),
 		})
 	}
 	sort.Slice(out.CategoryOutcomes, func(i, j int) bool {
