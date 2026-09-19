@@ -1,10 +1,43 @@
 # ISSUE-000007: 第一Web TargetへのProjection境界を設計する
 
-- 状態: Proposed
+- 状態: In Progress
 - GitHub Issue: #70
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
 - Product Acceptance Scenario: PAS-04 primary
+
+## 着手状況 — projection shell
+
+Gate B Ready / Handover Baseline `B / R`固定を受け、第一incrementを開始した。
+
+Reference-specific implementation:
+
+- `tools/reference-first-web-target/projection.go`
+- `tools/reference-first-web-target/server.go`
+- `tools/reference-first-web-target/main.go`
+- `tools/reference-first-web-target/projection_test.go`
+
+方針:
+
+```text
+Canonical / Driver meaning
+  -> reference-specific Web projection
+  -> HTML / JSON
+```
+
+このincrementでは汎用Presentation IRやWeb frameworkを追加しない。Go標準`net/http`で、Driver Resolverが解決したApplication Pattern / Contract Query / Capability参照を薄くProjectionする。
+
+Gate C provenanceとして、
+
+- Handover Baseline ID
+- `baselineRepositoryRevision = R`
+- `targetBuildRevision = T`
+
+を別identityで必須入力にする。
+
+現在はSource Evidenceであり、actual server execution / Functional Evidence / Visual Evidenceは未取得である。
+
+次incrementではprojection shellを捨てず、同じprimary `ISSUE-000007` workstream上でDriver execution境界をWeb interactionへ接続する。
 
 ## 背景
 
@@ -222,7 +255,7 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 
 ## 完了条件
 
-- [ ] Gate B Ready後、`ISSUE-000030`の第一Handover Baseline `B` / `R`を受け取る
+- [x] Gate B Ready後、`ISSUE-000030`の第一Handover Baseline `B` / `R`を受け取る
 - [ ] Target build revision `T`をbaseline `R`と別に追跡する
 - [ ] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
 - [ ] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
