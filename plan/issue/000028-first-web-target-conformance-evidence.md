@@ -13,7 +13,9 @@
 
 Authentication / AuthorizationのBusiness Outcome、Validation結果、Command Business Result、Observationを別結果として保持するsource pressureも追加した。さらにCustom UIとJSON APIが同じ`commandScenarioRunner`へ同じsemantic inputを渡すsource pressureを追加し、Custom UIを第二の業務正本にしていない。
 
-ただし、source implementationや`httptest`用test sourceの存在をGate C Evidenceへ読み替えない。actual Target build/runに紐づくSemantic / Functional / Visual Evidenceは未取得である。
+さらにactual Target runからsame-run raw artifactを取得する`tools/run-first-web-target-gate-c-evidence.sh`と、raw exact bytesを再監査する`tools/reference-first-web-target-evidence-audit`を追加している。successful pathだけでなくAuthentication denied / Authorization denied / Canonical Validation not-satisfied / Command Invocation Execution Errorを別artifactとして保持する。実行手順は[`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](../GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)へ整理した。
+
+ただし、runner / audit sourceや`httptest`用test sourceの存在をGate C Evidenceへ読み替えない。actual clean Target build/runに紐づくSemantic / Functional artifactは未取得であり、Visual Fidelity Evidenceも未取得である。Semantic / Functional audit sourceもVisual未取得時は`gateCReady = false`を固定する。
 
 ## 背景
 

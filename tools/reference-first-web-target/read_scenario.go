@@ -196,7 +196,6 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		Unresolved: []string{
 			"standalone-read-endpoint-is-reference-diagnostic-without-authentication-gate",
 			"standalone-read-endpoint-does-not-invoke-command",
-			"custom-ui-not-yet-wired",
 			"actual-functional-evidence-not-yet-acquired",
 			"visual-evidence-not-yet-acquired",
 		},
@@ -290,7 +289,8 @@ func (referenceBrowseExecutor) ExecuteBrowseQuery(
 		total      string
 	}{
 		{1001, 11, time.Date(2026, 9, 18, 9, 30, 0, 0, time.UTC), "draft", "12500.00"},
-		{1002, 12, time.Date(2026, 9, 18, 8, 15, 0, 0, time.UTC), "submitted", "8300.00"},
+		{1002, 12, time.Date(2026, 9, 18, 8, 15, 0, 0, time.UTC), "draft", "8300.00"},
+		{1003, 13, time.Date(2026, 9, 18, 7, 30, 0, 0, time.UTC), "draft", "6200.00"},
 	}
 	rows := make([][]any, 0, len(candidates))
 	for _, candidate := range candidates {
@@ -356,12 +356,20 @@ func (e referenceContractQueryExecutor) ExecuteContractQuery(
 		if e.provider != environment.ProviderPostgres {
 			return driver.ContractQueryResult{}, fmt.Errorf("order-line executor provider=%s", e.provider)
 		}
-		orderID, ok := parameters["order_id"]
+		orderIDValue, ok := parameters["order_id"]
 		if !ok {
 			return driver.ContractQueryResult{}, fmt.Errorf("order_id parameter is required")
 		}
+		orderID, ok := orderIDValue.(int64)
+		if !ok {
+			return driver.ContractQueryResult{}, fmt.Errorf("order_id parameter has unexpected type %T", orderIDValue)
+		}
 		if queryContract.Name != "find_by_order" {
 			return driver.ContractQueryResult{}, fmt.Errorf("unexpected order-line Query %s", queryContract.Name)
+		}
+		firstQuantity := "2"
+		if orderID == 1002 {
+			firstQuantity = "0"
 		}
 		return driver.ContractQueryResult{
 			Rows: []driver.ContractQueryRow{
@@ -369,7 +377,7 @@ func (e referenceContractQueryExecutor) ExecuteContractQuery(
 					core.MustCanonicalID("sales.order_line.order_line_id"): int64(5001),
 					core.MustCanonicalID("sales.order_line.line_number"):   1,
 					core.MustCanonicalID("sales.order_line.item_code"):     "ITEM-A",
-					core.MustCanonicalID("sales.order_line.quantity"):      "2",
+					core.MustCanonicalID("sales.order_line.quantity"):      firstQuantity,
 					core.MustCanonicalID("sales.order_line.unit_price"):    "4000.00",
 				}},
 				{Attributes: map[core.CanonicalID]any{
