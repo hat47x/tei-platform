@@ -2928,6 +2928,83 @@ readiness artifact digest
 
 R7A側はfinal readiness判定を再実装せず、第一Web Target final auditが出すcheck contractとartifact identityをfail closedで受領する。actual handoff sourceの統合・actual artifact取得まではR7Bへ進めない。
 
+#### R7A actual handoff source integration
+
+First Web Target Gate C Readyが`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`で正式記録されたため、actual Evidence JSONをR7へ渡すsourceをR7A final contractへ揃える。
+
+source:
+
+- `tools/reference-first-web-target-r7a-handoff/main.go`
+- `tools/reference-first-web-target-r7a-handoff/main_test.go`
+
+handoff CLIはfinal readiness / Semantic-Functional summaryのexact input bytes SHA-256を計算し、candidate provenanceへ保持する。
+
+同時にfinal readinessのrequired 10 checksをexact setとして検証し、missing / duplicate / unknown / failed checkをrejectする。
+
+必要provenance:
+
+```text
+B / R / T
+Target Adapter / Host
+Semantic-Functional run
+VisualRun
+readiness artifact SHA-256
+Semantic-Functional summary SHA-256
+raw behavior artifact SHA-256
+```
+
+candidateは`not-executed` / `behavior-unit`のままである。
+
+```text
+handoff source integrated
+  != handoff artifact acquired
+  != replay execution
+  != replay success
+```
+
+したがってR7Bは、Repository外に保持されたactual Gate C EvidenceをCLIへ入力し、actual handoff artifactを生成・取得してから開始する。
+
+#### R7B — actual handoff entry gate
+
+PR #817でFirst Web Targetのactual Gate C Readyを取得したため、R7B入口をSource pressureする。
+
+固定済みactual Gate C identity:
+
+- `B = B`
+- `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`
+- `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`
+- Semantic / Functional run `first-web-target-0ba87a4e0a96`
+- Semantic / Functional summary SHA-256 `78c4c3b1031a70eb62683233fb5f1794cf7f71fd8b420ffa741d5ebe3f649d6b`
+- final Gate C readiness SHA-256 `b796e38db9a249ef98f2cb600eb354afc70f9adf57d2c83d47116f9968a0ff6c`
+- judgment record repository revision `d34edb9273f5f138abcbc23f4dcb000dcb5cdf20`
+
+actual R7A handoff artifactはまだRepository上で取得・fingerprintされていないため、current stateはR7B execution開始前である。
+
+R7B entryは:
+
+- actual handoff artifact exact SHA-256
+- exact current B / R / T / Target / Host / run
+- exact final readiness / Semantic Functional summary SHA-256
+- six First Web behaviorの完全集合
+- 各behaviorのexact raw artifact SHA-256
+- `ReplayStatus=not-executed`
+- `CoverageClass=behavior-unit`
+
+を要求する。
+
+missing / duplicate / unknown behavior、wrong artifact mapping、provenance mismatch、actual handoff digest欠落をrejectする。
+
+R7B execution intakeはactual executionを意味せず、初期値を:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus = not-observed
+```
+
+とする。
+
+current Repository stateからactual raw Functional artifact digestを推測・再構成しない。Repository外Evidenceへアクセスしてactual R7A handoff artifactを生成・fingerprintできた時点でのみ、次のactual replay executionへ進む。
+
 
 
 ### R3AF — Category re-evaluation outcome / Operational explanation
