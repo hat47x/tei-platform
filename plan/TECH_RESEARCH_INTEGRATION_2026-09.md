@@ -1736,6 +1736,31 @@ Gate CのVisual Evidenceはentry条件の一部だが、Screenshot / HTML / DOM�
 
 actual Gate C Evidenceが取得された後、次段R7Bでreplay execution recipe / repeatability / observed result comparisonをactual artifactへ接続する。それまではR7Aをentry contractに留める。
 
+##### R7A operational handoff hardening — 2026-09-19
+
+First Web Target並行レーンでR7A handoff sourceが具体化されたため、R7A entry contractも実ファイル入力に対して曖昧にならないよう追加Pressureする。
+
+追加条件:
+
+- final Gate C readinessに少なくとも一つ以上のnamed checkがあり、すべてpassしている
+- unresolved itemはidentityを持ち、blocking itemは存在しない
+- Target Difference Handoffが `order_entry` / exact Target Adapter / exact Hostを指す
+- Semantic / Functional summary自身はpre-Visual stateのまま `GateCReady=false`
+- B / R / T / Target / run provenanceはnon-emptyかつexact一致
+- same-run artifact digest recordは、R7 candidateで直接使わないartifactも含めて不完全値を黙って無視しない
+
+このhardeningはFirst Web Target branchの実装をR7 authorityへ昇格させるものではない。First Web Target側はactual Evidenceの生成・handoff sourceを所有し、R7側は受領条件とcandidate意味を所有する。
+
+```text
+Target-side R7A handoff source
+  != actual handoff artifact acquired
+  != replay execution
+  != replay success
+```
+
+R7B開始条件は引き続きactual final Gate C readiness artifactの取得であり、Source実装の存在だけでは満たさない。
+
+
 ### R8 — Verified Experience Memory / Evidence Normalization
 
 目的:
