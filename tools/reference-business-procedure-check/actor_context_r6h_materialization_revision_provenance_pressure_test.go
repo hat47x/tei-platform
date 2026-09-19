@@ -7,20 +7,20 @@ import (
 )
 
 type actorContextR6HKnowledgeRevisionWitnessProbe struct {
-	KnowledgeKey              string                           `json:"knowledgeKey"`
-	KnowledgeKind             string                           `json:"knowledgeKind"`
-	MaterializationDisposition string                          `json:"materializationDisposition"`
-	MaterializationReason     string                           `json:"materializationReason"`
-	DependencyKeys            []string                         `json:"dependencyKeys,omitempty"`
-	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	SourceRefs                []string                         `json:"sourceRefs"`
+	KnowledgeKey               string                           `json:"knowledgeKey"`
+	KnowledgeKind              string                           `json:"knowledgeKind"`
+	MaterializationDisposition string                           `json:"materializationDisposition"`
+	MaterializationReason      string                           `json:"materializationReason"`
+	DependencyKeys             []string                         `json:"dependencyKeys,omitempty"`
+	RequiredInputFingerprints  []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
+	SourceRefs                 []string                         `json:"sourceRefs"`
 }
 
 type actorContextR6HRevisionProvenanceProbe struct {
-	Audience        string                                      `json:"audience"`
-	Purpose         string                                      `json:"purpose"`
+	Audience        string                                         `json:"audience"`
+	Purpose         string                                         `json:"purpose"`
 	Knowledge       []actorContextR6HKnowledgeRevisionWitnessProbe `json:"knowledge"`
-	AuthorityLimits []string                                    `json:"authorityLimits"`
+	AuthorityLimits []string                                       `json:"authorityLimits"`
 }
 
 func TestActorContextR6HOmittedKnowledgeRevisionDoesNotChangeMaterializationDisposition(t *testing.T) {

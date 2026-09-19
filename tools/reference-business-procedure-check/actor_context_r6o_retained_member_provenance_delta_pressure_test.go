@@ -7,26 +7,26 @@ import (
 )
 
 type actorContextR6OKnowledgeProvenanceSnapshotProbe struct {
-	KnowledgeKey              string                            `json:"knowledgeKey"`
-	KnowledgeKind             string                            `json:"knowledgeKind"`
+	KnowledgeKey              string                           `json:"knowledgeKey"`
+	KnowledgeKind             string                           `json:"knowledgeKind"`
 	RequiredInputFingerprints []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	SourceRefs                []string                          `json:"sourceRefs"`
+	SourceRefs                []string                         `json:"sourceRefs"`
 }
 
 type actorContextR6OKnowledgeProvenanceDeltaProbe struct {
-	KnowledgeKey string                                      `json:"knowledgeKey"`
+	KnowledgeKey string                                          `json:"knowledgeKey"`
 	Before       actorContextR6OKnowledgeProvenanceSnapshotProbe `json:"before"`
 	After        actorContextR6OKnowledgeProvenanceSnapshotProbe `json:"after"`
 }
 
 type actorContextR6ORetainedMemberProvenanceDeltaProbe struct {
-	ScopeIdentity   string                                      `json:"scopeIdentity"`
-	BeforeAudience  string                                      `json:"beforeAudience"`
-	BeforePurpose   string                                      `json:"beforePurpose"`
-	AfterAudience   string                                      `json:"afterAudience"`
-	AfterPurpose    string                                      `json:"afterPurpose"`
+	ScopeIdentity   string                                         `json:"scopeIdentity"`
+	BeforeAudience  string                                         `json:"beforeAudience"`
+	BeforePurpose   string                                         `json:"beforePurpose"`
+	AfterAudience   string                                         `json:"afterAudience"`
+	AfterPurpose    string                                         `json:"afterPurpose"`
 	KnowledgeDeltas []actorContextR6OKnowledgeProvenanceDeltaProbe `json:"knowledgeDeltas"`
-	AuthorityLimits []string                                    `json:"authorityLimits"`
+	AuthorityLimits []string                                       `json:"authorityLimits"`
 }
 
 func TestActorContextR6ORetainedKnowledgeRevisionIsSeparateFromMembership(t *testing.T) {

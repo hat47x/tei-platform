@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	actorContextR3TChangeSemanticSource       = "semantic-source-changed"
-	actorContextR3TChangeReferenceInput       = "reference-input-changed"
-	actorContextR3TChangeLocatorRefresh       = "locator-refresh-required"
-	actorContextR3TChangeRuntimeObservation   = "runtime-observation-changed"
-	actorContextR3TChangeProfile              = "profile-changed"
+	actorContextR3TChangeSemanticSource     = "semantic-source-changed"
+	actorContextR3TChangeReferenceInput     = "reference-input-changed"
+	actorContextR3TChangeLocatorRefresh     = "locator-refresh-required"
+	actorContextR3TChangeRuntimeObservation = "runtime-observation-changed"
+	actorContextR3TChangeProfile            = "profile-changed"
 
 	actorContextR3TReasonSemanticSubjectMeaning = "semantic-subject-meaning-source"
 	actorContextR3TReasonProfileSelection       = "projection-profile-selection-changed"
@@ -112,9 +112,9 @@ func TestActorContextR3TReferenceContentChangeAffectsOnlyCompatibleSelectedReaso
 func TestActorContextR3TOmittedKnownFactChangeIsUnselectedForHumanButSelectedForAgent(t *testing.T) {
 	core := actorContextR3QCurrentBP06Core(t)
 	dep := actorContextR3RReferenceArtifactDependencyProbe{
-		InputClass:          "test-only-extra-known-fact",
+		InputClass:         "test-only-extra-known-fact",
 		ContentFingerprint: "sha256:before",
-		Locator:             "test-only/known-fact.ref",
+		Locator:            "test-only/known-fact.ref",
 	}
 	before := actorContextR3RDependencyEnvelopeProbe{
 		ReferenceArtifacts: []actorContextR3RReferenceArtifactDependencyProbe{dep},
@@ -177,7 +177,7 @@ func TestActorContextR3TSemanticContentAndLocatorChangesRemainDifferent(t *testi
 		t.Fatal(err)
 	}
 	dep := actorContextR3RSemanticSubjectDependencyProbe{
-		Subject: sourceindex.Subject{Kind: "application-pattern", ID: "order_entry.submit_order"},
+		Subject:            sourceindex.Subject{Kind: "application-pattern", ID: "order_entry.submit_order"},
 		ContentFingerprint: "sha256:before",
 		Locator:            "applications/order-entry/patterns/submit-order.tei",
 		Role:               sourceindex.RoleDefinition,

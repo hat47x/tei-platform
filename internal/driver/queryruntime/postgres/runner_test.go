@@ -33,9 +33,11 @@ func (contractRunnerTestDriver) Open(string) (sqldriver.Conn, error) {
 
 type contractRunnerTestConn struct{ state *contractRunnerTestState }
 
-func (c *contractRunnerTestConn) Prepare(string) (sqldriver.Stmt, error) { return nil, sqldriver.ErrSkip }
-func (c *contractRunnerTestConn) Close() error                            { return nil }
-func (c *contractRunnerTestConn) Begin() (sqldriver.Tx, error)           { return nil, sqldriver.ErrSkip }
+func (c *contractRunnerTestConn) Prepare(string) (sqldriver.Stmt, error) {
+	return nil, sqldriver.ErrSkip
+}
+func (c *contractRunnerTestConn) Close() error                 { return nil }
+func (c *contractRunnerTestConn) Begin() (sqldriver.Tx, error) { return nil, sqldriver.ErrSkip }
 func (c *contractRunnerTestConn) QueryContext(_ context.Context, query string, args []sqldriver.NamedValue) (sqldriver.Rows, error) {
 	c.state.query = query
 	c.state.args = append([]sqldriver.NamedValue(nil), args...)

@@ -8,32 +8,32 @@ import (
 )
 
 const (
-	actorContextR3ANStatusUnresolved = "acceptance-authority-unresolved"
-	actorContextR3ANStatusQualified = "acceptance-authority-evidence-qualified"
+	actorContextR3ANStatusUnresolved        = "acceptance-authority-unresolved"
+	actorContextR3ANStatusQualified         = "acceptance-authority-evidence-qualified"
 	actorContextR3ANStatusMultipleQualified = "acceptance-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3ANAuthorityKind = "assertion-acceptance-authority"
+	actorContextR3ANAuthorityKind             = "assertion-acceptance-authority"
 	actorContextR3ANScopeExactBusinessAddress = "exact-business-address"
-	actorContextR3ANScopeAnyBusinessAddress = "any-business-address"
+	actorContextR3ANScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3ANAcceptanceAuthorityEvidenceProbe struct {
-	EvidenceID               string
-	RepositoryBacked         bool
-	AuthorityKind            string
-	AuthorityDeclarationRef  string
-	AssertionClasses         []string
-	ScopeKind                string
-	ScopeValue               string
-	DecisionLocusRef         string
-	DecisionSemantics        []string
+	EvidenceID              string
+	RepositoryBacked        bool
+	AuthorityKind           string
+	AuthorityDeclarationRef string
+	AssertionClasses        []string
+	ScopeKind               string
+	ScopeValue              string
+	DecisionLocusRef        string
+	DecisionSemantics       []string
 }
 
 type actorContextR3ANAcceptanceAuthorityGateProbe struct {
 	AcceptanceAuthorityStatus string
-	QualifiedEvidenceIDs       []string
-	UnresolvedReasons          []string
-	AuthorityLimits            []string
+	QualifiedEvidenceIDs      []string
+	UnresolvedReasons         []string
+	AuthorityLimits           []string
 }
 
 func TestActorContextR3ANCurrentCorpusKeepsAcceptanceAuthorityUnresolved(t *testing.T) {
@@ -125,25 +125,40 @@ func TestActorContextR3ANMissingQualifyingRequirementDoesNotQualify(t *testing.T
 
 	cases := map[string]actorContextR3ANAcceptanceAuthorityEvidenceProbe{
 		"E1-repository": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.RepositoryBacked = false; return x
+			x := base
+			x.RepositoryBacked = false
+			return x
 		}(),
 		"E2-kind": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.AuthorityKind = ""; return x
+			x := base
+			x.AuthorityKind = ""
+			return x
 		}(),
 		"E2-declaration-ref": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.AuthorityDeclarationRef = ""; return x
+			x := base
+			x.AuthorityDeclarationRef = ""
+			return x
 		}(),
 		"E3-class": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.AssertionClasses = nil; return x
+			x := base
+			x.AssertionClasses = nil
+			return x
 		}(),
 		"E4-scope": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.ScopeKind = ""; x.ScopeValue = ""; return x
+			x := base
+			x.ScopeKind = ""
+			x.ScopeValue = ""
+			return x
 		}(),
 		"E5-locus": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.DecisionLocusRef = ""; return x
+			x := base
+			x.DecisionLocusRef = ""
+			return x
 		}(),
 		"E6-semantics": func() actorContextR3ANAcceptanceAuthorityEvidenceProbe {
-			x := base; x.DecisionSemantics = []string{"observe"}; return x
+			x := base
+			x.DecisionSemantics = []string{"observe"}
+			return x
 		}(),
 	}
 

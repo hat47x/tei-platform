@@ -17,10 +17,10 @@ type RelationStorageAuthoring struct {
 // ParseRelationStorageは、Semantic Relationを物理的に保存するsupport columnを、
 // target Semantic Dataの通常属性へ偽装せずにauthoringする。
 //
-// relation-storage <persistence-mapping-id> {
-//     relation <semantic-relation-id>
-//     component <source-attribute-id> -> <column> storage <storage-type> <nullability>
-// }
+//	relation-storage <persistence-mapping-id> {
+//	    relation <semantic-relation-id>
+//	    component <source-attribute-id> -> <column> storage <storage-type> <nullability>
+//	}
 //
 // componentの順序は複合source identityを保持するため、そのままCanonical modelへ渡す。
 func (p *Parser) ParseRelationStorage() (RelationStorageAuthoring, error) {

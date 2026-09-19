@@ -170,13 +170,13 @@ func TestSecondApplicationReferencePreGateKeepsQualificationAxesIndependent(t *t
 
 func TestSecondApplicationReferencePreGateFixesExpectedChangePropagationWithoutImplementingImpactEngine(t *testing.T) {
 	cases := map[string]string{
-		"semantic-data:customer.customer":                         "dependency-requalification",
-		"database-contract:master_data.customer":                  "dependency-requalification",
-		"application-pattern:order_entry.customer_reference":      "provenance-drift",
-		"application:order_entry":                                 "unaffected",
-		"environment-binding:development/order_entry/master":      "unaffected",
-		"environment-binding:production/order_entry/master":       "unaffected",
-		"application-pattern:<destination>.customer_reference":    "destination-local-change",
+		"semantic-data:customer.customer":                      "dependency-requalification",
+		"database-contract:master_data.customer":               "dependency-requalification",
+		"application-pattern:order_entry.customer_reference":   "provenance-drift",
+		"application:order_entry":                              "unaffected",
+		"environment-binding:development/order_entry/master":   "unaffected",
+		"environment-binding:production/order_entry/master":    "unaffected",
+		"application-pattern:<destination>.customer_reference": "destination-local-change",
 	}
 	for subject, want := range cases {
 		if got := secondApplicationPreGateExpectedChangeEffect(subject); got != want {

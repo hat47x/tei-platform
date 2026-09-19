@@ -13,13 +13,13 @@ type actorContextR2HumanReviewProbe struct {
 	Intent                       string                           `json:"intent"`
 	ReferenceFingerprint         string                           `json:"referenceFingerprint"`
 	RequiredInputFingerprints    []actorContextR0InputFingerprint `json:"requiredInputFingerprints"`
-	CurrentMeaning               []string `json:"currentMeaning"`
-	ConflictCodes                []string `json:"conflictCodes,omitempty"`
-	UnresolvedDimensions         []string `json:"unresolvedDimensions,omitempty"`
-	PotentiallyAffectedAuthority []string `json:"potentiallyAffectedAuthority,omitempty"`
-	ReviewQuestions              []string `json:"reviewQuestions"`
-	DrillDownRefs                []string `json:"drillDownRefs"`
-	AuthorityLimits              []string `json:"authorityLimits"`
+	CurrentMeaning               []string                         `json:"currentMeaning"`
+	ConflictCodes                []string                         `json:"conflictCodes,omitempty"`
+	UnresolvedDimensions         []string                         `json:"unresolvedDimensions,omitempty"`
+	PotentiallyAffectedAuthority []string                         `json:"potentiallyAffectedAuthority,omitempty"`
+	ReviewQuestions              []string                         `json:"reviewQuestions"`
+	DrillDownRefs                []string                         `json:"drillDownRefs"`
+	AuthorityLimits              []string                         `json:"authorityLimits"`
 }
 
 func TestActorContextR2BuildsHighDensityHumanReviewWithoutChoosingResolution(t *testing.T) {

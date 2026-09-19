@@ -15,11 +15,11 @@ const (
 )
 
 type actorContextR3AYExecutionObservationWitnessProbe struct {
-	ReconciliationCandidateIdentity   string
-	AcceptedDecisionSinkRef           string
-	RevisionAuthorityRef              string
+	ReconciliationCandidateIdentity       string
+	AcceptedDecisionSinkRef               string
+	RevisionAuthorityRef                  string
 	ReconciliationExecutionObservationRef string
-	ReportedExecutionOutcome          string
+	ReportedExecutionOutcome              string
 }
 
 type actorContextR3AYCurrentStateObservationWitnessProbe struct {
@@ -32,11 +32,11 @@ type actorContextR3AYCurrentStateObservationWitnessProbe struct {
 }
 
 type actorContextR3AYRawExecutionObservationProbe struct {
-	ReconciliationCandidateIdentity   string
-	AcceptedDecisionSinkRef           string
-	RevisionAuthorityRef              string
+	ReconciliationCandidateIdentity       string
+	AcceptedDecisionSinkRef               string
+	RevisionAuthorityRef                  string
 	ReconciliationExecutionObservationRef string
-	ReportedExecutionOutcome          string
+	ReportedExecutionOutcome              string
 }
 
 type actorContextR3AYRawCurrentStateObservationProbe struct {

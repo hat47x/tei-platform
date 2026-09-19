@@ -13,24 +13,24 @@ const (
 )
 
 type actorContextR3AVOutcomeAcceptanceWitnessProbe struct {
-	ObservationIdentity                   string
-	OutcomeAcceptanceAuthorityEvidenceID  string
-	Decision                              string
-	AcceptanceProvenanceRef               string
+	ObservationIdentity                  string
+	OutcomeAcceptanceAuthorityEvidenceID string
+	Decision                             string
+	AcceptanceProvenanceRef              string
 }
 
 type actorContextR3AVOutcomeAcceptanceCandidateProbe struct {
-	ObservationIdentity                   string
-	WriteAttemptCandidateIdentity         string
-	RawReportedOutcome                    string
-	PostWriteObservedDecisionRevision     string
-	OutcomeAcceptanceAuthorityEvidenceID  string
-	OutcomeDecisionLocusRef               string
-	OutcomeAuthorityProvenanceRef         string
-	Decision                              string
-	AcceptanceProvenanceRef               string
-	OutcomeAcceptanceCandidateIdentity    string
-	AuthorityLimits                       []string
+	ObservationIdentity                  string
+	WriteAttemptCandidateIdentity        string
+	RawReportedOutcome                   string
+	PostWriteObservedDecisionRevision    string
+	OutcomeAcceptanceAuthorityEvidenceID string
+	OutcomeDecisionLocusRef              string
+	OutcomeAuthorityProvenanceRef        string
+	Decision                             string
+	AcceptanceProvenanceRef              string
+	OutcomeAcceptanceCandidateIdentity   string
+	AuthorityLimits                      []string
 }
 
 func TestActorContextR3AVCurrentUnresolvedGateCannotCreateCandidate(t *testing.T) {
@@ -117,10 +117,14 @@ func TestActorContextR3AVWrongObservationOrAuthorityFailsClosed(t *testing.T) {
 	}
 	cases := map[string]actorContextR3AVOutcomeAcceptanceWitnessProbe{
 		"observation": func() actorContextR3AVOutcomeAcceptanceWitnessProbe {
-			x := base; x.ObservationIdentity += ":other"; return x
+			x := base
+			x.ObservationIdentity += ":other"
+			return x
 		}(),
 		"authority": func() actorContextR3AVOutcomeAcceptanceWitnessProbe {
-			x := base; x.OutcomeAcceptanceAuthorityEvidenceID += ":other"; return x
+			x := base
+			x.OutcomeAcceptanceAuthorityEvidenceID += ":other"
+			return x
 		}(),
 	}
 	for name, witness := range cases {
@@ -176,13 +180,19 @@ func TestActorContextR3AVDecisionAndProvenanceMustBeExplicit(t *testing.T) {
 	}
 	cases := map[string]actorContextR3AVOutcomeAcceptanceWitnessProbe{
 		"missing-decision": func() actorContextR3AVOutcomeAcceptanceWitnessProbe {
-			x := base; x.Decision = ""; return x
+			x := base
+			x.Decision = ""
+			return x
 		}(),
 		"unsupported-decision": func() actorContextR3AVOutcomeAcceptanceWitnessProbe {
-			x := base; x.Decision = "test-only:auto-from-conflict"; return x
+			x := base
+			x.Decision = "test-only:auto-from-conflict"
+			return x
 		}(),
 		"missing-provenance": func() actorContextR3AVOutcomeAcceptanceWitnessProbe {
-			x := base; x.AcceptanceProvenanceRef = ""; return x
+			x := base
+			x.AcceptanceProvenanceRef = ""
+			return x
 		}(),
 	}
 	for name, witness := range cases {
@@ -273,11 +283,17 @@ func TestActorContextR3AVInputOrderAndRepeatedBuildAreStable(t *testing.T) {
 	inputB := []actorContextR3AVOutcomeAcceptanceWitnessProbe{base, base}
 	inputB[0], inputB[1] = inputB[1], inputB[0]
 	first, err := actorContextR3AVBuildCandidates(attempt, observation, businessAddress, gate, evidence, inputA)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	second, err := actorContextR3AVBuildCandidates(attempt, observation, businessAddress, gate, evidence, inputB)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	third, err := actorContextR3AVBuildCandidates(attempt, observation, businessAddress, gate, evidence, inputA)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(first, second) || !reflect.DeepEqual(first, third) {
 		t.Fatalf("R3AV normalization drifted: first=%+v second=%+v third=%+v", first, second, third)
 	}
@@ -323,7 +339,9 @@ func actorContextR3AVSingleQualifiedFixture(
 	gate, err := actorContextR3AUAssessOutcomeAcceptanceAuthority(
 		attempt, observation, businessAddress, evidence,
 	)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if gate.OutcomeAcceptanceAuthorityStatus != actorContextR3AUStatusQualified ||
 		!reflect.DeepEqual(gate.QualifiedEvidenceIDs, []string{current.EvidenceID}) {
 		t.Fatalf("R3AV setup lost single-qualified outcome acceptance authority: %+v", gate)
@@ -356,7 +374,9 @@ func actorContextR3AVBuildCandidates(
 
 	var authority *actorContextR3AUOutcomeAcceptanceEvidenceProbe
 	for i := range evidence {
-		if evidence[i].EvidenceID != qualifiedID { continue }
+		if evidence[i].EvidenceID != qualifiedID {
+			continue
+		}
 		if authority != nil {
 			return nil, fmt.Errorf("R3AV duplicate current outcome acceptance evidence %q", qualifiedID)
 		}
@@ -423,6 +443,8 @@ func actorContextR3AVBuildCandidates(
 			}),
 		}
 	}
-	if normalized == nil { return nil, nil }
+	if normalized == nil {
+		return nil, nil
+	}
 	return []actorContextR3AVOutcomeAcceptanceCandidateProbe{out}, nil
 }

@@ -187,4 +187,3 @@ func actorContextR3DAffectedSteps(
 	}
 	return actorContextR0SortedUnique(affected), nil
 }
-

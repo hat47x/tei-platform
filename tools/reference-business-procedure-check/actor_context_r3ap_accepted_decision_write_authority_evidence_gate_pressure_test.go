@@ -8,43 +8,36 @@ import (
 )
 
 const (
-	actorContextR3APStatusUnresolved =
-		"accepted-decision-write-authority-unresolved"
-	actorContextR3APStatusQualified =
-		"accepted-decision-write-authority-evidence-qualified"
-	actorContextR3APStatusMultipleQualified =
-		"accepted-decision-write-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3APStatusUnresolved        = "accepted-decision-write-authority-unresolved"
+	actorContextR3APStatusQualified         = "accepted-decision-write-authority-evidence-qualified"
+	actorContextR3APStatusMultipleQualified = "accepted-decision-write-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3APAuthorityKind =
-		"operational-accepted-decision-write-authority"
+	actorContextR3APAuthorityKind = "operational-accepted-decision-write-authority"
 
-	actorContextR3APRoleAuthoringAcceptancePrecedent =
-		"authoring-acceptance-precedent"
-	actorContextR3APRoleDerivedWitness =
-		"derived-acceptance-witness"
-	actorContextR3APRoleWriteAuthorityCandidate =
-		"accepted-decision-write-authority-candidate"
+	actorContextR3APRoleAuthoringAcceptancePrecedent = "authoring-acceptance-precedent"
+	actorContextR3APRoleDerivedWitness               = "derived-acceptance-witness"
+	actorContextR3APRoleWriteAuthorityCandidate      = "accepted-decision-write-authority-candidate"
 
 	actorContextR3APScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3APScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3APWriteAuthorityEvidenceProbe struct {
-	EvidenceID                    string
-	EvidenceRole                  string
-	RepositoryBacked              bool
-	AuthorityKind                 string
-	AuthorityDeclarationRef       string
-	AssertionClasses              []string
-	WitnessDecisions              []string
-	AcceptanceDecisionLocusRefs   []string
-	ScopeKind                     string
-	ScopeValue                    string
-	AcceptedDecisionSinkRef       string
-	RevisionAuthorityRef          string
-	CurrentDecisionRevision       string
-	WriteProvenanceRef            string
-	DerivedOnly                   bool
+	EvidenceID                  string
+	EvidenceRole                string
+	RepositoryBacked            bool
+	AuthorityKind               string
+	AuthorityDeclarationRef     string
+	AssertionClasses            []string
+	WitnessDecisions            []string
+	AcceptanceDecisionLocusRefs []string
+	ScopeKind                   string
+	ScopeValue                  string
+	AcceptedDecisionSinkRef     string
+	RevisionAuthorityRef        string
+	CurrentDecisionRevision     string
+	WriteProvenanceRef          string
+	DerivedOnly                 bool
 }
 
 type actorContextR3APWriteAuthorityGateProbe struct {
@@ -104,15 +97,15 @@ func TestActorContextR3APGeneralSharedAcceptanceDoesNotQualifyOperationalDecisio
 func TestActorContextR3APWitnessProvenanceDoesNotCreateWriteAuthority(t *testing.T) {
 	witness, businessAddress := actorContextR3APWitnessFixture(t)
 	candidate := actorContextR3APWriteAuthorityEvidenceProbe{
-		EvidenceID:              witness.AcceptanceProvenanceRef,
-		EvidenceRole:            actorContextR3APRoleDerivedWitness,
-		AuthorityDeclarationRef: witness.AcceptanceProvenanceRef,
-		AssertionClasses:        []string{witness.AssertionClass},
-		WitnessDecisions:        []string{witness.Decision},
+		EvidenceID:                  witness.AcceptanceProvenanceRef,
+		EvidenceRole:                actorContextR3APRoleDerivedWitness,
+		AuthorityDeclarationRef:     witness.AcceptanceProvenanceRef,
+		AssertionClasses:            []string{witness.AssertionClass},
+		WitnessDecisions:            []string{witness.Decision},
 		AcceptanceDecisionLocusRefs: []string{witness.DecisionLocusRef},
-		ScopeKind:               actorContextR3APScopeExactBusinessAddress,
-		ScopeValue:              businessAddress,
-		DerivedOnly:             true,
+		ScopeKind:                   actorContextR3APScopeExactBusinessAddress,
+		ScopeValue:                  businessAddress,
+		DerivedOnly:                 true,
 	}
 	got, err := actorContextR3APAssessWriteAuthority(
 		witness,
@@ -421,20 +414,20 @@ func actorContextR3APCurrentInspectedEvidence(
 			WriteProvenanceRef:      "plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md",
 		},
 		{
-			EvidenceID:   "plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md",
-			EvidenceRole: actorContextR3APRoleAuthoringAcceptancePrecedent,
-			RepositoryBacked: true,
-			AuthorityKind: "audited-authoring-acceptance-precedent",
+			EvidenceID:              "plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md",
+			EvidenceRole:            actorContextR3APRoleAuthoringAcceptancePrecedent,
+			RepositoryBacked:        true,
+			AuthorityKind:           "audited-authoring-acceptance-precedent",
 			AuthorityDeclarationRef: "plan/BUSINESS_AUTHORING_EXISTING_ACCEPTANCE_IMPLEMENTATION_REUSE_AUDIT_2026-09.md",
 		},
 		{
-			EvidenceID:              witness.AcceptanceProvenanceRef,
-			EvidenceRole:            actorContextR3APRoleDerivedWitness,
-			AuthorityDeclarationRef: witness.AcceptanceProvenanceRef,
-			AssertionClasses:        []string{witness.AssertionClass},
-			WitnessDecisions:        []string{witness.Decision},
+			EvidenceID:                  witness.AcceptanceProvenanceRef,
+			EvidenceRole:                actorContextR3APRoleDerivedWitness,
+			AuthorityDeclarationRef:     witness.AcceptanceProvenanceRef,
+			AssertionClasses:            []string{witness.AssertionClass},
+			WitnessDecisions:            []string{witness.Decision},
 			AcceptanceDecisionLocusRefs: []string{witness.DecisionLocusRef},
-			DerivedOnly:             true,
+			DerivedOnly:                 true,
 		},
 	}
 }
@@ -446,20 +439,20 @@ func actorContextR3APCompleteEvidence(
 	revision string,
 ) actorContextR3APWriteAuthorityEvidenceProbe {
 	return actorContextR3APWriteAuthorityEvidenceProbe{
-		EvidenceID:              id,
-		EvidenceRole:            actorContextR3APRoleWriteAuthorityCandidate,
-		RepositoryBacked:        true,
-		AuthorityKind:           actorContextR3APAuthorityKind,
-		AuthorityDeclarationRef: id + "/authority-declaration",
-		AssertionClasses:        []string{witness.AssertionClass},
-		WitnessDecisions:        []string{witness.Decision},
+		EvidenceID:                  id,
+		EvidenceRole:                actorContextR3APRoleWriteAuthorityCandidate,
+		RepositoryBacked:            true,
+		AuthorityKind:               actorContextR3APAuthorityKind,
+		AuthorityDeclarationRef:     id + "/authority-declaration",
+		AssertionClasses:            []string{witness.AssertionClass},
+		WitnessDecisions:            []string{witness.Decision},
 		AcceptanceDecisionLocusRefs: []string{witness.DecisionLocusRef},
-		ScopeKind:               actorContextR3APScopeExactBusinessAddress,
-		ScopeValue:              businessAddress,
-		AcceptedDecisionSinkRef: id + "/accepted-decision-sink",
-		RevisionAuthorityRef:    id + "/revision-authority",
-		CurrentDecisionRevision: revision,
-		WriteProvenanceRef:      id + "/write-provenance",
+		ScopeKind:                   actorContextR3APScopeExactBusinessAddress,
+		ScopeValue:                  businessAddress,
+		AcceptedDecisionSinkRef:     id + "/accepted-decision-sink",
+		RevisionAuthorityRef:        id + "/revision-authority",
+		CurrentDecisionRevision:     revision,
+		WriteProvenanceRef:          id + "/write-provenance",
 	}
 }
 

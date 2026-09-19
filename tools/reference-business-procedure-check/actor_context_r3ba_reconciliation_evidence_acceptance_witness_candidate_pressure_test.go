@@ -17,16 +17,16 @@ const (
 )
 
 type actorContextR3BAEvidenceAcceptanceWitnessProbe struct {
-	EvidencePlane                       string
-	ReconciliationCandidateIdentity     string
-	AcceptanceAuthorityEvidenceID       string
-	RawEvidenceRef                      string
-	ReportedExecutionOutcome            string
-	ObservedDecisionRevision            string
-	ObservedStateFingerprint            string
-	RevisionAuthorityRef                string
-	Decision                            string
-	EvidenceAcceptanceProvenanceRef     string
+	EvidencePlane                   string
+	ReconciliationCandidateIdentity string
+	AcceptanceAuthorityEvidenceID   string
+	RawEvidenceRef                  string
+	ReportedExecutionOutcome        string
+	ObservedDecisionRevision        string
+	ObservedStateFingerprint        string
+	RevisionAuthorityRef            string
+	Decision                        string
+	EvidenceAcceptanceProvenanceRef string
 }
 
 type actorContextR3BAEvidenceAcceptanceCandidateProbe struct {

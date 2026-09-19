@@ -6,21 +6,21 @@ import (
 )
 
 const (
-	actorContextR3ZGateInsufficient             = "insufficient-evidence"
+	actorContextR3ZGateInsufficient            = "insufficient-evidence"
 	actorContextR3ZGateSameSourceCompatibility = "same-source-compatibility-unresolved"
-	actorContextR3ZGateSynthetic                = "synthetic-conflict-pressure"
-	actorContextR3ZGateQualified                = "precedence-mechanism-pressure-qualified"
+	actorContextR3ZGateSynthetic               = "synthetic-conflict-pressure"
+	actorContextR3ZGateQualified               = "precedence-mechanism-pressure-qualified"
 )
 
 type actorContextR3ZConflictEvidenceProbe struct {
-	SameAuthorizationTuple          bool
-	ExplicitReevaluationDirective   bool
-	ExplicitReuseBypassDirective    bool
-	ExplicitReevaluationSource      string
-	ExplicitReuseSource             string
-	SameApplicabilityScope          bool
-	RepositoryBacked                bool
-	ProviderPolicyRevisionObserved  bool
+	SameAuthorizationTuple         bool
+	ExplicitReevaluationDirective  bool
+	ExplicitReuseBypassDirective   bool
+	ExplicitReevaluationSource     string
+	ExplicitReuseSource            string
+	SameApplicabilityScope         bool
+	RepositoryBacked               bool
+	ProviderPolicyRevisionObserved bool
 }
 
 type actorContextR3ZGateResultProbe struct {
@@ -51,13 +51,13 @@ func TestActorContextR3YGenericReusePermissionDoesNotProvePrecedenceConflict(t *
 	}
 
 	gate := actorContextR3ZEvaluateGate(actorContextR3ZConflictEvidenceProbe{
-		SameAuthorizationTuple:         true,
-		ExplicitReevaluationDirective:  true,
-		ExplicitReuseBypassDirective:   false,
-		ExplicitReevaluationSource:     "test-only:freshness-authority/reevaluate",
-		ExplicitReuseSource:            "test-only:freshness-authority/reuse",
-		SameApplicabilityScope:         true,
-		RepositoryBacked:               false,
+		SameAuthorizationTuple:        true,
+		ExplicitReevaluationDirective: true,
+		ExplicitReuseBypassDirective:  false,
+		ExplicitReevaluationSource:    "test-only:freshness-authority/reevaluate",
+		ExplicitReuseSource:           "test-only:freshness-authority/reuse",
+		SameApplicabilityScope:        true,
+		RepositoryBacked:              false,
 	})
 	if gate.Status != actorContextR3ZGateInsufficient {
 		t.Fatalf("generic reuse permission was mistaken for bypass-capable conflict Evidence: %+v", gate)
@@ -88,13 +88,13 @@ func TestActorContextR3ZSameSourceConflictKeepsCompatibilityUnresolved(t *testin
 
 func TestActorContextR3ZSyntheticExplicitConflictDoesNotJustifyProductionPrecedence(t *testing.T) {
 	got := actorContextR3ZEvaluateGate(actorContextR3ZConflictEvidenceProbe{
-		SameAuthorizationTuple:         true,
-		ExplicitReevaluationDirective:  true,
-		ExplicitReuseBypassDirective:   true,
-		ExplicitReevaluationSource:     "test-only:freshness-authority/reevaluate",
-		ExplicitReuseSource:            "test-only:freshness-authority/reuse-without-reevaluation",
-		SameApplicabilityScope:         true,
-		RepositoryBacked:               false,
+		SameAuthorizationTuple:        true,
+		ExplicitReevaluationDirective: true,
+		ExplicitReuseBypassDirective:  true,
+		ExplicitReevaluationSource:    "test-only:freshness-authority/reevaluate",
+		ExplicitReuseSource:           "test-only:freshness-authority/reuse-without-reevaluation",
+		SameApplicabilityScope:        true,
+		RepositoryBacked:              false,
 	})
 
 	if got.Status != actorContextR3ZGateSynthetic {
@@ -107,13 +107,13 @@ func TestActorContextR3ZSyntheticExplicitConflictDoesNotJustifyProductionPrecede
 
 func TestActorContextR3ZRepositoryBackedSameScopeConflictCanOpenMechanismPressure(t *testing.T) {
 	got := actorContextR3ZEvaluateGate(actorContextR3ZConflictEvidenceProbe{
-		SameAuthorizationTuple:         true,
-		ExplicitReevaluationDirective:  true,
-		ExplicitReuseBypassDirective:   true,
-		ExplicitReevaluationSource:     "accepted:test-only-example/reevaluate",
-		ExplicitReuseSource:            "accepted:test-only-example/reuse-without-reevaluation",
-		SameApplicabilityScope:         true,
-		RepositoryBacked:               true,
+		SameAuthorizationTuple:        true,
+		ExplicitReevaluationDirective: true,
+		ExplicitReuseBypassDirective:  true,
+		ExplicitReevaluationSource:    "accepted:test-only-example/reevaluate",
+		ExplicitReuseSource:           "accepted:test-only-example/reuse-without-reevaluation",
+		SameApplicabilityScope:        true,
+		RepositoryBacked:              true,
 	})
 
 	if got.Status != actorContextR3ZGateQualified {
@@ -126,33 +126,33 @@ func TestActorContextR3ZRepositoryBackedSameScopeConflictCanOpenMechanismPressur
 
 func TestActorContextR3ZTupleOrScopeMismatchDoesNotQualifyConflict(t *testing.T) {
 	cases := []struct {
-		name string
-		evidence actorContextR3ZConflictEvidenceProbe
+		name        string
+		evidence    actorContextR3ZConflictEvidenceProbe
 		wantBlocker string
 	}{
 		{
 			name: "tuple-mismatch",
 			evidence: actorContextR3ZConflictEvidenceProbe{
-				SameAuthorizationTuple:         false,
-				ExplicitReevaluationDirective:  true,
-				ExplicitReuseBypassDirective:   true,
-				ExplicitReevaluationSource:     "accepted:a",
-				ExplicitReuseSource:            "accepted:b",
-				SameApplicabilityScope:         true,
-				RepositoryBacked:               true,
+				SameAuthorizationTuple:        false,
+				ExplicitReevaluationDirective: true,
+				ExplicitReuseBypassDirective:  true,
+				ExplicitReevaluationSource:    "accepted:a",
+				ExplicitReuseSource:           "accepted:b",
+				SameApplicabilityScope:        true,
+				RepositoryBacked:              true,
 			},
 			wantBlocker: "authorization-context-tuple-mismatch",
 		},
 		{
 			name: "scope-mismatch",
 			evidence: actorContextR3ZConflictEvidenceProbe{
-				SameAuthorizationTuple:         true,
-				ExplicitReevaluationDirective:  true,
-				ExplicitReuseBypassDirective:   true,
-				ExplicitReevaluationSource:     "accepted:a",
-				ExplicitReuseSource:            "accepted:b",
-				SameApplicabilityScope:         false,
-				RepositoryBacked:               true,
+				SameAuthorizationTuple:        true,
+				ExplicitReevaluationDirective: true,
+				ExplicitReuseBypassDirective:  true,
+				ExplicitReevaluationSource:    "accepted:a",
+				ExplicitReuseSource:           "accepted:b",
+				SameApplicabilityScope:        false,
+				RepositoryBacked:              true,
 			},
 			wantBlocker: "applicability-scope-mismatch",
 		},

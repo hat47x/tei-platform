@@ -296,11 +296,11 @@ func handoffSignatures(set referenceSet) []string {
 
 func newReviewStamp(target, revision, artifact string, content []byte, decision string) reviewStamp {
 	return reviewStamp{
-		TargetProcedure:      target,
+		TargetProcedure:     target,
 		RepositoryRevision:  revision,
-		ArtifactPath:         artifact,
+		ArtifactPath:        artifact,
 		ArtifactFingerprint: sourceindex.Fingerprint(content),
-		Decision:             decision,
+		Decision:            decision,
 	}
 }
 

@@ -97,18 +97,18 @@ type entryEvidence struct {
 }
 
 type handoffSummary struct {
-	EvidenceNature                   string                        `json:"evidenceNature"`
-	HandoverBaselineID               string                        `json:"handoverBaselineId"`
-	BaselineRepositoryRevision       string                        `json:"baselineRepositoryRevision"`
-	TargetBuildRevision              string                        `json:"targetBuildRevision"`
-	TargetAdapter                    string                        `json:"targetAdapter"`
-	Host                             string                        `json:"host"`
-	SemanticFunctionalRun            string                        `json:"semanticFunctionalRun"`
-	VisualRun                        string                        `json:"visualRun"`
-	GateCReadinessArtifactSHA256     string                        `json:"gateCReadinessArtifactSHA256"`
-	SemanticFunctionalSummarySHA256  string                        `json:"semanticFunctionalSummarySHA256"`
-	Candidates                       []replayableBehaviorCandidate `json:"candidates"`
-	AuthorityLimits                  []string                      `json:"authorityLimits"`
+	EvidenceNature                  string                        `json:"evidenceNature"`
+	HandoverBaselineID              string                        `json:"handoverBaselineId"`
+	BaselineRepositoryRevision      string                        `json:"baselineRepositoryRevision"`
+	TargetBuildRevision             string                        `json:"targetBuildRevision"`
+	TargetAdapter                   string                        `json:"targetAdapter"`
+	Host                            string                        `json:"host"`
+	SemanticFunctionalRun           string                        `json:"semanticFunctionalRun"`
+	VisualRun                       string                        `json:"visualRun"`
+	GateCReadinessArtifactSHA256    string                        `json:"gateCReadinessArtifactSHA256"`
+	SemanticFunctionalSummarySHA256 string                        `json:"semanticFunctionalSummarySHA256"`
+	Candidates                      []replayableBehaviorCandidate `json:"candidates"`
+	AuthorityLimits                 []string                      `json:"authorityLimits"`
 }
 
 func main() {

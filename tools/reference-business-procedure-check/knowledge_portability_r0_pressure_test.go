@@ -22,34 +22,34 @@ type knowledgePortabilityR0DestinationProbe struct {
 }
 
 type knowledgePortabilityR0CandidateProbe struct {
-	ObservedIn          string
-	ObservedFrom        string
-	AuthoritySubject    string
-	ReuseRelation       string
-	Qualification       string
-	Reasons             []string
-	DestinationSubject  string
-	DestinationAlias    string
-	DependencySubjects  []string
-	ProvenanceSubjects  []string
-	AuthoritySource     string
-	AuthorityFingerprint string
-	ProvenanceSource    string
+	ObservedIn            string
+	ObservedFrom          string
+	AuthoritySubject      string
+	ReuseRelation         string
+	Qualification         string
+	Reasons               []string
+	DestinationSubject    string
+	DestinationAlias      string
+	DependencySubjects    []string
+	ProvenanceSubjects    []string
+	AuthoritySource       string
+	AuthorityFingerprint  string
+	ProvenanceSource      string
 	ProvenanceFingerprint string
-	AuthorityLimits     []string
+	AuthorityLimits       []string
 }
 
 type knowledgePortabilityR0EnvironmentProbe struct {
-	Environment       string
-	OriginApplication string
-	OriginAlias       string
-	Instance          string
-	Database          string
-	Provider          string
-	ReuseRelation     string
-	Qualification     string
+	Environment        string
+	OriginApplication  string
+	OriginAlias        string
+	Instance           string
+	Database           string
+	Provider           string
+	ReuseRelation      string
+	Qualification      string
 	DestinationBinding string
-	AuthorityLimits   []string
+	AuthorityLimits    []string
 }
 
 func TestKnowledgePortabilityR0SeparatesDiscoveryProvenanceFromSemanticAuthority(t *testing.T) {
@@ -364,18 +364,18 @@ func deriveKnowledgePortabilityR0PatternCandidate(
 		return knowledgePortabilityR0CandidateProbe{}, err
 	}
 	return knowledgePortabilityR0CandidateProbe{
-		ObservedIn:             "order_entry",
-		ObservedFrom:           portabilityR0SubjectKey(origin),
-		AuthoritySubject:       portabilityR0SubjectKey(origin),
-		ReuseRelation:          "adopted-local-variation",
-		Qualification:          "applicable-as-provenance",
-		DestinationSubject:     "application-pattern:" + destinationPatternID,
-		DependencySubjects:     nil,
-		ProvenanceSubjects:     []string{portabilityR0SubjectKey(origin)},
-		AuthoritySource:        source,
-		AuthorityFingerprint:   fingerprint,
-		ProvenanceSource:       source,
-		ProvenanceFingerprint:  fingerprint,
+		ObservedIn:            "order_entry",
+		ObservedFrom:          portabilityR0SubjectKey(origin),
+		AuthoritySubject:      portabilityR0SubjectKey(origin),
+		ReuseRelation:         "adopted-local-variation",
+		Qualification:         "applicable-as-provenance",
+		DestinationSubject:    "application-pattern:" + destinationPatternID,
+		DependencySubjects:    nil,
+		ProvenanceSubjects:    []string{portabilityR0SubjectKey(origin)},
+		AuthoritySource:       source,
+		AuthorityFingerprint:  fingerprint,
+		ProvenanceSource:      source,
+		ProvenanceFingerprint: fingerprint,
 		Reasons: []string{
 			"Application Pattern is Application-owned",
 			"destination must author and accept its own Pattern identity",
@@ -412,14 +412,14 @@ func deriveKnowledgePortabilityR0EnvironmentProbe(world ir.World, environmentID 
 				return knowledgePortabilityR0EnvironmentProbe{}, errPortabilityR0("origin binding points to missing instance")
 			}
 			return knowledgePortabilityR0EnvironmentProbe{
-				Environment:       environmentID,
-				OriginApplication: string(binding.Application),
-				OriginAlias:       string(binding.Alias),
-				Instance:          string(binding.Instance),
-				Database:          instance.database,
-				Provider:          instance.provider,
-				ReuseRelation:     "rebind-required",
-				Qualification:     "destination-owned",
+				Environment:        environmentID,
+				OriginApplication:  string(binding.Application),
+				OriginAlias:        string(binding.Alias),
+				Instance:           string(binding.Instance),
+				Database:           instance.database,
+				Provider:           instance.provider,
+				ReuseRelation:      "rebind-required",
+				Qualification:      "destination-owned",
 				DestinationBinding: "",
 				AuthorityLimits: []string{
 					"application-and-alias-are-origin-local",

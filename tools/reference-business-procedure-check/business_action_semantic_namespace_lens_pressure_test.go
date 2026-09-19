@@ -12,9 +12,9 @@ import (
 )
 
 type businessActionSemanticNamespaceLensRowProbe struct {
-	StepID                           string   `json:"step"`
-	Namespaces                       []string `json:"namespaces,omitempty"`
-	NoNamespaceTraceFromCurrentRefs  bool     `json:"noNamespaceTraceFromCurrentRefs"`
+	StepID                          string   `json:"step"`
+	Namespaces                      []string `json:"namespaces,omitempty"`
+	NoNamespaceTraceFromCurrentRefs bool     `json:"noNamespaceTraceFromCurrentRefs"`
 }
 
 func TestBusinessActionSemanticNamespaceLensDerivesCurrentComprehensionGroups(t *testing.T) {

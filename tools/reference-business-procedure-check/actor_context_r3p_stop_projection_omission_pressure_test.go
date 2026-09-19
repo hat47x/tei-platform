@@ -7,21 +7,21 @@ import (
 )
 
 const (
-	actorContextR3PCategoryStopIdentity             = "stop-identity"
-	actorContextR3PCategoryMachineReasons           = "machine-reasons"
-	actorContextR3PCategoryKnownAuthorityFacts      = "known-authority-facts"
-	actorContextR3PCategoryResolutionNeeds          = "resolution-needs"
-	actorContextR3PCategoryRuntimeOutcome           = "runtime-outcome"
-	actorContextR3PCategoryDownstreamNotAttempted   = "downstream-not-attempted"
-	actorContextR3PCategorySourceRefs               = "source-refs"
-	actorContextR3PCategoryResolutionRequest        = "resolution-request"
-	actorContextR3PCategoryHandoffRecipientStatus   = "handoff-recipient-status"
-	actorContextR3PCategoryAuthorityLimits          = "authority-limits"
+	actorContextR3PCategoryStopIdentity           = "stop-identity"
+	actorContextR3PCategoryMachineReasons         = "machine-reasons"
+	actorContextR3PCategoryKnownAuthorityFacts    = "known-authority-facts"
+	actorContextR3PCategoryResolutionNeeds        = "resolution-needs"
+	actorContextR3PCategoryRuntimeOutcome         = "runtime-outcome"
+	actorContextR3PCategoryDownstreamNotAttempted = "downstream-not-attempted"
+	actorContextR3PCategorySourceRefs             = "source-refs"
+	actorContextR3PCategoryResolutionRequest      = "resolution-request"
+	actorContextR3PCategoryHandoffRecipientStatus = "handoff-recipient-status"
+	actorContextR3PCategoryAuthorityLimits        = "authority-limits"
 
 	actorContextR3PAudienceHuman = "human"
 	actorContextR3PAudienceAgent = "agent"
 
-	actorContextR3PPurposeOrientation         = "orientation"
+	actorContextR3PPurposeOrientation          = "orientation"
 	actorContextR3PPurposeResolutionInspection = "resolution-inspection"
 )
 

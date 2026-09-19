@@ -8,53 +8,46 @@ import (
 )
 
 const (
-	actorContextR3AUStatusUnresolved =
-		"write-outcome-acceptance-authority-unresolved"
-	actorContextR3AUStatusQualified =
-		"write-outcome-acceptance-authority-evidence-qualified"
-	actorContextR3AUStatusMultipleQualified =
-		"write-outcome-acceptance-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3AUStatusUnresolved        = "write-outcome-acceptance-authority-unresolved"
+	actorContextR3AUStatusQualified         = "write-outcome-acceptance-authority-evidence-qualified"
+	actorContextR3AUStatusMultipleQualified = "write-outcome-acceptance-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3AUAuthorityKind =
-		"operational-write-outcome-acceptance-authority"
+	actorContextR3AUAuthorityKind = "operational-write-outcome-acceptance-authority"
 
-	actorContextR3AURoleOutcomeContractOnly =
-		"write-outcome-contract-only"
-	actorContextR3AURoleDerivedRawObservation =
-		"derived-raw-writer-observation"
-	actorContextR3AURoleOutcomeAcceptanceCandidate =
-		"write-outcome-acceptance-authority-candidate"
+	actorContextR3AURoleOutcomeContractOnly        = "write-outcome-contract-only"
+	actorContextR3AURoleDerivedRawObservation      = "derived-raw-writer-observation"
+	actorContextR3AURoleOutcomeAcceptanceCandidate = "write-outcome-acceptance-authority-candidate"
 
 	actorContextR3AUScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3AUScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3AUOutcomeAcceptanceEvidenceProbe struct {
-	EvidenceID                     string
-	EvidenceRole                   string
-	RepositoryBacked               bool
-	AuthorityKind                  string
-	AuthorityDeclarationRef        string
+	EvidenceID                      string
+	EvidenceRole                    string
+	RepositoryBacked                bool
+	AuthorityKind                   string
+	AuthorityDeclarationRef         string
 	WriteAttemptCandidateIdentities []string
-	ObservationIdentities          []string
-	WriteOutcomeContractRefs       []string
-	ReportedOutcomes               []string
-	AcceptedDecisionSinkRef        string
-	ScopeKind                      string
-	ScopeValue                     string
-	OutcomeDecisionLocusRef        string
-	OutcomeAcceptanceProvenanceRef string
-	DerivedOnly                    bool
+	ObservationIdentities           []string
+	WriteOutcomeContractRefs        []string
+	ReportedOutcomes                []string
+	AcceptedDecisionSinkRef         string
+	ScopeKind                       string
+	ScopeValue                      string
+	OutcomeDecisionLocusRef         string
+	OutcomeAcceptanceProvenanceRef  string
+	DerivedOnly                     bool
 }
 
 type actorContextR3AUOutcomeAcceptanceGateProbe struct {
-	OutcomeAcceptanceAuthorityStatus string
-	QualifiedEvidenceIDs             []string
-	OutcomeDecisionLocusRefs         []string
-	RawReportedOutcome               string
+	OutcomeAcceptanceAuthorityStatus  string
+	QualifiedEvidenceIDs              []string
+	OutcomeDecisionLocusRefs          []string
+	RawReportedOutcome                string
 	PostWriteObservedDecisionRevision string
-	InsufficientEvidenceIDs          []string
-	AuthorityLimits                  []string
+	InsufficientEvidenceIDs           []string
+	AuthorityLimits                   []string
 }
 
 func TestActorContextR3AUCurrentInspectedEvidenceKeepsOutcomeAcceptanceUnresolved(t *testing.T) {
@@ -385,19 +378,19 @@ func actorContextR3AUCurrentInspectedEvidence(
 ) []actorContextR3AUOutcomeAcceptanceEvidenceProbe {
 	return []actorContextR3AUOutcomeAcceptanceEvidenceProbe{
 		{
-			EvidenceID:               attempt.WriteOutcomeContractRef,
-			EvidenceRole:             actorContextR3AURoleOutcomeContractOnly,
+			EvidenceID:                      attempt.WriteOutcomeContractRef,
+			EvidenceRole:                    actorContextR3AURoleOutcomeContractOnly,
 			WriteAttemptCandidateIdentities: []string{attempt.WriteAttemptCandidateIdentity},
-			WriteOutcomeContractRefs: []string{attempt.WriteOutcomeContractRef},
-			AcceptedDecisionSinkRef:   attempt.AcceptedDecisionSinkRef,
+			WriteOutcomeContractRefs:        []string{attempt.WriteOutcomeContractRef},
+			AcceptedDecisionSinkRef:         attempt.AcceptedDecisionSinkRef,
 		},
 		{
 			EvidenceID:              observation.ObservationIdentity,
 			EvidenceRole:            actorContextR3AURoleDerivedRawObservation,
 			ObservationIdentities:   []string{observation.ObservationIdentity},
 			ReportedOutcomes:        []string{observation.ReportedOutcome},
-			AcceptedDecisionSinkRef:  observation.AcceptedDecisionSinkRef,
-			DerivedOnly:              true,
+			AcceptedDecisionSinkRef: observation.AcceptedDecisionSinkRef,
+			DerivedOnly:             true,
 		},
 	}
 }
@@ -497,12 +490,12 @@ func actorContextR3AUAssessOutcomeAcceptanceAuthority(
 	}
 
 	return actorContextR3AUOutcomeAcceptanceGateProbe{
-		OutcomeAcceptanceAuthorityStatus: status,
-		QualifiedEvidenceIDs:             actorContextR0SortedUnique(qualifiedIDs),
-		OutcomeDecisionLocusRefs:         actorContextR0SortedUnique(loci),
-		RawReportedOutcome:               observation.ReportedOutcome,
+		OutcomeAcceptanceAuthorityStatus:  status,
+		QualifiedEvidenceIDs:              actorContextR0SortedUnique(qualifiedIDs),
+		OutcomeDecisionLocusRefs:          actorContextR0SortedUnique(loci),
+		RawReportedOutcome:                observation.ReportedOutcome,
 		PostWriteObservedDecisionRevision: observation.PostWriteObservedDecisionRevision,
-		InsufficientEvidenceIDs:          actorContextR0SortedUnique(insufficient),
+		InsufficientEvidenceIDs:           actorContextR0SortedUnique(insufficient),
 		AuthorityLimits: actorContextR0SortedUnique([]string{
 			"write-outcome-contract-does-not-create-outcome-acceptance-authority",
 			"raw-writer-observation-does-not-create-outcome-acceptance-authority",

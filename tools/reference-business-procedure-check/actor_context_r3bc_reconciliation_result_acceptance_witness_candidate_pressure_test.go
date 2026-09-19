@@ -14,29 +14,29 @@ const (
 )
 
 type actorContextR3BCResultAcceptanceWitnessProbe struct {
-	ReconciliationCandidateIdentity               string
-	ResultAcceptanceAuthorityEvidenceID            string
-	ExecutionEvidenceAcceptanceCandidateIdentity   string
+	ReconciliationCandidateIdentity                 string
+	ResultAcceptanceAuthorityEvidenceID             string
+	ExecutionEvidenceAcceptanceCandidateIdentity    string
 	CurrentStateEvidenceAcceptanceCandidateIdentity string
-	ReconciliationResultDecisionLocusRef           string
-	CurrentStateAcceptanceLocusRef                 string
-	Decision                                       string
-	ResultAcceptanceProvenanceRef                  string
+	ReconciliationResultDecisionLocusRef            string
+	CurrentStateAcceptanceLocusRef                  string
+	Decision                                        string
+	ResultAcceptanceProvenanceRef                   string
 }
 
 type actorContextR3BCResultAcceptanceCandidateProbe struct {
-	ReconciliationCandidateIdentity               string
-	ResultAcceptanceAuthorityEvidenceID            string
-	ExecutionEvidenceAcceptanceCandidateIdentity   string
+	ReconciliationCandidateIdentity                 string
+	ResultAcceptanceAuthorityEvidenceID             string
+	ExecutionEvidenceAcceptanceCandidateIdentity    string
 	CurrentStateEvidenceAcceptanceCandidateIdentity string
-	ReconciliationResultDecisionLocusRef           string
-	CurrentStateAcceptanceLocusRef                 string
-	ObservedDecisionRevision                       string
-	ObservedStateFingerprint                       string
-	Decision                                       string
-	ResultAcceptanceProvenanceRef                  string
+	ReconciliationResultDecisionLocusRef            string
+	CurrentStateAcceptanceLocusRef                  string
+	ObservedDecisionRevision                        string
+	ObservedStateFingerprint                        string
+	Decision                                        string
+	ResultAcceptanceProvenanceRef                   string
 	ReconciliationResultAcceptanceCandidateIdentity string
-	AuthorityLimits                                []string
+	AuthorityLimits                                 []string
 }
 
 func TestActorContextR3BCUnresolvedGateCannotCreateCandidate(t *testing.T) {
@@ -56,14 +56,14 @@ func TestActorContextR3BCUnresolvedGateCannotCreateCandidate(t *testing.T) {
 		t.Fatalf("R3BC setup expected unresolved R3BB Gate: %+v", gate)
 	}
 	witness := actorContextR3BCResultAcceptanceWitnessProbe{
-		ReconciliationCandidateIdentity:               reconciliation.ReconciliationCandidateIdentity,
-		ResultAcceptanceAuthorityEvidenceID:            "test-only:r3bc/not-qualified",
-		ExecutionEvidenceAcceptanceCandidateIdentity:   execution.EvidenceAcceptanceCandidateIdentity,
+		ReconciliationCandidateIdentity:                 reconciliation.ReconciliationCandidateIdentity,
+		ResultAcceptanceAuthorityEvidenceID:             "test-only:r3bc/not-qualified",
+		ExecutionEvidenceAcceptanceCandidateIdentity:    execution.EvidenceAcceptanceCandidateIdentity,
 		CurrentStateEvidenceAcceptanceCandidateIdentity: current.EvidenceAcceptanceCandidateIdentity,
-		ReconciliationResultDecisionLocusRef:           "test-only:r3bc/result-locus",
-		CurrentStateAcceptanceLocusRef:                 "test-only:r3bc/current-state-locus",
-		Decision:                                       actorContextR3BCDecisionAccept,
-		ResultAcceptanceProvenanceRef:                  "test-only:r3bc/provenance",
+		ReconciliationResultDecisionLocusRef:            "test-only:r3bc/result-locus",
+		CurrentStateAcceptanceLocusRef:                  "test-only:r3bc/current-state-locus",
+		Decision:                                        actorContextR3BCDecisionAccept,
+		ResultAcceptanceProvenanceRef:                   "test-only:r3bc/provenance",
 	}
 	if _, err := actorContextR3BCBuildCandidates(
 		reconciliation, execution, current, gate, inspected,
@@ -231,14 +231,14 @@ func TestActorContextR3BCMultipleQualifiedGateCannotBeBypassed(t *testing.T) {
 		t.Fatalf("R3BC setup lost multiple-qualified R3BB Gate: %+v", gate)
 	}
 	witness := actorContextR3BCResultAcceptanceWitnessProbe{
-		ReconciliationCandidateIdentity:               reconciliation.ReconciliationCandidateIdentity,
-		ResultAcceptanceAuthorityEvidenceID:            a.EvidenceID,
-		ExecutionEvidenceAcceptanceCandidateIdentity:   execution.EvidenceAcceptanceCandidateIdentity,
+		ReconciliationCandidateIdentity:                 reconciliation.ReconciliationCandidateIdentity,
+		ResultAcceptanceAuthorityEvidenceID:             a.EvidenceID,
+		ExecutionEvidenceAcceptanceCandidateIdentity:    execution.EvidenceAcceptanceCandidateIdentity,
 		CurrentStateEvidenceAcceptanceCandidateIdentity: current.EvidenceAcceptanceCandidateIdentity,
-		ReconciliationResultDecisionLocusRef:           a.ReconciliationResultDecisionLocusRef,
-		CurrentStateAcceptanceLocusRef:                 a.CurrentStateAcceptanceLocusRef,
-		Decision:                                       actorContextR3BCDecisionAccept,
-		ResultAcceptanceProvenanceRef:                  "test-only:r3bc/multiple-qualified",
+		ReconciliationResultDecisionLocusRef:            a.ReconciliationResultDecisionLocusRef,
+		CurrentStateAcceptanceLocusRef:                  a.CurrentStateAcceptanceLocusRef,
+		Decision:                                        actorContextR3BCDecisionAccept,
+		ResultAcceptanceProvenanceRef:                   "test-only:r3bc/multiple-qualified",
 	}
 	if _, err := actorContextR3BCBuildCandidates(
 		reconciliation, execution, current, gate, evidence,
@@ -378,14 +378,14 @@ func actorContextR3BCExactWitness(
 	decision string,
 ) actorContextR3BCResultAcceptanceWitnessProbe {
 	return actorContextR3BCResultAcceptanceWitnessProbe{
-		ReconciliationCandidateIdentity:               reconciliation.ReconciliationCandidateIdentity,
-		ResultAcceptanceAuthorityEvidenceID:            gate.QualifiedEvidenceIDs[0],
-		ExecutionEvidenceAcceptanceCandidateIdentity:   execution.EvidenceAcceptanceCandidateIdentity,
+		ReconciliationCandidateIdentity:                 reconciliation.ReconciliationCandidateIdentity,
+		ResultAcceptanceAuthorityEvidenceID:             gate.QualifiedEvidenceIDs[0],
+		ExecutionEvidenceAcceptanceCandidateIdentity:    execution.EvidenceAcceptanceCandidateIdentity,
 		CurrentStateEvidenceAcceptanceCandidateIdentity: current.EvidenceAcceptanceCandidateIdentity,
-		ReconciliationResultDecisionLocusRef:           gate.ReconciliationResultDecisionLocusRefs[0],
-		CurrentStateAcceptanceLocusRef:                 gate.CurrentStateAcceptanceLocusRefs[0],
-		Decision:                                       decision,
-		ResultAcceptanceProvenanceRef:                  "test-only:r3bc/result-acceptance-witness",
+		ReconciliationResultDecisionLocusRef:            gate.ReconciliationResultDecisionLocusRefs[0],
+		CurrentStateAcceptanceLocusRef:                  gate.CurrentStateAcceptanceLocusRefs[0],
+		Decision:                                        decision,
+		ResultAcceptanceProvenanceRef:                   "test-only:r3bc/result-acceptance-witness",
 	}
 }
 
@@ -497,16 +497,16 @@ func actorContextR3BCBuildCandidates(
 			witness.ResultAcceptanceProvenanceRef,
 		}, "||")
 		out = append(out, actorContextR3BCResultAcceptanceCandidateProbe{
-			ReconciliationCandidateIdentity:               reconciliation.ReconciliationCandidateIdentity,
-			ResultAcceptanceAuthorityEvidenceID:            witness.ResultAcceptanceAuthorityEvidenceID,
-			ExecutionEvidenceAcceptanceCandidateIdentity:   execution.EvidenceAcceptanceCandidateIdentity,
+			ReconciliationCandidateIdentity:                 reconciliation.ReconciliationCandidateIdentity,
+			ResultAcceptanceAuthorityEvidenceID:             witness.ResultAcceptanceAuthorityEvidenceID,
+			ExecutionEvidenceAcceptanceCandidateIdentity:    execution.EvidenceAcceptanceCandidateIdentity,
 			CurrentStateEvidenceAcceptanceCandidateIdentity: current.EvidenceAcceptanceCandidateIdentity,
-			ReconciliationResultDecisionLocusRef:           witness.ReconciliationResultDecisionLocusRef,
-			CurrentStateAcceptanceLocusRef:                 witness.CurrentStateAcceptanceLocusRef,
-			ObservedDecisionRevision:                       current.ObservedDecisionRevision,
-			ObservedStateFingerprint:                       current.ObservedStateFingerprint,
-			Decision:                                       witness.Decision,
-			ResultAcceptanceProvenanceRef:                  witness.ResultAcceptanceProvenanceRef,
+			ReconciliationResultDecisionLocusRef:            witness.ReconciliationResultDecisionLocusRef,
+			CurrentStateAcceptanceLocusRef:                  witness.CurrentStateAcceptanceLocusRef,
+			ObservedDecisionRevision:                        current.ObservedDecisionRevision,
+			ObservedStateFingerprint:                        current.ObservedStateFingerprint,
+			Decision:                                        witness.Decision,
+			ResultAcceptanceProvenanceRef:                   witness.ResultAcceptanceProvenanceRef,
 			ReconciliationResultAcceptanceCandidateIdentity: identity,
 			AuthorityLimits: actorContextR0SortedUnique([]string{
 				"result-acceptance-candidate-does-not-apply-authoritative-state",

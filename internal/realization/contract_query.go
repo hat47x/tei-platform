@@ -9,7 +9,7 @@ import "tei/internal/core"
 type ContractQueryTarget struct {
 	Database core.CanonicalID `json:"database"`
 	Contract core.CanonicalID `json:"contract"`
-	Query    core.LocalName    `json:"query"`
+	Query    core.LocalName   `json:"query"`
 }
 
 // Validは、target identityの三要素がすべて明示されていることを確認する。

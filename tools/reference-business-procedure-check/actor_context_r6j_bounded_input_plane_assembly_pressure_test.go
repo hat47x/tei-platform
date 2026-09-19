@@ -7,20 +7,20 @@ import (
 )
 
 type actorContextR6JConsumerLocalUseProbe struct {
-	OriginClass      string `json:"originClass"`
+	OriginClass        string `json:"originClass"`
 	ProjectionCategory string `json:"projectionCategory"`
-	DependencyKey    string `json:"dependencyKey"`
-	DependencyReason string `json:"dependencyReason"`
+	DependencyKey      string `json:"dependencyKey"`
+	DependencyReason   string `json:"dependencyReason"`
 }
 
 type actorContextR6JBoundedInputAssemblyProbe struct {
-	Audience                 string                                  `json:"audience"`
-	Purpose                  string                                  `json:"purpose"`
+	Audience                 string                                 `json:"audience"`
+	Purpose                  string                                 `json:"purpose"`
 	RoutedKnowledge          []actorContextR6ISharedKnowledgeProbe  `json:"routedKnowledge"`
-	RoutedUseEdges           []actorContextR6IUseEdgeProbe           `json:"routedUseEdges"`
-	ConsumerLocalUseEdges    []actorContextR6JConsumerLocalUseProbe  `json:"consumerLocalUseEdges"`
-	QualifiedNotMaterialized []string                                `json:"qualifiedNotMaterialized"`
-	AuthorityLimits          []string                                `json:"authorityLimits"`
+	RoutedUseEdges           []actorContextR6IUseEdgeProbe          `json:"routedUseEdges"`
+	ConsumerLocalUseEdges    []actorContextR6JConsumerLocalUseProbe `json:"consumerLocalUseEdges"`
+	QualifiedNotMaterialized []string                               `json:"qualifiedNotMaterialized"`
+	AuthorityLimits          []string                               `json:"authorityLimits"`
 }
 
 func TestActorContextR6JAssemblesRoutedAndConsumerLocalPlanesWithoutFlattening(t *testing.T) {

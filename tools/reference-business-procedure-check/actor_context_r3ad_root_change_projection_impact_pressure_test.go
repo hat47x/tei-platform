@@ -312,14 +312,14 @@ func actorContextR3ADFreshnessFixture(
 	if audience == actorContextR3PAudienceAgent {
 		edges = append(edges,
 			actorContextR3SDependencyReasonEdgeProbe{
-				Category: actorContextR3PCategoryKnownAuthorityFacts,
+				Category:      actorContextR3PCategoryKnownAuthorityFacts,
 				DependencyKey: businessKey,
-				ReasonCode: actorContextR3SReasonAuthorizationRequirementSource,
+				ReasonCode:    actorContextR3SReasonAuthorizationRequirementSource,
 			},
 			actorContextR3SDependencyReasonEdgeProbe{
-				Category: actorContextR3PCategoryKnownAuthorityFacts,
+				Category:      actorContextR3PCategoryKnownAuthorityFacts,
 				DependencyKey: overlayKey,
-				ReasonCode: actorContextR3SReasonProtectedResourceSource,
+				ReasonCode:    actorContextR3SReasonProtectedResourceSource,
 			},
 		)
 	}
