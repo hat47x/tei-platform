@@ -105,13 +105,18 @@ type observationArtifact struct {
 }
 
 type runMetadata struct {
-	RunIdentity                 string `json:"runIdentity"`
-	TargetBuildRevision         string `json:"targetBuildRevision"`
-	RepositoryPreRunRevision    string `json:"repositoryPreRunRevision"`
-	RepositoryPreRunClean       bool   `json:"repositoryPreRunClean"`
-	RepositoryPostRunRevision   string `json:"repositoryPostRunRevision"`
-	RepositoryPostRunClean      bool   `json:"repositoryPostRunClean"`
-	SourceQualificationPassed   bool   `json:"sourceQualificationPassed"`
+	RunIdentity               string `json:"runIdentity"`
+	TargetBuildRevision       string `json:"targetBuildRevision"`
+	RepositoryPreRunRevision  string `json:"repositoryPreRunRevision"`
+	RepositoryPreRunClean     bool   `json:"repositoryPreRunClean"`
+	RepositoryPostRunRevision string `json:"repositoryPostRunRevision"`
+	RepositoryPostRunClean    bool   `json:"repositoryPostRunClean"`
+	SourceQualificationPassed bool   `json:"sourceQualificationPassed"`
+	GoVersion                 string `json:"goVersion"`
+	GOOS                      string `json:"goOS"`
+	GOARCH                    string `json:"goArch"`
+	ServerLaunchMode          string `json:"serverLaunchMode"`
+	NetworkBind               string `json:"networkBind"`
 }
 
 type evidenceArtifactDigest struct {
@@ -205,8 +210,13 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		metadata.RepositoryPostRunRevision != expected.TargetBuildRevision ||
 		!metadata.RepositoryPreRunClean ||
 		!metadata.RepositoryPostRunClean ||
-		!metadata.SourceQualificationPassed {
-		return evidenceSummary{}, fmt.Errorf("run metadata does not prove one clean Target revision: %+v", metadata)
+		!metadata.SourceQualificationPassed ||
+		strings.TrimSpace(metadata.GoVersion) == "" ||
+		strings.TrimSpace(metadata.GOOS) == "" ||
+		strings.TrimSpace(metadata.GOARCH) == "" ||
+		metadata.ServerLaunchMode != "go-run" ||
+		metadata.NetworkBind != "loopback" {
+		return evidenceSummary{}, fmt.Errorf("run metadata does not prove one clean Target revision and execution host: %+v", metadata)
 	}
 
 	health, err := os.ReadFile(filepath.Join(dir, "health.txt"))
@@ -483,10 +493,12 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"http-custom-submit-form",
 			},
 			RuntimeBindings: append([]runtimeBindingArtifact(nil), read.Result.RuntimeBindings...),
-			ExecutionArtifact: "unresolved",
-			ABI:               "unresolved",
+			ExecutionArtifact: "go-run-native-process",
+			ABI:               metadata.GOOS + "/" + metadata.GOARCH,
 			ExecutionTrust: []string{
 				"server-process-observed-through-health-artifact",
+				"go-version:" + metadata.GoVersion,
+				"network-bind:" + metadata.NetworkBind,
 				"reference-runtime-data-is-synthetic",
 				"credential-is-runtime-input-and-not-retained-in-evidence",
 			},
@@ -508,7 +520,6 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 			},
 			Unresolved: []string{
 				"browse-environment-instance-binding-not-exposed-by-current-driver-api",
-				"execution-artifact-and-abi-not-yet-qualified",
 				"actual-external-command-observation-not-acquired",
 				"target-capability-taxonomy-remains-candidate-until-second-target",
 			},
