@@ -76,14 +76,14 @@ type commandErrorEnvelope struct {
 }
 
 type commandArtifact struct {
-	ScenarioID     string                       `json:"scenarioId"`
-	ApplicationID  string                       `json:"applicationId"`
-	Stage          string                       `json:"stage"`
-	Authentication *businessResultArtifact      `json:"authentication,omitempty"`
-	Validations    []validationResultArtifact   `json:"validations,omitempty"`
-	Authorization  *businessResultArtifact      `json:"authorization,omitempty"`
-	Command        *businessResultArtifact      `json:"command,omitempty"`
-	Observation    *observationArtifact         `json:"observation,omitempty"`
+	ScenarioID     string                     `json:"scenarioId"`
+	ApplicationID  string                     `json:"applicationId"`
+	Stage          string                     `json:"stage"`
+	Authentication *businessResultArtifact    `json:"authentication,omitempty"`
+	Validations    []validationResultArtifact `json:"validations,omitempty"`
+	Authorization  *businessResultArtifact    `json:"authorization,omitempty"`
+	Command        *businessResultArtifact    `json:"command,omitempty"`
+	Observation    *observationArtifact       `json:"observation,omitempty"`
 }
 
 type validationResultArtifact struct {
@@ -125,8 +125,8 @@ type evidenceArtifactDigest struct {
 }
 
 type evidenceCheck struct {
-	Passed   bool     `json:"passed"`
-	Checks   []string `json:"checks"`
+	Passed    bool     `json:"passed"`
+	Checks    []string `json:"checks"`
 	Artifacts []string `json:"artifacts"`
 }
 
@@ -137,36 +137,36 @@ type visualEvidenceState struct {
 }
 
 type targetDifferenceHandoff struct {
-	ApplicationID       string                     `json:"applicationId"`
-	TargetAdapter       string                     `json:"targetAdapter"`
-	Host                string                     `json:"host"`
-	TargetCapabilities  []string                   `json:"targetCapabilities"`
-	RuntimeBindings     []runtimeBindingArtifact   `json:"runtimeBindings"`
-	ExecutionArtifact   string                     `json:"executionArtifact"`
-	ABI                 string                     `json:"abi"`
-	ExecutionTrust      []string                   `json:"executionTrust"`
-	WebSpecific         []string                   `json:"webSpecific"`
-	DoNotCanonicalize   []string                   `json:"doNotCanonicalize"`
-	Unresolved          []string                   `json:"unresolved"`
+	ApplicationID      string                   `json:"applicationId"`
+	TargetAdapter      string                   `json:"targetAdapter"`
+	Host               string                   `json:"host"`
+	TargetCapabilities []string                 `json:"targetCapabilities"`
+	RuntimeBindings    []runtimeBindingArtifact `json:"runtimeBindings"`
+	ExecutionArtifact  string                   `json:"executionArtifact"`
+	ABI                string                   `json:"abi"`
+	ExecutionTrust     []string                 `json:"executionTrust"`
+	WebSpecific        []string                 `json:"webSpecific"`
+	DoNotCanonicalize  []string                 `json:"doNotCanonicalize"`
+	Unresolved         []string                 `json:"unresolved"`
 }
 
 type evidenceSummary struct {
-	EvidenceNature              string                   `json:"evidenceNature"`
-	RunIdentity                 string                   `json:"runIdentity"`
-	HandoverBaselineID          string                   `json:"handoverBaselineId"`
-	BaselineRepositoryRevision  string                   `json:"baselineRepositoryRevision"`
-	TargetBuildRevision         string                   `json:"targetBuildRevision"`
-	TargetAdapter               string                   `json:"targetAdapter"`
-	Host                        string                   `json:"host"`
-	SourceQualification         evidenceCheck            `json:"sourceQualification"`
-	SemanticConformance         evidenceCheck            `json:"semanticConformance"`
-	FunctionalEvidence          evidenceCheck            `json:"functionalEvidence"`
-	VisualEvidence              visualEvidenceState      `json:"visualEvidence"`
-	TargetDifferenceHandoff     targetDifferenceHandoff  `json:"targetDifferenceHandoff"`
-	Artifacts                   []evidenceArtifactDigest `json:"artifacts"`
-	Unresolved                  []string                 `json:"unresolved"`
-	GateCReady                  bool                     `json:"gateCReady"`
-	AuthorityLimits             []string                 `json:"authorityLimits"`
+	EvidenceNature             string                   `json:"evidenceNature"`
+	RunIdentity                string                   `json:"runIdentity"`
+	HandoverBaselineID         string                   `json:"handoverBaselineId"`
+	BaselineRepositoryRevision string                   `json:"baselineRepositoryRevision"`
+	TargetBuildRevision        string                   `json:"targetBuildRevision"`
+	TargetAdapter              string                   `json:"targetAdapter"`
+	Host                       string                   `json:"host"`
+	SourceQualification        evidenceCheck            `json:"sourceQualification"`
+	SemanticConformance        evidenceCheck            `json:"semanticConformance"`
+	FunctionalEvidence         evidenceCheck            `json:"functionalEvidence"`
+	VisualEvidence             visualEvidenceState      `json:"visualEvidence"`
+	TargetDifferenceHandoff    targetDifferenceHandoff  `json:"targetDifferenceHandoff"`
+	Artifacts                  []evidenceArtifactDigest `json:"artifacts"`
+	Unresolved                 []string                 `json:"unresolved"`
+	GateCReady                 bool                     `json:"gateCReady"`
+	AuthorityLimits            []string                 `json:"authorityLimits"`
 }
 
 func main() {
@@ -557,9 +557,9 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 			Reason:   "HTML/HTTP artifacts are not Visual Fidelity Evidence; capture screenshot or equivalent separately",
 		},
 		TargetDifferenceHandoff: targetDifferenceHandoff{
-			ApplicationID:      "order_entry",
-			TargetAdapter:      expected.TargetAdapter,
-			Host:               expected.Host,
+			ApplicationID: "order_entry",
+			TargetAdapter: expected.TargetAdapter,
+			Host:          expected.Host,
 			TargetCapabilities: []string{
 				"http-html-projection",
 				"http-json-manifest",
@@ -567,7 +567,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"http-command-scenario",
 				"http-custom-submit-form",
 			},
-			RuntimeBindings: append([]runtimeBindingArtifact(nil), read.Result.RuntimeBindings...),
+			RuntimeBindings:   append([]runtimeBindingArtifact(nil), read.Result.RuntimeBindings...),
 			ExecutionArtifact: "go-run-native-process",
 			ABI:               metadata.GOOS + "/" + metadata.GOARCH,
 			ExecutionTrust: []string{
@@ -631,11 +631,11 @@ func requireManifestPatterns(patterns []manifestPatternArtifact) error {
 		byID[pattern.ID] = pattern
 	}
 	expected := map[string]string{
-		"order_entry.recent_orders":     "browse",
-		"order_entry.order_record":      "record",
+		"order_entry.recent_orders":      "browse",
+		"order_entry.order_record":       "record",
 		"order_entry.customer_reference": "reference",
-		"order_entry.order_lines":       "header-detail",
-		"order_entry.submit_order":      "command",
+		"order_entry.order_lines":        "header-detail",
+		"order_entry.submit_order":       "command",
 	}
 	if len(byID) != len(expected) {
 		return fmt.Errorf("manifest Pattern count=%d, want=%d", len(byID), len(expected))

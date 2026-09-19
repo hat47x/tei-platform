@@ -42,7 +42,7 @@ var nativeSQLPattern = regexp.MustCompile("(?is)\\bSELECT\\b.{0,240}\\bFROM\\b|\
 
 func main() {
 	var (
-		baselineID = flag.String("baseline-id", "B", "Handover Baseline ID")
+		baselineID  = flag.String("baseline-id", "B", "Handover Baseline ID")
 		baselineRev = flag.String(
 			"baseline-revision",
 			"e5231839a5dcc62cce1181a2731fcb7c70d16736",

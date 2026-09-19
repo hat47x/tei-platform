@@ -13,17 +13,17 @@ import (
 )
 
 type semanticFunctionalSummary struct {
-	EvidenceNature             string             `json:"evidenceNature"`
-	RunIdentity                string             `json:"runIdentity"`
-	HandoverBaselineID         string             `json:"handoverBaselineId"`
-	BaselineRepositoryRevision string             `json:"baselineRepositoryRevision"`
-	TargetBuildRevision        string             `json:"targetBuildRevision"`
-	TargetAdapter              string             `json:"targetAdapter"`
-	Host                       string             `json:"host"`
-	SourceQualification        passState          `json:"sourceQualification"`
-	SemanticConformance        passState          `json:"semanticConformance"`
-	FunctionalEvidence         passState          `json:"functionalEvidence"`
-	VisualEvidence             pendingVisualState `json:"visualEvidence"`
+	EvidenceNature             string                 `json:"evidenceNature"`
+	RunIdentity                string                 `json:"runIdentity"`
+	HandoverBaselineID         string                 `json:"handoverBaselineId"`
+	BaselineRepositoryRevision string                 `json:"baselineRepositoryRevision"`
+	TargetBuildRevision        string                 `json:"targetBuildRevision"`
+	TargetAdapter              string                 `json:"targetAdapter"`
+	Host                       string                 `json:"host"`
+	SourceQualification        passState              `json:"sourceQualification"`
+	SemanticConformance        passState              `json:"semanticConformance"`
+	FunctionalEvidence         passState              `json:"functionalEvidence"`
+	VisualEvidence             pendingVisualState     `json:"visualEvidence"`
 	Artifacts                  []sourceArtifactDigest `json:"artifacts"`
 	GateCReady                 bool                   `json:"gateCReady"`
 }

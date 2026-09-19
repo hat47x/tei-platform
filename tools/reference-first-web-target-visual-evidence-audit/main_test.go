@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -238,7 +238,7 @@ func writeVisualFixture(t *testing.T, dir, targetRevision, criterionResult strin
 			Status:   "pending",
 			Required: true,
 		},
-		Artifacts: testVisualSourceArtifacts(),
+		Artifacts:  testVisualSourceArtifacts(),
 		GateCReady: false,
 	})
 

@@ -13,8 +13,7 @@ func TestScanWebTargetAuthorityAcceptsPresentationOnlySource(t *testing.T) {
 
 const message = "selected order"
 `)
-	writeArchitectureFile(t, filepath.Join(dir, "README.md"), "Custom UI shares a command runner.
-")
+	writeArchitectureFile(t, filepath.Join(dir, "README.md"), "Custom UI shares a command runner.\n")
 
 	violations, err := scanWebTargetAuthority(dir)
 	if err != nil {
@@ -27,10 +26,8 @@ const message = "selected order"
 
 func TestScanWebTargetAuthorityRejectsTEISQLAndNativeSQL(t *testing.T) {
 	dir := t.TempDir()
-	writeArchitectureFile(t, filepath.Join(dir, "authoritative.tei"), "application order_entry {}
-")
-	writeArchitectureFile(t, filepath.Join(dir, "query.sql"), "SELECT order_id FROM orders;
-")
+	writeArchitectureFile(t, filepath.Join(dir, "authoritative.tei"), "application order_entry {}\n")
+	writeArchitectureFile(t, filepath.Join(dir, "query.sql"), "SELECT order_id FROM orders;\n")
 	writeArchitectureFile(t, filepath.Join(dir, "embedded.go"), `package demo
 
 const query = "UPDATE orders SET status = 'done'"
@@ -43,8 +40,7 @@ const query = "UPDATE orders SET status = 'done'"
 	if len(violations) != 3 {
 		t.Fatalf("authority violations=%v want=3", violations)
 	}
-	joined := strings.Join(violations, "
-")
+	joined := strings.Join(violations, "\n")
 	for _, want := range []string{
 		"authoritative .tei file",
 		"native .sql file",
