@@ -1823,9 +1823,9 @@ change classは観測分類に留め、ShouldReevaluate / ReusePermitted / Retry
 
 
 
-### R3AD — Provenance root change / bounded re-evaluation explanation
+### R3AD — Provenance root delta / existing projection dependency binding
 
-R3ACでrole-aware provenance root changeを分類した後、そのchangeをbounded projectionのselected categoryへexplicit bindingし、「どのcategoryを、なぜ再評価するか」をR3T型のreason tupleで説明する。
+R3ACのrole-aware root deltaをR3Tへ直接流さず、R3R/R3Sで既に成立しているcurrent projection dependencyとのexplicit bindingを一段挟む。
 
 正本:
 
@@ -1835,63 +1835,40 @@ test-only source:
 
 - `tools/reference-business-procedure-check/actor_context_r3ad_root_change_projection_impact_pressure_test.go`
 
-R3ACのchange classをgeneric source changeへ潰さず、R3Tのreason shape:
-
 ```text
-category
-change class
-dependency key
-dependency reason
+root delta
+  != projection impact
+
+root delta
+  + explicit root-to-existing-dependency binding
+  + selected R3S dependency reason
+  -> R3T bounded re-evaluation reason
 ```
 
-へ接続する。
+とする。
 
-explicit binding例:
+R3ADはparallel `provenance-root:*` dependency keyを作らず、Business Procedure Reference / protected-target overlay rootを既存R3R Reference dependency keyへ明示bindingする。
 
-- requirement Reference -> machine-reasons / Agent known-authority-facts
-- protected resource Reference -> machine-reasons / resolution-needs / Agent known-authority-facts
-- prior Observation -> machine-reasonsのみ（runtime Evidenceをauthority factへ昇格させない）
-- R3X test-only context -> stop-identity / machine-reasons / resolution-needs
-- locator-only -> source-refs
+R3ACからR3Tへlosslessに写せる `reference-evidence-content-changed` / `locator-refresh-required` / exact runtime dependencyがある場合の `runtime-observation-content-changed` だけを変換する。
 
-current bounded projectionでbindingを持たないcorroboration changeやunknown root-set changeはnearest generic impactへ変換せず `ResidualRootChanges` として保持する。
+bindingがないdeltaは `projection-dependency-binding-unresolved`、bindingはあってもexact R3T classがないdeltaは `r3t-change-class-unmapped` としてresidual保持する。
+
+prior Authorization Observationはfreshness authority unresolved中のcurrent RuntimeOutcomeではないためcurrent runtime dependencyへ自動bindingしない。test-only Authorization contextとLegacy policy corroborationもroleだけでdependencyへ昇格させない。
+
+bindingがあってもcurrent R3S selected reason edgeがなければR3T `UnselectedChanges` に残す。
 
 ```text
-UnselectedChange
-  = explicit binding exists
-    but current bounded view does not select that category
-
-ResidualRootChange
-  = binding / semantic mapping itself is absent
-
 unselected
   != unmapped
   != ignored
-```
 
-特に:
-
-```text
-prior Observation changed
-  != current runtime-outcome changed
-  != known-authority-facts changed
-
-corroboration changed
-  != authority changed
-
-root changed
-  != all categories changed
-
-affected category
-  != response action selected
+residual
+  != globally irrelevant
 ```
 
 を維持する。
 
-Human / Agentのshared categoryでは同じroot identity / dependency reasonへ戻り、Agent-only detailの追加をHuman側の不整合とみなさない。
-
-ShouldReevaluate / AutoReauthorize / RetryRequired / CacheValid / Winner / NextAction / HandoffOwner等は追加せず、production impact graph / watcher / scheduler / cache invalidation / runtime Observation storeも導入しない。
-
+production dependency registry / impact graph / watcher / scheduler / cache invalidation / auto reauthorizationは追加しない。
 
 
 ## Cross-cutting R6 — Selective Knowledge Routing
