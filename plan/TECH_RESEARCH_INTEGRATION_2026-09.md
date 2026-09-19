@@ -1914,6 +1914,98 @@ one replay pass
 
 current recorded stateはactual Gate C Readyだがactual R7A handoff artifact未取得なので、R7B actual replay executionはまだ開始しない。
 
+##### R7B actual handoff execution intake source — 2026-09-19
+
+PR #824で、Repository外Gate C Evidenceからactual R7A handoff artifactとacquisition receiptを取得するrunnerが統合された。
+
+ただしrunner統合だけではactual acquisition成功を意味しない。採用Gate C EvidenceはISSUE-000057記録どおりRepository外の1台のWSL2上に保持され、current R7 laneからactual bytesへはアクセスしていない。
+
+そのためactual replayを先取りせず、次段の受領sourceを追加する。
+
+source:
+
+- `tools/reference-first-web-target-r7b-intake/main.go`
+- `tools/reference-first-web-target-r7b-intake/main_test.go`
+
+input:
+
+- actual `r7a-replayable-behavior-handoff.json`
+- actual `r7a-handoff-receipt.json`
+
+R7B intake sourceは両inputのexact bytes SHA-256を自身で計算し、receiptがhandoff exact bytesへbindingしていることを要求する。
+
+receiptについて最低限:
+
+```text
+EvidenceNature
+  = first-web-target-r7a-handoff-acquisition-receipt
+
+RepositoryPostRunClean
+  = true
+
+SourceQualificationPassed
+  = true
+
+Gate C judgment record revision
+  = d34edb9273f5f138abcbc23f4dcb000dcb5cdf20
+
+recorded T
+  = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+
+handoff tool revision
+  = valid Git revision
+  = repository post-run revision
+
+readiness / Semantic-Functional digest
+  = recorded actual Gate C identity
+
+receipt handoff digest
+  = exact handoff input bytes SHA-256
+```
+
+を要求する。
+
+handoff側ではcurrent actual Gate Cの:
+
+- B / R / T
+- Target Adapter / Host
+- Semantic / Functional run
+- VisualRun
+- final readiness SHA-256
+- Semantic / Functional summary SHA-256
+- six First Web behaviorの完全集合
+- behaviorごとのexact semantic / target realization / raw artifact / Observation class
+- raw artifact SHA-256
+- candidate-local provenance
+
+を再照合する。
+
+outputは`first-web-target-r7b-execution-intake`であり、全candidateを:
+
+```text
+ReplayExecutionStatus = not-executed
+RepeatabilityStatus = not-observed
+```
+
+としてmaterializeする。
+
+このintakeはactual replay recipeやexecution結果ではない。
+
+```text
+actual R7A handoff acquired
+  + exact acquisition receipt
+  + R7B intake qualified
+  != replay executed
+  != repeatability observed
+  != replay success
+  != whole workflow covered
+```
+
+Target realization refは引き続きCanonical selector / DOM / coordinate / click sequenceではない。
+
+source追加前に同一内容を独立temp moduleで`gofmt`し、`go test -count=1 ./...` PASSを確認した。Repository上のPR/CI PASSは別途扱う。
+
+
 
 
 ### R8 — Verified Experience Memory / Evidence Normalization
