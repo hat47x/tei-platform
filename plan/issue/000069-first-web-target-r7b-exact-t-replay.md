@@ -556,63 +556,11 @@ go run ./cmd/tei validate -workspace reference/workspace
 
 focused replay-plan testだけのPASSではE0をmainへ入れない。health checkが失敗した場合、E0 codeをpushせず原因を修正してから再実行する。
 
-##### 3.0.1 E0のexact source delta
+##### 3.0.4 E0 responsibility boundary
 
-E0ではschemaを一般化しない。current `replayPlan` top-levelへ、execution intakeですでに検証済みのlaunch provenanceをそのまま追加する。
+E0 testでは、B / R / T / TargetAdapter / Hostについてdriftだけでなくempty valueもfail closedで拒否する。またcandidate側B/R/T provenanceとtop-level intakeの不一致、およびcredential / selector / coordinate / execution authority fieldを追加しない既存negative pressureを維持する。
 
-```go
-type replayPlan struct {
-    // existing exact source identities ...
-    HandoverBaselineID           string `json:"handoverBaselineId"`
-    BaselineRepositoryRevision   string `json:"baselineRepositoryRevision"`
-    ReplayTargetBuildRevision    string `json:"replayTargetBuildRevision"`
-    TargetAdapter                string `json:"targetAdapter"`
-    Host                         string `json:"host"`
-    // Units / AuthorityLimits ...
-}
-```
-
-`buildReplayPlan` では値をcompile-time定数から再構成せず、validation済みintakeからexact carryする。
-
-```text
-plan.HandoverBaselineID         = intake.HandoverBaselineID
-plan.BaselineRepositoryRevision = intake.BaselineRepositoryRevision
-plan.ReplayTargetBuildRevision  = intake.TargetBuildRevision
-plan.TargetAdapter              = intake.TargetAdapter
-plan.Host                       = intake.Host
-```
-
-ここでcurrent Gate C既知値との照合を担当するのは既存 `validateIntake` である。定数は「recorded Gate C provenanceからdriftした入力をrejectする」ために使い、plan出力値の別authorityにはしない。
-
-このためE0後の責務は次の二段になる。
-
-```text
-recorded Gate C constants
-    ↓ validateIntake: drift reject
-validated execution intake
-    ↓ buildReplayPlan: lossless carry
-replay plan B / R / T / adapter / host
-```
-
-runner / replay auditはplanを実行時expected provenanceとして読み、さらにcurrent Referenceで許容されたprovenanceと矛盾する場合はfail closedする。runnerがplanを無視してB/R/adapter/hostを自身の固定値だけから生成する形は禁止する。
-
-##### 3.0.2 E0 test pressure
-
-既存testを壊さず、最低限次を追加・拡張する。
-
-1. happy pathで `HandoverBaselineID / BaselineRepositoryRevision / ReplayTargetBuildRevision / TargetAdapter / Host` がintake値とexact一致する。
-2. JSON serialization後も5 fieldがexact field nameで存在し、値が失われない。
-3. `HandoverBaselineID` の空・driftをrejectする。
-4. `BaselineRepositoryRevision` の空・driftをrejectする。
-5. `TargetBuildRevision` の空・driftをrejectする。
-6. `TargetAdapter` の空・driftをrejectする。
-7. `Host` の空・driftをrejectする。
-8. candidate側B/R/T provenanceとtop-level intakeの不一致は既存fail-closedを維持する。
-9. credential / selector / coordinate / execution authority fieldを追加しない既存negative testを維持する。
-
-「plan生成後にfieldを改ざんしてbuilderがrejectする」という不可能な責務はbuilder testへ置かない。生成済みplanの改ざん・欠落rejectはV2 replay audit / E1 runnerのinput validationでPressureする。
-
-E0完了判定は、focused package testだけでなくfull `tools/repository-health-check.sh` PASSと、そのPASS対象commitがそのまま`main`へ入ったことまでを含む。
+一方、「生成済みplanを後から改ざん・欠落させた場合のreject」はbuilderの責務ではない。builderはvalidation済みintakeからlosslessにplanを生成する。生成後のplan input validationはV2 replay audit / E1 runnerが担当し、そこでexact provenanceとplan digest bindingをPressureする。
 
 #### 3.1 Gate C fixture replay map
 
@@ -889,6 +837,95 @@ R7B実装でsemantic判定を複製しないため、初回incrementの責務を
 7. per-run observationを生成する
 
 semantic判定条件を自身へcopyしない。
+
+#### V2.1 run capture input boundary
+
+V2 auditはrunnerの主張をそのままEvidenceへ昇格させない。runnerから受け取るmetadataは、raw responseをどのbehaviorのtransport observationとして取得したかを結び付ける最小情報に限定する。
+
+概念shape:
+
+```text
+run-metadata.json
+  EvidenceNature = first-web-target-r7b-run-metadata
+  RunIdentity
+  SourceReplayPlanSHA256
+  SourceReplayPlanReceiptSHA256
+  ReplayTargetBuildRevision
+  TargetProcessInstanceIdentity
+  TargetListenScope = loopback
+  Captures[]
+    - BehaviorID
+    - ObservedHTTPStatus
+    - RawArtifactFile
+```
+
+ここには `ObservationClass`、`SemanticValidationPassed`、`RawArtifactSHA256` をrunnerの自己申告値として持ち込まない。これらはauditがraw bytesとshared classifierから導出する。
+
+```text
+runner claims
+  observed HTTP + file mapping
+        ↓
+R7B replay audit
+  exact plan digest binding
+  raw bytes fingerprint
+  shared semantic validation
+        ↓
+run-observation.json
+```
+
+`TargetProcessInstanceIdentity` はrunごとに生成するnonsemantic identityで、2 run間で異なることを後段が確認できるようにする。ただしこのfield単独をfresh OS processの独立証明とは扱わない。fresh start / stop / waitを実際に行う責務はE1 runnerにあり、最終receiptはそのlifecycleをbindingする。
+
+run metadataではactual port番号をEvidence identityへ採用しない。auditに必要なのは `loopback` scopeであり、ephemeral port自体の同一性ではない。
+
+#### V2.2 audit-derived run observation
+
+V2が生成する `run-observation.json` は少なくとも次を保持する。
+
+```text
+EvidenceNature = first-web-target-r7b-run-observation
+RunIdentity
+TargetProcessInstanceIdentity
+SourceReplayPlanSHA256
+SourceReplayPlanReceiptSHA256
+HandoverBaselineID
+BaselineRepositoryRevision
+ReplayTargetBuildRevision
+TargetAdapter
+Host
+TargetListenScope = loopback
+Observations[]
+  - BehaviorID
+  - ObservedHTTPStatus
+  - ObservationClass
+  - SemanticValidationPassed
+  - RawArtifactFile
+  - RawArtifactSHA256
+```
+
+B / R / T / adapter / hostはplanからexpected valueを受け、raw response内Provenanceをshared classifierでexact照合した結果としてoutputへ保持する。metadata側に同じ値を重複記述して一致を装う方式にはしない。
+
+V2は1 runのEvidence化までを担当し、2 runのrepeatability集約は行わない。したがって `RepeatabilityObserved` やbehaviorの `Repeatable` をrun observationへ書かない。
+
+#### V2.3 V2 fail-closed test matrix
+
+V2実装時はsynthetic fixtureで少なくとも次をPressureする。
+
+1. replay-plan actual bytesのSHA-256と `SourceReplayPlanSHA256` が不一致ならreject。
+2. replay-plan receipt identityがmetadataのexpected receipt digestと不一致ならreject。
+3. empty run identity / empty process instance identityをreject。
+4. plan Tとrun metadata Tのdriftをreject。
+5. non-loopback listen scopeをreject。
+6. missing / duplicate / unknown behaviorをrejectし、6 behavior exact setだけを受理。
+7. expected HTTP statusとobserved statusのdriftをreject。
+8. raw artifact fileの欠落、absolute path、parent traversal、重複mappingをreject。
+9. raw bytesのSHA-256はaudit自身が計算し、runner supplied digestをauthorityにしない。
+10. raw ProvenanceのB / R / T / adapter / host driftをshared classifier経由でreject。
+11. expected Observation classとshared classifier結果のdriftをreject。
+12. known Reference credential materialを含むraw artifactをreject。
+13. happy pathでは6 observationすべてにaudit-derived SHA-256とsemantic classが残る。
+14. audit outputにcredential、request body、selector、coordinate、current Authorization shortcutを含めない。
+
+これらのtestはGate C semantic条件のcopyではなく、shared packageを呼ぶintegration pressureとして書く。
 
 ### operational runner
 
