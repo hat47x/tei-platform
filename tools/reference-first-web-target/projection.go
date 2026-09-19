@@ -23,10 +23,12 @@ type webTargetProjection struct {
 	TargetBuildRevision        string                 `json:"targetBuildRevision"`
 	TargetAdapter              string                 `json:"targetAdapter"`
 	Host                       string                 `json:"host"`
+	Stage                      string                 `json:"stage"`
 	ApplicationID              string                 `json:"applicationId"`
 	SemanticUses               []string               `json:"semanticUses,omitempty"`
 	Validations                []string               `json:"validations,omitempty"`
 	Patterns                   []webPatternProjection `json:"patterns"`
+	Unresolved                 []string               `json:"unresolved"`
 	AuthorityLimits            []string               `json:"authorityLimits"`
 }
 
@@ -95,9 +97,17 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 		TargetBuildRevision:        cfg.TargetBuildRevision,
 		TargetAdapter:              "reference-first-web-target",
 		Host:                       "go-net-http",
+		Stage:                      "projection-shell",
 		ApplicationID:              string(app.ID),
 		SemanticUses:               canonicalIDsToStrings(app.SemanticUses),
 		Validations:                canonicalIDsToStrings(app.Validations),
+		Unresolved: []string{
+			"runtime-data-execution-not-yet-wired",
+			"authentication-authorization-web-interaction-not-yet-wired",
+			"custom-ui-not-yet-wired",
+			"functional-evidence-not-yet-acquired",
+			"visual-evidence-not-yet-acquired",
+		},
 		AuthorityLimits: []string{
 			"projection-is-derived-not-canonical",
 			"presentation-candidate-is-target-local",
