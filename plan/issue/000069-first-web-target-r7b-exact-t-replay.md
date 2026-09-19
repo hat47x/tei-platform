@@ -1312,6 +1312,75 @@ receipt内のtool revisionは「そのrevisionが現在も最新である」こ�
 
 E1はplan / receiptをRepository外outputへcopyする場合、copy後bytesを再fingerprintし、source digestと一致することを最終receiptへbindingする。path文字列だけをsource identityとして採用しない。
 
+#### E1.0.1 V2 preflight validation reuse candidate
+
+E1 runnerがreplay-plan / receipt validationをshell側へ再実装すると、V2 auditとの間に第二のinput truthができる。これを避けるため、V1 pressureを含むV2 composition candidate `056527b6203feaf3c3830db4d33251d64c475be3` の子として、V2のexact validation pathをTarget起動前にも呼べるbranchless candidateを作成した。
+
+```text
+056527b6203feaf3c3830db4d33251d64c475be3
+  ↓ V2 plan/receipt preflight reuse
+ed17d529f605097a2171fc39cfdb5ed9d2c117ac
+```
+
+変更対象はV2 replay auditの2ファイルだけである。
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  blob = 62b526dc865ad49214aa84fcf4e9b40eeb6c4dff
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  blob = 28464cfdc3c06bd4e2baac8cf6173eb3210703ce
+```
+
+差分は次に限定する。
+
+- replay-plan / receiptのdecode、exact byte SHA-256、`validatePlan`、`validateReceipt` を `decodeAndValidateReplayInputs` へ集約
+- normal V2 run auditも同じ関数を利用
+- CLIへ `-preflight-only` を追加
+- preflight modeではrun metadata / raw directoryを要求せず、plan / receipt exact validationだけを行って成功時に `ok` を返す
+- missing launch provenance、receipt digest drift、already-executed receiptをnegative pressureする
+
+E1 runnerの開始時はconceptually:
+
+```text
+go run ./tools/reference-first-web-target-r7b-replay-audit \
+  -replay-plan <r7b-replay-plan.json> \
+  -replay-plan-receipt <r7b-replay-plan-receipt.json> \
+  -preflight-only
+
+PASS
+  -> Target process lifecycleへ進める
+
+FAIL
+  -> Target processを起動しない
+```
+
+とする。
+
+```text
+E1 input validation
+  = V2 exact plan/receipt validation reuse
+
+E1 shell-local JSON predicate
+  = prohibited
+```
+
+このcandidateはunreferenced Git commitであり、main / remote branch refは動かしていない。差分監査ではsemantic validator、run observation shape、repeatability判定には変更を加えていない。
+
+同じvalidation再利用形はRepository外prototypeで `gofmt` clean、`go vet` PASS、`go test -count=50` PASSを確認しているが、`ed17d529...` のexact candidateを含むfull Repository qualificationは未実行である。
+
+```text
+preflight reuse prototype PASS
+  != ed17d529 exact full-package qualification
+  != repository-health-check PASS
+  != V2 integrated
+  != E1 runner integrated
+```
+
+統合時はE0 → V1 → V2をhealth-check済みでmainへreconcileした後、この小差分をlatest V2 sourceへ適用し、同じfull `tools/repository-health-check.sh` gateを通す。
+
+
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
