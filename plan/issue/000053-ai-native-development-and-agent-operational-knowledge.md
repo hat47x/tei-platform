@@ -2626,6 +2626,68 @@ R6O  retained-member provenance delta
 
 R6OはR3AO / R3APのAccepted Decision、authority write、current authority applicationを扱わない。
 
+### R6P — orthogonal observation decomposition
+
+R6M / R6N / R6Oのsame-scope observationを一つのderived comparisonへ接続する。ただしそれぞれの意味を一つのgeneric changeへ丸めない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6p_orthogonal_observation_decomposition_pressure_test.go`
+
+R6P resultは:
+
+1. CardinalityDeltas
+2. MembershipDeltas
+3. RetainedKnowledgeProvenance
+
+を別々に保持する。
+
+cardinality / membershipには次の整合条件を要求する。
+
+```text
+CountDelta
+  == Added count
+   - Removed count
+```
+
+同じmemberをduplicate観測しただけでcountが増えるケースはこの整合条件に反するためfail closedする。
+
+代表的な分解:
+
+```text
+fingerprint-only
+  count       0
+  membership  0
+  provenance  1
+
+same-count substitution
+  count       0
+  added       1
+  removed     1
+  provenance  0
+
+use expansion
+  count      +1
+  added       1
+  removed     0
+  provenance  0
+```
+
+またadded / removed knowledge memberをretained provenanceとして扱わない。
+
+これによりR6のinput observationは:
+
+```text
+scope meaning
+cardinality
+membership
+retained provenance
+```
+
+を別軸のまま比較できる。
+
+R6Pは`Changed` / `SemanticChanged` / `ScopeChanged` / `Fresh` / `Authorized`等を追加せず、R3のfreshness / acceptance / action authorityへ踏み込まない。
+
 
 
 
