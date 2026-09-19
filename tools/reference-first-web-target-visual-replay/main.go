@@ -116,7 +116,7 @@ var requiredReplaySources = map[string]string{
 
 func main() {
 	var (
-		summaryPath = flag.String("semantic-functional-summary", "", "Semantic / Functional summary JSON")
+		summaryPath    = flag.String("semantic-functional-summary", "", "Semantic / Functional summary JSON")
 		artifactDir    = flag.String("artifact-dir", "", "Directory containing same-run raw Target HTML artifacts")
 		visualManifest = flag.String("visual-manifest", "", "Optional Visual manifest scaffold/review JSON")
 		listen         = flag.String("listen", "127.0.0.1:18181", "Loopback listen address")
