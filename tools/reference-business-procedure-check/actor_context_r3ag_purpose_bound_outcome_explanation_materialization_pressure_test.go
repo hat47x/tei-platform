@@ -304,7 +304,12 @@ func actorContextR3AGMaterialize(
 	case view.Audience == actorContextR3PAudienceHuman &&
 		view.Purpose == actorContextR3PPurposeOrientation:
 		out.DetailDispositions = actorContextR3AGHumanDetailProfile()
-		if len(explanation.CategoryOutcomes) > 0 && len(out.DrillDownRefs) == 0 {
+		out.DrillDownUnselectedChanges = actorContextR3TUniqueChanges(explanation.UnselectedChanges)
+		out.DrillDownResidualRootDeltas = actorContextR3AGNormalizeResiduals(explanation.ResidualRootDeltas)
+		if (len(explanation.CategoryOutcomes) > 0 ||
+			len(explanation.UnselectedChanges) > 0 ||
+			len(explanation.ResidualRootDeltas) > 0) &&
+			len(out.DrillDownRefs) == 0 {
 			return actorContextR3AGMaterializedExplanationProbe{}, fmt.Errorf(
 				"R3AG Human drill-down detail requires existing provenance refs",
 			)
@@ -342,7 +347,7 @@ func actorContextR3AGHumanDetailProfile() []actorContextR3AGDetailDispositionPro
 		{actorContextR3AGDetailCategoryReasons, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailFreshnessAuthority, actorContextR3AGDispositionInline},
 		{actorContextR3AGDetailResolutionNeeds, actorContextR3AGDispositionInline},
-		{actorContextR3AGDetailUnselectedChanges, actorContextR3AGDispositionOmitted},
+		{actorContextR3AGDetailUnselectedChanges, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailResidualRootDeltas, actorContextR3AGDispositionDrillDown},
 		{actorContextR3AGDetailProvenanceDrilldown, actorContextR3AGDispositionDrillDown},
 	}
