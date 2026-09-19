@@ -2627,6 +2627,68 @@ production messaging protocol / ticket creation / notification transport / recip
 
 
 
+
+### R3AK — Authority information request identity / response correlation
+
+R3AJのauthority-information requestにsemantic identityとcurrent context revisionを分けて付与し、responseをcurrent requestへcorrelateできるようにする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AK_REQUEST_CORRELATION_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ak_request_correlation_boundary_pressure_test.go`
+
+```text
+RequestIdentity
+  = semantic question identity
+
+RequestRevisionIdentity
+  = RequestIdentity
+    + current SourceRefs / DrillDownRefs
+    + HandoffRecipientStatus
+```
+
+とする。
+
+routing destination / recipient identity / delivery metadata / lifecycle stateはRequestIdentityへ含めない。
+
+SourceRefs / DrillDownRefsだけが変わる場合は:
+
+```text
+RequestIdentity = same
+RequestRevisionIdentity = changed
+```
+
+となり、旧revisionへのresponseをcurrent requestへsilent applyしない。
+
+test-only lifecycleは `prepared` と `response-correlated` だけを扱う。
+
+```text
+prepared
+  != sent / delivered / routed / assigned
+
+response-correlated
+  != accepted
+  != approved
+  != sufficient
+  != resolved
+  != authority accepted
+```
+
+response witnessはRequestIdentity / RequestRevisionIdentity / ResponseRef / ProvidedInformationClasses / EvidenceRefsだけを持ち、identityとrevisionがcurrent requestと一致した場合だけcorrelateする。
+
+ProvidedInformationClassesがneedと一致してもEvidence sufficient / authority acceptedとはしない。逆にinformation classが異なってもidentity / revisionが一致していればresponse自体のcorrelationは可能とする。
+
+recipient statusがunresolvedでもcorrelationでき、Sender / RoutingKey / Channel等を推測しない。
+
+production messaging / delivery tracking / recipient directory / ticketing / authority acceptance workflowは追加しない。
+
+次段ではcorrelated responseについて `response evidence observed != authority evidence qualified != Accepted Decision` を維持し、response evidence qualificationの入口だけをPressureする。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
