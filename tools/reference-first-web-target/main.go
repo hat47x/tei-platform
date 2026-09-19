@@ -18,6 +18,8 @@ func main() {
 		baselineID    = flag.String("baseline-id", "", "Handover Baseline ID, for example B")
 		baselineRev   = flag.String("baseline-revision", "", "Handover baseline repository revision R")
 		targetRev     = flag.String("target-revision", "", "Target build repository revision T")
+		legacyUsers   = flag.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
+		legacyAuthz   = flag.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen        = flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
 	)
 	flag.Parse()
@@ -46,7 +48,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	target, err := newWebTargetServer(projection, newReferenceReadScenarioRunner(loaded.World))
+	commandScenario, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		*legacyUsers,
+		*legacyAuthz,
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	target, err := newWebTargetServer(
+		projection,
+		newReferenceReadScenarioRunner(loaded.World),
+		commandScenario,
+	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
