@@ -41,6 +41,16 @@ type webCommandScenarioResponse struct {
 	Result                     commandScenarioResult `json:"result"`
 }
 
+type webCommandScenarioErrorResponse struct {
+	HandoverBaselineID         string                `json:"handoverBaselineId"`
+	BaselineRepositoryRevision string                `json:"baselineRepositoryRevision"`
+	TargetBuildRevision        string                `json:"targetBuildRevision"`
+	TargetAdapter              string                `json:"targetAdapter"`
+	Host                       string                `json:"host"`
+	Result                     commandScenarioResult `json:"result"`
+	ExecutionError             string                `json:"executionError"`
+}
+
 func newWebTargetServer(
 	projection webTargetProjection,
 	readScenario readScenarioRunner,
@@ -177,7 +187,22 @@ func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.R
 		RowIndex:   request.RowIndex,
 	})
 	if err != nil {
-		http.Error(w, "execute command scenario: "+err.Error(), http.StatusUnprocessableEntity)
+		response := webCommandScenarioErrorResponse{
+			HandoverBaselineID:         s.projection.HandoverBaselineID,
+			BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
+			TargetBuildRevision:        s.projection.TargetBuildRevision,
+			TargetAdapter:              s.projection.TargetAdapter,
+			Host:                       s.projection.Host,
+			Result:                     result,
+			ExecutionError:             err.Error(),
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		if encodeErr := encoder.Encode(response); encodeErr != nil {
+			http.Error(w, "encode command scenario execution error", http.StatusInternalServerError)
+		}
 		return
 	}
 
