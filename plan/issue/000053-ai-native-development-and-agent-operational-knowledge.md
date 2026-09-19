@@ -1850,7 +1850,7 @@ explicit binding例:
 
 - requirement Reference -> machine-reasons / Agent known-authority-facts
 - protected resource Reference -> machine-reasons / resolution-needs / Agent known-authority-facts
-- prior Observation -> machine-reasons / Agent known-authority-facts
+- prior Observation -> machine-reasonsのみ（runtime Evidenceをauthority factへ昇格させない）
 - R3X test-only context -> stop-identity / machine-reasons / resolution-needs
 - locator-only -> source-refs
 
@@ -1874,6 +1874,7 @@ unselected
 ```text
 prior Observation changed
   != current runtime-outcome changed
+  != known-authority-facts changed
 
 corroboration changed
   != authority changed
