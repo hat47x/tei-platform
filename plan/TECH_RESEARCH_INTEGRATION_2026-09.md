@@ -1416,6 +1416,65 @@ R6Oは`Changed` / `ChangeClass` / `Fresh` / `Stale` / `ShouldReevaluate` / `Auth
 
 R3AO / R3APのAccepted Decision / write-authority Evidence Gateは再実装しない。
 
+#### R6P orthogonal observation decomposition — 2026-09-19
+
+R6M / R6N / R6Oで分離したsame-scope observationを、一つの比較結果へ束ねても意味を平坦化しないことをPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6p_orthogonal_observation_decomposition_pressure_test.go`
+
+R6Pは同一ScopeIdentity上で:
+
+```text
+cardinality delta
+membership delta
+retained-member provenance delta
+```
+
+を別axisとして保持する。
+
+整合条件は:
+
+```text
+CountDelta
+  = len(Added)
+  - len(Removed)
+```
+
+である。
+
+これによりduplicate use observationのように:
+
+```text
+count +1
+membership +0
+```
+
+となる入力をfail closedできる。
+
+一方:
+
+```text
+fingerprint-only change
+  cardinality delta = 0
+  membership delta  = 0
+  provenance delta  = 1
+
+same-count member substitution
+  cardinality delta = 0
+  membership        = Added 1 / Removed 1
+  provenance delta  = 0
+```
+
+として、差分の種類を混ぜない。
+
+knowledge memberのAdded / Removedはretained provenance deltaへ現れてはならない。
+
+R6Pはこれらを`SemanticChanged` / `Fresh` / `ShouldReevaluate`等へ集約せず、input observationの直交分解に留める。
+
+Accepted Decision / authority application / execution responseはR3側の責務のままとする。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
