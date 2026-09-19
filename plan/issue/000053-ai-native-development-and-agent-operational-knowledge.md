@@ -2326,11 +2326,11 @@ R3AFのunderlying Operational explanationを再計算せず、Human / Agentのpu
 
 正本:
 
-- `plan/ACTOR_CONTEXT_R3AG_PURPOSE_BOUND_OUTCOME_MATERIALIZATION_2026-09.md`
+- `plan/ACTOR_CONTEXT_R3AG_PURPOSE_BOUND_OUTCOME_EXPLANATION_MATERIALIZATION_2026-09.md`
 
 test-only source:
 
-- `tools/reference-business-procedure-check/actor_context_r3ag_purpose_bound_outcome_materialization_pressure_test.go`
+- `tools/reference-business-procedure-check/actor_context_r3ag_purpose_bound_outcome_explanation_materialization_pressure_test.go`
 
 ```text
 materialization
