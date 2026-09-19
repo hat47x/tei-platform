@@ -24,7 +24,13 @@ type semanticFunctionalSummary struct {
 	SemanticConformance        passState          `json:"semanticConformance"`
 	FunctionalEvidence         passState          `json:"functionalEvidence"`
 	VisualEvidence             pendingVisualState `json:"visualEvidence"`
-	GateCReady                 bool               `json:"gateCReady"`
+	Artifacts                  []sourceArtifactDigest `json:"artifacts"`
+	GateCReady                 bool                   `json:"gateCReady"`
+}
+
+type sourceArtifactDigest struct {
+	File   string `json:"file"`
+	SHA256 string `json:"sha256"`
 }
 
 type passState struct {
@@ -64,6 +70,8 @@ type visualCapture struct {
 	MediaType      string `json:"mediaType"`
 	ViewportWidth  int    `json:"viewportWidth"`
 	ViewportHeight int    `json:"viewportHeight"`
+	SourceArtifact string `json:"sourceArtifact"`
+	SourceSHA256   string `json:"sourceSHA256"`
 }
 
 type visualCriterion struct {
@@ -74,10 +82,12 @@ type visualCriterion struct {
 }
 
 type captureDigest struct {
-	ID       string `json:"id"`
-	File     string `json:"file"`
-	SHA256   string `json:"sha256"`
-	ByteSize int64  `json:"byteSize"`
+	ID             string `json:"id"`
+	File           string `json:"file"`
+	SHA256         string `json:"sha256"`
+	ByteSize       int64  `json:"byteSize"`
+	SourceArtifact string `json:"sourceArtifact"`
+	SourceSHA256   string `json:"sourceSHA256"`
 }
 
 type criterionAudit struct {
@@ -115,6 +125,15 @@ var requiredCaptures = map[string]struct {
 	"custom-submit-authorization-denied":     {Surface: "custom-submit", State: "authorization-denied"},
 	"custom-submit-validation-not-satisfied": {Surface: "custom-submit", State: "validation-not-satisfied"},
 	"custom-submit-execution-error":          {Surface: "custom-submit", State: "execution-error"},
+}
+
+var requiredCaptureSources = map[string]string{
+	"projection-index":                       "projection-index.html",
+	"custom-submit-initial":                  "custom-submit-get.html",
+	"custom-submit-success":                  "custom-submit-success.html",
+	"custom-submit-authorization-denied":     "custom-submit-authorization-denied.html",
+	"custom-submit-validation-not-satisfied": "custom-submit-validation-not-satisfied.html",
+	"custom-submit-execution-error":          "custom-submit-execution-error.html",
 }
 
 var requiredCriteria = []string{
@@ -224,6 +243,10 @@ func auditVisualEvidence(
 	if err := validateSemanticFunctionalSource(semanticFunctional); err != nil {
 		return visualAuditSummary{}, err
 	}
+	sourceDigests, err := semanticArtifactDigestIndex(semanticFunctional.Artifacts)
+	if err != nil {
+		return visualAuditSummary{}, err
+	}
 
 	var manifest visualManifest
 	if err := readJSON(manifestPath, &manifest); err != nil {
@@ -288,6 +311,30 @@ func auditVisualEvidence(
 		if filepath.Base(capture.File) != capture.File || capture.File == "." || capture.File == "" {
 			return visualAuditSummary{}, fmt.Errorf("visual capture %s has unsafe file %q", capture.ID, capture.File)
 		}
+		expectedSource, requiredSource := requiredCaptureSources[capture.ID]
+		if requiredSource {
+			if capture.SourceArtifact != expectedSource {
+				return visualAuditSummary{}, fmt.Errorf(
+					"visual capture %s sourceArtifact=%q, want %q",
+					capture.ID,
+					capture.SourceArtifact,
+					expectedSource,
+				)
+			}
+			expectedDigest, ok := sourceDigests[expectedSource]
+			if !ok {
+				return visualAuditSummary{}, fmt.Errorf(
+					"Semantic / Functional summary has no digest for visual replay source %s",
+					expectedSource,
+				)
+			}
+			if capture.SourceSHA256 != expectedDigest {
+				return visualAuditSummary{}, fmt.Errorf(
+					"visual capture %s sourceSHA256 does not match Semantic / Functional raw artifact",
+					capture.ID,
+				)
+			}
+		}
 		capturesByID[capture.ID] = capture
 	}
 
@@ -346,10 +393,12 @@ func auditVisualEvidence(
 		}
 		sum := sha256.Sum256(data)
 		digests = append(digests, captureDigest{
-			ID:       capture.ID,
-			File:     capture.File,
-			SHA256:   hex.EncodeToString(sum[:]),
-			ByteSize: info.Size(),
+			ID:             capture.ID,
+			File:           capture.File,
+			SHA256:         hex.EncodeToString(sum[:]),
+			ByteSize:       info.Size(),
+			SourceArtifact: capture.SourceArtifact,
+			SourceSHA256:   capture.SourceSHA256,
 		})
 	}
 	sort.Slice(digests, func(i, j int) bool { return digests[i].ID < digests[j].ID })
@@ -449,6 +498,7 @@ func auditVisualEvidence(
 			"visual-pass-does-not-auto-declare-gate-c-ready",
 			"screenshot-files-are-derived-evidence-not-source-of-truth",
 			"capture-tool-and-evaluator-remain-exchangeable",
+			"each-screenshot-is-bound-to-a-same-run-target-rendered-html-artifact-digest",
 		},
 	}, nil
 }
@@ -488,6 +538,10 @@ func buildVisualManifestScaffold(
 	if viewportWidth <= 0 || viewportHeight <= 0 {
 		return visualManifest{}, fmt.Errorf("viewport width and height must be positive")
 	}
+	sourceDigests, err := semanticArtifactDigestIndex(source.Artifacts)
+	if err != nil {
+		return visualManifest{}, err
+	}
 
 	captureIDs := make([]string, 0, len(requiredCaptures))
 	for id := range requiredCaptures {
@@ -498,6 +552,14 @@ func buildVisualManifestScaffold(
 	captures := make([]visualCapture, 0, len(captureIDs))
 	for _, id := range captureIDs {
 		expected := requiredCaptures[id]
+		sourceArtifact := requiredCaptureSources[id]
+		sourceDigest, ok := sourceDigests[sourceArtifact]
+		if !ok {
+			return visualManifest{}, fmt.Errorf(
+				"Semantic / Functional summary has no digest for visual replay source %s",
+				sourceArtifact,
+			)
+		}
 		captures = append(captures, visualCapture{
 			ID:             id,
 			Surface:        expected.Surface,
@@ -506,6 +568,8 @@ func buildVisualManifestScaffold(
 			MediaType:      "image/png",
 			ViewportWidth:  viewportWidth,
 			ViewportHeight: viewportHeight,
+			SourceArtifact: sourceArtifact,
+			SourceSHA256:   sourceDigest,
 		})
 	}
 
@@ -532,6 +596,29 @@ func buildVisualManifestScaffold(
 		Captures:                            captures,
 		Criteria:                            criteria,
 	}, nil
+}
+
+func semanticArtifactDigestIndex(artifacts []sourceArtifactDigest) (map[string]string, error) {
+	result := make(map[string]string, len(artifacts))
+	for _, artifact := range artifacts {
+		if artifact.File == "" || artifact.SHA256 == "" {
+			return nil, fmt.Errorf("Semantic / Functional artifact digest is incomplete: %+v", artifact)
+		}
+		if _, exists := result[artifact.File]; exists {
+			return nil, fmt.Errorf("Semantic / Functional artifact digest %s is duplicated", artifact.File)
+		}
+		result[artifact.File] = artifact.SHA256
+	}
+	for captureID, sourceArtifact := range requiredCaptureSources {
+		if _, ok := result[sourceArtifact]; !ok {
+			return nil, fmt.Errorf(
+				"Semantic / Functional summary is missing visual replay source %s for %s",
+				sourceArtifact,
+				captureID,
+			)
+		}
+	}
+	return result, nil
 }
 
 func requireSameTargetProvenance(
