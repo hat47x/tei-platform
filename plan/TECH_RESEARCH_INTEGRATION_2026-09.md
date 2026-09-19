@@ -1361,6 +1361,61 @@ R6NもScopeIdentity一致を必須とし、異なるscope間のmember集合を�
 
 R6NはR3AM以降のauthority assertion / acceptance処理を再実装しない。
 
+#### R6O retained-member provenance delta — 2026-09-19
+
+R6Nでmembership identityとsource revisionを分離した次段として、同じScopeIdentityかつ同じKnowledgeKeyがbefore / afterの両方に残る場合だけ、knowledge provenanceのbefore / afterを観測する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6o_retained_member_provenance_delta_pressure_test.go`
+
+対象はretained routed knowledgeだけとし、snapshotは:
+
+```text
+KnowledgeKey
+KnowledgeKind
+RequiredInputFingerprints
+SourceRefs
+```
+
+を保持する。
+
+```text
+same ScopeIdentity
+  + same KnowledgeKey retained
+  + provenance differs
+  -> retained-member provenance delta
+```
+
+とする。
+
+同じKnowledgeKeyのfingerprintだけが変わる場合:
+
+```text
+membership delta = none
+provenance delta = before / after retained
+```
+
+となる。
+
+SourceRefsだけが変わる場合もprovenance differenceとして観測するが、それをsemantic change / locator refresh requiredへ分類しない。分類責務はR3R以降へ残す。
+
+一方:
+
+```text
+knowledge member added / removed
+  -> R6N membership delta
+  != R6O revision delta
+```
+
+である。
+
+またrouted use edgeだけが増減してknowledge body provenanceが同一ならR6O deltaは生成しない。
+
+R6Oは`Changed` / `ChangeClass` / `Fresh` / `Stale` / `ShouldReevaluate` / `Authorized`等を持たず、before / after provenanceを観測するだけに留める。
+
+R3AO / R3APのAccepted Decision / write-authority Evidence Gateは再実装しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
