@@ -3124,7 +3124,7 @@ current inspected Repository evidenceではこれらを同時に満たすOperati
 accepted-decision-write-authority-unresolved
 ```
 
-を維持する。これはR3AO witnessがinvalid / rejectedという意味ではない。
+を維持する。これはR3AO witness observationがinvalid / rejectedという意味ではない。
 
 complete synthetic candidateでGateをpressure-qualifiedにできるが、複数candidateがqualifyする場合はprecedence unresolvedとし、scope specificity / source location / revision値 / corroboration countからwinnerを選ばない。
 
@@ -3139,6 +3139,7 @@ commit candidate
   != committed Accepted Decision
   != current authority applied
 ```
+
 
 
 ## Phase 4 — side-effect Action
