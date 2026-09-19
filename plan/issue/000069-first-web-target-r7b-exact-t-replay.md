@@ -190,6 +190,8 @@ fresh Target process
 
 これを最低2 run行う。run 1とrun 2は別process、別run identity、別raw artifact directoryを持つ。
 
+run identityは同一execution内で異なるだけでなく、同じrunner revision / 同じTarget Tを後日再実行した場合にも不用意に衝突しないようにする。固定のTとrunner source revisionだけからdefault run IDを作らず、per-acquisition nonce / UTC timestamp等の非semantic discriminatorを含め、採用Evidence側には生成後のexact identityを記録する。
+
 #### 3.1 Gate C fixture replay map
 
 初回R7B operational replayのrequest fixtureは、existing `tools/run-first-web-target-gate-c-evidence.sh` がactual Gate C Evidence取得に使ったJSON Scenarioだけを再利用する。Custom UI / HTML captureはISSUE-000069の対象外とする。
@@ -565,6 +567,8 @@ r7b-replay/
 
 receiptにはsource revision、replay Target build、run identities、raw artifact identities、actual repeatability observedの有無を残す。
 
+Booleanの `originManifestVerified=true` だけではexact Evidence identityとして不足するため、少なくとも adopted Gate C archive SHA-256、展開後 `MANIFEST.sha256` 自体のSHA-256、replay plan / receipt SHA-256、各run-observation SHA-256、repeatability-summary SHA-256を最終receiptへbindingする。
+
 ## fail-closed条件
 
 少なくとも次を拒否する。
@@ -584,6 +588,7 @@ receiptにはsource revision、replay Target build、run identities、raw artifa
 - HTTP boundary mismatch
 - semantic classification mismatch
 - retained artifactへのReference credential混入
+- raw responseだけでなく、server / test log、metadata、summary、copyしたsource receiptを含むretained output set全体のcredential scan未実施
 - operational run中のcurrent Repository source変更
 
 ## 検証gate
