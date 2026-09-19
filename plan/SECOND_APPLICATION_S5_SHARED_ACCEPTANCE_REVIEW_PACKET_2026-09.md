@@ -218,7 +218,7 @@ witnessは少なくとも:
 
 ```text
 proposalFingerprint = b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2
-baseModelRevision   = bfda34c27f9768ddd744f9acfbb6991d9c104bb4
+baseModelRevision   = 6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
 sharedFreshness     = captured
 acceptanceWitness   = absent
 decision            = pending
