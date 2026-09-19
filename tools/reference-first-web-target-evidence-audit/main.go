@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -134,6 +133,7 @@ type evidenceSummary struct {
 	TargetBuildRevision         string                   `json:"targetBuildRevision"`
 	TargetAdapter               string                   `json:"targetAdapter"`
 	Host                        string                   `json:"host"`
+	SourceQualification         evidenceCheck            `json:"sourceQualification"`
 	SemanticConformance         evidenceCheck            `json:"semanticConformance"`
 	FunctionalEvidence          evidenceCheck            `json:"functionalEvidence"`
 	VisualEvidence              visualEvidenceState      `json:"visualEvidence"`
@@ -192,7 +192,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err := readJSONArtifact(dir, "manifest.json", &manifest); err != nil {
 		return evidenceSummary{}, err
 	}
-	if err := requireProvenance("manifest.json", manifest.provenance, expected); err != nil {
+	if err := requireProvenance("manifest.json", manifest.Provenance, expected); err != nil {
 		return evidenceSummary{}, err
 	}
 	if manifest.ApplicationID != "order_entry" {
@@ -209,7 +209,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err := readJSONArtifact(dir, "read.json", &read); err != nil {
 		return evidenceSummary{}, err
 	}
-	if err := requireProvenance("read.json", read.provenance, expected); err != nil {
+	if err := requireProvenance("read.json", read.Provenance, expected); err != nil {
 		return evidenceSummary{}, err
 	}
 	if read.Result.ScenarioID != "order-entry.read-only-web-slice" || read.Result.ApplicationID != "order_entry" {
@@ -223,7 +223,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err := readJSONArtifact(dir, "submit-success.json", &success); err != nil {
 		return evidenceSummary{}, err
 	}
-	if err := requireProvenance("submit-success.json", success.provenance, expected); err != nil {
+	if err := requireProvenance("submit-success.json", success.Provenance, expected); err != nil {
 		return evidenceSummary{}, err
 	}
 	if err := requireSuccessfulCommand(success.Result); err != nil {
@@ -234,7 +234,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err := readJSONArtifact(dir, "submit-authentication-denied.json", &authDenied); err != nil {
 		return evidenceSummary{}, err
 	}
-	if err := requireProvenance("submit-authentication-denied.json", authDenied.provenance, expected); err != nil {
+	if err := requireProvenance("submit-authentication-denied.json", authDenied.Provenance, expected); err != nil {
 		return evidenceSummary{}, err
 	}
 	if authDenied.Result.Stage != "authentication-denied" ||
@@ -249,7 +249,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err := readJSONArtifact(dir, "submit-authorization-denied.json", &authzDenied); err != nil {
 		return evidenceSummary{}, err
 	}
-	if err := requireProvenance("submit-authorization-denied.json", authzDenied.provenance, expected); err != nil {
+	if err := requireProvenance("submit-authorization-denied.json", authzDenied.Provenance, expected); err != nil {
 		return evidenceSummary{}, err
 	}
 	if authzDenied.Result.Stage != "authorization-denied" ||
@@ -561,7 +561,6 @@ func digestArtifact(dir, name string) (evidenceArtifactDigest, error) {
 }
 
 func fatalf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format+"
-", args...)
+	fmt.Fprintf(os.Stderr, format+"\\n", args...)
 	os.Exit(1)
 }
