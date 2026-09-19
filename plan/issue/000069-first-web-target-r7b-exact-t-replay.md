@@ -310,6 +310,49 @@ existing Gate C evidence-audit tests PASS
 
 Gate C auditorのsummary shapeと既存判定条件を保ったままshared helperへ移せない場合は、R7B側へコピーして先へ進まず停止する。
 
+#### 1.3 V1 test migration matrix
+
+current `tools/reference-first-web-target-evidence-audit/main_test.go` は次の3 integration testを持つ。
+
+- Semantic / Functional happy path
+- Target revision mismatch reject
+- retained raw artifactへのcredential material混入reject
+
+この3本はshared classifier extraction後もGate C auditor側に残す。これらは「shared helper単体」ではなく、Gate C audit全体のsource qualification / summary / Target Difference Handoff / credential scanまで含むintegration boundaryを検証しているためである。
+
+一方、current happy-path fixtureは6 behaviorを一度にvalidとして作るだけで、各semantic boundaryのnegative caseを独立には固定していない。V1ではshared package側に少なくとも次のtable-driven pressureを追加する。
+
+| validator | minimum negative pressure |
+| --- | --- |
+| provenance | B / R / T / Target Adapter / Hostのいずれか1つが違えばreject |
+| read | wrong Scenario ID、wrong Application ID、browse binding drift、customer binding drift、order-lines binding driftをreject |
+| command success | wrong stage、Authentication欠落/非authenticated、Validation count/result drift、Authorization非allowed、Command capability/mode drift、Observation欠落/identity/nature/result driftをreject |
+| authentication denied | wrong stage、Authentication欠落/非denied、CommandまたはObservationが存在すればreject |
+| authorization denied | wrong stage、Authorization欠落/非denied、CommandまたはObservationが存在すればreject |
+| validation not-satisfied | wrong stage、Validation件数/identity/result drift、Authorization / Command / Observationが存在すればreject |
+| execution error | wrong stage、Authorization欠落/非allowed、Command / Observationが存在、current synthetic execution-error conditionを満たさなければreject |
+| credential scan | editor / viewer / locked / disabled secret、およびlegacy credential-ref materialをreject |
+
+V1の順序:
+
+```text
+shared DTO / validator testsを先に追加
+  ↓
+current Gate C predicatesをshared packageへ移動
+  ↓
+Gate C auditorをshared validator callへ置換
+  ↓
+existing Gate C integration testsを維持
+  ↓
+full repository health check
+```
+
+先にproduction-like code motionを行い、後からtestを合わせる順序にしない。
+
+また `writeAuditFixture` 相当のtest fixtureはGate C integration test用として維持できるが、shared validator unit testは巨大なartifact directory全体を要求しない。各behaviorのraw JSON bytesを最小fixtureとして直接検証し、failure原因をbehavior boundaryへ局所化する。
+
+V1ではerror message文字列そのものをpublic contractにしない。判定PASS/FAILと、どのbehavior / provenance boundaryがrejectされたかをtestする。
+
 ### 2. R7B replay audit sourceを追加する
 
 新しいaudit sourceは、各runの6 raw responseを読み、replay planと照合して少なくとも次を記録する。
