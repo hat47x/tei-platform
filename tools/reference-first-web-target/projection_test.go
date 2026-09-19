@@ -45,7 +45,7 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 	if projection.ApplicationID != "order_entry" ||
 		projection.TargetAdapter != "reference-first-web-target" ||
 		projection.Host != "go-net-http" ||
-		projection.Stage != "read-only-driver-slice" {
+		projection.Stage != "authenticated-command-observation-slice" {
 		t.Fatalf("target projection identity=%+v", projection)
 	}
 	if len(projection.Patterns) != 5 {
@@ -124,11 +124,10 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 
 	for _, unresolved := range []string{
 		"browse-environment-instance-binding-not-exposed-by-current-driver-api",
-		"authentication-authorization-web-interaction-not-yet-wired",
-		"command-business-result-execution-error-observation-not-yet-wired",
 		"custom-ui-not-yet-wired",
 		"actual-functional-evidence-not-yet-acquired",
 		"visual-evidence-not-yet-acquired",
+		"actual-external-command-observation-not-acquired",
 	} {
 		if !containsString(projection.Unresolved, unresolved) {
 			t.Fatalf("projection hid unresolved boundary %q: %+v", unresolved, projection.Unresolved)
@@ -168,7 +167,7 @@ func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {
 		testTargetRevision,
 		"order_entry.customer_reference",
 		"master_data.customer",
-		"read-only-driver-slice",
+		"authenticated-command-observation-slice",
 	} {
 		if !strings.Contains(htmlBody, want) {
 			t.Fatalf("HTML projection does not contain %q", want)
