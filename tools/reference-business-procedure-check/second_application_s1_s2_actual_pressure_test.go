@@ -10,50 +10,50 @@ import (
 )
 
 type secondApplicationS1TypeCandidate struct {
-	AuthoritySubject   string
-	Qualification      string
-	ReuseRelation      string
-	DependencySubject  string
-	AuthoritySource    string
+	AuthoritySubject     string
+	Qualification        string
+	ReuseRelation        string
+	DependencySubject    string
+	AuthoritySource      string
 	AuthorityFingerprint string
-	Reasons            []string
-	AuthorityLimits    []string
+	Reasons              []string
+	AuthorityLimits      []string
 }
 
 type secondApplicationS1QueryCandidate struct {
-	AuthoritySubject   string
-	Qualification      string
-	ReuseRelation      string
-	DependencySubject  string
-	AuthoritySource    string
+	AuthoritySubject     string
+	Qualification        string
+	ReuseRelation        string
+	DependencySubject    string
+	AuthoritySource      string
 	AuthorityFingerprint string
-	Result             string
-	ResultCardinality  string
-	Reasons            []string
-	AuthorityLimits    []string
+	Result               string
+	ResultCardinality    string
+	Reasons              []string
+	AuthorityLimits      []string
 }
 
 type secondApplicationS1S2Packet struct {
-	GateCEntryState              string
-	ScenarioLabel                string
-	Intent                       string
-	SourceAuthoringAttempted     bool
-	AcceptanceAttempted          bool
-	EnvironmentBindingCreated    bool
-	TargetImplementationStarted  bool
-	SemanticCandidate            knowledgePortabilityR0CandidateProbe
-	CustomerIDTypeCandidate      secondApplicationS1TypeCandidate
-	ContractCandidate            knowledgePortabilityR0CandidateProbe
-	ContractQueryCandidate       secondApplicationS1QueryCandidate
-	PatternProvenanceCandidate   knowledgePortabilityR0CandidateProbe
-	DevelopmentBindingEvidence   knowledgePortabilityR0EnvironmentProbe
-	ProductionBindingEvidence    knowledgePortabilityR0EnvironmentProbe
-	SharedAuthoritySubjects      []string
-	LinkedDependencySubjects     []string
-	ProvenanceSubjects           []string
+	GateCEntryState                string
+	ScenarioLabel                  string
+	Intent                         string
+	SourceAuthoringAttempted       bool
+	AcceptanceAttempted            bool
+	EnvironmentBindingCreated      bool
+	TargetImplementationStarted    bool
+	SemanticCandidate              knowledgePortabilityR0CandidateProbe
+	CustomerIDTypeCandidate        secondApplicationS1TypeCandidate
+	ContractCandidate              knowledgePortabilityR0CandidateProbe
+	ContractQueryCandidate         secondApplicationS1QueryCandidate
+	PatternProvenanceCandidate     knowledgePortabilityR0CandidateProbe
+	DevelopmentBindingEvidence     knowledgePortabilityR0EnvironmentProbe
+	ProductionBindingEvidence      knowledgePortabilityR0EnvironmentProbe
+	SharedAuthoritySubjects        []string
+	LinkedDependencySubjects       []string
+	ProvenanceSubjects             []string
 	UnresolvedDestinationDecisions []string
-	GateCCarryForward            []string
-	AuthorityLimits              []string
+	GateCCarryForward              []string
+	AuthorityLimits                []string
 }
 
 func TestSecondApplicationS1S2ActualPacketStartsFromActualGateCEntry(t *testing.T) {
