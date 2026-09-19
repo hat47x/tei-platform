@@ -127,6 +127,32 @@ var requiredCriteria = []string{
 	"standard-vs-custom-ui-difference-explainable",
 }
 
+var requiredCriterionCaptureRefs = map[string][]string{
+	"field-grouping-readability": {
+		"projection-index",
+	},
+	"relation-reference-comprehensibility": {
+		"projection-index",
+	},
+	"header-detail-locality": {
+		"custom-submit-success",
+	},
+	"validation-feedback-distinguishable": {
+		"custom-submit-validation-not-satisfied",
+	},
+	"authorization-denial-vs-system-error-distinguishable": {
+		"custom-submit-authorization-denied",
+		"custom-submit-execution-error",
+	},
+	"business-result-vs-observation-distinguishable": {
+		"custom-submit-success",
+	},
+	"standard-vs-custom-ui-difference-explainable": {
+		"projection-index",
+		"custom-submit-initial",
+	},
+}
+
 func main() {
 	var (
 		semanticFunctional = flag.String("semantic-functional-summary", "", "Semantic / Functional summary JSON")
@@ -327,6 +353,25 @@ func auditVisualEvidence(
 					criterion.ID,
 					ref,
 				)
+			}
+		}
+		requiredRefs, required := requiredCriterionCaptureRefs[criterion.ID]
+		if required {
+			for _, requiredRef := range requiredRefs {
+				found := false
+				for _, actualRef := range criterion.CaptureRefs {
+					if actualRef == requiredRef {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return visualAuditSummary{}, fmt.Errorf(
+						"visual criterion %s does not reference required capture %s",
+						criterion.ID,
+						requiredRef,
+					)
+				}
 			}
 		}
 		criteriaByID[criterion.ID] = criterion
