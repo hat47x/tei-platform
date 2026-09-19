@@ -1,9 +1,17 @@
 # ISSUE-000028: 第一Web TargetのConformance Evidence契約を実証する
 
-- 状態: Blocked — Gate B Ready + Handover Baseline固定待ち
+- 状態: Ready — Gate B Ready / Handover Baseline B固定済み、First Web Target Evidence取得待ち
 - GitHub Issue: #270
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - Product Acceptance Scenario: PAS-04 primary
+
+## 現在の入口
+
+着手条件だったGate B ReadyとHandover Baseline `B / R`固定は成立した。
+
+`ISSUE-000007`では`tools/reference-first-web-target`のprojection shell source実装を開始している。manifestには`B / R / T`を別identityとして保持する。
+
+ただし、source implementationや`httptest`用test sourceの存在をGate C Evidenceへ読み替えない。actual Target build/runに紐づくSemantic / Functional / Visual Evidenceは未取得である。
 
 ## 背景
 
@@ -187,7 +195,7 @@ Evidence artifactはderivedです。Canonicalへ暗黙に逆書きしません�
 - [x] `GATE_C_EVIDENCE_CONTRACT.md`を定義する
 - [x] Gate B→C Handover baseline契約を定義する
 - [x] baseline `R`とTarget build `T`を別identityとしてEvidence契約へ定義する
-- [ ] Gate B Ready時に第一Handover Baselineを受け取る
+- [x] Gate B Ready時に第一Handover Baselineを受け取る
 - [ ] 各Gate C Evidence runからHandover Baseline ID / `R`へ追跡できる
 - [ ] 各runの`targetBuildRevision = T`を追跡できる
 - [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える
