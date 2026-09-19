@@ -241,7 +241,8 @@ header, main { max-width: 1120px; margin: 0 auto; padding: 24px; }
 header { border-bottom: 1px solid currentColor; }
 h1, h2, h3 { line-height: 1.2; }
 .meta, .limits { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 8px 20px; }
-code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.meta > div, .limits > li, .pattern { min-width: 0; }
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .patterns { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 16px; }
 .pattern { border: 1px solid currentColor; padding: 16px; }
 .kv { display: grid; grid-template-columns: 130px 1fr; gap: 5px 12px; }
