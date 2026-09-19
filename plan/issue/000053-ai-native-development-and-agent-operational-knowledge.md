@@ -3524,6 +3524,60 @@ production transaction / CAS / locking / idempotency implementation / write exec
 
 
 
+### R3AS — Explicit write-attempt witness / idempotency identity boundary
+
+R3AR application-authority Gateがsingle-qualifiedでも自動write attemptへ進まず、explicit write-attempt witnessが存在する場合だけtest-only write-attempt candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AS_WRITE_ATTEMPT_CANDIDATE_BOUNDARY_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3as_write_attempt_candidate_pressure_test.go`
+
+```text
+application-authority Gate qualified
+  != write attempt created
+
+explicit write-attempt witness
+  + exact R3AQ commit candidate
+  + exact single R3AR application authority
+  + exact revision observation
+  + explicit idempotency identity
+  + exact outcome contract
+  + attempt provenance
+  -> test-only write-attempt candidate
+
+write-attempt candidate
+  != write execution
+  != write outcome
+  != Accepted Decision committed
+```
+
+current Repository-backed R3AR stateはapplication authority unresolvedなのでcurrent corpusだけからattempt candidateを生成しない。
+
+witnessはCommitCandidateIdentity / ApplicationAuthorityEvidenceID / AcceptedDecisionSinkRef / RevisionObservationRef / ObservedDecisionRevision / IdempotencyContractRef / IdempotencyIdentity / WriteOutcomeContractRef / AttemptProvenanceRefをexplicitに持つ。
+
+```text
+idempotency identity present
+  != duplicate suppression executed
+  != exactly-once delivery
+
+outcome contract bound
+  != outcome observed
+```
+
+とする。
+
+multiple-qualified R3AR Gateはwitnessで迂回しない。exact duplicate witnessだけnormalizeし、同じcandidate/revisionで異なるIdempotencyIdentityまたはAttemptProvenanceRefが現れた場合はretry / precedence authority未解決としてfail closedする。
+
+WriteExecuted / WriteOutcome / Applied / Conflict / Committed / NewDecisionRevision / AcceptedDecision / ToolCall / Command / Executor / Retry / NextAction等は追加しない。
+
+production writer / transaction / CAS / transport / retry scheduler / idempotency store / decision store mutationは追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
