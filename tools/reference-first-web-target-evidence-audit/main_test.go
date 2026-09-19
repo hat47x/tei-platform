@@ -124,6 +124,19 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 		t.Fatal(err)
 	}
 
+	if err := os.WriteFile(
+		filepath.Join(dir, "projection-index.html"),
+		[]byte(
+			"<html>TEI / First Web Target Reference order_entry "+
+				p.HandoverBaselineID+" "+
+				p.BaselineRepositoryRevision+" "+
+				p.TargetBuildRevision+"</html>",
+		),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
 	writeAuditJSON(t, filepath.Join(dir, "manifest.json"), manifestArtifact{
 		Provenance:    p,
 		Stage:         "standard-and-custom-ui-shared-boundary",
