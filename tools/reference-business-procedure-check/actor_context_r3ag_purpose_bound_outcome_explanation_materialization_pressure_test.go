@@ -368,6 +368,18 @@ func actorContextR3AGAgentDetailProfile() []actorContextR3AGDetailDispositionPro
 	}
 }
 
+func actorContextR3AGOutcome(
+	outcomes []actorContextR3AFCategoryOutcomeProbe,
+	category string,
+) *actorContextR3AFCategoryOutcomeProbe {
+	for i := range outcomes {
+		if outcomes[i].Category == category {
+			return &outcomes[i]
+		}
+	}
+	return nil
+}
+
 func actorContextR3AGOutcomeIdentity(outcome actorContextR3AFCategoryOutcomeProbe) string {
 	reasons := actorContextR3TUniqueReasons(outcome.Reasons)
 	reasonIDs := make([]string, 0, len(reasons))

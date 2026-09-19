@@ -135,7 +135,7 @@ func businessActionSemanticNamespaceRowsByStepProbe(rows []businessActionSemanti
 
 func assertSemanticNamespaceLensProbe(t *testing.T, row businessActionSemanticNamespaceLensRowProbe, namespaces []string, noTrace bool) {
 	t.Helper()
-	if !reflect.DeepEqual(row.Namespaces, namespaces) {
+	if !(len(row.Namespaces) == 0 && len(namespaces) == 0) && !reflect.DeepEqual(row.Namespaces, namespaces) {
 		t.Fatalf("step %s Namespaces=%v want=%v", row.StepID, row.Namespaces, namespaces)
 	}
 	if row.NoNamespaceTraceFromCurrentRefs != noTrace {
