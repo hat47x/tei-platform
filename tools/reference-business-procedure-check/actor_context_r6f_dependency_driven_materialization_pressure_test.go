@@ -42,16 +42,12 @@ func TestActorContextR6FMaterializesOnlyRoutedKnowledgeConsumedByProjection(t *t
 	exactManifest, err := actorContextR6FBuildMaterializationManifest(
 		exact.Qualified,
 		exactOrigins.Dependencies,
-		exactOrigins.Dependencies[0].Category,
-		exactOrigins.Dependencies[0].Category,
+		actorContextR3PAudienceHuman,
+		actorContextR3PPurposeOrientation,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Audience/Purpose are not carried by R6D records; use the actual bounded
-	// projection identity rather than deriving them from dependency content.
-	exactManifest.Audience = actorContextR3PAudienceHuman
-	exactManifest.Purpose = actorContextR3PPurposeOrientation
 
 	broadManifest, err := actorContextR6FBuildMaterializationManifest(
 		broad.Qualified,
