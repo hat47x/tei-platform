@@ -1177,6 +1177,76 @@ V2 focused PASS
 
 統合sessionはE0をhealth-check済みでmainへ入れ、続いてV1をlatest mainへreconcileしてfull health checkを通した後、V2 candidateをreconcileする。V2もexact candidateを含むfull checkoutで `tools/repository-health-check.sh` がPASSするまでmainへ参照させない。
 
+#### V1 pressure強化を含むV2 composition candidate
+
+V1 branchless candidateのfocused preflight後、正本のV1 test migration matrixに対してnegative pressureが不足していることを再監査した。
+
+不足分だけをtest-only fileとして追加したV1強化candidate:
+
+```text
+fe627f3cb24a6bbef7cb34ccebd7702ff43ae07a
+  ↓ add semantics_pressure_test.go
+fba329f92dbb1a209a6fd89c2c84a51be78f6eb1
+```
+
+追加blob:
+
+```text
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+```
+
+このpressure fileはexact shared source blob
+`46629767bee3b3733c0ca6e4433971c4cc85bb9d`
+とRepository外の一時Go packageで組み合わせ、次を確認した。
+
+```text
+git hash-object semantics.go
+  = 46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+gofmt -l .
+  = empty
+
+go vet ./...
+  = PASS
+
+go test -count=50 ./...
+  = PASS
+```
+
+追加pressureは少なくとも次を網羅する。
+
+- B / R / T / TargetAdapter / Hostのempty / driftを6 validatorすべてでreject
+- read Scenario / Application / browse / customer / order-lines binding drift
+- command-success stage / Authentication / Validation / Authorization / Command / Observation drift
+- authentication-denied stage / Authentication / Command / Observation drift
+- authorization-denied stage / Authorization / Command / Observation drift
+- validation-not-satisfied stage / Validation / downstream-result presence drift
+- execution-error stage / Authorization / Command / Observation / current execution-error condition drift
+- Reference credential reject set
+
+V2 branchless candidate `a5b70735...` は旧V1 candidate `fe627f3c...` を親にしているため、V1強化candidateとは枝分かれしていた。code conflictはなくtest file 1件の追加だけなので、V2 treeへ同じblobを載せたcomposition candidateを作成した。
+
+```text
+a5b70735a1b2ebc6b9772908bef7871f9097bd8a
+  ↓ add ce77296e... test-only blob
+056527b6203feaf3c3830db4d33251d64c475be3
+```
+
+`056527b6...` はV2 source candidateを変更せず、V1 negative pressureを保持するための候補treeである。
+
+Evidence heightは分離する。
+
+```text
+a5b70735 V2 focused PASS
+  + ce77296e pressure focused PASS
+  != 056527b6 combined full-package PASS
+  != repository-health-check PASS
+  != integrated
+```
+
+したがって統合sessionでは、E0統合後のlatest mainへV1/V2 sourceをreconcileする際に **`056527b6...` のtree内容を優先参照**し、そのexact reconcile結果を含むfull checkoutで `tools/repository-health-check.sh` を実行する。unreferenced commit SHAそのものをmainへ機械的にfast-forwardしない。
+
 ### operational runner
 
 新規候補path:
