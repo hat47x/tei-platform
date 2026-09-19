@@ -2688,6 +2688,65 @@ retained provenance
 
 R6Pは`Changed` / `SemanticChanged` / `ScopeChanged` / `Fresh` / `Authorized`等を追加せず、R3のfreshness / acceptance / action authorityへ踏み込まない。
 
+### R6Q — router-substitution observation invariance
+
+R6Eで固定したrouter substitution boundaryを、現在のR6P observation decompositionまで再確認する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6q_router_substitution_observation_invariance_pressure_test.go`
+
+exact / broad routerはpre-qualification selectionが異なってよい。
+
+```text
+selected candidates
+  may differ
+
+qualified knowledge
+  must converge for same task
+
+downstream bounded observation
+  must not retain router choice
+```
+
+current BP-06ではbroad routerが実際にover-selectし、rejected candidateを持つことを確認したうえで、exact / broad双方のqualified knowledgeから同一bounded input assemblyを得る。
+
+router substitution自体をR6P comparisonへ渡すと:
+
+```text
+cardinality delta = 0
+membership delta  = 0
+provenance delta  = 0
+```
+
+である。
+
+さらに同一Procedure fingerprint revisionを双方へ与えた場合:
+
+```text
+exact decomposition
+  == broad decomposition
+
+count       0
+membership  0
+provenance  1
+```
+
+を要求する。
+
+runtime-only consumer-local Observationもrouter independentであり、broad selectionを理由にrouted knowledgeへ昇格させない。
+
+R6Q downstream observationはRoutingMechanism / PreferredRouter / Winner / Score / Confidence / rejected candidate情報を含まない。
+
+```text
+router substitution
+  != semantic input change
+  != freshness change
+  != authority change
+```
+
+R3AQ以降のAccepted Decision commit / write authority境界とは独立する。
+
 
 
 
