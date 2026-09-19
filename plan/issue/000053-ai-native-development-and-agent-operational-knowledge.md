@@ -1823,6 +1823,76 @@ change classは観測分類に留め、ShouldReevaluate / ReusePermitted / Retry
 
 
 
+### R3AD — Provenance root change / bounded re-evaluation explanation
+
+R3ACでrole-aware provenance root changeを分類した後、そのchangeをbounded projectionのselected categoryへexplicit bindingし、「どのcategoryを、なぜ再評価するか」をR3T型のreason tupleで説明する。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AD_ROOT_CHANGE_PROJECTION_IMPACT_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ad_root_change_projection_impact_pressure_test.go`
+
+R3ACのchange classをgeneric source changeへ潰さず、R3Tのreason shape:
+
+```text
+category
+change class
+dependency key
+dependency reason
+```
+
+へ接続する。
+
+explicit binding例:
+
+- requirement Reference -> machine-reasons / Agent known-authority-facts
+- protected resource Reference -> machine-reasons / resolution-needs / Agent known-authority-facts
+- prior Observation -> machine-reasons / Agent known-authority-facts
+- R3X test-only context -> stop-identity / machine-reasons / resolution-needs
+- locator-only -> source-refs
+
+current bounded projectionでbindingを持たないcorroboration changeやunknown root-set changeはnearest generic impactへ変換せず `ResidualRootChanges` として保持する。
+
+```text
+UnselectedChange
+  = explicit binding exists
+    but current bounded view does not select that category
+
+ResidualRootChange
+  = binding / semantic mapping itself is absent
+
+unselected
+  != unmapped
+  != ignored
+```
+
+特に:
+
+```text
+prior Observation changed
+  != current runtime-outcome changed
+
+corroboration changed
+  != authority changed
+
+root changed
+  != all categories changed
+
+affected category
+  != response action selected
+```
+
+を維持する。
+
+Human / Agentのshared categoryでは同じroot identity / dependency reasonへ戻り、Agent-only detailの追加をHuman側の不整合とみなさない。
+
+ShouldReevaluate / AutoReauthorize / RetryRequired / CacheValid / Winner / NextAction / HandoffOwner等は追加せず、production impact graph / watcher / scheduler / cache invalidation / runtime Observation storeも導入しない。
+
+
+
 ## Cross-cutting R6 — Selective Knowledge Routing
 
 最新技術リサーチのR6を、Phase 3のAuthorization locus探索とは別の横断pressureとして扱う。
