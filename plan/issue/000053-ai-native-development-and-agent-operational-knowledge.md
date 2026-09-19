@@ -2374,6 +2374,47 @@ Humanがexact detailをinline省略する場合、existing dependency keyまた�
 production UI component / Agent wire protocol / notification transport / routing engineは追加しない。
 
 
+### R3AH — Cross-audience outcome drill-down chain
+
+R3AGのpurpose-bound presentationから、shared outcomeのprovenanceを同じchainで辿れることをPressureする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AH_CROSS_AUDIENCE_OUTCOME_DRILLDOWN_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ah_cross_audience_outcome_drilldown_pressure_test.go`
+
+```text
+summary outcome identity
+  -> exact R3AF category outcome
+  -> exact R3T reason
+  -> existing R3R/R3S dependency key
+  -> explicit R3AD root binding
+  -> R3AB provenance root
+  -> current locator
+```
+
+とし、Human / Agentのpresentation差で別provenance chainを作らない。
+
+summary handleはderived identityでありauthorityではない。reasonのdependency keyからrootへ戻る際はR3AD explicit bindingだけを使い、role / locator類似から推測しない。
+
+prior Authorization Observation等のResidualRootDeltaはselected dependency chainへ捏造せず、residual reason -> root address / role -> current locatorという別chainで保持する。
+
+summary handle mismatch、missing dependency key、missing explicit root binding、missing current root / locatorはfail closedする。
+
+```text
+traceability
+  != authority
+  != remediation
+  != execution
+```
+
+を維持し、production provenance service / global graph / UI routing / Agent invocation protocolは追加しない。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
