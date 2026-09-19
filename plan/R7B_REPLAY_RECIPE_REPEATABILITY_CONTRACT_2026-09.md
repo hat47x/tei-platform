@@ -225,7 +225,11 @@ The plan pins:
 - exact execution-intake SHA-256
 - exact execution-intake receipt SHA-256
 - source R7A handoff / acquisition-receipt SHA-256
+- Handover Baseline ID
+- Baseline Repository revision
 - origin and replay Target build revision
+- Target Adapter
+- Host
 - one named Target-local request fixture per behavior
 - Target-local interaction description
 - expected HTTP boundary
@@ -249,7 +253,11 @@ execution intake
 
 `RequestFixtureID` and `TargetLocalInteraction` are Target-local operational material. They do not become Canonical Application identity or Semantic Operation authority.
 
-The first replay plan pins `ReplayTargetBuildRevision` to the origin Gate C Target build `T`. A cross-revision replay requires a different explicit plan / Evidence identity.
+The first replay plan pins `ReplayTargetBuildRevision` to the origin Gate C Target build `T`. E0 also requires the top-level plan to losslessly carry `HandoverBaselineID`, `BaselineRepositoryRevision`, `TargetAdapter`, and `Host` from the accepted execution intake. These values are execution provenance, not new authority.
+
+Until that E0 carry is health-check済みで integrated, a newly materialized replay plan is provisional and must not be adopted as the final Packet M execution plan.
+
+A cross-revision replay requires a different explicit plan / Evidence identity.
 
 ## 11. Origin Gate C Evidence locator
 

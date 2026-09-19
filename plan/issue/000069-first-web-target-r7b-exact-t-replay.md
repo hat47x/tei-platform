@@ -443,6 +443,119 @@ replay plan
 
 E0は `tools/reference-first-web-target-r7b-replay-plan` の小変更であり、Packet Vのshared classifier packageとはfile境界が分かれる。ただしコード変更なので、full `tools/repository-health-check.sh` PASS前にはmainへ入れない。
 
+##### 3.0.1 E0 exact implementation delta
+
+current sourceに対する初回差分は次に限定する。
+
+`replayPlan` top-levelへ追加:
+
+```go
+HandoverBaselineID         string `json:"handoverBaselineId"`
+BaselineRepositoryRevision string `json:"baselineRepositoryRevision"`
+TargetAdapter              string `json:"targetAdapter"`
+Host                       string `json:"host"`
+```
+
+既存:
+
+```go
+ReplayTargetBuildRevision string `json:"replayTargetBuildRevision"`
+```
+
+と合わせ、plan launch provenanceは:
+
+```text
+B / R / T / TargetAdapter / Host
+```
+
+の5要素になる。
+
+`buildReplayPlan` はaccepted `executionIntake` から次をそのまま代入する。
+
+```text
+plan.HandoverBaselineID
+  = intake.HandoverBaselineID
+
+plan.BaselineRepositoryRevision
+  = intake.BaselineRepositoryRevision
+
+plan.ReplayTargetBuildRevision
+  = intake.TargetBuildRevision
+
+plan.TargetAdapter
+  = intake.TargetAdapter
+
+plan.Host
+  = intake.Host
+```
+
+同じ4値を各 `replayUnit` へ複製しない。behavior unitはbehavior-local recipe / raw artifact / Target revision境界を保持し、launch provenanceのsingle sourceはplan top-levelとする。
+
+current `validateIntake` が持つknown Gate C exact-value checkはE0で除去しない。これはcurrent adopted Reference inputをfail closedで受ける境界であり、plan carryの代替ではない。
+
+##### 3.0.2 E0 exact test delta
+
+最低限、既存happy-path testで次を追加確認する。
+
+```text
+got.HandoverBaselineID
+  == intake.HandoverBaselineID
+
+got.BaselineRepositoryRevision
+  == intake.BaselineRepositoryRevision
+
+got.ReplayTargetBuildRevision
+  == intake.TargetBuildRevision
+
+got.TargetAdapter
+  == intake.TargetAdapter
+
+got.Host
+  == intake.Host
+```
+
+さらに `TestBuildReplayPlanRejectsGateCOrExecutionStateDrift` 相当へ少なくとも:
+
+- baseline ID drift
+- baseline revision drift
+- Target Adapter drift
+- Host drift
+
+を独立subtestとして追加し、current known Gate C Referenceから外れたlaunch provenanceが受理されないことを固定する。
+
+JSON encoding後のtop-level keyもtestで確認し、fieldをstructへ追加しただけでserializationから落ちる変更を防ぐ。
+
+禁止事項:
+
+- B/R/Adapter/Hostを`replayUnit`ごとへ重複保持
+- runner側だけのcompile-time constantをplan provenanceの代替にする
+- E0と同時にexpected Gate C constantを変更
+- E0と同時にbehavior set / fixture / HTTP status / Observation classを変更
+- E0をcurrent Authorizationやexecution permissionへ読み替える
+
+##### 3.0.3 E0 integration gate
+
+Go-enabled full checkoutでは、変更後に必ず:
+
+```bash
+tools/repository-health-check.sh
+```
+
+を実行する。
+
+これは実際に:
+
+```text
+gofmt -l .
+go vet ./...
+go test -count=1 ./...
+go run ./cmd/tei validate -workspace reference/workspace
+```
+
+を要求する。
+
+focused replay-plan testだけのPASSではE0をmainへ入れない。health checkが失敗した場合、E0 codeをpushせず原因を修正してから再実行する。
+
 ##### 3.0.1 E0のexact source delta
 
 E0ではschemaを一般化しない。current `replayPlan` top-levelへ、execution intakeですでに検証済みのlaunch provenanceをそのまま追加する。
