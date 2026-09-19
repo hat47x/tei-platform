@@ -38,7 +38,7 @@ type evidence struct {
 	Unresolved                 []string                   `json:"unresolved"`
 }
 
-var nativeSQLPattern = regexp.MustCompile("(?i)\\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|MERGE)\\s+")
+var nativeSQLPattern = regexp.MustCompile("(?is)\\bSELECT\\b.{0,240}\\bFROM\\b|\\bINSERT\\s+INTO\\b|\\bUPDATE\\s+[A-Za-z0-9_\\.\\\"]+\\s+SET\\b|\\bDELETE\\s+FROM\\b|\\bCREATE\\s+(TABLE|INDEX|VIEW)\\b|\\bALTER\\s+TABLE\\b|\\bDROP\\s+(TABLE|INDEX|VIEW)\\b|\\bMERGE\\s+INTO\\b")
 
 func main() {
 	var (
