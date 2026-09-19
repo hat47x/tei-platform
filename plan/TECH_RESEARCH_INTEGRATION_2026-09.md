@@ -1669,6 +1669,73 @@ Scenario / Semantic Operation
 - raw Target evidenceとnormalized evidenceの両方へ戻れる
 - deeper cumulative workflowを単一behavior成功で代替しない
 
+
+#### R7A — Gate C actual Evidence entry boundary — 2026-09-19
+
+R7はFirst Web Targetのactual Functional Evidenceへ接続してから進める。actual replay成功を先に作らず、まず**Gate CからR7へ何を受け渡せばreplay candidateを構成してよいか**だけをSource pressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/replayable_behavior_r7a_gate_c_entry_pressure_test.go`
+
+R7Aの入力は少なくとも:
+
+```text
+actual Gate C readiness audit
+  + actual Semantic / Functional summary
+  + exact same B / R / T / Target identity
+  + exact Semantic / Functional run identity
+  + raw artifact SHA-256
+```
+
+を要求する。
+
+`gateCReady=false`、blocking unresolved、B/R/T不一致、Semantic / Functional run不一致、raw artifact digest欠落ではreplay candidateを作らない。
+
+第一Web Targetのcandidate unitは、少なくとも次のraw artifactへtraceする。
+
+```text
+read-only                         -> read.json
+command success                   -> submit-success.json
+authentication denied             -> submit-authentication-denied.json
+authorization denied              -> submit-authorization-denied.json
+validation not satisfied          -> submit-validation-not-satisfied.json
+command invocation execution error -> submit-execution-error.json
+```
+
+各candidateは:
+
+```text
+Semantic Operation identity
+Target realization ref
+raw artifact filename + SHA-256
+Observation class
+B / R / T provenance
+Semantic / Functional run identity
+```
+
+を別々に保持する。
+
+重要:
+
+```text
+Gate C Ready
+  -> R7 entry eligible
+  != replay executed
+  != replay passed
+  != deep workflow covered
+
+Target realization ref
+  != Canonical selector
+  != Canonical DOM / coordinate / click sequence
+```
+
+R7A source pressureでは全candidateを `ReplayStatus = not-executed` / `CoverageClass = behavior-unit` とし、actual replay成功を捏造しない。
+
+Gate CのVisual Evidenceはentry条件の一部だが、Screenshot / HTML / DOM単独からFunctional replay successを導出しない。
+
+actual Gate C Evidenceが取得された後、次段R7Bでreplay execution recipe / repeatability / observed result comparisonをactual artifactへ接続する。それまではR7Aをentry contractに留める。
+
 ### R8 — Verified Experience Memory / Evidence Normalization
 
 目的:
