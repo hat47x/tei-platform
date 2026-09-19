@@ -1071,6 +1071,76 @@ shared materialized knowledge shapeにはAudience / Purpose / ProjectionCategory
 
 R3AG〜R3AIが扱うoutput側のpurpose-bound explanation / drill-down / read-only reasoningは再実装せず、R6Iはその手前のknowledge input materializationだけをPressureする。
 
+#### R6J bounded input plane assembly — 2026-09-19
+
+R6D〜R6Iの責務を一つのbounded input assemblyへ接続する。ただし全入力を一つのgeneric packetへ平坦化せず、input originごとのplaneを保持する。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6j_bounded_input_plane_assembly_pressure_test.go`
+
+assemblyは少なくとも次の3 planeを分離する。
+
+```text
+routed knowledge body
+  knowledge identity
+  kind
+  RequiredInputFingerprints
+  SourceRefs
+
+routed use edge
+  knowledge identity
+  projection category
+  dependency key
+  dependency reason
+
+consumer-local use edge
+  origin class
+  projection category
+  dependency key
+  dependency reason
+```
+
+current BP-06 Human orientationでは:
+
+- Business Procedure Reference body: 1件
+- Procedureへのrouted use: 3 edge
+- protected-target overlayへのconsumer-local Reference use: 3 edge
+- `security.authorize` Capability: qualified-not-materialized
+
+となる。
+
+consumer-local planeにはKnowledgeKey / KnowledgeKind / SourceRefsを持たせず、overlayやruntime Observationをrouter knowledgeへ変換しない。
+
+runtime Observationだけを使うsliceでは:
+
+```text
+routed knowledge = 0
+routed use = 0
+consumer-local runtime use = 1
+qualified-not-materialized = Procedure + Capability
+```
+
+を維持する。
+
+これにより:
+
+```text
+bounded input assembly
+  != universal context packet
+
+consumer-local input
+  != missing routed knowledge
+  != routed knowledge
+
+multiple use edges
+  != multiple source bodies
+```
+
+を固定する。
+
+R6JはPrompt serialization、token budget、production packet schema、freshness decision、execution authorityを導入しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
