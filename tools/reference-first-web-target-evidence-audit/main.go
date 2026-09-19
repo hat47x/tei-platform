@@ -355,6 +355,18 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	if err != nil {
 		return evidenceSummary{}, fmt.Errorf("read custom-submit-success.html: %w", err)
 	}
+	customAuthorizationDenied, err := os.ReadFile(filepath.Join(dir, "custom-submit-authorization-denied.html"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read custom-submit-authorization-denied.html: %w", err)
+	}
+	customValidationNotSatisfied, err := os.ReadFile(filepath.Join(dir, "custom-submit-validation-not-satisfied.html"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read custom-submit-validation-not-satisfied.html: %w", err)
+	}
+	customExecutionError, err := os.ReadFile(filepath.Join(dir, "custom-submit-execution-error.html"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read custom-submit-execution-error.html: %w", err)
+	}
 	for _, check := range []struct {
 		name    string
 		content []byte
@@ -375,10 +387,50 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 			name:    "custom-submit-success.html",
 			content: customPOST,
 			want: []string{
-				"order-entry.submit-order-web-slice",
+				"Scenario state",
+				"completed",
+				"Selected order and relations",
+				"Customer reference",
+				"Order lines",
+				"Canonical Validation",
+				"Command Business Result",
 				"sales.order.submit",
+				"Separate Observation",
 				"synthetic.order_state.read",
 				"submitted",
+			},
+		},
+		{
+			name:    "custom-submit-authorization-denied.html",
+			content: customAuthorizationDenied,
+			want: []string{
+				"authorization-denied",
+				"Authorization",
+				"security.authorize",
+				"denied",
+				"not_authorized",
+			},
+		},
+		{
+			name:    "custom-submit-validation-not-satisfied.html",
+			content: customValidationNotSatisfied,
+			want: []string{
+				"validation-not-satisfied",
+				"Canonical Validation",
+				"sales.order_line.quantity_positive",
+				"not-satisfied",
+			},
+		},
+		{
+			name:    "custom-submit-execution-error.html",
+			content: customExecutionError,
+			want: []string{
+				"Scenario state",
+				"command",
+				"Authorization",
+				"allowed",
+				"Execution error",
+				"synthetic submit adapter unavailable for order 1003",
 			},
 		},
 	} {
@@ -412,6 +464,9 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		"submit-execution-error.json",
 		"custom-submit-get.html",
 		"custom-submit-success.html",
+		"custom-submit-authorization-denied.html",
+		"custom-submit-validation-not-satisfied.html",
+		"custom-submit-execution-error.html",
 	}
 	if err := requireNoReferenceCredentialMaterial(dir, artifactNames); err != nil {
 		return evidenceSummary{}, err
@@ -464,7 +519,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"Canonical Validation not-satisfied stopped before Authorization and Command",
 				"Command Invocation Execution Error remained distinct from Business Result",
 				"Command Business Result remained distinct from separate Observation",
-				"Custom UI rendered the same Command scenario result without credential material",
+				"Custom UI rendered successful, Authorization-denied, Validation-not-satisfied and Execution-Error states without credential material",
 			},
 			Artifacts: []string{
 				"read.json",
@@ -474,6 +529,9 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"submit-validation-not-satisfied.json",
 				"submit-execution-error.json",
 				"custom-submit-success.html",
+				"custom-submit-authorization-denied.html",
+				"custom-submit-validation-not-satisfied.html",
+				"custom-submit-execution-error.html",
 			},
 		},
 		VisualEvidence: visualEvidenceState{
