@@ -264,6 +264,12 @@ func TestActorContextR6ORejectsProvenanceComparisonAcrossDifferentScope(t *testi
 		"revision-b",
 		"test-only:r6o/procedure",
 	)
+	after.ConsumerLocalUseEdges = []actorContextR6JConsumerLocalUseProbe{{
+		OriginClass:        actorContextR6DOriginConsumerRuntime,
+		ProjectionCategory: actorContextR3PCategoryRuntimeOutcome,
+		DependencyKey:      "runtime:test-only:r6o",
+		DependencyReason:   actorContextR3SReasonExactRuntimeObservation,
+	}}
 
 	beforeExpectations := actorContextR6LRoutedOnlyExpectations()
 	afterExpectations := actorContextR6LRoutedOnlyExpectations()
@@ -452,7 +458,7 @@ func actorContextR6OProcedureOnlyAssembly(
 			KnowledgeKind: "business-procedure-reference",
 			RequiredInputFingerprints: []actorContextR0InputFingerprint{{
 				Scope:       "business-procedure-reference",
-				Artifact:    sourceRef,
+				Artifact:    "test-only:r6o/procedure",
 				Fingerprint: fingerprint,
 			}},
 			SourceRefs: []string{sourceRef},
