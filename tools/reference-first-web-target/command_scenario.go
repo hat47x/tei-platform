@@ -126,7 +126,6 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 		Unresolved: []string{
 			"actual-functional-evidence-not-yet-acquired",
 			"visual-evidence-not-yet-acquired",
-			"custom-ui-not-yet-wired",
 			"actual-external-command-observation-not-acquired",
 		},
 	}
@@ -271,6 +270,9 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 		actualOrderID, ok := values["orderId"].(int64)
 		if !ok || actualOrderID != orderID {
 			return capabilityinvoke.BusinessResult{}, fmt.Errorf("submit orderId does not match selected order")
+		}
+		if actualOrderID == 1003 {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("synthetic submit adapter unavailable for order %d", actualOrderID)
 		}
 		state[actualOrderID] = "submitted"
 		return capabilityinvoke.BusinessResult{
