@@ -1,10 +1,11 @@
 # 現在の実装状況
 
-- 更新日: 2026-09-19
+- 更新日: 2026-09-20
 - Product phase: architecture & product validation / research implementation
 - Gate A: **Ready**
 - Gate B: **Ready**（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、Handover Baseline `B`固定済み）
 - Gate C: **Ready**（First Web Target build `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、Handover Baseline `B / R`。Visual Fidelityは単一のAI評価者による評価 — [`GATE_C_READINESS_AUDIT.md`](../plan/GATE_C_READINESS_AUDIT.md)）
+- R7 Replayable Behavior: **Source / Design進行中**（R7A handoff、R7B execution intake、exact replay plan、exact-T operational replay contractまで定義済み。Gate C origin EvidenceはRelease `gate-c-evidence-T-0ba87a4` に保管済み。actual R7A/R7B materialization、replay execution、repeatabilityは未実行）
 
 TEIは完成したlow-code製品ではありません。
 
