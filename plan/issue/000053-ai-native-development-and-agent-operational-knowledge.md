@@ -2319,6 +2319,61 @@ R3T UnselectedChangesとR3AD ResidualRootDeltasはcategory outcomeへ吸収せ�
 production UI schema / notification / routing / scheduler / cache policyは追加しない。
 
 
+
+### R3AG — Purpose-bound outcome explanation materialization
+
+R3AFのunderlying Operational explanationを再計算せず、Human / Agentのpurposeに応じてmaterializeする。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AG_PURPOSE_BOUND_OUTCOME_MATERIALIZATION_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ag_purpose_bound_outcome_materialization_pressure_test.go`
+
+```text
+materialization
+  != machine outcome recomputation
+  != authority recomputation
+
+inline disclosure
+  != underlying semantic identity
+```
+
+とする。
+
+Human / orientationではcategory / status、freshness stop reason、resolution need、reevaluation / reuse authority statusをinlineに保ち、fingerprint / exact reason / unselected detail / residual detail / provenance detailをdrill-downへ送れる。
+
+ただしcompact表示でも:
+
+```text
+UnselectedChangeCount
+ResidualRootDeltaCount
+```
+
+相当の存在情報をinlineに残し、detailを隠したことを「存在しない」へ変換しない。
+
+Agent / resolution-inspectionではexact fingerprint / reason / unselected / residual detailをinlineにmaterializeできるが:
+
+```text
+more detail
+  != stronger authority
+  != remediation authority
+  != execution authority
+```
+
+である。
+
+Human / Agent双方に存在するcategoryではcategory / statusとunderlying R3AF identityを共有する。Agent-only `known-authority-facts` をHumanへ強制開示しない。
+
+freshness authority statusはHuman / Agent双方でinline保持し、`unchanged-after-reevaluation` をFresh / Safe / Reusableへ読み替えない。
+
+Humanがexact detailをinline省略する場合、existing dependency keyまたはresidual root identityを使うdrill-down traceを要求し、traceがない場合はfail closedする。
+
+production UI component / Agent wire protocol / notification transport / routing engineは追加しない。
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
