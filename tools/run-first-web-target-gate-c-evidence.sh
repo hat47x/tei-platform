@@ -72,6 +72,7 @@ go_files=(
   tools/reference-first-web-target/*.go
   tools/reference-first-web-target-evidence-audit/*.go
   tools/reference-first-web-target-visual-evidence-audit/*.go
+  tools/reference-first-web-target-architecture-evidence/*.go
 )
 unformatted="$(gofmt -l "${go_files[@]}")"
 if [[ -n "$unformatted" ]]; then
@@ -84,6 +85,7 @@ GOENV=off GOWORK=off GOFLAGS= \
     ./tools/reference-first-web-target \
     ./tools/reference-first-web-target-evidence-audit \
     ./tools/reference-first-web-target-visual-evidence-audit \
+    ./tools/reference-first-web-target-architecture-evidence \
   >"$artifact_dir/source-tests.log" 2>&1
 
 GOENV=off GOWORK=off GOFLAGS= \
@@ -210,6 +212,13 @@ GOENV=off GOWORK=off GOFLAGS= \
     -baseline-revision "$baseline_revision" \
     -target-revision "$target_revision" \
   >"$artifact_dir/semantic-functional-summary.json"
+
+GOENV=off GOWORK=off GOFLAGS= \
+  go run ./tools/reference-first-web-target-architecture-evidence \
+    -baseline-id "$baseline_id" \
+    -baseline-revision "$baseline_revision" \
+    -target-revision "$target_revision" \
+  >"$artifact_dir/architecture-conformance.json"
 
 printf 'Semantic / Functional Gate C raw Evidence acquired at T=%s\n' "$target_revision" >&2
 printf 'Visual Fidelity remains pending by contract.\n' >&2
