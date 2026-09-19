@@ -796,6 +796,129 @@ DeepWorkflowCovered = false
 
 Repositoryへ実装する際はこのprototypeをそのまま正本化せず、current mainの型・Package境界へ合わせ、full `tools/repository-health-check.sh` を通す。
 
+#### 4.2 repeatability aggregator prototype preflight
+
+4.1のcontractを実装形へ落とすため、Repository外の独立Go moduleでrepeatability aggregator prototypeを作成した。
+
+候補path:
+
+- `tools/reference-first-web-target-r7b-repeatability/`
+
+prototype source identity:
+
+```text
+tools/reference-first-web-target-r7b-repeatability/main.go
+  git blob = 79df9595d25ef8aefd0c364d01b103277226d228
+  size     = 12149 bytes
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  git blob = dc233d3bd58a057ab298a046d9719afc1c6efa64
+  size     = 8472 bytes
+```
+
+focused preflight:
+
+```text
+gofmt -l
+  = empty
+
+go vet ./tools/reference-first-web-target-r7b-repeatability
+  = PASS
+
+go test -count=50 ./tools/reference-first-web-target-r7b-repeatability
+  = PASS
+```
+
+aggregatorはraw responseを読まず、V2が生成したaudit-derived `run-observation.json` だけを入力する。
+
+CLIの概念形:
+
+```text
+-replay-plan <r7b-replay-plan.json>
+-run-observation <run-01/run-observation.json>
+-run-observation <run-02/run-observation.json>
+```
+
+planはstructとbytesを別authorityとして受け取らず、aggregator自身が**exact plan bytesからdecode**し、そのbytesをSHA-256 fingerprintする。
+
+各runについて少なくとも:
+
+- `SourceReplayPlanSHA256 == actual replay-plan bytes SHA-256`
+- 全runの `SourceReplayPlanReceiptSHA256` が同一
+- non-emptyかつdistinctなRunIdentity
+- B / R / T / TargetAdapter / Hostがplanと一致
+- `TargetListenScope=loopback`
+- planの全behaviorをexact 1件ずつ保持
+- observed HTTP == plan expected HTTP
+- `SemanticValidationPassed=true`
+- Observation class == plan expected class
+- raw artifact filenameがnon-empty
+- raw artifact SHA-256がvalid
+
+を要求する。
+
+`RequiredDistinctRuns` は全behaviorで同一かつ2以上を要求し、入力run数が不足する場合はsummaryを生成せずfail closedする。
+
+summaryは少なくとも:
+
+```text
+EvidenceNature
+  = first-web-target-r7b-repeatability-summary
+
+SourceReplayPlanSHA256
+SourceReplayPlanReceiptSHA256
+ReplayTargetBuildRevision
+RequiredDistinctRuns
+ObservedDistinctRuns
+
+SourceRuns[]
+  - RunIdentity
+  - RunObservationSHA256
+
+Behaviors[]
+  - BehaviorID
+  - DistinctRuns
+  - Repeatable
+
+RepeatabilityObserved
+CoverageClass = behavior-unit
+DeepWorkflowCovered = false
+```
+
+を保持する。
+
+特にraw artifact digestはrun間同値判定に使わない。prototype happy pathは2 runの同一behaviorで**異なるraw SHA-256**を与えても、same T / same HTTP boundary / same semantic class / audit PASSならrepeatabilityが成立することを確認している。
+
+fail-closed pressureでは少なくとも:
+
+- duplicate run identity
+- required run不足
+- Target / B / R / adapter / host / listen scope drift
+- source replay-plan digest drift
+- run間replay-plan receipt identity drift
+- HTTP boundary drift
+- semantic class drift
+- `SemanticValidationPassed=false`
+- invalid raw SHA-256
+- missing / duplicate behavior
+- behavior間のRequiredDistinctRuns不一致
+
+をrejectする。
+
+このprototypeはaggregation責務の事前検証であり、Repository source candidateやactual repeatability Evidenceではない。
+
+```text
+repeatability aggregator focused PASS
+  != V2 integrated
+  != E1 lifecycle Evidence
+  != repository-health-check PASS
+  != repeatability actually observed
+```
+
+正本化時はE0 → V1 → V2のhealth-check済み統合後、latest run-observation shapeへreconcileし、E1 runnerから2 fresh process runのaudit outputを渡す。raw semantic validationをaggregator側へ追加しない。
+
+
+
 ## 実装ファイル境界
 
 R7B実装でsemantic判定を複製しないため、初回incrementの責務をファイル単位で次へ固定する。名称は実装時のGo package制約で微修正してよいが、責務を再混合しない。
