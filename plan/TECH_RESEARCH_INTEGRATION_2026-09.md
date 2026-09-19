@@ -813,6 +813,63 @@ origin class
 
 これによりR6を万能input registryへ拡張せず、R3側が直接必要とするReference / Runtime / Semantic dependencyを保持できる。
 
+#### R6E router substitution invariance — 2026-09-19
+
+R6の最初の目的であるrouter交換可能性を、qualificationだけでなくR6Dのprojection dependency originまで下流へ延長してPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6e_router_substitution_origin_invariance_pressure_test.go`
+
+current BP-06について:
+
+```text
+exact task router
+  -> narrow selected set
+
+broad heterogeneous router
+  -> deliberately over-selected set
+  -> deterministic qualification rejects unrelated knowledge
+```
+
+とした上で、両者が最終的に同じ:
+
+- qualified knowledge identity
+- R3 dependency key / reason
+- routed / consumer-local origin classification
+
+へ到達することを要求する。
+
+特に:
+
+```text
+router choice
+  != dependency identity
+  != dependency reason
+  != origin class
+```
+
+である。
+
+broad routerが余計なValidation / Pattern / Capability等をselectedに含んでも、qualification後のover-selectionをprojectionへ漏らさない。
+
+またconsumer-localなprotected-target overlayやruntime Authorization Observationはrouter交換の影響を受けず、broad routerがそれらをrouted knowledgeとして取り込まない。
+
+```text
+routing mechanism
+  = replaceable discovery/selection implementation detail
+
+deterministic qualification
+  = semantic/task boundary
+
+R3 dependency provenance
+  = consumer projection boundary
+```
+
+を保持する。
+
+PreferredRouter / Winner / Score / Confidenceを追加せず、router比較結果をSemantic authorityやproduction routing policyへ昇格しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:

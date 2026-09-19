@@ -2009,6 +2009,52 @@ origin classification
 
 R6DはR3 dependency key / reasonを変更せず、そのinputがroutingから来たかconsumer側の直接入力かだけを説明する。
 
+### R6E — router substitution invariance through dependency origin
+
+R6/R6Bで示したrouter交換可能性を、R6C/R6Dの下流までPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6e_router_substitution_origin_invariance_pressure_test.go`
+
+current BP-06ではexact routerと、意図的に候補を広く返すbroad routerを同じtaskへ適用する。
+
+```text
+exact
+  -> selected narrow
+  -> qualified set Q
+
+broad
+  -> selected broad
+  -> rejected unrelated candidates
+  -> qualified set Q
+
+Q
+  -> R6C / R6D
+  -> same R3 dependency provenance / origin classification
+```
+
+を要求する。
+
+これにより:
+
+```text
+selected set may differ
+
+qualified set
+dependency reason
+dependency origin
+  must not differ because router implementation changed
+```
+
+を固定する。
+
+protected-target overlayはどちらのrouterでもconsumer-reference-inputのまま、runtime Authorization Observationはconsumer-runtime-observationのまま保持する。
+
+`security.authorize`がqualifiedでも、current R3 reason edgeにbindingされていなければprojection dependencyへ昇格しない。この性質もrouter choiceから独立である。
+
+R6Eではrouting performance / ranking qualityを比較せず、PreferredRouterやproduction router selection policyを決めない。
+
 
 
 
