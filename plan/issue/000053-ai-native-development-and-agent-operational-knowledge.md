@@ -2811,7 +2811,7 @@ R6RはPhase 5 Knowledge Portabilityの採否、R3 Accepted Decision、Gate C rea
 
 ### R6 Source-pressure exit assessment
 
-R6A〜R6QのSelective Knowledge Routingは、ReferenceのSource / Design Evidenceとして次の責務分離を一巡した。
+R6A〜R6RのSelective Knowledge Routingは、ReferenceのSource / Design Evidenceとして次の責務分離を一巡した。R6Rでは無関係なcandidate pool growthまでdownstream meaningから隔離した。
 
 ```text
 available != selected != qualified != materialized
@@ -2822,7 +2822,7 @@ scope identity != cardinality
 cardinality != membership != retained provenance
 ```
 
-R6Qでexact / broad router substitutionがR6P downstream observationへ漏れないことまで確認したため、具体的defectなしにR6R以降を機械的に増やさない。
+R6Qでexact / broad router substitution、R6Rで無関係なcandidate pool augmentationがR6P downstream observationへ漏れないことまで確認したため、具体的defectなしにR6S以降を機械的に増やさない。
 
 未達・非主張:
 
