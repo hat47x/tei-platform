@@ -359,6 +359,27 @@ routing score、model内部signal、検索順位はcandidate generationのsignal
 
 qualification結果は同じISSUE-000040 primary workstreamへhandoffし、探索専用branchを長期正本にしない。
 
+### actual S1 status — 2026-09-19
+
+Gate C Ready後のactual second-Application S1を開始した。
+
+- `plan/SECOND_APPLICATION_GATE_C_ENTRY_2026-09.md`
+- `plan/SECOND_APPLICATION_S1_S2_QUALIFICATION_PORTABILITY_2026-09.md`
+- `tools/reference-business-procedure-check/second_application_s1_s2_actual_pressure_test.go`
+
+current RepositoryからCustomer lookup intentに対し、
+
+- `customer.customer`
+- `customer.customer_id`
+- `master_data.customer ^2`
+- `master_data.customer/find_by_id`
+
+をapplicable candidateとしてSource / fingerprint付きで再導出する。
+
+`order_entry.customer_reference`はshared authorityではなくprovenance candidateとして扱う。
+
+actual S1 sourceはApplication source authoringやEnvironment Bindingを行わない。S1 qualification結果は同じISSUE-000040 primary workstream内でPhase 5 portabilityへhandoffする。
+
 ## Knowledge Portabilityへのhandoff
 
 candidate qualification後、別Applicationで再利用する場合のauthority / provenance / freshnessはISSUE-000053 Phase 5へ渡す。
