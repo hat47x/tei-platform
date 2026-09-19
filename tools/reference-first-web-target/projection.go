@@ -203,11 +203,14 @@ func projectHeaderDetailContractQuery(source driver.ResolvedHeaderDetailContract
 	for _, input := range source.Query.Inputs {
 		inputTypes[string(input.Name)] = string(input.Type)
 	}
-	inputs := []webContractQueryInputMapping{{
-		SemanticAttribute: string(source.Binding.SourceAttribute),
-		QueryInput:        string(source.Binding.Target.Input),
-		QueryInputType:    inputTypes[string(source.Binding.Target.Input)],
-	}}
+	inputs := make([]webContractQueryInputMapping, 0, len(source.Binding.Inputs))
+	for _, binding := range source.Binding.Inputs {
+		inputs = append(inputs, webContractQueryInputMapping{
+			SemanticAttribute: string(binding.SourceAttribute),
+			QueryInput:        string(binding.Input),
+			QueryInputType:    inputTypes[string(binding.Input)],
+		})
+	}
 	return &webContractQueryProjection{
 		Contract:          string(source.Contract.ID),
 		ContractVersion:   fmt.Sprintf("%d.%d", source.Contract.Version.Major, source.Contract.Version.Minor),
