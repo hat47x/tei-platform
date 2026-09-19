@@ -3807,6 +3807,54 @@ StateSynchronized / RevisionAccepted / AcceptedWriteOutcome / AcceptedDecision /
 
 
 
+### R3AX — Explicit post-write reconciliation witness / candidate boundary
+
+R3AW reconciliation authority Gateがsingle-qualifiedでも自動reconciliationせず、explicit witnessが存在する場合だけtest-only reconciliation candidateを作る。
+
+正本:
+
+- `plan/ACTOR_CONTEXT_R3AX_RECONCILIATION_WITNESS_CANDIDATE_2026-09.md`
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r3ax_reconciliation_witness_candidate_pressure_test.go`
+
+```text
+single-qualified R3AW Gate
+  + exact R3AV outcome-acceptance candidate
+  + exact reconciliation authority
+  + exact post-write revision
+  + explicit reconciliation decision
+  + provenance
+  -> test-only reconciliation candidate
+
+candidate
+  != authoritative state synchronized
+  != revision applied
+  != current authority applied
+```
+
+witnessはOutcomeAcceptanceCandidateIdentity / ReconciliationAuthorityEvidenceID / AcceptedDecisionSinkRef / RevisionAuthorityRef / pre-write revision / PostWriteRevisionObservationRef / post-write revisionへexact bindingする。
+
+Decisionはtest-onlyに:
+
+- `accept-post-write-state-reconciliation`
+- `reject-post-write-state-reconciliation`
+
+だけをPressureし、revision changed / unchangedやraw writer outcomeから推測しない。
+
+`reject-post-write-state-reconciliation` はrollback / compensation / retry / write failedを意味しない。
+
+multiple-qualified R3AW GateはwitnessでEvidenceIDを指定してもprecedenceを迂回しない。
+
+exact duplicate witnessだけnormalizeし、Decision / ReconciliationProvenanceRef / revision bindingの競合はfail closedする。
+
+StateSynchronized / RevisionAccepted / AcceptedDecision / CurrentAuthority / Retry / Rollback / ToolCall / Command / NextAction等は追加しない。
+
+次段ではreconciliation candidateが存在しても、reconciliation execution observation / post-reconciliation current-state evidenceを別boundaryとしてPressureする。
+
+
+
 ## Phase 4 — side-effect Action
 
 read-only境界が成立した後だけ検討する。
