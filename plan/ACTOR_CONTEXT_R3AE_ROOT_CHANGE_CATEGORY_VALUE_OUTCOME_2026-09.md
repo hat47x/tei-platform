@@ -74,20 +74,19 @@ category meaning changed
 
 R3AA freshness stopではprior Authorization Observationはprovenance rootだがcurrent `RuntimeOutcome` ではない。
 
-したがって:
+refined R3ADではcurrent R3R/R3S projection dependencyへのbindingがないため:
 
 ```text
 prior Observation allowed -> denied
-  -> machine-reasons re-evaluation reason
+  -> residual: projection-dependency-binding-unresolved
 
+  != selected machine-reasons re-evaluation reason
   != runtime-outcome category changed
 ```
 
-である。
+とする。
 
-freshness authorityが未解決のままなら、machine reasonが同じ
-`authorization-evaluation-freshness-authority-unresolved`
-に留まることを正常系とする。
+これはObservation changeを無視する意味ではない。R3AEではResidualRootDeltaとして保持し、current selected category fingerprint比較へ無理に参加させない。
 
 ## 5. locator change
 
@@ -139,7 +138,7 @@ Pressureするcase:
 
 1. requirement root reason + unchanged machine-reasons -> unchanged-after-reevaluation
 2. same reason + actual machine-reasons change -> changed-after-reevaluation
-3. prior Observation allowed -> denied + freshness stop unchanged -> machine-reasons unchanged / runtime-outcome resultなし
+3. prior Observation allowed -> denied -> no-binding residual保持 / selected category resultなし / runtime-outcome resultなし
 4. locator reason + source-refs不変/変化を分離
 5. requirement root change + Agent known-authority-facts actual change -> Agent changed / Human omitted
 6. corroboration ResidualRootChangeだけではselected category changeを説明しない
