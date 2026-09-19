@@ -8,57 +8,51 @@ import (
 )
 
 const (
-	actorContextR3BDStatusUnresolved =
-		"authoritative-state-application-authority-unresolved"
-	actorContextR3BDStatusQualified =
-		"authoritative-state-application-authority-evidence-qualified"
-	actorContextR3BDStatusMultipleQualified =
-		"authoritative-state-application-authority-multiple-qualified-precedence-unresolved"
+	actorContextR3BDStatusUnresolved        = "authoritative-state-application-authority-unresolved"
+	actorContextR3BDStatusQualified         = "authoritative-state-application-authority-evidence-qualified"
+	actorContextR3BDStatusMultipleQualified = "authoritative-state-application-authority-multiple-qualified-precedence-unresolved"
 
-	actorContextR3BDAuthorityKind =
-		"operational-authoritative-state-application-authority"
+	actorContextR3BDAuthorityKind = "operational-authoritative-state-application-authority"
 
-	actorContextR3BDRoleDerivedResultCandidate =
-		"derived-reconciliation-result-acceptance-candidate"
-	actorContextR3BDRoleStateApplicationAuthorityCandidate =
-		"authoritative-state-application-authority-candidate"
+	actorContextR3BDRoleDerivedResultCandidate             = "derived-reconciliation-result-acceptance-candidate"
+	actorContextR3BDRoleStateApplicationAuthorityCandidate = "authoritative-state-application-authority-candidate"
 
 	actorContextR3BDScopeExactBusinessAddress = "exact-business-address"
 	actorContextR3BDScopeAnyBusinessAddress   = "any-business-address"
 )
 
 type actorContextR3BDStateApplicationAuthorityEvidenceProbe struct {
-	EvidenceID                                      string
-	EvidenceRole                                    string
-	RepositoryBacked                                bool
-	AuthorityKind                                   string
-	AuthorityDeclarationRef                        string
-	ReconciliationCandidateIdentities              []string
+	EvidenceID                                        string
+	EvidenceRole                                      string
+	RepositoryBacked                                  bool
+	AuthorityKind                                     string
+	AuthorityDeclarationRef                           string
+	ReconciliationCandidateIdentities                 []string
 	ReconciliationResultAcceptanceCandidateIdentities []string
-	AcceptedDecisionSinkRef                        string
-	RevisionAuthorityRef                           string
-	ObservedDecisionRevisions                      []string
-	ObservedStateFingerprints                      []string
-	ScopeKind                                       string
-	ScopeValue                                      string
-	StateApplicationLocusRef                       string
-	RevisionAcceptanceLocusRef                     string
-	CurrentAuthorityProjectionLocusRef              string
-	StateApplicationProvenanceRef                  string
-	DerivedOnly                                     bool
+	AcceptedDecisionSinkRef                           string
+	RevisionAuthorityRef                              string
+	ObservedDecisionRevisions                         []string
+	ObservedStateFingerprints                         []string
+	ScopeKind                                         string
+	ScopeValue                                        string
+	StateApplicationLocusRef                          string
+	RevisionAcceptanceLocusRef                        string
+	CurrentAuthorityProjectionLocusRef                string
+	StateApplicationProvenanceRef                     string
+	DerivedOnly                                       bool
 }
 
 type actorContextR3BDStateApplicationAuthorityGateProbe struct {
-	StateApplicationAuthorityStatus      string
-	QualifiedEvidenceIDs                 []string
-	StateApplicationLocusRefs            []string
-	RevisionAcceptanceLocusRefs          []string
-	CurrentAuthorityProjectionLocusRefs  []string
-	AcceptedDecisionSinkRefs             []string
-	ObservedDecisionRevision             string
-	ObservedStateFingerprint             string
-	InsufficientEvidenceIDs              []string
-	AuthorityLimits                      []string
+	StateApplicationAuthorityStatus     string
+	QualifiedEvidenceIDs                []string
+	StateApplicationLocusRefs           []string
+	RevisionAcceptanceLocusRefs         []string
+	CurrentAuthorityProjectionLocusRefs []string
+	AcceptedDecisionSinkRefs            []string
+	ObservedDecisionRevision            string
+	ObservedStateFingerprint            string
+	InsufficientEvidenceIDs             []string
+	AuthorityLimits                     []string
 }
 
 func TestActorContextR3BDCurrentInspectedEvidenceKeepsAuthorityUnresolved(t *testing.T) {
@@ -216,12 +210,16 @@ func TestActorContextR3BDInputOrderDoesNotChangeGateResult(t *testing.T) {
 		reconciliation, result, businessAddress,
 		[]actorContextR3BDStateApplicationAuthorityEvidenceProbe{qualified, insufficient},
 	)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	second, err := actorContextR3BDAssessStateApplicationAuthority(
 		reconciliation, result, businessAddress,
 		[]actorContextR3BDStateApplicationAuthorityEvidenceProbe{insufficient, qualified},
 	)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("R3BD input order changed Gate result: first=%+v second=%+v", first, second)
 	}
@@ -277,16 +275,16 @@ func actorContextR3BDCurrentInspectedEvidence(
 	result actorContextR3BCResultAcceptanceCandidateProbe,
 ) []actorContextR3BDStateApplicationAuthorityEvidenceProbe {
 	return []actorContextR3BDStateApplicationAuthorityEvidenceProbe{{
-		EvidenceID: result.ReconciliationResultAcceptanceCandidateIdentity,
-		EvidenceRole: actorContextR3BDRoleDerivedResultCandidate,
+		EvidenceID:                        result.ReconciliationResultAcceptanceCandidateIdentity,
+		EvidenceRole:                      actorContextR3BDRoleDerivedResultCandidate,
 		ReconciliationCandidateIdentities: []string{reconciliation.ReconciliationCandidateIdentity},
 		ReconciliationResultAcceptanceCandidateIdentities: []string{result.ReconciliationResultAcceptanceCandidateIdentity},
-		AcceptedDecisionSinkRef: reconciliation.AcceptedDecisionSinkRef,
-		RevisionAuthorityRef: reconciliation.RevisionAuthorityRef,
-		ObservedDecisionRevisions: []string{result.ObservedDecisionRevision},
-		ObservedStateFingerprints: []string{result.ObservedStateFingerprint},
-		StateApplicationProvenanceRef: result.ResultAcceptanceProvenanceRef,
-		DerivedOnly: true,
+		AcceptedDecisionSinkRef:                           reconciliation.AcceptedDecisionSinkRef,
+		RevisionAuthorityRef:                              reconciliation.RevisionAuthorityRef,
+		ObservedDecisionRevisions:                         []string{result.ObservedDecisionRevision},
+		ObservedStateFingerprints:                         []string{result.ObservedStateFingerprint},
+		StateApplicationProvenanceRef:                     result.ResultAcceptanceProvenanceRef,
+		DerivedOnly:                                       true,
 	}}
 }
 
@@ -297,23 +295,23 @@ func actorContextR3BDCompleteEvidence(
 	result actorContextR3BCResultAcceptanceCandidateProbe,
 ) actorContextR3BDStateApplicationAuthorityEvidenceProbe {
 	return actorContextR3BDStateApplicationAuthorityEvidenceProbe{
-		EvidenceID: id,
-		EvidenceRole: actorContextR3BDRoleStateApplicationAuthorityCandidate,
-		RepositoryBacked: true,
-		AuthorityKind: actorContextR3BDAuthorityKind,
-		AuthorityDeclarationRef: id + "/authority-declaration",
+		EvidenceID:                        id,
+		EvidenceRole:                      actorContextR3BDRoleStateApplicationAuthorityCandidate,
+		RepositoryBacked:                  true,
+		AuthorityKind:                     actorContextR3BDAuthorityKind,
+		AuthorityDeclarationRef:           id + "/authority-declaration",
 		ReconciliationCandidateIdentities: []string{reconciliation.ReconciliationCandidateIdentity},
 		ReconciliationResultAcceptanceCandidateIdentities: []string{result.ReconciliationResultAcceptanceCandidateIdentity},
-		AcceptedDecisionSinkRef: reconciliation.AcceptedDecisionSinkRef,
-		RevisionAuthorityRef: reconciliation.RevisionAuthorityRef,
-		ObservedDecisionRevisions: []string{result.ObservedDecisionRevision},
-		ObservedStateFingerprints: []string{result.ObservedStateFingerprint},
-		ScopeKind: actorContextR3BDScopeExactBusinessAddress,
-		ScopeValue: businessAddress,
-		StateApplicationLocusRef: id + "/state-application-locus",
-		RevisionAcceptanceLocusRef: id + "/revision-acceptance-locus",
-		CurrentAuthorityProjectionLocusRef: id + "/current-authority-projection-locus",
-		StateApplicationProvenanceRef: id + "/state-application-provenance",
+		AcceptedDecisionSinkRef:                           reconciliation.AcceptedDecisionSinkRef,
+		RevisionAuthorityRef:                              reconciliation.RevisionAuthorityRef,
+		ObservedDecisionRevisions:                         []string{result.ObservedDecisionRevision},
+		ObservedStateFingerprints:                         []string{result.ObservedStateFingerprint},
+		ScopeKind:                                         actorContextR3BDScopeExactBusinessAddress,
+		ScopeValue:                                        businessAddress,
+		StateApplicationLocusRef:                          id + "/state-application-locus",
+		RevisionAcceptanceLocusRef:                        id + "/revision-acceptance-locus",
+		CurrentAuthorityProjectionLocusRef:                id + "/current-authority-projection-locus",
+		StateApplicationProvenanceRef:                     id + "/state-application-provenance",
 	}
 }
 
@@ -365,11 +363,15 @@ func actorContextR3BDAssessStateApplicationAuthority(
 			insufficient = append(insufficient, value.EvidenceID)
 		}
 	}
-	sort.Slice(qualified, func(i,j int) bool { return qualified[i].EvidenceID < qualified[j].EvidenceID })
+	sort.Slice(qualified, func(i, j int) bool { return qualified[i].EvidenceID < qualified[j].EvidenceID })
 
 	status := actorContextR3BDStatusUnresolved
-	if len(qualified)==1 { status = actorContextR3BDStatusQualified }
-	if len(qualified)>1 { status = actorContextR3BDStatusMultipleQualified }
+	if len(qualified) == 1 {
+		status = actorContextR3BDStatusQualified
+	}
+	if len(qualified) > 1 {
+		status = actorContextR3BDStatusMultipleQualified
+	}
 
 	ids := []string{}
 	appRefs := []string{}
@@ -384,15 +386,15 @@ func actorContextR3BDAssessStateApplicationAuthority(
 		sinks = append(sinks, value.AcceptedDecisionSinkRef)
 	}
 	return actorContextR3BDStateApplicationAuthorityGateProbe{
-		StateApplicationAuthorityStatus: status,
-		QualifiedEvidenceIDs: actorContextR0SortedUnique(ids),
-		StateApplicationLocusRefs: actorContextR0SortedUnique(appRefs),
-		RevisionAcceptanceLocusRefs: actorContextR0SortedUnique(revRefs),
+		StateApplicationAuthorityStatus:     status,
+		QualifiedEvidenceIDs:                actorContextR0SortedUnique(ids),
+		StateApplicationLocusRefs:           actorContextR0SortedUnique(appRefs),
+		RevisionAcceptanceLocusRefs:         actorContextR0SortedUnique(revRefs),
 		CurrentAuthorityProjectionLocusRefs: actorContextR0SortedUnique(authRefs),
-		AcceptedDecisionSinkRefs: actorContextR0SortedUnique(sinks),
-		ObservedDecisionRevision: result.ObservedDecisionRevision,
-		ObservedStateFingerprint: result.ObservedStateFingerprint,
-		InsufficientEvidenceIDs: actorContextR0SortedUnique(insufficient),
+		AcceptedDecisionSinkRefs:            actorContextR0SortedUnique(sinks),
+		ObservedDecisionRevision:            result.ObservedDecisionRevision,
+		ObservedStateFingerprint:            result.ObservedStateFingerprint,
+		InsufficientEvidenceIDs:             actorContextR0SortedUnique(insufficient),
 		AuthorityLimits: actorContextR0SortedUnique([]string{
 			"result-acceptance-candidate-does-not-create-state-application-authority",
 			"observed-revision-and-fingerprint-do-not-create-state-application-authority",

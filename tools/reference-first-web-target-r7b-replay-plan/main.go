@@ -60,17 +60,17 @@ type executionIntake struct {
 }
 
 type intakeAcquisitionReceipt struct {
-	EvidenceNature                       string `json:"evidenceNature"`
-	IntakeToolRepositoryRevision         string `json:"intakeToolRepositoryRevision"`
-	RepositoryPostRunRevision            string `json:"repositoryPostRunRevision"`
-	RepositoryPostRunClean               bool   `json:"repositoryPostRunClean"`
-	SourceQualificationPassed            bool   `json:"sourceQualificationPassed"`
-	SourceR7AHandoffSHA256               string `json:"sourceR7AHandoffSHA256"`
-	SourceR7AAcquisitionReceiptSHA256     string `json:"sourceR7AAcquisitionReceiptSHA256"`
-	ExecutionIntakeArtifact              string `json:"executionIntakeArtifact"`
-	ExecutionIntakeArtifactSHA256        string `json:"executionIntakeArtifactSHA256"`
-	ReplayExecuted                       bool   `json:"replayExecuted"`
-	RepeatabilityObserved                bool   `json:"repeatabilityObserved"`
+	EvidenceNature                    string `json:"evidenceNature"`
+	IntakeToolRepositoryRevision      string `json:"intakeToolRepositoryRevision"`
+	RepositoryPostRunRevision         string `json:"repositoryPostRunRevision"`
+	RepositoryPostRunClean            bool   `json:"repositoryPostRunClean"`
+	SourceQualificationPassed         bool   `json:"sourceQualificationPassed"`
+	SourceR7AHandoffSHA256            string `json:"sourceR7AHandoffSHA256"`
+	SourceR7AAcquisitionReceiptSHA256 string `json:"sourceR7AAcquisitionReceiptSHA256"`
+	ExecutionIntakeArtifact           string `json:"executionIntakeArtifact"`
+	ExecutionIntakeArtifactSHA256     string `json:"executionIntakeArtifactSHA256"`
+	ReplayExecuted                    bool   `json:"replayExecuted"`
+	RepeatabilityObserved             bool   `json:"repeatabilityObserved"`
 }
 
 type behaviorSpec struct {
@@ -102,15 +102,15 @@ type replayUnit struct {
 }
 
 type replayPlan struct {
-	EvidenceNature                         string       `json:"evidenceNature"`
-	SourceExecutionIntakeSHA256            string       `json:"sourceExecutionIntakeSHA256"`
-	SourceExecutionIntakeReceiptSHA256     string       `json:"sourceExecutionIntakeReceiptSHA256"`
-	SourceR7AHandoffSHA256                 string       `json:"sourceR7AHandoffSHA256"`
-	SourceR7AAcquisitionReceiptSHA256      string       `json:"sourceR7AAcquisitionReceiptSHA256"`
-	IntakeToolRepositoryRevision           string       `json:"intakeToolRepositoryRevision"`
-	ReplayTargetBuildRevision              string       `json:"replayTargetBuildRevision"`
-	Units                                  []replayUnit `json:"units"`
-	AuthorityLimits                        []string     `json:"authorityLimits"`
+	EvidenceNature                     string       `json:"evidenceNature"`
+	SourceExecutionIntakeSHA256        string       `json:"sourceExecutionIntakeSHA256"`
+	SourceExecutionIntakeReceiptSHA256 string       `json:"sourceExecutionIntakeReceiptSHA256"`
+	SourceR7AHandoffSHA256             string       `json:"sourceR7AHandoffSHA256"`
+	SourceR7AAcquisitionReceiptSHA256  string       `json:"sourceR7AAcquisitionReceiptSHA256"`
+	IntakeToolRepositoryRevision       string       `json:"intakeToolRepositoryRevision"`
+	ReplayTargetBuildRevision          string       `json:"replayTargetBuildRevision"`
+	Units                              []replayUnit `json:"units"`
+	AuthorityLimits                    []string     `json:"authorityLimits"`
 }
 
 func main() {
@@ -238,9 +238,9 @@ func buildReplayPlan(
 		SourceExecutionIntakeReceiptSHA256: receiptSHA,
 		SourceR7AHandoffSHA256:             intake.SourceHandoffArtifactSHA256,
 		SourceR7AAcquisitionReceiptSHA256:  intake.AcquisitionReceiptSHA256,
-		IntakeToolRepositoryRevision:        receipt.IntakeToolRepositoryRevision,
-		ReplayTargetBuildRevision:           intake.TargetBuildRevision,
-		Units:                               units,
+		IntakeToolRepositoryRevision:       receipt.IntakeToolRepositoryRevision,
+		ReplayTargetBuildRevision:          intake.TargetBuildRevision,
+		Units:                              units,
 		AuthorityLimits: []string{
 			"replay-plan-does-not-execute-replay",
 			"request-fixture-id-is-target-local-not-canonical",

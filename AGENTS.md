@@ -46,6 +46,7 @@ examples/ bootstrap/
 
 - 単独開発のため、branch / PR / 人的reviewの手続きは置かない。`main`へ直接commitする。
 - remote branchを作らない。pushの前に`git pull --rebase origin main`し、mainへforce pushしない。
+- **コードを変えたら、pushの前に`tools/repository-health-check.sh`を通し、失敗したままpushしない。** gofmt差は`--fix`で自動整形できる（`--fast`で`go test`を省く）。並行して動くAI sessionも同じ。GoがPATHにない環境では、Goのあるclone（この環境ではWSL2）で実行する。CIは使えず、これが唯一の検証である。
 - 詳細は[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照する。
 
 コードの検証手順も[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照します。

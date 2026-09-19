@@ -10,15 +10,15 @@ import (
 )
 
 type secondApplicationS4CompositionCandidate struct {
-	Status                      string
-	SharedAcceptanceStatus      string
-	ApplicationSource           string
-	PatternSource               string
-	AuthorizationRequirement    string
-	EnvironmentBindingIncluded  bool
+	Status                       string
+	SharedAcceptanceStatus       string
+	ApplicationSource            string
+	PatternSource                string
+	AuthorizationRequirement     string
+	EnvironmentBindingIncluded   bool
 	TargetImplementationIncluded bool
-	BusinessProcedureIncluded   bool
-	SourceAuthoringAttempted    bool
+	BusinessProcedureIncluded    bool
+	SourceAuthoringAttempted     bool
 }
 
 func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("S4 Application candidate did not parse with existing grammar: %v", err)
 	}
-	if app.ID != s3.ApplicationIDCandidate {
+	if string(app.ID) != s3.ApplicationIDCandidate {
 		t.Fatalf("Application ID drifted from S3: got=%q want=%q", app.ID, s3.ApplicationIDCandidate)
 	}
 	if len(app.SemanticUses) != 1 || app.SemanticUses[0] != "customer" {
@@ -43,7 +43,7 @@ func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
 		t.Fatalf("database requirements=%+v", app.Databases)
 	}
 	db := app.Databases[0]
-	if db.Alias != s3.DatasourceAliasCandidate ||
+	if string(db.Alias) != s3.DatasourceAliasCandidate ||
 		db.TargetDatabase != "master_data" ||
 		db.Access != database.AccessRead {
 		t.Fatalf("Application database requirement drifted from S3/S1-S2: %+v", db)
@@ -63,10 +63,10 @@ func TestSecondApplicationS4ComposesPatternFromS3Decisions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("S4 Pattern candidate did not parse with existing grammar: %v", err)
 	}
-	if pattern.ID != s3.PatternCandidate ||
+	if string(pattern.ID) != s3.PatternCandidate ||
 		pattern.Kind != application.PatternReference ||
-		pattern.Relation != s3.BusinessRelationCandidate ||
-		pattern.Datasource != s3.DatasourceAliasCandidate {
+		string(pattern.Relation) != s3.BusinessRelationCandidate ||
+		string(pattern.Datasource) != s3.DatasourceAliasCandidate {
 		t.Fatalf("Pattern drifted from S3 decisions: %+v", pattern)
 	}
 	if pattern.Relation == "sales.order.customer" || pattern.Datasource == "master" {

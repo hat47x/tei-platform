@@ -207,17 +207,17 @@ func testInputs(t *testing.T) (
 	intakeSHA := hex.EncodeToString(intakeSum[:])
 
 	receipt := intakeAcquisitionReceipt{
-		EvidenceNature:                   "first-web-target-r7b-intake-acquisition-receipt",
-		IntakeToolRepositoryRevision:     strings.Repeat("4", 40),
-		RepositoryPostRunRevision:        strings.Repeat("4", 40),
-		RepositoryPostRunClean:           true,
-		SourceQualificationPassed:        true,
-		SourceR7AHandoffSHA256:           intake.SourceHandoffArtifactSHA256,
+		EvidenceNature:                    "first-web-target-r7b-intake-acquisition-receipt",
+		IntakeToolRepositoryRevision:      strings.Repeat("4", 40),
+		RepositoryPostRunRevision:         strings.Repeat("4", 40),
+		RepositoryPostRunClean:            true,
+		SourceQualificationPassed:         true,
+		SourceR7AHandoffSHA256:            intake.SourceHandoffArtifactSHA256,
 		SourceR7AAcquisitionReceiptSHA256: intake.AcquisitionReceiptSHA256,
-		ExecutionIntakeArtifact:          "r7b-execution-intake.json",
-		ExecutionIntakeArtifactSHA256:    intakeSHA,
-		ReplayExecuted:                   false,
-		RepeatabilityObserved:            false,
+		ExecutionIntakeArtifact:           "r7b-execution-intake.json",
+		ExecutionIntakeArtifactSHA256:     intakeSHA,
+		ReplayExecuted:                    false,
+		RepeatabilityObserved:             false,
 	}
 	receiptBytes, err := json.MarshalIndent(receipt, "", "  ")
 	if err != nil {

@@ -9,18 +9,18 @@ import (
 const secondApplicationS5ExpectedProposalFingerprint = "b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2"
 
 type secondApplicationS5ReviewPacket struct {
-	ProposalFingerprint       string
-	BaseModelRevision         string
-	AcceptanceWitnessID       string
-	Decision                  string
-	ReviewStatus              string
-	NewDestinationSubjects    []string
-	ReusedSharedSubjects      []string
-	ProvenanceSubjects        []string
-	EnvironmentMutationCount  int
-	RuntimeAuthorityGranted   bool
-	SourceAuthoringAttempted  bool
-	RetainedUnresolved        []string
+	ProposalFingerprint      string
+	BaseModelRevision        string
+	AcceptanceWitnessID      string
+	Decision                 string
+	ReviewStatus             string
+	NewDestinationSubjects   []string
+	ReusedSharedSubjects     []string
+	ProvenanceSubjects       []string
+	EnvironmentMutationCount int
+	RuntimeAuthorityGranted  bool
+	SourceAuthoringAttempted bool
+	RetainedUnresolved       []string
 }
 
 func TestSecondApplicationS5BindsReviewToExactS4Proposal(t *testing.T) {
@@ -121,11 +121,11 @@ func secondApplicationS5Review(s4 secondApplicationS4CompositionCandidate) secon
 	sum := sha256.Sum256([]byte(payload))
 
 	return secondApplicationS5ReviewPacket{
-		ProposalFingerprint:      hex.EncodeToString(sum[:]),
-		BaseModelRevision:        "",
-		AcceptanceWitnessID:      "",
-		Decision:                 "pending",
-		ReviewStatus:             "review-ready",
+		ProposalFingerprint: hex.EncodeToString(sum[:]),
+		BaseModelRevision:   "",
+		AcceptanceWitnessID: "",
+		Decision:            "pending",
+		ReviewStatus:        "review-ready",
 		NewDestinationSubjects: []string{
 			"application:repair_intake",
 			"semantic-relation:repair_intake.intake.customer",

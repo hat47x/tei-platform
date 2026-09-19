@@ -10,24 +10,29 @@ set -uo pipefail
 # Usage:
 #   tools/repository-health-check.sh          # gofmt, go vet, go test, workspace validate
 #   tools/repository-health-check.sh --fast   # skip go test
+#   tools/repository-health-check.sh --fix    # gofmt -w on drifted files first, then check
+#   (--fast and --fix can be combined)
 #
 # It runs every step even if an earlier one fails, prints a summary, and exits 1 if
-# any step failed. It never modifies files. The Go environment is fixed the same way
-# the Gate runners fix it (GOENV=off GOWORK=off GOFLAGS=).
+# any step failed. Without --fix it never modifies files. The Go environment is fixed
+# the same way the Gate runners fix it (GOENV=off GOWORK=off GOFLAGS=).
 
 fast=false
-case "${1:-}" in
-  "") ;;
-  --fast) fast=true ;;
-  -h | --help)
-    sed -n '3,15p' "$0"
-    exit 0
-    ;;
-  *)
-    echo "error: unknown argument '$1' (see --help)" >&2
-    exit 2
-    ;;
-esac
+fix=false
+for arg in "$@"; do
+  case "$arg" in
+    --fast) fast=true ;;
+    --fix) fix=true ;;
+    -h | --help)
+      sed -n '3,19p' "$0"
+      exit 0
+      ;;
+    *)
+      echo "error: unknown argument '$arg' (see --help)" >&2
+      exit 2
+      ;;
+  esac
+done
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [[ -z "$repo_root" || "$PWD" != "$repo_root" ]]; then
@@ -75,6 +80,14 @@ workspace_valid() {
     return 1
   fi
 }
+
+if [[ "$fix" == true ]]; then
+  fixed="$(gofmt -l . 2>/dev/null)"
+  if [[ -n "$fixed" ]]; then
+    printf '%s\n' "$fixed" | xargs gofmt -w
+    printf 'gofmt -w applied to:\n%s\n' "$fixed" >&2
+  fi
+fi
 
 run_step "gofmt -l . is empty" gofmt_clean
 run_step "go vet ./..." go vet ./...
