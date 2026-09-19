@@ -2838,6 +2838,50 @@ R6再開は、actual consumerで境界違反が観測された場合、productio
 
 現時点ではR6成果を既存原則のReference Evidenceとして保持し、R3 authority chainとFirst Web Target / Gate Cの並行レーンを重複実装しない。
 
+
+### R7A — Gate C actual Evidence entry boundary
+
+R7 Replayable Behavior EvidenceはFirst Web Targetのactual Gate C Evidenceから開始し、static sourceだけからreplay successを作らない。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/replayable_behavior_r7a_gate_c_entry_pressure_test.go`
+
+R7Aではactual Gate C readiness / Semantic-Functional Evidenceを受けるための入口だけをPressureする。
+
+必要条件:
+
+```text
+GateCReady = true
+all readiness checks passed
+no blocking unresolved
+same Handover Baseline B
+same baseline revision R
+same Target build T
+same Target Adapter / Host
+same Semantic / Functional run identity
+exact raw artifact SHA-256
+```
+
+第一Web Targetではread / success / Authentication denial / Authorization denial / Validation not-satisfied / Execution Errorを別behavior candidateとして保持し、各candidateを元raw artifactへ戻せるようにする。
+
+```text
+semantic operation
+  != target realization
+
+target realization
+  != Canonical selector / coordinate / click sequence
+
+Gate C Ready
+  != replay executed
+  != replay passed
+  != whole workflow passed
+```
+
+R7Aのtest-only candidateは常に `not-executed` であり、Source Evidenceをactual Replayable Behavior Evidenceへ格上げしない。
+
+actual Gate C readiness artifactが存在するまでR7B replay executionへ進めない。
+
 ### R3AF — Category re-evaluation outcome / Operational explanation
 
 R3AEのcategory fingerprint outcomeとR3YのAuthorization freshness authorityを別軸のままOperational explanationへ戻す。
