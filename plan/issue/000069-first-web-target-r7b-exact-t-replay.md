@@ -915,6 +915,65 @@ V2実装時はsynthetic fixtureで少なくとも次をPressureする。
 
 runnerはorchestrationだけを所有する。
 
+#### E1.0 replay-plan receipt validation
+
+E1は `r7b-replay-plan.json` と `r7b-replay-plan-receipt.json` を別々に「存在確認」するだけでは不十分である。runner開始前にreceiptをdecodeし、plan exact bytesと相互bindingを検証する。
+
+current receipt shape:
+
+```text
+EvidenceNature
+ReplayPlanToolRepositoryRevision
+RepositoryPostRunRevision
+RepositoryPostRunClean
+SourceQualificationPassed
+SourceExecutionIntakeSHA256
+SourceExecutionIntakeReceiptSHA256
+ReplayPlanArtifact
+ReplayPlanArtifactSHA256
+ReplayExecuted
+RepeatabilityObserved
+```
+
+E1開始条件:
+
+1. `EvidenceNature == first-web-target-r7b-replay-plan-acquisition-receipt`
+2. `ReplayPlanToolRepositoryRevision` がvalid 40-hex Git revision
+3. `RepositoryPostRunRevision == ReplayPlanToolRepositoryRevision`
+4. `RepositoryPostRunClean == true`
+5. `SourceQualificationPassed == true`
+6. `ReplayPlanArtifact == r7b-replay-plan.json`
+7. `ReplayPlanArtifactSHA256` がactual plan bytesのSHA-256とexact一致
+8. receiptの `SourceExecutionIntakeSHA256` がplanの同名source identityとexact一致
+9. receiptの `SourceExecutionIntakeReceiptSHA256` がplanの同名source identityとexact一致
+10. `ReplayExecuted == false`
+11. `RepeatabilityObserved == false`
+
+どれか1つでも満たさなければTarget processを起動しない。
+
+```text
+plan exists
+  != plan acquired correctly
+
+plan digest matches
+  != source qualification proven
+
+receipt present
+  != replay may start
+
+exact plan bytes
+  + exact receipt binding
+  + clean qualified acquisition
+  + pre-execution state
+  -> E1 input eligible
+```
+
+receipt内のtool revisionは「そのrevisionが現在も最新である」ことを意味しない。これはplanを生成したsource revisionのprovenanceであり、current main authorityではない。
+
+E1はplan / receiptをRepository外outputへcopyする場合、copy後bytesを再fingerprintし、source digestと一致することを最終receiptへbindingする。path文字列だけをsource identityとして採用しない。
+
+runnerはorchestrationだけを所有する。
+
 - current source checkout qualification
 - input plan / receipt / origin Evidence verification
 - exact T isolated checkout作成
@@ -1014,6 +1073,8 @@ Booleanの `originManifestVerified=true` だけではexact Evidence identityと�
 
 - dirty current source checkoutでのsource qualification
 - replay plan / receipt digest mismatch
+- replay-plan receiptのEvidenceNature / source qualification / clean revision / pre-execution state不整合
+- receipt source-intake identitiesとplan source identitiesの不一致
 - Gate C archive digest mismatch
 - `MANIFEST.sha256` failure
 - origin raw artifact digest mismatch
