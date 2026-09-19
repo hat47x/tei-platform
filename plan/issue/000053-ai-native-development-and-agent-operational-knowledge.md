@@ -2192,6 +2192,50 @@ R6F manifestはUniversal Context Packetではなく、現在のbounded consumer�
 
 Prompt本文、token budget、all-skill metadata、routing diagnostics、selected/rejected candidate全量をproduction payload schemaとして固定しない。
 
+### R6G — explainable non-materialization
+
+R6Fでcontext materializationを最小化した結果、qualifiedだがmaterializeされないknowledgeが生じる。R6Gではその状態をsilent omissionにせず、derived witnessとして説明可能にする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6g_materialization_explanation_pressure_test.go`
+
+witnessは:
+
+- knowledge identity
+- knowledge kind
+- materialized / qualified-not-materialized disposition
+- reason code
+- materialized時だけexact dependency keys
+- SourceRefs
+
+を保持する。
+
+```text
+qualified-not-materialized
+  reason = no-consumed-routed-projection-dependency
+```
+
+は:
+
+```text
+missing source
+qualification failure
+globally irrelevant
+```
+
+を意味しない。
+
+current BP-06では`security.authorize` CapabilityはqualifiedのままSourceRefsを保持するが、current bounded projectionがrouted dependencyとして消費していないためknowledge本文をpayloadへ materializeしない。
+
+説明用witnessへContent / Body / Text / Prompt / Payloadを持ち込まず、explainabilityがcontext膨張を逆流させないようにする。
+
+runtime Observationのみをconsumer-local inputとして扱うsliceでは、Business Procedure ReferenceもCapabilityも`qualified-not-materialized`として説明できる。
+
+exact / broad routerが同じqualificationとdependency originへ収束すれば、materialization explanationも一致しなければならない。
+
+R6GはPreferredRouter / Score / Confidence / Fresh / Authorized / NextActionを追加しない。
+
 
 
 

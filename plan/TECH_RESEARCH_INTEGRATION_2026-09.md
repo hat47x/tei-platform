@@ -924,6 +924,62 @@ materialization manifestはderived / rebuildableなtest-only一覧であり、Un
 
 exact / broad routerの違いはmaterialized resultへ残さず、R6Eと同じくrouter実装差をcontext identityへ混ぜない。
 
+#### R6G explainable non-materialization — 2026-09-19
+
+R6Fでmaterialize対象を最小化した後、materializeされなかったqualified knowledgeを「欠落」として扱わず、identity / provenanceを保持した説明可能な状態としてPressureする。
+
+test-only source:
+
+- `tools/reference-business-procedure-check/actor_context_r6g_materialization_explanation_pressure_test.go`
+
+R6Gではqualified knowledgeごとに:
+
+```text
+materialized
+  reason = consumed-routed-projection-dependency
+  dependency keys = exact R3 dependency identities
+
+qualified-not-materialized
+  reason = no-consumed-routed-projection-dependency
+  dependency keys = none
+```
+
+をderived witnessとして保持する。
+
+current BP-06では:
+
+```text
+Business Procedure Reference
+  -> materialized
+  -> routed R3 dependencyへ逆追跡可能
+
+security.authorize Capability
+  -> qualified-not-materialized
+  -> SourceRefsは保持
+  -> knowledge contentはcontextへ戻さない
+```
+
+となる。
+
+これにより:
+
+```text
+not materialized
+  != missing source
+  != qualification failure
+  != irrelevant globally
+```
+
+を区別する。
+
+omission witnessはknowledge identity / kind / SourceRefs / reason codeだけを持ち、Body / Content / Prompt / Payload等を持たない。したがってexplainabilityのために未使用knowledge本文を再注入しない。
+
+exact / broad routerで同じqualified / dependency consumptionへ収束する限り、materialization explanationも同一でなければならない。
+
+consumer-local dependencyはknowledge omission理由へ変換せず、別dependency identityとして保持する。
+
+R6G reasonはfreshness / authority / next action / routing preferenceを決定しない。
+
 ### R7 — Replayable Behavior Evidence
 
 目的:
