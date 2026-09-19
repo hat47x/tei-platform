@@ -1760,6 +1760,35 @@ Target-side R7A handoff source
 
 R7B開始条件は引き続きactual final Gate C readiness artifactの取得であり、Source実装の存在だけでは満たさない。
 
+##### R7A final-readiness provenance closure — 2026-09-19
+
+final Gate C readiness JSONは外部入力としてR7Aへ渡されるため、`GateCReady=true` と任意の少数checkだけを信頼しない。第一Web Targetのcurrent final readiness auditが生成する10個のcheck identityを完全集合としてPressureし、missing / duplicate / unknown checkをrejectする。
+
+さらにR7A handoff / candidateは、entry判断に使ったfinal Evidence chainを後から特定できるよう、少なくとも次を保持する。
+
+- `VisualRun`
+- final `gate-c-readiness-audit.json` exact-bytes SHA-256
+- `semantic-functional-summary.json` exact-bytes SHA-256
+- 既存のraw Functional artifact SHA-256
+
+```text
+GateCReady boolean
+  != final readiness artifact identity
+
+all supplied checks passed
+  != required readiness check set complete
+
+R7 candidate
+  -> exact final readiness artifact
+  -> exact Semantic / Functional summary
+  -> exact raw Functional artifact
+```
+
+これはVisual EvidenceをR7 behavior meaningへ混ぜるためではない。`VisualRun` は「どのfinal Gate C判定を通ってR7へ入ったか」を復元するprovenanceであり、Functional replay resultやCanonical identityではない。
+
+actual R7A handoff sourceでは入力JSONのfield値だけでなく、入力file exact bytesのdigestを計算してhandoffへ固定することを期待する。R7Bは引き続きactual handoff artifact取得後まで開始しない。
+
+
 
 ### R8 — Verified Experience Memory / Evidence Normalization
 
