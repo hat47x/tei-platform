@@ -194,6 +194,29 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		return evidenceSummary{}, fmt.Errorf("run metadata does not prove one clean Target revision: %+v", metadata)
 	}
 
+	health, err := os.ReadFile(filepath.Join(dir, "health.txt"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read health.txt: %w", err)
+	}
+	if string(health) != "ok\n" {
+		return evidenceSummary{}, fmt.Errorf("health.txt=%q, want %q", string(health), "ok\n")
+	}
+	serverLog, err := os.ReadFile(filepath.Join(dir, "server.log"))
+	if err != nil {
+		return evidenceSummary{}, fmt.Errorf("read server.log: %w", err)
+	}
+	for _, want := range []string{
+		"TEI first Web Target projection:",
+		"application=order_entry",
+		"baseline=" + expected.HandoverBaselineID,
+		"R=" + expected.BaselineRepositoryRevision,
+		"T=" + expected.TargetBuildRevision,
+	} {
+		if !strings.Contains(string(serverLog), want) {
+			return evidenceSummary{}, fmt.Errorf("server.log does not contain %q", want)
+		}
+	}
+
 	var manifest manifestArtifact
 	if err := readJSONArtifact(dir, "manifest.json", &manifest); err != nil {
 		return evidenceSummary{}, err
@@ -353,6 +376,8 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 	artifactNames := []string{
 		"run-metadata.json",
 		"source-tests.log",
+		"server.log",
+		"health.txt",
 		"manifest.json",
 		"read.json",
 		"submit-success.json",
@@ -390,7 +415,7 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 				"pre-run Repository was clean at targetBuildRevision",
 				"post-run Repository remained clean at the same targetBuildRevision",
 			},
-			Artifacts: []string{"run-metadata.json", "source-tests.log"},
+			Artifacts: []string{"run-metadata.json", "source-tests.log", "server.log", "health.txt"},
 		},
 		SemanticConformance: evidenceCheck{
 			Passed: true,
