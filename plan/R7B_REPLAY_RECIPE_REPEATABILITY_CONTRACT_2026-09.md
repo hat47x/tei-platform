@@ -161,27 +161,74 @@ The tests require:
 10. differing exact replay bytes may still be repeatable when observed meaning is stable
 11. behavior repeatability is not promoted to deeper workflow coverage
 
-## 9. Evidence height
+## 9. Operational intake acquisition runner
 
-This document and the test-only source are Source / Design Evidence.
+The source-defined R7B intake can be materialized from Repository-external R7A artifacts with:
+
+- `tools/run-first-web-target-r7b-intake.sh`
+
+The runner requires:
+
+- `TEI_R7B_R7A_HANDOFF`
+- `TEI_R7B_R7A_RECEIPT`
+- `TEI_R7B_OUTPUT_DIR`
+
+Both source artifacts and the output directory must remain outside the Repository.
+
+The runner:
+
+1. requires a clean Repository checkout,
+2. fingerprints the exact R7A handoff and acquisition-receipt bytes,
+3. source-qualifies `tools/reference-first-web-target-r7b-intake`,
+4. derives `r7b-execution-intake.json`,
+5. fingerprints the exact intake artifact,
+6. writes `r7b-intake-receipt.json` outside the Repository,
+7. verifies that the checkout did not change during acquisition.
+
+The intake receipt explicitly records:
+
+```text
+replayExecuted = false
+repeatabilityObserved = false
+```
+
+Therefore:
+
+```text
+R7A handoff acquired
+  -> R7B execution intake acquired
+  != replay executed
+  != repeatability observed
+```
+
+The runner performs no network replay and starts no First Web Target server.
+
+## 10. Evidence height
+
+This document, the test-only source, the intake CLI source, and the operational intake runner are Source / Design Evidence until the Repository-external artifacts are actually supplied and the runner is executed.
 
 They do not claim:
 
-- actual R7A handoff artifact acquisition
+- actual R7A handoff artifact acquisition in this Repository session
+- actual R7B execution-intake acquisition
 - actual replay execution
 - actual replay PASS
 - actual repeatability
 - complete workflow coverage
 
-Actual R7B execution remains blocked until the Repository-external R7A handoff artifact and its exact SHA-256 are acquired through the existing operational handoff path.
+Actual replay execution remains blocked until the Repository-external R7A handoff and acquisition receipt are supplied, exact-byte verified, and accepted by the R7B intake path.
 
-## 10. Next step
+## 11. Next step
 
-After actual R7A handoff acquisition, the next implementation increment should connect these source-defined recipes to an operational replay runner that:
+After actual R7A handoff acquisition:
 
-- reads the actual handoff artifact
-- verifies its exact SHA-256
-- verifies the six origin raw artifact identities
-- executes at least two distinct replay runs per selected behavior against explicit T
-- stores every raw replay artifact outside the Repository
-- produces a repeatability assessment without converting Target-local replay details into Canonical meaning
+1. run the R7B intake acquisition runner,
+2. retain the resulting intake artifact and receipt outside the Repository,
+3. then connect the source-defined replay recipes to an operational replay runner that:
+
+- reads the actual R7B execution intake,
+- verifies its exact SHA-256 and source provenance,
+- verifies the six origin raw artifact identities,
+- executes at least two distinct replay runs per selected behavior against explicit T,
+- stores every raw replay artifact outside the Repository,
+- produces a repeatability assessment without converting Target-local replay details into Canonical meaning.
