@@ -131,6 +131,20 @@ type visualEvidenceState struct {
 	Reason   string `json:"reason"`
 }
 
+type targetDifferenceHandoff struct {
+	ApplicationID       string                     `json:"applicationId"`
+	TargetAdapter       string                     `json:"targetAdapter"`
+	Host                string                     `json:"host"`
+	TargetCapabilities  []string                   `json:"targetCapabilities"`
+	RuntimeBindings     []runtimeBindingArtifact   `json:"runtimeBindings"`
+	ExecutionArtifact   string                     `json:"executionArtifact"`
+	ABI                 string                     `json:"abi"`
+	ExecutionTrust      []string                   `json:"executionTrust"`
+	WebSpecific         []string                   `json:"webSpecific"`
+	DoNotCanonicalize   []string                   `json:"doNotCanonicalize"`
+	Unresolved          []string                   `json:"unresolved"`
+}
+
 type evidenceSummary struct {
 	EvidenceNature              string                   `json:"evidenceNature"`
 	RunIdentity                 string                   `json:"runIdentity"`
@@ -143,6 +157,7 @@ type evidenceSummary struct {
 	SemanticConformance         evidenceCheck            `json:"semanticConformance"`
 	FunctionalEvidence          evidenceCheck            `json:"functionalEvidence"`
 	VisualEvidence              visualEvidenceState      `json:"visualEvidence"`
+	TargetDifferenceHandoff     targetDifferenceHandoff  `json:"targetDifferenceHandoff"`
 	Artifacts                   []evidenceArtifactDigest `json:"artifacts"`
 	Unresolved                  []string                 `json:"unresolved"`
 	GateCReady                  bool                     `json:"gateCReady"`
@@ -455,6 +470,48 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 			Status:   "pending",
 			Required: true,
 			Reason:   "HTML/HTTP artifacts are not Visual Fidelity Evidence; capture screenshot or equivalent separately",
+		},
+		TargetDifferenceHandoff: targetDifferenceHandoff{
+			ApplicationID:      "order_entry",
+			TargetAdapter:      expected.TargetAdapter,
+			Host:               expected.Host,
+			TargetCapabilities: []string{
+				"http-html-projection",
+				"http-json-manifest",
+				"http-read-scenario",
+				"http-command-scenario",
+				"http-custom-submit-form",
+			},
+			RuntimeBindings: append([]runtimeBindingArtifact(nil), read.Result.RuntimeBindings...),
+			ExecutionArtifact: "unresolved",
+			ABI:               "unresolved",
+			ExecutionTrust: []string{
+				"server-process-observed-through-health-artifact",
+				"reference-runtime-data-is-synthetic",
+				"credential-is-runtime-input-and-not-retained-in-evidence",
+			},
+			WebSpecific: []string{
+				"/",
+				"/manifest.json",
+				"/scenario/read",
+				"/scenario/submit",
+				"/custom-submit",
+				"HTTP status mapping",
+				"HTML template and CSS",
+			},
+			DoNotCanonicalize: []string{
+				"HTTP route",
+				"HTTP status",
+				"HTML element",
+				"CSS class",
+				"Reference synthetic fixture value",
+			},
+			Unresolved: []string{
+				"browse-environment-instance-binding-not-exposed-by-current-driver-api",
+				"execution-artifact-and-abi-not-yet-qualified",
+				"actual-external-command-observation-not-acquired",
+				"target-capability-taxonomy-remains-candidate-until-second-target",
+			},
 		},
 		Artifacts: digests,
 		Unresolved: []string{
