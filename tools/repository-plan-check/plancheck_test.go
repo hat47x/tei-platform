@@ -143,3 +143,43 @@ func TestMarkdownRelativeLinksResolve(t *testing.T) {
 		t.Errorf("Markdownの相対リンク先が存在しません: %s", b)
 	}
 }
+
+// TestMarkdownTitleAppearsOnce catches a document that was accidentally pasted into
+// itself (for example by a string-replace whose replacement text contained `$`
+// patterns): the title line of a document must not reappear later in the same file.
+func TestMarkdownTitleAppearsOnce(t *testing.T) {
+	root := repositoryRoot(t)
+	var repeated []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if entry.Name() == ".git" || entry.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(entry.Name(), ".md") {
+			return nil
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(content)
+		title, _, _ := strings.Cut(text, "\n")
+		if strings.HasPrefix(title, "# ") && strings.Count(text, title) > 1 {
+			rel, _ := filepath.Rel(root, path)
+			repeated = append(repeated, filepath.ToSlash(rel)+": "+title)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(repeated)
+	for _, r := range repeated {
+		t.Errorf("文書のtitle行が同じfile内で繰り返されています（自己複製の疑い）: %s", r)
+	}
+}
