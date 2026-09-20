@@ -3943,3 +3943,128 @@ E1.21 canonical 11 source
   -> same revision / clean base / no source overlap再確認
   -> direct-to-main code commit
 ```
+
+
+#### E1.22 latest-main credential-safe refresh and branch convergence — 2026-09-21
+
+E1.21 canonical source以後、mainは5 commit進んだ。E1.21 candidate parent:
+
+```text
+eb9335f48e225612d9f4dd6183ca8adeceea83b2
+```
+
+からcurrent main:
+
+```text
+775a9b4b0d6a3a4de145c7ce3c97195c1f40c80c
+```
+
+までを比較したところ、canonical 11 source pathとのoverlapは0件だった。増分はR7B文書、repository plan check、Lane C / Definition-Centered Feedback Loop sourceなどであり、R7B replay packetの11 pathは変更していない。
+
+したがってE1.21のexact blobsをcurrent mainへそのまま再配置したbranchless candidateを作成した。
+
+```text
+candidate:
+  2fb101ac74dfc854a5807c8e8fd049add7ede888
+
+parent:
+  775a9b4b0d6a3a4de145c7ce3c97195c1f40c80c
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+E1.22 current canonical identities:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+remote branch全18本もcurrent mainと再比較した。全件でbranch固有ahead commitは0だったため、forceを使わずcurrent mainへfast-forwardした。
+
+```text
+remote branch count excluding main = 18
+unique ahead commits                = 0
+after convergence:
+  ahead  = 0
+  behind = 0
+  status = identical
+force update                        = none
+new remote work branch              = none
+open PR                             = 0
+```
+
+E1.21でcredential-related sourceが更新されたため、E1.15のaggregate focused PASSをcurrent canonical packet全体のPASSへ読み替えない。現在の最初の未完了gateは引き続き:
+
+```text
+E1.22 canonical 11 source
+  -> same working treeでaggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+である。
+
+このsessionではGo 1.23.2のlocal runtimeは利用できる一方、private repository full checkoutを取得できるauthenticated clone / GitHub-hosted runner経路がない。GitHub-hosted workflowもrunner allocation unavailableを明記している。
+
+したがって:
+
+```text
+latest-main exact candidate assembly
+  = PASS
+
+source overlap check
+  = PASS
+
+branch convergence
+  = PASS
+
+E1.21 aggregate focused rerun
+  = pending
+
+tools/repository-health-check.sh
+  = pending
+
+code integration
+  = pending
+
+actual replay / repeatability
+  = pending
+```
+
+とする。candidate SHAそのものをmainへfast-forward / cherry-pickせず、health-capable integration sessionではE1.22 exact blobsをlatest mainへrestoreして同一working tree上でqualificationする。
