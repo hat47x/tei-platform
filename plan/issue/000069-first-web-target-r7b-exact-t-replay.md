@@ -5536,3 +5536,90 @@ AND no new remote work branch / open PR conflict
 である。
 
 direct-to-main時は同じworking treeをcommitし、別candidateへのcherry-pickやremote branch作成を行わない。
+
+
+#### E1.15 single aggregate focused composition PASS — 2026-09-21
+
+E1.14でpendingとしていたsingle aggregate focused commandを、canonical sourceとGit blob identityが一致するRepository外focused working treeで実行した。
+
+検証treeへ配置したchanged Go source 10 filesと既存Gate C audit test 1 fileについて、実行直前に `git hash-object` を再計算し、E1.13のcanonical identityおよび既存Gate C test identityと11/11一致することを確認した。
+
+```text
+semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+reference-first-web-target-evidence-audit/main_test.go
+  668efcdb084e9a7cefe050a5df4be86effc1cebb
+reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+```
+
+同じworking tree上でE1.14と同じ5 packageを一括指定し:
+
+```text
+gofmt -l
+  = empty
+
+go vet
+  = PASS
+
+go test -count=20
+  = PASS
+```
+
+を得た。
+
+package別test result:
+
+```text
+tei/tools/internal/firstwebtargetevidence
+  PASS
+tei/tools/reference-first-web-target-evidence-audit
+  PASS
+tei/tools/reference-first-web-target-r7b-replay-plan
+  PASS
+tei/tools/reference-first-web-target-r7b-replay-audit
+  PASS
+tei/tools/reference-first-web-target-r7b-repeatability
+  PASS
+```
+
+またE1.14のhandoff candidate `99eb861e71cfb225cf2f2ccf3db1f96feb716645` と、独立にlatest source-relevant base上で再構成した `f265dab08e5196ef75220cb5580b65358eaff2d6` をGit treeで比較したところ、両者は同一tree:
+
+```text
+6fdaf751cf9aeb1ffe9c31efc7ec183328602459
+```
+
+を指し、canonical 11 pathのblob identityも全件一致した。したがってbranchless candidate chain間のsource driftはない。
+
+Evidence heightを更新する。
+
+```text
+canonical 11-path exact source fixed
++ V1 / Gate C / E0 focused PASS
++ V2 formatted focused PASS
++ repeatability hardened focused PASS
++ runner bash -n / early smoke PASS
++ single aggregate 5-package focused PASS
+  != tools/repository-health-check.sh PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+このaggregate PASSはRepository外のfocused moduleであり、full Repository healthを意味しない。mainへのcode integration条件は引き続き、Go-enabled full checkoutでcanonical 11 sourceをcurrent mainへ配置した**同じworking tree**に対する `tools/repository-health-check.sh` PASS、source overlapなし、clean/same-revision確認である。
