@@ -4,7 +4,7 @@
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
-- Source-inspection base: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
+- Source-inspection base: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Authoritative destination source created: No
 - Executable Evidence obtained: No
 - Shared Acceptance established: No
@@ -27,7 +27,7 @@ implementation contract pinned
 前回の実装契約commit `64f0a5b8167fcb4aa90e56a6c47d7158bba336b8` 以後、inspection時点のmainは:
 
 ```text
-e1f13ae97b420a2703eec8598eb98c0ab057258b
+c185937ab27a3a31332fefcd63ba5940b97b021e
 docs(r7b): pin branchless integration packet
 ```
 
@@ -164,6 +164,23 @@ diagnostics := validation.Validate(loaded.World)
 
 を実行する。
 
+current sourceでは `validation.Validate()` から:
+
+```text
+Validate
+  -> validateQueryResultMappings
+  -> validateApplicationDataAccessContracts
+     -> ValidateSemanticRelationKeys
+     -> ValidatePersistenceRelationStorageMappings
+     -> ValidateDatabaseContractQuerySignatures
+     -> ValidateReferenceContractQueryInvocations
+     -> ValidateReferenceContractQueryCrossLayer
+     -> ValidateHeaderDetailContractQueryBindings
+     -> ValidateContractQuerySQLRealizations
+```
+
+へ到達することを確認した。したがって、このtestでRelation keyとContract Query cross-layerを含む通常のdata-access Validation経路を通せる。
+
 Acceptance prerequisiteとしては、少なくとも`validation.Error`が0件であることを要求する。特に次をsilent skipしない。
 
 - `UNKNOWN_APPLICATION_PATTERN_RELATION`
@@ -225,7 +242,7 @@ secondApplicationS5FreshnessBaseRevision =
 health-capable code milestoneでは、このconstantをcurrent inspected relevant-source base:
 
 ```text
-e1f13ae97b420a2703eec8598eb98c0ab057258b
+c185937ab27a3a31332fefcd63ba5940b97b021e
 ```
 
 へ更新する。

@@ -6,7 +6,7 @@
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base Repository revision: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
+- Review base Repository revision: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Shared Acceptance result: Not established
 - Acceptance witness: Absent
 
@@ -27,10 +27,10 @@ freshness captured
 今回実際にshared authority / provenanceとValidation implementationをinspectしたrevision:
 
 ```text
-e1f13ae97b420a2703eec8598eb98c0ab057258b
+c185937ab27a3a31332fefcd63ba5940b97b021e
 ```
 
-このrevisionで次のGit blob identityを再確認した。前回Second Application実装契約 `64f0a5b8...` からこのrevisionまでの変更pathはR7B Issue文書だけであり、下記relevant blobは不変である。
+このrevisionで次のGit blob identityを再確認した。前回Second Application更新 `bb608419...` からこのrevisionまでの変更pathはR7B Issue文書だけであり、下記relevant blobは不変である。
 
 ```text
 customer semantic source:
@@ -155,6 +155,8 @@ current implementation inspectionで確認した境界:
 - Relation `one` とQuery `zero-or-one` は互換
 
 revised Proposalはこれらを満たすよう構成した。
+
+さらにcurrent `validation.Validate()` が `validateQueryResultMappings()` → `validateApplicationDataAccessContracts()` を通じて、`ValidateSemanticRelationKeys()` と `ValidateReferenceContractQueryCrossLayer()` を通常Validationへ含めることを確認した。
 
 ただしこれはimplementation source inspectionであり、actual loader / validator executionではない。
 

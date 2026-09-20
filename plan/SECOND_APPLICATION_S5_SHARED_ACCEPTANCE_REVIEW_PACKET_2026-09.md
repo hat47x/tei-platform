@@ -7,7 +7,7 @@
 - Executable pressure implementation packet: `plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md`
 - Revised Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base inspected at: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
+- Review base inspected at: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Shared Acceptance result: Not established
 - Authoritative destination source created: No
 - Environment binding created: No
@@ -124,6 +124,8 @@ current Validation source inspectionでは次を要求する。
 
 current shared Contractは `find_by_id -> customer.customer zero-or-one` であり、revised Relationは `customer.customer one` なので、この互換規則に合う設計である。
 
+current `validation.Validate()` は `validateQueryResultMappings()` → `validateApplicationDataAccessContracts()` を通じ、Relation key / Contract Query invocation / cross-layer検査を含むことも再確認した。
+
 これはSource inspectionによるDesign Evidenceであり、temporary workspaceをactual load / validateしたExecutable Evidenceではない。
 
 ## 5. Persistence / authoring impact after Acceptance
@@ -201,7 +203,7 @@ health-capable cloneで少なくとも次を更新・実行する。
 4. `workspace.Load(probeRoot)` でactual loader pathを通す
 5. `validation.Validate(loaded.World)` でfull Validationを実行し、`validation.Error`が0件であることを要求
 6. revised fingerprint `c18ae0f...` とdestination-owned Semantic subjectsをS5 pressureへ反映
-7. S5 freshness pressureのreview-base constantを `e1f13ae97b420a2703eec8598eb98c0ab057258b` へ追随させる
+7. S5 freshness pressureのreview-base constantを `c185937ab27a3a31332fefcd63ba5940b97b021e` へ追随させる
 8. `tools/run-knowledge-portability-reference-evidence.sh` のgofmt対象へS3/S4/S5 pressureとfull-validation pressureを追加
 9. focused Second Application tests、reference evidence script、`tools/repository-health-check.sh` をすべてPASSさせる
 
@@ -230,7 +232,7 @@ Acceptance authorityを持つactorのexplicit witnessを要求する。witness�
 
 ```text
 proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
-reviewBaseInspected       = e1f13ae97b420a2703eec8598eb98c0ab057258b
+reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
 revisedExecutablePressure = absent
