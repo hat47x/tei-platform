@@ -1905,6 +1905,84 @@ runner bash syntax PASS
 
 統合sessionではunreferenced candidate SHAをmainへfast-forwardせず、latest mainへ `73f06bfa...` の責務とexact blobsをreconcileする。そのexact resultに対してfull `tools/repository-health-check.sh` を通した後にだけmainへ直接統合する。
 
+#### E1.2 runner lifecycle / retained Evidence hardening candidate
+
+E1.1 runnerを静的監査したところ、actual replay前に閉じるべき追加境界が見つかった。
+
+第一に、`go run` をbackground起動すると、runnerが保持するPIDがGo tool processであり、actual Target child processの停止境界を間接的に扱う形になる。fresh-process Evidenceではprocess lifecycleを曖昧にしないため、exact-T checkoutでTarget binaryをRepository外scratchへ**事前build**し、各runではsubshellから `exec` してそのbinaryを直接background processにする。
+
+第二に、固定base portに既存のcompatible health endpointがいた場合、Target起動直後のhealth判定が別processを誤認する余地がある。各run開始前に同じloopback `/healthz` が既に成功しないことを確認してからTargetを起動する。direct binaryがbindに失敗した場合はPID生存判定も失敗するため、そのrunを開始しない。
+
+第三に、E1.1 final receiptはT / adapter / hostを保持していた一方、validated launch provenanceのB / RはTSV digestに間接bindingされるだけだった。hardening candidateでは `HandoverBaselineID / BaselineRepositoryRevision` もfinal receiptへ明示する。
+
+さらに次を追加した。
+
+- source health check後、Target Evidence取得前にcurrent Repositoryがsame revision / cleanであることを再確認
+- `repository-health-check.log` / exact-T Target source test log / origin manifest check logのSHA-256をfinal receiptへbinding
+- retained output credential scanのPASS artifactとSHA-256をfinal receiptへbinding
+- final receipt生成後にretained output tree全体をもう一度credential scan
+- output directoryを作る**前**にparentをphysical canonicalizeし、relative path経由でRepository内へdirectoryを作ってからrejectする余地を除去
+- output parentは既存directoryを要求し、basename `.` / `..` をreject
+- base portを1024..65534の整数へ限定
+- runnerが利用するcore command dependencyを開始時に明示確認
+
+branchless candidate chainは次へ直列化した。
+
+```text
+a789401cabbd1280100f30de3d94b9154ab26c0d
+  ↓ E1.1 runner
+73f06bfa2cdceb29c9550604ce2e766e05f2fad5
+  ↓ lifecycle / receipt hardening
+92b8ca7f9efcc8135fa1ec4b42d7f2606d8b25ba
+  ↓ port expression correction path
+76b7745b6b724da401a43e66b6b1d231816d3b62
+  ↓ preserve literal bash PID
+f2f184dda2d99cf25cb70226f21093ae32b8db72
+  ↓ explicit command dependencies
+d5f7c54f69997036f31811771dbfaac4f2eb9dde
+  ↓ pre-materialization output-path qualification
+  ↓ post-health-check source immutability check
+3460457950ca355bf5d33c55b76cfc647da9c660
+```
+
+現在の**preferred runner candidate headは `34604579...`** とする。
+
+途中の `76b7745...` はJavaScriptのreplacement-string `$` semanticsにより直前treeと実質同一になったno-op candidateである。literal bash PID `$` が実際に保持されたのは `f2f184dd...` 以降であり、`34604579...` でも:
+
+```bash
+base_port="${TEI_R7B_REPLAY_BASE_PORT:-$((19080 + ($ % 700)))}"
+```
+
+をexact sourceで再確認した。
+
+current preferred runner blob:
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  blob = 86c5b9a36a13b43ccded3e6f336effba3bc023f0
+  mode = 100755
+```
+
+E1.1の元runner blob `63da55a8...` は同一bytesについて `bash -n` PASSと軽量fail-closed smokeがある。hardening後blob `86c5b9a3...` はlocalized diffを静的監査し、B/R receipt binding、direct exact-T binary lifecycle、credential scan binding、output path qualificationを確認したが、**このexact hardening blobについてのbash syntax再実行とfull Repository qualificationはまだ行っていない**。
+
+したがってEvidence heightは:
+
+```text
+E1.1 exact runner bash -n / early fail-closed smoke PASS
++ E1.2 hardening source candidate
++ exact preferred runner blob identity fixed
+  != E1.2 exact bash -n rerun
+  != candidate composition Go package PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+で止める。
+
+統合sessionでは `34604579...` をmainへfast-forwardせず、latest mainへ責務とexact sourceをreconcileする。そのfull checkoutでrunner `bash -n`、focused package tests、`tools/repository-health-check.sh` を順に通した後にだけmainへ直接統合する。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
