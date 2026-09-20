@@ -52,16 +52,16 @@ Product Gate A
   = Ready
 
 Lane C Pre-ADR Gate A
-  = actual Repository execution Evidence unresolved
+  = actual Repository execution PASS（R = e2856e6、2026-09-20）
 
 Business Procedure Contract ADR
   = Not Ready
 ```
 
-Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは二つです。
+Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、残るのはBlocker Bです。
 
 ```text
-Blocker A
+Blocker A — 充足（2026-09-20）
   actual Gate A green
   including source-uniqueness / source-root membership /
   candidate-only fresh-process / second-corpus non-inference Pressure
@@ -71,7 +71,7 @@ Blocker B
   from / to / condition sufficiency
 ```
 
-現在のexecution priorityはBlocker Aです。`ISSUE-000050`では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みですが、accepted independent Business seed / Procedure / Handoff positive Evidenceはまだ成立していません。Gate A green前はcorpus / provenance researchまでに留め、second-case検証のためのaccepted Handoff fixtureを作りません。
+現在のexecution priorityはBlocker Bです。`ISSUE-000050`では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みですが、accepted independent Business seed / Procedure / Handoff positive Evidenceはまだ成立していません。Gate Aは2026-09-20にgreenとなったため、独立したBusiness need / Reference seedを先にauthorし、それから必要な場合だけsecond Handoffを置く段階に入りました。
 
 Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
 

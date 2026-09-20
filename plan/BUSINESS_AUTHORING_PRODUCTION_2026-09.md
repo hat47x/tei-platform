@@ -434,7 +434,7 @@ migration
   -> legacy-read preview -> one authority cutover -> candidate-only load
 ```
 
-一方、actual runner未実行のままproduction package / loader / schemaへ進むと、test-only vocabularyを実装都合で固定する危険がある。
+一方、actual runner未実行のままproduction package / loader / schemaへ進むと、test-only vocabularyを実装都合で固定する危険がある（2026-09-20にGate A actual executionはPASSしたが、Gate A greenはproduction adoptionを意味しないため、この分離は維持する）。
 
 本書では「Contract ADRへ進めるためのEvidence」と「決めたcontractをproduction authorityとして採用するためのEvidence」を分離する。
 

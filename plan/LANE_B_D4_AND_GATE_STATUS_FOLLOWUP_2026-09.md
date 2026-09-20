@@ -15,11 +15,11 @@ Lane CのISSUE-000042とPre-ADR auditは次へ一致した。
 ```text
 15a synthetic multi-Application structural pressure
   source/test level implemented
-  actual execution pending
+  actual execution PASS（Gate A、R = e2856e6、2026-09-20）
 
 15b current order_entry social-system realism pressure
   source/test level implemented
-  actual execution pending
+  actual execution PASS（Gate A、R = e2856e6、2026-09-20）
 
 15c realistic second-Application / broader corpus pressure
   conditional

@@ -197,7 +197,7 @@ A. actual Repository runner green未取得
 B. second realistic TEI-original Handoff未充足
 ```
 
-Fresh-process feasibilityはADR前に必要な独立Evidence項目であるが、source-level実装済みであり、現在はGate A actual executionで同じrevision上に実行Evidenceを得る課題である。このためmaterial blockerを別立てして三重管理しない。
+Fresh-process feasibilityはADR前に必要な独立Evidence項目であるが、source-level実装済みであり、現在はGate A actual executionで同じrevision上に実行Evidenceを得る課題であった（2026-09-20更新: Gate A actual executionは取得済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。このためmaterial blockerを別立てして三重管理しない。
 
 ### Production adoption blocker
 
@@ -244,7 +244,7 @@ Readinessだけを次へ分離する。
 ```text
 Contract ADR
   = Not Ready
-  reason = actual Gate A green（fresh-process feasibilityを含む） + second realistic Handoff
+  reason = second realistic Handoff（actual Gate A greenは2026-09-20に充足）
 
 Production adoption
   = Not Ready

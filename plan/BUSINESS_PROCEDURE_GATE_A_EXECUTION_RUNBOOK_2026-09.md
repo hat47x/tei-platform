@@ -435,28 +435,15 @@ Gate A greenを理由に即ADR採用へしない。
 ## 18. Current state
 
 ```text
-PR #482
-  = mainへmerge済み
-
-current execution target branch
-  = old Lane C branchへ固定しない
-  = Pre-ADR判定対象のexact revision R
-
-GitHub Gate B manual workflow
-  = available but Lane C Gate A subsetではない
-
-GitHub generic Lane C Gate A manual workflow
-  = not found
-
-external actual runner
-  = availability unresolved
-
 Gate A actual Evidence
-  = unresolved
-
-Runbook
-  = post-merge execution modelへ更新
+  = PASS（R = e2856e6e568b6be966c6b8689ebea479ec184a4a、2026-09-20）
+  = runner: tools/run-business-procedure-gate-a.sh
+  = record: Pre-ADR Audit section 13 /
+    GitHub Release business-procedure-gate-a-evidence-R-e2856e6
 
 Pre-ADR
   = Not Ready
+  = remaining material blocker: Blocker B（independent second realistic Handoff）
 ```
+
+Gate A Evidenceは、そのrevision `R`のmechanical Evidenceである。判定対象のtreeが変わった場合は、`tools/run-business-procedure-gate-a.sh`で新しいrevisionについて取り直す。

@@ -88,7 +88,7 @@ ISSUE-000042との担当境界は次のとおりです。
 | C/U/D欠落は契約blockerではない、という判断 | readiness split §6 | ISSUE-000048の非目標 + 本書§6 |
 | `ir.World.Business` embeddingのdefer判断 | readiness split §7 | ISSUE-000048（ADR起票時に記録） + 本書§6 |
 
-Fresh-process feasibilityはADR前に必要なEvidenceである一方、current source-level implementationではGate A actual execution待ちまで縮約している。このためISSUE-000048でmaterial blockerをAとは別の第三blockerとして重複管理しない。
+Fresh-process feasibilityはADR前に必要なEvidenceである一方、current source-level implementationではGate A actual executionまで縮約している（2026-09-20更新: Gate A actual executionは取得済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。このためISSUE-000048でmaterial blockerをAとは別の第三blockerとして重複管理しない。
 
 ## 6. reopen triggerの所有先
 

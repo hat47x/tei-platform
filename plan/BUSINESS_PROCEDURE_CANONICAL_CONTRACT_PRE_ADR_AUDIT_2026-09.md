@@ -303,7 +303,7 @@ candidate Procedure + Handoff
 
 をPressureする。
 
-したがってfresh-process candidate-only feasibilityは**source-level implementation済み / actual runner未実行**であり、独立した設計未解決ではない。
+したがってfresh-process candidate-only feasibilityは**source-level implementation済み / actual runner未実行**であり、独立した設計未解決ではない（2026-09-20更新: Gate A actual executionは実行済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。
 
 ## 9. Derived Data / CRUD / ownership
 
@@ -506,6 +506,8 @@ intentional defect checker
 
 Fresh-process candidate-only subprocess Pressureもこのactual test runに含める。Source inspectionをactual greenへ読み替えない。
 
+**実行結果（2026-09-20）**: `tools/run-business-procedure-gate-a.sh`により、clean full checkoutのexact revision `R = e2856e6e568b6be966c6b8689ebea479ec184a4a`について、Step A1〜A7がすべて成功し（`gateAPassed = true`）、Gate Aは**PASS**した。A7ではcritical test 26件のexact nameがすべて存在し、focused runで26件すべてがPASSした（source-uniqueness、source-root membership、candidate-only disk / fresh-process reload、second-corpus non-inference Pressureを含む）。Evidence: GitHub Release [`business-procedure-gate-a-evidence-R-e2856e6`](https://github.com/hat47x/tei-platform/releases/tag/business-procedure-gate-a-evidence-R-e2856e6)（tagは`R`を指す）のasset `tei-lane-c-gate-a-evidence-R-e2856e6.tar.gz`、SHA-256 `d0f0f5a937340a59e04b00cc8bcd8d8046f0327c2384e951dc0de2fd4a788971`。Gate Aはmechanicalなexecution Evidenceであり、Contract ADR readinessやPAS-07 acceptedを意味しない。
+
 ### Gate B — minimum meaning / authoring feasibility
 
 Actual testsで:
@@ -525,7 +527,7 @@ Actual testsで:
 
 を確認する。
 
-Fresh-process / source-uniqueness testsはsource-level実装済みなので、残るのはGate A actual execution Evidenceである。
+Fresh-process / source-uniqueness testsはsource-level実装済みで、Gate A actual execution Evidenceも取得済みである（上記、R = `e2856e6`）。
 
 ### Gate C — address / Handoff sufficiency
 
@@ -634,11 +636,11 @@ migration
 source-authority uniqueness
   = Procedure duplicate logical source Pressure implemented
   = exact duplicate standalone Handoff Pressure implemented
-  = actual execution pending
+  = actual execution PASS（R = e2856e6、2026-09-20）
 
 fresh-process feasibility
   = source-level subprocess Pressure implemented
-  = actual execution pending
+  = actual execution PASS（R = e2856e6、2026-09-20）
 
 second realistic Handoff
   = second-corpus research target selected
@@ -657,7 +659,7 @@ Production adoption
 ### Remaining Contract ADR blockers
 
 ```text
-Blocker A
+Blocker A — 充足（2026-09-20、R = e2856e6）
   actual Repository runner green
   including source-uniqueness and fresh-process candidate-only Pressure
 
@@ -667,7 +669,7 @@ Blocker B
   from / to / condition sufficiency確認
 ```
 
-**実質的なContract ADR blockerはこの二つまで縮約した。**
+**実質的なContract ADR blockerは、Blocker Bだけまで縮約した（Blocker Aは2026-09-20に充足）。**
 
 次はblockerではない:
 
@@ -680,19 +682,22 @@ Blocker B
 
 ## 16. Verification status
 
-Actual Repository Gate A execution Evidenceは未取得である。Runner availabilityやexecution target revisionは一時状態なので本正本へ固定せず、`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`に従って実行時にexact revision `R`、runner kind、environmentを記録する。
+Actual Repository Gate A execution Evidenceは2026-09-20に取得した（R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、結果PASS、上記§13）。以後のexecution target revisionは一時状態なので本正本へ固定せず、`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`に従って、実行ごとにexact revision `R`、runner kind、environmentを記録する。判定対象のtreeが変わった場合は、新しいrevisionでGate Aを取り直す。
 
 Lane C Reference / Pressure PR #482はmainへmerge済みで、standalone Handoff source uniqueness PressureもPR #520でmainへmerge済みである。ただしRepositoryへのReference / Pressure mergeは、Contract ADR adoption・production Core adoption・Gate A actual greenのいずれも意味しない。
 
 したがってcurrent source-level tests / checkerについて:
 
 ```text
-gofmt PASS  -> 未主張
-go vet PASS -> 未主張
-go test PASS -> 未主張
-checker PASS -> 未主張
-fresh-process PASS -> 未主張
-source-uniqueness PASS -> 未主張
+R = e2856e6について:
+gofmt PASS  -> 主張（Gate A A1）
+go vet PASS -> 主張（A2）
+go test PASS -> 主張（A3 / A4）
+checker PASS -> 主張（A5 / A6）
+fresh-process PASS -> 主張（A7）
+source-uniqueness PASS -> 主張（A7）
 ```
 
-Contract ADRは**Not Ready**を維持する。次の状態遷移は、同一revisionでのactual Gate A greenとindependent second realistic TEI-original Handoffの両方が揃った場合だけ再判定する。
+ただしこれはそのrevisionのmechanical Evidenceに限る。他のrevisionへ引き継がない。
+
+Contract ADRは**Not Ready**を維持する。Blocker Aは充足したため、次の状態遷移は、independent second realistic TEI-original Handoff（Blocker B）が揃った場合だけ再判定する。

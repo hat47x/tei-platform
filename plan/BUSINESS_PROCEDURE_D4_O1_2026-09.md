@@ -519,7 +519,7 @@ adjacency / wording / Legacy policy derivation
 
 O1 field-specific target-aware test shape
   Source-level implemented
-  actual execution pending
+  actual execution PASS（Gate A、R = e2856e6、2026-09-20）
 
 authoring fixture field adoption
   Not decided

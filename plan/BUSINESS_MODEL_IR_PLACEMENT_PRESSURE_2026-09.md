@@ -177,7 +177,7 @@ workspace.Business
 理由:
 
 - production Canonical contract自体がPre-ADR Not Ready
-- actual runner green未取得
+- actual runner greenは2026-09-20にGate A PASSで取得したが、Contract ADRはNot Readyのままである
 - O1 production source syntax未確定
 - Handoff production source / placement未確定
 - Shared Acceptance / semantic revision API未確定

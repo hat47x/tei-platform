@@ -88,12 +88,12 @@ ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの
 
 Pre-ADR Auditのcurrent判定をそのまま担当する。
 
-- **A. actual Repository runner green未取得** — `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
+- **A. actual Repository runner green — 充足（2026-09-20、R = `e2856e6`、[Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）** — 次を同一revision `R`でactual実行した: `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
 - **B. independent second realistic TEI-original responsibility transfer未充足** — ISSUE-000050では製造・在庫連携のsecond-corpus research target、provenance、Evidence nature、RRB-P1 acceptance適用方法まで整理済み。ただしRRB-P1を満たすaccepted independent Business source、Procedure / Step、自然に生じたresponsibility transfer、`from/to/condition` positive Evidenceは未成立
 
 Blocker Bは「Handoff fixtureが二つあること」ではない。Handoff検証を目的に業務を逆算せず、独立したBusiness needから自然に生じた責任継続でcurrent H1/R3の一般性をpressureできることを要求する。
 
-Candidate-only fresh-process feasibilityはADR前に必要なEvidence項目だが、現在はsource-level実装済みであり、独立したmaterial blockerとしてAと二重計上しない。Blocker Aのactual executionで同じrevision上にEvidenceを得る。
+Candidate-only fresh-process feasibilityはADR前に必要なEvidence項目だが、現在はsource-level実装済みであり、独立したmaterial blockerとしてAと二重計上しない。Blocker Aのactual executionで同じrevision上にEvidenceを得た（2026-09-20、A7のcritical 26件がPASS）。
 
 ## 現在の作業順序
 
@@ -128,7 +128,7 @@ Gate A green前には:
 - `from/to/condition`をpositive Evidenceとしてauthorしない
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
-したがってcurrent execution priorityは**Blocker A**である。Actual runnerが利用可能になった時点で、second Handoff authoringより先にGate Aを同一revisionで実行する。
+したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。current execution priorityは**Blocker B**である。
 
 ## ADR前に要求するEvidence
 

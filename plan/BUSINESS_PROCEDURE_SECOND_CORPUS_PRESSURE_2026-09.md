@@ -710,6 +710,6 @@ H1/R3は引き続きnarrow relation pressureとして維持する。
 
 ## Verification status
 
-Repository上へ`second_corpus_handoff_inference_pressure_test.go`を追加したがactual runner greenは未取得である。
+Repository上へ`second_corpus_handoff_inference_pressure_test.go`を追加したがactual runner greenは未取得であった（2026-09-20更新: Gate A actual executionは実行済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。
 
 `gofmt / go vet / go test / checker` PASSはまだ主張しない。

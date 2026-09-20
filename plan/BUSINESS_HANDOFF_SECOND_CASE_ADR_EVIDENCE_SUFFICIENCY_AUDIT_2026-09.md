@@ -285,7 +285,7 @@ second case missing
 
 ## 9. Gate Aとの順序
 
-Current Gate A actual execution Evidenceは未取得である。Runner availability自体は一時状態なので、このauditではavailabilityを固定しない。
+Gate A actual execution Evidenceは、当初は未取得だった（2026-09-20更新: Gate A actual executionは取得済みでPASS。R = `e2856e6e568b6be966c6b8689ebea479ec184a4a`、判定の正本は[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）。Runner availability自体は一時状態なので、このauditではavailabilityを固定しない。
 
 既存search正本とISSUE-000050は、actual green前にsecond fixture / accepted Handoffを製造しないことを固定している。
 
@@ -354,4 +354,4 @@ Blocker B
   = independent second realistic TEI-original Handoff
 ```
 
-Contract ADRはBlocker A / Bの両方が充足するまでNot Readyを維持する。Fresh-process feasibilityはADR前Required Evidenceのままだが、current material blockerではGate A actual executionへ包含し第三blockerとして二重計上しない。
+Contract ADRはBlocker A / Bの両方が充足するまでNot Readyを維持する（Blocker Aは2026-09-20に充足。残るのはBlocker B）。Fresh-process feasibilityはADR前Required Evidenceのままだが、current material blockerではGate A actual executionへ包含し第三blockerとして二重計上しない。

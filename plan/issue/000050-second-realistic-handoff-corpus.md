@@ -391,7 +391,7 @@ Contract ADR blocker B
 - [x] Lane B RRB-P1 acceptance条件を製造・在庫候補へどう適用するか整理した
 - [x] R2 negative proofでsystem result / actuality / Handoff non-inferenceの主要short-circuitをreviewした
 - [x] Gate A green後にseed candidateをreviewするissue-local checklistを準備した
-- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた
+- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた（前提のGate A greenは2026-09-20に充足）
 - [ ] seedのknown / accepted / derived / proposal / unresolvedをreviewできる形で記録した
 - [ ] responsibility transferが自然に存在する場合、`from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
 - [ ] 元資料に無いidentity / actor / sequenceを補完していないことを確認した
@@ -408,7 +408,7 @@ Contract ADR blocker B
 3. RRB-P1 seed review checklistの観点を維持するが、回答内容やBusiness meaningは先に固定しない
 4. candidate / unresolved分類を維持し、accepted Business sourceへ昇格しない
 5. 同型negative Handoff caseやsynthetic sequenceを増やして「準備が進んだ」ことにしない
-6. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する
+6. Gate A actual executionが可能になればISSUE-000048 Blocker Aを優先する（2026-09-20に実行・PASS済み。以後は下の「Gate A green後」へ進める）
 
 Gate A前のresearchに具体的gapが無ければ、**追加文書を作らず待つこと自体を正しい停止条件**とする。
 
