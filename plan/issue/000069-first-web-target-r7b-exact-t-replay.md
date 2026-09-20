@@ -5623,3 +5623,84 @@ canonical 11-path exact source fixed
 ```
 
 このaggregate PASSはRepository外のfocused moduleであり、full Repository healthを意味しない。mainへのcode integration条件は引き続き、Go-enabled full checkoutでcanonical 11 sourceをcurrent mainへ配置した**同じworking tree**に対する `tools/repository-health-check.sh` PASS、source overlapなし、clean/same-revision確認である。
+
+
+#### E1.16 health integration environment boundary — 2026-09-21
+
+E1.15でsingle aggregate focused compositionはPASS済みとなった。current main `f57efd01fae19362b36e21ff7513db8469d277d7` を親に、E1.13 canonical 11 sourceをそのまま配置した最新branchless candidateを再構成した。
+
+```text
+candidate:
+  86902a74678756318c554da041a705c1d71ae5f0
+
+parent:
+  f57efd01fae19362b36e21ff7513db8469d277d7
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+E1.15のsource-relevant base `40209d25e36b0709776c77c369ab183f06b38670` からcurrent mainまでを比較すると、変更は次の4 docs pathだけであり、canonical 11 source pathとのoverlapは0である。
+
+```text
+plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md
+plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md
+plan/issue/000040-semantic-component-composition.md
+plan/issue/000069-first-web-target-r7b-exact-t-replay.md
+```
+
+remote branch 18本をcurrent mainと比較した結果、全件:
+
+```text
+ahead  = 0
+behind = 0
+status = identical
+```
+
+であり、open PRも0。新しいremote branch / PRは作成していない。
+
+現在のsessionではfull Repository healthを実行できない理由を実行環境側で再確認した。
+
+```text
+container DNS:
+  github.com                    resolution failure
+  api.github.com                resolution failure
+  raw.githubusercontent.com     resolution failure
+
+private git clone / ls-remote:
+  unavailable because github.com cannot be resolved
+
+GitHub-hosted Actions:
+  .github/workflows/knowledge-portability-reference-evidence.yml
+  が runner allocation unavailable / runner_id=0 を明記
+```
+
+`tools/repository-health-check.sh` のactual contractも再確認した。full checkoutで必要なのは:
+
+```text
+gofmt -l .
+go vet ./...
+go test -count=1 ./...
+go run ./cmd/tei validate -workspace reference/workspace
+```
+
+であり、focused moduleのPASSをこれへ読み替えることはしない。
+
+したがってcurrent Evidence heightは:
+
+```text
+canonical 11-path exact source fixed
++ all package dependency closures focused PASS
++ single aggregate 5-package focused PASS
++ runner bash -n / early fail-closed smoke PASS
++ no source overlap since focused source-relevant base
++ all remote branches converged / open PR 0
+  != repository-health-check PASS
+  != code integrated
+  != replay executed
+  != repeatability observed
+```
+
+次のhealth-capable full checkoutでは、current mainをpull/rebaseした後、candidate commit自体をcherry-pickせずE1.13 canonical 11 blobsを同一working treeへrestoreし、E1.14のaggregate focused commandと `tools/repository-health-check.sh` を実行する。両方PASSし、実行前後でsame revision / clean base / source overlapなしを確認した場合のみ、その同じworking treeをdirect-to-main commitする。
