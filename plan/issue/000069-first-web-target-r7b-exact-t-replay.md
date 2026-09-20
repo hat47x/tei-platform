@@ -5381,3 +5381,137 @@ current exact 11-path source set
 ```
 
 である。full checkoutを持たないsessionではfocused Evidenceをfull Repository healthへ読み替えず、codeをmainへ統合しない。actual exact-T replay / repeatability Evidenceも引き続き未取得として扱う。
+
+#### E1.14 package-closure proof and health execution handoff — 2026-09-21
+
+canonical 11-path source setが触るGo packageは5つだけである。
+
+```text
+P1  tei/tools/internal/firstwebtargetevidence
+P2  tei/tools/reference-first-web-target-evidence-audit
+P3  tei/tools/reference-first-web-target-r7b-replay-plan
+P4  tei/tools/reference-first-web-target-r7b-replay-audit
+P5  tei/tools/reference-first-web-target-r7b-repeatability
+```
+
+candidate source / testのimport graphをexact sourceから再確認した。
+
+```text
+P1 -> standard library only
+P2 -> P1 + standard library
+P3 -> standard library only
+P4 -> P1 + standard library
+P5 -> standard library only
+
+all candidate *_test.go:
+  same-package tests
+  no candidate cross-package import beyond package-under-test
+```
+
+したがってcandidate内部の非標準依存edgeは:
+
+```text
+P2 -> P1
+P4 -> P1
+```
+
+の2本だけであり、cycleはない。
+
+すでにexact blob identityで取得済みのfocused Evidenceはdependency closure単位で:
+
+```text
+{P1, P2, P3}
+  gofmt PASS
+  go vet PASS
+  go test -count=10 PASS
+
+{P1, P4}
+  gofmt clean
+  go vet PASS
+  go test -count=50 PASS
+
+{P5}
+  gofmt clean
+  go vet PASS
+  go test -count=50 PASS
+
+runner
+  bash -n PASS
+  early fail-closed smoke 4/4 PASS
+```
+
+である。全5 packageは少なくとも一度、自身のcandidate-internal dependencyを含むclosureでactual compile/test済みである。
+
+この事実はfull aggregate commandの実行結果そのものではないため:
+
+```text
+package-closure static composition
+  = PASS
+
+single aggregate focused command
+  = pending
+```
+
+と区別する。
+
+health-capable full checkoutでは、current mainへcandidateを接続する前に次を同一working treeで順に実行する。
+
+```bash
+git pull --rebase origin main
+
+git restore --source=99eb861e71cfb225cf2f2ccf3db1f96feb716645 -- \
+  tools/internal/firstwebtargetevidence/semantics.go \
+  tools/internal/firstwebtargetevidence/semantics_test.go \
+  tools/internal/firstwebtargetevidence/semantics_pressure_test.go \
+  tools/reference-first-web-target-evidence-audit/main.go \
+  tools/reference-first-web-target-r7b-replay-plan/main.go \
+  tools/reference-first-web-target-r7b-replay-plan/main_test.go \
+  tools/reference-first-web-target-r7b-replay-audit/main.go \
+  tools/reference-first-web-target-r7b-replay-audit/main_test.go \
+  tools/reference-first-web-target-r7b-repeatability/main.go \
+  tools/reference-first-web-target-r7b-repeatability/main_test.go \
+  tools/run-first-web-target-r7b-replay.sh
+
+test "$(git diff --name-only | wc -l)" -eq 11
+
+test -z "$(gofmt -l \
+  tools/internal/firstwebtargetevidence \
+  tools/reference-first-web-target-evidence-audit \
+  tools/reference-first-web-target-r7b-replay-plan \
+  tools/reference-first-web-target-r7b-replay-audit \
+  tools/reference-first-web-target-r7b-repeatability)"
+
+go vet \
+  ./tools/internal/firstwebtargetevidence \
+  ./tools/reference-first-web-target-evidence-audit \
+  ./tools/reference-first-web-target-r7b-replay-plan \
+  ./tools/reference-first-web-target-r7b-replay-audit \
+  ./tools/reference-first-web-target-r7b-repeatability
+
+go test -count=20 \
+  ./tools/internal/firstwebtargetevidence \
+  ./tools/reference-first-web-target-evidence-audit \
+  ./tools/reference-first-web-target-r7b-replay-plan \
+  ./tools/reference-first-web-target-r7b-replay-audit \
+  ./tools/reference-first-web-target-r7b-repeatability
+
+bash -n tools/run-first-web-target-r7b-replay.sh
+
+tools/repository-health-check.sh
+```
+
+ここで `99eb861e...` はsource-relevant base `40209d25...` 直上のbranchless composition candidateであり、後続のdocs-only commitだけではcanonical 11 blobのfreshnessを失わない。統合前には11 pathのblob identityをE1.13のcanonical listと再照合する。
+
+focused aggregate PASSだけではmain統合しない。必須条件は:
+
+```text
+aggregate focused PASS
+AND repository-health-check PASS
+AND candidate 11 blob identity exact
+AND no overlapping source change since health run
+AND no new remote work branch / open PR conflict
+```
+
+である。
+
+direct-to-main時は同じworking treeをcommitし、別candidateへのcherry-pickやremote branch作成を行わない。
