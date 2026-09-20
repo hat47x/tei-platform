@@ -1983,6 +1983,89 @@ E1.1 exact runner bash -n / early fail-closed smoke PASS
 
 統合sessionでは `34604579...` をmainへfast-forwardせず、latest mainへ責務とexact sourceをreconcileする。そのfull checkoutでrunner `bash -n`、focused package tests、`tools/repository-health-check.sh` を順に通した後にだけmainへ直接統合する。
 
+#### E1.3 branchless integration packet
+
+candidate chainの古いdocs snapshotをmainへ巻き戻さず、code sourceだけをlatest mainへ載せるため、preferred candidate `3460457950ca355bf5d33c55b76cfc647da9c660` から取得するpathをexactに固定する。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  1d15fde01cf4d1d0fae89c7c01bfe551e19d2903
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  a1cb0495d59e5d850209f044793cac6da5dca73a
+
+tools/reference-first-web-target-r7b-repeatability/main.go
+  48c9c595311a4fa8fc7c4e7b2a30c4a4fd999965
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  1ebe3a7bfed00b38ae7604143ae06f929267f665
+
+tools/run-first-web-target-r7b-replay.sh
+  86c5b9a36a13b43ccded3e6f336effba3bc023f0
+  mode = 100755
+```
+
+candidate起点 `17acb5ca3679d5931a4522580726fdd9a2ad49c2` からcurrent mainまでを再比較した時点で、上記11 pathと重なるmain側変更は **0件** だった。別レーンのdocs / second-application変更をcandidate treeへ巻き戻す必要はない。
+
+Go-enabled integration sessionではconceptually次のように扱う。
+
+```text
+latest main
+  ↓ git pull --rebase origin main
+clean / normal index
+  ↓
+candidate 34604579... から上記11 pathだけをrestore
+  ↓
+blob identityを上記expected SHAと照合
+  ↓
+bash -n tools/run-first-web-target-r7b-replay.sh
+  ↓
+focused Go tests
+  ↓
+tools/repository-health-check.sh
+  ↓
+same revision source / expected diffを再確認
+  ↓
+mainへ1つの適切なcode commit
+```
+
+Git commandの一例:
+
+```bash
+git restore --source=3460457950ca355bf5d33c55b76cfc647da9c660 -- \
+  tools/internal/firstwebtargetevidence \
+  tools/reference-first-web-target-evidence-audit/main.go \
+  tools/reference-first-web-target-r7b-replay-plan/main.go \
+  tools/reference-first-web-target-r7b-replay-plan/main_test.go \
+  tools/reference-first-web-target-r7b-replay-audit \
+  tools/reference-first-web-target-r7b-repeatability \
+  tools/run-first-web-target-r7b-replay.sh
+```
+
+これはcandidate commitをmainへfast-forward / cherry-pickする指示ではない。**latest mainのdocs/historyを保持したまま、qualified source pathだけをworking treeへmaterializeする**ための手順である。
+
+restore後にexpected path以外が変更されている、expected blob SHAと一致しない、またはmain側で同じpathが並行変更されていた場合は、そのままcommitせず再reconcileする。
+
+remote work branchは作らない。full health checkがPASSしたcode incrementをmainへ直接commitし、候補Git objectは履歴参照用のpreflight sourceとしてのみ扱う。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
