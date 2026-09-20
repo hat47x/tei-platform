@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Implementation contract refined / current freshness rechecked / actual execution pending
+- Status: Branchless executable-pressure candidate created / actual health execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
@@ -21,6 +21,59 @@ implementation contract pinned
   != executable pressure passed
   != accepted
 ```
+
+## 1.1 Branchless code candidate
+
+current `main` を変更せず、health-capable laneで検証するためのunreferenced Git commitを作成した。
+
+```text
+candidate commit:
+  e007c67b478feed958cd84ae0b040251a1dc8225
+
+parent:
+  172db0df3855a58c9a46ae71cbbfef1f08c489f3
+
+tree:
+  df1d4bd85e00a961be747817c47b9d4364fe0379
+
+remote branch / PR:
+  none
+```
+
+candidateの変更pathはexactly次の6件である。
+
+```text
+tools/reference-business-procedure-check/second_application_s3_destination_decision_pressure_test.go
+tools/reference-business-procedure-check/second_application_s4_composition_candidate_pressure_test.go
+tools/reference-business-procedure-check/second_application_s4_full_validation_pressure_test.go
+tools/reference-business-procedure-check/second_application_s5_freshness_capture_pressure_test.go
+tools/reference-business-procedure-check/second_application_s5_shared_acceptance_review_pressure_test.go
+tools/run-knowledge-portability-reference-evidence.sh
+```
+
+このcandidateでは:
+
+- S3 destination Semantic owner / attribute / Relation key decisionをmachine-readable化した
+- S4をSemantic + Application + Patternのthree-source Proposalへ更新した
+- temporary Reference Workspaceをactual `workspace.Load` + `validation.Validate`へ通すpressureを追加した
+- S5 fingerprintを `c18ae0f...` へ更新した
+- S5 freshness base constantをinspected revision `c185937a...` へ更新した
+- reference-evidence runnerのgofmt集合をactual Second Application test集合へ追随させた
+
+Git diff inspectionではcurrent `main` に既存 `repair_intake` source pathがなく、candidateは上記6 path以外を変更していないことを確認した。
+
+ただし現時点では:
+
+```text
+gofmt actual execution        = not obtained
+focused go test               = not obtained
+reference evidence execution  = not obtained
+repository health check       = not obtained
+Executable Evidence           = absent
+```
+
+である。candidate commitの存在をPASS Evidenceへ昇格しない。health-capable laneはcurrent main driftを先に確認し、必要ならcandidate内容をlatest mainへrebase/reconstructしたうえでbinding health checkを実行する。
+
 
 ## 2. Current main drift review
 

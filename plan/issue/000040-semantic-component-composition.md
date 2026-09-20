@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — revised executable-pressure code delta pinned / health execution pending
+- 状態: In Progress — branchless revised pressure candidate created / health execution pending
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -246,6 +246,8 @@ S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relat
 revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成しない。`plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md` で、temporary workspaceへのthree-source注入、`workspace.Load`、`validation.Validate`、S3/S4/S5 pressure更新、reference-evidence scriptのgofmt対象追随、repository health checkまでを次のhealth-capable execution契約として固定した。
 
 2026-09-20の再検査では、document freshness baseを `c185937ab27a3a31332fefcd63ba5940b97b021e` まで更新し、関連shared/provenance/validation blobが不変であることを確認した。また `validation.Validate()` がdata-access Validation集約経路を通じてRelation key / Contract Query cross-layer検査を含むことも確認した。一方、`second_application_s5_freshness_capture_pressure_test.go` のbase revision constantは旧 `6ffaa40e...` のままであるため、これも次のexecutable-pressure code deltaへ追加した。
+
+そのcode deltaは、current main `172db0df3855a58c9a46ae71cbbfef1f08c489f3` を親とするunreferenced branchless candidate `e007c67b478feed958cd84ae0b040251a1dc8225` として生成した。remote branch / PRは追加していない。candidateはS3/S4/S5 pressure、new full-workspace Validation pressure、reference-evidence runnerだけを変更し、authoritative `reference/workspace` sourceには触れていない。actual gofmt / focused test / reference evidence / `tools/repository-health-check.sh` PASSは未取得なので、candidateをmainへ接続せずExecutable Evidenceとも扱わない。
 
 ## 第二Applicationでの受入検証
 

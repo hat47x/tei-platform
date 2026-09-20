@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / executable pressure pending / explicit Acceptance witness pending
+- Status: Revised review defined / branchless executable candidate pending health / explicit Acceptance witness pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -235,6 +235,8 @@ proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e733
 reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
+branchlessCodeCandidate    = e007c67b478feed958cd84ae0b040251a1dc8225
+candidateHealthEvidence    = absent
 revisedExecutablePressure = absent
 acceptanceWitness         = absent
 decision                  = pending
@@ -265,7 +267,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current Repositoryには旧two-source Proposal向けGo pressureと旧freshness base constantが残っており、revised three-source Proposalのactual focused `go test` / full repository health PASSはまだ取得していない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `e007c67b...` にはrevised three-source pressure一式を実装済みだが、actual focused `go test` / reference evidence / full repository health PASSはまだ取得していない。candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 
