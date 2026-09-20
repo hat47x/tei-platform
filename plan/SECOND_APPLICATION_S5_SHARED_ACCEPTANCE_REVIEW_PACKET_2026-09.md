@@ -7,7 +7,7 @@
 - Executable pressure implementation packet: `plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md`
 - Revised Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base inspected at: `0dd20cf9100823b22499473d26c7caad7881a9dc`
+- Review base inspected at: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
 - Shared Acceptance result: Not established
 - Authoritative destination source created: No
 - Environment binding created: No
@@ -201,8 +201,9 @@ health-capable cloneで少なくとも次を更新・実行する。
 4. `workspace.Load(probeRoot)` でactual loader pathを通す
 5. `validation.Validate(loaded.World)` でfull Validationを実行し、`validation.Error`が0件であることを要求
 6. revised fingerprint `c18ae0f...` とdestination-owned Semantic subjectsをS5 pressureへ反映
-7. `tools/run-knowledge-portability-reference-evidence.sh` のgofmt対象へS3/S4/S5 pressureを追加
-8. focused Second Application tests、reference evidence script、`tools/repository-health-check.sh` をすべてPASSさせる
+7. S5 freshness pressureのreview-base constantを `e1f13ae97b420a2703eec8598eb98c0ab057258b` へ追随させる
+8. `tools/run-knowledge-portability-reference-evidence.sh` のgofmt対象へS3/S4/S5 pressureとfull-validation pressureを追加
+9. focused Second Application tests、reference evidence script、`tools/repository-health-check.sh` をすべてPASSさせる
 
 この条件が未取得の間、Source inspectionだけでAcceptance-readyへ昇格しない。
 
@@ -229,7 +230,7 @@ Acceptance authorityを持つactorのexplicit witnessを要求する。witness�
 
 ```text
 proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
-reviewBaseInspected       = 0dd20cf9100823b22499473d26c7caad7881a9dc
+reviewBaseInspected       = e1f13ae97b420a2703eec8598eb98c0ab057258b
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
 revisedExecutablePressure = absent
@@ -262,7 +263,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current Repositoryには旧two-source Proposal向けGo pressureが残っており、revised three-source Proposalのactual focused `go test` / full repository health PASSはまだ取得していない。
+current Repositoryには旧two-source Proposal向けGo pressureと旧freshness base constantが残っており、revised three-source Proposalのactual focused `go test` / full repository health PASSはまだ取得していない。
 
 ## 12. Conclusion
 

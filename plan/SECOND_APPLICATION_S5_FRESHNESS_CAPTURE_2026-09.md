@@ -6,7 +6,7 @@
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
-- Review base Repository revision: `0dd20cf9100823b22499473d26c7caad7881a9dc`
+- Review base Repository revision: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
 - Shared Acceptance result: Not established
 - Acceptance witness: Absent
 
@@ -27,10 +27,10 @@ freshness captured
 今回実際にshared authority / provenanceとValidation implementationをinspectしたrevision:
 
 ```text
-0dd20cf9100823b22499473d26c7caad7881a9dc
+e1f13ae97b420a2703eec8598eb98c0ab057258b
 ```
 
-このrevisionで次のGit blob identityを確認した。
+このrevisionで次のGit blob identityを再確認した。前回Second Application実装契約 `64f0a5b8...` からこのrevisionまでの変更pathはR7B Issue文書だけであり、下記relevant blobは不変である。
 
 ```text
 customer semantic source:
@@ -47,6 +47,15 @@ application-pattern validation:
 
 reference contract-query cross validation:
   8c2a4b5bd89baf3c4562d62bfed009ce3094bf40
+
+validation aggregate:
+  cff6c9f95c5829a6ea326a41b00c6f93c78f05a5
+
+workspace loader:
+  948c3558b0f8ed8dd48d4a108ab2da6bffb379b0
+
+syntax parser:
+  94b73b2d8cecc6d0e6cfe4e8ae4c1a3696a8d079
 ```
 
 後続の無関係なcommitだけでこのcaptureを自動staleにしない。Acceptance時にはrelevant source identityを再確認する。
@@ -149,7 +158,20 @@ revised Proposalはこれらを満たすよう構成した。
 
 ただしこれはimplementation source inspectionであり、actual loader / validator executionではない。
 
-## 7. Acceptance entry state
+## 7. Executable freshness pressure drift
+
+current Go pressureの `secondApplicationS5FreshnessBaseRevision` はまだ `6ffaa40ef2872a773baa5e7b127dcb89d94abc5c` を指している。
+
+したがってdocument-level freshnessは `e1f13ae9...` まで再確認済みだが、Executable Evidence側は未追随である。health-capable executionではこのconstantも更新対象に含める。
+
+```text
+document freshness base = e1f13ae9...
+executable freshness base = 6ffaa40e...  // stale, pending update
+```
+
+この差を黙って同一視しない。
+
+## 8. Acceptance entry state
 
 ```text
 proposalFingerprint       = captured
@@ -169,7 +191,7 @@ Shared Acceptance eligibility = blocked
 S6 source authoring = blocked
 ```
 
-## 8. Drift policy
+## 9. Drift policy
 
 Acceptance前にmainが進んだ場合:
 
@@ -180,13 +202,13 @@ Acceptance前にmainが進んだ場合:
 5. relevant input不変なら無関係なcommitだけでstale-allしない
 6. relevant input変更ならrequalification / review regenerationへ戻る
 
-## 9. Evidence height
+## 10. Evidence height
 
 この文書はSource / Design Evidenceである。
 
 revised Proposal向けGo pressureとfull repository health checkのactual PASSはまだ取得していない。
 
-## 10. Conclusion
+## 11. Conclusion
 
 revised Proposalのshared authority / provenance / validation preflight inputsはcurrent mainに対してcaptureできた。
 

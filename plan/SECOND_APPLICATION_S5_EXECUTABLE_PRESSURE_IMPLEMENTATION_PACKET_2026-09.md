@@ -1,10 +1,10 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Implementation contract pinned / actual execution pending
+- Status: Implementation contract refined / current freshness rechecked / actual execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
-- Source-inspection base: `1f3090c1e86de9d80e39879ffe8987c80a946fd4`
+- Source-inspection base: `e1f13ae97b420a2703eec8598eb98c0ab057258b`
 - Authoritative destination source created: No
 - Executable Evidence obtained: No
 - Shared Acceptance established: No
@@ -24,18 +24,31 @@ implementation contract pinned
 
 ## 2. Current main drift review
 
-前回Second Application文書更新 `d8a7fd24...` 以後、inspection時点のmainは:
+前回の実装契約commit `64f0a5b8167fcb4aa90e56a6c47d7158bba336b8` 以後、inspection時点のmainは:
 
 ```text
-1f3090c1e86de9d80e39879ffe8987c80a946fd4
-docs(r7b): record branchless V1 shared-validator candidate
+e1f13ae97b420a2703eec8598eb98c0ab057258b
+docs(r7b): pin branchless integration packet
 ```
 
 である。
 
-その間の変更はR7 / R7B文書に限られ、Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loaderには変更がないことをcompareで確認した。
+`64f0a5b8...` から `e1f13ae9...` までの12 commitをcompareし、変更pathは `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` のみだった。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loaderには変更がない。
 
-関連blob identity:
+current shared/provenance blob identity:
+
+```text
+reference/workspace/semantic/customer/customer.tei
+  c348122b33581e450974d23393d98fb8aa838388
+
+reference/workspace/databases/master-data/contracts/customer.tei
+  c1eea63b053fb936ae7aebbac82180af015b42e1
+
+reference/workspace/applications/order-entry/patterns/customer-reference.tei
+  252f6396cbc2394d1f26e748b01d54f49a2e1ecf
+```
+
+関連implementation blob identity:
 
 ```text
 internal/validation/validation.go
@@ -75,6 +88,21 @@ relation key target = customer.customer.customer_id
 ```
 
 これらはorigin `sales.order.customer` からのcopyではなく、S3 destination decisionとしてassertする。
+
+実装時のfield名は少なくとも次へ固定する。
+
+```text
+SemanticNamespaceCandidate
+SemanticDataCandidate
+CustomerIDAttributeCandidate
+CustomerIDAttributeType
+BusinessRelationTarget
+BusinessRelationCardinality
+BusinessRelationKeySource
+BusinessRelationKeyTarget
+```
+
+既存の `BusinessRelationCandidate` はRelation identityとして維持し、target/cardinality/keyを別fieldで明示する。
 
 ### S4 three-source pressure
 
@@ -145,7 +173,9 @@ Acceptance prerequisiteとしては、少なくとも`validation.Error`が0件�
 - Contract Query result Data mismatch
 - Contract Query result cardinality mismatch
 
-## 5. S5 exact Proposal pressure
+## 5. S5 exact Proposal / freshness pressure
+
+### Shared Acceptance review pressure
 
 `second_application_s5_shared_acceptance_review_pressure_test.go` は旧two-source payloadを廃止し、exact payloadを:
 
@@ -181,7 +211,41 @@ datasource-alias:repair_intake/customer_master
 
 Runtime authority、Environment mutation、source authoringはfalseのまま維持する。
 
-## 6. Reference evidence runner追随
+### Freshness pressure
+
+`second_application_s5_freshness_capture_pressure_test.go` には現在:
+
+```text
+secondApplicationS5FreshnessBaseRevision =
+  6ffaa40ef2872a773baa5e7b127dcb89d94abc5c
+```
+
+が残っており、revised S5 documentのreview baseと一致していない。これは今回のsource inspectionで新たに確認したstale executable fieldである。
+
+health-capable code milestoneでは、このconstantをcurrent inspected relevant-source base:
+
+```text
+e1f13ae97b420a2703eec8598eb98c0ab057258b
+```
+
+へ更新する。
+
+同時に `TestSecondApplicationS5FreshnessPreservesExactProposalIdentity` がrevised three-source fingerprint `c18ae0f...` を保持することを確認する。freshness base更新はAcceptance witnessを生成しない。
+
+## 6. Full Validation test placement
+
+temporary workspaceのactual load / Validation pressureは既存parser testへ過剰に詰め込まず、新しいtest file:
+
+```text
+tools/reference-business-procedure-check/
+  second_application_s4_full_validation_pressure_test.go
+```
+
+へ分離する。
+
+このfileでは既存package-level helper `repoPath()` と `copyDirectory()` を再利用し、Repository sourceへの書込みを避ける。test名は `TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation` とし、`workspace.Load` errorと `validation.Error` diagnosticsをblocking failureとして扱う。
+
+## 7. Reference evidence runner追随
 
 current `tools/run-knowledge-portability-reference-evidence.sh` のtest regexは`TestSecondApplication...`を実行するが、gofmt対象filesにはS3/S4/S5 shared-acceptance pressureが含まれていない。
 
@@ -191,18 +255,19 @@ code milestoneでは同scriptの`files=(...)`へ次を追加する。
 tools/reference-business-procedure-check/second_application_s3_destination_decision_pressure_test.go
 tools/reference-business-procedure-check/second_application_s4_composition_candidate_pressure_test.go
 tools/reference-business-procedure-check/second_application_s5_shared_acceptance_review_pressure_test.go
+tools/reference-business-procedure-check/second_application_s4_full_validation_pressure_test.go
 ```
 
 gofmt pressureとactual executed test集合を一致させる。
 
-## 7. Required execution sequence
+## 8. Required execution sequence
 
 health-capable cloneでは次の順を固定する。
 
 ```text
 pull --rebase current main
   -> relevant source drift recheck
-  -> S3/S4/S5 pressure + evidence runner update
+  -> S3/S4/S5 review + S5 freshness pressure + evidence runner update
   -> gofmt
   -> focused TestSecondApplication...
   -> tools/run-knowledge-portability-reference-evidence.sh
@@ -212,7 +277,7 @@ pull --rebase current main
 
 mainが途中で進んだ場合はforce pushせず、rebase / relevant drift reviewをやり直す。
 
-## 8. Evidence and Acceptance boundary
+## 9. Evidence and Acceptance boundary
 
 このpacketをmainへ置いても:
 

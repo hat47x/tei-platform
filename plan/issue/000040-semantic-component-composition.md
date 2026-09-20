@@ -228,7 +228,12 @@ S5:
 
 でexact Proposal identity、Semantic Diff、current shared-authority freshnessまで固定した。
 
-現在の停止条件はexplicit Acceptance witnessである。Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。一般的な作業継続指示をProposal採用Decisionへ読み替えない。
+現在のpre-Acceptance停止条件は二つ独立している。
+
+1. revised three-source Proposalのhealth-checked executable pressure
+2. exact fingerprintに結び付くexplicit Acceptance witness
+
+Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。一般的な作業継続指示をProposal採用Decisionへ読み替えない。
 
 ## S4 full-validation correction
 
@@ -239,6 +244,8 @@ S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relat
 - revised design: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
 
 revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake.customer` を持つ最小destination Semanticを含む。authoritative sourceはまだ作成しない。`plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md` で、temporary workspaceへのthree-source注入、`workspace.Load`、`validation.Validate`、S3/S4/S5 pressure更新、reference-evidence scriptのgofmt対象追随、repository health checkまでを次のhealth-capable execution契約として固定した。
+
+2026-09-20の再検査では、document freshness baseを `e1f13ae97b420a2703eec8598eb98c0ab057258b` まで更新し、関連shared/provenance/validation blobが不変であることを確認した。一方、`second_application_s5_freshness_capture_pressure_test.go` のbase revision constantは旧 `6ffaa40e...` のままであるため、これも次のexecutable-pressure code deltaへ追加した。
 
 ## 第二Applicationでの受入検証
 
