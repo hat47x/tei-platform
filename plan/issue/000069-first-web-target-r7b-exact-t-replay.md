@@ -4675,6 +4675,129 @@ preferred runner exact blob / bash -n PASS
 
 candidate SHAをmainへfast-forward / cherry-pickしない。full checkoutでfocused Go testsと `tools/repository-health-check.sh` を同じexact working treeに対して通した後だけdirect-to-main commitする。
 
+#### E1.7 repeatability summary plan-contract hardening
+
+V2 auditをexact transport contractへ固定した後、repeatability aggregatorも追加監査した。
+
+従来aggregatorは:
+
+```text
+run observed HTTP == plan expected HTTP
+run Observation class == plan expected Observation class
+RequiredDistinctRuns >= 2
+```
+
+を確認していたが、plan自身について:
+
+```text
+Expected HTTP > 0
+Expected Observation class != empty
+RequiredDistinctRuns >= 2
+```
+
+までしか要求していなかった。
+
+したがってplan / receipt / run observationを相互に整合させて改変した場合、最終summary単体ではcurrent six-behavior contractからのdriftをfail closedできない余地があった。
+
+aggregatorの責務はraw artifactのsemantic再分類ではないが、**採用済みreplay plan contractと一致することの再検証**はsummary生成境界で保持すべきなので、次をexact固定した。
+
+```text
+first-web/read-only
+  HTTP 200
+  read-result
+
+first-web/command-success
+  HTTP 200
+  business-result-plus-separate-observation
+
+first-web/authentication-denied
+  HTTP 200
+  business-denial-authentication
+
+first-web/authorization-denied
+  HTTP 200
+  business-denial-authorization
+
+first-web/validation-not-satisfied
+  HTTP 200
+  validation-not-satisfied
+
+first-web/execution-error
+  HTTP 422
+  command-invocation-execution-error
+
+RequiredDistinctRuns
+  = 2
+```
+
+追加test pressure:
+
+- 全6 behaviorを `RequiredDistinctRuns=3` に揃えたplan / receipt / 3 runをreject
+- plan Expected HTTP driftをreject
+- plan Expected Observation class driftをreject
+
+updated exact blobs:
+
+```text
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+```
+
+repeatability-only branchless candidate:
+
+```text
+68ae19d53e2551f0fc36769b35f9ae315f10e276
+```
+
+V2 transport/cardinality hardening、latest runner、repeatability hardeningをその時点のlatest main:
+
+```text
+172db0df3855a58c9a46ae71cbbfef1f08c489f3
+```
+
+へ11 source pathだけ再合成したcurrent preferred candidate:
+
+```text
+0ac445c699f8c576ecb51e055aa67622d388df74
+```
+
+baseに対して:
+
+```text
+ahead = 1
+behind = 0
+changed paths = 11
+```
+
+である。remote branch / PR / main refはcandidate作成で変更していない。
+
+このsessionではGit blob textをローカルへ分割materializeする試行も行ったが、再構成物のbyte countは一致した一方でGit blob SHAがexpected SHAと一致しなかった。connector側では同じcontentのfetch→create round-tripがexpected SHAへ戻るため、ローカル転送過程の転記誤差と判断し、**そのローカル再構成物をfocused PASS Evidenceとして採用していない**。
+
+Evidence height:
+
+```text
+preferred runner exact blob / bash -n PASS
++ runner early fail-closed smoke 4/4 PASS
++ V1 shared-validator prior focused evidence
++ V2 baseline prior focused evidence
++ repeatability prior focused evidence
++ V2 transport/cardinality source hardening
++ repeatability plan-contract source hardening
++ latest-main 11-path composition assembled
+  != updated V2 exact focused Go PASS
+  != updated repeatability exact focused Go PASS
+  != full 11-path composition focused Go PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+integration sessionは旧 `abd8b748...` / `68ae19d5...` を個別に統合せず、**`0ac445c6...` の責務 / exact blobsをその時点のlatest mainへreconcileする**。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
