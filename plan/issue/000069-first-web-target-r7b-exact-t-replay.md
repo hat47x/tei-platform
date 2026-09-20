@@ -5308,9 +5308,30 @@ actual replay executionはさらに、Release archiveの再取得・digest照合
 
 ## 現在の停止点
 
-Source / Design上の入口は揃っている。現在の最初のcode stopはE0 replay-plan launch provenance carryであり、これをGo-enabled full checkoutで実装してhealth checkを通す必要がある。その後、adopted Gate C Release archiveを再取得・照合し、R7A handoff、R7B intake、**E0後の**R7B replay planをactual materializeする。actual replay executionはさらにPacket V / Packet Eをhealth-check済みで統合し、exact Tへ2 distinct runsを実行するまで未成立である。
+Source / Design段階だけでなく、E0 / V1 / V2 / repeatability / E1 runnerのbranchless source candidateも揃っている。canonical integration sourceはE1.13の11 path / blob identityで固定され、dependency closure単位のfocused Evidenceも取得済みである。
 
-このIssueはその停止点から先を所有する。
+したがって現在の最初のcode stopは**E0の新規実装ではない**。Go-enabled full checkoutでcanonical 11 sourceをcurrent mainへrestoreし、E1.14のaggregate focused commandと `tools/repository-health-check.sh` を**同一working tree**でPASSさせることが最初の未完了gateである。
+
+このgateを閉じた後に、その同じworking treeをdirect-to-mainでcommitする。remote work branch / PRを新設せず、別candidateのcherry-pickで履歴を再分岐させない。
+
+code integration後の次段はactual Evidence acquisitionである。
+
+```text
+integrated canonical 11 source
+  -> adopted Gate C Release archive再取得 / digest照合
+  -> actual R7A handoff materialization
+  -> actual R7B intake materialization
+  -> integrated E0 sourceによるR7B replay plan materialization
+  -> exact-T detached target
+  -> two fresh-process runs
+  -> V2 run observations
+  -> repeatability summary
+  -> final receipt / retained artifact credential scan
+```
+
+actual exact-T replay / repeatability Evidenceはこの2-run executionが完了するまで未成立とする。
+
+このIssueはこのhealth integration gateから先を所有する。
 
 
 #### E1.13 exact-source convergence and branch hygiene — 2026-09-20
