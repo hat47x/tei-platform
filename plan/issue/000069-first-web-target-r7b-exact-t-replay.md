@@ -4798,6 +4798,26 @@ preferred runner exact blob / bash -n PASS
 
 integration sessionは旧 `abd8b748...` / `68ae19d5...` を個別に統合せず、**`0ac445c6...` の責務 / exact blobsをその時点のlatest mainへreconcileする**。
 
+#### E1.8 latest-main rebase note
+
+E1.7記録後、Second Application側の文書commitがmainへ入ったが、R7B 11 source pathとの重複は0件だった。
+
+そのためE1.7のexact source blobsを変更せず、current main:
+
+```text
+7970fa35536df745098e35abf7513ff8ecba7f3a
+```
+
+上へ再配置したbranchless candidateを作成した。
+
+```text
+5e1357a3e9ca9f0bbdf7226fe31e2b554ef9644a
+```
+
+これは新しい設計案ではなく、`0ac445c6...` と同一の11-path責務 / exact source blobsをlatest main history上へ載せ直したものだけである。
+
+remote branch / PRは追加していない。integration時はcandidate SHAの新旧ではなく、E1.6〜E1.7で固定した11 path / exact blob identityを正本としてlatest mainへreconcileする。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
