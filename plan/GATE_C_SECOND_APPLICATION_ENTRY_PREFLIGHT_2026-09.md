@@ -2,12 +2,12 @@
 
 - Status: Prepared / test-only
 - Date: 2026-09-19
-- Parent: \`plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md\`
+- Parent: `plan/GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`
 - Related:
-  - \`plan/GATE_C_EVIDENCE_CONTRACT.md\`
-  - \`plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md\`
-  - \`plan/V1_REFERENCE_APPLICATION_PLAN.md\`
-  - \`plan/MASTER_PLAN.md\`
+  - `plan/GATE_C_EVIDENCE_CONTRACT.md`
+  - `plan/GATE_B_TO_C_HANDOVER_BASELINE_B.md`
+  - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
+  - `plan/MASTER_PLAN.md`
 - Canonical Application impact: None
 - Product Gate impact: None
 
@@ -25,14 +25,14 @@ Gate C Ready後にsecond Application workstreamへ入る際、
 
 このPreflightはGate Cを判定する正本ではない。
 
-\`\`\`text
+```text
 Gate C authority
   = Gate C Evidence / readiness decision
 
 Entry Preflight
   = already accepted Gate C Evidenceが
     second Application開始に必要な形で揃っているか確認
-\`\`\`
+```
 
 である。
 
@@ -50,10 +50,10 @@ Preflightは次を導出しない。
 
 Gate C statusは外部authority inputとして受け取る。
 
-\`\`\`text
+```text
 gateCStatus = ready
   != preflight automatically complete
-\`\`\`
+```
 
 である。
 
@@ -63,29 +63,29 @@ gateCStatus = ready
 
 ### Gate C decision
 
-\`\`\`text
+```text
 gateCStatus = ready
-\`\`\`
+```
 
 ### Handover baseline
 
 - Handover Baseline ID
-- baseline Repository revision \`R\`
+- baseline Repository revision `R`
 
 current first baseline:
 
-\`\`\`text
+```text
 B
 R = e5231839a5dcc62cce1181a2731fcb7c70d16736
-\`\`\`
+```
 
 将来successor baselineを使う場合も、IDとrevisionを明示する。
 
 ### First Target build
 
-- Target build revision \`T1\`
+- Target build revision `T1`
 
-baseline \`R\`とTarget build \`T1\`を混同しない。
+baseline `R`とTarget build `T1`を混同しない。
 
 ### Evidence classes
 
@@ -117,10 +117,10 @@ Visualだけで他二つを代替しない。
 
 test-only qualificationは次の二状態のみとする。
 
-\`\`\`text
+```text
 entry-evidence-complete
 blocked
-\`\`\`
+```
 
 これはProduct authorityではない。
 
@@ -174,37 +174,37 @@ current entryは`entry-evidence-complete`として扱える。
 
 ### A. Visual only
 
-\`\`\`text
+```text
 gateCStatus = ready
 visualEvidence = exists
 semanticEvidence = missing
 functionalEvidence = missing
-\`\`\`
+```
 
 結果:
 
-\`\`\`text
+```text
 blocked
 missing:
   semantic-evidence
   functional-evidence
-\`\`\`
+```
 
 Visual evaluator / screenshot scoreだけでentryを開かない。
 
 ### B. Ready label only
 
-\`\`\`text
+```text
 gateCStatus = ready
 B / R = missing
 T1 = missing
-\`\`\`
+```
 
 結果:
 
-\`\`\`text
+```text
 blocked
-\`\`\`
+```
 
 Gate Cの文字列だけをsecond Application開始authorityにしない。
 
@@ -218,25 +218,25 @@ second Application / knowledge laneが第一Target固有差をCanonical meaning�
 
 ### D. Current pre-target state
 
-\`\`\`text
+```text
 B / R = known
 Gate C = not-ready
 T1 = missing
 Gate C Evidence = missing
-\`\`\`
+```
 
 は明示的にblocked。
 
 ## 7. Test-only source
 
-- \`tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go\`
+- `tools/reference-business-procedure-check/gate_c_second_application_entry_preflight_pressure_test.go`
 
 確認すること:
 
-1. completeなsynthetic entryは\`entry-evidence-complete\`
+1. completeなsynthetic entryは`entry-evidence-complete`
 2. current pre-target形はblocked
 3. Visual-onlyはblocked
-4. \`ready\` labelだけではblocked
+4. `ready` labelだけではblocked
 5. Target difference recordなしはblocked
 6. qualification typeへauthoring shortcutを追加しない
 
@@ -244,14 +244,14 @@ Gate C Evidence = missing
 
 test-only qualificationへ次を置かない。
 
-- \`AutoStart\`
-- \`CreateApplication\`
-- \`Accepted\`
-- \`Approved\`
-- \`CanonicalApplicationCreated\`
-- \`SourceAuthoringAttempted\`
-- \`EnvironmentBindingCreated\`
-- \`TargetImplementationStarted\`
+- `AutoStart`
+- `CreateApplication`
+- `Accepted`
+- `Approved`
+- `CanonicalApplicationCreated`
+- `SourceAuthoringAttempted`
+- `EnvironmentBindingCreated`
+- `TargetImplementationStarted`
 
 Preflightはentry evidenceの完全性だけを扱う。
 
@@ -259,17 +259,17 @@ Preflightはentry evidenceの完全性だけを扱う。
 
 portable runner:
 
-- \`tools/run-knowledge-portability-reference-evidence.sh\`
+- `tools/run-knowledge-portability-reference-evidence.sh`
 
 対象prefixへ、
 
-- \`TestGateCSecondApplication\`
+- `TestGateCSecondApplication`
 
 を追加する。
 
 GitHub-hosted runner availabilityが回復した場合は、
 
-- \`.github/workflows/knowledge-portability-reference-evidence.yml\`
+- `.github/workflows/knowledge-portability-reference-evidence.yml`
 
 から同じscriptを実行する。
 
@@ -277,12 +277,12 @@ successful runが得られるまでExecutable Evidence PASSとは扱わない。
 
 ## 10. Master Plan同期
 
-\`MASTER_PLAN.md\`はcurrent Evidenceに合わせ、
+`MASTER_PLAN.md`はcurrent Evidenceに合わせ、
 
 - Gate B Ready
-- Handover Baseline \`B\` / \`R\`固定済み
-- Gate C Not Ready
-- First Web Target \`T1\`未成立
+- Handover Baseline `B` / `R`固定済み
+- Gate C Not Ready（起票時点。2026-09-19にT = `0ba87a4e`でReadyとなった）
+- First Web Target `T1`未成立
 
 を一貫して示す。
 
@@ -293,9 +293,9 @@ successful runが得られるまでExecutable Evidence PASSとは扱わない。
 Gate C Readyが正式に成立した場合:
 
 1. Gate C Evidence正本を確認
-2. Preflight inputへ\`B/R/T1\`と三Evidence、Target差分を記録
-3. \`entry-evidence-complete\`を確認
-4. \`GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md\`のS0を完了
+2. Preflight inputへ`B/R/T1`と三Evidence、Target差分を記録
+3. `entry-evidence-complete`を確認
+4. `GATE_C_SECOND_APPLICATION_START_PACKET_2026-09.md`のS0を完了
 5. 同じprimary ISSUE-000040 workstream branchでS1へ進む
 
 Preflight PASSだけでS4以降へ飛ばない。

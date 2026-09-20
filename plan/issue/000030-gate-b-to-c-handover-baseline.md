@@ -1,6 +1,6 @@
 # ISSUE-000030: Gate BからGate Cへ渡すHandover Baselineを固定する
 
-- 状態: In Progress — Baseline `B / R`固定済み、Gate C側でのtrace実証待ち
+- 状態: Done — Baseline `B / R`固定済み、Gate C側でtrace実証済み（`same-B-R-T-and-target-identity`、T = `0ba87a4e`、2026-09-19）
 - GitHub Issue: #291
 - Gate B監査: `ISSUE-000029` / #273
 - Gate B final convergence: `ISSUE-000037` / #387
@@ -198,8 +198,8 @@ Gate B Ready前に大きなmachine-readable schemaを固定しません。
 - [x] #273がRをGate B Readyと判定
 - [x] 実revision Rから第一Handover Baseline Bを作成（[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../GATE_B_TO_C_HANDOVER_BASELINE_B.md)、`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）
 - [x] actual Oracle未完了範囲を必要に応じて`unresolved`へ記録（Baseline記録内「actual Oracleの扱い」節）
-- [ ] #70 / #270 Gate C Evidenceから`B / R / T1`へ追跡できる
-- [ ] Gate C中のmeaning変更でsuccessor Handoverを実証
+- [x] #70 / #270 Gate C Evidenceから`B / R / T1`へ追跡できる（[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)の`same-B-R-T-and-target-identity`）
+- 条件付き（発生せず。`canonical-world-invariant-R-to-T`）: Gate C中のmeaning変更でsuccessor Handoverを実証
 
 Gate Bは **Ready** です（`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）。Handover Baseline `B / R`は固定済みで、第一Web Target（`ISSUE-000007` / #70）へ着手可能です。残る2項目はGate C Evidence取得自体に依存するため、Gate C側の進行に伴い充足します。
 

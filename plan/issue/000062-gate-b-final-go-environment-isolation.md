@@ -1,6 +1,6 @@
 # ISSUE-000062: Gate B最終EvidenceのGo実行環境をcandidate revisionの外へ広げない
 
-- 状態: In Progress — 実装 / pure test / tool README / Runbook同期済み、実TEI checkoutでの通常Go test待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #421
 - Gate B最終収束: `ISSUE-000037` / #387
 - Gate B監査: `ISSUE-000029` / #273
@@ -79,7 +79,7 @@ Go環境固定を理由にDSN本文やsecret file pathの露出範囲を広げ�
 
 ## 残作業
 
-- [ ] 実TEI checkoutで次を再確認する
+- [x] 実TEI checkoutで次を再確認する（2026-09-21にmain 9f4fcd5でok）
 
 ```bash
 GOENV=off \
@@ -88,7 +88,7 @@ GOFLAGS= \
 go test ./tools/reference-gate-b-final-evidence -count=1
 ```
 
-- [ ] actual #387 final runで`goEnvironment`三条件を確認する
+- [x] actual #387 final runで`goEnvironment`三条件を確認する（`externalWorkspaceActive = false` / `goFlagsEmpty = true` / `goEnvDisabled = true`）
 
 actual run自体は#387の完了条件です。本Issue単独の成功をGate B Readyへ格上げしません。
 

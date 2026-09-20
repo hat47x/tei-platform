@@ -2,7 +2,7 @@
 
 - Status: Pre-Gate-C / test-only architecture pressure
 - Date: 2026-09-19
-- Parent: \`plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md\`
+- Parent: `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
 - Related: ISSUE-000040 / ISSUE-000053 Phase 5 / ADR-0017 / ADR-0018
 - Production schema impact: None
 - Canonical Application impact: None
@@ -28,15 +28,15 @@
 
 scenario label:
 
-\`\`\`text
+```text
 repair_intake-test-only
-\`\`\`
+```
 
 これは採用済みApplication名ではない。
 
 ### Application candidate
 
-\`\`\`text
+```text
 application repair_intake {
     uses semantic customer
 
@@ -48,7 +48,7 @@ application repair_intake {
         }
     }
 }
-\`\`\`
+```
 
 既存grammarだけで次を表現する。
 
@@ -60,7 +60,7 @@ application repair_intake {
 
 ### Pattern candidate
 
-\`\`\`text
+```text
 pattern repair_intake.customer_reference reference {
     relation repair_intake.intake.customer
     datasource customer_master
@@ -70,21 +70,21 @@ pattern repair_intake.customer_reference reference {
         input customer.customer.customer_id -> id
     }
 }
-\`\`\`
+```
 
 ここで、
 
 - Pattern identityはdestination-owned
 - Relation identityはdestination-owned
 - Contract / Query / Customer attributeはshared authority
-- origin \`sales.order.customer\`をcopyしない
-- origin datasource alias \`master\`をcopyしない
+- origin `sales.order.customer`をcopyしない
+- origin datasource alias `master`をcopyしない
 
 ことを示す。
 
 ### Environment candidate
 
-\`\`\`text
+```text
 environment development {
     database-instance master_data.dev {
         definition master_data
@@ -93,7 +93,7 @@ environment development {
 
     bind repair_intake.customer_master -> master_data.dev
 }
-\`\`\`
+```
 
 existing Environment grammarだけでdestination bindingを表現できる。
 
@@ -109,30 +109,30 @@ shared Semantic / Contractとdestination-owned aliasは既存Application grammar
 
 origin Patternを継承せず、destination-owned Patternがshared Contractを参照できる。
 
-\`\`\`text
+```text
 origin Pattern provenance
   != Pattern inheritance
-\`\`\`
+```
 
 ### C. Environment portabilityにcopy構文が不要
 
 destination bindingは既存Environment bindingとして明示できる。
 
-\`\`\`text
+```text
 origin binding
   != destination binding
-\`\`\`
+```
 
 ### D. Portability metadataをCanonicalへ混ぜない
 
 少なくともcurrent Referenceでは、
 
-- \`knowledge-package\`
-- \`portable\`
-- \`inherit\`
-- \`override\`
-- \`adopt-from\`
-- \`sync-from\`
+- `knowledge-package`
+- `portable`
+- `inherit`
+- `override`
+- `adopt-from`
+- `sync-from`
 
 のような専用Application authoring directiveを必要としない。
 
@@ -168,32 +168,32 @@ test-only sourceでは、これらをApplication grammarへ混ぜても受理さ
 
 existing Canonical identityをそのまま参照する。
 
-\`\`\`text
+```text
 customer
 customer.customer
 customer.customer.customer_id
 master_data
 master_data.customer
 find_by_id
-\`\`\`
+```
 
 ### local
 
 destinationが新しいidentityをauthorする。
 
-\`\`\`text
+```text
 repair_intake
 repair_intake.intake.customer
 repair_intake.customer_reference
 customer_master
-\`\`\`
+```
 
 ### environment local
 
-\`\`\`text
+```text
 repair_intake.customer_master -> master_data.dev
 repair_intake.customer_master -> master_data.prod
-\`\`\`
+```
 
 この分離だけで初回Portability Referenceを構成できる可能性が高い。
 
@@ -203,10 +203,10 @@ destination sourceがGate C後にAcceptanceされた場合、新しいApplicatio
 
 既存の、
 
-\`\`\`text
+```text
 application:<id>
 application-pattern:<id>
-\`\`\`
+```
 
 を再利用する。
 
@@ -231,10 +231,10 @@ AI Builderに必要なのは新しいsyntaxより、
 
 AIが最終sourceを生成する場合も、出力は通常のTEI Application / Pattern / Environment sourceになる。
 
-\`\`\`text
+```text
 AI planning context
   != Canonical portability syntax
-\`\`\`
+```
 
 である。
 
@@ -242,7 +242,7 @@ AI planning context
 
 Human Reviewでは、
 
-\`\`\`text
+```text
 shared
   customer.customer
   master_data.customer ^2
@@ -253,7 +253,7 @@ new local
   Pattern
   alias
   Environment binding
-\`\`\`
+```
 
 を明示すればよい。
 
@@ -261,7 +261,7 @@ reviewerにinheritance graphを理解させる必要はまだない。
 
 ## 9. Test-only source
 
-\`tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go\`
+`tools/reference-business-procedure-check/second_application_schema_sufficiency_pressure_test.go`
 
 次を確認する。
 
@@ -279,7 +279,7 @@ reviewerにinheritance graphを理解させる必要はまだない。
 
 このtest-only sourceを追加しただけではactual parser execution PASSを主張しない。
 
-\`\`\`text
+```text
 Design Evidence
   current grammar is expected to be sufficient
 
@@ -294,7 +294,7 @@ Reference Evidence
 
 Product Evidence
   repeated reuse works without special portability grammar
-\`\`\`
+```
 
 各段階を分ける。
 

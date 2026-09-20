@@ -51,7 +51,7 @@ SUI Sensemakingを、TEIが実際の複雑なApplicationを支えられるかを
 - First Web Target: 未実装 / Evidence未取得
 - Studio / Shared Acceptance実装: Design Only
 
-である。
+である。（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](GATE_C_READINESS_AUDIT.md)）以降の「当面」の順序は起票時点の判断であり、Gate C後の並行lane（`ISSUE-000046` / `000047` / `000027` / `000026`）に合わせて見直す。
 
 したがって、SUI Reference Adoptionは当面、
 

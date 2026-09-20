@@ -19,7 +19,7 @@ R1 / R2で得た` supported / contradiction / unresolved `を、将来のlocal L
 - AI runtime / provider contract
 - automatic Acceptance
 
-Product Gate Cは現在Blockedであり、Definition-Centered Feedback Loopのproduction AI / Studio implementationはGate C Ready後に進める。したがってR3は**read-onlyな情報境界の評価**で止める。
+Product Gate Cは現在Blockedであり（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](GATE_C_READINESS_AUDIT.md)）、Definition-Centered Feedback Loopのproduction AI / Studio implementationはGate C Ready後に進める。したがってR3は**read-onlyな情報境界の評価**で止める。
 
 ## 2. 入力となる既存Evidence
 
@@ -590,7 +590,7 @@ Shared Acceptance
 
 ## 17. 次に実装する条件
 
-現在はProduct Gate CがBlocked、Lane C actual Repository executionも未取得である。
+現在はProduct Gate CがBlocked、Lane C actual Repository executionも未取得である（2026-09-21注記: 起票時点の記述。Product Gate Cは2026-09-19にReady、Lane C Gate A actual executionは2026-09-20にPASSした。Contract ADRは引き続きNot Ready）。
 
 そのため次のproduction実装へは進まない。
 

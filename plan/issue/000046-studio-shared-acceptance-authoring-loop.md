@@ -1,6 +1,6 @@
 # ISSUE-000046: Studioの最小Authoring Loopをshared Acceptance Boundaryで実証する
 
-- 状態: Blocked — Gate C Ready待ち
+- 状態: Ready — Gate C Ready確認済み（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）/ Reference着手可能
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-01 primary**
@@ -350,6 +350,8 @@ Gate Cから少なくとも次を受け取ってから着手します。
 - Target Capability / Execution / Trustのunresolved
 
 これにより、Studio UI都合からApplication meaningを先行固定しません。
+
+2026-09-21: Gate CはReadyとなり、上記4項目は[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)（Handover Baseline `B / R / T`、Semantic / Functional / Visual Evidenceの分離、carry-forwardのunresolved、第二Targetへのhandoff）から受け取れる。本Issueは着手可能である。着手条件はProduct Gate Cだけで、Lane C（000048 / 000049）の完了は待たない。
 
 Gate C後の最初のReferenceでは、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)に従い、`ISSUE-000047`の探索と`ISSUE-000027`のProposalを同じone-change loopへ接続します。
 

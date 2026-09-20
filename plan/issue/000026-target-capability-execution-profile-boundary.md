@@ -1,8 +1,8 @@
 # ISSUE-000026: Target CapabilityとExecution / Trust Profileの境界を検証する
 
-- 状態: Proposed
+- 状態: Ready — Gate C Ready確認済み（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）/ 第二Target候補の選定から着手可能
 - GitHub Issue: #259
-- 本格着手条件: Gate C Ready
+- 本格着手条件: Gate C Ready（成立済み）
 - Product Acceptance Scenario: PAS-04 primary
 
 ## 背景
@@ -205,7 +205,9 @@ Application Target
 
 ### Gate C後
 
-第一Targetとの差を説明できるようになったら、第二Target候補を選びます。
+2026-09-21: Gate CはReadyとなった（[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)）。第一Targetの観測（`targetDifferenceHandoff`のTarget Capability候補、Runtime Binding、execution artifact・ABI・Host差、Execution・Trust差）は同auditの「第二Targetへのhandoff」から受け取る。同auditがcarry-forwardとして本Issueへ渡したunresolvedは`browse-environment-instance-binding-not-exposed-by-current-driver-api` / `general-target-neutral-presentation-taxonomy-not-yet-defined` / `target-capability-taxonomy-remains-candidate-until-second-target`である。
+
+第一Targetとの差を説明できるようになったので、第二Target候補を選びます。
 
 第二Targetは、第一Targetと十分に異なる圧力を与えられるものを優先します。
 

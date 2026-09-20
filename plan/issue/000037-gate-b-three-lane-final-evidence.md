@@ -1,6 +1,6 @@
 # ISSUE-000037: Gate Bの三つの必須Evidenceを同一revisionへ最終収束する
 
-- 状態: In Progress — runner / fail-closed / same-run artifact / secret stable-read / #308 path-only handoffまで実装、actual final run待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #387
 - Gate B監査: `ISSUE-000029` / #273
 - Handover: `ISSUE-000030` / #291
@@ -350,18 +350,18 @@ new clean R'
 
 残っている中心作業はactual executionです。
 
-- [ ] 実TEI checkoutでfinal runner / repositoryevidence package test
-- [ ] Evidence専用空PostgreSQL Database用意
-- [ ] Repository外DSN secret file用意
-- [ ] source変更が出尽くしたclean R固定
-- [ ] Runbook正規commandでactual final run
-- [ ] #310 / #255 / #308 same-R成功
-- [ ] `childArtifactsRetained = true`
-- [ ] 三つのsame-run child exact artifacts保存
-- [ ] child SHA-256とfinal fingerprint一致
-- [ ] child詳細からlane固有安全条件再監査
-- [ ] #273 Gate B Readiness Auditへ対応付け
-- [ ] Readyなら同じRを#291 Handover Baselineへ固定
+- [x] 実TEI checkoutでfinal runner / repositoryevidence package test
+- [x] Evidence専用空PostgreSQL Database用意
+- [x] Repository外DSN secret file用意（secretはEvidence / Repositoryへ保存していない）
+- [x] source変更が出尽くしたclean R固定（R = `e5231839`）
+- [x] Runbook正規commandでactual final run
+- [x] #310 / #255 / #308 same-R成功（`allLanesSameRevision = true`）
+- [x] `childArtifactsRetained = true`
+- [x] 三つのsame-run child exact artifacts保存
+- [x] child SHA-256とfinal fingerprint一致（`artifactAuditPassed = true`）
+- [x] child詳細からlane固有安全条件再監査
+- [x] #273 Gate B Readiness Auditへ対応付け
+- [x] Readyなら同じRを#291 Handover Baselineへ固定（[Handover Baseline B](../GATE_B_TO_C_HANDOVER_BASELINE_B.md)）
 
 actual final runはrunner実装、isolated test、GitHub mergeで代替しません。
 

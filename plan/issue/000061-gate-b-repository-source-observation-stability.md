@@ -1,6 +1,6 @@
 # ISSUE-000061: Gate BのRepository source観測中HEAD driftをfail closedにする
 
-- 状態: In Progress — HEAD drift / Git environment / untracked / ignored / Git index local state guardまで実装・pure test済み、実TEI checkoutでの通常Go test待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #418
 - Gate B最終収束: `ISSUE-000037` / #387
 - Gate B監査: `ISSUE-000029` / #273
@@ -300,7 +300,7 @@ PR #419 / #477 / #479 / #483はこの運用を置き換えるのではなく、�
 - [x] 隔離Go moduleで共有package / pure testを実行する
 - [x] #387とRepository正本へHEAD drift境界を同期する（PR #420）
 - [x] #418へPR #477 / #479の再現条件と隔離test結果を記録する
-- [ ] 実TEI Repository checkoutの通常Go環境で`go test ./tools/internal/repositoryevidence -count=1`を再確認する
+- [x] 実TEI Repository checkoutの通常Go環境で`go test ./tools/internal/repositoryevidence -count=1`を再確認する（actual #310で`repository-evidence-source-boundary`成功。2026-09-21にmain 9f4fcd5でも`GOENV=off GOWORK=off GOFLAGS=`のもとok）
 
 最後の通常checkout testが完了するまで、GitHub #418は完了扱いにしません。
 

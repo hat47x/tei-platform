@@ -1,6 +1,6 @@
 # ISSUE-000031: Gate Bでheader-detailのreal PostgreSQL engine Evidenceを取得する
 
-- 状態: Ready
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #308
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 前提Issue: `ISSUE-000024` / GitHub Issue #244（Completed）
@@ -291,18 +291,18 @@ Provider runtimeの2件 / 0件確認後、tool-owned fixtureを削除してmissi
 - [x] repository revision / `reproducibleRevision` / post-run状態をEvidence JSONへ含める（PR #336）
 - [x] cleanup後にuser relation 0件 / Event Trigger 0件 / fixture object不在を再観測し、非機密な結果をEvidence JSONへ残す（PR #341 / #365）
 - [x] 接続設定初期化 / initial Pingのdriver error本文をcredential-safeに隔離し、READMEへ同期する（PR #414 / #415、GitHub #411）
-- [ ] cleanな対象revisionでCanonical Workspace Validationを成功させる
-- [ ] Evidence専用の空PostgreSQL Databaseでtoolを実行する
-- [ ] `reproducibleRevision = true`を実runで確認する
-- [ ] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する
-- [ ] `fixtureCleanupSafety`が期待する終了状態を示すことを実runで確認する
-- [ ] 2件取得を確認する
-- [ ] 0件を正常な空collectionとして確認する
-- [ ] physical table欠落をExecution Errorとして確認する
-- [ ] Semantic mappingとsupport column非露出を確認する
-- [ ] parameter value / credential / DSN / Database名が通常Evidenceへ残っていないことを確認する
-- [ ] Evidence natureが`real-postgres-ephemeral-fixture`であることを確認する
-- [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
+- [x] cleanな対象revisionでCanonical Workspace Validationを成功させる（`workspaceValidation.passed = true`）
+- [x] Evidence専用の空PostgreSQL Databaseでtoolを実行する（`userRelationsBeforeFixture = 0` / `eventTriggersBeforeFixture = 0`）
+- [x] `reproducibleRevision = true`を実runで確認する
+- [x] `fixtureDatabaseSafety`が期待する安全条件を示すことを実runで確認する（`guardPassed = true`）
+- [x] `fixtureCleanupSafety`が期待する終了状態を示すことを実runで確認する（`verified = true` / `userRelationsAfterCleanup = 0` / `eventTriggersAfterCleanup = 0` / `fixtureObjectAbsentAfterCleanup = true`）
+- [x] 2件取得を確認する（`rows = 2`）
+- [x] 0件を正常な空collectionとして確認する（`zeroRows = 0`）
+- [x] physical table欠落をExecution Errorとして確認する（`executionErrorObserved = true`）
+- [x] Semantic mappingとsupport column非露出を確認する（`semanticMappingApplied = true` / `semanticOrderLineParentAttributeAdded = false`）
+- [x] parameter value / credential / DSN / Database名が通常Evidenceへ残っていないことを確認する（`parameterValuesPersisted = false` / `databaseIdentityPersisted = false`）
+- [x] Evidence natureが`real-postgres-ephemeral-fixture`であることを確認する
+- [x] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける（Gate B Readiness Audit「Required Evidence 3」）
 
 ## 非目標
 

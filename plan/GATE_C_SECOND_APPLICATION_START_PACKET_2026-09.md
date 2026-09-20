@@ -5,9 +5,9 @@
 - Primary owner after entry: ISSUE-000040
 - Inputs: ISSUE-000047 / ISSUE-000053 Phase 5 / ISSUE-000027 / ISSUE-000039
 - Pre-Gate contracts:
-  - \`plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md\`
-  - \`plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md\`
-  - \`plan/KNOWLEDGE_PORTABILITY_HANDOFF_2026-09.md\`
+  - `plan/SECOND_APPLICATION_REFERENCE_PRE_GATE_CONTRACT_2026-09.md`
+  - `plan/SECOND_APPLICATION_SCHEMA_SUFFICIENCY_PRESSURE_2026-09.md`
+  - `plan/KNOWLEDGE_PORTABILITY_HANDOFF_2026-09.md`
 - Canonical Application impact before Gate C Ready: None
 
 ## 1. 目的
@@ -16,13 +16,13 @@ Gate C Ready後に第二Application Referenceへ着手するとき、探索・Kn
 
 この文書は第二Application sourceではない。
 
-\`\`\`text
+```text
 Start Packet
   != Gate C Ready
   != Application Proposal
   != Shared Acceptance
   != Canonical source
-\`\`\`
+```
 
 ## 2. Entry Gate
 
@@ -37,7 +37,7 @@ Entryの機械的preflightは次を正本とする。
 
 開始時に次を一つのentry recordへ固定する。
 
-\`\`\`text
+```text
 gateC.status = ready
 
 baseline:
@@ -57,14 +57,14 @@ target differences:
 
 unresolved:
   <remaining items>
-\`\`\`
+```
 
 ### Stop
 
 次のいずれかなら第二Application source authoringへ進まない。
 
 - Gate C statusがReadyでない
-- \`R\`と\`T1\`が識別できない
+- `R`と`T1`が識別できない
 - Semantic Evidenceがない
 - Functional Evidenceがない
 - Visual Evidenceがない
@@ -114,10 +114,10 @@ change propagation Evidence
 
 ### Shared authority candidates
 
-- \`customer.customer\`
-- \`customer.customer_id\`
-- \`master_data.customer ^2\`
-- \`master_data.customer/find_by_id\`
+- `customer.customer`
+- `customer.customer_id`
+- `master_data.customer ^2`
+- `master_data.customer/find_by_id`
 
 ### Destination-owned decisions
 
@@ -159,8 +159,8 @@ PreflightはGate C authorityそのものではなく、accepted Gate C Evidence�
 Output:
 
 - Gate C Evidence refs
-- \`R\`
-- \`T1\`
+- `R`
+- `T1`
 - target difference summary
 - unresolved
 
@@ -207,7 +207,7 @@ S1 candidateを次へ分類する。
 - freshness input
 - destination requirement
 
-\`applicable\`を\`accepted\`へ変換しない。
+`applicable`を`accepted`へ変換しない。
 
 ### S3 — Destination decision packet
 
@@ -221,7 +221,7 @@ S1 candidateを次へ分類する。
 6. development / production binding policy
 7. first-target presentation scope
 
-未決定が残る項目は\`unknown\`として保持し、originから補完しない。
+未決定が残る項目は`unknown`として保持し、originから補完しない。
 
 ### S4 — ISSUE-000040 composition candidate
 
@@ -229,7 +229,7 @@ S1 candidateを次へ分類する。
 
 概念形:
 
-\`\`\`text
+```text
 application <destination> {
     uses semantic customer
 
@@ -241,11 +241,11 @@ application <destination> {
         }
     }
 }
-\`\`\`
+```
 
 reference Patternはdestination-owned。
 
-origin \`order_entry.customer_reference\`をコピー正本にしない。
+origin `order_entry.customer_reference`をコピー正本にしない。
 
 ### S5 — Shared Acceptance
 
@@ -282,7 +282,7 @@ Application source acceptance後にEnvironment側を別authorityとして扱う�
 - Provider
 - Permission / Resource requirement
 
-origin \`order_entry.master\` bindingをcopyしない。
+origin `order_entry.master` bindingをcopyしない。
 
 ### S8 — Driver / First Web Target
 
@@ -351,7 +351,7 @@ Target実装都合でCanonical meaningを黙って変えない。
 
 AI Builderへ渡すcontextは少なくとも次を含む。
 
-\`\`\`text
+```text
 Gate C entry
   R / T1 / Evidence
 
@@ -376,7 +376,7 @@ acceptance
 implementation
   allowed source kinds
   forbidden shortcuts
-\`\`\`
+```
 
 AIへRepository全体を無差別に読ませることを標準入口にしない。
 
@@ -395,10 +395,10 @@ Human Reviewではgenerated codeより先に、
 
 を提示する。
 
-\`\`\`text
+```text
 less code reading
   != less Evidence
-\`\`\`
+```
 
 を維持する。
 

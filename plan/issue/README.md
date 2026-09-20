@@ -76,8 +76,10 @@ Business System Design全体は[`../../docs/business-system-design-reading-guide
         ↓ ADR adopted
 000049 production adoption readiness
         ↓ production authority cutover
-000046 / 000027 Studio・AI authoring integration
+Business Procedure authoringへのStudio / AI接続（000046 / 000027のshared Acceptance Boundaryを再利用）
 ```
+
+[000046](000046-studio-shared-acceptance-authoring-loop.md) / [000027](000027-ai-proposal-acceptance-boundary.md)自体の着手条件は**Product Gate Cだけ**です（2026-09-19にReady済み）。v1 `order_entry`のData / Relationで先行して実証でき、上の①②の完了は待たず、Contract ADRの前提にもなりません（循環依存を作らない）。上の図の最終段は、同じshared Acceptance Boundaryが採用済みのBusiness Procedure contractへ広がる段を指します。
 
 | Issue | 減らす不確実性 | 主な出口 |
 | --- | --- | --- |
@@ -191,11 +193,11 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 - 既存のSource Index / derived index / Validationは再利用します。
 - 差分と依存経路の共通解析は000039が担当し、000040は候補の探索・適用先の選択を担当します。000040が解析を必要とする場合、000039の最小解析境界を利用し、完全な変更リハーサルの完成までは要求しません。
 - 採用・source反映・stale Proposalの受理境界は[000027](000027-ai-proposal-acceptance-boundary.md)が担当します。000039 / 000040はAI専用の書込経路を作りません。
-- 最小Editorと着手条件は[000008](000008-editor-and-ai-followup-note.md)が担当し、上記機能を利用します。
+- 最小Editor（最初のauthoring Reference）は[000046](000046-studio-shared-acceptance-authoring-loop.md)が担当し、上記機能を利用します。Editor / AIの着手条件を記録した[000008](000008-editor-and-ai-followup-note.md)は、Gate C Readyの成立で完了しています。
 - 第二Targetは[000026](000026-target-capability-execution-profile-boundary.md)が担当します。000040の第二Applicationと混同しません。
 - 000038の初回実装は000039 / 000040の完成を待ちません。000040の初回例も新Lifecycleの完成を前提にせず既存資産を使います。
 
-状態は3件ともProposedです。schema、Core primitive、APIの採用は未決定で、必要な判断をADRへ残してから実装します。将来の汎用Workflow、分散transaction、全言語解析、Marketplace、全Provider網羅を、この小さい受入単位の完了で達成済みにしません。
+状態は000038 / 000039がProposed、000040がIn Progress（既存資産を使う圧力試験候補の検証中）です。schema、Core primitive、APIの採用は未決定で、必要な判断をADRへ残してから実装します。将来の汎用Workflow、分散transaction、全言語解析、Marketplace、全Provider網羅を、この小さい受入単位の完了で達成済みにしません。
 
 000038については、2026-09-05に要件の詳細化を[業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)としてまとめ、所有境界と実行境界の判断を[ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)として提案しました。いずれも評価待ちであり、採用前に実装へ進みません。詳細化の結論として、`sales.order.submit`のCapability契約変更はGate B Ready判定と000030のHandover Baseline固定より前に入れない扱いです。
 
@@ -205,10 +207,10 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 | --- | --- | --- |
 | Gate Bのactual Oracle必須性再監査（既存#380 / #381） | [000035](000035-gate-b-external-provider-scope-audit.md) | 同じ設計判断へ統合。判断済みであり再起票しない |
 | 3-lane scopeの長文同期（既存#383） | [000036](000036-gate-b-three-lane-document-sync.md) | 上流でDone。今回の文書取り込みを実行Evidence取得と混同しない |
-| 通常Go / 生成物 / PostgreSQLの最終収束（既存#387） | [000037](000037-gate-b-three-lane-final-evidence.md) | 実装・pure test記録と未取得actual final runを分離して維持 |
+| 通常Go / 生成物 / PostgreSQLの最終収束（既存#387） | [000037](000037-gate-b-three-lane-final-evidence.md) | 実装・pure test記録とactual final runを分離して維持（actual final runはGate B Ready時に取得済みでDone） |
 | 最小状態遷移、履歴・Policyの意味知識 | [000038](000038-business-lifecycle-semantics.md) / [000040](000040-semantic-component-composition.md) | 前者は遷移の意味、後者は既存資産の再利用。汎用履歴基盤まで完了範囲を広げない |
 | provenance / change trace、AI Acceptanceのimpact analysis | [000039](000039-business-change-rehearsal.md) / [000027](000027-ai-proposal-acceptance-boundary.md) | 解析は前者、受理は後者 |
-| Editor、Projection、確認提案・判断履歴 | [000008](000008-editor-and-ai-followup-note.md) / [000027](000027-ai-proposal-acceptance-boundary.md) | 既存計画へ接続。Editor / AIの先行実装Issueを増やさない |
+| Editor、Projection、確認提案・判断履歴 | [000046](000046-studio-shared-acceptance-authoring-loop.md) / [000027](000027-ai-proposal-acceptance-boundary.md)（着手条件の記録は[000008](000008-editor-and-ai-followup-note.md)がDone） | 既存計画へ接続。Editor / AIの先行実装Issueを増やさない |
 | Targetごとの性能・可読性 | [000028](000028-first-web-target-conformance-evidence.md) / [000026](000026-target-capability-execution-profile-boundary.md) | 各TargetのEvidenceとして扱う |
 | 既存ADR移行（既存#71） | [000004](000004-migrate-existing-adrs.md) | 既存Issueを継続。新提案へ混ぜない |
 

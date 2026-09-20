@@ -1,6 +1,6 @@
 # ISSUE-000064: PostgreSQL fixture削除をDB側ownership markerで保護する
 
-- 状態: In Progress — 実装 / 隔離test / tool README / Runbook / #308同期済み、実PostgreSQL確認待ち
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #427
 - 親: `ISSUE-000031` / #308
 - Gate B最終収束: `ISSUE-000037` / #387
@@ -99,15 +99,15 @@ ownership markerは次を置き換えません。
 
 ## 残作業
 
-- [ ] 実TEI checkoutの通常Go testで再確認する
-- [ ] #308 actual PostgreSQL Evidenceで次を確認する
+- [x] 実TEI checkoutの通常Go testで再確認する（2026-09-21にmain 9f4fcd5で`./tools/reference-postgres-header-detail-runtime`がok）
+- [x] #308 actual PostgreSQL Evidenceで次を確認する（actual #308 childで`fixtureOwnedByTool = true` / `fixtureCleanupSafety.verified = true` / `userRelationsAfterCleanup = 0` / `eventTriggersAfterCleanup = 0` / `fixtureObjectAbsentAfterCleanup = true`。marker取得とDROPの内部手順は隔離testとfake SQL driver testが固定し、actual Evidenceは結果条件で確認した）
   - CREATE + COMMENT transaction成功
   - ACCESS EXCLUSIVE lock後のmarker取得
   - marker exact match後のDROP
   - cleanup後user relation 0 / Event Trigger 0 / fixture不在
-- [ ] #387 same-R final convergenceで同じ#308 Evidenceを取得する
+- [x] #387 same-R final convergenceで同じ#308 Evidenceを取得する
 
-actual PostgreSQL runが終わるまで本Issueを完了扱いにしません。
+actual PostgreSQL runは終了し、Gate B Ready時点で本Issueを完了としました。
 
 ## 非目標
 

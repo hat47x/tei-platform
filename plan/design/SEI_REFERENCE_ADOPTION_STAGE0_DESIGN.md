@@ -348,7 +348,7 @@ therefore:
 
 Change 1の次候補として、canonical meaningを変えず表示順やprogressive disclosureだけを変更するChange 2を検討した。
 
-しかしcurrent TEIはGate B Not Ready、Gate C Blockedであり、First Web Targetとcomplete Target-neutral Presentation IRは未成立である。第一Web Targetの計画自体も、Gate B前に完全なPresentation IRを先行設計しないことを明示している。
+しかしcurrent TEIはGate B Not Ready、Gate C Blockedであり、First Web Targetとcomplete Target-neutral Presentation IRは未成立である（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)）（complete Target-neutral Presentation IRは現在も未成立）。第一Web Targetの計画自体も、Gate B前に完全なPresentation IRを先行設計しないことを明示している。
 
 このため、Stage 0 Referenceへ専用のordering schemaやPresentation helperを追加しない。
 

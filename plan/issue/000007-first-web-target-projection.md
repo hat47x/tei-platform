@@ -1,6 +1,6 @@
 # ISSUE-000007: 第一Web TargetへのProjection境界を設計する
 
-- 状態: In Progress — Gate C Ready達成（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。残は条件付き項目（Replayable Behavior利用時のtrace等）とISSUE-000026での差分handoff利用
+- 状態: Done — Gate C Ready（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）で成立。条件付き項目（baseline変更時の切替 / Replayable Behavior利用時のtrace）は発生・利用せず、Target差分は`ISSUE-000026`へhandoff済み
 - GitHub Issue: #70
 - 本格着手条件: Gate B Ready + Handover Baseline固定
 - 関連RQ: RQ-009 / RQ-010 / RQ-011 / RQ-012 / RQ-013 / RQ-014 / RQ-017 / RQ-018 / RQ-021 / RQ-022 / RQ-024
@@ -111,7 +111,7 @@ Visual manifest scaffoldを渡した場合はreview indexも表示し、evaluato
 
 ただしHTML state artifactやreplay helper自体をScreenshot / Visual Fidelity Evidenceへ読み替えない。
 
-現在はこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得である。Gate CはNot Readyのままとする。
+起票時点ではこれらの**Source Evidence**までで、actual clean Target run / Screenshot / evaluator record / final readiness artifactは未取得であり、Gate CはNot Readyとしていた。2026-09-19に`T = 0ba87a4e`ですべて取得し、Gate CはReadyになった（[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)）。
 
 ## 背景
 
@@ -334,14 +334,14 @@ Gate Cで得たTarget差を`ISSUE-000026` / GitHub Issue #259へ渡し、第二T
 - [x] `order_entry`の主要Patternを同じCanonical meaningからWebへProjectionする
 - [x] Validation / Authorization / Capability / Result / ObservationをWeb側で再定義しない
 - [x] 各Gate C runからHandover Baselineへ追跡できる
-- [ ] `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える（条件付き。今回は`R → T`でCanonical不変を確認しており切替は発生していない）
+- 条件付き（発生せず）: `T`でbaseline meaningが変わった場合、新Handover Baselineへ切り替える（条件付き。今回は`R → T`でCanonical不変を確認しており切替は発生していない）
 - [x] Semantic ConformanceをEvidenceから確認できる
 - [x] Reference ScenarioのInteraction / Functional Evidenceを再現できる
-- [ ] replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる（任意。今回のGate C Evidenceでは未利用）
+- 任意（未利用）: replayable behaviorを利用する場合、semantic operation / raw Target Evidenceへtraceできる（任意。今回のGate C Evidenceでは未利用）
 - [x] Visual Fidelityを別Evidenceとして残せる
 - [x] standard ProjectionとCustom UIを同じ上位意味へ接続できる
 - [x] Web Adapterを外してもCanonical Worldが変わらない
-- [ ] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す（handoff recordは取得済み。`ISSUE-000026`での利用は未着手）
+- [x] Target Capability / Runtime Binding / execution artifact・ABI・Host / Execution・Trust差を`ISSUE-000026`へ渡す（handoff recordは取得済み。`ISSUE-000026`での利用は未着手）（handoff recordを取得済み。利用は`ISSUE-000026`の責務）
 - [x] Gate CをIssue close状態ではなくEvidenceから判定できる
 
 ## 非目標

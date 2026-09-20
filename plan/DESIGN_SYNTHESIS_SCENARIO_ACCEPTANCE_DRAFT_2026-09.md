@@ -20,7 +20,7 @@ S5  feedback closure
 
 また、現時点でS1〜S5をすべて実装可能とみなす文書でもない。
 
-TEIの現在地ではProduct Gate BはNot Ready、Gate CはBlockedであり、Studio / knowledge / AIのproduction implementationはGate C後の主線である。したがって本書では、**Gate C前にread-onlyでPressureできるAcceptanceと、Gate C後の実Referenceで初めて評価すべきAcceptanceを分離する。**
+TEIの現在地ではProduct Gate BはNot Ready、Gate CはBlockedであり（2026-09-21注記: 起票時点の記述。Gate BはR = `e5231839`、Gate CはT = `0ba87a4e`で2026-09-19にReadyとなり、第一Web Targetも実装・Evidence取得済みである。判定は[Gate C Readiness Audit](GATE_C_READINESS_AUDIT.md)）、Studio / knowledge / AIのproduction implementationはGate C後の主線である。したがって本書では、**Gate C前にread-onlyでPressureできるAcceptanceと、Gate C後の実Referenceで初めて評価すべきAcceptanceを分離する。**
 
 ## 2. 上位原則
 

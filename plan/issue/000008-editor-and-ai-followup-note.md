@@ -1,12 +1,12 @@
 # ISSUE-000008: Editor / AI支援の着手条件を整理する
 
-- 状態: Blocked — Gate C Ready待ち
-- 解除条件: Gate C Ready
+- 状態: Done — Gate C Ready（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）で着手条件が成立し、担当をISSUE-000046 / 000047 / 000027へ引き渡し済み
+- 解除条件: Gate C Ready（成立済み: [Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)）
 - 関連PAS: PAS-01 / PAS-06
 
 ## 統合後の担当境界
 
-本IssueはGate C後のEditor / AI着手条件と最小Editor Projectionを管理します。共通機能の実装は[ISSUE-000039](000039-business-change-rehearsal.md)の差分・依存解析、[ISSUE-000040](000040-semantic-component-composition.md)の探索・組み立て、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)のAcceptanceへ接続します。以下の構想に同じ機能が現れても別実装を起票せず、当該Issueの成果を利用します。
+本IssueはGate C後のEditor / AI着手条件を記録します。最小Editor Projection（最初のauthoring Reference）は[ISSUE-000046](000046-studio-shared-acceptance-authoring-loop.md)が担当します。共通機能の実装は[ISSUE-000039](000039-business-change-rehearsal.md)の差分・依存解析、[ISSUE-000040](000040-semantic-component-composition.md)の探索・組み立て、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)のAcceptanceへ接続します。以下の構想に同じ機能が現れても別実装を起票せず、当該Issueの成果を利用します。
 
 ## 背景と着手条件の根拠
 
@@ -268,6 +268,17 @@ Gate Cを通過し、Application / Driver / 第一TargetのEvidenceからEditor 
 - `ISSUE-000027` AI Proposal / Acceptance Boundary
 
 新しい実装Issueは、これらのReferenceで追加責務が確認された場合だけ分解します。
+
+## 解除結果
+
+2026-09-21: Gate Cは[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)でReady（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）と判定された。上記「着手条件」の1〜9は、Gate C判定条件のEvidence（Semantic / Functional / Visual Evidenceの分離、Handover Baseline `B / R / T`の追跡、Web固有実装のCanonicalへの逆流なし、Target差分のhandoff）から説明できる。よって本IssueのBlockを解除し、完了条件に従い次へ移した。
+
+- `ISSUE-000027`: Ready
+- `ISSUE-000047`: In Progress（Gate C Ready後のactual S1 qualification）
+- `ISSUE-000046`: Ready
+- `ISSUE-000051`: Ready（Product Gate C Ready後のReference evaluation。000047のqualificationを省略しない）
+
+Gate C Readyの非主張（production-ready、第二Target不要、actual external Command成功、Visual Fidelityの人による承認）は[Gate C Readiness Audit](../GATE_C_READINESS_AUDIT.md)「Ready の意味と非主張」のとおりで、Editor / AI側でも読み替えない。最小Editor Projectionの実装責務は000046が持つ。本Issueは着手条件の記録としての役目を終えたためDoneとし、新しい実装Issueは、上記Referenceで追加責務が確認された場合だけ分解する。
 
 ## 関連文書
 

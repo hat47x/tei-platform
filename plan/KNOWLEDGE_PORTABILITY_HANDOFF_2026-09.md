@@ -12,7 +12,7 @@ Knowledge Portability R0で整理したauthority / provenance / variation境界�
 
 三つのIssueは次の順で責務を分ける。
 
-\`\`\`text
+```text
 ISSUE-000047
   candidate discovery / qualification
         ↓
@@ -21,7 +21,7 @@ ISSUE-000053 Phase 5
         ↓
 ISSUE-000040
   destination composition / Proposal / Acceptance
-\`\`\`
+```
 
 同じ機能を三箇所で実装しない。
 
@@ -46,10 +46,10 @@ Phase 5が必要とする最小情報:
 
 重要:
 
-\`\`\`text
+```text
 candidate discovered in Application A
   != Application A owns candidate meaning
-\`\`\`
+```
 
 000047は、discovery provenanceとauthority sourceを可能な限り分離した形でhandoffする。
 
@@ -59,28 +59,28 @@ Phase 5はcandidateを別Applicationへどう関係付けるかを扱う。
 
 R0では概念的に次を区別する。
 
-\`\`\`text
+```text
 linked reuse
 conditional linked reuse
 adopted local variation
 rebind-required
-\`\`\`
+```
 
 これは000047のqualificationを置き換えない。
 
 例:
 
-\`\`\`text
+```text
 candidate = master_data.customer
 qualification = applicable
 reuse relation = conditional linked reuse
-\`\`\`
+```
 
 のように両方を保持する。
 
 ### qualification != reuse relation
 
-\`\`\`text
+```text
 applicable
   != linked reuse
 
@@ -89,7 +89,7 @@ incompatible direct reuse
 
 unknown
   != implicit inheritance
-\`\`\`
+```
 
 Application Patternはdirect linked reuseには不適切でも、destination-owned variationのprovenance candidateとして利用価値を持ち得る。
 
@@ -134,10 +134,10 @@ origin Application / Pattern / Referenceを設計上の参考にした関係。
 
 同じmeaningならsame Canonical identityをexplicit referenceする。
 
-\`\`\`text
+```text
 customer.customer
   -> shared reference
-\`\`\`
+```
 
 同名のdestination copyを標準にしない。
 
@@ -145,10 +145,10 @@ customer.customer
 
 origin Patternが有用でも、
 
-\`\`\`text
+```text
 order_entry.customer_reference
   != destination Pattern authority
-\`\`\`
+```
 
 である。
 
@@ -156,15 +156,15 @@ destinationは自分のPattern identityを持つ。
 
 ### 5.3 datasource aliasを引き継がない
 
-originの\`master\`等のlocal aliasはdestinationへ継承しない。
+originの`master`等のlocal aliasはdestinationへ継承しない。
 
 destination Application sourceで明示する。
 
 ### 5.4 Environment bindingを引き継がない
 
-\`\`\`text
+```text
 bind order_entry.master -> master_data.dev
-\`\`\`
+```
 
 はdestination bindingではない。
 
@@ -196,11 +196,11 @@ Gate C後にactual second Applicationを導入したら、少なくとも次を�
 
 linked reuseでは、destinationが依存したauthoritative inputを追跡する。
 
-\`\`\`text
+```text
 destination dependency set
   semantic-data:customer.customer
   database-contract:master_data.customer
-\`\`\`
+```
 
 このsetの実依存が変化した場合だけ、原則requalification対象とする。
 
@@ -212,10 +212,10 @@ adopted local variationではorigin sourceをprovenanceとして保持できる�
 
 originが変わった場合:
 
-\`\`\`text
+```text
 origin provenance fingerprint changed
   -> provenance drift
-\`\`\`
+```
 
 可能な反応:
 
@@ -234,10 +234,10 @@ origin provenance fingerprint changed
 
 R0では、destinationとoriginの差はまず独立authorityとして扱う。
 
-\`\`\`text
+```text
 origin Pattern uses alias master
 destination Pattern uses alias customer_master
-\`\`\`
+```
 
 これは「override」と呼ばなくても表現できる。
 
@@ -266,16 +266,16 @@ Phase 5から000040へInfrastructure candidateを渡す場合、次を分ける�
 - Lease policy
 - deployment route
 
-\`\`\`text
+```text
 infrastructure knowledge reusable
   != infrastructure configuration copied
-\`\`\`
+```
 
 ## 11. Acceptance boundary
 
 Phase 5のreuse relationや000047のqualificationはAcceptanceではない。
 
-\`\`\`text
+```text
 qualified candidate
   ↓
 portability relation
@@ -285,7 +285,7 @@ destination composition candidate
 Shared Acceptance
   ↓
 destination authoritative source
-\`\`\`
+```
 
 AIが組み立てた候補も同じ境界を通す。
 
@@ -377,7 +377,7 @@ ISSUE-000040で予定されている第二Applicationを使う。
 
 候補:
 
-\`\`\`text
+```text
 customer lookup
   shared:
     customer.customer
@@ -390,7 +390,7 @@ customer lookup
     reference Pattern
     Business context
     Environment binding
-\`\`\`
+```
 
 この構成で、shared / local / environment-specificの三層を同時に検証できる。
 

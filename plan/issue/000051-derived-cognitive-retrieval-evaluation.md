@@ -1,6 +1,6 @@
 # ISSUE-000051: 非LLM認知方式をSemantic探索の候補生成器として比較する
 
-- 状態: Blocked — Product Gate C Ready待ち
+- 状態: Ready — Product Gate C Ready確認済み（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）/ Reference input snapshot固定から着手可能
 - 提案日: 2026-09-10
 - 性格: Architecture probe / Reference evaluation
 - 主担当要求: RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-022
@@ -500,7 +500,7 @@ LLMがintent解釈や説明、新規compositionを行っても、`ISSUE-000027`�
 
 ## 着手条件
 
-本格着手はProduct Gate C Ready後です。
+本格着手はProduct Gate C Ready後です（2026-09-19にReady、T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。最初の作業は、Reference input snapshot / fingerprintの固定です。
 
 ただし、Gate C前に次のread-only設計準備は可能です。
 

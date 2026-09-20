@@ -1,6 +1,6 @@
 # ISSUE-000025: Reference生成物を最新Canonical Worldから再生成する
 
-- 状態: In Progress
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #255
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - 実PostgreSQL Evidence: `ISSUE-000031` / GitHub Issue #308
@@ -375,15 +375,15 @@ reference/workspace/databases/sales-core/query-realizations/order-line-find-by-o
 - [x] Evidence runnerから`-write`を呼ばないConformanceを固定した
 - [x] Evidence runnerで実行前後のHEAD / working treeを確認する境界を固定した
 - [x] golden check失敗時に`reproducibleRevision=false`を維持し、post-run source確認済みの成功runだけを完了候補にする（PR #398）
-- [ ] cleanな通常Go環境でWorkspace Validationを成功させる
-- [ ] `go run ./tools/reference-generated-artifact-evidence`をclean revisionで実行する
-- [ ] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する
-- [ ] staleの場合だけDurable Run全体を正規生成し、差分を説明する
-- [ ] stale修復が生じた場合、意図したgenerated artifactをcommitする
-- [ ] final clean revisionでEvidence runnerを再実行し`reproducibleRevision = true`を確認する
-- [ ] JSON Evidenceを再確認する
-- [ ] 必要なReference artifactを手編集せず更新する
-- [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
+- [x] cleanな通常Go環境でWorkspace Validationを成功させる（#310 childの`workspaceValidation.passed = true`）
+- [x] `go run ./tools/reference-generated-artifact-evidence`をclean revisionで実行する（Rでcheck-only成功。`world-plugin-lock-golden` / `durable-run-golden`とも`passed = true`）
+- [x] staleの場合だけWorld / Plugin Lockを正規生成し、差分を説明する（該当なし: Rでstale無し、修復不要）
+- [x] staleの場合だけDurable Run全体を正規生成し、差分を説明する（該当なし: Rでstale無し、修復不要）
+- [x] stale修復が生じた場合、意図したgenerated artifactをcommitする（該当なし: 修復が生じなかった）
+- [x] final clean revisionでEvidence runnerを再実行し`reproducibleRevision = true`を確認する（`generated-artifact-reproducibility.json`）
+- [x] JSON Evidenceを再確認する（独立artifact auditでfingerprint一致）
+- [x] 必要なReference artifactを手編集せず更新する（更新不要で、手編集も無し）
+- [x] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける（Gate B Readiness Audit「Required Evidence 2」）
 
 ## 非目標
 

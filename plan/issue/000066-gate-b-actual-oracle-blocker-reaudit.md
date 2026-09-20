@@ -1,6 +1,6 @@
 # ISSUE-000066: Gate Bでactual Oracleを必須blockerとする条件を再監査する
 
-- 状態: In Progress — 結論反映中
+- 状態: Done — 結論はGate B Readiness Audit / Runbook / Handover契約 / Product Requirement Gap Auditへ反映済み（Gate B Ready、2026-09-19）
 - GitHub Issue: #381
 - 対象Gate: Gate B「UIなしで主要Scenarioを再現できる」
 - 親Issue: `ISSUE-000006` / #69
@@ -228,11 +228,11 @@ Milestone 3はDatabase Bindingを含む小さいScenarioを動かして確認す
 - [x] actual OracleをGate B必須にしない理由を明示した
 - [x] #214 / #371 / #376を継続Evidenceとして残すclaim境界を定義した
 - [x] Handover unresolvedへ残す条件を定義した
-- [ ] Gate B Evidence lane定義を3必須lane + Oracle unresolvedへ更新する
-- [ ] candidate revision契約を#310 / #255 / #308へ更新する
-- [ ] Handover契約を更新する
-- [ ] #273 / #69 / #214へ結果を同期する
-- [ ] `PRODUCT_REQUIREMENT_GAP_AUDIT.md`へ再監査完了を同期する
+- [x] Gate B Evidence lane定義を3必須lane + Oracle unresolvedへ更新する（[Runbook](../GATE_B_EVIDENCE_RUNBOOK.md)冒頭）
+- [x] candidate revision契約を#310 / #255 / #308へ更新する（Runbook / [Handover契約](../GATE_B_TO_C_HANDOVER_CONTRACT.md)）
+- [x] Handover契約を更新する（[Handover契約](../GATE_B_TO_C_HANDOVER_CONTRACT.md)「Gate B Required Evidenceは次の三つ」）
+- [x] #273 / #69 / #214へ結果を同期する（対応するRepository側の`ISSUE-000029` / `000006` / `000022`へ反映。GitHub Issueは履歴参照であり、`plan/issue/README.md`の方針どおり更新しない）
+- [x] `PRODUCT_REQUIREMENT_GAP_AUDIT.md`へ再監査完了を同期する（[同audit](../PRODUCT_REQUIREMENT_GAP_AUDIT.md)「Gate Bの第四Required laneではありません」）
 
 ## 非目標
 

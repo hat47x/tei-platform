@@ -163,7 +163,7 @@ Runbookは長く安全条件が多いため、scope判断だけを理由に全�
 - 本文中の4-lane必須表現は現行条件ではなく履歴である
 - 現行必須Evidenceは#310 / #255 / #308の三laneである
 - #214 / #371 / #376は継続Evidenceであり、未完了ならHandover `unresolved`へ残す
-- Gate Bはactual run未取得のためNot Readyである
+- Gate Bはactual run未取得のためNot Readyである（当時。2026-09-19にactual #387 final runを取得してReady）
 
 この扱いにより、設計履歴を残しながら現在の判断を誤読しにくくしています。
 

@@ -1,6 +1,6 @@
 # ISSUE-000006: Application Driverの最小vertical sliceを実装する
 
-- 状態: In Progress — 主要境界成立、Gate B Evidence成立（R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`）、第一Web Target着手待ち
+- 状態: Done — Application Driver vertical sliceはGate B Ready（R = `e5231839a5dcc62cce1181a2731fcb7c70d16736`、2026-09-19）で成立し、第一Web TargetもGate C Readyに到達済み。actual Oracle（旧Lane A）はGate B必須外のunresolvedとして`ISSUE-000022` / `000033` / `000034`が継続
 - GitHub Issue: #69
 - 前段: `ISSUE-000013` / GitHub Issue #124（Gate A Ready）
 - 次のGate: Gate B「UIなしで主要Scenarioを再現できる」

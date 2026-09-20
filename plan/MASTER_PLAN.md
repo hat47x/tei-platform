@@ -86,7 +86,7 @@ Handover recordはCanonicalの第二正本ではありません。
 
 ### Gate C — 第一Targetとの差をEvidenceで説明できる
 
-**Not Ready**です。Gate B / Handoverの着手条件は成立していますが、第一Web Target build `T1`とGate C Evidenceはまだ成立していません。
+**Ready**です（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）。Gate B / Handoverを起点に、第一Web Target build `T1`のSemantic / Functional / Visual Evidenceが同一provenanceでそろいました（[GATE_C_READINESS_AUDIT.md](GATE_C_READINESS_AUDIT.md)）。Readyの非主張（production-ready、actual external Commandの成功、Target-neutral Presentation taxonomyの完成、第二Targetが不要になったこと、Visual Fidelityの人による承認）は同auditのとおりです。
 
 第一Web TargetはHandover Baseline `B` / revision `R`を意味baselineとして利用します。
 
@@ -340,10 +340,10 @@ B Semantic / Knowledge ───┬── C Application / Legacy
 
 ## 現在の優先順
 
-1. Gate B actual final Evidenceを同一revisionへ収束する
-2. Gate B ReadyならHandover Baseline `B` / revision `R`を固定する
-3. 第一Web Targetをbuild revision `T1`として実装し、Gate C Evidenceを取得する
-4. Gate C Ready後、次を並行開始する
+1. （完了、2026-09-19）Gate B actual final Evidenceを同一revision（R = `e5231839`）へ収束した
+2. （完了、2026-09-19）Handover Baseline `B` / revision `R`を固定した
+3. （完了、2026-09-19）第一Web Targetをbuild revision `T1`（T = `0ba87a4e`）として実装し、Gate C Evidenceを取得してReadyと判定した
+4. Gate C Ready後の並行lane（現在地。各Issueの状態は各Issueの`状態`行が正本）
    - `ISSUE-000046` Studio minimal Authoring Loop
    - `ISSUE-000047` knowledge-first Semantic exploration
    - `ISSUE-000027` AI Proposal / Acceptance

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -90,11 +91,9 @@ func TestIssueStatesUseTheSixAllowedValues(t *testing.T) {
 	}
 }
 
-var markdownLink = regexp.MustCompile(`\]\(([^)#\s]+)(?:#[^)]*)?\)`)
-
-func TestMarkdownRelativeLinksResolve(t *testing.T) {
+func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
+	t.Helper()
 	root := repositoryRoot(t)
-	var broken []string
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -112,74 +111,92 @@ func TestMarkdownRelativeLinksResolve(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		inFence := false
-		for _, line := range strings.Split(string(content), "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "```") {
-				inFence = !inFence
-				continue
-			}
-			if inFence {
-				continue
-			}
-			for _, m := range markdownLink.FindAllStringSubmatch(line, -1) {
-				target := m[1]
-				if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "mailto:") {
-					continue
-				}
-				resolved := filepath.Join(filepath.Dir(path), filepath.FromSlash(target))
-				if _, err := os.Stat(resolved); err != nil {
-					rel, _ := filepath.Rel(root, path)
-					broken = append(broken, filepath.ToSlash(rel)+" -> "+target)
-				}
-			}
-		}
+		rel, _ := filepath.Rel(root, path)
+		visit(filepath.ToSlash(rel), string(content))
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func outsideCodeFences(text string, visit func(lineNumber int, line string)) {
+	inFence := false
+	for i, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence {
+			visit(i+1, line)
+		}
+	}
+}
+
+var markdownLink = regexp.MustCompile(`\]\(([^)#\s]+)(?:#[^)]*)?\)`)
+
+func TestMarkdownRelativeLinksResolve(t *testing.T) {
+	root := repositoryRoot(t)
+	var broken []string
+	forEachMarkdown(t, func(rel, text string) {
+		dir := filepath.Dir(filepath.Join(root, filepath.FromSlash(rel)))
+		outsideCodeFences(text, func(_ int, line string) {
+			for _, m := range markdownLink.FindAllStringSubmatch(line, -1) {
+				target := m[1]
+				if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "mailto:") {
+					continue
+				}
+				if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); err != nil {
+					broken = append(broken, rel+" -> "+target)
+				}
+			}
+		})
+	})
 	sort.Strings(broken)
 	for _, b := range broken {
 		t.Errorf("Markdownの相対リンク先が存在しません: %s", b)
 	}
 }
 
-// TestMarkdownTitleAppearsOnce catches a document that was accidentally pasted into
-// itself (for example by a string-replace whose replacement text contained `$`
-// patterns): the title line of a document must not reappear later in the same file.
+// A document pasted into itself repeats its own title line.
 func TestMarkdownTitleAppearsOnce(t *testing.T) {
-	root := repositoryRoot(t)
 	var repeated []string
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(entry.Name(), ".md") {
-			return nil
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		text := string(content)
+	forEachMarkdown(t, func(rel, text string) {
 		title, _, _ := strings.Cut(text, "\n")
-		if strings.HasPrefix(title, "# ") && strings.Count(text, title) > 1 {
-			rel, _ := filepath.Rel(root, path)
-			repeated = append(repeated, filepath.ToSlash(rel)+": "+title)
+		title = strings.TrimRight(title, "\r")
+		if !strings.HasPrefix(title, "# ") {
+			return
 		}
-		return nil
+		count := 0
+		outsideCodeFences(text, func(_ int, line string) {
+			if strings.TrimRight(line, "\r") == title {
+				count++
+			}
+		})
+		if count > 1 {
+			repeated = append(repeated, rel+": "+title)
+		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	sort.Strings(repeated)
 	for _, r := range repeated {
 		t.Errorf("文書のtitle行が同じfile内で繰り返されています（自己複製の疑い）: %s", r)
+	}
+}
+
+// A heredoc that escapes every code-span backtick with a backslash breaks the code spans.
+func TestMarkdownHasNoEscapedBackticks(t *testing.T) {
+	var offenders []string
+	forEachMarkdown(t, func(rel, text string) {
+		reported := false
+		outsideCodeFences(text, func(lineNumber int, line string) {
+			if !reported && strings.Contains(line, "\\`") {
+				reported = true
+				offenders = append(offenders, rel+":"+strconv.Itoa(lineNumber))
+			}
+		})
+	})
+	sort.Strings(offenders)
+	for _, o := range offenders {
+		t.Errorf("バッククォートがバックスラッシュでescapeされています（heredocのescape事故の疑い）: %s", o)
 	}
 }

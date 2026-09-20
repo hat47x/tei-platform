@@ -1,6 +1,6 @@
 # ISSUE-000032: Gate Bのdeterministic Repository Evidenceを通常Go runnerで再現する
 
-- 状態: In Progress
+- 状態: Done — Gate B Ready（R = `e5231839`）のactual #387 final runで確認済み（2026-09-19）
 - GitHub Issue: #310
 - 親Issue: `ISSUE-000006` / GitHub Issue #69
 - Gate B監査: `ISSUE-000029` / GitHub Issue #273
@@ -236,15 +236,15 @@ runner自身のpackageはこのtargeted testへ含めません。将来runner側
 - [x] post-run確認前の早期失敗で`reproducibleRevision=true`を残さない（PR #351）
 - [x] targeted / broad check失敗時にも`reproducibleRevision=false`を維持する（PR #400）
 - [x] targeted / broad checkごとにRepository sourceを再確認し、通常Evidence runでsource変化を検出したら後続checkを止める（PR #412）
-- [ ] cleanな対象revisionでrunnerを実行する
-- [ ] Canonical Workspace Validation成功Evidenceを取得する
-- [ ] 最終UI-less Scenarioを通常Go runnerで成功させる
-- [ ] external Evidence intake testを通常Go runnerで成功させる
-- [ ] Repository source固定境界testを通常Go runnerで成功させる
-- [ ] 実行前後の同一revision / clean状態をJSON Evidenceで再確認する
-- [ ] repository revisionを含むJSON Evidenceを保存・再確認する
-- [ ] 可能なら`-broad`を実行し結果を記録する
-- [ ] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける
+- [x] cleanな対象revisionでrunnerを実行する
+- [x] Canonical Workspace Validation成功Evidenceを取得する（`workspaceValidation.passed = true`）
+- [x] 最終UI-less Scenarioを通常Go runnerで成功させる（check `final-ui-less-scenario`）
+- [x] external Evidence intake testを通常Go runnerで成功させる（check `external-evidence-intake`）
+- [x] Repository source固定境界testを通常Go runnerで成功させる（check `repository-evidence-source-boundary`）
+- [x] 実行前後の同一revision / clean状態をJSON Evidenceで再確認する（`postRunRepository.revisionStable = true` / `workingTreeClean = true`）
+- [x] repository revisionを含むJSON Evidenceを保存・再確認する（`repositoryRevision = R`。Repository外へ保存）
+- 任意: `-broad`は実施していない（`broadRequested = false`）。Gate B必須Evidenceではなく、通常の`go test ./...`は日次のhealth checkが担う
+- [x] 結果を`ISSUE-000029` / #273のGate B監査へ対応付ける（Gate B Readiness Audit「Required Evidence 1」）
 
 ## 非目標
 
