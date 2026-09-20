@@ -4875,6 +4875,150 @@ latest-main 11-path candidate assembled
 
 integration sessionはunreferenced candidate SHAそのものをmainへfast-forward / cherry-pickせず、latest mainへexact 11 blobsをreconcileし、同一working treeでfocused testsとfull repository health checkを通した後だけcodeをmainへ入れる。
 
+#### E1.10 exact focused verification and gofmt convergence — 2026-09-20
+
+E1.9 candidateを再監査したところ、V2 replay auditのsource blob:
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  38e58c930bd993b44e7f14d408a4cc3b4e1c94d9
+```
+
+は機能test自体は通る一方、exact bytesが `gofmt -l` cleanではなかった。full Repository qualificationでは `gofmt -l .` が必須なので、このblobをそのままintegration sourceには採用しない。
+
+意味変更なしでgofmt相当の整形だけを行ったreplacement blob:
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+```
+
+について、Repository外isolated moduleで:
+
+```text
+git hash-object main.go
+  = a370e0c5efc4399e324be7a0ad4801626f05a5da
+
+gofmt -l
+  = empty
+
+go vet
+  = PASS
+
+go test -count=50
+  = PASS
+```
+
+を確認した。V2 test blob `2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99` は変更しない。
+
+同時にE1.7で追加されたrepeatability plan-contract hardeningのexact blobs:
+
+```text
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+```
+
+をGitHub objectからRepository外へbyte-for-byte再構成し、両方の `git hash-object` が上記identityと一致することを確認したうえで:
+
+```text
+gofmt -l .
+  = empty
+
+go vet ./...
+  = PASS
+
+go test -count=50 ./...
+  = PASS
+```
+
+を実行した。
+
+これによりE1.7のcurrent six-behavior repeatability contract:
+
+- six Behavior ID exact set
+- HTTP 200 / 422 exact mapping
+- Observation class exact mapping
+- `RequiredDistinctRuns = 2`
+- distinct run identity
+- distinct Target process identity
+- exact plan / receipt binding
+- run provenance / loopback binding
+- raw digestの形式検証
+- raw digestのrun間一致は要求しない
+
+についてfocused verificationを得た。
+
+その後current main:
+
+```text
+2ee13811c04200cf7df86d61ece883349dc499a3
+```
+
+を親に、E1.6〜E1.7の11 source pathを再配置し、V2 mainだけをgofmt-clean replacement blobへ差し替えたbranchless candidateを作成した。
+
+```text
+f903daef60c5a786192e52b0d1ce1d64fccb2319
+```
+
+compare:
+
+```text
+ahead = 1
+behind = 0
+changed paths = 11
+```
+
+current exact integration source identitiesは:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+tools/internal/firstwebtargetevidence/semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+remote branch / PR / main refはcandidate作成で変更していない。
+
+Evidence heightを更新する。
+
+```text
+V1 shared-validator exact focused PASS
+V2 formatted exact focused PASS
+repeatability hardened exact focused PASS
+runner exact blob / bash -n PASS
+runner early fail-closed smoke 4/4 PASS
+latest-main 11-path candidate assembled
+  != Gate C audit + shared validator current full-package PASS
+  != full 11-path composition focused Go PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+次のintegration gateはGate C auditの既存test suiteをshared validator抽出後のexact sourceと同時に実行し、その後11-path composition全体をfull checkoutへ載せて `tools/repository-health-check.sh` を通すことである。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
