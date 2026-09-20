@@ -4350,23 +4350,58 @@ same exact working tree
 
  へ崩れた不採用candidateであり、統合元に使用しない。clean preferred headは `a315e856...` のみとする。
 
-Evidence heightは厳密に区別する。
+new preferred runner blob `2f55ec06...` はGitHub candidate objectから3区間で再取得し、Repository外へ同一bytesをmaterializeした。再構成後:
 
 ```text
-old runner blob 86c5b9a3...
-  bash -n exact PASS
+line count
+  = 496
 
-new preferred runner blob 2f55ec06...
-  localized source diff inspected
-  exact nonce source confirmed
-  != exact full-runner bash -n rerun
+git hash-object run-first-web-target-r7b-replay.sh
+  = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+
+bash -n run-first-web-target-r7b-replay.sh
+  = PASS
 ```
 
-したがって残るintegration gateは再び:
+を確認した。したがってacquisition identity hardening後のexact runner syntax gateも閉じた。
+
+さらに同じexact bytesをtemporary Git Repositoryへ置き、actual Target / Gate C Evidenceへ進む前のearly fail-closed smokeを再実行した。
 
 ```text
-new preferred runner exact blob
-  ↓ bash -n
+required environment variables missing
+  -> reject
+
+replay input path inside Repository
+  -> reject
+
+replay output path inside Repository
+  -> reject
+
+dirty current checkout
+  -> reject
+```
+
+4件すべてexit non-zeroで拒否した。このsmokeはactual replay / lifecycle Evidenceではないが、E1.1で確認したearly boundaryがnew preferred runnerでも維持されていることを示す。
+
+Evidence heightは:
+
+```text
+new preferred runner blob 2f55ec06...
+  exact blob identity PASS
+  bash -n exact PASS
+  early fail-closed smoke 4/4 PASS
+  != preferred 11-path composition focused Go package PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+となる。
+
+残るintegration gateは:
+
+```text
 preferred 11-path composition
   ↓ focused Go package tests
 latest main full checkout
