@@ -5789,3 +5789,38 @@ credential-safe canonical 11 source
 ```
 
 full checkoutを持たないsessionではここを越えてcodeをmainへ統合しない。actual exact-T replay / repeatability Evidenceも未取得のままとする。
+
+
+#### E1.18 credential-set parity proof — 2026-09-21
+
+E1.17で更新したshared validator exact blobとcurrent runner exact blobをGit objectから直接取得し、credential literal集合を機械比較した。
+
+```text
+runner:
+  credential-ref://legacy/
+  disabled-secret
+  editor-secret
+  locked-secret
+  viewer-secret
+  wrong-secret
+
+shared RejectReferenceCredentialMaterial:
+  credential-ref://legacy/
+  disabled-secret
+  editor-secret
+  locked-secret
+  viewer-secret
+  wrong-secret
+```
+
+結果:
+
+```text
+missing in validator = 0
+extra in validator   = 0
+set equality         = PASS
+```
+
+runner request pathでは `editor-secret` / `wrong-secret` / `viewer-secret` がruntime inputとして実使用され、retained-output final scanは上記6値すべてを拒否する。したがってE1.17後はruntime credential集合とretained Evidence禁止集合のdriftを解消している。
+
+このparity proofはstatic exact-blob contract Evidenceであり、credential-safe canonical packetに対するaggregate focused rerunやfull Repository health PASSの代替ではない。integration gateはE1.17のまま維持する。
