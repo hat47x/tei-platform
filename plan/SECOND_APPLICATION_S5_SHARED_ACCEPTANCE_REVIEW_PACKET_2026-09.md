@@ -235,7 +235,7 @@ proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e733
 reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
-branchlessCodeCandidate    = 8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
+branchlessCodeCandidate    = ccd2544a8a14501774ae3970813c7535e350ec90
 candidateGofmtEvidence     = pass
 candidateRunnerSyntax      = pass
 candidateStaticAPIAudit    = complete
@@ -272,7 +272,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `8c570c74...` にはrevised three-source pressure一式に加え、unknown RelationとQuery cardinality mismatchのfull-Validation negative controlを実装した。残る5 source blobは従来候補と同一で、強化したfull-validation testもactual gofmt PASSとblob identity一致を取得している。runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合も維持している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `ccd2544a...` はsource-relevant integration base `40209d25...` 直上でahead 1 / behind 0のcandidateであり、後続docs-only記録commitだけではsource driftと扱わない。revised three-source pressure一式に加え、unknown RelationとQuery cardinality mismatchのfull-Validation negative controlを実装している。残る5 source blobは従来候補と同一で、強化したfull-validation testもactual gofmt PASSとblob identity一致を取得している。runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合も維持している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 

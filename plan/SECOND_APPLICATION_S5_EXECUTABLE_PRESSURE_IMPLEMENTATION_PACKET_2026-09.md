@@ -28,13 +28,16 @@ current `main` を変更せず、health-capable laneで検証するためのunre
 
 ```text
 candidate commit:
-  8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
+  ccd2544a8a14501774ae3970813c7535e350ec90
 
 parent:
-  d71fa6305592ea4a0ae0b98a880808711ebac640
+  40209d25e36b059931174f635b63409cb83705af
 
 tree:
-  1edb6f400fce178dd1ac67e1a8816c1680e65829
+  a426277f2a49197831f94edae3f86b44b57c7bd9
+
+supersedes negative-control candidate:
+  8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
 
 supersedes positive-only candidate:
   f30cab65b98505c6b5d71b2c08aa14483e72a54f
@@ -74,7 +77,7 @@ Git diff inspectionではcurrent `main` に既存 `repair_intake` source pathが
 
 first candidate `e007c67b...` をローカルへ再現してactual `gofmt -d` を実行したところ、S3 field alignmentとfull-validation testのmap alignmentにdriftを検出した。このdriftを修正し、`eda2e367...` として再構成した。その後、並行R7Bレーンによる計画文書commitだけで`main`が進んだため、6 source blobを一切変更せずcurrent `main` `b12962ee...` 上へ積み直し、`9f0dd71d...` をcurrent branchless candidateとした。
 
-修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。`f30cab65...` までは6 filesのblob SHAが従来候補と全件同一だった。current candidate `8c570c74...` ではfull-validation testだけを意図的に強化し、残る5 filesのblob SHAは従来候補と同一のまま維持した。強化後full-validation testはlocal `gofmt -d` 差分ゼロで、local `git hash-object` とcandidate blobが `0f1e69c1a62077ef31c6f599f567286209c4f0d5` に一致した。
+修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。`f30cab65...` までは6 filesのblob SHAが従来候補と全件同一だった。negative-control candidate `8c570c74...` ではfull-validation testだけを意図的に強化し、残る5 filesのblob SHAは従来候補と同一のまま維持した。強化後full-validation testはlocal `gofmt -d` 差分ゼロで、local `git hash-object` とcandidate blobが `0f1e69c1a62077ef31c6f599f567286209c4f0d5` に一致した。その6 source blobを内容変更なしでsource-relevant integration base `40209d25...` 直上へ積み直したcandidateが `ccd2544a...` であり、そのbaseに対してahead 1 / behind 0である。candidateを記録する後続docs-only commitは対象source identityを変えないため、それだけではcandidateをstale扱いしない。
 
 ```text
 S3 pressure:
@@ -457,6 +460,18 @@ negative cardinality mismatch:
 ```
 
 これらはactual `go test` 未実行のため、現時点ではtest design / static source Evidenceである。
+
+### Focused full-validation test set
+
+health-capable laneでは少なくとも次の3 testをexact nameで含める。
+
+```text
+TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation
+TestSecondApplicationS4FullValidationRejectsUnknownRelation
+TestSecondApplicationS4FullValidationRejectsQueryCardinalityMismatch
+```
+
+package全体の `TestSecondApplication...` focused runでもこれら3件を包含しなければならない。positive caseだけのPASSをfull Validation pressure PASSとして扱わない。
 
 ## 5. S5 exact Proposal / freshness pressure
 
