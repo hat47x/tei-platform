@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / branchless executable candidate pending health / explicit Acceptance witness pending
+- Status: Revised review defined / branchless candidate gofmt-clean / focused and health pending / explicit Acceptance witness pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -235,7 +235,9 @@ proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e733
 reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
-branchlessCodeCandidate    = e007c67b478feed958cd84ae0b040251a1dc8225
+branchlessCodeCandidate    = eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
+candidateGofmtEvidence     = pass
+candidateFocusedTest       = absent
 candidateHealthEvidence    = absent
 revisedExecutablePressure = absent
 acceptanceWitness         = absent
@@ -267,7 +269,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `e007c67b...` にはrevised three-source pressure一式を実装済みだが、actual focused `go test` / reference evidence / full repository health PASSはまだ取得していない。candidateはExecutable Evidenceではない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `eda2e367...` にはrevised three-source pressure一式を実装し、candidate Go filesのactual gofmt PASSとGit blob identity一致まで取得した。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 

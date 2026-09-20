@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Branchless executable-pressure candidate created / actual health execution pending
+- Status: Branchless executable-pressure candidate gofmt-clean / focused and health execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
@@ -28,13 +28,16 @@ current `main` を変更せず、health-capable laneで検証するためのunre
 
 ```text
 candidate commit:
-  e007c67b478feed958cd84ae0b040251a1dc8225
+  eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
 
 parent:
-  172db0df3855a58c9a46ae71cbbfef1f08c489f3
+  dc5d5690dd393b871ba8ee0f2c242352741585a2
 
 tree:
-  df1d4bd85e00a961be747817c47b9d4364fe0379
+  6e4002cea7222f2eb3c04da9c55f64236706515b
+
+supersedes unformatted candidate:
+  e007c67b478feed958cd84ae0b040251a1dc8225
 
 remote branch / PR:
   none
@@ -62,17 +65,39 @@ tools/run-knowledge-portability-reference-evidence.sh
 
 Git diff inspectionではcurrent `main` に既存 `repair_intake` source pathがなく、candidateは上記6 path以外を変更していないことを確認した。
 
-ただし現時点では:
+first candidate `e007c67b...` をローカルへ再現してactual `gofmt -d` を実行したところ、S3 field alignmentとfull-validation testのmap alignmentにdriftを検出した。このdriftを修正し、`eda2e367...` として再構成した。
+
+修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。
 
 ```text
-gofmt actual execution        = not obtained
+S3 pressure:
+  3e840e24e8c3418b8aa601e2fa3a3407d57b4197
+
+S4 composition:
+  98ebd58b988cfb5118b3ef81a70dd2ddb1ed150b
+
+S4 full validation:
+  67f9045a8ca7628319dceb70944c2b75688d7319
+
+S5 freshness:
+  70de17b0c5901c378fcd51d181c14432a8692367
+
+S5 review:
+  e2b6dde5749cb525628d457c3060227ccca5bcd3
+```
+
+したがってcurrent Evidenceは:
+
+```text
+candidate Go gofmt execution  = PASS
+candidate blob identity match = PASS
 focused go test               = not obtained
 reference evidence execution  = not obtained
 repository health check       = not obtained
 Executable Evidence           = absent
 ```
 
-である。candidate commitの存在をPASS Evidenceへ昇格しない。health-capable laneはcurrent main driftを先に確認し、必要ならcandidate内容をlatest mainへrebase/reconstructしたうえでbinding health checkを実行する。
+である。gofmt PASSだけをexecutable-pressure PASSへ昇格しない。health-capable laneはcurrent main driftを先に確認し、必要ならcandidate内容をlatest mainへrebase/reconstructしたうえでfocused test / reference evidence / binding health checkを実行する。
 
 
 ## 2. Current main drift review
