@@ -4068,3 +4068,75 @@ actual replay / repeatability
 ```
 
 とする。candidate SHAそのものをmainへfast-forward / cherry-pickせず、health-capable integration sessionではE1.22 exact blobsをlatest mainへrestoreして同一working tree上でqualificationする。
+
+
+#### E1.23 E1.21 P1 exact rerun — 2026-09-21
+
+E1.17 / E1.21で更新されたP1 shared validator 3 blobsをGitHub objectからRepository外の一時Go moduleへ再構成し、実行直前に `git hash-object` を再計算した。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  expected = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+  actual   = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  expected = ba17f69a7e375cfdeec0db544986d51f99b26192
+  actual   = ba17f69a7e375cfdeec0db544986d51f99b26192
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  expected = 95553ba10756399a50e52e639f7d860f4420f29f
+  actual   = 95553ba10756399a50e52e639f7d860f4420f29f
+```
+
+3/3 exact identity一致後、同じworking treeで:
+
+```text
+gofmt -l tools/internal/firstwebtargetevidence
+  = empty
+
+go vet ./tools/internal/firstwebtargetevidence
+  = PASS
+
+go test -count=50 ./tools/internal/firstwebtargetevidence
+  = PASS
+```
+
+を取得した。
+
+これによりE1.21のcredential pressure correctionを含むP1 exact packageについてfocused Evidenceを更新できた。
+
+ただしE1.20で変更されたP2 Gate C audit production blob:
+
+```text
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+```
+
+をexact P1と組み合わせたclosure rerunはこのsessionでは未完了である。したがってEvidence heightは:
+
+```text
+E1.21 exact P1 hash identity
+  = PASS
+
+E1.21 exact P1 gofmt / vet / test×50
+  = PASS
+
+E1.20 P2 shared-credential delegation static source audit
+  = PASS
+
+E1.21 {P1,P2} exact closure rerun
+  = pending
+
+E1.21 5-package aggregate focused rerun
+  = pending
+
+tools/repository-health-check.sh
+  = pending
+
+code integration
+  = pending
+```
+
+と分離する。
+
+health integration gate自体はE1.22から変更しない。P2 closure / aggregate focused rerunとfull Repository healthを同一qualified source setに対して通した後だけdirect-to-main code integrationへ進む。
