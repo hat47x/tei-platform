@@ -58,7 +58,7 @@ syntax parser:
   94b73b2d8cecc6d0e6cfe4e8ae4c1a3696a8d079
 ```
 
-後続の無関係なcommitだけでこのcaptureを自動staleにしない。Acceptance時にはrelevant source identityを再確認する。
+後続の無関係なcommitだけでこのcaptureを自動staleにしない。2026-09-20の追加確認ではmainが `366f139003924d75cc67c1078cecba244480cfb2` まで進んだが、`c185937a...` 以後の変更はR7B Issue文書だけであり、relevant source driftはない。したがってreview baseは意図的に `c185937a...` のまま保持する。Acceptance時にはrelevant source identityを再確認する。
 
 ## 3. Exact shared-authority Source Index fingerprints
 
@@ -164,10 +164,10 @@ revised Proposalはこれらを満たすよう構成した。
 
 current Go pressureの `secondApplicationS5FreshnessBaseRevision` はまだ `6ffaa40ef2872a773baa5e7b127dcb89d94abc5c` を指している。
 
-したがってdocument-level freshnessは `e1f13ae9...` まで再確認済みだが、Executable Evidence側は未追随である。health-capable executionではこのconstantも更新対象に含める。
+したがってdocument-level freshnessは `c185937a...` まで再確認済みだが、Executable Evidence側は未追随である。health-capable executionではこのconstantも更新対象に含める。
 
 ```text
-document freshness base = e1f13ae9...
+document freshness base = c185937a...
 executable freshness base = 6ffaa40e...  // stale, pending update
 ```
 

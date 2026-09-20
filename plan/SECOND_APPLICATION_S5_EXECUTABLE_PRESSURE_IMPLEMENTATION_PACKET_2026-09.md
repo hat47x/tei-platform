@@ -24,16 +24,16 @@ implementation contract pinned
 
 ## 2. Current main drift review
 
-前回の実装契約commit `64f0a5b8167fcb4aa90e56a6c47d7158bba336b8` 以後、inspection時点のmainは:
+実際にrelevant sourceを再inspectionしたbaseは:
 
 ```text
 c185937ab27a3a31332fefcd63ba5940b97b021e
-docs(r7b): pin branchless integration packet
+docs(r7b): repair convergence audit and verify exact runner syntax
 ```
 
 である。
 
-`64f0a5b8...` から `e1f13ae9...` までの12 commitをcompareし、変更pathは `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` のみだった。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loaderには変更がない。
+その後mainは `366f139003924d75cc67c1078cecba244480cfb2` まで進んだが、`c185937a...` からの後続変更も `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` のみである。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loaderは不変なので、無関係なR7B文書commitだけを理由にsource-inspection baseを動かさない。
 
 current shared/provenance blob identity:
 
@@ -104,6 +104,36 @@ BusinessRelationKeyTarget
 
 既存の `BusinessRelationCandidate` はRelation identityとして維持し、target/cardinality/keyを別fieldで明示する。
 
+### Compile-ready S3 shape
+
+struct追加は次の形へ固定する。
+
+```go
+SemanticNamespaceCandidate   string
+SemanticDataCandidate        string
+CustomerIDAttributeCandidate string
+CustomerIDAttributeType      string
+BusinessRelationTarget       string
+BusinessRelationCardinality  string
+BusinessRelationKeySource    string
+BusinessRelationKeyTarget    string
+```
+
+`secondApplicationS3Decision()` では:
+
+```go
+SemanticNamespaceCandidate:   "repair_intake",
+SemanticDataCandidate:        "repair_intake.intake",
+CustomerIDAttributeCandidate: "repair_intake.intake.customer_id",
+CustomerIDAttributeType:      "customer.customer_id",
+BusinessRelationTarget:       "customer.customer",
+BusinessRelationCardinality:  "one",
+BusinessRelationKeySource:    "repair_intake.intake.customer_id",
+BusinessRelationKeyTarget:    "customer.customer.customer_id",
+```
+
+を返す。testではこれらを一括assertし、origin側 `sales.order.*` identityが混入しないことも確認する。
+
 ### S4 three-source pressure
 
 `secondApplicationS4CompositionCandidate`へ`SemanticSource`を追加する。
@@ -131,6 +161,76 @@ syntax.NewParser(got.PatternSource).ParseApplicationPattern()
 Applicationは`uses semantic repair_intake`と`uses semantic customer`の2件を要求する。
 
 Semantic parse resultではNamespace / Data / Attribute / Relation / keyのCanonical identityをassertする。
+
+### Compile-ready S4 parser assertions
+
+`secondApplicationS4CompositionCandidate` へ:
+
+```go
+SemanticSource string
+```
+
+を追加する。Application sourceは:
+
+```text
+application repair_intake {
+    uses semantic repair_intake
+    uses semantic customer
+
+    database customer_master {
+        target master_data
+        access read
+        requires {
+            contract master_data.customer ^2
+        }
+    }
+}
+```
+
+とする。
+
+Semantic parse assertionはcurrent model shapeに合わせて少なくとも次を要求する。
+
+```go
+ns, err := syntax.NewParser(got.SemanticSource).ParseSemanticFile()
+if err != nil {
+    t.Fatalf("S4 Semantic candidate did not parse with existing grammar: %v", err)
+}
+if ns.ID != "repair_intake" || len(ns.Data) != 1 {
+    t.Fatalf("destination Semantic drifted: %+v", ns)
+}
+data := ns.Data[0]
+if data.ID != "repair_intake.intake" ||
+    len(data.Attributes) != 1 ||
+    data.Attributes[0].ID != "repair_intake.intake.customer_id" ||
+    data.Attributes[0].TypeRef != "customer.customer_id" {
+    t.Fatalf("destination Data/attribute drifted: %+v", data)
+}
+if len(data.Relations) != 1 {
+    t.Fatalf("destination Relation count drifted: %+v", data.Relations)
+}
+relation := data.Relations[0]
+if relation.ID != "repair_intake.intake.customer" ||
+    relation.Target != "customer.customer" ||
+    relation.Cardinality != semantic.CardinalityOne ||
+    len(relation.Keys) != 1 ||
+    relation.Keys[0].SourceAttribute != "repair_intake.intake.customer_id" ||
+    relation.Keys[0].TargetAttribute != "customer.customer.customer_id" {
+    t.Fatalf("destination Relation/key drifted: %+v", relation)
+}
+```
+
+このassertionのためS4 test importへ `tei/internal/semantic` を追加する。
+
+Applicationの `SemanticUses` はexact source orderに従い:
+
+```go
+len(app.SemanticUses) == 2
+app.SemanticUses[0] == "repair_intake"
+app.SemanticUses[1] == "customer"
+```
+
+を要求する。
 
 ## 4. Actual temporary Workspace pressure
 
@@ -228,6 +328,35 @@ datasource-alias:repair_intake/customer_master
 
 Runtime authority、Environment mutation、source authoringはfalseのまま維持する。
 
+### Compile-ready S5 delta
+
+fingerprint constantを:
+
+```go
+const secondApplicationS5ExpectedProposalFingerprint =
+    "c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d"
+```
+
+へ更新する。
+
+payloadは:
+
+```go
+payload := s4.SemanticSource + "\n---\n" + s4.ApplicationSource + "\n---\n" + s4.PatternSource
+```
+
+とする。
+
+`NewDestinationSubjects` には既存4件に加え:
+
+```text
+semantic:repair_intake
+semantic-data:repair_intake.intake
+semantic-attribute:repair_intake.intake.customer_id
+```
+
+を追加する。Relation subjectは既存 `semantic-relation:repair_intake.intake.customer` を維持する。
+
 ### Freshness pressure
 
 `second_application_s5_freshness_capture_pressure_test.go` には現在:
@@ -261,6 +390,64 @@ tools/reference-business-procedure-check/
 へ分離する。
 
 このfileでは既存package-level helper `repoPath()` と `copyDirectory()` を再利用し、Repository sourceへの書込みを避ける。test名は `TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation` とし、`workspace.Load` errorと `validation.Error` diagnosticsをblocking failureとして扱う。
+
+### Compile-ready full-workspace test
+
+必要importは:
+
+```go
+import (
+    "os"
+    "path/filepath"
+    "testing"
+
+    "tei/internal/validation"
+    "tei/internal/workspace"
+)
+```
+
+test bodyは次の責務へ固定する。
+
+```go
+func TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation(t *testing.T) {
+    root := repoPath()
+    probeRoot := filepath.Join(t.TempDir(), "workspace")
+    copyDirectory(t, filepath.Join(root, "reference", "workspace"), probeRoot)
+
+    candidate := secondApplicationS4Composition(secondApplicationS3Decision())
+    sources := map[string]string{
+        filepath.Join("semantic", "repair-intake", "intake.tei"): candidate.SemanticSource,
+        filepath.Join("applications", "repair-intake", "application.tei"): candidate.ApplicationSource,
+        filepath.Join("applications", "repair-intake", "patterns", "customer-reference.tei"): candidate.PatternSource,
+    }
+    for relative, source := range sources {
+        path := filepath.Join(probeRoot, relative)
+        if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+            t.Fatal(err)
+        }
+        if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+            t.Fatal(err)
+        }
+    }
+
+    loaded, err := workspace.Load(probeRoot)
+    if err != nil {
+        t.Fatal(err)
+    }
+    diagnostics := validation.Validate(loaded.World)
+    var errors []validation.Diagnostic
+    for _, diagnostic := range diagnostics {
+        if diagnostic.Severity == validation.Error {
+            errors = append(errors, diagnostic)
+        }
+    }
+    if len(errors) != 0 {
+        t.Fatalf("revised Second Application Proposal failed full Validation: %#v", errors)
+    }
+}
+```
+
+WarningはこのAcceptance prerequisiteをblockしないが、Errorは1件でもblockする。
 
 ## 7. Reference evidence runner追随
 
