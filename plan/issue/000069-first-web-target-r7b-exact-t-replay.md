@@ -5704,3 +5704,88 @@ canonical 11-path exact source fixed
 ```
 
 次のhealth-capable full checkoutでは、current mainをpull/rebaseした後、candidate commit自体をcherry-pickせずE1.13 canonical 11 blobsを同一working treeへrestoreし、E1.14のaggregate focused commandと `tools/repository-health-check.sh` を実行する。両方PASSし、実行前後でsame revision / clean base / source overlapなしを確認した場合のみ、その同じworking treeをdirect-to-main commitする。
+
+
+#### E1.17 credential-safe canonical packet correction — 2026-09-21
+
+E1.16のhealth handoffを再監査し、runnerのretained-output credential scanとshared validatorの禁止集合に1点のdriftを確認した。
+
+runnerは `wrong-secret` をReference credential materialとして拒否する一方、E1.13 canonical P1 sourceではこの値だけが `RejectReferenceCredentialMaterial` の禁止集合から欠落していた。Authentication denial用のTarget-local runtime credentialであり、retained Evidenceへ残してよい値ではないため、canonical packetを次の2 blobだけ更新する。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  old 46629767bee3b3733c0ca6e4433971c4cc85bb9d
+  new 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  old b94db230f15871a36151f077be8aab13928b9d06
+  new ba17f69a7e375cfdeec0db544986d51f99b26192
+```
+
+Git object同士のexact diffは局所的である。
+
+```text
+semantics.go:
+  + "wrong-secret",
+
+semantics_test.go:
+  forbidden value tableへ "wrong-secret" を1件追加
+```
+
+他のP1/P2/P3/P4/P5 sourceとrunner blobはE1.16から変更しない。
+
+credential rejection境界については新 `semantics.go` exact blobに対するtargeted verificationでgofmt clean / go vet PASS / repeated Go test PASSを取得済みである。E1.15のaggregate focused PASSは旧P1 blobに対するものであるため、このdelta proofをもってfull aggregate rerunやfull Repository health PASSへ読み替えない。
+
+current main:
+
+```text
+085b4aa15fe9da1423b639bedbad4022ff4be474
+```
+
+を親に、credential-safe P1とE1.16の残りcanonical sourceを再配置したbranchless candidate:
+
+```text
+052285f526f8590c7dc03c76a41acabaeea5f4bf
+```
+
+を作成した。candidate vs parentはahead 1 / behind 0、changed pathsはcanonical 11 source pathsだけである。remote branch / PR / main refはcandidate作成では変更していない。
+
+E1.17以降のcanonical integration sourceは次とする。E1.13/E1.16のP1先頭2 blob identityはこの一覧で上書きする。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+integration gateは引き続き変えない。
+
+```text
+credential-safe canonical 11 source
+  -> same working treeでaggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+full checkoutを持たないsessionではここを越えてcodeをmainへ統合しない。actual exact-T replay / repeatability Evidenceも未取得のままとする。
