@@ -5082,6 +5082,92 @@ V1 old/new semantic condition equivalence
 
 とする。
 
+#### E1.12 inherited focused composition PASS by exact blob identity — 2026-09-20
+
+他チャットで先行取得されていたbranchless candidate:
+
+```text
+589d6c57351f7ec5bd0ef7bc9ba1b575338d04ee
+parent = 172db0df3855a58c9a46ae71cbbfef1f08c489f3
+```
+
+では、shared validator + Gate C audit + E0 replay-plan のfocused compositionについて、対象source blobをGit identityで照合した後に:
+
+```text
+gofmt
+  = PASS
+
+go vet
+  = PASS
+
+go test -count=10
+  = PASS
+```
+
+が実行済みだった。
+
+この検証対象の7 filesをcurrent R7B candidateと照合したところ、全blobがbyte-identicalだった。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+tools/internal/firstwebtargetevidence/semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+tools/reference-first-web-target-evidence-audit/main_test.go
+  668efcdb084e9a7cefe050a5df4be86effc1cebb
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+```
+
+さらに検証時parent `172db0df...` からcurrent main:
+
+```text
+2f052468a5aad11df405452ec9c480df1c158ab6
+```
+
+までをcompareした結果、changed pathは次の4つのMarkdown計画文書だけだった。
+
+```text
+plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md
+plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md
+plan/issue/000040-semantic-component-composition.md
+plan/issue/000069-first-web-target-r7b-exact-t-replay.md
+```
+
+Go / shell / runtime sourceおよび上記7 exact blobsのdependency surfaceは変更されていない。
+
+したがって、E1.11でstatic auditに留めていたGate C / V1境界は、byte identityとsource-dependency不変性により次のEvidenceとして継承できる。
+
+```text
+V1 shared validator + Gate C audit + E0 replay-plan
+  = exact focused composition gofmt PASS
+  = exact focused composition go vet PASS
+  = exact focused composition go test -count=10 PASS
+```
+
+これはcurrent full Repository healthを意味しない。残るgateは:
+
+```text
+V2 formatted exact focused PASS
+repeatability hardened exact focused PASS
+runner exact blob / bash -n PASS
+runner early fail-closed smoke 4/4 PASS
+V1 + Gate C + E0 exact focused composition PASS
+  != full 11-path composition focused Go PASS
+  != tools/repository-health-check.sh PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+である。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
