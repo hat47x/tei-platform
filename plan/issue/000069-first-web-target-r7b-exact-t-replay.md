@@ -4394,6 +4394,59 @@ runnerはorchestrationだけを所有する。
 
 runner内のfixture resolutionではReference credentialをruntime inputとして使ってよいが、request body / credentialをEvidence artifactへ保存しない。
 
+#### E1.5 latest-main reconciled integration candidate — 2026-09-20
+
+並行sessionの文書更新を巻き戻さず、E1.3で固定した11-path packetだけをその時点のlatest mainへreconcileしたbranchless candidateを作成した。
+
+```text
+latest main parent
+  c185937ab27a3a31332fefcd63ba5940b97b021e
+    ↓ 11-path code packet only
+reconciled candidate
+  44b302a9735d991b7bc669f3faceb4a7ac2cf1bd
+```
+
+このcandidateはremote branch / PR / main refを作成・更新していない。
+
+parentからcandidateへの変更pathはexactに次の11件だけである。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+tools/internal/firstwebtargetevidence/semantics_test.go
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+tools/reference-first-web-target-evidence-audit/main.go
+tools/reference-first-web-target-r7b-replay-plan/main.go
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+tools/reference-first-web-target-r7b-replay-audit/main.go
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+tools/reference-first-web-target-r7b-repeatability/main.go
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+tools/run-first-web-target-r7b-replay.sh
+```
+
+E1.3で固定したexact blob identityをそのまま使用しており、別レーンのdocs / second-application変更はcandidate treeへ巻き戻していない。
+
+cross-session比較では、candidate起点の親mainまでに上記11 pathと重なるmain側変更は0件だった。open PRも0件である。
+
+したがって次のintegration sessionは古いcandidate chainを直接fast-forward / cherry-pickせず、`44b302a9...` の11-path責務を**その時点のlatest main**へ再確認してからqualificationする。
+
+現在のEvidence height:
+
+```text
+preferred exact runner bash -n PASS
++ shared validator focused PASS
++ V2 baseline focused PASS
++ strong repeatability focused PASS
++ latest-main reconciled 11-path candidate fixed
+  != reconciled candidate focused Go composition PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+このsessionではGitHub connector外のprivate raw download / cloneがnetwork制約で利用できず、Repository内bootstrap payloadもconnector出力のbyte-exact materialization境界を越えられなかったため、full checkout qualificationは未実行のままfail closedとする。full checkoutを持つsessionだけが `tools/repository-health-check.sh` PASS後にmainへ直接code commitする。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
