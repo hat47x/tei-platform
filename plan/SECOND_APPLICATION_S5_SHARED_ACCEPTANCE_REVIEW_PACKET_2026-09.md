@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / branchless candidate gofmt-clean / focused and health pending / explicit Acceptance witness pending
+- Status: Revised review defined / branchless candidate static-preflight clean / focused and health pending / explicit Acceptance witness pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -237,6 +237,8 @@ sharedFreshness           = captured
 sourceInspectionPreflight = complete
 branchlessCodeCandidate    = eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
 candidateGofmtEvidence     = pass
+candidateRunnerSyntax      = pass
+candidateStaticAPIAudit    = complete
 candidateFocusedTest       = absent
 candidateHealthEvidence    = absent
 revisedExecutablePressure = absent
@@ -269,7 +271,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `eda2e367...` にはrevised three-source pressure一式を実装し、candidate Go filesのactual gofmt PASSとGit blob identity一致まで取得した。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `eda2e367...` にはrevised three-source pressure一式を実装し、candidate Go filesのactual gofmt PASSとblob identity一致、runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合まで取得した。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 

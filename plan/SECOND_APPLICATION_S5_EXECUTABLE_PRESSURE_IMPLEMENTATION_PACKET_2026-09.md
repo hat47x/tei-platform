@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Branchless executable-pressure candidate gofmt-clean / focused and health execution pending
+- Status: Branchless executable-pressure candidate static-preflight clean / focused and health execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
@@ -89,16 +89,48 @@ S5 review:
 したがってcurrent Evidenceは:
 
 ```text
-candidate Go gofmt execution  = PASS
-candidate blob identity match = PASS
-focused go test               = not obtained
-reference evidence execution  = not obtained
-repository health check       = not obtained
-Executable Evidence           = absent
+candidate Go gofmt execution     = PASS
+candidate Go blob identity match  = PASS
+candidate runner bash -n          = PASS
+candidate runner blob match       = PASS
+current API/static source audit   = complete
+focused go test                  = not obtained
+reference evidence execution     = not obtained
+repository health check          = not obtained
+Executable Evidence              = absent
 ```
 
 である。gofmt PASSだけをexecutable-pressure PASSへ昇格しない。health-capable laneはcurrent main driftを先に確認し、必要ならcandidate内容をlatest mainへrebase/reconstructしたうえでfocused test / reference evidence / binding health checkを実行する。
 
+
+### Static compile-risk / runner preflight
+
+6件目の変更pathである `tools/run-knowledge-portability-reference-evidence.sh` もcandidateからローカルへexactに再現し、actual `bash -n` を実行した。
+
+```text
+runner syntax:
+  PASS
+
+candidate runner blob:
+  42db7c4e789c36253b7ae995518eaef3c738b242
+
+local reproduced runner blob:
+  42db7c4e789c36253b7ae995518eaef3c738b242
+```
+
+またcurrent `main` の実装を直接照合し、candidateが参照するcompile surfaceを確認した。
+
+- `semantic.Relation` に `ID` / `Target` / `Cardinality` / `Keys` が存在する
+- `semantic.RelationKey` に `SourceAttribute` / `TargetAttribute` が存在する
+- `semantic.CardinalityOne` が存在する
+- `validation.Diagnostic` / `validation.Error` / `validation.Validate(ir.World)` が存在する
+- same-package helper `copyDirectory(t, sourceRoot, targetRoot)` が存在する
+- `ValidateReferenceContractQueryCrossLayer` はRelation key、typed input、result Data、cardinalityをcandidate設計どおり検査する
+- `ValidatePersistenceRelationStorageMappings` は存在するPersistence Mappingだけを検査し、read-only destination SemanticにPersistence Mappingが存在しないこと自体をerrorにしない
+
+したがって、現時点のsource inspectionではcandidateに新しいcompile/API blockerや「先にPersistenceを作る必要」は見つかっていない。
+
+これはstatic/source Evidenceであり、`go test` / `workspace.Load` / `validation.Validate` のactual execution結果ではない。
 
 ## 2. Current main drift review
 
@@ -111,7 +143,7 @@ docs(r7b): repair convergence audit and verify exact runner syntax
 
 である。
 
-その後mainは `366f139003924d75cc67c1078cecba244480cfb2` まで進んだが、`c185937a...` からの後続変更も `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` のみである。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loaderは不変なので、無関係なR7B文書commitだけを理由にsource-inspection baseを動かさない。
+その後mainは `4f64aa7763a271e12c4bb0271bbfb04f42b858f7` まで進んだ。`c185937a...` からcurrent mainまでの変更pathは、Second Applicationの計画文書4件と `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` に限定されている。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loader、candidate対象test/scriptは不変なので、計画文書commitだけを理由にsource-inspection baseを動かさない。
 
 current shared/provenance blob identity:
 
