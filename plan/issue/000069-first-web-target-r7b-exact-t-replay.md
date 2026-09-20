@@ -6034,3 +6034,114 @@ Packet M materialization
 したがってこのpreflightはM1の入力identityを確定するが、M1 completionやactual Gate C archive qualificationそのものではない。
 
 health integration gateも変更しない。credential-safe canonical 11 sourceについてaggregate focused rerunと `tools/repository-health-check.sh` を同一full checkoutでPASSさせ、code integrationを完了した後に、このverified Release identityを使ってPacket M actual materializationへ進む。
+
+
+#### E1.21 credential pressure parity correction — 2026-09-21
+
+E1.20でproduction側のcredential rejectorはsingle sourceへ収束したが、V1 negative matrixを担う `semantics_pressure_test.go` をexact blobで再監査すると、credential reject pressureだけがE1.17以前の5値集合を保持していた。
+
+旧pressure set:
+
+```text
+editor-secret
+viewer-secret
+locked-secret
+disabled-secret
+credential-ref://legacy/
+```
+
+production shared rejector / runner / ordinary shared testのcurrent setには:
+
+```text
+wrong-secret
+```
+
+も含まれる。
+
+したがってproduction behaviorのdriftではないが、**negative pressure contractの1値欠落**が残っていた。
+
+修正はtest-only 1行追加に限定する。
+
+```text
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+
+old:
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+
+new:
+  95553ba10756399a50e52e639f7d860f4420f29f
+
+delta:
+  + "wrong-secret",
+```
+
+これによりcredential contractの3面が同じ6値集合になる。
+
+```text
+runner retained-output scan
+shared RejectReferenceCredentialMaterial
+V1 credential negative pressure
+
+=
+  credential-ref://legacy/
+  disabled-secret
+  editor-secret
+  locked-secret
+  viewer-secret
+  wrong-secret
+```
+
+E1.20のGate C delegation blobとE1.17 credential-safe P1を含め、current main `eb9335f48e225612d9f4dd6183ca8adeceea83b2` を親にcanonical 11 sourceを再構成したbranchless candidate:
+
+```text
+2e2b7d063370eb468c8f86e64df7843b86f77e1e
+```
+
+を作成した。candidateはremote branch / PR / main refを変更していない。
+
+E1.21以降、canonical credential-related identitiesは:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+```
+
+とする。残りcanonical blobsはE1.20から不変である。
+
+この変更はtest-only pressure correctionであり、まだcredential-safe / single-source canonical packet全体のaggregate focused rerunではない。
+
+```text
+exact pressure-set parity
+  = PASS by source inspection
+
+aggregate focused rerun
+  = pending
+
+tools/repository-health-check.sh
+  = pending
+
+code integration
+  = pending
+
+actual replay / repeatability
+  = pending
+```
+
+integration gateはさらに増やさず、E1.20と同じ一本道を維持する。
+
+```text
+E1.21 canonical 11 source
+  -> same working treeでaggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
