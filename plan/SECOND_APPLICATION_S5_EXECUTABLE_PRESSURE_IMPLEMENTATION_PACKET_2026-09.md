@@ -28,13 +28,16 @@ current `main` を変更せず、health-capable laneで検証するためのunre
 
 ```text
 candidate commit:
-  eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
+  9f0dd71dbd181e4798f7b8efefb09759bdcc256e
 
 parent:
-  dc5d5690dd393b871ba8ee0f2c242352741585a2
+  b12962eebe75eea907241cf6cf2b831da7e99474
 
 tree:
-  6e4002cea7222f2eb3c04da9c55f64236706515b
+  d9c15240d6d90b08da4f2b776284f913bc8852d7
+
+supersedes prior formatted candidate:
+  eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
 
 supersedes unformatted candidate:
   e007c67b478feed958cd84ae0b040251a1dc8225
@@ -65,9 +68,9 @@ tools/run-knowledge-portability-reference-evidence.sh
 
 Git diff inspectionではcurrent `main` に既存 `repair_intake` source pathがなく、candidateは上記6 path以外を変更していないことを確認した。
 
-first candidate `e007c67b...` をローカルへ再現してactual `gofmt -d` を実行したところ、S3 field alignmentとfull-validation testのmap alignmentにdriftを検出した。このdriftを修正し、`eda2e367...` として再構成した。
+first candidate `e007c67b...` をローカルへ再現してactual `gofmt -d` を実行したところ、S3 field alignmentとfull-validation testのmap alignmentにdriftを検出した。このdriftを修正し、`eda2e367...` として再構成した。その後、並行R7Bレーンによる計画文書commitだけで`main`が進んだため、6 source blobを一切変更せずcurrent `main` `b12962ee...` 上へ積み直し、`9f0dd71d...` をcurrent branchless candidateとした。
 
-修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。
+修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。`9f0dd71d...` への積み直し後も6 filesのblob SHAは`eda2e367...`と全件同一であるため、このbyte-level Evidenceはそのまま継承される。
 
 ```text
 S3 pressure:
@@ -143,7 +146,35 @@ docs(r7b): repair convergence audit and verify exact runner syntax
 
 である。
 
-その後mainは `4f64aa7763a271e12c4bb0271bbfb04f42b858f7` まで進んだ。`c185937a...` からcurrent mainまでの変更pathは、Second Applicationの計画文書4件と `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` に限定されている。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loader、candidate対象test/scriptは不変なので、計画文書commitだけを理由にsource-inspection baseを動かさない。
+その後mainは `b12962eebe75eea907241cf6cf2b831da7e99474` まで進んだ。`c185937a...` からcurrent mainまでの変更pathは、Second Applicationの計画文書4件と `plan/issue/000069-first-web-target-r7b-exact-t-replay.md` に限定されている。Second Application Proposal component、Customer shared authority、Application Pattern validation、reference Contract Query cross validation、Workspace loader、candidate対象test/scriptは不変なので、計画文書commitだけを理由にsource-inspection baseを動かさない。
+
+## 2.1 Hosted runner availability
+
+`.github/workflows/knowledge-portability-reference-evidence.yml` 自体を再確認した。
+
+Repository sourceには2026-09-19の運用記録として:
+
+```text
+GitHub-hosted runner allocation is currently unavailable
+PR run 35385856132 failed before any step was created
+runner_id = 0
+workflow remains manual-only until successful allocation is observed
+```
+
+と明記されている。
+
+2026-09-20のActions履歴でもcurrent `main` に対応する利用可能なrunはなく、直近のKnowledge portability runsは2026-09-18のfailureである。したがってGitHub Actionsのfailureをcandidate test failureとして扱わず、またActionsをbinding health Evidenceの代替にもしない。
+
+current execution gateは引き続き:
+
+```text
+Go-enabled full checkout
+  -> focused TestSecondApplication...
+  -> reference-evidence runner
+  -> tools/repository-health-check.sh
+```
+
+である。
 
 current shared/provenance blob identity:
 

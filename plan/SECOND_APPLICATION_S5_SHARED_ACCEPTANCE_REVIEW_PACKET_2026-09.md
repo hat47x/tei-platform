@@ -235,7 +235,7 @@ proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e733
 reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
-branchlessCodeCandidate    = eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
+branchlessCodeCandidate    = 9f0dd71dbd181e4798f7b8efefb09759bdcc256e
 candidateGofmtEvidence     = pass
 candidateRunnerSyntax      = pass
 candidateStaticAPIAudit    = complete
@@ -271,7 +271,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `eda2e367...` にはrevised three-source pressure一式を実装し、candidate Go filesのactual gofmt PASSとblob identity一致、runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合まで取得した。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `9f0dd71d...` にはrevised three-source pressure一式を実装した。これはprior formatted candidate `eda2e367...` の6 source blobをcurrent `main`へbyte-identicalに積み直したものであり、candidate Go filesのactual gofmt PASSとblob identity一致、runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合まで取得している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 
