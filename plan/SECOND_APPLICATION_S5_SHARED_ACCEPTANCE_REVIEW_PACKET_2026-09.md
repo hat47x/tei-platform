@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / branchless candidate static-preflight clean / focused and health pending / explicit Acceptance witness pending
+- Status: Revised review defined / branchless candidate negative-controls pinned / focused and health pending / explicit Acceptance witness pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -235,10 +235,11 @@ proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e733
 reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
 sharedFreshness           = captured
 sourceInspectionPreflight = complete
-branchlessCodeCandidate    = 9f0dd71dbd181e4798f7b8efefb09759bdcc256e
+branchlessCodeCandidate    = 8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
 candidateGofmtEvidence     = pass
 candidateRunnerSyntax      = pass
 candidateStaticAPIAudit    = complete
+candidateNegativeControls  = pinned-not-executed
 candidateFocusedTest       = absent
 candidateHealthEvidence    = absent
 revisedExecutablePressure = absent
@@ -271,7 +272,7 @@ S6 authoritative authoring = blocked
 
 このpacketはSource / Design Evidenceである。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `9f0dd71d...` にはrevised three-source pressure一式を実装した。これはprior formatted candidate `eda2e367...` の6 source blobをcurrent `main`へbyte-identicalに積み直したものであり、candidate Go filesのactual gofmt PASSとblob identity一致、runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合まで取得している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
+current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `8c570c74...` にはrevised three-source pressure一式に加え、unknown RelationとQuery cardinality mismatchのfull-Validation negative controlを実装した。残る5 source blobは従来候補と同一で、強化したfull-validation testもactual gofmt PASSとblob identity一致を取得している。runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合も維持している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
 
 ## 12. Conclusion
 

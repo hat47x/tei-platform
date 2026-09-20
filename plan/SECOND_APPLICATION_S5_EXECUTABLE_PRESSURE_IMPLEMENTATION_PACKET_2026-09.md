@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Branchless executable-pressure candidate static-preflight clean / focused and health execution pending
+- Status: Branchless executable-pressure candidate negative-controls pinned / focused and health execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
@@ -28,15 +28,19 @@ current `main` を変更せず、health-capable laneで検証するためのunre
 
 ```text
 candidate commit:
-  9f0dd71dbd181e4798f7b8efefb09759bdcc256e
+  8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
 
 parent:
-  b12962eebe75eea907241cf6cf2b831da7e99474
+  d71fa6305592ea4a0ae0b98a880808711ebac640
 
 tree:
-  d9c15240d6d90b08da4f2b776284f913bc8852d7
+  1edb6f400fce178dd1ac67e1a8816c1680e65829
 
-supersedes prior formatted candidate:
+supersedes positive-only candidate:
+  f30cab65b98505c6b5d71b2c08aa14483e72a54f
+
+prior byte-identical rebases:
+  9f0dd71dbd181e4798f7b8efefb09759bdcc256e
   eda2e367bc1a0f12d83a41fc55e253b96bf76e9d
 
 supersedes unformatted candidate:
@@ -70,7 +74,7 @@ Git diff inspectionではcurrent `main` に既存 `repair_intake` source pathが
 
 first candidate `e007c67b...` をローカルへ再現してactual `gofmt -d` を実行したところ、S3 field alignmentとfull-validation testのmap alignmentにdriftを検出した。このdriftを修正し、`eda2e367...` として再構成した。その後、並行R7Bレーンによる計画文書commitだけで`main`が進んだため、6 source blobを一切変更せずcurrent `main` `b12962ee...` 上へ積み直し、`9f0dd71d...` をcurrent branchless candidateとした。
 
-修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。`9f0dd71d...` への積み直し後も6 filesのblob SHAは`eda2e367...`と全件同一であるため、このbyte-level Evidenceはそのまま継承される。
+修正版candidateの5 Go filesについて、ローカルで `gofmt -d` が全件差分ゼロであることを確認し、さらにlocal formatted fileのGit blob SHAとcandidate内blob SHAをexact matchさせた。`f30cab65...` までは6 filesのblob SHAが従来候補と全件同一だった。current candidate `8c570c74...` ではfull-validation testだけを意図的に強化し、残る5 filesのblob SHAは従来候補と同一のまま維持した。強化後full-validation testはlocal `gofmt -d` 差分ゼロで、local `git hash-object` とcandidate blobが `0f1e69c1a62077ef31c6f599f567286209c4f0d5` に一致した。
 
 ```text
 S3 pressure:
@@ -94,6 +98,7 @@ S5 review:
 ```text
 candidate Go gofmt execution     = PASS
 candidate Go blob identity match  = PASS
+negative-control source pressure  = pinned
 candidate runner bash -n          = PASS
 candidate runner blob match       = PASS
 current API/static source audit   = complete
@@ -430,6 +435,28 @@ Acceptance prerequisiteとしては、少なくとも`validation.Error`が0件�
 - Contract Query input binding mismatch
 - Contract Query result Data mismatch
 - Contract Query result cardinality mismatch
+
+### Full Validation negative controls
+
+positive Proposalが`validation.Error == 0`となることだけでは、将来validator経路がsilent skipされてもtestが偽陽性になる余地がある。そこでcurrent branchless candidateでは、authoritative sourceを変更せずtemporary candidateだけを壊すnegative controlを2件追加した。
+
+1. Pattern Relationを `repair_intake.intake.missing` へ置換し、通常Validationが `UNKNOWN_APPLICATION_PATTERN_RELATION` を返すことを要求する。
+2. destination Relation cardinalityを `one` から `many` へ置換し、shared Query `find_by_id -> zero-or-one` との横断検査が `REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH` を返すことを要求する。
+
+置換対象文字列が見つからない場合もtest setup failureとして即座にfailする。これによりnegative control自体のsilent no-opも許さない。
+
+```text
+positive candidate validation:
+  expected error diagnostics = 0
+
+negative unknown Relation:
+  expected diagnostic code = UNKNOWN_APPLICATION_PATTERN_RELATION
+
+negative cardinality mismatch:
+  expected diagnostic code = REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH
+```
+
+これらはactual `go test` 未実行のため、現時点ではtest design / static source Evidenceである。
 
 ## 5. S5 exact Proposal / freshness pressure
 
