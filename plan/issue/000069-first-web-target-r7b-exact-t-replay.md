@@ -4552,6 +4552,129 @@ preferred exact runner bash -n PASS
 
 このsessionではGitHub connector外のprivate raw download / cloneがnetwork制約で利用できず、Repository内bootstrap payloadもconnector出力のbyte-exact materialization境界を越えられなかったため、full checkout qualificationは未実行のままfail closedとする。full checkoutを持つsessionだけが `tools/repository-health-check.sh` PASS後にmainへ直接code commitする。
 
+#### E1.6 converged current-main composition — latest runner + transport hardening
+
+parallel candidate chainを再統合した。
+
+一方のcandidate:
+
+```text
+a315e8566f4784ecc005de209d6a6dae23d5b7cd
+```
+
+はacquisition identity collision hardeningを含み、runner exact blob:
+
+```text
+2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+についてexact blob identity / `bash -n` / early fail-closed smoke 4/4 PASSが確認済みである。
+
+もう一方のcurrent-main candidate:
+
+```text
+6c13178c56a8105647f43dd2bdad7a7bf6e20770
+```
+
+はV2 replay auditに次を追加した。
+
+- plan Expected HTTPをcurrent six-behavior contractへexact固定
+- `RequiredDistinctRuns == 2` をpreflightでexact要求
+- plan HTTP drift / distinct-run drift test pressure
+
+この2系統をlatest main:
+
+```text
+6e9c63b429a8f8f174ad24154afa8f3be2890818
+```
+
+上で11 source pathだけに再合成した。
+
+current preferred branchless composition candidate:
+
+```text
+abd8b748c4ff6c7b4d174d719d8a1be5c46158bb
+```
+
+baseに対して:
+
+```text
+ahead = 1
+behind = 0
+changed paths = 11
+```
+
+である。remote branch / PR / main refはcandidate作成では変更していない。
+
+current exact path identities:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  38e58c930bd993b44e7f14d408a4cc3b4e1c94d9
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+
+tools/reference-first-web-target-r7b-repeatability/main.go
+  48c9c595311a4fa8fc7c4e7b2a30c4a4fd999965
+
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  1ebe3a7bfed00b38ae7604143ae06f929267f665
+
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+このcandidateではV2がplan自身のtransport contractをpreflightで固定するため:
+
+```text
+observed HTTP == plan expected HTTP
+  + plan expected HTTP == adopted six-behavior mapping
+```
+
+の二段階が成立する。
+
+Evidence height:
+
+```text
+preferred runner exact blob / bash -n PASS
++ runner early fail-closed smoke 4/4 PASS
++ V1 shared-validator focused evidence
++ V2 baseline focused evidence
++ strong repeatability focused evidence
++ latest-main 11-path composition assembled
++ transport/cardinality fail-closed source hardened
+  != updated V2 exact focused Go PASS
+  != full 11-path composition focused Go PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+したがってintegration sessionは `a315e856...` または `6c13178c...` を単独の統合元にせず、**`abd8b748...` の責務 / exact blobsをlatest mainへreconcileする**。
+
+candidate SHAをmainへfast-forward / cherry-pickしない。full checkoutでfocused Go testsと `tools/repository-health-check.sh` を同じexact working treeに対して通した後だけdirect-to-main commitする。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
