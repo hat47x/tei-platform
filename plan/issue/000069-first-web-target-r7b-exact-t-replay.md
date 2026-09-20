@@ -4818,6 +4818,63 @@ E1.7記録後、Second Application側の文書commitがmainへ入ったが、R7B
 
 remote branch / PRは追加していない。integration時はcandidate SHAの新旧ではなく、E1.6〜E1.7で固定した11 path / exact blob identityを正本としてlatest mainへreconcileする。
 
+#### E1.9 current-main replay packet refresh
+
+E1.8後にSecond Application側の文書commitがさらに1件mainへ入ったが、R7Bの11 source pathとの重複は0件だった。
+
+current main:
+
+```text
+004d429b356b0709776c77c369ab183f06b38670
+```
+
+へE1.6〜E1.7で固定したexact source blobsを変更せず再配置したbranchless candidate:
+
+```text
+12c05a44f835e8db60b81622572f7f87ccbcce2e
+```
+
+compare:
+
+```text
+ahead = 1
+behind = 0
+changed paths = 11
+```
+
+changed pathはR7B integration packetの11 source pathだけで、plan / docs / Second Application sourceはcandidateへ混入していない。
+
+このrefreshでもremote branch / PRは追加していない。
+
+また主要レーンのうち:
+
+```text
+research/selective-knowledge-routing-r6
+work/issue-000007-first-web-target
+```
+
+は独自ahead commitがないことを確認してcurrent mainへforceなしfast-forwardした。
+
+```text
+docs/design-synthesis-local-cognition
+work/issue-000040-second-application-reference
+```
+
+は既にcurrent mainとidenticalだった。
+
+Evidence heightは変えない。
+
+```text
+latest-main 11-path candidate assembled
+  != updated V2 exact focused Go PASS
+  != updated repeatability exact focused Go PASS
+  != full 11-path composition focused Go PASS
+  != repository-health-check PASS
+  != integrated
+```
+
+integration sessionはunreferenced candidate SHAそのものをmainへfast-forward / cherry-pickせず、latest mainへexact 11 blobsをreconcileし、同一working treeでfocused testsとfull repository health checkを通した後だけcodeをmainへ入れる。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
