@@ -1,6 +1,6 @@
 # ISSUE-000046: Studioの最小Authoring Loopをshared Acceptance Boundaryで実証する
 
-- 状態: Ready — Gate C Ready確認済み（T = `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`、2026-09-19）/ Reference着手可能
+- 状態: In Progress — Gate C Ready済み。Studioが使うShared Acceptance Boundaryは決定論的Referenceとして成立（2026-09-21、`tools/reference-shared-acceptance`）。Studio UI・Data / Relationの選択・Relation変更は未着手
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-01 primary**
@@ -355,22 +355,32 @@ Gate Cから少なくとも次を受け取ってから着手します。
 
 Gate C後の最初のReferenceでは、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md`](../DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)に従い、`ISSUE-000047`の探索と`ISSUE-000027`のProposalを同じone-change loopへ接続します。
 
+## 実証状況
+
+### 最初のincrement — Studioが使う受入境界（2026-09-21）
+
+Studioの操作はcandidateを作るだけで、authoritative sourceを直接変更しない。そのcandidateを受け取る境界は、[`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)として、UIなしで実証した（[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)の実証状況と同じ実装）。Preview（Semantic Diff・exact dependencyに基づくimpact・unresolved）、Reject、Accept、stale `baseModelRevision`、受理後のtoolなしの再読込・Conformance、派生物の再生成、file moveとlogical renameの区別を、Reference workspaceのscratch copyで確認している。
+
+このincrementで扱った変更は、本Issueが最小loopとして想定するRelation変更ではなく、`order_entry`が使う`sales`への**Validation追加**である（`ISSUE-000027`のFeedback Loop Planが許す最初の変更候補）。Relation変更はpersistence・Application Patternへの影響が大きいため、この受入境界へoperation kindとして追加する次のincrementで扱う。
+
+未着手: Studio UI（Select・local neighborhood表示・Preview表示）、既存Data / RelationのSource-to-Canonical trace付き選択、Relation変更のcandidate、Wails Host。Studio Wails HostをApplication Target Evidenceへ数えない原則は変わらない。
+
 ## 完了条件
 
-- [ ] Gate C Ready後に着手する
+- [x] Gate C Ready後に着手する（2026-09-21着手）
 - [ ] Studioから既存Data / RelationをSource-to-Canonical trace付きで選択できる
 - [ ] selected definition / local neighborhoodだけで初回changeをreviewできる
 - [ ] small Relation change等をminimum semantic delta candidateとして作れる
-- [ ] PreviewでSemantic Diff / impact / derivation reasonを確認できる
-- [ ] Preview / Rejectでauthoritative sourceを変更しない
+- [x] PreviewでSemantic Diff / impact / derivation reasonを確認できる（CLI / JSONで確認できる。Studio上の表示は未実装）
+- [x] Preview / Rejectでauthoritative sourceを変更しない（共有受入境界のReferenceでbyte単位に確認）
 - [ ] feedbackをvisible symptomではなくmeaning-owning concernへrouteできる
 - [ ] Acceptがfile-native / CLI / AIと同じshared Acceptance原則へ接続する
-- [ ] accepted sourceをStudioなしでreloadできる
-- [ ] reload後CanonicalがValidation / Conformanceを満たす
+- [x] accepted sourceをStudioなしでreloadできる（共有loader / Validationだけで再読込）
+- [x] reload後CanonicalがValidation / Conformanceを満たす
 - [ ] derived projection / indexをaccepted sourceから再生成できる
-- [ ] stale `baseModelRevision`を黙って適用しない
-- [ ] file moveをsemantic no-op、logical renameをsemantic changeとして区別できる
-- [ ] mandatory authored Stable IDをStudio都合で導入しない
+- [x] stale `baseModelRevision`を黙って適用しない
+- [x] file moveをsemantic no-op、logical renameをsemantic changeとして区別できる
+- [x] mandatory authored Stable IDをStudio都合で導入しない（追記されるsourceはqualified logical keyだけ）
 - [ ] Wails Hostからbusiness / persistence semanticsを分離できる
 - [ ] Studio Wails HostをApplication Target Evidenceへ数えない
 

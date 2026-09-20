@@ -1,6 +1,6 @@
 # ISSUE-000027: AI Proposal / Acceptance Boundaryをv1 Referenceで実証する
 
-- 状態: Ready — Gate C Ready確認済み / Reference着手可能
+- 状態: In Progress — Gate C Ready済み。決定論的なShared Acceptance Boundaryの最初のincrementを実装済み（2026-09-21、`tools/reference-shared-acceptance`）。AI Proposalの生成・`ISSUE-000047`の探索結果との接続・Runtime authority系は未着手
 - GitHub Issue: #267
 - 本格着手条件: Gate C Ready
 - Product Acceptance Scenario: **PAS-01 primary / PAS-06 secondary**
@@ -456,6 +456,36 @@ Observationから変更候補を作る場合も、`Observation -> semantic write
 - AI / derived memory削除後もCanonical meaningが変わらないこと
 
 AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、secretや不要なprivate dataを保存しません。
+
+## 実証状況
+
+### 最初のincrement — 決定論的なShared Acceptance Boundary（2026-09-21）
+
+[`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)が、AIを含まない決定論的な受入境界をReferenceとして実装した。candidateの入口（file / CLI / Studio / AI）は`origin`で区別するだけで、同じ検査・同じ順序・同じ書込経路を通る。差分・依存影響の解析は[`tools/internal/changeanalysis`](../../tools/internal/changeanalysis)（`ISSUE-000039`の最初の解析境界）が担当し、このtoolは呼ぶだけである。Gate B / Gate Cが固定した`reference/workspace`は変更せず、scratch copyに対して実行する。
+
+最初のcandidateは、`order_entry`が使うsemantic namespace `sales`へ`positive` Validation（order lineの単価）を一つ追加する最小deltaである。`add-validation`だけを扱い、Relation変更等は必要になった時点で追加する。
+
+| 完了条件 | 状態 | 根拠・残り |
+| --- | --- | --- |
+| 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 未着手 | candidateは人 / CLIが書く。探索結果からの生成は`ISSUE-000047`との接続後 |
+| 2 ProposalそのものはCanonical authorityではない | 実証済み | Preview / Rejectはauthoritative sourceをbyte単位で変更しない |
+| 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | candidateのevidenceが存在するsubject / sourceへ解決できなければ拒否する。根拠を探索結果から自動で得る部分は未着手 |
+| 4 whole model regenerationを標準にせずminimum semantic deltaを扱う | 実証済み（operation kind 1種） | 宣言外のsemantic変更・World collection変更は拒否、変更subject数に上限（8件） |
+| 5 AI Proposalと他の入口が同じAcceptance原則へ収束 | 一部 | 入口が違っても同じfingerprint・同じsource・同じCanonical Worldになり、AI固有Evidenceは入らない。実際のStudio / AI producerは未実装 |
+| 6 feedbackをmeaning-owning concernへroute | 一部 | Validationはsemantic層でだけauthorでき、別layerへのplacementは拒否する。一般的なrouting catalogの実行は未着手 |
+| 7 Preview / Rejectでauthoritative source不変 | 実証済み | |
+| 8 Preview impactがexact dependency / deterministic derivationへtrace | 実証済み（Validation追加） | Attribute → Data → Relation → Pattern、namespace利用Application。Driver / Target影響は`unresolved`として明示 |
+| 9 stale `baseModelRevision`を検出 | 実証済み | 4つの分岐先を示し、黙って適用しない |
+| 10 受理後のsourceをAIなしで再読込 | 実証済み | 共有loader / Validationだけで再読込する |
+| 11 reload後のCanonicalがValidation / Conformanceを満たす | 実証済み | 受理前後で評価結果が変わることも確認 |
+| 12 derived projection / indexをaccepted sourceから再生成 | 一部 | Canonical World JSONを再生成し、決定論的であること・削除後に再生成できることを確認。Source Index等の他派生物・Target Projectionは未確認 |
+| 13 file moveとlogical renameを区別 | 実証済み | file移動はsemantic差分なし、改名はremoved / added |
+| 14 mandatory authored Stable IDを導入しない | 実証済み | 追記されるsourceはqualified logical keyだけ |
+| 15 autonomyとwrite / invoke / Resource authorityを分離 | 未着手 | |
+| 16 AI固有Evidence / Derived Experience Knowledgeを削除してもCanonical不変 | 一部 | AI固有のnotesはWorld / sourceへ入らない。Derived Experience Knowledge自体は未実装 |
+| 17〜23 Runtime authority・hybrid routing | 未着手 | |
+
+Previewが判断できなかった事項は成功へ読み替えず`unresolved`に残す。特に、`order_entry`は`uses validation`を宣言しておらず、現行のDriver / Canonical modelはApplicationが評価するValidationの選択を宣言から導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）。Validationを追加しただけでは実行時に評価されるとは言えない、というこのReferenceの発見は、次のincrementで扱う。
 
 ## Gate Cとの関係
 

@@ -269,9 +269,9 @@ First Targetは実装済みで、actual clean Target run、Visual capture、fina
 
 ## Studio / Authoring
 
-現時点ではDesign Onlyです。
+Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みですが、扱うoperationは`add-validation`だけです。
 
-Gate C後の最初のReferenceは`ISSUE-000046`です。
+Gate C後の最初のStudio Referenceは`ISSUE-000046`です（In Progress。UI・Relation変更は未着手）。
 
 ```text
 Select
@@ -309,7 +309,7 @@ search ranking / similarity / embedding / model confidenceをSemantic Evidence�
 
 ### AI Proposal
 
-`ISSUE-000027` / ADR-0022で扱います。
+`ISSUE-000027` / ADR-0022で扱います。AIによるcandidateの生成は未着手ですが、受け取る側の境界は上記のReferenceとして存在し、AI由来のcandidate（`origin.kind = ai`）も同じ経路を通ります。
 
 AI ProposalはCanonical authorityではありません。
 

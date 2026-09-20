@@ -1,9 +1,9 @@
 # ISSUE-000039: Semantic差分・依存影響解析を業務変更の共通機能として実装する
 
-- 状態: Proposed
+- 状態: In Progress — 最初の解析境界（Validation差分・明示依存の到達・file移動のno-op）を`tools/internal/changeanalysis`に実装済み（2026-09-21）。Binding kind・Scenario到達・Evidence鮮度・JSON / 人向け出力・変更リハーサルは未着手
 - 提案日: 2026-09-04
 - 提案順位: 2（根幹機能の新規提案内）
-- 本格着手条件: Gate C通過後
+- 本格着手条件: Gate C通過後（成立済み）
 
 ## 根幹機能としての価値
 
@@ -54,14 +54,24 @@ Evidenceはrevision・Scenario・fixture条件へ結び付け、欠落・不一�
 ## 完了条件
 
 - [ ] Gate C baseline、対象二kind、明示依存の取得元を固定する。
-- [ ] Canonical IDを保ったfile rename／moveだけならSemantic差分がなく、Source locatorだけ変わる。
+- [x] Canonical IDを保ったfile rename／moveだけならSemantic差分がなく、Source locatorだけ変わる。（`changeanalysis`の`TestFileMoveIsASemanticNoOpButALogicalRenameIsASemanticChange`）
 - [ ] Validation変更からApplication／Scenarioへ到達し、同じ入力で意図した評価差・command実行可否の差が出る。
 - [ ] Binding交換では業務identity／契約を保ち、実現差と再検証候補を検出する。未登録adapterは未検証とする。
 - [ ] 到達先の経路・由来を示し、nativeの未知依存と未対応kindをcoverage／unresolvedへ残す。
 - [ ] stale／欠落Evidenceはunknownとなり、revision混在を成功に使わない。
 - [ ] JSONと人向け出力は同じ結果から生成し、同じ入力で再現できる。
-- [ ] fixture以外の副作用を呼ばず、authoritative sourceを変更しない。
+- [x] fixture以外の副作用を呼ばず、authoritative sourceを変更しない。（`changeanalysis`はsourceを読み書きしない純粋な解析。Scenario実行は未実装）
 - [ ] [ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)が使う解析入力・結果・未確定状態を文書化し、AI専用解析器を作らない。
+
+## 実装状況
+
+### 最初の解析境界（2026-09-21）
+
+[`tools/internal/changeanalysis`](../../tools/internal/changeanalysis)が、二つのCanonical Worldのread-onlyな差分（subject単位のadded / removed / changed）、World直下collectionの変更有無、追加・変更されたValidationから辿れるexact identityの依存（Attribute → 所有Data → そのDataを指すRelation → Application Pattern、namespaceを利用するApplication）と、解析できなかった範囲（`unresolved`）を返す。file pathをidentityに使わず、Canonical IDの変更をrenameと推測せず削除＋追加として扱う。sourceを読み書きせず、採用判断もしない。
+
+[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)の受入境界（`tools/reference-shared-acceptance`）がこれを呼ぶ。解析器を受入境界側へ重複実装していない。
+
+未着手: Binding kind、Scenario / Driverへの到達と変更前後のfixture実行、Evidenceのrevision結び付け・stale判定、JSONと人向けProjectionの同一生成、native SQL / Goの未知依存のcoverage表示。
 
 ## 規模を抑える理由と非目標
 
