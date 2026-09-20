@@ -4377,6 +4377,76 @@ same exact working tree
 
 である。remote work branchは作らない。
 
+#### E1.5 current-main reconcile / transport contract hardening — 2026-09-20
+
+E1.3 integration packetをcurrent mainへ再reconcileした。
+
+base:
+
+```text
+28a5b8398f2d70c0fef6a77dce835faddacf853b
+```
+
+current branchless integration candidate:
+
+```text
+6c13178c56a8105647f43dd2bdad7a7bf6e20770
+```
+
+candidateはbaseに対してahead 1 / behind 0で、変更対象はE1.3と同じ11 source pathだけである。remote branch / PRは新設していない。
+
+再監査でV2 replay auditのtransport fail-closedに1点不足を確認した。従来candidateはrun metadataのObserved HTTPとplanのExpected HTTPが一致することは検証していた一方、**plan側Expected HTTPそのものがcurrent six-behavior contractの200/422 mappingと一致することをpreflightで固定していなかった**。
+
+これを閉じるためV2 ruleへExpected HTTPを追加し、plan validationをexact mappingにした。
+
+```text
+first-web/read-only                = 200
+first-web/command-success          = 200
+first-web/authentication-denied    = 200
+first-web/authorization-denied     = 200
+first-web/validation-not-satisfied = 200
+first-web/execution-error          = 422
+```
+
+同時にcurrent replay contractの `RequiredDistinctRuns=2` も `>= 2` ではなくexact 2でpreflight rejectする。
+
+updated exact blobs:
+
+```text
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  38e58c930bd993b44e7f14d408a4cc3b4e1c94d9
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+```
+
+追加test pressure:
+
+- plan Expected HTTP drift
+- plan RequiredDistinctRuns drift
+
+runner blobはE1.4でbash syntax PASS済みのexact blob
+`86c5b9a36a13b43ccded3e6f336effba3bc023f0`
+から変更していない。
+
+Evidence height:
+
+```text
+preferred runner exact bash -n PASS
++ current-main 11-path candidate assembled
++ V2 transport/cardinality fail-closed source hardened
+  != updated V2 exact candidate focused Go PASS
+  != 11-path composition focused Go PASS
+  != repository-health-check PASS
+  != integrated
+  != replay executed
+  != repeatability observed
+```
+
+このsessionのlocal runtimeにはGo 1.23.2があるが、private repositoryのfull checkoutに必要なGitHub DNS / authenticated clone経路がないため、full health checkを代替実行したとは扱わない。
+
+integration sessionではunreferenced candidate SHAをmainへfast-forward / cherry-pickせず、latest mainへ `6c13178c...` の11 source pathをreconcileし、そのexact working treeでfocused Go testsと `tools/repository-health-check.sh` を通してからdirect-to-main commitする。
+
 runnerはorchestrationだけを所有する。
 
 - current source checkout qualification
