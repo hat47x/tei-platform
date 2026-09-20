@@ -5019,6 +5019,69 @@ latest-main 11-path candidate assembled
 
 次のintegration gateはGate C auditの既存test suiteをshared validator抽出後のexact sourceと同時に実行し、その後11-path composition全体をfull checkoutへ載せて `tools/repository-health-check.sh` を通すことである。
 
+#### E1.11 cross-lane branch convergence and V1 semantic-equivalence audit — 2026-09-20
+
+並行chat / laneを再監査した。current mainは:
+
+```text
+7e192a9707bdc70595eb68c08d846026e56b99d7
+```
+
+であり、E1.10後の増分はSecond Application側の文書のみだった。R7B 11 source pathとの重複は0件である。
+
+remote branch全18本をcurrent mainと比較したところ、作業開始時点では:
+
+- 4本 = current mainとidentical
+- 14本 = branch固有ahead commit 0、current mainより3〜4 commit behind
+
+だった。14本はいずれも未統合作業を含まないため、forceを使わずfast-forwardでcurrent mainへ収束させた。
+
+再監査結果:
+
+```text
+remote branch count excluding main = 18
+branch unique commits               = 0
+behind main                         = 0
+status                              = all identical to current main
+force update                        = none
+new remote branch / PR              = none
+```
+
+したがって、過去branch refは残っていても、現在は分岐した作業履歴を指していない。今後も新しいremote work branchは作らずdirect-to-main policyを維持する。
+
+R7B sourceについてはE1.10と同一の11 exact blobsをcurrent mainへ再配置したbranchless candidate:
+
+```text
+0fe69628464a1f153813333a5ae730a5cba64a02
+```
+
+を作成した。これはcurrent mainに対してahead 1で、11 source path以外を変更しない。
+
+またV1 shared validator抽出について、candidate導入前のGate C audit semantic blockとshared packageを直接照合した。
+
+旧Gate C auditが保持していた6 behavior条件:
+
+1. read: exact provenance / Scenario / Application / runtime bindings
+2. command success: Scenario / stage / Authentication / 2 Validations / Authorization / Command Business Result / separate Observation
+3. authentication denied: stage / denied outcome / Commandなし / Observationなし
+4. authorization denied: stage / denied outcome / Commandなし / Observationなし
+5. validation not-satisfied: exact Validation identity/result / Authorizationなし / Commandなし / Observationなし
+6. execution error: command stage / Authorization allowed / Commandなし / Observationなし / exact synthetic adapter error fragment
+
+は、`tools/internal/firstwebtargetevidence/semantics.go` の対応validatorへ同一条件として移されていることを確認した。
+
+Gate C audit candidate側は6 raw JSONをshared validatorへ渡し、その後 `read.json` をTargetDifferenceHandoff生成のためだけにGate C-local shapeへ再decodeする。semantic acceptance ruleをGate C側で二重定義していない。
+
+したがって静的照合ではV1抽出によるsemantic条件の欠落・追加は確認されない。ただしこれは既存Gate C test suiteをcandidate sourceと同時実行した結果ではないため、Evidence heightは:
+
+```text
+V1 old/new semantic condition equivalence
+  = static exact-source audit PASS
+  != Gate C audit + shared validator current full-package test PASS
+```
+
+とする。
+
 ## Observation class mapping
 
 replay planのcurrent exact mappingをsemantic classifierとの接続契約とする。
