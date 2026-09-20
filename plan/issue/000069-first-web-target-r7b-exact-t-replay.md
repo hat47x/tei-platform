@@ -5311,3 +5311,73 @@ actual replay executionはさらに、Release archiveの再取得・digest照合
 Source / Design上の入口は揃っている。現在の最初のcode stopはE0 replay-plan launch provenance carryであり、これをGo-enabled full checkoutで実装してhealth checkを通す必要がある。その後、adopted Gate C Release archiveを再取得・照合し、R7A handoff、R7B intake、**E0後の**R7B replay planをactual materializeする。actual replay executionはさらにPacket V / Packet Eをhealth-check済みで統合し、exact Tへ2 distinct runsを実行するまで未成立である。
 
 このIssueはその停止点から先を所有する。
+
+
+#### E1.13 exact-source convergence and branch hygiene — 2026-09-20
+
+並行laneで得られたfocused Evidenceをexact Git blob identityで再収束した。current canonical integration sourceは、candidate commit SHAそのものではなく次の11 path / blob identityを正本とする。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+tools/internal/firstwebtargetevidence/semantics_test.go
+  b94db230f15871a36151f077be8aab13928b9d06
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  ce77296ebd8acccc386c4bab8bf819f9a81ae3d6
+tools/reference-first-web-target-evidence-audit/main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+V2では旧blob `38e58c93...` をgofmt非cleanのため統合元から外し、意味不変のgofmt-clean replacement `a370e0c5...` だけを採用する。
+
+現在までにexact identityで継承できるfocused Evidenceは:
+
+```text
+V1 shared validator + Gate C audit + E0 replay-plan
+  gofmt PASS
+  go vet PASS
+  go test -count=10 PASS
+
+V2 formatted exact source
+  gofmt clean
+  go vet PASS
+  go test -count=50 PASS
+
+repeatability hardened exact source
+  gofmt clean
+  go vet ./... PASS
+  go test -count=50 ./... PASS
+
+runner exact source
+  bash -n PASS
+  early fail-closed smoke 4/4 PASS
+```
+
+remote branchをcurrent mainと再比較した結果、main以外18本はいずれも固有ahead commit 0であり、全branchがcurrent mainとidenticalへ収束している。force update、新規remote branch、open PRはいずれもない。
+
+したがって残るintegration gateは:
+
+```text
+current exact 11-path source set
+  -> same working treeでfull focused composition
+  -> tools/repository-health-check.sh
+  -> same revision / clean working tree再確認
+  -> direct-to-main code commit
+```
+
+である。full checkoutを持たないsessionではfocused Evidenceをfull Repository healthへ読み替えず、codeをmainへ統合しない。actual exact-T replay / repeatability Evidenceも引き続き未取得として扱う。
