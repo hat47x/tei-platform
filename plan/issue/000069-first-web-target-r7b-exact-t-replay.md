@@ -5825,6 +5825,107 @@ runner request pathでは `editor-secret` / `wrong-secret` / `viewer-secret` が
 
 このparity proofはstatic exact-blob contract Evidenceであり、credential-safe canonical packetに対するaggregate focused rerunやfull Repository health PASSの代替ではない。integration gateはE1.17のまま維持する。
 
+#### E1.20 Gate C credential rejection single-source correction — 2026-09-21
+
+E1.17 / E1.18後にGate C audit candidateのcredential scanを再監査し、追加のdriftを確認した。
+
+Gate C auditは6 behaviorのsemantic validationをshared `firstwebtargetevidence` packageへ委譲している一方、retained artifact credential scanだけは旧ローカルhelperを保持していた。そのローカル禁止集合は:
+
+```text
+editor-secret
+viewer-secret
+locked-secret
+disabled-secret
+credential-ref://legacy/
+```
+
+であり、Authentication denialのruntime credential `wrong-secret` を含んでいなかった。
+
+したがってE1.18で証明したrunner/shared set equalityだけでは、Gate C retained-artifact scanまで単一化できていなかった。
+
+修正はGate C auditのhelper shapeを維持し、各artifact bytesをshared rejectorへ渡すだけに限定する。
+
+```go
+func requireNoReferenceCredentialMaterial(dir string, names []string) error {
+    for _, name := range names {
+        data, err := os.ReadFile(filepath.Join(dir, name))
+        if err != nil {
+            return fmt.Errorf("read %s for credential scan: %w", name, err)
+        }
+        if err := firstwebtargetevidence.RejectReferenceCredentialMaterial(name, data); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+```
+
+これによりcredential禁止集合の正本は:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  RejectReferenceCredentialMaterial
+```
+
+だけになる。
+
+exact blob更新:
+
+```text
+tools/reference-first-web-target-evidence-audit/main.go
+  old eb44ef1d543f0849e424e99ed517492f747d634a
+  new 3878dae15b06a3b57954cf196b108da1cc03bbc7
+```
+
+P1 canonical blobsはE1.17のcredential-safe版を維持する。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+```
+
+残る8 Go source/test blobsとrunner blobはE1.17から不変である。
+
+current main `ad5b97f9d340b4d40db316396ef477ad285316de` を親に、credential-safe P1 + Gate C delegation +残りcanonical sourceを再配置したbranchless candidate:
+
+```text
+92677eb4a37d31a8405e2971244a46ed79fe32ef
+```
+
+を作成した。candidateはparentに対しahead 1 / behind 0、changed pathsはcanonical 11 source pathsのみである。remote branch / PR / main refはcandidate作成では変更していない。
+
+Gate C helperのexact sourceとshared function signatureはGit objectから再取得して一致を確認した。
+
+```text
+Gate C local credential literal list
+  = removed
+
+Gate C shared reject calls
+  = 1
+
+shared forbidden values
+  = editor-secret
+    viewer-secret
+    wrong-secret
+    locked-secret
+    disabled-secret
+    credential-ref://legacy/
+```
+
+この修正はsource contract上の単一正本化であり、まだaggregate focused rerunではない。E1.15のaggregate PASSは旧P1 / 旧Gate C blobに対するものなので、integration gateは次へ更新する。
+
+```text
+E1.20 canonical 11 source
+  -> same working treeでaggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+full checkoutを持たないsessionではこのgateを越えてcodeをmainへ統合しない。actual exact-T replay / repeatability Evidenceも未取得のままとする。
+
 
 #### E1.19 adopted Gate C Release origin metadata audit — 2026-09-21
 
