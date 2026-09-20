@@ -5824,3 +5824,112 @@ set equality         = PASS
 runner request pathでは `editor-secret` / `wrong-secret` / `viewer-secret` がruntime inputとして実使用され、retained-output final scanは上記6値すべてを拒否する。したがってE1.17後はruntime credential集合とretained Evidence禁止集合のdriftを解消している。
 
 このparity proofはstatic exact-blob contract Evidenceであり、credential-safe canonical packetに対するaggregate focused rerunやfull Repository health PASSの代替ではない。integration gateはE1.17のまま維持する。
+
+
+#### E1.19 adopted Gate C Release origin metadata audit — 2026-09-21
+
+Packet Mのactual materialization前に、runbookが固定しているGate C origin identityをGitHub Release / Git refの現物metadataから再照合した。
+
+GitHub Release:
+
+```text
+release id:
+  392136119
+
+tag:
+  gate-c-evidence-T-0ba87a4
+
+release target_commitish:
+  0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+
+release name:
+  Gate C Evidence (T = 0ba87a4)
+
+draft:
+  false
+
+prerelease:
+  true
+
+published_at:
+  2026-09-19T16:27:40Z
+```
+
+Git ref:
+
+```text
+refs/tags/gate-c-evidence-T-0ba87a4
+  -> object type = commit
+  -> object sha  = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
+```
+
+annotated tag objectを介さず、Release tag refがexact Target build `T` commitを直接指している。
+
+Release asset:
+
+```text
+asset id:
+  575087696
+
+name:
+  tei-gate-c-evidence-T-0ba87a4e.tar.gz
+
+size:
+  961001 bytes
+
+state:
+  uploaded
+
+content type:
+  application/x-gtar
+
+GitHub asset digest:
+  sha256:de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3
+```
+
+この現物metadataはPacket M runbookの:
+
+```text
+gh release download gate-c-evidence-T-0ba87a4
+  --pattern tei-gate-c-evidence-T-0ba87a4e.tar.gz
+
+expected archive SHA-256:
+  de5f587a038c56c0f4b5776953b2f6729e6521d4eda67ebcc246567638fa12a3
+```
+
+と一致した。
+
+特にtag suffixとasset filename suffixは同じ文字列ではない。
+
+```text
+Release tag:
+  ...T-0ba87a4
+
+asset filename:
+  ...T-0ba87a4e.tar.gz
+```
+
+M1はこの差を既に正しく扱っているため、asset名をtag名として使用する変更は行わない。
+
+Evidence境界は分離する。
+
+```text
+Release metadata / tag ref / advertised asset digest equality
+  = PASS
+
+binary asset body re-download
+  = NOT EXECUTED
+
+downloaded bytes SHA-256 recomputation
+  = NOT EXECUTED
+
+expanded MANIFEST.sha256 verification
+  = NOT EXECUTED
+
+Packet M materialization
+  = NOT EXECUTED
+```
+
+したがってこのpreflightはM1の入力identityを確定するが、M1 completionやactual Gate C archive qualificationそのものではない。
+
+health integration gateも変更しない。credential-safe canonical 11 sourceについてaggregate focused rerunと `tools/repository-health-check.sh` を同一full checkoutでPASSさせ、code integrationを完了した後に、このverified Release identityを使ってPacket M actual materializationへ進む。
