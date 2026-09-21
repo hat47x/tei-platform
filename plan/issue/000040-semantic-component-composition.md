@@ -239,6 +239,7 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 - `plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`
 - `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
 - `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
+- `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
 
 現在のpre-Acceptance停止条件は三つ独立している。
 
@@ -357,6 +358,18 @@ health check           PASS
 受理に伴い、「まだbindingが無い」を前提にしたtestの起点を更新した。その過程で、`...BeforeSecondApplication`系のfixtureが**Applicationを消しながらbindingを残していた**（存在しないApplicationへbindしたWorld）ことが分かり、あわせて修正した。
 
 `RUNTIME_AUTHORITY_NOT_GRANTED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は未解消のままS8へ渡す。bindingができたことを実行可能性へ読み替えない。
+
+### S8 — Driver / First Web Target preflight（2026-09-21）
+
+正本: `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
+
+source inspectionで、developmentはaccepted `repair_intake.customer_master -> master_data.dev` bindingに加え、既存の `master_data.customer/find_by_id -> database.query.oracle` Contract Query executor bindingを持つため、instance-aware synthetic Driver scenarioを既存Driver APIだけで再現できることを確認した。runtime inputは`repair_intake.intake.customer_id`をSemantic columnとするmapped rowとして渡し、Relation keyからQuery input `id`へ到達させる。
+
+productionには`master_data.prod / master_data.customer/find_by_id`のexecutor bindingが無いため、development bindingやprovider名から暗黙補完しない。
+
+First Web TargetはProjection自体はApplication IDを受けるが、current read scenario runnerは`order_entry`固定で、`-application repair_intake`でも`/scenario/read`がorder_entryを実行し得る。このmanifest / runner identity mismatchをS8の最初のTarget pressureとする。Second Applicationの最小surfaceはCustomer ID input -> mapped Semantic row -> Driver reference lookupで、order_entryのbrowse / command / custom-submitを暗黙copyしない。
+
+actual Oracle principal / credential / network authorityは未観測のままなので、deterministic synthetic Evidenceとactual external Oracle Evidenceを分離する。`RUNTIME_AUTHORITY_NOT_GRANTED`は保持する。
 
 ## S4 full-validation correction
 

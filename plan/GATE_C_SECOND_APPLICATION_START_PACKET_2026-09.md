@@ -303,12 +303,20 @@ origin `order_entry.master` bindingをcopy authorityとして扱わない。
 
 ### S8 — Driver / First Web Target
 
+preflight:
+
+- `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
+
 read-only customer lookupを、
 
 1. Driver
 2. 第一Web Target
 
 で再現する。
+
+developmentには既に`master_data.customer/find_by_id`のContract Query executor bindingがあるため、synthetic/deterministic Driver scenarioは既存境界でpressureできる。productionには同等executor bindingが無いため、development設定を暗黙流用しない。
+
+current First Web TargetはProjectionだけ`-application`で切替可能だが、read scenario runnerが`order_entry`固定である。そのため`repair_intake` manifestと`order_entry` executionが混在し得る。S8ではこれをfail closedし、Customer ID input -> `repair_intake.intake.customer_id` mapped row -> Driver reference lookupというTarget-local read surfaceを追加pressureする。
 
 同じBusiness / Semantic meaningをTarget側で再定義しない。
 
@@ -472,7 +480,7 @@ S1 / S2は、
 
 でSource-definedまで進んだ。
 
-現在も第二Canonical Applicationのauthoritative destination source、Environment binding、Target実装は作成していない。Shared Acceptanceのactual Decisionも未成立である。
+Second ApplicationのCanonical sourceはS5で受理済み、S6 reload verification完了、Environment bindingはS7で受理済みである。Target実装はまだ開始していない。S8は`plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`を正本として、Driver / First Web Targetのdeterministic development Evidenceから開始する。actual Oracle runtime authorityは未成立のまま保持する。
 
 S3はSource-defined後、S6 preflightでdestination Relation owner / keyをaddendumした。旧S4 2-source ProposalはAcceptance前にsupersededし、current revised Proposalは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`、fingerprint `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` である。
 

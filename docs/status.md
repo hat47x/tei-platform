@@ -372,3 +372,6 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 - [Architecture](architecture.md)
 
 細かなM0.xxの検証履歴は`docs/conformance/`、ADR、Git historyから追跡します。本statusはcurrent snapshotを優先します。
+
+
+Second ApplicationはS5/S6/S7まで完了し、`repair_intake` sourceとdevelopment / productionの`customer_master -> master_data` Environment bindingがcurrent Referenceへ受理済みです。S8 preflightでは、developmentの既存Contract Query executor bindingを使えばsynthetic Driver lookupを既存Driver APIで再現できる一方、productionには同等executor bindingが無いこと、First Web TargetのProjectionはApplication切替可能でもread scenario runnerが`order_entry`固定であることを確認しました。次はこのmanifest / runner identity mismatchをfail closedし、Customer ID inputから`repair_intake.intake.customer_id` mapped rowを経てDriver lookupへ接続するTarget-local read surfaceをpressureします。actual Oracle principal / credential / network authorityは未観測のままで、synthetic Evidenceへ読み替えません。
