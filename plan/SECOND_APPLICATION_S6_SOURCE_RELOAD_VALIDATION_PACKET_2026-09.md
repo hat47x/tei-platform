@@ -4,7 +4,7 @@
 - Primary workstream: ISSUE-000040
 - Stage: S6
 - Entry condition: exact Proposal `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` has an explicit human Acceptance decision and the S5 Acceptance Execution Packet has completed successfully
-- Current status: **blocked on explicit human Acceptance; no authoritative destination source exists yet**
+- Current status: **complete — 2026-09-21、`ACCEPT_COMMIT = 0423b95`について全exit criteriaがPASS（§15）**
 - This document is a post-Acceptance verification contract, not an Acceptance witness and not authorization to write source.
 
 ## 1. Purpose
@@ -369,21 +369,73 @@ S6 accepted sourceが:
 
 すべて成立したときだけS6をcompleteにする。
 
-- [ ] explicit human Acceptance witnessがISSUE-000040に記録済み
-- [ ] Shared Acceptance actual accept成功
-- [ ] accepted source 3 filesがauthoritative Workspaceに存在
-- [ ] accepted Decision recordが`current` / `intact`として機械到達でき、record無しでもaccepted meaning / model revisionがsourceから自立する
-- [ ] `reference/world.json`をaccepted sourceから正規再生成
-- [ ] normal `tei validate` PASS
-- [ ] current model revision = Preview `modelRevisionAfter`
-- [ ] generated World = golden exact match
-- [ ] Source Index 6 subjectsがexpected artifactへ戻る
-- [ ] shared Customer / Contract / origin Pattern source unchanged
-- [ ] Environment source unchanged
-- [ ] reference evidence runner PASS
-- [ ] repository health check PASS
-- [ ] historical Gate B/C scopeをrevision-scopedのまま保持
-- [ ] retained unresolvedをS7 / S8へhandoff
-- [ ] dedicated portability grammar不要というinitial Reference Evidenceを記録
+- [x] explicit human Acceptance witnessがISSUE-000040に記録済み
+- [x] Shared Acceptance actual accept成功
+- [x] accepted source 3 filesがauthoritative Workspaceに存在
+- [x] accepted Decision recordが`current` / `intact`として機械到達でき、record無しでもaccepted meaning / model revisionがsourceから自立する
+- [x] `reference/world.json`をaccepted sourceから正規再生成
+- [x] normal `tei validate` PASS
+- [x] current model revision = Preview `modelRevisionAfter`
+- [x] generated World = golden exact match
+- [x] Source Index 6 subjectsがexpected artifactへ戻る
+- [x] shared Customer / Contract / origin Pattern source unchanged
+- [x] Environment source unchanged
+- [x] reference evidence runner PASS
+- [x] repository health check PASS
+- [x] historical Gate B/C scopeをrevision-scopedのまま保持
+- [x] retained unresolvedをS7 / S8へhandoff
+- [x] dedicated portability grammar不要というinitial Reference Evidenceを記録
 
 S6完了後にだけS7 Environment Binding Proposalへ進む。
+
+## 15. 実行記録 — 2026-09-21
+
+```text
+PRE_ACCEPT_HEAD  f8785800c66dbca735caefa75d284f6ec5b33396
+ACCEPT_COMMIT    0423b95e87197ea36f1f47e9596db14b9d1e52d8
+```
+
+Acceptance toolを使わない通常経路だけで確認した。
+
+| 確認 | 結果 |
+| --- | --- |
+| §5 `tei validate -workspace reference/workspace` | exit 0 / `ok`（Validation Error 0） |
+| §5 current model revision | `sha256:732763a2…`。S5 Previewの`modelRevisionAfter`とexact一致 |
+| §5.1 決定記録の到達性 | candidate fingerprint `sha256:8a936cf9…`の記録が`accepted` / `current` / `intact`、`modelRevisionAfter`一致 |
+| §5.1 記録はEvidenceでありauthorityではない | 記録を除いた複製でもmodel revisionが同一で、Canonical Worldがbyte一致 |
+| §6 World = golden | `tei world`の出力が`reference/world.json`とbyte一致。`reference-golden` PASS |
+| §7 Source Index | 6 subjectすべてがexpected artifactへexactに戻る |
+| §8 managed source | 3 accepted fileがmanaged source（全54件）に含まれ、決定記録は**含まれない** |
+| §9 shared authority | `customer.tei` / `contracts/customer.tei` / `order-entry/patterns/customer-reference.tei`に差分なし |
+| §10 Environment | `reference/workspace/environments`に差分なし |
+| §11 commit形状 | `A`×4（3 source + 決定記録）、`M reference/world.json`。plugin-lockに差分なし |
+| §12 historical scope | `R = e523183` / `T = 0ba87a4`は元のrevisionにそのまま存在 |
+| evidence runner | PASS（46 test PASS / 0 FAIL） |
+| repository health check | PASS |
+
+S6の実行でRepositoryは一切変更していない（検証後も`git status`は空）。
+
+### §13 dedicated portability grammar — initial Reference Evidence
+
+accepted sourceは次だけで通常reload / Validation / Source Indexへ乗った。
+
+```text
+existing Semantic grammar
+existing Application grammar
+existing reference Pattern grammar
+existing Database Contract reference
+```
+
+専用のKnowledge Package / inheritance / override / sync grammarは、初回Second Application Referenceでは**不要だった**。
+
+これは「将来も不要」という一般化ではない。共有`customer`意味の再利用は、destination側が既存identityを参照するだけで足りた事例であり、override・変種・同期が必要なcaseはまだ現れていない。S7〜S9でEnvironment bindingやchange propagationを表現できない具体的Evidenceが出た場合だけschema追加を再検討する。
+
+### S7へ引き渡すretained unresolved
+
+```text
+ENVIRONMENT_BINDING_NOT_AUTHORED   -> S7 Environment Binding Proposalで扱う
+DRIVER_SCENARIO_NOT_RUN            -> S8以降。S6では実行可能性を主張しない
+TARGET_PROJECTION_NOT_EVALUATED    -> S8以降。Target Projectionは未評価のまま
+```
+
+S6完了はこれらを解消しない。accepted sourceが正本として自立していることだけを示す。

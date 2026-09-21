@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — S5 Acceptance完了（2026-09-21、`c18ae...`を実際の`reference/workspace`へ受理）。次はS6 source reload validation
+- 状態: In Progress — S5 Acceptance完了 / S6 source reload validation完了（2026-09-21、`ACCEPT_COMMIT = 0423b95`）。次はS7 Environment Binding Proposal
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -322,9 +322,17 @@ resulting main commit:           0423b95
 
 guardを緩めた箇所は無い。`TestSecondApplicationCompositionRejectsAnExistingIdentity`のような衝突検出testは、受理前のworkspaceを起点にすることで意味を保っている。
 
+### S6 — 完了（2026-09-21）
+
+`plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md` §14のexit criteriaを全て満たした（実行記録は同§15）。Acceptance toolを使わない通常経路で、`tei validate` PASS、model revisionがPreviewの`modelRevisionAfter`と一致、`tei world`がgoldenとbyte一致、Source Index 6 subjectがexpected artifactへ戻ること、共有authorityとEnvironmentが不変であることを確認した。
+
+決定記録については、機械到達できること（`accepted` / `current` / `intact`）と、**記録を除いてもmodel revisionとCanonical Worldが変わらないこと**の両方を確認した。記録はEvidenceであってauthorityではない。
+
+初回Second Applicationについては、専用のportability grammar（Knowledge Package / inheritance / override / sync）は不要だった。既存のSemantic / Application / reference Pattern / Database Contract参照だけで成立している。一般化はしない。
+
 ### 次
 
-S6（`plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`）へ進む。Acceptance toolを介さずnormal TEI sourceとして自立することの確認であり、新しいauthoring経路ではない。Environment Binding（S7）はこのAcceptanceでは承認していない。
+S7 Environment Binding Proposalへ進む。`ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`はS6完了時点でも未解消のまま後続へ引き渡す。
 
 ## S4 full-validation correction
 
