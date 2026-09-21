@@ -5061,3 +5061,81 @@ execution-time latest main
 
 full checkoutを持たないsessionではRepository healthを推測でPASS扱いせず、
 code integrationを先取りしない。
+
+
+
+#### E1.33 concurrent-write reconciliation and branch convergence — 2026-09-22
+
+E1.32 stale-candidate retirement recordの作成直前に、並行R7B documentation laneから:
+
+```text
+aeb341795a0dd8a3a5874f29feb6d5e54b0d751b
+docs(r7b): pin current-main health handoff packet
+```
+
+がmainへ入っていた。E1.32 writeはGitHub contents APIのblob-SHA guardを通してこのcommitをparentとして成立しており、並行変更を上書きしていない。
+
+したがってE1.32内の `current main = 8eb0abad...` は、並行commit直前に取得したpre-concurrent snapshotとして読む。
+このreconciliation checkpointでのmainは:
+
+```text
+d382559bbaa695ba9226a7e93e88e5f25f3fc995
+  parent = aeb341795a0dd8a3a5874f29feb6d5e54b0d751b
+```
+
+である。
+
+source-relevant base `c46eafe95c69d91c2d6f4d51c58697d0539db2e4` からこのcheckpointまでを再比較した。
+
+```text
+main ahead from source-relevant base = 10 commits
+
+changed paths:
+  plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md
+  plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md
+  plan/issue/000040-semantic-component-composition.md
+  plan/issue/000069-first-web-target-r7b-exact-t-replay.md
+
+canonical 11-path overlap = 0
+```
+
+また、E1.32 documentation commit後にmain以外18本の既存remote branchを再点検し、
+全refを `force=false` でmainへfast-forwardした。18/18が成功し、独自ahead workを持つbranchはなかった。
+
+収束後checkpoint:
+
+```text
+remote branch count = 19
+unique branch tips   = 1
+all tips             = d382559bbaa695ba9226a7e93e88e5f25f3fc995
+force updates        = 0
+new remote branches  = 0
+```
+
+これにより、並行documentation更新を保持したままbranch fragmentationを再解消した。
+R7B code integration gateは変更しない。
+
+```text
+execution-time latest main
+  -> canonical 11 exact blobs materialize
+  -> exact runner bash -n
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / canonical 11-path overlapなし再確認
+  -> direct-to-main code commit
+  -> existing branch refsをforceなしでmainへ再収束
+  -> Packet M actual replay-plan materialization
+```
+
+current Evidence height:
+
+```text
+parallel-write reconciliation              = PASS
+canonical 11-path overlap through d382...  = 0
+branch convergence at checkpoint            = PASS (19 refs / 1 tip)
+stale c0a8d2 candidate                      = retired / do not integrate
+current health candidate                    = fa96801d... exact 11 paths
+exact runner bash -n                        = pending mandatory gate
+tools/repository-health-check.sh            = pending mandatory gate
+code integration                            = pending
+actual replay / repeatability Evidence      = pending
+```
