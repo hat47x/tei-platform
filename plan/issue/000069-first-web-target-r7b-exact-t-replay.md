@@ -4316,47 +4316,9 @@ E1.25 canonical 11 source
 E1.23でexact P1 packageはtest×50までPASS済みだが、credential-safe P2とのactual closure rerunは未取得である。focused/static Evidenceをfull Repository healthへ読み替えず、actual exact-T replay / repeatability Evidenceも引き続き未取得として扱う。
 
 
-#### E1.25 current-main refresh and P1/P2 delta compatibility — 2026-09-21
+#### E1.26 P1/P2 delta compatibility audit — 2026-09-21
 
-E1.24以後、mainはR7B packet refreshとSecond Application independent review文書の3 commit進んだ。
-
-current main:
-
-```text
-d5e293226a14841e11591fd07595b26fb74ea1e9
-```
-
-この増分はR7B canonical 11 source pathとoverlapしない。E1.21 exact blobsをcurrent mainへ再配置したbranchless candidate:
-
-```text
-candidate:
-  57a8dae31b1e7483d0df0f2e870b84cf110cd270
-
-parent:
-  d5e293226a14841e11591fd07595b26fb74ea1e9
-
-tree:
-  705b74cafc2891769d7f6ccf17080f19ef0d23cf
-
-candidate vs parent:
-  ahead  = 1
-  behind = 0
-  changed paths = canonical 11 source paths only
-```
-
-を作成した。candidate作成ではmain / remote branch / PRを変更していない。
-
-remote branch 18本を再比較した結果、全件:
-
-```text
-ahead  = 0
-behind = 0
-status = identical
-```
-
-であり、open PRも0である。
-
-E1.23でpendingのまま残る `{P1,P2}` closureについて、実行前のAPI互換性をexact blob差分で再監査した。
+E1.25でlatest-main convergenceとcredential-set parityは確認済みである。ここではE1.23でpendingのまま残る `{P1,P2}` closureについて、実行前のAPI互換性だけをexact blob差分で再監査する。
 
 P1:
 
@@ -4410,25 +4372,23 @@ P2 -> P1 dependency shape     = unchanged
 new credential behavior        = shared-set extension only
 ```
 
-と判断できる。
+である。
 
 ただしこれはcompile/test executionではない。Evidence heightは厳密に分離する。
 
 ```text
-latest-main exact candidate assembly = PASS
-current-main source overlap          = PASS
-remote branch convergence            = PASS
-P1 exact rerun x50                   = PASS
-P1/P2 delta API compatibility        = PASS (static)
-P2 shared delegation source audit    = PASS (static)
-{P1,P2} exact closure rerun          = pending
-5-package aggregate focused rerun    = pending
-tools/repository-health-check.sh     = pending
-code integration                     = pending
-actual replay / repeatability        = pending
+E1.25 latest-main convergence         = PASS
+P1 exact rerun x50                    = PASS
+P1/P2 delta API compatibility         = PASS (static)
+P2 shared delegation source audit     = PASS (static)
+{P1,P2} exact closure rerun           = pending
+5-package aggregate focused rerun     = pending
+tools/repository-health-check.sh      = pending
+code integration                      = pending
+actual replay / repeatability         = pending
 ```
 
-current integration pathは変えない。
+integration pathはE1.25から変更しない。
 
 ```text
 E1.25 canonical 11 source
