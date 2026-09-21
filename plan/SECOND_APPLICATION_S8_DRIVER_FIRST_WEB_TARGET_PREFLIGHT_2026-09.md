@@ -540,8 +540,8 @@ S9ではISSUE-000039のimpact analysisを再利用し、独自impact engineを�
 S8aのDriver pressureを、authoritative sourceを変更しないtest-only candidateとして作成した。
 
 ```text
-candidate commit = 015814af03e36859fbb4d5d896f26a9f4d4619b3
-base main        = 2a245ae4a7ba1626950350a87e7bd9dc19c5be85
+candidate commit = 35a2c6d88521942b9e9038953496c69a07202e3a
+base main        = 6284e323159297cde9ba3bb455dd5bca8f83ab17
 remote branch    = none
 PR               = none
 main connection  = none
@@ -600,3 +600,15 @@ direct-to-main integration
 である。
 
 このcandidateは旧 `d4fd397fe97291e6ca185c4a729de4a40e18202b` をsupersedeする。
+
+
+Rebase note:
+
+```text
+source candidate = 015814af03e36859fbb4d5d896f26a9f4d4619b3
+current candidate = 35a2c6d88521942b9e9038953496c69a07202e3a
+test blob         = a1fc1da3562090bc22af156934798b290f5dc95f (unchanged)
+main drift        = docs-only / non-conflicting
+```
+
+The current candidate supersedes prior branchless S8a candidates. Health evidence remains absent, so it stays disconnected from `main`.
