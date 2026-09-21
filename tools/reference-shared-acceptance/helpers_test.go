@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -35,12 +36,56 @@ func scratchWorkspace(t *testing.T) string {
 	return dst
 }
 
+// secondApplicationEnvironmentBindingsは、S7で受理したEnvironment bindingの置き場である。
+var secondApplicationEnvironmentBindings = []string{
+	filepath.Join("environments", "development", "environment.tei"),
+	filepath.Join("environments", "production", "environment.tei"),
+}
+
+// removeSecondApplicationBindingsは、`repair_intake`のEnvironment bindingを取り除く。
+// Applicationを消してbindingだけ残すと、存在しないApplicationへのbindingという別の不整合になる。
+func removeSecondApplicationBindings(t *testing.T, dir string) {
+	t.Helper()
+	for _, rel := range secondApplicationEnvironmentBindings {
+		path := filepath.Join(dir, rel)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var kept []string
+		removed := 0
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.Contains(line, "bind repair_intake.customer_master") {
+				removed++
+				continue
+			}
+			kept = append(kept, line)
+		}
+		if removed != 1 {
+			t.Fatalf("%sのbindingが1件ではありません: %d件", rel, removed)
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(kept, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// scratchWorkspaceBeforeEnvironmentBindingは、S7 Environment bindingを受理する前の状態のcopyを返す。
+// `repair_intake` Application自体はS5で受理済みなので残る。
+func scratchWorkspaceBeforeEnvironmentBinding(t *testing.T) string {
+	t.Helper()
+	dir := scratchWorkspace(t)
+	removeSecondApplicationBindings(t, dir)
+	return dir
+}
+
 // scratchWorkspaceBeforeSecondApplicationは、第二Application `repair_intake` を受理する前の状態の
-// copyを返す。受理後のReferenceにはそのsourceと受理の記録が含まれるため、「第二Applicationをこれから
-// 受け入れる」ことや「まだ記録が無い」ことを前提にするtestはこちらを使う。
+// copyを返す。受理後のReferenceにはそのsourceと受理の記録、S7のEnvironment bindingが含まれるため、
+// 「第二Applicationをこれから受け入れる」ことや「まだ記録が無い」ことを前提にするtestはこちらを使う。
 func scratchWorkspaceBeforeSecondApplication(t *testing.T) string {
 	t.Helper()
 	dir := scratchWorkspace(t)
+	removeSecondApplicationBindings(t, dir)
 	for _, rel := range []string{
 		filepath.Join("semantic", "repair-intake"),
 		filepath.Join("applications", "repair-intake"),

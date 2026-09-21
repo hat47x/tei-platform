@@ -1246,6 +1246,11 @@
           "application": "order_entry",
           "alias": "sales",
           "instance": "sales_core.dev"
+        },
+        {
+          "application": "repair_intake",
+          "alias": "customer_master",
+          "instance": "master_data.dev"
         }
       ],
       "deploymentExecutors": [
@@ -1391,6 +1396,11 @@
           "application": "order_entry",
           "alias": "sales",
           "instance": "sales_core.prod"
+        },
+        {
+          "application": "repair_intake",
+          "alias": "customer_master",
+          "instance": "master_data.prod"
         }
       ],
       "deploymentExecutors": [

@@ -4,7 +4,7 @@
 - Primary workstream: ISSUE-000040
 - Stage: S7 preflight
 - Entry condition for authoring: S6 complete
-- Current status: **executable pressure実施済み（2026-09-21、§13）。Proposal identity確定済み。Environment sourceは未変更で、Acceptance decisionも未取得**
+- Current status: **complete — 2026-09-21にexplicit human Acceptance decisionを得て受理済み（§15）**
 - This document is not an Environment Binding Proposal acceptance and does not authorize source writes.
 
 ## 1. Purpose
@@ -495,12 +495,64 @@ Preview前後で`reference/workspace`のfile digestは同一、`git status refer
 
 §10で固定した**source-levelのProposal fingerprint `sha256:9fb68c28…`は変わらない**。型付きoperationから生成される2行が、そこで定義したpayloadと同一だからである。`fa359de4…`はbase revisionを含むAcceptance candidateのidentityで、S4の`c18ae0fd…`とS5の`8a936cf9…`の関係と同じである。
 
-### 残る停止条件
+### 停止条件（2026-09-21に解消）
 
 ```text
-explicit human Acceptance decision for the S7 Proposal = absent
-accepted Environment source                            = none
-Permission / Resource / Runtime authority              = 未付与
+explicit human Acceptance decision for the S7 Proposal = 取得（§15）
+accepted Environment source                            = 受理済み
+Permission / Resource / Runtime authority              = 引き続き未付与
 ```
 
-Previewは受理ではない。`reference/workspace`への`accept`は、exact Proposalに対する明示的なAcceptance decisionがあるまで実行しない。
+## 15. S7 Acceptance witness と実行記録 — 2026-09-21
+
+```text
+proposal fingerprint (source-level):  sha256:9fb68c2878f468ed57e50b73b142344df9426cbc0eb20c5d60e9389ec367e2e4
+human Acceptance decision:            accepted
+witness identity / locus:             Repository owner（hat47x）。Claude Code session上の明示的な回答「S7 Accept します」
+                                      直前に提示した内容: 受入境界へのoperation追加（案1を仮採用）、実Reference Preview 11 stage PASS、
+                                      accept未実行、残る停止条件はexplicit human Acceptance decisionだけであること
+decision time:                        2026-09-21
+repository revision before accept:    2f8760759b9b05db1ac3fec7f7406c69c9b1ecbf
+baseModelRevision:                    sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+Acceptance candidate fingerprint:     sha256:fa359de44243c8fbc38ed8bbef679e5e59487a25773c48e5bdb51f807e64bc24
+modelRevisionAfter:                   sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c
+accepted source paths:                reference/workspace/environments/development/environment.tei（+1行）
+                                      reference/workspace/environments/production/environment.tei（+1行）
+decision record:                      reference/workspace/.tei/decisions/d89b54349c62aff76d3f5b4f090fc4d7345496c8f95612c0fcd7b8b98bf78f0b.json
+golden update result:                 reference/world.json のみ変更（10行追加・0行削除。すべてbinding 2件）
+reference-golden verification:        PASS
+reference evidence runner:            PASS（49 test PASS / 0 FAIL）
+repository health check:              PASS
+retained unresolved:                  RUNTIME_AUTHORITY_NOT_GRANTED ×2
+                                      DRIVER_SCENARIO_NOT_RUN
+                                      TARGET_PROJECTION_NOT_EVALUATED
+```
+
+### 手順の遵守
+
+accept直前の必須re-Previewで、記録済みの期待値と全一致した（11/11 stage、candidate fingerprint、base revision、modelRevisionAfter、意味の差分0件、environment差分2件、changed collections `[environments]`、impact 8本、unresolved 4件）。`-derived-out`は使わず、accept後に`reference-golden -write`でgoldenを再生成した。
+
+あわせて、**境界が書き込む2行が§10で固定したsource-level Proposal `sha256:9fb68c28…`（193 bytes）とハッシュ一致すること**をaccept前に確認した。型付きoperationから生成されるsourceが、fingerprintを固定した時点の宣言と同じであることの確認である。
+
+受理後のConformanceは7件すべてPASSした（`reloaded-with-shared-loader` / `model-revision-matches-preview` / `semantic-diff-matches-preview` / `application-diff-matches-preview` / `environment-diff-matches-preview` / `validation-clean` / `derived-world-reproducible`）。
+
+### 受理に伴って更新したtest前提
+
+S5のときと同じく、「まだbindingが無い」を前提にしたtestが受理で成り立たなくなった。主張は変えず前提だけを更新した。
+
+| 対象 | 変更 |
+| --- | --- |
+| `reference-shared-acceptance` | `scratchWorkspaceBeforeEnvironmentBinding`を追加し、Environment bindingのtestはそこから始める |
+| `reference-shared-acceptance`（決定記録系） | `scratchWorkspaceBeforeSecondApplication`がbindingも外すようにした。**Applicationを消してbindingだけ残すと、存在しないApplicationへbindしたWorldという別の不整合になる**（受理前はこのGapに気付いていなかった） |
+| `tools/internal/changeanalysis` | 同じ理由で`referenceWorkspaceCopyBeforeSecondApplication`もbindingを外す |
+| S7 pressure test | 受理済みbindingを外してからpressureを掛ける。diff pressureの"before"も同じ起点にした |
+
+### この受理が与えないもの
+
+§6のとおり、Permission grant・Resource binding・lease・実行principal・network / credential authorityはこの受理に含まれない。`RUNTIME_AUTHORITY_NOT_GRANTED`をunresolvedとして保持しており、bindingができたことを「接続できる」「実行できる」と読み替えない。
+
+Gate B / Gate CのEvidenceは`R = e5231839…` / `T = 0ba87a4e…`へ紐づく歴史的Evidenceのままである。受理後のcurrent Workspaceを旧baselineのcurrent equivalentとして扱わない。
+
+### 次
+
+§12のとおり、Driver APIがEnvironment instance selectionをどう受け取るか、実行principal、credential / network authority、First Web Targetでのrepair_intake surfaceは未解決のままS8へ渡す。binding成立だけでDriver / Target execution成功を主張しない。

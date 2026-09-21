@@ -36,4 +36,5 @@ environment production {
     grant deployment-executor migration.atlas permission filesystem read-write migration-workdir
 
     lease-policy deployment-executor migration.atlas max-lifetime 45m renew-before 5m revoke-timeout 15s renewal-failure fail-closed
+    bind repair_intake.customer_master -> master_data.prod
 }

@@ -1,0 +1,110 @@
+{
+  "schema": "tei.reference.change-decision/v0",
+  "decision": "accepted",
+  "candidateId": "cand-repair-intake-environment-binding",
+  "candidateFingerprint": "sha256:fa359de44243c8fbc38ed8bbef679e5e59487a25773c48e5bdb51f807e64bc24",
+  "origin": {
+    "kind": "cli",
+    "actor": "human-acceptance"
+  },
+  "baseModelRevision": "sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762",
+  "modelRevisionBefore": "sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762",
+  "modelRevisionAfter": "sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c",
+  "sourceChanged": true,
+  "sourceEdits": [
+    {
+      "path": "environments/development/environment.tei",
+      "layer": "environment",
+      "beforeFingerprint": "sha256:adbeba7f9e783b62b0e1d0391198b6fb6fc1cd3a9ac0f8ea578079a92166ae60",
+      "afterFingerprint": "sha256:a98973255180395d611b670aac3eef36d28ca0a7c177b4bc3d287bf5ef2646a3",
+      "insertedText": "    bind repair_intake.customer_master -\u003e master_data.dev\n"
+    },
+    {
+      "path": "environments/production/environment.tei",
+      "layer": "environment",
+      "beforeFingerprint": "sha256:7bdbd9e3ae617abbd8d1a81b1a72aa2f14028c1460dc4cb734e6aba14ef4b0de",
+      "afterFingerprint": "sha256:1e9f9c614880fd6d57b460124c6034121708f8c96e7a4102f7be9eec797f3b54",
+      "insertedText": "    bind repair_intake.customer_master -\u003e master_data.prod\n"
+    }
+  ],
+  "environmentDiff": [
+    {
+      "kind": "environment-binding",
+      "id": "development/repair_intake.customer_master",
+      "change": "added",
+      "after": {
+        "application": "repair_intake",
+        "alias": "customer_master",
+        "instance": "master_data.dev"
+      }
+    },
+    {
+      "kind": "environment-binding",
+      "id": "production/repair_intake.customer_master",
+      "change": "added",
+      "after": {
+        "application": "repair_intake",
+        "alias": "customer_master",
+        "instance": "master_data.prod"
+      }
+    }
+  ],
+  "conformance": [
+    {
+      "name": "reloaded-with-shared-loader",
+      "passed": true
+    },
+    {
+      "name": "model-revision-matches-preview",
+      "passed": true,
+      "detail": "sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c"
+    },
+    {
+      "name": "semantic-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "application-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "environment-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "validation-clean",
+      "passed": true
+    },
+    {
+      "name": "derived-world-reproducible",
+      "passed": true,
+      "detail": "sha256:8b0b2542e986b130b612aa95679a1231e275ce55d6b47c9e3f1d4cb70be35a6d"
+    }
+  ],
+  "derivedWorldSha256": "sha256:8b0b2542e986b130b612aa95679a1231e275ce55d6b47c9e3f1d4cb70be35a6d",
+  "intent": "repair_intakeのcustomer_master aliasを、各Environmentの既存master_data instanceへ結ぶ（S7）",
+  "evidence": [
+    {
+      "source": "applications/repair-intake/application.tei",
+      "note": "aliasを宣言しているApplication source"
+    }
+  ],
+  "unresolved": [
+    {
+      "code": "RUNTIME_AUTHORITY_NOT_GRANTED",
+      "message": "environment binding development/repair_intake.customer_master はApplicationのdatasource aliasを物理instanceへ結ぶが、Permission grant・Resource binding・lease・実行principalはこの変更に含まれない。接続できるとも実行できるとも言えない"
+    },
+    {
+      "code": "RUNTIME_AUTHORITY_NOT_GRANTED",
+      "message": "environment binding production/repair_intake.customer_master はApplicationのdatasource aliasを物理instanceへ結ぶが、Permission grant・Resource binding・lease・実行principalはこの変更に含まれない。接続できるとも実行できるとも言えない"
+    },
+    {
+      "code": "DRIVER_SCENARIO_NOT_RUN",
+      "message": "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"
+    },
+    {
+      "code": "TARGET_PROJECTION_NOT_EVALUATED",
+      "message": "解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"
+    }
+  ]
+}

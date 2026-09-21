@@ -31,6 +31,27 @@ func referenceWorkspaceCopyBeforeSecondApplication(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
+	// S7のEnvironment bindingも外す。Applicationを消してbindingだけ残すと、
+	// 存在しないApplicationへbindしたWorldという別の不整合になる。
+	for _, rel := range []string{
+		filepath.Join("environments", "development", "environment.tei"),
+		filepath.Join("environments", "production", "environment.tei"),
+	} {
+		path := filepath.Join(dir, rel)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var kept []string
+		for _, line := range strings.Split(string(content), "\n") {
+			if !strings.Contains(line, "bind repair_intake.customer_master") {
+				kept = append(kept, line)
+			}
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(kept, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return dir
 }
 

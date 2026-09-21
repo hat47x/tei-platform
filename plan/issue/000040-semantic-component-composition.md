@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — S5 Acceptance完了 / S6完了 / S7 executable pressure実施・Proposal identity確定（2026-09-21）。S7のAcceptance経路と決定が未了
+- 状態: In Progress — S5 / S6 / S7完了（2026-09-21）。次はS8（Driver / Target側の未解決事項）
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -344,7 +344,19 @@ S7 Acceptance decision  = absent
 
 実際の`reference/workspace`へのread-only Previewは11 stage全PASSで、変わるcollectionは`environments`だけ、意味の差分は0件、impact 8本、`RUNTIME_AUTHORITY_NOT_GRANTED`ほかをunresolvedとして残す（candidate fingerprint `sha256:fa359de4…`）。`accept`は未実行で、`reference/workspace`は未変更である。
 
-**残る停止条件はexact S7 Proposalに対する明示的なAcceptance decisionだけ**である。`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は引き続き未解消で、S8以降へ渡す。
+2026-09-21、利用者の明示的なAcceptance decision（「S7 Accept します」）によりS7 Proposalを受理した。witnessと実行記録はpreflight §15を正本とする。
+
+```text
+accepted source        environments/development/environment.tei（+1行）
+                       environments/production/environment.tei（+1行）
+modelRevisionAfter     sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c
+decision record        .tei/decisions/d89b5434…json
+health check           PASS
+```
+
+受理に伴い、「まだbindingが無い」を前提にしたtestの起点を更新した。その過程で、`...BeforeSecondApplication`系のfixtureが**Applicationを消しながらbindingを残していた**（存在しないApplicationへbindしたWorld）ことが分かり、あわせて修正した。
+
+`RUNTIME_AUTHORITY_NOT_GRANTED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は未解消のままS8へ渡す。bindingができたことを実行可能性へ読み替えない。
 
 ## S4 full-validation correction
 

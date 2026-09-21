@@ -40,7 +40,7 @@ func environmentBindingCandidate(revision string) Candidate {
 
 func previewEnvironmentBinding(t *testing.T, mutate func(c *Candidate)) (string, evaluation) {
 	t.Helper()
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeEnvironmentBinding(t)
 	c := environmentBindingCandidate(revisionOfDir(t, dir))
 	if mutate != nil {
 		mutate(&c)
@@ -102,7 +102,7 @@ func TestEnvironmentBindingPreviewReportsTheDecisionSeparatelyFromMeaning(t *tes
 }
 
 func TestEnvironmentBindingAcceptWritesOnlyTheTwoBindingLines(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeEnvironmentBinding(t)
 	before := treeDigest(t, dir)
 	data := mustJSON(t, environmentBindingCandidate(revisionOfDir(t, dir)))
 

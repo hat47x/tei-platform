@@ -33,6 +33,30 @@ func s7Workspace(t *testing.T, bindings map[string][]string, dropSecondApplicati
 	probeRoot := filepath.Join(t.TempDir(), "workspace")
 	copyDirectory(t, filepath.Join(repoPath(), "reference", "workspace"), probeRoot)
 
+	// S7はmainへ受理済みなので、pressureは「まだbindingが無い」状態から始める。
+	for _, relative := range []string{s7DevelopmentEnvironment, s7ProductionEnvironment} {
+		path := filepath.Join(probeRoot, filepath.FromSlash(relative))
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var kept []string
+		removed := 0
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.Contains(line, "bind repair_intake.customer_master") {
+				removed++
+				continue
+			}
+			kept = append(kept, line)
+		}
+		if removed != 1 {
+			t.Fatalf("%sの受理済みbindingが1件ではありません: %d件", relative, removed)
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(kept, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	if dropSecondApplication {
 		if err := os.RemoveAll(filepath.Join(probeRoot, "applications", "repair-intake")); err != nil {
 			t.Fatal(err)
@@ -177,8 +201,7 @@ func TestSecondApplicationS7BindingFailsClosedOnEachStructuralDefect(t *testing.
 
 // S7はEnvironment sourceだけを変える。Application / 共有意味 / instance定義 / plugin / 権限へは触れない。
 func TestSecondApplicationS7BindingChangesOnlyTheTwoEnvironmentFiles(t *testing.T) {
-	before := filepath.Join(t.TempDir(), "workspace")
-	copyDirectory(t, filepath.Join(repoPath(), "reference", "workspace"), before)
+	before := s7Workspace(t, nil, false)
 	after := s7Workspace(t, s7MinimalBinding(), false)
 
 	changed := changedFilesBetween(t, before, after)
