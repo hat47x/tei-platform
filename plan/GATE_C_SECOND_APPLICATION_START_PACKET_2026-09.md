@@ -320,6 +320,8 @@ current First Web TargetはProjectionだけ`-application`で切替可能だが�
 
 同じBusiness / Semantic meaningをTarget側で再定義しない。
 
+S8のTarget runではhistorical `B / R`を再利用しない。`repair_intake`を含むDriver EvidenceをS8aで取得後、Handover contractのsuccessor規則に従って `B2 / R2` を固定し、First Web Target buildを別identity `T2` として追跡する。
+
 ### S9 — Change propagation Evidence
 
 最低限次をPressureする。

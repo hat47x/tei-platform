@@ -371,6 +371,8 @@ First Web TargetはProjection自体はApplication IDを受けるが、current re
 
 actual Oracle principal / credential / network authorityは未観測のままなので、deterministic synthetic Evidenceとactual external Oracle Evidenceを分離する。`RUNTIME_AUTHORITY_NOT_GRANTED`は保持する。
 
+S8 Target provenanceは旧Gate Cの `B / R` をcarry-forwardしない。`repair_intake`は旧 `R=e523...` に存在しないため、S8a Driver scenarioをcurrent sourceで成立させた後、そのrevisionで必要なHandover Evidenceを再qualificationし、successor `B2 / R2`を発行してからFirst Web Targetへ渡す。Target buildは別identity `T2`として追跡する。
+
 ## S4 full-validation correction
 
 S6 preflightで、旧Application + Pattern Proposalがdestination Semantic Relation sourceを欠き、current full workspace Validationへそのまま接続できないことを確認した。

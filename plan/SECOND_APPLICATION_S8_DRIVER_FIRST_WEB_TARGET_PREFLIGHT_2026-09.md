@@ -215,6 +215,54 @@ contract query
 
 ProjectionはderivedでありCanonical authorityではない。
 
+## 6.1 Target provenance must use a successor Handover
+
+The original First Web Target used:
+
+```text
+B / R
+R = e5231839a5dcc62cce1181a2731fcb7c70d16736
+```
+
+That revision predates `repair_intake`.
+
+Therefore a Second Application Target run must **not** emit a manifest that says:
+
+```text
+Application = repair_intake
+baselineRepositoryRevision = e523...
+```
+
+because the Application does not exist at that revision.
+
+The existing Handover contract already defines the correct rule:
+
+```text
+meaning changes / expands
+  -> re-run required baseline Evidence at a new revision R2
+  -> issue successor Handover B2 / R2
+  -> keep Target build identity separate
+```
+
+For S8 the ordering is:
+
+```text
+S8a deterministic Driver scenario
+  -> stabilize current Repository revision
+  -> requalify Handover-required Evidence at R2
+  -> add repair_intake Driver scenario / unresolved references
+  -> issue successor Handover B2 / R2
+  -> S8b First Web Target
+       projection baseline = B2 / R2
+       target build        = separate T2
+```
+
+Do not assign `R2` before the S8a Driver implementation/evidence is integrated, because that work may itself move the Repository revision.
+
+Do not reuse old `B / R` merely because the same Target adapter is being reused.
+
+The successor Handover remains Evidence/reference metadata, not a second Canonical source.
+
 ## 7. Current First Web Target mismatch
 
 current executable serverには重要なapplication mismatchがある。
@@ -458,6 +506,9 @@ Entry:
 Initial exit for ISSUE-000040 requires:
 
 - development synthetic Driver scenario PASS
+- successor Handover `B2 / R2` issued from a revision that contains the accepted Second Application + S7 binding + S8a Driver Evidence
+- First Web Target run references `B2 / R2`, not the historical first-Application `B / R`
+- Target build identity is tracked separately as `T2`
 - repair_intake Web projection PASS
 - Customer ID input -> lookup Target interaction PASS
 - manifest / runner Application identity一致
