@@ -5310,3 +5310,117 @@ health-capable full checkout on execution-time latest main
 ```
 
 No Source/Design Evidence is promoted beyond the level actually observed.
+
+#### B4 continuation — S8 reconciliation and current-main health packet refresh — 2026-09-22
+
+After the exact-runner syntax gate was closed by PR #845, the concurrent Second Application lane advanced `main` by one commit:
+
+```text
+1b752c976a6b86bb1087f6b8b78814e4c5ad0c89
+test(driver): run the accepted Second Application through the ordinary Driver path (S8)
+```
+
+The S8 delta from the prior R7B merge point changes only:
+
+```text
+docs/status.md
+internal/driver/contract_query_executor_registry_key_test.go
+internal/driver/second_application_scenario_test.go
+plan/issue/000040-semantic-component-composition.md
+```
+
+Canonical R7B 11-path overlap is therefore:
+
+```text
+0
+```
+
+The existing B branch was fast-forwarded to the new `main` with `force=false` before any B4 write:
+
+```text
+main = research/selective-knowledge-routing-r6
+     = 1b752c976a6b86bb1087f6b8b78814e4c5ad0c89
+ahead = 0
+behind = 0
+```
+
+The same canonical 11 exact blobs were then composed over that exact S8 main tree without creating a remote work branch.
+
+```text
+parent:
+  1b752c976a6b86bb1087f6b8b78814e4c5ad0c89
+
+parent tree:
+  401c2accc5e1bf8d2583af293957a175a06119e8
+
+current branchless health candidate:
+  8445b87a53cffe64daf49a7463a4685422bfaebd
+
+candidate tree:
+  e691f0d3e0cc0338a4d340ff60b8ed804f1eb189
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The 11 blob identities remain unchanged from the canonical packet, including the already syntax-qualified runner blob:
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+This candidate is still not integration authority. It is a current-main composition target for a health-capable full checkout only.
+
+A direct full-checkout route was re-probed in the execution container. Go and git are available, but the container cannot resolve GitHub for `git ls-remote`, and no mounted TEI checkout is present. The GitHub connector can inspect the complete repository tree, but that does not constitute a filesystem checkout on which `tools/repository-health-check.sh` can execute. Therefore Repository health is not inferred from connector-side tree access.
+
+Remote branch convergence was also re-audited after the S8 commit. Before convergence, every non-B branch had:
+
+```text
+ahead  = 0
+behind = 1
+```
+
+and therefore contained no unique remote work. All 17 stale refs were fast-forwarded to the S8 main commit with `force=false`. Together with `main` and the already-current B branch:
+
+```text
+remote branch count = 19
+unique branch tips   = 1
+tip                  = 1b752c976a6b86bb1087f6b8b78814e4c5ad0c89
+force updates        = 0
+new remote branches  = 0
+```
+
+Current B4 Evidence height:
+
+```text
+Second Application S8 reconciliation        = PASS
+S8 vs canonical 11-path overlap             = 0
+B branch latest-main convergence             = PASS
+all remote refs convergence                  = PASS (19 refs / 1 tip)
+canonical 11 exact blobs                     = unchanged authority
+exact runner byte identity                   = PASS
+exact runner bash -n                         = PASS
+current-main branchless packet               = 8445b87a... (11 paths only)
+health-capable full checkout                 = unavailable in this session
+tools/repository-health-check.sh             = pending mandatory gate
+code integration                             = blocked
+actual replay / repeatability Evidence       = pending
+```
+
+The remaining path is unchanged:
+
+```text
+health-capable full checkout on execution-time latest main
+  -> materialize the same canonical 11 exact blobs
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no canonical-path overlap recheck
+  -> integrate the qualified 11-path source change
+  -> converge existing branch refs to merged main without force
+  -> Packet M actual replay-plan materialization
+```
+
+No branchless candidate is merged, fast-forwarded, or cherry-picked to bypass the mandatory health gate.
+
