@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — executable pressure obtained（2026-09-21） / multi-layer Shared Acceptance Preview implemented and PASS against the actual reference workspace / only the explicit human Acceptance of `c18ae...` remains before S6（利用者の方針、2026-09-21: 別の生成AIによる独立レビューの後にAcceptする。レビューは未実施）
+- 状態: In Progress — executable pressure PASS / Shared Acceptance Preview PASS / independent review completed（review-clear-with-conditions, GPT-5.6 Sol, 2026-09-21） / only explicit human Acceptance of `c18ae...` remains before S6
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -249,7 +249,16 @@ Shared Acceptanceはまだ成立しておらず、authoritative destination sour
 
 **Acceptanceの進め方（利用者の方針、2026-09-21）**: exact `c18ae...`のAcceptanceは、**別の生成AIによる独立レビューの後**に行う。レビューが済むまで`accept`は実行しない。作成者（`claude-sonnet-5`）のself-reviewは独立レビューの代わりにしない。レビューの指摘は、accept前に対応するか、理由つきで見送る。レビュー結果とAcceptance decision（exact `c18ae...`、判断、その時点のrevision、残るunresolved）は、このIssueへ追記する。この方針は「レビューの後にacceptする」という順序の決定であり、レビュー結果が出る前のacceptを許すものではない。
 
-独立レビュー入力は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_HANDOFF_2026-09.md` に固定する。レビュー担当はProposal identity、actual Preview、Reference golden更新、Gate B/Cのhistorical baseline scope、Shared Acceptanceのderived output安全性を同じreviewで確認する。
+独立レビュー入力は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_HANDOFF_2026-09.md` に固定し、2026-09-21にGPT-5.6 Sol（OpenAI）がレビューを実施した。
+
+結果:
+
+- `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_RESULT_2026-09.md`
+- verdict = `review-clear-with-conditions`
+- required pre-Acceptance fixes = none
+- human Acceptance decision = not made by the review
+
+Repository integration条件は、actual acceptで`-derived-out reference/world.json`を直接使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを生成し、golden check / repository health PASSまで同じRepository change内で完了すること。historical Gate B/C `B / R / T` はrevision-scoped Evidenceとして保持し、post-accept current Workspaceへcarry-forwardしない。
 
 acceptの帰結は、レビューで確認する。作成者が確認した事実は、acceptが`reference/workspace`へ3 fileを作ることと、`reference/workspace`のWorldを`reference/world.json`と比較するgolden test（`tools/reference-golden`、`internal/workspace/loader_test.go`）が存在することである。したがってacceptと同じ変更で`reference/world.json`を更新する必要が生じる見込みで（未実行）、Gate B / Gate Cが固定する`reference/workspace/**`（`canonical-world-invariant-R-to-T`）との関係の整理も要る。これらは未評価であり、acceptの前後どちらで扱うかを含めてレビューで確認する。
 

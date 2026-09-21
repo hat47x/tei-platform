@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / executable pressure obtained and Shared Acceptance compatibility Preview PASS（2026-09-21） / explicit human decision pending。利用者の方針（2026-09-21）: 別の生成AIによる独立レビューの後にAcceptする（レビューは未実施）
+- Status: Executable pressure PASS / Shared Acceptance Preview PASS / independent generative-AI review completed（review-clear-with-conditions, 2026-09-21） / explicit human Acceptance decision pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -275,18 +275,18 @@ previewChangedSubjects          = 6
 previewChangedCollections       = [applications, semantics]
 previewImpactEdges              = 15
 previewUnresolved               = [ENVIRONMENT_BINDING_NOT_AUTHORED, DRIVER_SCENARIO_NOT_RUN, TARGET_PROJECTION_NOT_EVALUATED]
-independentGenerativeAIReview   = absent
+independentGenerativeAIReview   = review-clear-with-conditions
 acceptanceWitness               = absent
 decision                        = pending
 ```
 
-したがって、機械的なpre-Acceptance条件は成立している。現在の停止条件は利用者方針に基づく次の2段階である。
+したがって、機械的なpre-Acceptance条件と独立レビュー条件は成立している。現在の停止条件は一つである。
 
 ```text
-different-generative-AI independent review
-  -> findings addressed or explicitly retained with rationale
-  -> explicit human Acceptance decision for exact c18ae...
+explicit human Acceptance decision for exact c18ae...
 ```
+
+独立レビュー結果は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_RESULT_2026-09.md` に記録した。結果は `review-clear-with-conditions` で、required pre-Acceptance fixは無い。Repository integration条件はactual accept後からcommit前までに適用する。
 
 Preview / health PASS / review依頼そのものをAcceptance witnessへ読み替えない。
 
@@ -313,9 +313,9 @@ Preview / health PASS / review依頼そのものをAcceptance witnessへ読み�
 - `1d720bde...` のRelation impact追加後も再Previewし、fingerprint / revisions / 6 changed subjects / unresolvedは不変、impact edgeのみ14→15へ増加
 - authoritative destination source: 未作成
 - Shared Acceptance decision: 未成立
-- independent generative-AI review: 未実施
+- independent generative-AI review: completed — `review-clear-with-conditions`（GPT-5.6 Sol, 2026-09-21）
 
-したがって、これ以上のparser / static inspection追加ではAcceptance条件は前進しない。次のEvidenceは独立レビュー結果である。
+独立レビューまで完了した。次に必要なのはexact `c18ae...`に対するexplicit human Acceptance decisionである。
 
 ## 12. Conclusion
 
@@ -324,10 +324,11 @@ S4 ProposalのRelation source欠落、executable pressure、multi-layer Shared A
 現在の順序は:
 
 ```text
-independent review by a different generative AI
-  -> review findingsを対応または理由付きretain
-  -> exact c18ae...へのexplicit human Acceptance decision
+exact c18ae...へのexplicit human Acceptance decision
   -> actual Shared Acceptance accept
+  -> reference-golden -write / verify
+  -> repository health check
+  -> same commit
   -> accepted sourceからReference golden / repository conformanceを再確認
   -> S6 authoritative-source / reload Evidenceを記録
 ```

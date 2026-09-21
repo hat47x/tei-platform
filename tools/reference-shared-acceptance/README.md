@@ -9,7 +9,7 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 - Reference専用のtoolです。Core primitive、platform共通のProposal schema、Patch DSLではありません。candidateの形式（`tei.reference.change-candidate/v0`）はこのReferenceの実測から決めた運搬形式で、固定を主張しません。
 - 差分・依存影響の解析はread-onlyな[`tools/internal/changeanalysis`](../internal/changeanalysis)（`ISSUE-000039`の最初の解析境界）が担当し、このtoolはそれを呼びます。受理・source反映（`ISSUE-000027`）と解析を混ぜず、解析側はsourceを読み書きしません。
 - AIによる候補生成、Studio UI、read-only探索（`ISSUE-000047`）は含みません。これらはcandidateの**生成側**であり、このtoolは**受け取る側の境界**だけを実証します。
-- Gate B / Gate Cが固定した`reference/workspace`は変更しません。`accept`は、baselineの名前（`.../reference/workspace`）を持つ場所へは`-allow-reference-baseline`が無い限り拒否します。scratch copyへ実行してください。実際の`reference/workspace`へのacceptは、別の生成AIによる独立レビューの後に行う方針です（利用者の方針、2026-09-21。`ISSUE-000040`）。
+- Gate B / Gate Cが固定した`reference/workspace`は変更しません。`accept`は、baselineの名前（`.../reference/workspace`）を持つ場所へは`-allow-reference-baseline`が無い限り拒否します。scratch copyへ実行してください。Second Applicationの別生成AIレビューは2026-09-21に完了し、`review-clear-with-conditions`となりました。実際の`reference/workspace`へのacceptには、なおexact Proposalに対するexplicit human Acceptance decisionが必要です（`ISSUE-000040`）。
 
 ## 受入境界
 
