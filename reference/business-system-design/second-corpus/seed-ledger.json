@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "business-seed-ledger-v0-pressure",
+  "artifactRole": "reference-seed-ledger-pressure",
+  "canonical": false,
+  "seed": "make-to-order-production-and-stocking",
+  "independentNeed": "A make-to-order production run has to let the business say whether the ordered goods physically exist in the completed quantity, separately from the instruction that asked for them and from the record made about them, because a delivery commitment made on a record that runs ahead of physical reality is a false promise. Separately, the stocking side has to keep the stock record in agreement with what physically arrived. Each of the two needs stands on its own.",
+  "scope": {
+    "in": [
+      "one make-to-order production run of one finished item",
+      "the separation of work instruction, physical manufacturing, physical confirmation and the completion record",
+      "releasing confirmed goods for stocking",
+      "taking released goods in charge, checking them against what production confirmed, putting them into stock, recording the stock movement and state"
+    ],
+    "out": [
+      "purchasing and material receipt accounting",
+      "work-in-progress costing and production scheduling / MRP",
+      "quality-management-system detail and lot / batch traceability",
+      "shipment and delivery",
+      "accounting and approval flows",
+      "any multi-site or multi-warehouse behaviour"
+    ]
+  },
+  "sources": [
+    {"id": "xtea-home", "title": "X-TEA HOME", "url": "https://dbc.in.coocan.jp/", "use": "design-pressure-only", "copied": false},
+    {"id": "itmedia-2011", "title": "渡辺幸三「実行可能な仕様書のライブラリを知的社会資本に」@IT / ITmedia", "publication": "2011-09-28", "use": "design-pressure-only", "copied": false},
+    {"id": "talon-mfs", "title": "TALON「カスタマイズ放題生産管理」", "url": "https://talon.jp/products/businesspackage/businesspackage-mfs/", "use": "design-pressure-only", "copied": false},
+    {"id": "talon-mfs-manual", "title": "TALON「カスタマイズ放題生産管理システム Ver.1.3 マニュアル」", "url": "https://talon.jp/manual/10.TALON_MPS_Manual.pdf", "use": "design-pressure-only", "copied": false},
+    {"id": "talon-business-flow", "title": "TALON「想定業務フロー」", "url": "https://talon.jp/manual/20.TALON_MPS_BusinessFlow.pdf", "use": "design-pressure-only", "copied": false},
+    {"id": "talon-ims", "title": "TALON「カスタマイズ放題在庫管理」", "url": "https://talon.jp/products/businesspackage/businesspackage-ims/", "use": "design-pressure-only", "copied": false},
+    {"id": "talon-modeling-2015", "title": "TALON「モデリング分科会の発足」", "publication": "2015", "use": "design-pressure-only", "copied": false},
+    {"id": "xeadmodeler-repo", "title": "XeadModeler GitHub repository", "use": "design-pressure-only", "copied": false, "licenseNote": "BSD-3-Clause applies to the Modeler source repository only; it is not assumed for CONCEPTWARE model artifacts"}
+  ],
+  "copiedArtifacts": [],
+  "licenseAnalogyMade": false,
+  "sourceBackedFacts": [
+    {"id": "SF-1", "text": "Manufacturing instruction, material issue, warehouse stock movement / stocktaking and shipment appear as cross-subsystem business concerns.", "sources": ["talon-mfs", "talon-mfs-manual", "talon-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-2", "text": "Material receipt and issue, manufacturing completion and shipment are physical / external-world pressures.", "sources": ["talon-mfs", "talon-mfs-manual", "talon-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-3", "text": "More than one responsibility context exists in such a business.", "sources": ["talon-mfs-manual", "xtea-home"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-4", "text": "The instruction / entry stage and the actual change of stock or accounting are not necessarily simultaneous.", "sources": ["talon-mfs-manual", "talon-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
+    {"id": "SF-5", "text": "Manufacturing instruction, physical manufacturing / completion, recording the completion in the system, and shipment work do not necessarily fold into one system command.", "sources": ["talon-mfs-manual", "talon-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
+    {"id": "SF-6", "text": "Inventory distinguishes the actual movement (receipt / issue) from the history and stock state that follow it.", "sources": ["talon-ims", "talon-mfs-manual"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"}
+  ],
+  "teiOriginalDecisions": [
+    {"id": "TD-1", "text": "The production run is one procedure with its own need: it must keep physical completion apart from the instruction and from the record.", "refs": ["make-to-order.production-run"]},
+    {"id": "TD-2", "text": "Instruction, physical manufacturing, physical confirmation and the completion record are four separate steps; no single step both confirms and records.", "refs": ["make-to-order.production-run/PR-02", "make-to-order.production-run/PR-03", "make-to-order.production-run/PR-04", "make-to-order.production-run/PR-05"]},
+    {"id": "TD-3", "text": "Stocking is a separate procedure with its own need and a separate candidate responsibility context.", "refs": ["finished-goods.stocking"]},
+    {"id": "TD-4", "text": "Physical confirmation (production side) and the arrival check (warehouse side) are verification of external state; they use the observation-boundary realization and carry no Observation identity.", "refs": ["make-to-order.production-run/PR-04", "finished-goods.stocking/ST-01"]},
+    {"id": "TD-5", "text": "Releasing confirmed goods is the last act that production performs with the goods; taking them in charge is where the receiving responsibility starts.", "refs": ["make-to-order.production-run/PR-06", "finished-goods.stocking/ST-00"]}
+  ],
+  "derived": [],
+  "proposals": [],
+  "unresolved": [
+    {"id": "U-1", "subject": "actor-identity", "status": "unresolved", "note": "Only candidate labels exist for the two responsibility contexts; no performer, role or principal identity is authored."},
+    {"id": "U-2", "subject": "trigger-exact", "status": "unresolved", "note": "The exact triggering event or document of each procedure is not authored beyond a candidate description."},
+    {"id": "U-3", "subject": "step-sequence-authority", "status": "unresolved", "note": "The step order is a TEI-original authoring decision for review, not an accepted operational sequence; overlap or reordering (for example confirmation and recording) is not decided."},
+    {"id": "U-4", "subject": "responsibility-boundary-detail", "status": "unresolved", "note": "How accountability for damage, loss and count is shared during the hand-over window is not decided."},
+    {"id": "U-5", "subject": "handoff-condition-evidence", "status": "unresolved", "note": "Which document, record or observation supports the Handoff condition is not part of the condition and is not authored."},
+    {"id": "U-6", "subject": "data-identity", "status": "unresolved", "note": "No Data identity or ownership is authored for the work instruction, the completed quantity, the received quantity or the stock quantity."},
+    {"id": "U-7", "subject": "application-realization", "status": "unresolved", "note": "Which steps an Application interaction could realize is not decided; no Application Pattern, Capability or Datasource is referenced."},
+    {"id": "U-8", "subject": "actuality-evidence", "status": "unresolved", "note": "How physical completion and physical arrival are evidenced is not decided."},
+    {"id": "U-9", "subject": "acceptance-criteria", "status": "unresolved", "note": "What counts as acceptable in the physical confirmation and in the arrival check is not defined."}
+  ],
+  "crossViewQuestions": [
+    {"id": "CQ-1", "question": "At each moment, which quantity does the business treat as authoritative for finished goods that can be committed to delivery: the recorded completion, the physically confirmed quantity, the quantity taken in charge, or the resulting stock state, and which responsibility owns each?", "views": ["business", "data"], "dataIdentity": "unresolved"},
+    {"id": "CQ-2", "question": "Which of these steps could be realized by an Application interaction at all, and which are manual or physical and lie outside any Application?", "views": ["business", "function"], "applicationRealization": "unresolved"}
+  ],
+  "handoff": {
+    "candidate": {"from": "make-to-order.production-run/PR-06", "to": "finished-goods.stocking/ST-00"},
+    "arisesNaturally": true,
+    "basis": "The two procedures have independent needs and different responsibility contexts, and accountability for the goods and their count belongs to production until the receiving responsibility takes them in charge. That change of accountability is Business meaning of its own and is not implied by the order of steps.",
+    "notDerivedFrom": ["step-adjacency", "actor-difference", "function-sequence", "positive-observation", "lifecycle-transition", "command-success"],
+    "conditionIsNot": ["the target procedure trigger", "an observation identity", "a restatement that the previous step finished"]
+  },
+  "review": {
+    "checklist": "LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md RRB-P1 items 1-14; ISSUE-000050 seed review checklist 1-8",
+    "author": "self-reviewed",
+    "independentReview": "pending"
+  }
+}

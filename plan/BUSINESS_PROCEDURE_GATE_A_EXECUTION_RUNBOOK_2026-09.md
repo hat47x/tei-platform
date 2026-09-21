@@ -305,6 +305,20 @@ legacy-read migration preview
 
 このsubset PASSはStep A4のfocused package PASSを代替しない。Triageでfixが入ってrevisionが変わった場合、Step A1〜A6を含むGate A全体を新revisionで再実行する。
 
+### Step A8 — second realistic Reference baseline checker
+
+`reference/business-system-design/second-corpus/`は、`order_entry`から独立した二つ目のBusiness Procedure Reference（[ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md)）である。そのpressure testはA4 / A7が既に走らせ、critical manifestにも載る。A8は、その二つのfixtureを実際のbaseline checker CLIへ通す。
+
+```text
+go run ./tools/reference-business-procedure-check \
+  -workspace reference/workspace \
+  -fixture reference/business-system-design/second-corpus/<fixture>.json
+```
+
+対象は`make-to-order-production-run.json`と`finished-goods-stocking.json`である。二つ目のReferenceはApplicationを持たないため、blocking diagnosticとApplication Pattern rowのどちらも出ないことを期待する。access probeは適用しない（Datasourceが無い）。
+
+A8のPASSは、RRB-P3のうち「二つ目のReferenceが実際のrunnerでbaseline checkerを通る」ことだけを示す。独立reviewを経たことも、Handoff一般の妥当性も、Contract ADRのreadinessも示さない。
+
 ## 12. Evidence record format
 
 一回のactual runごとに、`tools/run-business-procedure-gate-a.sh`が次を`gate-a-summary.json`とstepごとのlogへ書き出す。最低限:

@@ -3,7 +3,7 @@ set -uo pipefail
 
 # Lane C (Business Procedure) Gate A actual-execution runner.
 #
-# Executes Steps A0-A7 of
+# Executes Steps A0-A8 of
 #   plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md
 # against ONE revision R (the current HEAD of a clean checkout) and writes the
 # Evidence record (steps, exit codes, logs, summary JSON) outside the repository.
@@ -161,6 +161,22 @@ critical_preflight_and_triage() {
   fi
 }
 run_step A7 "critical Pressure preflight (exact names) + focused run" critical_preflight_and_triage
+
+# ---- A8 second realistic Reference baseline checker (RRB-P3) ----
+# The second Reference has no Application, so the baseline checker must report no diagnostic and
+# no Application Pattern row for either fixture. No access probe applies (there is no Datasource).
+second_reference_baseline() {
+  local fixture
+  for fixture in \
+    reference/business-system-design/second-corpus/make-to-order-production-run.json \
+    reference/business-system-design/second-corpus/finished-goods-stocking.json; do
+    echo "== $fixture"
+    go run ./tools/reference-business-procedure-check \
+      -workspace reference/workspace \
+      -fixture "$fixture" || return 1
+  done
+}
+run_step A8 "second realistic Reference baseline checker (RRB-P3)" second_reference_baseline
 
 finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 

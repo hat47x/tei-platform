@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "business-procedure-reference-set-v0",
+  "artifactRole": "reference-authoring-set-fixture",
+  "procedures": [
+    {
+      "id": "make-to-order.production-run",
+      "artifact": "make-to-order-production-run.json"
+    },
+    {
+      "id": "finished-goods.stocking",
+      "artifact": "finished-goods-stocking.json"
+    }
+  ],
+  "handoffs": [
+    {
+      "from": {
+        "procedure": "make-to-order.production-run",
+        "step": "PR-06"
+      },
+      "to": {
+        "procedure": "finished-goods.stocking",
+        "step": "ST-00"
+      },
+      "condition": "the released goods, in the quantity production confirmed, have been taken in charge by the receiving responsibility, so that accountability for the goods and for their count moves from production to the warehouse"
+    }
+  ]
+}

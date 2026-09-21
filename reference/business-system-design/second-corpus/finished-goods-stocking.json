@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "procedure": {
+    "id": "finished-goods.stocking",
+    "identityStatus": "reference-local-stable",
+    "purpose": "take released finished goods into stock under warehouse responsibility so that the stock record agrees with what has physically arrived and the goods can be committed to delivery",
+    "trigger": {
+      "status": "candidate",
+      "text": "finished goods released for stocking are waiting to be taken in charge"
+    },
+    "actor": {
+      "status": "candidate",
+      "label": "warehouse keeper"
+    }
+  },
+  "steps": [
+    {
+      "id": "ST-00",
+      "businessAction": "take the released goods in charge",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "ST-01",
+      "businessAction": "check what physically arrived against what production confirmed as completed",
+      "realization": "observation-boundary"
+    },
+    {
+      "id": "ST-02",
+      "businessAction": "put the accepted goods into their stock location",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "ST-03",
+      "businessAction": "record the stock movement and the stock state that results from it",
+      "realization": "manual-unresolved"
+    }
+  ]
+}

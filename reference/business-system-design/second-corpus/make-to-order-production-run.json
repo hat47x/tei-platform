@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "business-procedure-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "procedure": {
+    "id": "make-to-order.production-run",
+    "identityStatus": "reference-local-stable",
+    "purpose": "make the requested quantity of an ordered finished item against a work instruction, and establish by physical confirmation how much has actually been completed, keeping that fact separate from the instruction that asked for it and from the record made about it",
+    "trigger": {
+      "status": "candidate",
+      "text": "an accepted production need for a finished item that has to be made to order is waiting to be made"
+    },
+    "actor": {
+      "status": "candidate",
+      "label": "production floor lead"
+    }
+  },
+  "steps": [
+    {
+      "id": "PR-00",
+      "businessAction": "determine the finished item and the quantity that the production need requires",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "PR-01",
+      "businessAction": "make sure the materials the run needs are physically available to the work",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "PR-02",
+      "businessAction": "issue the work instruction that asks for the run",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "PR-03",
+      "businessAction": "carry out the manufacturing itself",
+      "realization": "manual-external-unresolved"
+    },
+    {
+      "id": "PR-04",
+      "businessAction": "establish by physical confirmation how much has actually been completed and is acceptable",
+      "realization": "observation-boundary"
+    },
+    {
+      "id": "PR-05",
+      "businessAction": "record the manufacturing completion that the confirmation supports",
+      "realization": "manual-unresolved"
+    },
+    {
+      "id": "PR-06",
+      "businessAction": "release the confirmed goods for stocking",
+      "realization": "manual-external-unresolved"
+    }
+  ]
+}

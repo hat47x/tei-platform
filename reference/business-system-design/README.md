@@ -136,6 +136,12 @@ order-entry.order-handling / BP-09
 
 このReferenceはhandoffをruntime Workflowへ変換しません。retry / timer / queue / scheduler等を含意しません。
 
+## `second-corpus/`
+
+`order_entry`とは独立した、二つ目のBusiness Procedure Referenceです（受注生産の製造と、完成品の入庫）。Applicationを参照しない二つのProcedureと、その間の責任の受け渡し（Handoff）一件、出典・fact・設計判断・未解決事項を分けて記録するseed ledgerを持ちます。
+
+同じloader、正規化Business model、D4導出、standalone Handoff source形式、baseline checkerへそのまま通ります。詳細、review状態、主張しないことは[`second-corpus/README.md`](second-corpus/README.md)を参照します。
+
 ## Review / approval continuity
 
 Reference-local Procedure keyはreview historyのtargetを束ねるためにも使います。
