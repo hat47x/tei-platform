@@ -4,7 +4,7 @@
 - Primary workstream: ISSUE-000040
 - Parent contract: `plan/GATE_B_TO_C_HANDOVER_CONTRACT.md`
 - Historical baseline: `B / R=e5231839a5dcc62cce1181a2731fcb7c70d16736`
-- Current S8a branchless candidate: `35a2c6d88521942b9e9038953496c69a07202e3a`
+- Current S8a branchless candidate: `decdb5c16d403e72e8ce12dcd62698d29b3ae40f`
 - Status: **preflight only; B2 / R2 not yet issued**
 - R2 assignment condition: S8a Driver source/evidence integrated, repository health PASS, clean stable revision
 

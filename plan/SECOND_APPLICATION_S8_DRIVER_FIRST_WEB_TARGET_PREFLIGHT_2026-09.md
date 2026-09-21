@@ -544,8 +544,8 @@ S9ではISSUE-000039のimpact analysisを再利用し、独自impact engineを�
 S8aのDriver pressureを、authoritative sourceを変更しないtest-only candidateとして作成した。
 
 ```text
-candidate commit = 35a2c6d88521942b9e9038953496c69a07202e3a
-base main        = 6284e323159297cde9ba3bb455dd5bca8f83ab17
+candidate commit = decdb5c16d403e72e8ce12dcd62698d29b3ae40f
+base main        = 50ce3bd6c334b0b3c6975f3a8e00981bc610f2bd
 remote branch    = none
 PR               = none
 main connection  = none
@@ -610,7 +610,7 @@ Rebase note:
 
 ```text
 source candidate = 015814af03e36859fbb4d5d896f26a9f4d4619b3
-current candidate = 35a2c6d88521942b9e9038953496c69a07202e3a
+current candidate = decdb5c16d403e72e8ce12dcd62698d29b3ae40f
 test blob         = a1fc1da3562090bc22af156934798b290f5dc95f (unchanged)
 main drift        = docs-only / non-conflicting
 ```
