@@ -260,7 +260,7 @@ Shared Acceptanceはまだ成立しておらず、authoritative destination sour
 
 Repository integration条件は、actual acceptで`-derived-out reference/world.json`を直接使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを生成し、golden check / repository health PASSまで同じRepository change内で完了すること。historical Gate B/C `B / R / T` はrevision-scoped Evidenceとして保持し、post-accept current Workspaceへcarry-forwardしない。
 
-acceptの帰結は、レビューで確認する。作成者が確認した事実は、acceptが`reference/workspace`へ3 fileを作ることと、`reference/workspace`のWorldを`reference/world.json`と比較するgolden test（`tools/reference-golden`、`internal/workspace/loader_test.go`）が存在することである。したがってacceptと同じ変更で`reference/world.json`を更新する必要が生じる見込みで（未実行）、Gate B / Gate Cが固定する`reference/workspace/**`（`canonical-world-invariant-R-to-T`）との関係の整理も要る。これらは未評価であり、acceptの前後どちらで扱うかを含めてレビューで確認する。
+独立レビューによりaccept後のRepository integration条件も評価済みである。actual acceptでは`-derived-out reference/world.json`を使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを再生成し、golden checkとrepository health PASSまで同じRepository changeで完了する。Gate B / Gate Cの`B / R / T`はrevision-scoped historical Evidenceであり、post-Gate-C current Referenceの進化を旧baselineへcarry-forwardしない。実行手順は`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`を正本とする。
 
 ## S4 full-validation correction
 
