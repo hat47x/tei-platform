@@ -4617,6 +4617,114 @@ canonical 11 exact blobs
 full checkoutまたはbyte-exact materializationが成立しないsessionではaggregate / repository healthを推測でPASS扱いせず、codeをmainへ統合しない。
 
 
+
+#### E1.30 latest-main refresh after Second Application mainline progress — 2026-09-22
+
+E1.29以後、Second Application / Shared Acceptance mainlineが進み、current mainは:
+
+```text
+c46eafe95c69d91c2d6f4d51c58697d0539db2e4
+```
+
+となった。
+
+E1.29 base `132da35b...` からcurrent mainまで:
+
+```text
+ahead        = 13 commits
+changed paths = 42
+canonical 11-path overlap = 0
+```
+
+をGit compareで確認した。
+
+current main上のcanonical path状態も再確認した。
+
+```text
+P1 shared validator 3 files              = not yet present
+Gate C audit main.go                      = pre-R7B blob
+R7B replay-plan main.go / main_test.go    = pre-R7B blobs
+R7B replay-audit 2 files                  = not yet present
+R7B repeatability 2 files                 = not yet present
+R7B operational runner                    = not yet present
+```
+
+したがってmainline側の13 commitはR7B canonical sourceを上書きしておらず、E1.21 credential-safe exact sourceをcurrent mainへそのまま再配置できる。
+
+current branchless packet:
+
+```text
+parent:
+  c46eafe95c69d91c2d6f4d51c58697d0539db2e4
+
+candidate:
+  a7aba7ba2ed3bda601608f9937d43bcca1d7acff
+
+tree:
+  8b96ed17026b1f06de1a93a92dd64361b301b691
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+candidate SHAそのものをauthorityにしない。integration sourceはE1.21で固定したexact blob集合である。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+current Evidence height:
+
+```text
+current-main source overlap check       = PASS
+latest-main exact candidate assembly    = PASS
+E1.21 exact P1 test x50                 = PASS
+E1.27 {P1,P2} exact closure x50         = PASS
+P3/P4/P5 exact focused Evidence         = previously obtained
+current P1-P5 aggregate focused rerun   = pending
+tools/repository-health-check.sh        = pending
+code integration                        = pending
+actual replay / repeatability Evidence  = pending
+```
+
+integration gateは変更しない。
+
+```text
+E1.21 exact 11 blobs on latest main
+  -> same working treeでP1-P5 aggregate focused rerun
+  -> bash -n exact runner
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+full checkoutまたはbyte-exact materializationが成立しないsessionでは、focused / health PASSを推測で補わずcodeをmainへ統合しない。
+
+
 #### E1.30 exact P1-P4 closure rerun — 2026-09-22
 
 E1.17以降のcredential-safe P1を、V2 replay audit P4のexact source/testと同一一時moduleへbyte-exactにmaterializeして依存closureを再実行した。
