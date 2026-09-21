@@ -5206,3 +5206,107 @@ actual replay / repeatability Evidence      = pending
 
 B4 must not reinterpret the workflow failure as source/test failure, and must not bypass Repository health by fast-forwarding or cherry-picking any branchless candidate. Documentation-only progress may be integrated while this gate remains blocked; the canonical 11 source paths stay untouched.
 
+
+
+
+#### B4 continuation — exact runner syntax closure and latest-main packet refresh — 2026-09-22
+
+The live runner allocation re-probe above remained unavailable for Repository health, but the first mandatory source gate does not require a full checkout. The exact operational runner bytes were therefore re-acquired from the canonical health packet and checked independently.
+
+Exact runner identity:
+
+```text
+path:
+  tools/run-first-web-target-r7b-replay.sh
+
+canonical Git blob:
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+
+source packet:
+  fa96801d40197e07a1d25e58bf14d07cfa9ff5f7
+```
+
+The connector-provided base64 bytes were decoded into an isolated local file. Before syntax checking, `git hash-object` was run over the decoded bytes.
+
+```text
+git hash-object:
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+
+expected:
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+
+byte identity:
+  PASS
+
+bash -n:
+  PASS
+```
+
+This closes the exact-runner syntax gate without claiming execution of the runner, Repository health, replay, or repeatability.
+
+While this check was in progress, parallel B4 work advanced main through PR #844:
+
+```text
+latest main:
+  d731c730fe0488450b202f7012a9c549821316c2
+
+advance from ebee11a7...:
+  2 commits
+
+changed paths:
+  plan/issue/000069-first-web-target-r7b-exact-t-replay.md
+
+canonical 11-path overlap:
+  0
+```
+
+The canonical 11 exact blobs were then placed over this latest main as a new branchless packet:
+
+```text
+parent:
+  d731c730fe0488450b202f7012a9c549821316c2
+
+branchless candidate:
+  c95232a93d48084f5e5f0ae13b668e9b50ca7912
+
+candidate tree:
+  adff524a5388270836b3bf38a7b32b3e3adcd066
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The candidate is not an integration authority and must not be merged, fast-forwarded, or cherry-picked as a shortcut. Its purpose is only to pin the exact current-main composition that a health-capable checkout must materialize and qualify.
+
+Before this documentation update, all 17 remote branches that were still at the prior convergence point were fast-forwarded to `d731c730...` with `force=false`. No unique branch work was overwritten and no new remote work branch was created.
+
+Updated B4 Evidence height:
+
+```text
+parallel-lane reconciliation               = PASS
+latest-main canonical 11-path overlap       = 0
+canonical 11 exact blobs                    = unchanged authority
+exact runner byte identity                  = PASS
+exact runner bash -n                        = PASS
+latest-main branchless packet               = c95232a9... (11 paths only)
+live GitHub runner allocation               = unavailable before observable steps
+tools/repository-health-check.sh            = pending mandatory gate
+code integration                            = blocked
+actual replay / repeatability Evidence      = pending
+```
+
+The remaining integration path is now narrower:
+
+```text
+health-capable full checkout on execution-time latest main
+  -> materialize the same canonical 11 exact blobs
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no canonical-path overlap recheck
+  -> integrate the qualified 11-path source change
+  -> converge existing branch refs to merged main without force
+  -> Packet M actual replay-plan materialization
+```
+
+No Source/Design Evidence is promoted beyond the level actually observed.
