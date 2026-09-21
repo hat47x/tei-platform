@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / executable health + Shared Acceptance compatibility + explicit human decision pending
+- Status: Revised review defined / executable pressure obtained and Shared Acceptance compatibility Preview PASS（2026-09-21） / explicit human decision pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`

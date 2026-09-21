@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const secondApplicationS5ExpectedProposalFingerprint = "b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2"
+const secondApplicationS5ExpectedProposalFingerprint = "c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d"
 
 type secondApplicationS5ReviewPacket struct {
 	ProposalFingerprint      string
@@ -39,6 +39,9 @@ func TestSecondApplicationS5SeparatesSemanticDiffFromSharedReuse(t *testing.T) {
 	got := secondApplicationS5Review(secondApplicationS4Composition(secondApplicationS3Decision()))
 
 	for _, want := range []string{
+		"semantic:repair_intake",
+		"semantic-data:repair_intake.intake",
+		"semantic-attribute:repair_intake.intake.customer_id",
 		"application:repair_intake",
 		"semantic-relation:repair_intake.intake.customer",
 		"application-pattern:repair_intake.customer_reference",
@@ -117,7 +120,7 @@ func TestSecondApplicationS5DoesNotGrantRuntimeAuthorityOrAuthorSource(t *testin
 }
 
 func secondApplicationS5Review(s4 secondApplicationS4CompositionCandidate) secondApplicationS5ReviewPacket {
-	payload := s4.ApplicationSource + "\n---\n" + s4.PatternSource
+	payload := s4.SemanticSource + "\n---\n" + s4.ApplicationSource + "\n---\n" + s4.PatternSource
 	sum := sha256.Sum256([]byte(payload))
 
 	return secondApplicationS5ReviewPacket{
@@ -127,6 +130,9 @@ func secondApplicationS5Review(s4 secondApplicationS4CompositionCandidate) secon
 		Decision:            "pending",
 		ReviewStatus:        "review-ready",
 		NewDestinationSubjects: []string{
+			"semantic:repair_intake",
+			"semantic-data:repair_intake.intake",
+			"semantic-attribute:repair_intake.intake.customer_id",
 			"application:repair_intake",
 			"semantic-relation:repair_intake.intake.customer",
 			"application-pattern:repair_intake.customer_reference",

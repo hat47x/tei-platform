@@ -1,6 +1,6 @@
 # Second Application Reference — S4 Full-Validation Preflight / Proposal Revision
 
-- Status: Revised Proposal defined / source-inspection preflight complete / executable pressure pending / Shared Acceptance not attempted
+- Status: Revised Proposal defined / source-inspection preflight complete / executable pressure obtained（2026-09-21） / Shared Acceptance not attempted
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Trigger: S6 preflight against current workspace Validation
@@ -98,7 +98,7 @@ workspace manifest変更、Persistence Mapping、Environment binding、Provider�
 
 次のhealth-capable executionではS3 decision pressure、S4 Semantic/Application/Pattern pressure、temporary workspace full validation、revised fingerprintをS5 pressureへ反映し、Repository health checkを通す。
 
-S5のrevised review contractは `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` に再生成した。ただしExecutable pressure未更新のため、Shared Acceptance eligibilityはまだ成立しない。
+S5のrevised review contractは `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md` に再生成した。ただしExecutable pressure未更新のため、Shared Acceptance eligibilityはまだ成立しない（2026-09-21更新: executable pressureは取得済み。`plan/SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md`「10. 実行記録」。Acceptance witnessは未成立）。
 
 ## 8. Acceptance boundary
 

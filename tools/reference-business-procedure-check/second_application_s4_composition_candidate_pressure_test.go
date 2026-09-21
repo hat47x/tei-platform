@@ -6,12 +6,14 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/database"
+	"tei/internal/semantic"
 	"tei/internal/syntax"
 )
 
 type secondApplicationS4CompositionCandidate struct {
 	Status                       string
 	SharedAcceptanceStatus       string
+	SemanticSource               string
 	ApplicationSource            string
 	PatternSource                string
 	AuthorizationRequirement     string
@@ -21,13 +23,49 @@ type secondApplicationS4CompositionCandidate struct {
 	SourceAuthoringAttempted     bool
 }
 
-func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
+func TestSecondApplicationS4ComposesSemanticFromS3Decisions(t *testing.T) {
 	s3 := secondApplicationS3Decision()
 	got := secondApplicationS4Composition(s3)
 
 	if got.Status != "proposal" || got.SharedAcceptanceStatus != "not-attempted" {
 		t.Fatalf("S4 crossed the Shared Acceptance boundary: %+v", got)
 	}
+
+	ns, err := syntax.NewParser(got.SemanticSource).ParseSemanticFile()
+	if err != nil {
+		t.Fatalf("S4 Semantic candidate did not parse with existing grammar: %v", err)
+	}
+	if string(ns.ID) != s3.SemanticNamespaceCandidate || len(ns.Data) != 1 {
+		t.Fatalf("destination Semantic drifted: %+v", ns)
+	}
+	data := ns.Data[0]
+	if string(data.ID) != s3.SemanticDataCandidate ||
+		len(data.Attributes) != 1 ||
+		string(data.Attributes[0].ID) != s3.CustomerIDAttributeCandidate ||
+		string(data.Attributes[0].TypeRef) != s3.CustomerIDAttributeType {
+		t.Fatalf("destination Data/attribute drifted: %+v", data)
+	}
+	if len(data.Relations) != 1 {
+		t.Fatalf("destination Relation count drifted: %+v", data.Relations)
+	}
+	relation := data.Relations[0]
+	if string(relation.ID) != s3.BusinessRelationCandidate ||
+		string(relation.Target) != s3.BusinessRelationTarget ||
+		string(relation.Cardinality) != s3.BusinessRelationCardinality ||
+		relation.Cardinality != semantic.CardinalityOne ||
+		len(relation.Keys) != 1 ||
+		string(relation.Keys[0].SourceAttribute) != s3.BusinessRelationKeySource ||
+		string(relation.Keys[0].TargetAttribute) != s3.BusinessRelationKeyTarget {
+		t.Fatalf("destination Relation/key drifted: %+v", relation)
+	}
+	if relation.ID == "sales.order.customer" || data.ID == "sales.order" {
+		t.Fatalf("origin-owned meaning leaked into S4 Semantic: %+v", data)
+	}
+}
+
+func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
+	s3 := secondApplicationS3Decision()
+	got := secondApplicationS4Composition(s3)
 
 	app, err := syntax.NewParser(got.ApplicationSource).ParseApplication()
 	if err != nil {
@@ -36,8 +74,10 @@ func TestSecondApplicationS4ComposesApplicationFromS3Decisions(t *testing.T) {
 	if string(app.ID) != s3.ApplicationIDCandidate {
 		t.Fatalf("Application ID drifted from S3: got=%q want=%q", app.ID, s3.ApplicationIDCandidate)
 	}
-	if len(app.SemanticUses) != 1 || app.SemanticUses[0] != "customer" {
-		t.Fatalf("shared Customer Semantic drifted: %+v", app.SemanticUses)
+	if len(app.SemanticUses) != 2 ||
+		string(app.SemanticUses[0]) != s3.SemanticNamespaceCandidate ||
+		app.SemanticUses[1] != "customer" {
+		t.Fatalf("Application semantic uses drifted (destination namespace, then shared Customer): %+v", app.SemanticUses)
 	}
 	if len(app.Databases) != 1 {
 		t.Fatalf("database requirements=%+v", app.Databases)
@@ -103,7 +143,18 @@ func TestSecondApplicationS4DoesNotCrossLaterAuthorityBoundaries(t *testing.T) {
 }
 
 func secondApplicationS4Composition(s3 secondApplicationS3DecisionPacket) secondApplicationS4CompositionCandidate {
+	semanticSrc := fmt.Sprintf(`namespace %s
+
+data Intake {
+    attribute customerId type %s
+    relation customer to %s %s
+        key %s -> %s
+}`, s3.SemanticNamespaceCandidate, s3.CustomerIDAttributeType,
+		s3.BusinessRelationTarget, s3.BusinessRelationCardinality,
+		s3.BusinessRelationKeySource, s3.BusinessRelationKeyTarget)
+
 	appSrc := fmt.Sprintf(`application %s {
+    uses semantic %s
     uses semantic customer
 
     database %s {
@@ -113,7 +164,7 @@ func secondApplicationS4Composition(s3 secondApplicationS3DecisionPacket) second
             contract master_data.customer ^2
         }
     }
-}`, s3.ApplicationIDCandidate, s3.DatasourceAliasCandidate)
+}`, s3.ApplicationIDCandidate, s3.SemanticNamespaceCandidate, s3.DatasourceAliasCandidate)
 
 	patternSrc := fmt.Sprintf(`pattern %s reference {
     relation %s
@@ -128,6 +179,7 @@ func secondApplicationS4Composition(s3 secondApplicationS3DecisionPacket) second
 	return secondApplicationS4CompositionCandidate{
 		Status:                       "proposal",
 		SharedAcceptanceStatus:       "not-attempted",
+		SemanticSource:               semanticSrc,
 		ApplicationSource:            appSrc,
 		PatternSource:                patternSrc,
 		AuthorizationRequirement:     s3.AuthorizationRequirement,

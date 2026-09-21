@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Freshness / Base Capture
 
-- Status: Revised Proposal freshness captured / executable pressure and Acceptance witness pending
+- Status: Revised Proposal freshness captured / executable pressure obtained（2026-09-21） / Acceptance witness pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Parent: `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_REVIEW_PACKET_2026-09.md`
@@ -180,7 +180,7 @@ proposalFingerprint       = captured
 reviewBase                = captured
 shared freshness          = captured
 source-inspection preflight = complete
-revised executable pressure = absent
+revised executable pressure = present（2026-09-21。S5 executable pressure packet「10. 実行記録」）
 acceptanceWitness         = absent
 decision                  = pending
 ```

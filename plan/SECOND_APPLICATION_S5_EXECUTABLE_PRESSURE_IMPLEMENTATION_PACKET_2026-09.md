@@ -1,13 +1,13 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Branchless executable-pressure candidate rebased on Shared Acceptance main / focused and health execution pending
+- Status: Applied to main / focused TestSecondApplication and reference-evidence runner PASS / repository health check PASS at the push / Shared Acceptance of the actual destination source not attempted
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Source-inspection base: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Authoritative destination source created: No
-- Executable Evidence obtained: No
-- Shared Acceptance established: No
+- Executable Evidence obtained: Yes（本文書「10. 実行記録」）
+- Shared Acceptance established: No（Previewは成立、explicit human Acceptanceは未成立）
 
 ## 1. 目的
 
@@ -108,10 +108,10 @@ negative-control source pressure  = pinned
 candidate runner bash -n          = PASS
 candidate runner blob match       = PASS
 current API/static source audit   = complete
-focused go test                  = not obtained
-reference evidence execution     = not obtained
-repository health check          = not obtained
-Executable Evidence              = absent
+focused go test                  = not obtained（→ 本文書「10. 実行記録」でPASS）
+reference evidence execution     = not obtained（→ 同PASS）
+repository health check          = not obtained（→ pushの直前にPASS）
+Executable Evidence              = absent（→ 同取得済み）
 ```
 
 である。gofmt PASSだけをexecutable-pressure PASSへ昇格しない。health-capable laneはcurrent main driftを先に確認し、必要ならcandidate内容をlatest mainへrebase/reconstructしたうえでfocused test / reference evidence / binding health checkを実行する。
@@ -695,7 +695,7 @@ mainが途中で進んだ場合はforce pushせず、rebase / relevant drift rev
 
 このpacketをmainへ置いても:
 
-- revised executable pressure = absent
+- revised executable pressure = present（「10. 実行記録」。2026-09-21に取得）
 - Shared Acceptance = absent
 - S6 authoritative authoring = blocked
 - Runtime authority = absent
@@ -703,3 +703,34 @@ mainが途中で進んだ場合はforce pushせず、rebase / relevant drift rev
 のままである。
 
 health-check PASS後もexplicit Acceptance witnessは独立条件として残す。一般的な作業継続指示をfingerprint `c18ae0f...` のAcceptanceへ読み替えない。
+
+## 10. 実行記録（2026-09-21）
+
+上記のcode deltaを、branchless candidate（`b38869a4...`。unreferencedのため、このclone側にはobjectが無い）ではなく、本文書§3〜§7のcompile-readyな記述から、current main上へ適用した。
+
+適用したpath（§1.1の6件）:
+
+- `second_application_s3_destination_decision_pressure_test.go`: destination Semantic decisionのmachine-readable化（8 field）と、それをassertする`TestSecondApplicationS3DecidesTheDestinationSemanticExplicitly`（namespace所有・`sales.*`の非混入・shared Customerがlinkのままであること）を追加した。
+- `second_application_s4_composition_candidate_pressure_test.go`: `SemanticSource`を追加してthree-source Proposalへ更新した。Semantic / Application / Patternを既存parser（`ParseSemanticFile` / `ParseApplication` / `ParseApplicationPattern`）で読み、Canonical identityをassertする。`SemanticUses`は`repair_intake`、`customer`の順で2件。sourceの可変部分はS3のfieldから生成し、固定文字列はData / Attribute / Relationのsymbolだけである。
+- `second_application_s4_full_validation_pressure_test.go`（新規）: 実際のReference Workspaceのtemporary copyへ3 sourceを書き、`workspace.Load` + `validation.Validate`のerrorを0件と要求する。negative controlは`replaceExactlyOnce`で置換対象が1件でなければsetupとして失敗させ（silent no-opを許さない）、`UNKNOWN_APPLICATION_PATTERN_RELATION`と`REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH`が通常のValidation diagnosticとして返ることを要求する。
+- `second_application_s5_freshness_capture_pressure_test.go`: freshness base constantを`c185937ab27a3a31332fefcd63ba5940b97b021e`へ更新した。
+- `second_application_s5_shared_acceptance_review_pressure_test.go`: payloadを`Semantic + "\n---\n" + Application + "\n---\n" + Pattern`、expected fingerprintを`c18ae0fd...`へ更新し、`NewDestinationSubjects`へ`semantic:repair_intake` / `semantic-data:repair_intake.intake` / `semantic-attribute:repair_intake.intake.customer_id`を追加した。
+- `tools/run-knowledge-portability-reference-evidence.sh`: gofmt対象へS3 / S4 composition / S4 full validation / S5 reviewを追加した。
+
+実行結果:
+
+```text
+gofmt -l tools/reference-business-procedure-check        = 差分なし
+go vet ./tools/reference-business-procedure-check         = PASS
+focused go test -run TestSecondApplicationS[345]          = 22 tests PASS
+  （名前指定の3件を含む）
+  TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation
+  TestSecondApplicationS4FullValidationRejectsUnknownRelation
+  TestSecondApplicationS4FullValidationRejectsQueryCardinalityMismatch
+tools/run-knowledge-portability-reference-evidence.sh     = PASS
+tools/repository-health-check.sh                          = pushの直前にPASS
+```
+
+freshness再確認: §2.2が列挙したshared / provenance / implementationの8 blob（`reference/workspace/semantic/customer/customer.tei`、`databases/master-data/contracts/customer.tei`、`applications/order-entry/patterns/customer-reference.tei`、`internal/validation/validation.go`、`application_pattern.go`、`reference_contract_query_cross.go`、`internal/workspace/loader.go`、`internal/syntax/parser.go`）は、current mainで全件同一のblob identityだった。
+
+境界: これはexecutable pressureの取得であり、Shared Acceptanceではない。§9のとおり、explicit Acceptance witnessは独立条件として残る。

@@ -1,34 +1,45 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 type secondApplicationS3DecisionPacket struct {
-	GateCEntryState             string
-	S1S2State                   string
-	ScenarioLabel               string
-	ApplicationIDCandidate      string
-	ApplicationDecisionBasis    string
-	ApplicationDecisionStatus   string
-	BusinessContext             string
-	BusinessRelationCandidate   string
-	PatternCandidate            string
-	DatasourceAliasCandidate    string
-	AuthorizationRequirement    string
-	AuthorizationPrincipalState string
-	AuthorizationResourceState  string
-	BusinessProcedureDecision   string
-	DevelopmentBindingPolicy    string
-	ProductionBindingPolicy     string
-	EnvironmentBindingSelected  bool
-	FirstTargetScope            string
-	AllowedOperation            string
-	SourceAuthoringAttempted    bool
-	AcceptanceAttempted         bool
-	EnvironmentBindingCreated   bool
-	TargetImplementationStarted bool
-	SharedAuthoritySubjects     []string
-	OriginProvenanceSubjects    []string
-	AuthorityLimits             []string
+	GateCEntryState              string
+	S1S2State                    string
+	ScenarioLabel                string
+	ApplicationIDCandidate       string
+	ApplicationDecisionBasis     string
+	ApplicationDecisionStatus    string
+	BusinessContext              string
+	BusinessRelationCandidate    string
+	SemanticNamespaceCandidate   string
+	SemanticDataCandidate        string
+	CustomerIDAttributeCandidate string
+	CustomerIDAttributeType      string
+	BusinessRelationTarget       string
+	BusinessRelationCardinality  string
+	BusinessRelationKeySource    string
+	BusinessRelationKeyTarget    string
+	PatternCandidate             string
+	DatasourceAliasCandidate     string
+	AuthorizationRequirement     string
+	AuthorizationPrincipalState  string
+	AuthorizationResourceState   string
+	BusinessProcedureDecision    string
+	DevelopmentBindingPolicy     string
+	ProductionBindingPolicy      string
+	EnvironmentBindingSelected   bool
+	FirstTargetScope             string
+	AllowedOperation             string
+	SourceAuthoringAttempted     bool
+	AcceptanceAttempted          bool
+	EnvironmentBindingCreated    bool
+	TargetImplementationStarted  bool
+	SharedAuthoritySubjects      []string
+	OriginProvenanceSubjects     []string
+	AuthorityLimits              []string
 }
 
 func TestSecondApplicationS3MakesExplicitDestinationDecisions(t *testing.T) {
@@ -53,6 +64,39 @@ func TestSecondApplicationS3MakesExplicitDestinationDecisions(t *testing.T) {
 		got.PatternCandidate != "repair_intake.customer_reference" ||
 		got.DatasourceAliasCandidate != "customer_master" {
 		t.Fatalf("destination-owned decisions are incomplete: %+v", got)
+	}
+}
+
+func TestSecondApplicationS3DecidesTheDestinationSemanticExplicitly(t *testing.T) {
+	got := secondApplicationS3Decision()
+
+	if got.SemanticNamespaceCandidate != "repair_intake" ||
+		got.SemanticDataCandidate != "repair_intake.intake" ||
+		got.CustomerIDAttributeCandidate != "repair_intake.intake.customer_id" ||
+		got.CustomerIDAttributeType != "customer.customer_id" ||
+		got.BusinessRelationTarget != "customer.customer" ||
+		got.BusinessRelationCardinality != "one" ||
+		got.BusinessRelationKeySource != "repair_intake.intake.customer_id" ||
+		got.BusinessRelationKeyTarget != "customer.customer.customer_id" {
+		t.Fatalf("destination Semantic decisions are incomplete or drifted: %+v", got)
+	}
+	for _, id := range []string{
+		got.SemanticDataCandidate,
+		got.CustomerIDAttributeCandidate,
+		got.BusinessRelationCandidate,
+		got.BusinessRelationKeySource,
+	} {
+		if id != got.SemanticNamespaceCandidate && !strings.HasPrefix(id, got.SemanticNamespaceCandidate+".") {
+			t.Fatalf("destination-owned identity %q is outside namespace %q", id, got.SemanticNamespaceCandidate)
+		}
+		if strings.HasPrefix(id, "sales.") {
+			t.Fatalf("origin sales.* identity leaked into the destination decision: %q", id)
+		}
+	}
+	if got.BusinessRelationTarget != "customer.customer" ||
+		got.CustomerIDAttributeType != "customer.customer_id" ||
+		got.BusinessRelationKeyTarget != "customer.customer.customer_id" {
+		t.Fatalf("shared Customer authority must stay a link, not a copy: %+v", got)
 	}
 }
 
@@ -140,29 +184,37 @@ func TestSecondApplicationS3KeepsFirstTargetReadOnlyAndAvoidsPrematureProcedure(
 
 func secondApplicationS3Decision() secondApplicationS3DecisionPacket {
 	return secondApplicationS3DecisionPacket{
-		GateCEntryState:             "entry-evidence-complete",
-		S1S2State:                   "source-defined",
-		ScenarioLabel:               "repair_intake-test-only",
-		ApplicationIDCandidate:      "repair_intake",
-		ApplicationDecisionBasis:    "explicit-s3-destination-decision",
-		ApplicationDecisionStatus:   "proposed-for-shared-acceptance",
-		BusinessContext:             "repair-intake",
-		BusinessRelationCandidate:   "repair_intake.intake.customer",
-		PatternCandidate:            "repair_intake.customer_reference",
-		DatasourceAliasCandidate:    "customer_master",
-		AuthorizationRequirement:    "required-current-authority-check",
-		AuthorizationPrincipalState: "unresolved",
-		AuthorizationResourceState:  "unresolved",
-		BusinessProcedureDecision:   "not-required-for-first-reference",
-		DevelopmentBindingPolicy:    "explicit-destination-binding-after-acceptance",
-		ProductionBindingPolicy:     "explicit-destination-binding-after-acceptance",
-		EnvironmentBindingSelected:  false,
-		FirstTargetScope:            "customer-id-lookup-result",
-		AllowedOperation:            "read-only-customer-find-by-id",
-		SourceAuthoringAttempted:    false,
-		AcceptanceAttempted:         false,
-		EnvironmentBindingCreated:   false,
-		TargetImplementationStarted: false,
+		GateCEntryState:              "entry-evidence-complete",
+		S1S2State:                    "source-defined",
+		ScenarioLabel:                "repair_intake-test-only",
+		ApplicationIDCandidate:       "repair_intake",
+		ApplicationDecisionBasis:     "explicit-s3-destination-decision",
+		ApplicationDecisionStatus:    "proposed-for-shared-acceptance",
+		BusinessContext:              "repair-intake",
+		BusinessRelationCandidate:    "repair_intake.intake.customer",
+		SemanticNamespaceCandidate:   "repair_intake",
+		SemanticDataCandidate:        "repair_intake.intake",
+		CustomerIDAttributeCandidate: "repair_intake.intake.customer_id",
+		CustomerIDAttributeType:      "customer.customer_id",
+		BusinessRelationTarget:       "customer.customer",
+		BusinessRelationCardinality:  "one",
+		BusinessRelationKeySource:    "repair_intake.intake.customer_id",
+		BusinessRelationKeyTarget:    "customer.customer.customer_id",
+		PatternCandidate:             "repair_intake.customer_reference",
+		DatasourceAliasCandidate:     "customer_master",
+		AuthorizationRequirement:     "required-current-authority-check",
+		AuthorizationPrincipalState:  "unresolved",
+		AuthorizationResourceState:   "unresolved",
+		BusinessProcedureDecision:    "not-required-for-first-reference",
+		DevelopmentBindingPolicy:     "explicit-destination-binding-after-acceptance",
+		ProductionBindingPolicy:      "explicit-destination-binding-after-acceptance",
+		EnvironmentBindingSelected:   false,
+		FirstTargetScope:             "customer-id-lookup-result",
+		AllowedOperation:             "read-only-customer-find-by-id",
+		SourceAuthoringAttempted:     false,
+		AcceptanceAttempted:          false,
+		EnvironmentBindingCreated:    false,
+		TargetImplementationStarted:  false,
 		SharedAuthoritySubjects: []string{
 			"semantic-data:customer.customer",
 			"semantic-type:customer.customer_id",

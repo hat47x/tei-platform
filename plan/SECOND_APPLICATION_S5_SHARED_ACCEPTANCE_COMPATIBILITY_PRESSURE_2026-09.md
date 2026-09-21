@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Compatibility Pressure
 
-- Status: Current Shared Acceptance coverage gap identified / compatibility Preview not yet executable
+- Status: Coverage gap closed（2026-09-21）: typed multi-layer operations implemented and the read-only Preview against the actual reference workspace PASS / Acceptance not attempted
 - Date: 2026-09-21
 - Primary workstream: ISSUE-000040
 - Shared boundary owner: ISSUE-000027
