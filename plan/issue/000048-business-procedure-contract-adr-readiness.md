@@ -89,7 +89,7 @@ ISSUE-000042のoperational checklistを本Issueへ再掲しない。checklistの
 Pre-ADR Auditのcurrent判定をそのまま担当する。
 
 - **A. actual Repository runner green — 充足（2026-09-20、R = `e2856e6`、[Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§13）** — 次を同一revision `R`でactual実行した: `gofmt` / `go vet` / `go test` / checkerに加え、source-uniqueness、source-root membership、candidate-only fresh-process、second-corpus non-inference Pressureを同一revision `R`でactual実行する。実行手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)に従い、exact revision `R`・runner kind・environmentを実行時に記録する
-- **B. independent second realistic TEI-original responsibility transfer未充足** — ISSUE-000050では製造・在庫連携のsecond-corpus research target、provenance、Evidence nature、RRB-P1 acceptance適用方法まで整理済み。ただしRRB-P1を満たすaccepted independent Business source、Procedure / Step、自然に生じたresponsibility transfer、`from/to/condition` positive Evidenceは未成立
+- **B. independent second realistic TEI-original responsibility transfer — Evidence取得済み（2026-09-21、R = `82e4301`、[ISSUE-000050](000050-second-realistic-handoff-corpus.md)実施記録）。ただし作成者self-reviewのみで、独立reviewとPre-ADR Auditによる再判定は未実施** — `order_entry`から独立した製造・入庫のReference（二つのProcedureと、自然に生じた責任のHandoff一件）をauthorし、RRB-P1、RRB-P2（source / test level。項目4は未確認）、RRB-P3（Gate A A1〜A8 PASS、critical 39件）のEvidenceを取得した。Handoff一般の妥当性、独立reviewを経たこと、Contract ADR readyは主張しない
 
 Blocker Bは「Handoff fixtureが二つあること」ではない。Handoff検証を目的に業務を逆算せず、独立したBusiness needから自然に生じた責任継続でcurrent H1/R3の一般性をpressureできることを要求する。
 
@@ -128,7 +128,7 @@ Gate A green前には:
 - `from/to/condition`をpositive Evidenceとしてauthorしない
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
-したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。current execution priorityは**Blocker B**である。
+したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。current execution priorityは、Pre-ADR Auditによる再判定（独立reviewの要否の判断を含む）である。
 
 ## ADR前に要求するEvidence
 

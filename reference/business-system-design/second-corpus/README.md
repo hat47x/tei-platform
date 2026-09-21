@@ -54,7 +54,7 @@ RRB-P1の14項目と、`ISSUE-000050`のseed review checklist（1〜8）に対�
 | 13 fake Application / Capability / Data identityが無い | `TestSecondRealisticReferenceCarriesNoFakeRealization`、baseline checker |
 | 14 Handoffを捏造していない | ledgerの`handoff`（自然に生じる根拠と、導出元ではないものの列挙） |
 
-RRB-P2（source / test level）は、同じloader・正規化model・D4導出・standalone Handoff source形式・baseline checkerへ通し、Handoffが隣接・actor差・正の物理Observationから導かれないこと、stale / 欠落 / 空のendpointがfail closedすること、conditionがBusiness meaningとして無損失に保持されることを確認している。O1は、protected-target roleが反復しない（Application Patternを参照しない）ため適用せず、target-role taxonomyも増やしていない。RRB-P3（actual execution）は`tools/run-business-procedure-gate-a.sh`のA7（critical test manifest）とA8（この二つのfixtureのbaseline checker）で確認する。結果は`plan/issue/000050-second-realistic-handoff-corpus.md`に記録する。
+RRB-P2（source / test level）は、同じloader・正規化model・D4導出・standalone Handoff source形式・baseline checkerへ通し、Handoffが隣接・actor差・正の物理Observationから導かれないこと、stale / 欠落 / 空のendpointがfail closedすること、conditionがBusiness meaningとして無損失に保持されることを確認している。O1は、protected-target roleが反復しない（Application Patternを参照しない）ため適用せず、target-role taxonomyも増やしていない。一方、Data-state / ownership境界のcross-check（RRB-P2項目4）は、Data identityが未解決（U-6）で照合する対象authorityが無いため未確認である。RRB-P3（actual execution）は`tools/run-business-procedure-gate-a.sh`のA7（critical test manifest）とA8（この二つのfixtureのbaseline checker）で確認する。R = `82e4301`での結果と、確認していない点は`plan/issue/000050-second-realistic-handoff-corpus.md`の実施記録に記録した。
 
 ## 主張しないこと
 

@@ -115,7 +115,7 @@ condition
 
 Current missing Evidenceは主にこれである。
 
-R2 negative proof後も:
+R2 negative proof後（2026-09-21より前）は:
 
 ```text
 accepted independent Business seed
@@ -289,7 +289,7 @@ Gate A actual execution Evidenceは、当初は未取得だった（2026-09-20�
 
 既存search正本とISSUE-000050は、actual green前にsecond fixture / accepted Handoffを製造しないことを固定している。
 
-ISSUE-000050では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みだが、accepted independent Business seedや`from/to/condition`は未成立である。
+ISSUE-000050では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みだが、accepted independent Business seedや`from/to/condition`は未成立である。（2026-09-21: seedとHandoffをauthorし、Evidenceを取得した。[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§17）
 
 PR #596のR2は、この順序を崩さずに実施できるnegative proofである。Gate A green前に許されるのは、accepted Handoffを作ることではなく、既存authorityから不正な導出を除外し、candidate / unresolved境界を明確にすることまでである。
 
@@ -354,4 +354,4 @@ Blocker B
   = independent second realistic TEI-original Handoff
 ```
 
-Contract ADRはBlocker A / Bの両方が充足するまでNot Readyを維持する（Blocker Aは2026-09-20に充足。残るのはBlocker B）。Fresh-process feasibilityはADR前Required Evidenceのままだが、current material blockerではGate A actual executionへ包含し第三blockerとして二重計上しない。
+Contract ADRはBlocker A / Bの両方が充足するまでNot Readyを維持する（Blocker Aは2026-09-20に充足。Blocker Bは2026-09-21にEvidenceを取得済みで、Auditによる再判定が残る）。Fresh-process feasibilityはADR前Required Evidenceのままだが、current material blockerではGate A actual executionへ包含し第三blockerとして二重計上しない。

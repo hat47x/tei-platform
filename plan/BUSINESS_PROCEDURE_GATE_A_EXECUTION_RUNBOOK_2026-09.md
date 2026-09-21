@@ -455,9 +455,14 @@ Gate A actual Evidence
   = record: Pre-ADR Audit section 13 /
     GitHub Release business-procedure-gate-a-evidence-R-e2856e6
 
+Gate A actual Evidence（A8とcritical 13件を加えた後の再実行）
+  = PASS（R = 82e430109f8f02944519738045f3d6c0bef4f295、2026-09-21）
+  = record: Pre-ADR Audit section 17 /
+    GitHub Release business-procedure-gate-a-evidence-R-82e4301
+
 Pre-ADR
   = Not Ready
-  = remaining material blocker: Blocker B（independent second realistic Handoff）
+  = Blocker B: Evidence取得済み（2026-09-21、作成者self-review）。Auditによる再判定が残る
 ```
 
 Gate A Evidenceは、そのrevision `R`のmechanical Evidenceである。判定対象のtreeが変わった場合は、`tools/run-business-procedure-gate-a.sh`で新しいrevisionについて取り直す。

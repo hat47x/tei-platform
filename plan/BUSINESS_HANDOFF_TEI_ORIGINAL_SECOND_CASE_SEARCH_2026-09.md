@@ -415,7 +415,7 @@ new qualifying second Handoff candidate
   = none
 ```
 
-したがってBlocker Bは未充足のままである。
+したがってBlocker Bは、既存corpusの検索からは未充足のままである（2026-09-21に、既存corpusではなくTEI-originalの二つ目のReferenceをauthorしてEvidenceを取得した。[Pre-ADR Audit](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§17）。
 
 ### 5.2 Existing-corpus search reopen trigger
 

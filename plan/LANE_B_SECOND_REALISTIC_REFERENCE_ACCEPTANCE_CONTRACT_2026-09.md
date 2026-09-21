@@ -296,7 +296,7 @@ E7-09  no premature concept expansion
 E7-10  accepted source / reload / Shared Acceptance when production meaning requires it
 ```
 
-## 8. current status — 2026-09-11
+## 8. current status — 2026-09-21（2026-09-11の記録を更新）
 
 ```text
 B-F19a external provenance-backed source availability
@@ -306,20 +306,21 @@ manufacturing / inventory candidate corpus
   selected
   provenance / non-copying boundary prepared
   candidate design question prepared
+  authored（reference/business-system-design/second-corpus、2026-09-21）
 
 Business design quality model
   prepared
 
 B-F19b
-  RRB-P1  Not yet achieved in repository
-  RRB-P2  Not achieved
-  RRB-P3  Not achieved
+  RRB-P1  Evidence取得（2026-09-21、作成者self-review。独立review未実施）
+  RRB-P2  source / test levelで実施（項目4は対象authorityが無く未確認。達成とみなすかはAuditが判断）
+  RRB-P3  Gate A A1〜A8 PASS（R = 82e4301、2026-09-21）
 
 current order_entry
   remains first accepted small Business Reference
 ```
 
-ISSUE-000050でcorpus選定・provenance・pre-authoring review準備まで進んでも、accepted TEI-native Business sourceが無い限りP1へ上げない。
+ISSUE-000050でcorpus選定・provenance・pre-authoring review準備まで進んでも、accepted TEI-native Business sourceが無い限りP1へ上げない。2026-09-21にTEI-nativeなsourceがRepositoryに成立したため、上の状態へ更新した（詳細は[ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md)の実施記録）。
 
 External source availabilityや文書上のscenario outlineだけを理由にP1へ上げない。
 

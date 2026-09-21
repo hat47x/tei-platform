@@ -58,7 +58,7 @@ Business Procedure Contract ADR
   = Not Ready
 ```
 
-Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、残るのはBlocker Bです。
+Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、Blocker Bは2026-09-21にEvidenceを取得しました。残るのはPre-ADR Auditによる再判定です。
 
 ```text
 Blocker A — 充足（2026-09-20）
@@ -66,12 +66,12 @@ Blocker A — 充足（2026-09-20）
   including source-uniqueness / source-root membership /
   candidate-only fresh-process / second-corpus non-inference Pressure
 
-Blocker B
+Blocker B — Evidence取得済み（2026-09-21、R = 82e4301、作成者self-review。再判定は未実施）
   independent second realistic TEI-original Handoff
   from / to / condition sufficiency
 ```
 
-現在のexecution priorityはBlocker Bです。`ISSUE-000050`では製造・在庫連携のsecond-corpus research targetとprovenance boundaryまでは選定済みですが、accepted independent Business seed / Procedure / Handoff positive Evidenceはまだ成立していません。Gate Aは2026-09-20にgreenとなったため、独立したBusiness need / Reference seedを先にauthorし、それから必要な場合だけsecond Handoffを置く段階に入りました。
+現在のexecution priorityは、Blocker Bの再判定です。`ISSUE-000050`で`order_entry`から独立した製造・入庫のsecond Referenceをauthorし、責任のHandoffを一件置き、source / test levelと、同一revision `R = 82e4301`のactual execution（Gate A A1〜A8、critical 39件PASS）のEvidenceを取得しました（2026-09-21）。ただし作成者によるself-reviewだけで、独立reviewは未実施です。Handoff一般の妥当性は主張せず、Contract ADRは**Not Ready**のままです。
 
 Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
 

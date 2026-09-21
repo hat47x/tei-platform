@@ -1,6 +1,6 @@
 # Design Synthesis Manufacturing Actuality / Handoff Proof Reference — 2026-09
 
-状態: **Lane D / R2 negative proof evaluation / second realistic Reference未成立 / 新規Product contract未採用**
+状態: **Lane D / R2 negative proof evaluation / second realistic Reference未成立（R2評価時点。2026-09-21にISSUE-000050でauthor済み） / 新規Product contract未採用**
 
 ## 1. 目的
 
@@ -310,6 +310,8 @@ accepted TEI-native second Business sourceも未成立である。
 
 ここを「negative pressureが十分だからHandoffあり」と変換しない。
 
+2026-09-21追記: 上の判定はR2評価時点のものであり、ここでは変更しない。その後ISSUE-000050で、独立したBusiness needからsecond Referenceをauthorし、Handoffを一件置いた（[実施記録](issue/000050-second-realistic-handoff-corpus.md)）。
+
 ### P6-06 — second corpus Handoffのfrom / toを特定できるか
 
 結果: **unresolved**
@@ -609,3 +611,5 @@ unresolved
 accepted second Business sourceが成立した時点でR2を再実行し、P5/P6のpositive proofが増えるかを見る。
 
 現時点ではAを先に行う方が、架空のsecond sourceを作らずDesign Synthesisの実装価値を確認できる。
+
+2026-09-21追記: second Business source（self-reviewのみ）が成立したため、Bの再実行が可能になった。ただし未実施である。

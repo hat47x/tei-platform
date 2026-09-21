@@ -388,7 +388,7 @@ existing-corpus search
 
 その後、ISSUE-000050では**受注生産を背景とする在庫・製造連携の小型TEI-original scenario**をsecond-corpus research targetとして選定し、provenance / reuse boundary / target scope / fact-candidate-unresolved分類まで整理した。
 
-ただし現在も:
+ただし2026-09-21より前の状態として（この節の状態は§17で更新した）:
 
 ```text
 accepted independent Business need / Reference seed
@@ -549,7 +549,7 @@ Fresh-process / source-uniqueness testsはsource-level実装済みで、Gate A a
 - candidate-only reload / normalize feasibility
 - second realistic **TEI-original independent** Handoffで`from/to/condition` sufficiency確認
 
-Existing-corpus searchはclosed。ISSUE-000050でsecond-corpus research targetは選定済みだが、accepted Business seed / Handoff authorityは未成立。Gate A actual green後、独立Business requirement / Reference seedを先にauthorしてsecond caseを成立させる。
+Existing-corpus searchはclosed。ISSUE-000050でsecond-corpus research targetは選定済みだが、accepted Business seed / Handoff authorityは未成立。Gate A actual green後、独立Business requirement / Reference seedを先にauthorしてsecond caseを成立させる。（2026-09-21: seedとHandoffをauthorし、Evidenceを取得した。§17）
 
 ### Gate D — O1
 
@@ -646,8 +646,9 @@ second realistic Handoff
   = second-corpus research target selected
   = provenance / reuse / fact-candidate-unresolved boundary established
   = P5/P6 negative proof confirms non-inference / actuality boundary
-  = accepted independent Business seed not yet authored
-  = from / to / condition positive Evidence unresolved
+  = independent Business seed authored（2026-09-21、作成者self-review。独立review未実施）
+  = from / to / condition source/test-level losslessness + actual execution PASS（R = 82e4301、§17）
+  = Contract ADR readiness re-judgment pending
 
 Contract ADR
   = Not Ready
@@ -663,13 +664,13 @@ Blocker A — 充足（2026-09-20、R = e2856e6）
   actual Repository runner green
   including source-uniqueness and fresh-process candidate-only Pressure
 
-Blocker B
+Blocker B — Evidence取得済み（2026-09-21、R = 82e4301、§17）。作成者self-reviewのみ、再判定は未実施
   independent Business requirementから生じた
   second realistic TEI-original Handoffで
   from / to / condition sufficiency確認
 ```
 
-**実質的なContract ADR blockerは、Blocker Bだけまで縮約した（Blocker Aは2026-09-20に充足）。**
+**実質的なContract ADR blockerは、Blocker Bだけまで縮約した（Blocker Aは2026-09-20に充足）。Blocker Bは2026-09-21にEvidenceを取得したが、再判定が済むまで充足とは扱わない。**
 
 次はblockerではない:
 
@@ -700,4 +701,61 @@ source-uniqueness PASS -> 主張（A7）
 
 ただしこれはそのrevisionのmechanical Evidenceに限る。他のrevisionへ引き継がない。
 
-Contract ADRは**Not Ready**を維持する。Blocker Aは充足したため、次の状態遷移は、independent second realistic TEI-original Handoff（Blocker B）が揃った場合だけ再判定する。
+Contract ADRは**Not Ready**を維持する。Blocker Aは充足し、Blocker BのEvidenceは2026-09-21に取得した（§17）。次の状態遷移は、Blocker Bの再判定である。
+
+
+## 17. Blocker B — second realistic Reference Evidence（2026-09-21）
+
+Gate A green後のauthoring protocol（§11）に従い、独立したBusiness needのseedを先にauthorし、そこから自然に生じた責任のHandoffを一件置いた。作業と対応づけの詳細は[ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md)の「実施記録」を正とし、ここには判定に必要な事実だけを置く。
+
+```text
+Evidence nature
+  = source/test-level cross-view pressure + actual Repository execution
+  = author self-reviewed（独立review未実施）
+
+revision
+  R = 82e430109f8f02944519738045f3d6c0bef4f295
+
+source
+  reference/business-system-design/second-corpus/
+  make-to-order.production-run / PR-06
+    -> finished-goods.stocking / ST-00
+
+actual execution
+  tools/run-business-procedure-gate-a.sh
+  A1-A8 exit 0、gateAPassed = true
+  A7: critical 39/39 present、39/39 PASS（+13 TestSecondRealisticReference*）
+  A8: 二つのfixtureがbaseline checkerでdiagnosticなし
+```
+
+保管先: GitHub Release [`business-procedure-gate-a-evidence-R-82e4301`](https://github.com/hat47x/tei-platform/releases/tag/business-procedure-gate-a-evidence-R-82e4301)（tagは`R`を指す）のasset `tei-lane-c-gate-a-evidence-R-82e4301.tar.gz`、SHA-256 `3a433835241b82b564e47cb5eb48e63c24f7a5afd3797ae1090afa9add058d7a`。展開して`MANIFEST.sha256`で各fileを再照合できる。§13のR = `e2856e6`の記録は書き換えない。本revisionでも同じrunnerがA1〜A7をPASSしたが、Blocker Aの判定を置き換えるものではない。
+
+§11が「新caseで確認する」とした五点の結果:
+
+| 点 | 結果 |
+| --- | --- |
+| natural-language condition sufficiency | conditionはcanonical、正規化model、standalone sourceを無損失に往復した。このfixtureのconditionの語彙とtarget triggerとの一致をtestで固定したが、意味上の言い換えを検出する仕組みではない |
+| trigger vs condition separation | 二つのProcedureはtriggerとconditionを別々に持ち、conditionはtarget triggerと文字列として一致しない |
+| actor/job change independence | actorが異なる場合に、explicit sourceが無ければHandoffが導出されないことを確認した。**actorが同じ場合にtransferを否定しないこと**は、両Procedureのactorが異なるため確認していない |
+| event/document identity necessity | conditionはevent / documentのidentityなしで保持できた。conditionを支えるevent / documentはauthorしていない（未解決U-5）ため、識別の要否には圧力を掛けていない |
+| thin Handoff vs full Business Flow necessity | 一件の物理的な引き渡しと責任の移転は、from / to / conditionだけで失われなかった。情報 / document / partyのflowを含む業務は扱っていない |
+
+具体的なlossは出なかったため、Contract candidateのreopen triggerは成立していない。ただし上のとおり圧力を掛けていない点があり、それらが不要であることの証明ではない。RRB-P2の項目4（Data-state / ownership境界のcross-check）も、対象のData authorityが無いため未確認である。
+
+Blocker Bについて次を区別する。
+
+```text
+Evidence取得
+  = 完了（R = 82e4301）
+
+独立review
+  = 未実施（作成者とreviewerが同一のAI）
+
+Auditによる再判定
+  = 未実施
+
+Contract ADR
+  = Not Ready（維持）
+```
+
+再判定では、self-reviewだけを根拠にBlocker Bを充足とするか、独立review（別の生成AI等）を先に求めるかを決める。二例目も同じ作成者が同じprotocolでauthorしたため、二例あることをHandoff一般の妥当性の証明として扱わない。

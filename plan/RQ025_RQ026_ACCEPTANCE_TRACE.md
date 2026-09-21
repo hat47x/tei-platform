@@ -310,7 +310,7 @@ RRB-P2 P1 sourceをsource/test cross-viewへ統合
 RRB-P3 actual execution-qualified breadth Evidence
 ```
 
-ISSUE-000050はprovenance source、Evidence nature、Business Seed Acceptance Contractまで整理したが、accepted Business seedはまだauthorしていない。したがってP1 / P2 / P3は未達である。
+ISSUE-000050はprovenance source、Evidence nature、Business Seed Acceptance Contractまで整理したが、accepted Business seedはまだauthorしていない。したがってP1 / P2 / P3は未達である。（2026-09-21追記: seedをauthorし、P1 / P2（source / test level）/ P3のEvidenceを取得した。作成者self-reviewのみ。[ISSUE-000050](issue/000050-second-realistic-handoff-corpus.md)の実施記録）
 
 ## 11. Current findings / status
 
@@ -334,10 +334,10 @@ Business design quality
 second realistic corpus
   manufacturing / inventory pressure selected
   Business Seed Acceptance Contract prepared
-  accepted TEI-native seedは未author
+  TEI-native seedをauthor済み（2026-09-21、作成者self-review。独立review未実施）
 
 RRB-P1 / P2 / P3
-  not achieved
+  Evidence取得済み（2026-09-21、R = 82e4301。P2の項目4は未確認。ISSUE-000050実施記録）
 
 actual gofmt / go vet / go test / checker green
   unresolved

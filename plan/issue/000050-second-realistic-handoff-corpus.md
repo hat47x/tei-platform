@@ -384,6 +384,83 @@ Contract ADR blocker B
 
 したがって現時点はRRB-P1へ向けたsource / review preparationであり、`Reference breadth Evidence established`やContract ADR readyを主張しない。
 
+（2026-09-21: この節は2026-09-10時点のincrementの記録である。「閉じない」に挙げた項目は、下の「実施記録」のincrementで扱った。）
+
+## 実施記録 — 2026-09-21
+
+Gate A green後の順序（独立needのseed、責任の確認、最小のProcedure、自然に生じた場合だけ明示的なHandoff、from / to / conditionの無損失確認）に従い、二つ目のReferenceをauthorし、同じrevisionでactual runnerを実行した。
+
+### authorしたもの
+
+`reference/business-system-design/second-corpus/`（詳細は[`README.md`](../../reference/business-system-design/second-corpus/README.md)）。
+
+| 対象 | 内容 |
+| --- | --- |
+| Procedure 1 | `make-to-order.production-run`（受注生産の製造一回。指示、物理的な製造、物理的な確認、完了記録、入庫への引き渡しを別のStepとして持つ） |
+| Procedure 2 | `finished-goods.stocking`（引き渡された完成品の引き受け、到着確認、入庫、記録） |
+| Handoff | `make-to-order.production-run / PR-06` から `finished-goods.stocking / ST-00`。conditionは、引き渡された品が生産側の確認した数量で受け入れ側の責任に引き受けられ、品と数量への責任が生産から倉庫へ移ること |
+| seed ledger | 出典8件（すべてdesign-pressure-only、コピー無し、license類推無し）、source-backed fact、TEI-original設計判断、未解決事項9件、cross-viewの問い2件、Handoffが自然に生じる根拠と導出元ではないもの |
+
+二つのProcedureは、それぞれ自分のBusiness needを持ち、Handoffを取り除いても成立する。どのStepもApplication Pattern / Data / Relation / Validation / Capabilityを参照せず、Observationのidentityも持たない（fake realizationを作っていない）。
+
+### RRB-P1
+
+14項目すべてについて、作成者が確認箇所を対応づけた（対応表は`second-corpus/README.md`）。機械的に確認できる項目（ledgerの区分、コピー無し、fake realization無し、trigger / actorが`candidate`のまま、Handoffの導出元）は`TestSecondRealisticReference*`が保持する。
+
+**この確認は作成者自身によるself-reviewである。独立したreviewは未実施**（ledgerの`review`に`pending`として残している）。step順序はTEI-originalなauthoring判断であり、accepted operational sequenceではない（未解決事項U-3）。
+
+### RRB-P2（source / test level）
+
+同じloader、正規化Business model、D4導出、standalone Handoff source形式、baseline checkerへ通した。項目ごとに、確認したことと確認していないことを分ける。
+
+| Contract項目 | 二つ目のReferenceでの扱い |
+| --- | --- |
+| 1 fake Function / Capabilityなしで手作業・物理・外部Actionを保持 | 確認した。fake realizationが無く（Application文脈、Pattern / Data / Relation / Validation / Capability参照、`application-use`の約束のいずれも無い）、baseline checkerの全Stepが`noApplicationFunction`である |
+| 2, 3 既存authorityへのexplicit ref、Pattern-owned meaningの非複製 | 該当なし（既存のSemantic / Applicationを参照しない） |
+| 4 Data-state / ownership境界をaccepted authorityからcross-check | **未確認**。Data identityは未解決U-6で、照合する対象authorityが無い |
+| 5 projectionでunknownをknownへ丸めない | 確認した。baseline checkerはPattern由来のmeaning行を出さず、Step単位のexplicit meaning行（Data / Relation / Validation / Capability）も空である |
+| 6, 9 指示 / 記録 / 物理的actuality / 継続の非同一視 | 確認した。指示、物理的な製造、物理的な確認、完了記録を別Stepにし、確認と記録を一つのStepへ畳まない（realizationの区分とBusiness Action文言について、このfixtureをtestで固定した）。Application Command resultは存在しないため、Command resultとの分離は対象外 |
+| 7 HandoffをRuntime Workflowへ変換しない | fixtureはstrict decodeを通り、runtime / workflow系のfieldを持たない |
+| 8 H1/R3 PASSをfull Business Flow / DFDへ読み替えない | 主張しない（`second-corpus/README.md`） |
+| 10, 11 Handoffを物理Observation / actor差 / Step adjacencyから生成しない | 確認した。隣接するStep、異なるactor、正のphysical Observationが揃っていても、explicit Handoff sourceを外すと正規化modelにもD4 modelにもHandoffは現れない（導出がそれらを入力にしない）。Function sequence / Lifecycle transitionは入力に無く、対象外 |
+| 12 conditionを継続predicateとして保持し、Observation identityへ畳まない | 確認した。conditionはcanonical、正規化model、standalone sourceを無損失に往復する。あわせて、このfixtureのconditionがtarget triggerと文字列として一致せず、Step identityやObservation語彙を含まないことをtestで固定した。意味上の言い換えを検出する仕組みではない |
+| 13 D3 / D4 / S4-A / H1 / R3 / C1を同じ基準で比較 | 下記 |
+| 14 O1 | 適用しなかった（protected-target roleが反復しない。Application Patternを参照しない）。target-role taxonomyは増やしていない |
+| 15 新しいdirect Data / Relation ref | 発生しなかった（D4がfail closedする条件が生じていない） |
+| 16 新しい不足のA-set / E7への再監査 | 下記 |
+
+項目13の内訳:
+
+- **H1 / R3**: from / to / conditionを、正規化したhandoff-only relationとstandalone Handoff sourceの両方で無損失に保持できることを確認した。
+- **D3 / D4**: 正規化Business modelとD4導出は二つ目のReferenceでも成立した。ただしdirect Data / Relation refを一つも持たない（U-6）ため、D4のref kindの十分性を積極的に押してはいない。確認したのは、unknownをrefへ昇格しない側だけである。
+- **S4-A**: Handoff endpointをProcedure key + Step keyで解決し、古いendpoint、未知のProcedure、空のcondition、重複したrelationをfail closedにすることを確認した。二つのProcedureはStep IDの接頭辞（`PR-` / `ST-`）が異なるため、別ProcedureでStep IDが衝突するcaseは確認していない。
+- **C1**: どのProcedureも単一のApplication ownerへ戻さずに説明できる（baseline checkerが`application`を出さない）。ただしApplicationを一つも持たないため、複数のApplicationを跨ぐProcedureへの圧力は掛かっていない。
+
+項目16: このReferenceから、既存のfrom / to / condition、Procedure-scoped address、handoff-only relationで吸収できない不足は出なかった。[Pre-ADR Audit](../BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)§11が挙げた確認点のうち、条件の自然言語による十分性、triggerとconditionの分離、actor差からの非導出は確認した。一方、**actorが同じ場合にtransferを否定しないこと**（両Procedureのactorは異なる）、**conditionを支えるevent / documentのidentityの要否**（U-5で未author）、**actor / responsibility detailをstructuredにする要否**（actorは`candidate`のラベルのまま）は、不足が出なかったのではなく**圧力を掛けていない**。「Reopen trigger」が成立しなかった根拠にはするが、これらが不要であることの証明にはしない。
+
+### RRB-P3（actual execution）
+
+Repositoryへpushした`R = 82e430109f8f02944519738045f3d6c0bef4f295`を、pristineなdetached cloneで`tools/run-business-procedure-gate-a.sh`により実行した（Ubuntu 22.04 / WSL2、`go1.25.14 linux/amd64`、`GOENV=off GOWORK=off GOFLAGS=`）。
+
+- Step A1〜A8がすべてexit 0、`gateAPassed = true`、`failedSteps = []`
+- A7: critical manifest 39件のexact nameがすべて存在し、focused run 39件すべてがPASS（従来の26件と`TestSecondRealisticReference*`の13件）
+- A8（新設）: 二つのfixtureをbaseline checkerへ通し、blocking diagnosticなし、Application Function rowなし
+- Evidence: GitHub Release [`business-procedure-gate-a-evidence-R-82e4301`](https://github.com/hat47x/tei-platform/releases/tag/business-procedure-gate-a-evidence-R-82e4301)（tagは`R`を指す）のasset `tei-lane-c-gate-a-evidence-R-82e4301.tar.gz`（6,009 bytes）、SHA-256 `3a433835241b82b564e47cb5eb48e63c24f7a5afd3797ae1090afa9add058d7a`。再ダウンロードしてSHA-256と`MANIFEST.sha256`を照合した。DSN / credential / secretが含まれないことをgrepで確認した
+
+作成時の補助検証として、seed data（fixtureとledger）へ35通りの変異を入れ、すべてtestが失敗することを確認した。この変異検証はrunnerのEvidenceには含めない。
+
+### 主張しないこと
+
+- **独立reviewを経たこと**（作成者とself-reviewerが同一のAI）
+- Handoff一般の妥当性。二例あることは一般化の証明ではない。二例目も同じ作成者が同じprotocolでauthorしており、独立した第三者の業務設計ではない
+- 実際のApplication / Data / Runtimeが存在すること
+- full Business Flow / DFDのConformance
+- Contract ADRのready（判定はPre-ADR Auditが持つ）
+
+### Blocker Bの状態
+
+RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-000048のBlocker Bへ、revision `R`とEvidence natureを渡した。RRB-P2は項目4が未確認のまま残るため、達成とみなしてよいかもAuditが判断する。**Pre-ADR Auditによるreadiness再判定は未実施**であり、Contract ADRは**Not Ready**を維持する。再判定では、self-reviewだけを根拠にするか、独立review（別の生成AI等）を求めるかをAuditが決める。
+
 ## 完了条件
 
 - [x] `order_entry`と独立したcorpusを1件選定し、出典・利用条件・対象範囲を記録した
@@ -391,13 +468,15 @@ Contract ADR blocker B
 - [x] Lane B RRB-P1 acceptance条件を製造・在庫候補へどう適用するか整理した
 - [x] R2 negative proofでsystem result / actuality / Handoff non-inferenceの主要short-circuitをreviewした
 - [x] Gate A green後にseed candidateをreviewするissue-local checklistを準備した
-- [ ] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた（前提のGate A greenは2026-09-20に充足）
-- [ ] seedのknown / accepted / derived / proposal / unresolvedをreviewできる形で記録した
-- [ ] responsibility transferが自然に存在する場合、`from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した
-- [ ] 元資料に無いidentity / actor / sequenceを補完していないことを確認した
-- [ ] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した
-- [ ] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した
-- [ ] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
+- [x] actual Gate A green後に、Handoff検証とは独立したBusiness need / Reference seedをRRB-P1として成立させた（前提のGate A greenは2026-09-20に充足。2026-09-21、作成者self-review。独立reviewは未実施）
+- [x] seedのknown / accepted / derived / proposal / unresolvedをreviewできる形で記録した（`second-corpus/seed-ledger.json`。`derived`と`proposals`は意図して空）
+- [x] responsibility transferが自然に存在する場合、`from` / `to` / `condition`がaccepted TEI-original sourceからlosslessに写せることを確認した（authorしたTEI-original sourceについて。独立acceptanceは未実施）
+- [x] 元資料に無いidentity / actor / sequenceを補完していないことを確認した（trigger / actorは`candidate`のまま。step順序はTEI-originalな判断で、operational sequenceとしては未解決U-3）
+- [x] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した（R = `82e4301`のA7）
+- [x] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した（R = `82e4301`のA7）
+- [x] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
+- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した
+- [ ] Pre-ADR AuditがBlocker Bを再判定した（判定はAuditが持つ）
 
 ## 次のincrement
 
@@ -422,6 +501,8 @@ Gate A前のresearchに具体的gapが無ければ、**追加文書を作らず�
 6. 確定できない項目はunresolvedのまま保持するnegative PressureをISSUE-000042側へ渡す
 7. source/test-level integration後、actual Repository runnerでsystem result / Observation / adjacency / actor差からHandoffを生成しないことを確認する
 8. RRB-P2 / P3とblocker Bを閉じられるEvidence natureに到達した時だけISSUE-000048へhandoffする
+
+2026-09-21: 1〜4、6、7は「実施記録」のとおり実施し、8はISSUE-000048への引き渡しとして行った。5（conditionを支えるEvidenceを既存mechanismで追えるかの確認）は、そのevent / documentをauthorしていない（U-5）ため実施していない。blocker Bを閉じるか（再判定）はPre-ADR Auditが持つ。
 
 ## Reopen trigger
 

@@ -126,7 +126,7 @@ Target側でbaseline meaningを変更する必要がある場合、Web固有fiel
 4. [`issue/000042-business-procedure-cross-view-reference.md`](issue/000042-business-procedure-cross-view-reference.md) — Lane C Reference / Pressure inventory
 5. [`LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md`](LANE_B_SECOND_REALISTIC_REFERENCE_ACCEPTANCE_CONTRACT_2026-09.md) — second realistic ReferenceのRRB-P1 / P2 / P3 acceptance / maturity条件
 6. [`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md) / [`issue/000048-business-procedure-contract-adr-readiness.md`](issue/000048-business-procedure-contract-adr-readiness.md) — Contract ADR readiness
-7. [`issue/000050-second-realistic-handoff-corpus.md`](issue/000050-second-realistic-handoff-corpus.md) — acceptance contractを製造 / 在庫candidateへ適用し、independent Business seedからsecond realistic Handoff Evidenceを取得する計画
+7. [`issue/000050-second-realistic-handoff-corpus.md`](issue/000050-second-realistic-handoff-corpus.md) — acceptance contractを製造 / 在庫candidateへ適用し、independent Business seedからsecond realistic Handoff Evidenceを取得する計画（2026-09-21: 実施済み。実施記録あり）
 
 現在の品質上の中心は、Business Procedureを「完全に埋めたflow」として作ることではありません。
 
