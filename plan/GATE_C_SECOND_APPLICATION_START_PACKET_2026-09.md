@@ -455,9 +455,19 @@ S1 / S2は、
 
 でSource-definedまで進んだ。
 
-現在も第二Canonical Application source、Shared Acceptance、Environment binding、Target実装は作成していない。
+現在も第二Canonical Applicationのauthoritative destination source、Environment binding、Target実装は作成していない。Shared Acceptanceのactual Decisionも未成立である。
 
-S3はSource-defined後、S6 preflightでdestination Relation owner / keyをaddendumした。旧S4 2-source Proposalはparser上成立したがfull workspace Validationに必要なdestination Semantic Relation sourceを欠くためAcceptance前にsupersededした。current revised Proposalは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`、fingerprint `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` である。旧S5 review / freshnessはhistorical recordへ戻した。次はhealth-capable環境でGo Source pressureをrevised Proposalへ追随させ、S5 reviewを再生成する。Shared Acceptance、authoritative destination source、Environment binding、Target実装はいずれも未成立である。
+S3はSource-defined後、S6 preflightでdestination Relation owner / keyをaddendumした。旧S4 2-source ProposalはAcceptance前にsupersededし、current revised Proposalは `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`、fingerprint `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d` である。
+
+2026-09-21時点で、revised executable pressure、multi-layer Shared Acceptance実装、actual `reference/workspace` read-only Preview、別生成AIによる独立レビュー（`review-clear-with-conditions`）まで完了した。required pre-Acceptance fixは無い。残るS5停止条件はexact `c18ae...`に対するexplicit human Acceptance decisionだけである。
+
+Acceptance実行契約:
+- `plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`
+
+Acceptance成功後のS6 Source / reload / validation契約:
+- `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
+
+一般的な作業継続指示をAcceptance witnessへ読み替えない。
 
 ## 12. Start Packet完了条件
 

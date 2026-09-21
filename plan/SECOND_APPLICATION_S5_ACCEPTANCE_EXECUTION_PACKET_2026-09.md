@@ -336,3 +336,13 @@ T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe
 ```
 
 Do not relabel the post-Acceptance current Workspace as the old B/R/T baseline. If a future Target / Gate needs the new Second Application meaning as a baseline, issue a successor baseline / Evidence at that future revision.
+
+## 10. S6 handoff
+
+S5 integration commitが成功した後のnormal Workspace reload / Source Index / golden / shared-authority確認は:
+
+- `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
+
+を正本とする。
+
+S6は別のauthoring経路ではなく、accepted sourceがAcceptance toolやexploration index無しで通常TEI sourceとして自立することを確認するEvidence段階である。
