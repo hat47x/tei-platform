@@ -58,7 +58,7 @@ Business Procedure Contract ADR
   = Not Ready
 ```
 
-Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、Blocker Bは2026-09-21にEvidenceを取得しました。残るのはPre-ADR Auditによる再判定です。
+Lane Cの作業正本は`ISSUE-000048`で、現在は**In Progress**です。Material blockerは当初二つでしたが、Blocker Aは2026-09-20に充足し、Blocker Bは2026-09-21にEvidenceを取得しました。残るのは、別の生成AIによる独立reviewと、その後のPre-ADR Auditによる再判定です。
 
 ```text
 Blocker A — 充足（2026-09-20）
@@ -71,7 +71,7 @@ Blocker B — Evidence取得済み（2026-09-21、R = 82e4301、作成者self-re
   from / to / condition sufficiency
 ```
 
-現在のexecution priorityは、Blocker Bの再判定です。`ISSUE-000050`で`order_entry`から独立した製造・入庫のsecond Referenceをauthorし、責任のHandoffを一件置き、source / test levelと、同一revision `R = 82e4301`のactual execution（Gate A A1〜A8、critical 39件PASS）のEvidenceを取得しました（2026-09-21）。ただし作成者によるself-reviewだけで、独立reviewは未実施です。Handoff一般の妥当性は主張せず、Contract ADRは**Not Ready**のままです。
+現在のexecution priorityは、Blocker Bの再判定です。`ISSUE-000050`で`order_entry`から独立した製造・入庫のsecond Referenceをauthorし、責任のHandoffを一件置き、source / test levelと、同一revision `R = 82e4301`のactual execution（Gate A A1〜A8、critical 39件PASS）のEvidenceを取得しました（2026-09-21）。ただし作成者によるself-reviewだけで、独立reviewは未実施です。利用者の方針（2026-09-21）として、再判定は別の生成AIによる独立レビューの後に行います。Handoff一般の妥当性は主張せず、Contract ADRは**Not Ready**のままです。
 
 Lane Cの判定正本は[`BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md`](../plan/BUSINESS_PROCEDURE_CANONICAL_CONTRACT_PRE_ADR_AUDIT_2026-09.md)、actual execution手順は[`BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md`](../plan/BUSINESS_PROCEDURE_GATE_A_EXECUTION_RUNBOOK_2026-09.md)です。
 
@@ -269,7 +269,7 @@ First Targetは実装済みで、actual clean Target run、Visual capture、fina
 
 ## Studio / Authoring
 
-Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。実際の`reference/workspace`へのSecond Application compositionのPreviewはPASSしていますが、Acceptは実行していません（人のAcceptance decisionが必要）。
+Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。実際の`reference/workspace`へのSecond Application compositionのPreviewはPASSしていますが、Acceptは実行していません（人のAcceptance decisionが必要）。 Second Applicationの改訂版Proposal（`c18ae0fd…`）は、実際のReferenceへのread-only Previewが全stage PASSしていますが、Acceptanceは未実施です。利用者の方針（2026-09-21）として、別の生成AIによる独立レビューの後にacceptします（[`ISSUE-000040`](../plan/issue/000040-semantic-component-composition.md)）。
 
 Gate C後の最初のStudio Referenceは`ISSUE-000046`です（In Progress。UI・Relation変更は未着手）。
 

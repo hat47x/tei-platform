@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / executable pressure obtained and Shared Acceptance compatibility Preview PASS（2026-09-21） / explicit human decision pending
+- Status: Revised review defined / executable pressure obtained and Shared Acceptance compatibility Preview PASS（2026-09-21） / explicit human decision pending。利用者の方針（2026-09-21）: 別の生成AIによる独立レビューの後にAcceptする（レビューは未実施）
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -228,6 +228,8 @@ Acceptance authorityを持つactorのexplicit witnessを要求する。witness�
 へ結び付ける。
 
 一般的な「作業を進める」「次へ進む」という実行指示は、このexact Proposalへのaccepted / rejected Decisionとして扱わない。
+
+2026-09-21、利用者の方針: Acceptanceは別の生成AIによる独立レビューの後に行う。これはwitnessの前に置く手順の決定であり、それ自体はwitnessではない。レビュー後にacceptを実行する時、上のwitness項目を[ISSUE-000040](issue/000040-semantic-component-composition.md)へ記録する。
 
 ## 8.1 Shared Acceptance implementation compatibility — 2026-09-21
 

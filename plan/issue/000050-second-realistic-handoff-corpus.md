@@ -459,7 +459,7 @@ Repositoryへpushした`R = 82e430109f8f02944519738045f3d6c0bef4f295`を、prist
 
 ### Blocker Bの状態
 
-RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-000048のBlocker Bへ、revision `R`とEvidence natureを渡した。RRB-P2は項目4が未確認のまま残るため、達成とみなしてよいかもAuditが判断する。**Pre-ADR Auditによるreadiness再判定は未実施**であり、Contract ADRは**Not Ready**を維持する。再判定では、self-reviewだけを根拠にするか、独立review（別の生成AI等）を求めるかをAuditが決める。
+RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-000048のBlocker Bへ、revision `R`とEvidence natureを渡した。RRB-P2は項目4が未確認のまま残るため、達成とみなしてよいかもAuditが判断する。**Pre-ADR Auditによるreadiness再判定は未実施**であり、Contract ADRは**Not Ready**を維持する。利用者の方針（2026-09-21）により、再判定は**別の生成AIによる独立レビューの後**に行い、self-reviewだけを根拠にしない。
 
 ## 完了条件
 
@@ -475,7 +475,7 @@ RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-00004
 - [x] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した（R = `82e4301`のA7）
 - [x] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した（R = `82e4301`のA7）
 - [x] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
-- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した
+- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した（方針は2026-09-21に決定済み。未実施）
 - [ ] Pre-ADR AuditがBlocker Bを再判定した（判定はAuditが持つ）
 
 ## 次のincrement

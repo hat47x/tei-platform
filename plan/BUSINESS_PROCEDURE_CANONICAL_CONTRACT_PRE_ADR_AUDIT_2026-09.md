@@ -758,4 +758,4 @@ Contract ADR
   = Not Ready（維持）
 ```
 
-再判定では、self-reviewだけを根拠にBlocker Bを充足とするか、独立review（別の生成AI等）を先に求めるかを決める。二例目も同じ作成者が同じprotocolでauthorしたため、二例あることをHandoff一般の妥当性の証明として扱わない。
+利用者の方針（2026-09-21）により、再判定は別の生成AIによる独立reviewの後に行う。self-reviewだけを根拠にBlocker Bを充足とはしない。二例目も同じ作成者が同じprotocolでauthorしたため、二例あることをHandoff一般の妥当性の証明として扱わない。

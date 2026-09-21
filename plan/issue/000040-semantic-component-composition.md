@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — executable pressure obtained（2026-09-21） / multi-layer Shared Acceptance Preview implemented and PASS against the actual reference workspace / only the explicit human Acceptance of `c18ae...` remains before S6
+- 状態: In Progress — executable pressure obtained（2026-09-21） / multi-layer Shared Acceptance Preview implemented and PASS against the actual reference workspace / only the explicit human Acceptance of `c18ae...` remains before S6（利用者の方針、2026-09-21: 別の生成AIによる独立レビューの後にAcceptする。レビューは未実施）
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -246,6 +246,10 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 2026-09-21更新: 2は成立した。`tools/reference-shared-acceptance`が型付きoperation `add-data` / `add-application` / `add-reference-pattern`を扱い、実際の`reference/workspace`（base revision `sha256:f70da9b64a5b…`）に対する`c18ae...`のread-only Previewが全stage PASSした（fingerprint・差分・impact・unresolvedは[実装記録](../SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md)）。1も成立した: `tools/reference-business-procedure-check`のS3 / S4 / S5 review / freshness pressureを改訂版3-source Proposalへ更新し、temporary workspaceへのfull-workspace Validation（positive 1件とnegative control 2件）を追加して、focused `TestSecondApplication...`・reference-evidence runner・repository health checkがPASSした（[実行記録](../SECOND_APPLICATION_S5_EXECUTABLE_PRESSURE_IMPLEMENTATION_PACKET_2026-09.md)「10. 実行記録」）。残る停止条件は3だけで、Previewもexecutable pressureも人のAcceptanceへ読み替えない。
 
 Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。PreviewをAcceptanceへ読み替えず、一般的な作業継続指示もProposal採用Decisionへ読み替えない。
+
+**Acceptanceの進め方（利用者の方針、2026-09-21）**: exact `c18ae...`のAcceptanceは、**別の生成AIによる独立レビューの後**に行う。レビューが済むまで`accept`は実行しない。作成者（`claude-sonnet-5`）のself-reviewは独立レビューの代わりにしない。レビューの指摘は、accept前に対応するか、理由つきで見送る。レビュー結果とAcceptance decision（exact `c18ae...`、判断、その時点のrevision、残るunresolved）は、このIssueへ追記する。この方針は「レビューの後にacceptする」という順序の決定であり、レビュー結果が出る前のacceptを許すものではない。
+
+acceptの帰結は、レビューで確認する。作成者が確認した事実は、acceptが`reference/workspace`へ3 fileを作ることと、`reference/workspace`のWorldを`reference/world.json`と比較するgolden test（`tools/reference-golden`、`internal/workspace/loader_test.go`）が存在することである。したがってacceptと同じ変更で`reference/world.json`を更新する必要が生じる見込みで（未実行）、Gate B / Gate Cが固定する`reference/workspace/**`（`canonical-world-invariant-R-to-T`）との関係の整理も要る。これらは未評価であり、acceptの前後どちらで扱うかを含めてレビューで確認する。
 
 ## S4 full-validation correction
 

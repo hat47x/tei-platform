@@ -128,7 +128,7 @@ Gate A green前には:
 - `from/to/condition`をpositive Evidenceとしてauthorしない
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
-したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。current execution priorityは、Pre-ADR Auditによる再判定（独立reviewの要否の判断を含む）である。
+したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。current execution priorityは、別の生成AIによる独立review（利用者の方針、2026-09-21）と、その後のPre-ADR Auditによる再判定である。
 
 ## ADR前に要求するEvidence
 
