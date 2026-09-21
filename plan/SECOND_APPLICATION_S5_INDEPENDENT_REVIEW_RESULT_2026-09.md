@@ -140,7 +140,7 @@ actual acceptで `reference/workspace`へ3 filesが追加されると、current 
 
 `internal/workspace/loader_test.go` と `tools/reference-golden` はcurrent Workspaceとgoldenの一致を要求するため、accepted sourceとgolden更新を同じRepository integration changeで整合させる必要がある。
 
-一方、Shared Acceptance CLIの `-derived-out` は現在existing artifactをdirect `os.WriteFile` で書き、source rollback pathはderived fileをrestoreしない。
+Review時点ではShared Acceptance CLIの `-derived-out` がexisting artifactをdirect `os.WriteFile` で書くことをtool-level riskとして指摘した。その後main `f6163a944415f866c44e8d47141caf10333b311b` でderived artifact writeは`writeFileAtomic`へ修正され、write failure時は既存artifactを変えずacceptをrefuseし、authoritative sourceもrollbackする。
 
 したがってactual Acceptanceで:
 
@@ -170,7 +170,7 @@ required integration sequence:
 
 4〜7で失敗した場合は、pre-accept revisionへsource / goldenをすべてrestoreしてから再試行する。
 
-これはProposal-level blockerではなく、Acceptance後のRepository integration conditionである。
+これはProposal-level blockerではなく、Acceptance後のRepository integration conditionである。tool-level atomic-write findingは実装修正済みだが、Repository goldenのownershipを明確に保つため、Second Applicationでは引き続き`-derived-out reference/world.json`を使わず`reference-golden -write`を正本とする。
 
 ### R7 — Gate B / Gate C historical baseline
 
@@ -223,3 +223,28 @@ actualAccept                  = not executed
 ```
 
 このレビュー結果自体はhuman Acceptance witnessではない。
+
+
+## 5. Post-review Shared Acceptance requalification
+
+Independent review後、Shared Acceptanceにはaccepted Decision recordとatomic derived-artifact writeが追加された。
+
+- successful acceptは `.tei/decisions/<content-sha256>.json` を残す。
+- `.tei/` はmanaged sourceではなく、record作成・削除はmodel revisionを変えない。
+- `decisions` はcurrent authoritative sourceと照合し、`current/superseded` と `intact/diverged` を報告する。
+- unreadable recordはfail closedし、rejectはrecordを作らない。
+- derived artifact writeはatomic化され、既存artifactを破損させるreview findingは修正済み。
+
+これらはProposal identity、typed delta、Preview fingerprint、authoritative source edit setを変えない。
+
+Second Application integrationではDecision recordを3 source + goldenと同じcommitに含め、後段integration失敗でsourceをrollbackする場合はその試行のDecision recordも削除する。
+
+Requalification result:
+
+```text
+review result             = review-clear-with-conditions
+post-review drift         = compatible
+tool-level derived risk   = fixed
+decision record           = non-authoritative evidence
+explicit human Acceptance = still required
+```

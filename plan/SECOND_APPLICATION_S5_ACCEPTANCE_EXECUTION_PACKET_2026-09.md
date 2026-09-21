@@ -4,6 +4,7 @@
 - Primary workstream: ISSUE-000040
 - Proposal fingerprint: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
 - Independent review: completed — `review-clear-with-conditions`
+- Post-review Shared Acceptance drift: decision-record extension + atomic derived-artifact fix requalified through `f6163a944415f866c44e8d47141caf10333b311b`; reviewed Proposal / Preview identities unchanged
 - Required pre-Acceptance fixes: none
 - Human Acceptance decision: **still required**
 - This document is an execution contract, **not** an Acceptance witness.
@@ -235,6 +236,16 @@ reference/workspace/applications/repair-intake/application.tei
 reference/workspace/applications/repair-intake/patterns/customer-reference.tei
 ```
 
+The accept output must contain a non-empty `recordPath` under `.tei/decisions/`. Verify it with:
+
+```bash
+go run ./tools/reference-shared-acceptance decisions \
+  -workspace reference/workspace \
+  -out /tmp/tei-second-application-decision-index.json
+```
+
+The matching record must be `accepted`, `current`, and `intact`, with candidate fingerprint `sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11` and model revision after `sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762`.
+
 No Environment / Provider / Permission / Persistence Mapping source is authorized by this Acceptance.
 
 ## 6. Golden integration condition
@@ -274,7 +285,9 @@ All must PASS before commit / push.
 
 The Acceptance tool itself rolls back source writes when its own post-write Conformance fails.
 
-If a later step in §6 fails, return the working tree to `$PRE_ACCEPT_HEAD` before retrying. The only intended new source paths are the three paths in §5.
+If a later step in §6 fails, return the working tree to `$PRE_ACCEPT_HEAD` before retrying. In addition to the three authoritative source files, remove the exact Decision record created by this accept attempt.
+
+Copy the exact `recordPath` returned by the accept result into `DECISION_RECORD_PATH` and require it to begin with `.tei/decisions/`.
 
 A safe explicit rollback is:
 
@@ -282,11 +295,13 @@ A safe explicit rollback is:
 rm -f \
   reference/workspace/semantic/repair-intake/intake.tei \
   reference/workspace/applications/repair-intake/application.tei \
-  reference/workspace/applications/repair-intake/patterns/customer-reference.tei
+  reference/workspace/applications/repair-intake/patterns/customer-reference.tei \
+  "reference/workspace/$DECISION_RECORD_PATH"
 
 rmdir reference/workspace/applications/repair-intake/patterns 2>/dev/null || true
 rmdir reference/workspace/applications/repair-intake 2>/dev/null || true
 rmdir reference/workspace/semantic/repair-intake 2>/dev/null || true
+rmdir reference/workspace/.tei/decisions 2>/dev/null || true
 
 git restore --source="$PRE_ACCEPT_HEAD" -- \
   reference/world.json \
@@ -302,7 +317,7 @@ If any additional path is modified, inspect it before cleanup; do not use a broa
 After all checks PASS:
 
 1. re-fetch / `git pull --rebase` only if doing so does not mix an uncommitted Acceptance working tree; if main moved, first compare/reconcile deliberately;
-2. commit the accepted three source files + matching golden as one semantic integration unit;
+2. commit the accepted three source files + matching golden + the accepted Decision record as one integration unit;
 3. run the binding repository health check again immediately before push if code/source changed after the previous run;
 4. push direct-to-main without force;
 5. do not create a new remote work branch;
@@ -322,6 +337,8 @@ baseModelRevision:
 Acceptance candidate fingerprint:
 modelRevisionAfter:
 accepted source paths:
+decision record path:
+decision record verification:
 golden update result:
 reference-golden verification:
 reference evidence runner:

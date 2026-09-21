@@ -265,6 +265,8 @@ R6が併せて指摘したtool側の欠陥（派生物の書き出しだけが�
 
 Repository integration条件は、actual acceptで`-derived-out reference/world.json`を直接使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを生成し、golden check / repository health PASSまで同じRepository change内で完了すること。historical Gate B/C `B / R / T` はrevision-scoped Evidenceとして保持し、post-accept current Workspaceへcarry-forwardしない。
 
+後続のShared Acceptance更新により、successful acceptは`.tei/decisions/<sha>.json`へaccepted Decisionを非authoritative Evidenceとして記録する。このrecordはmanaged sourceでもmodel revisionでもない。Second Applicationでは3 authoritative source + regenerated golden + exact Decision recordを同一integration unitへ含め、後段integration失敗でpre-acceptへ戻す場合はその試行のrecordも削除する。独立レビュー後のこの差分は再qualification済みで、review結論を変更しない。
+
 S6はAcceptance sourceをもう一度別経路でauthorする段階ではなく、accepted 3-source compositionが通常Workspaceとして自立することを確認するEvidence段階とする。normal `tei validate`、Workspace model revision、`reference/world.json`、Source Index 6 subjects、shared authority / Environment不変を確認し、その後だけS7 Environment Binding Proposalへ進む。正本は `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`。
 
 S7 preflightでは、current development / productionが既に `master_data.dev` / `master_data.prod`（definition `master_data`, provider `oracle`）を持ち、`tei.reference.providers` bundleがOracle providerを供給していることを確認した。したがってS6 complete後の最小Environment候補は `repair_intake.customer_master` を既存instanceへbindする2行であり、新Database instance / Provider / Permission / Resource grantを先行作成しない。exact S7 Proposal fingerprint / base revisionはS6完了後に固定する。

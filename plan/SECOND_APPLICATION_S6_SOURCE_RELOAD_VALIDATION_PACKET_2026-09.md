@@ -36,6 +36,14 @@ matching derived golden:
 reference/world.json
 ```
 
+non-authoritative accepted Decision Evidence:
+
+```text
+reference/workspace/.tei/decisions/<decision-record-sha256>.json
+```
+
+The Decision record is not managed source and does not participate in the Workspace model revision.
+
 この段階で新規作成してはいけないもの:
 
 - Environment binding
@@ -85,6 +93,9 @@ baseModelRevision
 acceptanceCandidateFingerprint
 modelRevisionAfter
 acceptedSourcePaths
+decisionRecordPath
+decisionRecordStatus
+decisionRecordSourceEdits
 referenceGoldenResult
 repositoryHealthResult
 retainedUnresolved
@@ -122,6 +133,27 @@ modelRevision = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71ea
 ```
 
 これはS5 Previewの `modelRevisionAfter` とexact一致しなければならない。
+
+## 5.1 Accepted Decision reachability
+
+Verify that the accepted Decision is reachable without the originating conversation:
+
+```bash
+go run ./tools/reference-shared-acceptance decisions \
+  -workspace reference/workspace \
+  -out /tmp/tei-second-application-decision-index.json
+```
+
+The record matching candidate fingerprint `sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11` must report:
+
+```text
+decision = accepted
+status = current
+sourceEdits = intact
+modelRevisionAfter = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+```
+
+This record is Evidence, not authority. Accepted meaning must still reload from the three TEI source files if the record is ignored or removed.
 
 ## 6. Canonical World / golden reproduction
 
@@ -290,6 +322,7 @@ expected content change:
 A reference/workspace/semantic/repair-intake/intake.tei
 A reference/workspace/applications/repair-intake/application.tei
 A reference/workspace/applications/repair-intake/patterns/customer-reference.tei
+A reference/workspace/.tei/decisions/<decision-record-sha256>.json
 M reference/world.json
 ```
 
@@ -339,6 +372,7 @@ S6 accepted sourceが:
 - [ ] explicit human Acceptance witnessがISSUE-000040に記録済み
 - [ ] Shared Acceptance actual accept成功
 - [ ] accepted source 3 filesがauthoritative Workspaceに存在
+- [ ] accepted Decision recordが`current` / `intact`として機械到達でき、record無しでもaccepted meaning / model revisionがsourceから自立する
 - [ ] `reference/world.json`をaccepted sourceから正規再生成
 - [ ] normal `tei validate` PASS
 - [ ] current model revision = Preview `modelRevisionAfter`
