@@ -4475,3 +4475,54 @@ actual replay / repeatability      = pending
 ```
 
 このclosure PASSはfull Repository healthの代替ではない。次のgateはcanonical P1-P5 exact sourceを同一working treeへmaterializeした5-package aggregate focused rerunであり、その後にfull checkout上の `tools/repository-health-check.sh` を要求する。
+
+
+#### E1.28 post-closure current-main packet — 2026-09-21
+
+E1.27のexact `{P1,P2}` closure PASS後、同じcredential-safe canonical 11 blobをcurrent mainへ再配置した。
+
+```text
+parent main:
+  19423b1b646e30a9bdd2e502eba46fe48a3c204b
+
+branchless candidate:
+  b8d8902b2115c22ef3ce88ac803b5f14baa46d73
+
+candidate tree:
+  bd7b6743e6c86dc7b99578478fd5ae28dcf8fec3
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+remote branchはE1.27記録後にmain以外18本を再びforceなしでparent mainへfast-forwardし、branch固有ahead work 0 / open PR 0の状態へ収束させた。
+
+current Evidence height:
+
+```text
+latest-main exact 11-path packet       = assembled
+{P1,P2} exact closure x50              = PASS
+P1 credential pressure x50             = PASS
+P3/P4/P5 historical exact focused PASS = inherited only
+current 5-package aggregate rerun       = pending
+tools/repository-health-check.sh        = pending
+code integration                        = pending
+actual replay / repeatability           = pending
+```
+
+P3/P4/P5 transfer bundleもbranchless scratch objectとして準備しているが、container側でexact blob hash照合とaggregate executionを完了するまでEvidenceには数えない。
+
+次のintegration gateはE1.27から変更しない。
+
+```text
+b8d8902b... canonical 11 source
+  -> same working treeでP1-P5 aggregate focused rerun
+  -> bash -n exact runner
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+candidate SHA自体はmainへfast-forward / cherry-pickせず、health-capable full checkoutでは11 exact blobsをlatest main working treeへmaterializeしてqualificationする。
