@@ -301,6 +301,7 @@ retained unresolved:             ENVIRONMENT_BINDING_NOT_AUTHORED
                                  TARGET_PROJECTION_NOT_EVALUATED
 historical Gate B/C scope:       R = e5231839... / T = 0ba87a4e... はそのexact revisionへ紐づく歴史的Evidenceとして保持。
                                  受理後のcurrent Workspaceを旧B/R/Tのcurrent equivalentへcarry-forwardしない
+resulting main commit:           0423b95
 ```
 
 ### 手順の遵守
