@@ -5424,3 +5424,79 @@ health-capable full checkout on execution-time latest main
 
 No branchless candidate is merged, fast-forwarded, or cherry-picked to bypass the mandatory health gate.
 
+#### B4 continuation — health harness identity and hosted-runner re-probe — 2026-09-22
+
+The remaining mandatory gate is `tools/repository-health-check.sh`. Its exact current-main bytes were reacquired and verified independently before attempting any health claim.
+
+```text
+path:
+  tools/repository-health-check.sh
+
+current main blob:
+  d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+git hash-object over reacquired exact bytes:
+  d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+byte identity:
+  PASS
+
+bash -n:
+  PASS
+```
+
+This only qualifies the harness bytes and shell syntax. It does not execute:
+
+```text
+gofmt -l .
+go vet ./...
+go test -count=1 ./...
+go run ./cmd/tei validate -workspace reference/workspace
+```
+
+A fresh GitHub-hosted runner allocation re-probe was also performed on 2026-09-22.
+
+Repository branch hygiene rerun:
+
+```text
+run      = 34771242002
+attempt  = 2
+job      = 106541743107 (inventory)
+updated  = 2026-09-21T22:28:05Z
+         = 2026-09-22T07:28:05+09:00
+result   = failure
+steps    = null
+```
+
+Knowledge portability reference evidence rerun:
+
+```text
+run      = 35385970642
+attempt  = 2
+job      = 106560654921 (verify)
+queued   = approximately 2026-09-21T23:43:55Z
+failed   = by 2026-09-21T23:43:59Z
+         = 2026-09-22 08:43 JST
+result   = failure
+steps    = null
+```
+
+The second probe briefly entered `queued`, but no observable workflow step was created. Therefore neither probe establishes checkout, setup-go, Repository health, or Source Evidence execution. The observation has also been recorded in infrastructure issue #513.
+
+Updated B4 gate state:
+
+```text
+canonical 11 exact blobs                     = fixed
+exact replay runner byte identity            = PASS
+exact replay runner bash -n                  = PASS
+exact repository-health harness identity     = PASS
+repository-health harness bash -n            = PASS
+hosted runner step execution                 = unavailable
+health-capable full checkout                 = unavailable in this session
+tools/repository-health-check.sh execution   = pending mandatory gate
+code integration                             = blocked
+actual replay / repeatability Evidence       = pending
+```
+
+The health gate is not weakened by the harness syntax result. Integration resumes only when the exact current-main working tree plus canonical 11 blobs can execute the harness itself.
+
