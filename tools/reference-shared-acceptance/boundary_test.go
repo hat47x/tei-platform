@@ -100,7 +100,7 @@ func TestPreviewImpactTracesToExactDependenciesAndKeepsUnresolvedVisible(t *test
 	want := []changeanalysis.ImpactEdge{
 		{From: "attribute:sales.order_line.unit_price", To: "data:sales.order_line", Via: "semantic.data.attribute"},
 		{From: "data:sales.order_line", To: "relation:sales.order.lines", Via: "semantic.relation.target"},
-		{From: "relation:sales.order.lines", To: "pattern:order_entry.order_lines", Via: "application.pattern.relation"},
+		{From: "relation:sales.order.lines", To: "application-pattern:order_entry.order_lines", Via: "application.pattern.relation"},
 		{From: "validation:sales.order_line.unit_price_positive", To: "application:order_entry", Via: "application.uses-semantic-namespace"},
 		{From: "validation:sales.order_line.unit_price_positive", To: "attribute:sales.order_line.unit_price", Via: "semantic.validation.attribute"},
 	}

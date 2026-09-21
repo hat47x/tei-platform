@@ -11,12 +11,13 @@ import (
 	"fmt"
 	"sort"
 
+	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
 
-// SubjectChangeは、Canonical Worldのsemantic subject単位の差分である。
+// SubjectChangeは、Canonical Worldのsubject単位の差分である。
 // file pathやsource上の順序は含まない。
 type SubjectChange struct {
 	Kind   string          `json:"kind"`
@@ -35,55 +36,58 @@ type subjectValue struct {
 	raw  json.RawMessage
 }
 
-func flattenSemantics(namespaces []semantic.Namespace) (map[string]subjectValue, error) {
-	out := map[string]subjectValue{}
-	add := func(kind string, id core.CanonicalID, value any) error {
-		raw, err := json.Marshal(value)
-		if err != nil {
-			return err
-		}
-		key := kind + ":" + string(id)
-		if _, exists := out[key]; exists {
-			return fmt.Errorf("%s が複数回宣言されています", key)
-		}
-		out[key] = subjectValue{kind: kind, id: string(id), raw: raw}
-		return nil
+type subjectSet map[string]subjectValue
+
+func (set subjectSet) add(kind string, id core.CanonicalID, value any) error {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return err
 	}
+	key := kind + ":" + string(id)
+	if _, exists := set[key]; exists {
+		return fmt.Errorf("%s が複数回宣言されています", key)
+	}
+	set[key] = subjectValue{kind: kind, id: string(id), raw: raw}
+	return nil
+}
+
+func flattenSemantics(namespaces []semantic.Namespace) (subjectSet, error) {
+	out := subjectSet{}
 	type identity struct {
 		ID     core.CanonicalID `json:"id"`
 		Symbol string           `json:"symbol,omitempty"`
 	}
 	for _, ns := range namespaces {
-		if err := add("namespace", ns.ID, identity{ID: ns.ID}); err != nil {
+		if err := out.add("namespace", ns.ID, identity{ID: ns.ID}); err != nil {
 			return nil, err
 		}
 		for _, t := range ns.Types {
-			if err := add("type", t.ID, t); err != nil {
+			if err := out.add("type", t.ID, t); err != nil {
 				return nil, err
 			}
 		}
 		for _, d := range ns.Data {
-			if err := add("data", d.ID, identity{ID: d.ID, Symbol: d.Symbol}); err != nil {
+			if err := out.add("data", d.ID, identity{ID: d.ID, Symbol: d.Symbol}); err != nil {
 				return nil, err
 			}
 			for _, a := range d.Attributes {
-				if err := add("attribute", a.ID, a); err != nil {
+				if err := out.add("attribute", a.ID, a); err != nil {
 					return nil, err
 				}
 			}
 			for _, r := range d.Relations {
-				if err := add("relation", r.ID, r); err != nil {
+				if err := out.add("relation", r.ID, r); err != nil {
 					return nil, err
 				}
 			}
 		}
 		for _, c := range ns.Capabilities {
-			if err := add("capability", c.ID, c); err != nil {
+			if err := out.add("capability", c.ID, c); err != nil {
 				return nil, err
 			}
 		}
 		for _, v := range ns.Validations {
-			if err := add("validation", v.ID, v); err != nil {
+			if err := out.add("validation", v.ID, v); err != nil {
 				return nil, err
 			}
 		}
@@ -91,18 +95,32 @@ func flattenSemantics(namespaces []semantic.Namespace) (map[string]subjectValue,
 	return out, nil
 }
 
-// Diffは、二つのCanonical Worldのsemantic層の差をsubject単位で返す。
-// 同じ意味を別fileへ移しただけの変更は、Worldが同一になるため差を生まない。
-// 論理的な改名は、旧subjectのremovedと新subjectのaddedとして現れ、暗黙にno-opとは扱わない。
-func Diff(before, after ir.World) ([]SubjectChange, error) {
-	b, err := flattenSemantics(before.Semantics)
-	if err != nil {
-		return nil, fmt.Errorf("変更前のsemantic層: %w", err)
+// flattenApplicationsは、Applicationの本体とPatternを別のsubjectとして並べる。
+// Application本体の比較にはPatternを含めないため、Patternだけの変更でApplication本体まで
+// 二重にchangedとは扱わない。datasource aliasとContract requirementはApplication本体の意味に含める。
+func flattenApplications(apps []application.Application) (subjectSet, error) {
+	out := subjectSet{}
+	type applicationIdentity struct {
+		ID           core.CanonicalID                  `json:"id"`
+		SemanticUses []core.CanonicalID                `json:"semanticUses,omitempty"`
+		Validations  []core.CanonicalID                `json:"validations,omitempty"`
+		Databases    []application.DatabaseRequirement `json:"databases,omitempty"`
 	}
-	a, err := flattenSemantics(after.Semantics)
-	if err != nil {
-		return nil, fmt.Errorf("変更後のsemantic層: %w", err)
+	for _, app := range apps {
+		identity := applicationIdentity{ID: app.ID, SemanticUses: app.SemanticUses, Validations: app.Validations, Databases: app.Databases}
+		if err := out.add("application", app.ID, identity); err != nil {
+			return nil, err
+		}
+		for _, p := range app.Patterns {
+			if err := out.add("application-pattern", p.ID, p); err != nil {
+				return nil, err
+			}
+		}
 	}
+	return out, nil
+}
+
+func diffSubjects(b, a subjectSet) []SubjectChange {
 	var out []SubjectChange
 	for key, bv := range b {
 		av, ok := a[key]
@@ -124,11 +142,40 @@ func Diff(before, after ir.World) ([]SubjectChange, error) {
 		}
 		return out[i].ID < out[j].ID
 	})
-	return out, nil
+	return out
+}
+
+// Diffは、二つのCanonical Worldのsemantic層の差をsubject単位で返す。
+// 同じ意味を別fileへ移しただけの変更は、Worldが同一になるため差を生まない。
+// 論理的な改名は、旧subjectのremovedと新subjectのaddedとして現れ、暗黙にno-opとは扱わない。
+func Diff(before, after ir.World) ([]SubjectChange, error) {
+	b, err := flattenSemantics(before.Semantics)
+	if err != nil {
+		return nil, fmt.Errorf("変更前のsemantic層: %w", err)
+	}
+	a, err := flattenSemantics(after.Semantics)
+	if err != nil {
+		return nil, fmt.Errorf("変更後のsemantic層: %w", err)
+	}
+	return diffSubjects(b, a), nil
+}
+
+// DiffApplicationsは、二つのCanonical WorldのApplication層の差をsubject単位で返す。
+// subject kindは application（本体）と application-pattern（Pattern）の二つである。
+func DiffApplications(before, after ir.World) ([]SubjectChange, error) {
+	b, err := flattenApplications(before.Applications)
+	if err != nil {
+		return nil, fmt.Errorf("変更前のApplication層: %w", err)
+	}
+	a, err := flattenApplications(after.Applications)
+	if err != nil {
+		return nil, fmt.Errorf("変更後のApplication層: %w", err)
+	}
+	return diffSubjects(b, a), nil
 }
 
 // CollectionDiffは、World直下のcollectionのうち内容が変わったものと変わらないものを返す。
-// semantic層以外が変わっていないことは、persistence・binding・Target入力へ副作用が及ばない根拠になる。
+// 期待したcollection以外が変わっていないことは、persistence・binding・Target入力へ副作用が及ばない根拠になる。
 func CollectionDiff(before, after ir.World) (changed, unchanged []string, err error) {
 	b, err := collections(before)
 	if err != nil {

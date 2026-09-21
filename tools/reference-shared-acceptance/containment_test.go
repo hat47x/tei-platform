@@ -11,24 +11,24 @@ import (
 func TestExpectedDeltaCheckRejectsUnexpectedEffects(t *testing.T) {
 	expected := []changeanalysis.SubjectChange{{Kind: "validation", ID: "sales.a", Change: "added"}}
 
-	if got := checkExpectedDelta(expected, expected, []string{"semantics"}); len(got) != 0 {
+	if got := checkExpectedDelta(expected, expected, []string{"semantics"}, []string{"semantics"}); len(got) != 0 {
 		t.Fatalf("宣言どおりの差分が拒否されました: %+v", got)
 	}
 
 	extra := append([]changeanalysis.SubjectChange{{Kind: "attribute", ID: "sales.order.total", Change: "changed"}}, expected...)
-	if got := checkExpectedDelta(extra, expected, []string{"semantics"}); len(got) != 1 || got[0].Code != "SEMANTIC_DIFF_MISMATCH" {
+	if got := checkExpectedDelta(extra, expected, []string{"semantics"}, []string{"semantics"}); len(got) != 1 || got[0].Code != "SEMANTIC_DIFF_MISMATCH" {
 		t.Fatalf("宣言外のsemantic変更が検出されていません: %+v", got)
 	}
-	if got := checkExpectedDelta(nil, expected, []string{"semantics"}); len(got) != 1 || got[0].Code != "SEMANTIC_DIFF_MISMATCH" {
+	if got := checkExpectedDelta(nil, expected, []string{"semantics"}, []string{"semantics"}); len(got) != 1 || got[0].Code != "SEMANTIC_DIFF_MISMATCH" {
 		t.Fatalf("宣言した変更が起きなかったことが検出されていません: %+v", got)
 	}
 	wrongChange := []changeanalysis.SubjectChange{{Kind: "validation", ID: "sales.a", Change: "changed"}}
-	if got := checkExpectedDelta(wrongChange, expected, []string{"semantics"}); len(got) != 1 {
+	if got := checkExpectedDelta(wrongChange, expected, []string{"semantics"}, []string{"semantics"}); len(got) != 1 {
 		t.Fatalf("変更の種類の違い(added / changed)が検出されていません: %+v", got)
 	}
 
 	for _, changed := range [][]string{{"applications", "semantics"}, {"persistenceMappings"}, nil} {
-		got := checkExpectedDelta(expected, expected, changed)
+		got := checkExpectedDelta(expected, expected, changed, []string{"semantics"})
 		if len(got) != 1 || got[0].Code != "UNEXPECTED_COLLECTION_CHANGE" {
 			t.Fatalf("collection変更 %v が検出されていません: %+v", changed, got)
 		}

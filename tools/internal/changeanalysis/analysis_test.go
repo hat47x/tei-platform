@@ -260,7 +260,7 @@ func TestImpactOfAnAddedValidationTracesExactDependencies(t *testing.T) {
 	want := [][3]string{
 		{"attribute:sales.order_line.unit_price", "data:sales.order_line", "semantic.data.attribute"},
 		{"data:sales.order_line", "relation:sales.order.lines", "semantic.relation.target"},
-		{"relation:sales.order.lines", "pattern:order_entry.order_lines", "application.pattern.relation"},
+		{"relation:sales.order.lines", "application-pattern:order_entry.order_lines", "application.pattern.relation"},
 		{"validation:sales.order_line.unit_price_positive", "application:order_entry", "application.uses-semantic-namespace"},
 		{"validation:sales.order_line.unit_price_positive", "attribute:sales.order_line.unit_price", "semantic.validation.attribute"},
 	}

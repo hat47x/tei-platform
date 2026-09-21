@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — executable pressure rebased / Shared Acceptance multi-layer compatibility pressure identified
+- 状態: In Progress — executable pressure rebased / multi-layer Shared Acceptance Preview implemented and PASS against the actual reference workspace（2026-09-21） / explicit human Acceptance pending
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -242,6 +242,8 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 1. revised three-source Proposalのhealth-checked executable pressure
 2. exact `c18ae...` Proposalをcurrent `baseModelRevision`へ結び付けたmulti-layer Shared Acceptance Preview PASS
 3. exact reviewed Proposalに対するexplicit human Acceptance decision
+
+2026-09-21更新: 2は成立した。`tools/reference-shared-acceptance`が型付きoperation `add-data` / `add-application` / `add-reference-pattern`を扱い、実際の`reference/workspace`（base revision `sha256:f70da9b64a5b…`）に対する`c18ae...`のread-only Previewが全stage PASSした（fingerprint・差分・impact・unresolvedは[実装記録](../SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md)）。1は一部のみ: 改訂版3-source ProposalのS4 identity・source再生成・full validationはtool側のtestで通したが、`tools/reference-business-procedure-check`のS3 / S4 / S5 review pressureは旧2-source Proposalを前提とする部分が残っている。3は未成立で、Previewを人のAcceptanceへ読み替えない。
 
 Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。PreviewをAcceptanceへ読み替えず、一般的な作業継続指示もProposal採用Decisionへ読み替えない。
 

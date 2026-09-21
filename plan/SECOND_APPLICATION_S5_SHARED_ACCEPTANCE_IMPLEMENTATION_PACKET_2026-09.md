@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Implementation Packet
 
-- Status: Implementation contract defined / code not yet authored
+- Status: Implemented in `tools/reference-shared-acceptance` / read-only Preview against the actual reference workspace PASS / Shared Acceptance of the actual destination source not attempted
 - Date: 2026-09-21
 - Primary workstream: ISSUE-000040
 - Shared boundary owner: ISSUE-000027
@@ -9,6 +9,7 @@
 - Current executable-pressure candidate: `b38869a48dcd8fb3e826a80de239063ee918c366`
 - Authoritative destination source created: No
 - Human Acceptance decision: Absent
+- Implementation record: 本文書末尾「実装記録」
 
 ## 1. Goal
 
@@ -367,3 +368,36 @@ pull --rebase latest main
 全PASS後も、actual Second Applicationで行うのはまずread-only Previewまでである。
 
 explicit human Acceptance decisionが無い限り `accept` をactual destination sourceへ実行しない。
+
+## 13. 実装記録（2026-09-21）
+
+型付きoperation `add-data` / `add-application` / `add-reference-pattern` を、別のAcceptance engineを作らず、既存の受入境界（`tools/reference-shared-acceptance`）へ追加した。`Diff`の隣に`DiffApplications`を`tools/internal/changeanalysis`へ追加した。既存の`add-validation`のtestはすべて維持している。
+
+契約との対応:
+
+- §2 operation: 3種を実装。任意のTEI textを運ばず、意味から決定論的にsourceを生成する。`usesSemantic` / `databases`の順序はauthoredされた順序のまま保つ（S4 payloadは`repair_intake`、`customer`の順で、並べ替えるとidentityが変わる）。
+- §3 placement: resolverが、層のprefix・loaderが読む形式・destination未存在・Patternのowner directory一致・operation間の衝突を確認する。このReferenceの3 pathは**規則の結果**として許され、toolへ固定していない（testが3 pathを使う）。
+- §4 S4 trace: `TestSecondApplicationCompositionPreviewBindsExactS4Proposal`が、S4 payloadの再計算（`c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`、741 bytes）、S4 sourceを既存parserで読んだ意味からの型付きoperation生成、operationからのsource再生成、payload再一致、current `baseModelRevision`を加えたcandidate identityの取得を通す。
+- §5 Diff: `DiffApplications`。subject kindは`application`と`application-pattern`。Application本体の比較にPatternを含めない。期待される追加subjectは6件（semantic 4、application 2）で、`maxSubjectChanges = 8`の範囲内。
+- §6 collections: deltaの型付きoperationから期待集合（`[applications, semantics]`）を導き、実際に変わったcollectionの集合とexactな一致を要求する。
+- §7 containment: 許可するeditの集合と、各editの所有層をoperationから導く。宣言していない4つ目のfile（共有Customer source、origin `order_entry`、Environment file）は拒否する。
+- §8 validation: 共有`workspace.Load` + `validation.Validate`をそのまま使い、`UNKNOWN_APPLICATION_PATTERN_RELATION`と`REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH`が通常のValidation diagnosticとして`validate` stageに現れる。
+- §9 / §10 test: 契約が挙げた名前のtestを追加し、accept経路の機械的なtest（3 fileだけが作られる、再読込・Validation・差分一致、3 fileのrollback、事前の並行作成でpartial writeが無い、Environmentが不変）を通した。
+
+契約との差分・解釈:
+
+- Application本体の比較には、契約が挙げたSemanticUses・Databasesに加えて`uses validation`（`Application.Validations`）も含めた。含めないと、Applicationが評価するValidationの宣言変更が差分に現れない。
+- impact edgeのsubject kindを、Source Indexと同じ`application-pattern`へ揃えた（以前の`pattern:`から変更）。
+- `RejectsMissingPattern`は、owner Applicationが既存のWorldにも同じdeltaにも無いPattern、owner directoryの外に置かれたPattern、loaderが読まない場所のPatternの拒否として実装した。
+- 追加したimpactの`unresolved`: 新しいApplicationに`ENVIRONMENT_BINDING_NOT_AUTHORED`（Environment binding・Provider・Permission grantは含まれず、実行可能性を主張しない）。
+
+実際のReferenceへのread-only Preview（`preview`。`accept`は実行していない）:
+
+- 対象: `reference/workspace`（main `12eb88a`時点）。Preview前後でworkspaceのfile digestは同一、`git status reference/`は空。
+- current `baseModelRevision`: `sha256:f70da9b64a5b48c7682b24c64f455b0b0c2a7278be4faa297b6ff99c2d3707bf`
+- Acceptance candidate fingerprint: `sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11`
+- Preview後のmodel revision: `sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762`
+- 全11 stage PASS。変更subject 6件（semantic: namespace / data / attribute / relation、application: application / application-pattern）。changed collections = `[applications, semantics]`。作られるfileは`applications/repair-intake/application.tei` / `applications/repair-intake/patterns/customer-reference.tei` / `semantic/repair-intake/intake.tei`の3件。
+- impact 14本。unresolved: `ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`。
+
+このPreview PASSはShared Acceptanceではない。exact Proposalに対するexplicit human Acceptance decisionが無い限り、`accept`をactual destination sourceへ実行しない（§12）。

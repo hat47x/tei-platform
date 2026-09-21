@@ -4,19 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
-	"tei/internal/core"
 	"tei/internal/subject"
-	"tei/internal/syntax"
 	"tei/internal/validation"
 	"tei/tools/internal/changeanalysis"
 )
 
 const (
 	previewSchema     = "tei.reference.change-preview/v0"
-	semanticRoot      = "semantic/"
 	maxSubjectChanges = 8
 )
 
@@ -54,6 +52,7 @@ type Preview struct {
 	Acceptable           bool                           `json:"acceptable"`
 	SourceEdits          []SourceEdit                   `json:"sourceEdits,omitempty"`
 	SemanticDiff         []changeanalysis.SubjectChange `json:"semanticDiff,omitempty"`
+	ApplicationDiff      []changeanalysis.SubjectChange `json:"applicationDiff,omitempty"`
 	ChangedCollections   []string                       `json:"changedCollections,omitempty"`
 	UnchangedCollections []string                       `json:"unchangedCollections,omitempty"`
 	Impact               []changeanalysis.ImpactEdge    `json:"impact,omitempty"`
@@ -170,7 +169,14 @@ func evaluate(root string, data []byte) (evaluation, error) {
 			return []Diagnostic{{Code: "OVERLAY_COPY", Message: err.Error()}}
 		}
 		for _, edit := range edits {
-			if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(edit.Path)), edit.after, 0o644); err != nil {
+			target := filepath.Join(dir, filepath.FromSlash(edit.Path))
+			if edit.Created {
+				if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+					infraErr = err
+					return []Diagnostic{{Code: "OVERLAY_WRITE", Message: err.Error()}}
+				}
+			}
+			if err := os.WriteFile(target, edit.after, 0o644); err != nil {
 				infraErr = err
 				return []Diagnostic{{Code: "OVERLAY_WRITE", Message: err.Error()}}
 			}
@@ -212,11 +218,16 @@ func evaluate(root string, data []byte) (evaluation, error) {
 	run("architecture-policy", func() []Diagnostic { return checkContainment(before, after, ev.edits) })
 
 	run("semantic-diff", func() []Diagnostic {
-		actual, err := changeanalysis.Diff(before.loaded.World, after.loaded.World)
+		semanticChanges, err := changeanalysis.Diff(before.loaded.World, after.loaded.World)
 		if err != nil {
 			return []Diagnostic{{Code: "SEMANTIC_DIFF_FAILED", Message: err.Error()}}
 		}
-		ev.preview.SemanticDiff = actual
+		applicationChanges, err := changeanalysis.DiffApplications(before.loaded.World, after.loaded.World)
+		if err != nil {
+			return []Diagnostic{{Code: "APPLICATION_DIFF_FAILED", Message: err.Error()}}
+		}
+		ev.preview.SemanticDiff = semanticChanges
+		ev.preview.ApplicationDiff = applicationChanges
 		changed, unchanged, err := changeanalysis.CollectionDiff(before.loaded.World, after.loaded.World)
 		if err != nil {
 			return []Diagnostic{{Code: "COLLECTION_DIFF_FAILED", Message: err.Error()}}
@@ -224,19 +235,19 @@ func evaluate(root string, data []byte) (evaluation, error) {
 		ev.preview.ChangedCollections = changed
 		ev.preview.UnchangedCollections = unchanged
 
-		return checkExpectedDelta(actual, expectedChanges(candidate.Delta), changed)
+		return checkExpectedDelta(allChanges(ev.preview), expectedChanges(candidate.Delta), changed, expectedCollections(candidate.Delta))
 	})
 
 	run("impact", func() []Diagnostic {
-		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.Impact(after.loaded.World, ev.preview.SemanticDiff)
+		ev.preview.Impact, ev.preview.Unresolved = changeanalysis.Impact(after.loaded.World, allChanges(ev.preview))
 		return nil
 	})
 
 	run("acceptance-policy", func() []Diagnostic {
-		if len(ev.preview.SemanticDiff) > maxSubjectChanges {
+		if n := len(allChanges(ev.preview)); n > maxSubjectChanges {
 			return []Diagnostic{{
 				Code:    "DELTA_TOO_LARGE",
-				Message: fmt.Sprintf("変更されるsubjectが%d件で、上限%d件を超えています。whole-model再生成ではなく、最小のsemantic deltaへ分けてください", len(ev.preview.SemanticDiff), maxSubjectChanges),
+				Message: fmt.Sprintf("変更されるsubjectが%d件で、上限%d件を超えています。whole-model再生成ではなく、最小のsemantic deltaへ分けてください", n, maxSubjectChanges),
 			}}
 		}
 		return nil
@@ -246,149 +257,64 @@ func evaluate(root string, data []byte) (evaluation, error) {
 	return ev, infraErr
 }
 
-// checkExpectedDeltaは、実際の差分がcandidateの宣言したdeltaと一致し、
-// semantic層以外のWorld collectionへ副作用が及んでいないことを確認する。
-func checkExpectedDelta(actual, expected []changeanalysis.SubjectChange, changedCollections []string) []Diagnostic {
+// checkExpectedDeltaは、実際の差分がcandidateの宣言したdeltaと一致し、変わったWorld collectionが
+// deltaから導かれる集合とexactに一致することを確認する。「semantics以外も許す」へ緩めない。
+func checkExpectedDelta(actual, expected []changeanalysis.SubjectChange, changedCollections, expectedCollections []string) []Diagnostic {
 	var out []Diagnostic
 	if !changesEqual(actual, expected) {
 		out = append(out, Diagnostic{
 			Code:    "SEMANTIC_DIFF_MISMATCH",
-			Message: fmt.Sprintf("実際のsemantic差分が、candidateが宣言したdeltaと一致しません: actual=%s expected=%s", describeChanges(actual), describeChanges(expected)),
+			Message: fmt.Sprintf("実際の差分が、candidateが宣言したdeltaと一致しません: actual=%s expected=%s", describeChanges(actual), describeChanges(expected)),
 		})
 	}
-	if len(changedCollections) != 1 || changedCollections[0] != "semantics" {
+	if !reflect.DeepEqual(nonNil(changedCollections), nonNil(expectedCollections)) {
 		out = append(out, Diagnostic{
 			Code:    "UNEXPECTED_COLLECTION_CHANGE",
-			Message: fmt.Sprintf("Validationの追加でsemantic層以外のWorld collectionが変わっています: %v", changedCollections),
+			Message: fmt.Sprintf("変わったWorld collection %v が、deltaから導かれる集合 %v と一致しません", changedCollections, expectedCollections),
 		})
 	}
 	return out
 }
 
-func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
-	var out []Diagnostic
-	world := s.loaded.World
-	namespaces := map[core.CanonicalID]bool{}
-	validations := map[core.CanonicalID]bool{}
-	attributes := map[core.CanonicalID]bool{}
-	relations := map[core.CanonicalID]bool{}
-	subjects := map[string]bool{}
-	for _, ns := range world.Semantics {
-		namespaces[ns.ID] = true
-		subjects[string(ns.ID)] = true
-		for _, t := range ns.Types {
-			subjects[string(t.ID)] = true
-		}
-		for _, v := range ns.Validations {
-			validations[v.ID] = true
-			subjects[string(v.ID)] = true
-		}
-		for _, cap := range ns.Capabilities {
-			subjects[string(cap.ID)] = true
-		}
-		for _, d := range ns.Data {
-			subjects[string(d.ID)] = true
-			for _, a := range d.Attributes {
-				attributes[a.ID] = true
-				subjects[string(a.ID)] = true
-			}
-			for _, r := range d.Relations {
-				relations[r.ID] = true
-				subjects[string(r.ID)] = true
-			}
-		}
+func nonNil(values []string) []string {
+	if values == nil {
+		return []string{}
 	}
-	for _, app := range world.Applications {
-		subjects[string(app.ID)] = true
-		for _, p := range app.Patterns {
-			subjects[string(p.ID)] = true
-		}
-	}
-
-	for _, op := range c.Delta {
-		key := "validation:" + op.ID
-		if !namespaces[core.CanonicalID(op.Namespace)] {
-			out = append(out, Diagnostic{Code: "NAMESPACE_NOT_FOUND", Message: fmt.Sprintf("semantic namespace %s は存在しません", op.Namespace), Subject: key})
-		}
-		if validations[core.CanonicalID(op.ID)] {
-			out = append(out, Diagnostic{Code: "VALIDATION_ALREADY_EXISTS", Message: fmt.Sprintf("validation %s は既に存在します", op.ID), Subject: key})
-		}
-		if !attributes[core.CanonicalID(op.Attribute)] {
-			out = append(out, Diagnostic{Code: "ATTRIBUTE_NOT_FOUND", Message: fmt.Sprintf("attribute %s は存在しません", op.Attribute), Subject: key})
-		}
-		if op.Relation != "" && !relations[core.CanonicalID(op.Relation)] {
-			out = append(out, Diagnostic{Code: "RELATION_NOT_FOUND", Message: fmt.Sprintf("relation %s は存在しません", op.Relation), Subject: key})
-		}
-		out = append(out, checkPlacementOwnership(s, op)...)
-	}
-
-	fingerprints := s.fingerprints()
-	for i, e := range c.Evidence {
-		if e.Subject != "" && !subjects[e.Subject] {
-			out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].subject %s はCanonical Worldに存在しません", i, e.Subject)})
-		}
-		if e.Source != "" {
-			if _, ok := fingerprints[e.Source]; !ok {
-				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].source %s は管理対象sourceではありません", i, e.Source)})
-			}
-		}
-	}
-	return out
+	return values
 }
 
-// checkPlacementOwnershipは、明示placementがValidationを所有するsemantic層のfileであること、
-// そのfileが同じnamespaceを宣言していることを、sourceを書き換える前に確認する。
-func checkPlacementOwnership(s snapshot, op Operation) []Diagnostic {
-	if op.Placement == "" {
-		return nil
-	}
-	key := "validation:" + op.ID
-	if !strings.HasPrefix(op.Placement, semanticRoot) {
-		return []Diagnostic{{
-			Code:    "LAYER_VIOLATION",
-			Message: fmt.Sprintf("Validationは意味を所有するsemantic層（%s）でauthorします。placement %s は別の層です", semanticRoot, op.Placement),
-			Subject: key,
-		}}
-	}
-	content, err := os.ReadFile(filepath.Join(s.root, filepath.FromSlash(op.Placement)))
-	if err != nil {
-		return []Diagnostic{{Code: "PLACEMENT_NOT_MANAGED_SOURCE", Message: fmt.Sprintf("placement %s を読めません: %v", op.Placement, err), Subject: key}}
-	}
-	ns, err := syntax.NewParser(string(content)).ParseSemanticFile()
-	if err != nil {
-		return []Diagnostic{{Code: "PLACEMENT_NOT_SEMANTIC_FILE", Message: fmt.Sprintf("placement %s はsemantic fileとして読めません: %v", op.Placement, err), Subject: key}}
-	}
-	if string(ns.ID) != op.Namespace {
-		return []Diagnostic{{
-			Code:    "PLACEMENT_NAMESPACE_MISMATCH",
-			Message: fmt.Sprintf("placement %s はnamespace %s を宣言しており、%s ではありません", op.Placement, ns.ID, op.Namespace),
-			Subject: key,
-		}}
-	}
-	return nil
-}
-
-// checkContainmentは、変更がdeltaのために作られたsource fileだけに閉じていることを確認する。
+// checkContainmentは、変更がdeltaのために作られたsource fileだけに閉じ、各fileがそのeditの所有層にあることを確認する。
 func checkContainment(before, after snapshot, edits []SourceEdit) []Diagnostic {
-	expected := map[string]bool{}
+	declared := map[string]SourceEdit{}
+	allowedPrefixes := map[string]bool{}
 	for _, e := range edits {
-		expected[e.Path] = true
+		declared[e.Path] = e
+		allowedPrefixes[layerPrefix(e.Layer)] = true
 	}
 	changed := changedFiles(before.fingerprints(), after.fingerprints())
 	var out []Diagnostic
-	for _, path := range changed {
-		if !expected[path] {
-			out = append(out, Diagnostic{Code: "UNEXPECTED_SOURCE_CHANGE", Message: fmt.Sprintf("deltaに対応しないsource fileが変わっています: %s", path), Subject: "file:" + path})
-		}
-		if !strings.HasPrefix(path, semanticRoot) {
-			out = append(out, Diagnostic{Code: "LAYER_VIOLATION", Message: fmt.Sprintf("semantic層の外のsource fileが変わっています: %s", path), Subject: "file:" + path})
-		}
-	}
 	changedSet := map[string]bool{}
 	for _, path := range changed {
 		changedSet[path] = true
+		edit, ok := declared[path]
+		if !ok {
+			out = append(out, Diagnostic{Code: "UNEXPECTED_SOURCE_CHANGE", Message: fmt.Sprintf("deltaに対応しないsource fileが変わっています: %s", path), Subject: "file:" + path})
+			inAllowedLayer := false
+			for prefix := range allowedPrefixes {
+				if strings.HasPrefix(path, prefix) {
+					inAllowedLayer = true
+				}
+			}
+			if !inAllowedLayer {
+				out = append(out, Diagnostic{Code: "LAYER_VIOLATION", Message: fmt.Sprintf("deltaが扱う層の外のsource fileが変わっています: %s", path), Subject: "file:" + path})
+			}
+			continue
+		}
+		if !strings.HasPrefix(path, layerPrefix(edit.Layer)) {
+			out = append(out, Diagnostic{Code: "LAYER_VIOLATION", Message: fmt.Sprintf("editの所有層（%s）の外のsource fileが変わっています: %s", layerPrefix(edit.Layer), path), Subject: "file:" + path})
+		}
 	}
-	for path := range expected {
+	for path := range declared {
 		if !changedSet[path] {
 			out = append(out, Diagnostic{Code: "EXPECTED_SOURCE_CHANGE_MISSING", Message: fmt.Sprintf("deltaが変更するはずのsource fileが変わっていません: %s", path), Subject: "file:" + path})
 		}
@@ -412,12 +338,66 @@ func changedFiles(before, after map[string]string) []string {
 	return out
 }
 
+// expectedChangesは、型付きdeltaから、Canonical Worldに現れるはずのsubject差分を導く。
 func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
-	out := make([]changeanalysis.SubjectChange, 0, len(ops))
-	for _, op := range ops {
-		out = append(out, changeanalysis.SubjectChange{Kind: "validation", ID: op.ID, Change: "added"})
+	var out []changeanalysis.SubjectChange
+	add := func(kind, id string) {
+		out = append(out, changeanalysis.SubjectChange{Kind: kind, ID: id, Change: "added"})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Key() < out[j].Key() })
+	for _, op := range ops {
+		switch op.Op {
+		case opAddValidation:
+			add("validation", op.ID)
+		case opAddData:
+			add("namespace", op.Data.Namespace)
+			add("data", op.Data.ID)
+			for _, a := range op.Data.Attributes {
+				add("attribute", a.ID)
+			}
+			for _, r := range op.Data.Relations {
+				add("relation", r.ID)
+			}
+		case opAddApplication:
+			add("application", op.Application.ID)
+		case opAddReferencePattern:
+			add("application-pattern", op.Pattern.ID)
+		}
+	}
+	sortChanges(out)
+	return out
+}
+
+// expectedCollectionsは、型付きdeltaから、変わるはずのWorld直下のcollectionを導く。
+func expectedCollections(ops []Operation) []string {
+	set := map[string]bool{}
+	for _, op := range ops {
+		switch op.Op {
+		case opAddValidation, opAddData:
+			set["semantics"] = true
+		case opAddApplication, opAddReferencePattern:
+			set["applications"] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for name := range set {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func sortChanges(changes []changeanalysis.SubjectChange) {
+	sort.Slice(changes, func(i, j int) bool {
+		if changes[i].Kind != changes[j].Kind {
+			return changes[i].Kind < changes[j].Kind
+		}
+		return changes[i].ID < changes[j].ID
+	})
+}
+
+func allChanges(p Preview) []changeanalysis.SubjectChange {
+	out := append(append([]changeanalysis.SubjectChange{}, p.SemanticDiff...), p.ApplicationDiff...)
+	sortChanges(out)
 	return out
 }
 

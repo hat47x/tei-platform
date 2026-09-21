@@ -11,15 +11,39 @@ import (
 	"tei/internal/sourceindex"
 )
 
+const (
+	layerSemantic    = "semantic"
+	layerApplication = "application"
+)
+
 // SourceEditは、authoritative sourceへ入る変更を、適用前後のfingerprintとともに記録する。
+// 既存fileへの追記（add-validation）と、新しいfileの作成（Created）がある。
 type SourceEdit struct {
 	Path              string `json:"path"`
-	BeforeFingerprint string `json:"beforeFingerprint"`
+	Layer             string `json:"layer"`
+	Created           bool   `json:"created,omitempty"`
+	BeforeFingerprint string `json:"beforeFingerprint,omitempty"`
 	AfterFingerprint  string `json:"afterFingerprint"`
 	InsertedText      string `json:"insertedText"`
 
 	before []byte
 	after  []byte
+}
+
+func layerOf(op Operation) string {
+	switch op.Op {
+	case opAddApplication, opAddReferencePattern:
+		return layerApplication
+	default:
+		return layerSemantic
+	}
+}
+
+func layerPrefix(layer string) string {
+	if layer == layerApplication {
+		return "applications/"
+	}
+	return "semantic/"
 }
 
 func renderValidation(op Operation) string {
@@ -31,6 +55,77 @@ func renderValidation(op Operation) string {
 	fmt.Fprintf(&b, "    attribute %s\n", op.Attribute)
 	b.WriteString("}")
 	return b.String()
+}
+
+// renderDataは新しいnamespaceのsemantic fileの本文を返す。末尾の改行は含めない。
+func renderData(d DataSpec) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "namespace %s\n\n", d.Namespace)
+	fmt.Fprintf(&b, "data %s {\n", d.Symbol)
+	for _, a := range d.Attributes {
+		fmt.Fprintf(&b, "    attribute %s type %s\n", a.Symbol, a.Type)
+	}
+	for _, r := range d.Relations {
+		fmt.Fprintf(&b, "    relation %s to %s %s\n", r.Symbol, r.Target, r.Cardinality)
+		for _, k := range r.Keys {
+			fmt.Fprintf(&b, "        key %s -> %s\n", k.SourceAttribute, k.TargetAttribute)
+		}
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
+func renderApplication(a ApplicationSpec) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "application %s {\n", a.ID)
+	for _, u := range a.UsesSemantic {
+		fmt.Fprintf(&b, "    uses semantic %s\n", u)
+	}
+	for _, db := range a.Databases {
+		fmt.Fprintf(&b, "\n    database %s {\n", db.Alias)
+		fmt.Fprintf(&b, "        target %s\n", db.Target)
+		fmt.Fprintf(&b, "        access %s\n", db.Access)
+		if len(db.Contracts) > 0 {
+			b.WriteString("        requires {\n")
+			for _, c := range db.Contracts {
+				fmt.Fprintf(&b, "            contract %s ^%d\n", c.Contract, c.Major)
+			}
+			b.WriteString("        }\n")
+		}
+		b.WriteString("    }\n")
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
+func renderPattern(p PatternSpec) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "pattern %s reference {\n", p.ID)
+	fmt.Fprintf(&b, "    relation %s\n", p.Relation)
+	fmt.Fprintf(&b, "    datasource %s\n", p.Datasource)
+	b.WriteString("    contract-query {\n")
+	fmt.Fprintf(&b, "        contract %s\n", p.ContractQuery.Contract)
+	fmt.Fprintf(&b, "        query %s\n", p.ContractQuery.Query)
+	for _, in := range p.ContractQuery.Inputs {
+		fmt.Fprintf(&b, "        input %s -> %s\n", in.Attribute, in.Input)
+	}
+	b.WriteString("    }\n")
+	b.WriteString("}")
+	return b.String()
+}
+
+// renderNewFileは、新しいfileの内容を返す（本文 + 末尾の改行一つ）。
+// S4のProposal identityは、この本文から末尾の改行を除いたものである。
+func renderNewFile(op Operation) (string, bool) {
+	switch op.Op {
+	case opAddData:
+		return renderData(*op.Data), true
+	case opAddApplication:
+		return renderApplication(*op.Application), true
+	case opAddReferencePattern:
+		return renderPattern(*op.Pattern), true
+	}
+	return "", false
 }
 
 // appendDeclarationは、既存fileの改行規則（LF / CRLF）を保ったまま、末尾へ宣言を一つ追加する。
@@ -69,12 +164,41 @@ func defaultPlacement(s snapshot, op Operation) (string, error) {
 	return sourceindex.NormalizeWorkspacePath(candidates[0])
 }
 
-// planEditsは、deltaをauthoritative sourceへのtext追記へ決定論的に変換する。
+func fileExists(root, path string) bool {
+	_, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
+	return err == nil
+}
+
+// planEditsは、deltaをauthoritative sourceへのtext追記・新規file作成へ決定論的に変換する。
 func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 	fingerprints := s.fingerprints()
-	byPath := map[string][]Operation{}
+	appends := map[string][]Operation{}
+	var edits []SourceEdit
 	var diagnostics []Diagnostic
+
 	for _, op := range ops {
+		if content, isNew := renderNewFile(op); isNew {
+			key := operationKey(op)
+			if _, managed := fingerprints[op.Placement]; managed || fileExists(s.root, op.Placement) {
+				diagnostics = append(diagnostics, Diagnostic{
+					Code:    "DESTINATION_ALREADY_EXISTS",
+					Message: fmt.Sprintf("作成先 %s は既に存在します", op.Placement),
+					Subject: key,
+				})
+				continue
+			}
+			after := []byte(content + "\n")
+			edits = append(edits, SourceEdit{
+				Path:             op.Placement,
+				Layer:            layerOf(op),
+				Created:          true,
+				AfterFingerprint: sourceindex.Fingerprint(after),
+				InsertedText:     string(after),
+				after:            after,
+			})
+			continue
+		}
+
 		path := op.Placement
 		if path == "" {
 			var err error
@@ -92,31 +216,25 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			})
 			continue
 		}
-		byPath[path] = append(byPath[path], op)
+		appends[path] = append(appends[path], op)
 	}
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
 
-	paths := make([]string, 0, len(byPath))
-	for path := range byPath {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-
-	var edits []SourceEdit
-	for _, path := range paths {
+	for path, group := range appends {
 		before, err := os.ReadFile(filepath.Join(s.root, filepath.FromSlash(path)))
 		if err != nil {
 			return nil, []Diagnostic{{Code: "SOURCE_UNREADABLE", Message: err.Error(), Subject: "file:" + path}}
 		}
 		after := before
-		for _, op := range byPath[path] {
+		for _, op := range group {
 			after = appendDeclaration(after, renderValidation(op))
 		}
 		original := strings.TrimRight(string(before), "\r\n\t ")
 		edits = append(edits, SourceEdit{
 			Path:              path,
+			Layer:             layerSemantic,
 			BeforeFingerprint: sourceindex.Fingerprint(before),
 			AfterFingerprint:  sourceindex.Fingerprint(after),
 			InsertedText:      string(after)[len(original):],
@@ -124,5 +242,6 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			after:             after,
 		})
 	}
+	sort.Slice(edits, func(i, j int) bool { return edits[i].Path < edits[j].Path })
 	return edits, nil
 }

@@ -41,6 +41,7 @@ type Decision struct {
 	Refusals             []Diagnostic                   `json:"refusals,omitempty"`
 	SourceEdits          []SourceEdit                   `json:"sourceEdits,omitempty"`
 	SemanticDiff         []changeanalysis.SubjectChange `json:"semanticDiff,omitempty"`
+	ApplicationDiff      []changeanalysis.SubjectChange `json:"applicationDiff,omitempty"`
 	Conformance          []Check                        `json:"conformance,omitempty"`
 	DerivedWorldSHA256   string                         `json:"derivedWorldSha256,omitempty"`
 }
@@ -89,8 +90,9 @@ func decisionFrom(p Preview, kind string) Decision {
 }
 
 // acceptは、candidateを受入境界の全検査へ通し、通った場合だけauthoritative sourceを更新する。
-// 更新後はtoolを介さずに読み込めることと、Previewが示した差分どおりであることを確認し、
-// 一つでも満たさなければ元のsourceへ戻す。
+// 更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・
+// 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
+// （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	ev, err := evaluate(root, data)
 	if err != nil {
@@ -104,9 +106,18 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	}
 
 	var written []SourceEdit
+	var createdDirs []string
 	rollback := func() {
 		for _, e := range written {
-			_ = writeFileAtomic(filepath.Join(root, filepath.FromSlash(e.Path)), e.before)
+			target := filepath.Join(root, filepath.FromSlash(e.Path))
+			if e.Created {
+				_ = os.Remove(target)
+			} else {
+				_ = writeFileAtomic(target, e.before)
+			}
+		}
+		for i := len(createdDirs) - 1; i >= 0; i-- {
+			_ = os.Remove(createdDirs[i])
 		}
 	}
 	refuse := func(code, message string) Decision {
@@ -121,15 +132,26 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
-		path := filepath.Join(root, filepath.FromSlash(e.Path))
-		current, err := os.ReadFile(path)
-		if err != nil {
-			return refuse("SOURCE_UNREADABLE", err.Error()), nil
+		target := filepath.Join(root, filepath.FromSlash(e.Path))
+		if e.Created {
+			if _, err := os.Stat(target); err == nil {
+				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s がPreviewの後に作られました", e.Path)), nil
+			}
+			dirs, err := makeDirs(filepath.Dir(target))
+			createdDirs = append(createdDirs, dirs...)
+			if err != nil {
+				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
+			}
+		} else {
+			current, err := os.ReadFile(target)
+			if err != nil {
+				return refuse("SOURCE_UNREADABLE", err.Error()), nil
+			}
+			if sourceindex.Fingerprint(current) != e.BeforeFingerprint {
+				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("%s がPreviewの後に変更されました", e.Path)), nil
+			}
 		}
-		if sourceindex.Fingerprint(current) != e.BeforeFingerprint {
-			return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("%s がPreviewの後に変更されました", e.Path)), nil
-		}
-		if err := writeFileAtomic(path, e.after); err != nil {
+		if err := writeFileAtomic(target, e.after); err != nil {
 			return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 		}
 		written = append(written, e)
@@ -142,7 +164,11 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	if err != nil {
 		return refuse("POST_ACCEPT_RELOAD_FAILED", err.Error()), nil
 	}
-	postDiff, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
+	postSemantic, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
+	if err != nil {
+		return refuse("POST_ACCEPT_DIFF_FAILED", err.Error()), nil
+	}
+	postApplication, err := changeanalysis.DiffApplications(ev.before.loaded.World, post.loaded.World)
 	if err != nil {
 		return refuse("POST_ACCEPT_DIFF_FAILED", err.Error()), nil
 	}
@@ -164,7 +190,8 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	checks := []Check{
 		{Name: "reloaded-with-shared-loader", Passed: true},
 		{Name: "model-revision-matches-preview", Passed: post.revision == ev.preview.ModelRevisionAfter, Detail: post.revision},
-		{Name: "semantic-diff-matches-preview", Passed: reflect.DeepEqual(postDiff, ev.preview.SemanticDiff)},
+		{Name: "semantic-diff-matches-preview", Passed: reflect.DeepEqual(postSemantic, ev.preview.SemanticDiff)},
+		{Name: "application-diff-matches-preview", Passed: reflect.DeepEqual(postApplication, ev.preview.ApplicationDiff)},
 		{Name: "validation-clean", Passed: validationErrors == 0},
 		{Name: "derived-world-reproducible", Passed: derivedSHA == again, Detail: derivedSHA},
 	}
@@ -187,10 +214,31 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.SourceChanged = true
 	decision.ModelRevisionAfter = post.revision
 	decision.SourceEdits = ev.edits
-	decision.SemanticDiff = postDiff
+	decision.SemanticDiff = postSemantic
+	decision.ApplicationDiff = postApplication
 	decision.Conformance = checks
 	decision.DerivedWorldSHA256 = derivedSHA
 	return decision, nil
+}
+
+// makeDirsは、directoryを作り、そのために新しく作ったdirectory（外側から内側の順）を返す。
+func makeDirs(dir string) ([]string, error) {
+	var missing []string
+	for d := dir; ; d = filepath.Dir(d) {
+		if _, err := os.Stat(d); err == nil {
+			break
+		}
+		missing = append([]string{d}, missing...)
+		if filepath.Dir(d) == d {
+			break
+		}
+	}
+	for _, d := range missing {
+		if err := os.Mkdir(d, 0o755); err != nil {
+			return missing, err
+		}
+	}
+	return missing, nil
 }
 
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。

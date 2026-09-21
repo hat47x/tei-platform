@@ -12,14 +12,10 @@ import (
 	"strings"
 
 	"tei/internal/core"
-	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 )
 
-const (
-	candidateSchema = "tei.reference.change-candidate/v0"
-	opAddValidation = "add-validation"
-)
+const candidateSchema = "tei.reference.change-candidate/v0"
 
 // Candidateは、このReference専用の最小semantic deltaの運搬形式である。
 // platform共通のProposal schemaやPatch DSLではなく、入口（file / CLI / Studio / AI）に依らず
@@ -46,16 +42,6 @@ type Evidence struct {
 	Subject string `json:"subject,omitempty"`
 	Source  string `json:"source,omitempty"`
 	Note    string `json:"note,omitempty"`
-}
-
-type Operation struct {
-	Op        string `json:"op"`
-	Namespace string `json:"namespace"`
-	ID        string `json:"id"`
-	Kind      string `json:"kind"`
-	Attribute string `json:"attribute"`
-	Relation  string `json:"relation,omitempty"`
-	Placement string `json:"placement,omitempty"`
 }
 
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -129,74 +115,21 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		if err != nil {
 			return c, "", fmt.Errorf("delta[%d]: %w", i, err)
 		}
-		if seen[normalized.ID] {
-			return c, "", fmt.Errorf("delta[%d]: validation %s がdelta内で重複しています", i, normalized.ID)
+		key := operationKey(normalized)
+		if seen[key] {
+			return c, "", fmt.Errorf("delta[%d]: %s がdelta内で重複しています", i, key)
 		}
-		seen[normalized.ID] = true
+		seen[key] = true
 		ops = append(ops, normalized)
 	}
 	sort.Slice(ops, func(i, j int) bool {
 		if ops[i].Op != ops[j].Op {
 			return ops[i].Op < ops[j].Op
 		}
-		return ops[i].ID < ops[j].ID
+		return operationKey(ops[i]) < operationKey(ops[j])
 	})
 	c.Delta = ops
 	return c, fingerprintOf(c.BaseModelRevision, ops), nil
-}
-
-func normalizeOperation(op Operation) (Operation, error) {
-	op.Op = strings.TrimSpace(op.Op)
-	if op.Op != opAddValidation {
-		return op, fmt.Errorf("operation %q は未対応です（このReferenceは %q だけを扱います）", op.Op, opAddValidation)
-	}
-	namespace, err := core.ParseCanonicalID(op.Namespace)
-	if err != nil {
-		return op, fmt.Errorf("namespace: %w", err)
-	}
-	id, err := core.ParseCanonicalID(op.ID)
-	if err != nil {
-		return op, fmt.Errorf("id: %w", err)
-	}
-	if !strings.HasPrefix(string(id), string(namespace)+".") {
-		return op, fmt.Errorf("validation id %s はnamespace %s に属していません", id, namespace)
-	}
-	kind := semantic.ValidationKind(strings.TrimSpace(op.Kind))
-	if !kind.Valid() {
-		return op, fmt.Errorf("validation kind %q は未対応です", op.Kind)
-	}
-	attribute, err := core.ParseCanonicalID(op.Attribute)
-	if err != nil {
-		return op, fmt.Errorf("attribute: %w", err)
-	}
-	relation := core.CanonicalID("")
-	switch kind {
-	case semantic.ValidationPositive:
-		if strings.TrimSpace(op.Relation) != "" {
-			return op, fmt.Errorf("positive validation %s はrelationを受け付けません", id)
-		}
-	case semantic.ValidationRelationUnique:
-		relation, err = core.ParseCanonicalID(op.Relation)
-		if err != nil {
-			return op, fmt.Errorf("relation-unique validation %s にはrelationが必要です: %w", id, err)
-		}
-	}
-	placement := ""
-	if strings.TrimSpace(op.Placement) != "" {
-		placement, err = sourceindex.NormalizeWorkspacePath(op.Placement)
-		if err != nil {
-			return op, fmt.Errorf("placement: %w", err)
-		}
-	}
-	return Operation{
-		Op:        op.Op,
-		Namespace: string(namespace),
-		ID:        string(id),
-		Kind:      string(kind),
-		Attribute: string(attribute),
-		Relation:  string(relation),
-		Placement: placement,
-	}, nil
 }
 
 func fingerprintOf(baseModelRevision string, ops []Operation) string {
