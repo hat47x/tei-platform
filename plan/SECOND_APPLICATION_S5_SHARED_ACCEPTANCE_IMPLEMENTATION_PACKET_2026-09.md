@@ -399,5 +399,6 @@ explicit human Acceptance decisionが無い限り `accept` をactual destination
 - Preview後のmodel revision: `sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762`
 - 全11 stage PASS。変更subject 6件（semantic: namespace / data / attribute / relation、application: application / application-pattern）。changed collections = `[applications, semantics]`。作られるfileは`applications/repair-intake/application.tei` / `applications/repair-intake/patterns/customer-reference.tei` / `semantic/repair-intake/intake.tei`の3件。
 - impact 14本。unresolved: `ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`。
+- 2026-09-21追記: `add-relation`の追加（`1d720bd`）で、relationからそれを所有するDataへの辺（`semantic.data.relation`）が加わり、同じPreviewのimpact edgeは15本になった。`main a3fc260`で再Previewし、11 stage PASS、fingerprint、base revision、Preview後のmodel revision、変更subject 6件、unresolved 3件が上の値のまま変わらないこと、`reference/workspace`のfile digestが変わらないことを確認した。
 
 このPreview PASSはShared Acceptanceではない。exact Proposalに対するexplicit human Acceptance decisionが無い限り、`accept`をactual destination sourceへ実行しない（§12）。
