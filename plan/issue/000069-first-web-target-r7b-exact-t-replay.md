@@ -4400,3 +4400,78 @@ E1.25 canonical 11 source
 ```
 
 candidate SHA自体をmainへfast-forward / cherry-pickしない。health-capable full checkoutではlatest mainを維持したままcanonical 11 exact blobsだけをmaterializeし、execution gateを同一working treeで閉じる。
+
+
+#### E1.27 exact P1/P2 closure PASS — 2026-09-21
+
+E1.23 / E1.26でpendingとしていたcredential-safe `{P1,P2}` closureを、E1.21 canonical candidateからGit object exact bytesでRepository外の一時Go moduleへ再構成して実行した。
+
+実行前にscratch transfer bundle自体を12 logical chunksのlength / CRCで照合し、展開後に5 fileのGit blob identityを再計算した。5/5がcanonical identityと一致した。
+
+```text
+P1 semantics.go
+  expected = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+  actual   = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+P1 semantics_test.go
+  expected = ba17f69a7e375cfdeec0db544986d51f99b26192
+  actual   = ba17f69a7e375cfdeec0db544986d51f99b26192
+
+P1 semantics_pressure_test.go
+  expected = 95553ba10756399a50e52e639f7d860f4420f29f
+  actual   = 95553ba10756399a50e52e639f7d860f4420f29f
+
+P2 Gate C audit main.go
+  expected = 3878dae15b06a3b57954cf196b108da1cc03bbc7
+  actual   = 3878dae15b06a3b57954cf196b108da1cc03bbc7
+
+P2 Gate C audit main_test.go
+  expected = 668efcdb084e9a7cefe050a5df4be86effc1cebb
+  actual   = 668efcdb084e9a7cefe050a5df4be86effc1cebb
+```
+
+同じworking treeで:
+
+```text
+gofmt -l \
+  tools/internal/firstwebtargetevidence \
+  tools/reference-first-web-target-evidence-audit
+  = empty
+
+go vet \
+  ./tools/internal/firstwebtargetevidence \
+  ./tools/reference-first-web-target-evidence-audit
+  = PASS
+
+go test -count=50 \
+  ./tools/internal/firstwebtargetevidence \
+  ./tools/reference-first-web-target-evidence-audit
+  = PASS
+```
+
+package result:
+
+```text
+tei/tools/internal/firstwebtargetevidence
+  PASS
+
+tei/tools/reference-first-web-target-evidence-audit
+  PASS
+```
+
+これによりE1.20のGate C credential delegationとE1.21の6-value pressure correctionを同一closureでcompile / testしたEvidenceを取得した。
+
+Evidence height:
+
+```text
+E1.21 P1 exact package x50        = PASS
+E1.26 P1/P2 static compatibility  = PASS
+E1.27 {P1,P2} exact closure x50   = PASS
+
+5-package aggregate focused rerun  = pending
+tools/repository-health-check.sh   = pending
+code integration                   = pending
+actual replay / repeatability      = pending
+```
+
+このclosure PASSはfull Repository healthの代替ではない。次のgateはcanonical P1-P5 exact sourceを同一working treeへmaterializeした5-package aggregate focused rerunであり、その後にfull checkout上の `tools/repository-health-check.sh` を要求する。
