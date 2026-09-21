@@ -235,6 +235,7 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 正本:
 
 - `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_COMPATIBILITY_PRESSURE_2026-09.md`
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`
 
 現在のpre-Acceptance停止条件は三つ独立している。
 

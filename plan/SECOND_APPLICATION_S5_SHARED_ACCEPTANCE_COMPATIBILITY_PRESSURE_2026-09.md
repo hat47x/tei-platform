@@ -192,3 +192,11 @@ reload
 を取得する。
 
 Environment bindingはその後の別Proposalであり、このAcceptanceへ混ぜない。
+
+## 9. Implementation packet
+
+次incrementの具体的なcode pressureは:
+
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`
+
+に分離する。
