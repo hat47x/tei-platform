@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — S5 / S6 / S7完了（2026-09-21）。次はS8（Driver / Target側の未解決事項）
+- 状態: In Progress — S5 / S6 / S7完了（2026-09-21）。S8 Driver scenario実施（2026-09-22）。残るTarget Projectionは未評価
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -377,6 +377,47 @@ S8a Driver test-only candidateは `decdb5c16d403e72e8ce12dcd62698d29b3ae40f`（b
 S8 Target provenanceは旧Gate Cの `B / R` をcarry-forwardしない。`repair_intake`は旧 `R=e523...` に存在しないため、S8a Driver scenarioをcurrent sourceで成立させた後、そのrevisionで必要なHandover Evidenceを再qualificationし、successor `B2 / R2`を発行してからFirst Web Targetへ渡す。Target buildは別identity `T2`として追跡する。
 
 S8bへ進む前のsuccessor Handover契約を `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md` に固定した。R2はS8a integration + health PASS後のclean revisionまで割り当てない。exact R2で既存Gate B Required Evidence #310/#255/#308をfinal convergence `-broad`でsame-run再取得し、retained child artifactsをreadiness artifact auditで独立再照合する。その上でSecond Application Driver Evidenceを追加参照してB2/R2を新規発行する。historical B/R/Tは不変で、#308 PostgreSQLをactual Oracle Evidenceへ読み替えない。
+
+### S8 — Driver scenario（2026-09-22）
+
+S7が残した`DRIVER_SCENARIO_NOT_RUN`について、受理済みの第二ApplicationがAcceptance toolを介さない通常のDriver経路で解決・実行できるかを確認した。実装は`internal/driver/second_application_scenario_test.go`である。
+
+#### 分かったこと
+
+**1. 第二Applicationのために新しいEnvironment sourceは要らなかった。**
+
+Contract Query executor bindingは`(environment, instance, database, contract, query)`で識別され、**Applicationでは識別されない**。`repair_intake.customer_reference`は`order_entry`と同じ`master_data.customer / find_by_id`を`master_data.dev`上で使うため、`order_entry`のために書かれた既存bindingがそのまま効いた。S7で受理したのはdatasource aliasのbinding 2行だけで、executor側は一行も足していない。
+
+developmentでの実行は通り、Relation keyが宣言どおりparameterへ渡り、結果が共有`customer.customer.customer_id`へ戻る。
+
+**2. productionでは実行できない。これは第二Application固有ではない。**
+
+`reference/workspace/environments/production`には**Contract Query executor bindingが一件も無い**（あるのはdevelopmentの2件だけ）。そのためproductionでは、S7 bindingによりaliasが`master_data.prod`まで解決した後、executor bindingの不在で止まる。
+
+`order_entry.customer_reference`をproductionで実行しても同じ失敗になることを確認した。current Referenceの既存の状態であり、S5 / S7の受理が壊したものではない。これがReferenceとして意図的な範囲なのか、埋めるべき欠落なのかはここでは判定しない。
+
+重要なのは、**developmentのexecutorへ暗黙に落ちない**ことである。失敗は`master_data.prod`まで解決した上でのexecutor binding不在として現れる。
+
+**3. 製品側のtest coverageの穴を見つけて塞いだ。**
+
+`ContractQueryExecutorRuntimeKey`は「Capability IDだけへ縮退すると接続先を取り違え得る」という理由でEnvironment / instance / Capabilityの三つで構成されている。変異検査で、`ExecutorForContractQuery`が組み立てるkeyから**Environment成分を落としても`internal/driver`と`internal/realization`の全testが通ってしまう**ことが分かった。instance成分とbinding解決側のEnvironment判定は既存testが守っていたが、runtime keyのEnvironment成分だけ固定されていなかった。
+
+`internal/driver/contract_query_executor_registry_key_test.go`を追加して塞いだ。追加後は三つの変異（registry keyがEnvironmentを無視 / instanceを無視 / binding解決がEnvironmentを無視）すべてをtestが検出する。
+
+この穴は、current Referenceにexecutor bindingがdevelopmentにしか無いために実Workspace経由では構成できず、registryを直接検査して初めて固定できた。
+
+#### この段階で主張しないこと
+
+使ったExecutorはtest doubleである。実際のDatabaseへ接続した証拠ではない。S7が残した`RUNTIME_AUTHORITY_NOT_GRANTED`（Permission grant / Resource binding / lease / 実行principal / credential / network authority）はそのまま未解決である。
+
+`TARGET_PROJECTION_NOT_EVALUATED`も未着手で、First Web Target上の`repair_intake` surfaceは評価していない。
+
+```text
+DRIVER_SCENARIO_NOT_RUN          -> developmentについて解消（test doubleによるDriver scenario）
+                                    productionはexecutor binding不在のため未実行のまま
+RUNTIME_AUTHORITY_NOT_GRANTED    -> 未解決
+TARGET_PROJECTION_NOT_EVALUATED  -> 未着手
+```
 
 ## S4 full-validation correction
 
