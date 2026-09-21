@@ -273,3 +273,51 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 		})
 	}
 }
+
+// 独立レビュー（GPT-5.6 Sol、2026-09-21）のR6が指摘したとおり、派生物の書き出しだけが
+// 原子的ではなかった。`reference/world.json`のようなgoldenを指された状態で書き込みが失敗すると、
+// 既にあるfileを壊したままsourceだけ巻き戻る可能性があった。
+func TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := revisionOfDir(t, dir)
+
+	outDir := t.TempDir()
+	derived := filepath.Join(outDir, "world.json")
+	const original = "{\"golden\": \"元の内容\"}\n"
+	writeFile(t, derived, original)
+
+	// directoryを書けなくして、派生物の書き出しだけを失敗させる。
+	if err := os.Chmod(outDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(outDir, 0o755) })
+
+	decision, err := accept(dir, mustJSON(t, unitPriceCandidate(before)), acceptOptions{DerivedOut: derived})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "refused" {
+		t.Fatalf("派生物を書けないのに受理しています: %+v", decision)
+	}
+	var codes []string
+	for _, r := range decision.Refusals {
+		codes = append(codes, r.Code)
+	}
+	if !hasCode(codes, "DERIVED_WRITE_FAILED") {
+		t.Fatalf("拒否理由=%v", codes)
+	}
+
+	content, err := os.ReadFile(derived)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != original {
+		t.Fatalf("既にあった派生物が壊れています: %q", string(content))
+	}
+	if after := revisionOfDir(t, dir); after != before {
+		t.Fatalf("sourceが巻き戻っていません: before=%s after=%s", before, after)
+	}
+	if index := decisionsOf(t, dir); len(index.Records) != 0 {
+		t.Fatalf("受理していないのに記録があります: %+v", index.Records)
+	}
+}

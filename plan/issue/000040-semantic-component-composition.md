@@ -261,6 +261,8 @@ Shared Acceptanceはまだ成立しておらず、authoritative destination sour
 - required pre-Acceptance fixes = none
 - human Acceptance decision = not made by the review
 
+R6が併せて指摘したtool側の欠陥（派生物の書き出しだけが原子的でなく、`-derived-out`に既存のgoldenを指されると失敗時にそれを壊し得る）は、2026-09-21に修正した。`accept`は派生物も`writeFileAtomic`で書き、書けない場合は既にあるfileを変えずにrefuseしてsourceを巻き戻す（`TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten`。修正前のcodeではこのtestが失敗することを確認済み）。上のintegration手順（`-derived-out`に`reference/world.json`を指さない）は、修正後も引き続き正本とする。
+
 Repository integration条件は、actual acceptで`-derived-out reference/world.json`を直接使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを生成し、golden check / repository health PASSまで同じRepository change内で完了すること。historical Gate B/C `B / R / T` はrevision-scoped Evidenceとして保持し、post-accept current Workspaceへcarry-forwardしない。
 
 S6はAcceptance sourceをもう一度別経路でauthorする段階ではなく、accepted 3-source compositionが通常Workspaceとして自立することを確認するEvidence段階とする。normal `tei validate`、Workspace model revision、`reference/world.json`、Source Index 6 subjects、shared authority / Environment不変を確認し、その後だけS7 Environment Binding Proposalへ進む。正本は `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`。

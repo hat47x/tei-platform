@@ -215,7 +215,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		if err := os.MkdirAll(filepath.Dir(opts.DerivedOut), 0o755); err != nil {
 			return refuse("DERIVED_WRITE_FAILED", err.Error()), nil
 		}
-		if err := os.WriteFile(opts.DerivedOut, derived, 0o644); err != nil {
+		// 派生物も原子的に書く。書けない場合は、既にそこにあるfileを壊さずrefuseする
+		// （`reference/world.json`のようなgoldenを指されても、失敗が途中まで書いた内容を残さない）。
+		if err := writeFileAtomic(opts.DerivedOut, derived); err != nil {
 			return refuse("DERIVED_WRITE_FAILED", err.Error()), nil
 		}
 	}
