@@ -5139,3 +5139,70 @@ tools/repository-health-check.sh            = pending mandatory gate
 code integration                            = pending
 actual replay / repeatability Evidence      = pending
 ```
+
+#### B4 continuation — live runner allocation re-probe and integration stop — 2026-09-22
+
+TEI development lane B4 starts from the converged state recorded by E1.33.
+
+Pre-write branch state:
+
+```text
+main = research/selective-knowledge-routing-r6
+     = ebee11a7f33aec86f3f48a3b7294ad9e817c696d
+ahead = 0
+behind = 0
+```
+
+No new remote work branch was created.
+
+To determine whether the mandatory Repository-health gate had become executable, the most recent failed Repository branch hygiene run was re-run through the existing GitHub Actions workflow.
+
+```text
+workflow run  = 34771242002
+run attempt   = 2
+updated_at    = 2026-09-21T22:28:05Z
+             = 2026-09-22T07:28:05+09:00
+status        = completed
+conclusion    = failure
+
+inventory job:
+  id          = 106541743107
+  conclusion  = failure
+  steps       = null
+
+branch-name-policy:
+  id          = 106541744849
+  conclusion  = skipped
+  steps       = null
+```
+
+The re-probe therefore still failed before any observable workflow step execution. It does not qualify the current R7B source packet, and it does not provide Repository-health Evidence.
+
+The integration boundary remains unchanged:
+
+```text
+execution-time latest main
+  -> canonical 11 exact blobs materialize
+  -> exact runner bash -n
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / canonical 11-path overlap-free recheck
+  -> code integration
+  -> existing branch refs converge to merged main without force
+  -> Packet M actual replay-plan materialization
+```
+
+Current B4 Evidence height:
+
+```text
+parallel-lane reconciliation               = PASS
+B branch/main convergence before B4 write  = PASS
+live runner allocation re-probe            = FAIL before observable steps
+canonical 11 exact blobs                    = unchanged authority
+exact runner bash -n                        = pending mandatory gate
+tools/repository-health-check.sh            = pending mandatory gate
+code integration                            = blocked
+actual replay / repeatability Evidence      = pending
+```
+
+B4 must not reinterpret the workflow failure as source/test failure, and must not bypass Repository health by fast-forwarding or cherry-picking any branchless candidate. Documentation-only progress may be integrated while this gate remains blocked; the canonical 11 source paths stay untouched.
+
