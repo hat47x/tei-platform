@@ -286,6 +286,36 @@
       ]
     },
     {
+      "id": "repair_intake",
+      "data": [
+        {
+          "id": "repair_intake.intake",
+          "symbol": "Intake",
+          "attributes": [
+            {
+              "id": "repair_intake.intake.customer_id",
+              "symbol": "customerId",
+              "type": "customer.customer_id"
+            }
+          ],
+          "relations": [
+            {
+              "id": "repair_intake.intake.customer",
+              "symbol": "customer",
+              "target": "customer.customer",
+              "cardinality": "one",
+              "keys": [
+                {
+                  "sourceAttribute": "repair_intake.intake.customer_id",
+                  "targetAttribute": "customer.customer.customer_id"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "sales",
       "types": [
         {
@@ -709,6 +739,44 @@
           "id": "order_entry.submit_order",
           "kind": "command",
           "capability": "sales.order.submit"
+        }
+      ]
+    },
+    {
+      "id": "repair_intake",
+      "semanticUses": [
+        "repair_intake",
+        "customer"
+      ],
+      "databases": [
+        {
+          "alias": "customer_master",
+          "target": "master_data",
+          "access": "read",
+          "requires": [
+            {
+              "contract": "master_data.customer",
+              "compatibleMajor": 2
+            }
+          ]
+        }
+      ],
+      "patterns": [
+        {
+          "id": "repair_intake.customer_reference",
+          "kind": "reference",
+          "relation": "repair_intake.intake.customer",
+          "datasource": "customer_master",
+          "contractQuery": {
+            "contract": "master_data.customer",
+            "query": "find_by_id",
+            "inputs": [
+              {
+                "targetAttribute": "customer.customer.customer_id",
+                "input": "id"
+              }
+            ]
+          }
         }
       ]
     }

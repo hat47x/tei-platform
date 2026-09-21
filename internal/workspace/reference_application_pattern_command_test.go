@@ -21,13 +21,7 @@ func TestReferenceCommandPatternUsesCapabilityContractWithoutDuplicatingIt(t *te
 	const patternID = "order_entry.submit_order"
 	const patternPath = "applications/order-entry/patterns/submit-order.tei"
 
-	if len(result.World.Applications) != 1 {
-		t.Fatalf("applications=%#v", result.World.Applications)
-	}
-	app := result.World.Applications[0]
-	if app.ID != "order_entry" {
-		t.Fatalf("application id=%q", app.ID)
-	}
+	app := referenceApplicationByID(t, result.World.Applications, "order_entry")
 	if !containsCanonicalID(app.SemanticUses, "sales") {
 		t.Fatalf("order_entryがsales Semantic Namespaceを利用していません: uses=%#v", app.SemanticUses)
 	}

@@ -52,7 +52,7 @@ func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
 // RQ-027は、後から入るAIが会話履歴に頼らず「accepted Decision」へ機械的に到達できることを求める。
 // 受理はauthoritative sourceを書くが、なぜそのsourceがあるのかはこれまでworkspaceに残らなかった。
 func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
 	candidatePath := candidateFile(t, candidate)
 
@@ -114,7 +114,7 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 
 // 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
 func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
 
 	accepted, err := takeSnapshot(dir)
@@ -183,7 +183,7 @@ func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
 }
 
 func TestDecisionRecordBecomesSupersededWhenTheWorkspaceMovesOn(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	first := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
 	second := acceptViaCLI(t, dir, candidateFile(t, secondApplicationCandidate(revisionOfDir(t, dir))))
 
@@ -208,7 +208,7 @@ func TestDecisionRecordBecomesSupersededWhenTheWorkspaceMovesOn(t *testing.T) {
 }
 
 func TestDecisionRecordReportsDivergedSourceWhenTheFileItWroteChanges(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
 	if len(decision.SourceEdits) == 0 {
 		t.Fatal("受理がsourceを書いていません")
@@ -236,7 +236,7 @@ func TestDecisionRecordReportsDivergedSourceWhenTheFileItWroteChanges(t *testing
 }
 
 func TestRecordingTheSameDecisionTwiceDoesNotAccumulate(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	decision, err := accept(dir, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))), acceptOptions{})
 	if err != nil || decision.Decision != "accepted" {
 		t.Fatalf("decision=%+v err=%v", decision, err)
@@ -263,7 +263,7 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 		"壊れたJSON":  `{"schema":`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			dir := scratchWorkspace(t)
+			dir := scratchWorkspaceBeforeSecondApplication(t)
 			acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
 			writeFile(t, filepath.Join(dir, filepath.FromSlash(decisionDir), "broken.json"), content)
 
@@ -278,7 +278,7 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 // 原子的ではなかった。`reference/world.json`のようなgoldenを指された状態で書き込みが失敗すると、
 // 既にあるfileを壊したままsourceだけ巻き戻る可能性があった。
 func TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := revisionOfDir(t, dir)
 
 	outDir := t.TempDir()

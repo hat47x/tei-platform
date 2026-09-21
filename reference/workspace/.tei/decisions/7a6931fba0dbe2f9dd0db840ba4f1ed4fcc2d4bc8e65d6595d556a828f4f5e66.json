@@ -1,0 +1,184 @@
+{
+  "schema": "tei.reference.change-decision/v0",
+  "decision": "accepted",
+  "candidateId": "cand-second-application-repair-intake",
+  "candidateFingerprint": "sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11",
+  "origin": {
+    "kind": "cli",
+    "actor": "human-acceptance"
+  },
+  "baseModelRevision": "sha256:f70da9b64a5b48c7682b24c64f455b0b0c2a7278be4faa297b6ff99c2d3707bf",
+  "modelRevisionBefore": "sha256:f70da9b64a5b48c7682b24c64f455b0b0c2a7278be4faa297b6ff99c2d3707bf",
+  "modelRevisionAfter": "sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762",
+  "sourceChanged": true,
+  "sourceEdits": [
+    {
+      "path": "applications/repair-intake/application.tei",
+      "layer": "application",
+      "created": true,
+      "afterFingerprint": "sha256:902a2d0346d84db34f8513650bd19b31fa484a11df2ace57c0fadc21a5addfbb",
+      "insertedText": "application repair_intake {\n    uses semantic repair_intake\n    uses semantic customer\n\n    database customer_master {\n        target master_data\n        access read\n        requires {\n            contract master_data.customer ^2\n        }\n    }\n}\n"
+    },
+    {
+      "path": "applications/repair-intake/patterns/customer-reference.tei",
+      "layer": "application",
+      "created": true,
+      "afterFingerprint": "sha256:9c20d2661195b466fb978d8c7e726b384e03870a27d159c43baa458174d24d4d",
+      "insertedText": "pattern repair_intake.customer_reference reference {\n    relation repair_intake.intake.customer\n    datasource customer_master\n    contract-query {\n        contract master_data.customer\n        query find_by_id\n        input customer.customer.customer_id -\u003e id\n    }\n}\n"
+    },
+    {
+      "path": "semantic/repair-intake/intake.tei",
+      "layer": "semantic",
+      "created": true,
+      "afterFingerprint": "sha256:8f94abda01ec4a0d1c8c6dcb7adc858441bf137223fef9c2f29fc893894ebdb7",
+      "insertedText": "namespace repair_intake\n\ndata Intake {\n    attribute customerId type customer.customer_id\n    relation customer to customer.customer one\n        key repair_intake.intake.customer_id -\u003e customer.customer.customer_id\n}\n"
+    }
+  ],
+  "semanticDiff": [
+    {
+      "kind": "attribute",
+      "id": "repair_intake.intake.customer_id",
+      "change": "added",
+      "after": {
+        "id": "repair_intake.intake.customer_id",
+        "symbol": "customerId",
+        "type": "customer.customer_id"
+      }
+    },
+    {
+      "kind": "data",
+      "id": "repair_intake.intake",
+      "change": "added",
+      "after": {
+        "id": "repair_intake.intake",
+        "symbol": "Intake"
+      }
+    },
+    {
+      "kind": "namespace",
+      "id": "repair_intake",
+      "change": "added",
+      "after": {
+        "id": "repair_intake"
+      }
+    },
+    {
+      "kind": "relation",
+      "id": "repair_intake.intake.customer",
+      "change": "added",
+      "after": {
+        "id": "repair_intake.intake.customer",
+        "symbol": "customer",
+        "target": "customer.customer",
+        "cardinality": "one",
+        "keys": [
+          {
+            "sourceAttribute": "repair_intake.intake.customer_id",
+            "targetAttribute": "customer.customer.customer_id"
+          }
+        ]
+      }
+    }
+  ],
+  "applicationDiff": [
+    {
+      "kind": "application",
+      "id": "repair_intake",
+      "change": "added",
+      "after": {
+        "id": "repair_intake",
+        "semanticUses": [
+          "repair_intake",
+          "customer"
+        ],
+        "databases": [
+          {
+            "alias": "customer_master",
+            "target": "master_data",
+            "access": "read",
+            "requires": [
+              {
+                "contract": "master_data.customer",
+                "compatibleMajor": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "application-pattern",
+      "id": "repair_intake.customer_reference",
+      "change": "added",
+      "after": {
+        "id": "repair_intake.customer_reference",
+        "kind": "reference",
+        "relation": "repair_intake.intake.customer",
+        "datasource": "customer_master",
+        "contractQuery": {
+          "contract": "master_data.customer",
+          "query": "find_by_id",
+          "inputs": [
+            {
+              "targetAttribute": "customer.customer.customer_id",
+              "input": "id"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "conformance": [
+    {
+      "name": "reloaded-with-shared-loader",
+      "passed": true
+    },
+    {
+      "name": "model-revision-matches-preview",
+      "passed": true,
+      "detail": "sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762"
+    },
+    {
+      "name": "semantic-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "application-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "validation-clean",
+      "passed": true
+    },
+    {
+      "name": "derived-world-reproducible",
+      "passed": true,
+      "detail": "sha256:48233d0c2e57d127685850cea8229331a0fc75253bc2ce1849806aded4bb0b65"
+    }
+  ],
+  "derivedWorldSha256": "sha256:48233d0c2e57d127685850cea8229331a0fc75253bc2ce1849806aded4bb0b65",
+  "intent": "Second Application repair_intake（改訂版S4 composition）をSemantic / Application / Patternの3 sourceとして追加する",
+  "evidence": [
+    {
+      "subject": "order_entry.customer_reference",
+      "note": "origin。provenanceだけで、意味はcopyしない"
+    },
+    {
+      "subject": "customer.customer"
+    }
+  ],
+  "unresolved": [
+    {
+      "code": "ENVIRONMENT_BINDING_NOT_AUTHORED",
+      "message": "application repair_intake はこの変更で追加されたが、Environment instanceへのbinding・Provider・Permission grantは含まれない。実行可能であるとは言えず、Environment / Runtime authorityはこの変更では変わらない"
+    },
+    {
+      "code": "DRIVER_SCENARIO_NOT_RUN",
+      "message": "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"
+    },
+    {
+      "code": "TARGET_PROJECTION_NOT_EVALUATED",
+      "message": "解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"
+    }
+  ]
+}

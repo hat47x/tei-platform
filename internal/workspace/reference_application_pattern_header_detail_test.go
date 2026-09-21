@@ -21,10 +21,7 @@ func TestReferenceHeaderDetailPatternReusesManyRelationWithoutPersistenceAssumpt
 	const patternID = "order_entry.order_lines"
 	const patternPath = "applications/order-entry/patterns/order-lines.tei"
 
-	if len(result.World.Applications) != 1 {
-		t.Fatalf("applications=%#v", result.World.Applications)
-	}
-	app := result.World.Applications[0]
+	app := referenceApplicationByID(t, result.World.Applications, "order_entry")
 	pattern := applicationPatternByID(t, app.Patterns, patternID)
 	if pattern.Kind != application.PatternHeaderDetail || pattern.Relation != "sales.order.lines" {
 		t.Fatalf("header-detail Patternの意味が期待値と異なります: %#v", pattern)

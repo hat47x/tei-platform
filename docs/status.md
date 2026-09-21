@@ -269,11 +269,13 @@ First Targetは実装済みで、actual clean Target run、Visual capture、fina
 
 ## Studio / Authoring
 
-Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。実際の`reference/workspace`へのSecond Application compositionのPreviewはPASSしていますが、Acceptは実行していません（人のAcceptance decisionが必要）。 Second Applicationの改訂版Proposal（`c18ae0fd…`）は、実際のReferenceへのread-only Previewが全stage PASSしています。2026-09-21に別の生成AI（GPT-5.6 Sol）による独立レビューも完了し、`review-clear-with-conditions`となりました。Acceptanceは未実施で、残る停止条件はexact Proposalに対するexplicit human Acceptance decisionです（[`ISSUE-000040`](../plan/issue/000040-semantic-component-composition.md)）。
+Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。Second Applicationの改訂版Proposal（`c18ae0fd…`）は、read-only Preview全stage PASS、別の生成AI（GPT-5.6 Sol）による独立レビュー完了（`review-clear-with-conditions`、必須修正なし）を経て、**2026-09-21に利用者の明示的なAcceptance decisionにより実際の`reference/workspace`へ受理しました**。受理されたのは`repair_intake`のSemantic / Application / Patternの3 sourceで、ディスク上の内容はレビュー済みProposal（741 bytes、`c18ae0fd…`）とバイト一致します。`reference/world.json`は同じ変更でrepair_intake部分木の追加のみを反映し（68行追加・0行削除）、reference-golden・evidence runner・repository health checkはすべてPASSしました。受理の記録は`reference/workspace/.tei/decisions/`にあります。witnessと実行記録の正本は[`ISSUE-000040`](../plan/issue/000040-semantic-component-composition.md)です。Environment Binding（S7）はこの受理では承認しておらず、次はS6のsource reload validationです。
 
 acceptは、更新したsourceに加えて受理そのものを`.tei/decisions/`へ残すようになりました（2026-09-21、`RQ-027`）。後から入るAIや人が、会話履歴を持たずに「このsourceはなぜここにあるのか」——intent、Evidence、基準revision、書いたfile、意味の差分、残ったunresolved——を`decisions`コマンドで読めます。記録はauthorityではなく、`.tei/`はmanaged sourceではないため、消してもmodel revisionもaccepted meaningも変わりません。
 
 Gate C後の最初のStudio Referenceは`ISSUE-000046`です（In Progress。UI・Relation変更は未着手）。
+
+Gate B / Gate CのEvidenceは、そのexact revision（`R = e5231839…` / `T = 0ba87a4e…`）へ紐づく歴史的Evidenceとして保持します。第二Application受理後のcurrent Workspaceを、旧baselineのcurrent equivalentとして読み替えません。
 
 ```text
 Select

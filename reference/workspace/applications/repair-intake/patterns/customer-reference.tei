@@ -1,0 +1,9 @@
+pattern repair_intake.customer_reference reference {
+    relation repair_intake.intake.customer
+    datasource customer_master
+    contract-query {
+        contract master_data.customer
+        query find_by_id
+        input customer.customer.customer_id -> id
+    }
+}

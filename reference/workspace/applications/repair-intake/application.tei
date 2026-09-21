@@ -1,0 +1,12 @@
+application repair_intake {
+    uses semantic repair_intake
+    uses semantic customer
+
+    database customer_master {
+        target master_data
+        access read
+        requires {
+            contract master_data.customer ^2
+        }
+    }
+}

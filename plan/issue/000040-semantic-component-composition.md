@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — executable pressure PASS / Shared Acceptance Preview PASS / independent review completed（review-clear-with-conditions, GPT-5.6 Sol, 2026-09-21） / only explicit human Acceptance of `c18ae...` remains before S6
+- 状態: In Progress — S5 Acceptance完了（2026-09-21、`c18ae...`を実際の`reference/workspace`へ受理）。次はS6 source reload validation
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -272,6 +272,58 @@ S6はAcceptance sourceをもう一度別経路でauthorする段階ではなく�
 S7 preflightでは、current development / productionが既に `master_data.dev` / `master_data.prod`（definition `master_data`, provider `oracle`）を持ち、`tei.reference.providers` bundleがOracle providerを供給していることを確認した。したがってS6 complete後の最小Environment候補は `repair_intake.customer_master` を既存instanceへbindする2行であり、新Database instance / Provider / Permission / Resource grantを先行作成しない。exact S7 Proposal fingerprint / base revisionはS6完了後に固定する。
 
 独立レビューによりaccept後のRepository integration条件も評価済みである。actual acceptでは`-derived-out reference/world.json`を使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを再生成し、golden checkとrepository health PASSまで同じRepository changeで完了する。Gate B / Gate Cの`B / R / T`はrevision-scoped historical Evidenceであり、post-Gate-C current Referenceの進化を旧baselineへcarry-forwardしない。実行手順は`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`を正本とする。
+
+## S5 Acceptance witness と実行記録 — 2026-09-21
+
+`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md` §9の形式で記録する。
+
+```text
+proposal fingerprint:            c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
+human Acceptance decision:       accepted
+witness identity / locus:        Repository owner（hat47x）。Claude Code session上の明示的な回答「Acceptします。」
+                                 直前に提示した内容: 独立レビュー完了（review-clear-with-conditions、必須修正なし）、
+                                 残る停止条件はexplicit human Acceptance decisionだけであること
+decision time:                   2026-09-21
+repository revision before accept: f8785800c66dbca735caefa75d284f6ec5b33396
+baseModelRevision:               sha256:f70da9b64a5b48c7682b24c64f455b0b0c2a7278be4faa297b6ff99c2d3707bf
+Acceptance candidate fingerprint: sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11
+modelRevisionAfter:              sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+accepted source paths:           reference/workspace/semantic/repair-intake/intake.tei
+                                 reference/workspace/applications/repair-intake/application.tei
+                                 reference/workspace/applications/repair-intake/patterns/customer-reference.tei
+decision record:                 reference/workspace/.tei/decisions/7a6931fba0dbe2f9dd0db840ba4f1ed4fcc2d4bc8e65d6595d556a828f4f5e66.json
+golden update result:            reference/world.json のみ変更（68行追加・0行削除。すべてrepair_intake部分木）
+reference-golden verification:   PASS
+reference evidence runner:       PASS（run-knowledge-portability-reference-evidence.sh、46 test PASS / 0 FAIL）
+repository health check:         PASS（gofmt / go vet / go test ./... / tei validate）
+retained unresolved:             ENVIRONMENT_BINDING_NOT_AUTHORED
+                                 DRIVER_SCENARIO_NOT_RUN
+                                 TARGET_PROJECTION_NOT_EVALUATED
+historical Gate B/C scope:       R = e5231839... / T = 0ba87a4e... はそのexact revisionへ紐づく歴史的Evidenceとして保持。
+                                 受理後のcurrent Workspaceを旧B/R/Tのcurrent equivalentへcarry-forwardしない
+```
+
+### 手順の遵守
+
+§4の必須re-Previewを直前に実行し、記録済みの期待値と全一致した（acceptable、11/11 stage、candidate fingerprint、base revision、modelRevisionAfter、changed subjects 6、changed collections `[applications, semantics]`、unresolved 3件、impact edge 15本）。`-derived-out`は使わず、source acceptの後に`go run ./tools/reference-golden -write`でgoldenを再生成した。
+
+受理後、ディスク上の3 sourceから再構成したbundleが**741 bytes / `c18ae0fd...`と一致**することを確認した。受理されたのはレビュー済みProposalそのものである。
+
+### 受理に伴って更新したtest前提
+
+受理により「`repair_intake`はまだ存在しない」という前提が正しく成り立たなくなり、3 packageの24 testが失敗した。いずれもAcceptanceの欠陥ではなく、Referenceの内容が進んだことによる前提の陳腐化である。各testの主張を変えずに前提だけを更新した。
+
+| 対象 | 変更 |
+| --- | --- |
+| `internal/workspace` 3件 | 主題は`order_entry`のPatternであり、「ReferenceのApplicationは1件」は副次的な足場だった。`referenceApplicationByID`でID検索へ置き換えた |
+| `tools/internal/changeanalysis` 2件 | 「第二Applicationを追加する」差分の起点を`referenceWorkspaceCopyBeforeSecondApplication`（受理前のReference）に変えた |
+| `tools/reference-shared-acceptance` 19件 | 同様に`scratchWorkspaceBeforeSecondApplication`を導入した。これらのtestが証明する内容（composition、containment、rollback、identity衝突の拒否、決定記録）は受理前と同一のworkspaceに対して変わらず成立する |
+
+guardを緩めた箇所は無い。`TestSecondApplicationCompositionRejectsAnExistingIdentity`のような衝突検出testは、受理前のworkspaceを起点にすることで意味を保っている。
+
+### 次
+
+S6（`plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`）へ進む。Acceptance toolを介さずnormal TEI sourceとして自立することの確認であり、新しいauthoring経路ではない。Environment Binding（S7）はこのAcceptanceでは承認していない。
 
 ## S4 full-validation correction
 

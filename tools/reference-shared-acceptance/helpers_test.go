@@ -35,6 +35,24 @@ func scratchWorkspace(t *testing.T) string {
 	return dst
 }
 
+// scratchWorkspaceBeforeSecondApplicationは、第二Application `repair_intake` を受理する前の状態の
+// copyを返す。受理後のReferenceにはそのsourceと受理の記録が含まれるため、「第二Applicationをこれから
+// 受け入れる」ことや「まだ記録が無い」ことを前提にするtestはこちらを使う。
+func scratchWorkspaceBeforeSecondApplication(t *testing.T) string {
+	t.Helper()
+	dir := scratchWorkspace(t)
+	for _, rel := range []string{
+		filepath.Join("semantic", "repair-intake"),
+		filepath.Join("applications", "repair-intake"),
+		filepath.Join(".tei", "decisions"),
+	} {
+		if err := os.RemoveAll(filepath.Join(dir, rel)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 func revisionOfDir(t *testing.T, dir string) string {
 	t.Helper()
 	s, err := takeSnapshot(dir)

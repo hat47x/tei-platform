@@ -1,0 +1,7 @@
+namespace repair_intake
+
+data Intake {
+    attribute customerId type customer.customer_id
+    relation customer to customer.customer one
+        key repair_intake.intake.customer_id -> customer.customer.customer_id
+}

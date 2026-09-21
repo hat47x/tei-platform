@@ -23,13 +23,7 @@ func TestReferenceBrowsePatternReusesExistingQueryDatasource(t *testing.T) {
 	const patternID = "order_entry.recent_orders"
 	const patternPath = "applications/order-entry/patterns/recent-orders.tei"
 
-	if len(result.World.Applications) != 1 {
-		t.Fatalf("applications=%#v", result.World.Applications)
-	}
-	app := result.World.Applications[0]
-	if app.ID != "order_entry" {
-		t.Fatalf("application id=%q", app.ID)
-	}
+	app := referenceApplicationByID(t, result.World.Applications, "order_entry")
 	if len(app.Patterns) != 5 {
 		t.Fatalf("browse、record、reference、command、header-detailが共存していません: %#v", app.Patterns)
 	}
@@ -157,6 +151,19 @@ func TestReferenceReferencePatternReusesRelationAndReadOnlyDatasourceContracts(t
 	if refs[0].ArtifactPath != patternPath {
 		t.Fatalf("reference Patternのsource path=%q want=%q", refs[0].ArtifactPath, patternPath)
 	}
+}
+
+// referenceApplicationByIDは、Reference WorkspaceのApplicationをIDで取り出す。
+// Reference上のApplication数は第二Application受理後に増えるため、順序や件数に依存しない。
+func referenceApplicationByID(t *testing.T, applications []application.Application, id string) application.Application {
+	t.Helper()
+	for _, app := range applications {
+		if string(app.ID) == id {
+			return app
+		}
+	}
+	t.Fatalf("Application %q がありません: %#v", id, applications)
+	return application.Application{}
 }
 
 func applicationPatternByID(t *testing.T, patterns []application.Pattern, id string) application.Pattern {

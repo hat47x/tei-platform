@@ -57,8 +57,8 @@ func writeSource(t *testing.T, root, relative, content string) {
 
 func worldWithSecondApplication(t *testing.T) (before, after ir.World) {
 	t.Helper()
-	before = loadWorld(t, referenceWorkspaceCopy(t)).World
-	dir := referenceWorkspaceCopy(t)
+	before = loadWorld(t, referenceWorkspaceCopyBeforeSecondApplication(t)).World
+	dir := referenceWorkspaceCopyBeforeSecondApplication(t)
 	writeSource(t, dir, "semantic/repair-intake/intake.tei", repairIntakeSemantic)
 	writeSource(t, dir, "applications/repair-intake/application.tei", repairIntakeApplication)
 	writeSource(t, dir, "applications/repair-intake/patterns/customer-reference.tei", repairIntakePattern)

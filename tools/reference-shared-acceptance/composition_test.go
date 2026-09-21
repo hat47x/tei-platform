@@ -117,7 +117,7 @@ func secondApplicationCandidate(revision string) Candidate {
 
 func previewComposition(t *testing.T, mutate func(c *Candidate)) (string, evaluation) {
 	t.Helper()
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	c := secondApplicationCandidate(revisionOfDir(t, dir))
 	if mutate != nil {
 		mutate(&c)
@@ -178,7 +178,7 @@ func TestSecondApplicationCompositionPreviewUsesSharedAcceptanceBoundary(t *test
 }
 
 func TestSecondApplicationCompositionPreviewLeavesSourceByteIdentical(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := treeDigest(t, dir)
 	ev, err := evaluate(dir, mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir))))
 	if err != nil || !ev.preview.Acceptable {
@@ -254,7 +254,7 @@ func TestSecondApplicationCompositionPreviewBindsExactS4Proposal(t *testing.T) {
 		}},
 	}
 
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	revision := revisionOfDir(t, dir)
 	fromParsed := secondApplicationCandidate(revision)
 	fromParsed.Delta = parsedOps
@@ -359,7 +359,7 @@ func TestSecondApplicationCompositionPreviewReportsSemanticAndApplicationDiff(t 
 }
 
 func TestSecondApplicationCompositionPreviewRejectsStaleBase(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	staleRevision := revisionOfDir(t, dir)
 	semanticFile := filepath.Join(dir, "semantic", "sales", "order.tei")
 	content, err := os.ReadFile(semanticFile)
@@ -396,7 +396,7 @@ func TestSecondApplicationCompositionPreviewRejectsExistingDestinationCollision(
 		{"application", s4ApplicationPath, "application other_app {\n    uses semantic customer\n}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := scratchWorkspace(t)
+			dir := scratchWorkspaceBeforeSecondApplication(t)
 			writeFile(t, filepath.Join(dir, filepath.FromSlash(tc.path)), tc.body)
 			before := treeDigest(t, dir)
 			data := mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir)))
@@ -421,7 +421,7 @@ func TestSecondApplicationCompositionPreviewRejectsExistingDestinationCollision(
 }
 
 func TestSecondApplicationCompositionPreviewRejectsUndeclaredFourthEdit(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	ev, err := evaluate(dir, mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir))))
 	if err != nil || !ev.preview.Acceptable {
 		t.Fatalf("preview=%+v err=%v", ev.preview, err)
@@ -591,7 +591,7 @@ func TestSecondApplicationCompositionOriginDoesNotChangeTheDecision(t *testing.T
 	}
 	var outcomes []outcome
 	for _, origin := range origins {
-		dir := scratchWorkspace(t)
+		dir := scratchWorkspaceBeforeSecondApplication(t)
 		c := secondApplicationCandidate(revisionOfDir(t, dir))
 		c.ID = "cand-" + origin.Kind
 		c.Origin = origin
@@ -620,7 +620,7 @@ func TestSecondApplicationCompositionOriginDoesNotChangeTheDecision(t *testing.T
 }
 
 func TestSecondApplicationCompositionAcceptWritesExactlyTheThreeDeclaredFiles(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := treeDigest(t, dir)
 	beforeEnvironments := map[string]string{}
 	for path, digest := range before {
@@ -697,7 +697,7 @@ func TestSecondApplicationCompositionAcceptWritesExactlyTheThreeDeclaredFiles(t 
 }
 
 func TestSecondApplicationCompositionAcceptRollsAllThreeFilesBackWhenConformanceFails(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	before := treeDigest(t, dir)
 	data := mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir)))
 
@@ -734,7 +734,7 @@ func TestSecondApplicationCompositionAcceptRollsAllThreeFilesBackWhenConformance
 }
 
 func TestSecondApplicationCompositionAcceptRefusesAConcurrentCreateWithoutPartialWrite(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	data := mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir)))
 	concurrent := filepath.Join(dir, filepath.FromSlash(s4PatternPath))
 

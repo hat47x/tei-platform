@@ -17,6 +17,23 @@ import (
 	"tei/internal/workspace"
 )
 
+// referenceWorkspaceCopyBeforeSecondApplicationは、第二Application `repair_intake` を受理する前の
+// Reference Workspaceを返す。受理後のReferenceにはそのsourceが含まれるため、「第二Applicationを追加する」
+// 差分を作るtestはこちらを起点にする。
+func referenceWorkspaceCopyBeforeSecondApplication(t *testing.T) string {
+	t.Helper()
+	dir := referenceWorkspaceCopy(t)
+	for _, rel := range []string{
+		filepath.Join("semantic", "repair-intake"),
+		filepath.Join("applications", "repair-intake"),
+	} {
+		if err := os.RemoveAll(filepath.Join(dir, rel)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 func referenceWorkspaceCopy(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
