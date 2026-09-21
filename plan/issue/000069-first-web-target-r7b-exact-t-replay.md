@@ -4758,3 +4758,115 @@ E1.21 exact 11 blobs on execution-time latest main
 
 full checkoutまたはbyte-exact materializationが成立しないsessionではaggregate / Repository healthを推測でPASS扱いせず、candidate SHAのfast-forward / cherry-pickや新規remote work branch作成も行わない。
 
+
+
+#### E1.31 aggregate gate subsumption audit — 2026-09-22
+
+E1.30までにcurrent canonical sourceのdependency closureは実測で閉じている。
+
+```text
+{P1,P2} exact closure
+  gofmt clean
+  go vet PASS
+  go test -count=50 PASS
+
+{P1,P4} exact closure
+  gofmt clean
+  go vet PASS
+  go test -count=50 PASS
+
+P3 exact focused
+  blob unchanged from PASS Evidence
+
+P5 exact focused
+  blob unchanged from PASS Evidence
+```
+
+single P1-P5 aggregate commandを別の必須gateとして残す必要性を判断するため、6 candidate test filesをexact sourceから機械監査した。
+
+確認項目:
+
+```text
+TestMain
+t.Parallel
+os.Setenv / t.Setenv / os.Unsetenv
+os.Chdir / t.Chdir
+fixed /tmp or os.TempDir
+net.Listen / httptest server
+exec.Command
+```
+
+結果:
+
+```text
+all test files:
+  TestMain   = 0
+  t.Parallel = 0
+  Setenv     = 0
+  Chdir      = 0
+  FixedTmp   = 0
+  Listen     = 0
+  ExecCommand= 0
+
+P2 main_test:
+  t.TempDir  = 3
+  file writes = 11
+
+P4 main_test:
+  t.TempDir  = 1
+  file writes = 5
+
+all other candidate tests:
+  file writes = 0
+```
+
+P2/P4の書き込みは各testの `t.TempDir()` 配下に限定され、package間で共有する固定path、process-global environment、cwd、listener、external processはない。
+
+candidate-internal dependency graphも:
+
+```text
+P2 -> P1
+P4 -> P1
+P1/P3/P5 -> standard library only
+```
+
+のままで、cycleはない。
+
+Goのmulti-package `go test` は各packageを別test binaryとして実行するため、上記条件下ではsingle aggregate commandが新たに検証するcandidate-internal semantic interactionはない。加えてmandatory `tools/repository-health-check.sh` 自体が:
+
+```text
+gofmt -l .
+go vet ./...
+go test -count=1 ./...
+go run ./cmd/tei validate -workspace reference/workspace
+```
+
+を同一full checkout / current-main working treeで実行し、candidate 5 packagesを含むrepository-wide aggregateを上位gateとして包含する。
+
+したがってP1-P5 single focused aggregateは**diagnostic convenience check**へ降格し、integrationを止める独立mandatory gateから外す。これはfull Repository healthを省略する判断ではなく、むしろ重複したfocused gateを上位mandatory gateへ統合するものである。
+
+更新後のintegration gate:
+
+```text
+canonical 11 exact blobs
+  -> exact runner bash -n
+  -> tools/repository-health-check.sh on current-main full checkout
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+Evidence height:
+
+```text
+{P1,P2} exact closure x50                 = PASS
+{P1,P4} exact closure x50                 = PASS
+P3 exact focused                          = PASS
+P5 exact focused                          = PASS
+candidate test isolation audit            = PASS
+P1-P5 single focused aggregate            = optional diagnostic
+tools/repository-health-check.sh           = pending mandatory gate
+code integration                           = pending
+actual replay / repeatability Evidence     = pending
+```
+
+full checkoutを持たないsessionではRepository healthを推測でPASS扱いせず、codeをmainへ統合しない。
