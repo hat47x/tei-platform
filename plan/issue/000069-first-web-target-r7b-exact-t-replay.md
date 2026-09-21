@@ -4314,3 +4314,129 @@ E1.25 canonical 11 source
 ```
 
 E1.23でexact P1 packageはtest×50までPASS済みだが、credential-safe P2とのactual closure rerunは未取得である。focused/static Evidenceをfull Repository healthへ読み替えず、actual exact-T replay / repeatability Evidenceも引き続き未取得として扱う。
+
+
+#### E1.25 current-main refresh and P1/P2 delta compatibility — 2026-09-21
+
+E1.24以後、mainはR7B packet refreshとSecond Application independent review文書の3 commit進んだ。
+
+current main:
+
+```text
+d5e293226a14841e11591fd07595b26fb74ea1e9
+```
+
+この増分はR7B canonical 11 source pathとoverlapしない。E1.21 exact blobsをcurrent mainへ再配置したbranchless candidate:
+
+```text
+candidate:
+  57a8dae31b1e7483d0df0f2e870b84cf110cd270
+
+parent:
+  d5e293226a14841e11591fd07595b26fb74ea1e9
+
+tree:
+  705b74cafc2891769d7f6ccf17080f19ef0d23cf
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+を作成した。candidate作成ではmain / remote branch / PRを変更していない。
+
+remote branch 18本を再比較した結果、全件:
+
+```text
+ahead  = 0
+behind = 0
+status = identical
+```
+
+であり、open PRも0である。
+
+E1.23でpendingのまま残る `{P1,P2}` closureについて、実行前のAPI互換性をexact blob差分で再監査した。
+
+P1:
+
+```text
+old semantics.go
+  46629767bee3b3733c0ca6e4433971c4cc85bb9d
+
+new semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+```
+
+差分はshared credential reject集合への:
+
+```text
++ "wrong-secret",
+```
+
+のみであり、exported API:
+
+```go
+func RejectReferenceCredentialMaterial(name string, data []byte) error
+```
+
+のsignatureは不変である。
+
+P2:
+
+```text
+old Gate C audit main.go
+  eb44ef1d543f0849e424e99ed517492f747d634a
+
+new Gate C audit main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+```
+
+production差分はGate Cローカルcredential literal scanを除去し:
+
+```go
+if err := firstwebtargetevidence.RejectReferenceCredentialMaterial(name, data); err != nil {
+    return err
+}
+```
+
+へ委譲する変更に限定される。P2はE1.20以前から同じshared packageをsemantic validationにimport済みであり、新しいpackage edgeは増えていない。
+
+したがってstatic delta compatibilityは:
+
+```text
+P1 exported API compatibility = PASS
+P2 -> P1 dependency shape     = unchanged
+new credential behavior        = shared-set extension only
+```
+
+と判断できる。
+
+ただしこれはcompile/test executionではない。Evidence heightは厳密に分離する。
+
+```text
+latest-main exact candidate assembly = PASS
+current-main source overlap          = PASS
+remote branch convergence            = PASS
+P1 exact rerun x50                   = PASS
+P1/P2 delta API compatibility        = PASS (static)
+P2 shared delegation source audit    = PASS (static)
+{P1,P2} exact closure rerun          = pending
+5-package aggregate focused rerun    = pending
+tools/repository-health-check.sh     = pending
+code integration                     = pending
+actual replay / repeatability        = pending
+```
+
+current integration pathは変えない。
+
+```text
+E1.25 canonical 11 source
+  -> same working treeで{P1,P2} exact closure rerun
+  -> same working treeで5-package aggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+candidate SHA自体をmainへfast-forward / cherry-pickしない。health-capable full checkoutではlatest mainを維持したままcanonical 11 exact blobsだけをmaterializeし、execution gateを同一working treeで閉じる。
