@@ -533,3 +533,70 @@ S8後、S9 change propagationへ渡すEvidence:
 - actual external authority unresolved is not hidden
 
 S9ではISSUE-000039のimpact analysisを再利用し、独自impact engineを作らない。
+
+
+## 16. S8a branchless Driver pressure candidate — 2026-09-21
+
+S8aのDriver pressureを、authoritative sourceを変更しないtest-only candidateとして作成した。
+
+```text
+candidate commit = 015814af03e36859fbb4d5d896f26a9f4d4619b3
+base main        = 2a245ae4a7ba1626950350a87e7bd9dc19c5be85
+remote branch    = none
+PR               = none
+main connection  = none
+```
+
+変更は2 fileだけ。
+
+```text
+A tools/reference-business-procedure-check/second_application_s8_driver_pressure_test.go
+M tools/run-knowledge-portability-reference-evidence.sh
+```
+
+Driver pressureは次の7点を固定する。
+
+1. accepted `repair_intake.intake.customer_id`からdevelopmentの`master_data.customer/find_by_id`を実行できる。
+2. zero-or-oneの0件を正常not-foundとして扱う。
+3. 2件以上をcardinality violationとして拒否する。
+4. Target側の別Semantic attributeからCustomer IDを推測しない。
+5. exact runtime registry entryが無ければ別instance / providerへfallbackしない。
+6. runtime Executor providerがOracle instanceと不一致なら拒否する。
+7. productionはexplicit executor bindingが無い限り、development binding / providerから暗黙補完しない。
+
+test fileはlocal `gofmt`後のGit blob:
+
+```text
+a1fc1da3562090bc22af156934798b290f5dc95f
+```
+
+とcandidate blobが一致した。
+
+現時点のEvidence分類:
+
+```text
+gofmt/blob identity      = PASS
+static API/error-path    = inspected
+focused go test          = not obtained
+reference evidence       = not obtained
+repository health check  = not obtained
+Executable Evidence      = absent
+```
+
+current execution environmentにはGo / GitはあるがRepository checkoutが無く、GitHub DNSも解決できないため、binding health checkを実行できていない。
+
+したがってこのcandidateを`main`へ接続しない。
+
+次のpromotion条件は:
+
+```text
+focused TestSecondApplicationS8* PASS
+tools/run-knowledge-portability-reference-evidence.sh PASS
+tools/repository-health-check.sh PASS
+latest main drift recheck
+direct-to-main integration
+```
+
+である。
+
+このcandidateは旧 `d4fd397fe97291e6ca185c4a729de4a40e18202b` をsupersedeする。

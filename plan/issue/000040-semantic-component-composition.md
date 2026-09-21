@@ -371,6 +371,8 @@ First Web TargetはProjection自体はApplication IDを受けるが、current re
 
 actual Oracle principal / credential / network authorityは未観測のままなので、deterministic synthetic Evidenceとactual external Oracle Evidenceを分離する。`RUNTIME_AUTHORITY_NOT_GRANTED`は保持する。
 
+S8a Driver test-only candidateは `015814af03e36859fbb4d5d896f26a9f4d4619b3`（base `2a245ae4...`）へ更新した。remote branch / PRは作らずmain未接続。accepted Semantic source key、development execution、not-found、zero-or-one violation、exact registry、provider mismatch、production executor binding不足の7 pressureを持つ。test blob `a1fc1da3...` はlocal gofmt後blobと一致する。ただしfocused test / reference evidence / repository healthはcheckout不在とGitHub DNS制約で未取得のためExecutable Evidenceとは扱わず、health PASS前にmainへ接続しない。
+
 S8 Target provenanceは旧Gate Cの `B / R` をcarry-forwardしない。`repair_intake`は旧 `R=e523...` に存在しないため、S8a Driver scenarioをcurrent sourceで成立させた後、そのrevisionで必要なHandover Evidenceを再qualificationし、successor `B2 / R2`を発行してからFirst Web Targetへ渡す。Target buildは別identity `T2`として追跡する。
 
 ## S4 full-validation correction
