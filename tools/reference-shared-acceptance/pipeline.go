@@ -63,6 +63,8 @@ type evaluation struct {
 	preview Preview
 	before  snapshot
 	edits   []SourceEdit
+	// candidateは、fingerprintへ入らないIntent / Evidenceを決定記録へ渡すために保持する。
+	candidate Candidate
 }
 
 func staleOptions() []string {
@@ -254,6 +256,7 @@ func evaluate(root string, data []byte) (evaluation, error) {
 	})
 
 	ev.preview.Acceptable = !failed
+	ev.candidate = candidate
 	return ev, infraErr
 }
 

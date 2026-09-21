@@ -1,0 +1,275 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func cliRun(t *testing.T, args ...string) (int, string, string) {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	code := runCLI(args, &stdout, &stderr)
+	return code, stdout.String(), stderr.String()
+}
+
+func candidateFile(t *testing.T, c Candidate) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "candidate.json")
+	writeFile(t, path, string(mustJSON(t, c)))
+	return path
+}
+
+func decisionsOf(t *testing.T, dir string) DecisionIndex {
+	t.Helper()
+	code, out, errOut := cliRun(t, "decisions", "-workspace", dir)
+	if code != 0 {
+		t.Fatalf("decisions code=%d err=%s", code, errOut)
+	}
+	var index DecisionIndex
+	if err := json.Unmarshal([]byte(out), &index); err != nil {
+		t.Fatalf("decisions出力を読めません: %v: %s", err, out)
+	}
+	return index
+}
+
+func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
+	t.Helper()
+	code, out, errOut := cliRun(t, "accept", "-workspace", dir, "-candidate", candidatePath)
+	if code != 0 {
+		t.Fatalf("accept code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	return decision
+}
+
+// RQ-027は、後から入るAIが会話履歴に頼らず「accepted Decision」へ機械的に到達できることを求める。
+// 受理はauthoritative sourceを書くが、なぜそのsourceがあるのかはこれまでworkspaceに残らなかった。
+func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidatePath := candidateFile(t, candidate)
+
+	// 何も受理していないworkspaceでは、記録が無いことがエラーではなく空として返る。
+	if index := decisionsOf(t, dir); len(index.Records) != 0 {
+		t.Fatalf("受理前に記録があります: %+v", index.Records)
+	}
+
+	// rejectはworkspaceを変えないので、記録も残さない。
+	if code, _, errOut := cliRun(t, "reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り"); code != 0 {
+		t.Fatalf("reject code=%d err=%s", code, errOut)
+	}
+	if index := decisionsOf(t, dir); len(index.Records) != 0 {
+		t.Fatalf("rejectが記録を残しています: %+v", index.Records)
+	}
+
+	decision := acceptViaCLI(t, dir, candidatePath)
+	if !strings.HasPrefix(decision.RecordPath, decisionDir+"/") {
+		t.Fatalf("受理結果が記録先を示していません: %q", decision.RecordPath)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("記録が1件ではありません: %+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.Path != decision.RecordPath {
+		t.Fatalf("record path=%q accept=%q", record.Path, decision.RecordPath)
+	}
+	if record.Status != "current" || record.SourceEdits != "intact" {
+		t.Fatalf("status=%q sourceEdits=%q", record.Status, record.SourceEdits)
+	}
+	if index.ModelRevision != record.Decision.ModelRevisionAfter {
+		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
+	}
+
+	// 記録は「何が変わったか」だけでなく「なぜか」を持つ。fingerprintへ入らないIntent / Evidenceが、
+	// 会話履歴を持たない読み手にとって唯一の手掛かりになる。
+	got := record.Decision
+	if got.Intent != candidate.Intent {
+		t.Fatalf("intent=%q want=%q", got.Intent, candidate.Intent)
+	}
+	if len(got.Evidence) != len(candidate.Evidence) {
+		t.Fatalf("evidence=%+v want=%+v", got.Evidence, candidate.Evidence)
+	}
+	if got.Decision != "accepted" || !got.SourceChanged {
+		t.Fatalf("decision=%q sourceChanged=%v", got.Decision, got.SourceChanged)
+	}
+	if got.CandidateFingerprint == "" || got.BaseModelRevision == "" || got.DerivedWorldSHA256 == "" {
+		t.Fatalf("同一性を追えません: %+v", got)
+	}
+	if len(got.SourceEdits) == 0 || len(got.SemanticDiff) == 0 || len(got.Conformance) == 0 {
+		t.Fatalf("変更内容を追えません: %+v", got)
+	}
+	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
+		t.Fatalf("origin=%+v", got.Origin)
+	}
+}
+
+// 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
+func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
+	dir := scratchWorkspace(t)
+	acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+
+	accepted, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acceptedSHA, _, err := worldSHA256(accepted.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertMeaningUnchanged := func(what string) {
+		t.Helper()
+		s, err := takeSnapshot(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sha, _, err := worldSHA256(s.loaded.World)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.revision != accepted.revision || sha != acceptedSHA {
+			t.Fatalf("%sでmeaningまたはmodel revisionが変わりました: revision=%s world=%s", what, s.revision, sha)
+		}
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, filepath.FromSlash(decisionDir))); err != nil {
+		t.Fatal(err)
+	}
+	assertMeaningUnchanged("記録を全消去した後")
+	if index := decisionsOf(t, dir); len(index.Records) != 0 {
+		t.Fatalf("消去後も記録が見えます: %+v", index.Records)
+	}
+
+	// 実際には起きていない受理を主張する記録を置く。
+	zero := "sha256:" + strings.Repeat("0", 64)
+	forged := Decision{
+		Schema:               decisionSchema,
+		Decision:             "accepted",
+		Intent:               "実在しない受理",
+		CandidateFingerprint: zero,
+		BaseModelRevision:    zero,
+		ModelRevisionAfter:   zero,
+		SourceChanged:        true,
+		SourceEdits: []SourceEdit{{
+			Path:             "semantic/sales/validation.tei",
+			AfterFingerprint: zero,
+		}},
+	}
+	if _, err := recordDecision(dir, forged); err != nil {
+		t.Fatal(err)
+	}
+	assertMeaningUnchanged("偽の記録を置いた後")
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("記録が1件ではありません: %+v", index.Records)
+	}
+	// 偽物は読めるが、現在のworkspaceと照合した結果として食い違いが出る。黙って信用しない。
+	if index.Records[0].Status != "superseded" || index.Records[0].SourceEdits != "diverged" {
+		t.Fatalf("偽の記録が現行として扱われています: %+v", index.Records[0])
+	}
+	if len(index.Records[0].Diverged) != 1 || index.Records[0].Diverged[0] != "semantic/sales/validation.tei" {
+		t.Fatalf("食い違ったfileを示していません: %+v", index.Records[0].Diverged)
+	}
+}
+
+func TestDecisionRecordBecomesSupersededWhenTheWorkspaceMovesOn(t *testing.T) {
+	dir := scratchWorkspace(t)
+	first := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	second := acceptViaCLI(t, dir, candidateFile(t, secondApplicationCandidate(revisionOfDir(t, dir))))
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 2 {
+		t.Fatalf("記録が2件ではありません: %+v", index.Records)
+	}
+	status := map[string]DecisionRecord{}
+	for _, r := range index.Records {
+		status[r.Path] = r
+	}
+	if got := status[first.RecordPath]; got.Status != "superseded" {
+		t.Fatalf("先の受理がsupersededになっていません: %+v", got)
+	}
+	if got := status[second.RecordPath]; got.Status != "current" {
+		t.Fatalf("後の受理がcurrentになっていません: %+v", got)
+	}
+	// revisionが進んでも、先の受理が書いたfile自体は変わっていない。両者を混同しない。
+	if got := status[first.RecordPath]; got.SourceEdits != "intact" {
+		t.Fatalf("先の受理のsourceEdits=%q", got.SourceEdits)
+	}
+}
+
+func TestDecisionRecordReportsDivergedSourceWhenTheFileItWroteChanges(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	if len(decision.SourceEdits) == 0 {
+		t.Fatal("受理がsourceを書いていません")
+	}
+	target := decision.SourceEdits[0].Path
+
+	if index := decisionsOf(t, dir); index.Records[0].SourceEdits != "intact" {
+		t.Fatalf("変更前からdivergedです: %+v", index.Records[0])
+	}
+
+	path := filepath.Join(dir, filepath.FromSlash(target))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(content, []byte("\n// 後から人が編集した\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	record := index.Records[0]
+	if record.SourceEdits != "diverged" || len(record.Diverged) != 1 || record.Diverged[0] != target {
+		t.Fatalf("書いたfileの変更を検出していません: %+v", record)
+	}
+}
+
+func TestRecordingTheSameDecisionTwiceDoesNotAccumulate(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision, err := accept(dir, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))), acceptOptions{})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	first, err := recordDecision(dir, decision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := recordDecision(dir, decision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second {
+		t.Fatalf("同じ決定が別のpathへ保存されました: %q %q", first, second)
+	}
+	if index := decisionsOf(t, dir); len(index.Records) != 1 {
+		t.Fatalf("記録が増えています: %+v", index.Records)
+	}
+}
+
+func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
+	for name, content := range map[string]string{
+		"未知のfield": `{"schema":"tei.reference.change-decision/v0","somethingElse":1}`,
+		"壊れたJSON":  `{"schema":`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := scratchWorkspace(t)
+			acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+			writeFile(t, filepath.Join(dir, filepath.FromSlash(decisionDir), "broken.json"), content)
+
+			if code, _, _ := cliRun(t, "decisions", "-workspace", dir); code == 0 {
+				t.Fatal("読めない記録を黙って飛ばしています")
+			}
+		})
+	}
+}

@@ -24,6 +24,7 @@ const usage = `usage:
   reference-shared-acceptance accept  -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
   reference-shared-acceptance revision -workspace DIR
+  reference-shared-acceptance decisions -workspace DIR [-out FILE]
 `
 
 func runCLI(args []string, stdout, stderr io.Writer) int {
@@ -33,7 +34,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "accept", "reject", "revision":
+	case "preview", "accept", "reject", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -50,7 +51,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
-	if *workspacePath == "" || (command != "revision" && *candidatePath == "") {
+	needsCandidate := command != "revision" && command != "decisions"
+	if *workspacePath == "" || (needsCandidate && *candidatePath == "") {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -79,6 +81,30 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return emit(map[string]string{"modelRevision": s.revision})
+	}
+
+	if command == "decisions" {
+		index, err := loadDecisionRecords(*workspacePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(index)
+	}
+
+	// 決定の保存はauthoritative sourceの変更と同じ場所へ書くため、baselineの保護を共有する。
+	record := func(d *Decision) bool {
+		if !*allowBaseline && isReferenceBaseline(*workspacePath) {
+			fmt.Fprintln(stderr, "reference/workspaceはGate B / Gate Cが固定したbaselineなので、決定記録を書きませんでした")
+			return true
+		}
+		path, err := recordDecision(*workspacePath, *d)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return false
+		}
+		d.RecordPath = path
+		return true
 	}
 
 	data, err := os.ReadFile(*candidatePath)
@@ -110,6 +136,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
+		if decision.Decision == "accepted" && !record(&decision) {
+			return 1
+		}
 		if code := emit(decision); code != 0 {
 			return code
 		}
@@ -122,6 +151,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
+		// rejectはauthoritative sourceもworkspaceも変えない。RQ-027が機械到達を求めるのは
+		// accepted Decisionなので、退けた候補を記録として残すことはしない。
 		if code := emit(decision); code != 0 {
 			return code
 		}

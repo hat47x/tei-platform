@@ -42,12 +42,32 @@ go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
+go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `accept`: 同じ検査を最初から実行し直し、通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
-- `reject`: sourceを変更しないことを記録します。staleなcandidateも退けられます。
+- `reject`: sourceを変更しないことを記録します。staleなcandidateも退けられます。workspaceへは何も書きません。
+- `decisions`: 受理した決定の記録を、現在のworkspaceと照合して出力します。
+
+### 受理の記録 — なぜそのsourceがあるのか
+
+`accept`は、authoritative sourceを更新したあと、その受理を`.tei/decisions/<内容のSHA-256>.json`へ残します。数か月後や別sessionのAIが、会話履歴を持たずに「このsourceはなぜここにあるのか」を機械的に読めるようにするためです（`RQ-027`）。
+
+記録には、fingerprintへ入らない`intent`と`evidence`、候補の同一性（`candidateFingerprint`）、基準と受理後のrevision、書いたfileとその前後のfingerprint、Semantic / Application差分、受理後Conformance、残ったunresolvedが入ります。
+
+```bash
+go run ./tools/reference-shared-acceptance decisions -workspace DIR
+```
+
+`decisions`は記録の内容を信用して意味を組み立て直さず、現在のworkspaceと照合した結果だけを付けます。
+
+- `status`: `current`（記録時のrevisionが現在と一致）か`superseded`（workspaceが先へ進んだ）
+- `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
+- 読めない記録があれば、黙って飛ばさずerrorにします
+
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
 
 ### candidateの例
 
@@ -102,6 +122,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
+- 受理した決定が、会話履歴なしでworkspaceから読める。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらず、偽の記録は現在のsourceとの照合で食い違いとして出る（`record_test.go`）
 
 示さないこと:
 
@@ -109,6 +130,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 - Driver scenario / Web Target Projectionへの影響の実行（Previewは`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`をunresolvedとして明示する）
 - Applicationが評価するValidationの選択がCanonicalから導出されること。現行のCanonical modelとDriverは、`uses validation`宣言から評価対象を導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）
 - Runtime操作のeffect-time authority、file move / renameの自動検出、Derived Experience Knowledge
+- 決定記録が`RQ-027`を閉じること。この境界を通らずに変更したsourceは記録を残さず、`Variation`はまだ表現を持たず、Gate Evidence / Release locatorは索引化されていない。Coreにも同等の仕組みはない
 
 ## 検証
 

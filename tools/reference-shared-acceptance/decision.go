@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
 
 	"tei/internal/ir"
 	"tei/internal/sourceindex"
@@ -44,6 +46,13 @@ type Decision struct {
 	ApplicationDiff      []changeanalysis.SubjectChange `json:"applicationDiff,omitempty"`
 	Conformance          []Check                        `json:"conformance,omitempty"`
 	DerivedWorldSHA256   string                         `json:"derivedWorldSha256,omitempty"`
+
+	// 以下は、後から入るAI / 人が「なぜこのsourceがあるのか」を読むための情報である。
+	// fingerprintには入らないため、受入判定にもaccepted meaningにも影響しない。
+	Intent     string                      `json:"intent,omitempty"`
+	Evidence   []Evidence                  `json:"evidence,omitempty"`
+	Unresolved []changeanalysis.Unresolved `json:"unresolved,omitempty"`
+	RecordPath string                      `json:"recordPath,omitempty"`
 }
 
 // beforeEachWriteHookはtestが「Previewの後にsourceが変わる」状況を再現するための差し込み口である。
@@ -218,6 +227,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.ApplicationDiff = postApplication
 	decision.Conformance = checks
 	decision.DerivedWorldSHA256 = derivedSHA
+	decision.Intent = ev.candidate.Intent
+	decision.Evidence = ev.candidate.Evidence
+	decision.Unresolved = ev.preview.Unresolved
 	return decision, nil
 }
 
@@ -268,5 +280,109 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		ModelRevisionBefore:  s.revision,
 		ModelRevisionAfter:   s.revision,
 		SourceChanged:        false,
+		Intent:               normalized.Intent,
+		Evidence:             normalized.Evidence,
 	}, nil
+}
+
+// decisionDirは、決定記録を置くworkspace内のdirectoryである。managed sourceではないため
+// model revisionには入らず、plugin-lockと同じ派生物の置き場に並ぶ。
+const decisionDir = ".tei/decisions"
+
+const decisionIndexSchema = "tei.reference.decision-index/v0"
+
+// DecisionRecordは、保存された決定一件と、それが現在のworkspaceをまだ説明できるかを表す。
+type DecisionRecord struct {
+	Path string `json:"path"`
+	// Statusは、記録した時点のrevisionが現在のrevisionと一致するか（current / superseded）。
+	Status string `json:"status"`
+	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
+	SourceEdits string   `json:"sourceEdits"`
+	Diverged    []string `json:"divergedPaths,omitempty"`
+	Decision    Decision `json:"decision"`
+}
+
+type DecisionIndex struct {
+	Schema        string           `json:"schema"`
+	ModelRevision string           `json:"modelRevision"`
+	Records       []DecisionRecord `json:"records"`
+}
+
+// recordDecisionは、決定を派生物として保存し、保存先のworkspace相対pathを返す。
+// 内容でaddressingするため、同じ決定を二度保存しても増えない。
+// この記録はauthorityではない。消してもaccepted meaningもmodel revisionも変わらない。
+func recordDecision(root string, d Decision) (string, error) {
+	d.RecordPath = ""
+	encoded, err := encodeJSON(d)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(encoded)
+	rel := decisionDir + "/" + hex.EncodeToString(sum[:]) + ".json"
+	target := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return "", err
+	}
+	if err := writeFileAtomic(target, encoded); err != nil {
+		return "", err
+	}
+	return rel, nil
+}
+
+// loadDecisionRecordsは、保存された決定を読み、現在のworkspaceに対して検証する。
+// 記録の内容を信用してmeaningを再構成せず、現在のsourceと照合した結果だけを付ける。
+func loadDecisionRecords(root string) (DecisionIndex, error) {
+	index := DecisionIndex{Schema: decisionIndexSchema, Records: []DecisionRecord{}}
+	s, err := takeSnapshot(root)
+	if err != nil {
+		return index, err
+	}
+	index.ModelRevision = s.revision
+
+	dir := filepath.Join(root, filepath.FromSlash(decisionDir))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return index, nil
+		}
+		return index, err
+	}
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		rel := decisionDir + "/" + name
+		content, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return index, err
+		}
+		var d Decision
+		decoder := json.NewDecoder(bytes.NewReader(content))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&d); err != nil {
+			return index, fmt.Errorf("decision record %s: %w", rel, err)
+		}
+		record := DecisionRecord{Path: rel, Decision: d, Status: "superseded", SourceEdits: "none"}
+		if d.ModelRevisionAfter == s.revision {
+			record.Status = "current"
+		}
+		if len(d.SourceEdits) > 0 {
+			record.SourceEdits = "intact"
+			for _, e := range d.SourceEdits {
+				current, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(e.Path)))
+				if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
+					record.SourceEdits = "diverged"
+					record.Diverged = append(record.Diverged, e.Path)
+				}
+			}
+		}
+		record.Decision.RecordPath = rel
+		index.Records = append(index.Records, record)
+	}
+	return index, nil
 }
