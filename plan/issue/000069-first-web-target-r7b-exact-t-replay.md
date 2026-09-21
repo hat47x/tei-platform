@@ -4977,3 +4977,87 @@ actual replay / repeatability Evidence      = pending
 ```
 
 full healthが取得されるまではR7B Source/Design packetのintegration readinessを超える主張をしない。
+
+
+
+#### E1.32 latest-main convergence and stale-candidate retirement — 2026-09-22
+
+E1.31後に並行Second Application / R7B documentation laneが進み、execution-time latest mainを再確認した。
+
+```text
+current main:
+  8eb0abadef36759075dae32220ef78f4567bf62b
+
+source-relevant base:
+  c46eafe95c69d91c2d6f4d51c58697d0539db2e4
+
+main advance from source-relevant base:
+  8 commits
+
+changed paths:
+  plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md
+  plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md
+  plan/issue/000040-semantic-component-composition.md
+  plan/issue/000069-first-web-target-r7b-exact-t-replay.md
+
+canonical 11-path overlap:
+  0
+```
+
+E1.31 current packet `a7aba7ba2ed3bda601608f9937d43bcca1d7acff` のchanged pathは、引き続き次のcanonical 11 source pathだけである。
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+tools/internal/firstwebtargetevidence/semantics_test.go
+tools/reference-first-web-target-evidence-audit/main.go
+tools/reference-first-web-target-r7b-repeatability/main.go
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+tools/reference-first-web-target-r7b-replay-audit/main.go
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+tools/reference-first-web-target-r7b-replay-plan/main.go
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+tools/run-first-web-target-r7b-replay.sh
+```
+
+旧 branchless candidate `c0a8d2c858f338cffd90f86752a21293c391350b` は、
+その作成時base `17acb5ca...` からcurrent mainが94 commit進み、candidate固有1 commitを持つdiverged objectである。
+このcandidate SHAをfast-forward / cherry-pick / integration authorityとして使用しない。
+
+canonical authorityはcandidate commitではなく、E1.21以降で固定・再監査してきたexact 11 blob setである。
+したがって次のqualificationでは、execution-time latest mainへこの11 exact blobsだけをmaterializeし、
+mandatory gateを同一full checkoutで実行する。
+
+remote branch stateも再確認し、確認時点ではmainを含む既存19 branch refがすべて
+`8eb0abadef36759075dae32220ef78f4567bf62b` を指しており、branch固有の未統合workは存在しない。
+新規remote work branchは作成しない。
+
+Evidence height:
+
+```text
+latest-main convergence                    = PASS
+canonical 11-path overlap since c46eafe    = 0
+remote branch unique ahead work            = 0
+stale c0a8d2 candidate                     = retired / do not integrate
+current canonical packet                   = a7aba7ba... exact 11 paths
+exact runner bash -n                       = pending mandatory gate
+tools/repository-health-check.sh           = pending mandatory gate
+code integration                           = pending
+actual replay / repeatability Evidence     = pending
+```
+
+次の一本道は変えない。
+
+```text
+execution-time latest main
+  -> canonical 11 exact blobs materialize
+  -> exact runner bash -n
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+  -> existing branch refsをforceなしでmainへ収束
+  -> Packet M actual replay-plan materialization
+```
+
+full checkoutを持たないsessionではRepository healthを推測でPASS扱いせず、
+code integrationを先取りしない。
