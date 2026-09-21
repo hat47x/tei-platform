@@ -4526,3 +4526,92 @@ b8d8902b... canonical 11 source
 ```
 
 candidate SHA自体はmainへfast-forward / cherry-pickせず、health-capable full checkoutでは11 exact blobsをlatest main working treeへmaterializeしてqualificationする。
+
+
+#### E1.29 current-main dependency-closure audit — 2026-09-21
+
+E1.28後に別レーンがcurrent mainを `132da35bfb1aa2a3e04a67c322c7907f9513d821` まで進めたため、R7B canonical 11-pathとのoverlapを再監査した。E1.28 parent `eb561532...` からcurrent mainまで3 commit / 8 changed pathsだったが、canonical 11-path overlapは0件だった。
+
+E1.21 canonical exact blobsをcurrent mainへ再配置したbranchless candidate:
+
+```text
+candidate:
+  5166eae4092b3e619ad8076e5fae71b3e94e82ec
+
+parent:
+  132da35bfb1aa2a3e04a67c322c7907f9513d821
+
+tree:
+  8eb40489c0a890620648400dca39b838c94e2838
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+remote branch 18本はbranch固有ahead work 0を確認したうえでforceなしfast-forwardし、current mainへ再収束させた。open PRは0件のままである。
+
+current candidate exact import graph:
+
+```text
+P1 tei/tools/internal/firstwebtargetevidence
+  -> standard library only
+
+P2 tei/tools/reference-first-web-target-evidence-audit
+  -> P1 + standard library
+
+P3 tei/tools/reference-first-web-target-r7b-replay-plan
+  -> standard library only
+
+P4 tei/tools/reference-first-web-target-r7b-replay-audit
+  -> P1 + standard library
+
+P5 tei/tools/reference-first-web-target-r7b-repeatability
+  -> standard library only
+```
+
+candidate-internal dependency edgeは `P2 -> P1` と `P4 -> P1` の2本だけで、cycleはない。
+
+E1.17でP1 credential forbidden setへ追加した `wrong-secret` がP4へ新たなtest failure surfaceを作るかexact sourceを再監査した。
+
+```text
+P4 main.go
+  wrong-secret literal = 0
+  shared RejectReferenceCredentialMaterial calls = 2
+
+P4 main_test.go
+  wrong-secret literal = 0
+  editor-secret literal = 2
+```
+
+P4 testが保持するcredential negative fixtureは、E1.17以前から禁止済みだった `editor-secret` だけである。したがってE1.17のP1変更でP4 test inputへ新規禁止値が混入した事実はない。shared rejectorのAPI shapeも不変である。
+
+これはstatic compatibility Evidenceであり、P4 rerunまたはP1-P5 aggregate rerunの代替ではない。
+
+current Evidence height:
+
+```text
+latest-main exact 11-path packet           = assembled
+{P1,P2} exact closure x50                  = PASS
+P1 credential pressure x50                 = PASS
+P4/P1 dependency + fixture compatibility   = static PASS
+P3/P5 package independence                 = static PASS
+P1-P5 aggregate focused rerun              = pending
+tools/repository-health-check.sh            = pending
+code integration                            = pending
+actual replay / repeatability Evidence      = pending
+```
+
+次のexecution gateは変えない。
+
+```text
+canonical 11 exact blobs
+  -> same working treeでP1-P5 aggregate focused rerun
+  -> bash -n exact runner
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+full checkoutまたはbyte-exact materializationが成立しないsessionではaggregate / repository healthを推測でPASS扱いせず、codeをmainへ統合しない。
