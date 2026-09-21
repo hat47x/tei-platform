@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Shared Acceptance Review Packet
 
-- Status: Revised review defined / branchless candidate negative-controls pinned / focused and health pending / explicit Acceptance witness pending
+- Status: Revised review defined / executable health + Shared Acceptance compatibility + explicit human decision pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal: `plan/SECOND_APPLICATION_S4_FULL_VALIDATION_PREFLIGHT_2026-09.md`
@@ -9,6 +9,7 @@
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
 - Review base inspected at: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Shared Acceptance result: Not established
+- Current Shared Acceptance implementation compatibility: Not established — current Reference supports add-validation / semantic-only delta
 - Authoritative destination source created: No
 - Environment binding created: No
 - Target implementation started: No
@@ -228,6 +229,34 @@ Acceptance authorityを持つactorのexplicit witnessを要求する。witness�
 
 一般的な「作業を進める」「次へ進む」という実行指示は、このexact Proposalへのaccepted / rejected Decisionとして扱わない。
 
+## 8.1 Shared Acceptance implementation compatibility — 2026-09-21
+
+mainへ決定論的Shared Acceptance Boundaryの最初のincrementが入ったため、S5をその実装へ再照合した。
+
+current `tools/reference-shared-acceptance` は:
+
+- candidate operation = `add-validation` のみ
+- semantic diff = `World.Semantics` subjectsのみ
+- architecture-policy = changed collectionがexactly `semantics`
+
+である。
+
+revised Second Application ProposalはSemantic + Application + Patternを同時に追加し、正当に `applications` collectionも変えるため、current boundaryへそのまま渡すことはできない。
+
+このため、direct source authoringや別Acceptance engineへ迂回せず、ISSUE-000027の同じboundaryへmulti-layer composition pressureを追加する。
+
+正本:
+
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_COMPATIBILITY_PRESSURE_2026-09.md`
+
+pre-Acceptance停止条件は次の3つとして扱う。
+
+1. revised executable pressureのhealth PASS
+2. exact `c18ae...` Proposalをcurrent base revisionへ結び付けたShared Acceptance Preview PASS
+3. explicit human Acceptance decision
+
+PreviewはAcceptanceではない。通常の継続指示もAcceptanceではない。
+
 ## 9. Current decision state
 
 ```text
@@ -252,6 +281,11 @@ decision                  = pending
 ```text
 S5 review contract = defined
 Shared Acceptance eligibility = blocked
+
+blocking dimensions:
+  executableHealth             = absent
+  multiLayerAcceptancePreview  = unsupported-by-current-reference
+  explicitHumanDecision        = absent
   - missing revised executable pressure
   - missing explicit acceptance witness
 S6 authoritative authoring = blocked

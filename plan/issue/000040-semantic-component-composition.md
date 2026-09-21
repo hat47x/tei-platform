@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — branchless revised pressure candidate negative-controls pinned / focused and health execution pending
+- 状態: In Progress — executable pressure rebased / Shared Acceptance multi-layer compatibility pressure identified
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -228,12 +228,21 @@ S5:
 
 でexact Proposal identity、Semantic Diff、current shared-authority freshnessまで固定した。
 
-現在のpre-Acceptance停止条件は二つ独立している。
+2026-09-21、mainへ決定論的Shared Acceptance Boundaryの最初のincrement（`tools/reference-shared-acceptance`）が入ったため、Second Application S5を再照合した。
+
+current Referenceは `add-validation` / semantic-only diff / semantic-only containmentに限定され、Semantic + Application + Patternのthree-source compositionはまだ表現・Previewできない。Second Application専用の別Acceptance経路は作らず、同じShared Acceptance Boundaryの次incrementをpressureする。
+
+正本:
+
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_COMPATIBILITY_PRESSURE_2026-09.md`
+
+現在のpre-Acceptance停止条件は三つ独立している。
 
 1. revised three-source Proposalのhealth-checked executable pressure
-2. exact fingerprintに結び付くexplicit Acceptance witness
+2. exact `c18ae...` Proposalをcurrent `baseModelRevision`へ結び付けたmulti-layer Shared Acceptance Preview PASS
+3. exact reviewed Proposalに対するexplicit human Acceptance decision
 
-Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。一般的な作業継続指示をProposal採用Decisionへ読み替えない。
+Shared Acceptanceはまだ成立しておらず、authoritative destination source / Environment binding / Target implementationは作成していない。PreviewをAcceptanceへ読み替えず、一般的な作業継続指示もProposal採用Decisionへ読み替えない。
 
 ## S4 full-validation correction
 
@@ -247,7 +256,7 @@ revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake
 
 2026-09-20の再検査では、document freshness baseを `c185937ab27a3a31332fefcd63ba5940b97b021e` まで更新し、関連shared/provenance/validation blobが不変であることを確認した。また `validation.Validate()` がdata-access Validation集約経路を通じてRelation key / Contract Query cross-layer検査を含むことも確認した。一方、`second_application_s5_freshness_capture_pressure_test.go` のbase revision constantは旧 `6ffaa40e...` のままであるため、これも次のexecutable-pressure code deltaへ追加した。
 
-そのcode deltaは、当初unreferenced candidate `e007c67b...` として生成したが、actual `gofmt -d` でS3とfull-validation testにformat driftを検出したためsupersedeした。修正版は当初`dc5d5690dd393b871ba8ee0f2c242352741585a2` を親とするunreferenced branchless candidate `eda2e367bc1a0f12d83a41fc55e253b96bf76e9d` として作成した。その後のmain更新がR7B/Second Application計画文書だけで対象sourceと競合しないことを確認し、6 source blobを変更せず`b12962eebe75eea907241cf6cf2b831da7e99474` 上へ積み直したcurrent candidateは `9f0dd71dbd181e4798f7b8efefb09759bdcc256e` である。remote branch / PRは追加していない。candidateはS3/S4/S5 pressure、new full-workspace Validation pressure、reference-evidence runnerだけを変更し、authoritative `reference/workspace` sourceには触れていない。5 Go filesはactual gofmt差分ゼロかつlocal formatted blob SHAとcandidate blob SHAが一致した。current candidateへの積み直し後も6 source blobは全件同一である。さらにrunnerはactual `bash -n` PASSかつcandidate blob `42db7c4e...` とlocal blobが一致し、current Semantic/Validation APIとhelperのstatic照合でもcompile surfaceの不一致は見つからなかった。RepositoryのKnowledge portability workflowはhosted runner allocation unavailableのためmanual-onlyであり、current candidateのExecutable Evidenceには利用していない。Persistence Mapping未定義もcurrent validatorではそれ自体がerror条件ではない。full Validation pressureはpositive-onlyの偽陽性を避けるため、candidate `8c570c746f78a3346348d3c9bb1f6a3bd6e3debb` でnegative controlを追加し、その6 source blobを変更せずsource-relevant integration base `40209d25...` 直上へ積み直したcandidateは `ccd2544a8a14501774ae3970813c7535e350ec90` である（そのbaseに対しahead 1 / behind 0）。このcandidateを記録する後続docs-only commitだけではsource driftと扱わない。unknown Relationでは `UNKNOWN_APPLICATION_PATTERN_RELATION`、Relation `many` とQuery `zero-or-one` の不整合では `REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH` をexact codeで要求する。強化したtest blobは `0f1e69c1a62077ef31c6f599f567286209c4f0d5` で、local gofmt後blobと一致する。focused実行では `TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation`、`TestSecondApplicationS4FullValidationRejectsUnknownRelation`、`TestSecondApplicationS4FullValidationRejectsQueryCardinalityMismatch` の3件を必須とする。focused test / reference evidence / `tools/repository-health-check.sh` PASSは未取得なので、candidateをmainへ接続せずExecutable Evidenceとも扱わない。
+そのcode deltaは、当初unreferenced candidate `e007c67b...` として生成したが、actual `gofmt -d` でS3とfull-validation testにformat driftを検出したためsupersedeした。修正版は当初`dc5d5690dd393b871ba8ee0f2c242352741585a2` を親とするunreferenced branchless candidate `eda2e367bc1a0f12d83a41fc55e253b96bf76e9d` として作成した。その後のmain更新がR7B/Second Application計画文書だけで対象sourceと競合しないことを確認し、6 source blobを変更せず`b12962eebe75eea907241cf6cf2b831da7e99474` 上へ積み直したcurrent candidateは `9f0dd71dbd181e4798f7b8efefb09759bdcc256e` である。remote branch / PRは追加していない。candidateはS3/S4/S5 pressure、new full-workspace Validation pressure、reference-evidence runnerだけを変更し、authoritative `reference/workspace` sourceには触れていない。5 Go filesはactual gofmt差分ゼロかつlocal formatted blob SHAとcandidate blob SHAが一致した。current candidateへの積み直し後も6 source blobは全件同一である。さらにrunnerはactual `bash -n` PASSかつcandidate blob `42db7c4e...` とlocal blobが一致し、current Semantic/Validation APIとhelperのstatic照合でもcompile surfaceの不一致は見つからなかった。RepositoryのKnowledge portability workflowはhosted runner allocation unavailableのためmanual-onlyであり、current candidateのExecutable Evidenceには利用していない。Persistence Mapping未定義もcurrent validatorではそれ自体がerror条件ではない。full Validation pressureはpositive-onlyの偽陽性を避けるため、candidate `8c570c746f78a3346348d3c9bb1f6a3bd6e3debb` でnegative controlを追加し、その6 source blobを変更せずsource-relevant integration base `40209d25...` 直上へ積み直したcandidateは `ccd2544a8a14501774ae3970813c7535e350ec90` である（そのbaseに対しahead 1 / behind 0）。このcandidateを記録する後続docs-only commitだけではsource driftと扱わない。unknown Relationでは `UNKNOWN_APPLICATION_PATTERN_RELATION`、Relation `many` とQuery `zero-or-one` の不整合では `REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH` をexact codeで要求する。強化したtest blobは `0f1e69c1a62077ef31c6f599f567286209c4f0d5` で、local gofmt後blobと一致する。focused実行では `TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation`、`TestSecondApplicationS4FullValidationRejectsUnknownRelation`、`TestSecondApplicationS4FullValidationRejectsQueryCardinalityMismatch` の3件を必須とする。その後、Shared Acceptance Boundary実装を含むsource-relevant main `ca0ad042c0fc967421d9643e0c8a104349abf204` 上へ同じ6 source blobをrebaseし、current executable-pressure candidateを `b38869a48dcd8fb3e826a80de239063ee918c366` とした（baseに対しahead 1 / behind 0）。focused test / reference evidence / `tools/repository-health-check.sh` PASSは未取得なので、candidateをmainへ接続せずExecutable Evidenceとも扱わない。
 
 ## 第二Applicationでの受入検証
 

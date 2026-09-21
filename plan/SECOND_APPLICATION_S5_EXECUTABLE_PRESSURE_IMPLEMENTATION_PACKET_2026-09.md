@@ -1,6 +1,6 @@
 # Second Application Reference — S5 Executable Pressure Implementation Packet
 
-- Status: Branchless executable-pressure candidate negative-controls pinned / focused and health execution pending
+- Status: Branchless executable-pressure candidate rebased on Shared Acceptance main / focused and health execution pending
 - Date: 2026-09-20
 - Primary workstream: ISSUE-000040
 - Proposal SHA-256: `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`
@@ -28,13 +28,16 @@ current `main` を変更せず、health-capable laneで検証するためのunre
 
 ```text
 candidate commit:
-  ccd2544a8a14501774ae3970813c7535e350ec90
+  b38869a48dcd8fb3e826a80de239063ee918c366
 
 parent:
-  40209d25e36b059931174f635b63409cb83705af
+  ca0ad042c0fc967421d9643e0c8a104349abf204
 
 tree:
-  a426277f2a49197831f94edae3f86b44b57c7bd9
+  a538c8c12740afcc1086901ab06719d735bf21ea
+
+supersedes source-identical candidate:
+  ccd2544a8a14501774ae3970813c7535e350ec90
 
 supersedes negative-control candidate:
   8c570c746f78a3346348d3c9bb1f6a3bd6e3debb
@@ -183,6 +186,30 @@ Go-enabled full checkout
 ```
 
 である。
+
+## 2.2 Shared Acceptance mainline drift
+
+2026-09-21、mainへ `tools/reference-shared-acceptance` と `tools/internal/changeanalysis` の最初の決定論的Shared Acceptance Boundaryが入った。
+
+これはSecond Application executable-pressure 6 pathとは非競合であり、candidate source blobは変更せず `ca0ad042...` 上へrebaseした。
+
+一方、この新実装は現在 `add-validation` / semantic-only deltaに限定されるため、Second Application three-source compositionをそのままacceptできない。
+
+詳細pressureは:
+
+- `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_COMPATIBILITY_PRESSURE_2026-09.md`
+
+に分離した。
+
+この発見は既存full-validation pressureを無効化しない。むしろ:
+
+```text
+composition executable pressure
+  != Shared Acceptance compatibility
+  != explicit human Acceptance
+```
+
+を明示する。
 
 current shared/provenance blob identity:
 
