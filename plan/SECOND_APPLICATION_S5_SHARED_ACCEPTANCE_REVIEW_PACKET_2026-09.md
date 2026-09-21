@@ -9,7 +9,7 @@
 - Superseded Proposal SHA-256: `b347b41b75c9864e66b4b191eefc3d668c0d8bf3dfdf186d0733f794159467c2`
 - Review base inspected at: `c185937ab27a3a31332fefcd63ba5940b97b021e`
 - Shared Acceptance result: Not established
-- Current Shared Acceptance implementation compatibility: Not established — current Reference supports add-validation / semantic-only delta
+- Current Shared Acceptance implementation compatibility: Established — typed multi-layer operations implemented; read-only Preview against actual `reference/workspace` PASS
 - Authoritative destination source created: No
 - Environment binding created: No
 - Target implementation started: No
@@ -18,7 +18,7 @@
 
 full workspace Validationのpreflightで修正したthree-source Proposalを、Shared Acceptanceへ渡せるreview contractとして固定する。
 
-ただしcurrent Go pressureは旧two-source Proposalを前提としているため、この文書だけでAcceptance eligibilityを成立させない。
+2026-09-21時点でrevised three-source executable pressureとmulti-layer Shared Acceptance Previewは取得済みである。ただし、それらを人のAcceptanceへ読み替えず、別の生成AIによる独立レビューと、その後のexplicit human Acceptance decisionを独立条件として残す。
 
 ```text
 revised review defined
@@ -231,11 +231,11 @@ Acceptance authorityを持つactorのexplicit witnessを要求する。witness�
 
 2026-09-21、利用者の方針: Acceptanceは別の生成AIによる独立レビューの後に行う。これはwitnessの前に置く手順の決定であり、それ自体はwitnessではない。レビュー後にacceptを実行する時、上のwitness項目を[ISSUE-000040](issue/000040-semantic-component-composition.md)へ記録する。
 
-## 8.1 Shared Acceptance implementation compatibility — 2026-09-21
+## 8.1 Shared Acceptance implementation compatibility — historical gap（closed 2026-09-21）
 
-mainへ決定論的Shared Acceptance Boundaryの最初のincrementが入ったため、S5をその実装へ再照合した。
+この節の以下の記述は、multi-layer operation実装前のcompatibility gapを記録したhistorical contractである。`0f069838...`で`add-data` / `add-application` / `add-reference-pattern`が実装され、actual `reference/workspace` Preview PASSまで取得したため、このgap自体はclosedである。
 
-current `tools/reference-shared-acceptance` は:
+当時の `tools/reference-shared-acceptance` は:
 
 - candidate operation = `add-validation` のみ
 - semantic diff = `World.Semantics` subjectsのみ
@@ -262,38 +262,33 @@ PreviewはAcceptanceではない。通常の継続指示もAcceptanceではな�
 ## 9. Current decision state
 
 ```text
-proposalFingerprint       = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
-reviewBaseInspected       = c185937ab27a3a31332fefcd63ba5940b97b021e
-sharedFreshness           = captured
-sourceInspectionPreflight = complete
-branchlessCodeCandidate    = ccd2544a8a14501774ae3970813c7535e350ec90
-candidateGofmtEvidence     = pass
-candidateRunnerSyntax      = pass
-candidateStaticAPIAudit    = complete
-candidateNegativeControls  = pinned-not-executed
-candidateFocusedTest       = absent
-candidateHealthEvidence    = absent
-revisedExecutablePressure = absent
-acceptanceWitness         = absent
-decision                  = pending
+proposalFingerprint             = c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d
+reviewBaseInspected             = c185937ab27a3a31332fefcd63ba5940b97b021e
+sharedFreshness                 = captured
+revisedExecutablePressure       = obtained (main 41b21d1068bdfabd122b8543afe980efc4b5fdb5)
+multiLayerAcceptancePreview     = pass
+previewBaseModelRevision        = sha256:f70da9b64a5b48c7682b24c64f455b0b0c2a7278be4faa297b6ff99c2d3707bf
+acceptanceCandidateFingerprint  = sha256:8a936cf96ddeb4faa220285dcef5055d418030373f9425ed8d0d1c2b3e7c9b11
+previewModelRevisionAfter       = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+previewStages                   = 11 / 11 PASS
+previewChangedSubjects          = 6
+previewChangedCollections       = [applications, semantics]
+previewImpactEdges              = 15
+previewUnresolved               = [ENVIRONMENT_BINDING_NOT_AUTHORED, DRIVER_SCENARIO_NOT_RUN, TARGET_PROJECTION_NOT_EVALUATED]
+independentGenerativeAIReview   = absent
+acceptanceWitness               = absent
+decision                        = pending
 ```
 
-したがって:
+したがって、機械的なpre-Acceptance条件は成立している。現在の停止条件は利用者方針に基づく次の2段階である。
 
 ```text
-S5 review contract = defined
-Shared Acceptance eligibility = blocked
-
-blocking dimensions:
-  executableHealth             = absent
-  multiLayerAcceptancePreview  = unsupported-by-current-reference
-  explicitHumanDecision        = absent
-  - missing revised executable pressure
-  - missing explicit acceptance witness
-S6 authoritative authoring = blocked
+different-generative-AI independent review
+  -> findings addressed or explicitly retained with rationale
+  -> explicit human Acceptance decision for exact c18ae...
 ```
 
-である。
+Preview / health PASS / review依頼そのものをAcceptance witnessへ読み替えない。
 
 ## 10. Negative cases
 
@@ -306,21 +301,37 @@ S6 authoritative authoring = blocked
 
 ## 11. Evidence height
 
-このpacketはSource / Design Evidenceである。
+2026-09-21時点のEvidenceは次の高さまで上がっている。
 
-current `main` には旧two-source Proposal向けGo pressureと旧freshness base constantが残っている。一方、unreferenced candidate `ccd2544a...` はsource-relevant integration base `40209d25...` 直上でahead 1 / behind 0のcandidateであり、後続docs-only記録commitだけではsource driftと扱わない。revised three-source pressure一式に加え、unknown RelationとQuery cardinality mismatchのfull-Validation negative controlを実装している。残る5 source blobは従来候補と同一で、強化したfull-validation testもactual gofmt PASSとblob identity一致を取得している。runnerのactual `bash -n` PASSとblob identity一致、current Semantic/Validation APIとのstatic source照合も維持している。Persistence未定義もcurrent validator上はそれ自体がerror条件ではない。focused `go test` / reference evidence / full repository health PASSはまだ取得していないため、candidateはExecutable Evidenceではない。
+- revised three-source executable pressure: main `41b21d1068bdfabd122b8543afe980efc4b5fdb5` で取得
+  - focused S3–S5: 22 tests PASS
+  - full-workspace Validation positive case + negative control 2件 PASS
+  - `tools/run-knowledge-portability-reference-evidence.sh` PASS
+  - `tools/repository-health-check.sh` PASS
+- multi-layer Shared Acceptance Boundary: main `0f069838aecd3cc6627a1bc2c11cac308493021f` で実装
+- actual `reference/workspace` read-only Preview: 11 / 11 stages PASS
+- `1d720bde...` のRelation impact追加後も再Previewし、fingerprint / revisions / 6 changed subjects / unresolvedは不変、impact edgeのみ14→15へ増加
+- authoritative destination source: 未作成
+- Shared Acceptance decision: 未成立
+- independent generative-AI review: 未実施
+
+したがって、これ以上のparser / static inspection追加ではAcceptance条件は前進しない。次のEvidenceは独立レビュー結果である。
 
 ## 12. Conclusion
 
-S6 preflightで見つかったRelation source欠落はProposalへ戻して修正した。
+S4 ProposalのRelation source欠落、executable pressure、multi-layer Shared Acceptance compatibilityはいずれも解消済みである。
 
-現在の次工程は:
+現在の順序は:
 
 ```text
-health-checked revised Source pressure
-  -> current S5 eligibility review
-  -> explicit Acceptance witness
-  -> S6 authoritative source authoring
+independent review by a different generative AI
+  -> review findingsを対応または理由付きretain
+  -> exact c18ae...へのexplicit human Acceptance decision
+  -> actual Shared Acceptance accept
+  -> accepted sourceからReference golden / repository conformanceを再確認
+  -> S6 authoritative-source / reload Evidenceを記録
 ```
 
 である。
+
+独立レビュー用の入力は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_HANDOFF_2026-09.md` に固定する。

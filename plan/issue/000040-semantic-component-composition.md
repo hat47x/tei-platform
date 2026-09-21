@@ -249,6 +249,8 @@ Shared Acceptanceはまだ成立しておらず、authoritative destination sour
 
 **Acceptanceの進め方（利用者の方針、2026-09-21）**: exact `c18ae...`のAcceptanceは、**別の生成AIによる独立レビューの後**に行う。レビューが済むまで`accept`は実行しない。作成者（`claude-sonnet-5`）のself-reviewは独立レビューの代わりにしない。レビューの指摘は、accept前に対応するか、理由つきで見送る。レビュー結果とAcceptance decision（exact `c18ae...`、判断、その時点のrevision、残るunresolved）は、このIssueへ追記する。この方針は「レビューの後にacceptする」という順序の決定であり、レビュー結果が出る前のacceptを許すものではない。
 
+独立レビュー入力は `plan/SECOND_APPLICATION_S5_INDEPENDENT_REVIEW_HANDOFF_2026-09.md` に固定する。レビュー担当はProposal identity、actual Preview、Reference golden更新、Gate B/Cのhistorical baseline scope、Shared Acceptanceのderived output安全性を同じreviewで確認する。
+
 acceptの帰結は、レビューで確認する。作成者が確認した事実は、acceptが`reference/workspace`へ3 fileを作ることと、`reference/workspace`のWorldを`reference/world.json`と比較するgolden test（`tools/reference-golden`、`internal/workspace/loader_test.go`）が存在することである。したがってacceptと同じ変更で`reference/world.json`を更新する必要が生じる見込みで（未実行）、Gate B / Gate Cが固定する`reference/workspace/**`（`canonical-world-invariant-R-to-T`）との関係の整理も要る。これらは未評価であり、acceptの前後どちらで扱うかを含めてレビューで確認する。
 
 ## S4 full-validation correction
