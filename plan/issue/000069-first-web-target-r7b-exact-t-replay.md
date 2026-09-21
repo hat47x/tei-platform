@@ -4870,3 +4870,110 @@ actual replay / repeatability Evidence     = pending
 ```
 
 full checkoutを持たないsessionではRepository healthを推測でPASS扱いせず、codeをmainへ統合しない。
+
+
+#### E1.32 current-main health handoff packet — 2026-09-22
+
+E1.31 aggregate gate subsumption後、mandatory gateをfull Repository healthへ一本化した状態でcurrent mainを再固定した。
+
+```text
+current main:
+  8eb0abadef36759075dae32220ef78f4567bf62b
+
+branchless health candidate:
+  fa96801d40197e07a1d25e58bf14d07cfa9ff5f7
+
+candidate tree:
+  401a2ae16429f2d49165952f4120b6e9b465f14c
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+candidateはE1.21以降のcredential-safe exact 11 blobsを変更せず配置する。candidate SHAそのものをauthorityとはせず、integration authorityはexact blob identitiesとhealth実行対象working treeである。
+
+実行環境を再監査した。
+
+```text
+Go:
+  available
+
+git:
+  available
+
+gh:
+  unavailable
+
+mounted TEI full checkout:
+  not found under /mnt/data, /workspace, /workspaces, /home/oai/share, /tmp
+
+private repository archive through GitHub connector:
+  tarball endpoint = rejected
+  zipball endpoint = rejected
+
+private raw URL through web/container bridge:
+  unavailable in this session
+```
+
+したがってこのsessionでは `tools/repository-health-check.sh` が要求するfull checkoutを構成できない。focused closure Evidenceをhealth PASSへ読み替えず、R7B codeをmainへ直接commitしない。
+
+E1.31の判断に従い、P1-P5 single focused aggregateはmandatory integration gateではない。current mandatory pathは次だけである。
+
+```text
+execution-time latest main
+  + canonical 11 exact blobs
+  -> exact runner bash -n
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / canonical 11-path overlapなし再確認
+  -> direct-to-main code commit
+```
+
+health-capable cloneでの実行手順:
+
+```bash
+git checkout main
+git pull --rebase origin main
+
+# E1.21/E1.32 canonical 11 exact blobsだけをworking treeへ配置する。
+# candidate commit自体をcherry-pick / fast-forwardしない。
+
+bash -n tools/run-first-web-target-r7b-replay.sh
+tools/repository-health-check.sh
+
+git status --short
+git rev-parse HEAD
+git diff --name-only
+```
+
+qualification時は:
+
+1. health開始時のHEADを記録する
+2. canonical 11 path以外に意図しないsource差分がないことを確認する
+3. exact runner `bash -n` PASS
+4. `tools/repository-health-check.sh` PASS
+5. health終了時も同じbase revisionであることを確認する
+6. 並行main更新があればrebase後にcanonical 11 path overlapを再監査し、healthを再実行する
+7. そのsame qualified working treeだけをdirect-to-main commitする
+
+とする。
+
+branch hygiene再監査では、E1.32記録直前にremote branch drift 0を確認した。新しいremote work branch / PRは作成していない。
+
+Evidence height:
+
+```text
+{P1,P2} exact closure x50                  = PASS
+{P1,P4} exact closure x50                  = PASS
+P3 exact focused                           = PASS
+P5 exact focused                           = PASS
+candidate test isolation audit             = PASS
+latest-main canonical packet               = PASS
+P1-P5 focused aggregate                    = optional diagnostic
+tools/repository-health-check.sh            = pending mandatory gate
+code integration                            = pending
+actual replay / repeatability Evidence      = pending
+```
+
+full healthが取得されるまではR7B Source/Design packetのintegration readinessを超える主張をしない。
