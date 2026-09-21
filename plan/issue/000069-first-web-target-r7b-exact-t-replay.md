@@ -4244,3 +4244,73 @@ tools/repository-health-check.sh        = pending
 code integration                        = pending
 actual replay / repeatability Evidence  = pending
 ```
+
+
+#### E1.25 post-review latest-main convergence — 2026-09-21
+
+E1.24記録後、mainはSecond Applicationの独立レビュー記録2件だけ進み、current mainは:
+
+```text
+d5e293226a14841e11591fd07595b26fb74ea1e9
+```
+
+となった。E1.24 base `b01aa017...` からcurrent mainまでのchanged pathはdocs / READMEだけであり、canonical 11 source pathとのoverlapは0件である。
+
+E1.21 credential-safe exact blobsをcurrent mainへ再配置したbranchless candidateを再構成した。
+
+```text
+candidate:
+  d13b74daf0c9cf289d867b2bf53bb6538f620751
+
+parent:
+  d5e293226a14841e11591fd07595b26fb74ea1e9
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+current candidate exact sourceでcredential contractも再監査した。
+
+```text
+shared RejectReferenceCredentialMaterial:
+  credential-ref://legacy/
+  disabled-secret
+  editor-secret
+  locked-secret
+  viewer-secret
+  wrong-secret
+
+V1 credential negative pressure:
+  same 6 values
+
+runner retained-output final scan:
+  same 6 values
+
+set equality:
+  PASS
+```
+
+Gate C retained-artifact helper本体にはcredential literal listを持たず、shared rejector:
+
+```text
+firstwebtargetevidence.RejectReferenceCredentialMaterial
+```
+
+を1回だけ呼ぶ。したがってE1.20 / E1.21で行ったcredential single-source correctionはlatest-main candidateでも保持されている。
+
+remote branchはmain以外18本を再監査し、17本がbehind 1 / branch固有ahead 0、`work/issue-000040-second-application-reference` がidenticalだった。17本はforceなしでcurrent mainへfast-forwardし、unique branch workを残していない。open PRは0。
+
+integration gateは変更しない。
+
+```text
+E1.25 canonical 11 source
+  -> same working treeで{P1,P2} exact closure rerun
+  -> same working treeで5-package aggregate focused rerun
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no source overlap再確認
+  -> direct-to-main code commit
+```
+
+E1.23でexact P1 packageはtest×50までPASS済みだが、credential-safe P2とのactual closure rerunは未取得である。focused/static Evidenceをfull Repository healthへ読み替えず、actual exact-T replay / repeatability Evidenceも引き続き未取得として扱う。
