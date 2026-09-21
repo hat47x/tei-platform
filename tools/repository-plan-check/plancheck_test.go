@@ -91,6 +91,85 @@ func TestIssueStatesUseTheSixAllowedValues(t *testing.T) {
 	}
 }
 
+// requirementIDs returns the RQ ids defined as sections of the Product Requirements document.
+func requirementIDs(t *testing.T) []string {
+	t.Helper()
+	return idsMatching(t, filepath.Join("requirements", "TEI_PRODUCT_REQUIREMENTS.md"), `(?m)^##[ \t]+(RQ-[0-9]{3})\b`, "")
+}
+
+// idsMatching collects the capture group of every match of pattern in the file. When section is not
+// empty, only the text from that heading up to the next heading of the same level is searched, so a
+// table is read as itself and not as every RQ mention in the document.
+func idsMatching(t *testing.T, relPath, pattern, section string) []string {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(repositoryRoot(t), relPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(content)
+	if section != "" {
+		start := strings.Index(text, section)
+		if start < 0 {
+			t.Fatalf("%sに見出し%qがありません。RQ coverageを追えないのでfail closedします", relPath, section)
+		}
+		text = text[start+len(section):]
+		if end := strings.Index(text, "\n## "); end >= 0 {
+			text = text[:end]
+		}
+	}
+	var ids []string
+	for _, m := range regexp.MustCompile(pattern).FindAllStringSubmatch(text, -1) {
+		ids = append(ids, m[1])
+	}
+	return ids
+}
+
+func assertCoversEveryRequirement(t *testing.T, defined []string, relPath string, covered []string) {
+	t.Helper()
+	seen := map[string]int{}
+	for _, id := range covered {
+		seen[id]++
+	}
+	definedSet := map[string]bool{}
+	for _, id := range defined {
+		definedSet[id] = true
+		switch seen[id] {
+		case 0:
+			t.Errorf("%sが%sに載っていません。Requirementを追加したらEvidence mapも同じ変更で更新します", id, relPath)
+		case 1:
+		default:
+			t.Errorf("%sが%sに%d回載っています", id, relPath, seen[id])
+		}
+	}
+	var unknown []string
+	for id := range seen {
+		if !definedSet[id] {
+			unknown = append(unknown, id)
+		}
+	}
+	sort.Strings(unknown)
+	for _, id := range unknown {
+		t.Errorf("%sは%sに載っていますが、requirements/TEI_PRODUCT_REQUIREMENTS.mdに定義がありません", id, relPath)
+	}
+}
+
+// TestEveryRequirementIsMappedToAnAcceptanceScenario keeps the Requirement set and its verification
+// map from drifting apart. RQ-027-030 were added by the 2026-09-18 product redefinition and were
+// missing from both maps until 2026-09-21, so neither had a PAS nor an Evidence tier.
+func TestEveryRequirementIsMappedToAnAcceptanceScenario(t *testing.T) {
+	defined := requirementIDs(t)
+	if len(defined) == 0 {
+		t.Fatal("Product Requirementを1件も読み取れません")
+	}
+	row := `(?m)^\|[ \t]*(RQ-[0-9]{3})[ \t]*\|`
+	assertCoversEveryRequirement(t, defined,
+		"plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md",
+		idsMatching(t, filepath.Join("plan", "UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md"), row, "## 11. Requirement → Primary PAS mapping"))
+	assertCoversEveryRequirement(t, defined,
+		"plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md",
+		idsMatching(t, filepath.Join("plan", "PRODUCT_REQUIREMENT_GAP_AUDIT.md"), row, "## 4. Requirement別監査"))
+}
+
 func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
 	t.Helper()
 	root := repositoryRoot(t)

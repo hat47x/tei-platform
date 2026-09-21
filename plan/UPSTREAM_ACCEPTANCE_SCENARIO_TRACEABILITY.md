@@ -532,8 +532,14 @@ PAS-04で具体化します。
 | RQ-024 | PAS-04 | - |
 | RQ-025 | PAS-07 | PAS-02 / PAS-04 |
 | RQ-026 | PAS-07 | PAS-01 / PAS-02 / PAS-04 |
+| RQ-027 | PAS-06 | PAS-01 |
+| RQ-028 | PAS-01 | PAS-06 / PAS-07 |
+| RQ-029 | PAS-06 | PAS-01 / PAS-03 |
+| RQ-030 | PAS-07 | PAS-02 / PAS-05 |
 
 Primaryは最初に具体化する代表PASであり、coverage scoreではありません。
+
+RQ-027〜RQ-030は2026-09-18のProduct再定義で追加されましたが、この表は2026-09-21までRQ-026で止まっていました。そのため4件はPrimary PASもEvidence tierも持たず、`PRODUCT_REQUIREMENT_GAP_AUDIT.md`の優先順位にも現れませんでした。上の4行は2026-09-21に割り当てたもので、最初に具体化する代表PASの提案です。`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`が、以後この表と監査表の両方がRequirement集合と一致することをfail-closedで確認します。
 
 ## 12. 現行Gate / Stageとの関係
 
