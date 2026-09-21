@@ -4615,3 +4615,58 @@ canonical 11 exact blobs
 ```
 
 full checkoutまたはbyte-exact materializationが成立しないsessionではaggregate / repository healthを推測でPASS扱いせず、codeをmainへ統合しない。
+
+
+#### E1.30 exact P1-P4 closure rerun — 2026-09-22
+
+E1.17以降のcredential-safe P1を、V2 replay audit P4のexact source/testと同一一時moduleへbyte-exactにmaterializeして依存closureを再実行した。
+
+materialized exact blobs:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+```
+
+materialization後に各fileへ `git hash-object` を実行し、3/3で上記Git blob identityと一致した。SHA不一致の転送物はEvidenceに採用しない運用を維持した。
+
+同一一時moduleで:
+
+```text
+gofmt -l .
+  -> no output
+
+go vet ./...
+  -> PASS
+
+go test -count=50 ./...
+  -> PASS
+     tei/tools/internal/firstwebtargetevidence [no test files]
+     tei/tools/reference-first-web-target-r7b-replay-audit ok
+```
+
+したがってE1.17で追加された `wrong-secret` を含むshared credential rejectorと、P4 replay auditのactual compile/test dependency closureは実測済みになった。
+
+current main `c46eafe95c69d91c2d6f4d51c58697d0539db2e4` までのE1.29以後の差分も再監査した。R7B canonical 11 source pathとのoverlapは0件で、追加変更はSecond Application S8 handover/preflight文書だけである。
+
+Evidence heightを更新する。
+
+```text
+{P1,P2} exact closure x50                  = PASS
+{P1,P4} exact closure x50                  = PASS
+P1 credential pressure x50                 = PASS
+P3 exact focused evidence                  = PASS (blob unchanged)
+P5 exact focused evidence                  = PASS (blob unchanged)
+P1-P5 single aggregate focused rerun       = pending
+tools/repository-health-check.sh            = pending
+code integration                            = pending
+actual replay / repeatability Evidence      = pending
+```
+
+`{P1,P4}` closure PASSはsingle aggregate commandの実行結果そのものではないため、aggregate gateを推測で閉じない。full checkoutまたは11-file byte-exact materializationが成立したworking treeでP1-P5 aggregateを実行し、その後current-main Repository healthへ進む。
