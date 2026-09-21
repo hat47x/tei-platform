@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"tei/internal/sourceindex"
+	"tei/internal/syntax"
 )
 
 const (
@@ -55,6 +56,55 @@ func renderValidation(op Operation) string {
 	fmt.Fprintf(&b, "    attribute %s\n", op.Attribute)
 	b.WriteString("}")
 	return b.String()
+}
+
+// renderRelationは、data blockの中へ入れるRelation宣言（1〜数行、各行は改行で終わる）を返す。
+func renderRelation(r AddRelationSpec, newline string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "    relation %s to %s %s%s", r.Symbol, r.Target, r.Cardinality, newline)
+	for _, k := range r.Keys {
+		fmt.Fprintf(&b, "        key %s -> %s%s", k.SourceAttribute, k.TargetAttribute, newline)
+	}
+	return b.String()
+}
+
+// insertIntoDataBlockは、既存のdata blockの閉じ括弧の行の直前へ、宣言を挿入する。
+// 閉じ括弧が行頭（空白だけの後）にないlayoutは、行の途中へ手探りで挿入せず、未対応として拒否する。
+func insertIntoDataBlock(content []byte, dataSymbol string, relation AddRelationSpec) ([]byte, string, error) {
+	src := string(content)
+	lx := syntax.NewLexer(src)
+	var previous, beforePrevious syntax.Token
+	closing := -1
+	inBlock := false
+	for closing < 0 {
+		t, err := lx.Next()
+		if err != nil {
+			return nil, "", err
+		}
+		if t.Kind == syntax.TokenEOF {
+			break
+		}
+		switch {
+		case !inBlock && t.Kind == syntax.TokenLBrace && previous.Kind == syntax.TokenIdent && previous.Text == dataSymbol && beforePrevious.Text == "data":
+			inBlock = true
+		case inBlock && t.Kind == syntax.TokenRBrace:
+			closing = t.Start.Offset
+		}
+		beforePrevious, previous = previous, t
+	}
+	if closing < 0 {
+		return nil, "", fmt.Errorf("data %s のblockをsource上で特定できません", dataSymbol)
+	}
+	lineStart := strings.LastIndex(src[:closing], "\n") + 1
+	if strings.TrimLeft(src[lineStart:closing], " \t") != "" {
+		return nil, "", fmt.Errorf("data %s の閉じ括弧が行頭にないため、挿入位置を決められません", dataSymbol)
+	}
+	newline := "\n"
+	if strings.Contains(src, "\r\n") {
+		newline = "\r\n"
+	}
+	text := renderRelation(relation, newline)
+	return []byte(src[:lineStart] + text + src[lineStart:]), text, nil
 }
 
 // renderDataは新しいnamespaceのsemantic fileの本文を返す。末尾の改行は含めない。
@@ -169,16 +219,17 @@ func fileExists(root, path string) bool {
 	return err == nil
 }
 
-// planEditsは、deltaをauthoritative sourceへのtext追記・新規file作成へ決定論的に変換する。
+// planEditsは、deltaをauthoritative sourceへのtext追記・挿入・新規file作成へ決定論的に変換する。
+// 既存fileへの変更（add-relationのdata block挿入 → add-validationの末尾追記）は、fileごとにこの順で適用する。
 func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 	fingerprints := s.fingerprints()
-	appends := map[string][]Operation{}
+	existing := map[string][]Operation{}
 	var edits []SourceEdit
 	var diagnostics []Diagnostic
 
 	for _, op := range ops {
+		key := operationKey(op)
 		if content, isNew := renderNewFile(op); isNew {
-			key := operationKey(op)
 			if _, managed := fingerprints[op.Placement]; managed || fileExists(s.root, op.Placement) {
 				diagnostics = append(diagnostics, Diagnostic{
 					Code:    "DESTINATION_ALREADY_EXISTS",
@@ -199,49 +250,97 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			continue
 		}
 
-		path := op.Placement
-		if path == "" {
-			var err error
-			path, err = defaultPlacement(s, op)
-			if err != nil {
-				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: err.Error(), Subject: "validation:" + op.ID})
+		var path string
+		switch op.Op {
+		case opAddRelation:
+			location, ok := s.loaded.Sources["semantic-data:"+op.AddRelation.Data]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: fmt.Sprintf("data %s を宣言したsource fileを特定できません", op.AddRelation.Data), Subject: key})
 				continue
 			}
+			path = location.File
+		default:
+			path = op.Placement
+			if path == "" {
+				var err error
+				path, err = defaultPlacement(s, op)
+				if err != nil {
+					diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: err.Error(), Subject: key})
+					continue
+				}
+			}
+		}
+		path, err := sourceindex.NormalizeWorkspacePath(path)
+		if err != nil {
+			diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: err.Error(), Subject: key})
+			continue
 		}
 		if _, ok := fingerprints[path]; !ok {
 			diagnostics = append(diagnostics, Diagnostic{
 				Code:    "PLACEMENT_NOT_MANAGED_SOURCE",
 				Message: fmt.Sprintf("placement %s は管理対象sourceではありません", path),
-				Subject: "validation:" + op.ID,
+				Subject: key,
 			})
 			continue
 		}
-		appends[path] = append(appends[path], op)
+		existing[path] = append(existing[path], op)
 	}
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
 
-	for path, group := range appends {
+	for path, group := range existing {
 		before, err := os.ReadFile(filepath.Join(s.root, filepath.FromSlash(path)))
 		if err != nil {
 			return nil, []Diagnostic{{Code: "SOURCE_UNREADABLE", Message: err.Error(), Subject: "file:" + path}}
 		}
-		after := before
+		content := before
+		var inserted strings.Builder
 		for _, op := range group {
-			after = appendDeclaration(after, renderValidation(op))
+			if op.Op != opAddRelation {
+				continue
+			}
+			symbol, ok := dataSymbol(s, op.AddRelation.Data)
+			if !ok {
+				return nil, []Diagnostic{{Code: "DATA_NOT_FOUND", Message: fmt.Sprintf("data %s は存在しません", op.AddRelation.Data), Subject: operationKey(op)}}
+			}
+			var text string
+			content, text, err = insertIntoDataBlock(content, symbol, *op.AddRelation)
+			if err != nil {
+				return nil, []Diagnostic{{Code: "DATA_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+			}
+			inserted.WriteString(text)
 		}
-		original := strings.TrimRight(string(before), "\r\n\t ")
+		appendBase := strings.TrimRight(string(content), "\r\n\t ")
+		for _, op := range group {
+			if op.Op == opAddValidation {
+				content = appendDeclaration(content, renderValidation(op))
+			}
+		}
+		if len(strings.TrimRight(string(content), "\r\n\t ")) != len(appendBase) {
+			inserted.WriteString(string(content)[len(appendBase):])
+		}
 		edits = append(edits, SourceEdit{
 			Path:              path,
 			Layer:             layerSemantic,
 			BeforeFingerprint: sourceindex.Fingerprint(before),
-			AfterFingerprint:  sourceindex.Fingerprint(after),
-			InsertedText:      string(after)[len(original):],
+			AfterFingerprint:  sourceindex.Fingerprint(content),
+			InsertedText:      inserted.String(),
 			before:            before,
-			after:             after,
+			after:             content,
 		})
 	}
 	sort.Slice(edits, func(i, j int) bool { return edits[i].Path < edits[j].Path })
 	return edits, nil
+}
+
+func dataSymbol(s snapshot, id string) (string, bool) {
+	for _, ns := range s.loaded.World.Semantics {
+		for _, d := range ns.Data {
+			if string(d.ID) == id {
+				return d.Symbol, true
+			}
+		}
+	}
+	return "", false
 }

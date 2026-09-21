@@ -1,6 +1,6 @@
 # ISSUE-000046: Studioの最小Authoring Loopをshared Acceptance Boundaryで実証する
 
-- 状態: In Progress — Gate C Ready済み。Studioが使うShared Acceptance Boundaryは決定論的Referenceとして成立（2026-09-21、`tools/reference-shared-acceptance`）。Studio UI・Data / Relationの選択・Relation変更は未着手
+- 状態: In Progress — Gate C Ready済み。Studioが使うShared Acceptance Boundaryは決定論的Referenceとして成立（2026-09-21、`tools/reference-shared-acceptance`）。Studio UI・Data / Relationの選択は未着手。本Issueが最小loopとして名指しするRelation追加（`add-relation`）は、受入境界のReferenceとして成立（同日の第二increment）
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-01 primary**
@@ -361,16 +361,32 @@ Gate C後の最初のReferenceでは、[`../DEFINITION_CENTERED_FEEDBACK_LOOP_PL
 
 Studioの操作はcandidateを作るだけで、authoritative sourceを直接変更しない。そのcandidateを受け取る境界は、[`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)として、UIなしで実証した（[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)の実証状況と同じ実装）。Preview（Semantic Diff・exact dependencyに基づくimpact・unresolved）、Reject、Accept、stale `baseModelRevision`、受理後のtoolなしの再読込・Conformance、派生物の再生成、file moveとlogical renameの区別を、Reference workspaceのscratch copyで確認している。
 
-このincrementで扱った変更は、本Issueが最小loopとして想定するRelation変更ではなく、`order_entry`が使う`sales`への**Validation追加**である（`ISSUE-000027`のFeedback Loop Planが許す最初の変更候補）。Relation変更はpersistence・Application Patternへの影響が大きいため、この受入境界へoperation kindとして追加する次のincrementで扱う。
+最初のincrementで扱った変更は、`order_entry`が使う`sales`への**Validation追加**である（`ISSUE-000027`のFeedback Loop Planが許す最初の変更候補）。同日の第二incrementで、本Issueが最小loopとして名指しする**Relation追加**（`add-relation`）を、同じ境界のoperation kindとして追加した。
 
-未着手: Studio UI（Select・local neighborhood表示・Preview表示）、既存Data / RelationのSource-to-Canonical trace付き選択、Relation変更のcandidate、Wails Host。Studio Wails HostをApplication Target Evidenceへ数えない原則は変わらない。
+Relation追加のloopは次のとおりである（`relation_test.go`、Reference workspaceのscratch copy）。
+
+```text
+Select   既存Data sales.order_line（candidateのaddRelation.dataが、qualified logical keyで指す）
+Propose  add-relation: sales.order_line.order -> sales.order, one, keyなしの概念Relation
+Preview  Semantic Diff = added relation:sales.order_line.order（一件）
+         changed collections = [semantics]（persistenceMappings / databases / applications等は不変）
+         impact = Data所有 / target Data / 端点を実現するPersistence Mapping（sales_core.order_line / sales_core.order）
+         unresolved = RELATION_STORAGE_NOT_AUTHORED（端点はpersistされているが、Relationの保存方法が未定義）
+         source = order.teiのdata OrderLineの閉じ括弧の直前へ1行。挿入した行以外のbyteは変わらない
+Reject   sourceは変わらない
+Accept   一つのfileの挿入した行だけが変わる。toolなしの再読込とValidationが通り、Persistence Mapping / Database / Applicationは不変
+```
+
+Persistenceへの影響は、Relationの端点を実現するMappingへのexact identityの辺と、保存方法の分類で示す: relation storageが定義済み / keyのsource Attributeがsource側Mappingの列として実現済みで導ける / どちらも無ければ未決定。この例のRelationは未決定であり、Previewはそれを成功へ読み替えず、Persistence Mapping・migrationを変えていないことも明示する。
+
+未着手: Studio UI（Select・local neighborhood表示・Preview表示）、既存Data / RelationのSource-to-Canonical trace付き選択、Relationの変更・削除、Wails Host。Studio Wails HostをApplication Target Evidenceへ数えない原則は変わらない。
 
 ## 完了条件
 
 - [x] Gate C Ready後に着手する（2026-09-21着手）
 - [ ] Studioから既存Data / RelationをSource-to-Canonical trace付きで選択できる
 - [ ] selected definition / local neighborhoodだけで初回changeをreviewできる
-- [ ] small Relation change等をminimum semantic delta candidateとして作れる
+- [x] small Relation change等をminimum semantic delta candidateとして作れる（candidate JSONとして作れる。Studioの操作から作る部分は未実装）
 - [x] PreviewでSemantic Diff / impact / derivation reasonを確認できる（CLI / JSONで確認できる。Studio上の表示は未実装）
 - [x] Preview / Rejectでauthoritative sourceを変更しない（共有受入境界のReferenceでbyte単位に確認）
 - [ ] feedbackをvisible symptomではなくmeaning-owning concernへrouteできる

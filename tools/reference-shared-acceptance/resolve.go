@@ -21,6 +21,7 @@ var (
 // worldIndexは、resolveが「既に存在するか」を確認するための、Canonical Worldのidentity一覧である。
 type worldIndex struct {
 	namespaces   map[core.CanonicalID]bool
+	dataIDs      map[core.CanonicalID]bool
 	validations  map[core.CanonicalID]bool
 	attributes   map[core.CanonicalID]bool
 	relations    map[core.CanonicalID]bool
@@ -32,6 +33,7 @@ type worldIndex struct {
 func indexWorld(s snapshot) worldIndex {
 	idx := worldIndex{
 		namespaces:   map[core.CanonicalID]bool{},
+		dataIDs:      map[core.CanonicalID]bool{},
 		validations:  map[core.CanonicalID]bool{},
 		attributes:   map[core.CanonicalID]bool{},
 		relations:    map[core.CanonicalID]bool{},
@@ -54,6 +56,7 @@ func indexWorld(s snapshot) worldIndex {
 			idx.subjects[string(c.ID)] = true
 		}
 		for _, d := range ns.Data {
+			idx.dataIDs[d.ID] = true
 			idx.subjects[string(d.ID)] = true
 			for _, a := range d.Attributes {
 				idx.attributes[a.ID] = true
@@ -122,6 +125,14 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			seenNamespaces[ns] = true
 			out = append(out, checkNewFile(s, fingerprints, planned, key, op.Placement, layerSemantic, semanticFilePattern, "semantic/<...>/<file>.tei")...)
+
+		case opAddRelation:
+			if !idx.dataIDs[core.CanonicalID(op.AddRelation.Data)] {
+				diag("DATA_NOT_FOUND", "data %s は存在しません（add-relationは既存のDataへRelationを追加します）", op.AddRelation.Data)
+			}
+			if idx.relations[core.CanonicalID(op.AddRelation.ID)] {
+				diag("RELATION_ALREADY_EXISTS", "relation %s は既に存在します", op.AddRelation.ID)
+			}
 
 		case opAddApplication:
 			if _, exists := idx.applications[core.CanonicalID(op.Application.ID)]; exists {

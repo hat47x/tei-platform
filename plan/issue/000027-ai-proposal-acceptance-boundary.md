@@ -463,14 +463,14 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 
 [`tools/reference-shared-acceptance`](../../tools/reference-shared-acceptance/README.md)が、AIを含まない決定論的な受入境界をReferenceとして実装した。candidateの入口（file / CLI / Studio / AI）は`origin`で区別するだけで、同じ検査・同じ順序・同じ書込経路を通る。差分・依存影響の解析は[`tools/internal/changeanalysis`](../../tools/internal/changeanalysis)（`ISSUE-000039`の最初の解析境界）が担当し、このtoolは呼ぶだけである。Gate B / Gate Cが固定した`reference/workspace`は変更せず、scratch copyに対して実行する。
 
-最初のcandidateは、`order_entry`が使うsemantic namespace `sales`へ`positive` Validation（order lineの単価）を一つ追加する最小deltaである。最初は`add-validation`だけを扱った。同じ日の次のincrementで、Second Application（`ISSUE-000040`）が必要とする型付きoperation `add-data`（新しいnamespaceへのData）/ `add-application` / `add-reference-pattern`を、別の受入経路を作らずに同じ境界へ追加した（新しいfileを作るため、失敗時は作ったfileとdirectoryを戻す。変わるべきWorld collectionはdeltaから導き、exactに一致しなければ拒否する）。Relation変更等は必要になった時点で追加する。
+最初のcandidateは、`order_entry`が使うsemantic namespace `sales`へ`positive` Validation（order lineの単価）を一つ追加する最小deltaである。最初は`add-validation`だけを扱った。同じ日の次のincrementで、Second Application（`ISSUE-000040`）が必要とする型付きoperation `add-data`（新しいnamespaceへのData）/ `add-application` / `add-reference-pattern`を、別の受入経路を作らずに同じ境界へ追加した（新しいfileを作るため、失敗時は作ったfileとdirectoryを戻す。変わるべきWorld collectionはdeltaから導き、exactに一致しなければ拒否する）。さらに`ISSUE-000046`が最小loopとして名指しする`add-relation`（既存のDataへRelationを一つ追加）を加えた（Persistence Mappingへの影響と保存方法の未決定を、Previewの辺と`unresolved`で示す）。Relationの変更・削除等は必要になった時点で追加する。
 
 | 完了条件 | 状態 | 根拠・残り |
 | --- | --- | --- |
 | 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 未着手 | candidateは人 / CLIが書く。探索結果からの生成は`ISSUE-000047`との接続後 |
 | 2 ProposalそのものはCanonical authorityではない | 実証済み | Preview / Rejectはauthoritative sourceをbyte単位で変更しない |
 | 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | candidateのevidenceが存在するsubject / sourceへ解決できなければ拒否する。根拠を探索結果から自動で得る部分は未着手 |
-| 4 whole model regenerationを標準にせずminimum semantic deltaを扱う | 実証済み（operation kind 4種） | 宣言外のsemantic変更・World collection変更は拒否、変更subject数に上限（8件） |
+| 4 whole model regenerationを標準にせずminimum semantic deltaを扱う | 実証済み（operation kind 5種） | 宣言外のsemantic変更・World collection変更は拒否、変更subject数に上限（8件） |
 | 5 AI Proposalと他の入口が同じAcceptance原則へ収束 | 一部 | 入口が違っても同じfingerprint・同じsource・同じCanonical Worldになり、AI固有Evidenceは入らない。実際のStudio / AI producerは未実装 |
 | 6 feedbackをmeaning-owning concernへroute | 一部 | Validationはsemantic層でだけauthorでき、別layerへのplacementは拒否する。一般的なrouting catalogの実行は未着手 |
 | 7 Preview / Rejectでauthoritative source不変 | 実証済み | |

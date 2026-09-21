@@ -70,19 +70,21 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 ```
 
 - `origin.kind`は`file` / `cli` / `studio` / `ai`。provenanceだけで、fingerprint・判定・source・Canonical Worldへ影響しません（AI固有のmodel名・prompt digest等は`origin.notes`に置けますが、どこにも保存されません）。
-- 対応するoperationは次の4種です。任意のTEI textやfile patchは運ばず、sourceは意味から決定論的に生成します。Relation変更等は、このReferenceで必要になった時点で追加します。
+- 対応するoperationは次の5種です。任意のTEI textやfile patchは運ばず、sourceは意味から決定論的に生成します。Relation変更等は、このReferenceで必要になった時点で追加します。
 
 | operation | 意味 | source |
 | --- | --- | --- |
 | `add-validation` | 既存namespaceへValidation（`positive` / `relation-unique`）を追加する | 既存fileの末尾へ追記（`placement`は省略可。省略時は同じnamespaceの既存Validationがあるfile） |
 | `add-data` | **新しい**semantic namespaceへData（Attribute・Relation・key）を追加する | 新しいsemantic file（`placement`必須） |
+| `add-relation` | **既存の**DataへRelation（key付き / 概念Relation）を一つ追加する | 対象Dataを宣言したfileのdata blockの、閉じ括弧の行の直前へ挿入（`placement`は持たない。閉じ括弧が行頭に無いlayoutは拒否） |
 | `add-application` | Environment bindingを含まないApplication（semantic利用・Database requirement）を追加する | 新しい`applications/<dir>/application.tei`（`placement`必須） |
 | `add-reference-pattern` | reference Patternを追加する | 新しい`applications/<dir>/patterns/<file>.tei`（`placement`必須） |
 
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
 - 変わるべきWorld collectionは、deltaの種類から導きます（semantic層のoperationは`semantics`、Application層のoperationは`applications`）。実際に変わったcollectionの集合とexactに一致しなければ拒否します。
-- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します。
+- 受理はfileを新しく作るため、失敗時は作ったfileと、そのために作ったdirectoryを削除して元へ戻します（既存fileへの挿入・追記は元のbyteへ戻します）。
+- Relationの追加・変更では、Previewが端点（source / target Data）を実現するPersistence Mappingへの辺と、Relationの保存方法（relation storageが定義済み / keyのsource Attributeが列として実現済みで導ける / 未決定）を返します。未決定なら`RELATION_STORAGE_NOT_AUTHORED`として残し、この変更がPersistence Mapping・migrationを変えないことも示します。
 
 ## このtoolが示すこと / 示さないこと
 
@@ -96,6 +98,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 - accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
+- `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）

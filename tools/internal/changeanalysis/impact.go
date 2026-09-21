@@ -2,9 +2,11 @@ package changeanalysis
 
 import (
 	"sort"
+	"strings"
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/database/persistence"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -40,6 +42,7 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	var edges []ImpactEdge
 	undeclaredValidation := map[string]bool{}
 	applicationAdded := map[string]bool{}
+	undecidedStorage := map[string]string{}
 
 	for _, change := range changes {
 		if change.Change == "removed" {
@@ -54,7 +57,11 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 				undeclaredValidation[app] = true
 			}
 		case "relation":
-			edges = append(edges, relationEdges(after, id)...)
+			es, undecided := relationEdges(after, id)
+			edges = append(edges, es...)
+			if undecided != "" {
+				undecidedStorage[string(id)] = undecided
+			}
 		case "attribute":
 			if owner, ok := ownerData(after, id); ok {
 				edges = append(edges, ImpactEdge{
@@ -111,6 +118,14 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 			Message: "application " + app + " はこの変更で追加されたが、Environment instanceへのbinding・Provider・Permission grantは含まれない。" +
 				"実行可能であるとは言えず、Environment / Runtime authorityはこの変更では変わらない",
 		})
+	}
+	storageRelations := make([]string, 0, len(undecidedStorage))
+	for id := range undecidedStorage {
+		storageRelations = append(storageRelations, id)
+	}
+	sort.Strings(storageRelations)
+	for _, id := range storageRelations {
+		unresolved = append(unresolved, Unresolved{Code: "RELATION_STORAGE_NOT_AUTHORED", Message: undecidedStorage[id]})
 	}
 	unresolved = append(unresolved,
 		Unresolved{Code: "DRIVER_SCENARIO_NOT_RUN", Message: "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"},
@@ -202,8 +217,10 @@ func validationEdges(after ir.World, id core.CanonicalID) ([]ImpactEdge, []strin
 	return edges, undeclared
 }
 
-func relationEdges(after ir.World, id core.CanonicalID) []ImpactEdge {
+// relationEdgesは、Relationから辿れる辺と、保存方法が定義されていない場合の説明（無ければ空）を返す。
+func relationEdges(after ir.World, id core.CanonicalID) ([]ImpactEdge, string) {
 	var edges []ImpactEdge
+	undecided := ""
 	for _, ns := range after.Semantics {
 		for _, d := range ns.Data {
 			for _, r := range d.Relations {
@@ -211,16 +228,19 @@ func relationEdges(after ir.World, id core.CanonicalID) []ImpactEdge {
 					continue
 				}
 				relationKey := subjectKey("relation", r.ID)
-				edges = append(edges, ImpactEdge{
-					From: relationKey, To: subjectKey("data", r.Target), Via: "semantic.relation.target",
-					Reason: "Relationが指すtarget Dataである",
-				})
+				edges = append(edges,
+					ImpactEdge{From: relationKey, To: subjectKey("data", d.ID), Via: "semantic.data.relation", Reason: "RelationはこのDataが宣言している"},
+					ImpactEdge{From: relationKey, To: subjectKey("data", r.Target), Via: "semantic.relation.target", Reason: "Relationが指すtarget Dataである"},
+				)
 				for _, k := range r.Keys {
 					edges = append(edges,
 						ImpactEdge{From: relationKey, To: subjectKey("attribute", k.SourceAttribute), Via: "semantic.relation.key.source", Reason: "Relation keyのsource側Attributeである"},
 						ImpactEdge{From: relationKey, To: subjectKey("attribute", k.TargetAttribute), Via: "semantic.relation.key.target", Reason: "Relation keyのtarget側Attributeである"},
 					)
 				}
+				persistenceEdges, message := persistenceImpact(after, d.ID, r)
+				edges = append(edges, persistenceEdges...)
+				undecided = message
 			}
 		}
 	}
@@ -234,7 +254,71 @@ func relationEdges(after ir.World, id core.CanonicalID) []ImpactEdge {
 			}
 		}
 	}
-	return edges
+	return edges, undecided
+}
+
+// persistenceImpactは、Relationの端点（source Data / target Data）を実現するPersistence Mappingと、
+// Relationの保存方法が定義されているかを返す。定義済みとは、Mappingのrelation storageがあるか、
+// keyのsource AttributeがsourceのMappingの列として実現されているかのどちらかである。
+// どちらも無く端点がpersistされている場合は、保存方法は未決定として説明を返す。
+func persistenceImpact(after ir.World, owner core.CanonicalID, r semantic.Relation) ([]ImpactEdge, string) {
+	relationKey := subjectKey("relation", r.ID)
+	var endpoints []persistence.Mapping
+	for _, m := range after.Persistence {
+		if m.SemanticData == owner || m.SemanticData == r.Target {
+			endpoints = append(endpoints, m)
+		}
+	}
+	if len(endpoints) == 0 {
+		return nil, ""
+	}
+	var edges []ImpactEdge
+	var mappingIDs []string
+	for _, m := range endpoints {
+		mappingIDs = append(mappingIDs, string(m.ID))
+		edges = append(edges, ImpactEdge{
+			From: relationKey, To: "persistence-mapping:" + string(m.ID), Via: "persistence.mapping.realizes-endpoint",
+			Reason: "Relationのsource / target DataをこのPersistence Mappingが実現している",
+		})
+	}
+	for _, m := range after.Persistence {
+		for _, rs := range m.RelationStorage {
+			if rs.Relation == r.ID {
+				edges = append(edges, ImpactEdge{
+					From: relationKey, To: "persistence-mapping:" + string(m.ID), Via: "persistence.relation-storage",
+					Reason: "このPersistence MappingがRelationのrelation storageを定義している",
+				})
+				return edges, ""
+			}
+		}
+	}
+	if len(r.Keys) > 0 {
+		for _, m := range after.Persistence {
+			if m.SemanticData != owner {
+				continue
+			}
+			mapped := map[core.CanonicalID]bool{}
+			for _, c := range m.Columns {
+				mapped[c.Attribute] = true
+			}
+			all := true
+			for _, k := range r.Keys {
+				if !mapped[k.SourceAttribute] {
+					all = false
+				}
+			}
+			if all {
+				edges = append(edges, ImpactEdge{
+					From: relationKey, To: "persistence-mapping:" + string(m.ID), Via: "persistence.relation-key-columns",
+					Reason: "keyのsource AttributeがこのPersistence Mappingの列として実現されているため、保存はkeyから導ける",
+				})
+				return edges, ""
+			}
+		}
+	}
+	sort.Strings(mappingIDs)
+	return edges, "relation " + string(r.ID) + " の端点はPersistence Mapping（" + strings.Join(mappingIDs, " / ") + "）で実現されているが、" +
+		"relation storageも、keyから導ける列も定義されていない。Relationの保存方法は未決定で、この変更はPersistence Mapping・migrationを変えない"
 }
 
 func applicationEdges(app application.Application) []ImpactEdge {

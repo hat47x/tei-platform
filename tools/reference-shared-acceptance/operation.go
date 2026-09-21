@@ -14,6 +14,7 @@ import (
 const (
 	opAddValidation       = "add-validation"
 	opAddData             = "add-data"
+	opAddRelation         = "add-relation"
 	opAddApplication      = "add-application"
 	opAddReferencePattern = "add-reference-pattern"
 )
@@ -31,6 +32,7 @@ type Operation struct {
 	Placement string `json:"placement,omitempty"`
 
 	Data        *DataSpec        `json:"data,omitempty"`
+	AddRelation *AddRelationSpec `json:"addRelation,omitempty"`
 	Application *ApplicationSpec `json:"application,omitempty"`
 	Pattern     *PatternSpec     `json:"pattern,omitempty"`
 }
@@ -61,6 +63,17 @@ type RelationSpec struct {
 type RelationKeySpec struct {
 	SourceAttribute string `json:"sourceAttribute"`
 	TargetAttribute string `json:"targetAttribute"`
+}
+
+// AddRelationSpecは、既存のDataへRelationを一つ追加する意味を表す。
+// sourceは対象Dataを宣言したfileのdata blockへ挿入するため、placementは持たない。
+type AddRelationSpec struct {
+	Data        string            `json:"data"`
+	ID          string            `json:"id"`
+	Symbol      string            `json:"symbol"`
+	Target      string            `json:"target"`
+	Cardinality string            `json:"cardinality"`
+	Keys        []RelationKeySpec `json:"keys,omitempty"`
 }
 
 // ApplicationSpecは、Environment bindingを含まないApplication定義の意味を表す。
@@ -136,7 +149,7 @@ func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
 		"attribute": op.Attribute != "", "relation": op.Relation != "",
-		"data": op.Data != nil, "application": op.Application != nil, "pattern": op.Pattern != nil,
+		"data": op.Data != nil, "addRelation": op.AddRelation != nil, "application": op.Application != nil, "pattern": op.Pattern != nil,
 	}
 	for _, name := range allowed {
 		delete(present, name)
@@ -156,13 +169,15 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddValidation(op)
 	case opAddData:
 		return normalizeAddData(op)
+	case opAddRelation:
+		return normalizeAddRelation(op)
 	case opAddApplication:
 		return normalizeAddApplication(op)
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s だけを扱います）",
-			op.Op, opAddValidation, opAddData, opAddApplication, opAddReferencePattern)
+		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s だけを扱います）",
+			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern)
 	}
 }
 
@@ -313,6 +328,60 @@ func normalizeAddData(op Operation) (Operation, error) {
 	return Operation{Op: op.Op, Placement: placement, Data: &out}, nil
 }
 
+func normalizeAddRelation(op Operation) (Operation, error) {
+	if err := onlyFields(op, "addRelation"); err != nil {
+		return op, err
+	}
+	if op.AddRelation == nil {
+		return op, fmt.Errorf("add-relation にはaddRelationが必要です")
+	}
+	if strings.TrimSpace(op.Placement) != "" {
+		return op, fmt.Errorf("add-relation はplacementを受け付けません（sourceは対象Dataを宣言したfileのdata blockへ入ります）")
+	}
+	r := *op.AddRelation
+	data, err := canonical("addRelation.data", r.Data)
+	if err != nil {
+		return op, err
+	}
+	id, err := canonical("addRelation.id", r.ID)
+	if err != nil {
+		return op, err
+	}
+	segment, err := segmentOf(r.Symbol)
+	if err != nil {
+		return op, fmt.Errorf("addRelation.symbol: %w", err)
+	}
+	if string(id) != string(data)+"."+segment {
+		return op, fmt.Errorf("addRelation.id %s は data %s とsymbol %s から導かれるid %s.%s と一致しません", id, data, r.Symbol, data, segment)
+	}
+	target, err := canonical("addRelation.target", r.Target)
+	if err != nil {
+		return op, err
+	}
+	if !semantic.Cardinality(r.Cardinality).Valid() {
+		return op, fmt.Errorf("addRelation.cardinality %q は one / many のいずれかである必要があります", r.Cardinality)
+	}
+	out := AddRelationSpec{Data: string(data), ID: string(id), Symbol: r.Symbol, Target: string(target), Cardinality: r.Cardinality}
+	seen := map[RelationKeySpec]bool{}
+	for k, key := range r.Keys {
+		source, err := canonical(fmt.Sprintf("addRelation.keys[%d].sourceAttribute", k), key.SourceAttribute)
+		if err != nil {
+			return op, err
+		}
+		targetAttr, err := canonical(fmt.Sprintf("addRelation.keys[%d].targetAttribute", k), key.TargetAttribute)
+		if err != nil {
+			return op, err
+		}
+		spec := RelationKeySpec{SourceAttribute: string(source), TargetAttribute: string(targetAttr)}
+		if seen[spec] {
+			return op, fmt.Errorf("addRelation.keys[%d]: 同じkey対応が重複しています", k)
+		}
+		seen[spec] = true
+		out.Keys = append(out.Keys, spec)
+	}
+	return Operation{Op: op.Op, AddRelation: &out}, nil
+}
+
 func normalizeAddApplication(op Operation) (Operation, error) {
 	if err := onlyFields(op, "application"); err != nil {
 		return op, err
@@ -445,6 +514,8 @@ func operationKey(op Operation) string {
 		return "validation:" + op.ID
 	case opAddData:
 		return "data:" + op.Data.ID
+	case opAddRelation:
+		return "relation:" + op.AddRelation.ID
 	case opAddApplication:
 		return "application:" + op.Application.ID
 	case opAddReferencePattern:

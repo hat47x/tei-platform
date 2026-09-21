@@ -189,12 +189,13 @@ func TestImpactOfASecondApplicationTracesEveryDeclaredReference(t *testing.T) {
 		"relation:repair_intake.intake.customer -> attribute:repair_intake.intake.customer_id via semantic.relation.key.source",
 		"relation:repair_intake.intake.customer -> attribute:customer.customer.customer_id via semantic.relation.key.target",
 		"relation:repair_intake.intake.customer -> application-pattern:repair_intake.customer_reference via application.pattern.relation",
+		"relation:repair_intake.intake.customer -> data:repair_intake.intake via semantic.data.relation",
 	} {
 		if !got[want] {
 			t.Fatalf("辺 %q がありません: %v", want, edges)
 		}
 	}
-	if len(edges) != 14 {
+	if len(edges) != 15 {
 		t.Fatalf("宣言された参照以外の辺が混じっています（%d本）: %v", len(edges), edges)
 	}
 	var codes []string

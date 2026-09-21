@@ -71,6 +71,8 @@ Evidenceはrevision・Scenario・fixture条件へ結び付け、欠落・不一�
 
 [ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)の受入境界（`tools/reference-shared-acceptance`）がこれを呼ぶ。解析器を受入境界側へ重複実装していない。
 
+Relationの追加・変更には、端点を実現するPersistence Mappingへの辺と、Relationの保存方法の分類（relation storage定義済み / keyの列から導ける / 未決定）を返す。未決定は`RELATION_STORAGE_NOT_AUTHORED`として残し、「影響なし」へ丸めない。
+
 未着手: Binding kind、Scenario / Driverへの到達と変更前後のfixture実行、Evidenceのrevision結び付け・stale判定、JSONと人向けProjectionの同一生成、native SQL / Goの未知依存のcoverage表示。
 
 ## 規模を抑える理由と非目標

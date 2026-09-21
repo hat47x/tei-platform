@@ -269,7 +269,7 @@ First Targetは実装済みで、actual clean Target run、Visual capture、fina
 
 ## Studio / Authoring
 
-Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`と、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。実際の`reference/workspace`へのSecond Application compositionのPreviewはPASSしていますが、Acceptは実行していません（人のAcceptance decisionが必要）。
+Studio UIはDesign Onlyです。ただしStudioも使うShared Acceptance Boundaryは、2026-09-21に決定論的なReferenceとして成立しました（[`tools/reference-shared-acceptance`](../tools/reference-shared-acceptance/README.md)）。file / CLI / Studio / AIのどの入口のcandidateも同じ検査を通り、acceptだけがauthoritative sourceを書き換えます。scratch copyでPreview / Reject / Accept / stale / 受理後の再読込を確認済みで、扱うoperationは`add-validation`、既存DataへのRelation追加（`add-relation`。`ISSUE-000046`の最小loop）、Second Application用の型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）です。実際の`reference/workspace`へのSecond Application compositionのPreviewはPASSしていますが、Acceptは実行していません（人のAcceptance decisionが必要）。
 
 Gate C後の最初のStudio Referenceは`ISSUE-000046`です（In Progress。UI・Relation変更は未着手）。
 
