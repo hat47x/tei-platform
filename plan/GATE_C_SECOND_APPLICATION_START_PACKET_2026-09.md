@@ -274,15 +274,32 @@ accepted compositionを通常のTEI sourceとしてauthorする。
 
 Application source acceptance後にEnvironment側を別authorityとして扱う。
 
+preflight:
+
+- `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
+
+current source inspectionでは、development / productionに既存の `master_data.dev` / `master_data.prod` Oracle instanceがあり、最小候補はdestination-owned aliasをそれぞれへ結ぶ2 bindingである。
+
+```text
+development:
+  bind repair_intake.customer_master -> master_data.dev
+
+production:
+  bind repair_intake.customer_master -> master_data.prod
+```
+
+新しいDatabase instance / Oracle plugin / Provider bundleを作るEvidenceは無い。
+
 確認:
 
 - destination Application / alias
 - target Database instance
 - Database definition
-- Provider
+- Provider resolution
 - Permission / Resource requirement
+- BindingがPermission / Resource / Runtime authorityを暗黙grantしないこと
 
-origin `order_entry.master` bindingをcopyしない。
+origin `order_entry.master` bindingをcopy authorityとして扱わない。
 
 ### S8 — Driver / First Web Target
 

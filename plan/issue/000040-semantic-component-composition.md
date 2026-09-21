@@ -238,6 +238,7 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 - `plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`
 - `plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`
 - `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
+- `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
 
 現在のpre-Acceptance停止条件は三つ独立している。
 
@@ -263,6 +264,8 @@ Shared Acceptanceはまだ成立しておらず、authoritative destination sour
 Repository integration条件は、actual acceptで`-derived-out reference/world.json`を直接使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを生成し、golden check / repository health PASSまで同じRepository change内で完了すること。historical Gate B/C `B / R / T` はrevision-scoped Evidenceとして保持し、post-accept current Workspaceへcarry-forwardしない。
 
 S6はAcceptance sourceをもう一度別経路でauthorする段階ではなく、accepted 3-source compositionが通常Workspaceとして自立することを確認するEvidence段階とする。normal `tei validate`、Workspace model revision、`reference/world.json`、Source Index 6 subjects、shared authority / Environment不変を確認し、その後だけS7 Environment Binding Proposalへ進む。正本は `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`。
+
+S7 preflightでは、current development / productionが既に `master_data.dev` / `master_data.prod`（definition `master_data`, provider `oracle`）を持ち、`tei.reference.providers` bundleがOracle providerを供給していることを確認した。したがってS6 complete後の最小Environment候補は `repair_intake.customer_master` を既存instanceへbindする2行であり、新Database instance / Provider / Permission / Resource grantを先行作成しない。exact S7 Proposal fingerprint / base revisionはS6完了後に固定する。
 
 独立レビューによりaccept後のRepository integration条件も評価済みである。actual acceptでは`-derived-out reference/world.json`を使わず、source accept後に`go run ./tools/reference-golden -write`でcurrent goldenを再生成し、golden checkとrepository health PASSまで同じRepository changeで完了する。Gate B / Gate Cの`B / R / T`はrevision-scoped historical Evidenceであり、post-Gate-C current Referenceの進化を旧baselineへcarry-forwardしない。実行手順は`plan/SECOND_APPLICATION_S5_ACCEPTANCE_EXECUTION_PACKET_2026-09.md`を正本とする。
 
