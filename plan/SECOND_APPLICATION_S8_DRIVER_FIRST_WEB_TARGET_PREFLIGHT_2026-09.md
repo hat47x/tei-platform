@@ -215,6 +215,10 @@ contract query
 
 ProjectionはderivedでありCanonical authorityではない。
 
+Successor Handover execution packet:
+
+- `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md`
+
 ## 6.1 Target provenance must use a successor Handover
 
 The original First Web Target used:

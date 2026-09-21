@@ -240,6 +240,7 @@ current Referenceは `add-validation` / semantic-only diff / semantic-only conta
 - `plan/SECOND_APPLICATION_S6_SOURCE_RELOAD_VALIDATION_PACKET_2026-09.md`
 - `plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md`
 - `plan/SECOND_APPLICATION_S8_DRIVER_FIRST_WEB_TARGET_PREFLIGHT_2026-09.md`
+- `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md`
 
 現在のpre-Acceptance停止条件は三つ独立している。
 
@@ -374,6 +375,8 @@ actual Oracle principal / credential / network authorityは未観測のままな
 S8a Driver test-only candidateは `35a2c6d88521942b9e9038953496c69a07202e3a`（base `6284e323...`）へ更新した。並行R7B更新はdocs-onlyでS8 sourceと非競合だったため、強化版 `015814af...` のtest blob `a1fc1da3...` を変更せず最新main直上へ積み直した。remote branch / PRは作らずmain未接続。accepted Semantic source key、development execution、not-found、zero-or-one violation、exact registry、provider mismatch、production executor binding不足の7 pressureを持つ。test blob `a1fc1da3...` はlocal gofmt後blobと一致する。ただしfocused test / reference evidence / repository healthはcheckout不在とGitHub DNS制約で未取得のためExecutable Evidenceとは扱わず、health PASS前にmainへ接続しない。
 
 S8 Target provenanceは旧Gate Cの `B / R` をcarry-forwardしない。`repair_intake`は旧 `R=e523...` に存在しないため、S8a Driver scenarioをcurrent sourceで成立させた後、そのrevisionで必要なHandover Evidenceを再qualificationし、successor `B2 / R2`を発行してからFirst Web Targetへ渡す。Target buildは別identity `T2`として追跡する。
+
+S8bへ進む前のsuccessor Handover契約を `plan/SECOND_APPLICATION_S8_SUCCESSOR_HANDOVER_PREFLIGHT_2026-09.md` に固定した。R2はS8a integration + health PASS後のclean revisionまで割り当てない。exact R2で既存Gate B Required Evidence #310/#255/#308をfinal convergence `-broad`でsame-run再取得し、retained child artifactsをreadiness artifact auditで独立再照合する。その上でSecond Application Driver Evidenceを追加参照してB2/R2を新規発行する。historical B/R/Tは不変で、#308 PostgreSQLをactual Oracle Evidenceへ読み替えない。
 
 ## S4 full-validation correction
 
