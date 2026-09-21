@@ -4,7 +4,7 @@
 - Primary workstream: ISSUE-000040
 - Stage: S7 preflight
 - Entry condition for authoring: S6 complete
-- Current status: **design/source-inspection preflight only; Environment source unchanged**
+- Current status: **executable pressure実施済み（2026-09-21、§13）。Proposal identity確定済み。Environment sourceは未変更で、Acceptance decisionも未取得**
 - This document is not an Environment Binding Proposal acceptance and does not authorize source writes.
 
 ## 1. Purpose
@@ -338,10 +338,24 @@ S7 ProposalはS6完了後のcurrent Workspace revisionをbaseにして初めて�
 したがって現時点では:
 
 ```text
-S7 exact Proposal fingerprint = not yet assigned
-S7 baseModelRevision          = not yet captured
+S7 exact Proposal fingerprint = sha256:9fb68c2878f468ed57e50b73b142344df9426cbc0eb20c5d60e9389ec367e2e4
+S7 baseModelRevision          = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
 S7 Acceptance decision        = absent
 ```
+
+S6完了（`ACCEPT_COMMIT = 0423b95`）でcurrent Workspace revisionが確定したため、2026-09-21にProposal identityを固定した。
+
+fingerprintの対象payloadは、environmentをID順に並べた次の文字列（193 bytes、UTF-8）である。再計算できるよう定義を明示する。
+
+```text
+environments/development/environment.tei
+bind repair_intake.customer_master -> master_data.dev
+---
+environments/production/environment.tei
+bind repair_intake.customer_master -> master_data.prod
+```
+
+baseModelRevisionはS5受理後のWorkspace revisionであり、S7はこのrevisionに対してのみ有効である。Workspaceが先へ進んだ場合はstale candidateとして扱い、base revisionを黙って書き換えない。
 
 を維持する。
 
@@ -382,3 +396,48 @@ S7後も次は未解決としてS8へ渡す。
 - TARGET_PROJECTION_NOT_EVALUATED
 
 S7 bindingの成立だけでDriver / Target execution成功を主張しない。
+
+## 13. 実行記録 — executable pressure（2026-09-21）
+
+§9が求めたpressureを`tools/reference-business-procedure-check/second_application_s7_environment_binding_pressure_test.go`として実装し、実行した。Repositoryのauthoritative Environment sourceは変更していない（すべて`t.TempDir()`上の複製に対する検査）。
+
+| test | 結果 |
+| --- | --- |
+| `TestSecondApplicationS7MinimalBindingPassesFullWorkspaceValidation` | PASS。2 bindingを足した複製が`workspace.Load` → `validation.Validate`でValidation Error 0件 |
+| `TestSecondApplicationS7BindingFailsClosedOnEachStructuralDefect` | PASS（5 subtest）。§5の5種類がそれぞれ期待するcodeで拒否される |
+| `TestSecondApplicationS7BindingChangesOnlyTheTwoEnvironmentFiles` | PASS。変更されたauthoritative fileはEnvironment 2 fileだけで、各fileで増えた行はbinding 1行だけ |
+
+negative controlの対応:
+
+```text
+unknown Application        -> UNKNOWN_BINDING_APPLICATION
+unknown datasource alias   -> UNKNOWN_BINDING_DATASOURCE_ALIAS
+unknown database instance  -> UNKNOWN_DATABASE_INSTANCE
+target mismatch            -> DATABASE_BINDING_TARGET_MISMATCH
+duplicate binding          -> DUPLICATE_ENVIRONMENT_BINDING
+```
+
+いずれも共有`validation.Validate`が出すdiagnosticであり、S7専用validatorは作っていない。
+
+positive testは「Validationが通った」ことに加えて、**loadしたWorld上に`repair_intake.customer_master`のbindingが期待するinstanceで実在すること**を確認する。これが無いと、bindingを一行も挿入していない場合でもtestが通ってしまう。origin側の`order_entry.master` bindingが壊れていないことも併せて確認する。
+
+test自体が空振りしないことを4件の変異で確認した（bindingを挿入しない / developmentがproduction instanceへ向く / validatorがtarget mismatch checkを落とす / validatorがunknown alias checkを落とす）。すべてtestが検出した。
+
+### まだ成立していないもの
+
+```text
+S7 Acceptance decision                 = absent
+accepted Environment source            = none
+Permission / Resource / Runtime authority = 未付与（§6のとおり）
+```
+
+このpressureはProposalが構造的に成立しうることを示すだけで、Environment authorityの決定ではない。§11のexit条件のうち、exact Proposal identity・positive Validation・negative controlsは満たし、explicit Acceptance decision以降は未了である。
+
+### Acceptance経路について未決
+
+S5はShared Acceptance Boundaryの型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）を通って受理した。現在のBoundaryにはEnvironment bindingに対応するoperationが無い。したがってS7は次のどちらかを先に決める必要がある。
+
+1. Boundaryへ`add-environment-binding`相当の型付きoperationを追加し、S5と同じ経路（Preview → 明示的Acceptance → 決定記録）で受理する
+2. Environment sourceを直接authorし、S7独自の検証手順で受理する
+
+1はEnvironment変更にも決定記録（`RQ-027`）とPreviewが付く一方、Boundaryの責務がApplication意味からEnvironment決定へ広がる。2は実装が不要な一方、S5で得た「どの入口でも同じ検査を通る」性質がEnvironmentには及ばない。この選択は利用者の判断を待つ。

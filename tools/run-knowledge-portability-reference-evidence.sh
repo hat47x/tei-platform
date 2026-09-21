@@ -13,6 +13,7 @@ files=(
   tools/reference-business-procedure-check/second_application_s4_full_validation_pressure_test.go
   tools/reference-business-procedure-check/second_application_s5_shared_acceptance_review_pressure_test.go
   tools/reference-business-procedure-check/second_application_s5_freshness_capture_pressure_test.go
+  tools/reference-business-procedure-check/second_application_s7_environment_binding_pressure_test.go
 )
 
 unformatted="$(gofmt -l "${files[@]}")"

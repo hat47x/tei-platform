@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — S5 Acceptance完了 / S6 source reload validation完了（2026-09-21、`ACCEPT_COMMIT = 0423b95`）。次はS7 Environment Binding Proposal
+- 状態: In Progress — S5 Acceptance完了 / S6完了 / S7 executable pressure実施・Proposal identity確定（2026-09-21）。S7のAcceptance経路と決定が未了
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -330,9 +330,17 @@ guardを緩めた箇所は無い。`TestSecondApplicationCompositionRejectsAnExi
 
 初回Second Applicationについては、専用のportability grammar（Knowledge Package / inheritance / override / sync）は不要だった。既存のSemantic / Application / reference Pattern / Database Contract参照だけで成立している。一般化はしない。
 
-### 次
+### S7 — executable pressure実施済み、Acceptance未了（2026-09-21）
 
-S7 Environment Binding Proposalへ進む。`ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`はS6完了時点でも未解消のまま後続へ引き渡す。
+`plan/SECOND_APPLICATION_S7_ENVIRONMENT_BINDING_PREFLIGHT_2026-09.md` §9のpressureを実装・実行し、§13へ記録した。最小のEnvironment binding 2行が共有Validationを通り、§5の5種類のdefectがそれぞれ期待するcodeでfail closedし、変更が2 Environment fileの1行ずつに収まることを確認した。Repositoryのauthoritative Environment sourceは変更していない。
+
+```text
+S7 Proposal fingerprint = sha256:9fb68c2878f468ed57e50b73b142344df9426cbc0eb20c5d60e9389ec367e2e4
+S7 baseModelRevision    = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+S7 Acceptance decision  = absent
+```
+
+**未決**: 現在のShared Acceptance BoundaryにはEnvironment bindingの型付きoperationが無い。Boundaryへ追加して同じ経路で受理するか、Environment sourceを直接authorするかを先に決める必要がある（preflight §13）。`ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は引き続き未解消である。
 
 ## S4 full-validation correction
 
