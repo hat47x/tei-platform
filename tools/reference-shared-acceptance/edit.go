@@ -15,6 +15,7 @@ import (
 const (
 	layerSemantic    = "semantic"
 	layerApplication = "application"
+	layerEnvironment = "environment"
 )
 
 // SourceEditは、authoritative sourceへ入る変更を、適用前後のfingerprintとともに記録する。
@@ -35,16 +36,73 @@ func layerOf(op Operation) string {
 	switch op.Op {
 	case opAddApplication, opAddReferencePattern:
 		return layerApplication
+	case opAddEnvironmentBinding:
+		return layerEnvironment
 	default:
 		return layerSemantic
 	}
 }
 
 func layerPrefix(layer string) string {
-	if layer == layerApplication {
+	switch layer {
+	case layerApplication:
 		return "applications/"
+	case layerEnvironment:
+		return "environments/"
+	default:
+		return "semantic/"
 	}
-	return "semantic/"
+}
+
+// renderEnvironmentBindingは、Environment block内へ挿入する一行を返す。
+func renderEnvironmentBinding(spec EnvironmentBindingSpec, newline string) string {
+	return fmt.Sprintf("    bind %s.%s -> %s%s", spec.Application, spec.Alias, spec.Instance, newline)
+}
+
+// insertIntoEnvironmentBlockは、`environment <id> { ... }`の閉じ括弧の直前へbinding一行を挿入する。
+// data blockへのRelation挿入と同じく、閉じ括弧が行頭にない書き方は扱わない。
+func insertIntoEnvironmentBlock(content []byte, environmentID string, spec EnvironmentBindingSpec) ([]byte, string, error) {
+	src := string(content)
+	lx := syntax.NewLexer(src)
+	var previous, beforePrevious syntax.Token
+	closing := -1
+	inBlock := false
+	depth := 0
+	for closing < 0 {
+		t, err := lx.Next()
+		if err != nil {
+			return nil, "", err
+		}
+		if t.Kind == syntax.TokenEOF {
+			break
+		}
+		switch {
+		case !inBlock && t.Kind == syntax.TokenLBrace && previous.Text == environmentID && beforePrevious.Text == "environment":
+			inBlock = true
+			depth = 1
+		case inBlock && t.Kind == syntax.TokenLBrace:
+			depth++
+		case inBlock && t.Kind == syntax.TokenRBrace:
+			depth--
+			if depth == 0 {
+				closing = t.Start.Offset
+			}
+		}
+		beforePrevious, previous = previous, t
+	}
+	if closing < 0 {
+		return nil, "", fmt.Errorf("environment %s のblockをsource上で特定できません", environmentID)
+	}
+	lineStart := strings.LastIndex(src[:closing], "\n") + 1
+	if strings.TrimLeft(src[lineStart:closing], " \t") != "" {
+		return nil, "", fmt.Errorf("environment %s の閉じ括弧が行頭にないため、挿入位置を決められません", environmentID)
+	}
+	newline := "\n"
+	if strings.Contains(src, "\r\n") {
+		newline = "\r\n"
+	}
+	text := renderEnvironmentBinding(spec, newline)
+	return []byte(src[:lineStart] + text + src[lineStart:]), text, nil
 }
 
 func renderValidation(op Operation) string {
@@ -297,6 +355,15 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 		content := before
 		var inserted strings.Builder
 		for _, op := range group {
+			if op.Op == opAddEnvironmentBinding {
+				var text string
+				content, text, err = insertIntoEnvironmentBlock(content, op.EnvironmentBinding.Environment, *op.EnvironmentBinding)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "ENVIRONMENT_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(text)
+				continue
+			}
 			if op.Op != opAddRelation {
 				continue
 			}
@@ -322,7 +389,7 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 		}
 		edits = append(edits, SourceEdit{
 			Path:              path,
-			Layer:             layerSemantic,
+			Layer:             layerOf(group[0]),
 			BeforeFingerprint: sourceindex.Fingerprint(before),
 			AfterFingerprint:  sourceindex.Fingerprint(content),
 			InsertedText:      inserted.String(),

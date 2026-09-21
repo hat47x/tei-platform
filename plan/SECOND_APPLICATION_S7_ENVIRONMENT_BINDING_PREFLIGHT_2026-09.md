@@ -433,11 +433,74 @@ Permission / Resource / Runtime authority = 未付与（§6のとおり）
 
 このpressureはProposalが構造的に成立しうることを示すだけで、Environment authorityの決定ではない。§11のexit条件のうち、exact Proposal identity・positive Validation・negative controlsは満たし、explicit Acceptance decision以降は未了である。
 
-### Acceptance経路について未決
+### Acceptance経路 — 案1を仮採用（2026-09-21）
 
-S5はShared Acceptance Boundaryの型付きoperation（`add-data` / `add-application` / `add-reference-pattern`）を通って受理した。現在のBoundaryにはEnvironment bindingに対応するoperationが無い。したがってS7は次のどちらかを先に決める必要がある。
+S5はShared Acceptance Boundaryの型付きoperationを通って受理した。Boundaryには当初Environment binding用のoperationが無く、次の二択があった。
 
-1. Boundaryへ`add-environment-binding`相当の型付きoperationを追加し、S5と同じ経路（Preview → 明示的Acceptance → 決定記録）で受理する
+1. Boundaryへ`add-environment-binding`を追加し、S5と同じ経路（Preview → 明示的Acceptance → 決定記録）で受理する
 2. Environment sourceを直接authorし、S7独自の検証手順で受理する
 
-1はEnvironment変更にも決定記録（`RQ-027`）とPreviewが付く一方、Boundaryの責務がApplication意味からEnvironment決定へ広がる。2は実装が不要な一方、S5で得た「どの入口でも同じ検査を通る」性質がEnvironmentには及ばない。この選択は利用者の判断を待つ。
+**案1を仮採用して実装した。** 理由は、「どの入口から来た変更も同じ境界を通り、Previewと決定記録が付く」ことがこのReferenceの中心的な性質であり、Environmentだけを例外にするとS5の前例とも`RQ-027`の決定記録とも食い違うためである。加えて、型付きoperationは§6「この変更が与えないもの」を機械的に閉じられる（Environment fileのbinding一行だけに限定し、Permission / Resource / leaseへ触れない）。手編集より強い封じ込めになる。
+
+この判断は**仮**である。次の場合に見直す。
+
+- Environmentの決定が、意味の変更とは異なる承認者・承認単位・秘匿情報を必要とすると分かった場合
+- Environment固有の知識がBoundaryのresolve / diffへ入り込み、意味中心の設計を濁し始めた場合
+- 型付きoperationでは表現できないEnvironment変更（削除・付け替え・条件付きbinding等）が必要になった場合
+
+実装は`tools/reference-shared-acceptance`の`add-environment-binding`である。層をまたぐ正しさは共有Validationに委ね、境界側はEnvironmentの存在・placementの所有関係・binding重複だけを見る。
+
+## 14. 実装と実Reference Preview — 2026-09-21
+
+案1に従い、受入境界へ`add-environment-binding`を追加した。
+
+```text
+operation   add-environment-binding
+spec        environment / application / alias / instance
+placement   そのEnvironmentを宣言しているsource file
+挿入        environment blockの閉じ括弧直前へ bind <application>.<alias> -> <instance> を一行
+層          environments/
+差分        environmentDiff（subject kind = environment-binding、id = <env>/<app>.<alias>）
+collection  environments
+impact      binding -> environment / application / database-instance、instance -> database定義
+unresolved  RUNTIME_AUTHORITY_NOT_GRANTED
+```
+
+境界側の検査はEnvironmentの存在、placementがそのEnvironmentの所有fileであること、同じbindingが既に無いことに限る。unknown alias / unknown instance / target mismatchは**共有Validation**が`validate` stageで出す。S7専用validatorは作っていない。
+
+### 実際の`reference/workspace`へのread-only Preview
+
+`main f9d756e`で実行した。`accept`は実行していない。
+
+```text
+acceptable             true
+stages                 11 / 11 pass
+baseModelRevision      sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759de846f71eaf18f762
+candidateFingerprint   sha256:fa359de44243c8fbc38ed8bbef679e5e59487a25773c48e5bdb51f807e64bc24
+modelRevisionAfter     sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c
+semantic diff          0件
+application diff       0件
+environment diff       added environment-binding:development/repair_intake.customer_master
+                       added environment-binding:production/repair_intake.customer_master
+changed collections    [environments]
+source edits           environments/development/environment.tei（+1行）
+                       environments/production/environment.tei（+1行）
+impact edges           8
+unresolved             RUNTIME_AUTHORITY_NOT_GRANTED ×2
+                       DRIVER_SCENARIO_NOT_RUN
+                       TARGET_PROJECTION_NOT_EVALUATED
+```
+
+Preview前後で`reference/workspace`のfile digestは同一、`git status reference`は空である。
+
+§10で固定した**source-levelのProposal fingerprint `sha256:9fb68c28…`は変わらない**。型付きoperationから生成される2行が、そこで定義したpayloadと同一だからである。`fa359de4…`はbase revisionを含むAcceptance candidateのidentityで、S4の`c18ae0fd…`とS5の`8a936cf9…`の関係と同じである。
+
+### 残る停止条件
+
+```text
+explicit human Acceptance decision for the S7 Proposal = absent
+accepted Environment source                            = none
+Permission / Resource / Runtime authority              = 未付与
+```
+
+Previewは受理ではない。`reference/workspace`への`accept`は、exact Proposalに対する明示的なAcceptance decisionがあるまで実行しない。

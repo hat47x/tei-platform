@@ -53,6 +53,7 @@ type Preview struct {
 	SourceEdits          []SourceEdit                   `json:"sourceEdits,omitempty"`
 	SemanticDiff         []changeanalysis.SubjectChange `json:"semanticDiff,omitempty"`
 	ApplicationDiff      []changeanalysis.SubjectChange `json:"applicationDiff,omitempty"`
+	EnvironmentDiff      []changeanalysis.SubjectChange `json:"environmentDiff,omitempty"`
 	ChangedCollections   []string                       `json:"changedCollections,omitempty"`
 	UnchangedCollections []string                       `json:"unchangedCollections,omitempty"`
 	Impact               []changeanalysis.ImpactEdge    `json:"impact,omitempty"`
@@ -228,8 +229,13 @@ func evaluate(root string, data []byte) (evaluation, error) {
 		if err != nil {
 			return []Diagnostic{{Code: "APPLICATION_DIFF_FAILED", Message: err.Error()}}
 		}
+		environmentChanges, err := changeanalysis.DiffEnvironments(before.loaded.World, after.loaded.World)
+		if err != nil {
+			return []Diagnostic{{Code: "ENVIRONMENT_DIFF_FAILED", Message: err.Error()}}
+		}
 		ev.preview.SemanticDiff = semanticChanges
 		ev.preview.ApplicationDiff = applicationChanges
+		ev.preview.EnvironmentDiff = environmentChanges
 		changed, unchanged, err := changeanalysis.CollectionDiff(before.loaded.World, after.loaded.World)
 		if err != nil {
 			return []Diagnostic{{Code: "COLLECTION_DIFF_FAILED", Message: err.Error()}}
@@ -366,6 +372,9 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 			add("application", op.Application.ID)
 		case opAddReferencePattern:
 			add("application-pattern", op.Pattern.ID)
+		case opAddEnvironmentBinding:
+			b := op.EnvironmentBinding
+			add("environment-binding", b.Environment+"/"+b.Application+"."+b.Alias)
 		}
 	}
 	sortChanges(out)
@@ -381,6 +390,8 @@ func expectedCollections(ops []Operation) []string {
 			set["semantics"] = true
 		case opAddApplication, opAddReferencePattern:
 			set["applications"] = true
+		case opAddEnvironmentBinding:
+			set["environments"] = true
 		}
 	}
 	out := make([]string, 0, len(set))
@@ -402,6 +413,7 @@ func sortChanges(changes []changeanalysis.SubjectChange) {
 
 func allChanges(p Preview) []changeanalysis.SubjectChange {
 	out := append(append([]changeanalysis.SubjectChange{}, p.SemanticDiff...), p.ApplicationDiff...)
+	out = append(out, p.EnvironmentDiff...)
 	sortChanges(out)
 	return out
 }

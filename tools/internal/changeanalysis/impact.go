@@ -42,6 +42,7 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	var edges []ImpactEdge
 	undeclaredValidation := map[string]bool{}
 	applicationAdded := map[string]bool{}
+	environmentBindingAdded := map[string]bool{}
 	undecidedStorage := map[string]string{}
 
 	for _, change := range changes {
@@ -89,6 +90,13 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 			if app, pattern, ok := findPattern(after, id); ok {
 				edges = append(edges, patternEdges(app, pattern)...)
 			}
+		case "environment-binding":
+			if es, ok := environmentBindingEdges(after, id); ok {
+				edges = append(edges, es...)
+				if change.Change == "added" {
+					environmentBindingAdded[string(id)] = true
+				}
+			}
 		}
 	}
 
@@ -117,6 +125,13 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 			Code: "ENVIRONMENT_BINDING_NOT_AUTHORED",
 			Message: "application " + app + " はこの変更で追加されたが、Environment instanceへのbinding・Provider・Permission grantは含まれない。" +
 				"実行可能であるとは言えず、Environment / Runtime authorityはこの変更では変わらない",
+		})
+	}
+	for _, binding := range sortedKeys(environmentBindingAdded) {
+		unresolved = append(unresolved, Unresolved{
+			Code: "RUNTIME_AUTHORITY_NOT_GRANTED",
+			Message: "environment binding " + binding + " はApplicationのdatasource aliasを物理instanceへ結ぶが、" +
+				"Permission grant・Resource binding・lease・実行principalはこの変更に含まれない。接続できるとも実行できるとも言えない",
 		})
 	}
 	storageRelations := make([]string, 0, len(undecidedStorage))
@@ -426,6 +441,37 @@ func findApplication(w ir.World, id core.CanonicalID) (application.Application, 
 		}
 	}
 	return application.Application{}, false
+}
+
+// environmentBindingEdgesは、binding subjectからEnvironment / Application / database instanceへの辺を返す。
+// 名前の一致からではなく、Worldが持つexact identityから辿る。
+func environmentBindingEdges(after ir.World, id core.CanonicalID) ([]ImpactEdge, bool) {
+	for _, env := range after.Environments {
+		for _, binding := range env.Bindings {
+			if EnvironmentBindingSubjectID(env.ID, binding.Application, binding.Alias) != id {
+				continue
+			}
+			from := subjectKey("environment-binding", id)
+			edges := []ImpactEdge{
+				{From: from, To: subjectKey("environment", env.ID), Via: "environment.binding.owner",
+					Reason: "このEnvironmentがbindingを宣言している"},
+				{From: from, To: subjectKey("application", binding.Application), Via: "environment.binding.application",
+					Reason: "bindingはこのApplicationのdatasource aliasを解決する"},
+				{From: from, To: subjectKey("database-instance", binding.Instance), Via: "environment.binding.instance",
+					Reason: "bindingはこのEnvironment内のdatabase instanceを選んでいる"},
+			}
+			for _, instance := range env.Instances {
+				if instance.ID == binding.Instance {
+					edges = append(edges, ImpactEdge{
+						From: subjectKey("database-instance", instance.ID), To: subjectKey("database", instance.Definition),
+						Via: "environment.instance.definition", Reason: "instanceはこのDatabase定義の実体である",
+					})
+				}
+			}
+			return edges, true
+		}
+	}
+	return nil, false
 }
 
 func findPattern(w ir.World, id core.CanonicalID) (application.Application, application.Pattern, bool) {

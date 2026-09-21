@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	opAddValidation       = "add-validation"
-	opAddData             = "add-data"
-	opAddRelation         = "add-relation"
-	opAddApplication      = "add-application"
-	opAddReferencePattern = "add-reference-pattern"
+	opAddValidation         = "add-validation"
+	opAddData               = "add-data"
+	opAddRelation           = "add-relation"
+	opAddEnvironmentBinding = "add-environment-binding"
+	opAddApplication        = "add-application"
+	opAddReferencePattern   = "add-reference-pattern"
 )
 
 // Operationは、型付きの最小semantic deltaの一単位である。
@@ -35,6 +36,17 @@ type Operation struct {
 	AddRelation *AddRelationSpec `json:"addRelation,omitempty"`
 	Application *ApplicationSpec `json:"application,omitempty"`
 	Pattern     *PatternSpec     `json:"pattern,omitempty"`
+
+	EnvironmentBinding *EnvironmentBindingSpec `json:"environmentBinding,omitempty"`
+}
+
+// EnvironmentBindingSpecは、Applicationが宣言したdatasource aliasを、Environmentが持つ
+// database instanceへ結ぶ決定を表す。Application側の意味ではなくEnvironment側のauthorityである。
+type EnvironmentBindingSpec struct {
+	Environment string `json:"environment"`
+	Application string `json:"application"`
+	Alias       string `json:"alias"`
+	Instance    string `json:"instance"`
 }
 
 // DataSpecは、新しいsemantic namespaceに一つのDataを追加する意味を表す。
@@ -171,13 +183,15 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddData(op)
 	case opAddRelation:
 		return normalizeAddRelation(op)
+	case opAddEnvironmentBinding:
+		return normalizeAddEnvironmentBinding(op)
 	case opAddApplication:
 		return normalizeAddApplication(op)
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s だけを扱います）",
-			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern)
+		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s / %s だけを扱います）",
+			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern, opAddEnvironmentBinding)
 	}
 }
 
@@ -507,6 +521,42 @@ func normalizeAddReferencePattern(op Operation) (Operation, error) {
 	return Operation{Op: op.Op, Placement: placement, Pattern: &out}, nil
 }
 
+func normalizeAddEnvironmentBinding(op Operation) (Operation, error) {
+	if err := onlyFields(op, "placement", "environmentBinding"); err != nil {
+		return op, err
+	}
+	if op.EnvironmentBinding == nil {
+		return op, fmt.Errorf("%s にはenvironmentBindingが必要です", opAddEnvironmentBinding)
+	}
+	spec := *op.EnvironmentBinding
+	env, err := canonical("environmentBinding.environment", spec.Environment)
+	if err != nil {
+		return op, err
+	}
+	application, err := canonical("environmentBinding.application", spec.Application)
+	if err != nil {
+		return op, err
+	}
+	instance, err := canonical("environmentBinding.instance", spec.Instance)
+	if err != nil {
+		return op, err
+	}
+	alias := strings.TrimSpace(spec.Alias)
+	if alias == "" {
+		return op, fmt.Errorf("environmentBinding.aliasが空です")
+	}
+	if strings.ContainsAny(alias, " \t.") {
+		return op, fmt.Errorf("environmentBinding.alias %q はApplication内のlocal nameです", alias)
+	}
+	placement := strings.TrimSpace(op.Placement)
+	if placement == "" {
+		return op, fmt.Errorf("%s にはplacement（Environment source file）が必要です", opAddEnvironmentBinding)
+	}
+	return Operation{Op: op.Op, Placement: placement, EnvironmentBinding: &EnvironmentBindingSpec{
+		Environment: string(env), Application: string(application), Alias: alias, Instance: string(instance),
+	}}, nil
+}
+
 // operationKeyは、deltaの中でoperationを一意に識別する。同じsubjectを二度追加するdeltaを拒否するために使う。
 func operationKey(op Operation) string {
 	switch op.Op {
@@ -516,6 +566,9 @@ func operationKey(op Operation) string {
 		return "data:" + op.Data.ID
 	case opAddRelation:
 		return "relation:" + op.AddRelation.ID
+	case opAddEnvironmentBinding:
+		b := op.EnvironmentBinding
+		return "environment-binding:" + b.Environment + "/" + b.Application + "." + b.Alias
 	case opAddApplication:
 		return "application:" + op.Application.ID
 	case opAddReferencePattern:

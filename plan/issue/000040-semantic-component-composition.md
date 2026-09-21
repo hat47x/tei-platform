@@ -340,7 +340,11 @@ S7 baseModelRevision    = sha256:732763a2b645a6783dd8fbe61b861f2a2c7842f464c1759
 S7 Acceptance decision  = absent
 ```
 
-**未決**: 現在のShared Acceptance BoundaryにはEnvironment bindingの型付きoperationが無い。Boundaryへ追加して同じ経路で受理するか、Environment sourceを直接authorするかを先に決める必要がある（preflight §13）。`ENVIRONMENT_BINDING_NOT_AUTHORED` / `DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は引き続き未解消である。
+**Acceptance経路（仮採用、2026-09-21）**: 受入境界へ`add-environment-binding`を追加し、S5と同じ経路で受理する（preflight §13 / §14）。Environmentだけを境界の例外にすると、S5の前例とも`RQ-027`の決定記録とも食い違うためである。仮の判断であり、見直し条件はpreflight §13に記録した。
+
+実際の`reference/workspace`へのread-only Previewは11 stage全PASSで、変わるcollectionは`environments`だけ、意味の差分は0件、impact 8本、`RUNTIME_AUTHORITY_NOT_GRANTED`ほかをunresolvedとして残す（candidate fingerprint `sha256:fa359de4…`）。`accept`は未実行で、`reference/workspace`は未変更である。
+
+**残る停止条件はexact S7 Proposalに対する明示的なAcceptance decisionだけ**である。`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`は引き続き未解消で、S8以降へ渡す。
 
 ## S4 full-validation correction
 

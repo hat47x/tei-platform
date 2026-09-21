@@ -44,6 +44,7 @@ type Decision struct {
 	SourceEdits          []SourceEdit                   `json:"sourceEdits,omitempty"`
 	SemanticDiff         []changeanalysis.SubjectChange `json:"semanticDiff,omitempty"`
 	ApplicationDiff      []changeanalysis.SubjectChange `json:"applicationDiff,omitempty"`
+	EnvironmentDiff      []changeanalysis.SubjectChange `json:"environmentDiff,omitempty"`
 	Conformance          []Check                        `json:"conformance,omitempty"`
 	DerivedWorldSHA256   string                         `json:"derivedWorldSha256,omitempty"`
 
@@ -181,6 +182,10 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	if err != nil {
 		return refuse("POST_ACCEPT_DIFF_FAILED", err.Error()), nil
 	}
+	postEnvironment, err := changeanalysis.DiffEnvironments(ev.before.loaded.World, post.loaded.World)
+	if err != nil {
+		return refuse("POST_ACCEPT_DIFF_FAILED", err.Error()), nil
+	}
 	derivedSHA, derived, err := worldSHA256(post.loaded.World)
 	if err != nil {
 		return refuse("POST_ACCEPT_DERIVE_FAILED", err.Error()), nil
@@ -201,6 +206,7 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		{Name: "model-revision-matches-preview", Passed: post.revision == ev.preview.ModelRevisionAfter, Detail: post.revision},
 		{Name: "semantic-diff-matches-preview", Passed: reflect.DeepEqual(postSemantic, ev.preview.SemanticDiff)},
 		{Name: "application-diff-matches-preview", Passed: reflect.DeepEqual(postApplication, ev.preview.ApplicationDiff)},
+		{Name: "environment-diff-matches-preview", Passed: reflect.DeepEqual(postEnvironment, ev.preview.EnvironmentDiff)},
 		{Name: "validation-clean", Passed: validationErrors == 0},
 		{Name: "derived-world-reproducible", Passed: derivedSHA == again, Detail: derivedSHA},
 	}
@@ -227,6 +233,7 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.SourceEdits = ev.edits
 	decision.SemanticDiff = postSemantic
 	decision.ApplicationDiff = postApplication
+	decision.EnvironmentDiff = postEnvironment
 	decision.Conformance = checks
 	decision.DerivedWorldSHA256 = derivedSHA
 	decision.Intent = ev.candidate.Intent

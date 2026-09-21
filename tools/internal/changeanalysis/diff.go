@@ -13,6 +13,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -172,6 +173,39 @@ func DiffApplications(before, after ir.World) ([]SubjectChange, error) {
 		return nil, fmt.Errorf("変更後のApplication層: %w", err)
 	}
 	return diffSubjects(b, a), nil
+}
+
+// DiffEnvironmentsは、Environment層の差をsubject単位で返す。
+// Environment bindingはApplicationが持つ意味ではなくEnvironmentが下した決定なので、semantic / application差分とは分けて扱う。
+func DiffEnvironments(before, after ir.World) ([]SubjectChange, error) {
+	b, err := flattenEnvironments(before.Environments)
+	if err != nil {
+		return nil, fmt.Errorf("変更前のEnvironment層: %w", err)
+	}
+	a, err := flattenEnvironments(after.Environments)
+	if err != nil {
+		return nil, fmt.Errorf("変更後のEnvironment層: %w", err)
+	}
+	return diffSubjects(b, a), nil
+}
+
+// EnvironmentBindingSubjectIDは、Environment binding一件のsubject IDを返す。
+// Environmentを跨いで同じApplication / aliasが別instanceへ向くため、Environmentを含めて識別する。
+func EnvironmentBindingSubjectID(env core.CanonicalID, application core.CanonicalID, alias core.LocalName) core.CanonicalID {
+	return core.CanonicalID(string(env) + "/" + string(application) + "." + string(alias))
+}
+
+func flattenEnvironments(envs []environment.Environment) (subjectSet, error) {
+	out := subjectSet{}
+	for _, env := range envs {
+		for _, binding := range env.Bindings {
+			id := EnvironmentBindingSubjectID(env.ID, binding.Application, binding.Alias)
+			if err := out.add("environment-binding", id, binding); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return out, nil
 }
 
 // CollectionDiffは、World直下のcollectionのうち内容が変わったものと変わらないものを返す。

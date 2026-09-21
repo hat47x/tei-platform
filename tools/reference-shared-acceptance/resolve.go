@@ -28,6 +28,10 @@ type worldIndex struct {
 	applications map[core.CanonicalID]string
 	patterns     map[core.CanonicalID]bool
 	subjects     map[string]bool
+	// environmentsはEnvironment IDからそれを宣言したsource file、
+	// environmentBindingsは既存binding（`<env>/<app>.<alias>`）の集合である。
+	environments        map[core.CanonicalID]string
+	environmentBindings map[string]bool
 }
 
 func indexWorld(s snapshot) worldIndex {
@@ -40,6 +44,18 @@ func indexWorld(s snapshot) worldIndex {
 		applications: map[core.CanonicalID]string{},
 		patterns:     map[core.CanonicalID]bool{},
 		subjects:     map[string]bool{},
+
+		environments:        map[core.CanonicalID]string{},
+		environmentBindings: map[string]bool{},
+	}
+	for _, env := range s.loaded.World.Environments {
+		if location, ok := s.loaded.Sources["environment:"+string(env.ID)]; ok {
+			idx.environments[env.ID] = location.File
+		}
+		idx.subjects[string(env.ID)] = true
+		for _, binding := range env.Bindings {
+			idx.environmentBindings[string(env.ID)+"/"+string(binding.Application)+"."+string(binding.Alias)] = true
+		}
 	}
 	world := s.loaded.World
 	for _, ns := range world.Semantics {
@@ -125,6 +141,26 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			seenNamespaces[ns] = true
 			out = append(out, checkNewFile(s, fingerprints, planned, key, op.Placement, layerSemantic, semanticFilePattern, "semantic/<...>/<file>.tei")...)
+
+		case opAddEnvironmentBinding:
+			// 層をまたぐ正しさ（unknown application / alias / instance、target mismatch、duplicate）は
+			// 共有Validationが見る。ここではEnvironmentの存在とplacementの所有関係だけを確認する。
+			b := op.EnvironmentBinding
+			file, exists := idx.environments[core.CanonicalID(b.Environment)]
+			if !exists {
+				diag("ENVIRONMENT_NOT_FOUND", "environment %s は存在しません", b.Environment)
+				break
+			}
+			if _, ok := fingerprints[op.Placement]; !ok {
+				diag("PLACEMENT_NOT_MANAGED_SOURCE", "placement %s は管理対象sourceではありません", op.Placement)
+				break
+			}
+			if op.Placement != file {
+				diag("PLACEMENT_NOT_OWNED", "environment %s を宣言しているのは %s で、placement %s ではありません", b.Environment, file, op.Placement)
+			}
+			if idx.environmentBindings[b.Environment+"/"+b.Application+"."+b.Alias] {
+				diag("ENVIRONMENT_BINDING_ALREADY_EXISTS", "environment %s には %s.%s のbindingが既にあります", b.Environment, b.Application, b.Alias)
+			}
 
 		case opAddRelation:
 			if !idx.dataIDs[core.CanonicalID(op.AddRelation.Data)] {

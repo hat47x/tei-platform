@@ -118,11 +118,14 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
+- Environment binding: 既存のEnvironment fileへ`bind <application>.<alias> -> <instance>`を一行挿入します。Environment blockの閉じ括弧の直前へ入れ、内側のblock（`database-instance { … }`等）と取り違えません。挿入先は、そのEnvironmentを宣言しているfileに限ります。
 - `ISSUE-000046`が最小loopとして名指しするRelation変更（既存Data `sales.order_line`へ`order`を追加）について、Preview（Semantic Diff・exact dependencyのimpact・Persistence Mappingへの辺と保存方法が未決定であること）→ Reject → Accept → toolなしの再読込までを通し、変わるのは一つのfileの挿入した行だけである（`relation_test.go`）
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
 - 受理した決定が、会話履歴なしでworkspaceから読める。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらず、偽の記録は現在のsourceとの照合で食い違いとして出る（`record_test.go`）
+- Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
+- そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
 
 示さないこと:
 
