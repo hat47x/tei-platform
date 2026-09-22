@@ -6381,14 +6381,6 @@ Qualification authority is therefore refined from blob-only identity to tree-awa
 
 tools/run-first-web-target-r7b-replay.sh:
   mode = 100755
-  blob = 2f55ec06f29bbca8f13e7e9a4bb245ee457fe1e7a5  # INVALID EXAMPLE; do not use
-```
-
-The runner line above is intentionally not authority until corrected below. The exact required runner tuple is:
-
-```text
-tools/run-first-web-target-r7b-replay.sh:
-  mode = 100755
   blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
 ```
 
