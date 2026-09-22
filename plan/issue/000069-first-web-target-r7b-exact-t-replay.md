@@ -8089,10 +8089,10 @@ main:
   6042da1b6ca2cd8777b60b557787e6327670a69b
 
 latest current-main mode-aware branchless packet:
-  e67a4f781cc26e160eded2a5f81f096ca94786fa
+  6112563fc4c0d10cfebf1b5a4011844dfba6a744
 
 candidate tree:
-  13fe9b80ecdbc6e4d6f651fa68ca4b2f00df006e
+  67b9043e033260b0fa1eac2c554c229fc64ed3ff
 
 changed paths:
   canonical 11 source paths only
