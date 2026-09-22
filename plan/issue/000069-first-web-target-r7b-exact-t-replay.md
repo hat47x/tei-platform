@@ -5584,3 +5584,96 @@ health-capable full checkout on execution-time latest main
 ```
 
 No Evidence level is promoted from a queued-but-step-less hosted job.
+
+#### B4 continuation — exact P1 local reconstruction on current packet — 2026-09-22
+
+While the full-checkout Repository-health gate remains unavailable, the canonical P1 package can be reconstructed independently because its complete package is exactly three canonical files and has no Repository-local dependency outside that package.
+
+The exact files were reacquired from the canonical 11-path packet and written into an isolated local module using the current module declaration.
+
+Git blob identity was checked before any test execution:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  expected = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+  actual   = 9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  expected = 95553ba10756399a50e52e639f7d860f4420f29f
+  actual   = 95553ba10756399a50e52e639f7d860f4420f29f
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  expected = ba17f69a7e375cfdeec0db544986d51f99b26192
+  actual   = ba17f69a7e375cfdeec0db544986d51f99b26192
+```
+
+The isolated exact package was then exercised with:
+
+```text
+gofmt -l tools/internal/firstwebtargetevidence
+  -> empty / PASS
+
+GOENV=off GOWORK=off GOFLAGS= go vet ./tools/internal/firstwebtargetevidence
+  -> PASS
+
+GOENV=off GOWORK=off GOFLAGS= go test -count=50 ./tools/internal/firstwebtargetevidence
+  -> PASS
+  -> ok tei/tools/internal/firstwebtargetevidence
+```
+
+This is fresh exact P1 focused Evidence. It is stronger than source inspection alone, but it is intentionally not promoted to Repository-health Evidence because the rest of the Repository is absent from the isolated reconstruction.
+
+During this work, concurrent B4 progress merged PR #848:
+
+```text
+252c748435a325ae1b48f2df0a8702d46eef3c32
+Merge PR #848 — r7b: record runner attempt 3 and refresh packet
+```
+
+That concurrent delta modifies only this R7B plan document and has zero canonical 11 source-path overlap. The B branch and all other 18 remote branches were observed fully converged to the same current main, with no unique ahead work.
+
+The canonical 11 exact blobs were therefore recomposed over exact current main after PR #848:
+
+```text
+parent:
+  252c748435a325ae1b48f2df0a8702d46eef3c32
+
+parent tree:
+  359b5aabd28956e88acdad010124e756b07474d0
+
+current branchless health candidate:
+  ce21d74d3cbd897505de8fa3ea866e318c3ad878
+
+candidate tree:
+  e60fde056650903c85f106a27ab59c2c8b8b2d17
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+Again, the branchless candidate is a composition target only and is not integration authority.
+
+Updated B4 Evidence height:
+
+```text
+all remote branches vs current main          = identical (19 refs / 1 tip)
+canonical 11 exact blobs                     = fixed
+P1 exact Git blob identity                   = PASS
+P1 exact gofmt                               = PASS
+P1 exact go vet                              = PASS
+P1 exact go test -count=50                   = PASS
+exact replay runner byte identity            = PASS
+exact replay runner bash -n                  = PASS
+exact repository-health harness identity     = PASS
+repository-health harness bash -n            = PASS
+hosted runner step execution                 = unavailable
+current branchless packet                    = ce21d74d... (11 paths only)
+tools/repository-health-check.sh execution   = pending mandatory gate
+code integration                             = blocked
+actual replay / repeatability Evidence       = pending
+```
+
+The mandatory integration path remains unchanged. Focused P1 PASS narrows uncertainty but does not authorize bypassing full Repository health.
+
