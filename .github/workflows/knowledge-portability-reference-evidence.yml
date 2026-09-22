@@ -1,10 +1,11 @@
 name: Knowledge portability reference evidence
 
-# 2026-09-19:
-# GitHub-hosted runner allocation is currently unavailable for this repository.
-# PR run 35385856132 failed twice before any step was created (runner_id=0).
-# Keep the reusable workflow manual-only until a successful hosted-runner
-# allocation is observed; the same check remains runnable through the script.
+# 2026-09-22:
+# GitHub Actions monthly usage has been exceeded. Keep this workflow manual-only
+# and keep the job disabled so an accidental dispatch cannot consume hosted-runner
+# time. Re-enable only after the monthly budget/usage state is intentionally reset
+# and Actions use is explicitly resumed. The same verification remains runnable
+# locally through the script.
 on:
   workflow_dispatch:
 
@@ -13,6 +14,8 @@ permissions:
 
 jobs:
   verify:
+    # Deliberate monthly-usage pause: no hosted runner must be allocated.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
