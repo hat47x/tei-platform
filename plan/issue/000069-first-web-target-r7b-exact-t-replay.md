@@ -8078,3 +8078,113 @@ execution-capable full checkout on latest main
   -> same-revision / clean-base / canonical-overlap recheck
   -> qualified source integration
 ```
+
+
+#### B4 continuation — same-owner private-repository billing refusal evidence — 2026-09-22
+
+The post-#869 mode-aware packet refresh already merged via PR #870 remains the current qualification composition basis:
+
+```text
+main:
+  6042da1b6ca2cd8777b60b557787e6327670a69b
+
+latest recorded mode-aware branchless packet:
+  d3703503f8be0893098e22649aa9e43717bcb471
+
+candidate tree:
+  a149388c414a07b97b6166470f52d490f1bb4e2d
+
+changed paths:
+  canonical 11 source paths only
+
+replay runner:
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+A cross-repository inspection found materially stronger infrastructure Evidence under the same personal GitHub owner.
+
+In private repository `hat47x/vs-bear-simulator`, Issue #21 comment `5751891478` preserves an operational observation and explicitly quotes GitHub's job-start refusal:
+
+```text
+The job was not started because recent account payments have failed
+or your spending limit needs to be increased.
+```
+
+The same record identifies `Billing & plans` as the account-side boundary and states that no workflow step executed.
+
+The referenced repository commit is:
+
+```text
+hat47x/vs-bear-simulator
+488d6a264c8399dcc0a67f23243d35060ad5e54b
+```
+
+GitHub check metadata for that exact commit independently matches the current pre-step symptom class:
+
+```text
+run 35530180932
+  static-validation job 106129271553
+  started      = 2026-09-20T18:47:12Z
+  completed    = 2026-09-20T18:47:15Z
+  conclusion   = failure
+  steps        = null
+  annotations  = 2
+
+run 35530177597
+  static-validation job 106129261731
+  started      = 2026-09-20T18:47:08Z
+  completed    = 2026-09-20T18:47:11Z
+  conclusion   = failure
+  steps        = null
+  annotations  = 2
+```
+
+This is stronger than public community analogy because the provider-message Evidence comes from another private repository under the same owner and its pre-step metadata was rechecked directly.
+
+The provenance boundary is kept explicit:
+
+```text
+vs-bear provider refusal message:
+  directly preserved in that repository's operational issue comment
+
+vs-bear pre-step GitHub metadata:
+  directly rechecked through GitHub
+
+TEI check annotation body:
+  still inaccessible through the current connector
+
+TEI exact rejection string:
+  not directly observed
+```
+
+The cause classification is therefore tightened without promoting an inference to fact:
+
+```text
+same-owner private repository affected by GitHub Billing & plans
+startup refusal:
+  directly observed
+
+TEI showing the same pre-step symptom class because of the same
+owner-side billing/spending-limit condition:
+  strongest current hypothesis
+
+TEI-specific proof of that exact provider message:
+  still missing
+
+specific Billing & plans condition:
+  payment failure vs account Actions budget vs repository-scoped budget
+  remains unresolved
+```
+
+Issue #513 comment `5775335128` carries the same cross-repository Evidence.
+
+No additional mechanical hosted-runner retry is justified from this finding. The next high-value action is direct inspection/correction of GitHub `Billing & plans` / `Billing & licensing` payment and Actions budget state. After an actual state change, perform one bounded current-revision recovery run.
+
+The R7B integration boundary remains unchanged:
+
+```text
+tools/repository-health-check.sh actual execution = pending
+canonical 11-path source integration             = blocked
+actual replay / repeatability Evidence           = pending
+```
