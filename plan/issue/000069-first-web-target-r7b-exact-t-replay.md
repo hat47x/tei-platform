@@ -6748,6 +6748,58 @@ specific external cause                        = unknown
 
 No new remote work branch was created. The existing B branch remains the sole write lane and must be reconverged to merged `main` after this documentation update.
 
+#### B4 continuation — delayed rerun recovery probe attempt 3 — 2026-09-22
+
+The existing `ubuntu-slim` probe was re-run again in place after the later documentation merges, without creating a new branch or workflow.
+
+```text
+run:
+  35697286875
+
+attempt:
+  3
+
+job:
+  106663823910 repository-health
+
+created / started:
+  2026-09-22T08:01:34Z
+
+completed:
+  2026-09-22T08:02:04Z
+
+label:
+  ubuntu-slim
+
+result:
+  conclusion        = failure
+  runner_id         = 0
+  runner_name       = ""
+  runner_group_id   = 0
+  runner_group_name = ""
+  steps             = []
+
+job log download:
+  BlobNotFound
+```
+
+Attempt 3 therefore reproduces the same pre-step allocation signature as attempts 1 and 2. No checkout, setup-go, canonical packet identity verification, Repository health, Git-bundle creation, or artifact upload step was created.
+
+The delayed re-run is useful only as a recovery check:
+
+```text
+hosted-runner recovery at attempt 3 = not observed
+step execution                       = not observed
+tools/repository-health-check.sh     = not executed
+canonical 11-path source integration = still blocked
+actual replay / repeatability        = still pending
+specific external cause              = still unknown
+```
+
+This remains a symptom observation, not proof of a billing, entitlement, quota, policy, or runner-registration root cause.
+
+No new remote branch or workflow was created for this probe. The existing R7B lane remains the sole write lane and must be reconverged to merged `main` after this documentation update.
+
 #### B4 continuation — hosted allocation onset narrowed to an 8-minute boundary — 2026-09-22
 
 The previously recorded onset boundary was re-audited directly against Actions run-attempt job payloads. Issue #513 already preserved an earlier September 4 example than the September 15 pair cited in the prior B4 section; a repository-wide time-window scan narrows the boundary further.
