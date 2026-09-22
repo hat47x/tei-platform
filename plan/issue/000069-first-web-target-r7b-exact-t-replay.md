@@ -6747,3 +6747,111 @@ specific external cause                        = unknown
 ```
 
 No new remote work branch was created. The existing B branch remains the sole write lane and must be reconverged to merged `main` after this documentation update.
+
+#### B4 continuation — hosted allocation onset narrowed to an 8-minute boundary — 2026-09-22
+
+The previously recorded onset boundary was re-audited directly against Actions run-attempt job payloads. Issue #513 already preserved an earlier September 4 example than the September 15 pair cited in the prior B4 section; a repository-wide time-window scan narrows the boundary further.
+
+Last confirmed successful hosted allocation:
+
+```text
+run:
+  33634416735
+
+run created:
+  2026-09-02T13:13:13Z
+
+job:
+  100261564372 connect
+
+label:
+  ubuntu-24.04
+
+job started:
+  2026-09-02T13:13:17Z
+
+job completed:
+  2026-09-02T13:13:23Z
+
+runner_id:
+  1000075820
+
+runner_name:
+  GitHub Actions 1000075820
+
+steps:
+  6 populated steps
+
+conclusion:
+  success
+```
+
+A parallel CI run immediately before it also had ordinary hosted allocation:
+
+```text
+run 33634239635
+  verify runner_id               = 1000075811
+  postgres-integration runner_id = 1000075812
+  steps                          = populated
+  conclusion                     = success
+```
+
+The first directly confirmed job with the current allocation-failure signature is:
+
+```text
+run:
+  33635220666
+
+run created:
+  2026-09-02T13:21:24Z
+
+attempt-1 jobs created:
+  2026-09-02T13:21:25Z
+
+verify:
+  job         = 100264290235
+  label       = ubuntu-latest
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+
+postgres-integration:
+  job         = 100264290641
+  label       = ubuntu-latest
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+```
+
+Two intervening runs at `13:18:57Z` and `13:20:02Z` failed with no jobs at all. Because they never created a job object, they are not classified as runner-allocation failures here.
+
+The directly evidenced transition is therefore:
+
+```text
+2026-09-02T13:13:23Z
+  hosted runner job completes successfully
+
+        8 minutes 2 seconds
+
+2026-09-02T13:21:25Z
+  hosted jobs exist with runner_id=0 / steps=[]
+```
+
+This supersedes the weaker September 2 -> September 15 and September 2 -> September 4 onset bounds previously quoted for B4. It does not establish the external cause, but it materially narrows when the repository/account execution state changed.
+
+Updated infrastructure boundary:
+
+```text
+last directly confirmed allocated hosted job = 2026-09-02T13:13:23Z
+first directly confirmed unassigned job       = 2026-09-02T13:21:25Z
+transition window                             = 8m02s
+public source/test failure in that window     = not established
+specific billing/policy/entitlement cause     = unknown
+Repository health                             = still not executed
+canonical source integration                  = still blocked
+```
+
+The source-integration rule remains unchanged. This historical narrowing is diagnostic Evidence only and does not substitute for execution of `tools/repository-health-check.sh`.
+
