@@ -6407,3 +6407,119 @@ tools/repository-health-check.sh execution   = pending mandatory gate
 canonical source integration                 = blocked
 actual replay / repeatability Evidence       = pending
 ```
+
+#### B4 continuation — cross-platform hosted-runner allocation boundary — 2026-09-22
+
+After PR #856, all 19 remote refs were identical at:
+
+```text
+807e0712ea02b6ab25246ab37edf811efb12902f
+```
+
+with no open PR and no unique branch-ahead work.
+
+The mode-aware canonical 11-path packet was then materialized over that exact main on the existing B branch. The replay runner tree tuple was explicitly preserved:
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+A temporary cross-platform health workflow tested whether the known pre-step failure was limited to Linux GitHub-hosted runners.
+
+```text
+probe commit:
+  8ff2fe61d72a31a210ebe543fcc7b8482f5f1696
+
+probe tree:
+  49af270396607fe565e272b368767bcdfc89a6d0
+
+run:
+  35696570153
+
+jobs:
+  106644642717  repository-health (macos-15, bash)
+  106644642725  repository-health (windows-2025, bash)
+```
+
+Raw job metadata:
+
+```text
+macos-15:
+  conclusion       = failure
+  runner_id        = 0
+  runner_name      = ""
+  runner_group_id  = 0
+  runner_group_name= ""
+  steps            = []
+
+windows-2025:
+  conclusion       = failure
+  runner_id        = 0
+  runner_name      = ""
+  runner_group_id  = 0
+  runner_group_name= ""
+  steps            = []
+```
+
+Neither job reached checkout, setup-go, packet-identity verification, or Repository health. Combined with the previous current-revision Linux probes:
+
+```text
+ubuntu-latest  = pre-step failure
+ubuntu-22.04   = pre-step failure
+ubuntu-24.04   = pre-step failure
+macos-15       = pre-step failure
+windows-2025   = pre-step failure
+```
+
+the observable blocker is now reproduced across the principal GitHub-hosted OS families. This narrows the boundary to hosted-runner allocation before a runner is assigned, but it does not establish a specific cause such as billing, policy, quota, or permission.
+
+The repository itself was searched for an alternate runner path:
+
+```text
+self-hosted workflow declarations = none found
+runner-group workflow declarations = none found
+```
+
+Repository runner-registration and Actions-permission endpoints are outside the connector's allowed read surface, so the existence or configuration of registered self-hosted runners cannot be asserted from this session.
+
+The probe source materialization and temporary workflow were removed immediately in a normal forward commit:
+
+```text
+cleanup commit:
+  5167d28754a91ae42904f1178dd9267072176b9a
+
+cleanup tree:
+  9cf3f8933657317e7161b3f4eb56317552711433
+
+probe-start main tree:
+  9cf3f8933657317e7161b3f4eb56317552711433
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+Issue #513 contains the same infrastructure observation.
+
+Updated B4 Evidence height:
+
+```text
+canonical 11 blob identities                  = fixed
+canonical replay-runner mode                  = 100755
+current P1-P5 focused dependency closures     = covered by exact executions
+Linux hosted allocation                       = pre-step failure
+macOS hosted allocation                       = pre-step failure / runner_id 0
+Windows hosted allocation                     = pre-step failure / runner_id 0
+repository-defined self-hosted path           = none found
+registered self-hosted runner state           = not observable in this session
+tools/repository-health-check.sh execution    = pending mandatory gate
+canonical 11-path source integration          = blocked
+actual replay / repeatability Evidence        = pending
+```
+
+No source integration is authorized from runner-allocation Evidence alone. The mandatory gate remains an actual full-checkout execution of `tools/repository-health-check.sh` on execution-time latest main plus the same mode-aware canonical packet.
+
