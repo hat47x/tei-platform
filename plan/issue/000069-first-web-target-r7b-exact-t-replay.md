@@ -8188,3 +8188,123 @@ tools/repository-health-check.sh actual execution = pending
 canonical 11-path source integration             = blocked
 actual replay / repeatability Evidence           = pending
 ```
+
+
+#### B4 continuation — local-execution qualification policy — 2026-09-22
+
+External compute resources are paused until explicitly re-enabled. No additional hosted-runner, Runpod, Replit, Codespaces, or other remote-compute probe is part of the active R7B qualification path.
+
+The active execution model is now:
+
+```text
+trusted local full checkout
+  -> existing branch research/selective-knowledge-routing-r6
+  -> execution-time latest origin/main as base
+  -> same mode-aware canonical 11-path packet
+  -> exact identity / mode preflight
+  -> tools/repository-health-check.sh
+  -> unchanged revision / clean working tree
+  -> remote-main overlap recheck
+  -> only then merge the existing B branch to main
+  -> converge all existing refs with force=false
+```
+
+No new qualification branch is authorized. The existing B branch is the single source-candidate lane.
+
+Local preflight after the canonical packet is staged on that branch:
+
+```bash
+git fetch origin --prune
+git switch research/selective-knowledge-routing-r6
+git pull --ff-only origin research/selective-knowledge-routing-r6
+git fetch origin main
+
+test -z "$(git status --porcelain)"
+
+BASE_MAIN="$(git rev-parse origin/main)"
+HEAD_BEFORE="$(git rev-parse HEAD)"
+
+git merge-base --is-ancestor "${BASE_MAIN}" "${HEAD_BEFORE}"
+```
+
+The branch diff against `origin/main` must contain exactly these 11 paths:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+tools/internal/firstwebtargetevidence/semantics_test.go
+tools/reference-first-web-target-evidence-audit/main.go
+tools/reference-first-web-target-r7b-repeatability/main.go
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+tools/reference-first-web-target-r7b-replay-audit/main.go
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+tools/reference-first-web-target-r7b-replay-plan/main.go
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+tools/run-first-web-target-r7b-replay.sh
+```
+
+Canonical byte identities:
+
+```text
+semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+The replay runner must additionally retain:
+
+```text
+Git tree mode = 100755
+```
+
+Required local checks before Repository health:
+
+```bash
+test "$(git hash-object tools/run-first-web-target-r7b-replay.sh)" =   "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03"
+
+test "$(git ls-files -s tools/run-first-web-target-r7b-replay.sh | awk '{print $1}')" =   "100755"
+
+bash -n tools/run-first-web-target-r7b-replay.sh
+```
+
+Then execute the mandatory gate:
+
+```bash
+bash tools/repository-health-check.sh
+```
+
+A PASS is qualified only if the checkout remains on the same commit and clean:
+
+```bash
+test "$(git rev-parse HEAD)" = "${HEAD_BEFORE}"
+test -z "$(git status --porcelain)"
+```
+
+After a local PASS, fetch `origin/main` again. If main moved, inspect every intervening changed path against the canonical 11 before integration. Any canonical-path overlap requires recomposition and requalification; no-overlap documentation or unrelated-source movement does not authorize skipping that check.
+
+Until this local gate is executed successfully:
+
+```text
+canonical source integration       = blocked
+actual replay / repeatability      = pending
+remote-compute fallback            = paused by current operating policy
+```
