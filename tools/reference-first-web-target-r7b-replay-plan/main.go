@@ -108,11 +108,7 @@ type replayPlan struct {
 	SourceR7AHandoffSHA256             string       `json:"sourceR7AHandoffSHA256"`
 	SourceR7AAcquisitionReceiptSHA256  string       `json:"sourceR7AAcquisitionReceiptSHA256"`
 	IntakeToolRepositoryRevision       string       `json:"intakeToolRepositoryRevision"`
-	HandoverBaselineID                 string       `json:"handoverBaselineId"`
-	BaselineRepositoryRevision         string       `json:"baselineRepositoryRevision"`
 	ReplayTargetBuildRevision          string       `json:"replayTargetBuildRevision"`
-	TargetAdapter                      string       `json:"targetAdapter"`
-	Host                               string       `json:"host"`
 	Units                              []replayUnit `json:"units"`
 	AuthorityLimits                    []string     `json:"authorityLimits"`
 }
@@ -243,11 +239,7 @@ func buildReplayPlan(
 		SourceR7AHandoffSHA256:             intake.SourceHandoffArtifactSHA256,
 		SourceR7AAcquisitionReceiptSHA256:  intake.AcquisitionReceiptSHA256,
 		IntakeToolRepositoryRevision:       receipt.IntakeToolRepositoryRevision,
-		HandoverBaselineID:                 intake.HandoverBaselineID,
-		BaselineRepositoryRevision:         intake.BaselineRepositoryRevision,
 		ReplayTargetBuildRevision:          intake.TargetBuildRevision,
-		TargetAdapter:                      intake.TargetAdapter,
-		Host:                               intake.Host,
 		Units:                              units,
 		AuthorityLimits: []string{
 			"replay-plan-does-not-execute-replay",
