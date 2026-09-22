@@ -6697,3 +6697,53 @@ windows-2025    = pre-step failure / runner_id 0
 ```
 
 No source/test failure is inferred from these runs. The mandatory source-integration gate remains an actual full-checkout execution of `tools/repository-health-check.sh` on execution-time latest main plus the same mode-aware canonical packet.
+
+#### B4 continuation — immediate rerun recovery probe — 2026-09-22
+
+After PR #859, `research/selective-knowledge-routing-r6` and `main` were rechecked and were identical at:
+
+```text
+405d77d278d9c9b6d16f47afc15237c870e66fe9
+ahead  = 0
+behind = 0
+```
+
+The latest `ubuntu-slim` probe was then re-run in place without creating a new branch or workflow:
+
+```text
+run:
+  35697286875
+
+attempt:
+  2
+
+run started:
+  2026-09-22T07:09:42Z
+
+run completed:
+  2026-09-22T07:09:58Z
+
+job:
+  106649790134 repository-health
+
+result:
+  conclusion = failure
+  steps      = null
+```
+
+The re-run initially entered `queued`, but it completed without any observable workflow step. Therefore it does not establish recovery and does not execute checkout, setup-go, canonical packet identity checks, Repository health, Git-bundle creation, or artifact upload.
+
+This connector's approved GitHub read surface does not expose repository Actions permission or registered-runner endpoints. Those reads were attempted and rejected by the connector before reaching GitHub, so they provide no evidence about the repository's actual Actions policy, billing state, entitlement, or runner registration.
+
+Updated boundary:
+
+```text
+attempt-2 immediate re-run                     = pre-step failure again
+step execution                                 = not observed
+Repository health                              = not executed
+canonical 11-path source integration           = blocked
+actual replay / repeatability Evidence         = pending
+specific external cause                        = unknown
+```
+
+No new remote work branch was created. The existing B branch remains the sole write lane and must be reconverged to merged `main` after this documentation update.
