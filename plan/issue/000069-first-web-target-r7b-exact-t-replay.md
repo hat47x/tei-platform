@@ -6229,3 +6229,83 @@ actual replay / repeatability Evidence         = pending
 
 The remaining integration rule is unchanged: a future environment must allocate the job far enough to execute the full Repository-health harness on execution-time latest main plus the same canonical 11 exact blobs. No source integration is authorized from the pre-step failure.
 
+#### B4 continuation — hosted runner label split probe — 2026-09-22
+
+After PR #854 converged all refs to main, the remaining blocker was tested for runner-label specificity on the same existing B branch.
+
+A temporary current-main qualification commit materialized the unchanged canonical 11 exact blobs and a two-job branch-local workflow:
+
+```text
+probe commit:
+  8e64573a65cc0587f4be61b1679bd053cbfb917f
+
+base main:
+  04c70d1b2b1dbc9ca89c0d68161fec89778eb947
+
+base tree:
+  581246881051e38670d2304b7d3e54a2b574ca32
+
+probe workflow:
+  ubuntu-22.04
+  ubuntu-24.04
+
+each job:
+  checkout exact branch revision
+  setup Go from go.mod
+  record revision / clean state / platform
+  bash tools/repository-health-check.sh
+```
+
+GitHub Actions run:
+
+```text
+run:
+  35694713314
+
+head:
+  8e64573a65cc0587f4be61b1679bd053cbfb917f
+
+job 106638943505:
+  name       = repository-health (ubuntu-22.04)
+  conclusion = failure
+  steps      = null
+
+job 106638943589:
+  name       = repository-health (ubuntu-24.04)
+  conclusion = failure
+  steps      = null
+```
+
+Neither explicit Linux runner label reached an observable workflow step. Combined with the previous current-revision `ubuntu-latest` probe, the available Evidence now shows the blocker is not specific to the `ubuntu-latest` alias.
+
+No Repository-health result is inferred:
+
+```text
+checkout executed                         = no Evidence
+setup-go executed                         = no Evidence
+tools/repository-health-check.sh executed = no
+source/test failure                       = not established
+hosted runner pre-step allocation blocker = reproduced on 22.04 and 24.04
+```
+
+The unqualified source materialization and temporary workflow were removed in a normal forward cleanup commit:
+
+```text
+cleanup commit:
+  18b0ec7ca4f94b2a2aa2be59fda806820453f2ee
+
+cleanup tree:
+  581246881051e38670d2304b7d3e54a2b574ca32
+
+current main tree at probe start:
+  581246881051e38670d2304b7d3e54a2b574ca32
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+The infrastructure observation is also recorded in issue #513. The integration boundary remains unchanged: only an environment that actually executes the full Repository-health harness on execution-time latest main plus the same canonical 11 blobs can authorize source integration.
+
