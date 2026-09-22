@@ -5774,3 +5774,99 @@ actual replay / repeatability Evidence       = pending
 
 The mandatory integration gate remains full Repository health. P1 focused PASS and P2 closure re-audit narrow the remaining uncertainty but do not bypass that gate.
 
+
+
+#### B4 continuation — exact P2 execution packet handoff and branch convergence — 2026-09-22
+
+After PR #850 merged, repository branch state was re-audited before any new write.
+
+```text
+main:
+  2e615ea860a83e16999c4f2bc4ba41173fda34c1
+  Merge PR #850 — r7b: pin P2 closure and pre-run log boundary
+
+remote refs:
+  total branches = 19
+  main + 18 non-main refs
+  all non-main refs vs main:
+    ahead  = 0
+    behind = 0
+    status = identical
+
+open pull requests:
+  0
+```
+
+No unique branch work existed to preserve, and no new remote work branch was created. The existing B4 branch `research/selective-knowledge-routing-r6` remains the only write lane for this continuation.
+
+Infrastructure issue #513 was also rechecked. The latest hosted-runner observations remain:
+
+```text
+observable workflow steps = unavailable
+steps                     = null
+failed-job log blobs      = absent / BlobNotFound
+repository health         = not executed
+```
+
+No new mechanical rerun is triggered from this checkpoint because no environment-change Evidence has been observed.
+
+The next useful executable unit is therefore pinned as an **exact P2 isolated-closure packet**. This is not Repository-health Evidence and does not authorize integration of the canonical 11-path source packet. It only removes ambiguity about the bytes that a health-capable or local execution environment must reconstruct.
+
+Exact packet:
+
+```text
+go.mod
+  f8763f8fb2d64d73f1b40b905f62b5e09c44493b
+
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+
+tools/reference-first-web-target-evidence-audit/main_test.go
+  668efcdb084e9a7cefe050a5df4be86effc1cebb
+```
+
+These blobs are read from the already-pinned canonical composition object `29ae71e736372d5fbafa02e9bb1ba8d378501907`. That object remains a composition target only; it is not integration authority.
+
+The isolated execution contract is:
+
+```text
+1. create a fresh temporary directory outside the Repository checkout
+2. materialize exactly the six files above at their repository-relative paths
+3. verify each file with git hash-object before execution
+4. do not add any other Repository source file
+5. run:
+
+   gofmt -l tools/internal/firstwebtargetevidence             tools/reference-first-web-target-evidence-audit
+
+   GOENV=off GOWORK=off GOFLAGS= \
+     go vet ./tools/internal/firstwebtargetevidence \
+            ./tools/reference-first-web-target-evidence-audit
+
+   GOENV=off GOWORK=off GOFLAGS= \
+     go test -count=50 ./tools/internal/firstwebtargetevidence \
+                       ./tools/reference-first-web-target-evidence-audit
+
+6. record exact Go version, GOOS, GOARCH, command output, and post-run blob identity
+```
+
+Acceptance boundary:
+
+```text
+exact six-blob identity                    = required
+P1 focused execution                      = already observed PASS
+P2 fresh focused execution                = pending
+full Repository health                    = pending mandatory gate
+canonical 11-path source integration      = blocked
+actual replay / repeatability Evidence    = pending
+```
+
+A future P2 focused PASS narrows source uncertainty only. The canonical 11-path packet still requires `tools/repository-health-check.sh` on a full, execution-time-latest checkout before any source integration.
