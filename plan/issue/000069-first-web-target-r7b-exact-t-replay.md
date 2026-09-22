@@ -6125,3 +6125,107 @@ execution-time latest main full checkout
 ```
 
 No Evidence level is promoted from connector-side tree visibility alone.
+
+#### B4 continuation — exact current-revision push probe and pre-step failure cleanup — 2026-09-22
+
+The checkout-transport boundary was tested directly on the existing B branch without creating a new remote branch.
+
+Starting point:
+
+```text
+main = research/selective-knowledge-routing-r6
+     = a9d09b4a59b5da3d72177cb22ee236ad58ae8f41
+open PR = 0
+```
+
+A temporary B-branch commit materialized the unchanged canonical 11 exact blobs over that exact main and added one branch-local push workflow whose only purpose was to run the mandatory Repository-health harness.
+
+```text
+probe commit:
+  585c2599d957968ecf6ed57aaccc2f7d2ef60d00
+
+probe tree:
+  8bf28c158954a14bf508652d937361f2545d9ee4
+
+workflow:
+  .github/workflows/r7b-repository-health-probe.yml
+
+workflow contract:
+  checkout exact branch revision
+  setup Go from go.mod
+  record git revision / clean state / Go platform
+  bash tools/repository-health-check.sh
+```
+
+The push created an actual current-revision GitHub Actions run:
+
+```text
+run:
+  35694275033
+
+workflow:
+  R7B repository health probe
+
+event:
+  push
+
+head:
+  585c2599d957968ecf6ed57aaccc2f7d2ef60d00
+
+created:
+  2026-09-22T06:18:54Z
+  2026-09-22 15:18:54 JST
+
+completed:
+  2026-09-22T06:18:57Z
+  2026-09-22 15:18:57 JST
+
+job:
+  106637611914 repository-health
+
+result:
+  failure
+
+steps:
+  null
+```
+
+This is stronger infrastructure Evidence than replaying an old workflow because the failed job targets the exact current canonical packet on the execution-time current B branch. However, it still terminates before observable workflow-step allocation. Therefore it proves neither checkout failure nor source/test failure, and it does not execute `tools/repository-health-check.sh`.
+
+No unqualified source is retained on the branch after the probe. The canonical 11 changes and the temporary workflow were removed in a normal forward commit:
+
+```text
+cleanup commit:
+  b93c06f3a59f2bc7bb893b39a9f7a04152dfe20e
+
+cleanup tree:
+  a7104da5c2db03b837858c3a9e1e5e9f29b13626
+
+current main tree at probe start:
+  a7104da5c2db03b837858c3a9e1e5e9f29b13626
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+Thus the branch was restored byte-for-byte to the pre-probe main tree before this documentation write. The temporary health workflow is not proposed for main, and the canonical 11 source packet remains unintegrated.
+
+Updated B4 Evidence height:
+
+```text
+current P1-P5 focused dependency closures      = covered by exact executions
+exact current-revision hosted push probe       = executed
+hosted job allocation                          = failure before steps
+observable workflow steps                      = unavailable
+probe source/workflow retained after test      = no
+post-probe branch tree == pre-probe main tree  = PASS
+tools/repository-health-check.sh execution     = pending mandatory gate
+canonical 11-path source integration           = blocked
+actual replay / repeatability Evidence         = pending
+```
+
+The remaining integration rule is unchanged: a future environment must allocate the job far enough to execute the full Repository-health harness on execution-time latest main plus the same canonical 11 exact blobs. No source integration is authorized from the pre-step failure.
+
