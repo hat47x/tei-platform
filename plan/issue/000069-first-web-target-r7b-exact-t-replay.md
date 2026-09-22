@@ -7591,3 +7591,317 @@ canonical 11-path source integration             = blocked
 actual replay / repeatability Evidence           = pending
 ```
 
+#### B4 continuation — service-container admission probe, four pre-step attempts — 2026-09-22
+
+A new current-main qualification probe tested whether adding a PostgreSQL service container changed hosted-runner admission behavior.
+
+The existing B branch was used; no new remote branch was created. The probe temporarily materialized:
+
+```text
+canonical 11 exact blobs
++
+.github/workflows/r7b-service-container-health-probe.yml
+```
+
+Probe commit:
+
+```text
+ddb57b02dd4a3a383c6734ff39d9d5e2711c5b30
+```
+
+Workflow contract:
+
+```text
+runs-on:
+  ubuntu-latest
+
+services:
+  postgres:17
+
+then:
+  checkout exact branch revision
+  setup Go
+  verify canonical 11 blob identities and replay-runner mode
+  bash tools/repository-health-check.sh
+  create portable Git bundle
+  upload bundle artifact
+```
+
+GitHub Actions run:
+
+```text
+run:
+  35704623810
+
+head:
+  ddb57b02dd4a3a383c6734ff39d9d5e2711c5b30
+```
+
+All four attempts failed at the same pre-step boundary:
+
+```text
+attempt 1:
+  job          = 106670449951
+  created      = 2026-09-22T08:24:24Z
+  completed    = 2026-09-22T08:24:27Z
+  runner_id    = 0
+  runner_name  = ""
+  steps        = []
+  conclusion   = failure
+
+attempt 2:
+  job          = 106670736447
+  created      = 2026-09-22T08:25:22Z
+  completed    = 2026-09-22T08:25:25Z
+  runner_id    = 0
+  runner_name  = ""
+  steps        = []
+  conclusion   = failure
+
+attempt 3:
+  job          = 106670894525
+  created      = 2026-09-22T08:25:54Z
+  completed    = 2026-09-22T08:25:57Z
+  runner_id    = 0
+  runner_name  = ""
+  steps        = []
+  conclusion   = failure
+
+attempt 4:
+  job          = 106671004859
+  created      = 2026-09-22T08:26:16Z
+  completed    = 2026-09-22T08:26:19Z
+  runner_id    = 0
+  runner_name  = ""
+  steps        = []
+  conclusion   = failure
+```
+
+No service container was started, because the job never acquired a runner. No checkout or workflow command executed.
+
+Therefore:
+
+```text
+PostgreSQL service declaration changes admission outcome:
+  no Evidence
+
+service container started:
+  no
+
+checkout executed:
+  no
+
+canonical blob/mode verification executed:
+  no
+
+tools/repository-health-check.sh executed:
+  no
+
+portable Git bundle created:
+  no
+
+artifact uploaded:
+  no
+```
+
+The canonical source packet and temporary workflow were immediately removed in a normal forward cleanup commit:
+
+```text
+cleanup commit:
+  ef7adf87c60f2238c0e942599e2847a752aaf712
+
+cleanup tree:
+  7f803008316df9ed356450e9af6d928f4ef94954
+
+current main tree before probe:
+  7f803008316df9ed356450e9af6d928f4ef94954
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+This probe adds one useful boundary only: the currently observed pre-step failure is not bypassed merely by selecting a workflow shape that includes a PostgreSQL service container. It does not identify the underlying cause.
+
+External public evidence was also checked separately. GitHub Status reports no public incident on 2026-09-02, while recent GitHub Community reports show similar pre-allocation symptoms under several different billing / budget / service-side contexts. Those reports are corroborative only and are not treated as evidence for this account's root cause.
+
+Current B4 gate remains:
+
+```text
+hosted step execution                         = unavailable in current probes
+tools/repository-health-check.sh execution    = pending mandatory gate
+canonical 11-path source integration           = blocked
+actual replay / repeatability Evidence         = pending
+specific external cause                        = unknown
+```
+
+
+
+#### B4 continuation — historical rerun carry-forward correction and bounded service-probe result — 2026-09-22
+
+A historical successful TEI CI job was re-run to test whether an unchanged old workflow could still acquire a hosted runner under the current external state.
+
+Historical run:
+
+```text
+run:
+  33634239635
+
+original head:
+  fc6e67ad70689ef2709ea05a5837b8618da16e30
+
+original workflow:
+  .github/workflows/ci.yml
+
+attempt 1:
+  verify
+    job       = 100260961812
+    runner_id = 1000075811
+    steps     = populated
+    conclusion= success
+
+  postgres-integration
+    job       = 100260962264
+    runner_id = 1000075812
+    steps     = populated
+    conclusion= success
+```
+
+The `verify` job was requested for re-run. Attempt 2 shows:
+
+```text
+verify:
+  job          = 106669226103
+  run_attempt  = 2
+  started      = 2026-09-22T08:20:11Z
+  completed    = 2026-09-22T08:20:15Z
+  runner_id    = 0
+  runner_name  = ""
+  steps        = 0
+  conclusion   = failure
+
+postgres-integration:
+  job          = 106669227881
+  run_attempt  = 2
+  started      = 2026-09-02T13:11:27Z
+  completed    = 2026-09-02T13:12:17Z
+  runner_id    = 1000075812
+  runner_name  = GitHub Actions 1000075812
+  steps        = 11
+  conclusion   = success
+```
+
+The second record is **not evidence that PostgreSQL integration acquired a runner on 2026-09-22**. Its execution timestamps and runner identity are the original 2026-09-02 values. GitHub carried the prior successful job result into the re-run attempt while only the requested `verify` job actually re-entered admission.
+
+Therefore the earlier provisional interpretation that a service-container job still acquired a runner under the current state is withdrawn.
+
+To test the service-container hypothesis directly, a temporary mode-aware canonical health workflow was materialized on the existing B branch:
+
+```text
+probe commit:
+  ddb57b02dd4a3a383c6734ff39d9d5e2711c5b30
+
+workflow:
+  .github/workflows/r7b-service-container-health-probe.yml
+
+run:
+  35704623810
+
+job:
+  postgres-admission-health
+
+runner:
+  ubuntu-latest
+
+service:
+  postgres:17
+
+Repository-health semantics:
+  canonical 11 blob identities checked first
+  replay runner mode 100755 checked first
+  PostgreSQL DSN not exported to the Repository-health process
+  service host port moved to 55432
+  tools/repository-health-check.sh would run only after those checks
+```
+
+Five bounded attempts were made on the exact same probe commit and workflow:
+
+```text
+attempt 1:
+  job = 106670449951
+  runner_id = 0
+  steps = 0
+  failure
+
+attempt 2:
+  job = 106670736447
+  runner_id = 0
+  steps = 0
+  failure
+
+attempt 3:
+  job = 106670894525
+  runner_id = 0
+  steps = 0
+  failure
+
+attempt 4:
+  job = 106671004859
+  runner_id = 0
+  steps = 0
+  failure
+
+attempt 5:
+  job = 106671126587
+  runner_id = 0
+  steps = 0
+  failure
+```
+
+No attempt reached checkout, setup-go, canonical identity verification, Repository health, Git-bundle creation, or artifact upload.
+
+The direct conclusion is narrower than the abandoned provisional hypothesis:
+
+```text
+service-container presence alone causes hosted admission:
+  not supported
+
+historical carry-forward job metadata proves current runner allocation:
+  false
+
+current mode-aware canonical health execution:
+  still not observed
+
+runner_id=0 / steps=[]:
+  remains an admission symptom class
+  root cause still unknown
+```
+
+The temporary workflow and canonical source materialization were removed by a forward cleanup commit:
+
+```text
+cleanup commit:
+  ef7adf87c60f2238c0e942599e2847a752aaf712
+
+cleanup tree:
+  7f803008316df9ed356450e9af6d928f4ef94954
+
+probe-start main tree:
+  7f803008316df9ed356450e9af6d928f4ef94954
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+The mandatory R7B integration boundary is unchanged:
+
+```text
+tools/repository-health-check.sh actual execution = pending
+canonical 11-path source integration             = blocked
+actual replay / repeatability Evidence           = pending
+```
