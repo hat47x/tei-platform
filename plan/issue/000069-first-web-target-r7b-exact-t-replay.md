@@ -7128,3 +7128,117 @@ canonical 11-path source integration             = blocked
 actual replay / repeatability Evidence           = pending
 ```
 
+#### B4 continuation — account-wide included-minutes exhaustion weakened; repository-scoped stop remains plausible — 2026-09-22
+
+The runner-allocation symptom was compared with current GitHub Actions billing semantics and with successful-run history across private repositories owned by the same personal account.
+
+Current GitHub billing semantics relevant to this investigation:
+
+```text
+standard GitHub-hosted runners in public repositories:
+  free
+
+standard GitHub-hosted runners in private repositories:
+  consume the repository owner's included Actions minutes
+  then require paid usage when included quota is exceeded
+
+included Actions minutes:
+  account/plan allowance
+  reset each billing cycle
+
+Actions budgets:
+  may be scoped at account or repository level
+  may be configured to stop usage when the budget threshold is reached
+```
+
+The connector cannot read the account's actual billing usage, budget configuration, payment state, or repository-specific budget state. The current GitHub Billing Usage REST endpoint was tested through the connector and rejected by the connector's allowed endpoint surface before reaching GitHub, so no billing amount is inferred.
+
+Run-count scan for the interval:
+
+```text
+2026-09-01T00:00:00Z
+  through
+2026-09-02T13:21:24Z
+
+TEI successful workflow runs:
+  323
+
+SEI successful workflow runs:
+  1245
+
+other connected private repositories inspected:
+  no successful runs in this interval
+  or no relevant Actions history
+```
+
+Run counts are not billed minutes and are not converted into a quota estimate here. They only establish that both TEI and SEI were actively consuming private-repository hosted execution during the billing period.
+
+The key temporal counterexample remains stronger than the raw counts:
+
+```text
+TEI first directly confirmed unassigned hosted jobs:
+  2026-09-02T13:21:25Z
+  runner_id = 0
+  steps     = []
+
+SEI later private-repository hosted success:
+  run 33670697154
+  job 100383296117
+  ubuntu-latest
+  runner_id = 1000076312
+  completed = 2026-09-02T19:03:39Z
+  steps     = populated
+  conclusion= success
+```
+
+Because GitHub documents the normal included-minute allowance for private repositories as an owner-account plan allowance, **simple account-wide exhaustion of included Actions minutes at the TEI 13:21Z transition cannot by itself explain the later SEI private-repository hosted success**.
+
+Therefore the billing-related hypothesis is narrowed:
+
+```text
+simple account-wide included-minutes exhaustion at TEI onset:
+  weakened / temporally inconsistent with later SEI private success
+
+public-repository free-runner behavior:
+  consistent with GitHub billing semantics
+  not diagnostic by itself
+
+repository-scoped Actions budget with hard stop:
+  compatible with staggered repository behavior
+  not confirmed
+
+repository-specific policy / entitlement / billing state:
+  compatible
+  not confirmed
+
+later account-wide state change after SEI success:
+  compatible
+  not confirmed
+
+multiple independent causes producing runner_id=0 / steps=[]:
+  compatible
+  not confirmed
+```
+
+This means the most useful manual billing check is no longer just "did the personal account exhaust its included minutes?" It is:
+
+```text
+Billing & licensing
+  -> Budgets and alerts
+     -> Actions product/SKU budgets
+     -> account scope and repository scopes
+     -> whether "Stop usage when budget limit is reached" is enabled
+
+plus:
+  payment method / paid-usage eligibility
+  repository Actions policy / enablement
+```
+
+The diagnostic result does not alter source qualification:
+
+```text
+actual tools/repository-health-check.sh execution = pending
+canonical 11-path source integration              = blocked
+actual replay / repeatability Evidence            = pending
+```
+
