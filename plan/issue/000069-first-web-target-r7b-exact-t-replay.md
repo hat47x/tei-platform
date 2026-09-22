@@ -6944,3 +6944,187 @@ No account billing, spending-limit, payment, Actions-policy, or private-runner e
 Operational follow-up is now more targeted: inspect the account-level private-repository Actions billing/budget/payment/entitlement state rather than treating the symptom as a TEI-only or all-Actions outage. If those settings are clean, the cross-repository run/job IDs above provide a stronger support case because the same owner has working public hosted allocation while several private repositories fail before runner assignment.
 
 This does not change the R7B source qualification rule. Canonical source remains blocked until a full checkout actually executes `tools/repository-health-check.sh`.
+
+#### B4 continuation — private-repository scope hypothesis corrected by SEI counterexample — 2026-09-22
+
+The cross-repository comparison after PR #861 was expanded across the connected repositories owned by the same account. The result requires a correction to the previous interpretation that the observed hosted-runner failure could be treated as a single private-repository-wide transition.
+
+A private repository under the same owner continued to receive and execute a normal GitHub-hosted runner after TEI had already entered the pre-step failure state.
+
+```text
+repository:
+  hat47x/sei-cognition
+
+visibility:
+  private
+
+successful run:
+  33670697154
+  Actual Model Artifact Exchange E3b
+
+workflow:
+  .github/workflows/actual-model-artifact-exchange-e3b.yml
+
+workflow_id:
+  348426986
+
+created:
+  2026-09-02T19:00:34Z
+
+successful job:
+  100383296117
+  two actual models / historical Application preservation
+
+label:
+  ubuntu-latest
+
+runner_id:
+  1000076312
+
+runner_name:
+  GitHub Actions 1000076312
+
+job started:
+  2026-09-02T19:00:42Z
+
+job completed:
+  2026-09-02T19:03:39Z
+
+steps:
+  populated through Complete job
+
+conclusion:
+  success
+```
+
+This is more than five hours after TEI's first directly confirmed current-signature jobs at `2026-09-02T13:21:25Z`.
+
+The same SEI workflow then switched to the same pre-step failure signature less than five minutes later:
+
+```text
+failed run:
+  33671503776
+  Actual Model Artifact Exchange E3b
+
+workflow:
+  .github/workflows/actual-model-artifact-exchange-e3b.yml
+
+workflow_id:
+  348426986
+
+created:
+  2026-09-02T19:08:28Z
+
+job:
+  100385957813
+  two actual models / historical Application preservation
+
+label:
+  ubuntu-latest
+
+runner_id:
+  0
+
+runner_name:
+  ""
+
+steps:
+  []
+
+completed:
+  2026-09-02T19:08:32Z
+
+conclusion:
+  failure
+```
+
+A second SEI workflow created in the same second shows the same boundary:
+
+```text
+run:
+  33671503688
+  Semantic Runtime Conformance
+
+job:
+  100385956315 runtime-conformance
+
+runner_id:
+  0
+
+steps:
+  []
+
+conclusion:
+  failure
+```
+
+The SEI transition is therefore directly bounded by:
+
+```text
+2026-09-02T19:03:39Z
+  private-repository ubuntu-latest job completes successfully
+
+        4 minutes 49 seconds
+
+2026-09-02T19:08:28Z
+  same private repository creates unassigned hosted jobs
+  runner_id = 0
+  steps     = []
+```
+
+The TEI and SEI onset windows are materially different:
+
+```text
+TEI:
+  last allocated completion = 2026-09-02T13:13:23Z
+  first unassigned jobs     = 2026-09-02T13:21:25Z
+
+SEI:
+  allocated completion      = 2026-09-02T19:03:39Z
+  unassigned jobs           = 2026-09-02T19:08:28Z
+```
+
+Therefore the previous `private-repository entitlement/billing/policy class` observation must be interpreted more narrowly:
+
+```text
+all repositories account-wide outage                 = contradicted by public successes
+all private repositories failing from TEI onset      = contradicted by SEI private success
+single simultaneous private-repository transition    = not supported
+current multi-private pre-step symptom                = observed
+same metadata signature implies same root cause       = not established
+repository-specific policy/budget state               = possible
+later account/private-wide state change               = possible
+multiple independent causes with same signature       = possible
+specific cause                                        = still unknown
+```
+
+A direct scan of connected private repositories after TEI's `13:21:25Z` boundary also found no later success in TEI, `markdown-matrix-injector`, or `vs-bear-simulator`, while SEI has the confirmed success above. Repositories with no Actions runs in that interval do not contribute evidence either way.
+
+TEI's own CI workflow identity was also compared across the successful and first failed runs:
+
+```text
+successful run:
+  33634239635
+  workflow_id = 345688230
+  path        = .github/workflows/ci.yml
+  verify/postgres jobs allocated normally
+
+failed run:
+  33635220666
+  workflow_id = 345688230
+  path        = .github/workflows/ci.yml
+  verify/postgres jobs both runner_id=0 / steps=[]
+```
+
+Both workflow versions retain the same `ubuntu-latest` job allocation shape. Their source differs only in later PostgreSQL semantic-mapping verification logic; no runner-label or job-allocation change explains the transition.
+
+Operationally, `runner_id=0 / steps=[]` must now be treated as a **symptom class**, not as proof of one billing, entitlement, policy, or quota root cause. Account and repository settings still need direct inspection outside the connector to identify the actual rejection reason.
+
+This correction does not alter the R7B integration gate:
+
+```text
+tools/repository-health-check.sh actual execution = pending
+canonical 11-path source integration             = blocked
+actual replay / repeatability Evidence           = pending
+```
+
