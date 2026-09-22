@@ -6855,3 +6855,92 @@ canonical source integration                  = still blocked
 
 The source-integration rule remains unchanged. This historical narrowing is diagnostic Evidence only and does not substitute for execution of `tools/repository-health-check.sh`.
 
+
+
+#### B4 continuation — public/private hosted-runner scope comparison — 2026-09-22
+
+The runner-allocation failure was compared against other repositories owned by the same GitHub account to distinguish an account-wide hosted-runner outage from a private-repository-specific boundary.
+
+A public repository under the same owner successfully allocated and executed an `ubuntu-latest` runner after the TEI private-repository failure window had already begun:
+
+```text
+repository:
+  hat47x/sui-sensemaking
+visibility:
+  public
+run:
+  35437442624
+created:
+  2026-09-19T10:27:12Z
+job:
+  105882400375 verify
+label:
+  ubuntu-latest
+runner_id:
+  1000078128
+runner_name:
+  GitHub Actions 1000078128
+steps:
+  populated
+conclusion:
+  success
+```
+
+Representative private repositories under the same owner show the same pre-step signature as TEI during the same period:
+
+```text
+repository:
+  hat47x/sei-cognition
+visibility:
+  private
+run:
+  35693341522
+job:
+  106634781467 e78-assistance-runtime
+label:
+  ubuntu-latest
+runner_id:
+  0
+runner_name:
+  ""
+steps:
+  []
+conclusion:
+  failure
+
+repository:
+  hat47x/vs-bear-simulator
+visibility:
+  private
+run:
+  35694974389
+job:
+  106639738000 static-validation
+label:
+  ubuntu-latest
+runner_id:
+  0
+runner_name:
+  ""
+steps:
+  []
+conclusion:
+  failure
+```
+
+This comparison materially narrows the operational boundary:
+
+```text
+GitHub-hosted runners for this account, all repositories = not globally unavailable
+public-repository hosted allocation after 2026-09-15       = observed working
+multiple private-repository hosted allocations             = observed failing before steps
+TEI-specific workflow/source defect                         = not supported by this comparison
+private-repository entitlement/billing/policy class         = materially strengthened hypothesis
+specific cause within that class                            = still unconfirmed
+```
+
+No account billing, spending-limit, payment, Actions-policy, or private-runner entitlement setting is readable through the current connector. Therefore none of those causes is promoted from hypothesis to confirmed fact.
+
+Operational follow-up is now more targeted: inspect the account-level private-repository Actions billing/budget/payment/entitlement state rather than treating the symptom as a TEI-only or all-Actions outage. If those settings are clean, the cross-repository run/job IDs above provide a stronger support case because the same owner has working public hosted allocation while several private repositories fail before runner assignment.
+
+This does not change the R7B source qualification rule. Canonical source remains blocked until a full checkout actually executes `tools/repository-health-check.sh`.
