@@ -6747,3 +6747,200 @@ specific external cause                        = unknown
 ```
 
 No new remote work branch was created. The existing B branch remains the sole write lane and must be reconverged to merged `main` after this documentation update.
+
+#### B4 continuation — hosted allocation onset narrowed to an 8-minute boundary — 2026-09-22
+
+The previously recorded onset boundary was re-audited directly against Actions run-attempt job payloads. Issue #513 already preserved an earlier September 4 example than the September 15 pair cited in the prior B4 section; a repository-wide time-window scan narrows the boundary further.
+
+Last confirmed successful hosted allocation:
+
+```text
+run:
+  33634416735
+
+run created:
+  2026-09-02T13:13:13Z
+
+job:
+  100261564372 connect
+
+label:
+  ubuntu-24.04
+
+job started:
+  2026-09-02T13:13:17Z
+
+job completed:
+  2026-09-02T13:13:23Z
+
+runner_id:
+  1000075820
+
+runner_name:
+  GitHub Actions 1000075820
+
+steps:
+  6 populated steps
+
+conclusion:
+  success
+```
+
+A parallel CI run immediately before it also had ordinary hosted allocation:
+
+```text
+run 33634239635
+  verify runner_id               = 1000075811
+  postgres-integration runner_id = 1000075812
+  steps                          = populated
+  conclusion                     = success
+```
+
+The first directly confirmed job with the current allocation-failure signature is:
+
+```text
+run:
+  33635220666
+
+run created:
+  2026-09-02T13:21:24Z
+
+attempt-1 jobs created:
+  2026-09-02T13:21:25Z
+
+verify:
+  job         = 100264290235
+  label       = ubuntu-latest
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+
+postgres-integration:
+  job         = 100264290641
+  label       = ubuntu-latest
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+```
+
+Two intervening runs at `13:18:57Z` and `13:20:02Z` failed with no jobs at all. Because they never created a job object, they are not classified as runner-allocation failures here.
+
+The directly evidenced transition is therefore:
+
+```text
+2026-09-02T13:13:23Z
+  hosted runner job completes successfully
+
+        8 minutes 2 seconds
+
+2026-09-02T13:21:25Z
+  hosted jobs exist with runner_id=0 / steps=[]
+```
+
+This supersedes the weaker September 2 -> September 15 and September 2 -> September 4 onset bounds previously quoted for B4. It does not establish the external cause, but it materially narrows when the repository/account execution state changed.
+
+Updated infrastructure boundary:
+
+```text
+last directly confirmed allocated hosted job = 2026-09-02T13:13:23Z
+first directly confirmed unassigned job       = 2026-09-02T13:21:25Z
+transition window                             = 8m02s
+public source/test failure in that window     = not established
+specific billing/policy/entitlement cause     = unknown
+Repository health                             = still not executed
+canonical source integration                  = still blocked
+```
+
+The source-integration rule remains unchanged. This historical narrowing is diagnostic Evidence only and does not substitute for execution of `tools/repository-health-check.sh`.
+
+
+
+#### B4 continuation — public/private hosted-runner scope comparison — 2026-09-22
+
+The runner-allocation failure was compared against other repositories owned by the same GitHub account to distinguish an account-wide hosted-runner outage from a private-repository-specific boundary.
+
+A public repository under the same owner successfully allocated and executed an `ubuntu-latest` runner after the TEI private-repository failure window had already begun:
+
+```text
+repository:
+  hat47x/sui-sensemaking
+visibility:
+  public
+run:
+  35437442624
+created:
+  2026-09-19T10:27:12Z
+job:
+  105882400375 verify
+label:
+  ubuntu-latest
+runner_id:
+  1000078128
+runner_name:
+  GitHub Actions 1000078128
+steps:
+  populated
+conclusion:
+  success
+```
+
+Representative private repositories under the same owner show the same pre-step signature as TEI during the same period:
+
+```text
+repository:
+  hat47x/sei-cognition
+visibility:
+  private
+run:
+  35693341522
+job:
+  106634781467 e78-assistance-runtime
+label:
+  ubuntu-latest
+runner_id:
+  0
+runner_name:
+  ""
+steps:
+  []
+conclusion:
+  failure
+
+repository:
+  hat47x/vs-bear-simulator
+visibility:
+  private
+run:
+  35694974389
+job:
+  106639738000 static-validation
+label:
+  ubuntu-latest
+runner_id:
+  0
+runner_name:
+  ""
+steps:
+  []
+conclusion:
+  failure
+```
+
+This comparison materially narrows the operational boundary:
+
+```text
+GitHub-hosted runners for this account, all repositories = not globally unavailable
+public-repository hosted allocation after 2026-09-15       = observed working
+multiple private-repository hosted allocations             = observed failing before steps
+TEI-specific workflow/source defect                         = not supported by this comparison
+private-repository entitlement/billing/policy class         = materially strengthened hypothesis
+specific cause within that class                            = still unconfirmed
+```
+
+No account billing, spending-limit, payment, Actions-policy, or private-runner entitlement setting is readable through the current connector. Therefore none of those causes is promoted from hypothesis to confirmed fact.
+
+Operational follow-up is now more targeted: inspect the account-level private-repository Actions billing/budget/payment/entitlement state rather than treating the symptom as a TEI-only or all-Actions outage. If those settings are clean, the cross-repository run/job IDs above provide a stronger support case because the same owner has working public hosted allocation while several private repositories fail before runner assignment.
+
+This does not change the R7B source qualification rule. Canonical source remains blocked until a full checkout actually executes `tools/repository-health-check.sh`.
