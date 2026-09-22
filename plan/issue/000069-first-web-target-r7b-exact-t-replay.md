@@ -8032,3 +8032,49 @@ No additional mechanical runner probe is justified from this checkpoint. The nex
 2. availability of an execution-capable full checkout through another trusted path.
 
 The mandatory source-integration gate remains an actual execution of `tools/repository-health-check.sh` on execution-time latest main plus these same mode-aware canonical 11 paths.
+
+
+#### B4 continuation — post-#869 latest-main mode-aware packet refresh — 2026-09-22
+
+PR #869 advanced `main` with documentation only. The canonical source authority is unchanged, but the qualification composition must remain based on execution-time latest main.
+
+Fresh branchless composition:
+
+```text
+parent:
+  f73b9957eebe971cc8aed9028e10ecb914b17eec
+
+parent tree:
+  383e6f0c21d7cd56592ba20413507ece487aaa91
+
+branchless qualification candidate:
+  d3703503f8be0893098e22649aa9e43717bcb471
+
+candidate tree:
+  a149388c414a07b97b6166470f52d490f1bb4e2d
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+
+replay runner:
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+The candidate is still a branchless composition target only. It is not integration authority and must not be merged or cherry-picked around Repository health.
+
+No further mechanical hosted-runner probe is added at this checkpoint. Existing probes already establish the current pre-step admission symptom across the relevant hosted-runner shapes, while the specific external cause remains unobserved through the available connector surface.
+
+Mandatory next gate remains unchanged:
+
+```text
+execution-capable full checkout on latest main
+  -> materialize the same tree-aware canonical 11 paths
+  -> verify all canonical blob identities
+  -> verify replay runner mode = 100755
+  -> tools/repository-health-check.sh
+  -> same-revision / clean-base / canonical-overlap recheck
+  -> qualified source integration
+```
