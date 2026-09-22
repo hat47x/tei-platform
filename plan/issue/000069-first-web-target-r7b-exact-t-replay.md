@@ -5677,3 +5677,100 @@ actual replay / repeatability Evidence       = pending
 
 The mandatory integration path remains unchanged. Focused P1 PASS narrows uncertainty but does not authorize bypassing full Repository health.
 
+#### B4 continuation — P2 closure preflight and pre-run log boundary — 2026-09-22
+
+After PR #849 merged, all 19 remote refs were reconverged to:
+
+```text
+e4aef476838508e9a69b1ca5c06e67ab7b852d61
+```
+
+with `force=false`, and no branch retained unique ahead work.
+
+The canonical 11 exact blobs were recomposed over that exact main:
+
+```text
+parent:
+  e4aef476838508e9a69b1ca5c06e67ab7b852d61
+
+parent tree:
+  bba7a50067f8675989db994c08a17284f76dceda
+
+branchless health candidate:
+  29ae71e736372d5fbafa02e9bb1ba8d378501907
+
+candidate tree:
+  90b508635a196b3279233a1023ccbdd2fc6d77ca
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+As before, this candidate is a composition target only and is not integration authority.
+
+P2 (`tools/reference-first-web-target-evidence-audit`) was then re-audited for exact source closure.
+
+```text
+candidate main.go:
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+
+current-main main.go:
+  2dd0102a04bdda29dd50dab13ba9a663b8df93d8
+
+candidate main_test.go:
+  668efcdb084e9a7cefe050a5df4be86effc1cebb
+
+current-main main_test.go:
+  668efcdb084e9a7cefe050a5df4be86effc1cebb
+```
+
+Thus P2 changes the production source blob while retaining the exact already-existing test blob. Its Repository-local import closure remains:
+
+```text
+P2 -> P1
+P2 -> standard library
+```
+
+Fresh P1 execution remains:
+
+```text
+gofmt clean
+go vet PASS
+go test -count=50 PASS
+```
+
+A fresh P2 execution result is not claimed by this checkpoint. Historical exact {P1,P2} closure remains recorded, while this section only reconfirms current candidate identity and dependency closure.
+
+The hosted-runner failure boundary was also probed one step deeper. Job-log retrieval was attempted for three recent `steps=null` jobs:
+
+```text
+106586603139  Knowledge portability attempt 3
+106560654921  Knowledge portability attempt 2
+106541743107  Repository branch hygiene attempt 2
+```
+
+All three returned a missing log blob (`BlobNotFound`). This is consistent with the existing observation that no workflow step was created; no checkout/setup-go/test log exists to classify as source failure. The observation is also recorded in infrastructure issue #513.
+
+Updated B4 Evidence height:
+
+```text
+remote branch convergence                    = PASS (19 refs / 1 tip at checkpoint)
+canonical 11 exact blobs                     = fixed
+P1 exact focused execution                   = PASS (gofmt / vet / test x50)
+P2 exact source/test identity                = PASS
+P2 Repository-local dependency closure       = P1 only
+fresh P2 execution                           = not claimed at this checkpoint
+exact replay runner identity / bash -n       = PASS
+health harness identity / bash -n            = PASS
+hosted runner observable steps               = unavailable
+hosted runner job logs for failed probes     = absent / BlobNotFound
+current branchless packet                    = 29ae71e7... (11 paths only)
+tools/repository-health-check.sh execution   = pending mandatory gate
+code integration                             = blocked
+actual replay / repeatability Evidence       = pending
+```
+
+The mandatory integration gate remains full Repository health. P1 focused PASS and P2 closure re-audit narrow the remaining uncertainty but do not bypass that gate.
+
