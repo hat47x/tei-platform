@@ -7905,3 +7905,130 @@ tools/repository-health-check.sh actual execution = pending
 canonical 11-path source integration             = blocked
 actual replay / repeatability Evidence           = pending
 ```
+
+
+#### B4 continuation — official Actions hard-budget semantics and latest-main packet rebind — 2026-09-22
+
+Before this checkpoint, all 19 remote refs were re-audited and were identical to current `main`, with no open pull request and no unique ahead work.
+
+Current integration base:
+
+```text
+main:
+  978fc324f8bf2dbf734ac7636fee4ccb929c02ba
+
+main tree:
+  ca0c5ec2b2bdd1fdec4a07e71810cefff2a9e348
+```
+
+The unchanged mode-aware canonical 11-path packet was recomposed over that exact main without creating or moving another remote branch:
+
+```text
+branchless qualification candidate:
+  374e331d86938285e0b47c1517bd120cf2c9275b
+
+candidate tree:
+  acc10649cb080273a7af86307383af433cf342d4
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+
+replay runner:
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+The candidate remains a qualification composition target only. It is not integration authority.
+
+The current GitHub billing documentation was then checked against the observed hosted-runner symptom.
+
+GitHub currently documents that:
+
+```text
+private repositories:
+  standard GitHub-hosted runner usage consumes the owner's included Actions minutes
+  usage beyond included amounts is billed when paid usage is available
+
+hard budget:
+  if an applicable budget has "Stop usage when budget limit is reached" enabled
+  and that budget is exhausted, additional metered usage is blocked
+
+Actions product budget example:
+  exhausted hard Actions budget blocks all GitHub-hosted runners
+  until the next billing cycle or until the budget is increased
+```
+
+Official references checked on 2026-09-22:
+
+- GitHub Docs — "Setting up budgets to control spending on metered products"
+  https://docs.github.com/en/billing/how-tos/set-up-budgets
+- GitHub Docs — "GitHub Actions billing"
+  https://docs.github.com/en/billing/concepts/product-billing/github-actions
+
+This strengthens one narrow statement: an exhausted applicable hard Actions budget is a documented mechanism that can block hosted-runner usage.
+
+It does **not** identify the cause of the current symptom, because the public documentation does not specify that a blocked job must surface as:
+
+```text
+runner_id = 0
+steps     = []
+job log   = BlobNotFound
+```
+
+and it does not document the propagation/atomicity semantics needed to explain the already-observed same-head SEI burst in which one `ubuntu-latest` workflow acquired a runner while several other workflows on the exact same head failed before steps.
+
+Therefore the current root-cause boundary is:
+
+```text
+hard Actions budget can block hosted runners:
+  documented
+
+this account/repository actually has an exhausted blocking budget:
+  not observable through the current connector
+
+runner_id=0 / steps=[] uniquely means budget hard stop:
+  not established
+
+same-head mixed allocation disproves every budget explanation:
+  not established
+
+budget-state propagation / admission race:
+  compatible
+  not proven
+
+repository/workflow policy or another external admission mechanism:
+  compatible
+  not proven
+
+specific root cause:
+  unknown
+```
+
+A final transport-path check also confirmed that the GitHub connector can issue a short-lived signed private-file download URL, but the execution container still cannot resolve the GitHub raw-content host. That path therefore does not produce a mountable checkout and does not change Evidence height.
+
+Updated B4 Evidence height:
+
+```text
+all 19 remote refs at pre-write checkpoint        = identical
+latest-main canonical 11 composition              = 374e331d... (11 paths only)
+canonical replay-runner mode                      = 100755
+current P1-P5 focused dependency closures         = covered by exact executions
+Linux/macOS/Windows hosted allocation probes      = pre-step failure
+ubuntu-slim / service-container probes            = pre-step failure
+same-head mixed hosted allocation                 = directly observed
+hard Actions budget blocking capability           = documented by GitHub
+actual account/repository budget state            = inaccessible
+private raw-file transport to execution container = blocked by container DNS
+tools/repository-health-check.sh execution        = pending mandatory gate
+canonical 11-path source integration              = blocked
+actual replay / repeatability Evidence            = pending
+```
+
+No additional mechanical runner probe is justified from this checkpoint. The next Evidence-raising event must be either:
+
+1. direct inspection/correction of the account or repository Actions billing/budget/policy state followed by one bounded recovery run, or
+2. availability of an execution-capable full checkout through another trusted path.
+
+The mandatory source-integration gate remains an actual execution of `tools/repository-health-check.sh` on execution-time latest main plus these same mode-aware canonical 11 paths.
