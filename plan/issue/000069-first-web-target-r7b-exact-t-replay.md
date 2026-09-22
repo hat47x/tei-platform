@@ -7471,3 +7471,123 @@ actual replay / repeatability Evidence          = pending
 ```
 
 The next high-value external observation is the actual check-run annotation text and the account/repository Actions billing/budget/policy state. Neither can be read through the current connector. Until an execution-capable checkout exists, the mandatory source-integration rule remains unchanged.
+
+#### B4 continuation — same-head burst shows intermittent hosted admission, not a deterministic workflow split — 2026-09-22
+
+The SEI same-head mixed-allocation case was expanded across every workflow run created for the exact head:
+
+```text
+repository:
+  hat47x/sei-cognition
+
+head:
+  765eb189f97d7dba402cec864960cecb3a5a91a6
+
+runs created at:
+  2026-09-02T19:00:34Z
+
+workflow runs on this head:
+  7 total
+```
+
+Job-level outcomes:
+
+```text
+6 jobs:
+  label       = ubuntu-latest
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+
+1 job:
+  label       = ubuntu-latest
+  runner_id   = 1000076312
+  runner_name = GitHub Actions 1000076312
+  steps       = populated
+  conclusion  = success
+```
+
+The successful job was:
+
+```text
+run:
+  33670697154
+job:
+  100383296117
+workflow:
+  Actual Model Artifact Exchange E3b
+started:
+  2026-09-02T19:00:42Z
+completed:
+  2026-09-02T19:03:39Z
+```
+
+The six failed jobs were created in the same second and completed within a few seconds without runner assignment. Their job timestamps show immediate pre-step failure rather than ordinary waiting behind the successful job.
+
+The workflow definitions at this exact head were compared directly. The successful workflow does not have a unique runner class or privileged permission boundary:
+
+```text
+successful E3b workflow:
+  runs-on     = ubuntu-latest
+  permissions = contents: read
+  checkout    = actions/checkout@v4
+  setup       = setup-python / setup-go
+  concurrency = workflow/ref group
+
+failed workflows include examples with the same:
+  runs-on     = ubuntu-latest
+  permissions = contents: read
+  checkout    = actions/checkout@v4
+  setup       = setup-python / setup-go
+  concurrency = workflow/ref group
+```
+
+A failed workflow also uses an explicit timeout, so `timeout-minutes` does not distinguish the successful admission.
+
+The previous successful-run scan adds one more constraint:
+
+```text
+SEI latest success before the 19:00Z E3b success:
+  run 33634890983
+  created 2026-09-02T13:18:02Z
+
+no SEI successful workflow runs observed:
+  2026-09-02T13:18:24Z .. 2026-09-02T19:00:33Z
+
+isolated later success:
+  run 33670697154
+  created 2026-09-02T19:00:34Z
+  completed 2026-09-02T19:03:39Z
+```
+
+Therefore the observed behavior is best recorded as an **intermittent hosted admission symptom**:
+
+```text
+deterministic workflow-config cause:
+  not supported by the compared fields
+
+simple repository-wide hard stop:
+  not sufficient to describe the observed 6-fail / 1-success burst
+
+ordinary one-job concurrency queue:
+  not supported by failed job timestamps
+
+transient admission pulse / threshold race:
+  compatible
+  not proven
+
+specific billing / budget / policy / platform cause:
+  still unknown
+```
+
+This strengthens the requirement not to promote `runner_id=0 / steps=[]` into a single inferred root cause without the inaccessible check annotation or account/repository Actions state.
+
+The R7B integration boundary remains unchanged:
+
+```text
+tools/repository-health-check.sh actual execution = pending
+canonical 11-path source integration             = blocked
+actual replay / repeatability Evidence           = pending
+```
+
