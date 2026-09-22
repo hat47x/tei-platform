@@ -6002,3 +6002,126 @@ actual replay / repeatability Evidence           = pending
 ```
 
 No source integration is authorized until the mandatory full-checkout Repository health gate passes on execution-time latest main with these same canonical 11 blobs.
+
+
+#### B4 continuation — latest-main branchless qualification packet and checkout transport boundary — 2026-09-22
+
+Parallel B4 work merged PR #852 before this continuation:
+
+```text
+main:
+  3bb05b7ee4d5033f59113abf2fd5c74e48c598d6
+  Merge PR #852 — r7b: rebind current focused evidence closure
+
+open pull requests:
+  0
+
+remote branch state before this write:
+  total refs     = 19
+  non-main ahead = 0
+  non-main behind= 0
+  status         = all identical to main
+```
+
+The PR #852 delta changes only this R7B plan document. It does not overlap the canonical 11 source paths.
+
+The canonical 11 exact blobs were therefore recomposed over exact current main without creating or moving a remote work branch.
+
+```text
+parent:
+  3bb05b7ee4d5033f59113abf2fd5c74e48c598d6
+
+parent tree:
+  b08a9bed7f6544835f057ec54cef8c862a925a82
+
+branchless qualification candidate:
+  645adb7e0fd3664514079135163c218a61a08c67
+
+candidate tree:
+  dcc35e1aedf76e99d8471a1243e55bc1c96beaf7
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The 11 blob identities are unchanged:
+
+```text
+tools/internal/firstwebtargetevidence/semantics.go
+  9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+tools/internal/firstwebtargetevidence/semantics_pressure_test.go
+  95553ba10756399a50e52e639f7d860f4420f29f
+tools/internal/firstwebtargetevidence/semantics_test.go
+  ba17f69a7e375cfdeec0db544986d51f99b26192
+tools/reference-first-web-target-evidence-audit/main.go
+  3878dae15b06a3b57954cf196b108da1cc03bbc7
+tools/reference-first-web-target-r7b-repeatability/main.go
+  7b2cf09460319b13241fa44e59f865d3864734ff
+tools/reference-first-web-target-r7b-repeatability/main_test.go
+  30a907578836c9b1b33b79bf4d521fb809a49e74
+tools/reference-first-web-target-r7b-replay-audit/main.go
+  a370e0c5efc4399e324be7a0ad4801626f05a5da
+tools/reference-first-web-target-r7b-replay-audit/main_test.go
+  2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+tools/reference-first-web-target-r7b-replay-plan/main.go
+  40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+tools/reference-first-web-target-r7b-replay-plan/main_test.go
+  d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+tools/run-first-web-target-r7b-replay.sh
+  2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+This candidate remains a composition target only. It is not integration authority and must not be merged, fast-forwarded, or cherry-picked around the mandatory Repository-health gate.
+
+A new checkout-transport feasibility probe was also performed instead of mechanically rerunning the known-broken hosted runner.
+
+GitHub connector recursive-tree access succeeds for exact current main:
+
+```text
+recursive tree truncated = false
+repository blobs         = 1292
+repository blob bytes    = 10,317,457
+
+health-oriented working-set estimate:
+  Go / go.mod / go.sum / reference workspace /
+  testdata / shell harness paths
+  files = 730
+  bytes = 4,843,307
+```
+
+The execution container itself still cannot resolve `github.com`; ordinary `git ls-remote` / clone therefore remains unavailable. The connector can enumerate and read the Git tree, but its textual file interface does not provide a repository archive that can be mounted directly into the execution filesystem. Consequently this probe does not constitute a full checkout and does not execute Repository health.
+
+PR #852 was also checked for naturally generated workflow runs. Neither its head commit nor merge commit has a connector-visible workflow run, so no new runner-allocation Evidence exists and no mechanical rerun is initiated.
+
+Current Evidence height:
+
+```text
+parallel-lane latest-main reconciliation       = PASS
+all remote refs identical at pre-write         = PASS
+canonical 11 exact blobs                       = unchanged
+latest-main branchless composition             = 645adb7e... (11 paths only)
+current main recursive Git tree                = fully enumerable
+execution-container GitHub DNS                 = unavailable
+mountable full checkout                        = unavailable
+natural PR #852 workflow observation           = none
+current P1-P5 focused dependency closures      = covered by exact executions
+tools/repository-health-check.sh execution     = pending mandatory gate
+canonical 11-path source integration           = blocked
+actual replay / repeatability Evidence         = pending
+```
+
+The remaining mandatory path is unchanged:
+
+```text
+execution-time latest main full checkout
+  -> apply these same canonical 11 exact blobs
+  -> tools/repository-health-check.sh
+  -> verify clean/same base and no parallel canonical-path overlap
+  -> integrate qualified source
+  -> converge existing refs with force=false
+  -> Packet M actual materialization
+```
+
+No Evidence level is promoted from connector-side tree visibility alone.
