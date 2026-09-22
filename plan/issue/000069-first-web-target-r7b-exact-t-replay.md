@@ -8088,11 +8088,11 @@ The post-#869 mode-aware packet refresh already merged via PR #870 remains the c
 main:
   6042da1b6ca2cd8777b60b557787e6327670a69b
 
-latest recorded mode-aware branchless packet:
-  d3703503f8be0893098e22649aa9e43717bcb471
+latest current-main mode-aware branchless packet:
+  6112563fc4c0d10cfebf1b5a4011844dfba6a744
 
 candidate tree:
-  a149388c414a07b97b6166470f52d490f1bb4e2d
+  67b9043e033260b0fa1eac2c554c229fc64ed3ff
 
 changed paths:
   canonical 11 source paths only
