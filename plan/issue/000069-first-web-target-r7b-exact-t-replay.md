@@ -5500,3 +5500,87 @@ actual replay / repeatability Evidence       = pending
 
 The health gate is not weakened by the harness syntax result. Integration resumes only when the exact current-main working tree plus canonical 11 blobs can execute the harness itself.
 
+
+
+
+#### B4 continuation — hosted-runner attempt 3 and latest-main packet pin — 2026-09-22
+
+The hosted-runner allocation blocker was re-probed again after the prior B4 checkpoint without creating a new workflow or branch.
+
+Knowledge portability reference evidence:
+
+```text
+run       = 35385970642
+attempt   = 3
+job       = 106586603139 (verify)
+started   = 2026-09-22T01:52:24Z
+          = 2026-09-22 10:52:24 JST
+completed = 2026-09-22T01:52:30Z
+          = 2026-09-22 10:52:30 JST
+result    = failure
+steps     = null
+```
+
+The job entered `queued` but again terminated before any observable step execution. This is not checkout, setup-go, Repository health, Source test, or Product Evidence. Infrastructure issue #513 was updated with the same observation.
+
+Parallel work had already advanced and converged main through:
+
+```text
+19e26189fcaa0ef00f4c448361744c466ff64c0d
+Merge PR #847 — r7b: pin health harness and hosted-runner re-probe
+```
+
+At the pre-write checkpoint all 19 remote branch refs pointed to that same main commit, so there was no unique remote branch work to preserve or reconcile.
+
+The unchanged canonical 11 exact blobs were composed over this exact latest main as a fresh branchless qualification packet:
+
+```text
+parent:
+  19e26189fcaa0ef00f4c448361744c466ff64c0d
+
+parent tree:
+  ac5d4fd2d88f17abbf82e2e56cec3e46703afddd
+
+branchless candidate:
+  3e4dec62ed54c2f1adea7fa2bacd919eb6cb6f27
+
+candidate tree:
+  a39e3d51bcfc4f8af217a2f35b85104c1c0d714b
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The candidate remains a composition target only. It is not integration authority and must not be merged, fast-forwarded, or cherry-picked around the mandatory health gate.
+
+Current B4 Evidence height:
+
+```text
+branch convergence at pre-write checkpoint    = PASS (19 refs / 1 tip)
+canonical 11 exact blobs                      = fixed
+exact replay runner byte identity             = PASS
+exact replay runner bash -n                   = PASS
+exact repository-health harness identity      = PASS
+repository-health harness bash -n             = PASS
+hosted runner attempt 3 step execution        = unavailable
+latest-main branchless packet                 = 3e4dec62... (11 paths only)
+tools/repository-health-check.sh execution    = pending mandatory gate
+code integration                              = blocked
+actual replay / repeatability Evidence        = pending
+```
+
+The remaining path is unchanged:
+
+```text
+health-capable full checkout on execution-time latest main
+  -> materialize the same canonical 11 exact blobs
+  -> tools/repository-health-check.sh
+  -> same revision / clean base / no canonical-path overlap recheck
+  -> integrate the qualified 11-path source change
+  -> converge existing branch refs to merged main without force
+  -> Packet M actual replay-plan materialization
+```
+
+No Evidence level is promoted from a queued-but-step-less hosted job.
