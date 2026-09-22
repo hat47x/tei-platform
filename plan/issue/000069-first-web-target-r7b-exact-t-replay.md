@@ -7294,3 +7294,180 @@ canonical 11-path source integration              = blocked
 actual replay / repeatability Evidence            = pending
 ```
 
+
+
+#### B4 continuation — same-head mixed hosted allocation and latest-main packet rebind — 2026-09-22
+
+The delayed recovery probe attempt 3 is already preserved on the existing B4 branch. Before adding this checkpoint, the branch is one documentation commit ahead of current main and has no canonical source-path delta.
+
+Current integration base:
+
+```text
+main:
+  9c5cfe85fcccf016f5c7e117bb2a858d17042422
+  Merge PR #863 — r7b: narrow Actions billing hypothesis
+
+B4 branch:
+  ahead  = 1
+  behind = 0
+  changed path = plan/issue/000069-first-web-target-r7b-exact-t-replay.md only
+```
+
+The unchanged canonical 11 exact blobs were recomposed over this exact main without creating or moving another remote branch.
+
+```text
+parent:
+  9c5cfe85fcccf016f5c7e117bb2a858d17042422
+
+parent tree:
+  decaf9d7f0156a47338c162a0a78baa68a763646
+
+branchless qualification candidate:
+  ea5b9e635ab6479d79b5ff2912b906df3c3a5a4f
+
+candidate tree:
+  9db7c07f4413a8cdea6bb232edc1e136f6c3039d
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The candidate is still a qualification composition target only. It is not integration authority.
+
+A deeper check-run comparison also changes how the SEI timing evidence must be interpreted.
+
+For the first confirmed TEI pre-step CI failure commit:
+
+```text
+TEI head:
+  83a7eef2731284eed64a3b815374dccc4420c45f
+
+verify check:
+  100272370585
+  conclusion        = failure
+  annotations_count = 1
+
+postgres-integration check:
+  100272370239
+  conclusion        = failure
+  annotations_count = 1
+```
+
+The connector exposes the annotation count but does not allow the check-run annotations endpoint, so the annotation body cannot be read in this session. No billing/policy/error message is inferred from the count alone.
+
+More importantly, one SEI head SHA shows successful and pre-step-failed hosted jobs at essentially the same time:
+
+```text
+SEI head:
+  765eb189f97d7dba402cec864960cecb3a5a91a6
+
+successful workflow:
+  run 33670697154
+  Actual Model Artifact Exchange E3b
+  job 100383296117
+  two actual models / historical Application preservation
+  event      = pull_request
+  runs-on    = ubuntu-latest
+  started    = 2026-09-02T19:00:42Z
+  completed  = 2026-09-02T19:03:39Z
+  steps      = populated through Complete job
+  conclusion = success
+
+pre-step failed workflow on the same head:
+  run 33670696988
+  Semantic Runtime Conformance
+  job 100383295376
+  event      = pull_request
+  runs-on    = ubuntu-latest
+  started    = 2026-09-02T19:00:34Z
+  completed  = 2026-09-02T19:00:39Z
+  steps      = null
+  conclusion = failure
+
+another pre-step failed workflow on the same head:
+  run 33670696938
+  External Model-backed Method E3b M1b
+  job 100383295882
+  event      = pull_request
+  runs-on    = ubuntu-latest
+  started    = 2026-09-02T19:00:35Z
+  completed  = 2026-09-02T19:00:38Z
+  steps      = null
+  conclusion = failure
+```
+
+The three workflow definitions at that exact head all use GitHub-hosted `ubuntu-latest`. The successful and failed definitions also share ordinary `contents: read` permissions and standard `actions/checkout` / setup actions; no failing-only runner label difference was found.
+
+Therefore the earlier 4m49s SEI boundary remains valid only for the **same E3b workflow**:
+
+```text
+E3b success completes:
+  2026-09-02T19:03:39Z
+
+same E3b workflow next observed failure:
+  2026-09-02T19:08:28Z
+```
+
+It is not a valid repository-wide transition boundary, because other workflows on the same repository and same head were already failing before steps while E3b still acquired and used a hosted runner.
+
+Updated diagnostic boundary:
+
+```text
+single account-wide runner outage:
+  not supported
+
+single private-repository-wide transition:
+  not supported
+
+single deterministic repository policy switch at 19:03Z:
+  not supported by same-head mixed allocation
+
+workflow/job admission symptom:
+  directly observed
+
+repository-scoped budget/policy state:
+  still possible
+  but not established as a simple all-jobs boundary
+
+concurrent admission / quota-update race:
+  possible
+  not established
+
+multiple independent causes with the same runner_id=0 / steps=[] signature:
+  possible
+
+specific external cause:
+  still unknown
+```
+
+The historical successful-run artifact route was also checked as a possible way to bypass the currently unavailable checkout path without weakening Evidence requirements:
+
+```text
+TEI last confirmed CI success:
+  run 33634239635
+  workflow artifacts = none
+
+SEI E3b confirmed hosted success:
+  run 33670697154
+  workflow artifacts = none
+```
+
+No reusable full-checkout or source snapshot artifact was available from those successful runs.
+
+Current Evidence height:
+
+```text
+delayed ubuntu-slim recovery attempt 3          = pre-step failure reproduced
+same-head SEI mixed hosted allocation           = directly observed
+check-run failure annotations                   = present, body inaccessible
+latest-main canonical 11 composition            = ea5b9e63... (11 paths only)
+historical full-checkout artifact salvage       = unavailable
+execution-container GitHub DNS                  = unavailable
+tools/repository-health-check.sh execution      = pending mandatory gate
+canonical 11-path source integration            = blocked
+actual replay / repeatability Evidence          = pending
+```
+
+The next high-value external observation is the actual check-run annotation text and the account/repository Actions billing/budget/policy state. Neither can be read through the current connector. Until an execution-capable checkout exists, the mandatory source-integration rule remains unchanged.
