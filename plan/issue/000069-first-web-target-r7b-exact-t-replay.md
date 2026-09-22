@@ -6309,3 +6309,101 @@ force update:
 
 The infrastructure observation is also recorded in issue #513. The integration boundary remains unchanged: only an environment that actually executes the full Repository-health harness on execution-time latest main plus the same canonical 11 blobs can authorize source integration.
 
+
+
+
+#### B4 continuation — preserve replay-runner executable tree mode — 2026-09-22
+
+A Git-tree audit found one qualification detail that blob-only checks do not cover: the operational replay runner must retain its executable file mode.
+
+The canonical runner content identity is unchanged:
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+However, Git blob identity does not include the tree entry mode. Historical operational candidates that carried the executable runner correctly used:
+
+```text
+99eb861e71cfb225cf2f2ccf3db1f96feb716645
+  runner mode = 100755
+  runner blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+The two recent hosted-health probe materializations carried the same bytes but accidentally downgraded the tree entry to non-executable:
+
+```text
+585c2599d957968ecf6ed57aaccc2f7d2ef60d00
+  runner mode = 100644
+  runner blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+
+8e64573a65cc0587f4be61b1679bd053cbfb917f
+  runner mode = 100644
+  runner blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+This does **not** change the interpretation of either hosted-runner probe: both failed before any observable workflow step was allocated, so the replay runner was never invoked and its mode cannot have caused those pre-step failures.
+
+The qualification packet itself must nevertheless preserve the operational mode. A corrected branchless packet was therefore composed over current main:
+
+```text
+parent:
+  eea3aa6774ff02585db0dfcf4e7b4eb9aac620c2
+
+parent tree:
+  b827026439855e68b354eb7fa9b818cfd8f0ef19
+
+mode-aware branchless candidate:
+  47eb285f7de7eafc01f725b3147e50d7a47badbc
+
+candidate tree:
+  027c4c9386659055a078bcf2c44c6d9e3177b4db
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+
+runner tree entry:
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+The branchless candidate remains a composition target only. It is not integration authority and must not be merged or cherry-picked around Repository health.
+
+Qualification authority is therefore refined from blob-only identity to tree-aware identity:
+
+```text
+10 Go source/test paths:
+  mode = 100644
+  blob = the already-fixed canonical blob identity
+
+tools/run-first-web-target-r7b-replay.sh:
+  mode = 100755
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+```
+
+A health-capable integration working tree must verify both byte and mode identity before running the mandatory health harness, for example:
+
+```bash
+test "$(git hash-object tools/run-first-web-target-r7b-replay.sh)" =   "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03"
+
+test "$(git ls-files -s tools/run-first-web-target-r7b-replay.sh | awk '{print $1}')" =   "100755"
+
+tools/repository-health-check.sh
+```
+
+The incorrect example tuple is explicitly superseded by the exact required tuple immediately following it and must never be copied into an integration packet.
+
+Updated boundary:
+
+```text
+canonical source blob identities             = fixed
+canonical runner tree mode                  = 100755 required
+current mode-aware branchless packet         = 47eb285f... (11 paths only)
+hosted 22.04 / 24.04 pre-step failures       = unchanged interpretation
+tools/repository-health-check.sh execution   = pending mandatory gate
+canonical source integration                 = blocked
+actual replay / repeatability Evidence       = pending
+```
