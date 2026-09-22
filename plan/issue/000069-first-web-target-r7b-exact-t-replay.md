@@ -6394,8 +6394,6 @@ test "$(git ls-files -s tools/run-first-web-target-r7b-replay.sh | awk '{print $
 tools/repository-health-check.sh
 ```
 
-The incorrect example tuple is explicitly superseded by the exact required tuple immediately following it and must never be copied into an integration packet.
-
 Updated boundary:
 
 ```text
@@ -6598,3 +6596,104 @@ Issue #513 carries the operational follow-up boundary: verify Actions enablement
 
 This does not change the source integration rule. Canonical R7B source remains blocked until an environment actually executes the full Repository-health harness.
 
+
+
+#### B4 continuation — ubuntu-slim shared-runner probe and transfer-artifact boundary — 2026-09-22
+
+After PR #858 merged, all 19 remote refs were converged to current main before this probe:
+
+```text
+main:
+  58353f3744d93e54962f03aa183fc6556b6dd93d
+
+main tree:
+  4cc0088b2523e063b5659e6af48719e81d1b88d8
+
+open PR:
+  0
+```
+
+The remaining GitHub-hosted variant not yet tested was `ubuntu-slim`, which uses the standard single-CPU shared-VM path rather than the normal hosted VM shape. A temporary probe on the existing B branch materialized the mode-aware canonical 11-path packet and a workflow that would:
+
+```text
+checkout full history
+-> setup Go from go.mod
+-> verify all 11 canonical blob identities
+-> verify replay runner mode = 100755
+-> tools/repository-health-check.sh
+-> always create a portable Git bundle
+-> always upload that bundle as an Actions artifact
+```
+
+Probe identity:
+
+```text
+probe commit:
+  d40d554e381bbb6f8672cfcab0432206a339ddb0
+
+probe tree:
+  d2688fe626c3f06906500237533a72946b76394c
+
+workflow:
+  .github/workflows/r7b-ubuntu-slim-health-probe.yml
+
+run:
+  35697286875
+
+job:
+  106646854517 repository-health
+```
+
+Observed job metadata:
+
+```text
+label              = ubuntu-slim
+created            = 2026-09-22T06:58:22Z
+started            = 2026-09-22T06:58:22Z
+completed          = 2026-09-22T06:58:35Z
+conclusion         = failure
+runner_id          = 0
+runner_name        = ""
+runner_group_id    = 0
+runner_group_name  = ""
+steps              = []
+check annotations  = 1
+job log download   = BlobNotFound
+workflow artifacts = 0
+```
+
+The run remained queued longer than the normal VM probes, but no observable workflow step was ever created and no runner was assigned. Therefore the result does not execute checkout, setup-go, canonical identity verification, Repository health, Git-bundle creation, or artifact upload.
+
+The transfer experiment is nevertheless useful because it proves that the planned artifact bridge is blocked at the same pre-step allocation boundary rather than at artifact download or bundle creation.
+
+The temporary canonical source materialization and workflow were removed by a normal forward cleanup commit:
+
+```text
+cleanup commit:
+  cbecad03f690cbb7ef42d390f0a9b56667d8dd72
+
+cleanup tree:
+  4cc0088b2523e063b5659e6af48719e81d1b88d8
+
+probe-start main tree:
+  4cc0088b2523e063b5659e6af48719e81d1b88d8
+
+tree equality:
+  PASS
+
+force update:
+  false
+```
+
+Current hosted-allocation coverage is now:
+
+```text
+ubuntu-latest   = pre-step failure
+ubuntu-22.04    = pre-step failure
+ubuntu-24.04    = pre-step failure
+ubuntu-slim     = pre-step failure / runner_id 0
+macos-15        = pre-step failure / runner_id 0
+windows-2025    = pre-step failure / runner_id 0
+```
+
+No source/test failure is inferred from these runs. The mandatory source-integration gate remains an actual full-checkout execution of `tools/repository-health-check.sh` on execution-time latest main plus the same mode-aware canonical packet.
