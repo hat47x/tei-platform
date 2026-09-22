@@ -6523,3 +6523,78 @@ actual replay / repeatability Evidence        = pending
 
 No source integration is authorized from runner-allocation Evidence alone. The mandatory gate remains an actual full-checkout execution of `tools/repository-health-check.sh` on execution-time latest main plus the same mode-aware canonical packet.
 
+#### B4 continuation — hosted allocation onset boundary — 2026-09-22
+
+The Actions history was compared across the last known successful allocation and the earliest current-style pre-step failures.
+
+Last confirmed successful hosted allocations:
+
+```text
+run 33634416735
+  created     = 2026-09-02T13:13:14Z
+  label       = ubuntu-24.04
+  runner_id   = 1000075820
+  runner_name = GitHub Actions 1000075820
+  steps       = populated
+  conclusion  = success
+
+run 33634239635 / verify
+  created     = 2026-09-02T13:11:24Z
+  label       = ubuntu-latest
+  runner_id   = 1000075811
+  runner_name = GitHub Actions 1000075811
+  steps       = populated
+  conclusion  = success
+```
+
+Earliest inspected failures with the current signature:
+
+```text
+run 35028517287 / job 104581243332
+  created     = 2026-09-15T21:58:21Z
+  label       = ubuntu-22.04
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+
+run 35028898569 / job 104582482529
+  created     = 2026-09-15T22:02:44Z
+  label       = ubuntu-22.04
+  runner_id   = 0
+  runner_name = ""
+  steps       = []
+  conclusion  = failure
+```
+
+The observable transition is therefore bounded by:
+
+```text
+2026-09-02  hosted runner allocation succeeds
+2026-09-15  hosted job exists but no runner is assigned
+```
+
+Current-revision probes now reproduce the same pre-step boundary on:
+
+```text
+ubuntu-latest
+ubuntu-22.04
+ubuntu-24.04
+macos-15
+windows-2025
+```
+
+Public GitHub Status reports Actions operational at the time of this investigation, so no public platform-wide Actions incident is used as the explanation for this repository's failure. Absence of a public incident does not by itself prove an account-specific cause.
+
+Public reports with the same zero-step / pre-allocation symptom exist for billing, spending-limit, and hosted-runner entitlement failures. This repository's account billing and Actions-policy settings are not readable through the current connector, and the failed jobs expose no annotation/log text that identifies a cause. Therefore:
+
+```text
+billing / spending-limit / entitlement = leading external hypothesis only
+confirmed cause                         = unknown
+confirmed technical boundary            = hosted runner not assigned before steps
+```
+
+Issue #513 carries the operational follow-up boundary: verify Actions enablement and account billing/budget/payment state outside this execution session, then provide the current run/job IDs to GitHub Support if those settings are clean.
+
+This does not change the source integration rule. Canonical R7B source remains blocked until an environment actually executes the full Repository-health harness.
+
