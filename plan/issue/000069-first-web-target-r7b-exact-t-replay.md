@@ -5870,3 +5870,135 @@ actual replay / repeatability Evidence    = pending
 ```
 
 A future P2 focused PASS narrows source uncertainty only. The canonical 11-path packet still requires `tools/repository-health-check.sh` on a full, execution-time-latest checkout before any source integration.
+
+
+
+#### B4 continuation — current canonical focused-Evidence closure rebind — 2026-09-22
+
+The current canonical packet was re-audited against the exact focused executions already recorded for the same Git blob identities. No new focused execution is claimed by this checkpoint; the purpose is to determine whether any focused source uncertainty remains after the credential-safe P1/P2 changes.
+
+Current latest-main composition:
+
+```text
+parent:
+  60d4de53d59c170f20a5ee8bc637a416370716b0
+
+branchless composition candidate:
+  e33ef2e6060b573b9e7742f2cb1c9f49715eecf1
+
+candidate tree:
+  3641cb543c536a38c78257079b6483ff217d1c63
+
+candidate vs parent:
+  ahead  = 1
+  behind = 0
+  changed paths = canonical 11 source paths only
+```
+
+The candidate remains a composition target only and is not integration authority.
+
+The candidate package dependency graph remains:
+
+```text
+P1  tei/tools/internal/firstwebtargetevidence
+    -> standard library only
+
+P2  tei/tools/reference-first-web-target-evidence-audit
+    -> P1 + standard library
+
+P3  tei/tools/reference-first-web-target-r7b-replay-plan
+    -> standard library only
+
+P4  tei/tools/reference-first-web-target-r7b-replay-audit
+    -> P1 + standard library
+
+P5  tei/tools/reference-first-web-target-r7b-repeatability
+    -> standard library only
+```
+
+Exact current Evidence binding:
+
+```text
+P1/P2 credential-safe closure:
+  P1 semantics.go
+    9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+  P1 semantics_test.go
+    ba17f69a7e375cfdeec0db544986d51f99b26192
+  P1 semantics_pressure_test.go
+    95553ba10756399a50e52e639f7d860f4420f29f
+  P2 main.go
+    3878dae15b06a3b57954cf196b108da1cc03bbc7
+  P2 main_test.go
+    668efcdb084e9a7cefe050a5df4be86effc1cebb
+  recorded exact execution:
+    gofmt clean
+    go vet PASS
+    go test -count=50 PASS
+
+P3 replay-plan:
+  main.go
+    40a1b1b19fa8bf16c43dd2fd0d4f549070efe7ab
+  main_test.go
+    d8fc5e8a1cadb82783c3804fa04d147c5954b3ed
+  current blobs are byte-identical to the previously executed exact focused set
+  dependency closure is standard library only
+
+P1/P4 credential-safe closure:
+  P1 semantics.go
+    9641e3539bb048b13e7e9a4bb245ee457fe1e7a5
+  P4 main.go
+    a370e0c5efc4399e324be7a0ad4801626f05a5da
+  P4 main_test.go
+    2fab7e44d49ddb2778a2bcb55cae67c0f48c1c99
+  recorded exact execution:
+    gofmt clean
+    go vet PASS
+    go test -count=50 PASS
+
+P5 repeatability:
+  main.go
+    7b2cf09460319b13241fa44e59f865d3864734ff
+  main_test.go
+    30a907578836c9b1b33b79bf4d521fb809a49e74
+  current blobs are byte-identical to the previously executed exact focused set
+  recorded exact execution:
+    gofmt clean
+    go vet PASS
+    go test -count=50 PASS
+```
+
+Therefore every current canonical candidate package is covered by exact focused execution at its actual dependency closure:
+
+```text
+{P1,P2} current exact closure x50 = PASS
+P3 current exact focused set      = PASS by identical blob identity
+{P1,P4} current exact closure x50 = PASS
+P5 current exact focused set      = PASS by identical blob identity
+```
+
+This does not revive the old aggregate focused command as a mandatory gate. E1.31 already subsumed that redundant aggregate into the stronger repository-wide mandatory gate:
+
+```text
+tools/repository-health-check.sh
+  -> gofmt -l .
+  -> go vet ./...
+  -> go test -count=1 ./...
+  -> go run ./cmd/tei validate -workspace reference/workspace
+```
+
+The remaining uncertainty is now explicitly Repository interaction / integration qualification, not an untested canonical focused package.
+
+Current Evidence height:
+
+```text
+canonical 11 exact blobs                         = fixed
+current P1-P5 focused dependency closures        = covered by exact executions
+exact replay runner identity / bash -n           = PASS
+health harness identity / bash -n                = PASS
+hosted runner observable steps                   = unavailable
+tools/repository-health-check.sh execution       = pending mandatory gate
+canonical 11-path source integration             = blocked
+actual replay / repeatability Evidence           = pending
+```
+
+No source integration is authorized until the mandatory full-checkout Repository health gate passes on execution-time latest main with these same canonical 11 blobs.
