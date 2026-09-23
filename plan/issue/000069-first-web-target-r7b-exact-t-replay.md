@@ -8941,3 +8941,100 @@ main^{tree} == receipt.qualificationRepositoryTree
 before Packet M or replay Evidence proceeds.
 
 If B4 has not moved since verification, converge `research/selective-knowledge-routing-r6` to the new main tip with a normal fast-forward (`force=false`). If another lane advanced B4 concurrently, leave that newer tip intact: the qualified revision was integrated exactly, while the newer B4 work remains unqualified and must follow the normal qualification cycle.
+#### B4 continuation — machine-checked post-merge qualified-tree verification — 2026-09-24
+
+The exact-parent integration protocol now has a dedicated post-merge verifier:
+
+```text
+tools/verify-first-web-target-r7b-post-merge.sh
+  mode = 100755
+  blob = 4ba5f8f76c84c551980387de51a6884d73669903
+```
+
+The verifier runs from an exact-clean checkout at current remote `main`, reads the Repository-external qualification receipt, and requires current `main` to be an exact two-parent merge object.
+
+It derives:
+
+```text
+first parent  = merge.parents[0]
+second parent = merge.parents[1]
+merge tree    = main^{tree}
+```
+
+and reuses the strict qualification-receipt audit with:
+
+```text
+expected main      = first parent
+expected candidate = second parent
+expected tree      = merge tree
+```
+
+Therefore a post-merge PASS proves that the merge object itself satisfies the receipt contract:
+
+```text
+merge.parents[0] == receipt.baseMainBefore
+                 == receipt.baseMainAfter
+
+merge.parents[1] == receipt.qualificationRepositoryRevision
+
+merge.tree       == receipt.qualificationRepositoryTree
+
+receipt.repositoryHealthPassed = true
+receipt.repositoryPostRunClean = true
+```
+
+The verifier also repeats exact-clean local-state checks and re-fetches remote `main` after the receipt audit. If `main` moves during post-merge verification, the check fails closed.
+
+Independent validation:
+
+```text
+git hash-object reconstructed script
+  = 4ba5f8f76c84c551980387de51a6884d73669903
+
+bash -n
+  PASS
+```
+
+A synthetic Git repository was then used to exercise the object-level contract.
+
+Positive case:
+
+```text
+base commit
+  -> qualification candidate commit
+  -> explicit integration merge commit
+
+merge first parent  = base
+merge second parent = qualification candidate
+merge tree          = candidate tree
+
+matching PASS receipt
+  -> receipt audit PASS
+  -> post-merge verifier PASS
+```
+
+Negative case:
+
+```text
+after the valid integration merge,
+advance main with an ordinary one-parent commit
+
+post-merge verifier
+  -> exit 1
+  -> "Current main must be an exact two-parent R7B integration merge commit."
+```
+
+This synthetic validation proves the verifier's merge-object boundary; it does not qualify the real canonical 11-path candidate.
+
+The actual integration sequence remains:
+
+```text
+trusted-local full qualification PASS receipt
+  -> integration receipt preflight PASS
+  -> explicit exact-parent merge object
+  -> force=false main ref update
+  -> post-merge verifier PASS
+  -> only then Packet M / actual replay
+```
+
+No integration-authorizing full-checkout PASS receipt has yet been observed.
