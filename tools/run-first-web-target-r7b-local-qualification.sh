@@ -59,9 +59,14 @@ if [[ "$current_branch" != "$qualification_branch" ]]; then
   exit 1
 fi
 
-status_before="$(git status --porcelain --untracked-files=all)"
+status_before="$(git status --porcelain --untracked-files=all --ignored=matching)"
 if [[ -n "$status_before" ]]; then
-  printf 'Repository is not clean before local R7B qualification:\n%s\n' "$status_before" >&2
+  printf 'Repository is not exact-clean before local R7B qualification (including ignored paths):\n%s\n' "$status_before" >&2
+  exit 1
+fi
+nonstandard_index_before="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+if [[ -n "$nonstandard_index_before" ]]; then
+  printf 'Repository has non-standard tracked index state before local R7B qualification:\n%s\n' "$nonstandard_index_before" >&2
   exit 1
 fi
 
@@ -137,12 +142,16 @@ bash -n tools/run-first-web-target-r7b-replay.sh
 bash tools/repository-health-check.sh
 
 head_after="$(git rev-parse HEAD)"
-status_after="$(git status --porcelain --untracked-files=all)"
-if [[ "$head_after" != "$head_before" || -n "$status_after" ]]; then
-  printf 'Repository changed during local R7B qualification.\n' >&2
+status_after="$(git status --porcelain --untracked-files=all --ignored=matching)"
+nonstandard_index_after="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+if [[ "$head_after" != "$head_before" || -n "$status_after" || -n "$nonstandard_index_after" ]]; then
+  printf 'Repository changed or ceased to be exact-clean during local R7B qualification.\n' >&2
   printf 'HEAD before=%s after=%s\n' "$head_before" "$head_after" >&2
   if [[ -n "$status_after" ]]; then
     printf '%s\n' "$status_after" >&2
+  fi
+  if [[ -n "$nonstandard_index_after" ]]; then
+    printf '%s\n' "$nonstandard_index_after" >&2
   fi
   exit 1
 fi
@@ -188,12 +197,16 @@ if [[ -n "$receipt_path" ]]; then
 EOF
   )
   receipt_post_head="$(git rev-parse HEAD)"
-  receipt_post_status="$(git status --porcelain --untracked-files=all)"
-  if [[ "$receipt_post_head" != "$head_before" || -n "$receipt_post_status" ]]; then
-    printf 'Repository changed while writing qualification receipt.\n' >&2
+  receipt_post_status="$(git status --porcelain --untracked-files=all --ignored=matching)"
+  receipt_post_nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+  if [[ "$receipt_post_head" != "$head_before" || -n "$receipt_post_status" || -n "$receipt_post_nonstandard_index" ]]; then
+    printf 'Repository changed or ceased to be exact-clean while writing qualification receipt.\n' >&2
     printf 'HEAD before=%s after=%s\n' "$head_before" "$receipt_post_head" >&2
     if [[ -n "$receipt_post_status" ]]; then
       printf '%s\n' "$receipt_post_status" >&2
+    fi
+    if [[ -n "$receipt_post_nonstandard_index" ]]; then
+      printf '%s\n' "$receipt_post_nonstandard_index" >&2
     fi
     exit 1
   fi
