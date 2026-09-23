@@ -8676,3 +8676,67 @@ canonical-11 overlap since baseMainAfter   = zero
 ```
 
 A helper run without a receipt may prove local diagnostics but must never be used to merge the canonical source candidate.
+
+#### B4 continuation — exact-main qualification binding — 2026-09-24
+
+The previous integration fence allowed a qualification run to remain authoritative when `main` moved forward during or after Repository health, provided the intervening paths did not overlap the canonical 11. That is insufficient for a full-repository health gate.
+
+`tools/repository-health-check.sh` executes repository-wide checks:
+
+```text
+gofmt -l .
+go vet ./...
+go test -count=1 ./...
+go run ./cmd/tei validate -workspace reference/workspace
+```
+
+A change outside the canonical 11 can therefore alter compile, test, validation, or cross-package behavior even when no canonical file path overlaps. A PASS must authorize the exact tree that is about to be integrated, not only the canonical path subset.
+
+This checkpoint supersedes the earlier forward-only / zero-overlap allowance.
+
+Current qualification helper:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = fa4203c2a7dc1ce506c063fdba0e543d0379a4b4
+  mode = 100755
+```
+
+After Repository health, the helper now requires both remote refs to remain exact:
+
+```text
+remote qualification tip after health
+  == qualificationRepositoryRevision
+
+remote main after health
+  == baseMainBefore
+  == baseMainAfter
+```
+
+Any `main` movement during qualification is fail-closed, even when the changed paths are documentation-only or have zero canonical-11 overlap. The recovery path is:
+
+```text
+latest main moves
+  -> merge latest main into the existing B4 tip
+  -> preserve B4 lineage / force=false
+  -> rerun the full local qualification helper
+  -> publish a new PASS receipt for the new exact tree
+```
+
+The integration-time fence is correspondingly exact. Immediately before integration:
+
+```text
+current remote B tip == receipt.qualificationRepositoryRevision
+current main         == receipt.baseMainAfter
+expected merge head  == receipt.qualificationRepositoryRevision
+```
+
+If either ref moved after the helper exited, the receipt is stale. Do not rely on path-overlap analysis to preserve authority; merge the new `main` into B4 and rerun full qualification.
+
+This makes the PASS receipt a two-revision lock:
+
+```text
+(candidate B4 revision, exact main revision)
+```
+
+and ensures that the repository-wide health result applies to the exact integration tree.
