@@ -8395,7 +8395,7 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = ab516edd3e7ba3e2e92978844aeff60cceae7313
+  blob = 2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8
   mode = 100755
 
 optional qualification receipt:
@@ -8471,7 +8471,7 @@ Current helper:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = ab516edd3e7ba3e2e92978844aeff60cceae7313
+  blob = 2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8
   mode = 100755
 ```
 
@@ -8488,7 +8488,7 @@ canonical 11 path-set drift
 canonical blob or mode drift
 ```
 
-The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. PR #882 additionally guarantees that failed receipt creation or a failed post-receipt exact-clean check cannot leave a PASS-looking receipt behind; partial or invalid receipt output is removed before failure is returned. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `ab516edd3e7ba3e2e92978844aeff60cceae7313` and must not be treated as an additional operator step.
+The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. PR #882 additionally guarantees that failed receipt creation or a failed post-receipt exact-clean check cannot leave a PASS-looking receipt behind; partial or invalid receipt output is removed before failure is returned. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8` and must not be treated as an additional operator step.
 
 The integration authority remains unchanged:
 
@@ -8505,7 +8505,7 @@ No full-checkout PASS receipt has yet been observed, so canonical source integra
 
 #### B4 continuation — post-PASS qualification-tip integration fence — 2026-09-24
 
-The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `ab516edd3e7ba3e2e92978844aeff60cceae7313` does not re-bind the remote qualification-branch tip after the potentially long health run.
+The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8` does not re-bind the remote qualification-branch tip after the potentially long health run.
 
 That distinction matters in this repository because several ChatGPT lanes can legitimately advance the existing `research/selective-knowledge-routing-r6` branch while another environment is performing local qualification.
 
@@ -8594,3 +8594,56 @@ If another ChatGPT lane advances B4 between read and update, the stale candidate
 Historical branchless candidate SHAs may still be used as content references for exact blobs, but never as replacement ancestry for the live B4 ref.
 
 The current integration fence remains stricter still: a trusted-local PASS receipt authorizes only its exact `qualificationRepositoryRevision`, and integration must require that exact revision to remain the current remote B4 tip and expected merge head.
+
+#### B4 continuation — qualification helper closes in-run B-tip movement — 2026-09-24
+
+The local qualification helper now re-checks the remote qualification-branch tip immediately after Repository health and the post-health exact-clean check.
+
+Current helper:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = 2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8
+  mode = 100755
+
+independent exact-byte check:
+  git hash-object = 2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8
+
+independent shell syntax:
+  bash -n = PASS
+```
+
+The added fail-closed boundary is:
+
+```bash
+git fetch "$remote" --prune
+remote_head_after="$(git rev-parse "$remote/$qualification_branch")"
+
+test "$remote_head_after" = "$head_before" || {
+  printf 'Qualification branch moved during local R7B qualification: before=%s after=%s\n' \
+    "$head_before" "$remote_head_after" >&2
+  exit 1
+}
+```
+
+This closes the interval from qualification start through completion of Repository health: if another ChatGPT lane advances the live B4 branch during the health run, no PASS receipt is emitted for the now-stale revision.
+
+The integration-time fence remains mandatory because the branch can still move **after the helper exits** and before the source merge is executed:
+
+```text
+during helper:
+  remote B tip after health == qualificationRepositoryRevision
+
+after helper / before merge:
+  fresh remote B tip == qualificationRepositoryRevision
+  expected merge head SHA == qualificationRepositoryRevision
+
+main:
+  movement since baseMainAfter remains forward-only
+  canonical-11 overlap remains zero
+```
+
+Therefore qualification authority is revision-specific across both concurrency windows. No receipt for an older B4 tip may authorize a newer tip, even when the canonical file bytes happen to be unchanged.
+
+No full-checkout PASS receipt has yet been observed, so canonical source integration remains blocked.
+
