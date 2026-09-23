@@ -252,7 +252,7 @@
         }
       },
       "split": {
-        "name": "test",
+        "name": "test_c",
         "application_pattern": "pattern-sales-v2",
         "source_family": "source-price-v2",
         "revision_lineage": "lineage-price-v2",

@@ -40,6 +40,13 @@ const (
 	RevisionCompatible = "current"
 	RevisionStale       = "stale_or_incompatible"
 	RevisionUnknown     = "unknown"
+
+	SplitTrain      = "train"
+	SplitValid      = "valid"
+	SplitTestA      = "test_a"
+	SplitTestB      = "test_b"
+	SplitTestC      = "test_c"
+	SplitUnassigned = "unassigned"
 )
 
 var sha256Revision = regexp.MustCompile("^sha256:[0-9a-f]{64}$")
@@ -356,7 +363,7 @@ func validateOutcome(row Row) error {
 
 func validateSplit(split SplitIdentity) error {
 	switch split.Name {
-	case "train", "valid", "test", "unassigned":
+	case SplitTrain, SplitValid, SplitTestA, SplitTestB, SplitTestC, SplitUnassigned:
 	default:
 		return fmt.Errorf("invalid split %q", split.Name)
 	}

@@ -173,6 +173,19 @@ func TestRowIdentityRequiresRecordedSourceTemporalGroupAndSchema(t *testing.T) {
 	}
 }
 
+func TestSplitContractUsesPreregisteredSlices(t *testing.T) {
+	corpus := loadFixture(t)
+	if corpus.Rows[3].Split.Name != SplitTestC {
+		t.Fatalf("stale fixture split=%q want=%q", corpus.Rows[3].Split.Name, SplitTestC)
+	}
+
+	corpus.Rows[3].Split.Name = "test"
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "invalid split") {
+		t.Fatalf("expected generic test split to be rejected, got %v", err)
+	}
+}
+
 func TestTemporalGroupCannotCrossSplit(t *testing.T) {
 	corpus := loadFixture(t)
 	corpus.Rows[3].TemporalGroupID = corpus.Rows[0].TemporalGroupID
