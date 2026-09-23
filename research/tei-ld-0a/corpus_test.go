@@ -150,6 +150,38 @@ func TestProposalEpisodeCannotCrossSplit(t *testing.T) {
 	}
 }
 
+
+func TestRowIdentityRequiresRecordedSourceTemporalGroupAndSchema(t *testing.T) {
+	cases := []struct {
+		name string
+		mutate func(*Row)
+		want string
+	}{
+		{"schema-version", func(row *Row) { row.SchemaVersion = "" }, "schema_version"},
+		{"source-id", func(row *Row) { row.SourceID = "" }, "source_id"},
+		{"source-revision", func(row *Row) { row.SourceRevision = "not-a-revision" }, "source_revision"},
+		{"temporal-group", func(row *Row) { row.TemporalGroupID = "" }, "temporal_group_id"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			corpus := loadFixture(t)
+			tc.mutate(&corpus.Rows[0])
+			if err := ValidateCorpus(corpus); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %s identity failure, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestTemporalGroupCannotCrossSplit(t *testing.T) {
+	corpus := loadFixture(t)
+	corpus.Rows[3].TemporalGroupID = corpus.Rows[0].TemporalGroupID
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "temporal_group") {
+		t.Fatalf("expected temporal-group split leakage failure, got %v", err)
+	}
+}
+
 func TestUnknownFieldIsRejected(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "corpus_v0.json"))
 	if err != nil {

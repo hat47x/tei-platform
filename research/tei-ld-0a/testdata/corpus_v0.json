@@ -63,7 +63,11 @@
         "revision_lineage": "lineage-price-v1",
         "proposal_episode": "episode-001",
         "time_regime": "time-early"
-      }
+      },
+      "schema_version": "tei.research.ld0a-proposal-corpus/v0",
+      "source_id": "source.sales.order.unit_price",
+      "source_revision": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "temporal_group_id": "temporal-sales-price-early-001"
     },
     {
       "row_id": "row-rejected-amount",
@@ -126,7 +130,11 @@
         "revision_lineage": "lineage-price-v1",
         "proposal_episode": "episode-001",
         "time_regime": "time-early"
-      }
+      },
+      "schema_version": "tei.research.ld0a-proposal-corpus/v0",
+      "source_id": "source.sales.order.unit_price",
+      "source_revision": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "temporal_group_id": "temporal-sales-price-early-001"
     },
     {
       "row_id": "row-unknown",
@@ -182,7 +190,11 @@
         "revision_lineage": "lineage-price-v1",
         "proposal_episode": "episode-001",
         "time_regime": "time-early"
-      }
+      },
+      "schema_version": "tei.research.ld0a-proposal-corpus/v0",
+      "source_id": "source.sales.order.unit_price",
+      "source_revision": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "temporal_group_id": "temporal-sales-price-early-001"
     },
     {
       "row_id": "row-stale-accepted",
@@ -246,7 +258,11 @@
         "revision_lineage": "lineage-price-v2",
         "proposal_episode": "episode-002",
         "time_regime": "time-late"
-      }
+      },
+      "schema_version": "tei.research.ld0a-proposal-corpus/v0",
+      "source_id": "source.sales.order.unit_price.v2",
+      "source_revision": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "temporal_group_id": "temporal-sales-price-late-002"
     }
   ]
 }

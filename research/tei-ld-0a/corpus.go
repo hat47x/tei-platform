@@ -51,6 +51,9 @@ type Corpus struct {
 
 type Row struct {
 	RowID              string            `json:"row_id"`
+	SchemaVersion      string            `json:"schema_version"`
+	SourceID           string            `json:"source_id"`
+	SourceRevision     string            `json:"source_revision"`
 	ApplicationID      string            `json:"application_id"`
 	ContextID          string            `json:"context_id"`
 	BaseModelRevision  string            `json:"base_model_revision"`
@@ -60,6 +63,7 @@ type Row struct {
 	Candidate          CandidateRef      `json:"candidate"`
 	ProposalID         string            `json:"proposal_id,omitempty"`
 	CollectedAt        string            `json:"collected_at"`
+	TemporalGroupID    string            `json:"temporal_group_id"`
 	Features           FeatureProjection `json:"features"`
 	Outcome            Outcome           `json:"outcome"`
 	Split              SplitIdentity     `json:"split"`
@@ -206,6 +210,7 @@ func ValidateCorpus(corpus Corpus) error {
 			"revision_lineage":    row.Split.RevisionLineage,
 			"proposal_episode":    row.Split.ProposalEpisode,
 			"time_regime":         row.Split.TimeRegime,
+			"temporal_group":      row.TemporalGroupID,
 		}
 		for kind, value := range groups {
 			key := kind + ":" + value
@@ -221,14 +226,23 @@ func ValidateCorpus(corpus Corpus) error {
 func validateRow(row Row) error {
 	for field, value := range map[string]string{
 		"row_id": row.RowID,
+		"schema_version": row.SchemaVersion,
+		"source_id": row.SourceID,
 		"application_id": row.ApplicationID,
 		"context_id": row.ContextID,
 		"candidate_set_id": row.CandidateSetID,
 		"collected_at": row.CollectedAt,
+		"temporal_group_id": row.TemporalGroupID,
 	} {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("%s is required", field)
 		}
+	}
+	if row.SchemaVersion != CorpusSchema {
+		return fmt.Errorf("schema_version %q must be %q", row.SchemaVersion, CorpusSchema)
+	}
+	if !sha256Revision.MatchString(row.SourceRevision) {
+		return fmt.Errorf("source_revision must be sha256:<64 lowercase hex>")
 	}
 	if !sha256Revision.MatchString(row.BaseModelRevision) {
 		return fmt.Errorf("base_model_revision must be sha256:<64 lowercase hex>")
