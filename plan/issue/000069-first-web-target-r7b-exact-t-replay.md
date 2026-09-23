@@ -8500,3 +8500,55 @@ trusted local full checkout
 ```
 
 No full-checkout PASS receipt has yet been observed, so canonical source integration remains blocked.
+
+#### B4 continuation — post-PASS qualification-tip integration fence — 2026-09-24
+
+The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `abcbb8b64d86a03e977ee5e560d5e60628506071` does not re-bind the remote qualification-branch tip after the potentially long health run.
+
+That distinction matters in this repository because several ChatGPT lanes can legitimately advance the existing `research/selective-knowledge-routing-r6` branch while another environment is performing local qualification.
+
+Therefore a PASS receipt authorizes only the exact revision named by:
+
+```text
+qualificationRepositoryRevision
+```
+
+and does **not** authorize "whatever the qualification branch points to later".
+
+Immediately before source integration, the operator must perform a fresh remote fetch and bind the merge target to the receipt revision:
+
+```bash
+git fetch origin --prune
+
+receipt_revision="<qualificationRepositoryRevision from PASS receipt>"
+remote_qualification_revision="$(
+  git rev-parse origin/research/selective-knowledge-routing-r6
+)"
+
+test "$remote_qualification_revision" = "$receipt_revision" || {
+  printf 'Qualification branch moved after qualification: receipt=%s remote=%s\n' \
+    "$receipt_revision" "$remote_qualification_revision" >&2
+  exit 1
+}
+```
+
+The same integration attempt must then re-read `origin/main` and confirm that any movement since the receipt's `baseMainAfter` is a forward-only change with **zero canonical-11 overlap**. If either the qualification branch or a canonical source path moved, the old receipt is stale and the current branch tip must be qualified again.
+
+When integration is performed through a pull request or API merge, the merge operation must also pin the expected PR head SHA to the same receipt revision. A concurrent B-lane update must therefore cause the merge to fail rather than silently integrating an unqualified tip.
+
+Final authority is consequently:
+
+```text
+PASS receipt revision
+  == current remote qualification tip
+  == expected merge head SHA
+
+AND
+
+current main movement since baseMainAfter
+  = forward-only
+  + zero canonical-11 overlap
+```
+
+This fence is an integration-time concurrency guard. It does not replace or weaken any checks inside `tools/run-first-web-target-r7b-local-qualification.sh`, and it does not authorize canonical source integration until a real trusted-local PASS receipt exists.
+
