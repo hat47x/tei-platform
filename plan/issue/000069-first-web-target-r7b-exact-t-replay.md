@@ -8799,3 +8799,41 @@ exact base main
 
 No full-checkout PASS receipt has yet been observed, so the canonical 11-path candidate remains unintegrated.
 
+
+#### B4 continuation — machine-checked integration receipt preflight — 2026-09-24
+
+The exact B revision / candidate tree / exact main requirements are now backed by a machine-checkable integration preflight rather than operator transcription alone.
+
+Added tools:
+
+```text
+tools/reference-first-web-target-r7b-qualification-receipt-audit
+tools/verify-first-web-target-r7b-integration-receipt.sh
+```
+
+The Go audit rejects unknown receipt fields and trailing JSON, then requires the receipt to match the current remote identities exactly:
+
+```text
+receipt.qualificationRepositoryRevision == current remote B4 tip
+receipt.qualificationRepositoryTree     == current remote B4 tip^{tree}
+receipt.baseMainBefore                  == current remote main
+receipt.baseMainAfter                   == current remote main
+receipt.mainMovedDuringQualification    == false
+receipt.repositoryHealthPassed          == true
+receipt.repositoryPostRunClean          == true
+receipt canonical path count / Go version / replay runner identity = canonical values
+```
+
+The shell preflight itself must run from an exact-clean local checkout whose HEAD equals current remote `main`; it rejects ignored residue and non-standard tracked index state before executing the audit. This prevents a locally modified verifier from authorizing integration.
+
+Usage after a trusted-local PASS receipt exists:
+
+```bash
+git switch main
+git pull --ff-only origin main
+
+bash tools/verify-first-web-target-r7b-integration-receipt.sh \
+  /tmp/tei-r7b-evidence/local-qualification.json
+```
+
+A PASS from this verifier still does not itself perform the merge. The actual API/PR merge must pin the expected head SHA to the verified qualification revision, and the merged main tree must then equal the receipt `qualificationRepositoryTree` before Packet M work proceeds.
