@@ -8398,8 +8398,12 @@ tools/run-first-web-target-r7b-local-qualification.sh
   blob = 2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8
   mode = 100755
 
-optional qualification receipt:
+optional for diagnostic qualification runs:
   TEI_R7B_QUALIFICATION_RECEIPT=<repository-external path>
+
+required for any qualification run intended to authorize canonical 11-path integration:
+  TEI_R7B_QUALIFICATION_RECEIPT must be set
+  the resulting PASS receipt is the revision-specific integration authority
   parent directory must already exist
   relative / .. forms are canonicalized before the repository-external check
   existing files and symlinks are rejected before qualification
@@ -8505,9 +8509,9 @@ No full-checkout PASS receipt has yet been observed, so canonical source integra
 
 #### B4 continuation — post-PASS qualification-tip integration fence — 2026-09-24
 
-The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `2d68e20a08614c3ce5b9f4a976804a1b8d97f9d8` does not re-bind the remote qualification-branch tip after the potentially long health run.
+The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins and re-checks the same remote qualification tip immediately after Repository health. It also re-fetches `main` and fail-closes on rewrite / canonical-path overlap.
 
-That distinction matters in this repository because several ChatGPT lanes can legitimately advance the existing `research/selective-knowledge-routing-r6` branch while another environment is performing local qualification.
+That closes qualification-branch movement during the helper run. A separate integration-time fence is still required because the branch can legitimately move **after** the helper exits and before the canonical source merge is executed.
 
 Therefore a PASS receipt authorizes only the exact revision named by:
 
@@ -8647,3 +8651,28 @@ Therefore qualification authority is revision-specific across both concurrency w
 
 No full-checkout PASS receipt has yet been observed, so canonical source integration remains blocked.
 
+
+
+#### B4 continuation — integration-authorizing receipt requirement — 2026-09-24
+
+The helper may still run without `TEI_R7B_QUALIFICATION_RECEIPT` for diagnostic purposes, but stdout-only PASS is not sufficient authority to integrate the canonical 11-path candidate.
+
+Any qualification run intended to authorize source integration must set a Repository-external receipt path and successfully publish the receipt. Integration authority is then bound to the exact receipt fields:
+
+```text
+qualificationRepositoryRevision
+baseMainAfter
+repositoryHealthPassed = true
+repositoryPostRunClean = true
+```
+
+Immediately before integration:
+
+```text
+current remote B tip == qualificationRepositoryRevision
+expected merge head   == qualificationRepositoryRevision
+current main movement since baseMainAfter = forward-only
+canonical-11 overlap since baseMainAfter   = zero
+```
+
+A helper run without a receipt may prove local diagnostics but must never be used to merge the canonical source candidate.
