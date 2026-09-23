@@ -44,7 +44,7 @@ if [[ -n "$receipt_path" ]]; then
   fi
 fi
 
-for command in git go bash awk sort diff grep mktemp; do
+for command in git go bash awk sort diff grep mktemp rm; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for local R7B qualification.\n' "$command" >&2
     exit 2
@@ -178,7 +178,7 @@ if [[ -n "$receipt_path" ]]; then
     printf 'Qualification receipt path appeared during qualification: %s\n' "$receipt_path" >&2
     exit 1
   fi
-  (
+  if ! (
     set -o noclobber
     cat >"$receipt_path" <<EOF
 {
@@ -195,7 +195,11 @@ if [[ -n "$receipt_path" ]]; then
   "repositoryPostRunClean": true
 }
 EOF
-  )
+  ); then
+    rm -f -- "$receipt_path" || true
+    printf 'Failed to write qualification receipt; any partial receipt was removed: %s\n' "$receipt_path" >&2
+    exit 1
+  fi
   receipt_post_head="$(git rev-parse HEAD)"
   receipt_post_status="$(git status --porcelain --untracked-files=all --ignored=matching)"
   receipt_post_nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
@@ -207,6 +211,9 @@ EOF
     fi
     if [[ -n "$receipt_post_nonstandard_index" ]]; then
       printf '%s\n' "$receipt_post_nonstandard_index" >&2
+    fi
+    if ! rm -f -- "$receipt_path"; then
+      printf 'Failed to remove invalid qualification receipt: %s\n' "$receipt_path" >&2
     fi
     exit 1
   fi
