@@ -9045,7 +9045,7 @@ The final canonical source integration now has a preparatory helper that constru
 ```text
 tools/prepare-first-web-target-r7b-exact-parent-merge.sh
   mode = 100755
-  blob = 35e999015425968de3c7b31370d1d6f539918d71
+  blob = 38ac9d764d28bec8eced4f427d3571401fe14a60
 ```
 
 The helper first runs `tools/verify-first-web-target-r7b-integration-receipt.sh` against the Repository-external PASS receipt. It then re-fetches remote state and derives:
@@ -9072,7 +9072,7 @@ Independent exact-byte and syntax checks:
 
 ```text
 git hash-object reconstructed helper
-  = 35e999015425968de3c7b31370d1d6f539918d71
+  = 38ac9d764d28bec8eced4f427d3571401fe14a60
 
 bash -n
   PASS
@@ -9123,3 +9123,24 @@ trusted-local full qualification PASS receipt
 ```
 
 No full-checkout PASS receipt has yet been observed, so the helper must not be used to publish the real canonical source packet yet.
+Current-blob revalidation after the dependency preflight was extended to include `tr`:
+
+```text
+helper blob
+  38ac9d764d28bec8eced4f427d3571401fe14a60
+
+git hash-object reconstructed helper
+  exact match
+
+bash -n
+  PASS
+
+synthetic exact-parent merge preparation
+  PASS
+
+remote refs unchanged after object preparation
+  PASS
+
+stale remote main
+  rejected with exit 1
+```
