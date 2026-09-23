@@ -8395,7 +8395,7 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = abcbb8b64d86a03e977ee5e560d5e60628506071
+  blob = ab516edd3e7ba3e2e92978844aeff60cceae7313
   mode = 100755
 
 optional qualification receipt:
@@ -8405,9 +8405,11 @@ optional qualification receipt:
   existing files and symlinks are rejected before qualification
   a receipt path that appears during qualification is rejected
   noclobber prevents replacement during receipt creation
+  same-directory temporary file + hard-link publication provides an atomic publish boundary
+  ln is a required preflight command for the atomic publish primitive
   partial receipt output is removed if receipt creation fails
   invalid receipt output is removed if the post-receipt exact-clean check fails
-  HEAD / worktree cleanliness is rechecked after receipt creation
+  HEAD / worktree cleanliness is rechecked after receipt publication
 ```
 
 It verifies branch/base ancestry, exact canonical path set, all canonical blob identities and modes, the required Go version, replay-runner shell syntax, full `tools/repository-health-check.sh`, unchanged HEAD/clean worktree, and post-run remote-main movement/overlap before reporting PASS.
@@ -8469,7 +8471,7 @@ Current helper:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = abcbb8b64d86a03e977ee5e560d5e60628506071
+  blob = ab516edd3e7ba3e2e92978844aeff60cceae7313
   mode = 100755
 ```
 
@@ -8486,7 +8488,7 @@ canonical 11 path-set drift
 canonical blob or mode drift
 ```
 
-The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. PR #882 additionally guarantees that failed receipt creation or a failed post-receipt exact-clean check cannot leave a PASS-looking receipt behind; partial or invalid receipt output is removed before failure is returned. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `abcbb8b64d86a03e977ee5e560d5e60628506071` and must not be treated as an additional operator step.
+The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. PR #882 additionally guarantees that failed receipt creation or a failed post-receipt exact-clean check cannot leave a PASS-looking receipt behind; partial or invalid receipt output is removed before failure is returned. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `ab516edd3e7ba3e2e92978844aeff60cceae7313` and must not be treated as an additional operator step.
 
 The integration authority remains unchanged:
 
@@ -8503,7 +8505,7 @@ No full-checkout PASS receipt has yet been observed, so canonical source integra
 
 #### B4 continuation — post-PASS qualification-tip integration fence — 2026-09-24
 
-The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `abcbb8b64d86a03e977ee5e560d5e60628506071` does not re-bind the remote qualification-branch tip after the potentially long health run.
+The local qualification helper validates that the local candidate HEAD equals the remote qualification-branch tip **before** Repository health begins. After Repository health it re-fetches remote state and fail-closes on `main` rewrite / canonical-path overlap, but helper blob `ab516edd3e7ba3e2e92978844aeff60cceae7313` does not re-bind the remote qualification-branch tip after the potentially long health run.
 
 That distinction matters in this repository because several ChatGPT lanes can legitimately advance the existing `research/selective-knowledge-routing-r6` branch while another environment is performing local qualification.
 
