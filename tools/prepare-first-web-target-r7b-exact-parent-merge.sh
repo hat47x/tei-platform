@@ -40,6 +40,15 @@ if [[ "$local_head" != "$main_revision" ]]; then
   exit 1
 fi
 
+# Re-bind the exact snapshot read by this preparation step to the trusted PASS
+# receipt. This closes the gap where the qualification branch could move after
+# the standalone preflight returned but before these refs were read.
+GOENV=off GOWORK=off GOFLAGS= go run ./tools/reference-first-web-target-r7b-qualification-receipt-audit \
+  -receipt "$receipt_path" \
+  -expected-candidate "$candidate_revision" \
+  -expected-tree "$candidate_tree" \
+  -expected-main "$main_revision"
+
 merge_message="r7b: integrate exact qualified source packet"
 merge_revision="$(printf '%s\n' "$merge_message" | git commit-tree "$candidate_tree" -p "$main_revision" -p "$candidate_revision")"
 
