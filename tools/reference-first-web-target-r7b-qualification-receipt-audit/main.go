@@ -25,6 +25,8 @@ type qualificationReceipt struct {
 	BaseMainAfter                   string `json:"baseMainAfter"`
 	MainMovedDuringQualification    bool   `json:"mainMovedDuringQualification"`
 	GoVersion                       string `json:"goVersion"`
+	GoOS                            string `json:"goOS"`
+	GoArch                          string `json:"goArch"`
 	CanonicalPathCount              int    `json:"canonicalPathCount"`
 	ReplayRunnerMode                string `json:"replayRunnerMode"`
 	ReplayRunnerBlob                string `json:"replayRunnerBlob"`
@@ -58,6 +60,7 @@ func main() {
 	fmt.Printf("  candidate: %s\n", receipt.QualificationRepositoryRevision)
 	fmt.Printf("  tree:      %s\n", receipt.QualificationRepositoryTree)
 	fmt.Printf("  main:      %s\n", receipt.BaseMainAfter)
+	fmt.Printf("  Go:        %s %s/%s\n", receipt.GoVersion, receipt.GoOS, receipt.GoArch)
 }
 
 func decodeReceipt(data []byte) (qualificationReceipt, error) {
@@ -104,6 +107,9 @@ func validateReceipt(receipt qualificationReceipt, expectedCandidate, expectedTr
 	}
 	if receipt.GoVersion != expectedGoVersion {
 		return fmt.Errorf("qualification receipt Go version=%q, want %q", receipt.GoVersion, expectedGoVersion)
+	}
+	if receipt.GoOS == "" || receipt.GoArch == "" {
+		return fmt.Errorf("qualification receipt must record non-empty goOS/goArch, got %q/%q", receipt.GoOS, receipt.GoArch)
 	}
 	if receipt.CanonicalPathCount != 11 {
 		return fmt.Errorf("qualification receipt canonicalPathCount=%d, want 11", receipt.CanonicalPathCount)
