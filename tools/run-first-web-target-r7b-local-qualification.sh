@@ -157,6 +157,13 @@ if [[ "$head_after" != "$head_before" || -n "$status_after" || -n "$nonstandard_
 fi
 
 git fetch "$remote" --prune
+remote_head_after="$(git rev-parse "$remote/$qualification_branch")"
+if [[ "$remote_head_after" != "$head_before" ]]; then
+  printf 'Qualification branch moved during local R7B qualification: before=%s after=%s\n' \
+    "$head_before" "$remote_head_after" >&2
+  exit 1
+fi
+
 base_after="$(git rev-parse "$remote/main")"
 main_moved=false
 if [[ "$base_after" != "$base_before" ]]; then
