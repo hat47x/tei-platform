@@ -8308,3 +8308,114 @@ canonical source integration       = blocked
 actual replay / repeatability      = pending
 remote-compute fallback            = paused by current operating policy
 ```
+
+#### B4 continuation — operator-confirmed monthly Actions exhaustion and hosted-runner pause — 2026-09-23
+
+The operator has now provided the account-side fact that was not observable through the GitHub connector during the earlier runner investigation:
+
+```text
+GitHub Actions monthly usage:
+  exceeded
+
+desired operating state:
+  stop GitHub Actions usage
+```
+
+This supersedes the earlier **current-cause uncertainty** for this operating period. The historical observations remain useful as provenance, but they must no longer be read as saying that the present blockage is still unexplained.
+
+Current cause / policy boundary:
+
+```text
+current monthly-usage exhaustion:
+  operator-confirmed
+
+GitHub-hosted Actions reruns / recovery probes:
+  stopped
+
+new hosted-runner diagnostic workflows:
+  stopped
+
+automatic hosted-runner consumption:
+  stopped
+
+active qualification path:
+  trusted local full checkout only
+
+resume condition:
+  monthly usage/budget state is reset
+  AND GitHub Actions use is explicitly resumed
+```
+
+Repository-side protection is already in place:
+
+```text
+remaining workflow:
+  .github/workflows/knowledge-portability-reference-evidence.yml
+
+trigger:
+  workflow_dispatch only
+
+job guard:
+  if: ${{ false }}
+
+pause integration:
+  PR #874
+```
+
+Therefore no further hosted-runner Evidence is required or desired while this pause is active. Issue #513 remains useful as the infrastructure/history record, but R7B qualification must not wait for another Actions probe.
+
+Current B4 source state at this checkpoint:
+
+```text
+main:
+  288db99d52ea2736b4750f2c5c6a951f0d91c886
+
+qualification branch:
+  research/selective-knowledge-routing-r6
+  d9bcfb73591f19ebf4d7eb38e64336a4c5b74fc6
+
+branch vs main:
+  ahead  = 3
+  behind = 0
+  net changed paths = canonical 11 source paths only
+
+Open PR:
+  0
+```
+
+The canonical 11 blob identities remain unchanged, and the replay runner remains:
+
+```text
+tools/run-first-web-target-r7b-replay.sh
+  blob = 2f55ec06f29bbca8f4a9e6ce04816bd311a8af03
+  mode = 100755
+```
+
+The local qualification entrypoint is:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = 5dc7b24865109c949c6bf704233f713bb651ce33
+  mode = 100755
+```
+
+It verifies branch/base ancestry, exact canonical path set, all canonical blob identities and modes, the required Go version, replay-runner shell syntax, full `tools/repository-health-check.sh`, unchanged HEAD/clean worktree, and post-run remote-main movement/overlap before reporting PASS.
+
+The remaining integration boundary is therefore deliberately narrow:
+
+```text
+trusted local full checkout
+  -> research/selective-knowledge-routing-r6
+  -> bash tools/run-first-web-target-r7b-local-qualification.sh
+  -> PASS
+  -> re-fetch / overlap check
+  -> merge the existing B4 lane to main
+  -> converge existing refs with force=false
+
+until PASS:
+  canonical 11-path source integration = blocked
+  actual replay / repeatability        = pending
+```
+
+No new qualification branch, remote-compute fallback, or Actions-based probe is authorized by this checkpoint.
+
