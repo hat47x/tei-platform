@@ -15,7 +15,7 @@ if [[ -z "$receipt_path" ]]; then
   printf 'Usage: %s <repository-external qualification receipt>\n' "$0" >&2
   exit 2
 fi
-for command in git go awk dirname basename; do
+for command in git go awk dirname basename tr; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for R7B exact-parent merge preparation.\n' "$command" >&2
     exit 2
