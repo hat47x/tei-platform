@@ -8893,3 +8893,51 @@ This focused PASS qualifies only the newly added receipt-audit package and integ
 
 No integration-authorizing full-checkout PASS receipt has yet been observed.
 
+
+#### B4 continuation — exact-parent source integration protocol — 2026-09-24
+
+The machine-checked receipt preflight fixes the candidate commit, candidate tree, and exact main revision, but an ordinary pull-request merge does not compare-and-swap the base branch SHA. Pinning only the PR head is therefore insufficient for the final canonical source integration.
+
+For this integration boundary, construct an explicit Git merge commit from the verified receipt:
+
+```text
+first parent  = receipt.baseMainAfter
+second parent = receipt.qualificationRepositoryRevision
+tree          = receipt.qualificationRepositoryTree
+```
+
+Before publishing it, audit the created merge object itself:
+
+```text
+merge.parents[0] == receipt.baseMainAfter
+merge.parents[1] == receipt.qualificationRepositoryRevision
+merge.tree       == receipt.qualificationRepositoryTree
+```
+
+Then update `main` to that merge commit with `force=false` only.
+
+This acts as the base-side compare-and-swap:
+
+```text
+if main is still receipt.baseMainAfter
+  -> the ref update is a valid fast-forward
+
+if main moved after receipt verification
+  -> the explicit merge commit does not contain the new main tip
+  -> force=false ref update is rejected
+  -> merge latest main into the existing B4 lane
+  -> rerun trusted-local qualification
+  -> publish a new receipt
+```
+
+Do not use a normal PR merge for the final canonical 11 source integration unless the mechanism independently pins the exact base main revision. `expected_head_sha` protects the candidate side only.
+
+After a successful main ref update, verify:
+
+```text
+main^{tree} == receipt.qualificationRepositoryTree
+```
+
+before Packet M or replay Evidence proceeds.
+
+If B4 has not moved since verification, converge `research/selective-knowledge-routing-r6` to the new main tip with a normal fast-forward (`force=false`). If another lane advanced B4 concurrently, leave that newer tip intact: the qualified revision was integrated exactly, while the newer B4 work remains unqualified and must follow the normal qualification cycle.
