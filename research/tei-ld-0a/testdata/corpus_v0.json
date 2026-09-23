@@ -1,0 +1,252 @@
+{
+  "schema": "tei.research.ld0a-proposal-corpus/v0",
+  "rows": [
+    {
+      "row_id": "row-accepted-unit-price",
+      "application_id": "app-sales",
+      "context_id": "field-unit-price",
+      "base_model_revision": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "candidate_set_id": "set-current",
+      "candidate_set_sha256": "sha256:4b2d3e7fc14d571011e19840b967833eeead83d298596bc247c9a33f13b5a5a1",
+      "candidate_set": [
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.UnitPrice",
+          "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "kind": "unknown_or_needs_new_concept"
+        },
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.Amount",
+          "canonical_revision": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "candidate": {
+        "kind": "canonical",
+        "canonical_id": "std.sales.UnitPrice",
+        "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "proposal_id": "proposal-001",
+      "collected_at": "2026-09-23T00:00:00Z",
+      "features": {
+        "source": {
+          "field_kind": "decimal",
+          "shape": "scalar",
+          "evidence_count": 2,
+          "relation_count": 1,
+          "revision_age_steps": 0
+        },
+        "candidate": {
+          "candidate_kind": "canonical",
+          "compatibility": "compatible",
+          "revision_compatibility": "current",
+          "evidence_available": true,
+          "reuse_count": 4
+        }
+      },
+      "outcome": {
+        "proposal_decision": "accepted",
+        "decision_provenance": "shared-acceptance:decision-001",
+        "staleness": "current_at_decision",
+        "post_accept_conformance": "pass",
+        "final_canonical_mapping": {
+          "canonical_id": "std.sales.UnitPrice",
+          "revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "split": {
+        "name": "train",
+        "application_pattern": "pattern-sales-v1",
+        "source_family": "source-price-v1",
+        "revision_lineage": "lineage-price-v1",
+        "proposal_episode": "episode-001",
+        "time_regime": "time-early"
+      }
+    },
+    {
+      "row_id": "row-rejected-amount",
+      "application_id": "app-sales",
+      "context_id": "field-unit-price",
+      "base_model_revision": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "candidate_set_id": "set-current",
+      "candidate_set_sha256": "sha256:4b2d3e7fc14d571011e19840b967833eeead83d298596bc247c9a33f13b5a5a1",
+      "candidate_set": [
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.UnitPrice",
+          "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "kind": "unknown_or_needs_new_concept"
+        },
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.Amount",
+          "canonical_revision": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "candidate": {
+        "kind": "canonical",
+        "canonical_id": "std.sales.Amount",
+        "canonical_revision": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "proposal_id": "proposal-001",
+      "collected_at": "2026-09-23T00:00:00Z",
+      "features": {
+        "source": {
+          "field_kind": "decimal",
+          "shape": "scalar",
+          "evidence_count": 2,
+          "relation_count": 1,
+          "revision_age_steps": 0
+        },
+        "candidate": {
+          "candidate_kind": "canonical",
+          "compatibility": "incompatible",
+          "revision_compatibility": "current",
+          "evidence_available": true,
+          "reuse_count": 8,
+          "incompatibility_reasons": [
+            "semantic-role-mismatch"
+          ]
+        }
+      },
+      "outcome": {
+        "proposal_decision": "rejected",
+        "decision_provenance": "shared-acceptance:decision-001",
+        "staleness": "current_at_decision",
+        "post_accept_conformance": "not_applicable"
+      },
+      "split": {
+        "name": "train",
+        "application_pattern": "pattern-sales-v1",
+        "source_family": "source-price-v1",
+        "revision_lineage": "lineage-price-v1",
+        "proposal_episode": "episode-001",
+        "time_regime": "time-early"
+      }
+    },
+    {
+      "row_id": "row-unknown",
+      "application_id": "app-sales",
+      "context_id": "field-unit-price",
+      "base_model_revision": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "candidate_set_id": "set-current",
+      "candidate_set_sha256": "sha256:4b2d3e7fc14d571011e19840b967833eeead83d298596bc247c9a33f13b5a5a1",
+      "candidate_set": [
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.UnitPrice",
+          "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "kind": "unknown_or_needs_new_concept"
+        },
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.Amount",
+          "canonical_revision": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "candidate": {
+        "kind": "unknown_or_needs_new_concept"
+      },
+      "collected_at": "2026-09-23T00:00:00Z",
+      "features": {
+        "source": {
+          "field_kind": "decimal",
+          "shape": "scalar",
+          "evidence_count": 2,
+          "relation_count": 1,
+          "revision_age_steps": 0
+        },
+        "candidate": {
+          "candidate_kind": "unknown_or_needs_new_concept",
+          "compatibility": "unknown",
+          "revision_compatibility": "unknown",
+          "evidence_available": false,
+          "reuse_count": 0
+        }
+      },
+      "outcome": {
+        "proposal_decision": "unknown_or_unresolved",
+        "staleness": "unknown",
+        "post_accept_conformance": "not_applicable"
+      },
+      "split": {
+        "name": "train",
+        "application_pattern": "pattern-sales-v1",
+        "source_family": "source-price-v1",
+        "revision_lineage": "lineage-price-v1",
+        "proposal_episode": "episode-001",
+        "time_regime": "time-early"
+      }
+    },
+    {
+      "row_id": "row-stale-accepted",
+      "application_id": "app-sales-v2",
+      "context_id": "field-unit-price-v2",
+      "base_model_revision": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "candidate_set_id": "set-stale",
+      "candidate_set_sha256": "sha256:4b2d3e7fc14d571011e19840b967833eeead83d298596bc247c9a33f13b5a5a1",
+      "candidate_set": [
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.UnitPrice",
+          "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "kind": "unknown_or_needs_new_concept"
+        },
+        {
+          "kind": "canonical",
+          "canonical_id": "std.sales.Amount",
+          "canonical_revision": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "candidate": {
+        "kind": "canonical",
+        "canonical_id": "std.sales.UnitPrice",
+        "canonical_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "proposal_id": "proposal-002",
+      "collected_at": "2026-09-23T01:00:00Z",
+      "features": {
+        "source": {
+          "field_kind": "decimal",
+          "shape": "scalar",
+          "evidence_count": 1,
+          "relation_count": 1,
+          "revision_age_steps": 2
+        },
+        "candidate": {
+          "candidate_kind": "canonical",
+          "compatibility": "compatible",
+          "revision_compatibility": "stale_or_incompatible",
+          "evidence_available": true,
+          "reuse_count": 4
+        }
+      },
+      "outcome": {
+        "proposal_decision": "accepted",
+        "decision_provenance": "shared-acceptance:decision-002",
+        "staleness": "stale_rebase_required",
+        "post_accept_conformance": "unavailable_not_run",
+        "final_canonical_mapping": {
+          "canonical_id": "std.sales.UnitPrice",
+          "revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "split": {
+        "name": "test",
+        "application_pattern": "pattern-sales-v2",
+        "source_family": "source-price-v2",
+        "revision_lineage": "lineage-price-v2",
+        "proposal_episode": "episode-002",
+        "time_regime": "time-late"
+      }
+    }
+  ]
+}
