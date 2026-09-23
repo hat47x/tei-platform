@@ -8837,3 +8837,59 @@ bash tools/verify-first-web-target-r7b-integration-receipt.sh \
 ```
 
 A PASS from this verifier still does not itself perform the merge. The actual API/PR merge must pin the expected head SHA to the verified qualification revision, and the merged main tree must then equal the receipt `qualificationRepositoryTree` before Packet M work proceeds.
+
+#### B4 continuation — integration receipt verifier local package qualification — 2026-09-24
+
+The integration-receipt verifier added around PR #890/#891 was independently reconstructed from the exact GitHub blobs and exercised outside a full repository checkout.
+
+Verified blobs:
+
+```text
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main.go
+  c702b7b4f768445e5b2706c6d5deeb3471018a0c
+
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main_test.go
+  ce8d2a8da6eeaac36cebd4893275bbd73594e018
+
+tools/verify-first-web-target-r7b-integration-receipt.sh
+  004d7be0f84824d2cadbb01a767bf30a75ed8ab4
+```
+
+The reconstruction was normalized with `gofmt` and then checked by `git hash-object`; the resulting hashes matched the GitHub blobs exactly.
+
+Environment:
+
+```text
+go version go1.23.2 linux/amd64
+```
+
+Focused verifier qualification:
+
+```text
+GO111MODULE=off go test -count=1
+  PASS
+
+GO111MODULE=off go vet
+  PASS
+
+bash -n tools/verify-first-web-target-r7b-integration-receipt.sh
+  PASS
+```
+
+The decoder test was also corrected so the unknown-field case is valid JSON and therefore actually exercises `DisallowUnknownFields`, rather than passing because the JSON itself is malformed. The test first round-trips a valid receipt through `json.Marshal` / `decodeReceipt` before exercising unknown-field and trailing-JSON rejection.
+
+The shell preflight now repeats exact-clean checks and re-fetches both remote identities after the Go audit:
+
+```text
+post local HEAD/status/index == preflight start state
+post-fetch origin/main       == preflight main revision
+post-fetch remote B tip      == preflight candidate revision
+post-fetch candidate tree    == preflight candidate tree
+```
+
+Any movement during receipt verification is fail-closed.
+
+This focused PASS qualifies only the newly added receipt-audit package and integration-preflight shell syntax/logic boundary. It is **not** a substitute for the mandatory trusted-local full-repository qualification of the canonical 11-path candidate.
+
+No integration-authorizing full-checkout PASS receipt has yet been observed.
+
