@@ -9246,3 +9246,61 @@ The moved-B failure was observed at the receipt-audit boundary with the candidat
 The standalone integration preflight remains required. The direct rebind is a second, narrower compare-and-swap-style check over the exact snapshot used by merge preparation; it does not replace trusted-local full Repository-health qualification.
 
 No integration-authorizing full-checkout PASS receipt has yet been observed.
+
+#### B4 continuation — exact-parent publication helper and active-lane cleanup guard — 2026-09-24
+
+The final non-force publication step is isolated behind a dedicated helper so operators do not manually transcribe the prepared merge SHA into a push command.
+
+```text
+tools/publish-first-web-target-r7b-exact-parent-merge.sh
+```
+
+The helper accepts the Repository-external qualification receipt and the prepared merge revision. It reruns the integration receipt verifier, refetches exact current `main` and B4 identities, rebinds the receipt to those identities, and audits the prepared merge object itself:
+
+```text
+merge parent[0] == current exact main == receipt.baseMainAfter
+merge parent[1] == current exact B4   == receipt.qualificationRepositoryRevision
+merge tree      == current B4 tree    == receipt.qualificationRepositoryTree
+```
+
+It repeats exact-clean checks, refetches main/B4/tree immediately before publication, and publishes only with a normal non-force push:
+
+```text
+git push <remote> <merge-revision>:refs/heads/main
+```
+
+If main or B4 moved, or the prepared object does not match the receipt, publication stops before the push.
+
+Synthetic bare-origin validation of the exact script bytes:
+
+```text
+bash -n
+  PASS
+
+positive exact-parent publication
+  remote main == prepared merge revision
+  PASS
+
+stale-main case
+  remote main advanced after merge preparation
+  publication rejected before push
+  exit 1
+```
+
+The helper is not integration authority by itself. It can only succeed with an integration-authorizing trusted-local PASS receipt and the exact prepared merge object.
+
+Cross-lane cleanup rule:
+
+```text
+R7B cleanup may move an unrelated branch to main only when:
+  ahead_by(main, branch) == 0
+  AND no open PR uses the branch as head
+
+otherwise:
+  preserve the branch as an active/independent lane
+  do not move, rewrite, or force-update it
+```
+
+Current protected independent lane: PR #895 head research/tei-ld-0a-corpus-v0 at 6ebb85485cdbfeedd097d841efbbb8f9aab75a5a.
+
+After a successful publication, update an exact-clean local main checkout to the published revision and run the existing post-merge verifier with the same receipt before Packet M / replay Evidence proceeds.
