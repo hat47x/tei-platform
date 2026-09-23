@@ -8395,7 +8395,7 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = 14e6960ca859ef26faf307edcbbb52ffdf0eac86
+  blob = 60bc4171524accb5882e409e1d28dafefd702452
   mode = 100755
 
 optional qualification receipt:
@@ -8459,30 +8459,42 @@ trusted local full checkout
 No new qualification branch, Actions retry, external-compute fallback, or synthetic substitute should be introduced while this boundary remains unresolved.
 
 
-#### B4 continuation — qualification checkout index-state preflight — 2026-09-23
+#### B4 continuation — qualification checkout exact-clean hardening — 2026-09-23
 
-The local qualification helper currently verifies clean status, exact canonical path identities/modes, unchanged HEAD, Repository health, and post-run main overlap. However, unlike the operational replay runner, it does not itself reject non-standard tracked index state such as skip-worktree / assume-unchanged entries.
+The previously identified qualification-checkout index-state gap has now been absorbed into the local qualification helper by PR #881.
 
-A clean `git status` alone is not sufficient evidence for this boundary because index flags can hide working-tree divergence from ordinary status inspection while repository commands still consume working-tree bytes.
-
-Until the helper is itself health-qualified with an equivalent fail-closed check, the trusted local full-checkout qualification sequence must include this mandatory preflight immediately before invoking the helper:
-
-```bash
-nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
-test -z "$nonstandard_index" || {
-  printf 'Repository has non-standard tracked index state:\n%s\n' "$nonstandard_index" >&2
-  exit 1
-}
-```
-
-Qualification authority therefore requires both:
+Current helper:
 
 ```text
-qualification checkout index-state preflight = PASS
-AND
-tools/run-first-web-target-r7b-local-qualification.sh = PASS
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = 60bc4171524accb5882e409e1d28dafefd702452
+  mode = 100755
 ```
 
-A helper receipt by itself does not supersede this preflight while the helper blob remains `14e6960ca859ef26faf307edcbbb52ffdf0eac86`.
+It now fail-closes on all of the following before Repository health:
 
-Do not patch the helper and merge that code without the same full Repository health gate. The helper may absorb this preflight in a later, properly health-qualified change; until then the manual preflight is the canonical fail-closed boundary.
+```text
+tracked / untracked / ignored worktree residue
+non-standard tracked index state (including skip-worktree / assume-unchanged forms)
+wrong qualification branch
+local tip != remote qualification tip
+current remote main not ancestor of qualification HEAD
+wrong Go version
+canonical 11 path-set drift
+canonical blob or mode drift
+```
+
+The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `60bc4171524accb5882e409e1d28dafefd702452` and must not be treated as an additional operator step.
+
+The integration authority remains unchanged:
+
+```text
+trusted local full checkout
+  -> current research/selective-knowledge-routing-r6 tip
+  -> tools/run-first-web-target-r7b-local-qualification.sh
+  -> PASS on exact candidate revision
+  -> latest-main / canonical-overlap recheck
+  -> only then integrate the existing R7B lane into main
+```
+
+No full-checkout PASS receipt has yet been observed, so canonical source integration remains blocked.
