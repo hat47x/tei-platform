@@ -92,6 +92,14 @@ func TestValidateReceiptRejectsContractDrift(t *testing.T) {
 }
 
 func TestDecodeReceiptRejectsUnknownOrTrailingJSON(t *testing.T) {
+	valid, err := json.Marshal(validReceipt())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeReceipt(valid); err != nil {
+		t.Fatalf("rejected valid qualification receipt JSON: %v", err)
+	}
+
 	unknown := `{"evidenceNature":"first-web-target-r7b-local-source-qualification-receipt","unknown":true}`
 	if _, err := decodeReceipt([]byte(unknown)); err == nil {
 		t.Fatal("accepted unknown receipt field")
