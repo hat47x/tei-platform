@@ -67,15 +67,42 @@ func TestSyntheticFixtureAndDerivedViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(escalation) != 2 {
+		t.Fatalf("escalation cases=%d want=2: %+v", len(escalation), escalation)
+	}
 	got := map[string]bool{}
 	for _, item := range escalation {
-		got[item.RowID] = item.Escalate
+		got[item.ContextID] = item.Escalate
 	}
-	if got["row-accepted-unit-price"] ||
-		got["row-rejected-amount"] ||
-		!got["row-unknown"] ||
-		!got["row-stale-accepted"] {
+	if got["field-unit-price"] || !got["field-unit-price-v2"] {
 		t.Fatalf("unexpected escalation view: %+v", got)
+	}
+}
+
+func TestEscalationIsDecisionContextLevel(t *testing.T) {
+	corpus := loadFixture(t)
+	currentOnly := Corpus{
+		Schema: corpus.Schema,
+		Rows:   append([]Row(nil), corpus.Rows[:3]...),
+	}
+	escalation, err := BuildEscalationView(currentOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(escalation) != 1 || escalation[0].Escalate {
+		t.Fatalf("accepted current context must not escalate because an explicit unknown candidate exists: %+v", escalation)
+	}
+
+	unknownOnly := Corpus{
+		Schema: corpus.Schema,
+		Rows:   []Row{corpus.Rows[2]},
+	}
+	escalation, err = BuildEscalationView(unknownOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(escalation) != 1 || !escalation[0].Escalate {
+		t.Fatalf("unresolved context without a current accepted mapping must escalate: %+v", escalation)
 	}
 }
 

@@ -144,8 +144,14 @@ type IncompatibilityExample struct {
 }
 
 type EscalationExample struct {
-	RowID    string `json:"row_id"`
-	Escalate bool   `json:"escalate"`
+	SourceID          string `json:"source_id"`
+	SourceRevision    string `json:"source_revision"`
+	ApplicationID     string `json:"application_id"`
+	ContextID         string `json:"context_id"`
+	BaseModelRevision string `json:"base_model_revision"`
+	ProposalEpisode   string `json:"proposal_episode"`
+	CandidateSetID    string `json:"candidate_set_id"`
+	Escalate          bool   `json:"escalate"`
 }
 
 func DecodeCorpus(data []byte) (Corpus, error) {
@@ -587,12 +593,44 @@ func BuildEscalationView(corpus Corpus) ([]EscalationExample, error) {
 	if err := ValidateCorpus(corpus); err != nil {
 		return nil, err
 	}
-	out := make([]EscalationExample, 0, len(corpus.Rows))
+	grouped := map[string][]Row{}
 	for _, row := range corpus.Rows {
-		escalate := row.Candidate.Kind == CandidateKindUnknown ||
-			row.Outcome.ProposalDecision == DecisionUnknown ||
-			row.Outcome.Staleness == StalenessStale
-		out = append(out, EscalationExample{RowID: row.RowID, Escalate: escalate})
+		key := decisionContextKey(row)
+		grouped[key] = append(grouped[key], row)
+	}
+	keys := make([]string, 0, len(grouped))
+	for key := range grouped {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	out := make([]EscalationExample, 0, len(keys))
+	for _, key := range keys {
+		rows := grouped[key]
+		acceptedCurrent := false
+		stale := false
+		for _, row := range rows {
+			if row.Outcome.Staleness == StalenessStale {
+				stale = true
+			}
+			if row.Outcome.ProposalDecision == DecisionAccepted &&
+				row.Outcome.Staleness == StalenessCurrent &&
+				row.Outcome.FinalCanonicalMapping != nil &&
+				canonicalRefInSet(*row.Outcome.FinalCanonicalMapping, row.CandidateSet) {
+				acceptedCurrent = true
+			}
+		}
+		first := rows[0]
+		out = append(out, EscalationExample{
+			SourceID:          first.SourceID,
+			SourceRevision:    first.SourceRevision,
+			ApplicationID:     first.ApplicationID,
+			ContextID:         first.ContextID,
+			BaseModelRevision: first.BaseModelRevision,
+			ProposalEpisode:   first.Split.ProposalEpisode,
+			CandidateSetID:    first.CandidateSetID,
+			Escalate:          stale || !acceptedCurrent,
+		})
 	}
 	return out, nil
 }
