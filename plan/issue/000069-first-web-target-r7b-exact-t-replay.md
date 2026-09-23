@@ -8395,7 +8395,7 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = 60bc4171524accb5882e409e1d28dafefd702452
+  blob = abcbb8b64d86a03e977ee5e560d5e60628506071
   mode = 100755
 
 optional qualification receipt:
@@ -8405,6 +8405,8 @@ optional qualification receipt:
   existing files and symlinks are rejected before qualification
   a receipt path that appears during qualification is rejected
   noclobber prevents replacement during receipt creation
+  partial receipt output is removed if receipt creation fails
+  invalid receipt output is removed if the post-receipt exact-clean check fails
   HEAD / worktree cleanliness is rechecked after receipt creation
 ```
 
@@ -8467,7 +8469,7 @@ Current helper:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = 60bc4171524accb5882e409e1d28dafefd702452
+  blob = abcbb8b64d86a03e977ee5e560d5e60628506071
   mode = 100755
 ```
 
@@ -8484,7 +8486,7 @@ canonical 11 path-set drift
 canonical blob or mode drift
 ```
 
-The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `60bc4171524accb5882e409e1d28dafefd702452` and must not be treated as an additional operator step.
+The same exact-clean conditions are rechecked after Repository health and again after optional qualification receipt creation. PR #882 additionally guarantees that failed receipt creation or a failed post-receipt exact-clean check cannot leave a PASS-looking receipt behind; partial or invalid receipt output is removed before failure is returned. Therefore the separate manual index-state preflight introduced in the immediately preceding checkpoint is superseded by helper blob `abcbb8b64d86a03e977ee5e560d5e60628506071` and must not be treated as an additional operator step.
 
 The integration authority remains unchanged:
 
