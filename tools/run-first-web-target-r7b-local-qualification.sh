@@ -25,6 +25,13 @@ fi
 receipt_path="${TEI_R7B_QUALIFICATION_RECEIPT:-}"
 
 if [[ -n "$receipt_path" ]]; then
+  receipt_parent="$(dirname -- "$receipt_path")"
+  receipt_name="$(basename -- "$receipt_path")"
+  if ! receipt_dir="$(cd "$receipt_parent" 2>/dev/null && pwd -P)"; then
+    printf 'Qualification receipt directory must already exist: %s\n' "$receipt_parent" >&2
+    exit 2
+  fi
+  receipt_path="$receipt_dir/$receipt_name"
   case "$receipt_path" in
     "$repo_root"|"$repo_root"/*)
       printf 'Qualification receipt must remain outside the repository: %s\n' "$receipt_path" >&2
@@ -35,9 +42,6 @@ if [[ -n "$receipt_path" ]]; then
     printf 'Qualification receipt already exists: %s\n' "$receipt_path" >&2
     exit 2
   fi
-  mkdir -p "$(dirname "$receipt_path")"
-  receipt_dir="$(cd "$(dirname "$receipt_path")" && pwd -P)"
-  receipt_path="$receipt_dir/$(basename "$receipt_path")"
 fi
 
 for command in git go bash awk sort diff grep mktemp; do
