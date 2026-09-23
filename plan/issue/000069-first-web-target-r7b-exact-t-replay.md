@@ -9144,3 +9144,52 @@ remote refs unchanged after object preparation
 stale remote main
   rejected with exit 1
 ```
+#### B4 continuation — qualification platform provenance and current-helper supersession — 2026-09-24
+
+The Repository-external PASS receipt now records the Go execution platform in addition to the already pinned Go version:
+
+```text
+goVersion = go env GOVERSION
+goOS      = go env GOOS
+goArch    = go env GOARCH
+```
+
+Current local qualification helper:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = babc0f80edeaee67a59c0bf8ddcccfec7083fad9
+  mode = 100755
+```
+
+Current receipt-audit package blobs:
+
+```text
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main.go
+  e2046453a64c5aeb9d9cd463a60d8d1beb716cee
+
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main_test.go
+  678a5e0c7583c68b026c3e4424c63f29a7b40806
+```
+
+The receipt audit requires `goOS` and `goArch` to be non-empty provenance. It does **not** constrain trusted local qualification to one operating system or architecture; `goVersion` remains the pinned execution-version requirement, while GOOS/GOARCH record the environment in which Repository health passed.
+
+Focused exact-blob validation of the receipt-audit package:
+
+```text
+gofmt + git hash-object
+  main.go      = e2046453a64c5aeb9d9cd463a60d8d1beb716cee
+  main_test.go = 678a5e0c7583c68b026c3e4424c63f29a7b40806
+
+GO111MODULE=off go test -count=1
+  PASS
+
+GO111MODULE=off go vet
+  PASS
+```
+
+The producer-side shell delta is limited to reading `GOOS` / `GOARCH`, writing those two JSON fields into the external receipt, and printing the platform in the final diagnostic. The previously qualified exact-clean, branch-tip, main-revision, canonical-path, and atomic-receipt publication gates remain unchanged.
+
+Earlier sections that label older helper blobs as "Current helper" are historical checkpoints. For all new qualification runs after this checkpoint, `babc0f80edeaee67a59c0bf8ddcccfec7083fad9` is the current helper identity.
+
+This support change does not authorize canonical source integration. A real trusted-local full Repository-health PASS receipt for the exact current B4 tip and exact current main revision is still mandatory.
