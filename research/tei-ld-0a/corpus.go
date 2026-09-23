@@ -127,9 +127,15 @@ type SplitIdentity struct {
 }
 
 type ReuseRankingCase struct {
-	CandidateSetID       string   `json:"candidate_set_id"`
-	PositiveCanonicalID  string   `json:"positive_canonical_id"`
-	NegativeCanonicalIDs []string `json:"negative_canonical_ids"`
+	SourceID           string         `json:"source_id"`
+	SourceRevision     string         `json:"source_revision"`
+	ApplicationID      string         `json:"application_id"`
+	ContextID          string         `json:"context_id"`
+	BaseModelRevision  string         `json:"base_model_revision"`
+	ProposalEpisode    string         `json:"proposal_episode"`
+	CandidateSetID     string         `json:"candidate_set_id"`
+	PositiveCandidate  CanonicalRef   `json:"positive_candidate"`
+	NegativeCandidates []CanonicalRef `json:"negative_candidates"`
 }
 
 type IncompatibilityExample struct {
@@ -205,10 +211,11 @@ func ValidateCorpus(corpus Corpus) error {
 		setIdentity[row.CandidateSetID] = row.CandidateSetSHA256
 
 		if row.Outcome.ProposalDecision == DecisionAccepted {
-			if previous, ok := setAccepted[row.CandidateSetID]; ok && previous != candidateKey(row.Candidate) {
-				return fmt.Errorf("candidate set %q has multiple accepted candidates", row.CandidateSetID)
+			contextKey := decisionContextKey(row)
+			if previous, ok := setAccepted[contextKey]; ok && previous != candidateKey(row.Candidate) {
+				return fmt.Errorf("decision context %q has multiple accepted candidates", contextKey)
 			}
-			setAccepted[row.CandidateSetID] = candidateKey(row.Candidate)
+			setAccepted[contextKey] = candidateKey(row.Candidate)
 		}
 
 		groups := map[string]string{
@@ -446,13 +453,40 @@ func candidateInSet(candidate CandidateRef, members []CandidateRef) bool {
 	return false
 }
 
+func decisionContextKey(row Row) string {
+	return strings.Join([]string{
+		row.SourceID,
+		row.SourceRevision,
+		row.ApplicationID,
+		row.ContextID,
+		row.BaseModelRevision,
+		row.CandidateSetID,
+		row.Split.ProposalEpisode,
+	}, "\x1f")
+}
+
+func canonicalRefKey(ref CanonicalRef) string {
+	return CandidateKindCanonical + ":" + ref.CanonicalID + "@" + ref.Revision
+}
+
+func canonicalRefInSet(ref CanonicalRef, members []CandidateRef) bool {
+	want := canonicalRefKey(ref)
+	for _, member := range members {
+		if member.Kind == CandidateKindCanonical && candidateKey(member) == want {
+			return true
+		}
+	}
+	return false
+}
+
 func BuildReuseRankingView(corpus Corpus) ([]ReuseRankingCase, error) {
 	if err := ValidateCorpus(corpus); err != nil {
 		return nil, err
 	}
 	grouped := map[string][]Row{}
 	for _, row := range corpus.Rows {
-		grouped[row.CandidateSetID] = append(grouped[row.CandidateSetID], row)
+		key := decisionContextKey(row)
+		grouped[key] = append(grouped[key], row)
 	}
 	keys := make([]string, 0, len(grouped))
 	for key := range grouped {
@@ -461,47 +495,70 @@ func BuildReuseRankingView(corpus Corpus) ([]ReuseRankingCase, error) {
 	sort.Strings(keys)
 
 	out := []ReuseRankingCase{}
-	for _, setID := range keys {
-		rows := grouped[setID]
-		positive := ""
-		memberIDs := map[string]bool{}
-		for _, member := range rows[0].CandidateSet {
-			if member.Kind == CandidateKindCanonical {
-				memberIDs[member.CanonicalID] = true
-			}
-		}
+	for _, key := range keys {
+		rows := grouped[key]
+		var positive CanonicalRef
+		positiveKey := ""
 		for _, row := range rows {
 			if row.Outcome.ProposalDecision != DecisionAccepted ||
 				row.Outcome.Staleness != StalenessCurrent ||
 				row.Outcome.FinalCanonicalMapping == nil {
 				continue
 			}
-			if memberIDs[row.Outcome.FinalCanonicalMapping.CanonicalID] {
-				positive = row.Outcome.FinalCanonicalMapping.CanonicalID
+			mapping := *row.Outcome.FinalCanonicalMapping
+			if !canonicalRefInSet(mapping, row.CandidateSet) {
+				continue
 			}
+			mappingKey := canonicalRefKey(mapping)
+			if positiveKey != "" && positiveKey != mappingKey {
+				return nil, fmt.Errorf("decision context %q has multiple final canonical mappings", key)
+			}
+			positive = mapping
+			positiveKey = mappingKey
 		}
-		if positive == "" {
+		if positiveKey == "" {
 			continue
 		}
-		negativeSet := map[string]bool{}
+
+		negativeSet := map[string]CanonicalRef{}
 		for _, row := range rows {
-			if row.Candidate.Kind != CandidateKindCanonical || row.Candidate.CanonicalID == positive {
+			if row.Candidate.Kind != CandidateKindCanonical {
+				continue
+			}
+			candidateRef := CanonicalRef{
+				CanonicalID: row.Candidate.CanonicalID,
+				Revision:    row.Candidate.CanonicalRevision,
+			}
+			candidateRefKey := canonicalRefKey(candidateRef)
+			if candidateRefKey == positiveKey {
 				continue
 			}
 			if row.Outcome.ProposalDecision == DecisionRejected ||
 				row.Features.Candidate.Compatibility == CompatibilityIncompatible {
-				negativeSet[row.Candidate.CanonicalID] = true
+				negativeSet[candidateRefKey] = candidateRef
 			}
 		}
-		negatives := make([]string, 0, len(negativeSet))
-		for id := range negativeSet {
-			negatives = append(negatives, id)
+		negativeKeys := make([]string, 0, len(negativeSet))
+		for negativeKey := range negativeSet {
+			negativeKeys = append(negativeKeys, negativeKey)
 		}
-		sort.Strings(negatives)
+		sort.Strings(negativeKeys)
+		negatives := make([]CanonicalRef, 0, len(negativeKeys))
+		for _, negativeKey := range negativeKeys {
+			negatives = append(negatives, negativeSet[negativeKey])
+		}
+
+		first := rows[0]
 		out = append(out, ReuseRankingCase{
-			CandidateSetID:       setID,
-			PositiveCanonicalID:  positive,
-			NegativeCanonicalIDs: negatives,
+			SourceID:           first.SourceID,
+			SourceRevision:     first.SourceRevision,
+			ApplicationID:      first.ApplicationID,
+			ContextID:          first.ContextID,
+			BaseModelRevision:  first.BaseModelRevision,
+			ProposalEpisode:    first.Split.ProposalEpisode,
+			CandidateSetID:     first.CandidateSetID,
+			PositiveCandidate:  positive,
+			NegativeCandidates: negatives,
 		})
 	}
 	return out, nil

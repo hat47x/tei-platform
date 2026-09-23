@@ -35,11 +35,14 @@ func TestSyntheticFixtureAndDerivedViews(t *testing.T) {
 		t.Fatalf("ranking cases=%d want=1: %+v", len(ranking), ranking)
 	}
 	if ranking[0].CandidateSetID != "set-current" ||
-		ranking[0].PositiveCanonicalID != "std.sales.UnitPrice" {
+		ranking[0].ContextID != "field-unit-price" ||
+		ranking[0].PositiveCandidate.CanonicalID != "std.sales.UnitPrice" ||
+		ranking[0].PositiveCandidate.Revision != "sha256:"+strings.Repeat("2", 64) {
 		t.Fatalf("unexpected ranking case: %+v", ranking[0])
 	}
-	if len(ranking[0].NegativeCanonicalIDs) != 1 ||
-		ranking[0].NegativeCanonicalIDs[0] != "std.sales.Amount" {
+	if len(ranking[0].NegativeCandidates) != 1 ||
+		ranking[0].NegativeCandidates[0].CanonicalID != "std.sales.Amount" ||
+		ranking[0].NegativeCandidates[0].Revision != "sha256:"+strings.Repeat("3", 64) {
 		t.Fatalf("unknown/unresolved must not be forced negative: %+v", ranking[0])
 	}
 
@@ -73,6 +76,88 @@ func TestSyntheticFixtureAndDerivedViews(t *testing.T) {
 		!got["row-unknown"] ||
 		!got["row-stale-accepted"] {
 		t.Fatalf("unexpected escalation view: %+v", got)
+	}
+}
+
+func TestReuseRankingSeparatesDecisionContextsSharingCandidateSet(t *testing.T) {
+	corpus := loadFixture(t)
+
+	accepted := corpus.Rows[1]
+	accepted.RowID = "row-context-two-accepted-amount"
+	accepted.SourceID = "source.sales.order.amount"
+	accepted.SourceRevision = "sha256:" + strings.Repeat("6", 64)
+	accepted.ApplicationID = "app-sales-context-two"
+	accepted.ContextID = "field-amount"
+	accepted.ProposalID = "proposal-003"
+	accepted.TemporalGroupID = "temporal-sales-amount-early-003"
+	accepted.Split.ApplicationPattern = "pattern-sales-context-two"
+	accepted.Split.SourceFamily = "source-amount-v1"
+	accepted.Split.RevisionLineage = "lineage-amount-v1"
+	accepted.Split.ProposalEpisode = "episode-003"
+	accepted.Outcome.ProposalDecision = DecisionAccepted
+	accepted.Outcome.DecisionProvenance = "shared-acceptance:decision-003"
+	accepted.Outcome.Staleness = StalenessCurrent
+	accepted.Outcome.PostAcceptConformance = ConformancePass
+	accepted.Outcome.FinalCanonicalMapping = &CanonicalRef{
+		CanonicalID: accepted.Candidate.CanonicalID,
+		Revision:    accepted.Candidate.CanonicalRevision,
+	}
+	accepted.Features.Candidate.Compatibility = CompatibilityCompatible
+	accepted.Features.Candidate.IncompatibilityReasons = nil
+
+	rejected := corpus.Rows[0]
+	rejected.RowID = "row-context-two-rejected-unit-price"
+	rejected.SourceID = accepted.SourceID
+	rejected.SourceRevision = accepted.SourceRevision
+	rejected.ApplicationID = accepted.ApplicationID
+	rejected.ContextID = accepted.ContextID
+	rejected.ProposalID = accepted.ProposalID
+	rejected.TemporalGroupID = accepted.TemporalGroupID
+	rejected.Split = accepted.Split
+	rejected.Outcome.ProposalDecision = DecisionRejected
+	rejected.Outcome.DecisionProvenance = accepted.Outcome.DecisionProvenance
+	rejected.Outcome.Staleness = StalenessCurrent
+	rejected.Outcome.PostAcceptConformance = ConformanceNA
+	rejected.Outcome.FinalCanonicalMapping = nil
+	rejected.Features.Candidate.Compatibility = CompatibilityIncompatible
+	rejected.Features.Candidate.IncompatibilityReasons = []string{"semantic-role-mismatch"}
+
+	corpus.Rows = append(corpus.Rows, accepted, rejected)
+	ranking, err := BuildReuseRankingView(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ranking) != 2 {
+		t.Fatalf("ranking cases=%d want=2: %+v", len(ranking), ranking)
+	}
+	got := map[string]ReuseRankingCase{}
+	for _, item := range ranking {
+		got[item.ContextID] = item
+	}
+	second, ok := got["field-amount"]
+	if !ok {
+		t.Fatalf("missing second decision context: %+v", ranking)
+	}
+	if second.PositiveCandidate.CanonicalID != "std.sales.Amount" ||
+		second.PositiveCandidate.Revision != "sha256:"+strings.Repeat("3", 64) {
+		t.Fatalf("unexpected second-context positive: %+v", second)
+	}
+	if len(second.NegativeCandidates) != 1 ||
+		second.NegativeCandidates[0].CanonicalID != "std.sales.UnitPrice" ||
+		second.NegativeCandidates[0].Revision != "sha256:"+strings.Repeat("2", 64) {
+		t.Fatalf("unexpected second-context negatives: %+v", second)
+	}
+}
+
+func TestReuseRankingRequiresExactCandidateRevision(t *testing.T) {
+	corpus := loadFixture(t)
+	corpus.Rows[0].Outcome.FinalCanonicalMapping.Revision = "sha256:" + strings.Repeat("9", 64)
+	ranking, err := BuildReuseRankingView(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ranking) != 0 {
+		t.Fatalf("mapping to a revision outside the candidate set must not become a ranking positive: %+v", ranking)
 	}
 }
 
