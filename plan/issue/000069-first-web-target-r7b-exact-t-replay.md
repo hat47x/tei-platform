@@ -8698,7 +8698,7 @@ Current qualification helper:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = fa4203c2a7dc1ce506c063fdba0e543d0379a4b4
+  blob = 4fb4d84147669ad7d7700999b370ba3a2f72f7b5
   mode = 100755
 ```
 
@@ -8740,3 +8740,62 @@ This makes the PASS receipt a two-revision lock:
 ```
 
 and ensures that the repository-wide health result applies to the exact integration tree.
+
+#### B4 continuation — qualified candidate tree binding — 2026-09-24
+
+The integration-authorizing PASS receipt now records the exact Git tree that Repository health qualified:
+
+```text
+qualificationRepositoryRevision = candidate commit
+qualificationRepositoryTree     = candidate commit^{tree}
+baseMainAfter                   = exact main revision
+```
+
+Current helper:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = 4fb4d84147669ad7d7700999b370ba3a2f72f7b5
+  mode = 100755
+```
+
+The helper derives the tree directly from the already-bound candidate HEAD:
+
+```bash
+head_before="$(git rev-parse HEAD)"
+tree_before="$(git rev-parse HEAD^{tree})"
+```
+
+and publishes both values in the Repository-external PASS receipt.
+
+This closes a separate integration Evidence gap. The source merge normally creates a new merge commit on `main`; its commit SHA is therefore expected to differ from the qualified B4 revision even though the resulting repository tree must be identical to the health-qualified candidate tree.
+
+For the canonical source integration, the merge method must preserve the qualified candidate tree. Immediately after the merge, verify:
+
+```text
+merged main tree
+  == receipt.qualificationRepositoryTree
+```
+
+while the pre-merge fence still requires:
+
+```text
+current remote B tip == receipt.qualificationRepositoryRevision
+current main         == receipt.baseMainAfter
+expected merge head  == receipt.qualificationRepositoryRevision
+```
+
+If the merge result tree differs from `qualificationRepositoryTree`, the integration result is not the tree that passed Repository health. Do not proceed to Packet M / actual replay Evidence; stop and reconcile.
+
+This post-merge tree check complements, rather than replaces, the exact-main and exact-B revision locks. Together they bind qualification authority across:
+
+```text
+exact base main
+  + exact candidate commit
+  + exact candidate tree
+  + exact merge head
+  + exact merged tree
+```
+
+No full-checkout PASS receipt has yet been observed, so the canonical 11-path candidate remains unintegrated.
+
