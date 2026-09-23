@@ -18,6 +18,8 @@ func validReceipt() qualificationReceipt {
 		BaseMainAfter:                   main,
 		MainMovedDuringQualification:    false,
 		GoVersion:                       expectedGoVersion,
+		GoOS:                            "linux",
+		GoArch:                          "amd64",
 		CanonicalPathCount:              11,
 		ReplayRunnerMode:                expectedRunnerMode,
 		ReplayRunnerBlob:                expectedRunnerBlob,
@@ -88,6 +90,16 @@ func TestValidateReceiptRejectsContractDrift(t *testing.T) {
 	goVersion.GoVersion = "go0.0.0"
 	if err := validateReceipt(goVersion, goVersion.QualificationRepositoryRevision, goVersion.QualificationRepositoryTree, goVersion.BaseMainAfter); err == nil {
 		t.Fatal("accepted receipt with Go version drift")
+	}
+	goOS := validReceipt()
+	goOS.GoOS = ""
+	if err := validateReceipt(goOS, goOS.QualificationRepositoryRevision, goOS.QualificationRepositoryTree, goOS.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt without GOOS provenance")
+	}
+	goArch := validReceipt()
+	goArch.GoArch = ""
+	if err := validateReceipt(goArch, goArch.QualificationRepositoryRevision, goArch.QualificationRepositoryTree, goArch.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt without GOARCH provenance")
 	}
 }
 
