@@ -9045,7 +9045,7 @@ The final canonical source integration now has a preparatory helper that constru
 ```text
 tools/prepare-first-web-target-r7b-exact-parent-merge.sh
   mode = 100755
-  blob = 38ac9d764d28bec8eced4f427d3571401fe14a60
+  blob = 13118b68520afcabe56227233d289e8628c1b51f
 ```
 
 The helper first runs `tools/verify-first-web-target-r7b-integration-receipt.sh` against the Repository-external PASS receipt. It then re-fetches remote state and derives:
@@ -9072,7 +9072,7 @@ Independent exact-byte and syntax checks:
 
 ```text
 git hash-object reconstructed helper
-  = 38ac9d764d28bec8eced4f427d3571401fe14a60
+  = 13118b68520afcabe56227233d289e8628c1b51f
 
 bash -n
   PASS
@@ -9127,7 +9127,7 @@ Current-blob revalidation after the dependency preflight was extended to include
 
 ```text
 helper blob
-  38ac9d764d28bec8eced4f427d3571401fe14a60
+  13118b68520afcabe56227233d289e8628c1b51f
 
 git hash-object reconstructed helper
   exact match
@@ -9193,3 +9193,56 @@ The producer-side shell delta is limited to reading `GOOS` / `GOARCH`, writing t
 Earlier sections that label older helper blobs as "Current helper" are historical checkpoints. For all new qualification runs after this checkpoint, `babc0f80edeaee67a59c0bf8ddcccfec7083fad9` is the current helper identity.
 
 This support change does not authorize canonical source integration. A real trusted-local full Repository-health PASS receipt for the exact current B4 tip and exact current main revision is still mandatory.
+#### B4 continuation — merge-preparation snapshot rebind to trusted receipt — 2026-09-24
+
+The exact-parent merge preparer now closes the interval between the standalone integration preflight and the preparer's own ref snapshot.
+
+Current preparer:
+
+```text
+tools/prepare-first-web-target-r7b-exact-parent-merge.sh
+  blob = 13118b68520afcabe56227233d289e8628c1b51f
+  mode = 100755
+```
+
+After the preparer fetches current remote state and derives `main_revision`, `candidate_revision`, and `candidate_tree`, it runs the strict receipt audit **again** against those exact values before `git commit-tree`:
+
+```text
+receipt candidate == preparer candidate revision
+receipt tree      == preparer candidate tree
+receipt main      == preparer exact main
+```
+
+This prevents a stale receipt from authorizing a B4 revision that moved after the standalone preflight returned but before merge-object construction began.
+
+Current-blob exact validation:
+
+```text
+git hash-object reconstructed preparer
+  = 13118b68520afcabe56227233d289e8628c1b51f
+
+bash -n
+  PASS
+```
+
+A synthetic bare-origin repository then exercised this new race boundary with the real receipt-audit package:
+
+```text
+matching receipt + current main/B/tree
+  -> receipt audit PASS
+  -> exact-parent merge object prepared
+  -> parents/tree exact
+  -> PASS
+
+move only remote B after receipt creation
+  -> preparer fetches new B tip
+  -> direct receipt rebind compares old receipt to new B tip
+  -> stale receipt rejected
+  -> exit 1
+```
+
+The moved-B failure was observed at the receipt-audit boundary with the candidate mismatch, before `git commit-tree` could authorize that newer unqualified tip.
+
+The standalone integration preflight remains required. The direct rebind is a second, narrower compare-and-swap-style check over the exact snapshot used by merge preparation; it does not replace trusted-local full Repository-health qualification.
+
+No integration-authorizing full-checkout PASS receipt has yet been observed.
