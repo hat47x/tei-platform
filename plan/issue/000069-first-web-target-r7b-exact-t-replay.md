@@ -8457,3 +8457,32 @@ trusted local full checkout
 ```
 
 No new qualification branch, Actions retry, external-compute fallback, or synthetic substitute should be introduced while this boundary remains unresolved.
+
+
+#### B4 continuation — qualification checkout index-state preflight — 2026-09-23
+
+The local qualification helper currently verifies clean status, exact canonical path identities/modes, unchanged HEAD, Repository health, and post-run main overlap. However, unlike the operational replay runner, it does not itself reject non-standard tracked index state such as skip-worktree / assume-unchanged entries.
+
+A clean `git status` alone is not sufficient evidence for this boundary because index flags can hide working-tree divergence from ordinary status inspection while repository commands still consume working-tree bytes.
+
+Until the helper is itself health-qualified with an equivalent fail-closed check, the trusted local full-checkout qualification sequence must include this mandatory preflight immediately before invoking the helper:
+
+```bash
+nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+test -z "$nonstandard_index" || {
+  printf 'Repository has non-standard tracked index state:\n%s\n' "$nonstandard_index" >&2
+  exit 1
+}
+```
+
+Qualification authority therefore requires both:
+
+```text
+qualification checkout index-state preflight = PASS
+AND
+tools/run-first-web-target-r7b-local-qualification.sh = PASS
+```
+
+A helper receipt by itself does not supersede this preflight while the helper blob remains `14e6960ca859ef26faf307edcbbb52ffdf0eac86`.
+
+Do not patch the helper and merge that code without the same full Repository health gate. The helper may absorb this preflight in a later, properly health-qualified change; until then the manual preflight is the canonical fail-closed boundary.
