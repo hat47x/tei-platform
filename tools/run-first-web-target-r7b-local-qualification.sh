@@ -44,7 +44,7 @@ if [[ -n "$receipt_path" ]]; then
   fi
 fi
 
-for command in git go bash awk sort diff grep mktemp rm; do
+for command in git go bash awk sort diff grep mktemp rm ln; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for local R7B qualification.\n' "$command" >&2
     exit 2
