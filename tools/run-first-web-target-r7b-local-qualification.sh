@@ -71,6 +71,7 @@ if [[ -n "$nonstandard_index_before" ]]; then
 fi
 
 head_before="$(git rev-parse HEAD)"
+tree_before="$(git rev-parse HEAD^{tree})"
 remote_head="$(git rev-parse "$remote/$qualification_branch")"
 base_before="$(git rev-parse "$remote/main")"
 
@@ -204,6 +205,7 @@ if [[ -n "$receipt_path" ]]; then
 {
   "evidenceNature": "first-web-target-r7b-local-source-qualification-receipt",
   "qualificationRepositoryRevision": "$head_before",
+  "qualificationRepositoryTree": "$tree_before",
   "baseMainBefore": "$base_before",
   "baseMainAfter": "$base_after",
   "mainMovedDuringQualification": $main_moved,
@@ -245,6 +247,7 @@ fi
 printf 'R7B local source qualification PASS\n'
 printf '  base main before: %s\n' "$base_before"
 printf '  candidate HEAD:   %s\n' "$head_before"
+printf '  candidate tree:   %s\n' "$tree_before"
 printf '  Go version:       %s\n' "$actual_go_version"
 printf '  base main after:  %s\n' "$base_after"
 printf '  main moved:       %s\n' "$main_moved"
