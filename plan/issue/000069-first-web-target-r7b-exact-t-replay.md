@@ -9038,3 +9038,211 @@ trusted-local full qualification PASS receipt
 ```
 
 No integration-authorizing full-checkout PASS receipt has yet been observed.
+#### B4 continuation — exact-parent merge object preparation helper — 2026-09-24
+
+The final canonical source integration now has a preparatory helper that constructs the exact merge object without moving any ref:
+
+```text
+tools/prepare-first-web-target-r7b-exact-parent-merge.sh
+  mode = 100755
+  blob = 13118b68520afcabe56227233d289e8628c1b51f
+```
+
+The helper first runs `tools/verify-first-web-target-r7b-integration-receipt.sh` against the Repository-external PASS receipt. It then re-fetches remote state and derives:
+
+```text
+main revision      = current remote main
+candidate revision = current remote B4 tip
+candidate tree     = candidate^{tree}
+```
+
+It creates an **unreferenced** Git merge object with `git commit-tree`:
+
+```text
+tree          = candidate tree
+first parent  = exact main revision
+second parent = exact B4 qualification revision
+```
+
+and immediately audits the created object before printing its SHA. The helper does not update local `main`, remote `main`, or the B4 branch.
+
+After object creation it repeats exact-clean local-state checks and re-fetches `main`, B4, and the candidate tree. Any in-run movement fails closed.
+
+Independent exact-byte and syntax checks:
+
+```text
+git hash-object reconstructed helper
+  = 13118b68520afcabe56227233d289e8628c1b51f
+
+bash -n
+  PASS
+```
+
+A synthetic bare-origin repository was then used to exercise the object-preparation boundary.
+
+Positive case:
+
+```text
+local checkout = current origin/main
+origin/B4      = descendant candidate
+receipt preflight boundary = stubbed PASS for this isolated merge-object test
+
+result:
+  exact two-parent merge object created
+  object tree == candidate tree
+  parent[0]   == origin/main
+  parent[1]   == origin/B4
+  origin/main unchanged
+  origin/B4 unchanged
+  PASS
+```
+
+Stale-main case:
+
+```text
+advance origin/main after the local checkout
+rerun merge preparation
+
+result:
+  exit 1
+  stale local main rejected before merge-object publication
+```
+
+The synthetic test intentionally stubs the receipt-preflight command because that verifier has its own focused package/shell qualification recorded above. This test isolates the `commit-tree` object construction and non-mutating/CAS boundary.
+
+The intended final sequence is now:
+
+```text
+trusted-local full qualification PASS receipt
+  -> machine-checked integration receipt preflight
+  -> prepare exact-parent unreferenced merge object
+  -> inspect exact parents/tree
+  -> publish main with non-force update only
+  -> machine-checked post-merge verification
+  -> Packet M / actual replay
+```
+
+No full-checkout PASS receipt has yet been observed, so the helper must not be used to publish the real canonical source packet yet.
+Current-blob revalidation after the dependency preflight was extended to include `tr`:
+
+```text
+helper blob
+  13118b68520afcabe56227233d289e8628c1b51f
+
+git hash-object reconstructed helper
+  exact match
+
+bash -n
+  PASS
+
+synthetic exact-parent merge preparation
+  PASS
+
+remote refs unchanged after object preparation
+  PASS
+
+stale remote main
+  rejected with exit 1
+```
+#### B4 continuation — qualification platform provenance and current-helper supersession — 2026-09-24
+
+The Repository-external PASS receipt now records the Go execution platform in addition to the already pinned Go version:
+
+```text
+goVersion = go env GOVERSION
+goOS      = go env GOOS
+goArch    = go env GOARCH
+```
+
+Current local qualification helper:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  blob = babc0f80edeaee67a59c0bf8ddcccfec7083fad9
+  mode = 100755
+```
+
+Current receipt-audit package blobs:
+
+```text
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main.go
+  e2046453a64c5aeb9d9cd463a60d8d1beb716cee
+
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main_test.go
+  678a5e0c7583c68b026c3e4424c63f29a7b40806
+```
+
+The receipt audit requires `goOS` and `goArch` to be non-empty provenance. It does **not** constrain trusted local qualification to one operating system or architecture; `goVersion` remains the pinned execution-version requirement, while GOOS/GOARCH record the environment in which Repository health passed.
+
+Focused exact-blob validation of the receipt-audit package:
+
+```text
+gofmt + git hash-object
+  main.go      = e2046453a64c5aeb9d9cd463a60d8d1beb716cee
+  main_test.go = 678a5e0c7583c68b026c3e4424c63f29a7b40806
+
+GO111MODULE=off go test -count=1
+  PASS
+
+GO111MODULE=off go vet
+  PASS
+```
+
+The producer-side shell delta is limited to reading `GOOS` / `GOARCH`, writing those two JSON fields into the external receipt, and printing the platform in the final diagnostic. The previously qualified exact-clean, branch-tip, main-revision, canonical-path, and atomic-receipt publication gates remain unchanged.
+
+Earlier sections that label older helper blobs as "Current helper" are historical checkpoints. For all new qualification runs after this checkpoint, `babc0f80edeaee67a59c0bf8ddcccfec7083fad9` is the current helper identity.
+
+This support change does not authorize canonical source integration. A real trusted-local full Repository-health PASS receipt for the exact current B4 tip and exact current main revision is still mandatory.
+#### B4 continuation — merge-preparation snapshot rebind to trusted receipt — 2026-09-24
+
+The exact-parent merge preparer now closes the interval between the standalone integration preflight and the preparer's own ref snapshot.
+
+Current preparer:
+
+```text
+tools/prepare-first-web-target-r7b-exact-parent-merge.sh
+  blob = 13118b68520afcabe56227233d289e8628c1b51f
+  mode = 100755
+```
+
+After the preparer fetches current remote state and derives `main_revision`, `candidate_revision`, and `candidate_tree`, it runs the strict receipt audit **again** against those exact values before `git commit-tree`:
+
+```text
+receipt candidate == preparer candidate revision
+receipt tree      == preparer candidate tree
+receipt main      == preparer exact main
+```
+
+This prevents a stale receipt from authorizing a B4 revision that moved after the standalone preflight returned but before merge-object construction began.
+
+Current-blob exact validation:
+
+```text
+git hash-object reconstructed preparer
+  = 13118b68520afcabe56227233d289e8628c1b51f
+
+bash -n
+  PASS
+```
+
+A synthetic bare-origin repository then exercised this new race boundary with the real receipt-audit package:
+
+```text
+matching receipt + current main/B/tree
+  -> receipt audit PASS
+  -> exact-parent merge object prepared
+  -> parents/tree exact
+  -> PASS
+
+move only remote B after receipt creation
+  -> preparer fetches new B tip
+  -> direct receipt rebind compares old receipt to new B tip
+  -> stale receipt rejected
+  -> exit 1
+```
+
+The moved-B failure was observed at the receipt-audit boundary with the candidate mismatch, before `git commit-tree` could authorize that newer unqualified tip.
+
+The standalone integration preflight remains required. The direct rebind is a second, narrower compare-and-swap-style check over the exact snapshot used by merge preparation; it does not replace trusted-local full Repository-health qualification.
+
+No integration-authorizing full-checkout PASS receipt has yet been observed.
