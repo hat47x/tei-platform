@@ -22,6 +22,23 @@ if [[ -v TEI_R7B_EXPECTED_GO_VERSION ]]; then
 else
   expected_go_version="go1.23.2"
 fi
+receipt_path="${TEI_R7B_QUALIFICATION_RECEIPT:-}"
+
+if [[ -n "$receipt_path" ]]; then
+  case "$receipt_path" in
+    "$repo_root"|"$repo_root"/*)
+      printf 'Qualification receipt must remain outside the repository: %s\n' "$receipt_path" >&2
+      exit 2
+      ;;
+  esac
+  if [[ -e "$receipt_path" ]]; then
+    printf 'Qualification receipt already exists: %s\n' "$receipt_path" >&2
+    exit 2
+  fi
+  mkdir -p "$(dirname "$receipt_path")"
+  receipt_dir="$(cd "$(dirname "$receipt_path")" && pwd -P)"
+  receipt_path="$receipt_dir/$(basename "$receipt_path")"
+fi
 
 for command in git go bash awk sort diff grep mktemp; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -143,9 +160,30 @@ if [[ "$base_after" != "$base_before" ]]; then
   fi
 fi
 
+if [[ -n "$receipt_path" ]]; then
+  cat >"$receipt_path" <<EOF
+{
+  "evidenceNature": "first-web-target-r7b-local-source-qualification-receipt",
+  "qualificationRepositoryRevision": "$head_before",
+  "baseMainBefore": "$base_before",
+  "baseMainAfter": "$base_after",
+  "mainMovedDuringQualification": $main_moved,
+  "goVersion": "$actual_go_version",
+  "canonicalPathCount": 11,
+  "replayRunnerMode": "100755",
+  "replayRunnerBlob": "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03",
+  "repositoryHealthPassed": true,
+  "repositoryPostRunClean": true
+}
+EOF
+fi
+
 printf 'R7B local source qualification PASS\n'
 printf '  base main before: %s\n' "$base_before"
 printf '  candidate HEAD:   %s\n' "$head_before"
 printf '  Go version:       %s\n' "$actual_go_version"
 printf '  base main after:  %s\n' "$base_after"
 printf '  main moved:       %s\n' "$main_moved"
+if [[ -n "$receipt_path" ]]; then
+  printf '  receipt:          %s\n' "$receipt_path"
+fi
