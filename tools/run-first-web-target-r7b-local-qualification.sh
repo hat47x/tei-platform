@@ -44,7 +44,7 @@ if [[ -n "$receipt_path" ]]; then
   fi
 fi
 
-for command in git go bash awk sort diff grep mktemp rm; do
+for command in git go bash awk sort diff grep mktemp rm ln; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for local R7B qualification.\n' "$command" >&2
     exit 2
@@ -174,13 +174,29 @@ if [[ "$base_after" != "$base_before" ]]; then
 fi
 
 if [[ -n "$receipt_path" ]]; then
-  if [[ -e "$receipt_path" || -L "$receipt_path" ]]; then
-    printf 'Qualification receipt path appeared during qualification: %s\n' "$receipt_path" >&2
-    exit 1
-  fi
-  if ! (
-    set -o noclobber
-    cat >"$receipt_path" <<EOF
+  (
+    cd "$receipt_dir"
+    if [[ -e "$receipt_name" || -L "$receipt_name" ]]; then
+      printf 'Qualification receipt path appeared during qualification: %s\n' "$receipt_path" >&2
+      exit 1
+    fi
+
+    receipt_tmp="$(mktemp '.tei-r7b-qualification-receipt.XXXXXX')"
+    receipt_published=false
+    cleanup_receipt() {
+      status="$?"
+      trap - EXIT
+      if [[ "$status" -ne 0 && "$receipt_published" == true ]]; then
+        if [[ ( -e "$receipt_name" || -L "$receipt_name" ) && "$receipt_tmp" -ef "$receipt_name" ]]; then
+          rm -f -- "$receipt_name" || true
+        fi
+      fi
+      rm -f -- "$receipt_tmp" || true
+      exit "$status"
+    }
+    trap cleanup_receipt EXIT
+
+    cat >"$receipt_tmp" <<EOF
 {
   "evidenceNature": "first-web-target-r7b-local-source-qualification-receipt",
   "qualificationRepositoryRevision": "$head_before",
@@ -195,28 +211,31 @@ if [[ -n "$receipt_path" ]]; then
   "repositoryPostRunClean": true
 }
 EOF
-  ); then
-    rm -f -- "$receipt_path" || true
-    printf 'Failed to write qualification receipt; any partial receipt was removed: %s\n' "$receipt_path" >&2
-    exit 1
-  fi
-  receipt_post_head="$(git rev-parse HEAD)"
-  receipt_post_status="$(git status --porcelain --untracked-files=all --ignored=matching)"
-  receipt_post_nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
-  if [[ "$receipt_post_head" != "$head_before" || -n "$receipt_post_status" || -n "$receipt_post_nonstandard_index" ]]; then
-    printf 'Repository changed or ceased to be exact-clean while writing qualification receipt.\n' >&2
-    printf 'HEAD before=%s after=%s\n' "$head_before" "$receipt_post_head" >&2
-    if [[ -n "$receipt_post_status" ]]; then
-      printf '%s\n' "$receipt_post_status" >&2
+
+    if ! ln -- "$receipt_tmp" "$receipt_name"; then
+      printf 'Qualification receipt path appeared before atomic publish: %s\n' "$receipt_path" >&2
+      exit 1
     fi
-    if [[ -n "$receipt_post_nonstandard_index" ]]; then
-      printf '%s\n' "$receipt_post_nonstandard_index" >&2
+    receipt_published=true
+
+    receipt_post_head="$(git -C "$repo_root" rev-parse HEAD)"
+    receipt_post_status="$(git -C "$repo_root" status --porcelain --untracked-files=all --ignored=matching)"
+    receipt_post_nonstandard_index="$(git -C "$repo_root" ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+    if [[ "$receipt_post_head" != "$head_before" || -n "$receipt_post_status" || -n "$receipt_post_nonstandard_index" ]]; then
+      printf 'Repository changed or ceased to be exact-clean while publishing qualification receipt.\n' >&2
+      printf 'HEAD before=%s after=%s\n' "$head_before" "$receipt_post_head" >&2
+      if [[ -n "$receipt_post_status" ]]; then
+        printf '%s\n' "$receipt_post_status" >&2
+      fi
+      if [[ -n "$receipt_post_nonstandard_index" ]]; then
+        printf '%s\n' "$receipt_post_nonstandard_index" >&2
+      fi
+      exit 1
     fi
-    if ! rm -f -- "$receipt_path"; then
-      printf 'Failed to remove invalid qualification receipt: %s\n' "$receipt_path" >&2
-    fi
-    exit 1
-  fi
+
+    trap - EXIT
+    rm -f -- "$receipt_tmp" || true
+  )
 fi
 
 printf 'R7B local source qualification PASS\n'
