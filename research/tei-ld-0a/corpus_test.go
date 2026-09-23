@@ -188,6 +188,61 @@ func TestReuseRankingRequiresExactCandidateRevision(t *testing.T) {
 	}
 }
 
+func TestResolverBackedValidationRejectsUnresolvableRecordedRevision(t *testing.T) {
+	corpus := loadFixture(t)
+	known := map[string]bool{
+		canonicalRefKey(CanonicalRef{
+			CanonicalID: "std.sales.UnitPrice",
+			Revision:    "sha256:" + strings.Repeat("2", 64),
+		}): true,
+		canonicalRefKey(CanonicalRef{
+			CanonicalID: "std.sales.Amount",
+			Revision:    "sha256:" + strings.Repeat("3", 64),
+		}): true,
+	}
+	resolve := func(ref CanonicalRef) bool {
+		return known[canonicalRefKey(ref)]
+	}
+	if err := ValidateCorpusWithCanonicalResolver(corpus, resolve); err != nil {
+		t.Fatalf("resolver-backed validation rejected known fixture identities: %v", err)
+	}
+
+	delete(known, canonicalRefKey(CanonicalRef{
+		CanonicalID: "std.sales.Amount",
+		Revision:    "sha256:" + strings.Repeat("3", 64),
+	}))
+	if err := ValidateCorpusWithCanonicalResolver(corpus, resolve); err == nil ||
+		!strings.Contains(err.Error(), "cannot be resolved at recorded revision") {
+		t.Fatalf("expected unresolved candidate revision failure, got %v", err)
+	}
+}
+
+func TestResolverBackedValidationChecksFinalMappingOutsideOriginalCandidateSet(t *testing.T) {
+	corpus := loadFixture(t)
+	manual := CanonicalRef{
+		CanonicalID: "std.sales.ManualCorrection",
+		Revision:    "sha256:" + strings.Repeat("7", 64),
+	}
+	corpus.Rows[0].Outcome.FinalCanonicalMapping = &manual
+
+	resolve := func(ref CanonicalRef) bool {
+		return ref.CanonicalID == "std.sales.UnitPrice" ||
+			ref.CanonicalID == "std.sales.Amount"
+	}
+	if err := ValidateCorpusWithCanonicalResolver(corpus, resolve); err == nil ||
+		!strings.Contains(err.Error(), "final_canonical_mapping") {
+		t.Fatalf("expected unresolved corrected final mapping failure, got %v", err)
+	}
+}
+
+func TestResolverBackedValidationRequiresResolver(t *testing.T) {
+	corpus := loadFixture(t)
+	if err := ValidateCorpusWithCanonicalResolver(corpus, nil); err == nil ||
+		!strings.Contains(err.Error(), "resolver is required") {
+		t.Fatalf("expected missing resolver failure, got %v", err)
+	}
+}
+
 func TestCandidateSetFingerprintIsOrderIndependent(t *testing.T) {
 	corpus := loadFixture(t)
 	row := corpus.Rows[0]

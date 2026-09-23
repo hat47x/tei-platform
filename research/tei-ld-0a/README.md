@@ -10,7 +10,7 @@ This work unit implements the bounded synthetic corpus mechanics tracked by #876
 - No teacher/provider/model output is captured by this corpus v0.
 - No row can write Canonical or authoritative source state.
 
-The corpus exists only to exercise schema, identity, validation, candidate-set hashing, split/leakage checks, and derived V1-V3 research views.
+The corpus exists only to exercise schema, identity, validation, candidate-set hashing, split/leakage checks, and derived V1-V3 research views. `DecodeCorpus` / `ValidateCorpus` validate these synthetic mechanics; they do not prove that a Canonical identity exists in an authoritative revision.
 
 ## Entry condition for historical evidence
 
@@ -22,6 +22,8 @@ Do not label historical rows as Evidence until #267 provides actual Proposal/Acc
 - reload and Validation/Conformance linkage where applicable.
 
 If those records are absent, improve the upstream Evidence path rather than inventing labels.
+
+Before any historical row is called Evidence, run `ValidateCorpusWithCanonicalResolver` with a resolver backed by the authoritative Canonical revision source. An unresolved candidate or final mapping fails closed; a nil resolver is rejected.
 
 ## Branch boundary
 

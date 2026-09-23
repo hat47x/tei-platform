@@ -126,6 +126,8 @@ type SplitIdentity struct {
 	TimeRegime         string `json:"time_regime"`
 }
 
+type CanonicalResolver func(CanonicalRef) bool
+
 type ReuseRankingCase struct {
 	SourceID           string         `json:"source_id"`
 	SourceRevision     string         `json:"source_revision"`
@@ -238,6 +240,50 @@ func ValidateCorpus(corpus Corpus) error {
 				return fmt.Errorf("%s %q crosses split %q -> %q", kind, value, previous, row.Split.Name)
 			}
 			groupSplit[key] = row.Split.Name
+		}
+	}
+	return nil
+}
+
+func ValidateCorpusWithCanonicalResolver(corpus Corpus, resolve CanonicalResolver) error {
+	if resolve == nil {
+		return fmt.Errorf("canonical resolver is required")
+	}
+	if err := ValidateCorpus(corpus); err != nil {
+		return err
+	}
+	resolved := map[string]bool{}
+	check := func(ref CanonicalRef) error {
+		key := canonicalRefKey(ref)
+		if ok, seen := resolved[key]; seen {
+			if !ok {
+				return fmt.Errorf("canonical identity %s cannot be resolved at recorded revision", key)
+			}
+			return nil
+		}
+		ok := resolve(ref)
+		resolved[key] = ok
+		if !ok {
+			return fmt.Errorf("canonical identity %s cannot be resolved at recorded revision", key)
+		}
+		return nil
+	}
+	for i, row := range corpus.Rows {
+		for j, candidate := range row.CandidateSet {
+			if candidate.Kind != CandidateKindCanonical {
+				continue
+			}
+			if err := check(CanonicalRef{
+				CanonicalID: candidate.CanonicalID,
+				Revision:    candidate.CanonicalRevision,
+			}); err != nil {
+				return fmt.Errorf("rows[%d] candidate_set[%d]: %w", i, j, err)
+			}
+		}
+		if row.Outcome.FinalCanonicalMapping != nil {
+			if err := check(*row.Outcome.FinalCanonicalMapping); err != nil {
+				return fmt.Errorf("rows[%d] final_canonical_mapping: %w", i, err)
+			}
 		}
 	}
 	return nil
