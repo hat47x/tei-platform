@@ -44,7 +44,7 @@ if [[ -n "$receipt_path" ]]; then
   fi
 fi
 
-for command in git go bash awk sort diff grep mktemp rm ln; do
+for command in git go bash awk sort diff mktemp rm ln; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for local R7B qualification.\n' "$command" >&2
     exit 2
@@ -167,17 +167,14 @@ fi
 base_after="$(git rev-parse "$remote/main")"
 main_moved=false
 if [[ "$base_after" != "$base_before" ]]; then
-  main_moved=true
   if ! git merge-base --is-ancestor "$base_before" "$base_after"; then
     printf '%s/main was rewritten during qualification; stop and reconcile.\n' "$remote" >&2
-    exit 1
+  else
+    printf '%s/main moved during local R7B qualification: before=%s after=%s\n' \
+      "$remote" "$base_before" "$base_after" >&2
+    printf 'The exact integration tree was not health-qualified. Merge latest main into the existing qualification branch and rerun qualification.\n' >&2
   fi
-  git diff --name-only "$base_before..$base_after" | LC_ALL=C sort -u >"$scratch/main-movement-paths"
-  if grep -Fxf "$scratch/expected-paths" "$scratch/main-movement-paths" >"$scratch/canonical-overlap"; then
-    printf 'Canonical-path overlap appeared on %s/main during qualification:\n' "$remote" >&2
-    cat "$scratch/canonical-overlap" >&2
-    exit 1
-  fi
+  exit 1
 fi
 
 if [[ -n "$receipt_path" ]]; then
