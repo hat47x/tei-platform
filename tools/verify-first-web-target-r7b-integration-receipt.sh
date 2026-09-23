@@ -15,7 +15,7 @@ if [[ -z "$receipt_path" ]]; then
   printf 'Usage: %s <repository-external qualification receipt>\n' "$0" >&2
   exit 2
 fi
-for command in git go awk; do
+for command in git go awk dirname basename; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf '%s is required for R7B integration receipt verification.\n' "$command" >&2
     exit 2
@@ -71,6 +71,26 @@ GOENV=off GOWORK=off GOFLAGS= go run ./tools/reference-first-web-target-r7b-qual
   -expected-candidate "$candidate_revision" \
   -expected-tree "$candidate_tree" \
   -expected-main "$main_revision"
+
+post_head="$(git rev-parse HEAD)"
+post_status="$(git status --porcelain --untracked-files=all --ignored=matching)"
+post_nonstandard_index="$(git ls-files -v | awk 'substr($0,1,1)!="H"{print}')"
+if [[ "$post_head" != "$local_head" || -n "$post_status" || -n "$post_nonstandard_index" ]]; then
+  printf 'Repository changed or ceased to be exact-clean during R7B integration receipt verification.\n' >&2
+  exit 1
+fi
+
+git fetch "$remote" --prune
+main_after="$(git rev-parse "$remote/main")"
+candidate_after="$(git rev-parse "$remote/$qualification_branch")"
+candidate_tree_after="$(git rev-parse "${candidate_after}^{tree}")"
+if [[ "$main_after" != "$main_revision" || "$candidate_after" != "$candidate_revision" || "$candidate_tree_after" != "$candidate_tree" ]]; then
+  printf 'Remote R7B integration identities moved during receipt verification.\n' >&2
+  printf '  main:      before=%s after=%s\n' "$main_revision" "$main_after" >&2
+  printf '  candidate: before=%s after=%s\n' "$candidate_revision" "$candidate_after" >&2
+  printf '  tree:      before=%s after=%s\n' "$candidate_tree" "$candidate_tree_after" >&2
+  exit 1
+fi
 
 printf 'R7B integration preflight PASS\n'
 printf '  qualification revision: %s\n' "$candidate_revision"
