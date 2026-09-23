@@ -8395,8 +8395,14 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = 5dc7b24865109c949c6bf704233f713bb651ce33
+  blob = 120869e3894982e02b3dd72d1e3916c1ec629d0e
   mode = 100755
+
+optional qualification receipt:
+  TEI_R7B_QUALIFICATION_RECEIPT=<repository-external path>
+  parent directory must already exist
+  relative / .. forms are canonicalized before the repository-external check
+  an existing receipt is never overwritten
 ```
 
 It verifies branch/base ancestry, exact canonical path set, all canonical blob identities and modes, the required Go version, replay-runner shell syntax, full `tools/repository-health-check.sh`, unchanged HEAD/clean worktree, and post-run remote-main movement/overlap before reporting PASS.
