@@ -8395,14 +8395,17 @@ The local qualification entrypoint is:
 
 ```text
 tools/run-first-web-target-r7b-local-qualification.sh
-  blob = 120869e3894982e02b3dd72d1e3916c1ec629d0e
+  blob = 14e6960ca859ef26faf307edcbbb52ffdf0eac86
   mode = 100755
 
 optional qualification receipt:
   TEI_R7B_QUALIFICATION_RECEIPT=<repository-external path>
   parent directory must already exist
   relative / .. forms are canonicalized before the repository-external check
-  an existing receipt is never overwritten
+  existing files and symlinks are rejected before qualification
+  a receipt path that appears during qualification is rejected
+  noclobber prevents replacement during receipt creation
+  HEAD / worktree cleanliness is rechecked after receipt creation
 ```
 
 It verifies branch/base ancestry, exact canonical path set, all canonical blob identities and modes, the required Go version, replay-runner shell syntax, full `tools/repository-health-check.sh`, unchanged HEAD/clean worktree, and post-run remote-main movement/overlap before reporting PASS.
@@ -8425,3 +8428,32 @@ until PASS:
 
 No new qualification branch, remote-compute fallback, or Actions-based probe is authorized by this checkpoint.
 
+
+#### B4 continuation — cross-chat qualification convergence checkpoint — 2026-09-23
+
+The current GitHub state, accessible ChatGPT conversation history, and retained Library validation material were rechecked together before further R7B work.
+
+No source provides an actual PASS receipt from a trusted local full checkout for the current canonical 11-path candidate. The retained Library files record isolated gofmt / go vet / go test or draft validation only and explicitly do not claim a full `tools/repository-health-check.sh` PASS on the private repository checkout.
+
+Therefore these observations must not be promoted into integration authority:
+
+```text
+static/source-shape audit                    != local source qualification
+isolated focused Go checks                  != repository health PASS
+historical draft validation                 != current candidate qualification
+absence of canonical-path conflict          != permission to merge code
+```
+
+The only Evidence-raising next step remains:
+
+```text
+trusted local full checkout
+  -> current research/selective-knowledge-routing-r6 tip
+  -> optional Repository-external qualification receipt path
+  -> tools/run-first-web-target-r7b-local-qualification.sh
+  -> repository-health-check PASS on the exact candidate revision
+  -> unchanged HEAD / clean worktree / no canonical overlap
+  -> only then integrate the existing R7B lane into main
+```
+
+No new qualification branch, Actions retry, external-compute fallback, or synthetic substitute should be introduced while this boundary remains unresolved.
