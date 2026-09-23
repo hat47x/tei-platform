@@ -86,6 +86,8 @@ if ! git merge-base --is-ancestor "$base_before" "$head_before"; then
 fi
 
 actual_go_version="$(GOENV=off GOWORK=off GOFLAGS= go env GOVERSION)"
+actual_go_os="$(GOENV=off GOWORK=off GOFLAGS= go env GOOS)"
+actual_go_arch="$(GOENV=off GOWORK=off GOFLAGS= go env GOARCH)"
 if [[ "$actual_go_version" != "$expected_go_version" ]]; then
   printf 'Go version=%s, want %s.\n' "$actual_go_version" "$expected_go_version" >&2
   exit 1
@@ -210,6 +212,8 @@ if [[ -n "$receipt_path" ]]; then
   "baseMainAfter": "$base_after",
   "mainMovedDuringQualification": $main_moved,
   "goVersion": "$actual_go_version",
+  "goOS": "$actual_go_os",
+  "goArch": "$actual_go_arch",
   "canonicalPathCount": 11,
   "replayRunnerMode": "100755",
   "replayRunnerBlob": "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03",
@@ -249,6 +253,7 @@ printf '  base main before: %s\n' "$base_before"
 printf '  candidate HEAD:   %s\n' "$head_before"
 printf '  candidate tree:   %s\n' "$tree_before"
 printf '  Go version:       %s\n' "$actual_go_version"
+printf '  Go platform:      %s/%s\n' "$actual_go_os" "$actual_go_arch"
 printf '  base main after:  %s\n' "$base_after"
 printf '  main moved:       %s\n' "$main_moved"
 if [[ -n "$receipt_path" ]]; then
