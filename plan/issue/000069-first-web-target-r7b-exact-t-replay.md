@@ -8554,3 +8554,43 @@ current main movement since baseMainAfter
 
 This fence is an integration-time concurrency guard. It does not replace or weaken any checks inside `tools/run-first-web-target-r7b-local-qualification.sh`, and it does not authorize canonical source integration until a real trusted-local PASS receipt exists.
 
+
+
+#### B4 continuation — live qualification-branch lineage preservation — 2026-09-24
+
+The historical notes above include branchless candidate recomposition and rebasing language from phases where candidate commits were deliberately unreferenced. Those records do **not** authorize rewriting the live qualification branch.
+
+For the current single source-candidate lane:
+
+```text
+research/selective-knowledge-routing-r6
+```
+
+branch identity and ancestry are part of the coordination contract.
+
+Required branch discipline:
+
+```text
+previous remote B4 tip
+  must remain an ancestor of
+new remote B4 tip
+
+latest main movement
+  -> merge into the existing B4 tip
+  -> preserve B4 ancestry
+
+B4 ref update
+  -> fast-forward only
+  -> force=false
+
+rebase / reset / delete+recreate / force-update of the live B4 ref
+  -> prohibited
+```
+
+If latest main does not overlap the canonical 11 paths, carry it into B4 with a normal merge commit while preserving the current B4 tip as first parent. If a canonical path overlaps, stop, reconcile the source on top of the current B4 tip, and re-run qualification after the resulting forward commit/merge.
+
+If another ChatGPT lane advances B4 between read and update, the stale candidate must be abandoned and recomposed from the newly observed B4 tip. A non-fast-forward rejection is a coordination success condition; it must never be bypassed with `force=true`.
+
+Historical branchless candidate SHAs may still be used as content references for exact blobs, but never as replacement ancestry for the live B4 ref.
+
+The current integration fence remains stricter still: a trusted-local PASS receipt authorizes only its exact `qualificationRepositoryRevision`, and integration must require that exact revision to remain the current remote B4 tip and expected merge head.
