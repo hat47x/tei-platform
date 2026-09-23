@@ -38,8 +38,8 @@ if [[ -n "$receipt_path" ]]; then
       exit 2
       ;;
   esac
-  if [[ -e "$receipt_path" ]]; then
-    printf 'Qualification receipt already exists: %s\n' "$receipt_path" >&2
+  if [[ -e "$receipt_path" || -L "$receipt_path" ]]; then
+    printf 'Qualification receipt path already exists (including symlink): %s\n' "$receipt_path" >&2
     exit 2
   fi
 fi
@@ -165,7 +165,13 @@ if [[ "$base_after" != "$base_before" ]]; then
 fi
 
 if [[ -n "$receipt_path" ]]; then
-  cat >"$receipt_path" <<EOF
+  if [[ -e "$receipt_path" || -L "$receipt_path" ]]; then
+    printf 'Qualification receipt path appeared during qualification: %s\n' "$receipt_path" >&2
+    exit 1
+  fi
+  (
+    set -o noclobber
+    cat >"$receipt_path" <<EOF
 {
   "evidenceNature": "first-web-target-r7b-local-source-qualification-receipt",
   "qualificationRepositoryRevision": "$head_before",
@@ -180,6 +186,17 @@ if [[ -n "$receipt_path" ]]; then
   "repositoryPostRunClean": true
 }
 EOF
+  )
+  receipt_post_head="$(git rev-parse HEAD)"
+  receipt_post_status="$(git status --porcelain --untracked-files=all)"
+  if [[ "$receipt_post_head" != "$head_before" || -n "$receipt_post_status" ]]; then
+    printf 'Repository changed while writing qualification receipt.\n' >&2
+    printf 'HEAD before=%s after=%s\n' "$head_before" "$receipt_post_head" >&2
+    if [[ -n "$receipt_post_status" ]]; then
+      printf '%s\n' "$receipt_post_status" >&2
+    fi
+    exit 1
+  fi
 fi
 
 printf 'R7B local source qualification PASS\n'
