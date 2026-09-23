@@ -9038,3 +9038,88 @@ trusted-local full qualification PASS receipt
 ```
 
 No integration-authorizing full-checkout PASS receipt has yet been observed.
+#### B4 continuation — exact-parent merge object preparation helper — 2026-09-24
+
+The final canonical source integration now has a preparatory helper that constructs the exact merge object without moving any ref:
+
+```text
+tools/prepare-first-web-target-r7b-exact-parent-merge.sh
+  mode = 100755
+  blob = 35e999015425968de3c7b31370d1d6f539918d71
+```
+
+The helper first runs `tools/verify-first-web-target-r7b-integration-receipt.sh` against the Repository-external PASS receipt. It then re-fetches remote state and derives:
+
+```text
+main revision      = current remote main
+candidate revision = current remote B4 tip
+candidate tree     = candidate^{tree}
+```
+
+It creates an **unreferenced** Git merge object with `git commit-tree`:
+
+```text
+tree          = candidate tree
+first parent  = exact main revision
+second parent = exact B4 qualification revision
+```
+
+and immediately audits the created object before printing its SHA. The helper does not update local `main`, remote `main`, or the B4 branch.
+
+After object creation it repeats exact-clean local-state checks and re-fetches `main`, B4, and the candidate tree. Any in-run movement fails closed.
+
+Independent exact-byte and syntax checks:
+
+```text
+git hash-object reconstructed helper
+  = 35e999015425968de3c7b31370d1d6f539918d71
+
+bash -n
+  PASS
+```
+
+A synthetic bare-origin repository was then used to exercise the object-preparation boundary.
+
+Positive case:
+
+```text
+local checkout = current origin/main
+origin/B4      = descendant candidate
+receipt preflight boundary = stubbed PASS for this isolated merge-object test
+
+result:
+  exact two-parent merge object created
+  object tree == candidate tree
+  parent[0]   == origin/main
+  parent[1]   == origin/B4
+  origin/main unchanged
+  origin/B4 unchanged
+  PASS
+```
+
+Stale-main case:
+
+```text
+advance origin/main after the local checkout
+rerun merge preparation
+
+result:
+  exit 1
+  stale local main rejected before merge-object publication
+```
+
+The synthetic test intentionally stubs the receipt-preflight command because that verifier has its own focused package/shell qualification recorded above. This test isolates the `commit-tree` object construction and non-mutating/CAS boundary.
+
+The intended final sequence is now:
+
+```text
+trusted-local full qualification PASS receipt
+  -> machine-checked integration receipt preflight
+  -> prepare exact-parent unreferenced merge object
+  -> inspect exact parents/tree
+  -> publish main with non-force update only
+  -> machine-checked post-merge verification
+  -> Packet M / actual replay
+```
+
+No full-checkout PASS receipt has yet been observed, so the helper must not be used to publish the real canonical source packet yet.
