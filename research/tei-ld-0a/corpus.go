@@ -223,8 +223,8 @@ func ValidateCorpus(corpus Corpus) error {
 
 		if row.Outcome.ProposalDecision == DecisionAccepted {
 			contextKey := decisionContextKey(row)
-			if previous, ok := setAccepted[contextKey]; ok && previous != candidateKey(row.Candidate) {
-				return fmt.Errorf("decision context %q has multiple accepted candidates", contextKey)
+			if previous, ok := setAccepted[contextKey]; ok {
+				return fmt.Errorf("decision context %q has multiple accepted rows: %s and %s", contextKey, previous, candidateKey(row.Candidate))
 			}
 			setAccepted[contextKey] = candidateKey(row.Candidate)
 		}

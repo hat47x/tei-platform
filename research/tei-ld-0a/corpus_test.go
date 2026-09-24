@@ -428,3 +428,15 @@ func TestPostAcceptConformanceRequiresReloadEvidenceLink(t *testing.T) {
 		t.Fatalf("expected rejected-row evidence-link failure, got %v", err)
 	}
 }
+
+func TestDecisionContextAllowsOnlyOneAcceptedRow(t *testing.T) {
+	corpus := loadFixture(t)
+	duplicate := corpus.Rows[0]
+	duplicate.RowID = "row-duplicate-accepted"
+	corpus.Rows = append(corpus.Rows, duplicate)
+
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "multiple accepted rows") {
+		t.Fatalf("expected duplicate accepted-row failure, got %v", err)
+	}
+}
