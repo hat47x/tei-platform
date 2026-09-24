@@ -9501,4 +9501,78 @@ generic merge of B4 into main
 ```
 
 If a future concurrent lane observes canonical source already present on `main` without an exact receipt-authorized publication record, it must fail closed and reconcile rather than treating presence on `main` as Evidence of qualification.
+#### B4 continuation — current qualification candidate and protected concurrent lanes — 2026-09-25
 
+The post-containment B4 snapshot above has since advanced only by normal merge commits that carry later `main` work over the same canonical packet. The current live qualification candidate is:
+
+```text
+main:
+  8ecffab2fdb94b8ca159c3aad7191c79e5d90893
+
+B4:
+  24abebf6c35fe0730799681756ac0371f9531c0f
+
+B4 message:
+  merge(r7b): carry latest Lane C remediation over qualification candidate
+
+B4 parents:
+  first  = 7d6b7dc7d00b870fb7fc9246fc8398031e3ef301
+  second = 8ecffab2fdb94b8ca159c3aad7191c79e5d90893
+
+B4 tree:
+  40a105452469cd1ab7a90de317419c92cb37e906
+
+B4 vs main:
+  ahead  = 4
+  behind = 0
+  net diff = canonical 11 paths only
+
+canonical mode/blob audit:
+  11 / 11 PASS
+```
+
+The qualification contract on current `main` is also internally bound to the exact scripts that must have produced a future PASS receipt:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  100755 / b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2
+
+tools/repository-health-check.sh
+  100755 / d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+receipt audit main.go
+  100644 / 6616e1ef9acdf4fce36eb7aed696a19ea4d06b41
+
+receipt audit main_test.go
+  100644 / ee9d50aea111b89beca6d9d01c9a636d453cb1c1
+```
+
+No Repository-external trusted-local PASS receipt has been observed in the connected conversation/library surfaces. Therefore the current B4 tip is still only a qualification candidate; it is not integration authority.
+
+Two concurrent lanes are currently protected and must not be moved by generic R7B branch cleanup:
+
+```text
+PR #895
+  research/tei-ld-0a-corpus-v0
+  research: add TEI-LD-0A corpus v0 contract
+
+PR #901
+  ci/reference-pressure-evidence
+  contain(tei-ld-0a): restore repository-health gate
+```
+
+Their live head SHAs are intentionally not frozen here. Re-read the open PRs immediately before any cleanup or convergence action. Neither current PR diff overlaps the R7B canonical 11 paths, but any merge to `main` still changes the exact repository tree and therefore invalidates an older R7B qualification base.
+
+Current publication rule remains fail-closed:
+
+```text
+trusted-local full Repository-health PASS receipt
+  -> exact receipt/candidate/main/tree preflight
+  -> exact-parent merge preparation
+  -> non-force publication
+  -> post-merge verification
+  -> B4 convergence finalizer
+  -> Packet M / actual replay
+```
+
+A generic merge of the live B4 branch into `main` is not permitted as qualification evidence.
