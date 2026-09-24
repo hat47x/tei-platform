@@ -9304,3 +9304,57 @@ otherwise:
 Current protected independent lane: PR #895 head research/tei-ld-0a-corpus-v0 at 6ebb85485cdbfeedd097d841efbbb8f9aab75a5a.
 
 After a successful publication, update an exact-clean local main checkout to the published revision and run the existing post-merge verifier with the same receipt before Packet M / replay Evidence proceeds.
+
+
+#### B4 continuation — post-merge B4 convergence finalizer — 2026-09-24
+
+After exact-parent publication and post-merge verification, branch convergence is now handled by a dedicated finalizer:
+
+```text
+tools/finalize-first-web-target-r7b-integration.sh
+```
+
+The helper first runs the existing post-merge verifier against the same Repository-external qualification receipt. It then classifies the live B4 ref relative to the integrated qualification parent.
+
+Behavior:
+
+```text
+B4 == current integrated main
+  -> idempotent PASS
+
+B4 == integrated qualification parent
+  -> refetch main/B4
+  -> fast-forward B4 to current main with normal non-force push
+  -> refetch and require main == B4 == integrated main
+
+integrated qualification parent is ancestor of a newer B4
+  -> preserve newer B4
+  -> PASS with convergence skipped
+
+qualification parent is no longer an ancestor of B4
+  -> fail closed for reconciliation
+```
+
+A concurrent main/B4 move between the post-merge verifier and convergence is detected and stops the fast-forward. No force update is available.
+
+Focused synthetic bare-origin validation of the exact helper behavior:
+
+```text
+bash -n
+  PASS
+
+positive convergence
+  exact integration merge on main
+  B4 still at integrated qualification parent
+  -> B4 fast-forwarded to integration merge
+  -> main == B4
+  PASS
+
+advanced-B4 preservation
+  B4 advanced from the integrated qualification parent
+  -> newer B4 left untouched
+  -> integrated parent ancestry confirmed
+  PASS
+```
+
+This finalizer is deliberately narrower than general branch cleanup. It only handles the R7B qualification branch after the canonical source integration has already passed post-merge verification. Unrelated active branches remain governed by the separate open-PR/unique-ahead protection rule.
