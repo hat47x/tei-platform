@@ -3106,31 +3106,94 @@ actual replay executionはさらに、Release archiveの再取得・digest照合
 
 ## 現在の停止点
 
-Source / Design段階だけでなく、E0 / V1 / V2 / repeatability / E1 runnerのbranchless source candidateも揃っている。canonical integration sourceはE1.13の11 path / blob identityで固定され、dependency closure単位のfocused Evidenceも取得済みである。
-
-したがって現在の最初のcode stopは**E0の新規実装ではない**。Go-enabled full checkoutでcanonical 11 sourceをcurrent mainへrestoreし、E1.14のaggregate focused commandと `tools/repository-health-check.sh` を**同一working tree**でPASSさせることが最初の未完了gateである。
-
-このgateを閉じた後に、その同じworking treeをdirect-to-mainでcommitする。remote work branch / PRを新設せず、別candidateのcherry-pickで履歴を再分岐させない。
-
-code integration後の次段はactual Evidence acquisitionである。
+2026-09-24のforward containment以後、canonical R7B sourceは `main` から再び除去され、既存qualification lane:
 
 ```text
-integrated canonical 11 source
-  -> adopted Gate C Release archive再取得 / digest照合
-  -> actual R7A handoff materialization
-  -> actual R7B intake materialization
-  -> integrated E0 sourceによるR7B replay plan materialization
-  -> exact-T detached target
-  -> two fresh-process runs
-  -> V2 run observations
-  -> repeatability summary
-  -> final receipt / retained artifact credential scan
+research/selective-knowledge-routing-r6
 ```
 
-actual exact-T replay / repeatability Evidenceはこの2-run executionが完了するまで未成立とする。
+だけに保持されている。したがって、現在の停止点は旧記述の「branchless candidateをdirect-to-mainでcommitすること」ではない。
 
-このIssueはこのhealth integration gateから先を所有する。
+現行状態の不変条件は次である。
 
+```text
+main
+  -> canonical 11 sourceは未統合
+
+live B4 qualification branch
+  -> current mainをancestorとして包含
+  -> mainとの差分はcanonical 11 pathだけ
+  -> qualification helperが固定する11 mode/blobと11/11一致
+
+trusted-local full Repository-health PASS receipt
+  -> 未観測
+```
+
+上記B4 head SHAはactive laneなので、この節ではintegration authorityとして固定しない。実際のqualification / integration直前にはremote B4 / mainを必ず再取得する。
+
+2026-09-25のlive-state auditでは:
+
+```text
+B4 vs main
+  ahead  > 0
+  behind = 0
+  net diff = canonical 11 paths only
+
+qualification helper manifest parity
+  11 / 11 PASS
+```
+
+を確認した。この観測はbranch headを凍結するものではなく、次のremote movementで失効し得る。
+
+現在の最初の未完了gateは、trusted local full checkoutで**live B4 tipそのもの**に対して:
+
+```bash
+TEI_R7B_QUALIFICATION_RECEIPT=/repository-external/path/local-qualification.json \
+  bash tools/run-first-web-target-r7b-local-qualification.sh
+```
+
+を実行し、Repository-external PASS receiptを得ることである。
+
+helperは同一run内で少なくとも:
+
+```text
+local HEAD == current remote B4 tip
+current remote main is ancestor of B4
+qualification diff == canonical 11 paths
+canonical 11 mode/blob == exact expected identities
+Go version == pinned version
+runner bash syntax
+tools/repository-health-check.sh
+post-health exact-clean state
+remote B4 unchanged during qualification
+remote main unchanged during qualification
+atomic external receipt publication
+```
+
+をfail closedで確認する。
+
+PASS receipt取得後もgeneric mergeは行わない。integration sequenceは:
+
+```text
+trusted-local PASS receipt
+  -> verify-first-web-target-r7b-integration-receipt.sh
+  -> prepare-first-web-target-r7b-exact-parent-merge.sh
+  -> exact parents/treeを監査
+  -> publish-first-web-target-r7b-exact-parent-merge.sh
+  -> verify-first-web-target-r7b-post-merge.sh
+  -> finalize-first-web-target-r7b-integration.sh
+  -> Packet M / actual exact-T replay
+```
+
+である。
+
+receiptが固定するrevision/tree/mainからB4またはmainが動いた場合、receiptはstaleとして破棄し、latest mainを既存B4へ通常mergeしてbranch ancestryを維持したうえでqualificationを再実行する。live B4 refのreset / rebase / force-update / delete+recreateは禁止する。
+
+他laneとの競合監査では、2026-09-25時点のopen PR #901 / #895はいずれもTEI-LD-0Aの4 pathだけを変更し、canonical 11 pathとのoverlapは0だった。ただしこの事実も動的なので、main/B4を動かす直前にPR / branch差分を再取得する。
+
+GitHub-hosted ActionsによるR7B health probeは9/22まで複数回試行されたが、直近probeでもjob stepが生成されず、full Repository-health PASS Evidenceは得られていない。CI failureをtrusted-local PASSへ読み替えない。
+
+actual exact-T replay / repeatability Evidenceは、receipt-authorized canonical integrationとPacket M actual materialization、その後のtwo fresh-process runsが完了するまで未成立とする。
 
 #### E1.13 exact-source convergence and branch hygiene — 2026-09-20
 
