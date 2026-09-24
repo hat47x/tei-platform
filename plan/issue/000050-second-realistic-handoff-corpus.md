@@ -475,7 +475,7 @@ RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-00004
 - [x] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した（R = `82e4301`のA7）
 - [x] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した（R = `82e4301`のA7）
 - [x] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
-- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した（方針は2026-09-21に決定済み。未実施）
+- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した（方針は2026-09-21に決定済み。未実施）。レビュー依頼は[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md)（2026-09-24準備、未実施）
 - [ ] Pre-ADR AuditがBlocker Bを再判定した（判定はAuditが持つ）
 
 ## 次のincrement
