@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"tei/tools/internal/firstwebtargetevidence"
 )
 
 type Provenance struct {
@@ -259,92 +261,40 @@ func auditArtifacts(dir, runID string, expected Provenance) (evidenceSummary, er
 		return evidenceSummary{}, err
 	}
 
+	sharedExpected := firstwebtargetevidence.Provenance{
+		HandoverBaselineID:         expected.HandoverBaselineID,
+		BaselineRepositoryRevision: expected.BaselineRepositoryRevision,
+		TargetBuildRevision:        expected.TargetBuildRevision,
+		TargetAdapter:              expected.TargetAdapter,
+		Host:                       expected.Host,
+	}
+	sharedChecks := []struct {
+		name     string
+		validate func([]byte, firstwebtargetevidence.Provenance) error
+	}{
+		{"read.json", firstwebtargetevidence.ValidateReadArtifact},
+		{"submit-success.json", firstwebtargetevidence.ValidateCommandSuccessArtifact},
+		{"submit-authentication-denied.json", firstwebtargetevidence.ValidateAuthenticationDeniedArtifact},
+		{"submit-authorization-denied.json", firstwebtargetevidence.ValidateAuthorizationDeniedArtifact},
+		{"submit-validation-not-satisfied.json", firstwebtargetevidence.ValidateValidationNotSatisfiedArtifact},
+		{"submit-execution-error.json", firstwebtargetevidence.ValidateExecutionErrorArtifact},
+	}
+	for _, check := range sharedChecks {
+		data, err := os.ReadFile(filepath.Join(dir, check.name))
+		if err != nil {
+			return evidenceSummary{}, fmt.Errorf("read %s: %w", check.name, err)
+		}
+		if err := check.validate(data, sharedExpected); err != nil {
+			return evidenceSummary{}, err
+		}
+	}
+
+	// Gate C still needs the validated read projection for TargetDifferenceHandoff.
+	// Re-decode it into the existing Gate C-local shape without re-defining its
+	// semantic acceptance rules here.
 	var read readEnvelope
 	if err := readJSONArtifact(dir, "read.json", &read); err != nil {
 		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("read.json", read.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if read.Result.ScenarioID != "order-entry.read-only-web-slice" || read.Result.ApplicationID != "order_entry" {
-		return evidenceSummary{}, fmt.Errorf("read Scenario identity is unexpected: %+v", read.Result)
-	}
-	if err := requireRuntimeBindings(read.Result.RuntimeBindings); err != nil {
-		return evidenceSummary{}, err
-	}
-
-	var success commandEnvelope
-	if err := readJSONArtifact(dir, "submit-success.json", &success); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("submit-success.json", success.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireSuccessfulCommand(success.Result); err != nil {
-		return evidenceSummary{}, err
-	}
-
-	var authDenied commandEnvelope
-	if err := readJSONArtifact(dir, "submit-authentication-denied.json", &authDenied); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("submit-authentication-denied.json", authDenied.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if authDenied.Result.Stage != "authentication-denied" ||
-		authDenied.Result.Authentication == nil ||
-		authDenied.Result.Authentication.Outcome != "denied" ||
-		authDenied.Result.Command != nil ||
-		authDenied.Result.Observation != nil {
-		return evidenceSummary{}, fmt.Errorf("authentication denial boundary is not preserved")
-	}
-
-	var authzDenied commandEnvelope
-	if err := readJSONArtifact(dir, "submit-authorization-denied.json", &authzDenied); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("submit-authorization-denied.json", authzDenied.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if authzDenied.Result.Stage != "authorization-denied" ||
-		authzDenied.Result.Authorization == nil ||
-		authzDenied.Result.Authorization.Outcome != "denied" ||
-		authzDenied.Result.Command != nil ||
-		authzDenied.Result.Observation != nil {
-		return evidenceSummary{}, fmt.Errorf("authorization denial boundary is not preserved")
-	}
-
-	var validationNotSatisfied commandEnvelope
-	if err := readJSONArtifact(dir, "submit-validation-not-satisfied.json", &validationNotSatisfied); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("submit-validation-not-satisfied.json", validationNotSatisfied.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if validationNotSatisfied.Result.Stage != "validation-not-satisfied" ||
-		len(validationNotSatisfied.Result.Validations) != 1 ||
-		validationNotSatisfied.Result.Validations[0].Validation != "sales.order_line.quantity_positive" ||
-		validationNotSatisfied.Result.Validations[0].Result != "not-satisfied" ||
-		validationNotSatisfied.Result.Authorization != nil ||
-		validationNotSatisfied.Result.Command != nil ||
-		validationNotSatisfied.Result.Observation != nil {
-		return evidenceSummary{}, fmt.Errorf("Validation not-satisfied boundary is not preserved")
-	}
-
-	var executionError commandErrorEnvelope
-	if err := readJSONArtifact(dir, "submit-execution-error.json", &executionError); err != nil {
-		return evidenceSummary{}, err
-	}
-	if err := requireProvenance("submit-execution-error.json", executionError.Provenance, expected); err != nil {
-		return evidenceSummary{}, err
-	}
-	if executionError.Result.Stage != "command" ||
-		executionError.Result.Authorization == nil ||
-		executionError.Result.Authorization.Outcome != "allowed" ||
-		executionError.Result.Command != nil ||
-		executionError.Result.Observation != nil ||
-		!strings.Contains(executionError.ExecutionError, "synthetic submit adapter unavailable for order 1003") {
-		return evidenceSummary{}, fmt.Errorf("Command Execution Error boundary is not preserved")
 	}
 
 	projectionIndex, err := os.ReadFile(filepath.Join(dir, "projection-index.html"))
@@ -746,16 +696,8 @@ func requireNoReferenceCredentialMaterial(dir string, names []string) error {
 		if err != nil {
 			return fmt.Errorf("read %s for credential scan: %w", name, err)
 		}
-		for _, forbidden := range []string{
-			"editor-secret",
-			"viewer-secret",
-			"locked-secret",
-			"disabled-secret",
-			"credential-ref://legacy/",
-		} {
-			if strings.Contains(string(data), forbidden) {
-				return fmt.Errorf("%s contains Reference credential material %q", name, forbidden)
-			}
+		if err := firstwebtargetevidence.RejectReferenceCredentialMaterial(name, data); err != nil {
+			return err
 		}
 	}
 	return nil
