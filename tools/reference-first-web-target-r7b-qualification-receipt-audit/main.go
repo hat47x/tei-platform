@@ -11,14 +11,14 @@ import (
 )
 
 const (
-	expectedEvidenceNature = "first-web-target-r7b-local-source-qualification-receipt"
-	expectedGoVersion      = "go1.23.2"
+	expectedEvidenceNature          = "first-web-target-r7b-local-source-qualification-receipt"
+	expectedGoVersion               = "go1.23.2"
 	expectedRunnerMode              = "100755"
 	expectedRunnerBlob              = "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03"
 	expectedQualificationHelperMode = "100755"
 	expectedQualificationHelperBlob = "b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2"
-	expectedRepositoryHealthMode     = "100755"
-	expectedRepositoryHealthBlob     = "d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9"
+	expectedRepositoryHealthMode    = "100755"
+	expectedRepositoryHealthBlob    = "d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9"
 )
 
 type qualificationReceipt struct {
