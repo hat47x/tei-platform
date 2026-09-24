@@ -128,8 +128,7 @@ Gate A green前には:
 - `from/to/condition`をpositive Evidenceとしてauthorしない
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
-したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。current execution priorityは、別の生成AIによる独立review（利用者の方針、2026-09-21）と、その後のPre-ADR Auditによる再判定である。
-独立reviewの入力は[Blocker B独立生成AIレビュー依頼](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md)に固定した（2026-09-24）。レビュー対象revision・fileのSHA-256・判定語彙・必須の問い・記録先を定め、作成者（Claude Sonnet 5）とは別ベンダーの生成AIが実施する。パケットの準備はレビューではない。
+したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。2026-09-24に作成者とは別系統の生成AI（OpenAI GPT-5.6 Sol）が独立reviewを実施し、[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)へ`review-blocked`を記録した。主なblocking findingは、conditionがtarget Step ST-00のmeaningを内包すること、count accountability transferとU-4/U-6/U-9の不整合、RRB-P2 item 4未確認である。current execution priorityはこれらのmeaning / pressure修正と必要な再reviewであり、その後にPre-ADR AuditがBlocker Bを再判定する。独立review自体はAudit再判定ではなく、Contract ADRはNot Readyを維持する。
 
 ## ADR前に要求するEvidence
 
