@@ -9639,3 +9639,74 @@ trusted-local full Repository-health PASS receipt
 ```
 
 A generic merge of the live B4 branch into `main` is not permitted as qualification evidence.
+
+
+#### B4 continuation — live qualification checkpoint after 2026-09-25 main refresh
+
+A fresh cross-chat / GitHub audit was performed before any further R7B integration action.
+
+Observed live refs at the start of this checkpoint:
+
+```text
+main
+  1e3dd22ee284a566b9333efa91ca43a19779da34
+
+research/selective-knowledge-routing-r6
+  41f10387fd17f573ad8358183003ca8b2509d09c
+
+B4 vs main
+  ahead  = 7
+  behind = 0
+  net diff = canonical 11 paths only
+```
+
+The current qualification helper on `main` is:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  100755 / b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2
+```
+
+Its 11 `check_entry` mode/blob expectations were compared directly with the live B4 tree. Result:
+
+```text
+canonical manifest entries = 11
+exact mode/blob matches     = 11
+mismatches                  = 0
+```
+
+The two open independent PR heads were re-read before any branch movement:
+
+```text
+PR #895
+  research/tei-ld-0a-corpus-v0
+  changed paths = research/tei-ld-0a/* only
+  overlap with R7B canonical 11 = 0
+
+PR #901
+  ci/reference-pressure-evidence
+  changed paths = research/tei-ld-0a/* only
+  overlap with R7B canonical 11 = 0
+```
+
+Both PR heads remain protected from generic R7B cleanup. Their existence does not authorize R7B publication, and any future merge that advances `main` invalidates an older qualification base until B4 normally merges the new main and is qualified again.
+
+A cross-chat search for later execution Evidence found no trusted-local full-checkout PASS receipt after the previously recorded checkpoints. Therefore:
+
+```text
+live B4 canonical packet exactness
+  = PASS
+
+open-PR canonical overlap
+  = 0
+
+trusted-local Repository-health PASS receipt
+  = not observed
+
+integration authority
+  = absent
+```
+
+No generic merge / squash / cherry-pick of B4 into `main` is authorized by this checkpoint. The next Evidence-raising action remains execution of the existing qualification helper on the **then-current live B4 tip** in a trusted local full checkout, followed by the receipt-bound exact-parent publication sequence already defined above.
+
+This checkpoint is observational. The exact B4 SHA is not a frozen future integration target; immediately before qualification or publication, remote `main`, B4, open PRs, canonical path overlap, and receipt binding must be re-read.
