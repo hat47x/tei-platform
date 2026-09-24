@@ -44,9 +44,13 @@ examples/ bootstrap/
 
 ## 開発フロー
 
-- 単独開発のため、branch / PR / 人的reviewの手続きは置かない。`main`へ直接commitする。
-- remote branchを作らない。pushの前に`git pull --rebase origin main`し、mainへforce pushしない。
-- **コードを変えたら、pushの前に`tools/repository-health-check.sh`を通し、失敗したままpushしない。** gofmt差は`--fix`で自動整形できる（`--fast`で`go test`を省く）。並行して動くAI sessionも同じ。GoがPATHにない環境では、Goのあるclone（この環境ではWSL2）で実行する。CIは使えず、これが唯一の検証である。
+- human ownerは単独でも、複数のAI session / processが同時にRepositoryを更新する。**単独process前提で`main`へ直接commitしない。**
+- 既存のtask / lane branchがある作業はそのbranchを再利用する。並行作業のたびに新しいremote branchを増やさず、milestone / Gate単位で`main`へPRまたは通常mergeし、その後にbranchを収束させる。
+- write前に`git fetch --prune`相当のremote再取得、open PR、対象branchのahead / behind、変更pathの競合を確認する。active PRのheadや独自aheadを持つbranchをcleanup対象にしない。
+- 複数sessionが共有するlive branchではrebase / reset / force updateをしない。最新`main`への追随は、必要なら現在のlane tipを第一親にした通常mergeで行う。`main`もforce updateしない。
+- **コードを変えたら、`main`へ統合する前に`tools/repository-health-check.sh`を通し、失敗または未実行のコードを統合しない。** gofmt差は`--fix`で自動整形できる（`--fast`で`go test`を省く）。GoがPATHにない環境では、Goのあるtrusted local cloneで実行する。GitHub Actionsが利用できない期間もこのGateを弱めない。
+- 文書だけの変更でも、正本・Gate / Evidence claim・並行branchとの競合を確認してから統合する。
+- R7Bのlive qualification branch `research/selective-knowledge-routing-r6` は特別なGate対象である。**generic merge / squash / cherry-pick / source copyでcanonical 11を`main`へ入れない。** `plan/issue/000069-first-web-target-r7b-exact-t-replay.md`に定めるtrusted-local PASS receipt → integration preflight → exact-parent merge preparation → non-force publication → post-merge verificationの順だけをintegration authorityとする。receiptが無い状態でcanonical sourceが`main`に見えてもqualifiedとは扱わず、fail closedでreconcileする。
 - 詳細は[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照する。
 
 コードの検証手順も[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照します。
