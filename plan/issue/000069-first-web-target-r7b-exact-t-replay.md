@@ -9301,7 +9301,7 @@ otherwise:
   do not move, rewrite, or force-update it
 ```
 
-Current protected independent lane: PR #895 head research/tei-ld-0a-corpus-v0 at 6ebb85485cdbfeedd097d841efbbb8f9aab75a5a.
+Protected independent lane: PR #895 head `research/tei-ld-0a-corpus-v0`. Its live head SHA is intentionally not frozen in this R7B document; re-read the PR/branch immediately before any cleanup decision.
 
 After a successful publication, update an exact-clean local main checkout to the published revision and run the existing post-merge verifier with the same receipt before Packet M / replay Evidence proceeds.
 

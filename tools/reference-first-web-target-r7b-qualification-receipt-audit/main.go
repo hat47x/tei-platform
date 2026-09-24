@@ -11,10 +11,14 @@ import (
 )
 
 const (
-	expectedEvidenceNature = "first-web-target-r7b-local-source-qualification-receipt"
-	expectedGoVersion      = "go1.23.2"
-	expectedRunnerMode     = "100755"
-	expectedRunnerBlob     = "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03"
+	expectedEvidenceNature          = "first-web-target-r7b-local-source-qualification-receipt"
+	expectedGoVersion               = "go1.23.2"
+	expectedRunnerMode              = "100755"
+	expectedRunnerBlob              = "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03"
+	expectedQualificationHelperMode = "100755"
+	expectedQualificationHelperBlob = "b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2"
+	expectedRepositoryHealthMode    = "100755"
+	expectedRepositoryHealthBlob    = "d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9"
 )
 
 type qualificationReceipt struct {
@@ -27,6 +31,10 @@ type qualificationReceipt struct {
 	GoVersion                       string `json:"goVersion"`
 	GoOS                            string `json:"goOS"`
 	GoArch                          string `json:"goArch"`
+	QualificationHelperMode         string `json:"qualificationHelperMode"`
+	QualificationHelperBlob         string `json:"qualificationHelperBlob"`
+	RepositoryHealthMode            string `json:"repositoryHealthMode"`
+	RepositoryHealthBlob            string `json:"repositoryHealthBlob"`
 	CanonicalPathCount              int    `json:"canonicalPathCount"`
 	ReplayRunnerMode                string `json:"replayRunnerMode"`
 	ReplayRunnerBlob                string `json:"replayRunnerBlob"`
@@ -61,6 +69,8 @@ func main() {
 	fmt.Printf("  tree:      %s\n", receipt.QualificationRepositoryTree)
 	fmt.Printf("  main:      %s\n", receipt.BaseMainAfter)
 	fmt.Printf("  Go:        %s %s/%s\n", receipt.GoVersion, receipt.GoOS, receipt.GoArch)
+	fmt.Printf("  qualifier: %s/%s\n", receipt.QualificationHelperMode, receipt.QualificationHelperBlob)
+	fmt.Printf("  health:    %s/%s\n", receipt.RepositoryHealthMode, receipt.RepositoryHealthBlob)
 }
 
 func decodeReceipt(data []byte) (qualificationReceipt, error) {
@@ -110,6 +120,18 @@ func validateReceipt(receipt qualificationReceipt, expectedCandidate, expectedTr
 	}
 	if receipt.GoOS == "" || receipt.GoArch == "" {
 		return fmt.Errorf("qualification receipt must record non-empty goOS/goArch, got %q/%q", receipt.GoOS, receipt.GoArch)
+	}
+	if receipt.QualificationHelperMode != expectedQualificationHelperMode ||
+		receipt.QualificationHelperBlob != expectedQualificationHelperBlob {
+		return fmt.Errorf("qualification receipt helper identity=%s/%s, want %s/%s",
+			receipt.QualificationHelperMode, receipt.QualificationHelperBlob,
+			expectedQualificationHelperMode, expectedQualificationHelperBlob)
+	}
+	if receipt.RepositoryHealthMode != expectedRepositoryHealthMode ||
+		receipt.RepositoryHealthBlob != expectedRepositoryHealthBlob {
+		return fmt.Errorf("qualification receipt Repository-health identity=%s/%s, want %s/%s",
+			receipt.RepositoryHealthMode, receipt.RepositoryHealthBlob,
+			expectedRepositoryHealthMode, expectedRepositoryHealthBlob)
 	}
 	if receipt.CanonicalPathCount != 11 {
 		return fmt.Errorf("qualification receipt canonicalPathCount=%d, want 11", receipt.CanonicalPathCount)

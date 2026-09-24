@@ -20,6 +20,10 @@ func validReceipt() qualificationReceipt {
 		GoVersion:                       expectedGoVersion,
 		GoOS:                            "linux",
 		GoArch:                          "amd64",
+		QualificationHelperMode:         expectedQualificationHelperMode,
+		QualificationHelperBlob:         expectedQualificationHelperBlob,
+		RepositoryHealthMode:            expectedRepositoryHealthMode,
+		RepositoryHealthBlob:            expectedRepositoryHealthBlob,
 		CanonicalPathCount:              11,
 		ReplayRunnerMode:                expectedRunnerMode,
 		ReplayRunnerBlob:                expectedRunnerBlob,
@@ -100,6 +104,27 @@ func TestValidateReceiptRejectsContractDrift(t *testing.T) {
 	goArch.GoArch = ""
 	if err := validateReceipt(goArch, goArch.QualificationRepositoryRevision, goArch.QualificationRepositoryTree, goArch.BaseMainAfter); err == nil {
 		t.Fatal("accepted receipt without GOARCH provenance")
+	}
+
+	helperMode := validReceipt()
+	helperMode.QualificationHelperMode = "100644"
+	if err := validateReceipt(helperMode, helperMode.QualificationRepositoryRevision, helperMode.QualificationRepositoryTree, helperMode.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with qualification helper mode drift")
+	}
+	helper := validReceipt()
+	helper.QualificationHelperBlob = strings.Repeat("d", 40)
+	if err := validateReceipt(helper, helper.QualificationRepositoryRevision, helper.QualificationRepositoryTree, helper.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with qualification helper blob drift")
+	}
+	healthMode := validReceipt()
+	healthMode.RepositoryHealthMode = "100644"
+	if err := validateReceipt(healthMode, healthMode.QualificationRepositoryRevision, healthMode.QualificationRepositoryTree, healthMode.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with Repository-health mode drift")
+	}
+	health := validReceipt()
+	health.RepositoryHealthBlob = strings.Repeat("d", 40)
+	if err := validateReceipt(health, health.QualificationRepositoryRevision, health.QualificationRepositoryTree, health.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with Repository-health blob drift")
 	}
 }
 
