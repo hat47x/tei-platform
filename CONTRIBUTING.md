@@ -24,19 +24,43 @@ TEIでは、概ね次を優先します。
 - command acknowledgementを事実とみなさずObservationを確認する
 - 特定技術をSemantic Definitionへ埋め込むよりProvider境界を置く
 
-## 開発フロー（単独開発）
+## 開発フロー（単独オーナー・並行AIセッション）
 
-このRepositoryは一人で開発しており、人的reviewを介する段階にありません。branch / PR / reviewの手続きは置かず、**mainへ直接commitします**。
+human ownerは一人ですが、複数のAI session / processが同時に作業するため、Git操作は単独process前提にしません。branch / PRは人的reviewの儀式ではなく、**並行作業の分離、Gateの保持、競合のfail-close**のために使います。
 
-- 変更は`main`へ直接commitする。PRは作らない。
-- remote branchを作らない。作業branchが必要ならlocalの一時branchとして使い、mainへ取り込んだら削除する。
-- pushの前に`git pull --rebase origin main`する。複数のAI sessionやprocessが同じmainへpushするため、直前にfetchして最新へ載せてからpushする。mainへforce pushしない。
-- コードを変えたときは、pushの前に`tools/repository-health-check.sh`を通す。文書だけの変更は、リンク・正本性・状態表現・Gate / Evidence claimを壊していないかを確認する。
-- commitは小さく、戻せる単位にする。commit messageには、何を変えたかだけでなく、なぜ変えたかを書く。安全網はGit historyであり、review代わりのPRは使わない。
-- branch名・commit・PRの有無は、Product / Issue / Gateの状態を表さない。状態は、それぞれの正本文書とEvidenceで管理する。
-- GitHub Actionsは月間quotaの都合で使えないことがあるため、検証の正本はlocalのhealth checkに置く。手動診断用のworkflowだけを残す。
+- 既存のtask / lane branchがある作業はそのbranchを再利用する。作業のたびに新しいremote branchを増やさない。
+- write前にremoteを再取得し、open PR、対象branchのahead / behind、変更pathの重複を確認する。
+- shared live branchはrebase / reset / force updateしない。最新`main`へ追随するときは、必要なら現在のlane tipを第一親にした通常mergeを使う。
+- milestone / Gateが完了したらPRまたは通常mergeで`main`へ戻す。統合後、独自aheadもactive PRもないbranchだけをnon-forceで最新`main`へ収束させる。active laneを機械的に削除しない。
+- `main`へforce pushしない。並行更新でexpected head / fast-forward条件が外れた場合は、forceで突破せずremote stateを再取得してreconcileする。
+- コードを変えたときは、`main`へ統合する前に`tools/repository-health-check.sh`を通す。文書だけの変更は、リンク・正本性・状態表現・Gate / Evidence claimを壊していないかを確認する。
+- GitHub Actionsは月間quota等で使えないことがある。hosted CIが使えないことはlocal Gateを省略する理由にしない。
+- branch名・commit・PRの有無はProduct / Issue / Gateの状態を表さない。状態は正本文書とEvidenceで管理する。
 
-過去のbranch / PR運用（workstream単位のremote branch、PR review、branch監査tool）は、単独開発では手続きの費用に見合わないため廃止しました。当時の内容はGit historyから辿れます。
+### R7B qualification branch
+
+`research/selective-knowledge-routing-r6` はFirst Web Target R7Bのlive qualification branchです。canonical 11 sourceは通常のbranch merge対象ではありません。
+
+禁止:
+
+- B4 branchのgeneric merge / squash / cherry-pickをintegration authorityとして扱う
+- PASS receiptなしにcanonical 11を`main`へcopy / mergeする
+- B4をrebase / reset / force updateしてlineageを切る
+- `main`上にsourceが存在すること自体をqualification Evidenceとみなす
+
+統合は[`plan/issue/000069-first-web-target-r7b-exact-t-replay.md`](plan/issue/000069-first-web-target-r7b-exact-t-replay.md)の順序に従います。
+
+```text
+trusted-local full Repository-health PASS receipt
+  -> integration receipt preflight
+  -> exact-parent merge object preparation
+  -> non-force publication
+  -> post-merge verification
+  -> B4 convergence
+  -> Packet M / actual replay
+```
+
+この順序を満たさないcanonical source mergeを検出した場合は、履歴を書き換えずforward containmentでGateを復旧し、資格確認済みB4 candidateを保持します。
 
 ## Development
 
