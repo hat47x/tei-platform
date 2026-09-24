@@ -505,7 +505,56 @@ recommended B-F19b = Unresolved
 
 詳細とrequired fixesは[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)を正とする。
 
-このreviewはPre-ADR Auditの再判定ではない。次はsource meaning / pressureのblocking findingsを解消し、必要なら再reviewした後にAudit `17を再判定する。
+このreviewはPre-ADR Auditの再判定ではない。次はsource meaning / pressureのblocking findingsを解消し、必要なら再reviewした後にAudit §17を再判定する。
+
+## 独立review後remediation — 2026-09-24
+
+独立reviewのF-1 / F-2 / F-4とsame-actor coverage recommendationを受け、current source / pressureを狭い範囲で改訂した。
+
+変更したmeaning:
+
+```text
+production independent need
+  + physical completion separation
+  + terminal release from production control
+  != a stocking-specific endpoint invented for Handoff
+
+Handoff condition
+  = explicit production-side release from production control
+  + permission for warehouse intake to begin
+  + received-count reconciliation remains pending
+  != target Procedure trigger
+
+condition
+  != ST-00 already completed
+  != ST-01 reconciliation succeeded
+  != count accountability already transferred
+```
+
+追加critical pressure:
+
+- `TestSecondRealisticReferenceProductionReleaseHasIndependentBusinessMeaning`
+- `TestSecondRealisticReferenceKeepsCountAccountabilityUnresolvedUntilReconciliation`
+- `TestSecondRealisticReferenceExplicitHandoffDoesNotDependOnActorDifference`
+
+これら3件を`tools/business-procedure-gate-a-critical-tests.txt`へ追加した。
+
+境界:
+
+- RRB-P2 item 4のData-state / ownership authorityは**未解決のまま**で、fake Data identityは追加していない。
+- remediationは独立reviewer自身（GPT-5.6 Sol）がauthorしたため、旧reviewをcurrent sourceのindependent acceptanceへ転用しない。`seed-ledger.json`は`re-review-required`を保持する。
+- 旧`R = 82e4301`のGate A PASSはhistorical Evidenceであり、current remediation revisionのP3 Evidenceではない。current sourceは新しいGate A actual runが必要。
+- Pre-ADR Auditの再判定はまだ行わない。
+
+current next state:
+
+```text
+P1 semantic remediation source
+  -> actual Gate A rerun
+  -> independent re-review by a reviewer independent of this remediation author
+  -> P2 item 4 resolution / status decision
+  -> Pre-ADR Audit re-judgment
+```
 
 ## 次のincrement
 

@@ -5,7 +5,7 @@
   "procedure": {
     "id": "make-to-order.production-run",
     "identityStatus": "reference-local-stable",
-    "purpose": "make the requested quantity of an ordered finished item against a work instruction, and establish by physical confirmation how much has actually been completed, keeping that fact separate from the instruction that asked for it and from the record made about it",
+    "purpose": "make the requested quantity of an ordered finished item against a work instruction, establish by physical confirmation how much has actually been completed, keep that fact separate from the instruction and completion record, and close the production responsibility for that run by releasing the physically confirmed goods from production control for downstream custody",
     "trigger": {
       "status": "candidate",
       "text": "an accepted production need for a finished item that has to be made to order is waiting to be made"
@@ -48,7 +48,7 @@
     },
     {
       "id": "PR-06",
-      "businessAction": "release the confirmed goods for stocking",
+      "businessAction": "release the physically confirmed goods from production control for downstream custody",
       "realization": "manual-external-unresolved"
     }
   ]

@@ -6,7 +6,7 @@
 
 | file | 役割 |
 | --- | --- |
-| `make-to-order-production-run.json` | Procedure 1: 受注生産の一回の製造。指示・物理的な製造・物理的な確認・完了記録を別のStepに分け、確認済みの品を入庫へ引き渡す |
+| `make-to-order-production-run.json` | Procedure 1: 受注生産の一回の製造。指示・物理的な製造・物理的な確認・完了記録を別のStepに分け、物理確認済みの品をproduction controlからterminal releaseして下流のcustodyへ渡せる状態にする |
 | `finished-goods-stocking.json` | Procedure 2: 引き渡された完成品を倉庫責任の下で受け入れ、到着を確認し、入庫して在庫記録を残す |
 | `production-and-stocking-reference-set.json` | 二つのProcedureと、責任の受け渡し（Handoff）一件。`order-entry-procedure-reference-set.json`と同じ形式 |
 | `seed-ledger.json` | 出典、source-backed fact、TEI-originalな設計判断、未解決事項、cross-viewの問い、Handoffの根拠、reviewの状態。Reference用のledgerで、Canonical authorityではない |
@@ -15,30 +15,32 @@ fixtureは既存のloader（`readReferenceSet` / `resolveReferenceSet`）、正�
 
 ## どのようなseedか
 
-- **独立した業務ニーズ**（Handoffを取り除いても成り立つ）: 受注生産では、注文された品が完成数量ぶん物理的に存在するかを、それを求めた指示とも、それについて残した記録とも分けて言える必要がある。記録が物理的な現実より先へ進んだ状態で納期を約束すると、それは偽りの約束になる。別の必要として、入庫側は在庫記録を実際に届いたものと一致させ続ける必要がある。
+- **独立した業務ニーズ**（Handoffを取り除いても成り立つ）: 受注生産では、注文された品が完成数量ぶん物理的に存在するかを、それを求めた指示とも、それについて残した記録とも分けて言える必要がある。記録が物理的な現実より先へ進んだ状態で納期を約束すると、それは偽りの約束になる。物理的完成を確立した後、そのrunを閉じるには確認済みの品をproduction controlから明示的にreleaseして下流custodyへ渡せる状態にする必要があり、これは特定の受入Procedureが無くてもproduction responsibilityの終端として成立する。別の必要として、入庫側は在庫記録を実際に届いたものと一致させ続ける必要がある。
 - **範囲**: 製造一回と入庫までに限る。購買、仕掛原価、計画（MRP）、品質管理システムの詳細、ロット追跡、出荷、会計、複数拠点は範囲外（`seed-ledger.json`の`scope`）。
 - **fake realizationを作らない**: どのStepもApplication Pattern / Data / Relation / Validation / Capabilityを参照せず、fixtureにApplication文脈もない。realizationは`manual-unresolved` / `manual-external-unresolved` / `observation-boundary`だけで、Observationのidentityは持たない。
 
 ## Handoff
 
 ```text
-make-to-order.production-run / PR-06 （確認済みの品を入庫へ引き渡す）
-        │ condition
+make-to-order.production-run / PR-06 （確認済みの品をproduction controlからterminal release）
+        │ condition: release済み・warehouse intake可能、received-count reconciliationはpending
         ▼
-finished-goods.stocking / ST-00 （引き渡された品を受け入れ側の責任で引き受ける）
+finished-goods.stocking / ST-00 （warehouse intakeを開始し、released goodsのphysical custodyを取る）
 ```
 
-conditionは「引き渡された品が、生産側が確認した数量で受け入れ側の責任に引き受けられ、品と数量への責任が生産から倉庫へ移ること」である。次のいずれでもない。
+conditionは「productionが物理確認済みの品をproduction controlからdownstream custody向けに明示releaseし、そのreleaseによってwarehouse intakeを開始できること。received countのreconciliationはまだpendingであること」である。stocking Procedureのtriggerは「finished goods expected for stocking are awaiting warehouse receipt and physical intake」であり、conditionとは別authorityとして保持する。次のいずれでもない。
 
-- 前のStepが終わったこと（Stepの順序・隣接）
-- target Procedureのtrigger
+- target Step `ST-00`がすでに完了したこと
+- received countの照合が成功したこと
+- count accountabilityがすでにwarehouseへ移転したこと
+- target Procedureのtriggerそのもの
 - Observationのidentity、または物理的な観測が正であること
 
-Handoffが自然に生じるのは、二つのProcedureが別々のニーズと別の責任context（候補）を持ち、品と数量への責任が受け入れ側に引き取られるまで生産側にあるからである。この責任の移転はStepの並びとは別のBusiness meaningである。
+production側のterminal releaseは、特定のHandoff fixtureのためではなくproduction responsibilityを閉じる独立Business Actionとして置く。stocking側はそのreleased goodsに対してwarehouse intakeを開始する。Handoffはこの二つの境界を接続するが、ST-00完了やST-01のcount reconciliation結果を先取りしない。
 
 ## review状態
 
-RRB-P1の14項目と、`ISSUE-000050`のseed review checklist（1〜8）に対する**作成者による自己review**を行った。**独立したreview（別の生成AI等）は未実施**で、`seed-ledger.json`の`review`に`self-reviewed` / `pending`として残している。
+2026-09-24の独立review（OpenAI GPT-5.6 Sol）は旧revision `R = 82e4301`に対して`review-blocked`だった。current sourceはそのF-1/F-2/F-4を受けたremediationであり、reviewer自身が修正をauthorしたため**独立再reviewが必要**である。`seed-ledger.json`の`review`も`remediation-authored-after-independent-review` / `re-review-required`としている。旧review結果をcurrent sourceのacceptanceへ読み替えない。
 
 | RRB-P1 | 確認箇所 |
 | --- | --- |
@@ -52,9 +54,9 @@ RRB-P1の14項目と、`ISSUE-000050`のseed review checklist（1〜8）に対�
 | 11 手作業・物理・外部のactualityをApplication結果へ還元すると壊れる圧力 | PR-03 / PR-04 / ST-01、`TestSecondRealisticReferenceKeepsInstructionEntryAndPhysicalCompletionApart` |
 | 12 二視点以上のcross-viewの問い | ledgerの`crossViewQuestions` |
 | 13 fake Application / Capability / Data identityが無い | `TestSecondRealisticReferenceCarriesNoFakeRealization`、baseline checker |
-| 14 Handoffを捏造していない | ledgerの`handoff`（自然に生じる根拠と、導出元ではないものの列挙） |
+| 14 Handoffを捏造していない | remediationではproduction purpose / TD-1へHandoff非依存のterminal releaseを置き、conditionからST-00完了・count transferを除いた。**独立再review待ちで、達成とはまだ扱わない** |
 
-RRB-P2（source / test level）は、同じloader・正規化model・D4導出・standalone Handoff source形式・baseline checkerへ通し、Handoffが隣接・actor差・正の物理Observationから導かれないこと、stale / 欠落 / 空のendpointがfail closedすること、conditionがBusiness meaningとして無損失に保持されることを確認している。O1は、protected-target roleが反復しない（Application Patternを参照しない）ため適用せず、target-role taxonomyも増やしていない。一方、Data-state / ownership境界のcross-check（RRB-P2項目4）は、Data identityが未解決（U-6）で照合する対象authorityが無いため未確認である。RRB-P3（actual execution）は`tools/run-business-procedure-gate-a.sh`のA7（critical test manifest）とA8（この二つのfixtureのbaseline checker）で確認する。R = `82e4301`での結果と、確認していない点は`plan/issue/000050-second-realistic-handoff-corpus.md`の実施記録に記録した。
+RRB-P2 item 4（Data-state / ownership境界をaccepted authorityからcross-check）は引き続き未確認であり、current remediationでfake Data identityを追加していない。したがってP2達成は主張しない。旧R = `82e4301`のRRB-P3 actual execution Evidenceはhistorical Evidenceとして保持するが、current remediation source / pressureは別revisionなのでnew Gate A runが必要である。
 
 ## 主張しないこと
 
