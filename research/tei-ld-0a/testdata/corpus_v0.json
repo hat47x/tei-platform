@@ -36,7 +36,14 @@
           "shape": "scalar",
           "evidence_count": 2,
           "relation_count": 1,
-          "revision_age_steps": 0
+          "revision_age_steps": 0,
+          "referenced_source_ids": [
+            "source.sales.order.unit_price"
+          ],
+          "evidence_ids": [
+            "evidence:source-shape",
+            "evidence:semantic-role"
+          ]
         },
         "candidate": {
           "candidate_kind": "canonical",
@@ -54,7 +61,8 @@
         "final_canonical_mapping": {
           "canonical_id": "std.sales.UnitPrice",
           "revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-        }
+        },
+        "post_accept_evidence_ref": "post-accept:reload-validation-001"
       },
       "split": {
         "name": "train",
@@ -104,7 +112,14 @@
           "shape": "scalar",
           "evidence_count": 2,
           "relation_count": 1,
-          "revision_age_steps": 0
+          "revision_age_steps": 0,
+          "referenced_source_ids": [
+            "source.sales.order.unit_price"
+          ],
+          "evidence_ids": [
+            "evidence:source-shape",
+            "evidence:semantic-role"
+          ]
         },
         "candidate": {
           "candidate_kind": "canonical",
@@ -168,7 +183,14 @@
           "shape": "scalar",
           "evidence_count": 2,
           "relation_count": 1,
-          "revision_age_steps": 0
+          "revision_age_steps": 0,
+          "referenced_source_ids": [
+            "source.sales.order.unit_price"
+          ],
+          "evidence_ids": [
+            "evidence:source-shape",
+            "evidence:semantic-role"
+          ]
         },
         "candidate": {
           "candidate_kind": "unknown_or_needs_new_concept",
@@ -231,7 +253,13 @@
           "shape": "scalar",
           "evidence_count": 1,
           "relation_count": 1,
-          "revision_age_steps": 2
+          "revision_age_steps": 2,
+          "referenced_source_ids": [
+            "source.sales.order.unit_price.v2"
+          ],
+          "evidence_ids": [
+            "evidence:source-shape"
+          ]
         },
         "candidate": {
           "candidate_kind": "canonical",

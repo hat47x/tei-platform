@@ -88,11 +88,13 @@ type FeatureProjection struct {
 }
 
 type SourceFeatures struct {
-	FieldKind        string `json:"field_kind"`
-	Shape            string `json:"shape"`
-	EvidenceCount    int    `json:"evidence_count"`
-	RelationCount    int    `json:"relation_count"`
-	RevisionAgeSteps int    `json:"revision_age_steps"`
+	FieldKind           string   `json:"field_kind"`
+	Shape               string   `json:"shape"`
+	ReferencedSourceIDs []string `json:"referenced_source_ids"`
+	EvidenceIDs         []string `json:"evidence_ids"`
+	EvidenceCount       int      `json:"evidence_count"`
+	RelationCount       int      `json:"relation_count"`
+	RevisionAgeSteps    int      `json:"revision_age_steps"`
 }
 
 type CandidateFeatures struct {
@@ -109,6 +111,7 @@ type Outcome struct {
 	DecisionProvenance    string        `json:"decision_provenance,omitempty"`
 	Staleness             string        `json:"staleness"`
 	PostAcceptConformance string        `json:"post_accept_conformance"`
+	PostAcceptEvidenceRef string        `json:"post_accept_evidence_ref,omitempty"`
 	FinalCanonicalMapping *CanonicalRef `json:"final_canonical_mapping,omitempty"`
 }
 
@@ -344,12 +347,39 @@ func validateRow(row Row) error {
 	return nil
 }
 
+func validateIdentityList(field string, values []string, required bool) error {
+	if required && len(values) == 0 {
+		return fmt.Errorf("source feature %s must contain at least one identity", field)
+	}
+	seen := map[string]bool{}
+	for i, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return fmt.Errorf("source feature %s[%d] must not be blank", field, i)
+		}
+		if seen[value] {
+			return fmt.Errorf("source feature %s contains duplicate identity %q", field, value)
+		}
+		seen[value] = true
+	}
+	return nil
+}
+
 func validateFeatures(features FeatureProjection) error {
 	if strings.TrimSpace(features.Source.FieldKind) == "" || strings.TrimSpace(features.Source.Shape) == "" {
 		return fmt.Errorf("source feature field_kind and shape are required")
 	}
 	if features.Source.EvidenceCount < 0 || features.Source.RelationCount < 0 || features.Source.RevisionAgeSteps < 0 {
 		return fmt.Errorf("source feature counts must be non-negative")
+	}
+	if err := validateIdentityList("referenced_source_ids", features.Source.ReferencedSourceIDs, true); err != nil {
+		return err
+	}
+	if err := validateIdentityList("evidence_ids", features.Source.EvidenceIDs, features.Source.EvidenceCount > 0); err != nil {
+		return err
+	}
+	if len(features.Source.EvidenceIDs) != features.Source.EvidenceCount {
+		return fmt.Errorf("source feature evidence_ids count=%d does not match evidence_count=%d", len(features.Source.EvidenceIDs), features.Source.EvidenceCount)
 	}
 	if features.Candidate.ReuseCount < 0 {
 		return fmt.Errorf("candidate reuse_count must be non-negative")
@@ -397,13 +427,26 @@ func validateOutcome(row Row) error {
 		return fmt.Errorf("invalid staleness %q", row.Outcome.Staleness)
 	}
 	switch row.Outcome.PostAcceptConformance {
-	case ConformancePass, ConformanceFail, ConformanceUnavailable:
+	case ConformancePass, ConformanceFail:
 		if row.Outcome.ProposalDecision != DecisionAccepted {
 			return fmt.Errorf("post-Accept conformance cannot exist before accepted decision")
+		}
+		if strings.TrimSpace(row.Outcome.PostAcceptEvidenceRef) == "" {
+			return fmt.Errorf("%s post-Accept conformance requires post_accept_evidence_ref", row.Outcome.PostAcceptConformance)
+		}
+	case ConformanceUnavailable:
+		if row.Outcome.ProposalDecision != DecisionAccepted {
+			return fmt.Errorf("post-Accept conformance cannot exist before accepted decision")
+		}
+		if row.Outcome.PostAcceptEvidenceRef != "" {
+			return fmt.Errorf("unavailable post-Accept conformance must not claim post_accept_evidence_ref")
 		}
 	case ConformanceNA:
 		if row.Outcome.ProposalDecision == DecisionAccepted {
 			return fmt.Errorf("accepted decision must preserve pass/fail/unavailable post-Accept conformance state")
+		}
+		if row.Outcome.PostAcceptEvidenceRef != "" {
+			return fmt.Errorf("not-applicable post-Accept conformance must not claim post_accept_evidence_ref")
 		}
 	default:
 		return fmt.Errorf("invalid post_accept_conformance %q", row.Outcome.PostAcceptConformance)

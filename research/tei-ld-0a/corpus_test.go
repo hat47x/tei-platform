@@ -381,3 +381,50 @@ func TestAcceptedDecisionRequiresProvenance(t *testing.T) {
 		t.Fatalf("expected decision provenance failure, got %v", err)
 	}
 }
+
+func TestSourceFeatureIdentityProjectionFailsClosed(t *testing.T) {
+	corpus := loadFixture(t)
+
+	corpus.Rows[0].Features.Source.ReferencedSourceIDs = nil
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "referenced_source_ids") {
+		t.Fatalf("expected missing referenced source identity failure, got %v", err)
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[0].Features.Source.EvidenceIDs = []string{"evidence:source-shape"}
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "does not match evidence_count") {
+		t.Fatalf("expected evidence identity/count mismatch, got %v", err)
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[0].Features.Source.EvidenceIDs = []string{"evidence:dup", "evidence:dup"}
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "duplicate identity") {
+		t.Fatalf("expected duplicate evidence identity failure, got %v", err)
+	}
+}
+
+func TestPostAcceptConformanceRequiresReloadEvidenceLink(t *testing.T) {
+	corpus := loadFixture(t)
+	corpus.Rows[0].Outcome.PostAcceptEvidenceRef = ""
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "post_accept_evidence_ref") {
+		t.Fatalf("expected pass-without-evidence-link failure, got %v", err)
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[3].Outcome.PostAcceptEvidenceRef = "post-accept:invented"
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "must not claim post_accept_evidence_ref") {
+		t.Fatalf("expected unavailable-with-evidence-link failure, got %v", err)
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[1].Outcome.PostAcceptEvidenceRef = "post-accept:invalid-before-accept"
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "must not claim post_accept_evidence_ref") {
+		t.Fatalf("expected rejected-row evidence-link failure, got %v", err)
+	}
+}
