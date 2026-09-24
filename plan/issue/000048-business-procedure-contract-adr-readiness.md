@@ -129,6 +129,7 @@ Gate A green前には:
 - system result / physical Observation / actor差からresponsibility transferをbackfillしない
 
 したがってGate Aをsecond Handoff authoringより先に同一revisionで実行し、2026-09-20にPASSした。Blocker Bは2026-09-21にEvidenceを取得した。current execution priorityは、別の生成AIによる独立review（利用者の方針、2026-09-21）と、その後のPre-ADR Auditによる再判定である。
+独立reviewの入力は[Blocker B独立生成AIレビュー依頼](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md)に固定した（2026-09-24）。レビュー対象revision・fileのSHA-256・判定語彙・必須の問い・記録先を定め、作成者（Claude Sonnet 5）とは別ベンダーの生成AIが実施する。パケットの準備はレビューではない。
 
 ## ADR前に要求するEvidence
 

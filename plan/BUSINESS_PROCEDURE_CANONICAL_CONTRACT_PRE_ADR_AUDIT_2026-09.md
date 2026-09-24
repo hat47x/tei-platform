@@ -759,3 +759,4 @@ Contract ADR
 ```
 
 利用者の方針（2026-09-21）により、再判定は別の生成AIによる独立reviewの後に行う。self-reviewだけを根拠にBlocker Bを充足とはしない。二例目も同じ作成者が同じprotocolでauthorしたため、二例あることをHandoff一般の妥当性の証明として扱わない。
+独立reviewの入力は[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md`](BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md)に固定した（2026-09-24）。依頼パケットの存在は、レビューが行われたことも、本§の判定が変わったことも意味しない。
