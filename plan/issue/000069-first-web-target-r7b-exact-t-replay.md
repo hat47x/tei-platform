@@ -9499,7 +9499,7 @@ receipt audit main.go
   100644 / 6616e1ef9acdf4fce36eb7aed696a19ea4d06b41
 
 receipt audit main_test.go
-  100644 / ee9d50aea111b89beca6d9d01c9a636d453cb1c1
+  100644 / 5a379823d56b24b9f653ee60c30ead794402cb09
 ```
 
 The qualification receipt contract now records and audits the exact qualification-helper and Repository-health mode/blob identities in addition to candidate/main/tree, Go platform, canonical path count, and replay-runner identity.
@@ -9690,6 +9690,23 @@ PR #901
 ```
 
 Both PR heads remain protected from generic R7B cleanup. Their existence does not authorize R7B publication, and any future merge that advances `main` invalidates an older qualification base until B4 normally merges the new main and is qualified again.
+
+Cross-lane sequencing is fail-closed:
+
+```text
+TEI-LD-0A lane
+  #901 containment / gate restoration settles before #895 source admission
+
+R7B lane
+  any #901 or #895 merge that advances main
+    -> invalidate any older R7B PASS receipt
+    -> merge latest main into the existing B4 branch by normal merge
+    -> preserve live B4 first-parent lineage
+    -> rerun trusted-local qualification on the new B4 tip
+    -> only a receipt bound to the then-current main / B4 revision / B4 tree may authorize R7B publication
+```
+
+R7B branch hygiene must not merge, close, reset, rebase, force-update, or otherwise repurpose either TEI-LD-0A branch.
 
 A cross-chat search for later execution Evidence found no trusted-local full-checkout PASS receipt after the previously recorded checkpoints. Therefore:
 
