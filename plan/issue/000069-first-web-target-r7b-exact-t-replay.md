@@ -9358,3 +9358,147 @@ advanced-B4 preservation
 ```
 
 This finalizer is deliberately narrower than general branch cleanup. It only handles the R7B qualification branch after the canonical source integration has already passed post-merge verification. Unrelated active branches remain governed by the separate open-PR/unique-ahead protection rule.
+
+#### B4 continuation — forward containment after an unqualified canonical-source merge — 2026-09-24
+
+A concurrent lane advanced `main` with a generic merge of the live B4 qualification branch before a trusted-local full Repository-health PASS receipt had been observed.
+
+Detected merge:
+
+```text
+main merge:
+  7e251bb9b677c33d6eed3399d173d5dffe63e07a
+
+parents:
+  first  = 6c62a4e0e8e6cb2b4ce6d4539073afb40098672f
+  second = af12d05142fea4fedbfef3566cc88c2389b6fd8f
+
+merge tree:
+  cdf6e2783fa5bf387748c9390d9ed8c0f94a2d38
+
+B4 candidate tree:
+  25eae9a8873b5520ac6d549a6a289f558868baaf
+```
+
+The merge tree did **not** equal the B4 candidate tree and the publication did not follow the required sequence:
+
+```text
+trusted-local full qualification PASS receipt
+  -> receipt preflight
+  -> exact-parent candidate-tree merge object
+  -> non-force publication
+  -> post-merge verifier
+```
+
+A comparison of the merge against its first parent showed that the net source effect was exactly the canonical 11-path packet. No unrelated first-parent changes were part of that merge effect.
+
+The violation was contained with forward history only. No reset, rebase, force push, or main-history rewrite was used.
+
+Containment path:
+
+```text
+PR #898
+  r7b: restore qualification gate and bind toolchain receipt
+
+merged main:
+  22e911c9791950ef23101a4f6c14e93e99723040
+
+contained main tree:
+  9709ed27070a3d91ee781eed6d461df0f32fc49b
+```
+
+The containment tree preserves the existing TEI-LD-0A and Lane C work while:
+
+```text
+8 canonical paths that did not exist before R7B source integration:
+  removed again
+
+3 pre-existing canonical paths:
+  restored to their pre-R7B blobs
+
+qualification / integration hardening:
+  retained
+```
+
+Post-containment main identities:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  100755 / b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2
+
+tools/repository-health-check.sh
+  100755 / d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+tools/finalize-first-web-target-r7b-integration.sh
+  100755 / ba34ba2f689b31f7e71aaa44d24a0d2c160b185b
+
+receipt audit main.go
+  100644 / 6616e1ef9acdf4fce36eb7aed696a19ea4d06b41
+
+receipt audit main_test.go
+  100644 / ee9d50aea111b89beca6d9d01c9a636d453cb1c1
+```
+
+The qualification receipt contract now records and audits the exact qualification-helper and Repository-health mode/blob identities in addition to candidate/main/tree, Go platform, canonical path count, and replay-runner identity.
+
+Focused receipt-audit validation on the exact current blobs:
+
+```text
+gofmt -d
+  clean
+
+go test -count=1
+  PASS
+
+go vet
+  PASS
+
+qualification helper / Repository-health tree modes
+  100755 / 100755
+  PASS
+```
+
+This focused verification is not a full Repository-health qualification of the canonical source candidate.
+
+After containment, the existing B branch was rebuilt without force:
+
+```text
+B4 tip:
+  7f15311287d04f067fa1fffda9e87c1cbf8fb714
+
+first parent:
+  af12d05142fea4fedbfef3566cc88c2389b6fd8f
+
+second parent:
+  22e911c9791950ef23101a4f6c14e93e99723040
+
+candidate tree:
+  00a74e3e0f08a11c875fe39ca760a134e391c734
+
+B4 vs main:
+  ahead  = 1
+  behind = 0
+  net diff = canonical 11 paths only
+
+canonical mode/blob audit:
+  11 / 11 PASS
+```
+
+The mandatory gate is restored:
+
+```text
+canonical source on main
+  = absent
+
+canonical exact packet on B4
+  = retained
+
+trusted-local full Repository-health PASS receipt
+  = still required before any future publication
+
+generic merge of B4 into main
+  = not integration authority
+```
+
+If a future concurrent lane observes canonical source already present on `main` without an exact receipt-authorized publication record, it must fail closed and reconcile rather than treating presence on `main` as Evidence of qualification.
+
