@@ -137,10 +137,19 @@ func TestDecodeReceiptRejectsUnknownOrTrailingJSON(t *testing.T) {
 		t.Fatalf("rejected valid qualification receipt JSON: %v", err)
 	}
 
-	unknown := `{"evidenceNature":"first-web-target-r7b-local-source-qualification-receipt","unknown":true}`
-	if _, err := decodeReceipt([]byte(unknown)); err == nil {
+	var unknown map[string]any
+	if err := json.Unmarshal(valid, &unknown); err != nil {
+		t.Fatal(err)
+	}
+	unknown["unknown"] = true
+	unknownJSON, err := json.Marshal(unknown)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeReceipt(unknownJSON); err == nil {
 		t.Fatal("accepted unknown receipt field")
 	}
+
 	trailing := `{} {}`
 	if _, err := decodeReceipt([]byte(trailing)); err == nil {
 		t.Fatal("accepted trailing JSON value")
