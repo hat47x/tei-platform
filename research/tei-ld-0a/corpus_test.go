@@ -319,7 +319,6 @@ func TestProposalEpisodeCannotCrossSplit(t *testing.T) {
 	}
 }
 
-
 func TestRowIdentityRequiresRecordedSourceTemporalGroupAndSchema(t *testing.T) {
 	cases := []struct {
 		name   string
