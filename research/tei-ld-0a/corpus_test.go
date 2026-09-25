@@ -125,6 +125,7 @@ func TestReuseRankingSeparatesDecisionContextsSharingCandidateSet(t *testing.T) 
 	accepted.Outcome.DecisionProvenance = "shared-acceptance:decision-003"
 	accepted.Outcome.Staleness = StalenessCurrent
 	accepted.Outcome.PostAcceptConformance = ConformancePass
+	accepted.Outcome.PostAcceptEvidenceRef = "post-accept:reload-validation-003"
 	accepted.Outcome.FinalCanonicalMapping = &CanonicalRef{
 		CanonicalID: accepted.Candidate.CanonicalID,
 		Revision:    accepted.Candidate.CanonicalRevision,
@@ -145,6 +146,7 @@ func TestReuseRankingSeparatesDecisionContextsSharingCandidateSet(t *testing.T) 
 	rejected.Outcome.DecisionProvenance = accepted.Outcome.DecisionProvenance
 	rejected.Outcome.Staleness = StalenessCurrent
 	rejected.Outcome.PostAcceptConformance = ConformanceNA
+	rejected.Outcome.PostAcceptEvidenceRef = ""
 	rejected.Outcome.FinalCanonicalMapping = nil
 	rejected.Features.Candidate.Compatibility = CompatibilityIncompatible
 	rejected.Features.Candidate.IncompatibilityReasons = []string{"semantic-role-mismatch"}
@@ -320,9 +322,9 @@ func TestProposalEpisodeCannotCrossSplit(t *testing.T) {
 
 func TestRowIdentityRequiresRecordedSourceTemporalGroupAndSchema(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		mutate func(*Row)
-		want string
+		want   string
 	}{
 		{"schema-version", func(row *Row) { row.SchemaVersion = "" }, "schema_version"},
 		{"source-id", func(row *Row) { row.SourceID = "" }, "source_id"},

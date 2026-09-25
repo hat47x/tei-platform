@@ -38,8 +38,8 @@ const (
 	CompatibilityUnknown      = "unknown"
 
 	RevisionCompatible = "current"
-	RevisionStale       = "stale_or_incompatible"
-	RevisionUnknown     = "unknown"
+	RevisionStale      = "stale_or_incompatible"
+	RevisionUnknown    = "unknown"
 
 	SplitTrain      = "train"
 	SplitValid      = "valid"
@@ -144,7 +144,7 @@ type ReuseRankingCase struct {
 }
 
 type IncompatibilityExample struct {
-	RowID         string `json:"row_id"`
+	RowID        string `json:"row_id"`
 	Incompatible bool   `json:"incompatible"`
 }
 
@@ -294,13 +294,13 @@ func ValidateCorpusWithCanonicalResolver(corpus Corpus, resolve CanonicalResolve
 
 func validateRow(row Row) error {
 	for field, value := range map[string]string{
-		"row_id": row.RowID,
-		"schema_version": row.SchemaVersion,
-		"source_id": row.SourceID,
-		"application_id": row.ApplicationID,
-		"context_id": row.ContextID,
-		"candidate_set_id": row.CandidateSetID,
-		"collected_at": row.CollectedAt,
+		"row_id":            row.RowID,
+		"schema_version":    row.SchemaVersion,
+		"source_id":         row.SourceID,
+		"application_id":    row.ApplicationID,
+		"context_id":        row.ContextID,
+		"candidate_set_id":  row.CandidateSetID,
+		"collected_at":      row.CollectedAt,
 		"temporal_group_id": row.TemporalGroupID,
 	} {
 		if strings.TrimSpace(value) == "" {
