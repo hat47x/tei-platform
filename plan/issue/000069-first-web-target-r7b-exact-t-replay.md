@@ -9727,3 +9727,103 @@ integration authority
 No generic merge / squash / cherry-pick of B4 into `main` is authorized by this checkpoint. The next Evidence-raising action remains execution of the existing qualification helper on the **then-current live B4 tip** in a trusted local full checkout, followed by the receipt-bound exact-parent publication sequence already defined above.
 
 This checkpoint is observational. The exact B4 SHA is not a frozen future integration target; immediately before qualification or publication, remote `main`, B4, open PRs, canonical path overlap, and receipt binding must be re-read.
+
+#### B4 continuation — live candidate/toolchain tree coherence checkpoint — 2026-09-25
+
+A fresh cross-lane audit was performed before any further qualification or publication action.
+
+Observed repository state:
+
+```text
+main:
+  a45fd19068322caeae4dc23582afc1d56267868e
+
+B4:
+  860ea6529b085e5410761ab3db867d7d46848418
+
+B4 vs main:
+  ahead  = 11
+  behind = 0
+  net diff = canonical 11 paths only
+
+B4 tree:
+  918d327d32e27a384016a6834dcae6b768fc63ce
+```
+
+The live B4 tip preserves normal lineage:
+
+```text
+first parent:
+  44462993fe048831e5661fc06d2a7b664f5df1aa
+
+second parent:
+  a45fd19068322caeae4dc23582afc1d56267868e
+```
+
+Canonical packet identity on the live B4 tree:
+
+```text
+canonical paths checked = 11
+mode/blob matches       = 11
+mismatches               = 0
+```
+
+The qualification/integration toolchain was compared directly between current `main` and current B4. All nine tracked toolchain paths are mode/blob-identical:
+
+```text
+tools/run-first-web-target-r7b-local-qualification.sh
+  100755 / b7e8fff04e251e481ad9a9c8ff0ff029fea0a4a2
+
+tools/repository-health-check.sh
+  100755 / d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main.go
+  100644 / 6616e1ef9acdf4fce36eb7aed696a19ea4d06b41
+
+tools/reference-first-web-target-r7b-qualification-receipt-audit/main_test.go
+  100644 / 5a379823d56b24b9f653ee60c30ead794402cb09
+
+tools/verify-first-web-target-r7b-integration-receipt.sh
+  100755 / 004d7be0f84824d2cadbb01a767bf30a75ed8ab4
+
+tools/prepare-first-web-target-r7b-exact-parent-merge.sh
+  100755 / 13118b68520afcabe56227233d289e8628c1b51f
+
+tools/publish-first-web-target-r7b-exact-parent-merge.sh
+  100755 / 05ff90ba67188d035532a745ccd3b82ae188c3db
+
+tools/verify-first-web-target-r7b-post-merge.sh
+  100755 / 4ba5f8f76c84c551980387de51a6884d73669903
+
+tools/finalize-first-web-target-r7b-integration.sh
+  100755 / ba34ba2f689b31f7e71aaa44d24a0d2c160b185b
+```
+
+Therefore the current B4 candidate is internally coherent with the exact qualification/publication contract present on its base main. This is **not** integration authority: no Repository-external trusted-local full Repository-health PASS receipt has been observed.
+
+Concurrent-lane protection remains active:
+
+```text
+PR #895
+  preserve head branch
+  do not generic-cleanup / fast-forward / rewrite
+
+PR #901
+  preserve head branch
+  do not generic-cleanup / fast-forward / rewrite
+```
+
+All other non-B4 remote refs were already identical to current `main` at this checkpoint.
+
+Current stop point:
+
+```text
+canonical 11 exactness                 = PASS
+qualification/publication toolchain    = main/B4 identical
+trusted-local full Repository-health   = not yet evidenced
+integration authority                  = absent
+generic merge of B4 into main          = prohibited
+```
+
+The next Evidence-raising action remains execution of `tools/run-first-web-target-r7b-local-qualification.sh` from an exact-clean trusted local full checkout at the then-current B4 tip, followed only by the receipt-bound exact-parent publication sequence.
+
