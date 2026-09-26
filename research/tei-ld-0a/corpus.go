@@ -395,6 +395,9 @@ func validateFeatures(features FeatureProjection) error {
 		return fmt.Errorf("invalid candidate revision_compatibility %q", features.Candidate.RevisionCompatibility)
 	}
 	if features.Candidate.Compatibility == CompatibilityIncompatible {
+		if !features.Candidate.EvidenceAvailable || len(features.Source.EvidenceIDs) == 0 {
+			return fmt.Errorf("deterministic incompatibility requires available referenced evidence")
+		}
 		if len(features.Candidate.IncompatibilityReasons) == 0 {
 			return fmt.Errorf("deterministic incompatibility requires reasons")
 		}

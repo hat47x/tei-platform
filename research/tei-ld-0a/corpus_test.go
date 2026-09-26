@@ -407,6 +407,23 @@ func TestSourceFeatureIdentityProjectionFailsClosed(t *testing.T) {
 	}
 }
 
+func TestIncompatibilityTargetRequiresEvidence(t *testing.T) {
+	corpus := loadFixture(t)
+	corpus.Rows[1].Features.Candidate.EvidenceAvailable = false
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "deterministic incompatibility requires available referenced evidence") {
+		t.Fatalf("expected unavailable incompatibility evidence failure, got %v", err)
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[1].Features.Source.EvidenceIDs = nil
+	corpus.Rows[1].Features.Source.EvidenceCount = 0
+	if err := ValidateCorpus(corpus); err == nil ||
+		!strings.Contains(err.Error(), "deterministic incompatibility requires available referenced evidence") {
+		t.Fatalf("expected missing referenced incompatibility evidence failure, got %v", err)
+	}
+}
+
 func TestPostAcceptConformanceRequiresReloadEvidenceLink(t *testing.T) {
 	corpus := loadFixture(t)
 	corpus.Rows[0].Outcome.PostAcceptEvidenceRef = ""
