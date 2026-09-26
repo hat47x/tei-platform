@@ -494,16 +494,43 @@ func TestPostAcceptConformanceRequiresReloadEvidenceLink(t *testing.T) {
 }
 
 func TestPostAcceptEvidenceCannotLeakIntoSourceFeatures(t *testing.T) {
-	for _, evidenceID := range []string{
-		"post-accept:reload-validation-001",
-		" post-accept:reload-validation-001 ",
+	for _, tc := range []struct {
+		name   string
+		mutate func(*Row)
+	}{
+		{
+			name: "evidence-id",
+			mutate: func(row *Row) {
+				row.Features.Source.EvidenceIDs[0] = row.Outcome.PostAcceptEvidenceRef
+			},
+		},
+		{
+			name: "evidence-id-whitespace",
+			mutate: func(row *Row) {
+				row.Features.Source.EvidenceIDs[0] = " " + row.Outcome.PostAcceptEvidenceRef + " "
+			},
+		},
+		{
+			name: "referenced-source-id",
+			mutate: func(row *Row) {
+				row.Features.Source.ReferencedSourceIDs[0] = row.Outcome.PostAcceptEvidenceRef
+			},
+		},
+		{
+			name: "referenced-source-id-whitespace",
+			mutate: func(row *Row) {
+				row.Features.Source.ReferencedSourceIDs[0] = " " + row.Outcome.PostAcceptEvidenceRef + " "
+			},
+		},
 	} {
-		corpus := loadFixture(t)
-		corpus.Rows[0].Features.Source.EvidenceIDs[0] = evidenceID
-		if err := ValidateCorpus(corpus); err == nil ||
-			!strings.Contains(err.Error(), "must not include post_accept_evidence_ref") {
-			t.Fatalf("expected post-Accept Evidence leakage failure for %q, got %v", evidenceID, err)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			corpus := loadFixture(t)
+			tc.mutate(&corpus.Rows[0])
+			if err := ValidateCorpus(corpus); err == nil ||
+				!strings.Contains(err.Error(), "must not include post_accept_evidence_ref") {
+				t.Fatalf("expected post-Accept Evidence leakage failure, got %v", err)
+			}
+		})
 	}
 }
 

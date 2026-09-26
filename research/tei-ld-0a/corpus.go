@@ -342,9 +342,15 @@ func validateRow(row Row) error {
 		return err
 	}
 	if postAcceptEvidenceRef := strings.TrimSpace(row.Outcome.PostAcceptEvidenceRef); postAcceptEvidenceRef != "" {
-		for _, evidenceID := range row.Features.Source.EvidenceIDs {
-			if strings.TrimSpace(evidenceID) == postAcceptEvidenceRef {
-				return fmt.Errorf("source feature evidence_ids must not include post_accept_evidence_ref")
+		featureIdentityLists := map[string][]string{
+			"referenced_source_ids": row.Features.Source.ReferencedSourceIDs,
+			"evidence_ids":          row.Features.Source.EvidenceIDs,
+		}
+		for field, identities := range featureIdentityLists {
+			for _, identity := range identities {
+				if strings.TrimSpace(identity) == postAcceptEvidenceRef {
+					return fmt.Errorf("source feature %s must not include post_accept_evidence_ref", field)
+				}
 			}
 		}
 	}
