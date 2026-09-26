@@ -703,11 +703,7 @@ func BuildEscalationView(corpus Corpus) ([]EscalationExample, error) {
 	for _, key := range keys {
 		rows := grouped[key]
 		acceptedCurrent := false
-		stale := false
 		for _, row := range rows {
-			if row.Outcome.Staleness == StalenessStale {
-				stale = true
-			}
 			if row.Outcome.ProposalDecision == DecisionAccepted &&
 				row.Outcome.Staleness == StalenessCurrent &&
 				row.Outcome.FinalCanonicalMapping != nil &&
@@ -724,7 +720,7 @@ func BuildEscalationView(corpus Corpus) ([]EscalationExample, error) {
 			BaseModelRevision: first.BaseModelRevision,
 			ProposalEpisode:   first.Split.ProposalEpisode,
 			CandidateSetID:    first.CandidateSetID,
-			Escalate:          stale || !acceptedCurrent,
+			Escalate:          !acceptedCurrent,
 		})
 	}
 	return out, nil

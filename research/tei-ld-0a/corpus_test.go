@@ -79,6 +79,25 @@ func TestSyntheticFixtureAndDerivedViews(t *testing.T) {
 	}
 }
 
+func TestEscalationIgnoresStaleRejectedAlternativeWhenCurrentMappingExists(t *testing.T) {
+	corpus := loadFixture(t)
+	staleAlternative := corpus.Rows[1]
+	staleAlternative.RowID = "row-stale-rejected-alternative"
+	staleAlternative.Outcome.Staleness = StalenessStale
+	staleAlternative.Features.Candidate.RevisionCompatibility = RevisionStale
+	corpus.Rows = append(corpus.Rows, staleAlternative)
+
+	view, err := BuildEscalationView(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range view {
+		if item.ContextID == "field-unit-price" && item.Escalate {
+			t.Fatalf("stale rejected alternative must not escalate a context with a current accepted mapping: %+v", item)
+		}
+	}
+}
+
 func TestEscalationIsDecisionContextLevel(t *testing.T) {
 	corpus := loadFixture(t)
 	currentOnly := Corpus{
