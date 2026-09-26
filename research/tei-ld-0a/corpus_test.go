@@ -494,11 +494,16 @@ func TestPostAcceptConformanceRequiresReloadEvidenceLink(t *testing.T) {
 }
 
 func TestPostAcceptEvidenceCannotLeakIntoSourceFeatures(t *testing.T) {
-	corpus := loadFixture(t)
-	corpus.Rows[0].Features.Source.EvidenceIDs[0] = corpus.Rows[0].Outcome.PostAcceptEvidenceRef
-	if err := ValidateCorpus(corpus); err == nil ||
-		!strings.Contains(err.Error(), "must not include post_accept_evidence_ref") {
-		t.Fatalf("expected post-Accept Evidence leakage failure, got %v", err)
+	for _, evidenceID := range []string{
+		"post-accept:reload-validation-001",
+		" post-accept:reload-validation-001 ",
+	} {
+		corpus := loadFixture(t)
+		corpus.Rows[0].Features.Source.EvidenceIDs[0] = evidenceID
+		if err := ValidateCorpus(corpus); err == nil ||
+			!strings.Contains(err.Error(), "must not include post_accept_evidence_ref") {
+			t.Fatalf("expected post-Accept Evidence leakage failure for %q, got %v", evidenceID, err)
+		}
 	}
 }
 

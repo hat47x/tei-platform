@@ -343,7 +343,7 @@ func validateRow(row Row) error {
 	}
 	if postAcceptEvidenceRef := strings.TrimSpace(row.Outcome.PostAcceptEvidenceRef); postAcceptEvidenceRef != "" {
 		for _, evidenceID := range row.Features.Source.EvidenceIDs {
-			if evidenceID == postAcceptEvidenceRef {
+			if strings.TrimSpace(evidenceID) == postAcceptEvidenceRef {
 				return fmt.Errorf("source feature evidence_ids must not include post_accept_evidence_ref")
 			}
 		}
