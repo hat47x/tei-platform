@@ -671,6 +671,9 @@ func BuildIncompatibilityView(corpus Corpus) ([]IncompatibilityExample, error) {
 		if row.Candidate.Kind != CandidateKindCanonical {
 			continue
 		}
+		if !row.Features.Candidate.EvidenceAvailable || len(row.Features.Source.EvidenceIDs) == 0 {
+			continue
+		}
 		switch row.Features.Candidate.Compatibility {
 		case CompatibilityCompatible:
 			out = append(out, IncompatibilityExample{RowID: row.RowID, Incompatible: false})

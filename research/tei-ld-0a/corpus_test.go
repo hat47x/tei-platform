@@ -407,6 +407,33 @@ func TestSourceFeatureIdentityProjectionFailsClosed(t *testing.T) {
 	}
 }
 
+func TestIncompatibilityViewExcludesEvidenceFreeCompatibleRows(t *testing.T) {
+	corpus := loadFixture(t)
+	corpus.Rows[0].Features.Candidate.EvidenceAvailable = false
+	view, err := BuildIncompatibilityView(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range view {
+		if item.RowID == corpus.Rows[0].RowID {
+			t.Fatalf("compatible row without candidate Evidence became a V2 target: %+v", item)
+		}
+	}
+
+	corpus = loadFixture(t)
+	corpus.Rows[0].Features.Source.EvidenceIDs = nil
+	corpus.Rows[0].Features.Source.EvidenceCount = 0
+	view, err = BuildIncompatibilityView(corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range view {
+		if item.RowID == corpus.Rows[0].RowID {
+			t.Fatalf("compatible row without referenced Evidence became a V2 target: %+v", item)
+		}
+	}
+}
+
 func TestIncompatibilityTargetRequiresEvidence(t *testing.T) {
 	corpus := loadFixture(t)
 	corpus.Rows[1].Features.Candidate.EvidenceAvailable = false
