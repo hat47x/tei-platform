@@ -1,10 +1,26 @@
 # ISSUE-000055: CI停止中でも、未検証の変更がmainへ入り続けない仕組みを決める
 
-- 状態: Done — main緑化、health check script（`--fix`付き）、`AGENTS.md`での必須化を実施し、方式を決定（2026-09-20）
+- 状態: Done — 2026-09-20に初回方式を決定、2026-09-28に並行AI session / protected Gate運用を踏まえて現行ルールへ更新
 - 提案日: 2026-09-19
 - 性格: Repository health / verification gate / Evidence reliability
 - 主担当要求: RQ-021 / RQ-022 / RQ-023
 - 関連: ISSUE-000029 / ISSUE-000028 / ISSUE-000037 / ISSUE-000060 / CONTRIBUTING.md「Branch / PR運用」§8・§11
+
+## 2026-09-28 運用更新（現行ルール）
+
+2026-09-20の決定のうち、**「main直接commitを正とする」「PRを不要とする」部分は現行運用では失効**しています。human ownerが一人でも、複数のAI session / processが同時にRepositoryを更新することが常態化し、protected Gate対象のsourceがqualification receiptなしにgeneric mergeへ巻き込まれる事象も発生しました。2026-09-27に#909で `AGENTS.md` / `CONTRIBUTING.md` をfail closedへ更新し、現在はそちらを正本とします。
+
+現行ルールは次のとおりです。
+
+- `main`へ直接commitしない。既存のtask / lane branchを再利用し、並行作業ごとにsibling branchを増やさない。
+- shared live branchでrebase / reset / force updateを行わない。最新`main`への追随が必要なら、現在のlane tipを第一親にした通常mergeを使う。
+- milestone / Gate完了時にPRまたは通常mergeで`main`へ戻し、統合後は独自aheadもactive PRもないbranchだけをnon-forceで収束または削除する。
+- code変更を含むDraft PRはmerge authorityではない。**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post state**が必要で、focused test、static tree audit、GitHubの`mergeable`表示は代用しない。
+- R7Bのような個別qualification contractを持つprotected laneでは、repository-wide healthに加えて、その計画文書が定めるreceipt-bound sequenceを満たすまでgeneric merge / squash / cherry-pick / source copyを行わない。
+
+GitHub側のserver enforcementにも依存できません。2026-09-28のAPI確認では`main`は `protected=false`、required status checksはoffでした。またprivate repositoryのrepository rulesets APIは、現在のGitHub planでは利用不可でした。したがって、現時点のfail-closed Gateは**GitHubが強制する保護ではなく、Repository内の運用契約**です。GitHub側のmerge操作が可能であること自体をintegration authorityとみなしません。
+
+この更新は2026-09-20の判断記録を削除するものではありません。下記「旧決定」は当時の履歴として残し、矛盾する箇所では本節と現行`AGENTS.md` / `CONTRIBUTING.md`を優先します。
 
 ## 何に困っているのか
 
@@ -63,9 +79,9 @@ Gate Readyや「pressure testがgreen」という主張が、コンパイルで�
 
 あわせて、main直接commitについて、§8の運用と実態のどちらを正とするかを決めます（例外条件を明文化するか、抑止するか）。
 
-## 決定（2026-09-20）
+## 旧決定（2026-09-20、2026-09-27以降は一部失効）
 
-利用者は一人で開発しており、人的reviewを介する段階になく、その工数もありません。これを前提に次のとおり決めました。
+以下は2026-09-20時点の判断記録です。当時はhuman ownerが一人であることを中心に運用を単純化しましたが、その後の複数AI session並行更新とGate逸脱を受け、上記2026-09-28節で一部を明示的に失効させています。
 
 - **A（script運用）を採用**し、`tools/repository-health-check.sh`をpush前の必須手順にする（`AGENTS.md`）。gofmt差は`--fix`で自動整形できる。並行して動くAI sessionにも同じ規則が適用される。
 - B（pre-push hook）は採用しない。Goが（この環境では）WSL2にだけあるため、Windows側cloneのhookは動かず、cloneごとの設定も要る。
@@ -81,7 +97,7 @@ Gate Readyや「pressure testがgreen」という主張が、コンパイルで�
 - [x] mainをgofmt / vet / test / validateすべてgreenにする（#828 / #829 / #830、`b0f466c`）
 - [x] 手元で再現できる検証scriptを用意し、`CONTRIBUTING.md`へ記載する
 - [x] gate化の方式（上のA〜E）を決める（Aを採用。方式の選択はこのIssueへ記録し、ADRにはしない）
-- [x] main直接commitの扱いを決め、`CONTRIBUTING.md` / `AGENTS.md`と実態を一致させる（直接commitを正とした）
+- [x] main直接commitの扱いを決める（2026-09-20は直接commitを正としたが、2026-09-27以降は現行`AGENTS.md` / `CONTRIBUTING.md`により失効し、既存lane経由へ戻した）
 - [x] 決めた方式の運用として、作業の開始時とpush前にhealth checkを実行することを`AGENTS.md` / `CONTRIBUTING.md`へ記載した
 - [x] Gate B `#310`の`-broad`は必要になったときに実行する方針とする（Gate B Readyの`R`は変えない）
 
