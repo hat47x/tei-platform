@@ -34,6 +34,8 @@ human ownerは一人ですが、複数のAI session / processが同時に作業�
 - milestone / Gateが完了したらPRまたは通常mergeで`main`へ戻す。統合後、独自aheadもactive PRもないbranchだけをnon-forceで最新`main`へ収束させる。active laneを機械的に削除しない。
 - `main`へforce pushしない。並行更新でexpected head / fast-forward条件が外れた場合は、forceで突破せずremote stateを再取得してreconcileする。
 - コードを変えたときは、`main`へ統合する前に`tools/repository-health-check.sh`を通す。文書だけの変更は、リンク・正本性・状態表現・Gate / Evidence claimを壊していないかを確認する。
+- code変更を含むDraft PRは、GitHub上でmerge可能でも統合しない。**そのexact headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post stateの記録**がmerge authorityであり、focused test、static tree audit、PRのmergeable判定は代用しない。
+- forward containmentや資格確認のために保持しているbranchは、PRがclosed/mergedになっただけでは通常cleanupへ戻さない。正本のGate handoffが完了し、candidate lineageをもう保持しなくてよいことを確認してからnon-forceで収束させる。
 - GitHub Actionsは月間quota等で使えないことがある。hosted CIが使えないことはlocal Gateを省略する理由にしない。
 - branch名・commit・PRの有無はProduct / Issue / Gateの状態を表さない。状態は正本文書とEvidenceで管理する。
 
