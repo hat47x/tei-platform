@@ -363,6 +363,8 @@ Change 2の再開条件は、Gate B Ready + Handover Baseline固定 + First Web 
 
 この判断は`reference/sei-adoption/change2-presentation-gate-boundary-20260918.json`へmachine-readableに固定する。
 
+2026-09-27注記: 上の再開条件のうち、Gate B Ready + Handover Baseline固定 + First Web Target着手は成立している（Gate C Readyの判定も含め、根拠は上の2026-09-21注記と同じ）。target-neutral Presentation機構は引き続き未成立である。再開は[ISSUE-000070](../issue/000070-sei-reference-adoption-change2-resumption.md)（Proposed・評価待ち）で扱い、最初にSEI Resumeを既存のApplication Patternと第一Web Targetの仕組みで扱えるかをread-onlyで確かめる。Change 2は未実行であり、下の整理はまだ更新しない。
+
 現時点では、
 
 - Reference-local semantic decomposition: 成立
