@@ -40,7 +40,9 @@ Web画面で登録するという実現方法
 
 この区別を維持するために、複数のRequirementが互いに支え合っています。
 
-## 2. 要求群を六つのテーマで読む
+これらの要求は、Product Valueが定める個人・組織・社会の価値を、プロダクトの能力として支えるためにあります。どの価値をどのRequirementが支えるかは、[`TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)の「意味のSSOTが生む価値」で各価値の項目ごとに示しています。
+
+## 2. 要求群を七つのテーマで読む
 
 ### A. 意味を実装から守る — RQ-001〜004
 
@@ -187,6 +189,29 @@ Referenceや実験が成功しても、そのままproduction-readyとは言え�
 
 RQ-025 / RQ-026は、[`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)で、もう一段具体的に解釈しています。
 
+### G. 人とAIが長く一緒に開発し、業務を続ける — RQ-027〜030
+
+生成AIが実装や業務の一部を担うようになると、問題は「一度作れるか」から「数か月後に、別のAIや別の担当者が安全に続きを担えるか」へ移ります。
+
+この領域では、Applicationの知識を会話履歴や特定の人の記憶へ閉じ込めず、人とAIが同じ正本から理解・承認・再利用・業務遂行を続けられることを要求します。
+
+主な失敗例:
+
+- 前回のAIとの会話履歴が無いと、Applicationの意味や過去の決定を誰も再構成できない
+- 人が生成コードの全量を読めないまま承認し、承認が形だけになる
+- 別Applicationへ意味をcopyした結果、元と先が黙って分岐する
+- AIエージェントが業務手順を読めることを理由に、外部へ副作用を起こす権限まで持つ
+- AIが命令を出したことを、業務が完了したことと読み替える
+
+対応する主なRequirement:
+
+- **RQ-027** — AIが長期間にわたりApplicationへ再入場できる開発contextを提供する
+- **RQ-028** — 人間が実装詳細を全面的に読まずに変更を理解・承認できる
+- **RQ-029** — Domain・Infrastructure知識を適用条件付きで再利用・移植する
+- **RQ-030** — AIエージェントがTEI成果物を業務遂行のOperational Knowledgeとして利用する
+
+この群は、Product Valueでいう個人の価値（引継ぎ、中身のある承認）、組織の価値（知識資産の再利用）、社会の価値（人による監督を名目にしないこと、権限の暗黙の拡大を防ぐこと）に直接つながります。RQ-030の業務遂行も、RQ-018〜RQ-020のCommand / Observation / 権限 / unknown境界を迂回しません。
+
 ## 3. 一つの受注例で要求のつながりを見る
 
 たとえば「顧客を選び、複数の明細を持つ受注を登録する」という業務を考えます。
@@ -253,6 +278,7 @@ Product Requirement exists
 
 ## 5. 次に読むもの
 
+- 要求が守る価値（個人・組織・社会）: [`../product/value/TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)
 - 正式な要求本文: [`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md)
 - 業務システム設計の要求解釈: [`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
 - Architectureを根幹から読む: [`../docs/architecture-reading-guide.md`](../docs/architecture-reading-guide.md)
