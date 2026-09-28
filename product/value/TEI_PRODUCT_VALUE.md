@@ -351,6 +351,20 @@ TEIは、SUI Sensemaking、SEI Cognition、EKI Fabricと組み合わせて利用
 
 この関係を固定pipelineにはしません。TEI単独でも成立し、必要なときだけ隣接Productや他のOSS・Providerを利用できることを重視します。
 
+### SEIが提案する「統合の頂点」との関係（2026-09-27追記・評価待ち）
+
+SEI側では、hat47xの製品群に対するSEIの役割を「統合の頂点」として定義し直す提案が出ています（`hat47x/sei-cognition:plan/adr/ADR-0032-family-integration-apex-and-control-meaning-boundary.md`、提案中）。この提案とそこから参照される文書は、SEIの未統合branch `docs/family-apex-backflow-20260927`にだけあります。SEIの役割の定義はSEIが正本であり、SEI側で採否が決まるまで、TEIではこの小節を評価待ちとして扱います。
+
+提案は「頂点」を三つの意味に限って採ります。観測・決定・権限のような最も一般的な概念を持ち、各製品に固有の意味をそこへ翻訳できるという**抽象の頂点**。製品やモデルや組織が入れ替わった後も読める、製品群の中で最も長く残る記録を持つという**時間の頂点**。製品をまたいだ判断の経緯を、時間をさかのぼって組み立て直せる唯一の場所という**統合の頂点**です。統合は任意の合流であり、製品はSEIへ記録を送ってもよいが、送らなくても成り立つ、とされています。逆に、他製品へ命令する**指揮の頂点**、他製品の意味やdataの正本を持つ**所有の頂点**、SEIが止まると製品群が止まる**可用性の頂点**は採りません。
+
+TEIから見ると、この定義は本節の境界と矛盾しません。TEIが守る線は次のとおりで、いずれも本節、ADR-0022、ADR-0028から導かれるものです。SEIの提案の採否に関係なく維持します。
+
+- **業務の意味の正本はTEIに残ります。** TEIに関してSEIが持つのは、TEIの記録（受理の記録、Authorization、Commandの結果、Observation等）への参照と、製品間の対応表だけです。対応表はTEIの記録を翻訳しますが、TEIの意味を書き換えません。
+- **SEIのRecommendationは、TEIのAuthorizationになりません。** SEIからTEIへの信号は依頼（SEIの語でAction Intent）であり、実行するかどうかはTEIが自らのAuthorization、Capability、Resourceの境界で判断します。SEIの記録が委任や判断の経緯を示していても、それは権限の証拠への参照であって、権限そのものではありません。
+- **必須の依存はどちら向きにもありません。** TEIのDriverとShared Acceptance Boundaryは、SEIが止まっていても単独で完結します。受理の記録等をSEIへ写すことは任意です。SEI側の提案は、こうした局所で完結するループを神経系の比喩で「反射弓」と呼びますが、これは比喩であり、TEIの型や要求の根拠にはしません。
+
+TEI側の具体的な受け止め方（SEI Change 2の再開、受理記録をSEIの判断の記憶へ写す候補、MCPの扱い）は[ISSUE-000070](../../plan/issue/000070-sei-reference-adoption-change2-resumption.md)、AI Business Actorへの委任をSEIから参照する候補は[Actor Context Projections §11.1](../../plan/ACTOR_CONTEXT_PROJECTIONS_2026-09.md)に置いています。どちらも評価待ちです。
+
 ## 価値が衝突したときの優先順位
 
 設計上の価値が衝突した場合は、原則として次の順に守ります。

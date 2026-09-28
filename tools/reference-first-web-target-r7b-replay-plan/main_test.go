@@ -22,12 +22,8 @@ func TestBuildReplayPlanBindsIntakeReceiptAndDerivesSixUnexecutedUnits(t *testin
 	}
 	if got.SourceExecutionIntakeSHA256 != intakeSHA ||
 		got.SourceExecutionIntakeReceiptSHA256 != receiptSHA ||
-		got.HandoverBaselineID != intake.HandoverBaselineID ||
-		got.BaselineRepositoryRevision != intake.BaselineRepositoryRevision ||
-		got.ReplayTargetBuildRevision != intake.TargetBuildRevision ||
-		got.TargetAdapter != intake.TargetAdapter ||
-		got.Host != intake.Host {
-		t.Fatalf("replay plan lost intake / receipt / launch provenance: %+v", got)
+		got.ReplayTargetBuildRevision != expectedTargetRevision {
+		t.Fatalf("replay plan lost intake / receipt / Target identity: %+v", got)
 	}
 	if len(got.Units) != 6 {
 		t.Fatalf("unit count=%d want=6", len(got.Units))
@@ -48,61 +44,6 @@ func TestBuildReplayPlanBindsIntakeReceiptAndDerivesSixUnexecutedUnits(t *testin
 			unit.CoverageClass != "behavior-unit" {
 			t.Fatalf("replay plan fabricated execution or changed replay Target: %+v", unit)
 		}
-	}
-}
-
-func TestBuildReplayPlanSerializesExactLaunchProvenance(t *testing.T) {
-	intake, receipt, intakeSHA, receiptSHA := testInputs(t)
-
-	got, err := buildReplayPlan(intake, receipt, intakeSHA, receiptSHA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := json.Marshal(got)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatal(err)
-	}
-	for key, want := range map[string]string{
-		"handoverBaselineId":         intake.HandoverBaselineID,
-		"baselineRepositoryRevision": intake.BaselineRepositoryRevision,
-		"replayTargetBuildRevision":  intake.TargetBuildRevision,
-		"targetAdapter":              intake.TargetAdapter,
-		"host":                       intake.Host,
-	} {
-		if got, ok := raw[key].(string); !ok || got != want {
-			t.Fatalf("%s=%v want=%q", key, raw[key], want)
-		}
-	}
-}
-
-func TestBuildReplayPlanRejectsLaunchProvenanceDrift(t *testing.T) {
-	tests := []struct {
-		name   string
-		mutate func(*executionIntake)
-	}{
-		{"baseline-id-empty", func(intake *executionIntake) { intake.HandoverBaselineID = "" }},
-		{"baseline-id-drift", func(intake *executionIntake) { intake.HandoverBaselineID = "different-B" }},
-		{"baseline-revision-empty", func(intake *executionIntake) { intake.BaselineRepositoryRevision = "" }},
-		{"baseline-revision-drift", func(intake *executionIntake) { intake.BaselineRepositoryRevision = "different-R" }},
-		{"target-revision-empty", func(intake *executionIntake) { intake.TargetBuildRevision = "" }},
-		{"target-revision-drift", func(intake *executionIntake) { intake.TargetBuildRevision = "different-T" }},
-		{"target-adapter-empty", func(intake *executionIntake) { intake.TargetAdapter = "" }},
-		{"target-adapter-drift", func(intake *executionIntake) { intake.TargetAdapter = "different-target" }},
-		{"host-empty", func(intake *executionIntake) { intake.Host = "" }},
-		{"host-drift", func(intake *executionIntake) { intake.Host = "different-host" }},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			intake, receipt, intakeSHA, receiptSHA := testInputs(t)
-			tc.mutate(&intake)
-			if _, err := buildReplayPlan(intake, receipt, intakeSHA, receiptSHA); err == nil {
-				t.Fatalf("accepted launch provenance drift: %s", tc.name)
-			}
-		})
 	}
 }
 

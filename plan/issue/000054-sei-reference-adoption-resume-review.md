@@ -412,6 +412,12 @@ Resolved
   != human usability established
 ```
 
+## 2026-09-27追記 — Change 2の再開条件の成立
+
+上の再開条件のうち一つ目（Gate B Ready後のHandover Baseline固定と第一Web Targetの着手）は、すでに成立しています。Gate Bは`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`でReady、Handover Baseline `B / R`は固定済み、第一Web Targetはbuild `T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`で実装・Evidence取得まで進み、Gate Cは2026-09-19にReadyと判定されました（Visual Fidelityは単一のAI評価者による評価で、人による確認ではありません）。二つ目の条件（SEIと独立したtarget-neutral Presentation機構）は未成立です。
+
+Resolutionの方針どおり、本Issueは開き直さず、再開は後続の[ISSUE-000070](000070-sei-reference-adoption-change2-resumption.md)（Proposed・評価待ち）で扱います。Change 2はまだ実行しておらず、本Issueの状態とadoption posture（limited / Reference-local）は変わりません。
+
 ## Natural Japanese review
 
 Stage 0では、SEIのResume BriefをTEI固有形式へ翻訳すること自体を目的にしていません。既存SEI fixtureをそのまま保持し、source意味からResume concernを導く小さいReferenceを作ることで、TEIのApplication Planeとしての適性を段階的に検証しています。
