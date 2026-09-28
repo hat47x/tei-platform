@@ -22,6 +22,44 @@ GitHub側のserver enforcementにも依存できません。2026-09-28のAPI確�
 
 この更新は2026-09-20の判断記録を削除するものではありません。下記「旧決定」は当時の履歴として残し、矛盾する箇所では本節と現行`AGENTS.md` / `CONTRIBUTING.md`を優先します。
 
+## 2026-09-28 merge-bypass incident
+
+上記の運用更新後にも、server-side protectionが無いことの実害が再発した。
+
+2026-09-28T04:14:06Z、次の二つのDraft PRがRepository操作によってmergeされた。
+
+```text
+#910 docs-only
+  head  = b6b6ce4786e3284ef75c4bc2282f2821d75e7112
+  merge = c7137690e381a5678a24303fd6f46517c6705195
+
+#908 code-changing containment
+  head  = 91b0dad6b945485e16165f5b2631deaad4293a05
+  merge = ee5b5b14f87536e08c9f713504de99f71f082c52
+```
+
+#908は、exact-head full `tools/repository-health-check.sh` PASSが観測されるまでDraftのまま保持する、とPR本文・コメント・Repository ruleで明示していた。それにもかかわらずmergeされたため、**Draft flagはこのRepositoryではmerge防止機構として扱えない**ことが実証された。
+
+merge後の監査:
+
+- #908 head `91b0dad6...`: GitHub status 0 / workflow run 0;
+- current main `ee5b5b14...`: GitHub status 0 / workflow run 0;
+- Library search: exact-head/full-checkout Repository-health PASSなし;
+- current main treeはcontainment意図どおり（R7B canonical 11をpre-R7B baselineへ11/11復元、TEI-LD four pathsを4/4 absenceへ復元）。
+
+よってこのincidentでは、source treeのforward containment自体は成立しているが、**merged stateはqualification Evidenceではない**。current main exact head `ee5b5b14...` のtrusted full Repository healthを新しいforward stopとし、それまでprotected R7B / TEI-LD candidate refsを動かさない。
+
+このincident以降の追加運用:
+
+- exact-head / exact-main qualification中は、無関係なdocs-only変更であっても`main`を動かさない;
+- main-moving PRはexisting laneに保持し、必要ならPR自体をclose/parkする。Draftだけを安全装置にしない;
+- open PRを機械的・一括にmergeしない。各PRのGate authority / exact head / main movement / parallel laneを個別確認する;
+- 必須PASSなしにcode-changing PRがmergeされた場合、既成事実として後続qualificationへ流用せず、current main exact headを新しいforward qualification boundaryとして扱う;
+- protected candidate branchはそのforward qualificationが成立するまで凍結する;
+- docsの未統合変更は同じ既存docs laneを再利用し、sibling branchを増やさない。
+
+この追記は`AGENTS.md` / `CONTRIBUTING.md`の同日hardeningと同じ事故記録を保持する。
+
 ## 何に困っているのか
 
 GitHub Actionsは月間quotaの都合で停止しており、[`CONTRIBUTING.md`](../../CONTRIBUTING.md)も手動診断だけに使うと定めています。そのためmainへ入る変更を、機械が検証しない状態が続いています。
