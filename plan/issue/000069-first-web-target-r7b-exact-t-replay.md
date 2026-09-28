@@ -6,6 +6,102 @@
 - 主担当要求: RQ-010 / RQ-021 / RQ-022 / RQ-023 / RQ-025
 - 関連: ISSUE-000007 / ISSUE-000028 / ISSUE-000053 / ISSUE-000057
 
+## 2026-09-28 containment merge-bypass checkpoint
+
+2026-09-27〜28のprotected-lane recoveryでは、R7B B4とTEI-LD candidateがqualification authorityを経ずgeneric mergeでmain lineageへ入ったため、Draft PR #908でforward-only containmentを作成した。
+
+しかし #908 自身も、exact-head full `tools/repository-health-check.sh` PASSが観測されないまま2026-09-28T04:14:06Zにmergeされた。
+
+```text
+#908 head
+  91b0dad6b945485e16165f5b2631deaad4293a05
+
+#910 docs merge
+  c7137690e381a5678a24303fd6f46517c6705195
+
+#908 containment merge / current main
+  ee5b5b14f87536e08c9f713504de99f71f082c52
+
+current main tree
+  a372f7fb3dba92369ce73fd94e82dd45d7e9ee0c
+```
+
+このmergeについて、#908 head / current mainともGitHub status・workflow runはなく、Libraryにもexact full-checkout Repository-health PASSは見つかっていない。したがって **merged stateをqualification Evidenceへ読み替えない**。
+
+一方、current main treeのsource boundaryはrecursive treeで再監査し、containment意図と一致している。
+
+- R7B canonical 11: pre-R7B baseline `6c62a4e0...` に対してmode/blob-or-absence 11/11一致。
+- TEI-LD four paths: pre-candidate baseline `2e09b281...` に対して4/4 absent。
+- #910のverification-policy docsと、並行docs lane `docs/family-apex-backflow-20260927` の変更はcurrent mainへ保持されている。
+
+### Current stop
+
+protected candidate再構成へ進む前に、current mainそのものを新しいforward qualification boundaryとして扱う。
+
+```text
+trusted full checkout
+  HEAD = ee5b5b14f87536e08c9f713504de99f71f082c52
+  Go   = go1.23.2
+
+pre-run
+  exact clean worktree
+  standard tracked index state
+
+run
+  bash tools/repository-health-check.sh
+
+post-run
+  same HEAD
+  exact clean worktree
+  standard tracked index state
+```
+
+このPASSが得られるまで:
+
+- `research/selective-knowledge-routing-r6` を動かさない。
+- `research/tei-ld-0a-corpus-v0` を動かさない。
+- #908がmergedであることをR7B/TEI-LD qualificationへ流用しない。
+- static tree audit / synthetic merge / isolated test / unreferenced Git objectをfull Repository healthの代替にしない。
+
+PASS後は、**同じ既存branch**を使って次の順で再構成する。
+
+```text
+R7B
+  first parent  = live research/selective-knowledge-routing-r6 tip
+  second parent = qualified cleaned main
+  tree          = cleaned main + canonical 11 candidate paths
+  diff          = canonical 11 exactly
+  -> trusted-local exact-main qualification
+  -> receipt-authorized exact-parent publication
+
+TEI-LD
+  first parent  = live research/tei-ld-0a-corpus-v0 tip
+  second parent = qualified then-current main
+  tree          = main + four live TEI-LD paths
+  diff          = TEI-LD four paths exactly
+  -> full Repository health
+  -> same-branch integration vehicle
+```
+
+current mainを第二親にしたaudit-only object preflightはすでに成立している。
+
+```text
+R7B
+  tree   e59937fc7f5a8f0257d3d1194a60cab83de454c5
+  commit 960289812cb36309200dd72c2aa19c5dc1f4acda
+  diff   canonical 11 exactly
+
+TEI-LD
+  tree   16ddd255bea6bf9f2cb9a331ed5f16d502e96a60
+  commit bcc6bc0f0e16aa616458f32b6497d14abe2bb229
+  diff   four paths exactly
+```
+
+これらはunreferenced audit objectでありpublication authorityではない。main/candidate refが動けば再取得・再計算する。
+
+generic merge / squash / cherry-pick / source copy、rebase / reset / force update、sibling protected branchの作成は禁止する。
+
+
 ## 背景
 
 R7A handoff、R7B execution intake、R7B replay planまではSourceとして実装され、第一Web TargetのGate C origin EvidenceもGitHub Release `gate-c-evidence-T-0ba87a4` に保管されている。
