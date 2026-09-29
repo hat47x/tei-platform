@@ -56,6 +56,62 @@ post-run
   standard tracked index state
 ```
 
+#### current-main qualification receipt acceptance
+
+`PASS`という要約文だけでは、このforward stopを解除しない。受理するreceiptは少なくとも次を同じ実行記録へbindingする。
+
+```text
+repository
+  hat47x/tei-platform
+
+qualified commit
+  ee5b5b14f87536e08c9f713504de99f71f082c52
+
+qualified tree
+  a372f7fb3dba92369ce73fd94e82dd45d7e9ee0c
+
+health runner
+  tools/repository-health-check.sh
+  blob = d9bcf87b5a8da8d19dad3041a2e09d31e21e0fd9
+
+toolchain
+  go1.23.2
+
+pre-run
+  git rev-parse HEAD == qualified commit
+  git status --porcelain --untracked-files=all --ignored=matching == empty
+  git ls-files -v has H only
+
+execution
+  full bash tools/repository-health-check.sh
+  --fast is not accepted
+  --fix is not accepted for the qualifying run
+
+required step result
+  gofmt -l . is empty = PASS
+  go vet ./... = PASS
+  go test -count=1 ./... = PASS
+  tei validate -workspace reference/workspace = PASS
+
+post-run
+  git rev-parse HEAD == same qualified commit
+  worktree/index clean conditions == same as pre-run
+```
+
+receiptには実行日時、実行環境識別、上記command/result、qualified commit/tree/toolchainを残す。stdout/stderr全体を保存する場合は、そのartifact identityもdigestでbindingする。
+
+次は受理しない。
+
+- 別commit / ancestor / descendantでのPASS;
+- `go test`だけ、focused package testだけ、`--fast`だけの成功;
+- synthetic / reconstructed checkoutでの成功;
+- pre-runまたはpost-run clean/index確認の欠落;
+- current `main`が動いた後の古いreceipt;
+- GitHubの`merged` / `mergeable` / status表示だけ;
+- 「tests passed」等、exact commit / tree / toolchainへbindingされない要約。
+
+receipt受領時は、まずremote `main`が上記commitから動いていないことを再取得する。動いていればreceiptを新しいmainのauthorityへ延長せず、新しいexact-main qualificationを取り直す。
+
 このPASSが得られるまで:
 
 - `research/selective-knowledge-routing-r6` を動かさない。
