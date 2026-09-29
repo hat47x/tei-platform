@@ -60,6 +60,69 @@ merge後の監査:
 
 この追記は`AGENTS.md` / `CONTRIBUTING.md`の同日hardeningと同じ事故記録を保持する。
 
+## 2026-09-29 verification-anchor audit
+
+current main `ee5b5b14f87536e08c9f713504de99f71f082c52` のqualificationを、過去の「green」記録から暗黙継承できないことを履歴上で再確認した。
+
+### Gate B actual full-checkout Evidence
+
+Gate B Readyの正本 `plan/GATE_B_READINESS_AUDIT.md` は、candidate `R = e5231839a5dcc62cce1181a2731fcb7c70d16736` についてactual full checkout、same-R child Evidence、clean source/index、Go環境隔離、independent artifact auditを記録している。
+
+これはGate B Product Evidenceとして有効だが、後続全Repository revisionのhealth PASSではない。current mainはこのRより大きく進んでいるため、RのEvidenceをcurrent mainのqualificationへ延長しない。
+
+### Last confirmed repository-wide Go green
+
+PR #830 merge `ac2fc24f5f3549fc7d54f24e1be44e0359dac857` は次を明示している。
+
+```text
+gofmt -l .               empty
+go vet ./...             PASS
+go test -count=1 ./...   PASS (64 packages)
+```
+
+ただし当時は現在の `tools/repository-health-check.sh` 導入前であり、次がreceiptにない。
+
+- Reference workspace validation;
+- exact pre/post HEAD binding;
+- tracked/untracked/ignored clean state;
+- tracked index normal-state check;
+- current health-runner blob binding.
+
+したがって `ac2fc24...` も現行full-health receiptではない。
+
+### Health script introduction
+
+PR #832 merge `51bdbb6c80211c7b9cbc4f416b87661b42adc4c3` で `tools/repository-health-check.sh` が導入されたが、そのPR自身のTest planは:
+
+```text
+tools/repository-health-check.sh --fast
+  PASS
+```
+
+であり、`--fast` は `go test -count=1 ./...` を省略する。よってこれもfull-health authorityではない。
+
+### Current gap
+
+`ac2fc24...` からcurrent mainまでは439 commits aheadで、code / Reference / toolingを含む多数の変更がある。さらに#908 containment merge後のcurrent main自身にはGitHub status / workflow runがなく、Libraryにもexact full-checkout PASSはない。
+
+結論:
+
+```text
+Gate B actual Evidence at e5231839...
+  != current repository health
+
+all-Go green at ac2fc24...
+  != current full-health receipt
+
+--fast health at 51bdbb6...
+  != full health
+
+current main ee5b5b14...
+  requires a fresh exact-main trusted full Repository-health receipt
+```
+
+current main receiptはcommit/tree/toolchain/health-runner blob/pre-post cleanへbindingし、full gofmt/vet/test/workspace validationを同じcheckoutで通す。過去anchorを組み合わせてcurrent PASSを推論しない。
+
 ## 何に困っているのか
 
 GitHub Actionsは月間quotaの都合で停止しており、[`CONTRIBUTING.md`](../../CONTRIBUTING.md)も手動診断だけに使うと定めています。そのためmainへ入る変更を、機械が検証しない状態が続いています。
