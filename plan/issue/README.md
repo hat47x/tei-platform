@@ -201,6 +201,30 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 
 000038については、2026-09-05に要件の詳細化を[業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)としてまとめ、所有境界と実行境界の判断を[ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)として提案しました。いずれも評価待ちであり、採用前に実装へ進みません。詳細化の結論として、`sales.order.submit`のCapability契約変更はGate B Ready判定と000030のHandover Baseline固定より前に入れない扱いです。
 
+## Product Valueの確かめ方と担当
+
+[Product Value](../../product/value/TEI_PRODUCT_VALUE.md)の「価値の確かめ方」は、個人・組織・社会の各層で観測する事実を定めています。2026-09-30に、各項目を担うIssueと、計測または検査が実在するかを照合しました。担当の無かった項目へ000071〜000074を起票しています。
+
+| 層 | 確かめる事実 | 担当Issue | 2026-09-30の状態 |
+| --- | --- | --- | --- |
+| 個人 | 会話履歴や聞き取りなしに、変更に必要な文脈へ到達できる | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1 / [000040](000040-semantic-component-composition.md) | 決定記録は機械可読。再入場に足りるかを判定する検査は無い |
+| 個人 | 承認の対象が、意味差分・影響・例外・未解決点として示される | **[000071](000071-approval-sufficient-projection.md)**（新規） / 000046 / 000027 | Previewは機械可読。人が読む面と、権限・native codeを示す項目が無い |
+| 個人 | 一度答えた確認が理由なく繰り返されない | **[000074](000074-answered-confirmation-history.md)**（新規） | 記録も検査も無い |
+| 組織 | 規則一件の変更で人が手で直す箇所の数 | **[000072](000072-rule-change-hand-edit-count.md)**（新規） / 000052 / 000070 | 繰り返し使える数え方が無い。Target側にValidation選択の一覧があることを確認 |
+| 組織 | 画面・API・AIエージェントの間で同じ規則が食い違わない | **[000073](000073-derive-validation-selection-from-canonical.md)**（新規） / [000014](000014-business-validation-reference.md) / [000026](000026-target-capability-execution-profile-boundary.md) | 画面とAPIは同じ評価経路。評価対象の選択がCanonicalに無い。AIエージェントの経路は無い |
+| 組織 | 再利用した意味・Infrastructure知識の元identity・前提・差分を追跡できる | [000040](000040-semantic-component-composition.md) | identity / provenanceは実行可能なtestあり。Variationは表現が無い |
+| 社会 | AIを介さず正本から第三者が根拠を再現できる | [000029](000029-gate-b-readiness-audit.md) / [000028](000028-first-web-target-conformance-evidence.md) / [000058](000058-gate-c-visual-independent-reevaluation.md) | Gate B / Cの独立監査あり。Visualは単一のAI評価者 |
+| 社会 | 分からない状態を成功や安全として扱わない | [000009](000009-capability-outcome-and-execution-error.md) / [000041](000041-partition-schema-drift-semantics.md) | Database・Runtime境界で多数のtestあり |
+| 社会 | 業務知識を読めることが実行権限へ変わらない | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) | Runtime / Pluginの権限はtestあり。AIエージェントの読み取り経路は製品側に無い |
+
+新規4件の着手順は次を推奨します。
+
+1. **000072の机上予測を実測する前に、000073の方針（ADR）を決める。** 000072の最初の計測ケースは、000073が解消する欠落をそのまま観測するため、両方を同じ変更で前後比較できます。
+2. **000071**は既存Previewの机上評価まで済んでおり、条件案のowner reviewから始められます。Gap Audit §8の優先順位6（RQ-028の担当決定）に当たります。
+3. **000074**は000046 / 000047が確認を出し始める前に、記録の形だけ先に決めます。
+
+この表は各Issueの状態の正本ではありません。状態は各Issueの`状態`行、Requirementごとの実証状況は[Gap Audit](../PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
+
 ## 既存計画への統合と履歴
 
 | 元の論点・作業 | 管理先 | 扱い |

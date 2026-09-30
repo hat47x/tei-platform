@@ -241,7 +241,7 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 3. ~~First Web Target `T1`でGate C Evidenceとquality baselineを取得する~~ — 完了（2026-09-19、`T = 0ba87a4`）
 4. ~~RQ-025 / 026のBusiness Procedure / cross-view actual Evidenceを取得する~~ — 取得（2026-09-20 / 2026-09-21）。独立reviewとPre-ADR再判定が残る
 5. RQ-030の閉包条件を決める。ACTOR_CONTEXT圧力がどの不確実性を減らすかと、何が揃えば連続を終えられるかを先に定める（§9、`ISSUE-000053`）
-6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する
+6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する（2026-09-30追記: RQ-028は[ISSUE-000071](issue/000071-approval-sufficient-projection.md)が担当し、条件案と既存Previewの机上評価を記録済み。RQ-027 / RQ-029の担当は未決定のまま）
 7. RQ-027のGapを閉じるか判断する。accepted Decision / VariationとEvidence / provenanceを機械到達可能にするか、到達不能をProduct上の制約として明記するか
 8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する
 9. Provider / production境界を必要なEvidenceとともに広げる

@@ -99,7 +99,7 @@ TEIは、**一つの層の価値を、別の層の損失で買わない**こと�
 
 例はRequirementやCanonical meaningではなく、価値の働き方を示すためのものです。いずれも小規模なReference上の事実であり、本番運用での効果を示すものではありません。
 
-- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationを一つの正本として持ち、Application Driverと第一Web Targetが同じ規則を使います。画面側へ規則を書き写していません（Gate C: Semantic Conformance）。
+- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationを一つの正本として持ち、Application Driverと第一Web Targetが同じ規則を使います。画面側へ規則の内容を書き写していません（Gate C: Semantic Conformance）。ただし、**どの規則を評価するか**の選択はまだCanonicalな宣言から導かれず、Web Target側のコードに一覧として書かれています。このため規則を一件足すと、正本の変更に加えてTarget側の一覧の手直しが要ります。この欠落の計測と解消は[ISSUE-000072](../../plan/issue/000072-rule-change-hand-edit-count.md) / [ISSUE-000073](../../plan/issue/000073-derive-validation-selection-from-canonical.md)で扱います。
 - **組織 — Domainの意味を再利用する。** 第二Application `repair_intake` は、`order_entry`で使っていた顧客の意味（`customer.customer`）と顧客照会のContractを、コピーではなく同じidentityのまま参照して組み立てられました。既存の意味を作り直さずに次のApplicationへ再利用した最初の実例です。
 - **組織 — Infrastructureの知識も再利用する。** `repair_intake`の顧客マスタは、各Environmentへ1行ずつ結び付けを足すだけで既存の`master_data`インスタンスへつながり、Driverで実行する段階では、Queryを実行するための新しいEnvironment sourceは不要でした。`order_entry`のために書かれた既存のContract Query executor binding（Queryを実行する実装への結び付け）が、Applicationではなく「Environment・Database・Contract・Query」の組で識別されていたため、そのまま使えたからです。ただしこれはdevelopmentでの確認で、使ったExecutorはtest doubleです。実Databaseへの接続や、productionでの実行を示すものではありません。
 - **個人 — 承認の対象を小さくする。** `repair_intake`の追加は、生成AIが作ったProposal（変更候補）を、file・CLI・Studio・AIのどの入口からの候補も同じ検査を通すShared Acceptance Boundary（共有の受入境界）で検査し、別の生成AIによる独立レビューを経てから、Repository ownerが明示的に受理しました。人が判断した対象は、生成コードの全量ではなく、3つのsourceへの意味の差分でした。
@@ -123,7 +123,7 @@ TEIは、価値を画面数やコード生成量では測りません。外部�
   - 分からない状態が、成功や安全として扱われていないこと
   - 業務知識を読めることが、実行権限へ変わっていないこと
 
-どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
+どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。各項目を担うIssueは[Issue一覧の「Product Valueの確かめ方と担当」](../../plan/issue/README.md)にまとめています。
 
 ### まだ主張しないこと
 
