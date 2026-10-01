@@ -74,7 +74,7 @@ Web Target      Application.Validations から評価対象を得る
 
 ## 完了条件
 
-- [ ] 案A / B / Cの判断をADRとして提案し、owner reviewで採用する
+- [ ] 案A / B / Cの判断をADRとして提案し、owner reviewで採用する（ADR案: [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)、2026-10-01に提案中。owner reviewは未実施）
 - [ ] `order_entry`へ`uses validation`を宣言する変更を、Shared Acceptance Boundary経由で受理する（explicit human Acceptance decisionが必要）
 - [ ] DriverとFirst Web Targetが宣言から評価対象を得るようにし、Target側のCanonical ID一覧を削除する
 - [ ] 宣言が無い場合の振る舞い（fail closed / unresolved）をtestで固定する
