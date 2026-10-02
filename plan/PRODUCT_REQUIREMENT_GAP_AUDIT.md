@@ -245,8 +245,8 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 3. ~~First Web Target `T1`でGate C Evidenceとquality baselineを取得する~~ — 完了（2026-09-19、`T = 0ba87a4`）
 4. ~~RQ-025 / 026のBusiness Procedure / cross-view actual Evidenceを取得する~~ — 取得（2026-09-20 / 2026-09-21）。独立reviewとPre-ADR再判定が残る
 5. RQ-030の閉包条件を決める。ACTOR_CONTEXT圧力がどの不確実性を減らすかと、何が揃えば連続を終えられるかを先に定める（§9、`ISSUE-000053`）
-6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する（2026-09-30追記: RQ-028は[ISSUE-000071](issue/000071-approval-sufficient-projection.md)が担当し、条件案と既存Previewの机上評価を記録済み。RQ-027 / RQ-029の担当は未決定のまま）
-7. RQ-027のGapを閉じるか判断する。accepted Decision / VariationとEvidence / provenanceを機械到達可能にするか、到達不能をProduct上の制約として明記するか
+6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する（2026-09-30追記: RQ-028は[ISSUE-000071](issue/000071-approval-sufficient-projection.md)が担当し、条件案と既存Previewの机上評価を記録済み。RQ-029の担当案は[ISSUE-000040](issue/000040-semantic-component-composition.md)、RQ-027の担当案は[ISSUE-000053](issue/000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1で、新規Issueは起票しない。いずれもowner判断待ち）
+7. RQ-027のGapを閉じるか制約として残すかを分けて判断する（owner判断待ちの提案）。(a) `Variation`は、RQ-029と同じ「destination固有の差分に独立した表現が要るか」という問いなので、[ISSUE-000040](issue/000040-semantic-component-composition.md)で判断し、ここでは独立に閉じない。(b) 再入場に十分かどうかの確認は[ISSUE-000053](issue/000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1の比較runで行う。(c) Gate Evidence / Release locatorの機械到達と、受入境界を通らない変更の記録は、当面閉じず次の制約として扱う。RQ-027は「accepted Decisionは、Shared Acceptance Boundaryを通った受理に限り機械到達できる」までを主張し、次は主張しない。Variationはまだ表現を持たず、再入場したAIがVariationを機械的に取得することは保証しない。Gate EvidenceのRelease locatorは索引化されておらず、散文からの参照が残る。受入境界を通らずに変更されたsourceは決定記録を残さないため、記録が無いことを「決定が無い」と読んではならない。
 8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する。knowledge / AIは`TECH_RESEARCH_INTEGRATION_2026-10.md`の段階昇格をbaselineとし、第二Targetではportable execution artifact / Host差もPressureする
 9. Provider / production境界を必要なEvidenceとともに広げる
 

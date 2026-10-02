@@ -18,9 +18,9 @@ RQ-028は「人間が実装詳細を全面的に読まずに変更を理解・�
 
 2026-09-21に、第二Application `repair_intake`のProposal（`c18ae0fd…`、741 bytes）が実際の`reference/workspace`へ受理されました（[ISSUE-000040](000040-semantic-component-composition.md)）。Proposalは生成AIが作り、別の生成AIが独立レビューし、Repository ownerが明示的に受理しています。
 
-このとき受理の直前にownerへ示されたのは、TEIのProjectionそのものではなく、Claude Code session上の会話でした。ISSUE-000040のwitness記録には「直前に提示した内容: 独立レビュー完了（review-clear-with-conditions、必須修正なし）、残る停止条件はexplicit human Acceptance decisionだけであること」とあります。Previewは機械可読なJSONとして全stage PASSしていましたが、人が読む形へ写したのはAIの要約でした。
+このときの承認は、Claude Code session上の回答「Acceptします。」として記録されています。ISSUE-000040のwitness記録の「直前に提示した内容」は、「独立レビュー完了（review-clear-with-conditions、必須修正なし）、残る停止条件はexplicit human Acceptance decisionだけであること」の2点です。Previewは機械可読なJSONとして全stage PASSしていました。PreviewのJSONや実装記録（S5 Implementation Packet §13）をownerがどの形で読んだか、AIが何をどう要約したかは記録されておらず、未確認です。確かなのは、TEIが出す人向けProjectionを介した承認の記録は無いことです。
 
-つまり現在の承認は、「PreviewのJSONが正しい」ことと「AIがそれを正しく要約した」ことの二つに依存しています。後者はTEIの境界の外にあります。
+つまり、承認の根拠を人がPreviewから直接確かめた記録は無く、承認が「PreviewのJSONが正しい」ことと「AIがそれを正しく要約した」ことの二つに依存していた可能性があります。後者はTEIの境界の外にあります。
 
 ## 防ぎたい失敗
 
@@ -60,15 +60,53 @@ RQ-028が列挙する確認対象と、Product Valueの「形だけの承認」�
 | 条件 | 評価 | 根拠と不足 |
 | --- | --- | --- |
 | A1 意味差分 | 満たす（機械可読） | `semanticDiff` / `applicationDiff` / `environmentDiff`。宣言したdeltaと実際の差分の一致も検査する |
-| A2 影響 | 一部満たす | exact identityに基づく`impact`辺を返す。Driver scenarioとTarget Projectionへの影響は評価せず、`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`としてunresolvedへ明示している。辿れない範囲を隠していない点は条件に合う |
-| A3 例外・診断 | 一部満たす | Validation diagnosticは`validate` stageに出る。業務上の例外（どの業務ケースで規則が効くか）を示す項目は無い |
+| A2 影響 | 一部満たす | exact identityに基づく`impact`辺を返す。Driver scenarioとTarget Projectionへの影響は評価せず、`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`としてunresolvedへ明示している。辿れない範囲を隠していない点は条件に合う。ただし`Impact`は`removed`のsubjectを辿らず、辺もunresolvedも出さない（`impact.go:48-51`）。現在のoperationは追加だけなので顕在化していないが、削除・変更を扱う時点で再評価が要る。Environmentへ辿るのは`environment-binding`のsubjectだけである（`impact.go:93-99`） |
+| A3 例外・診断 | 一部満たす | `validate` stageに出るのはerror severityのValidation diagnosticだけで、warningはPreviewへ出ない（`pipeline.go:202-219`）。errorが無ければstageはpassとなり、diagnosticは何も出力されない。業務上の例外（どの業務ケースで規則が効くか）を示す項目も無い |
 | A4 未解決点 | 満たす（機械可読） | `unresolved`。例: `ENVIRONMENT_BINDING_NOT_AUTHORED`、`RUNTIME_AUTHORITY_NOT_GRANTED` |
-| A5 権限の変更 | 満たさない | 権限の変化を独立に示す項目が無い。Environment bindingでは権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`で示すが、一般の変更では`changedCollections`から間接的に読むしかない |
-| A6 native codeへ残る箇所 | 満たさない | 項目が無い。現在の5 operationはnative codeを変えないが、それを承認者へ示す項目も無い |
-| A7 逆追跡 | 一部満たす | `sourceEdits`（前後のfingerprint）、subject ID、候補のEvidenceの解決結果がある。ただし人向けの要約が無いため、「要約が正本と一致するか」を確かめる手段も無い |
-| A8 承認単位の大きさ | 満たす | `maxSubjectChanges`（上限8）を`acceptance-policy` stageで検査する。whole-model再生成を標準経路にしない |
+| A5 権限の変更 | 満たさない（一部のoperationでは「変わらない」ことだけ文章で示す） | 権限の変化を独立に示す項目が無い（`pipeline.go:42-61`）。`add-application`ではunresolvedの`ENVIRONMENT_BINDING_NOT_AUTHORED`のmessageが「Environment / Runtime authorityはこの変更では変わらない」と述べ（`impact.go:123-129`）、`add-environment-binding`では`RUNTIME_AUTHORITY_NOT_GRANTED`が権限が付かないことを述べる（`impact.go:130-136`）。それ以外のoperationにはこうした言明が無く、`changedCollections` / `unchangedCollections`から間接的に読むしかない |
+| A6 native codeへ残る箇所 | 満たさない | 項目が無い（`pipeline.go:42-61`）。現在の6 operation（`operation.go:14-21`）はnative codeを変えず、deltaから導いたcollection（semantics / applications / environments）以外が変われば`UNEXPECTED_COLLECTION_CHANGE`で拒否する（`pipeline.go:271-286`）。ただし、その「変えない」ことを承認者へ示す項目は無い |
+| A7 逆追跡 | 一部満たす | `sourceEdits`（`path` / `layer` / `afterFingerprint` / `insertedText`と、既存file変更時だけの`beforeFingerprint`。`edit.go:23-29`）、subject ID、candidate fingerprint・Originがある。Evidenceは`resolve` stageで実在を検査するが、結果が出るのは失敗diagnosticとしてだけで（`resolve.go:188-194`）、Preview JSONにはIntentもEvidence本体も含まれない（`pipeline.go:42-61`）。IntentとEvidenceが読めるのは、受理後のDecision記録だけである（`decision.go:53-55`）。subject IDから該当source fileへ戻る対応も出力しない。ただし人向けの要約が無いため、「要約が正本と一致するか」を確かめる手段も無い |
+| A8 承認単位の大きさ | 一部満たす | `maxSubjectChanges = 8`（`pipeline.go:18`）を、`acceptance-policy` stageが変更subject数（semantic / application / environmentの差分の合計、`pipeline.go:255`）に対して検査し、超えれば`DELTA_TOO_LARGE`で拒否する（`pipeline.go:254-262`）。ただし、超過は拒否するだけで、分割できない理由を示して承認を求める経路は無い（A8の後半を満たさない）。また、通ったPreviewには変更subject数も上限も出力されないため、人は差分を数えるしかない。whole-model再生成を標準経路にしない点は条件に合う |
 
-**机上評価の結論:** Previewは、承認に必要な情報の多くを機械可読な形で正本から出しています（A1 / A4 / A8）。一方、人が読む面が無く、権限の変化とnative codeへ残る箇所を示す項目もありません（A5 / A6）。このため実際の受理では、AIの会話による要約が人とPreviewの間に入りました。
+**机上評価の結論:** Previewは、承認に必要な情報の多くを機械可読な形で正本から出しています（A1 / A4。A8は上限の検査のみ）。一方、人が読む面が無く、権限の変化とnative codeへ残る箇所を示す専用の項目もありません（A5 / A6）。このため、人がPreviewから直接確かめて承認する形にはなっていません（2026-09-21の受理で、ownerがPreviewをどの形で読んだかは記録にありません）。
+
+## 机上評価の拡張 — 他のoperation
+
+`repair_intake`のcomposition以外のPreviewでも、同じA1〜A8の観点で机上評価します。対象は`add-validation`（`boundary_test.go`の単価Validation）、`add-relation`（`relation_test.go`の`sales.order_line.order`）、`add-environment-binding`（`environment_test.go`の`repair_intake.customer_master`のbinding 2件）です。根拠は、`tools/reference-shared-acceptance/`のtestのassertionと、`tools/internal/changeanalysis/`の`impact.go`・`diff.go`・`analysis_test.go`・`persistence_test.go`、`tools/reference-shared-acceptance/pipeline.go`の読解です。コードは実行していません。
+
+評価の語は上の表と同じです。「満たす」は承認者が答えを機械可読な項目から得られること、「一部満たす」は項目はあるが問いの一部にしか答えないこと、「満たさない」は答える項目が無いことを指します。
+
+| 条件 | `repair_intake`（既存の評価） | add-validation | add-relation | add-environment-binding |
+| --- | --- | --- | --- | --- |
+| A1 意味差分 | 満たす | 満たす。`semanticDiff`はvalidation 1件（`boundary_test.go:70-72`） | 満たす。`semanticDiff`はrelation 1件、`applicationDiff`は空（`relation_test.go:50-55`） | 満たす。`semanticDiff` / `applicationDiff`は空で、決定は`environmentDiff`のbinding 2件に出る（`environment_test.go:62-69`）。意味が変わらないことと、何が決まったかが別の配列に分かれる |
+| A2 影響 | 一部満たす | 一部満たす。辺5本（Application `order_entry`と`order_entry.order_lines` Patternへ届く）。未解決は`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`、`DRIVER_SCENARIO_NOT_RUN`、`TARGET_PROJECTION_NOT_EVALUATED`（`boundary_test.go:94-123`） | 一部満たす。Persistence Mappingへの辺2本を含む（`relation_test.go:76-81`）。保存方法は`RELATION_STORAGE_NOT_AUTHORED`として残る（同:90-94） | 一部満たす。Environment / Application / database instance / Databaseへの辺（`environment_test.go:82-92`、`impact.go:448-470`）。Driver / Targetの未解決は無条件に付く（`impact.go:145-148`）。辺はこの4種だけで、Environmentが持つ既存の権限宣言へ向かう辺は`impact.go:448-470`に無い |
+| A3 例外・診断 | 一部満たす | 一部満たす。診断はvalidate stageに出る（`boundary_test.go:301-303`）が、PASSしたPreviewでは「無い」としか分からず、業務上の例外は項目に無い | 一部満たす。拒否時にはnormalize / resolve / validate stageへ出る（`relation_test.go:201-223`）。PASS時は同上 | 一部満たす。unknown alias / unknown instance / target mismatchは共有Validationのdiagnosticとしてvalidate stageに出る（`environment_test.go:162-194`）。PASS時は同上 |
+| A4 未解決点 | 満たす | 満たす。Application側が`uses validation`で宣言済みなら当該codeは消える（`tools/internal/changeanalysis/analysis_test.go:345-364`） | 満たす。保存方法が導けるRelationでは`RELATION_STORAGE_NOT_AUTHORED`は出ない（`tools/internal/changeanalysis/persistence_test.go:75-95`）。出る場合はMappingを名指しする（同:69-72） | 満たす。`RUNTIME_AUTHORITY_NOT_GRANTED`が、binding 1件ごとに出る（`impact.go:130-136`） |
+| A5 権限の変更 | 満たさない（下記の補足あり） | 満たさない。権限を述べる項目は無く、`environments`が不変であることを不変collectionの一覧から読めるだけ（`boundary_test.go:76-80`） | 満たさない。同上（`relation_test.go:59-63`） | 満たさない。ただし境界例（下記）。`RUNTIME_AUTHORITY_NOT_GRANTED`が「Permission grant・Resource binding・lease・実行principalはこの変更に含まれない」と述べる（`environment_test.go:94-101`、`impact.go:130-136`）が、`unresolved`の自由文であり、権限の変化を示す独立項目ではない |
+| A6 native codeへ残る箇所 | 満たさない（下記の補足あり） | 満たさない。専用の項目は無い | 満たさない。同上 | 満たさない。同上 |
+| A7 逆追跡 | 一部満たす | 一部満たす。`sourceEdits`に挿入するsourceが出る（`boundary_test.go:82-88`）。EvidenceのsubjectとsourceはPreview時にresolveされる（同:261-262） | 一部満たす。挿入行まで確認できる（`relation_test.go:65-70`）。差分と辺のsubject IDから正本へ戻れる | 一部満たす。受理時に変わるのは2 fileのbind 1行ずつ（`environment_test.go:124-141`）。このcandidateのEvidenceはApplication sourceの指定1件だけで、「なぜこのinstanceか」を示す根拠は含まない（同:19-21）。Preview時の`sourceEdits`は同testでは検査されておらず未確認 |
+| A8 承認単位の大きさ | 満たす（6 / 8） | 満たす（1 / 8） | 満たす（1 / 8） | 満たす（2 / 8）。`allChanges`が`environmentDiff`も数える（`pipeline.go:414-418`） |
+
+読んだ範囲では、どのoperationでも人が読む要約は無く、「要約が正本と一致するか」を確かめる手段が無い点（A7）は`repair_intake`と同じです。
+
+### 評価が変わるか
+
+確定して変わる評価はありません。A1〜A4、A6〜A8は`repair_intake`と同じ水準で、A5だけが境界例です。
+
+`add-validation`と`add-relation`では、Previewは権限について何も述べず、承認者は`unchangedCollections`に`environments`が入っていることから「権限を持つ層は動いていない」と推測するしかありません。
+
+`add-environment-binding`では`RUNTIME_AUTHORITY_NOT_GRANTED`が出ます。これは「この変更は権限を付与しない」という否定の注記であり、誰が何を新たにできるようになるかには答えていません。しかも`unresolved`の自由文です。`repair_intake`の`ENVIRONMENT_BINDING_NOT_AUTHORED`も同じ種類の自由文で「Environment / Runtime authorityはこの変更では変わらない」と述べるので（`impact.go:123-128`）、前者だけを「一部満たす」とすると評価の物差しがそろいません。そのためここでは、どちらも「満たさない」のままとし、`unresolved`の自由文でA5を満たしたと数えるかは、条件の定義の問題としてowner reviewに残します。数える場合は、`repair_intake`とadd-environment-bindingの両方が「一部満たす」になります。
+
+もう一つ、この読解で分かった点があります。権限の宣言とbindingは同じEnvironment fileに同居します（`environment_test.go:144`が、`grant deployment-executor`と`lease-policy deployment-executor`の両行が同じfileに残ることを検査している）。一方、`environmentDiff`のsubjectになるのはbindingだけです（`diff.go:203`）。このため、権限宣言が変わった場合に`environmentDiff`へ出るかは、読んだ範囲では確認できず、`changedCollections`が`environments`と示すだけでは、bindingの追加と権限宣言の変更を区別できません。collectionの一覧がA5の代わりにならないことが、この例から分かります。
+
+また、bindingで結んだinstanceにEnvironmentの既存の権限宣言が及ぶかどうかをPreviewが評価しているかは、`impact.go:448-470`の辺に出ないことしか確認できていません（未確認）。「この変更は権限を付与しない」と「既存の権限が新しいbindingに及ぶか」は別の問いなので、A5の定義を決めるときに分けて扱うことを、owner reviewの論点として挙げます。
+
+### 既存の`repair_intake`の評価への補足
+
+- **A5。** 上のとおり、`repair_intake`のcompositionでは`ENVIRONMENT_BINDING_NOT_AUTHORED`が付き、その説明文は権限が変わらないと述べます（`impact.go:123-128`、`composition_test.go:350-358`）。「項目なし」ではなく、**独立した項目ではなく`unresolved`の自由文の中でだけ述べている**と書くのが正確です。
+- **A6。** `unchangedCollections`は`customGoBindings`を含みます（`composition_test.go:173`）。この一覧は`CollectionDiff`がWorld直下の全collectionを比較して作るため（`diff.go:213-239`）、他のoperationにも同じ形で出ると読めます。ただしassertionで確かめたのは`repair_intake`のtestだけで、`customGoBindings`がnative codeへ残る箇所を過不足なく表すかも確認できていません（未確認）。A6を示す専用の項目が無いという評価は変わりませんが、「間接的な手がかりはある」と書き添える必要があります。
+
+この拡張評価は、机上の読解に基づく評価待ちの記録です。
 
 ## 必要能力
 
@@ -85,18 +123,18 @@ A1 意味差分    semantic 4件（namespace / data / attribute / relation）、
 A2 影響        15本。Driver scenario・Target Projectionは未評価（unresolved）
 A3 例外・診断  validation error 0件（全stage PASS）。業務上の例外を示す項目は無い
 A4 未解決点    ENVIRONMENT_BINDING_NOT_AUTHORED / DRIVER_SCENARIO_NOT_RUN / TARGET_PROJECTION_NOT_EVALUATED
-A5 権限の変更  項目なし（満たさない）
+A5 権限の変更  専用の項目なし。unresolvedのmessageが「権限は変わらない」と述べるのみ（満たさない）
 A6 native code 項目なし（満たさない）
 A7 逆追跡      作られるfile 3件と各fingerprint、candidate fingerprint 8a936cf9…
 A8 大きさ      変更subject 6件 / 上限8
 ```
 
-A5とA6が「項目なし」と明示されていれば、承認者は「権限は変わらないと示されたのではなく、示す仕組みが無い」と分かったうえで判断できます。
+A6が「項目なし」と明示されていれば、承認者は「native codeは変わらないと示されたのではなく、示す仕組みが無い」と分かったうえで判断できます。A5は専用の項目こそ無いものの、`repair_intake`ではunresolvedのmessageが権限は変わらないと述べているため、「示す仕組みが全く無い」とは言えません。ただし、そのmessageはoperationによっては出ないため、承認者がmessageの有無に頼らず確かめられる専用の項目が要ります。
 
 ## 完了条件
 
 - [ ] 条件A1〜A8を、owner reviewで採用・修正・却下のいずれかに判定する。採用した条件はRQ-028の解釈として、このIssueまたはADRへ残す
-- [ ] `repair_intake`以外のPreview（例: `add-relation`、`add-environment-binding`）でも机上評価を行い、評価が変わる条件を記録する
+- [x] `repair_intake`以外のPreview（`add-validation`、`add-relation`、`add-environment-binding`）でも机上評価を行い、評価が変わる条件を記録した（2026-10-02、上の「机上評価の拡張」。コードは実行していない）
 - [ ] Preview結果をA1〜A8の順に写す最小Projectionを、Reference toolとして作る（source変更を伴うため、`tools/repository-health-check.sh`のfull PASSが統合条件）
 - [ ] そのProjectionだけを見て、人が一件の変更を承認または却下した記録を残す（AIの要約を介さない）。承認者が気づいた不足を記録する
 - [ ] A5 / A6を示す項目を追加するか、追加しない理由と、承認時にそれを明示する方法を決める
