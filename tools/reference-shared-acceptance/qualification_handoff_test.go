@@ -70,6 +70,17 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 	if !foundExact {
 		t.Fatalf("exact qualification Evidence was not attached: %+v", grounded.Evidence)
 	}
+	var foundRequirements bool
+	for _, evidence := range grounded.Evidence {
+		if evidence.QualificationRequirements != nil &&
+			evidence.QualificationRequirements.ExpectedKind == "application-pattern" &&
+			evidence.QualificationRequirements.Application == "order_entry" {
+			foundRequirements = true
+		}
+	}
+	if !foundRequirements {
+		t.Fatalf("qualification requirements were not retained: %+v", grounded.Evidence)
+	}
 
 	ev, err := evaluate(dir, mustJSON(t, grounded))
 	if err != nil {
@@ -136,6 +147,27 @@ func TestSharedAcceptanceRejectsTamperedQualificationEvidence(t *testing.T) {
 		}
 		if ev.preview.Acceptable || !previewHasDiagnostic(ev.preview, "EVIDENCE_SOURCE_FINGERPRINT_MISMATCH") {
 			t.Fatalf("stale source fingerprint was not rejected: %+v", ev.preview.Stages)
+		}
+	})
+
+	t.Run("requirements no longer applicable", func(t *testing.T) {
+		bad := grounded
+		bad.Evidence = append([]Evidence(nil), grounded.Evidence...)
+		for i := range bad.Evidence {
+			if bad.Evidence[i].QualificationRequirements == nil {
+				continue
+			}
+			requirements := *bad.Evidence[i].QualificationRequirements
+			requirements.Application = "repair_intake"
+			bad.Evidence[i].QualificationRequirements = &requirements
+			break
+		}
+		ev, err := evaluate(dir, mustJSON(t, bad))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.preview.Acceptable || !previewHasDiagnostic(ev.preview, "EVIDENCE_QUALIFICATION_NOT_APPLICABLE") {
+			t.Fatalf("no-longer-applicable requirements were not rejected: %+v", ev.preview.Stages)
 		}
 	})
 }
