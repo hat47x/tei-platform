@@ -242,6 +242,23 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 					Code:    "EVIDENCE_QUALIFICATION_NOT_APPLICABLE",
 					Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はcurrent contextで%sです: %+v", i, e.SubjectKind, e.Subject, qualified.Status, qualified.Reasons),
 				})
+				continue
+			}
+			matchedQualifiedEvidence := false
+			for _, currentEvidence := range qualified.Evidence {
+				if currentEvidence.SubjectKind == e.SubjectKind &&
+					currentEvidence.Subject == e.Subject &&
+					currentEvidence.Source == e.Source &&
+					currentEvidence.SourceFingerprint == e.SourceFingerprint {
+					matchedQualifiedEvidence = true
+					break
+				}
+			}
+			if !matchedQualifiedEvidence {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_PROVENANCE_MISMATCH",
+					Message: fmt.Sprintf("evidence[%d]のsource / fingerprintはcurrent qualificationが返したauthoritative Evidenceと一致しません", i),
+				})
 			}
 		}
 	}
