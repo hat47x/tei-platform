@@ -34,17 +34,23 @@ type ApplicationDatabaseEdge struct {
 	Access      string           `json:"access"`
 }
 
+type ApplicationPatternContractQueryInputEntry struct {
+	TargetAttribute core.CanonicalID `json:"targetAttribute"`
+	Input           core.LocalName   `json:"input"`
+}
+
 type ApplicationPatternIndexEntry struct {
-	Application   core.CanonicalID `json:"application"`
-	Pattern       core.CanonicalID `json:"pattern"`
-	Kind          string           `json:"kind"`
-	Data          core.CanonicalID `json:"data,omitempty"`
-	Relation      core.CanonicalID `json:"relation,omitempty"`
-	Query         core.CanonicalID `json:"query,omitempty"`
-	Capability    core.CanonicalID `json:"capability,omitempty"`
-	Datasource    core.LocalName   `json:"datasource,omitempty"`
-	Contract      core.CanonicalID `json:"contract,omitempty"`
-	ContractQuery string           `json:"contractQuery,omitempty"`
+	Application         core.CanonicalID                           `json:"application"`
+	Pattern             core.CanonicalID                           `json:"pattern"`
+	Kind                string                                     `json:"kind"`
+	Data                core.CanonicalID                           `json:"data,omitempty"`
+	Relation            core.CanonicalID                           `json:"relation,omitempty"`
+	Query               core.CanonicalID                           `json:"query,omitempty"`
+	Capability          core.CanonicalID                           `json:"capability,omitempty"`
+	Datasource          core.LocalName                             `json:"datasource,omitempty"`
+	Contract            core.CanonicalID                           `json:"contract,omitempty"`
+	ContractQuery       string                                     `json:"contractQuery,omitempty"`
+	ContractQueryInputs []ApplicationPatternContractQueryInputEntry `json:"contractQueryInputs,omitempty"`
 }
 
 type DeclaredDependency struct {
@@ -344,6 +350,19 @@ func Build(w ir.World) Derived {
 			if p.ContractQuery != nil {
 				e.Contract = p.ContractQuery.Contract
 				e.ContractQuery = string(p.ContractQuery.Contract) + "/" + string(p.ContractQuery.Query)
+				for _, input := range p.ContractQuery.Inputs {
+					e.ContractQueryInputs = append(e.ContractQueryInputs, ApplicationPatternContractQueryInputEntry{
+						TargetAttribute: input.TargetAttribute,
+						Input:           input.Input,
+					})
+					d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract-query-input", ToKind: "semantic-attribute", To: input.TargetAttribute})
+				}
+				sort.Slice(e.ContractQueryInputs, func(i, j int) bool {
+					if e.ContractQueryInputs[i].Input == e.ContractQueryInputs[j].Input {
+						return e.ContractQueryInputs[i].TargetAttribute < e.ContractQueryInputs[j].TargetAttribute
+					}
+					return e.ContractQueryInputs[i].Input < e.ContractQueryInputs[j].Input
+				})
 				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract", ToKind: "database-contract", To: p.ContractQuery.Contract})
 				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract-query", ToKind: "database-contract-query", To: core.CanonicalID(e.ContractQuery)})
 			}
