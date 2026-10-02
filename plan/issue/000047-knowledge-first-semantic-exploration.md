@@ -498,6 +498,31 @@ Gate Cから次を受け取ります。
 
 Gate C前にはReference pattern provenanceの整理やbenchmark設計までを行えますが、production index / learned memoryは導入しません。
 
+## 2026-10-02 Product index increment — Pattern / Validationを機械到達可能にする
+
+Gate C後のknowledge-first baselineを製品コードへ戻して点検した結果、`tei index` / `internal/index.Build`はSemantic Data / Relation / CapabilityやDatabase依存を返す一方、**Semantic ValidationとApplication Pattern自体を索引化していない**ことが分かった。
+
+これはRQ-015 / RQ-027の観点では、AIや人がApplicationへ再入場するときに、業務ruleとPatternだけ別経路で再発見する必要があるGapである。新しいKnowledge Storeを追加せず、既存Canonical Worldから再生成するderived indexを拡張する。
+
+現在のcandidate incrementは既存branch `research/selective-knowledge-routing-r6` 上で次を追加する。
+
+- Semantic Validationを`semanticElements`へ追加
+- Validation → Attribute / Relationを`semanticDependencies`へ追加
+- Application Patternを`applicationPatterns`へ追加
+- Application → Validation / Patternを`declaredDependencies`へ追加
+- Pattern → Data / Relation / Query / Capability / Database Contract / Contract Queryを`declaredDependencies`へ追加
+- deterministic orderを保持するtestを追加
+
+このincrementは**derived machine-readable contextの欠落を埋めるだけ**であり、PatternやValidationの第二正本を作らない。indexを削除してもCanonical Worldは変わらず、Source authorityも既存Source Indexに残る。
+
+また、PatternのDatasource aliasはApplication-localな値としてindex entryに保持するが、alias文字列からDatabase authorityを推測しない。Contract Queryについても、Application Patternが明示したContract / Query identityだけをderived dependencyへ写す。
+
+### 現在のEvidence境界
+
+このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
+
+code-changing laneの既存ruleに従い、full `tools/repository-health-check.sh` PASSとclean pre/post stateが得られるまでmainへのintegration authorityは無い。
+
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
