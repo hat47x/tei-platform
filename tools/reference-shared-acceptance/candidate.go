@@ -38,7 +38,7 @@ type Origin struct {
 	Notes map[string]string `json:"notes,omitempty"`
 }
 
-// Evidenceは、candidateの根拠をqualified logical key（Canonical ID）またはworkspace相対のsource pathで示す。
+// Evidenceは、candidateの根拠を既存のCanonical ID、またはsubjectKind付きのSource Index identityとworkspace相対sourceで示す。
 type Evidence struct {
 	SubjectKind               string                                        `json:"subjectKind,omitempty"`
 	Subject                   string                                        `json:"subject,omitempty"`
