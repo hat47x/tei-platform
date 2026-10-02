@@ -188,6 +188,21 @@ func TestAttachQualificationRejectsNonApplicableResult(t *testing.T) {
 	}
 }
 
+func TestCandidateRejectsQualificationRequirementsWithoutExactProvenance(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	candidate.Evidence = []Evidence{{
+		SubjectKind: "application-pattern",
+		Subject:     "order_entry.customer_reference",
+		QualificationRequirements: &knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+		},
+	}}
+	if _, _, err := normalizeCandidate(candidate); err == nil {
+		t.Fatal("qualification requirements without source fingerprint were accepted")
+	}
+}
+
 func TestAttachQualificationCLIProducesCandidateWithoutWorkspaceMutation(t *testing.T) {
 	dir := scratchWorkspace(t)
 	snapshot, err := takeSnapshot(dir)
