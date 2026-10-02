@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/knowledgecontext"
 	"tei/internal/sourceindex"
 )
 
@@ -42,8 +43,9 @@ type Evidence struct {
 	SubjectKind       string `json:"subjectKind,omitempty"`
 	Subject           string `json:"subject,omitempty"`
 	Source            string `json:"source,omitempty"`
-	SourceFingerprint string `json:"sourceFingerprint,omitempty"`
-	Note              string `json:"note,omitempty"`
+	SourceFingerprint        string                                       `json:"sourceFingerprint,omitempty"`
+	QualificationRequirements *knowledgecontext.QualificationRequirements `json:"qualificationRequirements,omitempty"`
+	Note                     string                                       `json:"note,omitempty"`
 }
 
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -101,6 +103,9 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		}
 		if e.SourceFingerprint != "" && e.Source == "" {
 			return c, "", fmt.Errorf("evidence[%d].sourceFingerprintにはsourceが必要です", i)
+		}
+		if e.QualificationRequirements != nil && (e.SubjectKind == "" || e.Subject == "") {
+			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKindとsubjectが必要です", i)
 		}
 		if e.Subject != "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
