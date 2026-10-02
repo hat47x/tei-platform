@@ -256,6 +256,22 @@ func TestAttachQualificationRejectsNonApplicableResult(t *testing.T) {
 	}
 }
 
+func TestCandidateExactEvidenceAllowsSourceIndexCompositeIdentity(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	candidate.Evidence = []Evidence{{
+		SubjectKind: "database-contract-query",
+		Subject:     "master_data.customer/find_by_id",
+	}}
+	if _, _, err := normalizeCandidate(candidate); err != nil {
+		t.Fatalf("exact Source Index identity was rejected: %v", err)
+	}
+
+	candidate.Evidence[0].SubjectKind = ""
+	if _, _, err := normalizeCandidate(candidate); err == nil {
+		t.Fatal("legacy subject without kind bypassed Canonical ID validation")
+	}
+}
+
 func TestCandidateRejectsQualificationRequirementsWithoutExactProvenance(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	candidate.Evidence = []Evidence{{
