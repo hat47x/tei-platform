@@ -63,6 +63,38 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	}
 }
 
+func TestBuildKnowledgeContextReturnsSemanticValidationContext(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-validation",
+		"sales.order_line.quantity_positive",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SemanticElement == nil ||
+		got.SemanticElement.Kind != "validation" ||
+		got.SemanticElement.ID != "sales.order_line.quantity_positive" {
+		t.Fatalf("semantic validation detail is missing: %+v", got)
+	}
+	if len(got.References) == 0 || len(got.Artifacts) == 0 {
+		t.Fatalf("validation source trace is missing: references=%+v artifacts=%+v", got.References, got.Artifacts)
+	}
+	if len(got.Unresolved) != 0 {
+		t.Fatalf("known validation has unresolved context: %+v", got.Unresolved)
+	}
+	if !hasKnowledgeContextEdge(
+		got,
+		"outgoing",
+		"attribute",
+		"semantic-attribute",
+		"sales.order_line.quantity",
+	) {
+		t.Fatalf("validation target attribute is missing: %+v", got.Outgoing)
+	}
+}
+
 func TestBuildKnowledgeContextPreservesUnknownSubjectAsUnresolved(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
