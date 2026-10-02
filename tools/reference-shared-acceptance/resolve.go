@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/sourceindex"
 	"tei/internal/syntax"
 )
 
@@ -186,12 +187,38 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 	}
 
 	for i, e := range c.Evidence {
-		if e.Subject != "" && !idx.subjects[e.Subject] {
-			out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].subject %s はCanonical Worldに存在しません", i, e.Subject)})
+		if e.Subject != "" {
+			if e.SubjectKind == "" {
+				if !idx.subjects[e.Subject] {
+					out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].subject %s はCanonical Worldに存在しません", i, e.Subject)})
+				}
+			} else {
+				exact := sourceindex.Subject{Kind: e.SubjectKind, ID: e.Subject}
+				refs := s.index.ReferencesFor(exact)
+				if len(refs) == 0 {
+					out = append(out, Diagnostic{Code: "EVIDENCE_EXACT_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はcurrent Source Indexに存在しません", i, e.SubjectKind, e.Subject)})
+				} else if e.Source != "" {
+					matched := false
+					for _, ref := range refs {
+						if ref.ArtifactPath == e.Source {
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_SOURCE_MISMATCH", Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はsource %sにより宣言・authorされていません", i, e.SubjectKind, e.Subject, e.Source)})
+					}
+				}
+			}
 		}
 		if e.Source != "" {
-			if _, ok := fingerprints[e.Source]; !ok {
+			current, ok := fingerprints[e.Source]
+			if !ok {
 				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].source %s は管理対象sourceではありません", i, e.Source)})
+				continue
+			}
+			if e.SourceFingerprint != "" && e.SourceFingerprint != current {
+				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_FINGERPRINT_MISMATCH", Message: fmt.Sprintf("evidence[%d].sourceFingerprintはcurrent sourceと一致しません: source=%s have=%s current=%s", i, e.Source, e.SourceFingerprint, current)})
 			}
 		}
 	}
