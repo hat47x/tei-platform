@@ -36,11 +36,19 @@ type QualificationReason struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type QualificationEvidence struct {
+	SubjectKind       string `json:"subjectKind"`
+	Subject           string `json:"subject"`
+	Source            string `json:"source"`
+	SourceFingerprint string `json:"sourceFingerprint"`
+}
+
 type QualificationResult struct {
 	Candidate       subject.Subject           `json:"candidate"`
 	Status          QualificationStatus       `json:"status"`
 	Reasons         []QualificationReason     `json:"reasons,omitempty"`
 	Requirements    QualificationRequirements `json:"requirements"`
+	Evidence        []QualificationEvidence   `json:"evidence,omitempty"`
 	AuthorityLimits []string                  `json:"authorityLimits"`
 }
 
@@ -114,6 +122,7 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 		result.Status = QualificationUnknown
 	default:
 		result.Status = QualificationApplicable
+		result.Evidence = qualificationEvidence(ctx)
 	}
 	return result, nil
 }
@@ -204,4 +213,44 @@ func sortQualificationReasons(reasons []QualificationReason) {
 		}
 		return reasons[i].Detail < reasons[j].Detail
 	})
+}
+
+func qualificationEvidence(ctx Context) []QualificationEvidence {
+	artifacts := make(map[string]string, len(ctx.Artifacts))
+	for _, artifact := range ctx.Artifacts {
+		artifacts[artifact.Path] = artifact.Fingerprint
+	}
+	var out []QualificationEvidence
+	seen := map[string]struct{}{}
+	for _, ref := range ctx.References {
+		if ref.Role != sourceindex.RoleDefinition && ref.Role != sourceindex.RoleAuthoring {
+			continue
+		}
+		fingerprint := artifacts[ref.ArtifactPath]
+		if fingerprint == "" {
+			continue
+		}
+		item := QualificationEvidence{
+			SubjectKind:       ctx.Subject.Kind,
+			Subject:           ctx.Subject.ID,
+			Source:            ref.ArtifactPath,
+			SourceFingerprint: fingerprint,
+		}
+		key := strings.Join([]string{item.SubjectKind, item.Subject, item.Source, item.SourceFingerprint}, " ")
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, item)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Source != out[j].Source {
+			return out[i].Source < out[j].Source
+		}
+		if out[i].SubjectKind != out[j].SubjectKind {
+			return out[i].SubjectKind < out[j].SubjectKind
+		}
+		return out[i].Subject < out[j].Subject
+	})
+	return out
 }
