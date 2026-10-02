@@ -572,6 +572,23 @@ requirementsは少なくとも次を持つ。
 
 最初のReference pressureでは、`order_entry.customer_reference`を`order_entry` scope + `master_data.customer/find_by_id`依存で`applicable`とし、同じPatternを`repair_intake`所有のdirect shared authorityとして要求した場合はscope mismatchで`incompatible`へ落とす。存在しないsubjectは推測で近似せず`unknown`を返す。
 
+### 2026-10-03 qualification → Shared Acceptance handoff increment
+
+deterministic qualificationの結果をProposal側へ渡す際に、subjectのIDだけへ縮退させない。`applicable`な結果だけが、次のexact Evidenceを運べるようにする。
+
+- subject kind
+- Canonical ID
+- authoritative source path
+- source fingerprint
+- qualification時に評価したrequirements
+
+`reference-shared-acceptance attach-qualification`は、このEvidenceを既存candidateへ付与する。delta自体は変更せず、candidate fingerprintにも含めない。
+
+Shared AcceptanceのPreviewでは添付済みqualificationを信用せず、current Source Indexへ戻ってsubject kind / source / fingerprintを照合し、同じrequirementsでqualificationを再実行する。current contextで`applicable`でなければresolve stageで拒否する。
+
+これにより、探索時には適用可能だった資産が、その後のsource変更やApplication scope変更を経たあとも無条件にProposal根拠として残ることを防ぐ。`incompatible`と`unknown`はEvidenceとしてcandidateへ付与できない。
+
+この接続はqualificationをAcceptanceへ昇格させない。candidateは従来どおりShared Acceptance Boundaryのbase revision、resolve、Validation、architecture policy、Semantic Diff、impact、acceptance policyを通る。
 ### 現在のEvidence境界
 
 このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
