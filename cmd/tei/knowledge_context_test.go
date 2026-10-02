@@ -22,7 +22,10 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	}
 	if got.ApplicationPattern.Application != "order_entry" ||
 		got.ApplicationPattern.Pattern != "order_entry.customer_reference" ||
-		got.ApplicationPattern.Kind != "reference" {
+		got.ApplicationPattern.Kind != "reference" ||
+		len(got.ApplicationPattern.ContractQueryInputs) != 1 ||
+		got.ApplicationPattern.ContractQueryInputs[0].TargetAttribute != "customer.customer.customer_id" ||
+		got.ApplicationPattern.ContractQueryInputs[0].Input != "id" {
 		t.Fatalf("application pattern detail drifted: %+v", got.ApplicationPattern)
 	}
 	if len(got.References) == 0 || len(got.Artifacts) == 0 {
@@ -42,6 +45,7 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 		{direction: "outgoing", relation: "relation", kind: "semantic-relation", id: "sales.order.customer"},
 		{direction: "outgoing", relation: "contract", kind: "database-contract", id: "master_data.customer"},
 		{direction: "outgoing", relation: "contract-query", kind: "database-contract-query", id: "master_data.customer/find_by_id"},
+		{direction: "outgoing", relation: "contract-query-input", kind: "semantic-attribute", id: "customer.customer.customer_id"},
 	} {
 		if !hasKnowledgeContextEdge(got, want.direction, want.relation, want.kind, want.id) {
 			t.Fatalf("knowledge context edge is missing: %+v context=%+v", want, got)
