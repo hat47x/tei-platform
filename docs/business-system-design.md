@@ -285,7 +285,7 @@ Handoff
 
 `condition`はtarget Procedureのtriggerやruntime event IDそのものではありません。
 
-Handoffをauthorしないもの:
+Handoffをauthorしないもの。
 
 ```text
 Step adjacency
@@ -338,7 +338,7 @@ unresolved
 
 業務行為と機能、Data、Procedure等の対応をMatrixとして可視化することは、cross-checkに有効です。ただしMatrix自体を第二のsource of truthにはしません。
 
-候補例:
+候補例は次のとおりです。
 
 ```text
 Business Action × Application Pattern

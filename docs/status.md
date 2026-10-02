@@ -130,7 +130,7 @@ Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_A
 
 ## Semantic / Source
 
-実装済みの主な基線:
+実装済みの主な基線は次のとおりです。
 
 - Workspace / Canonical ID
 - Semantic namespace / type / data / relation / capability
@@ -156,7 +156,7 @@ header-detail
 command
 ```
 
-成立している主な境界:
+成立している主な境界は次のとおりです。
 
 - Application `DatabaseRequirement[]`
 - logical Datasource
@@ -225,7 +225,7 @@ actual second-provider / existing Oracle assetは別Evidenceとして継続し�
 
 ## Plugin / Runtime / Resource
 
-成立している主な境界:
+成立している主な境界は次のとおりです。
 
 - Plugin / Bundle / Capability negotiation
 - Plugin Lock
@@ -331,7 +331,7 @@ AI provider、vector database、Proposal最終schema、chat-first UXは未固定
 
 Gate C後、`ISSUE-000026`で第一Targetと十分に異なるApplication Targetを選びます。
 
-比較対象:
+比較対象は次のとおりです。
 
 - Handover / Canonical meaning
 - Target build identity

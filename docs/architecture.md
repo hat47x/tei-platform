@@ -273,7 +273,7 @@ Business Procedure / actor / manual / trigger
 
 CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
 
-詳細は [Business-System Design](business-system-design.md) と RQ-025 / RQ-026を参照してください。
+詳細は [Business-System Design](business-system-design.md) とRQ-025 / RQ-026を参照してください。
 
 ## Authorization semantic boundary
 

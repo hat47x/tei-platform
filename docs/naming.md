@@ -4,13 +4,13 @@
 
 ## Product name
 
-現在のプラットフォーム名は **TEI（鼎／テイ）** です。
+現在のプラットフォーム名は TEI（鼎／テイ） です。
 
 `TEI`を一つの英語展開へ固定しません。次の3つは競合する正式名称ではなく、同じ設計を異なる面から説明する補助的な読みです。
 
 - **Traceable Execution of Intent** — 意図がSemantic Definition、Realization、Execution、Observation、Evidence、Recoveryまで追跡できること。
 - **Target-neutral Executable Infrastructure** — Semantic / Application Definitionが、特定の実装言語、Database、UI技術、Deployment target、Executorを意味上の特権として持たないこと。
-- **Three-Element Integration** — 異なる層を一つのsource of truthへ潰さずに接続すること。たとえば semantic / realization / execution、logical / physical / observed、application / database / environment などです。
+- **Three-Element Integration** — 異なる層を一つのsource of truthへ潰さずに接続すること。たとえばsemantic / realization / execution、logical / physical / observed、application / database / environmentなどです。
 
 通常のUIや文書で、TEIを毎回これらの英語へ展開して表記する必要はありません。
 
@@ -53,7 +53,7 @@ TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣�
 - **Database Workbench** — schema / query / lineage / planを扱うderived editor projection。Canonical source of truthにはしません。
 - **DatabaseProvider / CatalogReader** — driver-neutralなDatabase observation境界。
 - **Migration Provider / HistoryReader** — 外部migration toolとの統合境界。
-- **Execution Plan IR**, **Physical Schema Snapshot**, **Derived Query IR**, **Persistence Mapping** — 明示的なmodel / artifact名称。
+- Execution Plan IR, Physical Schema Snapshot, Derived Query IR, Persistence Mapping — 明示的なmodel / artifact名称。
 - **Deployment Executor SPI** — provider-neutralなcommand境界。
 - **Observation Provider** — provider-neutralなlive-state observation境界。
 - **Evidence Provider** — rollout / decisionに必要なevidenceの境界。
@@ -63,7 +63,7 @@ TEI Workspaceは、`tei.workspace.yaml`と、そこで管理対象として宣�
 
 ## Historical references
 
-**X-TEA / XEAD** は現在の製品・プラットフォーム名ではありません。
+X-TEA / XEAD は現在の製品・プラットフォーム名ではありません。
 
 TEIはX-TEA / XEADの公式な後継・派生プロジェクトを名乗りません。公開資料や参照モデルから得た設計上の示唆を説明するとき、またはprovenanceを保つ必要がある既存artifactを指すときに、独立した参照対象として歴史的名称を用います。
 

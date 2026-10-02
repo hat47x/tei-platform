@@ -46,7 +46,7 @@ human ownerは一人ですが、複数のAI session / processが同時に作業�
 
 `research/selective-knowledge-routing-r6` はFirst Web Target R7Bのlive qualification branchです。canonical 11 sourceは通常のbranch merge対象ではありません。
 
-禁止:
+禁止は次のとおりです。
 
 - B4 branchのgeneric merge / squash / cherry-pickをintegration authorityとして扱う
 - PASS receiptなしにcanonical 11を`main`へcopy / mergeする

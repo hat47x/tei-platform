@@ -352,7 +352,7 @@ deterministic generator / compiler
 
 そのため、可能な限りaccepted meaningから独立してtest oracleを導出します。
 
-例:
+例は次のとおりです。
 
 ```text
 quantity > 0

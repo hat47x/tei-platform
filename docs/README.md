@@ -1,12 +1,10 @@
 # TEI ドキュメント案内
 
-[想定仕様ガイド（HTML）](specification/index.html)で全体像、業務モデル、実装境界、全26要求、未決事項、X-TEA原典の検討結果を横断できます。[期限なしロードマップ](../plan/product-roadmap.html)も参照してください。既存正本を変更する文書ではありません。
+この文書は、TEIの設計・実装・現在地を読むための案内板です。新しいProduct Requirement、Architecture判断、Gate条件、Evidence結論はここでは定義しません。各項目の意味上の正本は、それぞれのリンク先にあります。
 
-この文書は、TEIの設計・実装・現在地を読むための**案内板**です。
+全体像、業務モデル、実装境界、全26要求、未決事項、X-TEA原典の検討結果は、[想定仕様ガイド（HTML）](specification/index.html)でまとめて見られます。[期限なしロードマップ](../plan/product-roadmap.html)もあります。どちらも既存の正本を変更する文書ではありません。
 
-ここに新しいProduct Requirement、Architecture判断、Gate条件、Evidence結論を定義しません。各項目の意味上の正本は、それぞれのリンク先にあります。
-
-> 全文書を順番に読む必要はありません。知りたいことに応じて入口を選んでください。
+全文書を順番に読む必要はありません。知りたいことに応じて入口を選んでください。
 
 ## クイックナビゲーション
 
@@ -69,7 +67,7 @@ Gate / Product claim
 2. [TEIの考え方](overview.md)
 3. [現在の実装状況](status.md)
 
-ここでは、細かな型やGate手順より先に、TEIが「意味・実装・実行・観測」をなぜ分けるのかを把握します。
+細かな型やGate手順より先に、TEIが「意味・実装・実行・観測」をなぜ分けるのかをつかみます。
 
 ### 2. Architectureを追う
 
@@ -97,11 +95,11 @@ Requirementだけから実装を直接導出せず、PAS、設計判断、Refere
 
 ### 4. AI / local cognition / Design Synthesisを追う
 
-1. [TEIの考え方](overview.md) — TEI全体におけるAIの位置を確認する
-2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md) — 人の作業を何へ圧縮したいのかを具体例から理解する
-3. [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md) — 上位Product GoalとDSR候補
-4. [Derived Cognitive Exploration Overview](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md) — 非LLM認知を検討する理由
-5. [Derived Cognitive Requirement Draft](../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md) — TEIへ求める性質
+1. [TEIの考え方](overview.md)で、TEI全体におけるAIの位置を確認します。
+2. [Design Synthesis / 認知支援 読み方ガイド](design-synthesis-reading-guide.md)で、人の作業を何へ圧縮したいのかを具体例から理解します。
+3. [Design Synthesis Loop Requirement Draft](../plan/DESIGN_SYNTHESIS_LOOP_REQUIREMENT_DRAFT_2026-09.md)に、上位のProduct GoalとDSR候補があります。
+4. [Derived Cognitive Exploration Overview](../plan/DERIVED_COGNITIVE_EXPLORATION_OVERVIEW_2026-09.md)に、非LLM認知を検討する理由があります。
+5. [Derived Cognitive Requirement Draft](../plan/DERIVED_COGNITIVE_REQUIREMENT_DRAFT_2026-09.md)に、TEIへ求める性質があります。
 6. 対応するPlan Issue / Benchmark / Feature Contract
 
 FlyHash、HDC、embedding、feature atom等の詳細から読み始めず、「既知の事実で候補空間を狭め、人は残った意味判断を行う」というProduct Goalから下へ降ります。
@@ -120,7 +118,7 @@ FlyHash、HDC、embedding、feature atom等の詳細から読み始めず、「�
 2. [`AGENTS.md`](../AGENTS.md)
 3. 対象文書の上位正本 / Reference / Evidence
 
-TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では十分ではありません。文書側で背景、前提、用語、失敗例、設計理由を引き受け、**主担当より一段浅い知識の読者でも、目的・境界・判断理由をレビューできる状態**を目指します。
+TEIは扱う技術領域と業務知識が広いため、実装できる人だけが読める文書では足りません。文書側で背景、前提、用語、失敗例、設計理由を引き受け、主担当より一段浅い知識の読者でも、目的・境界・判断理由をレビューできる状態を目指します。
 
 ## 設計文書を読むときの区別
 
@@ -152,14 +150,14 @@ Architecture / Requirement exists
 
 新しい長文の設計・分析文書を追加するときは、内容に応じて冒頭で次を明らかにします。
 
-1. **役割** — Architecture、Requirement interpretation、planning、audit、experiment等のどれか
-2. **正本との関係** — 何の正本で、何の第二正本ではないか
-3. **対象範囲** — 何を扱い、何を扱わないか
-4. **現在の結論 / 状態** — 長い経緯より先に、読者が現在の判断を確認できること
-5. **根拠** — Reference、Conformance、Evidence、関連ADR / Issue
-6. **非主張範囲** — test PASSやReference成立から何を一般化しないか
+1. 役割。Architecture、Requirement interpretation、planning、audit、experiment等のどれか。
+2. 正本との関係。何の正本で、何の第二正本ではないか。
+3. 対象範囲。何を扱い、何を扱わないか。
+4. 現在の結論と状態。長い経緯より先に、読者が現在の判断を確認できること。
+5. 根拠。Reference、Conformance、Evidence、関連ADRとIssue。
+6. 非主張範囲。test PASSやReference成立から、何を一般化しないか。
 
-さらに、内容が難しいほど「なぜ必要か」「どんな失敗を防ぐか」「具体例ではどう見えるか」を先に説明します。詳細な執筆方針は[TEI 文書品質ガイド](documentation-quality.md)を参照してください。
+さらに、内容が難しい文書ほど、「なぜ必要か」「どんな失敗を防ぐか」「具体例ではどう見えるか」を先に説明します。詳細な執筆方針は[TEI 文書品質ガイド](documentation-quality.md)を参照してください。
 
 すべての文書へ同じ固定テンプレートを強制するものではありません。文書の種類に応じて必要な項目だけを使い、形式を守ること自体を目的にしません。
 

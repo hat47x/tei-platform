@@ -38,7 +38,7 @@ Canonical IDはsource pathから導出しません。同一内容・同一Canoni
 
 Source Indexのlocatorだけが新しいWorkspace-relative pathへ更新されます。
 
-主な検証:
+主な検証は次のとおりです。
 
 - `internal/workspace/source_index_invariance_test.go`
 - `internal/workspace/traceability_conformance_test.go`
@@ -49,7 +49,7 @@ Source IndexのArtifactはWorkspace-relative path、format、`sha256:` content f
 
 同じcontentをmoveしただけならfingerprintは不変です。contentを変えればfingerprintは変化します。
 
-主な実装:
+主な実装は次のとおりです。
 
 - `internal/sourceindex/model.go`
 - `internal/workspace/source_index.go`
@@ -60,7 +60,7 @@ Rangeは半開区間`[start,end)`のbyte offsetを基準とし、line / column�
 
 Parserのsyntax anchorとSource Index rangeはdomain modelへphysical locationを埋め込まずに接続します。
 
-主な実装:
+主な実装は次のとおりです。
 
 - `internal/syntax/anchor.go`
 - `internal/syntax/semantic_anchor.go`
@@ -79,7 +79,7 @@ Validate(World)
 
 Sourceを見つけられないderived / synthetic subjectは、推測でpathを作らずsourceなしのdiagnosticとして保持します。
 
-主な実装:
+主な実装は次のとおりです。
 
 - `internal/validation/validation.go`
 - `internal/workspace/diagnostic_projection.go`
@@ -90,7 +90,7 @@ Parse / lexer errorではCanonical subjectがまだ成立していない場合�
 
 Loaderは位置付きsyntax errorをsource artifact + rangeへ結び、`PARSE_ERROR`としてCLIへ渡せます。
 
-主な実装:
+主な実装は次のとおりです。
 
 - `internal/syntax/error.go`
 - `internal/workspace/source_diagnostic.go`
@@ -127,7 +127,7 @@ Analyzer protocolはCanonical Query ID、dialect、SQL source等を受け取り�
 
 このためSQL analyzer / Derived Query IRは、Workspace layoutをsemantic meaningとして取り込みません。
 
-主な実装:
+主な実装は次のとおりです。
 
 - `internal/query/analyzer/model.go`
 - `internal/workspace/traceability_conformance_test.go`
