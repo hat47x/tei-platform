@@ -222,6 +222,10 @@ retrieval candidate
 
 Derived Knowledge / index / trajectoryは削除・再生成可能に保ちます。
 
+2026-10-02のresearch integrationでは、このGapを「より強いmodelを先に導入する」計画にはしません。[TECH_RESEARCH_INTEGRATION_2026-10.md](TECH_RESEARCH_INTEGRATION_2026-10.md)に従い、exact / deterministic → lightweight associative / statistical → bounded local cognition → local model → external modelの段階昇格をReferenceで比較します。どの方式もcandidate generation / ranking / abstentionの範囲に留め、`applicable / incompatible / unknown`、Acceptance、write / runtime authorityは既存の決定論的境界へ戻します。
+
+この追記はplanning refinementであり、RQ-015 / 016等のEvidence tierを変更しません。
+
 ### Gap E — Business / cross-view
 
 主にRQ-025 / 026。
@@ -243,7 +247,7 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 5. RQ-030の閉包条件を決める。ACTOR_CONTEXT圧力がどの不確実性を減らすかと、何が揃えば連続を終えられるかを先に定める（§9、`ISSUE-000053`）
 6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する（2026-09-30追記: RQ-028は[ISSUE-000071](issue/000071-approval-sufficient-projection.md)が担当し、条件案と既存Previewの机上評価を記録済み。RQ-027 / RQ-029の担当は未決定のまま）
 7. RQ-027のGapを閉じるか判断する。accepted Decision / VariationとEvidence / provenanceを機械到達可能にするか、到達不能をProduct上の制約として明記するか
-8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する
+8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する。knowledge / AIは`TECH_RESEARCH_INTEGRATION_2026-10.md`の段階昇格をbaselineとし、第二Targetではportable execution artifact / Host差もPressureする
 9. Provider / production境界を必要なEvidenceとともに広げる
 
 ## 9. 維持コスト監査
