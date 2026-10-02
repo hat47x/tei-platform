@@ -23,6 +23,7 @@ const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
   reference-shared-acceptance accept  -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
+  reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
 `
@@ -34,7 +35,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "accept", "reject", "revision", "decisions":
+	case "preview", "accept", "reject", "attach-qualification", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -44,6 +45,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
+	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
 	outPath := flags.String("out", "", "結果JSONの出力先（省略時は標準出力）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
 	reason := flags.String("reason", "", "rejectの理由")
@@ -51,8 +53,11 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
+	needsWorkspace := command != "attach-qualification"
 	needsCandidate := command != "revision" && command != "decisions"
-	if *workspacePath == "" || (needsCandidate && *candidatePath == "") {
+	if (needsWorkspace && *workspacePath == "") ||
+		(needsCandidate && *candidatePath == "") ||
+		(command == "attach-qualification" && *qualificationPath == "") {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
