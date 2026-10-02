@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/knowledgecontext"
 	"tei/internal/sourceindex"
+	"tei/internal/subject"
 	"tei/internal/syntax"
 )
 
@@ -219,6 +221,27 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			if e.SourceFingerprint != "" && e.SourceFingerprint != current {
 				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_FINGERPRINT_MISMATCH", Message: fmt.Sprintf("evidence[%d].sourceFingerprintはcurrent sourceと一致しません: source=%s have=%s current=%s", i, e.Source, e.SourceFingerprint, current)})
+			}
+		}
+		if e.QualificationRequirements != nil {
+			ctx := knowledgecontext.Build(
+				s.loaded.World,
+				s.index,
+				subject.Subject{Kind: e.SubjectKind, ID: e.Subject},
+			)
+			qualified, err := knowledgecontext.Qualify(ctx, *e.QualificationRequirements)
+			if err != nil {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_INVALID",
+					Message: fmt.Sprintf("evidence[%d]のqualification requirementsを評価できません: %v", i, err),
+				})
+				continue
+			}
+			if qualified.Status != knowledgecontext.QualificationApplicable {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_NOT_APPLICABLE",
+					Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はcurrent contextで%sです: %+v", i, e.SubjectKind, e.Subject, qualified.Status, qualified.Reasons),
+				})
 			}
 		}
 	}
