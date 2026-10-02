@@ -4,7 +4,7 @@
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
-- 関連Issue: [ISSUE-000072](000072-rule-change-hand-edit-count.md)（この欠落を計測する）、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）、[ISSUE-000038](000038-business-lifecycle-semantics.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)（遷移ごとの評価条件。評価待ち）、[ISSUE-000014](000014-business-validation-reference.md)
+- 関連Issue: [ISSUE-000072](000072-rule-change-hand-edit-count.md)（この欠落を見つけた静的読解の記録。研究に留保）、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）、[ISSUE-000038](000038-business-lifecycle-semantics.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)（遷移ごとの評価条件。評価待ち）、[ISSUE-000014](000014-business-validation-reference.md)
 - 価値との対応: [Product Value](../../product/value/TEI_PRODUCT_VALUE.md)「組織 1. 変更の単位コストを下げる」、具体例「組織 — 規則を書き写さない」の但し書き
 - Gate impact: Gate B / Gate Cの判定は変えない（各exact revisionに固定されたhistorical Evidence）。ただし、Gate Cのarchitecture conformance tool（`tools/reference-first-web-target-architecture-evidence`）は、`reference/workspace`と`reference/world.json`がHandover Baselineの`R = e5231839…`からTarget build `T = 0ba87a4e…`の間で不変であることを要求するため、この変更を含む`main`では旧`R`に対して再実行できない
 
@@ -84,8 +84,7 @@ Web Target      Application.Validations から評価対象を得る
 - [ ] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す
 - [ ] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する
 - [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
-- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
-- [ ] ISSUE-000072の最初の計測ケースを再計測し、C3（正本の外にある意味の手直し）が減ったことを記録する
+- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
 - [ ] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する
 
 ## 完了後に判断できること

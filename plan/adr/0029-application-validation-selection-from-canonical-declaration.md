@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - 日付: 2026-10-01
-- 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を計測する）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
+- 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を見つけた静的読解の記録。研究に留保）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
 - 関連ADR: [ADR-0024](0024-business-lifecycle-ownership.md) / [ADR-0025](0025-transition-evaluation-and-conflict-result.md)（遷移ごとの`requires`。いずれも提案中）
 - 主担当要求: RQ-003 / RQ-013 / RQ-017 / RQ-021
 
@@ -93,7 +93,7 @@ Previewは、Validationが追加または変更されたとき（削除は対象
 
 ### 良くなる点
 
-- Validationを足すとき、人が直すのは正本（Validation定義とApplicationの宣言）だけになる。Target側の一覧の手直しが要らない
+- Validationの選択を、正本（Validation定義とApplicationの宣言）だけで決められる。Target側にもう一つの一覧を持たずに済む
 - 第二Target、API、AIエージェントの経路が、同じ選択を同じ入口から得られる
 - 受理前のPreviewで、評価対象の変化が差分とimpactに現れる（既に`Application.Validations`を差分へ含めている）
 - 宣言が無いときの振る舞いが推測ではなく、明示された判定不能になる
@@ -128,4 +128,4 @@ Previewは、Validationが追加または変更されたとき（削除は対象
 1. 正本へValidationを一件足し、Applicationへ宣言を一行足すだけで、Target側のコードを変えずに、画面からの確定でその規則が評価される。
 2. 宣言を外すと、評価されないまま成功するのではなく、判定不能として返る。
 3. 既存のCommand scenario（成功、Authorization拒否、Validation不成立、Execution Error、Observation）の結果と、Evidence auditの期待値が変わらない。
-4. [ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)の最初の計測ケースを再計測し、「正本の外にある意味の手直し」（C3）が減る。
+4. 手直しの箇所数は確認の基準にしない（[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)、Product Value「価値の確かめ方」）。代わりに、1〜3の動作を、実際に動くscenarioで通して確かめる。

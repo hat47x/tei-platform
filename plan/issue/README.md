@@ -210,16 +210,18 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 | 個人 | 会話履歴や聞き取りなしに、変更に必要な文脈へ到達できる | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1 / [000040](000040-semantic-component-composition.md) | 決定記録は機械可読。再入場に足りるかを判定する検査は無い |
 | 個人 | 承認の対象が、意味差分・影響・例外・未解決点として示される | **[000071](000071-approval-sufficient-projection.md)**（新規） / 000046 / 000027 | Previewは機械可読。人が読む面と、権限・native codeを示す項目が無い |
 | 個人 | 一度答えた確認が理由なく繰り返されない | **[000074](000074-answered-confirmation-history.md)**（新規） | 記録も検査も無い |
-| 組織 | 規則一件の変更で人が手で直す箇所の数 | **[000072](000072-rule-change-hand-edit-count.md)**（新規） / 000052 / 000070 | 繰り返し使える数え方が無い。Target側にValidation選択の一覧があることを確認 |
+| 組織 | （留保）規則変更に伴う手直しの数 | [000072](000072-rule-change-hand-edit-count.md)（研究に留保） | 価値の指標にしない。要件固有で、変更の深さで意味が変わるため。Product Valueでは、実務機能の量・関係性・実用性とMVP的な実証で確かめる |
 | 組織 | 画面・API・AIエージェントの間で同じ規則が食い違わない | **[000073](000073-derive-validation-selection-from-canonical.md)**（新規） / [000014](000014-business-validation-reference.md) / [000026](000026-target-capability-execution-profile-boundary.md) | 画面とAPIは同じ評価経路。評価対象の選択がCanonicalに無い。AIエージェントの経路は無い |
 | 組織 | 再利用した意味・Infrastructure知識の元identity・前提・差分を追跡できる | [000040](000040-semantic-component-composition.md) | identity / provenanceは実行可能なtestあり。Variationは表現が無い |
 | 社会 | AIを介さず正本から第三者が根拠を再現できる | [000029](000029-gate-b-readiness-audit.md) / [000028](000028-first-web-target-conformance-evidence.md) / [000058](000058-gate-c-visual-independent-reevaluation.md) | Gate B / Cの独立監査あり。Visualは単一のAI評価者 |
 | 社会 | 分からない状態を成功や安全として扱わない | [000009](000009-capability-outcome-and-execution-error.md) / [000041](000041-partition-schema-drift-semantics.md) | Database・Runtime境界で多数のtestあり |
 | 社会 | 業務知識を読めることが実行権限へ変わらない | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) | Runtime / Pluginの権限はtestあり。AIエージェントの読み取り経路は製品側に無い |
 
-新規4件の着手順は次を推奨します。
+新規のうち000072は、研究に留保しています。手直しの数は要件固有で、変更の深さで意味が変わるため、測定に基づく価値判断は、問題領域の知見が蓄積されるまで行いません。他の3件の着手順は次を推奨します。
 
-1. **000072の机上予測を実測する前に、000073の方針（ADR）を決める。** 000072の最初の計測ケースは、000073が解消する欠落をそのまま観測するため、両方を同じ変更で前後比較できます。
+価値の確かめ方の中心は、実務シナリオを通すMVP的な実証です。最初の実証の候補は[000075](000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。
+
+1. **000073**は、評価対象の選択をCanonicalな宣言から導く機能上の課題です。方針（ADR-0029）のowner reviewから始めます。
 2. **000071**は既存Previewの机上評価まで済んでおり、条件案のowner reviewから始められます。Gap Audit §8の優先順位6（RQ-028の担当決定）に当たります。
 3. **000074**は000046 / 000047が確認を出し始める前に、記録の形だけ先に決めます。
 
