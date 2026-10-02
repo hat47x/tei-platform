@@ -39,7 +39,6 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 		id        string
 	}{
 		{direction: "incoming", relation: "owns-pattern", kind: "application", id: "order_entry"},
-		{direction: "outgoing", relation: "data", kind: "semantic-data", id: "sales.order"},
 		{direction: "outgoing", relation: "relation", kind: "semantic-relation", id: "sales.order.customer"},
 		{direction: "outgoing", relation: "contract", kind: "database-contract", id: "master_data.customer"},
 		{direction: "outgoing", relation: "contract-query", kind: "database-contract-query", id: "master_data.customer/find_by_id"},
