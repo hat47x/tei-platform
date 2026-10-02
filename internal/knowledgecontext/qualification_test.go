@@ -11,7 +11,14 @@ import (
 func TestQualifyApplicableWithAuthoritativeSourceAndExactDependency(t *testing.T) {
 	ctx := Context{
 		Subject:            subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-		References:         []sourceindex.Reference{{Role: sourceindex.RoleDefinition}},
+		References: []sourceindex.Reference{{
+			Role:         sourceindex.RoleDefinition,
+			ArtifactPath: "applications/order_entry/patterns/customer_reference.tei",
+		}},
+		Artifacts: []sourceindex.Artifact{{
+			Path:        "applications/order_entry/patterns/customer_reference.tei",
+			Fingerprint: "sha256:pattern",
+		}},
 		ApplicationPattern: &index.ApplicationPatternIndexEntry{Application: "order_entry"},
 		Outgoing: []Edge{{
 			From:     subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
@@ -32,6 +39,16 @@ func TestQualifyApplicableWithAuthoritativeSourceAndExactDependency(t *testing.T
 	if result.Status != QualificationApplicable {
 		t.Fatalf("status=%s reasons=%+v", result.Status, result.Reasons)
 	}
+	if len(result.Evidence) != 1 {
+		t.Fatalf("evidence=%+v", result.Evidence)
+	}
+	evidence := result.Evidence[0]
+	if evidence.SubjectKind != "application-pattern" ||
+		evidence.Subject != "order_entry.customer_reference" ||
+		evidence.Source != "applications/order_entry/patterns/customer_reference.tei" ||
+		evidence.SourceFingerprint != "sha256:pattern" {
+		t.Fatalf("exact qualification evidence=%+v", evidence)
+	}
 }
 
 func TestQualifyApplicationScopeMismatchIsIncompatible(t *testing.T) {
@@ -47,6 +64,9 @@ func TestQualifyApplicationScopeMismatchIsIncompatible(t *testing.T) {
 	if result.Status != QualificationIncompatible {
 		t.Fatalf("status=%s reasons=%+v", result.Status, result.Reasons)
 	}
+	if len(result.Evidence) != 0 {
+		t.Fatalf("incompatible qualification leaked reusable evidence: %+v", result.Evidence)
+	}
 }
 
 func TestQualifyUnknownWithoutAuthoritativeSource(t *testing.T) {
@@ -60,6 +80,9 @@ func TestQualifyUnknownWithoutAuthoritativeSource(t *testing.T) {
 	}
 	if result.Status != QualificationUnknown {
 		t.Fatalf("status=%s reasons=%+v", result.Status, result.Reasons)
+	}
+	if len(result.Evidence) != 0 {
+		t.Fatalf("unknown qualification leaked reusable evidence: %+v", result.Evidence)
 	}
 }
 
