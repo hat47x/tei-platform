@@ -98,6 +98,23 @@ func TestQualifyMissingDependencyStaysUnknownWhenContextIsUnresolved(t *testing.
 	}
 }
 
+func TestQualifyMissingDependencyWithDerivedOnlySourceStaysUnknown(t *testing.T) {
+	ctx := Context{
+		Subject:    subject.Subject{Kind: "semantic-data", ID: "customer.customer"},
+		References: []sourceindex.Reference{{Role: sourceindex.RoleDerived}},
+	}
+	result, err := Qualify(ctx, QualificationRequirements{
+		ExpectedKind:         "semantic-data",
+		RequiredDependencies: []DependencyRequirement{{Direction: "outgoing", Relation: "attribute", Kind: "semantic-attribute", ID: "customer.customer.customer_id"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != QualificationUnknown {
+		t.Fatalf("status=%s reasons=%+v", result.Status, result.Reasons)
+	}
+}
+
 func TestQualifyRejectsAmbiguousRequirements(t *testing.T) {
 	_, err := Qualify(Context{}, QualificationRequirements{ExpectedKind: "semantic-data", Application: "order_entry"})
 	if err == nil {

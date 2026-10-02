@@ -563,7 +563,7 @@ requirementsは少なくとも次を持つ。
 
 判定境界:
 
-- current Source IndexにDefinition / Authoring referenceが無いcandidateは`applicable`へ昇格させず`unknown`とする。
+- current Source IndexにDefinition / Authoring referenceが無いcandidateは`applicable`へ昇格させず`unknown`とする。その状態ではderived index上のdependency欠落やApplication scopeも確定的不適合へ昇格させない。
 - expected kind、Application-owned Patternのscope、current derived dependencyに既知の矛盾がある場合だけ`incompatible`とする。
 - context自体にunresolvedがあり、required dependencyの不存在を確定できない場合は`unknown`を維持する。
 - requirementsに書かれていない条件を「満たした」と推測しない。

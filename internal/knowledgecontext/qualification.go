@@ -68,7 +68,8 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 			Detail: fmt.Sprintf("have=%s want=%s", ctx.Subject.Kind, requirements.ExpectedKind),
 		})
 	}
-	if !hasAuthoritativeSourceReference(ctx.References) {
+	authoritativeSource := hasAuthoritativeSourceReference(ctx.References)
+	if !authoritativeSource {
 		unknown = append(unknown, QualificationReason{Code: "authoritative-source-reference-unavailable"})
 	}
 	for _, unresolved := range ctx.Unresolved {
@@ -76,9 +77,12 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 	}
 
 	if requirements.Application != "" {
-		if ctx.ApplicationPattern == nil {
+		switch {
+		case ctx.ApplicationPattern == nil:
 			unknown = append(unknown, QualificationReason{Code: "application-scope-unavailable"})
-		} else if string(ctx.ApplicationPattern.Application) != requirements.Application {
+		case !authoritativeSource:
+			unknown = append(unknown, QualificationReason{Code: "application-scope-unverified"})
+		case string(ctx.ApplicationPattern.Application) != requirements.Application:
 			incompatible = append(incompatible, QualificationReason{
 				Code:   "application-scope-mismatch",
 				Detail: fmt.Sprintf("have=%s want=%s", ctx.ApplicationPattern.Application, requirements.Application),
@@ -91,7 +95,7 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 			continue
 		}
 		reason := QualificationReason{Detail: dependencyRequirementKey(requirement)}
-		if len(ctx.Unresolved) != 0 {
+		if !authoritativeSource || len(ctx.Unresolved) != 0 {
 			reason.Code = "required-dependency-unresolved"
 			unknown = append(unknown, reason)
 		} else {
