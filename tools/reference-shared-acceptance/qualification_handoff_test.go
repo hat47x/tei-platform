@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"tei/internal/knowledgecontext"
+	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
 
@@ -170,6 +171,73 @@ func TestSharedAcceptanceRejectsTamperedQualificationEvidence(t *testing.T) {
 			t.Fatalf("no-longer-applicable requirements were not rejected: %+v", ev.preview.Stages)
 		}
 	})
+}
+
+func TestSharedAcceptanceRejectsSourceThatCurrentQualificationDidNotAuthorize(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target := subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"}
+	ctx := knowledgecontext.Build(snapshot.loaded.World, snapshot.index, target)
+	qualification, err := knowledgecontext.Qualify(ctx, knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	grounded, err := attachQualificationEvidence(mustJSON(t, unitPriceCandidate(snapshot.revision)), qualification)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var alternate sourceindex.Artifact
+	for _, artifact := range snapshot.index.Artifacts {
+		if artifact.Path != qualification.Evidence[0].Source {
+			alternate = artifact
+			break
+		}
+	}
+	if alternate.Path == "" {
+		t.Fatal("alternate managed source was not found")
+	}
+
+	// Simulate a non-authoritative Reference for the same exact subject.
+	// Exact subject/source lookup and fingerprint lookup both succeed, but
+	// current qualification must not return this implementation-only source
+	// as authoritative Evidence.
+	snapshot.index.References = append(snapshot.index.References, sourceindex.Reference{
+		Subject:      target,
+		ArtifactPath: alternate.Path,
+		Role:         sourceindex.RoleImplementation,
+	})
+
+	bad := grounded
+	bad.Evidence = append([]Evidence(nil), grounded.Evidence...)
+	changed := false
+	for i := range bad.Evidence {
+		if bad.Evidence[i].QualificationRequirements == nil {
+			continue
+		}
+		bad.Evidence[i].Source = alternate.Path
+		bad.Evidence[i].SourceFingerprint = alternate.Fingerprint
+		changed = true
+		break
+	}
+	if !changed {
+		t.Fatal("qualification Evidence was not found")
+	}
+
+	diagnostics := resolveCandidate(snapshot, bad)
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "EVIDENCE_QUALIFICATION_PROVENANCE_MISMATCH" {
+			return
+		}
+	}
+	t.Fatalf("non-authoritative substituted source was not rejected: %+v", diagnostics)
 }
 
 func TestAttachQualificationRejectsNonApplicableResult(t *testing.T) {
