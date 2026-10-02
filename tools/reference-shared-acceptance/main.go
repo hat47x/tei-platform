@@ -79,6 +79,30 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	if command == "attach-qualification" {
+		candidateData, err := os.ReadFile(*candidatePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		qualificationData, err := os.ReadFile(*qualificationPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		qualification, err := decodeQualificationResult(qualificationData)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		grounded, err := attachQualificationEvidence(candidateData, qualification)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(grounded)
+	}
+
 	if command == "revision" {
 		s, err := takeSnapshot(*workspacePath)
 		if err != nil {
