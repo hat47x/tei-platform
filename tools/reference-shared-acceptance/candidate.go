@@ -104,8 +104,9 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		if e.SourceFingerprint != "" && e.Source == "" {
 			return c, "", fmt.Errorf("evidence[%d].sourceFingerprintにはsourceが必要です", i)
 		}
-		if e.QualificationRequirements != nil && (e.SubjectKind == "" || e.Subject == "") {
-			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKindとsubjectが必要です", i)
+		if e.QualificationRequirements != nil &&
+			(e.SubjectKind == "" || e.Subject == "" || e.Source == "" || e.SourceFingerprint == "") {
+			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKind / subject / source / sourceFingerprintが必要です", i)
 		}
 		if e.Subject != "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
