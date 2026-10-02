@@ -381,7 +381,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 5. 第二TargetとAuthoring / AIのEvidenceを相互に戻し、Target-neutral / authoring境界を再評価する
 6. production / ecosystem境界を必要なEvidenceとともに広げる
 
-現在、actual Gate B final runは実TEI checkout + Evidence専用PostgreSQL環境待ちです。環境待ちを理由にGate C以後の契約を前倒し実装しませんが、planning / traceabilityは先に矛盾なく固定します。
+Gate B / Gate CのReady判定とhistorical Evidenceは各exact revisionへ固定済みです。現在の主眼はGate C後のAuthoring / Knowledge / AI / Second Targetであり、旧Gate revisionのEvidenceをcurrent Workspaceへcarry-forwardしません。
 
 ## 先に固定しないもの
 
