@@ -242,7 +242,7 @@ func qualificationEvidence(ctx Context) []QualificationEvidence {
 			Source:            ref.ArtifactPath,
 			SourceFingerprint: fingerprint,
 		}
-		key := strings.Join([]string{item.SubjectKind, item.Subject, item.Source, item.SourceFingerprint}, "\\x00")
+		key := fmt.Sprintf("%q|%q|%q|%q", item.SubjectKind, item.Subject, item.Source, item.SourceFingerprint)
 		if _, ok := seen[key]; ok {
 			continue
 		}
