@@ -157,3 +157,64 @@ func containsKnowledgeContextString(values []string, want string) bool {
 	}
 	return false
 }
+
+
+func TestBuildKnowledgeQualificationClassifiesActualPatternApplicable(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeQualification(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+			RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+				Direction: "outgoing",
+				Relation:  "contract-query",
+				Kind:      "database-contract-query",
+				ID:        "master_data.customer/find_by_id",
+			}},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != knowledgecontext.QualificationApplicable {
+		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
+	}
+}
+
+func TestBuildKnowledgeQualificationRejectsApplicationOwnedNearMatch(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeQualification(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.customer_reference",
+		knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "repair_intake",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != knowledgecontext.QualificationIncompatible {
+		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
+	}
+}
+
+func TestBuildKnowledgeQualificationPreservesUnknownSubject(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeQualification(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"missing.example",
+		knowledgecontext.QualificationRequirements{ExpectedKind: "semantic-data"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != knowledgecontext.QualificationUnknown {
+		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
+	}
+}

@@ -68,7 +68,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-context|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <workspace-files|source-index|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -80,6 +80,7 @@ func main() {
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
 	var planPaths pathList
@@ -151,6 +152,24 @@ func main() {
 			os.Exit(2)
 		}
 		writeJSON(context)
+		return
+	}
+	if command == "knowledge-qualify" {
+		if *workspacePath == "" || *worldPath != "" {
+			fmt.Fprintln(os.Stderr, "knowledge-qualify requires -workspace and does not accept -world")
+			os.Exit(2)
+		}
+		qualification, err := buildKnowledgeQualificationFromFile(
+			*workspacePath,
+			*subjectKind,
+			*subjectID,
+			*qualificationRequirementsPath,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		writeJSON(qualification)
 		return
 	}
 	if command == "normalize-postgres-plan" {

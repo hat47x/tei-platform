@@ -519,6 +519,59 @@ Gate C後のknowledge-first baselineを製品コードへ戻して点検した�
 
 また、PatternのDatasource aliasはApplication-localな値としてindex entryに保持するが、alias文字列からDatabase authorityを推測しない。Contract Queryについても、Application Patternが明示したContract / Query identityだけをderived dependencyへ写す。
 
+### 2026-10-02 deterministic qualification increment — 明示要求をcurrent contextへ照合する
+
+`knowledge-context`で候補の局所Source / dependencyを機械取得できるようになったため、次のincrementでは検索順位やAI判断を介さず、**呼び出し側が明示した要求だけ**をcurrent contextへ照合する。
+
+```text
+candidate subject
+  + expected kind
+  + optional Application scope
+  + required dependency identities
+  ↓
+current Source Index / derived dependency context
+  ↓
+applicable / incompatible / unknown
+```
+
+CLI候補は次とする。
+
+```bash
+tei knowledge-qualify \
+  -workspace reference/workspace \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json
+```
+
+requirementsは少なくとも次を持つ。
+
+```json
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {
+      "direction": "outgoing",
+      "relation": "contract-query",
+      "kind": "database-contract-query",
+      "id": "master_data.customer/find_by_id"
+    }
+  ]
+}
+```
+
+判定境界:
+
+- current Source IndexにDefinition / Authoring referenceが無いcandidateは`applicable`へ昇格させず`unknown`とする。
+- expected kind、Application-owned Patternのscope、current derived dependencyに既知の矛盾がある場合だけ`incompatible`とする。
+- context自体にunresolvedがあり、required dependencyの不存在を確定できない場合は`unknown`を維持する。
+- requirementsに書かれていない条件を「満たした」と推測しない。
+- `applicable`は明示requirementsへの適合だけを意味し、Acceptance、write authority、Runtime authorityを付与しない。
+- retrieval score / similarity / model confidenceは入力にも判定根拠にも使わない。
+
+最初のReference pressureでは、`order_entry.customer_reference`を`order_entry` scope + `master_data.customer/find_by_id`依存で`applicable`とし、同じPatternを`repair_intake`所有のdirect shared authorityとして要求した場合はscope mismatchで`incompatible`へ落とす。存在しないsubjectは推測で近似せず`unknown`を返す。
+
 ### 現在のEvidence境界
 
 このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
