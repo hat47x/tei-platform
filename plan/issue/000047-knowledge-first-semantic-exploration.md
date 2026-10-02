@@ -498,6 +498,86 @@ Gate Cから次を受け取ります。
 
 Gate C前にはReference pattern provenanceの整理やbenchmark設計までを行えますが、production index / learned memoryは導入しません。
 
+## 2026-10-02 Product index increment — Pattern / Validationを機械到達可能にする
+
+Gate C後のknowledge-first baselineを製品コードへ戻して点検した結果、`tei index` / `internal/index.Build`はSemantic Data / Relation / CapabilityやDatabase依存を返す一方、**Semantic ValidationとApplication Pattern自体を索引化していない**ことが分かった。
+
+これはRQ-015 / RQ-027の観点では、AIや人がApplicationへ再入場するときに、業務ruleとPatternだけ別経路で再発見する必要があるGapである。新しいKnowledge Storeを追加せず、既存Canonical Worldから再生成するderived indexを拡張する。
+
+現在のcandidate incrementは、ISSUE-000040 primary workstreamとして既存branch `work/issue-000040-second-application-reference` 上で次を追加する。R7Bの特別qualification branchはこの作業には使用しない。
+
+- Semantic Validationを`semanticElements`へ追加
+- Validation → Attribute / Relationを`semanticDependencies`へ追加
+- Application Patternを`applicationPatterns`へ追加
+- Application → Validation / Patternを`declaredDependencies`へ追加
+- Pattern → Data / Relation / Query / Capability / Database Contract / Contract Queryを`declaredDependencies`へ追加
+- deterministic orderを保持するtestを追加
+- `tei knowledge-context -workspace ... -subject-kind ... -subject-id ...`を追加し、指定subjectのSource / derived detail / outgoing dependency / incoming dependencyだけをscoped projectionとして返す
+- 未知subjectは成功へ丸めず、Source / derived detail不足を`unresolved`として保持する
+
+このincrementは**derived machine-readable contextの欠落を埋めるだけ**であり、PatternやValidationの第二正本を作らない。`knowledge-context`も`index.Build`とSource Indexを束ねるread-only Projectionであり、削除してもCanonical Worldは変わらない。Source authorityは既存Source Indexに残る。
+
+また、PatternのDatasource aliasはApplication-localな値としてindex entryに保持するが、alias文字列からDatabase authorityを推測しない。Contract Queryについても、Application Patternが明示したContract / Query identityだけをderived dependencyへ写す。
+
+### 2026-10-02 deterministic qualification increment — 明示要求をcurrent contextへ照合する
+
+`knowledge-context`で候補の局所Source / dependencyを機械取得できるようになったため、次のincrementでは検索順位やAI判断を介さず、**呼び出し側が明示した要求だけ**をcurrent contextへ照合する。
+
+```text
+candidate subject
+  + expected kind
+  + optional Application scope
+  + required dependency identities
+  ↓
+current Source Index / derived dependency context
+  ↓
+applicable / incompatible / unknown
+```
+
+CLI候補は次とする。
+
+```bash
+tei knowledge-qualify \
+  -workspace reference/workspace \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json
+```
+
+requirementsは少なくとも次を持つ。
+
+```json
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {
+      "direction": "outgoing",
+      "relation": "contract-query",
+      "kind": "database-contract-query",
+      "id": "master_data.customer/find_by_id"
+    }
+  ]
+}
+```
+
+判定境界:
+
+- current Source IndexにDefinition / Authoring referenceが無いcandidateは`applicable`へ昇格させず`unknown`とする。その状態ではderived index上のdependency欠落やApplication scopeも確定的不適合へ昇格させない。
+- expected kind、Application-owned Patternのscope、current derived dependencyに既知の矛盾がある場合だけ`incompatible`とする。
+- context自体にunresolvedがあり、required dependencyの不存在を確定できない場合は`unknown`を維持する。
+- requirementsに書かれていない条件を「満たした」と推測しない。
+- `applicable`は明示requirementsへの適合だけを意味し、Acceptance、write authority、Runtime authorityを付与しない。
+- retrieval score / similarity / model confidenceは入力にも判定根拠にも使わない。
+
+最初のReference pressureでは、`order_entry.customer_reference`を`order_entry` scope + `master_data.customer/find_by_id`依存で`applicable`とし、同じPatternを`repair_intake`所有のdirect shared authorityとして要求した場合はscope mismatchで`incompatible`へ落とす。存在しないsubjectは推測で近似せず`unknown`を返す。
+
+### 現在のEvidence境界
+
+このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
+
+code-changing laneの既存ruleに従い、full `tools/repository-health-check.sh` PASSとclean pre/post stateが得られるまでmainへのintegration authorityは無い。
+
 ## 完了条件
 
 - [x] Gate C Ready後に着手する

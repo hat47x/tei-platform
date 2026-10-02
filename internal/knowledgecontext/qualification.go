@@ -1,0 +1,207 @@
+package knowledgecontext
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"tei/internal/sourceindex"
+	"tei/internal/subject"
+)
+
+type QualificationStatus string
+
+const (
+	QualificationApplicable   QualificationStatus = "applicable"
+	QualificationIncompatible QualificationStatus = "incompatible"
+	QualificationUnknown      QualificationStatus = "unknown"
+)
+
+type DependencyRequirement struct {
+	Direction string `json:"direction"`
+	Relation  string `json:"relation"`
+	Kind      string `json:"kind"`
+	ID        string `json:"id"`
+	Alias     string `json:"alias,omitempty"`
+}
+
+type QualificationRequirements struct {
+	ExpectedKind         string                  `json:"expectedKind"`
+	Application          string                  `json:"application,omitempty"`
+	RequiredDependencies []DependencyRequirement `json:"requiredDependencies,omitempty"`
+}
+
+type QualificationReason struct {
+	Code   string `json:"code"`
+	Detail string `json:"detail,omitempty"`
+}
+
+type QualificationResult struct {
+	Candidate       subject.Subject           `json:"candidate"`
+	Status          QualificationStatus       `json:"status"`
+	Reasons         []QualificationReason     `json:"reasons,omitempty"`
+	Requirements    QualificationRequirements `json:"requirements"`
+	AuthorityLimits []string                  `json:"authorityLimits"`
+}
+
+func Qualify(ctx Context, requirements QualificationRequirements) (QualificationResult, error) {
+	requirements, err := normalizeQualificationRequirements(requirements)
+	if err != nil {
+		return QualificationResult{}, err
+	}
+
+	result := QualificationResult{
+		Candidate:    ctx.Subject,
+		Requirements: requirements,
+		AuthorityLimits: []string{
+			"only-explicit-requirements-were-evaluated",
+			"qualification-is-not-acceptance",
+			"qualification-is-not-write-or-runtime-authority",
+		},
+	}
+	incompatible := make([]QualificationReason, 0)
+	unknown := make([]QualificationReason, 0)
+
+	if ctx.Subject.Kind != requirements.ExpectedKind {
+		incompatible = append(incompatible, QualificationReason{
+			Code:   "expected-kind-mismatch",
+			Detail: fmt.Sprintf("have=%s want=%s", ctx.Subject.Kind, requirements.ExpectedKind),
+		})
+	}
+	authoritativeSource := hasAuthoritativeSourceReference(ctx.References)
+	if !authoritativeSource {
+		unknown = append(unknown, QualificationReason{Code: "authoritative-source-reference-unavailable"})
+	}
+	for _, unresolved := range ctx.Unresolved {
+		unknown = append(unknown, QualificationReason{Code: "context-unresolved", Detail: unresolved})
+	}
+
+	if requirements.Application != "" {
+		switch {
+		case ctx.ApplicationPattern == nil:
+			unknown = append(unknown, QualificationReason{Code: "application-scope-unavailable"})
+		case !authoritativeSource:
+			unknown = append(unknown, QualificationReason{Code: "application-scope-unverified"})
+		case string(ctx.ApplicationPattern.Application) != requirements.Application:
+			incompatible = append(incompatible, QualificationReason{
+				Code:   "application-scope-mismatch",
+				Detail: fmt.Sprintf("have=%s want=%s", ctx.ApplicationPattern.Application, requirements.Application),
+			})
+		}
+	}
+
+	for _, requirement := range requirements.RequiredDependencies {
+		if hasRequiredDependency(ctx, requirement) {
+			continue
+		}
+		reason := QualificationReason{Detail: dependencyRequirementKey(requirement)}
+		if !authoritativeSource || len(ctx.Unresolved) != 0 {
+			reason.Code = "required-dependency-unresolved"
+			unknown = append(unknown, reason)
+		} else {
+			reason.Code = "required-dependency-missing"
+			incompatible = append(incompatible, reason)
+		}
+	}
+
+	result.Reasons = append(result.Reasons, incompatible...)
+	result.Reasons = append(result.Reasons, unknown...)
+	sortQualificationReasons(result.Reasons)
+	switch {
+	case len(incompatible) != 0:
+		result.Status = QualificationIncompatible
+	case len(unknown) != 0:
+		result.Status = QualificationUnknown
+	default:
+		result.Status = QualificationApplicable
+	}
+	return result, nil
+}
+
+func normalizeQualificationRequirements(requirements QualificationRequirements) (QualificationRequirements, error) {
+	requirements.ExpectedKind = strings.TrimSpace(requirements.ExpectedKind)
+	requirements.Application = strings.TrimSpace(requirements.Application)
+	if requirements.ExpectedKind == "" {
+		return QualificationRequirements{}, fmt.Errorf("qualification expectedKind is required")
+	}
+	if requirements.Application != "" && requirements.ExpectedKind != "application-pattern" {
+		return QualificationRequirements{}, fmt.Errorf("qualification application scope requires expectedKind=application-pattern")
+	}
+
+	seen := map[string]struct{}{}
+	for i := range requirements.RequiredDependencies {
+		dep := &requirements.RequiredDependencies[i]
+		dep.Direction = strings.ToLower(strings.TrimSpace(dep.Direction))
+		dep.Relation = strings.TrimSpace(dep.Relation)
+		dep.Kind = strings.TrimSpace(dep.Kind)
+		dep.ID = strings.TrimSpace(dep.ID)
+		dep.Alias = strings.TrimSpace(dep.Alias)
+		if dep.Direction != "outgoing" && dep.Direction != "incoming" {
+			return QualificationRequirements{}, fmt.Errorf("qualification dependency direction must be outgoing or incoming")
+		}
+		if dep.Relation == "" || dep.Kind == "" || dep.ID == "" {
+			return QualificationRequirements{}, fmt.Errorf("qualification dependency requires relation, kind, and id")
+		}
+		key := dependencyRequirementKey(*dep)
+		if _, ok := seen[key]; ok {
+			return QualificationRequirements{}, fmt.Errorf("qualification dependency is duplicated: %s", key)
+		}
+		seen[key] = struct{}{}
+	}
+	sort.Slice(requirements.RequiredDependencies, func(i, j int) bool {
+		return dependencyRequirementKey(requirements.RequiredDependencies[i]) < dependencyRequirementKey(requirements.RequiredDependencies[j])
+	})
+	return requirements, nil
+}
+
+func hasAuthoritativeSourceReference(references []sourceindex.Reference) bool {
+	for _, ref := range references {
+		if ref.Role == sourceindex.RoleDefinition || ref.Role == sourceindex.RoleAuthoring {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRequiredDependency(ctx Context, requirement DependencyRequirement) bool {
+	edges := ctx.Outgoing
+	if requirement.Direction == "incoming" {
+		edges = ctx.Incoming
+	}
+	for _, edge := range edges {
+		if edge.Relation != requirement.Relation {
+			continue
+		}
+		other := edge.To
+		if requirement.Direction == "incoming" {
+			other = edge.From
+		}
+		if other.Kind != requirement.Kind || other.ID != requirement.ID {
+			continue
+		}
+		if requirement.Alias != "" && string(edge.Alias) != requirement.Alias {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func dependencyRequirementKey(requirement DependencyRequirement) string {
+	return strings.Join([]string{
+		requirement.Direction,
+		requirement.Relation,
+		requirement.Kind,
+		requirement.ID,
+		requirement.Alias,
+	}, "|")
+}
+
+func sortQualificationReasons(reasons []QualificationReason) {
+	sort.Slice(reasons, func(i, j int) bool {
+		if reasons[i].Code != reasons[j].Code {
+			return reasons[i].Code < reasons[j].Code
+		}
+		return reasons[i].Detail < reasons[j].Detail
+	})
+}
