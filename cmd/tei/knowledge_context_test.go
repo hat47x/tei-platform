@@ -59,6 +59,29 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	}
 }
 
+func TestBuildKnowledgeContextPreservesUnknownSubjectAsUnresolved(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"missing.example",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"semantic-element-not-found-in-derived-index",
+		"source-reference-unavailable",
+	} {
+		if !containsKnowledgeContextString(got.Unresolved, want) {
+			t.Fatalf("unresolved %q is missing: %+v", want, got.Unresolved)
+		}
+	}
+	if got.SemanticElement != nil || got.ApplicationPattern != nil {
+		t.Fatalf("unknown subject produced authoritative detail: %+v", got)
+	}
+}
+
 func TestBuildKnowledgeContextRequiresWorkspaceAndSubject(t *testing.T) {
 	if _, err := buildKnowledgeContext("", "application-pattern", "order_entry.customer_reference"); err == nil {
 		t.Fatal("empty workspace was accepted")
