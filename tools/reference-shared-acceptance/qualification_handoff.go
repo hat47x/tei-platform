@@ -54,11 +54,13 @@ func attachQualificationEvidence(candidateData []byte, qualification knowledgeco
 		if evidence.Source == "" || evidence.SourceFingerprint == "" {
 			return Candidate{}, fmt.Errorf("qualification evidence[%d]にsourceまたはsourceFingerprintがありません", i)
 		}
+		requirements := qualification.Requirements
 		item := Evidence{
-			SubjectKind:       evidence.SubjectKind,
-			Subject:           evidence.Subject,
-			Source:            evidence.Source,
-			SourceFingerprint: evidence.SourceFingerprint,
+			SubjectKind:               evidence.SubjectKind,
+			Subject:                   evidence.Subject,
+			Source:                    evidence.Source,
+			SourceFingerprint:         evidence.SourceFingerprint,
+			QualificationRequirements: &requirements,
 		}
 		key := evidenceKey(item)
 		if _, ok := seen[key]; ok {
@@ -79,18 +81,6 @@ func attachQualificationEvidence(candidateData []byte, qualification knowledgeco
 }
 
 func evidenceKey(e Evidence) string {
-	encoded, _ := json.Marshal(struct {
-		SubjectKind       string
-		Subject           string
-		Source            string
-		SourceFingerprint string
-		Note              string
-	}{
-		SubjectKind:       e.SubjectKind,
-		Subject:           e.Subject,
-		Source:            e.Source,
-		SourceFingerprint: e.SourceFingerprint,
-		Note:              e.Note,
-	})
+	encoded, _ := json.Marshal(e)
 	return string(encoded)
 }
