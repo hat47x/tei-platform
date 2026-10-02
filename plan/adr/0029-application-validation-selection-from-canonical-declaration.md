@@ -2,7 +2,7 @@
 
 - 状態: 提案中
 - 日付: 2026-10-01
-- 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を計測する）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
+- 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を見つけた静的読解の記録。研究に留保）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
 - 関連ADR: [ADR-0024](0024-business-lifecycle-ownership.md) / [ADR-0025](0025-transition-evaluation-and-conflict-result.md)（遷移ごとの`requires`。いずれも提案中）
 - 主担当要求: RQ-003 / RQ-013 / RQ-017 / RQ-021
 
@@ -67,7 +67,7 @@ Commandを実行する経路が、宣言の無いApplicationのValidationを解�
 
 ### Shared Acceptance Previewのunresolvedを見直す
 
-Previewは、Validationを追加する変更について、そのnamespaceを使うApplicationが`uses validation`で宣言していない場合に`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を返します（`tools/internal/changeanalysis/impact.go`）。このunresolvedは「宣言しても実行時に選択へ使われない」ことも含意しているため、本ADRの採用後は、宣言が無いことだけを示す`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`へ改め、実行時の選択が宣言から導かれるようになった後は「宣言すれば評価される」ことを前提にしたメッセージにします。
+Previewは、Validationが追加または変更されたとき（削除は対象外）、そのnamespaceを使うApplicationのうち、そのValidationを`uses validation`で宣言していないものについて、Applicationごとに`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を返します（`tools/internal/changeanalysis/impact.go`）。このunresolvedは「宣言しても実行時に選択へ使われない」ことも含意しているため、本ADRの採用後は、宣言が無いことだけを示す`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`へ改め、実行時の選択が宣言から導かれるようになった後は「宣言すれば評価される」ことを前提にしたメッセージにします。
 
 ## 採用しない案
 
@@ -93,27 +93,32 @@ Previewは、Validationを追加する変更について、そのnamespaceを使
 
 ### 良くなる点
 
-- Validationを足すとき、人が直すのは正本（Validation定義とApplicationの宣言）だけになる。Target側の一覧の手直しが要らない
+- Validationの選択を、正本（Validation定義とApplicationの宣言）だけで決められる。Target側にもう一つの一覧を持たずに済む
 - 第二Target、API、AIエージェントの経路が、同じ選択を同じ入口から得られる
 - 受理前のPreviewで、評価対象の変化が差分とimpactに現れる（既に`Application.Validations`を差分へ含めている）
 - 宣言が無いときの振る舞いが推測ではなく、明示された判定不能になる
 
 ### 増える負担・制約
 
-- 既存の`order_entry`のApplication sourceが変わります。`reference/world.json`も再生成され、Shared Acceptance Boundaryを通した受理（explicit human Acceptance decision）が要ります。
+- 既存の`order_entry`のApplication sourceが変わります。`reference/world.json`も再生成されます。`Validations`は`omitempty`のため、確認できた範囲で変わるのは`order_entry`の`validations`だけで、宣言を持たない`repair_intake`は変わりません。現在のShared Acceptance Boundaryは、既存のapplication.teiを編集するoperationを持ちません（`add-application`は新しいapplication.teiの追加だけです）。そのため、受理（explicit human Acceptance decision）には、既存Applicationへ`uses validation`を加えるoperationの追加が先に要ります。
+- Previewのunresolved codeを`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`へ改めると、旧codeを期待する`tools/reference-shared-acceptance/boundary_test.go`、`tools/internal/changeanalysis/analysis_test.go`、`tools/reference-shared-acceptance/README.md`も更新が要ります。
 - Gate B / Gate CのEvidenceは、それぞれのexact revision（`R = e5231839…` / `T = 0ba87a4e…`）へ紐づく歴史的Evidenceです。この変更後のworkspaceを、旧baselineと同じものとして読み替えません。
-- 確認用Scenarioのtest（`submit_order_gate_scenario_test.go`、`gate_b_*_scenario_test.go`、`final_gate_b_scenario_test.go`）と第一Web Targetの評価対象は、一覧を引数・直書きから、Resolverの入口へ移す変更が入ります。Evidence auditの期待値（Validation 2件、最初の不成立で停止）は変えません。
+- Gate Cのarchitecture conformance tool（`tools/reference-first-web-target-architecture-evidence`）は、`R`から`T`の間で`reference/workspace`と`reference/world.json`が変わらないことを要求し、変わると後継Handoverが必要として停止します。この変更を含む`main`では、そのtoolを旧`R`に対して再実行できません。再実行する前に、後継のHandover Baselineを立てる判断が要ります。
+- 確認用Scenarioのtest（`submit_order_gate_scenario_test.go`、`submit_order_observation_scenario_test.go`、`gate_b_*_scenario_test.go`、`final_gate_b_scenario_test.go`。`gate_b_unified_scenario_test.go`は一覧を引数ではなくloopに直書きしています）と第一Web Targetの評価対象は、一覧を引数・直書きから、Resolverの入口へ移す変更が入ります。Evidence auditの期待値（Validation 2件、最初の不成立で停止）は変えません。
 - `repair_intake`はCommandを持たないため、宣言が無くても、このADRの判定不能に当たりません。
 
 ### 残るリスク
 
 - 「全Applicationに宣言が要る」と読まれると、Commandを持たないApplicationへ空の宣言を強いる運用になる。判定不能は、Commandを実行する経路が選択を要求したときだけ返します。
-- 宣言の順序に意味を持たせるため、順序を入れ替える変更は意味の変更になります。Shared Acceptance Previewは、`Application.Validations`の順序の変更を差分として扱う必要があります（現在の差分は`Validations`のslice順をそのままJSON化してbyteで比較するため、順序の入れ替えも変更として現れます）。
+- 宣言の順序に意味を持たせるため、順序を入れ替える変更は意味の変更になります。Shared Acceptance Previewは、`Application.Validations`の順序の変更を差分として扱う必要があります（現在の差分は`Validations`のslice順をそのままJSON化してbyteで比較するため、順序の入れ替えも変更として現れます）。Loaderは`Application.Validations`を並べ替えないため（`Databases`と`Patterns`だけを整列します）、順序はWorldにそのまま残ります。一方で、同じIDを二回宣言しても現在は検査で拒否されず、評価が二重になり順序の意味もあいまいになります。重複を診断にするかは実装時に決めます。確認できた範囲では、順序の入れ替えを差分として固定するtestは無い（`application_test.go`が扱うのは`uses validation`の追加だけ）ため、実装時に足します。
+
+[apply with oldText = "順序の入れ替えも変更として現れます）。" which appears exactly once, at the end of ADR line 111]
 
 ## 未解決
 
 - 「評価すべきValidationが無い」ことを意図して表す方法（空の宣言を許すのか、明示的な宣言を足すのか）。現時点で、そのReference上の必要は見つかっていません。
 - 操作（Command）ごとに評価対象が異なる必要が生じたときの層の重ね方（上記A′とB）。
+- Business Procedureの参照との関係。`reference/business-system-design/order-entry-business-procedure.json`のBP-05は、同じ二つのValidation IDを`validations`として保持しています（README.mdはこれを、Patternから導けない意味をProcedureが明示的に要求するdirect semantic referenceと位置づけており、評価対象の選択ではありません）。Applicationの宣言との一致を検査するのか、独立した参照として扱うのかは、本ADRでは決めません。一致の検査を足す場合は、同じ一覧を二か所で持つことにならないよう、どちらを正本とするかをその時点で決めます。
 - `APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`を、Business ResultとExecution Errorのどちらの分類へ置くか。本ADRはExecution Error側を提案しますが、[ADR-0020](0020-capability-business-outcome-boundary.md)の分類との整合を実装前に確認します。
 
 ## 確かめ方
@@ -123,4 +128,4 @@ Previewは、Validationを追加する変更について、そのnamespaceを使
 1. 正本へValidationを一件足し、Applicationへ宣言を一行足すだけで、Target側のコードを変えずに、画面からの確定でその規則が評価される。
 2. 宣言を外すと、評価されないまま成功するのではなく、判定不能として返る。
 3. 既存のCommand scenario（成功、Authorization拒否、Validation不成立、Execution Error、Observation）の結果と、Evidence auditの期待値が変わらない。
-4. [ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)の最初の計測ケースを再計測し、「正本の外にある意味の手直し」（C3）が減る。
+4. 手直しの箇所数は確認の基準にしない（[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)、Product Value「価値の確かめ方」）。代わりに、1〜3の動作を、実際に動くscenarioで通して確かめる。
