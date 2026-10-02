@@ -121,8 +121,14 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 	case len(unknown) != 0:
 		result.Status = QualificationUnknown
 	default:
-		result.Status = QualificationApplicable
 		result.Evidence = qualificationEvidence(ctx)
+		if len(result.Evidence) == 0 {
+			result.Status = QualificationUnknown
+			result.Reasons = append(result.Reasons, QualificationReason{Code: "exact-authoritative-evidence-unavailable"})
+			sortQualificationReasons(result.Reasons)
+		} else {
+			result.Status = QualificationApplicable
+		}
 	}
 	return result, nil
 }
