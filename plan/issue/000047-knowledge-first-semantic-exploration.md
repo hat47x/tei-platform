@@ -504,7 +504,7 @@ Gate C後のknowledge-first baselineを製品コードへ戻して点検した�
 
 これはRQ-015 / RQ-027の観点では、AIや人がApplicationへ再入場するときに、業務ruleとPatternだけ別経路で再発見する必要があるGapである。新しいKnowledge Storeを追加せず、既存Canonical Worldから再生成するderived indexを拡張する。
 
-現在のcandidate incrementは、ISSUE-000040 primary workstreamとして既存branch `work/issue-000040-second-application-reference` 上で次を追加する。R7Bの特別qualification branchはこの作業には使用しない。
+ISSUE-000040 primary workstreamは既存branch `work/issue-000040-second-application-reference` で実装した。ここに列挙する追加変更はcandidateとして既存branch `research/selective-knowledge-routing-r6` で扱う。R6のcandidate変更はR7Bのqualificationを意味せず、そのGate認定には所定のqualification手順を要する。
 
 - Semantic Validationを`semanticElements`へ追加
 - Validation → Attribute / Relationを`semanticDependencies`へ追加
