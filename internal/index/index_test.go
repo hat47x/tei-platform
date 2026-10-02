@@ -37,7 +37,6 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 					{
 						ID:         "order_entry.customer_reference",
 						Kind:       application.PatternReference,
-						Data:       "sales.order",
 						Relation:   "sales.order.customer",
 						Datasource: "master",
 						ContractQuery: &application.ContractQueryInvocation{
@@ -112,7 +111,7 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 	customerReference := got.ApplicationPatterns[0]
 	if customerReference.Application != "order_entry" ||
 		customerReference.Kind != string(application.PatternReference) ||
-		customerReference.Data != "sales.order" ||
+		customerReference.Data != "" ||
 		customerReference.Relation != "sales.order.customer" ||
 		customerReference.Datasource != "master" ||
 		customerReference.Contract != "master_data.customer" ||
@@ -141,13 +140,6 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 		{
 			FromKind: "application-pattern",
 			From:     "order_entry.customer_reference",
-			Relation: "data",
-			ToKind:   "semantic-data",
-			To:       "sales.order",
-		},
-		{
-			FromKind: "application-pattern",
-			From:     "order_entry.customer_reference",
 			Relation: "relation",
 			ToKind:   "semantic-relation",
 			To:       "sales.order.customer",
@@ -172,6 +164,13 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 			Relation: "contract-query-input",
 			ToKind:   "semantic-attribute",
 			To:       "customer.customer.customer_id",
+		},
+		{
+			FromKind: "application-pattern",
+			From:     "order_entry.recent_orders",
+			Relation: "data",
+			ToKind:   "semantic-data",
+			To:       "sales.order",
 		},
 		{
 			FromKind: "application-pattern",
