@@ -182,7 +182,17 @@ func TestBuildKnowledgeQualificationClassifiesActualPatternApplicable(t *testing
 	if got.Status != knowledgecontext.QualificationApplicable {
 		t.Fatalf("status=%s reasons=%+v", got.Status, got.Reasons)
 	}
-}
+	if len(got.Evidence) == 0 {
+		t.Fatalf("applicable qualification lacks exact Evidence: %+v", got)
+	}
+	for _, evidence := range got.Evidence {
+		if evidence.SubjectKind != "application-pattern" ||
+			evidence.Subject != "order_entry.customer_reference" ||
+			evidence.Source == "" ||
+			evidence.SourceFingerprint == "" {
+			t.Fatalf("qualification Evidence is incomplete: %+v", evidence)
+		}
+	}
 
 func TestBuildKnowledgeQualificationRejectsApplicationOwnedNearMatch(t *testing.T) {
 	root := testRepositoryRoot(t)
