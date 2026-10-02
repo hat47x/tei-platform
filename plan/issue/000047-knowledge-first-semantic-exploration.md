@@ -512,8 +512,10 @@ Gate C後のknowledge-first baselineを製品コードへ戻して点検した�
 - Application → Validation / Patternを`declaredDependencies`へ追加
 - Pattern → Data / Relation / Query / Capability / Database Contract / Contract Queryを`declaredDependencies`へ追加
 - deterministic orderを保持するtestを追加
+- `tei knowledge-context -workspace ... -subject-kind ... -subject-id ...`を追加し、指定subjectのSource / derived detail / outgoing dependency / incoming dependencyだけをscoped projectionとして返す
+- 未知subjectは成功へ丸めず、Source / derived detail不足を`unresolved`として保持する
 
-このincrementは**derived machine-readable contextの欠落を埋めるだけ**であり、PatternやValidationの第二正本を作らない。indexを削除してもCanonical Worldは変わらず、Source authorityも既存Source Indexに残る。
+このincrementは**derived machine-readable contextの欠落を埋めるだけ**であり、PatternやValidationの第二正本を作らない。`knowledge-context`も`index.Build`とSource Indexを束ねるread-only Projectionであり、削除してもCanonical Worldは変わらない。Source authorityは既存Source Indexに残る。
 
 また、PatternのDatasource aliasはApplication-localな値としてindex entryに保持するが、alias文字列からDatabase authorityを推測しない。Contract Queryについても、Application Patternが明示したContract / Query identityだけをderived dependencyへ写す。
 
