@@ -210,7 +210,7 @@ RQ-025 / RQ-026は、[`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_
 - **RQ-029** — Domain・Infrastructure知識を適用条件付きで再利用・移植する
 - **RQ-030** — AIエージェントがTEI成果物を業務遂行のOperational Knowledgeとして利用する
 
-この群は、Product Valueでいう個人の価値（引継ぎ、中身のある承認）、組織の価値（知識資産の再利用）、社会の価値（人による監督を名目にしないこと、権限の暗黙の拡大を防ぐこと）に直接つながります。RQ-030の業務遂行も、RQ-018〜RQ-020のCommand / Observation / 権限 / unknown境界を迂回しません。
+この群は、Product Valueでいう個人の価値（引継ぎ、中身のある承認）、組織の価値（知識資産の再利用）、社会の価値（人による監督を名目にしないこと、権限の暗黙の拡大を防ぐこと）に直接つながります。RQ-030の業務遂行も、RQ-018〜RQ-020のCommand / Observation / 権限 / unknown境界を迂回しません。ただし、この群には要求として定めた段階の項目が含まれ、価値の実証ではありません。RQ別の実証状況は[`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
 
 ## 3. 一つの受注例で要求のつながりを見る
 
