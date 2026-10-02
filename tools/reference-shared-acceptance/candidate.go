@@ -44,7 +44,7 @@ type Evidence struct {
 	Subject                   string                                        `json:"subject,omitempty"`
 	Source                    string                                        `json:"source,omitempty"`
 	SourceFingerprint         string                                        `json:"sourceFingerprint,omitempty"`
-	QualificationRequirements *knowledgecontext.QualificationRequirements  `json:"qualificationRequirements,omitempty"`
+	QualificationRequirements *knowledgecontext.QualificationRequirements `json:"qualificationRequirements,omitempty"`
 	Note                      string                                        `json:"note,omitempty"`
 }
 
