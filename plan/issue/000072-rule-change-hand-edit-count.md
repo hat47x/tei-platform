@@ -1,75 +1,68 @@
-# ISSUE-000072: 業務規則を一件変えるとき、人が手で直す箇所を数える
+# ISSUE-000072: 業務規則の変更に伴う手直しの記述方法を研究する（価値判断には使わない）
 
-- 状態: Proposed — 評価待ち。計測の手順と、最初の計測ケースの机上予測までを記録した段階で、実際の変更による計測はまだ行っていない
-- 提案日: 2026-09-30
-- 性格: Product Valueの計測 / Reference Evidence
-- 主担当要求: RQ-017（主）/ RQ-003 / RQ-013 / RQ-021 / RQ-022
-- 関連Issue: [ISSUE-000073](000073-derive-validation-selection-from-canonical.md)（最初に見つかった手直し箇所を減らす）、[ISSUE-000039](000039-business-change-rehearsal.md)（差分・依存解析）、[ISSUE-000052](000052-sui-reference-adoption-and-plugin-surface-evaluation.md) / [ISSUE-000070](000070-sei-reference-adoption-change2-resumption.md)（他Productとの比較。同じ数え方を使う）
-- 価値との対応: [Product Value](../../product/value/TEI_PRODUCT_VALUE.md)「価値の確かめ方 — 組織: 一つの業務規則を変えるとき、人が手で直す必要がある場所の数」、「組織 1. 変更の単位コストを下げる」
+- 状態: Proposed — 研究に留保。価値の判断に使わず、問題領域の知見が蓄積されるまで実測も行わない。2026-09-30の起票時は「手直し箇所の数」を価値の指標にする案だったが、2026-10-02に位置づけを改めた
+- 提案日: 2026-09-30（位置づけの改訂: 2026-10-02）
+- 性格: 研究 / Reference Evidenceの記述。Product Valueの判断根拠にしない
+- 主担当要求: RQ-022（主）/ RQ-017 / RQ-003
+- 関連Issue: [ISSUE-000073](000073-derive-validation-selection-from-canonical.md)（この研究の読解で見つかった、正本の外にある意味の置き場を解消する）、[ISSUE-000039](000039-business-change-rehearsal.md)（差分・依存解析）、[ISSUE-000052](000052-sui-reference-adoption-and-plugin-surface-evaluation.md) / [ISSUE-000070](000070-sei-reference-adoption-change2-resumption.md)（同種の比較。扱いは下記「他Issueとの関係」）
+- 価値との対応: [Product Value](../../product/value/TEI_PRODUCT_VALUE.md)「価値の確かめ方」。測定に基づく価値判断は留保し、積み上げた実務機能の量・関係性・実用性とMVP的な実証で確かめる
 - Gate impact: None
 
 ## この文書の役割
 
-Product Valueは、組織にとっての価値を「一つの業務規則を変えるとき、人が手で直す必要がある場所の数」で確かめると定めています。しかし、この数を**同じ方法で繰り返し数える手順**がありません。
+このIssueは当初、Product Valueの確かめ方の一つとして「一つの業務規則を変えるとき、人が手で直す箇所の数」を、同じ方法で繰り返し数える手順を定める案でした。
 
-これまでの数え方は、SEI Change 1の一回限りの比較（[ISSUE-000054](000054-sei-reference-adoption-resume-review.md)。結論は`not-observed`）と、ISSUE-000070 / 000052の比較表の設計だけです。受入境界のtest（`TestEnvironmentBindingAcceptWritesOnlyTheTwoBindingLines`等）は一つのoperationが書く行を固定しますが、規則の変更全体で人が何を直すかは数えていません。
+2026-10-02に、ownerから次の指摘がありました。手直しの量は業務要件の変更内容によって決まり、要件固有である。全体へ横串で同じ修正を入れるだけの変更と、ロジックの深い部分に及ぶ変更とでは意味がまるで違う。このため、箇所数を価値の指標にするのは無理がある。
 
-このIssueは、TEI自身の`order_entry`で、規則一件の変更に伴う手直しを分類して数える手順を定め、最初の計測ケースを置きます。
+この指摘を受け入れ、次のとおり位置づけを改めます。
 
-## 背景
+- 手直しの箇所数を、TEIの価値の指標にしない。価値の判断にも使わない。
+- 測定に基づく価値判断は、問題領域の知見が十分に蓄積されるまで留保し、研究にとどめる。
+- 価値は、積み上げた実務的な機能の量と、その有機的な関係性・実用性で確かめる。その実証は、MVP的・プロトタイプ的に先に行う（[Product Value](../../product/value/TEI_PRODUCT_VALUE.md)「価値の確かめ方」）。
+- このIssueには、研究の素材として、変更がどこへ及ぶかを記述する語彙と、静的な読解で見つかった事実の記録を残す。
 
-「同じ規則を複数の場所へ書き写さない」はTEIの中心的な価値です（原則P3、RQ-003）。ただし、価値があると言うには、書き写しが実際に何箇所あり、どれが機械的に再生成でき、どれが人の手に残るかを示す必要があります。
+## なぜ手直しの箇所数を価値の指標にしないか
 
-2026-09-30の読解で、次のことが分かりました。
+- **要件固有である。** 規則を足す、既存の規則の条件を変える、状態遷移の途中に新しい判断を差し込む、といった変更は、そもそも必要な作業が違う。箇所数は、そのApplicationの要件の形を映すだけで、TEIの良し悪しを示さない。
+- **変更の深さで意味が変わる。** 横串で同じ修正を入れる変更は、箇所が多くても機械的である。ロジックの深い変更は、箇所が少なくても判断が重い。同じ「三か所」が正反対の負担を表し得る。
+- **代理指標が目標になる。** 箇所数を減らすこと自体が目的になると、数を減らすために、見えにくい形へ意味を寄せる誘因が生まれる。
+- **一回の計測は一つの要件の記録にとどまる。** 要件の種類と変更の種類が蓄積されていない段階で数を出しても、比べる相手がない。
 
-- 第一Web Target（`tools/reference-first-web-target/command_scenario.go`）は、Validationの**内容**を書き写していません。Canonical Worldから規則の定義を読み込んで評価します。
-- 一方、**どのValidationを評価するか**は、同じfileの2か所にCanonical IDの一覧として手で書かれています（`sales.order_line.quantity_positive`と`sales.order.lines.line_number_unique`）。
-- 現行のCanonical modelとDriverは、Applicationの`uses validation`宣言から評価対象を導出していません（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`、[ISSUE-000027](000027-ai-proposal-acceptance-boundary.md)）。
+## 他Issueとの関係
 
-このため、受注確定に新しいValidationを一件足すと、正本へ規則を足すだけでは画面からの実行で評価されません。人がTarget側の一覧を直す必要があります。これは、Product Valueの「画面側へ規則を書き写していません」という例が、規則の内容については正しく、評価対象の選択については成り立っていないことを意味します。
+[ISSUE-000052](000052-sui-reference-adoption-and-plugin-surface-evaluation.md)（SUI）、[ISSUE-000054](000054-sei-reference-adoption-resume-review.md)（SEI）、[ISSUE-000070](000070-sei-reference-adoption-change2-resumption.md)（SEI）は、change amplification（同じ意味変更に必要な変更の広がり）の比較を持っています。これらも、この指摘と同じ種類の測定に基づく価値判断を含みます。本Issueでは書き換えず、扱い（研究にとどめるか、比較の目的を限定するか）をownerの判断に残します。
 
-## 防ぎたい失敗
+## 記述の語彙（区分）。数えるためのものではない
 
-- **価値の主張が計測に裏付けられない。** 「一か所の変更が全体へ伝わる」と言いながら、実際に何箇所を人が直しているかを誰も数えていない。
-- **数え方が毎回違う。** 数えるたびに対象（test・文書・生成物）の含め方が変わり、比べられない。
-- **再生成できる変更と手直しを混ぜる。** golden fileの再生成のような機械的な変更を手直しとして数え、実際の負担を大きく見せる。逆に、手で直したtest期待値を「生成物」として数えず、負担を小さく見せる。
-- **正本の外にある二つ目の置き場を見逃す。** Target・Evidence audit・業務手順の参照に、規則の一覧が別に存在していても気づかない。
-
-## 守る原則
-
-- 変更された箇所を、次の区分で数える。区分をまたいで合算した一つの数だけを報告しない。
-- 数は、変更前後のrevisionと、実際の`git diff`から数える。予測値と実測値を混ぜない。
-- 計測結果は、TEIが良く見える数だけを残さない。手直しが多かった場合もそのまま残す（RQ-022）。
-
-## 数え方（区分）
+下の区分は、規則の変更が正本の内と外のどこへ及ぶかを**記述する**ための語彙です。合算して一つの数にしたり、大小を比べたりしません。
 
 | 区分 | 意味 | 例 |
 | --- | --- | --- |
 | C1 正本の変更 | authoritative sourceに対する、意味を変えるための変更 | `reference/workspace/semantic/sales/validation.tei` |
 | C2 機械的な再生成 | 正本から決定論的に再生成でき、人が内容を書かない変更。受理toolが書く記録（`.tei/decisions/`）も含める | `reference/world.json`、golden、`reference/workspace/.tei/decisions/*.json` |
-| C3 正本の外にある意味の手直し | 正本と同じ意味を、別の場所で人が直す必要がある変更。**減らす対象** | Target側のValidation一覧 |
+| C3 正本の外にある意味の手直し | 正本と同じ意味を、別の場所で人が直す必要がある変更。構造上の欠落の手がかり | Target側のValidation一覧 |
 | C4 期待値の手直し | test・Evidence auditの期待値を人が直す変更 | `*_test.go`、`tools/*-evidence-audit` |
-| C5 文書 | 更新が必要な説明文書。`plan/`の監査記録など、過去の事実を残す文書にIDが出てくるだけの場合は数えない | `plan/`、`docs/`、利用者が読むREADME |
+| C5 文書 | 更新が必要な説明文書。`plan/`の監査記録など、過去の事実を残す文書にIDが出てくるだけの場合は対象にしない | `plan/`、`docs/`、利用者が読むREADME |
 | C6 観測用のfixture・入力data | 新規則の効果を観測するために、人が書く入力dataやfixture。正本の意味ではないが、観測できるかどうかを左右する | `tools/reference-first-web-target/read_scenario.go`の固定行 |
 
-C3が0に近いほど、SSOTが保たれています。C4はTEIの外でも必要になる負担なので、C3とは分けて報告します。
+C3は、正本の外に同じ意味が置かれている箇所で、構造上の欠落の手がかりになります。C4はTEIの外でも必要になるため、C3とは区別して記述します。「どこへ及ぶか」を記述する際には、次の点を併記します。
 
-数え方の補足を置きます。
+- 編集の単位（fileと、独立した編集のかたまり）。
+- 既存の期待値を直す変更か、新しいtestやfixtureを足す変更か。
+- 直し忘れを検出するtestやauditがあるか。検出されない箇所は、数が少なくても軽いとは限りません（例: 業務手順ReferenceのValidation一覧には、網羅を確認する仕組みがありません）。
+- 変更が横串の機械的な修正か、ロジックの深い変更か。同じ箇所数でも意味が違うためです。
 
-- **単位:** fileの数と、人が書いた独立の編集単位（hunk）の数を併記する。例えばC3は「1 file / 2か所」と書く。
-- **直す / 足す:** 既存の期待値を直す変更と、新しいtestやfixtureを足す変更を分けて数える。
-- **検出されるか:** C3は、直し忘れを検出するtestやauditがあるかを併記する。検出されないC3は、数が少なくても負担が小さいことを意味しない（例: 業務手順ReferenceのValidation一覧は、網羅を確認する仕組みがない）。
-- **例示衝突:** 計測する規則が、リポジトリ自身のtestやREADMEの例と同じ場合、その衝突で落ちるtestはC4の本計上へ混ぜず、別行の「例示衝突」として報告する。規則変更一般の負担ではなく、このケースを選んだことによる負担だからである。
+## 静的読解の記録 — 単価の正値規則を足す変更（2026-10-02。実測ではない）
 
-## 最初の計測ケース
+以下は、一つの変更を題材に、コードの読解だけで変更の及ぶ先を追った記録です。研究の素材であり、価値の根拠にはしません。Goは実行しておらず、予測は未検証です。
 
-**変更:** 受注明細の単価が正であることを、受注確定前に守る業務規則として追加する（`sales.order_line.unit_price_positive`、kind `positive`。対象は正本で`unitPrice`と書かれた属性で、Canonical IDは`sales.order_line.unit_price`）。`tools/reference-shared-acceptance/README.md`のcandidate例と同じ変更で、正本側はShared Acceptance Boundaryの`add-validation`で追加できます。
+**題材の変更:** 受注明細の単価が正であることを、受注確定前に守る業務規則として追加する（`sales.order_line.unit_price_positive`、kind `positive`。対象は正本で`unitPrice`と書かれた属性で、Canonical IDは`sales.order_line.unit_price`）。`tools/reference-shared-acceptance/README.md`のcandidate例と同じ変更で、正本側はShared Acceptance Boundaryの`add-validation`で追加できます。
 
 **机上の予測**（revision `efd50e46`時点の静的な読解。Goは実行しておらず、実測ではない。個々のtest関数が落ちるかどうかは、読んだ範囲の根拠を併記し、確認していないものは「未確認」と書く）:
 
 前提として、変更は`semantic/sales/validation.tei`への追記だけとする（`add-validation`は既存fileの末尾へ追記する。`tools/reference-shared-acceptance/boundary_test.go:82-88`）。`order_entry`は`uses validation`を宣言しておらず（`reference/world.json:672-676`は`semanticUses`のみ）、Applicationのsourceは変えない。
 
-**A. C3（Targetの評価対象一覧）を直さない場合**（最初の観測用。ISSUE-000073の前の状態）
+**A. C3（Targetの評価対象一覧）を直さない場合**（ISSUE-000073の前の状態）
 
 | 区分 | 予測される変更 | 箇所（file / 編集単位） | 根拠 |
 | --- | --- | --- | --- |
@@ -83,7 +76,7 @@ C3が0に近いほど、SSOTが保たれています。C4はTEIの外でも必�
 | C4（例示衝突） | このケースはリポジトリ自身の例と同じ規則である。実際のworkspaceへ入ると、`tools/reference-shared-acceptance`の`unitPriceCandidate`（`helpers_test.go:110-126`）を使うtestは`VALIDATION_ALREADY_EXISTS`（`resolve.go:126-128`）で受理できなくなる。呼び出し元は21関数（`boundary_test.go` 9、`provenance_test.go` 5、`record_test.go` 7）。個々に落ちるかは未確認（fingerprintだけを見るtestは通る可能性がある）。さらに`tools/internal/changeanalysis`の3 test（`analysis_test.go:186`、`:288`、`:345`）は、同じ規則を重ねて追加するため、`Diff`が同一subjectの重複宣言を拒否して落ちる見込み（`diff.go:48-50`、`internal/workspace/loader.go:271`は重複を除かない）。直す箇所は、helper 1、`boundary_test.go`の期待ID（70、85、104-105、157、165行付近）、`provenance_test.go`、`analysis_test.go`の3 testの規則ID（208-219、291-303、348-351行付近）。**この衝突はこのケース固有で、規則変更一般の負担ではない。C4の本計上とは分けて「例示衝突」として別掲する** | 約4 file / 十数か所（見積り） | 左記の行 |
 | C5 | 必須の文書更新は0。`tools/reference-shared-acceptance/README.md:68-90`のcandidate例は、受理済みの規則を再び追加する例になる（任意の追従1）。`plan/`の過去の記録にIDが出てくるだけのものは更新対象に数えない | 0〜1 | `README.md:68-90` |
 
-**B. C3を直し、新規則をTargetが評価するようにした場合**（ISSUE-000073の前に手で直した場合の再計測。新しいIDを一覧の末尾へ足す想定）
+**B. C3を直し、新規則をTargetが評価するようにした場合**（新しいIDを一覧の末尾へ足す想定）
 
 | 区分 | 予測される変更 | 箇所 | 根拠 |
 | --- | --- | --- | --- |
@@ -106,33 +99,33 @@ C3が0に近いほど、SSOTが保たれています。C4はTEIの外でも必�
 
 参考として、同じrevisionで既存規則`sales.order_line.quantity_positive`のIDを含むfileは、正本1、生成物1、test以外のcode 2（上記Target scenarioとEvidence audit）、test 22、文書13、その他1（業務手順Reference）でした。これはIDの出現数であり、変更時に直す箇所の数ではありません。
 
-## 設計詳細
+## この記録から分かった、構造上の事実
 
-1. **計測はscratch copyで行う。** Gate B / Gate CのBaseline Evidenceを変えないため、実際の`reference/workspace`へは受理しません。
-2. **手順:** `revision`でbaseを取る → candidateを`preview` → `accept`（scratch） → golden再生成 → `go test ./...`で落ちたtestを直す → Web Targetから確定操作を行い、新規則が評価されるかを確かめる → `git diff --stat`とfileごとの区分付けを記録する。
-3. **「評価されるか」の確認を必須にする。** C3を直さない状態で、先頭の明細の単価が0以下の受注を確定させ、新規則が評価されない（`Validations`に新規則が現れず、`validation-not-satisfied`にならずに`completed`へ進む）ことを先に観測する。これが観測できれば、C3が実在する手直しであることのEvidenceになる。観測の方法は二つあり、どちらを使ったかを記録する。
-   - in-processで、読込結果の`OrderLineRows[0]`の単価を差し替えて`RunCommand`を呼ぶ（`command_scenario_test.go:176-190`と同じ形）。fixtureを変えないので、C6は0になる。
-   - fixtureの単価を0にして、HTTPの`/scenario/submit`から確定する。`/scenario/submit`は明細を受け取らず、現行のfixtureは単価が常に正なので、この方法ではC6が1以上になる。
-   評価されるのは先頭の明細だけなので（`command_scenario.go:391-395`）、2行目以降の単価が0以下の場合は、C3を直した後も止まらない。観測は先頭の明細で行い、その範囲を超える主張はしない。
-4. **記録:** `reference/value-measurement/rule-change-<日付>.json`に、変更内容、before / after revision、区分ごとのfile・行、C3を直さなかった場合の観測結果、実行した環境を残す（file名と形式は初回の実測で確定する）。
-5. **再計測:** ISSUE-000073でC3を減らした後、同じ変更をもう一度計測し、区分ごとの差を記録する。
+数ではなく、事実として次を残します。いずれもISSUE-000073などの機能上の課題として扱い、本Issueでは追いません。
+
+- 評価するValidationの選択が、第一Web Targetのコードと、Driverのscenario testに手で書かれている。正本のApplicationの宣言（`uses validation`）は、実行時に読まれていない（[ISSUE-000073](000073-derive-validation-selection-from-canonical.md)、[ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)）。
+- 業務手順Referenceが、同じValidation IDを別に列挙している。足し忘れを検出する仕組みがない。
+- Web Targetは先頭の明細だけを評価する。これは既存の数量規則にも共通する制約である。
+- 計測の題材に選んだ規則が、リポジトリ自身のtestやREADMEの例と同じだった。題材の選び方が結果を左右する。
+
+## 研究を再開する条件
+
+次がそろうまで、実測は行いません。そろった後も、変更の種類（横串の機械的な修正か、ロジックの深い変更か等）ごとに分け、単一の数に畳みません。
+
+1. MVP的・プロトタイプ的な実証で、複数の実務シナリオと、複数の種類の変更が積み上がっている。
+2. 変更の種類を、要件の側から分類できるだけの知見がある。
+3. 再開するかどうかを、ownerが判断する。
 
 ## 完了条件
 
-- [ ] 区分C1〜C6をowner reviewで確定する
-- [ ] 最初の計測ケースをscratch copyで実行し、区分ごとの実測値と、C3を直さなかった場合の観測結果を記録する（Goのあるtrusted local環境が必要）
-- [ ] 実測値と机上予測の差を記録する
-- [ ] ISSUE-000073の完了後、同じケースを再計測し、C3の変化を記録する
-- [ ] 計測手順をISSUE-000052 / 000070の比較表の数え方と対応付ける（同じ区分で数えられるか）
+このIssueは研究として保持します。期限や完了を、Productの判断に結び付けません。
 
-## 完了後に判断できること
-
-- Product Valueの「一か所の変更が全体へ伝わる」を、どの範囲で主張してよいか
-- 次に減らすべきC3がどこにあるか
-- 他Product（SUI / SEI）との比較に、同じ数え方を使えるか
+- [ ] 区分の語彙（C1〜C6）を、記述の語彙として使うかをowner reviewで判断する
+- [ ] ISSUE-000052 / 000054 / 000070のchange amplification比較の扱いを、ownerが判断する
 
 ## 非主張範囲
 
-- 一つの計測ケースで、TEI全体の変更コストを主張しません。
-- 手直しの箇所数は負担の代理指標であり、時間や費用を測るものではありません。
-- scratch copyでの計測は、実際の`reference/workspace`やGate Evidenceを変更しません。
+- この記録は、TEIの変更コストが小さいことも大きいことも示しません。
+- 手直しの箇所数は、時間・費用・難しさの代理指標になりません。
+- 静的な読解は未検証の予測を含み、実測で確かめていません。
+- 計測の再開は、価値の主張を伴いません。

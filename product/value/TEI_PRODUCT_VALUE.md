@@ -99,7 +99,7 @@ TEIは、**一つの層の価値を、別の層の損失で買わない**こと�
 
 例はRequirementやCanonical meaningではなく、価値の働き方を示すためのものです。いずれも小規模なReference上の事実であり、本番運用での効果を示すものではありません。
 
-- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationの内容を一つの正本として持ち、Driverのscenarioと第一Web Targetが同じ定義を読んで評価します。画面側へ規則の内容を書き写していません（Gate Cのexact revision `T = 0ba87a4e…`で取得したFunctional Evidence。Validation not-satisfiedの経路）。ただし、**どの規則を評価するか**の選択はまだCanonicalな宣言から導かれず、第一Web Targetのコード（`tools/reference-first-web-target/command_scenario.go`）とDriverのscenario testに、Canonical IDの一覧として書かれています。このため規則を一件足すと、正本の変更に加えてTarget側の一覧の手直しが要ります。この欠落の計測と解消は[ISSUE-000072](../../plan/issue/000072-rule-change-hand-edit-count.md) / [ISSUE-000073](../../plan/issue/000073-derive-validation-selection-from-canonical.md)で扱う予定です（いずれもProposedで評価待ちです。計測も解消も、まだ始めていません）。
+- **組織 — 規則を書き写さない。** `order_entry`では、受注確定の前に守る業務Validationの内容を一つの正本として持ち、Driverのscenarioと第一Web Targetが同じ定義を読んで評価します。画面側へ規則の内容を書き写していません（Gate Cのexact revision `T = 0ba87a4e…`で取得したFunctional Evidence。Validation not-satisfiedの経路）。ただし、**どの規則を評価するか**の選択はまだCanonicalな宣言から導かれず、第一Web Targetのコード（`tools/reference-first-web-target/command_scenario.go`）とDriverのscenario testに、Canonical IDの一覧として書かれています。このため規則を一件足すと、正本の変更に加えてTarget側の一覧の手直しが要ります。この欠落の解消は[ISSUE-000073](../../plan/issue/000073-derive-validation-selection-from-canonical.md)で扱う予定です（Proposedで評価待ちです。まだ始めていません）。
 - **組織 — Domainの意味を再利用する。** 第二Application `repair_intake` は、`order_entry`で使っていた顧客の意味（`customer.customer`）と顧客照会のContractを、コピーではなく同じidentityのまま参照して組み立てられました。既存の意味を作り直さずに次のApplicationへ再利用した最初の実例です。ただし、顧客のSemanticは同じidentityでの参照ですが、Contractと照会Queryは互換範囲（`master_data.customer ^2`）の条件つきの再利用です。`order_entry`のPatternは引き継がず、`repair_intake`が自分のPattern（`repair_intake.customer_reference`）を持ちます。
 - **組織 — Infrastructureの知識も再利用する。** `repair_intake`の顧客マスタは、各Environmentへ1行ずつ結び付けを足すだけで既存の`master_data`インスタンスへつながり、Driverで実行する段階では、Queryを実行するための新しいEnvironment sourceは不要でした。`order_entry`のために書かれた既存のContract Query executor binding（Queryを実行する実装への結び付け）が、Applicationではなく「Environment・Database・Contract・Query」の組で識別されていたため、そのまま使えたからです。ただしこれはdevelopmentでの確認で、使ったExecutorはtest doubleです。実Databaseへの接続を示すものではありません。また、productionにはContract Query executor bindingが一件も無く、productionでは実行できません（`order_entry`でも同じで、Referenceの範囲として意図的かどうかは未判定です）。各Environmentへ足した1行ずつのbindingも、`repair_intake`のために新しく受理したものです。
 - **個人 — 承認の対象を小さくする。** `repair_intake`の追加は、生成AIが作ったProposal（変更候補）を、file・CLI・Studio・AIのどの入口からの候補も同じ検査を通すShared Acceptance Boundary（共有の受入境界）で検査し、別の生成AIによる独立レビューを経てから、Repository ownerが明示的に受理しました。受理の対象は、生成コードの全量ではなく、3 source（741 bytes）の意味の差分でした。ただし、受理した人が意味差分を読んで判断できたかは検証していません。記録に残るのは、独立レビューの完了と残る停止条件を提示された上での明示的な回答までです。人向けの面は未実装で、RQ-028はPartial Evidenceです。また、Shared Acceptance Boundaryが実証したのは受け取る側で、Studio UIとAIによる候補生成の入口はまだ含みません。
@@ -108,26 +108,38 @@ TEIは、**一つの層の価値を、別の層の損失で買わない**こと�
 
 ### 価値の確かめ方
 
-TEIは、価値を画面数やコード生成量では測りません。外部の研究や他製品の数値を、TEI自身で確かめないまま目標値にすることもしません（RQ-022）。代わりに、層ごとに次のような観測できる事実で価値を確かめます。
+TEIは、価値を測定値で確かめることを、今は主張しません。変更に伴う手直しの箇所数、削減率、作業時間、費用のような指標は、問題領域の知見が十分に蓄積されるまで、価値の判断に使わず、研究にとどめます（RQ-022）。
+
+理由は、こうした数が要件ごとに意味を変えるためです。手直しの量は、業務要件の変更内容に左右されます。全体へ横串で同じ修正を入れるだけで済む変更と、ロジックの深い部分に及ぶ変更とでは、同じ「一か所」でも負担の意味がまるで違います。一つの数に畳むと、価値を示すどころか誤読の元になります。外部の研究や他製品の数値を、TEI自身で確かめないまま目標値にすることもしません。画面数やコード生成量も、価値の尺度にはしません。
+
+代わりに、**積み上げた実務的な機能の量と、その有機的な関係性、実用性**で価値を確かめます。
+
+- **量:** 実務の業務シナリオを通せる機能が、どの範囲まで揃っているか。
+- **関係性:** それらの機能が、同じ意味・同じidentityでつながっているか。意味を一つ作れば、複数の機能・複数のApplicationから、写し直しなしに使われ、元へ辿れるか。
+- **実用性:** 実務に近いシナリオを、実際に最初から最後まで通せるか。
+
+この確かめ方は、数を出すためのものではなく、実際に動くものを作って見せることを先に置きます。MVP（最小限の実用的な製品）やプロトタイプで、実務シナリオを通し、通せた機能と、その間の関係を記録として積み上げます。測定は、その積み重ねから問題領域の知見が蓄積したあとの研究課題です。最初の実証の候補は[ISSUE-000075](../../plan/issue/000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。
+
+実証で確かめる性質は、層ごとに次のとおりです。いずれも「できたか、できないか」「示されたか、示されないか」で確かめる性質で、数の大小ではありません。
 
 - **個人**
   - 新しい担当者や別のAIが、過去の会話履歴や特定の人への聞き取りなしに、変更に必要な意味・決定・影響・未解決点へ到達できること
   - 承認の対象が、生成コードの全量ではなく、意味差分・影響・例外・未解決点として示されていたこと
   - 一度答えた確認が、理由なく繰り返されないこと
 - **組織**
-  - 一つの業務規則を変えるとき、人が手で直す必要がある場所の数
-  - 画面・API・AIエージェントの間で、同じ規則の食い違いが生じないこと
+  - 画面・API・AIエージェントの間で、同じ規則の食い違いが生じない構造であること
   - 別Applicationで再利用した意味とInfrastructure知識について、元のidentity・前提・差分を追跡できること
 - **社会**
   - 実行・承認・観測の根拠を、AIを介さず正本から第三者が再現できること
   - 分からない状態が、成功や安全として扱われていないこと
   - 業務知識を読めることが、実行権限へ変わっていないこと
 
-どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。各項目を担うIssueは[Issue一覧の「Product Valueの確かめ方と担当」](../../plan/issue/README.md)にまとめています。
+研究にとどめている測定の課題は、[ISSUE-000072](../../plan/issue/000072-rule-change-hand-edit-count.md)に置いています。どこまで確かめられているかの現在地は[`docs/status.md`](../../docs/status.md)、Requirementごとの実証状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。各項目を担うIssueは[Issue一覧の「Product Valueの確かめ方と担当」](../../plan/issue/README.md)にまとめています。
 
 ### まだ主張しないこと
 
-- 費用削減や生産性向上の数値的な効果は、まだ測定していません。
+- 費用削減や生産性向上の数値的な効果は、測定しておらず、測定に基づく価値判断も留保しています（上記「価値の確かめ方」）。
+- 積み上げた機能は小規模なReferenceの範囲にとどまり、実務で必要な機能の網羅は主張しません。実務シナリオを通すMVP的な実証は、これから積み上げる段階です。
 - 個人にとっての価値の多くは、人が意味を読み、承認する面（Editor / Review Surface、RQ-010 / RQ-028）の出来に依存します。この面を実際の利用者で確かめた実証はまだなく、認知負荷がどれだけ減るかも測定していません。
 - 社会価値は目指す方向であり、公共性の高い実システムで実証したものではありません。
 - 現在の実証は小規模なReference Application（`order_entry`、`repair_intake`等）に限られます。
