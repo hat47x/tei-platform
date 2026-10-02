@@ -86,6 +86,36 @@ func TestQualifyUnknownWithoutAuthoritativeSource(t *testing.T) {
 	}
 }
 
+func TestQualifyStaysUnknownWhenExactAuthoritativeEvidenceCannotBeBuilt(t *testing.T) {
+	ctx := Context{
+		Subject: subject.Subject{Kind: "semantic-data", ID: "customer.customer"},
+		References: []sourceindex.Reference{{
+			Role:         sourceindex.RoleDefinition,
+			ArtifactPath: "semantic/customer/customer.tei",
+		}},
+	}
+	result, err := Qualify(ctx, QualificationRequirements{ExpectedKind: "semantic-data"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != QualificationUnknown {
+		t.Fatalf("status=%s reasons=%+v", result.Status, result.Reasons)
+	}
+	if len(result.Evidence) != 0 {
+		t.Fatalf("unknown qualification leaked Evidence: %+v", result.Evidence)
+	}
+	var found bool
+	for _, reason := range result.Reasons {
+		if reason.Code == "exact-authoritative-evidence-unavailable" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("exact Evidence failure was not explained: %+v", result.Reasons)
+	}
+}
+
 func TestQualifyMissingDependencyFailsClosed(t *testing.T) {
 	ctx := Context{
 		Subject:    subject.Subject{Kind: "semantic-data", ID: "customer.customer"},
