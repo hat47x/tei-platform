@@ -1,7 +1,7 @@
 # TEI 技術リサーチ統合方針 — 2026-09
 
-Status: **current research-integration plan**  
-Last updated: **2026-09-18**
+Status: **superseded by [TECH_RESEARCH_INTEGRATION_2026-10.md](TECH_RESEARCH_INTEGRATION_2026-10.md)**  
+Last updated: **2026-10-02**
 
 ## 1. 位置づけ
 
