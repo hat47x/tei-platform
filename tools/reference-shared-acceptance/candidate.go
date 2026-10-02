@@ -39,9 +39,11 @@ type Origin struct {
 
 // Evidenceは、candidateの根拠をqualified logical key（Canonical ID）またはworkspace相対のsource pathで示す。
 type Evidence struct {
-	Subject string `json:"subject,omitempty"`
-	Source  string `json:"source,omitempty"`
-	Note    string `json:"note,omitempty"`
+	SubjectKind       string `json:"subjectKind,omitempty"`
+	Subject           string `json:"subject,omitempty"`
+	Source            string `json:"source,omitempty"`
+	SourceFingerprint string `json:"sourceFingerprint,omitempty"`
+	Note              string `json:"note,omitempty"`
 }
 
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -87,10 +89,18 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 
 	evidence := make([]Evidence, 0, len(c.Evidence))
 	for i, e := range c.Evidence {
+		e.SubjectKind = strings.TrimSpace(e.SubjectKind)
 		e.Subject = strings.TrimSpace(e.Subject)
 		e.Source = strings.TrimSpace(e.Source)
+		e.SourceFingerprint = strings.TrimSpace(e.SourceFingerprint)
 		if e.Subject == "" && e.Source == "" {
 			return c, "", fmt.Errorf("evidence[%d]にsubjectもsourceもありません", i)
+		}
+		if e.SubjectKind != "" && e.Subject == "" {
+			return c, "", fmt.Errorf("evidence[%d].subjectKindにはsubjectが必要です", i)
+		}
+		if e.SourceFingerprint != "" && e.Source == "" {
+			return c, "", fmt.Errorf("evidence[%d].sourceFingerprintにはsourceが必要です", i)
 		}
 		if e.Subject != "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
@@ -103,6 +113,9 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 				return c, "", fmt.Errorf("evidence[%d].source: %w", i, err)
 			}
 			e.Source = p
+		}
+		if e.SourceFingerprint != "" && !revisionPattern.MatchString(e.SourceFingerprint) {
+			return c, "", fmt.Errorf("evidence[%d].sourceFingerprint %q は sha256:<64桁の16進> 形式ではありません", i, e.SourceFingerprint)
 		}
 		evidence = append(evidence, e)
 	}
