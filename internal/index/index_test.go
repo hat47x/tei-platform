@@ -43,6 +43,12 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 						ContractQuery: &application.ContractQueryInvocation{
 							Contract: "master_data.customer",
 							Query:    "find_by_id",
+							Inputs: []application.ContractQueryInputBinding{
+								{
+									TargetAttribute: "customer.customer.customer_id",
+									Input:           "id",
+								},
+							},
 						},
 					},
 					{
@@ -110,7 +116,10 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 		customerReference.Relation != "sales.order.customer" ||
 		customerReference.Datasource != "master" ||
 		customerReference.Contract != "master_data.customer" ||
-		customerReference.ContractQuery != "master_data.customer/find_by_id" {
+		customerReference.ContractQuery != "master_data.customer/find_by_id" ||
+		len(customerReference.ContractQueryInputs) != 1 ||
+		customerReference.ContractQueryInputs[0].TargetAttribute != "customer.customer.customer_id" ||
+		customerReference.ContractQueryInputs[0].Input != "id" {
 		t.Fatalf("customer reference pattern lost meaning-bearing fields: %+v", customerReference)
 	}
 
@@ -156,6 +165,13 @@ func TestBuildIndexesValidationsAndApplicationPatterns(t *testing.T) {
 			Relation: "contract-query",
 			ToKind:   "database-contract-query",
 			To:       "master_data.customer/find_by_id",
+		},
+		{
+			FromKind: "application-pattern",
+			From:     "order_entry.customer_reference",
+			Relation: "contract-query-input",
+			ToKind:   "semantic-attribute",
+			To:       "customer.customer.customer_id",
 		},
 		{
 			FromKind: "application-pattern",
