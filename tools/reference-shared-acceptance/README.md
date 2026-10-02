@@ -8,7 +8,7 @@ file edit・CLI・Studio・AIのどの入口から来た変更candidateも、同
 
 - Reference専用のtoolです。Core primitive、platform共通のProposal schema、Patch DSLではありません。candidateの形式（`tei.reference.change-candidate/v0`）はこのReferenceの実測から決めた運搬形式で、固定を主張しません。
 - 差分・依存影響の解析はread-onlyな[`tools/internal/changeanalysis`](../internal/changeanalysis)（`ISSUE-000039`の最初の解析境界）が担当し、このtoolはそれを呼びます。受理・source反映（`ISSUE-000027`）と解析を混ぜず、解析側はsourceを読み書きしません。
-- AIによる候補生成、Studio UI、read-only探索（`ISSUE-000047`）は含みません。これらはcandidateの**生成側**であり、このtoolは**受け取る側の境界**だけを実証します。
+- AIによる候補生成、Studio UI、read-only探索そのものは含みません。これらはcandidateの生成側です。一方、`ISSUE-000047`で`applicable`になったqualification結果は、exactなsubject・source・fingerprint・requirementsをEvidenceとしてcandidateへ付与できます。このtoolはPreview時に同じrequirementsで再qualificationし、現在も適用可能かを確認します。
 - Gate B / Gate CのBaseline Evidenceは、その判定時のrevisionに固定されたhistorical Evidenceです。current `reference/workspace`を永久凍結する意味ではありませんが、baseline名のworkspaceへの誤書込みを避けるため、`accept`は`-allow-reference-baseline`が無い限り拒否します。通常はscratch copyで検証し、post-Gate-CのintentionalなReference更新だけをexplicit decision + flagで行います。Second Applicationの別生成AIレビューは2026-09-21に完了し、`review-clear-with-conditions`となりました。実際の`reference/workspace`へのacceptには、なおexact Proposalに対するexplicit human Acceptance decisionが必要です（`ISSUE-000040`）。
 
 ## 受入境界
@@ -24,7 +24,7 @@ decode → normalize → base-revision → resolve → apply(overlay)
 | decode | 未知fieldを許さず厳密に読む |
 | normalize | 正規形へ揃え、意味を持つ部分（base revisionとdelta）だけのfingerprintを作る。Origin / Intent / Evidenceは含めない |
 | base-revision | candidateの`baseModelRevision`が現在のsourceと一致する。staleなら黙って適用せず、reject / 再読込して再生成 / 明示rebase / 手動conflict解消へ分岐する |
-| resolve | 対象namespace・Attribute・Relationが存在し、追加するidが未使用で、Evidenceがqualified logical keyまたは管理対象sourceへ解決でき、placementが意味を所有するsemantic層のfileである |
+| resolve | 対象namespace・Attribute・Relationが存在し、追加するidが未使用で、Evidenceがcurrent Source Indexへ解決できることを確認する。qualification付きEvidenceはsubject kind・source・fingerprintを照合し、同じrequirementsで再qualificationする。placementは意味を所有する層に限る |
 | apply | 変更を**overlay（複製）**へ適用する。元のsourceはまだ変えない |
 | reload | overlayを共有loaderで読み直す |
 | validate | 共有Validationにerrorが一件も無い |
@@ -38,6 +38,7 @@ decode → normalize → base-revision → resolve → apply(overlay)
 ## 使い方
 
 ```bash
+go run ./tools/reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE]
@@ -45,6 +46,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
+- `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `accept`: 同じ検査を最初から実行し直し、通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
@@ -69,6 +71,31 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
 
+### knowledge qualificationからcandidateへの接続
+
+`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Canonical ID、source path、source fingerprintが含まれます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。
+
+```bash
+go run ./cmd/tei knowledge-qualify \
+  -workspace DIR \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json \
+  > qualification.json
+
+go run ./tools/reference-shared-acceptance attach-qualification \
+  -candidate candidate.json \
+  -qualification qualification.json \
+  > grounded-candidate.json
+
+go run ./tools/reference-shared-acceptance preview \
+  -workspace DIR \
+  -candidate grounded-candidate.json
+```
+
+Previewでは、添付された結果をそのまま信用しません。current Source Indexに対してexact subjectとsourceを解決し、source fingerprintを照合したうえで、同じrequirementsを使ってqualificationを再実行します。現在の文脈で`applicable`でなければresolve stageで拒否します。
+
+このEvidenceはcandidateの意味を変更しないため、candidate fingerprintには入りません。Accepted Decisionにはprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。
 ### candidateの例
 
 ```json
@@ -123,13 +150,14 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - Second Application `repair_intake`（改訂版S4 Proposal、SHA-256 `c18ae0fdef8e01aa965e2ad84c86ecfc21ca0608c07b1808e73368a5f434458d`）を、3つの型付きoperationとして表し、source・payload・candidate identityをS4 Proposalへ結び付けられる（`composition_test.go`）
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
+- `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。subject kind、source、fingerprint、requirementsの改変はfail closedになる（`qualification_handoff_test.go`）
 - 受理した決定が、会話履歴なしでworkspaceから読める。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらず、偽の記録は現在のsourceとの照合で食い違いとして出る（`record_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
 
 示さないこと:
 
-- AIがcandidateを生成できること、Studio UI、`ISSUE-000047`のknowledge-first探索との接続
+- AIやStudioがcandidateのdeltaを生成できること、knowledge-firstのretrievalやranking自体
 - Driver scenario / Web Target Projectionへの影響の実行（Previewは`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`をunresolvedとして明示する）
 - Applicationが評価するValidationの選択がCanonicalから導出されること。現行のCanonical modelとDriverは、`uses validation`宣言から評価対象を導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）
 - Runtime操作のeffect-time authority、file move / renameの自動検出、Derived Experience Knowledge
