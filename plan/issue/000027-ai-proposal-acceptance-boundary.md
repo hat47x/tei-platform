@@ -487,6 +487,15 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 
 Previewが判断できなかった事項は成功へ読み替えず`unresolved`に残す。特に、`order_entry`は`uses validation`を宣言しておらず、現行のDriver / Canonical modelはApplicationが評価するValidationの選択を宣言から導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）。Validationを追加しただけでは実行時に評価されるとは言えない、というこのReferenceの発見は、次のincrementで扱う。
 
+## qualification Evidenceとの接続候補 — 2026-10-03
+
+`ISSUE-000047`のdeterministic qualificationから、既存のShared Acceptance Boundaryへexact Evidenceを渡すcandidate実装を`research/selective-knowledge-routing-r6`で進めている。
+
+接続では新しいProposal schemaを作らず、既存candidateのEvidenceを後方互換で精密化する。`applicable`なqualificationからsubject kind、Canonical ID、source path、source fingerprint、評価したrequirementsを付与し、Preview時にcurrent Source Indexへ戻って同じrequirementsで再qualificationする。
+
+この方式では、qualification結果を過去のapprovalとして扱わない。current contextで`incompatible`または`unknown`になった場合はShared Acceptanceのresolve stageでfail closedとする。Evidenceはcandidate fingerprintへ含めず、deltaの意味とprovenanceを分離する。
+
+現時点ではexact-head full Repository-healthを通したProduct Evidenceではないため、完了条件1や3の状態はまだ更新しない。
 ## Gate Cとの関係
 
 本IssueはGate C前に本格実装しません。
