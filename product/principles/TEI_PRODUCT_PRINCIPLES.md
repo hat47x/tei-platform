@@ -125,9 +125,11 @@ Canonical meaning
 
 ## P16. 小さいCoreと交換可能な外周を保つ
 
-Coreへ個別DB、UI、Runtime、業種固有概念を増やし続けません。
+Coreへ個別DB、UI、Runtime、業種固有概念を増やし続けません。データモデル、workflow、UI等の完成した意味体系も、Coreの特権的な上位モデルとして固定しません。
 
-Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい意味基盤を中心にし、具体的な実現方式は外側のProvider、Capability、Adapterへ分けます。
+Coreは、identity、namespace、composition、extension metadata、provenance、Validation / Conformance、authority boundary等、異なる意味体系を安全に接続するための共通機構を中心にします。Type、Relation、Expression、Constraint、Lifecycle等を共通primitiveとして持つ場合も、拡張側から組み合わせ、参照できる形にします。
+
+Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
 
 ## P17. 再現性とConformanceを機能数より優先する
 

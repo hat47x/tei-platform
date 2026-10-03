@@ -536,10 +536,15 @@ PAS-04で具体化します。
 | RQ-028 | PAS-01 | PAS-06 / PAS-07 |
 | RQ-029 | PAS-06 | PAS-01 / PAS-03 |
 | RQ-030 | PAS-07 | PAS-02 / PAS-05 |
+| RQ-031 | PAS-06 | PAS-01 / PAS-07 |
+| RQ-032 | PAS-06 | PAS-01 / PAS-07 |
+| RQ-033 | PAS-06 | PAS-01 |
 
 Primaryは最初に具体化する代表PASであり、coverage scoreではありません。
 
 RQ-027〜RQ-030は2026-09-18のProduct再定義で追加されましたが、この表は2026-09-21までRQ-026で止まっていました。そのため4件はPrimary PASもEvidence tierも持たず、`PRODUCT_REQUIREMENT_GAP_AUDIT.md`の優先順位にも現れませんでした。上の4行は2026-09-21に割り当てたもので、最初に具体化する代表PASの提案です。`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`が、以後この表と監査表の両方がRequirement集合と一致することをfail-closedで確認します。
+
+RQ-031〜RQ-033は2026-10-03に、固定されたモデル体系ではなく意味論を後から拡張・合成できることをProduct Valueへ明示した際に追加しました。現時点では新しいPASを増やしません。まずPAS-06のknowledge-first探索を主な検証面とし、Shared Acceptanceを扱うPAS-01と、複数の意味視点を相互検証するPAS-07を必要に応じて組み合わせます。独立したAcceptance Scenarioが必要かどうかは、Semantic ExtensionのReferenceで既存PASでは表せない利用者レベルの成立条件が確認された時点で判断します。
 
 ## 12. 現行Gate / Stageとの関係
 
