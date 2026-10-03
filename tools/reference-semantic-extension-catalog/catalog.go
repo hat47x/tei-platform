@@ -63,10 +63,16 @@ type CatalogUnresolved struct {
 	Detail     string            `json:"detail"`
 }
 
+type CoreCatalogInput struct {
+	Subjects               []subject.Subject
+	SourceIndexFingerprint string
+}
+
 type SemanticCatalog struct {
-	Schema                 string                 `json:"schema"`
-	ResolutionFingerprint  string                 `json:"resolutionFingerprint"`
-	Requirements           []ExtensionRequirement `json:"requirements"`
+	Schema                     string                 `json:"schema"`
+	ResolutionFingerprint      string                 `json:"resolutionFingerprint"`
+	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
+	Requirements               []ExtensionRequirement `json:"requirements"`
 	Extensions             []CatalogExtension     `json:"extensions,omitempty"`
 	Subjects        []CatalogSubject    `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
@@ -125,6 +131,19 @@ func loadExtensionDescriptors(root string) ([]ExtensionDescriptor, error) {
 	return out, nil
 }
 
+func coreCatalogFromSourceIndex(index sourceindex.Index) CoreCatalogInput {
+	normalized := sourceindex.Index{
+		Artifacts:  append([]sourceindex.Artifact(nil), index.Artifacts...),
+		References: append([]sourceindex.Reference(nil), index.References...),
+	}
+	normalized.Normalize()
+	encoded, _ := json.Marshal(normalized)
+	return CoreCatalogInput{
+		Subjects:               sourceIndexSubjects(normalized),
+		SourceIndexFingerprint: sourceindex.Fingerprint(encoded),
+	}
+}
+
 func sourceIndexSubjects(index sourceindex.Index) []subject.Subject {
 	seen := map[string]subject.Subject{}
 	for _, ref := range index.References {
@@ -144,7 +163,7 @@ func sourceIndexSubjects(index sourceindex.Index) []subject.Subject {
 }
 
 func resolveSemanticCatalog(
-	coreSubjects []subject.Subject,
+	core CoreCatalogInput,
 	descriptors []ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (SemanticCatalog, error) {
@@ -231,9 +250,10 @@ func resolveSemanticCatalog(
 	}
 
 	catalog := SemanticCatalog{
-		Schema:        catalogSchema,
-		Requirements: normalizedRoots,
-		Subjects:      []CatalogSubject{},
+		Schema:                     catalogSchema,
+		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
+		Requirements:               normalizedRoots,
+		Subjects:                    []CatalogSubject{},
 		AuthorityLimits: []string{
 			"catalog-is-not-canonical-authority",
 			"extension-selection-is-not-acceptance",
@@ -243,7 +263,7 @@ func resolveSemanticCatalog(
 	}
 
 	subjectOwners := map[string][]CatalogSubject{}
-	for _, coreSubject := range coreSubjects {
+	for _, coreSubject := range core.Subjects {
 		normalizedSubject, err := normalizeSubject(coreSubject)
 		if err != nil {
 			return SemanticCatalog{}, fmt.Errorf("core subject: %w", err)
@@ -497,6 +517,10 @@ func normalizeRootRequirements(values []ExtensionRequirement) ([]ExtensionRequir
 
 func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	catalog.ResolutionFingerprint = ""
+	for i := range catalog.Extensions {
+		catalog.Extensions[i].Source = ""
+		catalog.Extensions[i].SourceFingerprint = ""
+	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
