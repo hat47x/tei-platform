@@ -23,14 +23,28 @@ type ReviewSection struct {
 	Note     string   `json:"note,omitempty"`
 }
 
+type ReviewCoverageGap struct {
+	Code     string `json:"code"`
+	Title    string `json:"title"`
+	Coverage string `json:"coverage"`
+}
+
+type ReviewCoverageSummary struct {
+	Available    int                 `json:"available"`
+	Partial      int                 `json:"partial"`
+	NotEvaluated int                 `json:"notEvaluated"`
+	Incomplete   []ReviewCoverageGap `json:"incomplete,omitempty"`
+}
+
 type ReviewProjection struct {
-	Schema               string          `json:"schema"`
-	CandidateID          string          `json:"candidateId,omitempty"`
-	Intent               string          `json:"intent,omitempty"`
-	CandidateFingerprint string          `json:"candidateFingerprint,omitempty"`
-	EvidenceFingerprint  string          `json:"evidenceFingerprint,omitempty"`
-	Acceptable           bool            `json:"acceptable"`
-	Sections             []ReviewSection `json:"sections"`
+	Schema               string                `json:"schema"`
+	CandidateID          string                `json:"candidateId,omitempty"`
+	Intent               string                `json:"intent,omitempty"`
+	CandidateFingerprint string                `json:"candidateFingerprint,omitempty"`
+	EvidenceFingerprint  string                `json:"evidenceFingerprint,omitempty"`
+	Acceptable           bool                  `json:"acceptable"`
+	Coverage             ReviewCoverageSummary `json:"coverage"`
+	Sections             []ReviewSection       `json:"sections"`
 }
 
 func buildReviewProjection(ev evaluation) ReviewProjection {
@@ -259,7 +273,30 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	review.Sections = append(review.Sections, a8)
 
+	review.Coverage = summarizeReviewCoverage(review.Sections)
 	return review
+}
+
+func summarizeReviewCoverage(sections []ReviewSection) ReviewCoverageSummary {
+	var summary ReviewCoverageSummary
+	for _, section := range sections {
+		switch section.Coverage {
+		case reviewCoverageAvailable:
+			summary.Available++
+		case reviewCoveragePartial:
+			summary.Partial++
+		default:
+			summary.NotEvaluated++
+		}
+		if section.Coverage != reviewCoverageAvailable {
+			summary.Incomplete = append(summary.Incomplete, ReviewCoverageGap{
+				Code:     section.Code,
+				Title:    section.Title,
+				Coverage: section.Coverage,
+			})
+		}
+	}
+	return summary
 }
 
 func reviewStage(p Preview, name string) (Stage, bool) {
@@ -323,6 +360,25 @@ func renderReviewProjection(review ReviewProjection) string {
 		b.WriteString("preview: 受入可能\n")
 	} else {
 		b.WriteString("preview: 受入不可\n")
+	}
+	fmt.Fprintf(
+		&b,
+		"coverage: 表示可能 %d / 一部 %d / 未評価 %d\n",
+		review.Coverage.Available,
+		review.Coverage.Partial,
+		review.Coverage.NotEvaluated,
+	)
+	if len(review.Coverage.Incomplete) > 0 {
+		var gaps []string
+		for _, gap := range review.Coverage.Incomplete {
+			gaps = append(gaps, fmt.Sprintf(
+				"%s %s [%s]",
+				gap.Code,
+				gap.Title,
+				reviewCoverageLabel(gap.Coverage),
+			))
+		}
+		fmt.Fprintf(&b, "確認が残るsection: %s\n", strings.Join(gaps, ", "))
 	}
 
 	for _, section := range review.Sections {
