@@ -34,6 +34,7 @@ type Decision struct {
 	Reason               string                         `json:"reason,omitempty"`
 	CandidateID          string                         `json:"candidateId,omitempty"`
 	CandidateFingerprint string                         `json:"candidateFingerprint,omitempty"`
+	EvidenceFingerprint  string                         `json:"evidenceFingerprint,omitempty"`
 	Origin               *Origin                        `json:"origin,omitempty"`
 	BaseModelRevision    string                         `json:"baseModelRevision,omitempty"`
 	ModelRevisionBefore  string                         `json:"modelRevisionBefore,omitempty"`
@@ -92,6 +93,7 @@ func decisionFrom(p Preview, kind string) Decision {
 		Decision:             kind,
 		CandidateID:          p.CandidateID,
 		CandidateFingerprint: p.CandidateFingerprint,
+		EvidenceFingerprint:  p.EvidenceFingerprint,
 		Origin:               p.Origin,
 		BaseModelRevision:    p.BaseModelRevision,
 		ModelRevisionBefore:  p.CurrentModelRevision,
@@ -284,6 +286,7 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		Reason:               reason,
 		CandidateID:          normalized.ID,
 		CandidateFingerprint: fingerprint,
+		EvidenceFingerprint:  evidenceFingerprintOf(normalized.Evidence),
 		Origin:               &origin,
 		BaseModelRevision:    normalized.BaseModelRevision,
 		ModelRevisionBefore:  s.revision,
