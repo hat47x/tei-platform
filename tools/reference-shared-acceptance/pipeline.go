@@ -43,6 +43,7 @@ type Preview struct {
 	Schema               string                         `json:"schema"`
 	CandidateID          string                         `json:"candidateId,omitempty"`
 	CandidateFingerprint string                         `json:"candidateFingerprint,omitempty"`
+	EvidenceFingerprint  string                         `json:"evidenceFingerprint,omitempty"`
 	Origin               *Origin                        `json:"origin,omitempty"`
 	BaseModelRevision    string                         `json:"baseModelRevision,omitempty"`
 	CurrentModelRevision string                         `json:"currentModelRevision,omitempty"`
@@ -126,6 +127,7 @@ func evaluate(root string, data []byte) (evaluation, error) {
 		candidate = normalized
 		ev.preview.CandidateID = candidate.ID
 		ev.preview.CandidateFingerprint = fingerprint
+		ev.preview.EvidenceFingerprint = evidenceFingerprintOf(candidate.Evidence)
 		origin := candidate.Origin
 		ev.preview.Origin = &origin
 		ev.preview.BaseModelRevision = candidate.BaseModelRevision
