@@ -120,7 +120,7 @@ A1〜A8をRequirementとして採用する前に、既存Previewだけで人が�
 
 `review`はA1〜A8を固定順で表示する。冒頭には`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionをまとめる。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。各sectionには導出元の`preview.*`または`candidate.*`項目を`sources`として残し、text出力でも`根拠:`として表示する。A7は`candidateFingerprint`と`evidenceFingerprint`を分けて示し、Evidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
 
-A5の権限変更とA6のnative code残存箇所には、現在のPreviewに完全な専用評価がない。そこで、関連するunresolvedやcollection差分を補助情報として表示しつつ、coverage自体は`未評価`とする。「専用情報がない」ことを「変更なし」と読み替えないためである。
+A5の権限変更とA6のnative code残存箇所には、現在のPreviewだけでは完全な専用評価がない。candidateのtyped operationから、Permission grant・Resource binding・lease・実行principalや`customGoBindings`を直接authorしないことは決定論的に確認できるため、この範囲は`一部`として表示する。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価として残す。前者を根拠に後者まで「変更なし」とは判定しない。
 
 既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6の`未評価`表示、A7の逆追跡情報、A8の変更単位、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
 
