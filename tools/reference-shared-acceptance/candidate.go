@@ -108,6 +108,17 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 			(e.SubjectKind == "" || e.Subject == "" || e.Source == "" || e.SourceFingerprint == "") {
 			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKind / subject / source / sourceFingerprintが必要です", i)
 		}
+		if len(e.QualificationDependencyEvidence) > 0 && e.QualificationRequirements == nil {
+			return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidenceにはqualificationRequirementsが必要です", i)
+		}
+		for j, dependency := range e.QualificationDependencyEvidence {
+			if strings.TrimSpace(dependency.SubjectKind) == "" ||
+				strings.TrimSpace(dependency.Subject) == "" ||
+				strings.TrimSpace(dependency.Source) == "" ||
+				!revisionPattern.MatchString(strings.TrimSpace(dependency.SourceFingerprint)) {
+				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d]はexact subject / source / fingerprintが必要です", i, j)
+			}
+		}
 		if e.Subject != "" && e.SubjectKind == "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
 				return c, "", fmt.Errorf("evidence[%d].subject: %w", i, err)
