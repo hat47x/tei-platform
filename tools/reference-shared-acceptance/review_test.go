@@ -414,6 +414,17 @@ func TestReviewFingerprintGuardFlowsThroughCLI(t *testing.T) {
 		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
 		t.Fatalf("decision=%+v review=%+v", decision, review)
 	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	binding := index.Records[0].Decision.ReviewBinding
+	if binding == nil ||
+		binding.Fingerprint != review.ReviewFingerprint ||
+		len(binding.Coverage.Incomplete) != len(review.Coverage.Incomplete) {
+		t.Fatalf("persisted review binding=%+v review=%+v", binding, review.Coverage)
+	}
 }
 
 func TestReviewShowsUnresolvedFailureWithoutInventingLaterCoverage(t *testing.T) {
