@@ -162,22 +162,48 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A5",
 		Title:    "権限の変更",
 		Coverage: reviewCoverageNotEvaluated,
-		Summary:  "専用評価なし",
-		Sources:  []string{"preview.unresolved", "preview.changedCollections"},
-		Note:     "権限差分を判定する専用項目はまだありません。下記は既存Previewから読める関連signalであり、権限変更の完全な判定ではありません",
+		Sources:  []string{"candidate.delta", "preview.unresolved", "preview.changedCollections"},
 	}
-	for _, unresolved := range p.Unresolved {
-		if strings.Contains(unresolved.Code, "AUTHORITY") ||
-			strings.Contains(unresolved.Code, "PERMISSION") ||
-			unresolved.Code == "ENVIRONMENT_BINDING_NOT_AUTHORED" {
-			a5.Items = append(a5.Items, unresolved.Code+" - "+unresolved.Message)
+	if normalizeEvaluated {
+		a5.Coverage = reviewCoveragePartial
+		a5.Summary = "runtime authority grant 0件 / effective authority impact 未評価"
+		a5.Items = append(a5.Items,
+			"candidateがauthorするruntime authority grant: 0件（現行operationはPermission grant / Resource binding / lease / execution principalをauthorしません）",
+		)
+		var applicationCount, bindingCount int
+		for _, op := range ev.candidate.Delta {
+			switch op.Op {
+			case opAddApplication:
+				applicationCount++
+			case opAddEnvironmentBinding:
+				bindingCount++
+			}
 		}
-	}
-	if len(p.ChangedCollections) > 0 {
-		a5.Items = append(a5.Items, "changed collections: "+strings.Join(p.ChangedCollections, ", "))
-	}
-	if len(a5.Items) == 0 {
-		a5.Items = []string{"権限変更について安全に断定できる専用情報なし"}
+		if applicationCount > 0 {
+			a5.Items = append(a5.Items, fmt.Sprintf(
+				"Application追加: %d件（Environment binding / Provider / Permission grantはadd-applicationに含まれません）",
+				applicationCount,
+			))
+		}
+		if bindingCount > 0 {
+			a5.Items = append(a5.Items, fmt.Sprintf(
+				"Environment binding追加: %d件（datasource aliasとinstanceの対応であり、runtime authority grantではありません）",
+				bindingCount,
+			))
+		}
+		for _, unresolved := range p.Unresolved {
+			if strings.Contains(unresolved.Code, "AUTHORITY") ||
+				strings.Contains(unresolved.Code, "PERMISSION") ||
+				unresolved.Code == "ENVIRONMENT_BINDING_NOT_AUTHORED" {
+				a5.Items = append(a5.Items, unresolved.Code+" - "+unresolved.Message)
+			}
+		}
+		if len(p.ChangedCollections) > 0 {
+			a5.Items = append(a5.Items, "changed collections: "+strings.Join(p.ChangedCollections, ", "))
+		}
+		a5.Note = "既存のPermission grant / leaseが変更後のApplicationや新しいbindingへどう及ぶかは評価していません。candidate自身がgrantをauthorしないことと、実効権限が変わらないことは別です"
+	} else {
+		a5.Note = "normalize stageが完了していないため、candidateがauthorする権限変更の範囲も確定できません"
 	}
 	review.Sections = append(review.Sections, a5)
 
@@ -185,17 +211,25 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A6",
 		Title:    "native codeへ残る箇所",
 		Coverage: reviewCoverageNotEvaluated,
-		Summary:  "専用評価なし",
-		Sources:  []string{"preview.changedCollections", "preview.unchangedCollections"},
-		Note:     "native codeの残存箇所を列挙する専用項目はまだありません。collection差分は間接signalに留めます",
+		Sources:  []string{"candidate.delta", "preview.changedCollections", "preview.unchangedCollections"},
 	}
-	switch {
-	case containsString(p.ChangedCollections, "customGoBindings"):
-		a6.Items = []string{"customGoBindings collection: changed"}
-	case containsString(p.UnchangedCollections, "customGoBindings"):
-		a6.Items = []string{"customGoBindings collection: unchanged（native code全体が不変であることまでは示しません）"}
-	default:
-		a6.Items = []string{"customGoBindings collectionの状態をこのPreviewから確認できません"}
+	if normalizeEvaluated {
+		a6.Coverage = reviewCoveragePartial
+		a6.Summary = "native code authoring 0件 / residual native dependency impact 未評価"
+		a6.Items = append(a6.Items,
+			"candidateがauthorするnative code: 0件（現行operationはcustomGoBindingsをauthorしません）",
+		)
+		switch {
+		case containsString(p.ChangedCollections, "customGoBindings"):
+			a6.Items = append(a6.Items, "customGoBindings collection: changed")
+		case containsString(p.UnchangedCollections, "customGoBindings"):
+			a6.Items = append(a6.Items, "customGoBindings collection: unchanged")
+		default:
+			a6.Items = append(a6.Items, "customGoBindings collectionの状態は、このPreviewの到達段階では未確認")
+		}
+		a6.Note = "既存custom implementationのどこが変更subjectに依存し、残存・再実装・確認を要するかはまだ追跡していません"
+	} else {
+		a6.Note = "normalize stageが完了していないため、native code authoringの有無も確定できません"
 	}
 	review.Sections = append(review.Sections, a6)
 
