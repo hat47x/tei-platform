@@ -34,11 +34,28 @@ func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontex
 	), nil
 }
 func buildKnowledgeQualification(root, subjectKind, subjectID string, requirements knowledgecontext.QualificationRequirements) (knowledgecontext.QualificationResult, error) {
-	ctx, err := buildKnowledgeContext(root, subjectKind, subjectID)
+	if strings.TrimSpace(root) == "" {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -workspace")
+	}
+	kind := strings.TrimSpace(subjectKind)
+	id := strings.TrimSpace(subjectID)
+	if kind == "" || id == "" {
+		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -subject-kind and -subject-id")
+	}
+	loaded, err := workspace.Load(root)
 	if err != nil {
 		return knowledgecontext.QualificationResult{}, err
 	}
-	return knowledgecontext.Qualify(ctx, requirements)
+	sources, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return knowledgecontext.QualificationResult{}, err
+	}
+	ctx := knowledgecontext.Build(
+		loaded.World,
+		sources,
+		subject.Subject{Kind: kind, ID: id},
+	)
+	return knowledgecontext.QualifyWithSources(ctx, sources, requirements)
 }
 
 func buildKnowledgeQualificationFromFile(root, subjectKind, subjectID, requirementsPath string) (knowledgecontext.QualificationResult, error) {
