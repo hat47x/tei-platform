@@ -355,6 +355,22 @@ func TestAttachQualificationRejectsMalformedRequirements(t *testing.T) {
 	}
 }
 
+func TestCandidateRejectsQualificationKindMismatch(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	candidate.Evidence = []Evidence{{
+		SubjectKind:       "application-pattern",
+		Subject:           "order_entry.customer_reference",
+		Source:            "applications/order-entry/patterns/customer-reference.tei",
+		SourceFingerprint: "sha256:" + strings.Repeat("b", 64),
+		QualificationRequirements: &knowledgecontext.QualificationRequirements{
+			ExpectedKind: "semantic-data",
+		},
+	}}
+	if _, _, err := normalizeCandidate(candidate); err == nil {
+		t.Fatal("qualification expectedKind mismatch was accepted")
+	}
+}
+
 func TestCandidateNormalizesQualificationRequirements(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	candidate.Evidence = []Evidence{{
