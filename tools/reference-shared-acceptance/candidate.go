@@ -111,13 +111,23 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		if len(e.QualificationDependencyEvidence) > 0 && e.QualificationRequirements == nil {
 			return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidenceにはqualificationRequirementsが必要です", i)
 		}
-		for j, dependency := range e.QualificationDependencyEvidence {
-			if strings.TrimSpace(dependency.SubjectKind) == "" ||
-				strings.TrimSpace(dependency.Subject) == "" ||
-				strings.TrimSpace(dependency.Source) == "" ||
-				!revisionPattern.MatchString(strings.TrimSpace(dependency.SourceFingerprint)) {
+		for j := range e.QualificationDependencyEvidence {
+			dependency := &e.QualificationDependencyEvidence[j]
+			dependency.SubjectKind = strings.TrimSpace(dependency.SubjectKind)
+			dependency.Subject = strings.TrimSpace(dependency.Subject)
+			dependency.Source = strings.TrimSpace(dependency.Source)
+			dependency.SourceFingerprint = strings.TrimSpace(dependency.SourceFingerprint)
+			if dependency.SubjectKind == "" ||
+				dependency.Subject == "" ||
+				dependency.Source == "" ||
+				!revisionPattern.MatchString(dependency.SourceFingerprint) {
 				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d]はexact subject / source / fingerprintが必要です", i, j)
 			}
+			p, err := sourceindex.NormalizeWorkspacePath(dependency.Source)
+			if err != nil {
+				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d].source: %w", i, j, err)
+			}
+			dependency.Source = p
 		}
 		if e.Subject != "" && e.SubjectKind == "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
