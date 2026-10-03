@@ -26,6 +26,11 @@ type Check struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type ReviewBinding struct {
+	Fingerprint string                `json:"fingerprint"`
+	Coverage    ReviewCoverageSummary `json:"coverage"`
+}
+
 // Decisionは、Accept / Reject / 受入拒否の結果を記録する。
 // authoritative sourceの一部ではなく、消去してもaccepted meaningは変わらない。
 type Decision struct {
@@ -35,6 +40,7 @@ type Decision struct {
 	CandidateID          string                         `json:"candidateId,omitempty"`
 	CandidateFingerprint string                         `json:"candidateFingerprint,omitempty"`
 	EvidenceFingerprint  string                         `json:"evidenceFingerprint,omitempty"`
+	ReviewBinding        *ReviewBinding                 `json:"reviewBinding,omitempty"`
 	Origin               *Origin                        `json:"origin,omitempty"`
 	BaseModelRevision    string                         `json:"baseModelRevision,omitempty"`
 	ModelRevisionBefore  string                         `json:"modelRevisionBefore,omitempty"`
@@ -66,6 +72,9 @@ var afterWritesHook func(root string)
 type acceptOptions struct {
 	// DerivedOutは、accepted sourceから再生成したCanonical World JSONの出力先。空なら書き出さない。
 	DerivedOut string
+	// ExpectedReviewFingerprintは、callerが直前に確認したReview Projectionとの一致を要求する任意guardである。
+	// 一致してもhuman approvalやauthorityを証明しない。
+	ExpectedReviewFingerprint string
 }
 
 func encodeJSON(value any) ([]byte, error) {
@@ -115,6 +124,25 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		decision.Decision = "refused"
 		decision.Refusals = allDiagnostics(ev.preview)
 		return decision, nil
+	}
+	if opts.ExpectedReviewFingerprint != "" {
+		review := buildReviewProjection(ev)
+		if review.ReviewFingerprint != opts.ExpectedReviewFingerprint {
+			decision.Decision = "refused"
+			decision.Refusals = append(decision.Refusals, Diagnostic{
+				Code: "REVIEW_FINGERPRINT_MISMATCH",
+				Message: fmt.Sprintf(
+					"Accept時のReview Projectionが期待値と一致しません: expected=%s current=%s",
+					opts.ExpectedReviewFingerprint,
+					review.ReviewFingerprint,
+				),
+			})
+			return decision, nil
+		}
+		decision.ReviewBinding = &ReviewBinding{
+			Fingerprint: review.ReviewFingerprint,
+			Coverage:    review.Coverage,
+		}
 	}
 
 	var written []SourceEdit
