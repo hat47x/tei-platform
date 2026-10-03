@@ -1,6 +1,6 @@
 # ISSUE-000040: 業務の意味資産を探索し、明示参照で組み立てる機能を提供する
 
-- 状態: In Progress — S5 / S6 / S7完了（2026-09-21）。S8 Driver scenario実施（2026-09-22）。残るTarget Projectionは未評価
+- 状態: In Progress — S5 / S6 / S7完了（2026-09-21）。S8 Driver scenario実施（2026-09-22）。残るTarget Projectionは未評価。Semantic Extension Reference candidateを実装中（2026-10-04）
 - 提案日: 2026-09-04
 - 提案順位: 3（根幹機能の新規提案内）
 - 本格着手条件: Gate C通過後
@@ -433,6 +433,21 @@ revised Proposalは `repair_intake.intake.customer_id` と `repair_intake.intake
 
 そのcode deltaは、当初unreferenced candidate `e007c67b...` として生成したが、actual `gofmt -d` でS3とfull-validation testにformat driftを検出したためsupersedeした。修正版は当初`dc5d5690dd393b871ba8ee0f2c242352741585a2` を親とするunreferenced branchless candidate `eda2e367bc1a0f12d83a41fc55e253b96bf76e9d` として作成した。その後のmain更新がR7B/Second Application計画文書だけで対象sourceと競合しないことを確認し、6 source blobを変更せず`b12962eebe75eea907241cf6cf2b831da7e99474` 上へ積み直したcurrent candidateは `9f0dd71dbd181e4798f7b8efefb09759bdcc256e` である。remote branch / PRは追加していない。candidateはS3/S4/S5 pressure、new full-workspace Validation pressure、reference-evidence runnerだけを変更し、authoritative `reference/workspace` sourceには触れていない。5 Go filesはactual gofmt差分ゼロかつlocal formatted blob SHAとcandidate blob SHAが一致した。current candidateへの積み直し後も6 source blobは全件同一である。さらにrunnerはactual `bash -n` PASSかつcandidate blob `42db7c4e...` とlocal blobが一致し、current Semantic/Validation APIとhelperのstatic照合でもcompile surfaceの不一致は見つからなかった。RepositoryのKnowledge portability workflowはhosted runner allocation unavailableのためmanual-onlyであり、current candidateのExecutable Evidenceには利用していない。Persistence Mapping未定義もcurrent validatorではそれ自体がerror条件ではない。full Validation pressureはpositive-onlyの偽陽性を避けるため、candidate `8c570c746f78a3346348d3c9bb1f6a3bd6e3debb` でnegative controlを追加し、その6 source blobを変更せずsource-relevant integration base `40209d25...` 直上へ積み直したcandidateは `ccd2544a8a14501774ae3970813c7535e350ec90` である（そのbaseに対しahead 1 / behind 0）。このcandidateを記録する後続docs-only commitだけではsource driftと扱わない。unknown Relationでは `UNKNOWN_APPLICATION_PATTERN_RELATION`、Relation `many` とQuery `zero-or-one` の不整合では `REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH` をexact codeで要求する。強化したtest blobは `0f1e69c1a62077ef31c6f599f567286209c4f0d5` で、local gofmt後blobと一致する。focused実行では `TestSecondApplicationS4ThreeSourceProposalPassesFullWorkspaceValidation`、`TestSecondApplicationS4FullValidationRejectsUnknownRelation`、`TestSecondApplicationS4FullValidationRejectsQueryCardinalityMismatch` の3件を必須とする。その後、Shared Acceptance Boundary実装を含むsource-relevant main `ca0ad042c0fc967421d9643e0c8a104349abf204` 上へ同じ6 source blobをrebaseし、current executable-pressure candidateを `b38869a48dcd8fb3e826a80de239063ee918c366` とした（baseに対しahead 1 / behind 0）。focused test / reference evidence / `tools/repository-health-check.sh` PASSは未取得なので、candidateをmainへ接続せずExecutable Evidenceとも扱わない。
 
+## Semantic Extension Reference — 2026-10-04
+
+RQ-031〜RQ-033で追加した「特定のモデル体系をCoreで特権化しない」「意味論を後から宣言・合成できる」「AIとToolが同じ意味拡張を探索できる」という要求を、最初のReferenceへ落とした。
+
+`tools/reference-semantic-extension-catalog`では、production DSLやCore schemaを先に固定せず、Reference専用descriptorからExtensionを解決する。descriptorはExtensionのidentity、namespace、version、適用対象kind、compatible-major依存、concept、relation、Constraint、Projection / Capabilityへのconnection referenceを持つ。conceptのsubject kindはopenな文字列であり、新しいkindを追加するためにCoreのswitchやCanonical modelを変更しない。
+
+最初のpressureでは、Coreに存在しない`service-level-policy`と`temporal-window`を追加し、既存Source Indexの`semantic-data:repair_intake.intake`と同じcatalogへ載せる。`service-level-policy:support.case.standard-response`は既存Dataを`governs`し、別Extensionが提供する`temporal-window:support.window.business-hours`を利用する。Service Levelの意味をData Modelへ押し込まず、別の意味視点として関係付ける。
+
+resolverはcompatible majorを満たす依存closureを決定論的に作る。同じmajorに複数versionがあれば最も新しいversionを選ぶ。一方、CoreとExtension、または複数Extensionが同じsubject identityを宣言した場合は読み込み順で上書きせず、そのsubjectをresolved catalogから外して`subject-conflict`をUnresolvedへ残す。存在しないrelation端点やConstraint対象も推測で補わない。
+
+catalog出力には選択したExtensionのnamespace、version、適用対象kind、依存条件も残す。これによりAIやToolは、Core subjectとExtension conceptを同じ探索面から取得しながら、どのExtensionが何へ適用でき、何に依存するかを再確認できる。
+
+このReferenceはCanonical authority、Acceptance、Runtime authorityを追加しない。descriptor JSONもproduction DSLではない。複数の意味体系で共通する不足がReferenceから確認されるまではCore primitiveへ昇格させない。
+
+現時点ではexact-headのfocused testと`tools/repository-health-check.sh`を実行していない。したがってRQ-031〜RQ-033のEvidence tierや本Issueの完了条件は更新しない。
 ## 第二Applicationでの受入検証
 
 `order_entry`と異なるApplicationを一つ用い、意味資産の組み立て機能を受入検証します。
@@ -458,7 +473,7 @@ Driverと第一Web Targetで適用結果を確認します。閉じたReference�
 
 ## 上位要求と既存Issueとの関係
 
-関連要求はRQ-001〜RQ-004、RQ-008、RQ-012、RQ-014〜RQ-017、RQ-019、RQ-021〜RQ-023です。Workstream Bの意味知識をCのApplicationとHの開発支援へ接続します。
+関連要求はRQ-001〜RQ-004、RQ-008、RQ-012、RQ-014〜RQ-017、RQ-019、RQ-021〜RQ-023、RQ-031〜RQ-033です。Workstream Bの意味知識をCのApplicationとHの開発支援へ接続します。
 
 ADR-0017 / ADR-0018に従い、Patternは各Applicationが所有します。複数ApplicationとTargetのEvidenceなしに標準CatalogやKernelへ昇格させません。
 
