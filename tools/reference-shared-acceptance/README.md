@@ -61,7 +61,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。`review`は、関連するunresolvedや`customGoBindings` collectionの状態を補助情報として示しますが、専用評価の代わりにはしません。情報がない状態を「変更なし」と読み替えないため、coverageは`未評価`のまま表示します。
 
-このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
+このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
 ### 受理の記録 — なぜそのsourceがあるのか
 
