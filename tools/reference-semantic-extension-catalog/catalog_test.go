@@ -188,6 +188,46 @@ func TestReferenceCatalogReportsSubjectConflictWithoutLoadOrderWinner(t *testing
 	}
 }
 
+func TestReferenceCatalogProtectsCoreNamespaceOwnership(t *testing.T) {
+	coreNamespace := subject.Subject{Kind: "semantic", ID: "shared.policy"}
+	extensionConcept := subject.Subject{Kind: "policy-view", ID: "policy.extension"}
+	extension := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.extension",
+		Namespace: "shared.policy",
+		Version:   "1.0.0",
+		Concepts: []ExtensionConcept{{
+			Subject: extensionConcept,
+		}},
+	}
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{Subjects: []subject.Subject{coreNamespace}},
+		[]ExtensionDescriptor{extension},
+		[]ExtensionRequirement{{Extension: "tei.reference.extension", CompatibleMajor: 1}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !catalogHasSubject(catalog, coreNamespace) {
+		t.Fatalf("core namespace disappeared: %+v", catalog.Subjects)
+	}
+	if catalogHasSubject(catalog, extensionConcept) {
+		t.Fatalf("extension silently took ownership of a core namespace: %+v", catalog.Subjects)
+	}
+	var found bool
+	for _, unresolved := range catalog.Unresolved {
+		if unresolved.Code == "namespace-ownership-conflict" &&
+			strings.Contains(unresolved.Detail, "core") &&
+			strings.Contains(unresolved.Detail, "tei.reference.extension") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("core namespace ownership conflict is missing: %+v", catalog.Unresolved)
+	}
+}
+
 func TestReferenceCatalogKeepsSharedNamespaceOwnershipUnresolved(t *testing.T) {
 	left := ExtensionDescriptor{
 		Schema:    extensionSchema,
