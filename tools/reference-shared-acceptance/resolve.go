@@ -188,7 +188,15 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 		}
 	}
 
-	for i, e := range c.Evidence {
+	out = append(out, validateEvidence(s, c.Evidence)...)
+	return out
+}
+
+func validateEvidence(s snapshot, evidence []Evidence) []Diagnostic {
+	var out []Diagnostic
+	idx := indexWorld(s)
+	fingerprints := s.fingerprints()
+	for i, e := range evidence {
 		if e.Subject != "" {
 			if e.SubjectKind == "" {
 				if !idx.subjects[e.Subject] {
