@@ -87,6 +87,14 @@ func TestReferenceCatalogCombinesCoreAndOpenEndedExtensionSubjects(t *testing.T)
 		catalog.Extensions[1].ID != "tei.reference.temporal-semantics" {
 		t.Fatalf("dependency closure is not deterministic: %+v", catalog.Extensions)
 	}
+	serviceLevel := catalog.Extensions[0]
+	if serviceLevel.Namespace != "support.service-level" ||
+		!reflect.DeepEqual(serviceLevel.AppliesToKinds, []string{"application-pattern", "semantic-data"}) ||
+		len(serviceLevel.Requires) != 1 ||
+		serviceLevel.Requires[0].Extension != "tei.reference.temporal-semantics" ||
+		serviceLevel.Requires[0].CompatibleMajor != 1 {
+		t.Fatalf("extension discovery metadata is incomplete: %+v", serviceLevel)
+	}
 }
 
 func TestReferenceCatalogSelectsHighestCompatibleVersionDeterministically(t *testing.T) {
