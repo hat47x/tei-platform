@@ -73,7 +73,7 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	catalog, err := resolveSemanticCatalog(sourceIndexSubjects(index), descriptors, roots)
+	catalog, err := resolveSemanticCatalog(coreCatalogFromSourceIndex(index), descriptors, roots)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
