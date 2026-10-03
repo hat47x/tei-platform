@@ -137,16 +137,19 @@ browse、record、reference、header-detail、command等、業務システムで
 生成AI向けの開発支援では、次の順序を基本とします。
 
 1. Existing Domain Component
-2. Existing Semantic Pattern / Facet
-3. Existing Policy / Variation
-4. Composition
-5. Declarative expression / rule
-6. Capability call
-7. Custom implementation
+2. Existing Plugin / DSL Semantic Extension
+3. Existing Semantic Pattern / Facet
+4. Existing Policy / Variation
+5. Composition
+6. Declarative expression / rule
+7. Capability call
+8. Custom implementation
 
 毎回ゼロからRepositoryとコードを読み直してApplicationの意味を再構成したり、毎回ゼロからコードを生成したりすることを標準経路にはしません。
 
 生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
+
+Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
 既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
 
@@ -330,6 +333,34 @@ AIエージェントは、少なくとも次を区別できなければなりま
 TEI成果物を読めること、Business Procedureを理解できること、AIのautonomy levelが高いことは、それだけでwrite / invoke / secret / network / external side effect authorityを与えません。
 
 Agentが行った業務もRQ-018〜RQ-020のCommand / Observation / Resource / retry / unknown境界を迂回してはいけません。
+
+## RQ-031 特定のモデル体系をCoreで特権化しないこと
+
+TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflow等のいずれか一つを、すべてのApplicationが従う唯一の上位モデルとして固定してはいけません。
+
+データモデルを含む各体系は、同じシステムの意味を特定の観点から構造化する表現として扱います。新しい観点が必要になった場合も、既存のモデルへ無理に押し込むのではなく、意味上の関係を保ったまま追加できる必要があります。
+
+新しい業務・設計概念を追加するたびにCore変更を要求してはいけません。Coreへ共通機構を追加するのは、複数の意味体系に共通する欠落がReferenceで確認された場合を基本とします。
+
+## RQ-032 Plugin / DSLで意味論を宣言・合成できること
+
+Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
+
+少なくとも、拡張のidentity、namespace、適用範囲、依存、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できる構造を持つ必要があります。
+
+複数の拡張が同じ意味へ異なる定義を与える場合は、読み込み順や偶然の実装順序で黙って上書きしてはいけません。競合、優先関係、互換性を明示的に判定し、一意に決められない場合はUnresolvedとして扱います。
+
+意味を宣言できることは実行Authorityを意味しません。Plugin / DSL拡張もRQ-019の権限・Resource境界を迂回してはいけません。
+
+## RQ-033 AIとToolが意味拡張を実装のレールとして利用できること
+
+生成AI、Editor、Driver等は、Core内蔵の概念とPlugin / DSL拡張を同じ探索対象として扱い、利用可能な概念、適用条件、依存、Constraint、Validation、Projection、Capabilityへの接続を機械的に取得できる必要があります。
+
+生成AIによる実装では、再利用可能な意味拡張の探索とComposition、決定論的に導出できる変換・Validationを、自由生成やApplication固有のcustom implementationより先に利用できる構造を目指します。
+
+複数の実装候補が同じ制約を満たして一意に決められない場合や、判断に必要な情報が不足している場合は、AIが暗黙に一つを選ばず、ProposalまたはUnresolvedとして扱える必要があります。
+
+この要求はAIが誤らないことを前提にしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
 
 ## 要求を実装へ落とすときの原則
 
