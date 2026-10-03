@@ -257,6 +257,81 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 	}
 }
 
+func TestReferenceCatalogNormalizesRootRequirementsAndFingerprintsResolution(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+			Concepts: []ExtensionConcept{{
+				Subject: subject.Subject{Kind: "view-a", ID: "a.example"},
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Concepts: []ExtensionConcept{{
+				Subject: subject.Subject{Kind: "view-b", ID: "b.example"},
+			}},
+		},
+	}
+	left, err := resolveSemanticCatalog(
+		nil,
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.b", CompatibleMajor: 1},
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := resolveSemanticCatalog(
+		nil,
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+			{Extension: "tei.reference.b", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(left.ResolutionFingerprint, "sha256:") {
+		t.Fatalf("resolution fingerprint=%q", left.ResolutionFingerprint)
+	}
+	if left.ResolutionFingerprint != right.ResolutionFingerprint {
+		t.Fatalf("root order changed resolution identity: %s != %s", left.ResolutionFingerprint, right.ResolutionFingerprint)
+	}
+	if !reflect.DeepEqual(left.Requirements, right.Requirements) || len(left.Requirements) != 2 {
+		t.Fatalf("root requirements are not normalized: left=%+v right=%+v", left.Requirements, right.Requirements)
+	}
+}
+
+func TestReferenceCatalogRejectsConflictingRootMajors(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.policy",
+		Namespace: "policy",
+		Version:   "1.0.0",
+	}
+	_, err := resolveSemanticCatalog(
+		nil,
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.policy", CompatibleMajor: 1},
+			{Extension: "tei.reference.policy", CompatibleMajor: 2},
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "incompatible majors") {
+		t.Fatalf("conflicting root majors were not rejected: %v", err)
+	}
+}
+
 func TestReferenceCatalogIsIndependentOfDescriptorLoadOrder(t *testing.T) {
 	descriptors := referenceDescriptors(t)
 	reversed := append([]ExtensionDescriptor(nil), descriptors...)
