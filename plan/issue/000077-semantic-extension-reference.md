@@ -5,6 +5,7 @@
 - 関連: ISSUE-000040 / ISSUE-000047 / ISSUE-000052
 - Product value: 固定モデルではなく、後から意味体系を安全に追加・合成できること
 - 主なReference pressure: SUI hierarchy adoption
+- 依存解決設計基線: `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 
 ## 目的
 
@@ -114,6 +115,24 @@ SUI以外の第二Referenceでも同じ意味が必要であり、同じ契約�
 - extensionからSource / version / dependencies / Validationへ戻れる
 - AIがcustom implementationより前にextensionを候補として発見できる
 
+## 依存規模を成立条件へ含める
+
+標準機能を含む多くの意味体系をSemantic Extensionとして提供する場合、Extensionの推移依存は大きくなる。このReferenceでは一つのExtensionをloadできるだけで成立としない。
+
+詳細な設計判断は`plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`を基線とし、少なくとも次をReference不変条件として扱う。
+
+- Semantic Extensionの依存解決をEnvironment固有のRuntime Plugin解決へ混ぜない。
+- 特定packageのidentityが必要な依存と、Semantic Interfaceを満たせばよい依存を区別する。
+- 異なる意味体系を横断する規則は、どちらか一方へ相互依存を埋め込む前にBridge Extensionを検討する。
+- Extension packageのdependency cycleはAccepted graphへ入れない。
+- 同じ入力のresolved graphをload順やcatalog列挙順で変えない。
+- Accepted Semantic Setはexact version、declaration fingerprint、解決済みdependency / interface wiringを再現できる形で固定する。
+- compatibleな新versionが見つかってもAccepted Semantic Setを自動更新しない。
+- 標準`std.*`を追加する段階でも、同じdependency / conflict / lock / discovery contractを利用する。
+- resolverはresolved setだけでなく、導入理由とconflict causeを人とAIへ説明できる。
+
+最初から高度なsolver実装を固定しない。E0で必要なのは、大規模化してもsolver実装を差し替えられるRequirement / resolved graph / conflict explanationの契約である。
+
 ## 意味と実装を分ける
 
 Semantic Extensionそのものへprocess実行Authorityを持たせません。
@@ -163,21 +182,49 @@ source contractがparentとchildrenの両方向を持つ場合、両者が矛盾
 
 第二Referenceで個別再利用できる可能性を残します。
 
-## E0 — declaration / discoveryだけを先に実証する
+## E0 — declaration / discovery / dependency resolutionを先に実証する
 
-最初のコードincrementは、SUI instance validationの実行まで一気に進めません。
+SUI instance validationの実行まで一気に進めない。E0は一つのworkstreamの中でE0-A〜E0-Cへ分ける。
 
-まず次を実証します。
+### E0-A — declaration / discovery
 
 1. extension declarationをSourceからloadできる。
 2. logical identity / version / dependencyがSource Indexへ入る。
 3. SUI hierarchy definitionから適用extensionへexactに辿れる。
 4. Knowledge Contextからextension Source / version / applicabilityへ戻れる。
 5. extensionが無い状態をCore標準Validationへ暗黙変換しない。
-6. incompatible duplicate definitionをload順で上書きせずfail closedまたはUnresolvedにする。
+6. incompatible duplicate definitionをload順で上書きしない。
 7. extensionを削除しても無関係なCanonical subjectsの意味は変わらない。
 
-E0ではRuntime Pluginを起動しません。
+### E0-B — typed dependency / conflict
+
+Reference-localな小さい依存graphを追加し、次をPressureする。
+
+- diamond dependencyが一つの互換なproviderへ決定論的に収束する
+- package identity dependencyとSemantic Interface dependencyを区別する
+- incompatible version / compatibility levelをload順に依存せずblocking conflictへする
+- package dependency cycleを検出する
+- Bridge Extensionを外した場合、両側の独立Extensionが互いを暗黙requireしない
+- optional Extensionの存在だけで既存meaningを変更しない
+
+SUI hierarchy Extensionをreal root consumerとして残し、synthetic dependency graphだけでRQ-032成立を主張しない。
+
+### E0-C — Semantic Lock / explanation
+
+同じroot requirements、同じCatalog、同じAccepted sourceから、列挙順を変えても同じresolved graphとSemantic Set fingerprintを得ることを確認する。
+
+最低限、次へmachine-readableに辿れることを要求する。
+
+- exact resolved extension identity / semantic version
+- declaration fingerprint
+- requirement -> provider / Semantic Interface wiring
+- root requirementから各Extensionまでのdependency path
+- reverse dependency
+- conflict cause / unresolved requirement
+
+Runtime Pluginの実装versionだけが変わりsemantic declarationが同じ場合、Semantic Set fingerprintへ不要な差分を入れないこともnegative controlで確認する。
+
+E0ではRuntime Pluginを起動しない。
 
 ## E1 — deterministic evaluator boundary
 
@@ -372,16 +419,26 @@ internal/knowledgecontext/    # read-only discovery
 - [ ] Source Indexからextension declarationを発見できる
 - [ ] Knowledge Contextから適用候補をread-only取得できる
 - [ ] duplicate / incompatible definitionをsilent overrideしない
-- [ ] dependency不一致をUnresolvedまたはblocking diagnosticにする
+- [ ] package identity dependencyとSemantic Interface dependencyを区別できる
+- [ ] diamond dependencyの解決がload順 / catalog列挙順に依存しない
+- [ ] dependency version / compatibility conflictをblocking diagnosticまたはUnresolvedにする
+- [ ] Extension package dependency cycleをAccepted graphへ入れない
+- [ ] Bridge Extensionなしで独立Extension同士を暗黙結合しない
+- [ ] optional Extensionの存在だけで既存meaningを変えない
+- [ ] resolved graphをexactなSemantic Lockまたは同等表現へ固定できる
+- [ ] 同じ入力から同じSemantic Set fingerprintを再現できる
+- [ ] resolved Extensionごとにrootからのdependency pathを説明できる
+- [ ] conflict時に両立しないrequirementの由来へ戻れる
 - [ ] extension不在をCore標準意味へ推測変換しない
 - [ ] Semantic ExtensionとRuntime Plugin identityを分ける
+- [ ] Runtime Pluginだけの変更をSemantic Set変更へ無条件に変換しない
 - [ ] extension declarationだけではRuntime Authorityを得ない
 - [ ] accepted extension sourceをToolなしでreloadできる
 - [ ] unrelated Canonical subjectsを変えない
 
 ## 次へ進む条件
 
-E0がexact-head full `tools/repository-health-check.sh`を通ってmainへ入った後、E1 evaluator、E2 SUI fixture、E3 second consumerの順に進めます。
+E0-A〜E0-Cが同じISSUE-000077 workstreamとしてexact-head full `tools/repository-health-check.sh`を通ってmainへ収束した後、E1 evaluator、E2 SUI fixture、E3 second consumerの順に進めます。
 
 E2が成立しても第二consumer前に`std.*`へ昇格しません。
 
@@ -421,3 +478,4 @@ code変更はTEIの通常Gateに従います。
 - `plan/issue/000040-semantic-component-composition.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`
+- `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
