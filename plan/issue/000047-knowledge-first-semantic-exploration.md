@@ -574,21 +574,20 @@ requirementsは少なくとも次を持つ。
 
 ### 2026-10-03 qualification → Shared Acceptance handoff increment
 
-deterministic qualificationの結果をProposal側へ渡す際に、subjectのIDだけへ縮退させない。`applicable`な結果だけが、次のexact Evidenceを運べるようにする。
+deterministic qualificationの結果をProposal側へ渡す際に、subjectのIDだけへ縮退させない。`applicable`な結果だけが、subject kind、Source Index identity、authoritative source path、source fingerprint、評価したrequirementsをexact Evidenceとして運ぶ。
 
-- subject kind
-- Canonical ID
-- authoritative source path
-- source fingerprint
-- qualification時に評価したrequirements
+requirementsがrequired dependencyを明示している場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintをscoped Evidenceとして保持する。requirementsに無いdependencyはhandoffへ含めず、必要なKnowledgeだけを渡す。
 
 `reference-shared-acceptance attach-qualification`は、このEvidenceを既存candidateへ付与する。delta自体は変更せず、candidate fingerprintにも含めない。
 
-Shared AcceptanceのPreviewでは添付済みqualificationを信用せず、current Source Indexへ戻ってsubject kind / source / fingerprintを照合し、同じrequirementsでqualificationを再実行する。current contextで`applicable`でなければresolve stageで拒否する。
+Shared AcceptanceのPreviewでは添付済みqualificationを信用しない。current Source Indexへ戻ってsubject kind / source / fingerprintを照合し、同じrequirementsでqualificationを再実行する。required dependencyがある場合は、そのauthoritative source / fingerprintの集合もcurrent qualificationと比較する。dependencyのIDが同じままsource内容が変わった場合もstaleとして拒否する。
 
-これにより、探索時には適用可能だった資産が、その後のsource変更やApplication scope変更を経たあとも無条件にProposal根拠として残ることを防ぐ。`incompatible`と`unknown`はEvidenceとしてcandidateへ付与できない。
+この鮮度判定はexplicit requirementsに必要なsourceへ限定する。無関係なaccepted changeを理由にqualification全体をstaleへせず、repository-wideなglobal revisionも要求しない。
 
-この接続はqualificationをAcceptanceへ昇格させない。candidateは従来どおりShared Acceptance Boundaryのbase revision、resolve、Validation、architecture policy、Semantic Diff、impact、acceptance policyを通る。
+また、accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent Source Indexへ再照合する。workspace全体のrevision、Decisionが書いたsource、受理理由として使ったEvidenceの現在性を別々に扱い、過去のAcceptanceを現在のapplicabilityとして読み替えない。
+
+`incompatible`と`unknown`はEvidenceとしてcandidateへ付与できない。この接続もqualificationをAcceptanceへ昇格させず、candidateは従来どおりShared Acceptance Boundaryのbase revision、resolve、Validation、architecture policy、Semantic Diff、impact、acceptance policyを通る。
+
 ### 現在のEvidence境界
 
 このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
