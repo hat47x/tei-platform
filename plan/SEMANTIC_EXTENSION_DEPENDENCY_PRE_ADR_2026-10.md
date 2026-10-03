@@ -22,7 +22,7 @@ TEIでは、標準機能を含む多くの意味体系をSemantic Extensionと�
 5. 標準機能も第三者Extensionと同じ契約を使い、Coreだけの隠れた意味追加経路を増やさない。
 6. Extension更新を通常の意味変更と同じShared Acceptance境界で扱える。
 
-この文書では、最終syntaxやresolver実装を固定しない。ISSUE-000077のReferenceで先に検証する不変条件を整理する。
+この文書では、最終syntaxやresolver実装を固定しない。ISSUE-000077のReferenceで先に検証すべき不変条件を整理する。
 
 ## 2. 既存方式から採るもの
 
@@ -36,7 +36,7 @@ Emacsから採るべき点は、本体機能と追加機能が近い拡張面を
 
 MLIRのDialectとInterfaceは、TEIの意味拡張に近い。新しいDialectを追加しても、既存analysisは各Dialectの具体型を列挙せず、Interfaceを通して横断的に扱える。
 
-TEIでも、特定のExtension packageへ直接依存する前に、必要な意味契約を表すSemantic Interfaceへ依存できないかを検討する。特定packageの意味そのものが必要な場合に限り、package identityへ直接依存する。
+TEIでも、特定のExtension packageへ直接依存するより、必要な意味契約を表すSemantic Interfaceへの依存を優先する。特定packageの意味そのものが必要な場合に限り、package identityへ直接依存する。
 
 ### OSGi
 
@@ -52,7 +52,7 @@ Cargoのlock-first、Goの単純な解決規則とgraph pruning、Bazelのcompat
 
 ### PubGrub
 
-依存が複雑になった場合、単に解決不能と返すだけでは、人もAIも修正箇所を判断しにくい。PubGrub型のroot-cause derivationは、「どの要求とどの要求が両立しなかったか」を説明する方法として有力である。
+依存が複雑になった場合、単に解決不能と返すだけでは、人もAIも適切に修正できない。PubGrub型のroot-cause derivationは、「どの要求とどの要求が両立しなかったか」を説明する方法として有力である。
 
 ただし、ISSUE-000077 E0でPubGrub実装そのものを必須にはしない。先に必要なのは、resolverが構造化されたresolution trace / conflict causeを返せる契約である。
 
@@ -251,7 +251,7 @@ Profile自体を新しいSemantic authorityにはしない。
 
 ## 12. AI / Toolへresolverの理由を公開する
 
-Pluginが増えると、人もAIもresolved setだけでは依存関係を十分に追えない。
+Pluginが増えると、人もAIもresolved setだけでは依存関係を保守できない。
 
 少なくとも、次の情報へ機械可読な形で到達できる必要がある。
 
