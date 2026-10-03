@@ -314,6 +314,45 @@ func TestSharedAcceptanceRejectsSourceThatCurrentQualificationDidNotAuthorize(t 
 	t.Fatalf("non-authoritative substituted source was not rejected: %+v", diagnostics)
 }
 
+func TestAttachQualificationRequiresExactEvidenceForEveryExplicitDependency(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	base := knowledgecontext.QualificationResult{
+		Candidate: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+		Status:    knowledgecontext.QualificationApplicable,
+		Requirements: knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			Application:  "order_entry",
+			RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+				Direction: "outgoing",
+				Relation:  "contract-query",
+				Kind:      "database-contract-query",
+				ID:        "master_data.customer/find_by_id",
+			}},
+		},
+		Evidence: []knowledgecontext.QualificationEvidence{{
+			SubjectKind:       "application-pattern",
+			Subject:           "order_entry.customer_reference",
+			Source:            "applications/order_entry/patterns/customer_reference.tei",
+			SourceFingerprint: "sha256:" + strings.Repeat("b", 64),
+		}},
+	}
+	if _, err := attachQualificationEvidence(mustJSON(t, candidate), base); err == nil {
+		t.Fatal("required dependency without authoritative Evidence was attached")
+	}
+
+	extra := base
+	extra.Requirements.RequiredDependencies = nil
+	extra.DependencyEvidence = []knowledgecontext.QualificationEvidence{{
+		SubjectKind:       "database-contract-query",
+		Subject:           "master_data.customer/find_by_id",
+		Source:            "database-contracts/master_data/customer.tei",
+		SourceFingerprint: "sha256:" + strings.Repeat("c", 64),
+	}}
+	if _, err := attachQualificationEvidence(mustJSON(t, candidate), extra); err == nil {
+		t.Fatal("dependency Evidence outside explicit requirements was attached")
+	}
+}
+
 func TestAttachQualificationRejectsNonApplicableResult(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	for _, status := range []knowledgecontext.QualificationStatus{
