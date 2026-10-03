@@ -66,6 +66,15 @@ func TestReferenceCatalogCombinesCoreAndOpenEndedExtensionSubjects(t *testing.T)
 			t.Fatalf("catalog does not contain %+v", want)
 		}
 	}
+	coreEntry, ok := catalogSubject(catalog, subject.Subject{Kind: "semantic-data", ID: "repair_intake.intake"})
+	if !ok || !catalogSourcesContain(coreEntry.Sources, "semantic/repair-intake/intake.tei") {
+		t.Fatalf("core subject source Evidence is missing: %+v", coreEntry)
+	}
+	extensionEntry, ok := catalogSubject(catalog, subject.Subject{Kind: "service-level-policy", ID: "support.case.standard-response"})
+	if !ok || !catalogSourcesContain(extensionEntry.Sources, "service-level-1.1.0.json") {
+		t.Fatalf("extension subject source Evidence is missing: %+v", extensionEntry)
+	}
+
 	if !catalogHasRelation(
 		catalog,
 		subject.Subject{Kind: "service-level-policy", ID: "support.case.standard-response"},
@@ -481,6 +490,25 @@ func catalogHasRelation(catalog SemanticCatalog, from subject.Subject, relation 
 func catalogHasUnresolved(catalog SemanticCatalog, code string, want subject.Subject) bool {
 	for _, item := range catalog.Unresolved {
 		if item.Code == code && item.Subject != nil && *item.Subject == want {
+			return true
+		}
+	}
+	return false
+}
+
+
+func catalogSubject(catalog SemanticCatalog, want subject.Subject) (CatalogSubject, bool) {
+	for _, entry := range catalog.Subjects {
+		if entry.Subject == want {
+			return entry, true
+		}
+	}
+	return CatalogSubject{}, false
+}
+
+func catalogSourcesContain(values []CatalogSource, path string) bool {
+	for _, value := range values {
+		if value.Path == path && value.Fingerprint != "" {
 			return true
 		}
 	}
