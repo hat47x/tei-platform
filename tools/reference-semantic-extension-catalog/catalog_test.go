@@ -89,6 +89,9 @@ func TestReferenceCatalogCombinesCoreAndOpenEndedExtensionSubjects(t *testing.T)
 	}
 	serviceLevel := catalog.Extensions[0]
 	if serviceLevel.Namespace != "support.service-level" ||
+		!strings.HasPrefix(serviceLevel.DescriptorFingerprint, "sha256:") ||
+		serviceLevel.Source != "service-level-1.1.0.json" ||
+		!strings.HasPrefix(serviceLevel.SourceFingerprint, "sha256:") ||
 		!reflect.DeepEqual(serviceLevel.AppliesToKinds, []string{"application-pattern", "semantic-data"}) ||
 		len(serviceLevel.Requires) != 1 ||
 		serviceLevel.Requires[0].Extension != "tei.reference.temporal-semantics" ||
@@ -173,6 +176,53 @@ func TestReferenceCatalogReportsSubjectConflictWithoutLoadOrderWinner(t *testing
 	}
 	if !catalogHasUnresolved(catalog, "subject-conflict", core) {
 		t.Fatalf("subject conflict is missing: %+v", catalog.Unresolved)
+	}
+}
+
+func TestReferenceCatalogKeepsSharedNamespaceOwnershipUnresolved(t *testing.T) {
+	left := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.left",
+		Namespace: "shared.policy",
+		Version:   "1.0.0",
+		Concepts: []ExtensionConcept{{
+			Subject: subject.Subject{Kind: "policy-view", ID: "policy.left"},
+		}},
+	}
+	right := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.right",
+		Namespace: "shared.policy",
+		Version:   "1.0.0",
+		Concepts: []ExtensionConcept{{
+			Subject: subject.Subject{Kind: "policy-view", ID: "policy.right"},
+		}},
+	}
+	catalog, err := resolveSemanticCatalog(
+		nil,
+		[]ExtensionDescriptor{right, left},
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.left", CompatibleMajor: 1},
+			{Extension: "tei.reference.right", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if catalogHasSubject(catalog, left.Concepts[0].Subject) ||
+		catalogHasSubject(catalog, right.Concepts[0].Subject) {
+		t.Fatalf("ambiguous namespace contributions were published: %+v", catalog.Subjects)
+	}
+	var found bool
+	for _, unresolved := range catalog.Unresolved {
+		if unresolved.Code == "namespace-ownership-conflict" &&
+			strings.Contains(unresolved.Detail, "shared.policy") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("namespace ownership conflict is missing: %+v", catalog.Unresolved)
 	}
 }
 
