@@ -87,10 +87,12 @@ catalogは意味の解決結果とSourceの来歴を分けます。
 
 - `descriptorFingerprint`は、正規化したExtension descriptorの意味内容から作るidentityです。
 - `sourceFingerprint`はdescriptor fileそのもののfingerprintで、保存時のprovenanceです。
-- `coreSourceIndexFingerprint`は、現在のWorkspace Source Index全体を正規化して得る入力identityです。
-- `resolutionFingerprint`は、Core Source Index identity、正規化root requirements、選択されたExtensionと解決結果から作ります。descriptor fileのpathやraw fingerprintは含めません。
+- `coreSubjectFingerprint`は、catalogが実際に利用するCore subject集合のidentityです。
+- `coreSourceIndexFingerprint`は、現在のWorkspace Source Index全体のprovenanceを示します。
+- `resolutionFingerprint`は、Core subject集合、正規化root requirements、選択されたExtensionと解決結果から作ります。raw sourceのpathやfingerprintは含めません。
+- `evidenceFingerprint`は、Core Source IndexとExtension descriptor fileのprovenanceを含むEvidence側のidentityです。
 
-このため、descriptor fileを同じ意味のまま移動・再整形してもresolution identityは変わりません。一方、Core Source Indexの内容やExtensionの正規化された意味が変われば、同じroot requirementsでも別のresolutionとして扱えます。
+このため、subject集合を変えないSource Index更新や、descriptor fileを同じ意味のまま移動・再整形した場合は`resolutionFingerprint`を維持し、`evidenceFingerprint`だけを更新できます。Core subject集合やExtensionの正規化された意味が変われば、同じroot requirementsでも別のresolutionとして扱います。
 ## Authority boundary
 
 出力には次を明示します。
