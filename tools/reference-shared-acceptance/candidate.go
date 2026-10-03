@@ -113,6 +113,14 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 			if err != nil {
 				return c, "", fmt.Errorf("evidence[%d].qualificationRequirements: %w", i, err)
 			}
+			if normalizedRequirements.ExpectedKind != e.SubjectKind {
+				return c, "", fmt.Errorf(
+					"evidence[%d].qualificationRequirements.expectedKind %q はsubjectKind %q と一致しません",
+					i,
+					normalizedRequirements.ExpectedKind,
+					e.SubjectKind,
+				)
+			}
 			e.QualificationRequirements = &normalizedRequirements
 		}
 		if e.Subject != "" && e.SubjectKind == "" {
