@@ -401,9 +401,22 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 				}
 			}
 		}
-		if len(d.Evidence) > 0 {
+		if len(d.Evidence) > 0 || d.EvidenceFingerprint != "" {
 			record.EvidenceStatus = "current"
-			record.EvidenceDiagnostics = validateEvidence(s, d.Evidence)
+			if d.EvidenceFingerprint != "" {
+				currentFingerprint := evidenceFingerprintOf(d.Evidence)
+				if currentFingerprint != d.EvidenceFingerprint {
+					record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, Diagnostic{
+						Code: "EVIDENCE_FINGERPRINT_MISMATCH",
+						Message: fmt.Sprintf(
+							"decision recordのevidenceFingerprintがEvidence本文と一致しません: recorded=%s current=%s",
+							d.EvidenceFingerprint,
+							currentFingerprint,
+						),
+					})
+				}
+			}
+			record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, validateEvidence(s, d.Evidence)...)
 			if len(record.EvidenceDiagnostics) > 0 {
 				record.EvidenceStatus = "diverged"
 			}
