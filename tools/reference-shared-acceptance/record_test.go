@@ -195,6 +195,48 @@ func TestDecisionRecordReportsQualificationEvidenceFreshnessSeparately(t *testin
 	}
 }
 
+func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	if decision.EvidenceFingerprint == "" || len(decision.Evidence) == 0 {
+		t.Fatalf("accepted decision lacks bound Evidence identity: %+v", decision)
+	}
+
+	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tampered Decision
+	if err := json.Unmarshal(content, &tampered); err != nil {
+		t.Fatal(err)
+	}
+	tampered.Evidence[0].Note = tampered.Evidence[0].Note + " tampered"
+	encoded, err := encodeJSON(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "diverged" {
+		t.Fatalf("tampered Evidence body was not reported: %+v", record)
+	}
+	var codes []string
+	for _, diagnostic := range record.EvidenceDiagnostics {
+		codes = append(codes, diagnostic.Code)
+	}
+	if !hasCode(codes, "EVIDENCE_FINGERPRINT_MISMATCH") {
+		t.Fatalf("fingerprint mismatch diagnostic is absent: %v", codes)
+	}
+}
+
 // 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
 func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
