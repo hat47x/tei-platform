@@ -47,8 +47,10 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	_ = semanticStage
 	impactStage, impactEvaluated := reviewStage(p, "impact")
 	_ = impactStage
-	normalizeStage, normalizeEvaluated := reviewStage(p, "normalize")
-	applyStage, applyEvaluated := reviewStage(p, "apply")
+	normalizeStage, normalizeReached := reviewStage(p, "normalize")
+	normalizeEvaluated := normalizeReached && normalizeStage.Status == "pass"
+	applyStage, applyReached := reviewStage(p, "apply")
+	applyEvaluated := applyReached && applyStage.Status == "pass"
 
 	a1 := ReviewSection{Code: "A1", Title: "意味差分", Coverage: reviewCoverageNotEvaluated}
 	if semanticEvaluated {
