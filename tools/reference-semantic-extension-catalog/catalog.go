@@ -64,14 +64,16 @@ type CatalogUnresolved struct {
 }
 
 type SemanticCatalog struct {
-	Schema          string              `json:"schema"`
-	Extensions      []CatalogExtension  `json:"extensions,omitempty"`
+	Schema                 string                 `json:"schema"`
+	ResolutionFingerprint  string                 `json:"resolutionFingerprint"`
+	Requirements           []ExtensionRequirement `json:"requirements"`
+	Extensions             []CatalogExtension     `json:"extensions,omitempty"`
 	Subjects        []CatalogSubject    `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
 	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
 	Connections     []CatalogConnection `json:"connections,omitempty"`
 	Unresolved      []CatalogUnresolved `json:"unresolved,omitempty"`
-	AuthorityLimits []string            `json:"authorityLimits"`
+	AuthorityLimits        []string               `json:"authorityLimits"`
 }
 
 const catalogSchema = "tei.reference.semantic-catalog/v0"
@@ -218,15 +220,20 @@ func resolveSemanticCatalog(
 		return nil
 	}
 
-	for _, root := range roots {
+	normalizedRoots, err := normalizeRootRequirements(roots)
+	if err != nil {
+		return SemanticCatalog{}, err
+	}
+	for _, root := range normalizedRoots {
 		if err := visit(root); err != nil {
 			return SemanticCatalog{}, err
 		}
 	}
 
 	catalog := SemanticCatalog{
-		Schema: catalogSchema,
-		Subjects: []CatalogSubject{},
+		Schema:        catalogSchema,
+		Requirements: normalizedRoots,
+		Subjects:      []CatalogSubject{},
 		AuthorityLimits: []string{
 			"catalog-is-not-canonical-authority",
 			"extension-selection-is-not-acceptance",
@@ -412,6 +419,7 @@ func resolveSemanticCatalog(
 		}
 		return catalog.Unresolved[i].Detail < catalog.Unresolved[j].Detail
 	})
+	catalog.ResolutionFingerprint = semanticCatalogFingerprint(catalog)
 	return catalog, nil
 }
 
@@ -447,4 +455,48 @@ func filterCatalog(catalog SemanticCatalog, kind, id string) SemanticCatalog {
 		}
 	}
 	return filtered
+}
+
+
+func normalizeRootRequirements(values []ExtensionRequirement) ([]ExtensionRequirement, error) {
+	if len(values) == 0 {
+		return nil, fmt.Errorf("at least one root extension requirement is required")
+	}
+	normalized := make([]ExtensionRequirement, 0, len(values))
+	seen := map[string]struct{}{}
+	majors := map[string]int{}
+	for _, value := range values {
+		value.Extension = strings.TrimSpace(value.Extension)
+		if value.Extension == "" || value.CompatibleMajor < 0 {
+			return nil, fmt.Errorf("invalid extension requirement")
+		}
+		if major, ok := majors[value.Extension]; ok && major != value.CompatibleMajor {
+			return nil, fmt.Errorf(
+				"root extension %s requires incompatible majors %d and %d",
+				value.Extension,
+				major,
+				value.CompatibleMajor,
+			)
+		}
+		majors[value.Extension] = value.CompatibleMajor
+		key := fmt.Sprintf("%s@%d", value.Extension, value.CompatibleMajor)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	sort.Slice(normalized, func(i, j int) bool {
+		if normalized[i].Extension != normalized[j].Extension {
+			return normalized[i].Extension < normalized[j].Extension
+		}
+		return normalized[i].CompatibleMajor < normalized[j].CompatibleMajor
+	})
+	return normalized, nil
+}
+
+func semanticCatalogFingerprint(catalog SemanticCatalog) string {
+	catalog.ResolutionFingerprint = ""
+	encoded, _ := json.Marshal(catalog)
+	return sourceindex.Fingerprint(encoded)
 }
