@@ -118,7 +118,7 @@ RQ-028が列挙する確認対象と、Product Valueの「形だけの承認」�
 
 A1〜A8をRequirementとして採用する前に、既存Previewだけで人がどこまで判断できるかを実物で確認するため、`tools/reference-shared-acceptance`へread-onlyの`review` commandをcandidate実装した。実装は既存の`evaluate`を再利用し、Acceptanceの判定規則やCanonical modelは増やしていない。
 
-`review`はA1〜A8を固定順で表示する。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。A7は`candidateFingerprint`と`evidenceFingerprint`を分けて示し、Evidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
+`review`はA1〜A8を固定順で表示する。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。各sectionには導出元の`preview.*`または`candidate.*`項目を`sources`として残し、text出力でも`根拠:`として表示する。A7は`candidateFingerprint`と`evidenceFingerprint`を分けて示し、Evidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
 
 A5の権限変更とA6のnative code残存箇所には、現在のPreviewに完全な専用評価がない。そこで、関連するunresolvedやcollection差分を補助情報として表示しつつ、coverage自体は`未評価`とする。「専用情報がない」ことを「変更なし」と読み替えないためである。
 
