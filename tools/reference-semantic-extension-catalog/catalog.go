@@ -20,11 +20,14 @@ type ExtensionIdentity struct {
 }
 
 type CatalogExtension struct {
-	ID             string                 `json:"id"`
-	Namespace      string                 `json:"namespace"`
-	Version        string                 `json:"version"`
-	AppliesToKinds []string               `json:"appliesToKinds,omitempty"`
-	Requires       []ExtensionRequirement `json:"requires,omitempty"`
+	ID                    string                 `json:"id"`
+	Namespace             string                 `json:"namespace"`
+	Version               string                 `json:"version"`
+	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
+	Source                string                 `json:"source,omitempty"`
+	SourceFingerprint     string                 `json:"sourceFingerprint,omitempty"`
+	AppliesToKinds        []string               `json:"appliesToKinds,omitempty"`
+	Requires              []ExtensionRequirement `json:"requires,omitempty"`
 }
 
 type CatalogSubject struct {
@@ -99,6 +102,12 @@ func loadExtensionDescriptors(root string) ([]ExtensionDescriptor, error) {
 		if err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		descriptor.sourcePath = filepath.ToSlash(rel)
+		descriptor.sourceFingerprint = sourceindex.Fingerprint(content)
 		out = append(out, descriptor)
 		return nil
 	})
@@ -241,16 +250,42 @@ func resolveSemanticCatalog(
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
+	namespaceOwners := map[string][]string{}
+	for _, id := range ids {
+		namespaceOwners[selected[id].Namespace] = append(namespaceOwners[selected[id].Namespace], id)
+	}
+	blockedExtensions := map[string]bool{}
+	for namespace, owners := range namespaceOwners {
+		if len(owners) < 2 {
+			continue
+		}
+		sort.Strings(owners)
+		for _, owner := range owners {
+			blockedExtensions[owner] = true
+		}
+		catalog.Unresolved = append(catalog.Unresolved, CatalogUnresolved{
+			Code:   "namespace-ownership-conflict",
+			Detail: fmt.Sprintf("namespace %q is selected from multiple extensions: %s", namespace, strings.Join(owners, ", ")),
+		})
+	}
+
 	for _, id := range ids {
 		descriptor := selected[id]
 		identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
 		catalog.Extensions = append(catalog.Extensions, CatalogExtension{
-			ID:             descriptor.ID,
-			Namespace:      descriptor.Namespace,
-			Version:        descriptor.Version,
-			AppliesToKinds: append([]string(nil), descriptor.AppliesToKinds...),
-			Requires:       append([]ExtensionRequirement(nil), descriptor.Requires...),
+			ID:                    descriptor.ID,
+			Namespace:             descriptor.Namespace,
+			Version:               descriptor.Version,
+			DescriptorFingerprint: descriptorFingerprint(descriptor),
+			Source:                descriptor.sourcePath,
+			SourceFingerprint:     descriptor.sourceFingerprint,
+			AppliesToKinds:        append([]string(nil), descriptor.AppliesToKinds...),
+			Requires:              append([]ExtensionRequirement(nil), descriptor.Requires...),
 		})
+		if blockedExtensions[id] {
+			continue
+		}
 		for _, concept := range descriptor.Concepts {
 			identityCopy := identity
 			entry := CatalogSubject{
@@ -293,6 +328,9 @@ func resolveSemanticCatalog(
 		available[subjectKey(entry.Subject)] = struct{}{}
 	}
 	for _, id := range ids {
+		if blockedExtensions[id] {
+			continue
+		}
 		descriptor := selected[id]
 		identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
 		for _, relation := range descriptor.Relations {
