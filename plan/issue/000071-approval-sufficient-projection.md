@@ -118,13 +118,13 @@ RQ-028が列挙する確認対象と、Product Valueの「形だけの承認」�
 
 A1〜A8をRequirementとして採用する前に、既存Previewだけで人がどこまで判断できるかを実物で確認するため、`tools/reference-shared-acceptance`へread-onlyの`review` commandをcandidate実装した。実装は既存の`evaluate`を再利用し、Acceptanceの判定規則やCanonical modelは増やしていない。
 
-`review`はA1〜A8を固定順で表示する。冒頭には`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionをまとめる。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。各sectionには導出元の`preview.*`または`candidate.*`項目を`sources`として残し、text出力でも`根拠:`として表示する。A7は`candidateFingerprint`と`evidenceFingerprint`を分けて示し、Evidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
+`review`はA1〜A8を固定順で表示する。冒頭には`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionをまとめる。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。各sectionには導出元の`preview.*`または`candidate.*`項目を`sources`として残し、text出力でも`根拠:`として表示する。`candidateFingerprint`は意味、`evidenceFingerprint`は根拠、`reviewFingerprint`はA1〜A8を含む提示Projectionのidentityとして分ける。A7はEvidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
 
 A5の権限変更とA6のnative code残存箇所には、現在のPreviewだけでは完全な専用評価がない。candidateのtyped operationから、Permission grant・Resource binding・lease・実行principalや`customGoBindings`を直接authorしないことは決定論的に確認できるため、この範囲は`一部`として表示する。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価として残す。前者を根拠に後者まで「変更なし」とは判定しない。
 
-既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6の`未評価`表示、A7の逆追跡情報、A8の変更単位、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
+既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6でcandidate自身のauthoringと未評価の実効影響を分けること、A7の逆追跡情報、A8の変更単位、`reviewFingerprint`の再現性、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
 
-このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
+このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`reviewFingerprint`は提示内容のidentityであってhuman approval tokenではない。`previewAcceptable`もShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
 
 ## 具体例
 
