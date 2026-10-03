@@ -46,9 +46,9 @@ extension descriptors
 
 同じsubject identityをCoreとExtension、または複数Extensionが宣言した場合、読み込み順で勝者を決めません。
 
-そのsubjectはresolved catalogから外し、`subject-conflict`を`unresolved`へ出します。Relation / Constraintが存在しないsubjectを参照した場合も、推測で補わずUnresolvedにします。
+そのsubjectはresolved catalogから外し、`subject-conflict`を`unresolved`へ出します。複数の選択済みExtensionが同じnamespaceを所有する場合も、互換性contractが無い段階ではどちらかを暗黙に採用せず、双方のsemantic contributionを公開しないまま`namespace-ownership-conflict`として残します。Relation / Constraintが存在しないsubjectを参照した場合も、推測で補いません。
 
-compatible majorを満たすExtensionが無い場合、dependency resolution自体をfail closedにします。同じmajor内に複数versionがある場合は、最も新しいversionを決定論的に選びます。
+compatible majorを満たすExtensionが無い場合、dependency resolution自体をfail closedにします。同じmajor内に複数versionがある場合は、最も新しいversionを決定論的に選びます。root requirementは正規化してcatalogへ残し、同じExtensionに異なるmajorを同時要求した場合は拒否します。
 
 ## Reference scenario
 
@@ -81,6 +81,16 @@ go run ./tools/reference-semantic-extension-catalog \
   -subject-id support.case.standard-response
 ```
 
+## Identityとprovenance
+
+catalogは意味の解決結果とSourceの来歴を分けます。
+
+- `descriptorFingerprint`は、正規化したExtension descriptorの意味内容から作るidentityです。
+- `sourceFingerprint`はdescriptor fileそのもののfingerprintで、保存時のprovenanceです。
+- `coreSourceIndexFingerprint`は、現在のWorkspace Source Index全体を正規化して得る入力identityです。
+- `resolutionFingerprint`は、Core Source Index identity、正規化root requirements、選択されたExtensionと解決結果から作ります。descriptor fileのpathやraw fingerprintは含めません。
+
+このため、descriptor fileを同じ意味のまま移動・再整形してもresolution identityは変わりません。一方、Core Source Indexの内容やExtensionの正規化された意味が変われば、同じroot requirementsでも別のresolutionとして扱えます。
 ## Authority boundary
 
 出力には次を明示します。
