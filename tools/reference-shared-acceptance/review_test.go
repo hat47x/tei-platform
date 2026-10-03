@@ -33,8 +33,8 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 		t.Fatalf("sections=%d want 8", len(review.Sections))
 	}
 	if review.Coverage.Available != 3 ||
-		review.Coverage.Partial != 3 ||
-		review.Coverage.NotEvaluated != 2 ||
+		review.Coverage.Partial != 5 ||
+		review.Coverage.NotEvaluated != 0 ||
 		len(review.Coverage.Incomplete) != 5 {
 		t.Fatalf("coverage=%+v", review.Coverage)
 	}
@@ -71,12 +71,16 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	}
 
 	a5 := reviewSection(t, review, "A5")
-	if a5.Coverage != reviewCoverageNotEvaluated {
-		t.Fatalf("A5 coverage=%s", a5.Coverage)
+	if a5.Coverage != reviewCoveragePartial ||
+		a5.Summary != "runtime authority grant 0件 / effective authority impact 未評価" ||
+		!sectionContains(a5, "runtime authority grant: 0件") {
+		t.Fatalf("A5=%+v", a5)
 	}
 
 	a6 := reviewSection(t, review, "A6")
-	if a6.Coverage != reviewCoverageNotEvaluated || !sectionContains(a6, "customGoBindings collection: unchanged") {
+	if a6.Coverage != reviewCoveragePartial ||
+		a6.Summary != "native code authoring 0件 / residual native dependency impact 未評価" ||
+		!sectionContains(a6, "customGoBindings collection: unchanged") {
 		t.Fatalf("A6=%+v", a6)
 	}
 
@@ -135,7 +139,9 @@ func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
 	}
 
 	a5 := reviewSection(t, review, "A5")
-	if a5.Coverage != reviewCoverageNotEvaluated || !sectionContains(a5, "ENVIRONMENT_BINDING_NOT_AUTHORED") {
+	if a5.Coverage != reviewCoveragePartial ||
+		!sectionContains(a5, "Application追加: 1件") ||
+		!sectionContains(a5, "ENVIRONMENT_BINDING_NOT_AUTHORED") {
 		t.Fatalf("A5=%+v", a5)
 	}
 
@@ -154,6 +160,39 @@ func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
 	if a8.Summary != "6 / 8" || !sectionContains(a8, "変更subject数 6 / 上限 8") {
 		t.Fatalf("A8=%+v", a8)
 	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
+func TestReviewSeparatesEnvironmentBindingFromRuntimeAuthority(t *testing.T) {
+	dir := scratchWorkspaceBeforeEnvironmentBinding(t)
+	before := treeDigest(t, dir)
+	ev, err := evaluate(dir, mustJSON(t, environmentBindingCandidate(revisionOfDir(t, dir))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("preview is not acceptable: %+v", ev.preview.Stages)
+	}
+
+	review := buildReviewProjection(ev)
+	a5 := reviewSection(t, review, "A5")
+	if a5.Coverage != reviewCoveragePartial ||
+		a5.Summary != "runtime authority grant 0件 / effective authority impact 未評価" ||
+		!sectionContains(a5, "Environment binding追加: 2件") ||
+		!sectionContains(a5, "RUNTIME_AUTHORITY_NOT_GRANTED") {
+		t.Fatalf("A5=%+v", a5)
+	}
+	if !strings.Contains(a5.Note, "実効権限が変わらないことは別") {
+		t.Fatalf("A5 did not preserve the effective-authority gap: %+v", a5)
+	}
+
+	a6 := reviewSection(t, review, "A6")
+	if a6.Coverage != reviewCoveragePartial ||
+		!sectionContains(a6, "candidateがauthorするnative code: 0件") ||
+		!strings.Contains(a6.Note, "既存custom implementation") {
+		t.Fatalf("A6=%+v", a6)
+	}
+
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }
 
@@ -182,12 +221,14 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 				for _, want := range []string{
 					"# Shared Acceptance Review",
 					"## A1 意味差分 [表示可能]",
-					"## A5 権限の変更 [未評価]",
-					"## A6 native codeへ残る箇所 [未評価]",
+					"## A5 権限の変更 [一部]",
+					"## A6 native codeへ残る箇所 [一部]",
 					"## A8 承認単位の大きさ [表示可能]",
 					"candidate fingerprint:",
 					"evidence fingerprint:",
+					"coverage: 表示可能 3 / 一部 5 / 未評価 0",
 					"要約: semantic 1件 / application 0件 / environment 0件",
+					"要約: runtime authority grant 0件 / effective authority impact 未評価",
 					"根拠: preview.semanticDiff",
 				} {
 					if !strings.Contains(stdout.String(), want) {
