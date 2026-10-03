@@ -43,10 +43,8 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Acceptable:           p.Acceptable,
 	}
 
-	semanticStage, semanticEvaluated := reviewStage(p, "semantic-diff")
-	_ = semanticStage
-	impactStage, impactEvaluated := reviewStage(p, "impact")
-	_ = impactStage
+	_, semanticEvaluated := reviewStage(p, "semantic-diff")
+	_, impactEvaluated := reviewStage(p, "impact")
 	normalizeStage, normalizeReached := reviewStage(p, "normalize")
 	normalizeEvaluated := normalizeReached && normalizeStage.Status == "pass"
 	applyStage, applyReached := reviewStage(p, "apply")
