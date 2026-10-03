@@ -18,6 +18,7 @@ type ReviewSection struct {
 	Code     string   `json:"code"`
 	Title    string   `json:"title"`
 	Coverage string   `json:"coverage"`
+	Sources  []string `json:"sources,omitempty"`
 	Items    []string `json:"items,omitempty"`
 	Note     string   `json:"note,omitempty"`
 }
@@ -50,7 +51,12 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	applyStage, applyReached := reviewStage(p, "apply")
 	applyEvaluated := applyReached && applyStage.Status == "pass"
 
-	a1 := ReviewSection{Code: "A1", Title: "意味差分", Coverage: reviewCoverageNotEvaluated}
+	a1 := ReviewSection{
+		Code:     "A1",
+		Title:    "意味差分",
+		Coverage: reviewCoverageNotEvaluated,
+		Sources:  []string{"preview.semanticDiff", "preview.applicationDiff", "preview.environmentDiff"},
+	}
 	if semanticEvaluated {
 		a1.Coverage = reviewCoverageAvailable
 		for _, change := range allChanges(p) {
@@ -64,7 +70,12 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	review.Sections = append(review.Sections, a1)
 
-	a2 := ReviewSection{Code: "A2", Title: "影響", Coverage: reviewCoverageNotEvaluated}
+	a2 := ReviewSection{
+		Code:     "A2",
+		Title:    "影響",
+		Coverage: reviewCoverageNotEvaluated,
+		Sources:  []string{"preview.impact", "preview.unresolved"},
+	}
 	if impactEvaluated {
 		a2.Coverage = reviewCoverageAvailable
 		for _, edge := range p.Impact {
@@ -86,6 +97,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A3",
 		Title:    "例外・診断",
 		Coverage: reviewCoveragePartial,
+		Sources:  []string{"preview.stages[*].diagnostics"},
 		Note:     "受入stageのdiagnosticは表示しますが、業務上の例外を独立に列挙する専用Projectionはまだありません",
 	}
 	for _, stage := range p.Stages {
@@ -102,7 +114,12 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	review.Sections = append(review.Sections, a3)
 
-	a4 := ReviewSection{Code: "A4", Title: "未解決点", Coverage: reviewCoverageNotEvaluated}
+	a4 := ReviewSection{
+		Code:     "A4",
+		Title:    "未解決点",
+		Coverage: reviewCoverageNotEvaluated,
+		Sources:  []string{"preview.unresolved"},
+	}
 	if impactEvaluated {
 		a4.Coverage = reviewCoverageAvailable
 		for _, unresolved := range p.Unresolved {
@@ -120,6 +137,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A5",
 		Title:    "権限の変更",
 		Coverage: reviewCoverageNotEvaluated,
+		Sources:  []string{"preview.unresolved", "preview.changedCollections"},
 		Note:     "権限差分を判定する専用項目はまだありません。下記は既存Previewから読める関連signalであり、権限変更の完全な判定ではありません",
 	}
 	for _, unresolved := range p.Unresolved {
@@ -141,6 +159,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A6",
 		Title:    "native codeへ残る箇所",
 		Coverage: reviewCoverageNotEvaluated,
+		Sources:  []string{"preview.changedCollections", "preview.unchangedCollections"},
 		Note:     "native codeの残存箇所を列挙する専用項目はまだありません。collection差分は間接signalに留めます",
 	}
 	switch {
@@ -157,6 +176,12 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A7",
 		Title:    "逆追跡",
 		Coverage: reviewCoverageNotEvaluated,
+		Sources: []string{
+			"candidate.evidence",
+			"preview.candidateFingerprint",
+			"preview.evidenceFingerprint",
+			"preview.sourceEdits",
+		},
 	}
 	if normalizeEvaluated {
 		a7.Coverage = reviewCoveragePartial
@@ -196,7 +221,17 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	review.Sections = append(review.Sections, a7)
 
-	a8 := ReviewSection{Code: "A8", Title: "承認単位の大きさ", Coverage: reviewCoverageNotEvaluated}
+	a8 := ReviewSection{
+		Code:     "A8",
+		Title:    "承認単位の大きさ",
+		Coverage: reviewCoverageNotEvaluated,
+		Sources: []string{
+			"preview.semanticDiff",
+			"preview.applicationDiff",
+			"preview.environmentDiff",
+			"acceptance-policy.maxSubjectChanges",
+		},
+	}
 	if semanticEvaluated {
 		n := len(allChanges(p))
 		a8.Coverage = reviewCoverageAvailable
@@ -281,6 +316,9 @@ func renderReviewProjection(review ReviewProjection) string {
 		sort.Strings(items)
 		for _, item := range items {
 			fmt.Fprintf(&b, "- %s\n", item)
+		}
+		if len(section.Sources) > 0 {
+			fmt.Fprintf(&b, "根拠: %s\n", strings.Join(section.Sources, ", "))
 		}
 		if section.Note != "" {
 			fmt.Fprintf(&b, "注記: %s\n", section.Note)
