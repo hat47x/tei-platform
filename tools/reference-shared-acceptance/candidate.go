@@ -247,6 +247,15 @@ func candidateEvidenceJSONKey(value any) string {
 	return string(encoded)
 }
 
+func evidenceFingerprintOf(evidence []Evidence) string {
+	if len(evidence) == 0 {
+		return ""
+	}
+	raw, _ := json.Marshal(evidence)
+	sum := sha256.Sum256(raw)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
 func fingerprintOf(baseModelRevision string, ops []Operation) string {
 	raw, _ := json.Marshal(struct {
 		BaseModelRevision string      `json:"baseModelRevision"`
