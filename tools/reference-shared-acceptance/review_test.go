@@ -197,6 +197,87 @@ func TestReviewFingerprintBindsExactProjectionWithoutChangingSemanticIdentity(t 
 	}
 }
 
+func TestAcceptCanBindTheExactReviewProjection(t *testing.T) {
+	dir := scratchWorkspace(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	ev, err := evaluate(dir, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := buildReviewProjection(ev)
+
+	decision, err := accept(dir, data, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "accepted" || !decision.SourceChanged {
+		t.Fatalf("decision=%+v", decision)
+	}
+	if decision.ReviewBinding == nil ||
+		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		t.Fatalf("review binding=%+v want %s", decision.ReviewBinding, review.ReviewFingerprint)
+	}
+	if decision.ReviewBinding.Coverage.Available != review.Coverage.Available ||
+		decision.ReviewBinding.Coverage.Partial != review.Coverage.Partial ||
+		decision.ReviewBinding.Coverage.NotEvaluated != review.Coverage.NotEvaluated ||
+		len(decision.ReviewBinding.Coverage.Incomplete) != len(review.Coverage.Incomplete) {
+		t.Fatalf("review coverage drifted: decision=%+v review=%+v", decision.ReviewBinding.Coverage, review.Coverage)
+	}
+}
+
+func TestAcceptRefusesWhenTheReviewedProjectionChanged(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	originalData := mustJSON(t, candidate)
+	originalEvaluation, err := evaluate(dir, originalData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalReview := buildReviewProjection(originalEvaluation)
+
+	changed := candidate
+	changed.Intent += "（Review後に説明を変更）"
+	changedData := mustJSON(t, changed)
+	changedEvaluation, err := evaluate(dir, changedData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changedReview := buildReviewProjection(changedEvaluation)
+	if changedReview.CandidateFingerprint != originalReview.CandidateFingerprint ||
+		changedReview.EvidenceFingerprint != originalReview.EvidenceFingerprint {
+		t.Fatalf(
+			"presentation-only change altered semantic/evidence identity: candidate=%s/%s evidence=%s/%s",
+			originalReview.CandidateFingerprint,
+			changedReview.CandidateFingerprint,
+			originalReview.EvidenceFingerprint,
+			changedReview.EvidenceFingerprint,
+		)
+	}
+	if changedReview.ReviewFingerprint == originalReview.ReviewFingerprint {
+		t.Fatalf("changed presentation kept review fingerprint %s", originalReview.ReviewFingerprint)
+	}
+
+	decision, err := accept(dir, changedData, acceptOptions{
+		ExpectedReviewFingerprint: originalReview.ReviewFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "refused" || decision.SourceChanged {
+		t.Fatalf("decision=%+v", decision)
+	}
+	if !decisionRefusalHasCode(decision, "REVIEW_FINGERPRINT_MISMATCH") {
+		t.Fatalf("review mismatch refusal is absent: %+v", decision.Refusals)
+	}
+	if decision.ReviewBinding != nil {
+		t.Fatalf("mismatched Review was recorded as bound: %+v", decision.ReviewBinding)
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
 func TestReviewSeparatesEnvironmentBindingFromRuntimeAuthority(t *testing.T) {
 	dir := scratchWorkspaceBeforeEnvironmentBinding(t)
 	before := treeDigest(t, dir)
@@ -328,6 +409,15 @@ func reviewSection(t *testing.T, review ReviewProjection, code string) ReviewSec
 	}
 	t.Fatalf("review section %s not found: %+v", code, review.Sections)
 	return ReviewSection{}
+}
+
+func decisionRefusalHasCode(decision Decision, want string) bool {
+	for _, refusal := range decision.Refusals {
+		if refusal.Code == want {
+			return true
+		}
+	}
+	return false
 }
 
 func sectionContains(section ReviewSection, want string) bool {
