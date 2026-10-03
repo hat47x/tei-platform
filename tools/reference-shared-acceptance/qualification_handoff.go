@@ -55,12 +55,17 @@ func attachQualificationEvidence(candidateData []byte, qualification knowledgeco
 			return Candidate{}, fmt.Errorf("qualification evidence[%d]にsourceまたはsourceFingerprintがありません", i)
 		}
 		requirements := qualification.Requirements
+		dependencyEvidence := append([]knowledgecontext.QualificationEvidence(nil), qualification.DependencyEvidence...)
+		sort.Slice(dependencyEvidence, func(i, j int) bool {
+			return qualificationEvidenceKey(dependencyEvidence[i]) < qualificationEvidenceKey(dependencyEvidence[j])
+		})
 		item := Evidence{
-			SubjectKind:               evidence.SubjectKind,
-			Subject:                   evidence.Subject,
-			Source:                    evidence.Source,
-			SourceFingerprint:         evidence.SourceFingerprint,
-			QualificationRequirements: &requirements,
+			SubjectKind:                     evidence.SubjectKind,
+			Subject:                         evidence.Subject,
+			Source:                          evidence.Source,
+			SourceFingerprint:               evidence.SourceFingerprint,
+			QualificationRequirements:       &requirements,
+			QualificationDependencyEvidence: dependencyEvidence,
 		}
 		key := evidenceKey(item)
 		if _, ok := seen[key]; ok {
@@ -83,4 +88,32 @@ func attachQualificationEvidence(candidateData []byte, qualification knowledgeco
 func evidenceKey(e Evidence) string {
 	encoded, _ := json.Marshal(e)
 	return string(encoded)
+}
+
+
+func qualificationEvidenceKey(e knowledgecontext.QualificationEvidence) string {
+	encoded, _ := json.Marshal(e)
+	return string(encoded)
+}
+
+func sameQualificationEvidence(left, right []knowledgecontext.QualificationEvidence) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	leftKeys := make([]string, len(left))
+	rightKeys := make([]string, len(right))
+	for i := range left {
+		leftKeys[i] = qualificationEvidenceKey(left[i])
+	}
+	for i := range right {
+		rightKeys[i] = qualificationEvidenceKey(right[i])
+	}
+	sort.Strings(leftKeys)
+	sort.Strings(rightKeys)
+	for i := range leftKeys {
+		if leftKeys[i] != rightKeys[i] {
+			return false
+		}
+	}
+	return true
 }
