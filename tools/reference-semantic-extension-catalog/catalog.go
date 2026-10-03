@@ -19,6 +19,14 @@ type ExtensionIdentity struct {
 	Version string `json:"version"`
 }
 
+type CatalogExtension struct {
+	ID             string                 `json:"id"`
+	Namespace      string                 `json:"namespace"`
+	Version        string                 `json:"version"`
+	AppliesToKinds []string               `json:"appliesToKinds,omitempty"`
+	Requires       []ExtensionRequirement `json:"requires,omitempty"`
+}
+
 type CatalogSubject struct {
 	Subject   subject.Subject    `json:"subject"`
 	Origin    string             `json:"origin"`
@@ -54,7 +62,7 @@ type CatalogUnresolved struct {
 
 type SemanticCatalog struct {
 	Schema          string              `json:"schema"`
-	Extensions      []ExtensionIdentity `json:"extensions,omitempty"`
+	Extensions      []CatalogExtension  `json:"extensions,omitempty"`
 	Subjects        []CatalogSubject    `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
 	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
@@ -236,7 +244,13 @@ func resolveSemanticCatalog(
 	for _, id := range ids {
 		descriptor := selected[id]
 		identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
-		catalog.Extensions = append(catalog.Extensions, identity)
+		catalog.Extensions = append(catalog.Extensions, CatalogExtension{
+			ID:             descriptor.ID,
+			Namespace:      descriptor.Namespace,
+			Version:        descriptor.Version,
+			AppliesToKinds: append([]string(nil), descriptor.AppliesToKinds...),
+			Requires:       append([]ExtensionRequirement(nil), descriptor.Requires...),
+		})
 		for _, concept := range descriptor.Concepts {
 			identityCopy := identity
 			entry := CatalogSubject{
