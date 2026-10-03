@@ -42,7 +42,7 @@ type ReviewProjection struct {
 	Intent               string                `json:"intent,omitempty"`
 	CandidateFingerprint string                `json:"candidateFingerprint,omitempty"`
 	EvidenceFingerprint  string                `json:"evidenceFingerprint,omitempty"`
-	Acceptable           bool                  `json:"acceptable"`
+	PreviewAcceptable    bool                  `json:"previewAcceptable"`
 	Coverage             ReviewCoverageSummary `json:"coverage"`
 	Sections             []ReviewSection       `json:"sections"`
 }
@@ -55,7 +55,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Intent:               ev.candidate.Intent,
 		CandidateFingerprint: p.CandidateFingerprint,
 		EvidenceFingerprint:  p.EvidenceFingerprint,
-		Acceptable:           p.Acceptable,
+		PreviewAcceptable:    p.Acceptable,
 	}
 
 	_, semanticEvaluated := reviewStage(p, "semantic-diff")
@@ -356,10 +356,10 @@ func renderReviewProjection(review ReviewProjection) string {
 	if review.EvidenceFingerprint != "" {
 		fmt.Fprintf(&b, "evidence fingerprint: %s\n", review.EvidenceFingerprint)
 	}
-	if review.Acceptable {
-		b.WriteString("preview: 受入可能\n")
+	if review.PreviewAcceptable {
+		b.WriteString("machine preview: 受入可能\n")
 	} else {
-		b.WriteString("preview: 受入不可\n")
+		b.WriteString("machine preview: 受入不可\n")
 	}
 	fmt.Fprintf(
 		&b,
