@@ -512,6 +512,41 @@ func TestCandidateRejectsQualificationKindMismatch(t *testing.T) {
 	}
 }
 
+func TestCandidateRejectsDependencyEvidenceOutsideExplicitRequirements(t *testing.T) {
+	base := Evidence{
+		SubjectKind:       "application-pattern",
+		Subject:           "order_entry.customer_reference",
+		Source:            "applications/order_entry/patterns/customer_reference.tei",
+		SourceFingerprint: "sha256:" + strings.Repeat("b", 64),
+		QualificationRequirements: &knowledgecontext.QualificationRequirements{
+			ExpectedKind: "application-pattern",
+			RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+				Direction: "outgoing",
+				Relation:  "contract-query",
+				Kind:      "database-contract-query",
+				ID:        "master_data.customer/find_by_id",
+			}},
+		},
+	}
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	candidate.Evidence = []Evidence{base}
+	if _, _, err := normalizeCandidate(candidate); err == nil {
+		t.Fatal("required dependency without authoritative Evidence was normalized")
+	}
+
+	extra := base
+	extra.QualificationDependencyEvidence = []knowledgecontext.QualificationEvidence{{
+		SubjectKind:       "semantic-data",
+		Subject:           "customer.customer",
+		Source:            "semantic/customer/customer.tei",
+		SourceFingerprint: "sha256:" + strings.Repeat("c", 64),
+	}}
+	candidate.Evidence = []Evidence{extra}
+	if _, _, err := normalizeCandidate(candidate); err == nil {
+		t.Fatal("dependency Evidence outside explicit requirements was normalized")
+	}
+}
+
 func TestCandidateNormalizesQualificationRequirements(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	candidate.Evidence = []Evidence{{
@@ -538,6 +573,20 @@ func TestCandidateNormalizesQualificationRequirements(t *testing.T) {
 				},
 			},
 		},
+		QualificationDependencyEvidence: []knowledgecontext.QualificationEvidence{
+			{
+				SubjectKind:       " database-contract-query ",
+				Subject:           " z.query ",
+				Source:            " database-contracts/z.tei ",
+				SourceFingerprint: "sha256:" + strings.Repeat("c", 64),
+			},
+			{
+				SubjectKind:       " semantic-data ",
+				Subject:           " a.data ",
+				Source:            " semantic/a/data.tei ",
+				SourceFingerprint: "sha256:" + strings.Repeat("d", 64),
+			},
+		},
 	}}
 
 	normalized, _, err := normalizeCandidate(candidate)
@@ -553,6 +602,16 @@ func TestCandidateNormalizesQualificationRequirements(t *testing.T) {
 	}
 	if len(requirements.RequiredDependencies) != 2 {
 		t.Fatalf("dependencies=%+v", requirements.RequiredDependencies)
+	}
+	if len(normalized.Evidence[0].QualificationDependencyEvidence) != 2 {
+		t.Fatalf("dependency Evidence=%+v", normalized.Evidence[0].QualificationDependencyEvidence)
+	}
+	for _, evidence := range normalized.Evidence[0].QualificationDependencyEvidence {
+		if strings.TrimSpace(evidence.SubjectKind) != evidence.SubjectKind ||
+			strings.TrimSpace(evidence.Subject) != evidence.Subject ||
+			strings.TrimSpace(evidence.Source) != evidence.Source {
+			t.Fatalf("dependency Evidence was not normalized: %+v", evidence)
+		}
 	}
 	first, second := requirements.RequiredDependencies[0], requirements.RequiredDependencies[1]
 	if first.Direction != "incoming" ||
