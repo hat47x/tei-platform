@@ -193,6 +193,23 @@ func TestBuildKnowledgeQualificationClassifiesActualPatternApplicable(t *testing
 			t.Fatalf("qualification Evidence is incomplete: %+v", evidence)
 		}
 	}
+	if len(got.DependencyEvidence) == 0 {
+		t.Fatalf("applicable qualification lacks required dependency Evidence: %+v", got)
+	}
+	var foundDependency bool
+	for _, evidence := range got.DependencyEvidence {
+		if evidence.SubjectKind == "database-contract-query" &&
+			evidence.Subject == "master_data.customer/find_by_id" &&
+			evidence.Source != "" &&
+			evidence.SourceFingerprint != "" {
+			foundDependency = true
+			break
+		}
+	}
+	if !foundDependency {
+		t.Fatalf("contract query dependency Evidence is missing: %+v", got.DependencyEvidence)
+	}
+}
 
 func TestBuildKnowledgeQualificationRejectsApplicationOwnedNearMatch(t *testing.T) {
 	root := testRepositoryRoot(t)
