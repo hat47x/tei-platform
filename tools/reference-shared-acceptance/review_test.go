@@ -40,7 +40,9 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	}
 
 	a1 := reviewSection(t, review, "A1")
-	if a1.Coverage != reviewCoverageAvailable || !sectionContains(a1, "added validation:sales.order_line.unit_price_positive") {
+	if a1.Coverage != reviewCoverageAvailable ||
+		!sectionContains(a1, "added validation:sales.order_line.unit_price_positive") ||
+		!containsString(a1.Sources, "preview.semanticDiff") {
 		t.Fatalf("A1=%+v", a1)
 	}
 
@@ -62,7 +64,8 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	a7 := reviewSection(t, review, "A7")
 	if a7.Coverage != reviewCoveragePartial ||
 		!sectionContains(a7, "candidateFingerprint: "+review.CandidateFingerprint) ||
-		!sectionContains(a7, "source edit: semantic/sales/validation.tei") {
+		!sectionContains(a7, "source edit: semantic/sales/validation.tei") ||
+		!containsString(a7.Sources, "preview.evidenceFingerprint") {
 		t.Fatalf("A7=%+v", a7)
 	}
 
@@ -104,6 +107,7 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 					"## A8 承認単位の大きさ [表示可能]",
 					"candidate fingerprint:",
 					"evidence fingerprint:",
+					"根拠: preview.semanticDiff",
 				} {
 					if !strings.Contains(stdout.String(), want) {
 						t.Fatalf("text review lacks %q:\n%s", want, stdout.String())
