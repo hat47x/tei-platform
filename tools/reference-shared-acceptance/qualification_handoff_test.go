@@ -25,7 +25,7 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 		snapshot.index,
 		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
 	)
-	qualification, err := knowledgecontext.Qualify(ctx, knowledgecontext.QualificationRequirements{
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, knowledgecontext.QualificationRequirements{
 		ExpectedKind: "application-pattern",
 		Application:  "order_entry",
 		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
@@ -81,6 +81,20 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 	}
 	if !foundRequirements {
 		t.Fatalf("qualification requirements were not retained: %+v", grounded.Evidence)
+	}
+	var foundDependencyEvidence bool
+	for _, evidence := range grounded.Evidence {
+		for _, dependency := range evidence.QualificationDependencyEvidence {
+			if dependency.SubjectKind == "database-contract-query" &&
+				dependency.Subject == "master_data.customer/find_by_id" &&
+				dependency.Source != "" &&
+				strings.HasPrefix(dependency.SourceFingerprint, "sha256:") {
+				foundDependencyEvidence = true
+			}
+		}
+	}
+	if !foundDependencyEvidence {
+		t.Fatalf("required dependency Evidence was not retained: %+v", grounded.Evidence)
 	}
 
 	ev, err := evaluate(dir, mustJSON(t, grounded))
@@ -171,6 +185,66 @@ func TestSharedAcceptanceRejectsTamperedQualificationEvidence(t *testing.T) {
 			t.Fatalf("no-longer-applicable requirements were not rejected: %+v", ev.preview.Stages)
 		}
 	})
+}
+
+func TestSharedAcceptanceRejectsStaleRequiredDependencyEvidence(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qualification.Status != knowledgecontext.QualificationApplicable || len(qualification.DependencyEvidence) == 0 {
+		t.Fatalf("qualification=%+v", qualification)
+	}
+	grounded, err := attachQualificationEvidence(mustJSON(t, unitPriceCandidate(snapshot.revision)), qualification)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bad := grounded
+	bad.Evidence = append([]Evidence(nil), grounded.Evidence...)
+	changed := false
+	for i := range bad.Evidence {
+		if len(bad.Evidence[i].QualificationDependencyEvidence) == 0 {
+			continue
+		}
+		bad.Evidence[i].QualificationDependencyEvidence = append(
+			[]knowledgecontext.QualificationEvidence(nil),
+			bad.Evidence[i].QualificationDependencyEvidence...,
+		)
+		bad.Evidence[i].QualificationDependencyEvidence[0].SourceFingerprint = "sha256:" + strings.Repeat("0", 64)
+		changed = true
+		break
+	}
+	if !changed {
+		t.Fatal("qualification dependency Evidence was not found")
+	}
+
+	ev, err := evaluate(dir, mustJSON(t, bad))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.preview.Acceptable || !previewHasDiagnostic(ev.preview, "EVIDENCE_QUALIFICATION_DEPENDENCY_STALE") {
+		t.Fatalf("stale required dependency Evidence was not rejected: %+v", ev.preview.Stages)
+	}
 }
 
 func TestSharedAcceptanceRejectsSourceThatCurrentQualificationDidNotAuthorize(t *testing.T) {
