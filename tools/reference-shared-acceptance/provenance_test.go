@@ -107,6 +107,65 @@ func TestFingerprintIgnoresProvenanceAndOrderButNotMeaning(t *testing.T) {
 	}
 }
 
+func TestSemanticAndEvidenceFingerprintsRemainIndependent(t *testing.T) {
+	revision := "sha256:" + strings.Repeat("a", 64)
+	base := unitPriceCandidate(revision)
+	normalizedBase, semanticBase, err := normalizeCandidate(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidenceBase := evidenceFingerprintOf(normalizedBase.Evidence)
+	if evidenceBase == "" {
+		t.Fatal("candidate with Evidence has no evidenceFingerprint")
+	}
+
+	changedEvidence := unitPriceCandidate(revision)
+	changedEvidence.Evidence = append([]Evidence(nil), changedEvidence.Evidence...)
+	changedEvidence.Evidence[0].Note = changedEvidence.Evidence[0].Note + "（別の説明）"
+	normalizedChanged, semanticChanged, err := normalizeCandidate(changedEvidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidenceChanged := evidenceFingerprintOf(normalizedChanged.Evidence)
+
+	if semanticChanged != semanticBase {
+		t.Fatalf("Evidence change altered semantic fingerprint: before=%s after=%s", semanticBase, semanticChanged)
+	}
+	if evidenceChanged == evidenceBase {
+		t.Fatalf("Evidence change was not reflected in evidenceFingerprint: %s", evidenceBase)
+	}
+}
+
+func TestPreviewAndAcceptedDecisionBindSameEvidenceFingerprint(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+
+	ev, err := evaluate(dir, mustJSON(t, candidate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("preview is not acceptable: %+v", ev.preview.Stages)
+	}
+	if ev.preview.EvidenceFingerprint == "" {
+		t.Fatal("preview has no evidenceFingerprint")
+	}
+
+	decision, err := accept(dir, mustJSON(t, candidate), acceptOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v", decision)
+	}
+	if decision.CandidateFingerprint != ev.preview.CandidateFingerprint {
+		t.Fatalf("semantic fingerprint drifted: preview=%s decision=%s", ev.preview.CandidateFingerprint, decision.CandidateFingerprint)
+	}
+	if decision.EvidenceFingerprint != ev.preview.EvidenceFingerprint {
+		t.Fatalf("Evidence fingerprint drifted: preview=%s decision=%s", ev.preview.EvidenceFingerprint, decision.EvidenceFingerprint)
+	}
+}
+
 func TestRelationUniqueGoesThroughTheSameBoundary(t *testing.T) {
 	dir := scratchWorkspace(t)
 	c := unitPriceCandidate(revisionOfDir(t, dir))
