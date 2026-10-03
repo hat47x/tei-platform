@@ -1,0 +1,68 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.service-level-policy",
+  "namespace": "support.service-level",
+  "version": "1.1.0",
+  "appliesToKinds": [
+    "semantic-data",
+    "application-pattern"
+  ],
+  "requires": [
+    {
+      "extension": "tei.reference.temporal-semantics",
+      "compatibleMajor": 1
+    }
+  ],
+  "concepts": [
+    {
+      "subject": {
+        "kind": "service-level-policy",
+        "id": "support.case.standard-response"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": {
+        "kind": "service-level-policy",
+        "id": "support.case.standard-response"
+      },
+      "relation": "governs",
+      "to": {
+        "kind": "semantic-data",
+        "id": "repair_intake.intake"
+      }
+    },
+    {
+      "from": {
+        "kind": "service-level-policy",
+        "id": "support.case.standard-response"
+      },
+      "relation": "uses-window",
+      "to": {
+        "kind": "temporal-window",
+        "id": "support.window.business-hours"
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "id": "response-target-positive",
+      "subject": {
+        "kind": "service-level-policy",
+        "id": "support.case.standard-response"
+      },
+      "validatorRef": "std.validation.duration-positive"
+    }
+  ],
+  "connections": [
+    {
+      "kind": "projection",
+      "ref": "studio.service-level-inspector"
+    },
+    {
+      "kind": "capability",
+      "ref": "std.timer.schedule"
+    }
+  ]
+}
