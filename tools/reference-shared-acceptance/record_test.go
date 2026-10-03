@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/knowledgecontext"
+	"tei/internal/subject"
 )
 
 func cliRun(t *testing.T, args ...string) (int, string, string) {
@@ -82,8 +85,8 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	if record.Path != decision.RecordPath {
 		t.Fatalf("record path=%q accept=%q", record.Path, decision.RecordPath)
 	}
-	if record.Status != "current" || record.SourceEdits != "intact" {
-		t.Fatalf("status=%q sourceEdits=%q", record.Status, record.SourceEdits)
+	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
+		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
 	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
@@ -109,6 +112,87 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
 		t.Fatalf("origin=%+v", got.Origin)
+	}
+}
+
+func TestDecisionRecordReportsQualificationEvidenceFreshnessSeparately(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qualification.Status != knowledgecontext.QualificationApplicable || len(qualification.DependencyEvidence) == 0 {
+		t.Fatalf("qualification=%+v", qualification)
+	}
+
+	grounded, err := attachQualificationEvidence(
+		mustJSON(t, unitPriceCandidate(snapshot.revision)),
+		qualification,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := acceptViaCLI(t, dir, candidateFile(t, grounded))
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "current" || len(record.EvidenceDiagnostics) != 0 {
+		t.Fatalf("accepted Evidence is not current: %+v", record)
+	}
+
+	dependencySource := qualification.DependencyEvidence[0].Source
+	path := filepath.Join(dir, filepath.FromSlash(dependencySource))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(content, '
+'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	index = decisionsOf(t, dir)
+	record = index.Records[0]
+	if record.Status != "superseded" {
+		t.Fatalf("workspace revision change was not reported: %+v", record)
+	}
+	if record.SourceEdits != "intact" {
+		t.Fatalf("decision-written source was incorrectly marked diverged: %+v", record)
+	}
+	if record.EvidenceStatus != "diverged" {
+		t.Fatalf("qualification Evidence drift was not reported: %+v", record)
+	}
+	var codes []string
+	for _, diagnostic := range record.EvidenceDiagnostics {
+		codes = append(codes, diagnostic.Code)
+	}
+	if !hasCode(codes, "EVIDENCE_QUALIFICATION_DEPENDENCY_STALE") {
+		t.Fatalf("dependency Evidence drift reason=%v", codes)
+	}
+	if record.Decision.RecordPath != decision.RecordPath {
+		t.Fatalf("record path changed: %q != %q", record.Decision.RecordPath, decision.RecordPath)
 	}
 }
 
