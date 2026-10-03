@@ -108,6 +108,13 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 			(e.SubjectKind == "" || e.Subject == "" || e.Source == "" || e.SourceFingerprint == "") {
 			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKind / subject / source / sourceFingerprintが必要です", i)
 		}
+		if e.QualificationRequirements != nil {
+			normalizedRequirements, err := knowledgecontext.NormalizeQualificationRequirements(*e.QualificationRequirements)
+			if err != nil {
+				return c, "", fmt.Errorf("evidence[%d].qualificationRequirements: %w", i, err)
+			}
+			e.QualificationRequirements = &normalizedRequirements
+		}
 		if e.Subject != "" && e.SubjectKind == "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
 				return c, "", fmt.Errorf("evidence[%d].subject: %w", i, err)
