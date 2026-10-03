@@ -59,7 +59,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 `review`は、AIの要約を新しい根拠にせず、Shared Acceptance Previewが持つ差分・影響・診断・未解決点・Evidence・source editをA1〜A8へ並べ直します。冒頭は`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionの要約です。各sectionは、導出元の`preview.*`または`candidate.*`項目を`sources`として持ち、text出力でも`根拠:`として表示します。`candidateFingerprint`は意味のidentity、`evidenceFingerprint`は正規化済み根拠のidentityです。A7ではEvidenceと変更予定sourceへ戻れる情報も出します。
 
-A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。`review`は、関連するunresolvedや`customGoBindings` collectionの状態を補助情報として示しますが、専用評価の代わりにはしません。情報がない状態を「変更なし」と読み替えないため、coverageは`未評価`のまま表示します。
+A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
 このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
