@@ -117,9 +117,9 @@ SUI以外の第二Referenceでも同じ意味が必要であり、同じ契約�
 
 ## 依存規模を成立条件へ含める
 
-標準機能を含む多くの意味体系をSemantic Extensionとして提供する場合、Extensionの推移依存は大きくなる。このReferenceでは一つのExtensionをloadできるだけで成立としない。
+標準機能を含む多くの意味体系をSemantic Extensionとして提供すると、Extensionの推移依存は大きくなります。このReferenceでは、一つのExtensionを読み込めるだけでは成立としません。
 
-詳細な設計判断は`plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`を基線とし、少なくとも次をReference不変条件として扱う。
+詳細な設計判断は`plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`を基線とし、少なくとも次の条件をReferenceでは変えないものとして扱います。
 
 - Semantic Extensionの依存解決をEnvironment固有のRuntime Plugin解決へ混ぜない。
 - 特定packageのidentityが必要な依存と、Semantic Interfaceを満たせばよい依存を区別する。
@@ -131,7 +131,7 @@ SUI以外の第二Referenceでも同じ意味が必要であり、同じ契約�
 - 標準`std.*`を追加する段階でも、同じdependency / conflict / lock / discovery contractを利用する。
 - resolverはresolved setだけでなく、導入理由とconflict causeを人とAIへ説明できる。
 
-最初から高度なsolver実装を固定しない。E0で必要なのは、大規模化してもsolver実装を差し替えられるRequirement / resolved graph / conflict explanationの契約である。
+最初から高度なsolver実装を固定しません。E0では、大規模化した後でもsolver実装を差し替えられるよう、Requirement、resolved graph、conflict explanationの入出力契約を先に定めます。
 
 ## 意味と実装を分ける
 
@@ -184,7 +184,7 @@ source contractがparentとchildrenの両方向を持つ場合、両者が矛盾
 
 ## E0 — declaration / discovery / dependency resolutionを先に実証する
 
-SUI instance validationの実行まで一気に進めない。E0は一つのworkstreamの中でE0-A〜E0-Cへ分ける。
+SUI instance validationの実行まで一度に進めません。E0は一つのworkstreamの中でE0-A〜E0-Cに分けます。
 
 ### E0-A — declaration / discovery
 
@@ -198,7 +198,7 @@ SUI instance validationの実行まで一気に進めない。E0は一つのwork
 
 ### E0-B — typed dependency / conflict
 
-Reference-localな小さい依存graphを追加し、次をPressureする。
+Reference-localな小規模の依存graphを追加し、次を検証します。
 
 - diamond dependencyが一つの互換なproviderへ決定論的に収束する
 - package identity dependencyとSemantic Interface dependencyを区別する
@@ -207,13 +207,13 @@ Reference-localな小さい依存graphを追加し、次をPressureする。
 - Bridge Extensionを外した場合、両側の独立Extensionが互いを暗黙requireしない
 - optional Extensionの存在だけで既存meaningを変更しない
 
-SUI hierarchy Extensionをreal root consumerとして残し、synthetic dependency graphだけでRQ-032成立を主張しない。
+SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなdependency graphだけでRQ-032の成立を主張しません。
 
 ### E0-C — Semantic Lock / explanation
 
-同じroot requirements、同じCatalog、同じAccepted sourceから、列挙順を変えても同じresolved graphとSemantic Set fingerprintを得ることを確認する。
+同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
 
-最低限、次へmachine-readableに辿れることを要求する。
+最低限、次の情報へ機械可読な形で辿れることを要求します。
 
 - exact resolved extension identity / semantic version
 - declaration fingerprint
@@ -222,7 +222,7 @@ SUI hierarchy Extensionをreal root consumerとして残し、synthetic dependen
 - reverse dependency
 - conflict cause / unresolved requirement
 
-Runtime Pluginの実装versionだけが変わりsemantic declarationが同じ場合、Semantic Set fingerprintへ不要な差分を入れないこともnegative controlで確認する。
+Runtime Pluginの実装versionだけが変わり、semantic declarationが同じ場合は、Semantic Set fingerprintに不要な差分が入らないこともnegative controlで確認します。
 
 E0ではRuntime Pluginを起動しない。
 
@@ -280,7 +280,7 @@ SUIだけで成立しても、Core標準語彙へ昇格しません。
 
 namespaceは意味Authorityの境界です。
 
-最初のReferenceでは少なくとも次をfail closedにします。
+最初のReferenceでは、少なくとも次の状態をfail closedとして扱います。
 
 - same extension identity + incompatible semantic version
 - same symbolを互換性なしで複数extensionが定義
@@ -302,7 +302,7 @@ Semantic versionはRuntime binary versionと独立させます。
 - 同じSemantic Extensionを複数Runtime実装が提供できる
 - 意味互換性と実装互換性を同じversionへ畳むと、不要なCanonical invalidationを起こす
 
-Source / Decision / qualification Evidenceは、必要に応じてSemantic Extension identity + semantic version + declaration fingerprintへboundします。
+Source / Decision / qualification Evidenceは、必要に応じてSemantic Extension identity、semantic version、declaration fingerprintへ紐付けます。
 
 ## Shared Acceptanceとの関係
 
@@ -353,7 +353,7 @@ AIがextensionを発見した後も、自動採用はしません。
 
 ## Product Evidence
 
-このReferenceで測る価値は、「新しい仕組みを実装できたか」だけではありません。
+このReferenceでは、「新しい仕組みを実装できたか」だけを価値として測りません。
 
 ### Core growth
 
@@ -388,7 +388,7 @@ Safety違反を生産性指標と相殺しません。
 
 ## 最初のcode work unit候補
 
-E0の最初のcode work unitは、一つのReference declarationとread-only loader / index pressureに限定します。
+E0の最初のcode work unitは、一つのReference declarationとread-onlyなloader / indexの検証に限定します。
 
 まだ最終syntaxは決めません。
 
