@@ -381,7 +381,7 @@ internal/knowledgecontext/    # read-only discovery
 
 ## 次へ進む条件
 
-E0がexact-head full`tools/repository-health-check.sh`を通ってmainへ入った後、E1 evaluator、E2 SUI fixture、E3 second consumerの順に進めます。
+E0がexact-head full `tools/repository-health-check.sh`を通ってmainへ入った後、E1 evaluator、E2 SUI fixture、E3 second consumerの順に進めます。
 
 E2が成立しても第二consumer前に`std.*`へ昇格しません。
 
@@ -393,7 +393,7 @@ code変更はTEIの通常Gateに従います。
 
 - latest main / open PR / active laneを再確認
 - code PRはDraft
-- exact-head full`tools/repository-health-check.sh` PASS
+- exact-head full `tools/repository-health-check.sh` PASS
 - clean pre/post state
 - Gate EvidenceをPRへ記録
 - PASSなしでmainへ統合しない
