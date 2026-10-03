@@ -306,9 +306,11 @@ type DecisionRecord struct {
 	// Statusは、記録した時点のrevisionが現在のrevisionと一致するか（current / superseded）。
 	Status string `json:"status"`
 	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
-	SourceEdits string   `json:"sourceEdits"`
-	Diverged    []string `json:"divergedPaths,omitempty"`
-	Decision    Decision `json:"decision"`
+	SourceEdits         string       `json:"sourceEdits"`
+	Diverged            []string     `json:"divergedPaths,omitempty"`
+	EvidenceStatus      string       `json:"evidenceStatus"`
+	EvidenceDiagnostics []Diagnostic `json:"evidenceDiagnostics,omitempty"`
+	Decision            Decision     `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -376,7 +378,13 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		if err := decoder.Decode(&d); err != nil {
 			return index, fmt.Errorf("decision record %s: %w", rel, err)
 		}
-		record := DecisionRecord{Path: rel, Decision: d, Status: "superseded", SourceEdits: "none"}
+		record := DecisionRecord{
+			Path:           rel,
+			Decision:       d,
+			Status:         "superseded",
+			SourceEdits:    "none",
+			EvidenceStatus: "none",
+		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
 		}
@@ -388,6 +396,13 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 					record.SourceEdits = "diverged"
 					record.Diverged = append(record.Diverged, e.Path)
 				}
+			}
+		}
+		if len(d.Evidence) > 0 {
+			record.EvidenceStatus = "current"
+			record.EvidenceDiagnostics = validateEvidence(s, d.Evidence)
+			if len(record.EvidenceDiagnostics) > 0 {
+				record.EvidenceStatus = "diverged"
 			}
 		}
 		record.Decision.RecordPath = rel
