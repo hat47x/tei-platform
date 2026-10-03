@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -312,9 +311,7 @@ func renderReviewProjection(review ReviewProjection) string {
 
 	for _, section := range review.Sections {
 		fmt.Fprintf(&b, "\n## %s %s [%s]\n", section.Code, section.Title, reviewCoverageLabel(section.Coverage))
-		items := append([]string(nil), section.Items...)
-		sort.Strings(items)
-		for _, item := range items {
+		for _, item := range section.Items {
 			fmt.Fprintf(&b, "- %s\n", item)
 		}
 		if len(section.Sources) > 0 {
