@@ -41,14 +41,15 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 
 	a1 := reviewSection(t, review, "A1")
 	if a1.Coverage != reviewCoverageAvailable ||
+		a1.Summary != "semantic 1件 / application 0件 / environment 0件" ||
 		!sectionContains(a1, "added validation:sales.order_line.unit_price_positive") ||
 		!containsString(a1.Sources, "preview.semanticDiff") {
 		t.Fatalf("A1=%+v", a1)
 	}
 
 	a2 := reviewSection(t, review, "A2")
-	if a2.Coverage != reviewCoveragePartial {
-		t.Fatalf("A2 coverage=%s", a2.Coverage)
+	if a2.Coverage != reviewCoveragePartial || !strings.Contains(a2.Summary, "impact ") {
+		t.Fatalf("A2=%+v", a2)
 	}
 
 	a5 := reviewSection(t, review, "A5")
@@ -90,8 +91,8 @@ func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
 
 	review := buildReviewProjection(ev)
 	a1 := reviewSection(t, review, "A1")
-	if len(a1.Items) != 6 {
-		t.Fatalf("A1 changes=%d want 6: %+v", len(a1.Items), a1.Items)
+	if len(a1.Items) != 6 || a1.Summary != "semantic 4件 / application 2件 / environment 0件" {
+		t.Fatalf("A1=%+v", a1)
 	}
 	for _, want := range []string{
 		"added namespace:repair_intake",
@@ -132,7 +133,7 @@ func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
 	}
 
 	a8 := reviewSection(t, review, "A8")
-	if !sectionContains(a8, "変更subject数 6 / 上限 8") {
+	if a8.Summary != "6 / 8" || !sectionContains(a8, "変更subject数 6 / 上限 8") {
 		t.Fatalf("A8=%+v", a8)
 	}
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
@@ -168,6 +169,7 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 					"## A8 承認単位の大きさ [表示可能]",
 					"candidate fingerprint:",
 					"evidence fingerprint:",
+					"要約: semantic 1件 / application 0件 / environment 0件",
 					"根拠: preview.semanticDiff",
 				} {
 					if !strings.Contains(stdout.String(), want) {
