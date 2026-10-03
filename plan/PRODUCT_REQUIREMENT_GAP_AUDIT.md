@@ -99,8 +99,8 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-029 | **Partial Evidence** | PAS-06 | 第二Applicationが共有`customer` semanticをorigin / provenanceを分けて再利用するS1〜S5 executable pressure、`run-knowledge-portability-reference-evidence.sh`、`KNOWLEDGE_PORTABILITY_R0_BOUNDARY`、Shared Acceptanceの型付きcomposition | `Variation` / destination-specific overrideの表現が無い（`internal/`に0件）。実際のAcceptanceは独立レビュー待ちで未実施。別Repository / 別組織への移植Evidenceが無い。担当IssueもADRも無い |
 | RQ-030 | **Design Only** | PAS-07 | Business Procedure Referenceがmanual / external / observation-boundaryとHandoffを区別してauthorでき、baseline checkerとGate A A8で機械確認できる（agentが必要とする区別の素材）。Permission Grant / Resource Lease / authorization境界。ACTOR_CONTEXT R3 / R6系の設計圧力 | **agentがTEI成果物を読んで業務を遂行するpathが製品側に無い**。R3系圧力の大半がproduction codeへ接続していない（§9）。閉包条件が未定義 |
 | RQ-031 | **Design Only** | PAS-06 | Product Value / Principle / Requirementで、Data Modelを含む特定のモデル体系をCoreの唯一の上位モデルにしない境界を定義。RQ-026にはData / Function / Businessを異なる視点として扱うcross-view圧力がある | Core変更なしに新しい意味視点を追加するReferenceが無い。何を共通primitiveとし、何をSemantic Extensionへ置くかの実装境界も未実証 |
-| RQ-032 | **Design Only** | PAS-06 | Plugin / Capability境界、`std.*` namespace、Shared Acceptance、Unresolvedの既存原則に加え、Semantic / Runtime依存分離、typed requirement、Bridge、Semantic LockのPre-ADRを定義 | Semantic Extension共通contract、推移依存resolver、exact Semantic Lock、diamond / conflict / cycle / load-order非依存のReference Evidenceが無い。標準`std.*`が同じcontractをdogfoodしたEvidenceも無い |
-| RQ-033 | **Design Only** | PAS-06 | RQ-015のknowledge-first探索、Source Index、Shared Acceptanceに加え、dependency path / reverse dependency / conflict causeをAI / Toolへ公開する設計を定義 | AI / ToolがCoreとSemantic Extensionを同じcatalogから探索し、必要なdependency closureと導入理由を取得し、Composition → 決定論的Validation → Proposal / Unresolvedへ進む一連のReferenceが無い |
+| RQ-032 | **Design Only** | PAS-06 | Plugin / Capability境界、`std.*` namespace、Shared Acceptance、Unresolvedの既存原則を、意味論的な拡張へ適用する要求を定義 | Plugin / DSLが意味のidentity・依存・関係・Constraint / Validationを機械可読に宣言する共通contractが無い。拡張間の競合・互換性判定も未実証 |
+| RQ-033 | **Design Only** | PAS-06 | RQ-015のknowledge-first探索、Source Index、Shared Acceptance等に、AI / Toolが既存意味を再利用するための部分的な土台がある | AI / ToolがCoreとSemantic Extensionを同じcatalogから探索し、Composition → 決定論的Validation → Proposal / Unresolvedへ進む一連のReferenceが無い |
 
 ## 5. 評価集約
 
@@ -151,8 +151,6 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
 
 2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
-
-2026-10-04の追記: `SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`で、標準機能を含む多数のSemantic Extensionを前提に依存解決の不変条件を追加しました。設計が具体化しただけでEvidence tierは上げません。ISSUE-000077 E0-A〜E0-Cでdeclaration / typed dependency / conflict / Semantic Lock / explanationを順にPressureし、SUIのreal consumerとdependency negative controlが揃うまでDesign Onlyを維持します。
 
 ## 6. Cross-cutting Product Quality監査
 
