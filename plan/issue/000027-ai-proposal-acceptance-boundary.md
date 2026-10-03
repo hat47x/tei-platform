@@ -489,13 +489,18 @@ Previewが判断できなかった事項は成功へ読み替えず`unresolved`�
 
 ## qualification Evidenceとの接続候補 — 2026-10-03
 
-`ISSUE-000047`のdeterministic qualificationから、既存のShared Acceptance Boundaryへexact Evidenceを渡すcandidate実装を`research/selective-knowledge-routing-r6`で進めている。
+`ISSUE-000047`のdeterministic qualificationから既存のShared Acceptance Boundaryへexact Evidenceを渡すcandidate実装を、primary workstreamの`work/issue-000040-second-application-reference`へ統合している。
 
-接続では新しいProposal schemaを作らず、既存candidateのEvidenceを後方互換で精密化する。`applicable`なqualificationからsubject kind、Canonical ID、source path、source fingerprint、評価したrequirementsを付与し、Preview時にcurrent Source Indexへ戻って同じrequirementsで再qualificationする。
+接続では新しいProposal schemaを作らず、既存candidateのEvidenceを後方互換で精密化する。`applicable`なqualificationからsubject kind、Source Index identity、source path、source fingerprint、評価したrequirementsを付与する。required dependencyを明示した場合は、そのdependencyのauthoritative sourceとfingerprintもscoped Evidenceとして保持する。
 
-この方式では、qualification結果を過去のapprovalとして扱わない。current contextで`incompatible`または`unknown`になった場合はShared Acceptanceのresolve stageでfail closedとする。Evidenceはcandidate fingerprintへ含めず、deltaの意味とprovenanceを分離する。
+Previewではcurrent Source Indexへ戻り、同じrequirementsでqualificationを再実行する。candidate自身のsourceだけでなくrequired dependencyのEvidenceもcurrent qualificationと比較するため、dependencyのIDが同じままsource内容が変わった場合をfail closedにできる。requirements外のKnowledgeはこのhandoffへ含めず、無関係なsource変更をqualification freshnessへ持ち込まない。
+
+Accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent Sourceへ再照合する。Decisionの`current / superseded`、そのDecisionが書いたsourceの`intact / diverged`、受理理由に使ったEvidenceの`current / diverged`を分け、historical Acceptanceとcurrent applicabilityを混同しない。
+
+この方式でもqualification結果をapprovalとして扱わない。Evidenceはcandidate fingerprintへ含めず、deltaの意味とprovenanceを分離する。
 
 現時点ではexact-head full Repository-healthを通したProduct Evidenceではないため、完了条件1や3の状態はまだ更新しない。
+
 ## Gate Cとの関係
 
 本IssueはGate C前に本格実装しません。
