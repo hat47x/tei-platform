@@ -369,6 +369,53 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 	}
 }
 
+func TestReviewFingerprintGuardFlowsThroughCLI(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidatePath := filepath.Join(t.TempDir(), "candidate.json")
+	if err := os.WriteFile(candidatePath, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var reviewOut, reviewErr bytes.Buffer
+	if code := runCLI(
+		[]string{"review", "-workspace", dir, "-candidate", candidatePath, "-format", "json"},
+		&reviewOut,
+		&reviewErr,
+	); code != 0 {
+		t.Fatalf("review code=%d stderr=%s output=%s", code, reviewErr.String(), reviewOut.String())
+	}
+	var review ReviewProjection
+	if err := json.Unmarshal(reviewOut.Bytes(), &review); err != nil {
+		t.Fatal(err)
+	}
+	if review.ReviewFingerprint == "" {
+		t.Fatal("review CLI returned no reviewFingerprint")
+	}
+
+	var acceptOut, acceptErr bytes.Buffer
+	if code := runCLI(
+		[]string{
+			"accept",
+			"-workspace", dir,
+			"-candidate", candidatePath,
+			"-expected-review-fingerprint", review.ReviewFingerprint,
+		},
+		&acceptOut,
+		&acceptErr,
+	); code != 0 {
+		t.Fatalf("accept code=%d stderr=%s output=%s", code, acceptErr.String(), acceptOut.String())
+	}
+	var decision Decision
+	if err := json.Unmarshal(acceptOut.Bytes(), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "accepted" ||
+		decision.ReviewBinding == nil ||
+		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		t.Fatalf("decision=%+v review=%+v", decision, review)
+	}
+}
+
 func TestReviewShowsUnresolvedFailureWithoutInventingLaterCoverage(t *testing.T) {
 	dir := scratchWorkspace(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
