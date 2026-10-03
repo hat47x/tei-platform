@@ -21,7 +21,7 @@ func repositoryRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
-func referenceCoreSubjects(t *testing.T) []subject.Subject {
+func referenceCoreCatalog(t *testing.T) CoreCatalogInput {
 	t.Helper()
 	root := repositoryRoot(t)
 	workspaceRoot := filepath.Join(root, "reference", "workspace")
@@ -33,7 +33,7 @@ func referenceCoreSubjects(t *testing.T) []subject.Subject {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return sourceIndexSubjects(index)
+	return coreCatalogFromSourceIndex(index)
 }
 
 func referenceDescriptors(t *testing.T) []ExtensionDescriptor {
@@ -47,7 +47,7 @@ func referenceDescriptors(t *testing.T) []ExtensionDescriptor {
 
 func TestReferenceCatalogCombinesCoreAndOpenEndedExtensionSubjects(t *testing.T) {
 	catalog, err := resolveSemanticCatalog(
-		referenceCoreSubjects(t),
+		referenceCoreCatalog(t),
 		referenceDescriptors(t),
 		[]ExtensionRequirement{{Extension: "tei.reference.service-level-policy", CompatibleMajor: 1}},
 	)
@@ -113,7 +113,7 @@ func TestReferenceCatalogSelectsHighestCompatibleVersionDeterministically(t *tes
 		}
 	}
 	catalog, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		[]ExtensionDescriptor{makeDescriptor("1.0.0"), makeDescriptor("1.2.0"), makeDescriptor("2.0.0")},
 		[]ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}},
 	)
@@ -143,7 +143,7 @@ func TestReferenceCatalogRejectsIncompatibleDependency(t *testing.T) {
 		Version:   "1.0.0",
 	}
 	_, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		[]ExtensionDescriptor{root, dependency},
 		[]ExtensionRequirement{{Extension: "tei.reference.root", CompatibleMajor: 1}},
 	)
@@ -164,7 +164,7 @@ func TestReferenceCatalogReportsSubjectConflictWithoutLoadOrderWinner(t *testing
 		}},
 	}
 	catalog, err := resolveSemanticCatalog(
-		[]subject.Subject{core},
+		CoreCatalogInput{Subjects: []subject.Subject{core}},
 		[]ExtensionDescriptor{extension},
 		[]ExtensionRequirement{{Extension: "tei.reference.conflict", CompatibleMajor: 1}},
 	)
@@ -199,7 +199,7 @@ func TestReferenceCatalogKeepsSharedNamespaceOwnershipUnresolved(t *testing.T) {
 		}},
 	}
 	catalog, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		[]ExtensionDescriptor{right, left},
 		[]ExtensionRequirement{
 			{Extension: "tei.reference.left", CompatibleMajor: 1},
@@ -242,7 +242,7 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 		}},
 	}
 	catalog, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		[]ExtensionDescriptor{extension},
 		[]ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}},
 	)
@@ -279,7 +279,7 @@ func TestReferenceCatalogNormalizesRootRequirementsAndFingerprintsResolution(t *
 		},
 	}
 	left, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		descriptors,
 		[]ExtensionRequirement{
 			{Extension: "tei.reference.b", CompatibleMajor: 1},
@@ -291,7 +291,7 @@ func TestReferenceCatalogNormalizesRootRequirementsAndFingerprintsResolution(t *
 		t.Fatal(err)
 	}
 	right, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		descriptors,
 		[]ExtensionRequirement{
 			{Extension: "tei.reference.a", CompatibleMajor: 1},
@@ -320,7 +320,7 @@ func TestReferenceCatalogRejectsConflictingRootMajors(t *testing.T) {
 		Version:   "1.0.0",
 	}
 	_, err := resolveSemanticCatalog(
-		nil,
+		CoreCatalogInput{},
 		[]ExtensionDescriptor{descriptor},
 		[]ExtensionRequirement{
 			{Extension: "tei.reference.policy", CompatibleMajor: 1},
@@ -339,11 +339,11 @@ func TestReferenceCatalogIsIndependentOfDescriptorLoadOrder(t *testing.T) {
 		reversed[i], reversed[j] = reversed[j], reversed[i]
 	}
 	roots := []ExtensionRequirement{{Extension: "tei.reference.service-level-policy", CompatibleMajor: 1}}
-	left, err := resolveSemanticCatalog(referenceCoreSubjects(t), descriptors, roots)
+	left, err := resolveSemanticCatalog(referenceCoreCatalog(t), descriptors, roots)
 	if err != nil {
 		t.Fatal(err)
 	}
-	right, err := resolveSemanticCatalog(referenceCoreSubjects(t), reversed, roots)
+	right, err := resolveSemanticCatalog(referenceCoreCatalog(t), reversed, roots)
 	if err != nil {
 		t.Fatal(err)
 	}
