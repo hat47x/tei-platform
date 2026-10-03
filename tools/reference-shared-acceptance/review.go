@@ -17,6 +17,7 @@ type ReviewSection struct {
 	Code     string   `json:"code"`
 	Title    string   `json:"title"`
 	Coverage string   `json:"coverage"`
+	Summary  string   `json:"summary,omitempty"`
 	Sources  []string `json:"sources,omitempty"`
 	Items    []string `json:"items,omitempty"`
 	Note     string   `json:"note,omitempty"`
@@ -58,6 +59,12 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	if semanticEvaluated {
 		a1.Coverage = reviewCoverageAvailable
+		a1.Summary = fmt.Sprintf(
+			"semantic %d件 / application %d件 / environment %d件",
+			len(p.SemanticDiff),
+			len(p.ApplicationDiff),
+			len(p.EnvironmentDiff),
+		)
 		for _, change := range allChanges(p) {
 			a1.Items = append(a1.Items, fmt.Sprintf("%s %s:%s", change.Change, change.Kind, change.ID))
 		}
@@ -77,6 +84,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	if impactEvaluated {
 		a2.Coverage = reviewCoverageAvailable
+		a2.Summary = fmt.Sprintf("impact %d本 / unresolved %d件", len(p.Impact), len(p.Unresolved))
 		for _, edge := range p.Impact {
 			a2.Items = append(a2.Items, fmt.Sprintf("%s -> %s via %s: %s", edge.From, edge.To, edge.Via, edge.Reason))
 		}
@@ -99,8 +107,10 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Sources:  []string{"preview.stages[*].diagnostics"},
 		Note:     "受入stageのdiagnosticは表示しますが、業務上の例外を独立に列挙する専用Projectionはまだありません",
 	}
+	diagnosticCount := 0
 	for _, stage := range p.Stages {
 		for _, diagnostic := range stage.Diagnostics {
+			diagnosticCount++
 			item := stage.Name + ": " + diagnostic.Code + " - " + diagnostic.Message
 			if diagnostic.Subject != "" {
 				item += " (" + diagnostic.Subject + ")"
@@ -108,6 +118,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 			a3.Items = append(a3.Items, item)
 		}
 	}
+	a3.Summary = fmt.Sprintf("diagnostic %d件", diagnosticCount)
 	if len(a3.Items) == 0 {
 		a3.Items = []string{"受入stageのerror diagnosticなし"}
 	}
@@ -121,6 +132,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	if impactEvaluated {
 		a4.Coverage = reviewCoverageAvailable
+		a4.Summary = fmt.Sprintf("unresolved %d件", len(p.Unresolved))
 		for _, unresolved := range p.Unresolved {
 			a4.Items = append(a4.Items, unresolved.Code+" - "+unresolved.Message)
 		}
@@ -136,6 +148,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A5",
 		Title:    "権限の変更",
 		Coverage: reviewCoverageNotEvaluated,
+		Summary:  "専用評価なし",
 		Sources:  []string{"preview.unresolved", "preview.changedCollections"},
 		Note:     "権限差分を判定する専用項目はまだありません。下記は既存Previewから読める関連signalであり、権限変更の完全な判定ではありません",
 	}
@@ -158,6 +171,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A6",
 		Title:    "native codeへ残る箇所",
 		Coverage: reviewCoverageNotEvaluated,
+		Summary:  "専用評価なし",
 		Sources:  []string{"preview.changedCollections", "preview.unchangedCollections"},
 		Note:     "native codeの残存箇所を列挙する専用項目はまだありません。collection差分は間接signalに留めます",
 	}
@@ -184,6 +198,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	}
 	if normalizeEvaluated {
 		a7.Coverage = reviewCoveragePartial
+		a7.Summary = fmt.Sprintf("Evidence %d件 / source edit %d件", len(ev.candidate.Evidence), len(p.SourceEdits))
 		a7.Items = append(a7.Items,
 			"candidateFingerprint: "+p.CandidateFingerprint,
 			"baseModelRevision: "+p.BaseModelRevision,
@@ -234,6 +249,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	if semanticEvaluated {
 		n := len(allChanges(p))
 		a8.Coverage = reviewCoverageAvailable
+		a8.Summary = fmt.Sprintf("%d / %d", n, maxSubjectChanges)
 		a8.Items = []string{fmt.Sprintf("変更subject数 %d / 上限 %d", n, maxSubjectChanges)}
 		if n > maxSubjectChanges {
 			a8.Note = "上限を超えているため、acceptance-policyが拒否します。分割できない理由を示して例外承認する経路はありません"
@@ -311,6 +327,9 @@ func renderReviewProjection(review ReviewProjection) string {
 
 	for _, section := range review.Sections {
 		fmt.Fprintf(&b, "\n## %s %s [%s]\n", section.Code, section.Title, reviewCoverageLabel(section.Coverage))
+		if section.Summary != "" {
+			fmt.Fprintf(&b, "要約: %s\n", section.Summary)
+		}
 		for _, item := range section.Items {
 			fmt.Fprintf(&b, "- %s\n", item)
 		}
