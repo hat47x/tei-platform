@@ -335,6 +335,82 @@ func TestSharedAcceptanceRejectsSourceThatCurrentQualificationDidNotAuthorize(t 
 	t.Fatalf("non-authoritative substituted source was not rejected: %+v", diagnostics)
 }
 
+func TestAttachQualificationRejectsMalformedRequirements(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	qualification := knowledgecontext.QualificationResult{
+		Candidate: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+		Status:    knowledgecontext.QualificationApplicable,
+		Requirements: knowledgecontext.QualificationRequirements{
+			ExpectedKind: "",
+		},
+		Evidence: []knowledgecontext.QualificationEvidence{{
+			SubjectKind:       "application-pattern",
+			Subject:           "order_entry.customer_reference",
+			Source:            "applications/order-entry/patterns/customer-reference.tei",
+			SourceFingerprint: "sha256:" + strings.Repeat("b", 64),
+		}},
+	}
+	if _, err := attachQualificationEvidence(mustJSON(t, candidate), qualification); err == nil {
+		t.Fatal("malformed qualification requirements were attached")
+	}
+}
+
+func TestCandidateNormalizesQualificationRequirements(t *testing.T) {
+	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
+	candidate.Evidence = []Evidence{{
+		SubjectKind:       "application-pattern",
+		Subject:           "order_entry.customer_reference",
+		Source:            "applications/order-entry/patterns/customer-reference.tei",
+		SourceFingerprint: "sha256:" + strings.Repeat("b", 64),
+		QualificationRequirements: &knowledgecontext.QualificationRequirements{
+			ExpectedKind: " application-pattern ",
+			Application:  " order_entry ",
+			RequiredDependencies: []knowledgecontext.DependencyRequirement{
+				{
+					Direction: " OUTGOING ",
+					Relation:  " contract-query ",
+					Kind:      " database-contract-query ",
+					ID:        " z.query ",
+					Alias:     " z ",
+				},
+				{
+					Direction: " incoming ",
+					Relation:  " depends-on ",
+					Kind:      " semantic-data ",
+					ID:        " a.data ",
+				},
+			},
+		},
+	}}
+
+	normalized, _, err := normalizeCandidate(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requirements := normalized.Evidence[0].QualificationRequirements
+	if requirements == nil {
+		t.Fatal("qualification requirements disappeared during normalization")
+	}
+	if requirements.ExpectedKind != "application-pattern" || requirements.Application != "order_entry" {
+		t.Fatalf("requirements were not trimmed: %+v", requirements)
+	}
+	if len(requirements.RequiredDependencies) != 2 {
+		t.Fatalf("dependencies=%+v", requirements.RequiredDependencies)
+	}
+	first, second := requirements.RequiredDependencies[0], requirements.RequiredDependencies[1]
+	if first.Direction != "incoming" ||
+		first.Relation != "depends-on" ||
+		first.Kind != "semantic-data" ||
+		first.ID != "a.data" ||
+		second.Direction != "outgoing" ||
+		second.Relation != "contract-query" ||
+		second.Kind != "database-contract-query" ||
+		second.ID != "z.query" ||
+		second.Alias != "z" {
+		t.Fatalf("qualification requirements were not normalized deterministically: %+v", requirements.RequiredDependencies)
+	}
+}
+
 func TestAttachQualificationRejectsNonApplicableResult(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	for _, status := range []knowledgecontext.QualificationStatus{
