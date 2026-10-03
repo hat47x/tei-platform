@@ -223,7 +223,7 @@ func TestReviewShowsUnresolvedFailureWithoutInventingLaterCoverage(t *testing.T)
 	}
 
 	review := buildReviewProjection(ev)
-	if review.Acceptable {
+	if review.PreviewAcceptable {
 		t.Fatal("review hid Preview rejection")
 	}
 	if review.Coverage.NotEvaluated == 0 || len(review.Coverage.Incomplete) == 0 {
