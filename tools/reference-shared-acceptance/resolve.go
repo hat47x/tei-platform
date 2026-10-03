@@ -188,7 +188,15 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 		}
 	}
 
-	for i, e := range c.Evidence {
+	out = append(out, validateEvidence(s, c.Evidence)...)
+	return out
+}
+
+func validateEvidence(s snapshot, evidence []Evidence) []Diagnostic {
+	var out []Diagnostic
+	idx := indexWorld(s)
+	fingerprints := s.fingerprints()
+	for i, e := range evidence {
 		if e.Subject != "" {
 			if e.SubjectKind == "" {
 				if !idx.subjects[e.Subject] {
@@ -229,7 +237,7 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				s.index,
 				subject.Subject{Kind: e.SubjectKind, ID: e.Subject},
 			)
-			qualified, err := knowledgecontext.Qualify(ctx, *e.QualificationRequirements)
+			qualified, err := knowledgecontext.QualifyWithSources(ctx, s.index, *e.QualificationRequirements)
 			if err != nil {
 				out = append(out, Diagnostic{
 					Code:    "EVIDENCE_QUALIFICATION_INVALID",
@@ -258,6 +266,12 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				out = append(out, Diagnostic{
 					Code:    "EVIDENCE_QUALIFICATION_PROVENANCE_MISMATCH",
 					Message: fmt.Sprintf("evidence[%d]のsource / fingerprintはcurrent qualificationが返したauthoritative Evidenceと一致しません", i),
+				})
+			}
+			if !sameQualificationEvidence(qualified.DependencyEvidence, e.QualificationDependencyEvidence) {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_DEPENDENCY_STALE",
+					Message: fmt.Sprintf("evidence[%d]のrequired dependency Evidenceはcurrent qualificationと一致しません", i),
 				})
 			}
 		}
