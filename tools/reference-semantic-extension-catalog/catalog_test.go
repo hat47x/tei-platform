@@ -332,6 +332,77 @@ func TestReferenceCatalogRejectsConflictingRootMajors(t *testing.T) {
 	}
 }
 
+func TestReferenceCatalogResolutionIdentityTracksCoreSourceIndex(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.policy",
+		Namespace: "policy",
+		Version:   "1.0.0",
+		Concepts: []ExtensionConcept{{
+			Subject: subject.Subject{Kind: "policy-view", ID: "policy.example"},
+		}},
+	}
+	root := []ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}}
+
+	left, err := resolveSemanticCatalog(
+		CoreCatalogInput{SourceIndexFingerprint: "sha256:" + strings.Repeat("1", 64)},
+		[]ExtensionDescriptor{descriptor},
+		root,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := resolveSemanticCatalog(
+		CoreCatalogInput{SourceIndexFingerprint: "sha256:" + strings.Repeat("2", 64)},
+		[]ExtensionDescriptor{descriptor},
+		root,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if left.ResolutionFingerprint == right.ResolutionFingerprint {
+		t.Fatalf("core Source Index change did not change resolution identity: %s", left.ResolutionFingerprint)
+	}
+}
+
+func TestReferenceCatalogResolutionIdentityIgnoresRawDescriptorProvenance(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.policy",
+		Namespace: "policy",
+		Version:   "1.0.0",
+		Concepts: []ExtensionConcept{{
+			Subject: subject.Subject{Kind: "policy-view", ID: "policy.example"},
+		}},
+	}
+	leftDescriptor := descriptor
+	leftDescriptor.sourcePath = "first/policy.json"
+	leftDescriptor.sourceFingerprint = "sha256:" + strings.Repeat("a", 64)
+	rightDescriptor := descriptor
+	rightDescriptor.sourcePath = "moved/policy.json"
+	rightDescriptor.sourceFingerprint = "sha256:" + strings.Repeat("b", 64)
+	root := []ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}}
+
+	left, err := resolveSemanticCatalog(CoreCatalogInput{}, []ExtensionDescriptor{leftDescriptor}, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := resolveSemanticCatalog(CoreCatalogInput{}, []ExtensionDescriptor{rightDescriptor}, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if left.ResolutionFingerprint != right.ResolutionFingerprint {
+		t.Fatalf("raw descriptor provenance changed semantic resolution identity: %s != %s", left.ResolutionFingerprint, right.ResolutionFingerprint)
+	}
+	if left.Extensions[0].Source == right.Extensions[0].Source ||
+		left.Extensions[0].SourceFingerprint == right.Extensions[0].SourceFingerprint {
+		t.Fatalf("raw provenance was not preserved separately: left=%+v right=%+v", left.Extensions[0], right.Extensions[0])
+	}
+	if left.Extensions[0].DescriptorFingerprint != right.Extensions[0].DescriptorFingerprint {
+		t.Fatalf("equivalent normalized descriptors produced different descriptor identities: %s != %s", left.Extensions[0].DescriptorFingerprint, right.Extensions[0].DescriptorFingerprint)
+	}
+}
+
 func TestReferenceCatalogIsIndependentOfDescriptorLoadOrder(t *testing.T) {
 	descriptors := referenceDescriptors(t)
 	reversed := append([]ExtensionDescriptor(nil), descriptors...)
