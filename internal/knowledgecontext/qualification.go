@@ -53,7 +53,7 @@ type QualificationResult struct {
 }
 
 func Qualify(ctx Context, requirements QualificationRequirements) (QualificationResult, error) {
-	requirements, err := normalizeQualificationRequirements(requirements)
+	requirements, err := NormalizeQualificationRequirements(requirements)
 	if err != nil {
 		return QualificationResult{}, err
 	}
@@ -133,7 +133,7 @@ func Qualify(ctx Context, requirements QualificationRequirements) (Qualification
 	return result, nil
 }
 
-func normalizeQualificationRequirements(requirements QualificationRequirements) (QualificationRequirements, error) {
+func NormalizeQualificationRequirements(requirements QualificationRequirements) (QualificationRequirements, error) {
 	requirements.ExpectedKind = strings.TrimSpace(requirements.ExpectedKind)
 	requirements.Application = strings.TrimSpace(requirements.Application)
 	if requirements.ExpectedKind == "" {
