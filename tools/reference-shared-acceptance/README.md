@@ -67,7 +67,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 - `status`: `current`（記録時のrevisionが現在と一致）か`superseded`（workspaceが先へ進んだ）
 - `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
-- `evidenceStatus`: `current`（受理理由に使ったEvidenceがcurrent Source Indexとqualificationに一致）、`diverged`（根拠sourceや明示dependencyが変わった）、`none`
+- `evidenceStatus`: `current`（受理理由に使ったEvidenceがcurrent Source Indexとqualificationに一致）、`diverged`（根拠sourceや明示dependencyが変わった、または保存済みEvidence本文が`evidenceFingerprint`と一致しない）、`none`
 - `evidenceDiagnostics`: `diverged`の理由。過去のAcceptanceを現在のapplicabilityとして読み替えないための照合結果
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
@@ -97,7 +97,7 @@ go run ./tools/reference-shared-acceptance preview \
 
 Previewでは、添付された結果をそのまま信用しません。current Source Indexに対してexact subjectとsourceを解決し、source fingerprintを照合したうえで、同じrequirementsを使ってqualificationを再実行します。required dependencyがある場合は、そのauthoritative sourceとfingerprintの集合もcurrent qualificationと照合します。したがって、dependencyのIDが同じままsource内容だけが変わった場合もstaleとして拒否できます。一方、requirementsが参照していないsourceの変更はqualification freshnessへ持ち込まず、repository-wideなglobal revisionは要求しません。
 
-このEvidenceはcandidateの意味を変更しないため、`candidateFingerprint`には入りません。一方、Preview / Decisionは正規化済みEvidenceの`evidenceFingerprint`を別に持つため、「同じ意味だが根拠が違う」candidateを機械的に区別できます。Accepted DecisionにはEvidence本文とそのidentityがprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。
+このEvidenceはcandidateの意味を変更しないため、`candidateFingerprint`には入りません。一方、Preview / Decisionは正規化済みEvidenceの`evidenceFingerprint`を別に持つため、「同じ意味だが根拠が違う」candidateを機械的に区別できます。Accepted DecisionにはEvidence本文とそのidentityがprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。 Decision Indexは新しい記録について保存済み`evidenceFingerprint`とEvidence本文も照合し、記録だけを書き換えた場合を`EVIDENCE_FINGERPRINT_MISMATCH`として検出します。
 ### candidateの例
 
 ```json
