@@ -65,12 +65,15 @@ type CatalogUnresolved struct {
 
 type CoreCatalogInput struct {
 	Subjects               []subject.Subject
+	SubjectFingerprint     string
 	SourceIndexFingerprint string
 }
 
 type SemanticCatalog struct {
 	Schema                     string                 `json:"schema"`
 	ResolutionFingerprint      string                 `json:"resolutionFingerprint"`
+	EvidenceFingerprint        string                 `json:"evidenceFingerprint"`
+	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
 	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
 	Requirements               []ExtensionRequirement `json:"requirements"`
 	Extensions             []CatalogExtension     `json:"extensions,omitempty"`
@@ -138,8 +141,11 @@ func coreCatalogFromSourceIndex(index sourceindex.Index) CoreCatalogInput {
 	}
 	normalized.Normalize()
 	encoded, _ := json.Marshal(normalized)
+	subjects := sourceIndexSubjects(normalized)
+	subjectsEncoded, _ := json.Marshal(subjects)
 	return CoreCatalogInput{
-		Subjects:               sourceIndexSubjects(normalized),
+		Subjects:               subjects,
+		SubjectFingerprint:     sourceindex.Fingerprint(subjectsEncoded),
 		SourceIndexFingerprint: sourceindex.Fingerprint(encoded),
 	}
 }
@@ -251,6 +257,7 @@ func resolveSemanticCatalog(
 
 	catalog := SemanticCatalog{
 		Schema:                     catalogSchema,
+		CoreSubjectFingerprint:     core.SubjectFingerprint,
 		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
 		Requirements:               normalizedRoots,
 		Subjects:                    []CatalogSubject{},
@@ -440,6 +447,7 @@ func resolveSemanticCatalog(
 		return catalog.Unresolved[i].Detail < catalog.Unresolved[j].Detail
 	})
 	catalog.ResolutionFingerprint = semanticCatalogFingerprint(catalog)
+	catalog.EvidenceFingerprint = semanticCatalogEvidenceFingerprint(catalog)
 	return catalog, nil
 }
 
@@ -517,10 +525,19 @@ func normalizeRootRequirements(values []ExtensionRequirement) ([]ExtensionRequir
 
 func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	catalog.ResolutionFingerprint = ""
+	catalog.EvidenceFingerprint = ""
+	catalog.CoreSourceIndexFingerprint = ""
 	for i := range catalog.Extensions {
 		catalog.Extensions[i].Source = ""
 		catalog.Extensions[i].SourceFingerprint = ""
 	}
+	encoded, _ := json.Marshal(catalog)
+	return sourceindex.Fingerprint(encoded)
+}
+
+func semanticCatalogEvidenceFingerprint(catalog SemanticCatalog) string {
+	catalog.ResolutionFingerprint = ""
+	catalog.EvidenceFingerprint = ""
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
