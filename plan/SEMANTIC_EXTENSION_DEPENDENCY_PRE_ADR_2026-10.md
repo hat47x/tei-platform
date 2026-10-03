@@ -303,7 +303,30 @@ Core側では、少なくとも次の入出力契約を先に固定する。
 
 「将来大規模になるから」という理由だけで、E0からsolver実装自体をProductの中心にしない。
 
-## 14. ISSUE-000077で追加するdependency pressure
+## 14. 現行Reference実装との関係
+
+PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより先に動き始めたReference実装である。2026-10-04時点では、次の境界まで実装している。
+
+- Extension identity、namespace、semantic version、Source fingerprintをReference descriptorから読み込む
+- concrete Extension IDとcompatible majorによる推移依存を決定論的に解決する
+- dependency cycleとexact version重複を拒否する
+- namespace ownership conflictをsilent overrideせずUnresolvedとして保持する
+- descriptor由来のresolution fingerprintとSource来歴のevidence fingerprintを分離する
+- Extension selectionをAcceptanceやRuntime Authorityへ昇格させない
+
+この実装はE0-AとE0-Bの初期pressureとして利用できる。ただし、次はまだ実証していない。
+
+- Semantic Interfaceを介したtyped dependency
+- compatibility level / family
+- Bridge Extensionによるcross-facet composition
+- Accepted Semantic Lock
+- root requirementからのwhy / reverse dependency
+- structured conflict derivation
+- Runtime Plugin更新とSemantic Set fingerprintの独立性
+
+したがって、PR #922のReferenceを完成形へ広げてから設計を合わせるのではなく、現在の小さいresolverをnegative / positive controlとして使い、上記の不足をE0-B / E0-Cで順にPressureする。Pre-ADRは既存Referenceの成立Evidenceを否定せず、その先で必要になる不変条件を定義する。
+
+## 15. ISSUE-000077で追加するdependency pressure
 
 E0のdeclaration / discoveryに加えて、E0内で次の小さいdependency pressureを入れる。
 
@@ -337,7 +360,7 @@ Runtime Pluginの実装versionだけを変更しても、semantic declarationが
 
 最初のSUI hierarchy Extensionをreal root consumerとして使い、D1〜D7の構造pressureにはReference-local Extensionを必要最小限だけ追加する。synthetic graphだけでSemantic Extension成立を主張しない。
 
-## 15. 実装順序
+## 16. 実装順序
 
 ISSUE-000077は次の順で進める。
 
@@ -359,7 +382,7 @@ std.*昇格判断
 
 E0-A〜Cを別remote branchへ分裂させる必要はない。同じISSUE-000077 workstreamで小さいcommitとしてmainへ収束させる。
 
-## 16. ADRへ進める判断
+## 17. ADRへ進める判断
 
 次のEvidenceが揃うまで、具体的なresolver algorithmや最終manifest syntaxをADRで固定しない。
 
@@ -381,7 +404,7 @@ E0-A〜Cを別remote branchへ分裂させる必要はない。同じISSUE-00007
 6. Semantic dependency updateをShared AcceptanceなしでAccepted Worldへ反映しない。
 7. dependency explanationを人とAIの共通surfaceにする。
 
-## 17. 参照した外部設計
+## 18. 参照した外部設計
 
 - GNU Emacs Lisp Reference Manual, Hooks / Generic Functions / Advice
   - https://www.gnu.org/software/emacs/manual/html_node/elisp/Hooks.html
