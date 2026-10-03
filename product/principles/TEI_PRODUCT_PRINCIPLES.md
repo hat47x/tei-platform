@@ -131,6 +131,8 @@ Coreは、identity、namespace、composition、extension metadata、provenance�
 
 Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
 
+標準機能も可能な限り同じExtension contract、依存解決、conflict判定、lock、discoveryを利用します。builtin実装は許容しますが、標準機能だけが使える隠れた意味追加経路を増やしません。Semantic Extensionの依存集合はRuntime / Toolingの依存集合と分け、Accepted meaningを再現できる単位で固定します。
+
 ## P17. 再現性とConformanceを機能数より優先する
 
 機能が一度動くことより、なぜ動いたのか、同じ条件で再現できるか、境界が別実装でも同じ意味を保てるかを重視します。
