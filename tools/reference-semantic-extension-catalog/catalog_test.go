@@ -301,8 +301,9 @@ func TestReferenceCatalogNormalizesRootRequirementsAndFingerprintsResolution(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(left.ResolutionFingerprint, "sha256:") {
-		t.Fatalf("resolution fingerprint=%q", left.ResolutionFingerprint)
+	if !strings.HasPrefix(left.ResolutionFingerprint, "sha256:") ||
+		!strings.HasPrefix(left.EvidenceFingerprint, "sha256:") {
+		t.Fatalf("catalog fingerprints: resolution=%q evidence=%q", left.ResolutionFingerprint, left.EvidenceFingerprint)
 	}
 	if left.ResolutionFingerprint != right.ResolutionFingerprint {
 		t.Fatalf("root order changed resolution identity: %s != %s", left.ResolutionFingerprint, right.ResolutionFingerprint)
@@ -332,7 +333,7 @@ func TestReferenceCatalogRejectsConflictingRootMajors(t *testing.T) {
 	}
 }
 
-func TestReferenceCatalogResolutionIdentityTracksCoreSourceIndex(t *testing.T) {
+func TestReferenceCatalogSeparatesCoreMeaningFromSourceIndexProvenance(t *testing.T) {
 	descriptor := ExtensionDescriptor{
 		Schema:    extensionSchema,
 		ID:        "tei.reference.policy",
@@ -343,9 +344,14 @@ func TestReferenceCatalogResolutionIdentityTracksCoreSourceIndex(t *testing.T) {
 		}},
 	}
 	root := []ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}}
+	coreSubjects := []subject.Subject{{Kind: "semantic-data", ID: "customer.customer"}}
 
 	left, err := resolveSemanticCatalog(
-		CoreCatalogInput{SourceIndexFingerprint: "sha256:" + strings.Repeat("1", 64)},
+		CoreCatalogInput{
+			Subjects:               coreSubjects,
+			SubjectFingerprint:     "sha256:" + strings.Repeat("1", 64),
+			SourceIndexFingerprint: "sha256:" + strings.Repeat("a", 64),
+		},
 		[]ExtensionDescriptor{descriptor},
 		root,
 	)
@@ -353,15 +359,41 @@ func TestReferenceCatalogResolutionIdentityTracksCoreSourceIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	right, err := resolveSemanticCatalog(
-		CoreCatalogInput{SourceIndexFingerprint: "sha256:" + strings.Repeat("2", 64)},
+		CoreCatalogInput{
+			Subjects:               coreSubjects,
+			SubjectFingerprint:     "sha256:" + strings.Repeat("1", 64),
+			SourceIndexFingerprint: "sha256:" + strings.Repeat("b", 64),
+		},
 		[]ExtensionDescriptor{descriptor},
 		root,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if left.ResolutionFingerprint == right.ResolutionFingerprint {
-		t.Fatalf("core Source Index change did not change resolution identity: %s", left.ResolutionFingerprint)
+	if left.ResolutionFingerprint != right.ResolutionFingerprint {
+		t.Fatalf("source provenance changed semantic resolution identity: %s != %s", left.ResolutionFingerprint, right.ResolutionFingerprint)
+	}
+	if left.EvidenceFingerprint == right.EvidenceFingerprint {
+		t.Fatalf("Source Index provenance change did not change Evidence identity: %s", left.EvidenceFingerprint)
+	}
+
+	changedMeaning, err := resolveSemanticCatalog(
+		CoreCatalogInput{
+			Subjects: []subject.Subject{
+				{Kind: "semantic-data", ID: "customer.customer"},
+				{Kind: "semantic-data", ID: "sales.order"},
+			},
+			SubjectFingerprint:     "sha256:" + strings.Repeat("2", 64),
+			SourceIndexFingerprint: "sha256:" + strings.Repeat("c", 64),
+		},
+		[]ExtensionDescriptor{descriptor},
+		root,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if left.ResolutionFingerprint == changedMeaning.ResolutionFingerprint {
+		t.Fatalf("core subject-set change did not change semantic resolution identity: %s", left.ResolutionFingerprint)
 	}
 }
 
@@ -393,6 +425,9 @@ func TestReferenceCatalogResolutionIdentityIgnoresRawDescriptorProvenance(t *tes
 	}
 	if left.ResolutionFingerprint != right.ResolutionFingerprint {
 		t.Fatalf("raw descriptor provenance changed semantic resolution identity: %s != %s", left.ResolutionFingerprint, right.ResolutionFingerprint)
+	}
+	if left.EvidenceFingerprint == right.EvidenceFingerprint {
+		t.Fatalf("raw descriptor provenance did not change Evidence identity: %s", left.EvidenceFingerprint)
 	}
 	if left.Extensions[0].Source == right.Extensions[0].Source ||
 		left.Extensions[0].SourceFingerprint == right.Extensions[0].SourceFingerprint {
