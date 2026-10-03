@@ -124,7 +124,7 @@ A5の権限変更とA6のnative code残存箇所には、現在のPreviewに完�
 
 既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6の`未評価`表示、A7の逆追跡情報、A8の変更単位、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
 
-このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
+このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
 
 ## 具体例
 
