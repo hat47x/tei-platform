@@ -21,6 +21,7 @@ func main() {
 
 const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
+  reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json] [-out FILE]
   reference-shared-acceptance accept  -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
@@ -35,7 +36,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "accept", "reject", "attach-qualification", "revision", "decisions":
+	case "preview", "review", "accept", "reject", "attach-qualification", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -46,7 +47,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
 	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
-	outPath := flags.String("out", "", "結果JSONの出力先（省略時は標準出力）")
+	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
+	format := flags.String("format", "text", "reviewの出力形式（text / json）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
 	reason := flags.String("reason", "", "rejectの理由")
 	allowBaseline := flags.Bool("allow-reference-baseline", false, "Gate B / Gate Cが固定したreference/workspaceへのacceptを許可する")
@@ -73,6 +75,18 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if err := os.WriteFile(*outPath, encoded, 0o644); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
+
+	emitText := func(value string) int {
+		if *outPath == "" {
+			_, _ = io.WriteString(stdout, value)
+			return 0
+		}
+		if err := os.WriteFile(*outPath, []byte(value), 0o644); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
@@ -143,6 +157,29 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch command {
+	case "review":
+		ev, err := evaluate(*workspacePath, data)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		review := buildReviewProjection(ev)
+		switch *format {
+		case "text":
+			if code := emitText(renderReviewProjection(review)); code != 0 {
+				return code
+			}
+		case "json":
+			if code := emit(review); code != 0 {
+				return code
+			}
+		default:
+			fmt.Fprintln(stderr, "reviewの-formatはtextまたはjsonを指定してください")
+			return 2
+		}
+		if !ev.preview.Acceptable {
+			return 1
+		}
 	case "preview":
 		ev, err := evaluate(*workspacePath, data)
 		if err != nil {
