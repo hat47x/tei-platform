@@ -346,9 +346,9 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
 
-少なくとも、拡張のidentity、namespace、適用範囲、依存、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できる構造を持つ必要があります。
+少なくとも、拡張のidentity、namespace、version、適用範囲、依存条件、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できなければなりません。意味論と、その意味を読み書き・検証・実現するための規則は、同じ拡張のidentityへ辿れる必要があります。
 
-複数の拡張が同じ意味へ異なる定義を与える場合は、読み込み順や偶然の実装順序で黙って上書きしてはいけません。競合、優先関係、互換性を明示的に判定し、一意に決められない場合はUnresolvedとして扱います。
+依存先と互換範囲を明示でき、同じnamespaceの意味を互換性のない定義へ黙って差し替えてはいけません。複数の拡張が同じ意味へ異なる定義を与える場合も、読み込み順や偶然の実装順序で上書きせず、競合、優先関係、互換性を明示的に判定します。一意に決められない場合はUnresolvedとして扱います。
 
 意味を宣言できることは実行Authorityを意味しません。Plugin / DSL拡張もRQ-019の権限・Resource境界を迂回してはいけません。
 
