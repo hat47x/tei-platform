@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -38,16 +41,19 @@ type ExtensionConnection struct {
 }
 
 type ExtensionDescriptor struct {
-	Schema         string                `json:"schema"`
-	ID             string                `json:"id"`
-	Namespace      string                `json:"namespace"`
-	Version        string                `json:"version"`
-	AppliesToKinds []string              `json:"appliesToKinds,omitempty"`
+	Schema         string                 `json:"schema"`
+	ID             string                 `json:"id"`
+	Namespace      string                 `json:"namespace"`
+	Version        string                 `json:"version"`
+	AppliesToKinds []string               `json:"appliesToKinds,omitempty"`
 	Requires       []ExtensionRequirement `json:"requires,omitempty"`
 	Concepts       []ExtensionConcept     `json:"concepts,omitempty"`
 	Relations      []ExtensionRelation    `json:"relations,omitempty"`
 	Constraints    []ExtensionConstraint  `json:"constraints,omitempty"`
 	Connections    []ExtensionConnection  `json:"connections,omitempty"`
+
+	sourcePath        string
+	sourceFingerprint string
 }
 
 func normalizeDescriptor(d ExtensionDescriptor) (ExtensionDescriptor, error) {
@@ -228,4 +234,13 @@ func uniqueSortedStrings(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+
+func descriptorFingerprint(d ExtensionDescriptor) string {
+	d.sourcePath = ""
+	d.sourceFingerprint = ""
+	encoded, _ := json.Marshal(d)
+	sum := sha256.Sum256(encoded)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
