@@ -338,8 +338,8 @@ func TestSharedAcceptanceRejectsSourceThatCurrentQualificationDidNotAuthorize(t 
 func TestAttachQualificationRejectsMalformedRequirements(t *testing.T) {
 	candidate := unitPriceCandidate("sha256:" + strings.Repeat("a", 64))
 	qualification := knowledgecontext.QualificationResult{
-		Candidate:     subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
-		Status:        knowledgecontext.QualificationApplicable,
+		Candidate: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+		Status:    knowledgecontext.QualificationApplicable,
 		Requirements: knowledgecontext.QualificationRequirements{
 			ExpectedKind: "",
 		},
