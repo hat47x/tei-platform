@@ -1,7 +1,8 @@
 # Product Requirement Gap Audit
 
 - 監査日: 2026-09-21（再監査。前回は2026-09-11）
-- 対象: RQ-001〜RQ-030
+- 追記: 2026-10-03（RQ-031〜RQ-033の初期評価）
+- 対象: RQ-001〜RQ-033
 - 上流Trace: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - Quality設計: `../docs/product-quality-architecture.md`
 - Quality実証計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
@@ -39,6 +40,8 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
 
 2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
+
+2026-10-03には、意味体系を後付けで拡張・合成できることをProduct Valueへ明示したことに伴い、RQ-031〜RQ-033を追加しました。この3件は追加時点ではDesign Onlyです。Requirement追加と同じ変更でPAS mappingと本監査へ登録し、前回のように価値定義だけが検証マップより先へ進む状態を作らないようにします。
 
 ```text
 Gate A — Ready
@@ -95,6 +98,9 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-028 | **Partial Evidence** | PAS-01 | Shared Acceptance Previewが、意味差分・application差分・理由つきimpact辺・unresolved・changed collections・source edit fingerprintを、Canonical ID / source pathへ戻れる形で出す（2026-09-21）。ACTOR_CONTEXT R2 human review challenge、Source Diagnostic、Workbench model | 人向けsurfaceが無い（Studio UIはDesign Only）。人が実際に承認したEvidenceが無い。承認に十分なprojectionの定義が無い。native custom code / 権限変更のprojectionが未実証。担当IssueもADRも無い |
 | RQ-029 | **Partial Evidence** | PAS-06 | 第二Applicationが共有`customer` semanticをorigin / provenanceを分けて再利用するS1〜S5 executable pressure、`run-knowledge-portability-reference-evidence.sh`、`KNOWLEDGE_PORTABILITY_R0_BOUNDARY`、Shared Acceptanceの型付きcomposition | `Variation` / destination-specific overrideの表現が無い（`internal/`に0件）。実際のAcceptanceは独立レビュー待ちで未実施。別Repository / 別組織への移植Evidenceが無い。担当IssueもADRも無い |
 | RQ-030 | **Design Only** | PAS-07 | Business Procedure Referenceがmanual / external / observation-boundaryとHandoffを区別してauthorでき、baseline checkerとGate A A8で機械確認できる（agentが必要とする区別の素材）。Permission Grant / Resource Lease / authorization境界。ACTOR_CONTEXT R3 / R6系の設計圧力 | **agentがTEI成果物を読んで業務を遂行するpathが製品側に無い**。R3系圧力の大半がproduction codeへ接続していない（§9）。閉包条件が未定義 |
+| RQ-031 | **Design Only** | PAS-06 | Product Value / Principle / Requirementで、Data Modelを含む特定のモデル体系をCoreの唯一の上位モデルにしない境界を定義。RQ-026にはData / Function / Businessを異なる視点として扱うcross-view圧力がある | Core変更なしに新しい意味視点を追加するReferenceが無い。何を共通primitiveとし、何をSemantic Extensionへ置くかの実装境界も未実証 |
+| RQ-032 | **Design Only** | PAS-06 | Plugin / Capability境界、`std.*` namespace、Shared Acceptance、Unresolvedの既存原則を、意味論的な拡張へ適用する要求を定義 | Plugin / DSLが意味のidentity・依存・関係・Constraint / Validationを機械可読に宣言する共通contractが無い。拡張間の競合・互換性判定も未実証 |
+| RQ-033 | **Design Only** | PAS-06 | RQ-015のknowledge-first探索、Source Index、Shared Acceptance等に、AI / Toolが既存意味を再利用するための部分的な土台がある | AI / ToolがCoreとSemantic Extensionを同じcatalogから探索し、Composition → 決定論的Validation → Proposal / Unresolvedへ進む一連のReferenceが無い |
 
 ## 5. 評価集約
 
@@ -129,17 +135,22 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-028
 - RQ-029
 
-### Design Only — 5
+### Design Only — 8
 
 - RQ-010
 - RQ-015
 - RQ-016
 - RQ-024
 - RQ-030
+- RQ-031
+- RQ-032
+- RQ-033
 
 ### Not Started — 0
 
 2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
+
+2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
 
 ## 6. Cross-cutting Product Quality監査
 
@@ -293,6 +304,6 @@ TEI packageをimportしないtestは、file内で定義したprobe型に対す�
 
 Product Qualityはこの主線と競合する別workstreamではなく、**既存RequirementがTarget / Provider / Runtime / Studio / AIへ渡っても壊れないことをEvidenceで確認する横断軸**として扱います。
 
-2026-09-21の再監査で分かった横断的な事実は、**Productの価値定義がその検証マップより先に進んでいた**ことです。2026-09-18にTEIを「AI-native継続開発とAgent業務遂行の共通知識基盤」へ再定義してRQ-027〜030を追加した一方、PAS mappingと本監査は翌日以降に更新されてもRQ-026で止まり、4件は優先順位にも現れませんでした。その間に、RQ-030へ向かう設計圧力だけが2日で81 file・32K行増えました（§9）。4件のうちRQ-027〜029は現在も担当Issueを持たず、RQ-028とRQ-029はADRも持ちません。作業項目を持つのは`ISSUE-000053`があるRQ-030だけで、圧力が偏った先もそこです。
+2026-09-21の再監査で分かった横断的な事実は、**Productの価値定義がその検証マップより先に進んでいた**ことです。2026-10-03のRQ-031〜RQ-033追加では、Requirement、PAS mapping、本監査を同時に更新し、このずれを繰り返さない形にしました。2026-09-18にTEIを「AI-native継続開発とAgent業務遂行の共通知識基盤」へ再定義してRQ-027〜030を追加した一方、PAS mappingと本監査は翌日以降に更新されてもRQ-026で止まり、4件は優先順位にも現れませんでした。その間に、RQ-030へ向かう設計圧力だけが2日で81 file・32K行増えました（§9）。4件のうちRQ-027〜029は現在も担当Issueを持たず、RQ-028とRQ-029はADRも持ちません。作業項目を持つのは`ISSUE-000053`があるRQ-030だけで、圧力が偏った先もそこです。
 
 さらにRQ-027の監査で、この構造がTEI自身へ跳ね返っていることが分かりました。RQ-027は「AIが会話履歴に頼らずApplicationへ再入場できる」ことを求め、そこにaccepted DecisionとEvidence / provenanceを含めています。しかしTEI Repository自身では、その二つだけが機械到達できません。Canonical meaning、source、validation、impactは`tei`コマンドで到達できるのに、判断は索引の無いADR 29件、Evidenceは散文から参照するRelease assetとして置かれています。**TEIは、自分が作ろうとしている共通知識面に、自分の判断とEvidenceをまだ載せていません。**
