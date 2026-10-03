@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -90,6 +91,100 @@ func TestApplicableQualificationAttachesExactEvidenceWithoutChangingCandidateMea
 	if !ev.preview.Acceptable {
 		t.Fatalf("qualified candidate did not pass Shared Acceptance preview: %+v", ev.preview.Stages)
 	}
+}
+
+func TestKnowledgeQualifyCLIOutputFlowsThroughAttachmentAndPreview(t *testing.T) {
+	dir := scratchWorkspace(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := treeDigest(t, dir)
+
+	temp := t.TempDir()
+	requirementsPath := filepath.Join(temp, "qualification-requirements.json")
+	candidatePath := filepath.Join(temp, "candidate.json")
+	qualificationPath := filepath.Join(temp, "qualification.json")
+	groundedPath := filepath.Join(temp, "grounded-candidate.json")
+
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+	if err := os.WriteFile(requirementsPath, mustJSON(t, requirements), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(candidatePath, mustJSON(t, unitPriceCandidate(snapshot.revision)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(
+		"go", "run", "./cmd/tei", "knowledge-qualify",
+		"-workspace", dir,
+		"-subject-kind", "application-pattern",
+		"-subject-id", "order_entry.customer_reference",
+		"-qualification-requirements", requirementsPath,
+	)
+	cmd.Dir = repositoryRoot(t)
+	cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=")
+	var qualificationOut, qualificationErr bytes.Buffer
+	cmd.Stdout = &qualificationOut
+	cmd.Stderr = &qualificationErr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("tei knowledge-qualify failed: %v\nstderr=%s", err, qualificationErr.String())
+	}
+	qualification, err := decodeQualificationResult(qualificationOut.Bytes())
+	if err != nil {
+		t.Fatalf("actual tei knowledge-qualify output is not accepted by handoff decoder: %v\noutput=%s", err, qualificationOut.String())
+	}
+	if qualification.Status != knowledgecontext.QualificationApplicable || len(qualification.Evidence) == 0 {
+		t.Fatalf("actual qualification lacks applicable exact Evidence: %+v", qualification)
+	}
+	if err := os.WriteFile(qualificationPath, qualificationOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var attachOut, attachErr bytes.Buffer
+	if code := runCLI(
+		[]string{"attach-qualification", "-candidate", candidatePath, "-qualification", qualificationPath},
+		&attachOut,
+		&attachErr,
+	); code != 0 {
+		t.Fatalf("attach-qualification code=%d stderr=%s", code, attachErr.String())
+	}
+	grounded, err := decodeCandidate(attachOut.Bytes())
+	if err != nil {
+		t.Fatalf("attach-qualification output is not a candidate: %v\noutput=%s", err, attachOut.String())
+	}
+	if len(grounded.Evidence) == 0 {
+		t.Fatalf("grounded candidate lacks Evidence: %+v", grounded)
+	}
+	if err := os.WriteFile(groundedPath, attachOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var previewOut, previewErr bytes.Buffer
+	if code := runCLI(
+		[]string{"preview", "-workspace", dir, "-candidate", groundedPath},
+		&previewOut,
+		&previewErr,
+	); code != 0 {
+		t.Fatalf("preview code=%d stderr=%s output=%s", code, previewErr.String(), previewOut.String())
+	}
+	var preview Preview
+	if err := json.Unmarshal(previewOut.Bytes(), &preview); err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Acceptable {
+		t.Fatalf("actual qualification handoff did not survive Shared Acceptance preview: %+v", preview.Stages)
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }
 
 func TestSharedAcceptanceRejectsTamperedQualificationEvidence(t *testing.T) {
