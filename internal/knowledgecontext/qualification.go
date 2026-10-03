@@ -44,12 +44,13 @@ type QualificationEvidence struct {
 }
 
 type QualificationResult struct {
-	Candidate       subject.Subject           `json:"candidate"`
-	Status          QualificationStatus       `json:"status"`
-	Reasons         []QualificationReason     `json:"reasons,omitempty"`
-	Requirements    QualificationRequirements `json:"requirements"`
-	Evidence        []QualificationEvidence   `json:"evidence,omitempty"`
-	AuthorityLimits []string                  `json:"authorityLimits"`
+	Candidate          subject.Subject           `json:"candidate"`
+	Status             QualificationStatus       `json:"status"`
+	Reasons            []QualificationReason     `json:"reasons,omitempty"`
+	Requirements       QualificationRequirements `json:"requirements"`
+	Evidence           []QualificationEvidence   `json:"evidence,omitempty"`
+	DependencyEvidence []QualificationEvidence   `json:"dependencyEvidence,omitempty"`
+	AuthorityLimits    []string                  `json:"authorityLimits"`
 }
 
 func Qualify(ctx Context, requirements QualificationRequirements) (QualificationResult, error) {
@@ -257,6 +258,84 @@ func qualificationEvidence(ctx Context) []QualificationEvidence {
 			return out[i].SubjectKind < out[j].SubjectKind
 		}
 		return out[i].Subject < out[j].Subject
+	})
+	return out
+}
+
+
+func QualifyWithSources(ctx Context, sources sourceindex.Index, requirements QualificationRequirements) (QualificationResult, error) {
+	result, err := Qualify(ctx, requirements)
+	if err != nil || result.Status != QualificationApplicable {
+		return result, err
+	}
+
+	var dependencyEvidence []QualificationEvidence
+	for _, requirement := range result.Requirements.RequiredDependencies {
+		target := subject.Subject{Kind: requirement.Kind, ID: requirement.ID}
+		current := authoritativeEvidenceForSubject(sources, target)
+		if len(current) == 0 {
+			result.Status = QualificationUnknown
+			result.Reasons = append(result.Reasons, QualificationReason{
+				Code:   "required-dependency-authoritative-evidence-unavailable",
+				Detail: dependencyRequirementKey(requirement),
+			})
+			sortQualificationReasons(result.Reasons)
+			result.Evidence = nil
+			result.DependencyEvidence = nil
+			return result, nil
+		}
+		dependencyEvidence = append(dependencyEvidence, current...)
+	}
+	result.DependencyEvidence = normalizeQualificationEvidence(dependencyEvidence)
+	return result, nil
+}
+
+func authoritativeEvidenceForSubject(sources sourceindex.Index, target subject.Subject) []QualificationEvidence {
+	artifacts := make(map[string]string, len(sources.Artifacts))
+	for _, artifact := range sources.Artifacts {
+		artifacts[artifact.Path] = artifact.Fingerprint
+	}
+	var out []QualificationEvidence
+	for _, ref := range sources.ReferencesFor(target) {
+		if ref.Role != sourceindex.RoleDefinition && ref.Role != sourceindex.RoleAuthoring {
+			continue
+		}
+		fingerprint := artifacts[ref.ArtifactPath]
+		if fingerprint == "" {
+			continue
+		}
+		out = append(out, QualificationEvidence{
+			SubjectKind:       target.Kind,
+			Subject:           target.ID,
+			Source:            ref.ArtifactPath,
+			SourceFingerprint: fingerprint,
+		})
+	}
+	return normalizeQualificationEvidence(out)
+}
+
+func normalizeQualificationEvidence(values []QualificationEvidence) []QualificationEvidence {
+	seen := map[string]struct{}{}
+	out := make([]QualificationEvidence, 0, len(values))
+	for _, item := range values {
+		key := fmt.Sprintf("%q|%q|%q|%q", item.SubjectKind, item.Subject, item.Source, item.SourceFingerprint)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, item)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].SubjectKind != out[j].SubjectKind {
+			return out[i].SubjectKind < out[j].SubjectKind
+		}
+		if out[i].Subject != out[j].Subject {
+			return out[i].Subject < out[j].Subject
+		}
+		if out[i].Source != out[j].Source {
+			return out[i].Source < out[j].Source
+		}
+		return out[i].SourceFingerprint < out[j].SourceFingerprint
 	})
 	return out
 }
