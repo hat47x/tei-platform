@@ -44,8 +44,9 @@ type Evidence struct {
 	Subject                   string                                        `json:"subject,omitempty"`
 	Source                    string                                        `json:"source,omitempty"`
 	SourceFingerprint         string                                        `json:"sourceFingerprint,omitempty"`
-	QualificationRequirements *knowledgecontext.QualificationRequirements `json:"qualificationRequirements,omitempty"`
-	Note                      string                                        `json:"note,omitempty"`
+	QualificationRequirements       *knowledgecontext.QualificationRequirements `json:"qualificationRequirements,omitempty"`
+	QualificationDependencyEvidence []knowledgecontext.QualificationEvidence    `json:"qualificationDependencyEvidence,omitempty"`
+	Note                            string                                      `json:"note,omitempty"`
 }
 
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -122,6 +123,27 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 				)
 			}
 			e.QualificationRequirements = &normalizedRequirements
+		}
+		if len(e.QualificationDependencyEvidence) > 0 && e.QualificationRequirements == nil {
+			return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidenceにはqualificationRequirementsが必要です", i)
+		}
+		for j := range e.QualificationDependencyEvidence {
+			dependency := &e.QualificationDependencyEvidence[j]
+			dependency.SubjectKind = strings.TrimSpace(dependency.SubjectKind)
+			dependency.Subject = strings.TrimSpace(dependency.Subject)
+			dependency.Source = strings.TrimSpace(dependency.Source)
+			dependency.SourceFingerprint = strings.TrimSpace(dependency.SourceFingerprint)
+			if dependency.SubjectKind == "" ||
+				dependency.Subject == "" ||
+				dependency.Source == "" ||
+				!revisionPattern.MatchString(dependency.SourceFingerprint) {
+				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d]はexact subject / source / fingerprintが必要です", i, j)
+			}
+			p, err := sourceindex.NormalizeWorkspacePath(dependency.Source)
+			if err != nil {
+				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d].source: %w", i, j, err)
+			}
+			dependency.Source = p
 		}
 		if e.Subject != "" && e.SubjectKind == "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
