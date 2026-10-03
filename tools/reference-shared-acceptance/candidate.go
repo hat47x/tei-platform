@@ -110,6 +110,7 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 			(e.SubjectKind == "" || e.Subject == "" || e.Source == "" || e.SourceFingerprint == "") {
 			return c, "", fmt.Errorf("evidence[%d].qualificationRequirementsにはsubjectKind / subject / source / sourceFingerprintが必要です", i)
 		}
+		requiredDependencySubjects := map[string]struct{}{}
 		if e.QualificationRequirements != nil {
 			normalizedRequirements, err := knowledgecontext.NormalizeQualificationRequirements(*e.QualificationRequirements)
 			if err != nil {
@@ -123,11 +124,15 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 					e.SubjectKind,
 				)
 			}
+			for _, requirement := range normalizedRequirements.RequiredDependencies {
+				requiredDependencySubjects[candidateDependencySubjectKey(requirement.Kind, requirement.ID)] = struct{}{}
+			}
 			e.QualificationRequirements = &normalizedRequirements
 		}
 		if len(e.QualificationDependencyEvidence) > 0 && e.QualificationRequirements == nil {
 			return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidenceにはqualificationRequirementsが必要です", i)
 		}
+		seenDependencySubjects := map[string]struct{}{}
 		for j := range e.QualificationDependencyEvidence {
 			dependency := &e.QualificationDependencyEvidence[j]
 			dependency.SubjectKind = strings.TrimSpace(dependency.SubjectKind)
@@ -145,6 +150,26 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 				return c, "", fmt.Errorf("evidence[%d].qualificationDependencyEvidence[%d].source: %w", i, j, err)
 			}
 			dependency.Source = p
+			subjectKey := candidateDependencySubjectKey(dependency.SubjectKind, dependency.Subject)
+			if _, required := requiredDependencySubjects[subjectKey]; !required {
+				return c, "", fmt.Errorf(
+					"evidence[%d].qualificationDependencyEvidence[%d]のsubject %s:%s はrequiredDependenciesにありません",
+					i,
+					j,
+					dependency.SubjectKind,
+					dependency.Subject,
+				)
+			}
+			seenDependencySubjects[subjectKey] = struct{}{}
+		}
+		for subjectKey := range requiredDependencySubjects {
+			if _, found := seenDependencySubjects[subjectKey]; !found {
+				return c, "", fmt.Errorf(
+					"evidence[%d]のrequired dependency %q にauthoritative Evidenceがありません",
+					i,
+					subjectKey,
+				)
+			}
 		}
 		if len(e.QualificationDependencyEvidence) > 0 {
 			dependencies := make([]knowledgecontext.QualificationEvidence, 0, len(e.QualificationDependencyEvidence))
@@ -211,6 +236,10 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 	})
 	c.Delta = ops
 	return c, fingerprintOf(c.BaseModelRevision, ops), nil
+}
+
+func candidateDependencySubjectKey(kind, id string) string {
+	return kind + "\x00" + id
 }
 
 func candidateEvidenceJSONKey(value any) string {
