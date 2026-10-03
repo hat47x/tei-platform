@@ -91,6 +91,7 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 	}
 
 	evidence := make([]Evidence, 0, len(c.Evidence))
+	evidenceSeen := map[string]struct{}{}
 	for i, e := range c.Evidence {
 		e.SubjectKind = strings.TrimSpace(e.SubjectKind)
 		e.Subject = strings.TrimSpace(e.Subject)
@@ -145,6 +146,22 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 			}
 			dependency.Source = p
 		}
+		if len(e.QualificationDependencyEvidence) > 0 {
+			dependencies := make([]knowledgecontext.QualificationEvidence, 0, len(e.QualificationDependencyEvidence))
+			seenDependencies := map[string]struct{}{}
+			for _, dependency := range e.QualificationDependencyEvidence {
+				key := candidateEvidenceJSONKey(dependency)
+				if _, duplicate := seenDependencies[key]; duplicate {
+					continue
+				}
+				seenDependencies[key] = struct{}{}
+				dependencies = append(dependencies, dependency)
+			}
+			sort.Slice(dependencies, func(i, j int) bool {
+				return candidateEvidenceJSONKey(dependencies[i]) < candidateEvidenceJSONKey(dependencies[j])
+			})
+			e.QualificationDependencyEvidence = dependencies
+		}
 		if e.Subject != "" && e.SubjectKind == "" {
 			if _, err := core.ParseCanonicalID(e.Subject); err != nil {
 				return c, "", fmt.Errorf("evidence[%d].subject: %w", i, err)
@@ -160,8 +177,16 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		if e.SourceFingerprint != "" && !revisionPattern.MatchString(e.SourceFingerprint) {
 			return c, "", fmt.Errorf("evidence[%d].sourceFingerprint %q は sha256:<64桁の16進> 形式ではありません", i, e.SourceFingerprint)
 		}
+		key := candidateEvidenceJSONKey(e)
+		if _, duplicate := evidenceSeen[key]; duplicate {
+			continue
+		}
+		evidenceSeen[key] = struct{}{}
 		evidence = append(evidence, e)
 	}
+	sort.Slice(evidence, func(i, j int) bool {
+		return candidateEvidenceJSONKey(evidence[i]) < candidateEvidenceJSONKey(evidence[j])
+	})
 	c.Evidence = evidence
 
 	ops := make([]Operation, 0, len(c.Delta))
@@ -186,6 +211,11 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 	})
 	c.Delta = ops
 	return c, fingerprintOf(c.BaseModelRevision, ops), nil
+}
+
+func candidateEvidenceJSONKey(value any) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
 }
 
 func fingerprintOf(baseModelRevision string, ops []Operation) string {
