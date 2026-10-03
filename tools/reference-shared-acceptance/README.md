@@ -22,7 +22,7 @@ decode → normalize → base-revision → resolve → apply(overlay)
 | stage | 確認すること |
 | --- | --- |
 | decode | 未知fieldを許さず厳密に読む |
-| normalize | 正規形へ揃え、意味を持つ部分（base revisionとdelta）だけのfingerprintを作る。Origin / Intent / Evidenceは含めない。qualification付きEvidenceはrequirementsとrequired dependency Evidenceの対応を検証し、Evidence集合をdedup・sortして入口差を除く |
+| normalize | 正規形へ揃え、意味を持つ部分（base revisionとdelta）だけの`candidateFingerprint`を作る。Origin / Intent / Evidenceは含めない。qualification付きEvidenceはrequirementsとrequired dependency Evidenceの対応を検証し、Evidence集合をdedup・sortして入口差を除く。正規化済みEvidenceには別の`evidenceFingerprint`を付け、意味identityと根拠identityを混ぜない |
 | base-revision | candidateの`baseModelRevision`が現在のsourceと一致する。staleなら黙って適用せず、reject / 再読込して再生成 / 明示rebase / 手動conflict解消へ分岐する |
 | resolve | 対象namespace・Attribute・Relationが存在し、追加するidが未使用で、Evidenceがcurrent Source Indexへ解決できることを確認する。qualification付きEvidenceはsubject kind・source・fingerprintを照合し、同じrequirementsで再qualificationする。明示required dependencyがある場合は、そのauthoritative sourceとfingerprintもcurrent qualificationと一致する必要がある。placementは意味を所有する層に限る |
 | apply | 変更を**overlay（複製）**へ適用する。元のsourceはまだ変えない |
@@ -97,7 +97,7 @@ go run ./tools/reference-shared-acceptance preview \
 
 Previewでは、添付された結果をそのまま信用しません。current Source Indexに対してexact subjectとsourceを解決し、source fingerprintを照合したうえで、同じrequirementsを使ってqualificationを再実行します。required dependencyがある場合は、そのauthoritative sourceとfingerprintの集合もcurrent qualificationと照合します。したがって、dependencyのIDが同じままsource内容だけが変わった場合もstaleとして拒否できます。一方、requirementsが参照していないsourceの変更はqualification freshnessへ持ち込まず、repository-wideなglobal revisionは要求しません。
 
-このEvidenceはcandidateの意味を変更しないため、candidate fingerprintには入りません。Accepted Decisionにはprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。
+このEvidenceはcandidateの意味を変更しないため、`candidateFingerprint`には入りません。一方、Preview / Decisionは正規化済みEvidenceの`evidenceFingerprint`を別に持つため、「同じ意味だが根拠が違う」candidateを機械的に区別できます。Accepted DecisionにはEvidence本文とそのidentityがprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。
 ### candidateの例
 
 ```json
@@ -143,7 +143,7 @@ Previewでは、添付された結果をそのまま信用しません。current
 - 受理した意味はtoolを介さず共有loaderで再読込でき、Validationを満たし、受理前後で評価結果が変わる
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
-- どの入口のcandidateも同じfingerprint・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない
+- どの入口のcandidateも同じ`candidateFingerprint`・同じsource・同じCanonical Worldになり、AI固有のEvidenceがCanonicalへ入らない。同値なEvidenceは同じ`evidenceFingerprint`へ正規化され、Evidenceだけを変えてもsemantic fingerprintは変わらない
 - accept途中の並行変更・受理後Conformance失敗では、書いたfileを元へ戻す
 - 同じ意味を別fileへ移すだけならsemantic差分は出ず、論理的な改名はremoved / addedとして現れる
 - 派生物（Canonical World JSON）を消しても、accepted sourceから同じものを再生成できる
