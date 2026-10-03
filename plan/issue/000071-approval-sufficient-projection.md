@@ -114,6 +114,20 @@ RQ-028が列挙する確認対象と、Product Valueの「形だけの承認」�
 2. A5 / A6を示す項目。変わらない場合も「変わらない」と示す。
 3. 承認記録（`.tei/decisions/`）に、承認時に満たしていなかった条件を残すこと。
 
+## 2026-10-04 最小Review Projectionのcandidate実装
+
+A1〜A8をRequirementとして採用する前に、既存Previewだけで人がどこまで判断できるかを実物で確認するため、`tools/reference-shared-acceptance`へread-onlyの`review` commandをcandidate実装した。実装は既存の`evaluate`を再利用し、Acceptanceの判定規則やCanonical modelは増やしていない。
+
+`review`はA1〜A8を固定順で表示する。冒頭には`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionをまとめる。A1〜A4は意味差分、影響、diagnostic、未解決点を既存Previewから取り出す。各sectionには導出元の`preview.*`または`candidate.*`項目を`sources`として残し、text出力でも`根拠:`として表示する。`candidateFingerprint`は意味、`evidenceFingerprint`は根拠、`reviewFingerprint`はA1〜A8を含む提示Projectionのidentityとして分ける。A7はEvidenceと変更予定sourceのpath・fingerprintも表示する。A8は変更subject数と既存上限を示す。
+
+A5の権限変更とA6のnative code残存箇所には、現在のPreviewだけでは完全な専用評価がない。candidateのtyped operationから、Permission grant・Resource binding・lease・実行principalや`customGoBindings`を直接authorしないことは決定論的に確認できるため、この範囲は`一部`として表示する。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価として残す。前者を根拠に後者まで「変更なし」とは判定しない。
+
+既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6でcandidate自身のauthoringと未評価の実効影響を分けること、A7の逆追跡情報、A8の変更単位、`reviewFingerprint`の再現性、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
+
+ReviewとAcceptの取り違えを防ぐため、`accept`には任意の`-expected-review-fingerprint`も追加した。Accept時にcurrent Reviewを再構築し、期待したfingerprintと違えばsource変更前にfail closedする。一致した場合は、`reviewBinding`としてfingerprintとcoverageをaccepted Decisionへ残し、`decisions`から会話履歴なしで再取得できる。これにより、受理時点でA1〜A8のどこが`一部`または`未評価`だったかも記録に残る。
+
+このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`reviewFingerprint`と`reviewBinding`は提示内容とのbindingを表すが、human approvalそのものを証明するtokenではない。`previewAcceptable`もShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
+
 ## 具体例
 
 `repair_intake`のPreviewをA1〜A8の順に写すと、たとえば次のようになります。
@@ -135,9 +149,9 @@ A6が「項目なし」と明示されていれば、承認者は「native code�
 
 - [ ] 条件A1〜A8を、owner reviewで採用・修正・却下のいずれかに判定する。採用した条件はRQ-028の解釈として、このIssueまたはADRへ残す
 - [x] `repair_intake`以外のPreview（`add-validation`、`add-relation`、`add-environment-binding`）でも机上評価を行い、評価が変わる条件を記録した（2026-10-02、上の「机上評価の拡張」。コードは実行していない）
-- [ ] Preview結果をA1〜A8の順に写す最小Projectionを、Reference toolとして作る（source変更を伴うため、`tools/repository-health-check.sh`のfull PASSが統合条件）
+- [ ] Preview結果をA1〜A8の順に写す最小Projectionを、Reference toolとして作る（candidate実装あり。source変更を伴うため、`tools/repository-health-check.sh`のexact-head full PASSが統合条件）
 - [ ] そのProjectionだけを見て、人が一件の変更を承認または却下した記録を残す（AIの要約を介さない）。承認者が気づいた不足を記録する
-- [ ] A5 / A6を示す項目を追加するか、追加しない理由と、承認時にそれを明示する方法を決める
+- [ ] A5 / A6を示す項目を追加するか、追加しない理由と、承認時にそれを明示する方法を決める（candidate実装では、typed operationから直接authorするgrant / native codeの有無までを`一部`として表示し、実効権限と既存native依存は未評価として残す）
 
 ## 完了後に判断できること
 

@@ -98,9 +98,9 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-028 | **Partial Evidence** | PAS-01 | Shared Acceptance Previewが、意味差分・application差分・理由つきimpact辺・unresolved・changed collections・source edit fingerprintを、Canonical ID / source pathへ戻れる形で出す（2026-09-21）。ACTOR_CONTEXT R2 human review challenge、Source Diagnostic、Workbench model | 人向けsurfaceが無い（Studio UIはDesign Only）。人が実際に承認したEvidenceが無い。承認に十分なprojectionの定義が無い。native custom code / 権限変更のprojectionが未実証。担当IssueもADRも無い |
 | RQ-029 | **Partial Evidence** | PAS-06 | 第二Applicationが共有`customer` semanticをorigin / provenanceを分けて再利用するS1〜S5 executable pressure、`run-knowledge-portability-reference-evidence.sh`、`KNOWLEDGE_PORTABILITY_R0_BOUNDARY`、Shared Acceptanceの型付きcomposition | `Variation` / destination-specific overrideの表現が無い（`internal/`に0件）。実際のAcceptanceは独立レビュー待ちで未実施。別Repository / 別組織への移植Evidenceが無い。担当IssueもADRも無い |
 | RQ-030 | **Design Only** | PAS-07 | Business Procedure Referenceがmanual / external / observation-boundaryとHandoffを区別してauthorでき、baseline checkerとGate A A8で機械確認できる（agentが必要とする区別の素材）。Permission Grant / Resource Lease / authorization境界。ACTOR_CONTEXT R3 / R6系の設計圧力 | **agentがTEI成果物を読んで業務を遂行するpathが製品側に無い**。R3系圧力の大半がproduction codeへ接続していない（§9）。閉包条件が未定義 |
-| RQ-031 | **Design Only** | PAS-06 | Product Value / Principle / Requirementで、Data Modelを含む特定のモデル体系をCoreの唯一の上位モデルにしない境界を定義。RQ-026にはData / Function / Businessを異なる視点として扱うcross-view圧力がある | Core変更なしに新しい意味視点を追加するReferenceが無い。何を共通primitiveとし、何をSemantic Extensionへ置くかの実装境界も未実証 |
-| RQ-032 | **Design Only** | PAS-06 | Plugin / Capability境界、`std.*` namespace、Shared Acceptance、Unresolvedの既存原則を、意味論的な拡張へ適用する要求を定義 | Plugin / DSLが意味のidentity・依存・関係・Constraint / Validationを機械可読に宣言する共通contractが無い。拡張間の競合・互換性判定も未実証 |
-| RQ-033 | **Design Only** | PAS-06 | RQ-015のknowledge-first探索、Source Index、Shared Acceptance等に、AI / Toolが既存意味を再利用するための部分的な土台がある | AI / ToolがCoreとSemantic Extensionを同じcatalogから探索し、Composition → 決定論的Validation → Proposal / Unresolvedへ進む一連のReferenceが無い |
+| RQ-031 | **Design Only** | PAS-06 | Product Value / Principle / Requirementで、Data Modelを含む特定のモデル体系をCoreの唯一の上位モデルにしない境界を定義。`tools/reference-semantic-extension-catalog` candidateでは、Core未定義の`service-level-policy` / `temporal-window`をopenなsubject kindとして既存Source Index subjectと同じcatalogへ追加するReferenceを実装中 | exact-headのfocused test / repository health未実行。Reference専用descriptorをCore primitiveへ昇格すべきかは未判断 |
+| RQ-032 | **Design Only** | PAS-06 | Reference descriptor candidateがExtension identity / namespace / version / applies-to kind / compatible-major依存 / concept / relation / Constraint / Projection・Capability connectionを機械可読に保持する。resolver candidateはmajor互換性を決定論的に解決し、同一subject競合と複数Extensionによる同一namespace所有を読み込み順で上書きせずUnresolvedへ落とす。正規化descriptor identityとraw source provenanceも分離する | production Plugin / DSL contractではない。Extension間の明示compatibility contract、実行可能なValidation接続、複数体系での再利用、exact-head Evidenceが未成立 |
+| RQ-033 | **Design Only** | PAS-06 | `reference-semantic-extension-catalog` candidateがWorkspace Source Index subjectと選択済みExtension conceptを同じcatalogへ統合し、Extensionの適用対象・依存・relation・Constraint・connectionを同じ出力から取得できる。Core subject集合とExtension意味を`resolutionFingerprint`、Source Index / descriptor provenanceを`evidenceFingerprint`として分離する | catalog → deterministic Validation → Shared Acceptance Proposalまでの一連の接続、AI / Studio producer、exact-head Evidenceが未成立 |
 
 ## 5. 評価集約
 
@@ -151,6 +151,8 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
 
 2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
+
+2026-10-04の追記: RQ-031〜RQ-033向けに`tools/reference-semantic-extension-catalog`のcandidate実装を追加した。Core未定義の意味kindをReference descriptorから既存Source Indexと同じcatalogへ載せ、compatible-major依存、subject conflict、namespace ownership conflictを決定論的に扱う。Core subject集合と正規化Extension意味をresolution identityへ結び、Source Index / descriptor provenanceはEvidence identityへ分離した。ただしfocused testとrepository healthを未実行のため、3件ともDesign Onlyを維持する。
 
 ## 6. Cross-cutting Product Quality監査
 
