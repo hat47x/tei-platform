@@ -61,7 +61,9 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
-このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。`reviewFingerprint`も「何を提示したか」を識別するだけで、人が承認したことを表すtokenではありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
+Review後に同じProjectionだけを受理したい場合は、`accept`へ`-expected-review-fingerprint`を渡せます。Acceptはsourceを書き換える前にcurrent Reviewを作り直し、fingerprintが違えば`REVIEW_FINGERPRINT_MISMATCH`で拒否します。一致した場合は、fingerprintとその時点のcoverageを`reviewBinding`としてaccepted Decisionへ残します。Decision Indexからも再取得できます。
+
+このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。`reviewFingerprint`と`reviewBinding`は「どのProjectionへ受理を結び付けたか」を識別するだけで、人が実際に読んで承認したことを証明するtokenではありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
 ### 受理の記録 — なぜそのsourceがあるのか
 
