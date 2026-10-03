@@ -30,10 +30,17 @@ type CatalogExtension struct {
 	Requires              []ExtensionRequirement `json:"requires,omitempty"`
 }
 
+type CatalogSource struct {
+	Path        string           `json:"path"`
+	Fingerprint string           `json:"fingerprint"`
+	Role        sourceindex.Role `json:"role"`
+}
+
 type CatalogSubject struct {
 	Subject   subject.Subject    `json:"subject"`
 	Origin    string             `json:"origin"`
 	Extension *ExtensionIdentity `json:"extension,omitempty"`
+	Sources   []CatalogSource    `json:"sources,omitempty"`
 }
 
 type CatalogRelation struct {
@@ -65,6 +72,7 @@ type CatalogUnresolved struct {
 
 type CoreCatalogInput struct {
 	Subjects               []subject.Subject
+	Sources                map[string][]CatalogSource
 	SubjectFingerprint     string
 	SourceIndexFingerprint string
 }
@@ -143,8 +151,30 @@ func coreCatalogFromSourceIndex(index sourceindex.Index) CoreCatalogInput {
 	encoded, _ := json.Marshal(normalized)
 	subjects := sourceIndexSubjects(normalized)
 	subjectsEncoded, _ := json.Marshal(subjects)
+	artifacts := make(map[string]sourceindex.Artifact, len(normalized.Artifacts))
+	for _, artifact := range normalized.Artifacts {
+		artifacts[artifact.Path] = artifact
+	}
+	sources := map[string][]CatalogSource{}
+	for _, ref := range normalized.References {
+		artifact, ok := artifacts[ref.ArtifactPath]
+		if !ok {
+			continue
+		}
+		key := subjectKey(ref.Subject)
+		item := CatalogSource{
+			Path:        ref.ArtifactPath,
+			Fingerprint: artifact.Fingerprint,
+			Role:        ref.Role,
+		}
+		sources[key] = append(sources[key], item)
+	}
+	for key := range sources {
+		sources[key] = normalizeCatalogSources(sources[key])
+	}
 	return CoreCatalogInput{
 		Subjects:               subjects,
+		Sources:                sources,
 		SubjectFingerprint:     sourceindex.Fingerprint(subjectsEncoded),
 		SourceIndexFingerprint: sourceindex.Fingerprint(encoded),
 	}
@@ -275,7 +305,11 @@ func resolveSemanticCatalog(
 		if err != nil {
 			return SemanticCatalog{}, fmt.Errorf("core subject: %w", err)
 		}
-		entry := CatalogSubject{Subject: normalizedSubject, Origin: "core"}
+		entry := CatalogSubject{
+			Subject: normalizedSubject,
+			Origin:  "core",
+			Sources: append([]CatalogSource(nil), core.Sources[subjectKey(normalizedSubject)]...),
+		}
 		subjectOwners[subjectKey(normalizedSubject)] = append(subjectOwners[subjectKey(normalizedSubject)], entry)
 	}
 
@@ -322,10 +356,19 @@ func resolveSemanticCatalog(
 		}
 		for _, concept := range descriptor.Concepts {
 			identityCopy := identity
+			var sources []CatalogSource
+			if descriptor.sourcePath != "" && descriptor.sourceFingerprint != "" {
+				sources = []CatalogSource{{
+					Path:        descriptor.sourcePath,
+					Fingerprint: descriptor.sourceFingerprint,
+					Role:        sourceindex.RoleDefinition,
+				}}
+			}
 			entry := CatalogSubject{
 				Subject:   concept.Subject,
 				Origin:    "extension",
 				Extension: &identityCopy,
+				Sources:   sources,
 			}
 			key := subjectKey(concept.Subject)
 			subjectOwners[key] = append(subjectOwners[key], entry)
@@ -531,6 +574,9 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 		catalog.Extensions[i].Source = ""
 		catalog.Extensions[i].SourceFingerprint = ""
 	}
+	for i := range catalog.Subjects {
+		catalog.Subjects[i].Sources = nil
+	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
@@ -540,4 +586,28 @@ func semanticCatalogEvidenceFingerprint(catalog SemanticCatalog) string {
 	catalog.EvidenceFingerprint = ""
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
+}
+
+
+func normalizeCatalogSources(values []CatalogSource) []CatalogSource {
+	seen := map[string]struct{}{}
+	out := make([]CatalogSource, 0, len(values))
+	for _, value := range values {
+		key := fmt.Sprintf("%q|%q|%q", value.Path, value.Fingerprint, value.Role)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Role != out[j].Role {
+			return out[i].Role < out[j].Role
+		}
+		if out[i].Path != out[j].Path {
+			return out[i].Path < out[j].Path
+		}
+		return out[i].Fingerprint < out[j].Fingerprint
+	})
+	return out
 }
