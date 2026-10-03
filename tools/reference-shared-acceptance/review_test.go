@@ -32,6 +32,24 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	if len(review.Sections) != 8 {
 		t.Fatalf("sections=%d want 8", len(review.Sections))
 	}
+	if review.Coverage.Available != 3 ||
+		review.Coverage.Partial != 3 ||
+		review.Coverage.NotEvaluated != 2 ||
+		len(review.Coverage.Incomplete) != 5 {
+		t.Fatalf("coverage=%+v", review.Coverage)
+	}
+	for _, want := range []string{"A2", "A3", "A5", "A6", "A7"} {
+		found := false
+		for _, gap := range review.Coverage.Incomplete {
+			if gap.Code == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("coverage incomplete lacks %s: %+v", want, review.Coverage.Incomplete)
+		}
+	}
 	for i, section := range review.Sections {
 		want := "A" + string(rune('1'+i))
 		if section.Code != want {
@@ -207,6 +225,9 @@ func TestReviewShowsUnresolvedFailureWithoutInventingLaterCoverage(t *testing.T)
 	review := buildReviewProjection(ev)
 	if review.Acceptable {
 		t.Fatal("review hid Preview rejection")
+	}
+	if review.Coverage.NotEvaluated == 0 || len(review.Coverage.Incomplete) == 0 {
+		t.Fatalf("rejected review hid incomplete coverage: %+v", review.Coverage)
 	}
 	if reviewSection(t, review, "A1").Coverage != reviewCoverageNotEvaluated {
 		t.Fatalf("A1 should be unavailable after resolve failure: %+v", reviewSection(t, review, "A1"))
