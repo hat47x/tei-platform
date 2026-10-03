@@ -77,6 +77,67 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }
 
+func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	before := treeDigest(t, dir)
+	ev, err := evaluate(dir, mustJSON(t, secondApplicationCandidate(revisionOfDir(t, dir))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("preview is not acceptable: %+v", ev.preview.Stages)
+	}
+
+	review := buildReviewProjection(ev)
+	a1 := reviewSection(t, review, "A1")
+	if len(a1.Items) != 6 {
+		t.Fatalf("A1 changes=%d want 6: %+v", len(a1.Items), a1.Items)
+	}
+	for _, want := range []string{
+		"added namespace:repair_intake",
+		"added data:repair_intake.intake",
+		"added application:repair_intake",
+		"added application-pattern:repair_intake.customer_reference",
+	} {
+		if !sectionContains(a1, want) {
+			t.Fatalf("A1 lacks %q: %+v", want, a1.Items)
+		}
+	}
+
+	a4 := reviewSection(t, review, "A4")
+	for _, want := range []string{
+		"ENVIRONMENT_BINDING_NOT_AUTHORED",
+		"DRIVER_SCENARIO_NOT_RUN",
+		"TARGET_PROJECTION_NOT_EVALUATED",
+	} {
+		if !sectionContains(a4, want) {
+			t.Fatalf("A4 lacks %s: %+v", want, a4.Items)
+		}
+	}
+
+	a5 := reviewSection(t, review, "A5")
+	if a5.Coverage != reviewCoverageNotEvaluated || !sectionContains(a5, "ENVIRONMENT_BINDING_NOT_AUTHORED") {
+		t.Fatalf("A5=%+v", a5)
+	}
+
+	a7 := reviewSection(t, review, "A7")
+	for _, path := range []string{
+		s4SemanticPath,
+		s4ApplicationPath,
+		s4PatternPath,
+	} {
+		if !sectionContains(a7, "source edit: "+path) {
+			t.Fatalf("A7 lacks source %s: %+v", path, a7.Items)
+		}
+	}
+
+	a8 := reviewSection(t, review, "A8")
+	if !sectionContains(a8, "変更subject数 6 / 上限 8") {
+		t.Fatalf("A8=%+v", a8)
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
 func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 	for _, format := range []string{"text", "json"} {
 		t.Run(format, func(t *testing.T) {
