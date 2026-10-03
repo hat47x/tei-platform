@@ -9,9 +9,9 @@
 
 ## 1. このPre-ADRで決めたいこと
 
-TEIでは、標準機能を含む多くの意味体系をSemantic Extensionとして提供する方向を採る。その場合、Extension数と推移依存は大きくなる。
+TEIでは、標準機能を含む多くの意味体系をSemantic Extensionとして提供する方向を採る。この構成では、Extension数と推移依存が大きくなる。
 
-問題は依存数そのものではない。Semantic Extensionでは、解決された依存集合が変わると、同じApplication sourceの意味解釈が変わる可能性がある。通常のpackage managerで「buildできるか」を決める問題より上流にあり、Canonical meaningの再現性に直接関係する。
+問題は依存数そのものではない。Semantic Extensionでは、解決された依存集合が変わると、同じApplication sourceでも意味解釈が変わる可能性がある。これは通常のpackage managerが扱う「buildできるか」という問題より上流にあり、Canonical meaningの再現性へ直接影響する。
 
 そのためTEIでは、次を同時に満たす必要がある。
 
@@ -22,39 +22,39 @@ TEIでは、標準機能を含む多くの意味体系をSemantic Extensionと�
 5. 標準機能も第三者Extensionと同じ契約を使い、Coreだけの隠れた意味追加経路を増やさない。
 6. Extension更新を通常の意味変更と同じShared Acceptance境界で扱える。
 
-この文書では最終syntaxやresolver実装を固定しない。ISSUE-000077のReferenceでPressureすべき不変条件を先に整理する。
+この文書では、最終syntaxやresolver実装を固定しない。ISSUE-000077のReferenceで先に検証すべき不変条件を整理する。
 
 ## 2. 既存方式から採るもの
 
 ### Emacs
 
-Emacsから採るべき点は、本体機能と追加機能が近い拡張面を使い、後から機能を参加させられることにある。Hookやgeneric functionは、既存処理の全体を書き換えずに拡張を参加させる。
+Emacsから採るべき点は、本体機能と追加機能が近い拡張面を使い、後から機能を組み込めることにある。Hookやgeneric functionを使えば、既存処理の全体を書き換えずに拡張を参加させられる。
 
-一方、TEIではAdviceのように既存意味を外側から任意に差し替える方式をCanonical pathへ持ち込まない。load順や偶然の実装順序で結果が変わる余地を残すと、同じsourceから同じmeaningを再現できなくなる。
+一方、TEIではAdviceのように既存の意味を外側から任意に差し替える方式をCanonical pathへ持ち込まない。load順や偶然の実装順序で結果が変われば、同じsourceから同じmeaningを再現できなくなる。
 
 ### MLIR
 
-MLIRのDialectとInterfaceはTEIの意味拡張に近い。新しいDialectを追加しても、既存analysisが各Dialectの具体型を列挙せず、Interfaceを通して横断的に扱える。
+MLIRのDialectとInterfaceは、TEIの意味拡張に近い。新しいDialectを追加しても、既存analysisは各Dialectの具体型を列挙せず、Interfaceを通して横断的に扱える。
 
-TEIでも、特定Extension packageへの依存より、必要な意味契約を表すSemantic Interfaceへの依存を優先する。特定packageの意味そのものが必要な場合だけpackage identityへ直接依存する。
+TEIでも、特定のExtension packageへ直接依存するより、必要な意味契約を表すSemantic Interfaceへの依存を優先する。特定packageの意味そのものが必要な場合に限り、package identityへ直接依存する。
 
 ### OSGi
 
-OSGiのRequirement / Capability modelは、推移依存とphaseごとの有効性を明示できる。TEIでも、何を要求するかと、どのExtensionがそれを満たすかを分ける。
+OSGiのRequirement / Capability modelでは、推移依存とphaseごとの有効性を明示できる。TEIでも、何を要求するかと、どのExtensionがその要求を満たすかを分ける。
 
 ただし、OSGiのclass space consistencyをそのまま移植するのではない。TEIでは「同一Canonical World内で互換性のない意味体系が二重に有効にならないこと」をcoherence条件として扱う。
 
 ### Cargo / Go / Bazel
 
-Cargoのlock-first、Goの小さい解決規則とgraph pruning、Bazelのcompatibility levelは参考になる。
+Cargoのlock-first、Goの単純な解決規則とgraph pruning、Bazelのcompatibility levelは参考になる。
 
-ただしSemantic Extensionでは、「互換範囲内なら新しいversionを自動的に選んでも意味は同じ」とは仮定しない。version rangeは候補探索の条件に使い、Accepted Worldはexact versionとdeclaration fingerprintで固定する。
+ただしSemantic Extensionでは、「互換範囲内の新しいversionなら自動的に選んでも意味は変わらない」とは仮定しない。version rangeは候補を探す条件として使い、Accepted Worldはexact versionとdeclaration fingerprintで固定する。
 
 ### PubGrub
 
-依存が複雑になった場合、単に解決不能を返すだけではAIも人も修正できない。PubGrub型のroot-cause derivationは、「どの要求がどの要求と両立しなかったか」を説明する考え方として有力である。
+依存が複雑になった場合、単に解決不能と返すだけでは、人もAIも適切に修正できない。PubGrub型のroot-cause derivationは、「どの要求とどの要求が両立しなかったか」を説明する方法として有力である。
 
-ただしISSUE-000077 E0でPubGrub実装そのものを必須にしない。最初に必要なのは、resolverが構造化されたresolution trace / conflict causeを返せる契約である。
+ただし、ISSUE-000077 E0でPubGrub実装そのものを必須にはしない。先に必要なのは、resolverが構造化されたresolution trace / conflict causeを返せる契約である。
 
 ## 3. TEIでは依存グラフを一つにしない
 
@@ -67,9 +67,9 @@ Cargoのlock-first、Goの小さい解決規則とgraph pruning、Bazelのcompat
 | Runtime | Provider、Executor、外部Runtime | Environment | 実行方法へ影響 |
 | Tooling | Editor、lint、importer、analysis補助 | Authoring context | 原則影響させない |
 
-最初から四種類のlock fileを作る必要はない。ただし少なくとも、Semantic Extensionの解決を現行Environment Plugin Lockへ混ぜない。
+最初から四種類のlock fileを作る必要はない。ただし、Semantic Extensionの解決結果を現行Environment Plugin Lockへ混ぜない。
 
-現行Runtime PluginはEnvironmentごとに解決できる。一方、同じApplicationのSemantic Extension集合がdevelopmentとproductionで異なれば、環境によってCanonical meaningが変わり得る。Semantic SetはEnvironmentより上流で固定する。
+現行Runtime PluginはEnvironmentごとに解決できる。一方、同じApplicationでdevelopmentとproductionのSemantic Extension集合が異なれば、環境によってCanonical meaningが変わり得る。Semantic SetはEnvironmentより上流で固定する。
 
 ## 4. Requirementをpackage名だけにしない
 
@@ -95,13 +95,13 @@ requires extension reference.hierarchy.integrity compatible ^1
 requires interface relation-acyclic-validator/v1
 ```
 
-この区別により、横断機能が個別Extensionを列挙する構造を避けられる。
+この区別によって、横断機能が個別Extensionを一つずつ列挙する構造を避けられる。
 
-Package identity dependencyを禁止はしない。あるExtensionのsymbolやparameter semanticsを直接参照する場合は、曖昧なInterface dependencyへ置き換えない。
+Package identity dependencyそのものは禁止しない。あるExtensionのsymbolやparameter semanticsを直接参照する場合は、曖昧なInterface dependencyへ置き換えない。
 
 ## 5. 異なる意味体系の接続はBridge Extensionへ寄せる
 
-Data、Interaction、Procedure等の各Semantic Extensionが互いを直接知り始めると、標準機能だけで依存網が密になる。
+Data、Interaction、Procedure等のSemantic Extensionが互いを直接参照し始めると、標準機能だけでも依存関係が密になる。
 
 たとえばDataとProcedureの相互検証が必要でも、両方を相互依存させない。
 
@@ -112,18 +112,18 @@ data extension       procedure extension
          data-procedure bridge
 ```
 
-Bridge Extensionは、両者のSemantic Interfaceへ依存し、横断ValidationやRelationを提供する。
+Bridge Extensionは両者のSemantic Interfaceへ依存し、横断的なValidationやRelationを提供する。
 
 この方式には二つの利点がある。
 
 - 個々の意味体系を単独でも利用できる。
 - cross-view ruleをどちらか一方の意味へ埋め込まずに済む。
 
-Bridgeが増えすぎる場合は、共通Interface不足またはCore primitive不足のEvidenceとして扱う。Bridge数そのものを隠すために巨大なumbrella Extensionへ統合しない。
+Bridgeが増えすぎる場合は、共通InterfaceかCore primitiveが不足しているEvidenceとして扱う。Bridge数を減らして見せるためだけに、巨大なumbrella Extensionへ統合しない。
 
 ## 6. Extension package dependencyはDAGを基本とする
 
-Extension packageのload dependency cycleは原則として拒否する。
+Extension packageの読み込み依存にcycleがある場合は、原則として拒否する。
 
 循環が必要に見える場合は、次の順で見直す。
 
@@ -131,7 +131,7 @@ Extension packageのload dependency cycleは原則として拒否する。
 2. 双方向関係をBridge Extensionへ移せないか。
 3. package dependencyではなく、Canonical object間のRelationとして表すべきではないか。
 
-ここで禁止するのはExtension packageの解決cycleである。業務上のRelation graphやobject referenceにcycleが存在することまで禁止しない。
+ここで禁止するのは、Extension packageを解決するためのcycleである。業務上のRelation graphやobject referenceにcycleが存在することまで禁止しない。
 
 ## 7. Semantic compatibilityをbinary versionだけに委ねない
 
@@ -142,11 +142,11 @@ Semantic Extensionは少なくとも次を分ける。
 - compatibility level / family
 - declaration fingerprint
 
-compatibility levelは「同じCanonical Worldで同一意味体系として共存できるか」を判定するために使う。
+compatibility levelは、「同じCanonical Worldで同一の意味体系として共存できるか」を判定するために使う。
 
-基本規則は、一つのsemantic identity familyについて同じSemantic Set内に一つのcompatibility levelだけを有効にすることとする。
+基本規則として、一つのsemantic identity familyでは、同じSemantic Set内で一つのcompatibility levelだけを有効にする。
 
-互換性のない世代を同時に扱う必要がある場合は、別namespaceまたは明示されたsemantic universeとして分離し、両者の間にMigration / Translation境界を置く。単にresolverが二つのmajorを選べたという理由だけで同じCanonical subjectへ混在させない。
+互換性のない世代を同時に扱う必要がある場合は、別namespaceまたは明示したsemantic universeとして分離し、両者の間にMigration / Translation境界を置く。resolverが二つのmajorを選択できるという理由だけで、同じCanonical subjectへ混在させない。
 
 ## 8. Optional dependencyで既存意味を暗黙変更しない
 
@@ -157,11 +157,11 @@ A alone       -> meaning X
 A + B present -> Aのmeaningが自動的にYへ変わる
 ```
 
-このようなambient activationは、Semantic Setを見ないとsourceの意味が分からなくなるだけでなく、第三者Extensionの追加が既存subjectを予期せず変える。
+このようなambient activationを許すと、Semantic Setを確認しなければsourceの意味が分からなくなる。さらに、第三者Extensionの追加だけで既存subjectの意味が予期せず変わる。
 
 追加の組合せ意味が必要なら、Bridge Extensionまたは明示的なroot requirementとしてSemantic Lockへ載せる。
 
-optional requirement自体を禁止するわけではない。欠けても意味が変わらず、追加的なdiagnosticやProjectionだけを提供するなど、影響範囲を契約で説明できる場合に限定する。
+optional requirement自体は禁止しない。欠けても既存の意味が変わらず、追加のdiagnosticやProjectionだけを提供するなど、影響範囲を契約で説明できる場合に限定する。
 
 ## 9. Semantic LockをCanonical interpretationの入力として扱う
 
@@ -188,9 +188,9 @@ authoritative source
 = reproducible Canonical meaning
 ```
 
-このため、sourceが一字も変わらなくてもSemantic Lockが変われば意味変更候補になり得る。
+そのため、sourceが変わっていなくても、Semantic Lockが変われば意味変更候補になり得る。
 
-Semantic Set全体についてstable fingerprintを作り、Proposal、Decision、qualification Evidence、derived artifactが必要に応じて参照できるようにする。
+Semantic Set全体についてstable fingerprintを作り、Proposal、Decision、qualification Evidence、derived artifactから必要に応じて参照できるようにする。
 
 ## 10. 更新はdependency updateではなくSemantic Changeとして扱う
 
@@ -210,15 +210,15 @@ current Semantic Lock
   -> accepted Semantic Lock
 ```
 
-SemVer上compatibleであることは、更新候補にできる条件であってAcceptanceの代わりではない。
+SemVer上compatibleであることは、更新候補にできる条件にすぎず、Acceptanceの代わりにはならない。
 
-Runtime Pluginだけの更新でsemantic declaration fingerprintが変わらない場合は、Semantic Lockまで無条件にinvalidにしない。
+Runtime Pluginだけを更新し、semantic declaration fingerprintが変わらない場合は、Semantic Lockまで無条件にinvalidとしない。
 
 ## 11. 標準機能は同じextension contractをdogfoodする
 
-将来、Data、Constraint、Interaction、Procedure等の標準意味体系を`std.*`として提供する場合も、第三者Extensionとは別の隠れたresolverを使わない。
+将来、Data、Constraint、Interaction、Procedure等の標準意味体系を`std.*`として提供する場合も、第三者Extensionとは別のresolverを標準機能だけに用意しない。
 
-実装がbuiltinであることは許容する。ただし、意味のidentity、dependency、Interface、conflict、lock、discoveryは同じcontractへ載せる。
+実装をbuiltinにすることは許容する。ただし、意味のidentity、dependency、Interface、conflict、lock、discoveryには同じcontractを適用する。
 
 Coreへ残すのは、Extensionを安全に成立させるためのmeta-level mechanismを中心とする。
 
@@ -236,7 +236,7 @@ Coreへ残すのは、Extensionを安全に成立させるためのmeta-level me
 
 どの標準語彙までCore primitiveとして残すかは、複数ReferenceのEvidenceで決める。
 
-標準構成を使いやすくするため、Standard Profileはroot requirement setとして提供できる。
+標準構成を使いやすくするために、Standard Profileをroot requirement setとして提供してもよい。
 
 ```text
 profile business-app
@@ -251,9 +251,9 @@ Profile自体を新しいSemantic authorityにはしない。
 
 ## 12. AI / Toolへresolverの理由を公開する
 
-Pluginが増えた場合、人もAIもresolved setだけでは保守できない。
+Pluginが増えると、人もAIもresolved setだけでは依存関係を保守できない。
 
-少なくともmachine-readableに次へ到達できる必要がある。
+少なくとも、次の情報へ機械可読な形で到達できる必要がある。
 
 - why: なぜこのExtensionが入ったか
 - path: どのroot requirementから到達したか
@@ -274,11 +274,11 @@ extension explain-resolution
 extension impact <candidate>
 ```
 
-AIはCatalog全体を毎回promptへ入れない。Semantic Lockとdependency indexからtaskに関係するclosureを切り出し、必要なら理由を辿って拡張する。
+AIへCatalog全体を毎回渡すことはしない。Semantic Lockとdependency indexからtaskに関係するclosureを切り出し、必要に応じて理由を辿りながら範囲を広げる。
 
 ## 13. Resolver実装は差し替え可能にする
 
-初期Referenceで複雑なsolverを先に作らない。
+初期Referenceでは、複雑なsolverを先に作らない。
 
 Core側では、少なくとも次の入出力契約を先に固定する。
 
@@ -299,13 +299,13 @@ Core側では、少なくとも次の入出力契約を先に固定する。
 - unresolved requirements
 - structured conflict cause
 
-最初の制約集合で単純なdeterministic resolverが十分ならそれを使う。Referenceでbacktrackingや複雑なversion range conflictが実際に必要になった段階で、PubGrub型のsolverへ差し替えられる境界を保つ。
+最初の制約集合を単純なdeterministic resolverで扱えるなら、それを使う。Referenceでbacktrackingや複雑なversion range conflictが必要だと確認できた段階で、PubGrub型のsolverへ差し替えられる境界を保つ。
 
-「将来大規模になるから」という理由だけで、E0からsolver実装自体をProductの中心にしない。
+将来大規模になるという予測だけを理由に、E0の時点からsolver実装そのものをProductの中心にはしない。
 
 ## 14. 現行Reference実装との関係
 
-PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより先に動き始めたReference実装である。2026-10-04時点では、次の境界まで実装している。
+PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより先に着手されたReference実装である。2026-10-04時点では、次の境界まで実装している。
 
 - Extension identity、namespace、semantic version、Source fingerprintをReference descriptorから読み込む
 - concrete Extension IDとcompatible majorによる推移依存を決定論的に解決する
@@ -314,7 +314,7 @@ PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより�
 - descriptor由来のresolution fingerprintとSource来歴のevidence fingerprintを分離する
 - Extension selectionをAcceptanceやRuntime Authorityへ昇格させない
 
-この実装はE0-AとE0-Bの初期pressureとして利用できる。ただし、次はまだ実証していない。
+この実装はE0-AとE0-Bの初期検証に利用できる。ただし、次の項目はまだ実証していない。
 
 - Semantic Interfaceを介したtyped dependency
 - compatibility level / family
@@ -324,11 +324,11 @@ PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより�
 - structured conflict derivation
 - Runtime Plugin更新とSemantic Set fingerprintの独立性
 
-したがって、PR #922のReferenceを完成形へ広げてから設計を合わせるのではなく、現在の小さいresolverをnegative / positive controlとして使い、上記の不足をE0-B / E0-Cで順にPressureする。Pre-ADRは既存Referenceの成立Evidenceを否定せず、その先で必要になる不変条件を定義する。
+したがって、PR #922のReferenceを先に完成形まで広げてから設計を合わせることはしない。現在の小さいresolverをnegative / positive controlとして使い、上記の不足をE0-B / E0-Cで順に検証する。このPre-ADRは既存Referenceの成立Evidenceを否定せず、その先で必要になる不変条件を定義する。
 
 ## 15. ISSUE-000077で追加するdependency pressure
 
-E0のdeclaration / discoveryに加えて、E0内で次の小さいdependency pressureを入れる。
+E0のdeclaration / discoveryに加え、E0内で次の小規模なdependency pressureを行う。
 
 ### D1 — diamond
 
@@ -358,7 +358,7 @@ Runtime Pluginの実装versionだけを変更しても、semantic declarationが
 
 各resolved Extensionについてrootからの依存pathを取得でき、conflict時には両立しないrequirementの由来へ戻れる。
 
-最初のSUI hierarchy Extensionをreal root consumerとして使い、D1〜D7の構造pressureにはReference-local Extensionを必要最小限だけ追加する。synthetic graphだけでSemantic Extension成立を主張しない。
+最初のSUI hierarchy Extensionを実際のroot consumerとして使う。D1〜D7の構造検証にはReference-local Extensionを必要最小限だけ追加し、syntheticなgraphだけでSemantic Extensionの成立を主張しない。
 
 ## 16. 実装順序
 
@@ -380,11 +380,11 @@ E3    independent second consumer
 std.*昇格判断
 ```
 
-E0-A〜Cを別remote branchへ分裂させる必要はない。同じISSUE-000077 workstreamで小さいcommitとしてmainへ収束させる。
+E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで小さなcommitに分け、mainへ収束させる。
 
 ## 17. ADRへ進める判断
 
-次のEvidenceが揃うまで、具体的なresolver algorithmや最終manifest syntaxをADRで固定しない。
+次のEvidenceが揃うまでは、具体的なresolver algorithmや最終manifest syntaxをADRで固定しない。
 
 - real SUI consumerを含むdependency graph
 - diamond / conflict / cycleのnegative control
@@ -394,7 +394,7 @@ E0-A〜Cを別remote branchへ分裂させる必要はない。同じISSUE-00007
 - semantic updateによるimpact
 - Runtime Plugin更新との分離
 
-一方、以下は現時点からReference不変条件として扱う。
+一方、以下は現時点からReferenceで変えない条件として扱う。
 
 1. Semantic resolutionをEnvironment Runtime resolutionへ混ぜない。
 2. silent override / last-winsを使わない。
