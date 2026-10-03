@@ -22,7 +22,7 @@ decode → normalize → base-revision → resolve → apply(overlay)
 | stage | 確認すること |
 | --- | --- |
 | decode | 未知fieldを許さず厳密に読む |
-| normalize | 正規形へ揃え、意味を持つ部分（base revisionとdelta）だけのfingerprintを作る。Origin / Intent / Evidenceは含めない |
+| normalize | 正規形へ揃え、意味を持つ部分（base revisionとdelta）だけのfingerprintを作る。Origin / Intent / Evidenceは含めない。qualification付きEvidenceはrequirementsとrequired dependency Evidenceの対応を検証し、Evidence集合をdedup・sortして入口差を除く |
 | base-revision | candidateの`baseModelRevision`が現在のsourceと一致する。staleなら黙って適用せず、reject / 再読込して再生成 / 明示rebase / 手動conflict解消へ分岐する |
 | resolve | 対象namespace・Attribute・Relationが存在し、追加するidが未使用で、Evidenceがcurrent Source Indexへ解決できることを確認する。qualification付きEvidenceはsubject kind・source・fingerprintを照合し、同じrequirementsで再qualificationする。明示required dependencyがある場合は、そのauthoritative sourceとfingerprintもcurrent qualificationと一致する必要がある。placementは意味を所有する層に限る |
 | apply | 変更を**overlay（複製）**へ適用する。元のsourceはまだ変えない |
@@ -46,7 +46,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
-- `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。requirementsは添付時に正規化・検証し、`expectedKind`とEvidenceの`subjectKind`が一致しない場合もPreview前に拒否します。
+- `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。requirementsは添付時に正規化・検証し、`expectedKind`とEvidenceの`subjectKind`が一致しない場合もPreview前に拒否します。required dependencyごとのauthoritative Evidenceも必須で、requirementsに無いdependency Evidenceは拒否します。同値なEvidenceは正規化後にdedup・sortされるため、再添付は冪等です。
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `accept`: 同じ検査を最初から実行し直し、通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
