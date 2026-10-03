@@ -320,6 +320,11 @@ func resolveSemanticCatalog(
 	sort.Strings(ids)
 
 	namespaceOwners := map[string][]string{}
+	for _, coreSubject := range core.Subjects {
+		if coreSubject.Kind == "semantic" {
+			namespaceOwners[coreSubject.ID] = append(namespaceOwners[coreSubject.ID], "core")
+		}
+	}
 	for _, id := range ids {
 		namespaceOwners[selected[id].Namespace] = append(namespaceOwners[selected[id].Namespace], id)
 	}
@@ -330,11 +335,13 @@ func resolveSemanticCatalog(
 		}
 		sort.Strings(owners)
 		for _, owner := range owners {
-			blockedExtensions[owner] = true
+			if owner != "core" {
+				blockedExtensions[owner] = true
+			}
 		}
 		catalog.Unresolved = append(catalog.Unresolved, CatalogUnresolved{
 			Code:   "namespace-ownership-conflict",
-			Detail: fmt.Sprintf("namespace %q is selected from multiple extensions: %s", namespace, strings.Join(owners, ", ")),
+			Detail: fmt.Sprintf("namespace %q has multiple owners: %s", namespace, strings.Join(owners, ", ")),
 		})
 	}
 
