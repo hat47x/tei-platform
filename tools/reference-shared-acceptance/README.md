@@ -46,7 +46,7 @@ go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FI
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
-- `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。
+- `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。requirementsは添付時に正規化・検証し、`expectedKind`とEvidenceの`subjectKind`が一致しない場合もPreview前に拒否します。
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `accept`: 同じ検査を最初から実行し直し、通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
@@ -73,7 +73,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 ### knowledge qualificationからcandidateへの接続
 
-`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Canonical ID、source path、source fingerprintが含まれます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。
+`tei knowledge-qualify`で候補を`applicable`と判定した場合、結果にはauthoritativeなsubject kind、Canonical ID、source path、source fingerprintが含まれます。`attach-qualification`は、そのEvidenceと判定時のrequirementsを既存candidateへ付与します。requirementsは同じ共有正規化を通すため、空の`expectedKind`、不正なdependency指定、重複dependency、`expectedKind`と`subjectKind`の不一致を、grounded candidateとして出力する前にfail closedで拒否します。
 
 ```bash
 go run ./cmd/tei knowledge-qualify \
