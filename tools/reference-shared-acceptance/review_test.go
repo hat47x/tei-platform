@@ -26,8 +26,11 @@ func TestReviewProjectionOrdersA1ToA8AndMakesMissingCoverageExplicit(t *testing.
 	if review.Schema != reviewSchema {
 		t.Fatalf("schema=%q", review.Schema)
 	}
-	if review.CandidateFingerprint == "" || review.EvidenceFingerprint == "" {
+	if review.CandidateFingerprint == "" || review.EvidenceFingerprint == "" || review.ReviewFingerprint == "" {
 		t.Fatalf("review identities are incomplete: %+v", review)
+	}
+	if got := fingerprintReviewProjection(review); got != review.ReviewFingerprint {
+		t.Fatalf("review fingerprint is not reproducible: have=%s got=%s", review.ReviewFingerprint, got)
 	}
 	if len(review.Sections) != 8 {
 		t.Fatalf("sections=%d want 8", len(review.Sections))
@@ -163,6 +166,37 @@ func TestReviewProjectionCoversSecondApplicationComposition(t *testing.T) {
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }
 
+func TestReviewFingerprintBindsExactProjectionWithoutChangingSemanticIdentity(t *testing.T) {
+	dir := scratchWorkspace(t)
+	ev, err := evaluate(dir, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := buildReviewProjection(ev)
+	if review.ReviewFingerprint == "" {
+		t.Fatal("review fingerprint is empty")
+	}
+
+	changed := review
+	changed.Sections = append([]ReviewSection(nil), review.Sections...)
+	changed.Sections[0] = review.Sections[0]
+	changed.Sections[0].Summary += "（表示変更）"
+	changedFingerprint := fingerprintReviewProjection(changed)
+	if changedFingerprint == review.ReviewFingerprint {
+		t.Fatalf("presentation change did not alter review fingerprint: %s", review.ReviewFingerprint)
+	}
+	if changed.CandidateFingerprint != review.CandidateFingerprint ||
+		changed.EvidenceFingerprint != review.EvidenceFingerprint {
+		t.Fatalf(
+			"presentation-only change altered semantic/evidence identities: candidate=%s/%s evidence=%s/%s",
+			review.CandidateFingerprint,
+			changed.CandidateFingerprint,
+			review.EvidenceFingerprint,
+			changed.EvidenceFingerprint,
+		)
+	}
+}
+
 func TestReviewSeparatesEnvironmentBindingFromRuntimeAuthority(t *testing.T) {
 	dir := scratchWorkspaceBeforeEnvironmentBinding(t)
 	before := treeDigest(t, dir)
@@ -226,6 +260,7 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 					"## A8 承認単位の大きさ [表示可能]",
 					"candidate fingerprint:",
 					"evidence fingerprint:",
+					"review fingerprint:",
 					"coverage: 表示可能 3 / 一部 5 / 未評価 0",
 					"要約: semantic 1件 / application 0件 / environment 0件",
 					"要約: runtime authority grant 0件 / effective authority impact 未評価",
@@ -240,8 +275,11 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 				if err := json.Unmarshal(stdout.Bytes(), &review); err != nil {
 					t.Fatal(err)
 				}
-				if review.Schema != reviewSchema || len(review.Sections) != 8 {
+				if review.Schema != reviewSchema || len(review.Sections) != 8 || review.ReviewFingerprint == "" {
 					t.Fatalf("review=%+v", review)
+				}
+				if got := fingerprintReviewProjection(review); got != review.ReviewFingerprint {
+					t.Fatalf("JSON review fingerprint is not reproducible: have=%s got=%s", review.ReviewFingerprint, got)
 				}
 			}
 
