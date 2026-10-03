@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -42,6 +45,7 @@ type ReviewProjection struct {
 	Intent               string                `json:"intent,omitempty"`
 	CandidateFingerprint string                `json:"candidateFingerprint,omitempty"`
 	EvidenceFingerprint  string                `json:"evidenceFingerprint,omitempty"`
+	ReviewFingerprint    string                `json:"reviewFingerprint,omitempty"`
 	PreviewAcceptable    bool                  `json:"previewAcceptable"`
 	Coverage             ReviewCoverageSummary `json:"coverage"`
 	Sections             []ReviewSection       `json:"sections"`
@@ -308,7 +312,15 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 	review.Sections = append(review.Sections, a8)
 
 	review.Coverage = summarizeReviewCoverage(review.Sections)
+	review.ReviewFingerprint = fingerprintReviewProjection(review)
 	return review
+}
+
+func fingerprintReviewProjection(review ReviewProjection) string {
+	review.ReviewFingerprint = ""
+	raw, _ := json.Marshal(review)
+	sum := sha256.Sum256(raw)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func summarizeReviewCoverage(sections []ReviewSection) ReviewCoverageSummary {
@@ -389,6 +401,9 @@ func renderReviewProjection(review ReviewProjection) string {
 	}
 	if review.EvidenceFingerprint != "" {
 		fmt.Fprintf(&b, "evidence fingerprint: %s\n", review.EvidenceFingerprint)
+	}
+	if review.ReviewFingerprint != "" {
+		fmt.Fprintf(&b, "review fingerprint: %s\n", review.ReviewFingerprint)
 	}
 	if review.PreviewAcceptable {
 		b.WriteString("machine preview: 受入可能\n")
