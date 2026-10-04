@@ -477,10 +477,16 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 		return "none", "none", nil
 	}
 	var diagnostics []Diagnostic
-	if strings.TrimSpace(binding.Fingerprint) == "" {
+	switch fingerprint := strings.TrimSpace(binding.Fingerprint); {
+	case fingerprint == "":
 		diagnostics = append(diagnostics, Diagnostic{
 			Code:    "REVIEW_BINDING_FINGERPRINT_EMPTY",
 			Message: "decision recordのreviewBindingにreview fingerprintがありません",
+		})
+	case !revisionPattern.MatchString(fingerprint):
+		diagnostics = append(diagnostics, Diagnostic{
+			Code:    "REVIEW_BINDING_FINGERPRINT_INVALID",
+			Message: "decision recordのreviewBinding fingerprintがsha256:<64桁の16進>形式ではありません",
 		})
 	}
 
