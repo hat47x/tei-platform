@@ -147,6 +147,17 @@ catalogは意味の解決結果とSourceの来歴を分けます。
 - `evidenceFingerprint`は、Core Source IndexとExtension descriptor fileのprovenanceを含むEvidence側のidentityです。
 
 このため、subject集合を変えないSource Index更新や、descriptor fileを同じ意味のまま移動・再整形した場合は`resolutionFingerprint`を維持し、`evidenceFingerprint`だけを更新できます。Core subject集合やExtensionの正規化された意味が変われば、同じroot requirementsでも別のresolutionとして扱います。
+## Semantic Lock
+
+resolved catalogにUnresolvedが無い場合だけ、`-semantic-lock-out FILE`でReference用のSemantic Lockを出力できます。lockはpackage version一覧ではなく、後日のsemantic replayに必要な入力を固定します。
+
+lockには、schema / canonicalization policy、resolution policy、正規化root requirementsとfingerprint、Core subject fingerprint、exact Extension identity / version / descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、resolved provider wiring、Semantic Set fingerprintを含めます。
+
+Catalogへcompatibleな新versionが追加されても、lockの検証時にはその新versionへ自動更新しません。lockに記録したexact versionだけを取り出してgraphを再構成します。同一versionのdeclarationが変わった場合、root requirementsやresolution policyが変わった場合、Interface wiringやnamespace ownerが変わった場合はreplayを拒否します。
+
+`-verify-semantic-lock FILE`が確認するのはsemantic replayです。成功時は`semanticReplayValid: true`を返します。これは現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityが有効であることを意味しません。replayではEvidence fingerprintを意味identityから外し、exact contract / owner / provider wiringだけを再構成します。
+
+同じprovider wiringが唯一候補として得られたか、明示wiringで指定されたかという選択経路もSemantic Setの意味には含めません。provider identityとcontractが同じなら`resolutionFingerprint`を維持し、選択経路とEvidenceはEvidence側で追跡します。
 ## Authority boundary
 
 出力には次を明示します。
