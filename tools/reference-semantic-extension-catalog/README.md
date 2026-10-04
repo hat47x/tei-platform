@@ -63,6 +63,12 @@ Reference段階のconstraint languageは、`Extension ID + compatible major`に�
 
 versionごとに依存graphが異なる場合も、ある候補だけがcycleを作り、別候補ならcycleを避けられるときは代替候補を探索します。すべての有効候補がcycleを作る場合は解決失敗とします。
 
+複数の有効解が存在する場合も、solver内部の偶然の探索順を隠れたpolicyにはしません。このReferenceでは、`highest-compatible-complete-search/by-extension-id/v0`を明示的なresolution policyとしてcatalogへ出力します。
+
+このpolicyは、Extension IDを正規化した順で選択対象を決め、各IDについて高いcompatible versionから完全解が存在する候補を選ぶReference規則です。policy identityはSemantic resolution fingerprintへ含めます。将来、より適切なpolicyへ変更する場合はpolicy identityも更新し、同じSemantic Setとして黙って扱いません。
+
+このReference policyをProductionの最終contractとして固定するものではありません。目的は「複数解をsolver実装の偶然で決めない」「選択規則が意味再現性へ影響することをfingerprintへ含める」ことの実証です。
+
 ## conflict方針
 
 同じsubject identityをCoreとExtension、または複数Extensionが宣言した場合、読み込み順で勝者を決めません。
