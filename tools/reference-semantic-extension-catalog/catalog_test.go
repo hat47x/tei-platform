@@ -575,6 +575,89 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 	}
 }
 
+func TestReferenceCatalogResolutionPolicyChoosesCompleteSolutionByExtensionID(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "2.0.0",
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "1.0.0",
+		},
+	}
+
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+			{Extension: "tei.reference.b", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	versions := map[string]string{}
+	for _, extension := range catalog.Extensions {
+		versions[extension.ID] = extension.Version
+	}
+	if got := versions["tei.reference.a"]; got != "1.1.0" {
+		t.Fatalf("resolution policy selected a=%q want=1.1.0", got)
+	}
+	if got := versions["tei.reference.b"]; got != "1.0.0" {
+		t.Fatalf("resolution policy selected b=%q want=1.0.0", got)
+	}
+	if got := versions["tei.reference.z"]; got != "1.0.0" {
+		t.Fatalf("resolution policy selected z=%q want=1.0.0", got)
+	}
+}
+
 func TestReferenceCatalogExposesAndFingerprintsResolutionPolicy(t *testing.T) {
 	descriptor := ExtensionDescriptor{
 		Schema:    extensionSchema,
