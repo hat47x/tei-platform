@@ -160,6 +160,8 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 
 2026-10-05のPR #927 candidateでは、AX-01のfalse conflictをReference codeへ反映した。compatible major内で高いversionを優先しつつ、推移依存またはversion固有cycleが全体制約と両立しない場合はlower compatible versionへbacktrackする。加えて、複数の完全解がある場合の選択規則を`resolutionPolicy`として明示し、そのidentityをSemantic resolution fingerprintへ含める。ただしrepository exact-head test / health gateを通していないため、Source Evidence候補以上には扱わず、RQ-032はDesign Onlyを維持する。
 
+同candidateでは、backtrackingの探索量をcandidate attempt数で制限できるoperational budget境界も追加した。budget超過はdependency conflictと別errorとして返し、十分なbudgetではunbounded解決と同じ結果になることをtestする。固定budget値をSemantic fingerprintへ含めず、意味仕様と運用上のresource policyを分離する。ただし実Repositoryでの性能測定とbudget値の妥当性検証は未実施である。
+
 ## 6. Cross-cutting Product Quality監査
 
 Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
