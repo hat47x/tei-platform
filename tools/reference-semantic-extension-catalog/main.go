@@ -63,6 +63,7 @@ func run(args []string) int {
 	subjectID := flags.String("subject-id", "", "optional subject ID filter")
 	semanticLockOut := flags.String("semantic-lock-out", "", "write resolved semantic lock JSON")
 	verifySemanticLockPath := flags.String("verify-semantic-lock", "", "replay an existing semantic lock against exact available declarations")
+	verifySemanticLockEvidence := flags.Bool("verify-semantic-lock-evidence", false, "also require accepted Conformance and namespace Authority Evidence bindings")
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
@@ -74,9 +75,13 @@ func run(args []string) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
+	if *verifySemanticLockEvidence && strings.TrimSpace(*verifySemanticLockPath) == "" {
+		fmt.Fprintln(os.Stderr, "-verify-semantic-lock-evidence requires -verify-semantic-lock FILE")
+		return 2
+	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" ||
 		(strings.TrimSpace(*verifySemanticLockPath) == "" && len(roots) == 0) {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-semantic-lock-out FILE] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-semantic-lock-out FILE] [-verify-semantic-lock-evidence] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -105,13 +110,37 @@ func run(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
+		result := map[string]any{
+			"semanticReplayValid":             true,
+			"semanticSetFingerprint":          lock.SemanticSetFingerprint,
+			"resolutionPolicy":                lock.ResolutionPolicy,
+			"acceptedEvidenceBindingsChecked": false,
+		}
+		if *verifySemanticLockEvidence {
+			conformances, err := loadSemanticInterfaceConformances(conformancePaths)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			namespaceAuthorities, err := loadSemanticNamespaceAuthorities(namespaceAuthorityPaths)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			if err := verifySemanticLockAcceptedEvidenceBindings(
+				lock,
+				conformances,
+				namespaceAuthorities,
+			); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			result["acceptedEvidenceBindingsChecked"] = true
+			result["acceptedEvidenceBindingsValid"] = true
+		}
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(map[string]any{
-			"semanticReplayValid":    true,
-			"semanticSetFingerprint": lock.SemanticSetFingerprint,
-			"resolutionPolicy":       lock.ResolutionPolicy,
-		}); err != nil {
+		if err := encoder.Encode(result); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
