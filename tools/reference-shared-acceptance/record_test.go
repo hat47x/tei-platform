@@ -250,6 +250,29 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 }
 
 // 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
+func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("g", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "invalid" || coverageStatus != "invalid" {
+		t.Fatalf("binding=%q coverage=%q diagnostics=%+v", bindingStatus, coverageStatus, diagnostics)
+	}
+	found := false
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_FINGERPRINT_INVALID" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("diagnostics=%+v", diagnostics)
+	}
+}
+
 func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
 	dir := scratchWorkspace(t)
 	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
