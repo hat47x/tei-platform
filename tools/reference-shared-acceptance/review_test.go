@@ -216,7 +216,10 @@ func TestAcceptCanBindTheExactReviewProjection(t *testing.T) {
 		t.Fatalf("decision=%+v", decision)
 	}
 	if decision.ReviewBinding == nil ||
-		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint ||
+		decision.ReviewBinding.Projection == nil ||
+		decision.ReviewBinding.Projection.ReviewFingerprint != review.ReviewFingerprint ||
+		fingerprintReviewProjection(*decision.ReviewBinding.Projection) != review.ReviewFingerprint {
 		t.Fatalf("review binding=%+v want %s", decision.ReviewBinding, review.ReviewFingerprint)
 	}
 	if decision.ReviewBinding.Coverage.Available != review.Coverage.Available ||
@@ -423,10 +426,13 @@ func TestReviewFingerprintGuardFlowsThroughCLI(t *testing.T) {
 	binding := record.Decision.ReviewBinding
 	if binding == nil ||
 		binding.Fingerprint != review.ReviewFingerprint ||
+		binding.Projection == nil ||
+		binding.Projection.ReviewFingerprint != review.ReviewFingerprint ||
+		fingerprintReviewProjection(*binding.Projection) != review.ReviewFingerprint ||
 		len(binding.Coverage.Incomplete) != len(review.Coverage.Incomplete) {
 		t.Fatalf("persisted review binding=%+v review=%+v", binding, review.Coverage)
 	}
-	if record.ReviewBindingStatus != "recorded" ||
+	if record.ReviewBindingStatus != "verified" ||
 		record.ReviewCoverageStatus != "incomplete" ||
 		len(record.ReviewIncomplete) != len(review.Coverage.Incomplete) ||
 		len(record.ReviewDiagnostics) != 0 {
