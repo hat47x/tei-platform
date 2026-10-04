@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -161,8 +162,11 @@ func decodeStrictJSONFile(path string, dst any) error {
 		return err
 	}
 	var extra any
-	if err := decoder.Decode(&extra); err == nil {
-		return fmt.Errorf("JSONの後ろに余分な内容があります")
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("JSONの後ろに余分な内容があります")
+		}
+		return fmt.Errorf("JSON末尾: %w", err)
 	}
 	return nil
 }
