@@ -340,7 +340,12 @@ func resolveSemanticInterfaces(
 					contractFingerprint,
 					provider.Extension,
 					provider.Provider,
-					verifiedConformance[semanticInterfaceConformanceKey(provider.Extension.ID, requirement.Interface)],
+					verifiedConformance[semanticInterfaceConformanceKey(
+						provider.Extension.ID,
+						requirement.Interface,
+						contractFingerprint,
+						contractOwner.Contract.ProviderConformanceRef,
+					)],
 					"explicit",
 				))
 				continue
@@ -366,7 +371,12 @@ func resolveSemanticInterfaces(
 					contractFingerprint,
 					validProviders[0].Extension,
 					validProviders[0].Provider,
-					verifiedConformance[semanticInterfaceConformanceKey(validProviders[0].Extension.ID, requirement.Interface)],
+					verifiedConformance[semanticInterfaceConformanceKey(
+						validProviders[0].Extension.ID,
+						requirement.Interface,
+						contractFingerprint,
+						contractOwner.Contract.ProviderConformanceRef,
+					)],
 					"unique-provider",
 				))
 			default:
@@ -486,7 +496,12 @@ func interfaceProvidersForContract(
 				})
 				continue
 			}
-			conformanceKey := semanticInterfaceConformanceKey(descriptor.ID, interfaceID)
+			conformanceKey := semanticInterfaceConformanceKey(
+				descriptor.ID,
+				interfaceID,
+				contractFingerprint,
+				conformanceProfile,
+			)
 			conformance, ok := conformances[conformanceKey]
 			if !ok ||
 				conformance.ContractFingerprint != contractFingerprint ||
@@ -612,7 +627,12 @@ func normalizeSemanticInterfaceConformance(
 			!validSHA256Fingerprint(value.EvidenceFingerprint) {
 			return nil, fmt.Errorf("semantic interface conformance requires exact provider, interface, contract fingerprint, profile, and evidence fingerprint")
 		}
-		key := semanticInterfaceConformanceKey(value.ProviderExtension, value.Interface)
+		key := semanticInterfaceConformanceKey(
+			value.ProviderExtension,
+			value.Interface,
+			value.ContractFingerprint,
+			value.Profile,
+		)
 		if existing, ok := out[key]; ok && existing != value {
 			return nil, fmt.Errorf("semantic interface conformance %s is declared more than once with different evidence", key)
 		}
@@ -621,6 +641,17 @@ func normalizeSemanticInterfaceConformance(
 	return out, nil
 }
 
-func semanticInterfaceConformanceKey(providerExtension, interfaceID string) string {
-	return fmt.Sprintf("%q|%q", providerExtension, interfaceID)
+func semanticInterfaceConformanceKey(
+	providerExtension string,
+	interfaceID string,
+	contractFingerprint string,
+	profile string,
+) string {
+	return fmt.Sprintf(
+		"%q|%q|%q|%q",
+		providerExtension,
+		interfaceID,
+		contractFingerprint,
+		profile,
+	)
 }
