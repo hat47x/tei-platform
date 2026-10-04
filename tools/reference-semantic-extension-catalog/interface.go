@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+
+	"tei/internal/sourceindex"
 )
 
 type SemanticInterfaceContract struct {
