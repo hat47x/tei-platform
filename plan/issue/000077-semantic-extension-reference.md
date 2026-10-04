@@ -248,6 +248,19 @@ PR #927では、複数の有効解がある場合の選択規則も隠れた探�
 
 同PRでは、backtrackingの探索量を制御するためのoperational budget境界も追加しています。candidate attempt上限を超えた場合は専用の`semantic resolution search budget exceeded`として返し、dependency conflictと区別します。十分なbudgetを与えた場合にunbounded解決と同じ結果になることもtestします。budget値自体はSemantic Set fingerprintへ入れず、意味仕様ではなく運用policyとして維持します。
 
+#### A2 / A3 candidate response — 2026-10-05
+
+PR #927では、敵対的評価A2に対するReference candidateとしてSemantic Interfaceのcontractとprovider wiringを追加した。package identity dependencyとは別に、Interface identity、contract version、正規化contract fingerprint、input / output semantics、unknown / failure semantics、provider conformance profileを宣言できる。
+
+providerの`implements`相当の自己申告だけでは適合済みと扱わない。provider descriptorはInterface identity、exact contract version、contract fingerprintを宣言するが、resolverは別入力のConformance Evidenceを要求する。Conformance Evidenceはprovider identity、Interface identity、exact contract fingerprint、conformance profileへ結び付ける。contract fingerprintまたはprofileが異なるEvidenceを流用しない。
+
+適合するproviderが一つならwiringを確定できる。複数providerが残る場合はpackage ID、version、Catalog列挙順で選ばず、明示wiringが無ければ`interface-provider-ambiguous`としてUnresolvedにする。明示wiringも、指定providerがexact contractとConformance条件を満たさなければ拒否する。
+
+provider wiringはSemantic resolution identityへ含める。同じcontract、provider、conformance profileに対するEvidenceの更新だけはmeaningの変更とせず、`evidenceFingerprint`側で追跡する。これによりSemantic identityとConformance provenanceを分離する。
+
+A3については、Acceptedなstandard authority / delegate metadataがまだ無いため、Reference descriptorからの`std` / `std.*` namespace宣言を全面的に拒否するcandidateを追加した。これはstandard Extensionを禁止する最終仕様ではなく、first claimantをauthorityの根拠にしないための暫定Reference境界である。standard authorityとsubnamespace delegateは別のAccepted metadataとして実証する必要が残る。
+
+これらは構造pressureのcandidateであり、A2 / A3をProduct Evidenceとして解消したとは扱わない。exact-head focused testとrepository healthに加え、SUI hierarchyを実root consumerとしてInterface依存へ接続し、provider Conformance Evidenceを実際のValidationへ結び付けるまでE0-Bの完了状態は更新しない。
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
