@@ -88,6 +88,18 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
 		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
 	}
+	if record.ReviewBindingStatus != "none" ||
+		record.ReviewCoverageStatus != "none" ||
+		len(record.ReviewIncomplete) != 0 ||
+		len(record.ReviewDiagnostics) != 0 {
+		t.Fatalf(
+			"review binding status=%q coverage=%q incomplete=%+v diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewIncomplete,
+			record.ReviewDiagnostics,
+		)
+	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
 	}
@@ -238,6 +250,55 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 }
 
 // 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
+func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
+	dir := scratchWorkspace(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	decision, err := accept(dir, data, acceptOptions{})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	decision.ReviewBinding = &ReviewBinding{
+		Fingerprint: "sha256:recorded-but-not-verifiable-here",
+		Coverage: ReviewCoverageSummary{
+			Available:    3,
+			Partial:      5,
+			NotEvaluated: 0,
+			Incomplete: []ReviewCoverageGap{
+				{Code: "A2", Title: "影響", Coverage: reviewCoveragePartial},
+				{Code: "A3", Title: "例外・診断", Coverage: reviewCoveragePartial},
+				{Code: "A5", Title: "権限の変更", Coverage: reviewCoveragePartial},
+				{Code: "A6", Title: "native codeへ残る箇所", Coverage: reviewCoverageNotEvaluated},
+				{Code: "A7", Title: "逆追跡", Coverage: reviewCoveragePartial},
+			},
+		},
+	}
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" || record.ReviewCoverageStatus != "invalid" {
+		t.Fatalf("review status=%q coverage=%q", record.ReviewBindingStatus, record.ReviewCoverageStatus)
+	}
+	if len(record.ReviewDiagnostics) == 0 {
+		t.Fatal("malformed review coverage produced no diagnostics")
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_COVERAGE_INCOMPLETE_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
+	}
+}
+
 func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
