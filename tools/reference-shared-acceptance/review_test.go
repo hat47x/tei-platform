@@ -419,11 +419,24 @@ func TestReviewFingerprintGuardFlowsThroughCLI(t *testing.T) {
 	if len(index.Records) != 1 {
 		t.Fatalf("records=%+v", index.Records)
 	}
-	binding := index.Records[0].Decision.ReviewBinding
+	record := index.Records[0]
+	binding := record.Decision.ReviewBinding
 	if binding == nil ||
 		binding.Fingerprint != review.ReviewFingerprint ||
 		len(binding.Coverage.Incomplete) != len(review.Coverage.Incomplete) {
 		t.Fatalf("persisted review binding=%+v review=%+v", binding, review.Coverage)
+	}
+	if record.ReviewBindingStatus != "recorded" ||
+		record.ReviewCoverageStatus != "incomplete" ||
+		len(record.ReviewIncomplete) != len(review.Coverage.Incomplete) ||
+		len(record.ReviewDiagnostics) != 0 {
+		t.Fatalf(
+			"review index status=%q coverage=%q incomplete=%+v diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewIncomplete,
+			record.ReviewDiagnostics,
+		)
 	}
 }
 
