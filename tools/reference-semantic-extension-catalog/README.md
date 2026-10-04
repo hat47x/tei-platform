@@ -157,6 +157,10 @@ Catalogへcompatibleな新versionが追加されても、lockの検証時には�
 
 `-verify-semantic-lock FILE`が確認するのはsemantic replayです。成功時は`semanticReplayValid: true`を返します。これは現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityが有効であることを意味しません。replayではEvidence fingerprintを意味identityから外し、exact contract / owner / provider wiringだけを再構成します。
 
+現在のAccepted Evidenceとの結び付きを確認する場合は、`-verify-semantic-lock-evidence`を併用します。この検査はsemantic replayの成功後に実行し、lockへ固定したprovider / Interface contract / conformance profileと、namespace / ownerに対応するEvidenceが入力されていることを確認します。Conformance Evidenceは`-interface-conformance`、namespace Authority Evidenceは`-namespace-authority`で渡します。
+
+Evidence fingerprintはlockの意味identityへ固定しません。同じcontract / profileやnamespace / ownerに対してEvidenceを更新してもsemantic replayは維持し、Evidence bindingだけを現在の入力で再確認します。この検査もEvidenceの発行Authorityやpublisher trustまでは証明しません。
+
 同じprovider wiringが唯一候補として得られたか、明示wiringで指定されたかという選択経路もSemantic Setの意味には含めません。provider identityとcontractが同じなら`resolutionFingerprint`を維持し、選択経路とEvidenceはEvidence側で追跡します。
 ## Authority boundary
 
