@@ -305,8 +305,9 @@ Semantic declaration、identity、dependency、Lockは、Tool / AI / buildが意
 - declaration-only ExtensionはRuntime artifactを持たなくてよい。
 - Semantic SetのdeclarationとLockは小さく保ち、意味解決に必要な範囲をeagerに利用できるようにする。
 - evaluator / Provider等の実行artifactは、Target buildで到達可能なものだけを含める。
+- Acceptance / Conformanceに必要なSemantic Evaluatorは、判定時までに解決・実行できなければならない。Application起動後まで未検証のまま遅延してはいけない。
+- Runtimeで呼び出すProvider等は、起動時に不要ならTarget条件に応じてlazy loadできる。
 - 同じruntimeやsupport codeを各Pluginへ複製せず、共有またはlink時に統合できるようにする。
-- 起動時に不要なartifactはTarget条件に応じてlazy loadできる。
 - content digestが同じartifactをversionやProfileごとに重複保存しない余地を保つ。
 - lazy load失敗を意味の不存在へ読み替えない。必要な実装を取得できなければRuntime / Realization側のUnresolvedとして扱う。
 
