@@ -485,6 +485,17 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 	}
 
 	coverage := binding.Coverage
+	if coverage.Available < 0 || coverage.Partial < 0 || coverage.NotEvaluated < 0 {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_COUNT_INVALID",
+			Message: fmt.Sprintf(
+				"review coverageの件数に負数があります: available=%d partial=%d notEvaluated=%d",
+				coverage.Available,
+				coverage.Partial,
+				coverage.NotEvaluated,
+			),
+		})
+	}
 	total := coverage.Available + coverage.Partial + coverage.NotEvaluated
 	if total != 8 {
 		diagnostics = append(diagnostics, Diagnostic{
@@ -497,32 +508,44 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 			),
 		})
 	}
-	if len(coverage.Incomplete) != coverage.Partial+coverage.NotEvaluated {
-		diagnostics = append(diagnostics, Diagnostic{
-			Code: "REVIEW_COVERAGE_INCOMPLETE_MISMATCH",
-			Message: fmt.Sprintf(
-				"review coverageのincomplete件数がpartial + notEvaluatedと一致しません: incomplete=%d partial=%d notEvaluated=%d",
-				len(coverage.Incomplete),
-				coverage.Partial,
-				coverage.NotEvaluated,
-			),
-		})
+
+	validCodes := map[string]bool{
+		"A1": true, "A2": true, "A3": true, "A4": true,
+		"A5": true, "A6": true, "A7": true, "A8": true,
 	}
 	seen := map[string]bool{}
+	var partialGaps, notEvaluatedGaps int
 	for _, gap := range coverage.Incomplete {
-		if gap.Code < "A1" || gap.Code > "A8" || seen[gap.Code] {
+		if !validCodes[gap.Code] || seen[gap.Code] {
 			diagnostics = append(diagnostics, Diagnostic{
 				Code:    "REVIEW_COVERAGE_GAP_INVALID",
 				Message: "review coverageに不正または重複したsection codeがあります: " + gap.Code,
 			})
 		}
 		seen[gap.Code] = true
-		if gap.Coverage != reviewCoveragePartial && gap.Coverage != reviewCoverageNotEvaluated {
+		switch gap.Coverage {
+		case reviewCoveragePartial:
+			partialGaps++
+		case reviewCoverageNotEvaluated:
+			notEvaluatedGaps++
+		default:
 			diagnostics = append(diagnostics, Diagnostic{
 				Code:    "REVIEW_COVERAGE_GAP_INVALID",
 				Message: "review coverageのincomplete sectionがpartial / not-evaluatedではありません: " + gap.Code,
 			})
 		}
+	}
+	if partialGaps != coverage.Partial || notEvaluatedGaps != coverage.NotEvaluated {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_INCOMPLETE_MISMATCH",
+			Message: fmt.Sprintf(
+				"review coverageのincomplete内訳がsummaryと一致しません: partial=%d/%d notEvaluated=%d/%d",
+				partialGaps,
+				coverage.Partial,
+				notEvaluatedGaps,
+				coverage.NotEvaluated,
+			),
+		})
 	}
 	if len(diagnostics) > 0 {
 		return "invalid", "invalid", diagnostics
