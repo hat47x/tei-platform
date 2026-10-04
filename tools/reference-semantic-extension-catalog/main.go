@@ -11,6 +11,18 @@ import (
 	"tei/internal/workspace"
 )
 
+type pathFlags []string
+
+func (p *pathFlags) String() string { return strings.Join(*p, ",") }
+func (p *pathFlags) Set(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("path must not be empty")
+	}
+	*p = append(*p, value)
+	return nil
+}
+
 type requirementFlags []ExtensionRequirement
 
 func (r *requirementFlags) String() string {
@@ -49,12 +61,16 @@ func run(args []string) int {
 	subjectKind := flags.String("subject-kind", "", "optional subject kind filter")
 	subjectID := flags.String("subject-id", "", "optional subject ID filter")
 	var roots requirementFlags
+	var wiringPaths pathFlags
+	var conformancePaths pathFlags
 	flags.Var(&roots, "require", "root extension requirement EXTENSION@MAJOR; repeatable")
+	flags.Var(&wiringPaths, "interface-wiring", "semantic interface wiring JSON file; repeatable")
+	flags.Var(&conformancePaths, "interface-conformance", "accepted semantic interface conformance JSON file; repeatable")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" || len(roots) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR -require EXTENSION@MAJOR [-require ...] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR -require EXTENSION@MAJOR [-require ...] [-interface-wiring FILE] [-interface-conformance FILE] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -73,7 +89,23 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	catalog, err := resolveSemanticCatalog(coreCatalogFromSourceIndex(index), descriptors, roots)
+	wirings, err := loadSemanticInterfaceWirings(wiringPaths)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	conformances, err := loadSemanticInterfaceConformances(conformancePaths)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	catalog, err := resolveSemanticCatalogWithInterfaceInputs(
+		coreCatalogFromSourceIndex(index),
+		descriptors,
+		roots,
+		wirings,
+		conformances,
+	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -90,4 +122,47 @@ func run(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+
+func loadSemanticInterfaceWirings(paths []string) ([]SemanticInterfaceWiring, error) {
+	out := make([]SemanticInterfaceWiring, 0, len(paths))
+	for _, path := range paths {
+		var value SemanticInterfaceWiring
+		if err := decodeStrictJSONFile(path, &value); err != nil {
+			return nil, fmt.Errorf("interface wiring %s: %w", path, err)
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
+
+func loadSemanticInterfaceConformances(paths []string) ([]SemanticInterfaceConformance, error) {
+	out := make([]SemanticInterfaceConformance, 0, len(paths))
+	for _, path := range paths {
+		var value SemanticInterfaceConformance
+		if err := decodeStrictJSONFile(path, &value); err != nil {
+			return nil, fmt.Errorf("interface conformance %s: %w", path, err)
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
+
+func decodeStrictJSONFile(path string, dst any) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err == nil {
+		return fmt.Errorf("JSONの後ろに余分な内容があります")
+	}
+	return nil
 }
