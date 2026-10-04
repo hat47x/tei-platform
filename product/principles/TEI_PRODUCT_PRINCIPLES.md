@@ -60,6 +60,8 @@ Web、Desktop、Mobile、API、MCP、VUIなどを、同じ上位設計から選�
 
 Target固有の機能は独立したAdapter / Packageへ置き、新しいTargetを追加するためにCoreの意味モデルを書き換えることを基本としません。
 
+Plugin / Extensionのlogical identityを、特定Targetのprocess、binary、Wasm module等の物理境界へ固定しません。同じ意味とCapability contractを、Webではbrowser-compatibleな実装、Desktop / Serverでは別のRuntime実装として実現できる余地を保ちます。
+
 ## P10. CommandとObserved Realityを分ける
 
 命令が受理されたことと、外部世界が期待どおり変化したことを同一視しません。
@@ -132,6 +134,8 @@ Coreは、identity、namespace、composition、extension metadata、provenance�
 Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
 
 標準機能も可能な限り同じExtension contractに載せ、依存解決、conflict判定、lock、discoveryも同じ仕組みを使います。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路は増やしません。Semantic Extensionの依存集合はRuntime / Toolingの依存集合と分け、Accepted meaningを再現できる単位で固定します。
+
+同じExtension contractを使うことは、各Extensionを別artifactや別processとして実行することを意味しません。Targetの性能・配布・storage条件に応じて、複数の標準Extensionを一つのartifactへ統合したり、未使用実装を除外したりしても、logical identityと追跡性が失われない構造を優先します。
 
 ## P17. 再現性とConformanceを機能数より優先する
 
