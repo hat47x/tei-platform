@@ -414,10 +414,10 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			return index, fmt.Errorf("decision record %s: %w", rel, err)
 		}
 		record := DecisionRecord{
-			Path:           rel,
-			Decision:       d,
-			Status:         "superseded",
-			SourceEdits:    "none",
+			Path:                 rel,
+			Decision:             d,
+			Status:               "superseded",
+			SourceEdits:          "none",
 			EvidenceStatus:       "none",
 			ReviewBindingStatus:  "none",
 			ReviewCoverageStatus: "none",
@@ -468,6 +468,9 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		record.Decision.RecordPath = rel
 		index.Records = append(index.Records, record)
 	}
+
+	return index, nil
+}
 
 func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic) {
 	if binding == nil {
@@ -530,5 +533,3 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 	return "recorded", "incomplete", nil
 }
 
-	return index, nil
-}
