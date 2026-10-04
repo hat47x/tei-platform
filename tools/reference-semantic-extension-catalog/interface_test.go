@@ -193,6 +193,56 @@ func TestSemanticInterfaceMultipleProvidersRequireExplicitWiring(t *testing.T) {
 	}
 }
 
+func TestSemanticInterfaceSelectionPathDoesNotChangeMeaningIdentity(t *testing.T) {
+	contract, owner, consumer, provider := semanticInterfaceFixture()
+	descriptors := []ExtensionDescriptor{owner, consumer, provider}
+	roots := semanticInterfaceRoots(owner.ID, consumer.ID, provider.ID)
+	conformances := []SemanticInterfaceConformance{
+		semanticInterfaceConformanceFor(contract, provider.ID, "9"),
+	}
+
+	unique, err := resolveSemanticCatalogWithInterfaceInputs(
+		CoreCatalogInput{},
+		descriptors,
+		roots,
+		nil,
+		conformances,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	explicit, err := resolveSemanticCatalogWithInterfaceInputs(
+		CoreCatalogInput{},
+		descriptors,
+		roots,
+		[]SemanticInterfaceWiring{{
+			ConsumerExtension: consumer.ID,
+			Interface:         contract.ID,
+			ProviderExtension: provider.ID,
+		}},
+		conformances,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unique.Unresolved) != 0 || len(explicit.Unresolved) != 0 {
+		t.Fatalf("fixture unresolved: unique=%+v explicit=%+v", unique.Unresolved, explicit.Unresolved)
+	}
+	if unique.InterfaceWirings[0].Selection == explicit.InterfaceWirings[0].Selection {
+		t.Fatalf("fixture did not exercise different selection paths: unique=%+v explicit=%+v", unique.InterfaceWirings, explicit.InterfaceWirings)
+	}
+	if unique.ResolutionFingerprint != explicit.ResolutionFingerprint {
+		t.Fatalf(
+			"selection path changed semantic identity: %s != %s",
+			unique.ResolutionFingerprint,
+			explicit.ResolutionFingerprint,
+		)
+	}
+	if unique.EvidenceFingerprint == explicit.EvidenceFingerprint {
+		t.Fatalf("selection path was not retained in Evidence identity")
+	}
+}
+
 func TestSemanticInterfaceWiringChangesSemanticResolutionIdentity(t *testing.T) {
 	contract, owner, consumer, providerA := semanticInterfaceFixture()
 	providerB := providerA
