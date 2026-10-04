@@ -61,6 +61,8 @@ func run(args []string) int {
 	extensionsPath := flags.String("extensions", "", "reference semantic extension descriptor directory")
 	subjectKind := flags.String("subject-kind", "", "optional subject kind filter")
 	subjectID := flags.String("subject-id", "", "optional subject ID filter")
+	semanticLockOut := flags.String("semantic-lock-out", "", "write resolved semantic lock JSON")
+	verifySemanticLockPath := flags.String("verify-semantic-lock", "", "verify an existing semantic lock against exact available declarations")
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
@@ -72,8 +74,9 @@ func run(args []string) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" || len(roots) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR -require EXTENSION@MAJOR [-require ...] [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-subject-kind KIND] [-subject-id ID]")
+	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" ||
+		(strings.TrimSpace(*verifySemanticLockPath) == "" && len(roots) == 0) {
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-semantic-lock-out FILE] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -91,6 +94,28 @@ func run(args []string) int {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+	if strings.TrimSpace(*verifySemanticLockPath) != "" {
+		var lock SemanticLock
+		if err := decodeStrictJSONFile(*verifySemanticLockPath, &lock); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := verifySemanticLock(lock, coreCatalogFromSourceIndex(index), descriptors); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(map[string]any{
+			"valid":                  true,
+			"semanticSetFingerprint": lock.SemanticSetFingerprint,
+			"resolutionPolicy":       lock.ResolutionPolicy,
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
 	}
 	wirings, err := loadSemanticInterfaceWirings(wiringPaths)
 	if err != nil {
@@ -118,6 +143,17 @@ func run(args []string) int {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+	if strings.TrimSpace(*semanticLockOut) != "" {
+		lock, err := buildSemanticLock(catalog)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := writeJSONFile(*semanticLockOut, lock); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 	}
 	catalog = filterCatalog(catalog, *subjectKind, *subjectID)
 
@@ -189,4 +225,14 @@ func decodeStrictJSONFile(path string, dst any) error {
 		return fmt.Errorf("JSON末尾: %w", err)
 	}
 	return nil
+}
+
+
+func writeJSONFile(path string, value any) error {
+	encoded, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	encoded = append(encoded, '\n')
+	return os.WriteFile(path, encoded, 0o644)
 }
