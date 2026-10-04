@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -202,21 +203,73 @@ func sourceIndexSubjects(index sourceindex.Index) []subject.Subject {
 	return out
 }
 
+var errSemanticResolutionBudgetExceeded = errors.New("semantic resolution search budget exceeded")
+
+type SemanticResolutionBudget struct {
+	MaxCandidateAttempts int
+}
+
+type SemanticResolutionStats struct {
+	CandidateAttempts int
+}
+
+type semanticResolutionSearchState struct {
+	budget SemanticResolutionBudget
+	stats  SemanticResolutionStats
+}
+
+func (s *semanticResolutionSearchState) consumeCandidateAttempt() error {
+	s.stats.CandidateAttempts++
+	if s.budget.MaxCandidateAttempts > 0 &&
+		s.stats.CandidateAttempts > s.budget.MaxCandidateAttempts {
+		return fmt.Errorf(
+			"%w: maxCandidateAttempts=%d",
+			errSemanticResolutionBudgetExceeded,
+			s.budget.MaxCandidateAttempts,
+		)
+	}
+	return nil
+}
+
 func resolveExtensionSelection(
 	byID map[string][]ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (map[string]ExtensionDescriptor, error) {
+	resolved, _, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{},
+	)
+	return resolved, err
+}
+
+func resolveExtensionSelectionWithBudget(
+	byID map[string][]ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	budget SemanticResolutionBudget,
+) (map[string]ExtensionDescriptor, SemanticResolutionStats, error) {
+	if budget.MaxCandidateAttempts < 0 {
+		return nil, SemanticResolutionStats{}, fmt.Errorf("max candidate attempts must not be negative")
+	}
 	constraints := map[string]map[int]struct{}{}
 	for _, root := range roots {
 		addExtensionConstraint(constraints, root)
 	}
-	return searchExtensionSelection(byID, map[string]ExtensionDescriptor{}, constraints)
+	state := &semanticResolutionSearchState{budget: budget}
+	resolved, err := searchExtensionSelection(
+		byID,
+		map[string]ExtensionDescriptor{},
+		constraints,
+		state,
+	)
+	return resolved, state.stats, err
 }
 
 func searchExtensionSelection(
 	byID map[string][]ExtensionDescriptor,
 	selected map[string]ExtensionDescriptor,
 	constraints map[string]map[int]struct{},
+	state *semanticResolutionSearchState,
 ) (map[string]ExtensionDescriptor, error) {
 	var ids []string
 	for id := range constraints {
@@ -279,6 +332,9 @@ func searchExtensionSelection(
 
 	var lastErr error
 	for _, candidate := range compatible {
+		if err := state.consumeCandidateAttempt(); err != nil {
+			return nil, err
+		}
 		nextSelected := cloneExtensionSelection(selected)
 		nextSelected[unresolvedID] = candidate
 		nextConstraints := cloneExtensionConstraints(constraints)
@@ -286,9 +342,12 @@ func searchExtensionSelection(
 			addExtensionConstraint(nextConstraints, child)
 		}
 
-		resolved, err := searchExtensionSelection(byID, nextSelected, nextConstraints)
+		resolved, err := searchExtensionSelection(byID, nextSelected, nextConstraints, state)
 		if err == nil {
 			return resolved, nil
+		}
+		if errors.Is(err, errSemanticResolutionBudgetExceeded) {
+			return nil, err
 		}
 		lastErr = err
 	}
