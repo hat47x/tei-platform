@@ -116,7 +116,7 @@ func buildSemanticLock(catalog SemanticCatalog) (SemanticLock, error) {
 	return lock, nil
 }
 
-func verifySemanticLock(
+func verifySemanticLockReplay(
 	lock SemanticLock,
 	core CoreCatalogInput,
 	available []ExtensionDescriptor,
