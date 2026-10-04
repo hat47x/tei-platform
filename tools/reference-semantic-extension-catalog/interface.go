@@ -186,3 +186,372 @@ func jsonMarshalStable(value any) ([]byte, error) {
 func fingerprintBytes(value []byte) string {
 	return sourceindex.Fingerprint(value)
 }
+
+
+type semanticInterfaceContractOwner struct {
+	Contract  SemanticInterfaceContract
+	Extension ExtensionDescriptor
+}
+
+type semanticInterfaceProviderCandidate struct {
+	Extension ExtensionDescriptor
+	Provider  SemanticInterfaceProvider
+}
+
+func resolveSemanticInterfaces(
+	selected map[string]ExtensionDescriptor,
+	blockedExtensions map[string]bool,
+	wirings []SemanticInterfaceWiring,
+) ([]CatalogSemanticInterface, []CatalogInterfaceWiring, []CatalogUnresolved, error) {
+	explicit, err := normalizeSemanticInterfaceWirings(wirings)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var ids []string
+	for id := range selected {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	contractsByID := map[string][]semanticInterfaceContractOwner{}
+	for _, id := range ids {
+		if blockedExtensions[id] {
+			continue
+		}
+		descriptor := selected[id]
+		for _, contract := range descriptor.Interfaces {
+			contractsByID[contract.ID] = append(contractsByID[contract.ID], semanticInterfaceContractOwner{
+				Contract:  contract,
+				Extension: descriptor,
+			})
+		}
+	}
+
+	var interfaces []CatalogSemanticInterface
+	for _, owners := range contractsByID {
+		for _, owner := range owners {
+			interfaces = append(interfaces, catalogSemanticInterface(owner))
+		}
+	}
+	sort.Slice(interfaces, func(i, j int) bool {
+		if interfaces[i].ID != interfaces[j].ID {
+			return interfaces[i].ID < interfaces[j].ID
+		}
+		if interfaces[i].Version != interfaces[j].Version {
+			return compareVersion(interfaces[i].Version, interfaces[j].Version) < 0
+		}
+		return interfaces[i].Extension.ID < interfaces[j].Extension.ID
+	})
+
+	var unresolved []CatalogUnresolved
+	var resolved []CatalogInterfaceWiring
+	usedExplicit := map[string]bool{}
+
+	for _, consumerID := range ids {
+		if blockedExtensions[consumerID] {
+			continue
+		}
+		consumer := selected[consumerID]
+		for _, requirement := range consumer.RequiresInterfaces {
+			matches := interfaceContractsCompatibleWithMajor(
+				contractsByID[requirement.Interface],
+				requirement.CompatibleMajor,
+			)
+			if len(matches) == 0 {
+				identity := ExtensionIdentity{ID: consumer.ID, Version: consumer.Version}
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-contract-unavailable",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s requires semantic interface %s major %d",
+						consumer.ID,
+						requirement.Interface,
+						requirement.CompatibleMajor,
+					),
+				})
+				continue
+			}
+			if len(matches) != 1 {
+				identity := ExtensionIdentity{ID: consumer.ID, Version: consumer.Version}
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-contract-ambiguous",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s sees %d contracts for semantic interface %s major %d",
+						consumer.ID,
+						len(matches),
+						requirement.Interface,
+						requirement.CompatibleMajor,
+					),
+				})
+				continue
+			}
+
+			contractOwner := matches[0]
+			contractFingerprint := semanticInterfaceFingerprint(contractOwner.Contract)
+			validProviders, providerDiagnostics := interfaceProvidersForContract(
+				selected,
+				blockedExtensions,
+				requirement.Interface,
+				contractOwner.Contract.Version,
+				contractFingerprint,
+			)
+			unresolved = append(unresolved, providerDiagnostics...)
+
+			wiringKey := semanticInterfaceWiringKey(consumer.ID, requirement.Interface)
+			requested, hasRequested := explicit[wiringKey]
+			if hasRequested {
+				usedExplicit[wiringKey] = true
+				provider, ok := semanticInterfaceProviderByExtension(validProviders, requested.ProviderExtension)
+				if !ok {
+					identity := ExtensionIdentity{ID: consumer.ID, Version: consumer.Version}
+					unresolved = append(unresolved, CatalogUnresolved{
+						Code:      "interface-wiring-invalid",
+						Extension: &identity,
+						Detail: fmt.Sprintf(
+							"%s wires %s to %s, but that provider is not conformant to %s@%s",
+							consumer.ID,
+							requirement.Interface,
+							requested.ProviderExtension,
+							contractOwner.Contract.ID,
+							contractOwner.Contract.Version,
+						),
+					})
+					continue
+				}
+				resolved = append(resolved, catalogInterfaceWiring(
+					consumer,
+					contractOwner.Contract,
+					contractFingerprint,
+					provider.Extension,
+					provider.Provider,
+					"explicit",
+				))
+				continue
+			}
+
+			switch len(validProviders) {
+			case 0:
+				identity := ExtensionIdentity{ID: consumer.ID, Version: consumer.Version}
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-provider-unavailable",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s requires provider for %s@%s",
+						consumer.ID,
+						contractOwner.Contract.ID,
+						contractOwner.Contract.Version,
+					),
+				})
+			case 1:
+				resolved = append(resolved, catalogInterfaceWiring(
+					consumer,
+					contractOwner.Contract,
+					contractFingerprint,
+					validProviders[0].Extension,
+					validProviders[0].Provider,
+					"unique-provider",
+				))
+			default:
+				identity := ExtensionIdentity{ID: consumer.ID, Version: consumer.Version}
+				var providerIDs []string
+				for _, provider := range validProviders {
+					providerIDs = append(providerIDs, provider.Extension.ID)
+				}
+				sort.Strings(providerIDs)
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-provider-ambiguous",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s has multiple conformant providers for %s@%s: %s",
+						consumer.ID,
+						contractOwner.Contract.ID,
+						contractOwner.Contract.Version,
+						strings.Join(providerIDs, ", "),
+					),
+				})
+			}
+		}
+	}
+
+	for key, wiring := range explicit {
+		if usedExplicit[key] {
+			continue
+		}
+		unresolved = append(unresolved, CatalogUnresolved{
+			Code: "interface-wiring-unrequired",
+			Detail: fmt.Sprintf(
+				"explicit wiring %s -> %s via %s does not match a selected interface requirement",
+				wiring.ConsumerExtension,
+				wiring.Interface,
+				wiring.ProviderExtension,
+			),
+		})
+	}
+
+	sort.Slice(resolved, func(i, j int) bool {
+		if resolved[i].ConsumerExtension != resolved[j].ConsumerExtension {
+			return resolved[i].ConsumerExtension < resolved[j].ConsumerExtension
+		}
+		if resolved[i].Interface != resolved[j].Interface {
+			return resolved[i].Interface < resolved[j].Interface
+		}
+		return resolved[i].ProviderExtension < resolved[j].ProviderExtension
+	})
+	sort.Slice(unresolved, func(i, j int) bool {
+		if unresolved[i].Code != unresolved[j].Code {
+			return unresolved[i].Code < unresolved[j].Code
+		}
+		return unresolved[i].Detail < unresolved[j].Detail
+	})
+	return interfaces, resolved, unresolved, nil
+}
+
+func catalogSemanticInterface(owner semanticInterfaceContractOwner) CatalogSemanticInterface {
+	identity := ExtensionIdentity{ID: owner.Extension.ID, Version: owner.Extension.Version}
+	return CatalogSemanticInterface{
+		ID:                     owner.Contract.ID,
+		Version:                owner.Contract.Version,
+		ContractFingerprint:    semanticInterfaceFingerprint(owner.Contract),
+		InputSemantics:         append([]string(nil), owner.Contract.InputSemantics...),
+		OutputSemantics:        append([]string(nil), owner.Contract.OutputSemantics...),
+		UnknownSemantics:       owner.Contract.UnknownSemantics,
+		FailureSemantics:       owner.Contract.FailureSemantics,
+		ProviderConformanceRef: owner.Contract.ProviderConformanceRef,
+		Extension:              identity,
+		Source:                 owner.Extension.sourcePath,
+		SourceFingerprint:      owner.Extension.sourceFingerprint,
+	}
+}
+
+func interfaceProvidersForContract(
+	selected map[string]ExtensionDescriptor,
+	blockedExtensions map[string]bool,
+	interfaceID string,
+	contractVersion string,
+	contractFingerprint string,
+) ([]semanticInterfaceProviderCandidate, []CatalogUnresolved) {
+	var ids []string
+	for id := range selected {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	var valid []semanticInterfaceProviderCandidate
+	var unresolved []CatalogUnresolved
+	for _, id := range ids {
+		if blockedExtensions[id] {
+			continue
+		}
+		descriptor := selected[id]
+		for _, provider := range descriptor.ProvidesInterfaces {
+			if provider.Interface != interfaceID {
+				continue
+			}
+			if provider.ContractVersion != contractVersion ||
+				provider.ContractFingerprint != contractFingerprint {
+				identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-provider-contract-mismatch",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s claims %s@%s fingerprint %s; required contract is %s@%s fingerprint %s",
+						descriptor.ID,
+						provider.Interface,
+						provider.ContractVersion,
+						provider.ContractFingerprint,
+						interfaceID,
+						contractVersion,
+						contractFingerprint,
+					),
+				})
+				continue
+			}
+			valid = append(valid, semanticInterfaceProviderCandidate{
+				Extension: descriptor,
+				Provider:  provider,
+			})
+		}
+	}
+	return valid, unresolved
+}
+
+func interfaceContractsCompatibleWithMajor(
+	owners []semanticInterfaceContractOwner,
+	major int,
+) []semanticInterfaceContractOwner {
+	var out []semanticInterfaceContractOwner
+	for _, owner := range owners {
+		if compatibleMajor(owner.Contract.Version, major) {
+			out = append(out, owner)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Contract.Version != out[j].Contract.Version {
+			return compareVersion(out[i].Contract.Version, out[j].Contract.Version) > 0
+		}
+		return out[i].Extension.ID < out[j].Extension.ID
+	})
+	return out
+}
+
+func normalizeSemanticInterfaceWirings(
+	values []SemanticInterfaceWiring,
+) (map[string]SemanticInterfaceWiring, error) {
+	out := map[string]SemanticInterfaceWiring{}
+	for _, value := range values {
+		value.ConsumerExtension = strings.TrimSpace(value.ConsumerExtension)
+		value.Interface = strings.TrimSpace(value.Interface)
+		value.ProviderExtension = strings.TrimSpace(value.ProviderExtension)
+		if value.ConsumerExtension == "" || value.Interface == "" || value.ProviderExtension == "" {
+			return nil, fmt.Errorf("semantic interface wiring requires consumerExtension, interface, and providerExtension")
+		}
+		key := semanticInterfaceWiringKey(value.ConsumerExtension, value.Interface)
+		if existing, ok := out[key]; ok && existing.ProviderExtension != value.ProviderExtension {
+			return nil, fmt.Errorf(
+				"semantic interface wiring %s has multiple providers: %s and %s",
+				key,
+				existing.ProviderExtension,
+				value.ProviderExtension,
+			)
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+func semanticInterfaceWiringKey(consumerExtension, interfaceID string) string {
+	return fmt.Sprintf("%q|%q", consumerExtension, interfaceID)
+}
+
+func semanticInterfaceProviderByExtension(
+	values []semanticInterfaceProviderCandidate,
+	extensionID string,
+) (semanticInterfaceProviderCandidate, bool) {
+	for _, value := range values {
+		if value.Extension.ID == extensionID {
+			return value, true
+		}
+	}
+	return semanticInterfaceProviderCandidate{}, false
+}
+
+func catalogInterfaceWiring(
+	consumer ExtensionDescriptor,
+	contract SemanticInterfaceContract,
+	contractFingerprint string,
+	providerExtension ExtensionDescriptor,
+	provider SemanticInterfaceProvider,
+	selection string,
+) CatalogInterfaceWiring {
+	return CatalogInterfaceWiring{
+		ConsumerExtension:   consumer.ID,
+		Interface:           contract.ID,
+		ContractVersion:     contract.Version,
+		ContractFingerprint: contractFingerprint,
+		ProviderExtension:   providerExtension.ID,
+		ProviderConformance: provider.ConformanceRef,
+		Selection:           selection,
+	}
+}
