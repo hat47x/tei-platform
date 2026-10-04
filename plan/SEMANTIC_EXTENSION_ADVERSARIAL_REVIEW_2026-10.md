@@ -167,9 +167,11 @@ namespaceはCatalog内の競合検出だけでなく、authorityの問題であ�
 
 ### 2026-10-05 Reference boundary
 
-PR #927では、Acceptedなstandard authority / delegate metadataが存在しない現段階で、Extension descriptorによる`std` / `std.*` namespace宣言を全面的に拒否するReference境界を追加した。したがって、第三者ExtensionがCatalogへ先に現れるだけで`std.*`を取得するfirst claimant経路は候補実装上では成立しない。
+PR #927ではnamespace authorityをExtension descriptorから分離し、Accepted Authority Evidenceを別入力にするReference candidateへ進んだ。`std` / `std.*`はauthority無しでは`namespace-authority-missing`となり、Catalogへ先に現れたExtensionがfirst claimantとして取得できない。
 
-この対応はnamespace authorityの最終モデルではない。standard Extensionを正当に宣言するAuthority、subnamespace委譲、publisher / Source trustとの関係はまだ実装していない。ReferenceではAuthorityが無い状態をfail closedにしただけなので、A3もProduction上の解消済みBlockerとは扱わない。
+Authority Evidenceがnamespaceとowner Extensionを明示した場合だけ、そのExtensionのsemantic contributionを公開する。同じnamespaceの別claimantは`namespace-authority-mismatch`として残し、Coreが既に所有するnamespaceはAuthority Evidenceでも上書きできない。Authority Evidence fingerprintはprovenanceとしてEvidence identityへ含め、namespaceとownerが同じままEvidenceだけを更新してもSemantic resolution identityを変えない。
+
+これでfirst claimant経路と正当なstandard Extensionの導入経路を分ける候補はできた。ただしsubnamespace委譲、publisher / Source trust、Authority Evidence自体の発行Authorityは未実証である。A3をProduction上の解消済みBlockerとはまだ扱わない。
 ## 6. A4 — exact versionだけではlockにならない
 
 次が変わると、Extensionのexact versionが同じでも解釈やgraphが変わり得る。
