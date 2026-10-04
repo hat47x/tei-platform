@@ -55,10 +55,13 @@ type CatalogRelation struct {
 }
 
 type CatalogConstraint struct {
-	ID           string            `json:"id"`
-	Subject      subject.Subject   `json:"subject"`
-	ValidatorRef string            `json:"validatorRef"`
-	Extension    ExtensionIdentity `json:"extension"`
+	ID                           string            `json:"id"`
+	Subject                      subject.Subject   `json:"subject"`
+	ValidatorRef                 string            `json:"validatorRef"`
+	EvaluatorInterface           string            `json:"evaluatorInterface,omitempty"`
+	EvaluatorProviderExtension   string            `json:"evaluatorProviderExtension,omitempty"`
+	EvaluatorContractFingerprint string            `json:"evaluatorContractFingerprint,omitempty"`
+	Extension                    ExtensionIdentity `json:"extension"`
 }
 
 type CatalogConnection struct {
@@ -652,6 +655,11 @@ func resolveSemanticCatalogWithAllInputs(
 	for _, entry := range catalog.Subjects {
 		available[subjectKey(entry.Subject)] = struct{}{}
 	}
+	resolvedInterfaceWiring := map[string]CatalogInterfaceWiring{}
+	for _, wiring := range catalog.InterfaceWirings {
+		resolvedInterfaceWiring[semanticInterfaceWiringKey(wiring.ConsumerExtension, wiring.Interface)] = wiring
+	}
+
 	for _, id := range ids {
 		if blockedExtensions[id] {
 			continue
@@ -697,9 +705,36 @@ func resolveSemanticCatalogWithAllInputs(
 				})
 				continue
 			}
-			catalog.Constraints = append(catalog.Constraints, CatalogConstraint{
-				ID: constraint.ID, Subject: constraint.Subject, ValidatorRef: constraint.ValidatorRef, Extension: identity,
-			})
+			item := CatalogConstraint{
+				ID:                 constraint.ID,
+				Subject:            constraint.Subject,
+				ValidatorRef:       constraint.ValidatorRef,
+				EvaluatorInterface: constraint.EvaluatorInterface,
+				Extension:          identity,
+			}
+			if constraint.EvaluatorInterface != "" {
+				wiring, ok := resolvedInterfaceWiring[
+					semanticInterfaceWiringKey(descriptor.ID, constraint.EvaluatorInterface)
+				]
+				if !ok {
+					extensionCopy := identity
+					subjectCopy := constraint.Subject
+					catalog.Unresolved = append(catalog.Unresolved, CatalogUnresolved{
+						Code:      "constraint-evaluator-unresolved",
+						Subject:   &subjectCopy,
+						Extension: &extensionCopy,
+						Detail: fmt.Sprintf(
+							"constraint %s requires resolved evaluator interface %s",
+							constraint.ID,
+							constraint.EvaluatorInterface,
+						),
+					})
+					continue
+				}
+				item.EvaluatorProviderExtension = wiring.ProviderExtension
+				item.EvaluatorContractFingerprint = wiring.ContractFingerprint
+			}
+			catalog.Constraints = append(catalog.Constraints, item)
 		}
 		for _, connection := range descriptor.Connections {
 			catalog.Connections = append(catalog.Connections, CatalogConnection{
