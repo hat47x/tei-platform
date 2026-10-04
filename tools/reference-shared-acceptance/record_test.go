@@ -275,7 +275,6 @@ func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
 }
 
 
-// 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
 func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
 	binding := &ReviewBinding{
 		Fingerprint: "sha256:" + strings.Repeat("g", 64),
@@ -307,7 +306,7 @@ func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
 		t.Fatalf("decision=%+v err=%v", decision, err)
 	}
 	decision.ReviewBinding = &ReviewBinding{
-		Fingerprint: "sha256:recorded-but-not-verifiable-here",
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
 		Coverage: ReviewCoverageSummary{
 			Available:    3,
 			Partial:      5,
@@ -348,6 +347,7 @@ func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
 	}
 }
 
+// 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
 func TestDecisionRecordIsNotAuthorityOverMeaning(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
