@@ -258,7 +258,7 @@ providerの`implements`相当の自己申告だけでは適合済みと扱わな
 
 provider wiringはSemantic resolution identityへ含める。同じcontract、provider、conformance profileに対するEvidenceの更新だけはmeaningの変更とせず、`evidenceFingerprint`側で追跡する。これによりSemantic identityとConformance provenanceを分離する。
 
-A3については、Acceptedなstandard authority / delegate metadataがまだ無いため、Reference descriptorからの`std` / `std.*` namespace宣言を全面的に拒否するcandidateを追加した。これはstandard Extensionを禁止する最終仕様ではなく、first claimantをauthorityの根拠にしないための暫定Reference境界である。standard authorityとsubnamespace delegateは別のAccepted metadataとして実証する必要が残る。
+A3については、namespace authorityをExtension descriptorから分離し、AcceptedなAuthority Evidenceを別入力にするcandidateへ進んだ。`std` / `std.*`はauthority無しでは`namespace-authority-missing`となり、first claimantでは取得できない。Accepted authorityがnamespaceとowner Extensionを明示した場合だけ、そのExtensionのsemantic contributionを公開する。Core所有namespaceはauthority入力でも上書きできず、同じnamespaceの他claimantは`namespace-authority-mismatch`として残す。Authority Evidence fingerprintはEvidence identityへ含め、同じnamespace / ownerに対するEvidence更新だけではSemantic resolution identityを変えない。subnamespace delegateとpublisher trustの最終contractは未実装である。
 
 これらは構造pressureのcandidateであり、A2 / A3をProduct Evidenceとして解消したとは扱わない。exact-head focused testとrepository healthに加え、SUI hierarchyを実root consumerとしてInterface依存へ接続し、provider Conformance Evidenceを実際のValidationへ結び付けるまでE0-Bの完了状態は更新しない。
 ### E0-C — Semantic Lock / explanation
