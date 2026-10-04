@@ -216,7 +216,11 @@ lockのsemantic replayでは、available Catalogを通常のresolverで再解決
 
 Source、Conformance、namespace AuthorityのEvidence fingerprintはSemantic Lockのmeaning identityへ含めない。同じsemantic graphに対するEvidence更新でSemantic Set fingerprintを変えない一方、Evidenceの現在性は別の検証責務として残す。CLIの検証結果も`semanticReplayValid`とし、current trust / Authorityまで有効であるという表現を避ける。
 
-これにより「exact package versionだけをlockとする」反例はReference candidate上で縮小した。ただしlockのShared Acceptance接続、Accepted source側のExtension参照、current Evidence / supply-chain trustの再検証、exact-head executable Evidenceは未成立である。A4をProduction上の解消済みBlockerとはまだ扱わない。
+current Evidenceの扱いもsemantic replayから分けた。`-verify-semantic-lock`はexact graphの再現だけを確認し、`-verify-semantic-lock-evidence`を指定した場合に限り、lockへ固定したInterface contract / conformance profileとnamespace / ownerへ現在のAccepted Evidenceが結び付いているかを追加検査する。Evidence fingerprintそのものはmeaning identityへ含めないため、同じ契約に対するEvidence更新だけではSemantic Setを変えない。
+
+この追加検査はEvidenceの存在とexact bindingを確認するものであり、Evidenceの発行Authorityやpublisher trustまでは証明しない。
+
+これにより「exact package versionだけをlockとする」反例と、「semantic replay成功をcurrent Evidenceの有効性と誤認する」反例はReference candidate上で縮小した。ただしlockのShared Acceptance接続、Accepted source側のExtension参照、Evidence発行Authority / supply-chain trust、exact-head executable Evidenceは未成立である。A4をProduction上の解消済みBlockerとはまだ扱わない。
 ## 7. A5 — EvaluatorをEnvironmentへ任せるとmeaningが揺れる
 
 現行ISSUE-000077には、同じSemantic Extensionを複数Pluginが評価でき、EnvironmentがCapability negotiationで実装を選べる案がある。
