@@ -242,6 +242,8 @@ SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなde
 
 この時点ではcandidateです。独立したGo 1.23.2 probeでは同じ探索アルゴリズムのfalse-conflict / version-specific-cycle caseがPASSしていますが、repository exact-head focused testとfull health gateは未実施です。したがってAcceptance checkboxやEvidence tierはまだ更新しません。
 
+Productionの`internal/plugin.ResolveEnvironment`も、2026-10-04時点ではhighest-compatibleを先に固定するDFSを使っています。同じ種類のfalse conflictを起こし得ますが、Semantic resolutionとRuntime Plugin resolutionは別scopeとして維持します。PR #927でReferenceの解法とnegative controlを確定した後、同じ反例をRuntime Plugin resolverへ適用し、共通solver primitiveへ寄せるべきか、別実装のまま同じConformanceを要求するべきかを判断します。Referenceが通る前にProduction resolverを同時変更しません。
+
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
