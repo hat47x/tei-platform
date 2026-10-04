@@ -423,7 +423,76 @@ ISSUE-000077へ次を追加する。
 | AX-11 | Sourceだけ異なる同一descriptor | semantic identityは同じ、Evidence / trustは別 |
 | AX-12 | resolution budget超過 | conflictへ偽装せず専用Unresolved |
 
-## 17. ADRへ進むための追加条件
+## 17. A13〜A18 — Plugin化による性能・storage・可搬性の劣化
+
+Semantic Extensionや標準Pluginの数が増えたとき、logicalな分割をそのまま物理分割へ写すと、拡張性のためにTarget品質を失う。
+
+### A13 — one Extension = one process
+
+標準機能100個を100 processとして起動する構成を考える。個々のPluginが軽量でも、process startup、scheduler、IPC、memory、supervisionの固定費が積み上がる。
+
+**判定: Blocker。**
+
+logical Plugin identityはprocess boundaryを要求しない。process isolationが必要な実装だけをprocessにし、標準機能はbuiltin / linked / coalesced realizationを選べる必要がある。
+
+### A14 — one Extension = one Go Wasm
+
+Web Targetで各Extensionを独立したGo `js/wasm` binaryとして配布すると、language runtimeやsupport codeの固定費が繰り返される可能性がある。
+
+Go公式WebAssembly Wikiは、標準GoのWasm binaryが小さなプログラムでも比較的大きくなりやすく、library importでさらに増えることを説明している。
+
+**判定: Blocker。**
+
+Extension contractとcompiler / module boundaryを分離し、複数Extensionを一つのWasm artifactへまとめたり、TinyGo等の小型toolchainや別実装をTargetごとに選べるようにする。
+
+### A15 — eager download everything
+
+Semantic SetにExtensionが含まれることを理由に、その全実行artifactをWeb初期表示前にdownloadすると、初期転送量と起動時間がExtension数へ比例しやすい。
+
+**判定: High。**
+
+意味のdeclaration / Lockと実行codeを分離する。意味解決に必要なmetadataはeagerに利用できるようにし、実行artifactはreachabilityとTarget条件に応じてprune / lazy loadできるようにする。
+
+### A16 — physical packagingをSemantic fingerprintへ混ぜる
+
+同じSemantic SetをDesktopではstatic link、WebではWasm bundleとして実現したとき、artifact分割方法をSemantic Set fingerprintへ含めるとTargetごとに別meaningとして扱われる。
+
+**判定: Blocker。**
+
+Semantic Set fingerprintとTarget artifact fingerprintを分離する。Target artifactからSemantic Set / Plugin Lockへ逆追跡できればよい。
+
+### A17 — browser非対応Runtimeを暗黙fallbackする
+
+process-only ProviderがWeb Targetで利用できないため、別Providerへ暗黙fallbackし、その実装差で結果や意味が変わるケースを考える。
+
+**判定: Blocker。**
+
+Targetが必要なRuntime classを満たせなければbuild / Conformance段階で非対応またはUnresolvedとする。fallbackを行う場合も、Accepted Binding / policyで明示する。
+
+### A18 — shared runtime / artifact duplication
+
+複数Pluginが同じWasm runtime、library、model artifactをそれぞれpackageへ複製すると、storageとnetwork costがlogical Plugin数に比例して増える。
+
+**判定: High。**
+
+content digestによるdeduplication、shared runtime、link-time coalescing等をTarget packagingで選べるようにする。logical Pluginごとのprovenanceは、物理byteの複製ではなくmappingで保持する。
+
+## 18. 性能・可搬性を含めた追加Reference条件
+
+次をReferenceで確認する。
+
+| ID | ケース | 期待 |
+| --- | --- | --- |
+| PX-01 | 10個のdeclaration-only Extension | Runtime artifact増加を要求しない |
+| PX-02 | 複数standard Extensionを一つのTarget artifactへ統合 | logical identity / Evidenceへ逆追跡できる |
+| PX-03 | 未使用evaluatorを含むCatalog | Target artifactから実行codeを除外できる |
+| PX-04 | 複数Pluginが同じsupport artifactを参照 | byteを重複格納しない余地がある |
+| PX-05 | Web Target | native process起動なしで最低限の標準Semantic Setを利用できる |
+| PX-06 | process-only implementationしかないCapability | 暗黙fallbackせず非対応 / Unresolvedになる |
+| PX-07 | 同一Semantic SetをWeb / Desktopへbuild | Semantic Set fingerprintは同じ、Target artifact fingerprintは別 |
+| PX-08 | Extension数を段階的に増やす | startup / transfer / memory / storageの増分を観測できる |
+
+## 19. ADRへ進むための追加条件
 
 従来の条件に加え、次を満たすまでresolver / lock / Interface contractをADRで固定しない。
 
@@ -434,5 +503,9 @@ ISSUE-000077へ次を追加する。
 - semantic Validation用EvaluatorがEnvironment Runtime selectionから独立する
 - optional contributionとAcceptance影響の境界を説明できる
 - Profile変更をSemantic Changeとして検出できる
+- logical Extension / Pluginとphysical artifact / process境界を分離できる
+- Web Targetでnative processを要求せずSemantic Extensionを成立させられる
+- unused executable implementationの除外とshared artifactの重複排除をTarget packagingで行える
+- Target packaging差がSemantic Set fingerprintを変えない
 
 この条件が成立した後でも、solver algorithmそのものをCoreのProduct Valueにはしない。必要なのは、意味の再現性と説明可能性を保つ解決契約である。
