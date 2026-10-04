@@ -62,7 +62,7 @@ func run(args []string) int {
 	subjectKind := flags.String("subject-kind", "", "optional subject kind filter")
 	subjectID := flags.String("subject-id", "", "optional subject ID filter")
 	semanticLockOut := flags.String("semantic-lock-out", "", "write resolved semantic lock JSON")
-	verifySemanticLockPath := flags.String("verify-semantic-lock", "", "verify an existing semantic lock against exact available declarations")
+	verifySemanticLockPath := flags.String("verify-semantic-lock", "", "replay an existing semantic lock against exact available declarations")
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
@@ -101,14 +101,14 @@ func run(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		if err := verifySemanticLock(lock, coreCatalogFromSourceIndex(index), descriptors); err != nil {
+		if err := verifySemanticLockReplay(lock, coreCatalogFromSourceIndex(index), descriptors); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(map[string]any{
-			"valid":                  true,
+			"semanticReplayValid":    true,
 			"semanticSetFingerprint": lock.SemanticSetFingerprint,
 			"resolutionPolicy":       lock.ResolutionPolicy,
 		}); err != nil {
