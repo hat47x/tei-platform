@@ -85,9 +85,10 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
 - `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。Review bindingがある場合だけ表示
 - `reviewDiagnostics`: Review bindingの構造不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section codeの重複などを検査する
+- 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reviewBindingStatus=recorded`も、人がReviewを読んだことの証明ではありません。保存されたbindingの構造が整合していることだけを示し、元のReview ProjectionをDecision recordから再構築して真正性を主張することはしません。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認したかを証明する署名ではありません。`reviewBindingStatus=recorded`も、人がReviewを読んだことの証明ではありません。保存されたbindingの構造が整合していることだけを示し、元のReview ProjectionをDecision recordから再構築して真正性を主張することはしません。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
 
 ### knowledge qualificationからcandidateへの接続
 
