@@ -63,6 +63,16 @@ Reference段階のconstraint languageは、`Extension ID + compatible major`に�
 
 versionごとに依存graphが異なる場合も、ある候補だけがcycleを作り、別候補ならcycleを避けられるときは代替候補を探索します。すべての有効候補がcycleを作る場合は解決失敗とします。
 
+複数の有効解が存在する場合も、solver内部の偶然の探索順を隠れたpolicyにはしません。このReferenceでは、`highest-compatible-complete-search/by-extension-id/v0`を明示的なresolution policyとしてcatalogへ出力します。
+
+このpolicyは、Extension IDを正規化した順で選択対象を決め、各IDについて高いcompatible versionから完全解が存在する候補を選ぶReference規則です。policy identityはSemantic resolution fingerprintへ含めます。将来、より適切なpolicyへ変更する場合はpolicy identityも更新し、同じSemantic Setとして黙って扱いません。
+
+このReference policyをProductionの最終contractとして固定するものではありません。目的は「複数解をsolver実装の偶然で決めない」「選択規則が意味再現性へ影響することをfingerprintへ含める」ことの実証です。
+
+backtrackingは探索量を増やし得るため、Reference helperにはcandidate attempt数で探索を止めるoperational budget境界も用意します。budget超過はdependency conflictとは別errorです。
+
+budget値はSemantic resolution policyやSemantic Set fingerprintへ含めません。十分なbudgetなら同じ意味解へ到達し、不足したbudgetは「解がない」ことを意味しません。
+
 ## conflict方針
 
 同じsubject identityをCoreとExtension、または複数Extensionが宣言した場合、読み込み順で勝者を決めません。
@@ -71,6 +81,29 @@ versionごとに依存graphが異なる場合も、ある候補だけがcycleを
 
 compatible majorを満たすExtensionが無い場合、dependency resolution自体をfail closedにします。同じmajor内に複数versionがある場合は、最も新しいversionを決定論的に選びます。root requirementは正規化してcatalogへ残し、同じExtensionに異なるmajorを同時要求した場合は拒否します。
 
+## Semantic Interface
+
+package identityへの依存と、意味契約への依存を分けて扱います。Semantic Interfaceは単なる名前ではなく、identity、contract version、正規化したcontract fingerprint、入出力の意味、unknown / failureの意味、provider conformance profileを持ちます。
+
+provider側の宣言だけでは適合済みと扱いません。providerはInterface identity、exact contract version、contract fingerprintを宣言し、resolverには別入力のConformance Evidenceが必要です。Conformance Evidenceはprovider、Interface、exact contract fingerprint、conformance profileへ結び付けます。
+
+適合するproviderが一つだけなら、そのproviderへ決定論的にwiringできます。複数の適合providerが残る場合はpackage名やversion順で選ばず、明示wiringが無ければ`interface-provider-ambiguous`としてUnresolvedにします。明示wiringで指定したproviderがcontractまたはConformance条件を満たさない場合もfail closedです。
+
+`resolutionFingerprint`にはInterface contractとprovider wiringを含めます。一方、同じcontract、provider、profileに対するConformance Evidenceの更新だけでは意味identityを変えません。そのfingerprintは`evidenceFingerprint`側で追跡します。
+
+CLIでは、必要に応じて`-interface-wiring FILE`と`-interface-conformance FILE`を繰り返し指定できます。どちらもstrict JSONとして読み込み、未知fieldや余分な末尾データを拒否します。
+
+この形式もReference contractです。ProductionのPlugin manifestやSemantic Lock形式としてはまだ固定しません。
+
+## Namespace authority
+
+`std`と`std.*`はstandard authority用に予約します。Extension descriptorがそのnamespaceを名乗るだけではownershipを得ません。Acceptedなnamespace authorityを別入力で与えた場合にだけ、指定したExtensionのsemantic contributionを公開します。
+
+同じnamespaceを複数Extensionが宣言しても、読み込み順では決めません。authorityが無ければUnresolvedにし、authorityが一つのExtensionを選んだ場合も、他のclaimantは`namespace-authority-mismatch`として残します。Coreが既に所有するnamespaceをauthority入力で上書きすることもできません。
+
+namespace authorityのEvidence fingerprintはprovenanceとして`evidenceFingerprint`へ含めますが、同じnamespaceとownerに対するEvidence更新だけでは`resolutionFingerprint`を変えません。CLIでは`-namespace-authority FILE`を繰り返し指定できます。
+
+subnamespace delegateやpublisher trustの最終contractはまだ固定していません。Referenceでは、first claimantをAuthorityにしないことと、standard Extensionも外部のAccepted Authority Evidenceを必要とすることを先に検証します。
 ## Reference scenario
 
 testdataではCoreに存在しない次のkindを追加します。
@@ -114,6 +147,17 @@ catalogは意味の解決結果とSourceの来歴を分けます。
 - `evidenceFingerprint`は、Core Source IndexとExtension descriptor fileのprovenanceを含むEvidence側のidentityです。
 
 このため、subject集合を変えないSource Index更新や、descriptor fileを同じ意味のまま移動・再整形した場合は`resolutionFingerprint`を維持し、`evidenceFingerprint`だけを更新できます。Core subject集合やExtensionの正規化された意味が変われば、同じroot requirementsでも別のresolutionとして扱います。
+## Semantic Lock
+
+resolved catalogにUnresolvedが無い場合だけ、`-semantic-lock-out FILE`でReference用のSemantic Lockを出力できます。lockはpackage version一覧ではなく、後日のsemantic replayに必要な入力を固定します。
+
+lockには、schema / canonicalization policy、resolution policy、正規化root requirementsとfingerprint、Core subject fingerprint、exact Extension identity / version / descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、resolved provider wiring、Semantic Set fingerprintを含めます。
+
+Catalogへcompatibleな新versionが追加されても、lockの検証時にはその新versionへ自動更新しません。lockに記録したexact versionだけを取り出してgraphを再構成します。同一versionのdeclarationが変わった場合、root requirementsやresolution policyが変わった場合、Interface wiringやnamespace ownerが変わった場合はreplayを拒否します。
+
+`-verify-semantic-lock FILE`が確認するのはsemantic replayです。成功時は`semanticReplayValid: true`を返します。これは現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityが有効であることを意味しません。replayではEvidence fingerprintを意味identityから外し、exact contract / owner / provider wiringだけを再構成します。
+
+同じprovider wiringが唯一候補として得られたか、明示wiringで指定されたかという選択経路もSemantic Setの意味には含めません。provider identityとcontractが同じなら`resolutionFingerprint`を維持し、選択経路とEvidenceはEvidence側で追跡します。
 ## Authority boundary
 
 出力には次を明示します。

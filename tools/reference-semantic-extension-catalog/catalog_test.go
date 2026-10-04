@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -572,6 +573,212 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 	}
 	if !catalogHasUnresolved(catalog, "relation-target-unavailable", missing) {
 		t.Fatalf("unknown relation target is not unresolved: %+v", catalog.Unresolved)
+	}
+}
+
+func TestReferenceCatalogSeparatesResolutionBudgetExhaustionFromConflict(t *testing.T) {
+	byID := map[string][]ExtensionDescriptor{
+		"tei.reference.a": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.a",
+				Namespace: "a",
+				Version:   "1.0.0",
+				Requires: []ExtensionRequirement{{
+					Extension:       "tei.reference.b",
+					CompatibleMajor: 1,
+				}},
+			},
+		},
+		"tei.reference.b": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.b",
+				Namespace: "b",
+				Version:   "1.0.0",
+			},
+		},
+	}
+	resolved, stats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		[]ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+		SemanticResolutionBudget{MaxCandidateAttempts: 1},
+	)
+	if err == nil || !errors.Is(err, errSemanticResolutionBudgetExceeded) {
+		t.Fatalf("resolution budget exhaustion was not distinguished from dependency conflict: resolved=%+v err=%v", resolved, err)
+	}
+	if stats.CandidateAttempts != 1 {
+		t.Fatalf("candidate attempts=%d want=1", stats.CandidateAttempts)
+	}
+}
+
+func TestReferenceCatalogResolutionBudgetDoesNotChangeUnboundedMeaning(t *testing.T) {
+	byID := map[string][]ExtensionDescriptor{
+		"tei.reference.a": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.a",
+				Namespace: "a",
+				Version:   "1.0.0",
+				Requires: []ExtensionRequirement{{
+					Extension:       "tei.reference.b",
+					CompatibleMajor: 1,
+				}},
+			},
+		},
+		"tei.reference.b": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.b",
+				Namespace: "b",
+				Version:   "1.0.0",
+			},
+		},
+	}
+	roots := []ExtensionRequirement{{
+		Extension:       "tei.reference.a",
+		CompatibleMajor: 1,
+	}}
+
+	unbounded, unboundedStats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bounded, boundedStats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{MaxCandidateAttempts: 2},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(unbounded, bounded) {
+		t.Fatalf("sufficient operational budget changed resolution: unbounded=%+v bounded=%+v", unbounded, bounded)
+	}
+	if unboundedStats.CandidateAttempts != 2 || boundedStats.CandidateAttempts != 2 {
+		t.Fatalf(
+			"unexpected attempt count: unbounded=%d bounded=%d",
+			unboundedStats.CandidateAttempts,
+			boundedStats.CandidateAttempts,
+		)
+	}
+}
+
+func TestReferenceCatalogResolutionPolicyChoosesCompleteSolutionByExtensionID(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "2.0.0",
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "1.0.0",
+		},
+	}
+
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+			{Extension: "tei.reference.b", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	versions := map[string]string{}
+	for _, extension := range catalog.Extensions {
+		versions[extension.ID] = extension.Version
+	}
+	if got := versions["tei.reference.a"]; got != "1.1.0" {
+		t.Fatalf("resolution policy selected a=%q want=1.1.0", got)
+	}
+	if got := versions["tei.reference.b"]; got != "1.0.0" {
+		t.Fatalf("resolution policy selected b=%q want=1.0.0", got)
+	}
+	if got := versions["tei.reference.z"]; got != "1.0.0" {
+		t.Fatalf("resolution policy selected z=%q want=1.0.0", got)
+	}
+}
+
+func TestReferenceCatalogExposesAndFingerprintsResolutionPolicy(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.policy",
+		Namespace: "policy",
+		Version:   "1.0.0",
+	}
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if catalog.ResolutionPolicy != semanticResolutionPolicy {
+		t.Fatalf("resolution policy=%q want=%q", catalog.ResolutionPolicy, semanticResolutionPolicy)
+	}
+
+	changed := catalog
+	changed.ResolutionFingerprint = ""
+	changed.EvidenceFingerprint = ""
+	changed.ResolutionPolicy = "different-policy/v0"
+	if got := semanticCatalogFingerprint(changed); got == catalog.ResolutionFingerprint {
+		t.Fatalf("resolution policy change did not change semantic resolution fingerprint: %s", got)
 	}
 }
 

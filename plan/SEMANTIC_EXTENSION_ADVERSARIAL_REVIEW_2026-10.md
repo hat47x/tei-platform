@@ -136,6 +136,15 @@ providerの`implements`宣言だけでは適合済みと扱わない。
 
 同じInterfaceを複数providerが満たす場合も、明示的なselection policyまたはAccepted wiringが無ければ、package IDやversion順で暗黙選択しない。
 
+### 2026-10-05 Reference candidate
+
+PR #927ではA2の反例に対し、Semantic Interfaceをversioned contractとしてReference実装へ追加した。contractはidentity、version、正規化fingerprint、input / output semantics、unknown / failure semantics、provider conformance profileを持つ。
+
+provider descriptorはInterface名だけでなくexact contract versionとcontract fingerprintを宣言する。ただし、この宣言だけではprovider候補として採用しない。resolverへ別入力のConformance Evidenceが必要であり、そのEvidenceはprovider、Interface、exact contract fingerprint、conformance profileに結び付く。
+
+複数の適合providerが存在する場合、package IDやversion順では選ばない。明示wiringが無ければUnresolvedにし、明示wiringもexact contractとConformance条件を満たすproviderだけを受け入れる。provider wiringはSemantic resolution identityに含め、Conformance Evidence自体のfingerprintはEvidence identityへ分離する。
+
+これにより「同じInterface文字列を名乗ればproviderになれる」という反例はReference candidate上では塞いだ。一方、Conformance Evidenceの発行Authority、実際のevaluator conformance suite、SUI hierarchyを使った実consumer pressureは未実証である。A2をProduction上の解消済みBlockerとはまだ扱わない。
 ## 5. A3 — namespace ownershipをfirst claimantへ与えない
 
 現行Referenceは複数Extensionが同じnamespaceを所有する場合をUnresolvedにできる。一方、まだ誰も宣言していないnamespaceでは、最初のExtensionがその名前を使える。
@@ -156,6 +165,13 @@ namespaceはCatalog内の競合検出だけでなく、authorityの問題であ�
 - subnamespace委譲が必要なら、ownerからの明示delegateとして表す。
 - semantic identityとpackage distribution sourceを分ける。
 
+### 2026-10-05 Reference boundary
+
+PR #927ではnamespace authorityをExtension descriptorから分離し、Accepted Authority Evidenceを別入力にするReference candidateへ進んだ。`std` / `std.*`はauthority無しでは`namespace-authority-missing`となり、Catalogへ先に現れたExtensionがfirst claimantとして取得できない。
+
+Authority Evidenceがnamespaceとowner Extensionを明示した場合だけ、そのExtensionのsemantic contributionを公開する。同じnamespaceの別claimantは`namespace-authority-mismatch`として残し、Coreが既に所有するnamespaceはAuthority Evidenceでも上書きできない。Authority Evidence fingerprintはprovenanceとしてEvidence identityへ含め、namespaceとownerが同じままEvidenceだけを更新してもSemantic resolution identityを変えない。
+
+これでfirst claimant経路と正当なstandard Extensionの導入経路を分ける候補はできた。ただしsubnamespace委譲、publisher / Source trust、Authority Evidence自体の発行Authorityは未実証である。A3をProduction上の解消済みBlockerとはまだ扱わない。
 ## 6. A4 — exact versionだけではlockにならない
 
 次が変わると、Extensionのexact versionが同じでも解釈やgraphが変わり得る。
@@ -192,6 +208,15 @@ Semantic Lockまたは同等表現へ、少なくとも次を含める。
 
 root requirementsまたはpolicyが変わった場合は、既存lockをそのまま有効とは扱わず、candidate re-resolutionとShared Acceptanceへ進める。
 
+### 2026-10-05 Semantic Lock candidate
+
+PR #927ではA4の反例に対し、Unresolvedが0のresolved catalogからだけ作成できるReference用Semantic Lockを追加した。lockはexact Extension versionだけでなく、root requirementsとfingerprint、resolution policy、canonicalization policy、Core subject fingerprint、descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、provider wiring、Semantic Set fingerprintを保持する。
+
+lockのsemantic replayでは、available Catalogを通常のresolverで再解決しない。lockに固定されたexact versionを取り出してgraphを再構成する。このため、新しいcompatible versionがCatalogへ追加されたことだけではAccepted Semantic Setを自動更新しない。同一versionのdeclaration drift、root requirement drift、policy / canonicalization drift、wiring / owner driftは拒否する。
+
+Source、Conformance、namespace AuthorityのEvidence fingerprintはSemantic Lockのmeaning identityへ含めない。同じsemantic graphに対するEvidence更新でSemantic Set fingerprintを変えない一方、Evidenceの現在性は別の検証責務として残す。CLIの検証結果も`semanticReplayValid`とし、current trust / Authorityまで有効であるという表現を避ける。
+
+これにより「exact package versionだけをlockとする」反例はReference candidate上で縮小した。ただしlockのShared Acceptance接続、Accepted source側のExtension参照、current Evidence / supply-chain trustの再検証、exact-head executable Evidenceは未成立である。A4をProduction上の解消済みBlockerとはまだ扱わない。
 ## 7. A5 — EvaluatorをEnvironmentへ任せるとmeaningが揺れる
 
 現行ISSUE-000077には、同じSemantic Extensionを複数Pluginが評価でき、EnvironmentがCapability negotiationで実装を選べる案がある。

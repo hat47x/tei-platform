@@ -244,6 +244,23 @@ SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなde
 
 Productionの`internal/plugin.ResolveEnvironment`も、2026-10-04時点ではhighest-compatibleを先に固定するDFSを使っています。同じ種類のfalse conflictを起こし得ますが、Semantic resolutionとRuntime Plugin resolutionは別scopeとして維持します。PR #927でReferenceの解法とnegative controlを確定した後、同じ反例をRuntime Plugin resolverへ適用し、共通solver primitiveへ寄せるべきか、別実装のまま同じConformanceを要求するべきかを判断します。Referenceが通る前にProduction resolverを同時変更しません。
 
+PR #927では、複数の有効解がある場合の選択規則も隠れた探索順にしないため、Reference catalogへ`resolutionPolicy`を追加しました。現在のcandidate policyは`highest-compatible-complete-search/by-extension-id/v0`です。policy identityをSemantic resolution fingerprintへ含め、policy変更を意味解決上の差として検出します。このpolicy名や規則自体はReference candidateであり、ADR成立前にProduction contractへ固定しません。
+
+同PRでは、backtrackingの探索量を制御するためのoperational budget境界も追加しています。candidate attempt上限を超えた場合は専用の`semantic resolution search budget exceeded`として返し、dependency conflictと区別します。十分なbudgetを与えた場合にunbounded解決と同じ結果になることもtestします。budget値自体はSemantic Set fingerprintへ入れず、意味仕様ではなく運用policyとして維持します。
+
+#### A2 / A3 candidate response — 2026-10-05
+
+PR #927では、敵対的評価A2に対するReference candidateとしてSemantic Interfaceのcontractとprovider wiringを追加した。package identity dependencyとは別に、Interface identity、contract version、正規化contract fingerprint、input / output semantics、unknown / failure semantics、provider conformance profileを宣言できる。
+
+providerの`implements`相当の自己申告だけでは適合済みと扱わない。provider descriptorはInterface identity、exact contract version、contract fingerprintを宣言するが、resolverは別入力のConformance Evidenceを要求する。Conformance Evidenceはprovider identity、Interface identity、exact contract fingerprint、conformance profileへ結び付ける。contract fingerprintまたはprofileが異なるEvidenceを流用しない。
+
+適合するproviderが一つならwiringを確定できる。複数providerが残る場合はpackage ID、version、Catalog列挙順で選ばず、明示wiringが無ければ`interface-provider-ambiguous`としてUnresolvedにする。明示wiringも、指定providerがexact contractとConformance条件を満たさなければ拒否する。
+
+provider wiringはSemantic resolution identityへ含める。同じcontract、provider、conformance profileに対するEvidenceの更新だけはmeaningの変更とせず、`evidenceFingerprint`側で追跡する。これによりSemantic identityとConformance provenanceを分離する。
+
+A3については、namespace authorityをExtension descriptorから分離し、AcceptedなAuthority Evidenceを別入力にするcandidateへ進んだ。`std` / `std.*`はauthority無しでは`namespace-authority-missing`となり、first claimantでは取得できない。Accepted authorityがnamespaceとowner Extensionを明示した場合だけ、そのExtensionのsemantic contributionを公開する。Core所有namespaceはauthority入力でも上書きできず、同じnamespaceの他claimantは`namespace-authority-mismatch`として残す。Authority Evidence fingerprintはEvidence identityへ含め、同じnamespace / ownerに対するEvidence更新だけではSemantic resolution identityを変えない。subnamespace delegateとpublisher trustの最終contractは未実装である。
+
+これらは構造pressureのcandidateであり、A2 / A3をProduct Evidenceとして解消したとは扱わない。exact-head focused testとrepository healthに加え、SUI hierarchyを実root consumerとしてInterface依存へ接続し、provider Conformance Evidenceを実際のValidationへ結び付けるまでE0-Bの完了状態は更新しない。
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
@@ -267,6 +284,17 @@ root requirements、resolution policy、canonicalization versionのいずれか�
 
 E0ではRuntime Pluginを起動しない。
 
+#### Semantic Lock candidate — 2026-10-05
+
+PR #927ではA4に対するReference candidateとしてSemantic Lockを追加した。Unresolvedを含むcatalogからはlockを作成しない。lockはroot requirements、requirements fingerprint、resolution policy、canonicalization policy、Core subject fingerprint、exact Extension identity / version / descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、provider wiring、Semantic Set fingerprintを保持する。
+
+既存lockの再検証では、現在のCatalogを通常のresolverで再解決しない。lockに固定したexact Extension versionだけをavailable declarationsから取り出し、同一descriptor fingerprintを確認したうえでsemantic graphを再構成する。したがってCatalogへcompatibleな新versionが増えただけでは既存lockを自動更新しない。一方、同一versionのdeclaration変更、root requirements、resolution policy、canonicalization、Interface wiring、namespace ownerが変わればreplayを拒否する。
+
+Semantic LockはSource / Conformance / namespace Authority Evidenceのfingerprintをmeaning identityへ含めない。Interface wiringとnamespace ownerは意味解決に含めるが、同じcontract / provider / ownerに対するEvidence更新だけではSemantic Set fingerprintを変えない。providerが唯一候補だったか明示wiringだったかという選択経路もmeaning identityから外す。
+
+CLIには`-semantic-lock-out`と`-verify-semantic-lock`を追加した。後者が保証するのはexact graphの`semanticReplayValid`であり、現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityの有効性ではない。A10のsupply-chain trust境界と混同しない。
+
+このlock形式もReference candidateである。exact-head focused testとrepository healthを未実行であり、Accepted source側のExtension参照、lockのShared Acceptance接続、current Evidence再検証も未実証なのでE0-Cの完了状態は更新しない。
 ## E1 — deterministic evaluator boundary
 
 E0成立後、H1〜H4のうちCore declarative primitiveだけでは評価できないものについて、deterministic evaluator boundaryを追加します。

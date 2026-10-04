@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,14 +21,17 @@ type ExtensionIdentity struct {
 }
 
 type CatalogExtension struct {
-	ID                    string                 `json:"id"`
-	Namespace             string                 `json:"namespace"`
-	Version               string                 `json:"version"`
-	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
-	Source                string                 `json:"source,omitempty"`
-	SourceFingerprint     string                 `json:"sourceFingerprint,omitempty"`
-	AppliesToKinds        []string               `json:"appliesToKinds,omitempty"`
-	Requires              []ExtensionRequirement `json:"requires,omitempty"`
+	ID                    string                         `json:"id"`
+	Namespace             string                         `json:"namespace"`
+	Version               string                         `json:"version"`
+	DescriptorFingerprint string                         `json:"descriptorFingerprint"`
+	Source                string                         `json:"source,omitempty"`
+	SourceFingerprint     string                         `json:"sourceFingerprint,omitempty"`
+	AppliesToKinds        []string                       `json:"appliesToKinds,omitempty"`
+	Requires              []ExtensionRequirement         `json:"requires,omitempty"`
+	Interfaces            []SemanticInterfaceContract    `json:"interfaces,omitempty"`
+	RequiresInterfaces    []SemanticInterfaceRequirement `json:"requiresInterfaces,omitempty"`
+	ProvidesInterfaces    []SemanticInterfaceProvider    `json:"providesInterfaces,omitempty"`
 }
 
 type CatalogSource struct {
@@ -79,13 +83,17 @@ type CoreCatalogInput struct {
 
 type SemanticCatalog struct {
 	Schema                     string                 `json:"schema"`
+	ResolutionPolicy           string                 `json:"resolutionPolicy"`
 	ResolutionFingerprint      string                 `json:"resolutionFingerprint"`
 	EvidenceFingerprint        string                 `json:"evidenceFingerprint"`
 	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
 	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
-	Requirements               []ExtensionRequirement `json:"requirements"`
-	Extensions             []CatalogExtension     `json:"extensions,omitempty"`
-	Subjects        []CatalogSubject    `json:"subjects"`
+	Requirements               []ExtensionRequirement    `json:"requirements"`
+	Extensions                 []CatalogExtension          `json:"extensions,omitempty"`
+	NamespaceAuthorities       []CatalogNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
+	Interfaces                 []CatalogSemanticInterface  `json:"interfaces,omitempty"`
+	InterfaceWirings           []CatalogInterfaceWiring  `json:"interfaceWirings,omitempty"`
+	Subjects                   []CatalogSubject          `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
 	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
 	Connections     []CatalogConnection `json:"connections,omitempty"`
@@ -93,7 +101,10 @@ type SemanticCatalog struct {
 	AuthorityLimits        []string               `json:"authorityLimits"`
 }
 
-const catalogSchema = "tei.reference.semantic-catalog/v0"
+const (
+	catalogSchema             = "tei.reference.semantic-catalog/v0"
+	semanticResolutionPolicy  = "highest-compatible-complete-search/by-extension-id/v0"
+)
 
 func loadExtensionDescriptors(root string) ([]ExtensionDescriptor, error) {
 	var out []ExtensionDescriptor
@@ -198,21 +209,73 @@ func sourceIndexSubjects(index sourceindex.Index) []subject.Subject {
 	return out
 }
 
+var errSemanticResolutionBudgetExceeded = errors.New("semantic resolution search budget exceeded")
+
+type SemanticResolutionBudget struct {
+	MaxCandidateAttempts int
+}
+
+type SemanticResolutionStats struct {
+	CandidateAttempts int
+}
+
+type semanticResolutionSearchState struct {
+	budget SemanticResolutionBudget
+	stats  SemanticResolutionStats
+}
+
+func (s *semanticResolutionSearchState) consumeCandidateAttempt() error {
+	if s.budget.MaxCandidateAttempts > 0 &&
+		s.stats.CandidateAttempts >= s.budget.MaxCandidateAttempts {
+		return fmt.Errorf(
+			"%w: maxCandidateAttempts=%d",
+			errSemanticResolutionBudgetExceeded,
+			s.budget.MaxCandidateAttempts,
+		)
+	}
+	s.stats.CandidateAttempts++
+	return nil
+}
+
 func resolveExtensionSelection(
 	byID map[string][]ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (map[string]ExtensionDescriptor, error) {
+	resolved, _, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{},
+	)
+	return resolved, err
+}
+
+func resolveExtensionSelectionWithBudget(
+	byID map[string][]ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	budget SemanticResolutionBudget,
+) (map[string]ExtensionDescriptor, SemanticResolutionStats, error) {
+	if budget.MaxCandidateAttempts < 0 {
+		return nil, SemanticResolutionStats{}, fmt.Errorf("max candidate attempts must not be negative")
+	}
 	constraints := map[string]map[int]struct{}{}
 	for _, root := range roots {
 		addExtensionConstraint(constraints, root)
 	}
-	return searchExtensionSelection(byID, map[string]ExtensionDescriptor{}, constraints)
+	state := &semanticResolutionSearchState{budget: budget}
+	resolved, err := searchExtensionSelection(
+		byID,
+		map[string]ExtensionDescriptor{},
+		constraints,
+		state,
+	)
+	return resolved, state.stats, err
 }
 
 func searchExtensionSelection(
 	byID map[string][]ExtensionDescriptor,
 	selected map[string]ExtensionDescriptor,
 	constraints map[string]map[int]struct{},
+	state *semanticResolutionSearchState,
 ) (map[string]ExtensionDescriptor, error) {
 	var ids []string
 	for id := range constraints {
@@ -275,6 +338,9 @@ func searchExtensionSelection(
 
 	var lastErr error
 	for _, candidate := range compatible {
+		if err := state.consumeCandidateAttempt(); err != nil {
+			return nil, err
+		}
 		nextSelected := cloneExtensionSelection(selected)
 		nextSelected[unresolvedID] = candidate
 		nextConstraints := cloneExtensionConstraints(constraints)
@@ -282,9 +348,12 @@ func searchExtensionSelection(
 			addExtensionConstraint(nextConstraints, child)
 		}
 
-		resolved, err := searchExtensionSelection(byID, nextSelected, nextConstraints)
+		resolved, err := searchExtensionSelection(byID, nextSelected, nextConstraints, state)
 		if err == nil {
 			return resolved, nil
+		}
+		if errors.Is(err, errSemanticResolutionBudgetExceeded) {
+			return nil, err
 		}
 		lastErr = err
 	}
@@ -382,6 +451,43 @@ func resolveSemanticCatalog(
 	descriptors []ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithInterfaceInputs(core, descriptors, roots, nil, nil)
+}
+
+func resolveSemanticCatalogWithInterfaceWiring(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithInterfaceInputs(core, descriptors, roots, interfaceWirings, nil)
+}
+
+func resolveSemanticCatalogWithInterfaceInputs(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+	interfaceConformance []SemanticInterfaceConformance,
+) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithAllInputs(
+		core,
+		descriptors,
+		roots,
+		interfaceWirings,
+		interfaceConformance,
+		nil,
+	)
+}
+
+func resolveSemanticCatalogWithAllInputs(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+	interfaceConformance []SemanticInterfaceConformance,
+	namespaceAuthorities []SemanticNamespaceAuthority,
+) (SemanticCatalog, error) {
 	normalized := make([]ExtensionDescriptor, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		value, err := normalizeDescriptor(descriptor)
@@ -417,6 +523,7 @@ func resolveSemanticCatalog(
 
 	catalog := SemanticCatalog{
 		Schema:                     catalogSchema,
+		ResolutionPolicy:           semanticResolutionPolicy,
 		CoreSubjectFingerprint:     core.SubjectFingerprint,
 		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
 		Requirements:               normalizedRoots,
@@ -449,31 +556,32 @@ func resolveSemanticCatalog(
 	}
 	sort.Strings(ids)
 
-	namespaceOwners := map[string][]string{}
+	coreNamespaces := map[string]struct{}{}
 	for _, coreSubject := range core.Subjects {
 		if coreSubject.Kind == "semantic" {
-			namespaceOwners[coreSubject.ID] = append(namespaceOwners[coreSubject.ID], "core")
+			coreNamespaces[coreSubject.ID] = struct{}{}
 		}
 	}
-	for _, id := range ids {
-		namespaceOwners[selected[id].Namespace] = append(namespaceOwners[selected[id].Namespace], id)
+	blockedExtensions, namespaceAuthoritiesResolved, namespaceUnresolved, err :=
+		resolveNamespaceAuthorities(selected, coreNamespaces, namespaceAuthorities)
+	if err != nil {
+		return SemanticCatalog{}, err
 	}
-	blockedExtensions := map[string]bool{}
-	for namespace, owners := range namespaceOwners {
-		if len(owners) < 2 {
-			continue
-		}
-		sort.Strings(owners)
-		for _, owner := range owners {
-			if owner != "core" {
-				blockedExtensions[owner] = true
-			}
-		}
-		catalog.Unresolved = append(catalog.Unresolved, CatalogUnresolved{
-			Code:   "namespace-ownership-conflict",
-			Detail: fmt.Sprintf("namespace %q has multiple owners: %s", namespace, strings.Join(owners, ", ")),
-		})
+	catalog.NamespaceAuthorities = namespaceAuthoritiesResolved
+	catalog.Unresolved = append(catalog.Unresolved, namespaceUnresolved...)
+
+	interfaces, interfaceWiringsResolved, interfaceUnresolved, err := resolveSemanticInterfaces(
+		selected,
+		blockedExtensions,
+		interfaceWirings,
+		interfaceConformance,
+	)
+	if err != nil {
+		return SemanticCatalog{}, err
 	}
+	catalog.Interfaces = interfaces
+	catalog.InterfaceWirings = interfaceWiringsResolved
+	catalog.Unresolved = append(catalog.Unresolved, interfaceUnresolved...)
 
 	for _, id := range ids {
 		descriptor := selected[id]
@@ -487,6 +595,9 @@ func resolveSemanticCatalog(
 			SourceFingerprint:     descriptor.sourceFingerprint,
 			AppliesToKinds:        append([]string(nil), descriptor.AppliesToKinds...),
 			Requires:              append([]ExtensionRequirement(nil), descriptor.Requires...),
+			Interfaces:            append([]SemanticInterfaceContract(nil), descriptor.Interfaces...),
+			RequiresInterfaces:    append([]SemanticInterfaceRequirement(nil), descriptor.RequiresInterfaces...),
+			ProvidesInterfaces:    append([]SemanticInterfaceProvider(nil), descriptor.ProvidesInterfaces...),
 		})
 		if blockedExtensions[id] {
 			continue
@@ -713,6 +824,17 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	}
 	for i := range catalog.Subjects {
 		catalog.Subjects[i].Sources = nil
+	}
+	for i := range catalog.Interfaces {
+		catalog.Interfaces[i].Source = ""
+		catalog.Interfaces[i].SourceFingerprint = ""
+	}
+	for i := range catalog.InterfaceWirings {
+		catalog.InterfaceWirings[i].ConformanceEvidence = ""
+		catalog.InterfaceWirings[i].Selection = ""
+	}
+	for i := range catalog.NamespaceAuthorities {
+		catalog.NamespaceAuthorities[i].EvidenceFingerprint = ""
 	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
