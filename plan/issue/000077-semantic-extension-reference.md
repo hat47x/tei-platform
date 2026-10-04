@@ -246,6 +246,8 @@ Productionの`internal/plugin.ResolveEnvironment`も、2026-10-04時点ではhig
 
 PR #927では、複数の有効解がある場合の選択規則も隠れた探索順にしないため、Reference catalogへ`resolutionPolicy`を追加しました。現在のcandidate policyは`highest-compatible-complete-search/by-extension-id/v0`です。policy identityをSemantic resolution fingerprintへ含め、policy変更を意味解決上の差として検出します。このpolicy名や規則自体はReference candidateであり、ADR成立前にProduction contractへ固定しません。
 
+同PRでは、backtrackingの探索量を制御するためのoperational budget境界も追加しています。candidate attempt上限を超えた場合は専用の`semantic resolution search budget exceeded`として返し、dependency conflictと区別します。十分なbudgetを与えた場合にunbounded解決と同じ結果になることもtestします。budget値自体はSemantic Set fingerprintへ入れず、意味仕様ではなく運用policyとして維持します。
+
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
