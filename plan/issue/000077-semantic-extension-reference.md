@@ -139,6 +139,23 @@ SUI以外の第二Referenceでも同じ意味が必要であり、同じ契約�
 
 最初から高度なsolver実装を固定しません。E0では、大規模化した後でもsolver実装を差し替えられるよう、Requirement、resolved graph、conflict explanationの入出力契約を先に定めます。
 
+### 物理packagingをExtension境界から分離する
+
+標準機能をPlugin / Semantic Extensionとして分割しても、一つのExtensionごとに別process、別binary、別Wasm moduleを要求しません。
+
+Referenceでは、logical identityとTarget realizationを分けます。
+
+- declaration-only ExtensionはRuntime artifactなしで成立できる
+- 複数Extensionを一つのbuiltin / linked / Wasm artifactへ統合できる
+- 未使用の実行implementationをTarget artifactから除外できる
+- 共通runtime / support artifactをlogical Pluginごとに複製しない
+- 実行artifactをlazy loadしても、Semantic Setの意味は消えない
+- 同じSemantic SetをWeb / Desktop等で異なるpackagingへ変換しても、Semantic Set fingerprintはTarget packagingに依存しない
+- Web Targetではnative processを必須にしない
+- Target非対応のRuntime要件を暗黙fallbackで隠さない
+
+物理最適化後も、diagnostic / Evidence / impactから元のlogical Extension / Pluginへ戻れることを要求します。
+
 ## 意味と実装を分ける
 
 Semantic Extensionそのものへprocess実行Authorityを持たせません。
@@ -402,6 +419,21 @@ AIがextensionを発見した後も、自動採用はしません。
 - required dependency / unresolvedを見落とした件数
 - extensionを無視して近似実装した件数
 
+### Target cost / portability
+
+- cold / warm start
+- compressed initial transfer
+- install / cache storage footprint
+- steady-state memory
+- resolver / evaluator overhead
+- Extension追加時の増分artifact size / startup / memory
+- unused executable implementationの除外
+- shared runtime / support artifactの重複排除
+- Web Targetでnative process依存が残っていないこと
+- logical Extension数とphysical artifact数の比率
+
+一律の閾値はこのIssueで固定しません。RQ-024に従い、Targetごとのactual Evidenceとして比較します。
+
 ### Safety
 
 - incompatible extensionのsilent override = 0
@@ -473,6 +505,15 @@ internal/knowledgecontext/    # read-only discovery
 - [ ] extension declarationだけではRuntime Authorityを得ない
 - [ ] accepted extension sourceをToolなしでreloadできる
 - [ ] unrelated Canonical subjectsを変えない
+- [ ] declaration-only ExtensionがRuntime artifactなしで成立する
+- [ ] logical Extension / Plugin identityをphysical artifact / process / Wasm moduleへ一対一固定しない
+- [ ] 複数Extensionを一つのTarget artifactへまとめても元identity / provenanceへ戻れる
+- [ ] unused executable implementationをTarget artifactから除外できる
+- [ ] shared runtime / support artifactを重複格納しない余地がある
+- [ ] Target packaging差だけではSemantic Set fingerprintを変えない
+- [ ] Web Targetでnative processを必須にしない
+- [ ] Web非対応Runtimeを暗黙fallbackで意味変更しない
+- [ ] RQ-024のTarget cost指標を増分として測定できる
 
 ## 次へ進む条件
 
