@@ -124,7 +124,9 @@ A5の権限変更とA6のnative code残存箇所には、現在のPreviewだけ�
 
 既定出力は人が読むtextで、`-format json`を指定すると同じProjectionを機械可読で取得できる。テストでは、A1〜A8の順序、A5/A6でcandidate自身のauthoringと未評価の実効影響を分けること、A7の逆追跡情報、A8の変更単位、`reviewFingerprint`の再現性、text / JSONの両出力、sourceを変更しないこと、途中stageで失敗した場合に後段の情報を推測で補わないことを対象にしている。
 
-ReviewとAcceptの取り違えを防ぐため、`accept`には任意の`-expected-review-fingerprint`も追加した。Accept時にcurrent Reviewを再構築し、期待したfingerprintと違えばsource変更前にfail closedする。一致した場合は、`reviewBinding`としてfingerprintとcoverageをaccepted Decisionへ残し、`decisions`から会話履歴なしで再取得できる。これにより、受理時点でA1〜A8のどこが`一部`または`未評価`だったかも記録に残る。
+ReviewとAcceptの取り違えを防ぐため、`accept`には任意の`-expected-review-fingerprint`も追加した。Accept時にcurrent Reviewを再構築し、期待したfingerprintと違えばsource変更前にfail closedする。一致した場合は、`reviewBinding`としてfingerprintとcoverageをaccepted Decisionへ残し、`decisions`から会話履歴なしで再取得できる。
+
+Decision Indexでは、Review bindingを`verified / recorded / none / invalid`、coverageを`complete / incomplete / none / invalid`として別に示す。新しいbindingはA1〜A8を含むReview Projection snapshotも保存し、fingerprintを再計算してcoverageとの一致まで確認できた場合だけ`verified`とする。snapshotを持たない旧形式は`recorded`として互換維持する。`incomplete`の場合は、受理時に`partial`または`not-evaluated`だったA1〜A8も列挙する。読み込み時は、file名に使ったSHA-256とrecord実内容を先に照合し、同じpathのまま書き換えられたrecordを拒否する。その後にJSON/schema、Source、Evidence、Review bindingを検査する。これは「どのReviewへAcceptを結び付け、何が未充足だったか」を再入場時に探しやすくするための索引であり、人が実際にReviewを読んだことの証明ではない。content-addressや`verified`も署名ではなく、承認者の真正性は主張しない。
 
 このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`reviewFingerprint`と`reviewBinding`は提示内容とのbindingを表すが、human approvalそのものを証明するtokenではない。`previewAcceptable`もShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
 

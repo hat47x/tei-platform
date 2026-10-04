@@ -61,7 +61,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
-Review後に同じProjectionだけを受理したい場合は、`accept`へ`-expected-review-fingerprint`を渡せます。Acceptはsourceを書き換える前にcurrent Reviewを作り直し、fingerprintが違えば`REVIEW_FINGERPRINT_MISMATCH`で拒否します。一致した場合は、fingerprintとその時点のcoverageを`reviewBinding`としてaccepted Decisionへ残します。Decision Indexからも再取得できます。
+Review後に同じProjectionだけを受理したい場合は、`accept`へ`-expected-review-fingerprint`を渡せます。Acceptはsourceを書き換える前にcurrent Reviewを作り直し、fingerprintが違えば`REVIEW_FINGERPRINT_MISMATCH`で拒否します。一致した場合は、fingerprint、coverage、A1〜A8を含むReview Projection snapshotを`reviewBinding`としてaccepted Decisionへ残します。Decision Indexはsnapshotからfingerprintを再計算し、coverageとも一致する場合だけ`verified`とします。
 
 このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。`reviewFingerprint`と`reviewBinding`は「どのProjectionへ受理を結び付けたか」を識別するだけで、人が実際に読んで承認したことを証明するtokenではありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
@@ -81,9 +81,14 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
 - `evidenceStatus`: `current`（受理理由に使ったEvidenceがcurrent Source Indexとqualificationに一致）、`diverged`（根拠sourceや明示dependencyが変わった、または保存済みEvidence本文が`evidenceFingerprint`と一致しない）、`none`
 - `evidenceDiagnostics`: `diverged`の理由。過去のAcceptanceを現在のapplicabilityとして読み替えないための照合結果
+- `reviewBindingStatus`: `verified`（保存したReview Projection、fingerprint、coverageが一致）、`recorded`（Projection snapshotを持たない旧形式のbindingは構造だけ整合）、`none`（bindingなし）、`invalid`（fingerprint、coverage、Projectionのいずれかが不整合）
+- `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
+- `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。有効なReview bindingでだけ表示
+- `reviewDiagnostics`: Review bindingの不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section code、Projection schema、Projection再計算fingerprint、coverage一致を検査する
+- 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認したかを証明する署名ではありません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
 
 ### knowledge qualificationからcandidateへの接続
 

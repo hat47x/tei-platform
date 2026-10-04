@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -17,6 +19,15 @@ func cliRun(t *testing.T, args ...string) (int, string, string) {
 	var stdout, stderr bytes.Buffer
 	code := runCLI(args, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
+}
+
+func writeRawDecisionRecord(t *testing.T, root, content string) string {
+	t.Helper()
+	sum := sha256.Sum256([]byte(content))
+	name := hex.EncodeToString(sum[:]) + ".json"
+	path := filepath.Join(root, filepath.FromSlash(decisionDir), name)
+	writeFile(t, path, content)
+	return path
 }
 
 func candidateFile(t *testing.T, c Candidate) string {
@@ -87,6 +98,18 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
 		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
+	}
+	if record.ReviewBindingStatus != "none" ||
+		record.ReviewCoverageStatus != "none" ||
+		len(record.ReviewIncomplete) != 0 ||
+		len(record.ReviewDiagnostics) != 0 {
+		t.Fatalf(
+			"review binding status=%q coverage=%q incomplete=%+v diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewIncomplete,
+			record.ReviewDiagnostics,
+		)
 	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
@@ -202,21 +225,17 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 		t.Fatalf("accepted decision lacks bound Evidence identity: %+v", decision)
 	}
 
-	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
-	content, err := os.ReadFile(path)
-	if err != nil {
+	// 元のcontent-addressed recordを外し、Evidence本文だけを書き換えた別recordを
+	// recordDecisionで正しいcontent addressへ保存する。file名の改ざん検査を通過した後も、
+	// Evidence本文とevidenceFingerprintの不一致を検出できる必要がある。
+	if err := os.Remove(filepath.Join(dir, filepath.FromSlash(decision.RecordPath))); err != nil {
 		t.Fatal(err)
 	}
-	var tampered Decision
-	if err := json.Unmarshal(content, &tampered); err != nil {
-		t.Fatal(err)
-	}
+	tampered := decision
+	tampered.RecordPath = ""
+	tampered.Evidence = append([]Evidence(nil), decision.Evidence...)
 	tampered.Evidence[0].Note = tampered.Evidence[0].Note + " tampered"
-	encoded, err := encodeJSON(tampered)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+	if _, err := recordDecision(dir, tampered); err != nil {
 		t.Fatal(err)
 	}
 
@@ -234,6 +253,177 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 	}
 	if !hasCode(codes, "EVIDENCE_FINGERPRINT_MISMATCH") {
 		t.Fatalf("fingerprint mismatch diagnostic is absent: %v", codes)
+	}
+}
+
+func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var tampered Decision
+	if err := json.Unmarshal(content, &tampered); err != nil {
+		t.Fatal(err)
+	}
+	tampered.Intent += " tampered"
+	encoded, err := encodeJSON(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadDecisionRecords(dir); err == nil {
+		t.Fatal("content-addressed decision recordのin-place改ざんを拒否していません")
+	} else if !strings.Contains(err.Error(), "content hashがfile名と一致しません") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+
+func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("g", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "invalid" || coverageStatus != "invalid" {
+		t.Fatalf("binding=%q coverage=%q diagnostics=%+v", bindingStatus, coverageStatus, diagnostics)
+	}
+	found := false
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_FINGERPRINT_INVALID" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("diagnostics=%+v", diagnostics)
+	}
+}
+
+func TestReviewBindingClassifierKeepsLegacyBindingRecorded(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "recorded" ||
+		coverageStatus != "complete" ||
+		len(diagnostics) != 0 {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			bindingStatus,
+			coverageStatus,
+			diagnostics,
+		)
+	}
+}
+
+func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
+	dir := scratchWorkspace(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	ev, err := evaluate(dir, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := buildReviewProjection(ev)
+	decision, err := accept(dir, data, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Projection == nil {
+		t.Fatalf("review binding=%+v", decision.ReviewBinding)
+	}
+	decision.ReviewBinding.Projection.Sections[0].Summary += " tampered"
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" ||
+		record.ReviewCoverageStatus != "invalid" ||
+		len(record.ReviewIncomplete) != 0 {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewDiagnostics,
+		)
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_PROJECTION_FINGERPRINT_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
+	}
+}
+
+func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
+	dir := scratchWorkspace(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	decision, err := accept(dir, data, acceptOptions{})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	decision.ReviewBinding = &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
+		Coverage: ReviewCoverageSummary{
+			Available:    3,
+			Partial:      5,
+			NotEvaluated: 0,
+			Incomplete: []ReviewCoverageGap{
+				{Code: "A2", Title: "影響", Coverage: reviewCoveragePartial},
+				{Code: "A3", Title: "例外・診断", Coverage: reviewCoveragePartial},
+				{Code: "A5", Title: "権限の変更", Coverage: reviewCoveragePartial},
+				{Code: "A6", Title: "native codeへ残る箇所", Coverage: reviewCoverageNotEvaluated},
+				{Code: "A7", Title: "逆追跡", Coverage: reviewCoveragePartial},
+			},
+		},
+	}
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" || record.ReviewCoverageStatus != "invalid" {
+		t.Fatalf("review status=%q coverage=%q", record.ReviewBindingStatus, record.ReviewCoverageStatus)
+	}
+	if len(record.ReviewDiagnostics) == 0 {
+		t.Fatal("malformed review coverage produced no diagnostics")
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_COVERAGE_INCOMPLETE_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
 	}
 }
 
@@ -390,7 +580,7 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := scratchWorkspaceBeforeSecondApplication(t)
 			acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
-			writeFile(t, filepath.Join(dir, filepath.FromSlash(decisionDir), "broken.json"), content)
+			writeRawDecisionRecord(t, dir, content)
 
 			if code, _, _ := cliRun(t, "decisions", "-workspace", dir); code == 0 {
 				t.Fatal("読めない記録を黙って飛ばしています")
