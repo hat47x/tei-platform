@@ -70,9 +70,6 @@ func normalizeDescriptor(d ExtensionDescriptor) (ExtensionDescriptor, error) {
 	if d.ID == "" || d.Namespace == "" || d.Version == "" {
 		return d, fmt.Errorf("extension requires id, namespace, and version")
 	}
-	if d.Namespace == "std" || strings.HasPrefix(d.Namespace, "std.") {
-		return d, fmt.Errorf("extension %s cannot claim reserved standard namespace %s without accepted standard authority", d.ID, d.Namespace)
-	}
 	if _, err := parseVersion(d.Version); err != nil {
 		return d, fmt.Errorf("extension %s: %w", d.ID, err)
 	}
