@@ -822,6 +822,9 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 		catalog.Interfaces[i].Source = ""
 		catalog.Interfaces[i].SourceFingerprint = ""
 	}
+	for i := range catalog.InterfaceWirings {
+		catalog.InterfaceWirings[i].ConformanceEvidence = ""
+	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
