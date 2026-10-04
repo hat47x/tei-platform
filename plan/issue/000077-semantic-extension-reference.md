@@ -284,6 +284,17 @@ root requirements、resolution policy、canonicalization versionのいずれか�
 
 E0ではRuntime Pluginを起動しない。
 
+#### Semantic Lock candidate — 2026-10-05
+
+PR #927ではA4に対するReference candidateとしてSemantic Lockを追加した。Unresolvedを含むcatalogからはlockを作成しない。lockはroot requirements、requirements fingerprint、resolution policy、canonicalization policy、Core subject fingerprint、exact Extension identity / version / descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、provider wiring、Semantic Set fingerprintを保持する。
+
+既存lockの再検証では、現在のCatalogを通常のresolverで再解決しない。lockに固定したexact Extension versionだけをavailable declarationsから取り出し、同一descriptor fingerprintを確認したうえでsemantic graphを再構成する。したがってCatalogへcompatibleな新versionが増えただけでは既存lockを自動更新しない。一方、同一versionのdeclaration変更、root requirements、resolution policy、canonicalization、Interface wiring、namespace ownerが変わればreplayを拒否する。
+
+Semantic LockはSource / Conformance / namespace Authority Evidenceのfingerprintをmeaning identityへ含めない。Interface wiringとnamespace ownerは意味解決に含めるが、同じcontract / provider / ownerに対するEvidence更新だけではSemantic Set fingerprintを変えない。providerが唯一候補だったか明示wiringだったかという選択経路もmeaning identityから外す。
+
+CLIには`-semantic-lock-out`と`-verify-semantic-lock`を追加した。後者が保証するのはexact graphの`semanticReplayValid`であり、現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityの有効性ではない。A10のsupply-chain trust境界と混同しない。
+
+このlock形式もReference candidateである。exact-head focused testとrepository healthを未実行であり、Accepted source側のExtension参照、lockのShared Acceptance接続、current Evidence再検証も未実証なのでE0-Cの完了状態は更新しない。
 ## E1 — deterministic evaluator boundary
 
 E0成立後、H1〜H4のうちCore declarative primitiveだけでは評価できないものについて、deterministic evaluator boundaryを追加します。
