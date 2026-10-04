@@ -309,6 +309,74 @@ func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
 	}
 }
 
+func TestReviewBindingClassifierKeepsLegacyBindingRecorded(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "recorded" ||
+		coverageStatus != "complete" ||
+		len(diagnostics) != 0 {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			bindingStatus,
+			coverageStatus,
+			diagnostics,
+		)
+	}
+}
+
+func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
+	dir := scratchWorkspace(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	ev, err := evaluate(dir, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := buildReviewProjection(ev)
+	decision, err := accept(dir, data, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Projection == nil {
+		t.Fatalf("review binding=%+v", decision.ReviewBinding)
+	}
+	decision.ReviewBinding.Projection.Sections[0].Summary += " tampered"
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" ||
+		record.ReviewCoverageStatus != "invalid" {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewDiagnostics,
+		)
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_PROJECTION_FINGERPRINT_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
+	}
+}
+
 func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
 	dir := scratchWorkspace(t)
 	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
