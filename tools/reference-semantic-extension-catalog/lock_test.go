@@ -36,7 +36,7 @@ func TestSemanticLockKeepsExactVersionWhenCatalogAddsNewerCompatibleVersion(t *t
 
 	v110 := semanticLockDescriptor("1.1.0", "policy.v1_1")
 	available := []ExtensionDescriptor{v110, v100}
-	if err := verifySemanticLock(lock, CoreCatalogInput{}, available); err != nil {
+	if err := verifySemanticLockReplay(lock, CoreCatalogInput{}, available); err != nil {
 		t.Fatalf("new catalog version invalidated exact lock: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestSemanticLockRejectsSameVersionDeclarationDrift(t *testing.T) {
 	}
 
 	changed := semanticLockDescriptor("1.0.0", "policy.changed")
-	err = verifySemanticLock(lock, CoreCatalogInput{}, []ExtensionDescriptor{changed})
+	err = verifySemanticLockReplay(lock, CoreCatalogInput{}, []ExtensionDescriptor{changed})
 	if err == nil || !strings.Contains(err.Error(), "declaration fingerprint is stale") {
 		t.Fatalf("same-version semantic drift was not rejected: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestSemanticLockReconstructsInterfaceWiringWithoutEvidenceIdentity(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verifySemanticLock(lock, CoreCatalogInput{}, descriptors); err != nil {
+	if err := verifySemanticLockReplay(lock, CoreCatalogInput{}, descriptors); err != nil {
 		t.Fatalf("semantic lock did not reconstruct interface wiring: %v", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestSemanticLockReconstructsAcceptedNamespaceAuthorityWithoutEvidenceIdenti
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verifySemanticLock(lock, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err != nil {
+	if err := verifySemanticLockReplay(lock, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err != nil {
 		t.Fatalf("semantic lock did not reconstruct namespace authority: %v", err)
 	}
 }
@@ -184,14 +184,14 @@ func TestSemanticLockDetectsRootAndPolicyDrift(t *testing.T) {
 		Extension:       "tei.reference.missing",
 		CompatibleMajor: 1,
 	})
-	if err := verifySemanticLock(rootDrift, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err == nil ||
+	if err := verifySemanticLockReplay(rootDrift, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err == nil ||
 		!strings.Contains(err.Error(), "root requirements fingerprint is stale") {
 		t.Fatalf("root requirement drift was not detected: %v", err)
 	}
 
 	policyDrift := lock
 	policyDrift.ResolutionPolicy = "different-policy/v1"
-	if err := verifySemanticLock(policyDrift, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err == nil ||
+	if err := verifySemanticLockReplay(policyDrift, CoreCatalogInput{}, []ExtensionDescriptor{descriptor}); err == nil ||
 		!strings.Contains(err.Error(), "resolution policy") {
 		t.Fatalf("resolution policy drift was not detected: %v", err)
 	}
