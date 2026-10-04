@@ -238,7 +238,13 @@ Repositoryを細かく分割しすぎず、関連する改修が同一Repository
 
 Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。
 
-現時点で根拠のない一律の数値目標は固定しません。
+Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、共通runtimeの共有、artifact重複排除、static linking、lazy loading等を選べる必要があります。
+
+性能最適化のために複数Extensionを一つのartifactへ統合しても、元のidentity、version、Lock、provenance、Authorityへ逆追跡できなければなりません。反対に、一つのExtensionを一つのprocessや一つのWasm moduleとして配布することを標準前提にしてはいけません。
+
+Web Targetでは、process起動、任意filesystem access等のブラウザで成立しない実行方式をSemantic Extensionの成立条件へ含めてはいけません。Target固有のRuntime要件を満たせない場合は、意味を暗黙に変更してfallbackせず、build / Conformance段階で非対応またはUnresolvedとして扱える必要があります。
+
+現時点で根拠のない一律の数値目標は固定しません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
 
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
@@ -373,6 +379,10 @@ Extension packageの依存関係に生じるcycleと、業務上のRelation grap
 optionalなdiagnosticやProjectionであっても、その存在がShared AcceptanceのAccept / RejectやCanonical validityへ影響する場合は、単なるTooling依存として扱わずSemantic Setへ明示する必要があります。
 
 Semantic Extensionの追加やversion変更、Profileによるroot requirement集合の変更によってAccepted Semantic Setが変わる場合は、sourceが変わっていなくても意味変更候補として扱います。新しいcompatible versionが見つかったことだけを理由に、Accepted Semantic Setを自動更新してはいけません。
+
+Semantic Extensionのlogical identityと、実行・配布に使うartifact境界は同一である必要はありません。同じAccepted Semantic SetからTargetごとに異なるpackaging planを導出し、複数Extensionを一つのbuiltin / linked artifactへまとめたり、必要な実装だけをWasm等で遅延読込したりできる必要があります。この変換でSemantic Set fingerprintを物理配置へ依存させてはいけません。
+
+実行codeを持たないdeclaration-only ExtensionまでRuntime artifactを要求してはいけません。実行codeが必要な場合も、Targetに応じてbuiltin / linked、portable sandboxed module、process等の実現方式を選べる余地を保ちます。Targetごとのpackaging差は、Semantic contractとConformanceを満たす限り、意味の差として扱いません。
 
 意味を宣言できることは実行Authorityを意味しません。Plugin / DSL拡張もRQ-019の権限・Resource境界を迂回してはいけません。
 
