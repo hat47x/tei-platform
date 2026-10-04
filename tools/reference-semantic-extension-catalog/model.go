@@ -41,16 +41,19 @@ type ExtensionConnection struct {
 }
 
 type ExtensionDescriptor struct {
-	Schema         string                 `json:"schema"`
-	ID             string                 `json:"id"`
-	Namespace      string                 `json:"namespace"`
-	Version        string                 `json:"version"`
-	AppliesToKinds []string               `json:"appliesToKinds,omitempty"`
-	Requires       []ExtensionRequirement `json:"requires,omitempty"`
-	Concepts       []ExtensionConcept     `json:"concepts,omitempty"`
-	Relations      []ExtensionRelation    `json:"relations,omitempty"`
-	Constraints    []ExtensionConstraint  `json:"constraints,omitempty"`
-	Connections    []ExtensionConnection  `json:"connections,omitempty"`
+	Schema             string                         `json:"schema"`
+	ID                 string                         `json:"id"`
+	Namespace          string                         `json:"namespace"`
+	Version            string                         `json:"version"`
+	AppliesToKinds     []string                       `json:"appliesToKinds,omitempty"`
+	Requires           []ExtensionRequirement         `json:"requires,omitempty"`
+	Interfaces         []SemanticInterfaceContract    `json:"interfaces,omitempty"`
+	RequiresInterfaces []SemanticInterfaceRequirement `json:"requiresInterfaces,omitempty"`
+	ProvidesInterfaces []SemanticInterfaceProvider    `json:"providesInterfaces,omitempty"`
+	Concepts           []ExtensionConcept             `json:"concepts,omitempty"`
+	Relations          []ExtensionRelation            `json:"relations,omitempty"`
+	Constraints        []ExtensionConstraint          `json:"constraints,omitempty"`
+	Connections        []ExtensionConnection          `json:"connections,omitempty"`
 
 	sourcePath        string
 	sourceFingerprint string
@@ -167,6 +170,9 @@ func normalizeDescriptor(d ExtensionDescriptor) (ExtensionDescriptor, error) {
 		return d.Connections[i].Ref < d.Connections[j].Ref
 	})
 
+	if err := normalizeSemanticInterfaceDeclarations(&d); err != nil {
+		return d, err
+	}
 	return d, nil
 }
 
