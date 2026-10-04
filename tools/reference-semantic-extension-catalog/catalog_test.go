@@ -575,6 +575,34 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 	}
 }
 
+func TestReferenceCatalogExposesAndFingerprintsResolutionPolicy(t *testing.T) {
+	descriptor := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.policy",
+		Namespace: "policy",
+		Version:   "1.0.0",
+	}
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{descriptor},
+		[]ExtensionRequirement{{Extension: "tei.reference.policy", CompatibleMajor: 1}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if catalog.ResolutionPolicy != semanticResolutionPolicy {
+		t.Fatalf("resolution policy=%q want=%q", catalog.ResolutionPolicy, semanticResolutionPolicy)
+	}
+
+	changed := catalog
+	changed.ResolutionFingerprint = ""
+	changed.EvidenceFingerprint = ""
+	changed.ResolutionPolicy = "different-policy/v0"
+	if got := semanticCatalogFingerprint(changed); got == catalog.ResolutionFingerprint {
+		t.Fatalf("resolution policy change did not change semantic resolution fingerprint: %s", got)
+	}
+}
+
 func TestReferenceCatalogNormalizesRootRequirementsAndFingerprintsResolution(t *testing.T) {
 	descriptors := []ExtensionDescriptor{
 		{
