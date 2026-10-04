@@ -269,6 +269,121 @@ profile business-app
 
 Profile自体を新しいSemantic authorityにはしない。ただし、Profileはroot requirement集合を選ぶため、意味解釈に影響する入力である。Profileにはidentity、version、Source、fingerprintを持たせ、Accepted Applicationが参照するProfileの変更をSemantic Changeとして扱う。
 
+### 11.1 Extensionの論理境界と物理packagingを分ける
+
+Semantic Extension、Runtime Plugin、物理artifactを一対一にはしない。
+
+```text
+Logical Extension / Plugin identity
+        |
+        | semantic / capability contract
+        v
+Target realization plan
+        |
+        +-- builtin / static linked
+        +-- shared native library or host implementation
+        +-- portable Wasm module
+        +-- isolated process
+        +-- external service binding
+        |
+        v
+Target artifact / deployment image
+```
+
+一つのTarget artifactへ複数のlogical Extension / Plugin実装をまとめてもよい。逆に、一つのlogical PluginがTargetごとに異なるartifactで実現されてもよい。
+
+この再配置で変えてはいけないものは、logical identity、semantic contract、Capability contract、Accepted Lock、Authority境界、provenanceへの逆追跡である。
+
+したがって、Semantic Set fingerprintへ物理artifactの分割方法を混ぜない。Targetごとのpackaging / build artifactには別のfingerprintを持たせ、どのSemantic Set / Plugin Lockから導出したかを参照させる。
+
+### 11.2 declarationをeager、実行codeを必要時だけloadできる構造にする
+
+Semantic declaration、identity、dependency、Lockは、Tool / AI / buildが意味を理解するために必要である。一方、すべての実行codeを起動時に読み込む必要はない。
+
+基本方針は次とする。
+
+- declaration-only ExtensionはRuntime artifactを持たなくてよい。
+- Semantic SetのdeclarationとLockは小さく保ち、意味解決に必要な範囲をeagerに利用できるようにする。
+- evaluator / Provider等の実行artifactは、Target buildで到達可能なものだけを含める。
+- 同じruntimeやsupport codeを各Pluginへ複製せず、共有またはlink時に統合できるようにする。
+- 起動時に不要なartifactはTarget条件に応じてlazy loadできる。
+- content digestが同じartifactをversionやProfileごとに重複保存しない余地を保つ。
+- lazy load失敗を意味の不存在へ読み替えない。必要な実装を取得できなければRuntime / Realization側のUnresolvedとして扱う。
+
+意味の依存graphをpruneするのではなく、**実行artifactの到達可能性をpruneする**点を区別する。Accepted Semantic Setに含まれる意味は、実行codeをまだloadしていなくても消えない。
+
+### 11.3 Web Targetをprocess Pluginへ依存させない
+
+Webブラウザでは、native process起動や任意filesystem access等を前提にできない。したがって、標準Semantic Extensionや標準Capabilityをprocess-only実装へ固定しない。
+
+Web Targetでは、少なくとも次の実現経路を候補にできる構造を保つ。
+
+- declaration-only
+- host JavaScript / Web API integration
+- browser-compatible Core WebAssembly
+- build時にhostへ統合したbuiltin / linked implementation
+- browserから利用可能な外部service binding
+
+Core WebAssemblyは現在のブラウザで広く利用でき、streaming compile / instantiateも利用できる。一方、WebAssembly Component Modelのbrowser native integrationは2026-10時点でも将来目標を含む段階にある。そのため、TEIのPlugin ABIをComponent Modelのnative browser supportへ依存させない。
+
+Go標準の`js/wasm`はTarget候補の一つだが、各Extensionを独立したGo Wasmへ機械的に変換する方針にはしない。Go公式資料でも、小さなWasm binaryにruntime由来のサイズ負担があり、importするlibraryによって大きくなり得るとされている。TinyGo等の小型toolchain、将来の軽量Go→Wasm compiler、JavaScript、static linking等をReferenceで比較し、Extension contractとcompiler選択を分離する。
+
+参照:
+
+- Go WebAssembly Wiki: https://go.dev/wiki/WebAssembly
+- WebAssembly `instantiateStreaming`: https://developer.mozilla.org/docs/WebAssembly/Reference/JavaScript_interface/instantiateStreaming_static
+- WebAssembly Component Model goals: https://github.com/WebAssembly/component-model/blob/main/design/high-level/Goals.md
+- TinyGo WebAssembly: https://tinygo.org/docs/guides/webassembly/
+
+### 11.4 Target buildで最適化しても追跡性を失わない
+
+Target packagerは、Accepted Semantic SetとRuntime / Capability Bindingからderivedなpackaging planを作る。
+
+概念上は次の順を取る。
+
+```text
+Accepted Semantic Set
+ + Target
+ + Capability / Runtime Binding
+        ↓
+reachable implementation analysis
+        ↓
+Target realization plan
+        ↓
+unused executable implementation elimination
+shared runtime / dependency deduplication
+compatible implementation coalescing
+compression / cache plan
+lazy-load boundary
+        ↓
+Target artifact
+```
+
+Target realization planはCanonical authorityではない。削除して再生成できるderived artifactとして扱う。
+
+複数Pluginを一つのartifactへまとめた場合も、diagnosticやEvidenceから元のlogical Plugin / Extensionへ戻れるmappingを保持する。
+
+### 11.5 性能・storage・可搬性をExtension Referenceの品質条件にする
+
+Plugin化によるcostは、機能数ではなく増分として測る。
+
+ReferenceではTargetごとに少なくとも次を観測する。
+
+- cold start / warm start
+- compressed initial transfer
+- install / cache storage footprint
+- steady-state memory
+- resolver時間
+- evaluator / Capability dispatch overhead
+- Extensionを一つ追加したときの増分artifact size / memory / startup cost
+- unused executable contributionを除外できたか
+- 共通runtime / dependencyを重複格納していないか
+- Web Targetでnative process依存が残っていないか
+
+現時点で一律の上限値は置かない。RQ-024に従い、First / Second Targetのactual Evidenceからcontext-specific thresholdを決める。
+
+重要なのは「Plugin化前より必ず高速であること」ではない。**拡張可能性を得るために、Target固有の実行・配布最適化を構造上禁止しないこと**を不変条件とする。
+
 ## 12. AI / Toolへresolverの理由を公開する
 
 Pluginが増えると、人もAIもresolved setだけでは依存関係を保守できない。
@@ -444,6 +559,10 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
 - root / wiring / policy / canonicalizationを含むlock再現性
 - Acceptanceに使うSemantic EvaluatorとEnvironment Runtime selectionの分離
 - optional contributionのAcceptance影響境界
+- logical Extension数とphysical artifact数を分離したTarget packaging
+- unused implementation pruning / shared runtime deduplication
+- Web Targetでのprocess-free realization
+- RQ-024に沿ったstartup / transfer / memory / storageの増分測定
 
 一方、以下は現時点からReferenceで変えない条件として扱う。
 
@@ -457,6 +576,10 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
 8. 有効解があるgraphを探索順だけでconflictにしない。
 9. Interface / namespace authorityをfirst claimantや自己申告へ委ねない。
 10. semantic validityをEnvironmentごとのEvaluator選択で変えない。
+11. logical Extension / Pluginを一つのartifact / process / Wasm moduleへ固定しない。
+12. Target packagingの最適化でSemantic identity / Lock / provenanceを失わない。
+13. Web Targetの成立をnative process Pluginへ依存させない。
+14. declaration-only ExtensionへRuntime artifactを要求しない。
 
 ## 18. 参照した外部設計
 
@@ -481,3 +604,13 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
   - https://github.com/dart-lang/pub/blob/master/doc/solver.md
 
 - 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
+
+- WebAssembly browser loading:
+  - https://developer.mozilla.org/docs/WebAssembly/Reference/JavaScript_interface/instantiateStreaming_static
+- Go WebAssembly:
+  - https://go.dev/wiki/WebAssembly
+- WebAssembly Component Model goals:
+  - https://github.com/WebAssembly/component-model/blob/main/design/high-level/Goals.md
+- TinyGo WebAssembly / binary optimization:
+  - https://tinygo.org/docs/guides/webassembly/
+  - https://tinygo.org/docs/guides/optimizing-binaries/
