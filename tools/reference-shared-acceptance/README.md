@@ -81,9 +81,13 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
 - `evidenceStatus`: `current`（受理理由に使ったEvidenceがcurrent Source Indexとqualificationに一致）、`diverged`（根拠sourceや明示dependencyが変わった、または保存済みEvidence本文が`evidenceFingerprint`と一致しない）、`none`
 - `evidenceDiagnostics`: `diverged`の理由。過去のAcceptanceを現在のapplicabilityとして読み替えないための照合結果
+- `reviewBindingStatus`: `recorded`（Review bindingの構造が整合）、`none`（bindingなし）、`invalid`（fingerprintやcoverageの構造が不正）
+- `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
+- `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。Review bindingがある場合だけ表示
+- `reviewDiagnostics`: Review bindingの構造不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section codeの重複などを検査する
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。偽の記録を置いても意味は動かず、照合結果が食い違いとして出ます（`record_test.go`）。`reviewBindingStatus=recorded`も、人がReviewを読んだことの証明ではありません。保存されたbindingの構造が整合していることだけを示し、元のReview ProjectionをDecision recordから再構築して真正性を主張することはしません。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
 
 ### knowledge qualificationからcandidateへの接続
 
