@@ -339,9 +339,13 @@ type DecisionRecord struct {
 	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
 	SourceEdits         string       `json:"sourceEdits"`
 	Diverged            []string     `json:"divergedPaths,omitempty"`
-	EvidenceStatus      string       `json:"evidenceStatus"`
-	EvidenceDiagnostics []Diagnostic `json:"evidenceDiagnostics,omitempty"`
-	Decision            Decision     `json:"decision"`
+	EvidenceStatus        string              `json:"evidenceStatus"`
+	EvidenceDiagnostics   []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
+	ReviewBindingStatus   string              `json:"reviewBindingStatus"`
+	ReviewCoverageStatus  string              `json:"reviewCoverageStatus"`
+	ReviewIncomplete      []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
+	ReviewDiagnostics     []Diagnostic        `json:"reviewDiagnostics,omitempty"`
+	Decision              Decision            `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -414,7 +418,9 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			Decision:       d,
 			Status:         "superseded",
 			SourceEdits:    "none",
-			EvidenceStatus: "none",
+			EvidenceStatus:       "none",
+			ReviewBindingStatus:  "none",
+			ReviewCoverageStatus: "none",
 		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
@@ -429,6 +435,16 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 				}
 			}
 		}
+		record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewDiagnostics = classifyReviewBinding(d.ReviewBinding)
+		if d.ReviewBinding != nil {
+			record.ReviewIncomplete = append(
+				record.ReviewIncomplete,
+				d.ReviewBinding.Coverage.Incomplete...,
+			)
+		}
+
 		if len(d.Evidence) > 0 || d.EvidenceFingerprint != "" {
 			record.EvidenceStatus = "current"
 			if d.EvidenceFingerprint != "" {
@@ -452,5 +468,67 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		record.Decision.RecordPath = rel
 		index.Records = append(index.Records, record)
 	}
+
+func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic) {
+	if binding == nil {
+		return "none", "none", nil
+	}
+	var diagnostics []Diagnostic
+	if strings.TrimSpace(binding.Fingerprint) == "" {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code:    "REVIEW_BINDING_FINGERPRINT_EMPTY",
+			Message: "decision recordのreviewBindingにreview fingerprintがありません",
+		})
+	}
+
+	coverage := binding.Coverage
+	total := coverage.Available + coverage.Partial + coverage.NotEvaluated
+	if total != 8 {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_COUNT_MISMATCH",
+			Message: fmt.Sprintf(
+				"review coverageのsection数がA1〜A8と一致しません: available=%d partial=%d notEvaluated=%d",
+				coverage.Available,
+				coverage.Partial,
+				coverage.NotEvaluated,
+			),
+		})
+	}
+	if len(coverage.Incomplete) != coverage.Partial+coverage.NotEvaluated {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_INCOMPLETE_MISMATCH",
+			Message: fmt.Sprintf(
+				"review coverageのincomplete件数がpartial + notEvaluatedと一致しません: incomplete=%d partial=%d notEvaluated=%d",
+				len(coverage.Incomplete),
+				coverage.Partial,
+				coverage.NotEvaluated,
+			),
+		})
+	}
+	seen := map[string]bool{}
+	for _, gap := range coverage.Incomplete {
+		if gap.Code < "A1" || gap.Code > "A8" || seen[gap.Code] {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_COVERAGE_GAP_INVALID",
+				Message: "review coverageに不正または重複したsection codeがあります: " + gap.Code,
+			})
+		}
+		seen[gap.Code] = true
+		if gap.Coverage != reviewCoveragePartial && gap.Coverage != reviewCoverageNotEvaluated {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_COVERAGE_GAP_INVALID",
+				Message: "review coverageのincomplete sectionがpartial / not-evaluatedではありません: " + gap.Code,
+			})
+		}
+	}
+	if len(diagnostics) > 0 {
+		return "invalid", "invalid", diagnostics
+	}
+	if coverage.Partial == 0 && coverage.NotEvaluated == 0 {
+		return "recorded", "complete", nil
+	}
+	return "recorded", "incomplete", nil
+}
+
 	return index, nil
 }
