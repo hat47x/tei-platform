@@ -69,6 +69,10 @@ versionごとに依存graphが異なる場合も、ある候補だけがcycleを
 
 このReference policyをProductionの最終contractとして固定するものではありません。目的は「複数解をsolver実装の偶然で決めない」「選択規則が意味再現性へ影響することをfingerprintへ含める」ことの実証です。
 
+backtrackingは探索量を増やし得るため、Reference helperにはcandidate attempt数で探索を止めるoperational budget境界も用意します。budget超過はdependency conflictとは別errorです。
+
+budget値はSemantic resolution policyやSemantic Set fingerprintへ含めません。十分なbudgetなら同じ意味解へ到達し、不足したbudgetは「解がない」ことを意味しません。
+
 ## conflict方針
 
 同じsubject identityをCoreとExtension、または複数Extensionが宣言した場合、読み込み順で勝者を決めません。
