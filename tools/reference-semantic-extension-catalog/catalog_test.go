@@ -272,6 +272,41 @@ func TestReferenceCatalogBacktracksAroundVersionSpecificDependencyCycle(t *testi
 	}
 }
 
+func TestReferenceCatalogRejectsDependencyCycleWhenNoAlternativeExists(t *testing.T) {
+	a := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.a",
+		Namespace: "a",
+		Version:   "1.0.0",
+		Requires: []ExtensionRequirement{{
+			Extension:       "tei.reference.b",
+			CompatibleMajor: 1,
+		}},
+	}
+	b := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.b",
+		Namespace: "b",
+		Version:   "1.0.0",
+		Requires: []ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+	}
+
+	_, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{a, b},
+		[]ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+	)
+	if err == nil || !strings.Contains(err.Error(), "dependency cycle") {
+		t.Fatalf("dependency cycle was not rejected: %v", err)
+	}
+}
+
 func TestReferenceCatalogRejectsIncompatibleDependency(t *testing.T) {
 	root := ExtensionDescriptor{
 		Schema:    extensionSchema,
