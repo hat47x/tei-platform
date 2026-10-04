@@ -393,6 +393,7 @@ AIがextensionを発見した後も、自動採用はしません。
 - 同じconstraintの重複記述数
 - 第二Referenceで再利用するための変更量
 - extensionなしcustom implementationとのhand-written差分
+- Bridge Extensionの個数、fan-in / fan-out、重複するcross-facet constraint数
 
 ### AI rail
 
@@ -404,8 +405,12 @@ AIがextensionを発見した後も、自動採用はしません。
 ### Safety
 
 - incompatible extensionのsilent override = 0
+- 有効解が存在するgraphのfalse conflict = 0
+- authority不明のSemantic Interface / reserved namespace受入 = 0
 - semantic declarationからRuntime Authorityへの暗黙昇格 = 0
 - evaluator不在をpass扱い = 0
+- EnvironmentごとのEvaluator差によるAccepted validity変更 = 0
+- stale Semantic Lockの無条件再利用 = 0
 - unrelated Canonical meaningの変化 = 0
 
 Safety違反を生産性指標と相殺しません。
