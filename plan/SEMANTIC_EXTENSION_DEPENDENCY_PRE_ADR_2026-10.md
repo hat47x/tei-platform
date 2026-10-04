@@ -6,6 +6,7 @@
 - 関連: ISSUE-000040 / ISSUE-000047 / ISSUE-000053
 - 対象: Semantic Extensionの依存、解決、固定、説明可能性
 - 非対象: package配布サービス、Marketplace、Runtime sandboxの再設計
+- 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
 
 ## 1. このPre-ADRで決めたいこと
 
@@ -46,9 +47,9 @@ OSGiのRequirement / Capability modelでは、推移依存とphaseごとの有�
 
 ### Cargo / Go / Bazel
 
-Cargoのlock-first、Goの単純な解決規則とgraph pruning、Bazelのcompatibility levelは参考になる。
+Cargoのlock-firstとbacktracking、Goの単純な解決規則とgraph pruningは参考になる。Bazelの`compatibility_level`は過去の設計例として参照できるが、2026-10時点のBazel main documentationではdeprecated / no-opである。このため、TEIで独立したcompatibility levelを設ける直接の根拠にはしない。
 
-ただしSemantic Extensionでは、「互換範囲内の新しいversionなら自動的に選んでも意味は変わらない」とは仮定しない。version rangeは候補を探す条件として使い、Accepted Worldはexact versionとdeclaration fingerprintで固定する。
+Semantic Extensionでは、「互換範囲内の新しいversionなら自動的に選んでも意味は変わらない」とは仮定しない。version rangeは候補を探す条件として使い、Accepted Worldはexact versionとdeclaration fingerprintで固定する。
 
 ### PubGrub
 
@@ -99,6 +100,10 @@ requires interface relation-acyclic-validator/v1
 
 Package identity dependencyそのものは禁止しない。あるExtensionのsymbolやparameter semanticsを直接参照する場合は、曖昧なInterface dependencyへ置き換えない。
 
+Semantic Interfaceは単なる文字列ラベルにはしない。Interface自体がlogical identity、contract version、namespace authority、contract fingerprint、Source / provenanceを持つ意味契約である必要がある。providerの`implements`自己申告だけを適合Evidenceにはしない。
+
+同じInterfaceを複数providerが満たす場合、Accepted wiringまたは明示的なselection policyが無ければ、package ID、version、catalog列挙順等で暗黙に一つを選ばない。
+
 ## 5. 異なる意味体系の接続はBridge Extensionへ寄せる
 
 Data、Interaction、Procedure等のSemantic Extensionが互いを直接参照し始めると、標準機能だけでも依存関係が密になる。
@@ -133,20 +138,27 @@ Extension packageの読み込み依存にcycleがある場合は、原則とし�
 
 ここで禁止するのは、Extension packageを解決するためのcycleである。業務上のRelation graphやobject referenceにcycleが存在することまで禁止しない。
 
-## 7. Semantic compatibilityをbinary versionだけに委ねない
+## 7. Semantic compatibilityを別のversion軸へ早期固定しない
 
-Semantic Extensionは少なくとも次を分ける。
+Semantic Extensionでは、少なくとも次を区別する。
 
 - extension identity
 - semantic version
-- compatibility level / family
 - declaration fingerprint
+- dependency compatibility constraint
 
-compatibility levelは、「同じCanonical Worldで同一の意味体系として共存できるか」を判定するために使う。
+semantic versionはRuntime binary versionと分ける。一方、semantic versionとは別に`compatibility level / family / epoch`を必須軸として今の段階で固定しない。
 
-基本規則として、一つのsemantic identity familyでは、同じSemantic Set内で一つのcompatibility levelだけを有効にする。
+独立したcompatibility軸を設けると、semantic versionとの優先関係や不整合時の判定規則が新たに必要になる。Referenceでversion rangeだけでは表現できない実例が確認されるまでは、互換範囲、明示conflict、exact lockでPressureする。
 
-互換性のない世代を同時に扱う必要がある場合は、別namespaceまたは明示したsemantic universeとして分離し、両者の間にMigration / Translation境界を置く。resolverが二つのmajorを選択できるという理由だけで、同じCanonical subjectへ混在させない。
+現時点の不変条件は次である。
+
+- 依存側が受け入れるsemantic version範囲を明示できる。
+- 互換性のない意味を同じCanonical subjectへ黙って混在させない。
+- Accepted Worldはexact versionとdeclaration fingerprintを含むSemantic Lockで固定する。
+- 別世代の意味体系を同時に扱う必要がある場合は、namespace、translation、migration等の境界を明示する。
+
+別のcompatibility family / epoch等が必要かは、複数ReferenceのEvidenceから判断する。
 
 ## 8. Optional dependencyで既存意味を暗黙変更しない
 
@@ -163,20 +175,24 @@ A + B present -> Aのmeaningが自動的にYへ変わる
 
 optional requirement自体は禁止しない。欠けても既存の意味が変わらず、追加のdiagnosticやProjectionだけを提供するなど、影響範囲を契約で説明できる場合に限定する。
 
+ただし、diagnosticやValidationの有無がShared AcceptanceのAccept / Rejectへ影響するなら、それは実質的にSemantic dependencyである。その場合はoptional Toolingとしてambientに追加せず、Semantic Setへ明示してlock / fingerprint / Acceptanceの対象にする。
+
 ## 9. Semantic LockをCanonical interpretationの入力として扱う
 
 Semantic Extensionの解決結果は、Accepted Worldに対してexactに固定する。
 
 概念上のSemantic Lockには最低限、次を保持する。
 
-- root requirements
+- root requirementsとそのfingerprint
 - resolved extension identity
 - exact semantic version
-- compatibility level
 - declaration fingerprint
+- Semantic Interface contract fingerprint
 - resolved requirement -> provider edge
 - Semantic Interface wiring
-- graph format version
+- resolution policy identity / version
+- fingerprint canonicalization version
+- graph / lock format version
 
 Artifact binaryやRuntime Plugin digestは既存Runtime Plugin Lock側で扱う。Semantic Lockへ実行Authorityを混ぜない。
 
@@ -191,6 +207,10 @@ authoritative source
 そのため、sourceが変わっていなくても、Semantic Lockが変われば意味変更候補になり得る。
 
 Semantic Set全体についてstable fingerprintを作り、Proposal、Decision、qualification Evidence、derived artifactから必要に応じて参照できるようにする。
+
+既存lockがある場合、Catalogへ新versionが追加されたことだけを理由に再解決しない。まずlockに記録したexact graphとfingerprintを検証する。root requirements、resolution policy、canonicalization規則が変わった場合はstale lockとして扱い、candidate re-resolutionとShared Acceptanceへ進める。
+
+Unresolvedを含むgraphからAccepted Semantic Lockを作らない。
 
 ## 10. 更新はdependency updateではなくSemantic Changeとして扱う
 
@@ -247,7 +267,7 @@ profile business-app
   -> required bridges
 ```
 
-Profile自体を新しいSemantic authorityにはしない。
+Profile自体を新しいSemantic authorityにはしない。ただし、Profileはroot requirement集合を選ぶため、意味解釈に影響する入力である。Profileにはidentity、version、Source、fingerprintを持たせ、Accepted Applicationが参照するProfileの変更をSemantic Changeとして扱う。
 
 ## 12. AI / Toolへresolverの理由を公開する
 
@@ -299,9 +319,13 @@ Core側では、少なくとも次の入出力契約を先に固定する。
 - unresolved requirements
 - structured conflict cause
 
-最初の制約集合を単純なdeterministic resolverで扱えるなら、それを使う。Referenceでbacktrackingや複雑なversion range conflictが必要だと確認できた段階で、PubGrub型のsolverへ差し替えられる境界を保つ。
+最初の制約集合を単純なdeterministic resolverで扱えるなら、それを使う。ただし、resolverは宣言したconstraint languageの範囲でsoundかつcompleteである必要がある。解が存在するのに探索順やgreedyなhighest-compatible選択だけを理由にunsatisfiableと判定してはいけない。
 
-将来大規模になるという予測だけを理由に、E0の時点からsolver実装そのものをProductの中心にはしない。
+複数の有効解があり、Acceptedなresolution policyでも一意に決められない場合は、solver内部の探索順で一つを選ばず、候補またはUnresolvedとして表す。
+
+現行Referenceのhighest-compatible先行選択には、より低いcompatible versionへbacktrackすれば解けるgraphをfalse conflictにできる反例がある。E0-Bでこのnegative controlを追加し、その結果に応じてbacktrackingまたは同等の探索が必要かを判断する。
+
+将来大規模になるという予測だけを理由に、E0の時点から特定solver実装そのものをProductの中心にはしない。必要なのは、意味の再現性を保つ解決契約である。
 
 ## 14. 現行Reference実装との関係
 
@@ -316,12 +340,13 @@ PR #922の`tools/reference-semantic-extension-catalog`は、このPre-ADRより�
 
 この実装はE0-AとE0-Bの初期検証に利用できる。ただし、次の項目はまだ実証していない。
 
-- Semantic Interfaceを介したtyped dependency
-- compatibility level / family
+- Semantic Interfaceを介したtyped dependencyとInterface contract authority
+- greedyなhighest-compatible選択によるfalse conflictの排除
 - Bridge Extensionによるcross-facet composition
 - Accepted Semantic Lock
 - root requirementからのwhy / reverse dependency
 - structured conflict derivation
+- namespace authority、特に`std.*`の予約
 - Runtime Plugin更新とSemantic Set fingerprintの独立性
 
 したがって、PR #922のReferenceを先に完成形まで広げてから設計を合わせることはしない。現在の小さいresolverをnegative / positive controlとして使い、上記の不足をE0-B / E0-Cで順に検証する。このPre-ADRは既存Referenceの成立Evidenceを否定せず、その先で必要になる不変条件を定義する。
@@ -336,7 +361,7 @@ E0のdeclaration / discoveryに加え、E0内で次の小規模なdependency pre
 
 ### D2 — incompatible range
 
-二つのExtensionが両立しないversion / compatibility levelを要求した場合、load順に依存せずblocking conflictになる。
+二つのExtensionが両立しないversion constraintを要求した場合、load順に依存せずblocking conflictになる。
 
 ### D3 — package cycle
 
@@ -358,7 +383,27 @@ Runtime Pluginの実装versionだけを変更しても、semantic declarationが
 
 各resolved Extensionについてrootからの依存pathを取得でき、conflict時には両立しないrequirementの由来へ戻れる。
 
-最初のSUI hierarchy Extensionを実際のroot consumerとして使う。D1〜D7の構造検証にはReference-local Extensionを必要最小限だけ追加し、syntheticなgraphだけでSemantic Extensionの成立を主張しない。
+### D8 — greedy false conflict
+
+higher compatible versionを選ぶとtransitive conflictになるが、lower compatible versionなら全体を解決できるgraphを用意する。resolverが最初の選択だけを理由にunsatisfiableとしないことを確認する。
+
+### D9 — Interface spoof / ambiguity
+
+同じSemantic Interface名を異なるcontract fingerprintで宣言した場合に同一Interface扱いしない。複数providerが同じInterfaceを満たす場合も、Accepted wiringまたは明示policyなしに暗黙選択しない。
+
+### D10 — namespace authority
+
+第三者Extensionが`std.*` namespaceを宣言しても、first claimantとしてownershipを得ないことを確認する。
+
+### D11 — lock input drift
+
+root requirements、resolution policy、canonicalization versionのいずれかだけを変え、既存Semantic Lockを再利用できないことを確認する。
+
+### D12 — optional semantic side effect
+
+optional diagnostic / ProjectionがAcceptance結果を変えようとする場合、ambient Toolingとして扱わずSemantic dependencyへの明示を要求する。
+
+最初のSUI hierarchy Extensionを実際のroot consumerとして使う。D1〜D12の構造検証にはReference-local Extensionを必要最小限だけ追加し、syntheticなgraphだけでSemantic Extensionの成立を主張しない。
 
 ## 16. 実装順序
 
@@ -393,6 +438,12 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
 - dependency reason / conflict explanation
 - semantic updateによるimpact
 - Runtime Plugin更新との分離
+- greedy false conflictを起こさないresolution completeness
+- Semantic Interface contractのidentity / fingerprint / authority
+- `std.*` namespace authority
+- root / wiring / policy / canonicalizationを含むlock再現性
+- Acceptanceに使うSemantic EvaluatorとEnvironment Runtime selectionの分離
+- optional contributionのAcceptance影響境界
 
 一方、以下は現時点からReferenceで変えない条件として扱う。
 
@@ -403,6 +454,9 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
 5. std.*も同じExtension contractを使う。
 6. Semantic dependency updateをShared AcceptanceなしでAccepted Worldへ反映しない。
 7. dependency explanationを人とAIの共通surfaceにする。
+8. 有効解があるgraphを探索順だけでconflictにしない。
+9. Interface / namespace authorityをfirst claimantや自己申告へ委ねない。
+10. semantic validityをEnvironmentごとのEvaluator選択で変えない。
 
 ## 18. 参照した外部設計
 
@@ -421,7 +475,9 @@ E0-A〜Cは別のremote branchへ分けない。同じISSUE-000077 workstreamで
   - https://doc.rust-lang.org/cargo/reference/features.html
 - Go Modules Reference
   - https://go.dev/ref/mod
-- Bazel Bzlmod
-  - https://docs.bazel.build/versions/main/bzlmod.html
+- Bazel module API（compatibility_levelの現行状態確認を含む）
+  - https://bazel.build/rules/lib/globals/module.html
 - Dart pub, PubGrub solver design
   - https://github.com/dart-lang/pub/blob/master/doc/solver.md
+
+- 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
