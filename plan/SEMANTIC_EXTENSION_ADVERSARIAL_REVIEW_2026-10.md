@@ -136,6 +136,15 @@ providerの`implements`宣言だけでは適合済みと扱わない。
 
 同じInterfaceを複数providerが満たす場合も、明示的なselection policyまたはAccepted wiringが無ければ、package IDやversion順で暗黙選択しない。
 
+### 2026-10-05 Reference candidate
+
+PR #927ではA2の反例に対し、Semantic Interfaceをversioned contractとしてReference実装へ追加した。contractはidentity、version、正規化fingerprint、input / output semantics、unknown / failure semantics、provider conformance profileを持つ。
+
+provider descriptorはInterface名だけでなくexact contract versionとcontract fingerprintを宣言する。ただし、この宣言だけではprovider候補として採用しない。resolverへ別入力のConformance Evidenceが必要であり、そのEvidenceはprovider、Interface、exact contract fingerprint、conformance profileに結び付く。
+
+複数の適合providerが存在する場合、package IDやversion順では選ばない。明示wiringが無ければUnresolvedにし、明示wiringもexact contractとConformance条件を満たすproviderだけを受け入れる。provider wiringはSemantic resolution identityに含め、Conformance Evidence自体のfingerprintはEvidence identityへ分離する。
+
+これにより「同じInterface文字列を名乗ればproviderになれる」という反例はReference candidate上では塞いだ。一方、Conformance Evidenceの発行Authority、実際のevaluator conformance suite、SUI hierarchyを使った実consumer pressureは未実証である。A2をProduction上の解消済みBlockerとはまだ扱わない。
 ## 5. A3 — namespace ownershipをfirst claimantへ与えない
 
 現行Referenceは複数Extensionが同じnamespaceを所有する場合をUnresolvedにできる。一方、まだ誰も宣言していないnamespaceでは、最初のExtensionがその名前を使える。
@@ -156,6 +165,11 @@ namespaceはCatalog内の競合検出だけでなく、authorityの問題であ�
 - subnamespace委譲が必要なら、ownerからの明示delegateとして表す。
 - semantic identityとpackage distribution sourceを分ける。
 
+### 2026-10-05 Reference boundary
+
+PR #927では、Acceptedなstandard authority / delegate metadataが存在しない現段階で、Extension descriptorによる`std` / `std.*` namespace宣言を全面的に拒否するReference境界を追加した。したがって、第三者ExtensionがCatalogへ先に現れるだけで`std.*`を取得するfirst claimant経路は候補実装上では成立しない。
+
+この対応はnamespace authorityの最終モデルではない。standard Extensionを正当に宣言するAuthority、subnamespace委譲、publisher / Source trustとの関係はまだ実装していない。ReferenceではAuthorityが無い状態をfail closedにしただけなので、A3もProduction上の解消済みBlockerとは扱わない。
 ## 6. A4 — exact versionだけではlockにならない
 
 次が変わると、Extensionのexact versionが同じでも解釈やgraphが変わり得る。
