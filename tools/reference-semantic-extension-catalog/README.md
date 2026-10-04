@@ -95,11 +95,15 @@ CLIでは、必要に応じて`-interface-wiring FILE`と`-interface-conformance
 
 この形式もReference contractです。ProductionのPlugin manifestやSemantic Lock形式としてはまだ固定しません。
 
-## Standard namespaceの予約
+## Namespace authority
 
-`std`と`std.*`はstandard authority用に予約します。現在のReferenceにはstandard authorityやsubnamespace delegateを与えるAccepted metadataが無いため、Extension descriptorからの`std.*`宣言はすべて拒否します。
+`std`と`std.*`はstandard authority用に予約します。Extension descriptorがそのnamespaceを名乗るだけではownershipを得ません。Acceptedなnamespace authorityを別入力で与えた場合にだけ、指定したExtensionのsemantic contributionを公開します。
 
-これは将来の標準Extensionを禁止する設計ではありません。standard authorityとdelegateを外部のAccepted metadataとして表せるまでは、first claimantによるnamespace取得を許さないためのReference境界です。
+同じnamespaceを複数Extensionが宣言しても、読み込み順では決めません。authorityが無ければUnresolvedにし、authorityが一つのExtensionを選んだ場合も、他のclaimantは`namespace-authority-mismatch`として残します。Coreが既に所有するnamespaceをauthority入力で上書きすることもできません。
+
+namespace authorityのEvidence fingerprintはprovenanceとして`evidenceFingerprint`へ含めますが、同じnamespaceとownerに対するEvidence更新だけでは`resolutionFingerprint`を変えません。CLIでは`-namespace-authority FILE`を繰り返し指定できます。
+
+subnamespace delegateやpublisher trustの最終contractはまだ固定していません。Referenceでは、first claimantをAuthorityにしないことと、standard Extensionも外部のAccepted Authority Evidenceを必要とすることを先に検証します。
 ## Reference scenario
 
 testdataではCoreに存在しない次のkindを追加します。
