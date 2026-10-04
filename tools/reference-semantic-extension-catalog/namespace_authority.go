@@ -52,6 +52,7 @@ func isReservedStandardNamespace(namespace string) bool {
 
 func resolveNamespaceAuthorities(
 	selected map[string]ExtensionDescriptor,
+	coreNamespaces map[string]struct{},
 	grants []SemanticNamespaceAuthority,
 ) (
 	map[string]bool,
@@ -86,6 +87,26 @@ func resolveNamespaceAuthorities(
 	for _, namespace := range namespaces {
 		namespaceOwners := owners[namespace]
 		grant, hasGrant := accepted[namespace]
+		_, coreOwned := coreNamespaces[namespace]
+
+		if coreOwned {
+			if hasGrant {
+				usedGrants[namespace] = true
+			}
+			for _, owner := range namespaceOwners {
+				blocked[owner] = true
+			}
+			labels := append([]string{"core"}, namespaceOwners...)
+			unresolved = append(unresolved, CatalogUnresolved{
+				Code: "namespace-ownership-conflict",
+				Detail: fmt.Sprintf(
+					"namespace %q is already owned by core; extension claimants: %s",
+					namespace,
+					strings.Join(labels[1:], ", "),
+				),
+			})
+			continue
+		}
 
 		if isReservedStandardNamespace(namespace) && !hasGrant {
 			for _, owner := range namespaceOwners {
