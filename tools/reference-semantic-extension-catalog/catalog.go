@@ -79,6 +79,7 @@ type CoreCatalogInput struct {
 
 type SemanticCatalog struct {
 	Schema                     string                 `json:"schema"`
+	ResolutionPolicy           string                 `json:"resolutionPolicy"`
 	ResolutionFingerprint      string                 `json:"resolutionFingerprint"`
 	EvidenceFingerprint        string                 `json:"evidenceFingerprint"`
 	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
@@ -93,7 +94,10 @@ type SemanticCatalog struct {
 	AuthorityLimits        []string               `json:"authorityLimits"`
 }
 
-const catalogSchema = "tei.reference.semantic-catalog/v0"
+const (
+	catalogSchema             = "tei.reference.semantic-catalog/v0"
+	semanticResolutionPolicy  = "highest-compatible-complete-search/by-extension-id/v0"
+)
 
 func loadExtensionDescriptors(root string) ([]ExtensionDescriptor, error) {
 	var out []ExtensionDescriptor
@@ -417,6 +421,7 @@ func resolveSemanticCatalog(
 
 	catalog := SemanticCatalog{
 		Schema:                     catalogSchema,
+		ResolutionPolicy:           semanticResolutionPolicy,
 		CoreSubjectFingerprint:     core.SubjectFingerprint,
 		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
 		Requirements:               normalizedRoots,
