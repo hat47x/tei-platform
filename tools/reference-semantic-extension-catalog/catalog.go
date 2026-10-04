@@ -831,6 +831,7 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	}
 	for i := range catalog.InterfaceWirings {
 		catalog.InterfaceWirings[i].ConformanceEvidence = ""
+		catalog.InterfaceWirings[i].Selection = ""
 	}
 	for i := range catalog.NamespaceAuthorities {
 		catalog.NamespaceAuthorities[i].EvidenceFingerprint = ""
