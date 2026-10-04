@@ -95,8 +95,9 @@ type SemanticCatalog struct {
 	Extensions                 []CatalogExtension          `json:"extensions,omitempty"`
 	NamespaceAuthorities       []CatalogNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
 	Interfaces                 []CatalogSemanticInterface  `json:"interfaces,omitempty"`
-	InterfaceWirings           []CatalogInterfaceWiring  `json:"interfaceWirings,omitempty"`
-	Subjects                   []CatalogSubject          `json:"subjects"`
+	InterfaceWirings           []CatalogInterfaceWiring       `json:"interfaceWirings,omitempty"`
+	DependencyExplanations     []CatalogDependencyExplanation  `json:"dependencyExplanations,omitempty"`
+	Subjects                   []CatalogSubject               `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
 	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
 	Connections     []CatalogConnection `json:"connections,omitempty"`
@@ -530,6 +531,7 @@ func resolveSemanticCatalogWithAllInputs(
 		CoreSubjectFingerprint:     core.SubjectFingerprint,
 		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
 		Requirements:               normalizedRoots,
+		DependencyExplanations:     buildDependencyExplanations(selected, normalizedRoots),
 		Subjects:                    []CatalogSubject{},
 		AuthorityLimits: []string{
 			"catalog-is-not-canonical-authority",
@@ -853,6 +855,7 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	catalog.ResolutionFingerprint = ""
 	catalog.EvidenceFingerprint = ""
 	catalog.CoreSourceIndexFingerprint = ""
+	catalog.DependencyExplanations = nil
 	for i := range catalog.Extensions {
 		catalog.Extensions[i].Source = ""
 		catalog.Extensions[i].SourceFingerprint = ""
@@ -878,6 +881,7 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 func semanticCatalogEvidenceFingerprint(catalog SemanticCatalog) string {
 	catalog.ResolutionFingerprint = ""
 	catalog.EvidenceFingerprint = ""
+	catalog.DependencyExplanations = nil
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
