@@ -335,8 +335,7 @@ func validateExtensionDependencyAcyclic(
 	selected map[string]ExtensionDescriptor,
 ) error {
 	const (
-		unvisited = iota
-		visiting
+		visiting = iota + 1
 		visited
 	)
 	state := map[string]int{}
