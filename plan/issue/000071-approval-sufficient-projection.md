@@ -126,7 +126,7 @@ A5の権限変更とA6のnative code残存箇所には、現在のPreviewだけ�
 
 ReviewとAcceptの取り違えを防ぐため、`accept`には任意の`-expected-review-fingerprint`も追加した。Accept時にcurrent Reviewを再構築し、期待したfingerprintと違えばsource変更前にfail closedする。一致した場合は、`reviewBinding`としてfingerprintとcoverageをaccepted Decisionへ残し、`decisions`から会話履歴なしで再取得できる。
 
-Decision Indexでは、Review bindingの有無と構造を`recorded / none / invalid`、coverageを`complete / incomplete / none / invalid`として別に示す。`incomplete`の場合は、受理時に`partial`または`not-evaluated`だったA1〜A8も列挙する。これは「どのReviewへAcceptを結び付け、何が未充足だったか」を再入場時に探しやすくするための索引であり、人が実際にReviewを読んだことの証明ではない。Decision recordだけから元Projectionを再構築して真正性を主張することもしない。
+Decision Indexでは、Review bindingの有無と構造を`recorded / none / invalid`、coverageを`complete / incomplete / none / invalid`として別に示す。`incomplete`の場合は、受理時に`partial`または`not-evaluated`だったA1〜A8も列挙する。読み込み時は、file名に使ったSHA-256とrecord実内容を先に照合し、同じpathのまま書き換えられたrecordを拒否する。その後にJSON/schema、Source、Evidence、Review bindingを検査する。これは「どのReviewへAcceptを結び付け、何が未充足だったか」を再入場時に探しやすくするための索引であり、人が実際にReviewを読んだことの証明ではない。content-addressも署名ではなく、Decision recordだけから元Projectionや承認者の真正性を主張することはしない。
 
 このcandidate実装は、A1〜A8の採用判断や「承認に十分」という結論を先取りしない。`reviewFingerprint`と`reviewBinding`は提示内容とのbindingを表すが、human approvalそのものを証明するtokenではない。`previewAcceptable`もShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しない。exact-headのfull Repository-health PASSもまだ取得していないため、下記の完了条件は現時点では更新しない。
 
