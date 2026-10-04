@@ -294,7 +294,11 @@ Semantic LockはSource / Conformance / namespace Authority Evidenceのfingerprin
 
 CLIには`-semantic-lock-out`と`-verify-semantic-lock`を追加した。後者が保証するのはexact graphの`semanticReplayValid`であり、現在のConformance Evidence、namespace Authority Evidence、publisher trust、Runtime Authorityの有効性ではない。A10のsupply-chain trust境界と混同しない。
 
-このlock形式もReference candidateである。exact-head focused testとrepository healthを未実行であり、Accepted source側のExtension参照、lockのShared Acceptance接続、current Evidence再検証も未実証なのでE0-Cの完了状態は更新しない。
+current Evidenceについては、`-verify-semantic-lock-evidence`を追加した。semantic replayが成功した後、lockへ固定したprovider / Interface contract / conformance profileと、namespace / ownerに対応するAccepted Evidenceが現在の入力に存在することを別に確認する。Evidence fingerprint自体はmeaning identityへ固定しないため、同じcontract / profileまたはnamespace / ownerに対するEvidence更新をsemantic changeにはしない。
+
+この検査が確認するのはlockとAccepted Evidenceの結び付きまでである。Conformance Evidenceやnamespace Authority Evidenceを誰が発行できるか、publisher trustをどう検証するかは引き続き未実証である。
+
+このlock形式もReference candidateである。exact-head focused testとrepository healthを未実行であり、Accepted source側のExtension参照、lockのShared Acceptance接続、Evidence発行Authority / supply-chain trustも未実証なのでE0-Cの完了状態は更新しない。
 ## E1 — deterministic evaluator boundary
 
 E0成立後、H1〜H4のうちCore declarative primitiveだけでは評価できないものについて、deterministic evaluator boundaryを追加します。
