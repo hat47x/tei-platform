@@ -208,6 +208,15 @@ Semantic Lockまたは同等表現へ、少なくとも次を含める。
 
 root requirementsまたはpolicyが変わった場合は、既存lockをそのまま有効とは扱わず、candidate re-resolutionとShared Acceptanceへ進める。
 
+### 2026-10-05 Semantic Lock candidate
+
+PR #927ではA4の反例に対し、Unresolvedが0のresolved catalogからだけ作成できるReference用Semantic Lockを追加した。lockはexact Extension versionだけでなく、root requirementsとfingerprint、resolution policy、canonicalization policy、Core subject fingerprint、descriptor fingerprint、namespace owner、Semantic Interface contract fingerprint、provider wiring、Semantic Set fingerprintを保持する。
+
+lockのsemantic replayでは、available Catalogを通常のresolverで再解決しない。lockに固定されたexact versionを取り出してgraphを再構成する。このため、新しいcompatible versionがCatalogへ追加されたことだけではAccepted Semantic Setを自動更新しない。同一versionのdeclaration drift、root requirement drift、policy / canonicalization drift、wiring / owner driftは拒否する。
+
+Source、Conformance、namespace AuthorityのEvidence fingerprintはSemantic Lockのmeaning identityへ含めない。同じsemantic graphに対するEvidence更新でSemantic Set fingerprintを変えない一方、Evidenceの現在性は別の検証責務として残す。CLIの検証結果も`semanticReplayValid`とし、current trust / Authorityまで有効であるという表現を避ける。
+
+これにより「exact package versionだけをlockとする」反例はReference candidate上で縮小した。ただしlockのShared Acceptance接続、Accepted source側のExtension参照、current Evidence / supply-chain trustの再検証、exact-head executable Evidenceは未成立である。A4をProduction上の解消済みBlockerとはまだ扱わない。
 ## 7. A5 — EvaluatorをEnvironmentへ任せるとmeaningが揺れる
 
 現行ISSUE-000077には、同じSemantic Extensionを複数Pluginが評価でき、EnvironmentがCapability negotiationで実装を選べる案がある。
