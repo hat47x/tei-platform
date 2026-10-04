@@ -134,6 +134,275 @@ func TestReferenceCatalogSelectsHighestCompatibleVersionDeterministically(t *tes
 	}
 }
 
+func TestReferenceCatalogBacktracksFromGreedyFalseConflict(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.x",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.y",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.x",
+			Namespace: "x",
+			Version:   "1.2.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.x",
+			Namespace: "x",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.y",
+			Namespace: "y",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "2.0.0",
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "1.0.0",
+		},
+	}
+
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.a", CompatibleMajor: 1},
+			{Extension: "tei.reference.b", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	versions := map[string]string{}
+	for _, extension := range catalog.Extensions {
+		versions[extension.ID] = extension.Version
+	}
+	if got := versions["tei.reference.x"]; got != "1.1.0" {
+		t.Fatalf("resolver kept greedy x version %q; want 1.1.0", got)
+	}
+	if got := versions["tei.reference.z"]; got != "1.0.0" {
+		t.Fatalf("resolver kept incompatible z version %q; want 1.0.0", got)
+	}
+}
+
+func TestReferenceCatalogBacktrackingIsIndependentOfInputOrder(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.x",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.y",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.x",
+			Namespace: "x",
+			Version:   "1.2.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 2,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.x",
+			Namespace: "x",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.y",
+			Namespace: "y",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.z",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "2.0.0",
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.z",
+			Namespace: "z",
+			Version:   "1.0.0",
+		},
+	}
+	roots := []ExtensionRequirement{
+		{Extension: "tei.reference.a", CompatibleMajor: 1},
+		{Extension: "tei.reference.b", CompatibleMajor: 1},
+	}
+	left, err := resolveSemanticCatalog(CoreCatalogInput{}, descriptors, roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reversedDescriptors := append([]ExtensionDescriptor(nil), descriptors...)
+	for i, j := 0, len(reversedDescriptors)-1; i < j; i, j = i+1, j-1 {
+		reversedDescriptors[i], reversedDescriptors[j] = reversedDescriptors[j], reversedDescriptors[i]
+	}
+	reversedRoots := []ExtensionRequirement{roots[1], roots[0]}
+	right, err := resolveSemanticCatalog(CoreCatalogInput{}, reversedDescriptors, reversedRoots)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if left.ResolutionFingerprint != right.ResolutionFingerprint {
+		t.Fatalf(
+			"backtracking depends on input order: %s != %s",
+			left.ResolutionFingerprint,
+			right.ResolutionFingerprint,
+		)
+	}
+	if !reflect.DeepEqual(left.Extensions, right.Extensions) {
+		t.Fatalf("resolved extension set depends on input order: left=%+v right=%+v", left.Extensions, right.Extensions)
+	}
+}
+
+func TestReferenceCatalogBacktracksAroundVersionSpecificDependencyCycle(t *testing.T) {
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.1.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.b",
+				CompatibleMajor: 1,
+			}},
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.a",
+			Namespace: "a",
+			Version:   "1.0.0",
+		},
+		{
+			Schema:    extensionSchema,
+			ID:        "tei.reference.b",
+			Namespace: "b",
+			Version:   "1.0.0",
+			Requires: []ExtensionRequirement{{
+				Extension:       "tei.reference.a",
+				CompatibleMajor: 1,
+			}},
+		},
+	}
+
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		descriptors,
+		[]ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Extensions) != 1 ||
+		catalog.Extensions[0].ID != "tei.reference.a" ||
+		catalog.Extensions[0].Version != "1.0.0" {
+		t.Fatalf("resolver did not backtrack away from dependency cycle: %+v", catalog.Extensions)
+	}
+}
+
+func TestReferenceCatalogRejectsDependencyCycleWhenNoAlternativeExists(t *testing.T) {
+	a := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.a",
+		Namespace: "a",
+		Version:   "1.0.0",
+		Requires: []ExtensionRequirement{{
+			Extension:       "tei.reference.b",
+			CompatibleMajor: 1,
+		}},
+	}
+	b := ExtensionDescriptor{
+		Schema:    extensionSchema,
+		ID:        "tei.reference.b",
+		Namespace: "b",
+		Version:   "1.0.0",
+		Requires: []ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+	}
+
+	_, err := resolveSemanticCatalog(
+		CoreCatalogInput{},
+		[]ExtensionDescriptor{a, b},
+		[]ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+	)
+	if err == nil || !strings.Contains(err.Error(), "dependency cycle") {
+		t.Fatalf("dependency cycle was not rejected: %v", err)
+	}
+}
+
 func TestReferenceCatalogRejectsIncompatibleDependency(t *testing.T) {
 	root := ExtensionDescriptor{
 		Schema:    extensionSchema,
