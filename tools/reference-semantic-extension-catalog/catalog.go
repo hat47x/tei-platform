@@ -89,8 +89,9 @@ type SemanticCatalog struct {
 	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
 	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
 	Requirements               []ExtensionRequirement    `json:"requirements"`
-	Extensions                 []CatalogExtension        `json:"extensions,omitempty"`
-	Interfaces                 []CatalogSemanticInterface `json:"interfaces,omitempty"`
+	Extensions                 []CatalogExtension          `json:"extensions,omitempty"`
+	NamespaceAuthorities       []CatalogNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
+	Interfaces                 []CatalogSemanticInterface  `json:"interfaces,omitempty"`
 	InterfaceWirings           []CatalogInterfaceWiring  `json:"interfaceWirings,omitempty"`
 	Subjects                   []CatalogSubject          `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
@@ -469,6 +470,24 @@ func resolveSemanticCatalogWithInterfaceInputs(
 	interfaceWirings []SemanticInterfaceWiring,
 	interfaceConformance []SemanticInterfaceConformance,
 ) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithAllInputs(
+		core,
+		descriptors,
+		roots,
+		interfaceWirings,
+		interfaceConformance,
+		nil,
+	)
+}
+
+func resolveSemanticCatalogWithAllInputs(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+	interfaceConformance []SemanticInterfaceConformance,
+	namespaceAuthorities []SemanticNamespaceAuthority,
+) (SemanticCatalog, error) {
 	normalized := make([]ExtensionDescriptor, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		value, err := normalizeDescriptor(descriptor)
@@ -537,31 +556,19 @@ func resolveSemanticCatalogWithInterfaceInputs(
 	}
 	sort.Strings(ids)
 
-	namespaceOwners := map[string][]string{}
+	coreNamespaces := map[string]struct{}{}
 	for _, coreSubject := range core.Subjects {
 		if coreSubject.Kind == "semantic" {
-			namespaceOwners[coreSubject.ID] = append(namespaceOwners[coreSubject.ID], "core")
+			coreNamespaces[coreSubject.ID] = struct{}{}
 		}
 	}
-	for _, id := range ids {
-		namespaceOwners[selected[id].Namespace] = append(namespaceOwners[selected[id].Namespace], id)
+	blockedExtensions, namespaceAuthoritiesResolved, namespaceUnresolved, err :=
+		resolveNamespaceAuthorities(selected, coreNamespaces, namespaceAuthorities)
+	if err != nil {
+		return SemanticCatalog{}, err
 	}
-	blockedExtensions := map[string]bool{}
-	for namespace, owners := range namespaceOwners {
-		if len(owners) < 2 {
-			continue
-		}
-		sort.Strings(owners)
-		for _, owner := range owners {
-			if owner != "core" {
-				blockedExtensions[owner] = true
-			}
-		}
-		catalog.Unresolved = append(catalog.Unresolved, CatalogUnresolved{
-			Code:   "namespace-ownership-conflict",
-			Detail: fmt.Sprintf("namespace %q has multiple owners: %s", namespace, strings.Join(owners, ", ")),
-		})
-	}
+	catalog.NamespaceAuthorities = namespaceAuthoritiesResolved
+	catalog.Unresolved = append(catalog.Unresolved, namespaceUnresolved...)
 
 	interfaces, interfaceWiringsResolved, interfaceUnresolved, err := resolveSemanticInterfaces(
 		selected,
@@ -824,6 +831,9 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	}
 	for i := range catalog.InterfaceWirings {
 		catalog.InterfaceWirings[i].ConformanceEvidence = ""
+	}
+	for i := range catalog.NamespaceAuthorities {
+		catalog.NamespaceAuthorities[i].EvidenceFingerprint = ""
 	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
