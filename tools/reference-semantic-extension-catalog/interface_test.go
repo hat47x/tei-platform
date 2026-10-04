@@ -264,3 +264,47 @@ func catalogHasUnresolvedCode(catalog SemanticCatalog, code string) bool {
 	}
 	return false
 }
+
+
+func TestSemanticInterfaceConformanceIdentityIncludesExactContract(t *testing.T) {
+	first := SemanticInterfaceConformance{
+		ProviderExtension:   "tei.reference.provider-a",
+		Interface:           "reference.interface.acyclic",
+		ContractFingerprint: "sha256:" + strings.Repeat("a", 64),
+		Profile:             "reference.conformance.acyclic-v1",
+		EvidenceFingerprint: "sha256:" + strings.Repeat("c", 64),
+	}
+	second := SemanticInterfaceConformance{
+		ProviderExtension:   first.ProviderExtension,
+		Interface:           first.Interface,
+		ContractFingerprint: "sha256:" + strings.Repeat("b", 64),
+		Profile:             "reference.conformance.acyclic-v2",
+		EvidenceFingerprint: "sha256:" + strings.Repeat("d", 64),
+	}
+
+	normalized, err := normalizeSemanticInterfaceConformance(
+		[]SemanticInterfaceConformance{first, second},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(normalized) != 2 {
+		t.Fatalf("distinct contract conformance Evidence collapsed: %+v", normalized)
+	}
+	if got := normalized[semanticInterfaceConformanceKey(
+		first.ProviderExtension,
+		first.Interface,
+		first.ContractFingerprint,
+		first.Profile,
+	)]; got != first {
+		t.Fatalf("first contract conformance missing: %+v", got)
+	}
+	if got := normalized[semanticInterfaceConformanceKey(
+		second.ProviderExtension,
+		second.Interface,
+		second.ContractFingerprint,
+		second.Profile,
+	)]; got != second {
+		t.Fatalf("second contract conformance missing: %+v", got)
+	}
+}
