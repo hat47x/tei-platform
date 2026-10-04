@@ -407,6 +407,16 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		if err != nil {
 			return index, err
 		}
+		sum := sha256.Sum256(content)
+		expectedName := hex.EncodeToString(sum[:]) + ".json"
+		if name != expectedName {
+			return index, fmt.Errorf(
+				"decision record %s: content hashがfile名と一致しません: expected=%s actual=%s",
+				rel,
+				expectedName,
+				name,
+			)
+		}
 		var d Decision
 		decoder := json.NewDecoder(bytes.NewReader(content))
 		decoder.DisallowUnknownFields()
