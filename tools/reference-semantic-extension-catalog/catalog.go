@@ -450,7 +450,7 @@ func resolveSemanticCatalog(
 	descriptors []ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (SemanticCatalog, error) {
-	return resolveSemanticCatalogWithInterfaceWiring(core, descriptors, roots, nil)
+	return resolveSemanticCatalogWithInterfaceInputs(core, descriptors, roots, nil, nil)
 }
 
 func resolveSemanticCatalogWithInterfaceWiring(
@@ -458,6 +458,16 @@ func resolveSemanticCatalogWithInterfaceWiring(
 	descriptors []ExtensionDescriptor,
 	roots []ExtensionRequirement,
 	interfaceWirings []SemanticInterfaceWiring,
+) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithInterfaceInputs(core, descriptors, roots, interfaceWirings, nil)
+}
+
+func resolveSemanticCatalogWithInterfaceInputs(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+	interfaceConformance []SemanticInterfaceConformance,
 ) (SemanticCatalog, error) {
 	normalized := make([]ExtensionDescriptor, 0, len(descriptors))
 	for _, descriptor := range descriptors {
@@ -557,6 +567,7 @@ func resolveSemanticCatalogWithInterfaceWiring(
 		selected,
 		blockedExtensions,
 		interfaceWirings,
+		interfaceConformance,
 	)
 	if err != nil {
 		return SemanticCatalog{}, err
@@ -806,6 +817,10 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	}
 	for i := range catalog.Subjects {
 		catalog.Subjects[i].Sources = nil
+	}
+	for i := range catalog.Interfaces {
+		catalog.Interfaces[i].Source = ""
+		catalog.Interfaces[i].SourceFingerprint = ""
 	}
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
