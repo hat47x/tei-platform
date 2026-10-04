@@ -357,7 +357,8 @@ func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
 	}
 	record := index.Records[0]
 	if record.ReviewBindingStatus != "invalid" ||
-		record.ReviewCoverageStatus != "invalid" {
+		record.ReviewCoverageStatus != "invalid" ||
+		len(record.ReviewIncomplete) != 0 {
 		t.Fatalf(
 			"binding=%q coverage=%q diagnostics=%+v",
 			record.ReviewBindingStatus,
