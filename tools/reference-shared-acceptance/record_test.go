@@ -214,21 +214,17 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 		t.Fatalf("accepted decision lacks bound Evidence identity: %+v", decision)
 	}
 
-	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
-	content, err := os.ReadFile(path)
-	if err != nil {
+	// 元のcontent-addressed recordを外し、Evidence本文だけを書き換えた別recordを
+	// recordDecisionで正しいcontent addressへ保存する。file名の改ざん検査を通過した後も、
+	// Evidence本文とevidenceFingerprintの不一致を検出できる必要がある。
+	if err := os.Remove(filepath.Join(dir, filepath.FromSlash(decision.RecordPath))); err != nil {
 		t.Fatal(err)
 	}
-	var tampered Decision
-	if err := json.Unmarshal(content, &tampered); err != nil {
-		t.Fatal(err)
-	}
+	tampered := decision
+	tampered.RecordPath = ""
+	tampered.Evidence = append([]Evidence(nil), decision.Evidence...)
 	tampered.Evidence[0].Note = tampered.Evidence[0].Note + " tampered"
-	encoded, err := encodeJSON(tampered)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+	if _, err := recordDecision(dir, tampered); err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,6 +244,36 @@ func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
 		t.Fatalf("fingerprint mismatch diagnostic is absent: %v", codes)
 	}
 }
+
+func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var tampered Decision
+	if err := json.Unmarshal(content, &tampered); err != nil {
+		t.Fatal(err)
+	}
+	tampered.Intent += " tampered"
+	encoded, err := encodeJSON(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadDecisionRecords(dir); err == nil {
+		t.Fatal("content-addressed decision recordのin-place改ざんを拒否していません")
+	} else if !strings.Contains(err.Error(), "content hashがfile名と一致しません") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 
 // 記録はauthorityではない。消しても、偽物を置いても、accepted meaningとmodel revisionは動かない。
 func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
