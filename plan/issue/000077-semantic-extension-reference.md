@@ -244,6 +244,8 @@ SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなde
 
 Productionの`internal/plugin.ResolveEnvironment`も、2026-10-04時点ではhighest-compatibleを先に固定するDFSを使っています。同じ種類のfalse conflictを起こし得ますが、Semantic resolutionとRuntime Plugin resolutionは別scopeとして維持します。PR #927でReferenceの解法とnegative controlを確定した後、同じ反例をRuntime Plugin resolverへ適用し、共通solver primitiveへ寄せるべきか、別実装のまま同じConformanceを要求するべきかを判断します。Referenceが通る前にProduction resolverを同時変更しません。
 
+PR #927では、複数の有効解がある場合の選択規則も隠れた探索順にしないため、Reference catalogへ`resolutionPolicy`を追加しました。現在のcandidate policyは`highest-compatible-complete-search/by-extension-id/v0`です。policy identityをSemantic resolution fingerprintへ含め、policy変更を意味解決上の差として検出します。このpolicy名や規則自体はReference candidateであり、ADR成立前にProduction contractへ固定しません。
+
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
