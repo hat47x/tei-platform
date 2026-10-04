@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -17,6 +19,15 @@ func cliRun(t *testing.T, args ...string) (int, string, string) {
 	var stdout, stderr bytes.Buffer
 	code := runCLI(args, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
+}
+
+func writeRawDecisionRecord(t *testing.T, root, content string) string {
+	t.Helper()
+	sum := sha256.Sum256([]byte(content))
+	name := hex.EncodeToString(sum[:]) + ".json"
+	path := filepath.Join(root, filepath.FromSlash(decisionDir), name)
+	writeFile(t, path, content)
+	return path
 }
 
 func candidateFile(t *testing.T, c Candidate) string {
@@ -500,7 +511,7 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := scratchWorkspaceBeforeSecondApplication(t)
 			acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
-			writeFile(t, filepath.Join(dir, filepath.FromSlash(decisionDir), "broken.json"), content)
+			writeRawDecisionRecord(t, dir, content)
 
 			if code, _, _ := cliRun(t, "decisions", "-workspace", dir); code == 0 {
 				t.Fatal("読めない記録を黙って飛ばしています")
