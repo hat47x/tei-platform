@@ -1,6 +1,6 @@
 # ISSUE-000077: Semantic ExtensionをCore変更なしで追加できる最小Referenceを実証する
 
-- 状態: Ready
+- 状態: In Progress — E0 candidate統合済み、敵対的dependency pressureを追加中
 - 起点: RQ-031 / RQ-032 / RQ-033、PR #919
 - 関連: ISSUE-000040 / ISSUE-000047 / ISSUE-000052
 - Product value: 固定モデルではなく、後から意味体系を安全に追加・合成できること
