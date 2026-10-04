@@ -198,6 +198,186 @@ func sourceIndexSubjects(index sourceindex.Index) []subject.Subject {
 	return out
 }
 
+func resolveExtensionSelection(
+	byID map[string][]ExtensionDescriptor,
+	roots []ExtensionRequirement,
+) (map[string]ExtensionDescriptor, error) {
+	constraints := map[string]map[int]struct{}{}
+	for _, root := range roots {
+		addExtensionConstraint(constraints, root)
+	}
+	return searchExtensionSelection(byID, map[string]ExtensionDescriptor{}, constraints)
+}
+
+func searchExtensionSelection(
+	byID map[string][]ExtensionDescriptor,
+	selected map[string]ExtensionDescriptor,
+	constraints map[string]map[int]struct{},
+) (map[string]ExtensionDescriptor, error) {
+	var ids []string
+	for id := range constraints {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	var unresolvedID string
+	var unresolvedMajor int
+	for _, id := range ids {
+		majors := constraints[id]
+		if len(majors) != 1 {
+			values := make([]int, 0, len(majors))
+			for major := range majors {
+				values = append(values, major)
+			}
+			sort.Ints(values)
+			return nil, fmt.Errorf("extension %s requires incompatible majors %v", id, values)
+		}
+		var major int
+		for value := range majors {
+			major = value
+		}
+		if existing, ok := selected[id]; ok {
+			if !compatibleMajor(existing.Version, major) {
+				return nil, fmt.Errorf(
+					"extension %s already resolved to %s, incompatible with required major %d",
+					id,
+					existing.Version,
+					major,
+				)
+			}
+			continue
+		}
+		unresolvedID = id
+		unresolvedMajor = major
+		break
+	}
+
+	if unresolvedID == "" {
+		if err := validateExtensionDependencyAcyclic(selected); err != nil {
+			return nil, err
+		}
+		return selected, nil
+	}
+
+	var compatible []ExtensionDescriptor
+	for _, descriptor := range byID[unresolvedID] {
+		if compatibleMajor(descriptor.Version, unresolvedMajor) {
+			compatible = append(compatible, descriptor)
+		}
+	}
+	if len(compatible) == 0 {
+		return nil, fmt.Errorf(
+			"no semantic extension %s compatible with major %d",
+			unresolvedID,
+			unresolvedMajor,
+		)
+	}
+
+	var lastErr error
+	for _, candidate := range compatible {
+		nextSelected := cloneExtensionSelection(selected)
+		nextSelected[unresolvedID] = candidate
+		nextConstraints := cloneExtensionConstraints(constraints)
+		for _, child := range candidate.Requires {
+			addExtensionConstraint(nextConstraints, child)
+		}
+
+		resolved, err := searchExtensionSelection(byID, nextSelected, nextConstraints)
+		if err == nil {
+			return resolved, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf(
+		"no globally compatible semantic extension %s for major %d: %w",
+		unresolvedID,
+		unresolvedMajor,
+		lastErr,
+	)
+}
+
+func addExtensionConstraint(
+	constraints map[string]map[int]struct{},
+	requirement ExtensionRequirement,
+) {
+	if constraints[requirement.Extension] == nil {
+		constraints[requirement.Extension] = map[int]struct{}{}
+	}
+	constraints[requirement.Extension][requirement.CompatibleMajor] = struct{}{}
+}
+
+func cloneExtensionSelection(
+	values map[string]ExtensionDescriptor,
+) map[string]ExtensionDescriptor {
+	out := make(map[string]ExtensionDescriptor, len(values))
+	for key, value := range values {
+		out[key] = value
+	}
+	return out
+}
+
+func cloneExtensionConstraints(
+	values map[string]map[int]struct{},
+) map[string]map[int]struct{} {
+	out := make(map[string]map[int]struct{}, len(values))
+	for id, majors := range values {
+		copyMajors := make(map[int]struct{}, len(majors))
+		for major := range majors {
+			copyMajors[major] = struct{}{}
+		}
+		out[id] = copyMajors
+	}
+	return out
+}
+
+func validateExtensionDependencyAcyclic(
+	selected map[string]ExtensionDescriptor,
+) error {
+	const (
+		unvisited = iota
+		visiting
+		visited
+	)
+	state := map[string]int{}
+	var visit func(string) error
+	visit = func(id string) error {
+		switch state[id] {
+		case visiting:
+			return fmt.Errorf("extension dependency cycle at %s", id)
+		case visited:
+			return nil
+		}
+
+		state[id] = visiting
+		descriptor, ok := selected[id]
+		if ok {
+			for _, requirement := range descriptor.Requires {
+				if _, selectedDependency := selected[requirement.Extension]; !selectedDependency {
+					continue
+				}
+				if err := visit(requirement.Extension); err != nil {
+					return err
+				}
+			}
+		}
+		state[id] = visited
+		return nil
+	}
+
+	var ids []string
+	for id := range selected {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if err := visit(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func resolveSemanticCatalog(
 	core CoreCatalogInput,
 	descriptors []ExtensionDescriptor,
@@ -227,62 +407,13 @@ func resolveSemanticCatalog(
 		}
 	}
 
-	selected := map[string]ExtensionDescriptor{}
-	visiting := map[string]bool{}
-	var visit func(ExtensionRequirement) error
-	visit = func(requirement ExtensionRequirement) error {
-		requirement.Extension = strings.TrimSpace(requirement.Extension)
-		if requirement.Extension == "" || requirement.CompatibleMajor < 0 {
-			return fmt.Errorf("invalid extension requirement")
-		}
-		if existing, ok := selected[requirement.Extension]; ok {
-			if !compatibleMajor(existing.Version, requirement.CompatibleMajor) {
-				return fmt.Errorf(
-					"extension %s already resolved to %s, incompatible with required major %d",
-					requirement.Extension,
-					existing.Version,
-					requirement.CompatibleMajor,
-				)
-			}
-			return nil
-		}
-		if visiting[requirement.Extension] {
-			return fmt.Errorf("extension dependency cycle at %s", requirement.Extension)
-		}
-		var match *ExtensionDescriptor
-		for i := range byID[requirement.Extension] {
-			if compatibleMajor(byID[requirement.Extension][i].Version, requirement.CompatibleMajor) {
-				copy := byID[requirement.Extension][i]
-				match = &copy
-				break
-			}
-		}
-		if match == nil {
-			return fmt.Errorf(
-				"no semantic extension %s compatible with major %d",
-				requirement.Extension,
-				requirement.CompatibleMajor,
-			)
-		}
-		visiting[requirement.Extension] = true
-		for _, child := range match.Requires {
-			if err := visit(child); err != nil {
-				return fmt.Errorf("extension %s requires: %w", match.ID, err)
-			}
-		}
-		visiting[requirement.Extension] = false
-		selected[match.ID] = *match
-		return nil
-	}
-
 	normalizedRoots, err := normalizeRootRequirements(roots)
 	if err != nil {
 		return SemanticCatalog{}, err
 	}
-	for _, root := range normalizedRoots {
-		if err := visit(root); err != nil {
-			return SemanticCatalog{}, err
-		}
+	selected, err := resolveExtensionSelection(byID, normalizedRoots)
+	if err != nil {
+		return SemanticCatalog{}, err
 	}
 
 	catalog := SemanticCatalog{
