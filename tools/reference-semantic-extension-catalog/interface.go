@@ -28,7 +28,14 @@ type SemanticInterfaceProvider struct {
 	Interface           string `json:"interface"`
 	ContractVersion     string `json:"contractVersion"`
 	ContractFingerprint string `json:"contractFingerprint"`
-	ConformanceRef      string `json:"conformanceRef"`
+}
+
+type SemanticInterfaceConformance struct {
+	ProviderExtension   string `json:"providerExtension"`
+	Interface           string `json:"interface"`
+	ContractFingerprint string `json:"contractFingerprint"`
+	Profile             string `json:"profile"`
+	EvidenceFingerprint string `json:"evidenceFingerprint"`
 }
 
 type SemanticInterfaceWiring struct {
@@ -56,9 +63,10 @@ type CatalogInterfaceWiring struct {
 	Interface           string `json:"interface"`
 	ContractVersion     string `json:"contractVersion"`
 	ContractFingerprint string `json:"contractFingerprint"`
-	ProviderExtension   string `json:"providerExtension"`
-	ProviderConformance string `json:"providerConformance"`
-	Selection           string `json:"selection"`
+	ProviderExtension          string `json:"providerExtension"`
+	ProviderConformanceProfile string `json:"providerConformanceProfile"`
+	ConformanceEvidence        string `json:"conformanceEvidenceFingerprint"`
+	Selection                  string `json:"selection"`
 }
 
 func normalizeSemanticInterfaceDeclarations(d *ExtensionDescriptor) error {
@@ -124,9 +132,8 @@ func normalizeSemanticInterfaceDeclarations(d *ExtensionDescriptor) error {
 		provider.Interface = strings.TrimSpace(provider.Interface)
 		provider.ContractVersion = strings.TrimSpace(provider.ContractVersion)
 		provider.ContractFingerprint = strings.TrimSpace(provider.ContractFingerprint)
-		provider.ConformanceRef = strings.TrimSpace(provider.ConformanceRef)
 		if provider.Interface == "" || provider.ContractVersion == "" ||
-			!validSHA256Fingerprint(provider.ContractFingerprint) || provider.ConformanceRef == "" {
+			!validSHA256Fingerprint(provider.ContractFingerprint) {
 			return fmt.Errorf("extension %s has incomplete semantic interface provider[%d]", d.ID, i)
 		}
 		if _, err := parseVersion(provider.ContractVersion); err != nil {
@@ -202,8 +209,13 @@ func resolveSemanticInterfaces(
 	selected map[string]ExtensionDescriptor,
 	blockedExtensions map[string]bool,
 	wirings []SemanticInterfaceWiring,
+	conformances []SemanticInterfaceConformance,
 ) ([]CatalogSemanticInterface, []CatalogInterfaceWiring, []CatalogUnresolved, error) {
 	explicit, err := normalizeSemanticInterfaceWirings(wirings)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	verifiedConformance, err := normalizeSemanticInterfaceConformance(conformances)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -296,6 +308,8 @@ func resolveSemanticInterfaces(
 				requirement.Interface,
 				contractOwner.Contract.Version,
 				contractFingerprint,
+				contractOwner.Contract.ProviderConformanceRef,
+				verifiedConformance,
 			)
 			unresolved = append(unresolved, providerDiagnostics...)
 
@@ -326,6 +340,7 @@ func resolveSemanticInterfaces(
 					contractFingerprint,
 					provider.Extension,
 					provider.Provider,
+					verifiedConformance[semanticInterfaceConformanceKey(provider.Extension.ID, requirement.Interface)],
 					"explicit",
 				))
 				continue
@@ -351,6 +366,7 @@ func resolveSemanticInterfaces(
 					contractFingerprint,
 					validProviders[0].Extension,
 					validProviders[0].Provider,
+					verifiedConformance[semanticInterfaceConformanceKey(validProviders[0].Extension.ID, requirement.Interface)],
 					"unique-provider",
 				))
 			default:
@@ -431,6 +447,8 @@ func interfaceProvidersForContract(
 	interfaceID string,
 	contractVersion string,
 	contractFingerprint string,
+	conformanceProfile string,
+	conformances map[string]SemanticInterfaceConformance,
 ) ([]semanticInterfaceProviderCandidate, []CatalogUnresolved) {
 	var ids []string
 	for id := range selected {
@@ -464,6 +482,25 @@ func interfaceProvidersForContract(
 						interfaceID,
 						contractVersion,
 						contractFingerprint,
+					),
+				})
+				continue
+			}
+			conformanceKey := semanticInterfaceConformanceKey(descriptor.ID, interfaceID)
+			conformance, ok := conformances[conformanceKey]
+			if !ok ||
+				conformance.ContractFingerprint != contractFingerprint ||
+				conformance.Profile != conformanceProfile {
+				identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
+				unresolved = append(unresolved, CatalogUnresolved{
+					Code:      "interface-provider-conformance-unverified",
+					Extension: &identity,
+					Detail: fmt.Sprintf(
+						"%s has no accepted conformance for %s fingerprint %s profile %s",
+						descriptor.ID,
+						interfaceID,
+						contractFingerprint,
+						conformanceProfile,
 					),
 				})
 				continue
@@ -543,15 +580,47 @@ func catalogInterfaceWiring(
 	contractFingerprint string,
 	providerExtension ExtensionDescriptor,
 	provider SemanticInterfaceProvider,
+	conformance SemanticInterfaceConformance,
 	selection string,
 ) CatalogInterfaceWiring {
 	return CatalogInterfaceWiring{
-		ConsumerExtension:   consumer.ID,
-		Interface:           contract.ID,
-		ContractVersion:     contract.Version,
-		ContractFingerprint: contractFingerprint,
-		ProviderExtension:   providerExtension.ID,
-		ProviderConformance: provider.ConformanceRef,
-		Selection:           selection,
+		ConsumerExtension:          consumer.ID,
+		Interface:                  contract.ID,
+		ContractVersion:            contract.Version,
+		ContractFingerprint:        contractFingerprint,
+		ProviderExtension:          providerExtension.ID,
+		ProviderConformanceProfile: conformance.Profile,
+		ConformanceEvidence:        conformance.EvidenceFingerprint,
+		Selection:                  selection,
 	}
+}
+
+
+func normalizeSemanticInterfaceConformance(
+	values []SemanticInterfaceConformance,
+) (map[string]SemanticInterfaceConformance, error) {
+	out := map[string]SemanticInterfaceConformance{}
+	for _, value := range values {
+		value.ProviderExtension = strings.TrimSpace(value.ProviderExtension)
+		value.Interface = strings.TrimSpace(value.Interface)
+		value.ContractFingerprint = strings.TrimSpace(value.ContractFingerprint)
+		value.Profile = strings.TrimSpace(value.Profile)
+		value.EvidenceFingerprint = strings.TrimSpace(value.EvidenceFingerprint)
+		if value.ProviderExtension == "" || value.Interface == "" ||
+			!validSHA256Fingerprint(value.ContractFingerprint) ||
+			value.Profile == "" ||
+			!validSHA256Fingerprint(value.EvidenceFingerprint) {
+			return nil, fmt.Errorf("semantic interface conformance requires exact provider, interface, contract fingerprint, profile, and evidence fingerprint")
+		}
+		key := semanticInterfaceConformanceKey(value.ProviderExtension, value.Interface)
+		if existing, ok := out[key]; ok && existing != value {
+			return nil, fmt.Errorf("semantic interface conformance %s is declared more than once with different evidence", key)
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+func semanticInterfaceConformanceKey(providerExtension, interfaceID string) string {
+	return fmt.Sprintf("%q|%q", providerExtension, interfaceID)
 }
