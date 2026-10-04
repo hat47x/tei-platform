@@ -1,11 +1,12 @@
 # ISSUE-000077: Semantic ExtensionをCore変更なしで追加できる最小Referenceを実証する
 
-- 状態: Ready
+- 状態: In Progress — E0 candidate統合済み、敵対的dependency pressureを追加中
 - 起点: RQ-031 / RQ-032 / RQ-033、PR #919
 - 関連: ISSUE-000040 / ISSUE-000047 / ISSUE-000052
 - Product value: 固定モデルではなく、後から意味体系を安全に追加・合成できること
 - 主なReference pressure: SUI hierarchy adoption
 - 依存解決設計基線: `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
+- 敵対的評価: `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
 
 ## 目的
 
@@ -130,6 +131,11 @@ SUI以外の第二Referenceでも同じ意味が必要であり、同じ契約�
 - compatibleな新versionが見つかってもAccepted Semantic Setを自動更新しない。
 - 標準`std.*`を追加する段階でも、同じdependency / conflict / lock / discovery contractを利用する。
 - resolverはresolved setだけでなく、導入理由とconflict causeを人とAIへ説明できる。
+- 有効解が存在する依存graphを、greedyなversion選択や探索順だけを理由にconflict扱いしない。
+- Semantic Interfaceはversioned contractとしてidentity / fingerprint / Sourceへ辿れ、providerの自己申告だけで適合済みとしない。
+- namespace ownershipをfirst claimantへ与えず、`std.*`はstandard authorityへ予約する。
+- Acceptanceに使うSemantic Evaluatorの選択をEnvironment Runtimeのprovider選択へ委ねない。
+- root requirements、resolution policy、canonicalization規則が変わったSemantic Lockをそのまま再利用しない。
 
 最初から高度なsolver実装を固定しません。E0では、大規模化した後でもsolver実装を差し替えられるよう、Requirement、resolved graph、conflict explanationの入出力契約を先に定めます。
 
@@ -154,7 +160,7 @@ extensionを読み込めたことは、evaluator processを実行してよいこ
 
 逆に、evaluator Pluginがinstallされていても、そのPluginがextensionの意味を勝手に変更できません。
 
-同一Semantic Extensionを複数の実装Pluginが評価できる構造を許容し、Environmentが既存Capability negotiationで実装を選べる方向を優先します。
+同一Semantic Extensionを複数の実装Pluginが評価できる構造は許容します。ただし、そのEvaluator結果がAcceptance / Conformanceへ影響する場合、実装選択をEnvironment固有のCapability negotiationへ委ねません。Semantic Validation用のEvaluator解決scopeをRuntime Environmentから分け、選択したcontract version、implementation identity / artifact、Conformance EvidenceをValidation Evidenceへ紐付けます。
 
 ## 最初のReference declaration
 
@@ -202,10 +208,16 @@ Reference-localな小規模の依存graphを追加し、次を検証します。
 
 - diamond dependencyが一つの互換なproviderへ決定論的に収束する
 - package identity dependencyとSemantic Interface dependencyを区別する
-- incompatible version / compatibility levelをload順に依存せずblocking conflictへする
+- Semantic Interfaceがidentity / contract version / fingerprint / Sourceを持つ
+- providerの`implements`自己申告だけでInterface適合済みとしない
+- 複数providerが同じInterfaceを満たす場合、Accepted wiringまたは明示policyなしに暗黙選択しない
+- incompatible version constraintをload順に依存せずblocking conflictへする
+- higher compatible versionでは衝突するがlower compatible versionなら解けるgraphをfalse conflictにしない
 - package dependency cycleを検出する
 - Bridge Extensionを外した場合、両側の独立Extensionが互いを暗黙requireしない
 - optional Extensionの存在だけで既存meaningを変更しない
+- optional diagnostic / ProjectionがAcceptanceを変える場合はSemantic dependencyへの明示を要求する
+- 第三者Extensionが`std.*` namespaceをfirst claimantとして取得できない
 
 SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなdependency graphだけでRQ-032の成立を主張しません。
 
@@ -215,14 +227,20 @@ SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなde
 
 最低限、次の情報へ機械可読な形で辿れることを要求します。
 
+- root requirementsとそのfingerprint
 - exact resolved extension identity / semantic version
 - declaration fingerprint
+- Semantic Interface contract fingerprint
 - requirement -> provider / Semantic Interface wiring
+- resolution policy identity / version
+- fingerprint canonicalization version
 - root requirementから各Extensionまでのdependency path
 - reverse dependency
 - conflict cause / unresolved requirement
 
 Runtime Pluginの実装versionだけが変わり、semantic declarationが同じ場合は、Semantic Set fingerprintに不要な差分が入らないこともnegative controlで確認します。
+
+root requirements、resolution policy、canonicalization versionのいずれかが変わった場合は、既存lockを有効なまま再利用しないことも確認します。Unresolvedを含むgraphからAccepted Semantic Lockを作りません。
 
 E0ではRuntime Pluginを起動しない。
 
@@ -237,6 +255,10 @@ Evaluatorは次を守ります。
 - evaluator outputをCanonical meaningそのものへしない
 - evaluator不在 / timeout / unsupported versionをpassへ変換しない
 - Runtime Pluginの場合は既存Permission / Sandbox / Artifact / Lockを迂回しない
+- Acceptance / Conformanceに使うEvaluatorの選択をEnvironment固有のRuntime provider選択へ委ねない
+- Validation Evidenceへevaluator contract version、implementation identity / artifact digest、Conformance Evidenceを紐付ける
+- 複数Evaluatorを交換可能と扱う場合、同じcontractに対するConformance Evidenceを要求する
+- EnvironmentごとのEvaluator差によってAccepted semantic validityを再解釈しない
 
 ## E2 — SUI fixtureでpressureする
 
@@ -280,6 +302,8 @@ SUIだけで成立しても、Core標準語彙へ昇格しません。
 
 namespaceは意味Authorityの境界です。
 
+ownershipは「最初にloadされた」「最初にCatalogへ現れた」ことから取得しません。`std.*`はTEI standard authorityへ予約し、第三者Extensionが先に宣言してもownershipを得ないものとします。subnamespace委譲が必要な場合はownerからの明示的なdelegateとして扱います。
+
 最初のReferenceでは、少なくとも次の状態をfail closedとして扱います。
 
 - same extension identity + incompatible semantic version
@@ -294,7 +318,7 @@ namespaceは意味Authorityの境界です。
 
 ## Versioning
 
-Semantic versionはRuntime binary versionと独立させます。
+Semantic versionはRuntime binary versionと独立させます。別の`compatibility level / family / epoch`は、version rangeだけでは表現できない実Referenceが得られるまで最終contractへ固定しません。
 
 理由:
 
@@ -369,6 +393,7 @@ AIがextensionを発見した後も、自動採用はしません。
 - 同じconstraintの重複記述数
 - 第二Referenceで再利用するための変更量
 - extensionなしcustom implementationとのhand-written差分
+- Bridge Extensionの個数、fan-in / fan-out、重複するcross-facet constraint数
 
 ### AI rail
 
@@ -380,8 +405,12 @@ AIがextensionを発見した後も、自動採用はしません。
 ### Safety
 
 - incompatible extensionのsilent override = 0
+- 有効解が存在するgraphのfalse conflict = 0
+- authority不明のSemantic Interface / reserved namespace受入 = 0
 - semantic declarationからRuntime Authorityへの暗黙昇格 = 0
 - evaluator不在をpass扱い = 0
+- EnvironmentごとのEvaluator差によるAccepted validity変更 = 0
+- stale Semantic Lockの無条件再利用 = 0
 - unrelated Canonical meaningの変化 = 0
 
 Safety違反を生産性指標と相殺しません。
@@ -420,12 +449,21 @@ internal/knowledgecontext/    # read-only discovery
 - [ ] Knowledge Contextから適用候補をread-only取得できる
 - [ ] duplicate / incompatible definitionをsilent overrideしない
 - [ ] package identity dependencyとSemantic Interface dependencyを区別できる
+- [ ] Semantic Interfaceがversioned contractとしてidentity / fingerprint / Sourceへ戻れる
+- [ ] providerの自己申告だけでSemantic Interface適合済みとしない
+- [ ] 複数Interface providerを明示policyなしに暗黙選択しない
 - [ ] diamond dependencyの解決がload順 / catalog列挙順に依存しない
+- [ ] lower compatible versionなら解けるgraphをgreedyなhighest-compatible選択だけでconflict扱いしない
 - [ ] dependency version / compatibility conflictをblocking diagnosticまたはUnresolvedにする
 - [ ] Extension package dependency cycleをAccepted graphへ入れない
 - [ ] Bridge Extensionなしで独立Extension同士を暗黙結合しない
 - [ ] optional Extensionの存在だけで既存meaningを変えない
+- [ ] optional diagnostic / ProjectionがAcceptanceへ影響する場合はSemantic Setへ明示する
+- [ ] 第三者Extensionが`std.*` namespaceをfirst claimantとして取得できない
 - [ ] resolved graphをexactなSemantic Lockまたは同等表現へ固定できる
+- [ ] Semantic Lockがroot requirements / wiring / resolution policy / canonicalization versionを再現できる
+- [ ] staleなroot / policy / canonicalizationに対して既存lockを無条件に再利用しない
+- [ ] Unresolvedを含むgraphからAccepted Semantic Lockを作らない
 - [ ] 同じ入力から同じSemantic Set fingerprintを再現できる
 - [ ] resolved Extensionごとにrootからのdependency pathを説明できる
 - [ ] conflict時に両立しないrequirementの由来へ戻れる
@@ -479,3 +517,4 @@ code変更はTEIの通常Gateに従います。
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`
 - `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
+- `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`
