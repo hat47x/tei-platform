@@ -21,14 +21,17 @@ type ExtensionIdentity struct {
 }
 
 type CatalogExtension struct {
-	ID                    string                 `json:"id"`
-	Namespace             string                 `json:"namespace"`
-	Version               string                 `json:"version"`
-	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
-	Source                string                 `json:"source,omitempty"`
-	SourceFingerprint     string                 `json:"sourceFingerprint,omitempty"`
-	AppliesToKinds        []string               `json:"appliesToKinds,omitempty"`
-	Requires              []ExtensionRequirement `json:"requires,omitempty"`
+	ID                    string                         `json:"id"`
+	Namespace             string                         `json:"namespace"`
+	Version               string                         `json:"version"`
+	DescriptorFingerprint string                         `json:"descriptorFingerprint"`
+	Source                string                         `json:"source,omitempty"`
+	SourceFingerprint     string                         `json:"sourceFingerprint,omitempty"`
+	AppliesToKinds        []string                       `json:"appliesToKinds,omitempty"`
+	Requires              []ExtensionRequirement         `json:"requires,omitempty"`
+	Interfaces            []SemanticInterfaceContract    `json:"interfaces,omitempty"`
+	RequiresInterfaces    []SemanticInterfaceRequirement `json:"requiresInterfaces,omitempty"`
+	ProvidesInterfaces    []SemanticInterfaceProvider    `json:"providesInterfaces,omitempty"`
 }
 
 type CatalogSource struct {
@@ -85,9 +88,11 @@ type SemanticCatalog struct {
 	EvidenceFingerprint        string                 `json:"evidenceFingerprint"`
 	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
 	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
-	Requirements               []ExtensionRequirement `json:"requirements"`
-	Extensions             []CatalogExtension     `json:"extensions,omitempty"`
-	Subjects        []CatalogSubject    `json:"subjects"`
+	Requirements               []ExtensionRequirement    `json:"requirements"`
+	Extensions                 []CatalogExtension        `json:"extensions,omitempty"`
+	Interfaces                 []CatalogSemanticInterface `json:"interfaces,omitempty"`
+	InterfaceWirings           []CatalogInterfaceWiring  `json:"interfaceWirings,omitempty"`
+	Subjects                   []CatalogSubject          `json:"subjects"`
 	Relations       []CatalogRelation   `json:"relations,omitempty"`
 	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
 	Connections     []CatalogConnection `json:"connections,omitempty"`
@@ -445,6 +450,15 @@ func resolveSemanticCatalog(
 	descriptors []ExtensionDescriptor,
 	roots []ExtensionRequirement,
 ) (SemanticCatalog, error) {
+	return resolveSemanticCatalogWithInterfaceWiring(core, descriptors, roots, nil)
+}
+
+func resolveSemanticCatalogWithInterfaceWiring(
+	core CoreCatalogInput,
+	descriptors []ExtensionDescriptor,
+	roots []ExtensionRequirement,
+	interfaceWirings []SemanticInterfaceWiring,
+) (SemanticCatalog, error) {
 	normalized := make([]ExtensionDescriptor, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		value, err := normalizeDescriptor(descriptor)
@@ -539,6 +553,18 @@ func resolveSemanticCatalog(
 		})
 	}
 
+	interfaces, interfaceWiringsResolved, interfaceUnresolved, err := resolveSemanticInterfaces(
+		selected,
+		blockedExtensions,
+		interfaceWirings,
+	)
+	if err != nil {
+		return SemanticCatalog{}, err
+	}
+	catalog.Interfaces = interfaces
+	catalog.InterfaceWirings = interfaceWiringsResolved
+	catalog.Unresolved = append(catalog.Unresolved, interfaceUnresolved...)
+
 	for _, id := range ids {
 		descriptor := selected[id]
 		identity := ExtensionIdentity{ID: descriptor.ID, Version: descriptor.Version}
@@ -551,6 +577,9 @@ func resolveSemanticCatalog(
 			SourceFingerprint:     descriptor.sourceFingerprint,
 			AppliesToKinds:        append([]string(nil), descriptor.AppliesToKinds...),
 			Requires:              append([]ExtensionRequirement(nil), descriptor.Requires...),
+			Interfaces:            append([]SemanticInterfaceContract(nil), descriptor.Interfaces...),
+			RequiresInterfaces:    append([]SemanticInterfaceRequirement(nil), descriptor.RequiresInterfaces...),
+			ProvidesInterfaces:    append([]SemanticInterfaceProvider(nil), descriptor.ProvidesInterfaces...),
 		})
 		if blockedExtensions[id] {
 			continue
