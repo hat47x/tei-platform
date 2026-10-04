@@ -450,7 +450,7 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		record.ReviewBindingStatus,
 			record.ReviewCoverageStatus,
 			record.ReviewDiagnostics = classifyReviewBinding(d.ReviewBinding)
-		if d.ReviewBinding != nil {
+		if d.ReviewBinding != nil && record.ReviewBindingStatus != "invalid" {
 			record.ReviewIncomplete = append(
 				record.ReviewIncomplete,
 				d.ReviewBinding.Coverage.Incomplete...,
