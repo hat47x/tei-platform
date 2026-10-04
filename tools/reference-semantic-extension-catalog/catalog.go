@@ -219,15 +219,15 @@ type semanticResolutionSearchState struct {
 }
 
 func (s *semanticResolutionSearchState) consumeCandidateAttempt() error {
-	s.stats.CandidateAttempts++
 	if s.budget.MaxCandidateAttempts > 0 &&
-		s.stats.CandidateAttempts > s.budget.MaxCandidateAttempts {
+		s.stats.CandidateAttempts >= s.budget.MaxCandidateAttempts {
 		return fmt.Errorf(
 			"%w: maxCandidateAttempts=%d",
 			errSemanticResolutionBudgetExceeded,
 			s.budget.MaxCandidateAttempts,
 		)
 	}
+	s.stats.CandidateAttempts++
 	return nil
 }
 
