@@ -238,6 +238,10 @@ Reference-localな小規模の依存graphを追加し、次を検証します。
 
 SUI hierarchy Extensionを実際のroot consumerとして使い、syntheticなdependency graphだけでRQ-032の成立を主張しません。
 
+2026-10-04の実装候補として、PR #927でAX-01のbacktracking resolverを追加しています。compatible major内では高いversionを先に試しつつ、推移依存が衝突した場合は低いcompatible versionへ戻ります。version固有のdependency cycleから代替versionへ退避するcaseと、代替が無いcycleを拒否するcaseもtestへ追加しています。
+
+この時点ではcandidateです。独立したGo 1.23.2 probeでは同じ探索アルゴリズムのfalse-conflict / version-specific-cycle caseがPASSしていますが、repository exact-head focused testとfull health gateは未実施です。したがってAcceptance checkboxやEvidence tierはまだ更新しません。
+
 ### E0-C — Semantic Lock / explanation
 
 同じroot requirements、同じCatalog、同じAccepted sourceからは、列挙順を変えても同じresolved graphとSemantic Set fingerprintが得られることを確認します。
