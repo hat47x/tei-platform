@@ -64,14 +64,16 @@ func run(args []string) int {
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
+	var namespaceAuthorityPaths pathFlags
 	flags.Var(&roots, "require", "root extension requirement EXTENSION@MAJOR; repeatable")
 	flags.Var(&wiringPaths, "interface-wiring", "semantic interface wiring JSON file; repeatable")
 	flags.Var(&conformancePaths, "interface-conformance", "accepted semantic interface conformance JSON file; repeatable")
+	flags.Var(&namespaceAuthorityPaths, "namespace-authority", "accepted semantic namespace authority JSON file; repeatable")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" || len(roots) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR -require EXTENSION@MAJOR [-require ...] [-interface-wiring FILE] [-interface-conformance FILE] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR -require EXTENSION@MAJOR [-require ...] [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -100,12 +102,18 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	catalog, err := resolveSemanticCatalogWithInterfaceInputs(
+	namespaceAuthorities, err := loadSemanticNamespaceAuthorities(namespaceAuthorityPaths)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	catalog, err := resolveSemanticCatalogWithAllInputs(
 		coreCatalogFromSourceIndex(index),
 		descriptors,
 		roots,
 		wirings,
 		conformances,
+		namespaceAuthorities,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -144,6 +152,18 @@ func loadSemanticInterfaceConformances(paths []string) ([]SemanticInterfaceConfo
 		var value SemanticInterfaceConformance
 		if err := decodeStrictJSONFile(path, &value); err != nil {
 			return nil, fmt.Errorf("interface conformance %s: %w", path, err)
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
+
+func loadSemanticNamespaceAuthorities(paths []string) ([]SemanticNamespaceAuthority, error) {
+	out := make([]SemanticNamespaceAuthority, 0, len(paths))
+	for _, path := range paths {
+		var value SemanticNamespaceAuthority
+		if err := decodeStrictJSONFile(path, &value); err != nil {
+			return nil, fmt.Errorf("namespace authority %s: %w", path, err)
 		}
 		out = append(out, value)
 	}
