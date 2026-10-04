@@ -30,9 +30,10 @@ type ExtensionRelation struct {
 }
 
 type ExtensionConstraint struct {
-	ID           string          `json:"id"`
-	Subject      subject.Subject `json:"subject"`
-	ValidatorRef string          `json:"validatorRef"`
+	ID                 string          `json:"id"`
+	Subject            subject.Subject `json:"subject"`
+	ValidatorRef       string          `json:"validatorRef"`
+	EvaluatorInterface string          `json:"evaluatorInterface,omitempty"`
 }
 
 type ExtensionConnection struct {
@@ -141,6 +142,7 @@ func normalizeDescriptor(d ExtensionDescriptor) (ExtensionDescriptor, error) {
 		c := &d.Constraints[i]
 		c.ID = strings.TrimSpace(c.ID)
 		c.ValidatorRef = strings.TrimSpace(c.ValidatorRef)
+		c.EvaluatorInterface = strings.TrimSpace(c.EvaluatorInterface)
 		var err error
 		if c.Subject, err = normalizeSubject(c.Subject); err != nil {
 			return d, fmt.Errorf("extension %s constraint[%d].subject: %w", d.ID, i, err)
@@ -171,6 +173,9 @@ func normalizeDescriptor(d ExtensionDescriptor) (ExtensionDescriptor, error) {
 	})
 
 	if err := normalizeSemanticInterfaceDeclarations(&d); err != nil {
+		return d, err
+	}
+	if err := validateConstraintEvaluatorRequirements(d); err != nil {
 		return d, err
 	}
 	return d, nil
@@ -249,4 +254,26 @@ func descriptorFingerprint(d ExtensionDescriptor) string {
 	encoded, _ := json.Marshal(d)
 	sum := sha256.Sum256(encoded)
 	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+
+func validateConstraintEvaluatorRequirements(d ExtensionDescriptor) error {
+	required := map[string]struct{}{}
+	for _, requirement := range d.RequiresInterfaces {
+		required[requirement.Interface] = struct{}{}
+	}
+	for _, constraint := range d.Constraints {
+		if constraint.EvaluatorInterface == "" {
+			continue
+		}
+		if _, ok := required[constraint.EvaluatorInterface]; !ok {
+			return fmt.Errorf(
+				"extension %s constraint %s evaluatorInterface %s must be declared in requiresInterfaces",
+				d.ID,
+				constraint.ID,
+				constraint.EvaluatorInterface,
+			)
+		}
+	}
+	return nil
 }
