@@ -29,6 +29,7 @@ type Check struct {
 type ReviewBinding struct {
 	Fingerprint string                `json:"fingerprint"`
 	Coverage    ReviewCoverageSummary `json:"coverage"`
+	Projection  *ReviewProjection     `json:"projection,omitempty"`
 }
 
 // Decisionは、Accept / Reject / 受入拒否の結果を記録する。
@@ -142,6 +143,7 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		decision.ReviewBinding = &ReviewBinding{
 			Fingerprint: review.ReviewFingerprint,
 			Coverage:    review.Coverage,
+			Projection:  &review,
 		}
 	}
 
@@ -563,12 +565,55 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 			),
 		})
 	}
+	if projection := binding.Projection; projection != nil {
+		if projection.Schema != reviewSchema {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_SCHEMA_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection schemaが一致しません: recorded=%s expected=%s",
+					projection.Schema,
+					reviewSchema,
+				),
+			})
+		}
+		if projection.ReviewFingerprint != "" && projection.ReviewFingerprint != binding.Fingerprint {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_ID_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection内fingerprintがbindingと一致しません: projection=%s binding=%s",
+					projection.ReviewFingerprint,
+					binding.Fingerprint,
+				),
+			})
+		}
+		if calculated := fingerprintReviewProjection(*projection); calculated != binding.Fingerprint {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_FINGERPRINT_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection内容がfingerprintと一致しません: recorded=%s calculated=%s",
+					binding.Fingerprint,
+					calculated,
+				),
+			})
+		}
+		if !reflect.DeepEqual(projection.Coverage, coverage) {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_BINDING_COVERAGE_MISMATCH",
+				Message: "review bindingのcoverageが保存済みProjectionのcoverageと一致しません",
+			})
+		}
+	}
+
 	if len(diagnostics) > 0 {
 		return "invalid", "invalid", diagnostics
 	}
-	if coverage.Partial == 0 && coverage.NotEvaluated == 0 {
-		return "recorded", "complete", nil
+	status := "recorded"
+	if binding.Projection != nil {
+		status = "verified"
 	}
-	return "recorded", "incomplete", nil
+	if coverage.Partial == 0 && coverage.NotEvaluated == 0 {
+		return status, "complete", nil
+	}
+	return status, "incomplete", nil
 }
 
