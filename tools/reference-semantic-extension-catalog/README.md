@@ -42,6 +42,27 @@ extension descriptors
   -> relations / constraints / connections
 ```
 
+## 依存versionの解決
+
+Reference resolverは、同じmajorの候補では高いversionを先に試します。ただし、そのversionの推移依存が全体の制約と両立しない場合は、低いcompatible versionへ戻って探索します。
+
+これはload順を決定論的にするだけの処理ではありません。最高versionを固定すると衝突する一方、低いcompatible versionなら全体を解決できる場合を、誤って「解決不能」と判定しないためです。
+
+```text
+A -> X@1
+B -> Y@1
+
+X 1.2 -> Z@2
+X 1.1 -> Z@1
+Y 1.0 -> Z@1
+```
+
+この例では、`X 1.1`と`Z 1.x`を選べば全体を解決できます。
+
+Reference段階のconstraint languageは、`Extension ID + compatible major`に限定します。一般的なpackage solverを先に完成させることは目的にしません。現在のconstraint languageの範囲で、有効解があるのにgreedyな探索順だけで解決不能としないことを検証します。
+
+versionごとに依存graphが異なる場合も、ある候補だけがcycleを作り、別候補ならcycleを避けられるときは代替候補を探索します。すべての有効候補がcycleを作る場合は解決失敗とします。
+
 ## conflict方針
 
 同じsubject identityをCoreとExtension、または複数Extensionが宣言した場合、読み込み順で勝者を決めません。
