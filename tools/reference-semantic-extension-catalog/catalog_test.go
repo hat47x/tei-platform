@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -572,6 +573,101 @@ func TestReferenceCatalogKeepsUnknownRelationTargetUnresolved(t *testing.T) {
 	}
 	if !catalogHasUnresolved(catalog, "relation-target-unavailable", missing) {
 		t.Fatalf("unknown relation target is not unresolved: %+v", catalog.Unresolved)
+	}
+}
+
+func TestReferenceCatalogSeparatesResolutionBudgetExhaustionFromConflict(t *testing.T) {
+	byID := map[string][]ExtensionDescriptor{
+		"tei.reference.a": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.a",
+				Namespace: "a",
+				Version:   "1.0.0",
+				Requires: []ExtensionRequirement{{
+					Extension:       "tei.reference.b",
+					CompatibleMajor: 1,
+				}},
+			},
+		},
+		"tei.reference.b": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.b",
+				Namespace: "b",
+				Version:   "1.0.0",
+			},
+		},
+	}
+	resolved, stats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		[]ExtensionRequirement{{
+			Extension:       "tei.reference.a",
+			CompatibleMajor: 1,
+		}},
+		SemanticResolutionBudget{MaxCandidateAttempts: 1},
+	)
+	if err == nil || !errors.Is(err, errSemanticResolutionBudgetExceeded) {
+		t.Fatalf("resolution budget exhaustion was not distinguished from dependency conflict: resolved=%+v err=%v", resolved, err)
+	}
+	if stats.CandidateAttempts != 1 {
+		t.Fatalf("candidate attempts=%d want=1", stats.CandidateAttempts)
+	}
+}
+
+func TestReferenceCatalogResolutionBudgetDoesNotChangeUnboundedMeaning(t *testing.T) {
+	byID := map[string][]ExtensionDescriptor{
+		"tei.reference.a": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.a",
+				Namespace: "a",
+				Version:   "1.0.0",
+				Requires: []ExtensionRequirement{{
+					Extension:       "tei.reference.b",
+					CompatibleMajor: 1,
+				}},
+			},
+		},
+		"tei.reference.b": {
+			{
+				Schema:    extensionSchema,
+				ID:        "tei.reference.b",
+				Namespace: "b",
+				Version:   "1.0.0",
+			},
+		},
+	}
+	roots := []ExtensionRequirement{{
+		Extension:       "tei.reference.a",
+		CompatibleMajor: 1,
+	}}
+
+	unbounded, unboundedStats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bounded, boundedStats, err := resolveExtensionSelectionWithBudget(
+		byID,
+		roots,
+		SemanticResolutionBudget{MaxCandidateAttempts: 2},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(unbounded, bounded) {
+		t.Fatalf("sufficient operational budget changed resolution: unbounded=%+v bounded=%+v", unbounded, bounded)
+	}
+	if unboundedStats.CandidateAttempts != 2 || boundedStats.CandidateAttempts != 2 {
+		t.Fatalf(
+			"unexpected attempt count: unbounded=%d bounded=%d",
+			unboundedStats.CandidateAttempts,
+			boundedStats.CandidateAttempts,
+		)
 	}
 }
 
