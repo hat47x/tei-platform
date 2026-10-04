@@ -81,6 +81,25 @@ budget値はSemantic resolution policyやSemantic Set fingerprintへ含めませ
 
 compatible majorを満たすExtensionが無い場合、dependency resolution自体をfail closedにします。同じmajor内に複数versionがある場合は、最も新しいversionを決定論的に選びます。root requirementは正規化してcatalogへ残し、同じExtensionに異なるmajorを同時要求した場合は拒否します。
 
+## Semantic Interface
+
+package identityへの依存と、意味契約への依存を分けて扱います。Semantic Interfaceは単なる名前ではなく、identity、contract version、正規化したcontract fingerprint、入出力の意味、unknown / failureの意味、provider conformance profileを持ちます。
+
+provider側の宣言だけでは適合済みと扱いません。providerはInterface identity、exact contract version、contract fingerprintを宣言し、resolverには別入力のConformance Evidenceが必要です。Conformance Evidenceはprovider、Interface、exact contract fingerprint、conformance profileへ結び付けます。
+
+適合するproviderが一つだけなら、そのproviderへ決定論的にwiringできます。複数の適合providerが残る場合はpackage名やversion順で選ばず、明示wiringが無ければ`interface-provider-ambiguous`としてUnresolvedにします。明示wiringで指定したproviderがcontractまたはConformance条件を満たさない場合もfail closedです。
+
+`resolutionFingerprint`にはInterface contractとprovider wiringを含めます。一方、同じcontract、provider、profileに対するConformance Evidenceの更新だけでは意味identityを変えません。そのfingerprintは`evidenceFingerprint`側で追跡します。
+
+CLIでは、必要に応じて`-interface-wiring FILE`と`-interface-conformance FILE`を繰り返し指定できます。どちらもstrict JSONとして読み込み、未知fieldや余分な末尾データを拒否します。
+
+この形式もReference contractです。ProductionのPlugin manifestやSemantic Lock形式としてはまだ固定しません。
+
+## Standard namespaceの予約
+
+`std`と`std.*`はstandard authority用に予約します。現在のReferenceにはstandard authorityやsubnamespace delegateを与えるAccepted metadataが無いため、Extension descriptorからの`std.*`宣言はすべて拒否します。
+
+これは将来の標準Extensionを禁止する設計ではありません。standard authorityとdelegateを外部のAccepted metadataとして表せるまでは、first claimantによるnamespace取得を許さないためのReference境界です。
 ## Reference scenario
 
 testdataではCoreに存在しない次のkindを追加します。
