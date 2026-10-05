@@ -243,6 +243,19 @@ Runtime providerの交換可能性と、Semantic Validationの交換可能性を
 - EnvironmentがRuntime用途のproviderを選ぶことは許容しても、その選択でAccepted semantic validityを再解釈しない。
 - evaluator不在、非対応version、結果不一致はpassへ丸めない。
 
+### 2026-10-05 Validation-scope evaluator candidate
+
+PR候補レーンではA5の反例に対し、Semantic Validation用Evaluatorの選択をEnvironment Runtimeのprovider解決から分離するReference candidateを追加した。
+
+Constraintは`evaluatorInterface`を明示し、そのInterfaceをSemantic dependencyとして宣言する。catalogへConstraintを公開するには、Semantic Interface、exact contract fingerprint、provider Extension、conformance profileまで解決済みであることを要求する。providerの自己申告だけでは不足し、現在AcceptedなConformance Evidenceが無い状態では評価できない。
+
+さらに`SemanticValidationPlan`をSemantic Setとは別artifactとして導入した。Planはexact Semantic Set fingerprintへboundし、Evaluator-requiredな全Constraintについてimplementation identityとartifact digestを固定する。一部だけをbindして残りをEnvironmentのCapability negotiationへ委ねるPlanは成立しない。Evaluation APIにもEnvironment planやRuntime provider一覧を渡さず、Planで指定したimplementation以外は受け入れない。
+
+SUI hierarchyの実consumer pressureでは、Stage 0とSemantic Extensionが同じ共有shadow evaluatorを使い、M1 / M2 / M3 / M4をPlan経由で評価する。別implementationをEnvironment側の代替候補のように渡しても、Plan identity / artifact digestと一致しなければ拒否するnegative controlを追加した。
+
+Evaluation EvidenceにはSemantic Set、Constraint、Interface contract、provider Extension、implementation / artifact、Conformance Evidence、input fingerprint、`pass / fail / unknown`を分離して記録する。Conformance Evidenceが無い場合、cancel / evaluator errorの場合はpassへ丸めない。`unknown`も独立したOutcomeとして保持する。
+
+これにより「developmentとproductionでEnvironmentが別Evaluatorを選んでAccepted validityが変わる」という経路はReference candidate上では縮小した。ただしRuntime PluginとしてEvaluatorを実行するときのPermission / Sandbox / signature / artifact verification、Conformance Evidenceの発行Authority、Shared AcceptanceへのValidation Evidence接続は未実証である。A5をProduction上の解消済みBlockerとはまだ扱わない。
 ## 8. A6 — optional contributionからAcceptanceへ逆流できる
 
 「既存meaningを変えず、diagnosticやProjectionだけを追加するoptional Extension」は一見安全に見える。
