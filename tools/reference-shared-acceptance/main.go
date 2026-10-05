@@ -25,6 +25,7 @@ const usage = `usage:
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
+  reference-shared-acceptance attach-semantic-evaluation -candidate FILE -semantic-evaluation FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
 `
@@ -36,7 +37,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "review", "accept", "reject", "attach-qualification", "revision", "decisions":
+	case "preview", "review", "accept", "reject", "attach-qualification", "attach-semantic-evaluation", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -47,6 +48,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
 	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
+	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
@@ -56,11 +58,12 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
-	needsWorkspace := command != "attach-qualification"
+	needsWorkspace := command != "attach-qualification" && command != "attach-semantic-evaluation"
 	needsCandidate := command != "revision" && command != "decisions"
 	if (needsWorkspace && *workspacePath == "") ||
 		(needsCandidate && *candidatePath == "") ||
-		(command == "attach-qualification" && *qualificationPath == "") {
+		(command == "attach-qualification" && *qualificationPath == "") ||
+		(command == "attach-semantic-evaluation" && *semanticEvaluationPath == "") {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -111,6 +114,25 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		grounded, err := attachQualificationEvidence(candidateData, qualification)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(grounded)
+	}
+
+	if command == "attach-semantic-evaluation" {
+		candidateData, err := os.ReadFile(*candidatePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		evaluationData, err := os.ReadFile(*semanticEvaluationPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		grounded, err := attachSemanticEvaluationEvidence(candidateData, evaluationData)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
