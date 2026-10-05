@@ -410,7 +410,7 @@ func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *tes
 	}
 }
 
-func TestAcyclicSecondConsumerSharesOnePhysicalEvaluatorArtifact(t *testing.T) {
+func TestAcyclicSecondConsumerSharesOneEvaluatorArtifactIdentity(t *testing.T) {
 	contract, _, provider, _ := acyclicSemanticInterfaceFixture()
 	implementation := acyclicEvaluatorImplementation(contract, provider)
 
