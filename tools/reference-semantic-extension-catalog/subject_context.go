@@ -165,9 +165,17 @@ func buildSubjectSemanticContext(
 			roles = append(roles, role)
 		}
 		sort.Strings(roles)
+		state := subjectExtensionState(roles)
+		if state == "" {
+			return SubjectSemanticContext{}, fmt.Errorf(
+				"subject semantic context cannot classify extension %s roles %v",
+				id,
+				roles,
+			)
+		}
 		use := SubjectExtensionUse{
 			Extension: extension,
-			State:     subjectExtensionState(roles),
+			State:     state,
 			Roles:     roles,
 		}
 		if explanation, ok := explanationsByID[id]; ok {
@@ -335,7 +343,10 @@ func subjectExtensionState(roles []string) string {
 	if _, ok := roleSet["evaluator-provider"]; ok {
 		return subjectExtensionSupporting
 	}
-	return subjectExtensionCandidate
+	if _, ok := roleSet["kind-applicable"]; ok {
+		return subjectExtensionCandidate
+	}
+	return ""
 }
 
 func subjectSemanticContextFingerprint(value SubjectSemanticContext) string {
