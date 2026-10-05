@@ -349,24 +349,23 @@ TEI側のmapping / extension declaration / evaluatorで結果を説明し、SUI�
 
 SUIだけで成立しても、Core標準語彙へ昇格しません。
 
-第二Referenceでは、SUIとは異なるdomainで同じconstraintの少なくとも一部を利用します。
+第二Referenceでは、既存のDatabase Migration modelを使います。`migration.Definition.Parents`はMigration間の依存関係を表し、cycleを許さないという意味上の必要性があります。SUI Island hierarchyとは別domainであり、単に同じJSON shapeを作るためのfixtureではありません。
 
-候補:
+2026-10-05のcandidateでは、SUIとMigrationからacyclic判定に必要な`nodes / directed edges`だけをdomain-neutralなsnapshotへ投影する小さなReference packageを追加しました。両domainで、同じSemantic Interface contract、provider Extension、evaluator implementation、artifact digestを再利用します。consumer Extension identityだけをdomainごとに分けます。
 
-- 組織 / category tree
-- BOM / dependency hierarchy
-- nested configuration
-- Business Procedure間の明示的な階層構造
+このpressureから、現時点では次の境界が妥当です。
 
-第二Referenceは、単に同じJSON shapeを作るためのsynthetic fixtureではなく、独立した意味上の必要性を持つものを選びます。
+- SUI固有の`IslandHierarchyContractV1`を共通Interfaceのinput shapeにしない。
+- Migration固有のIDや`Parents`表現も共通Interfaceへ持ち込まない。
+- 共通化するのはdirected graphのacyclicという意味だけに留める。
+- parent target existenceやparent / child consistency等、SUIだけで必要な意味はSUI側へ残す。
+- logical consumerが二つあっても、同じevaluator artifactを共有できる構造を保つ。
 
-確認すること:
+Reference testでは、SUIのM2をpass、M4をfailとして評価します。Migration側ではcurrent Reference Workspaceの`sales_core/20260826_001`をpassとし、`migration.Definition`で作ったcycleをfailとします。
 
-- 同一extension identityを変更せず再利用できるか
-- domain-specific parameterを追加しすぎていないか
-- SUI固有語彙が漏れていないか
-- Core primitiveへ昇格すべき共通性が本当にあるか
-- extensionのまま保持した方が小さいCoreを保てるか
+また、SUIから共通snapshotへ変換した結果に`islands`、`parentIslandId`、`childIslandIds`、`schemaVersion`が残らないことをnegative controlで確認します。共通InterfaceにSUI固有語彙が漏れた場合は、再利用成立とは扱いません。
+
+このcandidateが成立しても、`std.*`へ昇格しません。少なくともexact-head test、repository health、Semantic Lock / Validation Evidenceとの接続、AI / Tool discoveryでの再利用を確認した後に判断します。
 
 ## Namespace / conflict rule
 
