@@ -286,6 +286,25 @@ func migrationAcyclicSnapshot(definitions []migration.Definition) acyclicgraph.S
 	return acyclicgraph.Snapshot{Nodes: nodes, Edges: edges}
 }
 
+func TestAcyclicEvaluatorRejectsMalformedGraphInsteadOfReturningUnknown(t *testing.T) {
+	contract, _, provider, _ := acyclicSemanticInterfaceFixture(t)
+	implementation := acyclicEvaluatorImplementation(contract, provider)
+	input, err := json.Marshal(acyclicgraph.Snapshot{
+		Nodes: []string{"known"},
+		Edges: []acyclicgraph.Edge{{
+			From: "known",
+			To:   "missing",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome, err := implementation.Evaluate(context.Background(), input)
+	if err == nil {
+		t.Fatalf("malformed graph returned semantic outcome instead of evaluator error: %+v", outcome)
+	}
+}
+
 func TestAcyclicSemanticInterfaceReusesExactContractAcrossSUIAndMigration(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
