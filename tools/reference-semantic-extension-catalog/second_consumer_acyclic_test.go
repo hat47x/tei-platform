@@ -410,6 +410,49 @@ func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *tes
 	}
 }
 
+func TestAcyclicSemanticInterfaceDoesNotSubsumeSUIDomainIntegrity(t *testing.T) {
+	suiCore, suiTarget := suiReferenceCoreCatalog(t)
+	consumer := acyclicDomainConsumer(
+		"tei.reference.sui-acyclic",
+		"reference.sui.acyclic",
+		suiTarget,
+	)
+	catalog, contract, provider, conformance := resolveAcyclicDomainCatalog(
+		t,
+		suiCore,
+		consumer,
+	)
+
+	missingParent, err := suihierarchy.ReadFile(filepath.Join(
+		repositoryRoot(t),
+		"reference",
+		"sui-adoption",
+		"M3-missing-parent.invalid.json",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diagnostics := suihierarchy.Validate(missingParent); len(diagnostics) == 0 {
+		t.Fatal("SUI domain validator unexpectedly accepted missing-parent fixture")
+	}
+
+	evidence := evaluateAcyclicSnapshot(
+		t,
+		catalog,
+		consumer,
+		contract,
+		provider,
+		conformance,
+		suiAcyclicSnapshot(missingParent),
+	)
+	if evidence.Status != SemanticEvaluationPass {
+		t.Fatalf(
+			"generic acyclic constraint absorbed SUI target-existence semantics: evidence=%+v",
+			evidence,
+		)
+	}
+}
+
 func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
