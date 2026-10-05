@@ -61,6 +61,7 @@ type CatalogConstraint struct {
 	EvaluatorInterface           string            `json:"evaluatorInterface,omitempty"`
 	EvaluatorProviderExtension   string            `json:"evaluatorProviderExtension,omitempty"`
 	EvaluatorContractFingerprint string            `json:"evaluatorContractFingerprint,omitempty"`
+	EvaluatorConformanceProfile  string            `json:"evaluatorConformanceProfile,omitempty"`
 	Extension                    ExtensionIdentity `json:"extension"`
 }
 
@@ -735,6 +736,7 @@ func resolveSemanticCatalogWithAllInputs(
 				}
 				item.EvaluatorProviderExtension = wiring.ProviderExtension
 				item.EvaluatorContractFingerprint = wiring.ContractFingerprint
+				item.EvaluatorConformanceProfile = wiring.ProviderConformanceProfile
 			}
 			catalog.Constraints = append(catalog.Constraints, item)
 		}
