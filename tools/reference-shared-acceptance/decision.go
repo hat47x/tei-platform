@@ -309,6 +309,14 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 	if err != nil {
 		return Decision{}, err
 	}
+	var stale *Stale
+	if normalized.BaseModelRevision != s.revision {
+		stale = &Stale{
+			BaseModelRevision:    normalized.BaseModelRevision,
+			CurrentModelRevision: s.revision,
+			Options:              staleOptions(),
+		}
+	}
 	origin := normalized.Origin
 	return Decision{
 		Schema:               decisionSchema,
@@ -322,6 +330,7 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		ModelRevisionBefore:  s.revision,
 		ModelRevisionAfter:   s.revision,
 		SourceChanged:        false,
+		Stale:                stale,
 		Intent:               normalized.Intent,
 		Evidence:             normalized.Evidence,
 	}, nil
