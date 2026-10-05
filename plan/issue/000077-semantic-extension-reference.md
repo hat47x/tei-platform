@@ -367,6 +367,16 @@ Reference testでは、SUIのM2をpass、M4をfailとして評価します。Mig
 
 このcandidateが成立しても、`std.*`へ昇格しません。少なくともexact-head test、repository health、Semantic Lock / Validation Evidenceとの接続、AI / Tool discoveryでの再利用を確認した後に判断します。
 
+### E3で見えたInterface粒度
+
+E3では、既存SUI consumerが使う`reference.hierarchy.integrity.evaluator`全体をMigrationへ再利用できませんでした。SUIのInterfaceにはparent target existenceやparent / child consistency等、Migrationには不要な意味が含まれるためです。
+
+一方、cycle禁止だけは独立した`reference.graph.acyclic.evaluate`として切り出すと、二つのdomainで同じ契約を再利用できます。
+
+この結果から、Semantic Interfaceは「あるdomainのvalidator一式」を大きな一契約にまとめるより、独立して再利用できる意味単位へ分け、必要なdomain側で合成できる構造を優先します。ただし、細分化そのものを目的にはしません。二つ以上の実consumerで独立再利用できる境界をEvidenceとして判断します。
+
+既存のSUI hierarchy Interfaceは直ちに置き換えません。E3 candidateは、より小さいInterfaceへ分解できる可能性を示すpressureであり、現在のSUI Reference contractをMigrationの都合だけで書き換える根拠にはしません。
+
 ## Namespace / conflict rule
 
 namespaceは意味Authorityの境界です。
