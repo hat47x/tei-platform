@@ -363,6 +363,8 @@ SUIだけで成立しても、Core標準語彙へ昇格しません。
 
 Reference testでは、SUIのM2をpass、M4をfailとして評価します。Migration側ではcurrent Reference Workspaceの`sales_core/20260826_001`をpassとし、`migration.Definition`で作ったcycleをfailとします。
 
+現行Core ValidationはMigrationのparent identityが同じDatabase内に存在することを`UNKNOWN_MIGRATION_PARENT`で確認しますが、parent graphのcycleは検査していません。E3では既存のparent存在確認をSemantic Extensionへ移し替えず、未表現のacyclic ruleだけを追加pressureとします。dangling parentを含むMigration snapshotもgeneric acyclic単体ではpassとし、二つのValidation責務を混ぜないnegative controlを置きます。
+
 また、SUIから共通snapshotへ変換した結果に`islands`、`parentIslandId`、`childIslandIds`、`schemaVersion`が残らないことをnegative controlで確認します。共通InterfaceにSUI固有語彙が漏れた場合は、再利用成立とは扱いません。
 
 このcandidateが成立しても、`std.*`へ昇格しません。少なくともexact-head test、repository health、Semantic Lock / Validation Evidenceとの接続、AI / Tool discoveryでの再利用を確認した後に判断します。
