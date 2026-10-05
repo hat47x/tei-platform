@@ -356,8 +356,14 @@ func TestRejectLeavesAuthoritativeSourceByteIdentical(t *testing.T) {
 
 	stale := unitPriceCandidate("sha256:" + strings.Repeat("0", 64))
 	staleDecision, err := reject(dir, mustJSON(t, stale), "古いrevision")
-	if err != nil || staleDecision.Decision != "rejected" {
-		t.Fatalf("staleなcandidateもrejectできる必要があります: %+v %v", staleDecision, err)
+	if err != nil || staleDecision.Decision != "rejected" || staleDecision.Stale == nil {
+		t.Fatalf("staleなcandidateもconflict provenance付きでrejectできる必要があります: %+v %v", staleDecision, err)
+	}
+	if staleDecision.Stale.BaseModelRevision != stale.BaseModelRevision ||
+		staleDecision.Stale.CurrentModelRevision != revision ||
+		staleDecision.ModelRevisionBefore != revision ||
+		staleDecision.ModelRevisionAfter != revision {
+		t.Fatalf("stale rejectのrevision provenance=%+v decision=%+v", staleDecision.Stale, staleDecision)
 	}
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }

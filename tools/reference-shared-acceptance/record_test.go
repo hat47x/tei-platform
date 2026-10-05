@@ -75,45 +75,16 @@ func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
 
 // RQ-027は、後から入るAIが会話履歴に頼らず「accepted Decision」へ機械的に到達できることを求める。
 // 受理はauthoritative sourceを書くが、なぜそのsourceがあるのかはこれまでworkspaceに残らなかった。
-func TestDecisionHistoryIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
+func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
 	candidatePath := candidateFile(t, candidate)
-	baseRevision := revisionOfDir(t, dir)
 
+	// 何も受理していないworkspaceでは、記録が無いことがエラーではなく空として返る。
 	if index := decisionsOf(t, dir); len(index.Records) != 0 {
-		t.Fatalf("decision前に記録があります: %+v", index.Records)
+		t.Fatalf("受理前に記録があります: %+v", index.Records)
 	}
 
-	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
-	if code, _, errOut := cliRun(
-		t,
-		"reject",
-		"-workspace", dir,
-		"-candidate", candidatePath,
-		"-expected-review-fingerprint", reviewFingerprint,
-		"-reason", "見送り",
-	); code != 0 {
-		t.Fatalf("reject code=%d err=%s", code, errOut)
-	}
-	if after := revisionOfDir(t, dir); after != baseRevision {
-		t.Fatalf("rejectがmodel revisionを変更しました: before=%s after=%s", baseRevision, after)
-	}
-
-	rejectedIndex := decisionsOf(t, dir)
-	if len(rejectedIndex.Records) != 1 {
-		t.Fatalf("reject record=%+v", rejectedIndex.Records)
-	}
-	rejectedRecord := rejectedIndex.Records[0]
-	if rejectedRecord.Decision.Decision != "rejected" ||
-		rejectedRecord.Decision.Reason != "見送り" ||
-		rejectedRecord.Decision.SourceChanged ||
-		rejectedRecord.SourceEdits != "none" ||
-		rejectedRecord.Status != "current" ||
-		rejectedRecord.ReviewBindingStatus != "verified" ||
-		rejectedRecord.ReviewCoverageStatus != "incomplete" {
-		t.Fatalf("reject record=%+v", rejectedRecord)
-	}
 
 	decision := acceptViaCLI(t, dir, candidatePath)
 	if !strings.HasPrefix(decision.RecordPath, decisionDir+"/") {
@@ -121,26 +92,13 @@ func TestDecisionHistoryIsReachableFromTheWorkspaceWithoutTheConversation(t *tes
 	}
 
 	index := decisionsOf(t, dir)
-	if len(index.Records) != 2 {
-		t.Fatalf("decision historyが2件ではありません: %+v", index.Records)
+	if len(index.Records) != 1 {
+		t.Fatalf("記録が1件ではありません: %+v", index.Records)
 	}
-	var acceptedRecord *DecisionRecord
-	var historicalReject *DecisionRecord
-	for i := range index.Records {
-		record := &index.Records[i]
-		switch record.Decision.Decision {
-		case "accepted":
-			if record.Path == decision.RecordPath {
-				acceptedRecord = record
-			}
-		case "rejected":
-			historicalReject = record
-		}
+	record := index.Records[0]
+	if record.Path != decision.RecordPath {
+		t.Fatalf("record path=%q accept=%q", record.Path, decision.RecordPath)
 	}
-	if acceptedRecord == nil || historicalReject == nil {
-		t.Fatalf("accepted / rejected historyを区別できません: %+v", index.Records)
-	}
-	record := *acceptedRecord
 	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
 		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
 	}
@@ -156,15 +114,12 @@ func TestDecisionHistoryIsReachableFromTheWorkspaceWithoutTheConversation(t *tes
 			record.ReviewDiagnostics,
 		)
 	}
-	if historicalReject.Status != "superseded" ||
-		historicalReject.SourceEdits != "none" ||
-		historicalReject.Decision.Reason != "見送り" {
-		t.Fatalf("historical reject=%+v", historicalReject)
-	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
 	}
 
+	// 記録は「何が変わったか」だけでなく「なぜか」を持つ。fingerprintへ入らないIntent / Evidenceが、
+	// 会話履歴を持たない読み手にとって唯一の手掛かりになる。
 	got := record.Decision
 	if got.Intent != candidate.Intent {
 		t.Fatalf("intent=%q want=%q", got.Intent, candidate.Intent)
@@ -183,6 +138,148 @@ func TestDecisionHistoryIsReachableFromTheWorkspaceWithoutTheConversation(t *tes
 	}
 	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
 		t.Fatalf("origin=%+v", got.Origin)
+	}
+}
+
+func TestRejectedDecisionIsReachableWithoutChangingCanonicalMeaning(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidatePath := candidateFile(t, candidate)
+
+	before, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeWorld, _, err := worldSHA256(before.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "今回は見送る",
+	)
+	if code != 0 {
+		t.Fatalf("reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" ||
+		decision.Reason != "今回は見送る" ||
+		decision.SourceChanged ||
+		decision.ModelRevisionBefore != before.revision ||
+		decision.ModelRevisionAfter != before.revision ||
+		decision.RecordPath == "" {
+		t.Fatalf("rejected decision=%+v", decision)
+	}
+
+	after, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterWorld, _, err := worldSHA256(after.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.revision != before.revision || afterWorld != beforeWorld {
+		t.Fatalf(
+			"reject changed Canonical meaning: revision=%s/%s world=%s/%s",
+			before.revision,
+			after.revision,
+			beforeWorld,
+			afterWorld,
+		)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	record := index.Records[0]
+	if record.Path != decision.RecordPath ||
+		record.Status != "current" ||
+		record.SourceEdits != "none" ||
+		record.ReviewBindingStatus != "none" ||
+		record.ReviewCoverageStatus != "none" {
+		t.Fatalf("rejected Decision record=%+v", record)
+	}
+	if record.Decision.Decision != "rejected" ||
+		record.Decision.Reason != decision.Reason ||
+		record.Decision.CandidateFingerprint != decision.CandidateFingerprint {
+		t.Fatalf("rejected Decision provenance drifted: %+v", record.Decision)
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, filepath.FromSlash(decisionDir))); err != nil {
+		t.Fatal(err)
+	}
+	withoutLedger, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutLedgerWorld, _, err := worldSHA256(withoutLedger.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutLedger.revision != before.revision || withoutLedgerWorld != beforeWorld {
+		t.Fatal("Decision ledgerの削除がCanonical meaningを変えました")
+	}
+}
+
+func TestStaleRejectedDecisionPreservesRevisionConflictProvenance(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	currentRevision := revisionOfDir(t, dir)
+	staleRevision := "sha256:" + strings.Repeat("0", 64)
+	candidatePath := candidateFile(t, unitPriceCandidate(staleRevision))
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "古いrevisionなので見送る",
+	)
+	if code != 0 {
+		t.Fatalf("stale reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" || decision.Stale == nil {
+		t.Fatalf("stale reject did not preserve conflict: %+v", decision)
+	}
+	if decision.Stale.BaseModelRevision != staleRevision ||
+		decision.Stale.CurrentModelRevision != currentRevision ||
+		decision.ModelRevisionBefore != currentRevision ||
+		decision.ModelRevisionAfter != currentRevision ||
+		decision.SourceChanged {
+		t.Fatalf("stale reject revisions=%+v decision=%+v", decision.Stale, decision)
+	}
+	wantOptions := staleOptions()
+	if len(decision.Stale.Options) != len(wantOptions) {
+		t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+	}
+	for i := range wantOptions {
+		if decision.Stale.Options[i] != wantOptions[i] {
+			t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+		}
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("stale rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	if index.Records[0].Decision.Stale == nil ||
+		index.Records[0].Decision.Stale.CurrentModelRevision != currentRevision {
+		t.Fatalf("stored stale provenance=%+v", index.Records[0].Decision)
+	}
+	if got := revisionOfDir(t, dir); got != currentRevision {
+		t.Fatalf("stale reject changed model revision: got=%s want=%s", got, currentRevision)
 	}
 }
 

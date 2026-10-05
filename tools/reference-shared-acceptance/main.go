@@ -23,7 +23,7 @@ const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
   reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json] [-out FILE]
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
-  reference-shared-acceptance reject  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 -reason TEXT [-out FILE]
+  reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -50,9 +50,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
-	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept / reject時に必須のreviewFingerprint。reviewコマンドで得た現在のProjectionと一致する必要があります")
-	reason := flags.String("reason", "", "reject時に必須の理由")
-	allowBaseline := flags.Bool("allow-reference-baseline", false, "Gate B / Gate Cが固定したreference/workspaceへのacceptを許可する")
+	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept時に必須のreviewFingerprint。reviewコマンドで得た現在のProjectionと一致する必要があります")
+	reason := flags.String("reason", "", "rejectの理由")
+	allowBaseline := flags.Bool("allow-reference-baseline", false, "Gate B / Gate Cが固定したreference/workspaceへのsource変更またはDecision記録を許可する")
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
@@ -136,7 +136,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return emit(index)
 	}
 
-	// 決定の保存はauthoritative sourceの変更と同じ場所へ書くため、baselineの保護を共有する。
+	// Decision記録はCanonical sourceではないがworkspaceへ派生物を書き込むため、baselineの保護を共有する。
 	record := func(d *Decision) bool {
 		if !*allowBaseline && isReferenceBaseline(*workspacePath) {
 			fmt.Fprintln(stderr, "reference/workspaceはGate B / Gate Cが固定したbaselineなので、決定記録を書きませんでした")
@@ -220,17 +220,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	case "reject":
-		if strings.TrimSpace(*expectedReviewFingerprint) == "" {
-			fmt.Fprintln(stderr, "rejectにはreviewコマンドで確認した -expected-review-fingerprint が必要です。fingerprintはReview Projectionへのbindingであり、人が読んだことやdecision actor authorityを証明するものではありません")
-			return 2
-		}
-		if strings.TrimSpace(*reason) == "" {
-			fmt.Fprintln(stderr, "rejectには -reason が必要です。Reject理由はDecision provenanceであり、Canonical ruleへ自動昇格しません")
-			return 2
-		}
-		decision, err := rejectWithOptions(*workspacePath, data, *reason, rejectOptions{
-			ExpectedReviewFingerprint: *expectedReviewFingerprint,
-		})
+		decision, err := reject(*workspacePath, data, *reason)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
