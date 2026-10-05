@@ -238,22 +238,27 @@ func referenceMigrationAcyclicInput(
 	}
 	core := coreCatalogFromSourceIndex(index)
 
-	var target subject.Subject
+	target := subject.Subject{Kind: "migration", ID: "sales_core/20260826_001"}
+	var found bool
 	for _, item := range core.Subjects {
-		if item.Kind == "migration" {
-			if !target.IsZero() {
-				t.Fatalf("Reference Workspace has multiple migration subjects; second consumer needs an explicit root: first=%+v second=%+v", target, item)
-			}
-			target = item
+		if item == target {
+			found = true
+			break
 		}
 	}
-	if target.IsZero() {
-		t.Fatalf("Reference Workspace has no migration subject: %+v", core.Subjects)
+	if !found {
+		t.Fatalf("Reference migration subject %+v was not found: %+v", target, core.Subjects)
 	}
-	if len(loaded.World.Migrations) == 0 {
-		t.Fatal("Reference Workspace has no migration definitions")
+	var definitions []migration.Definition
+	for _, definition := range loaded.World.Migrations {
+		if string(definition.Database) == "sales_core" {
+			definitions = append(definitions, definition)
+		}
 	}
-	return core, target, loaded.World.Migrations
+	if len(definitions) == 0 {
+		t.Fatal("Reference Workspace has no sales_core migration definitions")
+	}
+	return core, target, definitions
 }
 
 func migrationAcyclicSnapshot(definitions []migration.Definition) acyclicgraph.Snapshot {
