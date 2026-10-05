@@ -91,8 +91,7 @@ func TestSemanticEvaluationEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuth
 			rendered := renderReviewProjection(review)
 			if !strings.Contains(rendered, "status="+status) ||
 				!strings.Contains(rendered, grounded.Evidence[0].Artifact.ArtifactFingerprint) {
-				t.Fatalf("review hid semantic evaluation state/binding:
-%s", rendered)
+				t.Fatalf("review hid semantic evaluation state/binding:\n%s", rendered)
 			}
 
 			decision, err := accept(dir, mustJSON(t, grounded), acceptOptions{
