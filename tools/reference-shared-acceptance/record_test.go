@@ -75,22 +75,44 @@ func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
 
 // RQ-027は、後から入るAIが会話履歴に頼らず「accepted Decision」へ機械的に到達できることを求める。
 // 受理はauthoritative sourceを書くが、なぜそのsourceがあるのかはこれまでworkspaceに残らなかった。
-func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
+func TestDecisionHistoryIsReachableFromTheWorkspaceWithoutTheConversation(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
 	candidatePath := candidateFile(t, candidate)
+	baseRevision := revisionOfDir(t, dir)
 
-	// 何も受理していないworkspaceでは、記録が無いことがエラーではなく空として返る。
 	if index := decisionsOf(t, dir); len(index.Records) != 0 {
-		t.Fatalf("受理前に記録があります: %+v", index.Records)
+		t.Fatalf("decision前に記録があります: %+v", index.Records)
 	}
 
-	// rejectはworkspaceを変えないので、記録も残さない。
-	if code, _, errOut := cliRun(t, "reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り"); code != 0 {
+	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	if code, _, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", reviewFingerprint,
+		"-reason", "見送り",
+	); code != 0 {
 		t.Fatalf("reject code=%d err=%s", code, errOut)
 	}
-	if index := decisionsOf(t, dir); len(index.Records) != 0 {
-		t.Fatalf("rejectが記録を残しています: %+v", index.Records)
+	if after := revisionOfDir(t, dir); after != baseRevision {
+		t.Fatalf("rejectがmodel revisionを変更しました: before=%s after=%s", baseRevision, after)
+	}
+
+	rejectedIndex := decisionsOf(t, dir)
+	if len(rejectedIndex.Records) != 1 {
+		t.Fatalf("reject record=%+v", rejectedIndex.Records)
+	}
+	rejectedRecord := rejectedIndex.Records[0]
+	if rejectedRecord.Decision.Decision != "rejected" ||
+		rejectedRecord.Decision.Reason != "見送り" ||
+		rejectedRecord.Decision.SourceChanged ||
+		rejectedRecord.SourceEdits != "none" ||
+		rejectedRecord.Status != "current" ||
+		rejectedRecord.ReviewBindingStatus != "verified" ||
+		rejectedRecord.ReviewCoverageStatus != "incomplete" {
+		t.Fatalf("reject record=%+v", rejectedRecord)
 	}
 
 	decision := acceptViaCLI(t, dir, candidatePath)
@@ -99,13 +121,26 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 
 	index := decisionsOf(t, dir)
-	if len(index.Records) != 1 {
-		t.Fatalf("記録が1件ではありません: %+v", index.Records)
+	if len(index.Records) != 2 {
+		t.Fatalf("decision historyが2件ではありません: %+v", index.Records)
 	}
-	record := index.Records[0]
-	if record.Path != decision.RecordPath {
-		t.Fatalf("record path=%q accept=%q", record.Path, decision.RecordPath)
+	var acceptedRecord *DecisionRecord
+	var historicalReject *DecisionRecord
+	for i := range index.Records {
+		record := &index.Records[i]
+		switch record.Decision.Decision {
+		case "accepted":
+			if record.Path == decision.RecordPath {
+				acceptedRecord = record
+			}
+		case "rejected":
+			historicalReject = record
+		}
 	}
+	if acceptedRecord == nil || historicalReject == nil {
+		t.Fatalf("accepted / rejected historyを区別できません: %+v", index.Records)
+	}
+	record := *acceptedRecord
 	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
 		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
 	}
@@ -121,12 +156,15 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 			record.ReviewDiagnostics,
 		)
 	}
+	if historicalReject.Status != "superseded" ||
+		historicalReject.SourceEdits != "none" ||
+		historicalReject.Decision.Reason != "見送り" {
+		t.Fatalf("historical reject=%+v", historicalReject)
+	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
 	}
 
-	// 記録は「何が変わったか」だけでなく「なぜか」を持つ。fingerprintへ入らないIntent / Evidenceが、
-	// 会話履歴を持たない読み手にとって唯一の手掛かりになる。
 	got := record.Decision
 	if got.Intent != candidate.Intent {
 		t.Fatalf("intent=%q want=%q", got.Intent, candidate.Intent)
