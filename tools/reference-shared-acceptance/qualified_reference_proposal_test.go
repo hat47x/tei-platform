@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -226,9 +228,17 @@ func TestProposeQualifiedReferencePatternCLILeavesWorkspaceReadOnly(t *testing.T
 	revision := revisionOfDir(t, dir)
 	before := treeDigest(t, dir)
 	temp := t.TempDir()
-	candidatePath := candidateFile(t, secondApplicationBaseWithoutPattern(revision))
-	qualificationPath := candidateFile(t, qualifiedCustomerReference(t, dir))
-	requestPath := candidateFile(t, qualifiedReferenceReuseRequest())
+	writeJSON := func(name string, value any) string {
+		t.Helper()
+		path := filepath.Join(temp, name)
+		if err := os.WriteFile(path, mustJSON(t, value), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	candidatePath := writeJSON("candidate.json", secondApplicationBaseWithoutPattern(revision))
+	qualificationPath := writeJSON("qualification.json", qualifiedCustomerReference(t, dir))
+	requestPath := writeJSON("reference-reuse.json", qualifiedReferenceReuseRequest())
 
 	code, out, errOut := cliRun(
 		t,
