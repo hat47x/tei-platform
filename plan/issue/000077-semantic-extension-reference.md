@@ -381,6 +381,10 @@ E3では、既存SUI consumerが使う`reference.hierarchy.integrity.evaluator`�
 
 既存のSUI hierarchy Interfaceは直ちに置き換えません。E3 candidateは、より小さいInterfaceへ分解できる可能性を示すpressureであり、現在のSUI Reference contractをMigrationの都合だけで書き換える根拠にはしません。
 
+Repository内にはさらに、Solution Releaseの`Definition.After`を`releaseplan.Compile`がDAGとして扱い、Core側の`detectCycle`でcycleを拒否する既存例があります。これはacyclicという判定ロジックがSUI / Migrationだけに閉じないことを示しますが、Release Planには既にそのruleのAuthorityがあります。
+
+したがって、Release Planを三つ目のSemantic Extension consumerとして重複Validationしません。将来、同じgraph algorithmをneutralなutilityへ抽出する余地はありますが、実装codeの共有とSemantic Interface / Validation Authorityの共有は別の判断として扱います。
+
 ## Namespace / conflict rule
 
 namespaceは意味Authorityの境界です。
