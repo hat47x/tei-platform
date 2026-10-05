@@ -95,31 +95,39 @@ func normalizeSemanticEvaluationArtifact(value semanticEvaluationArtifact) (sema
 	if value.Schema != semanticEvaluationEvidenceSchema {
 		return value, fmt.Errorf("semantic evaluation Evidence schema %q は未対応です", value.Schema)
 	}
-	for name, fingerprint := range map[string]string{
-		"semanticSetFingerprint":         value.SemanticSetFingerprint,
-		"evaluatorContractFingerprint":   value.EvaluatorContractFingerprint,
-		"evaluatorArtifactDigest":        value.EvaluatorArtifactDigest,
-		"conformanceEvidenceFingerprint": value.ConformanceEvidenceFingerprint,
-		"inputFingerprint":               value.InputFingerprint,
-		"evidenceFingerprint":            value.EvidenceFingerprint,
-	} {
-		if !revisionPattern.MatchString(fingerprint) {
-			return value, fmt.Errorf("semantic evaluation Evidence.%s %q は exact sha256 fingerprintではありません", name, fingerprint)
+	fingerprints := []struct {
+		name  string
+		value string
+	}{
+		{"semanticSetFingerprint", value.SemanticSetFingerprint},
+		{"evaluatorContractFingerprint", value.EvaluatorContractFingerprint},
+		{"evaluatorArtifactDigest", value.EvaluatorArtifactDigest},
+		{"conformanceEvidenceFingerprint", value.ConformanceEvidenceFingerprint},
+		{"inputFingerprint", value.InputFingerprint},
+		{"evidenceFingerprint", value.EvidenceFingerprint},
+	}
+	for _, item := range fingerprints {
+		if !revisionPattern.MatchString(item.value) {
+			return value, fmt.Errorf("semantic evaluation Evidence.%s %q は exact sha256 fingerprintではありません", item.name, item.value)
 		}
 	}
-	for name, field := range map[string]string{
-		"constraintExtension":        value.ConstraintExtension,
-		"constraintId":               value.ConstraintID,
-		"subject.kind":               value.Subject.Kind,
-		"subject.id":                 value.Subject.ID,
-		"validatorRef":               value.ValidatorRef,
-		"evaluatorInterface":         value.EvaluatorInterface,
-		"evaluatorConformanceProfile": value.EvaluatorConformanceProfile,
-		"evaluatorProviderExtension": value.EvaluatorProviderExtension,
-		"evaluatorImplementationId":  value.EvaluatorImplementationID,
-	} {
-		if field == "" {
-			return value, fmt.Errorf("semantic evaluation Evidence.%s が空です", name)
+	requiredFields := []struct {
+		name  string
+		value string
+	}{
+		{"constraintExtension", value.ConstraintExtension},
+		{"constraintId", value.ConstraintID},
+		{"subject.kind", value.Subject.Kind},
+		{"subject.id", value.Subject.ID},
+		{"validatorRef", value.ValidatorRef},
+		{"evaluatorInterface", value.EvaluatorInterface},
+		{"evaluatorConformanceProfile", value.EvaluatorConformanceProfile},
+		{"evaluatorProviderExtension", value.EvaluatorProviderExtension},
+		{"evaluatorImplementationId", value.EvaluatorImplementationID},
+	}
+	for _, item := range requiredFields {
+		if item.value == "" {
+			return value, fmt.Errorf("semantic evaluation Evidence.%s が空です", item.name)
 		}
 	}
 	switch value.Status {
