@@ -501,6 +501,39 @@ Accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent 
 
 現時点ではexact-head full Repository-healthを通したProduct Evidenceではないため、完了条件1や3の状態はまだ更新しない。
 
+## Semantic Evaluation Evidenceとの接続候補 — 2026-10-05
+
+Semantic Extension Referenceで得たEvaluation結果をShared Acceptanceへ接続するcandidateを追加した。ただし、Evaluationの`pass / fail / unknown`をAcceptance authorityへ昇格しない。
+
+接続では新しいAI専用ProposalやAcceptance engineを作らず、既存candidateの`Evidence`へartifact-only itemを追加する。Semantic Evaluation EvidenceはWorkspaceのAuthoring sourceではないため、既存の`subject / source / sourceFingerprint`へ偽装しない。Source Index Evidenceとartifact Evidenceを同一itemへ混在させず、別のauthority shapeとして保持する。
+
+producerであるSemantic ExtensionとconsumerであるShared Acceptanceは、`tools/internal/semanticevidence`の同じschema / normalization / fingerprint contractを使う。これによりEvaluation Evidenceの型とfingerprint規則を二重実装しない。
+
+artifact handoffでは、Semantic Set、Constraint、subject、validator、Evaluator Interface / contract、provider Extension、implementation / artifact digest、Conformance Evidence、input、status、diagnostic、Evaluation Evidence fingerprintを検査する。その正規化済みpayload全体へShared Acceptance側の`artifactFingerprint`も与え、受理時に見たartifactをexactに固定する。
+
+このartifactは`candidateFingerprint`には入らず、minimum semantic deltaのidentityを変えない。一方、`evidenceFingerprint`とReview Projectionには入るため、「意味差分は同じだが、判断時に見たEvaluation Evidenceが違う」状態を区別できる。Review A3にはstatus / diagnostic、A7にはartifact / Semantic Set / evaluation fingerprintを表示し、Accepted DecisionにもEvidence本文を残す。
+
+重要な停止線は次である。
+
+```text
+semantic evaluation pass
+  != Acceptance
+
+semantic evaluation fail / unknown
+  != automatic Reject
+
+recorded evaluation artifact
+  != current evaluator rerun
+  != current Conformance revalidation
+  != Runtime authority
+```
+
+Decision IndexもSource Evidenceとartifact Evidenceを別statusで返す。Source Indexへ再照合できる根拠は`sourceEvidenceStatus = current / diverged / none`、Evaluation artifactは`artifactEvidenceStatus = recorded / invalid / none`とし、artifactだけを「current」と呼ばない。両方が健全に併存する場合、集約`evidenceStatus`は`current-with-recorded-artifacts`とする。
+
+このcandidateは「Evaluation結果をレビュー可能な根拠として同じShared Acceptance Boundaryへ運べるか」をpressureするものであり、Semantic Evaluation Evidenceのcurrent freshnessを再実行する仕組みではない。将来current validityを要求する場合は、Semantic Set / Validation Plan / Conformance Evidenceを再取得してEvaluatorを再実行する別検査を追加する。
+
+exact-headのfocused test / full Repository healthは現在の実行環境では未取得であるため、本追記だけで完了条件やProduct Evidence tierを上げない。
+
 ## Gate Cとの関係
 
 本IssueはGate C前に本格実装しません。
