@@ -268,10 +268,12 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 
 	code, out, _ = run("reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り")
-	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) {
+	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(out, `"recordPath": ".tei/decisions/`) {
 		t.Fatalf("reject code=%d out=%s", code, out)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	if got := revisionOfDir(t, dir); got != revision {
+		t.Fatalf("reject Decision recordがmodel revisionを変えました: got=%s want=%s", got, revision)
+	}
 
 	// Gate B / Gate Cが固定したbaselineの名前を持つ場所へは、明示しない限りacceptしない。
 	baselineLike := filepath.Join(t.TempDir(), "reference", "workspace")
@@ -279,6 +281,16 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 		t.Fatal(err)
 	}
 	baselineBefore := treeDigest(t, baselineLike)
+	baselineDecisionCount := len(decisionsOf(t, baselineLike).Records)
+	code, out, errOut = run("reject", "-workspace", baselineLike, "-candidate", candidatePath, "-reason", "baselineでは記録しない")
+	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(errOut, "決定記録を書きませんでした") {
+		t.Fatalf("baselineのreject record guardが働いていません: code=%d out=%s err=%s", code, out, errOut)
+	}
+	if got := len(decisionsOf(t, baselineLike).Records); got != baselineDecisionCount {
+		t.Fatalf("baselineのDecision recordが明示許可なしで増えました: got=%d want=%d", got, baselineDecisionCount)
+	}
+	assertTreeUnchanged(t, baselineBefore, treeDigest(t, baselineLike))
+
 	code, _, errOut := run("accept", "-workspace", baselineLike, "-candidate", candidatePath)
 	if code != 2 || !strings.Contains(errOut, "baseline") {
 		t.Fatalf("baselineへのacceptが止まっていません: code=%d err=%s", code, errOut)
