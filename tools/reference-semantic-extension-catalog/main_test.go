@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,37 +72,41 @@ func captureReferenceCatalogRun(
 ) (int, string, string) {
 	t.Helper()
 	oldStdout, oldStderr := os.Stdout, os.Stderr
-	stdoutReader, stdoutWriter, err := os.Pipe()
+	stdout, err := os.CreateTemp(t.TempDir(), "stdout-*.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	stderrReader, stderrWriter, err := os.Pipe()
+	stderr, err := os.CreateTemp(t.TempDir(), "stderr-*.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Stdout, os.Stderr = stdoutWriter, stderrWriter
+	os.Stdout, os.Stderr = stdout, stderr
 	defer func() {
 		os.Stdout, os.Stderr = oldStdout, oldStderr
 	}()
 
 	code := run(args)
-	if err := stdoutWriter.Close(); err != nil {
+	if err := stdout.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	if err := stderrWriter.Close(); err != nil {
+	if err := stderr.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	stdout, err := io.ReadAll(stdoutReader)
+	stdoutBytes, err := os.ReadFile(stdout.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	stderr, err := io.ReadAll(stderrReader)
+	stderrBytes, err := os.ReadFile(stderr.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = stdoutReader.Close()
-	_ = stderrReader.Close()
-	return code, string(stdout), string(stderr)
+	if err := stdout.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stderr.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return code, string(stdoutBytes), string(stderrBytes)
 }
 
 func acyclicSubjectContextCLIArgs(t *testing.T) []string {
