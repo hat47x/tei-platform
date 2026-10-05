@@ -85,7 +85,7 @@ decisionをcandidate内容やReview結果から推測しない。
 
 decision actorは、accepted identity providerまたは同等の明示的なidentity Evidenceへ戻れる必要がある。
 
-必要な情報の概念形:
+必要な情報は、概念上は次の形になる。
 
 ```text
 actor identity
@@ -108,27 +108,13 @@ authenticated actor
 
 authority Evidenceは、少なくとも対象workspace / project、変更scope、許可されたdecision semanticsへ結び付く必要がある。
 
-例として将来検討できるsourceは:
-
-- Studio / organization policy
-- repository / SCM review policy
-- organization-managed authoring policy
-- 明示的に採用されたTEI authoring authority provider
-
-ただし、候補を列挙しただけでいずれかをproduction標準にはしない。
+将来のsource候補には、Studio / organization policy、repository / SCM review policy、organization-managed authoring policy、明示的に採用されたTEI authoring authority providerがある。ただし、ここで候補を挙げたことをproduction標準の採用とはみなさない。
 
 ### E4 — scope
 
 authorityはglobal booleanにしない。
 
-少なくとも概念上、次を区別できる必要がある。
-
-- workspace / project
-- source layerまたはsubject scope
-- accept / reject等のdecision semantics
-- 必要ならchange class
-
-別workspaceや別scopeのauthority Evidenceを流用しない。
+少なくとも、workspace / project、source layerまたはsubject scope、accept / reject等のdecision semanticsを区別する。必要な場合だけchange classもscopeへ含める。別workspaceや別scopeのauthority Evidenceは流用しない。
 
 ### E5 — freshness / revocation
 
@@ -185,7 +171,7 @@ authority qualified
 
 ## 6. Runtime Actor Contextとの境界
 
-R3AN / R3AOは、Runtime assertionについて:
+R3AN / R3AOは、Runtime assertionについて次の分離を固定している。
 
 ```text
 qualified acceptance authority evidence
@@ -210,7 +196,7 @@ Runtime assertion acceptance authority
 
 current Repositoryには、Shared AcceptanceのDecision actorについてE2〜E5を満たすaccepted authoring authority sourceがまだない。
 
-したがって現状は:
+したがって現状は次のとおりである。
 
 ```text
 candidate origin provenance
@@ -231,13 +217,7 @@ verified authoring decision authority
 
 である。
 
-この状態で次を実装しない。
-
-- `origin.actor`をDecision actorへcopyする
-- CLIの`--actor`文字列をverified actorとして保存する
-- `approved=true`をhuman approval proofとする
-- review fingerprint一致をhuman witnessへ昇格する
-- Runtime principalをauthoring reviewerへ自動変換する
+この状態では、`origin.actor`をDecision actorへcopyしない。CLIの`--actor`文字列をverified actorとして保存せず、`approved=true`もhuman approval proofにしない。review fingerprint一致をhuman witnessへ昇格せず、Runtime principalをauthoring reviewerへ自動変換することも避ける。
 
 ## 8. 次のReference pressure
 
@@ -271,15 +251,7 @@ providerが選べない場合は`authority-unresolved`のまま止める。
 
 ## 10. Product Valueとの接続
 
-このGateの目的は承認手順を重くすることではない。
-
-- AIやStudioが提案者になっても、判断者を混同しない
-- 人がReviewしたという見かけのmetadataでauthorityを捏造しない
-- 数か月後のAIがDecision historyへ再入場したとき、「何が決まったか」と「誰が決める権限を持っていたか」を別々に検証できる
-- Runtime permission modelをauthoringへ誤流用しない
-- 将来のidentity providerを交換してもCanonical meaningとShared Acceptanceの中核を保つ
-
-ための境界である。
+このGateの目的は承認手順を重くすることではない。AIやStudioが提案者になっても判断者を混同せず、人がReviewしたという見かけのmetadataからauthorityを捏造しないための境界である。数か月後のAIがDecision historyへ再入場したときには、「何が決まったか」と「誰が決める権限を持っていたか」を別々に検証できる必要がある。また、Runtime permission modelをauthoringへ誤流用せず、将来identity providerを交換してもCanonical meaningとShared Acceptanceの中核を保つ。
 
 ## 11. Current decision
 
