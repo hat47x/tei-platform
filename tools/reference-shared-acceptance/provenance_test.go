@@ -285,17 +285,39 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 	assertTreeUnchanged(t, baselineBefore, treeDigest(t, baselineLike))
 
+	// 外部CLIからのsource mutationは、Review Projectionを一度も固定せずに実行できない。
+	normalBefore := treeDigest(t, dir)
+	code, _, errOut = run("accept", "-workspace", dir, "-candidate", candidatePath)
+	if code != 2 || !strings.Contains(errOut, "expected-review-fingerprint") {
+		t.Fatalf("review bindingなしのacceptが止まっていません: code=%d err=%s", code, errOut)
+	}
+	assertTreeUnchanged(t, normalBefore, treeDigest(t, dir))
+
 	derived := filepath.Join(t.TempDir(), "world.json")
-	code, out, _ = run("accept", "-workspace", dir, "-candidate", candidatePath, "-derived-out", derived)
+	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	code, out, _ = run(
+		"accept",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", reviewFingerprint,
+		"-derived-out", derived,
+	)
 	if code != 0 || !strings.Contains(out, `"decision": "accepted"`) {
 		t.Fatalf("accept code=%d out=%s", code, out)
 	}
 	if _, err := os.Stat(derived); err != nil {
 		t.Fatalf("派生物が出力されていません: %v", err)
 	}
-	code, _, _ = run("accept", "-workspace", baselineLike, "-candidate", candidatePath, "-allow-reference-baseline")
+	baselineReviewFingerprint := reviewFingerprintViaCLI(t, baselineLike, candidatePath)
+	code, _, _ = run(
+		"accept",
+		"-workspace", baselineLike,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", baselineReviewFingerprint,
+		"-allow-reference-baseline",
+	)
 	if code != 0 {
-		t.Fatalf("明示的な許可があればbaseline名のscratchへacceptできる必要があります: code=%d", code)
+		t.Fatalf("明示的なbaseline許可とreview bindingがあればscratchへacceptできる必要があります: code=%d", code)
 	}
 
 	for _, args := range [][]string{{}, {"bogus"}, {"preview"}, {"preview", "-workspace", dir}} {
