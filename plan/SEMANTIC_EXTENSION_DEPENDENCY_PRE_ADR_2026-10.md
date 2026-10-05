@@ -115,6 +115,8 @@ Semantic Interfaceは、あるdomainのvalidatorや機能をまとめた便宜�
 
 SUI hierarchyとDatabase Migrationを使ったE3 candidateでは、hierarchy integrity全体ではなくdirected graphのacyclicだけがこの条件を満たす可能性を示しています。exact-head Evidenceが揃うまでは最終contractとして固定しません。
 
+同じalgorithmが複数domainに現れても、それだけでSemantic Authorityを統合しません。たとえばSolution Releaseは既にCoreの`releaseplan.Compile`がcycleを拒否します。この場合、共通graph utilityを内部実装として共有する余地と、Semantic Extensionとして同じValidation ruleを付与することは分けて判断します。二重Authorityを作らないことを優先します。
+
 Semantic Interfaceは単なる文字列ラベルにはしない。Interface自体がlogical identity、contract version、namespace authority、contract fingerprint、Source / provenanceを持つ意味契約である必要がある。providerの`implements`自己申告だけを適合Evidenceにはしない。
 
 同じInterfaceを複数providerが満たす場合、Accepted wiringまたは明示的なselection policyが無ければ、package ID、version、catalog列挙順等で暗黙に一つを選ばない。
