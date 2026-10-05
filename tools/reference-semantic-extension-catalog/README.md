@@ -135,6 +135,42 @@ go run ./tools/reference-semantic-extension-catalog \
   -subject-id support.case.standard-response
 ```
 
+### Subject Semantic Context
+
+`-subject-kind`と`-subject-id`でCatalogを絞るだけでは、AIやStudioが対象subjectへ再入場するときに必要な情報が複数箇所へ分かれます。そこでReferenceでは、`-subject-context`を指定すると、既存のKnowledge ContextへSemantic Extensionの情報を重ねた`Subject Semantic Context`を返します。
+
+このContextには、対象subjectのSourceと既存dependencyに加えて、次を含めます。
+
+- 対象kindへ適用可能なExtensionと、実際にConstraintやRelationを追加しているExtension
+- Extensionのversion、descriptor Source、fingerprint
+- root requirementからExtensionへ至るdependency path
+- 対象subjectに対するConstraintとSemantic Interface
+- resolved evaluator providerとConformance profile
+- Extensionが参照するCapability等のConnection
+- subjectに関係するUnresolvedと、Semantic Set全体のUnresolved
+- Semantic Set fingerprintとEvidence fingerprint
+
+Evaluator bindingを入力した場合だけ、exactなSemantic Validation Planのfingerprintと、対象subjectに必要なimplementation / artifact bindingも含めます。bindingを与えていない場合、Context側でimplementationを選びません。
+
+`kind-applicable`は「そのkindへ使える候補」であり、対象subjectへの採用を意味しません。Subject Semantic Context自体もderivedなread-only surfaceで、Canonical authority、Acceptance、Runtime Authorityのいずれにもなりません。
+
+SUIのacyclic candidateを対象にする例です。
+
+```bash
+go run ./tools/reference-semantic-extension-catalog \
+  -workspace reference/sui-adoption/workspace \
+  -extensions tools/reference-semantic-extension-catalog/testdata/extensions \
+  -require tei.reference.sui-acyclic@1 \
+  -require tei.reference.acyclic-evaluator@1 \
+  -require tei.reference.acyclic-contract@1 \
+  -interface-conformance path/to/accepted-acyclic-conformance.json \
+  -subject-context \
+  -subject-kind semantic-data \
+  -subject-id sui.island
+```
+
+このReferenceの目的は、Catalog全体をAIへ毎回渡すことではありません。対象subjectから、既存の意味、Source、依存理由、Validationのレールへ戻るための情報を一つの機械可読surfaceへまとめることです。
+
 ## Identityとprovenance
 
 catalogは意味の解決結果とSourceの来歴を分けます。
