@@ -534,6 +534,31 @@ Decision IndexもSource Evidenceとartifact Evidenceを別statusで返す。Sour
 
 exact-headのfocused test / full Repository healthは現在の実行環境では未取得であるため、本追記だけで完了条件やProduct Evidence tierを上げない。
 
+## Authoring Decision Authority Evidence Gate — 2026-10-05
+
+PV-AI-01の次段としてhuman Decision witnessを検討した結果、自己申告のactor fieldを追加する前にauthoring側のauthority Evidenceを確定する必要がある。
+
+正本は[Authoring Decision Authority Evidence Gate](../AUTHORING_DECISION_AUTHORITY_EVIDENCE_GATE_2026-10.md)へ分離した。
+
+current Shared Acceptanceで既に確定しているのは、candidate / Evidence / Review Projection / Accept・Reject Decisionのidentityとprovenanceである。一方、次はまだ未解決である。
+
+```text
+candidate origin actor
+  != decision actor
+
+decision actor identity
+  != authoring decision authority
+
+reviewFingerprint matched
+  != human witness verified
+```
+
+authoring側でverified witnessを扱うには、少なくともactor identity Evidence、workspace / projectとdecision semanticsへ束縛されたauthority Evidence、Decision時点のfreshness / revocation、exact candidate / Review bindingが必要である。Runtime Actor Contextのprincipal / AuthorizationやR3AN / R3AOのRuntime assertion authorityを、そのままauthoring Decisionへ流用しない。
+
+current RepositoryにはこのEvidence Gateを満たすaccepted authoring authority sourceがない。したがって`origin.actor`、CLI引数、`approved=true`、review fingerprint一致をhuman authorityへ昇格する実装は行わない。
+
+次のReferenceではproduction schemaを先に作らず、Studioのauthenticated user contextまたはrepository / organization側のreview authority等から、実在するidentity / authority Evidenceを一つ取得できるかをPressureする。providerを選べなければ`authority-unresolved`のまま止める。
+
 ## Gate Cとの関係
 
 本IssueはGate C前に本格実装しません。
