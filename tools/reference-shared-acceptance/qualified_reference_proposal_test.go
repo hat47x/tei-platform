@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -221,6 +223,92 @@ func TestQualifiedReferenceReuseRequestCannotInjectContractQuery(t *testing.T) {
 	if _, err := decodeQualifiedReferenceReuse(data); err == nil {
 		t.Fatal("destination requestからContract Queryを注入できています")
 	}
+}
+
+func TestKnowledgeQualifyCLIProducesExplicitReferenceProposal(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := treeDigest(t, dir)
+	temp := t.TempDir()
+	writeJSON := func(name string, value any) string {
+		t.Helper()
+		path := filepath.Join(temp, name)
+		if err := os.WriteFile(path, mustJSON(t, value), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+	requirementsPath := writeJSON("qualification-requirements.json", requirements)
+	candidatePath := writeJSON("base-candidate.json", secondApplicationBaseWithoutPattern(snapshot.revision))
+	requestPath := writeJSON("reference-reuse.json", qualifiedReferenceReuseRequest())
+	qualificationPath := filepath.Join(temp, "qualification.json")
+
+	cmd := exec.Command(
+		"go", "run", "./cmd/tei", "knowledge-qualify",
+		"-workspace", dir,
+		"-subject-kind", "application-pattern",
+		"-subject-id", "order_entry.customer_reference",
+		"-qualification-requirements", requirementsPath,
+	)
+	cmd.Dir = repositoryRoot(t)
+	cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=")
+	var qualificationOut, qualificationErr bytes.Buffer
+	cmd.Stdout = &qualificationOut
+	cmd.Stderr = &qualificationErr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("tei knowledge-qualify failed: %v\nstderr=%s", err, qualificationErr.String())
+	}
+	if err := os.WriteFile(qualificationPath, qualificationOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := cliRun(
+		t,
+		"propose-qualified-reference-pattern",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-qualification", qualificationPath,
+		"-reference-reuse", requestPath,
+	)
+	if code != 0 {
+		t.Fatalf("proposal CLI code=%d err=%s out=%s", code, errOut, out)
+	}
+	proposed, err := decodeCandidate([]byte(out))
+	if err != nil {
+		t.Fatalf("proposal CLI output is not a candidate: %v\n%s", err, out)
+	}
+	_, gotFingerprint, err := normalizeCandidate(proposed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, wantFingerprint, err := normalizeCandidate(secondApplicationCandidate(snapshot.revision))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotFingerprint != wantFingerprint {
+		t.Fatalf("end-to-end candidate fingerprint=%s want=%s", gotFingerprint, wantFingerprint)
+	}
+	ev, err := evaluate(dir, mustJSON(t, proposed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("end-to-end Proposal did not pass Shared Acceptance Preview: %+v", allDiagnostics(ev.preview))
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }
 
 func TestProposeQualifiedReferencePatternCLILeavesWorkspaceReadOnly(t *testing.T) {
