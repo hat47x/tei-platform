@@ -149,6 +149,31 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 }
 
+func TestCandidateOriginActorDoesNotBecomeDecisionActor(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidate.Origin.Actor = "proposal-author"
+	decision := acceptViaCLI(t, dir, candidateFile(t, candidate))
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.Decision.Origin == nil || record.Decision.Origin.Actor != "proposal-author" {
+		t.Fatalf("proposal origin actor was not preserved as provenance: %+v", record.Decision.Origin)
+	}
+	if record.DecisionActorStatus != "unresolved" ||
+		record.DecisionAuthorityStatus != "unresolved" {
+		t.Fatalf(
+			"proposal origin actor was promoted to decision authority: actor=%q authority=%q decision=%+v",
+			record.DecisionActorStatus,
+			record.DecisionAuthorityStatus,
+			decision,
+		)
+	}
+}
+
 func TestRejectedDecisionIsReachableWithoutChangingCanonicalMeaning(t *testing.T) {
 	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
