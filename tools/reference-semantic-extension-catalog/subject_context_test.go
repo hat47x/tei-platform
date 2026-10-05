@@ -78,7 +78,10 @@ func TestSubjectSemanticContextConnectsSUIKnowledgeToExtensionValidationRail(t *
 	if ctx.Schema != subjectSemanticContextSchema ||
 		ctx.Subject != target ||
 		ctx.SemanticSetFingerprint != catalog.ResolutionFingerprint ||
-		ctx.CoreSourceIndexFingerprint != catalog.CoreSourceIndexFingerprint {
+		ctx.CoreSourceIndexFingerprint != catalog.CoreSourceIndexFingerprint ||
+		ctx.CoreContextStatus != subjectContextResolved ||
+		ctx.SemanticSetStatus != subjectContextResolved ||
+		ctx.SubjectSemanticStatus != subjectContextResolved {
 		t.Fatalf("subject semantic context identity mismatch: %+v", ctx)
 	}
 	if ctx.ContextFingerprint == "" ||
@@ -109,7 +112,8 @@ func TestSubjectSemanticContextConnectsSUIKnowledgeToExtensionValidationRail(t *
 	if !ok {
 		t.Fatalf("consumer extension is not discoverable: %+v", ctx.Extensions)
 	}
-	if !hasString(consumerUse.Roles, "constraint") ||
+	if consumerUse.State != subjectExtensionActive ||
+		!hasString(consumerUse.Roles, "constraint") ||
 		!hasString(consumerUse.Roles, "kind-applicable") ||
 		consumerUse.Extension.Source == "" ||
 		consumerUse.Extension.SourceFingerprint == "" ||
@@ -117,7 +121,8 @@ func TestSubjectSemanticContextConnectsSUIKnowledgeToExtensionValidationRail(t *
 		t.Fatalf("consumer extension lacks re-entry information: %+v", consumerUse)
 	}
 	providerUse, ok := subjectExtensionUseByID(ctx.Extensions, provider.ID)
-	if !ok || !hasString(providerUse.Roles, "evaluator-provider") {
+	if !ok || providerUse.State != subjectExtensionSupporting ||
+		!hasString(providerUse.Roles, "evaluator-provider") {
 		t.Fatalf("evaluator provider is not discoverable: %+v", ctx.Extensions)
 	}
 
@@ -193,6 +198,12 @@ func TestSubjectSemanticContextKeepsGlobalUnresolvedVisibleWithoutMisattributing
 	}
 	if len(ctx.SemanticSetUnresolved) == 0 {
 		t.Fatal("global Semantic Set unresolved was hidden from subject context")
+	}
+	if ctx.SemanticSetStatus != subjectContextUnresolved {
+		t.Fatalf("Semantic Set status=%q want unresolved", ctx.SemanticSetStatus)
+	}
+	if ctx.SubjectSemanticStatus != subjectContextResolved {
+		t.Fatalf("unrelated global unresolved changed subject semantic status: %q", ctx.SubjectSemanticStatus)
 	}
 	for _, unresolved := range ctx.SubjectUnresolved {
 		if unresolved.Subject != nil && unresolved.Subject.ID == unrelated.ID {
@@ -321,8 +332,17 @@ func TestSubjectSemanticContextExplainsUnresolvedEvaluatorFromSubject(t *testing
 		t.Fatalf("unresolved evaluator leaked an active constraint: %+v", ctx.Constraints)
 	}
 	use, ok := subjectExtensionUseByID(ctx.Extensions, consumer.ID)
-	if !ok || !hasString(use.Roles, "unresolved") {
+	if !ok || use.State != subjectExtensionUnresolved ||
+		!hasString(use.Roles, "unresolved") {
 		t.Fatalf("unresolved consumer Extension is not discoverable: %+v", ctx.Extensions)
+	}
+	if ctx.SemanticSetStatus != subjectContextUnresolved ||
+		ctx.SubjectSemanticStatus != subjectContextUnresolved {
+		t.Fatalf(
+			"unresolved evaluator status semanticSet=%q subject=%q",
+			ctx.SemanticSetStatus,
+			ctx.SubjectSemanticStatus,
+		)
 	}
 	if use.Extension.Source == "" || use.Extension.SourceFingerprint == "" {
 		t.Fatalf("unresolved Extension lost Source re-entry information: %+v", use)
@@ -339,5 +359,20 @@ func TestSubjectSemanticContextExplainsUnresolvedEvaluatorFromSubject(t *testing
 	}
 	if !found {
 		t.Fatalf("subject unresolved does not point back to consumer Extension: %+v", ctx.SubjectUnresolved)
+	}
+}
+
+func TestSubjectExtensionStateKeepsCandidateDistinctFromActive(t *testing.T) {
+	if got := subjectExtensionState([]string{"kind-applicable"}); got != subjectExtensionCandidate {
+		t.Fatalf("candidate state=%q", got)
+	}
+	if got := subjectExtensionState([]string{"kind-applicable", "constraint"}); got != subjectExtensionActive {
+		t.Fatalf("active state=%q", got)
+	}
+	if got := subjectExtensionState([]string{"evaluator-provider"}); got != subjectExtensionSupporting {
+		t.Fatalf("supporting state=%q", got)
+	}
+	if got := subjectExtensionState([]string{"constraint", "unresolved"}); got != subjectExtensionUnresolved {
+		t.Fatalf("unresolved state=%q", got)
 	}
 }
