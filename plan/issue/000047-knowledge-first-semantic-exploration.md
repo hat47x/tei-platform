@@ -588,6 +588,20 @@ Shared AcceptanceのPreviewでは添付済みqualificationを信用しない。c
 
 `incompatible`と`unknown`はEvidenceとしてcandidateへ付与できない。この接続もqualificationをAcceptanceへ昇格させず、candidateは従来どおりShared Acceptance Boundaryのbase revision、resolve、Validation、architecture policy、Semantic Diff、impact、acceptance policyを通る。
 
+### 2026-10-05 qualification → explicit-reference Proposal candidate
+
+qualificationからShared AcceptanceへEvidenceを渡す経路に続き、探索結果から変更deltaへ進む最小のReference producerを追加した。
+
+`propose-qualified-reference-pattern`は、applicableな`application-pattern` qualification、既存のbase candidate、destination-ownedなreuse requestを受け取る。reuse requestが指定するのはPattern ID、所有Application、Relation、datasource、placementだけである。Contract / Query / input mappingはrequestから受け付けず、current Canonicalのqualified origin Patternから読み直す。
+
+この分離により、`order_entry.customer_reference`をprovenance candidateとして使いながら、origin側の`sales.order.customer`やdatasource alias `master`を`repair_intake`へ持ち込まない。一方、shared authorityとして再利用する`master_data.customer/find_by_id`とinput mappingは、qualificationのrequired dependencyにexact identityで含まれている場合だけProposalへ反映する。
+
+生成前には同じrequirementsでcurrent qualificationを再実行し、subject、Source Evidence、required dependency Evidenceの一致を確認する。過去にapplicableだったという履歴だけからProposalを作らない。生成したcandidateにもcurrent qualification Evidenceを添付するため、Shared Acceptance Preview側の再qualificationを迂回しない。
+
+testには、既知のS4 candidateと同じsemantic deltaになるpositive caseに加え、required Contract Queryをqualificationしていないcase、stale Evidence、reuse requestからContract Queryを注入するcaseをnegative caseとして記述した。CLI自体がworkspaceを変更しないことも対象にしている。
+
+この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
+
 ### 現在のEvidence境界
 
 このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
