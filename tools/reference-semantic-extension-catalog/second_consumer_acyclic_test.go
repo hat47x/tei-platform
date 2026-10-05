@@ -335,8 +335,8 @@ func TestAcyclicSemanticInterfaceReusesExactContractAcrossSUIAndMigration(t *tes
 func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.sui-acyclic",
-		"reference.sui.acyclic",
 		suiTarget,
 	)
 	suiCatalog, contract, provider, conformance := resolveAcyclicDomainCatalog(
@@ -377,8 +377,8 @@ func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *tes
 
 	migrationCore, migrationTarget, definitions := referenceMigrationAcyclicInput(t)
 	migrationConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.migration-acyclic",
-		"reference.migration.acyclic",
 		migrationTarget,
 	)
 	migrationCatalog, migrationContract, migrationProvider, migrationConformance :=
@@ -416,8 +416,8 @@ func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *tes
 func TestAcyclicSemanticInterfaceDoesNotSubsumeSUIDomainIntegrity(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	consumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.sui-acyclic",
-		"reference.sui.acyclic",
 		suiTarget,
 	)
 	catalog, contract, provider, conformance := resolveAcyclicDomainCatalog(
@@ -459,8 +459,8 @@ func TestAcyclicSemanticInterfaceDoesNotSubsumeSUIDomainIntegrity(t *testing.T) 
 func TestAcyclicMigrationAdapterDoesNotSubsumeParentExistence(t *testing.T) {
 	migrationCore, migrationTarget, _ := referenceMigrationAcyclicInput(t)
 	consumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.migration-acyclic",
-		"reference.migration.acyclic",
 		migrationTarget,
 	)
 	catalog, contract, provider, conformance :=
@@ -493,8 +493,8 @@ func TestAcyclicMigrationAdapterDoesNotSubsumeParentExistence(t *testing.T) {
 func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.sui-acyclic",
-		"reference.sui.acyclic",
 		suiTarget,
 	)
 	suiCatalog, contract, provider, _ := resolveAcyclicDomainCatalog(
@@ -505,8 +505,8 @@ func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.
 
 	migrationCore, migrationTarget, _ := referenceMigrationAcyclicInput(t)
 	migrationConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.migration-acyclic",
-		"reference.migration.acyclic",
 		migrationTarget,
 	)
 	migrationCatalog, migrationContract, migrationProvider, _ :=
