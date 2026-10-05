@@ -43,7 +43,7 @@ go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json] [-out FILE]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
-go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
+go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
@@ -52,8 +52,8 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力します。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
-- `reject`: sourceを変更しないことを記録します。staleなcandidateも退けられます。workspaceへは何も書きません。
-- `decisions`: 受理した決定の記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、受理時に書いたsource、受理理由に使ったEvidenceの現在性を別々に確認します。
+- `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
+- `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。
 
 ### 人が読むReview Projection
 
@@ -67,11 +67,11 @@ CLIから`accept`する場合、`-expected-review-fingerprint`は必須です。
 
 このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。`reviewFingerprint`と`reviewBinding`は「どのProjectionへ受理を結び付けたか」を識別するだけで、人が実際に読んで承認したことを証明するtokenではありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
-### 受理の記録 — なぜそのsourceがあるのか
+### Decisionの記録 — なぜ受け入れた / 退けたか
 
-`accept`は、authoritative sourceを更新したあと、その受理を`.tei/decisions/<内容のSHA-256>.json`へ残します。数か月後や別sessionのAIが、会話履歴を持たずに「このsourceはなぜここにあるのか」を機械的に読めるようにするためです（`RQ-027`）。
+`accept`はauthoritative sourceを更新したあと、その受理を`.tei/decisions/<内容のSHA-256>.json`へ残します。`reject`もsourceを変更せず、退けたcandidateと理由を同じcontent-addressed Decision ledgerへ残します。数か月後や別sessionのAIが、会話履歴だけに頼らず「なぜこのsourceがあるのか」「なぜこのcandidateは採用されなかったのか」を機械的に辿るためです。
 
-記録には、fingerprintへ入らない`intent`と`evidence`、候補の同一性（`candidateFingerprint`）、基準と受理後のrevision、書いたfileとその前後のfingerprint、Semantic / Application差分、受理後Conformance、残ったunresolvedが入ります。
+accepted Decisionには、fingerprintへ入らない`intent`と`evidence`、候補の同一性（`candidateFingerprint`）、基準と受理後のrevision、書いたfileとその前後のfingerprint、Semantic / Application差分、受理後Conformance、残ったunresolvedが入ります。rejected Decisionは同じcandidate / Evidence identityと判断理由を持ちますが、`sourceChanged=false`、`sourceEdits=none`です。stale candidateをrejectした場合は、candidateの`baseModelRevision`と判断時のcurrent revision、およびstale時の明示的な選択肢も保存します。
 
 ```bash
 go run ./tools/reference-shared-acceptance decisions -workspace DIR
@@ -93,7 +93,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認したかを証明する署名ではありません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`reject`は記録を残しません。`RQ-027`が機械到達を求めるのはaccepted Decisionだからです。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
 
 ### knowledge qualificationからcandidateへの接続
 
@@ -194,7 +194,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 
 示すこと（このtoolの`boundary_test.go` / `provenance_test.go` / `containment_test.go`と、`changeanalysis`の`analysis_test.go`）:
 
-- Preview / Rejectはauthoritative sourceをbyte単位で変更しない
+- Preview / pure Rejectはauthoritative sourceをbyte単位で変更しない。CLI RejectはDecision ledgerだけを増やし、model revisionとCanonical Worldを変更しない
 - 受理した意味はtoolを介さず共有loaderで再読込でき、Validationを満たし、受理前後で評価結果が変わる
 - staleなcandidateを黙って適用しない
 - 不正なcandidate（未知field / 存在しない参照 / 別layerへのplacement / 数値ではないAttributeへの`positive` / 宣言外の副作用）はsourceを変えずに拒否される
@@ -209,7 +209,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
 - Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
-- 受理した決定が、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged`、受理理由に使ったEvidenceの`current / diverged`を分けて返す。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go`）
+- accepted / rejected Decisionが、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged / none`、判断理由に使ったEvidenceの集約statusとSource/artifact別statusを返す。stale rejectはrevision conflictも保持する。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go` / `semantic_evaluation_handoff_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
 
