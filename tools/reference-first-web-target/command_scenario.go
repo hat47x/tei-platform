@@ -106,6 +106,11 @@ func newReferenceCommandScenarioRunner(
 	}, nil
 }
 
+// ApplicationID returns the Application this runner executes (see referenceReadScenarioRunner).
+func (r *referenceCommandScenarioRunner) ApplicationID() string {
+	return "order_entry"
+}
+
 func (r *referenceCommandScenarioRunner) RunCommand(
 	ctx context.Context,
 	input commandScenarioInput,

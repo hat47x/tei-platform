@@ -48,20 +48,33 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	commandScenario, err := newReferenceCommandScenarioRunner(
-		loaded.World,
-		*legacyUsers,
-		*legacyAuthz,
+	// Each Application gets only the scenario runners that exist for it. A runner for another
+	// Application is never attached, and newWebTargetServer rejects one that is.
+	var (
+		readScenario    readScenarioRunner
+		commandScenario commandScenarioRunner
+		options         []webTargetOption
 	)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	switch appID {
+	case core.MustCanonicalID("order_entry"):
+		readScenario = newReferenceReadScenarioRunner(loaded.World)
+		command, err := newReferenceCommandScenarioRunner(
+			loaded.World,
+			*legacyUsers,
+			*legacyAuthz,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		commandScenario = command
+	case core.MustCanonicalID("repair_intake"):
+		options = append(options, withCustomerLookup(newReferenceCustomerLookupScenarioRunner(loaded.World)))
+	default:
+		fmt.Fprintf(os.Stderr, "no scenario runner exists for Application %s (supported: order_entry, repair_intake)\n", appID)
 		os.Exit(2)
 	}
-	target, err := newWebTargetServer(
-		projection,
-		newReferenceReadScenarioRunner(loaded.World),
-		commandScenario,
-	)
+	target, err := newWebTargetServer(projection, readScenario, commandScenario, options...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)

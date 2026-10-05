@@ -74,6 +74,29 @@ curl -sS -X POST http://127.0.0.1:8080/scenario/submit \
 
 `editor-secret`はReference fixture用のsynthetic値であり、production credentialではありません。
 
+### 第二Application `repair_intake` の顧客照会
+
+`-application repair_intake`で起動すると、`order_entry`用のread / command runnerは付かず、顧客照会だけが有効になります。Applicationごとに存在するrunnerだけを付け、runnerが別のApplicationを実行する場合、またはどのApplicationを実行するか宣言しない場合は、起動時に拒否します（manifestと実行内容の食い違いを防ぐため）。
+
+```bash
+go run ./tools/reference-first-web-target \
+  -workspace reference/workspace -application repair_intake \
+  -baseline-id B -baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736 \
+  -target-revision "$(git rev-parse HEAD)" -listen 127.0.0.1:8080
+```
+
+- `/customer-lookup?customerId=11` — Customer IDを入れる画面。照会結果、実行の根拠、結果が主張しないこと、未解決を表示する
+- `/scenario/customer-lookup?customerId=11` — 同じrunnerを使うJSON
+
+Customer IDから`repair_intake.intake.customer_id`のmapped rowを作り、`repair_intake.customer_reference`をDriverのEnvironment-aware Contract Query resolutionで実行します。`order_entry`が使う`customer.customer`の意味とContract Query（`master_data.customer`の`find_by_id`）を、コピーせず同じidentityで使います。
+
+限界:
+
+- developmentのExecutorはsynthetic fixtureで、実Databaseへの接続ではありません。
+- productionにはContract Query executor bindingが無く、productionでは実行できません。developmentのExecutorへ代替しません。
+- 認証の門はありません（Reference診断用）。
+- Customer IDを整数へ変換するのはTarget内のfixture上の選択で、Canonicalな型規則ではありません。
+
 ## Authority boundary
 
 ```text

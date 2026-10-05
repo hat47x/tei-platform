@@ -1,6 +1,6 @@
 # ISSUE-000075: 実務シナリオを最初から最後まで通すMVP的な実証を先に行い、機能の積み上げと関係性を示す
 
-- 状態: Proposed — 評価待ち。実証の観点と候補の整理までを記録した段階で、どの実証を最初に行うかはownerが決めていない
+- 状態: In Progress — 最初の実証はA（2026-10-05にownerが選択）。Aの実装と実行確認までを記録した。B / Cは未着手
 - 提案日: 2026-10-02
 - 性格: 実証計画 / Reference Evidence。測定に基づく価値判断は含まない
 - 主担当要求: RQ-021（主）/ RQ-022 / RQ-012 / RQ-013 / RQ-014 / RQ-029
@@ -49,7 +49,7 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 | 関係性 | 機能どうしが同じ意味・同じidentityでつながっているか。意味を一つ作ると、複数の機能・複数のApplicationから、写し直しなしに使われ、元へ辿れるか |
 | 実用性 | 実務に近い入力から、最後の結果の観測まで、実際に最初から最後まで通せるか。通せない箇所はどこか |
 
-## 候補（owner判断待ち）
+## 候補（Aはownerが選択済み。B / Cは判断待ち）
 
 候補は、すでにある機能の延長で、範囲が小さい順に並べています。いずれも、新しい意味やCore primitiveを先に作りません。
 
@@ -61,6 +61,26 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 **整理上の見立て（推奨ではなく、判断材料）:** Aは既存の計画の延長で最も小さく、足りないものも具体的です。BはProduct Valueの個人・組織の価値に最も近く、000071 / 000073の機能とつながりますが、前提となる機能が複数あります。Cは範囲が広く、製品側の経路が無いため、Aの後です。ownerの判断で、AとBを順に、または並行して進めることも考えられます。
 
+## 実証記録A — `repair_intake`の顧客照会を画面から通す（2026-10-05）
+
+**シナリオ。** Customer IDを画面（`/customer-lookup`）またはJSON（`/scenario/customer-lookup`）から入力し、`repair_intake`の参照Pattern `repair_intake.customer_reference`をDriverのEnvironment-aware経路で実行し、顧客を表示する。実装は`tools/reference-first-web-target`で、正本・Core・Canonical meaningは変更していない。
+
+**環境。** WSL2（Ubuntu）、Go 1.23.2。Environmentは`development`、Executorはsynthetic fixture（test double）。実Database、production、本番相当環境ではない。
+
+| 観点 | 通せたこと | 通せなかったこと |
+| --- | --- | --- |
+| 量 | 入力 → intakeのmapped row → Relation keyからのContract Query parameter → Executor → 顧客の表示。画面とJSONが同じrunnerを使う。不正入力は400、未設定は503 | 認証の門、書き込み（Command）。`repair_intake`にはCommand Patternが無い |
+| 関係性 | `order_entry`と`repair_intake`が、同じ`customer.customer`の意味と同じContract Query（`master_data.customer`の`find_by_id`）を、同じExecutor bindingで解決し、同じ顧客の属性を返す（`TestCustomerLookupReusesTheCustomerMeaningAndContractOfOrderEntry`）。Contract Query executorの対応表は一か所（`referenceContractQueryExecutors`）にあり、二つのrunnerが共有する | `order_entry`のPatternの引き継ぎはなく、`repair_intake`は自分のPatternを持つ（意図どおり） |
+| 実用性 | サーバを実際に起動し、画面とJSONから照会を通した。manifestと異なるApplicationのrunnerは起動時に拒否される（以前は`order_entry`固定のrunnerが他Applicationのmanifestの後ろで動き得た） | productionでは実行できない（Executor bindingが無く、developmentへ代替しない。testで固定）。実Oracleへの接続は未観測。Customer IDの整数変換はTarget内のfixture上の選択 |
+
+**次に作る機能の候補（記録から）。**
+
+1. productionのContract Query executor bindingをReferenceとして持つか、持たないと決めるか（`order_entry`と共通の未判定事項）。
+2. 実Database（actual Oracle）への接続と、そのprincipal / credential / network authorityの観測（未観測のまま）。
+3. 照会の入口に認証の門を置くか。`order_entry`のAuthentication / Authorizationを`repair_intake`へ使えるかが、候補Bの前提になる。
+4. 候補B（変更を提案し、人が確かめ、受理し、反映される一周）。このとき評価対象の選択（[ISSUE-000073](000073-derive-validation-selection-from-canonical.md)）と人が読む承認の面（[ISSUE-000071](000071-approval-sufficient-projection.md)）が前提になる。
+
+この記録は、一つのシナリオの成功にとどまり、実務全般への適用可能性や、実Databaseでの動作を示しません。
 ## 設計詳細
 
 1. **記録の形。** 実証ごとに、通したシナリオ、使った機能、機能の間の関係（同じidentityで使われた意味など）、通せなかった箇所、使ったProviderと環境（synthetic / 実Provider）を、1つの記録にまとめる。置き場と形式は、最初の実証で決める。
@@ -69,10 +89,10 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 ## 完了条件
 
-- [ ] 最初に行う実証の候補を、ownerが選ぶ（A / B / C、または別案）
-- [ ] 選んだ実証を、本Issueの「実証で見せること」の三観点で記録として残す（通せた範囲、通せなかった範囲を含む）
-- [ ] 記録に、使ったProviderと環境（synthetic / 実Provider / 本番相当）を明示する
-- [ ] 記録から、次に作る機能の候補を挙げる
+- [x] 最初に行う実証の候補を、ownerが選ぶ（2026-10-05、Aを選択）
+- [x] 選んだ実証を、本Issueの「実証で見せること」の三観点で記録として残す（通せた範囲、通せなかった範囲を含む。下記「実証記録A」）
+- [x] 記録に、使ったProviderと環境（synthetic / 実Provider / 本番相当）を明示する（下記「実証記録A」）
+- [x] 記録から、次に作る機能の候補を挙げる（下記「実証記録A」。候補Bへ進むかはowner判断待ち）
 
 ## 完了後に判断できること
 
