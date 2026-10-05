@@ -52,13 +52,23 @@ func decisionsOf(t *testing.T, dir string) DecisionIndex {
 
 func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
 	t.Helper()
-	code, out, errOut := cliRun(t, "accept", "-workspace", dir, "-candidate", candidatePath)
+	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	code, out, errOut := cliRun(
+		t,
+		"accept",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", reviewFingerprint,
+	)
 	if code != 0 {
 		t.Fatalf("accept code=%d err=%s out=%s", code, errOut, out)
 	}
 	var decision Decision
 	if err := json.Unmarshal([]byte(out), &decision); err != nil {
 		t.Fatal(err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Fingerprint != reviewFingerprint {
+		t.Fatalf("accept did not preserve reviewed Projection: %+v", decision.ReviewBinding)
 	}
 	return decision
 }
@@ -99,9 +109,9 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
 		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
 	}
-	if record.ReviewBindingStatus != "none" ||
-		record.ReviewCoverageStatus != "none" ||
-		len(record.ReviewIncomplete) != 0 ||
+	if record.ReviewBindingStatus != "verified" ||
+		record.ReviewCoverageStatus != "incomplete" ||
+		len(record.ReviewIncomplete) == 0 ||
 		len(record.ReviewDiagnostics) != 0 {
 		t.Fatalf(
 			"review binding status=%q coverage=%q incomplete=%+v diagnostics=%+v",

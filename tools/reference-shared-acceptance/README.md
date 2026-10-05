@@ -42,7 +42,7 @@ go run ./tools/reference-shared-acceptance attach-qualification -candidate FILE 
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json] [-out FILE]
-go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE [-derived-out FILE] [-out FILE]
+go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
@@ -51,7 +51,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力します。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
-- `accept`: 同じ検査を最初から実行し直し、通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
+- `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: sourceを変更しないことを記録します。staleなcandidateも退けられます。workspaceへは何も書きません。
 - `decisions`: 受理した決定の記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、受理時に書いたsource、受理理由に使ったEvidenceの現在性を別々に確認します。
 
@@ -61,7 +61,9 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
-Review後に同じProjectionだけを受理したい場合は、`accept`へ`-expected-review-fingerprint`を渡せます。Acceptはsourceを書き換える前にcurrent Reviewを作り直し、fingerprintが違えば`REVIEW_FINGERPRINT_MISMATCH`で拒否します。一致した場合は、fingerprint、coverage、A1〜A8を含むReview Projection snapshotを`reviewBinding`としてaccepted Decisionへ残します。Decision Indexはsnapshotからfingerprintを再計算し、coverageとも一致する場合だけ`verified`とします。
+CLIから`accept`する場合、`-expected-review-fingerprint`は必須です。Acceptはsourceを書き換える前にcurrent Reviewを作り直し、fingerprintが違えば`REVIEW_FINGERPRINT_MISMATCH`で拒否します。一致した場合は、fingerprint、coverage、A1〜A8を含むReview Projection snapshotを`reviewBinding`としてaccepted Decisionへ残します。Decision Indexはsnapshotからfingerprintを再計算し、coverageとも一致する場合だけ`verified`とします。
+
+この必須化が閉じるのは「Review Projectionを一度も固定せず、CLIからsource mutationへ進む」迂回路です。package内部の`accept` primitiveまでhuman-review tokenを要求する設計にはしていません。内部primitiveはrollbackやconformance等の構成要素testでも使うためです。外部CLIのwrite boundaryだけをreview-binding必須とします。
 
 このProjectionはread-onlyであり、承認そのものでもAcceptance authorityでもありません。`reviewFingerprint`と`reviewBinding`は「どのProjectionへ受理を結び付けたか」を識別するだけで、人が実際に読んで承認したことを証明するtokenではありません。出力の`previewAcceptable`はShared Acceptanceの機械判定だけを表し、Review coverageの不足が解消されたことは意味しません。A1〜A8が承認条件として十分かはISSUE-000071のowner reviewが必要で、Reference toolとしての統合にはexact-headのfull Repository-health PASSが必要です。
 
