@@ -352,11 +352,13 @@ type DecisionRecord struct {
 	Diverged            []string     `json:"divergedPaths,omitempty"`
 	EvidenceStatus        string              `json:"evidenceStatus"`
 	EvidenceDiagnostics   []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
-	ReviewBindingStatus   string              `json:"reviewBindingStatus"`
-	ReviewCoverageStatus  string              `json:"reviewCoverageStatus"`
-	ReviewIncomplete      []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
-	ReviewDiagnostics     []Diagnostic        `json:"reviewDiagnostics,omitempty"`
-	Decision              Decision            `json:"decision"`
+	ReviewBindingStatus    string              `json:"reviewBindingStatus"`
+	ReviewCoverageStatus   string              `json:"reviewCoverageStatus"`
+	ReviewIncomplete       []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
+	ReviewDiagnostics      []Diagnostic        `json:"reviewDiagnostics,omitempty"`
+	DecisionActorStatus    string              `json:"decisionActorStatus"`
+	DecisionAuthorityStatus string             `json:"decisionAuthorityStatus"`
+	Decision               Decision            `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -439,9 +441,11 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			Decision:             d,
 			Status:               "superseded",
 			SourceEdits:          "none",
-			EvidenceStatus:       "none",
-			ReviewBindingStatus:  "none",
-			ReviewCoverageStatus: "none",
+			EvidenceStatus:          "none",
+			ReviewBindingStatus:     "none",
+			ReviewCoverageStatus:    "none",
+			DecisionActorStatus:     "unresolved",
+			DecisionAuthorityStatus: "unresolved",
 		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
