@@ -350,9 +350,12 @@ type DecisionRecord struct {
 	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
 	SourceEdits         string       `json:"sourceEdits"`
 	Diverged            []string     `json:"divergedPaths,omitempty"`
-	EvidenceStatus        string              `json:"evidenceStatus"`
-	EvidenceDiagnostics   []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
-	ReviewBindingStatus   string              `json:"reviewBindingStatus"`
+	EvidenceStatus             string              `json:"evidenceStatus"`
+	SourceEvidenceStatus       string              `json:"sourceEvidenceStatus"`
+	ArtifactEvidenceStatus     string              `json:"artifactEvidenceStatus"`
+	EvidenceDiagnostics        []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
+	ArtifactEvidenceDiagnostics []Diagnostic       `json:"artifactEvidenceDiagnostics,omitempty"`
+	ReviewBindingStatus        string              `json:"reviewBindingStatus"`
 	ReviewCoverageStatus  string              `json:"reviewCoverageStatus"`
 	ReviewIncomplete      []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
 	ReviewDiagnostics     []Diagnostic        `json:"reviewDiagnostics,omitempty"`
@@ -439,8 +442,10 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			Decision:             d,
 			Status:               "superseded",
 			SourceEdits:          "none",
-			EvidenceStatus:       "none",
-			ReviewBindingStatus:  "none",
+			EvidenceStatus:         "none",
+			SourceEvidenceStatus:   "none",
+			ArtifactEvidenceStatus: "none",
+			ReviewBindingStatus:    "none",
 			ReviewCoverageStatus: "none",
 		}
 		if d.ModelRevisionAfter == s.revision {
@@ -467,10 +472,41 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		}
 
 		if len(d.Evidence) > 0 || d.EvidenceFingerprint != "" {
-			record.EvidenceStatus = "current"
+			var sourceEvidence []Evidence
+			var artifactEvidence []Evidence
+			for _, evidence := range d.Evidence {
+				if evidence.Artifact != nil {
+					artifactEvidence = append(artifactEvidence, evidence)
+				} else {
+					sourceEvidence = append(sourceEvidence, evidence)
+				}
+			}
+
+			if len(sourceEvidence) > 0 {
+				record.SourceEvidenceStatus = "current"
+				sourceDiagnostics := validateEvidence(s, sourceEvidence)
+				record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, sourceDiagnostics...)
+				if len(sourceDiagnostics) > 0 {
+					record.SourceEvidenceStatus = "diverged"
+				}
+			}
+			if len(artifactEvidence) > 0 {
+				record.ArtifactEvidenceStatus = "recorded"
+				for _, evidence := range artifactEvidence {
+					diagnostics := validateEvidenceArtifact(evidence.Artifact)
+					record.ArtifactEvidenceDiagnostics = append(record.ArtifactEvidenceDiagnostics, diagnostics...)
+					record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, diagnostics...)
+				}
+				if len(record.ArtifactEvidenceDiagnostics) > 0 {
+					record.ArtifactEvidenceStatus = "invalid"
+				}
+			}
+
+			fingerprintMismatch := false
 			if d.EvidenceFingerprint != "" {
 				currentFingerprint := evidenceFingerprintOf(d.Evidence)
 				if currentFingerprint != d.EvidenceFingerprint {
+					fingerprintMismatch = true
 					record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, Diagnostic{
 						Code: "EVIDENCE_FINGERPRINT_MISMATCH",
 						Message: fmt.Sprintf(
@@ -481,9 +517,20 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 					})
 				}
 			}
-			record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, validateEvidence(s, d.Evidence)...)
-			if len(record.EvidenceDiagnostics) > 0 {
+
+			switch {
+			case fingerprintMismatch ||
+				record.SourceEvidenceStatus == "diverged" ||
+				record.ArtifactEvidenceStatus == "invalid":
 				record.EvidenceStatus = "diverged"
+			case record.SourceEvidenceStatus == "current" && record.ArtifactEvidenceStatus == "recorded":
+				record.EvidenceStatus = "current-with-recorded-artifacts"
+			case record.SourceEvidenceStatus == "current":
+				record.EvidenceStatus = "current"
+			case record.ArtifactEvidenceStatus == "recorded":
+				record.EvidenceStatus = "recorded"
+			default:
+				record.EvidenceStatus = "none"
 			}
 		}
 		record.Decision.RecordPath = rel
