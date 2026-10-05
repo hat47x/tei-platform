@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -105,6 +106,27 @@ func revisionOfDir(t *testing.T, dir string) string {
 		t.Fatalf("workspaceを読み込めません: %v", err)
 	}
 	return s.revision
+}
+
+func reviewFingerprintViaCLI(t *testing.T, dir, candidatePath string) string {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{"review", "-workspace", dir, "-candidate", candidatePath, "-format", "json"},
+		&stdout,
+		&stderr,
+	)
+	if code != 0 {
+		t.Fatalf("review code=%d err=%s out=%s", code, stderr.String(), stdout.String())
+	}
+	var review ReviewProjection
+	if err := json.Unmarshal(stdout.Bytes(), &review); err != nil {
+		t.Fatalf("review JSONを読めません: %v: %s", err, stdout.String())
+	}
+	if review.ReviewFingerprint == "" {
+		t.Fatal("review CLI returned no reviewFingerprint")
+	}
+	return review.ReviewFingerprint
 }
 
 func unitPriceCandidate(revision string) Candidate {
