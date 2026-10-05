@@ -359,7 +359,7 @@ SUIだけで成立しても、Core標準語彙へ昇格しません。
 - Migration固有のIDや`Parents`表現も共通Interfaceへ持ち込まない。
 - 共通化するのはdirected graphのacyclicという意味だけに留める。
 - parent target existenceやparent / child consistency等、SUIだけで必要な意味はSUI側へ残す。
-- logical consumerが二つあっても、同じevaluator artifactを共有できる構造を保つ。
+- logical consumerが二つあっても、同じevaluator implementation / artifact identityを参照できる構造を保つ。実packagingでのbyte重複排除は別Evidenceとして扱う。
 
 Reference testでは、SUIのM2をpass、M4をfailとして評価します。Migration側ではcurrent Reference Workspaceの`sales_core/20260826_001`をpassとし、`migration.Definition`で作ったcycleをfailとします。
 
