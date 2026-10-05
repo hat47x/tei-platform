@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"sort"
 
 	"tei/internal/ir"
 	"tei/internal/workspace"
+	suihierarchy "tei/tools/reference-sui-adoption/hierarchy"
 )
 
 const (
@@ -22,27 +21,10 @@ const (
 	sourceHandoffTestBlob  = "e069871a13c932dbb1c11cbed5e08e318f93be8c"
 )
 
-type hierarchyDocument struct {
-	SchemaVersion string       `json:"schemaVersion"`
-	Islands       []hierIsland `json:"islands"`
-}
-
-type hierIsland struct {
-	ID             string   `json:"id"`
-	ParentIslandID *string  `json:"parentIslandId"`
-	ChildIslandIDs []string `json:"childIslandIds"`
-}
-
-type diagnostic struct {
-	Code    string `json:"code"`
-	Island  string `json:"island,omitempty"`
-	Message string `json:"message"`
-}
-
-type parentLink struct {
-	Child  string `json:"child"`
-	Parent string `json:"parent"`
-}
+type hierarchyDocument = suihierarchy.Document
+type hierIsland = suihierarchy.Island
+type diagnostic = suihierarchy.Diagnostic
+type parentLink = suihierarchy.ParentLink
 
 type mappingSummary struct {
 	DataDefinition          string `json:"dataDefinition"`
@@ -164,166 +146,15 @@ func run(workspacePath, fixturePath string) (report, error) {
 }
 
 func readHierarchyFixture(path string) (hierarchyDocument, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %sを読み込めません: %w", path, err)
-	}
-	defer file.Close()
-
-	var doc hierarchyDocument
-	decoder := json.NewDecoder(file)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&doc); err != nil {
-		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %sが不正です: %w", path, err)
-	}
-	if err := requireEOF(decoder); err != nil {
-		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %sが不正です: %w", path, err)
-	}
-	if doc.SchemaVersion == "" {
-		return hierarchyDocument{}, fmt.Errorf("SUI hierarchy fixture %s: schemaVersion is required", path)
-	}
-	return doc, nil
-}
-
-func requireEOF(decoder *json.Decoder) error {
-	var trailing any
-	if err := decoder.Decode(&trailing); err == io.EOF {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	return fmt.Errorf("JSON documentの後ろに追加valueがあります")
+	return suihierarchy.ReadFile(path)
 }
 
 func validateHierarchy(doc hierarchyDocument) []diagnostic {
-	var diagnostics []diagnostic
-	islandByID := map[string]hierIsland{}
-	duplicateID := false
-
-	for _, island := range doc.Islands {
-		if _, exists := islandByID[island.ID]; exists {
-			duplicateID = true
-			diagnostics = append(diagnostics, diagnostic{
-				Code:    "SUI_HIERARCHY_DUPLICATE_ID",
-				Island:  island.ID,
-				Message: "duplicate island id",
-			})
-			continue
-		}
-
-		childSet := map[string]struct{}{}
-		for _, childID := range island.ChildIslandIDs {
-			if _, exists := childSet[childID]; exists {
-				diagnostics = append(diagnostics, diagnostic{
-					Code:    "SUI_HIERARCHY_DUPLICATE_CHILD",
-					Island:  island.ID,
-					Message: fmt.Sprintf("duplicate child island %s", childID),
-				})
-			}
-			childSet[childID] = struct{}{}
-		}
-		islandByID[island.ID] = island
-	}
-
-	for _, island := range doc.Islands {
-		if island.ParentIslandID != nil {
-			parentID := *island.ParentIslandID
-			if _, exists := islandByID[parentID]; !exists {
-				diagnostics = append(diagnostics, diagnostic{
-					Code:    "SUI_HIERARCHY_PARENT_MISSING",
-					Island:  island.ID,
-					Message: fmt.Sprintf("missing parent island %s", parentID),
-				})
-			}
-		}
-
-		for _, childID := range island.ChildIslandIDs {
-			child, exists := islandByID[childID]
-			if !exists {
-				diagnostics = append(diagnostics, diagnostic{
-					Code:    "SUI_HIERARCHY_CHILD_MISSING",
-					Island:  island.ID,
-					Message: fmt.Sprintf("missing child island %s", childID),
-				})
-				continue
-			}
-			if child.ParentIslandID == nil || *child.ParentIslandID != island.ID {
-				diagnostics = append(diagnostics, diagnostic{
-					Code:    "SUI_HIERARCHY_PARENT_CHILD_MISMATCH",
-					Island:  island.ID,
-					Message: fmt.Sprintf("parent/child link mismatch: %s -> %s", island.ID, childID),
-				})
-			}
-		}
-	}
-
-	if !duplicateID {
-		state := map[string]uint8{}
-		var visit func(string) bool
-		visit = func(id string) bool {
-			switch state[id] {
-			case 1:
-				return true
-			case 2:
-				return false
-			}
-			state[id] = 1
-			island, ok := islandByID[id]
-			if ok {
-				for _, childID := range island.ChildIslandIDs {
-					if _, exists := islandByID[childID]; exists && visit(childID) {
-						return true
-					}
-				}
-			}
-			state[id] = 2
-			return false
-		}
-
-		for id := range islandByID {
-			if visit(id) {
-				diagnostics = append(diagnostics, diagnostic{
-					Code:    "SUI_HIERARCHY_CYCLE",
-					Island:  id,
-					Message: "cycle detected",
-				})
-				break
-			}
-		}
-	}
-
-	sort.Slice(diagnostics, func(i, j int) bool {
-		if diagnostics[i].Code != diagnostics[j].Code {
-			return diagnostics[i].Code < diagnostics[j].Code
-		}
-		if diagnostics[i].Island != diagnostics[j].Island {
-			return diagnostics[i].Island < diagnostics[j].Island
-		}
-		return diagnostics[i].Message < diagnostics[j].Message
-	})
-	return diagnostics
+	return suihierarchy.Validate(doc)
 }
 
 func projectInstanceSummary(doc hierarchyDocument) ([]string, []parentLink) {
-	var roots []string
-	var links []parentLink
-
-	for _, island := range doc.Islands {
-		if island.ParentIslandID == nil {
-			roots = append(roots, island.ID)
-			continue
-		}
-		links = append(links, parentLink{Child: island.ID, Parent: *island.ParentIslandID})
-	}
-
-	sort.Strings(roots)
-	sort.Slice(links, func(i, j int) bool {
-		if links[i].Parent != links[j].Parent {
-			return links[i].Parent < links[j].Parent
-		}
-		return links[i].Child < links[j].Child
-	})
-	return roots, links
+	return suihierarchy.ProjectInstanceSummary(doc)
 }
 
 func stage0ConstraintCoverage() []constraintCoverage {
