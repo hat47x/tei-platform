@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"tei/internal/knowledgecontext"
+	"tei/internal/subject"
 	"tei/internal/workspace"
 )
 
@@ -66,6 +68,7 @@ func run(args []string) int {
 	verifySemanticLockEvidence := flags.Bool("verify-semantic-lock-evidence", false, "also require accepted Conformance and namespace Authority Evidence bindings")
 	validationPlanOut := flags.String("validation-plan-out", "", "write semantic validation plan JSON")
 	verifyValidationPlanPath := flags.String("verify-validation-plan", "", "verify semantic validation plan against the resolved Semantic Set")
+	subjectContext := flags.Bool("subject-context", false, "emit AI/Tool re-entry context for exact -subject-kind and -subject-id")
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
@@ -83,9 +86,20 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, "-verify-semantic-lock-evidence requires -verify-semantic-lock FILE")
 		return 2
 	}
+	if *subjectContext &&
+		(strings.TrimSpace(*subjectKind) == "" || strings.TrimSpace(*subjectID) == "") {
+		fmt.Fprintln(os.Stderr, "-subject-context requires exact -subject-kind and -subject-id")
+		return 2
+	}
+	if *subjectContext &&
+		(strings.TrimSpace(*verifySemanticLockPath) != "" ||
+			strings.TrimSpace(*verifyValidationPlanPath) != "") {
+		fmt.Fprintln(os.Stderr, "-subject-context cannot be combined with verify-only modes")
+		return 2
+	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" ||
 		(strings.TrimSpace(*verifySemanticLockPath) == "" && len(roots) == 0) {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-evaluator-binding FILE] [-semantic-lock-out FILE] [-validation-plan-out FILE] [-verify-validation-plan FILE] [-verify-semantic-lock-evidence] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-evaluator-binding FILE] [-semantic-lock-out FILE] [-validation-plan-out FILE] [-verify-validation-plan FILE] [-verify-semantic-lock-evidence] [-subject-context] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -199,7 +213,9 @@ func run(args []string) int {
 		}
 		return 0
 	}
-	if strings.TrimSpace(*validationPlanOut) != "" {
+	var resolvedValidationPlan *SemanticValidationPlan
+	if strings.TrimSpace(*validationPlanOut) != "" ||
+		(*subjectContext && len(evaluatorBindingPaths) > 0) {
 		bindings, err := loadSemanticEvaluatorBindings(evaluatorBindingPaths)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -210,9 +226,12 @@ func run(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		if err := writeJSONFile(*validationPlanOut, plan); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
+		resolvedValidationPlan = &plan
+		if strings.TrimSpace(*validationPlanOut) != "" {
+			if err := writeJSONFile(*validationPlanOut, plan); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
 		}
 	}
 	if strings.TrimSpace(*semanticLockOut) != "" {
@@ -226,6 +245,34 @@ func run(args []string) int {
 			return 1
 		}
 	}
+	if *subjectContext {
+		target := subject.Subject{
+			Kind: strings.TrimSpace(*subjectKind),
+			ID:   strings.TrimSpace(*subjectID),
+		}
+		baseContext := knowledgecontext.Build(loaded.World, index, target)
+		context, err := buildSubjectSemanticContext(
+			baseContext,
+			catalog,
+			resolvedValidationPlan,
+			target,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(context); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if len(catalog.Unresolved) > 0 {
+			return 1
+		}
+		return 0
+	}
+
 	catalog = filterCatalog(catalog, *subjectKind, *subjectID)
 
 	encoder := json.NewEncoder(os.Stdout)
