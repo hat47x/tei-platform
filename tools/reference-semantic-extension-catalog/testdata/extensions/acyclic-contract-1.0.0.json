@@ -8,13 +8,13 @@
       "id": "reference.graph.acyclic.evaluate",
       "version": "1.0.0",
       "inputSemantics": [
-        "normalized directed relation graph"
+        "complete directed relation graph snapshot with unique node identities"
       ],
       "outputSemantics": [
-        "acyclic pass fail unknown diagnostics"
+        "acyclic pass fail diagnostics"
       ],
-      "unknownSemantics": "incomplete normalized graph remains unknown",
-      "failureSemantics": "directed cycle is blocking",
+      "unknownSemantics": "not emitted for complete validated graph snapshots",
+      "failureSemantics": "directed cycle is blocking; malformed graph input is evaluator error",
       "providerConformanceRef": "reference.conformance.acyclic-graph-v1"
     }
   ]
