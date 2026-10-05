@@ -73,11 +73,15 @@ func TestSemanticEvaluationEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuth
 			if semanticBefore != semanticAfter {
 				t.Fatalf("artifact Evidence changed candidate meaning: before=%s after=%s", semanticBefore, semanticAfter)
 			}
-			if len(grounded.Evidence) != 1 || grounded.Evidence[0].Artifact == nil {
+			if len(grounded.Evidence) != len(candidate.Evidence)+1 {
+				t.Fatalf("semantic evaluation artifact attachment changed existing Evidence unexpectedly: before=%+v after=%+v", candidate.Evidence, grounded.Evidence)
+			}
+			artifactEvidence, ok := semanticEvaluationEvidenceItem(grounded.Evidence)
+			if !ok || artifactEvidence.Artifact == nil {
 				t.Fatalf("semantic evaluation artifact was not attached: %+v", grounded.Evidence)
 			}
-			if grounded.Evidence[0].Subject != "" || grounded.Evidence[0].Source != "" {
-				t.Fatalf("artifact Evidence was conflated with Source Index Evidence: %+v", grounded.Evidence[0])
+			if artifactEvidence.Subject != "" || artifactEvidence.Source != "" {
+				t.Fatalf("artifact Evidence was conflated with Source Index Evidence: %+v", artifactEvidence)
 			}
 
 			ev, err := evaluate(dir, mustJSON(t, grounded))
@@ -90,7 +94,7 @@ func TestSemanticEvaluationEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuth
 			review := buildReviewProjection(ev)
 			rendered := renderReviewProjection(review)
 			if !strings.Contains(rendered, "status="+status) ||
-				!strings.Contains(rendered, grounded.Evidence[0].Artifact.ArtifactFingerprint) {
+				!strings.Contains(rendered, artifactEvidence.Artifact.ArtifactFingerprint) {
 				t.Fatalf("review hid semantic evaluation state/binding:\n%s", rendered)
 			}
 
@@ -104,9 +108,11 @@ func TestSemanticEvaluationEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuth
 				t.Fatalf("explicit Acceptance was replaced by evaluation status %q: %+v", status, decision)
 			}
 			if decision.EvidenceFingerprint != ev.preview.EvidenceFingerprint ||
-				len(decision.Evidence) != 1 ||
-				decision.Evidence[0].Artifact == nil {
+				len(decision.Evidence) != len(candidate.Evidence)+1 {
 				t.Fatalf("Decision did not bind exact artifact Evidence: %+v", decision)
+			}
+			if _, ok := semanticEvaluationEvidenceItem(decision.Evidence); !ok {
+				t.Fatalf("Decision lost semantic evaluation artifact Evidence: %+v", decision.Evidence)
 			}
 		})
 	}
@@ -199,7 +205,7 @@ func TestAttachSemanticEvaluationCLIProducesReviewableCandidate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(grounded.Evidence) != 1 || grounded.Evidence[0].Artifact == nil {
+	if _, ok := semanticEvaluationEvidenceItem(grounded.Evidence); !ok {
 		t.Fatalf("CLI output lacks artifact Evidence: %+v", grounded)
 	}
 	if _, _, err := normalizeCandidate(grounded); err != nil {
@@ -232,7 +238,16 @@ func TestSemanticEvaluationAttachmentIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(second.Evidence) != 1 {
+	if len(second.Evidence) != len(unitPriceCandidate(revisionOfDir(t, dir)).Evidence)+1 {
 		t.Fatalf("same artifact Evidence was duplicated: %+v", second.Evidence)
 	}
+}
+
+func semanticEvaluationEvidenceItem(values []Evidence) (Evidence, bool) {
+	for _, value := range values {
+		if value.Artifact != nil && value.Artifact.Kind == evidenceArtifactKindSemanticEvaluation {
+			return value, true
+		}
+	}
+	return Evidence{}, false
 }
