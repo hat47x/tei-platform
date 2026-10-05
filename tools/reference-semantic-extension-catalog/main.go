@@ -64,14 +64,18 @@ func run(args []string) int {
 	semanticLockOut := flags.String("semantic-lock-out", "", "write resolved semantic lock JSON")
 	verifySemanticLockPath := flags.String("verify-semantic-lock", "", "replay an existing semantic lock against exact available declarations")
 	verifySemanticLockEvidence := flags.Bool("verify-semantic-lock-evidence", false, "also require accepted Conformance and namespace Authority Evidence bindings")
+	validationPlanOut := flags.String("validation-plan-out", "", "write semantic validation plan JSON")
+	verifyValidationPlanPath := flags.String("verify-validation-plan", "", "verify semantic validation plan against the resolved Semantic Set")
 	var roots requirementFlags
 	var wiringPaths pathFlags
 	var conformancePaths pathFlags
 	var namespaceAuthorityPaths pathFlags
+	var evaluatorBindingPaths pathFlags
 	flags.Var(&roots, "require", "root extension requirement EXTENSION@MAJOR; repeatable")
 	flags.Var(&wiringPaths, "interface-wiring", "semantic interface wiring JSON file; repeatable")
 	flags.Var(&conformancePaths, "interface-conformance", "accepted semantic interface conformance JSON file; repeatable")
 	flags.Var(&namespaceAuthorityPaths, "namespace-authority", "accepted semantic namespace authority JSON file; repeatable")
+	flags.Var(&evaluatorBindingPaths, "evaluator-binding", "semantic Validation evaluator binding JSON file; repeatable")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -81,7 +85,7 @@ func run(args []string) int {
 	}
 	if strings.TrimSpace(*workspacePath) == "" || strings.TrimSpace(*extensionsPath) == "" ||
 		(strings.TrimSpace(*verifySemanticLockPath) == "" && len(roots) == 0) {
-		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-semantic-lock-out FILE] [-verify-semantic-lock-evidence] [-subject-kind KIND] [-subject-id ID]")
+		fmt.Fprintln(os.Stderr, "usage: reference-semantic-extension-catalog -workspace DIR -extensions DIR (-require EXTENSION@MAJOR ... | -verify-semantic-lock FILE) [-interface-wiring FILE] [-interface-conformance FILE] [-namespace-authority FILE] [-evaluator-binding FILE] [-semantic-lock-out FILE] [-validation-plan-out FILE] [-verify-validation-plan FILE] [-verify-semantic-lock-evidence] [-subject-kind KIND] [-subject-id ID]")
 		return 2
 	}
 
@@ -173,6 +177,44 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	if strings.TrimSpace(*verifyValidationPlanPath) != "" {
+		var plan SemanticValidationPlan
+		if err := decodeStrictJSONFile(*verifyValidationPlanPath, &plan); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := verifySemanticValidationPlan(plan, catalog); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(map[string]any{
+			"validationPlanValid":     true,
+			"semanticSetFingerprint": plan.SemanticSetFingerprint,
+			"planFingerprint":        plan.PlanFingerprint,
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
+	}
+	if strings.TrimSpace(*validationPlanOut) != "" {
+		bindings, err := loadSemanticEvaluatorBindings(evaluatorBindingPaths)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		plan, err := buildSemanticValidationPlan(catalog, bindings)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := writeJSONFile(*validationPlanOut, plan); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+	}
 	if strings.TrimSpace(*semanticLockOut) != "" {
 		lock, err := buildSemanticLock(catalog)
 		if err != nil {
@@ -235,6 +277,17 @@ func loadSemanticNamespaceAuthorities(paths []string) ([]SemanticNamespaceAuthor
 	return out, nil
 }
 
+func loadSemanticEvaluatorBindings(paths []string) ([]SemanticEvaluatorBinding, error) {
+	out := make([]SemanticEvaluatorBinding, 0, len(paths))
+	for _, path := range paths {
+		var value SemanticEvaluatorBinding
+		if err := decodeStrictJSONFile(path, &value); err != nil {
+			return nil, fmt.Errorf("evaluator binding %s: %w", path, err)
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
 func decodeStrictJSONFile(path string, dst any) error {
 	file, err := os.Open(path)
 	if err != nil {
