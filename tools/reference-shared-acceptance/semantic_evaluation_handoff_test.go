@@ -9,6 +9,7 @@ import (
 
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
+	semanticevidence "tei/tools/internal/semanticevidence"
 )
 
 func semanticEvaluationFixture(status string) semanticEvaluationArtifact {
@@ -27,7 +28,7 @@ func semanticEvaluationFixture(status string) semanticEvaluationArtifact {
 		EvaluatorArtifactDigest:        "sha256:" + strings.Repeat("3", 64),
 		ConformanceEvidenceFingerprint: "sha256:" + strings.Repeat("4", 64),
 		InputFingerprint:               "sha256:" + strings.Repeat("5", 64),
-		Status:                         status,
+		Status:                         semanticevidence.Status(status),
 	}
 	if status != "pass" {
 		value.Diagnostics = []semanticEvaluationDiagnostic{{
@@ -118,7 +119,7 @@ func TestSemanticEvaluationAttachmentRejectsTamperingAndMixedAuthorityShapes(t *
 
 	t.Run("internal fingerprint mismatch", func(t *testing.T) {
 		value := semanticEvaluationFixture("pass")
-		value.Status = "fail"
+		value.Status = semanticevidence.Fail
 		encoded, err := json.Marshal(value)
 		if err != nil {
 			t.Fatal(err)
