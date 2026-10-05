@@ -100,6 +100,23 @@ requires interface relation-acyclic-validator/v1
 
 Package identity dependencyそのものは禁止しない。あるExtensionのsymbolやparameter semanticsを直接参照する場合は、曖昧なInterface dependencyへ置き換えない。
 
+### Semantic Interfaceの粒度
+
+Semantic Interfaceは、あるdomainのvalidatorや機能をまとめた便宜的な単位ではなく、consumerが独立して要求できる意味契約として切ります。
+
+第二consumerでInterface全体ではなく一部の意味だけが再利用できた場合、既存Interfaceを別domainへ無理に適用しません。共通部分に独立した意味があることを確認し、小さいInterfaceへ切り出してdomain側で合成することを優先します。
+
+一方、rule一つごとに機械的にInterfaceを作ることもしません。Interfaceの細分化は、次を満たす場合に行います。
+
+- 二つ以上の独立consumerで同じ意味契約として利用できる
+- input / output / unknown / failure semanticsをdomain語彙なしで説明できる
+- 切り出した後も、各domain固有のValidation責務が明確に残る
+- 分割によってprovider selectionやConformance Evidenceが不必要に増えない
+
+SUI hierarchyとDatabase Migrationを使ったE3 candidateでは、hierarchy integrity全体ではなくdirected graphのacyclicだけがこの条件を満たす可能性を示しています。exact-head Evidenceが揃うまでは最終contractとして固定しません。
+
+同じalgorithmが複数domainに現れても、それだけでSemantic Authorityを統合しません。たとえばSolution Releaseは既にCoreの`releaseplan.Compile`がcycleを拒否します。この場合、共通graph utilityを内部実装として共有する余地と、Semantic Extensionとして同じValidation ruleを付与することは分けて判断します。二重Authorityを作らないことを優先します。
+
 Semantic Interfaceは単なる文字列ラベルにはしない。Interface自体がlogical identity、contract version、namespace authority、contract fingerprint、Source / provenanceを持つ意味契約である必要がある。providerの`implements`自己申告だけを適合Evidenceにはしない。
 
 同じInterfaceを複数providerが満たす場合、Accepted wiringまたは明示的なselection policyが無ければ、package ID、version、catalog列挙順等で暗黙に一つを選ばない。

@@ -1,0 +1,13 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.acyclic-evaluator",
+  "namespace": "reference.graph.evaluator",
+  "version": "1.0.0",
+  "providesInterfaces": [
+    {
+      "interface": "reference.graph.acyclic.evaluate",
+      "contractVersion": "1.0.0",
+      "contractFingerprint": "sha256:67fa1472c4ac84a495092064e17a06f68f2be24df87ff15589f2c0bda1baba53"
+    }
+  ]
+}

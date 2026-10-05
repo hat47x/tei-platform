@@ -349,24 +349,41 @@ TEI側のmapping / extension declaration / evaluatorで結果を説明し、SUI�
 
 SUIだけで成立しても、Core標準語彙へ昇格しません。
 
-第二Referenceでは、SUIとは異なるdomainで同じconstraintの少なくとも一部を利用します。
+第二Referenceでは、既存のDatabase Migration modelを使います。`migration.Definition.Parents`はMigration間の依存関係を表し、cycleを許さないという意味上の必要性があります。SUI Island hierarchyとは別domainであり、単に同じJSON shapeを作るためのfixtureではありません。
 
-候補:
+2026-10-05のcandidateでは、SUIとMigrationからacyclic判定に必要な`nodes / directed edges`だけをdomain-neutralなsnapshotへ投影する小さなReference packageを追加しました。両domainで、同じSemantic Interface contract、provider Extension、evaluator implementation、artifact digestを再利用します。consumer Extension identityだけをdomainごとに分けます。
 
-- 組織 / category tree
-- BOM / dependency hierarchy
-- nested configuration
-- Business Procedure間の明示的な階層構造
+このpressureから、現時点では次の境界が妥当です。
 
-第二Referenceは、単に同じJSON shapeを作るためのsynthetic fixtureではなく、独立した意味上の必要性を持つものを選びます。
+- SUI固有の`IslandHierarchyContractV1`を共通Interfaceのinput shapeにしない。
+- Migration固有のIDや`Parents`表現も共通Interfaceへ持ち込まない。
+- 共通化するのはdirected graphのacyclicという意味だけに留める。
+- parent target existenceやparent / child consistency等、SUIだけで必要な意味はSUI側へ残す。
+- logical consumerが二つあっても、同じevaluator implementation / artifact identityを参照できる構造を保つ。実packagingでのbyte重複排除は別Evidenceとして扱う。
 
-確認すること:
+Reference testでは、SUIのM2をpass、M4をfailとして評価します。Migration側ではcurrent Reference Workspaceの`sales_core/20260826_001`をpassとし、`migration.Definition`で作ったcycleをfailとします。
 
-- 同一extension identityを変更せず再利用できるか
-- domain-specific parameterを追加しすぎていないか
-- SUI固有語彙が漏れていないか
-- Core primitiveへ昇格すべき共通性が本当にあるか
-- extensionのまま保持した方が小さいCoreを保てるか
+現行Core ValidationはMigrationのparent identityが同じDatabase内に存在することを`UNKNOWN_MIGRATION_PARENT`で確認しますが、parent graphのcycleは検査していません。E3では既存のparent存在確認をSemantic Extensionへ移し替えず、未表現のacyclic ruleだけを追加pressureとします。dangling parentを含むMigration snapshotもgeneric acyclic単体ではpassとし、二つのValidation責務を混ぜないnegative controlを置きます。
+
+また、SUIから共通snapshotへ変換した結果に`islands`、`parentIslandId`、`childIslandIds`、`schemaVersion`が残らないことをnegative controlで確認します。共通InterfaceにSUI固有語彙が漏れた場合は、再利用成立とは扱いません。
+
+共通Interfaceのinputはcomplete directed graphとして扱います。欠損endpointやduplicate node等は`unknown`ではなくEvaluator errorです。SUI / Migration側で別に保持するtarget存在確認をacyclicへ取り込まないことで、Interfaceの責務をcycle判定だけに限定します。
+
+このcandidateが成立しても、`std.*`へ昇格しません。少なくともexact-head test、repository health、Semantic Lock / Validation Evidenceとの接続、AI / Tool discoveryでの再利用を確認した後に判断します。
+
+### E3で見えたInterface粒度
+
+E3では、既存SUI consumerが使う`reference.hierarchy.integrity.evaluator`全体をMigrationへ再利用できませんでした。SUIのInterfaceにはparent target existenceやparent / child consistency等、Migrationには不要な意味が含まれるためです。
+
+一方、cycle禁止だけは独立した`reference.graph.acyclic.evaluate`として切り出すと、二つのdomainで同じ契約を再利用できます。
+
+この結果から、Semantic Interfaceは「あるdomainのvalidator一式」を大きな一契約にまとめるより、独立して再利用できる意味単位へ分け、必要なdomain側で合成できる構造を優先します。ただし、細分化そのものを目的にはしません。二つ以上の実consumerで独立再利用できる境界をEvidenceとして判断します。
+
+既存のSUI hierarchy Interfaceは直ちに置き換えません。E3 candidateは、より小さいInterfaceへ分解できる可能性を示すpressureであり、現在のSUI Reference contractをMigrationの都合だけで書き換える根拠にはしません。
+
+Repository内にはさらに、Solution Releaseの`Definition.After`を`releaseplan.Compile`がDAGとして扱い、Core側の`detectCycle`でcycleを拒否する既存例があります。これはacyclicという判定ロジックがSUI / Migrationだけに閉じないことを示しますが、Release Planには既にそのruleのAuthorityがあります。
+
+したがって、Release Planを三つ目のSemantic Extension consumerとして重複Validationしません。将来、同じgraph algorithmをneutralなutilityへ抽出する余地はありますが、実装codeの共有とSemantic Interface / Validation Authorityの共有は別の判断として扱います。
 
 ## Namespace / conflict rule
 
@@ -444,6 +461,12 @@ AI / Toolが新しい実装案を作る前に、対象subjectのKnowledge Contex
 AIがextensionを発見した後も、自動採用はしません。
 
 `applicable`は「使える候補」であり、AcceptanceでもRuntime Authorityでもありません。ISSUE-000047と同じ境界を使います。
+
+2026-10-05のcandidateでは、既存の`knowledgecontext.Build`を変更せず、その出力へresolved Semantic Catalogを重ねる`Subject Semantic Context`をReference内に追加しました。対象subjectを一つ指定すると、Source / dependency edgeに加えて、関連ExtensionのSource / version、導入理由、Constraint、Semantic Interface、evaluator provider、Connection、Unresolvedを同じJSONから取得できます。
+
+Semantic Validation Planが入力されている場合は、対象subjectに必要なimplementation identity / artifact digestも同じContextから参照できます。Planが無い場合はimplementationを推測しません。
+
+このContextはAI / Studio向けのread-onlyな再入場surfaceです。Context fingerprintは再生成結果を比較するためのderived identityであり、Semantic Set identityやCanonical authorityの代わりには使いません。Semantic Set全体のUnresolvedも隠さず保持し、対象subjectだけを見ることで全体の解決失敗を見落とさないようにします。
 
 ## Product Evidence
 

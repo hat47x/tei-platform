@@ -135,6 +135,42 @@ go run ./tools/reference-semantic-extension-catalog \
   -subject-id support.case.standard-response
 ```
 
+### Subject Semantic Context
+
+`-subject-kind`と`-subject-id`でCatalogを絞るだけでは、AIやStudioが対象subjectへ再入場するときに必要な情報が複数箇所へ分かれます。そこでReferenceでは、`-subject-context`を指定すると、既存のKnowledge ContextへSemantic Extensionの情報を重ねた`Subject Semantic Context`を返します。
+
+このContextには、対象subjectのSourceと既存dependencyに加えて、次を含めます。
+
+- 対象kindへ適用可能なExtensionと、実際にConstraintやRelationを追加しているExtension
+- Extensionのversion、descriptor Source、fingerprint
+- root requirementからExtensionへ至るdependency path
+- 対象subjectに対するConstraintとSemantic Interface
+- resolved evaluator providerとConformance profile
+- Extensionが参照するCapability等のConnection
+- subjectに関係するUnresolvedと、Semantic Set全体のUnresolved
+- Semantic Set fingerprintとEvidence fingerprint
+
+Evaluator bindingを入力した場合だけ、exactなSemantic Validation Planのfingerprintと、対象subjectに必要なimplementation / artifact bindingも含めます。bindingを与えていない場合、Context側でimplementationを選びません。
+
+`kind-applicable`は「そのkindへ使える候補」であり、対象subjectへの採用を意味しません。Subject Semantic Context自体もderivedなread-only surfaceで、Canonical authority、Acceptance、Runtime Authorityのいずれにもなりません。
+
+SUIのacyclic candidateを対象にする例です。
+
+```bash
+go run ./tools/reference-semantic-extension-catalog \
+  -workspace reference/sui-adoption/workspace \
+  -extensions tools/reference-semantic-extension-catalog/testdata/extensions \
+  -require tei.reference.sui-acyclic@1 \
+  -require tei.reference.acyclic-evaluator@1 \
+  -require tei.reference.acyclic-contract@1 \
+  -interface-conformance path/to/accepted-acyclic-conformance.json \
+  -subject-context \
+  -subject-kind semantic-data \
+  -subject-id sui.island
+```
+
+このReferenceの目的は、Catalog全体をAIへ毎回渡すことではありません。対象subjectから、既存の意味、Source、依存理由、Validationのレールへ戻るための情報を一つの機械可読surfaceへまとめることです。
+
 ## Identityとprovenance
 
 catalogは意味の解決結果とSourceの来歴を分けます。
@@ -196,6 +232,42 @@ Evaluation Evidenceには少なくとも次を残します。
 SUI hierarchy pressureでは`tools/reference-sui-adoption`の既存shadow validatorを共有packageへ切り出し、Stage 0とSemantic Extensionの両方が同じ評価ロジックを使います。M1 / M2 / M3 / M4のSource contract semanticsを二重実装しません。SUI側のnative contractがAuthorityであることも変えません。
 
 このReferenceはValidation scopeの選択境界を実証する候補であり、Runtime PluginのPermission / Sandbox / Artifact verificationを代替しません。将来EvaluatorをRuntime Pluginとして実行する場合も、Environmentの通常Capability negotiationとValidation-scope bindingは別に扱います。
+## Second consumer — Migration dependency graph
+
+SUIだけで成立したSemantic Interfaceを標準化しないため、第二consumerではDatabase Migrationの`Parents`を使います。Migrationの親関係は、SUIのIsland hierarchyとは別のdomainですが、依存graphにcycleがあってはならないという制約を持ちます。
+
+このpressureでは、SUIとMigrationを同じdomain shapeへ合わせません。各domainから、acyclic判定に必要な最小情報だけを次の共通snapshotへ投影します。
+
+```text
+SUI IslandHierarchyContractV1
+  -> nodes / directed parent edges
+                               \
+                                -> reference.graph.acyclic.evaluate
+                               /
+Migration Definition.Parents
+  -> nodes / directed parent edges
+```
+
+共通snapshotは`nodes`と`edges`だけを持ちます。`island`、`parentIslandId`、Migration IDの命名規則等はSemantic Interfaceへ持ち込みません。
+
+共通Interfaceのinputは、unique node identityを持つcomplete graph snapshotです。欠損endpointやduplicate node等は意味上の`unknown`ではなく入力不整合としてEvaluator errorにします。parent target existence等のdomain ruleをacyclic evaluatorへ吸収しません。
+
+SUI側とMigration側は別のconsumer Extension identityを持ちます。一方、次は同じものを再利用します。
+
+- Semantic Interface contract identity / fingerprint
+- provider Extension identity
+- evaluator implementation identity
+- evaluator artifact digest
+- Validation Planの評価境界
+
+この構造により、domainごとの意味bindingを分けながら、同じacyclic evaluator implementation / artifact identityを再利用できるかを確認します。実build後のbyte重複排除やartifact coalescingは、このReferenceだけでは成立済みと扱いません。
+
+このReferenceが示すのは、SUIの`hierarchy integrity`全体を共通標準へ昇格できることではありません。SUI固有のparent target existenceやparent / child consistencyは引き続きdomain側に残ります。第二consumerで再利用できたのは、現時点ではdirected graphのacyclic constraintだけです。
+
+Migrationでも責務を分けます。現行Core Validationはparent identityの存在を検査しますが、parent graphのcycleは検査していません。このReferenceは既存のparent存在確認を置き換えず、acyclicだけを追加のSemantic constraintとして扱います。
+
+この結果はInterfaceの粒度にもpressureを与えます。既存SUIの`reference.hierarchy.integrity.evaluator`はSUI domainの複数ruleをまとめた契約です。Migrationへそのまま持ち込まず、実際に共有できたacyclicだけを小さいInterface candidateとして分離します。既存SUI contractをこのPRで置き換えることはしません。
+
 ## Authority boundary
 
 出力には次を明示します。
