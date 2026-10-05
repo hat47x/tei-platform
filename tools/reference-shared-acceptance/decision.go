@@ -78,6 +78,12 @@ type acceptOptions struct {
 	ExpectedReviewFingerprint string
 }
 
+type rejectOptions struct {
+	// ExpectedReviewFingerprintは、callerが確認したReview ProjectionへReject decisionをexactに結び付ける任意guardである。
+	// 一致してもhuman approvalやactor authorityを証明しない。
+	ExpectedReviewFingerprint string
+}
+
 func encodeJSON(value any) ([]byte, error) {
 	var out bytes.Buffer
 	encoder := json.NewEncoder(&out)
@@ -127,24 +133,13 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		return decision, nil
 	}
 	if opts.ExpectedReviewFingerprint != "" {
-		review := buildReviewProjection(ev)
-		if review.ReviewFingerprint != opts.ExpectedReviewFingerprint {
+		binding, diagnostic := bindExpectedReview(ev, opts.ExpectedReviewFingerprint, "Accept")
+		if diagnostic != nil {
 			decision.Decision = "refused"
-			decision.Refusals = append(decision.Refusals, Diagnostic{
-				Code: "REVIEW_FINGERPRINT_MISMATCH",
-				Message: fmt.Sprintf(
-					"Accept時のReview Projectionが期待値と一致しません: expected=%s current=%s",
-					opts.ExpectedReviewFingerprint,
-					review.ReviewFingerprint,
-				),
-			})
+			decision.Refusals = append(decision.Refusals, *diagnostic)
 			return decision, nil
 		}
-		decision.ReviewBinding = &ReviewBinding{
-			Fingerprint: review.ReviewFingerprint,
-			Coverage:    review.Coverage,
-			Projection:  &review,
-		}
+		decision.ReviewBinding = binding
 	}
 
 	var written []SourceEdit
@@ -297,6 +292,10 @@ func makeDirs(dir string) ([]string, error) {
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。
 // staleなcandidateも退けられるため、基準revisionの一致は要求しない。
 func reject(root string, data []byte, reason string) (Decision, error) {
+	return rejectWithOptions(root, data, reason, rejectOptions{})
+}
+
+func rejectWithOptions(root string, data []byte, reason string, opts rejectOptions) (Decision, error) {
 	candidate, err := decodeCandidate(data)
 	if err != nil {
 		return Decision{Schema: decisionSchema, Decision: "refused", Refusals: []Diagnostic{{Code: "CANDIDATE_DECODE", Message: err.Error()}}}, nil
@@ -310,7 +309,7 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		return Decision{}, err
 	}
 	origin := normalized.Origin
-	return Decision{
+	decision := Decision{
 		Schema:               decisionSchema,
 		Decision:             "rejected",
 		Reason:               reason,
@@ -324,6 +323,41 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		SourceChanged:        false,
 		Intent:               normalized.Intent,
 		Evidence:             normalized.Evidence,
+	}
+	if opts.ExpectedReviewFingerprint != "" {
+		ev, err := evaluate(root, data)
+		if err != nil {
+			return Decision{}, err
+		}
+		binding, diagnostic := bindExpectedReview(ev, opts.ExpectedReviewFingerprint, "Reject")
+		if diagnostic != nil {
+			decision.Decision = "refused"
+			decision.Refusals = append(decision.Refusals, *diagnostic)
+			return decision, nil
+		}
+		decision.ReviewBinding = binding
+		decision.Unresolved = ev.preview.Unresolved
+	}
+	return decision, nil
+}
+
+func bindExpectedReview(ev evaluation, expected, action string) (*ReviewBinding, *Diagnostic) {
+	review := buildReviewProjection(ev)
+	if review.ReviewFingerprint != expected {
+		return nil, &Diagnostic{
+			Code: "REVIEW_FINGERPRINT_MISMATCH",
+			Message: fmt.Sprintf(
+				"%s時のReview Projectionが期待値と一致しません: expected=%s current=%s",
+				action,
+				expected,
+				review.ReviewFingerprint,
+			),
+		}
+	}
+	return &ReviewBinding{
+		Fingerprint: review.ReviewFingerprint,
+		Coverage:    review.Coverage,
+		Projection:  &review,
 	}, nil
 }
 
