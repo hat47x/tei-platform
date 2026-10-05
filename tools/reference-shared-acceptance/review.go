@@ -122,10 +122,11 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 		Code:     "A3",
 		Title:    "例外・診断",
 		Coverage: reviewCoveragePartial,
-		Sources:  []string{"preview.stages[*].diagnostics"},
-		Note:     "受入stageのdiagnosticは表示しますが、業務上の例外を独立に列挙する専用Projectionはまだありません",
+		Sources:  []string{"preview.stages[*].diagnostics", "candidate.evidence[*].artifact"},
+		Note:     "受入stageと添付Evaluation artifactのdiagnosticを表示します。Evaluationのpass / fail / unknownは根拠であり、それ自体からAccept / Rejectを自動導出しません",
 	}
 	diagnosticCount := 0
+	evaluationCount := 0
 	for _, stage := range p.Stages {
 		for _, diagnostic := range stage.Diagnostics {
 			diagnosticCount++
@@ -136,9 +137,30 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 			a3.Items = append(a3.Items, item)
 		}
 	}
-	a3.Summary = fmt.Sprintf("diagnostic %d件", diagnosticCount)
+	for _, evidence := range ev.candidate.Evidence {
+		evaluation, ok := semanticEvaluationFromEvidence(evidence)
+		if !ok {
+			continue
+		}
+		evaluationCount++
+		a3.Items = append(a3.Items, fmt.Sprintf(
+			"semantic evaluation: status=%s subject=%s:%s constraint=%s/%s evaluator=%s artifact=%s",
+			evaluation.Status,
+			evaluation.Subject.Kind,
+			evaluation.Subject.ID,
+			evaluation.ConstraintExtension,
+			evaluation.ConstraintID,
+			evaluation.EvaluatorImplementationID,
+			evidence.Artifact.ArtifactFingerprint,
+		))
+		for _, diagnostic := range evaluation.Diagnostics {
+			diagnosticCount++
+			a3.Items = append(a3.Items, "semantic evaluation: "+diagnostic.Code+" - "+diagnostic.Message)
+		}
+	}
+	a3.Summary = fmt.Sprintf("diagnostic %d件 / semantic evaluation %d件", diagnosticCount, evaluationCount)
 	if len(a3.Items) == 0 {
-		a3.Items = []string{"受入stageのerror diagnosticなし"}
+		a3.Items = []string{"受入stageのerror diagnosticなし / semantic evaluation artifactなし"}
 	}
 	review.Sections = append(review.Sections, a3)
 
@@ -281,7 +303,7 @@ func buildReviewProjection(ev evaluation) ReviewProjection {
 				))
 			}
 		}
-		a7.Note = "fingerprint・Evidence・source pathへ戻れますが、各Review項目からCanonical subjectとsourceへの直接linkはまだありません"
+		a7.Note = "Source Index Evidenceとartifact Evidenceを分離して表示します。artifact Evidenceは受理時に見たexact artifactを固定しますが、現在のEvaluator / Conformance状態を再実行・再証明したことにはなりません"
 	} else {
 		a7.Note = "normalize stageが完了していないため、candidate / Evidence identityを確定できません"
 	}
@@ -357,6 +379,22 @@ func reviewStage(p Preview, name string) (Stage, bool) {
 
 func describeReviewEvidence(e Evidence) string {
 	var parts []string
+	if e.Artifact != nil {
+		parts = append(parts,
+			"artifactKind="+e.Artifact.Kind,
+			"artifactSchema="+e.Artifact.Schema,
+			"artifactFingerprint="+e.Artifact.ArtifactFingerprint,
+		)
+		if evaluation, ok := semanticEvaluationFromEvidence(e); ok {
+			parts = append(parts,
+				"status="+evaluation.Status,
+				"subject="+evaluation.Subject.Kind+":"+evaluation.Subject.ID,
+				"constraint="+evaluation.ConstraintExtension+"/"+evaluation.ConstraintID,
+				"semanticSet="+evaluation.SemanticSetFingerprint,
+				"evaluationFingerprint="+evaluation.EvidenceFingerprint,
+			)
+		}
+	}
 	switch {
 	case e.SubjectKind != "" && e.Subject != "":
 		parts = append(parts, "subject="+e.SubjectKind+":"+e.Subject)
