@@ -196,6 +196,36 @@ Evaluation Evidenceには少なくとも次を残します。
 SUI hierarchy pressureでは`tools/reference-sui-adoption`の既存shadow validatorを共有packageへ切り出し、Stage 0とSemantic Extensionの両方が同じ評価ロジックを使います。M1 / M2 / M3 / M4のSource contract semanticsを二重実装しません。SUI側のnative contractがAuthorityであることも変えません。
 
 このReferenceはValidation scopeの選択境界を実証する候補であり、Runtime PluginのPermission / Sandbox / Artifact verificationを代替しません。将来EvaluatorをRuntime Pluginとして実行する場合も、Environmentの通常Capability negotiationとValidation-scope bindingは別に扱います。
+## Second consumer — Migration dependency graph
+
+SUIだけで成立したSemantic Interfaceを標準化しないため、第二consumerではDatabase Migrationの`Parents`を使います。Migrationの親関係は、SUIのIsland hierarchyとは別のdomainですが、依存graphにcycleがあってはならないという制約を持ちます。
+
+このpressureでは、SUIとMigrationを同じdomain shapeへ合わせません。各domainから、acyclic判定に必要な最小情報だけを次の共通snapshotへ投影します。
+
+```text
+SUI IslandHierarchyContractV1
+  -> nodes / directed parent edges
+                               \
+                                -> reference.graph.acyclic.evaluate
+                               /
+Migration Definition.Parents
+  -> nodes / directed parent edges
+```
+
+共通snapshotは`nodes`と`edges`だけを持ちます。`island`、`parentIslandId`、Migration IDの命名規則等はSemantic Interfaceへ持ち込みません。
+
+SUI側とMigration側は別のconsumer Extension identityを持ちます。一方、次は同じものを再利用します。
+
+- Semantic Interface contract identity / fingerprint
+- provider Extension identity
+- evaluator implementation identity
+- evaluator artifact digest
+- Validation Planの評価境界
+
+この構造により、domainごとの意味bindingを分けながら、同じacyclic evaluatorを物理的に複製せず再利用できるかを確認します。
+
+このReferenceが示すのは、SUIの`hierarchy integrity`全体を共通標準へ昇格できることではありません。SUI固有のparent target existenceやparent / child consistencyは引き続きdomain側に残ります。第二consumerで再利用できたのは、現時点ではdirected graphのacyclic constraintだけです。
+
 ## Authority boundary
 
 出力には次を明示します。
