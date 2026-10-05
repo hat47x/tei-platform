@@ -85,13 +85,6 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 		t.Fatalf("受理前に記録があります: %+v", index.Records)
 	}
 
-	// rejectはworkspaceを変えないので、記録も残さない。
-	if code, _, errOut := cliRun(t, "reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り"); code != 0 {
-		t.Fatalf("reject code=%d err=%s", code, errOut)
-	}
-	if index := decisionsOf(t, dir); len(index.Records) != 0 {
-		t.Fatalf("rejectが記録を残しています: %+v", index.Records)
-	}
 
 	decision := acceptViaCLI(t, dir, candidatePath)
 	if !strings.HasPrefix(decision.RecordPath, decisionDir+"/") {
@@ -145,6 +138,148 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
 		t.Fatalf("origin=%+v", got.Origin)
+	}
+}
+
+func TestRejectedDecisionIsReachableWithoutChangingCanonicalMeaning(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidatePath := candidateFile(t, candidate)
+
+	before, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeWorld, _, err := worldSHA256(before.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "今回は見送る",
+	)
+	if code != 0 {
+		t.Fatalf("reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" ||
+		decision.Reason != "今回は見送る" ||
+		decision.SourceChanged ||
+		decision.ModelRevisionBefore != before.revision ||
+		decision.ModelRevisionAfter != before.revision ||
+		decision.RecordPath == "" {
+		t.Fatalf("rejected decision=%+v", decision)
+	}
+
+	after, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterWorld, _, err := worldSHA256(after.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.revision != before.revision || afterWorld != beforeWorld {
+		t.Fatalf(
+			"reject changed Canonical meaning: revision=%s/%s world=%s/%s",
+			before.revision,
+			after.revision,
+			beforeWorld,
+			afterWorld,
+		)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	record := index.Records[0]
+	if record.Path != decision.RecordPath ||
+		record.Status != "current" ||
+		record.SourceEdits != "none" ||
+		record.ReviewBindingStatus != "none" ||
+		record.ReviewCoverageStatus != "none" {
+		t.Fatalf("rejected Decision record=%+v", record)
+	}
+	if record.Decision.Decision != "rejected" ||
+		record.Decision.Reason != decision.Reason ||
+		record.Decision.CandidateFingerprint != decision.CandidateFingerprint {
+		t.Fatalf("rejected Decision provenance drifted: %+v", record.Decision)
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, filepath.FromSlash(decisionDir))); err != nil {
+		t.Fatal(err)
+	}
+	withoutLedger, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutLedgerWorld, _, err := worldSHA256(withoutLedger.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutLedger.revision != before.revision || withoutLedgerWorld != beforeWorld {
+		t.Fatal("Decision ledgerの削除がCanonical meaningを変えました")
+	}
+}
+
+func TestStaleRejectedDecisionPreservesRevisionConflictProvenance(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	currentRevision := revisionOfDir(t, dir)
+	staleRevision := "sha256:" + strings.Repeat("0", 64)
+	candidatePath := candidateFile(t, unitPriceCandidate(staleRevision))
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "古いrevisionなので見送る",
+	)
+	if code != 0 {
+		t.Fatalf("stale reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" || decision.Stale == nil {
+		t.Fatalf("stale reject did not preserve conflict: %+v", decision)
+	}
+	if decision.Stale.BaseModelRevision != staleRevision ||
+		decision.Stale.CurrentModelRevision != currentRevision ||
+		decision.ModelRevisionBefore != currentRevision ||
+		decision.ModelRevisionAfter != currentRevision ||
+		decision.SourceChanged {
+		t.Fatalf("stale reject revisions=%+v decision=%+v", decision.Stale, decision)
+	}
+	wantOptions := staleOptions()
+	if len(decision.Stale.Options) != len(wantOptions) {
+		t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+	}
+	for i := range wantOptions {
+		if decision.Stale.Options[i] != wantOptions[i] {
+			t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+		}
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("stale rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	if index.Records[0].Decision.Stale == nil ||
+		index.Records[0].Decision.Stale.CurrentModelRevision != currentRevision {
+		t.Fatalf("stored stale provenance=%+v", index.Records[0].Decision)
+	}
+	if got := revisionOfDir(t, dir); got != currentRevision {
+		t.Fatalf("stale reject changed model revision: got=%s want=%s", got, currentRevision)
 	}
 }
 
