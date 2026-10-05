@@ -38,6 +38,7 @@ type SubjectSemanticContext struct {
 	InterfaceWirings           []CatalogInterfaceWiring     `json:"interfaceWirings,omitempty"`
 	Constraints                []CatalogConstraint          `json:"constraints,omitempty"`
 	Relations                  []CatalogRelation            `json:"relations,omitempty"`
+	Connections                []CatalogConnection          `json:"connections,omitempty"`
 	ValidationPlan             *SubjectValidationPlanContext `json:"validationPlan,omitempty"`
 	SubjectUnresolved          []CatalogUnresolved          `json:"subjectUnresolved,omitempty"`
 	SemanticSetUnresolved      []CatalogUnresolved          `json:"semanticSetUnresolved,omitempty"`
@@ -152,6 +153,13 @@ func buildSubjectSemanticContext(
 		out.Extensions = append(out.Extensions, use)
 	}
 
+	for _, connection := range catalog.Connections {
+		if _, relevant := rolesByExtension[connection.Extension.ID]; !relevant {
+			continue
+		}
+		out.Connections = append(out.Connections, connection)
+	}
+
 	interfaceIDs := map[string]struct{}{}
 	for _, constraint := range out.Constraints {
 		if constraint.EvaluatorInterface != "" {
@@ -254,6 +262,15 @@ func buildSubjectSemanticContext(
 			return left < right
 		}
 		return out.Relations[i].Extension.ID < out.Relations[j].Extension.ID
+	})
+	sort.Slice(out.Connections, func(i, j int) bool {
+		if out.Connections[i].Extension.ID != out.Connections[j].Extension.ID {
+			return out.Connections[i].Extension.ID < out.Connections[j].Extension.ID
+		}
+		if out.Connections[i].Kind != out.Connections[j].Kind {
+			return out.Connections[i].Kind < out.Connections[j].Kind
+		}
+		return out.Connections[i].Ref < out.Connections[j].Ref
 	})
 	sort.Slice(out.SubjectUnresolved, func(i, j int) bool {
 		if out.SubjectUnresolved[i].Code != out.SubjectUnresolved[j].Code {
