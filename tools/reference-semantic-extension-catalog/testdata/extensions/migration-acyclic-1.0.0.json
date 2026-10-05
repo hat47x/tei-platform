@@ -1,0 +1,26 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.migration-acyclic",
+  "namespace": "reference.migration.acyclic",
+  "version": "1.0.0",
+  "appliesToKinds": [
+    "migration"
+  ],
+  "requiresInterfaces": [
+    {
+      "interface": "reference.graph.acyclic.evaluate",
+      "compatibleMajor": 1
+    }
+  ],
+  "constraints": [
+    {
+      "id": "acyclic",
+      "subject": {
+        "kind": "migration",
+        "id": "sales_core/20260826_001"
+      },
+      "validatorRef": "reference.graph.acyclic.v1",
+      "evaluatorInterface": "reference.graph.acyclic.evaluate"
+    }
+  ]
+}
