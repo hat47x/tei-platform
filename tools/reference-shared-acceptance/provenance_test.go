@@ -267,11 +267,50 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 		t.Fatalf("staleなpreviewは失敗終了し理由を示す必要があります: code=%d out=%s", code, out)
 	}
 
-	code, out, _ = run("reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り")
+	rejectBefore := treeDigest(t, dir)
+	code, _, errOut := run("reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り")
+	if code != 2 || !strings.Contains(errOut, "expected-review-fingerprint") {
+		t.Fatalf("review bindingなしのrejectが止まっていません: code=%d err=%s", code, errOut)
+	}
+	assertTreeUnchanged(t, rejectBefore, treeDigest(t, dir))
+
+	rejectReviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	code, _, errOut = run(
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", rejectReviewFingerprint,
+	)
+	if code != 2 || !strings.Contains(errOut, "-reason") {
+		t.Fatalf("理由なしのrejectが止まっていません: code=%d err=%s", code, errOut)
+	}
+	assertTreeUnchanged(t, rejectBefore, treeDigest(t, dir))
+
+	code, out, _ = run(
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", rejectReviewFingerprint,
+		"-reason", "見送り",
+	)
 	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) {
 		t.Fatalf("reject code=%d out=%s", code, out)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	if after := revisionOfDir(t, dir); after != revision {
+		t.Fatalf("rejectがauthoritative model revisionを変更しました: before=%s after=%s", revision, after)
+	}
+	rejectIndex := decisionsOf(t, dir)
+	if len(rejectIndex.Records) != 1 {
+		t.Fatalf("reject provenance=%+v", rejectIndex.Records)
+	}
+	rejectRecord := rejectIndex.Records[0]
+	if rejectRecord.Decision.Decision != "rejected" ||
+		rejectRecord.Decision.Reason != "見送り" ||
+		rejectRecord.Decision.SourceChanged ||
+		rejectRecord.SourceEdits != "none" ||
+		rejectRecord.ReviewBindingStatus != "verified" {
+		t.Fatalf("reject record=%+v", rejectRecord)
+	}
 
 	// Gate B / Gate Cが固定したbaselineの名前を持つ場所へは、明示しない限りacceptしない。
 	baselineLike := filepath.Join(t.TempDir(), "reference", "workspace")
