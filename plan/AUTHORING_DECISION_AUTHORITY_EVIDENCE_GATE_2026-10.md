@@ -219,7 +219,25 @@ verified authoring decision authority
 
 この状態では、`origin.actor`をDecision actorへcopyしない。CLIの`--actor`文字列をverified actorとして保存せず、`approved=true`もhuman approval proofにしない。review fingerprint一致をhuman witnessへ昇格せず、Runtime principalをauthoring reviewerへ自動変換することも避ける。
 
-## 8. 次のReference pressure
+## 8. current Evidence source survey
+
+current Repositoryとauthoring経路について、Evidence source候補を実物で確認した。
+
+| 候補 | identity Evidence | authoring authority Evidence | 判定 |
+| --- | --- | --- | --- |
+| candidate `origin.actor` | caller supplied provenanceのみ | 無い | Decision actor / authorityには使わない |
+| OS process user / environment variable | local process identityにはなり得る | workspace / projectのAccept scopeを証明しない | authorityには使わない |
+| legacy `security.authenticate` subject | Application Runtime利用者のAuthentication Evidence | authoring Decision scopeではない | Runtime principalとしてのみ扱う |
+| Studio authenticated user context | current Repositoryにproduction実装なし | current Repositoryにpolicy sourceなし | Not Ready |
+| GitHub `CODEOWNERS` | current Repositoryにfileなし | owner scopeを取得できない | current Referenceには使えない |
+| GitHub branch protection / ruleset | SCM側source候補 | current integrationではbranch protectionを取得できず、rulesetもcurrent repository条件では利用不可 | current Referenceには使えない |
+| PR / commit metadata | author / mergerのprovenanceにはなる | Shared Acceptanceのchange scopeに対するauthorityを単独では証明しない | provenance候補に留める |
+
+この調査から、current ReferenceでE2〜E5を満たすsourceは見つからなかった。したがって`decisionActorStatus=unresolved` / `decisionAuthorityStatus=unresolved`は欠落を隠す暫定値ではなく、現在のEvidence高さを表す。
+
+SCM integrationを将来採る場合も、GitHub固有のreview modelをShared Acceptance contractへ埋め込まない。provider adapterがactor identity、scope、freshness、provenanceをEvidenceとして渡し、Shared Acceptanceはprovider固有metadataからauthorityを推論しない構造を優先する。
+
+## 9. 次のReference pressure
 
 次段では、抽象schemaを先に作らず、**一つの実在するauthoring identity / authority source**を選んでEvidenceを取得できるかをPressureする。
 
@@ -234,7 +252,7 @@ verified authoring decision authority
 
 providerが選べない場合は`authority-unresolved`のまま止める。
 
-## 9. 必須negative pressure
+## 10. 必須negative pressure
 
 実装へ進む場合、少なくとも次をfail closedで確認する。
 
@@ -249,11 +267,11 @@ providerが選べない場合は`authority-unresolved`のまま止める。
 -複数authority Evidenceが競合しwinnerを決められない
 - actor / authority Evidenceを削除した後に、過去Decisionをcurrent verified witnessとして読み替える
 
-## 10. Product Valueとの接続
+## 11. Product Valueとの接続
 
 このGateの目的は承認手順を重くすることではない。AIやStudioが提案者になっても判断者を混同せず、人がReviewしたという見かけのmetadataからauthorityを捏造しないための境界である。数か月後のAIがDecision historyへ再入場したときには、「何が決まったか」と「誰が決める権限を持っていたか」を別々に検証できる必要がある。また、Runtime permission modelをauthoringへ誤流用せず、将来identity providerを交換してもCanonical meaningとShared Acceptanceの中核を保つ。
 
-## 11. Current decision
+## 12. Current decision
 
 ```text
 self-asserted actor
