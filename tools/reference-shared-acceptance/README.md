@@ -87,10 +87,12 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
 - `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。有効なReview bindingでだけ表示
 - `reviewDiagnostics`: Review bindingの不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section code、Projection schema、Projection再計算fingerprint、coverage一致を検査する
+- `decisionActorStatus`: current Referenceでは`unresolved`。candidateの`origin.actor`やCLI実行者をDecision actorへ読み替えない
+- `decisionAuthorityStatus`: current Referenceでは`unresolved`。Review bindingやDecision recordの存在をauthoring authorityの証明にしない
 - 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`として返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
 
 ### knowledge qualificationからcandidateへの接続
 
