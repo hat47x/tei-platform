@@ -20,64 +20,67 @@ const (
 	acyclicConstraintID = "acyclic"
 )
 
-func acyclicSemanticInterfaceFixture() (
+func acyclicReferenceDescriptor(t *testing.T, id string) ExtensionDescriptor {
+	t.Helper()
+	for _, descriptor := range referenceDescriptors(t) {
+		if descriptor.ID == id {
+			if descriptor.sourcePath == "" || descriptor.sourceFingerprint == "" {
+				t.Fatalf("descriptor %s has no Source identity: %+v", id, descriptor)
+			}
+			return descriptor
+		}
+	}
+	t.Fatalf("Reference descriptor %s was not found", id)
+	return ExtensionDescriptor{}
+}
+
+func acyclicSemanticInterfaceFixture(
+	t *testing.T,
+) (
 	SemanticInterfaceContract,
 	ExtensionDescriptor,
 	ExtensionDescriptor,
 	SemanticInterfaceConformance,
 ) {
-	contract := SemanticInterfaceContract{
-		ID:                     acyclicInterfaceID,
-		Version:                "1.0.0",
-		InputSemantics:         []string{"normalized directed relation graph"},
-		OutputSemantics:        []string{"acyclic pass fail unknown diagnostics"},
-		UnknownSemantics:       "incomplete normalized graph remains unknown",
-		FailureSemantics:       "directed cycle is blocking",
-		ProviderConformanceRef: "reference.conformance.acyclic-graph-v1",
+	t.Helper()
+	owner := acyclicReferenceDescriptor(t, "tei.reference.acyclic-contract")
+	provider := acyclicReferenceDescriptor(t, "tei.reference.acyclic-evaluator")
+	if len(owner.Interfaces) != 1 {
+		t.Fatalf("acyclic contract interfaces=%+v", owner.Interfaces)
 	}
-	owner := ExtensionDescriptor{
-		Schema:    extensionSchema,
-		ID:        "tei.reference.acyclic-contract",
-		Namespace: "reference.graph.acyclic",
-		Version:   "1.0.0",
-		Interfaces: []SemanticInterfaceContract{contract},
+	contract := owner.Interfaces[0]
+	if len(provider.ProvidesInterfaces) != 1 {
+		t.Fatalf("acyclic evaluator providers=%+v", provider.ProvidesInterfaces)
 	}
-	provider := ExtensionDescriptor{
-		Schema:    extensionSchema,
-		ID:        "tei.reference.acyclic-evaluator",
-		Namespace: "reference.graph.evaluator",
-		Version:   "1.0.0",
-		ProvidesInterfaces: []SemanticInterfaceProvider{{
-			Interface:           contract.ID,
-			ContractVersion:     contract.Version,
-			ContractFingerprint: semanticInterfaceFingerprint(contract),
-		}},
+	claim := provider.ProvidesInterfaces[0]
+	if claim.Interface != contract.ID ||
+		claim.ContractVersion != contract.Version ||
+		claim.ContractFingerprint != semanticInterfaceFingerprint(contract) {
+		t.Fatalf("acyclic provider claim does not match Source contract: claim=%+v contract=%+v", claim, contract)
 	}
 	conformance := semanticInterfaceConformanceFor(contract, provider.ID, "7")
 	return contract, owner, provider, conformance
 }
 
 func acyclicDomainConsumer(
+	t *testing.T,
 	id string,
-	namespace string,
 	target subject.Subject,
 ) ExtensionDescriptor {
-	return ExtensionDescriptor{
-		Schema:    extensionSchema,
-		ID:        id,
-		Namespace: namespace,
-		Version:   "1.0.0",
-		RequiresInterfaces: []SemanticInterfaceRequirement{{
-			Interface:       acyclicInterfaceID,
-			CompatibleMajor: 1,
-		}},
-		Constraints: []ExtensionConstraint{{
-			ID:                 acyclicConstraintID,
-			Subject:            target,
-			ValidatorRef:       "reference.graph.acyclic.v1",
-			EvaluatorInterface: acyclicInterfaceID,
-		}},
+	t.Helper()
+	consumer := acyclicReferenceDescriptor(t, id)
+	if len(consumer.Constraints) != 1 {
+		t.Fatalf("acyclic consumer %s constraints=%+v", id, consumer.Constraints)
 	}
+	if consumer.Constraints[0].Subject != target {
+		t.Fatalf(
+			"acyclic consumer %s targets %+v, want %+v",
+			id,
+			consumer.Constraints[0].Subject,
+			target,
+		)
+	}
+	return consumer
 }
 
 func resolveAcyclicDomainCatalog(
@@ -91,7 +94,7 @@ func resolveAcyclicDomainCatalog(
 	SemanticInterfaceConformance,
 ) {
 	t.Helper()
-	contract, owner, provider, conformance := acyclicSemanticInterfaceFixture()
+	contract, owner, provider, conformance := acyclicSemanticInterfaceFixture(t)
 	catalog, err := resolveSemanticCatalogWithAllInputs(
 		core,
 		[]ExtensionDescriptor{consumer, provider, owner},
@@ -286,8 +289,8 @@ func migrationAcyclicSnapshot(definitions []migration.Definition) acyclicgraph.S
 func TestAcyclicSemanticInterfaceReusesExactContractAcrossSUIAndMigration(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.sui-acyclic",
-		"reference.sui.acyclic",
 		suiTarget,
 	)
 	suiCatalog, suiContract, suiProvider, _ := resolveAcyclicDomainCatalog(
@@ -298,8 +301,8 @@ func TestAcyclicSemanticInterfaceReusesExactContractAcrossSUIAndMigration(t *tes
 
 	migrationCore, migrationTarget, _ := referenceMigrationAcyclicInput(t)
 	migrationConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.migration-acyclic",
-		"reference.migration.acyclic",
 		migrationTarget,
 	)
 	migrationCatalog, migrationContract, migrationProvider, _ := resolveAcyclicDomainCatalog(
@@ -524,17 +527,17 @@ func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.
 }
 
 func TestAcyclicSecondConsumerSharesOneEvaluatorArtifactIdentity(t *testing.T) {
-	contract, _, provider, _ := acyclicSemanticInterfaceFixture()
+	contract, _, provider, _ := acyclicSemanticInterfaceFixture(t)
 	implementation := acyclicEvaluatorImplementation(contract, provider)
 
 	suiConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.sui-acyclic",
-		"reference.sui.acyclic",
 		subject.Subject{Kind: "semantic-data", ID: "sui.island"},
 	)
 	migrationConsumer := acyclicDomainConsumer(
+		t,
 		"tei.reference.migration-acyclic",
-		"reference.migration.acyclic",
 		subject.Subject{Kind: "migration", ID: "sales_core/20260826_001"},
 	)
 
