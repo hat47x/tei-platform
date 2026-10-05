@@ -57,7 +57,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 ### 人が読むReview Projection
 
-`review`は、AIの要約を新しい根拠にせず、Shared Acceptance Previewが持つ差分・影響・診断・未解決点・Evidence・source editをA1〜A8へ並べ直します。冒頭は`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionの要約です。各sectionは、導出元の`preview.*`または`candidate.*`項目を`sources`として持ち、text出力でも`根拠:`として表示します。`candidateFingerprint`は意味のidentity、`evidenceFingerprint`は正規化済み根拠のidentity、`reviewFingerprint`はA1〜A8を含む提示Projectionそのもののidentityです。A7ではEvidenceと変更予定sourceへ戻れる情報も出します。
+`review`は、AIの要約を新しい根拠にせず、Shared Acceptance Previewが持つ差分・影響・診断・未解決点・Evidence・source editをA1〜A8へ並べ直します。Semantic Evaluation artifactがEvidenceに添付されている場合は、A3に`pass / fail / unknown`とdiagnostic、A7にartifact / Semantic Set / evaluation fingerprintを表示します。冒頭は`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionの要約です。各sectionは、導出元の`preview.*`または`candidate.*`項目を`sources`として持ち、text出力でも`根拠:`として表示します。`candidateFingerprint`は意味のidentity、`evidenceFingerprint`は正規化済み根拠のidentity、`reviewFingerprint`はA1〜A8を含む提示Projectionそのもののidentityです。A7ではEvidenceと変更予定sourceへ戻れる情報も出します。
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
@@ -81,7 +81,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 - `status`: `current`（記録時のrevisionが現在と一致）か`superseded`（workspaceが先へ進んだ）
 - `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
-- `evidenceStatus`: `current`（受理理由に使ったEvidenceがcurrent Source Indexとqualificationに一致）、`diverged`（根拠sourceや明示dependencyが変わった、または保存済みEvidence本文が`evidenceFingerprint`と一致しない）、`none`
+- `evidenceStatus`: `current`（Source Index型Evidenceはcurrent source / qualificationと一致し、artifact型Evidenceは保存されたartifact fingerprintと内部fingerprintが整合）、`diverged`（根拠sourceや明示dependencyが変わった、保存済みEvidence本文が`evidenceFingerprint`と一致しない、またはartifactの自己整合が壊れている）、`none`。artifact型Evidenceの`current`はEvaluatorやConformanceを再実行した意味ではなく、受理時artifactのbinding integrityを確認できるという意味に限る
 - `evidenceDiagnostics`: `diverged`の理由。過去のAcceptanceを現在のapplicabilityとして読み替えないための照合結果
 - `reviewBindingStatus`: `verified`（保存したReview Projection、fingerprint、coverageが一致）、`recorded`（Projection snapshotを持たない旧形式のbindingは構造だけ整合）、`none`（bindingなし）、`invalid`（fingerprint、coverage、Projectionのいずれかが不整合）
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
@@ -117,6 +117,39 @@ go run ./tools/reference-shared-acceptance preview \
 Previewでは、添付された結果をそのまま信用しません。current Source Indexに対してexact subjectとsourceを解決し、source fingerprintを照合したうえで、同じrequirementsを使ってqualificationを再実行します。required dependencyがある場合は、そのauthoritative sourceとfingerprintの集合もcurrent qualificationと照合します。したがって、dependencyのIDが同じままsource内容だけが変わった場合もstaleとして拒否できます。一方、requirementsが参照していないsourceの変更はqualification freshnessへ持ち込まず、repository-wideなglobal revisionは要求しません。
 
 このEvidenceはcandidateの意味を変更しないため、`candidateFingerprint`には入りません。一方、Preview / Decisionは正規化済みEvidenceの`evidenceFingerprint`を別に持つため、「同じ意味だが根拠が違う」candidateを機械的に区別できます。Accepted DecisionにはEvidence本文とそのidentityがprovenanceとして残りますが、Acceptance、write authority、Runtime authorityを与えません。 Decision Indexは新しい記録について保存済み`evidenceFingerprint`とEvidence本文も照合し、記録だけを書き換えた場合を`EVIDENCE_FINGERPRINT_MISMATCH`として検出します。
+### Semantic Evaluation artifactからcandidateへの接続
+
+Semantic Extension Referenceが出力する`tei.reference.semantic-evaluation-evidence/v0`は、Source Index上のAuthoring sourceではありません。そのため、既存の`subject / source / sourceFingerprint`へ偽装して取り込みません。`attach-semantic-evaluation`は、Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与します。
+
+```bash
+go run ./tools/reference-shared-acceptance attach-semantic-evaluation \
+  -candidate candidate.json \
+  -semantic-evaluation semantic-evaluation.json \
+  > grounded-candidate.json
+
+go run ./tools/reference-shared-acceptance review \
+  -workspace DIR \
+  -candidate grounded-candidate.json
+```
+
+handoffでは次を検査します。
+
+- schemaが`tei.reference.semantic-evaluation-evidence/v0`である
+- Semantic Set、Evaluator contract、Evaluator artifact、Conformance Evidence、input、Evaluation Evidenceの各fingerprintがexact SHA-256である
+- Constraint / subject / validator / evaluator identityが空でない
+- statusが`pass / fail / unknown`のいずれかである
+- diagnosticがproducerと同じcanonical orderである
+- Evaluation Evidence自身の`evidenceFingerprint`が内容から再計算できる
+- さらにcanonical payload全体へ別の`artifactFingerprint`を付け、Shared Acceptance内のartifact bindingとして固定する
+
+Source Index Evidenceとartifact Evidenceは一つのEvidence itemへ混在できません。必要なら別itemとして並べます。これにより「workspaceのauthoritative source」と「外部または派生Evaluation artifact」を同じauthorityとして扱いません。
+
+Evaluation artifactはcandidateの意味を変えないため、`candidateFingerprint`には入りません。一方、`evidenceFingerprint`とReview Projectionには入るため、同じsemantic deltaでも「どのEvaluation Evidenceを見て判断したか」は区別できます。Accepted Decisionにもartifact本文とfingerprintが残ります。
+
+重要なのは、EvaluationのstatusをAcceptance authorityへ昇格しないことです。`pass`だから自動Acceptせず、`fail`や`unknown`だから自動Rejectもしません。A3/A7へ状態とdiagnosticを表示し、最終的なAccept / RejectはShared Acceptanceの明示Decisionとして残します。これは失敗を無視するという意味ではなく、Evaluatorの判定とAcceptance Decisionを別の責任として保持するための境界です。
+
+また、Decision Indexがartifactのfingerprint整合を確認できても、現在のEvaluator implementation、Conformance Evidence、Semantic Setを再実行してfreshnessを証明したことにはなりません。将来それを要求する場合は、Evaluation再実行またはcurrent Evidence bindingを別の検査として追加します。
+
 ### candidateの例
 
 ```json
@@ -172,6 +205,7 @@ Previewでは、添付された結果をそのまま信用しません。current
 - そのcompositionをscratch copyへacceptすると、宣言した3 fileだけが作られ、Environmentは変わらず、受理後の再読込・Conformance・Previewとの差分一致が通る。並行変更・受理後Conformance失敗では、3 fileと作ったdirectoryを元へ戻す
 - 同じcompositionを実際の`reference/workspace`へPreviewすると全stageがPASSし、`reference/workspace`は変更されない（Previewの結果は`plan/SECOND_APPLICATION_S5_SHARED_ACCEPTANCE_IMPLEMENTATION_PACKET_2026-09.md`「実装記録」）
 - `ISSUE-000047`の`applicable`なqualificationをexact Evidenceとしてcandidateへ付与し、Preview時にcurrent Source Indexと同じrequirementsへ戻って再qualificationできる。required dependencyのauthoritative source / fingerprintもscoped Evidenceとして照合し、同じIDのdependency sourceが変わったcaseをfail closedにできる。requirements外のdependency Evidenceはhandoffしない（`qualification_handoff_test.go`）
+- Semantic Evaluation Evidenceをartifact-only Evidenceとしてcandidateへ付与し、内部Evaluation fingerprintと外側artifact fingerprintを二重に固定できる。`pass / fail / unknown`はReview A3/A7へ露出するが、candidate meaningやAcceptance authorityへ昇格しない（`semantic_evaluation_handoff_test.go`）
 - 受理した決定が、会話履歴なしでworkspaceから読める。Decision Indexはworkspace全体の`current / superseded`、そのDecisionが書いたsourceの`intact / diverged`、受理理由に使ったEvidenceの`current / diverged`を分けて返す。記録はauthorityではなく、消してもmodel revisionもaccepted meaningも変わらない（`record_test.go`）
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
