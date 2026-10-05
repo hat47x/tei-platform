@@ -121,7 +121,7 @@ go run ./tools/reference-shared-acceptance preview \
   -candidate grounded-candidate.json
 ```
 
-探索結果からdestination-owned reference PatternをProposalへ追加する場合は、先にPatternのContract Query dependencyまで明示してqualificationします。たとえば`order_entry.customer_reference`を再利用候補にする場合、`master_data.customer/find_by_id`をrequired dependencyとして含めます。そのうえで、destination側で決める情報だけを次のrequestへ分けます。
+探索結果からdestination-owned reference PatternをProposalへ追加する場合は、PatternのContract Query dependencyまで明示したqualificationが前提です。たとえば`order_entry.customer_reference`を再利用候補にする場合、`master_data.customer/find_by_id`をrequired dependencyとして含めます。そのうえで、destination側で決める情報だけを次のrequestへ分けます。
 
 ```json
 {
