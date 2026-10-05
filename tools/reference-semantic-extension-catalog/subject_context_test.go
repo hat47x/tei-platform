@@ -290,3 +290,54 @@ func TestSubjectSemanticContextRejectsStaleValidationPlan(t *testing.T) {
 		t.Fatal("stale Validation Plan was accepted into subject context")
 	}
 }
+
+func TestSubjectSemanticContextExplainsUnresolvedEvaluatorFromSubject(t *testing.T) {
+	core, target := suiReferenceCoreCatalog(t)
+	consumer := acyclicDomainConsumer(t, "tei.reference.sui-acyclic", target)
+	_, owner, provider, _ := acyclicSemanticInterfaceFixture(t)
+	catalog, err := resolveSemanticCatalogWithAllInputs(
+		core,
+		[]ExtensionDescriptor{consumer, provider, owner},
+		semanticInterfaceRoots(consumer.ID, provider.ID, owner.ID),
+		nil,
+		nil,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Unresolved) == 0 {
+		t.Fatal("missing Conformance Evidence unexpectedly resolved evaluator")
+	}
+
+	root := repositoryRoot(t)
+	workspaceRoot := filepath.Join(root, "reference", "sui-adoption", "workspace")
+	base := knowledgeContextForWorkspace(t, workspaceRoot, target)
+	ctx, err := buildSubjectSemanticContext(base, catalog, nil, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ctx.Constraints) != 0 {
+		t.Fatalf("unresolved evaluator leaked an active constraint: %+v", ctx.Constraints)
+	}
+	use, ok := subjectExtensionUseByID(ctx.Extensions, consumer.ID)
+	if !ok || !hasString(use.Roles, "unresolved") {
+		t.Fatalf("unresolved consumer Extension is not discoverable: %+v", ctx.Extensions)
+	}
+	if use.Extension.Source == "" || use.Extension.SourceFingerprint == "" {
+		t.Fatalf("unresolved Extension lost Source re-entry information: %+v", use)
+	}
+	if len(ctx.SubjectUnresolved) == 0 {
+		t.Fatalf("subject-specific unresolved was hidden: %+v", ctx.SemanticSetUnresolved)
+	}
+	found := false
+	for _, unresolved := range ctx.SubjectUnresolved {
+		if unresolved.Extension != nil && unresolved.Extension.ID == consumer.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("subject unresolved does not point back to consumer Extension: %+v", ctx.SubjectUnresolved)
+	}
+}
