@@ -268,10 +268,12 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 
 	code, out, _ = run("reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り")
-	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) {
+	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(out, `"recordPath": ".tei/decisions/`) {
 		t.Fatalf("reject code=%d out=%s", code, out)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	if got := revisionOfDir(t, dir); got != revision {
+		t.Fatalf("reject Decision recordがmodel revisionを変えました: got=%s want=%s", got, revision)
+	}
 
 	// Gate B / Gate Cが固定したbaselineの名前を持つ場所へは、明示しない限りacceptしない。
 	baselineLike := filepath.Join(t.TempDir(), "reference", "workspace")
