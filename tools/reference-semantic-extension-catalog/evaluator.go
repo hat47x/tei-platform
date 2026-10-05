@@ -2,36 +2,27 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"tei/internal/sourceindex"
-	"tei/internal/subject"
+	semanticevidence "tei/tools/internal/semanticevidence"
 )
 
-const semanticEvaluationEvidenceSchema = "tei.reference.semantic-evaluation-evidence/v0"
+const semanticEvaluationEvidenceSchema = semanticevidence.Schema
 
-type SemanticEvaluationStatus string
+type SemanticEvaluationStatus = semanticevidence.Status
 
 const (
-	SemanticEvaluationPass SemanticEvaluationStatus = "pass"
-	SemanticEvaluationFail SemanticEvaluationStatus = "fail"
-	SemanticEvaluationUnknown SemanticEvaluationStatus = "unknown"
+	SemanticEvaluationPass    = semanticevidence.Pass
+	SemanticEvaluationFail    = semanticevidence.Fail
+	SemanticEvaluationUnknown = semanticevidence.Unknown
 )
 
-func (s SemanticEvaluationStatus) valid() bool {
-	return s == SemanticEvaluationPass || s == SemanticEvaluationFail || s == SemanticEvaluationUnknown
-}
-
-type SemanticEvaluationDiagnostic struct {
-	Code string `json:"code"`
-	Message string `json:"message"`
-}
+type SemanticEvaluationDiagnostic = semanticevidence.Diagnostic
 
 type SemanticEvaluationOutcome struct {
-	Status SemanticEvaluationStatus `json:"status"`
+	Status      SemanticEvaluationStatus       `json:"status"`
 	Diagnostics []SemanticEvaluationDiagnostic `json:"diagnostics,omitempty"`
 }
 
@@ -53,25 +44,7 @@ type SemanticEvaluatorBinding struct {
 	ArtifactDigest string `json:"artifactDigest"`
 }
 
-type SemanticEvaluationEvidence struct {
-	Schema string `json:"schema"`
-	SemanticSetFingerprint string `json:"semanticSetFingerprint"`
-	ConstraintExtension string `json:"constraintExtension"`
-	ConstraintID string `json:"constraintId"`
-	Subject subject.Subject `json:"subject"`
-	ValidatorRef string `json:"validatorRef"`
-	EvaluatorInterface string `json:"evaluatorInterface"`
-	EvaluatorContractFingerprint string `json:"evaluatorContractFingerprint"`
-	EvaluatorConformanceProfile string `json:"evaluatorConformanceProfile"`
-	EvaluatorProviderExtension string `json:"evaluatorProviderExtension"`
-	EvaluatorImplementationID string `json:"evaluatorImplementationId"`
-	EvaluatorArtifactDigest string `json:"evaluatorArtifactDigest"`
-	ConformanceEvidenceFingerprint string `json:"conformanceEvidenceFingerprint"`
-	InputFingerprint string `json:"inputFingerprint"`
-	Status SemanticEvaluationStatus `json:"status"`
-	Diagnostics []SemanticEvaluationDiagnostic `json:"diagnostics,omitempty"`
-	EvidenceFingerprint string `json:"evidenceFingerprint"`
-}
+type SemanticEvaluationEvidence = semanticevidence.Evidence
 
 func evaluateSemanticConstraint(
 	ctx context.Context,
@@ -168,10 +141,11 @@ func evaluateSemanticConstraint(
 	if err := ctx.Err(); err != nil {
 		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator did not complete: %w", err)
 	}
-	if !outcome.Status.valid() {
+	switch outcome.Status {
+	case SemanticEvaluationPass, SemanticEvaluationFail, SemanticEvaluationUnknown:
+	default:
 		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator %s returned invalid status %q", implementation.ID, outcome.Status)
 	}
-	outcome.Diagnostics = normalizeSemanticEvaluationDiagnostics(outcome.Diagnostics)
 
 	evidence := SemanticEvaluationEvidence{
 		Schema: semanticEvaluationEvidenceSchema,
@@ -191,7 +165,10 @@ func evaluateSemanticConstraint(
 		Status: outcome.Status,
 		Diagnostics: outcome.Diagnostics,
 	}
-	evidence.EvidenceFingerprint = semanticEvaluationEvidenceFingerprint(evidence)
+	evidence, err = semanticevidence.Prepare(evidence)
+	if err != nil {
+		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator %s produced invalid Evidence: %w", implementation.ID, err)
+	}
 	return evidence, nil
 }
 
@@ -204,27 +181,3 @@ func findCatalogConstraint(catalog SemanticCatalog, extensionID, constraintID st
 	return CatalogConstraint{}, false
 }
 
-func normalizeSemanticEvaluationDiagnostics(values []SemanticEvaluationDiagnostic) []SemanticEvaluationDiagnostic {
-	out := make([]SemanticEvaluationDiagnostic, 0, len(values))
-	for _, value := range values {
-		value.Code = strings.TrimSpace(value.Code)
-		value.Message = strings.TrimSpace(value.Message)
-		if value.Code == "" || value.Message == "" {
-			continue
-		}
-		out = append(out, value)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Code != out[j].Code {
-			return out[i].Code < out[j].Code
-		}
-		return out[i].Message < out[j].Message
-	})
-	return out
-}
-
-func semanticEvaluationEvidenceFingerprint(value SemanticEvaluationEvidence) string {
-	value.EvidenceFingerprint = ""
-	encoded, _ := json.Marshal(value)
-	return sourceindex.Fingerprint(encoded)
-}

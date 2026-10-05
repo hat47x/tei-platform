@@ -197,6 +197,13 @@ func validateEvidence(s snapshot, evidence []Evidence) []Diagnostic {
 	idx := indexWorld(s)
 	fingerprints := s.fingerprints()
 	for i, e := range evidence {
+		if e.Artifact != nil {
+			for _, diagnostic := range validateEvidenceArtifact(e.Artifact) {
+				diagnostic.Message = fmt.Sprintf("evidence[%d].artifact: %s", i, diagnostic.Message)
+				out = append(out, diagnostic)
+			}
+			continue
+		}
 		if e.Subject != "" {
 			if e.SubjectKind == "" {
 				if !idx.subjects[e.Subject] {

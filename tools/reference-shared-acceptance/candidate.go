@@ -46,6 +46,7 @@ type Evidence struct {
 	SourceFingerprint               string                                        `json:"sourceFingerprint,omitempty"`
 	QualificationRequirements       *knowledgecontext.QualificationRequirements   `json:"qualificationRequirements,omitempty"`
 	QualificationDependencyEvidence []knowledgecontext.QualificationEvidence      `json:"qualificationDependencyEvidence,omitempty"`
+	Artifact                        *EvidenceArtifact                             `json:"artifact,omitempty"`
 	Note                            string                                        `json:"note,omitempty"`
 }
 
@@ -97,8 +98,19 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		e.Subject = strings.TrimSpace(e.Subject)
 		e.Source = strings.TrimSpace(e.Source)
 		e.SourceFingerprint = strings.TrimSpace(e.SourceFingerprint)
-		if e.Subject == "" && e.Source == "" {
-			return c, "", fmt.Errorf("evidence[%d]にsubjectもsourceもありません", i)
+		if e.Subject == "" && e.Source == "" && e.Artifact == nil {
+			return c, "", fmt.Errorf("evidence[%d]にsubject / source / artifactのいずれもありません", i)
+		}
+		if e.Artifact != nil {
+			if e.SubjectKind != "" || e.Subject != "" || e.Source != "" || e.SourceFingerprint != "" ||
+				e.QualificationRequirements != nil || len(e.QualificationDependencyEvidence) != 0 {
+				return c, "", fmt.Errorf("evidence[%d].artifactはSource Index Evidenceと同じitemへ混在できません", i)
+			}
+			normalizedArtifact, err := normalizeEvidenceArtifact(*e.Artifact)
+			if err != nil {
+				return c, "", fmt.Errorf("evidence[%d].artifact: %w", i, err)
+			}
+			e.Artifact = &normalizedArtifact
 		}
 		if e.SubjectKind != "" && e.Subject == "" {
 			return c, "", fmt.Errorf("evidence[%d].subjectKindにはsubjectが必要です", i)

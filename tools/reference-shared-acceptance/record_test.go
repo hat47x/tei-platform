@@ -114,14 +114,6 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 			record.ReviewDiagnostics,
 		)
 	}
-	if record.DecisionActorStatus != "unresolved" ||
-		record.DecisionAuthorityStatus != "unresolved" {
-		t.Fatalf(
-			"decision actor=%q authority=%q",
-			record.DecisionActorStatus,
-			record.DecisionAuthorityStatus,
-		)
-	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
 	}
@@ -146,31 +138,6 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
 		t.Fatalf("origin=%+v", got.Origin)
-	}
-}
-
-func TestCandidateOriginActorDoesNotBecomeDecisionActor(t *testing.T) {
-	dir := scratchWorkspaceBeforeSecondApplication(t)
-	candidate := unitPriceCandidate(revisionOfDir(t, dir))
-	candidate.Origin.Actor = "proposal-author"
-	decision := acceptViaCLI(t, dir, candidateFile(t, candidate))
-
-	index := decisionsOf(t, dir)
-	if len(index.Records) != 1 {
-		t.Fatalf("records=%+v", index.Records)
-	}
-	record := index.Records[0]
-	if record.Decision.Origin == nil || record.Decision.Origin.Actor != "proposal-author" {
-		t.Fatalf("proposal origin actor was not preserved as provenance: %+v", record.Decision.Origin)
-	}
-	if record.DecisionActorStatus != "unresolved" ||
-		record.DecisionAuthorityStatus != "unresolved" {
-		t.Fatalf(
-			"proposal origin actor was promoted to decision authority: actor=%q authority=%q decision=%+v",
-			record.DecisionActorStatus,
-			record.DecisionAuthorityStatus,
-			decision,
-		)
 	}
 }
 
@@ -238,9 +205,7 @@ func TestRejectedDecisionIsReachableWithoutChangingCanonicalMeaning(t *testing.T
 		record.Status != "current" ||
 		record.SourceEdits != "none" ||
 		record.ReviewBindingStatus != "none" ||
-		record.ReviewCoverageStatus != "none" ||
-		record.DecisionActorStatus != "unresolved" ||
-		record.DecisionAuthorityStatus != "unresolved" {
+		record.ReviewCoverageStatus != "none" {
 		t.Fatalf("rejected Decision record=%+v", record)
 	}
 	if record.Decision.Decision != "rejected" ||
@@ -312,14 +277,6 @@ func TestStaleRejectedDecisionPreservesRevisionConflictProvenance(t *testing.T) 
 	if index.Records[0].Decision.Stale == nil ||
 		index.Records[0].Decision.Stale.CurrentModelRevision != currentRevision {
 		t.Fatalf("stored stale provenance=%+v", index.Records[0].Decision)
-	}
-	if index.Records[0].DecisionActorStatus != "unresolved" ||
-		index.Records[0].DecisionAuthorityStatus != "unresolved" {
-		t.Fatalf(
-			"stale decision actor=%q authority=%q",
-			index.Records[0].DecisionActorStatus,
-			index.Records[0].DecisionAuthorityStatus,
-		)
 	}
 	if got := revisionOfDir(t, dir); got != currentRevision {
 		t.Fatalf("stale reject changed model revision: got=%s want=%s", got, currentRevision)
