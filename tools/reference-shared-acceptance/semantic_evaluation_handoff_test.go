@@ -251,3 +251,60 @@ func semanticEvaluationEvidenceItem(values []Evidence) (Evidence, bool) {
 	}
 	return Evidence{}, false
 }
+
+func TestDecisionIndexSeparatesCurrentSourceEvidenceFromRecordedEvaluationArtifact(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	grounded, err := attachSemanticEvaluationEvidence(
+		mustJSON(t, candidate),
+		semanticEvaluationJSON(t, "fail"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := acceptViaCLI(t, dir, candidateFile(t, grounded))
+	if decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v", decision)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "current-with-recorded-artifacts" ||
+		record.SourceEvidenceStatus != "current" ||
+		record.ArtifactEvidenceStatus != "recorded" ||
+		len(record.EvidenceDiagnostics) != 0 ||
+		len(record.ArtifactEvidenceDiagnostics) != 0 {
+		t.Fatalf("evidence status did not preserve source/artifact distinction: %+v", record)
+	}
+}
+
+func TestDecisionIndexDoesNotCallArtifactOnlyEvidenceCurrent(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidate.Evidence = nil
+	grounded, err := attachSemanticEvaluationEvidence(
+		mustJSON(t, candidate),
+		semanticEvaluationJSON(t, "pass"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := acceptViaCLI(t, dir, candidateFile(t, grounded))
+	if decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v", decision)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "recorded" ||
+		record.SourceEvidenceStatus != "none" ||
+		record.ArtifactEvidenceStatus != "recorded" {
+		t.Fatalf("artifact-only Evidence was overstated as current: %+v", record)
+	}
+}
