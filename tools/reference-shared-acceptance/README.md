@@ -39,6 +39,7 @@ decode → normalize → base-revision → resolve → apply(overlay)
 
 ```bash
 go run ./tools/reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
+go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern -workspace DIR -candidate FILE -qualification FILE -reference-reuse FILE [-out FILE]
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json] [-out FILE]
@@ -48,6 +49,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ```
 
 - `attach-qualification`: `knowledge-qualify`が返した`applicable`な結果だけをcandidateのEvidenceへ付与します。candidateのdeltaやfingerprintは変えません。`incompatible`と`unknown`は付与できません。requirementsは添付時に正規化・検証し、`expectedKind`とEvidenceの`subjectKind`が一致しない場合もPreview前に拒否します。required dependencyごとのauthoritative Evidenceも必須で、requirementsに無いdependency Evidenceは拒否します。同値なEvidenceは正規化後にdedup・sortされるため、再添付は冪等です。
+- `propose-qualified-reference-pattern`: `application-pattern`のapplicable qualificationから、既存candidateへ`add-reference-pattern`を1件追加します。Pattern ID、所有Application、Relation、datasource、placementは`reference-reuse`側で明示します。Contract / Query / input mappingはrequestから受け取らず、current Canonicalのqualified origin Patternから取得します。origin PatternのContract Queryがqualificationの`requiredDependencies`に明示されていない場合や、qualificationのSource / dependency Evidenceがcurrent workspaceと一致しない場合はProposalを生成しません。生成したcandidateにはqualification Evidenceをそのまま引き継ぎます。
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力します。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
@@ -118,6 +120,30 @@ go run ./tools/reference-shared-acceptance preview \
   -workspace DIR \
   -candidate grounded-candidate.json
 ```
+
+探索結果からdestination-owned reference PatternをProposalへ追加する場合は、先にPatternのContract Query dependencyまで明示してqualificationします。たとえば`order_entry.customer_reference`を再利用候補にする場合、`master_data.customer/find_by_id`をrequired dependencyとして含めます。そのうえで、destination側で決める情報だけを次のrequestへ分けます。
+
+```json
+{
+  "schema": "tei.reference.qualified-reference-reuse/v0",
+  "patternId": "repair_intake.customer_reference",
+  "application": "repair_intake",
+  "relation": "repair_intake.intake.customer",
+  "datasource": "customer_master",
+  "placement": "applications/repair-intake/patterns/customer-reference.tei"
+}
+```
+
+```bash
+go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern \
+  -workspace DIR \
+  -candidate base-candidate.json \
+  -qualification qualification.json \
+  -reference-reuse reference-reuse.json \
+  > proposed-candidate.json
+```
+
+この経路では、originのPattern ID、Relation、datasource aliasをdestinationへコピーしません。Contract / Query / input mappingだけをcurrent Canonicalから読み、qualificationがそのContract Queryを明示的に評価している場合に限って使います。したがって、探索結果が`applicable`でも、未評価の依存関係を暗黙にProposalへ混ぜることはありません。Proposal生成後もAcceptanceは成立しておらず、通常どおり`preview` / `review` / `accept`を通します。
 
 Previewでは、添付された結果をそのまま信用しません。current Source Indexに対してexact subjectとsourceを解決し、source fingerprintを照合したうえで、同じrequirementsを使ってqualificationを再実行します。required dependencyがある場合は、そのauthoritative sourceとfingerprintの集合もcurrent qualificationと照合します。したがって、dependencyのIDが同じままsource内容だけが変わった場合もstaleとして拒否できます。一方、requirementsが参照していないsourceの変更はqualification freshnessへ持ち込まず、repository-wideなglobal revisionは要求しません。
 
