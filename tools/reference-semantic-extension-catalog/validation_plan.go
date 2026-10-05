@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -118,6 +119,19 @@ func normalizeSemanticEvaluatorBindings(
 		seen[key] = struct{}{}
 		out = append(out, binding)
 	}
+	for _, constraint := range catalog.Constraints {
+		if constraint.EvaluatorInterface == "" {
+			continue
+		}
+		key := semanticEvaluatorBindingKey(constraint.Extension.ID, constraint.ID)
+		if _, ok := seen[key]; !ok {
+			return nil, fmt.Errorf(
+				"semantic validation plan is missing evaluator binding for %s/%s",
+				constraint.Extension.ID,
+				constraint.ID,
+			)
+		}
+	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].ConstraintExtension != out[j].ConstraintExtension {
 			return out[i].ConstraintExtension < out[j].ConstraintExtension
@@ -147,4 +161,39 @@ func semanticValidationPlanFingerprint(plan SemanticValidationPlan) string {
 	plan.PlanFingerprint = ""
 	encoded, _ := json.Marshal(plan)
 	return sourceindex.Fingerprint(encoded)
+}
+
+func evaluateSemanticConstraintWithPlan(
+	ctx context.Context,
+	catalog SemanticCatalog,
+	plan SemanticValidationPlan,
+	constraintExtension string,
+	constraintID string,
+	implementation SemanticEvaluatorImplementation,
+	acceptedConformance []SemanticInterfaceConformance,
+	input []byte,
+) (SemanticEvaluationEvidence, error) {
+	if err := verifySemanticValidationPlan(plan, catalog); err != nil {
+		return SemanticEvaluationEvidence{}, err
+	}
+	binding, ok := semanticValidationPlanBinding(
+		plan,
+		strings.TrimSpace(constraintExtension),
+		strings.TrimSpace(constraintID),
+	)
+	if !ok {
+		return SemanticEvaluationEvidence{}, fmt.Errorf(
+			"semantic validation plan has no binding for %s/%s",
+			constraintExtension,
+			constraintID,
+		)
+	}
+	return evaluateSemanticConstraint(
+		ctx,
+		catalog,
+		binding,
+		implementation,
+		acceptedConformance,
+		input,
+	)
 }
