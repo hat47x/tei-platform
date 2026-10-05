@@ -375,4 +375,10 @@ func TestSubjectExtensionStateKeepsCandidateDistinctFromActive(t *testing.T) {
 	if got := subjectExtensionState([]string{"constraint", "unresolved"}); got != subjectExtensionUnresolved {
 		t.Fatalf("unresolved state=%q", got)
 	}
+	if got := subjectExtensionState(nil); got != "" {
+		t.Fatalf("empty roles were classified as %q", got)
+	}
+	if got := subjectExtensionState([]string{"future-role"}); got != "" {
+		t.Fatalf("unknown role was classified as %q", got)
+	}
 }
