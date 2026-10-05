@@ -203,3 +203,90 @@ func TestSubjectSemanticContextKeepsGlobalUnresolvedVisibleWithoutMisattributing
 		t.Fatalf("global unresolved detail was lost: %+v", ctx.SemanticSetUnresolved)
 	}
 }
+
+func TestSubjectSemanticContextSurfacesOnlyRelevantExtensionConnections(t *testing.T) {
+	target := subject.Subject{Kind: "semantic-data", ID: "example.item"}
+	descriptors := []ExtensionDescriptor{
+		{
+			Schema:         extensionSchema,
+			ID:             "tei.reference.relevant",
+			Namespace:      "reference.relevant",
+			Version:        "1.0.0",
+			AppliesToKinds: []string{"semantic-data"},
+			Constraints: []ExtensionConstraint{{
+				ID:           "example-rule",
+				Subject:      target,
+				ValidatorRef: "reference.example.rule",
+			}},
+			Connections: []ExtensionConnection{{
+				Kind: "capability",
+				Ref:  "std.example.evaluate",
+			}},
+		},
+		{
+			Schema:         extensionSchema,
+			ID:             "tei.reference.unrelated",
+			Namespace:      "reference.unrelated",
+			Version:        "1.0.0",
+			AppliesToKinds: []string{"application"},
+			Connections: []ExtensionConnection{{
+				Kind: "capability",
+				Ref:  "std.unrelated.execute",
+			}},
+		},
+	}
+	catalog, err := resolveSemanticCatalog(
+		CoreCatalogInput{Subjects: []subject.Subject{target}},
+		descriptors,
+		[]ExtensionRequirement{
+			{Extension: "tei.reference.relevant", CompatibleMajor: 1},
+			{Extension: "tei.reference.unrelated", CompatibleMajor: 1},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := knowledgecontext.Context{
+		Subject:         target,
+		AuthorityLimits: []string{"derived-context-is-not-canonical-authority"},
+	}
+	ctx, err := buildSubjectSemanticContext(base, catalog, nil, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ctx.Connections) != 1 ||
+		ctx.Connections[0].Extension.ID != "tei.reference.relevant" ||
+		ctx.Connections[0].Kind != "capability" ||
+		ctx.Connections[0].Ref != "std.example.evaluate" {
+		t.Fatalf("subject connections=%+v", ctx.Connections)
+	}
+	for _, connection := range ctx.Connections {
+		if connection.Extension.ID == "tei.reference.unrelated" {
+			t.Fatalf("unrelated extension connection leaked into subject context: %+v", connection)
+		}
+	}
+}
+
+func TestSubjectSemanticContextRejectsStaleValidationPlan(t *testing.T) {
+	core, target := suiReferenceCoreCatalog(t)
+	consumer := acyclicDomainConsumer(t, "tei.reference.sui-acyclic", target)
+	catalog, contract, provider, _ := resolveAcyclicDomainCatalog(t, core, consumer)
+	implementation := acyclicEvaluatorImplementation(contract, provider)
+	plan, err := buildSemanticValidationPlan(catalog, []SemanticEvaluatorBinding{{
+		ConstraintExtension: consumer.ID,
+		ConstraintID:        acyclicConstraintID,
+		ImplementationID:    implementation.ID,
+		ArtifactDigest:      implementation.ArtifactDigest,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.SemanticSetFingerprint = "sha256:" + strings.Repeat("f", 64)
+
+	root := repositoryRoot(t)
+	workspaceRoot := filepath.Join(root, "reference", "sui-adoption", "workspace")
+	base := knowledgeContextForWorkspace(t, workspaceRoot, target)
+	if _, err := buildSubjectSemanticContext(base, catalog, &plan, target); err == nil {
+		t.Fatal("stale Validation Plan was accepted into subject context")
+	}
+}
