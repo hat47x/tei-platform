@@ -1,6 +1,9 @@
 package acyclicgraph
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestValidateAcyclicAcceptsDAG(t *testing.T) {
 	diagnostics, err := ValidateAcyclic(Snapshot{
@@ -57,5 +60,59 @@ func TestNormalizeIgnoresDuplicateEdgeForAcyclicMeaning(t *testing.T) {
 	}
 	if len(normalized.Edges) != 1 {
 		t.Fatalf("duplicate edge was not normalized: %+v", normalized.Edges)
+	}
+}
+
+func TestNormalizeIsInputOrderIndependent(t *testing.T) {
+	left, err := Normalize(Snapshot{
+		Nodes: []string{"c", "a", "b"},
+		Edges: []Edge{
+			{From: "b", To: "c"},
+			{From: "a", To: "b"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := Normalize(Snapshot{
+		Nodes: []string{"b", "c", "a"},
+		Edges: []Edge{
+			{From: "a", To: "b"},
+			{From: "b", To: "c"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(left, right) {
+		t.Fatalf("normalized graph depends on input order: left=%+v right=%+v", left, right)
+	}
+}
+
+func TestCycleDiagnosticIsInputOrderIndependent(t *testing.T) {
+	left, err := ValidateAcyclic(Snapshot{
+		Nodes: []string{"c", "a", "b"},
+		Edges: []Edge{
+			{From: "c", To: "a"},
+			{From: "a", To: "b"},
+			{From: "b", To: "c"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := ValidateAcyclic(Snapshot{
+		Nodes: []string{"b", "c", "a"},
+		Edges: []Edge{
+			{From: "b", To: "c"},
+			{From: "c", To: "a"},
+			{From: "a", To: "b"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(left, right) {
+		t.Fatalf("cycle diagnostic depends on input order: left=%+v right=%+v", left, right)
 	}
 }
