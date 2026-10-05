@@ -22,7 +22,7 @@ func main() {
 const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
   reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json] [-out FILE]
-  reference-shared-acceptance accept  -workspace DIR -candidate FILE [-expected-review-fingerprint SHA256] [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
+  reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
@@ -50,7 +50,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
-	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept時に一致を要求するreviewFingerprint")
+	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept時に必須のreviewFingerprint。reviewコマンドで得た現在のProjectionと一致する必要があります")
 	reason := flags.String("reason", "", "rejectの理由")
 	allowBaseline := flags.Bool("allow-reference-baseline", false, "Gate B / Gate Cが固定したreference/workspaceへのacceptを許可する")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -196,6 +196,10 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	case "accept":
 		if !*allowBaseline && isReferenceBaseline(*workspacePath) {
 			fmt.Fprintln(stderr, "reference/workspaceはGate B / Gate Cが固定したbaselineです。scratch copyへacceptしてください（意図的に変更する場合は -allow-reference-baseline）")
+			return 2
+		}
+		if strings.TrimSpace(*expectedReviewFingerprint) == "" {
+			fmt.Fprintln(stderr, "acceptにはreviewコマンドで確認した -expected-review-fingerprint が必要です。fingerprintはReview Projectionへのbindingであり、人が読んだことや承認authorityそのものを証明するものではありません")
 			return 2
 		}
 		decision, err := accept(*workspacePath, data, acceptOptions{
