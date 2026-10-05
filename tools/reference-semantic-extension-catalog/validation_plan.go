@@ -43,6 +43,12 @@ func buildSemanticValidationPlan(
 }
 
 func verifySemanticValidationPlan(plan SemanticValidationPlan, catalog SemanticCatalog) error {
+	if len(catalog.Unresolved) != 0 {
+		return fmt.Errorf("semantic validation plan requires a fully resolved Semantic Set")
+	}
+	if !validSHA256Fingerprint(catalog.ResolutionFingerprint) {
+		return fmt.Errorf("semantic validation plan requires exact Semantic Set fingerprint")
+	}
 	plan.Schema = strings.TrimSpace(plan.Schema)
 	plan.SemanticSetFingerprint = strings.TrimSpace(plan.SemanticSetFingerprint)
 	plan.PlanFingerprint = strings.TrimSpace(plan.PlanFingerprint)
