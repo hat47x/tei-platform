@@ -25,6 +25,7 @@ const usage = `usage:
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
+  reference-shared-acceptance propose-qualified-reference-pattern -workspace DIR -candidate FILE -qualification FILE -reference-reuse FILE [-out FILE]
   reference-shared-acceptance attach-semantic-evaluation -candidate FILE -semantic-evaluation FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -37,7 +38,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "review", "accept", "reject", "attach-qualification", "attach-semantic-evaluation", "revision", "decisions":
+	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -48,6 +49,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	workspacePath := flags.String("workspace", "", "対象workspace directory")
 	candidatePath := flags.String("candidate", "", "candidate JSON file")
 	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
+	referenceReusePath := flags.String("reference-reuse", "", "qualified reference Patternのdestination-owned fields JSON file")
 	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json）")
@@ -63,6 +65,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	if (needsWorkspace && *workspacePath == "") ||
 		(needsCandidate && *candidatePath == "") ||
 		(command == "attach-qualification" && *qualificationPath == "") ||
+		(command == "propose-qualified-reference-pattern" && (*qualificationPath == "" || *referenceReusePath == "")) ||
 		(command == "attach-semantic-evaluation" && *semanticEvaluationPath == "") {
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -119,6 +122,35 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return emit(grounded)
+	}
+
+	if command == "propose-qualified-reference-pattern" {
+		candidateData, err := os.ReadFile(*candidatePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		qualificationData, err := os.ReadFile(*qualificationPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		reuseData, err := os.ReadFile(*referenceReusePath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		proposed, err := proposeQualifiedReferencePattern(
+			*workspacePath,
+			candidateData,
+			qualificationData,
+			reuseData,
+		)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return emit(proposed)
 	}
 
 	if command == "attach-semantic-evaluation" {
