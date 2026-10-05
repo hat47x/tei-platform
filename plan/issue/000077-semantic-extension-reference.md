@@ -462,6 +462,12 @@ AIがextensionを発見した後も、自動採用はしません。
 
 `applicable`は「使える候補」であり、AcceptanceでもRuntime Authorityでもありません。ISSUE-000047と同じ境界を使います。
 
+2026-10-05のcandidateでは、既存の`knowledgecontext.Build`を変更せず、その出力へresolved Semantic Catalogを重ねる`Subject Semantic Context`をReference内に追加しました。対象subjectを一つ指定すると、Source / dependency edgeに加えて、関連ExtensionのSource / version、導入理由、Constraint、Semantic Interface、evaluator provider、Connection、Unresolvedを同じJSONから取得できます。
+
+Semantic Validation Planが入力されている場合は、対象subjectに必要なimplementation identity / artifact digestも同じContextから参照できます。Planが無い場合はimplementationを推測しません。
+
+このContextはAI / Studio向けのread-onlyな再入場surfaceです。Context fingerprintは再生成結果を比較するためのderived identityであり、Semantic Set identityやCanonical authorityの代わりには使いません。Semantic Set全体のUnresolvedも隠さず保持し、対象subjectだけを見ることで全体の解決失敗を見落とさないようにします。
+
 ## Product Evidence
 
 このReferenceでは、「新しい仕組みを実装できたか」だけを価値として測りません。
