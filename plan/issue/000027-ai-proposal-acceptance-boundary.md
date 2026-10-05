@@ -467,9 +467,9 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 
 | 完了条件 | 状態 | 根拠・残り |
 | --- | --- | --- |
-| 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 未着手 | candidateは人 / CLIが書く。探索結果からの生成は`ISSUE-000047`との接続後 |
+| 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 候補実装（未検証） | `application-pattern`のapplicable qualificationとdestination-ownedなPattern情報から`add-reference-pattern`を生成するReference producerを追加した。exact-head test / Repository-healthは未取得 |
 | 2 ProposalそのものはCanonical authorityではない | 実証済み | Preview / Rejectはauthoritative sourceをbyte単位で変更しない |
-| 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | candidateのevidenceが存在するsubject / sourceへ解決できなければ拒否する。根拠を探索結果から自動で得る部分は未着手 |
+| 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | qualificationからsubject / source / required dependency Evidenceをcandidateへ引き継ぎ、Proposal生成時にもcurrent workspaceへ再照合する。一般の探索・routingからの接続は未完了 |
 | 4 whole model regenerationを標準にせずminimum semantic deltaを扱う | 実証済み（operation kind 5種） | 宣言外のsemantic変更・World collection変更は拒否、変更subject数に上限（8件） |
 | 5 AI Proposalと他の入口が同じAcceptance原則へ収束 | 一部 | 入口が違っても同じfingerprint・同じsource・同じCanonical Worldになり、AI固有Evidenceは入らない。実際のStudio / AI producerは未実装 |
 | 6 feedbackをmeaning-owning concernへroute | 一部 | Validationはsemantic層でだけauthorでき、別layerへのplacementは拒否する。一般的なrouting catalogの実行は未着手 |
@@ -500,6 +500,20 @@ Accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent 
 この方式でもqualification結果をapprovalとして扱わない。`candidateFingerprint`はbase revisionとminimum semantic deltaだけを表し、Evidenceは含めない。一方、正規化済みEvidenceには別の`evidenceFingerprint`を与え、PreviewとDecisionの間で同じ根拠identityを保持する。これにより「意味は同じだが、承認時に提示した根拠が違う」状態を、意味identityを壊さず機械的に区別する。
 
 現時点ではexact-head full Repository-healthを通したProduct Evidenceではないため、完了条件1や3の状態はまだ更新しない。
+
+## qualificationからexplicit-reference Proposalを作るcandidate — 2026-10-05
+
+`knowledge-qualify`の結果をEvidenceとして添付するだけでは、変更delta自体は人が書く必要があった。この断絶を最小のReference caseで埋めるため、`tools/reference-shared-acceptance`へ`propose-qualified-reference-pattern`を追加した。
+
+対象は`order_entry.customer_reference`から`repair_intake.customer_reference`を組み立てるcaseである。ただし、origin Patternを複製しない。destination側が所有するPattern ID、Application、Relation、datasource、placementは明示入力とし、Contract / Query / input mappingだけをcurrent Canonicalのqualified origin Patternから取得する。
+
+Contract Queryは、qualificationの`requiredDependencies`にexact identityで明示されている場合だけ再利用する。今回なら`master_data.customer/find_by_id`である。単にPatternが`applicable`だったという理由では、その内部依存をProposalへ持ち込まない。
+
+Proposal生成時には、保存済みqualificationをそのまま信用せず、current workspaceから同じsubjectとrequirementsでqualificationを再実行する。Source / required dependency Evidenceが一致しなければ生成を止める。生成後のcandidateにはcurrent qualification Evidenceを付け、通常のShared Acceptance Previewがもう一度鮮度と適用可能性を検査できる形を保つ。
+
+このcandidate実装では、既知のSecond Application S4 candidateと同じsemantic delta / candidate fingerprintになること、originの`sales.order.customer`やdatasource alias `master`をcopyしないこと、Contract Queryがrequired dependencyに無い場合やqualification Evidenceがstaleな場合に生成しないこと、CLIがworkspaceを変更しないことをtestへ記述した。
+
+ただし、exact-headのtestとfull Repository-healthはまだ取得していない。したがって完了条件1は「候補実装」に留め、Product Evidence成立や完了は主張しない。
 
 ## Semantic Evaluation Evidenceとの接続候補 — 2026-10-05
 
