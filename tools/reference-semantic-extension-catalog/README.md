@@ -222,7 +222,7 @@ SUI側とMigration側は別のconsumer Extension identityを持ちます。一�
 - evaluator artifact digest
 - Validation Planの評価境界
 
-この構造により、domainごとの意味bindingを分けながら、同じacyclic evaluatorを物理的に複製せず再利用できるかを確認します。
+この構造により、domainごとの意味bindingを分けながら、同じacyclic evaluator implementation / artifact identityを再利用できるかを確認します。実build後のbyte重複排除やartifact coalescingは、このReferenceだけでは成立済みと扱いません。
 
 このReferenceが示すのは、SUIの`hierarchy integrity`全体を共通標準へ昇格できることではありません。SUI固有のparent target existenceやparent / child consistencyは引き続きdomain側に残ります。第二consumerで再利用できたのは、現時点ではdirected graphのacyclic constraintだけです。
 
