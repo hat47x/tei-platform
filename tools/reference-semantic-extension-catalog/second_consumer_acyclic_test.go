@@ -410,6 +410,42 @@ func TestAcyclicSemanticEvaluatorHandlesIndependentSUIAndMigrationDomains(t *tes
 	}
 }
 
+func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.T) {
+	suiCore, suiTarget := suiReferenceCoreCatalog(t)
+	suiConsumer := acyclicDomainConsumer(
+		"tei.reference.sui-acyclic",
+		"reference.sui.acyclic",
+		suiTarget,
+	)
+	suiCatalog, contract, provider, _ := resolveAcyclicDomainCatalog(
+		t,
+		suiCore,
+		suiConsumer,
+	)
+
+	migrationCore, migrationTarget, _ := referenceMigrationAcyclicInput(t)
+	migrationConsumer := acyclicDomainConsumer(
+		"tei.reference.migration-acyclic",
+		"reference.migration.acyclic",
+		migrationTarget,
+	)
+	migrationCatalog, migrationContract, migrationProvider, _ :=
+		resolveAcyclicDomainCatalog(t, migrationCore, migrationConsumer)
+
+	if semanticInterfaceFingerprint(contract) != semanticInterfaceFingerprint(migrationContract) {
+		t.Fatalf("consumers did not share the same Interface contract")
+	}
+	if provider.ID != migrationProvider.ID || provider.Version != migrationProvider.Version {
+		t.Fatalf("consumers did not share the same evaluator provider")
+	}
+	if suiCatalog.ResolutionFingerprint == migrationCatalog.ResolutionFingerprint {
+		t.Fatalf(
+			"independent domain consumers collapsed into one Semantic Set: %s",
+			suiCatalog.ResolutionFingerprint,
+		)
+	}
+}
+
 func TestAcyclicSecondConsumerSharesOneEvaluatorArtifactIdentity(t *testing.T) {
 	contract, _, provider, _ := acyclicSemanticInterfaceFixture()
 	implementation := acyclicEvaluatorImplementation(contract, provider)
