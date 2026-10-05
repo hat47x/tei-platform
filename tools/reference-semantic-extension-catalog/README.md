@@ -226,6 +226,8 @@ SUI側とMigration側は別のconsumer Extension identityを持ちます。一�
 
 このReferenceが示すのは、SUIの`hierarchy integrity`全体を共通標準へ昇格できることではありません。SUI固有のparent target existenceやparent / child consistencyは引き続きdomain側に残ります。第二consumerで再利用できたのは、現時点ではdirected graphのacyclic constraintだけです。
 
+Migrationでも責務を分けます。現行Core Validationはparent identityの存在を検査しますが、parent graphのcycleは検査していません。このReferenceは既存のparent存在確認を置き換えず、acyclicだけを追加のSemantic constraintとして扱います。
+
 この結果はInterfaceの粒度にもpressureを与えます。既存SUIの`reference.hierarchy.integrity.evaluator`はSUI domainの複数ruleをまとめた契約です。Migrationへそのまま持ち込まず、実際に共有できたacyclicだけを小さいInterface candidateとして分離します。既存SUI contractをこのPRで置き換えることはしません。
 
 ## Authority boundary
