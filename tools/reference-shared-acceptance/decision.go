@@ -356,10 +356,12 @@ type DecisionRecord struct {
 	EvidenceDiagnostics        []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
 	ArtifactEvidenceDiagnostics []Diagnostic       `json:"artifactEvidenceDiagnostics,omitempty"`
 	ReviewBindingStatus        string              `json:"reviewBindingStatus"`
-	ReviewCoverageStatus  string              `json:"reviewCoverageStatus"`
-	ReviewIncomplete      []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
-	ReviewDiagnostics     []Diagnostic        `json:"reviewDiagnostics,omitempty"`
-	Decision              Decision            `json:"decision"`
+	ReviewCoverageStatus   string              `json:"reviewCoverageStatus"`
+	ReviewIncomplete       []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
+	ReviewDiagnostics      []Diagnostic        `json:"reviewDiagnostics,omitempty"`
+	DecisionActorStatus    string              `json:"decisionActorStatus"`
+	DecisionAuthorityStatus string             `json:"decisionAuthorityStatus"`
+	Decision               Decision            `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -444,9 +446,11 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			SourceEdits:          "none",
 			EvidenceStatus:         "none",
 			SourceEvidenceStatus:   "none",
-			ArtifactEvidenceStatus: "none",
-			ReviewBindingStatus:    "none",
-			ReviewCoverageStatus: "none",
+			ArtifactEvidenceStatus:  "none",
+			ReviewBindingStatus:     "none",
+			ReviewCoverageStatus:    "none",
+			DecisionActorStatus:     "unresolved",
+			DecisionAuthorityStatus: "unresolved",
 		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
