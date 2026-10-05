@@ -214,6 +214,8 @@ Migration Definition.Parents
 
 共通snapshotは`nodes`と`edges`だけを持ちます。`island`、`parentIslandId`、Migration IDの命名規則等はSemantic Interfaceへ持ち込みません。
 
+共通Interfaceのinputは、unique node identityを持つcomplete graph snapshotです。欠損endpointやduplicate node等は意味上の`unknown`ではなく入力不整合としてEvaluator errorにします。parent target existence等のdomain ruleをacyclic evaluatorへ吸収しません。
+
 SUI側とMigration側は別のconsumer Extension identityを持ちます。一方、次は同じものを再利用します。
 
 - Semantic Interface contract identity / fingerprint
