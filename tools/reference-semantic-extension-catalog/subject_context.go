@@ -12,8 +12,19 @@ import (
 
 const subjectSemanticContextSchema = "tei.reference.subject-semantic-context/v0"
 
+const (
+	subjectContextResolved   = "resolved"
+	subjectContextUnresolved = "unresolved"
+
+	subjectExtensionActive     = "active"
+	subjectExtensionCandidate  = "candidate"
+	subjectExtensionSupporting = "supporting"
+	subjectExtensionUnresolved = "unresolved"
+)
+
 type SubjectExtensionUse struct {
 	Extension CatalogExtension        `json:"extension"`
+	State     string                  `json:"state"`
 	Roles     []string                `json:"roles"`
 	RootPaths []CatalogDependencyPath `json:"rootPaths,omitempty"`
 }
@@ -32,6 +43,9 @@ type SubjectSemanticContext struct {
 	SemanticEvidenceFingerprint string                      `json:"semanticEvidenceFingerprint"`
 	CoreSourceIndexFingerprint string                       `json:"coreSourceIndexFingerprint,omitempty"`
 	ResolutionPolicy           string                       `json:"resolutionPolicy"`
+	CoreContextStatus          string                       `json:"coreContextStatus"`
+	SemanticSetStatus          string                       `json:"semanticSetStatus"`
+	SubjectSemanticStatus      string                       `json:"subjectSemanticStatus"`
 	Core                       knowledgecontext.Context     `json:"core"`
 	Extensions                 []SubjectExtensionUse        `json:"extensions,omitempty"`
 	Interfaces                 []CatalogSemanticInterface   `json:"interfaces,omitempty"`
@@ -153,6 +167,7 @@ func buildSubjectSemanticContext(
 		sort.Strings(roles)
 		use := SubjectExtensionUse{
 			Extension: extension,
+			State:     subjectExtensionState(roles),
 			Roles:     roles,
 		}
 		if explanation, ok := explanationsByID[id]; ok {
@@ -201,6 +216,19 @@ func buildSubjectSemanticContext(
 		if subjectRelevant || extensionRelevant {
 			out.SubjectUnresolved = append(out.SubjectUnresolved, unresolved)
 		}
+	}
+
+	out.CoreContextStatus = subjectContextResolved
+	if len(core.Unresolved) > 0 {
+		out.CoreContextStatus = subjectContextUnresolved
+	}
+	out.SemanticSetStatus = subjectContextResolved
+	if len(out.SemanticSetUnresolved) > 0 {
+		out.SemanticSetStatus = subjectContextUnresolved
+	}
+	out.SubjectSemanticStatus = subjectContextResolved
+	if len(out.SubjectUnresolved) > 0 {
+		out.SubjectSemanticStatus = subjectContextUnresolved
 	}
 
 	if plan != nil {
@@ -289,6 +317,25 @@ func buildSubjectSemanticContext(
 
 	out.ContextFingerprint = subjectSemanticContextFingerprint(out)
 	return out, nil
+}
+
+func subjectExtensionState(roles []string) string {
+	roleSet := map[string]struct{}{}
+	for _, role := range roles {
+		roleSet[role] = struct{}{}
+	}
+	if _, ok := roleSet["unresolved"]; ok {
+		return subjectExtensionUnresolved
+	}
+	for _, role := range []string{"constraint", "relation", "subject-definition"} {
+		if _, ok := roleSet[role]; ok {
+			return subjectExtensionActive
+		}
+	}
+	if _, ok := roleSet["evaluator-provider"]; ok {
+		return subjectExtensionSupporting
+	}
+	return subjectExtensionCandidate
 }
 
 func subjectSemanticContextFingerprint(value SubjectSemanticContext) string {
