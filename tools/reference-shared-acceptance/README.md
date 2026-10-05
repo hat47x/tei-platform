@@ -81,7 +81,10 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 - `status`: `current`（記録時のrevisionが現在と一致）か`superseded`（workspaceが先へ進んだ）
 - `sourceEdits`: `intact`（書いたfileが今も同じ内容）、`diverged`（変わった。`divergedPaths`に列挙）、`none`
-- `evidenceStatus`: `current`（Source Index型Evidenceはcurrent source / qualificationと一致し、artifact型Evidenceは保存されたartifact fingerprintと内部fingerprintが整合）、`diverged`（根拠sourceや明示dependencyが変わった、保存済みEvidence本文が`evidenceFingerprint`と一致しない、またはartifactの自己整合が壊れている）、`none`。artifact型Evidenceの`current`はEvaluatorやConformanceを再実行した意味ではなく、受理時artifactのbinding integrityを確認できるという意味に限る
+- `evidenceStatus`: 全Evidenceの集約状態。`current`（Source Index型だけがありcurrent）、`recorded`（artifact型だけがあり受理時artifactの自己整合を確認）、`current-with-recorded-artifacts`（currentなSource Index型とrecordedなartifact型が併存）、`diverged`、`none`
+- `sourceEvidenceStatus`: `current / diverged / none`。current Source Indexとqualificationへ再照合できるEvidenceだけを扱う
+- `artifactEvidenceStatus`: `recorded / invalid / none`。受理時artifactの内部fingerprintと外側artifact fingerprintの整合だけを扱い、EvaluatorやConformanceを現在再実行したとは主張しない
+- `artifactEvidenceDiagnostics`: artifact自己整合の失敗理由
 - `evidenceDiagnostics`: `diverged`の理由。過去のAcceptanceを現在のapplicabilityとして読み替えないための照合結果
 - `reviewBindingStatus`: `verified`（保存したReview Projection、fingerprint、coverageが一致）、`recorded`（Projection snapshotを持たない旧形式のbindingは構造だけ整合）、`none`（bindingなし）、`invalid`（fingerprint、coverage、Projectionのいずれかが不整合）
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
