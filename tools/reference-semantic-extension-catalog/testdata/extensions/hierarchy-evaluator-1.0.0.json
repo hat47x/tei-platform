@@ -1,0 +1,13 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.hierarchy-evaluator",
+  "namespace": "reference.hierarchy.evaluator",
+  "version": "1.0.0",
+  "providesInterfaces": [
+    {
+      "interface": "reference.hierarchy.validation.evaluate",
+      "contractVersion": "1.0.0",
+      "contractFingerprint": "sha256:4a836bf966cad85d6fdb073521be3e3c25a970d0d3d87468eb6e20535a77b34a"
+    }
+  ]
+}
