@@ -453,6 +453,40 @@ func TestAcyclicSemanticInterfaceDoesNotSubsumeSUIDomainIntegrity(t *testing.T) 
 	}
 }
 
+func TestAcyclicMigrationAdapterDoesNotSubsumeParentExistence(t *testing.T) {
+	migrationCore, migrationTarget, _ := referenceMigrationAcyclicInput(t)
+	consumer := acyclicDomainConsumer(
+		"tei.reference.migration-acyclic",
+		"reference.migration.acyclic",
+		migrationTarget,
+	)
+	catalog, contract, provider, conformance :=
+		resolveAcyclicDomainCatalog(t, migrationCore, consumer)
+
+	definitions := []migration.Definition{
+		{
+			ID:       "child",
+			Database: "sales_core",
+			Parents:  []string{"missing"},
+		},
+	}
+	evidence := evaluateAcyclicSnapshot(
+		t,
+		catalog,
+		consumer,
+		contract,
+		provider,
+		conformance,
+		migrationAcyclicSnapshot(definitions),
+	)
+	if evidence.Status != SemanticEvaluationPass {
+		t.Fatalf(
+			"generic acyclic constraint absorbed migration parent-existence semantics: evidence=%+v",
+			evidence,
+		)
+	}
+}
+
 func TestAcyclicConsumersShareEvaluatorWithoutCollapsingSemanticSets(t *testing.T) {
 	suiCore, suiTarget := suiReferenceCoreCatalog(t)
 	suiConsumer := acyclicDomainConsumer(
