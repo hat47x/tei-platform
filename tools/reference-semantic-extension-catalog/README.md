@@ -162,6 +162,40 @@ Catalogへcompatibleな新versionが追加されても、lockの検証時には�
 Evidence fingerprintはlockの意味identityへ固定しません。同じcontract / profileやnamespace / ownerに対してEvidenceを更新してもsemantic replayは維持し、Evidence bindingだけを現在の入力で再確認します。この検査もEvidenceの発行Authorityやpublisher trustまでは証明しません。
 
 同じprovider wiringが唯一候補として得られたか、明示wiringで指定されたかという選択経路もSemantic Setの意味には含めません。provider identityとcontractが同じなら`resolutionFingerprint`を維持し、選択経路とEvidenceはEvidence側で追跡します。
+## Semantic Validation Plan / Evaluator boundary
+
+Semantic Interfaceを解決しただけでは、Validationに使うEvaluator implementationをEnvironmentへ委ねません。Referenceでは、resolved Semantic Setとは別にSemantic Validation Planを作り、constraintごとのimplementation identityとartifact digestを明示的に固定します。
+
+Planは次を保持します。
+
+- exact `semanticSetFingerprint`
+- evaluatorを必要とする全constraintのExtension identity / constraint ID
+- Validationに使うimplementation identity
+- exact artifact digest
+- Plan自身のfingerprint
+
+Evaluator-required constraintの一部だけをbindingし、残りをEnvironmentのprovider選択へフォールバックするPlanは作れません。`-evaluator-binding FILE`を必要数指定し、`-validation-plan-out FILE`でPlanを出力できます。`-verify-validation-plan FILE`は、現在のresolved Semantic SetとPlan fingerprint / binding coverageが一致するかを再検証します。
+
+実行時はPlanで指定したimplementation / artifactと、constraintへ解決済みのSemantic Interface / contract fingerprint / conformance profile / provider Extensionが一致することを要求します。現在AcceptedされているConformance Evidenceも別に必要です。別のEnvironment providerが同じInterfaceを実装していても、Planと一致しなければValidationには使いません。
+
+Evaluation Evidenceには少なくとも次を残します。
+
+- Semantic Set fingerprint
+- constraint / subject / validator identity
+- Semantic Interface / exact contract fingerprint / conformance profile
+- provider Extension
+- evaluator implementation identity / artifact digest
+- 実際に使用したConformance Evidence fingerprint
+- input fingerprint
+- `pass / fail / unknown`
+- diagnostic
+- Evaluation Evidence fingerprint
+
+`unknown`は`pass`へ畳まず、Evaluator error / cancel / unsupported状態も成功扱いにしません。
+
+SUI hierarchy pressureでは`tools/reference-sui-adoption`の既存shadow validatorを共有packageへ切り出し、Stage 0とSemantic Extensionの両方が同じ評価ロジックを使います。M1 / M2 / M3 / M4のSource contract semanticsを二重実装しません。SUI側のnative contractがAuthorityであることも変えません。
+
+このReferenceはValidation scopeの選択境界を実証する候補であり、Runtime PluginのPermission / Sandbox / Artifact verificationを代替しません。将来EvaluatorをRuntime Pluginとして実行する場合も、Environmentの通常Capability negotiationとValidation-scope bindingは別に扱います。
 ## Authority boundary
 
 出力には次を明示します。
@@ -178,7 +212,7 @@ Evidence fingerprintはlockの意味identityへ固定しません。同じcontra
 focused test:
 
 ```bash
-go test ./tools/reference-semantic-extension-catalog -count=1
+go test ./tools/reference-sui-adoption ./tools/reference-semantic-extension-catalog -count=1
 ```
 
 現時点では、exact-headのfocused test / repository health PASSを取得するまでProduct Evidence成立とは扱いません。

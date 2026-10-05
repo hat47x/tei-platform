@@ -315,6 +315,21 @@ Evaluatorは次を守ります。
 - 複数Evaluatorを交換可能と扱う場合、同じcontractに対するConformance Evidenceを要求する
 - EnvironmentごとのEvaluator差によってAccepted semantic validityを再解釈しない
 
+### E1 candidate — Validation-scope binding / 2026-10-05
+
+PR候補レーンでは、Semantic Evaluatorの選択をEnvironment RuntimeのCapability negotiationから分離するReferenceを追加した。Evaluatorを必要とするConstraintは`evaluatorInterface`を明示し、そのInterfaceをExtensionの`requiresInterfaces`へ宣言しなければdescriptorを受理しない。catalogへConstraintを公開する時点でも、Semantic Interface / provider / exact contract fingerprint / conformance profileが解決済みでなければ`constraint-evaluator-unresolved`としてfail closedにする。
+
+さらに、resolved Semantic Setとは別に`SemanticValidationPlan`を導入した。Planはexact Semantic Set fingerprintへboundし、Evaluator-requiredな全Constraintについてimplementation identityとartifact digestを固定する。一部のConstraintだけをbindして残りをEnvironment任せにするPlanは成立させない。Plan自身にもfingerprintを持たせ、Semantic Set driftやbinding改変を再入場時に検出する。
+
+Evaluation時はPlanに記録されたimplementation / artifactと、Constraintへ解決済みのInterface / provider Extension / contract fingerprint / conformance profileの一致を要求する。現在AcceptedなConformance Evidenceも別入力で必要とし、使用したEvidence fingerprintをEvaluation Evidenceへ残す。Environment側に同じInterfaceを実装する別provider / implementationが存在しても、Planと一致しない限りValidationへ差し替えない。
+
+Evaluation EvidenceはSemantic Set fingerprint、Constraint / subject / validator、Interface contract、provider Extension、implementation identity / artifact digest、Conformance Evidence fingerprint、input fingerprint、`pass / fail / unknown`、diagnostic、Evidence fingerprintを保持する。`unknown`は`pass`へ畳まず、Evaluator error / cancelも成功扱いにしない。
+
+SUI hierarchyの実consumer pressureでは、`tools/reference-sui-adoption`に既存だったM1〜M4用shadow validatorを共有Reference packageへ切り出し、Stage 0とSemantic Extension側で同じ評価ロジックを利用する。これにより、Semantic ExtensionのためにSUI contract semanticsを二重実装しない。M1 root / M2 3-levelをpass、M3 missing parent / M4 cycleをfailとする既存fixtureをValidation Plan経由で評価し、CoreへSUI固有ValidationKindを追加しないcandidateを作った。
+
+CLIには`-evaluator-binding`、`-validation-plan-out`、`-verify-validation-plan`を追加した。これはAI / Toolが会話履歴やEnvironment設定へ依存せず、Accepted Semantic Setに対するValidation implementationの選択を再入場可能なartifactとして扱うためのReference pressureでもある。
+
+ただし、現時点のEvaluator implementationはReference内のdirect Go functionであり、Runtime PluginとしてのPermission / Sandbox / artifact signature verificationまでは通していない。Conformance Evidenceの発行Authorityも未実証である。したがってE1のProduct Evidence成立やAcceptance checkbox更新はまだ行わない。
 ## E2 — SUI fixtureでpressureする
 
 既存`reference/sui-adoption/` fixtureを再利用します。
