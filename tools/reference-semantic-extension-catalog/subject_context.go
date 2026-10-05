@@ -117,6 +117,14 @@ func buildSubjectSemanticContext(
 		}
 	}
 
+	for _, unresolved := range catalog.Unresolved {
+		if unresolved.Subject == nil || *unresolved.Subject != target ||
+			unresolved.Extension == nil {
+			continue
+		}
+		addRole(unresolved.Extension.ID, "unresolved")
+	}
+
 	extensionsByID := map[string]CatalogExtension{}
 	for _, extension := range catalog.Extensions {
 		extensionsByID[extension.ID] = extension
