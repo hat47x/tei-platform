@@ -23,10 +23,13 @@ const (
 )
 
 type SubjectExtensionUse struct {
-	Extension CatalogExtension        `json:"extension"`
-	State     string                  `json:"state"`
-	Roles     []string                `json:"roles"`
-	RootPaths []CatalogDependencyPath `json:"rootPaths,omitempty"`
+	Extension                  CatalogExtension        `json:"extension"`
+	State                      string                  `json:"state"`
+	Roles                      []string                `json:"roles"`
+	RootPaths                  []CatalogDependencyPath `json:"rootPaths,omitempty"`
+	PackageRequiredBy          []ExtensionIdentity     `json:"packageRequiredBy,omitempty"`
+	InterfaceConsumers         []ExtensionIdentity     `json:"interfaceConsumers,omitempty"`
+	PotentiallyAffectedExtensions []ExtensionIdentity  `json:"potentiallyAffectedExtensions,omitempty"`
 }
 
 type SubjectValidationPlanContext struct {
@@ -147,6 +150,8 @@ func buildSubjectSemanticContext(
 	for _, explanation := range catalog.DependencyExplanations {
 		explanationsByID[explanation.Extension.ID] = explanation
 	}
+
+	impactAdjacency := subjectExtensionImpactAdjacency(catalog)
 	var extensionIDs []string
 	for id := range rolesByExtension {
 		extensionIDs = append(extensionIDs, id)
@@ -180,7 +185,13 @@ func buildSubjectSemanticContext(
 		}
 		if explanation, ok := explanationsByID[id]; ok {
 			use.RootPaths = append([]CatalogDependencyPath(nil), explanation.RootPaths...)
+			use.PackageRequiredBy = append([]ExtensionIdentity(nil), explanation.RequiredBy...)
 		}
+		use.InterfaceConsumers = subjectInterfaceConsumers(catalog, id)
+		use.PotentiallyAffectedExtensions = transitiveSubjectExtensionImpact(
+			id,
+			impactAdjacency,
+		)
 		out.Extensions = append(out.Extensions, use)
 	}
 
@@ -325,6 +336,112 @@ func buildSubjectSemanticContext(
 
 	out.ContextFingerprint = subjectSemanticContextFingerprint(out)
 	return out, nil
+}
+
+func subjectExtensionImpactAdjacency(
+	catalog SemanticCatalog,
+) map[string][]ExtensionIdentity {
+	adjacency := map[string][]ExtensionIdentity{}
+	add := func(from string, to ExtensionIdentity) {
+		if from == "" || to.ID == "" || from == to.ID {
+			return
+		}
+		for _, existing := range adjacency[from] {
+			if existing == to {
+				return
+			}
+		}
+		adjacency[from] = append(adjacency[from], to)
+	}
+
+	for _, explanation := range catalog.DependencyExplanations {
+		for _, dependent := range explanation.RequiredBy {
+			add(explanation.Extension.ID, dependent)
+		}
+	}
+
+	interfaceOwner := map[string]ExtensionIdentity{}
+	for _, contract := range catalog.Interfaces {
+		interfaceOwner[contract.ID] = contract.Extension
+	}
+	for _, wiring := range catalog.InterfaceWirings {
+		consumer := extensionIdentityFromCatalog(catalog, wiring.ConsumerExtension)
+		provider := extensionIdentityFromCatalog(catalog, wiring.ProviderExtension)
+		add(wiring.ProviderExtension, consumer)
+		if owner, ok := interfaceOwner[wiring.Interface]; ok {
+			add(owner.ID, consumer)
+			add(owner.ID, provider)
+		}
+	}
+	for id := range adjacency {
+		sort.Slice(adjacency[id], func(i, j int) bool {
+			return compareExtensionIdentity(adjacency[id][i], adjacency[id][j]) < 0
+		})
+	}
+	return adjacency
+}
+
+func extensionIdentityFromCatalog(
+	catalog SemanticCatalog,
+	id string,
+) ExtensionIdentity {
+	for _, extension := range catalog.Extensions {
+		if extension.ID == id {
+			return ExtensionIdentity{ID: extension.ID, Version: extension.Version}
+		}
+	}
+	return ExtensionIdentity{ID: id}
+}
+
+func subjectInterfaceConsumers(
+	catalog SemanticCatalog,
+	providerID string,
+) []ExtensionIdentity {
+	seen := map[string]ExtensionIdentity{}
+	for _, wiring := range catalog.InterfaceWirings {
+		if wiring.ProviderExtension != providerID {
+			continue
+		}
+		identity := extensionIdentityFromCatalog(catalog, wiring.ConsumerExtension)
+		seen[identity.ID+"@"+identity.Version] = identity
+	}
+	out := make([]ExtensionIdentity, 0, len(seen))
+	for _, identity := range seen {
+		out = append(out, identity)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return compareExtensionIdentity(out[i], out[j]) < 0
+	})
+	return out
+}
+
+func transitiveSubjectExtensionImpact(
+	start string,
+	adjacency map[string][]ExtensionIdentity,
+) []ExtensionIdentity {
+	seen := map[string]ExtensionIdentity{}
+	queue := append([]ExtensionIdentity(nil), adjacency[start]...)
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current.ID == "" || current.ID == start {
+			continue
+		}
+		key := current.ID + "@" + current.Version
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = current
+		queue = append(queue, adjacency[current.ID]...)
+	}
+	out := make([]ExtensionIdentity, 0, len(seen))
+	for _, identity := range seen {
+		out = append(out, identity)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return compareExtensionIdentity(out[i], out[j]) < 0
+	})
+	return out
 }
 
 func subjectExtensionState(roles []string) string {
