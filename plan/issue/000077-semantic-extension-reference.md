@@ -367,6 +367,8 @@ Reference testでは、SUIのM2をpass、M4をfailとして評価します。Mig
 
 また、SUIから共通snapshotへ変換した結果に`islands`、`parentIslandId`、`childIslandIds`、`schemaVersion`が残らないことをnegative controlで確認します。共通InterfaceにSUI固有語彙が漏れた場合は、再利用成立とは扱いません。
 
+共通Interfaceのinputはcomplete directed graphとして扱います。欠損endpointやduplicate node等は`unknown`ではなくEvaluator errorです。SUI / Migration側で別に保持するtarget存在確認をacyclicへ取り込まないことで、Interfaceの責務をcycle判定だけに限定します。
+
 このcandidateが成立しても、`std.*`へ昇格しません。少なくともexact-head test、repository health、Semantic Lock / Validation Evidenceとの接続、AI / Tool discoveryでの再利用を確認した後に判断します。
 
 ### E3で見えたInterface粒度
