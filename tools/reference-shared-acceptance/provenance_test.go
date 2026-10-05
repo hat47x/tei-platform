@@ -275,6 +275,28 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	assertTreeUnchanged(t, rejectBefore, treeDigest(t, dir))
 
 	rejectReviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+
+	changedCandidate := unitPriceCandidate(revision)
+	changedCandidate.Intent += "（review後に説明を変更）"
+	changedCandidatePath := filepath.Join(t.TempDir(), "changed-candidate.json")
+	if err := os.WriteFile(changedCandidatePath, mustJSON(t, changedCandidate), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ = run(
+		"reject",
+		"-workspace", dir,
+		"-candidate", changedCandidatePath,
+		"-expected-review-fingerprint", rejectReviewFingerprint,
+		"-reason", "見送り",
+	)
+	if code != 1 || !strings.Contains(out, "REVIEW_FINGERPRINT_MISMATCH") {
+		t.Fatalf("stale Reviewでのrejectが止まっていません: code=%d out=%s", code, out)
+	}
+	if index := decisionsOf(t, dir); len(index.Records) != 0 {
+		t.Fatalf("Review mismatchなのにreject recordが増えました: %+v", index.Records)
+	}
+	assertTreeUnchanged(t, rejectBefore, treeDigest(t, dir))
+
 	code, _, errOut = run(
 		"reject",
 		"-workspace", dir,
