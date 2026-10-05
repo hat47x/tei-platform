@@ -98,7 +98,6 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		e.Subject = strings.TrimSpace(e.Subject)
 		e.Source = strings.TrimSpace(e.Source)
 		e.SourceFingerprint = strings.TrimSpace(e.SourceFingerprint)
-		e.Note = strings.TrimSpace(e.Note)
 		if e.Subject == "" && e.Source == "" && e.Artifact == nil {
 			return c, "", fmt.Errorf("evidence[%d]にsubject / source / artifactのいずれもありません", i)
 		}
