@@ -159,6 +159,8 @@ Application Pattern、View、Target、ORM等の実装都合から、Dataのbusin
 
 Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
 
+生成AIは、`identifier`、`external_id`、`code`等の属性名や外部から移行した識別子値だけを根拠に、business identifierやcandidate keyが成立したと判断してはいけません。acceptedな識別条件がある場合は、一意性のscope、時間・履歴条件、Relation / Constraint、Source / Contractを含むcontextへ到達できる必要があります。
+
 生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
 
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
