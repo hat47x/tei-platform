@@ -582,6 +582,9 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 			return fmt.Errorf("capability lock wiring plugin version: %w", err)
 		}
 	}
+	if lock.Wiring != nil && !providerMatchesWiring(lock.Provider, *lock.Wiring) {
+		return fmt.Errorf("capability lock wiring does not select locked provider")
+	}
 	if lock.Contract.ID != lock.Requirement.ContractID ||
 		lock.Provider.Scope != lock.Scope ||
 		lock.Provider.ContractID != lock.Contract.ID ||
