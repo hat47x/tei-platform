@@ -4,7 +4,7 @@
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-06 primary**
-- 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023
+- 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023 / RQ-026 / RQ-027
 
 ## このIssueを最初に読むときの要点
 
