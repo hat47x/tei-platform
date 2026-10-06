@@ -258,6 +258,12 @@ reviewed / conditional assertionはv0では `method=human-confirmation` のrevie
 
 このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る入力であり、一致そのものをsemantic proofへ昇格させない。format差とsemantic差を判別できない場合にreview維持を推測しない。
 
+### E1b supersession / conflict candidate
+
+旧assertionの `reviewState` だけを手で `superseded` へ更新することを前提にせず、後続assertionの `supersedes` relationから旧assertionの利用停止を派生する。Projectionには `supersededBy` を残し、relation provenanceへ戻れるようにする。
+
+Conflictもrelationとして保持し、current contextで両方が有効候補になる場合は一方を自動採用せず `review-required` とする。
+
 ### E2 context compatibility candidate
 
 assertion scopeとcurrent contextをdimensionごとに照合する。
