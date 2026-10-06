@@ -130,6 +130,14 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 		ctx.DataDesign.FunctionalDependencies.Nature != "unresolved" {
 		t.Fatalf("FD candidate boundary drifted: candidates=%+v state=%+v", ctx.DataDesign.FunctionalDependencyCandidates, ctx.DataDesign.FunctionalDependencies)
 	}
+	fdCandidate := ctx.DataDesign.FunctionalDependencyCandidates[0]
+	if len(fdCandidate.Determinants) != 2 ||
+		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Data != "sales.order" ||
+		fdCandidate.Determinants[1].Kind != "attribute" ||
+		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
+		t.Fatalf("FD candidate lost scoped determinant terms: %+v", fdCandidate)
+	}
 	for _, want := range []subject.Subject{
 		{Kind: "semantic-data", ID: "sales.order"},
 		{Kind: "semantic-data", ID: "sales.order_line"},
