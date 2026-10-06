@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -83,8 +84,10 @@ func TestReferenceSeparatesOriginReviewContextFreshnessAndConflict(t *testing.T)
 	}
 
 	superseded := assessmentByID(t, projection, "superseded-design")
-	if superseded.UseState != "blocked" || superseded.ReviewValidity != "superseded" {
-		t.Fatalf("superseded assertion remained usable: %+v", superseded)
+	if superseded.UseState != "blocked" || superseded.ReviewValidity != "superseded" ||
+		len(superseded.SupersededBy) != 1 || superseded.SupersededBy[0] != "superseding-design" ||
+		!hasReason(superseded, "SUPERSEDED_BY_RELATION") {
+		t.Fatalf("superseded assertion remained usable or lost relation provenance: %+v", superseded)
 	}
 
 	rejected := assessmentByID(t, projection, "rejected-claim")
@@ -150,7 +153,7 @@ func TestKnowledgeHealthWeightsCriticalDependenciesInsteadOfReviewRatio(t *testi
 	corpus, context := loadFixture(t)
 
 	for i := 0; i < 40; i++ {
-		id := "low-memo-" + string(rune('a'+i%26)) + "-" + strings.Repeat("x", i/26)
+		id := fmt.Sprintf("low-memo-%02d", i)
 		corpus.Assertions = append(corpus.Assertions, Assertion{
 			ID:                 id,
 			Target:             TargetRef{Kind: "memo", ID: id},
