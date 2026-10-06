@@ -83,24 +83,12 @@ func TestLegacyContractQueryCapabilityProjectsFromExistingPluginAuthority(t *tes
 		provider.ContractID != contract.ID {
 		t.Fatalf("projected provider=%+v", provider)
 	}
-
-	input := ResolveInput{
-		Scope:       ScopeApplicationRuntime,
-		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
-		Contracts:   []Contract{contract},
-		Providers:   []Provider{provider},
-		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "oracle-contract-query-conformance")},
-	}
-	resolution, err := resolveCapability(input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resolution.Provider != provider {
-		t.Fatalf("resolution provider=%+v want=%+v", resolution.Provider, provider)
+	if provider.ArtifactDigest != "" {
+		t.Fatalf("legacy projection invented artifact identity: %q", provider.ArtifactDigest)
 	}
 }
 
-func TestLegacyProjectionDoesNotTurnOldPluginDeclarationIntoConformance(t *testing.T) {
+func TestLegacyBuiltinProjectionExposesMissingImplementationIdentity(t *testing.T) {
 	contract := legacyContractQueryContract()
 	provider := projectReferenceContractQueryProvider(
 		t,
@@ -113,12 +101,12 @@ func TestLegacyProjectionDoesNotTurnOldPluginDeclarationIntoConformance(t *testi
 		Contracts:   []Contract{contract},
 		Providers:   []Provider{provider},
 	})
-	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
-		t.Fatalf("legacy declaration was treated as Conformance Evidence: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "exact implementation artifact digest") {
+		t.Fatalf("legacy builtin without exact implementation identity was accepted: %v", err)
 	}
 }
 
-func TestActualOracleAndPostgresLegacyProvidersRemainAmbiguousWithoutWiring(t *testing.T) {
+func TestLegacyRuntimeProvidersRemainAmbiguousAfterExactArtifactsAreSupplied(t *testing.T) {
 	contract := legacyContractQueryContract()
 	oracle := projectReferenceContractQueryProvider(
 		t,
@@ -130,6 +118,13 @@ func TestActualOracleAndPostgresLegacyProvidersRemainAmbiguousWithoutWiring(t *t
 		"tei.database.postgres",
 		core.CanonicalID("database.query.postgres"),
 	)
+
+	// Current legacy builtin descriptors do not carry exact implementation
+	// artifacts. These digests simulate the migration prerequisite after that
+	// identity has been established by a separate trusted build/provenance path.
+	oracle.ArtifactDigest = "sha256:" + strings.Repeat("1", 64)
+	postgres.ArtifactDigest = "sha256:" + strings.Repeat("2", 64)
+
 	input := ResolveInput{
 		Scope:       ScopeApplicationRuntime,
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
@@ -141,7 +136,7 @@ func TestActualOracleAndPostgresLegacyProvidersRemainAmbiguousWithoutWiring(t *t
 		},
 	}
 	if _, err := resolveCapability(input); err == nil || !strings.Contains(err.Error(), "ambiguous") {
-		t.Fatalf("actual runtime providers were silently selected: %v", err)
+		t.Fatalf("runtime providers were silently selected: %v", err)
 	}
 
 	input.Wirings = []Wiring{{
@@ -165,6 +160,7 @@ func TestProjectedRuntimeProviderCannotSatisfyAuthoringSourceAdapterScope(t *tes
 		"tei.database.oracle",
 		core.CanonicalID("database.query.oracle"),
 	)
+	runtimeProvider.ArtifactDigest = "sha256:" + strings.Repeat("3", 64)
 	authoringContract := sourceAdapterContract()
 	_, err := resolveCapability(ResolveInput{
 		Scope:       ScopeAuthoringTool,
