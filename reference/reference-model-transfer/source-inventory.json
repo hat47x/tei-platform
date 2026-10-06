@@ -26,7 +26,8 @@
       "dataflowLine": 81,
       "role": 10,
       "department": 7,
-      "dataType": 86
+      "dataType": 86,
+      "functionType": 14
     },
     "relationshipTypes": {
       "REFFER": 51,
@@ -114,7 +115,10 @@
     "xeadFunctionCount": 227,
     "xeafFunctionCount": 203,
     "xeadSortKeyToXeafIdIntersection": 180,
-    "functionMappingIsOneToOne": false
+    "functionMappingIsOneToOne": false,
+    "xeadOnlyFunctionIdentityCount": 47,
+    "xeafOnlyFunctionIdentityCount": 23,
+    "mappingNote": "identity-set difference is structural evidence only; helper/runtime split and design-only functions require source-level classification"
   },
   "interpretationLimits": [
     "aggregate counts are coverage inventory, not semantic equivalence evidence",
