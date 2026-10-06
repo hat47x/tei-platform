@@ -24,6 +24,8 @@ Date: 2026-10-06
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
   - https://dbconcept.hatenablog.com/entry/2025/02/25/120940
+  - https://dbconcept.hatenablog.com/entry/2024/12/16/071337
+  - https://dbconcept.hatenablog.com/entry/2024/11/27/080850
 - 公開実装
   - https://github.com/xead/XeadModeler
   - https://github.com/xead/XeadDriver
