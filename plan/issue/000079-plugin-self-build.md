@@ -345,3 +345,30 @@ SB-1 packageも同じBuild Planから二回materializeし、package digestが一
 SB-1/SB-2 runnerは、Workspaceを読み込めたことだけではbuildへ進みません。通常Referenceとself-build専用Referenceの双方について、既存の`internal/validation.Validate`を実行し、Error diagnosticが一つでもあれば停止します。
 
 Build層へPlugin Validation規則を複製しないためです。Runtime kind、Capability kind、Action、Permission、Artifact、Environment binding等の検証は既存のValidationを正本とし、Build Planとpackage materializerはbuild固有のidentity・reproducibility・authority境界だけを受け持ちます。
+
+
+### Runtime Plugin LockからBuild Planへの逆追跡
+
+E1の再監査で、artifact digestだけではRuntime Lockからexact Build Planへ一意に戻れないことが分かりました。
+
+異なるBuild Planが同じbytesを生成する場合や、複数のlogical Pluginを一つのphysical artifactへまとめるTarget最適化では、artifact digestだけを逆引きkeyにできません。
+
+このため、既存format 2 Runtime Plugin Lockは互換性のため維持し、self-buildされたRuntime implementationを明示的に採用するときだけ`buildPlanFingerprint`をPlugin entryへbindしてformat 3へ昇格する候補実装を追加しました。
+
+```text
+Build Plan
+  -> plan fingerprint
+  -> BuildArtifactLock
+       + artifact digest
+  -> Runtime Plugin Lock v3
+       + buildPlanFingerprint
+       + artifactDigest
+  -> EnvironmentLockFingerprint
+  -> Runtime / Durable Invocation
+```
+
+Runtime Plugin LockへSource closureやbuilderの詳細を複製しません。exact Build Planへの参照だけを保持します。
+
+format 2は引き続き読み取り可能です。format 3では`buildPlanFingerprint`が存在する場合、その値が64桁hexでなければ拒否します。package outputをRuntime Lockへbindすること、artifact digestが一致しないbuildをbindすること、既に別Build Planへbind済みのentryを書き換えることもfail-closedにします。
+
+これにより、Plugin Lock fingerprint自体がBuild Plan bindingを含むため、Durable Invocationが保持するPlugin Lock fingerprintからself-build provenanceへ戻れる経路を維持できます。
