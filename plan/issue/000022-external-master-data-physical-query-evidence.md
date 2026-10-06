@@ -13,6 +13,12 @@
 
 未取得の実Oracle Evidenceを完了扱いせず、[ISSUE-000030](000030-gate-b-to-c-handover-baseline.md)のunresolvedへ残します。以下に残るGate Bの4必須laneやcandidateへのOracle必須収束は過去の契約であり、現行scopeと衝突する場合は本節と[Gate B監査](../GATE_B_READINESS_AUDIT.md)を優先します。
 
+## Provider-neutralな位置づけ
+
+本IssueとISSUE-000033 / 000034は、題名と記述がOracleに寄っていますが、満たすべき要求はOracle固有ではありません。RQ-005 / RQ-007 / RQ-012が求めるのは、PostgreSQL以外の実Database Providerでも、物理事実の観測、read-only境界、driver assembly（ADR-0007）、actual readという同じ契約でprovider-neutral境界を検証できることです。
+
+第一Referenceの`master_data`が既存のOracle資産であるため、最初の具体例がOracleになっています。別のProviderを加える場合も、このEvidence契約を再利用し、Oracle固有の事実（`READ` object privilege、`SET TRANSACTION READ ONLY`、driver候補等）をprovider-neutralなCore契約へ昇格しません。
+
 ## Evidenceの目的
 
 第一Referenceの`master_data`について、TEIが所有していない既存資産の実物理事実、provenance、read-only境界、Oracle driverを通したactual readを確認し、`Order -> Customer` Referenceが実環境でもSemantic meaningを保って動作することをEvidenceとして確定します。

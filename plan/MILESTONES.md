@@ -93,7 +93,7 @@ v1の5 PatternをTEI全体の永久標準Catalogにはしません。
 
 理想化sampleだけでなく、実際の既存業務資産を段階移行できる状態です。
 
-actual Oracle #214 / #371 / #376はこの能力とMilestone 8のProvider圧力試験へつながる重要Evidenceですが、Gate Bの第四Required laneにはしません。
+PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は、この能力とMilestone 8のProvider圧力試験へつながる重要Evidenceですが、Gate Bの第四Required laneにはしません。
 
 ## Milestone 3 — 設計をDriverで動かして確認できる
 

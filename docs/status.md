@@ -221,7 +221,7 @@ ADR-0027 / #533の`DropTable` destructive readiness planning / rendering source�
 
 PostgreSQLは深いReference Providerとして利用しています。
 
-actual second-provider / existing Oracle assetは別Evidenceとして継続します。
+PostgreSQL以外の実Database Provider（actual second-provider）と、既存外部資産の受け入れは別Evidenceとして継続します。第一Referenceの`master_data`はOracleなので、最初の具体例はOracleです。Oracleに限定した要件ではなく、他のProviderも同じ境界で検証できる必要があります。
 
 ## Plugin / Runtime / Resource
 
@@ -356,7 +356,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 
 ## 現時点で完成済みとは言わないもの
 
-- actual Oracle E2E
+- PostgreSQL以外の実Database Providerでの E2E（第一Referenceの既存資産ではactual Oracle）
 - Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
 - complete Target-neutral Presentation IR
 - production-ready Web / Desktop / Mobile Target

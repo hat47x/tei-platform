@@ -91,7 +91,7 @@ Handover Baseline `B / R`も固定済みです。判定の正本は[Gate B Readi
 
 この`B / R`を引き継いだ`ISSUE-000007`の第一Web Targetは、baseline `R`とTarget build revision `T`を分離したままGate CのSemantic / Functional / Visual Evidenceを取得し、Gate C Readyと判定済みです（[Gate C Readiness Audit](plan/GATE_C_READINESS_AUDIT.md)）。
 
-actual Oracle #214 / #371 / #376はactual external asset / legacy compatibility / second-provider Evidenceとして継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
+PostgreSQL以外の実Database Providerと既存外部資産のEvidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
 
 ## Gate B → Gate Cでrevisionを分ける
 
