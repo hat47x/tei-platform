@@ -358,6 +358,8 @@ Persistence RealizationもData Design Contextへ接続した。`sales.order_line
 
 逆方向も同じ境界で扱う。`knowledge-context`へ`persistence:sales_core.order_line`を渡した場合は、primary keyやcolumn名からDataを推測せず、Persistence Mappingが明示する`semantic sales.order_line`だけを使ってData Design Contextへ戻る。逆追跡後もbusiness occurrence identifier、candidate key、functional dependencyは`unresolved`のままである。これにより、SemanticからRealizationを見る経路とRealizationからSemanticへ戻る経路のどちらでも、physical keyをlogical identityへ昇格しない。
 
+同じSemantic Dataに複数のPersistence Mappingがある場合も、各Databaseのprimary key / unique constraintを独立したRealization factとして保持する。たとえば一方が`order_line_id`をprimary keyにし、別のDatabaseが`line_number`をprimary keyにしていても、その差からlogical identityを再定義しない。`businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`のauthorityは変えず、Semantic側のscoped uniquenessから導いたbusiness identity候補もphysical keyで置換しない。このnegative pressureにより、Application↔Database=N:MでもData meaningのidentity境界を維持する。
+
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
 
 ### experienceからのlocal learning
