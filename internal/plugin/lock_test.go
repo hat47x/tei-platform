@@ -188,3 +188,41 @@ func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 		t.Fatal("expected invalid build plan fingerprint to fail")
 	}
 }
+
+
+func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.legacy-trace"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "legacy-trace"},
+		Artifact: plugin.Artifact{
+			Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("legacy-trace"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: 2,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				ArtifactDigest:       def.Artifact.Digest,
+				BuildPlanFingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err == nil {
+		t.Fatal("expected format 2 build trace field to fail")
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected format 2 build trace field to fail")
+	}
+}
