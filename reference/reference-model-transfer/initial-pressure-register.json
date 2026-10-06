@@ -213,6 +213,20 @@
       "observed": "Watanabe warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
       "risk": "a coherent AI-generated semantic graph can be mistaken for original or accepted system meaning, turning the importer or knowledge layer into a second canonical authority",
       "teiDirection": "keep source-faithful observation, AI-derived candidate and accepted semantic meaning as separate authority stages; require provenance and Shared Acceptance before reconstructed meaning enters authoritative Source"
+    },
+    {
+      "id": "RMP-031",
+      "topic": "identifier-field-without-identity-contract",
+      "observed": "Watanabe's 2026-09 critique distinguishes retaining legacy business identifiers as ordinary identifier attributes from actually preserving the uniqueness and functional-dependency structure that made them business identifiers",
+      "risk": "migration or interoperability can appear identity-preserving because identifier values survive while uniqueness scope, temporal validity, relation semantics, and impact analysis are lost",
+      "teiDirection": "treat identifier-like fields as source facts only; promote them to accepted business occurrence identity or candidate key only with explicit uniqueness scope, source/contract responsibility, temporal conditions, and relation/constraint evidence"
+    },
+    {
+      "id": "RMP-032",
+      "topic": "service-connectivity-vs-logical-data-integration",
+      "observed": "Watanabe's 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
+      "risk": "API/message connectivity can be reported as integration while business identity, relation, constraint, and ownership remain fragmented across systems",
+      "teiDirection": "allow N:M Database/Service topology while preserving cross-system logical identity, relation, constraint, ownership, and provenance; do not require a single physical database and do not treat connectivity alone as semantic integration"
     }
   ]
 }
