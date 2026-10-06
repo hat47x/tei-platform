@@ -54,6 +54,23 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextDoesNotResolveContradictoryValidationScope(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Semantics[0].Data[0].Relations[0].Target = "sales.other"
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-validation", ID: "sales.order.lines.line_number_unique"},
+	)
+	if ctx.SemanticElement == nil {
+		t.Fatal("validation semantic element is missing")
+	}
+	if ctx.DataDesign != nil {
+		t.Fatalf("contradictory validation scope was guessed: %+v", ctx.DataDesign)
+	}
+}
+
 func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Persistence = []persistence.Mapping{
