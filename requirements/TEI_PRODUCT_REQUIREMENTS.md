@@ -169,6 +169,8 @@ AIが作った内容を直接Canonical authorityとせず、まずProposal / Str
 
 AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属性、認証・認可等の典型論点について、必要な場合に確認を提案できることを目指します。
 
+識別子や関数従属性を確認するときは、単独`id`、field名、画面上のまとまり、一般的なschema patternだけを根拠にしません。currentなData / Relation / Constraint / Source / Evidenceから確定できる内容、設計候補、未解決点を区別し、根拠とともに提示できる必要があります。
+
 ただし、次を満たす必要があります。
 
 - 一度回答した質問を理由なく繰り返さない
