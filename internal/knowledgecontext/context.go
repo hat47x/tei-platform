@@ -267,12 +267,15 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			"which-relations-or-constraints-depend-on-the-identity",
 			"which-source-or-contract-owns-the-uniqueness-claim",
 			"which-normalization-or-equivalence-policy-applies",
+			"does-persistence-key-represent-business-identity-or-only-realization",
+			"if-surrogate-key-is-used-which-accepted-uniqueness-preserves-business-identity",
 		},
 		FunctionalDependencyEvidenceQuestions: []string{
 			"which-determinants-determine-which-dependents",
 			"under-what-scope-and-time-does-the-dependency-hold",
 			"which-source-or-evidence-establishes-the-dependency",
 			"is-this-a-functional-dependency-or-a-domain-constraint",
+			"does-scoped-uniqueness-imply-business-functional-dependency-or-only-local-constraint",
 		},
 		RelationEvidenceQuestions: []string{
 			"what-business-meaning-does-the-relation-express",
