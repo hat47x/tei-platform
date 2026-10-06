@@ -116,7 +116,11 @@ type DataDesignPersistenceRealization struct {
 	Authority    string                            `json:"authority"`
 }
 
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v1"
+
 type DataDesignContext struct {
+	ProjectionRevision                    string                   `json:"projectionRevision"`
+	Fingerprint                           string                   `json:"fingerprint"`
 	Data                                  core.CanonicalID         `json:"data"`
 	Focus                                 subject.Subject          `json:"focus"`
 	Attributes                            []DataDesignAttribute         `json:"attributes,omitempty"`
@@ -328,8 +332,9 @@ func buildDataDesignContext(
 	}
 
 	ctx := &DataDesignContext{
-		Data:  dataID,
-		Focus: target,
+		ProjectionRevision: dataDesignProjectionRevision,
+		Data:               dataID,
+		Focus:              target,
 		BusinessOccurrenceIdentifier: DataDesignKnowledgeState{
 			Nature: "unresolved",
 			Reason: "business-occurrence-identifier-not-first-class-in-current-canonical-model",
@@ -369,6 +374,7 @@ func buildDataDesignContext(
 		},
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
+			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
@@ -599,7 +605,40 @@ func buildDataDesignContext(
 	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
 		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
 	})
+	ctx.Fingerprint = dataDesignFingerprint(ctx)
 	return ctx
+}
+
+func dataDesignFingerprint(ctx *DataDesignContext) string {
+	var builder strings.Builder
+	builder.WriteString(ctx.ProjectionRevision)
+	builder.WriteByte('\n')
+	builder.WriteString(string(ctx.Data))
+	builder.WriteByte('\n')
+	builder.WriteString(ctx.Focus.Kind)
+	builder.WriteByte(':')
+	builder.WriteString(ctx.Focus.ID)
+	builder.WriteByte('\n')
+	for _, evidence := range ctx.Evidence {
+		builder.WriteString(evidence.Subject.Kind)
+		builder.WriteByte(':')
+		builder.WriteString(evidence.Subject.ID)
+		builder.WriteByte('|')
+		builder.WriteString(evidence.Source)
+		builder.WriteByte('|')
+		builder.WriteString(evidence.SourceFingerprint)
+		builder.WriteByte('|')
+		builder.WriteString(string(evidence.Role))
+		builder.WriteByte('\n')
+	}
+	for _, missing := range ctx.EvidenceMissing {
+		builder.WriteString("missing:")
+		builder.WriteString(missing.Kind)
+		builder.WriteByte(':')
+		builder.WriteString(missing.ID)
+		builder.WriteByte('\n')
+	}
+	return sourceindex.Fingerprint([]byte(builder.String()))
 }
 
 func persistenceUniquenessKey(value DataDesignPersistenceUniqueness) string {
