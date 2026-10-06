@@ -5,6 +5,7 @@ import "sort"
 type CandidateRule struct {
 	Classifications []string `json:"classifications"`
 	Extension       string   `json:"extension,omitempty"`
+	AuthorityLimits []string `json:"authorityLimits,omitempty"`
 }
 
 type Candidate struct {
@@ -12,6 +13,7 @@ type Candidate struct {
 	SourceName      string   `json:"sourceName"`
 	Classifications []string `json:"classifications"`
 	Extension       string   `json:"extension,omitempty"`
+	AuthorityLimits []string `json:"authorityLimits,omitempty"`
 	Unresolved      bool     `json:"unresolved"`
 }
 
@@ -34,6 +36,8 @@ func Classify(doc Document, policy ClassificationPolicy) []Candidate {
 			c.Classifications = append([]string(nil), rule.Classifications...)
 			sort.Strings(c.Classifications)
 			c.Extension = rule.Extension
+			c.AuthorityLimits = append([]string(nil), rule.AuthorityLimits...)
+			sort.Strings(c.AuthorityLimits)
 		}
 		out = append(out, c)
 		for _, child := range n.Children {
