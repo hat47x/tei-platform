@@ -357,6 +357,12 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+	if runtimeLock.FormatVersion != plugin.BuildTraceLockFormatVersion {
+		return evidence{}, fmt.Errorf(
+			"runtime plugin lock did not upgrade to build-trace format: got %d",
+			runtimeLock.FormatVersion,
+		)
+	}
 	runtimePlugin, err := exactLockedPlugin(runtimeLock, loaded.World.Environments[0].ID, definition.ID, definition.Version)
 	if err != nil {
 		return evidence{}, err
