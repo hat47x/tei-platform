@@ -24,6 +24,9 @@
       "context": [
         {"dimension": "project", "value": "tei", "provenance": "explicit"}
       ],
+      "evidence": [
+        {"kind": "conversation-turn", "ref": "conversation://tei/release-assumption"}
+      ],
       "reviewerCandidates": ["release-owner"]
     },
     {
