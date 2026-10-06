@@ -32,6 +32,18 @@ format 2は読み取り互換を維持します。format 3へ移行しただけ�
 
 候補が欠けている場合や同じ優先度で複数存在する場合、TEIはheuristicに選ばずerrorとします。
 
+### Extensible Capability Contract Reference
+
+現行実装ではCapabilityの種類を`internal/plugin.CapabilityKind`で固定列挙しています。これは既存Referenceのproduction境界として残しますが、新しいCapabilityを追加するたびCore codeを変更する構造を最終形とはしません。
+
+[ISSUE-000080](../plan/issue/000080-extensible-plugin-capability-contract.md)では、Capabilityのidentityとcallable contract、Provider implementation、Authority scope、Conformanceを分離するReferenceを進めています。Authoring Tool用Source Adapterのような新しいCapabilityを、Core enumへ追加せず解決できるかを検証します。
+
+Referenceではfresh resolutionと採用済みresolutionのreplayも分けます。採用済みの組合せはCapability Resolution Lock candidateでexact Contract / Provider / artifactへ固定し、Catalogへ新versionが追加されただけでは自動更新しません。Conformance Evidenceはresolution identityと分離しつつ、適合を確認したexact artifactへ結び付けます。
+
+既存`CapabilityKind`からの移行では、新旧のProvider declarationを二つの正本にしません。最初のpressureとして既存`contract-query-executor`を現行`plugin.Definition`から一方向に投影し、旧定義をAuthorityに保ったままgeneric contractへ接続します。
+
+このReferenceはproduction APIではありません。既存Plugin Lock、Permission、Resource、Sandbox、Runtime Authorityの境界は引き続き有効です。
+
 ## Bundle
 
 Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
