@@ -143,6 +143,15 @@
       "risk": "AI or importer synthesis may be reported as source truth merely because the reconstructed graph is internally coherent",
       "owner": "ISSUE-000078 / ISSUE-000027 / ISSUE-000053",
       "stopCondition": "record exact source observations and inference provenance; keep reconstructed meaning as proposal/unresolved until Shared Acceptance creates or updates authoritative Source"
+    },
+    {
+      "id": "RML-016",
+      "topic": "identifier-value-without-uniqueness-semantics",
+      "nature": "unresolved",
+      "evidence": "legacy/imported schemas can retain identifier-like fields even when the transfer contract has not established their uniqueness scope, temporal validity, relation role, or external authority",
+      "risk": "an importer or AI can claim business identity preservation from field presence and value migration alone",
+      "owner": "ISSUE-000078 / ISSUE-000040",
+      "stopCondition": "do not classify identifier-like fields as accepted business identity or candidate key until uniqueness scope, temporal conditions, Source/Contract responsibility and Relation/Constraint evidence are explicit"
     }
   ],
   "claimsNotEstablished": [
