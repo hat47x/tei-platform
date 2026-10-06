@@ -273,8 +273,9 @@ func TestLockBuildOutputAndVerifyRuntimePluginBuild(t *testing.T) {
 	runtime := plugin.LockedPlugin{
 		ID:             plan.Plugin.ID,
 		Version:        plan.Plugin.Version,
-		Fingerprint:    plugin.DefinitionFingerprint(definition),
-		ArtifactDigest: buildDigestB,
+		Fingerprint:           plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:        buildDigestB,
+		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err != nil {
 		t.Fatal(err)
@@ -291,8 +292,9 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 	baseRuntime := plugin.LockedPlugin{
 		ID:             plan.Plugin.ID,
 		Version:        plan.Plugin.Version,
-		Fingerprint:    plugin.DefinitionFingerprint(definition),
-		ArtifactDigest: buildDigestB,
+		Fingerprint:           plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:        buildDigestB,
+		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 
 	tests := []struct {
@@ -386,15 +388,28 @@ func TestRealizeBuiltDefinitionFeedsExistingRuntimePluginLock(t *testing.T) {
 	if len(runtimeLock.Environments) != 1 || len(runtimeLock.Environments[0].Plugins) != 1 {
 		t.Fatalf("runtime lock: %#v", runtimeLock)
 	}
-	locked := runtimeLock.Environments[0].Plugins[0]
-	if locked.ArtifactDigest != buildDigestB {
-		t.Fatalf("runtime lock artifact: got %s", locked.ArtifactDigest)
+	if runtimeLock.FormatVersion != plugin.LockFormatVersion {
+		t.Fatalf("unbound runtime lock format: got %d", runtimeLock.FormatVersion)
 	}
 
 	plan := buildPlanFixture()
 	buildOutput, err := plugin.LockBuildOutput(plan, buildDigestB)
 	if err != nil {
 		t.Fatal(err)
+	}
+	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, env.ID, buildOutput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtimeLock.FormatVersion != plugin.BuildTraceLockFormatVersion {
+		t.Fatalf("build-bound runtime lock format: got %d", runtimeLock.FormatVersion)
+	}
+	locked := runtimeLock.Environments[0].Plugins[0]
+	if locked.ArtifactDigest != buildDigestB {
+		t.Fatalf("runtime lock artifact: got %s", locked.ArtifactDigest)
+	}
+	if locked.BuildPlanFingerprint != buildOutput.PlanFingerprint {
+		t.Fatalf("runtime lock build plan: got %s want %s", locked.BuildPlanFingerprint, buildOutput.PlanFingerprint)
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, buildOutput, realized, locked); err != nil {
 		t.Fatal(err)
@@ -425,8 +440,9 @@ func TestVerifyRuntimePluginBuildRejectsPackageOutput(t *testing.T) {
 	runtime := plugin.LockedPlugin{
 		ID:             plan.Plugin.ID,
 		Version:        plan.Plugin.Version,
-		Fingerprint:    plugin.DefinitionFingerprint(definition),
-		ArtifactDigest: buildDigestB,
+		Fingerprint:           plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:        buildDigestB,
+		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err == nil {
 		t.Fatal("expected plugin-package output to be rejected as Runtime artifact")
@@ -482,5 +498,132 @@ func TestBuildDefinitionFingerprintDoesNotMutateSourceOrdering(t *testing.T) {
 	}
 	if source.Runtime.Args[0] != beforeArg0 || source.Runtime.Args[1] != beforeArg1 {
 		t.Fatalf("build fingerprint mutated runtime args: %#v", source.Runtime.Args)
+	}
+}
+
+
+func TestBindRuntimeBuildUpgradesLegacyLockAndChangesEnvironmentFingerprint(t *testing.T) {
+	plan := buildPlanFixture()
+	build, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := plugin.Lock{
+		FormatVersion: plugin.LockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: core.MustCanonicalID("reference"),
+			Plugins: []plugin.LockedPlugin{{
+				ID:             plan.Plugin.ID,
+				Version:        plan.Plugin.Version,
+				Fingerprint:    buildFPA,
+				ArtifactDigest: buildDigestB,
+			}},
+		}},
+	}
+	before, err := plugin.EnvironmentLockFingerprint(legacy, "reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound, err := plugin.BindRuntimeBuild(legacy, "reference", build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.FormatVersion != plugin.BuildTraceLockFormatVersion {
+		t.Fatalf("format: got %d", bound.FormatVersion)
+	}
+	if legacy.Environments[0].Plugins[0].BuildPlanFingerprint != "" {
+		t.Fatal("BindRuntimeBuild mutated input lock")
+	}
+	got := bound.Environments[0].Plugins[0].BuildPlanFingerprint
+	if got != build.PlanFingerprint {
+		t.Fatalf("build plan fingerprint: got %s want %s", got, build.PlanFingerprint)
+	}
+	after, err := plugin.EnvironmentLockFingerprint(bound, "reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Fatal("build-plan binding did not change environment lock fingerprint")
+	}
+}
+
+func TestBindRuntimeBuildFailsClosed(t *testing.T) {
+	plan := buildPlanFixture()
+	build, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := plugin.Lock{
+		FormatVersion: plugin.LockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: core.MustCanonicalID("reference"),
+			Plugins: []plugin.LockedPlugin{{
+				ID:             plan.Plugin.ID,
+				Version:        plan.Plugin.Version,
+				Fingerprint:    buildFPA,
+				ArtifactDigest: buildDigestB,
+			}},
+		}},
+	}
+
+	t.Run("package output", func(t *testing.T) {
+		b := build
+		b.OutputKind = plugin.BuildOutputPluginPackage
+		if _, err := plugin.BindRuntimeBuild(base, "reference", b); err == nil {
+			t.Fatal("expected package output binding to fail")
+		}
+	})
+	t.Run("artifact mismatch", func(t *testing.T) {
+		b := build
+		b.ArtifactDigest = buildDigestA
+		if _, err := plugin.BindRuntimeBuild(base, "reference", b); err == nil {
+			t.Fatal("expected artifact mismatch to fail")
+		}
+	})
+	t.Run("missing environment", func(t *testing.T) {
+		if _, err := plugin.BindRuntimeBuild(base, "other", build); err == nil {
+			t.Fatal("expected missing environment to fail")
+		}
+	})
+	t.Run("missing plugin", func(t *testing.T) {
+		b := build
+		b.Plugin.ID = core.MustCanonicalID("tei.other")
+		if _, err := plugin.BindRuntimeBuild(base, "reference", b); err == nil {
+			t.Fatal("expected missing plugin to fail")
+		}
+	})
+	t.Run("existing different plan", func(t *testing.T) {
+		l := base
+		l.Environments = []plugin.EnvironmentLock{{
+			Environment: core.MustCanonicalID("reference"),
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   plan.Plugin.ID,
+				Version:              plan.Plugin.Version,
+				Fingerprint:          buildFPA,
+				ArtifactDigest:       buildDigestB,
+				BuildPlanFingerprint: buildFPB,
+			}},
+		}}
+		if _, err := plugin.BindRuntimeBuild(l, "reference", build); err == nil {
+			t.Fatal("expected conflicting build-plan binding to fail")
+		}
+	})
+}
+
+func TestVerifyRuntimePluginBuildRequiresBuildPlanBinding(t *testing.T) {
+	plan := buildPlanFixture()
+	locked, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition := buildDefinitionFixture()
+	runtime := plugin.LockedPlugin{
+		ID:             plan.Plugin.ID,
+		Version:        plan.Plugin.Version,
+		Fingerprint:    plugin.DefinitionFingerprint(definition),
+		ArtifactDigest: buildDigestB,
+	}
+	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err == nil {
+		t.Fatal("expected unbound runtime lock to fail")
 	}
 }
