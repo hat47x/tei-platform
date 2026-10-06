@@ -97,6 +97,28 @@ Data設計時には、必要に応じて次を確認します。
 
 生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
 
+### Subject Area / Subsystemは理解と検査の境界候補とする
+
+大規模な業務システムでは、全Data / Function / Procedureを一度に理解することは困難です。そこで、業務上のまとまりを検討するSubject Areaと、Dataの所属とFunction / Interactionの利用関係を重ねて確認するSubsystemを、局所的なreview boundaryとして利用できるようにします。
+
+ここでいうSubsystemを、deployment unit、process、Application、Database、security boundary等へ自動変換しません。実装上それらが一致する場合でも、別の意味境界として明示します。
+
+Subsystemの妥当性を検討するときは、Data ownershipとFunctionからのread / create / update / delete等をderivedなcross-referenceとして重ねます。別Subsystemが所有するDataを読むことと、別SubsystemのDataを変更することも区別します。
+
+```text
+Data ownership / responsibility
+        +
+Function / Interaction -> Data usage
+        ↓
+derived CRUD / dependency projection
+        ↓
+cohesion / coupling review
+```
+
+cross-boundaryなCUDが存在することだけでinvalidとはしません。一方、それが多い場合は、Data ownership、Subsystemの切り方、Capability / Contract境界、Business responsibilityのいずれかに再検討が必要でないかをdiagnostic / design questionとして提示できます。
+
+Subject Area / Subsystemをdurable Canonical identityにするかは、現在もReference Evidence待ちです。まず既存のData / Application / Procedure / Sourceから再構成できるProjectionで、理解とcross-view reviewに十分かを確認します。
+
 ## 4. Function / InteractionはUIを含むが、UIはauthorityではない
 
 Function / Interaction視点には、利用者が具体的に理解できるUI、帳票、入出力、query、command、batch、API、function call relationshipを含みます。
