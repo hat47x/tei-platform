@@ -35,3 +35,12 @@ runnerは開始時と終了時にGit worktreeがcleanであることを要求し
 Build Planにはbuilderだけでなく、`tei-plugin-package`というrecipe kindと対象descriptorのentrypointも記録します。そのため、同じSource closureとbuilderを使って別のPluginをpackageした場合でも、Build Plan fingerprintから区別できます。
 
 SB-1 packageの生成に成功しても、Pluginの実行実装をTEI自身で生成できたことにはなりません。process Pluginのruntime artifactを2回buildしてdigest一致を確認するE2とは、別の到達段階として扱います。
+
+
+## Builder contractと隔離したGo state
+
+ReferenceではGo toolchainのversionと、TEI側のBuild contract versionを別に記録します。現在のcontract versionは`tei.plugin-build/v1`です。
+
+依存確認とruntime artifactの二回buildでは、`GOCACHE`、`GOMODCACHE`、`GOPATH`を一時領域へ分離します。`GOPROXY=off`、`GOSUMDB=off`、`GOVCS=*:off`、`GOTOOLCHAIN=local`も固定し、既存cacheや外部取得を暗黙の入力にしません。
+
+SB-1 packageも同じBuild Planから二回materializeし、二つのSHA-256 digestが一致することをEvidence条件にします。
