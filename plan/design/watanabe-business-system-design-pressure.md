@@ -212,5 +212,7 @@ physical Database / Service / Provider
 4. legacy Database / code / proseからAIが再構成したsemantic candidateと、authoring時からacceptedなmeaningを同じauthorityへ混ぜず、Proposal / Acceptance / provenanceを通じて区別できるか。
 5. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
 6. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
+7. legacy移行や外部連携で`identifier`相当の項目を取り込んだ場合、その存在だけを業務識別の成立へ読み替えず、一意性の範囲、Source、Relation / Constraintとの対応を追跡できるか。
+8. 同じ業務Dataを複数Database / Serviceへ分散配置しても、logical identity、Relation、Constraintをcross-system contractから追跡でき、反対に単一Databaseへ統合してもAuthority / Privacy / Responsibilityを一つへ混ぜないことを確認できるか。
 
 これらの結果が出るまでは、`FunctionalDependency`、`BusinessKey`、`SubjectArea`、`Subsystem`等を新しいCore primitiveとして固定しません。
