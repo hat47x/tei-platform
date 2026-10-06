@@ -9,7 +9,9 @@ import (
 func TestParsePreservesUnknownConstructsAndBindsExactBytes(t *testing.T) {
 	source := []byte(`<System Version="1"><Table ID="T1"><TableField ID="F1"/><FutureThing z="2" a="1"> raw </FutureThing></Table></System>`)
 	got, err := Parse(FormatXead, source)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.SHA256 != "da131513de53bd2ab2ae2ef7e2e4f66876bf0b79c297cf0ba277b4b23a602560" {
 		t.Fatalf("unexpected digest: %s", got.SHA256)
 	}
@@ -47,9 +49,13 @@ func TestParsePreservesDeepNestedTree(t *testing.T) {
 func TestParseIsDeterministic(t *testing.T) {
 	source := []byte(`<System><Function ID="F1"/><Unknown b="2" a="1"/></System>`)
 	a, err := Parse(FormatXeaf, source)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, err := Parse(FormatXeaf, source)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	aj, _ := json.Marshal(a)
 	bj, _ := json.Marshal(b)
 	if string(aj) != string(bj) {
@@ -59,9 +65,13 @@ func TestParseIsDeterministic(t *testing.T) {
 
 func TestElementReorderChangesSnapshotLocatorWithoutInventingIdentity(t *testing.T) {
 	a, err := Parse(FormatXead, []byte(`<System><Table ID="A"/><Table ID="B"/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, err := Parse(FormatXead, []byte(`<System><Table ID="B"/><Table ID="A"/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if a.SHA256 == b.SHA256 {
 		t.Fatal("different exact snapshots must have different digests")
 	}
@@ -75,9 +85,13 @@ func TestElementReorderChangesSnapshotLocatorWithoutInventingIdentity(t *testing
 
 func TestFormatKnownSetsDoNotConflateXeadAndXeafFunctionSurfaces(t *testing.T) {
 	xead, err := Parse(FormatXead, []byte(`<System><Task/><Script/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	xeaf, err := Parse(FormatXeaf, []byte(`<System><Task/><Script/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(xead.UnknownNames, []string{"Script"}) {
 		t.Fatalf("xead unknowns: %#v", xead.UnknownNames)
 	}
