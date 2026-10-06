@@ -16,7 +16,9 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/ir"
 	"tei/internal/plugin"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -96,6 +98,9 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, fmt.Errorf("load plugin self-build reference: %w", err)
 	}
+	if err := requireValidWorld("plugin self-build reference", loaded.World); err != nil {
+		return evidence{}, err
+	}
 	definition, err := exactPlugin(loaded.World.Plugins, referencePluginID, referencePluginVersion)
 	if err != nil {
 		return evidence{}, err
@@ -151,6 +156,9 @@ func run(repo string) (evidence, error) {
 	packageLoaded, err := workspace.Load(filepath.Join(root, filepath.FromSlash(packageWorkspace)))
 	if err != nil {
 		return evidence{}, fmt.Errorf("load standard plugin package reference: %w", err)
+	}
+	if err := requireValidWorld("standard plugin package reference", packageLoaded.World); err != nil {
+		return evidence{}, err
 	}
 	packageDefinition, err := exactPlugin(packageLoaded.World.Plugins, packagePluginID, packagePluginVersion)
 	if err != nil {
@@ -382,6 +390,24 @@ func run(repo string) (evidence, error) {
 }
 
 
+
+
+
+func requireValidWorld(label string, world ir.World) error {
+	diagnostics := validation.Validate(world)
+	var failures []string
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity != validation.Error {
+			continue
+		}
+		failures = append(failures, diagnostic.Code+": "+diagnostic.Message)
+	}
+	if len(failures) == 0 {
+		return nil
+	}
+	sort.Strings(failures)
+	return fmt.Errorf("%s validation failed: %s", label, strings.Join(failures, "; "))
+}
 
 func hashTrackedSourceTree(repo string) (string, error) {
 	listed, err := gitOutputBytes(repo, "ls-files", "-z")
