@@ -572,3 +572,39 @@ func TestCapabilityResolutionLockRejectsInternallyContradictoryWiring(t *testing
 		t.Fatalf("contradictory lock wiring was accepted: %v", err)
 	}
 }
+
+
+func TestCapabilityResolutionReplayIgnoresMalformedCurrentEvidence(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "evidence-valid")},
+	}
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	malformed := input
+	malformed.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "evidence-current")}
+	malformed.Evidence[0].EvidenceFingerprint = "malformed"
+	if err := verifyCapabilityResolutionLockReplay(lock, malformed); err != nil {
+		t.Fatalf("declaration replay was coupled to current Evidence: %v", err)
+	}
+	if _, err := verifyCapabilityResolutionLockEvidence(lock, malformed); err == nil {
+		t.Fatal("current Evidence verification accepted malformed Evidence")
+	}
+}
