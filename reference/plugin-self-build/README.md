@@ -44,3 +44,10 @@ ReferenceではGo toolchainのversionと、TEI側のBuild contract versionを別
 依存確認とruntime artifactの二回buildでは、`GOCACHE`、`GOMODCACHE`、`GOPATH`を一時領域へ分離します。`GOPROXY=off`、`GOSUMDB=off`、`GOVCS=*:off`、`GOTOOLCHAIN=local`も固定し、既存cacheや外部取得を暗黙の入力にしません。
 
 SB-1 packageも同じBuild Planから二回materializeし、二つのSHA-256 digestが一致することをEvidence条件にします。
+
+
+## Build前のValidation
+
+runnerは、通常Referenceとself-build専用Referenceの双方を既存の`internal/validation.Validate`へ通します。Error diagnosticが残るWorkspaceではpackage materializeやruntime artifact buildへ進みません。
+
+Pluginの妥当性規則をself-build側へ複製せず、既存Validationをそのまま正本として使います。
