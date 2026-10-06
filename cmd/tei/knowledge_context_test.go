@@ -236,6 +236,29 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("scoped uniqueness was promoted to a business key: %+v", dataDesign)
 	}
 
+	if len(dataDesign.PersistenceRealizations) != 1 {
+		t.Fatalf("persistence realizations=%+v", dataDesign.PersistenceRealizations)
+	}
+	realization := dataDesign.PersistenceRealizations[0]
+	if realization.Mapping != "sales_core.order_line" ||
+		realization.Database != "sales_core" ||
+		realization.Table != "public.order_lines" ||
+		realization.Authority != "database-owned-realization" {
+		t.Fatalf("persistence realization drifted: %+v", realization)
+	}
+	if len(realization.Uniqueness) != 1 ||
+		realization.Uniqueness[0].Kind != "primary-key" ||
+		realization.Uniqueness[0].Nature != "accepted-realization" ||
+		len(realization.Uniqueness[0].Attributes) != 1 ||
+		realization.Uniqueness[0].Attributes[0] != "sales.order_line.order_line_id" {
+		t.Fatalf("physical primary key realization is missing: %+v", realization.Uniqueness)
+	}
+	if dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		dataDesign.CandidateKeys.Nature != "unresolved" ||
+		dataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("physical primary key was promoted to logical identity: %+v", dataDesign)
+	}
+
 	for _, want := range []struct {
 		kind   string
 		id     string
@@ -246,6 +269,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		{kind: "semantic-attribute", id: "sales.order_line.line_number", source: "semantic/sales/order.tei"},
 		{kind: "semantic-relation", id: "sales.order.lines", source: "semantic/sales/order.tei"},
 		{kind: "semantic-validation", id: "sales.order.lines.line_number_unique", source: "semantic/sales/validation.tei"},
+		{kind: "persistence", id: "sales_core.order_line", source: "databases/sales-core/persistence/order-line.tei"},
 	} {
 		if !hasDataDesignEvidence(dataDesign, want.kind, want.id, want.source) {
 			t.Fatalf("data design Evidence is missing: %+v evidence=%+v", want, dataDesign.Evidence)
@@ -260,6 +284,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"relation-key-is-not-business-identifier",
 		"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
+		"persistence-primary-key-is-not-business-identifier-or-candidate-key",
+		"persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
 		"identifier-like-attribute-is-not-business-identity",
 		"identifier-value-presence-is-not-uniqueness-evidence",
 		"normalized-string-equality-is-not-business-identity-evidence",
