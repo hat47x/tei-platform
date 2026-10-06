@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -68,4 +69,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+func jsonBytes(value any) ([]byte, error) {
+	return json.MarshalIndent(value, "", "  ")
 }
