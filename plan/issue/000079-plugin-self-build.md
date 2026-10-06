@@ -198,3 +198,28 @@ WebAssembly Component Modelからは、interface contractと実装言語を分�
 - SLSA Build Provenance: https://slsa.dev/spec/v1.2/build-provenance
 - Nix derivations: https://wiki.nixos.org/wiki/Derivations
 - WebAssembly Component Model: https://component-model.bytecodealliance.org/
+
+
+## 2026-10-06 E1 candidate — Build Plan / Build Lock
+
+E1の最初の候補実装として、`internal/plugin/build.go`へread-onlyなBuild Plan / Build Lock modelを追加しました。
+
+Build Planは、Plugin identity、descriptor fingerprint、Source closure、builder identity、build-only dependency、Target / profile、非secret parameterを保持します。Build dependencyは既存の`Definition.Requires`へ統合せず、Runtime / package dependencyと分離しました。
+
+Build Planのfingerprintは、Source、dependency、parameterの宣言順に依存しません。一方、Source digest / locator、builder、dependency、Target、parameterのいずれかが変わればfingerprintも変わります。Sourceやbuilderのdigestが未固定の場合、重複したSource / dependency / parameterがある場合はfail-closedで停止します。
+
+Build Lockは、Plugin / TargetごとにBuild Plan fingerprintと生成artifact digestを結び付けます。既存Plugin Lockを置き換えるものではありません。Build Lockは「どのbuild inputsから何が生成されたか」を固定し、Plugin Lockは「RuntimeでどのPlugin実装を使うか」を固定します。
+
+このincrementでは、次を意図的に実装していません。
+
+- `.tei`のBuild syntax
+- Workspace loader
+- build executor
+- Go固有builder adapter
+- Build Evidence / provenance artifact
+- Plugin Lockとのcross-check
+- stage0 / stage1 / stage2 runner
+
+そのため、E1全体が完了したとは扱いません。追加したunit testはfingerprintの順序不変性、入力変更によるfingerprint変更、未固定inputと重複inputの拒否、Build Lockのartifact bindingを対象としています。
+
+この実行環境ではRepositoryのfull checkoutを使った`go test`と`tools/repository-health-check.sh`を実行できません。コードはcandidateとしてDraft PRに置き、exact-headの検証Evidenceが得られるまでmainへ統合しません。
