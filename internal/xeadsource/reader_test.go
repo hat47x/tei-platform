@@ -105,6 +105,24 @@ func TestParseRecognizesCompositeTableKeyWithoutInventingBusinessIdentity(t *tes
 	}
 }
 
+func TestKnownConstructsCoverObservedReferenceInventory(t *testing.T) {
+	xead, err := Parse(FormatXead, []byte(`<System><Subsystem/><Department/><DataType/><Table><TableField/><TableKey><TableKeyField/></TableKey></Table><Relationship/><FunctionType/><Function><FunctionUsedByThis/><IOTable/><IOPanel/><IOSpool/></Function><Role/><Task><TaskAction><TaskFunctionIO/></TaskAction></Task><SubjectArea/><DataflowNode/><DataflowLine/><Instance/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(xead.UnknownNames) != 0 {
+		t.Fatalf("observed Xead constructs remain unknown: %#v", xead.UnknownNames)
+	}
+
+	xeaf, err := Parse(FormatXeaf, []byte(`<System><Subsystem/><Table><Key/><Script/></Table><Function><Field/><Column/><Button/><Filter/><Refer/><Detail/></Function><Menu/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(xeaf.UnknownNames) != 0 {
+		t.Fatalf("observed Xeaf constructs remain unknown: %#v", xeaf.UnknownNames)
+	}
+}
+
 func TestRejectsUnsupportedFormat(t *testing.T) {
 	if _, err := Parse(Format("other"), []byte("<System/>")); err == nil {
 		t.Fatal("expected unsupported format error")
