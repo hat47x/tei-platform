@@ -40,8 +40,9 @@ func buildPlanFixture() plugin.BuildPlan {
 		},
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.go"),
-			Version:        "go1.26",
-			ArtifactDigest: buildDigestA,
+			Version:         "go1.26",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  buildDigestA,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "go-package",
