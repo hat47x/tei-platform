@@ -62,6 +62,17 @@ type BuildRecipe struct {
 	Entrypoint string `json:"entrypoint"`
 }
 
+// BuildOutputKind distinguishes artifacts that have different authority and
+// consumption paths. The value is intentionally extensible; Runtime binding
+// explicitly accepts only BuildOutputRuntimeArtifact.
+type BuildOutputKind string
+
+const (
+	BuildOutputRuntimeArtifact BuildOutputKind = "runtime-artifact"
+	BuildOutputPluginPackage   BuildOutputKind = "plugin-package"
+	BuildOutputBuilderArtifact BuildOutputKind = "builder-artifact"
+)
+
 // BuildPlan fixes the resolved inputs for one Plugin artifact build. It does not
 // grant Acceptance or Runtime Authority and does not execute the build.
 type BuildPlan struct {
@@ -71,6 +82,7 @@ type BuildPlan struct {
 	Sources               []BuildSource     `json:"sources"`
 	Builder               BuilderIdentity   `json:"builder"`
 	Recipe                BuildRecipe       `json:"recipe"`
+	OutputKind            BuildOutputKind   `json:"outputKind"`
 	Dependencies          []BuildDependency `json:"dependencies,omitempty"`
 	Target                string            `json:"target"`
 	Profile               string            `json:"profile,omitempty"`
@@ -79,7 +91,8 @@ type BuildPlan struct {
 
 // LockedBuild binds one BuildPlan fingerprint to the artifact produced from it.
 type LockedBuild struct {
-	Plugin          Identity `json:"plugin"`
+	Plugin          Identity        `json:"plugin"`
+	OutputKind      BuildOutputKind `json:"outputKind"`
 	Target          string   `json:"target"`
 	Profile         string   `json:"profile,omitempty"`
 	PlanFingerprint string   `json:"planFingerprint"`
@@ -196,6 +209,9 @@ func (p BuildPlan) Validate() error {
 	if strings.TrimSpace(p.Recipe.Entrypoint) == "" {
 		return fmt.Errorf("build recipe entrypoint is required")
 	}
+	if strings.TrimSpace(string(p.OutputKind)) == "" {
+		return fmt.Errorf("build output kind is required")
+	}
 	dependencies := map[string]struct{}{}
 	for _, d := range p.Dependencies {
 		if strings.TrimSpace(d.Kind) == "" {
@@ -257,6 +273,9 @@ func NormalizeBuildArtifactLock(l BuildArtifactLock) BuildArtifactLock {
 		if out.Builds[i].Plugin.Version != out.Builds[j].Plugin.Version {
 			return out.Builds[i].Plugin.Version < out.Builds[j].Plugin.Version
 		}
+		if out.Builds[i].OutputKind != out.Builds[j].OutputKind {
+			return out.Builds[i].OutputKind < out.Builds[j].OutputKind
+		}
 		if out.Builds[i].Target != out.Builds[j].Target {
 			return out.Builds[i].Target < out.Builds[j].Target
 		}
@@ -280,6 +299,9 @@ func (l BuildArtifactLock) Validate() error {
 		if !core.ValidNumericVersion(b.Plugin.Version) {
 			return fmt.Errorf("locked build plugin version %q must be major.minor.patch", b.Plugin.Version)
 		}
+		if strings.TrimSpace(string(b.OutputKind)) == "" {
+			return fmt.Errorf("locked build output kind is required")
+		}
 		if strings.TrimSpace(b.Target) == "" {
 			return fmt.Errorf("locked build target is required")
 		}
@@ -289,7 +311,7 @@ func (l BuildArtifactLock) Validate() error {
 		if err := validateBuildDigest("locked build artifact digest", b.ArtifactDigest); err != nil {
 			return err
 		}
-		key := string(b.Plugin.ID) + "@" + b.Plugin.Version + "|" + b.Target + "|" + b.Profile
+		key := string(b.Plugin.ID) + "@" + b.Plugin.Version + "|" + string(b.OutputKind) + "|" + b.Target + "|" + b.Profile
 		if _, exists := seen[key]; exists {
 			return fmt.Errorf("locked build %s is declared more than once", key)
 		}
@@ -350,6 +372,7 @@ func LockBuildOutput(plan BuildPlan, artifactDigest string) (LockedBuild, error)
 	}
 	return LockedBuild{
 		Plugin:          plan.Plugin,
+		OutputKind:      plan.OutputKind,
 		Target:          plan.Target,
 		Profile:         plan.Profile,
 		PlanFingerprint: planFingerprint,
@@ -383,6 +406,12 @@ func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, definition Defi
 			"build plan plugin %s@%s does not match runtime plugin %s@%s",
 			plan.Plugin.ID, plan.Plugin.Version, runtime.ID, runtime.Version,
 		)
+	}
+	if plan.OutputKind != BuildOutputRuntimeArtifact {
+		return fmt.Errorf("runtime plugin verification requires %s output, got %s", BuildOutputRuntimeArtifact, plan.OutputKind)
+	}
+	if build.OutputKind != plan.OutputKind {
+		return fmt.Errorf("locked build output kind %s does not match build plan %s", build.OutputKind, plan.OutputKind)
 	}
 	if build.Plugin != plan.Plugin {
 		return fmt.Errorf(
