@@ -3,7 +3,7 @@
 - 状態: Active
 - 起票日: 2026-10-06
 - GitHub Issue: #943
-- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / ADR-0022 / ADR-0028
+- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / GitHub #957 / ADR-0022 / ADR-0028
 
 ## 背景
 
@@ -151,7 +151,11 @@ Build PlanはPlugin descriptor fingerprintだけでなく、Source closure、bui
 
 ### E3 — TEI-native Reference
 
-標準Pluginを一つ選び、TEI sourceからpackage / implementation artifactをmaterializeします。どこまでをTEI-native implementationと呼べるかをEvidenceで明示します。
+TEI-native implementation SourceとBuiltin realizationの不足はGitHub #957で扱います。
+
+現行の`runtime builtin`は、Plugin descriptorから実装を生成する方式ではなく、Hostが`runtime.Registry.Builtins`へGo implementationを登録する方式です。したがって、SB-1 package materializeだけではTEI-native implementation self-buildは成立しません。
+
+#957では既存`runtime.Builtin` ABIを維持したまま、TEI-native implementation Source → realization → provider registrationを最小Referenceで実証します。Semantic ValidationはAccepted meaningを評価する別Authorityなので、Plugin implementation Sourceへ転用しません。
 
 ### E4 — Bootstrap convergence
 
@@ -198,3 +202,173 @@ WebAssembly Component Modelからは、interface contractと実装言語を分�
 - SLSA Build Provenance: https://slsa.dev/spec/v1.2/build-provenance
 - Nix derivations: https://wiki.nixos.org/wiki/Derivations
 - WebAssembly Component Model: https://component-model.bytecodealliance.org/
+
+
+## 2026-10-06 E1 candidate — Build Plan / Build Lock
+
+E1の最初の候補実装として、`internal/plugin/build.go`へread-onlyなBuild Plan / Build Lock modelを追加しました。
+
+Build Planは、Plugin identity、descriptor fingerprint、Source closure、builder identity、build-only dependency、Target / profile、非secret parameterを保持します。Build dependencyは既存の`Definition.Requires`へ統合せず、Runtime / package dependencyと分離しました。
+
+Build Planのfingerprintは、Source、dependency、parameterの宣言順に依存しません。一方、Source digest / locator、builder、dependency、Target、parameterのいずれかが変わればfingerprintも変わります。Sourceやbuilderのdigestが未固定の場合、重複したSource / dependency / parameterがある場合はfail-closedで停止します。
+
+Build Lockは、Plugin / TargetごとにBuild Plan fingerprintと生成artifact digestを結び付けます。既存Plugin Lockを置き換えるものではありません。Build Lockは「どのbuild inputsから何が生成されたか」を固定し、Plugin Lockは「RuntimeでどのPlugin実装を使うか」を固定します。
+
+このincrementでは、次を意図的に実装していません。
+
+- `.tei`のBuild syntax
+- Workspace loader
+- build executor
+- Go固有builder adapter
+- Build Evidence / provenance artifact
+- Plugin Lockとのcross-check
+- stage0 / stage1 / stage2 runner
+
+そのため、E1全体が完了したとは扱いません。追加したunit testはfingerprintの順序不変性、入力変更によるfingerprint変更、未固定inputと重複inputの拒否、Build Lockのartifact bindingを対象としています。
+
+この実行環境ではRepositoryのfull checkoutを使った`go test`と`tools/repository-health-check.sh`を実行できません。コードはcandidateとしてDraft PRに置き、exact-headの検証Evidenceが得られるまでmainへ統合しません。
+
+
+## 2026-10-06 E1再監査とE2候補
+
+E1候補を実Referenceへ接続する過程で、二つの境界を修正しました。
+
+第一に、既存packageにはRuntime Plugin Lockを生成する`BuildLock(...)`関数があるため、候補modelの`BuildLock`型はGo上で名前が衝突します。候補modelは`BuildArtifactLock`へ改名し、Runtime Plugin Lockとの役割差も型名で明示しました。
+
+第二に、既存`DefinitionFingerprint`は`artifact.digest`を含みます。このfingerprintをBuild Planへそのまま使うと、生成後に決まるartifact digestを生成前に要求する循環が生じます。このため、Build Planではartifact identityを除いた`BuildDefinitionFingerprint`を使います。Build後は`RealizeBuiltDefinition`でSource Definitionを変更せずderived Runtime Definitionへartifact digestを結び付け、従来の`DefinitionFingerprint`とPlugin Lockへ渡します。
+
+これにより、次の経路を候補実装で表せるようになりました。
+
+```text
+artifact-free Source Definition
+  -> BuildDefinitionFingerprint
+  -> Build Plan
+  -> produced artifact
+  -> BuildArtifactLock
+  -> derived Runtime Definition
+  -> existing Runtime Plugin Lock
+```
+
+`VerifyRuntimePluginBuild`は、Plugin identity、build definition fingerprint、Build Plan fingerprint、Target / profile、Runtime descriptor fingerprint、artifact digestを照合します。Build側の記録だけでRuntime Authorityを得ることはありません。
+
+また、`BuildDependency`のidentityをTEIの`CanonicalID`に限定する案を撤回しました。外部module、package、SDK等をTEI固有IDへ変換せず記録できるよう、kind / string identity / version / artifact digestの組にしています。Plugin runtime dependencyとは引き続き別です。
+
+### E2 Reference source
+
+既存`tools/reference-process-plugin/main.go`には実process実装がある一方、通常Reference Workspaceには対応するartifact-freeなSource Plugin Definitionがありませんでした。mainの通常Reference Worldを変更せず、`reference/plugin-self-build/workspace`を独立Referenceとして追加しました。
+
+このWorkspaceでは`tei.process.reference@1.0.0`をprocess Pluginとして宣言し、artifact digestはSourceへ記述しません。実装Sourceは既存`tools/reference-process-plugin/main.go`を再利用し、Reference配下へ複製しません。
+
+### E2 runner candidate
+
+`tools/reference-plugin-self-build`を候補実装として追加しました。trustedなclean checkoutで実行した場合、次を一続きに検証する構成です。
+
+1. tracked source全体をSHA-256の保守的なSource closureとして固定する。
+2. Source Plugin DefinitionをWorkspace loaderで読む。
+3. 実際に使用するGo toolchain closureをfingerprintする。
+4. 対象packageが外部Go moduleへ依存していないことを確認する。
+5. network取得を禁止し、`GOWORK=off`、`GOENV=off`、`GOTOOLCHAIN=local`、`CGO_ENABLED=0`等を固定する。
+6. 別々のbuild cacheで同じPluginを2回buildする。
+7. 二つのartifact digestが一致しなければ失敗する。
+8. BuildArtifactLockを作る。
+9. Source Definitionからderived Runtime Definitionを作る。
+10. 既存Plugin Lockを生成し、Build Plan / artifact / Runtime Lockを相互照合する。
+11. build後もRepositoryがcleanであることを確認する。
+
+初期Referenceでは、Source closureまたはGo toolchain closureにsymlinkがある場合は推測して追跡せず停止します。
+
+Source closureは現時点ではRepository全体です。これは過剰包含ですが入力の取りこぼしを避けるための意図的な初期条件です。E2 Evidence成立後に、必要であれば`go list`等から正確なbuild dependency closureへ狭めます。
+
+このrunnerはまだexact-headで実行していません。したがってactual artifact digest、reproducibility成立、SB-2達成は未主張です。Draft PR #949の検証Gateを維持します。
+
+
+## 2026-10-06 Build recipe・出力種別・SB-1 package self-build
+
+E1の静的監査を続けた結果、Build Planにはbuild対象そのものを表す情報が不足していました。Source、builder、Targetが同じでも、別のentrypointをbuildすれば結果は変わります。runner内の定数だけに依存すると、その差をBuild Planから説明できません。
+
+このため、Build Planに`BuildRecipe`を追加しました。初期形は`kind`と`entrypoint`だけを持ちます。任意のshell commandはCanonicalなBuild contractへ入れません。Go Referenceでは`go-package`と`./tools/reference-process-plugin`を記録します。将来、TEI-native builderや別言語のbuilderを使う場合も、builder adapterがrecipeを解釈する構造を維持します。
+
+また、Buildの生成物を一種類として扱うと、SB-1で作ったPlugin packageをRuntime artifactとして誤ってPlugin Lockへ接続できます。そこで`BuildOutputKind`を追加し、少なくとも次を区別します。
+
+- `plugin-package`
+- `runtime-artifact`
+- `builder-artifact`
+
+値自体は拡張可能とし、Runtimeとの照合だけが`runtime-artifact`を要求します。BuildArtifactLockの一意性にもoutput kindを含めるため、同じPlugin / TargetについてpackageとRuntime artifactを別々に記録できます。
+
+Build Definitionのfingerprint計算では、正規化前にdeep cloneするようにしました。fingerprintを計算しただけでauthoritative Sourceのslice順が変わらないことをtestで固定しています。
+
+### SB-1 package materializer
+
+`internal/plugin/package.go`に、最初のSB-1 package profileを追加しました。artifact-freeなPlugin Definitionと`plugin-package`向けBuild Planから、正規化済みDefinitionを含む決定論的なJSON packageを生成します。
+
+packageにはBuild Plan fingerprintとBuild Definition fingerprintを含めます。同じ意味のDefinitionでCapability内の宣言順だけが違う場合は、同じpackage bytesとdigestになります。一方、Build Planのprofile等が変わればpackage bytesも変わります。
+
+この初期profileではRuntime artifactを含むSource Definitionを受け付けません。SB-1のpackage outputとSB-2のRuntime outputを別経路に保つためです。
+
+通常のReference Workspaceにある`tei.runtime.reference@1.0.0`を使い、実descriptorからSB-1 packageをmaterializeするReference testも追加しました。これは標準Pluginのpackage self-build候補であり、Capability実装そのものをTEIで生成できたという主張ではありません。
+
+### runnerへのSB-1統合
+
+`tools/reference-plugin-self-build`は、process PluginのSB-2候補だけでなく、標準`tei.runtime.reference`のSB-1 packageも同じEvidenceに含めるよう更新しました。
+
+runnerがactualに成功した場合、少なくとも次の二つを別のBuild Plan / BuildArtifactLockとして確認できます。
+
+```text
+tei.runtime.reference
+  -> plugin-package
+
+tei.process.reference
+  -> runtime-artifact
+```
+
+前者はSB-1、後者はForeign-language ReferenceとしてのSB-2候補です。両者を同じ「self-build済み」という一語へまとめません。
+
+actual executionは引き続き#956で確認します。SB-1 packageのmaterializerとReference testを追加したことだけでは、Repository Healthやactual Evidenceの成立は主張しません。
+
+
+### Builder contract versionとGo実行環境の固定
+
+builderの実体versionと、TEIがそのbuilderへ渡すBuild contractのversionは別の事実です。同じGo toolchainを使っていても、Build Planの解釈規則が変われば同じbuildとは扱えません。
+
+そのため、`BuilderIdentity`に`contractVersion`を追加しました。現在のReferenceは`tei.plugin-build/v1`を使います。toolchain version、builder artifact digest、contract versionのいずれかが変わればBuild Plan fingerprintも変わります。
+
+Go Reference runnerでは、既存の利用者環境を暗黙に参照しないよう、`GOCACHE`、`GOMODCACHE`、`GOPATH`を一時領域へ分離します。依存確認と二回のbuildは、それぞれ隔離したstateを使います。
+
+さらに、`go list`にも`-mod=readonly`を指定し、`GOPROXY=off`に加えて`GOSUMDB=off`、`GOVCS=*:off`を固定しました。外部moduleやVCSを暗黙に取得して成功したように見せないためです。
+
+SB-1 packageも同じBuild Planから二回materializeし、package digestが一致する場合だけEvidenceを成立させます。これにより、SB-1とSB-2の双方で「同じ入力から同じ出力」を直接確認します。
+
+
+### 既存Plugin Validationの再利用
+
+SB-1/SB-2 runnerは、Workspaceを読み込めたことだけではbuildへ進みません。通常Referenceとself-build専用Referenceの双方について、既存の`internal/validation.Validate`を実行し、Error diagnosticが一つでもあれば停止します。
+
+Build層へPlugin Validation規則を複製しないためです。Runtime kind、Capability kind、Action、Permission、Artifact、Environment binding等の検証は既存のValidationを正本とし、Build Planとpackage materializerはbuild固有のidentity・reproducibility・authority境界だけを受け持ちます。
+
+
+### Runtime Plugin LockからBuild Planへの逆追跡
+
+E1の再監査で、artifact digestだけではRuntime Lockからexact Build Planへ一意に戻れないことが分かりました。
+
+異なるBuild Planが同じbytesを生成する場合や、複数のlogical Pluginを一つのphysical artifactへまとめるTarget最適化では、artifact digestだけを逆引きkeyにできません。
+
+このため、既存format 2 Runtime Plugin Lockは互換性のため維持し、self-buildされたRuntime implementationを明示的に採用するときだけ`buildPlanFingerprint`をPlugin entryへbindしてformat 3へ昇格する候補実装を追加しました。
+
+```text
+Build Plan
+  -> plan fingerprint
+  -> BuildArtifactLock
+       + artifact digest
+  -> Runtime Plugin Lock v3
+       + buildPlanFingerprint
+       + artifactDigest
+  -> EnvironmentLockFingerprint
+  -> Runtime / Durable Invocation
+```
+
+Runtime Plugin LockへSource closureやbuilderの詳細を複製しません。exact Build Planへの参照だけを保持します。
+
+format 2は引き続き読み取り可能です。format 3では`buildPlanFingerprint`が存在する場合、その値が64桁hexでなければ拒否します。package outputをRuntime Lockへbindすること、artifact digestが一致しないbuildをbindすること、既に別Build Planへbind済みのentryを書き換えることもfail-closedにします。
+
+これにより、Plugin Lock fingerprint自体がBuild Plan bindingを含むため、Durable Invocationが保持するPlugin Lock fingerprintからself-build provenanceへ戻れる経路を維持できます。

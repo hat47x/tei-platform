@@ -65,3 +65,198 @@ func TestEnvironmentLockFingerprintIgnoresPluginOrdering(t *testing.T) {
 		t.Fatalf("ordering changed environment lock fingerprint: %s != %s", a, b)
 	}
 }
+
+
+func TestLegacyFormat2PluginLockRemainsReadable(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.legacy"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("legacy"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	legacy := plugin.Lock{
+		FormatVersion: 2,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:          def.ID,
+				Version:     def.Version,
+				Fingerprint: plugin.DefinitionFingerprint(def),
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(legacy, env.ID); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resolved.Plugins) != 1 || resolved.Plugins[0].ID != def.ID {
+		t.Fatalf("resolved legacy lock: %#v", resolved.Plugins)
+	}
+}
+
+func TestBuildTraceFormat3PluginLockIsReadable(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.traced"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "traced"},
+		Artifact: plugin.Artifact{
+			Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("traced"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: plugin.BuildTraceLockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				ArtifactDigest:       def.Artifact.Digest,
+				BuildPlanFingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUnsupportedPluginLockFormatFails(t *testing.T) {
+	lock := plugin.Lock{FormatVersion: 99}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, core.MustCanonicalID("x")); err == nil {
+		t.Fatal("expected unsupported lock format to fail")
+	}
+	env := environment.Environment{ID: core.MustCanonicalID("x")}
+	if _, err := (plugin.Catalog{}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected unsupported lock format to fail")
+	}
+}
+
+
+func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.invalid-trace"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "invalid-trace"},
+		Artifact: plugin.Artifact{
+			Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("invalid-trace"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: plugin.BuildTraceLockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				ArtifactDigest:       def.Artifact.Digest,
+				BuildPlanFingerprint: "not-a-fingerprint",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err == nil {
+		t.Fatal("expected invalid build plan fingerprint to fail")
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected invalid build plan fingerprint to fail")
+	}
+}
+
+
+func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.legacy-trace"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "legacy-trace"},
+		Artifact: plugin.Artifact{
+			Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("legacy-trace"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: 2,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				ArtifactDigest:       def.Artifact.Digest,
+				BuildPlanFingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err == nil {
+		t.Fatal("expected format 2 build trace field to fail")
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected format 2 build trace field to fail")
+	}
+}
+
+
+func TestBuildTraceFormat3RequiresArtifactDigest(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.trace-without-artifact"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("trace-without-artifact"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: plugin.BuildTraceLockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				BuildPlanFingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err == nil {
+		t.Fatal("expected build trace without artifact digest to fail")
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected build trace without artifact digest to fail")
+	}
+}

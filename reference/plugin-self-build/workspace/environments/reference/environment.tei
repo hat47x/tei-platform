@@ -1,0 +1,4 @@
+environment reference {
+    plugin tei.process.reference ^1
+    deployment-executor database-release -> process.reference
+}

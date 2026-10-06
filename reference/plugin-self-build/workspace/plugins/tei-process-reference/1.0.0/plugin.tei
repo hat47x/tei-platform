@@ -1,0 +1,7 @@
+plugin tei.process.reference v1.0.0 {
+    runtime process "tei-process-reference" args "--tei-reference-marker=argv value preserved" sandbox none
+
+    provides deployment-executor process.reference {
+        action database-release
+    }
+}
