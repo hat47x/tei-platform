@@ -277,6 +277,7 @@ TEIは、Data、Function / Interaction、Business Procedureを同じ業務シス
 - Business Procedureが参照するView / Application Pattern / Action / Capabilityの存在とtraceability
 - View / Actionが利用・変更するData / Relation / Validationとの整合
 - read-only / ownership / subsystem等の境界を越える操作
+- Data ownershipとFunction / InteractionのCRUDを重ねたときのSubsystemの凝集・結合上の違和感
 - Data / Relation変更によるView / Procedureへの影響
 - ApplicationのBusiness Resultと、外部世界で観測される業務完了の混同
 
