@@ -84,13 +84,16 @@ func supportedLockFormatVersion(version int) bool {
 
 
 func validateLockBuildTrace(lock Lock) error {
-	if lock.FormatVersion != BuildTraceLockFormatVersion {
-		return nil
-	}
 	for _, environmentLock := range lock.Environments {
 		for _, locked := range environmentLock.Plugins {
 			if locked.BuildPlanFingerprint == "" {
 				continue
+			}
+			if lock.FormatVersion != BuildTraceLockFormatVersion {
+				return fmt.Errorf(
+					"plugin lock format %d cannot contain build plan fingerprint for %s@%s",
+					lock.FormatVersion, locked.ID, locked.Version,
+				)
 			}
 			if err := validateHexFingerprint(
 				"plugin lock build plan fingerprint for "+string(locked.ID)+"@"+locked.Version,
