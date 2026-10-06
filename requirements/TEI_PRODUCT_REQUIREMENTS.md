@@ -132,6 +132,8 @@ browse、record、reference、header-detail、command等、業務システムで
 
 標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。
 
+Application Pattern、View、Target、ORM等の実装都合から、Dataのbusiness identifierやkey構造を逆算してはいけません。特定のRealizationがsurrogate keyや単独keyを必要とする場合も、acceptedなcandidate key、uniqueness、Relation meaningを失わせず、Realization差として追跡できる必要があります。
+
 ## RQ-015 生成AIが既存知識から継続的にApplicationを構築・変更できること
 
 生成AI向けの開発支援では、次の順序を基本とします。
@@ -148,6 +150,10 @@ browse、record、reference、header-detail、command等、業務システムで
 毎回ゼロからRepositoryとコードを読み直してApplicationの意味を再構成したり、毎回ゼロからコードを生成したりすることを標準経路にはしません。
 
 生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
+
+Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
+
+生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
 
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
