@@ -51,3 +51,14 @@ SB-1 packageも同じBuild Planから二回materializeし、二つのSHA-256 dig
 runnerは、通常Referenceとself-build専用Referenceの双方を既存の`internal/validation.Validate`へ通します。Error diagnosticが残るWorkspaceではpackage materializeやruntime artifact buildへ進みません。
 
 Pluginの妥当性規則をself-build側へ複製せず、既存Validationをそのまま正本として使います。
+
+
+## Runtime Plugin Lockのbuild trace
+
+process Pluginのruntime artifactをBuildArtifactLockへ固定した後、既存Runtime Plugin Lockへexact Build Plan fingerprintをbindします。
+
+既存のformat 2 lockは読み取り互換を維持します。self-buildされたRuntime implementationを採用するEnvironmentでは、lockをbuild-trace対応のformat 3へ昇格します。
+
+format 3のPlugin entryは`artifactDigest`に加えて`buildPlanFingerprint`を保持します。Source closureやbuilderの詳細はRuntime Lockへ複製せず、Build Planへの参照だけを残します。
+
+runnerはformat 3への昇格、Plugin entryのBuild Plan fingerprint一致、Environment Lock fingerprintの生成まで確認します。
