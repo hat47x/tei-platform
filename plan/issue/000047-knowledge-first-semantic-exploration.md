@@ -295,6 +295,41 @@ AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、�
 
 過去trajectoryが「以前これを使った」と示しても、current accepted authority / Evidenceの下で現在も有効とは限りません。current Source / Evidenceへ戻って再確認します。
 
+### Data設計Knowledgeを生成AIへ渡す
+
+Data / Relationの新規設計や変更では、AIへ単なるtable一覧やfield一覧だけを渡しません。業務上の識別と関数従属性を検討するために必要なcurrent contextを、Source / Evidenceへ戻れるread-only Projectionとして選択的に渡します。
+
+初期のProjectionでは、対象Dataに応じて少なくとも次を候補にします。
+
+```text
+Data Design Context
+  subject / scope
+  business occurrence identifier
+  candidate key
+  determinant -> dependent
+  Relation topology / cardinality
+  temporal / history condition
+  Constraint
+  Source / provenance / Evidence
+  nature: accepted / candidate / unresolved
+```
+
+これは新しいData Modelの第二正本ではありません。現在のCanonical World、Source Index、accepted Decision、Reference pattern等から再構成できるderived contextとします。削除・再生成してもaccepted meaningは変わりません。
+
+現在のTEIで関数従属性をfirst-classにauthorしていない範囲では、AIに「従属性なし」とは伝えません。Sourceやaccepted meaningから確定できない場合は`unresolved`とし、項目名、画面配置、一般的なCRUD schema、過去の類似例だけから関数従属性を確定しません。
+
+同様に、AIが全tableへUUIDや単独`id`を付けた案を生成しても、そのkeyを業務上の識別条件とみなしません。surrogate keyを実装候補として残す場合でも、元のbusiness identifier、candidate key、Relation topologyとの対応を保持します。
+
+Reference pressureでは少なくとも次を比較します。
+
+- 親occurrenceの内部で繰り返される明細について、親の識別子とlocalな行番等による業務上の識別をcontextから追えるcase
+- 独立したrecordが別recordを変更可能に参照するcase
+- 独立した二つの識別対象の組合せ自体に意味があるcase
+- Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
+- physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
+
+このProjectionをprompt専用の文章へ固定しません。CLI、Studio、AIはいずれも同じmachine-readable contextへ戻れることを優先します。actual implementationは、現在のknowledge-context実装laneである`work/issue-000040-second-application-reference`へhandoffし、別branchを増やしません。
+
 ### experienceからのlocal learning
 
 将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
