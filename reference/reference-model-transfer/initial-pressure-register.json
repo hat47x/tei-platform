@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-initial-pressure-register",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "status": "initial",
+  "pressures": [
+    {
+      "id": "RMP-001",
+      "topic": "identity-vs-order",
+      "observed": "SortKey participates in presentation/order and import matching",
+      "risk": "ordering or import changes can be mistaken for semantic identity changes",
+      "teiDirection": "separate legacy external key/provenance from canonical identity"
+    },
+    {
+      "id": "RMP-002",
+      "topic": "design-vs-runtime-function",
+      "observed": "basic-design Function set and executable Function set are not one-to-one",
+      "risk": "helper/runtime functions can be promoted to business meaning or design-only functions can disappear",
+      "teiDirection": "separate Function/Interaction meaning from Realization"
+    },
+    {
+      "id": "RMP-003",
+      "topic": "relationship-field-mapping",
+      "observed": "legacy tooling contains relationship field matching paths based on shape/data type",
+      "risk": "same-typed fields can produce ambiguous or incorrect mapping",
+      "teiDirection": "require explicit field mapping or keep unresolved"
+    },
+    {
+      "id": "RMP-004",
+      "topic": "declared-vs-native-effects",
+      "observed": "declared Function/Table CRUD coexists with Script APIs capable of SQL/Table operations",
+      "risk": "actual effects can exceed declared CRUD",
+      "teiDirection": "cross-check declared effect with native effect; do not silently claim completeness"
+    },
+    {
+      "id": "RMP-005",
+      "topic": "transaction-context",
+      "observed": "commit/rollback behavior can depend on caller context, return code, or session lifecycle",
+      "risk": "target/agent changes can change transaction semantics",
+      "teiDirection": "make command transaction/effect boundary explicit"
+    },
+    {
+      "id": "RMP-006",
+      "topic": "environment-and-secret-mixing",
+      "observed": "runtime specification contains database endpoint/user/password/path settings",
+      "risk": "business meaning can become coupled to credentials and environment authority",
+      "teiDirection": "separate canonical meaning, environment binding, secret, and runtime authority"
+    },
+    {
+      "id": "RMP-007",
+      "topic": "hidden-script-session-dependency",
+      "observed": "login/shared scripts and session attributes can affect function behavior",
+      "risk": "individual function source is insufficient for replay",
+      "teiDirection": "record explicit dependency/provenance or preserve as native code with required capabilities"
+    },
+    {
+      "id": "RMP-008",
+      "topic": "business-actor-vs-authorization",
+      "observed": "business Role/Task and runtime user/menu controls are separate concerns",
+      "risk": "business actor can be mistaken for principal or authorization role",
+      "teiDirection": "keep actor, principal, policy, and resource authority separate"
+    },
+    {
+      "id": "RMP-009",
+      "topic": "non-database-business-state",
+      "observed": "business-flow stores include ledger/store/folder/subject concepts beyond database tables",
+      "risk": "physical/document/human state can be collapsed into Data",
+      "teiDirection": "preserve external/physical/human boundary or keep unresolved"
+    },
+    {
+      "id": "RMP-010",
+      "topic": "instance-sequence-ambiguity",
+      "observed": "Instance/SortKey can represent temporal change or presentation sequence depending on context",
+      "risk": "presentation order can be translated as lifecycle semantics",
+      "teiDirection": "separate Dataset, Snapshot, Scenario, Expectation, Presentation Order"
+    },
+    {
+      "id": "RMP-011",
+      "topic": "external-definition-sync",
+      "observed": "legacy external table reference/sync relies on file path and identifier conventions",
+      "risk": "copy/sync can become a second source of truth and relation authority can drift",
+      "teiDirection": "reuse semantic identity/version/provenance rather than copied authority"
+    },
+    {
+      "id": "RMP-012",
+      "topic": "prose-hidden-semantics",
+      "observed": "field/function descriptions can carry validation, derived logic, or technical notes",
+      "risk": "AI extraction can be mistaken for accepted specification",
+      "teiDirection": "treat extraction as proposal/unresolved until accepted"
+    },
+    {
+      "id": "RMP-013",
+      "topic": "driver-function-type-coupling",
+      "observed": "XF function classes combine interaction shape and concrete Driver implementation",
+      "risk": "legacy Java/UI taxonomy can leak into core semantics",
+      "teiDirection": "separate reusable pattern/interaction meaning from target realization"
+    },
+    {
+      "id": "RMP-014",
+      "topic": "dynamic-call-contract",
+      "observed": "parameter/return/session maps use dynamic keys",
+      "risk": "call contract remains in caller convention and cannot be safely reused",
+      "teiDirection": "promote stable meaning to typed input/result contracts; preserve dynamic remainder as native"
+    },
+    {
+      "id": "RMP-015",
+      "topic": "visual-vs-semantic-coupling",
+      "observed": "panel/report layout metadata lives close to function definition",
+      "risk": "visual changes can be mistaken for semantic changes",
+      "teiDirection": "keep semantic, functional, and visual evidence separate"
+    },
+    {
+      "id": "RMP-016",
+      "topic": "distributed-execution-gap",
+      "observed": "single-driver operation does not require all retry/unknown/idempotency semantics to be explicit",
+      "risk": "network/agent/distributed execution can duplicate effects or report false success",
+      "teiDirection": "route execution through RQ-018 to RQ-020 command/observation/retry/unknown boundaries"
+    }
+  ]
+}
