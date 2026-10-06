@@ -48,7 +48,7 @@ type Document struct {
 
 var known = map[Format]map[string]struct{}{
 	FormatXead: set(
-		"System", "Subsystem", "Table", "TableField", "Relationship",
+		"System", "Subsystem", "Table", "TableField", "TableKey", "TableKeyField", "Relationship",
 		"FunctionType", "Function", "IOTable", "IOPanel", "IOSpool",
 		"Role", "Task", "TaskAction", "TaskFunctionIO", "SubjectArea",
 		"DataflowNode", "DataflowLine", "Instance",
