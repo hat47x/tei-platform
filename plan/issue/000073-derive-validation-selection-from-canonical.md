@@ -1,6 +1,6 @@
 # ISSUE-000073: Applicationが評価するValidationの選択を、Target側の一覧ではなくCanonicalな宣言から導く
 
-- 状態: In Progress — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
+- 状態: Done（2026-10-06。全完了条件を充足） — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
@@ -82,11 +82,23 @@ Web Target      Application.Validations から評価対象を得る
 - [x] 既存Applicationへ`uses validation`を加えるShared Acceptance operationを追加する（`add-application-validation-use`）
 - [x] Previewのunresolved codeの改名に合わせ、`boundary_test.go`、`analysis_test.go`、`tools/reference-shared-acceptance/README.md`を更新する（`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`）
 - [x] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す（Resolverは重複をerror、operationは`APPLICATION_VALIDATION_USE_ALREADY_EXISTS`で拒否する。candidateの順序はfingerprintに入る）
-- [ ] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する
-- [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
-- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
+- [x] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する（2026-10-06、ownerが「今は後継Handoverを発行しない」を承認。下記「判断」）
+- [x] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める（2026-10-06、ownerが「独立した参照とする」を承認。下記「判断」）
+- [x] `tools/repository-health-check.sh`のfull PASSを記録する（下記。統合するexact headでの再取得は、コード変更を含む統合のときに行う。この統合は文書のみ）
 - [x] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する（2026-10-06）
 
+## 判断 — Gate Cの後継Handover（2026-10-06、ownerが承認）
+
+背景: Gate C architecture conformanceは`R`→`T`間で`reference/workspace/**`と`reference/world.json`が不変であることを確かめた。今回の受理でcurrent `main`のworkspaceは`R`から変わった。
+
+判断案: **今は後継Handoverを発行しない。**
+
+- Gate C Readyは`B / R / T`にbindingされたrevision-scopedな主張であり、current `main`へcarry-forwardしない。workspaceが後で変わっても、その主張は書き換わらない（S5独立レビュー結果の「Gate B/C historical-scope judgment」と同じ扱い）
+- Handover Contractが後継Handoverを求めるのは、Target実装中にbaseline meaningの変更が必要になった場合である。今回の変更はGate C通過後のReference進化で、第一Web Target `T`の要請ではない
+- 後継Handoverは、current workspaceに対する新しいTarget claim（Gate Cの再取得、第二Target、current `main`でのFirst Web Target Evidence）が必要になった時点で、そのclaimのためにだけ発行する
+- architecture conformance toolが現在の`main`で失敗しても、それはhistorical claimの否定ではない。tool出力を読む人が誤解しないよう、toolが比較している`R`/`T`を記録とともに示す
+
+非主張: Gate Cをcurrent `main`で再確認したことは主張しない。
 ## 受理の記録（2026-10-06）
 
 `order_entry`への宣言は、[ISSUE-000040](000040-semantic-component-composition.md)と同じく、Shared Acceptance Boundaryを通して受理した。
@@ -120,3 +132,29 @@ ownerに示したのはReview Projectionの要点と全文へのリンクであ�
 - 業務Lifecycle（ISSUE-000038）の遷移条件の設計を、このIssueでは決めません。
 - Gate B / Gate Cの判定は、それぞれのexact revisionのEvidenceとして変えません。このIssueの変更後のworkspaceを、旧baselineと同じものとして読み替えません。
 - 宣言からの導出は、Validationを「どの順で」「どのtransaction境界で」評価するかまでは決めません。
+
+## 判断 — BP-05のValidation参照とApplication宣言の関係（2026-10-06、ownerが承認）
+
+事実: BP-05（`validation-support`）は`sales.order_line.quantity_positive`と`sales.order.lines.line_number_unique`を保持する。Business Procedure checkerは、この参照が正本のsemantic namespaceに存在するかを既に検査する（`tools/reference-business-procedure-check/main.go`）。`order_entry`のApplicationも同じ2件を`uses validation`で宣言した（評価順 = 宣言順、ADR-0029）。
+
+判断案: **独立した参照とし、BP-05とApplicationの宣言の一致は検査しない。** 存在確認は現状のまま。
+
+- BP-05は「どの業務上の制約が満たされると言えるか」というBusiness側の意味で、ApplicationがCommand前に何を評価するかという実行側の選択とは別の関心である。Business Procedureをアプリ文脈から独立に保つ方針（RQ-025）に合う
+- 一致を検査すると、Business sourceがApplicationの宣言に依存し、Applicationを持たない業務（second corpus）や複数Applicationにまたがる手順で成り立たなくなる
+- 食い違い自体は有用な情報になり得る。必要になれば、検査ではなくcross-view projectionの派生診断（「BP-05が挙げるがApplicationは評価しない」）として出す。これは正本を増やさない
+
+非主張: 現状の2件が一致していることは、一致が保証されることを意味しない。
+
+## health checkの記録（2026-10-06）
+
+WSL2のネイティブ領域のclean cloneで、Go 1.25.14により`tools/repository-health-check.sh`をfull実行した。対象は判断案を加えたコミット`e506486f`（base = 当時の`origin/main`）。
+
+```text
+gofmt -l .                                 PASS
+go vet ./...                               PASS
+go test -count=1 ./...                     PASS
+tei validate -workspace reference/workspace PASS
+exit = 0
+```
+
+その後`origin/main`の53コミットを通常mergeで取り込んだ。取り込み側と本Issueに差分の競合は無く、本変更は文書のみである。取り込み後のheadでのhealth再実行は行っていない。

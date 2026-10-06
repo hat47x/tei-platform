@@ -64,7 +64,9 @@ Repository:
 
 installer同梱の`XeadFileFormat.pdf`、`XeafFileFormat.pdf`およびHTML manualも補助sourceとする。
 
-Reference Model本体にはGitHub source codeとは別の利用条件・著作権表示がある。再配布や大量転載を前提にせず、初期段階ではfingerprint、集計値、TEI側の独自mapping / fixture、loss / unresolved EvidenceだけをRepositoryへ残す。公開Repositoryへモデル内容を取り込む必要が生じた場合は、先に利用条件を確認する。
+Reference Model本体にはGitHub source codeとは別の利用条件・著作権表示がある。2026-10-06の公開情報調査では、CONCEPTWAREが公開され、利用・カスタマイズされてきたことは確認できたが、元のmodel / manualを第三者のpublic Repositoryで再配布できることを明示したlicenseまでは確認できなかった。
+
+そのため、[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)をRMT-0の正本として、原model / manualはRepository外sourceのまま扱う。public Repositoryにはfingerprint、集計値、最小限のsource locator、TEI独自のmapping / fixture、loss / unresolved Evidenceを残し、原modelの内容を実質的に再現するartifactは入れない。公開境界は、対象artifactへ適用される明示licenseまたは権利者確認が得られた場合に更新する。
 
 ## 4. 最初のsource inventory
 
@@ -119,8 +121,10 @@ unsupportedをゼロにするためにCoreへ概念を足すのではなく、�
 
 - exact source revisionとartifact fingerprintを固定する
 - Xead / Xeaf formatと実装上の解釈を照合する
-- 公開可能なEvidenceとRepository外に留めるsourceを分ける
-- model contentの再配布可否を未確認のままpublic fixtureへコピーしない
+- [CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従い、公開可能なEvidenceとRepository外に留めるsourceを分ける
+- 「公開・無償利用・カスタマイズ可能」という利用意図を、原modelの再配布許諾へ読み替えない
+- model contentの再配布可否を確認できない間は、原model / manual / raw excerpt / 直接変換したfixtureをpublic Repositoryへコピーしない
+- RMT-1〜3はRepository外sourceを読み、public Evidence側にはdigest / locator / aggregate / TEI独自判断を残して継続する
 
 ### RMT-1 — Complete structural accounting
 
@@ -273,7 +277,7 @@ execution-evidence/
 
 各artifactには、少なくともsource artifact digest、transcriber / mapping contract version、TEI repository revision、accepted / derived / unresolvedのnatureを保持する。
 
-`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。著作物の内容を公開する必要がある場合は、利用条件確認後に別判断する。
+`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。source locatorも、網羅的な名称・説明・配列を再現するものではなく、可能な限りlegacy ID、構造位置、locator digest等の最小情報で表す。公開範囲は[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
 
 ## 10. 判定
 
@@ -306,7 +310,7 @@ execution-evidence/
 次はactual environmentが必要なため、GitHub Issueへ切り出す。
 
 - [GitHub #940](https://github.com/hat47x/tei-platform/issues/940) — original X-TEA Modeler / DriverでReference Modelを起動し、代表Scenarioのactual behavior、transaction、Script effectを取得する
-- [GitHub #941](https://github.com/hat47x/tei-platform/issues/941) — CONCEPTWARE Reference Modelの公開Repository内再利用・転載条件を確認する
+- [GitHub #941](https://github.com/hat47x/tei-platform/issues/941) — Web調査で安全側の公開境界までは確定済み。原model / manualの再配布範囲を広げるには、対象artifactへ適用される明示licenseまたは権利者による書面確認が必要
 - TEI importer / execution codeを実装した後、対象exact-headを固定してtrusted local cloneで`tools/repository-health-check.sh`を実行する
 - 人による業務設計レビューが必要になった場合、AIの独立レビューと区別して記録する
 
