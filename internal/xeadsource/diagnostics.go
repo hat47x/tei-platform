@@ -17,21 +17,37 @@ type RelationalDiagnostic struct {
 	RightFieldLegacyID    string `json:"rightFieldLegacyId,omitempty"`
 	LeftDataTypeLegacyID  string `json:"leftDataTypeLegacyId,omitempty"`
 	RightDataTypeLegacyID string `json:"rightDataTypeLegacyId,omitempty"`
+	Count                 int    `json:"count,omitempty"`
 	LeftCount             int    `json:"leftCount,omitempty"`
 	RightCount            int    `json:"rightCount,omitempty"`
 }
 
 func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []RelationalDiagnostic {
 	tableFields := indexTableFieldMetadata(doc.Root)
-	keys := map[string]map[string]LegacyKeyFact{}
+	keys := map[string]map[string][]LegacyKeyFact{}
 	for _, key := range facts.LegacyKeys {
 		if _, ok := keys[key.TableLegacyID]; !ok {
-			keys[key.TableLegacyID] = map[string]LegacyKeyFact{}
+			keys[key.TableLegacyID] = map[string][]LegacyKeyFact{}
 		}
-		keys[key.TableLegacyID][key.KeyLegacyID] = key
+		keys[key.TableLegacyID][key.KeyLegacyID] = append(keys[key.TableLegacyID][key.KeyLegacyID], key)
 	}
 
 	out := make([]RelationalDiagnostic, 0)
+	for tableID, tableKeys := range keys {
+		for keyID, matches := range tableKeys {
+			if tableID == "" || keyID == "" || len(matches) <= 1 {
+				continue
+			}
+			out = append(out, RelationalDiagnostic{
+				Code:          "key-id-duplicate",
+				Locator:       matches[0].Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: tableID,
+				KeyLegacyID:   keyID,
+				Count:         len(matches),
+			})
+		}
+	}
 	for _, key := range facts.LegacyKeys {
 		fields, tableExists := tableFields[key.TableLegacyID]
 		if key.TableLegacyID == "" {
@@ -283,7 +299,7 @@ func diagnoseRelationshipSide(
 	tableID string,
 	keyID string,
 	tableFields map[string]map[string]tableFieldMetadata,
-	keys map[string]map[string]LegacyKeyFact,
+	keys map[string]map[string][]LegacyKeyFact,
 ) (LegacyKeyFact, bool) {
 	if tableID == "" {
 		*out = append(*out, RelationalDiagnostic{
@@ -319,8 +335,8 @@ func diagnoseRelationshipSide(
 		})
 		return LegacyKeyFact{}, false
 	}
-	key, ok := keys[tableID][keyID]
-	if !ok {
+	matches := keys[tableID][keyID]
+	if len(matches) == 0 {
 		*out = append(*out, RelationalDiagnostic{
 			Code:           "relationship-key-not-found",
 			Locator:        relation.Locator,
@@ -332,5 +348,18 @@ func diagnoseRelationshipSide(
 		})
 		return LegacyKeyFact{}, false
 	}
-	return key, true
+	if len(matches) > 1 {
+		*out = append(*out, RelationalDiagnostic{
+			Code:           "relationship-key-ambiguous",
+			Locator:        relation.Locator,
+			Nature:         RelationalDiagnosticNature,
+			Side:           side,
+			RelationshipID: relation.RelationshipID,
+			TableLegacyID:  tableID,
+			KeyLegacyID:    keyID,
+			Count:          len(matches),
+		})
+		return LegacyKeyFact{}, false
+	}
+	return matches[0], true
 }
