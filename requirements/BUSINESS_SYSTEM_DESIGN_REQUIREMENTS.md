@@ -30,6 +30,8 @@ Status: current interpretation index
 
 このfallbackは歴史的shapeをそのままTEIへ移植するための規則ではありません。歴史的概念が防いでいた設計上の失敗を確認し、現行TEIのmeaning / authority / Provider / Target境界へ翻訳します。
 
+2026-10の渡辺幸三氏の公開言説・公開実装の再調査と、TEIへの採否は [`plan/design/watanabe-business-system-design-pressure.md`](../plan/design/watanabe-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
+
 ## 3. RQ-025の解釈
 
 RQ-025では少なくとも次を分離します。
@@ -108,6 +110,8 @@ unresolved
 
 代表的なcross-view pressureは次です。
 
+- business identity / candidate key / functional dependencyがPersistence上の一律なsurrogate IDへ隠れ、異なるRelation semanticsを区別できない
+- Data上のuniqueness / determinant / cardinalityと、FunctionやBusiness Procedureが前提にする識別・選択単位が矛盾する
 - Business Procedureが必要とする情報がDataにない、または必要性自体がまだunresolved
 - UI / Functionがread-only datasourceへwriteを要求する
 - Business ActionがApplication Functionへ過剰に還元される
@@ -158,12 +162,13 @@ RQ-006の`Unresolved`は主に外部状態比較のRequirementですが、「情
 3. DFD型Business Flowの最小表現
 4. `Subsystem` / `SubjectArea`のdurable semantic boundary
 5. Target Adapter前のTarget-neutral View / Interaction構造
-6. realistic Reference Modelのscale / packaging / licensing
+6. realistic Reference Modelのscale / packaging / licensing、および実装・実行によって方法論 / platform claimを反証可能にするEvidence条件
 7. temporal semanticsのdomain meaning境界
 8. cross-view diagnosticのseverityをどこまでdeterministic Conformanceへ昇格するか
 9. optionalなReference / reporting Application contextをfixtureへ残すか完全除去するか、そのcompatibility
 10. source-backed fact / accepted Business meaning / derived / proposal / unresolvedのnatureを、どこまでdurable metadataとして保持する必要があるか
 11. Handoff condition成立を支えるEvidence traceを、既存Provenance / Evidence mechanismだけで十分にreviewできるか
+12. business identity / candidate key / functional dependency / domain constraintを、既存primitiveでlosslessに扱えるか。専用semantic contractが必要か
 
 これらを埋めるために、外部参照に同名概念があるという理由だけでCore kindやschema fieldを追加しません。
 
