@@ -64,6 +64,57 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 	}
 }
 
+func TestPersistenceMappingReverseTracesToSemanticDataWithoutInventingBusinessIdentity(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"persistence",
+		"sales_core.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order_line" ||
+		got.DataDesign.Focus.Kind != "persistence" ||
+		got.DataDesign.Focus.ID != "sales_core.order_line" {
+		t.Fatalf("persistence reverse trace did not reach Semantic Data: %+v", got.DataDesign)
+	}
+	if len(got.References) == 0 || len(got.Artifacts) == 0 {
+		t.Fatalf("persistence source trace is missing: references=%+v artifacts=%+v", got.References, got.Artifacts)
+	}
+	if len(got.DataDesign.PersistenceRealizations) != 1 {
+		t.Fatalf("persistence realization is missing: %+v", got.DataDesign.PersistenceRealizations)
+	}
+	realization := got.DataDesign.PersistenceRealizations[0]
+	if realization.Mapping != "sales_core.order_line" ||
+		len(realization.Uniqueness) != 1 ||
+		realization.Uniqueness[0].Kind != "primary-key" ||
+		len(realization.Uniqueness[0].Attributes) != 1 ||
+		realization.Uniqueness[0].Attributes[0] != "sales.order_line.order_line_id" {
+		t.Fatalf("physical key realization drifted: %+v", realization)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("persistence reverse trace invented logical identity: %+v", got.DataDesign)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"persistence",
+		"sales_core.order_line",
+		"databases/sales-core/persistence/order-line.tei",
+	) {
+		t.Fatalf("persistence mapping Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
+	if !containsKnowledgeContextString(
+		got.DataDesign.AuthorityLimits,
+		"persistence-semantic-data-reference-is-reverse-trace-not-business-identity",
+	) {
+		t.Fatalf("persistence reverse-trace authority limit is missing: %+v", got.DataDesign.AuthorityLimits)
+	}
+}
+
 func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
