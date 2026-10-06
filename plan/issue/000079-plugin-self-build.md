@@ -3,7 +3,7 @@
 - 状態: Active
 - 起票日: 2026-10-06
 - GitHub Issue: #943
-- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / ADR-0022 / ADR-0028
+- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / GitHub #957 / ADR-0022 / ADR-0028
 
 ## 背景
 
@@ -151,7 +151,11 @@ Build PlanはPlugin descriptor fingerprintだけでなく、Source closure、bui
 
 ### E3 — TEI-native Reference
 
-標準Pluginを一つ選び、TEI sourceからpackage / implementation artifactをmaterializeします。どこまでをTEI-native implementationと呼べるかをEvidenceで明示します。
+TEI-native implementation SourceとBuiltin realizationの不足はGitHub #957で扱います。
+
+現行の`runtime builtin`は、Plugin descriptorから実装を生成する方式ではなく、Hostが`runtime.Registry.Builtins`へGo implementationを登録する方式です。したがって、SB-1 package materializeだけではTEI-native implementation self-buildは成立しません。
+
+#957では既存`runtime.Builtin` ABIを維持したまま、TEI-native implementation Source → realization → provider registrationを最小Referenceで実証します。Semantic ValidationはAccepted meaningを評価する別Authorityなので、Plugin implementation Sourceへ転用しません。
 
 ### E4 — Bootstrap convergence
 
