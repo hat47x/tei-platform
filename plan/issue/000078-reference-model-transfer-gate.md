@@ -127,6 +127,7 @@ source model全体のelement / attribute / relationをinventoryし、Evidence Ga
 reference-model-transfer/
   source-baseline.json
   source-inventory.json
+  transcription-contract-v0.json
   transcription-map.json
   loss-ledger.json
 ~~~
