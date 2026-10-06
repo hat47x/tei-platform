@@ -171,6 +171,7 @@
           "PK/FK/SK/XK and ordered TableKeyField membership are preserved as source-backed legacy key assertions",
           "legacy PK or SK is not automatically a TEI business occurrence identifier or candidate key",
           "legacy key membership does not by itself establish an accepted functional dependency",
+          "composite key shape does not by itself establish an allowed-combination/domain constraint; domain restriction is a separate semantic question",
           "DDL realization evidence such as PRIMARY KEY or UNIQUE remains separate from business identity"
         ]
       },
