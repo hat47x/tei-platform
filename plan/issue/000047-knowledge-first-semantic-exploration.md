@@ -327,6 +327,8 @@ Reference pressureでは少なくとも次を比較します。
 - 独立した二つの識別対象の組合せ自体に意味があるcase
 - Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
 - physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
+- View / Application Pattern / ORM都合の単独`id`から、business identifierを逆算しないnegative case
+- physical keyへ正規化されたbusiness keyを置換する場合でも、元candidate keyのuniquenessとMappingを追跡できるcase
 
 このProjectionをprompt専用の文章へ固定しません。CLI、Studio、AIはいずれも同じmachine-readable contextへ戻れることを優先します。actual implementationは、現在のknowledge-context実装laneである`work/issue-000040-second-application-reference`へhandoffし、別branchを増やしません。
 
