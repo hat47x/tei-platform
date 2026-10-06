@@ -215,6 +215,20 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			return nil
 		}
 		dataID = element.Parent
+	case "persistence":
+		var matched core.CanonicalID
+		count := 0
+		for _, mapping := range w.Persistence {
+			if string(mapping.ID) != target.ID {
+				continue
+			}
+			count++
+			matched = mapping.SemanticData
+		}
+		if count != 1 || matched == "" {
+			return nil
+		}
+		dataID = matched
 	default:
 		return nil
 	}
@@ -264,6 +278,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
 			"persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
+			"persistence-semantic-data-reference-is-reverse-trace-not-business-identity",
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
