@@ -45,3 +45,15 @@ Conformance EvidenceはLockの意味identityへ固定しません。Lock replay�
 同じPlugin / version / implementation IDを複数のartifact digestで同時に宣言することも拒否します。明示wiringはlogical providerを指定するため、この状態を許すとartifactの選択がCatalog列挙順へ依存するためです。
 
 Capability Resolution LockはRuntime Authorityを与えません。ScopeごとのPermission / Resource / execution boundaryを置き換えず、productionのPlugin Lock形式としてもまだ固定しません。
+
+## 既存CapabilityKindからの移行pressure
+
+generic contractへの移行中に、旧`CapabilityKind`と新しいProvider declarationを二つの正本にしません。Referenceでは、現行`plugin.Definition`をAuthorityとして読み、その中の既存CapabilityからProvider候補を一方向に導出するcompatibility projectionを追加しています。
+
+最初の対象は`contract-query-executor`です。Reference Workspaceにある`tei.database.oracle`の`database.query.oracle`と、`tei.database.postgres`の`database.query.postgres`を`application-runtime.contract-query-executor`へ投影します。
+
+projection自体はConformanceを与えません。既存PluginがCapabilityを宣言していても、generic Contractへの適合には別のConformance Evidenceが必要です。旧定義から対象Capabilityを削除するとprojectionも成立しなくなります。
+
+OracleとPostgresの両方にConformance Evidenceがある場合、resolverはPlugin名やCatalog順で一方を選びません。Application Runtime側の明示wiringが必要です。これにより、既存Environment Bindingが持つ明示選択の原則をgeneric contractへ移しても維持できます。
+
+compatibility projectionは入力された旧Plugin定義を変更しません。移行bridgeが旧Authorityを正規化やsortの副作用で書き換えないこともtestします。
