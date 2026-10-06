@@ -210,6 +210,45 @@ target-specific rendering
 
 Unicode正規化、異体字置換、大文字小文字変換、記号除去等によって二つの値が一致しても、それだけで同じbusiness occurrenceとは判断しません。反対に、表記が異なることだけで別identityとも判断しません。等価性が業務上重要な場合は、どのscopeでどの変換・対応関係を認めるかをPolicy / Mapping / Sourceとして明示します。
 
+### 4.11 As-Isの観測をDesired Designへ自動昇格しない
+
+渡辺氏は2025年9月の記事で、抜本的な刷新において現行業務や現行Systemを詳細に分析するほど、現行踏襲へ引き寄せられる危険を指摘しています。TEIでは現状分析そのものを否定しません。legacy compatibility、migration、audit、運用継続のためにactual sourceを正確に観測することは必要です。
+
+重要なのはauthorityを分けることです。
+
+~~~text
+Observed As-Is
+  -> Source / Actual / Evidence
+
+Target candidate
+  -> Proposal / Design question
+
+Accepted To-Be
+  -> Decision / authoritative Source
+~~~
+
+ImporterやAIが現行Database、code、UI、業務手順を精密に復元できても、その構造をDesiredへコピーしません。逆に、To-Beを考えるためにAs-Isを捨てることもしません。互換性、移行、差分、未解決点を追跡できるよう、観測と採用判断を別のauthorityとして保持します。
+
+### 4.12 意味の発見と決定論的な構造変換を分ける
+
+渡辺氏は2026年5月の記事で、業務の現実からデータ項目間の関数従属性を見いだす過程と、得られた関数従属性をtable構造へ変換する過程を分けています。前者を本質的な設計問題、後者を比較的機械化しやすい変形問題と位置づけています。
+
+TEIでは「AIは関数従属性を認識できない」という能力評価を固定的な前提にはしません。モデル能力は変化するためです。代わりに、次のauthority境界を採用します。
+
+~~~text
+Source / domain evidence
+  -> AI / human exploration
+  -> candidate dependency / constraint
+  -> Shared Acceptance
+  -> accepted semantic meaning
+  -> deterministic validation / lowering where defined
+  -> Provider / Target realization
+~~~
+
+AIはdependency、candidate key、constraint、Data分割等を提案できます。しかし、提案のもっともらしさだけではaccepted meaningになりません。一方、acceptedなData / Relation / Constraintから機械的に導けるProvider schema、cross-reference、migration plan等を、実行ごとにLLMへ再解釈させる必要もありません。意味が確定した後の変形は、可能な範囲でversionedかつdeterministicなCompiler / Planner / Projectionへ委ねます。
+
+この境界は、OOP / ORMのclass graphをCanonical business modelへ昇格させないことにもつながります。classやruntime objectは有効な実装手段ですが、Data meaningを所有するauthorityではありません。
+
 ## 5. そのまま移植しないもの
 
 次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
