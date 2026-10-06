@@ -1,6 +1,6 @@
 # ISSUE-000073: Applicationが評価するValidationの選択を、Target側の一覧ではなくCanonicalな宣言から導く
 
-- 状態: Proposed — 評価待ち。現状の読解と選択肢の整理までを記録した段階で、実装は始めていない
+- 状態: Ready — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用した。実装は未着手
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
@@ -74,7 +74,7 @@ Web Target      Application.Validations から評価対象を得る
 
 ## 完了条件
 
-- [ ] 案A / B / Cの判断をADRとして提案し、owner reviewで採用する（ADR案: [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)、2026-10-01に提案中。owner reviewは未実施）
+- [x] 案A / B / Cの判断をADRとして提案し、owner reviewで採用する（2026-10-06に採用。ADR: [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)、2026-10-01に提案）
 - [ ] `order_entry`へ`uses validation`を宣言する変更を、Shared Acceptance Boundary経由で受理する（explicit human Acceptance decisionが必要）
 - [ ] DriverとFirst Web Targetが宣言から評価対象を得るようにし、Target側のCanonical ID一覧を削除する
 - [ ] 宣言が無い場合の振る舞い（fail closed / unresolved）をtestで固定する
@@ -84,7 +84,7 @@ Web Target      Application.Validations から評価対象を得る
 - [ ] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す
 - [ ] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する
 - [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
-- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
+- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
 - [ ] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する
 
 ## 完了後に判断できること

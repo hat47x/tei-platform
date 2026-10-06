@@ -1,12 +1,17 @@
 # ADR-0029: Applicationが評価するValidationの選択を、Canonicalな`uses validation`宣言から導く
 
-- 状態: 提案中
-- 日付: 2026-10-01
+- 状態: 採用
+- 日付: 2026-10-01（採用: 2026-10-06）
 - 関連Issue: [ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)（作業範囲）、[ISSUE-000072](../issue/000072-rule-change-hand-edit-count.md)（この欠落を見つけた静的読解の記録。研究に留保）、[ISSUE-000027](../issue/000027-ai-proposal-acceptance-boundary.md)（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`を最初に記録）
 - 関連ADR: [ADR-0024](0024-business-lifecycle-ownership.md) / [ADR-0025](0025-transition-evaluation-and-conflict-result.md)（遷移ごとの`requires`。いずれも提案中）
 - 主担当要求: RQ-003 / RQ-013 / RQ-017 / RQ-021
 
-この判断は評価待ちです。採用が決まるまで、実装やReference変更の根拠にしません。
+2026-10-06に、ownerが採用しました。実装とReference変更の根拠にできます。採用にあたり、未解決のうち次の2点をownerが決めました。
+
+- 「評価すべきValidationが無い」ことは、当面表しません。宣言が空のApplicationがCommandを実行しようとしたときは、判定不能（APPLICATION_VALIDATION_SELECTION_NOT_DECLARED）にします。表す必要がReferenceで生じた時点で、別のADRで決めます。
+- APPLICATION_VALIDATION_SELECTION_NOT_DECLAREDは、Execution Error側へ置きます。宣言が無いのは実行できない状態で、業務上の拒否（Validation不成立）ではありません。[ADR-0020](0020-capability-business-outcome-boundary.md)の「実行時・契約の失敗はExecution Error」と整合します。
+
+操作ごとに評価対象が異なる場合の層の重ね方と、Business Procedureの参照との関係は、決めていません（下記「未解決」）。
 
 ## 背景
 
@@ -116,10 +121,8 @@ Previewは、Validationが追加または変更されたとき（削除は対象
 
 ## 未解決
 
-- 「評価すべきValidationが無い」ことを意図して表す方法（空の宣言を許すのか、明示的な宣言を足すのか）。現時点で、そのReference上の必要は見つかっていません。
 - 操作（Command）ごとに評価対象が異なる必要が生じたときの層の重ね方（上記A′とB）。
 - Business Procedureの参照との関係。`reference/business-system-design/order-entry-business-procedure.json`のBP-05は、同じ二つのValidation IDを`validations`として保持しています（README.mdはこれを、Patternから導けない意味をProcedureが明示的に要求するdirect semantic referenceと位置づけており、評価対象の選択ではありません）。Applicationの宣言との一致を検査するのか、独立した参照として扱うのかは、本ADRでは決めません。一致の検査を足す場合は、同じ一覧を二か所で持つことにならないよう、どちらを正本とするかをその時点で決めます。
-- `APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`を、Business ResultとExecution Errorのどちらの分類へ置くか。本ADRはExecution Error側を提案しますが、[ADR-0020](0020-capability-business-outcome-boundary.md)の分類との整合を実装前に確認します。
 
 ## 確かめ方
 
