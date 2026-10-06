@@ -135,6 +135,31 @@
           "membership and cross-subsystem operation diagnostics may be preserved without adding a Core Subsystem kind"
         ]
       },
+      "Department": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure",
+        "rules": [
+          "Department is organization/context evidence and is not automatically an authorization role or Principal",
+          "legacy ID and SortKey remain source identity/order only",
+          "organization semantics require explicit acceptance before becoming reusable business meaning"
+        ]
+      },
+      "DataType": {
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "legacy DataType can contribute scalar/domain semantics but does not become a Core type enum by name alone",
+          "format/options and physical representation remain distinct from accepted semantic type meaning"
+        ]
+      },
       "Table": {
         "classification": [
           "canonical-candidate",
@@ -225,6 +250,18 @@
           "design Function is not assumed one-to-one with Xeaf executable Function",
           "Parameters/Return prose is not a typed contract until explicitly modeled",
           "Function call relations remain explicit source evidence"
+        ]
+      },
+      "FunctionUsedByThis": {
+        "classification": [
+          "derived-projection",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "rules": [
+          "caller/callee usage is source-backed function dependency evidence",
+          "usage relation does not by itself establish Business Procedure order, transaction scope, or runtime authority"
         ]
       },
       "IOTable": {
@@ -368,6 +405,31 @@
           "special-table roles become explicit service contracts/bindings if accepted"
         ]
       },
+      "Subsystem": {
+        "classification": [
+          "realization",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.subsystem-lens",
+        "rules": [
+          "runtime Subsystem grouping may correspond to design grouping but is not assumed identical",
+          "runtime grouping is not deployment, security, or canonical ownership authority by itself"
+        ]
+      },
+      "Table": {
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "runtime Table is realization evidence and does not replace accepted Data meaning",
+          "Key and Refer children are preserved separately as runtime mapping facts",
+          "physical/runtime table identity is not business occurrence identity"
+        ]
+      },
       "Function": {
         "classification": [
           "realization",
@@ -426,6 +488,57 @@
         "extension": "reference.xead.presentation",
         "rules": [
           "button event may invoke a Function/Script but button label/action is not canonical Business Action by itself"
+        ]
+      },
+      "Filter": {
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "filter definition is interaction/query realization evidence",
+          "filter fields or defaults do not create semantic constraints by themselves"
+        ]
+      },
+      "Refer": {
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "ToTable/ToKeyFields/WithKeyFields are runtime reference mapping facts",
+          "empty ToKeyFields may be resolved by the legacy Driver through target-table PK fallback; that fallback is runtime behavior, not business identity",
+          "runtime refer mapping is not semantic Relation authority until reconciled and accepted"
+        ]
+      },
+      "Detail": {
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "rules": [
+          "Detail describes a runtime interaction/table detail configuration",
+          "Detail KeyFields is a record-selection requirement and not Data identity",
+          "detail realization does not imply a distinct Business Action or canonical aggregate boundary"
+        ]
+      },
+      "Key": {
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "Type/Fields are runtime key realization facts",
+          "runtime PK is not business occurrence identity or functional-dependency authority",
+          "design TableKey and runtime Key must be reconciled through explicit source mapping rather than assumed equivalent"
         ]
       },
       "Menu": {
