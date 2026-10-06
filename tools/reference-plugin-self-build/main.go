@@ -125,6 +125,9 @@ func run(repo string) (evidence, error) {
 		return evidence{}, fmt.Errorf("resolve Go toolchain root: %w", err)
 	}
 	goRoot := strings.TrimSpace(string(goRootBytes))
+	if resolved, resolveErr := filepath.EvalSymlinks(goRoot); resolveErr == nil {
+		goRoot = resolved
+	}
 	goRootDigest, err := hashGoToolchain(goRoot)
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
@@ -292,14 +295,7 @@ func hashTrackedSourceTree(repo string) (string, error) {
 			return "", err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(path)
-			if err != nil {
-				return "", err
-			}
-			if _, err := fmt.Fprintf(sum, "symlink\x00%s\n", filepath.ToSlash(target)); err != nil {
-				return "", err
-			}
-			continue
+			return "", fmt.Errorf("tracked source symlink is not supported in the first self-build reference: %s", rel)
 		}
 		if !info.Mode().IsRegular() {
 			return "", fmt.Errorf("tracked source %s is not a regular file or symlink", rel)
@@ -406,12 +402,7 @@ func hashToolchainEntry(sum interface {
 		return err
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		target, err := os.Readlink(path)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(sum, "symlink\x00%s\n", filepath.ToSlash(target))
-		return err
+		return fmt.Errorf("Go toolchain symlink is not supported in the first self-build reference: %s", rel)
 	}
 	if !info.Mode().IsRegular() {
 		_, err := fmt.Fprint(sum, "special\n")
