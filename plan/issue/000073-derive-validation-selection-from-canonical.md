@@ -87,6 +87,18 @@ Web Target      Application.Validations から評価対象を得る
 - [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
 - [x] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する（2026-10-06）
 
+## 判断案 — Gate Cの後継Handover（2026-10-06、owner確認待ち）
+
+背景: Gate C architecture conformanceは`R`→`T`間で`reference/workspace/**`と`reference/world.json`が不変であることを確かめた。今回の受理でcurrent `main`のworkspaceは`R`から変わった。
+
+判断案: **今は後継Handoverを発行しない。**
+
+- Gate C Readyは`B / R / T`にbindingされたrevision-scopedな主張であり、current `main`へcarry-forwardしない。workspaceが後で変わっても、その主張は書き換わらない（S5独立レビュー結果の「Gate B/C historical-scope judgment」と同じ扱い）
+- Handover Contractが後継Handoverを求めるのは、Target実装中にbaseline meaningの変更が必要になった場合である。今回の変更はGate C通過後のReference進化で、第一Web Target `T`の要請ではない
+- 後継Handoverは、current workspaceに対する新しいTarget claim（Gate Cの再取得、第二Target、current `main`でのFirst Web Target Evidence）が必要になった時点で、そのclaimのためにだけ発行する
+- architecture conformance toolが現在の`main`で失敗しても、それはhistorical claimの否定ではない。tool出力を読む人が誤解しないよう、toolが比較している`R`/`T`を記録とともに示す
+
+非主張: Gate Cをcurrent `main`で再確認したことは主張しない。この判断案はowner確認までチェック項目を完了にしない。
 ## 受理の記録（2026-10-06）
 
 `order_entry`への宣言は、[ISSUE-000040](000040-semantic-component-composition.md)と同じく、Shared Acceptance Boundaryを通して受理した。
