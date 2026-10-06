@@ -42,6 +42,10 @@ func buildPlanFixture() plugin.BuildPlan {
 			Version:        "go1.26",
 			ArtifactDigest: buildDigestA,
 		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "go-package",
+			Entrypoint: "./tools/reference-process-plugin",
+		},
 		Dependencies: []plugin.BuildDependency{
 			{Kind: "sdk", ID: "example.builder.sdk", Version: "1.0.0", ArtifactDigest: buildDigestB},
 			{Kind: "support", ID: "example.builder.support", Version: "2.0.0", ArtifactDigest: buildDigestA},
@@ -90,6 +94,7 @@ func TestBuildPlanFingerprintChangesWhenBuildInputChanges(t *testing.T) {
 		{"source locator", func(p *plugin.BuildPlan) { p.Sources[0].Locator = "other/main.go" }},
 		{"builder", func(p *plugin.BuildPlan) { p.Builder.Version = "go1.26.1" }},
 		{"dependency", func(p *plugin.BuildPlan) { p.Dependencies[0].Version = "1.0.1" }},
+		{"recipe", func(p *plugin.BuildPlan) { p.Recipe.Entrypoint = "./tools/other-plugin" }},
 		{"target", func(p *plugin.BuildPlan) { p.Target = "wasm-component" }},
 		{"parameter", func(p *plugin.BuildPlan) { p.Parameters[0].Value = "false" }},
 	}
@@ -137,6 +142,27 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 			t.Fatal("expected duplicate build dependency to fail")
 		}
 	})
+	t.Run("recipe required", func(t *testing.T) {
+		p := buildPlanFixture()
+		p.Recipe = plugin.BuildRecipe{}
+		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
+			t.Fatal("expected missing build recipe to fail")
+		}
+	})
+	t.Run("invalid plugin id", func(t *testing.T) {
+		p := buildPlanFixture()
+		p.Plugin.ID = core.CanonicalID("Invalid")
+		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
+			t.Fatal("expected invalid plugin id to fail")
+		}
+	})
+	t.Run("invalid builder id", func(t *testing.T) {
+		p := buildPlanFixture()
+		p.Builder.ID = core.CanonicalID("Invalid")
+		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
+			t.Fatal("expected invalid builder id to fail")
+		}
+	})
 	t.Run("duplicate parameter", func(t *testing.T) {
 		p := buildPlanFixture()
 		p.Parameters[1].Name = p.Parameters[0].Name
@@ -179,6 +205,21 @@ func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
 	}
 	if changedFP == afp {
 		t.Fatal("artifact digest change did not change build lock fingerprint")
+	}
+}
+
+func TestBuildArtifactLockRejectsInvalidPluginID(t *testing.T) {
+	l := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds: []plugin.LockedBuild{{
+			Plugin:          plugin.Identity{ID: core.CanonicalID("Invalid"), Version: "1.0.0"},
+			Target:          "host-process",
+			PlanFingerprint: buildFPA,
+			ArtifactDigest:  buildDigestA,
+		}},
+	}
+	if _, err := plugin.BuildArtifactLockFingerprint(l); err == nil {
+		t.Fatal("expected invalid locked plugin id to fail")
 	}
 }
 
