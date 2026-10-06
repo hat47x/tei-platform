@@ -1,6 +1,11 @@
 package xeadsource
 
-import "sort"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"sort"
+)
 
 type CandidateRule struct {
 	Classifications []string `json:"classifications"`
@@ -18,6 +23,29 @@ type Candidate struct {
 }
 
 type ClassificationPolicy map[string]CandidateRule
+
+func ClassificationPolicyFingerprint(policy ClassificationPolicy) string {
+	if len(policy) == 0 {
+		return ""
+	}
+	normalized := make(ClassificationPolicy, len(policy))
+	for name, rule := range policy {
+		copyRule := CandidateRule{
+			Classifications: append([]string(nil), rule.Classifications...),
+			Extension:       rule.Extension,
+			AuthorityLimits: append([]string(nil), rule.AuthorityLimits...),
+		}
+		sort.Strings(copyRule.Classifications)
+		sort.Strings(copyRule.AuthorityLimits)
+		normalized[name] = copyRule
+	}
+	payload, err := json.Marshal(normalized)
+	if err != nil {
+		panic(err)
+	}
+	sum := sha256.Sum256(payload)
+	return hex.EncodeToString(sum[:])
+}
 
 // Classify applies an explicitly supplied candidate policy to source facts.
 // The policy is intentionally external: parsing source bytes must not grant
