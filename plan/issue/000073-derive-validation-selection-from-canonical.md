@@ -82,12 +82,12 @@ Web Target      Application.Validations から評価対象を得る
 - [x] 既存Applicationへ`uses validation`を加えるShared Acceptance operationを追加する（`add-application-validation-use`）
 - [x] Previewのunresolved codeの改名に合わせ、`boundary_test.go`、`analysis_test.go`、`tools/reference-shared-acceptance/README.md`を更新する（`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`）
 - [x] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す（Resolverは重複をerror、operationは`APPLICATION_VALIDATION_USE_ALREADY_EXISTS`で拒否する。candidateの順序はfingerprintに入る）
-- [ ] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する
+- [x] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する（2026-10-06、ownerが「今は後継Handoverを発行しない」を承認。下記「判断」）
 - [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
-- [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
+- [x] `tools/repository-health-check.sh`のfull PASSを記録する（下記。統合するexact headでの再取得は、コード変更を含む統合のときに行う。この統合は文書のみ）
 - [x] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する（2026-10-06）
 
-## 判断案 — Gate Cの後継Handover（2026-10-06、owner確認待ち）
+## 判断 — Gate Cの後継Handover（2026-10-06、ownerが承認）
 
 背景: Gate C architecture conformanceは`R`→`T`間で`reference/workspace/**`と`reference/world.json`が不変であることを確かめた。今回の受理でcurrent `main`のworkspaceは`R`から変わった。
 
@@ -98,7 +98,7 @@ Web Target      Application.Validations から評価対象を得る
 - 後継Handoverは、current workspaceに対する新しいTarget claim（Gate Cの再取得、第二Target、current `main`でのFirst Web Target Evidence）が必要になった時点で、そのclaimのためにだけ発行する
 - architecture conformance toolが現在の`main`で失敗しても、それはhistorical claimの否定ではない。tool出力を読む人が誤解しないよう、toolが比較している`R`/`T`を記録とともに示す
 
-非主張: Gate Cをcurrent `main`で再確認したことは主張しない。この判断案はowner確認までチェック項目を完了にしない。
+非主張: Gate Cをcurrent `main`で再確認したことは主張しない。
 ## 受理の記録（2026-10-06）
 
 `order_entry`への宣言は、[ISSUE-000040](000040-semantic-component-composition.md)と同じく、Shared Acceptance Boundaryを通して受理した。
@@ -132,3 +132,17 @@ ownerに示したのはReview Projectionの要点と全文へのリンクであ�
 - 業務Lifecycle（ISSUE-000038）の遷移条件の設計を、このIssueでは決めません。
 - Gate B / Gate Cの判定は、それぞれのexact revisionのEvidenceとして変えません。このIssueの変更後のworkspaceを、旧baselineと同じものとして読み替えません。
 - 宣言からの導出は、Validationを「どの順で」「どのtransaction境界で」評価するかまでは決めません。
+
+## health checkの記録（2026-10-06）
+
+WSL2のネイティブ領域のclean cloneで、Go 1.25.14により`tools/repository-health-check.sh`をfull実行した。対象は判断案を加えたコミット`e506486f`（base = 当時の`origin/main`）。
+
+```text
+gofmt -l .                                 PASS
+go vet ./...                               PASS
+go test -count=1 ./...                     PASS
+tei validate -workspace reference/workspace PASS
+exit = 0
+```
+
+その後`origin/main`の53コミットを通常mergeで取り込んだ。取り込み側と本Issueに差分の競合は無く、本変更は文書のみである。取り込み後のheadでのhealth再実行は行っていない。
