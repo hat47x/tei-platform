@@ -160,6 +160,10 @@ func run(repo string) (evidence, error) {
 			Version:        goVersion,
 			ArtifactDigest: goToolchainDigest,
 		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "go-package",
+			Entrypoint: referencePackage,
+		},
 		Target:  "host-process/" + runtime.GOOS + "/" + runtime.GOARCH,
 		Profile: "reference",
 		Parameters: []plugin.BuildParameter{
