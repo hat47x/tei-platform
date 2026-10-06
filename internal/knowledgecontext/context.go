@@ -67,15 +67,20 @@ type DataDesignEvidence struct {
 	Role              sourceindex.Role  `json:"role"`
 }
 
+type DataDesignDeterminantTerm struct {
+	Kind      string           `json:"kind"`
+	Data      core.CanonicalID `json:"data,omitempty"`
+	Attribute core.CanonicalID `json:"attribute,omitempty"`
+}
+
 type DataDesignFunctionalDependencyCandidate struct {
-	Relation             core.CanonicalID `json:"relation"`
-	SourceData           core.CanonicalID `json:"sourceData"`
-	DeterminantAttribute core.CanonicalID `json:"determinantAttribute"`
-	DependentData        core.CanonicalID `json:"dependentData"`
-	BasisConstraint      core.CanonicalID `json:"basisConstraint"`
-	Scope                string           `json:"scope"`
-	Nature               string           `json:"nature"`
-	EvidenceNeeded       []string         `json:"evidenceNeeded"`
+	Relation            core.CanonicalID            `json:"relation"`
+	Determinants        []DataDesignDeterminantTerm `json:"determinants"`
+	DependentOccurrence core.CanonicalID            `json:"dependentOccurrence"`
+	BasisConstraint     core.CanonicalID            `json:"basisConstraint"`
+	Scope               string                      `json:"scope"`
+	Nature              string                      `json:"nature"`
+	EvidenceNeeded      []string                    `json:"evidenceNeeded"`
 }
 
 type DataDesignPersistenceColumn struct {
@@ -433,16 +438,26 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 				ctx.FunctionalDependencyCandidates = append(
 					ctx.FunctionalDependencyCandidates,
 					DataDesignFunctionalDependencyCandidate{
-						Relation:             validation.Relation,
-						SourceData:           relation.Source,
-						DeterminantAttribute: validation.Attribute,
-						DependentData:        relation.Target,
-						BasisConstraint:      validation.ID,
-						Scope:                "per-relation-source-occurrence",
-						Nature:               "candidate-from-accepted-scoped-uniqueness",
+						Relation: validation.Relation,
+						Determinants: []DataDesignDeterminantTerm{
+							{
+								Kind: "relation-source-occurrence",
+								Data: relation.Source,
+							},
+							{
+								Kind:      "attribute",
+								Data:      relation.Target,
+								Attribute: validation.Attribute,
+							},
+						},
+						DependentOccurrence: relation.Target,
+						BasisConstraint:     validation.ID,
+						Scope:               "per-relation-source-occurrence",
+						Nature:              "candidate-from-accepted-scoped-uniqueness",
 						EvidenceNeeded: []string{
 							"source-occurrence-business-identifier",
 							"relation-business-meaning",
+							"target-membership-exclusivity",
 							"temporal-validity",
 						},
 					},
@@ -475,7 +490,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 		if ctx.FunctionalDependencyCandidates[i].BasisConstraint != ctx.FunctionalDependencyCandidates[j].BasisConstraint {
 			return ctx.FunctionalDependencyCandidates[i].BasisConstraint < ctx.FunctionalDependencyCandidates[j].BasisConstraint
 		}
-		return ctx.FunctionalDependencyCandidates[i].DeterminantAttribute < ctx.FunctionalDependencyCandidates[j].DeterminantAttribute
+		return ctx.FunctionalDependencyCandidates[i].DependentOccurrence < ctx.FunctionalDependencyCandidates[j].DependentOccurrence
 	})
 	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
 		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
