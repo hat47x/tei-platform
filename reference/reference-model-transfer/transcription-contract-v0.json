@@ -199,6 +199,12 @@
           "legacy key membership does not by itself establish an accepted functional dependency",
           "composite key shape does not by itself establish an allowed-combination/domain constraint; domain restriction is a separate semantic question",
           "DDL realization evidence such as PRIMARY KEY or UNIQUE remains separate from business identity"
+        ],
+        "authorityLimits": [
+          "legacy-key-is-not-business-identity",
+          "legacy-key-is-not-candidate-key",
+          "legacy-key-is-not-functional-dependency",
+          "legacy-key-is-not-physical-key-authority"
         ]
       },
       "TableKeyField": {
@@ -212,6 +218,11 @@
           "FieldID and source ordering preserve membership in the enclosing legacy key",
           "field position, name, type, or legacy ID is not canonical identity evidence",
           "ambiguous or missing field resolution remains unresolved rather than being repaired by naming or type heuristics"
+        ],
+        "authorityLimits": [
+          "legacy-key-field-membership-is-not-business-identity",
+          "legacy-key-field-membership-is-not-functional-dependency",
+          "ambiguous-key-field-mapping-must-remain-unresolved"
         ]
       },
       "Relationship": {
@@ -225,6 +236,11 @@
           "key references may support explicit relation mapping only when the participating key fields resolve without ambiguity",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
           "ExistWhen prose is not compiled into a constraint without explicit acceptance"
+        ],
+        "authorityLimits": [
+          "relationship-key-reference-is-not-business-identity",
+          "relationship-key-reference-is-not-functional-dependency",
+          "ambiguous-key-field-mapping-must-remain-unresolved"
         ]
       },
       "FunctionType": {
@@ -443,6 +459,11 @@
           "executable Function is not assumed identical to design Function",
           "TimerOption is runtime scheduling and is distinct from Business trigger",
           "KeyFields is a Function/Detail record-selection key; when absent the legacy Driver may fall back to the target Table PK, so selection key and Data identity must remain separate"
+        ],
+        "authorityLimits": [
+          "declared-key-fields-are-not-data-identity",
+          "declared-key-fields-are-not-business-identity",
+          "declared-key-fields-are-not-functional-dependency"
         ]
       },
       "Script": {
@@ -514,6 +535,11 @@
           "ToTable/ToKeyFields/WithKeyFields are runtime reference mapping facts",
           "empty ToKeyFields may be resolved by the legacy Driver through target-table PK fallback; that fallback is runtime behavior, not business identity",
           "runtime refer mapping is not semantic Relation authority until reconciled and accepted"
+        ],
+        "authorityLimits": [
+          "runtime-refer-is-realization-not-semantic-relation-authority",
+          "runtime-refer-key-fields-are-not-business-identity",
+          "runtime-pk-fallback-is-not-business-identity"
         ]
       },
       "Detail": {
@@ -527,6 +553,11 @@
           "Detail describes a runtime interaction/table detail configuration",
           "Detail KeyFields is a record-selection requirement and not Data identity",
           "detail realization does not imply a distinct Business Action or canonical aggregate boundary"
+        ],
+        "authorityLimits": [
+          "declared-key-fields-are-not-data-identity",
+          "declared-key-fields-are-not-business-identity",
+          "declared-key-fields-are-not-functional-dependency"
         ]
       },
       "Key": {
@@ -540,6 +571,11 @@
           "Type/Fields are runtime key realization facts",
           "runtime PK is not business occurrence identity or functional-dependency authority",
           "design TableKey and runtime Key must be reconciled through explicit source mapping rather than assumed equivalent"
+        ],
+        "authorityLimits": [
+          "runtime-key-is-realization-not-business-identity",
+          "runtime-key-is-not-functional-dependency",
+          "runtime-key-does-not-replace-design-key-evidence"
         ]
       },
       "Menu": {
