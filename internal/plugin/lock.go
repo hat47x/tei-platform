@@ -11,13 +11,23 @@ import (
 	"tei/internal/environment"
 )
 
-const LockFormatVersion = 2
+const (
+	// LockFormatVersion is the legacy/current unbound Runtime Plugin Lock
+	// format. It is kept for compatibility with existing checked-in locks.
+	LockFormatVersion = 2
+	// BuildTraceLockFormatVersion adds a per-Plugin BuildPlan fingerprint so a
+	// Runtime lock can trace the selected implementation back to exact build
+	// inputs. A lock is upgraded to this format only when build provenance is
+	// explicitly bound.
+	BuildTraceLockFormatVersion = 3
+)
 
 type LockedPlugin struct {
-	ID             core.CanonicalID `json:"id"`
-	Version        string           `json:"version"`
-	Fingerprint    string           `json:"fingerprint"`
-	ArtifactDigest string           `json:"artifactDigest,omitempty"`
+	ID                   core.CanonicalID `json:"id"`
+	Version              string           `json:"version"`
+	Fingerprint          string           `json:"fingerprint"`
+	ArtifactDigest       string           `json:"artifactDigest,omitempty"`
+	BuildPlanFingerprint string           `json:"buildPlanFingerprint,omitempty"`
 }
 
 type EnvironmentLock struct {
@@ -67,6 +77,10 @@ func exactDefinition(defs []Definition, id Identity) (Definition, bool) {
 	return Definition{}, false
 }
 
+func supportedLockFormatVersion(version int) bool {
+	return version == LockFormatVersion || version == BuildTraceLockFormatVersion
+}
+
 func (l Lock) environment(id core.CanonicalID) (EnvironmentLock, bool) {
 	for _, e := range l.Environments {
 		if e.Environment == id {
@@ -80,7 +94,7 @@ func (l Lock) environment(id core.CanonicalID) (EnvironmentLock, bool) {
 // identities and descriptor fingerprints pinned for one environment. Durable
 // execution artifacts bind to this value rather than to a mutable catalog.
 func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string, error) {
-	if l.FormatVersion != LockFormatVersion {
+	if !supportedLockFormatVersion(l.FormatVersion) {
 		return "", fmt.Errorf("unsupported plugin lock format %d", l.FormatVersion)
 	}
 	el, ok := l.environment(environmentID)
@@ -100,7 +114,7 @@ func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string,
 }
 
 func (c Catalog) ResolveEnvironmentWithLock(env environment.Environment, lock Lock) (ResolvedSet, error) {
-	if lock.FormatVersion != LockFormatVersion {
+	if !supportedLockFormatVersion(lock.FormatVersion) {
 		return ResolvedSet{}, fmt.Errorf("unsupported plugin lock format %d", lock.FormatVersion)
 	}
 	el, ok := lock.environment(env.ID)
