@@ -152,6 +152,15 @@
       "risk": "an importer or AI can claim business identity preservation from field presence and value migration alone",
       "owner": "ISSUE-000078 / ISSUE-000040",
       "stopCondition": "do not classify identifier-like fields as accepted business identity or candidate key until uniqueness scope, temporal conditions, Source/Contract responsibility and Relation/Constraint evidence are explicit"
+    },
+    {
+      "id": "RML-017",
+      "topic": "composite-relationship-member-correspondence",
+      "nature": "unresolved",
+      "evidence": "XeadModeler sorts TableKeyField by SortKey and uses TableField DataTypeID while matching relationship fields; XML source order alone does not define the correspondence",
+      "risk": "equal-arity composite keys can be paired incorrectly or a type-incompatible relationship can be accepted during transfer",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "for multi-field relationship keys, require unambiguous SortKey ordering before positional comparison; preserve missing/duplicate SortKey and explicit DataTypeID mismatch as unresolved and do not repair by field name or source order"
     }
   ],
   "claimsNotEstablished": [
