@@ -56,8 +56,10 @@ type DataDesignContext struct {
 	Constraints                  []DataDesignConstraint   `json:"constraints,omitempty"`
 	BusinessOccurrenceIdentifier DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
 	CandidateKeys                DataDesignKnowledgeState `json:"candidateKeys"`
-	FunctionalDependencies       DataDesignKnowledgeState `json:"functionalDependencies"`
-	AuthorityLimits              []string                 `json:"authorityLimits"`
+	FunctionalDependencies              DataDesignKnowledgeState `json:"functionalDependencies"`
+	BusinessIdentityEvidenceQuestions   []string                 `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions []string               `json:"functionalDependencyEvidenceQuestions"`
+	AuthorityLimits                     []string                 `json:"authorityLimits"`
 }
 
 type Context struct {
@@ -183,6 +185,19 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 		FunctionalDependencies: DataDesignKnowledgeState{
 			Nature: "unresolved",
 			Reason: "functional-dependency-not-first-class-in-current-canonical-model",
+		},
+		BusinessIdentityEvidenceQuestions: []string{
+			"which-fields-identify-the-business-occurrence",
+			"what-is-the-uniqueness-scope",
+			"when-is-the-identifier-valid",
+			"which-relations-or-constraints-depend-on-the-identity",
+			"which-source-or-contract-owns-the-uniqueness-claim",
+		},
+		FunctionalDependencyEvidenceQuestions: []string{
+			"which-determinants-determine-which-dependents",
+			"under-what-scope-and-time-does-the-dependency-hold",
+			"which-source-or-evidence-establishes-the-dependency",
+			"is-this-a-functional-dependency-or-a-domain-constraint",
 		},
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
