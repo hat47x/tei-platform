@@ -253,8 +253,11 @@ func run(repo string) (evidence, error) {
 			{Name: "goarch", Value: runtime.GOARCH},
 			{Name: "goenv", Value: "off"},
 			{Name: "goexperiment", Value: "default"},
+			{Name: "gocache", Value: "isolated"},
 			{Name: "goflags", Value: "empty"},
+			{Name: "gomodcache", Value: "isolated-empty"},
 			{Name: "goos", Value: runtime.GOOS},
+			{Name: "gopath", Value: "isolated-empty"},
 			{Name: "goproxy", Value: "off"},
 			{Name: "gotoolchain", Value: "local"},
 			{Name: "gowork", Value: "off"},
@@ -279,12 +282,12 @@ func run(repo string) (evidence, error) {
 		firstPath += ".exe"
 		secondPath += ".exe"
 	}
-	firstCache := filepath.Join(tempDir, "cache-first")
-	secondCache := filepath.Join(tempDir, "cache-second")
-	if err := buildReferencePlugin(root, goPath, firstPath, firstCache); err != nil {
+	firstState := filepath.Join(tempDir, "state-first")
+	secondState := filepath.Join(tempDir, "state-second")
+	if err := buildReferencePlugin(root, goPath, firstPath, firstState); err != nil {
 		return evidence{}, err
 	}
-	if err := buildReferencePlugin(root, goPath, secondPath, secondCache); err != nil {
+	if err := buildReferencePlugin(root, goPath, secondPath, secondState); err != nil {
 		return evidence{}, err
 	}
 	firstDigest, err := hashFile(firstPath)
@@ -412,6 +415,12 @@ func hashTrackedSourceTree(repo string) (string, error) {
 }
 
 func requireNoExternalModules(repo, goPath string) error {
+	stateDir, err := os.MkdirTemp("", "tei-plugin-self-build-list-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stateDir)
+
 	cmd := exec.Command(
 		goPath,
 		"list",
@@ -421,7 +430,7 @@ func requireNoExternalModules(repo, goPath string) error {
 		referencePackage,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), "")
+	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("resolve reference plugin dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
@@ -523,7 +532,7 @@ func executableName(name string) string {
 	return name
 }
 
-func buildReferencePlugin(repo, goPath, output, cacheDir string) error {
+func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 	cmd := exec.Command(
 		goPath,
 		"build",
@@ -535,7 +544,7 @@ func buildReferencePlugin(repo, goPath, output, cacheDir string) error {
 		referencePackage,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), cacheDir)
+	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("build reference process plugin: %w: %s", err, strings.TrimSpace(string(combined)))
@@ -543,8 +552,8 @@ func buildReferencePlugin(repo, goPath, output, cacheDir string) error {
 	return nil
 }
 
-func buildEnvironment(base []string, cacheDir string) []string {
-	out := make([]string, 0, len(base)+10)
+func buildEnvironment(base []string, stateDir string) []string {
+	out := make([]string, 0, len(base)+12)
 	for _, entry := range base {
 		key := entry
 		if i := strings.IndexByte(entry, '='); i >= 0 {
@@ -566,8 +575,12 @@ func buildEnvironment(base []string, cacheDir string) []string {
 		"GOTOOLCHAIN=local",
 		"GOWORK=off",
 	)
-	if cacheDir != "" {
-		out = append(out, "GOCACHE="+cacheDir)
+	if stateDir != "" {
+		out = append(out,
+			"GOCACHE="+filepath.Join(stateDir, "cache"),
+			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
+			"GOPATH="+filepath.Join(stateDir, "gopath"),
+		)
 	}
 	sort.Strings(out)
 	return out
