@@ -234,6 +234,13 @@
       "observed": "XeadModeler orders TableKeyField members by SortKey when handling relationships and uses TableField DataTypeID while finding corresponding fields; XML source order and AttributeType are therefore insufficient for checking composite key correspondence",
       "risk": "a transfer tool can pair the wrong composite-key members while reporting the relationship as structurally valid, especially when XML order differs or SortKey is missing/duplicated",
       "teiDirection": "preserve SourceOrdinal, SortKey, AttributeType, and DataTypeID separately; compare composite relationship members by unambiguous SortKey order and report ambiguous order or explicit data-type mismatch as unresolved rather than repairing by name/type heuristics"
+    },
+    {
+      "id": "RMP-034",
+      "topic": "representation-vs-business-identity",
+      "observed": "Watanabe's 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
+      "risk": "normalization, variant replacement, case folding, or code conversion can be mistaken for proof that two source values identify the same business occurrence, or representation differences can be mistaken for distinct identity",
+      "teiDirection": "preserve exact source representation when required, keep normalized/search/rendering representations separate, and require an explicit scoped equivalence policy or mapping before representation equality contributes to business identity evidence"
     }
   ]
 }
