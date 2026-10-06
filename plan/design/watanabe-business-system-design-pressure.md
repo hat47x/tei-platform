@@ -189,6 +189,24 @@ physical Database / Service / Provider
 
 同じ論理Data Modelを持つことも、すべてのrecordを同じDatabaseへ置くことを意味しません。法令、組織責任、可用性、性能、既存資産等の理由で物理配置を分ける場合は、その差をBinding / Realizationとして追跡します。反対に、APIで相互接続できることだけを、Data meaningが統合されたEvidenceにはしません。
 
+### 4.10 identityと表記の忠実性を分ける
+
+渡辺氏は2026年9月2日の氏名異体字の記事で、行政処理で扱いやすい文字表記と、本人が本来の氏名として保持したい表記を分ける案を示しています。TEIでは「本字を画像登録する」という制度案そのものではなく、同じ業務対象に複数の表記・符号化・外部表現があり得るという設計圧力を取り込みます。
+
+業務上のidentityを、正規化後の文字列や一つの表示形式と同一視しません。外部Sourceの表記を忠実に保持する必要がある場合は、原表記と、その検索・照合・表示等に使うnormalized / operational representationを分けます。
+
+~~~text
+business subject / occurrence identity
+        !=
+exact source representation
+        !=
+normalized / searchable representation
+        !=
+target-specific rendering
+~~~
+
+Unicode正規化、異体字置換、大文字小文字変換、記号除去等によって二つの値が一致しても、それだけで同じbusiness occurrenceとは判断しません。反対に、表記が異なることだけで別identityとも判断しません。等価性が業務上重要な場合は、どのscopeでどの変換・対応関係を認めるかをPolicy / Mapping / Sourceとして明示します。
+
 ## 5. そのまま移植しないもの
 
 次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
