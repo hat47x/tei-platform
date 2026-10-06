@@ -162,6 +162,32 @@ authoritative Source
 
 この原則はRDB以外のSourceにも適用します。良質なDocument schema、event contract、external API、physical / human procedure等がauthorityを持つdomainでは、それらを明示的なSourceとして扱います。
 
+### 4.8 業務識別を属性名だけへ退避させない
+
+渡辺氏は2026年9月の記事で、機械的な単独IDを主キーにしたまま、従来の業務キーを単なる`identifier`属性として残し、その一意性をApplicationや業務運用へ委ねる設計にも疑問を呈しています。
+
+TEIでは、この主張を「業務キーを必ずphysical primary keyにする」という規則にはしません。代わりに、業務上の識別条件がaccepted meaningになった場合は、識別を構成する項目だけでなく、一意性が成立する範囲、時間・履歴条件、RelationやConstraintとの関係、責任を持つSourceへ追跡できることを要求します。
+
+`identifier`、`external_id`、`code`等の属性が存在するだけでは、その属性をbusiness occurrence identifierやcandidate keyとして扱いません。外部制度や別Systemが一意性を保証する場合も、その責任主体と契約を明示し、TEI内部にConstraintがないことを「一意性は不要」とは解釈しません。
+
+### 4.9 論理的なData統合と物理的なDatabase統合を分ける
+
+渡辺氏は2026年7月の記事で、個別System間のサービス連携を整えることと、全体として整合したデータ構造を設計することは同じではないと論じています。記事では行政Databaseの論理的統合を強く主張していますが、TEIはこれを単一Databaseへの物理統合要求としては採用しません。
+
+TEIでは、ApplicationとDatabaseをN:Mで扱い、Dataを複数Database、Provider、外部Serviceへ配置できます。一方、物理的に分散していることを理由に、同じ業務対象のidentity、Relation、Constraint、ownershipを各APIや各Databaseへ閉じ込めません。
+
+```text
+accepted business Data meaning
+        ↓
+ownership / contract / capability
+        ↓
+logical datasource / mapping
+        ↓
+physical Database / Service / Provider
+```
+
+同じ論理Data Modelを持つことも、すべてのrecordを同じDatabaseへ置くことを意味しません。法令、組織責任、可用性、性能、既存資産等の理由で物理配置を分ける場合は、その差をBinding / Realizationとして追跡します。反対に、APIで相互接続できることだけを、Data meaningが統合されたEvidenceにはしません。
+
 ## 5. そのまま移植しないもの
 
 次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
