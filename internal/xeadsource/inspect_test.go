@@ -20,6 +20,9 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got.ClassificationPolicyFingerprint == "" {
+		t.Fatal("classified inspection did not expose policy fingerprint")
+	}
 	if got.Document.SHA256 == "" || !reflect.DeepEqual(got.Document.UnknownNames, []string{"FutureThing"}) {
 		t.Fatalf("source document evidence is incomplete: %#v", got.Document)
 	}
@@ -67,6 +70,9 @@ func TestInspectWithoutPolicyKeepsAllCandidateMeaningUnresolved(t *testing.T) {
 	got, err := Inspect(FormatXeaf, []byte(`<System><Function ID="F1" KeyFields="A;B;"/></System>`), nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got.ClassificationPolicyFingerprint != "" {
+		t.Fatalf("policy-free inspection claimed policy provenance: %s", got.ClassificationPolicyFingerprint)
 	}
 	if len(got.RelationalFacts.DeclaredKeyFields) != 1 {
 		t.Fatalf("declared key-field source fact is missing: %#v", got.RelationalFacts)
