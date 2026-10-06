@@ -1,6 +1,6 @@
 # ISSUE-000079: Plugin self-buildをSourceからArtifactまで再現可能にする
 
-- 状態: Active
+- 状態: In Progress
 - 起票日: 2026-10-06
 - GitHub Issue: #943
 - 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / GitHub #957 / ADR-0022 / ADR-0028

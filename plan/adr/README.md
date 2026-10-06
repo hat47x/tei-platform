@@ -52,6 +52,7 @@ Issueは「何を行うか」を管理する場所、ADRは「なぜその方針
 - [ADR-0027: Partition treeを伴うPostgreSQL DropTableをprovider execution preconditionでfail closedする](0027-postgres-partition-drop-execution-precondition.md)
 - [ADR-0028: TEI成果物を人間・AI Builder・AI Business Actorの共通知識面として扱う](0028-human-ai-builder-agent-shared-knowledge-plane.md)
 - [ADR-0029: Applicationが評価するValidationの選択を、Canonicalな`uses validation`宣言から導く](0029-application-validation-selection-from-canonical-declaration.md)
+- [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
 
 ## `docs/adr/`について
 
