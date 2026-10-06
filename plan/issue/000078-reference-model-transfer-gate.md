@@ -76,10 +76,14 @@ Reference ModelにはFunctionを持たないBusiness Actionも存在する。ま
 
 ### design Functionとruntime Functionは1:1ではない
 
-`MfgOrder.xead`には227 Function、`MfgOrder.xeaf`には203 Functionがある。基本設計FunctionとEditorで詳細化された実行Functionの間には補助Functionや基本設計only Functionがあり、単純なbijectionではない。
+`MfgOrder.xead`には227 Function、`MfgOrder.xeaf`には203 Functionがある。観測したidentity集合では、`.xeaf`側だけに存在するFunctionが23件、`.xead`側だけに存在するFunctionが47件あり、一つの基本設計Functionが複数の実行Functionへ分解される例もある。基本設計FunctionとEditorで詳細化された実行Functionの間には補助Functionや基本設計only Functionがあり、単純なbijectionではない。
 
 TEIでは、業務・interaction上のFunction meaningと、Target / Runtime固有Realizationを分けて扱う必要がある。
 
+
+### Business ActionとUI操作
+
+`TaskFunctionIO.Operations`には「更新ボタンを押す」「行を選んでエンターする」等の画面操作文が含まれる。これをBusiness Actionそのものとして転写すると、Target変更だけで業務意味が変わる。Business Action、利用Function / Capability、Target固有interaction instructionを分離するpressureを本Issueで所有する。
 ### 旧Runtimeに隠れやすい意味がある
 
 Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller contextに依存するcommit、return codeによるrollback、Login Script、共有Script、Session attribute、動的parameter map等を確認した。
@@ -153,6 +157,14 @@ source business factを改変してTEIの既存Patternへ合わせない。既�
 
 Importerを作る場合も、最初から「Xead XML -> TEI Canonical」の一括変換器にはしない。
 
+### Plugin-first
+
+転写で新しく必要になった業務・設計概念は、原則としてSemantic Extension / Pluginで表す。X-TEAのFunctionType、Relationship、Business Procedure、lifecycle、CRUD lens、UI / report、Scenario等を、対応するsource要素があるという理由だけでCore enumへ追加しない。
+
+標準機能として採用する概念にも、第三者Extensionと同じidentity、dependency、namespace authority、conflict、lock、discovery、Conformanceを適用する。X-TEA importerはcompatibility adapterであり、Canonical authorityやRuntime authorityを持たない。import結果はcandidateとしてShared Acceptanceへ渡す。
+
+論理Extensionと物理artifactは分ける。declaration-only ExtensionにRuntime artifactを要求せず、Targetに応じて複数Extensionを一つのbuiltin / linked / portable artifactへまとめられることを要求する。Web Targetでnative processが使えないことを理由に意味を変えない。
+
 ~~~text
 Xead / Xeaf source
       ↓ parse
@@ -191,7 +203,7 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 - [ ] identity / transaction / Environment / Secret / Session / actor / physical state等のmodernization pressureが、既存TEI境界または明示gapへ割り当てられている
 - [ ] 主要実行型を代表するScenarioがTEI Driver / Targetでactual実行され、Semantic / Functional Evidenceが取得されている
 - [ ] full-reference accountingで、特定sliceだけへの過適合がないことを確認している
-- [ ] Coreへ追加した概念がある場合、Reference-local Extension / native preservationでは不足するEvidenceとADRがある
+- [ ] Reference転写で必要になった業務・設計概念を原則Semantic Extension / Pluginとして表し、Core固有enumの追加が必要な場合だけReference-local Extension / native preservationでは不足するEvidenceとADRがある
 - [ ] original X-TEA actual runが必要なclaimは、actual比較または未取得Evidenceとして明示されている
 - [ ] Reference Modelの利用条件とpublic Evidence境界が確認されている
 
