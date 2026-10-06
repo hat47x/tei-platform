@@ -1,10 +1,10 @@
 package xeadsource
 
 type Inspection struct {
-	Document              Document               `json:"document"`
-	Candidates            []Candidate            `json:"candidates"`
-	RelationalFacts       RelationalSourceFacts  `json:"relationalFacts"`
-	RelationalDiagnostics          []RelationalDiagnostic `json:"relationalDiagnostics,omitempty"`
+	Document                         Document               `json:"document"`
+	Candidates                       []Candidate            `json:"candidates"`
+	RelationalFacts                  RelationalSourceFacts  `json:"relationalFacts"`
+	RelationalDiagnostics            []RelationalDiagnostic `json:"relationalDiagnostics,omitempty"`
 	ClassificationPolicyFingerprint  string                 `json:"classificationPolicyFingerprint,omitempty"`
 	TranscriptionContractFingerprint string                 `json:"transcriptionContractFingerprint,omitempty"`
 	AuthorityLimits                  []string               `json:"authorityLimits"`
@@ -17,10 +17,10 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 	}
 	facts := ExtractRelationalSourceFacts(doc)
 	return Inspection{
-		Document:              doc,
-		Candidates:            Classify(doc, policy),
-		RelationalFacts:       facts,
-		RelationalDiagnostics:          DiagnoseRelationalSourceFacts(doc, facts),
+		Document:                        doc,
+		Candidates:                      Classify(doc, policy),
+		RelationalFacts:                 facts,
+		RelationalDiagnostics:           DiagnoseRelationalSourceFacts(doc, facts),
 		ClassificationPolicyFingerprint: ClassificationPolicyFingerprint(policy),
 		AuthorityLimits: []string{
 			"source-inspection-is-not-canonical-authority",
