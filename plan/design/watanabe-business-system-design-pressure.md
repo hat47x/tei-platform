@@ -97,7 +97,13 @@ authoritative sourceへ戻って修正
 
 Reference専用の例外実装で成功させません。一つの小例が動いただけで汎用性を主張しません。異なるdomain / scale / Data structure / Procedure / Target / ProviderへReferenceを広げ、成立範囲を反証可能なEvidenceとして積み上げます。
 
-### 4.4 AIによるData設計をauthorityにしない
+### 4.4 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
+
+渡辺氏のSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
+
+TEIでは、Subsystemを直ちにCore primitive、Application、Database、deployment unitへ固定しません。まずData ownership、Function / Interaction、Capability / Contract等からderived CRUD / dependency Projectionを作り、cross-boundary CUDをdesign pressureとして確認します。durable identityが必要かはrealistic Referenceで判断します。
+
+### 4.5 AIによるData設計をauthorityにしない
 
 AIがschemaを生成できても、業務上の関数従属性や識別規則が確立したとは限りません。これはTEIの既存原則「AIはcritic / proposerでありauthorityではない」のData設計への具体化として扱います。
 
