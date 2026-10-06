@@ -14,11 +14,24 @@ const (
 	buildFPB      = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
+func buildDefinitionFixture() plugin.Definition {
+	return plugin.Definition{
+		ID:      core.MustCanonicalID("tei.process.reference"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{
+			Kind:    plugin.RuntimeProcess,
+			Command: "reference-plugin",
+		},
+		Artifact: plugin.Artifact{Digest: buildDigestB},
+	}
+}
+
 func buildPlanFixture() plugin.BuildPlan {
+	definition := buildDefinitionFixture()
 	return plugin.BuildPlan{
-		FormatVersion:         plugin.BuildPlanFormatVersion,
-		Plugin:                plugin.Identity{ID: core.MustCanonicalID("tei.process.reference"), Version: "1.0.0"},
-		DescriptorFingerprint: buildFPA,
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: definition.ID, Version: definition.Version},
+		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
 		Sources: []plugin.BuildSource{
 			{Kind: "implementation", ID: "main", Locator: "tools/reference-process-plugin/main.go", Digest: buildDigestA},
 			{Kind: "module-lock", ID: "go.sum", Locator: "go.sum", Digest: buildDigestB},
@@ -195,13 +208,14 @@ func TestLockBuildOutputAndVerifyRuntimePluginBuild(t *testing.T) {
 	if locked.PlanFingerprint != planFP {
 		t.Fatalf("plan fingerprint: got %s want %s", locked.PlanFingerprint, planFP)
 	}
+	definition := buildDefinitionFixture()
 	runtime := plugin.LockedPlugin{
 		ID:             plan.Plugin.ID,
 		Version:        plan.Plugin.Version,
-		Fingerprint:    plan.DescriptorFingerprint,
+		Fingerprint:    plugin.DefinitionFingerprint(definition),
 		ArtifactDigest: buildDigestB,
 	}
-	if err := plugin.VerifyRuntimePluginBuild(plan, locked, runtime); err != nil {
+	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -212,10 +226,11 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	definition := buildDefinitionFixture()
 	baseRuntime := plugin.LockedPlugin{
 		ID:             plan.Plugin.ID,
 		Version:        plan.Plugin.Version,
-		Fingerprint:    plan.DescriptorFingerprint,
+		Fingerprint:    plugin.DefinitionFingerprint(definition),
 		ArtifactDigest: buildDigestB,
 	}
 
@@ -248,9 +263,23 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 			b := locked
 			r := baseRuntime
 			tt.edit(&p, &b, &r)
-			if err := plugin.VerifyRuntimePluginBuild(p, b, r); err == nil {
+			if err := plugin.VerifyRuntimePluginBuild(p, b, definition, r); err == nil {
 				t.Fatal("expected divergence to fail")
 			}
 		})
+	}
+}
+
+
+func TestBuildDefinitionFingerprintExcludesProducedArtifact(t *testing.T) {
+	a := buildDefinitionFixture()
+	b := a
+	b.Artifact = plugin.Artifact{Digest: buildDigestA}
+
+	if got, want := plugin.BuildDefinitionFingerprint(a), plugin.BuildDefinitionFingerprint(b); got != want {
+		t.Fatalf("build definition fingerprint changed with produced artifact: %s != %s", got, want)
+	}
+	if plugin.DefinitionFingerprint(a) == plugin.DefinitionFingerprint(b) {
+		t.Fatal("runtime definition fingerprint did not change with artifact")
 	}
 }
