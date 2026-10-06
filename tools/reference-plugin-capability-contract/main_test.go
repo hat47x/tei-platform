@@ -37,7 +37,7 @@ func evidenceFor(provider Provider, contract Contract, marker string) Conformanc
 		ImplementationID:    provider.ImplementationID,
 		ContractFingerprint: fingerprint(contract),
 		ConformanceProfile:  contract.ConformanceProfile,
-		EvidenceFingerprint: marker,
+		EvidenceFingerprint: fingerprint(marker),
 	}
 }
 
@@ -217,5 +217,218 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
 		t.Fatalf("contract drift was accepted: %v", err)
+	}
+}
+
+
+func TestCapabilityResolutionLockPinsExactProviderAcrossCatalogGrowth(t *testing.T) {
+	v1 := sourceAdapterContract()
+	providerV1 := sourceAdapterProvider(
+		v1,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v1",
+	)
+	baseInput := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: v1.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{v1},
+		Providers:   []Provider{providerV1},
+		Evidence:    []ConformanceEvidence{evidenceFor(providerV1, v1, "evidence-v1")},
+	}
+	resolvedV1, err := resolveCapability(baseInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(baseInput.Requirement, resolvedV1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !validSHA256Fingerprint(lock.LockFingerprint) {
+		t.Fatalf("lock fingerprint=%q", lock.LockFingerprint)
+	}
+
+	v11 := sourceAdapterContract()
+	v11.Version = "1.1.0"
+	providerV11 := sourceAdapterProvider(
+		v11,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source.next",
+		"xead.reader.v11",
+	)
+	grown := baseInput
+	grown.Contracts = []Contract{v11, v1}
+	grown.Providers = []Provider{providerV11, providerV1}
+	grown.Evidence = []ConformanceEvidence{
+		evidenceFor(providerV11, v11, "evidence-v11"),
+		evidenceFor(providerV1, v1, "evidence-v1"),
+	}
+
+	fresh, err := resolveCapability(grown)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.Contract.Version != "1.1.0" {
+		t.Fatalf("fresh resolution contract=%s want=1.1.0", fresh.Contract.Version)
+	}
+	if fresh.ResolutionFingerprint == lock.ResolutionFingerprint {
+		t.Fatal("fresh resolution unexpectedly matched locked resolution")
+	}
+	if err := verifyCapabilityResolutionLockReplay(lock, grown); err != nil {
+		t.Fatalf("exact lock replay failed after catalog growth: %v", err)
+	}
+	if _, err := verifyCapabilityResolutionLockEvidence(lock, grown); err != nil {
+		t.Fatalf("locked provider current Evidence was not accepted: %v", err)
+	}
+}
+
+func TestCapabilityResolutionLockRejectsContractAndArtifactDrift(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "evidence-current")},
+	}
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input.Requirement, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	driftedContract := contract
+	driftedContract.ResultSemantics = "lossy-inventory"
+	contractDrift := input
+	contractDrift.Contracts = []Contract{driftedContract}
+	if err := verifyCapabilityResolutionLockReplay(lock, contractDrift); err == nil {
+		t.Fatal("same-version contract drift was accepted by lock replay")
+	}
+
+	driftedProvider := provider
+	driftedProvider.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+	artifactDrift := input
+	artifactDrift.Providers = []Provider{driftedProvider}
+	if err := verifyCapabilityResolutionLockReplay(lock, artifactDrift); err == nil {
+		t.Fatal("provider artifact drift was accepted by lock replay")
+	}
+}
+
+func TestCapabilityResolutionLockSeparatesReplayFromEvidenceRefresh(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "evidence-old")},
+	}
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input.Requirement, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	refreshed := input
+	refreshed.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "evidence-new")}
+	if err := verifyCapabilityResolutionLockReplay(lock, refreshed); err != nil {
+		t.Fatalf("Evidence refresh changed exact declaration replay: %v", err)
+	}
+	currentEvidenceFingerprint, err := verifyCapabilityResolutionLockEvidence(lock, refreshed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := resolveCapability(refreshed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if currentEvidenceFingerprint != fresh.EvidenceFingerprint {
+		t.Fatalf(
+			"lock Evidence fingerprint=%s fresh=%s",
+			currentEvidenceFingerprint,
+			fresh.EvidenceFingerprint,
+		)
+	}
+	if fresh.ResolutionFingerprint != lock.ResolutionFingerprint {
+		t.Fatal("Evidence refresh changed resolution identity")
+	}
+
+	withoutEvidence := refreshed
+	withoutEvidence.Evidence = nil
+	if err := verifyCapabilityResolutionLockReplay(lock, withoutEvidence); err != nil {
+		t.Fatalf("semantic declaration replay unexpectedly required current Evidence: %v", err)
+	}
+	if _, err := verifyCapabilityResolutionLockEvidence(lock, withoutEvidence); err == nil {
+		t.Fatal("current Evidence verification succeeded without Evidence")
+	}
+}
+
+func TestDuplicateLogicalProviderWithDifferentArtifactsFailsClosed(t *testing.T) {
+	contract := sourceAdapterContract()
+	left := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	right := left
+	right.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{left, right},
+		Evidence:    []ConformanceEvidence{evidenceFor(left, contract, "evidence-current")},
+		Wirings: []Wiring{{
+			ContractID:       contract.ID,
+			PluginID:         left.PluginID,
+			PluginVersion:    left.PluginVersion,
+			ImplementationID: left.ImplementationID,
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "logical provider") {
+		t.Fatalf("duplicate logical provider artifacts were not rejected: %v", err)
+	}
+}
+
+func TestMalformedConformanceEvidenceFingerprintFailsClosed(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	evidence := evidenceFor(provider, contract, "evidence-current")
+	evidence.EvidenceFingerprint = "not-a-fingerprint"
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidence},
+	})
+	if err == nil || !strings.Contains(err.Error(), "conformance evidence") {
+		t.Fatalf("malformed Conformance Evidence was not rejected: %v", err)
 	}
 }
