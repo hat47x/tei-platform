@@ -29,23 +29,23 @@ type Diagnostic struct {
 }
 
 type Evidence struct {
-	Schema                         string       `json:"schema"`
-	SemanticSetFingerprint         string       `json:"semanticSetFingerprint"`
-	ConstraintExtension            string       `json:"constraintExtension"`
-	ConstraintID                   string       `json:"constraintId"`
+	Schema                         string          `json:"schema"`
+	SemanticSetFingerprint         string          `json:"semanticSetFingerprint"`
+	ConstraintExtension            string          `json:"constraintExtension"`
+	ConstraintID                   string          `json:"constraintId"`
 	Subject                        subject.Subject `json:"subject"`
-	ValidatorRef                   string       `json:"validatorRef"`
-	EvaluatorInterface             string       `json:"evaluatorInterface"`
-	EvaluatorContractFingerprint   string       `json:"evaluatorContractFingerprint"`
-	EvaluatorConformanceProfile    string       `json:"evaluatorConformanceProfile"`
-	EvaluatorProviderExtension     string       `json:"evaluatorProviderExtension"`
-	EvaluatorImplementationID      string       `json:"evaluatorImplementationId"`
-	EvaluatorArtifactDigest        string       `json:"evaluatorArtifactDigest"`
-	ConformanceEvidenceFingerprint string       `json:"conformanceEvidenceFingerprint"`
-	InputFingerprint               string       `json:"inputFingerprint"`
-	Status                         Status       `json:"status"`
-	Diagnostics                    []Diagnostic `json:"diagnostics,omitempty"`
-	EvidenceFingerprint            string       `json:"evidenceFingerprint"`
+	ValidatorRef                   string          `json:"validatorRef"`
+	EvaluatorInterface             string          `json:"evaluatorInterface"`
+	EvaluatorContractFingerprint   string          `json:"evaluatorContractFingerprint"`
+	EvaluatorConformanceProfile    string          `json:"evaluatorConformanceProfile"`
+	EvaluatorProviderExtension     string          `json:"evaluatorProviderExtension"`
+	EvaluatorImplementationID      string          `json:"evaluatorImplementationId"`
+	EvaluatorArtifactDigest        string          `json:"evaluatorArtifactDigest"`
+	ConformanceEvidenceFingerprint string          `json:"conformanceEvidenceFingerprint"`
+	InputFingerprint               string          `json:"inputFingerprint"`
+	Status                         Status          `json:"status"`
+	Diagnostics                    []Diagnostic    `json:"diagnostics,omitempty"`
+	EvidenceFingerprint            string          `json:"evidenceFingerprint"`
 }
 
 var fingerprintPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)

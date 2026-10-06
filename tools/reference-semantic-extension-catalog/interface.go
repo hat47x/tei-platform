@@ -10,12 +10,12 @@ import (
 )
 
 type SemanticInterfaceContract struct {
-	ID                    string   `json:"id"`
-	Version               string   `json:"version"`
-	InputSemantics        []string `json:"inputSemantics"`
-	OutputSemantics       []string `json:"outputSemantics"`
-	UnknownSemantics      string   `json:"unknownSemantics"`
-	FailureSemantics      string   `json:"failureSemantics"`
+	ID                     string   `json:"id"`
+	Version                string   `json:"version"`
+	InputSemantics         []string `json:"inputSemantics"`
+	OutputSemantics        []string `json:"outputSemantics"`
+	UnknownSemantics       string   `json:"unknownSemantics"`
+	FailureSemantics       string   `json:"failureSemantics"`
 	ProviderConformanceRef string   `json:"providerConformanceRef"`
 }
 
@@ -45,24 +45,24 @@ type SemanticInterfaceWiring struct {
 }
 
 type CatalogSemanticInterface struct {
-	ID                  string            `json:"id"`
-	Version             string            `json:"version"`
-	ContractFingerprint string            `json:"contractFingerprint"`
-	InputSemantics      []string          `json:"inputSemantics"`
-	OutputSemantics     []string          `json:"outputSemantics"`
-	UnknownSemantics    string            `json:"unknownSemantics"`
-	FailureSemantics    string            `json:"failureSemantics"`
-	ProviderConformanceRef string         `json:"providerConformanceRef"`
-	Extension           ExtensionIdentity `json:"extension"`
-	Source              string            `json:"source,omitempty"`
-	SourceFingerprint   string            `json:"sourceFingerprint,omitempty"`
+	ID                     string            `json:"id"`
+	Version                string            `json:"version"`
+	ContractFingerprint    string            `json:"contractFingerprint"`
+	InputSemantics         []string          `json:"inputSemantics"`
+	OutputSemantics        []string          `json:"outputSemantics"`
+	UnknownSemantics       string            `json:"unknownSemantics"`
+	FailureSemantics       string            `json:"failureSemantics"`
+	ProviderConformanceRef string            `json:"providerConformanceRef"`
+	Extension              ExtensionIdentity `json:"extension"`
+	Source                 string            `json:"source,omitempty"`
+	SourceFingerprint      string            `json:"sourceFingerprint,omitempty"`
 }
 
 type CatalogInterfaceWiring struct {
-	ConsumerExtension   string `json:"consumerExtension"`
-	Interface           string `json:"interface"`
-	ContractVersion     string `json:"contractVersion"`
-	ContractFingerprint string `json:"contractFingerprint"`
+	ConsumerExtension          string `json:"consumerExtension"`
+	Interface                  string `json:"interface"`
+	ContractVersion            string `json:"contractVersion"`
+	ContractFingerprint        string `json:"contractFingerprint"`
 	ProviderExtension          string `json:"providerExtension"`
 	ProviderConformanceProfile string `json:"providerConformanceProfile"`
 	ConformanceEvidence        string `json:"conformanceEvidenceFingerprint"`
@@ -193,7 +193,6 @@ func jsonMarshalStable(value any) ([]byte, error) {
 func fingerprintBytes(value []byte) string {
 	return sourceindex.Fingerprint(value)
 }
-
 
 type semanticInterfaceContractOwner struct {
 	Contract  SemanticInterfaceContract
@@ -609,7 +608,6 @@ func catalogInterfaceWiring(
 		Selection:                  selection,
 	}
 }
-
 
 func normalizeSemanticInterfaceConformance(
 	values []SemanticInterfaceConformance,

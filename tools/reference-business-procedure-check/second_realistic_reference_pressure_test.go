@@ -474,8 +474,9 @@ func TestSecondRealisticReferenceProductionReleaseHasIndependentBusinessMeaning(
 		"independent need":   ledger.IndependentNeed,
 		"release action":     release.BusinessAction,
 	} {
+		// "releasing"のような活用形も、同じ業務上のreleaseとして受ける。
 		lowered := strings.ToLower(text)
-		if !strings.Contains(lowered, "production control") || !strings.Contains(lowered, "release") {
+		if !strings.Contains(lowered, "production control") || !strings.Contains(lowered, "releas") {
 			t.Fatalf("%s does not explain the terminal production release independently: %q", label, text)
 		}
 	}

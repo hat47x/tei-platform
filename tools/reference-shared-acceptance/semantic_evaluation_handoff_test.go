@@ -253,7 +253,7 @@ func semanticEvaluationEvidenceItem(values []Evidence) (Evidence, bool) {
 }
 
 func TestDecisionIndexSeparatesCurrentSourceEvidenceFromRecordedEvaluationArtifact(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
 	grounded, err := attachSemanticEvaluationEvidence(
 		mustJSON(t, candidate),
@@ -282,7 +282,7 @@ func TestDecisionIndexSeparatesCurrentSourceEvidenceFromRecordedEvaluationArtifa
 }
 
 func TestDecisionIndexDoesNotCallArtifactOnlyEvidenceCurrent(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidate := unitPriceCandidate(revisionOfDir(t, dir))
 	candidate.Evidence = nil
 	grounded, err := attachSemanticEvaluationEvidence(

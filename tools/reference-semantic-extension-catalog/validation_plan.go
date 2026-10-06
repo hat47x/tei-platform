@@ -13,10 +13,10 @@ import (
 const semanticValidationPlanSchema = "tei.reference.semantic-validation-plan/v0"
 
 type SemanticValidationPlan struct {
-	Schema string `json:"schema"`
-	SemanticSetFingerprint string `json:"semanticSetFingerprint"`
-	Bindings []SemanticEvaluatorBinding `json:"bindings"`
-	PlanFingerprint string `json:"planFingerprint"`
+	Schema                 string                     `json:"schema"`
+	SemanticSetFingerprint string                     `json:"semanticSetFingerprint"`
+	Bindings               []SemanticEvaluatorBinding `json:"bindings"`
+	PlanFingerprint        string                     `json:"planFingerprint"`
 }
 
 func buildSemanticValidationPlan(
@@ -34,9 +34,9 @@ func buildSemanticValidationPlan(
 		return SemanticValidationPlan{}, err
 	}
 	plan := SemanticValidationPlan{
-		Schema: semanticValidationPlanSchema,
+		Schema:                 semanticValidationPlanSchema,
 		SemanticSetFingerprint: catalog.ResolutionFingerprint,
-		Bindings: normalized,
+		Bindings:               normalized,
 	}
 	plan.PlanFingerprint = semanticValidationPlanFingerprint(plan)
 	return plan, nil

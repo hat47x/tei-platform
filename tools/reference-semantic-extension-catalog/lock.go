@@ -43,17 +43,17 @@ type SemanticLockNamespaceAuthority struct {
 }
 
 type SemanticLock struct {
-	Schema                      string                           `json:"schema"`
-	CanonicalizationPolicy      string                           `json:"canonicalizationPolicy"`
-	ResolutionPolicy            string                           `json:"resolutionPolicy"`
-	Requirements                []ExtensionRequirement           `json:"requirements"`
-	RequirementsFingerprint     string                           `json:"requirementsFingerprint"`
-	CoreSubjectFingerprint      string                           `json:"coreSubjectFingerprint,omitempty"`
-	Extensions                  []SemanticLockExtension          `json:"extensions"`
-	NamespaceAuthorities        []SemanticLockNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
-	Interfaces                  []SemanticLockInterface          `json:"interfaces,omitempty"`
-	InterfaceWirings            []SemanticLockInterfaceWiring    `json:"interfaceWirings,omitempty"`
-	SemanticSetFingerprint      string                           `json:"semanticSetFingerprint"`
+	Schema                  string                           `json:"schema"`
+	CanonicalizationPolicy  string                           `json:"canonicalizationPolicy"`
+	ResolutionPolicy        string                           `json:"resolutionPolicy"`
+	Requirements            []ExtensionRequirement           `json:"requirements"`
+	RequirementsFingerprint string                           `json:"requirementsFingerprint"`
+	CoreSubjectFingerprint  string                           `json:"coreSubjectFingerprint,omitempty"`
+	Extensions              []SemanticLockExtension          `json:"extensions"`
+	NamespaceAuthorities    []SemanticLockNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
+	Interfaces              []SemanticLockInterface          `json:"interfaces,omitempty"`
+	InterfaceWirings        []SemanticLockInterfaceWiring    `json:"interfaceWirings,omitempty"`
+	SemanticSetFingerprint  string                           `json:"semanticSetFingerprint"`
 }
 
 func buildSemanticLock(catalog SemanticCatalog) (SemanticLock, error) {

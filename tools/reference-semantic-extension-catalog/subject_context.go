@@ -23,13 +23,13 @@ const (
 )
 
 type SubjectExtensionUse struct {
-	Extension                  CatalogExtension        `json:"extension"`
-	State                      string                  `json:"state"`
-	Roles                      []string                `json:"roles"`
-	RootPaths                  []CatalogDependencyPath `json:"rootPaths,omitempty"`
-	PackageRequiredBy          []ExtensionIdentity     `json:"packageRequiredBy,omitempty"`
-	InterfaceConsumers         []ExtensionIdentity     `json:"interfaceConsumers,omitempty"`
-	PotentiallyAffectedExtensions []ExtensionIdentity  `json:"potentiallyAffectedExtensions,omitempty"`
+	Extension                     CatalogExtension        `json:"extension"`
+	State                         string                  `json:"state"`
+	Roles                         []string                `json:"roles"`
+	RootPaths                     []CatalogDependencyPath `json:"rootPaths,omitempty"`
+	PackageRequiredBy             []ExtensionIdentity     `json:"packageRequiredBy,omitempty"`
+	InterfaceConsumers            []ExtensionIdentity     `json:"interfaceConsumers,omitempty"`
+	PotentiallyAffectedExtensions []ExtensionIdentity     `json:"potentiallyAffectedExtensions,omitempty"`
 }
 
 type SubjectValidationPlanContext struct {
@@ -39,27 +39,27 @@ type SubjectValidationPlanContext struct {
 }
 
 type SubjectSemanticContext struct {
-	Schema                     string                       `json:"schema"`
-	Subject                    subject.Subject              `json:"subject"`
-	ContextFingerprint         string                       `json:"contextFingerprint"`
-	SemanticSetFingerprint     string                       `json:"semanticSetFingerprint"`
-	SemanticEvidenceFingerprint string                      `json:"semanticEvidenceFingerprint"`
-	CoreSourceIndexFingerprint string                       `json:"coreSourceIndexFingerprint,omitempty"`
-	ResolutionPolicy           string                       `json:"resolutionPolicy"`
-	CoreContextStatus          string                       `json:"coreContextStatus"`
-	SemanticSetStatus          string                       `json:"semanticSetStatus"`
-	SubjectSemanticStatus      string                       `json:"subjectSemanticStatus"`
-	Core                       knowledgecontext.Context     `json:"core"`
-	Extensions                 []SubjectExtensionUse        `json:"extensions,omitempty"`
-	Interfaces                 []CatalogSemanticInterface   `json:"interfaces,omitempty"`
-	InterfaceWirings           []CatalogInterfaceWiring     `json:"interfaceWirings,omitempty"`
-	Constraints                []CatalogConstraint          `json:"constraints,omitempty"`
-	Relations                  []CatalogRelation            `json:"relations,omitempty"`
-	Connections                []CatalogConnection          `json:"connections,omitempty"`
-	ValidationPlan             *SubjectValidationPlanContext `json:"validationPlan,omitempty"`
-	SubjectUnresolved          []CatalogUnresolved          `json:"subjectUnresolved,omitempty"`
-	SemanticSetUnresolved      []CatalogUnresolved          `json:"semanticSetUnresolved,omitempty"`
-	AuthorityLimits            []string                     `json:"authorityLimits"`
+	Schema                      string                        `json:"schema"`
+	Subject                     subject.Subject               `json:"subject"`
+	ContextFingerprint          string                        `json:"contextFingerprint"`
+	SemanticSetFingerprint      string                        `json:"semanticSetFingerprint"`
+	SemanticEvidenceFingerprint string                        `json:"semanticEvidenceFingerprint"`
+	CoreSourceIndexFingerprint  string                        `json:"coreSourceIndexFingerprint,omitempty"`
+	ResolutionPolicy            string                        `json:"resolutionPolicy"`
+	CoreContextStatus           string                        `json:"coreContextStatus"`
+	SemanticSetStatus           string                        `json:"semanticSetStatus"`
+	SubjectSemanticStatus       string                        `json:"subjectSemanticStatus"`
+	Core                        knowledgecontext.Context      `json:"core"`
+	Extensions                  []SubjectExtensionUse         `json:"extensions,omitempty"`
+	Interfaces                  []CatalogSemanticInterface    `json:"interfaces,omitempty"`
+	InterfaceWirings            []CatalogInterfaceWiring      `json:"interfaceWirings,omitempty"`
+	Constraints                 []CatalogConstraint           `json:"constraints,omitempty"`
+	Relations                   []CatalogRelation             `json:"relations,omitempty"`
+	Connections                 []CatalogConnection           `json:"connections,omitempty"`
+	ValidationPlan              *SubjectValidationPlanContext `json:"validationPlan,omitempty"`
+	SubjectUnresolved           []CatalogUnresolved           `json:"subjectUnresolved,omitempty"`
+	SemanticSetUnresolved       []CatalogUnresolved           `json:"semanticSetUnresolved,omitempty"`
+	AuthorityLimits             []string                      `json:"authorityLimits"`
 }
 
 func buildSubjectSemanticContext(
@@ -304,14 +304,14 @@ func buildSubjectSemanticContext(
 	})
 	sort.Slice(out.Relations, func(i, j int) bool {
 		left := relationKey(ExtensionRelation{
-			From: out.Relations[i].From,
+			From:     out.Relations[i].From,
 			Relation: out.Relations[i].Relation,
-			To: out.Relations[i].To,
+			To:       out.Relations[i].To,
 		})
 		right := relationKey(ExtensionRelation{
-			From: out.Relations[j].From,
+			From:     out.Relations[j].From,
 			Relation: out.Relations[j].Relation,
-			To: out.Relations[j].To,
+			To:       out.Relations[j].To,
 		})
 		if left != right {
 			return left < right

@@ -40,16 +40,16 @@ type ApplicationPatternContractQueryInputEntry struct {
 }
 
 type ApplicationPatternIndexEntry struct {
-	Application         core.CanonicalID                           `json:"application"`
-	Pattern             core.CanonicalID                           `json:"pattern"`
-	Kind                string                                     `json:"kind"`
-	Data                core.CanonicalID                           `json:"data,omitempty"`
-	Relation            core.CanonicalID                           `json:"relation,omitempty"`
-	Query               core.CanonicalID                           `json:"query,omitempty"`
-	Capability          core.CanonicalID                           `json:"capability,omitempty"`
-	Datasource          core.LocalName                             `json:"datasource,omitempty"`
-	Contract            core.CanonicalID                           `json:"contract,omitempty"`
-	ContractQuery       string                                     `json:"contractQuery,omitempty"`
+	Application         core.CanonicalID                            `json:"application"`
+	Pattern             core.CanonicalID                            `json:"pattern"`
+	Kind                string                                      `json:"kind"`
+	Data                core.CanonicalID                            `json:"data,omitempty"`
+	Relation            core.CanonicalID                            `json:"relation,omitempty"`
+	Query               core.CanonicalID                            `json:"query,omitempty"`
+	Capability          core.CanonicalID                            `json:"capability,omitempty"`
+	Datasource          core.LocalName                              `json:"datasource,omitempty"`
+	Contract            core.CanonicalID                            `json:"contract,omitempty"`
+	ContractQuery       string                                      `json:"contractQuery,omitempty"`
 	ContractQueryInputs []ApplicationPatternContractQueryInputEntry `json:"contractQueryInputs,omitempty"`
 }
 

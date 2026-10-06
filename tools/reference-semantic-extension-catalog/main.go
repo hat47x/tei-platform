@@ -204,7 +204,7 @@ func run(args []string) int {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(map[string]any{
-			"validationPlanValid":     true,
+			"validationPlanValid":    true,
 			"semanticSetFingerprint": plan.SemanticSetFingerprint,
 			"planFingerprint":        plan.PlanFingerprint,
 		}); err != nil {
@@ -287,7 +287,6 @@ func run(args []string) int {
 	return 0
 }
 
-
 func loadSemanticInterfaceWirings(paths []string) ([]SemanticInterfaceWiring, error) {
 	out := make([]SemanticInterfaceWiring, 0, len(paths))
 	for _, path := range paths {
@@ -355,7 +354,6 @@ func decodeStrictJSONFile(path string, dst any) error {
 	}
 	return nil
 }
-
 
 func writeJSONFile(path string, value any) error {
 	encoded, err := json.MarshalIndent(value, "", "  ")

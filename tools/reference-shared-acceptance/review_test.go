@@ -373,7 +373,7 @@ func TestReviewCLIIsReadOnlyAndCanEmitTextOrJSON(t *testing.T) {
 }
 
 func TestReviewFingerprintGuardFlowsThroughCLI(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	candidatePath := filepath.Join(t.TempDir(), "candidate.json")
 	if err := os.WriteFile(candidatePath, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))), 0o644); err != nil {
 		t.Fatal(err)

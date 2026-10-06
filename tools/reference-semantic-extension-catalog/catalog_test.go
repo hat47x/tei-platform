@@ -1012,7 +1012,6 @@ func catalogHasUnresolved(catalog SemanticCatalog, code string, want subject.Sub
 	return false
 }
 
-
 func catalogSubject(catalog SemanticCatalog, want subject.Subject) (CatalogSubject, bool) {
 	for _, entry := range catalog.Subjects {
 		if entry.Subject == want {

@@ -10,7 +10,7 @@ import (
 
 func TestQualifyApplicableWithAuthoritativeSourceAndExactDependency(t *testing.T) {
 	ctx := Context{
-		Subject:            subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+		Subject: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
 		References: []sourceindex.Reference{{
 			Role:         sourceindex.RoleDefinition,
 			ArtifactPath: "applications/order_entry/patterns/customer_reference.tei",

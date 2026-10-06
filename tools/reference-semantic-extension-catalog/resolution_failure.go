@@ -27,7 +27,7 @@ type SemanticResolutionFailure struct {
 	RequiredMajor        *int                                 `json:"requiredMajor,omitempty"`
 	RequiredMajors       []int                                `json:"requiredMajors,omitempty"`
 	SelectedVersion      string                               `json:"selectedVersion,omitempty"`
-	Cycle                 []string                            `json:"cycle,omitempty"`
+	Cycle                []string                             `json:"cycle,omitempty"`
 	MaxCandidateAttempts int                                  `json:"maxCandidateAttempts,omitempty"`
 	CandidateFailures    []SemanticResolutionCandidateFailure `json:"candidateFailures,omitempty"`
 	Detail               string                               `json:"detail"`

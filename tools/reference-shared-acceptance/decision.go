@@ -348,20 +348,20 @@ type DecisionRecord struct {
 	// Statusは、記録した時点のrevisionが現在のrevisionと一致するか（current / superseded）。
 	Status string `json:"status"`
 	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
-	SourceEdits         string       `json:"sourceEdits"`
-	Diverged            []string     `json:"divergedPaths,omitempty"`
-	EvidenceStatus             string              `json:"evidenceStatus"`
-	SourceEvidenceStatus       string              `json:"sourceEvidenceStatus"`
-	ArtifactEvidenceStatus     string              `json:"artifactEvidenceStatus"`
-	EvidenceDiagnostics        []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
-	ArtifactEvidenceDiagnostics []Diagnostic       `json:"artifactEvidenceDiagnostics,omitempty"`
-	ReviewBindingStatus        string              `json:"reviewBindingStatus"`
-	ReviewCoverageStatus   string              `json:"reviewCoverageStatus"`
-	ReviewIncomplete       []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
-	ReviewDiagnostics      []Diagnostic        `json:"reviewDiagnostics,omitempty"`
-	DecisionActorStatus    string              `json:"decisionActorStatus"`
-	DecisionAuthorityStatus string             `json:"decisionAuthorityStatus"`
-	Decision               Decision            `json:"decision"`
+	SourceEdits                 string              `json:"sourceEdits"`
+	Diverged                    []string            `json:"divergedPaths,omitempty"`
+	EvidenceStatus              string              `json:"evidenceStatus"`
+	SourceEvidenceStatus        string              `json:"sourceEvidenceStatus"`
+	ArtifactEvidenceStatus      string              `json:"artifactEvidenceStatus"`
+	EvidenceDiagnostics         []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
+	ArtifactEvidenceDiagnostics []Diagnostic        `json:"artifactEvidenceDiagnostics,omitempty"`
+	ReviewBindingStatus         string              `json:"reviewBindingStatus"`
+	ReviewCoverageStatus        string              `json:"reviewCoverageStatus"`
+	ReviewIncomplete            []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
+	ReviewDiagnostics           []Diagnostic        `json:"reviewDiagnostics,omitempty"`
+	DecisionActorStatus         string              `json:"decisionActorStatus"`
+	DecisionAuthorityStatus     string              `json:"decisionAuthorityStatus"`
+	Decision                    Decision            `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -440,12 +440,12 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			return index, fmt.Errorf("decision record %s: %w", rel, err)
 		}
 		record := DecisionRecord{
-			Path:                 rel,
-			Decision:             d,
-			Status:               "superseded",
-			SourceEdits:          "none",
-			EvidenceStatus:         "none",
-			SourceEvidenceStatus:   "none",
+			Path:                    rel,
+			Decision:                d,
+			Status:                  "superseded",
+			SourceEdits:             "none",
+			EvidenceStatus:          "none",
+			SourceEvidenceStatus:    "none",
 			ArtifactEvidenceStatus:  "none",
 			ReviewBindingStatus:     "none",
 			ReviewCoverageStatus:    "none",
@@ -676,4 +676,3 @@ func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic
 	}
 	return status, "incomplete", nil
 }
-

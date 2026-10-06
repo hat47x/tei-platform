@@ -304,7 +304,10 @@ func TestSharedAcceptanceRejectsTamperedQualificationEvidence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if ev.preview.Acceptable || !previewHasDiagnostic(ev.preview, "EVIDENCE_EXACT_SUBJECT_NOT_FOUND") {
+		// kindの食い違いは、候補の正規化（qualificationRequirementsとの整合検査）が先に止める。
+		// 整合を保ったまま改ざんしてもApplication scopeの検査に落ちるため、どちらの層でも受理されなければよい。
+		if ev.preview.Acceptable ||
+			!(previewHasDiagnostic(ev.preview, "CANDIDATE_NORMALIZE") || previewHasDiagnostic(ev.preview, "EVIDENCE_EXACT_SUBJECT_NOT_FOUND")) {
 			t.Fatalf("tampered subject kind was not rejected: %+v", ev.preview.Stages)
 		}
 	})

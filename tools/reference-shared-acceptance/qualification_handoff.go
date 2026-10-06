@@ -93,7 +93,6 @@ func evidenceKey(e Evidence) string {
 	return string(encoded)
 }
 
-
 func qualificationEvidenceKey(e knowledgecontext.QualificationEvidence) string {
 	encoded, _ := json.Marshal(e)
 	return string(encoded)

@@ -247,7 +247,6 @@ func uniqueSortedStrings(values []string) []string {
 	return out
 }
 
-
 func descriptorFingerprint(d ExtensionDescriptor) string {
 	d.sourcePath = ""
 	d.sourceFingerprint = ""
@@ -255,7 +254,6 @@ func descriptorFingerprint(d ExtensionDescriptor) string {
 	sum := sha256.Sum256(encoded)
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
-
 
 func validateConstraintEvaluatorRequirements(d ExtensionDescriptor) error {
 	required := map[string]struct{}{}

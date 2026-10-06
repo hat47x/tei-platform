@@ -72,10 +72,10 @@ type CatalogConnection struct {
 }
 
 type CatalogUnresolved struct {
-	Code       string            `json:"code"`
-	Subject    *subject.Subject  `json:"subject,omitempty"`
-	Extension  *ExtensionIdentity `json:"extension,omitempty"`
-	Detail     string            `json:"detail"`
+	Code      string             `json:"code"`
+	Subject   *subject.Subject   `json:"subject,omitempty"`
+	Extension *ExtensionIdentity `json:"extension,omitempty"`
+	Detail    string             `json:"detail"`
 }
 
 type CoreCatalogInput struct {
@@ -86,29 +86,29 @@ type CoreCatalogInput struct {
 }
 
 type SemanticCatalog struct {
-	Schema                     string                 `json:"schema"`
-	ResolutionPolicy           string                 `json:"resolutionPolicy"`
-	ResolutionFingerprint      string                 `json:"resolutionFingerprint"`
-	EvidenceFingerprint        string                 `json:"evidenceFingerprint"`
-	CoreSubjectFingerprint     string                 `json:"coreSubjectFingerprint,omitempty"`
-	CoreSourceIndexFingerprint string                 `json:"coreSourceIndexFingerprint,omitempty"`
-	Requirements               []ExtensionRequirement    `json:"requirements"`
-	Extensions                 []CatalogExtension          `json:"extensions,omitempty"`
-	NamespaceAuthorities       []CatalogNamespaceAuthority `json:"namespaceAuthorities,omitempty"`
-	Interfaces                 []CatalogSemanticInterface  `json:"interfaces,omitempty"`
+	Schema                     string                         `json:"schema"`
+	ResolutionPolicy           string                         `json:"resolutionPolicy"`
+	ResolutionFingerprint      string                         `json:"resolutionFingerprint"`
+	EvidenceFingerprint        string                         `json:"evidenceFingerprint"`
+	CoreSubjectFingerprint     string                         `json:"coreSubjectFingerprint,omitempty"`
+	CoreSourceIndexFingerprint string                         `json:"coreSourceIndexFingerprint,omitempty"`
+	Requirements               []ExtensionRequirement         `json:"requirements"`
+	Extensions                 []CatalogExtension             `json:"extensions,omitempty"`
+	NamespaceAuthorities       []CatalogNamespaceAuthority    `json:"namespaceAuthorities,omitempty"`
+	Interfaces                 []CatalogSemanticInterface     `json:"interfaces,omitempty"`
 	InterfaceWirings           []CatalogInterfaceWiring       `json:"interfaceWirings,omitempty"`
-	DependencyExplanations     []CatalogDependencyExplanation  `json:"dependencyExplanations,omitempty"`
+	DependencyExplanations     []CatalogDependencyExplanation `json:"dependencyExplanations,omitempty"`
 	Subjects                   []CatalogSubject               `json:"subjects"`
-	Relations       []CatalogRelation   `json:"relations,omitempty"`
-	Constraints     []CatalogConstraint `json:"constraints,omitempty"`
-	Connections     []CatalogConnection `json:"connections,omitempty"`
-	Unresolved      []CatalogUnresolved `json:"unresolved,omitempty"`
-	AuthorityLimits        []string               `json:"authorityLimits"`
+	Relations                  []CatalogRelation              `json:"relations,omitempty"`
+	Constraints                []CatalogConstraint            `json:"constraints,omitempty"`
+	Connections                []CatalogConnection            `json:"connections,omitempty"`
+	Unresolved                 []CatalogUnresolved            `json:"unresolved,omitempty"`
+	AuthorityLimits            []string                       `json:"authorityLimits"`
 }
 
 const (
-	catalogSchema             = "tei.reference.semantic-catalog/v0"
-	semanticResolutionPolicy  = "highest-compatible-complete-search/by-extension-id/v0"
+	catalogSchema            = "tei.reference.semantic-catalog/v0"
+	semanticResolutionPolicy = "highest-compatible-complete-search/by-extension-id/v0"
 )
 
 func loadExtensionDescriptors(root string) ([]ExtensionDescriptor, error) {
@@ -533,7 +533,7 @@ func resolveSemanticCatalogWithAllInputs(
 		CoreSourceIndexFingerprint: core.SourceIndexFingerprint,
 		Requirements:               normalizedRoots,
 		DependencyExplanations:     buildDependencyExplanations(selected, normalizedRoots),
-		Subjects:                    []CatalogSubject{},
+		Subjects:                   []CatalogSubject{},
 		AuthorityLimits: []string{
 			"catalog-is-not-canonical-authority",
 			"extension-selection-is-not-acceptance",
@@ -716,9 +716,7 @@ func resolveSemanticCatalogWithAllInputs(
 				Extension:          identity,
 			}
 			if constraint.EvaluatorInterface != "" {
-				wiring, ok := resolvedInterfaceWiring[
-					semanticInterfaceWiringKey(descriptor.ID, constraint.EvaluatorInterface)
-				]
+				wiring, ok := resolvedInterfaceWiring[semanticInterfaceWiringKey(descriptor.ID, constraint.EvaluatorInterface)]
 				if !ok {
 					extensionCopy := identity
 					subjectCopy := constraint.Subject
@@ -815,7 +813,6 @@ func filterCatalog(catalog SemanticCatalog, kind, id string) SemanticCatalog {
 	return filtered
 }
 
-
 func normalizeRootRequirements(values []ExtensionRequirement) ([]ExtensionRequirement, error) {
 	if len(values) == 0 {
 		return nil, fmt.Errorf("at least one root extension requirement is required")
@@ -858,6 +855,12 @@ func semanticCatalogFingerprint(catalog SemanticCatalog) string {
 	catalog.EvidenceFingerprint = ""
 	catalog.CoreSourceIndexFingerprint = ""
 	catalog.DependencyExplanations = nil
+	// catalogは値渡しだが、slice要素は呼び出し元と共有される。呼び出し元のEvidenceを消さないよう複製してから落とす。
+	catalog.Extensions = append([]CatalogExtension(nil), catalog.Extensions...)
+	catalog.Subjects = append([]CatalogSubject(nil), catalog.Subjects...)
+	catalog.Interfaces = append([]CatalogSemanticInterface(nil), catalog.Interfaces...)
+	catalog.InterfaceWirings = append([]CatalogInterfaceWiring(nil), catalog.InterfaceWirings...)
+	catalog.NamespaceAuthorities = append([]CatalogNamespaceAuthority(nil), catalog.NamespaceAuthorities...)
 	for i := range catalog.Extensions {
 		catalog.Extensions[i].Source = ""
 		catalog.Extensions[i].SourceFingerprint = ""
@@ -887,7 +890,6 @@ func semanticCatalogEvidenceFingerprint(catalog SemanticCatalog) string {
 	encoded, _ := json.Marshal(catalog)
 	return sourceindex.Fingerprint(encoded)
 }
-
 
 func normalizeCatalogSources(values []CatalogSource) []CatalogSource {
 	seen := map[string]struct{}{}

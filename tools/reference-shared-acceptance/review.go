@@ -387,7 +387,7 @@ func describeReviewEvidence(e Evidence) string {
 		)
 		if evaluation, ok := semanticEvaluationFromEvidence(e); ok {
 			parts = append(parts,
-				"status="+evaluation.Status,
+				"status="+string(evaluation.Status),
 				"subject="+evaluation.Subject.Kind+":"+evaluation.Subject.ID,
 				"constraint="+evaluation.ConstraintExtension+"/"+evaluation.ConstraintID,
 				"semanticSet="+evaluation.SemanticSetFingerprint,

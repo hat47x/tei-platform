@@ -282,7 +282,7 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 	baselineBefore := treeDigest(t, baselineLike)
 	baselineDecisionCount := len(decisionsOf(t, baselineLike).Records)
-	code, out, errOut = run("reject", "-workspace", baselineLike, "-candidate", candidatePath, "-reason", "baselineでは記録しない")
+	code, out, errOut := run("reject", "-workspace", baselineLike, "-candidate", candidatePath, "-reason", "baselineでは記録しない")
 	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(errOut, "決定記録を書きませんでした") {
 		t.Fatalf("baselineのreject record guardが働いていません: code=%d out=%s err=%s", code, out, errOut)
 	}
@@ -291,7 +291,7 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 	assertTreeUnchanged(t, baselineBefore, treeDigest(t, baselineLike))
 
-	code, _, errOut := run("accept", "-workspace", baselineLike, "-candidate", candidatePath)
+	code, _, errOut = run("accept", "-workspace", baselineLike, "-candidate", candidatePath)
 	if code != 2 || !strings.Contains(errOut, "baseline") {
 		t.Fatalf("baselineへのacceptが止まっていません: code=%d err=%s", code, errOut)
 	}

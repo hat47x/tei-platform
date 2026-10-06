@@ -19,15 +19,15 @@ type Edge struct {
 }
 
 type Context struct {
-	Subject             subject.Subject                     `json:"subject"`
-	Artifacts           []sourceindex.Artifact               `json:"artifacts,omitempty"`
-	References          []sourceindex.Reference              `json:"references,omitempty"`
-	SemanticElement     *index.SemanticElementEntry          `json:"semanticElement,omitempty"`
-	ApplicationPattern *index.ApplicationPatternIndexEntry  `json:"applicationPattern,omitempty"`
-	Outgoing            []Edge                               `json:"outgoing,omitempty"`
-	Incoming            []Edge                               `json:"incoming,omitempty"`
-	Unresolved          []string                             `json:"unresolved,omitempty"`
-	AuthorityLimits     []string                             `json:"authorityLimits"`
+	Subject            subject.Subject                     `json:"subject"`
+	Artifacts          []sourceindex.Artifact              `json:"artifacts,omitempty"`
+	References         []sourceindex.Reference             `json:"references,omitempty"`
+	SemanticElement    *index.SemanticElementEntry         `json:"semanticElement,omitempty"`
+	ApplicationPattern *index.ApplicationPatternIndexEntry `json:"applicationPattern,omitempty"`
+	Outgoing           []Edge                              `json:"outgoing,omitempty"`
+	Incoming           []Edge                              `json:"incoming,omitempty"`
+	Unresolved         []string                            `json:"unresolved,omitempty"`
+	AuthorityLimits    []string                            `json:"authorityLimits"`
 }
 
 func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Context {

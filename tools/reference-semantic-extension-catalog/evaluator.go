@@ -29,19 +29,19 @@ type SemanticEvaluationOutcome struct {
 type SemanticEvaluatorFunc func(context.Context, []byte) (SemanticEvaluationOutcome, error)
 
 type SemanticEvaluatorImplementation struct {
-	ID string
-	ProviderExtension string
-	Interface string
+	ID                  string
+	ProviderExtension   string
+	Interface           string
 	ContractFingerprint string
-	ArtifactDigest string
-	Evaluate SemanticEvaluatorFunc
+	ArtifactDigest      string
+	Evaluate            SemanticEvaluatorFunc
 }
 
 type SemanticEvaluatorBinding struct {
 	ConstraintExtension string `json:"constraintExtension"`
-	ConstraintID string `json:"constraintId"`
-	ImplementationID string `json:"implementationId"`
-	ArtifactDigest string `json:"artifactDigest"`
+	ConstraintID        string `json:"constraintId"`
+	ImplementationID    string `json:"implementationId"`
+	ArtifactDigest      string `json:"artifactDigest"`
 }
 
 type SemanticEvaluationEvidence = semanticevidence.Evidence
@@ -148,22 +148,22 @@ func evaluateSemanticConstraint(
 	}
 
 	evidence := SemanticEvaluationEvidence{
-		Schema: semanticEvaluationEvidenceSchema,
-		SemanticSetFingerprint: catalog.ResolutionFingerprint,
-		ConstraintExtension: binding.ConstraintExtension,
-		ConstraintID: binding.ConstraintID,
-		Subject: constraint.Subject,
-		ValidatorRef: constraint.ValidatorRef,
-		EvaluatorInterface: constraint.EvaluatorInterface,
-		EvaluatorContractFingerprint: constraint.EvaluatorContractFingerprint,
-		EvaluatorConformanceProfile: constraint.EvaluatorConformanceProfile,
-		EvaluatorProviderExtension: constraint.EvaluatorProviderExtension,
-		EvaluatorImplementationID: implementation.ID,
-		EvaluatorArtifactDigest: implementation.ArtifactDigest,
+		Schema:                         semanticEvaluationEvidenceSchema,
+		SemanticSetFingerprint:         catalog.ResolutionFingerprint,
+		ConstraintExtension:            binding.ConstraintExtension,
+		ConstraintID:                   binding.ConstraintID,
+		Subject:                        constraint.Subject,
+		ValidatorRef:                   constraint.ValidatorRef,
+		EvaluatorInterface:             constraint.EvaluatorInterface,
+		EvaluatorContractFingerprint:   constraint.EvaluatorContractFingerprint,
+		EvaluatorConformanceProfile:    constraint.EvaluatorConformanceProfile,
+		EvaluatorProviderExtension:     constraint.EvaluatorProviderExtension,
+		EvaluatorImplementationID:      implementation.ID,
+		EvaluatorArtifactDigest:        implementation.ArtifactDigest,
 		ConformanceEvidenceFingerprint: conformance.EvidenceFingerprint,
-		InputFingerprint: sourceindex.Fingerprint(input),
-		Status: outcome.Status,
-		Diagnostics: outcome.Diagnostics,
+		InputFingerprint:               sourceindex.Fingerprint(input),
+		Status:                         outcome.Status,
+		Diagnostics:                    outcome.Diagnostics,
 	}
 	evidence, err = semanticevidence.Prepare(evidence)
 	if err != nil {
@@ -180,4 +180,3 @@ func findCatalogConstraint(catalog SemanticCatalog, extensionID, constraintID st
 	}
 	return CatalogConstraint{}, false
 }
-

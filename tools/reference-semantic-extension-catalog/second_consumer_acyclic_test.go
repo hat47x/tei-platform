@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	acyclicInterfaceID = "reference.graph.acyclic.evaluate"
+	acyclicInterfaceID  = "reference.graph.acyclic.evaluate"
 	acyclicConstraintID = "acyclic"
 )
 

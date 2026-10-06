@@ -85,7 +85,6 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 		t.Fatalf("受理前に記録があります: %+v", index.Records)
 	}
 
-
 	decision := acceptViaCLI(t, dir, candidatePath)
 	if !strings.HasPrefix(decision.RecordPath, decisionDir+"/") {
 		t.Fatalf("受理結果が記録先を示していません: %q", decision.RecordPath)
@@ -407,7 +406,7 @@ func TestDecisionRecordReportsQualificationEvidenceFreshnessSeparately(t *testin
 }
 
 func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
 	if decision.EvidenceFingerprint == "" || len(decision.Evidence) == 0 {
 		t.Fatalf("accepted decision lacks bound Evidence identity: %+v", decision)
@@ -473,7 +472,6 @@ func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
 	}
 }
 
-
 func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
 	binding := &ReviewBinding{
 		Fingerprint: "sha256:" + strings.Repeat("g", 64),
@@ -518,7 +516,7 @@ func TestReviewBindingClassifierKeepsLegacyBindingRecorded(t *testing.T) {
 }
 
 func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
 	ev, err := evaluate(dir, data)
 	if err != nil {
@@ -567,7 +565,7 @@ func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
 }
 
 func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
-	dir := scratchWorkspace(t)
+	dir := scratchWorkspaceBeforeSecondApplication(t)
 	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
 	decision, err := accept(dir, data, acceptOptions{})
 	if err != nil || decision.Decision != "accepted" {

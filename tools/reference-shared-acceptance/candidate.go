@@ -40,14 +40,14 @@ type Origin struct {
 
 // Evidenceは、candidateの根拠を既存のCanonical ID、またはsubjectKind付きのSource Index identityとworkspace相対sourceで示す。
 type Evidence struct {
-	SubjectKind                     string                                        `json:"subjectKind,omitempty"`
-	Subject                         string                                        `json:"subject,omitempty"`
-	Source                          string                                        `json:"source,omitempty"`
-	SourceFingerprint               string                                        `json:"sourceFingerprint,omitempty"`
-	QualificationRequirements       *knowledgecontext.QualificationRequirements   `json:"qualificationRequirements,omitempty"`
-	QualificationDependencyEvidence []knowledgecontext.QualificationEvidence      `json:"qualificationDependencyEvidence,omitempty"`
-	Artifact                        *EvidenceArtifact                             `json:"artifact,omitempty"`
-	Note                            string                                        `json:"note,omitempty"`
+	SubjectKind                     string                                      `json:"subjectKind,omitempty"`
+	Subject                         string                                      `json:"subject,omitempty"`
+	Source                          string                                      `json:"source,omitempty"`
+	SourceFingerprint               string                                      `json:"sourceFingerprint,omitempty"`
+	QualificationRequirements       *knowledgecontext.QualificationRequirements `json:"qualificationRequirements,omitempty"`
+	QualificationDependencyEvidence []knowledgecontext.QualificationEvidence    `json:"qualificationDependencyEvidence,omitempty"`
+	Artifact                        *EvidenceArtifact                           `json:"artifact,omitempty"`
+	Note                            string                                      `json:"note,omitempty"`
 }
 
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)

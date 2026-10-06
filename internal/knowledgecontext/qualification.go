@@ -262,7 +262,6 @@ func qualificationEvidence(ctx Context) []QualificationEvidence {
 	return out
 }
 
-
 func QualifyWithSources(ctx Context, sources sourceindex.Index, requirements QualificationRequirements) (QualificationResult, error) {
 	result, err := Qualify(ctx, requirements)
 	if err != nil || result.Status != QualificationApplicable {

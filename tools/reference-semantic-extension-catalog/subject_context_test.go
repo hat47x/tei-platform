@@ -51,7 +51,7 @@ func hasString(values []string, want string) bool {
 func TestSubjectSemanticContextConnectsSUIKnowledgeToExtensionValidationRail(t *testing.T) {
 	core, target := suiReferenceCoreCatalog(t)
 	consumer := acyclicDomainConsumer(t, "tei.reference.sui-acyclic", target)
-	catalog, contract, provider, conformance := resolveAcyclicDomainCatalog(
+	catalog, contract, provider, _ := resolveAcyclicDomainCatalog(
 		t,
 		core,
 		consumer,

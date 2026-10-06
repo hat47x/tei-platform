@@ -58,10 +58,10 @@ func suiHierarchySemanticExtensionFixture(
 		ProviderConformanceRef: "reference.conformance.sui-hierarchy-v1",
 	}
 	hierarchy := ExtensionDescriptor{
-		Schema:    extensionSchema,
-		ID:        "tei.reference.hierarchy-integrity",
-		Namespace: "reference.hierarchy.integrity",
-		Version:   "1.0.0",
+		Schema:     extensionSchema,
+		ID:         "tei.reference.hierarchy-integrity",
+		Namespace:  "reference.hierarchy.integrity",
+		Version:    "1.0.0",
 		Interfaces: []SemanticInterfaceContract{contract},
 		RequiresInterfaces: []SemanticInterfaceRequirement{{
 			Interface:       contract.ID,
@@ -188,7 +188,6 @@ func TestConstraintEvaluatorMustBeDeclaredAsSemanticInterfaceRequirement(t *test
 		t.Fatalf("implicit evaluator dependency was not rejected: %v", err)
 	}
 }
-
 
 func suiHierarchyEvaluatorImplementation(
 	contract SemanticInterfaceContract,
@@ -450,7 +449,6 @@ func semanticEvaluationHasDiagnostic(values []SemanticEvaluationDiagnostic, code
 	}
 	return false
 }
-
 
 func TestSemanticValidationPlanRejectsMissingBindingAndSemanticSetDrift(t *testing.T) {
 	catalog, contract, hierarchy, provider, _ := resolvedSUIHierarchySemanticCatalog(t)

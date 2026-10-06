@@ -158,7 +158,6 @@ func containsKnowledgeContextString(values []string, want string) bool {
 	return false
 }
 
-
 func TestBuildKnowledgeQualificationClassifiesActualPatternApplicable(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeQualification(

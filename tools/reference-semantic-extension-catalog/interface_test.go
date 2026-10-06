@@ -22,10 +22,10 @@ func semanticInterfaceFixture() (
 	}
 	fingerprint := semanticInterfaceFingerprint(contract)
 	owner := ExtensionDescriptor{
-		Schema:    extensionSchema,
-		ID:        "tei.reference.interface-contract",
-		Namespace: "reference.interface",
-		Version:   "1.0.0",
+		Schema:     extensionSchema,
+		ID:         "tei.reference.interface-contract",
+		Namespace:  "reference.interface",
+		Version:    "1.0.0",
 		Interfaces: []SemanticInterfaceContract{contract},
 	}
 	consumer := ExtensionDescriptor{
@@ -314,7 +314,6 @@ func catalogHasUnresolvedCode(catalog SemanticCatalog, code string) bool {
 	}
 	return false
 }
-
 
 func TestSemanticInterfaceConformanceIdentityIncludesExactContract(t *testing.T) {
 	first := SemanticInterfaceConformance{
