@@ -164,6 +164,20 @@
       "observed": "the executable System definition names special tables for users, sessions, numbering, calendar, tax, exchange rates, variants, and other platform services",
       "risk": "one reference application's physical table identities can become hard-coded platform semantics",
       "teiDirection": "represent reusable service meaning through Extension/Capability contracts and environment/database bindings rather than Core-known table names"
+    },
+    {
+      "id": "RMP-024",
+      "topic": "conditional-relationship-prose",
+      "observed": "21 of 80 Relationship elements carry non-empty ExistWhen1 prose such as conditional existence statements",
+      "risk": "conditional relationship meaning can be dropped, or natural-language text can be over-promoted to an executable constraint",
+      "teiDirection": "preserve conditional existence as source-backed proposal/unresolved and promote it to Validation/Lifecycle semantics only through explicit acceptance"
+    },
+    {
+      "id": "RMP-025",
+      "topic": "derived-field-authority-split",
+      "observed": "52 Xead TableFields are DERIVABLE; 51 structurally match Xeaf VIRTUAL fields, while the actual calculation can live in Script, TypeOptions, or other runtime logic",
+      "risk": "DERIVABLE/VIRTUAL labels can be mistaken for complete derivation semantics or runtime Script can become the only hidden source of business meaning",
+      "teiDirection": "separate derived-value semantic contract from native evaluator/realization; preserve missing derivation authority as unresolved"
     }
   ]
 }
