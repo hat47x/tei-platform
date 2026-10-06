@@ -236,14 +236,22 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 
 func validationDataID(w ir.World, validationID core.CanonicalID) (core.CanonicalID, bool) {
 	attributeOwners := map[core.CanonicalID]core.CanonicalID{}
+	attributeCounts := map[core.CanonicalID]int{}
 	relationTargets := map[core.CanonicalID]core.CanonicalID{}
+	relationCounts := map[core.CanonicalID]int{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			for _, attribute := range data.Attributes {
-				attributeOwners[attribute.ID] = data.ID
+				attributeCounts[attribute.ID]++
+				if attributeCounts[attribute.ID] == 1 {
+					attributeOwners[attribute.ID] = data.ID
+				}
 			}
 			for _, relation := range data.Relations {
-				relationTargets[relation.ID] = relation.Target
+				relationCounts[relation.ID]++
+				if relationCounts[relation.ID] == 1 {
+					relationTargets[relation.ID] = relation.Target
+				}
 			}
 		}
 	}
@@ -259,14 +267,14 @@ func validationDataID(w ir.World, validationID core.CanonicalID) (core.Canonical
 			var candidate core.CanonicalID
 			if validation.Attribute != "" {
 				owner, ok := attributeOwners[validation.Attribute]
-				if !ok {
+				if !ok || attributeCounts[validation.Attribute] != 1 {
 					return "", false
 				}
 				candidate = owner
 			}
 			if validation.Relation != "" {
 				target, ok := relationTargets[validation.Relation]
-				if !ok {
+				if !ok || relationCounts[validation.Relation] != 1 {
 					return "", false
 				}
 				if candidate != "" && candidate != target {
@@ -379,6 +387,7 @@ func buildDataDesignContext(
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
+			"ambiguous-semantic-identity-does-not-produce-design-candidates",
 			"relation-key-is-not-business-identifier",
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
@@ -394,14 +403,19 @@ func buildDataDesignContext(
 	}
 
 	attributeOwner := map[core.CanonicalID]core.CanonicalID{}
+	attributeCount := map[core.CanonicalID]int{}
 	relations := map[core.CanonicalID]DataDesignRelation{}
+	relationCount := map[core.CanonicalID]int{}
 	evidenceSubjects := map[subject.Subject]struct{}{
 		{Kind: "semantic-data", ID: string(dataID)}: {},
 	}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			for _, attribute := range data.Attributes {
-				attributeOwner[attribute.ID] = data.ID
+				attributeCount[attribute.ID]++
+				if attributeCount[attribute.ID] == 1 {
+					attributeOwner[attribute.ID] = data.ID
+				}
 				if data.ID == dataID {
 					ctx.Attributes = append(ctx.Attributes, DataDesignAttribute{ID: attribute.ID, Type: attribute.TypeRef})
 					evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(attribute.ID)}] = struct{}{}
@@ -420,7 +434,10 @@ func buildDataDesignContext(
 						TargetAttribute: key.TargetAttribute,
 					})
 				}
-				relations[relation.ID] = item
+				relationCount[relation.ID]++
+				if relationCount[relation.ID] == 1 {
+					relations[relation.ID] = item
+				}
 				if data.ID == dataID || relation.Target == dataID {
 					ctx.Relations = append(ctx.Relations, item)
 					evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(relation.ID)}] = struct{}{}
@@ -488,7 +505,10 @@ func buildDataDesignContext(
 	for _, ns := range w.Semantics {
 		for _, validation := range ns.Validations {
 			relation, hasRelation := relations[validation.Relation]
-			attributeRelevant := validation.Attribute != "" && attributeOwner[validation.Attribute] == dataID
+			hasRelation = hasRelation && relationCount[validation.Relation] == 1
+			attributeRelevant := validation.Attribute != "" &&
+				attributeCount[validation.Attribute] == 1 &&
+				attributeOwner[validation.Attribute] == dataID
 			relationRelevant := hasRelation && (relation.Source == dataID || relation.Target == dataID)
 			if !attributeRelevant && !relationRelevant {
 				continue
@@ -510,6 +530,7 @@ func buildDataDesignContext(
 				hasRelation &&
 				relation.Cardinality == "many" &&
 				validation.Attribute != "" &&
+				attributeCount[validation.Attribute] == 1 &&
 				attributeOwner[validation.Attribute] == relation.Target {
 				ctx.ScopedUniqueness = append(ctx.ScopedUniqueness, DataDesignScopedUniqueness{
 					Constraint: validation.ID,
