@@ -55,9 +55,8 @@ func projectLegacyCapabilityProvider(
 		return Provider{}, fmt.Errorf("legacy Plugin artifact digest is not exact sha256")
 	}
 
-	normalized := plugin.NormalizeDefinition(definition)
 	var matches []plugin.Capability
-	for _, capability := range normalized.Provides {
+	for _, capability := range definition.Provides {
 		if capability.Kind == mapping.Kind && capability.ID == mapping.CapabilityID {
 			matches = append(matches, capability)
 		}
