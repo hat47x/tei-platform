@@ -106,6 +106,7 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 			"derived-context-is-not-canonical-authority",
 			"dependency-edge-is-not-semantic-applicability",
 			"dependency-edge-is-not-write-or-runtime-authority",
+			"projection-or-runtime-identity-is-not-business-data-identity",
 		},
 	}
 
