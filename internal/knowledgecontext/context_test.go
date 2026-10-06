@@ -233,6 +233,61 @@ func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextSuppressesDuplicatePersistenceMappingIdentity(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Persistence = []persistence.Mapping{
+		{
+			ID:           "sales_core.order_line",
+			Database:     "sales_core",
+			SemanticData: "sales.order_line",
+			Table:        "public.order_lines",
+			PrimaryKey:   []core.CanonicalID{"sales.order_line.line_number"},
+		},
+		{
+			ID:           "sales_core.order_line",
+			Database:     "archive",
+			SemanticData: "sales.order_line",
+			Table:        "archive.order_lines",
+			PrimaryKey:   []core.CanonicalID{"sales.order_line.line_number"},
+		},
+	}
+
+	dataContext := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if dataContext.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+	if len(dataContext.DataDesign.PersistenceRealizations) != 0 {
+		t.Fatalf("ambiguous persistence identity produced realization facts: %+v", dataContext.DataDesign.PersistenceRealizations)
+	}
+	if !containsDataDesignAmbiguityEffect(
+		dataContext.DataDesign.Ambiguities,
+		"duplicate-persistence-mapping",
+		"sales_core.order_line",
+		"realization-suppressed",
+	) {
+		t.Fatalf("persistence ambiguity was not exposed: %+v", dataContext.DataDesign.Ambiguities)
+	}
+	if !containsDataDesignString(
+		dataContext.DataDesign.AuthorityLimits,
+		"ambiguous-persistence-identity-does-not-produce-realization-facts",
+	) {
+		t.Fatalf("persistence ambiguity authority limit is missing: %+v", dataContext.DataDesign.AuthorityLimits)
+	}
+
+	persistenceContext := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "persistence", ID: "sales_core.order_line"},
+	)
+	if persistenceContext.DataDesign != nil {
+		t.Fatalf("duplicate persistence subject was resolved by read order: %+v", persistenceContext.DataDesign)
+	}
+}
+
 func TestDataDesignContextKeepsMultiplePhysicalKeysOutOfLogicalIdentity(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Semantics[0].Data[1].Attributes = append(
@@ -469,8 +524,17 @@ func dataDesignRelationUniqueWorld() ir.World {
 }
 
 func containsDataDesignAmbiguity(values []DataDesignAmbiguity, kind string, id core.CanonicalID) bool {
+	return containsDataDesignAmbiguityEffect(values, kind, id, "design-candidates-suppressed")
+}
+
+func containsDataDesignAmbiguityEffect(
+	values []DataDesignAmbiguity,
+	kind string,
+	id core.CanonicalID,
+	effect string,
+) bool {
 	for _, value := range values {
-		if value.Kind == kind && value.ID == id && value.Count > 1 && value.Effect == "design-candidates-suppressed" {
+		if value.Kind == kind && value.ID == id && value.Count > 1 && value.Effect == effect {
 			return true
 		}
 	}
