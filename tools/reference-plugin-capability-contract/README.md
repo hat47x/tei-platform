@@ -17,3 +17,31 @@ productionの`internal/plugin.CapabilityKind`をすぐに変更せず、Plugin�
 - physical artifactを変えてもlogical contractを別概念へ変えない
 
 これはproduction APIではありません。Referenceが成立した後に、既存`CapabilityKind`を標準contract/profileへどう移すかをADR候補として判断します。
+## Capability Resolution Lock
+
+fresh resolutionと、採用済みの解決結果を後から再現する処理を分けます。
+
+fresh resolutionは、compatibleなContractとConformance済みProviderを現在のCatalogから探索します。これに対し、Capability Resolution Lockは採用時に選ばれた組合せをexactに固定します。Catalogへ新しいContract versionやProviderが追加されても、Lock replayでは新しい候補へ自動更新しません。
+
+Reference Lockは次を保持します。
+
+- schemaとcanonicalization規則
+- resolution policy
+- Authority scope
+- root Requirement
+- 明示wiringの有無と内容
+- exact Contractとcontract fingerprint
+- ProviderのPlugin ID / version / implementation ID
+- exact artifact digest
+- resolution fingerprint
+- Lock自身のfingerprint
+
+同じversionのContract内容が変わった場合、Provider artifactが差し替わった場合、root Requirementや明示wiringが変わった場合はreplayを拒否します。
+
+Conformance EvidenceはLockの意味identityへ固定しません。Lock replayはContractとProvider declarationの再現を確認し、current Evidenceの確認は別に行います。Evidenceが更新されてもContract / Provider resolution identityは維持し、Evidence側のfingerprintだけを更新できます。
+
+一方、Conformance EvidenceはProviderのPlugin / version / implementation IDだけでなく、exact artifact digestへも結び付けます。同じlogical implementation IDのartifactだけを差し替え、古いConformance Evidenceを再利用することはできません。
+
+同じPlugin / version / implementation IDを複数のartifact digestで同時に宣言することも拒否します。明示wiringはlogical providerを指定するため、この状態を許すとartifactの選択がCatalog列挙順へ依存するためです。
+
+Capability Resolution LockはRuntime Authorityを与えません。ScopeごとのPermission / Resource / execution boundaryを置き換えず、productionのPlugin Lock形式としてもまだ固定しません。
