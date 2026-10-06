@@ -28,6 +28,8 @@ TEIが小規模な自作Referenceだけに適合した基盤ではなく、長�
 
 したがって本Gateは、単なるImporter互換試験ではなく、TEIの中心価値に対する規模・複雑性・異質性のpressure testである。
 
+渡辺氏の設計思想をTEI Architectureへどう翻訳するかという一般的な設計整理は[Watanabe Business System Design Pressure](design/watanabe-business-system-design-pressure.md)を正本とする。本Gateはその解釈を重複所有せず、実Reference Model全体で成立するかを反証可能なEvidenceにする責務を持つ。
+
 ## 3. Source baselineとprovenance
 
 ### 3.1 渡辺幸三氏のGitHub source
