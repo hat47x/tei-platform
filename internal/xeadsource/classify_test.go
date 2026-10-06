@@ -21,6 +21,48 @@ func TestClassifyRequiresExplicitPolicyAndKeepsUnknownUnresolved(t *testing.T) {
 	}
 }
 
+func TestClassifyCarriesKeyAuthorityLimitsWithoutPromotingMeaning(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table><TableKey Type="PK"><TableKeyField FieldID="F1"/></TableKey></Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := Classify(doc, ClassificationPolicy{
+		"TableKey": {
+			Classifications: []string{"canonical-candidate", "source-key-assertion", "unresolved"},
+			Extension:       "reference.xead.relational-semantics",
+			AuthorityLimits: []string{
+				"legacy-key-is-not-business-identity",
+				"legacy-key-is-not-functional-dependency",
+			},
+		},
+	})
+	var key *Candidate
+	for i := range got {
+		if got[i].SourceName == "TableKey" {
+			key = &got[i]
+			break
+		}
+	}
+	if key == nil {
+		t.Fatal("TableKey candidate is missing")
+	}
+	if key.Unresolved {
+		t.Fatalf("explicitly classified source construct remained unmapped: %#v", *key)
+	}
+	if !reflect.DeepEqual(key.Classifications, []string{"canonical-candidate", "source-key-assertion", "unresolved"}) {
+		t.Fatalf("classifications drifted: %#v", *key)
+	}
+	if !reflect.DeepEqual(key.AuthorityLimits, []string{
+		"legacy-key-is-not-business-identity",
+		"legacy-key-is-not-functional-dependency",
+	}) {
+		t.Fatalf("authority limits drifted: %#v", *key)
+	}
+	if key.Extension != "reference.xead.relational-semantics" {
+		t.Fatalf("extension drifted: %#v", *key)
+	}
+}
+
 func TestParseAloneDoesNotGrantCandidateMeaning(t *testing.T) {
 	doc, err := Parse(FormatXeaf, []byte(`<System><Script/></System>`))
 	if err != nil { t.Fatal(err) }
