@@ -39,11 +39,12 @@ var runtimeReferAuthorityLimits = []string{
 }
 
 type LegacyKeyMemberFact struct {
-	Locator       string `json:"locator"`
-	FieldLegacyID string `json:"fieldLegacyId"`
-	AttributeType string `json:"attributeType,omitempty"`
-	SortKey       string `json:"sortKey,omitempty"`
-	SourceOrdinal int    `json:"sourceOrdinal"`
+	Locator          string `json:"locator"`
+	FieldLegacyID    string `json:"fieldLegacyId"`
+	AttributeType    string `json:"attributeType,omitempty"`
+	DataTypeLegacyID string `json:"dataTypeLegacyId,omitempty"`
+	SortKey          string `json:"sortKey,omitempty"`
+	SourceOrdinal    int    `json:"sourceOrdinal"`
 }
 
 type LegacyKeyFact struct {
@@ -111,7 +112,7 @@ type RelationalSourceFacts struct {
 // candidate keys, physical key authority, or functional dependencies.
 func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	var facts RelationalSourceFacts
-	tableFieldTypes := indexTableFieldTypes(doc.Root)
+	tableFields := indexTableFieldMetadata(doc.Root)
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
@@ -137,9 +138,10 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				key.Members = append(key.Members, LegacyKeyMemberFact{
 					Locator:       child.Locator,
 					FieldLegacyID: fieldLegacyID,
-					AttributeType: tableFieldTypes[tableLegacyID][fieldLegacyID],
-					SortKey:       attributeValue(child, "SortKey"),
-					SourceOrdinal: i,
+					AttributeType:    tableFields[tableLegacyID][fieldLegacyID].AttributeType,
+					DataTypeLegacyID: tableFields[tableLegacyID][fieldLegacyID].DataTypeLegacyID,
+					SortKey:          attributeValue(child, "SortKey"),
+					SourceOrdinal:    i,
 				})
 			}
 			facts.LegacyKeys = append(facts.LegacyKeys, key)
@@ -219,14 +221,19 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	return facts
 }
 
-func indexTableFieldTypes(root Node) map[string]map[string]string {
-	out := map[string]map[string]string{}
+type tableFieldMetadata struct {
+	AttributeType    string
+	DataTypeLegacyID string
+}
+
+func indexTableFieldMetadata(root Node) map[string]map[string]tableFieldMetadata {
+	out := map[string]map[string]tableFieldMetadata{}
 	var walk func(Node)
 	walk = func(n Node) {
 		if localName(n.Name) == "Table" {
 			tableID := attributeValue(n, "ID")
 			if _, ok := out[tableID]; !ok {
-				out[tableID] = map[string]string{}
+				out[tableID] = map[string]tableFieldMetadata{}
 			}
 			var collectFields func(Node)
 			collectFields = func(current Node) {
@@ -236,7 +243,10 @@ func indexTableFieldTypes(root Node) map[string]map[string]string {
 						continue
 					}
 					if childName == "TableField" || childName == "Field" {
-						out[tableID][attributeValue(child, "ID")] = attributeValue(child, "AttributeType")
+						out[tableID][attributeValue(child, "ID")] = tableFieldMetadata{
+							AttributeType:    attributeValue(child, "AttributeType"),
+							DataTypeLegacyID: attributeValue(child, "DataTypeID"),
+						}
 					}
 					collectFields(child)
 				}
