@@ -16,6 +16,8 @@ TEIの価値を次の段階へ進めるには、既存の小さなReferenceを�
 
 このIssueはX-TEA互換機能の実装を目的にしない。成熟した外部modelをTEIへ転写する過程で、TEIの表現力、Source traceability、native asset境界、Target independence、Business cross-view、Runtime authority、AI再入場性を同時にpressureする。
 
+渡辺氏の設計思想をTEIへ翻訳する一般的なArchitecture整理は[Watanabe Business System Design Pressure](../design/watanabe-business-system-design-pressure.md)が担当する。本Issueは、その整理を実Reference Model全体でpressureし、転写できない意味や暗黙前提をEvidenceとして返す。
+
 ## 防ぎたい失敗
 
 最も避けたいのは「主要な画面やTableが再現できたので移植できた」と判断し、sourceに含まれる意味や暗黙前提を落とすことである。
