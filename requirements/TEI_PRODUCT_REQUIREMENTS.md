@@ -52,6 +52,8 @@ TEIは、それらを意味、Capability、Realization、Source Indexへ接続�
 - transaction boundary
 - failure boundary
 
+一つの業務処理（確定処理等）が複数Databaseを参照し、複数Databaseを更新する場合も基本要件として扱います。このとき、どのDatabase更新が一つのtransaction boundaryに入り、どこから先が別のfailure boundaryになるかをContractとして明示できなければなりません。Database同士にまたがる原子性を、Providerの能力から暗黙に仮定してはいけません。一部のDatabaseだけ更新が成功した状態は、成功にも失敗にも丸めず、未確定（Unresolved）として観測・再実行・補償の判断へ渡せる必要があります。特定のDatabase製品の数を増やすことは、この要件の主眼ではありません。
+
 Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
 
 複数DatabaseやServiceへDataを分散しても、同じ業務対象のidentity、Relation、Constraint、ownershipをlogicalな意味として追跡できなければなりません。APIやmessageで接続できることだけを、Data meaningが統合された状態とは扱いません。
