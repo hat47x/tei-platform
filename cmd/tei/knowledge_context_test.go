@@ -478,6 +478,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"functional-dependency-candidate-is-not-accepted-functional-dependency",
 		"ambiguous-semantic-identity-does-not-produce-design-candidates",
+		"ambiguous-persistence-identity-does-not-produce-realization-facts",
 		"relation-key-is-not-business-identifier",
 		"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 		"persistence-primary-key-is-not-business-identifier-or-candidate-key",
