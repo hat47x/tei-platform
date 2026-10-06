@@ -16,6 +16,8 @@ Canonical IDはfile pathやphysical object nameから独立し、実装や配置
 
 業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
 
+文字列や外部コードを正規化・変換した結果の一致を、それだけでbusiness identityの一致へ読み替えてはいけません。原Sourceの表記を保持する必要がある場合は、exact representationとnormalized / operational representationを区別し、同値性を判断するPolicy / MappingのscopeとSourceへ追跡できる必要があります。
+
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
 
 `.tei`、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。
