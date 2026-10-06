@@ -5,8 +5,9 @@ type Inspection struct {
 	Candidates            []Candidate            `json:"candidates"`
 	RelationalFacts       RelationalSourceFacts  `json:"relationalFacts"`
 	RelationalDiagnostics          []RelationalDiagnostic `json:"relationalDiagnostics,omitempty"`
-	ClassificationPolicyFingerprint string                 `json:"classificationPolicyFingerprint,omitempty"`
-	AuthorityLimits                 []string               `json:"authorityLimits"`
+	ClassificationPolicyFingerprint  string                 `json:"classificationPolicyFingerprint,omitempty"`
+	TranscriptionContractFingerprint string                 `json:"transcriptionContractFingerprint,omitempty"`
+	AuthorityLimits                  []string               `json:"authorityLimits"`
 }
 
 func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspection, error) {
