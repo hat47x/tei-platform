@@ -125,6 +125,15 @@
       "risk": "transfer can collapse allowed-combination semantics into identity/FD or omit the constraint entirely",
       "owner": "ISSUE-000078",
       "stopCondition": "do not infer domain restriction from key shape alone; when source or accepted design establishes it, preserve it separately from business identity and functional dependency"
+    },
+    {
+      "id": "RML-014",
+      "topic": "derived-value-dynamic-reference",
+      "nature": "unresolved",
+      "evidence": "the benchmark contains 52 DERIVABLE fields and 51 structural Xeaf VIRTUAL correspondences, while public X-TEA modeling guidance also uses derived attributes as relation keys; exact benchmark participation in Relationship keys is not yet established",
+      "risk": "a derived relation can disappear from the logical model, or native evaluator code can be mistaken for the semantic relation itself",
+      "owner": "ISSUE-000078 / ISSUE-000077",
+      "stopCondition": "confirm exact source participation before claiming a dynamic reference; if present, preserve derivation semantics, evaluator/native realization and Relation as separate traceable layers"
     }
   ],
   "claimsNotEstablished": [
