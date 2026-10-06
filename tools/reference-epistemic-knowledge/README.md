@@ -70,9 +70,11 @@ review recordは `reviewedMeaningFingerprint` を持ちます。現在assertion�
 
 このReference自身は自然言語のsemantic diffを判定しません。meaning fingerprintは対象を所有するsurface / transformation contractが供給する入力です。fingerprintが一致すること自体をsemantic proofにはせず、Projectionにも `meaning-fingerprint-is-input-not-semantic-proof` を残します。単なるformat変更と意味変更を区別できない場合に、ここで推測してreviewを維持することはしません。
 
-## Conflict
+## Supersession / Conflict
 
-Conflict relationは消しません。現在contextで両方のreviewed assertionが有効候補になるfixtureでは、どちらか一方をAIが選んで解消せず、双方を `review-required` として残します。
+supersessionは、旧assertionのstateだけを手で更新する二重管理にしません。後続assertionの `supersedes` relationから、旧assertionのassessmentを `superseded` として派生し、`supersededBy`へrelation provenanceを残します。旧assertion側がreview済みのままでも、後続relationを無視してpremiseへ戻しません。
+
+Conflict relationも消しません。現在contextで両方のreviewed assertionが有効候補になるfixtureでは、どちらか一方をAIが選んで解消せず、双方を `review-required` として残します。
 
 ## Project Knowledge Health
 
