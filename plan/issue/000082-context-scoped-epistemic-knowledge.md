@@ -220,6 +220,113 @@ Knowledge qualification / freshnessを再利用します。epistemic stateを既
 
 review、health、context evaluation等をPlugin-defined Capabilityとして提供できるか確認します。
 
+## 2026-10-06 First Reference candidate — E0〜E4
+
+ADR-0030採用後の最初のTEI側Reference candidateを、既存の `work/issue-000081-contextual-epistemic-knowledge` lane上に追加した。Issue改番前から存在するlaneを再利用しており、同目的のsibling branchは作らない。
+
+実装位置:
+
+- `tools/reference-epistemic-knowledge/`
+- `testdata/epistemic-fixture-v0.json`
+- `testdata/context-current.json`
+- `testdata/context-other-project.json`
+
+このcandidateはCanonical Worldへepistemic fieldを追加しない。入力sidecarからread-only Projectionを生成し、削除しても既存Canonical meaningへ影響しない構造を維持する。
+
+### E0 sidecar contract candidate
+
+一つのtruth / confidence fieldへ畳まず、少なくとも次を別fieldとして保持する。
+
+- target
+- origin
+- assertion mode
+- review state
+- explicit / inferred context
+- valid / checked time
+- Evidence
+- review record
+- supersedes / conflictsWith
+- downstream dependency criticality
+
+schemaはReference限定の `tei.reference.epistemic-corpus/v0` とし、現時点で `std.epistemic` やCore enumへ昇格させない。
+
+### E1 review validity candidate
+
+`user + fact + native` はcurrent scope内の前提として扱える。一方、AI originを `native` にする入力は拒否する。
+
+reviewed / conditional assertionはreview recordの `reviewedMeaningFingerprint` と現在の `meaningFingerprint` を比較し、意味identityが変わった場合は旧reviewを現在値へ継承せず `review-required` とする。
+
+このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る境界とし、format差とsemantic差を判別できない場合にreview維持を推測しない。
+
+### E2 context compatibility candidate
+
+assertion scopeとcurrent contextをdimensionごとに照合する。
+
+- 全必要dimension一致: `compatible`
+- 値が異なる: `incompatible`
+- 必要dimensionがcurrent contextに無い: `unknown`
+
+`unknown` を「たぶん同じ」としてpremiseへ昇格させない。explicit / inferred contextも区別し、inferred contextを使ったassessmentにはsignalを残す。
+
+### E3 Project Knowledge Health candidate
+
+Healthはreview率を主判定にせず、`dependencies` のcriticalityと現在のuse stateを組み合わせる。
+
+critical consumerがunreviewed / stale / Conflict / context不適合なassertionへ依存する場合は `critical` とする。低重要度unreviewed memoが多数存在しても、critical dependencyを件数比で希釈しないnegative testを置いた。
+
+### E4 review request handoff candidate
+
+review-required assertionと、high / critical dependencyがpremiseとして利用できないassertionをreview requestへ投影する。
+
+Projectionは次へ戻れる。
+
+- assertion identity / target
+- current review state
+- scope
+- Evidence
+- reason
+- downstream impact
+- reviewer candidate
+
+reviewer candidateには `reviewer-candidate-is-not-review-authority` を明示し、正式Authorityへ昇格させない。
+
+### fixture pressure
+
+最初のfixtureには次を同時に含める。
+
+- current-context user fact
+- AI unreviewed assertion
+- human-reviewed assertion
+- narrow-scope conditional review
+- stale reviewed assertion
+- superseded assertion
+- reviewed Conflict pair
+- rejected AI assertion
+- critical / high / low downstream dependency
+
+同じfixtureをSUI #3184 / SEI #660へ渡せるtransport candidateとして設計し、TEI固有UIやruntime objectをfixtureの正本にしない。
+
+### authority stop line
+
+このReferenceのassessment / Health / review requestは、いずれも次を与えない。
+
+```text
+epistemic assessment
+  != objective Truth
+  != Canonical Acceptance
+  != write authority
+  != Runtime authority
+
+reviewer candidate
+  != review authority
+```
+
+### Evidence状態
+
+現時点ではsource candidateとfocused testを追加した段階であり、exact-head full `tools/repository-health-check.sh` PASSは未取得である。
+
+したがって、この追記だけで完了条件のcheckbox、Product Evidence tier、ADR以外のproduction authorityを更新しない。trusted full checkoutでpre/post clean stateを確認したfull Repository Health PASSを取得してから、Reference成立を判断する。
+
 ## 完了条件
 
 - [ ] user factual assertionとAI unreviewed assertionを区別できる
