@@ -16,6 +16,7 @@
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-10.md` — 直近リサーチをProduct Value / existing Issueへ割り当てる現在の統合計画
+- `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` — 成熟した外部Reference ModelをPlugin-firstで転写し、TEIの表現力と暗黙前提をpressureする横断Evidence Gate
 
 ## 現在の主線
 
@@ -176,6 +177,8 @@ Gate C後のread-only探索は`ISSUE-000047`でPAS-06として実証します。
 actual external assetは、観測事実とCanonical contractを分離します。
 
 未観測のphysical object / column / SQL / datatypeを推測しません。
+
+成熟したReference Modelの転写は`ISSUE-000078` / `REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。転写で必要になった業務・設計概念は原則Semantic Extension / Pluginとして表し、X-TEA固有schemaをCoreへ直接追加しません。外部model本体をpublic fixtureへコピーせず、exact input digest、Source locator、mapping、loss / unresolved、Conformance Evidenceから再現します。
 
 ## Workstream D: Database / Provider Lifecycle
 
