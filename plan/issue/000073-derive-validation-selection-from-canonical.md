@@ -133,6 +133,18 @@ ownerに示したのはReview Projectionの要点と全文へのリンクであ�
 - Gate B / Gate Cの判定は、それぞれのexact revisionのEvidenceとして変えません。このIssueの変更後のworkspaceを、旧baselineと同じものとして読み替えません。
 - 宣言からの導出は、Validationを「どの順で」「どのtransaction境界で」評価するかまでは決めません。
 
+## 判断案 — BP-05のValidation参照とApplication宣言の関係（2026-10-06、owner確認待ち）
+
+事実: BP-05（`validation-support`）は`sales.order_line.quantity_positive`と`sales.order.lines.line_number_unique`を保持する。Business Procedure checkerは、この参照が正本のsemantic namespaceに存在するかを既に検査する（`tools/reference-business-procedure-check/main.go`）。`order_entry`のApplicationも同じ2件を`uses validation`で宣言した（評価順 = 宣言順、ADR-0029）。
+
+判断案: **独立した参照とし、BP-05とApplicationの宣言の一致は検査しない。** 存在確認は現状のまま。
+
+- BP-05は「どの業務上の制約が満たされると言えるか」というBusiness側の意味で、ApplicationがCommand前に何を評価するかという実行側の選択とは別の関心である。Business Procedureをアプリ文脈から独立に保つ方針（RQ-025）に合う
+- 一致を検査すると、Business sourceがApplicationの宣言に依存し、Applicationを持たない業務（second corpus）や複数Applicationにまたがる手順で成り立たなくなる
+- 食い違い自体は有用な情報になり得る。必要になれば、検査ではなくcross-view projectionの派生診断（「BP-05が挙げるがApplicationは評価しない」）として出す。これは正本を増やさない
+
+非主張: 現状の2件が一致していることは、一致が保証されることを意味しない。
+
 ## health checkの記録（2026-10-06）
 
 WSL2のネイティブ領域のclean cloneで、Go 1.25.14により`tools/repository-health-check.sh`をfull実行した。対象は判断案を加えたコミット`e506486f`（base = 当時の`origin/main`）。
