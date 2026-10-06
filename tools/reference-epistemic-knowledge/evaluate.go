@@ -40,11 +40,15 @@ type KnowledgeHealth struct {
 }
 
 type ReviewRequest struct {
-	AssertionID       string   `json:"assertionId"`
-	Reasons           []string `json:"reasons"`
-	DownstreamImpact  []string `json:"downstreamImpact,omitempty"`
-	ReviewerCandidates []string `json:"reviewerCandidates,omitempty"`
-	AuthorityLimit    string   `json:"authorityLimit"`
+	AssertionID        string         `json:"assertionId"`
+	Target             TargetRef      `json:"target"`
+	ReviewState        ReviewState    `json:"reviewState"`
+	Context            []ScopeBinding `json:"context,omitempty"`
+	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
+	Reasons            []string       `json:"reasons"`
+	DownstreamImpact   []string       `json:"downstreamImpact,omitempty"`
+	ReviewerCandidates []string       `json:"reviewerCandidates,omitempty"`
+	AuthorityLimit     string         `json:"authorityLimit"`
 }
 
 type Projection struct {
@@ -316,6 +320,10 @@ func buildReviewRequests(
 		assertion := assertions[id]
 		out = append(out, ReviewRequest{
 			AssertionID:        id,
+			Target:             assertion.Target,
+			ReviewState:        assertion.ReviewState,
+			Context:            append([]ScopeBinding{}, assertion.Context...),
+			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
 			Reasons:            append([]string{}, assessment.Reasons...),
 			DownstreamImpact:   normalizeStrings(impact[id]),
 			ReviewerCandidates: append([]string{}, assertion.ReviewerCandidates...),
