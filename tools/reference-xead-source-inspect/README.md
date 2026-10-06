@@ -16,7 +16,7 @@ go run ./tools/reference-xead-source-inspect \
 
 - source format / SHA-256
 - XML construct inventory
-- unknown construct名
+- unknown construct件数（名称は公開出力しない）
 - candidate classificationの集計
 - legacy / runtime keyとRelation mappingの集計
 - DERIVABLEなkey memberの件数
