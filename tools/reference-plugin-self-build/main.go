@@ -275,7 +275,9 @@ func run(repo string) (evidence, error) {
 			{Name: "goos", Value: runtime.GOOS},
 			{Name: "gopath", Value: "isolated-empty"},
 			{Name: "goproxy", Value: "off"},
+			{Name: "gosumdb", Value: "off"},
 			{Name: "gotoolchain", Value: "local"},
+			{Name: "govcs", Value: "*:off"},
 			{Name: "gowork", Value: "off"},
 			{Name: "mod", Value: "readonly"},
 			{Name: "trimpath", Value: "true"},
@@ -442,6 +444,7 @@ func requireNoExternalModules(repo, goPath string) error {
 	cmd := exec.Command(
 		goPath,
 		"list",
+		"-mod=readonly",
 		"-deps",
 		"-f",
 		"{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}",
@@ -590,7 +593,9 @@ func buildEnvironment(base []string, stateDir string) []string {
 		"GOFLAGS=",
 		"GOOS="+runtime.GOOS,
 		"GOPROXY=off",
+		"GOSUMDB=off",
 		"GOTOOLCHAIN=local",
+		"GOVCS=*:off",
 		"GOWORK=off",
 	)
 	if stateDir != "" {
