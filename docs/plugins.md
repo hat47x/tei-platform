@@ -42,6 +42,8 @@ Referenceではfresh resolutionと採用済みresolutionのreplayも分けます
 
 既存`CapabilityKind`からの移行では、新旧のProvider declarationを二つの正本にしません。最初のpressureとして既存`contract-query-executor`を現行`plugin.Definition`から一方向に投影し、旧定義をAuthorityに保ったままgeneric contractへ接続します。
 
+ただし、callable ProviderのConformanceにはexact implementation artifact digestが必要です。現在のbuiltin Plugin定義はこのidentityを持たないため、旧Capabilityを投影しただけではgeneric Providerとして採用しません。
+
 このReferenceはproduction APIではありません。既存Plugin Lock、Permission、Resource、Sandbox、Runtime Authorityの境界は引き続き有効です。
 
 ## Bundle
