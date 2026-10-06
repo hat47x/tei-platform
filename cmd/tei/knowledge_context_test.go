@@ -165,6 +165,12 @@ func TestBuildKnowledgeContextReturnsSemanticValidationContext(t *testing.T) {
 	if len(got.Unresolved) != 0 {
 		t.Fatalf("known validation has unresolved context: %+v", got.Unresolved)
 	}
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order_line" ||
+		got.DataDesign.Focus.Kind != "semantic-validation" ||
+		got.DataDesign.Focus.ID != "sales.order_line.quantity_positive" {
+		t.Fatalf("semantic validation did not resolve Data Design Context: %+v", got.DataDesign)
+	}
 	if !hasKnowledgeContextEdge(
 		got,
 		"outgoing",
@@ -173,6 +179,43 @@ func TestBuildKnowledgeContextReturnsSemanticValidationContext(t *testing.T) {
 		"sales.order_line.quantity",
 	) {
 		t.Fatalf("validation target attribute is missing: %+v", got.Outgoing)
+	}
+}
+
+func TestRelationUniqueValidationResolvesScopedDataDesignWithoutInventingIdentity(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-validation",
+		"sales.order.lines.line_number_unique",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order_line" ||
+		got.DataDesign.Focus.Kind != "semantic-validation" {
+		t.Fatalf("relation-unique validation did not resolve target Data Design Context: %+v", got.DataDesign)
+	}
+	if len(got.DataDesign.ScopedUniqueness) != 1 ||
+		got.DataDesign.ScopedUniqueness[0].Constraint != "sales.order.lines.line_number_unique" {
+		t.Fatalf("scoped uniqueness is missing from validation context: %+v", got.DataDesign.ScopedUniqueness)
+	}
+	if len(got.DataDesign.FunctionalDependencyCandidates) != 1 {
+		t.Fatalf("FD candidate is missing from validation context: %+v", got.DataDesign.FunctionalDependencyCandidates)
+	}
+	fdCandidate := got.DataDesign.FunctionalDependencyCandidates[0]
+	if len(fdCandidate.Determinants) != 2 ||
+		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Data != "sales.order" ||
+		fdCandidate.Determinants[1].Kind != "attribute" ||
+		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
+		t.Fatalf("validation context lost scoped determinant terms: %+v", fdCandidate)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("validation context invented accepted identity or FD: %+v", got.DataDesign)
 	}
 }
 
