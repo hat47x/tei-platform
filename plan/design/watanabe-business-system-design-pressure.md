@@ -21,6 +21,8 @@ Date: 2026-10-06
   - https://www.itmedia.co.jp/im/articles/1109/28/news134.html
   - https://www.itmedia.co.jp/im/articles/1109/28/news134_3.html
 - 「設計者の発言」— 近年のデータモデリング、関数従属性、複合的な識別関係、生成AIによるDB設計への批判的検討。
+  - https://dbconcept.hatenablog.com/entry/2026/09/14/161855
+  - https://dbconcept.hatenablog.com/entry/2026/07/05/203837
   - https://dbconcept.hatenablog.com/entry/2026/06/19/154613
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
