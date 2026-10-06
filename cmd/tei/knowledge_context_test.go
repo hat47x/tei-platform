@@ -211,6 +211,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"which-relations-or-constraints-depend-on-the-identity",
 		"which-source-or-contract-owns-the-uniqueness-claim",
 		"which-normalization-or-equivalence-policy-applies",
+		"does-persistence-key-represent-business-identity-or-only-realization",
+		"if-surrogate-key-is-used-which-accepted-uniqueness-preserves-business-identity",
 	} {
 		if !containsKnowledgeContextString(dataDesign.BusinessIdentityEvidenceQuestions, question) {
 			t.Fatalf("business identity evidence question %q is missing: %+v", question, dataDesign.BusinessIdentityEvidenceQuestions)
@@ -221,6 +223,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"under-what-scope-and-time-does-the-dependency-hold",
 		"which-source-or-evidence-establishes-the-dependency",
 		"is-this-a-functional-dependency-or-a-domain-constraint",
+		"does-scoped-uniqueness-imply-business-functional-dependency-or-only-local-constraint",
 	} {
 		if !containsKnowledgeContextString(dataDesign.FunctionalDependencyEvidenceQuestions, question) {
 			t.Fatalf("functional dependency evidence question %q is missing: %+v", question, dataDesign.FunctionalDependencyEvidenceQuestions)
