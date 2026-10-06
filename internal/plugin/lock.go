@@ -95,6 +95,12 @@ func validateLockBuildTrace(lock Lock) error {
 					lock.FormatVersion, locked.ID, locked.Version,
 				)
 			}
+			if locked.ArtifactDigest == "" {
+				return fmt.Errorf(
+					"plugin lock build plan fingerprint for %s@%s requires an artifact digest",
+					locked.ID, locked.Version,
+				)
+			}
 			if err := validateHexFingerprint(
 				"plugin lock build plan fingerprint for "+string(locked.ID)+"@"+locked.Version,
 				locked.BuildPlanFingerprint,
