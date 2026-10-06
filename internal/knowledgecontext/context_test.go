@@ -43,6 +43,9 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 			if len(ctx.DataDesign.ScopedUniqueness) != 0 {
 				t.Fatalf("invalid relation-unique was promoted: %+v", ctx.DataDesign.ScopedUniqueness)
 			}
+			if len(ctx.DataDesign.BusinessIdentityCandidates) != 0 {
+				t.Fatalf("invalid relation-unique produced a business identity candidate: %+v", ctx.DataDesign.BusinessIdentityCandidates)
+			}
 			if len(ctx.DataDesign.FunctionalDependencyCandidates) != 0 {
 				t.Fatalf("invalid relation-unique produced an FD candidate: %+v", ctx.DataDesign.FunctionalDependencyCandidates)
 			}
@@ -141,6 +144,19 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 	if len(ctx.DataDesign.ScopedUniqueness) != 1 {
 		t.Fatalf("valid scoped uniqueness is missing: %+v", ctx.DataDesign.ScopedUniqueness)
+	}
+	if len(ctx.DataDesign.BusinessIdentityCandidates) != 1 {
+		t.Fatalf("valid business identity candidate is missing: %+v", ctx.DataDesign.BusinessIdentityCandidates)
+	}
+	identityCandidate := ctx.DataDesign.BusinessIdentityCandidates[0]
+	if len(identityCandidate.Components) != 2 ||
+		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Data != "sales.order" ||
+		identityCandidate.Components[1].Kind != "attribute" ||
+		identityCandidate.Components[1].Attribute != "sales.order_line.line_number" ||
+		ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		ctx.DataDesign.CandidateKeys.Nature != "unresolved" {
+		t.Fatalf("business identity candidate boundary drifted: candidate=%+v state=%+v/%+v", identityCandidate, ctx.DataDesign.BusinessOccurrenceIdentifier, ctx.DataDesign.CandidateKeys)
 	}
 	if len(ctx.DataDesign.FunctionalDependencyCandidates) != 1 ||
 		ctx.DataDesign.FunctionalDependencyCandidates[0].Nature != "candidate-from-accepted-scoped-uniqueness" ||
