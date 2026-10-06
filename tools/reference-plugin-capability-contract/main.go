@@ -79,8 +79,15 @@ type ResolveInput struct {
 	Wirings     []Wiring              `json:"wirings,omitempty"`
 }
 
+const (
+	capabilityResolutionPolicy           = "highest-compatible-complete-search/explicit-wiring/v0"
+	capabilityResolutionLockSchema       = "tei.reference.capability-resolution-lock/v0"
+	capabilityResolutionCanonicalization = "json-struct-field-order/v0"
+)
+
 type Resolution struct {
 	Scope                 AuthorityScope `json:"scope"`
+	ResolutionPolicy      string         `json:"resolutionPolicy"`
 	Contract              Contract       `json:"contract"`
 	ContractFingerprint   string         `json:"contractFingerprint"`
 	Provider              Provider       `json:"provider"`
@@ -88,14 +95,24 @@ type Resolution struct {
 	EvidenceFingerprint   string         `json:"evidenceFingerprint"`
 }
 
+type CapabilityResolutionLock struct {
+	Schema                 string         `json:"schema"`
+	Canonicalization       string         `json:"canonicalization"`
+	ResolutionPolicy       string         `json:"resolutionPolicy"`
+	Scope                  AuthorityScope `json:"scope"`
+	Requirement            Requirement    `json:"requirement"`
+	Contract               Contract       `json:"contract"`
+	ContractFingerprint    string         `json:"contractFingerprint"`
+	Provider               Provider       `json:"provider"`
+	ResolutionFingerprint  string         `json:"resolutionFingerprint"`
+	LockFingerprint        string         `json:"lockFingerprint"`
+}
+
 func main() {}
 
 func resolveCapability(input ResolveInput) (Resolution, error) {
-	if !input.Scope.Valid() {
-		return Resolution{}, fmt.Errorf("invalid authority scope %q", input.Scope)
-	}
-	if input.Requirement.ContractID == "" || input.Requirement.CompatibleMajor < 0 {
-		return Resolution{}, fmt.Errorf("invalid contract requirement")
+	if err := validateResolveInput(input); err != nil {
+		return Resolution{}, err
 	}
 
 	contracts, err := compatibleContracts(input.Contracts, input.Requirement)
@@ -228,22 +245,12 @@ func providerMatchesWiring(provider Provider, wiring Wiring) bool {
 }
 
 func buildResolution(scope AuthorityScope, contract Contract, contractFingerprint string, provider Provider, evidence ConformanceEvidence) Resolution {
-	semantic := struct {
-		Scope               AuthorityScope `json:"scope"`
-		ContractFingerprint string         `json:"contractFingerprint"`
-		PluginID            string         `json:"pluginId"`
-		PluginVersion       string         `json:"pluginVersion"`
-		ImplementationID    string         `json:"implementationId"`
-		ArtifactDigest      string         `json:"artifactDigest,omitempty"`
-	}{
-		Scope:               scope,
-		ContractFingerprint: contractFingerprint,
-		PluginID:            provider.PluginID,
-		PluginVersion:       provider.PluginVersion,
-		ImplementationID:    provider.ImplementationID,
-		ArtifactDigest:      provider.ArtifactDigest,
-	}
-	resolutionFingerprint := fingerprint(semantic)
+	resolutionFingerprint := capabilityResolutionFingerprint(
+		scope,
+		contract,
+		contractFingerprint,
+		provider,
+	)
 	evidenceFingerprint := fingerprint(struct {
 		ResolutionFingerprint string `json:"resolutionFingerprint"`
 		EvidenceFingerprint   string `json:"evidenceFingerprint"`
@@ -253,12 +260,318 @@ func buildResolution(scope AuthorityScope, contract Contract, contractFingerprin
 	})
 	return Resolution{
 		Scope:                 scope,
+		ResolutionPolicy:      capabilityResolutionPolicy,
 		Contract:              contract,
 		ContractFingerprint:   contractFingerprint,
 		Provider:              provider,
 		ResolutionFingerprint: resolutionFingerprint,
 		EvidenceFingerprint:   evidenceFingerprint,
 	}
+}
+
+func capabilityResolutionFingerprint(
+	scope AuthorityScope,
+	contract Contract,
+	contractFingerprint string,
+	provider Provider,
+) string {
+	return fingerprint(struct {
+		ResolutionPolicy      string         `json:"resolutionPolicy"`
+		Scope                 AuthorityScope `json:"scope"`
+		ContractID            string         `json:"contractId"`
+		ContractVersion       string         `json:"contractVersion"`
+		ContractFingerprint   string         `json:"contractFingerprint"`
+		PluginID              string         `json:"pluginId"`
+		PluginVersion         string         `json:"pluginVersion"`
+		ImplementationID      string         `json:"implementationId"`
+		ArtifactDigest        string         `json:"artifactDigest,omitempty"`
+	}{
+		ResolutionPolicy:    capabilityResolutionPolicy,
+		Scope:               scope,
+		ContractID:          contract.ID,
+		ContractVersion:     contract.Version,
+		ContractFingerprint: contractFingerprint,
+		PluginID:            provider.PluginID,
+		PluginVersion:       provider.PluginVersion,
+		ImplementationID:    provider.ImplementationID,
+		ArtifactDigest:      provider.ArtifactDigest,
+	})
+}
+
+func validateResolveInput(input ResolveInput) error {
+	if !input.Scope.Valid() {
+		return fmt.Errorf("invalid authority scope %q", input.Scope)
+	}
+	if input.Requirement.ContractID == "" || input.Requirement.CompatibleMajor < 0 {
+		return fmt.Errorf("invalid contract requirement")
+	}
+	for i, provider := range input.Providers {
+		if provider.PluginID == "" || provider.PluginVersion == "" ||
+			provider.ImplementationID == "" || !provider.Scope.Valid() ||
+			provider.ContractID == "" || provider.ContractVersion == "" ||
+			!validSHA256Fingerprint(provider.ContractFingerprint) ||
+			provider.ConformanceProfile == "" {
+			return fmt.Errorf("provider[%d] is incomplete or invalid", i)
+		}
+		if _, err := parseVersion(provider.PluginVersion); err != nil {
+			return fmt.Errorf("provider[%d] plugin version: %w", i, err)
+		}
+		if _, err := parseVersion(provider.ContractVersion); err != nil {
+			return fmt.Errorf("provider[%d] contract version: %w", i, err)
+		}
+		if provider.ArtifactDigest != "" && !validSHA256Fingerprint(provider.ArtifactDigest) {
+			return fmt.Errorf("provider[%d] artifact digest is not exact sha256", i)
+		}
+	}
+	for i, evidence := range input.Evidence {
+		if evidence.PluginID == "" || evidence.PluginVersion == "" ||
+			evidence.ImplementationID == "" ||
+			!validSHA256Fingerprint(evidence.ContractFingerprint) ||
+			evidence.ConformanceProfile == "" ||
+			!validSHA256Fingerprint(evidence.EvidenceFingerprint) {
+			return fmt.Errorf("conformance evidence[%d] is incomplete or invalid", i)
+		}
+		if _, err := parseVersion(evidence.PluginVersion); err != nil {
+			return fmt.Errorf("conformance evidence[%d] plugin version: %w", i, err)
+		}
+	}
+	for i, wiring := range input.Wirings {
+		if wiring.ContractID == "" || wiring.PluginID == "" ||
+			wiring.PluginVersion == "" || wiring.ImplementationID == "" {
+			return fmt.Errorf("wiring[%d] is incomplete", i)
+		}
+		if _, err := parseVersion(wiring.PluginVersion); err != nil {
+			return fmt.Errorf("wiring[%d] plugin version: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func buildCapabilityResolutionLock(
+	requirement Requirement,
+	resolution Resolution,
+) (CapabilityResolutionLock, error) {
+	if requirement.ContractID == "" || requirement.CompatibleMajor < 0 {
+		return CapabilityResolutionLock{}, fmt.Errorf("invalid contract requirement")
+	}
+	if resolution.ResolutionPolicy != capabilityResolutionPolicy {
+		return CapabilityResolutionLock{}, fmt.Errorf(
+			"resolution policy %q does not match current policy %q",
+			resolution.ResolutionPolicy,
+			capabilityResolutionPolicy,
+		)
+	}
+	if !resolution.Scope.Valid() ||
+		resolution.Contract.ID != requirement.ContractID ||
+		!validSHA256Fingerprint(resolution.ContractFingerprint) ||
+		resolution.ContractFingerprint != fingerprint(resolution.Contract) ||
+		!validSHA256Fingerprint(resolution.ResolutionFingerprint) {
+		return CapabilityResolutionLock{}, fmt.Errorf("resolution is not exact enough to lock")
+	}
+	version, err := parseVersion(resolution.Contract.Version)
+	if err != nil || version[0] != requirement.CompatibleMajor {
+		return CapabilityResolutionLock{}, fmt.Errorf("resolved contract is incompatible with requirement")
+	}
+	expectedResolutionFingerprint := capabilityResolutionFingerprint(
+		resolution.Scope,
+		resolution.Contract,
+		resolution.ContractFingerprint,
+		resolution.Provider,
+	)
+	if resolution.ResolutionFingerprint != expectedResolutionFingerprint {
+		return CapabilityResolutionLock{}, fmt.Errorf("resolution fingerprint is stale")
+	}
+	lock := CapabilityResolutionLock{
+		Schema:                capabilityResolutionLockSchema,
+		Canonicalization:      capabilityResolutionCanonicalization,
+		ResolutionPolicy:      capabilityResolutionPolicy,
+		Scope:                 resolution.Scope,
+		Requirement:           requirement,
+		Contract:              resolution.Contract,
+		ContractFingerprint:   resolution.ContractFingerprint,
+		Provider:              resolution.Provider,
+		ResolutionFingerprint: resolution.ResolutionFingerprint,
+	}
+	lock.LockFingerprint = capabilityResolutionLockFingerprint(lock)
+	return lock, nil
+}
+
+func verifyCapabilityResolutionLockReplay(
+	lock CapabilityResolutionLock,
+	input ResolveInput,
+) error {
+	if err := validateCapabilityResolutionLock(lock); err != nil {
+		return err
+	}
+	if input.Scope != lock.Scope {
+		return fmt.Errorf(
+			"capability lock scope %q differs from current scope %q",
+			lock.Scope,
+			input.Scope,
+		)
+	}
+	if input.Requirement != lock.Requirement {
+		return fmt.Errorf(
+			"capability lock requirement %+v differs from current requirement %+v",
+			lock.Requirement,
+			input.Requirement,
+		)
+	}
+
+	var exactContracts []Contract
+	for _, contract := range input.Contracts {
+		if contract.ID == lock.Contract.ID && contract.Version == lock.Contract.Version {
+			exactContracts = append(exactContracts, contract)
+		}
+	}
+	if len(exactContracts) != 1 {
+		return fmt.Errorf(
+			"capability lock requires exactly one contract declaration %s@%s",
+			lock.Contract.ID,
+			lock.Contract.Version,
+		)
+	}
+	exactContract := exactContracts[0]
+	if fingerprint(exactContract) != lock.ContractFingerprint ||
+		exactContract != lock.Contract {
+		return fmt.Errorf(
+			"capability contract %s@%s drifted from lock",
+			lock.Contract.ID,
+			lock.Contract.Version,
+		)
+	}
+
+	var exactProviders []Provider
+	for _, provider := range input.Providers {
+		if provider == lock.Provider {
+			exactProviders = append(exactProviders, provider)
+		}
+	}
+	if len(exactProviders) != 1 {
+		return fmt.Errorf(
+			"capability lock requires exact provider %s@%s/%s with artifact %q",
+			lock.Provider.PluginID,
+			lock.Provider.PluginVersion,
+			lock.Provider.ImplementationID,
+			lock.Provider.ArtifactDigest,
+		)
+	}
+
+	expectedResolutionFingerprint := capabilityResolutionFingerprint(
+		lock.Scope,
+		lock.Contract,
+		lock.ContractFingerprint,
+		lock.Provider,
+	)
+	if expectedResolutionFingerprint != lock.ResolutionFingerprint {
+		return fmt.Errorf("capability lock resolution fingerprint is stale")
+	}
+	return nil
+}
+
+func verifyCapabilityResolutionLockEvidence(
+	lock CapabilityResolutionLock,
+	input ResolveInput,
+) (string, error) {
+	if err := verifyCapabilityResolutionLockReplay(lock, input); err != nil {
+		return "", err
+	}
+	evidence, ok := matchingEvidence(
+		input.Evidence,
+		lock.Provider,
+		lock.ContractFingerprint,
+		lock.Contract.ConformanceProfile,
+	)
+	if !ok {
+		return "", fmt.Errorf(
+			"capability lock has no unique current Conformance Evidence for %s@%s/%s",
+			lock.Provider.PluginID,
+			lock.Provider.PluginVersion,
+			lock.Provider.ImplementationID,
+		)
+	}
+	return fingerprint(struct {
+		ResolutionFingerprint string `json:"resolutionFingerprint"`
+		EvidenceFingerprint   string `json:"evidenceFingerprint"`
+	}{
+		ResolutionFingerprint: lock.ResolutionFingerprint,
+		EvidenceFingerprint:   evidence.EvidenceFingerprint,
+	}), nil
+}
+
+func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
+	if lock.Schema != capabilityResolutionLockSchema {
+		return fmt.Errorf("capability lock schema %q is not supported", lock.Schema)
+	}
+	if lock.Canonicalization != capabilityResolutionCanonicalization {
+		return fmt.Errorf(
+			"capability lock canonicalization %q is not supported",
+			lock.Canonicalization,
+		)
+	}
+	if lock.ResolutionPolicy != capabilityResolutionPolicy {
+		return fmt.Errorf(
+			"capability lock resolution policy %q is not supported",
+			lock.ResolutionPolicy,
+		)
+	}
+	if !lock.Scope.Valid() ||
+		lock.Requirement.ContractID == "" ||
+		lock.Requirement.CompatibleMajor < 0 {
+		return fmt.Errorf("capability lock has invalid scope or requirement")
+	}
+	if lock.Contract.ID != lock.Requirement.ContractID ||
+		lock.Provider.Scope != lock.Scope ||
+		lock.Provider.ContractID != lock.Contract.ID ||
+		lock.Provider.ContractVersion != lock.Contract.Version ||
+		lock.Provider.ContractFingerprint != lock.ContractFingerprint ||
+		lock.Provider.ConformanceProfile != lock.Contract.ConformanceProfile {
+		return fmt.Errorf("capability lock declarations are internally inconsistent")
+	}
+	version, err := parseVersion(lock.Contract.Version)
+	if err != nil || version[0] != lock.Requirement.CompatibleMajor {
+		return fmt.Errorf("capability lock contract is incompatible with requirement")
+	}
+	if !validSHA256Fingerprint(lock.ContractFingerprint) ||
+		lock.ContractFingerprint != fingerprint(lock.Contract) ||
+		!validSHA256Fingerprint(lock.ResolutionFingerprint) ||
+		!validSHA256Fingerprint(lock.LockFingerprint) {
+		return fmt.Errorf("capability lock fingerprints are invalid")
+	}
+	if lock.Provider.ArtifactDigest != "" &&
+		!validSHA256Fingerprint(lock.Provider.ArtifactDigest) {
+		return fmt.Errorf("capability lock provider artifact digest is invalid")
+	}
+	expectedResolutionFingerprint := capabilityResolutionFingerprint(
+		lock.Scope,
+		lock.Contract,
+		lock.ContractFingerprint,
+		lock.Provider,
+	)
+	if expectedResolutionFingerprint != lock.ResolutionFingerprint {
+		return fmt.Errorf("capability lock resolution fingerprint is stale")
+	}
+	if capabilityResolutionLockFingerprint(lock) != lock.LockFingerprint {
+		return fmt.Errorf("capability lock fingerprint is stale")
+	}
+	return nil
+}
+
+func capabilityResolutionLockFingerprint(lock CapabilityResolutionLock) string {
+	lock.LockFingerprint = ""
+	return fingerprint(lock)
+}
+
+func validSHA256Fingerprint(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
+		return false
+	}
+	for _, r := range strings.TrimPrefix(value, "sha256:") {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
 
 func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFingerprint, profile string) (ConformanceEvidence, bool) {
