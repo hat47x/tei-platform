@@ -72,8 +72,13 @@ Reference Model本体にはGitHub source codeとは別の利用条件・著作�
 | --- | ---: |
 | Subsystem | 12 |
 | Table | 56 |
+| TableField | 522 |
 | Relationship | 80 |
+| FunctionType | 14 |
 | Function | 227 |
+| IOTable | 392 |
+| IOPanel | 281 |
+| IOSpool | 13 |
 | Task | 62 |
 | TaskAction | 148 |
 | TaskFunctionIO | 407 |
@@ -82,7 +87,7 @@ Reference Model本体にはGitHub source codeとは別の利用条件・著作�
 | DataflowNode | 92 |
 | DataflowLine | 81 |
 
-`MfgOrder.xeaf`には203 Functionが存在する。基本設計側227 Functionと実行仕様側203 Functionは1:1ではない。Editorで詳細化された補助Functionや、基本設計だけに存在するFunctionがあるため、TEIでは「設計上のFunction」と「実行Realization」を同一identityへ機械的に畳まない。
+`MfgOrder.xeaf`には203 Function、58 Table、1,440 Field、161 Script、949 Column、626 Buttonが存在する。基本設計側227 Functionと実行仕様側203 Functionは1:1ではない。観測したidentity集合では、`.xeaf`側だけに存在するFunctionが23件、`.xead`側だけに存在するFunctionが47件あり、一つの基本設計Functionが複数の実行Functionへ分解される例もある。Editorで詳細化された補助Functionや、基本設計だけに存在するFunctionがあるため、TEIでは「設計上のFunction」と「実行Realization」を同一identityへ機械的に畳まない。
 
 このinventoryは転写完了数を競うためではなく、source constructが黙って消えていないかを確認する母集団として使う。
 
@@ -198,6 +203,7 @@ RMT-1〜4で得たmappingを、特定の数FunctionだけでなくReference Mode
 | Database URL、user、password、path等が実行仕様へ同居する | Semantic sourceへsecret / Environment authorityが混入する | Environment binding / Secret / Runtime Authorityを分離する |
 | Login Script、共有Script、Session attributeが暗黙依存になる | 個別Functionだけ読んでも挙動を再現できない | dependency / provenanceを明示し、native codeならrequired Capabilityを付ける |
 | Business RoleとDriver user / menu権限が別層にある | actorをAuthorization Roleへ変換する | Business actor / principal / policyを分離する |
+| `TaskFunctionIO.Operations`に「更新ボタンを押す」等の画面操作文が入る | Business Actionを特定GUIの操作手順へ固定する | Business Action / Function利用 / Target固有interaction instructionを分離する |
 | Business flowのStoreがDB以外の帳票・物・人・待ちを表せる | すべてをData/Tableへ押し込む | external / physical / human stateを別境界として扱う |
 | Instanceの順序が時系列にも説明順にも使われる | presentation orderをstate transitionへ誤変換する | Dataset / Snapshot / Scenario / Expectation / Presentation Orderを分離する |
 | 外部Table定義をpath + IDで参照・同期する | copy / syncが第二正本になり、Relationだけdriftする | semantic identity / version / provenanceによる再利用へ置換する |
@@ -212,6 +218,18 @@ RMT-1〜4で得たmappingを、特定の数FunctionだけでなくReference Mode
 ## 8. X-TEA固有schemaをCoreへ昇格させない
 
 Reference Modelが成熟していることと、そのschemaがTEI Coreに適していることは別である。
+
+### Plugin-firstの適用原則
+
+本Gateから新たに必要性が見つかった業務・設計概念は、原則としてSemantic Extension / Pluginとして追加する。標準機能として採用する概念も、第三者Extensionと同じidentity、dependency、conflict、discovery、Conformance契約を通す。builtin実装を選ぶことは許容するが、標準機能だけがCoreへ直接意味を追加できる別経路は作らない。
+
+Coreが持つのは特定の業務概念ではなく、Extensionを成立させる共通機構である。少なくともidentity / namespace / Source / version、dependency / Semantic Interface / conflict / lock、Canonical subjectとの明示relation、Source Index / provenance / impact、Shared Acceptance / Conformance、Capability / Permission / Runtime Authority、Projection contributionの発見と合成をCore側の責務とする。
+
+Reference転写で必要になる候補責務は、X-TEA source import、relational Data、Function / Interaction pattern、Business Procedure、lifecycle / state、CRUD lens、UI / report projection、Dataset / Scenario、scheduled / event-driven execution、legacy Script realization等へ分けてpressureする。これらの名称やpackage境界はReference Evidenceなしに固定しない。
+
+論理Extensionと物理artifactも分ける。declaration-only ExtensionにRuntime artifactを要求せず、複数Extensionを一つのbuiltin / linked / portable artifactへまとめられるようにする。逆に、一つのExtensionを一つのprocessやWasm moduleとして配布することを標準前提にしない。物理的にまとめた後も、元のExtension identity、Semantic Set、provenance、Authorityへ逆追跡できなければならない。
+
+X-TEA importer自体もCanonical authorityにはしない。import結果はcandidate / ProposalとしてShared Acceptanceへ渡し、対応不能・解釈不能な箇所は`Unresolved`として残す。ImporterがX-TEA固有schemaを読めることと、その意味をTEI標準として受理することを分ける。
 
 次の順で解決する。
 
@@ -228,6 +246,12 @@ Core common mechanism candidate
 ~~~
 
 `Subsystem`、`FunctionType`、`Task`、`DataflowNode`等の名前を、対応するsource要素があるという理由だけでCore型として追加しない。
+
+### Semantic Extension機構へ返すpressure
+
+このGateはISSUE-000077に対する大規模consumerとして扱う。SUI hierarchyのような小さいExtensionだけでなく、Data / Function / Business / UI / lifecycleをまたぐ多数のcontributionを同じReferenceで合成したときにも、Core固有enumを増やさず成立することを確認する。
+
+少なくとも、対象SubsystemやFunctionから必要なExtension closureと導入理由を取得できること、cross-facet依存をload順で解決しないこと、compatibility Extensionが`std.*`を取得しないこと、declaration-onlyとevaluator / runtime implementationを分離できること、Web Targetでprocess Pluginが使えなくても同じSemantic Setから別packagingを導出できることをpressureする。Extensionを除去・更新した場合は、依存する転写結果を黙って縮退させずstale / unresolvedとして追跡する。
 
 一方、既存TEIの表現では意味が失われることがReferenceで確認された場合は、X-TEA側で従来問題にならなかった点であってもTEI側の欠落として扱う。
 
