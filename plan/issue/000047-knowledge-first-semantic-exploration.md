@@ -344,6 +344,8 @@ Reference pressureでは少なくとも次を比較します。
 
 Data Design Contextには、判断材料として使ったData、Attribute、Relation、Relation keyの両端、Validation、関連Dataについて、Source Indexから得たsubject、source path、source fingerprint、range、roleを`evidence`として含める。authoritativeなDefinition / Authoring referenceを取得できないsubjectは黙って省略せず、`evidenceMissing`へ残す。
 
+Data Design Context全体には`projectionRevision`と`fingerprint`も付ける。fingerprintは関連するSource Evidenceと`evidenceMissing`から決定論的に生成し、関連Sourceが変わった場合にAIやStudioがContextを再取得するために使う。無関係なSourceの追加だけではfingerprintを変えない。この値はData設計の正しさや意味の同一性を証明するものではなく、キャッシュ無効化のための識別子として扱う。
+
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
 
 一方、acceptedなscoped uniquenessからは、次に検証すべき関数従属性の候補を限定的に導ける。`sales.order.lines.line_number_unique`の場合、`line_number`単独をdeterminantとして扱わない。候補のdeterminantは、`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項として保持し、dependent occurrenceを`sales.order_line`、scopeを`per-relation-source-occurrence`とする。これにより、scope注記を読み落としたAIが「line numberだけで明細を決める」と誤解する経路を構造上閉じる。natureは`candidate-from-accepted-scoped-uniqueness`であり、acceptedなfunctional dependencyではない。確定には少なくともsource occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、temporal validityが必要であるため、これらを`evidenceNeeded`へ残す。`functionalDependencies`本体は引き続き`unresolved`とする。
