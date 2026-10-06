@@ -156,7 +156,10 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 	var dataID core.CanonicalID
 	switch target.Kind {
 	case "semantic-data":
-		dataID = core.CanonicalID(target.ID)
+		if element == nil {
+			return nil
+		}
+		dataID = element.ID
 	case "semantic-attribute", "semantic-relation":
 		if element == nil || element.Parent == "" {
 			return nil
