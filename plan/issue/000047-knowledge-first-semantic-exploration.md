@@ -340,6 +340,8 @@ Reference pressureでは少なくとも次を比較します。
 
 この一意性はbusiness identifierやcandidate keyではない。親子関係が業務上の包含を意味するか、親の識別子とline numberの組合せがbusiness occurrenceを識別するかは、現在のCanonical meaningだけでは確定できない。このため`businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`は引き続き`unresolved`とする。
 
+ただし、設計探索を止めないため、acceptedなscoped uniquenessから検討対象となる`businessIdentityCandidates`は提示する。`sales.order.lines.line_number_unique`では、候補のcomponentsを`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項に分け、target occurrenceを`sales.order_line`とする。これはbusiness identifierやcandidate keyの確定ではない。source occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、identifier stability、temporal validityを確認できるまでcandidateのまま保持する。
+
 Data Design Contextには、判断材料として使ったData、Attribute、Relation、Relation keyの両端、Validation、関連Dataについて、Source Indexから得たsubject、source path、source fingerprint、range、roleを`evidence`として含める。authoritativeなDefinition / Authoring referenceを取得できないsubjectは黙って省略せず、`evidenceMissing`へ残す。
 
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
@@ -347,6 +349,8 @@ Data Design Contextには、判断材料として使ったData、Attribute、Rel
 一方、acceptedなscoped uniquenessからは、次に検証すべき関数従属性の候補を限定的に導ける。`sales.order.lines.line_number_unique`の場合、`line_number`単独をdeterminantとして扱わない。候補のdeterminantは、`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項として保持し、dependent occurrenceを`sales.order_line`、scopeを`per-relation-source-occurrence`とする。これにより、scope注記を読み落としたAIが「line numberだけで明細を決める」と誤解する経路を構造上閉じる。natureは`candidate-from-accepted-scoped-uniqueness`であり、acceptedなfunctional dependencyではない。確定には少なくともsource occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、temporal validityが必要であるため、これらを`evidenceNeeded`へ残す。`functionalDependencies`本体は引き続き`unresolved`とする。
 
 Reference testでは、`sales.order_line`についてincoming Relation、`relation-unique`、positive Validation、exact Source Evidenceを同じData Design Contextから取得できることを記述した。また、Relation keyを持つ`sales.order.customer`でも、source / target AttributeのEvidenceを保持しつつbusiness identifierへ昇格しないことを確認対象にした。内部negative testでは、不正なRelation shapeから`scopedUniqueness`を生成しないことと、Source Indexが欠けた場合に`evidenceMissing`へ明示することを固定した。
+
+Constraint自体も探索入口にする。`semantic-validation`からは、ValidationのAttribute ownerとRelation targetが一致して一意にDataを決められる場合だけData Design Contextへ接続する。positive ValidationはAttribute ownerへ、`relation-unique`はAttribute ownerとRelation targetの一致を確認したうえでtarget Dataへ降りる。両者が矛盾する場合はDataを推測せず、Data Design Contextを生成しない。
 
 Application PatternからData設計へ戻る経路もnegative Referenceとして固定した。`order_entry.order_record`のPattern identityからData Design Contextやbusiness identityを生成せず、既存の`application-pattern -> semantic-data` dependencyで`sales.order`へ明示的に辿る。Context全体のauthority limitにも、Projectionやruntime objectのidentityをbusiness data identityへ読み替えないことを追加した。現時点で直接pressureしたのはApplication Patternであり、Target / ORM / runtime objectの具体的Referenceは後続に残す。
 
