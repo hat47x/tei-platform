@@ -116,6 +116,15 @@
       "risk": "record-selection requirements of one interaction can become durable Data identity or leak target/runtime assumptions into semantics",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "preserve declared KeyFields as Function/Interaction source facts distinct from Table key, business identity, Canonical identity and physical key authority"
+    },
+    {
+      "id": "RML-013",
+      "topic": "composite-domain-constraint",
+      "nature": "unresolved",
+      "evidence": "a composite set of values may represent an allowed-combination/domain restriction independently of whether dependent attributes are present",
+      "risk": "transfer can collapse allowed-combination semantics into identity/FD or omit the constraint entirely",
+      "owner": "ISSUE-000078",
+      "stopCondition": "do not infer domain restriction from key shape alone; when source or accepted design establishes it, preserve it separately from business identity and functional dependency"
     }
   ],
   "claimsNotEstablished": [
