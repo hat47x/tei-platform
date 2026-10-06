@@ -67,6 +67,10 @@ Canonical subject identity
 
 TEIはnatural key / composite key / surrogate keyのどれかを一律に強制しません。代わりに、業務上のdeterminant、uniqueness、Relation semantics、Constraintを物理実装から失わないことを要求します。
 
+渡辺氏は、単独主キーしか扱いにくい実装環境ではsurrogate keyを使う余地を認めています。その場合も、本来の複合識別をuniquenessとして残し、正規化された意味との差を理解したうえで実装する立場です。TEIではこの点を、Provider / ORM / Target固有のRealizationがlogical Data meaningを上書きしないという境界へ翻訳します。
+
+同じ理由で、View、formの入力単位、Application Pattern、runtime objectのidentityをbusiness keyのauthorityにはしません。これらはData meaningを利用するProjection / Realizationであり、業務上のoccurrenceを何が識別するかはData / Relation / ConstraintとそのSourceへ戻って確認します。
+
 ### 4.2 関数従属性をData設計上の重要なmeaningとして扱う
 
 渡辺氏の近年の言説で一貫しているのは、主キーの形そのものより、その背後にある関数従属性と業務上の識別関係を設計者が理解する必要があるという点です。
