@@ -371,6 +371,17 @@ func buildCapabilityResolutionLock(
 	if err != nil {
 		return CapabilityResolutionLock{}, err
 	}
+	current, err := resolveCapability(input)
+	if err != nil {
+		return CapabilityResolutionLock{}, err
+	}
+	if current.ResolutionFingerprint != resolution.ResolutionFingerprint ||
+		current.Contract != resolution.Contract ||
+		current.Provider != resolution.Provider {
+		return CapabilityResolutionLock{}, fmt.Errorf(
+			"resolution does not match current deterministic capability resolution",
+		)
+	}
 	if resolution.ResolutionPolicy != capabilityResolutionPolicy {
 		return CapabilityResolutionLock{}, fmt.Errorf(
 			"resolution policy %q does not match current policy %q",
