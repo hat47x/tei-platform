@@ -130,17 +130,37 @@ func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.
 		got.ApplicationPattern.Data != "sales.order" {
 		t.Fatalf("record Pattern detail is missing: %+v", got.ApplicationPattern)
 	}
-	if got.DataDesign != nil {
-		t.Fatalf("Application Pattern identity was promoted to Data Design authority: %+v", got.DataDesign)
+	if got.DataDesign == nil ||
+		got.DataDesign.Data != "sales.order" ||
+		got.DataDesign.Focus.Kind != "application-pattern" ||
+		got.DataDesign.Focus.ID != "order_entry.order_record" {
+		t.Fatalf("record Pattern did not expose its explicit Semantic Data context: %+v", got.DataDesign)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("Application Pattern identity was promoted to business data identity: %+v", got.DataDesign)
+	}
+	for _, candidate := range got.DataDesign.BusinessIdentityCandidates {
+		if candidate.TargetOccurrence == "sales.order" {
+			t.Fatalf("record Pattern or physical key invented an order business identity candidate: %+v", candidate)
+		}
 	}
 	if !hasKnowledgeContextEdge(got, "outgoing", "data", "semantic-data", "sales.order") {
 		t.Fatalf("Pattern must reach Semantic Data through an explicit dependency edge: %+v", got.Outgoing)
 	}
-	if !containsKnowledgeContextString(
-		got.AuthorityLimits,
+	for _, limit := range []string{
 		"projection-or-runtime-identity-is-not-business-data-identity",
-	) {
-		t.Fatalf("projection identity authority limit is missing: %+v", got.AuthorityLimits)
+		"application-pattern-data-reference-is-context-not-business-identity",
+	} {
+		if !containsKnowledgeContextString(got.AuthorityLimits, "projection-or-runtime-identity-is-not-business-data-identity") &&
+			limit == "projection-or-runtime-identity-is-not-business-data-identity" {
+			t.Fatalf("projection identity authority limit is missing: %+v", got.AuthorityLimits)
+		}
+		if !containsKnowledgeContextString(got.DataDesign.AuthorityLimits, limit) &&
+			limit == "application-pattern-data-reference-is-context-not-business-identity" {
+			t.Fatalf("Pattern Data authority limit is missing: %+v", got.DataDesign.AuthorityLimits)
+		}
 	}
 }
 
