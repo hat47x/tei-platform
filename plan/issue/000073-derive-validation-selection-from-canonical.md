@@ -1,6 +1,6 @@
 # ISSUE-000073: Applicationが評価するValidationの選択を、Target側の一覧ではなくCanonicalな宣言から導く
 
-- 状態: In Progress — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
+- 状態: Done（2026-10-06。全完了条件を充足） — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
@@ -83,7 +83,7 @@ Web Target      Application.Validations から評価対象を得る
 - [x] Previewのunresolved codeの改名に合わせ、`boundary_test.go`、`analysis_test.go`、`tools/reference-shared-acceptance/README.md`を更新する（`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`）
 - [x] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す（Resolverは重複をerror、operationは`APPLICATION_VALIDATION_USE_ALREADY_EXISTS`で拒否する。candidateの順序はfingerprintに入る）
 - [x] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する（2026-10-06、ownerが「今は後継Handoverを発行しない」を承認。下記「判断」）
-- [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
+- [x] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める（2026-10-06、ownerが「独立した参照とする」を承認。下記「判断」）
 - [x] `tools/repository-health-check.sh`のfull PASSを記録する（下記。統合するexact headでの再取得は、コード変更を含む統合のときに行う。この統合は文書のみ）
 - [x] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する（2026-10-06）
 
@@ -133,7 +133,7 @@ ownerに示したのはReview Projectionの要点と全文へのリンクであ�
 - Gate B / Gate Cの判定は、それぞれのexact revisionのEvidenceとして変えません。このIssueの変更後のworkspaceを、旧baselineと同じものとして読み替えません。
 - 宣言からの導出は、Validationを「どの順で」「どのtransaction境界で」評価するかまでは決めません。
 
-## 判断案 — BP-05のValidation参照とApplication宣言の関係（2026-10-06、owner確認待ち）
+## 判断 — BP-05のValidation参照とApplication宣言の関係（2026-10-06、ownerが承認）
 
 事実: BP-05（`validation-support`）は`sales.order_line.quantity_positive`と`sales.order.lines.line_number_unique`を保持する。Business Procedure checkerは、この参照が正本のsemantic namespaceに存在するかを既に検査する（`tools/reference-business-procedure-check/main.go`）。`order_entry`のApplicationも同じ2件を`uses validation`で宣言した（評価順 = 宣言順、ADR-0029）。
 
