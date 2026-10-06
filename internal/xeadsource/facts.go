@@ -26,6 +26,18 @@ var declaredKeyFieldsAuthorityLimits = []string{
 	"declared-key-fields-are-not-functional-dependency",
 }
 
+var runtimeKeyAuthorityLimits = []string{
+	"runtime-key-is-realization-not-business-identity",
+	"runtime-key-is-not-functional-dependency",
+	"runtime-key-does-not-replace-design-key-evidence",
+}
+
+var runtimeReferAuthorityLimits = []string{
+	"runtime-refer-is-realization-not-semantic-relation-authority",
+	"runtime-refer-key-fields-are-not-business-identity",
+	"runtime-pk-fallback-is-not-business-identity",
+}
+
 type LegacyKeyMemberFact struct {
 	Locator       string `json:"locator"`
 	FieldLegacyID string `json:"fieldLegacyId"`
@@ -64,10 +76,34 @@ type DeclaredKeyFieldsFact struct {
 	AuthorityLimits []string `json:"authorityLimits"`
 }
 
+type RuntimeKeyFact struct {
+	Locator         string   `json:"locator"`
+	TableLegacyID   string   `json:"tableLegacyId,omitempty"`
+	KeyLegacyID     string   `json:"keyLegacyId,omitempty"`
+	KeyType         string   `json:"keyType,omitempty"`
+	Fields          []string `json:"fields,omitempty"`
+	Nature          string   `json:"nature"`
+	AuthorityLimits []string `json:"authorityLimits"`
+}
+
+type RuntimeReferFact struct {
+	Locator             string   `json:"locator"`
+	ReferLegacyID       string   `json:"referLegacyId,omitempty"`
+	SourceTableLegacyID string   `json:"sourceTableLegacyId,omitempty"`
+	ToTableLegacyID     string   `json:"toTableLegacyId,omitempty"`
+	TableAlias          string   `json:"tableAlias,omitempty"`
+	ToKeyFields         []string `json:"toKeyFields,omitempty"`
+	WithKeyFields       []string `json:"withKeyFields,omitempty"`
+	Nature              string   `json:"nature"`
+	AuthorityLimits     []string `json:"authorityLimits"`
+}
+
 type RelationalSourceFacts struct {
-	LegacyKeys        []LegacyKeyFact        `json:"legacyKeys,omitempty"`
-	RelationshipKeys  []RelationshipKeyFact  `json:"relationshipKeys,omitempty"`
+	LegacyKeys        []LegacyKeyFact         `json:"legacyKeys,omitempty"`
+	RelationshipKeys  []RelationshipKeyFact   `json:"relationshipKeys,omitempty"`
 	DeclaredKeyFields []DeclaredKeyFieldsFact `json:"declaredKeyFields,omitempty"`
+	RuntimeKeys       []RuntimeKeyFact        `json:"runtimeKeys,omitempty"`
+	RuntimeRefers     []RuntimeReferFact      `json:"runtimeRefers,omitempty"`
 }
 
 // ExtractRelationalSourceFacts projects only facts explicitly present in the
@@ -119,6 +155,32 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				Nature:          SourceFactNature,
 				AuthorityLimits: cloneStrings(relationshipKeyAuthorityLimits),
 			})
+		case "Key":
+			if doc.Format == FormatXeaf {
+				facts.RuntimeKeys = append(facts.RuntimeKeys, RuntimeKeyFact{
+					Locator:         n.Locator,
+					TableLegacyID:   tableLegacyID,
+					KeyLegacyID:     attributeValue(n, "ID"),
+					KeyType:         attributeValue(n, "Type"),
+					Fields:          splitLegacyFieldList(attributeValue(n, "Fields")),
+					Nature:          SourceFactNature,
+					AuthorityLimits: cloneStrings(runtimeKeyAuthorityLimits),
+				})
+			}
+		case "Refer":
+			if doc.Format == FormatXeaf {
+				facts.RuntimeRefers = append(facts.RuntimeRefers, RuntimeReferFact{
+					Locator:             n.Locator,
+					ReferLegacyID:       attributeValue(n, "ID"),
+					SourceTableLegacyID: tableLegacyID,
+					ToTableLegacyID:     attributeValue(n, "ToTable"),
+					TableAlias:          attributeValue(n, "TableAlias"),
+					ToKeyFields:         splitLegacyFieldList(attributeValue(n, "ToKeyFields")),
+					WithKeyFields:       splitLegacyFieldList(attributeValue(n, "WithKeyFields")),
+					Nature:              SourceFactNature,
+					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
+				})
+			}
 		}
 
 		if raw := attributeValue(n, "KeyFields"); raw != "" {
@@ -147,6 +209,12 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	})
 	sort.Slice(facts.DeclaredKeyFields, func(i, j int) bool {
 		return facts.DeclaredKeyFields[i].Locator < facts.DeclaredKeyFields[j].Locator
+	})
+	sort.Slice(facts.RuntimeKeys, func(i, j int) bool {
+		return facts.RuntimeKeys[i].Locator < facts.RuntimeKeys[j].Locator
+	})
+	sort.Slice(facts.RuntimeRefers, func(i, j int) bool {
+		return facts.RuntimeRefers[i].Locator < facts.RuntimeRefers[j].Locator
 	})
 	return facts
 }
