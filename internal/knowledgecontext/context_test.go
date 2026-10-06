@@ -3,6 +3,8 @@ package knowledgecontext
 import (
 	"testing"
 
+	"tei/internal/core"
+	"tei/internal/database/persistence"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
@@ -46,6 +48,65 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 				t.Fatalf("invalid relation-unique created business identity: %+v", ctx.DataDesign)
 			}
 		})
+	}
+}
+
+func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Persistence = []persistence.Mapping{
+		{
+			ID:           "sales_core.order_line",
+			Database:     "sales_core",
+			SemanticData: "sales.order_line",
+			Table:        "public.order_lines",
+			Columns: []persistence.ColumnMapping{
+				{
+					Attribute:   "sales.order_line.line_number",
+					Column:      "line_number",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+			},
+			PrimaryKey: []core.CanonicalID{"sales.order_line.line_number"},
+			UniqueConstraints: []persistence.UniqueConstraintMapping{
+				{
+					Name:       "order_lines_line_number_uq",
+					Attributes: []core.CanonicalID{"sales.order_line.line_number"},
+				},
+			},
+		},
+	}
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil || len(ctx.DataDesign.PersistenceRealizations) != 1 {
+		t.Fatalf("persistence realization is missing: %+v", ctx.DataDesign)
+	}
+	realization := ctx.DataDesign.PersistenceRealizations[0]
+	if realization.Authority != "database-owned-realization" ||
+		len(realization.Uniqueness) != 2 {
+		t.Fatalf("persistence uniqueness facts are incomplete: %+v", realization)
+	}
+	for _, uniqueness := range realization.Uniqueness {
+		if uniqueness.Nature != "accepted-realization" ||
+			len(uniqueness.Attributes) != 1 ||
+			uniqueness.Attributes[0] != "sales.order_line.line_number" {
+			t.Fatalf("persistence uniqueness fact drifted: %+v", uniqueness)
+		}
+	}
+	if ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		ctx.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		ctx.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("persistence uniqueness was promoted to logical identity: %+v", ctx.DataDesign)
+	}
+	if !containsDataDesignSubject(
+		ctx.DataDesign.EvidenceMissing,
+		subject.Subject{Kind: "persistence", ID: "sales_core.order_line"},
+	) {
+		t.Fatalf("missing persistence source Evidence was hidden: %+v", ctx.DataDesign.EvidenceMissing)
 	}
 }
 
