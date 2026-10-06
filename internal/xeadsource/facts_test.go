@@ -6,7 +6,7 @@ import (
 )
 
 func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences(t *testing.T) {
-	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE"/><TableField ID="F2" AttributeType="NATIVE"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE" DataTypeID="DT1"/><TableField ID="F2" AttributeType="NATIVE" DataTypeID="DT2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,8 +19,8 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 		t.Fatalf("legacy key source fact drifted: %#v", key)
 	}
 	if !reflect.DeepEqual(key.Members, []LegacyKeyMemberFact{
-		{Locator: "/System[1]/Table[1]/TableKey[3]/TableKeyField[1]", FieldLegacyID: "F1", AttributeType: "DERIVABLE", SortKey: "10", SourceOrdinal: 0},
-		{Locator: "/System[1]/Table[1]/TableKey[3]/TableKeyField[2]", FieldLegacyID: "F2", AttributeType: "NATIVE", SortKey: "20", SourceOrdinal: 1},
+		{Locator: "/System[1]/Table[1]/TableKey[3]/TableKeyField[1]", FieldLegacyID: "F1", AttributeType: "DERIVABLE", DataTypeLegacyID: "DT1", SortKey: "10", SourceOrdinal: 0},
+		{Locator: "/System[1]/Table[1]/TableKey[3]/TableKeyField[2]", FieldLegacyID: "F2", AttributeType: "NATIVE", DataTypeLegacyID: "DT2", SortKey: "20", SourceOrdinal: 1},
 	}) {
 		t.Fatalf("legacy composite key membership drifted: %#v", key.Members)
 	}
