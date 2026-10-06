@@ -73,6 +73,16 @@ type DataDesignDeterminantTerm struct {
 	Attribute core.CanonicalID `json:"attribute,omitempty"`
 }
 
+type DataDesignBusinessIdentityCandidate struct {
+	Relation         core.CanonicalID            `json:"relation"`
+	Components       []DataDesignDeterminantTerm `json:"components"`
+	TargetOccurrence core.CanonicalID            `json:"targetOccurrence"`
+	BasisConstraint  core.CanonicalID            `json:"basisConstraint"`
+	Scope            string                      `json:"scope"`
+	Nature           string                      `json:"nature"`
+	EvidenceNeeded   []string                    `json:"evidenceNeeded"`
+}
+
 type DataDesignFunctionalDependencyCandidate struct {
 	Relation            core.CanonicalID            `json:"relation"`
 	Determinants        []DataDesignDeterminantTerm `json:"determinants"`
@@ -113,6 +123,7 @@ type DataDesignContext struct {
 	Relations                             []DataDesignRelation          `json:"relations,omitempty"`
 	Constraints                           []DataDesignConstraint        `json:"constraints,omitempty"`
 	ScopedUniqueness                      []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
+	BusinessIdentityCandidates             []DataDesignBusinessIdentityCandidate      `json:"businessIdentityCandidates,omitempty"`
 	FunctionalDependencyCandidates        []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
 	PersistenceRealizations               []DataDesignPersistenceRealization        `json:"persistenceRealizations,omitempty"`
 	Evidence                              []DataDesignEvidence                 `json:"evidence,omitempty"`
@@ -348,6 +359,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
+			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
 			"relation-key-is-not-business-identifier",
@@ -490,21 +502,40 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 					Scope:      "per-relation-source-occurrence",
 					Nature:     "accepted",
 				})
+				identityTerms := []DataDesignDeterminantTerm{
+					{
+						Kind: "relation-source-occurrence",
+						Data: relation.Source,
+					},
+					{
+						Kind:      "attribute",
+						Data:      relation.Target,
+						Attribute: validation.Attribute,
+					},
+				}
+				ctx.BusinessIdentityCandidates = append(
+					ctx.BusinessIdentityCandidates,
+					DataDesignBusinessIdentityCandidate{
+						Relation:         validation.Relation,
+						Components:       append([]DataDesignDeterminantTerm(nil), identityTerms...),
+						TargetOccurrence: relation.Target,
+						BasisConstraint:  validation.ID,
+						Scope:            "per-relation-source-occurrence",
+						Nature:           "candidate-from-accepted-scoped-uniqueness",
+						EvidenceNeeded: []string{
+							"source-occurrence-business-identifier",
+							"relation-business-meaning",
+							"target-membership-exclusivity",
+							"identifier-stability",
+							"temporal-validity",
+						},
+					},
+				)
 				ctx.FunctionalDependencyCandidates = append(
 					ctx.FunctionalDependencyCandidates,
 					DataDesignFunctionalDependencyCandidate{
 						Relation: validation.Relation,
-						Determinants: []DataDesignDeterminantTerm{
-							{
-								Kind: "relation-source-occurrence",
-								Data: relation.Source,
-							},
-							{
-								Kind:      "attribute",
-								Data:      relation.Target,
-								Attribute: validation.Attribute,
-							},
-						},
+						Determinants: append([]DataDesignDeterminantTerm(nil), identityTerms...),
 						DependentOccurrence: relation.Target,
 						BasisConstraint:     validation.ID,
 						Scope:               "per-relation-source-occurrence",
@@ -540,6 +571,12 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 	})
 	sort.Slice(ctx.ScopedUniqueness, func(i, j int) bool {
 		return ctx.ScopedUniqueness[i].Constraint < ctx.ScopedUniqueness[j].Constraint
+	})
+	sort.Slice(ctx.BusinessIdentityCandidates, func(i, j int) bool {
+		if ctx.BusinessIdentityCandidates[i].BasisConstraint != ctx.BusinessIdentityCandidates[j].BasisConstraint {
+			return ctx.BusinessIdentityCandidates[i].BasisConstraint < ctx.BusinessIdentityCandidates[j].BasisConstraint
+		}
+		return ctx.BusinessIdentityCandidates[i].TargetOccurrence < ctx.BusinessIdentityCandidates[j].TargetOccurrence
 	})
 	sort.Slice(ctx.FunctionalDependencyCandidates, func(i, j int) bool {
 		if ctx.FunctionalDependencyCandidates[i].BasisConstraint != ctx.FunctionalDependencyCandidates[j].BasisConstraint {
