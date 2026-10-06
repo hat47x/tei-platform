@@ -409,6 +409,76 @@ func LockBuildOutput(plan BuildPlan, artifactDigest string) (LockedBuild, error)
 	}, nil
 }
 
+
+
+// BindRuntimeBuild records which exact BuildPlan produced the Runtime artifact
+// selected by one Environment's Plugin Lock entry. Existing format-2 locks are
+// accepted and upgraded to format 3. Other Environment entries are preserved.
+func BindRuntimeBuild(lock Lock, environmentID core.CanonicalID, build LockedBuild) (Lock, error) {
+	if !supportedLockFormatVersion(lock.FormatVersion) {
+		return Lock{}, fmt.Errorf("unsupported plugin lock format %d", lock.FormatVersion)
+	}
+	if err := (BuildArtifactLock{
+		FormatVersion: BuildArtifactLockFormatVersion,
+		Builds:        []LockedBuild{build},
+	}).Validate(); err != nil {
+		return Lock{}, err
+	}
+	if build.OutputKind != BuildOutputRuntimeArtifact {
+		return Lock{}, fmt.Errorf("runtime lock build binding requires %s output, got %s", BuildOutputRuntimeArtifact, build.OutputKind)
+	}
+
+	out := lock
+	out.Environments = make([]EnvironmentLock, len(lock.Environments))
+	foundEnvironment := false
+	foundPlugin := false
+	for i, environmentLock := range lock.Environments {
+		out.Environments[i] = environmentLock
+		out.Environments[i].Plugins = append([]LockedPlugin(nil), environmentLock.Plugins...)
+		if environmentLock.Environment != environmentID {
+			continue
+		}
+		foundEnvironment = true
+		for j := range out.Environments[i].Plugins {
+			locked := &out.Environments[i].Plugins[j]
+			if locked.ID != build.Plugin.ID || locked.Version != build.Plugin.Version {
+				continue
+			}
+			foundPlugin = true
+			if locked.ArtifactDigest == "" {
+				return Lock{}, fmt.Errorf(
+					"runtime plugin %s@%s has no artifact digest to bind to build plan",
+					locked.ID, locked.Version,
+				)
+			}
+			if locked.ArtifactDigest != build.ArtifactDigest {
+				return Lock{}, fmt.Errorf(
+					"runtime plugin %s@%s artifact digest does not match build output",
+					locked.ID, locked.Version,
+				)
+			}
+			if locked.BuildPlanFingerprint != "" && locked.BuildPlanFingerprint != build.PlanFingerprint {
+				return Lock{}, fmt.Errorf(
+					"runtime plugin %s@%s is already bound to a different build plan",
+					locked.ID, locked.Version,
+				)
+			}
+			locked.BuildPlanFingerprint = build.PlanFingerprint
+		}
+	}
+	if !foundEnvironment {
+		return Lock{}, fmt.Errorf("plugin lock has no environment %s", environmentID)
+	}
+	if !foundPlugin {
+		return Lock{}, fmt.Errorf(
+			"plugin lock environment %s has no plugin %s@%s",
+			environmentID, build.Plugin.ID, build.Plugin.Version,
+		)
+	}
+	out.FormatVersion = BuildTraceLockFormatVersion
+	return out, nil
+}
+
 // VerifyRuntimePluginBuild checks that a Runtime Plugin Lock entry can be
 // traced back to this exact BuildPlan and locked build output. This is an
 // explicit cross-check only; neither BuildPlan nor BuildArtifactLock is Runtime
@@ -468,6 +538,12 @@ func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, definition Defi
 	}
 	if runtime.ArtifactDigest != build.ArtifactDigest {
 		return fmt.Errorf("runtime plugin artifact digest does not match locked build output")
+	}
+	if runtime.BuildPlanFingerprint == "" {
+		return fmt.Errorf("runtime plugin %s@%s is not bound to a build plan", runtime.ID, runtime.Version)
+	}
+	if runtime.BuildPlanFingerprint != build.PlanFingerprint {
+		return fmt.Errorf("runtime plugin build plan fingerprint does not match locked build output")
 	}
 	return nil
 }
