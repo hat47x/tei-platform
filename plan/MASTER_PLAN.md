@@ -69,7 +69,7 @@ Required Evidenceは次の三つで、同じclean candidate revision `R`のsame-
 
 `#387` final convergenceとsame-run child artifact auditを含むReady判定の正本は `GATE_B_READINESS_AUDIT.md` です。
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
+PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
 
 ### Handover Baseline — Gate B → Gate C
 
@@ -188,7 +188,7 @@ Desired / Actual / Diff / Migration / Provider境界を、Provider固有知識�
 
 PostgreSQLは深い実証Providerとして利用します。
 
-Oracle等の異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。
+異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
 
 actual Oracle Evidence未完了をGate B blockerへ戻しません。
 

@@ -161,7 +161,7 @@ TEIは、価値を測定値で確かめることを、今は主張しません�
 - Gate CのVisual Fidelityは単一のAI評価者による評価で、人の確認も別の評価者による再評価もありません（[`docs/status.md`](../../docs/status.md)、ISSUE-000058）。「社会」の層で述べる、第三者が根拠を再現できることの根拠には、この評価を数えません。
 - 要求ごとの実証には偏りがあります。2026-09-21の再監査では、RQ-010、RQ-015、RQ-016、RQ-030がDesign Only、RQ-027、RQ-028、RQ-029がPartial Evidenceでした。2026-10-03に追加したRQ-031〜RQ-033は、追加時点ではDesign Onlyです。最新の状況は[`plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)を参照してください。特に、AIエージェントがTEI成果物を読んで業務を遂行する経路、答えた確認や退けた提案の記録、再利用時のVariationの表現は、製品側にまだありません。
 - 決定記録（`.tei/decisions/`）は、Shared Acceptance Boundaryを通った変更に限られます。また、消去・偽造しても意味とrevisionが変わらないEvidenceであり、監査に耐える記録とは主張しません。
-- 第一Web Target以外のTarget、`repair_intake`の顧客照会を実Database（actual Oracle）へ接続した実行、productionでの実行、別Repository・別組織への知識の移植は確かめていません。
+- 第一Web Target以外のTarget、`repair_intake`の顧客照会を、PostgreSQL以外の実Database Provider（第一Referenceの既存資産ではOracle）へ接続した実行、productionでの実行、別Repository・別組織への知識の移植は確かめていません。
 - 「担い手が替わっても続く」ことは、実際の引継ぎ、刷新、委託先の交代では確かめていません。確認したのは、Reference内で会話履歴なしに機械側から意味・決定・影響へ到達できることの一部です。
 
 ## 1. 業務の意味を失わない
