@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	BuildPlanFormatVersion = 1
+	BuildPlanFormatVersion         = 1
 	BuildArtifactLockFormatVersion = 1
 )
 
@@ -81,27 +81,27 @@ const (
 // BuildPlan fixes the resolved inputs for one Plugin artifact build. It does not
 // grant Acceptance or Runtime Authority and does not execute the build.
 type BuildPlan struct {
-	FormatVersion         int               `json:"formatVersion"`
-	Plugin                Identity          `json:"plugin"`
+	FormatVersion               int               `json:"formatVersion"`
+	Plugin                      Identity          `json:"plugin"`
 	PluginDefinitionFingerprint string            `json:"pluginDefinitionFingerprint"`
-	Sources               []BuildSource     `json:"sources"`
-	Builder               BuilderIdentity   `json:"builder"`
-	Recipe                BuildRecipe       `json:"recipe"`
-	OutputKind            BuildOutputKind   `json:"outputKind"`
-	Dependencies          []BuildDependency `json:"dependencies,omitempty"`
-	Target                string            `json:"target"`
-	Profile               string            `json:"profile,omitempty"`
-	Parameters            []BuildParameter  `json:"parameters,omitempty"`
+	Sources                     []BuildSource     `json:"sources"`
+	Builder                     BuilderIdentity   `json:"builder"`
+	Recipe                      BuildRecipe       `json:"recipe"`
+	OutputKind                  BuildOutputKind   `json:"outputKind"`
+	Dependencies                []BuildDependency `json:"dependencies,omitempty"`
+	Target                      string            `json:"target"`
+	Profile                     string            `json:"profile,omitempty"`
+	Parameters                  []BuildParameter  `json:"parameters,omitempty"`
 }
 
 // LockedBuild binds one BuildPlan fingerprint to the artifact produced from it.
 type LockedBuild struct {
 	Plugin          Identity        `json:"plugin"`
 	OutputKind      BuildOutputKind `json:"outputKind"`
-	Target          string   `json:"target"`
-	Profile         string   `json:"profile,omitempty"`
-	PlanFingerprint string   `json:"planFingerprint"`
-	ArtifactDigest  string   `json:"artifactDigest"`
+	Target          string          `json:"target"`
+	Profile         string          `json:"profile,omitempty"`
+	PlanFingerprint string          `json:"planFingerprint"`
+	ArtifactDigest  string          `json:"artifactDigest"`
 }
 
 // BuildArtifactLock is separate from Plugin Lock. Plugin Lock answers which
@@ -113,7 +113,6 @@ type BuildArtifactLock struct {
 	FormatVersion int           `json:"formatVersion"`
 	Builds        []LockedBuild `json:"builds"`
 }
-
 
 // BuildDefinitionFingerprint identifies the build-relevant Plugin definition
 // without the produced artifact identity. Keeping Artifact outside this
@@ -127,8 +126,6 @@ func BuildDefinitionFingerprint(d Definition) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
-
-
 
 func cloneBuildDefinition(d Definition) Definition {
 	out := d
@@ -364,8 +361,6 @@ func BuildArtifactLockFingerprint(l BuildArtifactLock) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-
-
 // RealizeBuiltDefinition returns a derived Runtime definition that binds a
 // produced artifact to an authoritative Plugin definition without mutating the
 // source definition. If the source already pins an artifact, the produced
@@ -408,8 +403,6 @@ func LockBuildOutput(plan BuildPlan, artifactDigest string) (LockedBuild, error)
 		ArtifactDigest:  artifactDigest,
 	}, nil
 }
-
-
 
 // BindRuntimeBuild records which exact BuildPlan produced the Runtime artifact
 // selected by one Environment's Plugin Lock entry. Existing format-2 locks are

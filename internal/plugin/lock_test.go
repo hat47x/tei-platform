@@ -66,7 +66,6 @@ func TestEnvironmentLockFingerprintIgnoresPluginOrdering(t *testing.T) {
 	}
 }
 
-
 func TestLegacyFormat2PluginLockRemainsReadable(t *testing.T) {
 	def := plugin.Definition{
 		ID:      core.MustCanonicalID("tei.legacy"),
@@ -151,7 +150,6 @@ func TestUnsupportedPluginLockFormatFails(t *testing.T) {
 	}
 }
 
-
 func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 	def := plugin.Definition{
 		ID:      core.MustCanonicalID("tei.invalid_trace"),
@@ -189,7 +187,6 @@ func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 	}
 }
 
-
 func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
 	def := plugin.Definition{
 		ID:      core.MustCanonicalID("tei.legacy_trace"),
@@ -226,7 +223,6 @@ func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
 		t.Fatal("expected format 2 build trace field to fail")
 	}
 }
-
 
 func TestBuildTraceFormat3RequiresArtifactDigest(t *testing.T) {
 	def := plugin.Definition{

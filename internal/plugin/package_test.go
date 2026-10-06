@@ -21,7 +21,7 @@ func pluginPackagePlan(source plugin.Definition) plugin.BuildPlan {
 			Digest:  buildDigestA,
 		}},
 		Builder: plugin.BuilderIdentity{
-			ID:             core.MustCanonicalID("tei.builder.package.seed"),
+			ID:              core.MustCanonicalID("tei.builder.package.seed"),
 			Version:         "1.0.0",
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  buildDigestB,

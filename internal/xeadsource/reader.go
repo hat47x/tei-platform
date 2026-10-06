@@ -33,9 +33,9 @@ type Node struct {
 }
 
 type InventoryEntry struct {
-	Name       string `json:"name"`
-	Count      int    `json:"count"`
-	Known      bool   `json:"known"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+	Known bool   `json:"known"`
 }
 
 type Document struct {

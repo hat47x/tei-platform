@@ -22,7 +22,7 @@ func TestParsePreservesUnknownConstructsAndBindsExactBytes(t *testing.T) {
 	if future.Known || future.Text != "raw" || future.Locator != "/System[1]/Table[1]/FutureThing[2]" {
 		t.Fatalf("unexpected future node: %#v", future)
 	}
-	if !reflect.DeepEqual(future.Attributes, []Attribute{{Name:"a", Value:"1"}, {Name:"z", Value:"2"}}) {
+	if !reflect.DeepEqual(future.Attributes, []Attribute{{Name: "a", Value: "1"}, {Name: "z", Value: "2"}}) {
 		t.Fatalf("attributes not preserved deterministically: %#v", future.Attributes)
 	}
 }

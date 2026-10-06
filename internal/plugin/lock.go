@@ -81,8 +81,6 @@ func supportedLockFormatVersion(version int) bool {
 	return version == LockFormatVersion || version == BuildTraceLockFormatVersion
 }
 
-
-
 func validateLockBuildTrace(lock Lock) error {
 	for _, environmentLock := range lock.Environments {
 		for _, locked := range environmentLock.Plugins {
