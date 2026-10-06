@@ -24,6 +24,11 @@ type sourceIdentity struct {
 	SHA256 string            `json:"sha256"`
 }
 
+type inventorySummaryEntry struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
 type factSummary struct {
 	LegacyKeyCount                   int            `json:"legacyKeyCount"`
 	LegacyKeyTypes                   map[string]int `json:"legacyKeyTypes,omitempty"`
@@ -59,9 +64,9 @@ type diagnosticSummary struct {
 type report struct {
 	SchemaVersion                    string                      `json:"schemaVersion"`
 	Source                           sourceIdentity              `json:"source"`
-	Inventory                        []xeadsource.InventoryEntry `json:"inventory"`
-	UnknownConstructs                []string                    `json:"unknownConstructs,omitempty"`
-	Candidates                       candidateSummary            `json:"candidates"`
+	Inventory                        []inventorySummaryEntry `json:"inventory"`
+	UnknownConstructCount             int                     `json:"unknownConstructCount"`
+	Candidates                       candidateSummary        `json:"candidates"`
 	RelationalFacts                  factSummary                 `json:"relationalFacts"`
 	RelationalDiagnostics            diagnosticSummary           `json:"relationalDiagnostics"`
 	ClassificationPolicyFingerprint  string                      `json:"classificationPolicyFingerprint"`
@@ -123,8 +128,8 @@ func buildReport(inspection xeadsource.Inspection) report {
 			Format: inspection.Document.Format,
 			SHA256: inspection.Document.SHA256,
 		},
-		Inventory:                        append([]xeadsource.InventoryEntry(nil), inspection.Document.Inventory...),
-		UnknownConstructs:                append([]string(nil), inspection.Document.UnknownNames...),
+		Inventory:                        summarizeInventory(inspection.Document.Inventory),
+		UnknownConstructCount:             countUnknownInventory(inspection.Document.Inventory),
 		Candidates:                       summarizeCandidates(inspection.Candidates),
 		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
@@ -132,9 +137,42 @@ func buildReport(inspection xeadsource.Inspection) report {
 		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
 		AuthorityLimits:                  append([]string(nil), inspection.AuthorityLimits...),
 	}
-	sort.Strings(result.UnknownConstructs)
 	sort.Strings(result.AuthorityLimits)
 	return result
+}
+
+func summarizeInventory(inventory []xeadsource.InventoryEntry) []inventorySummaryEntry {
+	counts := map[string]int{}
+	for _, entry := range inventory {
+		if !entry.Known {
+			continue
+		}
+		name := entry.Name
+		if i := strings.LastIndex(name, "}"); i >= 0 {
+			name = name[i+1:]
+		}
+		counts[name] += entry.Count
+	}
+	names := make([]string, 0, len(counts))
+	for name := range counts {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]inventorySummaryEntry, 0, len(names))
+	for _, name := range names {
+		out = append(out, inventorySummaryEntry{Name: name, Count: counts[name]})
+	}
+	return out
+}
+
+func countUnknownInventory(inventory []xeadsource.InventoryEntry) int {
+	total := 0
+	for _, entry := range inventory {
+		if !entry.Known {
+			total += entry.Count
+		}
+	}
+	return total
 }
 
 func summarizeCandidates(candidates []xeadsource.Candidate) candidateSummary {
