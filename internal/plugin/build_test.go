@@ -46,6 +46,7 @@ func buildPlanFixture() plugin.BuildPlan {
 			Kind:       "go-package",
 			Entrypoint: "./tools/reference-process-plugin",
 		},
+		OutputKind:   plugin.BuildOutputRuntimeArtifact,
 		Dependencies: []plugin.BuildDependency{
 			{Kind: "sdk", ID: "example.builder.sdk", Version: "1.0.0", ArtifactDigest: buildDigestB},
 			{Kind: "support", ID: "example.builder.support", Version: "2.0.0", ArtifactDigest: buildDigestA},
@@ -149,6 +150,13 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 			t.Fatal("expected missing build recipe to fail")
 		}
 	})
+	t.Run("output kind required", func(t *testing.T) {
+		p := buildPlanFixture()
+		p.OutputKind = ""
+		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
+			t.Fatal("expected missing build output kind to fail")
+		}
+	})
 	t.Run("invalid plugin id", func(t *testing.T) {
 		p := buildPlanFixture()
 		p.Plugin.ID = core.CanonicalID("Invalid")
@@ -176,8 +184,8 @@ func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
 	a := plugin.BuildArtifactLock{
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
 		Builds: []plugin.LockedBuild{
-			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.z"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
-			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "wasm-component", Profile: "web", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
+			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.z"), Version: "1.0.0"}, OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
+			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "wasm-component", Profile: "web", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
 		},
 	}
 	b := a
@@ -213,6 +221,7 @@ func TestBuildArtifactLockRejectsInvalidPluginID(t *testing.T) {
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
 		Builds: []plugin.LockedBuild{{
 			Plugin:          plugin.Identity{ID: core.CanonicalID("Invalid"), Version: "1.0.0"},
+			OutputKind:      plugin.BuildOutputRuntimeArtifact,
 			Target:          "host-process",
 			PlanFingerprint: buildFPA,
 			ArtifactDigest:  buildDigestA,
@@ -227,8 +236,8 @@ func TestBuildLockRejectsDuplicatePluginTarget(t *testing.T) {
 	l := plugin.BuildArtifactLock{
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
 		Builds: []plugin.LockedBuild{
-			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
-			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
+			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
+			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, OutputKind: plugin.BuildOutputRuntimeArtifact, Target: "host-process", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
 		},
 	}
 	if _, err := plugin.BuildArtifactLockFingerprint(l); err == nil {
@@ -291,6 +300,9 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 		}},
 		{"target", func(_ *plugin.BuildPlan, b *plugin.LockedBuild, _ *plugin.LockedPlugin) {
 			b.Target = "wasm-component"
+		}},
+		{"output kind", func(_ *plugin.BuildPlan, b *plugin.LockedBuild, _ *plugin.LockedPlugin) {
+			b.OutputKind = plugin.BuildOutputPluginPackage
 		}},
 		{"artifact", func(_ *plugin.BuildPlan, _ *plugin.LockedBuild, r *plugin.LockedPlugin) {
 			r.ArtifactDigest = buildDigestA
@@ -387,6 +399,51 @@ func TestRealizeBuiltDefinitionRejectsPredeclaredArtifactMismatch(t *testing.T) 
 		t.Fatal("expected predeclared artifact mismatch to fail")
 	}
 	if _, err := plugin.RealizeBuiltDefinition(source, buildDigestA); err != nil {
+		t.Fatal(err)
+	}
+}
+
+
+func TestVerifyRuntimePluginBuildRejectsPackageOutput(t *testing.T) {
+	plan := buildPlanFixture()
+	plan.OutputKind = plugin.BuildOutputPluginPackage
+	locked, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition := buildDefinitionFixture()
+	runtime := plugin.LockedPlugin{
+		ID:             plan.Plugin.ID,
+		Version:        plan.Plugin.Version,
+		Fingerprint:    plugin.DefinitionFingerprint(definition),
+		ArtifactDigest: buildDigestB,
+	}
+	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err == nil {
+		t.Fatal("expected plugin-package output to be rejected as Runtime artifact")
+	}
+}
+
+func TestBuildArtifactLockAllowsDifferentOutputKinds(t *testing.T) {
+	l := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds: []plugin.LockedBuild{
+			{
+				Plugin:          plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"},
+				OutputKind:      plugin.BuildOutputRuntimeArtifact,
+				Target:          "host-process",
+				PlanFingerprint: buildFPA,
+				ArtifactDigest:  buildDigestA,
+			},
+			{
+				Plugin:          plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"},
+				OutputKind:      plugin.BuildOutputPluginPackage,
+				Target:          "host-process",
+				PlanFingerprint: buildFPB,
+				ArtifactDigest:  buildDigestB,
+			},
+		},
+	}
+	if _, err := plugin.BuildArtifactLockFingerprint(l); err != nil {
 		t.Fatal(err)
 	}
 }
