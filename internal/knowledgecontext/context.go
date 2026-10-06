@@ -119,26 +119,26 @@ type DataDesignPersistenceRealization struct {
 const dataDesignProjectionRevision = "tei.knowledge.data-design/v1"
 
 type DataDesignContext struct {
-	ProjectionRevision                    string                   `json:"projectionRevision"`
-	Fingerprint                           string                   `json:"fingerprint"`
-	Data                                  core.CanonicalID         `json:"data"`
-	Focus                                 subject.Subject          `json:"focus"`
-	Attributes                            []DataDesignAttribute         `json:"attributes,omitempty"`
-	Relations                             []DataDesignRelation          `json:"relations,omitempty"`
-	Constraints                           []DataDesignConstraint        `json:"constraints,omitempty"`
+	ProjectionRevision                    string                                    `json:"projectionRevision"`
+	Fingerprint                           string                                    `json:"fingerprint"`
+	Data                                  core.CanonicalID                          `json:"data"`
+	Focus                                 subject.Subject                           `json:"focus"`
+	Attributes                            []DataDesignAttribute                     `json:"attributes,omitempty"`
+	Relations                             []DataDesignRelation                      `json:"relations,omitempty"`
+	Constraints                           []DataDesignConstraint                    `json:"constraints,omitempty"`
 	ScopedUniqueness                      []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
-	BusinessIdentityCandidates             []DataDesignBusinessIdentityCandidate      `json:"businessIdentityCandidates,omitempty"`
+	BusinessIdentityCandidates            []DataDesignBusinessIdentityCandidate     `json:"businessIdentityCandidates,omitempty"`
 	FunctionalDependencyCandidates        []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
 	PersistenceRealizations               []DataDesignPersistenceRealization        `json:"persistenceRealizations,omitempty"`
-	Evidence                              []DataDesignEvidence                 `json:"evidence,omitempty"`
-	EvidenceMissing                       []subject.Subject                    `json:"evidenceMissing,omitempty"`
-	BusinessOccurrenceIdentifier          DataDesignKnowledgeState            `json:"businessOccurrenceIdentifier"`
-	CandidateKeys                         DataDesignKnowledgeState `json:"candidateKeys"`
-	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
-	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
-	FunctionalDependencyEvidenceQuestions []string                 `json:"functionalDependencyEvidenceQuestions"`
-	RelationEvidenceQuestions             []string                 `json:"relationEvidenceQuestions"`
-	AuthorityLimits                       []string                 `json:"authorityLimits"`
+	Evidence                              []DataDesignEvidence                      `json:"evidence,omitempty"`
+	EvidenceMissing                       []subject.Subject                         `json:"evidenceMissing,omitempty"`
+	BusinessOccurrenceIdentifier          DataDesignKnowledgeState                  `json:"businessOccurrenceIdentifier"`
+	CandidateKeys                         DataDesignKnowledgeState                  `json:"candidateKeys"`
+	FunctionalDependencies                DataDesignKnowledgeState                  `json:"functionalDependencies"`
+	BusinessIdentityEvidenceQuestions     []string                                  `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions []string                                  `json:"functionalDependencyEvidenceQuestions"`
+	RelationEvidenceQuestions             []string                                  `json:"relationEvidenceQuestions"`
+	AuthorityLimits                       []string                                  `json:"authorityLimits"`
 }
 
 type Context struct {
