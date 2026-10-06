@@ -552,8 +552,8 @@ func buildDataDesignContext(
 				ctx.FunctionalDependencyCandidates = append(
 					ctx.FunctionalDependencyCandidates,
 					DataDesignFunctionalDependencyCandidate{
-						Relation: validation.Relation,
-						Determinants: append([]DataDesignDeterminantTerm(nil), identityTerms...),
+						Relation:            validation.Relation,
+						Determinants:        append([]DataDesignDeterminantTerm(nil), identityTerms...),
 						DependentOccurrence: relation.Target,
 						BasisConstraint:     validation.ID,
 						Scope:               "per-relation-source-occurrence",
