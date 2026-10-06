@@ -281,6 +281,29 @@ func BuildArtifactLockFingerprint(l BuildArtifactLock) (string, error) {
 }
 
 
+
+// RealizeBuiltDefinition returns a derived Runtime definition that binds a
+// produced artifact to an authoritative Plugin definition without mutating the
+// source definition. If the source already pins an artifact, the produced
+// artifact must match it exactly.
+func RealizeBuiltDefinition(source Definition, artifactDigest string) (Definition, error) {
+	if err := source.Artifact.Validate(); err != nil {
+		return Definition{}, err
+	}
+	if err := validateBuildDigest("built plugin artifact digest", artifactDigest); err != nil {
+		return Definition{}, err
+	}
+	if source.Artifact.Digest != "" && source.Artifact.Digest != artifactDigest {
+		return Definition{}, fmt.Errorf(
+			"built plugin artifact digest does not match source definition: got %s want %s",
+			artifactDigest, source.Artifact.Digest,
+		)
+	}
+	out := source
+	out.Artifact.Digest = artifactDigest
+	return out, nil
+}
+
 // LockBuildOutput binds one validated BuildPlan to an exact produced artifact.
 // It does not add the artifact to Runtime Plugin Lock or grant any Runtime
 // authority.
