@@ -139,6 +139,18 @@ Projectionは設計不備を見つけるために使えますが、Projection側
 
 UI / Interaction Projectionは、利用者がDataやFunctionの意味を具体的に確認する**review surface**でもあります。Data Modelだけでは見落としやすい入力不足、意味の取り違え、利用不能な状態遷移等を、実際の利用像から発見できることを重視します。ただし、reviewしやすさのために具体化した表示内容や配置を、そのままCanonical authorityへ昇格させません。
 
+設計レビュー用のInteraction Projectionと、出荷TargetのVisual Fidelityも分けます。設計レビューでは、Dataの識別・Relation・入出力・Validation・Action・状態等を利用者が確認しやすいことを優先し、色、装飾、pixel-levelな完成度を意味成立の条件にはしません。
+
+```text
+design review projection
+  -> semantic / interaction feedback
+
+target realization
+  -> functional + visual evidence
+```
+
+一方、簡素なreview UIが成立したことを、production UIの品質成立へ読み替えません。最終TargetではSemantic / Functional / Visual Evidenceを分離したまま評価します。
+
 ## 5. Business ActionとApplication Functionを同一視しない
 
 ```text
