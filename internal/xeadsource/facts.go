@@ -228,13 +228,20 @@ func indexTableFieldTypes(root Node) map[string]map[string]string {
 			if _, ok := out[tableID]; !ok {
 				out[tableID] = map[string]string{}
 			}
-			for _, child := range n.Children {
-				childName := localName(child.Name)
-				if childName != "TableField" && childName != "Field" {
-					continue
+			var collectFields func(Node)
+			collectFields = func(current Node) {
+				for _, child := range current.Children {
+					childName := localName(child.Name)
+					if childName == "Table" {
+						continue
+					}
+					if childName == "TableField" || childName == "Field" {
+						out[tableID][attributeValue(child, "ID")] = attributeValue(child, "AttributeType")
+					}
+					collectFields(child)
 				}
-				out[tableID][attributeValue(child, "ID")] = attributeValue(child, "AttributeType")
 			}
+			collectFields(n)
 		}
 		for _, child := range n.Children {
 			walk(child)
