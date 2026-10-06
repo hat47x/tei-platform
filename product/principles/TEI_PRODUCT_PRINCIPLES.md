@@ -28,6 +28,10 @@ file path、DB上の名前、画面位置などを、そのままsemantic identi
 
 Canonical IDを安定した意味上の識別子として扱い、物理的な配置や実装名は追跡可能な別情報として保持します。
 
+ただし、Canonical objectのidentityとApplication dataのbusiness key / candidate key、さらにPersistence上のprimary keyを同一視しません。物理的なsurrogate IDを導入しても、業務上の識別関係やRelation semanticsを消さないことを優先します。
+
+View、Application Pattern、Target、ORM、runtime objectの都合を、business keyや関数従属性の根拠にはしません。実装上必要なkey構造はRealizationとして追跡し、Data meaningを暗黙に置き換えないことを原則とします。
+
 ## P5. Nativeな資産を尊重する
 
 SQL、Go、外部設定、既存ツールなど、その領域で成熟した表現を無理にTEI-native DSLへ移し替えません。
@@ -142,6 +146,10 @@ Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味�
 機能が一度動くことより、なぜ動いたのか、同じ条件で再現できるか、境界が別実装でも同じ意味を保てるかを重視します。
 
 Reference Workspace、fixture、Conformance、Evidenceを、単なるテスト補助ではなく設計の説明可能性を支える資産として扱います。
+
+Referenceは成功例を示すだけのdemoではありません。現実的なReferenceを通常経路で表現・検証・実行できない場合は、その失敗からArchitectureまたはReference設計の不足を見つけます。Reference専用の例外で通すより、Product claimを反証・限定できるEvidenceとして扱います。
+
+一つのReferenceだけで汎用性を主張せず、異なるdomainや実現条件へReferenceを増やし、成立範囲を段階的に確かめます。
 
 ## P18. 実装都合による過剰な専門化を避ける
 

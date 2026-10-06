@@ -61,6 +61,64 @@ instance-level factはApplication data、Database、external system、Observatio
 
 ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
 
+### 業務上の識別・関数従属性・物理キーを分ける
+
+Data設計を、各tableへ一律に単独の`id`を付けるところから始めません。まず、業務上の一つのoccurrenceを何が識別するのか、どのData項目が何によって定まるのかを確認します。識別と関数従属性は、画面やORM、Database Providerの都合より先に検討するData meaningです。
+
+TEIでは、少なくとも次のidentityを同一視しません。
+
+```text
+Canonical subject identity
+  != business occurrence identifier
+  != physical primary key
+```
+
+Canonical identityは、設計上のsubjectをRepositoryやTargetをまたいで追跡するためのidentityです。business occurrence identifierは、対象業務で「何を同じ一件として扱うか」を表します。physical primary keyは、特定DatabaseやProviderでrecordを実装・参照するための仕組みです。
+
+したがって、UUIDやsurrogate keyを物理実装で使うこと自体は否定しません。一方、それを追加したことで、業務上の複合識別や関数従属性、Relationの違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
+
+Provider、ORM、Target等の制約からsurrogate keyが必要になる場合も、本来のcandidate key、uniqueness、Relationの意味を失わないMapping / Constraintを保ちます。物理実装上の都合で正規化された構造から外れる場合は、その差を暗黙の標準形として扱わず、意図したRealization差として追跡します。
+
+View、Application Pattern、formの入力単位、runtime objectのidentityから、business occurrence identifierを逆算しません。Presentationや実装objectはData meaningを利用できますが、その都合をData identityのauthorityにはしません。
+
+たとえば、1:Nに見える構造でも意味は同じとは限りません。親から独立して存在し、参照先を変更し得るrecordと、特定の親occurrenceの内部で繰り返される明細と、独立した二つの識別対象の組合せを表すrecordでは、業務上の識別と従属性が異なります。UI上の見え方や「子table」という呼称だけから同じRelationへ畳みません。
+
+Data設計時には、必要に応じて次を確認します。
+
+- 何がそのoccurrenceを業務上識別するか
+- determinantとなる項目または項目組と、そこから定まるdependentな項目は何か
+- Relationが変更可能な参照なのか、親の内部にある反復なのか、独立した識別対象同士の組合せなのか
+- 識別や従属性がどの時点・期間・状態で成立するか
+- sourceから確定できることと、候補・推論・unresolvedのどれに留まるか
+
+関数従属性そのものを、現時点から必ず新しいtop-level Canonical kindとして持つとは決めません。既存のData / Relation / Constraint / Source / Evidenceでlosslessに表現・追跡できる範囲を確認し、不足がReferenceで再現された場合に表現を追加します。
+
+正規化はData設計を検査する有力な手段ですが、特定の正規形を全Persistenceへ機械的に強制しません。性能や外部schema互換性のために非正規化した実装を採る場合も、realization上の都合によって元のbusiness Data meaningやdeterminantを消さないことを優先します。
+
+生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
+
+### Subject Area / Subsystemは理解と検査の境界候補とする
+
+大規模な業務システムでは、全Data / Function / Procedureを一度に理解することは困難です。そこで、業務上のまとまりを検討するSubject Areaと、Dataの所属とFunction / Interactionの利用関係を重ねて確認するSubsystemを、局所的なreview boundaryとして利用できるようにします。
+
+ここでいうSubsystemを、deployment unit、process、Application、Database、security boundary等へ自動変換しません。実装上それらが一致する場合でも、別の意味境界として明示します。
+
+Subsystemの妥当性を検討するときは、Data ownershipとFunctionからのread / create / update / delete等をderivedなcross-referenceとして重ねます。別Subsystemが所有するDataを読むことと、別SubsystemのDataを変更することも区別します。
+
+```text
+Data ownership / responsibility
+        +
+Function / Interaction -> Data usage
+        ↓
+derived CRUD / dependency projection
+        ↓
+cohesion / coupling review
+```
+
+cross-boundaryなCUDが存在することだけでinvalidとはしません。一方、それが多い場合は、Data ownership、Subsystemの切り方、Capability / Contract境界、Business responsibilityのいずれかに再検討が必要でないかをdiagnostic / design questionとして提示できます。
+
+Subject Area / Subsystemをdurable Canonical identityにするかは、現在もReference Evidence待ちです。まず既存のData / Application / Procedure / Sourceから再構成できるProjectionで、理解とcross-view reviewに十分かを確認します。
+
 ## 4. Function / InteractionはUIを含むが、UIはauthorityではない
 
 Function / Interaction視点には、利用者が具体的に理解できるUI、帳票、入出力、query、command、batch、API、function call relationshipを含みます。
@@ -78,6 +136,20 @@ concrete UI / API / MCP / VUI
 ```
 
 Projectionは設計不備を見つけるために使えますが、Projection側の都合でCanonical meaningを黙って変更しません。
+
+UI / Interaction Projectionは、利用者がDataやFunctionの意味を具体的に確認する**review surface**でもあります。Data Modelだけでは見落としやすい入力不足、意味の取り違え、利用不能な状態遷移等を、実際の利用像から発見できることを重視します。ただし、reviewしやすさのために具体化した表示内容や配置を、そのままCanonical authorityへ昇格させません。
+
+設計レビュー用のInteraction Projectionと、出荷TargetのVisual Fidelityも分けます。設計レビューでは、Dataの識別・Relation・入出力・Validation・Action・状態等を利用者が確認しやすいことを優先し、色、装飾、pixel-levelな完成度を意味成立の条件にはしません。
+
+```text
+design review projection
+  -> semantic / interaction feedback
+
+target realization
+  -> functional + visual evidence
+```
+
+一方、簡素なreview UIが成立したことを、production UIの品質成立へ読み替えません。最終TargetではSemantic / Functional / Visual Evidenceを分離したまま評価します。
 
 ## 5. Business ActionとApplication Functionを同一視しない
 
@@ -413,6 +485,24 @@ Referenceはtechnical fixtureだけでなく、学習例、platform pressure tes
 
 Realistic Referenceは既存schemaを検証するためだけのfixtureではありません。Handoff等の対象fieldを取り除いても独立したBusiness needを説明できるseedから始め、そのneedから自然に出るpressureだけをcontract判断へ使います。
 
+さらにReferenceは、TEIのArchitectureやRuntimeに都合のよい小例だけで成立させません。一定の業務複雑性を持つReferenceを通常のAuthoring / Validation / Binding / Driver / Target経路で扱えない場合、その事実をplatform側またはReference設計側のGapとして残します。Reference専用の例外実装で「対応済み」に見せません。
+
+~~~text
+Reference source / design
+        ↓
+author / validate / realize
+        ↓
+execute / observe / review
+        ↓
+platform gap or reference-design gap
+        ↓
+authoritative sourceへ戻って修正
+~~~
+
+実装を試みた結果、Reference自体の矛盾や不足が見つかることも正常なfeedbackです。したがって「モデルがある」「parseできる」「画面が出る」を同じ成熟度として扱わず、少なくとも設計表現、実行可能性、実装・観測による検証をEvidence上で区別します。これは新しい固定status enumを要求するものではありません。
+
+一つのReferenceが動くことだけから汎用性を主張しません。異なるdomain、規模、Data構造、Business Procedure、Target / Provider条件を持つ複数Referenceによって、どの範囲までTEIの設計体系が成立するかを反証可能な形で広げます。
+
 ## 21. AIはcritic / proposerでありauthorityではない
 
 AIはExisting knowledge探索、cross-reference候補、Procedure草案、Matrix / graph / UI Projection生成、不足検出、unresolved question提示を支援できます。
@@ -429,6 +519,10 @@ unresolved
 Human / Studio / CLI / AIのいずれも同じShared Acceptance Boundaryへ接続します。
 
 AIが空欄をもっともらしく補完することを品質向上とはみなしません。sourceに根拠がなければunresolvedを保持する提案も正当な結果です。
+
+Data Modelについても同じです。AIがschemaを生成できたことや、生成結果がparse / type-checkを通ったことだけから、業務上のidentity、関数従属性、cardinality、Constraint、正規化上の妥当性が確認済みとはみなしません。source-backedなdeterminantや業務規則を確定できない場合は、もっともらしいkeyを補うよりunresolvedを残します。
+
+決定論的なValidatorは、宣言済みのConstraintや整合性を検査できます。一方、業務の現実から未宣言の関数従属性や識別規則を自動的に「発見した」ことにはしません。AIによる候補発見と、accepted Data meaningの成立を分離します。
 
 ## 22. 外部参照の概念をCoreへ先回りして写さない
 
@@ -450,6 +544,8 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 - **O-08 Temporal semantics:** 何をbusiness meaningとして保持し、何をanalysis / persistence realizationへ残すか。
 - **O-09 Evidence nature:** source-backed / accepted / derived / proposal / unresolvedの違いをどこまでdurable metadataとして保持する必要があるか。
 - **O-10 Handoff Evidence:** Business condition成立を支えるEvidence traceを既存Provenanceで十分に説明できるか。
+- **O-11 Data determinant:** business identity / candidate key / functional dependency / domain constraintのうち、どこまでをdurable semantic contractとして保持すべきか。
+- **O-12 Reference falsifiability:** domain diversityと実装検証のどこまでが、TEIの汎用性を主張するための十分なReference Evidenceになるか。
 
 これらはReference実験、ADR、Evidenceから決めます。
 

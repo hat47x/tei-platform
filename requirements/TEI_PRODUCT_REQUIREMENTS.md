@@ -132,6 +132,8 @@ browse、record、reference、header-detail、command等、業務システムで
 
 標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。
 
+Application Pattern、View、Target、ORM等の実装都合から、Dataのbusiness identifierやkey構造を逆算してはいけません。特定のRealizationがsurrogate keyや単独keyを必要とする場合も、acceptedなcandidate key、uniqueness、Relation meaningを失わせず、Realization差として追跡できる必要があります。
+
 ## RQ-015 生成AIが既存知識から継続的にApplicationを構築・変更できること
 
 生成AI向けの開発支援では、次の順序を基本とします。
@@ -149,6 +151,10 @@ browse、record、reference、header-detail、command等、業務システムで
 
 生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
 
+Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
+
+生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
+
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
 既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
@@ -162,6 +168,8 @@ AIが作った内容を直接Canonical authorityとせず、まずProposal / Str
 ## RQ-016 AIによる確認提案は控えめで、履歴を持つこと
 
 AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属性、認証・認可等の典型論点について、必要な場合に確認を提案できることを目指します。
+
+識別子や関数従属性を確認するときは、単独`id`、field名、画面上のまとまり、一般的なschema patternだけを根拠にしません。currentなData / Relation / Constraint / Source / Evidenceから確定できる内容、設計候補、未解決点を区別し、根拠とともに提示できる必要があります。
 
 ただし、次を満たす必要があります。
 
@@ -269,6 +277,7 @@ TEIは、Data、Function / Interaction、Business Procedureを同じ業務シス
 - Business Procedureが参照するView / Application Pattern / Action / Capabilityの存在とtraceability
 - View / Actionが利用・変更するData / Relation / Validationとの整合
 - read-only / ownership / subsystem等の境界を越える操作
+- Data ownershipとFunction / InteractionのCRUDを重ねたときのSubsystemの凝集・結合上の違和感
 - Data / Relation変更によるView / Procedureへの影響
 - ApplicationのBusiness Resultと、外部世界で観測される業務完了の混同
 
