@@ -104,6 +104,15 @@ func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t
 				)
 			},
 		},
+		{
+			name:          "duplicate validation id",
+			ambiguityKind: "duplicate-semantic-validation",
+			ambiguityID:   "sales.order.lines.line_number_unique",
+			mutate: func(w *ir.World) {
+				duplicate := w.Semantics[0].Validations[0]
+				w.Semantics[0].Validations = append(w.Semantics[0].Validations, duplicate)
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := dataDesignRelationUniqueWorld()
