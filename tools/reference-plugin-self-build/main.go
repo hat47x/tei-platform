@@ -164,6 +164,7 @@ func run(repo string) (evidence, error) {
 			Kind:       "go-package",
 			Entrypoint: referencePackage,
 		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
 		Target:  "host-process/" + runtime.GOOS + "/" + runtime.GOARCH,
 		Profile: "reference",
 		Parameters: []plugin.BuildParameter{
