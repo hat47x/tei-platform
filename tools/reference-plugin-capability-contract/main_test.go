@@ -519,3 +519,56 @@ func TestCapabilityResolutionLockRejectsWiringDrift(t *testing.T) {
 		t.Fatal("removed explicit wiring was accepted by lock replay")
 	}
 }
+
+
+func TestCapabilityResolutionLockRejectsInternallyContradictoryWiring(t *testing.T) {
+	contract := sourceAdapterContract()
+	left := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.left",
+		"xead.reader.left",
+	)
+	right := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.right",
+		"xead.reader.right",
+	)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{left, right},
+		Evidence: []ConformanceEvidence{
+			evidenceFor(left, contract, "evidence-left"),
+			evidenceFor(right, contract, "evidence-right"),
+		},
+		Wirings: []Wiring{{
+			ContractID:       contract.ID,
+			PluginID:         left.PluginID,
+			PluginVersion:    left.PluginVersion,
+			ImplementationID: left.ImplementationID,
+		}},
+	}
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lock.Wiring = &Wiring{
+		ContractID:       contract.ID,
+		PluginID:         right.PluginID,
+		PluginVersion:    right.PluginVersion,
+		ImplementationID: right.ImplementationID,
+	}
+	lock.LockFingerprint = capabilityResolutionLockFingerprint(lock)
+	if err := validateCapabilityResolutionLock(lock); err == nil ||
+		!strings.Contains(err.Error(), "does not select locked provider") {
+		t.Fatalf("contradictory lock wiring was accepted: %v", err)
+	}
+}
