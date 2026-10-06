@@ -58,6 +58,7 @@ type ConformanceEvidence struct {
 	PluginID            string `json:"pluginId"`
 	PluginVersion       string `json:"pluginVersion"`
 	ImplementationID    string `json:"implementationId"`
+	ArtifactDigest      string `json:"artifactDigest,omitempty"`
 	ContractFingerprint string `json:"contractFingerprint"`
 	ConformanceProfile  string `json:"conformanceProfile"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
@@ -233,7 +234,7 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 			continue
 		}
 		providers = append(providers, provider)
-		evidenceByProvider[key] = evidence
+		evidenceByProvider[providerKey(provider)] = evidence
 	}
 	sort.Slice(providers, func(i, j int) bool {
 		return providerKey(providers[i]) < providerKey(providers[j])
@@ -333,6 +334,13 @@ func validateResolveInput(input ResolveInput) error {
 			evidence.ConformanceProfile == "" ||
 			!validSHA256Fingerprint(evidence.EvidenceFingerprint) {
 			return fmt.Errorf("conformance evidence[%d] is incomplete or invalid", i)
+		}
+		if evidence.ArtifactDigest != "" &&
+			!validSHA256Fingerprint(evidence.ArtifactDigest) {
+			return fmt.Errorf(
+				"conformance evidence[%d] artifact digest is not exact sha256",
+				i,
+			)
 		}
 		if _, err := parseVersion(evidence.PluginVersion); err != nil {
 			return fmt.Errorf("conformance evidence[%d] plugin version: %w", i, err)
@@ -583,6 +591,7 @@ func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFing
 		if evidence.PluginID == provider.PluginID &&
 			evidence.PluginVersion == provider.PluginVersion &&
 			evidence.ImplementationID == provider.ImplementationID &&
+			evidence.ArtifactDigest == provider.ArtifactDigest &&
 			evidence.ContractFingerprint == contractFingerprint &&
 			evidence.ConformanceProfile == profile &&
 			evidence.EvidenceFingerprint != "" {
