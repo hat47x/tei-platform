@@ -286,6 +286,31 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" {
 		t.Fatalf("scoped uniqueness was promoted to a business key: %+v", dataDesign)
 	}
+	if len(dataDesign.FunctionalDependencyCandidates) != 1 {
+		t.Fatalf("functional dependency candidates=%+v", dataDesign.FunctionalDependencyCandidates)
+	}
+	fdCandidate := dataDesign.FunctionalDependencyCandidates[0]
+	if fdCandidate.Relation != "sales.order.lines" ||
+		fdCandidate.SourceData != "sales.order" ||
+		fdCandidate.DeterminantAttribute != "sales.order_line.line_number" ||
+		fdCandidate.DependentData != "sales.order_line" ||
+		fdCandidate.BasisConstraint != "sales.order.lines.line_number_unique" ||
+		fdCandidate.Scope != "per-relation-source-occurrence" ||
+		fdCandidate.Nature != "candidate-from-accepted-scoped-uniqueness" {
+		t.Fatalf("functional dependency candidate drifted: %+v", fdCandidate)
+	}
+	for _, needed := range []string{
+		"source-occurrence-business-identifier",
+		"relation-business-meaning",
+		"temporal-validity",
+	} {
+		if !containsKnowledgeContextString(fdCandidate.EvidenceNeeded, needed) {
+			t.Fatalf("functional dependency Evidence need %q is missing: %+v", needed, fdCandidate.EvidenceNeeded)
+		}
+	}
+	if dataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("functional dependency candidate was promoted to accepted FD: %+v", dataDesign.FunctionalDependencies)
+	}
 
 	if len(dataDesign.PersistenceRealizations) != 1 {
 		t.Fatalf("persistence realizations=%+v", dataDesign.PersistenceRealizations)
@@ -333,6 +358,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for _, limit := range []string{
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
+		"functional-dependency-candidate-is-not-accepted-functional-dependency",
 		"relation-key-is-not-business-identifier",
 		"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 		"persistence-primary-key-is-not-business-identifier-or-candidate-key",
