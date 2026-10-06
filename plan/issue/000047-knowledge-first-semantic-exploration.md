@@ -332,6 +332,22 @@ Reference pressureでは少なくとも次を比較します。
 
 このProjectionをprompt専用の文章へ固定しません。CLI、Studio、AIはいずれも同じmachine-readable contextへ戻れることを優先します。actual implementationは、現在のknowledge-context実装laneである`work/issue-000040-second-application-reference`へhandoffし、別branchを増やしません。
 
+### 2026-10-06 Data Design Context — scoped uniqueness / Source Evidence increment
+
+現在のCanonical modelでは、business occurrence identifier、candidate key、functional dependencyをfirst-classにauthorしていない。この状態で単独`id`やRelation keyを業務上の識別条件へ読み替えずにData設計を進めるには、確定している意味と未確定の意味を同じContext上で区別できる必要がある。
+
+そこで`knowledge-context`のData Design Contextを拡張し、`relation-unique` Validationがすでに確定している範囲を`scopedUniqueness`として構造化する。たとえば`sales.order.lines.line_number_unique`から確定できるのは、`sales.order.lines`の各source occurrenceについて、target側の`sales.order_line.line_number`が一意であることまでである。Projectionでは`scope = per-relation-source-occurrence`、`nature = accepted`として表す。
+
+この一意性はbusiness identifierやcandidate keyではない。親子関係が業務上の包含を意味するか、親の識別子とline numberの組合せがbusiness occurrenceを識別するかは、現在のCanonical meaningだけでは確定できない。このため`businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`は引き続き`unresolved`とする。
+
+Data Design Contextには、判断材料として使ったData、Attribute、Relation、Relation keyの両端、Validation、関連Dataについて、Source Indexから得たsubject、source path、source fingerprint、range、roleを`evidence`として含める。authoritativeなDefinition / Authoring referenceを取得できないsubjectは黙って省略せず、`evidenceMissing`へ残す。
+
+`scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
+
+Reference testでは、`sales.order_line`についてincoming Relation、`relation-unique`、positive Validation、exact Source Evidenceを同じData Design Contextから取得できることを記述した。また、Relation keyを持つ`sales.order.customer`でも、source / target AttributeのEvidenceを保持しつつbusiness identifierへ昇格しないことを確認対象にした。内部negative testでは、不正なRelation shapeから`scopedUniqueness`を生成しないことと、Source Indexが欠けた場合に`evidenceMissing`へ明示することを固定した。
+
+このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
+
 ### experienceからのlocal learning
 
 将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
