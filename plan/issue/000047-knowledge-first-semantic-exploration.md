@@ -364,6 +364,8 @@ Persistence RealizationもData Design Contextへ接続した。`sales.order_line
 
 同じSemantic Dataに複数のPersistence Mappingがある場合も、各Databaseのprimary key / unique constraintを独立したRealization factとして保持する。たとえば一方が`order_line_id`をprimary keyにし、別のDatabaseが`line_number`をprimary keyにしていても、その差からlogical identityを再定義しない。`businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`のauthorityは変えず、Semantic側のscoped uniquenessから導いたbusiness identity候補もphysical keyで置換しない。このnegative pressureにより、Application↔Database=N:MでもData meaningのidentity境界を維持する。
 
+ただし、異なるMapping IDを持つ複数Databaseの実現と、同じMapping IDの重複定義は分ける。同じMapping IDが複数ある場合はどちらもRealization factとして採用せず、`duplicate-persistence-mapping`を`ambiguities`へ出す。Persistence Mappingを入口にした逆追跡でも、重複IDを読み込み順で解決しない。
+
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
 
 ### experienceからのlocal learning
