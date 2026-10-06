@@ -20,6 +20,12 @@ Environmentが要求するPlugin / Bundleのcompatible majorから実装を解�
 
 Plugin LockはRuntimeで利用する実装を固定するためのものです。PluginをSourceから再構築するためのBuild入力まで、同じLockへ押し込みません。
 
+既存のformat 2 Plugin Lockは、Plugin version、descriptor fingerprint、必要な場合はartifact digestを固定します。SourceからbuildしたRuntime implementationを採用する場合は、exact Build PlanのfingerprintだけをPlugin Lockへ追加でbindし、build trace付きformat 3へ昇格します。
+
+Build PlanのSource closure、builder、dependency、parameterそのものはBuildArtifactLock側に残します。Runtime Plugin Lockは`buildPlanFingerprint`と`artifactDigest`を持つことで、選択した実装からexact buildへ逆追跡できるようにします。同じphysical artifactを複数のlogical Pluginが共有しても、PluginごとのBuild Plan fingerprintは失いません。
+
+format 2は読み取り互換を維持します。format 3へ移行しただけで、build traceを持たない既存Pluginまでself-build済みとみなしません。
+
 ## Capability negotiation
 
 現在のarchitecture probeでは、Database Provider、Migration Provider、Deployment Executor、Observation Provider、Evidence Provider、SQL analysis等のCapabilityを明示的に解決します。
