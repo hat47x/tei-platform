@@ -59,11 +59,24 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 
 func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		mutate func(*ir.World)
+		name          string
+		ambiguityKind string
+		ambiguityID   core.CanonicalID
+		mutate        func(*ir.World)
 	}{
 		{
-			name: "duplicate attribute id",
+			name:          "duplicate data id",
+			ambiguityKind: "duplicate-semantic-data",
+			ambiguityID:   "sales.order_line",
+			mutate: func(w *ir.World) {
+				duplicate := w.Semantics[0].Data[1]
+				w.Semantics[0].Data = append(w.Semantics[0].Data, duplicate)
+			},
+		},
+		{
+			name:          "duplicate attribute id",
+			ambiguityKind: "duplicate-semantic-attribute",
+			ambiguityID:   "sales.order_line.line_number",
 			mutate: func(w *ir.World) {
 				w.Semantics[0].Data[0].Attributes = append(
 					w.Semantics[0].Data[0].Attributes,
@@ -76,7 +89,9 @@ func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t
 			},
 		},
 		{
-			name: "duplicate relation id",
+			name:          "duplicate relation id",
+			ambiguityKind: "duplicate-semantic-relation",
+			ambiguityID:   "sales.order.lines",
 			mutate: func(w *ir.World) {
 				w.Semantics[0].Data[1].Relations = append(
 					w.Semantics[0].Data[1].Relations,
@@ -106,6 +121,13 @@ func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t
 				len(dataContext.DataDesign.BusinessIdentityCandidates) != 0 ||
 				len(dataContext.DataDesign.FunctionalDependencyCandidates) != 0 {
 				t.Fatalf("ambiguous semantic identity produced design candidates: %+v", dataContext.DataDesign)
+			}
+			if !containsDataDesignAmbiguity(
+				dataContext.DataDesign.Ambiguities,
+				tc.ambiguityKind,
+				tc.ambiguityID,
+			) {
+				t.Fatalf("semantic ambiguity was not exposed: want=%s:%s got=%+v", tc.ambiguityKind, tc.ambiguityID, dataContext.DataDesign.Ambiguities)
 			}
 			if !containsDataDesignString(
 				dataContext.DataDesign.AuthorityLimits,
@@ -435,6 +457,15 @@ func dataDesignRelationUniqueWorld() ir.World {
 			},
 		},
 	}
+}
+
+func containsDataDesignAmbiguity(values []DataDesignAmbiguity, kind string, id core.CanonicalID) bool {
+	for _, value := range values {
+		if value.Kind == kind && value.ID == id && value.Count > 1 && value.Effect == "design-candidates-suppressed" {
+			return true
+		}
+	}
+	return false
 }
 
 func containsDataDesignString(values []string, want string) bool {
