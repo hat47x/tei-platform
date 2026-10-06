@@ -149,18 +149,17 @@ func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.
 	if !hasKnowledgeContextEdge(got, "outgoing", "data", "semantic-data", "sales.order") {
 		t.Fatalf("Pattern must reach Semantic Data through an explicit dependency edge: %+v", got.Outgoing)
 	}
-	for _, limit := range []string{
+	if !containsKnowledgeContextString(
+		got.AuthorityLimits,
 		"projection-or-runtime-identity-is-not-business-data-identity",
+	) {
+		t.Fatalf("projection identity authority limit is missing: %+v", got.AuthorityLimits)
+	}
+	if !containsKnowledgeContextString(
+		got.DataDesign.AuthorityLimits,
 		"application-pattern-data-reference-is-context-not-business-identity",
-	} {
-		if !containsKnowledgeContextString(got.AuthorityLimits, "projection-or-runtime-identity-is-not-business-data-identity") &&
-			limit == "projection-or-runtime-identity-is-not-business-data-identity" {
-			t.Fatalf("projection identity authority limit is missing: %+v", got.AuthorityLimits)
-		}
-		if !containsKnowledgeContextString(got.DataDesign.AuthorityLimits, limit) &&
-			limit == "application-pattern-data-reference-is-context-not-business-identity" {
-			t.Fatalf("Pattern Data authority limit is missing: %+v", got.DataDesign.AuthorityLimits)
-		}
+	) {
+		t.Fatalf("Pattern Data authority limit is missing: %+v", got.DataDesign.AuthorityLimits)
 	}
 }
 
