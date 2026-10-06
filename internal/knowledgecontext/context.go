@@ -67,6 +67,17 @@ type DataDesignEvidence struct {
 	Role              sourceindex.Role  `json:"role"`
 }
 
+type DataDesignFunctionalDependencyCandidate struct {
+	Relation             core.CanonicalID `json:"relation"`
+	SourceData           core.CanonicalID `json:"sourceData"`
+	DeterminantAttribute core.CanonicalID `json:"determinantAttribute"`
+	DependentData        core.CanonicalID `json:"dependentData"`
+	BasisConstraint      core.CanonicalID `json:"basisConstraint"`
+	Scope                string           `json:"scope"`
+	Nature               string           `json:"nature"`
+	EvidenceNeeded       []string         `json:"evidenceNeeded"`
+}
+
 type DataDesignPersistenceColumn struct {
 	Attribute   core.CanonicalID `json:"attribute"`
 	Column      string           `json:"column"`
@@ -96,8 +107,9 @@ type DataDesignContext struct {
 	Attributes                            []DataDesignAttribute         `json:"attributes,omitempty"`
 	Relations                             []DataDesignRelation          `json:"relations,omitempty"`
 	Constraints                           []DataDesignConstraint        `json:"constraints,omitempty"`
-	ScopedUniqueness                      []DataDesignScopedUniqueness       `json:"scopedUniqueness,omitempty"`
-	PersistenceRealizations               []DataDesignPersistenceRealization `json:"persistenceRealizations,omitempty"`
+	ScopedUniqueness                      []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
+	FunctionalDependencyCandidates        []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
+	PersistenceRealizations               []DataDesignPersistenceRealization        `json:"persistenceRealizations,omitempty"`
 	Evidence                              []DataDesignEvidence                 `json:"evidence,omitempty"`
 	EvidenceMissing                       []subject.Subject                    `json:"evidenceMissing,omitempty"`
 	BusinessOccurrenceIdentifier          DataDesignKnowledgeState            `json:"businessOccurrenceIdentifier"`
@@ -274,6 +286,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			"data-design-context-is-derived-not-authority",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
+			"functional-dependency-candidate-is-not-accepted-functional-dependency",
 			"relation-key-is-not-business-identifier",
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
@@ -414,6 +427,23 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 					Scope:      "per-relation-source-occurrence",
 					Nature:     "accepted",
 				})
+				ctx.FunctionalDependencyCandidates = append(
+					ctx.FunctionalDependencyCandidates,
+					DataDesignFunctionalDependencyCandidate{
+						Relation:             validation.Relation,
+						SourceData:           relation.Source,
+						DeterminantAttribute: validation.Attribute,
+						DependentData:        relation.Target,
+						BasisConstraint:      validation.ID,
+						Scope:                "per-relation-source-occurrence",
+						Nature:               "candidate-from-accepted-scoped-uniqueness",
+						EvidenceNeeded: []string{
+							"source-occurrence-business-identifier",
+							"relation-business-meaning",
+							"temporal-validity",
+						},
+					},
+				)
 			}
 		}
 	}
@@ -437,6 +467,12 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 	})
 	sort.Slice(ctx.ScopedUniqueness, func(i, j int) bool {
 		return ctx.ScopedUniqueness[i].Constraint < ctx.ScopedUniqueness[j].Constraint
+	})
+	sort.Slice(ctx.FunctionalDependencyCandidates, func(i, j int) bool {
+		if ctx.FunctionalDependencyCandidates[i].BasisConstraint != ctx.FunctionalDependencyCandidates[j].BasisConstraint {
+			return ctx.FunctionalDependencyCandidates[i].BasisConstraint < ctx.FunctionalDependencyCandidates[j].BasisConstraint
+		}
+		return ctx.FunctionalDependencyCandidates[i].DeterminantAttribute < ctx.FunctionalDependencyCandidates[j].DeterminantAttribute
 	})
 	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
 		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
