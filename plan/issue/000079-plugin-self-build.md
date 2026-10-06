@@ -334,3 +334,10 @@ Go Reference runnerでは、既存の利用者環境を暗黙に参照しない�
 さらに、`go list`にも`-mod=readonly`を指定し、`GOPROXY=off`に加えて`GOSUMDB=off`、`GOVCS=*:off`を固定しました。外部moduleやVCSを暗黙に取得して成功したように見せないためです。
 
 SB-1 packageも同じBuild Planから二回materializeし、package digestが一致する場合だけEvidenceを成立させます。これにより、SB-1とSB-2の双方で「同じ入力から同じ出力」を直接確認します。
+
+
+### 既存Plugin Validationの再利用
+
+SB-1/SB-2 runnerは、Workspaceを読み込めたことだけではbuildへ進みません。通常Referenceとself-build専用Referenceの双方について、既存の`internal/validation.Validate`を実行し、Error diagnosticが一つでもあれば停止します。
+
+Build層へPlugin Validation規則を複製しないためです。Runtime kind、Capability kind、Action、Permission、Artifact、Environment binding等の検証は既存のValidationを正本とし、Build Planとpackage materializerはbuild固有のidentity・reproducibility・authority境界だけを受け持ちます。
