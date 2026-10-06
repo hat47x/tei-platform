@@ -67,6 +67,44 @@ func TestFormatKnownSetsDoNotConflateXeadAndXeafFunctionSurfaces(t *testing.T) {
 	}
 }
 
+func TestParseRecognizesCompositeTableKeyWithoutInventingBusinessIdentity(t *testing.T) {
+	source := []byte(`<System><Table ID="T1"><TableField ID="F1"/><TableField ID="F2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="1"/><TableKeyField FieldID="F2" SortKey="2"/></TableKey></Table></System>`)
+	got, err := Parse(FormatXead, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.UnknownNames) != 0 {
+		t.Fatalf("known key constructs were reported as unknown: %#v", got.UnknownNames)
+	}
+	var keyCount, keyFieldCount int
+	for _, entry := range got.Inventory {
+		switch entry.Name {
+		case "TableKey":
+			keyCount = entry.Count
+		case "TableKeyField":
+			keyFieldCount = entry.Count
+		}
+	}
+	if keyCount != 1 || keyFieldCount != 2 {
+		t.Fatalf("key inventory drifted: key=%d fields=%d inventory=%#v", keyCount, keyFieldCount, got.Inventory)
+	}
+	table := got.Root.Children[0]
+	key := table.Children[2]
+	if key.Name != "TableKey" || !key.Known {
+		t.Fatalf("table key was not preserved as a known source construct: %#v", key)
+	}
+	if !reflect.DeepEqual(key.Attributes, []Attribute{{Name: "ID", Value: "K1"}, {Name: "Type", Value: "PK"}}) {
+		t.Fatalf("table key attributes drifted: %#v", key.Attributes)
+	}
+	if len(key.Children) != 2 ||
+		key.Children[0].Name != "TableKeyField" ||
+		key.Children[1].Name != "TableKeyField" ||
+		!key.Children[0].Known ||
+		!key.Children[1].Known {
+		t.Fatalf("composite key field membership was not preserved: %#v", key.Children)
+	}
+}
+
 func TestRejectsUnsupportedFormat(t *testing.T) {
 	if _, err := Parse(Format("other"), []byte("<System/>")); err == nil {
 		t.Fatal("expected unsupported format error")
