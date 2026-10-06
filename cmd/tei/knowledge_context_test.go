@@ -257,6 +257,11 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v1" ||
+		len(dataDesign.Fingerprint) <= len("sha256:") ||
+		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" {
+		t.Fatalf("data design cache identity is missing: revision=%q fingerprint=%q", dataDesign.ProjectionRevision, dataDesign.Fingerprint)
+	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
 		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
 		"candidate keys":        dataDesign.CandidateKeys,
@@ -463,6 +468,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	}
 
 	for _, limit := range []string{
+		"data-design-context-is-derived-not-authority",
+		"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
