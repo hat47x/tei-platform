@@ -150,3 +150,41 @@ func TestUnsupportedPluginLockFormatFails(t *testing.T) {
 		t.Fatal("expected unsupported lock format to fail")
 	}
 }
+
+
+func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
+	def := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.invalid-trace"),
+		Version: "1.0.0",
+		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "invalid-trace"},
+		Artifact: plugin.Artifact{
+			Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
+	}
+	env := environment.Environment{
+		ID: core.MustCanonicalID("invalid-trace"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              def.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	lock := plugin.Lock{
+		FormatVersion: plugin.BuildTraceLockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: env.ID,
+			Plugins: []plugin.LockedPlugin{{
+				ID:                   def.ID,
+				Version:              def.Version,
+				Fingerprint:          plugin.DefinitionFingerprint(def),
+				ArtifactDigest:       def.Artifact.Digest,
+				BuildPlanFingerprint: "not-a-fingerprint",
+			}},
+		}},
+	}
+	if _, err := plugin.EnvironmentLockFingerprint(lock, env.ID); err == nil {
+		t.Fatal("expected invalid build plan fingerprint to fail")
+	}
+	if _, err := (plugin.Catalog{Plugins: []plugin.Definition{def}}).ResolveEnvironmentWithLock(env, lock); err == nil {
+		t.Fatal("expected invalid build plan fingerprint to fail")
+	}
+}
