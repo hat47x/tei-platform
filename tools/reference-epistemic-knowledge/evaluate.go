@@ -92,6 +92,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"assessment-does-not-assert-objective-truth",
 			"assessment-does-not-grant-canonical-acceptance",
 			"assessment-does-not-grant-write-or-runtime-authority",
+			"meaning-fingerprint-is-input-not-semantic-proof",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
