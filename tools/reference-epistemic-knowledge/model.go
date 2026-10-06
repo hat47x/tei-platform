@@ -103,9 +103,12 @@ type EvidenceRef struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
+const reviewMethodHumanConfirmation = "human-confirmation"
+
 type ReviewRecord struct {
 	ID                         string        `json:"id"`
 	Reviewer                   string        `json:"reviewer"`
+	Method                     string        `json:"method"`
 	ReviewedMeaningFingerprint string        `json:"reviewedMeaningFingerprint"`
 	ReviewedAt                 string        `json:"reviewedAt"`
 	Evidence                   []EvidenceRef `json:"evidence,omitempty"`
@@ -309,9 +312,13 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 func normalizeReview(r *ReviewRecord) error {
 	r.ID = strings.TrimSpace(r.ID)
 	r.Reviewer = strings.TrimSpace(r.Reviewer)
+	r.Method = strings.TrimSpace(r.Method)
 	r.ReviewedMeaningFingerprint = strings.TrimSpace(r.ReviewedMeaningFingerprint)
 	if r.ID == "" || r.Reviewer == "" || !sha256Pattern.MatchString(r.ReviewedMeaningFingerprint) {
 		return fmt.Errorf("review requires id / reviewer / exact reviewedMeaningFingerprint")
+	}
+	if r.Method != reviewMethodHumanConfirmation {
+		return fmt.Errorf("review method %q is unsupported; v0 requires %q", r.Method, reviewMethodHumanConfirmation)
 	}
 	if err := validateOptionalTime("reviewedAt", r.ReviewedAt); err != nil || r.ReviewedAt == "" {
 		if err != nil {
