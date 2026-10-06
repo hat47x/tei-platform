@@ -1,0 +1,375 @@
+{
+  "schema": "tei.reference.change-decision/v0",
+  "decision": "accepted",
+  "candidateId": "cand-order-entry-validation-selection",
+  "candidateFingerprint": "sha256:feb70e034d241070dc731cec3ca90965122d023c452b7adda0714799ad8e170c",
+  "evidenceFingerprint": "sha256:c79fc70bfe46195a365b2b7325dbcab331edbc3b17a0829290c3de7fe4e232ea",
+  "reviewBinding": {
+    "fingerprint": "sha256:2c78c047d6a60bd76e428adbad4829f3eacf11010d0ab7f34e88e1da354add9f",
+    "coverage": {
+      "available": 3,
+      "partial": 5,
+      "notEvaluated": 0,
+      "incomplete": [
+        {
+          "code": "A2",
+          "title": "影響",
+          "coverage": "partial"
+        },
+        {
+          "code": "A3",
+          "title": "例外・診断",
+          "coverage": "partial"
+        },
+        {
+          "code": "A5",
+          "title": "権限の変更",
+          "coverage": "partial"
+        },
+        {
+          "code": "A6",
+          "title": "native codeへ残る箇所",
+          "coverage": "partial"
+        },
+        {
+          "code": "A7",
+          "title": "逆追跡",
+          "coverage": "partial"
+        }
+      ]
+    },
+    "projection": {
+      "schema": "tei.reference.approval-review/v0",
+      "candidateId": "cand-order-entry-validation-selection",
+      "intent": "order_entryが受注確定の前に評価するValidationを、Applicationの uses validation 宣言としてCanonicalな正本へ置く。Target側の手書きの一覧をやめ、Driverが宣言から選べるようにする（ADR-0029）",
+      "candidateFingerprint": "sha256:feb70e034d241070dc731cec3ca90965122d023c452b7adda0714799ad8e170c",
+      "evidenceFingerprint": "sha256:c79fc70bfe46195a365b2b7325dbcab331edbc3b17a0829290c3de7fe4e232ea",
+      "reviewFingerprint": "sha256:2c78c047d6a60bd76e428adbad4829f3eacf11010d0ab7f34e88e1da354add9f",
+      "previewAcceptable": true,
+      "coverage": {
+        "available": 3,
+        "partial": 5,
+        "notEvaluated": 0,
+        "incomplete": [
+          {
+            "code": "A2",
+            "title": "影響",
+            "coverage": "partial"
+          },
+          {
+            "code": "A3",
+            "title": "例外・診断",
+            "coverage": "partial"
+          },
+          {
+            "code": "A5",
+            "title": "権限の変更",
+            "coverage": "partial"
+          },
+          {
+            "code": "A6",
+            "title": "native codeへ残る箇所",
+            "coverage": "partial"
+          },
+          {
+            "code": "A7",
+            "title": "逆追跡",
+            "coverage": "partial"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "code": "A1",
+          "title": "意味差分",
+          "coverage": "available",
+          "summary": "semantic 0件 / application 1件 / environment 0件",
+          "sources": [
+            "preview.semanticDiff",
+            "preview.applicationDiff",
+            "preview.environmentDiff"
+          ],
+          "items": [
+            "changed application:order_entry"
+          ]
+        },
+        {
+          "code": "A2",
+          "title": "影響",
+          "coverage": "partial",
+          "summary": "impact 10本 / unresolved 2件",
+          "sources": [
+            "preview.impact",
+            "preview.unresolved"
+          ],
+          "items": [
+            "application:order_entry -\u003e contract:master_data.customer via application.database.requires-contract: Applicationがalias master で要求しているDatabase Contractである",
+            "application:order_entry -\u003e contract:sales_core.order via application.database.requires-contract: Applicationがalias sales で要求しているDatabase Contractである",
+            "application:order_entry -\u003e contract:sales_core.order_line via application.database.requires-contract: Applicationがalias sales で要求しているDatabase Contractである",
+            "application:order_entry -\u003e database:master_data via application.database.target: Applicationがalias master で要求しているDatabaseである",
+            "application:order_entry -\u003e database:sales_core via application.database.target: Applicationがalias sales で要求しているDatabaseである",
+            "application:order_entry -\u003e namespace:customer via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである",
+            "application:order_entry -\u003e namespace:sales via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである",
+            "application:order_entry -\u003e namespace:security via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである",
+            "application:order_entry -\u003e validation:sales.order.lines.line_number_unique via application.uses-validation: Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）",
+            "application:order_entry -\u003e validation:sales.order_line.quantity_positive via application.uses-validation: Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）"
+          ],
+          "note": "解析できなかった範囲があります。A4 未解決点を確認してください"
+        },
+        {
+          "code": "A3",
+          "title": "例外・診断",
+          "coverage": "partial",
+          "summary": "diagnostic 0件 / semantic evaluation 0件",
+          "sources": [
+            "preview.stages[*].diagnostics",
+            "candidate.evidence[*].artifact"
+          ],
+          "items": [
+            "受入stageのerror diagnosticなし / semantic evaluation artifactなし"
+          ],
+          "note": "受入stageと添付Evaluation artifactのdiagnosticを表示します。Evaluationのpass / fail / unknownは根拠であり、それ自体からAccept / Rejectを自動導出しません"
+        },
+        {
+          "code": "A4",
+          "title": "未解決点",
+          "coverage": "available",
+          "summary": "unresolved 2件",
+          "sources": [
+            "preview.unresolved"
+          ],
+          "items": [
+            "DRIVER_SCENARIO_NOT_RUN - 解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない",
+            "TARGET_PROJECTION_NOT_EVALUATED - 解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"
+          ]
+        },
+        {
+          "code": "A5",
+          "title": "権限の変更",
+          "coverage": "partial",
+          "summary": "runtime authority grant 0件 / effective authority impact 未評価",
+          "sources": [
+            "candidate.delta",
+            "preview.unresolved",
+            "preview.changedCollections"
+          ],
+          "items": [
+            "candidateがauthorするruntime authority grant: 0件（現行operationはPermission grant / Resource binding / lease / execution principalをauthorしません）",
+            "changed collections: applications"
+          ],
+          "note": "既存のPermission grant / leaseが変更後のApplicationや新しいbindingへどう及ぶかは評価していません。candidate自身がgrantをauthorしないことと、実効権限が変わらないことは別です"
+        },
+        {
+          "code": "A6",
+          "title": "native codeへ残る箇所",
+          "coverage": "partial",
+          "summary": "native code authoring 0件 / residual native dependency impact 未評価",
+          "sources": [
+            "candidate.delta",
+            "preview.changedCollections",
+            "preview.unchangedCollections"
+          ],
+          "items": [
+            "candidateがauthorするnative code: 0件（現行operationはcustomGoBindingsをauthorしません）",
+            "customGoBindings collection: unchanged"
+          ],
+          "note": "既存custom implementationのどこが変更subjectに依存し、残存・再実装・確認を要するかはまだ追跡していません"
+        },
+        {
+          "code": "A7",
+          "title": "逆追跡",
+          "coverage": "partial",
+          "summary": "Evidence 3件 / source edit 1件",
+          "sources": [
+            "candidate.evidence",
+            "preview.candidateFingerprint",
+            "preview.evidenceFingerprint",
+            "preview.sourceEdits"
+          ],
+          "items": [
+            "candidateFingerprint: sha256:feb70e034d241070dc731cec3ca90965122d023c452b7adda0714799ad8e170c",
+            "baseModelRevision: sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c",
+            "currentModelRevision: sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c",
+            "evidenceFingerprint: sha256:c79fc70bfe46195a365b2b7325dbcab331edbc3b17a0829290c3de7fe4e232ea",
+            "Evidence: source=applications/order-entry/application.tei note=宣言を足す対象のApplication source。現在はuses validationを宣言していない",
+            "Evidence: subject=sales.order.lines.line_number_unique",
+            "Evidence: subject=sales.order_line.quantity_positive",
+            "source edit: applications/order-entry/application.tei layer=application after=sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
+          ],
+          "note": "Source Index Evidenceとartifact Evidenceを分離して表示します。artifact Evidenceは受理時に見たexact artifactを固定しますが、現在のEvaluator / Conformance状態を再実行・再証明したことにはなりません"
+        },
+        {
+          "code": "A8",
+          "title": "承認単位の大きさ",
+          "coverage": "available",
+          "summary": "1 / 8",
+          "sources": [
+            "preview.semanticDiff",
+            "preview.applicationDiff",
+            "preview.environmentDiff",
+            "acceptance-policy.maxSubjectChanges"
+          ],
+          "items": [
+            "変更subject数 1 / 上限 8"
+          ]
+        }
+      ]
+    }
+  },
+  "origin": {
+    "kind": "ai",
+    "actor": "claude-sonnet-5-5"
+  },
+  "baseModelRevision": "sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c",
+  "modelRevisionBefore": "sha256:4c0ec01c83b1412454a4ab2ba4adf8cd8904ea7609f1326acb910ba5652f1f5c",
+  "modelRevisionAfter": "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4",
+  "sourceChanged": true,
+  "sourceEdits": [
+    {
+      "path": "applications/order-entry/application.tei",
+      "layer": "application",
+      "beforeFingerprint": "sha256:62d90a9e509e628e9830fb8607c89eaf7be00a07d27c4cf44f6501037b0969ee",
+      "afterFingerprint": "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a",
+      "insertedText": "    uses validation sales.order_line.quantity_positive\n    uses validation sales.order.lines.line_number_unique\n"
+    }
+  ],
+  "applicationDiff": [
+    {
+      "kind": "application",
+      "id": "order_entry",
+      "change": "changed",
+      "before": {
+        "id": "order_entry",
+        "semanticUses": [
+          "sales",
+          "customer",
+          "security"
+        ],
+        "databases": [
+          {
+            "alias": "master",
+            "target": "master_data",
+            "access": "read",
+            "requires": [
+              {
+                "contract": "master_data.customer",
+                "compatibleMajor": 2
+              }
+            ]
+          },
+          {
+            "alias": "sales",
+            "target": "sales_core",
+            "access": "read-write",
+            "requires": [
+              {
+                "contract": "sales_core.order",
+                "compatibleMajor": 4
+              },
+              {
+                "contract": "sales_core.order_line",
+                "compatibleMajor": 1
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "order_entry",
+        "semanticUses": [
+          "sales",
+          "customer",
+          "security"
+        ],
+        "validations": [
+          "sales.order_line.quantity_positive",
+          "sales.order.lines.line_number_unique"
+        ],
+        "databases": [
+          {
+            "alias": "master",
+            "target": "master_data",
+            "access": "read",
+            "requires": [
+              {
+                "contract": "master_data.customer",
+                "compatibleMajor": 2
+              }
+            ]
+          },
+          {
+            "alias": "sales",
+            "target": "sales_core",
+            "access": "read-write",
+            "requires": [
+              {
+                "contract": "sales_core.order",
+                "compatibleMajor": 4
+              },
+              {
+                "contract": "sales_core.order_line",
+                "compatibleMajor": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "conformance": [
+    {
+      "name": "reloaded-with-shared-loader",
+      "passed": true
+    },
+    {
+      "name": "model-revision-matches-preview",
+      "passed": true,
+      "detail": "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4"
+    },
+    {
+      "name": "semantic-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "application-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "environment-diff-matches-preview",
+      "passed": true
+    },
+    {
+      "name": "validation-clean",
+      "passed": true
+    },
+    {
+      "name": "derived-world-reproducible",
+      "passed": true,
+      "detail": "sha256:565d2e9ab1926db1f3b05baee2792ca0ca4dcae7bf637282809d817ebcc1ec32"
+    }
+  ],
+  "derivedWorldSha256": "sha256:565d2e9ab1926db1f3b05baee2792ca0ca4dcae7bf637282809d817ebcc1ec32",
+  "intent": "order_entryが受注確定の前に評価するValidationを、Applicationの uses validation 宣言としてCanonicalな正本へ置く。Target側の手書きの一覧をやめ、Driverが宣言から選べるようにする（ADR-0029）",
+  "evidence": [
+    {
+      "source": "applications/order-entry/application.tei",
+      "note": "宣言を足す対象のApplication source。現在はuses validationを宣言していない"
+    },
+    {
+      "subject": "sales.order.lines.line_number_unique"
+    },
+    {
+      "subject": "sales.order_line.quantity_positive"
+    }
+  ],
+  "unresolved": [
+    {
+      "code": "DRIVER_SCENARIO_NOT_RUN",
+      "message": "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"
+    },
+    {
+      "code": "TARGET_PROJECTION_NOT_EVALUATED",
+      "message": "解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"
+    }
+  ]
+}

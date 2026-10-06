@@ -1,6 +1,6 @@
 # ISSUE-000073: Applicationが評価するValidationの選択を、Target側の一覧ではなくCanonicalな宣言から導く
 
-- 状態: Ready — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用した。実装は未着手
+- 状態: In Progress — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
@@ -75,18 +75,41 @@ Web Target      Application.Validations から評価対象を得る
 ## 完了条件
 
 - [x] 案A / B / Cの判断をADRとして提案し、owner reviewで採用する（2026-10-06に採用。ADR: [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)、2026-10-01に提案）
-- [ ] `order_entry`へ`uses validation`を宣言する変更を、Shared Acceptance Boundary経由で受理する（explicit human Acceptance decisionが必要）
-- [ ] DriverとFirst Web Targetが宣言から評価対象を得るようにし、Target側のCanonical ID一覧を削除する
-- [ ] 宣言が無い場合の振る舞い（fail closed / unresolved）をtestで固定する
-- [ ] 既存のCommand scenario（success / Authorization denied / Validation not-satisfied / Execution Error / Observation）が変わらないことを確かめる
-- [ ] 既存Applicationへ`uses validation`を加えるShared Acceptance operationを追加する（現在は`add-application`による新規追加だけ）
-- [ ] Previewのunresolved codeの改名に合わせ、`boundary_test.go`、`analysis_test.go`、`tools/reference-shared-acceptance/README.md`を更新する
-- [ ] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す
+- [x] `order_entry`へ`uses validation`を宣言する変更を、Shared Acceptance Boundary経由で受理する（2026-10-06。下記「受理の記録」）
+- [x] DriverとFirst Web Targetが宣言から評価対象を得るようにし、Target側のCanonical ID一覧を削除する（Driverは`ResolveApplicationValidations`、Web TargetとDriver scenario testはそれを使う。固定IDは期待値としてだけ残る）
+- [x] 宣言が無い場合の振る舞い（fail closed / unresolved）をtestで固定する（Resolverは`ErrApplicationValidationSelectionNotDeclared`を返し、空を成功にしない。`repair_intake`で固定）
+- [x] 既存のCommand scenario（success / Authorization denied / Validation not-satisfied / Execution Error / Observation）が変わらないことを確かめる（Web Targetとevidence auditのtestが、変更後のworkspaceで通る）
+- [x] 既存Applicationへ`uses validation`を加えるShared Acceptance operationを追加する（`add-application-validation-use`）
+- [x] Previewのunresolved codeの改名に合わせ、`boundary_test.go`、`analysis_test.go`、`tools/reference-shared-acceptance/README.md`を更新する（`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`）
+- [x] 同じ`uses validation`の重複宣言を診断にするか決め、testで固定する。宣言順序の入れ替えが差分に現れるtestも足す（Resolverは重複をerror、operationは`APPLICATION_VALIDATION_USE_ALREADY_EXISTS`で拒否する。candidateの順序はfingerprintに入る）
 - [ ] Gate Cのarchitecture conformance toolが`R`から`T`のworkspace不変を要求することに対し、後継Handoverを立てるか判断を記録する
 - [ ] Business ProcedureのBP-05が保持するValidation referenceとApplicationの宣言の関係（検査するか、独立した参照とするか）を決める
 - [ ] `tools/repository-health-check.sh`のfull PASSを、exact headで記録してから統合する
-- [ ] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する
+- [x] Product Valueの具体例「組織 — 規則を書き写さない」の但し書きを、結果に合わせて更新する（2026-10-06）
 
+## 受理の記録（2026-10-06）
+
+`order_entry`への宣言は、[ISSUE-000040](000040-semantic-component-composition.md)と同じく、Shared Acceptance Boundaryを通して受理した。
+
+```text
+candidate:                       cand-order-entry-validation-selection
+candidate fingerprint:           sha256:feb70e034d241070dc731cec3ca90965122d023c452b7adda0714799ad8e170c
+review fingerprint:              sha256:2c78c047d6a60bd76e428adbad4829f3eacf11010d0ab7f34e88e1da354add9f
+human Acceptance decision:       accepted
+witness identity / locus:        Repository owner（hat47x）。Claude Code session上の明示的な回答「Accept（受理する）」
+                                 直前に提示した内容: Review Projectionの要点（A1 / A4 / A8は表示可能、A2 / A3 / A5 / A6 / A7は一部）と全文へのリンク、変更の中身（宣言2行・world.json 4行）、
+                                 受理で起きること（Web Targetが宣言から評価対象を得る。Gate Cのarchitecture conformance toolは
+                                 このworkspaceでは再実行できない）、権限を付与しないこと
+decision time:                   2026-10-06
+base / after model revision:     sha256:4c0ec01c… / sha256:4234d86e…（Previewが示した値と一致）
+changed files:                   reference/workspace/applications/order-entry/application.tei（+2行）、reference/world.json（+4行）
+decision record:                 reference/workspace/.tei/decisions/ced73f8294c2f8488d37d04a12695d22914d676fd92b34b866b4a2bd1c414db0.json
+retained unresolved:             DRIVER_SCENARIO_NOT_RUN / TARGET_PROJECTION_NOT_EVALUATED
+```
+
+Reviewで「一部」だったのは、A2（Driver・Targetへの影響は未評価）、A3、A5（既存の権限が変更後に及ぶか）、A6、A7である。この受理は、Permission grant、Resource binding、lease、実行principalを与えない。
+
+ownerに示したのはReview Projectionの要点と全文へのリンクであり、ownerが全文を読んだこと、または`reviewFingerprint`の根拠を自分で再現して確かめたことの記録ではない（fingerprintはReview Projectionへのbindingであり、承認authorityそのものではない）。
 ## 完了後に判断できること
 
 - 第二Target・API・AIエージェントの経路で、同じ評価対象の選択を再利用できるか

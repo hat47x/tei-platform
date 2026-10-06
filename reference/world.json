@@ -674,6 +674,10 @@
         "customer",
         "security"
       ],
+      "validations": [
+        "sales.order_line.quantity_positive",
+        "sales.order.lines.line_number_unique"
+      ],
       "databases": [
         {
           "alias": "master",
