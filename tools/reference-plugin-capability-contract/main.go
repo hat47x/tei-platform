@@ -315,6 +315,7 @@ func validateResolveInput(input ResolveInput) error {
 			provider.ImplementationID == "" || !provider.Scope.Valid() ||
 			provider.ContractID == "" || provider.ContractVersion == "" ||
 			!validSHA256Fingerprint(provider.ContractFingerprint) ||
+			!validSHA256Fingerprint(provider.ArtifactDigest) ||
 			provider.ConformanceProfile == "" {
 			return fmt.Errorf("provider[%d] is incomplete or invalid", i)
 		}
@@ -324,24 +325,15 @@ func validateResolveInput(input ResolveInput) error {
 		if _, err := parseVersion(provider.ContractVersion); err != nil {
 			return fmt.Errorf("provider[%d] contract version: %w", i, err)
 		}
-		if provider.ArtifactDigest != "" && !validSHA256Fingerprint(provider.ArtifactDigest) {
-			return fmt.Errorf("provider[%d] artifact digest is not exact sha256", i)
-		}
 	}
 	for i, evidence := range input.Evidence {
 		if evidence.PluginID == "" || evidence.PluginVersion == "" ||
 			evidence.ImplementationID == "" ||
+			!validSHA256Fingerprint(evidence.ArtifactDigest) ||
 			!validSHA256Fingerprint(evidence.ContractFingerprint) ||
 			evidence.ConformanceProfile == "" ||
 			!validSHA256Fingerprint(evidence.EvidenceFingerprint) {
 			return fmt.Errorf("conformance evidence[%d] is incomplete or invalid", i)
-		}
-		if evidence.ArtifactDigest != "" &&
-			!validSHA256Fingerprint(evidence.ArtifactDigest) {
-			return fmt.Errorf(
-				"conformance evidence[%d] artifact digest is not exact sha256",
-				i,
-			)
 		}
 		if _, err := parseVersion(evidence.PluginVersion); err != nil {
 			return fmt.Errorf("conformance evidence[%d] plugin version: %w", i, err)
@@ -608,9 +600,8 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 		!validSHA256Fingerprint(lock.LockFingerprint) {
 		return fmt.Errorf("capability lock fingerprints are invalid")
 	}
-	if lock.Provider.ArtifactDigest != "" &&
-		!validSHA256Fingerprint(lock.Provider.ArtifactDigest) {
-		return fmt.Errorf("capability lock provider artifact digest is invalid")
+	if !validSHA256Fingerprint(lock.Provider.ArtifactDigest) {
+		return fmt.Errorf("capability lock provider requires exact artifact digest")
 	}
 	if lock.Provider.PluginID == "" ||
 		lock.Provider.PluginVersion == "" ||
