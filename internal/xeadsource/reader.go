@@ -48,12 +48,16 @@ type Document struct {
 
 var known = map[Format]map[string]struct{}{
 	FormatXead: set(
-		"System", "Subsystem", "Table", "TableField", "TableKey", "TableKeyField", "Relationship",
-		"FunctionType", "Function", "IOTable", "IOPanel", "IOSpool",
+		"System", "Subsystem", "Department", "DataType",
+		"Table", "TableField", "TableKey", "TableKeyField", "Relationship",
+		"FunctionType", "Function", "FunctionUsedByThis", "IOTable", "IOPanel", "IOSpool",
 		"Role", "Task", "TaskAction", "TaskFunctionIO", "SubjectArea",
 		"DataflowNode", "DataflowLine", "Instance",
 	),
-	FormatXeaf: set("System", "Function", "Script", "Field", "Column", "Button", "Menu"),
+	FormatXeaf: set(
+		"System", "Subsystem", "Table", "Function", "Script",
+		"Field", "Column", "Button", "Filter", "Refer", "Detail", "Key", "Menu",
+	),
 }
 
 func set(names ...string) map[string]struct{} {
