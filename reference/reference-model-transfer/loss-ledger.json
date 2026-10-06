@@ -161,6 +161,15 @@
       "risk": "equal-arity composite keys can be paired incorrectly or a type-incompatible relationship can be accepted during transfer",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "for multi-field relationship keys, require unambiguous SortKey ordering before positional comparison; preserve missing/duplicate SortKey and explicit DataTypeID mismatch as unresolved and do not repair by field name or source order"
+    },
+    {
+      "id": "RML-018",
+      "topic": "source-fidelity-vs-target-adoption",
+      "nature": "unresolved",
+      "evidence": "RMT can increasingly reconstruct legacy schema, key topology, function interaction and runtime constraints with high fidelity",
+      "risk": "better observation can silently become stronger pressure to preserve accidental As-Is structure in the TEI target design",
+      "owner": "ISSUE-000078 / ISSUE-000027",
+      "stopCondition": "keep exact source observations as Source/Actual Evidence and require an explicit Proposal/Acceptance step before any reconstructed legacy structure becomes Desired or authoritative TEI meaning"
     }
   ],
   "claimsNotEstablished": [
