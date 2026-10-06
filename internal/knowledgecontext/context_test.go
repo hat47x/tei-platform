@@ -43,6 +43,9 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 			if len(ctx.DataDesign.ScopedUniqueness) != 0 {
 				t.Fatalf("invalid relation-unique was promoted: %+v", ctx.DataDesign.ScopedUniqueness)
 			}
+			if len(ctx.DataDesign.FunctionalDependencyCandidates) != 0 {
+				t.Fatalf("invalid relation-unique produced an FD candidate: %+v", ctx.DataDesign.FunctionalDependencyCandidates)
+			}
 			if ctx.DataDesign.CandidateKeys.Nature != "unresolved" ||
 				ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" {
 				t.Fatalf("invalid relation-unique created business identity: %+v", ctx.DataDesign)
@@ -121,6 +124,11 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 	if len(ctx.DataDesign.ScopedUniqueness) != 1 {
 		t.Fatalf("valid scoped uniqueness is missing: %+v", ctx.DataDesign.ScopedUniqueness)
+	}
+	if len(ctx.DataDesign.FunctionalDependencyCandidates) != 1 ||
+		ctx.DataDesign.FunctionalDependencyCandidates[0].Nature != "candidate-from-accepted-scoped-uniqueness" ||
+		ctx.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("FD candidate boundary drifted: candidates=%+v state=%+v", ctx.DataDesign.FunctionalDependencyCandidates, ctx.DataDesign.FunctionalDependencies)
 	}
 	for _, want := range []subject.Subject{
 		{Kind: "semantic-data", ID: "sales.order"},
