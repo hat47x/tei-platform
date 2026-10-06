@@ -241,6 +241,20 @@
       "observed": "Watanabe's 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
       "risk": "normalization, variant replacement, case folding, or code conversion can be mistaken for proof that two source values identify the same business occurrence, or representation differences can be mistaken for distinct identity",
       "teiDirection": "preserve exact source representation when required, keep normalized/search/rendering representations separate, and require an explicit scoped equivalence policy or mapping before representation equality contributes to business identity evidence"
+    },
+    {
+      "id": "RMP-035",
+      "topic": "as-is-observation-vs-target-design",
+      "observed": "Watanabe argues that detailed current-state analysis can bias redesign toward preserving the current system; RMT intentionally increases the fidelity of legacy observation",
+      "risk": "a high-quality source-faithful transcription can be mistaken for the desired TEI design, preserving accidental legacy topology and runtime constraints precisely because they are now well understood",
+      "teiDirection": "keep source observation, target Proposal and Accepted To-Be as separate authority stages; retain compatibility and migration evidence without copying As-Is structure into Desired by default"
+    },
+    {
+      "id": "RMP-036",
+      "topic": "semantic-discovery-vs-deterministic-lowering",
+      "observed": "Watanabe distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
+      "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
+      "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
     }
   ]
 }
