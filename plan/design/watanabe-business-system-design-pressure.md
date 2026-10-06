@@ -21,6 +21,7 @@ Date: 2026-10-06
   - https://www.itmedia.co.jp/im/articles/1109/28/news134.html
   - https://www.itmedia.co.jp/im/articles/1109/28/news134_3.html
 - 「設計者の発言」— 近年のデータモデリング、関数従属性、複合的な識別関係、生成AIによるDB設計への批判的検討。
+  - https://dbconcept.hatenablog.com/entry/2026/06/19/154613
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
   - https://dbconcept.hatenablog.com/entry/2025/08/31/131839
@@ -129,6 +130,36 @@ AIは候補、矛盾、問いを提示できます。Validatorは宣言済みCon
 
 この判断はAIへ渡すcontextにも反映します。Data / Relationを設計するときは、単なるtable / field一覧ではなく、business occurrence identifier、candidate key、既知または候補のfunctional dependency、domain / allowed-combination constraint、derived-value contract、Relation topology、時間・履歴条件、Source / Evidence、accepted / candidate / unresolvedのnatureへ、必要な範囲で到達できるread-onlyなData Design Contextを用意します。これは第二正本ではなく、current Canonical / Source / Decision / Evidenceから再構成するProjectionです。現在のCanonicalでfirst-classに表現していない意味は、存在しないものとして返さず、Source-backed candidateまたはunresolvedとして扱います。
 
+### 4.7 後付けのSemantic Layerを第二正本にしない
+
+渡辺氏は、既存Database定義、Application source、文書、メール等からAIが意味のネットワークを再構成する方式について、元のDatabase構造自体が業務上の関数従属性を十分に表していなければ、後段のSemantic Layerだけでは意味を回復しきれないと指摘しています。
+
+TEIではこの問題を、RDBを唯一の上位モデルにすることではなく、**意味のauthorityをどの段階で確立したか**として扱います。
+
+~~~text
+authoritative Source / accepted design
+        ↓
+Canonical meaning
+        ↓
+AI向けread-only Projection
+
+legacy Database / code / prose / observation
+        ↓
+source-faithful inspection
+        ↓
+candidate / unresolved
+        ↓
+Shared Acceptance
+        ↓ accept only
+authoritative Source
+~~~
+
+既存SystemからDatabase、code、文書、画面等を解析して意味候補を作ることは有用です。しかし、複数の断片からAIが整合的な説明を生成できたことを、元からAccepted meaningが存在した場合と同じEvidenceにはしません。逆向きに復元した意味には、Source、抽出方法、モデル・ruleのversion、曖昧性、未解決点を残し、Shared Acceptanceを経て初めてauthorityへ入れます。
+
+また、TEIの新規Applicationで後から意味を復元する必要が生じないよう、Data / Relation / Constraint / Procedure / Capability等のAccepted meaningを、生成Targetとは独立した長寿命なSourceとして保持します。AI向けKnowledge Context、embedding、検索index、要約、ontology Projection等は再生成可能なderived knowledgeであり、Canonical meaningの第二正本にはしません。
+
+この原則はRDB以外のSourceにも適用します。良質なDocument schema、event contract、external API、physical / human procedure等がauthorityを持つdomainでは、それらを明示的なSourceとして扱います。
+
 ## 5. そのまま移植しないもの
 
 次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
@@ -150,7 +181,8 @@ AIは候補、矛盾、問いを提示できます。Validatorは宣言済みCon
 1. `order_entry`または別の現実的なReferenceで、business identity / candidate key / functional dependencyを明示した場合と、surrogate-onlyにした場合のcross-view差分を機械的・人間可読に示せるか。
 2. Data上のdeterminant / uniquenessと、Functionの選択・更新単位、Business Procedureの識別単位が矛盾した場合にdiagnosticへ到達できるか。
 3. 導出値がRelationのsource keyへ参加するReferenceで、semanticな導出契約、evaluator realization、materialized cache、Relationを混同せずに追跡・実行できるか。
-4. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
-5. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
+4. legacy Database / code / proseからAIが再構成したsemantic candidateと、authoring時からacceptedなmeaningを同じauthorityへ混ぜず、Proposal / Acceptance / provenanceを通じて区別できるか。
+5. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
+6. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
 
 これらの結果が出るまでは、`FunctionalDependency`、`BusinessKey`、`SubjectArea`、`Subsystem`等を新しいCore primitiveとして固定しません。
