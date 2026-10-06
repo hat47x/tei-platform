@@ -1,9 +1,9 @@
-# ISSUE-000081: 文脈付きEpistemic AnnotationとProject Knowledge Healthを実証する
+# ISSUE-000082: 文脈付きEpistemic AnnotationとProject Knowledge Healthを実証する
 
-- 状態: In Progress — ADR-0029採用、TEI / SUI / SEIの横断Issue起票済み。Reference実装は未着手
+- 状態: In Progress — ADR-0030採用、TEI / SUI / SEIの横断Issue起票済み。Reference実装は未着手
 - GitHub Issue: #958
 - Cross-repository Issues: SUI #3184 / SEI #660
-- 関連ADR: ADR-0029
+- 関連ADR: ADR-0030
 
 ## このIssueを最初に読むときの要点
 
@@ -251,7 +251,7 @@ review、health、context evaluation等をPlugin-defined Capabilityとして提�
 ## 関連
 
 - GitHub Issue #958
-- ADR-0029
+- ADR-0030
 - SUI Sensemaking #3184
 - SEI Cognition #660
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`

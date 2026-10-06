@@ -187,6 +187,8 @@ cross-view / execution Evidence
 
 [000081](000081-eki-fabric-execution-base-evaluation.md)は、別製品のEKI Fabricを、TEIの実行基盤の一つ（Provider）として置けるかを評価するIssueです。EKI側が2026-10-06に決めた「TEIはEKI上で稼働する」という整理を、TEI側から見て受け入れてよいかを確かめます。評価待ちであり、採用、Requirementの変更、Gate判定条件の緩和は含みません。特に、EKIの結果をGate Evidenceやmerge authorityへ読み替えない境界と、依存の循環を作らない条件を先に置きます。
 
+[000082](000082-context-scoped-epistemic-knowledge.md)は、生成AIが扱う情報を文脈付きの認識状態として保持し、Project Knowledge Healthを実証する作業です（ADR-0030）。2026-10-06に、先に存在した000081（EKI Fabric評価）と番号が重複したため、後から追加した本Issueを000082、対応するADRを0030へ改番しました。GitHub Issue #958の本文にはISSUE-000081の表記が残る場合があります。
+
 ## 外部資産・Providerの継続課題
 
 | 担当Issue | 統合した課題 | 分けて扱う理由 |
