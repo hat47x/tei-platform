@@ -132,6 +132,8 @@ browse、record、reference、header-detail、command等、業務システムで
 
 標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。
 
+Application Pattern、View、Target、ORM等の実装都合から、Dataのbusiness identifierやkey構造を逆算してはいけません。特定のRealizationがsurrogate keyや単独keyを必要とする場合も、acceptedなcandidate key、uniqueness、Relation meaningを失わせず、Realization差として追跡できる必要があります。
+
 ## RQ-015 生成AIが既存知識から継続的にApplicationを構築・変更できること
 
 生成AI向けの開発支援では、次の順序を基本とします。
