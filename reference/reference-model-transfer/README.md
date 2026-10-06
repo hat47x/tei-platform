@@ -16,6 +16,8 @@
 
 これらはRMT-0 / RMT-1の開始Evidenceです。TEIへのtranscription完了、original Runtimeとのbehavior equivalence、Reference Modelの再配布許諾を意味しません。
 
+RMT-2のsource-faithful adapter候補は `internal/xeadsource` に置きます。そこではraw source treeに加え、legacy key / Relationship key reference / declared `KeyFields`をsource factとして機械可読化できます。ただし、それらはbusiness identifier、candidate key、functional dependency、Canonical identity、physical key authorityではありません。AI / Studio / CLIが利用する場合も、candidate classificationとauthority limitを同時に扱います。
+
 ## 更新原則
 
 - source snapshotが変わったらdigestを変え、既存Evidenceへ上書きして同一source扱いしない
