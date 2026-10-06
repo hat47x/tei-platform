@@ -1,9 +1,6 @@
 package xeadsource
 
-import (
-	"reflect"
-	"testing"
-)
+import "testing"
 
 func TestDiagnoseRelationalSourceFactsAcceptsExplicitResolvableKeyReferences(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
@@ -22,19 +19,24 @@ func TestDiagnoseRelationalSourceFactsFailsClosedOnMissingReferences(t *testing.
 		t.Fatal(err)
 	}
 	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
-	codes := make([]string, 0, len(got))
+	codes := map[string]bool{}
 	for _, diagnostic := range got {
 		if diagnostic.Nature != RelationalDiagnosticNature {
 			t.Fatalf("diagnostic gained non-unresolved nature: %#v", diagnostic)
 		}
-		codes = append(codes, diagnostic.Code)
+		codes[diagnostic.Code] = true
 	}
-	if !reflect.DeepEqual(codes, []string{
+	for _, want := range []string{
 		"key-field-not-found",
 		"relationship-key-not-found",
 		"relationship-table-not-found",
-	}) {
-		t.Fatalf("unexpected diagnostics: %#v", got)
+	} {
+		if !codes[want] {
+			t.Fatalf("diagnostic %q is missing: %#v", want, got)
+		}
+	}
+	if len(got) != 3 {
+		t.Fatalf("unexpected extra diagnostics: %#v", got)
 	}
 }
 
