@@ -213,6 +213,67 @@ func TestDataDesignContextKeepsMultiplePhysicalKeysOutOfLogicalIdentity(t *testi
 	}
 }
 
+func TestDataDesignContextFingerprintTracksRelevantEvidenceOnly(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	relevantPath := "semantic/sales/order.tei"
+	relevantSubject := subject.Subject{Kind: "semantic-data", ID: "sales.order_line"}
+	baseSources := sourceindex.Index{
+		Artifacts: []sourceindex.Artifact{
+			{
+				Path:        relevantPath,
+				Fingerprint: sourceindex.Fingerprint([]byte("relevant-v1")),
+			},
+		},
+		References: []sourceindex.Reference{
+			{
+				Subject:      relevantSubject,
+				ArtifactPath: relevantPath,
+				Role:         sourceindex.RoleDefinition,
+			},
+		},
+	}
+
+	first := Build(w, baseSources, relevantSubject)
+	if first.DataDesign == nil ||
+		first.DataDesign.ProjectionRevision != dataDesignProjectionRevision ||
+		first.DataDesign.Fingerprint == "" {
+		t.Fatalf("data design fingerprint is missing: %+v", first.DataDesign)
+	}
+
+	withUnrelated := baseSources
+	withUnrelated.Artifacts = append(
+		append([]sourceindex.Artifact(nil), baseSources.Artifacts...),
+		sourceindex.Artifact{
+			Path:        "semantic/other/example.tei",
+			Fingerprint: sourceindex.Fingerprint([]byte("unrelated")),
+		},
+	)
+	withUnrelated.References = append(
+		append([]sourceindex.Reference(nil), baseSources.References...),
+		sourceindex.Reference{
+			Subject:      subject.Subject{Kind: "semantic-data", ID: "other.example"},
+			ArtifactPath: "semantic/other/example.tei",
+			Role:         sourceindex.RoleDefinition,
+		},
+	)
+	second := Build(w, withUnrelated, relevantSubject)
+	if second.DataDesign == nil || second.DataDesign.Fingerprint != first.DataDesign.Fingerprint {
+		t.Fatalf("unrelated source changed Data Design fingerprint: first=%q second=%q", first.DataDesign.Fingerprint, second.DataDesign.Fingerprint)
+	}
+
+	changedRelevant := baseSources
+	changedRelevant.Artifacts = []sourceindex.Artifact{
+		{
+			Path:        relevantPath,
+			Fingerprint: sourceindex.Fingerprint([]byte("relevant-v2")),
+		},
+	}
+	third := Build(w, changedRelevant, relevantSubject)
+	if third.DataDesign == nil || third.DataDesign.Fingerprint == first.DataDesign.Fingerprint {
+		t.Fatalf("relevant source change did not invalidate Data Design fingerprint: first=%q third=%q", first.DataDesign.Fingerprint, third.DataDesign.Fingerprint)
+	}
+}
+
 func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	ctx := Build(
 		dataDesignRelationUniqueWorld(),
