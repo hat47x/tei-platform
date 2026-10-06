@@ -115,8 +115,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
-		"business identifier": dataDesign.BusinessOccurrenceIdentifier,
-		"candidate keys":      dataDesign.CandidateKeys,
+		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
+		"candidate keys":        dataDesign.CandidateKeys,
 		"functional dependency": dataDesign.FunctionalDependencies,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
@@ -223,8 +223,8 @@ func TestBuildKnowledgeContextPreservesUnknownSubjectAsUnresolved(t *testing.T) 
 			t.Fatalf("unresolved %q is missing: %+v", want, got.Unresolved)
 		}
 	}
-	if got.SemanticElement != nil || got.ApplicationPattern != nil {
-		t.Fatalf("unknown subject produced authoritative detail: %+v", got)
+	if got.SemanticElement != nil || got.ApplicationPattern != nil || got.DataDesign != nil {
+		t.Fatalf("unknown subject produced authoritative or derived design detail: %+v", got)
 	}
 }
 
