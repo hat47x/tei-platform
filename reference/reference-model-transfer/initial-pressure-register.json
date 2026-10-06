@@ -206,6 +206,13 @@
       "observed": "Watanabe models derived attributes as logical fields and allows a derived value to participate in a foreign-key-like dynamic reference; the benchmark has 52 DERIVABLE Xead fields, but participation of those fields in Relationship keys has not yet been confirmed",
       "risk": "derived values may be reduced to display/cache fields, or native Script may become the only hidden authority for a Relation whose source key is actually derived",
       "teiDirection": "separate derived-value semantic contract, evaluator realization, materialized cache, and Relation use; keep benchmark dynamic-reference occurrence unresolved until exact source mapping confirms it"
+    },
+    {
+      "id": "RMP-030",
+      "topic": "post-hoc-semantic-reconstruction",
+      "observed": "Watanabe warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
+      "risk": "a coherent AI-generated semantic graph can be mistaken for original or accepted system meaning, turning the importer or knowledge layer into a second canonical authority",
+      "teiDirection": "keep source-faithful observation, AI-derived candidate and accepted semantic meaning as separate authority stages; require provenance and Shared Acceptance before reconstructed meaning enters authoritative Source"
     }
   ]
 }
