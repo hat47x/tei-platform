@@ -79,6 +79,36 @@ instance-level factはApplication data、Database、external system、Observatio
 
 ただしmaster/reference data、configuration、policy table等、instance集合自体が設計authorityを持つdomainでは明示的なauthoritative sourceとして扱う余地があります。その場合もdefinition / instance / Observationのどれがownerかを曖昧にしません。
 
+### 業務上の識別・関数従属性・物理キーを分ける
+
+Data設計を、各tableへ一律に単独の`id`を付けるところから始めません。まず、業務上の一つのoccurrenceを何が識別するのか、どのData項目が何によって定まるのかを確認します。識別と関数従属性は、画面やORM、Database Providerの都合より先に検討するData meaningです。
+
+TEIでは、少なくとも次のidentityを同一視しません。
+
+```text
+Canonical subject identity
+  != business occurrence identifier
+  != physical primary key
+```
+
+Canonical identityは、設計上のsubjectをRepositoryやTargetをまたいで追跡するためのidentityです。business occurrence identifierは、対象業務で「何を同じ一件として扱うか」を表します。physical primary keyは、特定DatabaseやProviderでrecordを実装・参照するための仕組みです。
+
+したがって、UUIDやsurrogate keyを物理実装で使うこと自体は否定しません。一方、それを追加したことで、業務上の複合識別や関数従属性、Relationの違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
+
+たとえば、1:Nに見える構造でも意味は同じとは限りません。親から独立して存在し、参照先を変更し得るrecordと、特定の親occurrenceの内部で繰り返される明細と、独立した二つの識別対象の組合せを表すrecordでは、業務上の識別と従属性が異なります。UI上の見え方や「子table」という呼称だけから同じRelationへ畳みません。
+
+Data設計時には、必要に応じて次を確認します。
+
+- 何がそのoccurrenceを業務上識別するか
+- determinantとなる項目または項目組と、そこから定まるdependentな項目は何か
+- Relationが変更可能な参照なのか、親の内部にある反復なのか、独立した識別対象同士の組合せなのか
+- 識別や従属性がどの時点・期間・状態で成立するか
+- sourceから確定できることと、候補・推論・unresolvedのどれに留まるか
+
+関数従属性そのものを、現時点から必ず新しいtop-level Canonical kindとして持つとは決めません。既存のData / Relation / Constraint / Source / Evidenceでlosslessに表現・追跡できる範囲を確認し、不足がReferenceで再現された場合に表現を追加します。
+
+生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
+
 ## 4. Function / InteractionはUIを含むが、UIはauthorityではない
 
 Function / Interaction視点には、利用者が具体的に理解できるUI、帳票、入出力、query、command、batch、API、function call relationshipを含みます。
