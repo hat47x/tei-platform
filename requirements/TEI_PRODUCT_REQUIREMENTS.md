@@ -52,6 +52,10 @@ TEIは、それらを意味、Capability、Realization、Source Indexへ接続�
 
 Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
 
+複数DatabaseやServiceへDataを分散しても、同じ業務対象のidentity、Relation、Constraint、ownershipをlogicalな意味として追跡できなければなりません。APIやmessageで接続できることだけを、Data meaningが統合された状態とは扱いません。
+
+反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
+
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
