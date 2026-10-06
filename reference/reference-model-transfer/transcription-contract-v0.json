@@ -16,7 +16,9 @@
     "target-specific interaction is not business action meaning",
     "function-level potential CRUD is not business-action-specific CRUD",
     "native script effect is not inferred solely from declared CRUD",
-    "new semantic requirements are plugin/extension-first; legacy schema names do not become Core kinds by default"
+    "new semantic requirements are plugin/extension-first; legacy schema names do not become Core kinds by default",
+    "legacy TableKey, Relationship key mapping, and Function selection key are distinct source facts and are not business occurrence identity by themselves",
+    "a legacy PK/SK declaration or key-field correspondence does not establish an accepted functional dependency without explicit semantic acceptance or corroborating evidence"
   ],
   "sourceLocator": {
     "exactSnapshot": "artifact digest + XML structural path + sibling ordinal + available legacy attributes",
@@ -158,6 +160,33 @@
           "NoUpdate is interaction/policy pressure and is not automatically authorization"
         ]
       },
+      "TableKey": {
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "PK/FK/SK/XK and ordered TableKeyField membership are preserved as source-backed legacy key assertions",
+          "legacy PK or SK is not automatically a TEI business occurrence identifier or candidate key",
+          "legacy key membership does not by itself establish an accepted functional dependency",
+          "DDL realization evidence such as PRIMARY KEY or UNIQUE remains separate from business identity"
+        ]
+      },
+      "TableKeyField": {
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "FieldID and source ordering preserve membership in the enclosing legacy key",
+          "field position, name, type, or legacy ID is not canonical identity evidence",
+          "ambiguous or missing field resolution remains unresolved rather than being repaired by naming or type heuristics"
+        ]
+      },
       "Relationship": {
         "classification": [
           "canonical-candidate",
@@ -165,7 +194,8 @@
         ],
         "extension": "reference.xead.relational-semantics",
         "rules": [
-          "key references may support explicit relation mapping",
+          "Table1ID/TableKey1ID and Table2ID/TableKey2ID are source-backed relationship key references and remain distinct from business identity",
+          "key references may support explicit relation mapping only when the participating key fields resolve without ambiguity",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
           "ExistWhen prose is not compiled into a constraint without explicit acceptance"
         ]
@@ -347,7 +377,8 @@
         "rules": [
           "Type selects legacy Driver realization family",
           "executable Function is not assumed identical to design Function",
-          "TimerOption is runtime scheduling and is distinct from Business trigger"
+          "TimerOption is runtime scheduling and is distinct from Business trigger",
+          "KeyFields is a Function/Detail record-selection key; when absent the legacy Driver may fall back to the target Table PK, so selection key and Data identity must remain separate"
         ]
       },
       "Script": {
