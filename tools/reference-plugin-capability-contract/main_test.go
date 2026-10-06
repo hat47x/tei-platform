@@ -241,7 +241,7 @@ func TestCapabilityResolutionLockPinsExactProviderAcrossCatalogGrowth(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock, err := buildCapabilityResolutionLock(baseInput.Requirement, resolvedV1)
+	lock, err := buildCapabilityResolutionLock(baseInput, resolvedV1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestCapabilityResolutionLockRejectsContractAndArtifactDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock, err := buildCapabilityResolutionLock(input.Requirement, resolution)
+	lock, err := buildCapabilityResolutionLock(input, resolution)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestCapabilityResolutionLockSeparatesReplayFromEvidenceRefresh(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock, err := buildCapabilityResolutionLock(input.Requirement, resolution)
+	lock, err := buildCapabilityResolutionLock(input, resolution)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,5 +456,66 @@ func TestConformanceEvidenceDoesNotSurviveArtifactReplacement(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
 		t.Fatalf("old Conformance Evidence survived artifact replacement: %v", err)
+	}
+}
+
+
+func TestCapabilityResolutionLockRejectsWiringDrift(t *testing.T) {
+	contract := sourceAdapterContract()
+	left := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.left",
+		"xead.reader.left",
+	)
+	right := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.right",
+		"xead.reader.right",
+	)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{left, right},
+		Evidence: []ConformanceEvidence{
+			evidenceFor(left, contract, "evidence-left"),
+			evidenceFor(right, contract, "evidence-right"),
+		},
+		Wirings: []Wiring{{
+			ContractID:       contract.ID,
+			PluginID:         left.PluginID,
+			PluginVersion:    left.PluginVersion,
+			ImplementationID: left.ImplementationID,
+		}},
+	}
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.Wiring == nil || lock.Wiring.PluginID != left.PluginID {
+		t.Fatalf("lock wiring=%+v", lock.Wiring)
+	}
+
+	rewired := input
+	rewired.Wirings = []Wiring{{
+		ContractID:       contract.ID,
+		PluginID:         right.PluginID,
+		PluginVersion:    right.PluginVersion,
+		ImplementationID: right.ImplementationID,
+	}}
+	if err := verifyCapabilityResolutionLockReplay(lock, rewired); err == nil {
+		t.Fatal("changed explicit wiring was accepted by lock replay")
+	}
+
+	unwired := input
+	unwired.Wirings = nil
+	if err := verifyCapabilityResolutionLockReplay(lock, unwired); err == nil {
+		t.Fatal("removed explicit wiring was accepted by lock replay")
 	}
 }
