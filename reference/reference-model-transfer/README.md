@@ -11,6 +11,7 @@
 - `source-baseline.json` — source code revision、model / manual artifact digest、公開境界
 - `source-inventory.json` — model構造のaggregate inventory。source constructの母集団
 - `initial-pressure-register.json` — 旧Runtimeでは暗黙でも成立した点をTEIへ移す際の初期pressure
+- `transcription-contract-v0.json` — RMT-2のconstruct分類、Plugin / Extension責務、source locator停止線を定めるcandidate contract
 
 これらはRMT-0 / RMT-1の開始Evidenceです。TEIへのtranscription完了、original Runtimeとのbehavior equivalence、Reference Modelの再配布許諾を意味しません。
 
