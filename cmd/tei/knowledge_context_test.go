@@ -262,6 +262,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" {
 		t.Fatalf("data design cache identity is missing: revision=%q fingerprint=%q", dataDesign.ProjectionRevision, dataDesign.Fingerprint)
 	}
+	if len(dataDesign.Ambiguities) != 0 {
+		t.Fatalf("valid Reference Data Design Context has semantic identity ambiguities: %+v", dataDesign.Ambiguities)
+	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
 		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
 		"candidate keys":        dataDesign.CandidateKeys,
