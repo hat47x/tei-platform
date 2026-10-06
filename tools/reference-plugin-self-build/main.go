@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,7 +33,8 @@ type evidence struct {
 	RepositoryRevision           string                   `json:"repositoryRevision"`
 	RepositoryTreeDigest         string                   `json:"repositoryTreeDigest"`
 	GoVersion                    string                   `json:"goVersion"`
-	GoBuilderDigest              string                   `json:"goBuilderDigest"`
+	GoBinaryDigest               string                   `json:"goBinaryDigest"`
+	GoToolchainDigest            string                   `json:"goToolchainDigest"`
 	BuildPlan                    plugin.BuildPlan         `json:"buildPlan"`
 	BuildPlanFingerprint         string                   `json:"buildPlanFingerprint"`
 	FirstArtifactDigest          string                   `json:"firstArtifactDigest"`
@@ -106,15 +108,31 @@ func run(repo string) (evidence, error) {
 	if resolved, resolveErr := filepath.EvalSymlinks(goPath); resolveErr == nil {
 		goPath = resolved
 	}
-	goDigest, err := hashFile(goPath)
+	goBinaryDigest, err := hashFile(goPath)
 	if err != nil {
-		return evidence{}, fmt.Errorf("hash Go builder: %w", err)
+		return evidence{}, fmt.Errorf("hash Go builder binary: %w", err)
 	}
-	goVersionBytes, err := exec.Command(goPath, "version").Output()
+	goVersionCmd := exec.Command(goPath, "version")
+	goVersionCmd.Env = buildEnvironment(os.Environ())
+	goVersionBytes, err := goVersionCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("read Go builder version: %w", err)
 	}
 	goVersion := strings.TrimSpace(string(goVersionBytes))
+	goRootCmd := exec.Command(goPath, "env", "GOROOT")
+	goRootCmd.Env = buildEnvironment(os.Environ())
+	goRootBytes, err := goRootCmd.Output()
+	if err != nil {
+		return evidence{}, fmt.Errorf("resolve Go toolchain root: %w", err)
+	}
+	goRoot := strings.TrimSpace(string(goRootBytes))
+	goToolchainDigest, err := hashGoToolchain(goRoot)
+	if err != nil {
+		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
+	}
+	if err := requireNoExternalModules(root, goPath); err != nil {
+		return evidence{}, err
+	}
 
 	plan := plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
@@ -137,7 +155,7 @@ func run(repo string) (evidence, error) {
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.go.seed"),
 			Version:        goVersion,
-			ArtifactDigest: goDigest,
+			ArtifactDigest: goToolchainDigest,
 		},
 		Target:  "host-process/" + runtime.GOOS + "/" + runtime.GOARCH,
 		Profile: "reference",
@@ -231,7 +249,8 @@ func run(repo string) (evidence, error) {
 		RepositoryRevision:           revision,
 		RepositoryTreeDigest:         treeDigest,
 		GoVersion:                    goVersion,
-		GoBuilderDigest:              goDigest,
+		GoBinaryDigest:               goBinaryDigest,
+		GoToolchainDigest:            goToolchainDigest,
 		BuildPlan:                    plan,
 		BuildPlanFingerprint:         planFingerprint,
 		FirstArtifactDigest:          firstDigest,
@@ -242,6 +261,124 @@ func run(repo string) (evidence, error) {
 		RuntimeDefinitionFingerprint: plugin.DefinitionFingerprint(realized),
 		RuntimePluginLock:            runtimeLock,
 	}, nil
+}
+
+
+func requireNoExternalModules(repo, goPath string) error {
+	cmd := exec.Command(
+		goPath,
+		"list",
+		"-deps",
+		"-f",
+		"{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}",
+		referencePackage,
+	)
+	cmd.Dir = repo
+	cmd.Env = buildEnvironment(os.Environ())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("resolve reference plugin dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	for _, raw := range strings.Split(string(out), "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] != "tei" {
+			return fmt.Errorf("reference plugin has unresolved external build dependency %q", line)
+		}
+	}
+	return nil
+}
+
+func hashGoToolchain(goRoot string) (string, error) {
+	if strings.TrimSpace(goRoot) == "" {
+		return "", fmt.Errorf("Go toolchain root is empty")
+	}
+	paths := []string{
+		filepath.Join(goRoot, "VERSION"),
+		filepath.Join(goRoot, "bin", executableName("go")),
+		filepath.Join(goRoot, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH),
+		filepath.Join(goRoot, "src"),
+	}
+	sum := sha256.New()
+	for _, root := range paths {
+		info, err := os.Lstat(root)
+		if err != nil {
+			return "", err
+		}
+		if !info.IsDir() {
+			if err := hashToolchainEntry(sum, goRoot, root, info); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			return hashToolchainEntry(sum, goRoot, path, info)
+		}); err != nil {
+			return "", err
+		}
+	}
+	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+func hashToolchainEntry(sum interface {
+	Write([]byte) (int, error)
+}, goRoot, path string, info os.FileInfo) error {
+	rel, err := filepath.Rel(goRoot, path)
+	if err != nil {
+		return err
+	}
+	rel = filepath.ToSlash(rel)
+	if _, err := fmt.Fprintf(sum, "%s\x00%o\x00", rel, info.Mode()); err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(path)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(sum, "symlink\x00%s\n", filepath.ToSlash(target))
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		_, err := fmt.Fprint(sum, "special\n")
+		return err
+	}
+	if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
+		return err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(sum, f); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	_, err = fmt.Fprint(sum, "\n")
+	return err
+}
+
+func executableName(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
 }
 
 func buildReferencePlugin(repo, goPath, output string) error {
@@ -352,7 +489,7 @@ func hashFile(path string) (string, error) {
 	defer f.Close()
 
 	sum := sha256.New()
-	if _, err := sum.ReadFrom(f); err != nil {
+	if _, err := io.Copy(sum, f); err != nil {
 		return "", err
 	}
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
