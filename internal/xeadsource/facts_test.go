@@ -77,6 +77,41 @@ func TestExtractRelationalSourceFactsKeepsDeclaredKeyFieldsSeparateFromDataIdent
 	}
 }
 
+func TestExtractRelationalSourceFactsPreservesXeafRuntimeKeyAndReferMappings(t *testing.T) {
+	doc, err := Parse(FormatXeaf, []byte(`<System><Table ID="T1"><Key ID="K1" Type="PK" Fields="A;B;"/><Refer ID="R1" ToTable="T2" TableAlias="REF" ToKeyFields="C;D;" WithKeyFields="A;B;"/></Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.RuntimeKeys) != 1 {
+		t.Fatalf("runtime key count = %d: %#v", len(got.RuntimeKeys), got)
+	}
+	key := got.RuntimeKeys[0]
+	if key.TableLegacyID != "T1" ||
+		key.KeyLegacyID != "K1" ||
+		key.KeyType != "PK" ||
+		!reflect.DeepEqual(key.Fields, []string{"A", "B"}) ||
+		key.Nature != SourceFactNature ||
+		!reflect.DeepEqual(key.AuthorityLimits, runtimeKeyAuthorityLimits) {
+		t.Fatalf("runtime key fact drifted: %#v", key)
+	}
+
+	if len(got.RuntimeRefers) != 1 {
+		t.Fatalf("runtime refer count = %d: %#v", len(got.RuntimeRefers), got)
+	}
+	refer := got.RuntimeRefers[0]
+	if refer.ReferLegacyID != "R1" ||
+		refer.SourceTableLegacyID != "T1" ||
+		refer.ToTableLegacyID != "T2" ||
+		refer.TableAlias != "REF" ||
+		!reflect.DeepEqual(refer.ToKeyFields, []string{"C", "D"}) ||
+		!reflect.DeepEqual(refer.WithKeyFields, []string{"A", "B"}) ||
+		refer.Nature != SourceFactNature ||
+		!reflect.DeepEqual(refer.AuthorityLimits, runtimeReferAuthorityLimits) {
+		t.Fatalf("runtime refer fact drifted: %#v", refer)
+	}
+}
+
 func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="ORDER"><TableField ID="ORDER_ID" Name="Primary Key"/></Table></System>`))
 	if err != nil {
