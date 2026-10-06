@@ -25,6 +25,25 @@ func TestParsePreservesUnknownConstructsAndBindsExactBytes(t *testing.T) {
 	}
 }
 
+func TestParsePreservesDeepNestedTree(t *testing.T) {
+	source := []byte(`<System><Subsystem ID="S1"><Table ID="T1"><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1"/></TableKey></Table></Subsystem></System>`)
+	got, err := Parse(FormatXead, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Root.Children) != 1 ||
+		len(got.Root.Children[0].Children) != 1 ||
+		len(got.Root.Children[0].Children[0].Children) != 1 ||
+		len(got.Root.Children[0].Children[0].Children[0].Children) != 1 {
+		t.Fatalf("deep source hierarchy was lost: %#v", got.Root)
+	}
+	keyField := got.Root.Children[0].Children[0].Children[0].Children[0]
+	if keyField.Name != "TableKeyField" ||
+		keyField.Locator != "/System[1]/Subsystem[1]/Table[1]/TableKey[1]/TableKeyField[1]" {
+		t.Fatalf("deep source locator drifted: %#v", keyField)
+	}
+}
+
 func TestParseIsDeterministic(t *testing.T) {
 	source := []byte(`<System><Function ID="F1"/><Unknown b="2" a="1"/></System>`)
 	a, err := Parse(FormatXeaf, source)
