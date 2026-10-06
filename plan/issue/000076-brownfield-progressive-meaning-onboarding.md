@@ -355,4 +355,4 @@ WSL2（Go 1.25.14）で、追加した3件はPASSした。`tools/repository-heal
 - `TestIssueStatesUseTheSixAllowedValues`: ISSUE-000079の状態が`Active`で、6値の外（`a93c449a`）
 - `gofmt -l .`: `cmd/tei/knowledge_context_test.go`が未整形（`dd41e0ee`）
 
-どちらも本branchの変更を外しても再現する。統合は、`main`のhealthが緑になってから行う。
+どちらも本branchの変更を外しても再現した。その後、gofmtの空白2行とISSUE-000079の状態（`Active` → `In Progress`）だけを直し、exact head `039e24a5`でfull health checkがPASSした（gofmt / vet / test / validate、実行前後ともclean）。
