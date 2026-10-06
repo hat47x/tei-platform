@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
@@ -307,7 +308,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			if validation.Relation != "" {
 				evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(validation.Relation)}] = struct{}{}
 			}
-			if validation.Kind == "relation-unique" &&
+			if validation.Kind == semantic.ValidationRelationUnique &&
 				hasRelation &&
 				relation.Cardinality == "many" &&
 				validation.Attribute != "" &&
