@@ -30,6 +30,8 @@ Canonical IDを安定した意味上の識別子として扱い、物理的な�
 
 ただし、Canonical objectのidentityとApplication dataのbusiness key / candidate key、さらにPersistence上のprimary keyを同一視しません。物理的なsurrogate IDを導入しても、業務上の識別関係やRelation semanticsを消さないことを優先します。
 
+View、Application Pattern、Target、ORM、runtime objectの都合を、business keyや関数従属性の根拠にはしません。実装上必要なkey構造はRealizationとして追跡し、Data meaningを暗黙に置き換えないことを原則とします。
+
 ## P5. Nativeな資産を尊重する
 
 SQL、Go、外部設定、既存ツールなど、その領域で成熟した表現を無理にTEI-native DSLへ移し替えません。
