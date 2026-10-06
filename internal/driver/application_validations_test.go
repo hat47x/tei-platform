@@ -76,13 +76,23 @@ func TestResolveApplicationValidationsFailsClosedOnUnknownDuplicateAndMissingApp
 	}
 }
 
-// The Reference does not declare `uses validation` yet, so the real workspace must report that
-// instead of guessing a list. This test is replaced when the Reference declares its selection.
-func TestReferenceApplicationsDoNotYetDeclareAValidationSelection(t *testing.T) {
+// order_entry declares the Validations it evaluates before an order is submitted, in the order
+// they are evaluated. repair_intake has no Command and declares none, so it must report that
+// instead of resolving an empty selection.
+func TestReferenceApplicationsResolveTheirDeclaredValidationSelection(t *testing.T) {
 	resolver := driver.NewResolver(referenceWorld(t))
-	for _, id := range []string{"order_entry", "repair_intake"} {
-		if _, err := resolver.ResolveApplicationValidations(core.CanonicalID(id)); !errors.Is(err, driver.ErrApplicationValidationSelectionNotDeclared) {
-			t.Fatalf("%s: err=%v", id, err)
-		}
+
+	rules, err := resolver.ResolveApplicationValidations("order_entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != 2 ||
+		rules[0].ID != "sales.order_line.quantity_positive" ||
+		rules[1].ID != "sales.order.lines.line_number_unique" {
+		t.Fatalf("order_entry selection=%+v", rules)
+	}
+
+	if _, err := resolver.ResolveApplicationValidations("repair_intake"); !errors.Is(err, driver.ErrApplicationValidationSelectionNotDeclared) {
+		t.Fatalf("repair_intake: err=%v", err)
 	}
 }

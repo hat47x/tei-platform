@@ -216,11 +216,8 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 		quantity:    lineQuantity,
 		lineNumbers: []string{"1", "2"},
 	}
-	for _, validationID := range []core.CanonicalID{
-		"sales.order_line.quantity_positive",
-		"sales.order.lines.line_number_unique",
-	} {
-		rule := submitScenarioValidation(t, world, validationID)
+	for _, rule := range orderEntryValidations(t, world) {
+		validationID := rule.ID
 		result, err := validationeval.Evaluate(rule, validationSource)
 		if err != nil {
 			t.Fatalf("Validation %sを評価できません: %v", validationID, err)

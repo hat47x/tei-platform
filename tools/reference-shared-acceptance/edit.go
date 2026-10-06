@@ -34,7 +34,7 @@ type SourceEdit struct {
 
 func layerOf(op Operation) string {
 	switch op.Op {
-	case opAddApplication, opAddReferencePattern:
+	case opAddApplication, opAddReferencePattern, opAddApplicationValidationUse:
 		return layerApplication
 	case opAddEnvironmentBinding:
 		return layerEnvironment
@@ -364,6 +364,15 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				inserted.WriteString(text)
 				continue
 			}
+			if op.Op == opAddApplicationValidationUse {
+				var text string
+				content, text, err = insertApplicationValidationUse(content, *op.ApplicationValidationUse)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "APPLICATION_BLOCK_INSERTION_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(text)
+				continue
+			}
 			if op.Op != opAddRelation {
 				continue
 			}
@@ -410,4 +419,83 @@ func dataSymbol(s snapshot, id string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// insertApplicationValidationUseは、`application <id> { ... }`の直下にある`uses`宣言の後ろへ、
+// `uses validation <id>`を一行挿入する。宣言順が評価順になるため（ADR-0029）、既存の
+// `uses validation`があればその最後の後ろへ、無ければ最後の`uses`宣言の後ろへ入れる。
+//
+// block内の`uses`宣言が一つも無い、または`uses`が行の途中から始まるlayoutは、挿入位置を
+// 手探りで決めず、未対応として拒否する。
+func insertApplicationValidationUse(content []byte, spec ApplicationValidationUseSpec) ([]byte, string, error) {
+	src := string(content)
+	lx := syntax.NewLexer(src)
+	var previous, beforePrevious syntax.Token
+	inBlock := false
+	depth := 0
+	lastUses, lastValidationUse := -1, -1
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return nil, "", err
+		}
+		if t.Kind == syntax.TokenEOF {
+			break
+		}
+		switch {
+		case !inBlock && t.Kind == syntax.TokenLBrace && previous.Text == spec.Application && beforePrevious.Text == "application":
+			inBlock = true
+			depth = 1
+		case inBlock && t.Kind == syntax.TokenLBrace:
+			depth++
+		case inBlock && t.Kind == syntax.TokenRBrace:
+			depth--
+		case inBlock && depth == 1 && t.Kind == syntax.TokenIdent && t.Text == "uses":
+			kind, err := lx.Next()
+			if err != nil {
+				return nil, "", err
+			}
+			target, err := lx.Next()
+			if err != nil {
+				return nil, "", err
+			}
+			if strings.TrimLeft(src[strings.LastIndex(src[:t.Start.Offset], "\n")+1:t.Start.Offset], " \t") != "" {
+				return nil, "", fmt.Errorf("application %s の`uses`が行頭にないため、挿入位置を決められません", spec.Application)
+			}
+			lastUses = target.End.Offset
+			if kind.Text == "validation" {
+				lastValidationUse = target.End.Offset
+				if target.Text == spec.Validation {
+					return nil, "", fmt.Errorf("application %s は`uses validation %s`を既に宣言しています", spec.Application, spec.Validation)
+				}
+			}
+			beforePrevious, previous = kind, target
+			continue
+		}
+		if inBlock && depth == 0 {
+			break
+		}
+		beforePrevious, previous = previous, t
+	}
+	if !inBlock {
+		return nil, "", fmt.Errorf("application %s のblockをsource上で特定できません", spec.Application)
+	}
+	anchor := lastValidationUse
+	if anchor < 0 {
+		anchor = lastUses
+	}
+	if anchor < 0 {
+		return nil, "", fmt.Errorf("application %s のblockに`uses`宣言が無いため、挿入位置を決められません", spec.Application)
+	}
+	lineEnd := strings.Index(src[anchor:], "\n")
+	if lineEnd < 0 {
+		return nil, "", fmt.Errorf("application %s の最後の`uses`宣言の後ろに改行がありません", spec.Application)
+	}
+	insertAt := anchor + lineEnd + 1
+	newline := "\n"
+	if strings.Contains(src, "\r\n") {
+		newline = "\r\n"
+	}
+	text := fmt.Sprintf("    uses validation %s%s", spec.Validation, newline)
+	return []byte(src[:insertAt] + text + src[insertAt:]), text, nil
 }

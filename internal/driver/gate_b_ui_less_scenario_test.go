@@ -136,8 +136,7 @@ func TestGateBUIlessReferenceScenarioConnectsExistingDriverBoundariesWithoutNewR
 	evidence.HeaderDetailPattern = lineExecution.Execution.Resolution.Pattern.ID
 	evidence.HeaderDetailInstance = lineExecution.Executor.Instance.ID
 
-	quantityPositive := submitScenarioValidation(t, world, "sales.order_line.quantity_positive")
-	lineNumberUnique := submitScenarioValidation(t, world, "sales.order.lines.line_number_unique")
+	quantityPositive, lineNumberUnique := orderEntryValidationPair(t, world)
 	validationSource := submitOrderValidationSource{
 		quantity:    mustRat(t, "2.5"),
 		lineNumbers: []string{"1", "2"},

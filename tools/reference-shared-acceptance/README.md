@@ -202,7 +202,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 ```
 
 - `origin.kind`は`file` / `cli` / `studio` / `ai`。provenanceだけで、fingerprint・判定・source・Canonical Worldへ影響しません（AI固有のmodel名・prompt digest等は`origin.notes`に置けますが、どこにも保存されません）。
-- 対応するoperationは次の5種です。任意のTEI textやfile patchは運ばず、sourceは意味から決定論的に生成します。Relation変更等は、このReferenceで必要になった時点で追加します。
+- 対応するoperationは次の表のとおりです。任意のTEI textやfile patchは運ばず、sourceは意味から決定論的に生成します。Relation変更等は、このReferenceで必要になった時点で追加します。
 
 | operation | 意味 | source |
 | --- | --- | --- |
@@ -211,6 +211,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 | `add-relation` | **既存の**DataへRelation（key付き / 概念Relation）を一つ追加する | 対象Dataを宣言したfileのdata blockの、閉じ括弧の行の直前へ挿入（`placement`は持たない。閉じ括弧が行頭に無いlayoutは拒否） |
 | `add-application` | Environment bindingを含まないApplication（semantic利用・Database requirement）を追加する | 新しい`applications/<dir>/application.tei`（`placement`必須） |
 | `add-reference-pattern` | reference Patternを追加する | 新しい`applications/<dir>/patterns/<file>.tei`（`placement`必須） |
+| `add-application-validation-use` | **既存の**Applicationが評価するValidationを`uses validation`として一件宣言する。宣言順が評価順になる（ADR-0029） | 既存のApplication source fileの、最後の`uses`宣言の後ろへ一行挿入（`placement`は必須で、そのApplicationを宣言しているfileに限る）。同じApplicationへの複数の宣言は、candidateが指定した順序を保つ（この順序はfingerprintにも入る） |
 
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
 - `usesSemantic`や`databases`の順序は、authoredされたsourceの順序としてそのまま保ちます（入れ替えるとsourceとfingerprintが変わります）。
@@ -245,7 +246,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 
 - AIやStudioがcandidateのdeltaを生成できること、knowledge-firstのretrievalやranking自体
 - Driver scenario / Web Target Projectionへの影響の実行（Previewは`DRIVER_SCENARIO_NOT_RUN` / `TARGET_PROJECTION_NOT_EVALUATED`をunresolvedとして明示する）
-- Applicationが評価するValidationの選択がCanonicalから導出されること。現行のCanonical modelとDriverは、`uses validation`宣言から評価対象を導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）
+- Validationを追加しただけでは、実行時に評価されるとは限らないこと。Applicationが評価するValidationは`uses validation`の宣言から選ばれる（ADR-0029）ため、Previewは宣言していないApplicationを`APPLICATION_VALIDATION_SELECTION_NOT_DECLARED`として示す。宣言を足すのは別のoperation（`add-application-validation-use`）である
 - Runtime操作のeffect-time authority、file move / renameの自動検出、Derived Experience Knowledge
 - 決定記録が`RQ-027`を閉じること。この境界を通らずに変更したsourceは記録を残さず、`Variation`はまだ表現を持たず、Gate Evidence / Release locatorは索引化されていない。Coreにも同等の仕組みはない
 

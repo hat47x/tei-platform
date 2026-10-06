@@ -16,7 +16,6 @@ import (
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
-	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/semantic/validationeval"
 )
@@ -204,10 +203,7 @@ func TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI(t *testing.T) {
 		quantity:    gateBScenarioQuantity(t, headerDetailExecution.Execution.Result.Rows[0]),
 		lineNumbers: gateBScenarioLineNumbers(t, headerDetailExecution.Execution.Result.Rows),
 	}
-	for _, rule := range []semantic.Validation{
-		submitScenarioValidation(t, world, "sales.order_line.quantity_positive"),
-		submitScenarioValidation(t, world, "sales.order.lines.line_number_unique"),
-	} {
+	for _, rule := range orderEntryValidations(t, world) {
 		result, err := validationeval.Evaluate(rule, validationSource)
 		if err != nil {
 			t.Fatalf("Validation %sを評価できません: %v", rule.ID, err)

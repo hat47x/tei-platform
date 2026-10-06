@@ -240,9 +240,14 @@ func normalizeCandidate(c Candidate) (Candidate, string, error) {
 		seen[key] = true
 		ops = append(ops, normalized)
 	}
-	sort.Slice(ops, func(i, j int) bool {
+	// deltaは集合として決定的に並べる。ただしadd-application-validation-useだけは、宣言順が評価順になる
+	// （ADR-0029）ため、candidateが指定した順序をそのまま保つ（stable sort）。この順序はfingerprintにも入る。
+	sort.SliceStable(ops, func(i, j int) bool {
 		if ops[i].Op != ops[j].Op {
 			return ops[i].Op < ops[j].Op
+		}
+		if ops[i].Op == opAddApplicationValidationUse {
+			return false
 		}
 		return operationKey(ops[i]) < operationKey(ops[j])
 	})

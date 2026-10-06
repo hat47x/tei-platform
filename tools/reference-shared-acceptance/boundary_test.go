@@ -116,7 +116,7 @@ func TestPreviewImpactTracesToExactDependenciesAndKeepsUnresolvedVisible(t *test
 	for _, u := range ev.preview.Unresolved {
 		codes = append(codes, u.Code)
 	}
-	for _, c := range []string{"APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"} {
+	for _, c := range []string{"APPLICATION_VALIDATION_SELECTION_NOT_DECLARED", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"} {
 		if !hasCode(codes, c) {
 			t.Fatalf("unresolved %s が成功へ読み替えられて消えています: %v", c, codes)
 		}

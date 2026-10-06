@@ -12,7 +12,6 @@ import (
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
-	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/semantic/validationeval"
 )
@@ -65,7 +64,6 @@ type referenceCommandScenarioRunner struct {
 	read          readScenarioRunner
 	store         *legacyauth.FixtureStore
 	authorization *legacyauthorization.FixtureRule
-	validations   map[core.CanonicalID]semantic.Validation
 	now           time.Time
 }
 
@@ -83,25 +81,11 @@ func newReferenceCommandScenarioRunner(
 		return nil, err
 	}
 
-	validationIDs := []core.CanonicalID{
-		core.MustCanonicalID("sales.order_line.quantity_positive"),
-		core.MustCanonicalID("sales.order.lines.line_number_unique"),
-	}
-	validations := make(map[core.CanonicalID]semantic.Validation, len(validationIDs))
-	for _, id := range validationIDs {
-		rule, err := findSemanticValidation(world, id)
-		if err != nil {
-			return nil, err
-		}
-		validations[id] = rule
-	}
-
 	return &referenceCommandScenarioRunner{
 		resolver:      driver.NewResolver(world),
 		read:          newReferenceReadScenarioRunner(world),
 		store:         store,
 		authorization: authorization,
-		validations:   validations,
 		now:           time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC),
 	}, nil
 }
@@ -197,11 +181,14 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 
 	result.Stage = "validation"
 	validationSource := commandValidationSource{orderLines: readResult.OrderLineRows}
-	for _, id := range []core.CanonicalID{
-		core.MustCanonicalID("sales.order_line.quantity_positive"),
-		core.MustCanonicalID("sales.order.lines.line_number_unique"),
-	} {
-		rule := r.validations[id]
+	// どのValidationを評価するかは、ApplicationがCanonicalに宣言した選択から得る（ADR-0029）。
+	// Target側に一覧を持たない。宣言が無ければ、空を成功とみなさず、Execution Errorとして返す。
+	rules, err := r.resolver.ResolveApplicationValidations(core.MustCanonicalID("order_entry"))
+	if err != nil {
+		return result, err
+	}
+	for _, rule := range rules {
+		id := rule.ID
 		evaluated, err := validationeval.Evaluate(rule, validationSource)
 		if err != nil {
 			return result, err
@@ -444,28 +431,6 @@ func semanticRowValueByAttribute(row semanticRowProjection, attribute string) (a
 		}
 	}
 	return nil, false
-}
-
-func findSemanticValidation(world ir.World, id core.CanonicalID) (semantic.Validation, error) {
-	var found semantic.Validation
-	count := 0
-	for _, namespace := range world.Semantics {
-		for _, candidate := range namespace.Validations {
-			if candidate.ID != id {
-				continue
-			}
-			found = candidate
-			count++
-		}
-	}
-	switch count {
-	case 0:
-		return semantic.Validation{}, fmt.Errorf("Semantic Validation %s not found", id)
-	case 1:
-		return found, nil
-	default:
-		return semantic.Validation{}, fmt.Errorf("Semantic Validation %s is ambiguous: %d definitions", id, count)
-	}
 }
 
 func projectBusinessResult(source capabilityinvoke.BusinessResult) (businessResultProjection, error) {
