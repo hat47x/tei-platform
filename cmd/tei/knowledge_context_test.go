@@ -332,6 +332,40 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" {
 		t.Fatalf("scoped uniqueness was promoted to a business key: %+v", dataDesign)
 	}
+	if len(dataDesign.BusinessIdentityCandidates) != 1 {
+		t.Fatalf("business identity candidates=%+v", dataDesign.BusinessIdentityCandidates)
+	}
+	identityCandidate := dataDesign.BusinessIdentityCandidates[0]
+	if identityCandidate.Relation != "sales.order.lines" ||
+		identityCandidate.TargetOccurrence != "sales.order_line" ||
+		identityCandidate.BasisConstraint != "sales.order.lines.line_number_unique" ||
+		identityCandidate.Scope != "per-relation-source-occurrence" ||
+		identityCandidate.Nature != "candidate-from-accepted-scoped-uniqueness" {
+		t.Fatalf("business identity candidate drifted: %+v", identityCandidate)
+	}
+	if len(identityCandidate.Components) != 2 ||
+		identityCandidate.Components[0].Kind != "relation-source-occurrence" ||
+		identityCandidate.Components[0].Data != "sales.order" ||
+		identityCandidate.Components[1].Kind != "attribute" ||
+		identityCandidate.Components[1].Data != "sales.order_line" ||
+		identityCandidate.Components[1].Attribute != "sales.order_line.line_number" {
+		t.Fatalf("business identity candidate lost composite occurrence terms: %+v", identityCandidate.Components)
+	}
+	for _, needed := range []string{
+		"source-occurrence-business-identifier",
+		"relation-business-meaning",
+		"target-membership-exclusivity",
+		"identifier-stability",
+		"temporal-validity",
+	} {
+		if !containsKnowledgeContextString(identityCandidate.EvidenceNeeded, needed) {
+			t.Fatalf("business identity Evidence need %q is missing: %+v", needed, identityCandidate.EvidenceNeeded)
+		}
+	}
+	if dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		dataDesign.CandidateKeys.Nature != "unresolved" {
+		t.Fatalf("business identity candidate was promoted to accepted identity: %+v", dataDesign)
+	}
 	if len(dataDesign.FunctionalDependencyCandidates) != 1 {
 		t.Fatalf("functional dependency candidates=%+v", dataDesign.FunctionalDependencyCandidates)
 	}
@@ -411,6 +445,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 
 	for _, limit := range []string{
 		"absence-of-authored-business-identifier-is-not-no-identifier",
+		"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"functional-dependency-candidate-is-not-accepted-functional-dependency",
 		"relation-key-is-not-business-identifier",
