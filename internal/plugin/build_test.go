@@ -148,7 +148,7 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 	})
 	t.Run("duplicate build dependency", func(t *testing.T) {
 		p := buildPlanFixture()
-		p.Dependencies[1].ID = p.Dependencies[0].ID
+		p.Dependencies[1] = p.Dependencies[0]
 		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
 			t.Fatal("expected duplicate build dependency to fail")
 		}
