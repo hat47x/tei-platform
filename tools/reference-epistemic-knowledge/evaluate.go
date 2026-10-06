@@ -91,7 +91,12 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			assessment.ReviewValidity = "superseded"
 			assessment.SupersededBy = append([]string{}, replacements...)
 			assessment.Reasons = append(assessment.Reasons, "SUPERSEDED_BY_RELATION")
+			assessments[assertion.ID] = assessment
 		}
+	}
+
+	for _, assertion := range corpus.Assertions {
+		assessment := assessments[assertion.ID]
 		assessment.Conflict = conflictState(assertion, assessments)
 		assessment.UseState, assessment.Reasons = deriveUseState(assertion, assessment)
 		assessment.Reasons = normalizeStrings(assessment.Reasons)
