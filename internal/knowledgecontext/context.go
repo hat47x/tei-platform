@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"tei/internal/core"
-	"tei/internal/database/persistence"
 	"tei/internal/index"
 	"tei/internal/ir"
 	"tei/internal/semantic"
