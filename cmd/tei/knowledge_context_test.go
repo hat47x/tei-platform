@@ -123,6 +123,27 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
 		}
 	}
+	for _, question := range []string{
+		"which-fields-identify-the-business-occurrence",
+		"what-is-the-uniqueness-scope",
+		"when-is-the-identifier-valid",
+		"which-relations-or-constraints-depend-on-the-identity",
+		"which-source-or-contract-owns-the-uniqueness-claim",
+	} {
+		if !containsKnowledgeContextString(dataDesign.BusinessIdentityEvidenceQuestions, question) {
+			t.Fatalf("business identity evidence question %q is missing: %+v", question, dataDesign.BusinessIdentityEvidenceQuestions)
+		}
+	}
+	for _, question := range []string{
+		"which-determinants-determine-which-dependents",
+		"under-what-scope-and-time-does-the-dependency-hold",
+		"which-source-or-evidence-establishes-the-dependency",
+		"is-this-a-functional-dependency-or-a-domain-constraint",
+	} {
+		if !containsKnowledgeContextString(dataDesign.FunctionalDependencyEvidenceQuestions, question) {
+			t.Fatalf("functional dependency evidence question %q is missing: %+v", question, dataDesign.FunctionalDependencyEvidenceQuestions)
+		}
+	}
 
 	var foundLineRelation bool
 	for _, relation := range dataDesign.Relations {
