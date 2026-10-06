@@ -9,6 +9,10 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/database/migration"
+	"tei/internal/deployment"
+	"tei/internal/environment"
+	"tei/internal/permission"
 )
 
 const (
@@ -116,11 +120,32 @@ type BuildArtifactLock struct {
 // before the artifact exists. Runtime DefinitionFingerprint intentionally keeps
 // Artifact included.
 func BuildDefinitionFingerprint(d Definition) string {
-	n := NormalizeDefinition(d)
+	n := NormalizeDefinition(cloneBuildDefinition(d))
 	n.Artifact = Artifact{}
 	b, _ := json.Marshal(n)
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
+}
+
+
+
+func cloneBuildDefinition(d Definition) Definition {
+	out := d
+	out.Runtime.Args = append([]string(nil), d.Runtime.Args...)
+	out.Requires = append([]Requirement(nil), d.Requires...)
+	out.External = append([]ExternalRequirement(nil), d.External...)
+	out.Provides = make([]Capability, len(d.Provides))
+	for i, capability := range d.Provides {
+		out.Provides[i] = capability
+		out.Provides[i].Actions = append([]deployment.ActionKind(nil), capability.Actions...)
+		out.Provides[i].Observations = append([]deployment.ObservationKind(nil), capability.Observations...)
+		out.Provides[i].Evidence = append([]deployment.EvidenceKind(nil), capability.Evidence...)
+		out.Provides[i].DatabaseProviders = append([]environment.DatabaseProvider(nil), capability.DatabaseProviders...)
+		out.Provides[i].MigrationTools = append([]migration.Tool(nil), capability.MigrationTools...)
+		out.Provides[i].Features = append([]environment.Feature(nil), capability.Features...)
+		out.Provides[i].Permissions = append([]permission.Spec(nil), capability.Permissions...)
+	}
+	return out
 }
 
 func NormalizeBuildPlan(p BuildPlan) BuildPlan {
