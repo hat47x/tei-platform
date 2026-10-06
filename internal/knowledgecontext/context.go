@@ -192,6 +192,7 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			"when-is-the-identifier-valid",
 			"which-relations-or-constraints-depend-on-the-identity",
 			"which-source-or-contract-owns-the-uniqueness-claim",
+			"which-normalization-or-equivalence-policy-applies",
 		},
 		FunctionalDependencyEvidenceQuestions: []string{
 			"which-determinants-determine-which-dependents",
@@ -207,6 +208,7 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
+			"normalized-string-equality-is-not-business-identity-evidence",
 			"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 		},
 	}
