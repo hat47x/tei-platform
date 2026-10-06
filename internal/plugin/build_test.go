@@ -95,7 +95,8 @@ func TestBuildPlanFingerprintChangesWhenBuildInputChanges(t *testing.T) {
 	}{
 		{"source digest", func(p *plugin.BuildPlan) { p.Sources[0].Digest = buildDigestB }},
 		{"source locator", func(p *plugin.BuildPlan) { p.Sources[0].Locator = "other/main.go" }},
-		{"builder", func(p *plugin.BuildPlan) { p.Builder.Version = "go1.26.1" }},
+		{"builder version", func(p *plugin.BuildPlan) { p.Builder.Version = "go1.26.1" }},
+		{"builder contract", func(p *plugin.BuildPlan) { p.Builder.ContractVersion = "tei.plugin-build/v2" }},
 		{"dependency", func(p *plugin.BuildPlan) { p.Dependencies[0].Version = "1.0.1" }},
 		{"recipe", func(p *plugin.BuildPlan) { p.Recipe.Entrypoint = "./tools/other-plugin" }},
 		{"target", func(p *plugin.BuildPlan) { p.Target = "wasm-component" }},
@@ -129,6 +130,13 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 		p.Builder.ArtifactDigest = ""
 		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
 			t.Fatal("expected missing builder digest to fail")
+		}
+	})
+	t.Run("builder contract required", func(t *testing.T) {
+		p := buildPlanFixture()
+		p.Builder.ContractVersion = ""
+		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
+			t.Fatal("expected missing builder contract version to fail")
 		}
 	})
 	t.Run("duplicate source identity", func(t *testing.T) {
