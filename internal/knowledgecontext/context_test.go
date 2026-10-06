@@ -133,6 +133,82 @@ func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextKeepsMultiplePhysicalKeysOutOfLogicalIdentity(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Semantics[0].Data[1].Attributes = append(
+		w.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{
+			ID:      "sales.order_line.order_line_id",
+			Symbol:  "orderLineId",
+			TypeRef: "std.identifier",
+		},
+	)
+	w.Persistence = []persistence.Mapping{
+		{
+			ID:           "sales_core.order_line",
+			Database:     "sales_core",
+			SemanticData: "sales.order_line",
+			Table:        "public.order_lines",
+			Columns: []persistence.ColumnMapping{
+				{
+					Attribute:   "sales.order_line.order_line_id",
+					Column:      "order_line_id",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+				{
+					Attribute:   "sales.order_line.line_number",
+					Column:      "line_number",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+			},
+			PrimaryKey: []core.CanonicalID{"sales.order_line.order_line_id"},
+		},
+		{
+			ID:           "archive.order_line",
+			Database:     "archive",
+			SemanticData: "sales.order_line",
+			Table:        "order_line_archive",
+			Columns: []persistence.ColumnMapping{
+				{
+					Attribute:   "sales.order_line.line_number",
+					Column:      "line_no",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+			},
+			PrimaryKey: []core.CanonicalID{"sales.order_line.line_number"},
+		},
+	}
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil || len(ctx.DataDesign.PersistenceRealizations) != 2 {
+		t.Fatalf("multiple persistence realizations are missing: %+v", ctx.DataDesign)
+	}
+	if ctx.DataDesign.PersistenceRealizations[0].Mapping != "archive.order_line" ||
+		ctx.DataDesign.PersistenceRealizations[1].Mapping != "sales_core.order_line" {
+		t.Fatalf("persistence realizations are not deterministic: %+v", ctx.DataDesign.PersistenceRealizations)
+	}
+	if ctx.DataDesign.PersistenceRealizations[0].Uniqueness[0].Attributes[0] != "sales.order_line.line_number" ||
+		ctx.DataDesign.PersistenceRealizations[1].Uniqueness[0].Attributes[0] != "sales.order_line.order_line_id" {
+		t.Fatalf("different physical primary keys were not preserved independently: %+v", ctx.DataDesign.PersistenceRealizations)
+	}
+	if ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		ctx.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		ctx.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("multiple physical keys changed logical identity authority: %+v", ctx.DataDesign)
+	}
+	if len(ctx.DataDesign.BusinessIdentityCandidates) != 1 ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].BasisConstraint != "sales.order.lines.line_number_unique" {
+		t.Fatalf("physical keys replaced semantic identity candidate: %+v", ctx.DataDesign.BusinessIdentityCandidates)
+	}
+}
+
 func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	ctx := Build(
 		dataDesignRelationUniqueWorld(),
