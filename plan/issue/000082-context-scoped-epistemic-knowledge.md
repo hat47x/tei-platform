@@ -254,9 +254,9 @@ schemaはReference限定の `tei.reference.epistemic-corpus/v0` とし、現時�
 
 `user + fact + native` はcurrent scope内の前提として扱える。一方、AI originを `native` にする入力は拒否する。
 
-reviewed / conditional assertionはreview recordの `reviewedMeaningFingerprint` と現在の `meaningFingerprint` を比較し、意味identityが変わった場合は旧reviewを現在値へ継承せず `review-required` とする。
+reviewed / conditional assertionはv0では `method=human-confirmation` のreview recordを要求する。AI自己reviewをreview済み状態へ読み替えない。そのうえでreview recordの `reviewedMeaningFingerprint` と現在の `meaningFingerprint` を比較し、意味identityが変わった場合は旧reviewを現在値へ継承せず `review-required` とする。
 
-このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る境界とし、format差とsemantic差を判別できない場合にreview維持を推測しない。
+このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る入力であり、一致そのものをsemantic proofへ昇格させない。format差とsemantic差を判別できない場合にreview維持を推測しない。
 
 ### E2 context compatibility candidate
 
