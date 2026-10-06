@@ -192,6 +192,13 @@
       "observed": "XeadDriver record/detail functions may declare Function/Detail KeyFields; only when that override is absent do XF290/XF390 fall back to the target Table PK",
       "risk": "a Function or UI record-selection key can be mistaken for Table identity or durable business identity, coupling interaction realization back into Data meaning",
       "teiDirection": "model record-selection/input keys as Function/Interaction requirements distinct from table key assertions, business occurrence identity, Canonical identity, and physical primary key"
+    },
+    {
+      "id": "RMP-028",
+      "topic": "composite-domain-constraint",
+      "observed": "Watanabe distinguishes functional dependency from domain restriction: a composite value set can require an explicit allowed relation even when no dependent attribute exists",
+      "risk": "treating every composite key only as record identity or dependency evidence can lose the business meaning of allowed combinations and can over-normalize or under-constrain transferred Data",
+      "teiDirection": "keep composite domain/allowed-combination constraints distinct from business identity and functional dependency; preserve source evidence and leave semantic promotion unresolved until an explicit Constraint/Relation contract is accepted"
     }
   ]
 }
