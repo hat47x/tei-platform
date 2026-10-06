@@ -12,13 +12,17 @@ type RelationalDiagnostic struct {
 	RelationshipID string `json:"relationshipId,omitempty"`
 	TableLegacyID  string `json:"tableLegacyId,omitempty"`
 	KeyLegacyID    string `json:"keyLegacyId,omitempty"`
-	FieldLegacyID  string `json:"fieldLegacyId,omitempty"`
-	LeftCount      int    `json:"leftCount,omitempty"`
-	RightCount     int    `json:"rightCount,omitempty"`
+	FieldLegacyID         string `json:"fieldLegacyId,omitempty"`
+	LeftFieldLegacyID     string `json:"leftFieldLegacyId,omitempty"`
+	RightFieldLegacyID    string `json:"rightFieldLegacyId,omitempty"`
+	LeftDataTypeLegacyID  string `json:"leftDataTypeLegacyId,omitempty"`
+	RightDataTypeLegacyID string `json:"rightDataTypeLegacyId,omitempty"`
+	LeftCount             int    `json:"leftCount,omitempty"`
+	RightCount            int    `json:"rightCount,omitempty"`
 }
 
 func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []RelationalDiagnostic {
-	tableFields := indexTableFieldTypes(doc.Root)
+	tableFields := indexTableFieldMetadata(doc.Root)
 	keys := map[string]map[string]LegacyKeyFact{}
 	for _, key := range facts.LegacyKeys {
 		if _, ok := keys[key.TableLegacyID]; !ok {
@@ -73,7 +77,10 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	for _, relation := range facts.RelationshipKeys {
 		left, leftOK := diagnoseRelationshipSide(&out, relation, "table1", relation.Table1LegacyID, relation.Key1LegacyID, tableFields, keys)
 		right, rightOK := diagnoseRelationshipSide(&out, relation, "table2", relation.Table2LegacyID, relation.Key2LegacyID, tableFields, keys)
-		if leftOK && rightOK && len(left.Members) != len(right.Members) {
+		if !leftOK || !rightOK {
+			continue
+		}
+		if len(left.Members) != len(right.Members) {
 			out = append(out, RelationalDiagnostic{
 				Code:           "relationship-key-arity-mismatch",
 				Locator:        relation.Locator,
@@ -81,6 +88,53 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				RelationshipID: relation.RelationshipID,
 				LeftCount:      len(left.Members),
 				RightCount:     len(right.Members),
+			})
+			continue
+		}
+
+		leftMembers, leftOrderOK := orderedLegacyKeyMembers(left)
+		rightMembers, rightOrderOK := orderedLegacyKeyMembers(right)
+		if !leftOrderOK {
+			out = append(out, RelationalDiagnostic{
+				Code:           "relationship-key-order-unresolved",
+				Locator:        relation.Locator,
+				Nature:         RelationalDiagnosticNature,
+				Side:           "table1",
+				RelationshipID: relation.RelationshipID,
+				TableLegacyID:  relation.Table1LegacyID,
+				KeyLegacyID:    relation.Key1LegacyID,
+			})
+		}
+		if !rightOrderOK {
+			out = append(out, RelationalDiagnostic{
+				Code:           "relationship-key-order-unresolved",
+				Locator:        relation.Locator,
+				Nature:         RelationalDiagnosticNature,
+				Side:           "table2",
+				RelationshipID: relation.RelationshipID,
+				TableLegacyID:  relation.Table2LegacyID,
+				KeyLegacyID:    relation.Key2LegacyID,
+			})
+		}
+		if !leftOrderOK || !rightOrderOK {
+			continue
+		}
+
+		for i := range leftMembers {
+			leftType := leftMembers[i].DataTypeLegacyID
+			rightType := rightMembers[i].DataTypeLegacyID
+			if leftType == "" || rightType == "" || leftType == rightType {
+				continue
+			}
+			out = append(out, RelationalDiagnostic{
+				Code:                  "relationship-key-data-type-mismatch",
+				Locator:               relation.Locator,
+				Nature:                RelationalDiagnosticNature,
+				RelationshipID:        relation.RelationshipID,
+				LeftFieldLegacyID:     leftMembers[i].FieldLegacyID,
+				RightFieldLegacyID:    rightMembers[i].FieldLegacyID,
+				LeftDataTypeLegacyID:  leftType,
+				RightDataTypeLegacyID: rightType,
 			})
 		}
 	}
@@ -201,13 +255,34 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	return out
 }
 
+func orderedLegacyKeyMembers(key LegacyKeyFact) ([]LegacyKeyMemberFact, bool) {
+	members := append([]LegacyKeyMemberFact(nil), key.Members...)
+	if len(members) <= 1 {
+		return members, true
+	}
+	seen := map[string]struct{}{}
+	for _, member := range members {
+		if member.SortKey == "" {
+			return nil, false
+		}
+		if _, duplicate := seen[member.SortKey]; duplicate {
+			return nil, false
+		}
+		seen[member.SortKey] = struct{}{}
+	}
+	sort.Slice(members, func(i, j int) bool {
+		return members[i].SortKey < members[j].SortKey
+	})
+	return members, true
+}
+
 func diagnoseRelationshipSide(
 	out *[]RelationalDiagnostic,
 	relation RelationshipKeyFact,
 	side string,
 	tableID string,
 	keyID string,
-	tableFields map[string]map[string]string,
+	tableFields map[string]map[string]tableFieldMetadata,
 	keys map[string]map[string]LegacyKeyFact,
 ) (LegacyKeyFact, bool) {
 	if tableID == "" {
