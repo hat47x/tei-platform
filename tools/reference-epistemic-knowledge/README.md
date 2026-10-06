@@ -44,7 +44,7 @@ conflict
 
 user origin + fact assertion + `native` は、明示された現在scopeと一致する場合、通常の作業前提として利用できます。外部検証済みという意味ではありません。
 
-AI originは `native` にできません。AIが生成したfact assertionは、保存されただけではreview済みに昇格せず、`unreviewed` のまま `candidate-only` です。human reviewを持つAI assertionはreview済みになり得ますが、review recordがbindingしたmeaning fingerprintと現在値が一致する必要があります。
+AI originは `native` にできません。AIが生成したfact assertionは、保存されただけではreview済みに昇格せず、`unreviewed` のまま `candidate-only` です。v0で `reviewed / conditional` を成立させるreview recordは `method=human-confirmation` を明示的に要求し、AI自己reviewをreview済み状態へ読み替えません。review recordがbindingしたmeaning fingerprintと現在値も一致する必要があります。
 
 ## context generalizationをしない
 
@@ -68,7 +68,7 @@ usable when environment is unknown
 
 review recordは `reviewedMeaningFingerprint` を持ちます。現在assertionの `meaningFingerprint` が変わった場合、以前のreviewを現在値へ継承せず `review-required` に戻します。
 
-このReference自身は自然言語のsemantic diffを判定しません。meaning fingerprintは対象を所有するsurface / transformation contractが供給する前提です。単なるformat変更と意味変更を区別できない場合に、ここで推測してreviewを維持することはしません。
+このReference自身は自然言語のsemantic diffを判定しません。meaning fingerprintは対象を所有するsurface / transformation contractが供給する入力です。fingerprintが一致すること自体をsemantic proofにはせず、Projectionにも `meaning-fingerprint-is-input-not-semantic-proof` を残します。単なるformat変更と意味変更を区別できない場合に、ここで推測してreviewを維持することはしません。
 
 ## Conflict
 
