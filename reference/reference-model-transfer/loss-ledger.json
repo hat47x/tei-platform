@@ -98,6 +98,24 @@
       "risk": "test fixtures or mapping artifacts may republish protected model content without a confirmed boundary",
       "owner": "GitHub #941",
       "stopCondition": "keep original model contents outside public repository until usage/republication boundary is confirmed"
+    },
+    {
+      "id": "RML-011",
+      "topic": "legacy-key-to-business-identity",
+      "nature": "unresolved",
+      "evidence": "XeadModeler preserves ordered multi-field TableKey/TableKeyField sets and PK/FK/SK/XK distinctions; Relationship refers to key identities on both sides",
+      "risk": "database-oriented source key assertions can be silently promoted to business occurrence identity, candidate key, or functional dependency",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "preserve source key kind, membership, relation references and provenance; keep business identifier/candidate key/FD unresolved until separately accepted or corroborated"
+    },
+    {
+      "id": "RML-012",
+      "topic": "function-selection-key-to-data-identity",
+      "nature": "unresolved",
+      "evidence": "XeadDriver XF290/XF390 use Function/Detail KeyFields when declared and fall back to Table PK only when the override is absent",
+      "risk": "record-selection requirements of one interaction can become durable Data identity or leak target/runtime assumptions into semantics",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "preserve declared KeyFields as Function/Interaction source facts distinct from Table key, business identity, Canonical identity and physical key authority"
     }
   ],
   "claimsNotEstablished": [
