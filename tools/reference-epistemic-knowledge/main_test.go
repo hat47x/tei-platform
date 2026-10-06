@@ -279,3 +279,34 @@ func TestMissingContextDimensionDoesNotGeneralize(t *testing.T) {
 		t.Fatalf("missing environment scope was generalized silently: %+v", conditional)
 	}
 }
+
+func TestReviewedAssertionRequiresHumanConfirmationMethod(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "human-reviewed" && corpus.Assertions[i].Review != nil {
+			corpus.Assertions[i].Review.Method = "ai-self-review"
+		}
+	}
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "human-confirmation") {
+		t.Fatalf("non-human review method was accepted: %v", err)
+	}
+}
+
+func TestProjectionStatesMeaningFingerprintIsNotSemanticProof(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, limit := range projection.AuthorityLimits {
+		if limit == "meaning-fingerprint-is-input-not-semantic-proof" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("meaning fingerprint authority limit is missing: %+v", projection.AuthorityLimits)
+	}
+}
