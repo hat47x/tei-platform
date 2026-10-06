@@ -115,8 +115,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
-		"business identifier": dataDesign.BusinessOccurrenceIdentifier,
-		"candidate keys":      dataDesign.CandidateKeys,
+		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
+		"candidate keys":        dataDesign.CandidateKeys,
 		"functional dependency": dataDesign.FunctionalDependencies,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
