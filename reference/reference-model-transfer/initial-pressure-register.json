@@ -129,6 +129,41 @@
       "observed": "the reference combines heterogeneous Data, Function, Business, UI, lifecycle, Script, and runtime constructs under one legacy model/runtime family",
       "risk": "a compatibility importer can become a second canonical model or force legacy kinds into TEI Core",
       "teiDirection": "treat imported meaning as candidate Semantic Extensions/Plugins and native assets; keep importer authority separate and preserve unresolved mappings"
+    },
+    {
+      "id": "RMP-019",
+      "topic": "function-potential-vs-action-specific-crud",
+      "observed": "TaskFunctionIO selects a Panel or Spool, while the legacy task/table CRUD matrix aggregates every IOTable declared by the referenced Function",
+      "risk": "Function-wide potential data access can be mistaken for the data effect of one Business Action or one interaction path",
+      "teiDirection": "keep Function-level operation authority separate from Business Action attribution; require an explicit path-specific link before deriving action-specific CRUD"
+    },
+    {
+      "id": "RMP-020",
+      "topic": "business-step-addressability",
+      "observed": "35 of 148 TaskAction elements in the benchmark have no ID and are primarily located by parent context, SortKey, indentation, and source position",
+      "risk": "source-local ordering can be promoted to durable semantic identity or cross-view references can become unstable",
+      "teiDirection": "separate exact-snapshot source locator from durable Business step addressability; add durable identity only when Reference pressure requires it"
+    },
+    {
+      "id": "RMP-021",
+      "topic": "business-trigger-vs-runtime-schedule",
+      "observed": "Task.Event expresses business timing such as on-demand work, while executable functions can independently carry TimerOption runtime scheduling",
+      "risk": "business event wording can be compiled into scheduler semantics or runtime schedule can be mistaken for business trigger meaning",
+      "teiDirection": "separate Business trigger/event, scheduling policy, and executable capability binding"
+    },
+    {
+      "id": "RMP-022",
+      "topic": "mixed-script-semantics-and-presentation",
+      "observed": "the same native Script mechanism can validate data, derive values, update related tables, and change presentation properties such as editable state or color",
+      "risk": "native Script extraction can collapse deterministic business semantics, persistence effects, and target-specific presentation effects into one canonical rule",
+      "teiDirection": "preserve native Script first; extract semantic validation/derivation and presentation contribution separately only with explicit evidence and acceptance"
+    },
+    {
+      "id": "RMP-023",
+      "topic": "platform-service-table-role",
+      "observed": "the executable System definition names special tables for users, sessions, numbering, calendar, tax, exchange rates, variants, and other platform services",
+      "risk": "one reference application's physical table identities can become hard-coded platform semantics",
+      "teiDirection": "represent reusable service meaning through Extension/Capability contracts and environment/database bindings rather than Core-known table names"
     }
   ]
 }
