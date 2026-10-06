@@ -178,6 +178,20 @@
       "observed": "52 Xead TableFields are DERIVABLE; 51 structurally match Xeaf VIRTUAL fields, while the actual calculation can live in Script, TypeOptions, or other runtime logic",
       "risk": "DERIVABLE/VIRTUAL labels can be mistaken for complete derivation semantics or runtime Script can become the only hidden source of business meaning",
       "teiDirection": "separate derived-value semantic contract from native evaluator/realization; preserve missing derivation authority as unresolved"
+    },
+    {
+      "id": "RMP-026",
+      "topic": "legacy-key-vs-business-identity",
+      "observed": "XeadModeler represents ordered multi-field TableKey/TableKeyField sets, distinguishes PK/FK/SK/XK, emits PK as PRIMARY KEY and SK as UNIQUE, and Relationship links both participating TableKey identities",
+      "risk": "legacy database key declarations or relationship key references can be promoted directly to TEI business occurrence identity, candidate key, or functional dependency without preserving the difference between source assertion and accepted business meaning",
+      "teiDirection": "preserve legacy key kind, ordered field membership, relationship key references, and provenance as source facts; keep business identifier, candidate key, and functional dependency candidate/unresolved until explicitly accepted or independently corroborated"
+    },
+    {
+      "id": "RMP-027",
+      "topic": "function-selection-key-vs-data-identity",
+      "observed": "XeadDriver record/detail functions may declare Function/Detail KeyFields; only when that override is absent do XF290/XF390 fall back to the target Table PK",
+      "risk": "a Function or UI record-selection key can be mistaken for Table identity or durable business identity, coupling interaction realization back into Data meaning",
+      "teiDirection": "model record-selection/input keys as Function/Interaction requirements distinct from table key assertions, business occurrence identity, Canonical identity, and physical primary key"
     }
   ]
 }
