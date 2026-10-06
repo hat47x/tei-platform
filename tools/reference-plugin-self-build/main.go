@@ -183,8 +183,9 @@ func run(repo string) (evidence, error) {
 		},
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.package.go.seed"),
-			Version:        goVersion,
-			ArtifactDigest: goToolchainDigest,
+			Version:         goVersion,
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  goToolchainDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
@@ -251,8 +252,9 @@ func run(repo string) (evidence, error) {
 		},
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.go.seed"),
-			Version:        goVersion,
-			ArtifactDigest: goToolchainDigest,
+			Version:         goVersion,
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  goToolchainDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "go-package",
