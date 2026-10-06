@@ -29,6 +29,7 @@ var declaredKeyFieldsAuthorityLimits = []string{
 type LegacyKeyMemberFact struct {
 	Locator       string `json:"locator"`
 	FieldLegacyID string `json:"fieldLegacyId"`
+	AttributeType string `json:"attributeType,omitempty"`
 	SortKey       string `json:"sortKey,omitempty"`
 	SourceOrdinal int    `json:"sourceOrdinal"`
 }
@@ -74,6 +75,7 @@ type RelationalSourceFacts struct {
 // candidate keys, physical key authority, or functional dependencies.
 func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	var facts RelationalSourceFacts
+	tableFieldTypes := indexTableFieldTypes(doc.Root)
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
@@ -95,9 +97,11 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				if localName(child.Name) != "TableKeyField" {
 					continue
 				}
+				fieldLegacyID := attributeValue(child, "FieldID")
 				key.Members = append(key.Members, LegacyKeyMemberFact{
 					Locator:       child.Locator,
-					FieldLegacyID: attributeValue(child, "FieldID"),
+					FieldLegacyID: fieldLegacyID,
+					AttributeType: tableFieldTypes[tableLegacyID][fieldLegacyID],
 					SortKey:       attributeValue(child, "SortKey"),
 					SourceOrdinal: i,
 				})
@@ -145,6 +149,30 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 		return facts.DeclaredKeyFields[i].Locator < facts.DeclaredKeyFields[j].Locator
 	})
 	return facts
+}
+
+func indexTableFieldTypes(root Node) map[string]map[string]string {
+	out := map[string]map[string]string{}
+	var walk func(Node)
+	walk = func(n Node) {
+		if localName(n.Name) == "Table" {
+			tableID := attributeValue(n, "ID")
+			if _, ok := out[tableID]; !ok {
+				out[tableID] = map[string]string{}
+			}
+			for _, child := range n.Children {
+				if localName(child.Name) != "TableField" {
+					continue
+				}
+				out[tableID][attributeValue(child, "ID")] = attributeValue(child, "AttributeType")
+			}
+		}
+		for _, child := range n.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return out
 }
 
 func attributeValue(n Node, name string) string {
