@@ -194,7 +194,11 @@ func TestDataDesignContextKeepsMultiplePhysicalKeysOutOfLogicalIdentity(t *testi
 		ctx.DataDesign.PersistenceRealizations[1].Mapping != "sales_core.order_line" {
 		t.Fatalf("persistence realizations are not deterministic: %+v", ctx.DataDesign.PersistenceRealizations)
 	}
-	if ctx.DataDesign.PersistenceRealizations[0].Uniqueness[0].Attributes[0] != "sales.order_line.line_number" ||
+	if len(ctx.DataDesign.PersistenceRealizations[0].Uniqueness) != 1 ||
+		len(ctx.DataDesign.PersistenceRealizations[0].Uniqueness[0].Attributes) != 1 ||
+		len(ctx.DataDesign.PersistenceRealizations[1].Uniqueness) != 1 ||
+		len(ctx.DataDesign.PersistenceRealizations[1].Uniqueness[0].Attributes) != 1 ||
+		ctx.DataDesign.PersistenceRealizations[0].Uniqueness[0].Attributes[0] != "sales.order_line.line_number" ||
 		ctx.DataDesign.PersistenceRealizations[1].Uniqueness[0].Attributes[0] != "sales.order_line.order_line_id" {
 		t.Fatalf("different physical primary keys were not preserved independently: %+v", ctx.DataDesign.PersistenceRealizations)
 	}
