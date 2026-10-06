@@ -48,13 +48,34 @@ type DataDesignConstraint struct {
 	Relation  core.CanonicalID `json:"relation,omitempty"`
 }
 
+type DataDesignScopedUniqueness struct {
+	Constraint core.CanonicalID `json:"constraint"`
+	Relation   core.CanonicalID `json:"relation"`
+	Source     core.CanonicalID `json:"source"`
+	Target     core.CanonicalID `json:"target"`
+	Attribute  core.CanonicalID `json:"attribute"`
+	Scope      string           `json:"scope"`
+	Nature     string           `json:"nature"`
+}
+
+type DataDesignEvidence struct {
+	Subject           subject.Subject  `json:"subject"`
+	Source            string           `json:"source"`
+	SourceFingerprint string           `json:"sourceFingerprint"`
+	Range             sourceindex.Range `json:"range"`
+	Role              sourceindex.Role `json:"role"`
+}
+
 type DataDesignContext struct {
 	Data                                  core.CanonicalID         `json:"data"`
 	Focus                                 subject.Subject          `json:"focus"`
-	Attributes                            []DataDesignAttribute    `json:"attributes,omitempty"`
-	Relations                             []DataDesignRelation     `json:"relations,omitempty"`
-	Constraints                           []DataDesignConstraint   `json:"constraints,omitempty"`
-	BusinessOccurrenceIdentifier          DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
+	Attributes                            []DataDesignAttribute         `json:"attributes,omitempty"`
+	Relations                             []DataDesignRelation          `json:"relations,omitempty"`
+	Constraints                           []DataDesignConstraint        `json:"constraints,omitempty"`
+	ScopedUniqueness                      []DataDesignScopedUniqueness  `json:"scopedUniqueness,omitempty"`
+	Evidence                              []DataDesignEvidence          `json:"evidence,omitempty"`
+	EvidenceMissing                       []subject.Subject             `json:"evidenceMissing,omitempty"`
+	BusinessOccurrenceIdentifier          DataDesignKnowledgeState     `json:"businessOccurrenceIdentifier"`
 	CandidateKeys                         DataDesignKnowledgeState `json:"candidateKeys"`
 	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
 	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
@@ -127,7 +148,7 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 		}
 	}
 
-	ctx.DataDesign = buildDataDesignContext(w, target, ctx.SemanticElement)
+	ctx.DataDesign = buildDataDesignContext(w, sources, target, ctx.SemanticElement)
 
 	for _, dep := range derived.SemanticDependencies {
 		edge := Edge{
@@ -155,7 +176,7 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 	return ctx
 }
 
-func buildDataDesignContext(w ir.World, target subject.Subject, element *index.SemanticElementEntry) *DataDesignContext {
+func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subject.Subject, element *index.SemanticElementEntry) *DataDesignContext {
 	var dataID core.CanonicalID
 	switch target.Kind {
 	case "semantic-data":
@@ -214,6 +235,7 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"relation-key-is-not-business-identifier",
+			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
@@ -224,12 +246,16 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 
 	attributeOwner := map[core.CanonicalID]core.CanonicalID{}
 	relations := map[core.CanonicalID]DataDesignRelation{}
+	evidenceSubjects := map[subject.Subject]struct{}{
+		{Kind: "semantic-data", ID: string(dataID)}: {},
+	}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			for _, attribute := range data.Attributes {
 				attributeOwner[attribute.ID] = data.ID
 				if data.ID == dataID {
 					ctx.Attributes = append(ctx.Attributes, DataDesignAttribute{ID: attribute.ID, Type: attribute.TypeRef})
+					evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(attribute.ID)}] = struct{}{}
 				}
 			}
 			for _, relation := range data.Relations {
@@ -248,6 +274,13 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 				relations[relation.ID] = item
 				if data.ID == dataID || relation.Target == dataID {
 					ctx.Relations = append(ctx.Relations, item)
+					evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(relation.ID)}] = struct{}{}
+					evidenceSubjects[subject.Subject{Kind: "semantic-data", ID: string(data.ID)}] = struct{}{}
+					evidenceSubjects[subject.Subject{Kind: "semantic-data", ID: string(relation.Target)}] = struct{}{}
+					for _, key := range relation.Keys {
+						evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(key.SourceAttribute)}] = struct{}{}
+						evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(key.TargetAttribute)}] = struct{}{}
+					}
 				}
 			}
 		}
@@ -267,8 +300,28 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 				Attribute: validation.Attribute,
 				Relation:  validation.Relation,
 			})
+			evidenceSubjects[subject.Subject{Kind: "semantic-validation", ID: string(validation.ID)}] = struct{}{}
+			if validation.Attribute != "" {
+				evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(validation.Attribute)}] = struct{}{}
+			}
+			if validation.Relation != "" {
+				evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(validation.Relation)}] = struct{}{}
+			}
+			if validation.Kind == "relation-unique" && hasRelation {
+				ctx.ScopedUniqueness = append(ctx.ScopedUniqueness, DataDesignScopedUniqueness{
+					Constraint: validation.ID,
+					Relation:   validation.Relation,
+					Source:     relation.Source,
+					Target:     relation.Target,
+					Attribute:  validation.Attribute,
+					Scope:      "per-relation-source-occurrence",
+					Nature:     "accepted",
+				})
+			}
 		}
 	}
+
+	ctx.Evidence, ctx.EvidenceMissing = collectDataDesignEvidence(sources, evidenceSubjects)
 
 	sort.Slice(ctx.Attributes, func(i, j int) bool {
 		return ctx.Attributes[i].ID < ctx.Attributes[j].ID
@@ -285,7 +338,64 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 	sort.Slice(ctx.Constraints, func(i, j int) bool {
 		return ctx.Constraints[i].ID < ctx.Constraints[j].ID
 	})
+	sort.Slice(ctx.ScopedUniqueness, func(i, j int) bool {
+		return ctx.ScopedUniqueness[i].Constraint < ctx.ScopedUniqueness[j].Constraint
+	})
 	return ctx
+}
+
+func collectDataDesignEvidence(
+	sources sourceindex.Index,
+	subjects map[subject.Subject]struct{},
+) ([]DataDesignEvidence, []subject.Subject) {
+	artifactFingerprints := make(map[string]string, len(sources.Artifacts))
+	for _, artifact := range sources.Artifacts {
+		artifactFingerprints[artifact.Path] = artifact.Fingerprint
+	}
+	var evidence []DataDesignEvidence
+	var missing []subject.Subject
+	for item := range subjects {
+		found := false
+		for _, ref := range sources.ReferencesFor(item) {
+			if ref.Role != sourceindex.RoleDefinition && ref.Role != sourceindex.RoleAuthoring {
+				continue
+			}
+			fingerprint := artifactFingerprints[ref.ArtifactPath]
+			if fingerprint == "" {
+				continue
+			}
+			found = true
+			evidence = append(evidence, DataDesignEvidence{
+				Subject:           item,
+				Source:            ref.ArtifactPath,
+				SourceFingerprint: fingerprint,
+				Range:             ref.Range,
+				Role:              ref.Role,
+			})
+		}
+		if !found {
+			missing = append(missing, item)
+		}
+	}
+	sort.Slice(evidence, func(i, j int) bool {
+		if evidence[i].Subject.Kind != evidence[j].Subject.Kind {
+			return evidence[i].Subject.Kind < evidence[j].Subject.Kind
+		}
+		if evidence[i].Subject.ID != evidence[j].Subject.ID {
+			return evidence[i].Subject.ID < evidence[j].Subject.ID
+		}
+		if evidence[i].Source != evidence[j].Source {
+			return evidence[i].Source < evidence[j].Source
+		}
+		return evidence[i].Range.Start.Offset < evidence[j].Range.Start.Offset
+	})
+	sort.Slice(missing, func(i, j int) bool {
+		if missing[i].Kind != missing[j].Kind {
+			return missing[i].Kind < missing[j].Kind
+		}
+		return missing[i].ID < missing[j].ID
+	})
+	return evidence, missing
 }
 
 func appendMatchingEdge(ctx *Context, target subject.Subject, edge Edge) {
