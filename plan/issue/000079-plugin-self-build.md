@@ -223,3 +223,56 @@ Build Lockは、Plugin / TargetごとにBuild Plan fingerprintと生成artifact 
 そのため、E1全体が完了したとは扱いません。追加したunit testはfingerprintの順序不変性、入力変更によるfingerprint変更、未固定inputと重複inputの拒否、Build Lockのartifact bindingを対象としています。
 
 この実行環境ではRepositoryのfull checkoutを使った`go test`と`tools/repository-health-check.sh`を実行できません。コードはcandidateとしてDraft PRに置き、exact-headの検証Evidenceが得られるまでmainへ統合しません。
+
+
+## 2026-10-06 E1再監査とE2候補
+
+E1候補を実Referenceへ接続する過程で、二つの境界を修正しました。
+
+第一に、既存packageにはRuntime Plugin Lockを生成する`BuildLock(...)`関数があるため、候補modelの`BuildLock`型はGo上で名前が衝突します。候補modelは`BuildArtifactLock`へ改名し、Runtime Plugin Lockとの役割差も型名で明示しました。
+
+第二に、既存`DefinitionFingerprint`は`artifact.digest`を含みます。このfingerprintをBuild Planへそのまま使うと、生成後に決まるartifact digestを生成前に要求する循環が生じます。このため、Build Planではartifact identityを除いた`BuildDefinitionFingerprint`を使います。Build後は`RealizeBuiltDefinition`でSource Definitionを変更せずderived Runtime Definitionへartifact digestを結び付け、従来の`DefinitionFingerprint`とPlugin Lockへ渡します。
+
+これにより、次の経路を候補実装で表せるようになりました。
+
+```text
+artifact-free Source Definition
+  -> BuildDefinitionFingerprint
+  -> Build Plan
+  -> produced artifact
+  -> BuildArtifactLock
+  -> derived Runtime Definition
+  -> existing Runtime Plugin Lock
+```
+
+`VerifyRuntimePluginBuild`は、Plugin identity、build definition fingerprint、Build Plan fingerprint、Target / profile、Runtime descriptor fingerprint、artifact digestを照合します。Build側の記録だけでRuntime Authorityを得ることはありません。
+
+また、`BuildDependency`のidentityをTEIの`CanonicalID`に限定する案を撤回しました。外部module、package、SDK等をTEI固有IDへ変換せず記録できるよう、kind / string identity / version / artifact digestの組にしています。Plugin runtime dependencyとは引き続き別です。
+
+### E2 Reference source
+
+既存`tools/reference-process-plugin/main.go`には実process実装がある一方、通常Reference Workspaceには対応するartifact-freeなSource Plugin Definitionがありませんでした。mainの通常Reference Worldを変更せず、`reference/plugin-self-build/workspace`を独立Referenceとして追加しました。
+
+このWorkspaceでは`tei.process.reference@1.0.0`をprocess Pluginとして宣言し、artifact digestはSourceへ記述しません。実装Sourceは既存`tools/reference-process-plugin/main.go`を再利用し、Reference配下へ複製しません。
+
+### E2 runner candidate
+
+`tools/reference-plugin-self-build`を候補実装として追加しました。trustedなclean checkoutで実行した場合、次を一続きに検証する構成です。
+
+1. tracked source全体をSHA-256の保守的なSource closureとして固定する。
+2. Source Plugin DefinitionをWorkspace loaderで読む。
+3. 実際に使用するGo toolchain closureをfingerprintする。
+4. 対象packageが外部Go moduleへ依存していないことを確認する。
+5. network取得を禁止し、`GOWORK=off`、`GOENV=off`、`GOTOOLCHAIN=local`、`CGO_ENABLED=0`等を固定する。
+6. 別々のbuild cacheで同じPluginを2回buildする。
+7. 二つのartifact digestが一致しなければ失敗する。
+8. BuildArtifactLockを作る。
+9. Source Definitionからderived Runtime Definitionを作る。
+10. 既存Plugin Lockを生成し、Build Plan / artifact / Runtime Lockを相互照合する。
+11. build後もRepositoryがcleanであることを確認する。
+
+初期Referenceでは、Source closureまたはGo toolchain closureにsymlinkがある場合は推測して追跡せず停止します。
+
+Source closureは現時点ではRepository全体です。これは過剰包含ですが入力の取りこぼしを避けるための意図的な初期条件です。E2 Evidence成立後に、必要であれば`go list`等から正確なbuild dependency closureへ狭めます。
+
+このrunnerはまだexact-headで実行していません。したがってactual artifact digest、reproducibility成立、SB-2達成は未主張です。Draft PR #949の検証Gateを維持します。
