@@ -435,7 +435,9 @@ func verifyCapabilityResolutionLockReplay(
 	if err := validateCapabilityResolutionLock(lock); err != nil {
 		return err
 	}
-	if err := validateResolveInput(input); err != nil {
+	replayInput := input
+	replayInput.Evidence = nil
+	if err := validateResolveInput(replayInput); err != nil {
 		return err
 	}
 	if input.Scope != lock.Scope {
@@ -525,6 +527,9 @@ func verifyCapabilityResolutionLockEvidence(
 	input ResolveInput,
 ) (string, error) {
 	if err := verifyCapabilityResolutionLockReplay(lock, input); err != nil {
+		return "", err
+	}
+	if err := validateResolveInput(input); err != nil {
 		return "", err
 	}
 	evidence, ok := matchingEvidence(
