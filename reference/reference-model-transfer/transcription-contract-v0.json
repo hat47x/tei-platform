@@ -234,6 +234,9 @@
         "rules": [
           "Table1ID/TableKey1ID and Table2ID/TableKey2ID are source-backed relationship key references and remain distinct from business identity",
           "key references may support explicit relation mapping only when the participating key fields resolve without ambiguity",
+          "multi-field key correspondence follows unambiguous TableKeyField SortKey order rather than XML source order",
+          "TableField AttributeType and DataTypeID are distinct source facts; explicit corresponding DataTypeID mismatch remains unresolved",
+          "missing or duplicate SortKey on a multi-field relationship key is not repaired from field names, data types, or source order",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
           "ExistWhen prose is not compiled into a constraint without explicit acceptance"
         ],
