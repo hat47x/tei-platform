@@ -354,7 +354,7 @@ Reference testでは、`sales.order_line`についてincoming Relation、`relati
 
 Constraint自体も探索入口にする。`semantic-validation`からは、ValidationのAttribute ownerとRelation targetが一致して一意にDataを決められる場合だけData Design Contextへ接続する。positive ValidationはAttribute ownerへ、`relation-unique`はAttribute ownerとRelation targetの一致を確認したうえでtarget Dataへ降りる。両者が矛盾する場合はDataを推測せず、Data Design Contextを生成しない。
 
-同じCanonical IDを持つAttributeやRelationが複数ある場合も推測しない。Dataを直接参照したContextでは、その重複要素を根拠に`scopedUniqueness`、business identity候補、functional dependency候補を生成しない。Validationを入口にしたContextでは、Attribute ownerまたはRelation targetを一意に決められないためData Design Context自体を生成しない。無効なWorkspaceで読み込み順に依存した設計判断を行わないことを、この境界で固定する。
+同じCanonical IDを持つData、Attribute、Relationが複数ある場合も推測しない。Dataを直接参照したContextでは、重複している要素を`ambiguities`へ種類、ID、件数とともに示し、その要素を根拠に`scopedUniqueness`、business identity候補、functional dependency候補を生成しない。Validationを入口にしたContextでは、Attribute ownerやRelation target、対象Dataを一意に決められないためData Design Context自体を生成しない。無効なWorkspaceで読み込み順に依存した設計判断を行わないことを、この境界で固定する。
 
 Application PatternからData設計へ戻る経路もnegative Referenceとして固定した。`order_entry.order_record`のようにPatternが`data sales.order`を明示している場合は、その参照を使って同じ`knowledge-context`内にData Design Contextを提示する。これにより、Patternを設計しているAIがSemantic Data、Constraint、Persistence Realization、未解決のidentityを別呼び出しなしで確認できる。一方、Pattern IDや画面上のrecord identityからbusiness identityを作らず、`businessOccurrenceIdentifier` / `candidateKeys` / `functionalDependencies`のauthorityはSemantic側に残す。`application-pattern -> semantic-data` dependencyも併存させ、参照経路を追跡できるようにする。PatternがDataを明示していない場合は、RelationやQuery等から都合よくDataを推測しない。現時点で直接pressureしたのはApplication Patternであり、Target / ORM / runtime objectの具体的Referenceは後続に残す。
 
