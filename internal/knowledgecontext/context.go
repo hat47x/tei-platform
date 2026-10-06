@@ -49,15 +49,18 @@ type DataDesignConstraint struct {
 }
 
 type DataDesignContext struct {
-	Data                         core.CanonicalID         `json:"data"`
-	Focus                        subject.Subject          `json:"focus"`
-	Attributes                   []DataDesignAttribute    `json:"attributes,omitempty"`
-	Relations                    []DataDesignRelation     `json:"relations,omitempty"`
-	Constraints                  []DataDesignConstraint   `json:"constraints,omitempty"`
-	BusinessOccurrenceIdentifier DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
-	CandidateKeys                DataDesignKnowledgeState `json:"candidateKeys"`
-	FunctionalDependencies       DataDesignKnowledgeState `json:"functionalDependencies"`
-	AuthorityLimits              []string                 `json:"authorityLimits"`
+	Data                                  core.CanonicalID         `json:"data"`
+	Focus                                 subject.Subject          `json:"focus"`
+	Attributes                            []DataDesignAttribute    `json:"attributes,omitempty"`
+	Relations                             []DataDesignRelation     `json:"relations,omitempty"`
+	Constraints                           []DataDesignConstraint   `json:"constraints,omitempty"`
+	BusinessOccurrenceIdentifier          DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
+	CandidateKeys                         DataDesignKnowledgeState `json:"candidateKeys"`
+	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
+	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions []string                 `json:"functionalDependencyEvidenceQuestions"`
+	RelationEvidenceQuestions             []string                 `json:"relationEvidenceQuestions"`
+	AuthorityLimits                       []string                 `json:"authorityLimits"`
 }
 
 type Context struct {
@@ -156,7 +159,10 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 	var dataID core.CanonicalID
 	switch target.Kind {
 	case "semantic-data":
-		dataID = core.CanonicalID(target.ID)
+		if element == nil {
+			return nil
+		}
+		dataID = element.ID
 	case "semantic-attribute", "semantic-relation":
 		if element == nil || element.Parent == "" {
 			return nil
@@ -181,12 +187,37 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			Nature: "unresolved",
 			Reason: "functional-dependency-not-first-class-in-current-canonical-model",
 		},
+		BusinessIdentityEvidenceQuestions: []string{
+			"which-fields-identify-the-business-occurrence",
+			"what-is-the-uniqueness-scope",
+			"when-is-the-identifier-valid",
+			"which-relations-or-constraints-depend-on-the-identity",
+			"which-source-or-contract-owns-the-uniqueness-claim",
+			"which-normalization-or-equivalence-policy-applies",
+		},
+		FunctionalDependencyEvidenceQuestions: []string{
+			"which-determinants-determine-which-dependents",
+			"under-what-scope-and-time-does-the-dependency-hold",
+			"which-source-or-evidence-establishes-the-dependency",
+			"is-this-a-functional-dependency-or-a-domain-constraint",
+		},
+		RelationEvidenceQuestions: []string{
+			"what-business-meaning-does-the-relation-express",
+			"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+			"what-cardinality-is-required",
+			"is-the-relation-current-only-or-temporal",
+			"what-history-or-validity-period-must-be-preserved",
+			"which-source-or-contract-owns-the-relation",
+		},
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"relation-key-is-not-business-identifier",
 			"attribute-name-or-id-shape-is-not-key-evidence",
+			"identifier-like-attribute-is-not-business-identity",
+			"identifier-value-presence-is-not-uniqueness-evidence",
+			"normalized-string-equality-is-not-business-identity-evidence",
 			"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 		},
 	}

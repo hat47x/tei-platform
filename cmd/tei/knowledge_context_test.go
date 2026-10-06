@@ -115,12 +115,46 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
-		"business identifier": dataDesign.BusinessOccurrenceIdentifier,
-		"candidate keys":      dataDesign.CandidateKeys,
+		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
+		"candidate keys":        dataDesign.CandidateKeys,
 		"functional dependency": dataDesign.FunctionalDependencies,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
 			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
+		}
+	}
+	for _, question := range []string{
+		"which-fields-identify-the-business-occurrence",
+		"what-is-the-uniqueness-scope",
+		"when-is-the-identifier-valid",
+		"which-relations-or-constraints-depend-on-the-identity",
+		"which-source-or-contract-owns-the-uniqueness-claim",
+		"which-normalization-or-equivalence-policy-applies",
+	} {
+		if !containsKnowledgeContextString(dataDesign.BusinessIdentityEvidenceQuestions, question) {
+			t.Fatalf("business identity evidence question %q is missing: %+v", question, dataDesign.BusinessIdentityEvidenceQuestions)
+		}
+	}
+	for _, question := range []string{
+		"which-determinants-determine-which-dependents",
+		"under-what-scope-and-time-does-the-dependency-hold",
+		"which-source-or-evidence-establishes-the-dependency",
+		"is-this-a-functional-dependency-or-a-domain-constraint",
+	} {
+		if !containsKnowledgeContextString(dataDesign.FunctionalDependencyEvidenceQuestions, question) {
+			t.Fatalf("functional dependency evidence question %q is missing: %+v", question, dataDesign.FunctionalDependencyEvidenceQuestions)
+		}
+	}
+	for _, question := range []string{
+		"what-business-meaning-does-the-relation-express",
+		"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+		"what-cardinality-is-required",
+		"is-the-relation-current-only-or-temporal",
+		"what-history-or-validity-period-must-be-preserved",
+		"which-source-or-contract-owns-the-relation",
+	} {
+		if !containsKnowledgeContextString(dataDesign.RelationEvidenceQuestions, question) {
+			t.Fatalf("relation evidence question %q is missing: %+v", question, dataDesign.RelationEvidenceQuestions)
 		}
 	}
 
@@ -158,6 +192,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"relation-key-is-not-business-identifier",
+		"identifier-like-attribute-is-not-business-identity",
+		"identifier-value-presence-is-not-uniqueness-evidence",
+		"normalized-string-equality-is-not-business-identity-evidence",
 		"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 	} {
 		if !containsKnowledgeContextString(dataDesign.AuthorityLimits, limit) {
@@ -223,8 +260,8 @@ func TestBuildKnowledgeContextPreservesUnknownSubjectAsUnresolved(t *testing.T) 
 			t.Fatalf("unresolved %q is missing: %+v", want, got.Unresolved)
 		}
 	}
-	if got.SemanticElement != nil || got.ApplicationPattern != nil {
-		t.Fatalf("unknown subject produced authoritative detail: %+v", got)
+	if got.SemanticElement != nil || got.ApplicationPattern != nil || got.DataDesign != nil {
+		t.Fatalf("unknown subject produced authoritative or derived design detail: %+v", got)
 	}
 }
 
