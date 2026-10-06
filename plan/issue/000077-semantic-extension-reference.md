@@ -655,5 +655,6 @@ code変更はTEIの通常Gateに従います。
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`
 - `plan/issue/000078-reference-model-transfer-gate.md`
+- `plan/issue/000080-extensible-plugin-capability-contract.md`
 - `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 - `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`

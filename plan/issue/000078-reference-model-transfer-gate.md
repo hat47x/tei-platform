@@ -64,7 +64,7 @@ MfgOrder.xeaf
   sha256 f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754
 ~~~
 
-model / manual本体は利用者Libraryのsource snapshotを利用し、初期EvidenceではRepositoryへコピーしない。
+model / manual本体は利用者Libraryのsource snapshotを利用し、初期EvidenceではRepositoryへコピーしない。公開範囲は[CONCEPTWARE Reference Model公開境界](../REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
 
 ## 現在すでに分かっていること
 
@@ -127,6 +127,7 @@ source model全体のelement / attribute / relationをinventoryし、Evidence Ga
 reference-model-transfer/
   source-baseline.json
   source-inventory.json
+  transcription-contract-v0.json
   transcription-map.json
   loss-ledger.json
 ~~~
@@ -188,11 +189,11 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 次はactual environmentまたは利用条件判断が必要であり、本Issueの文書研究だけで完了させない。
 
 1. [GitHub #940](https://github.com/hat47x/tei-platform/issues/940)で、original X-TEA Modeler / Driverを起動し、代表Scenarioのactual behavior、native Scriptのtransaction / rollback / TableOperator effectを取得する。
-2. [GitHub #941](https://github.com/hat47x/tei-platform/issues/941)で、CONCEPTWARE Reference Modelのpublic Repository内での再利用・転載条件を確認する。
+2. [GitHub #941](https://github.com/hat47x/tei-platform/issues/941)では、Web調査で安全側のpublication boundaryを確定済み。原model / manualの公開範囲を広げるには、対象artifactへ適用される明示licenseまたは権利者による書面確認を取得する。
 3. importer / runtime code変更後は、対象exact-headを固定してtrusted local cloneでfull `tools/repository-health-check.sh`を実行する。実装revisionが存在してからEvidence取得単位を確定する。
 4. 業務設計としての転写妥当性を人が確認する場合、AI reviewとは別Evidenceとして保持する。
 
-#940 / #941の結果は本IssueのEvidenceへ戻し、未取得のactual behaviorや利用条件を推測で補わない。
+#940 / #941の結果は本IssueのEvidenceへ戻し、未取得のactual behaviorや利用条件を推測で補わない。#941の明示許諾が未取得でもRMT-1〜3はRepository外sourceを用いて継続し、public Evidenceへ原model内容を複製しない。
 
 ## 完了条件
 
