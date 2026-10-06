@@ -7,12 +7,16 @@ import (
 
 func TestClassifyRequiresExplicitPolicyAndKeepsUnknownUnresolved(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table/><FutureThing/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	got := Classify(doc, ClassificationPolicy{
 		"System": {Classifications: []string{"realization", "source-metadata"}, Extension: "reference.compat.xead.source"},
 		"Table":  {Classifications: []string{"unresolved", "canonical-candidate"}, Extension: "reference.xead.relational-semantics"},
 	})
-	if len(got) != 3 { t.Fatalf("candidate count = %d", len(got)) }
+	if len(got) != 3 {
+		t.Fatalf("candidate count = %d", len(got))
+	}
 	if !reflect.DeepEqual(got[1].Classifications, []string{"canonical-candidate", "unresolved"}) {
 		t.Fatalf("classifications must be deterministic: %#v", got[1])
 	}
@@ -63,9 +67,48 @@ func TestClassifyCarriesKeyAuthorityLimitsWithoutPromotingMeaning(t *testing.T) 
 	}
 }
 
+func TestClassificationPolicyFingerprintNormalizesRuleOrdering(t *testing.T) {
+	a := ClassificationPolicy{
+		"TableKey": {
+			Classifications: []string{"unresolved", "canonical-candidate"},
+			Extension:       "reference.xead.relational-semantics",
+			AuthorityLimits: []string{"z-limit", "a-limit"},
+		},
+	}
+	b := ClassificationPolicy{
+		"TableKey": {
+			Classifications: []string{"canonical-candidate", "unresolved"},
+			Extension:       "reference.xead.relational-semantics",
+			AuthorityLimits: []string{"a-limit", "z-limit"},
+		},
+	}
+	if ClassificationPolicyFingerprint(a) == "" {
+		t.Fatal("non-empty policy has no fingerprint")
+	}
+	if ClassificationPolicyFingerprint(a) != ClassificationPolicyFingerprint(b) {
+		t.Fatalf("equivalent policy ordering changed fingerprint: a=%s b=%s",
+			ClassificationPolicyFingerprint(a),
+			ClassificationPolicyFingerprint(b),
+		)
+	}
+	b["TableKey"] = CandidateRule{
+		Classifications: []string{"canonical-candidate", "unresolved"},
+		Extension:       "different.extension",
+		AuthorityLimits: []string{"a-limit", "z-limit"},
+	}
+	if ClassificationPolicyFingerprint(a) == ClassificationPolicyFingerprint(b) {
+		t.Fatal("different classification policy produced the same fingerprint")
+	}
+	if ClassificationPolicyFingerprint(nil) != "" {
+		t.Fatal("nil policy must not claim classification provenance")
+	}
+}
+
 func TestParseAloneDoesNotGrantCandidateMeaning(t *testing.T) {
 	doc, err := Parse(FormatXeaf, []byte(`<System><Script/></System>`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	got := Classify(doc, nil)
 	for _, candidate := range got {
 		if !candidate.Unresolved || len(candidate.Classifications) != 0 || candidate.Extension != "" {
