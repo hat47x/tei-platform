@@ -59,6 +59,7 @@ type DataDesignContext struct {
 	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
 	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
 	FunctionalDependencyEvidenceQuestions []string                 `json:"functionalDependencyEvidenceQuestions"`
+	RelationEvidenceQuestions             []string                 `json:"relationEvidenceQuestions"`
 	AuthorityLimits                       []string                 `json:"authorityLimits"`
 }
 
@@ -199,6 +200,14 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			"under-what-scope-and-time-does-the-dependency-hold",
 			"which-source-or-evidence-establishes-the-dependency",
 			"is-this-a-functional-dependency-or-a-domain-constraint",
+		},
+		RelationEvidenceQuestions: []string{
+			"what-business-meaning-does-the-relation-express",
+			"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
+			"what-cardinality-is-required",
+			"is-the-relation-current-only-or-temporal",
+			"what-history-or-validity-period-must-be-preserved",
+			"which-source-or-contract-owns-the-relation",
 		},
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
