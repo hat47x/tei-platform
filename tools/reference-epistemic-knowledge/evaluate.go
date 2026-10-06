@@ -12,6 +12,7 @@ type Assessment struct {
 	ContextCompatibility string   `json:"contextCompatibility"`
 	Freshness            string   `json:"freshness"`
 	Conflict             string   `json:"conflict"`
+	SupersededBy         []string `json:"supersededBy,omitempty"`
 	UseState             string   `json:"useState"`
 	InferredContextUsed  bool     `json:"inferredContextUsed"`
 	Reasons              []string `json:"reasons"`
@@ -72,13 +73,25 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 
 	assertions := make(map[string]Assertion, len(corpus.Assertions))
 	assessments := make(map[string]Assessment, len(corpus.Assertions))
+	supersededBy := map[string][]string{}
 	for _, assertion := range corpus.Assertions {
 		assertions[assertion.ID] = assertion
 		assessments[assertion.ID] = baseAssessment(assertion, context, asOf)
+		for _, target := range assertion.Supersedes {
+			supersededBy[target] = append(supersededBy[target], assertion.ID)
+		}
+	}
+	for target := range supersededBy {
+		sort.Strings(supersededBy[target])
 	}
 
 	for _, assertion := range corpus.Assertions {
 		assessment := assessments[assertion.ID]
+		if replacements := supersededBy[assertion.ID]; len(replacements) > 0 {
+			assessment.ReviewValidity = "superseded"
+			assessment.SupersededBy = append([]string{}, replacements...)
+			assessment.Reasons = append(assessment.Reasons, "SUPERSEDED_BY_RELATION")
+		}
 		assessment.Conflict = conflictState(assertion, assessments)
 		assessment.UseState, assessment.Reasons = deriveUseState(assertion, assessment)
 		assessment.Reasons = normalizeStrings(assessment.Reasons)
