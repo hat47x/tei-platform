@@ -173,13 +173,12 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 
 次はactual environmentまたは利用条件判断が必要であり、本Issueの文書研究だけで完了させない。
 
-1. original X-TEA Modeler / DriverでReference Modelを起動し、代表Scenarioのactual behaviorを取得する。
-2. native Scriptのtransaction / rollback / TableOperator effectをactual Databaseで観測し、manual / source解釈だけで互換判定しない。
-3. CONCEPTWARE Reference Modelのpublic Repository内での再利用・転載条件を確認する。
-4. importer / runtime code変更後、trusted local cloneでexact-head full `tools/repository-health-check.sh`を実行する。
-5. 業務設計としての転写妥当性を人が確認する場合、AI reviewとは別Evidenceとして保持する。
+1. [GitHub #940](https://github.com/hat47x/tei-platform/issues/940)で、original X-TEA Modeler / Driverを起動し、代表Scenarioのactual behavior、native Scriptのtransaction / rollback / TableOperator effectを取得する。
+2. [GitHub #941](https://github.com/hat47x/tei-platform/issues/941)で、CONCEPTWARE Reference Modelのpublic Repository内での再利用・転載条件を確認する。
+3. importer / runtime code変更後は、対象exact-headを固定してtrusted local cloneでfull `tools/repository-health-check.sh`を実行する。実装revisionが存在してからEvidence取得単位を確定する。
+4. 業務設計としての転写妥当性を人が確認する場合、AI reviewとは別Evidenceとして保持する。
 
-これらはGitHub Issueへ分離し、結果だけを本IssueのEvidenceへ戻す。
+#940 / #941の結果は本IssueのEvidenceへ戻し、未取得のactual behaviorや利用条件を推測で補わない。
 
 ## 完了条件
 
