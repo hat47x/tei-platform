@@ -153,6 +153,12 @@ func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t
 			if validationContext.DataDesign != nil {
 				t.Fatalf("ambiguous validation scope was resolved: %+v", validationContext.DataDesign)
 			}
+			if !containsDataDesignString(
+				validationContext.Unresolved,
+				"data-design-validation-scope-not-uniquely-resolvable",
+			) {
+				t.Fatalf("ambiguous validation scope reason is missing: %+v", validationContext.Unresolved)
+			}
 		})
 	}
 }
@@ -285,6 +291,12 @@ func TestDataDesignContextSuppressesDuplicatePersistenceMappingIdentity(t *testi
 	)
 	if persistenceContext.DataDesign != nil {
 		t.Fatalf("duplicate persistence subject was resolved by read order: %+v", persistenceContext.DataDesign)
+	}
+	if !containsDataDesignString(
+		persistenceContext.Unresolved,
+		"data-design-persistence-subject-not-uniquely-resolvable",
+	) {
+		t.Fatalf("duplicate persistence reason is missing: %+v", persistenceContext.Unresolved)
 	}
 }
 
