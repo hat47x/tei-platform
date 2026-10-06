@@ -31,9 +31,10 @@ type BuildSource struct {
 // separate from Definition.Requires, which describes Plugin runtime/package
 // dependencies.
 type BuildDependency struct {
-	ID             core.CanonicalID `json:"id"`
-	Version        string           `json:"version"`
-	ArtifactDigest string           `json:"artifactDigest"`
+	Kind           string `json:"kind"`
+	ID             string `json:"id"`
+	Version        string `json:"version"`
+	ArtifactDigest string `json:"artifactDigest"`
 }
 
 // BuilderIdentity identifies the exact builder used to produce an artifact.
@@ -115,6 +116,9 @@ func NormalizeBuildPlan(p BuildPlan) BuildPlan {
 		return out.Sources[i].Locator < out.Sources[j].Locator
 	})
 	sort.Slice(out.Dependencies, func(i, j int) bool {
+		if out.Dependencies[i].Kind != out.Dependencies[j].Kind {
+			return out.Dependencies[i].Kind < out.Dependencies[j].Kind
+		}
 		if out.Dependencies[i].ID != out.Dependencies[j].ID {
 			return out.Dependencies[i].ID < out.Dependencies[j].ID
 		}
@@ -170,19 +174,23 @@ func (p BuildPlan) Validate() error {
 	if err := validateBuildDigest("builder artifact digest", p.Builder.ArtifactDigest); err != nil {
 		return err
 	}
-	dependencies := map[core.CanonicalID]struct{}{}
+	dependencies := map[string]struct{}{}
 	for _, d := range p.Dependencies {
-		if d.ID == "" {
+		if strings.TrimSpace(d.Kind) == "" {
+			return fmt.Errorf("build dependency kind is required")
+		}
+		if strings.TrimSpace(d.ID) == "" {
 			return fmt.Errorf("build dependency id is required")
 		}
-		if _, exists := dependencies[d.ID]; exists {
-			return fmt.Errorf("build dependency %s is declared more than once", d.ID)
-		}
-		dependencies[d.ID] = struct{}{}
 		if strings.TrimSpace(d.Version) == "" {
 			return fmt.Errorf("build dependency %s version is required", d.ID)
 		}
-		if err := validateBuildDigest("build dependency "+string(d.ID)+" artifact digest", d.ArtifactDigest); err != nil {
+		key := d.Kind + "|" + d.ID + "|" + d.Version
+		if _, exists := dependencies[key]; exists {
+			return fmt.Errorf("build dependency %s is declared more than once", key)
+		}
+		dependencies[key] = struct{}{}
+		if err := validateBuildDigest("build dependency "+d.ID+" artifact digest", d.ArtifactDigest); err != nil {
 			return err
 		}
 	}
