@@ -188,10 +188,48 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("data design constraints are incomplete: %+v", dataDesign.Constraints)
 	}
 
+	if len(dataDesign.ScopedUniqueness) != 1 {
+		t.Fatalf("scoped uniqueness=%+v", dataDesign.ScopedUniqueness)
+	}
+	uniqueness := dataDesign.ScopedUniqueness[0]
+	if uniqueness.Constraint != "sales.order.lines.line_number_unique" ||
+		uniqueness.Relation != "sales.order.lines" ||
+		uniqueness.Source != "sales.order" ||
+		uniqueness.Target != "sales.order_line" ||
+		uniqueness.Attribute != "sales.order_line.line_number" ||
+		uniqueness.Scope != "per-relation-source-occurrence" ||
+		uniqueness.Nature != "accepted" {
+		t.Fatalf("relation-unique meaning was widened or lost: %+v", uniqueness)
+	}
+	if dataDesign.CandidateKeys.Nature != "unresolved" ||
+		dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" {
+		t.Fatalf("scoped uniqueness was promoted to a business key: %+v", dataDesign)
+	}
+
+	for _, want := range []struct {
+		kind   string
+		id     string
+		source string
+	}{
+		{kind: "semantic-data", id: "sales.order_line", source: "semantic/sales/order.tei"},
+		{kind: "semantic-data", id: "sales.order", source: "semantic/sales/order.tei"},
+		{kind: "semantic-attribute", id: "sales.order_line.line_number", source: "semantic/sales/order.tei"},
+		{kind: "semantic-relation", id: "sales.order.lines", source: "semantic/sales/order.tei"},
+		{kind: "semantic-validation", id: "sales.order.lines.line_number_unique", source: "semantic/sales/validation.tei"},
+	} {
+		if !hasDataDesignEvidence(dataDesign, want.kind, want.id, want.source) {
+			t.Fatalf("data design Evidence is missing: %+v evidence=%+v", want, dataDesign.Evidence)
+		}
+	}
+	if len(dataDesign.EvidenceMissing) != 0 {
+		t.Fatalf("known data design subjects lack exact source Evidence: %+v", dataDesign.EvidenceMissing)
+	}
+
 	for _, limit := range []string{
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"relation-key-is-not-business-identifier",
+		"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 		"identifier-like-attribute-is-not-business-identity",
 		"identifier-value-presence-is-not-uniqueness-evidence",
 		"normalized-string-equality-is-not-business-identity-evidence",
@@ -239,6 +277,20 @@ func TestBuildKnowledgeContextExposesRelationKeyWithoutPromotingItToBusinessIden
 	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
 		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
 		t.Fatalf("relation key was promoted to business identity or FD: %+v", got.DataDesign)
+	}
+	for _, want := range []struct {
+		kind   string
+		id     string
+		source string
+	}{
+		{kind: "semantic-relation", id: "sales.order.customer", source: "semantic/sales/order.tei"},
+		{kind: "semantic-attribute", id: "sales.order.customer_id", source: "semantic/sales/order.tei"},
+		{kind: "semantic-attribute", id: "customer.customer.customer_id", source: "semantic/customer/customer.tei"},
+		{kind: "semantic-data", id: "customer.customer", source: "semantic/customer/customer.tei"},
+	} {
+		if !hasDataDesignEvidence(got.DataDesign, want.kind, want.id, want.source) {
+			t.Fatalf("relation key Evidence is missing: %+v evidence=%+v", want, got.DataDesign.Evidence)
+		}
 	}
 }
 
@@ -290,6 +342,19 @@ func hasKnowledgeContextEdge(ctx knowledgecontext.Context, direction, relation, 
 			return true
 		}
 		if direction == "outgoing" && edge.To.Kind == otherKind && edge.To.ID == otherID {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDataDesignEvidence(ctx *knowledgecontext.DataDesignContext, kind, id, source string) bool {
+	for _, evidence := range ctx.Evidence {
+		if evidence.Subject.Kind == kind &&
+			evidence.Subject.ID == id &&
+			evidence.Source == source &&
+			evidence.SourceFingerprint != "" &&
+			evidence.Range.Start.Offset <= evidence.Range.End.Offset {
 			return true
 		}
 	}
