@@ -290,6 +290,11 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 			return a, fmt.Errorf("validUntil precedes validFrom")
 		}
 	}
+	evidence, err := normalizeEvidenceRefs(a.Evidence)
+	if err != nil {
+		return a, fmt.Errorf("evidence: %w", err)
+	}
+	a.Evidence = evidence
 	if a.Review != nil {
 		if err := normalizeReview(a.Review); err != nil {
 			return a, err
@@ -314,8 +319,45 @@ func normalizeReview(r *ReviewRecord) error {
 		}
 		return fmt.Errorf("reviewedAt is required")
 	}
+	evidence, err := normalizeEvidenceRefs(r.Evidence)
+	if err != nil {
+		return fmt.Errorf("review evidence: %w", err)
+	}
+	r.Evidence = evidence
 	r.Conditions = normalizeStrings(r.Conditions)
 	return nil
+}
+
+func normalizeEvidenceRefs(values []EvidenceRef) ([]EvidenceRef, error) {
+	out := make([]EvidenceRef, 0, len(values))
+	seen := map[string]struct{}{}
+	for i, value := range values {
+		value.Kind = strings.TrimSpace(value.Kind)
+		value.Ref = strings.TrimSpace(value.Ref)
+		value.Fingerprint = strings.TrimSpace(value.Fingerprint)
+		if value.Kind == "" || value.Ref == "" {
+			return nil, fmt.Errorf("evidence[%d] requires kind and ref", i)
+		}
+		if value.Fingerprint != "" && !sha256Pattern.MatchString(value.Fingerprint) {
+			return nil, fmt.Errorf("evidence[%d] fingerprint %q is not exact sha256", i, value.Fingerprint)
+		}
+		key := value.Kind + "|" + value.Ref + "|" + value.Fingerprint
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
+		if out[i].Ref != out[j].Ref {
+			return out[i].Ref < out[j].Ref
+		}
+		return out[i].Fingerprint < out[j].Fingerprint
+	})
+	return out, nil
 }
 
 func normalizeContext(input ContextQuery) (ContextQuery, time.Time, error) {
