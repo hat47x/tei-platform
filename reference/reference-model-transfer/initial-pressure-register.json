@@ -115,6 +115,20 @@
       "observed": "single-driver operation does not require all retry/unknown/idempotency semantics to be explicit",
       "risk": "network/agent/distributed execution can duplicate effects or report false success",
       "teiDirection": "route execution through RQ-018 to RQ-020 command/observation/retry/unknown boundaries"
+    },
+    {
+      "id": "RMP-017",
+      "topic": "business-action-vs-target-interaction",
+      "observed": "TaskFunctionIO.Operations includes target-specific instructions such as pressing an update button or selecting a row and pressing Enter",
+      "risk": "business action meaning can be coupled to one GUI interaction and change when the target changes",
+      "teiDirection": "separate business action, referenced Function/Capability, and target-specific interaction instruction"
+    },
+    {
+      "id": "RMP-018",
+      "topic": "legacy-schema-vs-extension-composition",
+      "observed": "the reference combines heterogeneous Data, Function, Business, UI, lifecycle, Script, and runtime constructs under one legacy model/runtime family",
+      "risk": "a compatibility importer can become a second canonical model or force legacy kinds into TEI Core",
+      "teiDirection": "treat imported meaning as candidate Semantic Extensions/Plugins and native assets; keep importer authority separate and preserve unresolved mappings"
     }
   ]
 }
