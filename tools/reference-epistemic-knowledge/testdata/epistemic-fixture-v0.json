@@ -1,0 +1,157 @@
+{
+  "schema": "tei.reference.epistemic-corpus/v0",
+  "assertions": [
+    {
+      "id": "user-current",
+      "target": {"kind": "project-fact", "id": "tei.database-lifecycle"},
+      "text": "Database schema has an application-independent lifecycle.",
+      "meaningFingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "origin": "user",
+      "assertionMode": "fact",
+      "reviewState": "native",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ]
+    },
+    {
+      "id": "ai-unreviewed",
+      "target": {"kind": "design-claim", "id": "tei.release.assumption"},
+      "text": "A generated release artifact is always portable across targets.",
+      "meaningFingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "origin": "ai",
+      "assertionMode": "fact",
+      "reviewState": "unreviewed",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ],
+      "reviewerCandidates": ["release-owner"]
+    },
+    {
+      "id": "human-reviewed",
+      "target": {"kind": "repository-fact", "id": "tei.main-branch"},
+      "text": "The repository default branch is main.",
+      "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "origin": "external",
+      "assertionMode": "fact",
+      "reviewState": "reviewed",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"},
+        {"dimension": "branch", "value": "main", "provenance": "inferred"}
+      ],
+      "checkedAt": "2026-10-06T12:00:00Z",
+      "review": {
+        "id": "review-main-branch",
+        "reviewer": "human",
+        "reviewedMeaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "reviewedAt": "2026-10-06T12:05:00Z"
+      }
+    },
+    {
+      "id": "conditional-production",
+      "target": {"kind": "environment-fact", "id": "production.auth"},
+      "text": "Production authentication uses the configured external provider.",
+      "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "origin": "user",
+      "assertionMode": "fact",
+      "reviewState": "conditional",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"},
+        {"dimension": "environment", "value": "production", "provenance": "explicit"}
+      ],
+      "review": {
+        "id": "review-production-auth",
+        "reviewer": "system-owner",
+        "reviewedMeaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "reviewedAt": "2026-10-06T12:10:00Z",
+        "conditions": ["production only"]
+      }
+    },
+    {
+      "id": "stale-critical",
+      "target": {"kind": "provider-fact", "id": "provider.contract"},
+      "text": "The provider contract observed in September is current.",
+      "meaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "origin": "external",
+      "assertionMode": "fact",
+      "reviewState": "reviewed",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ],
+      "validUntil": "2026-09-30T23:59:59Z",
+      "review": {
+        "id": "review-provider-contract",
+        "reviewer": "integration-owner",
+        "reviewedMeaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "reviewedAt": "2026-09-01T00:00:00Z"
+      },
+      "reviewerCandidates": ["integration-owner"]
+    },
+    {
+      "id": "superseded-design",
+      "target": {"kind": "design-claim", "id": "tei.runtime.old"},
+      "text": "The older runtime binding design remains current.",
+      "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "origin": "imported",
+      "assertionMode": "fact",
+      "reviewState": "superseded",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ]
+    },
+    {
+      "id": "conflict-a",
+      "target": {"kind": "design-claim", "id": "tei.identifier.policy"},
+      "text": "Business identifiers must always be UUIDs.",
+      "meaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "origin": "imported",
+      "assertionMode": "fact",
+      "reviewState": "reviewed",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ],
+      "review": {
+        "id": "review-identifier-a",
+        "reviewer": "reviewer-a",
+        "reviewedMeaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        "reviewedAt": "2026-10-05T00:00:00Z"
+      },
+      "conflictsWith": ["conflict-b"]
+    },
+    {
+      "id": "conflict-b",
+      "target": {"kind": "design-claim", "id": "tei.identifier.policy"},
+      "text": "Business identifiers need not be UUIDs.",
+      "meaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "origin": "user",
+      "assertionMode": "fact",
+      "reviewState": "reviewed",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ],
+      "review": {
+        "id": "review-identifier-b",
+        "reviewer": "reviewer-b",
+        "reviewedMeaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "reviewedAt": "2026-10-05T00:00:00Z"
+      },
+      "conflictsWith": ["conflict-a"]
+    },
+    {
+      "id": "rejected-claim",
+      "target": {"kind": "design-claim", "id": "tei.derived-authority"},
+      "text": "A derived cache can become Canonical authority by being persisted.",
+      "meaningFingerprint": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "origin": "ai",
+      "assertionMode": "fact",
+      "reviewState": "rejected",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ]
+    }
+  ],
+  "dependencies": [
+    {"assertionId": "ai-unreviewed", "consumer": "release-decision", "criticality": "critical"},
+    {"assertionId": "stale-critical", "consumer": "provider-integration", "criticality": "high"},
+    {"assertionId": "user-current", "consumer": "architecture-note", "criticality": "low"}
+  ]
+}
