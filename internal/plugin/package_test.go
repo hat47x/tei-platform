@@ -22,8 +22,9 @@ func pluginPackagePlan(source plugin.Definition) plugin.BuildPlan {
 		}},
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.package.seed"),
-			Version:        "1.0.0",
-			ArtifactDigest: buildDigestB,
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  buildDigestB,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
