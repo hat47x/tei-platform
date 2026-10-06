@@ -1,0 +1,8 @@
+{
+  "schema": "tei.reference.epistemic-context/v0",
+  "bindings": [
+    {"dimension": "project", "value": "other-project", "provenance": "explicit"},
+    {"dimension": "environment", "value": "production", "provenance": "explicit"}
+  ],
+  "asOf": "2026-10-06T14:00:00Z"
+}
