@@ -40,10 +40,10 @@ func MaterializePluginPackage(source Definition, plan BuildPlan) ([]byte, error)
 			source.ID, source.Version, plan.Plugin.ID, plan.Plugin.Version,
 		)
 	}
-	if _, err := coreParseCanonicalID(source.ID); err != nil {
-		return nil, err
+	if _, err := core.ParseCanonicalID(string(source.ID)); err != nil {
+		return nil, fmt.Errorf("plugin package source id: %w", err)
 	}
-	if !validPluginVersion(source.Version) {
+	if !core.ValidNumericVersion(source.Version) {
 		return nil, fmt.Errorf("plugin package source version %q must be major.minor.patch", source.Version)
 	}
 	if err := source.Artifact.Validate(); err != nil {
@@ -82,18 +82,4 @@ func MaterializePluginPackage(source Definition, plan BuildPlan) ([]byte, error)
 func BuildOutputDigest(data []byte) string {
 	sum := sha256.Sum256(data)
 	return "sha256:" + hex.EncodeToString(sum[:])
-}
-
-// Small wrappers keep package.go independent from the details of core's public
-// parsing helpers while preserving the same validation contract as BuildPlan.
-func coreParseCanonicalID(id core.CanonicalID) (core.CanonicalID, error) {
-	parsed, err := core.ParseCanonicalID(string(id))
-	if err != nil {
-		return "", fmt.Errorf("plugin package source id: %w", err)
-	}
-	return parsed, nil
-}
-
-func validPluginVersion(version string) bool {
-	return core.ValidNumericVersion(version)
 }
