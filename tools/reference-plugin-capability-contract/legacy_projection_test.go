@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -202,5 +203,28 @@ func TestLegacyProjectionDisappearsWhenAuthoritativeCapabilityDisappears(t *test
 	)
 	if err == nil || !strings.Contains(err.Error(), "must provide exactly one") {
 		t.Fatalf("projection survived removal from authoritative legacy definition: %v", err)
+	}
+}
+
+
+func TestLegacyProjectionDoesNotMutateAuthoritativePluginDefinition(t *testing.T) {
+	definition := referencePluginDefinition(t, "tei.database.oracle")
+	before := definition
+	before.Provides = append([]plugin.Capability(nil), definition.Provides...)
+
+	_, err := projectLegacyCapabilityProvider(
+		definition,
+		LegacyCapabilityMapping{
+			Kind:         plugin.CapabilityContractQueryExecutor,
+			CapabilityID: core.CanonicalID("database.query.oracle"),
+			Scope:        ScopeApplicationRuntime,
+			Contract:     legacyContractQueryContract(),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(definition, before) {
+		t.Fatalf("legacy projection mutated authoritative Plugin definition")
 	}
 }
