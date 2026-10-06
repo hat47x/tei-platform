@@ -279,9 +279,9 @@ execution-evidence/
 
 次はactual environmentが必要なため、GitHub Issueへ切り出す。
 
-- original X-TEA Modeler / DriverでReference Modelを起動し、代表Scenarioのactual behavior、transaction、Script effectを取得する
-- CONCEPTWARE Reference Modelの公開Repository内再利用・転載条件を確認する
-- TEI importer / execution codeを実装した後、trusted local cloneでexact-head `tools/repository-health-check.sh`を実行する
+- [GitHub #940](https://github.com/hat47x/tei-platform/issues/940) — original X-TEA Modeler / DriverでReference Modelを起動し、代表Scenarioのactual behavior、transaction、Script effectを取得する
+- [GitHub #941](https://github.com/hat47x/tei-platform/issues/941) — CONCEPTWARE Reference Modelの公開Repository内再利用・転載条件を確認する
+- TEI importer / execution codeを実装した後、対象exact-headを固定してtrusted local cloneで`tools/repository-health-check.sh`を実行する
 - 人による業務設計レビューが必要になった場合、AIの独立レビューと区別して記録する
 
 これらが未実施でもRMT-0〜3のresearchは進められるが、actual比較が必要なclaimを推測で埋めない。
