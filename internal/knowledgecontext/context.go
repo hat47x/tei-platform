@@ -202,7 +202,7 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 		}
 	}
 
-	ctx.DataDesign = buildDataDesignContext(w, sources, target, ctx.SemanticElement)
+	ctx.DataDesign = buildDataDesignContext(w, sources, target, ctx.SemanticElement, ctx.ApplicationPattern)
 
 	for _, dep := range derived.SemanticDependencies {
 		edge := Edge{
@@ -279,7 +279,13 @@ func validationDataID(w ir.World, validationID core.CanonicalID) (core.Canonical
 	return resolved, matches == 1 && resolved != ""
 }
 
-func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subject.Subject, element *index.SemanticElementEntry) *DataDesignContext {
+func buildDataDesignContext(
+	w ir.World,
+	sources sourceindex.Index,
+	target subject.Subject,
+	element *index.SemanticElementEntry,
+	pattern *index.ApplicationPatternIndexEntry,
+) *DataDesignContext {
 	var dataID core.CanonicalID
 	switch target.Kind {
 	case "semantic-data":
@@ -298,6 +304,11 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			return nil
 		}
 		dataID = resolved
+	case "application-pattern":
+		if pattern == nil || pattern.Data == "" {
+			return nil
+		}
+		dataID = pattern.Data
 	case "persistence":
 		var matched core.CanonicalID
 		count := 0
@@ -367,6 +378,7 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
 			"persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
 			"persistence-semantic-data-reference-is-reverse-trace-not-business-identity",
+			"application-pattern-data-reference-is-context-not-business-identity",
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
