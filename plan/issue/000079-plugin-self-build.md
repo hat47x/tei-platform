@@ -276,3 +276,48 @@ artifact-free Source Definition
 Source closureは現時点ではRepository全体です。これは過剰包含ですが入力の取りこぼしを避けるための意図的な初期条件です。E2 Evidence成立後に、必要であれば`go list`等から正確なbuild dependency closureへ狭めます。
 
 このrunnerはまだexact-headで実行していません。したがってactual artifact digest、reproducibility成立、SB-2達成は未主張です。Draft PR #949の検証Gateを維持します。
+
+
+## 2026-10-06 Build recipe・出力種別・SB-1 package self-build
+
+E1の静的監査を続けた結果、Build Planにはbuild対象そのものを表す情報が不足していました。Source、builder、Targetが同じでも、別のentrypointをbuildすれば結果は変わります。runner内の定数だけに依存すると、その差をBuild Planから説明できません。
+
+このため、Build Planに`BuildRecipe`を追加しました。初期形は`kind`と`entrypoint`だけを持ちます。任意のshell commandはCanonicalなBuild contractへ入れません。Go Referenceでは`go-package`と`./tools/reference-process-plugin`を記録します。将来、TEI-native builderや別言語のbuilderを使う場合も、builder adapterがrecipeを解釈する構造を維持します。
+
+また、Buildの生成物を一種類として扱うと、SB-1で作ったPlugin packageをRuntime artifactとして誤ってPlugin Lockへ接続できます。そこで`BuildOutputKind`を追加し、少なくとも次を区別します。
+
+- `plugin-package`
+- `runtime-artifact`
+- `builder-artifact`
+
+値自体は拡張可能とし、Runtimeとの照合だけが`runtime-artifact`を要求します。BuildArtifactLockの一意性にもoutput kindを含めるため、同じPlugin / TargetについてpackageとRuntime artifactを別々に記録できます。
+
+Build Definitionのfingerprint計算では、正規化前にdeep cloneするようにしました。fingerprintを計算しただけでauthoritative Sourceのslice順が変わらないことをtestで固定しています。
+
+### SB-1 package materializer
+
+`internal/plugin/package.go`に、最初のSB-1 package profileを追加しました。artifact-freeなPlugin Definitionと`plugin-package`向けBuild Planから、正規化済みDefinitionを含む決定論的なJSON packageを生成します。
+
+packageにはBuild Plan fingerprintとBuild Definition fingerprintを含めます。同じ意味のDefinitionでCapability内の宣言順だけが違う場合は、同じpackage bytesとdigestになります。一方、Build Planのprofile等が変わればpackage bytesも変わります。
+
+この初期profileではRuntime artifactを含むSource Definitionを受け付けません。SB-1のpackage outputとSB-2のRuntime outputを別経路に保つためです。
+
+通常のReference Workspaceにある`tei.runtime.reference@1.0.0`を使い、実descriptorからSB-1 packageをmaterializeするReference testも追加しました。これは標準Pluginのpackage self-build候補であり、Capability実装そのものをTEIで生成できたという主張ではありません。
+
+### runnerへのSB-1統合
+
+`tools/reference-plugin-self-build`は、process PluginのSB-2候補だけでなく、標準`tei.runtime.reference`のSB-1 packageも同じEvidenceに含めるよう更新しました。
+
+runnerがactualに成功した場合、少なくとも次の二つを別のBuild Plan / BuildArtifactLockとして確認できます。
+
+```text
+tei.runtime.reference
+  -> plugin-package
+
+tei.process.reference
+  -> runtime-artifact
+```
+
+前者はSB-1、後者はForeign-language ReferenceとしてのSB-2候補です。両者を同じ「self-build済み」という一語へまとめません。
+
+actual executionは引き続き#956で確認します。SB-1 packageのmaterializerとReference testを追加したことだけでは、Repository Healthやactual Evidenceの成立は主張しません。
