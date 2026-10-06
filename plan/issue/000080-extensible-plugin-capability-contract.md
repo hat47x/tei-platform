@@ -134,8 +134,12 @@ process非対応Targetで暗黙に別の意味へfallbackしない。
 - Xead / Xeaf Source Adapterをauthoring-tool scopeで解決できる
 - Runtime scopeとのAuthority混同をnegative testで拒否できる
 - provider Conformanceと明示wiringを検証できる
+- callable ProviderのConformanceをexact implementation artifact identityへ結び付けられる
+- fresh resolutionと採用済みresolution replayを分け、Catalog成長だけで採用済みProviderを自動更新しない
+- Contract / Provider replayとcurrent Conformance Evidenceの検証を分けられる
 - logical contractとphysical artifact / processの境界を分離できる
 - process非対応Targetでも同じcontractを別realizationへ載せられる構造を説明できる
+- existing `CapabilityKind`を二重Authorityにせず一方向に移行するpressureを示せる
 - existing `CapabilityKind`をどう移行するかをADR候補として説明できる
 - ISSUE-000077のSemantic InterfaceとAuthorityを混同しない
 
