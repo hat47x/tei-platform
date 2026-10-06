@@ -45,6 +45,7 @@
       "review": {
         "id": "review-main-branch",
         "reviewer": "human",
+        "method": "human-confirmation",
         "reviewedMeaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
         "reviewedAt": "2026-10-06T12:05:00Z"
       }
@@ -64,6 +65,7 @@
       "review": {
         "id": "review-production-auth",
         "reviewer": "system-owner",
+        "method": "human-confirmation",
         "reviewedMeaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
         "reviewedAt": "2026-10-06T12:10:00Z",
         "conditions": ["production only"]
@@ -84,6 +86,7 @@
       "review": {
         "id": "review-provider-contract",
         "reviewer": "integration-owner",
+        "method": "human-confirmation",
         "reviewedMeaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
         "reviewedAt": "2026-09-01T00:00:00Z"
       },
@@ -115,6 +118,7 @@
       "review": {
         "id": "review-identifier-a",
         "reviewer": "reviewer-a",
+        "method": "human-confirmation",
         "reviewedMeaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
         "reviewedAt": "2026-10-05T00:00:00Z"
       },
@@ -134,6 +138,7 @@
       "review": {
         "id": "review-identifier-b",
         "reviewer": "reviewer-b",
+        "method": "human-confirmation",
         "reviewedMeaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
         "reviewedAt": "2026-10-05T00:00:00Z"
       },
