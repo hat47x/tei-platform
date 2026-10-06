@@ -12,8 +12,8 @@ import (
 const (
 	buildDigestA = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	buildDigestB = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-	buildFPA      = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	buildFPB      = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	buildFPA     = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	buildFPB     = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
 func buildDefinitionFixture() plugin.Definition {
@@ -39,7 +39,7 @@ func buildPlanFixture() plugin.BuildPlan {
 			{Kind: "module-lock", ID: "go.sum", Locator: "go.sum", Digest: buildDigestB},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:             core.MustCanonicalID("tei.builder.go"),
+			ID:              core.MustCanonicalID("tei.builder.go"),
 			Version:         "go1.26",
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  buildDigestA,
@@ -48,7 +48,7 @@ func buildPlanFixture() plugin.BuildPlan {
 			Kind:       "go-package",
 			Entrypoint: "./tools/reference-process-plugin",
 		},
-		OutputKind:   plugin.BuildOutputRuntimeArtifact,
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
 		Dependencies: []plugin.BuildDependency{
 			{Kind: "sdk", ID: "example.builder.sdk", Version: "1.0.0", ArtifactDigest: buildDigestB},
 			{Kind: "support", ID: "example.builder.support", Version: "2.0.0", ArtifactDigest: buildDigestA},
@@ -148,7 +148,7 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 	})
 	t.Run("duplicate build dependency", func(t *testing.T) {
 		p := buildPlanFixture()
-		p.Dependencies[1].ID = p.Dependencies[0].ID
+		p.Dependencies[1] = p.Dependencies[0]
 		if _, err := plugin.BuildPlanFingerprint(p); err == nil {
 			t.Fatal("expected duplicate build dependency to fail")
 		}
@@ -255,7 +255,6 @@ func TestBuildLockRejectsDuplicatePluginTarget(t *testing.T) {
 	}
 }
 
-
 func TestLockBuildOutputAndVerifyRuntimePluginBuild(t *testing.T) {
 	plan := buildPlanFixture()
 	locked, err := plugin.LockBuildOutput(plan, buildDigestB)
@@ -271,10 +270,10 @@ func TestLockBuildOutputAndVerifyRuntimePluginBuild(t *testing.T) {
 	}
 	definition := buildDefinitionFixture()
 	runtime := plugin.LockedPlugin{
-		ID:             plan.Plugin.ID,
-		Version:        plan.Plugin.Version,
-		Fingerprint:           plugin.DefinitionFingerprint(definition),
-		ArtifactDigest:        buildDigestB,
+		ID:                   plan.Plugin.ID,
+		Version:              plan.Plugin.Version,
+		Fingerprint:          plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:       buildDigestB,
 		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err != nil {
@@ -290,10 +289,10 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 	}
 	definition := buildDefinitionFixture()
 	baseRuntime := plugin.LockedPlugin{
-		ID:             plan.Plugin.ID,
-		Version:        plan.Plugin.Version,
-		Fingerprint:           plugin.DefinitionFingerprint(definition),
-		ArtifactDigest:        buildDigestB,
+		ID:                   plan.Plugin.ID,
+		Version:              plan.Plugin.Version,
+		Fingerprint:          plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:       buildDigestB,
 		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 
@@ -336,7 +335,6 @@ func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
 	}
 }
 
-
 func TestBuildDefinitionFingerprintExcludesProducedArtifact(t *testing.T) {
 	a := buildDefinitionFixture()
 	b := a
@@ -349,7 +347,6 @@ func TestBuildDefinitionFingerprintExcludesProducedArtifact(t *testing.T) {
 		t.Fatal("runtime definition fingerprint did not change with artifact")
 	}
 }
-
 
 func TestRealizeBuiltDefinitionFeedsExistingRuntimePluginLock(t *testing.T) {
 	source := buildDefinitionFixture()
@@ -428,7 +425,6 @@ func TestRealizeBuiltDefinitionRejectsPredeclaredArtifactMismatch(t *testing.T) 
 	}
 }
 
-
 func TestVerifyRuntimePluginBuildRejectsPackageOutput(t *testing.T) {
 	plan := buildPlanFixture()
 	plan.OutputKind = plugin.BuildOutputPluginPackage
@@ -438,10 +434,10 @@ func TestVerifyRuntimePluginBuildRejectsPackageOutput(t *testing.T) {
 	}
 	definition := buildDefinitionFixture()
 	runtime := plugin.LockedPlugin{
-		ID:             plan.Plugin.ID,
-		Version:        plan.Plugin.Version,
-		Fingerprint:           plugin.DefinitionFingerprint(definition),
-		ArtifactDigest:        buildDigestB,
+		ID:                   plan.Plugin.ID,
+		Version:              plan.Plugin.Version,
+		Fingerprint:          plugin.DefinitionFingerprint(definition),
+		ArtifactDigest:       buildDigestB,
 		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, locked, definition, runtime); err == nil {
@@ -474,7 +470,6 @@ func TestBuildArtifactLockAllowsDifferentOutputKinds(t *testing.T) {
 	}
 }
 
-
 func TestBuildDefinitionFingerprintDoesNotMutateSourceOrdering(t *testing.T) {
 	source := buildDefinitionFixture()
 	source.Runtime.Args = []string{"second", "first"}
@@ -500,7 +495,6 @@ func TestBuildDefinitionFingerprintDoesNotMutateSourceOrdering(t *testing.T) {
 		t.Fatalf("build fingerprint mutated runtime args: %#v", source.Runtime.Args)
 	}
 }
-
 
 func TestBindRuntimeBuildUpgradesLegacyLockAndChangesEnvironmentFingerprint(t *testing.T) {
 	plan := buildPlanFixture()

@@ -136,8 +136,8 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				}
 				fieldLegacyID := attributeValue(child, "FieldID")
 				key.Members = append(key.Members, LegacyKeyMemberFact{
-					Locator:       child.Locator,
-					FieldLegacyID: fieldLegacyID,
+					Locator:          child.Locator,
+					FieldLegacyID:    fieldLegacyID,
 					AttributeType:    tableFields[tableLegacyID][fieldLegacyID].AttributeType,
 					DataTypeLegacyID: tableFields[tableLegacyID][fieldLegacyID].DataTypeLegacyID,
 					SortKey:          attributeValue(child, "SortKey"),

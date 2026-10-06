@@ -30,17 +30,17 @@ type inventorySummaryEntry struct {
 }
 
 type factSummary struct {
-	LegacyKeyCount                   int            `json:"legacyKeyCount"`
-	LegacyKeyTypes                   map[string]int `json:"legacyKeyTypes,omitempty"`
-	CompositeLegacyKeyCount          int            `json:"compositeLegacyKeyCount"`
-	DerivedLegacyKeyMemberCount      int            `json:"derivedLegacyKeyMemberCount"`
-	RelationshipKeyCount             int            `json:"relationshipKeyCount"`
-	RelationshipsUsingDerivedKeyCount int           `json:"relationshipsUsingDerivedKeyCount"`
-	DeclaredKeyFieldsCount           int            `json:"declaredKeyFieldsCount"`
-	RuntimeKeyCount                  int            `json:"runtimeKeyCount"`
-	RuntimeReferCount                int            `json:"runtimeReferCount"`
-	RuntimeReferExplicitKeyCount     int            `json:"runtimeReferExplicitKeyCount"`
-	RuntimeReferPKFallbackCount      int            `json:"runtimeReferPkFallbackCount"`
+	LegacyKeyCount                    int            `json:"legacyKeyCount"`
+	LegacyKeyTypes                    map[string]int `json:"legacyKeyTypes,omitempty"`
+	CompositeLegacyKeyCount           int            `json:"compositeLegacyKeyCount"`
+	DerivedLegacyKeyMemberCount       int            `json:"derivedLegacyKeyMemberCount"`
+	RelationshipKeyCount              int            `json:"relationshipKeyCount"`
+	RelationshipsUsingDerivedKeyCount int            `json:"relationshipsUsingDerivedKeyCount"`
+	DeclaredKeyFieldsCount            int            `json:"declaredKeyFieldsCount"`
+	RuntimeKeyCount                   int            `json:"runtimeKeyCount"`
+	RuntimeReferCount                 int            `json:"runtimeReferCount"`
+	RuntimeReferExplicitKeyCount      int            `json:"runtimeReferExplicitKeyCount"`
+	RuntimeReferPKFallbackCount       int            `json:"runtimeReferPkFallbackCount"`
 }
 
 type candidateSummary struct {
@@ -62,16 +62,16 @@ type diagnosticSummary struct {
 }
 
 type report struct {
-	SchemaVersion                    string                      `json:"schemaVersion"`
-	Source                           sourceIdentity              `json:"source"`
+	SchemaVersion                    string                  `json:"schemaVersion"`
+	Source                           sourceIdentity          `json:"source"`
 	Inventory                        []inventorySummaryEntry `json:"inventory"`
-	UnknownConstructCount             int                     `json:"unknownConstructCount"`
+	UnknownConstructCount            int                     `json:"unknownConstructCount"`
 	Candidates                       candidateSummary        `json:"candidates"`
-	RelationalFacts                  factSummary                 `json:"relationalFacts"`
-	RelationalDiagnostics            diagnosticSummary           `json:"relationalDiagnostics"`
-	ClassificationPolicyFingerprint  string                      `json:"classificationPolicyFingerprint"`
-	TranscriptionContractFingerprint string                      `json:"transcriptionContractFingerprint"`
-	AuthorityLimits                  []string                    `json:"authorityLimits"`
+	RelationalFacts                  factSummary             `json:"relationalFacts"`
+	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
+	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
+	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
+	AuthorityLimits                  []string                `json:"authorityLimits"`
 }
 
 func main() {
@@ -129,7 +129,7 @@ func buildReport(inspection xeadsource.Inspection) report {
 			SHA256: inspection.Document.SHA256,
 		},
 		Inventory:                        summarizeInventory(inspection.Document.Inventory),
-		UnknownConstructCount:             countUnknownInventory(inspection.Document.Inventory),
+		UnknownConstructCount:            countUnknownInventory(inspection.Document.Inventory),
 		Candidates:                       summarizeCandidates(inspection.Candidates),
 		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
@@ -198,12 +198,12 @@ func summarizeCandidates(candidates []xeadsource.Candidate) candidateSummary {
 
 func summarizeFacts(facts xeadsource.RelationalSourceFacts) factSummary {
 	out := factSummary{
-		LegacyKeyCount:       len(facts.LegacyKeys),
-		LegacyKeyTypes:       map[string]int{},
-		RelationshipKeyCount: len(facts.RelationshipKeys),
+		LegacyKeyCount:         len(facts.LegacyKeys),
+		LegacyKeyTypes:         map[string]int{},
+		RelationshipKeyCount:   len(facts.RelationshipKeys),
 		DeclaredKeyFieldsCount: len(facts.DeclaredKeyFields),
-		RuntimeKeyCount:      len(facts.RuntimeKeys),
-		RuntimeReferCount:    len(facts.RuntimeRefers),
+		RuntimeKeyCount:        len(facts.RuntimeKeys),
+		RuntimeReferCount:      len(facts.RuntimeRefers),
 	}
 	type keyIdentity struct {
 		table string

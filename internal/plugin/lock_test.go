@@ -66,7 +66,6 @@ func TestEnvironmentLockFingerprintIgnoresPluginOrdering(t *testing.T) {
 	}
 }
 
-
 func TestLegacyFormat2PluginLockRemainsReadable(t *testing.T) {
 	def := plugin.Definition{
 		ID:      core.MustCanonicalID("tei.legacy"),
@@ -151,10 +150,9 @@ func TestUnsupportedPluginLockFormatFails(t *testing.T) {
 	}
 }
 
-
 func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 	def := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.invalid-trace"),
+		ID:      core.MustCanonicalID("tei.invalid_trace"),
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "invalid-trace"},
 		Artifact: plugin.Artifact{
@@ -162,7 +160,7 @@ func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 		},
 	}
 	env := environment.Environment{
-		ID: core.MustCanonicalID("invalid-trace"),
+		ID: core.MustCanonicalID("invalid_trace"),
 		Plugins: []environment.ExtensionRequirement{{
 			ID:              def.ID,
 			CompatibleMajor: 1,
@@ -189,10 +187,9 @@ func TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint(t *testing.T) {
 	}
 }
 
-
 func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
 	def := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.legacy-trace"),
+		ID:      core.MustCanonicalID("tei.legacy_trace"),
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "legacy-trace"},
 		Artifact: plugin.Artifact{
@@ -200,7 +197,7 @@ func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
 		},
 	}
 	env := environment.Environment{
-		ID: core.MustCanonicalID("legacy-trace"),
+		ID: core.MustCanonicalID("legacy_trace"),
 		Plugins: []environment.ExtensionRequirement{{
 			ID:              def.ID,
 			CompatibleMajor: 1,
@@ -227,15 +224,14 @@ func TestLegacyFormat2RejectsBuildTraceField(t *testing.T) {
 	}
 }
 
-
 func TestBuildTraceFormat3RequiresArtifactDigest(t *testing.T) {
 	def := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.trace-without-artifact"),
+		ID:      core.MustCanonicalID("tei.trace_without_artifact"),
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
 	}
 	env := environment.Environment{
-		ID: core.MustCanonicalID("trace-without-artifact"),
+		ID: core.MustCanonicalID("trace_without_artifact"),
 		Plugins: []environment.ExtensionRequirement{{
 			ID:              def.ID,
 			CompatibleMajor: 1,

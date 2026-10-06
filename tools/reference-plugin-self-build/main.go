@@ -23,41 +23,41 @@ import (
 )
 
 const (
-	referencePluginID       = "tei.process.reference"
-	referencePluginVersion  = "1.0.0"
-	referenceWorkspace      = "reference/plugin-self-build/workspace"
-	referenceDescriptor     = "reference/plugin-self-build/workspace/plugins/tei-process-reference/1.0.0/plugin.tei"
-	referencePackage        = "./tools/reference-process-plugin"
-	packagePluginID         = "tei.runtime.reference"
-	packagePluginVersion    = "1.0.0"
-	packageWorkspace        = "reference/workspace"
-	packageDescriptor       = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
+	referencePluginID      = "tei.process.reference"
+	referencePluginVersion = "1.0.0"
+	referenceWorkspace     = "reference/plugin-self-build/workspace"
+	referenceDescriptor    = "reference/plugin-self-build/workspace/plugins/tei-process-reference/1.0.0/plugin.tei"
+	referencePackage       = "./tools/reference-process-plugin"
+	packagePluginID        = "tei.runtime.reference"
+	packagePluginVersion   = "1.0.0"
+	packageWorkspace       = "reference/workspace"
+	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
 )
 
 type evidence struct {
-	Schema                       string                   `json:"schema"`
-	RepositoryRevision           string                   `json:"repositoryRevision"`
-	RepositoryTreeDigest         string                   `json:"repositoryTreeDigest"`
-	GoVersion                    string                   `json:"goVersion"`
-	GoBinaryDigest               string                   `json:"goBinaryDigest"`
-	GoToolchainDigest            string                   `json:"goToolchainDigest"`
-	PackageBuildPlan             plugin.BuildPlan         `json:"packageBuildPlan"`
-	PackageBuildPlanFingerprint  string                   `json:"packageBuildPlanFingerprint"`
-	PackageFirstArtifactDigest   string                   `json:"packageFirstArtifactDigest"`
-	PackageSecondArtifactDigest  string                   `json:"packageSecondArtifactDigest"`
-	PackageReproducible          bool                     `json:"packageReproducible"`
-	PackageLockedBuild           plugin.LockedBuild       `json:"packageLockedBuild"`
-	PackageLockFingerprint       string                   `json:"packageLockFingerprint"`
-	BuildPlan                    plugin.BuildPlan         `json:"buildPlan"`
-	BuildPlanFingerprint         string                   `json:"buildPlanFingerprint"`
-	FirstArtifactDigest          string                   `json:"firstArtifactDigest"`
-	SecondArtifactDigest         string                   `json:"secondArtifactDigest"`
-	Reproducible                 bool                     `json:"reproducible"`
-	LockedBuild                  plugin.LockedBuild       `json:"lockedBuild"`
-	BuildArtifactLockFingerprint string                   `json:"buildArtifactLockFingerprint"`
-	RuntimeDefinitionFingerprint string                   `json:"runtimeDefinitionFingerprint"`
-	RuntimePluginLockFingerprint string                   `json:"runtimePluginLockFingerprint"`
-	RuntimePluginLock            plugin.Lock              `json:"runtimePluginLock"`
+	Schema                       string             `json:"schema"`
+	RepositoryRevision           string             `json:"repositoryRevision"`
+	RepositoryTreeDigest         string             `json:"repositoryTreeDigest"`
+	GoVersion                    string             `json:"goVersion"`
+	GoBinaryDigest               string             `json:"goBinaryDigest"`
+	GoToolchainDigest            string             `json:"goToolchainDigest"`
+	PackageBuildPlan             plugin.BuildPlan   `json:"packageBuildPlan"`
+	PackageBuildPlanFingerprint  string             `json:"packageBuildPlanFingerprint"`
+	PackageFirstArtifactDigest   string             `json:"packageFirstArtifactDigest"`
+	PackageSecondArtifactDigest  string             `json:"packageSecondArtifactDigest"`
+	PackageReproducible          bool               `json:"packageReproducible"`
+	PackageLockedBuild           plugin.LockedBuild `json:"packageLockedBuild"`
+	PackageLockFingerprint       string             `json:"packageLockFingerprint"`
+	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
+	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
+	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
+	SecondArtifactDigest         string             `json:"secondArtifactDigest"`
+	Reproducible                 bool               `json:"reproducible"`
+	LockedBuild                  plugin.LockedBuild `json:"lockedBuild"`
+	BuildArtifactLockFingerprint string             `json:"buildArtifactLockFingerprint"`
+	RuntimeDefinitionFingerprint string             `json:"runtimeDefinitionFingerprint"`
+	RuntimePluginLockFingerprint string             `json:"runtimePluginLockFingerprint"`
+	RuntimePluginLock            plugin.Lock        `json:"runtimePluginLock"`
 }
 
 func main() {
@@ -191,7 +191,7 @@ func run(repo string) (evidence, error) {
 			},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:             core.MustCanonicalID("tei.builder.package.go.seed"),
+			ID:              core.MustCanonicalID("tei.builder.package.go.seed"),
 			Version:         goVersion,
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  goToolchainDigest,
@@ -260,7 +260,7 @@ func run(repo string) (evidence, error) {
 			},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:             core.MustCanonicalID("tei.builder.go.seed"),
+			ID:              core.MustCanonicalID("tei.builder.go.seed"),
 			Version:         goVersion,
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  goToolchainDigest,
@@ -270,8 +270,8 @@ func run(repo string) (evidence, error) {
 			Entrypoint: referencePackage,
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
-		Target:  "host-process/" + runtime.GOOS + "/" + runtime.GOARCH,
-		Profile: "reference",
+		Target:     "host-process/" + runtime.GOOS + "/" + runtime.GOARCH,
+		Profile:    "reference",
 		Parameters: []plugin.BuildParameter{
 			{Name: "buildvcs", Value: "false"},
 			{Name: "cgo", Value: "disabled"},
@@ -407,10 +407,6 @@ func run(repo string) (evidence, error) {
 		RuntimePluginLock:            runtimeLock,
 	}, nil
 }
-
-
-
-
 
 func requireValidWorld(label string, world ir.World) error {
 	diagnostics := validation.Validate(world)
