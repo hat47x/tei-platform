@@ -53,6 +53,15 @@ type BuildParameter struct {
 	Value string `json:"value"`
 }
 
+// BuildRecipe identifies what the selected builder is asked to build without
+// embedding an arbitrary shell command in the canonical build contract.
+// Kind is interpreted by the builder adapter; Entrypoint identifies the
+// language/toolchain-local source unit such as a Go package or TEI module.
+type BuildRecipe struct {
+	Kind       string `json:"kind"`
+	Entrypoint string `json:"entrypoint"`
+}
+
 // BuildPlan fixes the resolved inputs for one Plugin artifact build. It does not
 // grant Acceptance or Runtime Authority and does not execute the build.
 type BuildPlan struct {
@@ -61,6 +70,7 @@ type BuildPlan struct {
 	PluginDefinitionFingerprint string            `json:"pluginDefinitionFingerprint"`
 	Sources               []BuildSource     `json:"sources"`
 	Builder               BuilderIdentity   `json:"builder"`
+	Recipe                BuildRecipe       `json:"recipe"`
 	Dependencies          []BuildDependency `json:"dependencies,omitempty"`
 	Target                string            `json:"target"`
 	Profile               string            `json:"profile,omitempty"`
@@ -137,6 +147,9 @@ func (p BuildPlan) Validate() error {
 	if p.Plugin.ID == "" {
 		return fmt.Errorf("build plan plugin id is required")
 	}
+	if _, err := core.ParseCanonicalID(string(p.Plugin.ID)); err != nil {
+		return fmt.Errorf("build plan plugin id: %w", err)
+	}
 	if !core.ValidNumericVersion(p.Plugin.Version) {
 		return fmt.Errorf("build plan plugin version %q must be major.minor.patch", p.Plugin.Version)
 	}
@@ -168,11 +181,20 @@ func (p BuildPlan) Validate() error {
 	if p.Builder.ID == "" {
 		return fmt.Errorf("builder id is required")
 	}
+	if _, err := core.ParseCanonicalID(string(p.Builder.ID)); err != nil {
+		return fmt.Errorf("builder id: %w", err)
+	}
 	if strings.TrimSpace(p.Builder.Version) == "" {
 		return fmt.Errorf("builder version is required")
 	}
 	if err := validateBuildDigest("builder artifact digest", p.Builder.ArtifactDigest); err != nil {
 		return err
+	}
+	if strings.TrimSpace(p.Recipe.Kind) == "" {
+		return fmt.Errorf("build recipe kind is required")
+	}
+	if strings.TrimSpace(p.Recipe.Entrypoint) == "" {
+		return fmt.Errorf("build recipe entrypoint is required")
 	}
 	dependencies := map[string]struct{}{}
 	for _, d := range p.Dependencies {
@@ -251,6 +273,9 @@ func (l BuildArtifactLock) Validate() error {
 	for _, b := range l.Builds {
 		if b.Plugin.ID == "" {
 			return fmt.Errorf("locked build plugin id is required")
+		}
+		if _, err := core.ParseCanonicalID(string(b.Plugin.ID)); err != nil {
+			return fmt.Errorf("locked build plugin id: %w", err)
 		}
 		if !core.ValidNumericVersion(b.Plugin.Version) {
 			return fmt.Errorf("locked build plugin version %q must be major.minor.patch", b.Plugin.Version)
