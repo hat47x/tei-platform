@@ -95,6 +95,116 @@ func TestBuildKnowledgeContextReturnsSemanticValidationContext(t *testing.T) {
 	}
 }
 
+func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil {
+		t.Fatalf("data design context is missing: %+v", got)
+	}
+	dataDesign := got.DataDesign
+	if dataDesign.Data != "sales.order_line" ||
+		dataDesign.Focus.Kind != "semantic-data" ||
+		dataDesign.Focus.ID != "sales.order_line" {
+		t.Fatalf("data design scope drifted: %+v", dataDesign)
+	}
+	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
+		"business identifier": dataDesign.BusinessOccurrenceIdentifier,
+		"candidate keys":      dataDesign.CandidateKeys,
+		"functional dependency": dataDesign.FunctionalDependencies,
+	} {
+		if state.Nature != "unresolved" || state.Reason == "" {
+			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
+		}
+	}
+
+	var foundLineRelation bool
+	for _, relation := range dataDesign.Relations {
+		if relation.ID == "sales.order.lines" &&
+			relation.Source == "sales.order" &&
+			relation.Target == "sales.order_line" &&
+			relation.Cardinality == "many" {
+			foundLineRelation = true
+			break
+		}
+	}
+	if !foundLineRelation {
+		t.Fatalf("incoming order-line relation is missing: %+v", dataDesign.Relations)
+	}
+
+	var foundLineUnique, foundQuantityPositive bool
+	for _, constraint := range dataDesign.Constraints {
+		switch constraint.ID {
+		case "sales.order.lines.line_number_unique":
+			foundLineUnique = constraint.Kind == "relation-unique" &&
+				constraint.Relation == "sales.order.lines" &&
+				constraint.Attribute == "sales.order_line.line_number"
+		case "sales.order_line.quantity_positive":
+			foundQuantityPositive = constraint.Kind == "positive" &&
+				constraint.Attribute == "sales.order_line.quantity"
+		}
+	}
+	if !foundLineUnique || !foundQuantityPositive {
+		t.Fatalf("data design constraints are incomplete: %+v", dataDesign.Constraints)
+	}
+
+	for _, limit := range []string{
+		"absence-of-authored-business-identifier-is-not-no-identifier",
+		"absence-of-authored-functional-dependency-is-not-no-dependency",
+		"relation-key-is-not-business-identifier",
+		"application-pattern-ui-or-runtime-identity-is-not-data-identity",
+	} {
+		if !containsKnowledgeContextString(dataDesign.AuthorityLimits, limit) {
+			t.Fatalf("data design authority limit %q is missing: %+v", limit, dataDesign.AuthorityLimits)
+		}
+	}
+}
+
+func TestBuildKnowledgeContextExposesRelationKeyWithoutPromotingItToBusinessIdentifier(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-relation",
+		"sales.order.customer",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DataDesign == nil || got.DataDesign.Data != "sales.order" {
+		t.Fatalf("relation focus did not resolve parent data design context: %+v", got.DataDesign)
+	}
+
+	var found bool
+	for _, relation := range got.DataDesign.Relations {
+		if relation.ID != "sales.order.customer" {
+			continue
+		}
+		if relation.Source != "sales.order" || relation.Target != "customer.customer" || relation.Cardinality != "one" {
+			t.Fatalf("relation topology drifted: %+v", relation)
+		}
+		if len(relation.Keys) != 1 ||
+			relation.Keys[0].SourceAttribute != "sales.order.customer_id" ||
+			relation.Keys[0].TargetAttribute != "customer.customer.customer_id" {
+			t.Fatalf("relation key mapping is incomplete: %+v", relation.Keys)
+		}
+		found = true
+		break
+	}
+	if !found {
+		t.Fatalf("focused relation is missing from data design context: %+v", got.DataDesign.Relations)
+	}
+	if got.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
+		t.Fatalf("relation key was promoted to business identity or FD: %+v", got.DataDesign)
+	}
+}
+
 func TestBuildKnowledgeContextPreservesUnknownSubjectAsUnresolved(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
