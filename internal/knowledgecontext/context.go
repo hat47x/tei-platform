@@ -219,6 +219,55 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 	return ctx
 }
 
+func validationDataID(w ir.World, validationID core.CanonicalID) (core.CanonicalID, bool) {
+	attributeOwners := map[core.CanonicalID]core.CanonicalID{}
+	relationTargets := map[core.CanonicalID]core.CanonicalID{}
+	for _, ns := range w.Semantics {
+		for _, data := range ns.Data {
+			for _, attribute := range data.Attributes {
+				attributeOwners[attribute.ID] = data.ID
+			}
+			for _, relation := range data.Relations {
+				relationTargets[relation.ID] = relation.Target
+			}
+		}
+	}
+
+	var resolved core.CanonicalID
+	matches := 0
+	for _, ns := range w.Semantics {
+		for _, validation := range ns.Validations {
+			if validation.ID != validationID {
+				continue
+			}
+			matches++
+			var candidate core.CanonicalID
+			if validation.Attribute != "" {
+				owner, ok := attributeOwners[validation.Attribute]
+				if !ok {
+					return "", false
+				}
+				candidate = owner
+			}
+			if validation.Relation != "" {
+				target, ok := relationTargets[validation.Relation]
+				if !ok {
+					return "", false
+				}
+				if candidate != "" && candidate != target {
+					return "", false
+				}
+				candidate = target
+			}
+			if candidate == "" {
+				return "", false
+			}
+			resolved = candidate
+		}
+	}
+	return resolved, matches == 1 && resolved != ""
+}
+
 func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subject.Subject, element *index.SemanticElementEntry) *DataDesignContext {
 	var dataID core.CanonicalID
 	switch target.Kind {
@@ -232,6 +281,12 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			return nil
 		}
 		dataID = element.Parent
+	case "semantic-validation":
+		resolved, ok := validationDataID(w, core.CanonicalID(target.ID))
+		if !ok {
+			return nil
+		}
+		dataID = resolved
 	case "persistence":
 		var matched core.CanonicalID
 		count := 0
