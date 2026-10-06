@@ -294,17 +294,25 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	}
 	fdCandidate := dataDesign.FunctionalDependencyCandidates[0]
 	if fdCandidate.Relation != "sales.order.lines" ||
-		fdCandidate.SourceData != "sales.order" ||
-		fdCandidate.DeterminantAttribute != "sales.order_line.line_number" ||
-		fdCandidate.DependentData != "sales.order_line" ||
+		fdCandidate.DependentOccurrence != "sales.order_line" ||
 		fdCandidate.BasisConstraint != "sales.order.lines.line_number_unique" ||
 		fdCandidate.Scope != "per-relation-source-occurrence" ||
 		fdCandidate.Nature != "candidate-from-accepted-scoped-uniqueness" {
 		t.Fatalf("functional dependency candidate drifted: %+v", fdCandidate)
 	}
+	if len(fdCandidate.Determinants) != 2 ||
+		fdCandidate.Determinants[0].Kind != "relation-source-occurrence" ||
+		fdCandidate.Determinants[0].Data != "sales.order" ||
+		fdCandidate.Determinants[0].Attribute != "" ||
+		fdCandidate.Determinants[1].Kind != "attribute" ||
+		fdCandidate.Determinants[1].Data != "sales.order_line" ||
+		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
+		t.Fatalf("functional dependency determinant terms lost scoped identity: %+v", fdCandidate.Determinants)
+	}
 	for _, needed := range []string{
 		"source-occurrence-business-identifier",
 		"relation-business-meaning",
+		"target-membership-exclusivity",
 		"temporal-validity",
 	} {
 		if !containsKnowledgeContextString(fdCandidate.EvidenceNeeded, needed) {
