@@ -45,6 +45,24 @@ physical schema / Provider
 
 Data traceが見つからないことを、その業務にData dependencyが存在しないというnegative factへ変換しません。
 
+### 業務上の識別と関数従属性を物理キーへ畳まない
+
+Data設計では、recordを技術的に一意に識別できることだけでなく、**業務上、何が何を決めるのか**を失わないことを重視します。
+
+~~~text
+Canonical subject identity
+  != Application recordのbusiness identity
+  != physical primary key / surrogate key
+~~~
+
+Canonical IDはTEI内の意味上の対象を安定して指すためのidentityです。一方、Application dataには、業務上の識別子、candidate key、複合的な識別関係、関数従属性、定義域制約等があります。さらにPersistenceでは、surrogate keyやProvider固有の物理キーを使う場合があります。これらを一つの`id`概念へ畳みません。
+
+TEIは「natural keyを使う」「複合主キーを使う」「surrogate keyを使う」のいずれかを一律の規則にはしません。重要なのは、物理実装を変更しても、親子、参照、独立した組合せ等の**業務上異なるRelation semantics**と、それを支えるdeterminant / uniqueness / Constraintを追跡できることです。
+
+正規化はData設計を検査する有力な手段ですが、特定の正規形を全Persistenceへ機械的に強制することは要求しません。性能や外部schema互換性のために非正規化した実装を採る場合も、derived / realization上の都合によって元のbusiness Data meaningを消さないことを優先します。
+
+現時点では`FunctionalDependency`や`BusinessKey`を新しいtop-level Canonical kindとして固定しません。まずrealistic Referenceで、既存のIdentity / Relation / Constraint / Expression / Provenanceでどこまでlosslessに表現・検査できるかをPressureします。
+
 ### Data meaningとrecord instanceを分ける
 
 Data視点でいう`Customer`、`Order`、`Card`等のbusiness meaningと、Applicationが実際に保持する個々のrecordを同一視しません。
@@ -78,6 +96,8 @@ concrete UI / API / MCP / VUI
 ```
 
 Projectionは設計不備を見つけるために使えますが、Projection側の都合でCanonical meaningを黙って変更しません。
+
+UI / Interaction Projectionは、利用者がDataやFunctionの意味を具体的に確認する**review surface**でもあります。Data Modelだけでは見落としやすい入力不足、意味の取り違え、利用不能な状態遷移等を、実際の利用像から発見できることを重視します。ただし、reviewしやすさのために具体化した表示内容や配置を、そのままCanonical authorityへ昇格させません。
 
 ## 5. Business ActionとApplication Functionを同一視しない
 
@@ -413,6 +433,24 @@ Referenceはtechnical fixtureだけでなく、学習例、platform pressure tes
 
 Realistic Referenceは既存schemaを検証するためだけのfixtureではありません。Handoff等の対象fieldを取り除いても独立したBusiness needを説明できるseedから始め、そのneedから自然に出るpressureだけをcontract判断へ使います。
 
+さらにReferenceは、TEIのArchitectureやRuntimeに都合のよい小例だけで成立させません。一定の業務複雑性を持つReferenceを通常のAuthoring / Validation / Binding / Driver / Target経路で扱えない場合、その事実をplatform側またはReference設計側のGapとして残します。Reference専用の例外実装で「対応済み」に見せません。
+
+~~~text
+Reference source / design
+        ↓
+author / validate / realize
+        ↓
+execute / observe / review
+        ↓
+platform gap or reference-design gap
+        ↓
+authoritative sourceへ戻って修正
+~~~
+
+実装を試みた結果、Reference自体の矛盾や不足が見つかることも正常なfeedbackです。したがって「モデルがある」「parseできる」「画面が出る」を同じ成熟度として扱わず、少なくとも設計表現、実行可能性、実装・観測による検証をEvidence上で区別します。これは新しい固定status enumを要求するものではありません。
+
+一つのReferenceが動くことだけから汎用性を主張しません。異なるdomain、規模、Data構造、Business Procedure、Target / Provider条件を持つ複数Referenceによって、どの範囲までTEIの設計体系が成立するかを反証可能な形で広げます。
+
 ## 21. AIはcritic / proposerでありauthorityではない
 
 AIはExisting knowledge探索、cross-reference候補、Procedure草案、Matrix / graph / UI Projection生成、不足検出、unresolved question提示を支援できます。
@@ -429,6 +467,10 @@ unresolved
 Human / Studio / CLI / AIのいずれも同じShared Acceptance Boundaryへ接続します。
 
 AIが空欄をもっともらしく補完することを品質向上とはみなしません。sourceに根拠がなければunresolvedを保持する提案も正当な結果です。
+
+Data Modelについても同じです。AIがschemaを生成できたことや、生成結果がparse / type-checkを通ったことだけから、業務上のidentity、関数従属性、cardinality、Constraint、正規化上の妥当性が確認済みとはみなしません。source-backedなdeterminantや業務規則を確定できない場合は、もっともらしいkeyを補うよりunresolvedを残します。
+
+決定論的なValidatorは、宣言済みのConstraintや整合性を検査できます。一方、業務の現実から未宣言の関数従属性や識別規則を自動的に「発見した」ことにはしません。AIによる候補発見と、accepted Data meaningの成立を分離します。
 
 ## 22. 外部参照の概念をCoreへ先回りして写さない
 
@@ -450,6 +492,8 @@ Identity / Type / Relation / Expression / Constraint / Lifecycle / Provenance等
 - **O-08 Temporal semantics:** 何をbusiness meaningとして保持し、何をanalysis / persistence realizationへ残すか。
 - **O-09 Evidence nature:** source-backed / accepted / derived / proposal / unresolvedの違いをどこまでdurable metadataとして保持する必要があるか。
 - **O-10 Handoff Evidence:** Business condition成立を支えるEvidence traceを既存Provenanceで十分に説明できるか。
+- **O-11 Data determinant:** business identity / candidate key / functional dependency / domain constraintのうち、どこまでをdurable semantic contractとして保持すべきか。
+- **O-12 Reference falsifiability:** domain diversityと実装検証のどこまでが、TEIの汎用性を主張するための十分なReference Evidenceになるか。
 
 これらはReference実験、ADR、Evidenceから決めます。
 
