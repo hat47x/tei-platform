@@ -28,7 +28,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	    }
 	  }
 	}`)
-	source := []byte(`<System><Table ID="SECRET_TABLE"><TableField ID="SECRET_DERIVED" AttributeType="DERIVABLE"/><TableKey ID="SECRET_KEY" Type="PK"><TableKeyField FieldID="SECRET_DERIVED"/></TableKey></Table><Table ID="OTHER_TABLE"><TableField ID="OTHER_FIELD" AttributeType="NATIVE"/><TableKey ID="OTHER_KEY" Type="PK"><TableKeyField FieldID="OTHER_FIELD"/></TableKey></Table><Relationship ID="SECRET_REL" Table1ID="SECRET_TABLE" TableKey1ID="SECRET_KEY" Table2ID="OTHER_TABLE" TableKey2ID="OTHER_KEY"/></System>`)
+	source := []byte(`<System><Table ID="SECRET_TABLE"><TableField ID="SECRET_DERIVED" AttributeType="DERIVABLE"/><TableKey ID="SECRET_KEY" Type="PK"><TableKeyField FieldID="SECRET_DERIVED"/></TableKey></Table><Table ID="OTHER_TABLE"><TableField ID="OTHER_FIELD" AttributeType="NATIVE"/><TableKey ID="OTHER_KEY" Type="PK"><TableKeyField FieldID="OTHER_FIELD"/></TableKey></Table><Relationship ID="SECRET_REL" Table1ID="SECRET_TABLE" TableKey1ID="SECRET_KEY" Table2ID="OTHER_TABLE" TableKey2ID="OTHER_KEY"/><PRIVATE_EXTENSION/></System>`)
 	inspection, err := xeadsource.InspectWithContract(xeadsource.FormatXead, source, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -37,6 +37,9 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	if got.RelationalFacts.DerivedLegacyKeyMemberCount != 1 ||
 		got.RelationalFacts.RelationshipsUsingDerivedKeyCount != 1 {
 		t.Fatalf("derived relation pressure was not detected: %#v", got.RelationalFacts)
+	}
+	if got.UnknownConstructCount != 1 {
+		t.Fatalf("unknown source construct count = %d", got.UnknownConstructCount)
 	}
 	if got.Source.SHA256 == "" ||
 		got.ClassificationPolicyFingerprint == "" ||
@@ -47,7 +50,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, secret := range []string{"SECRET_TABLE", "SECRET_DERIVED", "SECRET_KEY", "SECRET_REL", "OTHER_TABLE", "OTHER_FIELD", "OTHER_KEY"} {
+	for _, secret := range []string{"SECRET_TABLE", "SECRET_DERIVED", "SECRET_KEY", "SECRET_REL", "OTHER_TABLE", "OTHER_FIELD", "OTHER_KEY", "PRIVATE_EXTENSION"} {
 		if bytes.Contains(encoded, []byte(secret)) {
 			t.Fatalf("public report leaked raw source identifier %q: %s", secret, encoded)
 		}
