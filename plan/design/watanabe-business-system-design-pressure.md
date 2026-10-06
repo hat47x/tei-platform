@@ -43,7 +43,7 @@ Date: 2026-10-06
 
 渡辺氏はUIを、利用者が理解しやすく、Data Modelの意味を具体的に確認できる設計要素として重視しています。TEIもUIをauthorityにはしない一方、Interaction ProjectionからData / Functionの矛盾を発見する設計を採っています。
 
-今回、UIを「表示結果」だけでなく利用者による意味確認のreview surfaceとして明文化しました。
+今回、UIを「表示結果」だけでなく利用者による意味確認のreview surfaceとして明文化しました。また、基本設計のreview projectionと出荷TargetのVisual Fidelityを分離し、設計段階の装飾完成度をSemantic成立条件へ混ぜない境界も明確にしました。
 
 ### 3.3 Business ProcedureをApplication Functionへ還元しない
 
