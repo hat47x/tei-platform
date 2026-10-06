@@ -56,6 +56,7 @@ type evidence struct {
 	LockedBuild                  plugin.LockedBuild       `json:"lockedBuild"`
 	BuildArtifactLockFingerprint string                   `json:"buildArtifactLockFingerprint"`
 	RuntimeDefinitionFingerprint string                   `json:"runtimeDefinitionFingerprint"`
+	RuntimePluginLockFingerprint string                   `json:"runtimePluginLockFingerprint"`
 	RuntimePluginLock            plugin.Lock              `json:"runtimePluginLock"`
 }
 
@@ -366,6 +367,10 @@ func run(repo string) (evidence, error) {
 	if err := plugin.VerifyRuntimePluginBuild(plan, lockedBuild, realized, runtimePlugin); err != nil {
 		return evidence{}, err
 	}
+	runtimePluginLockFingerprint, err := plugin.EnvironmentLockFingerprint(runtimeLock, loaded.World.Environments[0].ID)
+	if err != nil {
+		return evidence{}, err
+	}
 	if err := requireCleanRepository(root); err != nil {
 		return evidence{}, fmt.Errorf("repository changed during build: %w", err)
 	}
@@ -392,6 +397,7 @@ func run(repo string) (evidence, error) {
 		LockedBuild:                  lockedBuild,
 		BuildArtifactLockFingerprint: buildArtifactLockFingerprint,
 		RuntimeDefinitionFingerprint: plugin.DefinitionFingerprint(realized),
+		RuntimePluginLockFingerprint: runtimePluginLockFingerprint,
 		RuntimePluginLock:            runtimeLock,
 	}, nil
 }
