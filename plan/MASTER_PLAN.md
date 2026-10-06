@@ -367,6 +367,16 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 このresearch integrationは、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030の既存Gapを減らすための作業であり、研究を読んだことだけでEvidence tierを変更しません。
 
+## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
+
+小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkは渡辺幸三氏のX-TEA / XEAD系「CONCEPTWARE／受注生産」です。
+
+これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
+
+転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
+
+判定契約は[Reference Model Transfer Evidence Gate](REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）Gate B actual final Evidenceを同一revision（R = `e5231839`）へ収束した
@@ -378,7 +388,8 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
    - `ISSUE-000027` AI Proposal / Acceptance — mechanismに依存せずminimum semantic deltaをShared Acceptanceへ収束
    - `ISSUE-000026` 第二Target pressure test — Target差に加えてportable execution artifact / Host差を比較
    - `ISSUE-000053` AI-native re-entry / Operational Knowledge — contract / implementation / config / current authority / Observationの再現性
-5. 第二TargetとAuthoring / AIのEvidenceを相互に戻し、Target-neutral / authoring境界を再評価する
+   - `ISSUE-000078` Reference Model Transfer — 成熟した既存model全体を転写し、表現力・loss・暗黙前提を横断Evidenceでpressure
+5. 第二TargetとAuthoring / AI / Reference Model TransferのEvidenceを相互に戻し、Target-neutral / authoring / semantic extension境界を再評価する
 6. production / ecosystem境界を必要なEvidenceとともに広げる
 
 Gate B / Gate CのReady判定とhistorical Evidenceは各exact revisionへ固定済みです。現在の主眼はGate C後のAuthoring / Knowledge / AI / Second Targetであり、旧Gate revisionのEvidenceをcurrent Workspaceへcarry-forwardしません。
