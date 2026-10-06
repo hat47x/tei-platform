@@ -95,6 +95,10 @@ Canonical identityは、設計上のsubjectをRepositoryやTargetをまたいで
 
 したがって、UUIDやsurrogate keyを物理実装で使うこと自体は否定しません。一方、それを追加したことで、業務上の複合識別や関数従属性、Relationの違いが見えなくなる設計は避けます。自然キーを物理主キーとして必須にすることも要求しません。
 
+Provider、ORM、Target等の制約からsurrogate keyが必要になる場合も、本来のcandidate key、uniqueness、Relationの意味を失わないMapping / Constraintを保ちます。物理実装上の都合で正規化された構造から外れる場合は、その差を暗黙の標準形として扱わず、意図したRealization差として追跡します。
+
+View、Application Pattern、formの入力単位、runtime objectのidentityから、business occurrence identifierを逆算しません。Presentationや実装objectはData meaningを利用できますが、その都合をData identityのauthorityにはしません。
+
 たとえば、1:Nに見える構造でも意味は同じとは限りません。親から独立して存在し、参照先を変更し得るrecordと、特定の親occurrenceの内部で繰り返される明細と、独立した二つの識別対象の組合せを表すrecordでは、業務上の識別と従属性が異なります。UI上の見え方や「子table」という呼称だけから同じRelationへ畳みません。
 
 Data設計時には、必要に応じて次を確認します。
