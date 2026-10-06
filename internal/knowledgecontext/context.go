@@ -418,6 +418,12 @@ func buildDataDesignContext(
 	attributeCount := map[core.CanonicalID]int{}
 	relations := map[core.CanonicalID]DataDesignRelation{}
 	relationCount := map[core.CanonicalID]int{}
+	validationCount := map[core.CanonicalID]int{}
+	for _, ns := range w.Semantics {
+		for _, validation := range ns.Validations {
+			validationCount[validation.ID]++
+		}
+	}
 	evidenceSubjects := map[subject.Subject]struct{}{
 		{Kind: "semantic-data", ID: string(dataID)}: {},
 	}
@@ -540,6 +546,7 @@ func buildDataDesignContext(
 				evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(validation.Relation)}] = struct{}{}
 			}
 			if validation.Kind == semantic.ValidationRelationUnique &&
+				validationCount[validation.ID] == 1 &&
 				hasRelation &&
 				dataCount[relation.Source] == 1 &&
 				dataCount[relation.Target] == 1 &&
@@ -637,6 +644,20 @@ func buildDataDesignContext(
 		}
 		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
 			Kind:   "duplicate-semantic-relation",
+			ID:     id,
+			Count:  count,
+			Effect: "design-candidates-suppressed",
+		})
+	}
+	for id, count := range validationCount {
+		if count <= 1 {
+			continue
+		}
+		if _, relevant := evidenceSubjects[subject.Subject{Kind: "semantic-validation", ID: string(id)}]; !relevant {
+			continue
+		}
+		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
+			Kind:   "duplicate-semantic-validation",
 			ID:     id,
 			Count:  count,
 			Effect: "design-candidates-suppressed",
