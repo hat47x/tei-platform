@@ -183,3 +183,17 @@ Conformance EvidenceもLockから分離しました。Evidence更新だけでは
 また、同じPlugin / version / implementation IDを異なるartifact digestで複数宣言すると、明示wiringだけではartifactを一意に指定できません。この状態はload順依存を生むため、logical provider identityの重複として拒否します。
 
 現時点ではReference candidateであり、productionのPlugin Lockや`internal/plugin.CapabilityKind`は変更していません。focused testとfull Repository healthを通した後も、Reference結果からproduction schemaを直接固定せず、既存Capabilityの移行pressureと合わせてADR候補を判断します。
+
+## E2 既存CapabilityKind migration pressure — 2026-10-06
+
+既存`CapabilityKind`からgeneric contractへ移行する際、新旧のProvider declarationを独立してauthorすると二重正本になります。Referenceでは、現行`plugin.Definition`をAuthorityとして保持し、既存Capabilityからgeneric Provider候補を一方向に導出するcompatibility projection candidateを追加しました。
+
+最初の対象は既存の`contract-query-executor`です。`reference/workspace`から`tei.database.oracle / database.query.oracle`と`tei.database.postgres / database.query.postgres`を実際に読み、`application-runtime.contract-query-executor`のProvider候補へ投影します。
+
+projectionは旧宣言をConformanceへ自動昇格しません。generic ContractへのConformance Evidenceが無ければresolverへは採用されません。旧Plugin定義から対象Capabilityが消えた場合もprojectionはfail closedになります。
+
+OracleとPostgresの両方がConformanceを満たす場合、generic resolverは暗黙選択しません。既存Environment Bindingと同じく、runtime scopeでは明示wiringが必要です。投影したruntime providerをauthoring-tool scopeのSource Adapterへfallbackすることも拒否します。
+
+projectionはread-onlyです。旧Plugin定義をsortやnormalizeの副作用で変更せず、移行bridgeがAuthority sourceを書き換えないことをtestします。
+
+この段階でもproductionの`CapabilityKind`は削除しません。次に判断すべき点は、generic contract / provider / scope / lockのReference契約が既存Runtime Plugin Lockとどこまで共有できるか、また旧`CapabilityKind`を標準contract profileへ投影する一方向の移行期間をどう終了するかです。
