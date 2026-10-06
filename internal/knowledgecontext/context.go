@@ -216,6 +216,18 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 	}
 
 	ctx.DataDesign = buildDataDesignContext(w, sources, target, ctx.SemanticElement, ctx.ApplicationPattern)
+	if ctx.DataDesign == nil {
+		switch target.Kind {
+		case "semantic-validation":
+			if ctx.SemanticElement != nil {
+				ctx.Unresolved = append(ctx.Unresolved, "data-design-validation-scope-not-uniquely-resolvable")
+			}
+		case "persistence":
+			if persistenceSubjectCount(w, core.CanonicalID(target.ID)) != 1 {
+				ctx.Unresolved = append(ctx.Unresolved, "data-design-persistence-subject-not-uniquely-resolvable")
+			}
+		}
+	}
 
 	for _, dep := range derived.SemanticDependencies {
 		edge := Edge{
@@ -241,6 +253,16 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 	sortEdges(ctx.Incoming)
 	sort.Strings(ctx.Unresolved)
 	return ctx
+}
+
+func persistenceSubjectCount(w ir.World, mappingID core.CanonicalID) int {
+	count := 0
+	for _, mapping := range w.Persistence {
+		if mapping.ID == mappingID {
+			count++
+		}
+	}
+	return count
 }
 
 func validationDataID(w ir.World, validationID core.CanonicalID) (core.CanonicalID, bool) {
