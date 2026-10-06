@@ -321,3 +321,16 @@ tei.process.reference
 前者はSB-1、後者はForeign-language ReferenceとしてのSB-2候補です。両者を同じ「self-build済み」という一語へまとめません。
 
 actual executionは引き続き#956で確認します。SB-1 packageのmaterializerとReference testを追加したことだけでは、Repository Healthやactual Evidenceの成立は主張しません。
+
+
+### Builder contract versionとGo実行環境の固定
+
+builderの実体versionと、TEIがそのbuilderへ渡すBuild contractのversionは別の事実です。同じGo toolchainを使っていても、Build Planの解釈規則が変われば同じbuildとは扱えません。
+
+そのため、`BuilderIdentity`に`contractVersion`を追加しました。現在のReferenceは`tei.plugin-build/v1`を使います。toolchain version、builder artifact digest、contract versionのいずれかが変わればBuild Plan fingerprintも変わります。
+
+Go Reference runnerでは、既存の利用者環境を暗黙に参照しないよう、`GOCACHE`、`GOMODCACHE`、`GOPATH`を一時領域へ分離します。依存確認と二回のbuildは、それぞれ隔離したstateを使います。
+
+さらに、`go list`にも`-mod=readonly`を指定し、`GOPROXY=off`に加えて`GOSUMDB=off`、`GOVCS=*:off`を固定しました。外部moduleやVCSを暗黙に取得して成功したように見せないためです。
+
+SB-1 packageも同じBuild Planから二回materializeし、package digestが一致する場合だけEvidenceを成立させます。これにより、SB-1とSB-2の双方で「同じ入力から同じ出力」を直接確認します。
