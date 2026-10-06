@@ -62,6 +62,8 @@ Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
 
+legacy Database、source code、UI、業務手順等をImporterやAIが高精度に再構成できた場合も、そのAs-Is構造をDesiredへ自動採用してはいけません。Target候補はProposalとして分離し、採用判断と互換性・移行上の制約を別々に追跡できる必要があります。
+
 比較に十分な情報がない場合は、差分なしや破壊的変更へ自動変換せず、Unresolvedとして扱う必要があります。
 
 ## RQ-007 Provider固有知識をCoreへ無制限に持ち込まないこと
