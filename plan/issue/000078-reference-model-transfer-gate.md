@@ -86,6 +86,28 @@ TEIでは、業務・interaction上のFunction meaningと、Target / Runtime固�
 ### Business ActionとUI操作
 
 `TaskFunctionIO.Operations`には「更新ボタンを押す」「行を選んでエンターする」等の画面操作文が含まれる。これをBusiness Actionそのものとして転写すると、Target変更だけで業務意味が変わる。Business Action、利用Function / Capability、Target固有interaction instructionを分離するpressureを本Issueで所有する。
+
+### 識別・関数従属性・定義域制約・選択キーを分ける
+
+Xeadでは、TableのPK / FK / SK / XK、複数のTableKeyField、Relationshipが参照する両側のTableKeyが明示される。一方、XeadDriverではFunctionやDetailが独自の`KeyFields`を持つことができ、未指定の場合だけTableのPKへ戻る実装がある。
+
+したがって、source上で「key」と呼ばれる情報を一種類のidentityへまとめない。
+
+~~~text
+legacy TableKey assertion
+  != Relationship key mapping
+  != Function / UI selection key
+  != business occurrence identifier
+  != Canonical identity
+  != physical primary key
+  != functional dependency
+  != composite domain constraint
+~~~
+
+TableKeyの型、field membership、Relationshipのkey参照、Function / Detailの`KeyFields`はsource factとして保持できる。ただし、それだけを根拠にbusiness identifierや関数従属性へ昇格しない。複合項目についても、recordの識別だけでなく「許される値の組合せ」という定義域制約を持つ場合があるため、複合keyの形から意味を一意に決めない。
+
+生成AIへ渡す場合も、source factとauthority limitを同時に提示する。根拠が足りないbusiness identifier、candidate key、functional dependency、domain constraintは、もっともらしい補完をせずUnresolvedのまま残す。
+
 ### 旧Runtimeに隠れやすい意味がある
 
 Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller contextに依存するcommit、return codeによるrollback、Login Script、共有Script、Session attribute、動的parameter map等を確認した。
@@ -202,6 +224,7 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 - [ ] source locatorからTEI側のmeaning / native asset / unresolvedへ逆追跡できる
 - [ ] Data / Function-Interaction / Businessのcross-view diagnosticsをsource全体に適用できる
 - [ ] design Functionとruntime Realizationを1:1と仮定していない
+- [ ] legacy TableKeyの型・field membership、Relationshipのkey参照、Function / Detailの明示`KeyFields`をsource factとして逆追跡でき、business identity / FD / domain constraintへ自動昇格しない
 - [ ] declared CRUDとnative Script effectの差を検査またはUnresolvedとして保持できる
 - [ ] identity / transaction / Environment / Secret / Session / actor / physical state等のmodernization pressureが、既存TEI境界または明示gapへ割り当てられている
 - [ ] 主要実行型を代表するScenarioがTEI Driver / Targetでactual実行され、Semantic / Functional Evidenceが取得されている
