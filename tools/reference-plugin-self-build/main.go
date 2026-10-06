@@ -352,9 +352,16 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, loaded.World.Environments[0].ID, lockedBuild)
+	if err != nil {
+		return evidence{}, err
+	}
 	runtimePlugin, err := exactLockedPlugin(runtimeLock, loaded.World.Environments[0].ID, definition.ID, definition.Version)
 	if err != nil {
 		return evidence{}, err
+	}
+	if runtimePlugin.BuildPlanFingerprint != lockedBuild.PlanFingerprint {
+		return evidence{}, fmt.Errorf("runtime plugin lock lost build plan trace")
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, lockedBuild, realized, runtimePlugin); err != nil {
 		return evidence{}, err
