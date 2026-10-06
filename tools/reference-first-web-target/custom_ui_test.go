@@ -421,6 +421,8 @@ type recordingCommandScenarioRunner struct {
 	err    error
 }
 
+func (*recordingCommandScenarioRunner) ApplicationID() string { return "order_entry" }
+
 func (r *recordingCommandScenarioRunner) RunCommand(
 	_ context.Context,
 	input commandScenarioInput,

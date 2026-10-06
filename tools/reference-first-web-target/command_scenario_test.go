@@ -514,6 +514,8 @@ type staticReadScenarioRunner struct {
 	err    error
 }
 
+func (staticReadScenarioRunner) ApplicationID() string { return "order_entry" }
+
 func (s staticReadScenarioRunner) Run(context.Context, readScenarioInput) (readScenarioResult, error) {
 	return s.result, s.err
 }

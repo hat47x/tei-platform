@@ -77,18 +77,31 @@ func newReferenceReadScenarioRunner(world ir.World) *referenceReadScenarioRunner
 		environmentID: core.MustCanonicalID("development"),
 		applicationID: core.MustCanonicalID("order_entry"),
 		browse:        referenceBrowseExecutor{},
-		contracts: driver.ContractQueryExecutorMap{
-			{
-				Environment: core.MustCanonicalID("development"),
-				Instance:    core.MustCanonicalID("master_data.dev"),
-				Capability:  core.MustCanonicalID("database.query.oracle"),
-			}: referenceContractQueryExecutor{provider: environment.ProviderOracle},
-			{
-				Environment: core.MustCanonicalID("development"),
-				Instance:    core.MustCanonicalID("sales_core.dev"),
-				Capability:  core.MustCanonicalID("database.query.postgres"),
-			}: referenceContractQueryExecutor{provider: environment.ProviderPostgres},
-		},
+		contracts:     referenceContractQueryExecutors(),
+	}
+}
+
+// ApplicationID returns the Application this runner executes. The server compares it with the
+// projected Application so a runner never serves another Application's manifest.
+func (r *referenceReadScenarioRunner) ApplicationID() string {
+	return string(r.applicationID)
+}
+
+// referenceContractQueryExecutors is the development runtime composition shared by every
+// Reference scenario runner, so the Executor-to-instance binding is written once.
+// The Executors are synthetic fixtures, not connections to a real Database.
+func referenceContractQueryExecutors() driver.ContractQueryExecutorMap {
+	return driver.ContractQueryExecutorMap{
+		{
+			Environment: core.MustCanonicalID("development"),
+			Instance:    core.MustCanonicalID("master_data.dev"),
+			Capability:  core.MustCanonicalID("database.query.oracle"),
+		}: referenceContractQueryExecutor{provider: environment.ProviderOracle},
+		{
+			Environment: core.MustCanonicalID("development"),
+			Instance:    core.MustCanonicalID("sales_core.dev"),
+			Capability:  core.MustCanonicalID("database.query.postgres"),
+		}: referenceContractQueryExecutor{provider: environment.ProviderPostgres},
 	}
 }
 
