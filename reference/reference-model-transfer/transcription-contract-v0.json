@@ -18,7 +18,8 @@
     "native script effect is not inferred solely from declared CRUD",
     "new semantic requirements are plugin/extension-first; legacy schema names do not become Core kinds by default",
     "legacy TableKey, Relationship key mapping, and Function selection key are distinct source facts and are not business occurrence identity by themselves",
-    "a legacy PK/SK declaration or key-field correspondence does not establish an accepted functional dependency without explicit semantic acceptance or corroborating evidence"
+    "a legacy PK/SK declaration or key-field correspondence does not establish an accepted functional dependency without explicit semantic acceptance or corroborating evidence",
+    "a coherent semantic graph reconstructed from legacy source, code, prose, or AI inference is still candidate evidence and does not become accepted authority without Shared Acceptance"
   ],
   "sourceLocator": {
     "exactSnapshot": "artifact digest + XML structural path + sibling ordinal + available legacy attributes",
@@ -566,6 +567,7 @@
     "production semantic extension contract",
     "complete per-node transcription",
     "original runtime equivalence",
-    "permission to republish reference model content"
+    "permission to republish reference model content",
+    "AI-reconstructed semantic graph equivalent to original accepted meaning"
   ]
 }
