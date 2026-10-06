@@ -21,11 +21,15 @@ import (
 )
 
 const (
-	referencePluginID      = "tei.process.reference"
-	referencePluginVersion = "1.0.0"
-	referenceWorkspace     = "reference/plugin-self-build/workspace"
-	referenceDescriptor    = "reference/plugin-self-build/workspace/plugins/tei-process-reference/1.0.0/plugin.tei"
-	referencePackage       = "./tools/reference-process-plugin"
+	referencePluginID       = "tei.process.reference"
+	referencePluginVersion  = "1.0.0"
+	referenceWorkspace      = "reference/plugin-self-build/workspace"
+	referenceDescriptor     = "reference/plugin-self-build/workspace/plugins/tei-process-reference/1.0.0/plugin.tei"
+	referencePackage        = "./tools/reference-process-plugin"
+	packagePluginID         = "tei.runtime.reference"
+	packagePluginVersion    = "1.0.0"
+	packageWorkspace        = "reference/workspace"
+	packageDescriptor       = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
 )
 
 type evidence struct {
@@ -35,6 +39,11 @@ type evidence struct {
 	GoVersion                    string                   `json:"goVersion"`
 	GoBinaryDigest               string                   `json:"goBinaryDigest"`
 	GoToolchainDigest            string                   `json:"goToolchainDigest"`
+	PackageBuildPlan             plugin.BuildPlan         `json:"packageBuildPlan"`
+	PackageBuildPlanFingerprint  string                   `json:"packageBuildPlanFingerprint"`
+	PackageArtifactDigest        string                   `json:"packageArtifactDigest"`
+	PackageLockedBuild           plugin.LockedBuild       `json:"packageLockedBuild"`
+	PackageLockFingerprint       string                   `json:"packageLockFingerprint"`
 	BuildPlan                    plugin.BuildPlan         `json:"buildPlan"`
 	BuildPlanFingerprint         string                   `json:"buildPlanFingerprint"`
 	FirstArtifactDigest          string                   `json:"firstArtifactDigest"`
@@ -134,6 +143,77 @@ func run(repo string) (evidence, error) {
 	}
 	goToolchainDigest := sha256Digest([]byte(goVersion + "\n" + goBinaryDigest + "\n" + goRootDigest + "\n"))
 	if err := requireNoExternalModules(root, goPath); err != nil {
+		return evidence{}, err
+	}
+
+	packageLoaded, err := workspace.Load(filepath.Join(root, filepath.FromSlash(packageWorkspace)))
+	if err != nil {
+		return evidence{}, fmt.Errorf("load standard plugin package reference: %w", err)
+	}
+	packageDefinition, err := exactPlugin(packageLoaded.World.Plugins, packagePluginID, packagePluginVersion)
+	if err != nil {
+		return evidence{}, err
+	}
+	if packageDefinition.Artifact.Digest != "" {
+		return evidence{}, fmt.Errorf("standard package source unexpectedly predeclares artifact %s", packageDefinition.Artifact.Digest)
+	}
+	packageDescriptorDigest, err := hashFile(filepath.Join(root, filepath.FromSlash(packageDescriptor)))
+	if err != nil {
+		return evidence{}, err
+	}
+	packagePlan := plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
+		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(packageDefinition),
+		Sources: []plugin.BuildSource{
+			{
+				Kind:    "git-tree",
+				ID:      "tei-repository",
+				Locator: "git:HEAD",
+				Digest:  treeDigest,
+			},
+			{
+				Kind:    "plugin-definition",
+				ID:      "tei-runtime-reference-definition",
+				Locator: packageDescriptor,
+				Digest:  packageDescriptorDigest,
+			},
+		},
+		Builder: plugin.BuilderIdentity{
+			ID:             core.MustCanonicalID("tei.builder.package.go.seed"),
+			Version:        goVersion,
+			ArtifactDigest: goToolchainDigest,
+		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "tei-plugin-package",
+			Entrypoint: packageDescriptor,
+		},
+		OutputKind: plugin.BuildOutputPluginPackage,
+		Target:     "plugin-package",
+		Profile:    "reference",
+		Parameters: []plugin.BuildParameter{
+			{Name: "encoding", Value: "tei-plugin-package-json-v1"},
+		},
+	}
+	packagePlanFingerprint, err := plugin.BuildPlanFingerprint(packagePlan)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageArtifactDigest := plugin.BuildOutputDigest(packageBytes)
+	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageArtifactDigest)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageArtifactLock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{packageLockedBuild},
+	}
+	packageLockFingerprint, err := plugin.BuildArtifactLockFingerprint(packageArtifactLock)
+	if err != nil {
 		return evidence{}, err
 	}
 
@@ -261,6 +341,11 @@ func run(repo string) (evidence, error) {
 		GoVersion:                    goVersion,
 		GoBinaryDigest:               goBinaryDigest,
 		GoToolchainDigest:            goToolchainDigest,
+		PackageBuildPlan:             packagePlan,
+		PackageBuildPlanFingerprint:  packagePlanFingerprint,
+		PackageArtifactDigest:        packageArtifactDigest,
+		PackageLockedBuild:           packageLockedBuild,
+		PackageLockFingerprint:       packageLockFingerprint,
 		BuildPlan:                    plan,
 		BuildPlanFingerprint:         planFingerprint,
 		FirstArtifactDigest:          firstDigest,
