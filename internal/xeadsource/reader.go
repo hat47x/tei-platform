@@ -75,9 +75,12 @@ func Parse(format Format, source []byte) (Document, error) {
 	}
 	sum := sha256.Sum256(source)
 	decoder := xml.NewDecoder(bytes.NewReader(source))
+	type parseFrame struct {
+		node         Node
+		childOrdinal int
+	}
 	var root *Node
-	stack := []*Node{}
-	childOrdinals := []int{}
+	stack := []parseFrame{}
 	counts := map[string]int{}
 	unknown := map[string]struct{}{}
 
@@ -104,49 +107,66 @@ func Parse(format Format, source []byte) (Document, error) {
 				}
 				return n.Attributes[i].Value < n.Attributes[j].Value
 			})
+
 			if len(stack) == 0 {
+				if root != nil {
+					return Document{}, fmt.Errorf("parse %s source: multiple root elements", format)
+				}
 				n.Locator = "/" + name + "[1]"
-				root = &n
 			} else {
-				parent := stack[len(stack)-1]
-				childOrdinals[len(childOrdinals)-1]++
-				n.Locator = fmt.Sprintf("%s/%s[%d]", parent.Locator, name, childOrdinals[len(childOrdinals)-1])
-				parent.Children = append(parent.Children, n)
-				n = parent.Children[len(parent.Children)-1]
+				parent := &stack[len(stack)-1]
+				parent.childOrdinal++
+				n.Locator = fmt.Sprintf("%s/%s[%d]", parent.node.Locator, name, parent.childOrdinal)
 			}
+
 			counts[name]++
 			if !isKnown {
 				unknown[name] = struct{}{}
 			}
-			stack = append(stack, &n)
-			childOrdinals = append(childOrdinals, 0)
+			stack = append(stack, parseFrame{node: n})
+
 		case xml.CharData:
 			if len(stack) > 0 {
-				stack[len(stack)-1].Text += string(t)
+				stack[len(stack)-1].node.Text += string(t)
 			}
+
 		case xml.EndElement:
 			if len(stack) == 0 {
 				return Document{}, fmt.Errorf("unexpected closing element %q", t.Name.Local)
 			}
-			stack[len(stack)-1].Text = strings.TrimSpace(stack[len(stack)-1].Text)
-			stack = stack[:len(stack)-1]
-			childOrdinals = childOrdinals[:len(childOrdinals)-1]
+			last := len(stack) - 1
+			completed := stack[last].node
+			completed.Text = strings.TrimSpace(completed.Text)
+			stack = stack[:last]
+
+			if len(stack) == 0 {
+				root = &completed
+			} else {
+				parent := &stack[len(stack)-1]
+				parent.node.Children = append(parent.node.Children, completed)
+			}
 		}
+	}
+	if len(stack) != 0 {
+		return Document{}, fmt.Errorf("parse %s source: unclosed element", format)
 	}
 	if root == nil {
 		return Document{}, fmt.Errorf("source contains no root element")
 	}
+
 	inventory := make([]InventoryEntry, 0, len(counts))
 	for name, count := range counts {
 		_, isKnown := knownNames[localName(name)]
 		inventory = append(inventory, InventoryEntry{Name: name, Count: count, Known: isKnown})
 	}
 	sort.Slice(inventory, func(i, j int) bool { return inventory[i].Name < inventory[j].Name })
+
 	unknownNames := make([]string, 0, len(unknown))
 	for name := range unknown {
 		unknownNames = append(unknownNames, name)
 	}
 	sort.Strings(unknownNames)
+
 	return Document{
 		Format: format, SHA256: hex.EncodeToString(sum[:]), Root: *root,
 		Inventory: inventory, UnknownNames: unknownNames,
