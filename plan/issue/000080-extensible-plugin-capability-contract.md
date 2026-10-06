@@ -167,3 +167,19 @@ Referenceでは次のnegative controlを置いた。
 明示wiringも`ImplementationID`だけでは不足する。同名implementationを別Pluginが提供できるため、Plugin ID / Plugin version / Implementation IDの組で選択する。
 
 現時点ではReference candidateであり、productionの`internal/plugin.CapabilityKind`は変更していない。exact-headのrepository health checkは未実施であり、PRはDraftとして扱う。
+
+## E1 Resolution Lock candidate — 2026-10-06
+
+E0のresolverだけでは、同じRequirementを後日もう一度解決したとき、Catalogへ追加された新しいContract versionやProviderへ自動的に切り替わります。Source Adapter等のTool Capabilityでは、同じSourceを扱っていても実装が変わり得るため、AIやToolが長期間にわたって同じ処理へ再入場する条件として不十分でした。
+
+ReferenceにCapability Resolution Lock candidateを追加しました。Lockはresolution policy、Authority scope、root Requirement、明示wiring、exact Contract / fingerprint、Provider identity、artifact digestを固定します。Lock自身にもfingerprintを持たせます。
+
+fresh resolutionとLock replayは別の操作として扱います。Catalogへcompatibleな新versionが追加された場合、fresh resolutionは新しい完全解を選べます。一方、既存Lockのreplayは記録済みのexact Contract / Providerが現在も同じ内容で存在することを確認し、新versionへ自動更新しません。
+
+Conformance EvidenceもLockから分離しました。Evidence更新だけではresolution identityを変えません。current Evidenceが必要な処理では、Lock replayの後に別の検査を行います。これにより、exact Contract / Provider replay、current Conformance Evidence、Runtime / Tool execution Authorityを区別します。
+
+敵対的な確認では、Conformance EvidenceがProvider artifactへ結び付いていない問題も見つかりました。同じPlugin / version / implementation IDのartifactだけを差し替えると、古いEvidenceを再利用できるためです。ReferenceではEvidenceへexact artifact digestを追加し、artifact差し替え時は新しいConformance Evidenceを要求します。
+
+また、同じPlugin / version / implementation IDを異なるartifact digestで複数宣言すると、明示wiringだけではartifactを一意に指定できません。この状態はload順依存を生むため、logical provider identityの重複として拒否します。
+
+現時点ではReference candidateであり、productionのPlugin Lockや`internal/plugin.CapabilityKind`は変更していません。focused testとfull Repository healthを通した後も、Reference結果からproduction schemaを直接固定せず、既存Capabilityの移行pressureと合わせてADR候補を判断します。
