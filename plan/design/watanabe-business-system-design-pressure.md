@@ -23,6 +23,7 @@ Date: 2026-10-06
 - 「設計者の発言」— 近年のデータモデリング、関数従属性、複合的な識別関係、生成AIによるDB設計への批判的検討。
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
+  - https://dbconcept.hatenablog.com/entry/2025/08/31/131839
   - https://dbconcept.hatenablog.com/entry/2025/02/25/120940
   - https://dbconcept.hatenablog.com/entry/2024/12/16/071337
   - https://dbconcept.hatenablog.com/entry/2024/11/27/080850
@@ -77,7 +78,24 @@ TEIはnatural key / composite key / surrogate keyのどれかを一律に強制�
 
 TEIでは、これを「複合主キーを推奨する」という規則には翻訳しません。business identity / candidate key / functional dependency / domain constraintを、realistic Referenceで既存primitiveからlosslessに表現・検査できるかを新しいEvidence questionとしました。
 
-### 4.3 Referenceを反証可能なProduct Evidenceにする
+### 4.3 導出属性と動的なRelationを意味として失わない
+
+渡辺氏は、物理的には保持しない導出属性も論理データモデル上へ置き、その導出値を外部キーとして使う「動的参照関係」を示しています。重要なのは名称ではなく、あるDataの事実から導いた値が別DataへのRelationを決め、その関係自体が業務上の制約になる点です。
+
+TEIでは、導出値を単なる表示用の計算結果やcacheとして扱いません。少なくとも次を分けます。
+
+~~~text
+derived-value semantic contract
+  != evaluator / query / Script realization
+  != materialized cache
+  != Relation using the derived value
+~~~
+
+導出ロジックがaccepted meaningとして確定している場合、TargetやProviderが変わっても同じ意味を再現できる必要があります。反対に、旧Scriptが値を計算しているという事実だけから、そのScript全体をsemantic authorityへ昇格しません。
+
+導出値がRelationのsource keyへ参加する場合は、そのRelationを通常のstored field同士の参照と同一視しません。導出に必要なSource / dependency / temporal conditionと、参照先を決めるRelationを追跡できることをReferenceで確認します。現時点では専用のCore primitiveを先に追加せず、既存のData / Relation / Constraint / Rule / native evaluatorでlosslessに表現できる範囲をpressureします。
+
+### 4.4 Referenceを反証可能なProduct Evidenceにする
 
 渡辺氏は、レファレンスモデルを方法論の有効性を第三者が検討する材料と位置づけ、さらに本格的な販売管理モデルをDriver上で実装することで、DriverだけでなくReference Model自身の不備も修正したと説明しています。
 
@@ -97,13 +115,13 @@ authoritative sourceへ戻って修正
 
 Reference専用の例外実装で成功させません。一つの小例が動いただけで汎用性を主張しません。異なるdomain / scale / Data structure / Procedure / Target / ProviderへReferenceを広げ、成立範囲を反証可能なEvidenceとして積み上げます。
 
-### 4.4 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
+### 4.5 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
 
 渡辺氏のSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
 
 TEIでは、Subsystemを直ちにCore primitive、Application、Database、deployment unitへ固定しません。まずData ownership、Function / Interaction、Capability / Contract等からderived CRUD / dependency Projectionを作り、cross-boundary CUDをdesign pressureとして確認します。durable identityが必要かはrealistic Referenceで判断します。
 
-### 4.5 AIによるData設計をauthorityにしない
+### 4.6 AIによるData設計をauthorityにしない
 
 AIがschemaを生成できても、業務上の関数従属性や識別規則が確立したとは限りません。これはTEIの既存原則「AIはcritic / proposerでありauthorityではない」のData設計への具体化として扱います。
 
@@ -131,7 +149,8 @@ AIは候補、矛盾、問いを提示できます。Validatorは宣言済みCon
 
 1. `order_entry`または別の現実的なReferenceで、business identity / candidate key / functional dependencyを明示した場合と、surrogate-onlyにした場合のcross-view差分を機械的・人間可読に示せるか。
 2. Data上のdeterminant / uniquenessと、Functionの選択・更新単位、Business Procedureの識別単位が矛盾した場合にdiagnosticへ到達できるか。
-3. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
-4. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
+3. 導出値がRelationのsource keyへ参加するReferenceで、semanticな導出契約、evaluator realization、materialized cache、Relationを混同せずに追跡・実行できるか。
+4. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
+5. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
 
 これらの結果が出るまでは、`FunctionalDependency`、`BusinessKey`、`SubjectArea`、`Subsystem`等を新しいCore primitiveとして固定しません。
