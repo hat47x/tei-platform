@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/deployment"
 	"tei/internal/environment"
 	"tei/internal/plugin"
 )
@@ -445,5 +446,32 @@ func TestBuildArtifactLockAllowsDifferentOutputKinds(t *testing.T) {
 	}
 	if _, err := plugin.BuildArtifactLockFingerprint(l); err != nil {
 		t.Fatal(err)
+	}
+}
+
+
+func TestBuildDefinitionFingerprintDoesNotMutateSourceOrdering(t *testing.T) {
+	source := buildDefinitionFixture()
+	source.Runtime.Args = []string{"second", "first"}
+	source.Provides = []plugin.Capability{{
+		Kind: plugin.CapabilityDeploymentExecutor,
+		ID:   core.MustCanonicalID("runtime.reference"),
+		Actions: []deployment.ActionKind{
+			deployment.ActionTrafficShift,
+			deployment.ActionApplicationStart,
+		},
+	}}
+	beforeFirst := source.Provides[0].Actions[0]
+	beforeSecond := source.Provides[0].Actions[1]
+	beforeArg0 := source.Runtime.Args[0]
+	beforeArg1 := source.Runtime.Args[1]
+
+	_ = plugin.BuildDefinitionFingerprint(source)
+
+	if source.Provides[0].Actions[0] != beforeFirst || source.Provides[0].Actions[1] != beforeSecond {
+		t.Fatalf("build fingerprint mutated capability action ordering: %#v", source.Provides[0].Actions)
+	}
+	if source.Runtime.Args[0] != beforeArg0 || source.Runtime.Args[1] != beforeArg1 {
+		t.Fatalf("build fingerprint mutated runtime args: %#v", source.Runtime.Args)
 	}
 }
