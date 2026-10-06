@@ -468,6 +468,27 @@ Semantic Validation Planが入力されている場合は、対象subjectに必�
 
 このContextはAI / Studio向けのread-onlyな再入場surfaceです。Context fingerprintは再生成結果を比較するためのderived identityであり、Semantic Set identityやCanonical authorityの代わりには使いません。Semantic Set全体のUnresolvedも隠さず保持し、対象subjectだけを見ることで全体の解決失敗を見落とさないようにします。
 
+## Reference Model Transfer Gate pressure
+
+`ISSUE-000078`のReference Model Transfer Gateを、Semantic Extension機構に対する大規模consumerとして追加する。SUI hierarchyでは一つのconstraint familyを中心に依存解決をpressureしているが、Reference Model転写ではData、Function / Interaction、Business Procedure、lifecycle、CRUD、UI / report、Scenario、legacy Script realization等の複数facetが同時に現れる。
+
+このpressureでは、X-TEA固有schemaをCoreへ追加しないことを前提とする。必要な意味は原則としてExtension contributionとして表し、標準化する場合も第三者Extensionと同じidentity / namespace authority / dependency / conflict / lock / discovery / Conformance契約を通す。
+
+最低限、次を確認する。
+
+- Reference全体から必要なExtension closureをsubject / Subsystem単位で切り出し、各Extensionの導入理由へ戻れる
+- Data / Function / Business / UI / lifecycle間の依存をload順やpackage列挙順で解決しない
+- compatibility Extensionが`std.*` namespaceをfirst claimantとして取得しない
+- declaration-only ExtensionにRuntime artifactを要求しない
+- 複数Extensionを一つのbuiltin / linked / portable artifactへまとめてもlogical identityとSemantic Setへ戻れる
+- Web Targetでprocess Pluginが使えなくても、同じSemantic Setから別packagingを導出できる
+- X-TEA importerがSemantic / Runtime authorityを暗黙に取得しない
+- Extensionを削除・変更したとき、依存する転写結果をsilent dropせずstale / unresolvedとして追跡する
+- AI / ToolがCatalog全体を毎回読み込まず、対象subjectから必要なclosure、dependency path、conflict causeを取得できる
+
+このReferenceで多数のExtensionが必要になっても、一つのsource schemaをそのまま一つの巨大Extensionへ包むことを成功条件にしない。意味の再利用単位とcross-facet constraintを見ながら分割し、Bridge Extensionの数やdependency fan-outが増えすぎる場合は、Core共通機構の不足か、Extension境界の誤りかを分けて評価する。
+
+Reference Model Transfer Gateの成功を理由にSemantic Extensionのproduction contractを自動採用しない。ISSUE-000077の小型ReferenceとISSUE-000078の大規模pressureを往復し、両方で必要性が再現した契約だけをADR候補へ進める。
 ## Product Evidence
 
 このReferenceでは、「新しい仕組みを実装できたか」だけを価値として測りません。
@@ -633,5 +654,6 @@ code変更はTEIの通常Gateに従います。
 - `plan/issue/000040-semantic-component-composition.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
 - `plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md`
+- `plan/issue/000078-reference-model-transfer-gate.md`
 - `plan/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 - `plan/SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`

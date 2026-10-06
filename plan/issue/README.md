@@ -27,7 +27,7 @@ production authorityへ採用する
 
 この区別を保つことで、一つの大きなAI / Business / Runtime Issueへ責務が集まりすぎることを避けます。
 
-## 現在の重要な二つの読み筋
+## 現在の重要な三つの読み筋
 
 ### 1. Design Synthesis / knowledge-first探索
 
@@ -165,6 +165,24 @@ Gate Bは2026-09-19にReadyへ到達しました（candidate revision `R = e5231
 
 Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceです。片方の成功で他方をgreenへ読み替えません。
 
+### 3. 成熟したReference Modelの転写
+
+[000078](000078-reference-model-transfer-gate.md)は、既存の小規模Referenceとは別に、成熟した外部業務モデル全体をTEIへ転写して表現力をpressureする横断Issueです。最初のbenchmarkにはX-TEA / XEAD系「CONCEPTWARE／受注生産」を使います。
+
+~~~text
+外部source / manual / model
+        ↓ inventory
+source-faithful accounting
+        ↓ classify
+Canonical / Realization / Native / Derived / Unresolved
+        ↓
+TEI source / Driver / Target
+        ↓
+cross-view / execution Evidence
+~~~
+
+このIssueはX-TEA互換を所有しません。転写で見つかった具体的gapを000042、000038〜000040、000026、000027、000053、000077等へ戻し、同じ機能を000078内で二重実装しません。判定契約は[Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+
 ## 外部資産・Providerの継続課題
 
 | 担当Issue | 統合した課題 | 分けて扱う理由 |
@@ -219,7 +237,7 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 
 新規のうち000072は、研究に留保しています。手直しの数は要件固有で、変更の深さで意味が変わるため、測定に基づく価値判断は、問題領域の知見が蓄積されるまで行いません。他の3件の着手順は次を推奨します。
 
-価値の確かめ方の中心は、実務シナリオを通すMVP的な実証です。最初の実証の候補は[000075](000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。
+価値の確かめ方の中心は、実務シナリオを通すMVP的な実証です。最初の実証の候補は[000075](000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。これと並行して、成熟した既存業務モデルの規模・cross-reference・暗黙前提にTEIが耐えられるかを[000078](000078-reference-model-transfer-gate.md)で確認します。
 
 1. **000073**は、評価対象の選択をCanonicalな宣言から導く機能上の課題です。方針（ADR-0029）のowner reviewから始めます。
 2. **000071**は既存Previewの机上評価まで済んでおり、条件案のowner reviewから始められます。Gap Audit §8の優先順位6（RQ-028の担当決定）に当たります。

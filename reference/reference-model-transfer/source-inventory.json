@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-source-inventory",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "source": {
+    "xeadSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+    "xeafSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754"
+  },
+  "xead": {
+    "counts": {
+      "subsystem": 12,
+      "table": 56,
+      "tableField": 522,
+      "relationship": 80,
+      "function": 227,
+      "task": 62,
+      "taskAction": 148,
+      "taskFunctionIO": 407,
+      "ioTable": 392,
+      "ioPanel": 281,
+      "ioSpool": 13,
+      "functionUsedByThis": 289,
+      "instance": 35,
+      "subjectArea": 7,
+      "dataflowNode": 92,
+      "dataflowLine": 81,
+      "role": 10,
+      "department": 7,
+      "dataType": 86,
+      "functionType": 14
+    },
+    "relationshipTypes": {
+      "REFFER": 51,
+      "FAMILY": 27,
+      "SUBTYPE": 2
+    },
+    "crud": {
+      "ioTableCount": 392,
+      "operationOccurrences": {
+        "C": 82,
+        "R": 375,
+        "U": 100,
+        "D": 75
+      },
+      "combinations": {
+        "R": 244,
+        "CRUD": 42,
+        "RU": 36,
+        "RD": 28,
+        "CRU": 19,
+        "C": 16,
+        "CRD": 3,
+        "RUD": 2,
+        "CU": 1,
+        "CR": 1
+      }
+    },
+    "crossSubsystemTableIO": {
+      "count": 59,
+      "combinations": {
+        "R": 59
+      },
+      "observedExternalCUD": 0
+    },
+    "business": {
+      "taskActionCount": 148,
+      "taskActionsWithoutTaskFunctionIO": 6
+    },
+    "instanceSortKeys": {
+      "0": 18,
+      "1": 3,
+      "2": 3,
+      "3": 3,
+      "4": 5,
+      "5": 1,
+      "6": 1,
+      "7": 1
+    },
+    "dataflowNodeTypes": {
+      "Process": 46,
+      "Ledger": 31,
+      "Subject": 8,
+      "Store1": 5,
+      "Store2": 1,
+      "Folder": 1
+    }
+  },
+  "xeaf": {
+    "counts": {
+      "subsystem": 12,
+      "table": 58,
+      "function": 203,
+      "script": 161,
+      "field": 1440,
+      "column": 949,
+      "button": 626,
+      "filter": 151,
+      "refer": 94,
+      "detail": 83,
+      "key": 72,
+      "menu": 8
+    },
+    "functionTypes": {
+      "XF000": 45,
+      "XF100": 47,
+      "XF110": 3,
+      "XF200": 47,
+      "XF290": 3,
+      "XF300": 34,
+      "XF310": 14,
+      "XF390": 10
+    }
+  },
+  "crossSource": {
+    "xeadFunctionCount": 227,
+    "xeafFunctionCount": 203,
+    "xeadSortKeyToXeafIdIntersection": 180,
+    "functionMappingIsOneToOne": false,
+    "xeadOnlyFunctionIdentityCount": 47,
+    "xeafOnlyFunctionIdentityCount": 23,
+    "mappingNote": "identity-set difference is structural evidence only; helper/runtime split and design-only functions require source-level classification"
+  },
+  "interpretationLimits": [
+    "aggregate counts are coverage inventory, not semantic equivalence evidence",
+    "absence of external CUD is an observation of this snapshot, not a universal X-TEA rule",
+    "task actions without function include both meaningful manual actions and placeholder-like entries",
+    "function mapping requires source-level relation analysis; identifier intersection alone is not authority"
+  ]
+}

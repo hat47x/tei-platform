@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-source-baseline",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "recordedDate": "2026-10-06",
+  "evidenceNature": "source-derived",
+  "codeSources": [
+    {
+      "repository": "xead/XeadModeler",
+      "revision": "68f1535b1c5dd80a327dfced37be401ecd3093c9",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "repository": "xead/XeadEditor",
+      "revision": "ee19a27609b2749110ec39b62d4540693347fe09",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "repository": "xead/XeadDriver",
+      "revision": "6c077773b74c6d7dbcc253835cf8d347e4ffb1ef",
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "referenceModel": {
+    "archive": {
+      "name": "MfgOrder160627(1).zip",
+      "sha256": "2e2324ba6e7a2ec3e52f783011bfb655520589483d1f3f5890a932bd6a0e0aec"
+    },
+    "xead": {
+      "name": "MfgOrder.xead",
+      "sha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+      "formatVersion": "1.2",
+      "modelVersion": "1.0.2"
+    },
+    "xeaf": {
+      "name": "MfgOrder.xeaf",
+      "sha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
+      "formatVersion": "1.2",
+      "modelVersion": "1.0.7"
+    }
+  },
+  "manualSnapshots": [
+    {
+      "name": "XTeaModelerInstaller1_4_50__Files.zip",
+      "sha256": "257a333a8db9319fb5da49689751ccb90bbaa384021bf1e6b8e2623ac3cc74bc",
+      "contains": [
+        "XeadFileFormat.pdf",
+        "HTML manual"
+      ]
+    },
+    {
+      "name": "XTeaDriverInstaller230127__Files.zip",
+      "sha256": "f79f6825a6d6ce3c4c41f3c7028b92c3e18fd33f06e9090bee064f79cfbfe32",
+      "contains": [
+        "XeafFileFormat.pdf",
+        "HTML manual"
+      ]
+    }
+  ],
+  "publicationBoundary": {
+    "referenceModelContentsCopiedToRepository": false,
+    "codeLicenseReviewed": true,
+    "referenceModelUsageNoticeObserved": true,
+    "redistributionReviewRequiredBeforeCopyingModelContents": true
+  },
+  "claimsNotEstablished": [
+    "reference model redistribution permission for repository publication",
+    "original runtime behavior equivalence",
+    "TEI transcription completeness",
+    "production readiness"
+  ]
+}

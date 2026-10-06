@@ -325,6 +325,16 @@ file-native / Studio / CLI / AIをShared Acceptance Boundaryへ収束させま�
 
 AI provider、vector database、Proposal最終schema、chat-first UXは未固定です。
 
+## Reference Model Transfer
+
+2026-10-06に、成熟した既存業務モデルを一式でTEIへ転写できるかを確かめる横断Evidence laneを[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)として開始しました。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」です。これはProduct Gate Dではなく、RQ-001 / 002 / 003 / 004 / 010〜013 / 021 / 022 / 025 / 026 / 029 / 031〜033をまとめてpressureするReferenceです。
+
+RMT-0 / RMT-1の開始Evidenceとして、渡辺幸三氏のXeadModeler / XeadEditor / XeadDriver source revision、利用者が保持するmodel / manualのdigest、model構造のaggregate inventory、modernization pressureを`reference/reference-model-transfer/`へ記録しました。原Reference Modelの内容そのものはRepositoryへ転載していません。
+
+初回解析では、基本設計側のFunctionと実行仕様側のFunctionが1対1ではないこと、Function / Table I/Oの明示CRUDとは別にnative ScriptがDatabase effectを持ち得ること、transaction / Session / Environment / Secret等に旧Runtime固有の暗黙前提があることを確認しています。これらをTEI側で黙って補完せず、Canonical / Realization / Native / Derived / Unresolvedへ分類していきます。
+
+現時点で**転写成立は未実証**です。original X-TEA Runtimeでのactual behavior取得はGitHub #940、Reference Model本体の再利用・公開条件確認はGitHub #941へ分離しています。RMT-2以降のtranscription、cross-view全体検査、TEI Driver / Targetでの代表Scenario実行も未取得です。
+
 ## Second Target
 
 現時点ではDesign Onlyです。
@@ -354,6 +364,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 - production-ready GUI Editor
 - knowledge-first exploration actual Reference
 - AI Proposal / Decision UX actual Reference
+- mature Reference Modelのfull transcription / executable comparison
 - second Application Target
 - production-grade Workflow / HA / distributed ownership
 - generic OS sandbox
