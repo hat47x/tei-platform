@@ -57,6 +57,75 @@ func TestDataDesignContextDoesNotPromoteInvalidRelationUnique(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*ir.World)
+	}{
+		{
+			name: "duplicate attribute id",
+			mutate: func(w *ir.World) {
+				w.Semantics[0].Data[0].Attributes = append(
+					w.Semantics[0].Data[0].Attributes,
+					semantic.Attribute{
+						ID:      "sales.order_line.line_number",
+						Symbol:  "conflictingLineNumber",
+						TypeRef: "std.integer",
+					},
+				)
+			},
+		},
+		{
+			name: "duplicate relation id",
+			mutate: func(w *ir.World) {
+				w.Semantics[0].Data[1].Relations = append(
+					w.Semantics[0].Data[1].Relations,
+					semantic.Relation{
+						ID:          "sales.order.lines",
+						Symbol:      "conflictingLines",
+						Target:      "sales.order_line",
+						Cardinality: semantic.CardinalityMany,
+					},
+				)
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := dataDesignRelationUniqueWorld()
+			tc.mutate(&w)
+
+			dataContext := Build(
+				w,
+				sourceindex.Index{},
+				subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+			)
+			if dataContext.DataDesign == nil {
+				t.Fatal("data design context is missing")
+			}
+			if len(dataContext.DataDesign.ScopedUniqueness) != 0 ||
+				len(dataContext.DataDesign.BusinessIdentityCandidates) != 0 ||
+				len(dataContext.DataDesign.FunctionalDependencyCandidates) != 0 {
+				t.Fatalf("ambiguous semantic identity produced design candidates: %+v", dataContext.DataDesign)
+			}
+			if !containsDataDesignString(
+				dataContext.DataDesign.AuthorityLimits,
+				"ambiguous-semantic-identity-does-not-produce-design-candidates",
+			) {
+				t.Fatalf("ambiguous identity authority limit is missing: %+v", dataContext.DataDesign.AuthorityLimits)
+			}
+
+			validationContext := Build(
+				w,
+				sourceindex.Index{},
+				subject.Subject{Kind: "semantic-validation", ID: "sales.order.lines.line_number_unique"},
+			)
+			if validationContext.DataDesign != nil {
+				t.Fatalf("ambiguous validation scope was resolved: %+v", validationContext.DataDesign)
+			}
+		})
+	}
+}
+
 func TestDataDesignContextDoesNotResolveContradictoryValidationScope(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Semantics[0].Data[0].Relations[0].Target = "sales.other"
@@ -366,6 +435,15 @@ func dataDesignRelationUniqueWorld() ir.World {
 			},
 		},
 	}
+}
+
+func containsDataDesignString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func containsDataDesignSubject(values []subject.Subject, want subject.Subject) bool {
