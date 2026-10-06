@@ -399,6 +399,7 @@ func buildDataDesignContext(
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
 			"ambiguous-semantic-identity-does-not-produce-design-candidates",
+			"ambiguous-persistence-identity-does-not-produce-realization-facts",
 			"relation-key-is-not-business-identifier",
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
@@ -419,6 +420,10 @@ func buildDataDesignContext(
 	relations := map[core.CanonicalID]DataDesignRelation{}
 	relationCount := map[core.CanonicalID]int{}
 	validationCount := map[core.CanonicalID]int{}
+	persistenceCount := map[core.CanonicalID]int{}
+	for _, mapping := range w.Persistence {
+		persistenceCount[mapping.ID]++
+	}
 	for _, ns := range w.Semantics {
 		for _, validation := range ns.Validations {
 			validationCount[validation.ID]++
@@ -475,6 +480,10 @@ func buildDataDesignContext(
 		if mapping.SemanticData != dataID {
 			continue
 		}
+		evidenceSubjects[subject.Subject{Kind: "persistence", ID: string(mapping.ID)}] = struct{}{}
+		if persistenceCount[mapping.ID] != 1 {
+			continue
+		}
 		realization := DataDesignPersistenceRealization{
 			Mapping:   mapping.ID,
 			Database:  mapping.Database,
@@ -518,7 +527,6 @@ func buildDataDesignContext(
 			return persistenceUniquenessKey(realization.Uniqueness[i]) < persistenceUniquenessKey(realization.Uniqueness[j])
 		})
 		ctx.PersistenceRealizations = append(ctx.PersistenceRealizations, realization)
-		evidenceSubjects[subject.Subject{Kind: "persistence", ID: string(mapping.ID)}] = struct{}{}
 	}
 
 	for _, ns := range w.Semantics {
@@ -661,6 +669,20 @@ func buildDataDesignContext(
 			ID:     id,
 			Count:  count,
 			Effect: "design-candidates-suppressed",
+		})
+	}
+	for id, count := range persistenceCount {
+		if count <= 1 {
+			continue
+		}
+		if _, relevant := evidenceSubjects[subject.Subject{Kind: "persistence", ID: string(id)}]; !relevant {
+			continue
+		}
+		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
+			Kind:   "duplicate-persistence-mapping",
+			ID:     id,
+			Count:  count,
+			Effect: "realization-suppressed",
 		})
 	}
 
