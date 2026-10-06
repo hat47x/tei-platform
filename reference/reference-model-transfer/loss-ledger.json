@@ -134,6 +134,15 @@
       "risk": "a derived relation can disappear from the logical model, or native evaluator code can be mistaken for the semantic relation itself",
       "owner": "ISSUE-000078 / ISSUE-000077",
       "stopCondition": "confirm exact source participation before claiming a dynamic reference; if present, preserve derivation semantics, evaluator/native realization and Relation as separate traceable layers"
+    },
+    {
+      "id": "RML-015",
+      "topic": "reconstructed-semantic-authority",
+      "nature": "unresolved",
+      "evidence": "some legacy meaning may only be recoverable by combining XML structure, runtime code, prose and observed behavior rather than by one explicit authoritative declaration",
+      "risk": "AI or importer synthesis may be reported as source truth merely because the reconstructed graph is internally coherent",
+      "owner": "ISSUE-000078 / ISSUE-000027 / ISSUE-000053",
+      "stopCondition": "record exact source observations and inference provenance; keep reconstructed meaning as proposal/unresolved until Shared Acceptance creates or updates authoritative Source"
     }
   ],
   "claimsNotEstablished": [
