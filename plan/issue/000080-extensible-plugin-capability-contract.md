@@ -1,6 +1,6 @@
 # ISSUE-000080: Plugin Capability contractをCore固定enumから分離する
 
-- 状態: Proposed
+- 状態: In Progress
 - 起票日: 2026-10-06
 - GitHub Issue: #951
 - 関連: RQ-019 / RQ-023 / RQ-031 / RQ-032 / RQ-033 / ISSUE-000077 / ISSUE-000079 / ISSUE-000078 / GitHub #950
@@ -147,3 +147,23 @@ process非対応Targetで暗黙に別の意味へfallbackしない。
 - 任意のremote RPCを標準Plugin contractにすること
 - Plugin Marketplaceの設計
 - 既存CapabilityKindを一度に全面置換すること
+
+## E0 Reference candidate — 2026-10-06
+
+`tools/reference-plugin-capability-contract/`にproduction型を変更しないReference resolverを追加した。
+
+最初のcontractは`authoring.source-adapter.xead`で、Authority scopeを`authoring-tool`として扱う。contract identity / version / fingerprintとprovider Plugin / implementation / artifactを分離し、providerの自己申告だけでは解決対象にしない。exact contract fingerprintとConformance profileへ結び付くEvidenceを要求する。
+
+Referenceでは次のnegative controlを置いた。
+
+- Conformance Evidenceが無いproviderを拒否する
+- `application-runtime` scopeのproviderを`authoring-tool`要求のfallbackに使わない
+- 複数の適合providerがある場合、明示wiringなしで選ばない
+- contract fingerprintが変わったproviderを拒否する
+- Evidenceだけを更新してもcontract / provider resolution identityは変えず、Evidence fingerprintだけを変える
+
+さらに敵対評価で、最高compatible contractを先に固定すると、そのversionにproviderが無いだけでlower compatible versionの有効解を失うことが分かった。Reference resolverはcontract versionとprovider / Conformanceの組を高いversionから探索し、完全な解があるlower versionへ退避できるcandidateへ修正した。
+
+明示wiringも`ImplementationID`だけでは不足する。同名implementationを別Pluginが提供できるため、Plugin ID / Plugin version / Implementation IDの組で選択する。
+
+現時点ではReference candidateであり、productionの`internal/plugin.CapabilityKind`は変更していない。exact-headのrepository health checkは未実施であり、PRはDraftとして扱う。
