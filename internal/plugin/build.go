@@ -44,9 +44,10 @@ type BuildDependency struct {
 // BuilderIdentity identifies the exact builder used to produce an artifact.
 // The builder may itself be implemented by TEI or by another language/toolchain.
 type BuilderIdentity struct {
-	ID             core.CanonicalID `json:"id"`
-	Version        string           `json:"version"`
-	ArtifactDigest string           `json:"artifactDigest"`
+	ID              core.CanonicalID `json:"id"`
+	Version         string           `json:"version"`
+	ContractVersion string           `json:"contractVersion"`
+	ArtifactDigest  string           `json:"artifactDigest"`
 }
 
 // BuildParameter contains a non-secret input that may affect the build output.
@@ -224,6 +225,9 @@ func (p BuildPlan) Validate() error {
 	}
 	if strings.TrimSpace(p.Builder.Version) == "" {
 		return fmt.Errorf("builder version is required")
+	}
+	if strings.TrimSpace(p.Builder.ContractVersion) == "" {
+		return fmt.Errorf("builder contract version is required")
 	}
 	if err := validateBuildDigest("builder artifact digest", p.Builder.ArtifactDigest); err != nil {
 		return err
