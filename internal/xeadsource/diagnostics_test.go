@@ -71,6 +71,49 @@ func TestDiagnoseRelationalSourceFactsFailsClosedOnBrokenXeafReferMapping(t *tes
 	}
 }
 
+func TestDiagnoseRelationalSourceFactsUsesSortKeyOrderForCompositeRelationship(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" DataTypeID="D2"/><TableField ID="B" DataTypeID="D1"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A" SortKey="20"/><TableKeyField FieldID="B" SortKey="10"/></TableKey></Table><Table ID="T2"><TableField ID="C" DataTypeID="D1"/><TableField ID="D" DataTypeID="D2"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="C" SortKey="10"/><TableKeyField FieldID="D" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc)); len(got) != 0 {
+		t.Fatalf("SortKey-aligned relationship produced diagnostics: %#v", got)
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsReportsCompositeRelationshipDataTypeMismatch(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" DataTypeID="D1"/><TableField ID="B" DataTypeID="D2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A" SortKey="10"/><TableKeyField FieldID="B" SortKey="20"/></TableKey></Table><Table ID="T2"><TableField ID="C" DataTypeID="D1"/><TableField ID="D" DataTypeID="OTHER"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="C" SortKey="10"/><TableKeyField FieldID="D" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	if len(got) != 1 ||
+		got[0].Code != "relationship-key-data-type-mismatch" ||
+		got[0].RelationshipID != "R1" ||
+		got[0].LeftFieldLegacyID != "B" ||
+		got[0].RightFieldLegacyID != "D" ||
+		got[0].LeftDataTypeLegacyID != "D2" ||
+		got[0].RightDataTypeLegacyID != "OTHER" {
+		t.Fatalf("data type mismatch was not preserved as unresolved: %#v", got)
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsDoesNotGuessCompositeOrderWhenSortKeyIsAmbiguous(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" DataTypeID="D1"/><TableField ID="B" DataTypeID="D2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A" SortKey="10"/><TableKeyField FieldID="B" SortKey="10"/></TableKey></Table><Table ID="T2"><TableField ID="C" DataTypeID="D1"/><TableField ID="D" DataTypeID="D2"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="C" SortKey="10"/><TableKeyField FieldID="D" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	if len(got) != 1 ||
+		got[0].Code != "relationship-key-order-unresolved" ||
+		got[0].Side != "table1" ||
+		got[0].RelationshipID != "R1" ||
+		got[0].TableLegacyID != "T1" ||
+		got[0].KeyLegacyID != "K1" {
+		t.Fatalf("ambiguous SortKey order was guessed instead of preserved: %#v", got)
+	}
+}
+
 func TestDiagnoseRelationalSourceFactsReportsCompositeKeyArityMismatchWithoutRepair(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableField ID="B"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/><TableKeyField FieldID="B"/></TableKey></Table><Table ID="T2"><TableField ID="C"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="C"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
