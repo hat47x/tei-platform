@@ -103,6 +103,8 @@ AIがschemaを生成できても、業務上の関数従属性や識別規則が
 
 AIは候補、矛盾、問いを提示できます。Validatorは宣言済みConstraintを検査できます。しかし、sourceから裏づけられていないdeterminantを自動発見したことにはしません。根拠が不足する場合はunresolvedを保持します。
 
+この判断はAIへ渡すcontextにも反映します。Data / Relationを設計するときは、単なるtable / field一覧ではなく、business occurrence identifier、candidate key、既知または候補のfunctional dependency、Relation topology、時間・履歴条件、Source / Evidence、accepted / candidate / unresolvedのnatureへ到達できるread-onlyなData Design Contextを用意します。これは第二正本ではなく、current Canonical / Source / Decision / Evidenceから再構成するProjectionです。
+
 ## 5. そのまま移植しないもの
 
 次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
