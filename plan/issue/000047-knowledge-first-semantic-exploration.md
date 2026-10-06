@@ -648,6 +648,10 @@ code-changing laneの既存ruleに従い、full `tools/repository-health-check.s
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
+- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、Relation topology、Source / Evidence、unresolvedへ到達できる
+- [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningを失わず逆追跡できる
+- [ ] View / Application Pattern / Target / ORM / runtime objectのidentityからbusiness keyを逆算しないnegative Referenceを持つ
+- [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない
