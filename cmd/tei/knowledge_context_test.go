@@ -158,6 +158,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"relation-key-is-not-business-identifier",
+		"identifier-like-attribute-is-not-business-identity",
+		"identifier-value-presence-is-not-uniqueness-evidence",
 		"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 	} {
 		if !containsKnowledgeContextString(dataDesign.AuthorityLimits, limit) {
