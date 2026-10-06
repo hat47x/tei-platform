@@ -196,8 +196,10 @@ func TestReviewRequestPreservesImpactAndDoesNotGrantAuthority(t *testing.T) {
 	}
 	if len(found.DownstreamImpact) != 1 ||
 		!strings.Contains(found.DownstreamImpact[0], "release-decision") ||
+		len(found.Evidence) != 1 ||
+		found.Evidence[0].Ref != "conversation://tei/release-assumption" ||
 		found.AuthorityLimit != "reviewer-candidate-is-not-review-authority" {
-		t.Fatalf("review request lost impact or authority boundary: %+v", *found)
+		t.Fatalf("review request lost impact, evidence, or authority boundary: %+v", *found)
 	}
 }
 
@@ -255,5 +257,25 @@ func TestAIAssertionCannotUseNativeUserFactState(t *testing.T) {
 	if _, err := evaluateCorpus(corpus, context); err == nil ||
 		!strings.Contains(err.Error(), "native assertion requires user origin") {
 		t.Fatalf("AI-native state was accepted: %v", err)
+	}
+}
+
+func TestMissingContextDimensionDoesNotGeneralize(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.Bindings = []ScopeBinding{{
+		Dimension: "project",
+		Value: "tei",
+		Provenance: ScopeExplicit,
+	}}
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conditional := assessmentByID(t, projection, "conditional-production")
+	if conditional.ContextCompatibility != "unknown" ||
+		conditional.UseState != "blocked" ||
+		!hasReason(conditional, "CONTEXT_COMPATIBILITY_UNKNOWN") {
+		t.Fatalf("missing environment scope was generalized silently: %+v", conditional)
 	}
 }
