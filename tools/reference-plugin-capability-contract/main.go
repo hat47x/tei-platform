@@ -46,7 +46,7 @@ type Provider struct {
 	PluginID            string         `json:"pluginId"`
 	PluginVersion       string         `json:"pluginVersion"`
 	ImplementationID    string         `json:"implementationId"`
-	ArtifactDigest      string         `json:"artifactDigest,omitempty"`
+	ArtifactDigest      string         `json:"artifactDigest"`
 	Scope               AuthorityScope `json:"scope"`
 	ContractID          string         `json:"contractId"`
 	ContractVersion     string         `json:"contractVersion"`
@@ -58,7 +58,7 @@ type ConformanceEvidence struct {
 	PluginID            string `json:"pluginId"`
 	PluginVersion       string `json:"pluginVersion"`
 	ImplementationID    string `json:"implementationId"`
-	ArtifactDigest      string `json:"artifactDigest,omitempty"`
+	ArtifactDigest      string `json:"artifactDigest"`
 	ContractFingerprint string `json:"contractFingerprint"`
 	ConformanceProfile  string `json:"conformanceProfile"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
@@ -289,7 +289,7 @@ func capabilityResolutionFingerprint(
 		PluginID              string         `json:"pluginId"`
 		PluginVersion         string         `json:"pluginVersion"`
 		ImplementationID      string         `json:"implementationId"`
-		ArtifactDigest        string         `json:"artifactDigest,omitempty"`
+		ArtifactDigest        string         `json:"artifactDigest"`
 	}{
 		ResolutionPolicy:    capabilityResolutionPolicy,
 		Scope:               scope,
