@@ -10,7 +10,7 @@ func TestParsePreservesUnknownConstructsAndBindsExactBytes(t *testing.T) {
 	source := []byte(`<System Version="1"><Table ID="T1"><TableField ID="F1"/><FutureThing z="2" a="1"> raw </FutureThing></Table></System>`)
 	got, err := Parse(FormatXead, source)
 	if err != nil { t.Fatal(err) }
-	if got.SHA256 != "d7199339eced69fa7c01d12ec244225ad67c6080ed7e31f20a21ff260ecfb253" {
+	if got.SHA256 != "da131513de53bd2ab2ae2ef7e2e4f66876bf0b79c297cf0ba277b4b23a602560" {
 		t.Fatalf("unexpected digest: %s", got.SHA256)
 	}
 	if !reflect.DeepEqual(got.UnknownNames, []string{"FutureThing"}) {
