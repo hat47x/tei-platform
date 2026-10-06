@@ -3,7 +3,7 @@
 - 状態: Active
 - 起票日: 2026-10-06
 - GitHub Issue: #943
-- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ADR-0022 / ADR-0028
+- 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / ADR-0022 / ADR-0028
 
 ## 背景
 
@@ -79,7 +79,7 @@ Build graphとRuntime graphを分離し、Build-only dependencyがRuntime artifa
 
 builderは「実行したcommand文字列」ではなく、identityとcontractを持つ対象として扱います。最低限、builder identity / version、builder artifact identity、build contract version、Target / profile、parametersを再現できる必要があります。
 
-将来はbuilder自体をPlugin / Capabilityとして提供できる構造を検討します。ただし、最初のsyntaxとして任意shell scriptを採用しません。
+将来はbuilder自体をPlugin / Capabilityとして提供できる構造を検討します。ただし、最初のsyntaxとして任意shell scriptを採用しません。PluginがCore固定enumを増やさず新しいCapability Contractを提供する境界はISSUE-000080で扱い、本Issueから独自のbuilder専用Capability機構を作りません。
 
 ### Build Lock
 

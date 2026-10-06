@@ -312,6 +312,7 @@ Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に�
 ### 対象
 
 - Plugin distribution / trust
+- Plugin-defined Capability Contract（ISSUE-000080。Core固定enumを増やさずauthoring / build / runtime scopeを分離）
 - production Provider adapters
 - durable store / HA
 - observability
@@ -376,7 +377,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
 
-転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
+転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Runtime / Tool Capabilityの種類をCore固定enumへ追加しないための共通境界はISSUE-000080へ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
 
 判定契約は[Reference Model Transfer Evidence Gate](REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
 

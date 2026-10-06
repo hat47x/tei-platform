@@ -83,6 +83,17 @@
       "Store1": 5,
       "Store2": 1,
       "Folder": 1
+    },
+    "fieldAttributeTypes": {
+      "NATIVE": 467,
+      "DERIVABLE": 52,
+      "INHERITED": 3
+    },
+    "relationshipConditionalExistence": {
+      "total": 80,
+      "withExistWhen1": 21,
+      "withExistWhen2": 0,
+      "note": "condition text is source prose and is not a deterministic constraint by itself"
     }
   },
   "xeaf": {
@@ -118,7 +129,14 @@
     "functionMappingIsOneToOne": false,
     "xeadOnlyFunctionIdentityCount": 47,
     "xeafOnlyFunctionIdentityCount": 23,
-    "mappingNote": "identity-set difference is structural evidence only; helper/runtime split and design-only functions require source-level classification"
+    "mappingNote": "identity-set difference is structural evidence only; helper/runtime split and design-only functions require source-level classification",
+    "derivableFieldMapping": {
+      "xeadDerivable": 52,
+      "matchedXeafFieldByTableSortKeyAndFieldAlias": 51,
+      "matchedAsXeafVirtual": 51,
+      "unmatched": 1,
+      "interpretation": "structural correspondence only; derivation authority may live in Script/TypeOptions/other runtime logic"
+    }
   },
   "interpretationLimits": [
     "aggregate counts are coverage inventory, not semantic equivalence evidence",

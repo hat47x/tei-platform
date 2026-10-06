@@ -183,6 +183,10 @@ cross-view / execution Evidence
 
 このIssueはX-TEA互換を所有しません。転写で見つかった具体的gapを000042、000038〜000040、000026、000027、000053、000077等へ戻し、同じ機能を000078内で二重実装しません。判定契約は[Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
 
+### 4. 外部の実行基盤の評価
+
+[000081](000081-eki-fabric-execution-base-evaluation.md)は、別製品のEKI Fabricを、TEIの実行基盤の一つ（Provider）として置けるかを評価するIssueです。EKI側が2026-10-06に決めた「TEIはEKI上で稼働する」という整理を、TEI側から見て受け入れてよいかを確かめます。評価待ちであり、採用、Requirementの変更、Gate判定条件の緩和は含みません。特に、EKIの結果をGate Evidenceやmerge authorityへ読み替えない境界と、依存の循環を作らない条件を先に置きます。
+
 ## 外部資産・Providerの継続課題
 
 | 担当Issue | 統合した課題 | 分けて扱う理由 |

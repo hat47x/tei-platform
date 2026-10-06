@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-transcription-contract",
+  "status": "candidate",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "purpose": "Define source-faithful classification and plugin ownership before per-node transcription. This is not accepted semantic authority.",
+  "sourceBaseline": {
+    "xeadSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+    "xeafSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754"
+  },
+  "invariants": [
+    "no source construct may be silently dropped",
+    "legacy ID, SortKey, XML position, or display order is not canonical identity",
+    "source parsing does not grant canonical or runtime authority",
+    "prose extraction is proposal or unresolved until explicitly accepted",
+    "target-specific interaction is not business action meaning",
+    "function-level potential CRUD is not business-action-specific CRUD",
+    "native script effect is not inferred solely from declared CRUD",
+    "new semantic requirements are plugin/extension-first; legacy schema names do not become Core kinds by default"
+  ],
+  "sourceLocator": {
+    "exactSnapshot": "artifact digest + XML structural path + sibling ordinal + available legacy attributes",
+    "semantics": "source locator is stable only within the exact source artifact and is never canonical identity",
+    "crossRevision": "reconcile through accepted semantic identity or explicit migration mapping; do not match by SortKey alone"
+  },
+  "candidateExtensions": [
+    {
+      "id": "reference.compat.xead.source",
+      "class": "source-adapter",
+      "responsibility": "Parse Xead/Xeaf losslessly enough to inventory known and unknown constructs, preserve source locators, and emit transcription candidates.",
+      "authority": "none",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.relational-semantics",
+      "class": "semantic-extension",
+      "responsibility": "Carry X-TEA-specific relational semantics only where existing TEI Data/Relation meaning is not lossless, including legacy relation taxonomy and conditional existence.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.subsystem-lens",
+      "class": "semantic-extension/projection",
+      "responsibility": "Represent subsystem grouping, ownership pressure, and cross-subsystem operation diagnostics without making Subsystem a Core kind.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.function-interaction-lens",
+      "class": "semantic-extension/projection",
+      "responsibility": "Represent design Function, I/O and call relations as a review lens over Application Pattern, Query, Capability and Realization.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.function-data-io",
+      "class": "semantic-extension",
+      "responsibility": "Preserve explicit Function/Table operation authority for derived CRUD and cross-view diagnostics.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.business-procedure",
+      "class": "semantic-extension",
+      "responsibility": "Represent Role, Task, TaskAction and explicit Function/I/O use while keeping human/manual work and target interaction separate.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.business-flow",
+      "class": "semantic-extension/projection",
+      "responsibility": "Preserve business-flow nodes/lines as evidence-backed relations without assuming every Store/Ledger/Subject is canonical Data.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.presentation",
+      "class": "projection-extension",
+      "responsibility": "Preserve panel, spool, menu and layout information as target/presentation assets and visual evidence inputs.",
+      "authority": "non-semantic unless an explicit semantic contribution is separately accepted",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.example-scenario",
+      "class": "semantic-extension/projection",
+      "responsibility": "Separate legacy Instance examples into Dataset, Snapshot, Scenario, Expectation and Presentation Order only when evidence supports the classification.",
+      "authority": "candidate until Shared Acceptance",
+      "runtimeArtifactRequired": false
+    },
+    {
+      "id": "reference.xead.native-script",
+      "class": "runtime-plugin/native-asset-binding",
+      "responsibility": "Preserve Script/LoginScript/shared functions and their dependencies/effects without treating executable code as semantic authority.",
+      "authority": "runtime authority requires normal Capability/Permission/Resource bindings",
+      "runtimeArtifactRequired": true
+    },
+    {
+      "id": "reference.xead.platform-service-binding",
+      "class": "semantic-extension/runtime-binding",
+      "responsibility": "Map legacy special-table roles such as user/session/numbering/calendar/tax/exchange-rate services to explicit contracts and bindings.",
+      "authority": "candidate semantics plus separate runtime/environment authority",
+      "runtimeArtifactRequired": false
+    }
+  ],
+  "constructMappings": {
+    "xead": {
+      "System": {
+        "classification": [
+          "source-metadata",
+          "realization",
+          "native-preserved",
+          "unresolved"
+        ],
+        "extension": "reference.compat.xead.source",
+        "rules": [
+          "FormatVersion/Version are source metadata",
+          "Database/SMTP/credential/path/VM options are environment or realization inputs, never canonical business meaning",
+          "LoginScript/ScriptFunctions are native assets",
+          "special service table attributes are candidates for reference.xead.platform-service-binding",
+          "Remarks/Descriptions remain source prose unless separately accepted"
+        ]
+      },
+      "Subsystem": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens",
+        "rules": [
+          "ID is legacy source identity only",
+          "SortKey is ordering/import evidence only",
+          "membership and cross-subsystem operation diagnostics may be preserved without adding a Core Subsystem kind"
+        ]
+      },
+      "Table": {
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "a Table may represent semantic Data, physical persistence, or a platform/runtime table; do not auto-promote every Table to domain Data",
+          "TableTypeID is legacy taxonomy evidence, not a Core enum"
+        ]
+      },
+      "TableField": {
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "NATIVE/DERIVABLE/INHERITED are preserved as source facts",
+          "DERIVABLE does not establish derivation logic unless an accepted expression/evaluator can be traced",
+          "NoUpdate is interaction/policy pressure and is not automatically authorization"
+        ]
+      },
+      "Relationship": {
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "key references may support explicit relation mapping",
+          "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
+          "ExistWhen prose is not compiled into a constraint without explicit acceptance"
+        ]
+      },
+      "FunctionType": {
+        "classification": [
+          "derived-projection",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "rules": [
+          "XF/Menu/TableScript/custom type is an implementation/pattern hint, not canonical business identity",
+          "mapping to browse/record/header-detail/report/command or another pattern is a candidate decision, not a type alias"
+        ]
+      },
+      "Function": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "rules": [
+          "design Function is not assumed one-to-one with Xeaf executable Function",
+          "Parameters/Return prose is not a typed contract until explicitly modeled",
+          "Function call relations remain explicit source evidence"
+        ]
+      },
+      "IOTable": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.function-data-io",
+        "rules": [
+          "OpC/OpR/OpU/OpD is explicit Function/Table operation authority",
+          "CRUD matrix is derived and not a second source of truth",
+          "Function-level CRUD does not establish path-specific or Business Action-specific effect"
+        ]
+      },
+      "IOPanel": {
+        "classification": [
+          "presentation-only",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "panel text/layout is presentation evidence",
+          "panel identity may be referenced by a TaskFunctionIO but is not business action identity"
+        ]
+      },
+      "IOSpool": {
+        "classification": [
+          "presentation-only",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "report/spool layout remains presentation/native asset unless separate business semantics are explicitly accepted"
+        ]
+      },
+      "Role": {
+        "classification": [
+          "canonical-candidate"
+        ],
+        "extension": "reference.xead.business-procedure",
+        "rules": [
+          "Role is business actor/job context",
+          "do not convert it to authentication principal or authorization role"
+        ]
+      },
+      "Task": {
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure",
+        "rules": [
+          "Task is a Business Procedure candidate",
+          "Event is business trigger/timing prose and not runtime scheduler configuration"
+        ]
+      },
+      "TaskAction": {
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure",
+        "rules": [
+          "manual/external action remains valid without a Function",
+          "ExecuteIf is source condition prose unless accepted as a deterministic constraint",
+          "missing ID requires source-locator/addressability handling; SortKey is not durable identity"
+        ]
+      },
+      "TaskFunctionIO": {
+        "classification": [
+          "canonical-candidate",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.business-procedure",
+        "rules": [
+          "FunctionID/IOID is explicit use evidence",
+          "Operations is target-specific interaction instruction and is separated from Business Action meaning",
+          "IOID in the benchmark addresses Panel/Spool; it does not itself establish Table effect"
+        ]
+      },
+      "SubjectArea": {
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.business-flow",
+        "rules": [
+          "boundary position/size is presentation metadata",
+          "subject area may group flow meaning but is not canonical identity by default"
+        ]
+      },
+      "DataflowNode": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-flow",
+        "rules": [
+          "Process may resolve to Task",
+          "Ledger/Store/Folder/Subject is not automatically semantic Data or Database state",
+          "SlideNumber is presentation/scenario evidence, not lifecycle authority"
+        ]
+      },
+      "DataflowLine": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-flow",
+        "rules": [
+          "direction and endpoints are source flow evidence",
+          "line labels do not create data contracts or handoff authority by name alone"
+        ]
+      },
+      "Instance": {
+        "classification": [
+          "presentation-only",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.example-scenario",
+        "rules": [
+          "free text is preserved as source asset",
+          "SortKey can indicate time or explanation order and is not assumed to be a transition sequence"
+        ]
+      }
+    },
+    "xeaf": {
+      "System": {
+        "classification": [
+          "realization",
+          "native-preserved",
+          "unresolved"
+        ],
+        "extension": "reference.xead.platform-service-binding",
+        "rules": [
+          "credentials/endpoints/paths remain environment or secret inputs",
+          "LoginScript/ScriptFunctions are native assets",
+          "special-table roles become explicit service contracts/bindings if accepted"
+        ]
+      },
+      "Function": {
+        "classification": [
+          "realization",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "rules": [
+          "Type selects legacy Driver realization family",
+          "executable Function is not assumed identical to design Function",
+          "TimerOption is runtime scheduling and is distinct from Business trigger"
+        ]
+      },
+      "Script": {
+        "classification": [
+          "native-preserved",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.native-script",
+        "rules": [
+          "native code remains authoritative only for its native behavior, not canonical meaning",
+          "semantic validation/derivation, persistence effect and presentation effect are extracted separately if accepted",
+          "static analysis is evidence, not effect authority"
+        ]
+      },
+      "Field": {
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "runtime field definition may realize Data/Relation meaning but does not replace the semantic source",
+          "editable/color/default/display behavior stays target/interaction-specific unless separately accepted"
+        ]
+      },
+      "Column": {
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "column order/width/rendering is projection metadata"
+        ]
+      },
+      "Button": {
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "button event may invoke a Function/Script but button label/action is not canonical Business Action by itself"
+        ]
+      },
+      "Menu": {
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "menu visibility/navigation is separated from business actor and authorization policy"
+        ]
+      }
+    }
+  },
+  "nextEvidence": [
+    "create source-faithful importer output outside canonical authority",
+    "produce per-node transcription map against exact source digest without publishing restricted source content",
+    "create loss ledger for unresolved/unsupported mappings",
+    "pressure Semantic Extension resolver with the required extension closure",
+    "select representative executable scenarios only after mapping authority is explicit"
+  ],
+  "claimsNotEstablished": [
+    "accepted final extension identities",
+    "production semantic extension contract",
+    "complete per-node transcription",
+    "original runtime equivalence",
+    "permission to republish reference model content"
+  ]
+}
