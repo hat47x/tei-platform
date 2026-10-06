@@ -1,6 +1,7 @@
 package knowledgecontext
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -47,6 +48,13 @@ type DataDesignConstraint struct {
 	Kind      string           `json:"kind"`
 	Attribute core.CanonicalID `json:"attribute,omitempty"`
 	Relation  core.CanonicalID `json:"relation,omitempty"`
+}
+
+type DataDesignAmbiguity struct {
+	Kind   string           `json:"kind"`
+	ID     core.CanonicalID `json:"id"`
+	Count  int              `json:"count"`
+	Effect string           `json:"effect"`
 }
 
 type DataDesignScopedUniqueness struct {
@@ -126,6 +134,7 @@ type DataDesignContext struct {
 	Attributes                            []DataDesignAttribute                     `json:"attributes,omitempty"`
 	Relations                             []DataDesignRelation                      `json:"relations,omitempty"`
 	Constraints                           []DataDesignConstraint                    `json:"constraints,omitempty"`
+	Ambiguities                           []DataDesignAmbiguity                     `json:"ambiguities,omitempty"`
 	ScopedUniqueness                      []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
 	BusinessIdentityCandidates            []DataDesignBusinessIdentityCandidate     `json:"businessIdentityCandidates,omitempty"`
 	FunctionalDependencyCandidates        []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
@@ -235,12 +244,14 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 }
 
 func validationDataID(w ir.World, validationID core.CanonicalID) (core.CanonicalID, bool) {
+	dataCounts := map[core.CanonicalID]int{}
 	attributeOwners := map[core.CanonicalID]core.CanonicalID{}
 	attributeCounts := map[core.CanonicalID]int{}
 	relationTargets := map[core.CanonicalID]core.CanonicalID{}
 	relationCounts := map[core.CanonicalID]int{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
+			dataCounts[data.ID]++
 			for _, attribute := range data.Attributes {
 				attributeCounts[attribute.ID]++
 				if attributeCounts[attribute.ID] == 1 {
@@ -282,7 +293,7 @@ func validationDataID(w ir.World, validationID core.CanonicalID) (core.Canonical
 				}
 				candidate = target
 			}
-			if candidate == "" {
+			if candidate == "" || dataCounts[candidate] != 1 {
 				return "", false
 			}
 			resolved = candidate
@@ -402,6 +413,7 @@ func buildDataDesignContext(
 		},
 	}
 
+	dataCount := map[core.CanonicalID]int{}
 	attributeOwner := map[core.CanonicalID]core.CanonicalID{}
 	attributeCount := map[core.CanonicalID]int{}
 	relations := map[core.CanonicalID]DataDesignRelation{}
@@ -411,6 +423,7 @@ func buildDataDesignContext(
 	}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
+			dataCount[data.ID]++
 			for _, attribute := range data.Attributes {
 				attributeCount[attribute.ID]++
 				if attributeCount[attribute.ID] == 1 {
@@ -528,6 +541,8 @@ func buildDataDesignContext(
 			}
 			if validation.Kind == semantic.ValidationRelationUnique &&
 				hasRelation &&
+				dataCount[relation.Source] == 1 &&
+				dataCount[relation.Target] == 1 &&
 				relation.Cardinality == "many" &&
 				validation.Attribute != "" &&
 				attributeCount[validation.Attribute] == 1 &&
@@ -591,8 +606,51 @@ func buildDataDesignContext(
 		}
 	}
 
+	if dataCount[dataID] > 1 {
+		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
+			Kind:   "duplicate-semantic-data",
+			ID:     dataID,
+			Count:  dataCount[dataID],
+			Effect: "design-candidates-suppressed",
+		})
+	}
+	for id, count := range attributeCount {
+		if count <= 1 {
+			continue
+		}
+		if _, relevant := evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(id)}]; !relevant {
+			continue
+		}
+		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
+			Kind:   "duplicate-semantic-attribute",
+			ID:     id,
+			Count:  count,
+			Effect: "design-candidates-suppressed",
+		})
+	}
+	for id, count := range relationCount {
+		if count <= 1 {
+			continue
+		}
+		if _, relevant := evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(id)}]; !relevant {
+			continue
+		}
+		ctx.Ambiguities = append(ctx.Ambiguities, DataDesignAmbiguity{
+			Kind:   "duplicate-semantic-relation",
+			ID:     id,
+			Count:  count,
+			Effect: "design-candidates-suppressed",
+		})
+	}
+
 	ctx.Evidence, ctx.EvidenceMissing = collectDataDesignEvidence(sources, evidenceSubjects)
 
+	sort.Slice(ctx.Ambiguities, func(i, j int) bool {
+		if ctx.Ambiguities[i].Kind != ctx.Ambiguities[j].Kind {
+			return ctx.Ambiguities[i].Kind < ctx.Ambiguities[j].Kind
+		}
+		return ctx.Ambiguities[i].ID < ctx.Ambiguities[j].ID
+	})
 	sort.Slice(ctx.Attributes, func(i, j int) bool {
 		return ctx.Attributes[i].ID < ctx.Attributes[j].ID
 	})
@@ -640,6 +698,17 @@ func dataDesignFingerprint(ctx *DataDesignContext) string {
 	builder.WriteByte(':')
 	builder.WriteString(ctx.Focus.ID)
 	builder.WriteByte('\n')
+	for _, ambiguity := range ctx.Ambiguities {
+		builder.WriteString("ambiguity:")
+		builder.WriteString(ambiguity.Kind)
+		builder.WriteByte(':')
+		builder.WriteString(string(ambiguity.ID))
+		builder.WriteByte(':')
+		builder.WriteString(fmt.Sprintf("%d", ambiguity.Count))
+		builder.WriteByte('|')
+		builder.WriteString(ambiguity.Effect)
+		builder.WriteByte('\n')
+	}
 	for _, evidence := range ctx.Evidence {
 		builder.WriteString(evidence.Subject.Kind)
 		builder.WriteByte(':')
