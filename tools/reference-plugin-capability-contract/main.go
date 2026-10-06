@@ -220,11 +220,14 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 		if provider.PluginID == "" || provider.PluginVersion == "" || provider.ImplementationID == "" {
 			continue
 		}
-		key := providerKey(provider)
-		if _, duplicate := seen[key]; duplicate {
-			return nil, nil, fmt.Errorf("provider %s is declared more than once", key)
+		identityKey := providerIdentityKey(provider)
+		if _, duplicate := seen[identityKey]; duplicate {
+			return nil, nil, fmt.Errorf(
+				"logical provider %s is declared more than once",
+				identityKey,
+			)
 		}
-		seen[key] = struct{}{}
+		seen[identityKey] = struct{}{}
 		evidence, ok := matchingEvidence(input.Evidence, provider, contractFingerprint, contract.ConformanceProfile)
 		if !ok {
 			continue
@@ -590,6 +593,13 @@ func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFing
 		return ConformanceEvidence{}, false
 	}
 	return matches[0], true
+}
+
+func providerIdentityKey(provider Provider) string {
+	return strings.Join(
+		[]string{provider.PluginID, provider.PluginVersion, provider.ImplementationID},
+		"\x00",
+	)
 }
 
 func providerKey(provider Provider) string {
