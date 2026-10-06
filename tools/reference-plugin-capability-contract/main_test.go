@@ -35,6 +35,7 @@ func evidenceFor(provider Provider, contract Contract, marker string) Conformanc
 		PluginID:            provider.PluginID,
 		PluginVersion:       provider.PluginVersion,
 		ImplementationID:    provider.ImplementationID,
+		ArtifactDigest:      provider.ArtifactDigest,
 		ContractFingerprint: fingerprint(contract),
 		ConformanceProfile:  contract.ConformanceProfile,
 		EvidenceFingerprint: fingerprint(marker),
@@ -430,5 +431,30 @@ func TestMalformedConformanceEvidenceFingerprintFailsClosed(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "conformance evidence") {
 		t.Fatalf("malformed Conformance Evidence was not rejected: %v", err)
+	}
+}
+
+
+func TestConformanceEvidenceDoesNotSurviveArtifactReplacement(t *testing.T) {
+	contract := sourceAdapterContract()
+	original := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	evidence := evidenceFor(original, contract, "evidence-original")
+
+	replaced := original
+	replaced.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{replaced},
+		Evidence:    []ConformanceEvidence{evidence},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("old Conformance Evidence survived artifact replacement: %v", err)
 	}
 }
