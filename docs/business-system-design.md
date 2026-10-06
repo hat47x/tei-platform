@@ -99,6 +99,14 @@ Data設計時には、必要に応じて次を確認します。
 
 `identifier`、`external_id`、`code`等の属性名も、業務識別の根拠にはしません。業務上の識別条件がacceptedである場合は、その構成項目に加えて、一意性が成立するscope、時間・履歴条件、Relation / Constraint、Sourceへ追跡できるようにします。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示します。
 
+### identityと表記・正規化を分ける
+
+同じ業務対象が、外部Systemごとに異なる文字表記、符号化、コード体系、表示形式を持つことがあります。TEIでは、business identityを一つの文字列表現や正規化規則と同一視しません。
+
+原Sourceの表記を監査・相互運用のために保持する必要がある場合は、exact source representationと、検索・照合・表示等に利用するnormalized / operational representationを分けて追跡します。Unicode正規化、大文字小文字変換、異体字置換、記号除去等による一致は、明示されたPolicy / Mappingなしにidentity Evidenceへ昇格させません。
+
+表記が異なる場合も、直ちに別identityとは判断しません。どの差異を同値と扱うかはdomainと用途に依存するため、Source、scope、変換規則、必要なら人によるAcceptanceへ戻れる構造を優先します。
+
 ### 論理的なData統合と物理配置を分ける
 
 TEIは、一つの業務Data Modelを一つの物理Databaseへ固定しません。ApplicationとDatabaseをN:Mで扱い、同じ業務システムのDataを複数Database、Provider、外部Serviceへ配置できます。
