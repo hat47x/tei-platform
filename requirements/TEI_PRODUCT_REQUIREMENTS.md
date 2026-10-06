@@ -165,6 +165,8 @@ Data / Relationを設計・変更する場合、そのcontextから、業務上�
 
 生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
 
+生成AIは関数従属性、candidate key、Constraint、Data分割等をProposalとして提示できます。一方、それらをaccepted meaningへ昇格するにはSource / Evidenceと通常のAcceptance境界が必要です。acceptedなData / Relation / Constraintから機械的に導出できるProvider schema、cross-reference、migration plan等は、可能な範囲でversionedかつdeterministicなCompiler / Planner / Projectionにより生成し、LLMの再解釈を実行authorityにしてはいけません。
+
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
 既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
