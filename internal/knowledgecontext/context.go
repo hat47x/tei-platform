@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/database/persistence"
 	"tei/internal/index"
 	"tei/internal/ir"
 	"tei/internal/semantic"
@@ -60,11 +61,34 @@ type DataDesignScopedUniqueness struct {
 }
 
 type DataDesignEvidence struct {
-	Subject           subject.Subject  `json:"subject"`
-	Source            string           `json:"source"`
-	SourceFingerprint string           `json:"sourceFingerprint"`
+	Subject           subject.Subject   `json:"subject"`
+	Source            string            `json:"source"`
+	SourceFingerprint string            `json:"sourceFingerprint"`
 	Range             sourceindex.Range `json:"range"`
-	Role              sourceindex.Role `json:"role"`
+	Role              sourceindex.Role  `json:"role"`
+}
+
+type DataDesignPersistenceColumn struct {
+	Attribute   core.CanonicalID `json:"attribute"`
+	Column      string           `json:"column"`
+	Storage     string           `json:"storage"`
+	Nullability string           `json:"nullability"`
+}
+
+type DataDesignPersistenceUniqueness struct {
+	Kind       string             `json:"kind"`
+	Name       string             `json:"name,omitempty"`
+	Attributes []core.CanonicalID `json:"attributes"`
+	Nature     string             `json:"nature"`
+}
+
+type DataDesignPersistenceRealization struct {
+	Mapping      core.CanonicalID                  `json:"mapping"`
+	Database     core.CanonicalID                  `json:"database"`
+	Table        string                            `json:"table"`
+	Columns      []DataDesignPersistenceColumn     `json:"columns,omitempty"`
+	Uniqueness   []DataDesignPersistenceUniqueness `json:"uniqueness,omitempty"`
+	Authority    string                            `json:"authority"`
 }
 
 type DataDesignContext struct {
@@ -73,10 +97,11 @@ type DataDesignContext struct {
 	Attributes                            []DataDesignAttribute         `json:"attributes,omitempty"`
 	Relations                             []DataDesignRelation          `json:"relations,omitempty"`
 	Constraints                           []DataDesignConstraint        `json:"constraints,omitempty"`
-	ScopedUniqueness                      []DataDesignScopedUniqueness  `json:"scopedUniqueness,omitempty"`
-	Evidence                              []DataDesignEvidence          `json:"evidence,omitempty"`
-	EvidenceMissing                       []subject.Subject             `json:"evidenceMissing,omitempty"`
-	BusinessOccurrenceIdentifier          DataDesignKnowledgeState     `json:"businessOccurrenceIdentifier"`
+	ScopedUniqueness                      []DataDesignScopedUniqueness       `json:"scopedUniqueness,omitempty"`
+	PersistenceRealizations               []DataDesignPersistenceRealization `json:"persistenceRealizations,omitempty"`
+	Evidence                              []DataDesignEvidence                 `json:"evidence,omitempty"`
+	EvidenceMissing                       []subject.Subject                    `json:"evidenceMissing,omitempty"`
+	BusinessOccurrenceIdentifier          DataDesignKnowledgeState            `json:"businessOccurrenceIdentifier"`
 	CandidateKeys                         DataDesignKnowledgeState `json:"candidateKeys"`
 	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
 	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
@@ -238,6 +263,8 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"relation-key-is-not-business-identifier",
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
+			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
+			"persistence-unique-constraint-is-not-business-identifier-or-candidate-key",
 			"attribute-name-or-id-shape-is-not-key-evidence",
 			"identifier-like-attribute-is-not-business-identity",
 			"identifier-value-presence-is-not-uniqueness-evidence",
@@ -286,6 +313,56 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 				}
 			}
 		}
+	}
+
+	for _, mapping := range w.Persistence {
+		if mapping.SemanticData != dataID {
+			continue
+		}
+		realization := DataDesignPersistenceRealization{
+			Mapping:   mapping.ID,
+			Database:  mapping.Database,
+			Table:     mapping.Table,
+			Authority: "database-owned-realization",
+		}
+		for _, column := range mapping.Columns {
+			realization.Columns = append(realization.Columns, DataDesignPersistenceColumn{
+				Attribute:   column.Attribute,
+				Column:      column.Column,
+				Storage:     string(column.Storage),
+				Nullability: string(column.Nullability),
+			})
+			evidenceSubjects[subject.Subject{Kind: "semantic-attribute", ID: string(column.Attribute)}] = struct{}{}
+		}
+		if len(mapping.PrimaryKey) != 0 {
+			realization.Uniqueness = append(realization.Uniqueness, DataDesignPersistenceUniqueness{
+				Kind:       "primary-key",
+				Attributes: append([]core.CanonicalID(nil), mapping.PrimaryKey...),
+				Nature:     "accepted-realization",
+			})
+		}
+		for _, unique := range mapping.UniqueConstraints {
+			realization.Uniqueness = append(realization.Uniqueness, DataDesignPersistenceUniqueness{
+				Kind:       "unique-constraint",
+				Name:       unique.Name,
+				Attributes: append([]core.CanonicalID(nil), unique.Attributes...),
+				Nature:     "accepted-realization",
+			})
+		}
+		sort.Slice(realization.Columns, func(i, j int) bool {
+			return realization.Columns[i].Attribute < realization.Columns[j].Attribute
+		})
+		sort.Slice(realization.Uniqueness, func(i, j int) bool {
+			if realization.Uniqueness[i].Kind != realization.Uniqueness[j].Kind {
+				return realization.Uniqueness[i].Kind < realization.Uniqueness[j].Kind
+			}
+			if realization.Uniqueness[i].Name != realization.Uniqueness[j].Name {
+				return realization.Uniqueness[i].Name < realization.Uniqueness[j].Name
+			}
+			return persistenceUniquenessKey(realization.Uniqueness[i]) < persistenceUniquenessKey(realization.Uniqueness[j])
+		})
+		ctx.PersistenceRealizations = append(ctx.PersistenceRealizations, realization)
+		evidenceSubjects[subject.Subject{Kind: "persistence", ID: string(mapping.ID)}] = struct{}{}
 	}
 
 	for _, ns := range w.Semantics {
@@ -347,7 +424,18 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 	sort.Slice(ctx.ScopedUniqueness, func(i, j int) bool {
 		return ctx.ScopedUniqueness[i].Constraint < ctx.ScopedUniqueness[j].Constraint
 	})
+	sort.Slice(ctx.PersistenceRealizations, func(i, j int) bool {
+		return ctx.PersistenceRealizations[i].Mapping < ctx.PersistenceRealizations[j].Mapping
+	})
 	return ctx
+}
+
+func persistenceUniquenessKey(value DataDesignPersistenceUniqueness) string {
+	parts := make([]string, len(value.Attributes))
+	for i, attribute := range value.Attributes {
+		parts[i] = string(attribute)
+	}
+	return strings.Join(parts, "\x1f")
 }
 
 func collectDataDesignEvidence(
