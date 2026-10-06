@@ -190,6 +190,8 @@ func buildDataDesignContext(w ir.World, target subject.Subject, element *index.S
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"relation-key-is-not-business-identifier",
 			"attribute-name-or-id-shape-is-not-key-evidence",
+			"identifier-like-attribute-is-not-business-identity",
+			"identifier-value-presence-is-not-uniqueness-evidence",
 			"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 		},
 	}
