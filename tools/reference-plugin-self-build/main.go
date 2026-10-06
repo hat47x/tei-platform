@@ -41,7 +41,9 @@ type evidence struct {
 	GoToolchainDigest            string                   `json:"goToolchainDigest"`
 	PackageBuildPlan             plugin.BuildPlan         `json:"packageBuildPlan"`
 	PackageBuildPlanFingerprint  string                   `json:"packageBuildPlanFingerprint"`
-	PackageArtifactDigest        string                   `json:"packageArtifactDigest"`
+	PackageFirstArtifactDigest   string                   `json:"packageFirstArtifactDigest"`
+	PackageSecondArtifactDigest  string                   `json:"packageSecondArtifactDigest"`
+	PackageReproducible          bool                     `json:"packageReproducible"`
 	PackageLockedBuild           plugin.LockedBuild       `json:"packageLockedBuild"`
 	PackageLockFingerprint       string                   `json:"packageLockFingerprint"`
 	BuildPlan                    plugin.BuildPlan         `json:"buildPlan"`
@@ -199,12 +201,24 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	packageBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	packageFirstBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
 	if err != nil {
 		return evidence{}, err
 	}
-	packageArtifactDigest := plugin.BuildOutputDigest(packageBytes)
-	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageArtifactDigest)
+	packageSecondBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageFirstArtifactDigest := plugin.BuildOutputDigest(packageFirstBytes)
+	packageSecondArtifactDigest := plugin.BuildOutputDigest(packageSecondBytes)
+	if packageFirstArtifactDigest != packageSecondArtifactDigest {
+		return evidence{}, fmt.Errorf(
+			"standard plugin package build is not reproducible: %s != %s",
+			packageFirstArtifactDigest,
+			packageSecondArtifactDigest,
+		)
+	}
+	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageFirstArtifactDigest)
 	if err != nil {
 		return evidence{}, err
 	}
@@ -346,7 +360,9 @@ func run(repo string) (evidence, error) {
 		GoToolchainDigest:            goToolchainDigest,
 		PackageBuildPlan:             packagePlan,
 		PackageBuildPlanFingerprint:  packagePlanFingerprint,
-		PackageArtifactDigest:        packageArtifactDigest,
+		PackageFirstArtifactDigest:   packageFirstArtifactDigest,
+		PackageSecondArtifactDigest:  packageSecondArtifactDigest,
+		PackageReproducible:          true,
 		PackageLockedBuild:           packageLockedBuild,
 		PackageLockFingerprint:       packageLockFingerprint,
 		BuildPlan:                    plan,
