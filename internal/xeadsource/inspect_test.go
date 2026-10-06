@@ -26,6 +26,10 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 	if len(got.RelationalFacts.LegacyKeys) != 1 {
 		t.Fatalf("relational source facts are missing: %#v", got.RelationalFacts)
 	}
+	if len(got.RelationalDiagnostics) != 1 ||
+		got.RelationalDiagnostics[0].Code != "key-field-not-found" {
+		t.Fatalf("missing field reference was not preserved as unresolved: %#v", got.RelationalDiagnostics)
+	}
 	key := got.RelationalFacts.LegacyKeys[0]
 	if key.KeyLegacyID != "K1" || key.KeyType != "PK" || key.Nature != SourceFactNature {
 		t.Fatalf("legacy key fact drifted: %#v", key)
