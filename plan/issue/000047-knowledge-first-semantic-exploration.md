@@ -346,6 +346,8 @@ Data Design Contextには、判断材料として使ったData、Attribute、Rel
 
 Reference testでは、`sales.order_line`についてincoming Relation、`relation-unique`、positive Validation、exact Source Evidenceを同じData Design Contextから取得できることを記述した。また、Relation keyを持つ`sales.order.customer`でも、source / target AttributeのEvidenceを保持しつつbusiness identifierへ昇格しないことを確認対象にした。内部negative testでは、不正なRelation shapeから`scopedUniqueness`を生成しないことと、Source Indexが欠けた場合に`evidenceMissing`へ明示することを固定した。
 
+Application PatternからData設計へ戻る経路もnegative Referenceとして固定した。`order_entry.order_record`のPattern identityからData Design Contextやbusiness identityを生成せず、既存の`application-pattern -> semantic-data` dependencyで`sales.order`へ明示的に辿る。Context全体のauthority limitにも、Projectionやruntime objectのidentityをbusiness data identityへ読み替えないことを追加した。現時点で直接pressureしたのはApplication Patternであり、Target / ORM / runtime objectの具体的Referenceは後続に残す。
+
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
 
 ### experienceからのlocal learning
