@@ -227,6 +227,13 @@
       "observed": "Watanabe's 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
       "risk": "API/message connectivity can be reported as integration while business identity, relation, constraint, and ownership remain fragmented across systems",
       "teiDirection": "allow N:M Database/Service topology while preserving cross-system logical identity, relation, constraint, ownership, and provenance; do not require a single physical database and do not treat connectivity alone as semantic integration"
+    },
+    {
+      "id": "RMP-033",
+      "topic": "composite-key-order-and-type-correspondence",
+      "observed": "XeadModeler orders TableKeyField members by SortKey when handling relationships and uses TableField DataTypeID while finding corresponding fields; XML source order and AttributeType are therefore insufficient for checking composite key correspondence",
+      "risk": "a transfer tool can pair the wrong composite-key members while reporting the relationship as structurally valid, especially when XML order differs or SortKey is missing/duplicated",
+      "teiDirection": "preserve SourceOrdinal, SortKey, AttributeType, and DataTypeID separately; compare composite relationship members by unambiguous SortKey order and report ambiguous order or explicit data-type mismatch as unresolved rather than repairing by name/type heuristics"
     }
   ]
 }
