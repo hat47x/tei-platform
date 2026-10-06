@@ -350,6 +350,8 @@ Application PatternからData設計へ戻る経路もnegative Referenceとして
 
 Persistence RealizationもData Design Contextへ接続した。`sales.order_line`は`public.order_lines`へ実現され、Persistence Mappingでは`sales.order_line.order_line_id`が単独primary keyである。この事実は`database-owned-realization`として保持するが、business occurrence identifierやcandidate keyへは昇格しない。Database-ownedなunique constraintも同じく`accepted-realization`として保持し、業務上の一意性とは区別する。MappingのSource EvidenceもSource Indexから同じContextへ載せ、取得できない場合は`evidenceMissing`へ残す。これにより、単独primary keyやunique constraintが見えている場合でも、生成AIがそれをbusiness identityとみなす経路を明示的に閉じる。なお、現行Referenceの`order_line_id`がsurrogate keyであるとは断定しない。今回実証するのは、physical / persistence primary keyの存在だけではbusiness keyを確定できないという境界である。
 
+逆方向も同じ境界で扱う。`knowledge-context`へ`persistence:sales_core.order_line`を渡した場合は、primary keyやcolumn名からDataを推測せず、Persistence Mappingが明示する`semantic sales.order_line`だけを使ってData Design Contextへ戻る。逆追跡後もbusiness occurrence identifier、candidate key、functional dependencyは`unresolved`のままである。これにより、SemanticからRealizationを見る経路とRealizationからSemanticへ戻る経路のどちらでも、physical keyをlogical identityへ昇格しない。
+
 このincrementでも`BusinessKey`や`FunctionalDependency`を新しいCore primitiveとして追加しない。まずexisting primitiveからlosslessに説明できる範囲と、なお不足するEvidenceをReferenceで分離する。exact-headのRepository Healthは現在の実行環境では取得できないため、Product Evidence成立や完了条件充足はまだ主張しない。
 
 ### experienceからのlocal learning
