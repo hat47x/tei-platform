@@ -24,3 +24,14 @@ runnerは開始時と終了時にGit worktreeがcleanであることを要求し
 同じSource / builder条件で、別々のbuild cacheを使って2回buildし、SHA-256 artifact digestが一致した場合だけ`reproducible=true`を出力します。その後、Build Plan、BuildArtifactLock、derived Runtime Definition、既存Plugin Lockを相互照合します。
 
 この説明はrunnerの候補実装を示すものであり、actual Evidenceの成立を示すものではありません。exact-headのtrusted checkoutでrunnerとRepository Health Checkが成功するまでSB-2完了とは扱いません。
+
+
+## SB-1 package self-build
+
+同じrunnerで、通常のReference Workspaceにある`tei.runtime.reference@1.0.0`から決定論的なPlugin packageも生成します。
+
+このpackageはdescriptorだけを対象とする最初のSB-1 profileです。Source DefinitionにRuntime artifact digestが含まれている場合は受け付けません。生成物の種類は`plugin-package`として記録し、`runtime-artifact`とは別のBuildArtifactLock entryにします。
+
+Build Planにはbuilderだけでなく、`tei-plugin-package`というrecipe kindと対象descriptorのentrypointも記録します。そのため、同じSource closureとbuilderを使って別のPluginをpackageした場合でも、Build Plan fingerprintから区別できます。
+
+SB-1 packageの生成に成功しても、Pluginの実行実装をTEI自身で生成できたことにはなりません。process Pluginのruntime artifactを2回buildしてdigest一致を確認するE2とは、別の到達段階として扱います。
