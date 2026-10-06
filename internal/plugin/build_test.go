@@ -43,8 +43,8 @@ func buildPlanFixture() plugin.BuildPlan {
 			ArtifactDigest: buildDigestA,
 		},
 		Dependencies: []plugin.BuildDependency{
-			{ID: core.MustCanonicalID("tei.builder.sdk"), Version: "1.0.0", ArtifactDigest: buildDigestB},
-			{ID: core.MustCanonicalID("tei.builder.support"), Version: "2.0.0", ArtifactDigest: buildDigestA},
+			{Kind: "sdk", ID: "example.builder.sdk", Version: "1.0.0", ArtifactDigest: buildDigestB},
+			{Kind: "support", ID: "example.builder.support", Version: "2.0.0", ArtifactDigest: buildDigestA},
 		},
 		Target:  "host-process",
 		Profile: "reference",
