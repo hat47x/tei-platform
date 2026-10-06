@@ -24,6 +24,8 @@ Date: 2026-10-06
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
   - https://dbconcept.hatenablog.com/entry/2025/02/25/120940
+  - https://dbconcept.hatenablog.com/entry/2024/12/16/071337
+  - https://dbconcept.hatenablog.com/entry/2024/11/27/080850
 - 公開実装
   - https://github.com/xead/XeadModeler
   - https://github.com/xead/XeadDriver
@@ -41,7 +43,7 @@ Date: 2026-10-06
 
 渡辺氏はUIを、利用者が理解しやすく、Data Modelの意味を具体的に確認できる設計要素として重視しています。TEIもUIをauthorityにはしない一方、Interaction ProjectionからData / Functionの矛盾を発見する設計を採っています。
 
-今回、UIを「表示結果」だけでなく利用者による意味確認のreview surfaceとして明文化しました。
+今回、UIを「表示結果」だけでなく利用者による意味確認のreview surfaceとして明文化しました。また、基本設計のreview projectionと出荷TargetのVisual Fidelityを分離し、設計段階の装飾完成度をSemantic成立条件へ混ぜない境界も明確にしました。
 
 ### 3.3 Business ProcedureをApplication Functionへ還元しない
 
@@ -64,6 +66,10 @@ Canonical subject identity
 ~~~
 
 TEIはnatural key / composite key / surrogate keyのどれかを一律に強制しません。代わりに、業務上のdeterminant、uniqueness、Relation semantics、Constraintを物理実装から失わないことを要求します。
+
+渡辺氏は、単独主キーしか扱いにくい実装環境ではsurrogate keyを使う余地を認めています。その場合も、本来の複合識別をuniquenessとして残し、正規化された意味との差を理解したうえで実装する立場です。TEIではこの点を、Provider / ORM / Target固有のRealizationがlogical Data meaningを上書きしないという境界へ翻訳します。
+
+同じ理由で、View、formの入力単位、Application Pattern、runtime objectのidentityをbusiness keyのauthorityにはしません。これらはData meaningを利用するProjection / Realizationであり、業務上のoccurrenceを何が識別するかはData / Relation / ConstraintとそのSourceへ戻って確認します。
 
 ### 4.2 関数従属性をData設計上の重要なmeaningとして扱う
 
@@ -91,11 +97,19 @@ authoritative sourceへ戻って修正
 
 Reference専用の例外実装で成功させません。一つの小例が動いただけで汎用性を主張しません。異なるdomain / scale / Data structure / Procedure / Target / ProviderへReferenceを広げ、成立範囲を反証可能なEvidenceとして積み上げます。
 
-### 4.4 AIによるData設計をauthorityにしない
+### 4.4 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
+
+渡辺氏のSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
+
+TEIでは、Subsystemを直ちにCore primitive、Application、Database、deployment unitへ固定しません。まずData ownership、Function / Interaction、Capability / Contract等からderived CRUD / dependency Projectionを作り、cross-boundary CUDをdesign pressureとして確認します。durable identityが必要かはrealistic Referenceで判断します。
+
+### 4.5 AIによるData設計をauthorityにしない
 
 AIがschemaを生成できても、業務上の関数従属性や識別規則が確立したとは限りません。これはTEIの既存原則「AIはcritic / proposerでありauthorityではない」のData設計への具体化として扱います。
 
 AIは候補、矛盾、問いを提示できます。Validatorは宣言済みConstraintを検査できます。しかし、sourceから裏づけられていないdeterminantを自動発見したことにはしません。根拠が不足する場合はunresolvedを保持します。
+
+この判断はAIへ渡すcontextにも反映します。Data / Relationを設計するときは、単なるtable / field一覧ではなく、business occurrence identifier、candidate key、既知または候補のfunctional dependency、Relation topology、時間・履歴条件、Source / Evidence、accepted / candidate / unresolvedのnatureへ到達できるread-onlyなData Design Contextを用意します。これは第二正本ではなく、current Canonical / Source / Decision / Evidenceから再構成するProjectionです。
 
 ## 5. そのまま移植しないもの
 
