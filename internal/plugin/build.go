@@ -13,7 +13,7 @@ import (
 
 const (
 	BuildPlanFormatVersion = 1
-	BuildLockFormatVersion = 1
+	BuildArtifactLockFormatVersion = 1
 )
 
 // BuildSource is one exact member of the source closure that affects a Plugin
@@ -75,10 +75,12 @@ type LockedBuild struct {
 	ArtifactDigest  string   `json:"artifactDigest"`
 }
 
-// BuildLock is separate from Plugin Lock. Plugin Lock answers which exact
-// implementation is used at runtime; Build Lock answers which exact build plan
-// produced a particular artifact.
-type BuildLock struct {
+// BuildArtifactLock is separate from Plugin Lock. Plugin Lock answers which
+// exact implementation is used at runtime; BuildArtifactLock answers which
+// exact build plan produced a particular artifact. The longer Go name avoids
+// colliding with the existing BuildLock function that constructs Runtime
+// Plugin Lock.
+type BuildArtifactLock struct {
 	FormatVersion int           `json:"formatVersion"`
 	Builds        []LockedBuild `json:"builds"`
 }
@@ -201,7 +203,7 @@ func BuildPlanFingerprint(p BuildPlan) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func NormalizeBuildLock(l BuildLock) BuildLock {
+func NormalizeBuildArtifactLock(l BuildArtifactLock) BuildArtifactLock {
 	out := l
 	out.Builds = append([]LockedBuild(nil), l.Builds...)
 	sort.Slice(out.Builds, func(i, j int) bool {
@@ -219,8 +221,8 @@ func NormalizeBuildLock(l BuildLock) BuildLock {
 	return out
 }
 
-func (l BuildLock) Validate() error {
-	if l.FormatVersion != BuildLockFormatVersion {
+func (l BuildArtifactLock) Validate() error {
+	if l.FormatVersion != BuildArtifactLockFormatVersion {
 		return fmt.Errorf("unsupported build lock format %d", l.FormatVersion)
 	}
 	seen := map[string]struct{}{}
@@ -249,19 +251,85 @@ func (l BuildLock) Validate() error {
 	return nil
 }
 
-// BuildLockFingerprint returns a stable fingerprint for exact build-plan and
-// output-artifact bindings.
-func BuildLockFingerprint(l BuildLock) (string, error) {
+// BuildArtifactLockFingerprint returns a stable fingerprint for exact
+// build-plan and output-artifact bindings.
+func BuildArtifactLockFingerprint(l BuildArtifactLock) (string, error) {
 	if err := l.Validate(); err != nil {
 		return "", err
 	}
-	n := NormalizeBuildLock(l)
+	n := NormalizeBuildArtifactLock(l)
 	b, err := json.Marshal(n)
 	if err != nil {
 		return "", err
 	}
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+
+// LockBuildOutput binds one validated BuildPlan to an exact produced artifact.
+// It does not add the artifact to Runtime Plugin Lock or grant any Runtime
+// authority.
+func LockBuildOutput(plan BuildPlan, artifactDigest string) (LockedBuild, error) {
+	planFingerprint, err := BuildPlanFingerprint(plan)
+	if err != nil {
+		return LockedBuild{}, err
+	}
+	if err := validateBuildDigest("build output artifact digest", artifactDigest); err != nil {
+		return LockedBuild{}, err
+	}
+	return LockedBuild{
+		Plugin:          plan.Plugin,
+		Target:          plan.Target,
+		Profile:         plan.Profile,
+		PlanFingerprint: planFingerprint,
+		ArtifactDigest:  artifactDigest,
+	}, nil
+}
+
+// VerifyRuntimePluginBuild checks that a Runtime Plugin Lock entry can be
+// traced back to this exact BuildPlan and locked build output. This is an
+// explicit cross-check only; neither BuildPlan nor BuildArtifactLock is Runtime
+// authority by itself.
+func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, runtime LockedPlugin) error {
+	expectedPlanFingerprint, err := BuildPlanFingerprint(plan)
+	if err != nil {
+		return err
+	}
+	if err := (BuildArtifactLock{
+		FormatVersion: BuildArtifactLockFormatVersion,
+		Builds:        []LockedBuild{build},
+	}).Validate(); err != nil {
+		return err
+	}
+	if plan.Plugin.ID != runtime.ID || plan.Plugin.Version != runtime.Version {
+		return fmt.Errorf(
+			"build plan plugin %s@%s does not match runtime plugin %s@%s",
+			plan.Plugin.ID, plan.Plugin.Version, runtime.ID, runtime.Version,
+		)
+	}
+	if build.Plugin != plan.Plugin {
+		return fmt.Errorf(
+			"locked build plugin %s@%s does not match build plan %s@%s",
+			build.Plugin.ID, build.Plugin.Version, plan.Plugin.ID, plan.Plugin.Version,
+		)
+	}
+	if build.Target != plan.Target || build.Profile != plan.Profile {
+		return fmt.Errorf("locked build target/profile does not match build plan")
+	}
+	if build.PlanFingerprint != expectedPlanFingerprint {
+		return fmt.Errorf("locked build plan fingerprint diverged")
+	}
+	if plan.DescriptorFingerprint != runtime.Fingerprint {
+		return fmt.Errorf("runtime plugin descriptor fingerprint does not match build plan")
+	}
+	if runtime.ArtifactDigest == "" {
+		return fmt.Errorf("runtime plugin %s@%s has no artifact digest", runtime.ID, runtime.Version)
+	}
+	if runtime.ArtifactDigest != build.ArtifactDigest {
+		return fmt.Errorf("runtime plugin artifact digest does not match locked build output")
+	}
+	return nil
 }
 
 func validateHexFingerprint(label, value string) error {
