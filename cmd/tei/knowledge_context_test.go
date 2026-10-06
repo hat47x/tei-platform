@@ -129,6 +129,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"when-is-the-identifier-valid",
 		"which-relations-or-constraints-depend-on-the-identity",
 		"which-source-or-contract-owns-the-uniqueness-claim",
+		"which-normalization-or-equivalence-policy-applies",
 	} {
 		if !containsKnowledgeContextString(dataDesign.BusinessIdentityEvidenceQuestions, question) {
 			t.Fatalf("business identity evidence question %q is missing: %+v", question, dataDesign.BusinessIdentityEvidenceQuestions)
@@ -181,6 +182,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"relation-key-is-not-business-identifier",
 		"identifier-like-attribute-is-not-business-identity",
 		"identifier-value-presence-is-not-uniqueness-evidence",
+		"normalized-string-equality-is-not-business-identity-evidence",
 		"application-pattern-ui-or-runtime-identity-is-not-data-identity",
 	} {
 		if !containsKnowledgeContextString(dataDesign.AuthorityLimits, limit) {
