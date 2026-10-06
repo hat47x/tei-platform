@@ -49,17 +49,17 @@ type DataDesignConstraint struct {
 }
 
 type DataDesignContext struct {
-	Data                         core.CanonicalID         `json:"data"`
-	Focus                        subject.Subject          `json:"focus"`
-	Attributes                   []DataDesignAttribute    `json:"attributes,omitempty"`
-	Relations                    []DataDesignRelation     `json:"relations,omitempty"`
-	Constraints                  []DataDesignConstraint   `json:"constraints,omitempty"`
-	BusinessOccurrenceIdentifier DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
-	CandidateKeys                DataDesignKnowledgeState `json:"candidateKeys"`
-	FunctionalDependencies              DataDesignKnowledgeState `json:"functionalDependencies"`
-	BusinessIdentityEvidenceQuestions   []string                 `json:"businessIdentityEvidenceQuestions"`
-	FunctionalDependencyEvidenceQuestions []string               `json:"functionalDependencyEvidenceQuestions"`
-	AuthorityLimits                     []string                 `json:"authorityLimits"`
+	Data                                  core.CanonicalID         `json:"data"`
+	Focus                                 subject.Subject          `json:"focus"`
+	Attributes                            []DataDesignAttribute    `json:"attributes,omitempty"`
+	Relations                             []DataDesignRelation     `json:"relations,omitempty"`
+	Constraints                           []DataDesignConstraint   `json:"constraints,omitempty"`
+	BusinessOccurrenceIdentifier          DataDesignKnowledgeState `json:"businessOccurrenceIdentifier"`
+	CandidateKeys                         DataDesignKnowledgeState `json:"candidateKeys"`
+	FunctionalDependencies                DataDesignKnowledgeState `json:"functionalDependencies"`
+	BusinessIdentityEvidenceQuestions     []string                 `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions []string                 `json:"functionalDependencyEvidenceQuestions"`
+	AuthorityLimits                       []string                 `json:"authorityLimits"`
 }
 
 type Context struct {
