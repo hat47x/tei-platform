@@ -5,13 +5,13 @@ import "sort"
 const RelationalDiagnosticNature = "unresolved"
 
 type RelationalDiagnostic struct {
-	Code           string `json:"code"`
-	Locator        string `json:"locator"`
-	Nature         string `json:"nature"`
-	Side           string `json:"side,omitempty"`
-	RelationshipID string `json:"relationshipId,omitempty"`
-	TableLegacyID  string `json:"tableLegacyId,omitempty"`
-	KeyLegacyID    string `json:"keyLegacyId,omitempty"`
+	Code                  string `json:"code"`
+	Locator               string `json:"locator"`
+	Nature                string `json:"nature"`
+	Side                  string `json:"side,omitempty"`
+	RelationshipID        string `json:"relationshipId,omitempty"`
+	TableLegacyID         string `json:"tableLegacyId,omitempty"`
+	KeyLegacyID           string `json:"keyLegacyId,omitempty"`
 	FieldLegacyID         string `json:"fieldLegacyId,omitempty"`
 	LeftFieldLegacyID     string `json:"leftFieldLegacyId,omitempty"`
 	RightFieldLegacyID    string `json:"rightFieldLegacyId,omitempty"`
