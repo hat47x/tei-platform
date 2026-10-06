@@ -114,6 +114,37 @@ func TestDiagnoseRelationalSourceFactsDoesNotGuessCompositeOrderWhenSortKeyIsAmb
 	}
 }
 
+func TestDiagnoseRelationalSourceFactsRejectsDuplicateLegacyKeyIdentity(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey><TableKey ID="K1" Type="SK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	codes := map[string]RelationalDiagnostic{}
+	for _, diagnostic := range got {
+		codes[diagnostic.Code] = diagnostic
+	}
+	duplicate, ok := codes["key-id-duplicate"]
+	if !ok ||
+		duplicate.TableLegacyID != "T1" ||
+		duplicate.KeyLegacyID != "K1" ||
+		duplicate.Count != 2 {
+		t.Fatalf("duplicate key identity was not diagnosed: %#v", got)
+	}
+	ambiguous, ok := codes["relationship-key-ambiguous"]
+	if !ok ||
+		ambiguous.RelationshipID != "R1" ||
+		ambiguous.Side != "table1" ||
+		ambiguous.TableLegacyID != "T1" ||
+		ambiguous.KeyLegacyID != "K1" ||
+		ambiguous.Count != 2 {
+		t.Fatalf("relationship resolved an ambiguous key identity: %#v", got)
+	}
+	if len(got) != 2 {
+		t.Fatalf("unexpected duplicate-key diagnostics: %#v", got)
+	}
+}
+
 func TestDiagnoseRelationalSourceFactsReportsCompositeKeyArityMismatchWithoutRepair(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableField ID="B"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/><TableKeyField FieldID="B"/></TableKey></Table><Table ID="T2"><TableField ID="C"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="C"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
