@@ -102,6 +102,7 @@ type CapabilityResolutionLock struct {
 	ResolutionPolicy       string         `json:"resolutionPolicy"`
 	Scope                  AuthorityScope `json:"scope"`
 	Requirement            Requirement    `json:"requirement"`
+	Wiring                 *Wiring        `json:"wiring,omitempty"`
 	Contract               Contract       `json:"contract"`
 	ContractFingerprint    string         `json:"contractFingerprint"`
 	Provider               Provider       `json:"provider"`
@@ -359,11 +360,16 @@ func validateResolveInput(input ResolveInput) error {
 }
 
 func buildCapabilityResolutionLock(
-	requirement Requirement,
+	input ResolveInput,
 	resolution Resolution,
 ) (CapabilityResolutionLock, error) {
-	if requirement.ContractID == "" || requirement.CompatibleMajor < 0 {
-		return CapabilityResolutionLock{}, fmt.Errorf("invalid contract requirement")
+	if err := validateResolveInput(input); err != nil {
+		return CapabilityResolutionLock{}, err
+	}
+	requirement := input.Requirement
+	wiring, err := wiringForContract(input.Wirings, requirement.ContractID)
+	if err != nil {
+		return CapabilityResolutionLock{}, err
 	}
 	if resolution.ResolutionPolicy != capabilityResolutionPolicy {
 		return CapabilityResolutionLock{}, fmt.Errorf(
@@ -398,12 +404,16 @@ func buildCapabilityResolutionLock(
 		ResolutionPolicy:      capabilityResolutionPolicy,
 		Scope:                 resolution.Scope,
 		Requirement:           requirement,
+		Wiring:                wiring,
 		Contract:              resolution.Contract,
 		ContractFingerprint:   resolution.ContractFingerprint,
 		Provider:              resolution.Provider,
 		ResolutionFingerprint: resolution.ResolutionFingerprint,
 	}
 	lock.LockFingerprint = capabilityResolutionLockFingerprint(lock)
+	if err := validateCapabilityResolutionLock(lock); err != nil {
+		return CapabilityResolutionLock{}, err
+	}
 	return lock, nil
 }
 
@@ -412,6 +422,9 @@ func verifyCapabilityResolutionLockReplay(
 	input ResolveInput,
 ) error {
 	if err := validateCapabilityResolutionLock(lock); err != nil {
+		return err
+	}
+	if err := validateResolveInput(input); err != nil {
 		return err
 	}
 	if input.Scope != lock.Scope {
@@ -426,6 +439,22 @@ func verifyCapabilityResolutionLockReplay(
 			"capability lock requirement %+v differs from current requirement %+v",
 			lock.Requirement,
 			input.Requirement,
+		)
+	}
+	currentWiring, err := wiringForContract(input.Wirings, input.Requirement.ContractID)
+	if err != nil {
+		return err
+	}
+	switch {
+	case lock.Wiring == nil && currentWiring != nil:
+		return fmt.Errorf("capability lock was resolved without explicit wiring but current input has wiring")
+	case lock.Wiring != nil && currentWiring == nil:
+		return fmt.Errorf("capability lock requires explicit wiring but current input has none")
+	case lock.Wiring != nil && currentWiring != nil && *lock.Wiring != *currentWiring:
+		return fmt.Errorf(
+			"capability lock wiring %+v differs from current wiring %+v",
+			*lock.Wiring,
+			*currentWiring,
 		)
 	}
 
@@ -531,6 +560,17 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 		lock.Requirement.CompatibleMajor < 0 {
 		return fmt.Errorf("capability lock has invalid scope or requirement")
 	}
+	if lock.Wiring != nil {
+		if lock.Wiring.ContractID != lock.Requirement.ContractID ||
+			lock.Wiring.PluginID == "" ||
+			lock.Wiring.PluginVersion == "" ||
+			lock.Wiring.ImplementationID == "" {
+			return fmt.Errorf("capability lock has invalid explicit wiring")
+		}
+		if _, err := parseVersion(lock.Wiring.PluginVersion); err != nil {
+			return fmt.Errorf("capability lock wiring plugin version: %w", err)
+		}
+	}
 	if lock.Contract.ID != lock.Requirement.ContractID ||
 		lock.Provider.Scope != lock.Scope ||
 		lock.Provider.ContractID != lock.Contract.ID ||
@@ -552,6 +592,20 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 	if lock.Provider.ArtifactDigest != "" &&
 		!validSHA256Fingerprint(lock.Provider.ArtifactDigest) {
 		return fmt.Errorf("capability lock provider artifact digest is invalid")
+	}
+	if lock.Provider.PluginID == "" ||
+		lock.Provider.PluginVersion == "" ||
+		lock.Provider.ImplementationID == "" {
+		return fmt.Errorf("capability lock provider identity is incomplete")
+	}
+	if _, err := parseVersion(lock.Provider.PluginVersion); err != nil {
+		return fmt.Errorf("capability lock provider plugin version: %w", err)
+	}
+	if lock.Contract.RequestSemantics == "" ||
+		lock.Contract.ResultSemantics == "" ||
+		lock.Contract.FailureSemantics == "" ||
+		lock.Contract.ConformanceProfile == "" {
+		return fmt.Errorf("capability lock contract is incomplete")
 	}
 	expectedResolutionFingerprint := capabilityResolutionFingerprint(
 		lock.Scope,
