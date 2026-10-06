@@ -99,10 +99,30 @@
       "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
       "origin": "imported",
       "assertionMode": "fact",
-      "reviewState": "superseded",
+      "reviewState": "reviewed",
       "context": [
         {"dimension": "project", "value": "tei", "provenance": "explicit"}
-      ]
+      ],
+      "review": {
+        "id": "review-runtime-old",
+        "reviewer": "runtime-owner",
+        "method": "human-confirmation",
+        "reviewedMeaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "reviewedAt": "2026-09-20T00:00:00Z"
+      }
+    },
+    {
+      "id": "superseding-design",
+      "target": {"kind": "design-claim", "id": "tei.runtime.current"},
+      "text": "The newer runtime binding design supersedes the older design.",
+      "meaningFingerprint": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "origin": "user",
+      "assertionMode": "fact",
+      "reviewState": "native",
+      "context": [
+        {"dimension": "project", "value": "tei", "provenance": "explicit"}
+      ],
+      "supersedes": ["superseded-design"]
     },
     {
       "id": "conflict-a",
