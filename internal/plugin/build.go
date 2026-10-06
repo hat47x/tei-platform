@@ -57,7 +57,7 @@ type BuildParameter struct {
 type BuildPlan struct {
 	FormatVersion         int               `json:"formatVersion"`
 	Plugin                Identity          `json:"plugin"`
-	DescriptorFingerprint string            `json:"descriptorFingerprint"`
+	PluginDefinitionFingerprint string            `json:"pluginDefinitionFingerprint"`
 	Sources               []BuildSource     `json:"sources"`
 	Builder               BuilderIdentity   `json:"builder"`
 	Dependencies          []BuildDependency `json:"dependencies,omitempty"`
@@ -83,6 +83,20 @@ type LockedBuild struct {
 type BuildArtifactLock struct {
 	FormatVersion int           `json:"formatVersion"`
 	Builds        []LockedBuild `json:"builds"`
+}
+
+
+// BuildDefinitionFingerprint identifies the build-relevant Plugin definition
+// without the produced artifact identity. Keeping Artifact outside this
+// fingerprint avoids a cycle where a BuildPlan would need the output digest
+// before the artifact exists. Runtime DefinitionFingerprint intentionally keeps
+// Artifact included.
+func BuildDefinitionFingerprint(d Definition) string {
+	n := NormalizeDefinition(d)
+	n.Artifact = Artifact{}
+	b, _ := json.Marshal(n)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 func NormalizeBuildPlan(p BuildPlan) BuildPlan {
@@ -122,7 +136,7 @@ func (p BuildPlan) Validate() error {
 	if !core.ValidNumericVersion(p.Plugin.Version) {
 		return fmt.Errorf("build plan plugin version %q must be major.minor.patch", p.Plugin.Version)
 	}
-	if err := validateHexFingerprint("descriptor fingerprint", p.DescriptorFingerprint); err != nil {
+	if err := validateHexFingerprint("plugin definition fingerprint", p.PluginDefinitionFingerprint); err != nil {
 		return err
 	}
 	if len(p.Sources) == 0 {
@@ -291,7 +305,7 @@ func LockBuildOutput(plan BuildPlan, artifactDigest string) (LockedBuild, error)
 // traced back to this exact BuildPlan and locked build output. This is an
 // explicit cross-check only; neither BuildPlan nor BuildArtifactLock is Runtime
 // authority by itself.
-func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, runtime LockedPlugin) error {
+func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, definition Definition, runtime LockedPlugin) error {
 	expectedPlanFingerprint, err := BuildPlanFingerprint(plan)
 	if err != nil {
 		return err
@@ -301,6 +315,12 @@ func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, runtime LockedP
 		Builds:        []LockedBuild{build},
 	}).Validate(); err != nil {
 		return err
+	}
+	if definition.ID != plan.Plugin.ID || definition.Version != plan.Plugin.Version {
+		return fmt.Errorf(
+			"plugin definition %s@%s does not match build plan %s@%s",
+			definition.ID, definition.Version, plan.Plugin.ID, plan.Plugin.Version,
+		)
 	}
 	if plan.Plugin.ID != runtime.ID || plan.Plugin.Version != runtime.Version {
 		return fmt.Errorf(
@@ -320,8 +340,14 @@ func VerifyRuntimePluginBuild(plan BuildPlan, build LockedBuild, runtime LockedP
 	if build.PlanFingerprint != expectedPlanFingerprint {
 		return fmt.Errorf("locked build plan fingerprint diverged")
 	}
-	if plan.DescriptorFingerprint != runtime.Fingerprint {
-		return fmt.Errorf("runtime plugin descriptor fingerprint does not match build plan")
+	if BuildDefinitionFingerprint(definition) != plan.PluginDefinitionFingerprint {
+		return fmt.Errorf("plugin definition fingerprint does not match build plan")
+	}
+	if DefinitionFingerprint(definition) != runtime.Fingerprint {
+		return fmt.Errorf("runtime plugin descriptor fingerprint diverged from definition")
+	}
+	if definition.Artifact.Digest != runtime.ArtifactDigest {
+		return fmt.Errorf("runtime plugin artifact digest diverged from definition")
 	}
 	if runtime.ArtifactDigest == "" {
 		return fmt.Errorf("runtime plugin %s@%s has no artifact digest", runtime.ID, runtime.Version)
