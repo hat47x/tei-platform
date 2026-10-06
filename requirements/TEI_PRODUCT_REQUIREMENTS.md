@@ -14,6 +14,8 @@ TEIは、業務概念、型、関係、制約、lifecycle等を、特定の画�
 
 Canonical IDはfile pathやphysical object nameから独立し、実装や配置を変更しても意味上のidentityを維持できる必要があります。
 
+業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
+
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
 
 `.tei`、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。
