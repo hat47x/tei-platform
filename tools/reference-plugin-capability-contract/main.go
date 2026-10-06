@@ -315,9 +315,11 @@ func validateResolveInput(input ResolveInput) error {
 			provider.ImplementationID == "" || !provider.Scope.Valid() ||
 			provider.ContractID == "" || provider.ContractVersion == "" ||
 			!validSHA256Fingerprint(provider.ContractFingerprint) ||
-			!validSHA256Fingerprint(provider.ArtifactDigest) ||
 			provider.ConformanceProfile == "" {
 			return fmt.Errorf("provider[%d] is incomplete or invalid", i)
+		}
+		if !validSHA256Fingerprint(provider.ArtifactDigest) {
+			return fmt.Errorf("provider[%d] requires exact implementation artifact digest", i)
 		}
 		if _, err := parseVersion(provider.PluginVersion); err != nil {
 			return fmt.Errorf("provider[%d] plugin version: %w", i, err)
@@ -329,11 +331,13 @@ func validateResolveInput(input ResolveInput) error {
 	for i, evidence := range input.Evidence {
 		if evidence.PluginID == "" || evidence.PluginVersion == "" ||
 			evidence.ImplementationID == "" ||
-			!validSHA256Fingerprint(evidence.ArtifactDigest) ||
 			!validSHA256Fingerprint(evidence.ContractFingerprint) ||
 			evidence.ConformanceProfile == "" ||
 			!validSHA256Fingerprint(evidence.EvidenceFingerprint) {
 			return fmt.Errorf("conformance evidence[%d] is incomplete or invalid", i)
+		}
+		if !validSHA256Fingerprint(evidence.ArtifactDigest) {
+			return fmt.Errorf("conformance evidence[%d] requires exact implementation artifact digest", i)
 		}
 		if _, err := parseVersion(evidence.PluginVersion); err != nil {
 			return fmt.Errorf("conformance evidence[%d] plugin version: %w", i, err)
