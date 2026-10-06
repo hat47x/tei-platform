@@ -58,8 +58,9 @@ func TestReferenceRuntimePluginCanMaterializeSB1Package(t *testing.T) {
 		}},
 		Builder: plugin.BuilderIdentity{
 			ID:             core.MustCanonicalID("tei.builder.package.seed"),
-			Version:        "reference-test",
-			ArtifactDigest: packageBuilderDigest,
+			Version:         "reference-test",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  packageBuilderDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
