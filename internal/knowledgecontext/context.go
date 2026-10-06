@@ -307,7 +307,11 @@ func buildDataDesignContext(w ir.World, sources sourceindex.Index, target subjec
 			if validation.Relation != "" {
 				evidenceSubjects[subject.Subject{Kind: "semantic-relation", ID: string(validation.Relation)}] = struct{}{}
 			}
-			if validation.Kind == "relation-unique" && hasRelation {
+			if validation.Kind == "relation-unique" &&
+				hasRelation &&
+				relation.Cardinality == "many" &&
+				validation.Attribute != "" &&
+				attributeOwner[validation.Attribute] == relation.Target {
 				ctx.ScopedUniqueness = append(ctx.ScopedUniqueness, DataDesignScopedUniqueness{
 					Constraint: validation.ID,
 					Relation:   validation.Relation,
