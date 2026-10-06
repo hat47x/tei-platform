@@ -81,6 +81,28 @@ func supportedLockFormatVersion(version int) bool {
 	return version == LockFormatVersion || version == BuildTraceLockFormatVersion
 }
 
+
+
+func validateLockBuildTrace(lock Lock) error {
+	if lock.FormatVersion != BuildTraceLockFormatVersion {
+		return nil
+	}
+	for _, environmentLock := range lock.Environments {
+		for _, locked := range environmentLock.Plugins {
+			if locked.BuildPlanFingerprint == "" {
+				continue
+			}
+			if err := validateHexFingerprint(
+				"plugin lock build plan fingerprint for "+string(locked.ID)+"@"+locked.Version,
+				locked.BuildPlanFingerprint,
+			); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (l Lock) environment(id core.CanonicalID) (EnvironmentLock, bool) {
 	for _, e := range l.Environments {
 		if e.Environment == id {
@@ -96,6 +118,9 @@ func (l Lock) environment(id core.CanonicalID) (EnvironmentLock, bool) {
 func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string, error) {
 	if !supportedLockFormatVersion(l.FormatVersion) {
 		return "", fmt.Errorf("unsupported plugin lock format %d", l.FormatVersion)
+	}
+	if err := validateLockBuildTrace(l); err != nil {
+		return "", err
 	}
 	el, ok := l.environment(environmentID)
 	if !ok {
@@ -116,6 +141,9 @@ func EnvironmentLockFingerprint(l Lock, environmentID core.CanonicalID) (string,
 func (c Catalog) ResolveEnvironmentWithLock(env environment.Environment, lock Lock) (ResolvedSet, error) {
 	if !supportedLockFormatVersion(lock.FormatVersion) {
 		return ResolvedSet{}, fmt.Errorf("unsupported plugin lock format %d", lock.FormatVersion)
+	}
+	if err := validateLockBuildTrace(lock); err != nil {
+		return ResolvedSet{}, err
 	}
 	el, ok := lock.environment(env.ID)
 	if !ok {
