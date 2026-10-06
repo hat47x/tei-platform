@@ -133,8 +133,8 @@ func TestBuildPlanRejectsAmbiguousOrUnpinnedInputs(t *testing.T) {
 }
 
 func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
-	a := plugin.BuildLock{
-		FormatVersion: plugin.BuildLockFormatVersion,
+	a := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
 		Builds: []plugin.LockedBuild{
 			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.z"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
 			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "wasm-component", Profile: "web", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
@@ -144,11 +144,11 @@ func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
 	b.Builds = append([]plugin.LockedBuild(nil), a.Builds...)
 	b.Builds[0], b.Builds[1] = b.Builds[1], b.Builds[0]
 
-	afp, err := plugin.BuildLockFingerprint(a)
+	afp, err := plugin.BuildArtifactLockFingerprint(a)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bfp, err := plugin.BuildLockFingerprint(b)
+	bfp, err := plugin.BuildArtifactLockFingerprint(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
 	changed := b
 	changed.Builds = append([]plugin.LockedBuild(nil), b.Builds...)
 	changed.Builds[0].ArtifactDigest = buildDigestA
-	changedFP, err := plugin.BuildLockFingerprint(changed)
+	changedFP, err := plugin.BuildArtifactLockFingerprint(changed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,14 +169,88 @@ func TestBuildLockFingerprintIsStableAndBindsArtifact(t *testing.T) {
 }
 
 func TestBuildLockRejectsDuplicatePluginTarget(t *testing.T) {
-	l := plugin.BuildLock{
-		FormatVersion: plugin.BuildLockFormatVersion,
+	l := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
 		Builds: []plugin.LockedBuild{
 			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPA, ArtifactDigest: buildDigestA},
 			{Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.a"), Version: "1.0.0"}, Target: "host-process", PlanFingerprint: buildFPB, ArtifactDigest: buildDigestB},
 		},
 	}
-	if _, err := plugin.BuildLockFingerprint(l); err == nil {
+	if _, err := plugin.BuildArtifactLockFingerprint(l); err == nil {
 		t.Fatal("expected duplicate plugin/target build lock entry to fail")
+	}
+}
+
+
+func TestLockBuildOutputAndVerifyRuntimePluginBuild(t *testing.T) {
+	plan := buildPlanFixture()
+	locked, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planFP, err := plugin.BuildPlanFingerprint(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if locked.PlanFingerprint != planFP {
+		t.Fatalf("plan fingerprint: got %s want %s", locked.PlanFingerprint, planFP)
+	}
+	runtime := plugin.LockedPlugin{
+		ID:             plan.Plugin.ID,
+		Version:        plan.Plugin.Version,
+		Fingerprint:    plan.DescriptorFingerprint,
+		ArtifactDigest: buildDigestB,
+	}
+	if err := plugin.VerifyRuntimePluginBuild(plan, locked, runtime); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerifyRuntimePluginBuildFailsClosedOnDivergence(t *testing.T) {
+	plan := buildPlanFixture()
+	locked, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseRuntime := plugin.LockedPlugin{
+		ID:             plan.Plugin.ID,
+		Version:        plan.Plugin.Version,
+		Fingerprint:    plan.DescriptorFingerprint,
+		ArtifactDigest: buildDigestB,
+	}
+
+	tests := []struct {
+		name string
+		edit func(*plugin.BuildPlan, *plugin.LockedBuild, *plugin.LockedPlugin)
+	}{
+		{"runtime identity", func(_ *plugin.BuildPlan, _ *plugin.LockedBuild, r *plugin.LockedPlugin) {
+			r.ID = core.MustCanonicalID("tei.other")
+		}},
+		{"descriptor fingerprint", func(_ *plugin.BuildPlan, _ *plugin.LockedBuild, r *plugin.LockedPlugin) {
+			r.Fingerprint = buildFPB
+		}},
+		{"plan fingerprint", func(_ *plugin.BuildPlan, b *plugin.LockedBuild, _ *plugin.LockedPlugin) {
+			b.PlanFingerprint = buildFPB
+		}},
+		{"target", func(_ *plugin.BuildPlan, b *plugin.LockedBuild, _ *plugin.LockedPlugin) {
+			b.Target = "wasm-component"
+		}},
+		{"artifact", func(_ *plugin.BuildPlan, _ *plugin.LockedBuild, r *plugin.LockedPlugin) {
+			r.ArtifactDigest = buildDigestA
+		}},
+		{"missing runtime artifact", func(_ *plugin.BuildPlan, _ *plugin.LockedBuild, r *plugin.LockedPlugin) {
+			r.ArtifactDigest = ""
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := plan
+			b := locked
+			r := baseRuntime
+			tt.edit(&p, &b, &r)
+			if err := plugin.VerifyRuntimePluginBuild(p, b, r); err == nil {
+				t.Fatal("expected divergence to fail")
+			}
+		})
 	}
 }
