@@ -76,11 +76,10 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	treeBytes, err := gitOutputBytes(root, "ls-tree", "-r", "--full-tree", "HEAD")
+	treeDigest, err := hashTrackedSourceTree(root)
 	if err != nil {
 		return evidence{}, err
 	}
-	treeDigest := sha256Digest(treeBytes)
 
 	loaded, err := workspace.Load(filepath.Join(root, filepath.FromSlash(referenceWorkspace)))
 	if err != nil {
@@ -113,23 +112,24 @@ func run(repo string) (evidence, error) {
 		return evidence{}, fmt.Errorf("hash Go builder binary: %w", err)
 	}
 	goVersionCmd := exec.Command(goPath, "version")
-	goVersionCmd.Env = buildEnvironment(os.Environ())
+	goVersionCmd.Env = buildEnvironment(os.Environ(), "")
 	goVersionBytes, err := goVersionCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("read Go builder version: %w", err)
 	}
 	goVersion := strings.TrimSpace(string(goVersionBytes))
 	goRootCmd := exec.Command(goPath, "env", "GOROOT")
-	goRootCmd.Env = buildEnvironment(os.Environ())
+	goRootCmd.Env = buildEnvironment(os.Environ(), "")
 	goRootBytes, err := goRootCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("resolve Go toolchain root: %w", err)
 	}
 	goRoot := strings.TrimSpace(string(goRootBytes))
-	goToolchainDigest, err := hashGoToolchain(goRoot)
+	goRootDigest, err := hashGoToolchain(goRoot)
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
 	}
+	goToolchainDigest := sha256Digest([]byte(goVersion + "\n" + goBinaryDigest + "\n" + goRootDigest + "\n"))
 	if err := requireNoExternalModules(root, goPath); err != nil {
 		return evidence{}, err
 	}
@@ -191,10 +191,12 @@ func run(repo string) (evidence, error) {
 		firstPath += ".exe"
 		secondPath += ".exe"
 	}
-	if err := buildReferencePlugin(root, goPath, firstPath); err != nil {
+	firstCache := filepath.Join(tempDir, "cache-first")
+	secondCache := filepath.Join(tempDir, "cache-second")
+	if err := buildReferencePlugin(root, goPath, firstPath, firstCache); err != nil {
 		return evidence{}, err
 	}
-	if err := buildReferencePlugin(root, goPath, secondPath); err != nil {
+	if err := buildReferencePlugin(root, goPath, secondPath, secondCache); err != nil {
 		return evidence{}, err
 	}
 	firstDigest, err := hashFile(firstPath)
@@ -264,6 +266,65 @@ func run(repo string) (evidence, error) {
 }
 
 
+
+func hashTrackedSourceTree(repo string) (string, error) {
+	listed, err := gitOutputBytes(repo, "ls-files", "-z")
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(string(listed), "\x00")
+	paths := make([]string, 0, len(parts))
+	for _, rel := range parts {
+		if rel != "" {
+			paths = append(paths, rel)
+		}
+	}
+	sort.Strings(paths)
+
+	sum := sha256.New()
+	for _, rel := range paths {
+		path := filepath.Join(repo, filepath.FromSlash(rel))
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", err
+		}
+		if _, err := fmt.Fprintf(sum, "%s\x00", filepath.ToSlash(rel)); err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return "", err
+			}
+			if _, err := fmt.Fprintf(sum, "symlink\x00%s\n", filepath.ToSlash(target)); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			return "", fmt.Errorf("tracked source %s is not a regular file or symlink", rel)
+		}
+		if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
+			return "", err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		if _, err := io.Copy(sum, f); err != nil {
+			f.Close()
+			return "", err
+		}
+		if err := f.Close(); err != nil {
+			return "", err
+		}
+		if _, err := fmt.Fprint(sum, "\n"); err != nil {
+			return "", err
+		}
+	}
+	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
+}
+
 func requireNoExternalModules(repo, goPath string) error {
 	cmd := exec.Command(
 		goPath,
@@ -274,7 +335,7 @@ func requireNoExternalModules(repo, goPath string) error {
 		referencePackage,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ())
+	cmd.Env = buildEnvironment(os.Environ(), "")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("resolve reference plugin dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
@@ -381,7 +442,7 @@ func executableName(name string) string {
 	return name
 }
 
-func buildReferencePlugin(repo, goPath, output string) error {
+func buildReferencePlugin(repo, goPath, output, cacheDir string) error {
 	cmd := exec.Command(
 		goPath,
 		"build",
@@ -393,7 +454,7 @@ func buildReferencePlugin(repo, goPath, output string) error {
 		referencePackage,
 	)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ())
+	cmd.Env = buildEnvironment(os.Environ(), cacheDir)
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("build reference process plugin: %w: %s", err, strings.TrimSpace(string(combined)))
@@ -401,35 +462,17 @@ func buildReferencePlugin(repo, goPath, output string) error {
 	return nil
 }
 
-func buildEnvironment(base []string) []string {
-	remove := map[string]struct{}{
-		"CGO_ENABLED": {},
-		"GOAMD64":     {},
-		"GOARCH":      {},
-		"GOARM":       {},
-		"GOARM64":     {},
-		"GOENV":       {},
-		"GOEXPERIMENT": {},
-		"GOFLAGS":     {},
-		"GOMIPS":      {},
-		"GOMIPS64":    {},
-		"GOOS":        {},
-		"GOPPC64":     {},
-		"GORISCV64":   {},
-		"GOROOT":      {},
-		"GOPROXY":     {},
-		"GOTOOLCHAIN": {},
-		"GOWORK":      {},
-	}
-	out := make([]string, 0, len(base)+8)
+func buildEnvironment(base []string, cacheDir string) []string {
+	out := make([]string, 0, len(base)+10)
 	for _, entry := range base {
 		key := entry
 		if i := strings.IndexByte(entry, '='); i >= 0 {
 			key = entry[:i]
 		}
-		if _, drop := remove[key]; !drop {
-			out = append(out, entry)
+		if strings.HasPrefix(key, "GO") || key == "CGO_ENABLED" {
+			continue
 		}
+		out = append(out, entry)
 	}
 	out = append(out,
 		"CGO_ENABLED=0",
@@ -442,6 +485,9 @@ func buildEnvironment(base []string) []string {
 		"GOTOOLCHAIN=local",
 		"GOWORK=off",
 	)
+	if cacheDir != "" {
+		out = append(out, "GOCACHE="+cacheDir)
+	}
 	sort.Strings(out)
 	return out
 }
