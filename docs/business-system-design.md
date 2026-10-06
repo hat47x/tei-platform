@@ -45,24 +45,6 @@ physical schema / Provider
 
 Data traceが見つからないことを、その業務にData dependencyが存在しないというnegative factへ変換しません。
 
-### 業務上の識別と関数従属性を物理キーへ畳まない
-
-Data設計では、recordを技術的に一意に識別できることだけでなく、**業務上、何が何を決めるのか**を失わないことを重視します。
-
-~~~text
-Canonical subject identity
-  != Application recordのbusiness identity
-  != physical primary key / surrogate key
-~~~
-
-Canonical IDはTEI内の意味上の対象を安定して指すためのidentityです。一方、Application dataには、業務上の識別子、candidate key、複合的な識別関係、関数従属性、定義域制約等があります。さらにPersistenceでは、surrogate keyやProvider固有の物理キーを使う場合があります。これらを一つの`id`概念へ畳みません。
-
-TEIは「natural keyを使う」「複合主キーを使う」「surrogate keyを使う」のいずれかを一律の規則にはしません。重要なのは、物理実装を変更しても、親子、参照、独立した組合せ等の**業務上異なるRelation semantics**と、それを支えるdeterminant / uniqueness / Constraintを追跡できることです。
-
-正規化はData設計を検査する有力な手段ですが、特定の正規形を全Persistenceへ機械的に強制することは要求しません。性能や外部schema互換性のために非正規化した実装を採る場合も、derived / realization上の都合によって元のbusiness Data meaningを消さないことを優先します。
-
-現時点では`FunctionalDependency`や`BusinessKey`を新しいtop-level Canonical kindとして固定しません。まずrealistic Referenceで、既存のIdentity / Relation / Constraint / Expression / Provenanceでどこまでlosslessに表現・検査できるかをPressureします。
-
 ### Data meaningとrecord instanceを分ける
 
 Data視点でいう`Customer`、`Order`、`Card`等のbusiness meaningと、Applicationが実際に保持する個々のrecordを同一視しません。
@@ -110,6 +92,8 @@ Data設計時には、必要に応じて次を確認します。
 - sourceから確定できることと、候補・推論・unresolvedのどれに留まるか
 
 関数従属性そのものを、現時点から必ず新しいtop-level Canonical kindとして持つとは決めません。既存のData / Relation / Constraint / Source / Evidenceでlosslessに表現・追跡できる範囲を確認し、不足がReferenceで再現された場合に表現を追加します。
+
+正規化はData設計を検査する有力な手段ですが、特定の正規形を全Persistenceへ機械的に強制しません。性能や外部schema互換性のために非正規化した実装を採る場合も、realization上の都合によって元のbusiness Data meaningやdeterminantを消さないことを優先します。
 
 生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
 
