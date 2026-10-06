@@ -98,6 +98,78 @@
       "risk": "test fixtures or mapping artifacts may republish protected model content without a confirmed boundary",
       "owner": "GitHub #941",
       "stopCondition": "keep original model contents outside public repository until usage/republication boundary is confirmed"
+    },
+    {
+      "id": "RML-011",
+      "topic": "legacy-key-to-business-identity",
+      "nature": "unresolved",
+      "evidence": "XeadModeler preserves ordered multi-field TableKey/TableKeyField sets and PK/FK/SK/XK distinctions; Relationship refers to key identities on both sides",
+      "risk": "database-oriented source key assertions can be silently promoted to business occurrence identity, candidate key, or functional dependency",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "preserve source key kind, membership, relation references and provenance; keep business identifier/candidate key/FD unresolved until separately accepted or corroborated"
+    },
+    {
+      "id": "RML-012",
+      "topic": "function-selection-key-to-data-identity",
+      "nature": "unresolved",
+      "evidence": "XeadDriver XF290/XF390 use Function/Detail KeyFields when declared and fall back to Table PK only when the override is absent",
+      "risk": "record-selection requirements of one interaction can become durable Data identity or leak target/runtime assumptions into semantics",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "preserve declared KeyFields as Function/Interaction source facts distinct from Table key, business identity, Canonical identity and physical key authority"
+    },
+    {
+      "id": "RML-013",
+      "topic": "composite-domain-constraint",
+      "nature": "unresolved",
+      "evidence": "a composite set of values may represent an allowed-combination/domain restriction independently of whether dependent attributes are present",
+      "risk": "transfer can collapse allowed-combination semantics into identity/FD or omit the constraint entirely",
+      "owner": "ISSUE-000078",
+      "stopCondition": "do not infer domain restriction from key shape alone; when source or accepted design establishes it, preserve it separately from business identity and functional dependency"
+    },
+    {
+      "id": "RML-014",
+      "topic": "derived-value-dynamic-reference",
+      "nature": "unresolved",
+      "evidence": "the benchmark contains 52 DERIVABLE fields and 51 structural Xeaf VIRTUAL correspondences, while public X-TEA modeling guidance also uses derived attributes as relation keys; exact benchmark participation in Relationship keys is not yet established",
+      "risk": "a derived relation can disappear from the logical model, or native evaluator code can be mistaken for the semantic relation itself",
+      "owner": "ISSUE-000078 / ISSUE-000077",
+      "stopCondition": "confirm exact source participation before claiming a dynamic reference; if present, preserve derivation semantics, evaluator/native realization and Relation as separate traceable layers"
+    },
+    {
+      "id": "RML-015",
+      "topic": "reconstructed-semantic-authority",
+      "nature": "unresolved",
+      "evidence": "some legacy meaning may only be recoverable by combining XML structure, runtime code, prose and observed behavior rather than by one explicit authoritative declaration",
+      "risk": "AI or importer synthesis may be reported as source truth merely because the reconstructed graph is internally coherent",
+      "owner": "ISSUE-000078 / ISSUE-000027 / ISSUE-000053",
+      "stopCondition": "record exact source observations and inference provenance; keep reconstructed meaning as proposal/unresolved until Shared Acceptance creates or updates authoritative Source"
+    },
+    {
+      "id": "RML-016",
+      "topic": "identifier-value-without-uniqueness-semantics",
+      "nature": "unresolved",
+      "evidence": "legacy/imported schemas can retain identifier-like fields even when the transfer contract has not established their uniqueness scope, temporal validity, relation role, or external authority",
+      "risk": "an importer or AI can claim business identity preservation from field presence and value migration alone",
+      "owner": "ISSUE-000078 / ISSUE-000040",
+      "stopCondition": "do not classify identifier-like fields as accepted business identity or candidate key until uniqueness scope, temporal conditions, Source/Contract responsibility and Relation/Constraint evidence are explicit"
+    },
+    {
+      "id": "RML-017",
+      "topic": "composite-relationship-member-correspondence",
+      "nature": "unresolved",
+      "evidence": "XeadModeler sorts TableKeyField by SortKey and uses TableField DataTypeID while matching relationship fields; XML source order alone does not define the correspondence",
+      "risk": "equal-arity composite keys can be paired incorrectly or a type-incompatible relationship can be accepted during transfer",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "for multi-field relationship keys, require unambiguous SortKey ordering before positional comparison; preserve missing/duplicate SortKey and explicit DataTypeID mismatch as unresolved and do not repair by field name or source order"
+    },
+    {
+      "id": "RML-018",
+      "topic": "source-fidelity-vs-target-adoption",
+      "nature": "unresolved",
+      "evidence": "RMT can increasingly reconstruct legacy schema, key topology, function interaction and runtime constraints with high fidelity",
+      "risk": "better observation can silently become stronger pressure to preserve accidental As-Is structure in the TEI target design",
+      "owner": "ISSUE-000078 / ISSUE-000027",
+      "stopCondition": "keep exact source observations as Source/Actual Evidence and require an explicit Proposal/Acceptance step before any reconstructed legacy structure becomes Desired or authoritative TEI meaning"
     }
   ],
   "claimsNotEstablished": [

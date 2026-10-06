@@ -97,6 +97,34 @@ Data設計時には、必要に応じて次を確認します。
 
 生成AIがData構造を提案する場合も、名称や一般的なschema patternだけから関数従属性を事実として補完しません。すべてのtableへ単独`id`を付けてRelationを作る案も、業務上の識別と従属性を確認した後の実現候補として扱います。根拠が不足している場合は、もっともらしいkey構造を確定せず、設計上の問いまたはunresolvedとして残します。
 
+`identifier`、`external_id`、`code`等の属性名も、業務識別の根拠にはしません。業務上の識別条件がacceptedである場合は、その構成項目に加えて、一意性が成立するscope、時間・履歴条件、Relation / Constraint、Sourceへ追跡できるようにします。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示します。
+
+### identityと表記・正規化を分ける
+
+同じ業務対象が、外部Systemごとに異なる文字表記、符号化、コード体系、表示形式を持つことがあります。TEIでは、business identityを一つの文字列表現や正規化規則と同一視しません。
+
+原Sourceの表記を監査・相互運用のために保持する必要がある場合は、exact source representationと、検索・照合・表示等に利用するnormalized / operational representationを分けて追跡します。Unicode正規化、大文字小文字変換、異体字置換、記号除去等による一致は、明示されたPolicy / Mappingなしにidentity Evidenceへ昇格させません。
+
+表記が異なる場合も、直ちに別identityとは判断しません。どの差異を同値と扱うかはdomainと用途に依存するため、Source、scope、変換規則、必要なら人によるAcceptanceへ戻れる構造を優先します。
+
+### 論理的なData統合と物理配置を分ける
+
+TEIは、一つの業務Data Modelを一つの物理Databaseへ固定しません。ApplicationとDatabaseをN:Mで扱い、同じ業務システムのDataを複数Database、Provider、外部Serviceへ配置できます。
+
+一方、物理的に分散していることを理由に、同じ業務対象のidentity、Relation、Constraint、ownershipを各DatabaseやAPIへ閉じ込めません。
+
+```text
+accepted business Data meaning
+        ↓
+ownership / contract
+        ↓
+logical datasource / mapping
+        ↓
+physical Database / Service / Provider
+```
+
+APIやmessageで接続できることは、Data meaningが統合されているEvidenceではありません。逆に、論理的に一つのData Modelとして説明できることも、すべてのrecordを一つのDatabaseへ集約する理由にはしません。法令、組織責任、可用性、性能、既存資産等による配置差はBinding / Realizationとして追跡します。
+
 ### Subject Area / Subsystemは理解と検査の境界候補とする
 
 大規模な業務システムでは、全Data / Function / Procedureを一度に理解することは困難です。そこで、業務上のまとまりを検討するSubject Areaと、Dataの所属とFunction / Interactionの利用関係を重ねて確認するSubsystemを、局所的なreview boundaryとして利用できるようにします。

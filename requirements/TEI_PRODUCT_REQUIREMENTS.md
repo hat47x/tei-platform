@@ -14,6 +14,10 @@ TEIは、業務概念、型、関係、制約、lifecycle等を、特定の画�
 
 Canonical IDはfile pathやphysical object nameから独立し、実装や配置を変更しても意味上のidentityを維持できる必要があります。
 
+業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
+
+文字列や外部コードを正規化・変換した結果の一致を、それだけでbusiness identityの一致へ読み替えてはいけません。原Sourceの表記を保持する必要がある場合は、exact representationとnormalized / operational representationを区別し、同値性を判断するPolicy / MappingのscopeとSourceへ追跡できる必要があります。
+
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
 
 `.tei`、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。
@@ -50,9 +54,15 @@ TEIは、それらを意味、Capability、Realization、Source Indexへ接続�
 
 Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
 
+複数DatabaseやServiceへDataを分散しても、同じ業務対象のidentity、Relation、Constraint、ownershipをlogicalな意味として追跡できなければなりません。APIやmessageで接続できることだけを、Data meaningが統合された状態とは扱いません。
+
+反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
+
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
+
+legacy Database、source code、UI、業務手順等をImporterやAIが高精度に再構成できた場合も、そのAs-Is構造をDesiredへ自動採用してはいけません。Target候補はProposalとして分離し、採用判断と互換性・移行上の制約を別々に追跡できる必要があります。
 
 比較に十分な情報がない場合は、差分なしや破壊的変更へ自動変換せず、Unresolvedとして扱う必要があります。
 
@@ -153,7 +163,11 @@ Application Pattern、View、Target、ORM等の実装都合から、Dataのbusin
 
 Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
 
+生成AIは、`identifier`、`external_id`、`code`等の属性名や外部から移行した識別子値だけを根拠に、business identifierやcandidate keyが成立したと判断してはいけません。acceptedな識別条件がある場合は、一意性のscope、時間・履歴条件、Relation / Constraint、Source / Contractを含むcontextへ到達できる必要があります。
+
 生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
+
+生成AIは関数従属性、candidate key、Constraint、Data分割等をProposalとして提示できます。一方、それらをaccepted meaningへ昇格するにはSource / Evidenceと通常のAcceptance境界が必要です。acceptedなData / Relation / Constraintから機械的に導出できるProvider schema、cross-reference、migration plan等は、可能な範囲でversionedかつdeterministicなCompiler / Planner / Projectionにより生成し、LLMの再解釈を実行authorityにしてはいけません。
 
 Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 

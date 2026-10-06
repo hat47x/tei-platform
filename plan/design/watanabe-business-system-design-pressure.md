@@ -21,8 +21,16 @@ Date: 2026-10-06
   - https://www.itmedia.co.jp/im/articles/1109/28/news134.html
   - https://www.itmedia.co.jp/im/articles/1109/28/news134_3.html
 - 「設計者の発言」— 近年のデータモデリング、関数従属性、複合的な識別関係、生成AIによるDB設計への批判的検討。
+  - https://dbconcept.hatenablog.com/entry/2026/09/14/161855
+  - https://dbconcept.hatenablog.com/entry/2026/09/02/084506
+  - https://dbconcept.hatenablog.com/entry/2026/07/05/203837
+  - https://dbconcept.hatenablog.com/entry/2026/06/19/154613
   - https://dbconcept.hatenablog.com/entry/2026/05/09/070129
+  - https://dbconcept.hatenablog.com/entry/2026/01/21/102610
+  - https://dbconcept.hatenablog.com/entry/2025/10/19/111109
+  - https://dbconcept.hatenablog.com/entry/2025/09/26/065937
   - https://dbconcept.hatenablog.com/entry/2025/09/14/074541
+  - https://dbconcept.hatenablog.com/entry/2025/08/31/131839
   - https://dbconcept.hatenablog.com/entry/2025/02/25/120940
   - https://dbconcept.hatenablog.com/entry/2024/12/16/071337
   - https://dbconcept.hatenablog.com/entry/2024/11/27/080850
@@ -77,7 +85,24 @@ TEIはnatural key / composite key / surrogate keyのどれかを一律に強制�
 
 TEIでは、これを「複合主キーを推奨する」という規則には翻訳しません。business identity / candidate key / functional dependency / domain constraintを、realistic Referenceで既存primitiveからlosslessに表現・検査できるかを新しいEvidence questionとしました。
 
-### 4.3 Referenceを反証可能なProduct Evidenceにする
+### 4.3 導出属性と動的なRelationを意味として失わない
+
+渡辺氏は、物理的には保持しない導出属性も論理データモデル上へ置き、その導出値を外部キーとして使う「動的参照関係」を示しています。重要なのは名称ではなく、あるDataの事実から導いた値が別DataへのRelationを決め、その関係自体が業務上の制約になる点です。
+
+TEIでは、導出値を単なる表示用の計算結果やcacheとして扱いません。少なくとも次を分けます。
+
+~~~text
+derived-value semantic contract
+  != evaluator / query / Script realization
+  != materialized cache
+  != Relation using the derived value
+~~~
+
+導出ロジックがaccepted meaningとして確定している場合、TargetやProviderが変わっても同じ意味を再現できる必要があります。反対に、旧Scriptが値を計算しているという事実だけから、そのScript全体をsemantic authorityへ昇格しません。
+
+導出値がRelationのsource keyへ参加する場合は、そのRelationを通常のstored field同士の参照と同一視しません。導出に必要なSource / dependency / temporal conditionと、参照先を決めるRelationを追跡できることをReferenceで確認します。現時点では専用のCore primitiveを先に追加せず、既存のData / Relation / Constraint / Rule / native evaluatorでlosslessに表現できる範囲をpressureします。
+
+### 4.4 Referenceを反証可能なProduct Evidenceにする
 
 渡辺氏は、レファレンスモデルを方法論の有効性を第三者が検討する材料と位置づけ、さらに本格的な販売管理モデルをDriver上で実装することで、DriverだけでなくReference Model自身の不備も修正したと説明しています。
 
@@ -97,19 +122,132 @@ authoritative sourceへ戻って修正
 
 Reference専用の例外実装で成功させません。一つの小例が動いただけで汎用性を主張しません。異なるdomain / scale / Data structure / Procedure / Target / ProviderへReferenceを広げ、成立範囲を反証可能なEvidenceとして積み上げます。
 
-### 4.4 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
+### 4.5 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
 
 渡辺氏のSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
 
 TEIでは、Subsystemを直ちにCore primitive、Application、Database、deployment unitへ固定しません。まずData ownership、Function / Interaction、Capability / Contract等からderived CRUD / dependency Projectionを作り、cross-boundary CUDをdesign pressureとして確認します。durable identityが必要かはrealistic Referenceで判断します。
 
-### 4.5 AIによるData設計をauthorityにしない
+### 4.6 AIによるData設計をauthorityにしない
 
 AIがschemaを生成できても、業務上の関数従属性や識別規則が確立したとは限りません。これはTEIの既存原則「AIはcritic / proposerでありauthorityではない」のData設計への具体化として扱います。
 
 AIは候補、矛盾、問いを提示できます。Validatorは宣言済みConstraintを検査できます。しかし、sourceから裏づけられていないdeterminantを自動発見したことにはしません。根拠が不足する場合はunresolvedを保持します。
 
-この判断はAIへ渡すcontextにも反映します。Data / Relationを設計するときは、単なるtable / field一覧ではなく、business occurrence identifier、candidate key、既知または候補のfunctional dependency、Relation topology、時間・履歴条件、Source / Evidence、accepted / candidate / unresolvedのnatureへ到達できるread-onlyなData Design Contextを用意します。これは第二正本ではなく、current Canonical / Source / Decision / Evidenceから再構成するProjectionです。
+この判断はAIへ渡すcontextにも反映します。Data / Relationを設計するときは、単なるtable / field一覧ではなく、business occurrence identifier、candidate key、既知または候補のfunctional dependency、domain / allowed-combination constraint、derived-value contract、Relation topology、時間・履歴条件、Source / Evidence、accepted / candidate / unresolvedのnatureへ、必要な範囲で到達できるread-onlyなData Design Contextを用意します。これは第二正本ではなく、current Canonical / Source / Decision / Evidenceから再構成するProjectionです。現在のCanonicalでfirst-classに表現していない意味は、存在しないものとして返さず、Source-backed candidateまたはunresolvedとして扱います。
+
+### 4.7 後付けのSemantic Layerを第二正本にしない
+
+渡辺氏は、既存Database定義、Application source、文書、メール等からAIが意味のネットワークを再構成する方式について、元のDatabase構造自体が業務上の関数従属性を十分に表していなければ、後段のSemantic Layerだけでは意味を回復しきれないと指摘しています。
+
+TEIではこの問題を、RDBを唯一の上位モデルにすることではなく、**意味のauthorityをどの段階で確立したか**として扱います。
+
+~~~text
+authoritative Source / accepted design
+        ↓
+Canonical meaning
+        ↓
+AI向けread-only Projection
+
+legacy Database / code / prose / observation
+        ↓
+source-faithful inspection
+        ↓
+candidate / unresolved
+        ↓
+Shared Acceptance
+        ↓ accept only
+authoritative Source
+~~~
+
+既存SystemからDatabase、code、文書、画面等を解析して意味候補を作ることは有用です。しかし、複数の断片からAIが整合的な説明を生成できたことを、元からAccepted meaningが存在した場合と同じEvidenceにはしません。逆向きに復元した意味には、Source、抽出方法、モデル・ruleのversion、曖昧性、未解決点を残し、Shared Acceptanceを経て初めてauthorityへ入れます。
+
+また、TEIの新規Applicationで後から意味を復元する必要が生じないよう、Data / Relation / Constraint / Procedure / Capability等のAccepted meaningを、生成Targetとは独立した長寿命なSourceとして保持します。AI向けKnowledge Context、embedding、検索index、要約、ontology Projection等は再生成可能なderived knowledgeであり、Canonical meaningの第二正本にはしません。
+
+この原則はRDB以外のSourceにも適用します。良質なDocument schema、event contract、external API、physical / human procedure等がauthorityを持つdomainでは、それらを明示的なSourceとして扱います。
+
+### 4.8 業務識別を属性名だけへ退避させない
+
+渡辺氏は2026年9月の記事で、機械的な単独IDを主キーにしたまま、従来の業務キーを単なる`identifier`属性として残し、その一意性をApplicationや業務運用へ委ねる設計にも疑問を呈しています。
+
+TEIでは、この主張を「業務キーを必ずphysical primary keyにする」という規則にはしません。代わりに、業務上の識別条件がaccepted meaningになった場合は、識別を構成する項目だけでなく、一意性が成立する範囲、時間・履歴条件、RelationやConstraintとの関係、責任を持つSourceへ追跡できることを要求します。
+
+`identifier`、`external_id`、`code`等の属性が存在するだけでは、その属性をbusiness occurrence identifierやcandidate keyとして扱いません。外部制度や別Systemが一意性を保証する場合も、その責任主体と契約を明示し、TEI内部にConstraintがないことを「一意性は不要」とは解釈しません。
+
+### 4.9 論理的なData統合と物理的なDatabase統合を分ける
+
+渡辺氏は2026年7月の記事で、個別System間のサービス連携を整えることと、全体として整合したデータ構造を設計することは同じではないと論じています。記事では行政Databaseの論理的統合を強く主張していますが、TEIはこれを単一Databaseへの物理統合要求としては採用しません。
+
+TEIでは、ApplicationとDatabaseをN:Mで扱い、Dataを複数Database、Provider、外部Serviceへ配置できます。一方、物理的に分散していることを理由に、同じ業務対象のidentity、Relation、Constraint、ownershipを各APIや各Databaseへ閉じ込めません。
+
+```text
+accepted business Data meaning
+        ↓
+ownership / contract / capability
+        ↓
+logical datasource / mapping
+        ↓
+physical Database / Service / Provider
+```
+
+同じ論理Data Modelを持つことも、すべてのrecordを同じDatabaseへ置くことを意味しません。法令、組織責任、可用性、性能、既存資産等の理由で物理配置を分ける場合は、その差をBinding / Realizationとして追跡します。反対に、APIで相互接続できることだけを、Data meaningが統合されたEvidenceにはしません。
+
+### 4.10 identityと表記の忠実性を分ける
+
+渡辺氏は2026年9月2日の氏名異体字の記事で、行政処理で扱いやすい文字表記と、本人が本来の氏名として保持したい表記を分ける案を示しています。TEIでは「本字を画像登録する」という制度案そのものではなく、同じ業務対象に複数の表記・符号化・外部表現があり得るという設計圧力を取り込みます。
+
+業務上のidentityを、正規化後の文字列や一つの表示形式と同一視しません。外部Sourceの表記を忠実に保持する必要がある場合は、原表記と、その検索・照合・表示等に使うnormalized / operational representationを分けます。
+
+~~~text
+business subject / occurrence identity
+        !=
+exact source representation
+        !=
+normalized / searchable representation
+        !=
+target-specific rendering
+~~~
+
+Unicode正規化、異体字置換、大文字小文字変換、記号除去等によって二つの値が一致しても、それだけで同じbusiness occurrenceとは判断しません。反対に、表記が異なることだけで別identityとも判断しません。等価性が業務上重要な場合は、どのscopeでどの変換・対応関係を認めるかをPolicy / Mapping / Sourceとして明示します。
+
+### 4.11 As-Isの観測をDesired Designへ自動昇格しない
+
+渡辺氏は2025年9月の記事で、抜本的な刷新において現行業務や現行Systemを詳細に分析するほど、現行踏襲へ引き寄せられる危険を指摘しています。TEIでは現状分析そのものを否定しません。legacy compatibility、migration、audit、運用継続のためにactual sourceを正確に観測することは必要です。
+
+重要なのはauthorityを分けることです。
+
+~~~text
+Observed As-Is
+  -> Source / Actual / Evidence
+
+Target candidate
+  -> Proposal / Design question
+
+Accepted To-Be
+  -> Decision / authoritative Source
+~~~
+
+ImporterやAIが現行Database、code、UI、業務手順を精密に復元できても、その構造をDesiredへコピーしません。逆に、To-Beを考えるためにAs-Isを捨てることもしません。互換性、移行、差分、未解決点を追跡できるよう、観測と採用判断を別のauthorityとして保持します。
+
+### 4.12 意味の発見と決定論的な構造変換を分ける
+
+渡辺氏は2026年5月の記事で、業務の現実からデータ項目間の関数従属性を見いだす過程と、得られた関数従属性をtable構造へ変換する過程を分けています。前者を本質的な設計問題、後者を比較的機械化しやすい変形問題と位置づけています。
+
+TEIでは「AIは関数従属性を認識できない」という能力評価を固定的な前提にはしません。モデル能力は変化するためです。代わりに、次のauthority境界を採用します。
+
+~~~text
+Source / domain evidence
+  -> AI / human exploration
+  -> candidate dependency / constraint
+  -> Shared Acceptance
+  -> accepted semantic meaning
+  -> deterministic validation / lowering where defined
+  -> Provider / Target realization
+~~~
+
+AIはdependency、candidate key、constraint、Data分割等を提案できます。しかし、提案のもっともらしさだけではaccepted meaningになりません。一方、acceptedなData / Relation / Constraintから機械的に導けるProvider schema、cross-reference、migration plan等を、実行ごとにLLMへ再解釈させる必要もありません。意味が確定した後の変形は、可能な範囲でversionedかつdeterministicなCompiler / Planner / Projectionへ委ねます。
+
+この境界は、OOP / ORMのclass graphをCanonical business modelへ昇格させないことにもつながります。classやruntime objectは有効な実装手段ですが、Data meaningを所有するauthorityではありません。
 
 ## 5. そのまま移植しないもの
 
@@ -131,7 +269,11 @@ AIは候補、矛盾、問いを提示できます。Validatorは宣言済みCon
 
 1. `order_entry`または別の現実的なReferenceで、business identity / candidate key / functional dependencyを明示した場合と、surrogate-onlyにした場合のcross-view差分を機械的・人間可読に示せるか。
 2. Data上のdeterminant / uniquenessと、Functionの選択・更新単位、Business Procedureの識別単位が矛盾した場合にdiagnosticへ到達できるか。
-3. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
-4. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
+3. 導出値がRelationのsource keyへ参加するReferenceで、semanticな導出契約、evaluator realization、materialized cache、Relationを混同せずに追跡・実行できるか。
+4. legacy Database / code / proseからAIが再構成したsemantic candidateと、authoring時からacceptedなmeaningを同じauthorityへ混ぜず、Proposal / Acceptance / provenanceを通じて区別できるか。
+5. 一つのReferenceを実装する過程で見つかった不足を、Reference専用workaroundではなくCanonical / Binding / Provider / TargetのどのGapかに分類して戻せるか。
+6. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
+7. legacy移行や外部連携で`identifier`相当の項目を取り込んだ場合、その存在だけを業務識別の成立へ読み替えず、一意性の範囲、Source、Relation / Constraintとの対応を追跡できるか。
+8. 同じ業務Dataを複数Database / Serviceへ分散配置しても、logical identity、Relation、Constraintをcross-system contractから追跡でき、反対に単一Databaseへ統合してもAuthority / Privacy / Responsibilityを一つへ混ぜないことを確認できるか。
 
 これらの結果が出るまでは、`FunctionalDependency`、`BusinessKey`、`SubjectArea`、`Subsystem`等を新しいCore primitiveとして固定しません。
