@@ -56,10 +56,40 @@ func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.
 		"derived-context-is-not-canonical-authority",
 		"dependency-edge-is-not-semantic-applicability",
 		"dependency-edge-is-not-write-or-runtime-authority",
+		"projection-or-runtime-identity-is-not-business-data-identity",
 	} {
 		if !containsKnowledgeContextString(got.AuthorityLimits, limit) {
 			t.Fatalf("authority limit %q is missing: %+v", limit, got.AuthorityLimits)
 		}
+	}
+}
+
+func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"application-pattern",
+		"order_entry.order_record",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ApplicationPattern == nil ||
+		got.ApplicationPattern.Kind != "record" ||
+		got.ApplicationPattern.Data != "sales.order" {
+		t.Fatalf("record Pattern detail is missing: %+v", got.ApplicationPattern)
+	}
+	if got.DataDesign != nil {
+		t.Fatalf("Application Pattern identity was promoted to Data Design authority: %+v", got.DataDesign)
+	}
+	if !hasKnowledgeContextEdge(got, "outgoing", "data", "semantic-data", "sales.order") {
+		t.Fatalf("Pattern must reach Semantic Data through an explicit dependency edge: %+v", got.Outgoing)
+	}
+	if !containsKnowledgeContextString(
+		got.AuthorityLimits,
+		"projection-or-runtime-identity-is-not-business-data-identity",
+	) {
+		t.Fatalf("projection identity authority limit is missing: %+v", got.AuthorityLimits)
 	}
 }
 
