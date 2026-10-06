@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/environment"
 	"tei/internal/plugin"
 )
 
@@ -281,5 +282,70 @@ func TestBuildDefinitionFingerprintExcludesProducedArtifact(t *testing.T) {
 	}
 	if plugin.DefinitionFingerprint(a) == plugin.DefinitionFingerprint(b) {
 		t.Fatal("runtime definition fingerprint did not change with artifact")
+	}
+}
+
+
+func TestRealizeBuiltDefinitionFeedsExistingRuntimePluginLock(t *testing.T) {
+	source := buildDefinitionFixture()
+	source.Artifact = plugin.Artifact{}
+	sourceBuildFP := plugin.BuildDefinitionFingerprint(source)
+	sourceRuntimeFP := plugin.DefinitionFingerprint(source)
+
+	realized, err := plugin.RealizeBuiltDefinition(source, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source.Artifact.Digest != "" {
+		t.Fatal("source definition was mutated")
+	}
+	if realized.Artifact.Digest != buildDigestB {
+		t.Fatalf("realized artifact digest: got %s", realized.Artifact.Digest)
+	}
+	if plugin.BuildDefinitionFingerprint(realized) != sourceBuildFP {
+		t.Fatal("build definition identity changed after artifact realization")
+	}
+	if plugin.DefinitionFingerprint(realized) == sourceRuntimeFP {
+		t.Fatal("runtime definition identity did not bind produced artifact")
+	}
+
+	env := environment.Environment{
+		ID: core.MustCanonicalID("reference"),
+		Plugins: []environment.ExtensionRequirement{{
+			ID:              source.ID,
+			CompatibleMajor: 1,
+		}},
+	}
+	runtimeLock, err := plugin.BuildLock(plugin.Catalog{Plugins: []plugin.Definition{realized}}, []environment.Environment{env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runtimeLock.Environments) != 1 || len(runtimeLock.Environments[0].Plugins) != 1 {
+		t.Fatalf("runtime lock: %#v", runtimeLock)
+	}
+	locked := runtimeLock.Environments[0].Plugins[0]
+	if locked.ArtifactDigest != buildDigestB {
+		t.Fatalf("runtime lock artifact: got %s", locked.ArtifactDigest)
+	}
+
+	plan := buildPlanFixture()
+	buildOutput, err := plugin.LockBuildOutput(plan, buildDigestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := plugin.VerifyRuntimePluginBuild(plan, buildOutput, realized, locked); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRealizeBuiltDefinitionRejectsPredeclaredArtifactMismatch(t *testing.T) {
+	source := buildDefinitionFixture()
+	source.Artifact = plugin.Artifact{Digest: buildDigestA}
+
+	if _, err := plugin.RealizeBuiltDefinition(source, buildDigestB); err == nil {
+		t.Fatal("expected predeclared artifact mismatch to fail")
+	}
+	if _, err := plugin.RealizeBuiltDefinition(source, buildDigestA); err != nil {
+		t.Fatal(err)
 	}
 }
