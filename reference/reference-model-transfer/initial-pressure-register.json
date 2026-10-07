@@ -255,6 +255,13 @@
       "observed": "Watanabe distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
       "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
       "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
+    },
+    {
+      "id": "RMP-037",
+      "topic": "duplicate-source-identity",
+      "observed": "legacy XML can be malformed or partially merged so that Table or Field identifiers are duplicated; a map-based importer would otherwise overwrite one occurrence with another and still appear to resolve downstream key/refer references",
+      "risk": "source order, traversal order, or implementation-specific map overwrite can silently choose which legacy object a relationship/key/reference means",
+      "teiDirection": "preserve duplicate source identities as unresolved diagnostics; do not collapse duplicate Table/Field IDs into one lookup result, and do not borrow metadata from an arbitrary duplicate occurrence"
     }
   ]
 }
