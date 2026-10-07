@@ -29,11 +29,13 @@ type DataDesignRelationKey struct {
 }
 
 type DataDesignRelation struct {
-	ID          core.CanonicalID        `json:"id"`
-	Source      core.CanonicalID        `json:"source"`
-	Target      core.CanonicalID        `json:"target"`
-	Cardinality string                  `json:"cardinality"`
-	Keys        []DataDesignRelationKey `json:"keys,omitempty"`
+	ID                core.CanonicalID       `json:"id"`
+	Source            core.CanonicalID       `json:"source"`
+	Target            core.CanonicalID       `json:"target"`
+	Cardinality       string                 `json:"cardinality"`
+	Keys              []DataDesignRelationKey `json:"keys,omitempty"`
+	BusinessMeaning   DataDesignKnowledgeState `json:"businessMeaning"`
+	TemporalSemantics DataDesignKnowledgeState `json:"temporalSemantics"`
 }
 
 type DataDesignConstraint struct {
@@ -330,6 +332,8 @@ func buildDataDesignContext(
 			"persistence-unique-constraint-is-not-domain-constraint",
 			"ambiguous-semantic-identity-does-not-produce-design-candidates",
 			"ambiguous-persistence-identity-does-not-produce-realization-facts",
+			"relation-shape-does-not-establish-business-meaning",
+			"relation-shape-does-not-establish-temporal-semantics",
 			"relation-key-is-not-business-identifier",
 			"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 			"persistence-primary-key-is-not-business-identifier-or-candidate-key",
@@ -382,6 +386,14 @@ func buildDataDesignContext(
 					Source:      data.ID,
 					Target:      relation.Target,
 					Cardinality: string(relation.Cardinality),
+					BusinessMeaning: DataDesignKnowledgeState{
+						Nature: "unresolved",
+						Reason: "relation-business-meaning-not-first-class-in-current-canonical-model",
+					},
+					TemporalSemantics: DataDesignKnowledgeState{
+						Nature: "unresolved",
+						Reason: "relation-temporal-semantics-not-first-class-in-current-canonical-model",
+					},
 				}
 				for _, key := range relation.Keys {
 					item.Keys = append(item.Keys, DataDesignRelationKey{
