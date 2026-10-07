@@ -867,3 +867,41 @@ func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 		t.Fatalf("historical direct-user premise changed unexpectedly: %+v", got)
 	}
 }
+
+
+func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "ai-unreviewed" {
+			continue
+		}
+		corpus.Assertions[i].ReviewEvents = []ReviewEvent{
+			{
+				Sequence:           3,
+				ID:                 "historical-sequence-3",
+				Kind:               ReviewEventConfirm,
+				Reviewer:           "user:reviewer",
+				Method:             reviewMethodHuman,
+				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+				OccurredAt:         "2026-01-01T00:00:00Z",
+			},
+			{
+				Sequence:           7,
+				ID:                 "historical-sequence-7",
+				Kind:               ReviewEventWithdraw,
+				Reviewer:           "user:reviewer",
+				Method:             reviewMethodHuman,
+				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+				OccurredAt:         "2026-01-02T00:00:00Z",
+			},
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "ai-unreviewed")
+	if got.ReviewEventCount != 2 || got.ReviewLogSequence != 7 {
+		t.Fatalf("review count was incorrectly used as append sequence: %+v", got)
+	}
+}
