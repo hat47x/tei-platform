@@ -37,10 +37,11 @@ type PublishedClassification struct {
 }
 
 type ClassificationProjection struct {
-	ContractSHA256  string                    `json:"contractSha256"`
-	Format          SourceFormat              `json:"format"`
-	Kinds           []PublishedClassification `json:"kinds"`
-	AuthorityLimits []string                  `json:"authorityLimits"`
+	ContractSHA256             string                    `json:"contractSha256"`
+	Format                     SourceFormat              `json:"format"`
+	Kinds                      []PublishedClassification `json:"kinds"`
+	RedactedUnknownObservedCount int                     `json:"redactedUnknownObservedCount,omitempty"`
+	AuthorityLimits            []string                  `json:"authorityLimits"`
 }
 
 func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contractBytes []byte) ([]LocalTranscriptionCandidate, error) {
@@ -100,16 +101,20 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 		},
 	}
 	var kinds []string
-	for kind := range receipt.ElementCounts {
+	for kind := range receipt.ObservedElementCounts {
 		kinds = append(kinds, kind)
 	}
 	sort.Strings(kinds)
 	for _, kind := range kinds {
-		observedCount := receipt.ElementCounts[kind]
+		observedCount := receipt.ObservedElementCounts[kind]
 		unresolvedCount := receipt.UnknownElements[kind]
-		mappedCount := observedCount - unresolvedCount
+		mappedCount := receipt.ElementCounts[kind]
 		mapping, ok := mappings[kind]
 		if !ok {
+			if _, standardName := knownElements[format][kind]; !standardName {
+				out.RedactedUnknownObservedCount += observedCount
+				continue
+			}
 			out.Kinds = append(out.Kinds, PublishedClassification{
 				Kind:                    kind,
 				ObservedCount:           observedCount,
