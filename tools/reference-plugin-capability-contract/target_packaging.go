@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 const targetCapabilityPackagingPlanSchema = "tei.reference.target-capability-packaging-plan/v0"
@@ -188,13 +189,95 @@ func validateTargetCapabilityPackagingPlan(
 			"target packaging schema %q is not supported", plan.Schema,
 		)
 	}
-	if !plan.Scope.Valid() || plan.Target == "" {
+	if !plan.Scope.Valid() ||
+		strings.TrimSpace(plan.Target) == "" ||
+		plan.Target != strings.TrimSpace(plan.Target) {
 		return fmt.Errorf("target packaging scope / Target is invalid")
 	}
-	if plan.LogicalProviderCount <= 0 ||
-		plan.PhysicalArtifactCount <= 0 ||
-		plan.PhysicalArtifactCount != len(plan.Artifacts) {
-		return fmt.Errorf("target packaging counts are invalid")
+	if len(plan.Artifacts) == 0 {
+		return fmt.Errorf("target packaging requires at least one artifact")
+	}
+
+	providers := map[string]string{}
+	pluginArtifacts := map[string]map[string]struct{}{}
+	coalesced := 0
+	for i, artifact := range plan.Artifacts {
+		if !validSHA256Fingerprint(artifact.ArtifactDigest) {
+			return fmt.Errorf("target packaging artifact[%d] digest is invalid", i)
+		}
+		if len(artifact.Providers) == 0 {
+			return fmt.Errorf("target packaging artifact[%d] has no Providers", i)
+		}
+		if len(artifact.Providers) > 1 {
+			coalesced++
+		}
+		for j, ref := range artifact.Providers {
+			if ref.PluginID == "" ||
+				ref.PluginVersion == "" ||
+				ref.ImplementationID == "" ||
+				ref.ContractID == "" ||
+				ref.ContractVersion == "" ||
+				!validSHA256Fingerprint(ref.ContractFingerprint) ||
+				!validSHA256Fingerprint(ref.CapabilityLockFingerprint) ||
+				!validSHA256Fingerprint(ref.ProviderBuildRealizationFingerprint) {
+				return fmt.Errorf(
+					"target packaging artifact[%d] provider[%d] is incomplete or invalid",
+					i,
+					j,
+				)
+			}
+			if _, err := parseVersion(ref.PluginVersion); err != nil {
+				return fmt.Errorf(
+					"target packaging provider Plugin version: %w",
+					err,
+				)
+			}
+			if _, err := parseVersion(ref.ContractVersion); err != nil {
+				return fmt.Errorf(
+					"target packaging provider Contract version: %w",
+					err,
+				)
+			}
+			if ref.SourceDeclarationFingerprint != "" &&
+				!validSHA256Fingerprint(ref.SourceDeclarationFingerprint) {
+				return fmt.Errorf(
+					"target packaging provider source declaration fingerprint is invalid",
+				)
+			}
+			key := ref.PluginID + "\x00" + ref.PluginVersion + "\x00" +
+				ref.ImplementationID
+			if previous, duplicate := providers[key]; duplicate {
+				if previous != artifact.ArtifactDigest {
+					return fmt.Errorf(
+						"logical Provider %s is assigned to multiple artifacts",
+						key,
+					)
+				}
+				return fmt.Errorf(
+					"logical Provider %s is declared more than once",
+					key,
+				)
+			}
+			providers[key] = artifact.ArtifactDigest
+
+			pluginKey := ref.PluginID + "@" + ref.PluginVersion
+			if pluginArtifacts[pluginKey] == nil {
+				pluginArtifacts[pluginKey] = map[string]struct{}{}
+			}
+			pluginArtifacts[pluginKey][artifact.ArtifactDigest] = struct{}{}
+		}
+	}
+	splitPlugins := 0
+	for _, artifacts := range pluginArtifacts {
+		if len(artifacts) > 1 {
+			splitPlugins++
+		}
+	}
+	if plan.LogicalProviderCount != len(providers) ||
+		plan.PhysicalArtifactCount != len(plan.Artifacts) ||
+		plan.CoalescedArtifactCount != coalesced ||
+		plan.SplitPluginCount != splitPlugins {
+		return fmt.Errorf("target packaging counts are stale")
 	}
 	if !validSHA256Fingerprint(plan.PlanFingerprint) {
 		return fmt.Errorf("target packaging fingerprint is invalid")
@@ -203,6 +286,28 @@ func validateTargetCapabilityPackagingPlan(
 		return fmt.Errorf("target packaging fingerprint is stale")
 	}
 	return nil
+}
+
+func normalizeTargetCapabilityPackagingPlan(
+	plan TargetCapabilityPackagingPlan,
+) TargetCapabilityPackagingPlan {
+	out := plan
+	out.Artifacts = make([]TargetPackagingArtifact, len(plan.Artifacts))
+	for i, artifact := range plan.Artifacts {
+		out.Artifacts[i] = artifact
+		out.Artifacts[i].Providers = append(
+			[]TargetPackagingProviderRef(nil),
+			artifact.Providers...,
+		)
+		sort.Slice(out.Artifacts[i].Providers, func(a, b int) bool {
+			return targetPackagingProviderKey(out.Artifacts[i].Providers[a]) <
+				targetPackagingProviderKey(out.Artifacts[i].Providers[b])
+		})
+	}
+	sort.Slice(out.Artifacts, func(i, j int) bool {
+		return out.Artifacts[i].ArtifactDigest < out.Artifacts[j].ArtifactDigest
+	})
+	return out
 }
 
 func targetPackagingProviderKey(ref TargetPackagingProviderRef) string {
@@ -215,5 +320,5 @@ func targetCapabilityPackagingPlanFingerprint(
 	plan TargetCapabilityPackagingPlan,
 ) string {
 	plan.PlanFingerprint = ""
-	return fingerprint(plan)
+	return fingerprint(normalizeTargetCapabilityPackagingPlan(plan))
 }
