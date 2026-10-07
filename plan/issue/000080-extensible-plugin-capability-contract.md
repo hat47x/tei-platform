@@ -308,7 +308,7 @@ Authority Evidenceの更新はCapability Resolution Lock identityへ含めない
 
 E2では、現行builtin Pluginにexact artifact digestが無いため、legacy Capabilityをgeneric callable Providerへそのまま昇格できないことを確認しました。E7では、この不足をPlugin source definitionへ仮digestを追加して解消せず、ISSUE-000079で既に持つBuildArtifactLockへ接続します。
 
-`ProviderBuildRealization` candidateは、logical ProviderとBuildArtifactLock内のruntime buildを結びます。Plugin / version / implementation ID、Source declaration fingerprint、Target、Build profile、BuildPlan fingerprint、artifact digestを保持します。
+`ProviderBuildRealization` candidateは、logical Provider、exact BuildPlan、BuildArtifactLock内のruntime buildを結びます。Plugin / version / implementation ID、Source declaration fingerprint、Target、Build profile、BuildPlan fingerprint、artifact digestを保持します。
 
 このbindingはBuild provenanceからphysical artifactを特定するためのderived artifactです。ConformanceやRuntime Authorityは付与しません。BuildArtifactLockからartifactを得たProviderでも、exact Target / artifact / Source declarationへ結び付いたConformance Evidenceが無ければgeneric resolverは採用しません。
 
@@ -319,3 +319,5 @@ E2では、現行builtin Pluginにexact artifact digestが無いため、legacy 
 したがって、E7で成立したのはBuild provenanceとProvider artifact identityの接続、複数Providerのartifact coalescing候補、split packaging Gapの再現までです。Provider-levelまたはTarget packaging-levelのRuntime Authority表現はまだ未設計です。Plugin Lockへfieldを追加する判断は、このGapだけを理由に先行させません。
 
 BuildPlanだけが変わりartifact bytesが同じ場合も区別します。ProviderBuildRealizationのbinding fingerprintは変わりますが、realized Providerのartifact identityは変えません。Build provenanceとcallable implementation identityを別の更新軸として扱うためです。
+
+legacy移行では、BuildPlanのPlugin definition fingerprintをauthoritative `plugin.Definition`へ照合します。Plugin identityだけが一致する古いBuildPlanを、変更後のCapability宣言へ後付けする経路は拒否します。
