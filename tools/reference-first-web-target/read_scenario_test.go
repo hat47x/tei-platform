@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"net/http/httptest"
 	"testing"
 
@@ -53,6 +54,25 @@ func TestReferenceReadScenarioRunsBrowseRecordReferenceAndHeaderDetailThroughDri
 	}
 	if got := semanticValue(result.OrderLineRows[0], "sales.order_line.order_line_id"); got != int64(5001) {
 		t.Fatalf("first order-line id=%#v", got)
+	}
+
+	rowType := reflect.TypeOf(semanticRowProjection{})
+	if rowType.NumField() != 1 || rowType.Field(0).Name != "Attributes" {
+		t.Fatalf("runtime row projection acquired identity authority fields: %v", rowType)
+	}
+	for _, forbidden := range []string{"ID", "Identity", "Key", "BusinessID", "OccurrenceID"} {
+		if _, found := rowType.FieldByName(forbidden); found {
+			t.Fatalf("runtime row projection exposes forbidden identity field %q", forbidden)
+		}
+	}
+	for _, limit := range []string{
+		"runtime-row-index-is-selection-state-not-business-identity",
+		"runtime-row-or-attribute-value-is-not-business-identity-proof",
+		"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
+	} {
+		if !containsString(result.AuthorityLimits, limit) {
+			t.Fatalf("runtime identity authority limit %q is missing: %+v", limit, result.AuthorityLimits)
+		}
 	}
 
 	bindings := runtimeBindingsByPattern(result.RuntimeBindings)
