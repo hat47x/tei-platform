@@ -54,6 +54,8 @@ Application Runtime scopeでは、generic Capability Resolution Lockを新しい
 
 ただし、現行Plugin LockはPluginごとに一つの`artifactDigest`しか持ちません。一つのPluginを同じTargetで複数のCapability implementation artifactへ分割する構成は、まだRuntime Authorityとして表現できません。Provider artifactとPlugin-level artifactが一致しない場合はfail closedとし、Web向けlazy loadingやWasm分割まで成立したとは扱いません。
 
+generic Capability ReferenceではTargetもrealization条件として分離しています。同じlogical Provider identityを保ったままTargetごとに別artifactを宣言でき、Targetを指定した解決ではexact Targetだけを候補にします。Target未指定Providerを任意Targetへのfallbackには使いません。Contract identityはTarget差だけでは変えません。
+
 ## Bundle
 
 Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
