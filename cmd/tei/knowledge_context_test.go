@@ -32,6 +32,16 @@ func TestCheckDataDesignFingerprint(t *testing.T) {
 		t.Fatalf("stale Data Design fingerprint was not rejected clearly: %v", err)
 	}
 
+	incomplete := ctx
+	incomplete.DataDesign = &knowledgecontext.DataDesignContext{
+		Fingerprint:            ctx.DataDesign.Fingerprint,
+		EvidenceCoverageStatus: "incomplete",
+	}
+	if err := checkDataDesignFingerprint(incomplete, ctx.DataDesign.Fingerprint); err == nil ||
+		!strings.Contains(err.Error(), "requires complete Evidence coverage") {
+		t.Fatalf("incomplete Evidence coverage allowed cached Context reuse: %v", err)
+	}
+
 	withoutDataDesign := knowledgecontext.Context{}
 	if err := checkDataDesignFingerprint(withoutDataDesign, ctx.DataDesign.Fingerprint); err == nil ||
 		!strings.Contains(err.Error(), "no Data Design Context") {
