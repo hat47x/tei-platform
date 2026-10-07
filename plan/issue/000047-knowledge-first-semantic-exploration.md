@@ -352,7 +352,7 @@ Data Design Context全体には`projectionRevision`と`fingerprint`も付ける�
 
 Source Evidenceの揃い方は`evidenceCoverageStatus = complete | incomplete`で別に示す。`complete`が意味するのは、Data Design Contextが必要と判断したsubjectについてDefinition / Authoring EvidenceをSource Indexから取得できたことまでであり、Source Index自体が現在のworkspaceと一致することの証明ではない。Source freshnessはSource Index側のfingerprint検証責務として分離する。`incomplete`なContextにもfingerprintは付くが、完全なEvidenceを持つContextとして再利用しない。
 
-CLIでcached Contextを再利用する場合は、保存していたfingerprintを`tei knowledge-context -expected-data-design-fingerprint <sha256:...>`へ渡せる。current Projectionが同じなら通常どおりContextを返し、一致しなければfail closedにする。対象subjectがData Design Contextを持たない場合もguardは失敗する。この比較はstale derived contextの検出に使うものであり、fingerprint一致をSource freshnessやSemantic適用可能性の証明へ昇格しない。
+CLIでcached Contextを再利用する場合は、保存していたfingerprintを`tei knowledge-context -expected-data-design-fingerprint <sha256:...>`へ渡せる。再利用が成立するには、current Projectionのfingerprint一致に加えて`evidenceCoverageStatus=complete`が必要である。一致しない場合、Evidence coverageが不完全な場合、対象subjectがData Design Contextを持たない場合はfail closedにする。この比較はstale derived contextの検出に使うものであり、fingerprint一致やEvidence coverage完了をSource freshnessやSemantic適用可能性の証明へ昇格しない。
 
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
 
