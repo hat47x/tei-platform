@@ -616,6 +616,12 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 		lock.Requirement.CompatibleMajor < 0 {
 		return fmt.Errorf("capability lock has invalid scope or requirement")
 	}
+	if lock.Target != strings.TrimSpace(lock.Target) {
+		return fmt.Errorf(
+			"capability lock target %q has surrounding whitespace",
+			lock.Target,
+		)
+	}
 	if lock.Wiring != nil {
 		if lock.Wiring.ContractID != lock.Requirement.ContractID ||
 			lock.Wiring.PluginID == "" ||
