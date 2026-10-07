@@ -235,16 +235,20 @@
         "rules": [
           "Table1ID/TableKey1ID and Table2ID/TableKey2ID are source-backed relationship key references and remain distinct from business identity",
           "key references may support explicit relation mapping only when the participating key fields resolve without ambiguity",
-          "multi-field key correspondence follows unambiguous TableKeyField SortKey order rather than XML source order",
           "TableField AttributeType and DataTypeID are distinct source facts; explicit corresponding DataTypeID mismatch remains unresolved",
           "missing or duplicate SortKey on a multi-field relationship key is not repaired from field names, data types, or source order",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
-          "ExistWhen prose is not compiled into a constraint without explicit acceptance"
+          "ExistWhen prose is not compiled into a constraint without explicit acceptance",
+          "relationship key correspondence is type-specific and must not require equal key cardinality for every legacy relationship type",
+          "REFFER uses equal-arity source PK/SK to target FK correspondence; SUBTYPE uses equal-arity PK/SK correspondence",
+          "FAMILY uses a target PK/SK that contains the source-equivalent key fields plus additional key fields; do not positionally zip the entire keys or reject the relationship only because target arity is larger",
+          "within the fields that must correspond, preserve TableKeyField SortKey, DataTypeID and ambiguity evidence rather than repairing by XML order or field name heuristics"
         ],
         "authorityLimits": [
           "relationship-key-reference-is-not-business-identity",
           "relationship-key-reference-is-not-functional-dependency",
-          "ambiguous-key-field-mapping-must-remain-unresolved"
+          "ambiguous-key-field-mapping-must-remain-unresolved",
+          "family-key-extension-is-not-equal-arity-correspondence"
         ]
       },
       "FunctionType": {
