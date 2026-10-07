@@ -28,6 +28,7 @@ type LocalTranscriptionCandidate struct {
 type PublishedClassification struct {
 	Kind                    string   `json:"kind"`
 	ObservedCount           int      `json:"observedCount"`
+	MappedObservedCount     int      `json:"mappedObservedCount"`
 	UnresolvedObservedCount int      `json:"unresolvedObservedCount,omitempty"`
 	MappingStatus           string   `json:"mappingStatus"`
 	Classification          []string `json:"classification,omitempty"`
@@ -106,11 +107,13 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 	for _, kind := range kinds {
 		observedCount := receipt.ElementCounts[kind]
 		unresolvedCount := receipt.UnknownElements[kind]
+		mappedCount := observedCount - unresolvedCount
 		mapping, ok := mappings[kind]
 		if !ok {
 			out.Kinds = append(out.Kinds, PublishedClassification{
 				Kind:                    kind,
 				ObservedCount:           observedCount,
+				MappedObservedCount:     0,
 				UnresolvedObservedCount: observedCount,
 				MappingStatus:           "unmapped",
 				AuthorityLimits: []string{
@@ -120,15 +123,28 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 			})
 			continue
 		}
+		if mappedCount <= 0 {
+			out.Kinds = append(out.Kinds, PublishedClassification{
+				Kind:                    kind,
+				ObservedCount:           observedCount,
+				MappedObservedCount:     0,
+				UnresolvedObservedCount: unresolvedCount,
+				MappingStatus:           "unmapped",
+				AuthorityLimits: []string{
+					"local-name-mapping-does-not-apply-to-unknown-or-namespaced-observation",
+					"unknown-source-construct-must-not-be-silently-dropped",
+				},
+			})
+			continue
+		}
 		status := "mapped"
-		if unresolvedCount == observedCount && observedCount > 0 {
-			status = "unmapped"
-		} else if unresolvedCount > 0 {
+		if unresolvedCount > 0 {
 			status = "mixed"
 		}
 		out.Kinds = append(out.Kinds, PublishedClassification{
 			Kind:                    kind,
 			ObservedCount:           observedCount,
+			MappedObservedCount:     mappedCount,
 			UnresolvedObservedCount: unresolvedCount,
 			MappingStatus:           status,
 			Classification:          append([]string(nil), mapping.Classification...),
