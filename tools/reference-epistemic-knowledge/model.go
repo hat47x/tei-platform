@@ -386,10 +386,20 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		if out[i].Sequence <= out[i-1].Sequence {
 			return nil, fmt.Errorf("review event sequence must increase")
 		}
+		previousAt, _ := time.Parse(time.RFC3339, out[i-1].OccurredAt)
+		currentAt, _ := time.Parse(time.RFC3339, out[i].OccurredAt)
+		if currentAt.Before(previousAt) {
+			return nil, fmt.Errorf(
+				"review event occurredAt must not move backward: sequence %d=%s sequence %d=%s",
+				out[i-1].Sequence,
+				out[i-1].OccurredAt,
+				out[i].Sequence,
+				out[i].OccurredAt,
+			)
+		}
 	}
 	return out, nil
 }
-
 
 func normalizeEvidenceRefs(values []EvidenceRef) ([]EvidenceRef, error) {
 	out := make([]EvidenceRef, 0, len(values))
