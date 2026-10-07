@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"tei/internal/core"
@@ -204,6 +205,42 @@ func verifyLegacyProductionExecutionBridge(
 		)
 	}
 	return nil
+}
+
+func invokeLegacyCapabilityWithProductionBridge(
+	ctx context.Context,
+	binding ProductionExecutionBridge,
+	lock CapabilityResolutionLock,
+	runtimeBinding RuntimeCapabilityBinding,
+	profile CapabilityExecutionProfile,
+	executionAuthority CapabilityExecutionAuthorityBinding,
+	registry pluginruntime.Registry,
+	plan pluginruntime.EnvironmentPlan,
+	mapping LegacyCapabilityMapping,
+	operation string,
+	requestID string,
+	payload any,
+) (pluginruntime.Invocation, error) {
+	if err := verifyLegacyProductionExecutionBridge(
+		binding,
+		lock,
+		runtimeBinding,
+		profile,
+		executionAuthority,
+		plan,
+		mapping,
+	); err != nil {
+		return pluginruntime.Invocation{}, err
+	}
+	return registry.InvokeWithProvenance(
+		ctx,
+		plan,
+		mapping.Kind,
+		mapping.CapabilityID,
+		operation,
+		requestID,
+		payload,
+	)
 }
 
 func exactPluginRuntime(
