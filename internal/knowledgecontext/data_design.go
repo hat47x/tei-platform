@@ -707,7 +707,7 @@ func buildDataDesignContext(
 func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandidate) string {
 	value.Fingerprint = ""
 	value.Components = normalizedDeterminantTerms(value.Components)
-	value.EvidenceNeeded = normalizedStrings(value.EvidenceNeeded)
+	value.EvidenceNeeded = normalizedDataDesignStrings(value.EvidenceNeeded)
 	return typedDataDesignCandidateFingerprint(
 		"tei.knowledge.data-design.business-identity-candidate/v1",
 		value,
@@ -717,7 +717,7 @@ func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandid
 func functionalDependencyCandidateFingerprint(value DataDesignFunctionalDependencyCandidate) string {
 	value.Fingerprint = ""
 	value.Determinants = normalizedDeterminantTerms(value.Determinants)
-	value.EvidenceNeeded = normalizedStrings(value.EvidenceNeeded)
+	value.EvidenceNeeded = normalizedDataDesignStrings(value.EvidenceNeeded)
 	return typedDataDesignCandidateFingerprint(
 		"tei.knowledge.data-design.functional-dependency-candidate/v1",
 		value,
@@ -738,7 +738,7 @@ func normalizedDeterminantTerms(values []DataDesignDeterminantTerm) []DataDesign
 	return out
 }
 
-func normalizedStrings(values []string) []string {
+func normalizedDataDesignStrings(values []string) []string {
 	out := append([]string(nil), values...)
 	sort.Strings(out)
 	return out
