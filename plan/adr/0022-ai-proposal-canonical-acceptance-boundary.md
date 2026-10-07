@@ -84,7 +84,7 @@ reload / conformance
 
 ### 開発環境内での直接編集を許容する
 
-生成AIや人間は、authoritative sourceから分離されたRepository clone、branch、worktree、scratch workspace等で、通常のSource編集を行って構いません。その環境でTEI CLI / MCP、Repository内Tool、言語固有Toolchain等を利用し、Build、Driver実行、Validation、Conformance、Testまで進めることも許容します。
+生成AIや人間は、authoritative sourceから分離されたRepository clone、branch、worktree、scratch workspace等で、通常のSource編集を行って構いません。その環境でTEI CLI、Hostが提供するShell / Filesystem / Git MCP、Repository内Tool、言語固有Toolchain等を利用し、Build、Driver実行、Validation、Conformance、Testまで進めることも許容します。TEI固有のdeveloper MCP serverは、この経路の成立条件にはしません。
 
 この経路でSourceを直接編集した場合、TEIが作業中の全操作を仲介したり、編集前にStructured Proposalへ変換したりすることは要求しません。正式なauthoritative stateへまだ統合されていない変更をcandidateとして扱い、Git差分やfile-native sourceから必要なSemantic Diff / Validation / Conformanceを再構築できることを優先します。
 
@@ -144,7 +144,7 @@ Agent Session、Agent Workspace、Checkpoint、Plan、tool trajectory、Test実�
 
 Git、CI、開発Tool等が所有する状態は、必要な理由がない限りTEIへ複製しません。TEIが保持するのは、Canonical meaning、Source、Decision、Authority、Conformance等としてTEI自身に独立した必要性がある情報です。
 
-Agent Adapterや外部Serviceとの直接統合は追加できますが、その存在をfile-native / Git / CLI / MCPによる標準的な開発の前提にはしません。
+Agent Adapter、TEI固有MCP、その他の外部Serviceとの直接統合は追加できますが、その存在をfile-native / Git / CLIやHost-provided MCPによる標準的な開発の前提にはしません。
 
 ### AI固有EvidenceをCanonicalへ混ぜない
 
