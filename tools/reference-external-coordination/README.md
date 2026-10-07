@@ -46,3 +46,5 @@ runnerはremote Git、GitHub API、外部SaaS、Go toolchain、TEI CLIを必要�
 E1の結果だけで、Git repositoryをproductionの標準Coordination Backendには採用しません。Work / Result JSONもproduction wire formatとして固定せず、Human / Agent actor identityが認証済みだともみなしません。stale ResultのSemantic Rebase、Coordination stateからのCanonical Acceptance、Broker、Queue、distributed leaseの必要性も未確定です。ChatGPT、Copilot、Backlog、Box等のAdapter完成も主張しません。
 
 Coordination Store削除後のCanonical reloadは、このrunner単独では検証しません。Canonical reloadとGit-nativeな開発経路はRQ-034 / ISSUE-000083が所有します。本Referenceは、Coordination層がProduct Sourceの第二正本やAuthority sourceにならないことを先に検証します。
+
+GitHub Issuesを第二consumerとして比較した結果は`github-issues-profile.md`に記録しています。Backend stateを共通lifecycleへ黙って正規化せず、`origin`、`createdVia`、Backend actor、Authorityを分離します。
