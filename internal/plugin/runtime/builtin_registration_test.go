@@ -155,6 +155,12 @@ func TestBuildBoundBuiltinRejectsRegistrationMismatch(t *testing.T) {
 		{"realization digest", func(r *pruntime.BuiltinRegistration) {
 			r.RealizationDigest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 		}},
+		{"descriptor identity", func(r *pruntime.BuiltinRegistration) {
+			r.Builtin = registeredBuiltin{
+				id: plugin.Identity{ID: core.MustCanonicalID("tei.native.runtime.reference"), Version: "1.0.0"},
+				fp: "wrong",
+			}
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,5 +227,45 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 	tampered.RealizationDigest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	if err := pruntime.ValidateDeploymentInvocation(fx.plan, core.MustCanonicalID("runtime.native_reference"), &tampered); err == nil {
 		t.Fatal("expected tampered realization provenance to fail")
+	}
+}
+
+
+func TestBuildBoundBuiltinRejectsUnsupportedSignatureOrProvenanceMetadata(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*plugin.Artifact)
+	}{
+		{"signature", func(a *plugin.Artifact) {
+			a.SignatureRef = "sigstore://reference"
+		}},
+		{"provenance", func(a *plugin.Artifact) {
+			a.Provenance = "source://reference"
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fx := newBuildBoundBuiltinFixture(t)
+			for i := range fx.plan.Plugins {
+				if fx.plan.Plugins[i].Plugin.ID == core.MustCanonicalID("tei.native.runtime.reference") {
+					tt.edit(&fx.plan.Plugins[i].Artifact)
+				}
+			}
+			registry := pruntime.Registry{BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
+				"tei.native.runtime.reference@1.0.0": fx.reg,
+			}}
+			adapter := pruntime.DeploymentExecutor{
+				Plan:         fx.plan,
+				Registry:     registry,
+				CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+			}
+			if _, err := adapter.Execute(context.Background(), executor.Command{
+				ActionID:       "app/start",
+				IdempotencyKey: "k-native",
+				Kind:           string(deployment.ActionApplicationStart),
+			}); err == nil {
+				t.Fatal("expected unsupported builtin artifact trust metadata to fail closed")
+			}
+		})
 	}
 }
