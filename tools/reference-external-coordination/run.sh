@@ -34,6 +34,7 @@ cat > "$STORE/work/open/$WORK_ID.json" <<EOF_WORK
   "exchangeVersion": "reference-v0",
   "workRef": {"backend": "git-text", "id": "$WORK_ID"},
   "origin": {"kind": "human", "actorRef": "human-reference"},
+  "createdVia": {"kind": "automation", "actorRef": "reference-runner"},
   "objective": "Verify that external coordination remains outside TEI product state.",
   "sourceContext": {
     "repositoryRef": "local-product-checkout",
@@ -118,6 +119,7 @@ results = [
 ]
 
 assert work["origin"]["kind"] == "human"
+assert work["createdVia"] == {"kind": "automation", "actorRef": "reference-runner"}
 assert work["sourceContext"]["baseRevision"] == product_head
 assert work["coordination"]["status"] == "ready"
 assert len(results) == 2
