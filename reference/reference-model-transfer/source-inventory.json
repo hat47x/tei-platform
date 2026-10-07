@@ -175,5 +175,25 @@
       "exactArtifactSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754"
     },
     "note": "recognized means covered by the source-faithful adapter inventory, not semantically accepted by TEI"
+  },
+  "sourceFactProjection": {
+    "xead": {
+      "total": 359,
+      "byType": {
+        "legacy-table-key": 110,
+        "legacy-key-field-membership": 169,
+        "legacy-relationship-key-reference": 80
+      }
+    },
+    "xeaf": {
+      "total": 407,
+      "byType": {
+        "legacy-function-selection-key": 158,
+        "legacy-detail-key-binding": 83,
+        "runtime-table-key": 72,
+        "runtime-reference-key-binding": 94
+      }
+    },
+    "authority": "source facts only; these counts do not establish accepted business identity, functional dependency, or semantic relation authority"
   }
 }
