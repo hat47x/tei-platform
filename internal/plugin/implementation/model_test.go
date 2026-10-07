@@ -241,6 +241,7 @@ func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing
 		{"external ref", `{"attemptId":"a","outcome":"accepted","externalRef":"forged"}`},
 		{"observed at", `{"attemptId":"a","outcome":"accepted","observedAt":"2026-01-01T00:00:00Z"}`},
 		{"unknown field", `{"attemptId":"a","outcome":"accepted","unknown":true}`},
+		{"duplicate key", `{"attemptId":"a","attemptId":"b","outcome":"accepted"}`},
 		{"missing attempt", `{"outcome":"accepted"}`},
 		{"invalid outcome", `{"attemptId":"a","outcome":"maybe"}`},
 	}
@@ -251,5 +252,22 @@ func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing
 				t.Fatal("expected invalid deployment executor response to fail")
 			}
 		})
+	}
+}
+
+
+func TestStaticResponseProfileRejectsExcessiveJSONNesting(t *testing.T) {
+	payload := `{"attemptId":"a","outcome":"accepted","message":`
+	for i := 0; i < 130; i++ {
+		payload += "["
+	}
+	payload += `"x"`
+	for i := 0; i < 130; i++ {
+		payload += "]"
+	}
+	payload += "}"
+	source := implementationSource(payload)
+	if err := source.Validate(); err == nil {
+		t.Fatal("expected excessive JSON nesting to fail")
 	}
 }
