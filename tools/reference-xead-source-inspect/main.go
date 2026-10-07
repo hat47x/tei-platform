@@ -17,7 +17,7 @@ import (
 	"tei/internal/xeadsource"
 )
 
-const reportSchemaVersion = "reference-xead-source-inspection-v1"
+const reportSchemaVersion = "reference-xead-source-inspection-v2"
 
 type sourceIdentity struct {
 	Format xeadsource.Format `json:"format"`
@@ -61,6 +61,21 @@ type diagnosticSummary struct {
 	Evidence []diagnosticEvidence `json:"evidence,omitempty"`
 }
 
+type factResolutionCount struct {
+	Total       int `json:"total"`
+	Resolved    int `json:"resolved"`
+	Unresolved  int `json:"unresolved"`
+	Unvalidated int `json:"unvalidated"`
+}
+
+type factResolutionSummary struct {
+	Total       int                            `json:"total"`
+	Resolved    int                            `json:"resolved"`
+	Unresolved  int                            `json:"unresolved"`
+	Unvalidated int                            `json:"unvalidated"`
+	ByKind      map[string]factResolutionCount `json:"byKind,omitempty"`
+}
+
 type report struct {
 	SchemaVersion                    string                  `json:"schemaVersion"`
 	Source                           sourceIdentity          `json:"source"`
@@ -69,6 +84,7 @@ type report struct {
 	Candidates                       candidateSummary        `json:"candidates"`
 	RelationalFacts                  factSummary             `json:"relationalFacts"`
 	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
+	RelationalFactResolutions         factResolutionSummary   `json:"relationalFactResolutions"`
 	RelationalResolutionStatus       string                  `json:"relationalResolutionStatus"`
 	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
 	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
@@ -134,6 +150,7 @@ func buildReport(inspection xeadsource.Inspection) report {
 		Candidates:                       summarizeCandidates(inspection.Candidates),
 		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
+		RelationalFactResolutions:         summarizeFactResolutions(inspection.RelationalFactResolutions),
 		RelationalResolutionStatus:       inspection.RelationalResolutionStatus,
 		ClassificationPolicyFingerprint:  inspection.ClassificationPolicyFingerprint,
 		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
@@ -266,5 +283,33 @@ func summarizeDiagnostics(diagnostics []xeadsource.RelationalDiagnostic) diagnos
 		}
 		return out.Evidence[i].LocatorDigest < out.Evidence[j].LocatorDigest
 	})
+	return out
+}
+
+
+func summarizeFactResolutions(values []xeadsource.RelationalFactResolution) factResolutionSummary {
+	out := factResolutionSummary{
+		Total:  len(values),
+		ByKind: map[string]factResolutionCount{},
+	}
+	for _, value := range values {
+		count := out.ByKind[value.Kind]
+		count.Total++
+		switch value.Status {
+		case xeadsource.RelationalFactResolutionResolved:
+			out.Resolved++
+			count.Resolved++
+		case xeadsource.RelationalFactResolutionUnresolved:
+			out.Unresolved++
+			count.Unresolved++
+		case xeadsource.RelationalFactResolutionUnvalidated:
+			out.Unvalidated++
+			count.Unvalidated++
+		}
+		out.ByKind[value.Kind] = count
+	}
+	if len(out.ByKind) == 0 {
+		out.ByKind = nil
+	}
 	return out
 }
