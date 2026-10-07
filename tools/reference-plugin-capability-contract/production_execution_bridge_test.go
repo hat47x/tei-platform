@@ -6,8 +6,10 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/permission"
+	"tei/internal/environment"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
+	"tei/internal/resource"
 )
 
 type productionExecutionFixture struct {
@@ -273,7 +275,7 @@ func TestProductionExecutionBridgeRejectsLegacyCapabilityDeclarationDrift(t *tes
 		CapabilityIsolationHostTrusted,
 		nil,
 	)
-	fx.Plan.Capabilities[0].Capability.Features = []string{"drifted"}
+	fx.Plan.Capabilities[0].Capability.Features = []environment.Feature{"drifted"}
 	if _, err := buildLegacyProductionExecutionBridge(
 		fx.CapabilityLock,
 		fx.RuntimeBinding,
