@@ -259,22 +259,28 @@ func TestDiagnoseRelationalSourceFactsPropagatesDuplicateFieldAmbiguityToRelatio
 
 
 func TestDiagnoseRelationalSourceFactsReportsMissingTableAndFieldIdentity(t *testing.T) {
-	doc, err := Parse(FormatXead, []byte(`<System><Table><TableField ID="A"/></Table><Table ID="T1"><TableField/><TableField ID="B"/></Table></System>`))
+	doc, err := Parse(FormatXead, []byte(`<System><Table><TableField/><TableField ID="A"/></Table><Table ID="T1"><TableField/><TableField ID="B"/></Table></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
-	var tableMissing, fieldMissing bool
+	var tableMissing, unscopedFieldMissing, scopedFieldMissing bool
 	for _, diagnostic := range got {
 		switch diagnostic.Code {
 		case "table-id-missing":
 			tableMissing = diagnostic.Locator == "/System[1]/Table[1]"
 		case "field-id-missing":
-			fieldMissing = diagnostic.Locator == "/System[1]/Table[2]/TableField[1]" &&
-				diagnostic.TableLegacyID == "T1"
+			if diagnostic.Locator == "/System[1]/Table[1]/TableField[1]" &&
+				diagnostic.TableLegacyID == "" {
+				unscopedFieldMissing = true
+			}
+			if diagnostic.Locator == "/System[1]/Table[2]/TableField[1]" &&
+				diagnostic.TableLegacyID == "T1" {
+				scopedFieldMissing = true
+			}
 		}
 	}
-	if !tableMissing || !fieldMissing {
-		t.Fatalf("missing source identities were not diagnosed: %#v", got)
+	if !tableMissing || !unscopedFieldMissing || !scopedFieldMissing {
+		t.Fatalf("missing source identities were not diagnosed independently: %#v", got)
 	}
 }
