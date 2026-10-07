@@ -192,6 +192,29 @@ func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 			t.Fatal("expected permission-bearing capability to fail")
 		}
 	})
+	t.Run("plugin dependency", func(t *testing.T) {
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+		definition := implementationDefinition()
+		definition.Requires = []plugin.Requirement{{
+			Plugin:          core.MustCanonicalID("tei.other"),
+			CompatibleMajor: 1,
+		}}
+		if err := implementation.ValidateAgainstDefinition(source, definition); err == nil {
+			t.Fatal("expected Plugin dependency to fail")
+		}
+	})
+	t.Run("external dependency", func(t *testing.T) {
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+		definition := implementationDefinition()
+		definition.External = []plugin.ExternalRequirement{{
+			Scope: "runtime",
+			Kind:  "service",
+			Name:  "external",
+		}}
+		if err := implementation.ValidateAgainstDefinition(source, definition); err == nil {
+			t.Fatal("expected external dependency to fail")
+		}
+	})
 }
 
 
@@ -204,6 +227,8 @@ func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing
 		{"idempotency key", `{"attemptId":"a","idempotencyKey":"forged","outcome":"accepted"}`},
 		{"executor id", `{"attemptId":"a","executorId":"forged","outcome":"accepted"}`},
 		{"plugin provenance", `{"attemptId":"a","outcome":"accepted","pluginInvocation":{"pluginId":"tei.x"}}`},
+		{"external ref", `{"attemptId":"a","outcome":"accepted","externalRef":"forged"}`},
+		{"observed at", `{"attemptId":"a","outcome":"accepted","observedAt":"2026-01-01T00:00:00Z"}`},
 		{"unknown field", `{"attemptId":"a","outcome":"accepted","unknown":true}`},
 		{"missing attempt", `{"outcome":"accepted"}`},
 		{"invalid outcome", `{"attemptId":"a","outcome":"maybe"}`},
