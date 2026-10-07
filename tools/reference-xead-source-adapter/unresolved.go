@@ -86,7 +86,7 @@ func BuildUnresolvedProjection(
 		if !containsClassification(kind.Classification, "unresolved") {
 			continue
 		}
-		mappedCount := kind.ObservedCount - kind.UnresolvedObservedCount
+		mappedCount := kind.MappedObservedCount
 		if mappedCount <= 0 {
 			continue
 		}
