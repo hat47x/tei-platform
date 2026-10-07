@@ -316,7 +316,9 @@ review eventは `confirm / reject / withdraw` を持ち、positiveで一意なse
 
 旧assertionのconfirmationを変更してsupersessionを表現せず、後続assertionの `supersedes` relationから `lifecycleState=superseded` を派生する。Projectionには `supersededBy` を残し、relation provenanceへ戻れるようにする。
 
-Conflictもrelationとして保持し、current contextで両方が有効候補になる場合は一方を自動採用せず `review-required` とする。
+supersession cycleは置換関係として解釈できないためvalidationで拒否する。
+
+Conflictもrelationとして保持する。入力が片側だけでもProjectionでは対称なConflictとして扱い、current contextで両方が有効候補になる場合は一方を自動採用せず `review-required` とする。
 
 ### E2 context compatibility / target anchoring candidate
 
@@ -429,6 +431,8 @@ reviewer candidate
 - [ ] semantic edit後に確認の有効性を再評価できる
 - [ ] AI summaryへ確認状態を無条件継承しない
 - [ ] contradictionを保持できる
+- [ ] one-sided conflictsWithを対称なConflictとして投影できる
+- [ ] supersession cycleを拒否できる
 - [ ] retrievalへrelevanceとcontext compatibilityを別signalとして渡せる
 - [ ] Project Knowledge Healthがcritical dependencyを考慮できる
 - [ ] consumer側のfreshness requirementをassertion本体の確認状態と分離して評価できる
