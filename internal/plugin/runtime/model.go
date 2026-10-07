@@ -37,6 +37,7 @@ const (
 type PluginRuntime struct {
 	Plugin                plugin.Identity      `json:"plugin"`
 	DescriptorFingerprint string               `json:"descriptorFingerprint"`
+	BuildPlanFingerprint  string               `json:"buildPlanFingerprint,omitempty"`
 	Boundary              Boundary             `json:"boundary"`
 	Trust                 TrustClass           `json:"trust"`
 	Command               string               `json:"command,omitempty"`
@@ -81,7 +82,11 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 		if !ok {
 			return EnvironmentPlan{}, fmt.Errorf("resolved plugin %s@%s missing from catalog", ident.ID, ident.Version)
 		}
-		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), Command: d.Runtime.Command, Args: append([]string(nil), d.Runtime.Args...), SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
+		locked, ok := lockedPluginForEnvironment(lock, env.ID, ident)
+		if !ok {
+			return EnvironmentPlan{}, fmt.Errorf("resolved plugin %s@%s missing from plugin lock", ident.ID, ident.Version)
+		}
+		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), BuildPlanFingerprint: locked.BuildPlanFingerprint, Command: d.Runtime.Command, Args: append([]string(nil), d.Runtime.Args...), SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
 		switch d.Runtime.Kind {
 		case plugin.RuntimeBuiltin:
 			pr.Boundary, pr.Trust = BoundaryInProcess, TrustHostTrusted
@@ -123,6 +128,21 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 	})
 	out.RuntimePolicyFingerprint = PolicyFingerprint(out)
 	return out, nil
+}
+
+
+func lockedPluginForEnvironment(lock plugin.Lock, environmentID core.CanonicalID, ident plugin.Identity) (plugin.LockedPlugin, bool) {
+	for _, environmentLock := range lock.Environments {
+		if environmentLock.Environment != environmentID {
+			continue
+		}
+		for _, locked := range environmentLock.Plugins {
+			if locked.ID == ident.ID && locked.Version == ident.Version {
+				return locked, true
+			}
+		}
+	}
+	return plugin.LockedPlugin{}, false
 }
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
@@ -235,6 +255,15 @@ type Builtin interface {
 	Invoke(context.Context, Request) (Response, error)
 }
 
+// BuiltinRegistration is Host-owned acceptance metadata for an in-process
+// realization. Build-bound Runtime locks are checked against this object rather
+// than trusting the Builtin implementation to self-report its own provenance.
+type BuiltinRegistration struct {
+	Builtin              Builtin `json:"-"`
+	BuildPlanFingerprint string  `json:"buildPlanFingerprint"`
+	RealizationDigest    string  `json:"realizationDigest"`
+}
+
 // ProcessCommand preserves executable and argv as separate values across the
 // Host boundary. It is never a shell command line and must not be reparsed by
 // ProcessLauncher implementations.
@@ -307,6 +336,8 @@ type InvocationProvenance struct {
 	CapabilityKind            plugin.CapabilityKind        `json:"capabilityKind"`
 	CapabilityID              core.CanonicalID             `json:"capabilityId"`
 	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
+	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
+	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
 	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
 	Artifact                  plugin.Artifact              `json:"artifact,omitempty"`
 	Verification              *ArtifactVerification        `json:"verification,omitempty"`
@@ -332,6 +363,7 @@ type Invocation struct {
 
 type Registry struct {
 	Builtins               map[string]Builtin
+	BuiltinRegistrations   map[string]BuiltinRegistration
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
@@ -342,6 +374,32 @@ type Registry struct {
 }
 
 func identityKey(i plugin.Identity) string { return string(i.ID) + "@" + i.Version }
+
+
+func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string, error) {
+	key := identityKey(pr.Plugin)
+	if pr.BuildPlanFingerprint == "" {
+		impl, ok := r.Builtins[key]
+		if !ok {
+			return nil, "", fmt.Errorf("builtin plugin %s@%s is locked but not registered", pr.Plugin.ID, pr.Plugin.Version)
+		}
+		return impl, "", nil
+	}
+	if pr.Artifact.Digest == "" {
+		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no realization digest", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	registration, ok := r.BuiltinRegistrations[key]
+	if !ok || registration.Builtin == nil {
+		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no accepted realization registration", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if registration.BuildPlanFingerprint != pr.BuildPlanFingerprint {
+		return nil, "", fmt.Errorf("builtin realization build plan mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if registration.RealizationDigest != pr.Artifact.Digest {
+		return nil, "", fmt.Errorf("builtin realization digest mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	return registration.Builtin, registration.RealizationDigest, nil
+}
 
 func (r Registry) Invoke(ctx context.Context, plan EnvironmentPlan, kind plugin.CapabilityKind, id core.CanonicalID, operation, requestID string, payload any) (Response, error) {
 	inv, err := r.InvokeWithProvenance(ctx, plan, kind, id, operation, requestID, payload)
@@ -407,12 +465,12 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		return Invocation{}, fmt.Errorf("plugin runtime descriptor missing for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 	}
 
-	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
+	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, BuildPlanFingerprint: pr.BuildPlanFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
 
 	// Trust and execution-boundary checks happen before a resource lease is
 	// acquired. An unverifiable artifact or unavailable required sandbox must
 	// never receive even a short-lived secret/network/filesystem lease.
-	if pr.Artifact.Digest != "" {
+	if pr.Artifact.Digest != "" && !(cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "") {
 		if r.Verifier == nil {
 			return Invocation{}, fmt.Errorf("plugin %s@%s declares artifact %s but host has no artifact verifier", cr.Plugin.ID, cr.Plugin.Version, pr.Artifact.Digest)
 		}
@@ -433,13 +491,14 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	}
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, ok := r.Builtins[identityKey(cr.Plugin)]
-		if !ok {
-			return Invocation{}, fmt.Errorf("builtin plugin %s@%s is locked but not registered", cr.Plugin.ID, cr.Plugin.Version)
+		impl, realizationDigest, err := r.resolveBuiltinRegistration(*pr)
+		if err != nil {
+			return Invocation{}, err
 		}
 		if impl.Identity() != cr.Plugin || impl.DescriptorFingerprint() != pr.DescriptorFingerprint {
 			return Invocation{}, fmt.Errorf("builtin registry identity/descriptor mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
+		prov.RealizationDigest = realizationDigest
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
 		if policy == "" {
@@ -539,9 +598,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	var resp Response
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, ok := r.Builtins[identityKey(cr.Plugin)]
-		if !ok {
-			return Invocation{}, fmt.Errorf("builtin plugin %s@%s is locked but not registered", cr.Plugin.ID, cr.Plugin.Version)
+		impl, _, resolveErr := r.resolveBuiltinRegistration(*pr)
+		if resolveErr != nil {
+			return Invocation{}, resolveErr
 		}
 		if impl.Identity() != cr.Plugin {
 			return Invocation{}, fmt.Errorf("builtin registry identity mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
