@@ -112,15 +112,23 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 	assertions := make(map[string]Assertion, len(corpus.Assertions))
 	assessments := make(map[string]Assessment, len(corpus.Assertions))
 	supersededBy := map[string][]string{}
+	conflictsByID := map[string][]string{}
 	for _, assertion := range corpus.Assertions {
 		assertions[assertion.ID] = assertion
 		assessments[assertion.ID] = baseAssessment(assertion, context, asOf)
 		for _, target := range assertion.Supersedes {
 			supersededBy[target] = append(supersededBy[target], assertion.ID)
 		}
+		for _, target := range assertion.ConflictsWith {
+			conflictsByID[assertion.ID] = append(conflictsByID[assertion.ID], target)
+			conflictsByID[target] = append(conflictsByID[target], assertion.ID)
+		}
 	}
 	for target := range supersededBy {
 		sort.Strings(supersededBy[target])
+	}
+	for id := range conflictsByID {
+		conflictsByID[id] = normalizeStrings(conflictsByID[id])
 	}
 
 	for _, assertion := range corpus.Assertions {
@@ -135,7 +143,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 
 	for _, assertion := range corpus.Assertions {
 		assessment := assessments[assertion.ID]
-		assessment.Conflict = conflictState(assertion, assessments)
+		assessment.Conflict = conflictState(conflictsByID[assertion.ID], assessments)
 		assessment.UseState, assessment.Reasons = deriveUseState(assertion, assessment)
 		assessment.Reasons = normalizeStrings(assessment.Reasons)
 		assessments[assertion.ID] = assessment
@@ -367,12 +375,12 @@ func freshness(assertion Assertion, asOf time.Time) string {
 	return "unknown"
 }
 
-func conflictState(assertion Assertion, assessments map[string]Assessment) string {
-	if len(assertion.ConflictsWith) == 0 {
+func conflictState(conflictingIDs []string, assessments map[string]Assessment) string {
+	if len(conflictingIDs) == 0 {
 		return "none"
 	}
 	active := false
-	for _, id := range assertion.ConflictsWith {
+	for _, id := range conflictingIDs {
 		other, ok := assessments[id]
 		if !ok {
 			continue
