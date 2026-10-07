@@ -40,6 +40,30 @@ func buildKnowledgeDisclosure(
 	return knowledgecontext.BuildDisclosure(ctx, []string{selection})
 }
 
+func checkKnowledgeDisclosureFingerprint(
+	disclosure knowledgecontext.DisclosureProjection,
+	expected string,
+) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if disclosure.Status != "complete" {
+		return fmt.Errorf(
+			"Knowledge Disclosure status is %q; cached disclosure reuse requires complete selected Knowledge",
+			disclosure.Status,
+		)
+	}
+	if disclosure.Fingerprint != expected {
+		return fmt.Errorf(
+			"Knowledge Disclosure fingerprint mismatch: expected=%s current=%s",
+			expected,
+			disclosure.Fingerprint,
+		)
+	}
+	return nil
+}
+
 func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) error {
 	expected = strings.TrimSpace(expected)
 	if expected == "" {
