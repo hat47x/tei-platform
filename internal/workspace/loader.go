@@ -72,7 +72,7 @@ func Load(root string) (Result, error) {
 			if err := loadPlugins(root, &r); err != nil {
 				return Result{}, err
 			}
-		case "implementations":
+		case "plugin-implementations":
 			if err := loadPluginImplementations(root, &r); err != nil {
 				return Result{}, err
 			}
