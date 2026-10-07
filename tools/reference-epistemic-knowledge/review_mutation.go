@@ -23,6 +23,7 @@ type ReviewCommand struct {
 	EventID                    string          `json:"eventId"`
 	OccurredAt                 string          `json:"occurredAt"`
 	ExpectedMeaningFingerprint string          `json:"expectedMeaningFingerprint"`
+	ExpectedReviewSubjectFingerprint string     `json:"expectedReviewSubjectFingerprint"`
 	ExpectedTargetBinding      string          `json:"expectedTargetBinding"`
 	ExpectedLastSequence       int             `json:"expectedLastSequence"`
 	Evidence                   []EvidenceRef   `json:"evidence,omitempty"`
@@ -81,11 +82,11 @@ func applyReviewCommand(
 	assertion := corpus.Assertions[assertionIndex]
 
 	if assertion.MeaningFingerprint != command.ExpectedMeaningFingerprint {
-		return ReviewMutationResult{}, fmt.Errorf(
-			"review command meaning binding is stale: expected %s current %s",
-			command.ExpectedMeaningFingerprint,
-			assertion.MeaningFingerprint,
-		)
+		return ReviewMutationResult{}, fmt.Errorf("review command meaning binding is stale")
+	}
+	currentSubjectFingerprint := reviewSubjectFingerprint(assertion)
+	if currentSubjectFingerprint != command.ExpectedReviewSubjectFingerprint {
+		return ReviewMutationResult{}, fmt.Errorf("review command subject binding is stale")
 	}
 
 	currentTargetBinding := targetBinding(assertion.Target, context)
@@ -191,6 +192,7 @@ func applyReviewCommand(
 			"review-command-does-not-grant-canonical-acceptance",
 			"review-command-does-not-change-canonical-content",
 			"meaning-fingerprint-is-binding-input-not-semantic-proof",
+			"review-subject-fingerprint-is-concurrency-receipt-not-truth-proof",
 			"target-binding-precondition-does-not-prove-semantic-identity",
 		},
 	}, nil
@@ -204,6 +206,7 @@ func normalizeReviewCommand(input ReviewCommand) (ReviewCommand, time.Time, erro
 	input.EventID = strings.TrimSpace(input.EventID)
 	input.OccurredAt = strings.TrimSpace(input.OccurredAt)
 	input.ExpectedMeaningFingerprint = strings.TrimSpace(input.ExpectedMeaningFingerprint)
+	input.ExpectedReviewSubjectFingerprint = strings.TrimSpace(input.ExpectedReviewSubjectFingerprint)
 	input.ExpectedTargetBinding = strings.TrimSpace(input.ExpectedTargetBinding)
 
 	if input.Contract != reviewCommandContract {
@@ -222,6 +225,12 @@ func normalizeReviewCommand(input ReviewCommand) (ReviewCommand, time.Time, erro
 		return input, time.Time{}, fmt.Errorf(
 			"review command expectedMeaningFingerprint %q is not exact sha256",
 			input.ExpectedMeaningFingerprint,
+		)
+	}
+	if !sha256Pattern.MatchString(input.ExpectedReviewSubjectFingerprint) {
+		return input, time.Time{}, fmt.Errorf(
+			"review command expectedReviewSubjectFingerprint %q is not exact sha256",
+			input.ExpectedReviewSubjectFingerprint,
 		)
 	}
 	if !validTargetBinding(input.ExpectedTargetBinding) {
