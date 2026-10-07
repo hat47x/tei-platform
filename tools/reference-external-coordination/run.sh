@@ -49,7 +49,7 @@ cat > "$STORE/work/$WORK_ID.json" <<EOF_WORK
 }
 EOF_WORK
 
-git -C "$STORE" add "work/open/$WORK_ID.json"
+git -C "$STORE" add "work/$WORK_ID.json"
 git -C "$STORE" commit -qm "coordination: create human work"
 WORK_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
