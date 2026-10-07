@@ -438,7 +438,7 @@ TEIは、この開発過程を管理するために、Agent Session、Agent Work
 
 変更の受け渡しには、Git commit、branch、Pull Request等の既存Version管理を第一級の経路として利用できる必要があります。Gitを直接利用できない環境では、patch、bundle、file set、任意のWeb ServiceやCIを経由した受け渡し等を利用できる余地を持ちます。Gitで十分に表現できる変更に対して、TEI独自のChange Set形式を必須にしてはいけません。
 
-TEI CLIとMCPは、Canonical meaning、Source、Dependency、Validation、Conformance等へ到達するための開発Interfaceとして利用できます。同じ操作をCLI、MCP、Studio等から利用する場合、入口の違いだけでCanonical meaningが変化してはいけません。MCP経由で呼び出したこと自体を、追加のSemantic authorityやRuntime authorityの根拠にもしてはいけません。
+TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance等へ到達するための標準的な開発Interfaceとして利用できなければなりません。チャット実行環境等がMCPを利用する場合、汎用のShell / Filesystem / Git MCP等からTEI CLIを呼び出す構成を正規経路として許容し、TEI自身のdeveloper MCP serverを必須にはしません。TEI固有のMCP projectionを追加する場合も、CLIと別のCanonical解釈・Validation・Authority modelを実装してはいけません。同じ意味操作をCLI、MCP、Studio等から利用する場合、入口の違いだけでCanonical meaningが変化してはいけず、MCP経由であること自体を追加のSemantic authorityやRuntime authorityの根拠にもしてはいけません。
 
 人間、ChatGPT、Codex、Claude Code等のどの手段でSourceが編集されたかは、Canonical meaningそのものの一部にはしません。変更後のauthoritative sourceから、特定のAgent、Chat transcript、Editor内部状態等なしにCanonical meaningを再構築できる必要があります。
 
