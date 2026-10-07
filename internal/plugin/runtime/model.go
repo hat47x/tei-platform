@@ -473,6 +473,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	// Trust and execution-boundary checks happen before a resource lease is
 	// acquired. An unverifiable artifact or unavailable required sandbox must
 	// never receive even a short-lived secret/network/filesystem lease.
+	var acceptedBuiltin Builtin
 	if pr.Artifact.Digest != "" && !(cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "") {
 		if r.Verifier == nil {
 			return Invocation{}, fmt.Errorf("plugin %s@%s declares artifact %s but host has no artifact verifier", cr.Plugin.ID, cr.Plugin.Version, pr.Artifact.Digest)
@@ -501,6 +502,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		if impl.Identity() != cr.Plugin || impl.DescriptorFingerprint() != pr.DescriptorFingerprint {
 			return Invocation{}, fmt.Errorf("builtin registry identity/descriptor mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
+		acceptedBuiltin = impl
 		prov.RealizationDigest = realizationDigest
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
@@ -601,17 +603,10 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	var resp Response
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, _, resolveErr := r.resolveBuiltinRegistration(*pr)
-		if resolveErr != nil {
-			return Invocation{}, resolveErr
+		if acceptedBuiltin == nil {
+			return Invocation{}, fmt.Errorf("builtin plugin %s@%s lost accepted registration before invocation", cr.Plugin.ID, cr.Plugin.Version)
 		}
-		if impl.Identity() != cr.Plugin {
-			return Invocation{}, fmt.Errorf("builtin registry identity mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
-		}
-		if impl.DescriptorFingerprint() != pr.DescriptorFingerprint {
-			return Invocation{}, fmt.Errorf("builtin registry descriptor fingerprint mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
-		}
-		resp, err = impl.Invoke(ctx, req)
+		resp, err = acceptedBuiltin.Invoke(ctx, req)
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
 		if policy == "" {
