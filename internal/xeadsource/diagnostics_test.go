@@ -284,3 +284,43 @@ func TestDiagnoseRelationalSourceFactsReportsMissingTableAndFieldIdentity(t *tes
 		t.Fatalf("missing source identities were not diagnosed independently: %#v", got)
 	}
 }
+
+
+func TestDiagnoseRelationalSourceFactsReportsMissingLegacyKeyAndRelationshipIdentity(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship Table1ID="T1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var keyMissing, relationshipMissing bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "key-id-missing":
+			keyMissing = diagnostic.TableLegacyID == "T1"
+		case "relationship-id-missing":
+			relationshipMissing = diagnostic.Locator != ""
+		}
+	}
+	if !keyMissing || !relationshipMissing {
+		t.Fatalf("missing key/relationship identity was not diagnosed: %#v", got)
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsReportsDuplicateRelationshipIdentity(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var duplicate bool
+	for _, diagnostic := range got {
+		if diagnostic.Code == "relationship-id-duplicate" &&
+			diagnostic.RelationshipID == "R1" &&
+			diagnostic.Count == 2 {
+			duplicate = true
+		}
+	}
+	if !duplicate {
+		t.Fatalf("duplicate relationship identity was not diagnosed: %#v", got)
+	}
+}
