@@ -19,16 +19,16 @@ func portableRuntimeContract() Contract {
 
 func targetRuntimeProvider(contract Contract, target, digestMarker string) Provider {
 	return Provider{
-		PluginID:          "tei.reference.portable",
-		PluginVersion:     "1.0.0",
-		ImplementationID:  "portable.runtime.v1",
-		RealizationTarget:            target,
-		ArtifactDigest:    "sha256:" + strings.Repeat(digestMarker, 64),
-		Scope:             ScopeApplicationRuntime,
-		ContractID:        contract.ID,
-		ContractVersion:   contract.Version,
+		PluginID:            "tei.reference.portable",
+		PluginVersion:       "1.0.0",
+		ImplementationID:    "portable.runtime.v1",
+		RealizationTarget:   target,
+		ArtifactDigest:      "sha256:" + strings.Repeat(digestMarker, 64),
+		Scope:               ScopeApplicationRuntime,
+		ContractID:          contract.ID,
+		ContractVersion:     contract.Version,
 		ContractFingerprint: fingerprint(contract),
-		ConformanceProfile: contract.ConformanceProfile,
+		ConformanceProfile:  contract.ConformanceProfile,
 	}
 }
 
@@ -45,9 +45,9 @@ func targetResolveInput(
 		)
 	}
 	return ResolveInput{
-		Scope:       ScopeApplicationRuntime,
-		RealizationTarget:      target,
-		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Scope:             ScopeApplicationRuntime,
+		RealizationTarget: target,
+		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:   []Contract{contract},
 		Providers:   providers,
 		Evidence:    evidence,
@@ -124,9 +124,9 @@ func TestTargetSpecificProviderRequiresEvidenceForExactTarget(t *testing.T) {
 	desktopEvidenceProvider.RealizationTarget = "desktop"
 
 	input := ResolveInput{
-		Scope:       ScopeApplicationRuntime,
-		RealizationTarget:      "web-browser",
-		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Scope:             ScopeApplicationRuntime,
+		RealizationTarget: "web-browser",
+		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:   []Contract{contract},
 		Providers:   []Provider{web},
 		Evidence: []ConformanceEvidence{
