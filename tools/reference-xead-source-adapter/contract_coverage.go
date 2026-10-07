@@ -12,9 +12,10 @@ type ClassificationCoverage struct {
 	Format                  SourceFormat `json:"format"`
 	ObservedKindCount       int          `json:"observedKindCount"`
 	MappedObservedKindCount int          `json:"mappedObservedKindCount"`
-	UnmappedObservedKinds   []string     `json:"unmappedObservedKinds,omitempty"`
-	UnobservedMappedKinds   []string     `json:"unobservedMappedKinds,omitempty"`
-	UnknownObservedElements int          `json:"unknownObservedElements"`
+	UnmappedObservedKinds      []string     `json:"unmappedObservedKinds,omitempty"`
+	UnmappedObservedKindCount  int          `json:"unmappedObservedKindCount,omitempty"`
+	UnobservedMappedKinds      []string     `json:"unobservedMappedKinds,omitempty"`
+	UnknownObservedElements    int          `json:"unknownObservedElements"`
 	Complete                bool         `json:"complete"`
 	AuthorityLimits         []string     `json:"authorityLimits"`
 }
@@ -37,11 +38,14 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 	}
 	sum := sha256.Sum256(contractBytes)
 	coverage.ContractSHA256 = hex.EncodeToString(sum[:])
-	for kind := range receipt.ElementCounts {
+	for kind := range receipt.ObservedElementCounts {
 		coverage.ObservedKindCount++
-		if _, exists := mapped[kind]; exists {
+		if _, exists := mapped[kind]; exists && receipt.ElementCounts[kind] > 0 {
 			coverage.MappedObservedKindCount++
-		} else {
+			continue
+		}
+		coverage.UnmappedObservedKindCount++
+		if _, standardName := knownElements[format][kind]; standardName {
 			coverage.UnmappedObservedKinds = append(coverage.UnmappedObservedKinds, kind)
 		}
 	}
@@ -50,11 +54,9 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 			coverage.UnobservedMappedKinds = append(coverage.UnobservedMappedKinds, kind)
 		}
 	}
-	for _, count := range receipt.UnknownElements {
-		coverage.UnknownObservedElements += count
-	}
+	coverage.UnknownObservedElements = receipt.UnknownElementCount
 	sort.Strings(coverage.UnmappedObservedKinds)
 	sort.Strings(coverage.UnobservedMappedKinds)
-	coverage.Complete = len(coverage.UnmappedObservedKinds) == 0 && coverage.UnknownObservedElements == 0
+	coverage.Complete = coverage.UnmappedObservedKindCount == 0 && coverage.UnknownObservedElements == 0
 	return coverage, nil
 }
