@@ -22,3 +22,10 @@ go run ./tools/reference-xead-source-adapter -format xead -input /path/to/model.
 ```
 
 `-contract`を付けた場合は、Publication Receiptに加えて、観測したelement kindが転写契約へ割り当て済みかを返します。mapping entryが存在してもSemantic Acceptance済みとはみなしません。
+
+
+## XMLレベルの観測
+
+element / attributeに加え、XML comment、processing instruction、directiveをローカル観測でaccountingします。公開receiptには内容を出さず、件数だけを残します。
+
+namespace付きの要素はlocal nameだけで既知constructに一致させません。同名の標準constructに見えてもunresolvedとし、Classification coverageを未完了のままにします。
