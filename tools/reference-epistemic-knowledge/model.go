@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -718,4 +719,15 @@ func normalizeStrings(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+
+func reviewSubjectFingerprint(assertion Assertion) string {
+	subject := assertion
+	subject.ReviewEvents = nil
+	subject.ReviewerCandidates = nil
+	subject.AccessRefs = nil
+	encoded, _ := json.Marshal(subject)
+	sum := sha256.Sum256(encoded)
+	return fmt.Sprintf("sha256:%x", sum[:])
 }
