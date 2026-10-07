@@ -1,8 +1,8 @@
 # Context-scoped Epistemic Knowledge Reference
 
-ADR-0030 / ISSUE-000082 の最初のTEI Referenceです。
+ADR-0030 / ISSUE-000082の最初のTEI Referenceです。
 
-目的は、保存された文章を「事実 / 未確認」の一つの値へ潰さず、現在の作業文脈でどのように利用できるかを、由来・review・scope・freshness・Conflictを分けたまま機械判定できるか確認することです。
+保存された情報を単一の「正しい / 未確認」へ畳まず、現在の作業文脈で利用できるかを、情報の出所、取り込み主体、statement kind、確認履歴、文脈、鮮度、ライフサイクル、Conflictに分けて評価します。
 
 ## 実行
 
@@ -14,7 +14,7 @@ go run ./tools/reference-epistemic-knowledge \
 
 出力schemaは `tei.reference.epistemic-assessment/v0` です。
 
-## このReferenceが分けるもの
+## 分離する情報
 
 一つのconfidenceやtruth scoreにはまとめません。
 
@@ -29,8 +29,14 @@ statement kind
   fact / observation / requirement / decision / constraint
   hypothesis / question / instruction / preference / other
 
-review validity
-  native / unreviewed / valid / stale / rejected / superseded
+review event
+  confirm / reject / withdraw
+
+derived confirmation state
+  unreviewed / confirmed / rejected
+
+review binding
+  none / current / stale
 
 context compatibility
   compatible / incompatible / unknown
@@ -38,57 +44,86 @@ context compatibility
 freshness
   current / stale / not-yet-valid / unknown
 
+lifecycle
+  active / superseded
+
 conflict
   none / inactive / present
 ```
 
-そのうえで、現在のcontext assemblyでの利用状態だけを `premise / candidate-only / review-required / blocked` として派生します。この派生状態は客観的Truthを表しません。
+現在のcontext assemblyでの利用状態だけを `premise / candidate-only / review-required / blocked` として派生します。この利用状態は客観的TruthやCanonical Authorityを表しません。
 
 ## ユーザー入力とAI生成情報
 
-user origin + direct user ingestion + working-premise statement + `native` は、現在の適用範囲と一致する場合、通常の作業前提として利用できます。対象はfactだけでなく、observation / requirement / decision / constraintを含みます。これは外部検証済み、組織上の正式承認、Canonical Acceptanceのいずれも意味しません。
+user originかつuserが直接取り込んだfact / observation / requirement / decision / constraintは、適用範囲が現在の文脈と一致すれば作業前提として利用できます。
 
-入力者と内容の出所も分けます。ユーザーがAI出力を貼り付けた場合はcontent originをai、ingested byをuserとして保持し、貼り付け操作だけでuser assertionへ変換しません。
+この場合でも `confirmationState` は `unreviewed` のままです。「ユーザーが現在の作業で直接与えたため前提として使えること」と「人間の確認履歴がありconfirmedであること」を同じ状態へしません。また、組織上の正式承認やCanonical Acceptanceも意味しません。
 
-AI originは `native` にできません。AIが生成したfact assertionは、保存されただけではreview済みに昇格せず、`unreviewed` のまま `candidate-only` です。v0で `reviewed / conditional` を成立させるreview recordは `method=human-confirmation` を明示的に要求し、AI自己reviewをreview済み状態へ読み替えません。review recordがbindingしたmeaning fingerprintと現在値も一致する必要があります。
+入力者と内容の出所も分けます。ユーザーがAI出力を貼り付けた場合、content originは `ai`、ingested byは `user` のままです。貼り付けだけではuser assertionやconfirmedへ変わりません。
+
+AI-origin情報にreview eventがなければ `unreviewed` であり、working-premise statementでも `candidate-only` です。
+
+## 確認履歴
+
+現在の確認状態をassertion上の単一fieldとして保存しません。`reviewEvents` に履歴を追記し、現在のmeaningに結び付く最新eventから確認状態を導出します。
+
+v0のeventは次の3種類です。
+
+- `confirm`: 現在のmeaningを人が確認した
+- `reject`: 現在のmeaningを人が退けた
+- `withdraw`: 以前の確認を撤回した
+
+各eventはpositiveな `sequence`、一意なID、reviewer、`method=human-review`、対象meaning fingerprint、時刻、任意のEvidenceとconditionsを持ちます。sequenceは一意で、時刻がsequenceに反して過去へ戻る履歴は拒否します。
+
+たとえば、
+
+```text
+confirm
+  -> reject
+  -> confirm
+```
+
+という履歴は3eventを残したまま、現在値だけを `confirmed` として導出します。過去のrejectを上書きして消しません。
+
+`withdraw` はassertionを削除したりrejectedへ変えたりする操作ではありません。確認だけを外します。外部由来の情報なら再び `candidate-only` になり、direct user working premiseなら、確認済みとは表示せず現在文脈の作業前提として利用できます。
+
+## semantic editとreview binding
+
+review eventはevent時点の `meaningFingerprint` を持ちます。
+
+現在assertionのmeaning fingerprintが変わり、現在meaningへ結び付くreview eventがなくなった場合、過去のeventは履歴として残しますが、`reviewBinding=stale` として再確認を要求します。旧確認を現在値へ継承しません。
+
+このReference自身は自然言語のsemantic diffを判定しません。meaning fingerprintは対象を所有するsurface / transformation contractが供給する入力です。fingerprint一致そのものをsemantic proofにはせず、Projectionにも `meaning-fingerprint-is-input-not-semantic-proof` を残します。
 
 ## context generalizationをしない
 
 assertionのscopeに必要なdimensionが現在contextに無い場合は `unknown` とし、前提へ自動昇格させません。値が異なる場合は `incompatible` です。
 
-したがって、
-
 ```text
-reviewed in project A / production
+usable in project A / production
   !=
 usable in project B
   !=
 usable when environment is unknown
 ```
 
-です。
-
-`observed` / `declared` / `inferred` を区別します。現在のrepositoryやbranch等をsystemが直接観測した場合はobserved、ユーザーや資料が明示した場合はdeclared、AIやheuristicの推定はinferredです。inferred contextを利用したassessmentはその事実を出力へ残します。
-
-## semantic editとreview
-
-review recordは `reviewedMeaningFingerprint` を持ちます。現在assertionの `meaningFingerprint` が変わった場合、以前のreviewを現在値へ継承せず `review-required` に戻します。
-
-このReference自身は自然言語のsemantic diffを判定しません。meaning fingerprintは対象を所有するsurface / transformation contractが供給する入力です。fingerprintが一致すること自体をsemantic proofにはせず、Projectionにも `meaning-fingerprint-is-input-not-semantic-proof` を残します。単なるformat変更と意味変更を区別できない場合に、ここで推測してreviewを維持することはしません。
+context provenanceも `observed / declared / inferred` に分けます。repositoryやbranchなどをsystemが直接観測した場合はobserved、ユーザーや資料が明示した場合はdeclared、AIやheuristicの推定はinferredです。inferred contextを使ったassessmentは、その事実を出力へ残します。
 
 ## Supersession / Conflict
 
-supersessionは、旧assertionのstateだけを手で更新する二重管理にしません。後続assertionの `supersedes` relationから、旧assertionのassessmentを `superseded` として派生し、`supersededBy`へrelation provenanceを残します。旧assertion側がreview済みのままでも、後続relationを無視してpremiseへ戻しません。
+supersessionは確認状態へ混ぜません。後続assertionの `supersedes` relationから、旧assertionの `lifecycleState=superseded` を派生し、`supersededBy` にrelation provenanceを残します。
 
-Conflict relationも消しません。現在contextで両方のreviewed assertionが有効候補になるfixtureでは、どちらか一方をAIが選んで解消せず、双方を `review-required` として残します。
+したがって、旧assertionに有効なconfirm eventが残っていても、後続relationを無視してpremiseへ戻しません。
+
+Conflict relationも消しません。現在contextで両方が利用候補になる場合、AIが一方を選んで解消したことにはせず、双方を `review-required` として残します。
 
 ## Project Knowledge Health
 
-Healthは「review済み件数 / 全件数」のpercentを主判定にしません。
+Healthは「確認済み件数 / 全件数」のpercentを主判定にしません。
 
-`dependencies` が、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerがunreviewed / stale / conflict / scope不適合なassertionへ依存していれば `critical` を返します。
+`dependencies` は、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerがunreviewed、stale、Conflict、scope不適合なassertionへ依存する場合は `critical` を返します。
 
-多数の低重要度memoが未reviewでも、それだけでcritical dependencyを希釈しません。
+多数の低重要度memoが未確認でも、それだけでcritical dependencyを希釈しません。
 
 ## review request handoff
 
@@ -96,9 +131,8 @@ reviewが必要なassertion、またはhigh / critical consumerがpremiseとし�
 
 requestは少なくとも次を保持します。
 
-- assertion identity
-- target
-- current review state
+- assertion identity / target
+- derived confirmation state / review binding
 - context
 - Evidence
 - reason
@@ -111,19 +145,9 @@ reviewer candidateはAuthorityではありません。Projectionには `reviewer
 
 `testdata/epistemic-fixture-v0.json` は、SUI / SEIへ同じ意味のfixtureを渡すためのtransport candidateです。
 
-含むcase:
+含むcaseは、current-context user fact、AI unreviewed assertion、human-confirmed assertion、scope付きconfirm、stale情報、relation-derived supersession、reviewed Conflict、reject event、critical / high / low downstream dependencyです。
 
-- current-context user fact
-- AI unreviewed assertion
-- human-reviewed assertion
-- narrow-scope conditional review
-- stale reviewed assertion
-- superseded assertion
-- reviewed conflict pair
-- rejected AI assertion
-- critical / high / low downstream dependency
-
-TEI固有UIやruntime objectをfixtureの正本にしていません。
+TEI固有UIやruntime objectをfixtureの正本にはしません。
 
 ## Authority limits
 
@@ -135,11 +159,13 @@ TEI固有UIやruntime objectをfixtureの正本にしていません。
 - Runtime authority
 - reviewer authority
 
-Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらないことが設計前提です。このtoolは現在Canonical loaderへ接続せず、入力sidecarからread-only Projectionを生成します。
+Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらないことが設計前提です。このtoolはCanonical loaderへ接続せず、入力sidecarからread-only Projectionを生成します。
 
-## v0の状態値をproduction modelへ固定しない
+## v0をproduction modelへ固定しない
 
-このReferenceには、既存pressureを保つため `native / conditional / superseded` 等の状態値が残っています。ADR-0030では、成立経路、確認状態、適用条件、ライフサイクルを別軸にする方針へ精密化しました。したがって、このv0 enumをproduction contractとして固定しません。
+このReferenceは、confirmation historyを単一review stateから分離するpressureまで進めています。ただしevent kind、sequence方式、context scopeの表現、永続化方式をproduction contractとして固定したわけではありません。
+
+特に、review eventを複数surfaceから永続化・mergeする仕組み、reviewerの正式Authority、annotation targetの再特定、epistemic coverage、legacy / export-import境界は別pressureが必要です。
 
 ## 今回まだ示さないこと
 
@@ -148,10 +174,11 @@ Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらない�
 - arbitrary proseからのsemantic meaning fingerprint生成
 - reviewer / stakeholderの正式な組織Authority解決
 - Semantic Extension / Pluginとしてのproduction registration
-- persistent review event store
+- review eventのdurable persistence / multi-surface merge
+- annotation targetの編集後再特定
+- epistemic coverage
+- legacy / export-importでのmetadata loss処理
 - Cross-repository fixtureの正式versioning
-
-これらは最初のcontractがRepository Healthを通り、SUI / SEIの第二consumer pressureへ渡せる段階で進めます。
 
 ## 検証
 
