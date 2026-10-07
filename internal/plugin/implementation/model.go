@@ -175,21 +175,21 @@ func (b staticResponseBuiltin) Invoke(_ context.Context, req pruntime.Request) (
 	return pruntime.Response{}, fmt.Errorf("TEI-native implementation does not support operation %q", req.Operation)
 }
 
-// NewBuiltin adapts the constrained implementation Source to the existing
-// runtime.Builtin ABI. Registration acceptance remains a Host responsibility.
-func NewBuiltin(source Source, definition plugin.Definition) (pruntime.Builtin, error) {
+
+
+func ValidateAgainstDefinition(source Source, definition plugin.Definition) error {
 	normalized, err := Normalize(source)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if definition.ID != normalized.Plugin.ID || definition.Version != normalized.Plugin.Version {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"implementation source %s does not match plugin definition %s@%s",
 			normalized.Identity(), definition.ID, definition.Version,
 		)
 	}
 	if definition.Runtime.Kind != plugin.RuntimeBuiltin {
-		return nil, fmt.Errorf("TEI-native static response Reference requires builtin runtime")
+		return fmt.Errorf("TEI-native static response Reference requires builtin runtime")
 	}
 	var matches int
 	for _, capability := range definition.Provides {
@@ -198,10 +198,23 @@ func NewBuiltin(source Source, definition plugin.Definition) (pruntime.Builtin, 
 		}
 	}
 	if matches != 1 {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"plugin definition must provide capability %s %s exactly once",
 			normalized.CapabilityKind, normalized.CapabilityID,
 		)
+	}
+	return nil
+}
+
+// NewBuiltin adapts the constrained implementation Source to the existing
+// runtime.Builtin ABI. Registration acceptance remains a Host responsibility.
+func NewBuiltin(source Source, definition plugin.Definition) (pruntime.Builtin, error) {
+	if err := ValidateAgainstDefinition(source, definition); err != nil {
+		return nil, err
+	}
+	normalized, err := Normalize(source)
+	if err != nil {
+		return nil, err
 	}
 	return staticResponseBuiltin{
 		source:                normalized,
