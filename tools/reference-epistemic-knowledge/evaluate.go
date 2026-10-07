@@ -10,6 +10,7 @@ import (
 type Assessment struct {
 	AssertionID          string         `json:"assertionId"`
 	MeaningFingerprint   string         `json:"meaningFingerprint"`
+	ReviewSubjectFingerprint string      `json:"reviewSubjectFingerprint"`
 	ContentOrigin        Origin         `json:"contentOrigin"`
 	IngestedBy           IngestionActor `json:"ingestedBy"`
 	MetadataState        MetadataState  `json:"metadataState"`
@@ -183,6 +184,7 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 	assessment := Assessment{
 		AssertionID:           assertion.ID,
 		MeaningFingerprint:    assertion.MeaningFingerprint,
+		ReviewSubjectFingerprint: reviewSubjectFingerprint(assertion),
 		ContentOrigin:         assertion.Origin,
 		IngestedBy:            assertion.IngestedBy,
 		MetadataState:         assertion.MetadataState,
