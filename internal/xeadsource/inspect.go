@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v1"
+
 const (
 	RelationalFactResolutionResolved    = "resolved"
 	RelationalFactResolutionUnresolved  = "unresolved"
@@ -25,7 +27,8 @@ type Inspection struct {
 	RelationalFacts                  RelationalSourceFacts  `json:"relationalFacts"`
 	RelationalDiagnostics            []RelationalDiagnostic `json:"relationalDiagnostics,omitempty"`
 	RelationalFactResolutions         []RelationalFactResolution `json:"relationalFactResolutions,omitempty"`
-	RelationalResolutionStatus       string                 `json:"relationalResolutionStatus"`
+	RelationalResolutionStatus        string                     `json:"relationalResolutionStatus"`
+	RelationalResolutionPolicyRevision string                    `json:"relationalResolutionPolicyRevision"`
 	ClassificationPolicyFingerprint  string                 `json:"classificationPolicyFingerprint,omitempty"`
 	TranscriptionContractFingerprint string                 `json:"transcriptionContractFingerprint,omitempty"`
 	AuthorityLimits                  []string               `json:"authorityLimits"`
@@ -45,8 +48,9 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 		Candidates:                 Classify(doc, policy),
 		RelationalFacts:            facts,
 		RelationalDiagnostics:      diagnostics,
-		RelationalFactResolutions:  factResolutions,
-		RelationalResolutionStatus: resolutionStatus,
+		RelationalFactResolutions:          factResolutions,
+		RelationalResolutionStatus:         resolutionStatus,
+		RelationalResolutionPolicyRevision: RelationalResolutionPolicyRevision,
 		ClassificationPolicyFingerprint: ClassificationPolicyFingerprint(policy),
 		AuthorityLimits: []string{
 			"source-inspection-is-not-canonical-authority",
@@ -55,6 +59,7 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 			"unresolved-source-meaning-must-not-be-auto-completed",
 			"relational-resolution-status-is-source-consistency-not-canonical-meaning",
 			"relational-fact-resolution-is-structural-not-semantic-acceptance",
+			"relational-resolution-policy-revision-is-algorithm-provenance-not-semantic-authority",
 			"resolved-relational-fact-is-only-eligible-not-authorized-for-local-lowering",
 			"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
 			"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
