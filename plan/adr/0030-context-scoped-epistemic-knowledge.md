@@ -13,7 +13,7 @@
 
 ただし、その情報が特定案件、時点、環境では正しくても、別案件や別versionで常に正しいとは限りません。ユーザーは適用文脈を毎回完全には入力しないため、情報の由来だけでなく、どの文脈で成立する前提なのかを扱う必要があります。
 
-TEIにはすでに、AI ProposalとCanonical Acceptanceを分離するADR-0022、Knowledge qualificationとfreshness、Source / Evidenceへのprovenance、Semantic Extension、Plugin Capabilityの境界があります。本ADRはこれらを一般の保存知識へ広げ、人間入力、AI生成物、review結果を後続のAIが利用するための認識上の境界を定めます。
+TEIにはすでに、AI ProposalとCanonical Acceptanceを分離するADR-0022、Knowledge qualificationとfreshness、Source / Evidenceへのprovenance、Semantic Extension、Plugin Capabilityの境界があります。本ADRはこれらを一般の保存知識へ広げ、人間入力、AI生成物、確認結果を後続のAIが利用するための認識上の境界を定めます。
 
 ## 判断
 
@@ -45,7 +45,7 @@ validity time
   valid from / valid until / checked at / reviewed at
 
 provenance links
-  source / evidence / review event / derivation
+  source / evidence / 確認イベント / derivation
 ```
 
 具体的なschema名やenumはReferenceで決めます。本ADRが固定するのは、これらを一つの状態値へ畳まないことです。たとえば、ユーザーが現在の文脈で直接述べたため通常の前提にできることは「確認済み」と同じ意味ではありません。また、条件付きで確認されたことは確認状態ではなく適用条件の性質であり、後続情報に置き換えられたことはライフサイクルの性質です。
@@ -78,9 +78,9 @@ AIが生成した主張は原則としてunreviewedから始めます。ファ�
 
 人間が内容を確認した場合は、その確認が成立したscopeと時点を伴ってreviewedとして扱えます。
 
-AIがreviewed factを要約、統合、言い換えした場合も、新しい文章は原則として新しいAI生成物です。元情報がreview済みであることだけを理由に、生成結果へreview stateを継承しません。意味保存を機械的に証明できる転記等が必要になった場合は、別のtransformation contractとして扱います。
+AIがreviewed factを要約、統合、言い換えした場合も、新しい文章は原則として新しいAI生成物です。元情報が確認済みであることだけを理由に、生成結果へreview stateを継承しません。意味保存を機械的に証明できる転記等が必要になった場合は、別のtransformation contractとして扱います。
 
-### review済みとは、ある文脈で採用可能な前提として確認されたことを表す
+### 確認済みとは、ある文脈で採用可能な前提として確認されたことを表す
 
 reviewedは普遍的なTruthを意味しません。
 
@@ -91,7 +91,7 @@ reviewedは普遍的なTruthを意味しません。
 - document / conversation等のlocal context
 - environment
 - valid time / checked time
-- reviewer / review Evidence
+- 確認者 / 確認Evidence
 - 条件や例外
 
 確認によって「本番環境では正しいが、外部APIでは異なる」と分かった場合、単純なYes / Noへ畳まず、scopeを狭める、条件を追加する、assertionを分割する、元assertionをsupersededにする等の処理へ進めます。
@@ -131,9 +131,9 @@ similarity、model confidence、retrieval rankをTruthや確認済み状態へ�
 
 ### 確認履歴は上書きせず、現在状態を履歴から導出する
 
-同じ情報を複数人が確認したり、後から確認を撤回したり、条件を追加して再確認したりすることがあります。単一のreview recordを上書きすると、誰が何を確認し、その後に何が変わったかを失います。
+同じ情報を複数人が確認したり、後から確認を撤回したり、条件を追加して再確認したりすることがあります。単一の確認記録を上書きすると、誰が何を確認し、その後に何が変わったかを失います。
 
-確認、条件付き確認、否定、撤回等は履歴として追記し、現在の確認状態は対象となる意味、適用範囲、時点、review eventから導出する構造を優先します。人間が内容を確認したことと、その人に組織上の決定Authorityがあることも分けます。
+確認、条件付き確認、否定、撤回等は履歴として追記し、現在の確認状態は対象となる意味、適用範囲、時点、確認イベントから導出する構造を優先します。人間が内容を確認したことと、その人に組織上の決定Authorityがあることも分けます。
 
 ### annotationの対象は編集後に誤って付け替えない
 
@@ -141,9 +141,9 @@ paragraph、card、row、選択範囲等へannotationする場合、文字位置
 
 編集後に同じ対象だと安全に判断できなければ、別の文章へannotationを黙って移しません。detached、ambiguous、stale等として再確認できる状態を残します。
 
-### semantic editはreview validityを再評価する
+### 意味が変わる編集では確認の有効性を再評価する
 
-review済みの文章を変更した場合、以前のreviewを現在値へ無条件に継承しません。
+確認済みの文章を変更した場合、以前のreviewを現在値へ無条件に継承しません。
 
 空白、表示順、format等の意味を変えない変更まで一律に失効させる必要はありませんが、意味が変わる編集を検出した場合は再確認対象に戻します。
 
@@ -151,7 +151,7 @@ review済みの文章を変更した場合、以前のreviewを現在値へ無�
 
 ### 矛盾を自動的に消さない
 
-review済みのassertion同士が矛盾した場合でも、AIがもっともらしい一方を選び、矛盾が解消したことにはしません。
+確認済みのassertion同士が矛盾した場合でも、AIがもっともらしい一方を選び、矛盾が解消したことにはしません。
 
 双方の適用範囲、時点、出所、確認履歴を保持します。文脈差で両立できる場合は適用範囲を精密化し、両立できない場合は矛盾として確認対象へ送ります。
 
@@ -179,20 +179,20 @@ Project Knowledge Healthでは少なくとも次を考慮します。
 
 ### 未確認事項をステークホルダー確認へ接続する
 
-alertを表示するだけで終わらせず、review requestへ変換できる契約を持ちます。
+alertを表示するだけで終わらせず、確認依頼へ変換できる契約を持ちます。
 
-review requestからは少なくとも次へ戻れるようにします。
+確認依頼からは少なくとも次へ戻れるようにします。
 
 - 確認するassertion
 - 現在のstatus / scope
 - 確認が必要な理由
 - downstream impact
 - Source / Evidence
-- reviewer候補
-- review結果
+- 確認者候補
+- 確認結果
 - unresolved / conditional result
 
-AIやruleがreviewer候補を提示しても、それを正式なAuthorityや担当者の確定には使いません。
+AIやruleが確認者候補を提示しても、それを正式なAuthorityや担当者の確定には使いません。
 
 ### 既存資料とmetadataを失う入出力を明示的に扱う
 
@@ -200,7 +200,7 @@ AIやruleがreviewer候補を提示しても、それを正式なAuthorityや担
 
 Markdown、GitHub Issue、外部ストレージ等へ本文だけを書き出すと、epistemic metadataが失われる場合があります。metadataを保持できる形式では一緒に出力し、保持できない形式では喪失を明示します。metadataなしで再取り込みした本文を、以前の確認状態へ自動復元しません。
 
-### UI上の単純さと内部modelの精密さを分ける
+### UI上の単純さと内部モデルの精密さを分ける
 
 SUI等のUIでは、確認、未確認、仮説、否定等の少数状態を高速操作として見せられます。ただし、画面上の4状態を内部modelの全状態へ1対1で固定しません。
 
@@ -220,7 +220,7 @@ ISSUE-000077のSemantic ExtensionとISSUE-000080 / #951のPlugin Capability cont
 
 ```text
 TEI
-  persistence / provenance / context binding / review event / health contract
+  persistence / provenance / context binding / 確認イベント / health contract
 
 SUI
   low-friction annotation / review queue / stakeholder handoff / health projection
@@ -238,7 +238,7 @@ SEI
 - AI生成物を保存しただけで事実化する連鎖を防げる
 - ユーザーが与えた前提を自然に利用できる
 - 別projectや別versionへの誤った一般化を減らせる
-- review結果を条件やscope付きで保持できる
+- 確認結果を条件やscope付きで保持できる
 - 検索・認知処理が未確認情報をfactと同じ強さで扱うことを避けられる
 - 矛盾やstale情報をreview対象として残せる
 - Project Healthを「何が未確認か」だけでなく「何がそれに依存しているか」から判断できる
@@ -251,9 +251,9 @@ SEI
 - annotation対象を編集後に再特定し、曖昧な場合は再確認する必要がある
 - 確認履歴を上書きせず保持する必要がある
 - legacy資料やmetadataを失う入出力のUnknownを扱う必要がある
-- review済み情報の編集時にvalidityを再評価する必要がある
+- 確認済み情報の編集時にvalidityを再評価する必要がある
 - retrieval時にcontext compatibility等を評価する必要がある
-- review requestとProject Healthの依存解析が必要になる
+- 確認依頼とProject Healthの依存解析が必要になる
 - inferred contextの誤推定を観測、訂正できる必要がある
 
 これらは、生成AIを長期的な設計・知識管理へ利用するために受け入れます。
@@ -268,7 +268,7 @@ AI生成物の未確認情報や誤りが、保存を境に事実として再利
 
 ユーザーが作業前提として与えた情報まで再承認が必要になり、通常の対話や設計作業を不自然にするため採用しません。
 
-### review済みをglobal booleanで持つ
+### 確認済みをglobal booleanで持つ
 
 どの文脈、時点、対象で確認されたかを失い、別文脈へ誤って一般化しやすいため採用しません。
 
@@ -292,20 +292,20 @@ ISSUE-000082 / GitHub Issue #958では、少なくとも次を確認します。
 - fact / observation / requirement / decision / constraint / hypothesis等の情報の働きを区別できる
 - 入力した主体と内容の出所を分離できる
 - observed / declared / inferred contextを区別できる
-- 複数review eventから現在の確認状態を導出できる
+- 複数確認イベントから現在の確認状態を導出できる
 - annotation対象を編集後に誤って別箇所へ付け替えない
 - legacy資料やmetadata欠落を確認済みへ推定しない
 - epistemic coverage不足をProject Knowledge Healthと併せて観測できる
 - AI生成主張が保存だけでreviewedへ昇格しない
-- origin / assertion mode / review state / scope / time / Evidenceを分離できる
-- explicit contextとinferred contextを区別できる
-- narrow scopeのfactをwide scopeへ黙って一般化しない
-- reviewed textのsemantic changeでreview validityを再評価できる
-- AI summaryが元factのreview stateを無条件継承しない
+- content provenance / ingestion actor / statement kind / confirmation / lifecycle / context / time / Evidenceを分離できる
+- observed / declared / inferred contextを区別できる
+- 狭い適用範囲の情報を広い適用範囲へ黙って一般化しない
+- 確認済みtextのsemantic changeで確認の有効性を再評価できる
+- AI summaryが元情報の確認状態を無条件継承しない
 - contradictionを保持できる
 - retrievalでrelevanceとcontext compatibilityを分離できる
 - critical dependencyを使ったProject Knowledge Healthを計算できる
-- stakeholder review requestへimpact / Evidence / scopeを渡せる
+- stakeholder 確認依頼へimpact / Evidence / scopeを渡せる
 - SUI #3184とSEI #660が同じ契約を利用できる
 - Extension / Pluginを外しても既存Canonical meaningが変化しない
 
