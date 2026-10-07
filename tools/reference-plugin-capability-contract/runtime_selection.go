@@ -284,6 +284,66 @@ func verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
 	)
 }
 
+func verifyLegacyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+	binding RuntimeCapabilitySelectionBinding,
+	runtimeBinding RuntimeCapabilityBinding,
+	capabilityLock CapabilityResolutionLock,
+	runtimeLock plugin.Lock,
+	env environment.Environment,
+	catalog plugin.Catalog,
+	bindings []realization.ContractQueryExecutorBinding,
+	definition plugin.Definition,
+	mapping LegacyCapabilityMapping,
+) error {
+	if env.ID != binding.Environment {
+		return fmt.Errorf(
+			"runtime capability selection environment %s differs from current environment %s",
+			binding.Environment,
+			env.ID,
+		)
+	}
+
+	currentRuntimeBinding, err := buildLegacyRuntimeCapabilityBinding(
+		capabilityLock,
+		runtimeLock,
+		env.ID,
+		definition,
+		mapping,
+	)
+	if err != nil {
+		return fmt.Errorf("current Runtime Plugin authority does not reproduce capability binding: %w", err)
+	}
+	if currentRuntimeBinding != runtimeBinding {
+		return fmt.Errorf("runtime capability binding differs from current Runtime Plugin authority")
+	}
+
+	resolvedPlugins, err := catalog.ResolveEnvironmentWithLock(env, runtimeLock)
+	if err != nil {
+		return fmt.Errorf("current Runtime Plugin Lock cannot reproduce Environment: %w", err)
+	}
+
+	selected, err := realization.ResolveContractQueryExecutor(
+		env,
+		resolvedPlugins,
+		bindings,
+		binding.Instance,
+		binding.Target,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"current Contract Query executor authority no longer reproduces selection: %w",
+			err,
+		)
+	}
+
+	return verifyRuntimeCapabilitySelectionBinding(
+		binding,
+		runtimeBinding,
+		capabilityLock,
+		selected,
+	)
+}
+
 func validateRuntimeCapabilitySelectionBinding(
 	binding RuntimeCapabilitySelectionBinding,
 ) error {
