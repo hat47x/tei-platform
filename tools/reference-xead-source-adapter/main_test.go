@@ -66,8 +66,8 @@ func TestPublicationReceiptDoesNotContainSourceValuesOrText(t *testing.T) {
 	if receipt.LocatorCount == 0 || receipt.LocatorSetFingerprint == "" {
 		t.Fatalf("locator accounting missing: %+v", receipt)
 	}
-	if receipt.UnknownElements["Mystery"] != 1 || receipt.UnknownElementCount != 1 {
-		t.Fatalf("unknown element accounting=%+v total=%d", receipt.UnknownElements, receipt.UnknownElementCount)
+	if receipt.UnknownElements["Mystery"] != 1 || receipt.UnknownElementCount != 1 || receipt.UnknownAttributeCount != 1 {
+		t.Fatalf("unknown element accounting=%+v elements=%d attributes=%d", receipt.UnknownElements, receipt.UnknownElementCount, receipt.UnknownAttributeCount)
 	}
 	if receipt.AttributeNameCounts["Table"]["CustomAttr"] != 1 {
 		t.Fatalf("new attribute was silently dropped locally: %+v", receipt.AttributeNameCounts["Table"])
@@ -176,5 +176,28 @@ func TestNamespacedLookalikeDoesNotBecomeKnownXeadConstruct(t *testing.T) {
 	}
 	if len(doc.Unresolved) != 1 || doc.Unresolved[0].Code != "namespaced-element" {
 		t.Fatalf("unresolved=%+v", doc.Unresolved)
+	}
+}
+
+func TestNamespacedLookalikeDoesNotProduceKnownSourceFacts(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:extension"><x:TableKey ID="private" Type="PK"/><x:Relationship Table1ID="private"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Facts) != 0 {
+		t.Fatalf("namespaced lookalike produced standard Xead facts: %+v", doc.Facts)
+	}
+	receipt := PublicReceipt(doc)
+	encoded, err := json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"private", "TableKey", "Relationship"} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("public receipt leaked or promoted namespaced source construct %q: %s", forbidden, encoded)
+		}
+	}
+	if receipt.UnknownElementCount != 2 {
+		t.Fatalf("unknown element count=%d want=2", receipt.UnknownElementCount)
 	}
 }
