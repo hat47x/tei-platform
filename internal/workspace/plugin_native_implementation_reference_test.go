@@ -142,11 +142,14 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 		ImplementationDigest: nativeReferenceEngineDigest,
 		Target:               "host/reference",
 	}
-	plan, err = pruntime.BindBuiltinRuntimeEngine(
-		plan,
-		plugin.Identity{ID: realizedDefinition.ID, Version: realizedDefinition.Version},
-		engine,
-	)
+	engineLock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: realizedDefinition.ID, Version: realizedDefinition.Version},
+			Engine: engine,
+		}},
+	}
+	plan, err = pruntime.BindRuntimeEngineLock(plan, engineLock)
 	if err != nil {
 		t.Fatal(err)
 	}
