@@ -72,6 +72,7 @@ func TestBuildDisclosureSeparatesSelectedDisclosedAndOmittedKnowledge(t *testing
 	for _, limit := range []string{
 		"derived-context-is-not-canonical-authority",
 		"selective-disclosure-is-derived-not-authority",
+		"selective-disclosure-is-not-access-control-or-redaction",
 		"disclosure-fingerprint-is-cache-identity-not-semantic-proof",
 		"selection-does-not-change-qualification-or-canonical-meaning",
 		"omitted-knowledge-is-not-negative-evidence",
