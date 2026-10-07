@@ -141,6 +141,17 @@ func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.
 		got.DataDesign.FunctionalDependencies.Nature != "unresolved" {
 		t.Fatalf("Application Pattern identity was promoted to business data identity: %+v", got.DataDesign)
 	}
+	if got.DataDesign.EvidenceCoverageStatus != "complete" {
+		t.Fatalf("record Pattern Data Design Evidence is incomplete: %+v", got.DataDesign)
+	}
+	if !hasDataDesignEvidence(
+		got.DataDesign,
+		"application-pattern",
+		"order_entry.order_record",
+		"applications/order-entry/patterns/order-record.tei",
+	) {
+		t.Fatalf("record Pattern focus Evidence is missing: %+v", got.DataDesign.Evidence)
+	}
 	for _, candidate := range got.DataDesign.BusinessIdentityCandidates {
 		if candidate.TargetOccurrence == "sales.order" {
 			t.Fatalf("record Pattern or physical key invented an order business identity candidate: %+v", candidate)
