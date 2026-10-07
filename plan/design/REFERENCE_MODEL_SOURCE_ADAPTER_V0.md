@@ -108,3 +108,13 @@ exact modelを用いたcoverage確認では、public Repositoryへ集計値、di
 - 旧Runtimeとのbehavior equivalence
 - source factからCanonical meaningへの自動変換
 - Reference Model全体のsemantic transcription完了
+
+## Classification coverage
+
+Source Adapterがsourceを観測できることと、そのconstructに転写方針があることも分ける。
+
+`CheckClassificationCoverage`はPublication Receiptのelement kindと`transcription-contract-v0.json`の`constructMappings`を比較する。観測済みなのにmappingがないkindは`unmappedObservedKinds`として残す。
+
+2026-10-07時点では、exact sourceで観測したXead 30 kind、Xeaf 21 kindのすべてにmapping entryがある。
+
+この結果は転写方針の網羅性だけを示す。mapping entryの存在をSemantic Acceptance、behavior equivalence、Runtime Authorityへ読み替えない。
