@@ -36,6 +36,9 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 	if got.RelationalResolutionStatus != "unresolved" {
 		t.Fatalf("relational inconsistency was marked reusable: %#v", got)
 	}
+	if got.RelationalResolutionPolicyRevision != RelationalResolutionPolicyRevision {
+		t.Fatalf("resolution policy revision=%q", got.RelationalResolutionPolicyRevision)
+	}
 	if len(got.RelationalFactResolutions) != 1 ||
 		got.RelationalFactResolutions[0].Kind != "legacy-key" ||
 		got.RelationalFactResolutions[0].Status != RelationalFactResolutionUnresolved ||
@@ -72,6 +75,7 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 		"unresolved-source-meaning-must-not-be-auto-completed",
 		"relational-resolution-status-is-source-consistency-not-canonical-meaning",
 		"relational-fact-resolution-is-structural-not-semantic-acceptance",
+		"relational-resolution-policy-revision-is-algorithm-provenance-not-semantic-authority",
 		"resolved-relational-fact-is-only-eligible-not-authorized-for-local-lowering",
 		"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
 		"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
