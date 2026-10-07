@@ -295,21 +295,21 @@ func capabilityResolutionFingerprint(
 	provider Provider,
 ) string {
 	return fingerprint(struct {
-		ResolutionPolicy      string         `json:"resolutionPolicy"`
-		Scope                 AuthorityScope `json:"scope"`
-		RealizationTarget                string         `json:"realizationTarget,omitempty"`
-		ContractID            string         `json:"contractId"`
-		ContractVersion       string         `json:"contractVersion"`
-		ContractFingerprint   string         `json:"contractFingerprint"`
-		PluginID              string         `json:"pluginId"`
-		PluginVersion         string         `json:"pluginVersion"`
-		ImplementationID      string         `json:"implementationId"`
+		ResolutionPolicy             string         `json:"resolutionPolicy"`
+		Scope                        AuthorityScope `json:"scope"`
+		RealizationTarget            string         `json:"realizationTarget,omitempty"`
+		ContractID                   string         `json:"contractId"`
+		ContractVersion              string         `json:"contractVersion"`
+		ContractFingerprint          string         `json:"contractFingerprint"`
+		PluginID                     string         `json:"pluginId"`
+		PluginVersion                string         `json:"pluginVersion"`
+		ImplementationID             string         `json:"implementationId"`
 		ArtifactDigest               string         `json:"artifactDigest"`
 		SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	}{
 		ResolutionPolicy:             capabilityResolutionPolicy,
 		Scope:                        scope,
-		RealizationTarget:                       provider.RealizationTarget,
+		RealizationTarget:            provider.RealizationTarget,
 		ContractID:                   contract.ID,
 		ContractVersion:              contract.Version,
 		ContractFingerprint:          contractFingerprint,
