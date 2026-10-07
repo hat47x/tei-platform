@@ -170,6 +170,15 @@
       "risk": "better observation can silently become stronger pressure to preserve accidental As-Is structure in the TEI target design",
       "owner": "ISSUE-000078 / ISSUE-000027",
       "stopCondition": "keep exact source observations as Source/Actual Evidence and require an explicit Proposal/Acceptance step before any reconstructed legacy structure becomes Desired or authoritative TEI meaning"
+    },
+    {
+      "id": "RML-019",
+      "topic": "duplicate-table-or-field-identity",
+      "nature": "unresolved",
+      "evidence": "source Table/Field identifiers can be duplicated in malformed, merged, or hand-edited legacy definitions; previous lookup shape could overwrite duplicate entries while retaining one apparent resolution",
+      "risk": "a key, Relationship, runtime Key, or Refer can be bound to an arbitrary duplicate occurrence and reported as resolved",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "diagnose duplicate Table/Field identities, suppress ambiguous metadata lookup, and keep every dependent key/relation/reference unresolved until source identity is unambiguous"
     }
   ],
   "claimsNotEstablished": [
