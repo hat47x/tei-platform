@@ -67,6 +67,12 @@ func validatePluginImplementationDefinitions(r *Result) error {
 		if !ok {
 			return fmt.Errorf("plugin implementation %s has no matching plugin definition", source.Identity())
 		}
+		if definition.Artifact.Digest != "" || definition.Artifact.SignatureRef != "" || definition.Artifact.Provenance != "" {
+			return fmt.Errorf(
+				"plugin implementation %s requires artifact-free authoritative Plugin definition",
+				source.Identity(),
+			)
+		}
 		if err := implementation.ValidateAgainstDefinition(source, definition); err != nil {
 			return fmt.Errorf("plugin implementation %s: %w", source.Identity(), err)
 		}
