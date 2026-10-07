@@ -518,3 +518,26 @@ func TestDirectUserPremiseIsNotMisreportedAsConfirmed(t *testing.T) {
 		t.Fatalf("direct user premise was conflated with human confirmation: %+v", got)
 	}
 }
+
+func TestReviewHistoryRejectsBackwardChronology(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		assertion := &corpus.Assertions[i]
+		assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
+			Sequence:           2,
+			ID:                 "backdated-reject",
+			Kind:               ReviewEventReject,
+			Reviewer:           "reviewer-b",
+			Method:             reviewMethodHuman,
+			MeaningFingerprint: assertion.MeaningFingerprint,
+			OccurredAt:         "2026-10-06T11:00:00Z",
+		})
+	}
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "must not move backward") {
+		t.Fatalf("backward review chronology was accepted: %v", err)
+	}
+}
