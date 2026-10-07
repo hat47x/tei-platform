@@ -386,3 +386,242 @@ func TestSelectedRuntimeCapabilityRejectsTargetDatabaseMismatch(t *testing.T) {
 		t.Fatalf("target Database mismatch was accepted: %v", err)
 	}
 }
+
+
+func TestRuntimeCapabilitySelectionReplaysCurrentProductionBindingAuthority(t *testing.T) {
+	definition := exactLegacyRuntimeDefinition(
+		"tei.database.oracle",
+		"database.query.oracle",
+		environment.ProviderOracle,
+		"6",
+	)
+	mapping := legacyRuntimeMapping("database.query.oracle")
+	envID := core.MustCanonicalID("development")
+	instanceID := core.MustCanonicalID("sales.oracle")
+	target := realization.ContractQueryTarget{
+		Database: core.MustCanonicalID("sales_oracle"),
+		Contract: core.MustCanonicalID("sales.oracle.contract"),
+		Query:    core.MustLocalName("find"),
+	}
+	env := environment.Environment{
+		ID: envID,
+		Plugins: []environment.ExtensionRequirement{{
+			ID: definition.ID, CompatibleMajor: 1,
+		}},
+		Instances: []environment.DatabaseInstance{{
+			ID:         instanceID,
+			Definition: target.Database,
+			Provider:   environment.ProviderOracle,
+		}},
+	}
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{definition}}
+	resolvedPlugins, err := catalog.ResolveEnvironment(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindings := []realization.ContractQueryExecutorBinding{{
+		Environment: envID,
+		Instance:    instanceID,
+		Target:      target,
+		Executor:    definition.Provides[0].ID,
+	}}
+	selected, err := realization.ResolveContractQueryExecutor(
+		env,
+		resolvedPlugins,
+		bindings,
+		instanceID,
+		target,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	capabilityLock, err := resolveLegacyContractQueryCapabilityForSelection(
+		selected,
+		definition,
+		mapping,
+		evidenceForLegacyRuntimeSelection(
+			t,
+			definition,
+			mapping,
+			"production-binding-conformance",
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeLock, err := plugin.BuildLock(
+		catalog,
+		[]environment.Environment{env},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeBinding, err := buildLegacyRuntimeCapabilityBinding(
+		capabilityLock,
+		runtimeLock,
+		envID,
+		definition,
+		mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectionBinding, err := buildRuntimeCapabilitySelectionBinding(
+		runtimeBinding,
+		capabilityLock,
+		selected,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		env,
+		resolvedPlugins,
+		bindings,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		env,
+		resolvedPlugins,
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "no") {
+		t.Fatalf("removed production Binding remained current: %v", err)
+	}
+
+	duplicate := append(
+		append([]realization.ContractQueryExecutorBinding(nil), bindings...),
+		bindings[0],
+	)
+	if err := verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		env,
+		resolvedPlugins,
+		duplicate,
+	); err == nil || !strings.Contains(err.Error(), "multiple") {
+		t.Fatalf("duplicate production Binding remained current: %v", err)
+	}
+}
+
+func TestRuntimeCapabilitySelectionRejectsCurrentBindingToDifferentExecutor(t *testing.T) {
+	oracleDefinition := exactLegacyRuntimeDefinition(
+		"tei.database.oracle",
+		"database.query.oracle",
+		environment.ProviderOracle,
+		"7",
+	)
+	alternateDefinition := exactLegacyRuntimeDefinition(
+		"tei.database.oracle.alternate",
+		"database.query.oracle_alternate",
+		environment.ProviderOracle,
+		"8",
+	)
+	mapping := legacyRuntimeMapping("database.query.oracle")
+	envID := core.MustCanonicalID("development")
+	instanceID := core.MustCanonicalID("sales.oracle")
+	target := realization.ContractQueryTarget{
+		Database: core.MustCanonicalID("sales_oracle"),
+		Contract: core.MustCanonicalID("sales.oracle.contract"),
+		Query:    core.MustLocalName("find"),
+	}
+	env := environment.Environment{
+		ID: envID,
+		Plugins: []environment.ExtensionRequirement{
+			{ID: oracleDefinition.ID, CompatibleMajor: 1},
+			{ID: alternateDefinition.ID, CompatibleMajor: 1},
+		},
+		Instances: []environment.DatabaseInstance{{
+			ID:         instanceID,
+			Definition: target.Database,
+			Provider:   environment.ProviderOracle,
+		}},
+	}
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{
+		oracleDefinition,
+		alternateDefinition,
+	}}
+	resolvedPlugins, err := catalog.ResolveEnvironment(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalBindings := []realization.ContractQueryExecutorBinding{{
+		Environment: envID,
+		Instance:    instanceID,
+		Target:      target,
+		Executor:    oracleDefinition.Provides[0].ID,
+	}}
+	selected, err := realization.ResolveContractQueryExecutor(
+		env,
+		resolvedPlugins,
+		originalBindings,
+		instanceID,
+		target,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilityLock, err := resolveLegacyContractQueryCapabilityForSelection(
+		selected,
+		oracleDefinition,
+		mapping,
+		evidenceForLegacyRuntimeSelection(
+			t,
+			oracleDefinition,
+			mapping,
+			"original-selection",
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeLock, err := plugin.BuildLock(catalog, []environment.Environment{env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeBinding, err := buildLegacyRuntimeCapabilityBinding(
+		capabilityLock,
+		runtimeLock,
+		envID,
+		oracleDefinition,
+		mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectionBinding, err := buildRuntimeCapabilitySelectionBinding(
+		runtimeBinding,
+		capabilityLock,
+		selected,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changedBindings := []realization.ContractQueryExecutorBinding{{
+		Environment: envID,
+		Instance:    instanceID,
+		Target:      target,
+		Executor:    alternateDefinition.Provides[0].ID,
+	}}
+	err = verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		env,
+		resolvedPlugins,
+		changedBindings,
+	)
+	if err == nil || !strings.Contains(err.Error(), "differs") {
+		t.Fatalf("changed authoritative executor remained current: %v", err)
+	}
+}
