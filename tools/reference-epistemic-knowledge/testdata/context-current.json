@@ -1,9 +1,21 @@
 {
   "schema": "tei.reference.epistemic-context/v0",
   "bindings": [
-    {"dimension": "project", "value": "tei", "provenance": "explicit"},
-    {"dimension": "branch", "value": "main", "provenance": "explicit"},
-    {"dimension": "environment", "value": "production", "provenance": "explicit"}
+    {
+      "dimension": "project",
+      "value": "tei",
+      "provenance": "observed"
+    },
+    {
+      "dimension": "branch",
+      "value": "main",
+      "provenance": "observed"
+    },
+    {
+      "dimension": "environment",
+      "value": "production",
+      "provenance": "observed"
+    }
   ],
   "asOf": "2026-10-06T14:00:00Z"
 }
