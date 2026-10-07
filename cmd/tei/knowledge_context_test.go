@@ -687,6 +687,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"target-membership-exclusivity",
 		"identifier-stability",
 		"temporal-validity",
+		"history-version-identity",
+		"identifier-reuse-policy",
 	} {
 		if !containsKnowledgeContextString(identityCandidate.EvidenceNeeded, needed) {
 			t.Fatalf("business identity Evidence need %q is missing: %+v", needed, identityCandidate.EvidenceNeeded)
@@ -721,6 +723,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"relation-business-meaning",
 		"target-membership-exclusivity",
 		"temporal-validity",
+		"history-version-identity",
+		"temporal-dependency-scope",
 	} {
 		if !containsKnowledgeContextString(fdCandidate.EvidenceNeeded, needed) {
 			t.Fatalf("functional dependency Evidence need %q is missing: %+v", needed, fdCandidate.EvidenceNeeded)
