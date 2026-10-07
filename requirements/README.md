@@ -233,6 +233,28 @@ TEIでは、データモデルも含め、現在あるモデル体系を将来�
 
 この要求群により、TEIの拡張性を「実装を差し替えられること」から「意味体系そのものを後から追加し、既存の意味と矛盾なく扱えること」まで広げます。生成AIは、その拡張を探索・合成・検証することで、毎回ゼロから設計判断をやり直す範囲を減らします。
 
+
+### I. 開発環境を囲い込まない — RQ-034
+
+生成AIを開発基盤に使う場合も、TEI専用のAgent Runtimeへ作業を閉じ込めません。ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDEやCLI、CIは、それぞれ独立した開発環境としてRepositoryを扱えます。
+
+重要なのは、どのToolが編集したかをTEIへ細かく記録することではありません。各環境がSourceを理解し、編集し、必要なBuildやTestまで行い、その結果をGit等の標準的な経路で受け渡せることです。統合後は、元のChatやAgentを必要とせずauthoritative sourceからCanonical meaningを再構築できなければなりません。
+
+主な失敗例は次のとおりです。
+
+- TEIを編集するために特定のAgent AdapterやChat UIが必須になる
+- AIがSourceを編集する前に、すべての変更をTEI独自Proposal形式へ変換しなければならない
+- GitやCIが持つ作業状態をAgent Session、Checkpoint、検証状態等としてTEIへ二重管理する
+- Gitで十分な変更にもTEI独自Change Setを必須にする
+- MCPから呼び出した操作だけが特別なSemantic authorityを持つ
+- 開発環境のShell / Filesystem権限とApplication RuntimeのAuthorityを混同する
+
+対応するRequirement:
+
+- **RQ-034** — 標準的な開発環境からTEIを改修・実行・検証できる
+
+RQ-034はRQ-015やRQ-027を置き換えません。RQ-015はAIが何を参照して実装するか、RQ-027は後から再入場するための開発contextを扱います。RQ-034は、それらを利用する開発環境を特定のAgent製品やTEI専用workflowへ固定しないための境界です。
+
 ## 3. 一つの受注例で要求のつながりを見る
 
 たとえば「顧客を選び、複数の明細を持つ受注を登録する」という業務を考えます。
