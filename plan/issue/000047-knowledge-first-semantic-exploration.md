@@ -348,6 +348,10 @@ Reference pressureでは少なくとも次を比較します。
 
 Data Design Contextには、判断材料として使ったData、Attribute、Relation、Relation keyの両端、Validation、関連Dataについて、Source Indexから得たsubject、source path、source fingerprint、range、roleを`evidence`として含める。authoritativeなDefinition / Authoring referenceを取得できないsubjectは黙って省略せず、`evidenceMissing`へ残す。
 
+Context再利用では、Evidenceの揃い方と構造解決の一意性を分ける。`evidenceCoverageStatus=complete|incomplete`は必要subjectのSource Evidenceが揃っているかだけを表し、`resolutionStatus=resolved|ambiguous`はCanonical ID / Persistence Mapping等の構造解決が一意かだけを表す。業務意味がすべて確定したことを`resolved`の意味にはしない。cached Contextのexact fingerprint guardは、`resolutionStatus=resolved`かつEvidence completeの場合だけ通す。Evidenceが揃っていてもduplicate Semantic IDやduplicate Persistence Mappingが残るContextは再利用しない。
+
+このJSON contract変更に合わせ、Data Design Projection revisionは`tei.knowledge.data-design/v2`へ上げる。fingerprint自体にもprojection revisionが含まれるため、v1 cacheをv2へ黙って持ち越さない。
+
 Data Design Context全体には`projectionRevision`と`fingerprint`も付ける。fingerprintは、正規化・並べ替え後のData Design Context全体から`fingerprint`自身だけを空にして決定論的に生成する。したがって、関連Source Evidenceだけでなく、ambiguity、候補、Persistence Realization、Evidence coverageなどProjectionの意味が変われば値も変わる。無関係なSourceはProjectionへ入らないため、その追加だけではfingerprintを変えない。この値はData設計の正しさやCanonical meaningの同一性を証明するものではなく、AIやStudioがContextを再取得するためのcache identityとして扱う。
 
 Source Evidenceの揃い方は`evidenceCoverageStatus = complete | incomplete`で別に示す。`complete`が意味するのは、Data Design Contextが必要と判断したsubjectについてDefinition / Authoring EvidenceをSource Indexから取得できたことまでであり、Source Index自体が現在のworkspaceと一致することの証明ではない。Source freshnessはSource Index側のfingerprint検証責務として分離する。`incomplete`なContextにもfingerprintは付くが、完全なEvidenceを持つContextとして再利用しない。
