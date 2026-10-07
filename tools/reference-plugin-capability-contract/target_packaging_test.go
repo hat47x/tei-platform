@@ -315,3 +315,92 @@ func TestTargetPackagingPlanValidationRejectsStaleCountsAndNormalizesOrder(t *te
 		t.Fatalf("stale packaging counts were accepted: %v", err)
 	}
 }
+
+
+func TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts(t *testing.T) {
+	firstContract := portableRuntimeContract()
+	secondContract := firstContract
+	secondContract.ID = "application-runtime.reference-portable-secondary"
+	secondContract.ConformanceProfile = "tei.reference.portable-runtime-secondary/v0"
+
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.multi-contract"),
+		Version: "1.0.0",
+	}
+	logical := Provider{
+		PluginID:            string(definition.ID),
+		PluginVersion:       definition.Version,
+		ImplementationID:    "multi-contract.runtime",
+		Scope:               ScopeApplicationRuntime,
+		ContractID:          firstContract.ID,
+		ContractVersion:     firstContract.Version,
+		ContractFingerprint: fingerprint(firstContract),
+		ConformanceProfile:  firstContract.ConformanceProfile,
+	}
+	plan := providerRuntimeBuildPlan(
+		logical.PluginID,
+		logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
+		"web-browser",
+		"runtime",
+		"cmd/multi-contract",
+		"a",
+	)
+	buildLock, _ := buildLockForPlan(t, plan, "5")
+	binding, err := bindProviderToBuildArtifact(logical, plan, buildLock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstProvider, err := realizeProviderFromBuild(logical, binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondLogical := logical
+	secondLogical.ContractID = secondContract.ID
+	secondLogical.ContractVersion = secondContract.Version
+	secondLogical.ContractFingerprint = fingerprint(secondContract)
+	secondLogical.ConformanceProfile = secondContract.ConformanceProfile
+	secondProvider, err := realizeProviderFromBuild(secondLogical, binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstInput := targetResolveInput(firstContract, "web-browser", firstProvider)
+	firstResolution, err := resolveCapability(firstInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstLock, err := buildCapabilityResolutionLock(firstInput, firstResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondInput := targetResolveInput(secondContract, "web-browser", secondProvider)
+	secondResolution, err := resolveCapability(secondInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondLock, err := buildCapabilityResolutionLock(secondInput, secondResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	packaging, err := buildTargetCapabilityPackagingPlan([]TargetPackagingInput{
+		{CapabilityLock: firstLock, BuildRealization: binding},
+		{CapabilityLock: secondLock, BuildRealization: binding},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packaging.LogicalProviderCount != 1 ||
+		packaging.PhysicalArtifactCount != 1 ||
+		packaging.CoalescedArtifactCount != 0 ||
+		packaging.SplitPluginCount != 0 {
+		t.Fatalf("multi-Contract implementation was miscounted: %+v", packaging)
+	}
+	if len(packaging.Artifacts) != 1 ||
+		len(packaging.Artifacts[0].Providers) != 2 {
+		t.Fatalf("multi-Contract refs were lost: %+v", packaging.Artifacts)
+	}
+}
