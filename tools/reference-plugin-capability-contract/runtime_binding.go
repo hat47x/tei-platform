@@ -75,6 +75,39 @@ func buildRuntimeCapabilityBinding(
 	return binding, nil
 }
 
+func buildLegacyRuntimeCapabilityBinding(
+	capabilityLock CapabilityResolutionLock,
+	runtimeLock plugin.Lock,
+	environmentID core.CanonicalID,
+	definition plugin.Definition,
+	mapping LegacyCapabilityMapping,
+) (RuntimeCapabilityBinding, error) {
+	projected, err := projectLegacyCapabilityProvider(definition, mapping)
+	if err != nil {
+		return RuntimeCapabilityBinding{}, err
+	}
+	if projected != capabilityLock.Provider {
+		return RuntimeCapabilityBinding{}, fmt.Errorf(
+			"capability lock provider was not derived from the authoritative legacy Plugin declaration",
+		)
+	}
+	locked, err := runtimeLockedPlugin(
+		runtimeLock,
+		environmentID,
+		projected.PluginID,
+		projected.PluginVersion,
+	)
+	if err != nil {
+		return RuntimeCapabilityBinding{}, err
+	}
+	if locked.Fingerprint != plugin.DefinitionFingerprint(definition) {
+		return RuntimeCapabilityBinding{}, fmt.Errorf(
+			"runtime Plugin Lock definition fingerprint does not match authoritative legacy Plugin definition",
+		)
+	}
+	return buildRuntimeCapabilityBinding(capabilityLock, runtimeLock, environmentID)
+}
+
 func verifyRuntimeCapabilityBinding(
 	binding RuntimeCapabilityBinding,
 	capabilityLock CapabilityResolutionLock,
