@@ -335,3 +335,36 @@ logical Provider数はPlugin / version / implementation IDで数えます。同�
 Planのfreshnessはfingerprintの自己整合だけでは判定しません。現在のCapability Resolution LockとProviderBuildRealizationからPlanを再構築します。artifact bytesが同じでもBuildPlanが変わればProviderBuildRealizationのfingerprintが変わるため、保存済みPlanはstaleになります。一方、Capability Resolution Lockは変わりません。Build provenanceとcallable Provider identityを別の更新軸として保つためです。
 
 E8で成立したのは、Target packagingの機械可読なderived表現と、coalescing / splitの構造的な計測までです。actual Wasm / JavaScript artifactの生成、lazy load、byte deduplication、startup / memory / transfer測定、split artifactへのRuntime Authorityは未実証です。RQ-024のEvidence tierは上げません。
+
+## E9 Execution Authority separation — 2026-10-07
+
+Capability Resolution Lockが成立しても、そのProviderを実行してよいとは限りません。Referenceでは`CapabilityExecutionProfile`を別artifactとして追加し、Authority scope、realization Target、isolation policy、Permission集合を固定します。
+
+Execution ProfileをProviderへbindするとresolution identityは変わります。一方、実行許可は別の`CapabilityExecutionGrant`で与え、`CapabilityExecutionAuthorityBinding`へ固定します。GrantはCapability Lock、Execution Profile、exact Permission集合、Authority Evidence fingerprintを参照します。
+
+Permission不足だけでなく、Profileに無いPermissionの追加も拒否します。zero-Permission profileへambient権限を自動付与しません。host-trustedとhost-enforced-sandboxも別のisolation policyとして扱います。
+
+この境界によって、Contract適合と実行権限を分離します。Conformance EvidenceがあってもExecution Authorityは得られず、Execution Authority Evidenceを更新してもCapability Resolution Lockのidentityは変えません。
+
+E9はReference内のAuthority modelです。production hostのPermission Grant、Resource Broker、Lease、Sandbox enforcementへ接続したことまでは意味しません。
+
+## E10 production Runtime Authority bridge — 2026-10-07
+
+Application Runtimeのlegacy Capability移行では、generic Execution Profileを第二のPermission Authorityにしません。productionの`EnvironmentPlan`が既に選んだPlugin runtimeとCapability runtimeへ照合する`ProductionExecutionBridge` candidateを追加しました。
+
+bridgeは、Capability Resolution Lock、RuntimeCapabilityBinding、Execution Profile、Execution Authority Binding、production EnvironmentPlan、legacy Capability identityを同時に照合します。
+
+特に次をfail closedで確認します。
+
+- production CapabilityのPlugin identityがlocked Providerと一致する
+- legacy Capability declaration fingerprintがlocked Source declarationと一致する
+- production側で実際にgrantされたPermission集合がExecution Profileとexactに一致する
+- host-trusted profileはin-process / host-trusted runtimeへだけ接続する
+- host-enforced-sandbox profileはprocess / external-process / sandbox-requiredへだけ接続する
+- Runtime Capability Bindingのdescriptor / artifactとproduction Plugin runtimeが一致する
+
+Resource BindingやLease Policyはgeneric Execution Profileへ移しません。productionの`CapabilityRuntime`に残し、そのfingerprintをbridge identityへ含めます。そのため、Resource / Lease policyが変われば保存済みbridgeはstaleになります。無関係なPlugin runtimeがEnvironmentPlanへ追加されても、対象Providerと無関係ならbridge identityは変えません。
+
+`ProductionExecutionBridge`自身は`derived-verification-not-runtime-authority`です。Provider選択、Permission Grant、Resource取得、Host Sandbox起動のいずれも行いません。既存production Authorityとgeneric contractの整合を検証するだけです。
+
+これにより、generic Capability Contractへ移行するために既存runtime Permission / Resource / Sandbox機構を捨てる必要がないことをReference上で示せます。ただしactual `HostSandboxLauncher`やResource Brokerをgeneric Capabilityから起動するE2Eは未実施です。production enforcement成立とは扱いません。
