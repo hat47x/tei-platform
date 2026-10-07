@@ -140,12 +140,14 @@ type DataDesignContext struct {
 	EvidenceMissing                       []subject.Subject                         `json:"evidenceMissing,omitempty"`
 	BusinessOccurrenceIdentifier          DataDesignKnowledgeState                  `json:"businessOccurrenceIdentifier"`
 	CandidateKeys                         DataDesignKnowledgeState                  `json:"candidateKeys"`
-	FunctionalDependencies                DataDesignKnowledgeState                  `json:"functionalDependencies"`
-	CompositeDomainConstraints                      DataDesignKnowledgeState                  `json:"compositeDomainConstraints"`
-	BusinessIdentityEvidenceQuestions     []string                                  `json:"businessIdentityEvidenceQuestions"`
-	FunctionalDependencyEvidenceQuestions []string                                  `json:"functionalDependencyEvidenceQuestions"`
-	CompositeDomainConstraintEvidenceQuestions      []string                                  `json:"compositeDomainConstraintEvidenceQuestions"`
-	RelationEvidenceQuestions             []string                                  `json:"relationEvidenceQuestions"`
+	FunctionalDependencies                     DataDesignKnowledgeState                  `json:"functionalDependencies"`
+	CompositeDomainConstraints                   DataDesignKnowledgeState                  `json:"compositeDomainConstraints"`
+	TemporalHistoryConditions                    DataDesignKnowledgeState                  `json:"temporalHistoryConditions"`
+	BusinessIdentityEvidenceQuestions            []string                                  `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions        []string                                  `json:"functionalDependencyEvidenceQuestions"`
+	CompositeDomainConstraintEvidenceQuestions   []string                                  `json:"compositeDomainConstraintEvidenceQuestions"`
+	TemporalHistoryEvidenceQuestions             []string                                  `json:"temporalHistoryEvidenceQuestions"`
+	RelationEvidenceQuestions                    []string                                  `json:"relationEvidenceQuestions"`
 	AuthorityLimits                       []string                                  `json:"authorityLimits"`
 }
 
@@ -286,6 +288,10 @@ func buildDataDesignContext(
 			Nature: "unresolved",
 			Reason: "composite-domain-constraint-not-first-class-in-current-canonical-model",
 		},
+		TemporalHistoryConditions: DataDesignKnowledgeState{
+			Nature: "unresolved",
+			Reason: "temporal-history-condition-not-first-class-in-current-canonical-model",
+		},
 		BusinessIdentityEvidenceQuestions: []string{
 			"which-fields-identify-the-business-occurrence",
 			"what-is-the-uniqueness-scope",
@@ -310,6 +316,13 @@ func buildDataDesignContext(
 			"which-source-or-contract-establishes-the-allowed-combinations",
 			"is-the-domain-static-or-derived-from-reference-data",
 		},
+		TemporalHistoryEvidenceQuestions: []string{
+			"when-is-the-business-occurrence-or-identity-valid",
+			"can-the-business-identifier-be-reused-across-time",
+			"which-state-transitions-change-identity-membership-or-validity",
+			"which-history-or-validity-period-must-be-preserved",
+			"which-source-or-contract-establishes-the-temporal-semantics",
+		},
 		RelationEvidenceQuestions: []string{
 			"what-business-meaning-does-the-relation-express",
 			"is-the-relation-a-changeable-reference-parent-contained-repeat-or-independent-association",
@@ -333,6 +346,9 @@ func buildDataDesignContext(
 			"relation-shape-is-not-composite-domain-constraint-evidence",
 			"scoped-uniqueness-is-not-composite-domain-constraint",
 			"persistence-unique-constraint-is-not-composite-domain-constraint",
+			"absence-of-authored-temporal-history-condition-is-not-timeless-semantics",
+			"datetime-or-timestamp-attribute-is-not-temporal-semantics",
+			"persistence-history-column-is-not-business-temporal-semantics",
 			"ambiguous-semantic-identity-does-not-produce-design-candidates",
 			"ambiguous-persistence-identity-does-not-produce-realization-facts",
 			"relation-shape-does-not-establish-business-meaning",
