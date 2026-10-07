@@ -80,6 +80,7 @@ func main() {
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
@@ -150,6 +151,10 @@ func main() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
+		}
+		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		writeJSON(context)
 		return
