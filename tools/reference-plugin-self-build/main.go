@@ -752,27 +752,30 @@ func hashTrackedSourceTree(repo string) (string, error) {
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
 }
 
-func requireNoExternalModules(repo, goPath string) error {
+func requireNoExternalModules(repo, goPath string, packages ...string) error {
+	if len(packages) == 0 {
+		return fmt.Errorf("at least one Go package is required for dependency closure validation")
+	}
 	stateDir, err := os.MkdirTemp("", "tei-plugin-self-build-list-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(stateDir)
 
-	cmd := exec.Command(
-		goPath,
+	args := []string{
 		"list",
 		"-mod=readonly",
 		"-deps",
 		"-f",
 		"{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}",
-		referencePackage,
-	)
+	}
+	args = append(args, packages...)
+	cmd := exec.Command(goPath, args...)
 	cmd.Dir = repo
 	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("resolve reference plugin dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("resolve Reference Go dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	for _, raw := range strings.Split(string(out), "\n") {
 		line := strings.TrimSpace(raw)
@@ -781,7 +784,7 @@ func requireNoExternalModules(repo, goPath string) error {
 		}
 		fields := strings.Fields(line)
 		if len(fields) > 0 && fields[0] != "tei" {
-			return fmt.Errorf("reference plugin has unresolved external build dependency %q", line)
+			return fmt.Errorf("Reference Go package has unresolved external build dependency %q", line)
 		}
 	}
 	return nil
@@ -872,6 +875,13 @@ func executableName(name string) string {
 }
 
 func buildReferencePlugin(repo, goPath, output, stateDir string) error {
+	if err := buildGoPackage(repo, goPath, referencePackage, output, stateDir); err != nil {
+		return fmt.Errorf("build reference process plugin: %w", err)
+	}
+	return nil
+}
+
+func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 	cmd := exec.Command(
 		goPath,
 		"build",
@@ -880,13 +890,32 @@ func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 		"-mod=readonly",
 		"-o",
 		output,
-		referencePackage,
+		packagePath,
 	)
 	cmd.Dir = repo
 	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("build reference process plugin: %w: %s", err, strings.TrimSpace(string(combined)))
+		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
+	}
+	return nil
+}
+
+func runNativePluginBuilder(repo, builderPath, output string) error {
+	cmd := exec.Command(
+		builderPath,
+		"-implementation",
+		filepath.Join(repo, filepath.FromSlash(nativeImplementation)),
+		"-plugin",
+		filepath.Join(repo, filepath.FromSlash(nativeDescriptor)),
+		"-out",
+		output,
+	)
+	cmd.Dir = repo
+	cmd.Env = []string{}
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("native Plugin builder: %w: %s", err, strings.TrimSpace(string(combined)))
 	}
 	return nil
 }
