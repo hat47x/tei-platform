@@ -93,7 +93,7 @@ func TestStaticResponseBuiltinUsesExistingRuntimeABI(t *testing.T) {
 }
 
 func TestStaticResponseBuiltinRejectsUnsupportedInvocation(t *testing.T) {
-	source := implementationSource(`{"outcome":"accepted"}`)
+	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 	builtin, err := implementation.NewBuiltin(source, implementationDefinition())
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +120,7 @@ func TestStaticResponseBuiltinRejectsUnsupportedInvocation(t *testing.T) {
 }
 
 func TestValidateAgainstDefinitionRejectsRuntimeAndCapabilityMismatch(t *testing.T) {
-	source := implementationSource(`{"outcome":"accepted"}`)
+	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 	definition := implementationDefinition()
 
 	process := definition
@@ -142,14 +142,14 @@ func TestValidateAgainstDefinitionRejectsRuntimeAndCapabilityMismatch(t *testing
 
 func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 	t.Run("other capability kind", func(t *testing.T) {
-		source := implementationSource(`{"outcome":"accepted"}`)
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 		source.CapabilityKind = plugin.CapabilityObservationProvider
 		if err := source.Validate(); err == nil {
 			t.Fatal("expected non-deployment capability to fail")
 		}
 	})
 	t.Run("additional operation", func(t *testing.T) {
-		source := implementationSource(`{"outcome":"accepted"}`)
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 		source.Operations = append(source.Operations, implementation.Operation{
 			Name:    "other",
 			Payload: []byte(`{"ok":true}`),
@@ -159,10 +159,34 @@ func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 		}
 	})
 	t.Run("renamed operation", func(t *testing.T) {
-		source := implementationSource(`{"outcome":"accepted"}`)
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 		source.Operations[0].Name = "observe"
 		if err := source.Validate(); err == nil {
 			t.Fatal("expected non-execute operation to fail")
 		}
 	})
+}
+
+
+func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+	}{
+		{"action id", `{"attemptId":"a","actionId":"forged","outcome":"accepted"}`},
+		{"idempotency key", `{"attemptId":"a","idempotencyKey":"forged","outcome":"accepted"}`},
+		{"executor id", `{"attemptId":"a","executorId":"forged","outcome":"accepted"}`},
+		{"plugin provenance", `{"attemptId":"a","outcome":"accepted","pluginInvocation":{"pluginId":"tei.x"}}`},
+		{"unknown field", `{"attemptId":"a","outcome":"accepted","unknown":true}`},
+		{"missing attempt", `{"outcome":"accepted"}`},
+		{"invalid outcome", `{"attemptId":"a","outcome":"maybe"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := implementationSource(tt.payload)
+			if err := source.Validate(); err == nil {
+				t.Fatal("expected invalid deployment executor response to fail")
+			}
+		})
+	}
 }
