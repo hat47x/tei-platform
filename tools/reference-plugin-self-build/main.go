@@ -696,11 +696,14 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	runtimePlan, err = pruntime.BindBuiltinRuntimeEngine(
-		runtimePlan,
-		plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
-		nativeRuntimeEngine,
-	)
+	nativeRuntimeEngineLock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
+			Engine: nativeRuntimeEngine,
+		}},
+	}
+	runtimePlan, err = pruntime.BindRuntimeEngineLock(runtimePlan, nativeRuntimeEngineLock)
 	if err != nil {
 		return evidence{}, err
 	}
