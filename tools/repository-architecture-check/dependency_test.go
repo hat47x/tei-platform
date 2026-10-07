@@ -60,15 +60,43 @@ func productionImports(root string) ([]importEdge, error) {
 	return edges, nil
 }
 
+
+// readModulePath prevents a future go.mod module rename from silently
+// bypassing first-party import checks that were written for "tei".
+func readModulePath(root string) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return "", fmt.Errorf("read go.mod: %w", err)
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 || fields[0] != "module" {
+			continue
+		}
+		module := fields[1]
+		if strings.HasPrefix(module, "\"") {
+			module, err = strconv.Unquote(module)
+			if err != nil {
+				return "", fmt.Errorf("invalid module directive: %w", err)
+			}
+		}
+		if module == "" {
+			return "", fmt.Errorf("empty module directive")
+		}
+		return module, nil
+	}
+	return "", fmt.Errorf("go.mod has no module directive")
+}
+
 // boundaryViolation deliberately guards only the small, demonstrated core.
 // Plugin -> implementation-specific model coupling belongs to #951 and must
 // not be hidden by a premature blanket restriction in this test.
-func boundaryViolation(e importEdge) string {
-	if strings.HasPrefix(e.path, "tei/cmd/") || strings.HasPrefix(e.path, "tei/tools/") ||
-		strings.HasPrefix(e.path, "tei/examples/") || strings.HasPrefix(e.path, "tei/reference/") {
+func boundaryViolation(e importEdge, module string) string {
+	if strings.HasPrefix(e.path, module+"/cmd/") || strings.HasPrefix(e.path, module+"/tools/") ||
+		strings.HasPrefix(e.path, module+"/examples/") || strings.HasPrefix(e.path, module+"/reference/") {
 		return "internal packages must not import executable/reference packages"
 	}
-	if !strings.HasPrefix(e.path, "tei/internal/") {
+	if !strings.HasPrefix(e.path, module+"/internal/") {
 		return ""
 	}
 	group := strings.TrimPrefix(e.source, "internal/")
@@ -77,16 +105,16 @@ func boundaryViolation(e importEdge) string {
 	case "core", "subject":
 		return "foundational package must not depend on other TEI internal packages"
 	case "permission":
-		if e.path != "tei/internal/core" {
+		if e.path != module+"/internal/core" {
 			return "permission model may depend only on core"
 		}
 	case "semantic":
-		if e.path != "tei/internal/core" && e.path != "tei/internal/semantic" &&
-			!strings.HasPrefix(e.path, "tei/internal/semantic/") {
+		if e.path != module+"/internal/core" && e.path != module+"/internal/semantic" &&
+			!strings.HasPrefix(e.path, module+"/internal/semantic/") {
 			return "semantic model must not depend on realization or runtime packages"
 		}
 	case "stdlib":
-		if e.path != "tei/internal/core" && e.path != "tei/internal/semantic" {
+		if e.path != module+"/internal/core" && e.path != module+"/internal/semantic" {
 			return "standard semantics may depend only on core and semantic model"
 		}
 	}
@@ -114,7 +142,7 @@ func TestBoundaryViolationClassification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		e := importEdge{source: tt.source, path: tt.imported}
-		if got := boundaryViolation(e) != ""; got != tt.wantViolation {
+		if got := boundaryViolation(e, "tei") != ""; got != tt.wantViolation {
 			t.Errorf("boundaryViolation(%s -> %s)=%v, want %v", tt.source, tt.imported, got, tt.wantViolation)
 		}
 	}
@@ -129,6 +157,10 @@ func TestProductionDependencyBoundaries(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
 		t.Fatalf("repository root unavailable: %v", err)
 	}
+	module, err := readModulePath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	edges, err := productionImports(root)
 	if err != nil {
 		t.Fatal(err)
@@ -137,8 +169,72 @@ func TestProductionDependencyBoundaries(t *testing.T) {
 		t.Fatal("no production imports inspected; dependency check is not meaningful")
 	}
 	for _, e := range edges {
-		if reason := boundaryViolation(e); reason != "" {
+		if reason := boundaryViolation(e, module); reason != "" {
 			t.Errorf("%s imports %s: %s", e.source, e.path, reason)
 		}
+	}
+}
+
+func TestModulePathDetection(t *testing.T) {
+	for _, tc := range []struct {
+		name, contents, want string
+	}{
+		{"short", "module tei\\n", "tei"},
+		{"qualified", "module github.com/example/tei-platform\\ngo 1.23.2\\n", "github.com/example/tei-platform"},
+		{"quoted", "module \\"example.com/tei\\"\\n", "example.com/tei"},
+		{"missing", "go 1.23.2\\n", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(strings.ReplaceAll(tc.contents, "\\\\n", "\\n")), 0600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := readModulePath(root)
+			if tc.want == "" {
+				if err == nil {
+					t.Fatalf("expected missing module error; got %q", got)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("readModulePath() = %q, %v; want %q", got, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestProductionScannerFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "internal", "core")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(dir, "model.go")
+	if err := os.WriteFile(src, []byte("package core\\nimport \\"tei/internal/plugin\\"\\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Test-only imports must not become production dependencies.
+	if err := os.WriteFile(filepath.Join(dir, "model_test.go"), []byte("this is deliberately not valid Go"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	edges, err := productionImports(root)
+	if err != nil || len(edges) != 1 || boundaryViolation(edges[0], "tei") == "" {
+		t.Fatalf("production import not detected: edges=%v, err=%v", edges, err)
+	}
+	if err := os.WriteFile(src, []byte("package core\\nimport (\\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := productionImports(root); err == nil {
+		t.Fatal("malformed production source must fail the check")
+	}
+}
+
+func TestBoundaryAfterModuleRename(t *testing.T) {
+	changed := importEdge{source: "internal/core", path: "github.com/example/tei-platform/internal/plugin"}
+	if got := boundaryViolation(changed, "github.com/example/tei-platform"); got == "" {
+		t.Fatal("module-qualified import must not bypass boundary guard")
+	}
+	if got := boundaryViolation(changed, "tei"); got != "" {
+		t.Fatalf("third-party import must not be treated as local: %s", got)
 	}
 }
