@@ -75,7 +75,7 @@ func TestPublishedClassificationDoesNotContainSourceLocatorOrValues(t *testing.T
 	}
 }
 
-func TestPublishedClassificationKeepsUnmappedKindUnresolved(t *testing.T) {
+func TestPublishedClassificationRedactsArbitraryUnmappedKindName(t *testing.T) {
 	doc, err := Observe(FormatXead, []byte(`<System><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
@@ -84,15 +84,15 @@ func TestPublishedClassificationKeepsUnmappedKindUnresolved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var mystery *PublishedClassification
-	for i := range projection.Kinds {
-		if projection.Kinds[i].Kind == "Mystery" {
-			mystery = &projection.Kinds[i]
-			break
-		}
+	encoded, err := json.Marshal(projection)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if mystery == nil || mystery.MappingStatus != "unmapped" || mystery.UnresolvedObservedCount != 1 {
-		t.Fatalf("unmapped kind not preserved: %+v", projection.Kinds)
+	if strings.Contains(string(encoded), "Mystery") {
+		t.Fatalf("public classification leaked arbitrary unknown kind: %s", encoded)
+	}
+	if projection.RedactedUnknownObservedCount != 1 {
+		t.Fatalf("redacted unknown accounting=%+v", projection)
 	}
 }
 
