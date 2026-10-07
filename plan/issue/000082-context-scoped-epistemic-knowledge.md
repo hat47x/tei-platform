@@ -202,9 +202,17 @@ SUI #3184のreview intentをappend-only review historyへ安全に戻すため�
 
 Projectionは現在meaning fingerprintとas-of時点のreview log末尾sequenceを返す。SUIはmeaning fingerprint、target binding、review sequenceをhuman intentへ保持する。
 
-TEI側のreview commandは、これら3つをpreconditionとして再確認する。
+TEI側のreview commandは、次のpreconditionを再確認する。
+
+- meaning fingerprint
+- review subject fingerprint
+- target binding
+- review log sequence
+
+`reviewSubjectFingerprint` はreview event等を除いたepistemic subjectの同時実行receiptであり、target / statement kind / scope / Evidence / relation等の変更も検出する。Truthや意味同一性の証明にはしない。
 
 - meaningが変わった: stale commandとして拒否
+- epistemic subjectが変わった: stale commandとして拒否
 - target bindingが変わった: stale commandとして拒否
 - review log sequenceが進んだ: concurrent reviewとして拒否
 
