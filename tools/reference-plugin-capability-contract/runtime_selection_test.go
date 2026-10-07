@@ -54,7 +54,7 @@ func selectedContractQueryExecutor(
 			Target: realization.ContractQueryTarget{
 				Database: core.MustCanonicalID(databaseID),
 				Contract: core.MustCanonicalID(contractID),
-				Query:    core.MustCanonicalID(queryID),
+				Query:    core.MustLocalName(queryID),
 			},
 			Executor: capability.ID,
 		},
