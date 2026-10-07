@@ -16,6 +16,8 @@ Canonical IDはfile pathやphysical object nameから独立し、実装や配置
 
 業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
 
+時間・履歴を扱うDataでは、business occurrence identityとhistory / version identityを区別できる必要があります。適用開始日、履歴番号、version番号、最新フラグ、日時型Attribute等を、その存在や名称だけを根拠にbusiness occurrence identifierへ昇格してはいけません。validity period、identifier reuse、state transition、current-state selectionを業務意味として扱う場合は、そのscopeとSource / Contractへ追跡できる必要があります。
+
 文字列や外部コードを正規化・変換した結果の一致を、それだけでbusiness identityの一致へ読み替えてはいけません。原Sourceの表記を保持する必要がある場合は、exact representationとnormalized / operational representationを区別し、同値性を判断するPolicy / MappingのscopeとSourceへ追跡できる必要があります。
 
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
@@ -166,6 +168,8 @@ Application Pattern、View、Target、ORM等の実装都合から、Dataのbusin
 Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
 
 生成AIは、`identifier`、`external_id`、`code`等の属性名や外部から移行した識別子値だけを根拠に、business identifierやcandidate keyが成立したと判断してはいけません。acceptedな識別条件がある場合は、一意性のscope、時間・履歴条件、Relation / Constraint、Source / Contractを含むcontextへ到達できる必要があります。
+
+生成AIは、適用開始日、履歴番号、version番号、最新フラグ、datetime / timestamp属性、Persistence上のhistory / audit columnだけを根拠に、business occurrence identityやtemporal semanticsが確定したと判断してはいけません。current contextから、同じoccurrenceのhistory / versionか別occurrenceか、有効期間、identifier reuse、状態遷移、保持すべき履歴、根拠となるSource / Contractへ到達できる必要があります。
 
 生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
 
