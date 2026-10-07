@@ -89,25 +89,50 @@ Structured Proposalへの事前変換は要求しません。
 
 ISSUE-000027のShared Acceptance Referenceで既に扱っているValidationやRelationの小変更は候補ですが、本IssueではStructured Proposal経路そのものを再実証することが目的ではありません。
 
-## 2026-10-07 E1 executable candidate
+## 2026-10-08 E1 executable candidateの強化
 
-`tools/reference-tool-neutral-development/run.sh`を、E1の最初のExecutable Reference candidateとして追加しました。
+`tools/reference-tool-neutral-development/run.sh`を、E1のExecutable Reference candidateとして強化しました。
 
-runnerはmainの`reference/workspace`を直接変更しません。一時directoryへ複製し、その複製だけを独立Git repositoryとして初期化します。baselineをcommitした後、`semantic/sales/validation.tei`へ`sales.order_line.unit_price_positive`をfile editで直接追加します。
+初期案は`reference/workspace`だけを一時Git repositoryへ複製していましたが、これは「標準的なTEI Repository checkoutで開発する」というRQ-034を十分にpressureしていませんでした。現在は**current TEI Repository全体をlocal clone**し、そのclone内でbuild / test / CLI実行 / file edit / commitを行います。
 
-変更前には既存の`sales.order_line.quantity_positive`へ`knowledge-context`から到達し、変更後には追加したValidationへ同じCLIから到達します。変更前後のCanonical Worldが同じなら失敗し、commit前のdiffが対象1 file以外へ広がっても失敗します。
+```text
+clean current TEI checkout
+  -> local task clone
+  -> build cmd/tei
+  -> targeted test
+  -> knowledge-context / validate / world
+  -> direct file edit
+  -> validate / world / targeted test
+  -> ordinary Git commit
+  -> separate integration clone
+  -> rebuild / test / reload
+```
 
-変更は通常のGit commitへ確定し、その一時repositoryを別directoryへlocal cloneします。integration側で`tei validate`、`knowledge-context`、`tei world`を再実行し、task側とintegration側のCanonical Worldがbyte単位で一致すること、read-only操作後にintegration cloneがcleanであることを確認します。
+task側では`semantic/sales/validation.tei`へ`sales.order_line.unit_price_positive`をfile editで直接追加します。変更前には既存の`sales.order_line.quantity_positive`へ`knowledge-context`から到達し、変更後には追加したValidationへ同じCLIから到達します。
 
-このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Workspace / Checkpointを使用しません。Shared Acceptanceの価値を否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることだけをpressureします。
+build結果はRepository外の一時directoryへ置きます。関連するknowledge-context testもtask cloneとintegration cloneの双方で実行します。file edit後のGit diffが対象1 file以外へ広がる場合、またbuild / test / CLI利用によってRepository内へuntracked artifactが生じる場合は失敗します。
+
+変更は通常のGit commitへ確定し、そのtask repositoryをさらに別directoryへlocal cloneします。integration側でも`cmd/tei`をbuildし、targeted test、`tei validate`、`knowledge-context`、`tei world`を再実行します。task側とintegration側のCanonical Worldがbyte単位で一致し、read-only操作後もintegration cloneがcleanであることを要求します。
+
+### Decision ledger非依存のpressure
+
+current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Tool固有stateなしでもCanonical meaningを再構築できる」という主張が弱い状態でした。
+
+現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceとCanonical Worldがbyte単位で一致することを要求します。
+
+`.tei/plugin-lock.json`は削除しません。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
+
+このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Agent Workspace / Checkpointを使用しません。Shared Acceptanceを否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることをpressureします。
 
 ### 現在の検証状態
 
-- runnerのBash syntaxは`bash -n`で確認済み。
-- この実行環境からGitHubをcloneしてactual Repositoryで実行しようとしたが、`github.com`のDNS解決に失敗した。
-- したがって、`go run ./cmd/tei`、actual Git round trip、Repository healthのPASSはまだ主張しない。
+- full local clone方式へ書き直したrunnerは`bash -n`で構文確認済み。
+- E2で期待する`DUPLICATE_SEMANTIC_ELEMENT`がcurrent Validation実装に存在することはsourceから確認済み。
+- current execution environmentにはTEI Repositoryのlocal checkoutが無く、GitHubからcloneしようとすると`github.com`のDNS解決に失敗する。
+- したがって、actual `go build` / `go test` / CLI round trip / Git integration / Repository healthのPASSはまだ主張しない。
 - GitHub Actionsは使用していない。
 - actual executionが成立するまでは本Issueを完了扱いにせず、RQ-034もDesign Onlyを維持する。
+- runner自身はremote Gitを要求しないが、Go module cacheが空の環境では通常のGo buildと同様にdependency取得が必要になる可能性がある。offline hermetic buildはRQ-034の成立条件にはしない。
 
 実行入口:
 
