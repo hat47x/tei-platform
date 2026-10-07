@@ -12,12 +12,13 @@ import (
 )
 
 const (
-	opAddValidation         = "add-validation"
-	opAddData               = "add-data"
-	opAddRelation           = "add-relation"
-	opAddEnvironmentBinding = "add-environment-binding"
-	opAddApplication        = "add-application"
-	opAddReferencePattern   = "add-reference-pattern"
+	opAddValidation               = "add-validation"
+	opAddData                     = "add-data"
+	opAddRelation                 = "add-relation"
+	opAddEnvironmentBinding       = "add-environment-binding"
+	opAddApplication              = "add-application"
+	opAddReferencePattern         = "add-reference-pattern"
+	opAddApplicationValidationUse = "add-application-validation-use"
 )
 
 // Operationは、型付きの最小semantic deltaの一単位である。
@@ -38,6 +39,15 @@ type Operation struct {
 	Pattern     *PatternSpec     `json:"pattern,omitempty"`
 
 	EnvironmentBinding *EnvironmentBindingSpec `json:"environmentBinding,omitempty"`
+
+	ApplicationValidationUse *ApplicationValidationUseSpec `json:"applicationValidationUse,omitempty"`
+}
+
+// ApplicationValidationUseSpecは、既存のApplicationが評価するValidationを一件宣言する（`uses validation`）。
+// 宣言順が評価順になる（ADR-0029）ため、既存の宣言の後ろへ追加する。
+type ApplicationValidationUseSpec struct {
+	Application string `json:"application"`
+	Validation  string `json:"validation"`
 }
 
 // EnvironmentBindingSpecは、Applicationが宣言したdatasource aliasを、Environmentが持つ
@@ -185,13 +195,15 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddRelation(op)
 	case opAddEnvironmentBinding:
 		return normalizeAddEnvironmentBinding(op)
+	case opAddApplicationValidationUse:
+		return normalizeAddApplicationValidationUse(op)
 	case opAddApplication:
 		return normalizeAddApplication(op)
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s / %s だけを扱います）",
-			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern, opAddEnvironmentBinding)
+		return op, fmt.Errorf("operation %q は未対応です（%s / %s / %s / %s / %s / %s / %s だけを扱います）",
+			op.Op, opAddValidation, opAddData, opAddRelation, opAddApplication, opAddReferencePattern, opAddEnvironmentBinding, opAddApplicationValidationUse)
 	}
 }
 
@@ -557,6 +569,31 @@ func normalizeAddEnvironmentBinding(op Operation) (Operation, error) {
 	}}, nil
 }
 
+func normalizeAddApplicationValidationUse(op Operation) (Operation, error) {
+	if err := onlyFields(op, "placement", "applicationValidationUse"); err != nil {
+		return op, err
+	}
+	if op.ApplicationValidationUse == nil {
+		return op, fmt.Errorf("%s にはapplicationValidationUseが必要です", opAddApplicationValidationUse)
+	}
+	spec := *op.ApplicationValidationUse
+	application, err := canonical("applicationValidationUse.application", spec.Application)
+	if err != nil {
+		return op, err
+	}
+	validation, err := canonical("applicationValidationUse.validation", spec.Validation)
+	if err != nil {
+		return op, err
+	}
+	placement := strings.TrimSpace(op.Placement)
+	if placement == "" {
+		return op, fmt.Errorf("%s にはplacement（既存のApplication source file）が必要です", opAddApplicationValidationUse)
+	}
+	return Operation{Op: op.Op, Placement: placement, ApplicationValidationUse: &ApplicationValidationUseSpec{
+		Application: string(application), Validation: string(validation),
+	}}, nil
+}
+
 // operationKeyは、deltaの中でoperationを一意に識別する。同じsubjectを二度追加するdeltaを拒否するために使う。
 func operationKey(op Operation) string {
 	switch op.Op {
@@ -569,6 +606,9 @@ func operationKey(op Operation) string {
 	case opAddEnvironmentBinding:
 		b := op.EnvironmentBinding
 		return "environment-binding:" + b.Environment + "/" + b.Application + "." + b.Alias
+	case opAddApplicationValidationUse:
+		u := op.ApplicationValidationUse
+		return "application-validation-use:" + u.Application + "/" + u.Validation
 	case opAddApplication:
 		return "application:" + op.Application.ID
 	case opAddReferencePattern:

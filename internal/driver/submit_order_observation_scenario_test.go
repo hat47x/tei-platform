@@ -69,8 +69,7 @@ func TestOrderEntrySubmitScenarioObservesStateThroughSeparateExplicitRead(t *tes
 	}
 	authorization := legacyauthorization.Adapter{Store: store, Rule: authorizationRule}
 
-	quantityPositive := submitScenarioValidation(t, world, "sales.order_line.quantity_positive")
-	lineNumberUnique := submitScenarioValidation(t, world, "sales.order.lines.line_number_unique")
+	quantityPositive, lineNumberUnique := orderEntryValidationPair(t, world)
 	validSource := submitOrderValidationSource{
 		quantity:    mustRat(t, "2.5"),
 		lineNumbers: []string{"1", "2"},

@@ -130,7 +130,7 @@ Gate B判定の正本は[`GATE_B_READINESS_AUDIT.md`](../plan/GATE_B_READINESS_A
 
 ## Semantic / Source
 
-実装済みの主な基線:
+実装済みの主な基線は次のとおりです。
 
 - Workspace / Canonical ID
 - Semantic namespace / type / data / relation / capability
@@ -156,7 +156,7 @@ header-detail
 command
 ```
 
-成立している主な境界:
+成立している主な境界は次のとおりです。
 
 - Application `DatabaseRequirement[]`
 - logical Datasource
@@ -221,11 +221,11 @@ ADR-0027 / #533の`DropTable` destructive readiness planning / rendering source�
 
 PostgreSQLは深いReference Providerとして利用しています。
 
-actual second-provider / existing Oracle assetは別Evidenceとして継続します。
+PostgreSQL以外の実Database Provider（actual second-provider）と、既存外部資産の受け入れは別Evidenceとして継続します。第一Referenceの`master_data`はOracleなので、最初の具体例はOracleです。Oracleに限定した要件ではなく、他のProviderも同じ境界で検証できる必要があります。
 
 ## Plugin / Runtime / Resource
 
-成立している主な境界:
+成立している主な境界は次のとおりです。
 
 - Plugin / Bundle / Capability negotiation
 - Plugin Lock
@@ -325,13 +325,23 @@ file-native / Studio / CLI / AIをShared Acceptance Boundaryへ収束させま�
 
 AI provider、vector database、Proposal最終schema、chat-first UXは未固定です。
 
+## Reference Model Transfer
+
+2026-10-06に、成熟した既存業務モデルを一式でTEIへ転写できるかを確かめる横断Evidence laneを[ISSUE-000078](../plan/issue/000078-reference-model-transfer-gate.md)として開始しました。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」です。これはProduct Gate Dではなく、RQ-001 / 002 / 003 / 004 / 010〜013 / 021 / 022 / 025 / 026 / 029 / 031〜033をまとめてpressureするReferenceです。
+
+RMT-0 / RMT-1の開始Evidenceとして、渡辺幸三氏のXeadModeler / XeadEditor / XeadDriver source revision、利用者が保持するmodel / manualのdigest、model構造のaggregate inventory、modernization pressureを`reference/reference-model-transfer/`へ記録しました。原Reference Modelの内容そのものはRepositoryへ転載していません。
+
+初回解析では、基本設計側のFunctionと実行仕様側のFunctionが1対1ではないこと、Function / Table I/Oの明示CRUDとは別にnative ScriptがDatabase effectを持ち得ること、transaction / Session / Environment / Secret等に旧Runtime固有の暗黙前提があることを確認しています。これらをTEI側で黙って補完せず、Canonical / Realization / Native / Derived / Unresolvedへ分類していきます。
+
+現時点で**転写成立は未実証**です。original X-TEA Runtimeでのactual behavior取得はGitHub #940、Reference Model本体の再利用・公開条件確認はGitHub #941へ分離しています。RMT-2以降のtranscription、cross-view全体検査、TEI Driver / Targetでの代表Scenario実行も未取得です。
+
 ## Second Target
 
 現時点ではDesign Onlyです。
 
 Gate C後、`ISSUE-000026`で第一Targetと十分に異なるApplication Targetを選びます。
 
-比較対象:
+比較対象は次のとおりです。
 
 - Handover / Canonical meaning
 - Target build identity
@@ -346,7 +356,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 
 ## 現時点で完成済みとは言わないもの
 
-- actual Oracle E2E
+- PostgreSQL以外の実Database Providerでの E2E（第一Referenceの既存資産ではactual Oracle）
 - Visual Fidelityの人による承認（Gate C Visualは単一のAI評価者による評価）
 - complete Target-neutral Presentation IR
 - production-ready Web / Desktop / Mobile Target
@@ -354,6 +364,7 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 - production-ready GUI Editor
 - knowledge-first exploration actual Reference
 - AI Proposal / Decision UX actual Reference
+- mature Reference Modelのfull transcription / executable comparison
 - second Application Target
 - production-grade Workflow / HA / distributed ownership
 - generic OS sandbox
@@ -378,4 +389,6 @@ Studio Wails Hostは第二Application Target Evidenceへ数えません。
 細かなM0.xxの検証履歴は`docs/conformance/`、ADR、Git historyから追跡します。本statusはcurrent snapshotを優先します。
 
 
-Second ApplicationはS5/S6/S7まで完了し、`repair_intake` sourceとdevelopment / productionの`customer_master -> master_data` Environment bindingがcurrent Referenceへ受理済みです。S8 preflightでは、developmentの既存Contract Query executor bindingを使えばsynthetic Driver lookupを既存Driver APIで再現できる一方、productionには同等executor bindingが無いこと、First Web TargetのProjectionはApplication切替可能でもread scenario runnerが`order_entry`固定であることを確認しました。次はこのmanifest / runner identity mismatchをfail closedし、Customer ID inputから`repair_intake.intake.customer_id` mapped rowを経てDriver lookupへ接続するTarget-local read surfaceをpressureします。actual Oracle principal / credential / network authorityは未観測のままで、synthetic Evidenceへ読み替えません。
+Second ApplicationはS5/S6/S7まで完了し、`repair_intake` sourceとdevelopment / productionの`customer_master -> master_data` Environment bindingがcurrent Referenceへ受理済みです。S8 preflightでは、developmentの既存Contract Query executor bindingを使えばsynthetic Driver lookupを既存Driver APIで再現できる一方、productionには同等executor bindingが無いこと、First Web TargetのProjectionはApplication切替可能でもread scenario runnerが`order_entry`固定であることを確認しました。この点は2026-10-05に、First Web Targetのmanifest / runner identity mismatchをfail closed（runnerが別のApplicationを実行する場合、またはApplicationを宣言しない場合は起動時に拒否）にし、Customer ID inputから`repair_intake.intake.customer_id` mapped rowを経て`repair_intake.customer_reference`をDriverのEnvironment-aware経路で実行するTarget-local lookup（画面とJSON）を追加しました（`tools/reference-first-web-target`、[ISSUE-000075](../plan/issue/000075-practical-scenario-mvp-demonstration.md)のMVP実証A）。`order_entry`と同じ`customer.customer`の意味とContract Queryが同じExecutor bindingで解決されることをtestで固定しています。ただし、Executorはsynthetic fixture（test double）で実Databaseへの接続ではなく、productionでは実行できません。actual Oracle principal / credential / network authorityは未観測のままで、synthetic Evidenceへ読み替えません。Gate C Evidence（`T`）の対象ではなく、`T`以降のrevisionでの実装です。
+
+2026-10-06には、Applicationが評価するValidationの選択を、Target側の一覧ではなくApplicationの`uses validation`宣言から導くようにしました（[ADR-0029](../plan/adr/0029-application-validation-selection-from-canonical-declaration.md)、[ISSUE-000073](../plan/issue/000073-derive-validation-selection-from-canonical.md)）。Driverの`Resolver`が宣言を宣言順に返し、第一Web Targetとscenario testはそれを使います。宣言が無いApplicationは判定不能（Execution Error側）で、空を成功にしません。`order_entry`の宣言（2行）は、Shared Acceptance Boundary（新しいoperation `add-application-validation-use`）を通してownerが受理しました。この変更後のworkspaceは、Gate Bの`R`・Gate Cの`T`のworkspaceと同一ではなく、Gate Cのarchitecture conformance toolはこのworkspaceでは`R`→`T`の不変を満たせません（後継Handoverの要否は未判断です）。

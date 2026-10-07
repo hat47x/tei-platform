@@ -116,7 +116,7 @@ func TestPreviewImpactTracesToExactDependenciesAndKeepsUnresolvedVisible(t *test
 	for _, u := range ev.preview.Unresolved {
 		codes = append(codes, u.Code)
 	}
-	for _, c := range []string{"APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"} {
+	for _, c := range []string{"APPLICATION_VALIDATION_SELECTION_NOT_DECLARED", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"} {
 		if !hasCode(codes, c) {
 			t.Fatalf("unresolved %s が成功へ読み替えられて消えています: %v", c, codes)
 		}
@@ -356,8 +356,14 @@ func TestRejectLeavesAuthoritativeSourceByteIdentical(t *testing.T) {
 
 	stale := unitPriceCandidate("sha256:" + strings.Repeat("0", 64))
 	staleDecision, err := reject(dir, mustJSON(t, stale), "古いrevision")
-	if err != nil || staleDecision.Decision != "rejected" {
-		t.Fatalf("staleなcandidateもrejectできる必要があります: %+v %v", staleDecision, err)
+	if err != nil || staleDecision.Decision != "rejected" || staleDecision.Stale == nil {
+		t.Fatalf("staleなcandidateもconflict provenance付きでrejectできる必要があります: %+v %v", staleDecision, err)
+	}
+	if staleDecision.Stale.BaseModelRevision != stale.BaseModelRevision ||
+		staleDecision.Stale.CurrentModelRevision != revision ||
+		staleDecision.ModelRevisionBefore != revision ||
+		staleDecision.ModelRevisionAfter != revision {
+		t.Fatalf("stale rejectのrevision provenance=%+v decision=%+v", staleDecision.Stale, staleDecision)
 	}
 	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }

@@ -9,6 +9,9 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/knowledgecontext"
+	"tei/internal/sourceindex"
+	"tei/internal/subject"
 	"tei/internal/syntax"
 )
 
@@ -32,6 +35,8 @@ type worldIndex struct {
 	// environmentBindingsは既存binding（`<env>/<app>.<alias>`）の集合である。
 	environments        map[core.CanonicalID]string
 	environmentBindings map[string]bool
+	// applicationValidationsは既存の`uses validation`宣言（`<application>/<validation>`）の集合である。
+	applicationValidations map[string]bool
 }
 
 func indexWorld(s snapshot) worldIndex {
@@ -47,6 +52,8 @@ func indexWorld(s snapshot) worldIndex {
 
 		environments:        map[core.CanonicalID]string{},
 		environmentBindings: map[string]bool{},
+
+		applicationValidations: map[string]bool{},
 	}
 	for _, env := range s.loaded.World.Environments {
 		if location, ok := s.loaded.Sources["environment:"+string(env.ID)]; ok {
@@ -87,6 +94,9 @@ func indexWorld(s snapshot) worldIndex {
 	for _, app := range world.Applications {
 		idx.applications[app.ID] = s.loaded.Sources["application:"+string(app.ID)].File
 		idx.subjects[string(app.ID)] = true
+		for _, id := range app.Validations {
+			idx.applicationValidations[string(app.ID)+"/"+string(id)] = true
+		}
 		for _, p := range app.Patterns {
 			idx.patterns[p.ID] = true
 			idx.subjects[string(p.ID)] = true
@@ -162,6 +172,28 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				diag("ENVIRONMENT_BINDING_ALREADY_EXISTS", "environment %s には %s.%s のbindingが既にあります", b.Environment, b.Application, b.Alias)
 			}
 
+		case opAddApplicationValidationUse:
+			// そのnamespaceをApplicationが使っているか等、層をまたぐ正しさは共有Validationが見る。
+			// ここでは対象の存在、重複宣言、placementの所有関係だけを確認する。
+			u := op.ApplicationValidationUse
+			file, exists := idx.applications[core.CanonicalID(u.Application)]
+			if !exists {
+				diag("APPLICATION_NOT_FOUND", "application %s は存在しません（%s は既存のApplicationへ宣言を追加します）", u.Application, opAddApplicationValidationUse)
+				break
+			}
+			if !idx.validations[core.CanonicalID(u.Validation)] {
+				diag("VALIDATION_NOT_FOUND", "validation %s は存在しません", u.Validation)
+			}
+			if _, ok := fingerprints[op.Placement]; !ok {
+				diag("PLACEMENT_NOT_MANAGED_SOURCE", "placement %s は管理対象sourceではありません", op.Placement)
+				break
+			}
+			if op.Placement != file {
+				diag("PLACEMENT_NOT_OWNED", "application %s を宣言しているのは %s で、placement %s ではありません", u.Application, file, op.Placement)
+			}
+			if idx.applicationValidations[u.Application+"/"+u.Validation] {
+				diag("APPLICATION_VALIDATION_USE_ALREADY_EXISTS", "application %s は`uses validation %s`を既に宣言しています", u.Application, u.Validation)
+			}
 		case opAddRelation:
 			if !idx.dataIDs[core.CanonicalID(op.AddRelation.Data)] {
 				diag("DATA_NOT_FOUND", "data %s は存在しません（add-relationは既存のDataへRelationを追加します）", op.AddRelation.Data)
@@ -185,13 +217,98 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 		}
 	}
 
-	for i, e := range c.Evidence {
-		if e.Subject != "" && !idx.subjects[e.Subject] {
-			out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].subject %s はCanonical Worldに存在しません", i, e.Subject)})
+	out = append(out, validateEvidence(s, c.Evidence)...)
+	return out
+}
+
+func validateEvidence(s snapshot, evidence []Evidence) []Diagnostic {
+	var out []Diagnostic
+	idx := indexWorld(s)
+	fingerprints := s.fingerprints()
+	for i, e := range evidence {
+		if e.Artifact != nil {
+			for _, diagnostic := range validateEvidenceArtifact(e.Artifact) {
+				diagnostic.Message = fmt.Sprintf("evidence[%d].artifact: %s", i, diagnostic.Message)
+				out = append(out, diagnostic)
+			}
+			continue
+		}
+		if e.Subject != "" {
+			if e.SubjectKind == "" {
+				if !idx.subjects[e.Subject] {
+					out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].subject %s はCanonical Worldに存在しません", i, e.Subject)})
+				}
+			} else {
+				exact := sourceindex.Subject{Kind: e.SubjectKind, ID: e.Subject}
+				refs := s.index.ReferencesFor(exact)
+				if len(refs) == 0 {
+					out = append(out, Diagnostic{Code: "EVIDENCE_EXACT_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はcurrent Source Indexに存在しません", i, e.SubjectKind, e.Subject)})
+				} else if e.Source != "" {
+					matched := false
+					for _, ref := range refs {
+						if ref.ArtifactPath == e.Source {
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						out = append(out, Diagnostic{Code: "EVIDENCE_SUBJECT_SOURCE_MISMATCH", Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はsource %sにより宣言・authorされていません", i, e.SubjectKind, e.Subject, e.Source)})
+					}
+				}
+			}
 		}
 		if e.Source != "" {
-			if _, ok := fingerprints[e.Source]; !ok {
+			current, ok := fingerprints[e.Source]
+			if !ok {
 				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("evidence[%d].source %s は管理対象sourceではありません", i, e.Source)})
+				continue
+			}
+			if e.SourceFingerprint != "" && e.SourceFingerprint != current {
+				out = append(out, Diagnostic{Code: "EVIDENCE_SOURCE_FINGERPRINT_MISMATCH", Message: fmt.Sprintf("evidence[%d].sourceFingerprintはcurrent sourceと一致しません: source=%s have=%s current=%s", i, e.Source, e.SourceFingerprint, current)})
+			}
+		}
+		if e.QualificationRequirements != nil {
+			ctx := knowledgecontext.Build(
+				s.loaded.World,
+				s.index,
+				subject.Subject{Kind: e.SubjectKind, ID: e.Subject},
+			)
+			qualified, err := knowledgecontext.QualifyWithSources(ctx, s.index, *e.QualificationRequirements)
+			if err != nil {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_INVALID",
+					Message: fmt.Sprintf("evidence[%d]のqualification requirementsを評価できません: %v", i, err),
+				})
+				continue
+			}
+			if qualified.Status != knowledgecontext.QualificationApplicable {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_NOT_APPLICABLE",
+					Message: fmt.Sprintf("evidence[%d]のexact subject %s:%s はcurrent contextで%sです: %+v", i, e.SubjectKind, e.Subject, qualified.Status, qualified.Reasons),
+				})
+				continue
+			}
+			matchedQualifiedEvidence := false
+			for _, currentEvidence := range qualified.Evidence {
+				if currentEvidence.SubjectKind == e.SubjectKind &&
+					currentEvidence.Subject == e.Subject &&
+					currentEvidence.Source == e.Source &&
+					currentEvidence.SourceFingerprint == e.SourceFingerprint {
+					matchedQualifiedEvidence = true
+					break
+				}
+			}
+			if !matchedQualifiedEvidence {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_PROVENANCE_MISMATCH",
+					Message: fmt.Sprintf("evidence[%d]のsource / fingerprintはcurrent qualificationが返したauthoritative Evidenceと一致しません", i),
+				})
+			}
+			if !sameQualificationEvidence(qualified.DependencyEvidence, e.QualificationDependencyEvidence) {
+				out = append(out, Diagnostic{
+					Code:    "EVIDENCE_QUALIFICATION_DEPENDENCY_STALE",
+					Message: fmt.Sprintf("evidence[%d]のrequired dependency Evidenceはcurrent qualificationと一致しません", i),
+				})
 			}
 		}
 	}

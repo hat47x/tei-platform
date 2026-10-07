@@ -576,6 +576,71 @@ SEI Recommendation
 
 SEIなしでdeterministic / policy-driven Actionを実行する経路も成立する。
 
+### 11.1 委任の付与と判断の文脈を、SEIから参照できるようにする（2026-09-27追記・評価待ち）
+
+この小節は評価待ちの設計候補であり、production schemaも実装も採用しない。[ADR-0028](adr/0028-human-ai-builder-agent-shared-knowledge-plane.md)（採用）は変更せず、その判断の範囲内で、SEIとの接続の仕方を一つ書き足す。
+
+#### 背景
+
+ADR-0028は、Applicationの定義を変えること（Authoring Plane）と、受入済みのAction / Capabilityに従って業務を実行すること（Operational Plane）を別のAuthority境界とした。Operational Planeでは、AI Business Actorは「与えられたAuthorityの範囲で」既に定義・受入済みのActionをinvokeできる。
+
+しかしTEIの文書は、その「与えられたAuthority」を**誰が、どの範囲で、いつまで与え、いつ取り消したか**という経緯を、どこで読めるようにするかをまだ定めていない。§7のBP-04でも、将来AIへ委任する場合は「Decision authority / policyのEvidenceが必要」と書くにとどまる。
+
+SEI側では2026-09-27に、この経緯を「委任」という判断のコミットメント（後から確かめられるように記録しておく約束事）として扱う提案が出た。SEIは、既存の契約（ResponsibilityとAuthority evidence ref等）の組み合わせで委任を表せるかを先に試し、表せない独立の失敗が観測されるまで新しい型を足さない方針である（`hat47x/sei-cognition:plan/issue/ISSUE-000081-test-commitment-gaps-by-composition.md`。SEIの未統合branch `docs/family-apex-backflow-20260927`にだけある）。TEIのAI Business Actorは、その試験の題材の候補になっている。
+
+#### 防ぎたい失敗
+
+- **委任の範囲外の実行。** AI Business Actorが、与えられた範囲を超えるActionを実行し、後から誰もそれに気づけない。
+- **記録と権限の取り違え。** SEIに残った委任の記録や判断の経緯を、TEIが実行時に確かめるべきAuthorizationの代わりに使う。
+- **古い委任の使い回し。** 取り消された、または期限の切れた委任が、記録上まだ有効に見える。
+- **判断の文脈の喪失。** なぜそのActionをAIに任せたのか、どのRecommendationを受けて誰が決めたのかが、実行の記録から辿れない。
+
+#### 守る原則
+
+- **Authorityの判定はTEIが実行時に行う。** AuthorizationはTEIの`security.authorize` Capability、Permission、Resourceの境界で、invokeのたびに評価する（§6のL3〜L5、RQ-019）。SEIに記録があってもなくても、この判定は変わらない。
+- **SEIが持つのは参照だけ。** SEIの記録は、TEIのAuthorizationの証拠を指すAuthority evidence refであり、権限そのものではない。§11の`SEI Recommendation != TEI Authorization`をそのまま保つ。
+- **Business actorの名前はruntime principalではない。** [R3A](ACTOR_CONTEXT_R3A_PRINCIPAL_AUTHORIZATION_BOUNDARY_2026-09.md)の区別を保ち、SEI側の「誰に委ねたか」をTEIのprincipalへ自動で写さない。
+- **SEIなしでも成り立つ。** SEIへ参照を渡すことは任意であり、SEIが止まっていてもAI Business Actorの実行経路は変わらない。
+
+#### 必要な能力（候補）
+
+SEIがTEIの委任を参照するには、TEI側で少なくとも次をread-onlyに指し示せればよい。新しい委任objectをTEIに作ることは、ここでは求めない。
+
+- どのActionについての委任か（Business Action / Capabilityへの参照）
+- 誰を実行主体としたか（runtime principal。secretの値は含めない）
+- どのAuthorizationの結果に基づいたか（`security.authorize`の入力と結果への参照、Permission grant / Resource bindingへの参照）
+- どのOperational Projectionを見て実行したか（§3.3のfingerprint）
+- 実行の結果（Command Business Result、Execution Error、Observationへの参照）
+
+SEI側はこれらを、委任のコミットメント、判断の文脈（どのRecommendationを受け、誰が決めたか）、実行の受領記録（Execution receipt）と対応づける。範囲外の実行を後から見つけるには、SEI側の委任の範囲と、TEI側の実行の参照とを突き合わせればよい。
+
+#### 具体例
+
+BP-07（受注のsubmit）を、将来AI Business Actorへ任せる場合を考える。委任の範囲や人物は説明のための例であり、current `order_entry` Referenceにこうした条件があるわけではない。
+
+```text
+SEI（参照と経緯）
+  委任: 担当者Xが、AI Actor Yに、受注submitを
+        金額が一定以下のものに限って、9月末まで委ねた
+  判断の文脈: AIは「全件自動submit」を提案し、Xは範囲を絞って決めた
+  → TEIのAuthorizationの証拠への参照（Authority evidence ref）
+
+TEI（権限と実行）
+  BP-06  security.authorize(subject = Yのprincipal, action = submit, resource = 受注)
+         → allowed / denied を実行時に判定
+  BP-07  Command
+  BP-08  Observation
+```
+
+SEIの記録に「9月末まで」とあっても、10月にTEIのAuthorizationがallowedを返せば実行は進み、deniedを返せば止まる。判定の根拠は常にTEIのAuthorizationである。前者の場合は、SEIの委任の範囲とTEIの実行の参照を突き合わせることで、委任の範囲外の実行として後から見つけ、説明できる。期限を実行の前に効かせたいなら、それはTEIのAuthorization policyの側で扱う問題であり、下の未解決に残す。
+
+#### 未解決 / 非主張範囲
+
+- TEIに委任object、委任の期限や取り消しを表すschemaを追加しない。TEIのAuthorization policyに期限等を持たせるべきかは、R4（side-effect Reference）へ進む時点で別に判断する。
+- 委任を既存の契約で表せるかはSEI側（ISSUE-000081）で試す。表せないと分かった場合も、TEI側の変更はADR-0028と矛盾しない範囲で、新しいIssueまたはADRとして扱う。
+- BP-07等のside-effect Referenceは、§15のR4の条件（R3と必要Authorityの成立）を満たすまで進めない。本小節はその前提を変えない。
+- 「委任」「コミットメント」はSEI側の語であり、TEIのCanonical kindにはしない。
+
 ## 10. Human ProjectionとOperational Projectionは同じではない
 
 Human Reviewでは、

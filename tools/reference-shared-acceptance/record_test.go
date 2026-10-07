@@ -2,11 +2,16 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/knowledgecontext"
+	"tei/internal/subject"
 )
 
 func cliRun(t *testing.T, args ...string) (int, string, string) {
@@ -14,6 +19,15 @@ func cliRun(t *testing.T, args ...string) (int, string, string) {
 	var stdout, stderr bytes.Buffer
 	code := runCLI(args, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
+}
+
+func writeRawDecisionRecord(t *testing.T, root, content string) string {
+	t.Helper()
+	sum := sha256.Sum256([]byte(content))
+	name := hex.EncodeToString(sum[:]) + ".json"
+	path := filepath.Join(root, filepath.FromSlash(decisionDir), name)
+	writeFile(t, path, content)
+	return path
 }
 
 func candidateFile(t *testing.T, c Candidate) string {
@@ -38,13 +52,23 @@ func decisionsOf(t *testing.T, dir string) DecisionIndex {
 
 func acceptViaCLI(t *testing.T, dir, candidatePath string) Decision {
 	t.Helper()
-	code, out, errOut := cliRun(t, "accept", "-workspace", dir, "-candidate", candidatePath)
+	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	code, out, errOut := cliRun(
+		t,
+		"accept",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", reviewFingerprint,
+	)
 	if code != 0 {
 		t.Fatalf("accept code=%d err=%s out=%s", code, errOut, out)
 	}
 	var decision Decision
 	if err := json.Unmarshal([]byte(out), &decision); err != nil {
 		t.Fatal(err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Fingerprint != reviewFingerprint {
+		t.Fatalf("accept did not preserve reviewed Projection: %+v", decision.ReviewBinding)
 	}
 	return decision
 }
@@ -61,14 +85,6 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 		t.Fatalf("受理前に記録があります: %+v", index.Records)
 	}
 
-	// rejectはworkspaceを変えないので、記録も残さない。
-	if code, _, errOut := cliRun(t, "reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り"); code != 0 {
-		t.Fatalf("reject code=%d err=%s", code, errOut)
-	}
-	if index := decisionsOf(t, dir); len(index.Records) != 0 {
-		t.Fatalf("rejectが記録を残しています: %+v", index.Records)
-	}
-
 	decision := acceptViaCLI(t, dir, candidatePath)
 	if !strings.HasPrefix(decision.RecordPath, decisionDir+"/") {
 		t.Fatalf("受理結果が記録先を示していません: %q", decision.RecordPath)
@@ -82,8 +98,28 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	if record.Path != decision.RecordPath {
 		t.Fatalf("record path=%q accept=%q", record.Path, decision.RecordPath)
 	}
-	if record.Status != "current" || record.SourceEdits != "intact" {
-		t.Fatalf("status=%q sourceEdits=%q", record.Status, record.SourceEdits)
+	if record.Status != "current" || record.SourceEdits != "intact" || record.EvidenceStatus != "current" {
+		t.Fatalf("status=%q sourceEdits=%q evidenceStatus=%q", record.Status, record.SourceEdits, record.EvidenceStatus)
+	}
+	if record.ReviewBindingStatus != "verified" ||
+		record.ReviewCoverageStatus != "incomplete" ||
+		len(record.ReviewIncomplete) == 0 ||
+		len(record.ReviewDiagnostics) != 0 {
+		t.Fatalf(
+			"review binding status=%q coverage=%q incomplete=%+v diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewIncomplete,
+			record.ReviewDiagnostics,
+		)
+	}
+	if record.DecisionActorStatus != "unresolved" ||
+		record.DecisionAuthorityStatus != "unresolved" {
+		t.Fatalf(
+			"decision actor=%q authority=%q",
+			record.DecisionActorStatus,
+			record.DecisionAuthorityStatus,
+		)
 	}
 	if index.ModelRevision != record.Decision.ModelRevisionAfter {
 		t.Fatalf("index revision=%q record=%q", index.ModelRevision, record.Decision.ModelRevisionAfter)
@@ -109,6 +145,471 @@ func TestAcceptedDecisionIsReachableFromTheWorkspaceWithoutTheConversation(t *te
 	}
 	if got.Origin == nil || got.Origin.Kind != candidate.Origin.Kind {
 		t.Fatalf("origin=%+v", got.Origin)
+	}
+}
+
+func TestCandidateOriginActorDoesNotBecomeDecisionActor(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidate.Origin.Actor = "proposal-author"
+	decision := acceptViaCLI(t, dir, candidateFile(t, candidate))
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.Decision.Origin == nil || record.Decision.Origin.Actor != "proposal-author" {
+		t.Fatalf("proposal origin actor was not preserved as provenance: %+v", record.Decision.Origin)
+	}
+	if record.DecisionActorStatus != "unresolved" ||
+		record.DecisionAuthorityStatus != "unresolved" {
+		t.Fatalf(
+			"proposal origin actor was promoted to decision authority: actor=%q authority=%q decision=%+v",
+			record.DecisionActorStatus,
+			record.DecisionAuthorityStatus,
+			decision,
+		)
+	}
+}
+
+func TestRejectedDecisionIsReachableWithoutChangingCanonicalMeaning(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidatePath := candidateFile(t, candidate)
+
+	before, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeWorld, _, err := worldSHA256(before.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "今回は見送る",
+	)
+	if code != 0 {
+		t.Fatalf("reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" ||
+		decision.Reason != "今回は見送る" ||
+		decision.SourceChanged ||
+		decision.ModelRevisionBefore != before.revision ||
+		decision.ModelRevisionAfter != before.revision ||
+		decision.RecordPath == "" {
+		t.Fatalf("rejected decision=%+v", decision)
+	}
+
+	after, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterWorld, _, err := worldSHA256(after.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.revision != before.revision || afterWorld != beforeWorld {
+		t.Fatalf(
+			"reject changed Canonical meaning: revision=%s/%s world=%s/%s",
+			before.revision,
+			after.revision,
+			beforeWorld,
+			afterWorld,
+		)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	record := index.Records[0]
+	if record.Path != decision.RecordPath ||
+		record.Status != "current" ||
+		record.SourceEdits != "none" ||
+		record.ReviewBindingStatus != "none" ||
+		record.ReviewCoverageStatus != "none" ||
+		record.DecisionActorStatus != "unresolved" ||
+		record.DecisionAuthorityStatus != "unresolved" {
+		t.Fatalf("rejected Decision record=%+v", record)
+	}
+	if record.Decision.Decision != "rejected" ||
+		record.Decision.Reason != decision.Reason ||
+		record.Decision.CandidateFingerprint != decision.CandidateFingerprint {
+		t.Fatalf("rejected Decision provenance drifted: %+v", record.Decision)
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, filepath.FromSlash(decisionDir))); err != nil {
+		t.Fatal(err)
+	}
+	withoutLedger, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutLedgerWorld, _, err := worldSHA256(withoutLedger.loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutLedger.revision != before.revision || withoutLedgerWorld != beforeWorld {
+		t.Fatal("Decision ledgerの削除がCanonical meaningを変えました")
+	}
+}
+
+func TestStaleRejectedDecisionPreservesRevisionConflictProvenance(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	currentRevision := revisionOfDir(t, dir)
+	staleRevision := "sha256:" + strings.Repeat("0", 64)
+	candidatePath := candidateFile(t, unitPriceCandidate(staleRevision))
+
+	code, out, errOut := cliRun(
+		t,
+		"reject",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-reason", "古いrevisionなので見送る",
+	)
+	if code != 0 {
+		t.Fatalf("stale reject code=%d err=%s out=%s", code, errOut, out)
+	}
+	var decision Decision
+	if err := json.Unmarshal([]byte(out), &decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "rejected" || decision.Stale == nil {
+		t.Fatalf("stale reject did not preserve conflict: %+v", decision)
+	}
+	if decision.Stale.BaseModelRevision != staleRevision ||
+		decision.Stale.CurrentModelRevision != currentRevision ||
+		decision.ModelRevisionBefore != currentRevision ||
+		decision.ModelRevisionAfter != currentRevision ||
+		decision.SourceChanged {
+		t.Fatalf("stale reject revisions=%+v decision=%+v", decision.Stale, decision)
+	}
+	wantOptions := staleOptions()
+	if len(decision.Stale.Options) != len(wantOptions) {
+		t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+	}
+	for i := range wantOptions {
+		if decision.Stale.Options[i] != wantOptions[i] {
+			t.Fatalf("stale options=%v want=%v", decision.Stale.Options, wantOptions)
+		}
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("stale rejected Decision record count=%d: %+v", len(index.Records), index.Records)
+	}
+	if index.Records[0].Decision.Stale == nil ||
+		index.Records[0].Decision.Stale.CurrentModelRevision != currentRevision {
+		t.Fatalf("stored stale provenance=%+v", index.Records[0].Decision)
+	}
+	if index.Records[0].DecisionActorStatus != "unresolved" ||
+		index.Records[0].DecisionAuthorityStatus != "unresolved" {
+		t.Fatalf(
+			"stale decision actor=%q authority=%q",
+			index.Records[0].DecisionActorStatus,
+			index.Records[0].DecisionAuthorityStatus,
+		)
+	}
+	if got := revisionOfDir(t, dir); got != currentRevision {
+		t.Fatalf("stale reject changed model revision: got=%s want=%s", got, currentRevision)
+	}
+}
+
+func TestDecisionRecordReportsQualificationEvidenceFreshnessSeparately(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	snapshot, err := takeSnapshot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := knowledgecontext.Build(
+		snapshot.loaded.World,
+		snapshot.index,
+		subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+	)
+	qualification, err := knowledgecontext.QualifyWithSources(ctx, snapshot.index, knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qualification.Status != knowledgecontext.QualificationApplicable || len(qualification.DependencyEvidence) == 0 {
+		t.Fatalf("qualification=%+v", qualification)
+	}
+
+	grounded, err := attachQualificationEvidence(
+		mustJSON(t, unitPriceCandidate(snapshot.revision)),
+		qualification,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := acceptViaCLI(t, dir, candidateFile(t, grounded))
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "current" || len(record.EvidenceDiagnostics) != 0 {
+		t.Fatalf("accepted Evidence is not current: %+v", record)
+	}
+
+	dependencySource := qualification.DependencyEvidence[0].Source
+	path := filepath.Join(dir, filepath.FromSlash(dependencySource))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(content, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	index = decisionsOf(t, dir)
+	record = index.Records[0]
+	if record.Status != "superseded" {
+		t.Fatalf("workspace revision change was not reported: %+v", record)
+	}
+	if record.SourceEdits != "intact" {
+		t.Fatalf("decision-written source was incorrectly marked diverged: %+v", record)
+	}
+	if record.EvidenceStatus != "diverged" {
+		t.Fatalf("qualification Evidence drift was not reported: %+v", record)
+	}
+	var codes []string
+	for _, diagnostic := range record.EvidenceDiagnostics {
+		codes = append(codes, diagnostic.Code)
+	}
+	if !hasCode(codes, "EVIDENCE_QUALIFICATION_DEPENDENCY_STALE") {
+		t.Fatalf("dependency Evidence drift reason=%v", codes)
+	}
+	if record.Decision.RecordPath != decision.RecordPath {
+		t.Fatalf("record path changed: %q != %q", record.Decision.RecordPath, decision.RecordPath)
+	}
+}
+
+func TestDecisionRecordDetectsEvidenceBodyTampering(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	if decision.EvidenceFingerprint == "" || len(decision.Evidence) == 0 {
+		t.Fatalf("accepted decision lacks bound Evidence identity: %+v", decision)
+	}
+
+	// 元のcontent-addressed recordを外し、Evidence本文だけを書き換えた別recordを
+	// recordDecisionで正しいcontent addressへ保存する。file名の改ざん検査を通過した後も、
+	// Evidence本文とevidenceFingerprintの不一致を検出できる必要がある。
+	if err := os.Remove(filepath.Join(dir, filepath.FromSlash(decision.RecordPath))); err != nil {
+		t.Fatal(err)
+	}
+	tampered := decision
+	tampered.RecordPath = ""
+	tampered.Evidence = append([]Evidence(nil), decision.Evidence...)
+	tampered.Evidence[0].Note = tampered.Evidence[0].Note + " tampered"
+	if _, err := recordDecision(dir, tampered); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "diverged" {
+		t.Fatalf("tampered Evidence body was not reported: %+v", record)
+	}
+	var codes []string
+	for _, diagnostic := range record.EvidenceDiagnostics {
+		codes = append(codes, diagnostic.Code)
+	}
+	if !hasCode(codes, "EVIDENCE_FINGERPRINT_MISMATCH") {
+		t.Fatalf("fingerprint mismatch diagnostic is absent: %v", codes)
+	}
+}
+
+func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
+	dir := scratchWorkspace(t)
+	decision := acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
+	path := filepath.Join(dir, filepath.FromSlash(decision.RecordPath))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var tampered Decision
+	if err := json.Unmarshal(content, &tampered); err != nil {
+		t.Fatal(err)
+	}
+	tampered.Intent += " tampered"
+	encoded, err := encodeJSON(tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := loadDecisionRecords(dir); err == nil {
+		t.Fatal("content-addressed decision recordのin-place改ざんを拒否していません")
+	} else if !strings.Contains(err.Error(), "content hashがfile名と一致しません") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReviewBindingClassifierRejectsInvalidFingerprint(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("g", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "invalid" || coverageStatus != "invalid" {
+		t.Fatalf("binding=%q coverage=%q diagnostics=%+v", bindingStatus, coverageStatus, diagnostics)
+	}
+	found := false
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_FINGERPRINT_INVALID" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("diagnostics=%+v", diagnostics)
+	}
+}
+
+func TestReviewBindingClassifierKeepsLegacyBindingRecorded(t *testing.T) {
+	binding := &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
+		Coverage: ReviewCoverageSummary{
+			Available: 8,
+		},
+	}
+	bindingStatus, coverageStatus, diagnostics := classifyReviewBinding(binding)
+	if bindingStatus != "recorded" ||
+		coverageStatus != "complete" ||
+		len(diagnostics) != 0 {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			bindingStatus,
+			coverageStatus,
+			diagnostics,
+		)
+	}
+}
+
+func TestDecisionRecordRejectsTamperedStoredReviewProjection(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	ev, err := evaluate(dir, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := buildReviewProjection(ev)
+	decision, err := accept(dir, data, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Projection == nil {
+		t.Fatalf("review binding=%+v", decision.ReviewBinding)
+	}
+	decision.ReviewBinding.Projection.Sections[0].Summary += " tampered"
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" ||
+		record.ReviewCoverageStatus != "invalid" ||
+		len(record.ReviewIncomplete) != 0 {
+		t.Fatalf(
+			"binding=%q coverage=%q diagnostics=%+v",
+			record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewDiagnostics,
+		)
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_BINDING_PROJECTION_FINGERPRINT_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
+	}
+}
+
+func TestDecisionRecordRejectsMalformedRecordedReviewCoverage(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	data := mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir)))
+	decision, err := accept(dir, data, acceptOptions{})
+	if err != nil || decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+	decision.ReviewBinding = &ReviewBinding{
+		Fingerprint: "sha256:" + strings.Repeat("1", 64),
+		Coverage: ReviewCoverageSummary{
+			Available:    3,
+			Partial:      5,
+			NotEvaluated: 0,
+			Incomplete: []ReviewCoverageGap{
+				{Code: "A2", Title: "影響", Coverage: reviewCoveragePartial},
+				{Code: "A3", Title: "例外・診断", Coverage: reviewCoveragePartial},
+				{Code: "A5", Title: "権限の変更", Coverage: reviewCoveragePartial},
+				{Code: "A6", Title: "native codeへ残る箇所", Coverage: reviewCoverageNotEvaluated},
+				{Code: "A7", Title: "逆追跡", Coverage: reviewCoveragePartial},
+			},
+		},
+	}
+	if _, err := recordDecision(dir, decision); err != nil {
+		t.Fatal(err)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.ReviewBindingStatus != "invalid" || record.ReviewCoverageStatus != "invalid" {
+		t.Fatalf("review status=%q coverage=%q", record.ReviewBindingStatus, record.ReviewCoverageStatus)
+	}
+	if len(record.ReviewDiagnostics) == 0 {
+		t.Fatal("malformed review coverage produced no diagnostics")
+	}
+	found := false
+	for _, diagnostic := range record.ReviewDiagnostics {
+		if diagnostic.Code == "REVIEW_COVERAGE_INCOMPLETE_MISMATCH" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("review diagnostics=%+v", record.ReviewDiagnostics)
 	}
 }
 
@@ -265,7 +766,7 @@ func TestUnreadableDecisionRecordFailsClosed(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := scratchWorkspaceBeforeSecondApplication(t)
 			acceptViaCLI(t, dir, candidateFile(t, unitPriceCandidate(revisionOfDir(t, dir))))
-			writeFile(t, filepath.Join(dir, filepath.FromSlash(decisionDir), "broken.json"), content)
+			writeRawDecisionRecord(t, dir, content)
 
 			if code, _, _ := cliRun(t, "decisions", "-workspace", dir); code == 0 {
 				t.Fatal("読めない記録を黙って飛ばしています")

@@ -15,6 +15,8 @@
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
+- `plan/TECH_RESEARCH_INTEGRATION_2026-10.md` — 直近リサーチをProduct Value / existing Issueへ割り当てる現在の統合計画
+- `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` — 成熟した外部Reference ModelをPlugin-firstで転写し、TEIの表現力と暗黙前提をpressureする横断Evidence Gate
 
 ## 現在の主線
 
@@ -67,7 +69,7 @@ Required Evidenceは次の三つで、同じclean candidate revision `R`のsame-
 
 `#387` final convergenceとsame-run child artifact auditを含むReady判定の正本は `GATE_B_READINESS_AUDIT.md` です。
 
-actual Oracle #214 / #371 / #376は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
+PostgreSQL以外の実Database Provider Evidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は重要なactual external asset Evidenceとして継続しますが、Gate Bの第四Required laneにはしません。未完了範囲はHandoverへ`unresolved`として渡します。
 
 ### Handover Baseline — Gate B → Gate C
 
@@ -176,6 +178,8 @@ actual external assetは、観測事実とCanonical contractを分離します�
 
 未観測のphysical object / column / SQL / datatypeを推測しません。
 
+成熟したReference Modelの転写は`ISSUE-000078` / `REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。転写で必要になった業務・設計概念は原則Semantic Extension / Pluginとして表し、X-TEA固有schemaをCoreへ直接追加しません。外部model本体をpublic fixtureへコピーせず、exact input digest、Source locator、mapping、loss / unresolved、Conformance Evidenceから再現します。
+
 ## Workstream D: Database / Provider Lifecycle
 
 ### 目的
@@ -184,7 +188,7 @@ Desired / Actual / Diff / Migration / Provider境界を、Provider固有知識�
 
 PostgreSQLは深い実証Providerとして利用します。
 
-Oracle等の異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。
+異なるProviderは、既存資産互換とprovider-neutral境界の圧力試験に利用します。Oracleは第一Referenceの`master_data`が持つ既存資産としての最初の具体例であり、要件がOracleに限られるわけではありません。MySQL、SQL Server等を加えるかは、具体的な既存資産や利用条件が現れた時点で決め、Oracleと同じEvidence契約（物理事実の観測、read-only境界、driver assembly、actual read）で検証します。
 
 actual Oracle Evidence未完了をGate B blockerへ戻しません。
 
@@ -308,6 +312,7 @@ Coreと外部実行基盤の境界を、実利用に耐える形へ段階的に�
 ### 対象
 
 - Plugin distribution / trust
+- Plugin-defined Capability Contract（ISSUE-000080。Core固定enumを増やさずauthoring / build / runtime scopeを分離）
 - production Provider adapters
 - durable store / HA
 - observability
@@ -338,6 +343,44 @@ B Semantic / Knowledge ───┬── C Application / Legacy
 
 完全な直列ではありません。Gate C後はStudio / AI / knowledge-firstと第二Targetを並行できます。
 
+## 2026-10 Research Integration — Product Valueへ戻す
+
+直近のresearchは、新しいAI subsystemや新しいGateを増やす根拠にはしません。Product Valueの中心である「意味のSSOT」「技術からの独立」「人が確認可能な変更」「AIを使っても再現可能なEvidence」へ戻し、既存Workstreamへ割り当てます。
+
+詳細は[TECH_RESEARCH_INTEGRATION_2026-10.md](TECH_RESEARCH_INTEGRATION_2026-10.md)を正本とします。
+
+Knowledge / AIでは、次の段階昇格をbaselineとしてPressureします。
+
+~~~text
+exact / explicit
+   ↓ unresolved only
+deterministic inference
+   ↓ unresolved only
+lightweight associative / statistical candidate generation
+   ↓ unresolved only
+bounded local cognition
+   ↓ unresolved only
+local SLM / LLM
+   ↓ unresolved only
+external LLM
+~~~
+
+どの段階でも、candidate quality / confidenceはSemantic applicability、Acceptance、write authority、Runtime authorityを意味しません。最終的なqualification / Validation / Acceptance / authority checkは決定論的境界へ戻します。
+
+Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaningへ持ち込まず、Host / Adapter / execution artifact / ABI / Execution Profileの差として観測します。同じSemantic Operationが異なるartifact / Hostでも追跡できることを第二Target pressureへ含めます。
+
+このresearch integrationは、RQ-010 / 013 / 015 / 016 / 021 / 024 / 027〜030の既存Gapを減らすための作業であり、研究を読んだことだけでEvidence tierを変更しません。
+
+## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
+
+小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkは渡辺幸三氏のX-TEA / XEAD系「CONCEPTWARE／受注生産」です。
+
+これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
+
+転写中に見つかった不足は、Business Procedure、Lifecycle、change impact、Target、Semantic Extension等の既存Issueへ返します。Runtime / Tool Capabilityの種類をCore固定enumへ追加しないための共通境界はISSUE-000080へ返します。Reference Modelに存在するという理由だけでCore primitiveを追加しません。原モデルの内容は利用条件を確認せずpublic Repositoryへ転載せず、source fingerprint、mapping、loss / unresolved、TEI独自fixtureをEvidenceとして保持します。
+
+判定契約は[Reference Model Transfer Evidence Gate](REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）Gate B actual final Evidenceを同一revision（R = `e5231839`）へ収束した
@@ -345,13 +388,15 @@ B Semantic / Knowledge ───┬── C Application / Legacy
 3. （完了、2026-09-19）第一Web Targetをbuild revision `T1`（T = `0ba87a4e`）として実装し、Gate C Evidenceを取得してReadyと判定した
 4. Gate C Ready後の並行lane（現在地。各Issueの状態は各Issueの`状態`行が正本）
    - `ISSUE-000046` Studio minimal Authoring Loop
-   - `ISSUE-000047` knowledge-first Semantic exploration
-   - `ISSUE-000027` AI Proposal / Acceptance
-   - `ISSUE-000026` 第二Target pressure test
-5. 第二TargetとAuthoring / AIのEvidenceを相互に戻し、Target-neutral / authoring境界を再評価する
+   - `ISSUE-000047` knowledge-first Semantic exploration — exact / deterministic baseline → lightweight cognition → model escalation
+   - `ISSUE-000027` AI Proposal / Acceptance — mechanismに依存せずminimum semantic deltaをShared Acceptanceへ収束
+   - `ISSUE-000026` 第二Target pressure test — Target差に加えてportable execution artifact / Host差を比較
+   - `ISSUE-000053` AI-native re-entry / Operational Knowledge — contract / implementation / config / current authority / Observationの再現性
+   - `ISSUE-000078` Reference Model Transfer — 成熟した既存model全体を転写し、表現力・loss・暗黙前提を横断Evidenceでpressure
+5. 第二TargetとAuthoring / AI / Reference Model TransferのEvidenceを相互に戻し、Target-neutral / authoring / semantic extension境界を再評価する
 6. production / ecosystem境界を必要なEvidenceとともに広げる
 
-現在、actual Gate B final runは実TEI checkout + Evidence専用PostgreSQL環境待ちです。環境待ちを理由にGate C以後の契約を前倒し実装しませんが、planning / traceabilityは先に矛盾なく固定します。
+Gate B / Gate CのReady判定とhistorical Evidenceは各exact revisionへ固定済みです。現在の主眼はGate C後のAuthoring / Knowledge / AI / Second Targetであり、旧Gate revisionのEvidenceをcurrent Workspaceへcarry-forwardしません。
 
 ## 先に固定しないもの
 

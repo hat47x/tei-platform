@@ -316,7 +316,7 @@ func TestImpactOfAnAddedValidationTracesExactDependencies(t *testing.T) {
 	for _, u := range unresolved {
 		codes = append(codes, u.Code)
 	}
-	wantCodes := []string{"APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"}
+	wantCodes := []string{"APPLICATION_VALIDATION_SELECTION_NOT_DECLARED", "DRIVER_SCENARIO_NOT_RUN", "TARGET_PROJECTION_NOT_EVALUATED"}
 	if !reflect.DeepEqual(codes, wantCodes) {
 		t.Fatalf("unresolved=%v want %v", codes, wantCodes)
 	}
@@ -357,7 +357,7 @@ func TestAnApplicationThatDeclaresTheValidationIsNotFlaggedAsUnresolved(t *testi
 	}
 	_, unresolved := Impact(after, diff)
 	for _, u := range unresolved {
-		if u.Code == "APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL" {
+		if u.Code == "APPLICATION_VALIDATION_SELECTION_NOT_DECLARED" {
 			t.Fatalf("Applicationが宣言済みなのに未解決として残っています: %+v", u)
 		}
 	}

@@ -107,6 +107,65 @@ func TestFingerprintIgnoresProvenanceAndOrderButNotMeaning(t *testing.T) {
 	}
 }
 
+func TestSemanticAndEvidenceFingerprintsRemainIndependent(t *testing.T) {
+	revision := "sha256:" + strings.Repeat("a", 64)
+	base := unitPriceCandidate(revision)
+	normalizedBase, semanticBase, err := normalizeCandidate(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidenceBase := evidenceFingerprintOf(normalizedBase.Evidence)
+	if evidenceBase == "" {
+		t.Fatal("candidate with Evidence has no evidenceFingerprint")
+	}
+
+	changedEvidence := unitPriceCandidate(revision)
+	changedEvidence.Evidence = append([]Evidence(nil), changedEvidence.Evidence...)
+	changedEvidence.Evidence[0].Note = changedEvidence.Evidence[0].Note + "（別の説明）"
+	normalizedChanged, semanticChanged, err := normalizeCandidate(changedEvidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidenceChanged := evidenceFingerprintOf(normalizedChanged.Evidence)
+
+	if semanticChanged != semanticBase {
+		t.Fatalf("Evidence change altered semantic fingerprint: before=%s after=%s", semanticBase, semanticChanged)
+	}
+	if evidenceChanged == evidenceBase {
+		t.Fatalf("Evidence change was not reflected in evidenceFingerprint: %s", evidenceBase)
+	}
+}
+
+func TestPreviewAndAcceptedDecisionBindSameEvidenceFingerprint(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+
+	ev, err := evaluate(dir, mustJSON(t, candidate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("preview is not acceptable: %+v", ev.preview.Stages)
+	}
+	if ev.preview.EvidenceFingerprint == "" {
+		t.Fatal("preview has no evidenceFingerprint")
+	}
+
+	decision, err := accept(dir, mustJSON(t, candidate), acceptOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v", decision)
+	}
+	if decision.CandidateFingerprint != ev.preview.CandidateFingerprint {
+		t.Fatalf("semantic fingerprint drifted: preview=%s decision=%s", ev.preview.CandidateFingerprint, decision.CandidateFingerprint)
+	}
+	if decision.EvidenceFingerprint != ev.preview.EvidenceFingerprint {
+		t.Fatalf("Evidence fingerprint drifted: preview=%s decision=%s", ev.preview.EvidenceFingerprint, decision.EvidenceFingerprint)
+	}
+}
+
 func TestRelationUniqueGoesThroughTheSameBoundary(t *testing.T) {
 	dir := scratchWorkspace(t)
 	c := unitPriceCandidate(revisionOfDir(t, dir))
@@ -209,10 +268,12 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 	}
 
 	code, out, _ = run("reject", "-workspace", dir, "-candidate", candidatePath, "-reason", "見送り")
-	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) {
+	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(out, `"recordPath": ".tei/decisions/`) {
 		t.Fatalf("reject code=%d out=%s", code, out)
 	}
-	assertTreeUnchanged(t, before, treeDigest(t, dir))
+	if got := revisionOfDir(t, dir); got != revision {
+		t.Fatalf("reject Decision recordがmodel revisionを変えました: got=%s want=%s", got, revision)
+	}
 
 	// Gate B / Gate Cが固定したbaselineの名前を持つ場所へは、明示しない限りacceptしない。
 	baselineLike := filepath.Join(t.TempDir(), "reference", "workspace")
@@ -220,23 +281,55 @@ func TestCLIRunsPreviewRejectAndAcceptAndGuardsTheReferenceBaseline(t *testing.T
 		t.Fatal(err)
 	}
 	baselineBefore := treeDigest(t, baselineLike)
-	code, _, errOut := run("accept", "-workspace", baselineLike, "-candidate", candidatePath)
+	baselineDecisionCount := len(decisionsOf(t, baselineLike).Records)
+	code, out, errOut := run("reject", "-workspace", baselineLike, "-candidate", candidatePath, "-reason", "baselineでは記録しない")
+	if code != 0 || !strings.Contains(out, `"decision": "rejected"`) || !strings.Contains(errOut, "決定記録を書きませんでした") {
+		t.Fatalf("baselineのreject record guardが働いていません: code=%d out=%s err=%s", code, out, errOut)
+	}
+	if got := len(decisionsOf(t, baselineLike).Records); got != baselineDecisionCount {
+		t.Fatalf("baselineのDecision recordが明示許可なしで増えました: got=%d want=%d", got, baselineDecisionCount)
+	}
+	assertTreeUnchanged(t, baselineBefore, treeDigest(t, baselineLike))
+
+	code, _, errOut = run("accept", "-workspace", baselineLike, "-candidate", candidatePath)
 	if code != 2 || !strings.Contains(errOut, "baseline") {
 		t.Fatalf("baselineへのacceptが止まっていません: code=%d err=%s", code, errOut)
 	}
 	assertTreeUnchanged(t, baselineBefore, treeDigest(t, baselineLike))
 
+	// 外部CLIからのsource mutationは、Review Projectionを一度も固定せずに実行できない。
+	normalBefore := treeDigest(t, dir)
+	code, _, errOut = run("accept", "-workspace", dir, "-candidate", candidatePath)
+	if code != 2 || !strings.Contains(errOut, "expected-review-fingerprint") {
+		t.Fatalf("review bindingなしのacceptが止まっていません: code=%d err=%s", code, errOut)
+	}
+	assertTreeUnchanged(t, normalBefore, treeDigest(t, dir))
+
 	derived := filepath.Join(t.TempDir(), "world.json")
-	code, out, _ = run("accept", "-workspace", dir, "-candidate", candidatePath, "-derived-out", derived)
+	reviewFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	code, out, _ = run(
+		"accept",
+		"-workspace", dir,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", reviewFingerprint,
+		"-derived-out", derived,
+	)
 	if code != 0 || !strings.Contains(out, `"decision": "accepted"`) {
 		t.Fatalf("accept code=%d out=%s", code, out)
 	}
 	if _, err := os.Stat(derived); err != nil {
 		t.Fatalf("派生物が出力されていません: %v", err)
 	}
-	code, _, _ = run("accept", "-workspace", baselineLike, "-candidate", candidatePath, "-allow-reference-baseline")
+	baselineReviewFingerprint := reviewFingerprintViaCLI(t, baselineLike, candidatePath)
+	code, _, _ = run(
+		"accept",
+		"-workspace", baselineLike,
+		"-candidate", candidatePath,
+		"-expected-review-fingerprint", baselineReviewFingerprint,
+		"-allow-reference-baseline",
+	)
 	if code != 0 {
-		t.Fatalf("明示的な許可があればbaseline名のscratchへacceptできる必要があります: code=%d", code)
+		t.Fatalf("明示的なbaseline許可とreview bindingがあればscratchへacceptできる必要があります: code=%d", code)
 	}
 
 	for _, args := range [][]string{{}, {"bogus"}, {"preview"}, {"preview", "-workspace", dir}} {

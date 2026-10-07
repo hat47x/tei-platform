@@ -14,6 +14,10 @@ TEIは、業務概念、型、関係、制約、lifecycle等を、特定の画�
 
 Canonical IDはfile pathやphysical object nameから独立し、実装や配置を変更しても意味上のidentityを維持できる必要があります。
 
+業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
+
+文字列や外部コードを正規化・変換した結果の一致を、それだけでbusiness identityの一致へ読み替えてはいけません。原Sourceの表記を保持する必要がある場合は、exact representationとnormalized / operational representationを区別し、同値性を判断するPolicy / MappingのscopeとSourceへ追跡できる必要があります。
+
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
 
 `.tei`、SQL、将来の他形式を含むauthoring sourceから、どのCanonical subjectへ寄与したかを追跡できなければなりません。
@@ -48,11 +52,19 @@ TEIは、それらを意味、Capability、Realization、Source Indexへ接続�
 - transaction boundary
 - failure boundary
 
+一つの業務処理（確定処理等）が複数Databaseを参照し、複数Databaseを更新する場合も基本要件として扱います。このとき、どのDatabase更新が一つのtransaction boundaryに入り、どこから先が別のfailure boundaryになるかをContractとして明示できなければなりません。Database同士にまたがる原子性を、Providerの能力から暗黙に仮定してはいけません。一部のDatabaseだけ更新が成功した状態は、成功にも失敗にも丸めず、未確定（Unresolved）として観測・再実行・補償の判断へ渡せる必要があります。特定のDatabase製品の数を増やすことは、この要件の主眼ではありません。
+
 Application ReleaseとDatabase Releaseは独立したlifecycleを持ちます。
+
+複数DatabaseやServiceへDataを分散しても、同じ業務対象のidentity、Relation、Constraint、ownershipをlogicalな意味として追跡できなければなりません。APIやmessageで接続できることだけを、Data meaningが統合された状態とは扱いません。
+
+反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
 
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
+
+legacy Database、source code、UI、業務手順等をImporterやAIが高精度に再構成できた場合も、そのAs-Is構造をDesiredへ自動採用してはいけません。Target候補はProposalとして分離し、採用判断と互換性・移行上の制約を別々に追跡できる必要があります。
 
 比較に十分な情報がない場合は、差分なしや破壊的変更へ自動変換せず、Unresolvedとして扱う必要があります。
 
@@ -132,21 +144,34 @@ browse、record、reference、header-detail、command等、業務システムで
 
 標準PatternからCRUD、View、Validation等を導出できる一方、適用できない業務へ無理に当てはめない必要があります。
 
+Application Pattern、View、Target、ORM等の実装都合から、Dataのbusiness identifierやkey構造を逆算してはいけません。特定のRealizationがsurrogate keyや単独keyを必要とする場合も、acceptedなcandidate key、uniqueness、Relation meaningを失わせず、Realization差として追跡できる必要があります。
+
 ## RQ-015 生成AIが既存知識から継続的にApplicationを構築・変更できること
 
 生成AI向けの開発支援では、次の順序を基本とします。
 
 1. Existing Domain Component
-2. Existing Semantic Pattern / Facet
-3. Existing Policy / Variation
-4. Composition
-5. Declarative expression / rule
-6. Capability call
-7. Custom implementation
+2. Existing Plugin / DSL Semantic Extension
+3. Existing Semantic Pattern / Facet
+4. Existing Policy / Variation
+5. Composition
+6. Declarative expression / rule
+7. Capability call
+8. Custom implementation
 
 毎回ゼロからRepositoryとコードを読み直してApplicationの意味を再構成したり、毎回ゼロからコードを生成したりすることを標準経路にはしません。
 
 生成AIは、Canonical meaning、Source、Decision、Pattern、Policy、Capability、Binding、Evidenceから、今回の変更に必要なcontextを機械的に取得できる必要があります。
+
+Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
+
+生成AIは、`identifier`、`external_id`、`code`等の属性名や外部から移行した識別子値だけを根拠に、business identifierやcandidate keyが成立したと判断してはいけません。acceptedな識別条件がある場合は、一意性のscope、時間・履歴条件、Relation / Constraint、Source / Contractを含むcontextへ到達できる必要があります。
+
+生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
+
+生成AIは関数従属性、candidate key、Constraint、Data分割等をProposalとして提示できます。一方、それらをaccepted meaningへ昇格するにはSource / Evidenceと通常のAcceptance境界が必要です。acceptedなData / Relation / Constraintから機械的に導出できるProvider schema、cross-reference、migration plan等は、可能な範囲でversionedかつdeterministicなCompiler / Planner / Projectionにより生成し、LLMの再解釈を実行authorityにしてはいけません。
+
+Core内蔵の概念とPlugin / DSLによる意味拡張は、生成AIから見て同じ探索可能な意味資産として扱える必要があります。
 
 既存Applicationへの変更では、少なくとも変更対象、影響範囲、維持すべき不変条件、再生成可能なderived artifact、慎重に扱うnative assetを区別できる構造を目指します。
 
@@ -159,6 +184,8 @@ AIが作った内容を直接Canonical authorityとせず、まずProposal / Str
 ## RQ-016 AIによる確認提案は控えめで、履歴を持つこと
 
 AI / Editorは、履歴管理、監査、状態遷移、1:N関係、関数従属性、認証・認可等の典型論点について、必要な場合に確認を提案できることを目指します。
+
+識別子や関数従属性を確認するときは、単独`id`、field名、画面上のまとまり、一般的なschema patternだけを根拠にしません。currentなData / Relation / Constraint / Source / Evidenceから確定できる内容、設計候補、未解決点を区別し、根拠とともに提示できる必要があります。
 
 ただし、次を満たす必要があります。
 
@@ -235,7 +262,13 @@ Repositoryを細かく分割しすぎず、関連する改修が同一Repository
 
 Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。
 
-現時点で根拠のない一律の数値目標は固定しません。
+Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、共通runtimeの共有、artifact重複排除、static linking、lazy loading等を選べる必要があります。
+
+性能最適化のために複数Extensionを一つのartifactへ統合しても、元のidentity、version、Lock、provenance、Authorityへ逆追跡できなければなりません。反対に、一つのExtensionを一つのprocessや一つのWasm moduleとして配布することを標準前提にしてはいけません。
+
+Web Targetでは、process起動、任意filesystem access等のブラウザで成立しない実行方式をSemantic Extensionの成立条件へ含めてはいけません。Target固有のRuntime要件を満たせない場合は、意味を暗黙に変更してfallbackせず、build / Conformance段階で非対応またはUnresolvedとして扱える必要があります。
+
+現時点で根拠のない一律の数値目標は固定しません。Referenceでは、少なくともcold / warm start、初期転送量、install / cache footprint、steady memory、Extension追加時の増分cost、resolver / evaluator overheadをTargetごとに観測できるようにします。
 
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
@@ -260,6 +293,7 @@ TEIは、Data、Function / Interaction、Business Procedureを同じ業務シス
 - Business Procedureが参照するView / Application Pattern / Action / Capabilityの存在とtraceability
 - View / Actionが利用・変更するData / Relation / Validationとの整合
 - read-only / ownership / subsystem等の境界を越える操作
+- Data ownershipとFunction / InteractionのCRUDを重ねたときのSubsystemの凝集・結合上の違和感
 - Data / Relation変更によるView / Procedureへの影響
 - ApplicationのBusiness Resultと、外部世界で観測される業務完了の混同
 
@@ -330,6 +364,66 @@ AIエージェントは、少なくとも次を区別できなければなりま
 TEI成果物を読めること、Business Procedureを理解できること、AIのautonomy levelが高いことは、それだけでwrite / invoke / secret / network / external side effect authorityを与えません。
 
 Agentが行った業務もRQ-018〜RQ-020のCommand / Observation / Resource / retry / unknown境界を迂回してはいけません。
+
+## RQ-031 特定のモデル体系をCoreで特権化しないこと
+
+TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflow等のいずれか一つを、すべてのApplicationが従う唯一の上位モデルとして固定してはいけません。
+
+データモデルを含む各体系は、同じシステムの意味を特定の観点から構造化する表現として扱います。新しい観点が必要になった場合も、既存のモデルへ無理に押し込まず、意味上の関係を保ったまま追加できる必要があります。
+
+新しい業務・設計概念を追加するたびにCore変更を要求してはいけません。Coreへ共通機構を追加するのは、複数の意味体系に共通する欠落がReferenceで確認された場合を基本とします。
+
+標準機能として提供する意味体系にも、原則として第三者Extensionと同じidentity、dependency、conflict、discovery、Conformanceの契約を適用します。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路を前提にしません。
+
+標準namespaceのauthorityも同じ原則に従って明示します。`std.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。
+
+## RQ-032 Plugin / DSLで意味論を宣言・合成できること
+
+Plugin / DSLによる拡張は、実装関数を追加するだけでなく、概念が何を意味し、他の概念とどう関係し、何を満たす必要があるかを機械可読に宣言できる必要があります。
+
+少なくとも、拡張のidentity、namespace、semantic version、適用範囲、依存条件、既存概念との関係、Constraint / Validation、ProjectionやCapabilityへの接続を追跡できなければなりません。意味論と、その意味を読み書き・検証・実現する規則は、同じ拡張のidentityへ辿れる必要があります。
+
+Semantic Extensionの依存は、特定packageのidentityを必要とするものと、Semantic Interface等の契約を満たせばよいものを区別して表現できる必要があります。Semantic Interface自体も、identity、contract version、Source、contract fingerprint等へ辿れる意味契約として扱います。providerが同じInterface名を自己申告しただけで適合済みとしてはいけません。
+
+意味解釈に影響するSemantic依存を、Environment固有のRuntime PluginやToolingの依存と同じ解決scopeへ暗黙に混ぜてはいけません。Validation結果がShared AcceptanceやConformanceへ影響するEvaluatorも、EnvironmentごとのRuntime provider選択だけでAccepted semantic validityを変えない構造にする必要があります。
+
+依存先と互換範囲を明示し、root requirementから推移依存を決定論的に解決できなければなりません。同じ入力から得られるresolved graphは、load順やcatalogの列挙順に依存してはいけません。さらに、宣言したconstraint languageの範囲で有効解が存在する場合、greedyなversion選択や探索順だけを理由に解決不能としてはいけません。
+
+複数の有効解が存在し、Acceptedなresolution policyでも一意に決められない場合は、solver内部の探索順で一つを暗黙選択せず、候補またはUnresolvedとして扱える必要があります。Semantic Interfaceを満たすproviderが複数ある場合も同様です。
+
+Accepted Semantic Setは、root requirements、exact version、declaration fingerprint、Semantic Interface contract fingerprint、解決済みdependency / interface wiring、resolution policy、fingerprint canonicalization規則を再現できるlock、または同等の表現へ固定できる必要があります。Catalogへ新versionが追加されたことだけを理由にAccepted Semantic Setを再解決してはいけません。root requirementsや解決規則が変わった場合はstaleとして検出し、意味変更候補として扱います。
+
+同じnamespaceやsemantic identityの意味を、互換性のない定義へ黙って差し替えてはいけません。複数の拡張が同じ意味へ異なる定義を与える場合も、読み込み順や偶然の実装順序で上書きせず、競合、優先関係、互換性を明示的に判定します。一つのCanonical Worldで互換性のない世代の意味体系を同時に有効化する場合は、namespaceやtranslationの境界を明示します。一意に決められない場合はUnresolvedとして扱います。
+
+semantic versionとは別のcompatibility family / epoch / levelを必須軸として先に固定しません。version range等では表現できない互換性の差が複数Referenceで確認された場合に追加を検討します。
+
+Extension packageの依存関係に生じるcycleと、業務上のRelation graphに存在するcycleは区別します。package dependency cycleは原則としてAccepted graphへ入れず、共通Interfaceの抽出やBridge Extension等によって解消できる構造を目指します。
+
+あるExtensionが存在するだけで、別Extensionの既存の意味が暗黙に変わる方式を標準にはしません。組合せによって新しい意味が必要な場合は、Bridge Extensionや明示的なroot requirement等としてSemantic Setに現れる必要があります。
+
+optionalなdiagnosticやProjectionであっても、その存在がShared AcceptanceのAccept / RejectやCanonical validityへ影響する場合は、単なるTooling依存として扱わずSemantic Setへ明示する必要があります。
+
+Semantic Extensionの追加やversion変更、Profileによるroot requirement集合の変更によってAccepted Semantic Setが変わる場合は、sourceが変わっていなくても意味変更候補として扱います。新しいcompatible versionが見つかったことだけを理由に、Accepted Semantic Setを自動更新してはいけません。
+
+Semantic Extensionのlogical identityと、実行・配布に使うartifact境界は同一である必要はありません。同じAccepted Semantic SetからTargetごとに異なるpackaging planを導出し、複数Extensionを一つのbuiltin / linked artifactへまとめたり、必要な実装だけをWasm等で遅延読込したりできる必要があります。この変換でSemantic Set fingerprintを物理配置へ依存させてはいけません。
+
+実行codeを持たないdeclaration-only ExtensionまでRuntime artifactを要求してはいけません。実行codeが必要な場合も、Targetに応じてbuiltin / linked、portable sandboxed module、process等の実現方式を選べる余地を保ちます。Targetごとのpackaging差は、Semantic contractとConformanceを満たす限り、意味の差として扱いません。
+
+意味を宣言できることは実行Authorityを意味しません。Plugin / DSL拡張もRQ-019の権限・Resource境界を迂回してはいけません。
+
+## RQ-033 AIとToolが意味拡張を実装のレールとして利用できること
+
+生成AI、Editor、Driver等は、Core内蔵の概念とPlugin / DSL拡張を同じ探索対象として扱い、利用可能な概念、適用条件、依存、Constraint、Validation、Projection、Capabilityへの接続を機械的に取得できる必要があります。
+
+依存が推移的に大きくなっても、AI / Toolはresolved setだけでなく、各Extensionがどのroot requirementから導入されたか、どのRequirementをどのprovider / Semantic Interfaceが満たしたか、どの要素がそのExtensionへ逆依存しているか、解決できない場合は何が競合しているかを機械的に辿れる必要があります。
+
+生成AIによる実装では、再利用可能な意味拡張の探索とComposition、決定論的に導出できる変換・Validationを、自由生成やApplication固有のcustom implementationより先に利用できる構造を目指します。Catalog全体を毎回読み込ませるのではなく、対象subjectとSemantic dependency graphから必要なclosureを切り出し、必要に応じて理由や影響を追加で探索できる構造を優先します。
+
+複数の実装候補が同じ制約を満たして一意に決められない場合や、判断に必要な情報が不足している場合は、AIが暗黙に一つを選ばず、ProposalまたはUnresolvedとして扱える必要があります。依存競合も単なる「解決失敗」にまとめず、原因となるrequirementとその由来を説明できることを目指します。
+
+resolution budget超過、Catalog不足、Interface authority不足等も、実際のdependency conflictと区別して説明できる必要があります。AIやToolが「解けなかった」ことを「解が存在しない」ことへ読み替えてはいけません。
+
+この要求はAIが誤らないことを前提にしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
 
 ## 要求を実装へ落とすときの原則
 

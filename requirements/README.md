@@ -1,6 +1,6 @@
 # TEI Product Requirements 読み方ガイド
 
-この文書は、[`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md) にある正式なProduct Requirementを、**根幹の目的から個別要求へ降りて読めるようにする案内**です。
+この文書は、[`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md) にある正式なProduct Requirementを、根幹の目的から個別要求へ降りて読めるようにする案内です。
 
 正式な要求の正本は`TEI_PRODUCT_REQUIREMENTS.md`です。この文書はRequirementを追加・変更するものではありません。
 
@@ -11,7 +11,7 @@ TEIには、業務モデリング、Database、Target、Runtime、Security、AI�
 TEIの要求は、おおむね次の一連の流れを守るためにあります。
 
 ```text
-業務上の意味を定義する
+業務上の意味を定義・拡張する
         ↓
 既存の知識・実装へ結び付ける
         ↓
@@ -40,7 +40,9 @@ Web画面で登録するという実現方法
 
 この区別を維持するために、複数のRequirementが互いに支え合っています。
 
-## 2. 要求群を六つのテーマで読む
+これらの要求は、Product Valueが定める個人・組織・社会の価値を、プロダクトの能力として支えるためにあります。どの価値をどのRequirementが支えるかは、[`TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)の「意味のSSOTが生む価値」で各価値の項目ごとに示しています。
+
+## 2. 要求群を八つのテーマで読む
 
 ### A. 意味を実装から守る — RQ-001〜004
 
@@ -60,7 +62,7 @@ Web画面で登録するという実現方法
 - **RQ-003** — 暗黙の複数正本を作らない
 - **RQ-004** — Native assetをnativeなまま利用する
 
-ここでいう**Canonical**は、特定の画面やDatabase製品ではなく、TEIが基準として扱う意味です。
+ここでいうCanonicalは、特定の画面やDatabase製品ではなく、TEIが基準として扱う意味です。
 
 ### B. Applicationと実装を安全に組み立てる — RQ-005〜009
 
@@ -68,7 +70,7 @@ Web画面で登録するという実現方法
 
 この領域では、Application、Database、Provider、Capabilityを最初から一枚岩にしないことを要求します。
 
-主な失敗例:
+主な失敗例は次のとおりです。
 
 - Application ReleaseとDatabase Releaseを常に一対一に固定する
 - actual Databaseの情報不足を「差分なし」と判断する
@@ -89,7 +91,7 @@ TEIでは、設計を一つのフォームや一つのDiagramへ閉じ込めま�
 
 同じ意味を、表、Graph、Flow、UI、自然言語等から確認し、Driverで実行可能な部分を早期に試します。
 
-主な失敗例:
+主な失敗例は次のとおりです。
 
 - Editorで表現できるものだけがCore conceptになる
 - Web画面の都合がCanonical meaningを決める
@@ -104,7 +106,7 @@ TEIでは、設計を一つのフォームや一つのDiagramへ閉じ込めま�
 - **RQ-013** — Target-neutralなPresentation / Interaction
 - **RQ-014** — Application Patternの再利用
 
-**Projection**は、同じ意味を用途別に見せる表現です。Projectionは読みやすさや編集しやすさを提供しますが、それ自体を別の正本にはしません。
+Projectionは、同じ意味を用途別に見せる表現です。Projectionは読みやすさや編集しやすさを提供しますが、それ自体を別の正本にはしません。
 
 ### D. AIを「自由生成器」ではなく設計支援へ使う — RQ-015〜017
 
@@ -112,7 +114,7 @@ TEIでは、AIに毎回Repository全体を読ませ、コードや設計を一�
 
 まず既存の意味資産、Pattern、Rule、Capabilityを探し、利用可能な候補を絞り、それでも不足する部分だけを新規提案へ進めます。
 
-主な失敗例:
+主な失敗例は次のとおりです。
 
 - 同じ業務意味をAIが毎回違うコードとして再生成する
 - AI提案がReviewなしにCanonicalへ書き込まれる
@@ -146,7 +148,7 @@ TEIでは、AIに毎回Repository全体を読ませ、コードや設計を一�
 
 設計が正しくても、実行時に権限が広がったり、副作用を二重実行したりすれば安全な業務基盤にはなりません。
 
-主な失敗例:
+主な失敗例は次のとおりです。
 
 - commandが受理されたことを、外部状態が変わった証拠にする
 - PluginがCapabilityを知っているだけで実行権限も得る
@@ -168,7 +170,7 @@ Security / Runtimeの具体的な説明は[`../docs/security.md`](../docs/securi
 
 Referenceや実験が成功しても、そのままproduction-readyとは言えません。また、Business Procedure、Data、Function等の一視点だけで業務全体を説明したことにもなりません。
 
-主な失敗例:
+主な失敗例は次のとおりです。
 
 - toy fixtureで動いた結果をproduction保証へ広げる
 - experimental frameworkの成功率をTEIのKPIへそのまま転記する
@@ -186,6 +188,50 @@ Referenceや実験が成功しても、そのままproduction-readyとは言え�
 - **RQ-026** — Data / Function-Interaction / Business Procedureを相互検証する
 
 RQ-025 / RQ-026は、[`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)で、もう一段具体的に解釈しています。
+
+### G. 人とAIが長く一緒に開発し、業務を続ける — RQ-027〜030
+
+生成AIが実装や業務の一部を担うようになると、問題は「一度作れるか」から「数か月後に、別のAIや別の担当者が安全に続きを担えるか」へ移ります。
+
+この領域では、Applicationの知識を会話履歴や特定の人の記憶へ閉じ込めず、人とAIが同じ正本から理解・承認・再利用・業務遂行を続けられることを要求します。
+
+主な失敗例は次のとおりです。
+
+- 前回のAIとの会話履歴が無いと、Applicationの意味や過去の決定を誰も再構成できない
+- 人が生成コードの全量を読めないまま承認し、承認が形だけになる
+- 別Applicationへ意味をcopyした結果、元と先が黙って分岐する
+- AIエージェントが業務手順を読めることを理由に、外部へ副作用を起こす権限まで持つ
+- AIが命令を出したことを、業務が完了したことと読み替える
+
+対応する主なRequirement:
+
+- **RQ-027** — AIが長期間にわたりApplicationへ再入場できる開発contextを提供する
+- **RQ-028** — 人間が実装詳細を全面的に読まずに変更を理解・承認できる
+- **RQ-029** — Domain・Infrastructure知識を適用条件付きで再利用・移植する
+- **RQ-030** — AIエージェントがTEI成果物を業務遂行のOperational Knowledgeとして利用する
+
+この群は、Product Valueでいう個人の価値（引継ぎ、中身のある承認）、組織の価値（知識資産の再利用）、社会の価値（人による監督を名目にしないこと、権限の暗黙の拡大を防ぐこと）に直接つながります。RQ-030の業務遂行も、RQ-018〜RQ-020のCommand / Observation / 権限 / unknown境界を迂回しません。ただし、この群には要求として定めた段階の項目が含まれ、価値の実証ではありません。RQ別の実証状況は[`PRODUCT_REQUIREMENT_GAP_AUDIT.md`](../plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
+
+### H. Coreを固定語彙へ閉じない — RQ-031〜033
+
+TEIでは、データモデルも含め、現在あるモデル体系を将来のすべてのApplicationへ強制しません。Coreが持つべきなのは業務概念の網羅ではなく、新しい意味を既存の意味と関係付け、衝突を検出し、複数の表現や実装へ接続できる共通機構です。
+
+主な失敗例は次のとおりです。
+
+- データモデルを唯一の上位モデルにし、行為・Interaction・手順等を無理に従属させる
+- Pluginがコードは追加できても意味を宣言できず、EditorやAIから不透明な固有実装になる
+- 拡張のversionや依存・互換範囲が分からず、同じnamespaceの意味が知らないうちに変わる
+- 拡張同士の競合を読み込み順で黙って解決する
+- AIが既存の意味拡張を発見できず、同じ概念や規則をApplicationごとに再実装する
+- 情報不足や複数候補をAIが暗黙に一つへ決める
+
+対応する主なRequirement:
+
+- **RQ-031** — 特定のモデル体系をCoreで特権化しない
+- **RQ-032** — Plugin / DSLで意味論を宣言・合成する
+- **RQ-033** — AIとToolが意味拡張を実装のレールとして利用する
+
+この要求群により、TEIの拡張性を「実装を差し替えられること」から「意味体系そのものを後から追加し、既存の意味と矛盾なく扱えること」まで広げます。生成AIは、その拡張を探索・合成・検証することで、毎回ゼロから設計判断をやり直す範囲を減らします。
 
 ## 3. 一つの受注例で要求のつながりを見る
 
@@ -232,7 +278,7 @@ RQを単独のチェック項目として見るより、同じ業務シナリオ
 
 たとえば「staleなAI Proposalを黙って適用しない」という要求があっても、特定のversion storeやconflict algorithmを要求しているとは限りません。
 
-Product Requirementはまず**何を守るか**を定めます。具体的な方式はArchitecture、ADR、Referenceで比較します。
+Product Requirementはまず何を守るかを定めます。具体的な方式はArchitecture、ADR、Referenceで比較します。
 
 ### Requirementがあることと、実装済みであることは別
 
@@ -253,6 +299,7 @@ Product Requirement exists
 
 ## 5. 次に読むもの
 
+- 要求が守る価値（個人・組織・社会）: [`../product/value/TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)
 - 正式な要求本文: [`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md)
 - 業務システム設計の要求解釈: [`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
 - Architectureを根幹から読む: [`../docs/architecture-reading-guide.md`](../docs/architecture-reading-guide.md)

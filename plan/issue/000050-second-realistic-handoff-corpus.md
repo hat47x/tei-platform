@@ -475,8 +475,86 @@ RRB-P1 / P2 / P3のEvidenceを取得した（上の限定つき）。ISSUE-00004
 - [x] system result / Observation / adjacency / actor差からHandoffを生成していないことをactual testで確認した（R = `82e4301`のA7）
 - [x] Handoff sourceが無い箇所はunknownのまま保持され、fail closedになることを確認した（R = `82e4301`のA7）
 - [x] ISSUE-000048のblocker Bへ、取得revisionとEvidence natureつきで結果を渡した
-- [ ] 独立review（別の生成AI等）を受け、RRB-P1 14項目とseed review checklistの結果を記録した（方針は2026-09-21に決定済み。未実施）。レビュー依頼は[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_HANDOFF_2026-09.md)（2026-09-24準備、未実施）
+- [x] 独立review（OpenAI GPT-5.6 Sol）を実施し、RRB-P1 14項目・seed review checklist・O-1〜O-5・RRB-P2/P3を記録した（2026-09-24）。結果は[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)の`review-blocked`。Pre-ADR Audit再判定は未実施
 - [ ] Pre-ADR AuditがBlocker Bを再判定した（判定はAuditが持つ）
+
+## 独立review結果 — 2026-09-24
+
+作成者とは別系統の生成AI（OpenAI GPT-5.6 Sol）が固定revision `R = 82e430109f8f02944519738045f3d6c0bef4f295`をreviewした。
+
+結果:
+
+```text
+review result = review-blocked
+
+RRB-P1 = 未達
+  item 14を満たす「forced Handoffではない」ことが未立証
+  conditionがST-00のmeaningを内包
+  count accountability transferとU-4/U-6/U-9が不整合
+
+RRB-P2 = 未達
+  item 4 Data-state / ownership cross-check未確認
+  condition continuation predicateも再authoring必要
+
+RRB-P3 = 達成
+  recorded actual Gate A EvidenceをRelease metadataで照合
+  reviewer自身のrunner再実行はしていない
+
+recommended B-F19b = Unresolved
+```
+
+詳細とrequired fixesは[`BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md`](../BUSINESS_PROCEDURE_BLOCKER_B_INDEPENDENT_REVIEW_RESULT_2026-09.md)を正とする。
+
+このreviewはPre-ADR Auditの再判定ではない。次はsource meaning / pressureのblocking findingsを解消し、必要なら再reviewした後にAudit §17を再判定する。
+
+## 独立review後remediation — 2026-09-24
+
+独立reviewのF-1 / F-2 / F-4とsame-actor coverage recommendationを受け、current source / pressureを狭い範囲で改訂した。
+
+変更したmeaning:
+
+```text
+production independent need
+  + physical completion separation
+  + terminal release from production control
+  != a stocking-specific endpoint invented for Handoff
+
+Handoff condition
+  = explicit production-side release from production control
+  + permission for warehouse intake to begin
+  + received-count reconciliation remains pending
+  != target Procedure trigger
+
+condition
+  != ST-00 already completed
+  != ST-01 reconciliation succeeded
+  != count accountability already transferred
+```
+
+追加critical pressure:
+
+- `TestSecondRealisticReferenceProductionReleaseHasIndependentBusinessMeaning`
+- `TestSecondRealisticReferenceKeepsCountAccountabilityUnresolvedUntilReconciliation`
+- `TestSecondRealisticReferenceExplicitHandoffDoesNotDependOnActorDifference`
+
+これら3件を`tools/business-procedure-gate-a-critical-tests.txt`へ追加した。
+
+境界:
+
+- RRB-P2 item 4のData-state / ownership authorityは**未解決のまま**で、fake Data identityは追加していない。
+- remediationは独立reviewer自身（GPT-5.6 Sol）がauthorしたため、旧reviewをcurrent sourceのindependent acceptanceへ転用しない。`seed-ledger.json`は`re-review-required`を保持する。
+- 旧`R = 82e4301`のGate A PASSはhistorical Evidenceであり、current remediation revisionのP3 Evidenceではない。current sourceは新しいGate A actual runが必要。
+- Pre-ADR Auditの再判定はまだ行わない。
+
+current next state:
+
+```text
+P1 semantic remediation source
+  -> actual Gate A rerun
+  -> independent re-review by a reviewer independent of this remediation author
+  -> P2 item 4 resolution / status decision
+  -> Pre-ADR Audit re-judgment
+```
 
 ## 次のincrement
 

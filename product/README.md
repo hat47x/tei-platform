@@ -6,7 +6,7 @@
 
 ## 文書の役割
 
-- [`value/TEI_PRODUCT_VALUE.md`](value/TEI_PRODUCT_VALUE.md): TEIが利用者へ提供し、開発中も失ってはならない価値
+- [`value/TEI_PRODUCT_VALUE.md`](value/TEI_PRODUCT_VALUE.md): TEIが利用者へ提供し、開発中も失ってはならない価値。その価値が個人・組織・社会のそれぞれに何をもたらし、どう確かめるかもここで定める
 - [`vision/TEI_PRODUCT_VISION.md`](vision/TEI_PRODUCT_VISION.md): その価値が十分に実現されたとき、TEIがどのような開発基盤になっているか
 - [`principles/TEI_PRODUCT_PRINCIPLES.md`](principles/TEI_PRODUCT_PRINCIPLES.md): 設計や実装で迷ったときに用いる判断原則
 

@@ -35,7 +35,7 @@ runtime process "python3 -m worker" sandbox required
 
 この形は明示argsへの移行を要求するerrorになります。
 
-主な検証:
+主な検証は次のとおりです。
 
 - `internal/syntax/process_args_conformance_test.go`
 - `internal/syntax/plugin_parser_test.go`
@@ -50,7 +50,7 @@ argvは実行内容を変えるため、Host-local optionではなくPlugin exec
 - Environment Plugin Lock fingerprint
 - Runtime Policy fingerprint
 
-主な検証:
+主な検証は次のとおりです。
 
 - `internal/plugin/process_args_conformance_test.go`
 - `internal/plugin/runtime/process_args_policy_test.go`

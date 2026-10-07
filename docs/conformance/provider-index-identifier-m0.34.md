@@ -103,7 +103,7 @@ desiredValue
 actualValue
 ```
 
-例:
+例は次のとおりです。
 
 ```json
 {

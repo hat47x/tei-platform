@@ -20,6 +20,10 @@ func validReceipt() qualificationReceipt {
 		GoVersion:                       expectedGoVersion,
 		GoOS:                            "linux",
 		GoArch:                          "amd64",
+		QualificationHelperMode:         expectedQualificationHelperMode,
+		QualificationHelperBlob:         expectedQualificationHelperBlob,
+		RepositoryHealthMode:            expectedRepositoryHealthMode,
+		RepositoryHealthBlob:            expectedRepositoryHealthBlob,
 		CanonicalPathCount:              11,
 		ReplayRunnerMode:                expectedRunnerMode,
 		ReplayRunnerBlob:                expectedRunnerBlob,
@@ -101,6 +105,27 @@ func TestValidateReceiptRejectsContractDrift(t *testing.T) {
 	if err := validateReceipt(goArch, goArch.QualificationRepositoryRevision, goArch.QualificationRepositoryTree, goArch.BaseMainAfter); err == nil {
 		t.Fatal("accepted receipt without GOARCH provenance")
 	}
+
+	helperMode := validReceipt()
+	helperMode.QualificationHelperMode = "100644"
+	if err := validateReceipt(helperMode, helperMode.QualificationRepositoryRevision, helperMode.QualificationRepositoryTree, helperMode.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with qualification helper mode drift")
+	}
+	helper := validReceipt()
+	helper.QualificationHelperBlob = strings.Repeat("d", 40)
+	if err := validateReceipt(helper, helper.QualificationRepositoryRevision, helper.QualificationRepositoryTree, helper.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with qualification helper blob drift")
+	}
+	healthMode := validReceipt()
+	healthMode.RepositoryHealthMode = "100644"
+	if err := validateReceipt(healthMode, healthMode.QualificationRepositoryRevision, healthMode.QualificationRepositoryTree, healthMode.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with Repository-health mode drift")
+	}
+	health := validReceipt()
+	health.RepositoryHealthBlob = strings.Repeat("d", 40)
+	if err := validateReceipt(health, health.QualificationRepositoryRevision, health.QualificationRepositoryTree, health.BaseMainAfter); err == nil {
+		t.Fatal("accepted receipt with Repository-health blob drift")
+	}
 }
 
 func TestDecodeReceiptRejectsUnknownOrTrailingJSON(t *testing.T) {
@@ -112,10 +137,19 @@ func TestDecodeReceiptRejectsUnknownOrTrailingJSON(t *testing.T) {
 		t.Fatalf("rejected valid qualification receipt JSON: %v", err)
 	}
 
-	unknown := `{"evidenceNature":"first-web-target-r7b-local-source-qualification-receipt","unknown":true}`
-	if _, err := decodeReceipt([]byte(unknown)); err == nil {
+	var unknown map[string]any
+	if err := json.Unmarshal(valid, &unknown); err != nil {
+		t.Fatal(err)
+	}
+	unknown["unknown"] = true
+	unknownJSON, err := json.Marshal(unknown)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeReceipt(unknownJSON); err == nil {
 		t.Fatal("accepted unknown receipt field")
 	}
+
 	trailing := `{} {}`
 	if _, err := decodeReceipt([]byte(trailing)); err == nil {
 		t.Fatal("accepted trailing JSON value")

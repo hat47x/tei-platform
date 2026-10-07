@@ -34,6 +34,25 @@ type ApplicationDatabaseEdge struct {
 	Access      string           `json:"access"`
 }
 
+type ApplicationPatternContractQueryInputEntry struct {
+	TargetAttribute core.CanonicalID `json:"targetAttribute"`
+	Input           core.LocalName   `json:"input"`
+}
+
+type ApplicationPatternIndexEntry struct {
+	Application         core.CanonicalID                            `json:"application"`
+	Pattern             core.CanonicalID                            `json:"pattern"`
+	Kind                string                                      `json:"kind"`
+	Data                core.CanonicalID                            `json:"data,omitempty"`
+	Relation            core.CanonicalID                            `json:"relation,omitempty"`
+	Query               core.CanonicalID                            `json:"query,omitempty"`
+	Capability          core.CanonicalID                            `json:"capability,omitempty"`
+	Datasource          core.LocalName                              `json:"datasource,omitempty"`
+	Contract            core.CanonicalID                            `json:"contract,omitempty"`
+	ContractQuery       string                                      `json:"contractQuery,omitempty"`
+	ContractQueryInputs []ApplicationPatternContractQueryInputEntry `json:"contractQueryInputs,omitempty"`
+}
+
 type DeclaredDependency struct {
 	FromKind string           `json:"fromKind"`
 	From     core.CanonicalID `json:"from"`
@@ -198,6 +217,7 @@ type Derived struct {
 	SemanticElements             []SemanticElementEntry             `json:"semanticElements"`
 	SemanticDependencies         []SemanticDependency               `json:"semanticDependencies"`
 	DeclaredDependencies         []DeclaredDependency               `json:"declaredDependencies"`
+	ApplicationPatterns          []ApplicationPatternIndexEntry     `json:"applicationPatterns,omitempty"`
 	ApplicationDatabases         []ApplicationDatabaseEdge          `json:"applicationDatabases"`
 	EnvironmentBindings          []EnvironmentBinding               `json:"environmentBindings"`
 	DeploymentExecutorRoutes     []DeploymentExecutorRouteEntry     `json:"deploymentExecutorRoutes,omitempty"`
@@ -277,6 +297,15 @@ func Build(w ir.World) Derived {
 				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-relation", From: r.ID, Relation: "targets", ToKind: "semantic-data", To: r.Target})
 			}
 		}
+		for _, v := range ns.Validations {
+			d.SemanticElements = append(d.SemanticElements, SemanticElementEntry{Kind: "validation", ID: v.ID, Namespace: ns.ID})
+			if v.Attribute != "" {
+				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-validation", From: v.ID, Relation: "attribute", ToKind: "semantic-attribute", To: v.Attribute})
+			}
+			if v.Relation != "" {
+				d.SemanticDependencies = append(d.SemanticDependencies, SemanticDependency{FromKind: "semantic-validation", From: v.ID, Relation: "relation", ToKind: "semantic-relation", To: v.Relation})
+			}
+		}
 		for _, c := range ns.Capabilities {
 			d.SemanticElements = append(d.SemanticElements, SemanticElementEntry{Kind: "capability", ID: c.ID, Namespace: ns.ID})
 			for _, in := range c.Inputs {
@@ -290,6 +319,54 @@ func Build(w ir.World) Derived {
 	for _, a := range w.Applications {
 		for _, s := range a.SemanticUses {
 			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application", From: a.ID, Relation: "uses-semantic", ToKind: "semantic", To: s})
+		}
+		for _, v := range a.Validations {
+			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application", From: a.ID, Relation: "uses-validation", ToKind: "semantic-validation", To: v})
+		}
+		for _, p := range a.Patterns {
+			e := ApplicationPatternIndexEntry{
+				Application: a.ID,
+				Pattern:     p.ID,
+				Kind:        string(p.Kind),
+				Data:        p.Data,
+				Relation:    p.Relation,
+				Query:       p.Query,
+				Capability:  p.Capability,
+				Datasource:  p.Datasource,
+			}
+			d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application", From: a.ID, Relation: "owns-pattern", ToKind: "application-pattern", To: p.ID})
+			if p.Data != "" {
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "data", ToKind: "semantic-data", To: p.Data})
+			}
+			if p.Relation != "" {
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "relation", ToKind: "semantic-relation", To: p.Relation})
+			}
+			if p.Query != "" {
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "query", ToKind: "query", To: p.Query})
+			}
+			if p.Capability != "" {
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "capability", ToKind: "semantic-capability", To: p.Capability})
+			}
+			if p.ContractQuery != nil {
+				e.Contract = p.ContractQuery.Contract
+				e.ContractQuery = string(p.ContractQuery.Contract) + "/" + string(p.ContractQuery.Query)
+				for _, input := range p.ContractQuery.Inputs {
+					e.ContractQueryInputs = append(e.ContractQueryInputs, ApplicationPatternContractQueryInputEntry{
+						TargetAttribute: input.TargetAttribute,
+						Input:           input.Input,
+					})
+					d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract-query-input", ToKind: "semantic-attribute", To: input.TargetAttribute})
+				}
+				sort.Slice(e.ContractQueryInputs, func(i, j int) bool {
+					if e.ContractQueryInputs[i].Input == e.ContractQueryInputs[j].Input {
+						return e.ContractQueryInputs[i].TargetAttribute < e.ContractQueryInputs[j].TargetAttribute
+					}
+					return e.ContractQueryInputs[i].Input < e.ContractQueryInputs[j].Input
+				})
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract", ToKind: "database-contract", To: p.ContractQuery.Contract})
+				d.DeclaredDependencies = append(d.DeclaredDependencies, DeclaredDependency{FromKind: "application-pattern", From: p.ID, Relation: "contract-query", ToKind: "database-contract-query", To: core.CanonicalID(e.ContractQuery)})
+			}
+			d.ApplicationPatterns = append(d.ApplicationPatterns, e)
 		}
 		for _, r := range a.Databases {
 			d.ApplicationDatabases = append(d.ApplicationDatabases, ApplicationDatabaseEdge{Application: a.ID, Alias: r.Alias, Database: r.TargetDatabase, Access: string(r.Access)})
@@ -434,6 +511,12 @@ func Build(w ir.World) Derived {
 			return a.Alias < b.Alias
 		}
 		return a.To < b.To
+	})
+	sort.Slice(d.ApplicationPatterns, func(i, j int) bool {
+		if d.ApplicationPatterns[i].Application == d.ApplicationPatterns[j].Application {
+			return d.ApplicationPatterns[i].Pattern < d.ApplicationPatterns[j].Pattern
+		}
+		return d.ApplicationPatterns[i].Application < d.ApplicationPatterns[j].Application
 	})
 	sort.Slice(d.ApplicationDatabases, func(i, j int) bool {
 		return d.ApplicationDatabases[i].Application < d.ApplicationDatabases[j].Application || (d.ApplicationDatabases[i].Application == d.ApplicationDatabases[j].Application && d.ApplicationDatabases[i].Alias < d.ApplicationDatabases[j].Alias)

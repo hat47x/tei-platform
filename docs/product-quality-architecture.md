@@ -2,7 +2,7 @@
 
 Status: **Design baseline — cross-cutting / Evidence-driven**
 
-関連:
+関連は次のとおりです。
 
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md` — Product Requirement正本
 - `plan/PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md` — 段階的な実証計画
@@ -55,7 +55,7 @@ AI retrieval accuracyが高い
 
 ### 3.1 Meaning quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - Projection / Target / Provider都合でCanonical meaningが変わっていないか。
 - derived artifactが第二正本になっていないか。
@@ -68,7 +68,7 @@ AI retrieval accuracyが高い
 
 ### 3.2 Change quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - semantic no-op / compatible / incompatible / destructive / unresolvedを区別できるか。
 - apply前にimpactとpreconditionを説明できるか。
@@ -82,7 +82,7 @@ AI retrieval accuracyが高い
 
 ### 3.3 Execution quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - Business Result、named Outcome、Execution Error、Observationを区別できるか。
 - dependency unavailable / degraded / timeout / unknownをsuccessへ丸めていないか。
@@ -95,7 +95,7 @@ AI retrieval accuracyが高い
 
 ### 3.4 Interaction quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - high-density表示が操作不能・理解不能になっていないか。
 - Target / Host / input modalityに応じて主要Scenarioを完遂できるか。
@@ -108,7 +108,7 @@ AI retrieval accuracyが高い
 
 ### 3.5 Performance / resource quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - latency / throughput / memory / external cost等をTarget / Host / Provider / workload条件付きで観測しているか。
 - averageだけでtail / cold-start / large-data等のrelevant caseを隠していないか。
@@ -120,7 +120,7 @@ AI retrieval accuracyが高い
 
 ### 3.6 Security / authority quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - actor、UI convenience、AI autonomyをexecution authorityへ読み替えていないか。
 - secret / credential / DSN / unnecessary physical identityをdiagnosticやEvidenceへ複製していないか。
@@ -132,7 +132,7 @@ AI retrieval accuracyが高い
 
 ### 3.7 Maintainability / evolvability quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - 一つの意味変更に複数正本の人手同期が必要になっていないか。
 - Provider / Target固有変更がCoreへ不要に波及していないか。
@@ -145,7 +145,7 @@ AI retrieval accuracyが高い
 
 ### 3.8 Business completeness quality
 
-主な問い:
+主な問いは次のとおりです。
 
 - Application Functionだけで業務全体を説明したことにしていないか。
 - manual / external work、actor、handoff、judgmentを失っていないか。
@@ -216,7 +216,7 @@ Operational Telemetry
 
 これらは相関してよいですが同一ではありません。
 
-例:
+例は次のとおりです。
 
 ```text
 HTTP 200
@@ -242,7 +242,7 @@ Change safetyはDatabase migrationだけに限定しません。
 - Target / Runtime configuration change
 - Studio / AI accepted edit
 
-共通原則は:
+共通原則はは次のとおりです。
 
 ```text
 candidate
@@ -309,7 +309,7 @@ Operational TelemetryはRuntimeを観測するProjectionです。
 
 OpenTelemetry等のsemantic conventionsへ写像できることは相互運用上有用ですが、TEI Canonical modelをtelemetry data modelへ合わせません。
 
-必要な相関を:
+必要な相関をは次のとおりです。
 
 ```text
 TEI logical identity

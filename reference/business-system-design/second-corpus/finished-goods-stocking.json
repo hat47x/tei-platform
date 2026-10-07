@@ -8,7 +8,7 @@
     "purpose": "take released finished goods into stock under warehouse responsibility so that the stock record agrees with what has physically arrived and the goods can be committed to delivery",
     "trigger": {
       "status": "candidate",
-      "text": "finished goods released for stocking are waiting to be taken in charge"
+      "text": "finished goods expected for stocking are awaiting warehouse receipt and physical intake"
     },
     "actor": {
       "status": "candidate",
@@ -18,7 +18,7 @@
   "steps": [
     {
       "id": "ST-00",
-      "businessAction": "take the released goods in charge",
+      "businessAction": "begin warehouse intake by taking physical custody of the released goods",
       "realization": "manual-external-unresolved"
     },
     {

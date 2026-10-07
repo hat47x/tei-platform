@@ -467,9 +467,9 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 
 | 完了条件 | 状態 | 根拠・残り |
 | --- | --- | --- |
-| 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 未着手 | candidateは人 / CLIが書く。探索結果からの生成は`ISSUE-000047`との接続後 |
+| 1 `ISSUE-000047`の探索結果からexplicit-reference Proposalを作れる | 候補実装（未検証） | `application-pattern`のapplicable qualificationとdestination-ownedなPattern情報から`add-reference-pattern`を生成するReference producerを追加した。exact-head test / Repository-healthは未取得 |
 | 2 ProposalそのものはCanonical authorityではない | 実証済み | Preview / Rejectはauthoritative sourceをbyte単位で変更しない |
-| 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | candidateのevidenceが存在するsubject / sourceへ解決できなければ拒否する。根拠を探索結果から自動で得る部分は未着手 |
+| 3 qualified logical key / Canonical ID / Source / Evidenceへtraceできる | 一部 | qualificationからsubject / source / required dependency Evidenceをcandidateへ引き継ぎ、Proposal生成時にもcurrent workspaceへ再照合する。一般の探索・routingからの接続は未完了 |
 | 4 whole model regenerationを標準にせずminimum semantic deltaを扱う | 実証済み（operation kind 5種） | 宣言外のsemantic変更・World collection変更は拒否、変更subject数に上限（8件） |
 | 5 AI Proposalと他の入口が同じAcceptance原則へ収束 | 一部 | 入口が違っても同じfingerprint・同じsource・同じCanonical Worldになり、AI固有Evidenceは入らない。実際のStudio / AI producerは未実装 |
 | 6 feedbackをmeaning-owning concernへroute | 一部 | Validationはsemantic層でだけauthorでき、別layerへのplacementは拒否する。一般的なrouting catalogの実行は未着手 |
@@ -486,6 +486,92 @@ AI provider固有のpromptやtrajectoryをEvidenceとして残す場合も、sec
 | 17〜23 Runtime authority・hybrid routing | 未着手 | |
 
 Previewが判断できなかった事項は成功へ読み替えず`unresolved`に残す。特に、`order_entry`は`uses validation`を宣言しておらず、現行のDriver / Canonical modelはApplicationが評価するValidationの選択を宣言から導出していない（`APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL`）。Validationを追加しただけでは実行時に評価されるとは言えない、というこのReferenceの発見は、次のincrementで扱う。
+
+## qualification Evidenceとの接続候補 — 2026-10-03
+
+`ISSUE-000047`のdeterministic qualificationから既存のShared Acceptance Boundaryへexact Evidenceを渡すcandidate実装を、primary workstreamの`work/issue-000040-second-application-reference`へ統合している。
+
+接続では新しいProposal schemaを作らず、既存candidateのEvidenceを後方互換で精密化する。`applicable`なqualificationからsubject kind、Source Index identity、source path、source fingerprint、評価したrequirementsを付与する。required dependencyを明示した場合は、そのdependencyのauthoritative sourceとfingerprintもscoped Evidenceとして保持する。
+
+Previewではcurrent Source Indexへ戻り、同じrequirementsでqualificationを再実行する。candidate自身のsourceだけでなくrequired dependencyのEvidenceもcurrent qualificationと比較するため、dependencyのIDが同じままsource内容が変わった場合をfail closedにできる。requirements外のKnowledgeはこのhandoffへ含めず、無関係なsource変更をqualification freshnessへ持ち込まない。
+
+Accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent Sourceへ再照合する。Decisionの`current / superseded`、そのDecisionが書いたsourceの`intact / diverged`、受理理由に使ったEvidenceの`current / diverged`を分け、historical Acceptanceとcurrent applicabilityを混同しない。Evidence本文は正規化後にdedup・sortし、保存時の`evidenceFingerprint`とも照合するため、Decision記録だけを書き換えた場合も別の不整合として検出できる。
+
+この方式でもqualification結果をapprovalとして扱わない。`candidateFingerprint`はbase revisionとminimum semantic deltaだけを表し、Evidenceは含めない。一方、正規化済みEvidenceには別の`evidenceFingerprint`を与え、PreviewとDecisionの間で同じ根拠identityを保持する。これにより「意味は同じだが、承認時に提示した根拠が違う」状態を、意味identityを壊さず機械的に区別する。
+
+現時点ではexact-head full Repository-healthを通したProduct Evidenceではないため、完了条件1や3の状態はまだ更新しない。
+
+## qualificationからexplicit-reference Proposalを作るcandidate — 2026-10-05
+
+`knowledge-qualify`の結果をEvidenceとして添付するだけでは、変更delta自体は人が書く必要があった。この断絶を最小のReference caseで埋めるため、`tools/reference-shared-acceptance`へ`propose-qualified-reference-pattern`を追加した。
+
+対象は`order_entry.customer_reference`から`repair_intake.customer_reference`を組み立てるcaseである。ただし、origin Patternを複製しない。destination側が所有するPattern ID、Application、Relation、datasource、placementは明示入力とし、Contract / Query / input mappingだけをcurrent Canonicalのqualified origin Patternから取得する。
+
+Contract Queryは、qualificationの`requiredDependencies`にexact identityで明示されている場合だけ再利用する。今回なら`master_data.customer/find_by_id`である。単にPatternが`applicable`だったという理由では、その内部依存をProposalへ持ち込まない。
+
+Proposal生成時には、保存済みqualificationをそのまま信用せず、current workspaceから同じsubjectとrequirementsでqualificationを再実行する。Source / required dependency Evidenceが一致しなければ生成を止める。生成後のcandidateにはcurrent qualification Evidenceを付け、通常のShared Acceptance Previewがもう一度鮮度と適用可能性を検査できる形を保つ。
+
+このcandidate実装では、既知のSecond Application S4 candidateと同じsemantic delta / candidate fingerprintになること、originの`sales.order.customer`やdatasource alias `master`をcopyしないこと、Contract Queryがrequired dependencyに無い場合やqualification Evidenceがstaleな場合に生成しないこと、CLIがworkspaceを変更しないことをtestへ記述した。
+
+ただし、exact-headのtestとfull Repository-healthはまだ取得していない。したがって完了条件1は「候補実装」に留め、Product Evidence成立や完了は主張しない。
+
+## Semantic Evaluation Evidenceとの接続候補 — 2026-10-05
+
+Semantic Extension Referenceで得たEvaluation結果をShared Acceptanceへ接続するcandidateを追加した。ただし、Evaluationの`pass / fail / unknown`をAcceptance authorityへ昇格しない。
+
+接続では新しいAI専用ProposalやAcceptance engineを作らず、既存candidateの`Evidence`へartifact-only itemを追加する。Semantic Evaluation EvidenceはWorkspaceのAuthoring sourceではないため、既存の`subject / source / sourceFingerprint`へ偽装しない。Source Index Evidenceとartifact Evidenceを同一itemへ混在させず、別のauthority shapeとして保持する。
+
+producerであるSemantic ExtensionとconsumerであるShared Acceptanceは、`tools/internal/semanticevidence`の同じschema / normalization / fingerprint contractを使う。これによりEvaluation Evidenceの型とfingerprint規則を二重実装しない。
+
+artifact handoffでは、Semantic Set、Constraint、subject、validator、Evaluator Interface / contract、provider Extension、implementation / artifact digest、Conformance Evidence、input、status、diagnostic、Evaluation Evidence fingerprintを検査する。その正規化済みpayload全体へShared Acceptance側の`artifactFingerprint`も与え、受理時に見たartifactをexactに固定する。
+
+このartifactは`candidateFingerprint`には入らず、minimum semantic deltaのidentityを変えない。一方、`evidenceFingerprint`とReview Projectionには入るため、「意味差分は同じだが、判断時に見たEvaluation Evidenceが違う」状態を区別できる。Review A3にはstatus / diagnostic、A7にはartifact / Semantic Set / evaluation fingerprintを表示し、Accepted DecisionにもEvidence本文を残す。
+
+重要な停止線は次である。
+
+```text
+semantic evaluation pass
+  != Acceptance
+
+semantic evaluation fail / unknown
+  != automatic Reject
+
+recorded evaluation artifact
+  != current evaluator rerun
+  != current Conformance revalidation
+  != Runtime authority
+```
+
+Decision IndexもSource Evidenceとartifact Evidenceを別statusで返す。Source Indexへ再照合できる根拠は`sourceEvidenceStatus = current / diverged / none`、Evaluation artifactは`artifactEvidenceStatus = recorded / invalid / none`とし、artifactだけを「current」と呼ばない。両方が健全に併存する場合、集約`evidenceStatus`は`current-with-recorded-artifacts`とする。
+
+このcandidateは「Evaluation結果をレビュー可能な根拠として同じShared Acceptance Boundaryへ運べるか」をpressureするものであり、Semantic Evaluation Evidenceのcurrent freshnessを再実行する仕組みではない。将来current validityを要求する場合は、Semantic Set / Validation Plan / Conformance Evidenceを再取得してEvaluatorを再実行する別検査を追加する。
+
+exact-headのfocused test / full Repository healthは現在の実行環境では未取得であるため、本追記だけで完了条件やProduct Evidence tierを上げない。
+
+## Authoring Decision Authority Evidence Gate — 2026-10-05
+
+PV-AI-01の次段としてhuman Decision witnessを検討した結果、自己申告のactor fieldを追加する前にauthoring側のauthority Evidenceを確定する必要がある。
+
+正本は[Authoring Decision Authority Evidence Gate](../AUTHORING_DECISION_AUTHORITY_EVIDENCE_GATE_2026-10.md)へ分離した。
+
+current Shared Acceptanceで既に確定しているのは、candidate / Evidence / Review Projection / Accept・Reject Decisionのidentityとprovenanceである。一方、次はまだ未解決である。
+
+```text
+candidate origin actor
+  != decision actor
+
+decision actor identity
+  != authoring decision authority
+
+reviewFingerprint matched
+  != human witness verified
+```
+
+authoring側でverified witnessを扱うには、少なくともactor identity Evidence、workspace / projectとdecision semanticsへ束縛されたauthority Evidence、Decision時点のfreshness / revocation、exact candidate / Review bindingが必要である。Runtime Actor Contextのprincipal / AuthorizationやR3AN / R3AOのRuntime assertion authorityを、そのままauthoring Decisionへ流用しない。
+
+current RepositoryにはこのEvidence Gateを満たすaccepted authoring authority sourceがない。したがって`origin.actor`、CLI引数、`approved=true`、review fingerprint一致をhuman authorityへ昇格する実装は行わない。
+
+次のReferenceではproduction schemaを先に作らず、Studioのauthenticated user contextまたはrepository / organization側のreview authority等から、実在するidentity / authority Evidenceを一つ取得できるかをPressureする。providerを選べなければ`authority-unresolved`のまま止める。
 
 ## Gate Cとの関係
 

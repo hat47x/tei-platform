@@ -114,10 +114,9 @@ func Impact(after ir.World, changes []SubjectChange) ([]ImpactEdge, []Unresolved
 	var unresolved []Unresolved
 	for _, app := range sortedKeys(undeclaredValidation) {
 		unresolved = append(unresolved, Unresolved{
-			Code: "APPLICATION_VALIDATION_SELECTION_NOT_CANONICAL",
-			Message: "application " + app + " はこのValidationを`uses validation`で宣言していない。現行のDriver / Canonical modelは、" +
-				"Applicationが評価するValidationの選択を宣言から導出しておらず（Reference scenarioはrule IDを呼び出し側で選ぶ）、" +
-				"この変更だけでは実行時に評価されるとは言えない",
+			Code: "APPLICATION_VALIDATION_SELECTION_NOT_DECLARED",
+			Message: "application " + app + " はこのValidationを`uses validation`で宣言していない。Applicationが評価するValidationは" +
+				"宣言から選ばれる（ADR-0029）ため、宣言を足さない限り、この変更は実行時にそのApplicationでは評価されない",
 		})
 	}
 	for _, app := range sortedKeys(applicationAdded) {
@@ -343,6 +342,12 @@ func applicationEdges(app application.Application) []ImpactEdge {
 		edges = append(edges, ImpactEdge{
 			From: key, To: subjectKey("namespace", ns), Via: "application.uses-semantic-namespace",
 			Reason: "Applicationが利用宣言しているsemantic namespaceである",
+		})
+	}
+	for _, id := range app.Validations {
+		edges = append(edges, ImpactEdge{
+			From: key, To: subjectKey("validation", id), Via: "application.uses-validation",
+			Reason: "Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）",
 		})
 	}
 	for _, db := range app.Databases {

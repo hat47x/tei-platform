@@ -88,6 +88,14 @@ fi
 actual_go_version="$(GOENV=off GOWORK=off GOFLAGS= go env GOVERSION)"
 actual_go_os="$(GOENV=off GOWORK=off GOFLAGS= go env GOOS)"
 actual_go_arch="$(GOENV=off GOWORK=off GOFLAGS= go env GOARCH)"
+
+qualification_helper_path="tools/run-first-web-target-r7b-local-qualification.sh"
+repository_health_path="tools/repository-health-check.sh"
+qualification_helper_mode="$(git ls-files -s -- "$qualification_helper_path" | awk 'NR == 1 {print $1}')"
+qualification_helper_blob="$(git hash-object "$qualification_helper_path")"
+repository_health_mode="$(git ls-files -s -- "$repository_health_path" | awk 'NR == 1 {print $1}')"
+repository_health_blob="$(git hash-object "$repository_health_path")"
+
 if [[ "$actual_go_version" != "$expected_go_version" ]]; then
   printf 'Go version=%s, want %s.\n' "$actual_go_version" "$expected_go_version" >&2
   exit 1
@@ -214,6 +222,10 @@ if [[ -n "$receipt_path" ]]; then
   "goVersion": "$actual_go_version",
   "goOS": "$actual_go_os",
   "goArch": "$actual_go_arch",
+  "qualificationHelperMode": "$qualification_helper_mode",
+  "qualificationHelperBlob": "$qualification_helper_blob",
+  "repositoryHealthMode": "$repository_health_mode",
+  "repositoryHealthBlob": "$repository_health_blob",
   "canonicalPathCount": 11,
   "replayRunnerMode": "100755",
   "replayRunnerBlob": "2f55ec06f29bbca8f4a9e6ce04816bd311a8af03",
@@ -254,6 +266,8 @@ printf '  candidate HEAD:   %s\n' "$head_before"
 printf '  candidate tree:   %s\n' "$tree_before"
 printf '  Go version:       %s\n' "$actual_go_version"
 printf '  Go platform:      %s/%s\n' "$actual_go_os" "$actual_go_arch"
+printf '  qualifier:        %s/%s\n' "$qualification_helper_mode" "$qualification_helper_blob"
+printf '  repository health:%s/%s\n' "$repository_health_mode" "$repository_health_blob"
 printf '  base main after:  %s\n' "$base_after"
 printf '  main moved:       %s\n' "$main_moved"
 if [[ -n "$receipt_path" ]]; then

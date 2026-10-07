@@ -26,6 +26,12 @@ type Check struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type ReviewBinding struct {
+	Fingerprint string                `json:"fingerprint"`
+	Coverage    ReviewCoverageSummary `json:"coverage"`
+	Projection  *ReviewProjection     `json:"projection,omitempty"`
+}
+
 // Decisionは、Accept / Reject / 受入拒否の結果を記録する。
 // authoritative sourceの一部ではなく、消去してもaccepted meaningは変わらない。
 type Decision struct {
@@ -34,6 +40,8 @@ type Decision struct {
 	Reason               string                         `json:"reason,omitempty"`
 	CandidateID          string                         `json:"candidateId,omitempty"`
 	CandidateFingerprint string                         `json:"candidateFingerprint,omitempty"`
+	EvidenceFingerprint  string                         `json:"evidenceFingerprint,omitempty"`
+	ReviewBinding        *ReviewBinding                 `json:"reviewBinding,omitempty"`
 	Origin               *Origin                        `json:"origin,omitempty"`
 	BaseModelRevision    string                         `json:"baseModelRevision,omitempty"`
 	ModelRevisionBefore  string                         `json:"modelRevisionBefore,omitempty"`
@@ -65,6 +73,9 @@ var afterWritesHook func(root string)
 type acceptOptions struct {
 	// DerivedOutは、accepted sourceから再生成したCanonical World JSONの出力先。空なら書き出さない。
 	DerivedOut string
+	// ExpectedReviewFingerprintは、callerが直前に確認したReview Projectionとの一致を要求する任意guardである。
+	// 一致してもhuman approvalやauthorityを証明しない。
+	ExpectedReviewFingerprint string
 }
 
 func encodeJSON(value any) ([]byte, error) {
@@ -92,6 +103,7 @@ func decisionFrom(p Preview, kind string) Decision {
 		Decision:             kind,
 		CandidateID:          p.CandidateID,
 		CandidateFingerprint: p.CandidateFingerprint,
+		EvidenceFingerprint:  p.EvidenceFingerprint,
 		Origin:               p.Origin,
 		BaseModelRevision:    p.BaseModelRevision,
 		ModelRevisionBefore:  p.CurrentModelRevision,
@@ -113,6 +125,26 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		decision.Decision = "refused"
 		decision.Refusals = allDiagnostics(ev.preview)
 		return decision, nil
+	}
+	if opts.ExpectedReviewFingerprint != "" {
+		review := buildReviewProjection(ev)
+		if review.ReviewFingerprint != opts.ExpectedReviewFingerprint {
+			decision.Decision = "refused"
+			decision.Refusals = append(decision.Refusals, Diagnostic{
+				Code: "REVIEW_FINGERPRINT_MISMATCH",
+				Message: fmt.Sprintf(
+					"Accept時のReview Projectionが期待値と一致しません: expected=%s current=%s",
+					opts.ExpectedReviewFingerprint,
+					review.ReviewFingerprint,
+				),
+			})
+			return decision, nil
+		}
+		decision.ReviewBinding = &ReviewBinding{
+			Fingerprint: review.ReviewFingerprint,
+			Coverage:    review.Coverage,
+			Projection:  &review,
+		}
 	}
 
 	var written []SourceEdit
@@ -277,6 +309,14 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 	if err != nil {
 		return Decision{}, err
 	}
+	var stale *Stale
+	if normalized.BaseModelRevision != s.revision {
+		stale = &Stale{
+			BaseModelRevision:    normalized.BaseModelRevision,
+			CurrentModelRevision: s.revision,
+			Options:              staleOptions(),
+		}
+	}
 	origin := normalized.Origin
 	return Decision{
 		Schema:               decisionSchema,
@@ -284,11 +324,13 @@ func reject(root string, data []byte, reason string) (Decision, error) {
 		Reason:               reason,
 		CandidateID:          normalized.ID,
 		CandidateFingerprint: fingerprint,
+		EvidenceFingerprint:  evidenceFingerprintOf(normalized.Evidence),
 		Origin:               &origin,
 		BaseModelRevision:    normalized.BaseModelRevision,
 		ModelRevisionBefore:  s.revision,
 		ModelRevisionAfter:   s.revision,
 		SourceChanged:        false,
+		Stale:                stale,
 		Intent:               normalized.Intent,
 		Evidence:             normalized.Evidence,
 	}, nil
@@ -306,9 +348,20 @@ type DecisionRecord struct {
 	// Statusは、記録した時点のrevisionが現在のrevisionと一致するか（current / superseded）。
 	Status string `json:"status"`
 	// SourceEditsは、その決定が書いたfileが今も同じ内容か（intact / diverged / none）。
-	SourceEdits string   `json:"sourceEdits"`
-	Diverged    []string `json:"divergedPaths,omitempty"`
-	Decision    Decision `json:"decision"`
+	SourceEdits                 string              `json:"sourceEdits"`
+	Diverged                    []string            `json:"divergedPaths,omitempty"`
+	EvidenceStatus              string              `json:"evidenceStatus"`
+	SourceEvidenceStatus        string              `json:"sourceEvidenceStatus"`
+	ArtifactEvidenceStatus      string              `json:"artifactEvidenceStatus"`
+	EvidenceDiagnostics         []Diagnostic        `json:"evidenceDiagnostics,omitempty"`
+	ArtifactEvidenceDiagnostics []Diagnostic        `json:"artifactEvidenceDiagnostics,omitempty"`
+	ReviewBindingStatus         string              `json:"reviewBindingStatus"`
+	ReviewCoverageStatus        string              `json:"reviewCoverageStatus"`
+	ReviewIncomplete            []ReviewCoverageGap `json:"reviewIncomplete,omitempty"`
+	ReviewDiagnostics           []Diagnostic        `json:"reviewDiagnostics,omitempty"`
+	DecisionActorStatus         string              `json:"decisionActorStatus"`
+	DecisionAuthorityStatus     string              `json:"decisionAuthorityStatus"`
+	Decision                    Decision            `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -370,13 +423,35 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		if err != nil {
 			return index, err
 		}
+		sum := sha256.Sum256(content)
+		expectedName := hex.EncodeToString(sum[:]) + ".json"
+		if name != expectedName {
+			return index, fmt.Errorf(
+				"decision record %s: content hashがfile名と一致しません: expected=%s actual=%s",
+				rel,
+				expectedName,
+				name,
+			)
+		}
 		var d Decision
 		decoder := json.NewDecoder(bytes.NewReader(content))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&d); err != nil {
 			return index, fmt.Errorf("decision record %s: %w", rel, err)
 		}
-		record := DecisionRecord{Path: rel, Decision: d, Status: "superseded", SourceEdits: "none"}
+		record := DecisionRecord{
+			Path:                    rel,
+			Decision:                d,
+			Status:                  "superseded",
+			SourceEdits:             "none",
+			EvidenceStatus:          "none",
+			SourceEvidenceStatus:    "none",
+			ArtifactEvidenceStatus:  "none",
+			ReviewBindingStatus:     "none",
+			ReviewCoverageStatus:    "none",
+			DecisionActorStatus:     "unresolved",
+			DecisionAuthorityStatus: "unresolved",
+		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
 		}
@@ -390,8 +465,214 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 				}
 			}
 		}
+		record.ReviewBindingStatus,
+			record.ReviewCoverageStatus,
+			record.ReviewDiagnostics = classifyReviewBinding(d.ReviewBinding)
+		if d.ReviewBinding != nil && record.ReviewBindingStatus != "invalid" {
+			record.ReviewIncomplete = append(
+				record.ReviewIncomplete,
+				d.ReviewBinding.Coverage.Incomplete...,
+			)
+		}
+
+		if len(d.Evidence) > 0 || d.EvidenceFingerprint != "" {
+			var sourceEvidence []Evidence
+			var artifactEvidence []Evidence
+			for _, evidence := range d.Evidence {
+				if evidence.Artifact != nil {
+					artifactEvidence = append(artifactEvidence, evidence)
+				} else {
+					sourceEvidence = append(sourceEvidence, evidence)
+				}
+			}
+
+			if len(sourceEvidence) > 0 {
+				record.SourceEvidenceStatus = "current"
+				sourceDiagnostics := validateEvidence(s, sourceEvidence)
+				record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, sourceDiagnostics...)
+				if len(sourceDiagnostics) > 0 {
+					record.SourceEvidenceStatus = "diverged"
+				}
+			}
+			if len(artifactEvidence) > 0 {
+				record.ArtifactEvidenceStatus = "recorded"
+				for _, evidence := range artifactEvidence {
+					diagnostics := validateEvidenceArtifact(evidence.Artifact)
+					record.ArtifactEvidenceDiagnostics = append(record.ArtifactEvidenceDiagnostics, diagnostics...)
+					record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, diagnostics...)
+				}
+				if len(record.ArtifactEvidenceDiagnostics) > 0 {
+					record.ArtifactEvidenceStatus = "invalid"
+				}
+			}
+
+			fingerprintMismatch := false
+			if d.EvidenceFingerprint != "" {
+				currentFingerprint := evidenceFingerprintOf(d.Evidence)
+				if currentFingerprint != d.EvidenceFingerprint {
+					fingerprintMismatch = true
+					record.EvidenceDiagnostics = append(record.EvidenceDiagnostics, Diagnostic{
+						Code: "EVIDENCE_FINGERPRINT_MISMATCH",
+						Message: fmt.Sprintf(
+							"decision recordのevidenceFingerprintがEvidence本文と一致しません: recorded=%s current=%s",
+							d.EvidenceFingerprint,
+							currentFingerprint,
+						),
+					})
+				}
+			}
+
+			switch {
+			case fingerprintMismatch ||
+				record.SourceEvidenceStatus == "diverged" ||
+				record.ArtifactEvidenceStatus == "invalid":
+				record.EvidenceStatus = "diverged"
+			case record.SourceEvidenceStatus == "current" && record.ArtifactEvidenceStatus == "recorded":
+				record.EvidenceStatus = "current-with-recorded-artifacts"
+			case record.SourceEvidenceStatus == "current":
+				record.EvidenceStatus = "current"
+			case record.ArtifactEvidenceStatus == "recorded":
+				record.EvidenceStatus = "recorded"
+			default:
+				record.EvidenceStatus = "none"
+			}
+		}
 		record.Decision.RecordPath = rel
 		index.Records = append(index.Records, record)
 	}
+
 	return index, nil
+}
+
+func classifyReviewBinding(binding *ReviewBinding) (string, string, []Diagnostic) {
+	if binding == nil {
+		return "none", "none", nil
+	}
+	var diagnostics []Diagnostic
+	switch fingerprint := strings.TrimSpace(binding.Fingerprint); {
+	case fingerprint == "":
+		diagnostics = append(diagnostics, Diagnostic{
+			Code:    "REVIEW_BINDING_FINGERPRINT_EMPTY",
+			Message: "decision recordのreviewBindingにreview fingerprintがありません",
+		})
+	case !revisionPattern.MatchString(fingerprint):
+		diagnostics = append(diagnostics, Diagnostic{
+			Code:    "REVIEW_BINDING_FINGERPRINT_INVALID",
+			Message: "decision recordのreviewBinding fingerprintがsha256:<64桁の16進>形式ではありません",
+		})
+	}
+
+	coverage := binding.Coverage
+	if coverage.Available < 0 || coverage.Partial < 0 || coverage.NotEvaluated < 0 {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_COUNT_INVALID",
+			Message: fmt.Sprintf(
+				"review coverageの件数に負数があります: available=%d partial=%d notEvaluated=%d",
+				coverage.Available,
+				coverage.Partial,
+				coverage.NotEvaluated,
+			),
+		})
+	}
+	total := coverage.Available + coverage.Partial + coverage.NotEvaluated
+	if total != 8 {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_COUNT_MISMATCH",
+			Message: fmt.Sprintf(
+				"review coverageのsection数がA1〜A8と一致しません: available=%d partial=%d notEvaluated=%d",
+				coverage.Available,
+				coverage.Partial,
+				coverage.NotEvaluated,
+			),
+		})
+	}
+
+	validCodes := map[string]bool{
+		"A1": true, "A2": true, "A3": true, "A4": true,
+		"A5": true, "A6": true, "A7": true, "A8": true,
+	}
+	seen := map[string]bool{}
+	var partialGaps, notEvaluatedGaps int
+	for _, gap := range coverage.Incomplete {
+		if !validCodes[gap.Code] || seen[gap.Code] {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_COVERAGE_GAP_INVALID",
+				Message: "review coverageに不正または重複したsection codeがあります: " + gap.Code,
+			})
+		}
+		seen[gap.Code] = true
+		switch gap.Coverage {
+		case reviewCoveragePartial:
+			partialGaps++
+		case reviewCoverageNotEvaluated:
+			notEvaluatedGaps++
+		default:
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_COVERAGE_GAP_INVALID",
+				Message: "review coverageのincomplete sectionがpartial / not-evaluatedではありません: " + gap.Code,
+			})
+		}
+	}
+	if partialGaps != coverage.Partial || notEvaluatedGaps != coverage.NotEvaluated {
+		diagnostics = append(diagnostics, Diagnostic{
+			Code: "REVIEW_COVERAGE_INCOMPLETE_MISMATCH",
+			Message: fmt.Sprintf(
+				"review coverageのincomplete内訳がsummaryと一致しません: partial=%d/%d notEvaluated=%d/%d",
+				partialGaps,
+				coverage.Partial,
+				notEvaluatedGaps,
+				coverage.NotEvaluated,
+			),
+		})
+	}
+	if projection := binding.Projection; projection != nil {
+		if projection.Schema != reviewSchema {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_SCHEMA_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection schemaが一致しません: recorded=%s expected=%s",
+					projection.Schema,
+					reviewSchema,
+				),
+			})
+		}
+		if projection.ReviewFingerprint != "" && projection.ReviewFingerprint != binding.Fingerprint {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_ID_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection内fingerprintがbindingと一致しません: projection=%s binding=%s",
+					projection.ReviewFingerprint,
+					binding.Fingerprint,
+				),
+			})
+		}
+		if calculated := fingerprintReviewProjection(*projection); calculated != binding.Fingerprint {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: "REVIEW_BINDING_PROJECTION_FINGERPRINT_MISMATCH",
+				Message: fmt.Sprintf(
+					"review bindingのProjection内容がfingerprintと一致しません: recorded=%s calculated=%s",
+					binding.Fingerprint,
+					calculated,
+				),
+			})
+		}
+		if !reflect.DeepEqual(projection.Coverage, coverage) {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code:    "REVIEW_BINDING_COVERAGE_MISMATCH",
+				Message: "review bindingのcoverageが保存済みProjectionのcoverageと一致しません",
+			})
+		}
+	}
+
+	if len(diagnostics) > 0 {
+		return "invalid", "invalid", diagnostics
+	}
+	status := "recorded"
+	if binding.Projection != nil {
+		status = "verified"
+	}
+	if coverage.Partial == 0 && coverage.NotEvaluated == 0 {
+		return status, "complete", nil
+	}
+	return status, "incomplete", nil
 }

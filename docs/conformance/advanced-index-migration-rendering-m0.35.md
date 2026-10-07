@@ -64,7 +64,7 @@ collationとoperator classはSQL断片として扱わず、識別子として引
 
 `DROP INDEX`は親tableのschemaを使い、必ずschema-qualified nameとして生成します。
 
-例:
+例は次のとおりです。
 
 ```sql
 DROP INDEX "sales"."customers_name_idx";

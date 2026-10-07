@@ -6,9 +6,29 @@ TEI（鼎／テイ）が十分に成熟したとき、ソフトウェア開発�
 
 ソフトウェアと業務の意味を表す構造化知識が基準として存在し、その同じ内容を人が高密度な図表として理解したり、生成AIがApplicationを構築・変更したり、Driverで検証したり、必要に応じてAIエージェントが業務遂行のために読んだりできます。
 
+この構造化知識を、一つの固定されたデータモデルやworkflow体系へ閉じません。Data、Function / Interaction、Business Procedure等は異なる観点から意味を表す体系であり、将来必要になる概念もPluginやDSLによるSemantic Extensionとして既存の意味へ接続できることを目指します。
+
 **意味を一度構造化すれば、人間の理解、AIによる継続開発、Application実行、AIエージェントの業務遂行、別システムへの知識移植へ再利用できること。**
 
 これがTEIの長期的なプロダクト像です。
+
+## 担い手が替わっても続く業務システム — 個人・組織・社会から見たTEI
+
+成熟したTEIの価値は、一つのApplicationを新しく作る場面よりも、長い年月の中で担い手・技術・利用形態が替わる場面で強く現れます。
+
+たとえば、10年使われている受注システムで、次のことが同時に起きたとします。
+
+- 業務を最もよく知る担当者が異動する
+- 画面の技術を刷新する
+- 問い合わせ対応の一部をAIエージェントへ任せる
+
+TEIが成熟していれば、それぞれの層で次のようになります。
+
+- **個人** — 異動する担当者は、引継ぎ資料を一から書き起こしません。これまでの判断は、根拠と一緒に意味として既に残っています。後任者や新しいAI Builderは、高密度なProjectionから全体・例外・未解決点へ入り、分からないことは分からないまま引き継ぎます。
+- **組織** — 画面の刷新は作り直しではなく、同じ意味から新しいTargetを実現し直す作業になります。業務規則を画面側へ書き写さない設計のため、刷新の途中で例外が落ちていないかをConformanceで確かめられます。
+- **社会** — AIエージェントは、Business ActionとCapabilityから自分が実行できる範囲を知り、明示された権限の中だけで動きます。顧客や監査する第三者から「なぜこう処理されたのか」と問われれば、根拠・承認・実行・観測を記録から示せます。
+
+この例は成熟した姿の説明であり、現在の実証範囲ではありません。担当者の交代、画面技術の刷新、AIエージェントによる問い合わせ対応のいずれも実際の運用では確かめておらず、AIエージェントが業務を遂行する経路は製品側にまだありません。価値そのものの定義は[`TEI_PRODUCT_VALUE.md`](../value/TEI_PRODUCT_VALUE.md)、現在地は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 ## 開発者から見たTEI
 
@@ -53,6 +73,8 @@ TEIはそのために、実装詳細の総量を人へ提示するのではな�
 
 ```text
 既存の業務部品
+  ↓
+既存のPlugin / DSL Semantic Extension
   ↓
 既存の意味パターン
   ↓
@@ -140,19 +162,19 @@ SUIでのReference Adoptionは、TEI利用率ではなく、**同じ意味変更
 
 ## TEI適用判断の二つの軸
 
-TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だけでは決めない。
+TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だけでは決めません。
 
 もう一つ重要なのは、
 
 > **そのソフトウェアの意味・関係・制約・状態・変換を、図・表・グラフ・モデル等の構造化された情報群として整理統合し、その設計資産から実装を導きたいか**
 
-という軸である。
+という軸です。
 
-ここでは前者を **Application Plane強度**、後者を **Structured Design Affinity（構造化設計適性）** と呼ぶ。
+ここでは前者を **Application Plane強度**、後者を **Structured Design Affinity（構造化設計適性）** と呼びます。
 
 ### Axis A — Application Plane強度
 
-高いほど、次の共通化価値が大きい。
+高いほど、次の共通化価値が大きくなります。
 
 - UI / Interaction
 - domain / business rule
@@ -164,7 +186,7 @@ TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だ�
 
 ### Axis B — Structured Design Affinity
 
-高いほど、実装より前に次を外在化して保持する価値が大きい。
+高いほど、実装より前に次を外在化して保持する価値が大きくなります。
 
 - Data / type
 - Relation
@@ -177,12 +199,12 @@ TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だ�
 - permission
 - deployment / runtime binding
 
-この軸は「図を描くかどうか」そのものではない。  
-**実装知識をコードだけに閉じず、複数の図表・表・グラフ・自然言語Projectionから同じ構造化された意味へ戻れる状態を作りたいか**を問う。
+この軸は「図を描くかどうか」そのものではありません。
+**実装知識をコードだけに閉じず、複数の図表・表・グラフ・自然言語Projectionから同じ構造化された意味へ戻れる状態を作りたいか**を問います。
 
-したがって、UIをほとんど持たないCLIやheadless serviceでも、定義・関係・変換・制約を構造化設計資産として管理し、そこからValidationや実装を導きたい場合はTEIの射程に入り得る。
+したがって、UIをほとんど持たないCLIやheadless serviceでも、定義・関係・変換・制約を構造化設計資産として管理し、そこからValidationや実装を導きたい場合はTEIの射程に入り得ます。
 
-逆に、UIを持っていても価値の大半が特殊描画engine、数値kernel、compiler、認知algorithm等の手続き的・性能依存な実装そのものにある場合、TEIの役割はApplication shellや周辺設計へ限定され得る。
+逆に、UIを持っていても価値の大半が特殊描画engine、数値kernel、compiler、認知algorithm等の手続き的・性能依存な実装そのものにある場合、TEIの役割はApplication shellや周辺設計へ限定され得ます。
 
 ### 二軸による基本分類
 
@@ -191,11 +213,11 @@ TEI-firstの適否は、「UIや業務ロジックを持つApplicationか」だ�
 | **Application Plane 高** | **Broad TEI-first** — 意味モデル、Validation、Projection、Target、Capabilityまで広くTEIで構成する有力候補 | **TEI shell + native domain engine** — UI、権限、設定、周辺workflow等はTEI、専門挙動はnative |
 | **Application Plane 低** | **TEI design / definition plane** — headlessでもschema、relation、rule、mapping、generation、validationにTEIを使う余地が大きい | **Native-first** — TEI導入の利益が小さく、必要な管理面だけ個別評価 |
 
-この分類は採用の自動判定ではない。性能、安全、device constraint、既存資産、移行費用、Product Valueを上位条件として扱う。
+この分類は採用の自動判定ではありません。性能、安全、device constraint、既存資産、移行費用、Product Valueを上位条件として扱います。
 
 ### 図表とCanonical meaningの関係
 
-図、表、グラフは非常に重要なauthoring / understanding surfaceになり得るが、見た目そのものを暗黙の正本にはしない。
+図、表、グラフは非常に重要なauthoring / understanding surfaceになり得ますが、見た目そのものを暗黙の正本にはしません。
 
 ```text
 diagram / table / graph / natural language
@@ -205,9 +227,9 @@ Canonical meaning
 validation / simulation / realization / generation
 ```
 
-同じ意味を複数Projectionで編集・検証できることが、TEIの価値である。
+同じ意味を複数Projectionで編集・検証できることが、TEIの価値です。
 
-このため「図表で整理した情報群からApplicationを作りたい」という要求は、TEIとの適合性を強く示すが、「一つの図ファイルをそのまま唯一の正本にする」ことを意味しない。
+このため「図表で整理した情報群からApplicationを作りたい」という要求は、TEIとの適合性を強く示しますが、「一つの図ファイルをそのまま唯一の正本にする」ことを意味しません。
 
 ## 既存システムから見たTEI
 

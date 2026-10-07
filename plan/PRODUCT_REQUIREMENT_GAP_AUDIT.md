@@ -1,7 +1,8 @@
 # Product Requirement Gap Audit
 
 - 監査日: 2026-09-21（再監査。前回は2026-09-11）
-- 対象: RQ-001〜RQ-030
+- 追記: 2026-10-03（RQ-031〜RQ-033の初期評価）
+- 対象: RQ-001〜RQ-033
 - 上流Trace: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - Quality設計: `../docs/product-quality-architecture.md`
 - Quality実証計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
@@ -39,6 +40,8 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
 
 2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
+
+2026-10-03には、意味体系を後付けで拡張・合成できることをProduct Valueへ明示したことに伴い、RQ-031〜RQ-033を追加しました。この3件は追加時点ではDesign Onlyです。Requirement追加と同じ変更でPAS mappingと本監査へ登録し、前回のように価値定義だけが検証マップより先へ進む状態を作らないようにします。
 
 ```text
 Gate A — Ready
@@ -88,13 +91,16 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-021 | **Strong Evidence** | cross | Reference Workspace、Conformance、golden、source-fixed runners、Provider Evidence tools、Gate B actual run（2026-09-19）、Gate C Target Evidence（`T = 0ba87a4`）、Lane C Gate A actual run（2026-09-20 / 2026-09-21） | Studio / AI / 第二Targetを含めた再現性 |
 | RQ-022 | **Strong Evidence** | cross | architecture probe / actual Evidence / production claimを分離 | v1以後のsupport / compatibility level整理 |
 | RQ-023 | **Partial Evidence** | cross | monorepo、Go中心、ADR / Plan / Reference、Provider / Target分離、doc guard（`repository-plan-check`）とhealth check | 保守量のGapが実測として現れた（§9）。plan文書108K行 / production Go 44.8K行。`reference-business-procedure-check`は171 file・50.8K行で、うち101 file・33.6K行がTEI packageをimportしない |
-| RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T trace | actual Target measurement、context-specific threshold |
+| RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T traceに加え、Plugin / Semantic Extensionのlogical境界とphysical artifact境界を分離し、cold / warm start、初期転送量、storage、memory、resolver / evaluator overhead、Extension追加時の増分costをTargetごとに観測する設計を追加 | Plugin化前後のactual比較、unused implementation pruning、shared runtime deduplication、Web Targetでのprocess-free realization、context-specific thresholdが未実証 |
 | RQ-025 | **Partial Evidence** | PAS-07 | Business Action != Application Function、manual / external Action、actor / authority分離、Business Procedure Reference / Pressure、Lane C Gate A actual execution（2026-09-20）、独立second corpus（2026-09-21、作成者self-review） | 独立review未実施。Canonical identity最終判断。Contract ADRはNot Ready |
 | RQ-026 | **Partial Evidence** | PAS-07 | Data / Function / Business cross-view Reference、Handoff identity Pressure、derived Projection原則、realistic second-case actual Evidence（`R = 82e4301`、Gate A A1〜A8） | 独立review未実施。Data-state / ownership cross-check（RRB-P2項目4）はData identityが無く未確認。diagnostic severityの確定 |
 | RQ-027 | **Partial Evidence** | PAS-06 | `tei world` / `source-index`（artifact fingerprint + reference） / `validate` / `index` / `consumer-impact` / `workbench-model`、`changeanalysis`のdependency / impact、ACTOR_CONTEXT R0 source map・R1 builder challenge（production codeを検証）。**accepted Decisionの機械到達**（2026-09-21）: Shared Acceptance Boundaryを通った受理が`.tei/decisions/`へ残り、`decisions`が現在のworkspaceと照合して`current` / `superseded`と`intact` / `diverged`を返す。記録はauthorityではない（消去・偽造しても意味とrevisionは動かない） | 残る到達不能: **`Variation`は表現を持たない**（`internal/`に0件）。Gate Evidence / Release locatorは索引の無い散文からの参照のまま。決定記録はこの境界を通った変更に限られ、Coreには同等の仕組みが無い。再入場の十分性を判定するconformanceが無い。担当Issueが無い（ADR-0028のみ） |
 | RQ-028 | **Partial Evidence** | PAS-01 | Shared Acceptance Previewが、意味差分・application差分・理由つきimpact辺・unresolved・changed collections・source edit fingerprintを、Canonical ID / source pathへ戻れる形で出す（2026-09-21）。ACTOR_CONTEXT R2 human review challenge、Source Diagnostic、Workbench model | 人向けsurfaceが無い（Studio UIはDesign Only）。人が実際に承認したEvidenceが無い。承認に十分なprojectionの定義が無い。native custom code / 権限変更のprojectionが未実証。担当IssueもADRも無い |
 | RQ-029 | **Partial Evidence** | PAS-06 | 第二Applicationが共有`customer` semanticをorigin / provenanceを分けて再利用するS1〜S5 executable pressure、`run-knowledge-portability-reference-evidence.sh`、`KNOWLEDGE_PORTABILITY_R0_BOUNDARY`、Shared Acceptanceの型付きcomposition | `Variation` / destination-specific overrideの表現が無い（`internal/`に0件）。実際のAcceptanceは独立レビュー待ちで未実施。別Repository / 別組織への移植Evidenceが無い。担当IssueもADRも無い |
 | RQ-030 | **Design Only** | PAS-07 | Business Procedure Referenceがmanual / external / observation-boundaryとHandoffを区別してauthorでき、baseline checkerとGate A A8で機械確認できる（agentが必要とする区別の素材）。Permission Grant / Resource Lease / authorization境界。ACTOR_CONTEXT R3 / R6系の設計圧力 | **agentがTEI成果物を読んで業務を遂行するpathが製品側に無い**。R3系圧力の大半がproduction codeへ接続していない（§9）。閉包条件が未定義 |
+| RQ-031 | **Design Only** | PAS-06 | Product Value / Principle / Requirementで、Data Modelを含む特定のモデル体系をCoreの唯一の上位モデルにしない境界を定義。`tools/reference-semantic-extension-catalog` candidateでは、Core未定義の`service-level-policy` / `temporal-window`をopenなsubject kindとして既存Source Index subjectと同じcatalogへ追加。PR #927ではnamespace authorityをdescriptorから分離し、`std` / `std.*`をAccepted Authority Evidence無しでは拒否する。authorityがnamespaceとowner Extensionを明示した場合だけsemantic contributionを許可し、first claimantをnamespace authorityにしないReference境界も追加 | exact-headのfocused test / repository health未実行。namespace Authority Evidenceの発行Authority、subnamespace delegate、publisher trustのcontractは未実装。Reference専用descriptorをCore primitiveへ昇格すべきかも未判断 |
+| RQ-032 | **Design Only** | PAS-06 | `reference-semantic-extension-catalog`はExtension identity / namespace / semantic version / package dependency / Semantic Interface / Constraint / relation / connectionを機械可読に保持し、complete-search backtracking、明示`resolutionPolicy`、resolver budget、namespace Authority Evidence、Interface Conformance Evidence、exact Semantic LockまでReference化した。SUI hierarchyではConstraintのEvaluator requirementをSemantic Interfaceへ結び、`SemanticValidationPlan`でimplementation identity / artifact digestを固定するcandidateを追加。2026-10-05のsecond-consumer candidateでは、SUIとDatabase Migrationの双方をdomain-neutralなdirected graphへ投影し、acyclic constraintについて同じInterface contract、provider Extension、evaluator implementation / artifactを再利用するpressureを追加 | second-consumer branchのexact-head focused test / repository healthは未取得。再利用できたのはacyclic constraintだけで、SUI固有のparent target existence / parent-child consistencyは共通化していない。Runtime Plugin経由のPermission / Sandbox / signature / artifact verification、Conformance Evidence発行Authority / publisher trust、artifact coalescing / pruning / browser-compatible realizationも未実証。Reference contractをproduction syntaxへ固定していない |
+| RQ-033 | **Design Only** | PAS-06 | catalogはWorkspace Source Index subjectとExtension meaningを統合し、dependency why / reverse dependency / structured failure、Interface contract / provider wiring / Conformance、namespace Authority、Semantic Lockを機械可読に返す。`SemanticValidationPlan`はSemantic Set fingerprint、Constraint→implementation/artifact binding、Plan fingerprintを固定する。2026-10-05のcandidateでは、既存Knowledge ContextへSemantic Catalogを重ねる`Subject Semantic Context`を追加し、対象subjectからExtension Source / version / dependency path / Constraint / Interface / evaluator provider / Connection / Unresolvedへ一つのread-only JSONで戻れるようにした。Plan入力時だけ対象subjectのimplementation / artifact bindingも含める | Shared Acceptance ProposalへのValidation Evidence接続、Studioの実consumer、Evidence発行Authority、exact-head executable Evidenceが未成立。`kind-applicable`候補とAccepted semanticsをAIが混同しないE2E、resolver budget / authority不足 / evaluator failureを同じsurfaceで正しく扱うpressureも未完成 |
 
 ## 5. 評価集約
 
@@ -129,18 +135,40 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-028
 - RQ-029
 
-### Design Only — 5
+### Design Only — 8
 
 - RQ-010
 - RQ-015
 - RQ-016
 - RQ-024
 - RQ-030
+- RQ-031
+- RQ-032
+- RQ-033
 
 ### Not Started — 0
 
 2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
 
+2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
+
+2026-10-04の追記: RQ-031〜RQ-033向けに`tools/reference-semantic-extension-catalog`のcandidate実装を追加した。Core未定義の意味kindをReference descriptorから既存Source Indexと同じcatalogへ載せ、compatible-major依存、subject conflict、namespace ownership conflictを決定論的に扱う。Core subject集合と正規化Extension意味をresolution identityへ結び、Source Index / descriptor provenanceはEvidence identityへ分離した。ただしfocused testとrepository healthを未実行のため、3件ともDesign Onlyを維持する。
+
+2026-10-04の敵対的評価では、現行candidateとPre-ADRへ12個の破壊ケースを適用した。特に、highest-compatibleを先に固定する現行resolverは、有効なlower compatible versionが存在してもtransitive conflictを返せる。加えて、Semantic Interfaceの自己申告、`std.*` namespaceのfirst claimant、root / policy / canonicalizationを欠くlock、EnvironmentごとのEvaluator選択、optional diagnosticからAcceptanceへの逆流を設計Gapとして確認した。`SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`とISSUE-000077 E0-B / E0-C / E1へ反映したが、いずれも設計または未実証の段階であるためEvidence tierは上げない。
+
+2026-10-04の追記では、標準機能を広くPlugin / Semantic Extension化した場合の性能・storage・Target可搬性を追加監査した。logical Extension数をprocess数やWasm module数へ一対一対応させず、Target buildで実行artifactをprune / coalesce / deduplicate / lazy loadできる構造をRQ-024 / RQ-032、Pre-ADR、ISSUE-000077へ反映した。Web Targetではnative processを必須にせず、Target packaging差だけではSemantic Set fingerprintを変えない方針とした。actual size / startup / memory / browser Evidenceは未取得のためEvidence tierは変更しない。
+
+2026-10-05のPR #927 candidateでは、AX-01のfalse conflictをReference codeへ反映した。compatible major内で高いversionを優先しつつ、推移依存またはversion固有cycleが全体制約と両立しない場合はlower compatible versionへbacktrackする。加えて、複数の完全解がある場合の選択規則を`resolutionPolicy`として明示し、そのidentityをSemantic resolution fingerprintへ含める。ただしrepository exact-head test / health gateを通していないため、Source Evidence候補以上には扱わず、RQ-032はDesign Onlyを維持する。
+
+2026-10-05のE3 candidateでは、第二consumerとして既存Database Migrationの`Definition.Parents`を採用した。SUIとMigrationからacyclic判定に必要なnodes / directed edgesだけをdomain-neutral snapshotへ投影し、同じSemantic Interface contract、provider Extension、evaluator implementation / artifactを再利用する。SUI固有語彙が共通snapshotへ漏れないnegative controlも追加した。これはSource Evidence候補であり、exact-head test / health gate未取得のためRQ-032のtierは上げない。 現行CoreはMigration parentの存在を検査する一方でcycleを検査していないため、既存ruleをExtensionへ移すのではなく、未表現のacyclicだけをsecond-consumer pressureとして追加する。
+
+同candidateでは、backtrackingの探索量をcandidate attempt数で制限できるoperational budget境界も追加した。budget超過はdependency conflictと別errorとして返し、十分なbudgetではunbounded解決と同じ結果になることをtestする。固定budget値をSemantic fingerprintへ含めず、意味仕様と運用上のresource policyを分離する。ただし実Repositoryでの性能測定とbudget値の妥当性検証は未実施である。
+
+Semantic Lock candidateではsemantic replayとcurrent Evidence bindingも分離した。lockのexact graphはEvidence fingerprintを意味identityへ含めず再現し、必要な場合だけ`-verify-semantic-lock-evidence`でInterface contract / conformance profileとnamespace / ownerに対応するAccepted Evidenceの存在を確認する。Evidence発行Authorityやpublisher trustは未実証であり、exact-head test / health gateも未実施のためEvidence tierは変更しない。
+
+2026-10-05のEvaluator scope追記では、A5のEnvironment依存をReference codeへ反映した。SUI Stage 0のhierarchy shadow validatorを共有packageへ切り出し、Semantic Extension側でも同じ実装を利用する。ConstraintはSemantic Interface evaluator requirementを明示し、Interface / provider / exact contract / conformance profileが解決できない場合はcatalogへ有効Constraintとして出さない。Validation implementationはEnvironmentのCapability negotiationではなく、exact Semantic Set fingerprintへboundした`SemanticValidationPlan`で全件明示し、implementation identity / artifact digestを固定する。M1 / M2 / M3 / M4をPlan経由でpressureし、Conformance欠落、別implementation差し替え、cancel / errorをfail openにしないcandidateを追加した。Plan / Evaluation EvidenceはCLI・JSONで再入場可能にしたが、exact-head test / health gateとRuntime Plugin実行境界は未実証なのでRQ-032 / 033はDesign Onlyを維持する。
+
+2026-10-05のAI / Tool re-entry candidateでは、既存の`knowledgecontext.Build`を変更せず、対象subjectへresolved Semantic Catalogを重ねる`Subject Semantic Context`を追加した。ContextはSemantic Set / Evidence fingerprint、Extension Source / version / root dependency path、Constraint / Interface / evaluator provider、Connection、subject固有UnresolvedとSemantic Set全体のUnresolvedを保持する。Evaluator bindingを入力した場合だけValidation Planの対象bindingを含め、未指定時はimplementationを推測しない。Source Evidence候補であり、exact-head test / health gate未取得のためRQ-033はDesign Onlyを維持する。
 ## 6. Cross-cutting Product Quality監査
 
 Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
@@ -222,6 +250,10 @@ retrieval candidate
 
 Derived Knowledge / index / trajectoryは削除・再生成可能に保ちます。
 
+2026-10-02のresearch integrationでは、このGapを「より強いmodelを先に導入する」計画にはしません。[TECH_RESEARCH_INTEGRATION_2026-10.md](TECH_RESEARCH_INTEGRATION_2026-10.md)に従い、exact / deterministic → lightweight associative / statistical → bounded local cognition → local model → external modelの段階昇格をReferenceで比較します。どの方式もcandidate generation / ranking / abstentionの範囲に留め、`applicable / incompatible / unknown`、Acceptance、write / runtime authorityは既存の決定論的境界へ戻します。
+
+この追記はplanning refinementであり、RQ-015 / 016等のEvidence tierを変更しません。
+
 ### Gap E — Business / cross-view
 
 主にRQ-025 / 026。
@@ -241,9 +273,9 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 3. ~~First Web Target `T1`でGate C Evidenceとquality baselineを取得する~~ — 完了（2026-09-19、`T = 0ba87a4`）
 4. ~~RQ-025 / 026のBusiness Procedure / cross-view actual Evidenceを取得する~~ — 取得（2026-09-20 / 2026-09-21）。独立reviewとPre-ADR再判定が残る
 5. RQ-030の閉包条件を決める。ACTOR_CONTEXT圧力がどの不確実性を減らすかと、何が揃えば連続を終えられるかを先に定める（§9、`ISSUE-000053`）
-6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する
-7. RQ-027のGapを閉じるか判断する。accepted Decision / VariationとEvidence / provenanceを機械到達可能にするか、到達不能をProduct上の制約として明記するか
-8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する
+6. RQ-027〜029の担当を決める。**3件とも担当Issueを持たず、RQ-028とRQ-029はADRも持ちません**（RQ-027はADR-0028のみ）。特にRQ-028は、承認に十分なprojectionの条件を定義し、Shared Acceptance Previewがそれを満たすか評価する（2026-09-30追記: RQ-028は[ISSUE-000071](issue/000071-approval-sufficient-projection.md)が担当し、条件案と既存Previewの机上評価を記録済み。RQ-029の担当案は[ISSUE-000040](issue/000040-semantic-component-composition.md)、RQ-027の担当案は[ISSUE-000053](issue/000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1で、新規Issueは起票しない。いずれもowner判断待ち）
+7. RQ-027のGapを閉じるか制約として残すかを分けて判断する（owner判断待ちの提案）。(a) `Variation`は、RQ-029と同じ「destination固有の差分に独立した表現が要るか」という問いなので、[ISSUE-000040](issue/000040-semantic-component-composition.md)で判断し、ここでは独立に閉じない。(b) 再入場に十分かどうかの確認は[ISSUE-000053](issue/000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1の比較runで行う。(c) Gate Evidence / Release locatorの機械到達と、受入境界を通らない変更の記録は、当面閉じず次の制約として扱う。RQ-027は「accepted Decisionは、Shared Acceptance Boundaryを通った受理に限り機械到達できる」までを主張し、次は主張しない。Variationはまだ表現を持たず、再入場したAIがVariationを機械的に取得することは保証しない。Gate EvidenceのRelease locatorは索引化されておらず、散文からの参照が残る。受入境界を通らずに変更されたsourceは決定記録を残さないため、記録が無いことを「決定が無い」と読んではならない。
+8. Gate C Ready後、Studio / knowledge-first / AI Proposal / Second Targetを並行する。knowledge / AIは`TECH_RESEARCH_INTEGRATION_2026-10.md`の段階昇格をbaselineとし、第二Targetではportable execution artifact / Host差もPressureする
 9. Provider / production境界を必要なEvidenceとともに広げる
 
 ## 9. 維持コスト監査
@@ -289,6 +321,6 @@ TEI packageをimportしないtestは、file内で定義したprobe型に対す�
 
 Product Qualityはこの主線と競合する別workstreamではなく、**既存RequirementがTarget / Provider / Runtime / Studio / AIへ渡っても壊れないことをEvidenceで確認する横断軸**として扱います。
 
-2026-09-21の再監査で分かった横断的な事実は、**Productの価値定義がその検証マップより先に進んでいた**ことです。2026-09-18にTEIを「AI-native継続開発とAgent業務遂行の共通知識基盤」へ再定義してRQ-027〜030を追加した一方、PAS mappingと本監査は翌日以降に更新されてもRQ-026で止まり、4件は優先順位にも現れませんでした。その間に、RQ-030へ向かう設計圧力だけが2日で81 file・32K行増えました（§9）。4件のうちRQ-027〜029は現在も担当Issueを持たず、RQ-028とRQ-029はADRも持ちません。作業項目を持つのは`ISSUE-000053`があるRQ-030だけで、圧力が偏った先もそこです。
+2026-09-21の再監査で分かった横断的な事実は、**Productの価値定義がその検証マップより先に進んでいた**ことです。2026-10-03のRQ-031〜RQ-033追加では、Requirement、PAS mapping、本監査を同時に更新し、このずれを繰り返さない形にしました。2026-09-18にTEIを「AI-native継続開発とAgent業務遂行の共通知識基盤」へ再定義してRQ-027〜030を追加した一方、PAS mappingと本監査は翌日以降に更新されてもRQ-026で止まり、4件は優先順位にも現れませんでした。その間に、RQ-030へ向かう設計圧力だけが2日で81 file・32K行増えました（§9）。4件のうちRQ-027〜029は現在も担当Issueを持たず、RQ-028とRQ-029はADRも持ちません。作業項目を持つのは`ISSUE-000053`があるRQ-030だけで、圧力が偏った先もそこです。
 
 さらにRQ-027の監査で、この構造がTEI自身へ跳ね返っていることが分かりました。RQ-027は「AIが会話履歴に頼らずApplicationへ再入場できる」ことを求め、そこにaccepted DecisionとEvidence / provenanceを含めています。しかしTEI Repository自身では、その二つだけが機械到達できません。Canonical meaning、source、validation、impactは`tei`コマンドで到達できるのに、判断は索引の無いADR 29件、Evidenceは散文から参照するRelease assetとして置かれています。**TEIは、自分が作ろうとしている共通知識面に、自分の判断とEvidenceをまだ載せていません。**

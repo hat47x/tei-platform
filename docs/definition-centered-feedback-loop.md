@@ -59,7 +59,7 @@ TEIでは「外部モデルにfieldがある」ことではなく、**そのfiel
 
 Definition-centeredは「すべてをTEI DSLへ書き直す」という意味ではありません。
 
-Authoritative sourceは concern ごとに異なり得ます。
+Authoritative sourceはconcernごとに異なり得ます。
 
 ```text
 TEI-native business / semantic meaning -> .tei等のTEI-native source
@@ -288,7 +288,7 @@ Minimum Semantic Deltaは固定Patch DSLを意味しません。file-native edit
 
 Authoring UXでは、入力formを増やすより、**一つの定義変更が何へ波及するか**を見せることを重視します。
 
-例:
+例は次のとおりです。
 
 ```text
 Add required Relation
@@ -387,7 +387,7 @@ Referenceや運用から得た経験で自動更新を検討する場合、最�
 - false-positive suppression
 - local retrieval hint
 
-それでも revision / task / outcome / provenance を持ち、無効化可能にします。
+それでもrevision / task / outcome / provenanceを持ち、無効化可能にします。
 
 accepted semantic ruleをmodel weightだけへ埋め込むonline learningは標準経路にしません。
 

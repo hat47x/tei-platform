@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.acyclic-contract",
+  "namespace": "reference.graph.acyclic",
+  "version": "1.0.0",
+  "interfaces": [
+    {
+      "id": "reference.graph.acyclic.evaluate",
+      "version": "1.0.0",
+      "inputSemantics": [
+        "complete directed relation graph snapshot with unique node identities"
+      ],
+      "outputSemantics": [
+        "acyclic pass fail diagnostics"
+      ],
+      "unknownSemantics": "not emitted for complete validated graph snapshots",
+      "failureSemantics": "directed cycle is blocking; malformed graph input is evaluator error",
+      "providerConformanceRef": "reference.conformance.acyclic-graph-v1"
+    }
+  ]
+}

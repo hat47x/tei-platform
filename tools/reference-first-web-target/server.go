@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -9,11 +10,38 @@ import (
 )
 
 type webTargetServer struct {
-	projection      webTargetProjection
-	readScenario    readScenarioRunner
-	commandScenario commandScenarioRunner
-	index           *template.Template
-	customSubmit    *template.Template
+	projection         webTargetProjection
+	readScenario       readScenarioRunner
+	commandScenario    commandScenarioRunner
+	customerLookup     customerLookupRunner
+	index              *template.Template
+	customSubmit       *template.Template
+	customerLookupPage *template.Template
+}
+
+// applicationBound is implemented by every scenario runner. The server refuses to start when a
+// runner executes a different Application than the projected one, instead of serving one
+// Application's manifest in front of another Application's scenario.
+type applicationBound interface {
+	ApplicationID() string
+}
+
+// webTargetOption configures optional scenario runners without changing existing call sites.
+type webTargetOption func(*webTargetServer)
+
+func withCustomerLookup(runner customerLookupRunner) webTargetOption {
+	return func(s *webTargetServer) { s.customerLookup = runner }
+}
+
+func requireApplicationMatch(kind string, runner any, want string) error {
+	bound, ok := runner.(applicationBound)
+	if !ok {
+		return fmt.Errorf("%s runner does not declare its Application; refusing to serve Application %s", kind, want)
+	}
+	if got := bound.ApplicationID(); got != want {
+		return fmt.Errorf("%s runner executes Application %s but the projection is for Application %s", kind, got, want)
+	}
+	return nil
 }
 
 type webReadScenarioResponse struct {
@@ -55,6 +83,7 @@ func newWebTargetServer(
 	projection webTargetProjection,
 	readScenario readScenarioRunner,
 	commandScenario commandScenarioRunner,
+	options ...webTargetOption,
 ) (*webTargetServer, error) {
 	index, err := template.New("index").Parse(indexHTML)
 	if err != nil {
@@ -64,13 +93,38 @@ func newWebTargetServer(
 	if err != nil {
 		return nil, err
 	}
-	return &webTargetServer{
-		projection:      projection,
-		readScenario:    readScenario,
-		commandScenario: commandScenario,
-		index:           index,
-		customSubmit:    customSubmit,
-	}, nil
+	customerLookupPage, err := template.New("customer-lookup").Parse(customerLookupHTML)
+	if err != nil {
+		return nil, err
+	}
+	server := &webTargetServer{
+		projection:         projection,
+		readScenario:       readScenario,
+		commandScenario:    commandScenario,
+		index:              index,
+		customSubmit:       customSubmit,
+		customerLookupPage: customerLookupPage,
+	}
+	for _, option := range options {
+		option(server)
+	}
+
+	if server.readScenario != nil {
+		if err := requireApplicationMatch("read scenario", server.readScenario, projection.ApplicationID); err != nil {
+			return nil, err
+		}
+	}
+	if server.commandScenario != nil {
+		if err := requireApplicationMatch("command scenario", server.commandScenario, projection.ApplicationID); err != nil {
+			return nil, err
+		}
+	}
+	if server.customerLookup != nil {
+		if err := requireApplicationMatch("customer lookup scenario", server.customerLookup, projection.ApplicationID); err != nil {
+			return nil, err
+		}
+	}
+	return server, nil
 }
 
 func (s *webTargetServer) Handler() http.Handler {
@@ -81,6 +135,8 @@ func (s *webTargetServer) Handler() http.Handler {
 	mux.HandleFunc("/scenario/read", s.handleReadScenario)
 	mux.HandleFunc("/scenario/submit", s.handleCommandScenario)
 	mux.HandleFunc("/custom-submit", s.handleCustomSubmit)
+	mux.HandleFunc("/scenario/customer-lookup", s.handleCustomerLookupScenario)
+	mux.HandleFunc("/customer-lookup", s.handleCustomerLookupPage)
 	return mux
 }
 

@@ -1,0 +1,52 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.sui-hierarchy-integrity",
+  "namespace": "reference.sui.hierarchy",
+  "version": "1.0.0",
+  "appliesToKinds": [
+    "semantic-data"
+  ],
+  "requiresInterfaces": [
+    {
+      "interface": "reference.hierarchy.validation.evaluate",
+      "compatibleMajor": 1
+    }
+  ],
+  "constraints": [
+    {
+      "id": "parent-presence-optional-single",
+      "subject": {
+        "kind": "semantic-data",
+        "id": "sui.island"
+      },
+      "validatorRef": "reference.sui.hierarchy.parent-presence-optional-single"
+    },
+    {
+      "id": "parent-target-exists",
+      "subject": {
+        "kind": "semantic-data",
+        "id": "sui.island"
+      },
+      "validatorRef": "reference.sui.hierarchy.parent-target-exists",
+      "evaluatorInterface": "reference.hierarchy.validation.evaluate"
+    },
+    {
+      "id": "acyclic",
+      "subject": {
+        "kind": "semantic-data",
+        "id": "sui.island"
+      },
+      "validatorRef": "reference.sui.hierarchy.acyclic",
+      "evaluatorInterface": "reference.hierarchy.validation.evaluate"
+    },
+    {
+      "id": "parent-child-consistency",
+      "subject": {
+        "kind": "semantic-data",
+        "id": "sui.island"
+      },
+      "validatorRef": "reference.sui.hierarchy.parent-child-consistency",
+      "evaluatorInterface": "reference.hierarchy.validation.evaluate"
+    }
+  ]
+}

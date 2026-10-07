@@ -1,0 +1,33 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.temporal-semantics",
+  "namespace": "support.temporal",
+  "version": "1.0.0",
+  "appliesToKinds": [
+    "semantic-data"
+  ],
+  "concepts": [
+    {
+      "subject": {
+        "kind": "temporal-window",
+        "id": "support.window.business-hours"
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "id": "business-hours-valid",
+      "subject": {
+        "kind": "temporal-window",
+        "id": "support.window.business-hours"
+      },
+      "validatorRef": "std.validation.time-window"
+    }
+  ],
+  "connections": [
+    {
+      "kind": "projection",
+      "ref": "studio.temporal-window"
+    }
+  ]
+}

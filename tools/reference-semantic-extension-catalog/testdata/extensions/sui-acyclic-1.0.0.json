@@ -1,0 +1,26 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.sui-acyclic",
+  "namespace": "reference.sui.acyclic",
+  "version": "1.0.0",
+  "appliesToKinds": [
+    "semantic-data"
+  ],
+  "requiresInterfaces": [
+    {
+      "interface": "reference.graph.acyclic.evaluate",
+      "compatibleMajor": 1
+    }
+  ],
+  "constraints": [
+    {
+      "id": "acyclic",
+      "subject": {
+        "kind": "semantic-data",
+        "id": "sui.island"
+      },
+      "validatorRef": "reference.graph.acyclic.v1",
+      "evaluatorInterface": "reference.graph.acyclic.evaluate"
+    }
+  ]
+}

@@ -113,6 +113,17 @@ Stage 0の最小実装を`tools/reference-sui-adoption`として隔離する。
 
 この時点ではValidationKindやPlugin CapabilityKindを増やさない。
 
+## Stage 0 → Semantic Extension evaluator pressure — 2026-10-05
+
+Stage 0でReference-local shadowとして保持していたhierarchy validatorを、Semantic Extensionの実consumer pressureへ再利用するcandidateを追加した。SUIの`IslandHierarchyContractV1`やfixtureは変更せず、既存M1〜M4 semanticsを実装していた評価ロジックを共有Reference packageへ切り出し、`tools/reference-sui-adoption`と`tools/reference-semantic-extension-catalog`の両方から同じ実装を使う。
+
+この変更でSUI側のAuthorityはTEIへ移らない。SUI native contractが引き続き正本であり、共有Evaluatorはそのpinned contractをshadowするReference implementationである。TEI Canonical dataへinstanceを昇格せず、writeも行わない。
+
+Semantic Extension側では、`sui.island` subjectへhierarchy integrity Constraintを追加し、そのEvaluator requirementをversioned Semantic Interfaceとして明示する。provider自己申告だけではConstraintを有効化せず、exact contractへboundしたConformance Evidenceが必要である。さらにValidation Planでimplementation identity / artifact digestを固定し、Environment Runtimeのprovider選択でAccepted validityを変えない。
+
+M1 root / M2 three-levelはpass、M3 missing parent / M4 cycleはfailとして、同じshared evaluatorをValidation Plan経由で評価するcandidate testを追加した。これは「SUI固有ValidationKindをCoreへ追加しなくても、実Application由来の意味不足をSemantic Extensionで扱えるか」をpressureする。
+
+ただしexact-headのfocused test / repository healthはこの環境では未取得であり、Stage 0の`constraintCoverage`をnative coverageへ昇格しない。Semantic ExtensionのProduct Evidence、SUI移管判断、標準語彙化のいずれもこのcandidateだけでは更新しない。
 ## 最初のReference slice候補
 
 最初からSUI全体を移しません。少なくとも次の性質を一つの小さいsliceでPressureできるものを選びます。

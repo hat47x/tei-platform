@@ -27,7 +27,7 @@ production authorityへ採用する
 
 この区別を保つことで、一つの大きなAI / Business / Runtime Issueへ責務が集まりすぎることを避けます。
 
-## 現在の重要な二つの読み筋
+## 現在の重要な三つの読み筋
 
 ### 1. Design Synthesis / knowledge-first探索
 
@@ -165,6 +165,30 @@ Gate Bは2026-09-19にReadyへ到達しました（candidate revision `R = e5231
 
 Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceです。片方の成功で他方をgreenへ読み替えません。
 
+### 3. 成熟したReference Modelの転写
+
+[000078](000078-reference-model-transfer-gate.md)は、既存の小規模Referenceとは別に、成熟した外部業務モデル全体をTEIへ転写して表現力をpressureする横断Issueです。最初のbenchmarkにはX-TEA / XEAD系「CONCEPTWARE／受注生産」を使います。
+
+~~~text
+外部source / manual / model
+        ↓ inventory
+source-faithful accounting
+        ↓ classify
+Canonical / Realization / Native / Derived / Unresolved
+        ↓
+TEI source / Driver / Target
+        ↓
+cross-view / execution Evidence
+~~~
+
+このIssueはX-TEA互換を所有しません。転写で見つかった具体的gapを000042、000038〜000040、000026、000027、000053、000077等へ戻し、同じ機能を000078内で二重実装しません。判定契約は[Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)を正本とします。
+
+### 4. 外部の実行基盤の評価
+
+[000081](000081-eki-fabric-execution-base-evaluation.md)は、別製品のEKI Fabricを、TEIの実行基盤の一つ（Provider）として置けるかを評価するIssueです。EKI側が2026-10-06に決めた「TEIはEKI上で稼働する」という整理を、TEI側から見て受け入れてよいかを確かめます。評価待ちであり、採用、Requirementの変更、Gate判定条件の緩和は含みません。特に、EKIの結果をGate Evidenceやmerge authorityへ読み替えない境界と、依存の循環を作らない条件を先に置きます。
+
+[000082](000082-context-scoped-epistemic-knowledge.md)は、生成AIが扱う情報を文脈付きの認識状態として保持し、Project Knowledge Healthを実証する作業です（ADR-0030）。2026-10-06に、先に存在した000081（EKI Fabric評価）と番号が重複したため、後から追加した本Issueを000082、対応するADRを0030へ改番しました。GitHub Issue #958の本文にはISSUE-000081の表記が残る場合があります。
+
 ## 外部資産・Providerの継続課題
 
 | 担当Issue | 統合した課題 | 分けて扱う理由 |
@@ -200,6 +224,32 @@ Lane Cのactual runner greenとGate B必須Evidence三系統は別のEvidenceで
 状態は000038 / 000039がProposed、000040がIn Progress（既存資産を使う圧力試験候補の検証中）です。schema、Core primitive、APIの採用は未決定で、必要な判断をADRへ残してから実装します。将来の汎用Workflow、分散transaction、全言語解析、Marketplace、全Provider網羅を、この小さい受入単位の完了で達成済みにしません。
 
 000038については、2026-09-05に要件の詳細化を[業務Lifecycle v1 設計](../design/BUSINESS_LIFECYCLE_V1_DESIGN.md)としてまとめ、所有境界と実行境界の判断を[ADR-0024](../adr/0024-business-lifecycle-ownership.md) / [ADR-0025](../adr/0025-transition-evaluation-and-conflict-result.md)として提案しました。いずれも評価待ちであり、採用前に実装へ進みません。詳細化の結論として、`sales.order.submit`のCapability契約変更はGate B Ready判定と000030のHandover Baseline固定より前に入れない扱いです。
+
+## Product Valueの確かめ方と担当
+
+[Product Value](../../product/value/TEI_PRODUCT_VALUE.md)の「価値の確かめ方」は、個人・組織・社会の各層で観測する事実を定めています。2026-09-30に、各項目を担うIssueと、計測または検査が実在するかを照合しました。担当の無かった項目へ000071〜000074を起票しています。
+
+| 層 | 確かめる事実 | 担当Issue | 2026-09-30の状態 |
+| --- | --- | --- | --- |
+| 個人 | 会話履歴や聞き取りなしに、変更に必要な文脈へ到達できる | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) Phase 1 / [000040](000040-semantic-component-composition.md) | 決定記録は機械可読。再入場に足りるかを判定する検査は無い |
+| 個人 | 承認の対象が、意味差分・影響・例外・未解決点として示される | **[000071](000071-approval-sufficient-projection.md)**（新規） / 000046 / 000027 | Previewは機械可読。人が読む面と、権限・native codeを示す項目が無い |
+| 個人 | 一度答えた確認が理由なく繰り返されない | **[000074](000074-answered-confirmation-history.md)**（新規） | 記録も検査も無い |
+| 組織 | （留保）規則変更に伴う手直しの数 | [000072](000072-rule-change-hand-edit-count.md)（研究に留保） | 価値の指標にしない。要件固有で、変更の深さで意味が変わるため。Product Valueでは、実務機能の量・関係性・実用性とMVP的な実証で確かめる |
+| 組織 | 画面・API・AIエージェントの間で同じ規則が食い違わない | **[000073](000073-derive-validation-selection-from-canonical.md)**（新規） / [000014](000014-business-validation-reference.md) / [000026](000026-target-capability-execution-profile-boundary.md) | 画面とAPIは同じ評価経路。評価対象の選択がCanonicalに無い。AIエージェントの経路は無い |
+| 組織 | 再利用した意味・Infrastructure知識の元identity・前提・差分を追跡できる | [000040](000040-semantic-component-composition.md) | identity / provenanceは実行可能なtestあり。Variationは表現が無い |
+| 社会 | AIを介さず正本から第三者が根拠を再現できる | [000029](000029-gate-b-readiness-audit.md) / [000028](000028-first-web-target-conformance-evidence.md) / [000058](000058-gate-c-visual-independent-reevaluation.md) | Gate B / Cの独立監査あり。Visualは単一のAI評価者 |
+| 社会 | 分からない状態を成功や安全として扱わない | [000009](000009-capability-outcome-and-execution-error.md) / [000041](000041-partition-schema-drift-semantics.md) | Database・Runtime境界で多数のtestあり |
+| 社会 | 業務知識を読めることが実行権限へ変わらない | [000053](000053-ai-native-development-and-agent-operational-knowledge.md) | Runtime / Pluginの権限はtestあり。AIエージェントの読み取り経路は製品側に無い |
+
+新規のうち000072は、研究に留保しています。手直しの数は要件固有で、変更の深さで意味が変わるため、測定に基づく価値判断は、問題領域の知見が蓄積されるまで行いません。他の3件の着手順は次を推奨します。
+
+価値の確かめ方の中心は、実務シナリオを通すMVP的な実証です。最初の実証の候補は[000075](000075-practical-scenario-mvp-demonstration.md)に整理しています（owner判断待ち）。これと並行して、成熟した既存業務モデルの規模・cross-reference・暗黙前提にTEIが耐えられるかを[000078](000078-reference-model-transfer-gate.md)で確認します。
+
+1. **000073**は、評価対象の選択をCanonicalな宣言から導く機能上の課題です。方針（ADR-0029）のowner reviewから始めます。
+2. **000071**は既存Previewの机上評価まで済んでおり、条件案のowner reviewから始められます。Gap Audit §8の優先順位6（RQ-028の担当決定）に当たります。
+3. **000074**は000046 / 000047が確認を出し始める前に、記録の形だけ先に決めます。
+
+この表は各Issueの状態の正本ではありません。状態は各Issueの`状態`行、Requirementごとの実証状況は[Gap Audit](../PRODUCT_REQUIREMENT_GAP_AUDIT.md)が正本です。
 
 ## 既存計画への統合と履歴
 

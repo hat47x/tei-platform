@@ -341,6 +341,7 @@ func TestSecondRealisticReferenceLedgerSeparatesFactsDecisionsAndUnresolved(t *t
 	required := []string{
 		"actor-identity", "trigger-exact", "step-sequence-authority", "responsibility-boundary-detail",
 		"handoff-condition-evidence", "data-identity", "application-realization", "actuality-evidence",
+		"acceptance-criteria",
 	}
 	got := map[string]bool{}
 	for _, u := range ledger.Unresolved {
@@ -381,8 +382,8 @@ func TestSecondRealisticReferenceLedgerSeparatesFactsDecisionsAndUnresolved(t *t
 			t.Fatalf("the Handoff does not state that it is not derived from %q", inference)
 		}
 	}
-	if ledger.Review.Author != "self-reviewed" || ledger.Review.IndependentReview != "pending" {
-		t.Fatalf("review status must say what was and was not done: %+v", ledger.Review)
+	if ledger.Review.Author != "remediation-authored-after-independent-review" || ledger.Review.IndependentReview != "re-review-required" {
+		t.Fatalf("review status must preserve the blocked independent review and require a new independent review: %+v", ledger.Review)
 	}
 }
 
@@ -457,6 +458,47 @@ func TestSecondRealisticReferenceProcedureBodiesStandAloneWithoutTheHandoff(t *t
 		if len(p.Steps) < 3 {
 			t.Fatalf("procedure %q has no independent body once the Handoff is removed", p.ID)
 		}
+	}
+}
+
+func TestSecondRealisticReferenceProductionReleaseHasIndependentBusinessMeaning(t *testing.T) {
+	_, fixtures := loadSecondCorpus(t)
+	ledger := loadSeedLedger(t)
+	production := fixtures["make-to-order.production-run"]
+	release, ok := stepByID(production, "PR-06")
+	if !ok {
+		t.Fatal("production terminal release PR-06 is missing")
+	}
+	for label, text := range map[string]string{
+		"production purpose": production.Procedure.Purpose,
+		"independent need":   ledger.IndependentNeed,
+		"release action":     release.BusinessAction,
+	} {
+		// "releasing"のような活用形も、同じ業務上のreleaseとして受ける。
+		lowered := strings.ToLower(text)
+		if !strings.Contains(lowered, "production control") || !strings.Contains(lowered, "releas") {
+			t.Fatalf("%s does not explain the terminal production release independently: %q", label, text)
+		}
+	}
+	loweredAction := strings.ToLower(release.BusinessAction)
+	for _, receivingSpecific := range []string{"stocking", "warehouse", "handoff"} {
+		if strings.Contains(loweredAction, receivingSpecific) {
+			t.Fatalf("PR-06 depends on the receiving Handoff instead of the production boundary (%q): %q", receivingSpecific, release.BusinessAction)
+		}
+	}
+	foundDecision := false
+	for _, decision := range ledger.TEIOriginalDecisions {
+		if decision.ID != "TD-1" {
+			continue
+		}
+		foundDecision = true
+		if !contains(decision.Refs, "make-to-order.production-run/PR-06") ||
+			!strings.Contains(strings.ToLower(decision.Text), "production control") {
+			t.Fatalf("TD-1 does not bind PR-06 to the independent production need: %+v", decision)
+		}
+	}
+	if !foundDecision {
+		t.Fatal("TD-1 is missing")
 	}
 }
 
@@ -557,6 +599,13 @@ func TestSecondRealisticReferenceHandoffKeepsFromToAndConditionLosslessly(t *tes
 	if strings.EqualFold(got.Condition, to.Procedure.Trigger.Text) {
 		t.Fatal("the condition restates the target procedure trigger")
 	}
+	loweredTrigger := strings.ToLower(to.Procedure.Trigger.Text)
+	if strings.Contains(loweredTrigger, "production control") {
+		t.Fatalf("the target trigger absorbed the production-side release authority: %q", to.Procedure.Trigger.Text)
+	}
+	if !strings.Contains(strings.ToLower(got.Condition), "production control") {
+		t.Fatalf("the Handoff condition lost the production-side release authority: %q", got.Condition)
+	}
 	for _, f := range []fixture{from, to} {
 		for _, s := range f.Steps {
 			if strings.EqualFold(got.Condition, s.BusinessAction) || strings.Contains(got.Condition, s.ID) {
@@ -569,8 +618,56 @@ func TestSecondRealisticReferenceHandoffKeepsFromToAndConditionLosslessly(t *tes
 			t.Fatalf("the condition names runtime / observation vocabulary %q", forbidden)
 		}
 	}
+	loweredCondition := strings.ToLower(got.Condition)
+	for _, forbidden := range []string{"taken in charge", "count moves", "count accountability has transferred", "reconciliation already succeeded"} {
+		if strings.Contains(loweredCondition, forbidden) {
+			t.Fatalf("the condition pre-completes the target intake or count reconciliation (%q): %q", forbidden, got.Condition)
+		}
+	}
+	if !strings.Contains(loweredCondition, "reconciliation") || !strings.Contains(loweredCondition, "pending") {
+		t.Fatalf("the condition must leave received-count reconciliation pending: %q", got.Condition)
+	}
 	if strings.Count(got.Condition, " ") < 10 {
 		t.Fatalf("the condition is too thin to carry Business meaning: %q", got.Condition)
+	}
+}
+
+func TestSecondRealisticReferenceKeepsCountAccountabilityUnresolvedUntilReconciliation(t *testing.T) {
+	set, fixtures := loadSecondCorpus(t)
+	ledger := loadSeedLedger(t)
+	condition := strings.ToLower(set.Handoffs[0].Condition)
+	if !strings.Contains(condition, "reconciliation") || !strings.Contains(condition, "pending") {
+		t.Fatalf("Handoff condition does not preserve pending count reconciliation: %q", set.Handoffs[0].Condition)
+	}
+	for _, premature := range []string{"count moves", "count accountability has transferred", "reconciliation succeeded"} {
+		if strings.Contains(condition, premature) {
+			t.Fatalf("Handoff condition prematurely resolves count accountability (%q): %q", premature, set.Handoffs[0].Condition)
+		}
+	}
+	stocking := fixtures["finished-goods.stocking"]
+	reconcile, ok := stepByID(stocking, "ST-01")
+	if !ok || reconcile.Realization != "observation-boundary" || !hasAnyWord(reconcile.BusinessAction, "check") {
+		t.Fatalf("ST-01 must remain the separate received-count reconciliation boundary: %+v", reconcile)
+	}
+	requiredUnresolved := map[string]bool{
+		"responsibility-boundary-detail": false,
+		"data-identity":                  false,
+		"acceptance-criteria":            false,
+	}
+	for _, u := range ledger.Unresolved {
+		if _, ok := requiredUnresolved[u.Subject]; ok && u.Status == "unresolved" {
+			requiredUnresolved[u.Subject] = true
+		}
+	}
+	for subject, found := range requiredUnresolved {
+		if !found {
+			t.Fatalf("count-accountability remediation must retain unresolved subject %q", subject)
+		}
+	}
+	for _, q := range ledger.CrossViewQuestions {
+		if q.ID == "CQ-1" && q.DataIdentity != "unresolved" {
+			t.Fatalf("CQ-1 must not fabricate Data ownership while P2 item 4 is unresolved: %+v", q)
+		}
 	}
 }
 
@@ -619,6 +716,35 @@ func TestSecondRealisticReferenceHandoffIsNotSynthesizedFromAdjacencyActorChange
 	}
 	if len(d4.Handoffs) != 0 {
 		t.Fatalf("the D4 derivation synthesized a Handoff: %+v", d4.Handoffs)
+	}
+}
+
+func TestSecondRealisticReferenceExplicitHandoffDoesNotDependOnActorDifference(t *testing.T) {
+	set, fixtures := loadSecondCorpus(t)
+	from := fixtures[set.Handoffs[0].From.Procedure]
+	to := fixtures[set.Handoffs[0].To.Procedure]
+	to.Procedure.Actor.Label = from.Procedure.Actor.Label
+	fixtures[set.Handoffs[0].To.Procedure] = to
+
+	model, err := deriveNormalizedBusinessModelProbe(set, fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateNormalizedBusinessModelProbe(model); err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Handoffs) != 1 {
+		t.Fatalf("explicit Handoff disappeared when actor labels became equal: %+v", model.Handoffs)
+	}
+
+	withoutHandoff := set
+	withoutHandoff.Handoffs = nil
+	model, err = deriveNormalizedBusinessModelProbe(withoutHandoff, fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Handoffs) != 0 {
+		t.Fatalf("equal actor labels synthesized a Handoff without explicit source: %+v", model.Handoffs)
 	}
 }
 

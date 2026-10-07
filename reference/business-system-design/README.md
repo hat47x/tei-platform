@@ -185,7 +185,7 @@ Application contract
 BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 ```
 
-再現:
+再現は次のとおりです。
 
 ```bash
 go run ./tools/reference-business-procedure-check \

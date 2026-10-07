@@ -2,6 +2,8 @@ application order_entry {
     uses semantic sales
     uses semantic customer
     uses semantic security
+    uses validation sales.order_line.quantity_positive
+    uses validation sales.order.lines.line_number_unique
 
     database sales {
         target sales_core

@@ -43,6 +43,7 @@ type Preview struct {
 	Schema               string                         `json:"schema"`
 	CandidateID          string                         `json:"candidateId,omitempty"`
 	CandidateFingerprint string                         `json:"candidateFingerprint,omitempty"`
+	EvidenceFingerprint  string                         `json:"evidenceFingerprint,omitempty"`
 	Origin               *Origin                        `json:"origin,omitempty"`
 	BaseModelRevision    string                         `json:"baseModelRevision,omitempty"`
 	CurrentModelRevision string                         `json:"currentModelRevision,omitempty"`
@@ -126,6 +127,7 @@ func evaluate(root string, data []byte) (evaluation, error) {
 		candidate = normalized
 		ev.preview.CandidateID = candidate.ID
 		ev.preview.CandidateFingerprint = fingerprint
+		ev.preview.EvidenceFingerprint = evidenceFingerprintOf(candidate.Evidence)
 		origin := candidate.Origin
 		ev.preview.Origin = &origin
 		ev.preview.BaseModelRevision = candidate.BaseModelRevision
@@ -353,6 +355,7 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 	add := func(kind, id string) {
 		out = append(out, changeanalysis.SubjectChange{Kind: kind, ID: id, Change: "added"})
 	}
+	changedApplications := map[string]bool{}
 	for _, op := range ops {
 		switch op.Op {
 		case opAddValidation:
@@ -375,6 +378,13 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 		case opAddEnvironmentBinding:
 			b := op.EnvironmentBinding
 			add("environment-binding", b.Environment+"/"+b.Application+"."+b.Alias)
+		case opAddApplicationValidationUse:
+			// 既存Applicationの宣言が変わる。subjectは追加ではなく変更になる。
+			// 同じApplicationへ複数の宣言を足しても、変わるsubjectは一つである。
+			if !changedApplications[op.ApplicationValidationUse.Application] {
+				changedApplications[op.ApplicationValidationUse.Application] = true
+				out = append(out, changeanalysis.SubjectChange{Kind: "application", ID: op.ApplicationValidationUse.Application, Change: "changed"})
+			}
 		}
 	}
 	sortChanges(out)
@@ -388,7 +398,7 @@ func expectedCollections(ops []Operation) []string {
 		switch op.Op {
 		case opAddValidation, opAddData, opAddRelation:
 			set["semantics"] = true
-		case opAddApplication, opAddReferencePattern:
+		case opAddApplication, opAddReferencePattern, opAddApplicationValidationUse:
 			set["applications"] = true
 		case opAddEnvironmentBinding:
 			set["environments"] = true

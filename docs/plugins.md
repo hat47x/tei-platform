@@ -18,6 +18,14 @@ Environmentが要求するPlugin / Bundleのcompatible majorから実装を解�
 
 これにより、開発時に「たまたま見つかった実装」と本番で使う実装が暗黙に変わることを避けます。
 
+Plugin LockはRuntimeで利用する実装を固定するためのものです。PluginをSourceから再構築するためのBuild入力まで、同じLockへ押し込みません。
+
+既存のformat 2 Plugin Lockは、Plugin version、descriptor fingerprint、必要な場合はartifact digestを固定します。SourceからbuildしたRuntime implementationを採用する場合は、exact Build PlanのfingerprintだけをPlugin Lockへ追加でbindし、build trace付きformat 3へ昇格します。
+
+Build PlanのSource closure、builder、dependency、parameterそのものはBuildArtifactLock側に残します。Runtime Plugin Lockは`buildPlanFingerprint`と`artifactDigest`を持つことで、選択した実装からexact buildへ逆追跡できるようにします。同じphysical artifactを複数のlogical Pluginが共有しても、PluginごとのBuild Plan fingerprintは失いません。
+
+format 2は読み取り互換を維持します。format 3へ移行しただけで、build traceを持たない既存Pluginまでself-build済みとみなしません。
+
 ## Capability negotiation
 
 現在のarchitecture probeでは、Database Provider、Migration Provider、Deployment Executor、Observation Provider、Evidence Provider、SQL analysis等のCapabilityを明示的に解決します。
@@ -28,8 +36,50 @@ Environmentが要求するPlugin / Bundleのcompatible majorから実装を解�
 
 Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
 
+BundleやPluginのlogical identityを、そのまま物理artifact、process、Wasm moduleの境界にはしません。一つのTarget artifactへ複数Plugin実装をまとめたり、同じartifactを複数のlogical Pluginから参照したりできる余地を保ちます。
+
+Targetごとのpackagingでは、Semantic / Capability上のidentity、version、Lock、provenanceを保ったまま、未使用実装の除外、共通runtimeの共有、artifactの重複排除、static linking、Wasmへの統合、lazy loading等を選べる構造を目指します。
+
+この最適化によってPlugin境界を消したことにはしません。diagnostic、Evidence、更新影響、Authorityは、最適化後も元のlogical Plugin / Capabilityへ逆追跡できる必要があります。
+
+## Build / self-build
+
+Plugin descriptorをTEIで記述できることと、Plugin implementationをTEI自身で再構築できることは別です。
+
+現行の`artifact`は、出来上がったartifactのdigest / signature / provenanceを記述できます。しかし、それだけではartifactを作ったSource、builder、build dependency、Target、parameterをRepositoryから再現できません。
+
+Plugin self-buildでは、次の経路を独立したBuild contractとして扱います。
+
+```text
+Plugin / implementation Source
+  -> Build inputs
+  -> Builder
+  -> Build Evidence
+  -> Artifact
+  -> Plugin Lock
+  -> Runtime
+```
+
+Runtime dependencyとbuild-time dependencyも分離します。compiler、generator、SDK等を`requires plugin`へ混ぜ、実行時に不要な依存まで残す設計にはしません。
+
+self-buildは段階を分けて評価します。
+
+- SB-1: TEI sourceからPlugin packageを再構築できる
+- SB-2: Pluginの実行artifactを再構築できる
+- SB-3: TEI-native builderをstage0 seedから構築し、そのbuilderで再構築してconvergenceを確認できる
+
+stage0 seedは隠しません。seedのidentityとtrust boundaryをBuild Evidenceへ残します。
+
+TEI-native Pluginを優先してReference化しますが、Go、Rust、JavaScript、WebAssembly等の実装も禁止しません。言語ごとに別のPlugin modelを作らず、builder adapterを差し替えて同じSource → Build → Artifact契約へ載せます。
+
+Build可能であること、artifactをAccepted Plugin Lockへ採用できること、RuntimeでCapabilityをinvokeできることは別のAuthorityです。Build成功をAcceptanceやRuntime Authorityへ自動昇格させません。
+
+詳細な作業契約は [ISSUE-000079](../plan/issue/000079-plugin-self-build.md) で管理します。
+
 ## Runtime
 
 process Pluginは、Plugin LockだけでなくPermission Grant、Resource Binding、Sandbox Profile、Resource Lease、Supervisor ownership / fencing等の実行時境界を通ります。
+
+processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
 
 詳しくは [Security / Trust Boundary](security.md) を参照してください。

@@ -4,7 +4,7 @@
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-06 primary**
-- 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023
+- 関連RQ: RQ-002 / RQ-003 / RQ-014 / RQ-015 / RQ-016 / RQ-017 / RQ-021 / RQ-023 / RQ-026 / RQ-027
 
 ## このIssueを最初に読むときの要点
 
@@ -295,6 +295,43 @@ AI向けSkill、examples、trajectory、過去Proposal等を使う場合も、�
 
 過去trajectoryが「以前これを使った」と示しても、current accepted authority / Evidenceの下で現在も有効とは限りません。current Source / Evidenceへ戻って再確認します。
 
+### Data設計Knowledgeを生成AIへ渡す
+
+Data / Relationの新規設計や変更では、AIへ単なるtable一覧やfield一覧だけを渡しません。業務上の識別と関数従属性を検討するために必要なcurrent contextを、Source / Evidenceへ戻れるread-only Projectionとして選択的に渡します。
+
+初期のProjectionでは、対象Dataに応じて少なくとも次を候補にします。
+
+```text
+Data Design Context
+  subject / scope
+  business occurrence identifier
+  candidate key
+  determinant -> dependent
+  Relation topology / cardinality
+  temporal / history condition
+  Constraint
+  Source / provenance / Evidence
+  nature: accepted / candidate / unresolved
+```
+
+これは新しいData Modelの第二正本ではありません。現在のCanonical World、Source Index、accepted Decision、Reference pattern等から再構成できるderived contextとします。削除・再生成してもaccepted meaningは変わりません。
+
+現在のTEIで関数従属性をfirst-classにauthorしていない範囲では、AIに「従属性なし」とは伝えません。Sourceやaccepted meaningから確定できない場合は`unresolved`とし、項目名、画面配置、一般的なCRUD schema、過去の類似例だけから関数従属性を確定しません。
+
+同様に、AIが全tableへUUIDや単独`id`を付けた案を生成しても、そのkeyを業務上の識別条件とみなしません。surrogate keyを実装候補として残す場合でも、元のbusiness identifier、candidate key、Relation topologyとの対応を保持します。
+
+Reference pressureでは少なくとも次を比較します。
+
+- 親occurrenceの内部で繰り返される明細について、親の識別子とlocalな行番等による業務上の識別をcontextから追えるcase
+- 独立したrecordが別recordを変更可能に参照するcase
+- 独立した二つの識別対象の組合せ自体に意味があるcase
+- Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
+- physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
+- View / Application Pattern / ORM都合の単独`id`から、business identifierを逆算しないnegative case
+- physical keyへ正規化されたbusiness keyを置換する場合でも、元candidate keyのuniquenessとMappingを追跡できるcase
+
+このProjectionをprompt専用の文章へ固定しません。CLI、Studio、AIはいずれも同じmachine-readable contextへ戻れることを優先します。actual implementationは、現在のknowledge-context実装laneである`work/issue-000040-second-application-reference`へhandoffし、別branchを増やしません。
+
 ### experienceからのlocal learning
 
 将来、過去のaccept / reject結果をcandidate rankingへ反映する場合、まず次のような局所的更新を比較します。
@@ -498,9 +535,123 @@ Gate Cから次を受け取ります。
 
 Gate C前にはReference pattern provenanceの整理やbenchmark設計までを行えますが、production index / learned memoryは導入しません。
 
+## 2026-10-02 Product index increment — Pattern / Validationを機械到達可能にする
+
+Gate C後のknowledge-first baselineを製品コードへ戻して点検した結果、`tei index` / `internal/index.Build`はSemantic Data / Relation / CapabilityやDatabase依存を返す一方、**Semantic ValidationとApplication Pattern自体を索引化していない**ことが分かった。
+
+これはRQ-015 / RQ-027の観点では、AIや人がApplicationへ再入場するときに、業務ruleとPatternだけ別経路で再発見する必要があるGapである。新しいKnowledge Storeを追加せず、既存Canonical Worldから再生成するderived indexを拡張する。
+
+ISSUE-000040 primary workstreamと、ここに列挙する追加変更は、既存branch `work/issue-000040-second-application-reference` に集約する。`research/selective-knowledge-routing-r6` はFirst Web Target R7Bのqualification lineageとして予約されているため、このknowledge workには使用しない。
+
+- Semantic Validationを`semanticElements`へ追加
+- Validation → Attribute / Relationを`semanticDependencies`へ追加
+- Application Patternを`applicationPatterns`へ追加
+- Application → Validation / Patternを`declaredDependencies`へ追加
+- Pattern → Data / Relation / Query / Capability / Database Contract / Contract Queryを`declaredDependencies`へ追加
+- deterministic orderを保持するtestを追加
+- `tei knowledge-context -workspace ... -subject-kind ... -subject-id ...`を追加し、指定subjectのSource / derived detail / outgoing dependency / incoming dependencyだけをscoped projectionとして返す
+- 未知subjectは成功へ丸めず、Source / derived detail不足を`unresolved`として保持する
+
+このincrementは**derived machine-readable contextの欠落を埋めるだけ**であり、PatternやValidationの第二正本を作らない。`knowledge-context`も`index.Build`とSource Indexを束ねるread-only Projectionであり、削除してもCanonical Worldは変わらない。Source authorityは既存Source Indexに残る。
+
+また、PatternのDatasource aliasはApplication-localな値としてindex entryに保持するが、alias文字列からDatabase authorityを推測しない。Contract Queryについても、Application Patternが明示したContract / Query identityだけをderived dependencyへ写す。
+
+### 2026-10-02 deterministic qualification increment — 明示要求をcurrent contextへ照合する
+
+`knowledge-context`で候補の局所Source / dependencyを機械取得できるようになったため、次のincrementでは検索順位やAI判断を介さず、**呼び出し側が明示した要求だけ**をcurrent contextへ照合する。
+
+```text
+candidate subject
+  + expected kind
+  + optional Application scope
+  + required dependency identities
+  ↓
+current Source Index / derived dependency context
+  ↓
+applicable / incompatible / unknown
+```
+
+CLI候補は次とする。
+
+```bash
+tei knowledge-qualify \
+  -workspace reference/workspace \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference \
+  -qualification-requirements requirements.json
+```
+
+requirementsは少なくとも次を持つ。
+
+```json
+{
+  "expectedKind": "application-pattern",
+  "application": "order_entry",
+  "requiredDependencies": [
+    {
+      "direction": "outgoing",
+      "relation": "contract-query",
+      "kind": "database-contract-query",
+      "id": "master_data.customer/find_by_id"
+    }
+  ]
+}
+```
+
+判定境界:
+
+- current Source IndexにDefinition / Authoring referenceが無いcandidateは`applicable`へ昇格させず`unknown`とする。その状態ではderived index上のdependency欠落やApplication scopeも確定的不適合へ昇格させない。
+- expected kind、Application-owned Patternのscope、current derived dependencyに既知の矛盾がある場合だけ`incompatible`とする。
+- context自体にunresolvedがあり、required dependencyの不存在を確定できない場合は`unknown`を維持する。
+- requirementsに書かれていない条件を「満たした」と推測しない。
+- `applicable`は明示requirementsへの適合だけを意味し、Acceptance、write authority、Runtime authorityを付与しない。
+- retrieval score / similarity / model confidenceは入力にも判定根拠にも使わない。
+
+最初のReference pressureでは、`order_entry.customer_reference`を`order_entry` scope + `master_data.customer/find_by_id`依存で`applicable`とし、同じPatternを`repair_intake`所有のdirect shared authorityとして要求した場合はscope mismatchで`incompatible`へ落とす。存在しないsubjectは推測で近似せず`unknown`を返す。
+
+### 2026-10-03 qualification → Shared Acceptance handoff increment
+
+deterministic qualificationの結果をProposal側へ渡す際に、subjectのIDだけへ縮退させない。`applicable`な結果だけが、subject kind、Source Index identity、authoritative source path、source fingerprint、評価したrequirementsをexact Evidenceとして運ぶ。
+
+requirementsがrequired dependencyを明示している場合は、そのdependencyについてもDefinition / Authoring sourceとfingerprintをscoped Evidenceとして保持する。requirementsに無いdependencyはhandoffへ含めず、必要なKnowledgeだけを渡す。
+
+`reference-shared-acceptance attach-qualification`は、このEvidenceを既存candidateへ付与する。delta自体は変更せず、candidate fingerprintにも含めない。
+
+Shared AcceptanceのPreviewでは添付済みqualificationを信用しない。current Source Indexへ戻ってsubject kind / source / fingerprintを照合し、同じrequirementsでqualificationを再実行する。required dependencyがある場合は、そのauthoritative source / fingerprintの集合もcurrent qualificationと比較する。dependencyのIDが同じままsource内容が変わった場合もstaleとして拒否する。
+
+この鮮度判定はexplicit requirementsに必要なsourceへ限定する。無関係なaccepted changeを理由にqualification全体をstaleへせず、repository-wideなglobal revisionも要求しない。
+
+また、accepted Decisionへ保存したEvidenceもDecision Indexの読込時にcurrent Source Indexへ再照合する。workspace全体のrevision、Decisionが書いたsource、受理理由として使ったEvidenceの現在性を別々に扱い、過去のAcceptanceを現在のapplicabilityとして読み替えない。
+
+`incompatible`と`unknown`はEvidenceとしてcandidateへ付与できない。この接続もqualificationをAcceptanceへ昇格させず、candidateは従来どおりShared Acceptance Boundaryのbase revision、resolve、Validation、architecture policy、Semantic Diff、impact、acceptance policyを通る。
+
+### 2026-10-05 qualification → explicit-reference Proposal candidate
+
+qualificationからShared AcceptanceへEvidenceを渡す経路に続き、探索結果から変更deltaへ進む最小のReference producerを追加した。
+
+`propose-qualified-reference-pattern`は、applicableな`application-pattern` qualification、既存のbase candidate、destination-ownedなreuse requestを受け取る。reuse requestが指定するのはPattern ID、所有Application、Relation、datasource、placementだけである。Contract / Query / input mappingはrequestから受け付けず、current Canonicalのqualified origin Patternから読み直す。
+
+この分離により、`order_entry.customer_reference`をprovenance candidateとして使いながら、origin側の`sales.order.customer`やdatasource alias `master`を`repair_intake`へ持ち込まない。一方、shared authorityとして再利用する`master_data.customer/find_by_id`とinput mappingは、qualificationのrequired dependencyにexact identityで含まれている場合だけProposalへ反映する。
+
+生成前には同じrequirementsでcurrent qualificationを再実行し、subject、Source Evidence、required dependency Evidenceの一致を確認する。過去にapplicableだったという履歴だけからProposalを作らない。生成したcandidateにもcurrent qualification Evidenceを添付するため、Shared Acceptance Preview側の再qualificationを迂回しない。
+
+testには、既知のS4 candidateと同じsemantic deltaになるpositive caseに加え、required Contract Queryをqualificationしていないcase、stale Evidence、reuse requestからContract Queryを注入するcaseをnegative caseとして記述した。CLI自体がworkspaceを変更しないことも対象にしている。
+
+この段階でも探索結果の自動採用やReference Patternの自動適用は行わない。destination-ownedな情報は明示入力のままであり、Proposal生成後もAcceptanceは別である。
+
+### 現在のEvidence境界
+
+このsource changeはまだexact-head full Repository-healthを通していない。したがって、現時点ではProduct Evidence成立や本Issueの完了条件充足を主張しない。
+
+code-changing laneの既存ruleに従い、full `tools/repository-health-check.sh` PASSとclean pre/post stateが得られるまでmainへのintegration authorityは無い。
+
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
+- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、Relation topology、Source / Evidence、unresolvedへ到達できる
+- [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningを失わず逆追跡できる
+- [ ] View / Application Pattern / Target / ORM / runtime objectのidentityからbusiness keyを逆算しないnegative Referenceを持つ
+- [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない

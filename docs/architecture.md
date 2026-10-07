@@ -181,6 +181,16 @@ accepted meaningから後でCapability invocationやResource accessが発生す�
 
 Authoring identityはfile pathそのものではなく、qualified logical key / Canonical identityを基準にします。file移動はlogical identityが同じならsemantic no-opになり得ますが、logical rename / Canonical identity変更は明示的なsemantic changeです。StudioやAIの都合だけで、user-authored Stable ID / UUIDを全資産へ必須化しません。
 
+ここでいうCanonical identityを、Application recordの業務上の識別子やDatabaseのphysical primary keyへ流用することも前提にしません。
+
+```text
+Canonical subject identity
+  != business occurrence identifier
+  != physical primary key
+```
+
+一つのrecordへUUIDやsurrogate keyを付けても、業務上の識別条件や関数従属性が消えるわけではありません。反対に、業務上の複合識別を、そのまま全Providerのphysical primary keyへ固定する必要もありません。TEIは意味上の識別と実装上のkeyを分けて追跡し、Mappingによって関係を明示します。
+
 AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
 
 この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、一つのAI Issueへ集約せず、[`ISSUE-000046`](../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)でStudioのShared Acceptance loop、[`ISSUE-000047`](../plan/issue/000047-knowledge-first-semantic-exploration.md)でHuman / AI共通のread-only探索、[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)でAI Proposal / Acceptanceをそれぞれ扱います。
@@ -273,7 +283,7 @@ Business Procedure / actor / manual / trigger
 
 CRUD matrix、flow、graph等はこの検査に有用ですが、原則としてderived Projectionとして生成し、人が第二の意味正本として維持することを要求しません。
 
-詳細は [Business-System Design](business-system-design.md) と RQ-025 / RQ-026を参照してください。
+詳細は [Business-System Design](business-system-design.md) とRQ-025 / RQ-026を参照してください。
 
 ## Authorization semantic boundary
 

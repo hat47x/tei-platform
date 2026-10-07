@@ -77,8 +77,7 @@ func TestOrderEntrySubmitScenarioExecutesCommandOnlyAfterValidationAndAuthorizat
 	}
 	authorization := legacyauthorization.Adapter{Store: store, Rule: authorizationRule}
 
-	quantityPositive := submitScenarioValidation(t, world, "sales.order_line.quantity_positive")
-	lineNumberUnique := submitScenarioValidation(t, world, "sales.order.lines.line_number_unique")
+	quantityPositive, lineNumberUnique := orderEntryValidationPair(t, world)
 	validSource := submitOrderValidationSource{
 		quantity:    mustRat(t, "2.5"),
 		lineNumbers: []string{"1", "2"},
@@ -296,6 +295,29 @@ func submitScenarioAdapters(
 			return nil, fmt.Errorf("未登録のBindingです: %s", binding.Identity())
 		}
 	})
+}
+
+// orderEntryValidationsは、order_entryが`uses validation`で宣言したValidationを、宣言順に返す（ADR-0029）。
+// Scenarioは評価するValidationの一覧を自分で持たない。ここで固定するIDは選択の入力ではなく、
+// 現在のReferenceが宣言している内容に対する期待値である。
+func orderEntryValidations(t *testing.T, world ir.World) []semantic.Validation {
+	t.Helper()
+	rules, err := driver.NewResolver(world).ResolveApplicationValidations("order_entry")
+	if err != nil {
+		t.Fatalf("order_entryのValidation選択を解決できません: %v", err)
+	}
+	if len(rules) != 2 ||
+		rules[0].ID != "sales.order_line.quantity_positive" ||
+		rules[1].ID != "sales.order.lines.line_number_unique" {
+		t.Fatalf("order_entryが宣言したValidationが想定と異なります: %+v", rules)
+	}
+	return rules
+}
+
+func orderEntryValidationPair(t *testing.T, world ir.World) (semantic.Validation, semantic.Validation) {
+	t.Helper()
+	rules := orderEntryValidations(t, world)
+	return rules[0], rules[1]
 }
 
 func submitScenarioValidation(t *testing.T, world ir.World, id core.CanonicalID) semantic.Validation {

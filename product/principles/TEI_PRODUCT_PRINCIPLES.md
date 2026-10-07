@@ -28,6 +28,10 @@ file path、DB上の名前、画面位置などを、そのままsemantic identi
 
 Canonical IDを安定した意味上の識別子として扱い、物理的な配置や実装名は追跡可能な別情報として保持します。
 
+ただし、Canonical objectのidentityとApplication dataのbusiness key / candidate key、さらにPersistence上のprimary keyを同一視しません。物理的なsurrogate IDを導入しても、業務上の識別関係やRelation semanticsを消さないことを優先します。
+
+View、Application Pattern、Target、ORM、runtime objectの都合を、business keyや関数従属性の根拠にはしません。実装上必要なkey構造はRealizationとして追跡し、Data meaningを暗黙に置き換えないことを原則とします。
+
 ## P5. Nativeな資産を尊重する
 
 SQL、Go、外部設定、既存ツールなど、その領域で成熟した表現を無理にTEI-native DSLへ移し替えません。
@@ -59,6 +63,8 @@ DatabaseごとのContract、Environment、release、障害境界、transaction�
 Web、Desktop、Mobile、API、MCP、VUIなどを、同じ上位設計から選択可能なTargetとして扱います。
 
 Target固有の機能は独立したAdapter / Packageへ置き、新しいTargetを追加するためにCoreの意味モデルを書き換えることを基本としません。
+
+Plugin / Extensionのlogical identityを、特定Targetのprocess、binary、Wasm module等の物理境界へ固定しません。同じ意味とCapability contractを、Webではbrowser-compatibleな実装、Desktop / Serverでは別のRuntime実装として実現できる余地を保ちます。
 
 ## P10. CommandとObserved Realityを分ける
 
@@ -125,15 +131,25 @@ Canonical meaning
 
 ## P16. 小さいCoreと交換可能な外周を保つ
 
-Coreへ個別DB、UI、Runtime、業種固有概念を増やし続けません。
+Coreへ個別DB、UI、Runtime、業種固有概念を増やし続けません。データモデル、workflow、UI等の完成した意味体系も、Coreの特権的な上位モデルとして固定しません。
 
-Identity、Type、Relation、Expression、Constraint、Lifecycle、Metadata、Provenance等の小さい意味基盤を中心にし、具体的な実現方式は外側のProvider、Capability、Adapterへ分けます。
+Coreは、identity、namespace、composition、extension metadata、provenance、Validation / Conformance、authority boundary等、異なる意味体系を安全に接続するための共通機構を中心にします。Type、Relation、Expression、Constraint、Lifecycle等を共通primitiveとして持つ場合も、拡張側から組み合わせ、参照できる形にします。
+
+Coreの価値は語彙の多さではなく、PluginやDSLから新しい意味論を追加しても、既存の意味、追跡性、検証可能性を保てることにあります。
+
+標準機能も可能な限り同じExtension contractに載せ、依存解決、conflict判定、lock、discoveryも同じ仕組みを使います。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路は増やしません。Semantic Extensionの依存集合はRuntime / Toolingの依存集合と分け、Accepted meaningを再現できる単位で固定します。
+
+同じExtension contractを使うことは、各Extensionを別artifactや別processとして実行することを意味しません。Targetの性能・配布・storage条件に応じて、複数の標準Extensionを一つのartifactへ統合したり、未使用実装を除外したりしても、logical identityと追跡性が失われない構造を優先します。
 
 ## P17. 再現性とConformanceを機能数より優先する
 
 機能が一度動くことより、なぜ動いたのか、同じ条件で再現できるか、境界が別実装でも同じ意味を保てるかを重視します。
 
 Reference Workspace、fixture、Conformance、Evidenceを、単なるテスト補助ではなく設計の説明可能性を支える資産として扱います。
+
+Referenceは成功例を示すだけのdemoではありません。現実的なReferenceを通常経路で表現・検証・実行できない場合は、その失敗からArchitectureまたはReference設計の不足を見つけます。Reference専用の例外で通すより、Product claimを反証・限定できるEvidenceとして扱います。
+
+一つのReferenceだけで汎用性を主張せず、異なるdomainや実現条件へReferenceを増やし、成立範囲を段階的に確かめます。
 
 ## P18. 実装都合による過剰な専門化を避ける
 
@@ -148,6 +164,8 @@ Database、Application、Editor、AI支援、Target、Runtimeの各面が、Prod
 人が確認すべき意味、差分、影響、例外、未確定、Evidenceを高密度なProjectionとして提示し、必要な箇所へ掘り下げられる構造を優先します。
 
 人間の注意を、機械的に検証可能な詳細へ消費させず、意味上の判断へ集中させます。
+
+これは効率だけの問題ではありません。承認の対象が大きすぎたり不透明だったりすると、人は中身を確かめられないまま承認するようになり、承認は形だけになります。そのとき責任だけが承認した個人に残り、社会が信頼の根拠にする「人による確認」も名目になります。人に承認を求めるときは、人が判断できる大きさと形へ対象を絞ります。
 
 ## P20. Knowledge reuseはcode reuseより広く捉える
 

@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.semantic-extension/v0",
+  "id": "tei.reference.hierarchy-contract",
+  "namespace": "reference.hierarchy.validation",
+  "version": "1.0.0",
+  "interfaces": [
+    {
+      "id": "reference.hierarchy.validation.evaluate",
+      "version": "1.0.0",
+      "inputSemantics": [
+        "sui-island-hierarchy-v1-json"
+      ],
+      "outputSemantics": [
+        "semantic-validation-outcome-v1"
+      ],
+      "unknownSemantics": "unsupported-or-indeterminate-is-unknown",
+      "failureSemantics": "evaluator-error-is-not-pass",
+      "providerConformanceRef": "reference.hierarchy.validation.conformance/v1"
+    }
+  ]
+}
