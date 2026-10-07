@@ -12,6 +12,7 @@ func portableRuntimeContract() Contract {
 		RequestSemantics:   "execute-reference-operation",
 		ResultSemantics:    "return-reference-result",
 		FailureSemantics:   "unsupported-target-or-execution-failure-is-not-success",
+		UnknownSemantics:   "runtime-uncertainty-remains-unknown-and-is-not-success",
 		ConformanceProfile: "tei.reference.portable-runtime/v0",
 	}
 }
