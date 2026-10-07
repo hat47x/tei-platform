@@ -293,3 +293,74 @@ func TestRuntimeCapabilityBindingRejectsDuplicateEnvironmentLock(t *testing.T) {
 		t.Fatalf("duplicate Environment Lock was accepted: %v", err)
 	}
 }
+
+
+func TestRuntimeCapabilityBindingSeparatesBuildPlanProvenanceFromRuntimeArtifactIdentity(t *testing.T) {
+	fixture := newRuntimeCapabilityFixture(t)
+	binding, err := buildLegacyRuntimeCapabilityBinding(
+		fixture.CapabilityLock,
+		fixture.RuntimeLock,
+		fixture.Environment,
+		fixture.Definition,
+		fixture.Mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	traced := fixture.RuntimeLock
+	traced.FormatVersion = plugin.BuildTraceLockFormatVersion
+	traced.Environments = append([]plugin.EnvironmentLock(nil), fixture.RuntimeLock.Environments...)
+	traced.Environments[0].Plugins = append(
+		[]plugin.LockedPlugin(nil),
+		fixture.RuntimeLock.Environments[0].Plugins...,
+	)
+	traced.Environments[0].Plugins[0].BuildPlanFingerprint = strings.Repeat("f", 64)
+
+	if err := verifyRuntimeCapabilityBinding(
+		binding,
+		fixture.CapabilityLock,
+		traced,
+	); err != nil {
+		t.Fatalf("build provenance refresh changed runtime capability identity: %v", err)
+	}
+}
+
+func TestRuntimeCapabilityBindingRejectsSplitProviderArtifactUntilRuntimeAuthorityCanRepresentIt(t *testing.T) {
+	fixture := newRuntimeCapabilityFixture(t)
+	contract := legacyContractQueryContract()
+
+	splitProvider := fixture.Input.Providers[0]
+	splitProvider.ArtifactDigest = "sha256:" + strings.Repeat("9", 64)
+	splitInput := fixture.Input
+	splitInput.Providers = []Provider{splitProvider}
+	splitInput.Evidence = []ConformanceEvidence{
+		evidenceFor(splitProvider, contract, "split-provider-conformance"),
+	}
+	splitInput.Wirings = []Wiring{{
+		ContractID:       contract.ID,
+		PluginID:         splitProvider.PluginID,
+		PluginVersion:    splitProvider.PluginVersion,
+		ImplementationID: splitProvider.ImplementationID,
+	}}
+	resolution, err := resolveCapability(splitInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	splitCapabilityLock, err := buildCapabilityResolutionLock(splitInput, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = buildRuntimeCapabilityBinding(
+		splitCapabilityLock,
+		fixture.RuntimeLock,
+		fixture.Environment,
+	)
+	if err == nil || !strings.Contains(err.Error(), "does not match capability provider artifact") {
+		t.Fatalf(
+			"split capability artifact was falsely authorized by plugin-level Runtime Lock: %v",
+			err,
+		)
+	}
+}
