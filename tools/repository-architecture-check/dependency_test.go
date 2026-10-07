@@ -18,6 +18,7 @@ import (
 // that the imported package can execute with the importer's authority.
 type importEdge struct {
 	source string
+	file   string // workspace-relative .go source for actionable diagnostics
 	path   string
 }
 
@@ -39,12 +40,16 @@ func productionImports(root string) ([]importEdge, error) {
 			return err
 		}
 		source := filepath.ToSlash(rel)
+		fileRel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
 		for _, imported := range file.Imports {
 			value, err := strconv.Unquote(imported.Path.Value)
 			if err != nil {
 				return fmt.Errorf("invalid import path in %s: %w", path, err)
 			}
-			edges = append(edges, importEdge{source: source, path: value})
+			edges = append(edges, importEdge{source: source, file: filepath.ToSlash(fileRel), path: value})
 		}
 		return nil
 	})
@@ -55,7 +60,10 @@ func productionImports(root string) ([]importEdge, error) {
 		if edges[i].source != edges[j].source {
 			return edges[i].source < edges[j].source
 		}
-		return edges[i].path < edges[j].path
+		if edges[i].path != edges[j].path {
+			return edges[i].path < edges[j].path
+		}
+		return edges[i].file < edges[j].file
 	})
 	return edges, nil
 }
@@ -92,11 +100,13 @@ func readModulePath(root string) (string, error) {
 // Plugin -> implementation-specific model coupling belongs to #951 and must
 // not be hidden by a premature blanket restriction in this test.
 func boundaryViolation(e importEdge, module string) string {
-	if strings.HasPrefix(e.path, module+"/cmd/") || strings.HasPrefix(e.path, module+"/tools/") ||
-		strings.HasPrefix(e.path, module+"/examples/") || strings.HasPrefix(e.path, module+"/reference/") {
-		return "internal packages must not import executable/reference packages"
+	for _, root := range []string{"cmd", "tools", "examples", "reference"} {
+		prefix := module + "/" + root
+		if e.path == prefix || strings.HasPrefix(e.path, prefix+"/") {
+			return "internal packages must not import executable/reference packages"
+		}
 	}
-	if !strings.HasPrefix(e.path, module+"/internal/") {
+	if e.path != module+"/internal" && !strings.HasPrefix(e.path, module+"/internal/") {
 		return ""
 	}
 	group := strings.TrimPrefix(e.source, "internal/")
@@ -139,6 +149,8 @@ func TestBoundaryViolationClassification(t *testing.T) {
 		{"internal/plugin", "tei/internal/database/migration", false},
 		{"internal/plugin", "tei/tools/example", true},
 		{"internal/plugin", "tei/cmd/tei", true},
+		{"internal/plugin", "tei/tools", true},
+		{"internal/core", "tei/internal", true},
 	}
 	for _, tt := range tests {
 		e := importEdge{source: tt.source, path: tt.imported}
@@ -170,7 +182,7 @@ func TestProductionDependencyBoundaries(t *testing.T) {
 	}
 	for _, e := range edges {
 		if reason := boundaryViolation(e, module); reason != "" {
-			t.Errorf("%s imports %s: %s", e.source, e.path, reason)
+			t.Errorf("%s imports %s: %s", e.file, e.path, reason)
 		}
 	}
 }
@@ -220,7 +232,7 @@ import "tei/internal/plugin"
 		t.Fatal(err)
 	}
 	edges, err := productionImports(root)
-	if err != nil || len(edges) != 1 || boundaryViolation(edges[0], "tei") == "" {
+	if err != nil || len(edges) != 1 || edges[0].file != "internal/core/model.go" || boundaryViolation(edges[0], "tei") == "" {
 		t.Fatalf("production import not detected: edges=%v, err=%v", edges, err)
 	}
 	if err := os.WriteFile(src, []byte(`package core
