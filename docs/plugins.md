@@ -48,6 +48,10 @@ Referenceではfresh resolutionと採用済みresolutionのreplayも分けます
 
 このReferenceはproduction APIではありません。既存Plugin Lock、Permission、Resource、Sandbox、Runtime Authorityの境界は引き続き有効です。
 
+Application Runtime scopeでは、generic Capability Resolution Lockを新しいRuntime Authorityにしません。Referenceでは、既存Runtime Plugin Lock内の対象Plugin entryへ`RuntimeCapabilityBinding`で接続します。対象Providerと無関係なPlugin追加ではbindingを無効にせず、対象Pluginの削除、definition drift、artifact差し替えだけを停止条件にします。
+
+ただし、現行Plugin LockはPluginごとに一つの`artifactDigest`しか持ちません。一つのPluginを同じTargetで複数のCapability implementation artifactへ分割する構成は、まだRuntime Authorityとして表現できません。Provider artifactとPlugin-level artifactが一致しない場合はfail closedとし、Web向けlazy loadingやWasm分割まで成立したとは扱いません。
+
 ## Bundle
 
 Bundleは互換性のあるPlugin requirementをまとめる配布上の便宜です。BundleそのものをSemantic Coreの新しいkindにはしません。
