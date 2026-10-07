@@ -425,6 +425,27 @@ resolution budget超過、Catalog不足、Interface authority不足等も、実�
 
 この要求はAIが誤らないことを前提にしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
 
+
+## RQ-034 標準的な開発環境からTEIを改修・実行・検証できること
+
+TEIは、人間や生成AIが、TEI専用のAgent Runtimeや常駐Adapterを必須とせず、一般的な開発環境から継続的に改修できなければなりません。
+
+ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE、CLI中心のローカル環境、CI等は、いずれも開発環境の候補です。特定のAI製品、Chat UI、Agent frameworkを標準の開発経路へ固定しません。
+
+各開発環境では、通常のRepository checkoutやGit worktree等を利用してSourceを編集し、TEI CLI、MCP、Repository内のTool、言語固有のToolchain等を使って、必要なBuild、Driver実行、Validation、Conformance、Test、生成物の確認まで、その環境内で行えることを基本とします。生成AIが隔離された開発Workspace内でSourceを直接編集する場合も、編集前にTEI固有のProposal objectへ変換することを必須にしません。
+
+TEIは、この開発過程を管理するために、Agent Session、Agent Workspace、Checkpoint、Plan、Test実行回数、一般的な `verified / unverified` 状態等を、TEI固有の永続的なProduct stateとして要求してはいけません。Git、CI、開発Tool等が所有する状態を、TEI側へ重複して持ち込みません。
+
+変更の受け渡しには、Git commit、branch、Pull Request等の既存Version管理を第一級の経路として利用できる必要があります。Gitを直接利用できない環境では、patch、bundle、file set、任意のWeb ServiceやCIを経由した受け渡し等を利用できる余地を持ちます。Gitで十分に表現できる変更に対して、TEI独自のChange Set形式を必須にしてはいけません。
+
+TEI CLIとMCPは、Canonical meaning、Source、Dependency、Validation、Conformance等へ到達するための開発Interfaceとして利用できます。同じ操作をCLI、MCP、Studio等から利用する場合、入口の違いだけでCanonical meaningが変化してはいけません。MCP経由で呼び出したこと自体を、追加のSemantic authorityやRuntime authorityの根拠にもしてはいけません。
+
+人間、ChatGPT、Codex、Claude Code等のどの手段でSourceが編集されたかは、Canonical meaningそのものの一部にはしません。変更後のauthoritative sourceから、特定のAgent、Chat transcript、Editor内部状態等なしにCanonical meaningを再構築できる必要があります。
+
+外部の開発環境が持つShell、Filesystem、Git等の操作権限を、TEI Repositoryを編集するという理由だけでTEI ApplicationのRuntime Capabilityとして再定義することも要求しません。一方、実Database、外部Service、Secret、Production相当Resource、その他の外部副作用へ到達する場合は、RQ-018〜RQ-020のCommand / Observation、Authority、Resource、unknownの境界を維持します。
+
+Agent Adapterや統合Serviceを追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLI / MCPによる開発やCanonical sourceへの到達に必要な前提にはしません。
+
 ## 要求を実装へ落とすときの原則
 
 個別IssueやADRを起票するときは、どのProduct Requirementの不確実性を減らす作業なのかを明記します。
