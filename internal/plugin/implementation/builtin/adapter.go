@@ -42,19 +42,30 @@ func (b staticResponseBuiltin) Invoke(_ context.Context, req pruntime.Request) (
 	return pruntime.Response{}, fmt.Errorf("TEI-native implementation does not support operation %q", req.Operation)
 }
 
-// New adapts a validated TEI-native implementation Source to the existing
-// runtime.Builtin ABI. Host acceptance and build provenance remain outside this
-// adapter and are supplied through runtime.BuiltinRegistration.
-func New(source implementation.Source, definition plugin.Definition) (pruntime.Builtin, error) {
-	if err := implementation.ValidateAgainstDefinition(source, definition); err != nil {
-		return nil, err
-	}
-	normalized, err := implementation.Normalize(source)
+// New reconstructs a TEI-native implementation from the exact canonical
+// realization bytes selected by Runtime authority. Host acceptance and build
+// provenance remain outside this adapter and are supplied through
+// runtime.BuiltinRegistration.
+func New(realization []byte, definition plugin.Definition) (pruntime.Builtin, error) {
+	source, realizationDigest, err := implementation.ParseRealization(realization)
 	if err != nil {
 		return nil, err
 	}
+	if err := implementation.ValidateAgainstDefinition(source, definition); err != nil {
+		return nil, err
+	}
+	if definition.Artifact.Digest == "" {
+		return nil, fmt.Errorf("realized Plugin definition has no artifact digest")
+	}
+	if definition.Artifact.Digest != realizationDigest {
+		return nil, fmt.Errorf(
+			"plugin realization digest %s does not match Runtime definition artifact %s",
+			realizationDigest,
+			definition.Artifact.Digest,
+		)
+	}
 	return staticResponseBuiltin{
-		source:                normalized,
+		source:                source,
 		descriptorFingerprint: plugin.DefinitionFingerprint(definition),
 	}, nil
 }
