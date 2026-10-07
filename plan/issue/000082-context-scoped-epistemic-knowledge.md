@@ -1,6 +1,6 @@
 # ISSUE-000082: 文脈付きEpistemic AnnotationとProject Knowledge Healthを実証する
 
-- 状態: In Progress — ADR-0030採用、TEI / SUI / SEIの横断Issue起票済み。Reference実装は未着手
+- 状態: In Progress — ADR-0030採用、TEI / SUI / SEIの横断Issue起票済み。First Reference candidateはDraft PR #961で実装中。exact-head full Repository Healthは#962で未完了
 - GitHub Issue: #958
 - Cross-repository Issues: SUI #3184 / SEI #660
 - 関連ADR: ADR-0030
@@ -52,6 +52,18 @@ reviewed in project A / production
 reviewed in project B / external API
 ```
 
+### 情報の働きと確認状態を分ける
+
+事実でない情報が、すべて仮説になるわけではありません。設計上の要件、決定、制約は、世界についての事実とは異なりますが、後続作業の前提になります。
+
+最初のReferenceではfact中心のpressureを置いていますが、次のincrementでは少なくともfact / observation / requirement / decision / constraint / hypothesisを区別します。ユーザーが現在の作業で直接与えた要件や決定は通常の作業前提にできますが、組織上の正式AuthorityやCanonical Acceptanceとは分けます。
+
+### 入力者と内容の出所を分ける
+
+ユーザーがAI出力や外部資料を貼り付けた場合、入力操作をした人と内容の本来の出所は異なります。入力主体だけをoriginとして使うと、貼り付けたAI文章をユーザー自身の主張へ誤変換できます。
+
+Referenceでは、content provenanceとingestion actorを別に表し、出所不明のlegacy資料をユーザー由来へ推定しません。
+
 ### relevanceとapplicabilityを分ける
 
 検索結果が意味的に近いことと、現在の文脈で前提にできることは別です。
@@ -89,6 +101,22 @@ paragraph、card、row、selected range等の対象へ、Canonical meaningを複
 - supersession / contradiction relation
 
 実装前に、既存Source Index、Evidence、Decision Index、Semantic Extensionのどれを再利用できるか確認します。
+
+### E0a: statement kind / provenance contract
+
+E0のsidecar contractを、事実だけでなく設計作業に必要な情報の働きへ広げます。
+
+少なくともfact、observation、requirement、decision、constraint、hypothesisを別に扱います。content provenanceとingestion actorも分けます。ユーザーがAI出力を貼り付けたcaseをnegative fixtureにし、取り込み操作だけでuser factual assertionへ変わらないことを確認します。
+
+### E0b: context provenance
+
+context bindingは、systemが直接観測したobserved、userやauthoritative sourceが明示したdeclared、AIやheuristicが推定したinferredを区別します。inferred contextだけで適用範囲を広げません。
+
+### E0c: target anchoring / review history
+
+paragraph、card、row、selected range等へのannotationは、編集後の再特定を考慮します。positionだけへ依存せず、利用可能なsubject identity、source revision、structure、quoted text等を組み合わせます。
+
+同じ情報への複数回reviewは上書きせず、review eventとして保持します。現在の確認状態は、対象meaning、scope、time、review eventから導出する構造をpressureします。
 
 ### E1: state transition
 
@@ -130,6 +158,8 @@ inferred contextを利用する場合、その推定結果と根拠を保持し�
 
 低重要度memoが多いだけのcaseより、critical dependencyが未確認のcaseを強くalertできることを確認します。
 
+さらに、annotationされた情報だけでHealthを計算しません。重要な文書や判断領域が未分類、出所不明、対象不明であれば、epistemic coverage不足として別に観測します。coverageが不明な領域を「問題なし」と数えません。
+
 ### E4: review request handoff
 
 SUI #3184へ渡すreview request projectionを定義します。
@@ -151,6 +181,12 @@ reviewer candidateをAuthorityにはしません。
 SEI #660へ、semantic relevanceとepistemic / context signalsを別々に渡せることを確認します。
 
 TEI側で一つの最終scoreへ固定しません。
+
+### E6: legacy / export-import boundary
+
+既存資料と外部連携ではmetadataが存在しない、または途中で失われる場合があります。
+
+最初の境界として、provenance不明のlegacy資料をreview済みへ推定しないこと、metadataを保持できるexportでは本文と一緒に運ぶこと、保持できないexportでは喪失を明示すること、metadataなしで再importした本文へ過去のreviewを自動復元しないことを確認します。Evidenceやreview情報も元資料のaccess controlを迂回して露出させません。
 
 ## Plugin / Extension方針
 
@@ -221,6 +257,10 @@ Knowledge qualification / freshnessを再利用します。epistemic stateを既
 review、health、context evaluation等をPlugin-defined Capabilityとして提供できるか確認します。
 
 ## 2026-10-06 First Reference candidate — E0〜E4
+
+このcandidateは、fact中心の最小pressureとして有効ですが、ADR-0030の最終modelではありません。2026-10-07の要件再点検で、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review event、target anchoring、epistemic coverage、legacy / export-import境界が不足していることを確認しました。
+
+既存candidateのnative / conditional / superseded等を、そのままproductionの単一review enumへ固定しません。成立経路、確認状態、適用条件、ライフサイクルを分離する次incrementでpressureします。
 
 ADR-0030採用後の最初のTEI側Reference candidateを、既存の `work/issue-000081-contextual-epistemic-knowledge` lane上に追加した。Issue改番前から存在するlaneを再利用しており、同目的のsibling branchは作らない。
 
@@ -336,6 +376,14 @@ reviewer candidate
 ## 完了条件
 
 - [ ] user factual assertionとAI unreviewed assertionを区別できる
+- [ ] fact / observation / requirement / decision / constraint / hypothesisを区別できる
+- [ ] content provenanceとingestion actorを分離できる
+- [ ] observed / declared / inferred contextを区別できる
+- [ ] 複数review eventから現在の確認状態を導出できる
+- [ ] annotation targetを編集後に誤って別箇所へ付け替えない
+- [ ] provenance不明のlegacy資料をreview済みへ推定しない
+- [ ] metadata欠落export / reimportでreview stateを自動復元しない
+- [ ] epistemic coverage不足を観測できる
 - [ ] AI生成主張が保存だけでreviewedへ昇格しない
 - [ ] origin / assertion mode / review state / scope / time / Evidenceを分離できる
 - [ ] explicit contextとinferred contextを区別できる
