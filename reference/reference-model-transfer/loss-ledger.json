@@ -179,6 +179,15 @@
       "risk": "A public Reference Evidence artifact can disclose enterprise-specific schema vocabulary while still appearing to satisfy the no-source-content publication boundary.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "separate local source-faithful schema-name observation from public Evidence; public output retains unknown/additional schema occurrence counts and deterministic fingerprints without arbitrary source-derived names, and tests prove unknown/custom names do not appear in serialized public output"
+    },
+    {
+      "id": "RML-023",
+      "topic": "unknown-qualified-construct-repromoted-by-local-name",
+      "nature": "unresolved",
+      "evidence": "Before the RMP-048 fix, factsForNode dispatched on node.Kind without checking node.Known, so a namespaced element whose local name matched TableKey, Relationship, Function, Detail, Key, or Refer could emit standard source facts despite being unknown to the reader.",
+      "risk": "namespace/vendor extensions can be reinterpreted as standard Xead/Xeaf semantics after the inventory layer has already rejected that interpretation.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "fact extraction and every later projection honor the qualified-name known-state; adversarial tests prove namespaced lookalikes remain unknown and cannot emit standard source facts or public standard-fact claims"
     }
   ],
   "claimsNotEstablished": [
