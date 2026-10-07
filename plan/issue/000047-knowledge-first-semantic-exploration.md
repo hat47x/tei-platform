@@ -348,6 +348,8 @@ Data Design Context全体には`projectionRevision`と`fingerprint`も付ける�
 
 Source Evidenceの揃い方は`evidenceCoverageStatus = complete | incomplete`で別に示す。`complete`が意味するのは、Data Design Contextが必要と判断したsubjectについてDefinition / Authoring EvidenceをSource Indexから取得できたことまでであり、Source Index自体が現在のworkspaceと一致することの証明ではない。Source freshnessはSource Index側のfingerprint検証責務として分離する。`incomplete`なContextにもfingerprintは付くが、完全なEvidenceを持つContextとして再利用しない。
 
+CLIでcached Contextを再利用する場合は、保存していたfingerprintを`tei knowledge-context -expected-data-design-fingerprint <sha256:...>`へ渡せる。current Projectionが同じなら通常どおりContextを返し、一致しなければfail closedにする。対象subjectがData Design Contextを持たない場合もguardは失敗する。この比較はstale derived contextの検出に使うものであり、fingerprint一致をSource freshnessやSemantic適用可能性の証明へ昇格しない。
+
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
 
 一方、acceptedなscoped uniquenessからは、次に検証すべき関数従属性の候補を限定的に導ける。`sales.order.lines.line_number_unique`の場合、`line_number`単独をdeterminantとして扱わない。候補のdeterminantは、`relation-source-occurrence: sales.order`と`attribute: sales.order_line.line_number`の2項として保持し、dependent occurrenceを`sales.order_line`、scopeを`per-relation-source-occurrence`とする。これにより、scope注記を読み落としたAIが「line numberだけで明細を決める」と誤解する経路を構造上閉じる。natureは`candidate-from-accepted-scoped-uniqueness`であり、acceptedなfunctional dependencyではない。確定には少なくともsource occurrenceのbusiness identifier、Relationのbusiness meaning、target membershipの排他性、temporal validityが必要であるため、これらを`evidenceNeeded`へ残す。`functionalDependencies`本体は引き続き`unresolved`とする。
