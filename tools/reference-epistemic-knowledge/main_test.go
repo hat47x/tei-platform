@@ -832,3 +832,38 @@ func TestProjectionSeparatesSemanticContractFromRepresentationSchema(t *testing.
 		t.Fatalf("semantic contract and representation schema must remain distinct: %+v", projection)
 	}
 }
+
+
+func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.AsOf = "2026-01-15T00:00:00Z"
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		corpus.Assertions[i].ReviewEvents = []ReviewEvent{{
+			Sequence:           1,
+			ID:                 "future-confirm",
+			Kind:               ReviewEventConfirm,
+			Reviewer:           "user:reviewer",
+			Method:             reviewMethodHuman,
+			MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+			OccurredAt:         "2026-02-01T00:00:00Z",
+		}}
+	}
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "user-current")
+	if got.ConfirmationState != "unreviewed" ||
+		got.LatestReviewEventID != "" ||
+		!hasReason(got, "FUTURE_REVIEW_HISTORY_PRESENT") {
+		t.Fatalf("future review event rewrote historical projection: %+v", got)
+	}
+	if got.UseState != "premise" || !hasReason(got, "DIRECT_USER_WORKING_PREMISE") {
+		t.Fatalf("historical direct-user premise changed unexpectedly: %+v", got)
+	}
+}
