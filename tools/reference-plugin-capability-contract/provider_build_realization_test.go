@@ -358,3 +358,83 @@ func TestProviderBuildRealizationSeparatesBuildProvenanceFromArtifactIdentity(t 
 		t.Fatalf("same artifact bytes changed Provider identity: first=%+v second=%+v", firstProvider, secondProvider)
 	}
 }
+
+
+func TestProviderBuildRealizationReplayDetectsBuildPlanDrift(t *testing.T) {
+	logical := Provider{
+		PluginID:         "tei.reference.replay-build",
+		PluginVersion:    "1.0.0",
+		ImplementationID: "replay.runtime",
+		Scope:            ScopeApplicationRuntime,
+	}
+	build := lockedRuntimeBuild(
+		logical.PluginID,
+		logical.PluginVersion,
+		"desktop",
+		"runtime",
+		"a",
+		"8",
+	)
+	lock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{build},
+	}
+	binding, err := bindProviderToBuildArtifact(
+		logical,
+		lock,
+		build.Target,
+		build.Profile,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyProviderBuildRealization(binding, logical, lock); err != nil {
+		t.Fatal(err)
+	}
+
+	drifted := lock
+	drifted.Builds = append([]plugin.LockedBuild(nil), lock.Builds...)
+	drifted.Builds[0].PlanFingerprint = strings.Repeat("b", 64)
+	if err := verifyProviderBuildRealization(binding, logical, drifted); err == nil ||
+		!strings.Contains(err.Error(), "differs from current BuildArtifactLock") {
+		t.Fatalf("BuildPlan drift did not stale provider realization: %v", err)
+	}
+}
+
+func TestProviderBuildRealizationRejectsSourceDeclarationDrift(t *testing.T) {
+	logical := Provider{
+		PluginID:                     "tei.reference.source-bound",
+		PluginVersion:                "1.0.0",
+		ImplementationID:             "source-bound.runtime",
+		SourceDeclarationFingerprint: "sha256:" + strings.Repeat("1", 64),
+		Scope:                        ScopeApplicationRuntime,
+	}
+	build := lockedRuntimeBuild(
+		logical.PluginID,
+		logical.PluginVersion,
+		"desktop",
+		"runtime",
+		"c",
+		"9",
+	)
+	lock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{build},
+	}
+	binding, err := bindProviderToBuildArtifact(
+		logical,
+		lock,
+		build.Target,
+		build.Profile,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	drifted := logical
+	drifted.SourceDeclarationFingerprint = "sha256:" + strings.Repeat("2", 64)
+	if _, err := realizeProviderFromBuild(drifted, binding); err == nil ||
+		!strings.Contains(err.Error(), "does not belong to logical provider") {
+		t.Fatalf("source declaration drift reused old build realization: %v", err)
+	}
+}
