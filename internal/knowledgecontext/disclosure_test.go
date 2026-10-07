@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
+	"tei/internal/index"
 	"tei/internal/subject"
 )
 
@@ -16,6 +18,22 @@ func TestBuildDisclosureSeparatesSelectedDisclosedAndOmittedKnowledge(t *testing
 			ResolutionStatus:       "resolved",
 			EvidenceCoverageStatus: "complete",
 			Data:                   "sales.order_line",
+			BusinessIdentityCandidates: []DataDesignBusinessIdentityCandidate{
+				{
+					Fingerprint: "sha256:candidate",
+					Relation:    "sales.order.lines",
+					Components: []DataDesignDeterminantTerm{
+						{Kind: "relation-source-occurrence", Data: "sales.order"},
+						{Kind: "attribute", Data: "sales.order_line", Attribute: "sales.order_line.line_number"},
+					},
+					TargetOccurrence: "sales.order_line",
+					BasisConstraint:  "sales.order.lines.line_number_unique",
+					Scope:            "per-relation-source-occurrence",
+					Nature:           "candidate-from-accepted-scoped-uniqueness",
+					EvidenceNeeded:   []string{"relation-business-meaning"},
+				},
+			},
+			AuthorityLimits: []string{"data-design-source-limit"},
 		},
 		Outgoing: []Edge{
 			{
@@ -68,6 +86,48 @@ func TestBuildDisclosureSeparatesSelectedDisclosedAndOmittedKnowledge(t *testing
 	}
 	if len(ctx.AuthorityLimits) != 1 {
 		t.Fatalf("source Context was mutated: %+v", ctx.AuthorityLimits)
+	}
+
+	got.DataDesign.AuthorityLimits[0] = "mutated"
+	got.DataDesign.BusinessIdentityCandidates[0].Components[0].Kind = "mutated"
+	got.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded[0] = "mutated"
+	if ctx.DataDesign.AuthorityLimits[0] != "data-design-source-limit" ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].Components[0].Kind != "relation-source-occurrence" ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].EvidenceNeeded[0] != "relation-business-meaning" {
+		t.Fatalf("disclosure Data Design snapshot aliases source Context: source=%+v disclosure=%+v", ctx.DataDesign, got.DataDesign)
+	}
+}
+
+func TestBuildDisclosureDetachesApplicationPatternDefinition(t *testing.T) {
+	ctx := Context{
+		Subject: subject.Subject{Kind: "application-pattern", ID: "order_entry.customer_reference"},
+		ApplicationPattern: &index.ApplicationPatternIndexEntry{
+			Application:   "order_entry",
+			Pattern:       "order_entry.customer_reference",
+			Kind:          "reference",
+			Relation:      "sales.order.customer",
+			Contract:      "master_data.customer",
+			ContractQuery: "find_by_id",
+			ContractQueryInputs: []index.ApplicationPatternContractQueryInputEntry{
+				{
+					TargetAttribute: core.CanonicalID("customer.customer.customer_id"),
+					Input:           core.LocalName("id"),
+				},
+			},
+		},
+		AuthorityLimits: []string{"derived-context-is-not-canonical-authority"},
+	}
+
+	got, err := BuildDisclosure(ctx, []string{"definition"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ApplicationPattern == nil || len(got.ApplicationPattern.ContractQueryInputs) != 1 {
+		t.Fatalf("Application Pattern definition is missing: %+v", got.ApplicationPattern)
+	}
+	got.ApplicationPattern.ContractQueryInputs[0].Input = "mutated"
+	if ctx.ApplicationPattern.ContractQueryInputs[0].Input != "id" {
+		t.Fatalf("disclosure Application Pattern snapshot aliases source Context: source=%+v disclosure=%+v", ctx.ApplicationPattern, got.ApplicationPattern)
 	}
 }
 
