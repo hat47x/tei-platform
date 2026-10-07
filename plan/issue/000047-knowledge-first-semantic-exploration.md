@@ -321,6 +321,8 @@ Data Design Context
 
 複数項目の値の組合せを制限するcomposite domain / allowed-combination constraintも同じです。現行Canonicalでfirst-classに表現していないことを「制約なし」と読み替えず、関数従属性や一意性とは別の`unresolved`として保持します。単項の`positive` Validation等、すでにCanonicalで表現できるConstraintまで未解決扱いにはしません。
 
+時間・履歴条件も、日時型Attributeや監査用columnが存在するだけでは確定しません。Data Design Contextでは`temporalHistoryConditions`を独立した`unresolved`として返し、business occurrenceや識別子がいつ有効か、識別子を時間をまたいで再利用できるか、どの状態遷移がidentity / membership / validityを変えるか、どの履歴を保持するか、どのSource / Contractがその意味を定めるかを確認対象にします。
+
 同様に、AIが全tableへUUIDや単独`id`を付けた案を生成しても、そのkeyを業務上の識別条件とみなしません。surrogate keyを実装候補として残す場合でも、元のbusiness identifier、candidate key、Relation topologyとの対応を保持します。
 
 Reference pressureでは少なくとも次を比較します。
@@ -330,6 +332,7 @@ Reference pressureでは少なくとも次を比較します。
 - 独立した二つの識別対象の組合せ自体に意味があるcase
 - Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
 - allowed-combinationの根拠がないとき、Relation shapeやunique constraintからcomposite domain constraintを補完しないnegative case
+- datetime / timestamp属性やPersistence上の履歴columnがあるだけで、business temporal / history semanticsを確定しないnegative case
 - physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
 - View / Application Pattern / ORM都合の単独`id`から、business identifierを逆算しないnegative case
 - physical keyへ正規化されたbusiness keyを置換する場合でも、元candidate keyのuniquenessとMappingを追跡できるcase
@@ -356,7 +359,7 @@ Data Design Context全体には`projectionRevision`と`fingerprint`も付ける�
 
 Source Evidenceの揃い方は`evidenceCoverageStatus = complete | incomplete`で別に示す。`complete`が意味するのは、Data Design Contextが必要と判断したsubjectについてDefinition / Authoring EvidenceをSource Indexから取得できたことまでであり、Source Index自体が現在のworkspaceと一致することの証明ではない。Source freshnessはSource Index側のfingerprint検証責務として分離する。`incomplete`なContextにもfingerprintは付くが、完全なEvidenceを持つContextとして再利用しない。
 
-CLIでcached Contextを再利用する場合は、保存していたfingerprintを`tei knowledge-context -expected-data-design-fingerprint <sha256:...>`へ渡せる。再利用が成立するには、current Projectionのfingerprint一致に加えて`evidenceCoverageStatus=complete`が必要である。一致しない場合、Evidence coverageが不完全な場合、対象subjectがData Design Contextを持たない場合はfail closedにする。この比較はstale derived contextの検出に使うものであり、fingerprint一致やEvidence coverage完了をSource freshnessやSemantic適用可能性の証明へ昇格しない。
+CLIでcached Contextを再利用する場合は、保存していたfingerprintを`tei knowledge-context -expected-data-design-fingerprint <sha256:...>`へ渡せる。再利用が成立するには、current Projectionのfingerprint一致に加えて`resolutionStatus=resolved`と`evidenceCoverageStatus=complete`の両方が必要である。fingerprintが一致しない場合、構造解決がambiguousな場合、Evidence coverageが不完全な場合、対象subjectがData Design Contextを持たない場合はfail closedにする。この比較はstale derived contextの検出に使うものであり、fingerprint一致やEvidence coverage完了をSource freshnessやSemantic適用可能性の証明へ昇格しない。
 
 `scopedUniqueness`はkind名だけから生成しない。Relationが`many`であり、ValidationのAttributeがそのRelation targetに属する場合に限ってProjectionへ出す。壊れた`relation-unique`やSource Evidence不足から、business identityやfunctional dependencyを推測しない。
 
@@ -377,6 +380,10 @@ Application PatternからData設計へ戻る経路もnegative Referenceとして
 first-web-targetにも同じnegative boundaryを追加した。Web TargetはPatternごとに`PresentationCandidate`、Data、Relation、Capability等を投影するが、`item` / `collection` / `relation-selection`等のTargetローカルidentityをbusiness data identityへ読み替えない。`target-or-presentation-identity-is-not-business-data-identity`をTarget Projectionのauthority limitへ加え、record / browseのpresentation candidateが`sales.order`と別物であることをReference testで固定した。ORM / runtime objectについては、current Referenceに該当する独立したauthoritative identity layerが存在するかを確認したうえで扱い、抽象的なORM層を要件充足のためだけに追加しない。
 
 current Repositoryには独立したORM identity layerはない。実在するruntime境界として、Driverの`queryresult.MappedResult`とfirst-web-targetのread scenarioをpressureした。MappedResultはraw columnを明示result mappingでSemantic attributeへ対応付けるが、それはSemantic correspondenceであってbusiness keyの証明ではない。read scenarioのrowは`Attributes`だけを持ち、row indexは選択状態、`order_id` / `order_line_id`等の値はruntimeで観測したAttribute値として扱う。Authority limitへ`runtime-row-index-is-selection-state-not-business-identity`、`runtime-row-or-attribute-value-is-not-business-identity-proof`、`explicit-result-mapping-is-semantic-correspondence-not-business-key-proof`を追加し、runtime convenience identityをbusiness occurrence identityへ昇格しないことをReference testで固定した。
+
+時間・履歴条件についても、Data全体の設計判断とRelation固有の意味を分ける。Relationごとの`temporalSemantics`は、そのRelationがcurrent-onlyか、期間や履歴を持つかを示すための状態である。一方、`temporalHistoryConditions`はbusiness occurrenceや識別子の有効期間・再利用・状態遷移・履歴保持条件を扱う。現行Canonicalではこれらを十分にfirst-class authoringしていないため、Source / Contractが確定するまでは`unresolved`にする。
+
+日時型Attribute、`created_at` / `updated_at`のような名称、Persistence上のhistory / audit columnを、それだけでbusiness temporal semanticsへ読み替えない。生成AIには有効期間、identifier reuse、identity / membershipを変える状態遷移、必要な履歴、根拠Source / ContractをEvidence questionとして渡す。時間意味をfirst-classなCore primitiveへ追加するかは、Referenceでlossが再現された時点で判断する。
 
 関数従属性とは別に、複数項目の値の組合せ自体が許されるかというcomposite domain constraintも独立して扱う。現行Canonical modelには、allowed-combinationや複合的なdomain membershipをfirst-classにauthorするprimitiveがない。このためData Design Contextでは、該当する定義が見つからないことを「複合制約なし」とは扱わず、`compositeDomainConstraints.nature = unresolved`として返す。
 
@@ -741,11 +748,12 @@ code-changing laneの既存ruleに従い、full `tools/repository-health-check.s
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
-- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、composite domain constraint、Relation topology、Source / Evidence、unresolvedへ到達できる
+- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、composite domain constraint、時間・履歴条件、Relation topology、Source / Evidence、unresolvedへ到達できる
 - [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningを失わず逆追跡できる
 - [ ] View / Application Pattern / Target / ORM / runtime objectのidentityからbusiness keyを逆算しないnegative Referenceを持つ
 - [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] composite domain / allowed-combination constraintをfirst-classにauthorしていない対象で、根拠不足を「複合制約なし」へ丸めずunresolvedとしてAIへ返せる
+- [ ] temporal / history conditionをfirst-classにauthorしていない対象で、datetime属性や履歴columnを根拠に「時間意味が確定済み」と扱わずunresolvedとしてAIへ返せる
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない
