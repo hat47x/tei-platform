@@ -38,6 +38,9 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		got.RelationalFacts.RelationshipsUsingDerivedKeyCount != 1 {
 		t.Fatalf("derived relation pressure was not detected: %#v", got.RelationalFacts)
 	}
+	if got.RelationalResolutionStatus != "resolved" {
+		t.Fatalf("valid relational source was marked unresolved: %#v", got)
+	}
 	if got.UnknownConstructCount != 1 {
 		t.Fatalf("unknown source construct count = %d", got.UnknownConstructCount)
 	}
@@ -102,7 +105,8 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	}
 	if got.RelationalFacts.RuntimeKeyCount != 1 ||
 		got.Source.Format != xeadsource.FormatXeaf ||
-		got.Source.SHA256 == "" {
+		got.Source.SHA256 == "" ||
+		got.RelationalResolutionStatus != "resolved" {
 		t.Fatalf("unexpected report: %#v", got)
 	}
 }
@@ -111,5 +115,24 @@ func TestRunRejectsUnsupportedFormat(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"-format", "other", "-source", "unused"}, &stdout, &stderr); code != 2 {
 		t.Fatalf("code=%d stderr=%s", code, stderr.String())
+	}
+}
+
+
+func TestBuildReportMarksRelationalDiagnosticsAsUnresolved(t *testing.T) {
+	inspection, err := xeadsource.Inspect(
+		xeadsource.FormatXead,
+		[]byte(`<System><Table ID="T1"><TableKey ID="K1" Type="PK"><TableKeyField FieldID="MISSING"/></TableKey></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := buildReport(inspection)
+	if got.RelationalResolutionStatus != "unresolved" {
+		t.Fatalf("relational diagnostic did not block lowering readiness: %#v", got)
+	}
+	if got.RelationalDiagnostics.Total == 0 {
+		t.Fatalf("unresolved report lost diagnostic Evidence: %#v", got)
 	}
 }
