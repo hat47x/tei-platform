@@ -42,13 +42,13 @@ func loadPluginImplementations(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		key := "plugin-implementation:" + definition.Identity()
-		if previous, exists := r.Sources[key]; exists {
+		key := definition.Identity()
+		if previous, exists := r.PluginImplementationSources[key]; exists {
 			return fmt.Errorf("%s: plugin implementation %s is already defined in %s", path, definition.Identity(), previous.File)
 		}
 		r.PluginImplementations = append(r.PluginImplementations, definition)
 		relative := relPath(root, path)
-		r.Sources[key] = SourceLocation{File: relative, Line: 1, Column: 1}
+		r.PluginImplementationSources[key] = SourceLocation{File: relative, Line: 1, Column: 1}
 		r.SourceContributions = append(r.SourceContributions, SourceContribution{
 			Subject: sourceindex.Subject{Kind: "plugin-implementation", ID: definition.Identity()},
 			File:    relative,
@@ -63,7 +63,7 @@ func loadPluginImplementations(root string, r *Result) error {
 
 func validatePluginImplementationDefinitions(r *Result) error {
 	for _, source := range r.PluginImplementations {
-		definition, ok := pluginDefinition(r.World.Plugins, source)
+		definition, ok := pluginDefinitionForImplementation(r.World.Plugins, source)
 		if !ok {
 			return fmt.Errorf("plugin implementation %s has no matching plugin definition", source.Identity())
 		}
@@ -74,7 +74,7 @@ func validatePluginImplementationDefinitions(r *Result) error {
 	return nil
 }
 
-func pluginDefinition(definitions []plugin.Definition, source implementation.Source) (plugin.Definition, bool) {
+func pluginDefinitionForImplementation(definitions []plugin.Definition, source implementation.Source) (plugin.Definition, bool) {
 	for _, definition := range definitions {
 		if definition.ID == source.Plugin.ID && definition.Version == source.Plugin.Version {
 			return definition, true
