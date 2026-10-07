@@ -446,3 +446,70 @@ func TestRuntimeEngineBindingChangesRuntimePolicyFingerprint(t *testing.T) {
 		t.Fatal("runtime engine identity did not affect runtime policy fingerprint")
 	}
 }
+
+
+func TestBindBuiltinRuntimeEngineDoesNotMutateInputPlan(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	input := fx.plan
+	for i := range input.Plugins {
+		if input.Plugins[i].Plugin.ID == core.MustCanonicalID("tei.native.runtime.reference") {
+			input.Plugins[i].RuntimeEngine = nil
+		}
+	}
+	input.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(input)
+	before := input.RuntimePolicyFingerprint
+
+	bound, err := pruntime.BindBuiltinRuntimeEngine(
+		input,
+		plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
+		builtinRuntimeEngine(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pr := range input.Plugins {
+		if pr.Plugin.ID == fx.definition.ID && pr.RuntimeEngine != nil {
+			t.Fatal("binding mutated input runtime plan")
+		}
+	}
+	if input.RuntimePolicyFingerprint != before {
+		t.Fatal("binding mutated input runtime policy fingerprint")
+	}
+	var found bool
+	for _, pr := range bound.Plugins {
+		if pr.Plugin.ID != fx.definition.ID {
+			continue
+		}
+		found = true
+		if pr.RuntimeEngine == nil || *pr.RuntimeEngine != builtinRuntimeEngine() {
+			t.Fatalf("bound runtime engine: %#v", pr.RuntimeEngine)
+		}
+	}
+	if !found {
+		t.Fatal("bound plugin missing")
+	}
+	if bound.RuntimePolicyFingerprint == before {
+		t.Fatal("runtime engine binding did not change runtime policy fingerprint")
+	}
+}
+
+func TestBindBuiltinRuntimeEngineRejectsRebindingDifferentEngine(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	other := builtinRuntimeEngine()
+	other.ImplementationDigest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	if _, err := pruntime.BindBuiltinRuntimeEngine(
+		fx.plan,
+		plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
+		other,
+	); err == nil {
+		t.Fatal("expected different runtime engine rebinding to fail")
+	}
+}
+
+func TestRuntimeEngineIdentityRejectsMalformedDigest(t *testing.T) {
+	engine := builtinRuntimeEngine()
+	engine.ImplementationDigest = "sha256:not-a-digest"
+	if _, err := pruntime.RuntimeEngineIdentityFingerprint(engine); err == nil {
+		t.Fatal("expected malformed runtime engine digest to fail")
+	}
+}
