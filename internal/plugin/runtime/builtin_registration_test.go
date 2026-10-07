@@ -95,7 +95,7 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 		Sources: []plugin.BuildSource{{
 			Kind:    "plugin-implementation",
 			ID:      "tei-native-runtime-reference",
-			Locator: "plugins/tei-native-runtime-reference/1.0.0/implementation.tei",
+			Locator: "plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei",
 			Digest:  builtinSourceDigest,
 		}},
 		Builder: plugin.BuilderIdentity{
@@ -106,7 +106,7 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-native-static-response",
-			Entrypoint: "plugins/tei-native-runtime-reference/1.0.0/implementation.tei",
+			Entrypoint: "plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei",
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
 		Target:     "builtin/host",
