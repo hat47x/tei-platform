@@ -258,10 +258,10 @@
     },
     {
       "id": "RMP-037",
-      "topic": "duplicate-source-identity",
-      "observed": "legacy XML can be malformed or partially merged so that Table or Field identifiers are duplicated; a map-based importer would otherwise overwrite one occurrence with another and still appear to resolve downstream key/refer references",
-      "risk": "source order, traversal order, or implementation-specific map overwrite can silently choose which legacy object a relationship/key/reference means",
-      "teiDirection": "preserve duplicate source identities as unresolved diagnostics; do not collapse duplicate Table/Field IDs into one lookup result, and do not borrow metadata from an arbitrary duplicate occurrence"
+      "topic": "missing-or-duplicate-source-identity",
+      "observed": "legacy XML can be malformed, partially merged, or hand-edited so that Table/Field identifiers are missing or duplicated; a map-based importer would otherwise overwrite one occurrence with another or only notice missing identity when some downstream reference happens to touch it",
+      "risk": "source order, traversal order, or absence of a referencing path can determine whether invalid source identity is noticed, and downstream key/refer resolution can bind to an arbitrary duplicate occurrence",
+      "teiDirection": "diagnose missing and duplicate source identities directly from the source tree; do not collapse duplicate Table/Field IDs into one lookup result, do not borrow metadata from an arbitrary occurrence, and keep dependent key/relation/reference meaning unresolved"
     }
   ]
 }
