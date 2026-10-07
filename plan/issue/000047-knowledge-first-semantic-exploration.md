@@ -307,6 +307,7 @@ Data Design Context
   business occurrence identifier
   candidate key
   determinant -> dependent
+  domain / allowed-combination constraint
   Relation topology / cardinality
   temporal / history condition
   Constraint
@@ -318,6 +319,8 @@ Data Design Context
 
 現在のTEIで関数従属性をfirst-classにauthorしていない範囲では、AIに「従属性なし」とは伝えません。Sourceやaccepted meaningから確定できない場合は`unresolved`とし、項目名、画面配置、一般的なCRUD schema、過去の類似例だけから関数従属性を確定しません。
 
+domain / allowed-combination constraintも同じです。現行Canonicalでfirst-classに表現していないことを「制約なし」と読み替えず、関数従属性や一意性とは別の`unresolved`として保持します。
+
 同様に、AIが全tableへUUIDや単独`id`を付けた案を生成しても、そのkeyを業務上の識別条件とみなしません。surrogate keyを実装候補として残す場合でも、元のbusiness identifier、candidate key、Relation topologyとの対応を保持します。
 
 Reference pressureでは少なくとも次を比較します。
@@ -326,6 +329,7 @@ Reference pressureでは少なくとも次を比較します。
 - 独立したrecordが別recordを変更可能に参照するcase
 - 独立した二つの識別対象の組合せ自体に意味があるcase
 - Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
+- allowed-combinationの根拠がないとき、Relation shapeやunique constraintからdomain constraintを補完しないnegative case
 - physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
 - View / Application Pattern / ORM都合の単独`id`から、business identifierを逆算しないnegative case
 - physical keyへ正規化されたbusiness keyを置換する場合でも、元candidate keyのuniquenessとMappingを追跡できるcase
