@@ -251,3 +251,21 @@ Reference runnerではengine Source closureをRepository全体にはしません
 - production Hostがaccepted engine artifactを独立検証する仕組み
 
 この段階で成立させるのは、「engine identityを暗黙依存から明示Lockへ引き上げ、realizationとの組合せをRuntime PolicyとInvocation provenanceで追跡する」ことまでです。
+
+
+### SB-3 convergence Evidence candidate
+
+SB-3のactual self-hosting runnerに先立ち、stage chainを記録するread-only Evidence modelを追加しています。
+
+```text
+stage0 seed
+  -> stage1 current builder
+  -> stage2 rebuilt by stage1
+  -> bit-for-bit convergence result
+```
+
+stage1とstage2は同じSource closureを使い、stage2を実行するbuilderはstage1 outputそのものでなければなりません。outputのlogical builder ID / version / contractも同一であることを要求します。
+
+digestが違う場合はEvidenceを捨てず、`Converged=false`として両digestを保持します。
+
+このmodelは実行機構ではありません。現在のReference package/native builderはまだGo seedから作られており、SB-3 stage executionを実施したとは扱いません。stage0 trustもconvergenceから消去しません。
