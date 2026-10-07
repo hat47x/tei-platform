@@ -42,6 +42,7 @@ func reviewCommandFor(
 			EventID:                    eventID,
 			OccurredAt:                 normalizedContext.AsOf,
 			ExpectedMeaningFingerprint: assertion.MeaningFingerprint,
+			ExpectedReviewSubjectFingerprint: reviewSubjectFingerprint(assertion),
 			ExpectedTargetBinding:      targetBinding(assertion.Target, normalizedContext),
 			ExpectedLastSequence:       lastSequence,
 		}
@@ -98,6 +99,41 @@ func TestReviewCommandRejectsStaleSequence(t *testing.T) {
 	_, err := applyReviewCommand(corpus, context, command)
 	if err == nil || !strings.Contains(err.Error(), "sequence is stale") {
 		t.Fatalf("stale sequence command was accepted: %v", err)
+	}
+}
+
+func TestReviewCommandRejectsStaleReviewSubjectBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "user-current", ReviewEventConfirm, "stale-subject")
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "user-current" {
+			corpus.Assertions[i].Mode = ModeHypothesis
+		}
+	}
+
+	_, err := applyReviewCommand(corpus, context, command)
+	if err == nil || !strings.Contains(err.Error(), "subject binding is stale") {
+		t.Fatalf("stale epistemic subject command was accepted: %v", err)
+	}
+}
+
+func TestReviewCommandRejectsExactToExactTargetReplacement(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "user-current", ReviewEventConfirm, "replaced-target")
+	if command.ExpectedTargetBinding != "not-required" {
+		t.Fatalf("unexpected target binding: %+v", command)
+	}
+
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "user-current" {
+			corpus.Assertions[i].Target.ID = "tei.database-lifecycle-replaced"
+		}
+	}
+
+	_, err := applyReviewCommand(corpus, context, command)
+	if err == nil || !strings.Contains(err.Error(), "subject binding is stale") {
+		t.Fatalf("exact-to-exact target replacement was not detected: %v", err)
 	}
 }
 
