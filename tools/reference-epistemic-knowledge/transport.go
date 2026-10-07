@@ -48,13 +48,35 @@ func exportCorpusForAccess(raw Corpus, access TransportAccess) (TransportEnvelop
 		}
 	}
 
-	exported := Corpus{Schema: corpus.Schema}
+	exported := Corpus{
+		Schema:        corpus.Schema,
+		MetadataState: MetadataComplete,
+	}
+	hiddenRelationTargets := map[string]bool{}
+	for _, assertion := range corpus.Assertions {
+		if _, hidden := visible[assertion.ID]; hidden {
+			continue
+		}
+		for _, target := range assertion.ConflictsWith {
+			if _, ok := visible[target]; ok {
+				hiddenRelationTargets[target] = true
+				redactions.Relations++
+			}
+		}
+		for _, target := range assertion.Supersedes {
+			if _, ok := visible[target]; ok {
+				hiddenRelationTargets[target] = true
+				redactions.Relations++
+			}
+		}
+	}
+
 	for _, assertion := range corpus.Assertions {
 		if _, ok := visible[assertion.ID]; !ok {
 			continue
 		}
 		copy := assertion
-		partial := false
+		partial := hiddenRelationTargets[assertion.ID]
 
 		copy.Evidence, partial, redactions.Evidence = filterEvidenceForAccess(
 			copy.Evidence,
@@ -126,6 +148,14 @@ func exportCorpusForAccess(raw Corpus, access TransportAccess) (TransportEnvelop
 		exported.CoverageAreas = append(exported.CoverageAreas, copy)
 	}
 
+	if redactions.Assertions > 0 ||
+		redactions.Evidence > 0 ||
+		redactions.ReviewEvents > 0 ||
+		redactions.Relations > 0 ||
+		redactions.Dependencies > 0 ||
+		redactions.CoverageAreas > 0 {
+		exported.MetadataState = MetadataPartial
+	}
 	if len(exported.Assertions) == 0 {
 		return TransportEnvelope{}, fmt.Errorf("transport contains no accessible assertions")
 	}
@@ -142,6 +172,7 @@ func exportCorpusForAccess(raw Corpus, access TransportAccess) (TransportEnvelop
 			"transport-access-refs-are-opaque-input-not-authorization-authority",
 			"transport-does-not-broaden-source-access",
 			"redacted-metadata-does-not-preserve-confirmation-authority",
+			"partial-transport-health-is-not-project-wide-health",
 		},
 	}, nil
 }
