@@ -271,3 +271,12 @@ func TestStaticResponseProfileRejectsExcessiveJSONNesting(t *testing.T) {
 		t.Fatal("expected excessive JSON nesting to fail")
 	}
 }
+
+
+func TestStaticResponseProfileRejectsInvalidUTF8(t *testing.T) {
+	source := implementationSource("")
+	source.Operations[0].Payload = []byte{'{', '"', 'a', 't', 't', 'e', 'm', 'p', 't', 'I', 'd', '"', ':', '"', 0xff, '"', ',', '"', 'o', 'u', 't', 'c', 'o', 'm', 'e', '"', ':', '"', 'a', 'c', 'c', 'e', 'p', 't', 'e', 'd', '"', '}'}
+	if err := source.Validate(); err == nil {
+		t.Fatal("expected invalid UTF-8 to fail")
+	}
+}
