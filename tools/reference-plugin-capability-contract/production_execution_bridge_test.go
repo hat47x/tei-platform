@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/permission"
@@ -614,9 +615,12 @@ func (b *recordingResourceBroker) Acquire(
 	}
 	permissionSpec := req.Permissions[0]
 	binding := req.Bindings[0]
+	now := time.Now().UTC()
 	return resource.Lease{
 		ID:                       "reference-lease",
 		Revision:                 1,
+		IssuedAt:                 now.Format(time.RFC3339Nano),
+		ExpiresAt:                now.Add(20 * time.Minute).Format(time.RFC3339Nano),
 		RuntimePolicyFingerprint: req.RuntimePolicyFingerprint,
 		Resources: []resource.Resolved{{
 			Kind:              permissionSpec.Kind,
