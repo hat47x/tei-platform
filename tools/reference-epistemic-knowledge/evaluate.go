@@ -39,11 +39,13 @@ type HealthCounts struct {
 }
 
 type HealthIssue struct {
-	AssertionID string      `json:"assertionId"`
-	Consumer    string      `json:"consumer"`
-	Criticality Criticality `json:"criticality"`
-	UseState    string      `json:"useState"`
-	Reasons     []string    `json:"reasons"`
+	AssertionID                 string      `json:"assertionId"`
+	Consumer                    string      `json:"consumer"`
+	Criticality                 Criticality `json:"criticality"`
+	UseState                    string      `json:"useState"`
+	ConsumerFreshness           string      `json:"consumerFreshness,omitempty"`
+	FreshnessRequirementSeconds int         `json:"freshnessRequirementSeconds,omitempty"`
+	Reasons                     []string    `json:"reasons"`
 }
 
 type CoverageCounts struct {
@@ -156,8 +158,8 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 	for _, assertion := range corpus.Assertions {
 		out.Assessments = append(out.Assessments, assessments[assertion.ID])
 	}
-	out.Health = buildHealth(corpus, assessments, context)
-	out.ReviewRequests = buildReviewRequests(corpus, assertions, assessments)
+	out.Health = buildHealth(corpus, assertions, assessments, context)
+	out.ReviewRequests = buildReviewRequests(corpus, assertions, assessments, context)
 	return out, nil
 }
 
@@ -442,8 +444,14 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
 }
 
-func buildHealth(corpus Corpus, assessments map[string]Assessment, context ContextQuery) KnowledgeHealth {
+func buildHealth(
+	corpus Corpus,
+	assertions map[string]Assertion,
+	assessments map[string]Assessment,
+	context ContextQuery,
+) KnowledgeHealth {
 	health := KnowledgeHealth{Level: "healthy"}
+	asOf, _ := time.Parse(time.RFC3339, context.AsOf)
 	for _, assertion := range corpus.Assertions {
 		switch assessments[assertion.ID].UseState {
 		case "premise":
@@ -460,15 +468,23 @@ func buildHealth(corpus Corpus, assessments map[string]Assessment, context Conte
 
 	for _, dependency := range corpus.Dependencies {
 		assessment := assessments[dependency.AssertionID]
-		if assessment.UseState == "premise" {
+		useState, consumerFreshness, reasons := assessDependencyUse(
+			dependency,
+			assertions[dependency.AssertionID],
+			assessment,
+			asOf,
+		)
+		if useState == "premise" {
 			continue
 		}
 		issue := HealthIssue{
-			AssertionID: dependency.AssertionID,
-			Consumer:    dependency.Consumer,
-			Criticality: dependency.Criticality,
-			UseState:    assessment.UseState,
-			Reasons:     append([]string{}, assessment.Reasons...),
+			AssertionID:                 dependency.AssertionID,
+			Consumer:                    dependency.Consumer,
+			Criticality:                 dependency.Criticality,
+			UseState:                    useState,
+			ConsumerFreshness:           consumerFreshness,
+			FreshnessRequirementSeconds: dependency.MaxAgeSeconds,
+			Reasons:                     reasons,
 		}
 		health.Issues = append(health.Issues, issue)
 		switch dependency.Criticality {
@@ -506,6 +522,68 @@ func buildHealth(corpus Corpus, assessments map[string]Assessment, context Conte
 		return health.Issues[i].Consumer < health.Issues[j].Consumer
 	})
 	return health
+}
+
+func assessDependencyUse(
+	dependency Dependency,
+	assertion Assertion,
+	assessment Assessment,
+	asOf time.Time,
+) (string, string, []string) {
+	useState := assessment.UseState
+	reasons := append([]string{}, assessment.Reasons...)
+	consumerFreshness := "not-required"
+	if dependency.MaxAgeSeconds <= 0 {
+		return useState, consumerFreshness, normalizeStrings(reasons)
+	}
+
+	consumerFreshness = consumerFreshnessState(assertion, asOf, dependency.MaxAgeSeconds)
+	switch consumerFreshness {
+	case "stale":
+		useState = "blocked"
+		reasons = append(reasons, "CONSUMER_FRESHNESS_STALE")
+	case "unknown":
+		if useState == "premise" {
+			useState = "review-required"
+		}
+		reasons = append(reasons, "CONSUMER_FRESHNESS_UNKNOWN")
+	}
+	return useState, consumerFreshness, normalizeStrings(reasons)
+}
+
+func consumerFreshnessState(assertion Assertion, asOf time.Time, maxAgeSeconds int) string {
+	if maxAgeSeconds <= 0 {
+		return "not-required"
+	}
+	var latest time.Time
+	found := false
+	if assertion.CheckedAt != "" {
+		if checkedAt, err := time.Parse(time.RFC3339, assertion.CheckedAt); err == nil && !checkedAt.After(asOf) {
+			latest = checkedAt
+			found = true
+		}
+	}
+	for _, event := range assertion.ReviewEvents {
+		if event.Kind != ReviewEventConfirm ||
+			event.MeaningFingerprint != assertion.MeaningFingerprint {
+			continue
+		}
+		occurredAt, err := time.Parse(time.RFC3339, event.OccurredAt)
+		if err != nil || occurredAt.After(asOf) {
+			continue
+		}
+		if !found || occurredAt.After(latest) {
+			latest = occurredAt
+			found = true
+		}
+	}
+	if !found {
+		return "unknown"
+	}
+	if asOf.Sub(latest).Seconds() > float64(maxAgeSeconds) {
+		return "stale"
+	}
+	return "current"
 }
 
 func assessCoverage(
@@ -568,19 +646,35 @@ func buildReviewRequests(
 	corpus Corpus,
 	assertions map[string]Assertion,
 	assessments map[string]Assessment,
+	context ContextQuery,
 ) []ReviewRequest {
 	impact := map[string][]string{}
 	critical := map[string]bool{}
+	consumerReviewReasons := map[string][]string{}
+	asOf, _ := time.Parse(time.RFC3339, context.AsOf)
 	for _, dependency := range corpus.Dependencies {
 		impact[dependency.AssertionID] = append(impact[dependency.AssertionID], fmt.Sprintf("%s (%s)", dependency.Consumer, dependency.Criticality))
 		if dependency.Criticality == CriticalityCritical || dependency.Criticality == CriticalityHigh {
 			critical[dependency.AssertionID] = true
+			useState, _, reasons := assessDependencyUse(
+				dependency,
+				assertions[dependency.AssertionID],
+				assessments[dependency.AssertionID],
+				asOf,
+			)
+			if useState != "premise" {
+				consumerReviewReasons[dependency.AssertionID] = append(
+					consumerReviewReasons[dependency.AssertionID],
+					reasons...,
+				)
+			}
 		}
 	}
 	var out []ReviewRequest
 	for id, assessment := range assessments {
+		consumerReasons := normalizeStrings(consumerReviewReasons[id])
 		if assessment.UseState != "review-required" &&
-			!(critical[id] && assessment.UseState != "premise") {
+			!(critical[id] && (assessment.UseState != "premise" || len(consumerReasons) > 0)) {
 			continue
 		}
 		assertion := assertions[id]
@@ -592,7 +686,7 @@ func buildReviewRequests(
 			TargetBinding:      assessment.TargetBinding,
 			Context:            append([]ScopeBinding{}, assertion.Context...),
 			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
-			Reasons:            append([]string{}, assessment.Reasons...),
+			Reasons:            normalizeStrings(append(append([]string{}, assessment.Reasons...), consumerReasons...)),
 			DownstreamImpact:   normalizeStrings(impact[id]),
 			ReviewerCandidates: append([]string{}, assertion.ReviewerCandidates...),
 			AuthorityLimit:     "reviewer-candidate-is-not-review-authority",
