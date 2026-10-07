@@ -144,27 +144,44 @@ cutover後に旧native assetをcompatibility / export / generated artifactとし
 
 現時点では`AuthorityMigration`等のproduction schemaやglobal cutover protocolをCoreへ固定しません。SUI Reference Adoption等の実Referenceで、scope・equivalence・rollback情報のどれがdurable contractとして必要かを確認します。
 
-## Authoring candidate / Acceptance Boundary
+## Authoring candidate / Integration / Acceptance Boundary
 
-Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する経路をそれぞれ独立したauthorityとして増やしません。
+Editor、CLI、file-native tooling、AI支援等が増えても、authoritative sourceを変更する入口ごとに別のCanonical authorityを増やしません。
 
-AIを含む非決定的な支援の出力は、Canonical Worldへ直接書き込まず、受理前のProposal / Structured Intent candidateとして扱います。
+未統合の変更には少なくとも二つの正規経路があります。
 
 ```text
-file / CLI / Editor / AI
-          ↓
-  authoring candidate
-          ↓
- Shared Acceptance Boundary
-          ↓
- authoritative source
-          ↓ reload
-   Canonical World
+structured authoring path
+
+AI / Editor / Tool
+      ↓
+Proposal / Structured Intent
+      ↓
+Preview / Shared Acceptance
+      ↓
+authoritative source
+
+
+Git-native development path
+
+Human / Chat / Codex / Claude Code / IDE
+      ↓
+isolated clone / branch / worktree
+      ↓
+file-native edit + build / test / validate
+      ↓
+ordinary Git integration
+      ↓
+authoritative source
 ```
 
-Acceptance Boundaryでは、変更種類に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、acceptance policy、reload / conformance等を決定論的に組み合わせます。
+Structured Proposalは、意味差分・根拠・Previewを機械可読に扱う価値がある場合の経路です。すべてのfile editやAI編集を開始前にProposalへ変換することは要求しません。
 
-すべてを一つの固定processやAPIへ押し込むことは要求しません。一方、AI経路やEditor経路だけがValidation / Conformanceを迂回することは認めません。
+どちらの経路でも、未統合の変更をCanonical Worldそのものとは扱いません。正式統合後のauthoritative sourceを共有loader / validatorでreloadし、入口の違いによってCanonical meaningが変わらないことを要求します。
+
+Acceptance / Integration Boundaryでは、対象に応じてparse / decode、normalize、validate、architecture / policy check、semantic diff、impact analysis、Repository policy、reload / conformance等を決定論的に組み合わせます。すべてを一つの中央Service、固定process、専用APIへ押し込むことは要求しません。
+
+Gitで十分に表現できる変更にTEI独自Change Setを必須にせず、Git conflictはGitへ任せます。そのうえで、Git上はmerge可能でも意味上不正な変更をTEIのValidation / Conformanceで拒否できることを要求します。
 
 interactiveな変更候補では、Proposal作成時点の`baseModelRevision`等と現在revisionを比較できる余地を持たせます。staleな候補を黙って最新状態へ適用せず、reject、rebase、regenerate、manual conflict resolution等へ分岐します。
 
@@ -194,6 +211,53 @@ Canonical subject identity
 AIが参照するSkill、探索規則、過去の成功Proposal、trajectory等はderived knowledgeとして保持できますが、Canonical meaningの第二の正本にはしません。model名、prompt、tool trajectory、judge score等も、意味を定義しない限りEvidence側へ残します。
 
 この判断は[ADR-0022](../plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)に置きます。Gate C後の実証は、一つのAI Issueへ集約せず、[`ISSUE-000046`](../plan/issue/000046-studio-shared-acceptance-authoring-loop.md)でStudioのShared Acceptance loop、[`ISSUE-000047`](../plan/issue/000047-knowledge-first-semantic-exploration.md)でHuman / AI共通のread-only探索、[`ISSUE-000027`](../plan/issue/000027-ai-proposal-acceptance-boundary.md)でAI Proposal / Acceptanceをそれぞれ扱います。
+
+## Development Tool / Host Boundary
+
+TEIは、ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLI、CI等を、TEI専用Agent Runtimeの下位実装として扱いません。
+
+完全な開発loopを同一Hostで完結するには、Host側が少なくとも次を持つ必要があります。
+
+```text
+repository materialization
++ filesystem read / write
++ process execution
++ Git operations
++ required language / build toolchain
+```
+
+これはTEI Application RuntimeのCapability modelではなく、開発Hostの環境条件です。Hostが一部しか持たない場合でも、その環境で作った通常のGit差分やcommitを別の標準開発環境へ渡して継続できます。
+
+TEI側が提供すべき基本面は、特定Agentのsession管理ではなく、通常のCLIとRepository contractです。
+
+```text
+Human / Chat / Coding Agent / CI
+              |
+      Host shell / Git / files
+              |
+            tei CLI
+              |
+ workspace / source index / knowledge context /
+ validation / world / conformance
+```
+
+Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / Git MCPから`tei` CLIを呼べれば正規経路として成立します。TEI自身のdeveloper MCP serverを必須にはしません。
+
+将来native developer MCPを追加する場合は、CLIと別のCanonical解釈・Knowledge Store・Validation・Authority modelを作らず、既存の`workspace.Load`、Source Index、knowledge context、validation等と同じapplication operationを別transportから利用します。
+
+次をTEIのProduct stateとして一般化しません。
+
+- Agent Session / Agent Workspace
+- Checkpoint / internal Plan
+- Tool trajectory
+- Test実行回数
+- CI job state
+- 一般的な `verified / unverified`
+- Chat transcript
+
+これらに別のProduct上の必要性がある場合は、その必要性を個別に評価します。開発Toolが所有する状態を、RQ-034のためだけにTEIへ複製しません。
+
+この境界のExecutable Referenceは[ISSUE-000083](../plan/issue/000083-tool-neutral-development-reference.md)で扱います。
 
 ## Semantic kernel
 
