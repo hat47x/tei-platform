@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,8 +17,12 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/deployment"
+	"tei/internal/deployment/executor"
 	"tei/internal/ir"
 	"tei/internal/plugin"
+	"tei/internal/plugin/implementation"
+	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -32,6 +37,10 @@ const (
 	packagePluginVersion   = "1.0.0"
 	packageWorkspace       = "reference/workspace"
 	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
+	nativePluginID         = "tei.native.runtime.reference"
+	nativePluginVersion    = "1.0.0"
+	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
+	nativeImplementation   = "reference/plugin-self-build/workspace/implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 )
 
 type evidence struct {
@@ -48,6 +57,16 @@ type evidence struct {
 	PackageReproducible          bool               `json:"packageReproducible"`
 	PackageLockedBuild           plugin.LockedBuild `json:"packageLockedBuild"`
 	PackageLockFingerprint       string             `json:"packageLockFingerprint"`
+	NativeSourceFingerprint     string             `json:"nativeSourceFingerprint"`
+	NativeBuildPlan             plugin.BuildPlan   `json:"nativeBuildPlan"`
+	NativeBuildPlanFingerprint  string             `json:"nativeBuildPlanFingerprint"`
+	NativeFirstArtifactDigest   string             `json:"nativeFirstArtifactDigest"`
+	NativeSecondArtifactDigest  string             `json:"nativeSecondArtifactDigest"`
+	NativeReproducible          bool               `json:"nativeReproducible"`
+	NativeLockedBuild           plugin.LockedBuild `json:"nativeLockedBuild"`
+	NativeLockFingerprint       string             `json:"nativeLockFingerprint"`
+	NativeDefinitionFingerprint string             `json:"nativeDefinitionFingerprint"`
+	NativeInvocation            executor.Result    `json:"nativeInvocation"`
 	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
 	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
 	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
