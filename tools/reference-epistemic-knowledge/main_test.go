@@ -814,3 +814,21 @@ func TestSupersessionCycleIsRejected(t *testing.T) {
 		t.Fatalf("supersession cycle was accepted: %v", err)
 	}
 }
+
+
+func TestProjectionSeparatesSemanticContractFromRepresentationSchema(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Contract != projectionContract {
+		t.Fatalf("unexpected semantic contract: %q", projection.Contract)
+	}
+	if projection.Schema != projectionSchema {
+		t.Fatalf("unexpected representation schema: %q", projection.Schema)
+	}
+	if projection.Contract == projection.Schema {
+		t.Fatalf("semantic contract and representation schema must remain distinct: %+v", projection)
+	}
+}
