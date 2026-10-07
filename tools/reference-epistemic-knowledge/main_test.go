@@ -906,8 +906,10 @@ func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 	got := assessmentByID(t, projection, "user-current")
 	if got.ConfirmationState != "unreviewed" ||
 		got.LatestReviewEventID != "" ||
-		!hasReason(got, "FUTURE_REVIEW_HISTORY_PRESENT") {
-		t.Fatalf("future review event rewrote historical projection: %+v", got)
+		got.ReviewEventCount != 0 ||
+		got.ReviewLogSequence != 0 ||
+		hasReason(got, "FUTURE_REVIEW_HISTORY_PRESENT") {
+		t.Fatalf("future review event leaked into historical projection: %+v", got)
 	}
 	if got.UseState != "premise" || !hasReason(got, "DIRECT_USER_WORKING_PREMISE") {
 		t.Fatalf("historical direct-user premise changed unexpectedly: %+v", got)
@@ -949,5 +951,17 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 	got := assessmentByID(t, projection, "ai-unreviewed")
 	if got.ReviewEventCount != 2 || got.ReviewLogSequence != 7 {
 		t.Fatalf("review count was incorrectly used as append sequence: %+v", got)
+	}
+}
+
+
+func TestProjectionStatesReviewHistoryIsAsOfBounded(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "review-history-is-bounded-by-context-as-of") {
+		t.Fatalf("missing as-of history authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
