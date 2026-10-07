@@ -48,7 +48,7 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 
 	const (
 		descriptorRel     = "plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
-		implementationRel = "implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
+		implementationRel = "plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 	)
 	descriptorDigest := referenceFileDigest(t, filepath.Join(ws, filepath.FromSlash(descriptorRel)))
 	implementationDigest := referenceFileDigest(t, filepath.Join(ws, filepath.FromSlash(implementationRel)))
