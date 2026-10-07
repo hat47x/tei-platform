@@ -196,6 +196,24 @@ metadata-preserving transportのReference candidateとして `tei.reference.epis
 
 transport adapterを実storage / connectorへ接続すること、text-only exportでloss markerを運ぶこと、accessRefsを既存authorization providerへ接続すること、transport署名は未実証として残す。
 
+### E6b: human review mutation / optimistic concurrency
+
+SUI #3184のreview intentをappend-only review historyへ安全に戻すため、review mutation candidateを追加した。
+
+Projectionは現在meaning fingerprintとas-of時点のreview log末尾sequenceを返す。SUIはmeaning fingerprint、target binding、review sequenceをhuman intentへ保持する。
+
+TEI側のreview commandは、これら3つをpreconditionとして再確認する。
+
+- meaningが変わった: stale commandとして拒否
+- target bindingが変わった: stale commandとして拒否
+- review log sequenceが進んだ: concurrent reviewとして拒否
+
+confirm / rejectではmetadata complete、target stable、context compatibleも要求する。
+
+CLIはcorpusファイルを直接変更せず、updated sidecar + appended event + Projectionをresultとして返す。durable storage commitやmulti-surface mergeは未実証のまま残す。
+
+またProjectionは `ContextQuery.asOf` より未来のreview eventをconfirmation、event count、sequence、reasonへ含めない。Historical projectionへ未来のreview情報を漏らさない。
+
 ### E7: semantic contract / representation versionの分離
 
 SUI #3184とSEI #660の第二consumerを作った結果、consumerがReferenceのJSON schema IDへ直接依存するだけでは、TEI側の表現変更と意味変更を区別できないことが分かった。
@@ -432,6 +450,8 @@ reviewer candidate
 - [ ] content provenanceとingestion actorを分離できる
 - [ ] observed / declared / inferred contextを区別できる
 - [ ] 複数review eventから現在の確認状態を導出できる
+- [ ] as-ofより未来のreview eventをhistorical Projectionへ漏らさない
+- [ ] human review intentをmeaning / target / review sequenceのprecondition付きでappendできる
 - [ ] target bindingをexact / reanchored / ambiguous / detachedとして観測できる
 - [ ] coverage mappingを意味的完全性の証明へ昇格させない
 - [ ] annotation targetを編集後に誤って別箇所へ付け替えない（Reference candidate追加済み。full qualification未完了）
