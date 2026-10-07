@@ -1,6 +1,9 @@
 package plugin
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const BootstrapConvergenceFormatVersion = 1
 
@@ -15,19 +18,25 @@ const (
 // Builder is the exact builder that executed the stage. Output is the exact
 // builder artifact produced by the stage. SourceClosureDigest must describe the
 // same authoritative source closure across stage1 and stage2.
+type BootstrapSeedEvidence struct {
+	Builder       BuilderIdentity `json:"builder"`
+	TrustBoundary string          `json:"trustBoundary"`
+}
+
 type BootstrapStageEvidence struct {
-	Stage               BootstrapStageName `json:"stage"`
-	Builder             BuilderIdentity    `json:"builder"`
-	SourceClosureDigest string             `json:"sourceClosureDigest"`
-	BuildPlanFingerprint string            `json:"buildPlanFingerprint"`
-	Output              BuilderIdentity    `json:"output"`
+	Stage                 BootstrapStageName `json:"stage"`
+	Builder               BuilderIdentity    `json:"builder"`
+	SourceClosureDigest   string             `json:"sourceClosureDigest"`
+	BuildInputFingerprint string             `json:"buildInputFingerprint"`
+	BuildPlanFingerprint  string             `json:"buildPlanFingerprint"`
+	Output                BuilderIdentity    `json:"output"`
 }
 
 // BootstrapConvergenceEvidence is read-only Evidence for SB-3. It does not
 // execute a builder and does not grant Acceptance or Runtime Authority.
 type BootstrapConvergenceEvidence struct {
 	FormatVersion int                    `json:"formatVersion"`
-	Stage0Seed    BuilderIdentity        `json:"stage0Seed"`
+	Stage0Seed    BootstrapSeedEvidence  `json:"stage0Seed"`
 	Stage1        BootstrapStageEvidence `json:"stage1"`
 	Stage2        BootstrapStageEvidence `json:"stage2"`
 }
@@ -42,8 +51,11 @@ func (e BootstrapConvergenceEvidence) Validate() error {
 	if e.FormatVersion != BootstrapConvergenceFormatVersion {
 		return fmt.Errorf("unsupported bootstrap convergence format %d", e.FormatVersion)
 	}
-	if err := e.Stage0Seed.Validate(); err != nil {
+	if err := e.Stage0Seed.Builder.Validate(); err != nil {
 		return fmt.Errorf("stage0 seed: %w", err)
+	}
+	if strings.TrimSpace(e.Stage0Seed.TrustBoundary) == "" {
+		return fmt.Errorf("stage0 seed trust boundary is required")
 	}
 	if err := validateBootstrapStage(e.Stage1, BootstrapStage1); err != nil {
 		return err
@@ -51,7 +63,7 @@ func (e BootstrapConvergenceEvidence) Validate() error {
 	if err := validateBootstrapStage(e.Stage2, BootstrapStage2); err != nil {
 		return err
 	}
-	if e.Stage1.Builder != e.Stage0Seed {
+	if e.Stage1.Builder != e.Stage0Seed.Builder {
 		return fmt.Errorf("stage1 builder does not match exact stage0 seed")
 	}
 	if e.Stage2.Builder != e.Stage1.Output {
@@ -59,6 +71,9 @@ func (e BootstrapConvergenceEvidence) Validate() error {
 	}
 	if e.Stage1.SourceClosureDigest != e.Stage2.SourceClosureDigest {
 		return fmt.Errorf("stage1 and stage2 source closures differ")
+	}
+	if e.Stage1.BuildInputFingerprint != e.Stage2.BuildInputFingerprint {
+		return fmt.Errorf("stage1 and stage2 build inputs differ beyond builder identity")
 	}
 	if e.Stage1.Output.ID != e.Stage2.Output.ID {
 		return fmt.Errorf("stage1 and stage2 output builder ids differ")
@@ -94,6 +109,9 @@ func validateBootstrapStage(stage BootstrapStageEvidence, expected BootstrapStag
 		return fmt.Errorf("%s output: %w", expected, err)
 	}
 	if err := validateBuildDigest(string(expected)+" source closure digest", stage.SourceClosureDigest); err != nil {
+		return err
+	}
+	if err := validateHexFingerprint(string(expected)+" build input fingerprint", stage.BuildInputFingerprint); err != nil {
 		return err
 	}
 	if err := validateHexFingerprint(string(expected)+" build plan fingerprint", stage.BuildPlanFingerprint); err != nil {
