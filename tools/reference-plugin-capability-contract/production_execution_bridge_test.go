@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -48,6 +49,10 @@ func newProductionExecutionFixture(
 		},
 		Provides: []plugin.Capability{capability},
 	}
+	if runtimeKind == plugin.RuntimeProcess {
+		definition.Runtime.Command = "reference-plugin"
+	}
+
 	mapping := LegacyCapabilityMapping{
 		Kind:         capability.Kind,
 		CapabilityID: capability.ID,
@@ -139,6 +144,8 @@ func newProductionExecutionFixture(
 			DescriptorFingerprint: plugin.DefinitionFingerprint(definition),
 			Boundary:              boundary,
 			Trust:                 trust,
+			Command:               definition.Runtime.Command,
+			Args:                  append([]string(nil), definition.Runtime.Args...),
 			SandboxPolicy:         sandbox,
 			Artifact:              definition.Artifact,
 		}},
