@@ -179,14 +179,14 @@ func TestModulePathDetection(t *testing.T) {
 	for _, tc := range []struct {
 		name, contents, want string
 	}{
-		{"short", "module tei\\n", "tei"},
-		{"qualified", "module github.com/example/tei-platform\\ngo 1.23.2\\n", "github.com/example/tei-platform"},
-		{"quoted", "module \\"example.com/tei\\"\\n", "example.com/tei"},
-		{"missing", "go 1.23.2\\n", ""},
+		{"short", "module tei", "tei"},
+		{"qualified", "module github.com/example/tei-platform", "github.com/example/tei-platform"},
+		{"quoted", `module "example.com/tei"`, "example.com/tei"},
+		{"missing", "go 1.23.2", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(strings.ReplaceAll(tc.contents, "\\\\n", "\\n")), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(tc.contents), 0600); err != nil {
 				t.Fatal(err)
 			}
 			got, err := readModulePath(root)
@@ -210,7 +210,9 @@ func TestProductionScannerFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := filepath.Join(dir, "model.go")
-	if err := os.WriteFile(src, []byte("package core\\nimport \\"tei/internal/plugin\\"\\n"), 0600); err != nil {
+	if err := os.WriteFile(src, []byte(`package core
+import "tei/internal/plugin"
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	// Test-only imports must not become production dependencies.
@@ -221,7 +223,9 @@ func TestProductionScannerFailsClosed(t *testing.T) {
 	if err != nil || len(edges) != 1 || boundaryViolation(edges[0], "tei") == "" {
 		t.Fatalf("production import not detected: edges=%v, err=%v", edges, err)
 	}
-	if err := os.WriteFile(src, []byte("package core\\nimport (\\n"), 0600); err != nil {
+	if err := os.WriteFile(src, []byte(`package core
+import (
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := productionImports(root); err == nil {
