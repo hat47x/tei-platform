@@ -159,3 +159,76 @@ func TestDiagnoseRelationalSourceFactsReportsCompositeKeyArityMismatchWithoutRep
 		t.Fatalf("arity mismatch was not preserved as unresolved: %#v", got)
 	}
 }
+
+
+func TestDiagnoseRelationalSourceFactsRejectsDuplicateLegacyTableIdentity(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T1"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Table ID="T2"><TableField ID="C"/><TableKey ID="K3" Type="PK"><TableKeyField FieldID="C"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K3"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var tableDuplicate, relationshipAmbiguous bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "table-id-duplicate":
+			tableDuplicate = diagnostic.TableLegacyID == "T1" && diagnostic.Count == 2
+		case "relationship-table-ambiguous":
+			relationshipAmbiguous = diagnostic.RelationshipID == "R1" &&
+				diagnostic.Side == "table1" &&
+				diagnostic.TableLegacyID == "T1" &&
+				diagnostic.Count == 2
+		}
+	}
+	if !tableDuplicate || !relationshipAmbiguous {
+		t.Fatalf("duplicate table identity was resolved implicitly: %#v", got)
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsRejectsDuplicateLegacyFieldIdentity(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" DataTypeID="D1"/><TableField ID="A" DataTypeID="D2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var fieldDuplicate, keyAmbiguous bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "field-id-duplicate":
+			fieldDuplicate = diagnostic.TableLegacyID == "T1" &&
+				diagnostic.FieldLegacyID == "A" &&
+				diagnostic.Count == 2
+		case "key-field-ambiguous":
+			keyAmbiguous = diagnostic.TableLegacyID == "T1" &&
+				diagnostic.KeyLegacyID == "K1" &&
+				diagnostic.FieldLegacyID == "A" &&
+				diagnostic.Count == 2
+		}
+	}
+	if !fieldDuplicate || !keyAmbiguous {
+		t.Fatalf("duplicate field identity was resolved implicitly: %#v", got)
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsRejectsDuplicateXeafReferFieldIdentity(t *testing.T) {
+	doc, err := Parse(FormatXeaf, []byte(`<System><Table ID="T1"><Field ID="A"/><Field ID="A"/><Refer ID="R1" ToTable="T2" ToKeyFields="B;" WithKeyFields="A;"/></Table><Table ID="T2"><Field ID="B"/></Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var fieldDuplicate, referAmbiguous bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "field-id-duplicate":
+			fieldDuplicate = diagnostic.TableLegacyID == "T1" &&
+				diagnostic.FieldLegacyID == "A" &&
+				diagnostic.Count == 2
+		case "runtime-refer-source-field-ambiguous":
+			referAmbiguous = diagnostic.TableLegacyID == "T1" &&
+				diagnostic.FieldLegacyID == "A" &&
+				diagnostic.Count == 2
+		}
+	}
+	if !fieldDuplicate || !referAmbiguous {
+		t.Fatalf("duplicate runtime refer field identity was resolved implicitly: %#v", got)
+	}
+}
