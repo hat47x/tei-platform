@@ -180,6 +180,40 @@ func TestDataDesignContextDoesNotResolveContradictoryValidationScope(t *testing.
 	}
 }
 
+func TestDataDesignContextKeepsDomainConstraintUnresolvedWithoutFirstClassEvidence(t *testing.T) {
+	ctx := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+	if ctx.DataDesign.DomainConstraints.Nature != "unresolved" ||
+		ctx.DataDesign.DomainConstraints.Reason != "domain-constraint-not-first-class-in-current-canonical-model" {
+		t.Fatalf("domain constraint was invented or left unexplained: %+v", ctx.DataDesign.DomainConstraints)
+	}
+	for _, question := range []string{
+		"which-value-combinations-are-allowed-or-forbidden",
+		"is-this-constraint-about-identity-functional-dependency-or-domain-membership",
+		"which-source-or-contract-establishes-the-allowed-combinations",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.DomainConstraintEvidenceQuestions, question) {
+			t.Fatalf("domain constraint Evidence question %q is missing: %+v", question, ctx.DataDesign.DomainConstraintEvidenceQuestions)
+		}
+	}
+	for _, limit := range []string{
+		"absence-of-authored-domain-constraint-is-not-no-domain-constraint",
+		"relation-shape-is-not-domain-constraint-evidence",
+		"scoped-uniqueness-is-not-domain-constraint",
+		"persistence-unique-constraint-is-not-domain-constraint",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("domain constraint authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+}
+
 func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Persistence = []persistence.Mapping{
