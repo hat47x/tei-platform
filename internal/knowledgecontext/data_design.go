@@ -346,6 +346,7 @@ func buildDataDesignContext(
 			"incomplete-data-design-evidence-blocks-complete-cache-reuse",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
+			"derived-design-candidate-fingerprint-is-identity-not-acceptance",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
 			"absence-of-authored-composite-domain-constraint-is-not-no-composite-domain-constraint",
