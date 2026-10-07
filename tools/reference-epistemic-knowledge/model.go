@@ -89,20 +89,17 @@ func (v AssertionMode) canBeWorkingPremise() bool {
 	}
 }
 
-type ReviewState string
+type ReviewEventKind string
 
 const (
-	ReviewNative     ReviewState = "native"
-	ReviewUnreviewed ReviewState = "unreviewed"
-	ReviewReviewed   ReviewState = "reviewed"
-	ReviewConditional ReviewState = "conditional"
-	ReviewRejected   ReviewState = "rejected"
-	ReviewSuperseded ReviewState = "superseded"
+	ReviewEventConfirm  ReviewEventKind = "confirm"
+	ReviewEventReject   ReviewEventKind = "reject"
+	ReviewEventWithdraw ReviewEventKind = "withdraw"
 )
 
-func (v ReviewState) valid() bool {
+func (v ReviewEventKind) valid() bool {
 	switch v {
-	case ReviewNative, ReviewUnreviewed, ReviewReviewed, ReviewConditional, ReviewRejected, ReviewSuperseded:
+	case ReviewEventConfirm, ReviewEventReject, ReviewEventWithdraw:
 		return true
 	default:
 		return false
@@ -138,36 +135,37 @@ type EvidenceRef struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
-const reviewMethodHumanConfirmation = "human-confirmation"
+const reviewMethodHuman = "human-review"
 
-type ReviewRecord struct {
-	ID                         string        `json:"id"`
-	Reviewer                   string        `json:"reviewer"`
-	Method                     string        `json:"method"`
-	ReviewedMeaningFingerprint string        `json:"reviewedMeaningFingerprint"`
-	ReviewedAt                 string        `json:"reviewedAt"`
-	Evidence                   []EvidenceRef `json:"evidence,omitempty"`
-	Conditions                 []string      `json:"conditions,omitempty"`
+type ReviewEvent struct {
+	Sequence           int             `json:"sequence"`
+	ID                 string          `json:"id"`
+	Kind               ReviewEventKind `json:"kind"`
+	Reviewer           string          `json:"reviewer"`
+	Method             string          `json:"method"`
+	MeaningFingerprint string          `json:"meaningFingerprint"`
+	OccurredAt         string          `json:"occurredAt"`
+	Evidence           []EvidenceRef   `json:"evidence,omitempty"`
+	Conditions         []string        `json:"conditions,omitempty"`
 }
 
 type Assertion struct {
-	ID                 string        `json:"id"`
-	Target             TargetRef     `json:"target"`
-	Text               string        `json:"text"`
-	MeaningFingerprint string        `json:"meaningFingerprint"`
+	ID                 string         `json:"id"`
+	Target             TargetRef      `json:"target"`
+	Text               string         `json:"text"`
+	MeaningFingerprint string         `json:"meaningFingerprint"`
 	Origin             Origin         `json:"origin"`
 	IngestedBy         IngestionActor `json:"ingestedBy"`
 	Mode               AssertionMode  `json:"assertionMode"`
-	ReviewState        ReviewState   `json:"reviewState"`
 	Context            []ScopeBinding `json:"context,omitempty"`
-	ValidFrom          string        `json:"validFrom,omitempty"`
-	ValidUntil         string        `json:"validUntil,omitempty"`
-	CheckedAt          string        `json:"checkedAt,omitempty"`
-	Evidence           []EvidenceRef `json:"evidence,omitempty"`
-	Review             *ReviewRecord `json:"review,omitempty"`
-	Supersedes         []string      `json:"supersedes,omitempty"`
-	ConflictsWith      []string      `json:"conflictsWith,omitempty"`
-	ReviewerCandidates []string      `json:"reviewerCandidates,omitempty"`
+	ValidFrom          string         `json:"validFrom,omitempty"`
+	ValidUntil         string         `json:"validUntil,omitempty"`
+	CheckedAt          string         `json:"checkedAt,omitempty"`
+	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
+	ReviewEvents       []ReviewEvent  `json:"reviewEvents,omitempty"`
+	Supersedes         []string       `json:"supersedes,omitempty"`
+	ConflictsWith      []string       `json:"conflictsWith,omitempty"`
+	ReviewerCandidates []string       `json:"reviewerCandidates,omitempty"`
 }
 
 type Criticality string
