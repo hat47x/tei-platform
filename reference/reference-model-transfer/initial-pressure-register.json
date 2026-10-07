@@ -255,6 +255,13 @@
       "observed": "Watanabe distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
       "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
       "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
+    },
+    {
+      "id": "RMP-037",
+      "topic": "secondary-construct-silent-drop",
+      "observed": "Full exact-source traversal found source constructs that were absent from the initial transcription map: Xead TableType, SubsystemTable, SubsystemRelationship, IOPanelField, IOPanelStyle, IOSpoolStyle, MaintenanceLog; Xeaf HeaderPhrase, Phrase, Option, PrintFont, BatchField, AddRowListColumn, AddRowListButton, MaintenanceLog. IOPanelStyle alone occurs 5,328 times.",
+      "risk": "A transfer can appear complete while silently discarding presentation, source-history, diagram-membership, menu/navigation, or helper interaction data that was not included in the first semantic inventory.",
+      "teiDirection": "make the Source Adapter account for every XML construct before semantic classification; preserve non-semantic constructs as presentation/projection/provenance/native facts instead of promoting them to Core or dropping them"
     }
   ]
 }
