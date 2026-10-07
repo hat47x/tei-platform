@@ -76,6 +76,8 @@ func Load(root string) (Result, error) {
 			if err := loadPluginImplementations(root, &r); err != nil {
 				return Result{}, err
 			}
+		case "implementations":
+			return Result{}, fmt.Errorf("workspace source root %q is ambiguous; use plugin-implementations for Plugin implementation Source", sourceRoot)
 		case "bundles":
 			if err := loadBundles(root, &r); err != nil {
 				return Result{}, err
