@@ -2,7 +2,6 @@ package implementation
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,7 +12,6 @@ import (
 	"tei/internal/core"
 	"tei/internal/deployment/executor"
 	"tei/internal/plugin"
-	pruntime "tei/internal/plugin/runtime"
 )
 
 const (
@@ -152,117 +150,6 @@ func Materialize(s Source) ([]byte, string, error) {
 	raw = append(raw, '\n')
 	sum := sha256.Sum256(raw)
 	return raw, "sha256:" + hex.EncodeToString(sum[:]), nil
-}
-
-type staticResponseBuiltin struct {
-	source                Source
-	descriptorFingerprint string
-}
-
-func (b staticResponseBuiltin) Identity() plugin.Identity {
-	return b.source.Plugin
-}
-
-func (b staticResponseBuiltin) DescriptorFingerprint() string {
-	return b.descriptorFingerprint
-}
-
-func (b staticResponseBuiltin) Invoke(_ context.Context, req pruntime.Request) (pruntime.Response, error) {
-	if req.Plugin != b.source.Plugin {
-		return pruntime.Response{}, fmt.Errorf("TEI-native implementation plugin identity mismatch")
-	}
-	if req.CapabilityKind != b.source.CapabilityKind || req.CapabilityID != b.source.CapabilityID {
-		return pruntime.Response{}, fmt.Errorf(
-			"TEI-native implementation does not provide capability %s %s",
-			req.CapabilityKind, req.CapabilityID,
-		)
-	}
-	for _, operation := range b.source.Operations {
-		if operation.Name != req.Operation {
-			continue
-		}
-		payload := append(json.RawMessage(nil), operation.Payload...)
-		return pruntime.Response{Status: pruntime.ResponseOK, Payload: payload}, nil
-	}
-	return pruntime.Response{}, fmt.Errorf("TEI-native implementation does not support operation %q", req.Operation)
-}
-
-
-
-func ValidateAgainstDefinition(source Source, definition plugin.Definition) error {
-	normalized, err := Normalize(source)
-	if err != nil {
-		return err
-	}
-	if definition.ID != normalized.Plugin.ID || definition.Version != normalized.Plugin.Version {
-		return fmt.Errorf(
-			"implementation source %s does not match plugin definition %s@%s",
-			normalized.Identity(), definition.ID, definition.Version,
-		)
-	}
-	if definition.Runtime.Kind != plugin.RuntimeBuiltin {
-		return fmt.Errorf("TEI-native static response Reference requires builtin runtime")
-	}
-	var matches int
-	var matched plugin.Capability
-	for _, capability := range definition.Provides {
-		if capability.Kind == normalized.CapabilityKind && capability.ID == normalized.CapabilityID {
-			matches++
-			matched = capability
-		}
-	}
-	if matches != 1 {
-		return fmt.Errorf(
-			"plugin definition must provide capability %s %s exactly once",
-			normalized.CapabilityKind, normalized.CapabilityID,
-		)
-	}
-	if len(matched.Actions) != 1 || !matched.Actions[0].Valid() {
-		return fmt.Errorf("%s profile requires exactly one valid deployment action", StaticResponseProfileV1)
-	}
-	if len(matched.Permissions) != 0 {
-		return fmt.Errorf("%s profile does not accept capability permissions", StaticResponseProfileV1)
-	}
-	return nil
-}
-
-// NewBuiltin adapts the constrained implementation Source to the existing
-// runtime.Builtin ABI. Registration acceptance remains a Host responsibility.
-func NewBuiltin(source Source, definition plugin.Definition) (pruntime.Builtin, error) {
-	if err := ValidateAgainstDefinition(source, definition); err != nil {
-		return nil, err
-	}
-	normalized, err := Normalize(source)
-	if err != nil {
-		return nil, err
-	}
-	return staticResponseBuiltin{
-		source:                normalized,
-		descriptorFingerprint: plugin.DefinitionFingerprint(definition),
-	}, nil
-}
-
-
-
-func validateDeploymentExecutorResponse(raw json.RawMessage) error {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	var result executor.Result
-	if err := decoder.Decode(&result); err != nil {
-		return fmt.Errorf("deployment executor response schema: %w", err)
-	}
-	if result.ExecutorID != "" || result.ActionID != "" || result.IdempotencyKey != "" || result.PluginInvocation != nil {
-		return fmt.Errorf("deployment executor response must not set Host-owned invocation identity or provenance")
-	}
-	switch result.Outcome {
-	case executor.OutcomeAccepted, executor.OutcomeRejected, executor.OutcomeUnknown:
-	default:
-		return fmt.Errorf("deployment executor response outcome %q is invalid", result.Outcome)
-	}
-	if strings.TrimSpace(result.AttemptID) == "" {
-		return fmt.Errorf("deployment executor response attemptId is required")
-	}
-	return nil
 }
 
 func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
