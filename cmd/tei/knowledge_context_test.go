@@ -32,9 +32,29 @@ func TestCheckDataDesignFingerprint(t *testing.T) {
 		t.Fatalf("stale Data Design fingerprint was not rejected clearly: %v", err)
 	}
 
+	ambiguous := ctx
+	ambiguous.DataDesign = &knowledgecontext.DataDesignContext{
+		Fingerprint:            ctx.DataDesign.Fingerprint,
+		ResolutionStatus:       "ambiguous",
+		EvidenceCoverageStatus: "complete",
+		Ambiguities: []knowledgecontext.DataDesignAmbiguity{
+			{
+				Kind:   "duplicate-semantic-data",
+				ID:     "sales.order_line",
+				Count:  2,
+				Effect: "design-candidates-suppressed",
+			},
+		},
+	}
+	if err := checkDataDesignFingerprint(ambiguous, ctx.DataDesign.Fingerprint); err == nil ||
+		!strings.Contains(err.Error(), "requires structurally resolved identity") {
+		t.Fatalf("ambiguous Data Design Context allowed cached reuse: %v", err)
+	}
+
 	incomplete := ctx
 	incomplete.DataDesign = &knowledgecontext.DataDesignContext{
 		Fingerprint:            ctx.DataDesign.Fingerprint,
+		ResolutionStatus:       "resolved",
 		EvidenceCoverageStatus: "incomplete",
 	}
 	if err := checkDataDesignFingerprint(incomplete, ctx.DataDesign.Fingerprint); err == nil ||
@@ -344,11 +364,13 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v1" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
+		dataDesign.ResolutionStatus != "resolved" ||
 		dataDesign.EvidenceCoverageStatus != "complete" {
 		t.Fatalf(
-			"data design cache identity is incomplete: revision=%q fingerprint=%q evidenceCoverageStatus=%q",
+			"data design cache identity is incomplete: revision=%q fingerprint=%q resolutionStatus=%q evidenceCoverageStatus=%q",
 			dataDesign.ProjectionRevision,
 			dataDesign.Fingerprint,
+			dataDesign.ResolutionStatus,
 			dataDesign.EvidenceCoverageStatus,
 		)
 	}
