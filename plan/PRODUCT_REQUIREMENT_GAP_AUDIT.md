@@ -111,6 +111,9 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 
 同日のISSUE-000080 candidateでは、Tool / Runtime CapabilityをCore固定`CapabilityKind`から分離するReferenceを進めた。Capability Resolution Lockはresolution policy、Authority scope、Requirement、明示wiring、exact Contract、Provider identity、artifact digestを固定し、fresh resolutionとreplayを分ける。Conformance Evidenceはexact artifactへ結び付け、同じlogical provider identityに複数artifactを重ねる状態を拒否する。既存`contract-query-executor`は旧Plugin定義をAuthorityにした一方向projectionでpressureする。現行Oracle / PostgreSQL builtin Pluginはartifact digestを持たないため、宣言の投影はできてもgeneric Conformance済みProviderとしては採用しない。実装artifact identityを信頼できるbuild / provenance経路で確定するmigration prerequisiteが残る。いずれもproduction contractへの昇格前であり、本branchのexecutable Gateも未取得なのでRQ-032 / RQ-033はDesign Onlyを維持する。
 
+
+2026-10-07のISSUE-000080 Runtime Authority pressureでは、generic Capability Contractを既存Runtimeの第二selectorにしない境界を追加した。既存`contract-query-executor`はEnvironment / Database instance / Contract Query targetごとのBindingが先にexecutor Capabilityを選び、generic Contractは選択済みProviderだけをConformance検証する。Capability Resolution Lockはgeneric `Wiring`を持たず、target-specificな選択は`RuntimeCapabilitySelectionBinding`でEnvironment / instance / target / executor / Plugin / Capability Lockへ結び付ける。同一EnvironmentでOracleとPostgreSQLのtargetが同じgeneric Contractを別Providerで満たすpressureを追加したが、production pathへの統合とexact-head Repository Gateは未取得のためRQ-032 / RQ-033のtierは変更しない。
+
 ## 5. 評価集約
 
 ### Strong Evidence — 10
