@@ -1,7 +1,7 @@
 package knowledgecontext
 
 import (
-	"fmt"
+	"encoding/json"
 	"sort"
 	"strings"
 
@@ -650,49 +650,13 @@ func buildDataDesignContext(
 }
 
 func dataDesignFingerprint(ctx *DataDesignContext) string {
-	var builder strings.Builder
-	builder.WriteString(ctx.ProjectionRevision)
-	builder.WriteByte('\n')
-	builder.WriteString(string(ctx.Data))
-	builder.WriteByte('\n')
-	builder.WriteString(ctx.Focus.Kind)
-	builder.WriteByte(':')
-	builder.WriteString(ctx.Focus.ID)
-	builder.WriteByte('\n')
-	builder.WriteString("evidence-coverage-status:")
-	builder.WriteString(ctx.EvidenceCoverageStatus)
-	builder.WriteByte('\n')
-	for _, ambiguity := range ctx.Ambiguities {
-		builder.WriteString("ambiguity:")
-		builder.WriteString(ambiguity.Kind)
-		builder.WriteByte(':')
-		builder.WriteString(string(ambiguity.ID))
-		builder.WriteByte(':')
-		builder.WriteString(fmt.Sprintf("%d", ambiguity.Count))
-		builder.WriteByte('|')
-		builder.WriteString(ambiguity.Effect)
-		builder.WriteByte('\n')
+	projection := *ctx
+	projection.Fingerprint = ""
+	encoded, err := json.Marshal(projection)
+	if err != nil {
+		panic("Data Design Context contains non-JSON state: " + err.Error())
 	}
-	for _, evidence := range ctx.Evidence {
-		builder.WriteString(evidence.Subject.Kind)
-		builder.WriteByte(':')
-		builder.WriteString(evidence.Subject.ID)
-		builder.WriteByte('|')
-		builder.WriteString(evidence.Source)
-		builder.WriteByte('|')
-		builder.WriteString(evidence.SourceFingerprint)
-		builder.WriteByte('|')
-		builder.WriteString(string(evidence.Role))
-		builder.WriteByte('\n')
-	}
-	for _, missing := range ctx.EvidenceMissing {
-		builder.WriteString("missing:")
-		builder.WriteString(missing.Kind)
-		builder.WriteByte(':')
-		builder.WriteString(missing.ID)
-		builder.WriteByte('\n')
-	}
-	return sourceindex.Fingerprint([]byte(builder.String()))
+	return sourceindex.Fingerprint(encoded)
 }
 
 func persistenceUniquenessKey(value DataDesignPersistenceUniqueness) string {
