@@ -32,12 +32,12 @@ Publication Receiptはpublic Evidenceとして扱える範囲に情報を減ら�
 - source format
 - element kindごとの件数
 - attribute名ごとの件数
-- exact snapshotに結び付いたlocator digest
-- source factの種類とauthority limit
+- exact snapshotに結び付いたlocator総数と集合fingerprint
+- source factの種類と、追跡が必要なfactだけに付与するlocator digest、authority limit
 - unresolvedの種類とlocator digest
 - receipt全体のfingerprint
 
-属性値、要素内テキスト、legacy IDの値、説明文、Script本文は含めない。
+属性値、要素内テキスト、legacy IDの値、説明文、Script本文は含めない。全要素のlocator digest一覧も公開せず、全体は件数と集合fingerprintへ集約する。
 
 ## Source Locator
 
