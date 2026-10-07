@@ -153,6 +153,54 @@ func Materialize(s Source) ([]byte, string, error) {
 	return raw, "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
+// ParseRealization accepts only the exact canonical bytes emitted by
+// Materialize. Runtime adapters use this path so the executed implementation is
+// reconstructed from the artifact bound by BuildArtifactLock and Plugin Lock,
+// not from an independent Source object.
+func ParseRealization(raw []byte) (Source, string, error) {
+	if len(raw) == 0 {
+		return Source{}, "", fmt.Errorf("plugin realization is empty")
+	}
+	if !utf8.Valid(raw) {
+		return Source{}, "", fmt.Errorf("plugin realization is not valid UTF-8")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var manifest RealizationManifest
+	if err := decoder.Decode(&manifest); err != nil {
+		return Source{}, "", fmt.Errorf("decode plugin realization: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return Source{}, "", fmt.Errorf("plugin realization contains multiple values")
+		}
+		return Source{}, "", fmt.Errorf("decode trailing plugin realization content: %w", err)
+	}
+	if manifest.FormatVersion != RealizationFormatVersion {
+		return Source{}, "", fmt.Errorf("unsupported plugin realization format %d", manifest.FormatVersion)
+	}
+	normalized, err := Normalize(manifest.Source)
+	if err != nil {
+		return Source{}, "", fmt.Errorf("plugin realization source: %w", err)
+	}
+	sourceFingerprint, err := Fingerprint(normalized)
+	if err != nil {
+		return Source{}, "", err
+	}
+	if manifest.SourceFingerprint != sourceFingerprint {
+		return Source{}, "", fmt.Errorf("plugin realization source fingerprint diverged")
+	}
+	canonical, digest, err := Materialize(normalized)
+	if err != nil {
+		return Source{}, "", err
+	}
+	if !bytes.Equal(raw, canonical) {
+		return Source{}, "", fmt.Errorf("plugin realization bytes are not canonical")
+	}
+	return normalized, digest, nil
+}
+
 func ValidateAgainstDefinition(source Source, definition plugin.Definition) error {
 	normalized, err := Normalize(source)
 	if err != nil {
