@@ -195,7 +195,8 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 	if got.PluginInvocation == nil ||
 		got.PluginInvocation.BuildPlanFingerprint != lockedBuild.PlanFingerprint ||
 		got.PluginInvocation.RealizationDigest != firstDigest ||
-		got.PluginInvocation.RuntimeEngineFingerprint != engineFingerprint {
+		got.PluginInvocation.RuntimeEngineFingerprint != engineFingerprint ||
+		got.PluginInvocation.RuntimeEngineLockFingerprint != plan.RuntimeEngineLockFingerprint {
 		t.Fatalf("build realization/runtime engine provenance: %#v", got.PluginInvocation)
 	}
 	if err := pruntime.ValidateDeploymentInvocation(plan, core.MustCanonicalID("runtime.native_reference"), got.PluginInvocation); err != nil {
