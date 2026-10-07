@@ -361,6 +361,7 @@ func buildDataDesignContext(
 	}
 	evidenceSubjects := map[subject.Subject]struct{}{
 		{Kind: "semantic-data", ID: string(dataID)}: {},
+		target: {},
 	}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
