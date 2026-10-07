@@ -8,71 +8,113 @@ import (
 	"tei/internal/plugin"
 )
 
-func lockedRuntimeBuild(
+func providerRuntimeBuildPlan(
 	pluginID string,
 	version string,
+	definitionFingerprint string,
 	target string,
 	profile string,
-	planMarker string,
-	artifactMarker string,
-) plugin.LockedBuild {
-	return plugin.LockedBuild{
-		Plugin: plugin.Identity{
-			ID:      core.MustCanonicalID(pluginID),
-			Version: version,
+	entrypoint string,
+	sourceMarker string,
+) plugin.BuildPlan {
+	return plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      plugin.Identity{ID: core.MustCanonicalID(pluginID), Version: version},
+		PluginDefinitionFingerprint: definitionFingerprint,
+		Sources: []plugin.BuildSource{{
+			Kind:    "implementation-source",
+			ID:      "source",
+			Locator: entrypoint,
+			Digest:  "sha256:" + strings.Repeat(sourceMarker, 64),
+		}},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.reference"),
+			Version:         "1.0.0",
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  "sha256:" + strings.Repeat("f", 64),
 		},
-		OutputKind:      plugin.BuildOutputRuntimeArtifact,
-		Target:          target,
-		Profile:         profile,
-		PlanFingerprint: strings.Repeat(planMarker, 64),
-		ArtifactDigest:  "sha256:" + strings.Repeat(artifactMarker, 64),
+		Recipe: plugin.BuildRecipe{
+			Kind:       "reference-runtime",
+			Entrypoint: entrypoint,
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     target,
+		Profile:    profile,
+	}
+}
+
+func buildLockForPlan(
+	t *testing.T,
+	plan plugin.BuildPlan,
+	artifactMarker string,
+) (plugin.BuildArtifactLock, plugin.LockedBuild) {
+	t.Helper()
+	locked, err := plugin.LockBuildOutput(
+		plan,
+		"sha256:"+strings.Repeat(artifactMarker, 64),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{locked},
+	}
+	if err := lock.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return lock, locked
+}
+
+func legacyContractQueryMapping(capabilityID core.CanonicalID) LegacyCapabilityMapping {
+	return LegacyCapabilityMapping{
+		Kind:         plugin.CapabilityContractQueryExecutor,
+		CapabilityID: capabilityID,
+		Scope:        ScopeApplicationRuntime,
+		Contract:     legacyContractQueryContract(),
 	}
 }
 
 func TestLegacyBuiltinProviderCanAcquireExactArtifactFromBuildArtifactLock(t *testing.T) {
-	contract := legacyContractQueryContract()
-	logical := projectReferenceContractQueryProvider(
-		t,
-		"tei.database.oracle",
-		core.CanonicalID("database.query.oracle"),
-	)
+	definition := referencePluginDefinition(t, "tei.database.oracle")
+	mapping := legacyContractQueryMapping(core.CanonicalID("database.query.oracle"))
+	logical, err := projectLegacyCapabilityProvider(definition, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if logical.ArtifactDigest != "" {
 		t.Fatalf("legacy builtin unexpectedly has artifact %q", logical.ArtifactDigest)
 	}
-	build := lockedRuntimeBuild(
+	plan := providerRuntimeBuildPlan(
 		logical.PluginID,
 		logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
 		"server-linux-amd64",
 		"shared-runtime",
+		"cmd/tei-runtime",
 		"a",
-		"1",
 	)
-	buildLock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{build},
-	}
-	binding, err := bindProviderToBuildArtifact(
-		logical,
+	buildLock, locked := buildLockForPlan(t, plan, "1")
+	binding, realized, err := bindLegacyProviderToBuildArtifact(
+		definition,
+		mapping,
+		plan,
 		buildLock,
-		build.Target,
-		build.Profile,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	realized, err := realizeProviderFromBuild(logical, binding)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if realized.ArtifactDigest != build.ArtifactDigest ||
-		realized.RealizationTarget != build.Target ||
-		realized.SourceDeclarationFingerprint != logical.SourceDeclarationFingerprint {
-		t.Fatalf("realized provider=%+v", realized)
+	if realized.ArtifactDigest != locked.ArtifactDigest ||
+		realized.RealizationTarget != plan.Target ||
+		realized.SourceDeclarationFingerprint != logical.SourceDeclarationFingerprint ||
+		binding.PluginBuildDefinitionFingerprint != plan.PluginDefinitionFingerprint {
+		t.Fatalf("realized provider=%+v binding=%+v", realized, binding)
 	}
 
+	contract := legacyContractQueryContract()
 	resolution, err := resolveCapability(ResolveInput{
 		Scope:             ScopeApplicationRuntime,
-		RealizationTarget: build.Target,
+		RealizationTarget: plan.Target,
 		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:         []Contract{contract},
 		Providers:         []Provider{realized},
@@ -83,45 +125,62 @@ func TestLegacyBuiltinProviderCanAcquireExactArtifactFromBuildArtifactLock(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Provider.ArtifactDigest != build.ArtifactDigest {
+	if resolution.Provider.ArtifactDigest != locked.ArtifactDigest {
 		t.Fatalf("resolved provider=%+v", resolution.Provider)
 	}
 }
 
-func TestProviderBuildRealizationDoesNotGrantConformance(t *testing.T) {
-	contract := legacyContractQueryContract()
-	logical := projectReferenceContractQueryProvider(
-		t,
-		"tei.database.oracle",
-		core.CanonicalID("database.query.oracle"),
-	)
-	build := lockedRuntimeBuild(
+func TestLegacyProviderBuildRejectsBuildPlanForDifferentAuthoritativeDefinition(t *testing.T) {
+	definition := referencePluginDefinition(t, "tei.database.oracle")
+	mapping := legacyContractQueryMapping(core.CanonicalID("database.query.oracle"))
+	logical, err := projectLegacyCapabilityProvider(definition, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := providerRuntimeBuildPlan(
 		logical.PluginID,
 		logical.PluginVersion,
+		strings.Repeat("a", 64),
 		"server-linux-amd64",
-		"shared-runtime",
+		"runtime",
+		"cmd/tei-runtime",
 		"a",
-		"1",
 	)
-	binding, err := bindProviderToBuildArtifact(
-		logical,
-		plugin.BuildArtifactLock{
-			FormatVersion: plugin.BuildArtifactLockFormatVersion,
-			Builds:        []plugin.LockedBuild{build},
-		},
-		build.Target,
-		build.Profile,
+	buildLock, _ := buildLockForPlan(t, plan, "1")
+	if _, _, err := bindLegacyProviderToBuildArtifact(
+		definition, mapping, plan, buildLock,
+	); err == nil || !strings.Contains(err.Error(), "authoritative legacy Plugin definition") {
+		t.Fatalf("unrelated BuildPlan was accepted for legacy Provider: %v", err)
+	}
+}
+
+func TestProviderBuildRealizationDoesNotGrantConformance(t *testing.T) {
+	definition := referencePluginDefinition(t, "tei.database.oracle")
+	mapping := legacyContractQueryMapping(core.CanonicalID("database.query.oracle"))
+	logical, err := projectLegacyCapabilityProvider(definition, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := providerRuntimeBuildPlan(
+		logical.PluginID,
+		logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
+		"server-linux-amd64",
+		"runtime",
+		"cmd/tei-runtime",
+		"a",
+	)
+	buildLock, _ := buildLockForPlan(t, plan, "1")
+	_, realized, err := bindLegacyProviderToBuildArtifact(
+		definition, mapping, plan, buildLock,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	realized, err := realizeProviderFromBuild(logical, binding)
-	if err != nil {
-		t.Fatal(err)
-	}
+	contract := legacyContractQueryContract()
 	_, err = resolveCapability(ResolveInput{
 		Scope:             ScopeApplicationRuntime,
-		RealizationTarget: build.Target,
+		RealizationTarget: plan.Target,
 		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:         []Contract{contract},
 		Providers:         []Provider{realized},
@@ -132,59 +191,64 @@ func TestProviderBuildRealizationDoesNotGrantConformance(t *testing.T) {
 }
 
 func TestBuildArtifactLockCanCoalesceDifferentLogicalProviders(t *testing.T) {
-	contract := legacyContractQueryContract()
-	oracleLogical := projectReferenceContractQueryProvider(
-		t,
-		"tei.database.oracle",
-		core.CanonicalID("database.query.oracle"),
-	)
-	postgresLogical := projectReferenceContractQueryProvider(
-		t,
-		"tei.database.postgres",
-		core.CanonicalID("database.query.postgres"),
-	)
-	sharedDigestMarker := "7"
-	oracleBuild := lockedRuntimeBuild(
+	oracleDefinition := referencePluginDefinition(t, "tei.database.oracle")
+	postgresDefinition := referencePluginDefinition(t, "tei.database.postgres")
+	oracleMapping := legacyContractQueryMapping(core.CanonicalID("database.query.oracle"))
+	postgresMapping := legacyContractQueryMapping(core.CanonicalID("database.query.postgres"))
+	oracleLogical, err := projectLegacyCapabilityProvider(oracleDefinition, oracleMapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	postgresLogical, err := projectLegacyCapabilityProvider(postgresDefinition, postgresMapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oraclePlan := providerRuntimeBuildPlan(
 		oracleLogical.PluginID,
 		oracleLogical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(oracleDefinition),
 		"web-browser",
 		"coalesced-standard-runtime",
+		"cmd/tei-web-runtime",
 		"a",
-		sharedDigestMarker,
 	)
-	postgresBuild := lockedRuntimeBuild(
+	postgresPlan := providerRuntimeBuildPlan(
 		postgresLogical.PluginID,
 		postgresLogical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(postgresDefinition),
 		"web-browser",
 		"coalesced-standard-runtime",
+		"cmd/tei-web-runtime",
 		"b",
-		sharedDigestMarker,
 	)
+	oracleLocked, err := plugin.LockBuildOutput(
+		oraclePlan, "sha256:"+strings.Repeat("7", 64),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	postgresLocked, err := plugin.LockBuildOutput(
+		postgresPlan, "sha256:"+strings.Repeat("7", 64),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	buildLock := plugin.BuildArtifactLock{
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{oracleBuild, postgresBuild},
+		Builds:        []plugin.LockedBuild{oracleLocked, postgresLocked},
 	}
 	if err := buildLock.Validate(); err != nil {
 		t.Fatal(err)
 	}
-
-	oracleBinding, err := bindProviderToBuildArtifact(
-		oracleLogical, buildLock, oracleBuild.Target, oracleBuild.Profile,
+	_, oracle, err := bindLegacyProviderToBuildArtifact(
+		oracleDefinition, oracleMapping, oraclePlan, buildLock,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	postgresBinding, err := bindProviderToBuildArtifact(
-		postgresLogical, buildLock, postgresBuild.Target, postgresBuild.Profile,
+	_, postgres, err := bindLegacyProviderToBuildArtifact(
+		postgresDefinition, postgresMapping, postgresPlan, buildLock,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	oracle, err := realizeProviderFromBuild(oracleLogical, oracleBinding)
-	if err != nil {
-		t.Fatal(err)
-	}
-	postgres, err := realizeProviderFromBuild(postgresLogical, postgresBinding)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,6 +260,7 @@ func TestBuildArtifactLockCanCoalesceDifferentLogicalProviders(t *testing.T) {
 		t.Fatal("physical coalescing collapsed logical provider identity")
 	}
 
+	contract := legacyContractQueryContract()
 	input := ResolveInput{
 		Scope:             ScopeApplicationRuntime,
 		RealizationTarget: "web-browser",
@@ -214,9 +279,14 @@ func TestBuildArtifactLockCanCoalesceDifferentLogicalProviders(t *testing.T) {
 
 func TestBuildArtifactLockCanDescribeSplitProviderArtifactsButRuntimeLockStillCannot(t *testing.T) {
 	contract := portableRuntimeContract()
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.split"),
+		Version: "1.0.0",
+	}
+	definitionFingerprint := plugin.BuildDefinitionFingerprint(definition)
 	left := Provider{
-		PluginID:            "tei.reference.split",
-		PluginVersion:       "1.0.0",
+		PluginID:            string(definition.ID),
+		PluginVersion:       definition.Version,
 		ImplementationID:    "split.left",
 		Scope:               ScopeApplicationRuntime,
 		ContractID:          contract.ID,
@@ -226,28 +296,35 @@ func TestBuildArtifactLockCanDescribeSplitProviderArtifactsButRuntimeLockStillCa
 	}
 	right := left
 	right.ImplementationID = "split.right"
-	leftBuild := lockedRuntimeBuild(
-		left.PluginID, left.PluginVersion, "web-browser", "split-left", "c", "3",
+	leftPlan := providerRuntimeBuildPlan(
+		left.PluginID, left.PluginVersion, definitionFingerprint,
+		"web-browser", "split-left", "cmd/split-left", "c",
 	)
-	rightBuild := lockedRuntimeBuild(
-		right.PluginID, right.PluginVersion, "web-browser", "split-right", "d", "4",
+	rightPlan := providerRuntimeBuildPlan(
+		right.PluginID, right.PluginVersion, definitionFingerprint,
+		"web-browser", "split-right", "cmd/split-right", "d",
 	)
-	buildLock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{leftBuild, rightBuild},
-	}
-	if err := buildLock.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	leftBinding, err := bindProviderToBuildArtifact(
-		left, buildLock, leftBuild.Target, leftBuild.Profile,
+	leftLocked, err := plugin.LockBuildOutput(
+		leftPlan, "sha256:"+strings.Repeat("3", 64),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rightBinding, err := bindProviderToBuildArtifact(
-		right, buildLock, rightBuild.Target, rightBuild.Profile,
+	rightLocked, err := plugin.LockBuildOutput(
+		rightPlan, "sha256:"+strings.Repeat("4", 64),
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buildLock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{leftLocked, rightLocked},
+	}
+	leftBinding, err := bindProviderToBuildArtifact(left, leftPlan, buildLock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightBinding, err := bindProviderToBuildArtifact(right, rightPlan, buildLock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,19 +349,16 @@ func TestBuildArtifactLockCanDescribeSplitProviderArtifactsButRuntimeLockStillCa
 	if err != nil {
 		t.Fatal(err)
 	}
-	definition := plugin.Definition{
-		ID:      core.MustCanonicalID(left.PluginID),
-		Version: left.PluginVersion,
-		Artifact: plugin.Artifact{Digest: leftRealized.ArtifactDigest},
-	}
+	definitionWithArtifact := definition
+	definitionWithArtifact.Artifact = plugin.Artifact{Digest: leftRealized.ArtifactDigest}
 	runtimeLock := plugin.Lock{
 		FormatVersion: plugin.LockFormatVersion,
 		Environments: []plugin.EnvironmentLock{{
 			Environment: core.MustCanonicalID("reference"),
 			Plugins: []plugin.LockedPlugin{{
-				ID:             definition.ID,
-				Version:        definition.Version,
-				Fingerprint:    plugin.DefinitionFingerprint(definition),
+				ID:             definitionWithArtifact.ID,
+				Version:        definitionWithArtifact.Version,
+				Fingerprint:    plugin.DefinitionFingerprint(definitionWithArtifact),
 				ArtifactDigest: leftRealized.ArtifactDigest,
 			}},
 		}},
@@ -312,34 +386,30 @@ func TestBuildArtifactLockCanDescribeSplitProviderArtifactsButRuntimeLockStillCa
 }
 
 func TestProviderBuildRealizationSeparatesBuildProvenanceFromArtifactIdentity(t *testing.T) {
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.rebuild"),
+		Version: "1.0.0",
+	}
 	logical := Provider{
-		PluginID:         "tei.reference.rebuild",
-		PluginVersion:    "1.0.0",
+		PluginID:         string(definition.ID),
+		PluginVersion:    definition.Version,
 		ImplementationID: "rebuild.runtime",
 		Scope:            ScopeApplicationRuntime,
 	}
-	firstBuild := lockedRuntimeBuild(
-		logical.PluginID, logical.PluginVersion, "desktop", "runtime", "a", "6",
+	firstPlan := providerRuntimeBuildPlan(
+		logical.PluginID, logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
+		"desktop", "runtime", "cmd/rebuild", "a",
 	)
-	secondBuild := firstBuild
-	secondBuild.PlanFingerprint = strings.Repeat("b", 64)
-	firstLock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{firstBuild},
-	}
-	secondLock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{secondBuild},
-	}
-	firstBinding, err := bindProviderToBuildArtifact(
-		logical, firstLock, firstBuild.Target, firstBuild.Profile,
-	)
+	secondPlan := firstPlan
+	secondPlan.Parameters = []plugin.BuildParameter{{Name: "rebuild-marker", Value: "2"}}
+	firstLock, _ := buildLockForPlan(t, firstPlan, "6")
+	secondLock, _ := buildLockForPlan(t, secondPlan, "6")
+	firstBinding, err := bindProviderToBuildArtifact(logical, firstPlan, firstLock)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondBinding, err := bindProviderToBuildArtifact(
-		logical, secondLock, secondBuild.Target, secondBuild.Profile,
-	)
+	secondBinding, err := bindProviderToBuildArtifact(logical, secondPlan, secondLock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,74 +429,62 @@ func TestProviderBuildRealizationSeparatesBuildProvenanceFromArtifactIdentity(t 
 	}
 }
 
-
 func TestProviderBuildRealizationReplayDetectsBuildPlanDrift(t *testing.T) {
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.replay-build"),
+		Version: "1.0.0",
+	}
 	logical := Provider{
-		PluginID:         "tei.reference.replay-build",
-		PluginVersion:    "1.0.0",
+		PluginID:         string(definition.ID),
+		PluginVersion:    definition.Version,
 		ImplementationID: "replay.runtime",
 		Scope:            ScopeApplicationRuntime,
 	}
-	build := lockedRuntimeBuild(
-		logical.PluginID,
-		logical.PluginVersion,
-		"desktop",
-		"runtime",
-		"a",
-		"8",
+	firstPlan := providerRuntimeBuildPlan(
+		logical.PluginID, logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
+		"desktop", "runtime", "cmd/replay", "a",
 	)
-	lock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{build},
-	}
-	binding, err := bindProviderToBuildArtifact(
-		logical,
-		lock,
-		build.Target,
-		build.Profile,
-	)
+	firstLock, _ := buildLockForPlan(t, firstPlan, "8")
+	binding, err := bindProviderToBuildArtifact(logical, firstPlan, firstLock)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verifyProviderBuildRealization(binding, logical, lock); err != nil {
+	if err := verifyProviderBuildRealization(
+		binding, logical, firstPlan, firstLock,
+	); err != nil {
 		t.Fatal(err)
 	}
 
-	drifted := lock
-	drifted.Builds = append([]plugin.LockedBuild(nil), lock.Builds...)
-	drifted.Builds[0].PlanFingerprint = strings.Repeat("b", 64)
-	if err := verifyProviderBuildRealization(binding, logical, drifted); err == nil ||
-		!strings.Contains(err.Error(), "differs from current BuildArtifactLock") {
+	secondPlan := firstPlan
+	secondPlan.Parameters = []plugin.BuildParameter{{Name: "changed", Value: "true"}}
+	secondLock, _ := buildLockForPlan(t, secondPlan, "8")
+	if err := verifyProviderBuildRealization(
+		binding, logical, secondPlan, secondLock,
+	); err == nil || !strings.Contains(err.Error(), "differs from current BuildPlan / BuildArtifactLock") {
 		t.Fatalf("BuildPlan drift did not stale provider realization: %v", err)
 	}
 }
 
 func TestProviderBuildRealizationRejectsSourceDeclarationDrift(t *testing.T) {
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.source-bound"),
+		Version: "1.0.0",
+	}
 	logical := Provider{
-		PluginID:                     "tei.reference.source-bound",
-		PluginVersion:                "1.0.0",
+		PluginID:                     string(definition.ID),
+		PluginVersion:                definition.Version,
 		ImplementationID:             "source-bound.runtime",
 		SourceDeclarationFingerprint: "sha256:" + strings.Repeat("1", 64),
 		Scope:                        ScopeApplicationRuntime,
 	}
-	build := lockedRuntimeBuild(
-		logical.PluginID,
-		logical.PluginVersion,
-		"desktop",
-		"runtime",
-		"c",
-		"9",
+	plan := providerRuntimeBuildPlan(
+		logical.PluginID, logical.PluginVersion,
+		plugin.BuildDefinitionFingerprint(definition),
+		"desktop", "runtime", "cmd/source-bound", "c",
 	)
-	lock := plugin.BuildArtifactLock{
-		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds:        []plugin.LockedBuild{build},
-	}
-	binding, err := bindProviderToBuildArtifact(
-		logical,
-		lock,
-		build.Target,
-		build.Profile,
-	)
+	lock, _ := buildLockForPlan(t, plan, "9")
+	binding, err := bindProviderToBuildArtifact(logical, plan, lock)
 	if err != nil {
 		t.Fatal(err)
 	}
