@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/deployment"
 	"tei/internal/plugin"
 	"tei/internal/workspace"
 )
@@ -67,6 +69,136 @@ func projectReferenceContractQueryProvider(
 		t.Fatal(err)
 	}
 	return provider
+}
+
+func TestLegacyCapabilityFingerprintNormalizesOrderingButTracksPayload(t *testing.T) {
+	left := plugin.Capability{
+		Kind: plugin.CapabilityContractQueryExecutor,
+		ID:   core.CanonicalID("database.query.reference"),
+		Actions: []deployment.ActionKind{
+			deployment.ActionKind("z-action"),
+			deployment.ActionKind("a-action"),
+		},
+	}
+	right := left
+	right.Actions = []deployment.ActionKind{
+		deployment.ActionKind("a-action"),
+		deployment.ActionKind("z-action"),
+	}
+	leftFingerprint, err := normalizedLegacyCapabilityFingerprint(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rightFingerprint, err := normalizedLegacyCapabilityFingerprint(right)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leftFingerprint != rightFingerprint {
+		t.Fatalf(
+			"semantically identical legacy declaration order changed fingerprint: left=%s right=%s",
+			leftFingerprint,
+			rightFingerprint,
+		)
+	}
+
+	changed := right
+	changed.Actions = append(changed.Actions, deployment.ActionKind("new-action"))
+	changedFingerprint, err := normalizedLegacyCapabilityFingerprint(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changedFingerprint == leftFingerprint {
+		t.Fatal("legacy capability payload change did not change source declaration fingerprint")
+	}
+}
+
+func TestLegacyProjectionBindsToExactAuthoritativeCapabilityDeclaration(t *testing.T) {
+	definition := referencePluginDefinition(t, "tei.database.oracle")
+	mapping := LegacyCapabilityMapping{
+		Kind:         plugin.CapabilityContractQueryExecutor,
+		CapabilityID: core.CanonicalID("database.query.oracle"),
+		Scope:        ScopeApplicationRuntime,
+		Contract:     legacyContractQueryContract(),
+	}
+	before, err := projectLegacyCapabilityProvider(definition, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !validSHA256Fingerprint(before.SourceDeclarationFingerprint) {
+		t.Fatalf(
+			"source declaration fingerprint=%q",
+			before.SourceDeclarationFingerprint,
+		)
+	}
+
+	changed := definition
+	changed.Provides = append([]plugin.Capability(nil), definition.Provides...)
+	found := false
+	for i := range changed.Provides {
+		if changed.Provides[i].Kind == mapping.Kind &&
+			changed.Provides[i].ID == mapping.CapabilityID {
+			changed.Provides[i] = cloneLegacyCapabilityForTest(t, changed.Provides[i])
+			changed.Provides[i].Actions = append(
+				changed.Provides[i].Actions,
+				deployment.ActionKind("synthetic-source-change"),
+			)
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("reference legacy capability was not found")
+	}
+	after, err := projectLegacyCapabilityProvider(changed, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.SourceDeclarationFingerprint == before.SourceDeclarationFingerprint {
+		t.Fatal("legacy authoritative declaration drift was invisible to projection")
+	}
+	if after.PluginID != before.PluginID ||
+		after.PluginVersion != before.PluginVersion ||
+		after.ImplementationID != before.ImplementationID ||
+		after.ContractFingerprint != before.ContractFingerprint {
+		t.Fatalf("source-only drift changed unrelated projected identity: before=%+v after=%+v", before, after)
+	}
+}
+
+func TestLegacyConformanceEvidenceDoesNotSurviveSourceDeclarationDrift(t *testing.T) {
+	contract := legacyContractQueryContract()
+	provider := projectReferenceContractQueryProvider(
+		t,
+		"tei.database.oracle",
+		core.CanonicalID("database.query.oracle"),
+	)
+	provider.ArtifactDigest = "sha256:" + strings.Repeat("4", 64)
+	evidence := evidenceFor(provider, contract, "legacy-source-evidence")
+
+	drifted := provider
+	drifted.SourceDeclarationFingerprint = "sha256:" + strings.Repeat("5", 64)
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeApplicationRuntime,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{drifted},
+		Evidence:    []ConformanceEvidence{evidence},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("stale legacy Conformance Evidence survived source declaration drift: %v", err)
+	}
+}
+
+func cloneLegacyCapabilityForTest(t *testing.T, value plugin.Capability) plugin.Capability {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var clone plugin.Capability
+	if err := json.Unmarshal(encoded, &clone); err != nil {
+		t.Fatal(err)
+	}
+	return clone
 }
 
 func TestLegacyContractQueryCapabilityProjectsFromExistingPluginAuthority(t *testing.T) {
