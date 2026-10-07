@@ -170,15 +170,15 @@ func main() {
 		}
 	}
 	output := struct {
-		Receipt            PublicationReceipt                `json:"receipt"`
-		Coverage           ClassificationCoverage            `json:"classificationCoverage"`
-		Classification     ClassificationProjection          `json:"classificationProjection"`
-		LocalOutputNotice  string                            `json:"localOutputNotice,omitempty"`
-		LocalCandidates    []LocalTranscriptionCandidate     `json:"localCandidates,omitempty"`
+		Receipt           PublicationReceipt            `json:"receipt"`
+		Coverage          ClassificationCoverage        `json:"classificationCoverage"`
+		Classification    ClassificationProjection      `json:"classificationProjection"`
+		LocalOutputNotice string                        `json:"localOutputNotice,omitempty"`
+		LocalCandidates   []LocalTranscriptionCandidate `json:"localCandidates,omitempty"`
 	}{
-		Receipt:        receipt,
-		Coverage:       coverage,
-		Classification: classification,
+		Receipt:         receipt,
+		Coverage:        coverage,
+		Classification:  classification,
 		LocalCandidates: localCandidates,
 	}
 	if *localCandidatesFlag {
