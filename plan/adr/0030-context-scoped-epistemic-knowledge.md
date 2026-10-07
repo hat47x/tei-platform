@@ -52,7 +52,7 @@ provenance links
 
 ### ユーザーが事実として与えた情報は、現在文脈の前提として扱う
 
-ユーザーがプロンプトで事実として述べた内容は、AI生成文と同じunreviewed既定値にはしません。その会話、project、subject等の現在文脈では、ユーザーが与えた前提として通常どおり利用します。
+ユーザーがプロンプトで事実として述べた内容は、AI生成文と同じ扱いにはしません。その会話、project、subject等の現在の文脈では、ユーザーが直接与えた前提として通常どおり利用します。ただし、確認イベントがなければ確認状態そのものは未確認のままです。
 
 これは「世界について客観的に検証済み」という意味ではありません。別の文脈へ再利用するときは、適用範囲、時点、対象の一致を別途評価します。
 
@@ -74,15 +74,15 @@ provenance links
 
 ### AI生成情報は、保存されたことだけでは事実へ昇格しない
 
-AIが生成した主張は原則としてunreviewedから始めます。ファイル、チャット履歴、Issue、設計書等へ保存されたこと自体をreviewの代わりにはしません。
+AIが生成した情報は原則として未確認から始めます。ファイル、チャット履歴、Issue、設計書等へ保存されたこと自体を人間の確認の代わりにはしません。
 
-人間が内容を確認した場合は、その確認が成立したscopeと時点を伴ってreviewedとして扱えます。
+人間が内容を確認した場合は、その確認が成立した適用範囲と時点を伴って確認済みとして扱えます。
 
-AIがreviewed factを要約、統合、言い換えした場合も、新しい文章は原則として新しいAI生成物です。元情報が確認済みであることだけを理由に、生成結果へreview stateを継承しません。意味保存を機械的に証明できる転記等が必要になった場合は、別のtransformation contractとして扱います。
+AIが確認済みの情報を要約、統合、言い換えした場合も、新しい文章は原則として新しいAI生成物です。元情報が確認済みであることだけを理由に、生成結果へ確認状態を継承しません。意味保存を機械的に証明できる転記等が必要になった場合は、別のtransformation contractとして扱います。
 
 ### 確認済みとは、ある文脈で採用可能な前提として確認されたことを表す
 
-reviewedは普遍的なTruthを意味しません。
+確認済みであることは、普遍的に真であることを意味しません。
 
 確認結果には、可能な範囲で次を結び付けます。
 
@@ -94,7 +94,7 @@ reviewedは普遍的なTruthを意味しません。
 - 確認者 / 確認Evidence
 - 条件や例外
 
-確認によって「本番環境では正しいが、外部APIでは異なる」と分かった場合、単純なYes / Noへ畳まず、scopeを狭める、条件を追加する、assertionを分割する、元assertionをsupersededにする等の処理へ進めます。
+確認によって「本番環境では正しいが、外部APIでは異なる」と分かった場合、単純なYes / Noへ畳みません。適用範囲を狭める、条件を追加する、情報を分割する、元情報を置換済みとして扱う等の処理へ進めます。
 
 ### 文脈はユーザー入力だけに依存しない
 
@@ -163,7 +163,7 @@ paragraph、card、row、選択範囲等へannotationする場合、文字位置
 
 さらに、確認状態が付いている情報だけを分母にすると、まだannotationされていない大量のAI出力や既存資料を見落とせます。そのため、Project Knowledge Healthとは別に、重要な情報領域の状態をどこまで把握できているかというepistemic coverageも扱います。重要領域が未分類、出所不明、対象不明である場合は、それ自体をUnknownとして残します。
 
-Project Healthでは、未確認、stale、矛盾、scope不一致、coverage不足の情報が、どの判断や実装に依存されているかを重く見ます。
+Project Healthでは、未確認、stale、矛盾、適用範囲の不一致、coverage不足の情報が、どの判断や実装に依存されているかを重く見ます。
 
 Project Knowledge Healthでは少なくとも次を考慮します。
 
@@ -184,7 +184,7 @@ alertを表示するだけで終わらせず、確認依頼へ変換できる契
 確認依頼からは少なくとも次へ戻れるようにします。
 
 - 確認するassertion
-- 現在のstatus / scope
+- 現在の状態 / 適用範囲
 - 確認が必要な理由
 - downstream impact
 - Source / Evidence
@@ -204,7 +204,7 @@ Markdown、GitHub Issue、外部ストレージ等へ本文だけを書き出す
 
 SUI等のUIでは、確認、未確認、仮説、否定等の少数状態を高速操作として見せられます。ただし、画面上の4状態を内部modelの全状態へ1対1で固定しません。
 
-PCでは範囲選択と1操作、複数選択の一括処理を基準にし、origin、scope、Evidence等の詳細は必要なときだけ表示します。
+PCでは範囲選択と1操作、複数選択の一括処理を基準にし、出所、適用範囲、Evidence等の詳細は必要なときだけ表示します。
 
 AI出力へunreviewedを付ける操作は人間へ要求しません。AI生成時に自動付与します。
 
@@ -264,7 +264,7 @@ SEI
 
 AI生成物の未確認情報や誤りが、保存を境に事実として再利用されるため採用しません。
 
-### 人間入力もすべてunreviewedにする
+### 人間入力もすべて未確認情報と同じ扱いにする
 
 ユーザーが作業前提として与えた情報まで再承認が必要になり、通常の対話や設計作業を不自然にするため採用しません。
 
@@ -296,7 +296,7 @@ ISSUE-000082 / GitHub Issue #958では、少なくとも次を確認します。
 - annotation対象を編集後に誤って別箇所へ付け替えない
 - legacy資料やmetadata欠落を確認済みへ推定しない
 - epistemic coverage不足をProject Knowledge Healthと併せて観測できる
-- AI生成主張が保存だけでreviewedへ昇格しない
+- AI生成情報が保存だけで確認済みへ昇格しない
 - content provenance / ingestion actor / statement kind / confirmation / lifecycle / context / time / Evidenceを分離できる
 - observed / declared / inferred contextを区別できる
 - 狭い適用範囲の情報を広い適用範囲へ黙って一般化しない
@@ -305,7 +305,7 @@ ISSUE-000082 / GitHub Issue #958では、少なくとも次を確認します。
 - contradictionを保持できる
 - retrievalでrelevanceとcontext compatibilityを分離できる
 - critical dependencyを使ったProject Knowledge Healthを計算できる
-- stakeholder 確認依頼へimpact / Evidence / scopeを渡せる
+- stakeholderへの確認依頼へimpact / Evidence / 適用範囲を渡せる
 - SUI #3184とSEI #660が同じ契約を利用できる
 - Extension / Pluginを外しても既存Canonical meaningが変化しない
 
