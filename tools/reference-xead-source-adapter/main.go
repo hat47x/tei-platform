@@ -303,7 +303,7 @@ func publicRootKind(doc ObservedDocument) string {
 
 func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	receipt := PublicationReceipt{
-		SchemaVersion:       1,
+		SchemaVersion:         2,
 		Format:              doc.Format,
 		ArtifactSHA256:      doc.ArtifactSHA256,
 		RootKind:              publicRootKind(doc),
