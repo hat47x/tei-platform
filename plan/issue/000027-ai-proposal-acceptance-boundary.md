@@ -110,14 +110,14 @@ Gate C後のReferenceを作るIssueですが、最初から完成形のAI subsys
 
 本IssueでいうProposalは、すべてのAI編集を開始する前に必須となるTEI固有objectではありません。
 
-ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI等は、独立したRepository clone、branch、worktree、scratch workspaceでSourceを直接編集できます。その環境でTEI CLI / MCP、Repository内Tool、通常のToolchainを使い、Build、Driver、Validation、Conformance、Testまで進めて構いません。
+ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI等は、独立したRepository clone、branch、worktree、scratch workspaceでSourceを直接編集できます。その環境でTEI CLI、Host-provided Shell / Filesystem / Git MCP、Repository内Tool、通常のToolchainを使い、Build、Driver、Validation、Conformance、Testまで進めて構いません。TEI自身のdeveloper MCP serverは必須ではありません。
 
 概念上の標準経路は次です。
 
 ```text
 independent development environment
   -> checkout / worktree
-  -> TEI CLI / MCPでcurrent meaningを探索
+  -> TEI CLI / Host-provided MCPでcurrent meaningを探索
   -> Source edit
   -> Build / Driver / Validation / Test
   -> Git commit / branch / Pull Request等
@@ -310,16 +310,28 @@ file pathそのものをSemantic identityにはしません。
 
 AIだけの特別な受入APIを作りません。
 
+この節は、**Structured Proposal / Preview / Acceptを利用するReference経路**を扱います。RQ-034で定めた通常のGit-native開発に対し、すべてのfile editをこのToolへ通すことは要求しません。
+
 ```text
-file edit -------┐
-Studio ----------|
-CLI / refactor --|--> candidate --> Shared Acceptance Boundary --> authoritative source
-AI Proposal -----|
-Matrix ----------|
-optional Patch --┘
+Studio / AI Proposal / optional Patch
+              ↓
+          candidate
+              ↓
+   Shared Acceptance Boundary
+              ↓
+      authoritative source
+
+separate regular path:
+branch / worktree file edit
+              ↓
+      ordinary Git integration
+              ↓
+      authoritative source
 ```
 
-対象に応じて少なくとも次の決定論的検査を共有します。
+二つの経路はauthoritative sourceへの統合後に同じloader / Validation / Conformanceへ戻ります。Shared Acceptance Toolの利用有無をCanonical meaningの差にしません。
+
+Structured Proposal経路では、対象に応じて少なくとも次の決定論的検査を共有します。
 
 ```text
 candidate
