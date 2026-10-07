@@ -276,6 +276,27 @@
       "observed": "Aggregate transcription accounting assigns 5,629 of 8,718 Xead elements and 3,361 of 4,053 Xeaf elements to the Presentation Extension; Xead IOPanelStyle alone accounts for 5,328 elements.",
       "risk": "A source-faithful adapter or AI authoring context can become dominated by presentation/realization detail, increasing context, storage, browser and editor cost while hiding the smaller set of semantic decisions that require review.",
       "teiDirection": "preserve presentation source losslessly through a projection/presentation extension, but index and load it lazily; AI/Editor semantic context should request only the subject/dependency closure and fetch presentation/native detail on demand rather than materializing the full source graph"
+    },
+    {
+      "id": "RMP-043",
+      "topic": "relationship-type-specific-key-shape",
+      "observed": "Exact benchmark accounting shows all 51 REFFER relationships use equal-arity PK/SK-to-FK key shapes and both SUBTYPE relationships use equal-arity PK-to-PK shapes, while all 27 FAMILY relationships use a strictly larger target PK. XeadModeler classifies the larger target PK/SK containing source-equivalent key fields as FAMILY.",
+      "risk": "A generic relationship validator that requires equal key cardinality or positional zip for every relationship type rejects all FAMILY relationships or maps the wrong subset of child key fields.",
+      "teiDirection": "make legacy relationship correspondence type-aware: equal-arity matching is valid pressure for REFFER/SUBTYPE, while FAMILY requires containment/extension semantics; preserve source key shape as evidence and keep accepted business identity/FD semantics separate"
+    },
+    {
+      "id": "RMP-044",
+      "topic": "business-step-multi-function-composition",
+      "observed": "Of 148 TaskActions, 6 have no TaskFunctionIO, 10 reference one unique Function, and 132 reference two to five Functions; 407 TaskFunctionIO rows form 369 distinct Action/Function pairs.",
+      "risk": "Mapping a Business Action to one Function loses the normal composition structure of the reference model and can incorrectly attribute one Function's CRUD, transaction or UI behavior to the whole step.",
+      "teiDirection": "represent a Business Action as an ordered/evidenced composition of zero or more Function/Capability uses; keep target I/O interactions and Function-level potential Data access separate from accepted action-specific effects"
+    },
+    {
+      "id": "RMP-045",
+      "topic": "function-use-graph-cycle-vs-procedure-order",
+      "observed": "The 289 declared FunctionUsedByThis edges all resolve structurally, but the graph contains four multi-node strongly connected components covering nine Functions.",
+      "risk": "Treating declared Function use as an acyclic dependency graph or Business Procedure order can invent a topological sequence and misclassify navigation/call relationships as recursive execution.",
+      "teiDirection": "preserve Function-use edges as source-backed interaction/dependency evidence; support cycles and require separate runtime or Business Procedure evidence before interpreting them as call-stack recursion or step order"
     }
   ]
 }
