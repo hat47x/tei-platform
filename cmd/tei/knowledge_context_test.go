@@ -8,6 +8,56 @@ import (
 	"tei/internal/knowledgecontext"
 )
 
+func TestBuildKnowledgeDisclosureUsesCurrentContextWithoutChangingQualification(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx.DataDesign == nil || ctx.DataDesign.Fingerprint == "" {
+		t.Fatalf("current Data Design Context is missing: %+v", ctx.DataDesign)
+	}
+
+	disclosure, err := buildKnowledgeDisclosure(ctx, "source,data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.Status != "complete" ||
+		len(disclosure.DisclosedSections) != 2 ||
+		disclosure.DisclosedSections[0] != "data-design" ||
+		disclosure.DisclosedSections[1] != "source" {
+		t.Fatalf("disclosure sections=%+v", disclosure)
+	}
+	if disclosure.DataDesign == nil ||
+		disclosure.DataDesign.Fingerprint != ctx.DataDesign.Fingerprint {
+		t.Fatalf("disclosure changed Data Design identity: disclosure=%+v context=%+v", disclosure.DataDesign, ctx.DataDesign)
+	}
+	if len(disclosure.Artifacts) == 0 || len(disclosure.References) == 0 {
+		t.Fatalf("selected source knowledge is missing: artifacts=%+v references=%+v", disclosure.Artifacts, disclosure.References)
+	}
+	if disclosure.SemanticElement != nil ||
+		disclosure.ApplicationPattern != nil ||
+		len(disclosure.Outgoing) != 0 ||
+		len(disclosure.Incoming) != 0 {
+		t.Fatalf("unselected Knowledge leaked into disclosure: %+v", disclosure)
+	}
+	for _, omitted := range []string{"definition", "dependencies"} {
+		if !containsKnowledgeContextString(disclosure.OmittedAvailableSections, omitted) {
+			t.Fatalf("available but omitted section %q is not recorded: %+v", omitted, disclosure.OmittedAvailableSections)
+		}
+	}
+	if !containsKnowledgeContextString(
+		disclosure.AuthorityLimits,
+		"omitted-knowledge-is-not-negative-evidence",
+	) {
+		t.Fatalf("selective disclosure authority boundary is missing: %+v", disclosure.AuthorityLimits)
+	}
+}
+
 func TestCheckDataDesignFingerprint(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
