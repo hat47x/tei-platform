@@ -48,6 +48,7 @@ type Provider struct {
 	PluginVersion                string         `json:"pluginVersion"`
 	ImplementationID             string         `json:"implementationId"`
 	RealizationTarget            string         `json:"realizationTarget,omitempty"`
+	ExecutionProfileFingerprint  string         `json:"executionProfileFingerprint,omitempty"`
 	ArtifactDigest               string         `json:"artifactDigest"`
 	SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	Scope                        AuthorityScope `json:"scope"`
@@ -348,6 +349,13 @@ func validateResolveInput(input ResolveInput) error {
 			!validSHA256Fingerprint(provider.SourceDeclarationFingerprint) {
 			return fmt.Errorf(
 				"provider[%d] source declaration fingerprint is not exact sha256",
+				i,
+			)
+		}
+		if provider.ExecutionProfileFingerprint != "" &&
+			!validSHA256Fingerprint(provider.ExecutionProfileFingerprint) {
+			return fmt.Errorf(
+				"provider[%d] execution profile fingerprint is not exact sha256",
 				i,
 			)
 		}
@@ -663,6 +671,10 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 	if lock.Provider.SourceDeclarationFingerprint != "" &&
 		!validSHA256Fingerprint(lock.Provider.SourceDeclarationFingerprint) {
 		return fmt.Errorf("capability lock provider source declaration fingerprint is invalid")
+	}
+	if lock.Provider.ExecutionProfileFingerprint != "" &&
+		!validSHA256Fingerprint(lock.Provider.ExecutionProfileFingerprint) {
+		return fmt.Errorf("capability lock provider execution profile fingerprint is invalid")
 	}
 	if lock.Provider.PluginID == "" ||
 		lock.Provider.PluginVersion == "" ||
