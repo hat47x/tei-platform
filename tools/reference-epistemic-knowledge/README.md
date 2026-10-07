@@ -186,11 +186,16 @@ confirm / reject / withdraw commandは少なくとも次のpreconditionを持ち
 
 - assertion ID
 - expected meaning fingerprint
+- expected review subject fingerprint
 - expected target binding
 - expected review log sequence
 - reviewer / event ID / occurredAt
 
-meaning、target、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。これにより、別surfaceで編集やreviewが行われた後に、古い画面から確認を重ねるlost updateを避けます。
+meaning、review subject、target binding、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。
+
+`reviewSubjectFingerprint` は、review event、reviewer candidate、access referenceを除いた正規化assertionから作るopaqueな同時実行receiptです。target、statement kind、scope、temporal validity、Evidence、Conflict / supersession relation等の変更を検出します。これはTruthやsemantic identityを証明するfingerprintではありません。
+
+これにより、別surfaceで意味編集、scope変更、classification変更、Evidence変更、relation変更、target移動、review追加が行われた後に、古い画面から確認を重ねるlost updateを避けます。
 
 confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
 
