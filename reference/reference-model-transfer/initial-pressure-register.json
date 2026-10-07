@@ -262,6 +262,13 @@
       "observed": "Full exact-source traversal found source constructs that were absent from the initial transcription map: Xead TableType, SubsystemTable, SubsystemRelationship, IOPanelField, IOPanelStyle, IOSpoolStyle, MaintenanceLog; Xeaf HeaderPhrase, Phrase, Option, PrintFont, BatchField, AddRowListColumn, AddRowListButton, MaintenanceLog. IOPanelStyle alone occurs 5,328 times.",
       "risk": "A transfer can appear complete while silently discarding presentation, source-history, diagram-membership, menu/navigation, or helper interaction data that was not included in the first semantic inventory.",
       "teiDirection": "make the Source Adapter account for every XML construct before semantic classification; preserve non-semantic constructs as presentation/projection/provenance/native facts instead of promoting them to Core or dropping them"
+    },
+    {
+      "id": "RMP-038",
+      "topic": "xml-level-silent-drop",
+      "observed": "The initial Source Adapter accounted for XML elements and attributes but not comments, processing instructions, directives, or namespace-qualified lookalikes. The benchmark snapshots contain one processing instruction each (their XML declarations) and no comments/directives/namespaced elements.",
+      "risk": "A future or alternate source can carry extension metadata or provenance outside ordinary elements, or a namespaced lookalike can be mistaken for a known Xead/Xeaf construct when only the local element name is checked.",
+      "teiDirection": "account for XML markup and namespace-qualified elements explicitly; keep raw markup local, publish count-only evidence, and require unknown/namespaced observations to keep classification coverage incomplete"
     }
   ]
 }
