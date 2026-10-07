@@ -173,12 +173,12 @@
     },
     {
       "id": "RML-019",
-      "topic": "missing-or-duplicate-table-or-field-identity",
+      "topic": "missing-or-duplicate-source-identity",
       "nature": "unresolved",
-      "evidence": "source Table/Field identifiers can be missing or duplicated in malformed, merged, or hand-edited legacy definitions; lookup-based processing can otherwise miss isolated absent IDs or overwrite duplicate entries while retaining one apparent resolution",
-      "risk": "invalid source identity can go unnoticed until referenced, or a key, Relationship, runtime Key, or Refer can be bound to an arbitrary duplicate occurrence and reported as resolved",
+      "evidence": "Xead Table, TableField, TableKey and Relationship identities can be absent or duplicated in malformed, merged, or hand-edited source; lookup-based processing can otherwise miss isolated absent IDs or retain one apparent resolution after overwrite",
+      "risk": "invalid source identity can go unnoticed until referenced, or a key/Relationship can be attributed to an arbitrary duplicate occurrence and reported as resolved",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "diagnose missing/duplicate Table and Field identities from the source tree, suppress ambiguous metadata lookup, and keep every dependent key/relation/reference unresolved until source identity is explicit and unambiguous"
+      "stopCondition": "diagnose missing/duplicate Xead Table, Field, TableKey and Relationship identities from source facts, suppress ambiguous lookup/metadata selection, and keep dependent meaning unresolved until source identity is explicit and unambiguous"
     }
   ],
   "claimsNotEstablished": [
