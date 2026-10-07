@@ -124,6 +124,7 @@ const dataDesignProjectionRevision = "tei.knowledge.data-design/v1"
 type DataDesignContext struct {
 	ProjectionRevision                    string                                    `json:"projectionRevision"`
 	Fingerprint                           string                                    `json:"fingerprint"`
+	ResolutionStatus                      string                                    `json:"resolutionStatus"`
 	EvidenceCoverageStatus                string                                    `json:"evidenceCoverageStatus"`
 	Data                                  core.CanonicalID                          `json:"data"`
 	Focus                                 subject.Subject                           `json:"focus"`
@@ -320,6 +321,8 @@ func buildDataDesignContext(
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
 			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
+			"data-design-resolution-status-is-structural-not-business-certainty",
+			"ambiguous-data-design-context-blocks-cache-reuse",
 			"data-design-evidence-coverage-is-not-source-freshness-proof",
 			"incomplete-data-design-evidence-blocks-complete-cache-reuse",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
@@ -634,6 +637,11 @@ func buildDataDesignContext(
 		ctx.EvidenceCoverageStatus = "complete"
 	} else {
 		ctx.EvidenceCoverageStatus = "incomplete"
+	}
+	if len(ctx.Ambiguities) == 0 {
+		ctx.ResolutionStatus = "resolved"
+	} else {
+		ctx.ResolutionStatus = "ambiguous"
 	}
 
 	sort.Slice(ctx.Ambiguities, func(i, j int) bool {
