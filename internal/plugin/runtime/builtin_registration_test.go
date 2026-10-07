@@ -109,8 +109,11 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 			Entrypoint: "plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei",
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
-		Target:     "builtin/host",
+		Target:     "interpreted-builtin/host",
 		Profile:    "reference",
+		Parameters: []plugin.BuildParameter{
+			{Name: "execution-model", Value: "interpreted-builtin"},
+		},
 	}
 	realized, err := plugin.RealizeBuiltDefinition(source, builtinRealizationDigest)
 	if err != nil {
