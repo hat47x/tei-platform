@@ -300,6 +300,35 @@
           "occurredAt": "2026-10-05T00:00:00Z"
         }
       ]
+    },
+    {
+      "id": "anchored-identifier-policy",
+      "target": {
+        "kind": "document-range",
+        "id": "tei.identifier.hyphen-policy",
+        "anchor": {
+          "sourceRef": "repo://plan/identifier-policy.md",
+          "sourceRevisionFingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+          "structuralPath": "/rules/identifiers/paragraph[1]",
+          "quote": {
+            "exact": "Identifiers may contain hyphens.",
+            "prefix": "Rule: ",
+            "suffix": " Applies to application identifiers."
+          }
+        }
+      },
+      "text": "Identifiers may contain hyphens.",
+      "meaningFingerprint": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+      "origin": "user",
+      "ingestedBy": "user",
+      "assertionMode": "requirement",
+      "context": [
+        {
+          "dimension": "project",
+          "value": "tei",
+          "provenance": "declared"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -317,6 +346,28 @@
       "assertionId": "user-current",
       "consumer": "architecture-note",
       "criticality": "low"
+    }
+  ],
+  "coverageAreas": [
+    {
+      "id": "release-assumption-coverage",
+      "target": {
+        "kind": "knowledge-area",
+        "id": "tei.release.assumptions"
+      },
+      "criticality": "critical",
+      "mappedAssertionIds": [
+        "ai-unreviewed"
+      ]
+    },
+    {
+      "id": "legacy-import-coverage",
+      "target": {
+        "kind": "knowledge-area",
+        "id": "tei.legacy.import"
+      },
+      "criticality": "normal",
+      "mappedAssertionIds": []
     }
   ]
 }
