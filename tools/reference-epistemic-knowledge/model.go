@@ -234,10 +234,11 @@ func (v Criticality) valid() bool {
 }
 
 type Dependency struct {
-	AssertionID  string      `json:"assertionId"`
-	Consumer     string      `json:"consumer"`
-	Criticality  Criticality `json:"criticality"`
-	MaxAgeSeconds int        `json:"maxAgeSeconds,omitempty"`
+	AssertionID   string      `json:"assertionId"`
+	Consumer      string      `json:"consumer"`
+	Criticality   Criticality `json:"criticality"`
+	MaxAgeSeconds int         `json:"maxAgeSeconds,omitempty"`
+	AccessRefs    []string    `json:"accessRefs,omitempty"`
 }
 
 type CoverageArea struct {
@@ -245,6 +246,7 @@ type CoverageArea struct {
 	Target             TargetRef   `json:"target"`
 	Criticality        Criticality `json:"criticality"`
 	MappedAssertionIDs []string    `json:"mappedAssertionIds,omitempty"`
+	AccessRefs         []string    `json:"accessRefs,omitempty"`
 }
 
 type Corpus struct {
@@ -324,6 +326,7 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 		if d.Consumer == "" || !d.Criticality.valid() || d.MaxAgeSeconds < 0 {
 			return input, fmt.Errorf("dependencies[%d] has invalid consumer / criticality / maxAgeSeconds", i)
 		}
+		d.AccessRefs = normalizeStrings(d.AccessRefs)
 	}
 	coverageAreas, err := normalizeCoverageAreas(input.CoverageAreas, ids)
 	if err != nil {
@@ -420,6 +423,7 @@ func normalizeCoverageAreas(values []CoverageArea, assertionIDs map[string]struc
 		}
 		area.Target = target
 		area.MappedAssertionIDs = normalizeStrings(area.MappedAssertionIDs)
+		area.AccessRefs = normalizeStrings(area.AccessRefs)
 		for _, id := range area.MappedAssertionIDs {
 			if _, ok := assertionIDs[id]; !ok {
 				return nil, fmt.Errorf("coverageAreas[%d] references unknown assertion %q", i, id)
