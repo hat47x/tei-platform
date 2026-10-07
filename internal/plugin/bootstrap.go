@@ -1,6 +1,9 @@
 package plugin
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -42,6 +45,7 @@ type BootstrapConvergenceEvidence struct {
 }
 
 type BootstrapConvergenceResult struct {
+	EvidenceFingerprint  string `json:"evidenceFingerprint"`
 	Converged            bool   `json:"converged"`
 	Stage1ArtifactDigest string `json:"stage1ArtifactDigest"`
 	Stage2ArtifactDigest string `json:"stage2ArtifactDigest"`
@@ -87,11 +91,25 @@ func (e BootstrapConvergenceEvidence) Validate() error {
 	return nil
 }
 
-func EvaluateBootstrapConvergence(e BootstrapConvergenceEvidence) (BootstrapConvergenceResult, error) {
+func BootstrapConvergenceFingerprint(e BootstrapConvergenceEvidence) (string, error) {
 	if err := e.Validate(); err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(e)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func EvaluateBootstrapConvergence(e BootstrapConvergenceEvidence) (BootstrapConvergenceResult, error) {
+	fingerprint, err := BootstrapConvergenceFingerprint(e)
+	if err != nil {
 		return BootstrapConvergenceResult{}, err
 	}
 	return BootstrapConvergenceResult{
+		EvidenceFingerprint:  fingerprint,
 		Converged:            e.Stage1.Output.ArtifactDigest == e.Stage2.Output.ArtifactDigest,
 		Stage1ArtifactDigest: e.Stage1.Output.ArtifactDigest,
 		Stage2ArtifactDigest: e.Stage2.Output.ArtifactDigest,
