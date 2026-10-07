@@ -178,6 +178,9 @@ func buildTargetCapabilityPackagingPlan(
 		}
 	}
 	plan.PlanFingerprint = targetCapabilityPackagingPlanFingerprint(plan)
+	if err := validateTargetCapabilityPackagingPlan(plan); err != nil {
+		return TargetCapabilityPackagingPlan{}, err
+	}
 	return plan, nil
 }
 
