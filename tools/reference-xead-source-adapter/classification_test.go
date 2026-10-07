@@ -27,7 +27,7 @@ func classificationContractFixture() []byte {
 	return out
 }
 
-func TestLocalClassificationKeepsLocatorAndCandidateAuthority(t *testing.T) {
+func TestLocalClassificationKeepsLocatorAndMappingSeparateFromSemanticUnresolved(t *testing.T) {
 	doc, err := Observe(FormatXead, []byte(`<System><Table ID="local"/><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
@@ -42,11 +42,11 @@ func TestLocalClassificationKeepsLocatorAndCandidateAuthority(t *testing.T) {
 	if candidates[1].Locator == "" || candidates[1].Extension != "reference.xead.relational-semantics" {
 		t.Fatalf("mapped candidate=%+v", candidates[1])
 	}
-	if candidates[1].Unresolved {
-		t.Fatalf("mapped Table unexpectedly unresolved: %+v", candidates[1])
+	if candidates[1].MappingStatus != "mapped" || !containsString(candidates[1].Classification, "unresolved") {
+		t.Fatalf("mapping status and semantic classification were conflated: %+v", candidates[1])
 	}
-	if !candidates[2].Unresolved || candidates[2].Classification[0] != "unresolved" {
-		t.Fatalf("unknown source construct was not kept unresolved: %+v", candidates[2])
+	if candidates[2].MappingStatus != "unmapped" || candidates[2].Classification[0] != "unresolved" {
+		t.Fatalf("unknown source construct was not kept unmapped/unresolved: %+v", candidates[2])
 	}
 }
 
@@ -91,9 +91,29 @@ func TestPublishedClassificationKeepsUnmappedKindUnresolved(t *testing.T) {
 			break
 		}
 	}
-	if mystery == nil || !mystery.Unresolved {
-		t.Fatalf("unmapped kind not unresolved: %+v", projection.Kinds)
+	if mystery == nil || mystery.MappingStatus != "unmapped" || mystery.UnresolvedObservedCount != 1 {
+		t.Fatalf("unmapped kind not preserved: %+v", projection.Kinds)
 	}
+}
+
+func TestNamespacedLookalikeDoesNotHideBehindMappedLocalName(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><Table/><x:Table/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), classificationContractFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range projection.Kinds {
+		if kind.Kind == "Table" {
+			if kind.MappingStatus != "mixed" || kind.UnresolvedObservedCount != 1 || kind.ObservedCount != 2 {
+				t.Fatalf("namespaced lookalike was hidden by mapped local name: %+v", kind)
+			}
+			return
+		}
+	}
+	t.Fatal("Table classification missing")
 }
 
 func TestClassificationRejectsMappingWithoutClassification(t *testing.T) {
@@ -105,4 +125,13 @@ func TestClassificationRejectsMappingWithoutClassification(t *testing.T) {
 	if _, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), contract); err == nil || !strings.Contains(err.Error(), "has no classification") {
 		t.Fatalf("invalid mapping accepted: %v", err)
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
