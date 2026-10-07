@@ -260,6 +260,110 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 
+	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeDefinition.Artifact.Digest != "" {
+		return evidence{}, fmt.Errorf("TEI-native source definition unexpectedly predeclares artifact %s", nativeDefinition.Artifact.Digest)
+	}
+	nativeSource, err := exactImplementation(loaded.PluginImplementations, nativePluginID, nativePluginVersion)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSourceFingerprint, err := implementation.Fingerprint(nativeSource)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeDescriptorDigest, err := hashFile(filepath.Join(root, filepath.FromSlash(nativeDescriptor)))
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeImplementationDigest, err := hashFile(filepath.Join(root, filepath.FromSlash(nativeImplementation)))
+	if err != nil {
+		return evidence{}, err
+	}
+	nativePlan := plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      nativeSource.Plugin,
+		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(nativeDefinition),
+		Sources: []plugin.BuildSource{
+			{
+				Kind:    "git-tree",
+				ID:      "tei-repository",
+				Locator: "git:HEAD",
+				Digest:  treeDigest,
+			},
+			{
+				Kind:    "plugin-definition",
+				ID:      "tei-native-runtime-reference-definition",
+				Locator: nativeDescriptor,
+				Digest:  nativeDescriptorDigest,
+			},
+			{
+				Kind:    "plugin-implementation",
+				ID:      "tei-native-runtime-reference-implementation",
+				Locator: nativeImplementation,
+				Digest:  nativeImplementationDigest,
+			},
+		},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.native.go.seed"),
+			Version:         goVersion,
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  goToolchainDigest,
+		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "tei-native-static-response",
+			Entrypoint: nativeImplementation,
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     "builtin/host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		Profile:    "reference",
+		Parameters: []plugin.BuildParameter{
+			{Name: "profile", Value: implementation.StaticResponseProfileV1},
+		},
+	}
+	nativePlanFingerprint, err := plugin.BuildPlanFingerprint(nativePlan)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeFirstBytes, nativeFirstArtifactDigest, err := implementation.Materialize(nativeSource)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSecondBytes, nativeSecondArtifactDigest, err := implementation.Materialize(nativeSource)
+	if err != nil {
+		return evidence{}, err
+	}
+	if string(nativeFirstBytes) != string(nativeSecondBytes) || nativeFirstArtifactDigest != nativeSecondArtifactDigest {
+		return evidence{}, fmt.Errorf(
+			"TEI-native builtin realization is not reproducible: %s != %s",
+			nativeFirstArtifactDigest,
+			nativeSecondArtifactDigest,
+		)
+	}
+	nativeLockedBuild, err := plugin.LockBuildOutput(nativePlan, nativeFirstArtifactDigest)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeArtifactLock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{nativeLockedBuild},
+	}
+	nativeLockFingerprint, err := plugin.BuildArtifactLockFingerprint(nativeArtifactLock)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeRealized, err := plugin.RealizeBuiltDefinition(nativeDefinition, nativeFirstArtifactDigest)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeBuiltin, err := implementation.NewBuiltin(nativeSource, nativeRealized)
+	if err != nil {
+		return evidence{}, err
+	}
+
 	plan := plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: definition.ID, Version: definition.Version},
