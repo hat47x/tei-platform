@@ -590,3 +590,209 @@ func TestGenericCapabilityBridgeDoesNotBypassMissingHostSandboxEnforcement(t *te
 		t.Fatalf("generic bridge bypassed missing host enforcement: %v", err)
 	}
 }
+
+
+type recordingResourceBroker struct {
+	AcquireCalls int
+	ReleaseCalls int
+	LastAcquire  resource.AcquireRequest
+}
+
+func (b *recordingResourceBroker) Acquire(
+	ctx context.Context,
+	req resource.AcquireRequest,
+) (resource.Lease, error) {
+	if err := ctx.Err(); err != nil {
+		return resource.Lease{}, err
+	}
+	b.AcquireCalls++
+	b.LastAcquire = req
+	if len(req.Permissions) != 1 || len(req.Bindings) != 1 {
+		return resource.Lease{}, fmt.Errorf(
+			"reference broker expects one permission/binding",
+		)
+	}
+	permissionSpec := req.Permissions[0]
+	binding := req.Bindings[0]
+	return resource.Lease{
+		ID:                       "reference-lease",
+		Revision:                 1,
+		RuntimePolicyFingerprint: req.RuntimePolicyFingerprint,
+		Resources: []resource.Resolved{{
+			Kind:              permissionSpec.Kind,
+			Access:            permissionSpec.Access,
+			Scope:             permissionSpec.Scope,
+			ResourceID:        binding.ResourceID,
+			MountSourceHandle: "workspace-source-handle",
+			MountPath:         "/workspace/source",
+		}},
+	}, nil
+}
+
+func (b *recordingResourceBroker) Release(
+	ctx context.Context,
+	lease resource.Lease,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if lease.ID != "reference-lease" {
+		return fmt.Errorf("unexpected lease %q", lease.ID)
+	}
+	b.ReleaseCalls++
+	return nil
+}
+
+func TestGenericCapabilityBridgeUsesExistingResourceBrokerAndSandboxMount(t *testing.T) {
+	permissions := []permission.Spec{{
+		Kind:   permission.KindFilesystem,
+		Access: permission.AccessRead,
+		Scope:  "workspace-source",
+	}}
+	fx := newProductionExecutionFixture(
+		t,
+		plugin.RuntimeProcess,
+		plugin.SandboxRequired,
+		CapabilityIsolationHostEnforcedSandbox,
+		permissions,
+	)
+	fx.Plan.Capabilities[0].ResourceBindings = []resource.Binding{{
+		Kind:       permission.KindFilesystem,
+		Scope:      "workspace-source",
+		ResourceID: core.MustCanonicalID("resource.workspace-source"),
+	}}
+	fx.Plan.Capabilities[0].LeasePolicy = resource.DefaultLeasePolicy()
+	fx.Plan.RuntimePolicyFingerprint = pluginruntime.PolicyFingerprint(fx.Plan)
+
+	bridge, err := buildLegacyProductionExecutionBridge(
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	network := &recordingNetworkEnforcer{}
+	filesystem := &recordingFilesystemEnforcer{}
+	runner := &recordingSandboxedRunner{}
+	broker := &recordingResourceBroker{}
+	registry := pluginruntime.Registry{
+		Verifier:  referenceArtifactVerifier{},
+		Resources: broker,
+		Sandboxes: pluginruntime.HostSandboxLauncher{
+			Network:    network,
+			Filesystem: filesystem,
+			Runner:     runner,
+		},
+	}
+	invocation, err := invokeLegacyCapabilityWithProductionBridge(
+		context.Background(),
+		bridge,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		registry,
+		fx.Plan,
+		fx.Mapping,
+		"query",
+		"request-resource-1",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if broker.AcquireCalls != 1 || broker.ReleaseCalls != 1 {
+		t.Fatalf(
+			"resource broker calls acquire=%d release=%d",
+			broker.AcquireCalls,
+			broker.ReleaseCalls,
+		)
+	}
+	if broker.LastAcquire.CapabilityKind != string(fx.Mapping.Kind) ||
+		broker.LastAcquire.CapabilityID != fx.Mapping.CapabilityID ||
+		broker.LastAcquire.RuntimePolicyFingerprint !=
+			fx.Plan.RuntimePolicyFingerprint {
+		t.Fatalf("resource acquire request=%+v", broker.LastAcquire)
+	}
+	if !invocation.Provenance.ResourceLeaseReleased ||
+		invocation.Provenance.ResourceLeaseID != "reference-lease" ||
+		len(invocation.Provenance.Resources) != 1 {
+		t.Fatalf("resource invocation provenance=%+v", invocation.Provenance)
+	}
+	if filesystem.Calls != 1 ||
+		len(filesystem.Policy.Mounts) != 1 ||
+		filesystem.Policy.Mounts[0].Target != "/workspace/source" ||
+		filesystem.Policy.Mounts[0].Access != permission.AccessRead {
+		t.Fatalf("filesystem sandbox policy=%+v", filesystem.Policy)
+	}
+	if len(network.Policy.Allowlist) != 0 ||
+		!network.Policy.DenyByDefault {
+		t.Fatalf("network sandbox policy=%+v", network.Policy)
+	}
+	if runner.Calls != 1 {
+		t.Fatalf("sandboxed runner calls=%d want=1", runner.Calls)
+	}
+}
+
+func TestGenericCapabilityBridgeDoesNotBypassMissingResourceBroker(t *testing.T) {
+	permissions := []permission.Spec{{
+		Kind:   permission.KindFilesystem,
+		Access: permission.AccessRead,
+		Scope:  "workspace-source",
+	}}
+	fx := newProductionExecutionFixture(
+		t,
+		plugin.RuntimeProcess,
+		plugin.SandboxRequired,
+		CapabilityIsolationHostEnforcedSandbox,
+		permissions,
+	)
+	fx.Plan.Capabilities[0].ResourceBindings = []resource.Binding{{
+		Kind:       permission.KindFilesystem,
+		Scope:      "workspace-source",
+		ResourceID: core.MustCanonicalID("resource.workspace-source"),
+	}}
+	fx.Plan.Capabilities[0].LeasePolicy = resource.DefaultLeasePolicy()
+	fx.Plan.RuntimePolicyFingerprint = pluginruntime.PolicyFingerprint(fx.Plan)
+
+	bridge, err := buildLegacyProductionExecutionBridge(
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := pluginruntime.Registry{
+		Verifier: referenceArtifactVerifier{},
+		Sandboxes: pluginruntime.HostSandboxLauncher{
+			Network:    &recordingNetworkEnforcer{},
+			Filesystem: &recordingFilesystemEnforcer{},
+			Runner:     &recordingSandboxedRunner{},
+		},
+	}
+	if _, err := invokeLegacyCapabilityWithProductionBridge(
+		context.Background(),
+		bridge,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		registry,
+		fx.Plan,
+		fx.Mapping,
+		"query",
+		"request-resource-2",
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "host has no resource broker") {
+		t.Fatalf("generic bridge bypassed missing Resource Broker: %v", err)
+	}
+}
