@@ -67,21 +67,21 @@ type ObservedIssue struct {
 }
 
 type PublicationReceipt struct {
-	SchemaVersion         int                       `json:"schemaVersion"`
-	Format                SourceFormat              `json:"format"`
-	ArtifactSHA256        string                    `json:"artifactSha256"`
-	RootKind              string                    `json:"rootKind"`
-	ElementCounts         map[string]int            `json:"elementCounts"`
-	AttributeCounts       map[string]int            `json:"attributeCounts,omitempty"`
-	UnknownElementCount   int                       `json:"unknownElementCount,omitempty"`
-	UnknownAttributeCount int                       `json:"unknownAttributeCount,omitempty"`
-	MarkupCounts          map[string]int            `json:"markupCounts,omitempty"`
-	LocatorCount          int                       `json:"locatorCount"`
-	LocatorSetFingerprint string                    `json:"locatorSetFingerprint"`
-	Facts                 []PublishedFact           `json:"facts,omitempty"`
-	Unresolved            []PublishedIssue          `json:"unresolved,omitempty"`
-	AuthorityLimits       []string                  `json:"authorityLimits"`
-	ReceiptFingerprint    string                    `json:"receiptFingerprint"`
+	SchemaVersion         int              `json:"schemaVersion"`
+	Format                SourceFormat     `json:"format"`
+	ArtifactSHA256        string           `json:"artifactSha256"`
+	RootKind              string           `json:"rootKind"`
+	ElementCounts         map[string]int   `json:"elementCounts"`
+	AttributeCounts       map[string]int   `json:"attributeCounts,omitempty"`
+	UnknownElementCount   int              `json:"unknownElementCount,omitempty"`
+	UnknownAttributeCount int              `json:"unknownAttributeCount,omitempty"`
+	MarkupCounts          map[string]int   `json:"markupCounts,omitempty"`
+	LocatorCount          int              `json:"locatorCount"`
+	LocatorSetFingerprint string           `json:"locatorSetFingerprint"`
+	Facts                 []PublishedFact  `json:"facts,omitempty"`
+	Unresolved            []PublishedIssue `json:"unresolved,omitempty"`
+	AuthorityLimits       []string         `json:"authorityLimits"`
+	ReceiptFingerprint    string           `json:"receiptFingerprint"`
 
 	ObservedElementCounts map[string]int            `json:"-"`
 	AttributeNameCounts   map[string]map[string]int `json:"-"`
@@ -305,8 +305,8 @@ func publicRootKind(doc ObservedDocument) string {
 func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	receipt := PublicationReceipt{
 		SchemaVersion:         2,
-		Format:              doc.Format,
-		ArtifactSHA256:      doc.ArtifactSHA256,
+		Format:                doc.Format,
+		ArtifactSHA256:        doc.ArtifactSHA256,
 		RootKind:              publicRootKind(doc),
 		ElementCounts:         map[string]int{},
 		AttributeCounts:       map[string]int{},
