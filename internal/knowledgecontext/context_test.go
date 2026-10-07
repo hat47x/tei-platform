@@ -131,6 +131,9 @@ func TestDataDesignContextDoesNotDeriveCandidatesFromDuplicateSemanticIdentity(t
 				len(dataContext.DataDesign.FunctionalDependencyCandidates) != 0 {
 				t.Fatalf("ambiguous semantic identity produced design candidates: %+v", dataContext.DataDesign)
 			}
+			if dataContext.DataDesign.ResolutionStatus != "ambiguous" {
+				t.Fatalf("structurally ambiguous context was marked reusable: %+v", dataContext.DataDesign)
+			}
 			if !containsDataDesignAmbiguity(
 				dataContext.DataDesign.Ambiguities,
 				tc.ambiguityKind,
@@ -374,6 +377,9 @@ func TestDataDesignContextSuppressesDuplicatePersistenceMappingIdentity(t *testi
 	}
 	if len(dataContext.DataDesign.PersistenceRealizations) != 0 {
 		t.Fatalf("ambiguous persistence identity produced realization facts: %+v", dataContext.DataDesign.PersistenceRealizations)
+	}
+	if dataContext.DataDesign.ResolutionStatus != "ambiguous" {
+		t.Fatalf("ambiguous persistence context was marked resolved: %+v", dataContext.DataDesign)
 	}
 	if !containsDataDesignAmbiguityEffect(
 		dataContext.DataDesign.Ambiguities,
