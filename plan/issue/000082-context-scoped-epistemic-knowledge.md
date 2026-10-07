@@ -192,7 +192,9 @@ TEI側で一つの最終scoreへ固定しません。
 
 既存資料と外部連携ではmetadataが存在しない、または途中で失われる場合があります。
 
-最初の境界として、provenance不明のlegacy資料をreview済みへ推定しないこと、metadataを保持できるexportでは本文と一緒に運ぶこと、保持できないexportでは喪失を明示すること、metadataなしで再importした本文へ過去のreviewを自動復元しないことを確認します。Evidenceやreview情報も元資料のaccess controlを迂回して露出させません。
+import側の最小candidateとして、`metadataState=complete / partial / absent` と `origin=unknown` を追加した。confirmedな別assertionとtext / meaning fingerprintが一致しても、metadata-free reimportへreview historyを自動移送しないnegative testを置く。
+
+metadataを保持できるexportでは本文とsidecarを一緒に運び、保持できないtext-only exportでは喪失を明示する必要がある。export / import adapterそのもの、transport署名、access control継承は未実証として残す。Evidenceやreview情報が元資料のaccess controlを迂回しないこともproduction adapter側でpressureする。
 
 ## Plugin / Extension方針
 
@@ -411,8 +413,8 @@ reviewer candidate
 - [ ] target bindingをexact / reanchored / ambiguous / detachedとして観測できる
 - [ ] coverage mappingを意味的完全性の証明へ昇格させない
 - [ ] annotation targetを編集後に誤って別箇所へ付け替えない（Reference candidate追加済み。full qualification未完了）
-- [ ] provenance不明のlegacy資料をreview済みへ推定しない
-- [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない
+- [ ] provenance不明のlegacy資料をreview済みへ推定しない（import-side Reference candidate追加済み。full qualification未完了）
+- [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない（reimport negative candidate追加済み。export adapter未実証）
 - [ ] epistemic coverage不足を観測できる（Reference candidate追加済み。full qualification未完了）
 - [ ] AI生成主張が保存だけで確認済みへ昇格しない
 - [ ] content provenance / ingestion actor / statement kind / confirmation history / lifecycle / scope / time / Evidenceを分離できる
