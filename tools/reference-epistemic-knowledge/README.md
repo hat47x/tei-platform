@@ -75,6 +75,8 @@ v0のeventは次の3種類です。
 
 各eventはpositiveな `sequence`、一意なID、reviewer、`method=human-review`、対象meaning fingerprint、時刻、任意のEvidenceとconditionsを持ちます。sequenceは一意で、時刻がsequenceに反して過去へ戻る履歴は拒否します。
 
+適用条件を機械判定できる場合は、可能な限りassertionの構造化contextへ表します。review eventに自由文conditionsが残っている場合、このReferenceは条件を満たしたと推測せず、`REVIEW_CONDITIONS_UNRESOLVED`として`review-required`へ戻します。
+
 たとえば、
 
 ```text
@@ -145,7 +147,7 @@ reviewer candidateはAuthorityではありません。Projectionには `reviewer
 
 `testdata/epistemic-fixture-v0.json` は、SUI / SEIへ同じ意味のfixtureを渡すためのtransport candidateです。
 
-含むcaseは、current-context user fact、AI unreviewed assertion、human-confirmed assertion、scope付きconfirm、stale情報、relation-derived supersession、reviewed Conflict、reject event、critical / high / low downstream dependencyです。
+含むcaseは、current-context user fact、AI unreviewed assertion、human-confirmed assertion、構造化scopeによる限定確認、stale情報、relation-derived supersession、reviewed Conflict、reject event、critical / high / low downstream dependencyです。自由文review conditionをfail closedにするnegative testも持ちます。
 
 TEI固有UIやruntime objectをfixtureの正本にはしません。
 
