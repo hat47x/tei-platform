@@ -218,6 +218,18 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 
 変換不能項目をwarningだけで落とさない。mapping versionを変更した場合は同じsourceから得られるtranscription差分を比較できるようにする。
 
+### R1 Source Adapter projection
+
+GitHub #950 / Draft PR #968では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。
+
+`ClassificationProjection`は、source kindごとにmappingの有無、mapped / unresolved件数、候補classification、担当Extensionを返す。mappingの存在とsemanticな確定状態は分けて扱う。
+
+`UnresolvedProjection`は、source observationの未知状態、mapping未決定、mapping済みcandidateのsemantic未確定を集約する。これは`loss-ledger.json`への入力Evidenceであり、RML IDを自動生成しない。
+
+exact locator付きの`LocalTranscriptionCandidate`はローカル調査用に限定し、public Evidenceへ保存しない。
+
+R1追加後のexact-head focused testとfull repository healthは未取得である。R0のPASSをR1 headへ流用しない。
+
 ## Webチャット外担当
 
 次はactual environmentまたは利用条件判断が必要であり、本Issueの文書研究だけで完了させない。
