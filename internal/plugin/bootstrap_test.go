@@ -59,6 +59,9 @@ func TestEvaluateBootstrapConvergenceAcceptsExactStageChain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if result.EvidenceFingerprint == "" {
+		t.Fatal("missing bootstrap convergence evidence fingerprint")
+	}
 	if !result.Converged {
 		t.Fatalf("expected exact stage convergence: %#v", result)
 	}
@@ -155,5 +158,24 @@ func TestBootstrapConvergenceDoesNotTreatSeedTrustAsConvergence(t *testing.T) {
 	// explicit in the Evidence and is not erased by convergence.
 	if evidence.Stage0Seed.Builder.ArtifactDigest == evidence.Stage1.Output.ArtifactDigest {
 		t.Fatal("fixture unexpectedly collapsed stage0 seed into current builder")
+	}
+}
+
+
+func TestBootstrapConvergenceFingerprintChangesWithStageEvidence(t *testing.T) {
+	base := bootstrapEvidenceFixture()
+	baseFP, err := plugin.BootstrapConvergenceFingerprint(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changed := bootstrapEvidenceFixture()
+	changed.Stage2.Output.ArtifactDigest = bootstrapDigestB
+	changedFP, err := plugin.BootstrapConvergenceFingerprint(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if baseFP == changedFP {
+		t.Fatal("stage evidence change did not change bootstrap evidence fingerprint")
 	}
 }
