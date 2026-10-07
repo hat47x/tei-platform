@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 
 	"tei/internal/core"
 	"tei/internal/deployment/executor"
@@ -270,6 +271,9 @@ func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return nil, fmt.Errorf("JSON payload is empty")
+	}
+	if !utf8.Valid(trimmed) {
+		return nil, fmt.Errorf("JSON payload is not valid UTF-8")
 	}
 	if err := rejectDuplicateJSONKeys(trimmed); err != nil {
 		return nil, err
