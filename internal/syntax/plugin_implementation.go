@@ -28,8 +28,12 @@ func (p *Parser) ParsePluginImplementation() (implementation.Source, error) {
 	if err != nil {
 		return implementation.Source{}, err
 	}
+	version, err := parsePluginVersionToken(versionTok)
+	if err != nil {
+		return implementation.Source{}, p.errAt(versionTok, err.Error())
+	}
 	source := implementation.Source{
-		Plugin: plugin.Identity{ID: id, Version: versionTok.Text},
+		Plugin: plugin.Identity{ID: id, Version: version},
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return source, err
