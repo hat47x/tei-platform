@@ -269,6 +269,13 @@
       "observed": "source-faithful inspection intentionally preserves relational facts even when diagnostics show missing, duplicate, mismatched, or otherwise unresolved relational structure",
       "risk": "a downstream importer can treat the mere presence or count of extracted facts as proof that those facts are safe inputs to deterministic semantic lowering",
       "teiDirection": "publish relational resolution status separately from observed facts; keep unresolved facts as Evidence, but block deterministic semantic lowering until relational diagnostics are cleared or explicitly accepted through a later authority boundary"
+    },
+    {
+      "id": "RMP-039",
+      "topic": "business-occurrence-vs-history-version-identity",
+      "observed": "Watanabe's temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
+      "risk": "reference transfer can promote version/history selectors into business occurrence identity, erase the distinction between an occurrence and its versions, or impose history structure on domains that do not require it",
+      "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
     }
   ]
 }
