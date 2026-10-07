@@ -63,6 +63,9 @@ func TestPublicationReceiptDoesNotContainSourceValuesOrText(t *testing.T) {
 			t.Fatalf("publication receipt leaked source content %q: %s", forbidden, text)
 		}
 	}
+	if receipt.LocatorCount == 0 || receipt.LocatorSetFingerprint == "" {
+		t.Fatalf("locator accounting missing: %+v", receipt)
+	}
 	if receipt.UnknownElements["Mystery"] != 1 {
 		t.Fatalf("unknown element accounting=%+v", receipt.UnknownElements)
 	}
