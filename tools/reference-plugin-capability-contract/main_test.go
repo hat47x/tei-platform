@@ -692,3 +692,54 @@ func TestIncompleteAndExactDuplicateLogicalProviderStillFailsClosed(t *testing.T
 		t.Fatalf("duplicate migration/provider authorities were not rejected: %v", err)
 	}
 }
+
+
+func TestCapabilityContractRequiresExplicitUnknownSemantics(t *testing.T) {
+	contract := sourceAdapterContract()
+	contract.UnknownSemantics = ""
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "missing-unknown")},
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid capability contract") {
+		t.Fatalf("Contract without unknown semantics was accepted: %v", err)
+	}
+}
+
+func TestUnknownSemanticsDriftInvalidatesProviderConformance(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	evidence := evidenceFor(provider, contract, "known-unknown-semantics")
+
+	drifted := contract
+	drifted.UnknownSemantics = "silently-drop-unsupported-construct"
+	if fingerprint(drifted) == fingerprint(contract) {
+		t.Fatal("unknown semantics drift did not change Contract fingerprint")
+	}
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{drifted},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidence},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("stale Provider/Evidence survived unknown semantics drift: %v", err)
+	}
+}
