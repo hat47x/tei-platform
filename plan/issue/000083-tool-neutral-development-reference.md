@@ -89,6 +89,32 @@ Structured Proposalへの事前変換は要求しません。
 
 ISSUE-000027のShared Acceptance Referenceで既に扱っているValidationやRelationの小変更は候補ですが、本IssueではStructured Proposal経路そのものを再実証することが目的ではありません。
 
+## 2026-10-07 E1 executable candidate
+
+`tools/reference-tool-neutral-development/run.sh`を、E1の最初のExecutable Reference candidateとして追加しました。
+
+runnerはmainの`reference/workspace`を直接変更しません。一時directoryへ複製し、その複製だけを独立Git repositoryとして初期化します。baselineをcommitした後、`semantic/sales/validation.tei`へ`sales.order_line.unit_price_positive`をfile editで直接追加します。
+
+変更前には既存の`sales.order_line.quantity_positive`へ`knowledge-context`から到達し、変更後には追加したValidationへ同じCLIから到達します。変更前後のCanonical Worldが同じなら失敗し、commit前のdiffが対象1 file以外へ広がっても失敗します。
+
+変更は通常のGit commitへ確定し、その一時repositoryを別directoryへlocal cloneします。integration側で`tei validate`、`knowledge-context`、`tei world`を再実行し、task側とintegration側のCanonical Worldがbyte単位で一致すること、read-only操作後にintegration cloneがcleanであることを確認します。
+
+このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Workspace / Checkpointを使用しません。Shared Acceptanceの価値を否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることだけをpressureします。
+
+### 現在の検証状態
+
+- runnerのBash syntaxは`bash -n`で確認済み。
+- この実行環境からGitHubをcloneしてactual Repositoryで実行しようとしたが、`github.com`のDNS解決に失敗した。
+- したがって、`go run ./cmd/tei`、actual Git round trip、Repository healthのPASSはまだ主張しない。
+- GitHub Actionsは使用していない。
+- actual executionが成立するまでは本Issueを完了扱いにせず、RQ-034もDesign Onlyを維持する。
+
+実行入口:
+
+```bash
+bash tools/reference-tool-neutral-development/run.sh
+```
+
 ## E2 — Git integration boundary
 
 変更元と統合側を別contextとして扱います。
