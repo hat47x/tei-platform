@@ -195,3 +195,15 @@ Planはartifact digestごとにProvider参照をまとめます。同じartifact
 保存済みPlanをcurrentとみなす場合は、現在のCapability Resolution LockとProviderBuildRealizationから再構築してfingerprintを照合します。artifact bytesが同じでもBuildPlanだけが変わればProviderBuildRealizationが変わるため、古いPackaging Planはstaleになります。Capability identityまで変えない点が重要です。
 
 このPlanはphysical配置の比較と将来のRQ-024計測に使う候補です。actual artifact size、network transfer、startup、memory、cache footprintはまだ含みません。また、split packagingを現行Runtime Plugin Lockでauthorizeできるようになったことも意味しません。
+
+## Execution Authorityとproduction Runtimeの接続
+
+Capability Resolution LockはProviderを特定しますが、実行許可ではありません。Referenceでは`CapabilityExecutionProfile`でisolation policyとPermission集合を固定し、別のAuthority Grantから`CapabilityExecutionAuthorityBinding`を作ります。
+
+Application Runtimeのlegacy migrationでは、さらに`ProductionExecutionBridge`で既存production `EnvironmentPlan`へ照合します。generic profileがPermissionを追加するのではなく、production側で選択済みCapabilityのgrantとexactに一致する場合だけbridgeが成立します。
+
+host-trusted profileはin-process / host-trusted runtimeへ、host-enforced-sandbox profileはprocess / external-process / sandbox-required runtimeへだけ接続します。sandbox-preferredを「enforced」と読み替えません。
+
+Resource BindingとLease Policyはproduction側に残します。bridgeは選択済みCapabilityRuntimeのfingerprintを保持するため、Resource / Lease policy driftもreplayで検出できます。一方、無関係なPlugin runtime追加はbridgeをstaleにしません。
+
+このbridgeはderived verificationです。Permission Grant、Resource lease、Host Sandbox invocationを実行しません。actual host enforcementのE2Eは今後のEvidenceです。
