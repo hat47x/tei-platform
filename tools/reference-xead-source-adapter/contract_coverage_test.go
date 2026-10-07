@@ -11,7 +11,7 @@ func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
 		t.Fatal(err)
 	}
 	receipt := PublicReceipt(doc)
-	contract := []byte(`{"constructMappings":{"xead":{"System":{},"Table":{}}}}`)
+	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXead, receipt, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestClassificationCoveragePassesWhenEveryObservedKindHasMapping(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract := []byte(`{"constructMappings":{"xeaf":{"System":{},"Function":{},"Script":{},"Unused":{}}}}`)
+	contract := []byte(`{"constructMappings":{"xeaf":{"System":{"classification":["source-metadata"]},"Function":{"classification":["realization"]},"Script":{"classification":["native-preserved"]},"Unused":{"classification":["unresolved"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXeaf, PublicReceipt(doc), contract)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract := []byte(`{"constructMappings":{"xead":{"System":{},"Table":{}}}}`)
+	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXead, PublicReceipt(doc), contract)
 	if err != nil {
 		t.Fatal(err)
