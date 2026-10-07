@@ -13,6 +13,7 @@
 - `initial-pressure-register.json` — 旧Runtimeでは暗黙でも成立した点をTEIへ移す際の初期pressure
 - `transcription-contract-v0.json` — RMT-2のconstruct分類、Plugin / Extension責務、source locator停止線を定めるcandidate contract
 - `transcription-map-v0.json` — full-source inventoryをconstruct kind単位でclassification / Extensionへ割り当てたaggregate candidate map
+- `cross-view-accounting-v0.json` — Data / Function-Interaction / Business / Xeaf correspondenceを原モデル本文なしで集約したRMT-2 cross-view Evidence
 - `loss-ledger.json` — 転写時に推測で埋めてはいけないloss / unresolved / unsupportedの初期台帳
 
 RMT-0 / RMT-1の開始Evidenceに加え、`transcription-map-v0.json`はRMT-2のaggregate candidate Evidenceです。TEIへのtranscription完了、original Runtimeとのbehavior equivalence、Reference Modelの再配布許諾を意味しません。
