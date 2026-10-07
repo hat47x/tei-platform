@@ -122,6 +122,7 @@ const dataDesignProjectionRevision = "tei.knowledge.data-design/v1"
 type DataDesignContext struct {
 	ProjectionRevision                    string                                    `json:"projectionRevision"`
 	Fingerprint                           string                                    `json:"fingerprint"`
+	EvidenceStatus                        string                                    `json:"evidenceStatus"`
 	Data                                  core.CanonicalID                          `json:"data"`
 	Focus                                 subject.Subject                           `json:"focus"`
 	Attributes                            []DataDesignAttribute                     `json:"attributes,omitempty"`
@@ -304,6 +305,7 @@ func buildDataDesignContext(
 		AuthorityLimits: []string{
 			"data-design-context-is-derived-not-authority",
 			"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
+			"incomplete-data-design-evidence-does-not-establish-complete-freshness",
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
@@ -597,6 +599,11 @@ func buildDataDesignContext(
 	}
 
 	ctx.Evidence, ctx.EvidenceMissing = collectDataDesignEvidence(sources, evidenceSubjects)
+	if len(ctx.EvidenceMissing) == 0 {
+		ctx.EvidenceStatus = "complete"
+	} else {
+		ctx.EvidenceStatus = "incomplete"
+	}
 
 	sort.Slice(ctx.Ambiguities, func(i, j int) bool {
 		if ctx.Ambiguities[i].Kind != ctx.Ambiguities[j].Kind {
@@ -650,6 +657,9 @@ func dataDesignFingerprint(ctx *DataDesignContext) string {
 	builder.WriteString(ctx.Focus.Kind)
 	builder.WriteByte(':')
 	builder.WriteString(ctx.Focus.ID)
+	builder.WriteByte('\n')
+	builder.WriteString("evidence-status:")
+	builder.WriteString(ctx.EvidenceStatus)
 	builder.WriteByte('\n')
 	for _, ambiguity := range ctx.Ambiguities {
 		builder.WriteString("ambiguity:")
