@@ -437,12 +437,22 @@ Projectionは`availableSections`、`selectedSections`、`disclosedSections`、`u
 
 Disclosure Projectionには`tei.knowledge.disclosure/v1`と決定論的fingerprintを付ける。section指定はtrim / dedup / sortしてから扱うため、同じ選択集合なら順序が違っても同じProjection identityになる。このfingerprintは「どのKnowledge subsetを実際に開示したか」のidentityであり、Semantic authorityやqualificationの証明ではない。
 
+cached Disclosureを再利用する場合は、`-disclose`と`-expected-disclosure-fingerprint <sha256:...>`を組み合わせる。current Disclosureが`status=complete`で、fingerprintも一致する場合だけ再利用を許す。requested sectionが現在は利用不能で`status=partial`になった場合は、fingerprintが一致していてもfail closedにする。`-expected-disclosure-fingerprint`だけを指定してfull Contextへ暗黙適用することも許さない。
+
 ```bash
 tei knowledge-context \
   -workspace DIR \
   -subject-kind semantic-data \
   -subject-id sales.order_line \
   -disclose source,data-design
+
+# 後続sessionでexact subsetを再利用する場合
+tei knowledge-context \
+  -workspace DIR \
+  -subject-kind semantic-data \
+  -subject-id sales.order_line \
+  -disclose source,data-design \
+  -expected-disclosure-fingerprint sha256:...
 ```
 
 この経路はavailable Contextを削除せず、Canonical Worldやqualificationも変更しない。selective disclosureはrouting / prompt budget / task-local contextの境界であり、accepted meaningの第二正本にはしない。exact-head full Repository Healthはまだ取得していないため、この段階では完了条件の充足を主張しない。
