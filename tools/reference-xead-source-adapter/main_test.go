@@ -58,7 +58,7 @@ func TestPublicationReceiptDoesNotContainSourceValuesOrText(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, forbidden := range []string{"demo.order", "order_no", "kept-locally", "sample prose", "source text that must not be published"} {
+	for _, forbidden := range []string{"demo.order", "order_no", "kept-locally", "sample prose", "source text that must not be published", "Mystery", "AddedLater", "CustomAttr"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("publication receipt leaked source content %q: %s", forbidden, text)
 		}
@@ -66,11 +66,14 @@ func TestPublicationReceiptDoesNotContainSourceValuesOrText(t *testing.T) {
 	if receipt.LocatorCount == 0 || receipt.LocatorSetFingerprint == "" {
 		t.Fatalf("locator accounting missing: %+v", receipt)
 	}
-	if receipt.UnknownElements["Mystery"] != 1 {
-		t.Fatalf("unknown element accounting=%+v", receipt.UnknownElements)
+	if receipt.UnknownElements["Mystery"] != 1 || receipt.UnknownElementCount != 1 {
+		t.Fatalf("unknown element accounting=%+v total=%d", receipt.UnknownElements, receipt.UnknownElementCount)
 	}
 	if receipt.AttributeNameCounts["Table"]["CustomAttr"] != 1 {
-		t.Fatalf("new attribute was silently dropped: %+v", receipt.AttributeNameCounts["Table"])
+		t.Fatalf("new attribute was silently dropped locally: %+v", receipt.AttributeNameCounts["Table"])
+	}
+	if receipt.AttributeCounts["Table"] == 0 {
+		t.Fatalf("public attribute occurrence accounting missing: %+v", receipt.AttributeCounts)
 	}
 }
 
