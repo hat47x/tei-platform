@@ -404,7 +404,7 @@ func TestDataDesignContextFingerprintTracksRelevantEvidenceOnly(t *testing.T) {
 	if first.DataDesign == nil ||
 		first.DataDesign.ProjectionRevision != dataDesignProjectionRevision ||
 		first.DataDesign.Fingerprint == "" ||
-		first.DataDesign.EvidenceStatus != "incomplete" {
+		first.DataDesign.EvidenceCoverageStatus != "incomplete" {
 		t.Fatalf("partial data design fingerprint boundary is missing: %+v", first.DataDesign)
 	}
 
@@ -451,7 +451,7 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	if ctx.DataDesign == nil {
 		t.Fatal("data design context is missing")
 	}
-	if ctx.DataDesign.EvidenceStatus != "incomplete" ||
+	if ctx.DataDesign.EvidenceCoverageStatus != "incomplete" ||
 		ctx.DataDesign.Fingerprint == "" {
 		t.Fatalf("missing Evidence must remain explicitly incomplete: %+v", ctx.DataDesign)
 	}
