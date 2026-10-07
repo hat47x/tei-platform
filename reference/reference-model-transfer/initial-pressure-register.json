@@ -268,7 +268,7 @@
       "topic": "observed-facts-vs-lowering-readiness",
       "observed": "source-faithful inspection intentionally preserves relational facts even when diagnostics show missing, duplicate, mismatched, or otherwise unresolved relational structure",
       "risk": "a downstream importer can treat the mere presence or count of extracted facts as proof that those facts are safe inputs to deterministic semantic lowering",
-      "teiDirection": "publish relational resolution status separately from observed facts; keep unresolved facts as Evidence, but block deterministic semantic lowering until relational diagnostics are cleared or explicitly accepted through a later authority boundary"
+      "teiDirection": "publish global relational resolution status separately from observed facts; keep unresolved facts as Evidence and block full-set deterministic semantic lowering while diagnostics remain. Per-fact local readiness is handled separately and must not convert unresolved or unvalidated facts into lowerable inputs"
     },
     {
       "id": "RMP-039",
