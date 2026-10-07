@@ -18,7 +18,7 @@ sources:
 	writePluginImplementationWorkspaceFile(t, root, "implementations/missing/1.0.0/implementation.tei", `plugin-implementation tei.missing v1.0.0 {
     profile static-response-v1
     capability deployment-executor runtime.missing
-    operation execute json { {"outcome":"accepted"} }
+    operation execute json { {"attemptId":"a","outcome":"accepted"} }
 }
 `)
 
@@ -45,7 +45,7 @@ sources:
 	writePluginImplementationWorkspaceFile(t, root, "implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
     profile static-response-v1
     capability deployment-executor runtime.other
-    operation execute json { {"outcome":"accepted"} }
+    operation execute json { {"attemptId":"a","outcome":"accepted"} }
 }
 `)
 
