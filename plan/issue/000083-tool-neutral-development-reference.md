@@ -205,7 +205,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - clean pre-state
 - 利用したCLI command
 - 対象Source identity / locator
--変更したfile
+- 変更したfile
 - Git diff
 - Build / Validation / Test commandとactual result
 - result commit / revision
