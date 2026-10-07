@@ -23,13 +23,13 @@ product repository remains unchanged
 
 runnerは、現在のProduct repositoryとは別に一時Git repositoryを作ります。そこへHuman-originのWorkを1件保存し、作成経路は`createdVia=automation/reference-runner`として別に記録します。同じWorkへ二つのAgent Resultを追加します。
 
-Result Aは現在のProduct revisionを観測しています。Result Bは意図的に古いrevisionを持ち、producerの`actorRef`へ`admin`という自己申告値を設定します。どちらも`canonicalAccepted=false`、`runtimeAuthorized=false`のままです。
+Result Aは現在のProduct revisionを観測し、Agent-originのfollow-up Workを1件生成します。Result Bは意図的に古いrevisionを持ち、producerの`actorRef`へ`admin`という自己申告値を設定します。どちらも`canonicalAccepted=false`、`runtimeAuthorized=false`のままです。Human-origin WorkとAgent-origin Workを同じStoreへ保存しても、`origin`と`createdVia`は別に保持します。
 
 Workを`completed`へ更新した後も、Product repositoryのHEADとclean stateが変わっていないことを確認します。最後にCoordination repositoryを削除し、削除後もProduct repositoryが変化しないことを確認します。
 
 ## 検査内容
 
-runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。Workの`origin.kind`は`human`として保持し、一つのWorkへ二つの独立したAgent Resultを保存します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
+runnerは、Product repositoryがcleanなGit checkoutであることを最初に確認します。最初のWorkは`origin.kind=human`として保持し、作成経路を`createdVia`へ分離します。一つのWorkへ二つの独立したAgent Resultを保存し、Result Aからは`origin.kind=agent`のfollow-up Workを生成します。base revisionからcurrent resultとstale resultを区別し、stale resultを自動適用しません。`actorRef=admin`という自己申告もAuthorityとして扱いません。
 
 Result保存やWork completionの前後でProduct Sourceが変化しないことも確認します。Artifactは本文へ埋め込まず、SHA-256 digest付き参照で保持します。token budget、quota、credential、Agent Session、Checkpointは交換文書へ含めません。最後にCoordination repositoryを削除し、Product repositoryのrevisionとclean stateが変化しないことを検査します。
 
