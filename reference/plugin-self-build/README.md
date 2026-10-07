@@ -183,3 +183,14 @@ E3 runnerはTEI-native realizationをrunner内部のhelperから直接生成し�
 その後、first builderとsecond builderからrealizationを各1回生成し、artifact bytesとdigestが一致することを要求します。
 
 Go toolchainはnative PluginそのもののBuilder artifactとは扱わず、このReference builderを生成するstage0 seed側のEvidenceとして残します。これでもSB-3 convergenceが成立したことにはなりません。
+
+
+### exact SB-1 package builder
+
+SB-1 package materializationにもE3と同じBuilder identity原則を適用します。
+
+runnerは`tools/reference-plugin-package-builder`を隔離Go stateで2回buildし、二つのbuilder binary digestが一致することを要求します。そのexact digestをSB-1 Build Planの`BuilderIdentity.ArtifactDigest`へ入れ、Builder versionにはRepository revisionを使います。
+
+確定したBuild PlanをJSON invocation envelopeとして渡し、first / second builder binaryからpackageを各1回生成します。package bytesとdigestが一致した場合だけSB-1 Evidenceを成立させます。
+
+これにより、Go toolchainをpackage builder artifactと呼ばず、GoはReference builderを生成するstage0 seed側へ後退します。builder executionをOS sandboxで隔離したという主張はしません。
