@@ -141,3 +141,34 @@ Authority Grantが無い自己発行Evidenceは受け付けません。一方、
 このAuthority bindingはCapability Resolution Lockのidentityへ混ぜません。Authority Evidenceが更新されてもContract / Provider resolution identityは変えず、Authority binding fingerprintだけを更新します。
 
 このReferenceが確認するのはaccepted issuance bindingまでです。Authority Evidence自体の真正性、署名検証、組織のpublisher trust、証明書や鍵のrotationはまだ扱いません。fingerprintが存在するだけでcryptographic trust済みとはみなしません。
+
+## Build-backed Provider realization
+
+legacy builtinやcoalesced runtimeでは、Plugin source definitionがCapabilityごとのartifact digestを直接持たない場合があります。その状態を仮のdigestで埋めず、既存BuildArtifactLockからphysical artifactを取得するReference経路を追加しました。
+
+`ProviderBuildRealization`はlogical ProviderとBuildArtifactLock内のexact runtime buildを結びます。保持するのはPlugin / version / implementation identity、Source declaration fingerprint、Target、Build profile、BuildPlan fingerprint、artifact digestです。このbindingはderived artifactであり、Runtime AuthorityやConformanceを与えません。
+
+役割は次のように分けます。
+
+```text
+logical Provider declaration
+  + BuildArtifactLock
+      -> ProviderBuildRealization
+      -> exact physical artifact
+
+realized Provider
+  + Conformance Evidence
+      -> callable Contract適合
+
+Capability Resolution Lock
+  + Runtime Plugin Lock / existing runtime selection
+      -> Runtime Authority
+```
+
+BuildPlan fingerprintはbuild provenanceとしてbindingへ残しますが、Provider resolution identityには入れません。同じartifact bytesを別のAccepted BuildPlanから再構築した場合、Build provenanceは変わってもcallable implementation artifact identityは変えません。
+
+複数のlogical Plugin / Providerが同じartifact digestを参照するcoalescingも許容します。physical artifactを共有してもProvider identityや選択Authorityは統合しません。複数Providerが同じContractを満たす場合は、従来どおり既存Bindingや明示wiringが必要です。
+
+一つのPluginを同じTargetで複数Capability artifactへ分割する構成も、BuildArtifactLockでは別profileのbuildとしてpressureできます。しかし、現行Runtime Plugin LockはPluginごとにartifact digestを一つしか持たないため、複数artifactを同時にRuntime Authorityへ載せられません。このReferenceはそのGapを解消済みとは扱いません。
+
+Build provenanceだけでもConformanceは成立しません。BuildArtifactLockからartifactを特定できても、exact Provider / Target / artifactへ結び付いたConformance Evidenceが無ければresolverは採用しません。
