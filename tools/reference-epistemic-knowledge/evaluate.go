@@ -7,18 +7,24 @@ import (
 )
 
 type Assessment struct {
-	AssertionID          string   `json:"assertionId"`
-	ContentOrigin        Origin   `json:"contentOrigin"`
+	AssertionID          string         `json:"assertionId"`
+	ContentOrigin        Origin         `json:"contentOrigin"`
 	IngestedBy           IngestionActor `json:"ingestedBy"`
-	StatementKind        AssertionMode `json:"statementKind"`
-	ReviewValidity       string   `json:"reviewValidity"`
-	ContextCompatibility string   `json:"contextCompatibility"`
-	Freshness            string   `json:"freshness"`
-	Conflict             string   `json:"conflict"`
-	SupersededBy         []string `json:"supersededBy,omitempty"`
-	UseState             string   `json:"useState"`
-	InferredContextUsed  bool     `json:"inferredContextUsed"`
-	Reasons              []string `json:"reasons"`
+	StatementKind        AssertionMode  `json:"statementKind"`
+	ConfirmationState    string         `json:"confirmationState"`
+	ReviewBinding        string         `json:"reviewBinding"`
+	ReviewEventCount     int            `json:"reviewEventCount"`
+	LatestReviewEventID  string         `json:"latestReviewEventId,omitempty"`
+	LatestReviewEventKind ReviewEventKind `json:"latestReviewEventKind,omitempty"`
+	ReviewConditions     []string       `json:"reviewConditions,omitempty"`
+	ContextCompatibility string         `json:"contextCompatibility"`
+	Freshness            string         `json:"freshness"`
+	LifecycleState       string         `json:"lifecycleState"`
+	Conflict             string         `json:"conflict"`
+	SupersededBy         []string       `json:"supersededBy,omitempty"`
+	UseState             string         `json:"useState"`
+	InferredContextUsed  bool           `json:"inferredContextUsed"`
+	Reasons              []string       `json:"reasons"`
 }
 
 type HealthCounts struct {
@@ -46,7 +52,8 @@ type KnowledgeHealth struct {
 type ReviewRequest struct {
 	AssertionID        string         `json:"assertionId"`
 	Target             TargetRef      `json:"target"`
-	ReviewState        ReviewState    `json:"reviewState"`
+	ConfirmationState  string         `json:"confirmationState"`
+	ReviewBinding      string         `json:"reviewBinding"`
 	Context            []ScopeBinding `json:"context,omitempty"`
 	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
 	Reasons            []string       `json:"reasons"`
@@ -91,7 +98,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 	for _, assertion := range corpus.Assertions {
 		assessment := assessments[assertion.ID]
 		if replacements := supersededBy[assertion.ID]; len(replacements) > 0 {
-			assessment.ReviewValidity = "superseded"
+			assessment.LifecycleState = "superseded"
 			assessment.SupersededBy = append([]string{}, replacements...)
 			assessment.Reasons = append(assessment.Reasons, "SUPERSEDED_BY_RELATION")
 			assessments[assertion.ID] = assessment
@@ -126,15 +133,25 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 }
 
 func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) Assessment {
+	history := assessReviewHistory(assertion)
 	assessment := Assessment{
-		AssertionID:          assertion.ID,
-		ContentOrigin:        assertion.Origin,
-		IngestedBy:           assertion.IngestedBy,
-		StatementKind:        assertion.Mode,
-		ReviewValidity:       reviewValidity(assertion),
-		ContextCompatibility: contextCompatibility(assertion.Context, context.Bindings),
-		Freshness:            freshness(assertion, asOf),
-		Conflict:             "none",
+		AssertionID:           assertion.ID,
+		ContentOrigin:         assertion.Origin,
+		IngestedBy:            assertion.IngestedBy,
+		StatementKind:         assertion.Mode,
+		ConfirmationState:     history.ConfirmationState,
+		ReviewBinding:         history.ReviewBinding,
+		ReviewEventCount:      len(assertion.ReviewEvents),
+		LatestReviewEventID:   history.LatestEventID,
+		LatestReviewEventKind: history.LatestEventKind,
+		ReviewConditions:      append([]string{}, history.Conditions...),
+		ContextCompatibility:  contextCompatibility(assertion.Context, context.Bindings),
+		Freshness:             freshness(assertion, asOf),
+		LifecycleState:        "active",
+		Conflict:              "none",
+	}
+	if history.StaleEventCount > 0 {
+		assessment.Reasons = append(assessment.Reasons, "STALE_REVIEW_HISTORY_PRESENT")
 	}
 	for _, binding := range assertion.Context {
 		if binding.Provenance == ScopeInferred {
@@ -145,27 +162,49 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 	return assessment
 }
 
-func reviewValidity(assertion Assertion) string {
-	switch assertion.ReviewState {
-	case ReviewNative:
-		return "native"
-	case ReviewUnreviewed:
-		return "unreviewed"
-	case ReviewRejected:
-		return "rejected"
-	case ReviewSuperseded:
-		return "superseded"
-	case ReviewReviewed, ReviewConditional:
-		if assertion.Review == nil {
-			return "invalid"
-		}
-		if assertion.Review.ReviewedMeaningFingerprint != assertion.MeaningFingerprint {
-			return "stale"
-		}
-		return "valid"
-	default:
-		return "invalid"
+type reviewHistoryAssessment struct {
+	ConfirmationState string
+	ReviewBinding     string
+	LatestEventID     string
+	LatestEventKind   ReviewEventKind
+	Conditions        []string
+	StaleEventCount   int
+}
+
+func assessReviewHistory(assertion Assertion) reviewHistoryAssessment {
+	result := reviewHistoryAssessment{
+		ConfirmationState: "unreviewed",
+		ReviewBinding:     "none",
 	}
+	var latest *ReviewEvent
+	for i := range assertion.ReviewEvents {
+		event := &assertion.ReviewEvents[i]
+		if event.MeaningFingerprint != assertion.MeaningFingerprint {
+			result.StaleEventCount++
+			continue
+		}
+		latest = event
+	}
+	if latest == nil {
+		if result.StaleEventCount > 0 {
+			result.ReviewBinding = "stale"
+		}
+		return result
+	}
+
+	result.ReviewBinding = "current"
+	result.LatestEventID = latest.ID
+	result.LatestEventKind = latest.Kind
+	result.Conditions = append([]string{}, latest.Conditions...)
+	switch latest.Kind {
+	case ReviewEventConfirm:
+		result.ConfirmationState = "confirmed"
+	case ReviewEventReject:
+		result.ConfirmationState = "rejected"
+	case ReviewEventWithdraw:
+		result.ConfirmationState = "unreviewed"
+	}
+	return result
 }
 
 func contextCompatibility(assertion, current []ScopeBinding) string {
@@ -221,8 +260,8 @@ func conflictState(assertion Assertion, assessments map[string]Assessment) strin
 			continue
 		}
 		if other.ContextCompatibility == "incompatible" ||
-			other.ReviewValidity == "rejected" ||
-			other.ReviewValidity == "superseded" ||
+			other.ConfirmationState == "rejected" ||
+			other.LifecycleState == "superseded" ||
 			other.Freshness == "stale" ||
 			other.Freshness == "not-yet-valid" {
 			continue
@@ -251,17 +290,14 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	case "unknown":
 		reasons = append(reasons, "FRESHNESS_UNBOUNDED")
 	}
-	switch assessment.ReviewValidity {
-	case "rejected":
-		return "blocked", append(reasons, "ASSERTION_REJECTED")
-	case "superseded":
+	if assessment.LifecycleState == "superseded" {
 		return "blocked", append(reasons, "ASSERTION_SUPERSEDED")
-	case "stale":
+	}
+	if assessment.ConfirmationState == "rejected" {
+		return "blocked", append(reasons, "ASSERTION_REJECTED")
+	}
+	if assessment.ReviewBinding == "stale" {
 		return "review-required", append(reasons, "REVIEW_BINDING_STALE")
-	case "unreviewed":
-		return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
-	case "invalid":
-		return "blocked", append(reasons, "REVIEW_STATE_INVALID")
 	}
 	if assessment.Conflict == "present" {
 		return "review-required", append(reasons, "CONFLICT_PRESENT")
@@ -269,7 +305,19 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	if !assertion.Mode.canBeWorkingPremise() {
 		return "candidate-only", append(reasons, "STATEMENT_KIND_NOT_WORKING_PREMISE")
 	}
-	return "premise", reasons
+	if assessment.ConfirmationState == "confirmed" {
+		if len(assessment.ReviewConditions) > 0 {
+			reasons = append(reasons, "CONFIRMATION_HAS_CONDITIONS")
+		}
+		return "premise", reasons
+	}
+	if assertion.Origin == OriginUser && assertion.IngestedBy == IngestedByUser {
+		return "premise", append(reasons, "DIRECT_USER_WORKING_PREMISE")
+	}
+	if assessment.LatestReviewEventKind == ReviewEventWithdraw {
+		reasons = append(reasons, "CONFIRMATION_WITHDRAWN")
+	}
+	return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
 }
 
 func buildHealth(corpus Corpus, assessments map[string]Assessment) KnowledgeHealth {
@@ -346,7 +394,8 @@ func buildReviewRequests(
 		out = append(out, ReviewRequest{
 			AssertionID:        id,
 			Target:             assertion.Target,
-			ReviewState:        assertion.ReviewState,
+			ConfirmationState:  assessment.ConfirmationState,
+			ReviewBinding:      assessment.ReviewBinding,
 			Context:            append([]ScopeBinding{}, assertion.Context...),
 			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
 			Reasons:            append([]string{}, assessment.Reasons...),
