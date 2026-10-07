@@ -143,6 +143,32 @@ Git conflictはGitに任せます。
 
 このnegative caseで必要なのは「TEI独自merge engine」ではなく、通常のGit統合後にTEIの既存Validation / Conformanceが意味上の問題を検出できることです。
 
+## 2026-10-07 E2 semantic conflict candidate
+
+同じrunnerへ、Gitのfile-level mergeとTEIのSemantic validationを分離するnegative caseを追加しました。
+
+一つのbaselineから二つのbranchを作り、それぞれ別fileへ同じCanonical Data identity `sales.tool_neutral_collision` を追加します。
+
+```text
+branch A
+  semantic/sales/tool-neutral-collision-a.tei
+        \
+         +-- git merge succeeds
+        /
+branch B
+  semantic/sales/tool-neutral-collision-b.tei
+
+merged workspace
+  -> tei validate
+  -> DUPLICATE_SEMANTIC_ELEMENT
+```
+
+各branch単独では`tei validate`を通すことを要求します。二つのfile pathは異なるため、Gitのtext mergeではconflictしません。統合後だけ既存`validation.Validate`が同じCanonical IDの重複を検出し、`DUPLICATE_SEMANTIC_ELEMENT`で拒否することを期待します。
+
+このcaseの目的はTEI独自merge engineを作ることではありません。Gitが所有するtext / history integrationを尊重したまま、その後のSemantic boundaryで意味上の不整合を止められることを確認します。
+
+runnerのBash syntaxはE2追加後に再確認する必要があります。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
+
 ## E3 — MCP parity
 
 CLI-only E2Eが成立した後で、developer-facing MCPがProduct valueを増す箇所を限定して検討します。
