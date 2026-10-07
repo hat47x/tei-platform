@@ -628,6 +628,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	}
 	switch cr.Boundary {
 	case BoundaryInProcess:
+		if pr.BuildPlanFingerprint != "" && plan.RuntimeEngineLockFingerprint == "" {
+			return Invocation{}, fmt.Errorf("build-bound builtin plugin %s@%s has no runtime engine lock", cr.Plugin.ID, cr.Plugin.Version)
+		}
 		impl, realizationDigest, runtimeEngineFingerprint, err := r.resolveBuiltinRegistration(*pr)
 		if err != nil {
 			return Invocation{}, err
@@ -835,6 +838,9 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 		return fmt.Errorf("deployment attempt build plan fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 	}
 	if cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "" {
+		if plan.RuntimeEngineLockFingerprint == "" {
+			return fmt.Errorf("locked build-bound builtin plugin %s@%s has no runtime engine lock", cr.Plugin.ID, cr.Plugin.Version)
+		}
 		if pi.RealizationDigest == "" || pi.RealizationDigest != pr.Artifact.Digest {
 			return fmt.Errorf("deployment attempt builtin realization digest does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
