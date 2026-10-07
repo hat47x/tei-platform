@@ -170,7 +170,8 @@
         "extension": "reference.xead.relational-semantics",
         "rules": [
           "a Table may represent semantic Data, physical persistence, or a platform/runtime table; do not auto-promote every Table to domain Data",
-          "TableTypeID is legacy taxonomy evidence, not a Core enum"
+          "TableTypeID is legacy taxonomy evidence, not a Core enum",
+          "duplicate Table IDs are source ambiguity and must not be resolved by traversal order or map overwrite"
         ]
       },
       "TableField": {
@@ -183,7 +184,8 @@
         "rules": [
           "NATIVE/DERIVABLE/INHERITED are preserved as source facts",
           "DERIVABLE does not establish derivation logic unless an accepted expression/evaluator can be traced",
-          "NoUpdate is interaction/policy pressure and is not automatically authorization"
+          "NoUpdate is interaction/policy pressure and is not automatically authorization",
+          "duplicate field IDs within one unambiguous Table remain unresolved and do not donate arbitrary AttributeType/DataTypeID metadata to key mappings"
         ]
       },
       "TableKey": {
@@ -238,7 +240,8 @@
           "TableField AttributeType and DataTypeID are distinct source facts; explicit corresponding DataTypeID mismatch remains unresolved",
           "missing or duplicate SortKey on a multi-field relationship key is not repaired from field names, data types, or source order",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
-          "ExistWhen prose is not compiled into a constraint without explicit acceptance"
+          "ExistWhen prose is not compiled into a constraint without explicit acceptance",
+          "duplicate participating Table/Field identities make relationship resolution unresolved even when a later occurrence would otherwise satisfy the reference"
         ],
         "authorityLimits": [
           "relationship-key-reference-is-not-business-identity",
@@ -447,7 +450,8 @@
         "rules": [
           "runtime Table is realization evidence and does not replace accepted Data meaning",
           "Key and Refer children are preserved separately as runtime mapping facts",
-          "physical/runtime table identity is not business occurrence identity"
+          "physical/runtime table identity is not business occurrence identity",
+          "duplicate runtime Table IDs remain unresolved rather than being treated as one realization object"
         ]
       },
       "Function": {
@@ -491,7 +495,8 @@
         "extension": "reference.xead.presentation",
         "rules": [
           "runtime field definition may realize Data/Relation meaning but does not replace the semantic source",
-          "editable/color/default/display behavior stays target/interaction-specific unless separately accepted"
+          "editable/color/default/display behavior stays target/interaction-specific unless separately accepted",
+          "duplicate runtime field IDs remain unresolved for Key/Refer lookup"
         ]
       },
       "Column": {
@@ -537,7 +542,8 @@
         "rules": [
           "ToTable/ToKeyFields/WithKeyFields are runtime reference mapping facts",
           "empty ToKeyFields may be resolved by the legacy Driver through target-table PK fallback; that fallback is runtime behavior, not business identity",
-          "runtime refer mapping is not semantic Relation authority until reconciled and accepted"
+          "runtime refer mapping is not semantic Relation authority until reconciled and accepted",
+          "Refer source/target mappings do not resolve through duplicate Table or Field identities"
         ],
         "authorityLimits": [
           "runtime-refer-is-realization-not-semantic-relation-authority",
