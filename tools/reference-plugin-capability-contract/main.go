@@ -224,6 +224,9 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 		if provider.PluginID == "" || provider.PluginVersion == "" || provider.ImplementationID == "" {
 			continue
 		}
+		if !validSHA256Fingerprint(provider.ArtifactDigest) {
+			continue
+		}
 		identityKey := providerIdentityKey(provider)
 		if _, duplicate := seen[identityKey]; duplicate {
 			return nil, nil, fmt.Errorf(
@@ -322,8 +325,9 @@ func validateResolveInput(input ResolveInput) error {
 			provider.ConformanceProfile == "" {
 			return fmt.Errorf("provider[%d] is incomplete or invalid", i)
 		}
-		if !validSHA256Fingerprint(provider.ArtifactDigest) {
-			return fmt.Errorf("provider[%d] requires exact implementation artifact digest", i)
+		if provider.ArtifactDigest != "" &&
+			!validSHA256Fingerprint(provider.ArtifactDigest) {
+			return fmt.Errorf("provider[%d] artifact digest is not exact sha256", i)
 		}
 		if provider.SourceDeclarationFingerprint != "" &&
 			!validSHA256Fingerprint(provider.SourceDeclarationFingerprint) {
