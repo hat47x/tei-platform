@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/plugin"
+	"tei/internal/plugin/implementation"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/stdlib"
@@ -35,7 +36,8 @@ type SourceContribution struct {
 }
 
 type Result struct {
-	World               ir.World
+	World                 ir.World
+	PluginImplementations []implementation.Source
 	Sources             map[string]SourceLocation
 	ManagedFiles        []ManagedFile
 	SourceContributions []SourceContribution
@@ -67,6 +69,10 @@ func Load(root string) (Result, error) {
 		switch sourceRoot {
 		case "plugins":
 			if err := loadPlugins(root, &r); err != nil {
+				return Result{}, err
+			}
+		case "implementations":
+			if err := loadPluginImplementations(root, &r); err != nil {
 				return Result{}, err
 			}
 		case "bundles":
@@ -105,6 +111,9 @@ func Load(root string) (Result, error) {
 		default:
 			// Other source roots are accepted for forward-compatible workspace layout.
 		}
+	}
+	if err := validatePluginImplementationDefinitions(&r); err != nil {
+		return Result{}, err
 	}
 	Normalize(&r.World)
 	r.ManagedFiles = scanManagedFiles(root, roots)
