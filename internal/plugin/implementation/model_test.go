@@ -296,3 +296,53 @@ func TestStaticResponseProfileRejectsInvalidUTF8(t *testing.T) {
 		t.Fatal("expected invalid UTF-8 to fail")
 	}
 }
+
+
+func TestParseRealizationBindsExactCanonicalArtifact(t *testing.T) {
+	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+	realization, digest, err := implementation.Materialize(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, parsedDigest, err := implementation.ParseRealization(realization)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Identity() != source.Identity() || parsedDigest != digest {
+		t.Fatalf("parsed realization: source=%s digest=%s want source=%s digest=%s", parsed.Identity(), parsedDigest, source.Identity(), digest)
+	}
+
+	nonCanonical := append([]byte(" "), realization...)
+	if _, _, err := implementation.ParseRealization(nonCanonical); err == nil {
+		t.Fatal("expected non-canonical realization bytes to fail")
+	}
+
+	tampered := append([]byte(nil), realization...)
+	for i := range tampered {
+		if i+8 <= len(tampered) && string(tampered[i:i+8]) == "accepted" {
+			copy(tampered[i:i+8], "rejected")
+			break
+		}
+	}
+	if _, _, err := implementation.ParseRealization(tampered); err == nil {
+		t.Fatal("expected tampered realization bytes to fail")
+	}
+}
+
+func TestBuiltinRejectsRuntimeDefinitionArtifactMismatch(t *testing.T) {
+	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+	realization, _, err := implementation.Materialize(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrongDefinition, err := plugin.RealizeBuiltDefinition(
+		implementationDefinition(),
+		"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pluginbuiltin.New(realization, wrongDefinition); err == nil {
+		t.Fatal("expected realization/runtime definition digest mismatch to fail")
+	}
+}
