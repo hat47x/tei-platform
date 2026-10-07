@@ -86,15 +86,25 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 			result.References = append([]sourceindex.Reference(nil), ctx.References...)
 		case "definition":
 			if ctx.SemanticElement != nil {
-				copy := *ctx.SemanticElement
-				result.SemanticElement = &copy
+				copy, err := cloneDisclosureValue(ctx.SemanticElement)
+				if err != nil {
+					return DisclosureProjection{}, err
+				}
+				result.SemanticElement = copy
 			}
 			if ctx.ApplicationPattern != nil {
-				copy := *ctx.ApplicationPattern
-				result.ApplicationPattern = &copy
+				copy, err := cloneDisclosureValue(ctx.ApplicationPattern)
+				if err != nil {
+					return DisclosureProjection{}, err
+				}
+				result.ApplicationPattern = copy
 			}
 		case "data-design":
-			result.DataDesign = ctx.DataDesign
+			copy, err := cloneDisclosureValue(ctx.DataDesign)
+			if err != nil {
+				return DisclosureProjection{}, err
+			}
+			result.DataDesign = copy
 		case "dependencies":
 			result.Outgoing = append([]Edge(nil), ctx.Outgoing...)
 			result.Incoming = append([]Edge(nil), ctx.Incoming...)
@@ -116,6 +126,21 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 	sort.Strings(result.AuthorityLimits)
 	result.Fingerprint = disclosureFingerprint(result)
 	return result, nil
+}
+
+func cloneDisclosureValue[T any](value *T) (*T, error) {
+	if value == nil {
+		return nil, nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("knowledge disclosure snapshot encode failed: %w", err)
+	}
+	var copy T
+	if err := json.Unmarshal(encoded, &copy); err != nil {
+		return nil, fmt.Errorf("knowledge disclosure snapshot decode failed: %w", err)
+	}
+	return &copy, nil
 }
 
 func normalizeDisclosureSections(values []string) ([]string, error) {
