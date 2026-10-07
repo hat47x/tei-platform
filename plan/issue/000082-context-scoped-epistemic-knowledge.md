@@ -338,6 +338,12 @@ target annotationについては、任意targetへ元resourceのrevision fingerp
 
 `ambiguous / detached` は別textへ自動転送せず `review-required` にする。anchor解決はsemantic identityの証明ではなく、その限界をProjectionへ明示する。
 
+### E2b: consumer freshness requirement
+
+情報側のvalidUntilとは別に、dependency consumerが必要とする最大経過時間を `maxAgeSeconds` として指定するcandidateを追加した。基準時刻にはcurrent meaningのhuman confirm eventまたは `checkedAt` のうち最新のものを使う。
+
+consumer requirementを満たさなくてもassertion本体のconfirmation / base use stateは書き換えない。同じ情報を別用途で利用できる余地を残したまま、high / critical consumerについてHealth issue / review requestへ反映する。
+
 ### E3 Project Knowledge Health / coverage candidate
 
 Healthはreview率を主判定にせず、`dependencies` のcriticalityと現在のuse stateを組み合わせる。
@@ -425,6 +431,7 @@ reviewer candidate
 - [ ] contradictionを保持できる
 - [ ] retrievalへrelevanceとcontext compatibilityを別signalとして渡せる
 - [ ] Project Knowledge Healthがcritical dependencyを考慮できる
+- [ ] consumer側のfreshness requirementをassertion本体の確認状態と分離して評価できる
 - [ ] stakeholderへの確認依頼へimpact / Evidence / scopeを渡せる
 - [ ] conditional reviewでscope refinementを保持できる
 - [ ] SUI #3184とSEI #660が同じcontractを利用できる
