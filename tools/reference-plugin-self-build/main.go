@@ -727,6 +727,9 @@ func run(repo string) (evidence, error) {
 		GoVersion:                    goVersion,
 		GoBinaryDigest:               goBinaryDigest,
 		GoToolchainDigest:            goToolchainDigest,
+		PackageBuilderFirstDigest:   packageBuilderFirstDigest,
+		PackageBuilderSecondDigest:  packageBuilderSecondDigest,
+		PackageBuilderReproducible:  true,
 		PackageBuildPlan:             packagePlan,
 		PackageBuildPlanFingerprint:  packagePlanFingerprint,
 		PackageFirstArtifactDigest:   packageFirstArtifactDigest,
@@ -972,6 +975,25 @@ func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
+	}
+	return nil
+}
+
+func runPluginPackageBuilder(repo, builderPath, planPath, output string) error {
+	cmd := exec.Command(
+		builderPath,
+		"-plugin",
+		filepath.Join(repo, filepath.FromSlash(packageDescriptor)),
+		"-plan",
+		planPath,
+		"-out",
+		output,
+	)
+	cmd.Dir = repo
+	cmd.Env = []string{}
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Plugin package builder: %w: %s", err, strings.TrimSpace(string(combined)))
 	}
 	return nil
 }
