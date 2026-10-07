@@ -25,3 +25,8 @@ RMT-2のsource-faithful adapter候補は `internal/xeadsource` に置きます�
 - source nodeを落とす場合は`loss-ledger`へ明示する
 - model proseから抽出した意味をAccepted Canonicalへ自動昇格しない
 - original contentの転載が必要な場合は利用条件を先に確認する
+
+## Source Adapter Reference
+
+- `../../plan/design/REFERENCE_MODEL_SOURCE_ADAPTER_V0.md` — Repository外のObserved Documentとpublic Publication Receiptを分ける#950の設計境界
+- `../../tools/reference-xead-source-adapter/` — Xead / Xeaf full-source accountingとsource fact projectionのReference実装
