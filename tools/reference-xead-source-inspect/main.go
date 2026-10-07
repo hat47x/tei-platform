@@ -85,7 +85,8 @@ type report struct {
 	RelationalFacts                  factSummary             `json:"relationalFacts"`
 	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
 	RelationalFactResolutions         factResolutionSummary   `json:"relationalFactResolutions"`
-	RelationalResolutionStatus       string                  `json:"relationalResolutionStatus"`
+	RelationalResolutionStatus        string                  `json:"relationalResolutionStatus"`
+	RelationalResolutionPolicyRevision string                 `json:"relationalResolutionPolicyRevision"`
 	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
 	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
 	AuthorityLimits                  []string                `json:"authorityLimits"`
@@ -150,8 +151,9 @@ func buildReport(inspection xeadsource.Inspection) report {
 		Candidates:                       summarizeCandidates(inspection.Candidates),
 		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
-		RelationalFactResolutions:         summarizeFactResolutions(inspection.RelationalFactResolutions),
-		RelationalResolutionStatus:       inspection.RelationalResolutionStatus,
+		RelationalFactResolutions:          summarizeFactResolutions(inspection.RelationalFactResolutions),
+		RelationalResolutionStatus:         inspection.RelationalResolutionStatus,
+		RelationalResolutionPolicyRevision: inspection.RelationalResolutionPolicyRevision,
 		ClassificationPolicyFingerprint:  inspection.ClassificationPolicyFingerprint,
 		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
 		AuthorityLimits:                  append([]string(nil), inspection.AuthorityLimits...),
