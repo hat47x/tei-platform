@@ -13,7 +13,7 @@ import (
 )
 
 func loadPluginImplementations(root string, r *Result) error {
-	base := filepath.Join(root, "implementations")
+	base := filepath.Join(root, "plugin-implementations")
 	var files []string
 	err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
