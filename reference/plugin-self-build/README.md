@@ -143,3 +143,30 @@ tei.native.runtime.reference
 TEI-native realizationについても同じSourceから二回materializeし、digest一致を要求します。その後Runtime Lock v3へbindし、accepted Builtin registration経由で実際にDeploymentExecutorを呼び出します。
 
 このE3はTEI-native implementation SourceからBuiltin realizationを再構築できる最初のReferenceです。builder自体は依然としてGo seed implementationを使うため、SB-3 self-hostingを達成したとは扱いません。
+
+
+### interpreted realizationとRuntime Engine
+
+E3の`runtime-artifact`はstandalone executableではありません。`static-response-v1`では、deterministicなrealization bytesをHost内のgeneric Builtin adapterが解釈します。
+
+したがって、完全なexecution identityはrealization digestだけでは決まりません。
+
+```text
+execution identity
+  = realization artifact
+  + Runtime Engine / interpreter
+  + Host acceptance
+```
+
+現在のReferenceではBuild PlanのSource closureにRepository全体を含めるため、generic adapterのSource変更もBuild Plan fingerprintへ反映されます。しかし、これはproductionのRuntime Engine identityを独立に固定したことを意味しません。
+
+Runtime Engineのexact identity、engine drift検知、native Host / Web / Wasm間のengine bindingは#973で扱います。
+
+そのためE3では次を主張しません。
+
+- realization digest単独でruntime behaviorが完全に固定された
+- standalone executable相当のSB-2を達成した
+- Runtime Engine差替えに対するreplay safetyが成立した
+- Web / Wasm engineとのportable bindingが成立した
+
+E3が確認するのは、TEI-native Sourceをdeterministicなinterpreted realizationへ変換し、Build trace付きHost acceptanceを通して既存Runtime ABIから実行できることまでです。
