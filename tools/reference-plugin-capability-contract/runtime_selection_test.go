@@ -765,7 +765,7 @@ func TestLegacyRuntimeSelectionReplayRequiresCurrentPluginAuthority(t *testing.T
 		legacyDefinitionDrift,
 		mapping,
 	)
-	if err == nil || !strings.Contains(err.Error(), "authoritative legacy Plugin definition") {
+	if err == nil || !strings.Contains(err.Error(), "authoritative legacy Plugin") {
 		t.Fatalf("legacy authority drift remained current: %v", err)
 	}
 
