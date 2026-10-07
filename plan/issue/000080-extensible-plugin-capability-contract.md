@@ -198,7 +198,7 @@ projectionは旧宣言をConformanceへ自動昇格しません。generic Contra
 
 このpressureから、現行builtin Pluginにはもう一つmigration prerequisiteがあることも分かりました。Reference WorkspaceのOracle / PostgreSQL Pluginはartifact digestを持たないため、どの実装bitに対するConformance Evidenceかを固定できません。callable generic Providerを採用するにはexact implementation artifact digestを必須とし、legacy builtinは宣言の投影までに留めます。実装artifact identityが信頼できるbuild / provenance経路で確定した後にだけ、Conformance Evidenceとresolverへ進めます。
 
-OracleとPostgresの両方がConformanceを満たす場合、generic resolverは暗黙選択しません。既存Environment Bindingと同じく、runtime scopeでは明示wiringが必要です。投影したruntime providerをauthoring-tool scopeのSource Adapterへfallbackすることも拒否します。
+OracleとPostgresの両方がConformanceを満たしても、generic resolverは暗黙選択しません。既存`contract-query-executor`ではEnvironment / Database instance / Contract Query targetごとのBindingがすでに選択Authorityを持つため、generic Contract側へ第二のRuntime wiringを追加しません。既存Bindingで選択されたProviderだけをConformance検証へ渡します。投影したruntime providerをauthoring-tool scopeのSource Adapterへfallbackすることも拒否します。
 
 projectionはread-onlyです。旧Plugin定義をsortやnormalizeの副作用で変更せず、移行bridgeがAuthority sourceを書き換えないことをtestします。
 
@@ -222,3 +222,26 @@ Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability resolution id
 このpressureで、現行Runtime Plugin Lockのpackaging上の限界も明確になった。Plugin LockはPluginごとに一つの`artifactDigest`を持つため、一つのPluginを同じTargetで複数のCapability implementation artifactへ分割した構成を表現できない。ReferenceではProvider artifactとPlugin-level artifactが異なる場合を拒否し、対応済みとは扱わない。
 
 この不足はRQ-024のWeb可搬性、lazy loading、Wasm分割、artifact coalescingと直接関係する。Plugin Lockへ新しいfieldを先に追加せず、ISSUE-000079のBuildArtifactLockとTarget packaging pressureを通して、provider-level artifact identityをRuntime Authorityへ固定する必要が実際に再現するかを確認する。
+
+
+## E3 Runtime Authority integration — 2026-10-07
+
+Application Runtime scopeでgeneric Capability Resolution Lockを新しいRuntime Authorityにしないため、既存Runtime Plugin Lockへ接続する`RuntimeCapabilityBinding` candidateを追加しました。対象EnvironmentのPlugin entryからPlugin definition fingerprintとartifact digestを照合し、Capability Lockが指すProviderと一致する場合だけ接続します。
+
+Environment Lock全体のfingerprintはCapability Bindingへ固定しません。対象Providerと無関係なPlugin追加までstaleにしないためです。一方、対象Pluginの削除、definition drift、artifact差し替えは拒否します。legacy migration pathでは、Capability LockのProviderが現在のlegacy Plugin definitionから一方向に導出されたことも再確認します。
+
+さらに、Contract Query runtimeには既存のtarget-specific Authorityがあります。
+
+```text
+Environment
+  + Database instance
+  + Contract Query target
+      -> ContractQueryExecutorBinding
+      -> executor Capability
+```
+
+この選択をgeneric Contractの`Wiring`で再実装すると二重Authorityになります。Referenceではproductionの`ResolvedContractQueryExecutor`を先に受け取り、選択済みPlugin / Capabilityだけをgeneric ContractのConformance検証へ渡します。この経路のCapability Resolution Lockはgeneric `Wiring`を持ちません。
+
+target-specificな選択は`RuntimeCapabilitySelectionBinding`へ分離し、Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Lock、Runtime Capability Bindingをfingerprintで結びます。Oracle targetとPostgreSQL targetが同じgeneric Contractを要求しても、それぞれ既存Bindingに従って別Providerを利用できるpressureを追加しました。
+
+この結果から、Capability Contractの共通resolverが常にProvider selection Authorityを持つとは限らないことが分かります。既存のdomain / runtime Bindingが選択Authorityを持つ場合、generic Contractは選択済みProviderの契約適合性を検証する層として使います。generic Contract自体が選択Authorityを持つscopeでは、曖昧なProviderを明示wiringまたはAccepted policyなしに選ばない規則を維持します。
