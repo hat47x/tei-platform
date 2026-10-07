@@ -133,7 +133,7 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 		t.Fatal(err)
 	}
 
-	builtin, err := pluginbuiltin.New(source, realizedDefinition)
+	builtin, err := pluginbuiltin.New(firstBytes, realizedDefinition)
 	if err != nil {
 		t.Fatal(err)
 	}
