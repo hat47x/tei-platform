@@ -195,5 +195,20 @@
       }
     },
     "authority": "source facts only; these counts do not establish accepted business identity, functional dependency, or semantic relation authority"
+  },
+  "classificationCoverage": {
+    "xead": {
+      "observedKindCount": 29,
+      "mappedObservedKindCount": 29,
+      "unmappedObservedKinds": [],
+      "complete": true
+    },
+    "xeaf": {
+      "observedKindCount": 20,
+      "mappedObservedKindCount": 20,
+      "unmappedObservedKinds": [],
+      "complete": true
+    },
+    "authority": "mapping entry existence only; this is not semantic acceptance or behavior equivalence"
   }
 }
