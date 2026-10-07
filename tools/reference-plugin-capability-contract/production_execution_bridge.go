@@ -175,6 +175,37 @@ func buildLegacyProductionExecutionBridge(
 	return binding, nil
 }
 
+func verifyLegacyProductionExecutionBridge(
+	binding ProductionExecutionBridge,
+	lock CapabilityResolutionLock,
+	runtimeBinding RuntimeCapabilityBinding,
+	profile CapabilityExecutionProfile,
+	executionAuthority CapabilityExecutionAuthorityBinding,
+	plan pluginruntime.EnvironmentPlan,
+	mapping LegacyCapabilityMapping,
+) error {
+	if err := validateProductionExecutionBridge(binding); err != nil {
+		return err
+	}
+	current, err := buildLegacyProductionExecutionBridge(
+		lock,
+		runtimeBinding,
+		profile,
+		executionAuthority,
+		plan,
+		mapping,
+	)
+	if err != nil {
+		return err
+	}
+	if binding != current {
+		return fmt.Errorf(
+			"production execution bridge differs from current production runtime authority",
+		)
+	}
+	return nil
+}
+
 func exactPluginRuntime(
 	plan pluginruntime.EnvironmentPlan,
 	pluginID string,
@@ -237,6 +268,18 @@ func validateProductionExecutionBridge(
 		binding.PluginID == "" ||
 		binding.PluginVersion == "" {
 		return fmt.Errorf("production execution bridge identity is incomplete")
+	}
+	if !plugin.CapabilityKind(binding.LegacyCapabilityKind).Valid() {
+		return fmt.Errorf(
+			"production execution bridge legacy Capability kind %q is invalid",
+			binding.LegacyCapabilityKind,
+		)
+	}
+	if _, err := parseVersion(binding.PluginVersion); err != nil {
+		return fmt.Errorf(
+			"production execution bridge Plugin version: %w",
+			err,
+		)
 	}
 	for _, value := range []string{
 		binding.CapabilityLockFingerprint,
