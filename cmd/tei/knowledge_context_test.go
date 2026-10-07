@@ -58,6 +58,60 @@ func TestBuildKnowledgeDisclosureUsesCurrentContextWithoutChangingQualification(
 	}
 }
 
+func TestCheckKnowledgeDisclosureFingerprint(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disclosure, err := buildKnowledgeDisclosure(ctx, "source,data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.Status != "complete" || disclosure.Fingerprint == "" {
+		t.Fatalf("complete disclosure identity is missing: %+v", disclosure)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(disclosure, ""); err != nil {
+		t.Fatalf("empty expected disclosure fingerprint enabled the guard: %v", err)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(disclosure, disclosure.Fingerprint); err != nil {
+		t.Fatalf("current disclosure fingerprint was rejected: %v", err)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(disclosure, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale disclosure fingerprint was not rejected clearly: %v", err)
+	}
+
+	partial, err := buildKnowledgeDisclosure(ctx, "data-design,missing-source")
+	if err == nil {
+		t.Fatalf("unknown section must be rejected before disclosure guard: %+v", partial)
+	}
+
+	capabilityCtx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-capability",
+		"sales.order.submit",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	partial, err = buildKnowledgeDisclosure(capabilityCtx, "definition,data-design")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if partial.Status != "partial" || !containsKnowledgeContextString(partial.UnavailableSections, "data-design") {
+		t.Fatalf("expected partial capability disclosure: %+v", partial)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(partial, partial.Fingerprint); err == nil ||
+		!strings.Contains(err.Error(), "requires complete selected Knowledge") {
+		t.Fatalf("partial disclosure allowed cached reuse: %v", err)
+	}
+}
+
 func TestCheckDataDesignFingerprint(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
