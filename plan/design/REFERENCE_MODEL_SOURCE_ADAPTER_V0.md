@@ -163,3 +163,15 @@ projectionでは、source観測時の未知状態、mappingの未決定、mappin
 public projectionにはsource valueとstructural locatorを含めない。件数、kind、未解決の種類、mapping status、必要なauthority limitだけを残す。
 
 `loss-ledger.json`は論点単位の台帳であり、このprojectionからRML IDを自動発番しない。複数の観測が同じ既存論点へ集約される場合もあれば、新しい論点を示す場合もあるためである。
+
+## Public schema-name redaction
+
+Publication Receiptで値と本文を除くだけでは十分ではない。企業独自のXead / Xeaf派生形式では、未知element名や追加attribute名そのものがローカルな業務語彙・内部schemaを表す可能性がある。
+
+現在のReference実装は`elementCounts` / `unknownElements`へ未知elementのlocal nameを、`attributeNameCounts`へ任意のattribute名を出力している。benchmarkではunknown elementが0件のため、この問題は通常のcoverage結果には現れない。
+
+したがってpublic-safe境界では、任意のsource由来schema名をローカル`ObservedDocument`へ限定する。public Evidenceには存在件数とdeterministicな集合fingerprint等を残し、unknownをsilent dropせずに名称自体は公開しない。
+
+既知のXead / Xeaf標準schema名についても、公開可能性はReference Model本体とは別に根拠を持つ。少なくとも「unknownだからpublicへ名前を出してよい」とは扱わない。
+
+この修正が入るまで、現行`PublicationReceipt`を一般的なpublic-safe contractとして確定しない。RMP-047 / RML-022を停止条件とする。
