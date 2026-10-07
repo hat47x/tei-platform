@@ -21,6 +21,7 @@ func legacyContractQueryContract() Contract {
 		RequestSemantics:   "execute-explicit-database-contract-query-realization-with-bound-parameters",
 		ResultSemantics:    "return-provider-result-with-explicit-zero-one-many-and-error-boundaries",
 		FailureSemantics:   "execution-failure-is-not-empty-result",
+		UnknownSemantics:   "provider-or-runtime-uncertainty-remains-unknown-not-empty-result",
 		ConformanceProfile: "tei.reference.legacy-contract-query-executor/v0",
 	}
 }
