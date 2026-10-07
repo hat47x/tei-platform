@@ -14,7 +14,7 @@ go run ./tools/reference-xead-source-inspect \
 
 主な出力:
 
-- schema version（現在は `reference-xead-source-inspection-v1`）
+- schema version（現在は `reference-xead-source-inspection-v2`）
 - source format / SHA-256
 - XML construct inventory
 - unknown construct件数（名称は公開出力しない）
@@ -23,7 +23,8 @@ go run ./tools/reference-xead-source-inspect \
 - DERIVABLEなkey memberの件数
 - DERIVABLEなkeyを参照するRelationshipの件数
 - unresolved diagnostic codeとsource-locator digest
-- relational source factの整合状態を示す `relationalResolutionStatus = resolved | unresolved`
+- relational source fact全体の整合状態を示す `relationalResolutionStatus = resolved | partial | unresolved`
+- fact種別ごとの `resolved / unresolved / unvalidated` 件数を示す `relationalFactResolutions`
 - transcription contract fingerprint
 - normalized classification policy fingerprint
 - authority limit
@@ -32,7 +33,14 @@ go run ./tools/reference-xead-source-inspect \
 `plan/REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md`に従います。
 
 
-`relationalResolutionStatus`は、source factをCanonical meaningとして承認したことを示しません。
-`resolved`はrelational diagnosticが残っていないことだけを表します。
-`unresolved`の場合も観測したsource factはEvidenceとして保持しますが、
-deterministic semantic loweringの入力としてそのまま再利用しません。
+`relationalResolutionStatus`と`relationalFactResolutions`は、source factをCanonical meaningとして承認したことを示しません。
+`resolved`は、その検証scopeで構造diagnosticが残っていないことだけを表します。
+`partial`は、diagnosticは無いものの現行validatorでは安全に検証できないfactが残る状態です。
+`unresolved`の場合も観測したsource factはEvidenceとして保持します。
+
+全体statusが`unresolved`でも、無関係なfactまで自動的に意味不明になるとは限りません。
+内部Inspectionは各factを`resolved / unresolved / unvalidated`へ分けます。ただし局所`resolved`はloweringの「候補資格」であり、
+Canonical meaning、business identity、functional dependency等の承認ではありません。局所loweringを行う場合も、
+そのfactが依存するKey / Table / Field / Relationshipに未解決が伝播していないことをexplicitなResolution Projectionから確認します。
+
+公開reportではraw locatorやlegacy IDを出さず、fact種別ごとの件数だけを出します。
