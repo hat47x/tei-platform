@@ -440,3 +440,35 @@ E3でexact native builder identityを導入した後、SB-1 package materializat
 Go toolchainはSB-1 packageの直接Builderではなく、Reference builderを生成するstage0 seed側のEvidenceとして扱います。これによってSB-1とTEI-native E3でBuilder identityの意味を揃えます。
 
 ただし、builder executable自体のSB-3 stage convergenceやOS-level hermetic executionが成立したという主張はしません。
+
+
+### 2026-10-08 Runtime Engine Lock candidate — #973
+
+TEI-native E3のinterpreted realizationでは、realization artifactだけでruntime behaviorを固定できません。generic interpreter / Host adapterのidentityを別に固定する必要があります。
+
+このため候補実装では、Plugin Lockと別に`RuntimeEngineLock`を導入します。
+
+`RuntimeEngineIdentity`は次を持ちます。
+
+- engine ID
+- version
+- contract version
+- implementation digest
+- Target
+
+Runtime EngineをPluginの`Requires`やBuild dependencyへ入れません。Plugin realizationのBuild Planと、実行時に選ばれるengineは別のAuthorityです。
+
+`RuntimeEngineLock`はPlugin identityからexpected engine identityへのbindingだけを保持します。Lock fingerprintをEnvironment Planへ記録し、RuntimePolicyFingerprintにも含めます。build-bound Builtinはengine bindingが欠けていれば実行しません。
+
+Host-owned `BuiltinRegistration`はexpected engine identityと一致しなければ拒否します。Invocation Provenanceにはengine identity fingerprintとRuntime Engine Lock fingerprintを残し、`ValidateDeploymentInvocation`で再検証します。
+
+Referenceではengine implementation digestを、限定したengine Source closureとGo toolchain digestから生成します。Repository全体をengine identityへ含めず、無関係なHost変更によるstale化を避けます。
+
+ただし、このdigestはexact linked machine-code artifactではありません。そのため#973のうち次は未達です。
+
+- actual loaded engine imageのdigest / attestation
+- executable / linked artifactとしてのengine Build Evidence
+- Web / Wasm等、別engine Targetとのexchange
+- production Host側での独立artifact verification
+
+したがって、Runtime Engine Lock候補によりengine driftを明示検知できる構造は得ますが、#973完了やstandalone executable相当のSB-2達成はまだ主張しません。
