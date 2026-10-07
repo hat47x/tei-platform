@@ -32,14 +32,14 @@ func sourceAdapterProvider(contract Contract, scope AuthorityScope, pluginID, im
 
 func evidenceFor(provider Provider, contract Contract, marker string) ConformanceEvidence {
 	return ConformanceEvidence{
-		PluginID:            provider.PluginID,
-		PluginVersion:       provider.PluginVersion,
-		ImplementationID:    provider.ImplementationID,
+		PluginID:                     provider.PluginID,
+		PluginVersion:                provider.PluginVersion,
+		ImplementationID:             provider.ImplementationID,
 		ArtifactDigest:               provider.ArtifactDigest,
 		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 		ContractFingerprint:          fingerprint(contract),
-		ConformanceProfile:  contract.ConformanceProfile,
-		EvidenceFingerprint: fingerprint(marker),
+		ConformanceProfile:           contract.ConformanceProfile,
+		EvidenceFingerprint:          fingerprint(marker),
 	}
 }
 
