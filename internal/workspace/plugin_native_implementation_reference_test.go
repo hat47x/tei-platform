@@ -82,8 +82,11 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 			Entrypoint: implementationRel,
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
-		Target:     "builtin/host",
+		Target:     "interpreted-builtin/host",
 		Profile:    "reference",
+		Parameters: []plugin.BuildParameter{
+			{Name: "execution-model", Value: "interpreted-builtin"},
+		},
 	}
 
 	firstBytes, firstDigest, err := implementation.Materialize(source)
