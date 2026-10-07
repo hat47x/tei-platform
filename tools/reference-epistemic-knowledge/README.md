@@ -203,6 +203,28 @@ Projectionには `content-fingerprint-does-not-restore-review-history` をAuthor
 
 metadata-preserving exporter / importerそのものは、このReferenceではまだ実装しません。保持できるtransportではsidecarを一緒に運び、text-only transportではmetadata lossを明示する契約を後続pressureとします。
 
+## Metadata-preserving transportとaccess containment
+
+Referenceには `tei.reference.epistemic-transport/v0` のtransport candidateを追加しています。
+
+epistemic transport自身はRBACや組織Authorityを判定しません。既存のauthorization境界が与えるopaqueな `accessRefs` と、export時にcallerが利用可能なref集合だけを入力として扱います。refの意味を推測せず、完全一致だけでtransport対象を絞ります。
+
+`accessRefs` は少なくともassertion、Evidence、review event、dependency、coverage areaへ付与できます。権限不足の場合は次のように扱います。
+
+- assertion全体が不可視ならtransportから除外する
+- Evidenceやreview eventだけが不可視なら、そのassertionを `metadataState=partial` にする
+- 不可視assertionへのrelationは可視側からも除去し、可視assertionをpartialにする
+- 不可視dependency / coverage areaは除外する
+- 何かを除外したtransport全体を `metadataState=partial` とする
+
+これにより、hidden reject / Conflict / supersession等を落とした後に、残ったconfirmだけから「完全な確認済み情報」を再構成しません。partial metadataはReference評価でfail closedし、通常のpremiseへそのまま昇格させません。
+
+また、partial transportのProject Knowledge Healthはproject全体のHealthではありません。Projectionは `viewMetadataState` を返し、`partial-transport-health-is-not-project-wide-health` をAuthority limitとして残します。
+
+redaction summaryは件数だけを返し、不可視assertion ID等をtransport metadataから漏らしません。
+
+このcandidateが示すのはaccess containmentであり、authorization decisionそのものではありません。`accessRefs` の発行・解釈・組織Roleとの対応は既存TEI authorization境界の責務です。
+
 ## v0をproduction modelへ固定しない
 
 このReferenceは、confirmation historyを単一review stateから分離するpressureまで進めています。ただしevent kind、sequence方式、context scopeの表現、永続化方式をproduction contractとして固定したわけではありません。
@@ -219,7 +241,9 @@ metadata-preserving exporter / importerそのものは、このReferenceでは�
 - review eventのdurable persistence / multi-surface merge
 - arbitrary documentからtarget surface / selector候補を生成するproduction resolver
 - coverage area / mappingを自動抽出して意味的完全性を証明する仕組み
-- metadata-preserving export / import adapterとtext-only transportでのloss marker
+- transport candidateを実Provider / storage / connectorへ接続するadapter
+- text-only transportでの明示的loss marker
+- accessRefsを既存authorization providerへ接続するproduction contract
 - Cross-repository fixtureの正式versioning
 
 ## 検証
