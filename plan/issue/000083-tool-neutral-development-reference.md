@@ -59,6 +59,30 @@ current RepositoryのArchitectureは、developer-facing HostのMCP / control int
 
 したがって、最初のE2EはCLI-onlyで成立させます。CLI-onlyで成立しないGapがある場合は、まず通常のapplication service / CLI Gapとして扱います。MCPは、そのGapを隠す別実装にはしません。
 
+## Development Hostの前提
+
+RQ-034は、すべてのChat UIが同じ能力を持つことを要求しません。
+
+改修からBuild / Testまで一つの環境で完結するには、Host側に少なくとも次の能力が必要です。
+
+```text
+repository materialization
+  + filesystem read / write
+  + process execution
+  + Git operations
+  + required language toolchain
+```
+
+network accessやMCPは常に必須ではありません。必要なdependencyや外部Resourceへ到達する作業でだけ追加前提になります。
+
+この前提はTEIのRuntime CapabilityやCanonical modelへ登録する対象ではありません。開発Hostがそのtaskを完遂できるかを判断する環境条件です。
+
+たとえばGitHub Contents APIだけを利用できるChat環境はSource変更を作成できますが、process executionやRepository checkoutが無ければ、その環境単独ではRQ-034のfull build / test loopを実証できません。その場合は、変更をGitへ渡して別の標準開発環境で継続できます。
+
+反対に、Chat / Coding Agent側がcheckout、shell、Gitを持つ場合は、TEI専用Adapterを追加せず、そのHost内で通常の開発loopを完結できます。
+
+この区別を、`full / partial`等の永続的なTEI状態にはしません。
+
 ## E1 — CLI-only round trip
 
 既存Reference Workspaceの小さい変更を一つ選び、専用Agent Adapterなしで次を実行します。
