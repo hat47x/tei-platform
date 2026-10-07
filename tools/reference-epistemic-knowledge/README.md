@@ -89,7 +89,7 @@ confirm
 
 `withdraw` はassertionを削除したりrejectedへ変えたりする操作ではありません。確認だけを外します。外部由来の情報なら再び `candidate-only` になり、direct user working premiseなら、確認済みとは表示せず現在文脈の作業前提として利用できます。
 
-## semantic editとreview binding
+## 意味変更とreview binding
 
 review eventはevent時点の `meaningFingerprint` を持ちます。
 
@@ -99,7 +99,7 @@ review eventはevent時点の `meaningFingerprint` を持ちます。
 
 ## context generalizationをしない
 
-assertionのscopeに必要なdimensionが現在contextに無い場合は `unknown` とし、前提へ自動昇格させません。値が異なる場合は `incompatible` です。
+情報の適用範囲に必要なdimensionが現在contextに無い場合は `unknown` とし、前提へ自動昇格させません。値が異なる場合は `incompatible` です。
 
 ```text
 usable in project A / production
@@ -151,7 +151,7 @@ consumer freshnessがstaleでも、assertion自体のconfirmationや通常のuse
 
 Healthは「確認済み件数 / 全件数」のpercentを主判定にしません。
 
-`dependencies` は、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerがunreviewed、stale、Conflict、scope不適合なassertionへ依存する場合は `critical` を返します。
+`dependencies` は、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerが未確認、stale、Conflict、適用範囲不一致の情報へ依存する場合は `critical` を返します。
 
 多数の低重要度memoが未確認でも、それだけでcritical dependencyを希釈しません。
 
