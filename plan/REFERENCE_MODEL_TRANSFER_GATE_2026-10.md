@@ -160,6 +160,8 @@ relational sourceについては、source factの観測とlowering readinessを�
 
 Reference Model規模でpartial deterministic loweringを行う場合は、explicitにlocal `resolved`なfactだけを対象とし、Key memberからRelationshipへのdiagnostic伝播やglobal source identity diagnosticを迂回しない。
 
+readiness Evidenceには判定algorithmのrevisionも必要である。同じsource artifact digestとtranscription contract fingerprintでも、diagnostic propagationやlocal readiness算法が変われば結果は変わり得るため、`relationalResolutionPolicyRevision`をEvidenceへ残す。このrevisionはalgorithm provenanceであり、Semantic authorityではない。
+
 ~~~text
 source artifact + source locator
         ↓
