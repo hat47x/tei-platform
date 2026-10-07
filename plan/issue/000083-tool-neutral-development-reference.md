@@ -167,7 +167,7 @@ merged workspace
 
 このcaseの目的はTEI独自merge engineを作ることではありません。Gitが所有するtext / history integrationを尊重したまま、その後のSemantic boundaryで意味上の不整合を止められることを確認します。
 
-runnerのBash syntaxはE2追加後に再確認する必要があります。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
+E2追加後のrunnerも`bash -n`でBash syntaxを再確認しました。また、current `internal/validation.Validate`が同一Canonical IDを`DUPLICATE_SEMANTIC_ELEMENT`として拒否することをsourceから確認しています。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
 
 ## E3 — MCP parity
 
