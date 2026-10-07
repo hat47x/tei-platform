@@ -204,9 +204,11 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 		return fmt.Errorf("TEI-native static response Reference requires builtin runtime")
 	}
 	var matches int
+	var matched plugin.Capability
 	for _, capability := range definition.Provides {
 		if capability.Kind == normalized.CapabilityKind && capability.ID == normalized.CapabilityID {
 			matches++
+			matched = capability
 		}
 	}
 	if matches != 1 {
@@ -214,6 +216,12 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 			"plugin definition must provide capability %s %s exactly once",
 			normalized.CapabilityKind, normalized.CapabilityID,
 		)
+	}
+	if len(matched.Actions) != 1 || !matched.Actions[0].Valid() {
+		return fmt.Errorf("%s profile requires exactly one valid deployment action", StaticResponseProfileV1)
+	}
+	if len(matched.Permissions) != 0 {
+		return fmt.Errorf("%s profile does not accept capability permissions", StaticResponseProfileV1)
 	}
 	return nil
 }
