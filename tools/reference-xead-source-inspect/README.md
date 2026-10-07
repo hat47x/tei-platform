@@ -14,6 +14,7 @@ go run ./tools/reference-xead-source-inspect \
 
 主な出力:
 
+- schema version（現在は `reference-xead-source-inspection-v1`）
 - source format / SHA-256
 - XML construct inventory
 - unknown construct件数（名称は公開出力しない）
@@ -22,9 +23,16 @@ go run ./tools/reference-xead-source-inspect \
 - DERIVABLEなkey memberの件数
 - DERIVABLEなkeyを参照するRelationshipの件数
 - unresolved diagnostic codeとsource-locator digest
+- relational source factの整合状態を示す `relationalResolutionStatus = resolved | unresolved`
 - transcription contract fingerprint
 - normalized classification policy fingerprint
 - authority limit
 
 出力はReference Modelの利用条件を変更しません。public RepositoryへEvidenceを保存する場合は、
 `plan/REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md`に従います。
+
+
+`relationalResolutionStatus`は、source factをCanonical meaningとして承認したことを示しません。
+`resolved`はrelational diagnosticが残っていないことだけを表します。
+`unresolved`の場合も観測したsource factはEvidenceとして保持しますが、
+deterministic semantic loweringの入力としてそのまま再利用しません。
