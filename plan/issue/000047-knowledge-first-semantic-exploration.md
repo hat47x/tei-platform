@@ -362,6 +362,8 @@ Reference testでは、`sales.order_line`についてincoming Relation、`relati
 
 Constraint自体も探索入口にする。`semantic-validation`からは、ValidationのAttribute ownerとRelation targetが一致して一意にDataを決められる場合だけData Design Contextへ接続する。positive ValidationはAttribute ownerへ、`relation-unique`はAttribute ownerとRelation targetの一致を確認したうえでtarget Dataへ降りる。両者が矛盾する場合はDataを推測せず、Data Design Contextを生成しない。
 
+Capabilityも同じread-only探索契約で扱う。`semantic-capability:sales.order.submit`からはCapability定義のSource traceと、input / outputとして参照する`sales.order`へのdependencyを取得できる。Capability IDやruntime invocation identityからData Design identityを作らず、Data Design Contextは生成しない。これによりData / Relation / Validation / Capability / Application Patternを同じContext形式で探索しつつ、各subjectのauthority境界を保つ。
+
 同じCanonical IDを持つData、Attribute、Relation、Validationが複数ある場合も推測しない。Dataを直接参照したContextでは、重複している要素を`ambiguities`へ種類、ID、件数とともに示し、その要素を根拠に`scopedUniqueness`、business identity候補、functional dependency候補を生成しない。Validationを入口にしたContextでは、Attribute ownerやRelation target、対象Data、Validation自身を一意に決められないためData Design Context自体を生成しない。無効なWorkspaceで読み込み順に依存した設計判断を行わないことを、この境界で固定する。
 
 Data Design Contextを生成しない場合も理由を隠さない。Validationのscopeを一意に解決できない場合は`data-design-validation-scope-not-uniquely-resolvable`、Persistence Mappingのsubjectを一意に解決できない場合は`data-design-persistence-subject-not-uniquely-resolvable`を上位Contextの`unresolved`へ残す。利用側は「Data Design Contextがない」ことだけを見て推測を再開せず、元定義の確認へ戻れる。
