@@ -404,3 +404,34 @@ func TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts(t 
 		t.Fatalf("multi-Contract refs were lost: %+v", packaging.Artifacts)
 	}
 }
+
+
+func TestTargetPackagingPlanIsExplicitlyNonAuthoritative(t *testing.T) {
+	oracle := legacyPackagingInput(
+		t,
+		"tei.database.oracle",
+		core.CanonicalID("database.query.oracle"),
+		"web-browser",
+		"runtime",
+		"a",
+		"7",
+	)
+	plan, err := buildTargetCapabilityPackagingPlan(
+		[]TargetPackagingInput{oracle},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Authority != targetCapabilityPackagingPlanAuthority {
+		t.Fatalf("packaging authority=%q", plan.Authority)
+	}
+
+	tampered := plan
+	tampered.Authority = "runtime-authority"
+	tampered.PlanFingerprint =
+		targetCapabilityPackagingPlanFingerprint(tampered)
+	if err := validateTargetCapabilityPackagingPlan(tampered); err == nil ||
+		!strings.Contains(err.Error(), "authority") {
+		t.Fatalf("authoritative packaging plan was accepted: %v", err)
+	}
+}
