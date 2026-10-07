@@ -8,6 +8,9 @@ import (
 
 type Assessment struct {
 	AssertionID          string   `json:"assertionId"`
+	ContentOrigin        Origin   `json:"contentOrigin"`
+	IngestedBy           IngestionActor `json:"ingestedBy"`
+	StatementKind        AssertionMode `json:"statementKind"`
 	ReviewValidity       string   `json:"reviewValidity"`
 	ContextCompatibility string   `json:"contextCompatibility"`
 	Freshness            string   `json:"freshness"`
@@ -125,6 +128,9 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) Assessment {
 	assessment := Assessment{
 		AssertionID:          assertion.ID,
+		ContentOrigin:        assertion.Origin,
+		IngestedBy:           assertion.IngestedBy,
+		StatementKind:        assertion.Mode,
 		ReviewValidity:       reviewValidity(assertion),
 		ContextCompatibility: contextCompatibility(assertion.Context, context.Bindings),
 		Freshness:            freshness(assertion, asOf),
@@ -260,8 +266,8 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	if assessment.Conflict == "present" {
 		return "review-required", append(reasons, "CONFLICT_PRESENT")
 	}
-	if assertion.Mode != ModeFact {
-		return "candidate-only", append(reasons, "NON_FACT_ASSERTION")
+	if !assertion.Mode.canBeWorkingPremise() {
+		return "candidate-only", append(reasons, "STATEMENT_KIND_NOT_WORKING_PREMISE")
 	}
 	return "premise", reasons
 }
