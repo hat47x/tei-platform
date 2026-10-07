@@ -187,7 +187,8 @@
           "DERIVABLE does not establish derivation logic unless an accepted expression/evaluator can be traced",
           "NoUpdate is interaction/policy pressure and is not automatically authorization",
           "duplicate field IDs within one unambiguous Table remain unresolved and do not donate arbitrary AttributeType/DataTypeID metadata to key mappings",
-          "missing field ID is source ambiguity even when no key or Function currently references that field"
+          "missing field ID is source ambiguity even when no key or Function currently references that field",
+          "missing field ID remains unresolved and is reported by source locator even when the enclosing Table ID is also missing"
         ]
       },
       "TableKey": {
@@ -500,7 +501,8 @@
           "runtime field definition may realize Data/Relation meaning but does not replace the semantic source",
           "editable/color/default/display behavior stays target/interaction-specific unless separately accepted",
           "duplicate runtime field IDs remain unresolved for Key/Refer lookup",
-          "missing runtime field ID remains unresolved even if no current Key/Refer touches it"
+          "missing runtime field ID remains unresolved even if no current Key/Refer touches it",
+          "missing runtime field ID remains unresolved and is reported by source locator even when the enclosing runtime Table ID is also missing"
         ]
       },
       "Column": {
