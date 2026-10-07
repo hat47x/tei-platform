@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ssh_keygen="${SSH_KEYGEN:-ssh-keygen}"
-verify_time="${VERIFY_TIME:-20261007T120000Z}"
+verify_time="${VERIFY_TIME:-20261007120000Z}"
 principal="reviewer@example.com"
-namespace_accept="tei-authoring-v1.ws-ref-001.accept.scope-aaaaaaaa@tei-platform"
-namespace_reject="tei-authoring-v1.ws-ref-001.reject.scope-aaaaaaaa@tei-platform"
+namespace_accept="tei-authoring-v1.ws-ref-001.accept.scope-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@tei-platform.invalid"
+namespace_reject="tei-authoring-v1.ws-ref-001.reject.scope-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@tei-platform.invalid"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fixture="${root}/fixture/witness-v0.txt"
