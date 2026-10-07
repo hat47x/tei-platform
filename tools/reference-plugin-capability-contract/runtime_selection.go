@@ -14,17 +14,17 @@ const (
 )
 
 type RuntimeCapabilitySelectionBinding struct {
-	Schema                          string                          `json:"schema"`
-	Authority                       string                          `json:"authority"`
-	Environment                     core.CanonicalID                `json:"environment"`
-	Instance                        core.CanonicalID                `json:"instance"`
-	Target                          realization.ContractQueryTarget `json:"target"`
-	ExecutorCapability              core.CanonicalID                `json:"executorCapability"`
-	PluginID                        string                          `json:"pluginId"`
-	PluginVersion                   string                          `json:"pluginVersion"`
-	CapabilityLockFingerprint       string                          `json:"capabilityLockFingerprint"`
-	RuntimeCapabilityBindingFingerprint string                      `json:"runtimeCapabilityBindingFingerprint"`
-	SelectionFingerprint            string                          `json:"selectionFingerprint"`
+	Schema                              string                          `json:"schema"`
+	Authority                           string                          `json:"authority"`
+	Environment                         core.CanonicalID                `json:"environment"`
+	Instance                            core.CanonicalID                `json:"instance"`
+	Target                              realization.ContractQueryTarget `json:"target"`
+	ExecutorCapability                  core.CanonicalID                `json:"executorCapability"`
+	PluginID                            string                          `json:"pluginId"`
+	PluginVersion                       string                          `json:"pluginVersion"`
+	CapabilityLockFingerprint           string                          `json:"capabilityLockFingerprint"`
+	RuntimeCapabilityBindingFingerprint string                          `json:"runtimeCapabilityBindingFingerprint"`
+	SelectionFingerprint                string                          `json:"selectionFingerprint"`
 }
 
 func resolveLegacyContractQueryCapabilityForSelection(
@@ -207,15 +207,15 @@ func buildRuntimeCapabilitySelectionBinding(
 	}
 
 	binding := RuntimeCapabilitySelectionBinding{
-		Schema:                            runtimeCapabilitySelectionSchema,
-		Authority:                         runtimeCapabilitySelectionAuthority,
-		Environment:                       selected.Binding.Environment,
-		Instance:                          selected.Binding.Instance,
-		Target:                            selected.Binding.Target,
-		ExecutorCapability:                selected.Binding.Executor,
-		PluginID:                          string(selected.Capability.Plugin.ID),
-		PluginVersion:                     selected.Capability.Plugin.Version,
-		CapabilityLockFingerprint:         capabilityLock.LockFingerprint,
+		Schema:                              runtimeCapabilitySelectionSchema,
+		Authority:                           runtimeCapabilitySelectionAuthority,
+		Environment:                         selected.Binding.Environment,
+		Instance:                            selected.Binding.Instance,
+		Target:                              selected.Binding.Target,
+		ExecutorCapability:                  selected.Binding.Executor,
+		PluginID:                            string(selected.Capability.Plugin.ID),
+		PluginVersion:                       selected.Capability.Plugin.Version,
+		CapabilityLockFingerprint:           capabilityLock.LockFingerprint,
 		RuntimeCapabilityBindingFingerprint: runtimeBinding.BindingFingerprint,
 	}
 	binding.SelectionFingerprint = runtimeCapabilitySelectionFingerprint(binding)
