@@ -16,8 +16,8 @@ func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if coverage.Complete || len(coverage.UnmappedObservedKinds) != 1 || coverage.UnmappedObservedKinds[0] != "Mystery" {
-		t.Fatalf("coverage=%+v", coverage)
+	if coverage.Complete || coverage.UnmappedObservedKindCount != 1 || len(coverage.UnmappedObservedKinds) != 0 {
+		t.Fatalf("coverage leaked arbitrary unknown kind or lost unresolved accounting: %+v", coverage)
 	}
 	if len(coverage.AuthorityLimits) == 0 {
 		t.Fatal("classification coverage lost authority limits")
