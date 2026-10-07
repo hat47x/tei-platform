@@ -247,13 +247,14 @@ TEIでは、データモデルも含め、現在あるモデル体系を将来�
 - GitやCIが持つ作業状態をAgent Session、Checkpoint、検証状態等としてTEIへ二重管理する
 - Gitで十分な変更にもTEI独自Change Setを必須にする
 - MCPから呼び出した操作だけが特別なSemantic authorityを持つ
+- Chat環境でMCPを使うという理由だけで、TEI自身のdeveloper MCP serverを必須にする
 - 開発環境のShell / Filesystem権限とApplication RuntimeのAuthorityを混同する
 
 対応するRequirement:
 
 - **RQ-034** — 標準的な開発環境からTEIを改修・実行・検証できる
 
-RQ-034はRQ-015やRQ-027を置き換えません。RQ-015はAIが何を参照して実装するか、RQ-027は後から再入場するための開発contextを扱います。RQ-034は、それらを利用する開発環境を特定のAgent製品やTEI専用workflowへ固定しないための境界です。
+RQ-034はRQ-015やRQ-027を置き換えません。RQ-015はAIが何を参照して実装するか、RQ-027は後から再入場するための開発contextを扱います。RQ-034は、それらを利用する開発環境を特定のAgent製品やTEI専用workflowへ固定しないための境界です。Chat側がMCPを利用する場合も、まずHostが持つShell / Filesystem / Git MCP等からTEI CLIを呼べればよく、TEI固有MCPは追加価値が確認された場合の任意Projectionです。
 
 ## 3. 一つの受注例で要求のつながりを見る
 
