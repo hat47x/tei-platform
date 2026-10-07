@@ -117,3 +117,27 @@ resolverへTargetを指定した場合、同じTargetのProviderだけを候補�
 Capability Resolution LockはTargetも固定します。Web向けに採用したLockをDesktop contextでreplayすることはできません。Runtime Capability BindingにもTargetを明示し、どのTarget向けRuntime Authorityへ接続しているかを直接読めるようにします。
 
 このcandidateはTarget selectionの境界を示すものであり、browser-compatible Wasm / JavaScript artifactを実際にbuild・loadしたEvidenceではありません。
+
+
+## Conformance Evidenceの発行Authority
+
+ProviderがConformance Evidenceを持っていることだけでは、適合性のAuthorityとして不十分です。Provider自身が任意のEvidence fingerprintを作れるなら、自己申告を別形式へ移しただけになるためです。
+
+Referenceでは、Capability Resolution Lockとは別に、次の鎖を検証するcandidateを追加しています。
+
+```text
+Capability Contract / Conformance profile
+  -> Accepted Conformance Authority Grant
+  -> issuer
+  -> issuer attestation
+  -> current Conformance Evidence
+  -> exact Provider / artifact
+```
+
+Authority Grantは、exact Contract fingerprint、Conformance profile、issuer、Authority Evidence fingerprintを結び付けます。Conformance Evidenceごとのattestationは、そのEvidenceを誰が発行したかと、どのAuthority Evidenceに基づくかを示します。
+
+Authority Grantが無い自己発行Evidenceは受け付けません。一方、Provider自身をissuerとして明示的に許可することは表現できます。その場合も、自己発行だから暗黙に信頼するのではなく、Accepted Authority Grantが必要です。
+
+このAuthority bindingはCapability Resolution Lockのidentityへ混ぜません。Authority Evidenceが更新されてもContract / Provider resolution identityは変えず、Authority binding fingerprintだけを更新します。
+
+このReferenceが確認するのはaccepted issuance bindingまでです。Authority Evidence自体の真正性、署名検証、組織のpublisher trust、証明書や鍵のrotationはまだ扱いません。fingerprintが存在するだけでcryptographic trust済みとはみなしません。
