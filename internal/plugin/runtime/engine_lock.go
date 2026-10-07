@@ -39,6 +39,9 @@ func (lock RuntimeEngineLock) Validate() error {
 	if lock.FormatVersion != RuntimeEngineLockFormatVersion {
 		return fmt.Errorf("unsupported runtime engine lock format %d", lock.FormatVersion)
 	}
+	if len(lock.Bindings) == 0 {
+		return fmt.Errorf("runtime engine lock requires at least one binding")
+	}
 	seen := map[string]struct{}{}
 	for _, binding := range lock.Bindings {
 		if binding.Plugin.ID == "" {
@@ -88,6 +91,18 @@ func RuntimeEngineLockFingerprint(lock RuntimeEngineLock) (string, error) {
 // interpreter/host engine is neither the logical Plugin identity nor a
 // build-time dependency of the Plugin realization.
 func BindRuntimeEngineLock(plan EnvironmentPlan, lock RuntimeEngineLock) (EnvironmentPlan, error) {
+	if plan.RuntimeEngineLockFingerprint != "" {
+		return EnvironmentPlan{}, fmt.Errorf("runtime engine lock is already bound to environment plan")
+	}
+	for _, pr := range plan.Plugins {
+		if pr.RuntimeEngine != nil {
+			return EnvironmentPlan{}, fmt.Errorf(
+				"runtime plan plugin %s@%s already contains runtime engine identity without lock authority",
+				pr.Plugin.ID,
+				pr.Plugin.Version,
+			)
+		}
+	}
 	lockFingerprint, err := RuntimeEngineLockFingerprint(lock)
 	if err != nil {
 		return EnvironmentPlan{}, err
