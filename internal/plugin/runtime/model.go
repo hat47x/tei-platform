@@ -388,6 +388,9 @@ func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string,
 	if pr.Artifact.Digest == "" {
 		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no realization digest", pr.Plugin.ID, pr.Plugin.Version)
 	}
+	if pr.Artifact.SignatureRef != "" || pr.Artifact.Provenance != "" {
+		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s uses unsupported artifact signature/provenance metadata", pr.Plugin.ID, pr.Plugin.Version)
+	}
 	registration, ok := r.BuiltinRegistrations[key]
 	if !ok || registration.Builtin == nil {
 		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no accepted realization registration", pr.Plugin.ID, pr.Plugin.Version)
