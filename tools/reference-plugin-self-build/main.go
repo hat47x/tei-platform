@@ -878,6 +878,24 @@ func exactPlugin(definitions []plugin.Definition, id, version string) (plugin.De
 	return plugin.Definition{}, fmt.Errorf("plugin %s@%s not found", id, version)
 }
 
+func exactImplementation(sources []implementation.Source, id, version string) (implementation.Source, error) {
+	for _, source := range sources {
+		if string(source.Plugin.ID) == id && source.Plugin.Version == version {
+			return source, nil
+		}
+	}
+	return implementation.Source{}, fmt.Errorf("plugin implementation %s@%s not found", id, version)
+}
+
+func replacePluginDefinition(definitions []plugin.Definition, replacement plugin.Definition) {
+	for i := range definitions {
+		if definitions[i].ID == replacement.ID && definitions[i].Version == replacement.Version {
+			definitions[i] = replacement
+			return
+		}
+	}
+}
+
 func exactLockedPlugin(lock plugin.Lock, environmentID core.CanonicalID, id core.CanonicalID, version string) (plugin.LockedPlugin, error) {
 	for _, environment := range lock.Environments {
 		if environment.Environment != environmentID {
