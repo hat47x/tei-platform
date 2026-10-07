@@ -196,6 +196,16 @@ metadata-preserving transportのReference candidateとして `tei.reference.epis
 
 transport adapterを実storage / connectorへ接続すること、text-only exportでloss markerを運ぶこと、accessRefsを既存authorization providerへ接続すること、transport署名は未実証として残す。
 
+### E7: semantic contract / representation versionの分離
+
+SUI #3184とSEI #660の第二consumerを作った結果、consumerがReferenceのJSON schema IDへ直接依存するだけでは、TEI側の表現変更と意味変更を区別できないことが分かった。
+
+Projectionへ `contract=tei.epistemic-projection/v0` を追加し、`schema=tei.reference.epistemic-assessment/v0` と分離する。
+
+consumerは両方を明示確認し、未知contract / 未対応schemaをfail closedする。同じcontractだから未知schemaを自動受理することも、同じschemaだから別contractを互換と推定することもしない。
+
+この段階ではproduction Contract Catalogへの登録やSemVer policyまでは固定しない。第二consumerで必要性を実証するReference candidateとする。
+
 ## Plugin / Extension方針
 
 最初からCore enumを増やしません。
