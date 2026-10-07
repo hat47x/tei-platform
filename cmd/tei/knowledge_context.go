@@ -33,6 +33,13 @@ func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontex
 		subject.Subject{Kind: kind, ID: id},
 	), nil
 }
+func buildKnowledgeDisclosure(
+	ctx knowledgecontext.Context,
+	selection string,
+) (knowledgecontext.DisclosureProjection, error) {
+	return knowledgecontext.BuildDisclosure(ctx, []string{selection})
+}
+
 func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) error {
 	expected = strings.TrimSpace(expected)
 	if expected == "" {
