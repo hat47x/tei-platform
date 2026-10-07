@@ -94,6 +94,14 @@ confirm
 
 `withdraw` はassertionを削除したりrejectedへ変えたりする操作ではありません。確認だけを外します。外部由来の情報なら再び `candidate-only` になり、direct user working premiseなら、確認済みとは表示せず現在文脈の作業前提として利用できます。
 
+## as-of時点のreview history
+
+Projectionの `ContextQuery.asOf` より後に発生したreview eventは、現在の確認状態だけでなく、event件数、末尾sequence、reasonからも見えないようにします。過去時点のProjectionを、未来の確認履歴で書き換えません。
+
+Projectionは `reviewEventCount` と `reviewLogSequence` をas-of時点で見えている履歴だけから返します。両者は同義ではありません。sequenceに欠番があっても、件数から次sequenceを推測しません。
+
+Authority limitとして `review-history-is-bounded-by-context-as-of` を返します。
+
 ## 意味変更とreview binding
 
 review eventはevent時点の `meaningFingerprint` を持ちます。
@@ -159,6 +167,45 @@ Healthは「確認済み件数 / 全件数」のpercentを主判定にしませ�
 `dependencies` は、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerが未確認、stale、Conflict、適用範囲不一致の情報へ依存する場合は `critical` を返します。
 
 多数の低重要度memoが未確認でも、それだけでcritical dependencyを希釈しません。
+
+## Human review mutation candidate
+
+SUI等のhuman review UIからappend-only review historyへ戻すため、Referenceには副作用のないreview mutation candidateを追加しています。
+
+command identity:
+
+- semantic contract: `tei.epistemic-review-command/v0`
+- representation schema: `tei.reference.epistemic-review-command/v0`
+
+mutation result:
+
+- semantic contract: `tei.epistemic-review-mutation/v0`
+- representation schema: `tei.reference.epistemic-review-mutation/v0`
+
+confirm / reject / withdraw commandは少なくとも次のpreconditionを持ちます。
+
+- assertion ID
+- expected meaning fingerprint
+- expected target binding
+- expected review log sequence
+- reviewer / event ID / occurredAt
+
+meaning、target、review sequenceのいずれかがUI表示後に変わっていれば古いcommandを拒否します。これにより、別surfaceで編集やreviewが行われた後に、古い画面から確認を重ねるlost updateを避けます。
+
+confirm / rejectではmetadataがcompleteであり、targetがambiguous / detachedではなく、現在contextがcompatibleであることも要求します。withdrawは既存確認を外す操作なので、contentの再確認とは分けます。
+
+meaning fingerprintやtarget binding preconditionはsemantic identityの証明ではありません。Reviewer IDも組織Authorityを与えません。
+
+CLIでは次のside-effect-free modeを使えます。
+
+```bash
+go run ./tools/reference-epistemic-knowledge \
+  -corpus corpus.json \
+  -context context.json \
+  -review-command review-command.json
+```
+
+元corpusファイルを直接書き換えず、updated corpus、appended event、再評価Projectionを含むmutation resultを返します。storageへの永続化とmulti-surface commitはproduction adapterの責務です。
 
 ## review request handoff
 
@@ -267,7 +314,7 @@ schema
 - arbitrary proseからのsemantic meaning fingerprint生成
 - reviewer / stakeholderの正式な組織Authority解決
 - Semantic Extension / Pluginとしてのproduction registration
-- review eventのdurable persistence / multi-surface merge
+- review eventのdurable persistence / multi-surface commit・merge
 - arbitrary documentからtarget surface / selector候補を生成するproduction resolver
 - coverage area / mappingを自動抽出して意味的完全性を証明する仕組み
 - transport candidateを実Provider / storage / connectorへ接続するadapter
