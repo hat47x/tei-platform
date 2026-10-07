@@ -568,6 +568,8 @@ func buildDataDesignContext(
 						"target-membership-exclusivity",
 						"identifier-stability",
 						"temporal-validity",
+						"history-version-identity",
+						"identifier-reuse-policy",
 					},
 				}
 				identityCandidate.Fingerprint = businessIdentityCandidateFingerprint(identityCandidate)
@@ -585,6 +587,8 @@ func buildDataDesignContext(
 						"relation-business-meaning",
 						"target-membership-exclusivity",
 						"temporal-validity",
+						"history-version-identity",
+						"temporal-dependency-scope",
 					},
 				}
 				fdCandidate.Fingerprint = functionalDependencyCandidateFingerprint(fdCandidate)
