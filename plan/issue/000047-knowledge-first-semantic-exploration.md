@@ -353,7 +353,7 @@ Data Design Contextには、判断材料として使ったData、Attribute、Rel
 
 Context再利用では、Evidenceの揃い方と構造解決の一意性を分ける。`evidenceCoverageStatus=complete|incomplete`は必要subjectのSource Evidenceが揃っているかだけを表し、`resolutionStatus=resolved|ambiguous`はCanonical ID / Persistence Mapping等の構造解決が一意かだけを表す。業務意味がすべて確定したことを`resolved`の意味にはしない。cached Contextのexact fingerprint guardは、`resolutionStatus=resolved`かつEvidence completeの場合だけ通す。Evidenceが揃っていてもduplicate Semantic IDやduplicate Persistence Mappingが残るContextは再利用しない。
 
-構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げた。その後、Data全体の`temporalHistoryConditions`とEvidence questionをJSON contractへ追加したため、current revisionは`tei.knowledge.data-design/v3`とする。fingerprint自体にもprojection revisionが含まれるため、v1 / v2 cacheをv3へ黙って持ち越さない。
+構造解決状態を追加した段階ではData Design Projection revisionを`tei.knowledge.data-design/v2`へ上げ、その後、Data全体の`temporalHistoryConditions`とEvidence questionを追加してv3とした。さらにbusiness identity候補とfunctional dependency候補へ個別fingerprintを追加したため、current revisionは`tei.knowledge.data-design/v4`とする。fingerprint自体にもprojection revisionが含まれるため、v1〜v3 cacheをv4へ黙って持ち越さない。
 
 Data Design Context全体には`projectionRevision`と`fingerprint`も付ける。fingerprintは、正規化・並べ替え後のData Design Context全体から`fingerprint`自身だけを空にして決定論的に生成する。したがって、関連Source Evidenceだけでなく、ambiguity、候補、Persistence Realization、Evidence coverageなどProjectionの意味が変われば値も変わる。無関係なSourceはProjectionへ入らないため、その追加だけではfingerprintを変えない。この値はData設計の正しさやCanonical meaningの同一性を証明するものではなく、AIやStudioがContextを再取得するためのcache identityとして扱う。
 
