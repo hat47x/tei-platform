@@ -281,6 +281,25 @@ func (p BuildPlan) Validate() error {
 	return nil
 }
 
+// BuildPlanInputFingerprint returns a stable fingerprint for every resolved
+// build input except the exact Builder identity. Bootstrap stage1/stage2 use
+// this value to prove they are rebuilding the same target with the same
+// sources, recipe, dependencies and parameters while intentionally changing
+// only the builder that performs the build.
+func BuildPlanInputFingerprint(p BuildPlan) (string, error) {
+	if err := p.Validate(); err != nil {
+		return "", err
+	}
+	n := NormalizeBuildPlan(p)
+	n.Builder = BuilderIdentity{}
+	b, err := json.Marshal(n)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), nil
+}
+
 // BuildPlanFingerprint returns the stable fingerprint for the exact resolved
 // build inputs. Slice declaration order does not affect the result.
 func BuildPlanFingerprint(p BuildPlan) (string, error) {
