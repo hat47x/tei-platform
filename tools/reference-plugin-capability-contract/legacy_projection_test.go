@@ -233,7 +233,7 @@ func TestLegacyBuiltinProjectionExposesMissingImplementationIdentity(t *testing.
 		Contracts:   []Contract{contract},
 		Providers:   []Provider{provider},
 	})
-	if err == nil || !strings.Contains(err.Error(), "exact implementation artifact digest") {
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
 		t.Fatalf("legacy builtin without exact implementation identity was accepted: %v", err)
 	}
 }
