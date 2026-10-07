@@ -6,7 +6,12 @@ import (
 	"strings"
 )
 
-const targetCapabilityPackagingPlanSchema = "tei.reference.target-capability-packaging-plan/v0"
+const (
+	targetCapabilityPackagingPlanSchema =
+		"tei.reference.target-capability-packaging-plan/v0"
+	targetCapabilityPackagingPlanAuthority =
+		"derived-packaging-not-runtime-authority"
+)
 
 type TargetPackagingProviderRef struct {
 	PluginID                         string `json:"pluginId"`
@@ -27,6 +32,7 @@ type TargetPackagingArtifact struct {
 
 type TargetCapabilityPackagingPlan struct {
 	Schema                 string                    `json:"schema"`
+	Authority              string                    `json:"authority"`
 	Scope                  AuthorityScope            `json:"scope"`
 	Target                 string                    `json:"target"`
 	LogicalProviderCount   int                       `json:"logicalProviderCount"`
@@ -160,6 +166,7 @@ func buildTargetCapabilityPackagingPlan(
 
 	plan := TargetCapabilityPackagingPlan{
 		Schema:                targetCapabilityPackagingPlanSchema,
+		Authority:             targetCapabilityPackagingPlanAuthority,
 		Scope:                 scope,
 		Target:                target,
 		LogicalProviderCount:  len(providerKeys),
@@ -201,6 +208,12 @@ func validateTargetCapabilityPackagingPlan(
 	if plan.Schema != targetCapabilityPackagingPlanSchema {
 		return fmt.Errorf(
 			"target packaging schema %q is not supported", plan.Schema,
+		)
+	}
+	if plan.Authority != targetCapabilityPackagingPlanAuthority {
+		return fmt.Errorf(
+			"target packaging authority %q is not supported",
+			plan.Authority,
 		)
 	}
 	if !plan.Scope.Valid() ||
