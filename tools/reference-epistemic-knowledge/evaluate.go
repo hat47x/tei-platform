@@ -92,6 +92,7 @@ type ReviewRequest struct {
 }
 
 type Projection struct {
+	Contract        string          `json:"contract"`
 	Schema          string          `json:"schema"`
 	Context         ContextQuery    `json:"context"`
 	Assessments     []Assessment    `json:"assessments"`
@@ -151,8 +152,9 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 	}
 
 	out := Projection{
-		Schema:  projectionSchema,
-		Context: context,
+		Contract: projectionContract,
+		Schema:   projectionSchema,
+		Context:  context,
 		AuthorityLimits: []string{
 			"assessment-does-not-assert-objective-truth",
 			"assessment-does-not-grant-canonical-acceptance",
