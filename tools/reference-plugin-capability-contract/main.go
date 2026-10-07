@@ -34,6 +34,7 @@ type Contract struct {
 	RequestSemantics   string `json:"requestSemantics"`
 	ResultSemantics    string `json:"resultSemantics"`
 	FailureSemantics   string `json:"failureSemantics"`
+	UnknownSemantics   string `json:"unknownSemantics"`
 	ConformanceProfile string `json:"conformanceProfile"`
 }
 
@@ -171,7 +172,8 @@ func compatibleContracts(contracts []Contract, requirement Requirement) ([]Contr
 	seen := map[string]struct{}{}
 	for _, contract := range contracts {
 		if contract.ID == "" || contract.Version == "" || contract.RequestSemantics == "" ||
-			contract.ResultSemantics == "" || contract.FailureSemantics == "" || contract.ConformanceProfile == "" {
+			contract.ResultSemantics == "" || contract.FailureSemantics == "" ||
+			contract.UnknownSemantics == "" || contract.ConformanceProfile == "" {
 			return nil, fmt.Errorf("invalid capability contract %+v", contract)
 		}
 		version, err := parseVersion(contract.Version)
@@ -673,6 +675,7 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 	if lock.Contract.RequestSemantics == "" ||
 		lock.Contract.ResultSemantics == "" ||
 		lock.Contract.FailureSemantics == "" ||
+		lock.Contract.UnknownSemantics == "" ||
 		lock.Contract.ConformanceProfile == "" {
 		return fmt.Errorf("capability lock contract is incomplete")
 	}
