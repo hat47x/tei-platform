@@ -63,8 +63,9 @@ type PublicationReceipt struct {
 	ElementCounts       map[string]int            `json:"elementCounts"`
 	AttributeNameCounts map[string]map[string]int `json:"attributeNameCounts"`
 	UnknownElements     map[string]int            `json:"unknownElements,omitempty"`
-	LocatorDigests      []string                  `json:"locatorDigests"`
-	Facts               []PublishedFact           `json:"facts,omitempty"`
+	LocatorCount          int                       `json:"locatorCount"`
+	LocatorSetFingerprint string                    `json:"locatorSetFingerprint"`
+	Facts                 []PublishedFact           `json:"facts,omitempty"`
 	Unresolved          []PublishedIssue          `json:"unresolved,omitempty"`
 	AuthorityLimits     []string                  `json:"authorityLimits"`
 	ReceiptFingerprint  string                    `json:"receiptFingerprint"`
@@ -194,6 +195,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			"publication-receipt-does-not-contain-source-values-or-source-text",
 		},
 	}
+	var locatorDigests []string
 	for _, node := range doc.Nodes {
 		receipt.ElementCounts[node.Kind]++
 		if receipt.AttributeNameCounts[node.Kind] == nil {
@@ -205,7 +207,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 		if !node.Known {
 			receipt.UnknownElements[node.Kind]++
 		}
-		receipt.LocatorDigests = append(receipt.LocatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
+		locatorDigests = append(locatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
 	}
 	for _, fact := range doc.Facts {
 		receipt.Facts = append(receipt.Facts, PublishedFact{
@@ -222,7 +224,9 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	if len(receipt.UnknownElements) == 0 {
 		receipt.UnknownElements = nil
 	}
-	sort.Strings(receipt.LocatorDigests)
+	sort.Strings(locatorDigests)
+	receipt.LocatorCount = len(locatorDigests)
+	receipt.LocatorSetFingerprint = fingerprint(locatorDigests)
 	sort.Slice(receipt.Facts, func(i, j int) bool {
 		if receipt.Facts[i].LocatorDigest != receipt.Facts[j].LocatorDigest {
 			return receipt.Facts[i].LocatorDigest < receipt.Facts[j].LocatorDigest
