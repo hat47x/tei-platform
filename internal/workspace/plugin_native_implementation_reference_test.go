@@ -20,7 +20,10 @@ import (
 	"tei/internal/workspace"
 )
 
-const nativeReferenceBuilderDigest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+const (
+	nativeReferenceBuilderDigest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	nativeReferenceEngineDigest  = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+)
 
 func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *testing.T) {
 	root := repoRoot(t)
@@ -132,6 +135,21 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 	if err != nil {
 		t.Fatal(err)
 	}
+	engine := pruntime.RuntimeEngineIdentity{
+		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		Version:              "reference-test",
+		ContractVersion:      "tei.runtime-engine/static-response-v1",
+		ImplementationDigest: nativeReferenceEngineDigest,
+		Target:               "host/reference",
+	}
+	plan, err = pruntime.BindBuiltinRuntimeEngine(
+		plan,
+		plugin.Identity{ID: realizedDefinition.ID, Version: realizedDefinition.Version},
+		engine,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	builtin, err := pluginbuiltin.New(firstBytes, realizedDefinition)
 	if err != nil {
@@ -143,6 +161,7 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 				Builtin:              builtin,
 				BuildPlanFingerprint: lockedBuild.PlanFingerprint,
 				RealizationDigest:    firstDigest,
+				RuntimeEngine:        engine,
 			},
 		},
 	}
@@ -166,10 +185,15 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 	if got.ActionID != command.ActionID || got.IdempotencyKey != command.IdempotencyKey {
 		t.Fatalf("request identity was not preserved by adapter: %#v", got)
 	}
+	engineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(engine)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.PluginInvocation == nil ||
 		got.PluginInvocation.BuildPlanFingerprint != lockedBuild.PlanFingerprint ||
-		got.PluginInvocation.RealizationDigest != firstDigest {
-		t.Fatalf("build realization provenance: %#v", got.PluginInvocation)
+		got.PluginInvocation.RealizationDigest != firstDigest ||
+		got.PluginInvocation.RuntimeEngineFingerprint != engineFingerprint {
+		t.Fatalf("build realization/runtime engine provenance: %#v", got.PluginInvocation)
 	}
 	if err := pruntime.ValidateDeploymentInvocation(plan, core.MustCanonicalID("runtime.native_reference"), got.PluginInvocation); err != nil {
 		t.Fatal(err)
