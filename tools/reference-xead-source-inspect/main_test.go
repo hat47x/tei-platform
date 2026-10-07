@@ -44,6 +44,9 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	if got.RelationalResolutionStatus != "resolved" {
 		t.Fatalf("valid relational source was marked unresolved: %#v", got)
 	}
+	if got.RelationalResolutionPolicyRevision != xeadsource.RelationalResolutionPolicyRevision {
+		t.Fatalf("resolution policy revision=%q", got.RelationalResolutionPolicyRevision)
+	}
 	if got.RelationalFactResolutions.Total != 3 ||
 		got.RelationalFactResolutions.Resolved != 3 ||
 		got.RelationalFactResolutions.Unresolved != 0 ||
