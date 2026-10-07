@@ -13,9 +13,9 @@ func TestPluginImplementationLoaderRejectsMissingPluginDefinition(t *testing.T) 
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
 sources:
-  - implementations
+  - plugin-implementations
 `)
-	writePluginImplementationWorkspaceFile(t, root, "implementations/missing/1.0.0/implementation.tei", `plugin-implementation tei.missing v1.0.0 {
+	writePluginImplementationWorkspaceFile(t, root, "plugin-implementations/missing/1.0.0/implementation.tei", `plugin-implementation tei.missing v1.0.0 {
     profile static-response-v1
     capability deployment-executor runtime.missing
     operation execute json { {"attemptId":"a","outcome":"accepted"} }
@@ -33,7 +33,7 @@ func TestPluginImplementationLoaderRejectsCapabilityMismatch(t *testing.T) {
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
 sources:
   - plugins
-  - implementations
+  - plugin-implementations
 `)
 	writePluginImplementationWorkspaceFile(t, root, "plugins/example/1.0.0/plugin.tei", `plugin tei.example v1.0.0 {
     runtime builtin
@@ -42,7 +42,7 @@ sources:
     }
 }
 `)
-	writePluginImplementationWorkspaceFile(t, root, "implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
+	writePluginImplementationWorkspaceFile(t, root, "plugin-implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
     profile static-response-v1
     capability deployment-executor runtime.other
     operation execute json { {"attemptId":"a","outcome":"accepted"} }
@@ -72,7 +72,7 @@ func TestPluginImplementationLoaderRejectsPredeclaredArtifact(t *testing.T) {
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
 sources:
   - plugins
-  - implementations
+  - plugin-implementations
 `)
 	writePluginImplementationWorkspaceFile(t, root, "plugins/example/1.0.0/plugin.tei", `plugin tei.example v1.0.0 {
     runtime builtin
@@ -84,7 +84,7 @@ sources:
     }
 }
 `)
-	writePluginImplementationWorkspaceFile(t, root, "implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
+	writePluginImplementationWorkspaceFile(t, root, "plugin-implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
     profile static-response-v1
     capability deployment-executor runtime.expected
     operation execute json { {"attemptId":"a","outcome":"accepted"} }
