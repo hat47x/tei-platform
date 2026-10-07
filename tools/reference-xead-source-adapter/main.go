@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 )
@@ -103,7 +105,31 @@ var knownElements = map[SourceFormat]map[string]struct{}{
 	),
 }
 
-func main() {}
+func main() {
+	formatFlag := flag.String("format", "", "source format: xead or xeaf")
+	inputFlag := flag.String("input", "", "path to the source XML")
+	flag.Parse()
+	if *formatFlag == "" || *inputFlag == "" {
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file>")
+		os.Exit(2)
+	}
+	content, err := os.ReadFile(*inputFlag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	doc, err := Observe(SourceFormat(*formatFlag), content)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(PublicReceipt(doc)); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+}
 
 func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 	if _, ok := knownElements[format]; !ok {
