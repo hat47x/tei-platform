@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-source-adapter-r0",
+  "status": "candidate-focused-pass",
+  "issue": 950,
+  "sourceAdapter": {
+    "branch": "research/reference-model-transfer-gate",
+    "head": "965b03db4482e19268763079e9e20b814329d8ff",
+    "files": {
+      "tools/reference-xead-source-adapter/main.go": "7e31e9bacb153b3752d9ec27c49948eccd488320",
+      "tools/reference-xead-source-adapter/main_test.go": "58308cc3f4cc77e64d8676a75aa74f5a1d10b9f1",
+      "tools/reference-xead-source-adapter/contract_coverage.go": "71944ea5fd8312975c7dbec79742529ae0e59857",
+      "tools/reference-xead-source-adapter/contract_coverage_test.go": "05b46b167e9df6fd1b4c035023ec54e4c2ab11e6"
+    }
+  },
+  "focusedValidation": {
+    "goVersion": "go1.23.2 linux/amd64",
+    "gofmtDriftFiles": 0,
+    "goTest": "PASS",
+    "testCommand": "go test -count=1 ./...",
+    "scope": "standalone source-adapter Reference package, not full TEI repository",
+    "fullRepositoryHealthCheck": "NOT_RUN"
+  },
+  "exactSourceObservations": {
+    "xead": {
+      "sha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+      "elementCount": 8718,
+      "unknownElementCount": 0,
+      "markupCounts": {
+        "processing-instruction": 1
+      },
+      "sourceFactCount": 359,
+      "sourceFactTypes": {
+        "legacy-table-key": 110,
+        "legacy-key-field-membership": 169,
+        "legacy-relationship-key-reference": 80
+      },
+      "receiptFingerprint": "sha256:cc20223d18f89ba7904a025775cd73fc6ffc738292ac640ba42c8ada3fd5f941"
+    },
+    "xeaf": {
+      "sha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
+      "elementCount": 4053,
+      "unknownElementCount": 0,
+      "markupCounts": {
+        "processing-instruction": 1
+      },
+      "sourceFactCount": 407,
+      "sourceFactTypes": {
+        "legacy-function-selection-key": 158,
+        "legacy-detail-key-binding": 83,
+        "runtime-table-key": 72,
+        "runtime-reference-key-binding": 94
+      },
+      "receiptFingerprint": "sha256:cc9b8098db95b6ec63a663b5176547fd67d7e68205c7c8c84219f4aaee7d75df"
+    }
+  },
+  "classificationCoverage": {
+    "transcriptionContractBlob": "6e658b10b526a6a5b84f7e9adcf7355ecbaeb375",
+    "xead": {
+      "observedKinds": 30,
+      "mappedObservedKinds": 30,
+      "unknownObservedElements": 0,
+      "complete": true
+    },
+    "xeaf": {
+      "observedKinds": 21,
+      "mappedObservedKinds": 21,
+      "unknownObservedElements": 0,
+      "complete": true
+    },
+    "authority": "mapping coverage only; not semantic acceptance, behavior equivalence, or runtime authority"
+  },
+  "publicationBoundary": {
+    "originalModelIncluded": false,
+    "rawObservedDocumentIncluded": false,
+    "sourceAttributeValuesIncluded": false,
+    "sourceTextIncluded": false,
+    "fullLocatorListIncluded": false,
+    "publicEvidence": "digests, aggregate counts, receipt fingerprints, fact type counts, authority limits"
+  },
+  "claimsNotEstablished": [
+    "full repository health check PASS",
+    "production Source Adapter Plugin contract",
+    "semantic transcription complete",
+    "original X-TEA runtime behavior equivalence",
+    "Reference Model publication permission beyond the separately owned #941 boundary"
+  ]
+}
