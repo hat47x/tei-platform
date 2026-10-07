@@ -37,6 +37,8 @@ type PluginInvocation struct {
 	PluginID                  core.CanonicalID             `json:"pluginId"`
 	PluginVersion             string                       `json:"pluginVersion"`
 	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
+	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
+	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
 	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
 	RuntimePolicyFingerprint  string                       `json:"runtimePolicyFingerprint,omitempty"`
 	ArtifactDigest            string                       `json:"artifactDigest,omitempty"`
