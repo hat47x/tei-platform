@@ -172,3 +172,14 @@ Runtime Engineのexact identity、engine drift検知、native Host / Web / Wasm�
 - Web / Wasm engineとのportable bindingが成立した
 
 E3が確認するのは、TEI-native Sourceをdeterministicなinterpreted realizationへ変換し、Build trace付きHost acceptanceを通して既存Runtime ABIから実行できることまでです。
+
+
+### exact native builder
+
+E3 runnerはTEI-native realizationをrunner内部のhelperから直接生成しません。`tools/reference-native-plugin-builder`を隔離したGo build stateで2回buildし、builder binaryのSHA-256 digest一致を確認します。
+
+そのexact builder binary digestをnative Build Planの`BuilderIdentity.ArtifactDigest`へ入れます。Builder versionにはRepository revisionを使います。
+
+その後、first builderとsecond builderからrealizationを各1回生成し、artifact bytesとdigestが一致することを要求します。
+
+Go toolchainはnative PluginそのもののBuilder artifactとは扱わず、このReference builderを生成するstage0 seed側のEvidenceとして残します。これでもSB-3 convergenceが成立したことにはなりません。
