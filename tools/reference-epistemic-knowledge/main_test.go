@@ -60,19 +60,21 @@ func TestReferenceSeparatesOriginReviewContextFreshnessAndConflict(t *testing.T)
 	}
 
 	user := assessmentByID(t, projection, "user-current")
-	if user.UseState != "premise" || user.ReviewValidity != "native" ||
-		user.ContextCompatibility != "compatible" {
-		t.Fatalf("user current-context fact was not preserved as native premise: %+v", user)
+	if user.UseState != "premise" || user.ConfirmationState != "unreviewed" ||
+		user.ReviewBinding != "none" || user.ContextCompatibility != "compatible" ||
+		!hasReason(user, "DIRECT_USER_WORKING_PREMISE") {
+		t.Fatalf("user current-context fact was not preserved as an unconfirmed scoped working premise: %+v", user)
 	}
 
 	ai := assessmentByID(t, projection, "ai-unreviewed")
-	if ai.UseState != "candidate-only" || ai.ReviewValidity != "unreviewed" ||
+	if ai.UseState != "candidate-only" || ai.ConfirmationState != "unreviewed" ||
 		!hasReason(ai, "ASSERTION_UNREVIEWED") {
 		t.Fatalf("AI assertion was silently promoted: %+v", ai)
 	}
 
 	conditional := assessmentByID(t, projection, "conditional-production")
-	if conditional.UseState != "premise" || conditional.ReviewValidity != "valid" ||
+	if conditional.UseState != "premise" || conditional.ConfirmationState != "confirmed" ||
+		conditional.ReviewBinding != "current" || len(conditional.ReviewConditions) != 1 ||
 		conditional.ContextCompatibility != "compatible" {
 		t.Fatalf("conditional reviewed fact was not usable in matching scope: %+v", conditional)
 	}
@@ -84,14 +86,16 @@ func TestReferenceSeparatesOriginReviewContextFreshnessAndConflict(t *testing.T)
 	}
 
 	superseded := assessmentByID(t, projection, "superseded-design")
-	if superseded.UseState != "blocked" || superseded.ReviewValidity != "superseded" ||
+	if superseded.UseState != "blocked" || superseded.LifecycleState != "superseded" ||
+		superseded.ConfirmationState != "confirmed" ||
 		len(superseded.SupersededBy) != 1 || superseded.SupersededBy[0] != "superseding-design" ||
 		!hasReason(superseded, "SUPERSEDED_BY_RELATION") {
 		t.Fatalf("superseded assertion remained usable or lost relation provenance: %+v", superseded)
 	}
 
 	rejected := assessmentByID(t, projection, "rejected-claim")
-	if rejected.UseState != "blocked" || rejected.ReviewValidity != "rejected" {
+	if rejected.UseState != "blocked" || rejected.ConfirmationState != "rejected" ||
+		rejected.LatestReviewEventKind != ReviewEventReject {
 		t.Fatalf("rejected assertion remained usable: %+v", rejected)
 	}
 
@@ -143,7 +147,8 @@ func TestSemanticEditInvalidatesReviewBindingWithoutChangingOrigin(t *testing.T)
 		t.Fatal(err)
 	}
 	edited := assessmentByID(t, projection, "human-reviewed")
-	if edited.ReviewValidity != "stale" || edited.UseState != "review-required" ||
+	if edited.ConfirmationState != "unreviewed" || edited.ReviewBinding != "stale" ||
+		edited.UseState != "review-required" ||
 		!hasReason(edited, "REVIEW_BINDING_STALE") {
 		t.Fatalf("semantic edit inherited old review: %+v", edited)
 	}
@@ -162,7 +167,6 @@ func TestKnowledgeHealthWeightsCriticalDependenciesInsteadOfReviewRatio(t *testi
 			Origin:             OriginAI,
 			IngestedBy:         IngestedByAI,
 			Mode:               ModeFact,
-			ReviewState:        ReviewUnreviewed,
 			Context: []ScopeBinding{{
 				Dimension: "project", Value: "tei", Provenance: ScopeDeclared,
 			}},
@@ -244,24 +248,28 @@ func TestCLIEmitsMachineReadableProjection(t *testing.T) {
 	}
 }
 
-func TestAIAssertionCannotUseNativeUserFactState(t *testing.T) {
+func TestAIOriginIngestedByUserDoesNotBecomeDirectUserPremise(t *testing.T) {
 	corpus, context := loadFixture(t)
 	corpus.Assertions = append(corpus.Assertions, Assertion{
-		ID:                 "invalid-ai-native",
-		Target:             TargetRef{Kind: "claim", ID: "invalid"},
-		Text:               "AI output should not be native by persistence alone.",
+		ID:                 "pasted-ai-without-review",
+		Target:             TargetRef{Kind: "claim", ID: "pasted-ai-without-review"},
+		Text:               "AI output pasted by the user remains AI-origin content.",
 		MeaningFingerprint: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
 		Origin:             OriginAI,
 		IngestedBy:         IngestedByUser,
 		Mode:               ModeFact,
-		ReviewState:        ReviewNative,
 		Context: []ScopeBinding{{
 			Dimension: "project", Value: "tei", Provenance: ScopeDeclared,
 		}},
 	})
-	if _, err := evaluateCorpus(corpus, context); err == nil ||
-		!strings.Contains(err.Error(), "direct user content") {
-		t.Fatalf("AI-origin content ingested by a user became native: %v", err)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "pasted-ai-without-review")
+	if got.UseState != "candidate-only" || got.ConfirmationState != "unreviewed" ||
+		hasReason(got, "DIRECT_USER_WORKING_PREMISE") {
+		t.Fatalf("AI-origin content ingested by user became a direct-user premise: %+v", got)
 	}
 }
 
@@ -285,15 +293,15 @@ func TestMissingContextDimensionDoesNotGeneralize(t *testing.T) {
 	}
 }
 
-func TestReviewedAssertionRequiresHumanConfirmationMethod(t *testing.T) {
+func TestReviewEventRequiresHumanReviewMethod(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
-		if corpus.Assertions[i].ID == "human-reviewed" && corpus.Assertions[i].Review != nil {
-			corpus.Assertions[i].Review.Method = "ai-self-review"
+		if corpus.Assertions[i].ID == "human-reviewed" && len(corpus.Assertions[i].ReviewEvents) > 0 {
+			corpus.Assertions[i].ReviewEvents[0].Method = "ai-self-review"
 		}
 	}
 	if _, err := evaluateCorpus(corpus, context); err == nil ||
-		!strings.Contains(err.Error(), "human-confirmation") {
+		!strings.Contains(err.Error(), "human-review") {
 		t.Fatalf("non-human review method was accepted: %v", err)
 	}
 }
@@ -363,7 +371,6 @@ func TestUserPastedAIContentRetainsAIProvenance(t *testing.T) {
 		Origin:             OriginAI,
 		IngestedBy:         IngestedByUser,
 		Mode:               ModeFact,
-		ReviewState:        ReviewUnreviewed,
 		Context: []ScopeBinding{{
 			Dimension: "project", Value: "tei", Provenance: ScopeDeclared,
 		}},
@@ -374,7 +381,7 @@ func TestUserPastedAIContentRetainsAIProvenance(t *testing.T) {
 	}
 	got := assessmentByID(t, projection, "pasted-ai-content")
 	if got.ContentOrigin != OriginAI || got.IngestedBy != IngestedByUser ||
-		got.ReviewValidity != "unreviewed" || got.UseState != "candidate-only" {
+		got.ConfirmationState != "unreviewed" || got.UseState != "candidate-only" {
 		t.Fatalf("pasted AI content lost source provenance or was promoted: %+v", got)
 	}
 }
@@ -398,5 +405,117 @@ func TestContextProvenanceDistinguishesObservedDeclaredAndInferred(t *testing.T)
 	}
 	if !foundDeclared || !foundInferred {
 		t.Fatalf("fixture must preserve declared and inferred context provenance")
+	}
+}
+
+func TestReviewHistoryDerivesCurrentConfirmationWithoutOverwritingEvents(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		assertion := &corpus.Assertions[i]
+		assertion.ReviewEvents = append(assertion.ReviewEvents,
+			ReviewEvent{
+				Sequence: 2,
+				ID: "reject-main-branch",
+				Kind: ReviewEventReject,
+				Reviewer: "reviewer-b",
+				Method: reviewMethodHuman,
+				MeaningFingerprint: assertion.MeaningFingerprint,
+				OccurredAt: "2026-10-06T13:00:00Z",
+			},
+			ReviewEvent{
+				Sequence: 3,
+				ID: "reconfirm-main-branch",
+				Kind: ReviewEventConfirm,
+				Reviewer: "reviewer-c",
+				Method: reviewMethodHuman,
+				MeaningFingerprint: assertion.MeaningFingerprint,
+				OccurredAt: "2026-10-06T14:00:00Z",
+			},
+		)
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "confirmed" ||
+		got.ReviewEventCount != 3 ||
+		got.LatestReviewEventID != "reconfirm-main-branch" ||
+		got.LatestReviewEventKind != ReviewEventConfirm ||
+		got.UseState != "premise" {
+		t.Fatalf("current confirmation was not derived from full review history: %+v", got)
+	}
+}
+
+func TestConfirmationWithdrawalPreservesHistoryAndReturnsExternalFactToCandidate(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		assertion := &corpus.Assertions[i]
+		assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
+			Sequence: 2,
+			ID: "withdraw-main-branch-confirmation",
+			Kind: ReviewEventWithdraw,
+			Reviewer: "reviewer-b",
+			Method: reviewMethodHuman,
+			MeaningFingerprint: assertion.MeaningFingerprint,
+			OccurredAt: "2026-10-06T13:00:00Z",
+		})
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "unreviewed" ||
+		got.ReviewBinding != "current" ||
+		got.LatestReviewEventKind != ReviewEventWithdraw ||
+		got.ReviewEventCount != 2 ||
+		got.UseState != "candidate-only" ||
+		!hasReason(got, "CONFIRMATION_WITHDRAWN") {
+		t.Fatalf("confirmation withdrawal was not preserved as history: %+v", got)
+	}
+}
+
+func TestReviewHistoryRejectsDuplicateSequence(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		assertion := &corpus.Assertions[i]
+		assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
+			Sequence: 1,
+			ID: "duplicate-sequence",
+			Kind: ReviewEventReject,
+			Reviewer: "reviewer-b",
+			Method: reviewMethodHuman,
+			MeaningFingerprint: assertion.MeaningFingerprint,
+			OccurredAt: "2026-10-06T13:00:00Z",
+		})
+	}
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "duplicate review event sequence") {
+		t.Fatalf("duplicate review event sequence was accepted: %v", err)
+	}
+}
+
+func TestDirectUserPremiseIsNotMisreportedAsConfirmed(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "user-current")
+	if got.UseState != "premise" ||
+		got.ConfirmationState != "unreviewed" ||
+		got.ReviewEventCount != 0 ||
+		!hasReason(got, "DIRECT_USER_WORKING_PREMISE") {
+		t.Fatalf("direct user premise was conflated with human confirmation: %+v", got)
 	}
 }
