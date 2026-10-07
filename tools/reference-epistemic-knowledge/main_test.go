@@ -343,7 +343,6 @@ func TestUserDecisionAndConstraintCanBeWorkingPremisesWithoutBecomingCanonicalAu
 			Origin:             OriginUser,
 			IngestedBy:         IngestedByUser,
 			Mode:               tc.mode,
-			ReviewState:        ReviewNative,
 			Context: []ScopeBinding{{
 				Dimension: "project", Value: "tei", Provenance: ScopeDeclared,
 			}},
