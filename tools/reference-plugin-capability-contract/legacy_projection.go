@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"tei/internal/core"
@@ -72,6 +73,11 @@ func projectLegacyCapabilityProvider(
 		)
 	}
 
+	sourceDeclarationFingerprint, err := normalizedLegacyCapabilityFingerprint(matches[0])
+	if err != nil {
+		return Provider{}, err
+	}
+
 	return Provider{
 		PluginID:         string(definition.ID),
 		PluginVersion:    definition.Version,
@@ -80,11 +86,33 @@ func projectLegacyCapabilityProvider(
 			mapping.Kind,
 			mapping.CapabilityID,
 		),
-		ArtifactDigest:      definition.Artifact.Digest,
-		Scope:               mapping.Scope,
+		ArtifactDigest:               definition.Artifact.Digest,
+		SourceDeclarationFingerprint: sourceDeclarationFingerprint,
+		Scope:                        mapping.Scope,
 		ContractID:          mapping.Contract.ID,
 		ContractVersion:     mapping.Contract.Version,
 		ContractFingerprint: fingerprint(mapping.Contract),
 		ConformanceProfile:  mapping.Contract.ConformanceProfile,
 	}, nil
+}
+
+
+func normalizedLegacyCapabilityFingerprint(
+	value plugin.Capability,
+) (string, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", fmt.Errorf("legacy capability declaration cannot be encoded: %w", err)
+	}
+	var clone plugin.Capability
+	if err := json.Unmarshal(encoded, &clone); err != nil {
+		return "", fmt.Errorf("legacy capability declaration cannot be cloned: %w", err)
+	}
+	normalized := plugin.NormalizeDefinition(plugin.Definition{
+		Provides: []plugin.Capability{clone},
+	})
+	if len(normalized.Provides) != 1 {
+		return "", fmt.Errorf("legacy capability normalization lost declaration")
+	}
+	return fingerprint(normalized.Provides[0]), nil
 }
