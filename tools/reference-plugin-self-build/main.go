@@ -41,7 +41,7 @@ const (
 	nativePluginID         = "tei.native.runtime.reference"
 	nativePluginVersion    = "1.0.0"
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
-	nativeImplementation   = "reference/plugin-self-build/workspace/implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
+	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
 )
 
 type evidence struct {
