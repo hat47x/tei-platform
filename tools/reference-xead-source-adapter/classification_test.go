@@ -107,11 +107,35 @@ func TestNamespacedLookalikeDoesNotHideBehindMappedLocalName(t *testing.T) {
 	}
 	for _, kind := range projection.Kinds {
 		if kind.Kind == "Table" {
-			if kind.MappingStatus != "mixed" || kind.UnresolvedObservedCount != 1 || kind.ObservedCount != 2 {
+			if kind.MappingStatus != "mixed" || kind.MappedObservedCount != 1 || kind.UnresolvedObservedCount != 1 || kind.ObservedCount != 2 {
 				t.Fatalf("namespaced lookalike was hidden by mapped local name: %+v", kind)
 			}
 			return
 		}
+	}
+	t.Fatal("Table classification missing")
+}
+
+func TestNamespacedOnlyLookalikeDoesNotPublishKnownMappingClassification(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><x:Table/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), classificationContractFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range projection.Kinds {
+		if kind.Kind != "Table" {
+			continue
+		}
+		if kind.MappingStatus != "unmapped" || kind.MappedObservedCount != 0 || kind.UnresolvedObservedCount != 1 {
+			t.Fatalf("namespaced-only lookalike mapping status=%+v", kind)
+		}
+		if len(kind.Classification) != 0 || kind.Extension != "" {
+			t.Fatalf("known local-name mapping leaked onto unknown namespace observation: %+v", kind)
+		}
+		return
 	}
 	t.Fatal("Table classification missing")
 }
