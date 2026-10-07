@@ -47,7 +47,7 @@ type Provider struct {
 	PluginID                     string         `json:"pluginId"`
 	PluginVersion                string         `json:"pluginVersion"`
 	ImplementationID             string         `json:"implementationId"`
-	RealizationTarget                       string         `json:"realizationTarget,omitempty"`
+	RealizationTarget            string         `json:"realizationTarget,omitempty"`
 	ArtifactDigest               string         `json:"artifactDigest"`
 	SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	Scope                        AuthorityScope `json:"scope"`
@@ -61,7 +61,7 @@ type ConformanceEvidence struct {
 	PluginID                     string `json:"pluginId"`
 	PluginVersion                string `json:"pluginVersion"`
 	ImplementationID             string `json:"implementationId"`
-	RealizationTarget                       string `json:"realizationTarget,omitempty"`
+	RealizationTarget            string `json:"realizationTarget,omitempty"`
 	ArtifactDigest               string `json:"artifactDigest"`
 	SourceDeclarationFingerprint string `json:"sourceDeclarationFingerprint,omitempty"`
 	ContractFingerprint          string `json:"contractFingerprint"`
@@ -77,13 +77,13 @@ type Wiring struct {
 }
 
 type ResolveInput struct {
-	Scope       AuthorityScope        `json:"scope"`
-	RealizationTarget      string                `json:"realizationTarget,omitempty"`
-	Requirement Requirement           `json:"requirement"`
-	Contracts   []Contract            `json:"contracts"`
-	Providers   []Provider            `json:"providers"`
-	Evidence    []ConformanceEvidence `json:"evidence"`
-	Wirings     []Wiring              `json:"wirings,omitempty"`
+	Scope             AuthorityScope        `json:"scope"`
+	RealizationTarget string                `json:"realizationTarget,omitempty"`
+	Requirement       Requirement           `json:"requirement"`
+	Contracts         []Contract            `json:"contracts"`
+	Providers         []Provider            `json:"providers"`
+	Evidence          []ConformanceEvidence `json:"evidence"`
+	Wirings           []Wiring              `json:"wirings,omitempty"`
 }
 
 const (
@@ -94,7 +94,7 @@ const (
 
 type Resolution struct {
 	Scope                 AuthorityScope `json:"scope"`
-	RealizationTarget                string         `json:"realizationTarget,omitempty"`
+	RealizationTarget     string         `json:"realizationTarget,omitempty"`
 	ResolutionPolicy      string         `json:"resolutionPolicy"`
 	Contract              Contract       `json:"contract"`
 	ContractFingerprint   string         `json:"contractFingerprint"`
@@ -104,18 +104,18 @@ type Resolution struct {
 }
 
 type CapabilityResolutionLock struct {
-	Schema                 string         `json:"schema"`
-	Canonicalization       string         `json:"canonicalization"`
-	ResolutionPolicy       string         `json:"resolutionPolicy"`
-	Scope                  AuthorityScope `json:"scope"`
-	RealizationTarget                 string         `json:"realizationTarget,omitempty"`
-	Requirement            Requirement    `json:"requirement"`
-	Wiring                 *Wiring        `json:"wiring,omitempty"`
-	Contract               Contract       `json:"contract"`
-	ContractFingerprint    string         `json:"contractFingerprint"`
-	Provider               Provider       `json:"provider"`
-	ResolutionFingerprint  string         `json:"resolutionFingerprint"`
-	LockFingerprint        string         `json:"lockFingerprint"`
+	Schema                string         `json:"schema"`
+	Canonicalization      string         `json:"canonicalization"`
+	ResolutionPolicy      string         `json:"resolutionPolicy"`
+	Scope                 AuthorityScope `json:"scope"`
+	RealizationTarget     string         `json:"realizationTarget,omitempty"`
+	Requirement           Requirement    `json:"requirement"`
+	Wiring                *Wiring        `json:"wiring,omitempty"`
+	Contract              Contract       `json:"contract"`
+	ContractFingerprint   string         `json:"contractFingerprint"`
+	Provider              Provider       `json:"provider"`
+	ResolutionFingerprint string         `json:"resolutionFingerprint"`
+	LockFingerprint       string         `json:"lockFingerprint"`
 }
 
 func main() {}
