@@ -86,11 +86,13 @@ plugin-implementation tei.native.runtime.reference v1.0.0 {
 
 この最初のprofileは、一つのPluginについて既存`deployment-executor` Capabilityの`execute` operationを一つだけ実装します。filesystem、network、clock、random等のambient inputは持たず、同じSourceとRequestから同じResponseを返します。追加operation、別Capability kind、未定義operationへの呼び出しはerrorです。ほかのCapabilityへ一般化するのは、#951のcallable contract境界を踏まえた後続課題です。
 
-implementation SourceはCanonicalな`ir.World`へ追加しません。Workspaceのphysical implementation sourceとして別に保持し、Source Indexでは`RoleImplementation`として追跡します。Plugin descriptorとimplementation Sourceは別のAuthorityです。
+implementation SourceはCanonicalな`ir.World`へ追加しません。WorkspaceではPlugin専用の`plugin-implementations` source rootに保持し、Source Indexでは`RoleImplementation`として追跡します。Plugin descriptorとimplementation Sourceは別のAuthorityです。
 
 ### realizationとRuntime登録
 
 `static-response-v1` Sourceは正規化した決定論的realization manifestへmaterializeします。そのSHA-256 digestを`runtime-artifact`としてBuildArtifactLockとRuntime Plugin Lock v3へ結び付けます。
+
+Runtime adapterは元のSource objectから直接Builtinを作りません。Lock対象のrealization bytesを再parseし、format version、Source fingerprint、canonical bytes、Runtime Definitionのartifact digestを照合した後だけBuiltinへ変換します。したがってReference上では、Lockしたartifactとは別のSource objectを実行する経路を許しません。
 
 Builtin implementation自身にbuild provenanceを自己申告させません。Host側の`BuiltinRegistration`が次を保持します。
 
