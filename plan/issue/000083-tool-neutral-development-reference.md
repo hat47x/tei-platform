@@ -194,28 +194,62 @@ merged workspace
 
 E2追加後のrunnerも`bash -n`でBash syntaxを再確認しました。また、current `internal/validation.Validate`が同一Canonical IDを`DUPLICATE_SEMANTIC_ELEMENT`として拒否することをsourceから確認しています。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
 
-## E3 — MCP parity
+## E3 — MCP利用とCLI parity
 
-CLI-only E2Eが成立した後で、developer-facing MCPがProduct valueを増す箇所を限定して検討します。
+RQ-034は、TEI自身のdeveloper MCP serverを必須にはしません。
 
-候補は、既存のapplication service / read model / validation operationをMCP transportから呼び出す薄いprojectionです。
+チャット実行環境がMCPを利用する場合、最初の正規経路は次で十分です。
 
 ```text
-CLI ----┐
-        ├-> same application service / semantic operation
-MCP ----┘
+Chat / Agent
+  -> Host-provided Shell / Filesystem / Git MCP
+  -> tei CLI
+  -> existing workspace / knowledgecontext / validation implementation
 ```
 
-MCP用にCanonical解釈、Validation、Knowledge qualification、Authority判定を再実装しません。
+つまり、「MCPを使うこと」と「TEIがMCP serverを実装すること」を分けます。
 
-MCP経由であることは、次の根拠にはなりません。
+### E3-A — Host-mediated CLI
+
+最初に確認するのは、汎用MCPやComputer / Shell capabilityから通常の`tei` CLIを呼ぶだけで、E1 / E2と同じ開発loopを実行できることです。
+
+この経路ではTEI側に新しいtransport、Session model、Adapter stateを追加しません。MCPはHost capabilityであり、TEIのCanonical modelには入りません。
+
+### E3-B — optional native MCP projection
+
+将来、structured request / response、discoverability、latency、typed schema等に明確なProduct valueがある場合だけ、TEI固有のdeveloper MCP projectionを検討します。
+
+current CLI実装を読むと、主要処理は次へ既に分かれています。
+
+- `workspace.Load`
+- `workspace.BuildSourceIndex`
+- `knowledgecontext.Build`
+- `knowledgecontext.QualifyWithSources`
+- `validation.Validate`
+- `workspace.ProjectDiagnostics`
+
+`cmd/tei`側は、これらを組み合わせ、引数検査や出力整形を行う薄い境界です。
+
+そのためnative MCPを追加する場合も、MCP専用parser、MCP専用Knowledge Store、MCP専用Validationを作りません。必要ならCLIとMCPが共有するapplication-level operationを抽出しますが、second frontendが本当に必要になる前から新しいservice layerを先行実装しません。
+
+```text
+                       -> CLI formatter / exit code
+workspace + operation -|
+                       -> optional MCP transport
+```
+
+移行初期にMCP側がCLI subprocessを呼ぶ薄いbridgeを使うことも禁止しません。長期的に共有serviceへ切り出すかは、実測したlatency、error projection、typed transportの必要性から判断します。
+
+### Authority
+
+Host-mediated MCPでもnative MCPでも、MCP経由であることは次の根拠にはなりません。
 
 - Semantic authority
 - Acceptance authority
 - Runtime authority
 - Resource authority
 
-MCP serverが無い環境でもCLI-only pathが成立することを維持します。
+developer MCPが存在しない環境でもCLI-only pathが成立することを維持します。
 
 ## E4 — chat-hosted / coding-agent consumer
 
