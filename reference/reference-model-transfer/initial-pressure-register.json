@@ -276,6 +276,13 @@
       "observed": "Watanabe's temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
       "risk": "reference transfer can promote version/history selectors into business occurrence identity, erase the distinction between an occurrence and its versions, or impose history structure on domains that do not require it",
       "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
+    },
+    {
+      "id": "RMP-040",
+      "topic": "global-fail-closed-vs-local-lowering-readiness",
+      "observed": "a mature reference model can contain one malformed or unresolved relational area while unrelated TableKey, Relationship, runtime Key, or Refer facts remain structurally consistent; treating any single diagnostic as proof that every relational fact is unusable preserves safety but makes full-reference transcription unnecessarily all-or-nothing",
+      "risk": "a global unresolved flag can either block useful independent transfer indefinitely or tempt later code to bypass the global gate wholesale, losing the fail-closed dependency boundary",
+      "teiDirection": "retain a global fail-closed status for full-set lowering, but derive per-fact resolved/unresolved/unvalidated readiness with diagnostic propagation through Key/Relationship dependencies; only locally resolved facts are eligible for deterministic lowering, and local readiness never grants Canonical or business-semantic authority"
     }
   ]
 }
