@@ -39,6 +39,7 @@ type PluginInvocation struct {
 	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
 	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
 	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
+	RuntimeEngineFingerprint string                       `json:"runtimeEngineFingerprint,omitempty"`
 	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
 	RuntimePolicyFingerprint  string                       `json:"runtimePolicyFingerprint,omitempty"`
 	ArtifactDigest            string                       `json:"artifactDigest,omitempty"`
