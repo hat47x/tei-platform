@@ -177,11 +177,14 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 	}
 	var implementationIndexed bool
 	for _, ref := range idx.References {
-		if ref.Subject.Kind == "plugin-implementation" &&
-			ref.Subject.ID == source.Identity() &&
-			ref.Role == sourceindex.RoleImplementation {
+		if ref.Subject.Kind != "plugin-implementation" || ref.Subject.ID != source.Identity() {
+			continue
+		}
+		if ref.Role == sourceindex.RoleDefinition {
+			t.Fatal("TEI-native implementation source must not be indexed as canonical definition")
+		}
+		if ref.Role == sourceindex.RoleImplementation {
 			implementationIndexed = true
-			break
 		}
 	}
 	if !implementationIndexed {
