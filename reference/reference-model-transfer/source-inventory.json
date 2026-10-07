@@ -210,5 +210,22 @@
       "complete": true
     },
     "authority": "mapping entry existence only; this is not semantic acceptance or behavior equivalence"
+  },
+  "xmlLevelCoverage": {
+    "xead": {
+      "comments": 0,
+      "processingInstructions": 1,
+      "directives": 0,
+      "namespacedElements": 0,
+      "note": "processing instruction is the XML declaration in this exact snapshot"
+    },
+    "xeaf": {
+      "comments": 0,
+      "processingInstructions": 1,
+      "directives": 0,
+      "namespacedElements": 0,
+      "note": "processing instruction is the XML declaration in this exact snapshot"
+    },
+    "authority": "snapshot observation only; absence in this benchmark is not a universal Xead/Xeaf rule"
   }
 }
