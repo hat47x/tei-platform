@@ -17,7 +17,18 @@ const (
 	builtinRealizationDigest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	builtinBuilderDigest     = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	builtinSourceDigest      = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	builtinEngineDigest      = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 )
+
+func builtinRuntimeEngine() pruntime.RuntimeEngineIdentity {
+	return pruntime.RuntimeEngineIdentity{
+		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		Version:              "1.0.0",
+		ContractVersion:      "tei.runtime-engine/static-response-v1",
+		ImplementationDigest: builtinEngineDigest,
+		Target:               "host/reference",
+	}
+}
 
 type registeredBuiltin struct {
 	id plugin.Identity
@@ -148,6 +159,15 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	engine := builtinRuntimeEngine()
+	plan, err = pruntime.BindBuiltinRuntimeEngine(
+		plan,
+		plugin.Identity{ID: realized.ID, Version: realized.Version},
+		engine,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	impl := registeredBuiltin{
 		id: plugin.Identity{ID: realized.ID, Version: realized.Version},
@@ -162,6 +182,7 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 			Builtin:              impl,
 			BuildPlanFingerprint: lockedBuild.PlanFingerprint,
 			RealizationDigest:    builtinRealizationDigest,
+			RuntimeEngine:        engine,
 		},
 	}
 }
@@ -193,6 +214,9 @@ func TestBuildBoundBuiltinRejectsRegistrationMismatch(t *testing.T) {
 		}},
 		{"realization digest", func(r *pruntime.BuiltinRegistration) {
 			r.RealizationDigest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+		}},
+		{"runtime engine", func(r *pruntime.BuiltinRegistration) {
+			r.RuntimeEngine.ImplementationDigest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 		}},
 		{"descriptor identity", func(r *pruntime.BuiltinRegistration) {
 			r.Builtin = registeredBuiltin{
@@ -255,6 +279,17 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 	if result.PluginInvocation.RealizationDigest != builtinRealizationDigest {
 		t.Fatalf("realization digest: got %s", result.PluginInvocation.RealizationDigest)
 	}
+	engineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(fx.reg.RuntimeEngine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.PluginInvocation.RuntimeEngineFingerprint != engineFingerprint {
+		t.Fatalf(
+			"runtime engine fingerprint: got %s want %s",
+			result.PluginInvocation.RuntimeEngineFingerprint,
+			engineFingerprint,
+		)
+	}
 	if result.PluginInvocation.DigestVerified {
 		t.Fatal("in-process accepted realization must not pretend external artifact verification occurred")
 	}
@@ -266,6 +301,12 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 	tampered.RealizationDigest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	if err := pruntime.ValidateDeploymentInvocation(fx.plan, core.MustCanonicalID("runtime.native_reference"), &tampered); err == nil {
 		t.Fatal("expected tampered realization provenance to fail")
+	}
+
+	tamperedEngine := *result.PluginInvocation
+	tamperedEngine.RuntimeEngineFingerprint = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	if err := pruntime.ValidateDeploymentInvocation(fx.plan, core.MustCanonicalID("runtime.native_reference"), &tamperedEngine); err == nil {
+		t.Fatal("expected tampered runtime engine provenance to fail")
 	}
 }
 
@@ -325,6 +366,7 @@ func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
 		},
 		BuildPlanFingerprint: fx.reg.BuildPlanFingerprint,
 		RealizationDigest:    fx.reg.RealizationDigest,
+		RuntimeEngine:        fx.reg.RuntimeEngine,
 	}
 	original := swappingBuiltin{
 		id:            fx.reg.Builtin.Identity(),
@@ -338,6 +380,7 @@ func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
 		Builtin:              original,
 		BuildPlanFingerprint: fx.reg.BuildPlanFingerprint,
 		RealizationDigest:    fx.reg.RealizationDigest,
+		RuntimeEngine:        fx.reg.RuntimeEngine,
 	}
 
 	adapter := pruntime.DeploymentExecutor{
@@ -360,5 +403,46 @@ func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
 	}
 	if result.AttemptID != "accepted-original" {
 		t.Fatalf("unexpected builtin instance executed: %#v", result)
+	}
+}
+
+
+func TestBuildBoundBuiltinRequiresRuntimeEngineBinding(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	for i := range fx.plan.Plugins {
+		if fx.plan.Plugins[i].Plugin.ID == core.MustCanonicalID("tei.native.runtime.reference") {
+			fx.plan.Plugins[i].RuntimeEngine = nil
+		}
+	}
+	fx.plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(fx.plan)
+	registry := pruntime.Registry{BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
+		"tei.native.runtime.reference@1.0.0": fx.reg,
+	}}
+	adapter := pruntime.DeploymentExecutor{
+		Plan:         fx.plan,
+		Registry:     registry,
+		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+	}
+	if _, err := adapter.Execute(context.Background(), executor.Command{
+		ActionID:       "app/start",
+		IdempotencyKey: "k-native",
+		Kind:           string(deployment.ActionApplicationStart),
+	}); err == nil {
+		t.Fatal("expected missing runtime engine binding to fail")
+	}
+}
+
+func TestRuntimeEngineBindingChangesRuntimePolicyFingerprint(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	withEngine := fx.plan.RuntimePolicyFingerprint
+	withoutEngine := fx.plan
+	for i := range withoutEngine.Plugins {
+		if withoutEngine.Plugins[i].Plugin.ID == core.MustCanonicalID("tei.native.runtime.reference") {
+			withoutEngine.Plugins[i].RuntimeEngine = nil
+		}
+	}
+	withoutFingerprint := pruntime.PolicyFingerprint(withoutEngine)
+	if withEngine == withoutFingerprint {
+		t.Fatal("runtime engine identity did not affect runtime policy fingerprint")
 	}
 }
