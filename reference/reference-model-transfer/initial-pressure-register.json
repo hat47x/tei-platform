@@ -269,6 +269,13 @@
       "observed": "The initial Source Adapter accounted for XML elements and attributes but not comments, processing instructions, directives, or namespace-qualified lookalikes. The benchmark snapshots contain one processing instruction each (their XML declarations) and no comments/directives/namespaced elements.",
       "risk": "A future or alternate source can carry extension metadata or provenance outside ordinary elements, or a namespaced lookalike can be mistaken for a known Xead/Xeaf construct when only the local element name is checked.",
       "teiDirection": "account for XML markup and namespace-qualified elements explicitly; keep raw markup local, publish count-only evidence, and require unknown/namespaced observations to keep classification coverage incomplete"
+    },
+    {
+      "id": "RMP-042",
+      "topic": "presentation-volume-vs-semantic-context",
+      "observed": "Aggregate transcription accounting assigns 5,629 of 8,718 Xead elements and 3,361 of 4,053 Xeaf elements to the Presentation Extension; Xead IOPanelStyle alone accounts for 5,328 elements.",
+      "risk": "A source-faithful adapter or AI authoring context can become dominated by presentation/realization detail, increasing context, storage, browser and editor cost while hiding the smaller set of semantic decisions that require review.",
+      "teiDirection": "preserve presentation source losslessly through a projection/presentation extension, but index and load it lazily; AI/Editor semantic context should request only the subject/dependency closure and fetch presentation/native detail on demand rather than materializing the full source graph"
     }
   ]
 }
