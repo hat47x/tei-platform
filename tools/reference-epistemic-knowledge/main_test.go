@@ -689,3 +689,36 @@ func containsString(values []string, expected string) bool {
 	}
 	return false
 }
+
+
+func TestMetadataLossDoesNotLaunderPriorReviewByFingerprint(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewed := assessmentByID(t, projection, "human-reviewed")
+	legacy := assessmentByID(t, projection, "legacy-reimport-copy")
+	if reviewed.ConfirmationState != "confirmed" {
+		t.Fatalf("control assertion is not confirmed: %+v", reviewed)
+	}
+	if legacy.ConfirmationState != "unreviewed" ||
+		legacy.ReviewBinding != "none" ||
+		legacy.UseState != "candidate-only" ||
+		legacy.ContentOrigin != OriginUnknown ||
+		legacy.MetadataState != MetadataAbsent ||
+		!hasReason(legacy, "EPISTEMIC_METADATA_ABSENT") {
+		t.Fatalf("metadata-free reimport inherited prior review: %+v", legacy)
+	}
+}
+
+func TestProjectionStatesFingerprintCannotRestoreReviewHistory(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "content-fingerprint-does-not-restore-review-history") {
+		t.Fatalf("missing metadata-loss authority boundary: %+v", projection.AuthorityLimits)
+	}
+}
