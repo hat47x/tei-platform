@@ -372,3 +372,50 @@ Runtime Plugin LockへSource closureやbuilderの詳細を複製しません。e
 format 2は引き続き読み取り可能です。format 3では`buildPlanFingerprint`が存在する場合、その値が64桁hexでなければ拒否します。package outputをRuntime Lockへbindすること、artifact digestが一致しないbuildをbindすること、既に別Build Planへbind済みのentryを書き換えることもfail-closedにします。
 
 これにより、Plugin Lock fingerprint自体がBuild Plan bindingを含むため、Durable Invocationが保持するPlugin Lock fingerprintからself-build provenanceへ戻れる経路を維持できます。
+
+
+## 2026-10-07 E3 candidate — TEI-native interpreted Plugin realization
+
+E3では、Plugin descriptorだけでなく実装Source自体をTEI-nativeに保持し、Runtimeで利用できるrealizationへ変換する最初のReferenceを#957 / Draft PR #969で進めます。
+
+最初の`static-response-v1`は汎用言語ではありません。一つのPlugin Definition、一つの`deployment-executor` Capability、一つのvalidなdeployment Action、一つの`execute` operationだけを許します。Permission、Plugin runtime dependency、external runtime dependencyは許可しません。
+
+responseからHost-ownedな`executorId`、`actionId`、`idempotencyKey`、`pluginInvocation`を設定できません。`externalRef`や`observedAt`で外部世界を観測したように主張することもできません。
+
+implementation SourceはCanonicalな`ir.World`へ追加せず、Plugin専用の`plugin-implementations` source rootから読み込み、Source Indexでは`RoleImplementation`として追跡します。
+
+### Source → artifact bytes → Runtime
+
+TEI-native Sourceはdeterministic realization manifestへmaterializeします。invalid UTF-8、duplicate JSON key、複数top-level value、過剰nesting、unsupported fieldをfail-closedで拒否します。
+
+Runtime adapterはauthoring時のSource objectを直接実行しません。Lock対象のexact realization bytesを再parseし、format version、Source fingerprint、canonical bytes、Runtime Definition artifact digestを照合した後だけ既存`runtime.Builtin` ABIへ変換します。
+
+```text
+TEI-native Source
+  -> canonical realization bytes
+  -> BuildArtifactLock
+  -> Runtime Plugin Lock v3
+  -> exact realization bytesを再parse
+  -> existing runtime.Builtin ABI
+```
+
+authoritative Plugin Definitionはartifact-freeのまま保持し、build後にだけderived Runtime Definitionへartifact digestを結び付けます。
+
+build-bound BuiltinではHost-owned `BuiltinRegistration`がBuild Plan fingerprintとrealization digestを保持し、Lockと不一致ならInvoke前に停止します。preflightで受理したBuiltin instanceをInvokeまで保持し、registration差替えによるTOCTOUも避けます。
+
+### interpreted realizationという限界
+
+E3の`runtime-artifact`はstandalone executableではなく、Host内のgeneric interpreter / Builtin adapterが解釈するartifactです。完全なexecution identityはrealization digestだけでは決まりません。
+
+```text
+execution identity
+  = Plugin realization artifact
+  + Runtime Engine / interpreter
+  + Host acceptance
+```
+
+現在のReferenceではRepository全体を保守的なBuild Plan Source closureに含めるためengine Source変更もBuild Plan fingerprintへ波及します。ただしproductionのexact Runtime Engine identityを独立に固定できたことは意味しません。この不足は#973で追跡します。
+
+#973が解決するまでは、standalone executable相当のSB-2達成、realization digest単独による完全なruntime behavior固定、engine差替えへのreplay safety、Web / Wasm engine bindingを主張しません。
+
+#971でfocused test、self-build Evidence v1、既存SB-1 / Go process SB-2 regression、TEI-native actual invocation、full Repository Health、clean pre/post stateを確認します。actual Evidenceが得られるまでは#969をReady化・mergeしません。
