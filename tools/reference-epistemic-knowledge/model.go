@@ -118,9 +118,34 @@ func (v ScopeProvenance) valid() bool {
 	return v == ScopeObserved || v == ScopeDeclared || v == ScopeInferred
 }
 
+type TextQuoteSelector struct {
+	Exact  string `json:"exact"`
+	Prefix string `json:"prefix,omitempty"`
+	Suffix string `json:"suffix,omitempty"`
+}
+
+type TargetAnchor struct {
+	SourceRef                 string             `json:"sourceRef"`
+	SourceRevisionFingerprint string             `json:"sourceRevisionFingerprint"`
+	StructuralPath            string             `json:"structuralPath,omitempty"`
+	Quote                     *TextQuoteSelector `json:"quote,omitempty"`
+}
+
 type TargetRef struct {
-	Kind string `json:"kind"`
-	ID   string `json:"id"`
+	Kind   string        `json:"kind"`
+	ID     string        `json:"id"`
+	Anchor *TargetAnchor `json:"anchor,omitempty"`
+}
+
+type TargetSegment struct {
+	StructuralPath string `json:"structuralPath"`
+	Text           string `json:"text"`
+}
+
+type TargetSurface struct {
+	SourceRef           string          `json:"sourceRef"`
+	RevisionFingerprint string          `json:"revisionFingerprint"`
+	Segments            []TargetSegment `json:"segments"`
 }
 
 type ScopeBinding struct {
@@ -192,16 +217,25 @@ type Dependency struct {
 	Criticality Criticality `json:"criticality"`
 }
 
+type CoverageArea struct {
+	ID                 string      `json:"id"`
+	Target             TargetRef   `json:"target"`
+	Criticality        Criticality `json:"criticality"`
+	MappedAssertionIDs []string    `json:"mappedAssertionIds,omitempty"`
+}
+
 type Corpus struct {
-	Schema       string       `json:"schema"`
-	Assertions   []Assertion  `json:"assertions"`
-	Dependencies []Dependency `json:"dependencies,omitempty"`
+	Schema        string         `json:"schema"`
+	Assertions    []Assertion    `json:"assertions"`
+	Dependencies  []Dependency   `json:"dependencies,omitempty"`
+	CoverageAreas []CoverageArea `json:"coverageAreas,omitempty"`
 }
 
 type ContextQuery struct {
-	Schema   string         `json:"schema"`
-	Bindings []ScopeBinding `json:"bindings"`
-	AsOf     string         `json:"asOf"`
+	Schema         string          `json:"schema"`
+	Bindings       []ScopeBinding  `json:"bindings"`
+	AsOf           string          `json:"asOf"`
+	TargetSurfaces []TargetSurface `json:"targetSurfaces,omitempty"`
 }
 
 var sha256Pattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -265,6 +299,11 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 			return input, fmt.Errorf("dependencies[%d] has invalid consumer or criticality", i)
 		}
 	}
+	coverageAreas, err := normalizeCoverageAreas(input.CoverageAreas, ids)
+	if err != nil {
+		return input, err
+	}
+	input.CoverageAreas = coverageAreas
 	sort.Slice(input.Assertions, func(i, j int) bool { return input.Assertions[i].ID < input.Assertions[j].ID })
 	sort.Slice(input.Dependencies, func(i, j int) bool {
 		if input.Dependencies[i].AssertionID != input.Dependencies[j].AssertionID {
@@ -278,15 +317,75 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 	return input, nil
 }
 
+func normalizeTargetRef(target TargetRef) (TargetRef, error) {
+	target.Kind = strings.TrimSpace(target.Kind)
+	target.ID = strings.TrimSpace(target.ID)
+	if target.Kind == "" || target.ID == "" {
+		return target, fmt.Errorf("kind and id are required")
+	}
+	if target.Anchor == nil {
+		return target, nil
+	}
+	anchor := target.Anchor
+	anchor.SourceRef = strings.TrimSpace(anchor.SourceRef)
+	anchor.SourceRevisionFingerprint = strings.TrimSpace(anchor.SourceRevisionFingerprint)
+	anchor.StructuralPath = strings.TrimSpace(anchor.StructuralPath)
+	if anchor.SourceRef == "" {
+		return target, fmt.Errorf("anchor sourceRef is required")
+	}
+	if !sha256Pattern.MatchString(anchor.SourceRevisionFingerprint) {
+		return target, fmt.Errorf("anchor sourceRevisionFingerprint %q is not exact sha256", anchor.SourceRevisionFingerprint)
+	}
+	if anchor.Quote != nil && strings.TrimSpace(anchor.Quote.Exact) == "" {
+		return target, fmt.Errorf("anchor quote exact is required")
+	}
+	if anchor.StructuralPath == "" && anchor.Quote == nil {
+		return target, fmt.Errorf("anchor requires structuralPath or quote")
+	}
+	return target, nil
+}
+
+func normalizeCoverageAreas(values []CoverageArea, assertionIDs map[string]struct{}) ([]CoverageArea, error) {
+	out := make([]CoverageArea, 0, len(values))
+	seen := map[string]struct{}{}
+	for i, area := range values {
+		area.ID = strings.TrimSpace(area.ID)
+		if area.ID == "" || !area.Criticality.valid() {
+			return nil, fmt.Errorf("coverageAreas[%d] has invalid id or criticality", i)
+		}
+		if _, ok := seen[area.ID]; ok {
+			return nil, fmt.Errorf("duplicate coverage area id %q", area.ID)
+		}
+		seen[area.ID] = struct{}{}
+		target, err := normalizeTargetRef(area.Target)
+		if err != nil {
+			return nil, fmt.Errorf("coverageAreas[%d] target: %w", i, err)
+		}
+		area.Target = target
+		area.MappedAssertionIDs = normalizeStrings(area.MappedAssertionIDs)
+		for _, id := range area.MappedAssertionIDs {
+			if _, ok := assertionIDs[id]; !ok {
+				return nil, fmt.Errorf("coverageAreas[%d] references unknown assertion %q", i, id)
+			}
+		}
+		out = append(out, area)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
 func normalizeAssertion(a Assertion) (Assertion, error) {
 	a.ID = strings.TrimSpace(a.ID)
-	a.Target.Kind = strings.TrimSpace(a.Target.Kind)
-	a.Target.ID = strings.TrimSpace(a.Target.ID)
 	a.Text = strings.TrimSpace(a.Text)
 	a.MeaningFingerprint = strings.TrimSpace(a.MeaningFingerprint)
-	if a.ID == "" || a.Target.Kind == "" || a.Target.ID == "" || a.Text == "" {
-		return a, fmt.Errorf("id / target / text are required")
+	if a.ID == "" || a.Text == "" {
+		return a, fmt.Errorf("id / text are required")
 	}
+	target, err := normalizeTargetRef(a.Target)
+	if err != nil {
+		return a, fmt.Errorf("target: %w", err)
+	}
+	a.Target = target
 	if !sha256Pattern.MatchString(a.MeaningFingerprint) {
 		return a, fmt.Errorf("meaningFingerprint %q is not exact sha256", a.MeaningFingerprint)
 	}
@@ -443,12 +542,51 @@ func normalizeContext(input ContextQuery) (ContextQuery, time.Time, error) {
 		return input, time.Time{}, err
 	}
 	input.Bindings = bindings
+	surfaces, err := normalizeTargetSurfaces(input.TargetSurfaces)
+	if err != nil {
+		return input, time.Time{}, err
+	}
+	input.TargetSurfaces = surfaces
 	asOf, err := time.Parse(time.RFC3339, strings.TrimSpace(input.AsOf))
 	if err != nil {
 		return input, time.Time{}, fmt.Errorf("invalid asOf: %w", err)
 	}
 	input.AsOf = asOf.Format(time.RFC3339)
 	return input, asOf, nil
+}
+
+func normalizeTargetSurfaces(values []TargetSurface) ([]TargetSurface, error) {
+	out := make([]TargetSurface, 0, len(values))
+	seen := map[string]struct{}{}
+	for i, surface := range values {
+		surface.SourceRef = strings.TrimSpace(surface.SourceRef)
+		surface.RevisionFingerprint = strings.TrimSpace(surface.RevisionFingerprint)
+		if surface.SourceRef == "" || !sha256Pattern.MatchString(surface.RevisionFingerprint) {
+			return nil, fmt.Errorf("targetSurfaces[%d] requires sourceRef and exact revisionFingerprint", i)
+		}
+		if _, ok := seen[surface.SourceRef]; ok {
+			return nil, fmt.Errorf("duplicate target surface %q", surface.SourceRef)
+		}
+		seen[surface.SourceRef] = struct{}{}
+		paths := map[string]struct{}{}
+		for j := range surface.Segments {
+			segment := &surface.Segments[j]
+			segment.StructuralPath = strings.TrimSpace(segment.StructuralPath)
+			if segment.StructuralPath == "" || segment.Text == "" {
+				return nil, fmt.Errorf("targetSurfaces[%d].segments[%d] requires structuralPath and text", i, j)
+			}
+			if _, ok := paths[segment.StructuralPath]; ok {
+				return nil, fmt.Errorf("targetSurfaces[%d] has duplicate structuralPath %q", i, segment.StructuralPath)
+			}
+			paths[segment.StructuralPath] = struct{}{}
+		}
+		sort.Slice(surface.Segments, func(i, j int) bool {
+			return surface.Segments[i].StructuralPath < surface.Segments[j].StructuralPath
+		})
+		out = append(out, surface)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SourceRef < out[j].SourceRef })
+	return out, nil
 }
 
 func normalizeBindings(values []ScopeBinding) ([]ScopeBinding, error) {
