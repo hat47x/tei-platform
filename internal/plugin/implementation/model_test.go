@@ -169,6 +169,17 @@ func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 			t.Fatal("expected non-execute operation to fail")
 		}
 	})
+	t.Run("additional capability", func(t *testing.T) {
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+		definition := implementationDefinition()
+		definition.Provides = append(definition.Provides, plugin.Capability{
+			Kind: plugin.CapabilityObservationProvider,
+			ID:   core.MustCanonicalID("observation.other"),
+		})
+		if err := implementation.ValidateAgainstDefinition(source, definition); err == nil {
+			t.Fatal("expected partial Plugin realization to fail")
+		}
+	})
 	t.Run("multiple deployment actions", func(t *testing.T) {
 		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
 		definition := implementationDefinition()
