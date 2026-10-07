@@ -307,7 +307,7 @@ Data Design Context
   business occurrence identifier
   candidate key
   determinant -> dependent
-  domain / allowed-combination constraint
+  composite domain / allowed-combination constraint
   Relation topology / cardinality
   temporal / history condition
   Constraint
@@ -319,7 +319,7 @@ Data Design Context
 
 現在のTEIで関数従属性をfirst-classにauthorしていない範囲では、AIに「従属性なし」とは伝えません。Sourceやaccepted meaningから確定できない場合は`unresolved`とし、項目名、画面配置、一般的なCRUD schema、過去の類似例だけから関数従属性を確定しません。
 
-domain / allowed-combination constraintも同じです。現行Canonicalでfirst-classに表現していないことを「制約なし」と読み替えず、関数従属性や一意性とは別の`unresolved`として保持します。
+複数項目の値の組合せを制限するcomposite domain / allowed-combination constraintも同じです。現行Canonicalでfirst-classに表現していないことを「制約なし」と読み替えず、関数従属性や一意性とは別の`unresolved`として保持します。単項の`positive` Validation等、すでにCanonicalで表現できるConstraintまで未解決扱いにはしません。
 
 同様に、AIが全tableへUUIDや単独`id`を付けた案を生成しても、そのkeyを業務上の識別条件とみなしません。surrogate keyを実装候補として残す場合でも、元のbusiness identifier、candidate key、Relation topologyとの対応を保持します。
 
@@ -329,7 +329,7 @@ Reference pressureでは少なくとも次を比較します。
 - 独立したrecordが別recordを変更可能に参照するcase
 - 独立した二つの識別対象の組合せ自体に意味があるcase
 - Source不足のため、関数従属性やcandidate keyを`unresolved`のまま保持するnegative case
-- allowed-combinationの根拠がないとき、Relation shapeやunique constraintからdomain constraintを補完しないnegative case
+- allowed-combinationの根拠がないとき、Relation shapeやunique constraintからcomposite domain constraintを補完しないnegative case
 - physical surrogate keyを追加しても、acceptedなbusiness identifier / dependencyが消えないcase
 - View / Application Pattern / ORM都合の単独`id`から、business identifierを逆算しないnegative case
 - physical keyへ正規化されたbusiness keyを置換する場合でも、元candidate keyのuniquenessとMappingを追跡できるcase
@@ -368,9 +368,9 @@ Data Design Contextを生成しない場合も理由を隠さない。Validation
 
 Application PatternからData設計へ戻る経路もnegative Referenceとして固定した。`order_entry.order_record`のようにPatternが`data sales.order`を明示している場合は、その参照を使って同じ`knowledge-context`内にData Design Contextを提示する。これにより、Patternを設計しているAIがSemantic Data、Constraint、Persistence Realization、未解決のidentityを別呼び出しなしで確認できる。一方、Pattern IDや画面上のrecord identityからbusiness identityを作らず、`businessOccurrenceIdentifier` / `candidateKeys` / `functionalDependencies`のauthorityはSemantic側に残す。`application-pattern -> semantic-data` dependencyも併存させ、参照経路を追跡できるようにする。PatternがDataを明示していない場合は、RelationやQuery等から都合よくDataを推測しない。現時点で直接pressureしたのはApplication Patternであり、Target / ORM / runtime objectの具体的Referenceは後続に残す。
 
-関数従属性とは別に、値の組合せ自体が許されるかというdomain constraintも独立して扱う。現行Canonical modelには、allowed-combinationやdomain membershipをfirst-classにauthorするprimitiveがない。このためData Design Contextでは、定義が見つからないことを「domain constraintなし」とは扱わず、`domainConstraints.nature = unresolved`として返す。
+関数従属性とは別に、複数項目の値の組合せ自体が許されるかというcomposite domain constraintも独立して扱う。現行Canonical modelには、allowed-combinationや複合的なdomain membershipをfirst-classにauthorするprimitiveがない。このためData Design Contextでは、該当する定義が見つからないことを「複合制約なし」とは扱わず、`compositeDomainConstraints.nature = unresolved`として返す。
 
-生成AIには、許可・禁止される値の組合せ、成立するscopeと時間条件、根拠となるSource / Contract、staticなdomainかreference dataから導かれるdomainかをEvidence questionとして渡す。`relation-unique`、Relation key、Persistenceのprimary key / unique constraintは、それだけではdomain constraintのEvidenceにしない。これにより、関数従属性、識別条件、局所的な一意性、allowed-combinationを同じ概念へまとめずに探索できる。
+生成AIには、許可・禁止される値の組合せ、成立するscopeと時間条件、根拠となるSource / Contract、staticなdomainかreference dataから導かれるdomainかをEvidence questionとして渡す。`relation-unique`、Relation key、Persistenceのprimary key / unique constraintは、それだけではcomposite domain constraintのEvidenceにしない。これにより、関数従属性、識別条件、局所的な一意性、allowed-combinationを同じ概念へまとめずに探索できる。
 
 この変更も新しいCore primitiveの追加ではない。現行primitiveとSource / Evidenceから確定できる範囲を返し、表現不足が現実的なReferenceで再現された時点で、Semantic ExtensionまたはCore表現の追加が必要かを判断する。
 
@@ -700,11 +700,11 @@ code-changing laneの既存ruleに従い、full `tools/repository-health-check.s
 ## 完了条件
 
 - [x] Gate C Ready後に着手する
-- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、domain constraint、Relation topology、Source / Evidence、unresolvedへ到達できる
+- [ ] Data / Relation設計時に、AI / Studio / CLIが同じData Design Contextからbusiness occurrence identifier、candidate key、既知・候補のfunctional dependency、composite domain constraint、Relation topology、Source / Evidence、unresolvedへ到達できる
 - [ ] 単独`id` / UUID / surrogate keyを持つRealizationでも、acceptedなbusiness identifier / candidate key / uniqueness / Relation meaningを失わず逆追跡できる
 - [ ] View / Application Pattern / Target / ORM / runtime objectのidentityからbusiness keyを逆算しないnegative Referenceを持つ
 - [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
-- [ ] domain / allowed-combination constraintをfirst-classにauthorしていない対象で、根拠不足を「制約なし」へ丸めずunresolvedとしてAIへ返せる
+- [ ] composite domain / allowed-combination constraintをfirst-classにauthorしていない対象で、根拠不足を「複合制約なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない
