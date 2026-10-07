@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"sort"
 )
@@ -24,15 +23,9 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 	if format != receipt.Format {
 		return ClassificationCoverage{}, fmt.Errorf("receipt format %s does not match requested format %s", receipt.Format, format)
 	}
-	var contract struct {
-		ConstructMappings map[string]map[string]json.RawMessage `json:"constructMappings"`
-	}
-	if err := json.Unmarshal(contractBytes, &contract); err != nil {
-		return ClassificationCoverage{}, fmt.Errorf("parse transcription contract: %w", err)
-	}
-	mapped, ok := contract.ConstructMappings[string(format)]
-	if !ok {
-		return ClassificationCoverage{}, fmt.Errorf("transcription contract has no %s construct mappings", format)
+	mapped, err := parseConstructMappings(format, contractBytes)
+	if err != nil {
+		return ClassificationCoverage{}, err
 	}
 	coverage := ClassificationCoverage{
 		Format: format,
