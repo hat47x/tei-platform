@@ -51,9 +51,9 @@ type SourceFact struct {
 }
 
 type ObservedDocument struct {
-	Format         SourceFormat    `json:"format"`
-	ArtifactSHA256 string          `json:"artifactSha256"`
-	RootKind       string          `json:"rootKind"`
+	Format         SourceFormat     `json:"format"`
+	ArtifactSHA256 string           `json:"artifactSha256"`
+	RootKind       string           `json:"rootKind"`
 	Nodes          []ObservedNode   `json:"nodes"`
 	Markup         []ObservedMarkup `json:"markup,omitempty"`
 	Facts          []SourceFact     `json:"facts,omitempty"`
@@ -67,12 +67,12 @@ type ObservedIssue struct {
 }
 
 type PublicationReceipt struct {
-	SchemaVersion       int                       `json:"schemaVersion"`
-	Format              SourceFormat              `json:"format"`
-	ArtifactSHA256      string                    `json:"artifactSha256"`
-	RootKind            string                    `json:"rootKind"`
-	ElementCounts       map[string]int            `json:"elementCounts"`
-	AttributeNameCounts map[string]map[string]int `json:"attributeNameCounts"`
+	SchemaVersion         int                       `json:"schemaVersion"`
+	Format                SourceFormat              `json:"format"`
+	ArtifactSHA256        string                    `json:"artifactSha256"`
+	RootKind              string                    `json:"rootKind"`
+	ElementCounts         map[string]int            `json:"elementCounts"`
+	AttributeNameCounts   map[string]map[string]int `json:"attributeNameCounts"`
 	UnknownElements       map[string]int            `json:"unknownElements,omitempty"`
 	MarkupCounts          map[string]int            `json:"markupCounts,omitempty"`
 	LocatorCount          int                       `json:"locatorCount"`
