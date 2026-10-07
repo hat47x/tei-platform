@@ -242,6 +242,9 @@ func TestDataDesignContextKeepsTemporalHistoryUnresolvedFromDatetimeAttribute(t 
 	for _, question := range []string{
 		"when-is-the-business-occurrence-or-identity-valid",
 		"can-the-business-identifier-be-reused-across-time",
+		"does-the-history-record-represent-a-version-of-the-same-occurrence-or-a-new-occurrence",
+		"may-validity-periods-overlap",
+		"is-current-state-derived-from-validity-or-marked-by-a-latest-flag",
 		"which-state-transitions-change-identity-membership-or-validity",
 		"which-history-or-validity-period-must-be-preserved",
 		"which-source-or-contract-establishes-the-temporal-semantics",
@@ -254,6 +257,10 @@ func TestDataDesignContextKeepsTemporalHistoryUnresolvedFromDatetimeAttribute(t 
 		"absence-of-authored-temporal-history-condition-is-not-timeless-semantics",
 		"datetime-or-timestamp-attribute-is-not-temporal-semantics",
 		"persistence-history-column-is-not-business-temporal-semantics",
+		"effective-date-or-history-number-is-not-business-occurrence-identity-by-default",
+		"latest-flag-is-not-business-identity-evidence",
+		"history-row-identity-is-not-business-occurrence-identity-by-default",
+		"temporal-history-model-is-opt-in-not-universal",
 	} {
 		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, limit) {
 			t.Fatalf("temporal/history authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
