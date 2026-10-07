@@ -194,3 +194,60 @@ runnerは`tools/reference-plugin-package-builder`を隔離Go stateで2回build�
 確定したBuild PlanをJSON invocation envelopeとして渡し、first / second builder binaryからpackageを各1回生成します。package bytesとdigestが一致した場合だけSB-1 Evidenceを成立させます。
 
 これにより、Go toolchainをpackage builder artifactと呼ばず、GoはReference builderを生成するstage0 seed側へ後退します。builder executionをOS sandboxで隔離したという主張はしません。
+
+
+### Runtime Engine Lock candidate
+
+#973のpressureを受け、interpreted Builtin realizationについてRuntime Engine identityをPlugin realizationから分離しました。
+
+Reference候補ではengine identityを次で表します。
+
+- engine ID
+- engine version
+- interpreter / ABI contract version
+- implementation digest
+- Target
+
+このidentityはPlugin Definition、Build Plan、Runtime Plugin Lockのいずれにも混ぜ込みません。Runtime EngineはPluginのlogical identityでもbuild-only dependencyでもないため、別の`RuntimeEngineLock`でEnvironment Planへbindします。
+
+```text
+Runtime Plugin Lock v3
+  -> exact Plugin realization / Build Plan
+
+Runtime Engine Lock
+  -> exact expected interpreter identity
+
+Environment Plan
+  -> realization + engineの組合せ
+  -> RuntimePolicyFingerprint
+```
+
+build-bound BuiltinはRuntime Engine Lockのbindingが無い場合、Invoke前にfail-closedです。Host-owned `BuiltinRegistration`はBuild Plan fingerprint / realization digestに加えRuntime Engine identityも保持しますが、registration側の値だけをAuthorityにはしません。Environment Planへ先にbindされた期待engineと一致する必要があります。
+
+Invocation / Deployment provenanceには次を残します。
+
+- realization digest
+- Runtime Engine identity fingerprint
+- Runtime Engine Lock fingerprint
+
+Runtime Engine identityが変わればRuntime Engine Lock fingerprintとRuntimePolicyFingerprintも変わるため、同じrealization bytesを別engineで暗黙にreplayする経路をReference上では拒否できます。
+
+Reference runnerではengine Source closureをRepository全体にはしません。現在は次の実装Sourceだけを固定します。
+
+- `internal/plugin/implementation/model.go`
+- `internal/plugin/implementation/builtin/adapter.go`
+- `internal/plugin/runtime/model.go`
+- `internal/plugin/runtime/adapters.go`
+
+このSource closure digestとGo toolchain digestを組み合わせ、Reference engineの`implementationDigest`を作ります。これにより無関係なRepository変更でengine identityが不要に変わることを避けます。
+
+ただし、このimplementation digestは**実際にHostへlinkされたmachine-code imageのdigestではありません**。Source closureとtoolchainを固定したReference identityです。したがって#973はまだ完了ではありません。
+
+未達として残すもの:
+
+- exact linked / loaded engine imageのattestation
+- build flags / linker outputまで含むengine artifact identity
+- Web / Wasm engineとのcross-target binding
+- production Hostがaccepted engine artifactを独立検証する仕組み
+
+この段階で成立させるのは、「engine identityを暗黙依存から明示Lockへ引き上げ、realizationとの組合せをRuntime PolicyとInvocation provenanceで追跡する」ことまでです。
