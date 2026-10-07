@@ -18,20 +18,21 @@ type ConstructMapping struct {
 type LocalTranscriptionCandidate struct {
 	Kind            string   `json:"kind"`
 	Locator         string   `json:"locator"`
+	MappingStatus   string   `json:"mappingStatus"`
 	Classification  []string `json:"classification"`
 	Extension       string   `json:"extension,omitempty"`
 	Rules           []string `json:"rules,omitempty"`
 	AuthorityLimits []string `json:"authorityLimits,omitempty"`
-	Unresolved      bool     `json:"unresolved"`
 }
 
 type PublishedClassification struct {
-	Kind            string   `json:"kind"`
-	ObservedCount   int      `json:"observedCount"`
-	Classification  []string `json:"classification"`
-	Extension       string   `json:"extension,omitempty"`
-	AuthorityLimits []string `json:"authorityLimits,omitempty"`
-	Unresolved      bool     `json:"unresolved"`
+	Kind                    string   `json:"kind"`
+	ObservedCount           int      `json:"observedCount"`
+	UnresolvedObservedCount int      `json:"unresolvedObservedCount,omitempty"`
+	MappingStatus           string   `json:"mappingStatus"`
+	Classification          []string `json:"classification,omitempty"`
+	Extension               string   `json:"extension,omitempty"`
+	AuthorityLimits         []string `json:"authorityLimits,omitempty"`
 }
 
 type ClassificationProjection struct {
@@ -56,18 +57,19 @@ func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contrac
 			out = append(out, LocalTranscriptionCandidate{
 				Kind:           node.Kind,
 				Locator:        node.Locator.Path,
+				MappingStatus:  "unmapped",
 				Classification: []string{"unresolved"},
 				AuthorityLimits: []string{
 					"unmapped-source-construct-is-not-semantic-authority",
 					"unknown-source-construct-must-not-be-silently-dropped",
 				},
-				Unresolved: true,
 			})
 			continue
 		}
 		out = append(out, LocalTranscriptionCandidate{
 			Kind:            node.Kind,
 			Locator:         node.Locator.Path,
+			MappingStatus:   "mapped",
 			Classification:  append([]string(nil), mapping.Classification...),
 			Extension:       mapping.Extension,
 			Rules:           append([]string(nil), mapping.Rules...),
@@ -92,6 +94,7 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 		AuthorityLimits: []string{
 			"classification-projection-is-candidate-evidence-not-semantic-acceptance",
 			"kind-level-public-projection-does-not-disclose-source-values-or-source-locators",
+			"unresolved-observed-count-remains-unclassified-even-when-the-same-local-name-has-a-mapping",
 			"mapping-extension-does-not-grant-runtime-authority",
 		},
 	}
@@ -101,26 +104,36 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 	}
 	sort.Strings(kinds)
 	for _, kind := range kinds {
+		observedCount := receipt.ElementCounts[kind]
+		unresolvedCount := receipt.UnknownElements[kind]
 		mapping, ok := mappings[kind]
-		if !ok || receipt.UnknownElements[kind] > 0 {
+		if !ok {
 			out.Kinds = append(out.Kinds, PublishedClassification{
-				Kind:           kind,
-				ObservedCount:  receipt.ElementCounts[kind],
-				Classification: []string{"unresolved"},
+				Kind:                    kind,
+				ObservedCount:           observedCount,
+				UnresolvedObservedCount: observedCount,
+				MappingStatus:           "unmapped",
 				AuthorityLimits: []string{
 					"unmapped-source-construct-is-not-semantic-authority",
 					"unknown-source-construct-must-not-be-silently-dropped",
 				},
-				Unresolved: true,
 			})
 			continue
 		}
+		status := "mapped"
+		if unresolvedCount == observedCount && observedCount > 0 {
+			status = "unmapped"
+		} else if unresolvedCount > 0 {
+			status = "mixed"
+		}
 		out.Kinds = append(out.Kinds, PublishedClassification{
-			Kind:            kind,
-			ObservedCount:   receipt.ElementCounts[kind],
-			Classification:  append([]string(nil), mapping.Classification...),
-			Extension:       mapping.Extension,
-			AuthorityLimits: append([]string(nil), mapping.AuthorityLimits...),
+			Kind:                    kind,
+			ObservedCount:           observedCount,
+			UnresolvedObservedCount: unresolvedCount,
+			MappingStatus:           status,
+			Classification:          append([]string(nil), mapping.Classification...),
+			Extension:               mapping.Extension,
+			AuthorityLimits:         append([]string(nil), mapping.AuthorityLimits...),
 		})
 	}
 	return out, nil
