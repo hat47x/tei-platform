@@ -580,7 +580,7 @@ func run(repo string) (evidence, error) {
 	}
 
 	return evidence{
-		Schema:                       "tei.reference.plugin-self-build-evidence/v0",
+		Schema:                       "tei.reference.plugin-self-build-evidence/v1",
 		RepositoryRevision:           revision,
 		RepositoryTreeDigest:         treeDigest,
 		GoVersion:                    goVersion,
