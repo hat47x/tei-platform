@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-cross-view-accounting",
+  "status": "aggregate-candidate",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "sourceBaseline": {
+    "xeadSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+    "xeafSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
+    "xeadModelerRevision": "68f1535b1c5dd80a327dfced37be401ecd3093c9"
+  },
+  "dataView": {
+    "xeadTableCount": 56,
+    "xeadTableKeyCount": 110,
+    "xeadTableKeyTypeCounts": {
+      "PK": 56,
+      "FK": 41,
+      "SK": 13
+    },
+    "xeadTableKeyArityCounts": {
+      "1": 73,
+      "2": 27,
+      "3": 4,
+      "5": 6
+    },
+    "relationshipCount": 80,
+    "relationshipTypeCounts": {
+      "REFFER": 51,
+      "FAMILY": 27,
+      "SUBTYPE": 2
+    },
+    "relationshipKeyShape": {
+      "REFFER": {
+        "count": 51,
+        "sourceKeyKinds": [
+          "PK",
+          "SK"
+        ],
+        "targetKeyKind": "FK",
+        "sameArityCount": 51
+      },
+      "SUBTYPE": {
+        "count": 2,
+        "sourceKeyKinds": [
+          "PK"
+        ],
+        "targetKeyKind": "PK",
+        "sameArityCount": 2
+      },
+      "FAMILY": {
+        "count": 27,
+        "sourceKeyKinds": [
+          "PK"
+        ],
+        "targetKeyKind": "PK",
+        "targetKeyStrictlyLargerCount": 27,
+        "arityPairs": {
+          "1->2": 17,
+          "1->3": 3,
+          "2->3": 4,
+          "3->5": 3
+        }
+      }
+    },
+    "relationshipConditionalExistenceCount": 21,
+    "derivableFieldCount": 52,
+    "derivableFieldInAnyTableKeyCount": 0,
+    "derivableFieldInRelationshipKeyCount": 0,
+    "sourceCodeEvidence": {
+      "path": "src/xeadModeler/DialogAddRelationshipOnDatamodel.java",
+      "revision": "68f1535b1c5dd80a327dfced37be401ecd3093c9",
+      "blob": "06db0d68e9ebc4ff5b18828abc2de72ee6e34f3a",
+      "observedRule": "target PK/SK with equal key-field count is SUBTYPE; target PK/SK containing the source-equivalent key fields with more fields is FAMILY; target FK with equal field count is REFFER"
+    },
+    "authorityLimits": [
+      "relationship-type-specific-key-shape-is-source-structure-not-accepted-business-identity",
+      "family-key-extension-must-not-be-rejected-by-an-equal-arity-only-validator",
+      "absence-of-derived-key-participation-is-benchmark-specific-not-a-universal-xtea-rule"
+    ]
+  },
+  "functionInteractionView": {
+    "xeadFunctionCount": 227,
+    "functionIOTableCount": 392,
+    "functionsWithIOTableCount": 219,
+    "functionsWithoutIOTableCount": 8,
+    "functionTableOperationCombinations": {
+      "R": 244,
+      "CRUD": 42,
+      "RU": 36,
+      "RD": 28,
+      "CRU": 19,
+      "C": 16,
+      "CRD": 3,
+      "RUD": 2,
+      "CU": 1,
+      "CR": 1
+    },
+    "crossSubsystemFunctionTableIOCount": 59,
+    "crossSubsystemOperationCombinations": {
+      "R": 59
+    },
+    "declaredFunctionUseEdgeCount": 289,
+    "declaredFunctionUseUnresolvedTargetCount": 0,
+    "declaredFunctionUseSourceCount": 117,
+    "declaredFunctionUseTargetCount": 224,
+    "declaredFunctionUseMultiNodeSCCCount": 4,
+    "declaredFunctionUseNodesInMultiNodeSCCCount": 9,
+    "declaredFunctionUseSCCSizeCounts": {
+      "2": 3,
+      "3": 1
+    },
+    "authorityLimits": [
+      "function-wide-iotable-is-potential-access-not-business-action-specific-effect",
+      "declared-function-use-cycle-is-not-proof-of-runtime-recursion",
+      "declared-function-use-graph-is-not-business-procedure-order"
+    ]
+  },
+  "businessView": {
+    "taskCount": 62,
+    "taskActionCount": 148,
+    "taskActionWithoutFunctionIOCount": 6,
+    "taskActionMissingIDCount": 35,
+    "taskActionMissingIDWithFunctionIOCount": 30,
+    "taskActionMissingIDWithoutFunctionIOCount": 5,
+    "taskFunctionIOCount": 407,
+    "taskFunctionIOUnresolvedFunctionReferenceCount": 0,
+    "taskFunctionIOUnresolvedIOReferenceCount": 0,
+    "taskFunctionIOKindCounts": {
+      "panel": 396,
+      "spool": 11
+    },
+    "uniqueFunctionCountPerAction": {
+      "0": 6,
+      "1": 10,
+      "2": 72,
+      "3": 33,
+      "4": 19,
+      "5": 8
+    },
+    "distinctActionFunctionPairCount": 369,
+    "businessReferencedFunctionCount": 128,
+    "businessReferencedFunctionWithIOTableCount": 126,
+    "businessReferencedFunctionWithoutIOTableCount": 2,
+    "taskActionWithPotentialFunctionTableAccessCount": 142,
+    "potentialActionFunctionTablePathCount": 665,
+    "potentialActionFunctionTableOperationCombinations": {
+      "R": 380,
+      "RU": 103,
+      "CRU": 86,
+      "CRUD": 85,
+      "C": 10,
+      "RUD": 1
+    },
+    "authorityLimits": [
+      "task-action-to-function-is-not-one-to-one",
+      "potential-action-function-table-path-is-not-actual-action-effect",
+      "taskfunctionio-target-interaction-is-not-business-action-semantics",
+      "missing-task-action-id-must-not-be-repaired-from-sortkey-or-order"
+    ]
+  },
+  "crossSourceView": {
+    "xeadFunctionCount": 227,
+    "xeafFunctionCount": 203,
+    "structuralFunctionCorrespondenceCount": 180,
+    "xeadOnlyFunctionIdentityCount": 47,
+    "xeafOnlyFunctionIdentityCount": 23,
+    "businessReferencedXeadFunctionCount": 128,
+    "businessReferencedFunctionWithRuntimeCorrespondenceCount": 116,
+    "businessReferencedFunctionWithoutRuntimeCorrespondenceCount": 12,
+    "taskActionRuntimeCorrespondenceStatusCounts": {
+      "allFunctionUsesHaveRuntimeCorrespondence": 57,
+      "partialRuntimeCorrespondence": 68,
+      "noFunctionUseHasRuntimeCorrespondence": 17,
+      "noFunctionUse": 6
+    },
+    "xeafScriptCount": 161,
+    "xeafTimerOptionFunctionCount": 4,
+    "authorityLimits": [
+      "structural-function-correspondence-is-not-runtime-equivalence",
+      "missing-runtime-correspondence-does-not-imply-invalid-design-function",
+      "runtime-only-function-does-not-become-canonical-business-function"
+    ]
+  },
+  "claimsNotEstablished": [
+    "business-action-specific actual CRUD effect",
+    "runtime transaction or rollback behavior",
+    "semantic equivalence between Xead and Xeaf functions",
+    "declared FunctionUsedByThis cycle is actual runtime recursion",
+    "FAMILY relationship is accepted TEI business identity semantics"
+  ]
+}
