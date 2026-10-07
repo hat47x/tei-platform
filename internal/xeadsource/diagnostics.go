@@ -54,9 +54,6 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 		})
 	}
 	for tableID, fieldCounts := range tableIndex.FieldCounts {
-		if tableID == "" || tableIndex.TableCounts[tableID] != 1 {
-			continue
-		}
 		if count := fieldCounts[""]; count > 0 {
 			for _, locator := range tableIndex.FieldLocators[tableID][""] {
 				out = append(out, RelationalDiagnostic{
@@ -66,6 +63,9 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 					TableLegacyID: tableID,
 				})
 			}
+		}
+		if tableID == "" || tableIndex.TableCounts[tableID] != 1 {
+			continue
 		}
 		for fieldID, count := range fieldCounts {
 			if fieldID == "" || count <= 1 {
