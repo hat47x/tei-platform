@@ -69,6 +69,7 @@ type report struct {
 	Candidates                       candidateSummary        `json:"candidates"`
 	RelationalFacts                  factSummary             `json:"relationalFacts"`
 	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
+	RelationalResolutionStatus       string                  `json:"relationalResolutionStatus"`
 	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
 	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
 	AuthorityLimits                  []string                `json:"authorityLimits"`
@@ -133,6 +134,7 @@ func buildReport(inspection xeadsource.Inspection) report {
 		Candidates:                       summarizeCandidates(inspection.Candidates),
 		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
+		RelationalResolutionStatus:       inspection.RelationalResolutionStatus,
 		ClassificationPolicyFingerprint:  inspection.ClassificationPolicyFingerprint,
 		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
 		AuthorityLimits:                  append([]string(nil), inspection.AuthorityLimits...),
