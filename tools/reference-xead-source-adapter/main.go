@@ -328,7 +328,7 @@ func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
 					FactType:        "legacy-function-selection-key",
 					Values:          selectedValues(attrs, names...),
 					AttributeNames:  names,
-					AuthorityLimits: []string{"function-selection-key-is-not-business-identity", "function-selection-key-is-not-functional-dependency", "runtime-selection-key-is-not-canonical-data-identity"},
+					AuthorityLimits: []string{"declared-key-fields-are-not-data-identity", "declared-key-fields-are-not-business-identity", "declared-key-fields-are-not-functional-dependency"},
 				}}
 			}
 		case "Detail":
@@ -340,7 +340,7 @@ func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
 					FactType:        "legacy-detail-key-binding",
 					Values:          selectedValues(attrs, names...),
 					AttributeNames:  names,
-					AuthorityLimits: []string{"detail-key-binding-is-not-business-identity", "detail-key-binding-is-not-functional-dependency", "runtime-key-binding-is-not-canonical-relation-authority"},
+					AuthorityLimits: []string{"declared-key-fields-are-not-data-identity", "declared-key-fields-are-not-business-identity", "declared-key-fields-are-not-functional-dependency"},
 				}}
 			}
 		case "Key":
@@ -350,7 +350,7 @@ func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
 				FactType:        "runtime-table-key",
 				Values:          selectedValues(attrs, "Fields", "Type"),
 				AttributeNames:  presentAttributeNames(attrs, "Fields", "Type"),
-				AuthorityLimits: []string{"runtime-key-is-not-business-identity", "runtime-key-is-not-functional-dependency", "runtime-key-is-not-semantic-authority"},
+				AuthorityLimits: []string{"runtime-key-is-realization-not-business-identity", "runtime-key-is-not-functional-dependency", "runtime-key-does-not-replace-design-key-evidence"},
 			}}
 		case "Refer":
 			return []SourceFact{{
@@ -360,9 +360,9 @@ func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
 				Values:         selectedValues(attrs, "Fields", "ToKeyFields", "WithKeyFields", "ToTable", "TableAlias", "Optional"),
 				AttributeNames: presentAttributeNames(attrs, "Fields", "ToKeyFields", "WithKeyFields", "ToTable", "TableAlias", "Optional"),
 				AuthorityLimits: []string{
-					"runtime-reference-is-not-business-identity",
-					"runtime-reference-is-not-functional-dependency",
-					"runtime-reference-is-not-canonical-relation-authority",
+					"runtime-refer-is-realization-not-semantic-relation-authority",
+					"runtime-refer-key-fields-are-not-business-identity",
+					"runtime-pk-fallback-is-not-business-identity",
 				},
 			}}
 		}
