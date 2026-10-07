@@ -264,7 +264,7 @@ review、health、context evaluation等をPlugin-defined Capabilityとして提�
 
 ## 2026-10-06 First Reference candidate — E0〜E4
 
-このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review eventまでpressureを広げました。2026-10-07の再点検で残ったtarget anchoring、epistemic coverage、legacy / export-import境界は、引き続き未実証です。
+このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review event、target anchoring、epistemic coverageまでpressureを広げました。2026-10-07の再点検で残ったlegacy / export-import境界とproduction向けresolver / coverage生成は、引き続き未実証です。
 
 確認状態については、初期版のnative / reviewed / conditional / rejected / supersededという単一stateを廃止しました。review eventから導出するconfirmation、meaningへのreview binding、supersedes relationから導出するlifecycleを別軸として扱います。
 
@@ -316,7 +316,7 @@ review eventは `confirm / reject / withdraw` を持ち、positiveで一意なse
 
 Conflictもrelationとして保持し、current contextで両方が有効候補になる場合は一方を自動採用せず `review-required` とする。
 
-### E2 context compatibility candidate
+### E2 context compatibility / target anchoring candidate
 
 assertion scopeとcurrent contextをdimensionごとに照合する。
 
@@ -326,11 +326,25 @@ assertion scopeとcurrent contextをdimensionごとに照合する。
 
 `unknown` を「たぶん同じ」としてpremiseへ昇格させない。observed / declared / inferred contextを区別し、inferred contextを使ったassessmentにはsignalを残す。
 
-### E3 Project Knowledge Health candidate
+
+target annotationについては、任意targetへ元resourceのrevision fingerprint、structural path、text quoteのexact / prefix / suffixを持つanchorを付けられるcandidateを追加した。current context側にはresourceの現在revisionとsegment群を渡す。
+
+- 同revisionのselectorが一意に一致: `exact`
+- revision / path変更後もquote + 周辺文脈で一意に一致: `reanchored`
+- 複数候補: `ambiguous`
+- 候補なし: `detached`
+
+`ambiguous / detached` は別textへ自動転送せず `review-required` にする。anchor解決はsemantic identityの証明ではなく、その限界をProjectionへ明示する。
+
+### E3 Project Knowledge Health / coverage candidate
 
 Healthはreview率を主判定にせず、`dependencies` のcriticalityと現在のuse stateを組み合わせる。
 
 critical consumerがunreviewed / stale / Conflict / context不適合なassertionへ依存する場合は `critical` とする。低重要度unreviewed memoが多数存在しても、critical dependencyを件数比で希釈しないnegative testを置いた。
+
+さらに、project側が状態を把握すべき情報領域をcoverage areaとして入力できるcandidateを追加した。areaへ対応するassertion mappingが無い、またはmapping先targetを再特定できない場合はcoverage gapとする。critical / high gapはHealthへ反映する。
+
+coverage mappingは入力であり、意味的完全性の証明ではない。自動抽出や「必要情報がすべて揃った」という判定は本ReferenceのAuthority外とする。
 
 ### E4 review request handoff candidate
 
@@ -394,10 +408,12 @@ reviewer candidate
 - [ ] content provenanceとingestion actorを分離できる
 - [ ] observed / declared / inferred contextを区別できる
 - [ ] 複数review eventから現在の確認状態を導出できる
-- [ ] annotation targetを編集後に誤って別箇所へ付け替えない
+- [ ] target bindingをexact / reanchored / ambiguous / detachedとして観測できる
+- [ ] coverage mappingを意味的完全性の証明へ昇格させない
+- [ ] annotation targetを編集後に誤って別箇所へ付け替えない（Reference candidate追加済み。full qualification未完了）
 - [ ] provenance不明のlegacy資料をreview済みへ推定しない
 - [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない
-- [ ] epistemic coverage不足を観測できる
+- [ ] epistemic coverage不足を観測できる（Reference candidate追加済み。full qualification未完了）
 - [ ] AI生成主張が保存だけで確認済みへ昇格しない
 - [ ] content provenance / ingestion actor / statement kind / confirmation history / lifecycle / scope / time / Evidenceを分離できる
 - [ ] explicit contextとinferred contextを区別できる
