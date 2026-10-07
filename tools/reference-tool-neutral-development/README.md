@@ -49,6 +49,12 @@ runnerは次を検査します。
 - 別cloneで同じValidationへ到達できる
 - 別cloneのCanonical Worldがtask側とbyte単位で一致する
 - read-only reload後も別cloneがcleanである
+- 別々のbranchがそれぞれ単独ではValidationを通る
+- 二つのbranchはGit上ではfile conflictなしにmergeできる
+- merge後に同じCanonical Data identityが重複し、`DUPLICATE_SEMANTIC_ELEMENT`としてSemantic Validationが拒否する
+- Semantic Validation失敗によってGit working treeが書き換わらない
+
+このnegative caseでは、二つのbranchが別fileに同じ`sales.tool_neutral_collision` Dataを追加します。TEIがGit mergeを置き換えるのではなく、**Gitが正常に統合した後でも意味上の不整合を既存Validationで止められること**を確認します。
 
 ## Run
 
@@ -70,5 +76,6 @@ MCP parityはISSUE-000083 E3で後続検証します。MCPを追加する場合�
 - Shared Acceptance / Semantic Diff / Reviewが不要である
 - local Git write authorityがApplication Runtime authorityを与える
 - production-grade CI / sandboxが完成した
+- TEIが独自のGit merge engineを必要とする
 
 このReferenceが示すのは、**Tool固有stateをTEIへ持ち込まなくても、SourceとGitを境界にして開発環境を交換できるか**という最小の一往復です。
