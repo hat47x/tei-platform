@@ -81,6 +81,39 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 4. 候補B（変更を提案し、人が確かめ、受理し、反映される一周）。このとき評価対象の選択（[ISSUE-000073](000073-derive-validation-selection-from-canonical.md)）と人が読む承認の面（[ISSUE-000071](000071-approval-sufficient-projection.md)）が前提になる。
 
 この記録は、一つのシナリオの成功にとどまり、実務全般への適用可能性や、実Databaseでの動作を示しません。
+## 実証Bの追加評価 — 業務設計から実行へ戻す一周（2026-10-08、評価待ち）
+
+本節は、[Product triage #982](https://github.com/hat47x/tei-platform/issues/982)で示した着手順を、**既存の候補Bで試せるか**検討するための補足である。候補Bの選択はまだ行われておらず、2026-10-05にownerが選択・実施したAの記録を置き換えない。新しいProduct Gateや別の実証Issueは設けない。
+
+### 先に確かめたいこと
+
+TEIの実用性は、個別にModelやDriverを動かせるだけでは判断できない。小さな業務規則の追加を契機に、データの意味、画面・処理、担当者の仕事が同じ設計へ戻れることを確認する。変更の内容は、既存の[ISSUE-000072](000072-rule-change-hand-edit-count.md)で調査した「受注明細の単価は正である」という**未採用の候補**を第一候補とする。現時点のCanonicalにその規則が受理済みだと仮定しない。
+
+- **Data**: どのentity / field / Relation / validationに関わるか、業務識別条件を誤って変えないか。
+- **Function / Interaction**: どのAction、Application Pattern、Driver、Web操作で検査されるか。Target側に独自の同等規則を作らないか。
+- **Business**: 不正な単価を見つけたとき、どの担当者が修正を依頼・実施するか。Procedureの現行Referenceで辿れる範囲と、未受理の説明とを区別できるか。
+
+### B実証の最小手順案
+
+1. `reference/workspace`の変更前Sourceとcurrent meaningを読み、対象のData / Functionを特定する。Business Procedureは既存のread-only Referenceと照合し、存在しない関連を推測して補わない。
+2. 受注明細の単価Validationを意味変更の候補として作る。生成AI・Studioの利用は必須にせず、file-nativeな変更からでも同じ結果を得られることを優先する。
+3. `ISSUE-000071`の承認に足る条件に沿って、変更内容、影響、未解決、対象外のnative code、Sourceを人が読める形で示す。表示していない影響を「影響なし」としない。
+4. preview / rejectを非変更操作として確認する。acceptを行う場合は、current base revisionと受理権限を明示し、staleな候補を黙って適用しない。AcceptedなSourceだけを正本としてreloadする。
+5. `ISSUE-000073`の論点に沿い、Validationの適用対象がcurrent Canonicalから導かれているか確認する。Driverで正常な単価と不正な単価の双方を実行し、成功・拒否が意味上説明できるか確認する。
+6. 第一Web Targetで同じ業務規則が働くかを確認する。Webで不足を埋める独自Validationを正本とせず、Target固有の入力検査があれば別物として記録する。
+7. Data / Function / Businessの三視点で、影響を追跡できた箇所とできなかった箇所を示す。業務手順の受理・production昇格は `ISSUE-000042` / `000048` / `000049` の判断に従い、B成功を理由に飛ばさない。
+8. 使用した実行環境、syntheticかactual Providerか、CommandとObservationの関係、未確認事項をまとめる。historical Gate B/CのEvidenceを更新したことにはしない。
+
+### Bの判定と停止条件案
+
+**成立と判断できる範囲:** 変更が一つの正本へ受理され、reload後にDriverとWebが同じ意味を示し、人がData / Function / Businessへの影響と未確認を理解できること。少なくとも正常系と拒否系の両方を実行し、実装側に複製された規則の有無を確認する。
+
+**成立していないと判断する例:** WebとDriverでValidationの選択が異なる、人間向けProjectionが未解決を隠す、Procedureとの接続が文章上の推測だけ、正本へ戻らずWeb固有の修正で通した、syntheticな結果を実Providerの成功と呼ぶ。
+
+**止め方:** 以上を満たせない場合、新しい汎用Semantic概念やAI専用Runtimeを増やす前に、不足した一つの接続に絞って既存Issueへ戻す。成立した場合も、より高度なPlugin self-hosting、マルチTarget、AI Business Actorを自動的な次の着手条件にしない。
+
+この追加評価は、業務実証の候補Bを具体化するものであり、ownerによる候補Bの選択、Studio UI完成、Business Procedure production採用を確定するものではない。
+
 ## 設計詳細
 
 1. **記録の形。** 実証ごとに、通したシナリオ、使った機能、機能の間の関係（同じidentityで使われた意味など）、通せなかった箇所、使ったProviderと環境（synthetic / 実Provider）を、1つの記録にまとめる。置き場と形式は、最初の実証で決める。
