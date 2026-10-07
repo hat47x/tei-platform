@@ -469,14 +469,21 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	runtimeLock, err := plugin.BuildLock(
-		plugin.Catalog{Plugins: []plugin.Definition{realized}},
-		loaded.World.Environments,
-	)
+	runtimeCatalog := plugin.Catalog{
+		Plugins: append([]plugin.Definition(nil), loaded.World.Plugins...),
+	}
+	replacePluginDefinition(runtimeCatalog.Plugins, realized)
+	replacePluginDefinition(runtimeCatalog.Plugins, nativeRealized)
+
+	runtimeLock, err := plugin.BuildLock(runtimeCatalog, loaded.World.Environments)
 	if err != nil {
 		return evidence{}, err
 	}
 	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, loaded.World.Environments[0].ID, lockedBuild)
+	if err != nil {
+		return evidence{}, err
+	}
+	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, loaded.World.Environments[0].ID, nativeLockedBuild)
 	if err != nil {
 		return evidence{}, err
 	}
@@ -491,11 +498,79 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if runtimePlugin.BuildPlanFingerprint != lockedBuild.PlanFingerprint {
-		return evidence{}, fmt.Errorf("runtime plugin lock lost build plan trace")
+		return evidence{}, fmt.Errorf("process runtime plugin lock lost build plan trace")
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, lockedBuild, realized, runtimePlugin); err != nil {
 		return evidence{}, err
 	}
+	nativeRuntimePlugin, err := exactLockedPlugin(
+		runtimeLock,
+		loaded.World.Environments[0].ID,
+		nativeDefinition.ID,
+		nativeDefinition.Version,
+	)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeRuntimePlugin.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint {
+		return evidence{}, fmt.Errorf("TEI-native runtime plugin lock lost build plan trace")
+	}
+	if err := plugin.VerifyRuntimePluginBuild(
+		nativePlan,
+		nativeLockedBuild,
+		nativeRealized,
+		nativeRuntimePlugin,
+	); err != nil {
+		return evidence{}, err
+	}
+
+	runtimePlan, err := pruntime.BuildPlan(
+		runtimeCatalog,
+		loaded.World.Environments[0],
+		runtimeLock,
+	)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeRegistry := pruntime.Registry{
+		BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
+			nativePluginID + "@" + nativePluginVersion: {
+				Builtin:              nativeBuiltin,
+				BuildPlanFingerprint: nativeLockedBuild.PlanFingerprint,
+				RealizationDigest:    nativeFirstArtifactDigest,
+			},
+		},
+	}
+	nativeAdapter := pruntime.DeploymentExecutor{
+		Plan:         runtimePlan,
+		Registry:     nativeRegistry,
+		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+	}
+	nativeInvocation, err := nativeAdapter.Execute(context.Background(), executor.Command{
+		ActionID:       "application/start",
+		IdempotencyKey: "tei-native-reference",
+		Kind:           string(deployment.ActionApplicationStart),
+	})
+	if err != nil {
+		return evidence{}, fmt.Errorf("invoke TEI-native builtin Reference: %w", err)
+	}
+	if nativeInvocation.AttemptID != "tei-native-reference" ||
+		nativeInvocation.Outcome != executor.OutcomeAccepted {
+		return evidence{}, fmt.Errorf("unexpected TEI-native builtin Reference result: %#v", nativeInvocation)
+	}
+	if nativeInvocation.PluginInvocation == nil ||
+		nativeInvocation.PluginInvocation.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint ||
+		nativeInvocation.PluginInvocation.RealizationDigest != nativeFirstArtifactDigest {
+		return evidence{}, fmt.Errorf("TEI-native builtin invocation lost build realization provenance")
+	}
+	if err := pruntime.ValidateDeploymentInvocation(
+		runtimePlan,
+		core.MustCanonicalID("runtime.native_reference"),
+		nativeInvocation.PluginInvocation,
+	); err != nil {
+		return evidence{}, fmt.Errorf("validate TEI-native builtin invocation provenance: %w", err)
+	}
+
 	runtimePluginLockFingerprint, err := plugin.EnvironmentLockFingerprint(runtimeLock, loaded.World.Environments[0].ID)
 	if err != nil {
 		return evidence{}, err
@@ -518,6 +593,16 @@ func run(repo string) (evidence, error) {
 		PackageReproducible:          true,
 		PackageLockedBuild:           packageLockedBuild,
 		PackageLockFingerprint:       packageLockFingerprint,
+		NativeSourceFingerprint:      nativeSourceFingerprint,
+		NativeBuildPlan:              nativePlan,
+		NativeBuildPlanFingerprint:   nativePlanFingerprint,
+		NativeFirstArtifactDigest:    nativeFirstArtifactDigest,
+		NativeSecondArtifactDigest:   nativeSecondArtifactDigest,
+		NativeReproducible:           true,
+		NativeLockedBuild:            nativeLockedBuild,
+		NativeLockFingerprint:        nativeLockFingerprint,
+		NativeDefinitionFingerprint:  plugin.DefinitionFingerprint(nativeRealized),
+		NativeInvocation:             nativeInvocation,
 		BuildPlan:                    plan,
 		BuildPlanFingerprint:         planFingerprint,
 		FirstArtifactDigest:          firstDigest,
