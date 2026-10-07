@@ -47,7 +47,7 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work identityやactor referenceはCoordination上の参照であり、Canonical identityやAcceptance authorityではありません。
 
-Resultには、対象Work、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。
+Resultには、対象Work、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
 
 大型Artifactは本文へ埋めず、URI、digest、media type等の参照で扱えるようにします。
 
@@ -57,11 +57,11 @@ Resultには、対象Work、producer、観測したbase revision、summary、Art
 
 runnerは一時的なCoordination repositoryを作り、Human-originのWorkを1件保存します。同じWorkに対して二つのAgent Resultを保存し、一方はcurrent base revision、もう一方は意図的にstaleなbase revisionと自己申告の`admin` actor labelを持たせます。current側のResultからはAgent-originのfollow-up Workを1件生成し、Human-originとAgent-originを同じStore上で区別します。
 
-この状態でも、どちらのResultにもCanonical AcceptanceやRuntime authorityを与えません。Workを`completed`へ更新してもProduct Sourceは変化しません。最後にCoordination repository自体を削除し、元のProduct repositoryのrevisionとclean stateが変化しないことを確認します。
+この状態でも、どちらのResultにもCanonical AcceptanceやRuntime authorityを与えません。Authorityを表すfield自体をWork / Result envelopeへ置かないことで、Coordination metadataからAuthorityへ昇格する経路を作りません。Workは固定pathのまま`coordination.status`だけを`completed`へ更新し、directory名とfieldによる状態の二重管理を避けます。最後にCoordination repository自体を削除し、元のProduct repositoryのrevisionとclean stateが変化しないことを確認します。
 
 ### E1で確認するnegative pressure
 
-E1では、一つのWorkへ複数Resultを保存できることに加え、Human-origin WorkとAgent-origin follow-up Workを区別できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Workを`completed`へ変更してもProduct Sourceの変更とはみなしません。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、digest付き参照として扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
+E1では、一つのWorkへ複数Resultを保存できることに加え、Human-origin WorkとAgent-origin follow-up Workを区別できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Authorityを否定するbooleanを置くのではなく、Authority fieldを交換契約から除外します。Workを`completed`へ変更してもProduct Sourceの変更とはみなしません。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、digest付き参照として扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
 
 E1はCanonical Worldを実際にreloadする試験ではありません。その部分はRQ-034 / ISSUE-000083が所有します。本Issueでは、Coordination層がProduct Sourceの第二正本にならないことを先にpressureします。
 
