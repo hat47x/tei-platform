@@ -74,8 +74,11 @@ type evidence struct {
 	NativeReproducible          bool               `json:"nativeReproducible"`
 	NativeLockedBuild           plugin.LockedBuild `json:"nativeLockedBuild"`
 	NativeLockFingerprint       string             `json:"nativeLockFingerprint"`
-	NativeDefinitionFingerprint string             `json:"nativeDefinitionFingerprint"`
-	NativeInvocation            executor.Result    `json:"nativeInvocation"`
+	NativeDefinitionFingerprint string                      `json:"nativeDefinitionFingerprint"`
+	NativeRuntimeEngineSourceDigest string                   `json:"nativeRuntimeEngineSourceDigest"`
+	NativeRuntimeEngine          pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
+	NativeRuntimeEngineFingerprint string                     `json:"nativeRuntimeEngineFingerprint"`
+	NativeInvocation            executor.Result             `json:"nativeInvocation"`
 	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
 	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
 	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
@@ -178,6 +181,26 @@ func run(repo string) (evidence, error) {
 		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
 	}
 	goToolchainDigest := sha256Digest([]byte(goVersion + "\n" + goBinaryDigest + "\n" + goRootDigest + "\n"))
+	nativeRuntimeEngineSourceDigest, err := hashSourceFiles(root, []string{
+		"internal/plugin/implementation/model.go",
+		"internal/plugin/implementation/builtin/adapter.go",
+		"internal/plugin/runtime/model.go",
+		"internal/plugin/runtime/adapters.go",
+	})
+	if err != nil {
+		return evidence{}, fmt.Errorf("hash TEI-native runtime engine source closure: %w", err)
+	}
+	nativeRuntimeEngine := pruntime.RuntimeEngineIdentity{
+		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		Version:              revision,
+		ContractVersion:      "tei.runtime-engine/static-response-v1",
+		ImplementationDigest: sha256Digest([]byte(nativeRuntimeEngineSourceDigest + "\n" + goToolchainDigest + "\n")),
+		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	}
+	nativeRuntimeEngineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(nativeRuntimeEngine)
+	if err != nil {
+		return evidence{}, err
+	}
 	if err := requireNoExternalModules(root, goPath, referencePackage, packageBuilderPackage, nativeBuilderPackage); err != nil {
 		return evidence{}, err
 	}
@@ -673,12 +696,21 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+	runtimePlan, err = pruntime.BindBuiltinRuntimeEngine(
+		runtimePlan,
+		plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
+		nativeRuntimeEngine,
+	)
+	if err != nil {
+		return evidence{}, err
+	}
 	nativeRegistry := pruntime.Registry{
 		BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
 			nativePluginID + "@" + nativePluginVersion: {
 				Builtin:              nativeBuiltin,
 				BuildPlanFingerprint: nativeLockedBuild.PlanFingerprint,
 				RealizationDigest:    nativeFirstArtifactDigest,
+				RuntimeEngine:        nativeRuntimeEngine,
 			},
 		},
 	}
@@ -701,8 +733,9 @@ func run(repo string) (evidence, error) {
 	}
 	if nativeInvocation.PluginInvocation == nil ||
 		nativeInvocation.PluginInvocation.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint ||
-		nativeInvocation.PluginInvocation.RealizationDigest != nativeFirstArtifactDigest {
-		return evidence{}, fmt.Errorf("TEI-native builtin invocation lost build realization provenance")
+		nativeInvocation.PluginInvocation.RealizationDigest != nativeFirstArtifactDigest ||
+		nativeInvocation.PluginInvocation.RuntimeEngineFingerprint != nativeRuntimeEngineFingerprint {
+		return evidence{}, fmt.Errorf("TEI-native builtin invocation lost build/runtime engine provenance")
 	}
 	if err := pruntime.ValidateDeploymentInvocation(
 		runtimePlan,
@@ -748,8 +781,11 @@ func run(repo string) (evidence, error) {
 		NativeReproducible:           true,
 		NativeLockedBuild:            nativeLockedBuild,
 		NativeLockFingerprint:        nativeLockFingerprint,
-		NativeDefinitionFingerprint:  plugin.DefinitionFingerprint(nativeRealized),
-		NativeInvocation:             nativeInvocation,
+		NativeDefinitionFingerprint:       plugin.DefinitionFingerprint(nativeRealized),
+		NativeRuntimeEngineSourceDigest: nativeRuntimeEngineSourceDigest,
+		NativeRuntimeEngine:             nativeRuntimeEngine,
+		NativeRuntimeEngineFingerprint:  nativeRuntimeEngineFingerprint,
+		NativeInvocation:                nativeInvocation,
 		BuildPlan:                    plan,
 		BuildPlanFingerprint:         planFingerprint,
 		FirstArtifactDigest:          firstDigest,
@@ -777,6 +813,57 @@ func requireValidWorld(label string, world ir.World) error {
 	}
 	sort.Strings(failures)
 	return fmt.Errorf("%s validation failed: %s", label, strings.Join(failures, "; "))
+}
+
+
+
+func hashSourceFiles(repo string, paths []string) (string, error) {
+	if len(paths) == 0 {
+		return "", fmt.Errorf("source closure must contain at least one file")
+	}
+	ordered := append([]string(nil), paths...)
+	sort.Strings(ordered)
+	sum := sha256.New()
+	seen := map[string]struct{}{}
+	for _, rel := range ordered {
+		rel = filepath.ToSlash(strings.TrimSpace(rel))
+		if rel == "" {
+			return "", fmt.Errorf("source closure contains empty path")
+		}
+		if _, ok := seen[rel]; ok {
+			return "", fmt.Errorf("source closure contains duplicate path %s", rel)
+		}
+		seen[rel] = struct{}{}
+		path := filepath.Join(repo, filepath.FromSlash(rel))
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("source closure symlink is not supported: %s", rel)
+		}
+		if !info.Mode().IsRegular() {
+			return "", fmt.Errorf("source closure member is not a regular file: %s", rel)
+		}
+		if _, err := fmt.Fprintf(sum, "%s\x00", rel); err != nil {
+			return "", err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		if _, err := io.Copy(sum, f); err != nil {
+			f.Close()
+			return "", err
+		}
+		if err := f.Close(); err != nil {
+			return "", err
+		}
+		if _, err := fmt.Fprint(sum, "\n"); err != nil {
+			return "", err
+		}
+	}
+	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
 }
 
 func hashTrackedSourceTree(repo string) (string, error) {
