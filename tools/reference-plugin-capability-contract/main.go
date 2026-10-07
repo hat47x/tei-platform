@@ -46,8 +46,9 @@ type Provider struct {
 	PluginID            string         `json:"pluginId"`
 	PluginVersion       string         `json:"pluginVersion"`
 	ImplementationID    string         `json:"implementationId"`
-	ArtifactDigest      string         `json:"artifactDigest"`
-	Scope               AuthorityScope `json:"scope"`
+	ArtifactDigest               string         `json:"artifactDigest"`
+	SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
+	Scope                        AuthorityScope `json:"scope"`
 	ContractID          string         `json:"contractId"`
 	ContractVersion     string         `json:"contractVersion"`
 	ContractFingerprint string         `json:"contractFingerprint"`
@@ -58,8 +59,9 @@ type ConformanceEvidence struct {
 	PluginID            string `json:"pluginId"`
 	PluginVersion       string `json:"pluginVersion"`
 	ImplementationID    string `json:"implementationId"`
-	ArtifactDigest      string `json:"artifactDigest"`
-	ContractFingerprint string `json:"contractFingerprint"`
+	ArtifactDigest               string `json:"artifactDigest"`
+	SourceDeclarationFingerprint string `json:"sourceDeclarationFingerprint,omitempty"`
+	ContractFingerprint          string `json:"contractFingerprint"`
 	ConformanceProfile  string `json:"conformanceProfile"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
 }
@@ -289,7 +291,8 @@ func capabilityResolutionFingerprint(
 		PluginID              string         `json:"pluginId"`
 		PluginVersion         string         `json:"pluginVersion"`
 		ImplementationID      string         `json:"implementationId"`
-		ArtifactDigest        string         `json:"artifactDigest"`
+		ArtifactDigest               string         `json:"artifactDigest"`
+		SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	}{
 		ResolutionPolicy:    capabilityResolutionPolicy,
 		Scope:               scope,
@@ -299,7 +302,8 @@ func capabilityResolutionFingerprint(
 		PluginID:            provider.PluginID,
 		PluginVersion:       provider.PluginVersion,
 		ImplementationID:    provider.ImplementationID,
-		ArtifactDigest:      provider.ArtifactDigest,
+		ArtifactDigest:               provider.ArtifactDigest,
+		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 	})
 }
 
@@ -321,6 +325,13 @@ func validateResolveInput(input ResolveInput) error {
 		if !validSHA256Fingerprint(provider.ArtifactDigest) {
 			return fmt.Errorf("provider[%d] requires exact implementation artifact digest", i)
 		}
+		if provider.SourceDeclarationFingerprint != "" &&
+			!validSHA256Fingerprint(provider.SourceDeclarationFingerprint) {
+			return fmt.Errorf(
+				"provider[%d] source declaration fingerprint is not exact sha256",
+				i,
+			)
+		}
 		if _, err := parseVersion(provider.PluginVersion); err != nil {
 			return fmt.Errorf("provider[%d] plugin version: %w", i, err)
 		}
@@ -338,6 +349,13 @@ func validateResolveInput(input ResolveInput) error {
 		}
 		if !validSHA256Fingerprint(evidence.ArtifactDigest) {
 			return fmt.Errorf("conformance evidence[%d] requires exact implementation artifact digest", i)
+		}
+		if evidence.SourceDeclarationFingerprint != "" &&
+			!validSHA256Fingerprint(evidence.SourceDeclarationFingerprint) {
+			return fmt.Errorf(
+				"conformance evidence[%d] source declaration fingerprint is not exact sha256",
+				i,
+			)
 		}
 		if _, err := parseVersion(evidence.PluginVersion); err != nil {
 			return fmt.Errorf("conformance evidence[%d] plugin version: %w", i, err)
@@ -607,6 +625,10 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 	if !validSHA256Fingerprint(lock.Provider.ArtifactDigest) {
 		return fmt.Errorf("capability lock provider requires exact artifact digest")
 	}
+	if lock.Provider.SourceDeclarationFingerprint != "" &&
+		!validSHA256Fingerprint(lock.Provider.SourceDeclarationFingerprint) {
+		return fmt.Errorf("capability lock provider source declaration fingerprint is invalid")
+	}
 	if lock.Provider.PluginID == "" ||
 		lock.Provider.PluginVersion == "" ||
 		lock.Provider.ImplementationID == "" {
@@ -660,6 +682,7 @@ func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFing
 			evidence.PluginVersion == provider.PluginVersion &&
 			evidence.ImplementationID == provider.ImplementationID &&
 			evidence.ArtifactDigest == provider.ArtifactDigest &&
+			evidence.SourceDeclarationFingerprint == provider.SourceDeclarationFingerprint &&
 			evidence.ContractFingerprint == contractFingerprint &&
 			evidence.ConformanceProfile == profile &&
 			evidence.EvidenceFingerprint != "" {
