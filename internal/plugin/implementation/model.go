@@ -55,17 +55,28 @@ func (s Source) Validate() error {
 	if !s.CapabilityKind.Valid() {
 		return fmt.Errorf("unsupported plugin implementation capability kind %q", s.CapabilityKind)
 	}
+	if s.CapabilityKind != plugin.CapabilityDeploymentExecutor {
+		return fmt.Errorf(
+			"%s profile currently supports only %s capability, got %s",
+			StaticResponseProfileV1,
+			plugin.CapabilityDeploymentExecutor,
+			s.CapabilityKind,
+		)
+	}
 	if _, err := core.ParseCanonicalID(string(s.CapabilityID)); err != nil {
 		return fmt.Errorf("implementation capability id: %w", err)
 	}
-	if len(s.Operations) == 0 {
-		return fmt.Errorf("plugin implementation requires at least one operation")
+	if len(s.Operations) != 1 {
+		return fmt.Errorf("%s profile requires exactly one execute operation", StaticResponseProfileV1)
 	}
 	seen := map[string]struct{}{}
 	for _, operation := range s.Operations {
 		name := strings.TrimSpace(operation.Name)
 		if name == "" {
 			return fmt.Errorf("plugin implementation operation name is required")
+		}
+		if name != "execute" {
+			return fmt.Errorf("%s profile supports only execute operation, got %q", StaticResponseProfileV1, name)
 		}
 		if _, exists := seen[name]; exists {
 			return fmt.Errorf("plugin implementation operation %q is declared more than once", name)
