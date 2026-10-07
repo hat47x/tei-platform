@@ -33,6 +33,9 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 		got.RelationalDiagnostics[0].Code != "key-field-not-found" {
 		t.Fatalf("missing field reference was not preserved as unresolved: %#v", got.RelationalDiagnostics)
 	}
+	if got.RelationalResolutionStatus != "unresolved" {
+		t.Fatalf("relational inconsistency was marked reusable: %#v", got)
+	}
 	key := got.RelationalFacts.LegacyKeys[0]
 	if key.KeyLegacyID != "K1" || key.KeyType != "PK" || key.Nature != SourceFactNature {
 		t.Fatalf("legacy key fact drifted: %#v", key)
@@ -61,6 +64,8 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 		"source-fact-is-not-accepted-semantic-meaning",
 		"candidate-classification-is-not-shared-acceptance",
 		"unresolved-source-meaning-must-not-be-auto-completed",
+		"relational-resolution-status-is-source-consistency-not-canonical-meaning",
+		"unresolved-relational-resolution-blocks-deterministic-semantic-lowering",
 	}) {
 		t.Fatalf("inspection authority limits drifted: %#v", got.AuthorityLimits)
 	}
@@ -84,5 +89,23 @@ func TestInspectWithoutPolicyKeepsAllCandidateMeaningUnresolved(t *testing.T) {
 			len(candidate.AuthorityLimits) != 0 {
 			t.Fatalf("policy-free inspection granted candidate meaning: %#v", candidate)
 		}
+	}
+}
+
+
+func TestInspectMarksRelationalFactsResolvedOnlyWithoutDiagnostics(t *testing.T) {
+	got, err := Inspect(
+		FormatXead,
+		[]byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.RelationalDiagnostics) != 0 {
+		t.Fatalf("valid relational source produced diagnostics: %#v", got.RelationalDiagnostics)
+	}
+	if got.RelationalResolutionStatus != "resolved" {
+		t.Fatalf("diagnostic-free relational source was not marked resolved: %#v", got)
 	}
 }
