@@ -207,3 +207,11 @@ host-trusted profileはin-process / host-trusted runtimeへ、host-enforced-sand
 Resource BindingとLease Policyはproduction側に残します。bridgeは選択済みCapabilityRuntimeのfingerprintを保持するため、Resource / Lease policy driftもreplayで検出できます。一方、無関係なPlugin runtime追加はbridgeをstaleにしません。
 
 このbridgeはderived verificationです。Permission Grant、Resource lease、Host Sandbox invocationを実行しません。actual host enforcementのE2Eは今後のEvidenceです。
+
+## Existing Host Sandboxへの実行委譲
+
+Application Runtimeのlegacy migrationでは、`ProductionExecutionBridge`を確認した後、既存`Registry.InvokeWithProvenance`へlegacy Capability kind / IDで委譲できます。generic Capability専用の実行transportは追加しません。
+
+Reference testではprocess / sandbox-requiredのProviderを使い、production `HostSandboxLauncher`まで通します。artifact verifier、deny-by-default Network / Filesystem enforcer、sandboxed runnerが既存順序で使われます。必要なenforcerが無ければHostSandboxLauncherがfail closedになります。
+
+このtestはzero-Permissionです。Resource Broker / Leaseを含む実行は次のpressureとして残します。
