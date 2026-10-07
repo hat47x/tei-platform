@@ -403,8 +403,9 @@ func TestDataDesignContextFingerprintTracksRelevantEvidenceOnly(t *testing.T) {
 	first := Build(w, baseSources, relevantSubject)
 	if first.DataDesign == nil ||
 		first.DataDesign.ProjectionRevision != dataDesignProjectionRevision ||
-		first.DataDesign.Fingerprint == "" {
-		t.Fatalf("data design fingerprint is missing: %+v", first.DataDesign)
+		first.DataDesign.Fingerprint == "" ||
+		first.DataDesign.EvidenceStatus != "incomplete" {
+		t.Fatalf("partial data design fingerprint boundary is missing: %+v", first.DataDesign)
 	}
 
 	withUnrelated := baseSources
@@ -449,6 +450,10 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	)
 	if ctx.DataDesign == nil {
 		t.Fatal("data design context is missing")
+	}
+	if ctx.DataDesign.EvidenceStatus != "incomplete" ||
+		ctx.DataDesign.Fingerprint == "" {
+		t.Fatalf("missing Evidence must remain explicitly incomplete: %+v", ctx.DataDesign)
 	}
 	if len(ctx.DataDesign.ScopedUniqueness) != 1 {
 		t.Fatalf("valid scoped uniqueness is missing: %+v", ctx.DataDesign.ScopedUniqueness)
