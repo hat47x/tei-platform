@@ -206,6 +206,37 @@ func TestApplicationPatternIdentityDoesNotBecomeBusinessDataIdentity(t *testing.
 	}
 }
 
+func TestBuildKnowledgeContextReturnsSemanticCapabilityContext(t *testing.T) {
+	root := testRepositoryRoot(t)
+	got, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-capability",
+		"sales.order.submit",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SemanticElement == nil ||
+		got.SemanticElement.Kind != "capability" ||
+		got.SemanticElement.ID != "sales.order.submit" {
+		t.Fatalf("semantic capability detail is missing: %+v", got.SemanticElement)
+	}
+	if len(got.References) == 0 || len(got.Artifacts) == 0 {
+		t.Fatalf("capability source trace is missing: references=%+v artifacts=%+v", got.References, got.Artifacts)
+	}
+	for _, relation := range []string{"input", "output"} {
+		if !hasKnowledgeContextEdge(got, "outgoing", relation, "semantic-element", "sales.order") {
+			t.Fatalf("capability %s dependency is missing: %+v", relation, got.Outgoing)
+		}
+	}
+	if got.DataDesign != nil {
+		t.Fatalf("capability identity was promoted to Data Design context: %+v", got.DataDesign)
+	}
+	if len(got.Unresolved) != 0 {
+		t.Fatalf("known semantic capability has unresolved context: %+v", got.Unresolved)
+	}
+}
+
 func TestBuildKnowledgeContextReturnsSemanticValidationContext(t *testing.T) {
 	root := testRepositoryRoot(t)
 	got, err := buildKnowledgeContext(
