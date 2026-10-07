@@ -306,6 +306,8 @@ review eventは `confirm / reject / withdraw` を持ち、positiveで一意なse
 
 現在の `confirmationState` は、現在の `meaningFingerprint` に結び付く最新eventから導出する。過去meaningに対するeventしか存在しない場合は `reviewBinding=stale` とし、旧確認を現在値へ継承せず `review-required` とする。
 
+適用条件を構造化できる場合はassertion contextへ置く。review eventに自由文 `conditions` が残る場合、このReferenceは条件成立を推測せず `REVIEW_CONDITIONS_UNRESOLVED` として `review-required` にする。
+
 このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る入力であり、一致そのものをsemantic proofへ昇格させない。format差とsemantic差を判別できない場合に確認の有効性を推測しない。
 
 ### E1b supersession / conflict candidate
