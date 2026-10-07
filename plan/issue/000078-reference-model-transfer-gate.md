@@ -114,7 +114,7 @@ Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller
 
 これらは旧Driverでは実行規約として成立するが、TEIでTargetやagentを交換する場合は明示的なdependency / transaction / authority / effect境界が必要になる。
 
-詳細なmodernization pressureはEvidence Gate `7を正本とし、本Issueへ重複列挙しない。
+詳細なmodernization pressureはEvidence Gate §7を正本とし、本Issueへ重複列挙しない。
 
 ## 担当境界
 
@@ -133,9 +133,21 @@ Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller
 | AI re-entry / operational knowledge | 000053 |
 | Target差 / execution profile | 000026 |
 | Semantic Extension / Plugin / DSL | 000077 |
+| Tool / Runtime Capability Contract | 000080 / GitHub #951 |
 | Command / Observation / retry / unknown | 000009 / RQ-018〜020の既存境界 |
 
 Reference Modelで新しいgapが見つかっても、既存Issueが所有する責務なら本Issueの中に別実装を作らない。
+
+### 現在の実装レーン
+
+2026-10-07時点では、次のように担当を分ける。
+
+- GitHub #950は本Reference Model Transferレーンで継続し、source-faithful reader、locator、inventory、public receipt、source fact projection、classification coverageを扱う。
+- GitHub #940はoriginal X-TEA Runtimeのactual behavior取得専用レーンへ移す。本Issueでは結果を受け取る。
+- GitHub #941はReference Modelの利用条件・公開範囲確認専用レーンへ移す。本Issueでは安全側publication boundaryを維持し、結果を受け取る。
+- GitHub #951 / ISSUE-000080はPlugin Capability Contract専用レーンで進める。Draft PR #963が存在するため、#950側でgeneric Capability resolver / lockを重複実装しない。
+
+#950は#951のproduction contract確定を待たずreaderとEvidence整備を進めてよい。ただし、Source Adapter登録のためだけにCore固定`CapabilityKind`を追加しない。
 
 ## 作業順序
 
