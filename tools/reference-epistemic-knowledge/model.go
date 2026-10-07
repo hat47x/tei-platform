@@ -251,6 +251,7 @@ type CoverageArea struct {
 
 type Corpus struct {
 	Schema        string         `json:"schema"`
+	MetadataState MetadataState  `json:"metadataState,omitempty"`
 	Assertions    []Assertion    `json:"assertions"`
 	Dependencies  []Dependency   `json:"dependencies,omitempty"`
 	CoverageAreas []CoverageArea `json:"coverageAreas,omitempty"`
@@ -288,6 +289,12 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 	}
 	if len(input.Assertions) == 0 {
 		return input, fmt.Errorf("corpus has no assertions")
+	}
+	if input.MetadataState == "" {
+		input.MetadataState = MetadataComplete
+	}
+	if !input.MetadataState.valid() {
+		return input, fmt.Errorf("invalid corpus metadataState %q", input.MetadataState)
 	}
 
 	ids := map[string]struct{}{}
