@@ -55,10 +55,13 @@ runnerは少なくとも次を検査します。
 - task環境がcurrent Repository全体のlocal cloneである
 - task clone内で`cmd/tei`をbuildできる
 - knowledge-contextの関連targeted testを実行できる
+- `workspace-files`が`semantic/sales/validation.tei`をmanaged sourceとして列挙する
 - baseline Workspaceが`tei validate`を通る
+- 既存Validationが`source-index`から`semantic/sales/validation.tei`へtraceできる
 - 既存Validationへ`knowledge-context`から到達できる
 - `.tei/decisions`を除去してもValidationとCanonical Worldが変わらない
 - 直接file edit後も`tei validate`を通る
+- 追加したValidationも`source-index`から同じauthoring sourceへtraceできる
 - 追加したValidationへ`knowledge-context`から到達できる
 - Canonical Worldがbaselineから実際に変わる
 - file edit後にも関連targeted testを実行できる
@@ -67,6 +70,7 @@ runnerは少なくとも次を検査します。
 - ordinary Git commitに変更を確定できる
 - integration側はtask repositoryから作った別local cloneである
 - integration clone内でもCLIをbuildし、関連targeted testを実行できる
+- integration cloneでも追加ValidationのSource Indexが同じauthoring sourceへ戻る
 - integration cloneで同じValidationへ到達できる
 - integration cloneのCanonical Worldがtask側とbyte単位で一致する
 - read-only reload後もintegration cloneがcleanである
