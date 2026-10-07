@@ -13,10 +13,10 @@
       "id": "RML-001",
       "topic": "design-runtime-function-reconciliation",
       "nature": "unresolved",
-      "evidence": "Xead has 227 Functions and Xeaf has 203; identity-set comparison leaves 47 Xead-only and 23 Xeaf-only entries",
-      "risk": "one-to-one conversion would silently lose design-only meaning or promote helper/runtime functions",
+      "evidence": "Xead has 227 design Functions and Xeaf has 203 runtime Functions; structural identity comparison maps 180 and leaves 47 Xead-only / 23 Xeaf-only. Of 128 Functions referenced by Business Actions, 116 map structurally and 12 do not. At Action level, 57 have complete Function correspondence, 68 are partial, 17 have none, and 6 use no Function.",
+      "risk": "one-to-one or all-or-nothing conversion can silently lose design-only meaning, promote runtime/helper functions, or report a partially realized Business Action as fully executable",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "do not accept a Function mapping without explicit reconciliation evidence"
+      "stopCondition": "reconcile each design Function/Capability use independently; preserve Action-level partial realization and do not infer semantic invalidity or runtime completeness from set membership alone"
     },
     {
       "id": "RML-002",
