@@ -81,6 +81,7 @@ func main() {
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
+	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
 	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
@@ -155,6 +156,15 @@ func main() {
 		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
+		}
+		if strings.TrimSpace(*knowledgeDisclosure) != "" {
+			disclosure, err := buildKnowledgeDisclosure(context, *knowledgeDisclosure)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(2)
+			}
+			writeJSON(disclosure)
+			return
 		}
 		writeJSON(context)
 		return
