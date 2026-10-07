@@ -72,8 +72,8 @@ type PublicationReceipt struct {
 	ArtifactSHA256        string                    `json:"artifactSha256"`
 	RootKind              string                    `json:"rootKind"`
 	ElementCounts         map[string]int            `json:"elementCounts"`
-	AttributeNameCounts   map[string]map[string]int `json:"attributeNameCounts"`
-	UnknownElements       map[string]int            `json:"unknownElements,omitempty"`
+	AttributeCounts       map[string]int            `json:"attributeCounts,omitempty"`
+	UnknownElementCount   int                       `json:"unknownElementCount,omitempty"`
 	MarkupCounts          map[string]int            `json:"markupCounts,omitempty"`
 	LocatorCount          int                       `json:"locatorCount"`
 	LocatorSetFingerprint string                    `json:"locatorSetFingerprint"`
@@ -81,6 +81,10 @@ type PublicationReceipt struct {
 	Unresolved            []PublishedIssue          `json:"unresolved,omitempty"`
 	AuthorityLimits       []string                  `json:"authorityLimits"`
 	ReceiptFingerprint    string                    `json:"receiptFingerprint"`
+
+	ObservedElementCounts map[string]int            `json:"-"`
+	AttributeNameCounts   map[string]map[string]int `json:"-"`
+	UnknownElements       map[string]int            `json:"-"`
 }
 
 type PublishedFact struct {
@@ -286,34 +290,52 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 	return doc, nil
 }
 
+func publicRootKind(doc ObservedDocument) string {
+	if len(doc.Nodes) == 0 {
+		return ""
+	}
+	root := doc.Nodes[0]
+	if root.Known {
+		return root.Kind
+	}
+	return "unknown"
+}
+
 func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	receipt := PublicationReceipt{
 		SchemaVersion:       1,
 		Format:              doc.Format,
 		ArtifactSHA256:      doc.ArtifactSHA256,
-		RootKind:            doc.RootKind,
-		ElementCounts:       map[string]int{},
-		AttributeNameCounts: map[string]map[string]int{},
-		UnknownElements:     map[string]int{},
-		MarkupCounts:        map[string]int{},
+		RootKind:              publicRootKind(doc),
+		ElementCounts:         map[string]int{},
+		AttributeCounts:       map[string]int{},
+		ObservedElementCounts: map[string]int{},
+		AttributeNameCounts:   map[string]map[string]int{},
+		UnknownElements:       map[string]int{},
+		MarkupCounts:          map[string]int{},
 		AuthorityLimits: []string{
 			"source-observation-is-not-canonical-authority",
 			"legacy-id-sortkey-and-xml-position-are-not-canonical-identity",
 			"legacy-key-facts-are-not-business-identity-or-functional-dependency",
 			"publication-receipt-does-not-contain-source-values-or-source-text",
+			"publication-receipt-does-not-disclose-arbitrary-unknown-element-or-attribute-names",
 		},
 	}
 	var locatorDigests []string
 	for _, node := range doc.Nodes {
-		receipt.ElementCounts[node.Kind]++
+		receipt.ObservedElementCounts[node.Kind]++
 		if receipt.AttributeNameCounts[node.Kind] == nil {
 			receipt.AttributeNameCounts[node.Kind] = map[string]int{}
 		}
 		for name := range node.Attributes {
 			receipt.AttributeNameCounts[node.Kind][name]++
 		}
-		if !node.Known {
+		if node.Known {
+			receipt.ElementCounts[node.Kind]++
+			receipt.AttributeCounts[node.Kind] += len(node.Attributes)
+		} else {
 			receipt.UnknownElements[node.Kind]++
+			receipt.UnknownElementCount++
 		}
 		locatorDigests = append(locatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
 	}
@@ -334,9 +356,6 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	}
 	for _, issue := range doc.Unresolved {
 		receipt.Unresolved = append(receipt.Unresolved, PublishedIssue{Code: issue.Code, LocatorDigest: digestString(doc.ArtifactSHA256 + "|" + issue.Locator)})
-	}
-	if len(receipt.UnknownElements) == 0 {
-		receipt.UnknownElements = nil
 	}
 	sort.Strings(locatorDigests)
 	receipt.LocatorCount = len(locatorDigests)
