@@ -180,7 +180,7 @@ func TestDataDesignContextDoesNotResolveContradictoryValidationScope(t *testing.
 	}
 }
 
-func TestDataDesignContextKeepsDomainConstraintUnresolvedWithoutFirstClassEvidence(t *testing.T) {
+func TestDataDesignContextKeepsCompositeDomainConstraintUnresolvedWithoutFirstClassEvidence(t *testing.T) {
 	ctx := Build(
 		dataDesignRelationUniqueWorld(),
 		sourceindex.Index{},
@@ -189,27 +189,27 @@ func TestDataDesignContextKeepsDomainConstraintUnresolvedWithoutFirstClassEviden
 	if ctx.DataDesign == nil {
 		t.Fatal("data design context is missing")
 	}
-	if ctx.DataDesign.DomainConstraints.Nature != "unresolved" ||
-		ctx.DataDesign.DomainConstraints.Reason != "domain-constraint-not-first-class-in-current-canonical-model" {
-		t.Fatalf("domain constraint was invented or left unexplained: %+v", ctx.DataDesign.DomainConstraints)
+	if ctx.DataDesign.CompositeDomainConstraints.Nature != "unresolved" ||
+		ctx.DataDesign.CompositeDomainConstraints.Reason != "composite-domain-constraint-not-first-class-in-current-canonical-model" {
+		t.Fatalf("composite domain constraint was invented or left unexplained: %+v", ctx.DataDesign.CompositeDomainConstraints)
 	}
 	for _, question := range []string{
 		"which-value-combinations-are-allowed-or-forbidden",
 		"is-this-constraint-about-identity-functional-dependency-or-domain-membership",
 		"which-source-or-contract-establishes-the-allowed-combinations",
 	} {
-		if !containsDataDesignString(ctx.DataDesign.DomainConstraintEvidenceQuestions, question) {
-			t.Fatalf("domain constraint Evidence question %q is missing: %+v", question, ctx.DataDesign.DomainConstraintEvidenceQuestions)
+		if !containsDataDesignString(ctx.DataDesign.CompositeDomainConstraintEvidenceQuestions, question) {
+			t.Fatalf("composite domain constraint Evidence question %q is missing: %+v", question, ctx.DataDesign.CompositeDomainConstraintEvidenceQuestions)
 		}
 	}
 	for _, limit := range []string{
-		"absence-of-authored-domain-constraint-is-not-no-domain-constraint",
-		"relation-shape-is-not-domain-constraint-evidence",
-		"scoped-uniqueness-is-not-domain-constraint",
-		"persistence-unique-constraint-is-not-domain-constraint",
+		"absence-of-authored-composite-domain-constraint-is-not-no-composite-domain-constraint",
+		"relation-shape-is-not-composite-domain-constraint-evidence",
+		"scoped-uniqueness-is-not-composite-domain-constraint",
+		"persistence-unique-constraint-is-not-composite-domain-constraint",
 	} {
 		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, limit) {
-			t.Fatalf("domain constraint authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+			t.Fatalf("composite domain constraint authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
 		}
 	}
 }
