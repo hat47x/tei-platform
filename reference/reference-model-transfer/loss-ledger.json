@@ -188,6 +188,15 @@
       "risk": "later transcription can accidentally consume an unresolved fact because it exists in RelationalFacts, bypassing the diagnostic boundary",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "expose relationalResolutionStatus independently from fact availability and require resolved status before deterministic semantic lowering; unresolved facts remain Source Evidence only"
+    },
+    {
+      "id": "RML-021",
+      "topic": "history-version-fields-promoted-to-business-identity",
+      "nature": "unresolved",
+      "evidence": "legacy models may encode effective-start dates, history numbers, version selectors, or latest flags alongside keys even when those values identify a version/current view rather than the underlying business occurrence",
+      "risk": "transfer can make version identity part of business occurrence identity, hide stable relations, or infer temporal semantics from field names and physical key shape",
+      "owner": "ISSUE-000078 / ISSUE-000047",
+      "stopCondition": "separate occurrence identity from history/version identity and validity semantics; do not promote effective-date/history/latest fields from source shape alone, and do not require a history model without business temporal evidence"
     }
   ],
   "claimsNotEstablished": [
