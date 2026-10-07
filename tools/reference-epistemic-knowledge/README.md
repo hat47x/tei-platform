@@ -19,11 +19,15 @@ go run ./tools/reference-epistemic-knowledge \
 一つのconfidenceやtruth scoreにはまとめません。
 
 ```text
-origin
+content origin
   user / ai / system / imported / external
 
-assertion mode
-  fact / hypothesis / question / instruction / other
+ingested by
+  user / ai / system / connector / import
+
+statement kind
+  fact / observation / requirement / decision / constraint
+  hypothesis / question / instruction / preference / other
 
 review validity
   native / unreviewed / valid / stale / rejected / superseded
@@ -40,9 +44,11 @@ conflict
 
 そのうえで、現在のcontext assemblyでの利用状態だけを `premise / candidate-only / review-required / blocked` として派生します。この派生状態は客観的Truthを表しません。
 
-## user factとAI生成情報
+## ユーザー入力とAI生成情報
 
-user origin + fact assertion + `native` は、明示された現在scopeと一致する場合、通常の作業前提として利用できます。外部検証済みという意味ではありません。
+user origin + direct user ingestion + working-premise statement + `native` は、現在の適用範囲と一致する場合、通常の作業前提として利用できます。対象はfactだけでなく、observation / requirement / decision / constraintを含みます。これは外部検証済み、組織上の正式承認、Canonical Acceptanceのいずれも意味しません。
+
+入力者と内容の出所も分けます。ユーザーがAI出力を貼り付けた場合はcontent originをai、ingested byをuserとして保持し、貼り付け操作だけでuser assertionへ変換しません。
 
 AI originは `native` にできません。AIが生成したfact assertionは、保存されただけではreview済みに昇格せず、`unreviewed` のまま `candidate-only` です。v0で `reviewed / conditional` を成立させるreview recordは `method=human-confirmation` を明示的に要求し、AI自己reviewをreview済み状態へ読み替えません。review recordがbindingしたmeaning fingerprintと現在値も一致する必要があります。
 
@@ -62,7 +68,7 @@ usable when environment is unknown
 
 です。
 
-`explicit` と `inferred` scopeも保持します。inferred scopeを利用したassessmentはその事実を出力へ残します。
+`observed` / `declared` / `inferred` を区別します。現在のrepositoryやbranch等をsystemが直接観測した場合はobserved、ユーザーや資料が明示した場合はdeclared、AIやheuristicの推定はinferredです。inferred contextを利用したassessmentはその事実を出力へ残します。
 
 ## semantic editとreview
 
@@ -130,6 +136,10 @@ TEI固有UIやruntime objectをfixtureの正本にしていません。
 - reviewer authority
 
 Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらないことが設計前提です。このtoolは現在Canonical loaderへ接続せず、入力sidecarからread-only Projectionを生成します。
+
+## v0の状態値をproduction modelへ固定しない
+
+このReferenceには、既存pressureを保つため `native / conditional / superseded` 等の状態値が残っています。ADR-0030では、成立経路、確認状態、適用条件、ライフサイクルを別軸にする方針へ精密化しました。したがって、このv0 enumをproduction contractとして固定しません。
 
 ## 今回まだ示さないこと
 
