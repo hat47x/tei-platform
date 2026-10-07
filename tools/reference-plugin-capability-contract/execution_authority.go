@@ -167,6 +167,9 @@ func verifyCapabilityExecutionAuthority(
 	}
 	binding.BindingFingerprint =
 		capabilityExecutionAuthorityBindingFingerprint(binding)
+	if err := validateCapabilityExecutionAuthorityBinding(binding); err != nil {
+		return CapabilityExecutionAuthorityBinding{}, err
+	}
 	return binding, nil
 }
 
@@ -255,6 +258,46 @@ func samePermissionSet(
 		}
 	}
 	return true
+}
+
+func validateCapabilityExecutionAuthorityBinding(
+	binding CapabilityExecutionAuthorityBinding,
+) error {
+	if binding.Schema != capabilityExecutionAuthorityBindingSchema {
+		return fmt.Errorf(
+			"execution authority binding schema %q is not supported",
+			binding.Schema,
+		)
+	}
+	if !validSHA256Fingerprint(binding.CapabilityLockFingerprint) ||
+		!validSHA256Fingerprint(binding.ExecutionProfileFingerprint) ||
+		!validSHA256Fingerprint(binding.AuthorityEvidenceFingerprint) ||
+		!validSHA256Fingerprint(binding.BindingFingerprint) {
+		return fmt.Errorf("execution authority binding fingerprints are invalid")
+	}
+	if !binding.IsolationPolicy.Valid() {
+		return fmt.Errorf(
+			"execution authority binding isolation policy %q is invalid",
+			binding.IsolationPolicy,
+		)
+	}
+	normalized, err := normalizePermissionSet(binding.Permissions)
+	if err != nil {
+		return err
+	}
+	if len(normalized) != len(binding.Permissions) {
+		return fmt.Errorf("execution authority binding permissions are not normalized")
+	}
+	for i := range normalized {
+		if normalized[i] != binding.Permissions[i] {
+			return fmt.Errorf("execution authority binding permissions are not normalized")
+		}
+	}
+	if capabilityExecutionAuthorityBindingFingerprint(binding) !=
+		binding.BindingFingerprint {
+		return fmt.Errorf("execution authority binding fingerprint is stale")
+	}
+	return nil
 }
 
 func capabilityExecutionProfileFingerprint(
