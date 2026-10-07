@@ -15,6 +15,7 @@ type ClassificationCoverage struct {
 	MappedObservedKindCount int          `json:"mappedObservedKindCount"`
 	UnmappedObservedKinds   []string     `json:"unmappedObservedKinds,omitempty"`
 	UnobservedMappedKinds   []string     `json:"unobservedMappedKinds,omitempty"`
+	UnknownObservedElements int          `json:"unknownObservedElements"`
 	Complete                bool         `json:"complete"`
 	AuthorityLimits         []string     `json:"authorityLimits"`
 }
@@ -56,8 +57,11 @@ func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt
 			coverage.UnobservedMappedKinds = append(coverage.UnobservedMappedKinds, kind)
 		}
 	}
+	for _, count := range receipt.UnknownElements {
+		coverage.UnknownObservedElements += count
+	}
 	sort.Strings(coverage.UnmappedObservedKinds)
 	sort.Strings(coverage.UnobservedMappedKinds)
-	coverage.Complete = len(coverage.UnmappedObservedKinds) == 0
+	coverage.Complete = len(coverage.UnmappedObservedKinds) == 0 && coverage.UnknownObservedElements == 0
 	return coverage, nil
 }
