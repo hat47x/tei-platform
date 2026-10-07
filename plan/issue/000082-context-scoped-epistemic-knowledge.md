@@ -14,7 +14,7 @@
 特に次の二つを同時に満たします。
 
 1. ユーザーが事実として入力した情報は、その作業文脈では通常の前提として利用する。
-2. AIが生成した情報は、保存されたことだけではreview済みの事実へ昇格しない。
+2. AIが生成した情報は、保存されたことだけでは確認済み情報へ昇格しない。
 
 さらに、どちらも別のproject、version、environmentへ無条件に一般化しません。
 
@@ -24,7 +24,7 @@
 
 本Issueでは、この連鎖をPrompt上の注意書きではなく、保存、検索、review、context assemblyの契約で止めます。
 
-利用者側では、大量出力へ細かいmetadataを手入力させません。AI出力は自動的にunreviewedとし、利用者は確認できた範囲だけを高速にreviewします。
+利用者側では、大量出力へ細かなmetadataを手入力させません。AI出力は自動的に未確認として扱い、利用者は確認できた範囲だけを高速に処理します。
 
 ## 設計上の境界
 
@@ -34,29 +34,23 @@ TEIは世界の客観的真偽を判定するAuthorityになりません。
 
 扱うのは、誰が、どの文脈で、いつ、どの状態としてそのassertionを利用できるとしたかです。
 
-### originとreview stateを分ける
+### 情報の出所、取り込み主体、働き、確認状態を分ける
 
-user由来であることは客観的検証済みを意味しません。ただし、現在の作業文脈ではユーザーが与えた前提として扱います。
+ユーザー由来であることは、客観的に検証済みであることを意味しません。一方、ユーザーが現在の作業で直接与えた事実、観測、要件、決定、制約は、その適用範囲では通常の作業前提として利用できます。
 
-AI由来であることは誤りを意味しません。ただし、人間review等のEvidenceなしにreview済みへ昇格しません。
+AI由来であることも誤りを意味しません。ただし、人間による確認等のEvidenceがなければ確認済みへ昇格しません。また、ユーザーがAI文章を貼り付けても、内容の出所はAIのまま保持します。
 
-### review stateとscopeを分ける
+### 確認状態と適用範囲を分ける
 
-review済みのassertionも、scope外では自動的に利用しません。
+確認済みの情報も、確認が成立した適用範囲の外では自動的に利用しません。
 
-たとえば次の二つは、同じ意味ではありません。
-
-```text
-reviewed in project A / production
-  !=
-reviewed in project B / external API
-```
+たとえば「project Aのproductionで確認済み」であることと、「project Bやexternal APIでも利用可能」であることは別です。
 
 ### 情報の働きと確認状態を分ける
 
 事実でない情報が、すべて仮説になるわけではありません。設計上の要件、決定、制約は、世界についての事実とは異なりますが、後続作業の前提になります。
 
-最初のReferenceではfact中心のpressureを置いていますが、次のincrementでは少なくともfact / observation / requirement / decision / constraint / hypothesisを区別します。ユーザーが現在の作業で直接与えた要件や決定は通常の作業前提にできますが、組織上の正式AuthorityやCanonical Acceptanceとは分けます。
+Reference candidateでは、fact / observation / requirement / decision / constraint / hypothesisを区別しています。ユーザーが現在の作業で直接与えた要件や決定は通常の作業前提にできますが、組織上の正式AuthorityやCanonical Acceptanceとは分けます。
 
 ### 入力者と内容の出所を分ける
 
@@ -92,13 +86,15 @@ paragraph、card、row、selected range等の対象へ、Canonical meaningを複
 最低限必要な情報は次です。
 
 - target / subject reference
-- origin
-- assertion mode
-- review state
-- explicit / inferred context
+- content provenance
+- ingestion actor
+- statement kind
+- append-only confirmation history
+- observed / declared / inferred context
 - valid / checked time
-- Source / Evidence / review record
+- Source / Evidence
 - supersession / contradiction relation
+- downstream dependency criticality
 
 実装前に、既存Source Index、Evidence、Decision Index、Semantic Extensionのどれを再利用できるか確認します。
 
@@ -116,7 +112,7 @@ context bindingは、systemが直接観測したobserved、userやauthoritative 
 
 paragraph、card、row、selected range等へのannotationは、編集後の再特定を考慮します。positionだけへ依存せず、利用可能なsubject identity、source revision、structure、quoted text等を組み合わせます。
 
-同じ情報への複数回reviewは上書きせず、review eventとして保持します。現在の確認状態は、対象meaning、scope、time、review eventから導出する構造をpressureします。
+同じ情報への複数回の確認は上書きせず、review eventとして保持します。現在の確認状態は、対象meaning、適用範囲、時点、review eventから導出する構造をpressureします。
 
 ### E1: confirmation history
 
@@ -146,7 +142,7 @@ review eventは対象meaning fingerprintへ結び付けます。semantic editで
 
 ### E2: context compatibility
 
-同じassertionを別project、branch、version、environmentへ持ち出し、scope mismatchを検出します。
+同じassertionを別project、branch、version、environmentへ持ち出し、適用範囲の不一致を検出します。
 
 inferred contextを利用する場合、その推定結果と根拠を保持し、後から訂正できるようにします。
 
@@ -160,7 +156,7 @@ inferred contextを利用する場合、その推定結果と根拠を保持し�
 - 少数のcritical unreviewed dependency
 - reviewedだがstaleなcritical dependency
 - reviewed同士のConflict
-- scope mismatchしたcritical dependency
+- 適用範囲の不一致したcritical dependency
 
 低重要度memoが多いだけのcaseより、critical dependencyが未確認のcaseを強くalertできることを確認します。
 
@@ -173,7 +169,7 @@ SUI #3184へ渡すreview request projectionを定義します。
 少なくとも次を含みます。
 
 - assertion
-- current state / scope
+- current state / 適用範囲
 - reason
 - downstream impact
 - Source / Evidence
@@ -222,12 +218,14 @@ SEI routing / assembly
 
 SUIでは次を実証します。
 
-- AI出力へunreviewedを自動付与
-- user factual assertionへ通常の再承認操作を要求しない
+- AI出力を自動的に未確認として扱う
+- userが直接与えたfact / observation / requirement / decision / constraintへ通常の再承認操作を要求しない
 - selection + 1操作
 - bulk review
-- conditional review / scope refinement
-- semantic edit後の再確認表示
+- 条件付き確認 / 適用範囲の精密化
+- 意味変更後の再確認表示
+- ambiguous / detached targetの再接続UI
+- epistemic coverage gapの表示
 - Knowledge Health projection
 - stakeholder review queue
 
@@ -240,7 +238,9 @@ SEIでは次を実証します。
 - context-compatible retrieval
 - status-aware context assembly
 - Conflict / stale / supersededの保持
-- narrow scopeからwide scopeへのgeneralization抑制
+- 狭い適用範囲から広い適用範囲へのgeneralization抑制
+- ambiguous / detached targetをpremiseへ投入しない
+- consumer freshness requirementをquery / task文脈から適用する
 - review escalation候補
 - RecommendationとAuthorityの分離
 
@@ -250,7 +250,7 @@ similarityやmodel confidenceをTruthへ昇格させません。
 
 ### #267 / ADR-0022
 
-AI ProposalとCanonical Acceptanceを分離する既存境界は維持します。本Issueのreview済み情報が存在しても、それだけでCanonical changeをAcceptedにはしません。
+AI ProposalとCanonical Acceptanceを分離する既存境界は維持します。本Issueで確認済みとなった情報が存在しても、それだけでCanonical changeをAcceptedにはしません。
 
 ### ISSUE-000047
 
@@ -266,7 +266,7 @@ review、health、context evaluation等をPlugin-defined Capabilityとして提�
 
 ## 2026-10-06 First Reference candidate — E0〜E4
 
-このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review event、target anchoring、epistemic coverageまでpressureを広げました。2026-10-07の再点検で残ったlegacy / export-import境界とproduction向けresolver / coverage生成は、引き続き未実証です。
+このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、append-only review history、target anchoring、epistemic coverage、metadata-free legacy reimport、consumer freshnessまでpressureを広げました。未実証なのは、metadata-preserving export / import adapter、production向けtarget resolver / coverage生成、consumer側での実retrieval統合です。
 
 確認状態については、初期版のnative / reviewed / conditional / rejected / supersededという単一stateを廃止しました。review eventから導出するconfirmation、meaningへのreview binding、supersedes relationから導出するlifecycleを別軸として扱います。
 
@@ -380,11 +380,11 @@ reviewer candidateには `reviewer-candidate-is-not-review-authority` を明示�
 - user decision / constraintのworking-premise test
 - userが取り込んだAI-origin contentのprovenance保持test
 - AI unreviewed assertion
-- human-reviewed assertion
-- narrow-scope conditional review
-- stale reviewed assertion
+- human-confirmed assertion
+- 構造化された適用範囲を持つconditional confirmation
+- staleなconfirmed assertion
 - superseded assertion
-- reviewed Conflict pair
+- confirmed Conflict pair
 - rejected AI assertion
 - critical / high / low downstream dependency
 
@@ -413,7 +413,7 @@ reviewer candidate
 
 ## 完了条件
 
-- [ ] user factual assertionとAI unreviewed assertionを区別できる
+- [ ] userが直接与えた作業前提とAI未確認情報を区別できる
 - [ ] fact / observation / requirement / decision / constraint / hypothesisを区別できる
 - [ ] content provenanceとingestion actorを分離できる
 - [ ] observed / declared / inferred contextを区別できる
@@ -427,7 +427,7 @@ reviewer candidate
 - [ ] AI生成主張が保存だけで確認済みへ昇格しない
 - [ ] content provenance / ingestion actor / statement kind / confirmation history / lifecycle / scope / time / Evidenceを分離できる
 - [ ] explicit contextとinferred contextを区別できる
-- [ ] narrow scopeのfactをwide scopeへ黙って一般化しない
+- [ ] 狭い適用範囲の情報を広い適用範囲へ黙って一般化しない
 - [ ] semantic edit後に確認の有効性を再評価できる
 - [ ] AI summaryへ確認状態を無条件継承しない
 - [ ] contradictionを保持できる
@@ -436,8 +436,8 @@ reviewer candidate
 - [ ] retrievalへrelevanceとcontext compatibilityを別signalとして渡せる
 - [ ] Project Knowledge Healthがcritical dependencyを考慮できる
 - [ ] consumer側のfreshness requirementをassertion本体の確認状態と分離して評価できる
-- [ ] stakeholderへの確認依頼へimpact / Evidence / scopeを渡せる
-- [ ] conditional reviewでscope refinementを保持できる
+- [ ] stakeholderへの確認依頼へimpact / Evidence / 適用範囲を渡せる
+- [ ] 条件付き確認で適用範囲の精密化を保持できる
 - [ ] SUI #3184とSEI #660が同じcontractを利用できる
 - [ ] Core固定enum追加なしで最初のReferenceを成立させられる
 - [ ] Extension / Pluginを外しても既存Canonical meaningが変化しない
