@@ -11,7 +11,6 @@
       "meaningFingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       "origin": "user",
       "assertionMode": "fact",
-      "reviewState": "native",
       "context": [
         {
           "dimension": "project",
@@ -31,7 +30,6 @@
       "meaningFingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
       "origin": "ai",
       "assertionMode": "fact",
-      "reviewState": "unreviewed",
       "context": [
         {
           "dimension": "project",
@@ -60,7 +58,6 @@
       "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       "origin": "external",
       "assertionMode": "fact",
-      "reviewState": "reviewed",
       "context": [
         {
           "dimension": "project",
@@ -74,14 +71,18 @@
         }
       ],
       "checkedAt": "2026-10-06T12:00:00Z",
-      "review": {
-        "id": "review-main-branch",
-        "reviewer": "human",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
-        "reviewedAt": "2026-10-06T12:05:00Z"
-      },
-      "ingestedBy": "connector"
+      "ingestedBy": "connector",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-main-branch",
+          "kind": "confirm",
+          "reviewer": "human",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "occurredAt": "2026-10-06T12:05:00Z"
+        }
+      ]
     },
     {
       "id": "conditional-production",
@@ -93,7 +94,6 @@
       "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
       "origin": "user",
       "assertionMode": "fact",
-      "reviewState": "conditional",
       "context": [
         {
           "dimension": "project",
@@ -106,17 +106,21 @@
           "provenance": "declared"
         }
       ],
-      "review": {
-        "id": "review-production-auth",
-        "reviewer": "system-owner",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-        "reviewedAt": "2026-10-06T12:10:00Z",
-        "conditions": [
-          "production only"
-        ]
-      },
-      "ingestedBy": "user"
+      "ingestedBy": "user",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-production-auth",
+          "kind": "confirm",
+          "reviewer": "system-owner",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "occurredAt": "2026-10-06T12:10:00Z",
+          "conditions": [
+            "production only"
+          ]
+        }
+      ]
     },
     {
       "id": "stale-critical",
@@ -128,7 +132,6 @@
       "meaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
       "origin": "external",
       "assertionMode": "fact",
-      "reviewState": "reviewed",
       "context": [
         {
           "dimension": "project",
@@ -137,17 +140,21 @@
         }
       ],
       "validUntil": "2026-09-30T23:59:59Z",
-      "review": {
-        "id": "review-provider-contract",
-        "reviewer": "integration-owner",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
-        "reviewedAt": "2026-09-01T00:00:00Z"
-      },
       "reviewerCandidates": [
         "integration-owner"
       ],
-      "ingestedBy": "connector"
+      "ingestedBy": "connector",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-provider-contract",
+          "kind": "confirm",
+          "reviewer": "integration-owner",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "occurredAt": "2026-09-01T00:00:00Z"
+        }
+      ]
     },
     {
       "id": "superseded-design",
@@ -159,7 +166,6 @@
       "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
       "origin": "imported",
       "assertionMode": "fact",
-      "reviewState": "reviewed",
       "context": [
         {
           "dimension": "project",
@@ -167,14 +173,18 @@
           "provenance": "declared"
         }
       ],
-      "review": {
-        "id": "review-runtime-old",
-        "reviewer": "runtime-owner",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
-        "reviewedAt": "2026-09-20T00:00:00Z"
-      },
-      "ingestedBy": "import"
+      "ingestedBy": "import",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-runtime-old",
+          "kind": "confirm",
+          "reviewer": "runtime-owner",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "occurredAt": "2026-09-20T00:00:00Z"
+        }
+      ]
     },
     {
       "id": "superseding-design",
@@ -186,7 +196,6 @@
       "meaningFingerprint": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "origin": "user",
       "assertionMode": "fact",
-      "reviewState": "native",
       "context": [
         {
           "dimension": "project",
@@ -209,7 +218,6 @@
       "meaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
       "origin": "imported",
       "assertionMode": "fact",
-      "reviewState": "reviewed",
       "context": [
         {
           "dimension": "project",
@@ -217,17 +225,21 @@
           "provenance": "declared"
         }
       ],
-      "review": {
-        "id": "review-identifier-a",
-        "reviewer": "reviewer-a",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
-        "reviewedAt": "2026-10-05T00:00:00Z"
-      },
       "conflictsWith": [
         "conflict-b"
       ],
-      "ingestedBy": "import"
+      "ingestedBy": "import",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-identifier-a",
+          "kind": "confirm",
+          "reviewer": "reviewer-a",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "occurredAt": "2026-10-05T00:00:00Z"
+        }
+      ]
     },
     {
       "id": "conflict-b",
@@ -239,7 +251,6 @@
       "meaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
       "origin": "user",
       "assertionMode": "fact",
-      "reviewState": "reviewed",
       "context": [
         {
           "dimension": "project",
@@ -247,17 +258,21 @@
           "provenance": "declared"
         }
       ],
-      "review": {
-        "id": "review-identifier-b",
-        "reviewer": "reviewer-b",
-        "method": "human-confirmation",
-        "reviewedMeaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
-        "reviewedAt": "2026-10-05T00:00:00Z"
-      },
       "conflictsWith": [
         "conflict-a"
       ],
-      "ingestedBy": "user"
+      "ingestedBy": "user",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "review-identifier-b",
+          "kind": "confirm",
+          "reviewer": "reviewer-b",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+          "occurredAt": "2026-10-05T00:00:00Z"
+        }
+      ]
     },
     {
       "id": "rejected-claim",
@@ -269,7 +284,6 @@
       "meaningFingerprint": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
       "origin": "ai",
       "assertionMode": "fact",
-      "reviewState": "rejected",
       "context": [
         {
           "dimension": "project",
@@ -277,7 +291,18 @@
           "provenance": "declared"
         }
       ],
-      "ingestedBy": "ai"
+      "ingestedBy": "ai",
+      "reviewEvents": [
+        {
+          "sequence": 1,
+          "id": "reject-derived-authority",
+          "kind": "reject",
+          "reviewer": "human-reviewer",
+          "method": "human-review",
+          "meaningFingerprint": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "occurredAt": "2026-10-05T00:00:00Z"
+        }
+      ]
     }
   ],
   "dependencies": [
