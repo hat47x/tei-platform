@@ -440,6 +440,18 @@ func TestDataDesignContextFingerprintTracksRelevantEvidenceOnly(t *testing.T) {
 	if third.DataDesign == nil || third.DataDesign.Fingerprint == first.DataDesign.Fingerprint {
 		t.Fatalf("relevant source change did not invalidate Data Design fingerprint: first=%q third=%q", first.DataDesign.Fingerprint, third.DataDesign.Fingerprint)
 	}
+
+	changedProjection := dataDesignRelationUniqueWorld()
+	changedProjection.Semantics[0].Data[0].Relations[0].Cardinality = semantic.CardinalityOne
+	fourth := Build(changedProjection, baseSources, relevantSubject)
+	if fourth.DataDesign == nil ||
+		fourth.DataDesign.Fingerprint == first.DataDesign.Fingerprint {
+		t.Fatalf(
+			"derived projection change did not invalidate Data Design fingerprint: first=%q fourth=%q",
+			first.DataDesign.Fingerprint,
+			fourth.DataDesign.Fingerprint,
+		)
+	}
 }
 
 func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
