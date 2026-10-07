@@ -170,6 +170,15 @@
       "risk": "better observation can silently become stronger pressure to preserve accidental As-Is structure in the TEI target design",
       "owner": "ISSUE-000078 / ISSUE-000027",
       "stopCondition": "keep exact source observations as Source/Actual Evidence and require an explicit Proposal/Acceptance step before any reconstructed legacy structure becomes Desired or authoritative TEI meaning"
+    },
+    {
+      "id": "RML-022",
+      "topic": "public-receipt-leaks-local-schema-names",
+      "nature": "unresolved",
+      "evidence": "Current PublicationReceipt removes source values/text but serializes arbitrary unknown element names in elementCounts/unknownElements and arbitrary attribute names in attributeNameCounts. The benchmark has unknown element count zero and therefore does not exercise the leak.",
+      "risk": "A public Reference Evidence artifact can disclose enterprise-specific schema vocabulary while still appearing to satisfy the no-source-content publication boundary.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "separate local source-faithful schema-name observation from public Evidence; public output retains unknown/additional schema occurrence counts and deterministic fingerprints without arbitrary source-derived names, and tests prove unknown/custom names do not appear in serialized public output"
     }
   ],
   "claimsNotEstablished": [
