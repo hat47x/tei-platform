@@ -160,11 +160,14 @@ func newBuildBoundBuiltinFixture(t *testing.T) buildBoundBuiltinFixture {
 		t.Fatal(err)
 	}
 	engine := builtinRuntimeEngine()
-	plan, err = pruntime.BindBuiltinRuntimeEngine(
-		plan,
-		plugin.Identity{ID: realized.ID, Version: realized.Version},
-		engine,
-	)
+	engineLock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: realized.ID, Version: realized.Version},
+			Engine: engine,
+		}},
+	}
+	plan, err = pruntime.BindRuntimeEngineLock(plan, engineLock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +451,7 @@ func TestRuntimeEngineBindingChangesRuntimePolicyFingerprint(t *testing.T) {
 }
 
 
-func TestBindBuiltinRuntimeEngineDoesNotMutateInputPlan(t *testing.T) {
+func TestBindRuntimeEngineLockDoesNotMutateInputPlan(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
 	input := fx.plan
 	for i := range input.Plugins {
@@ -459,11 +462,14 @@ func TestBindBuiltinRuntimeEngineDoesNotMutateInputPlan(t *testing.T) {
 	input.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(input)
 	before := input.RuntimePolicyFingerprint
 
-	bound, err := pruntime.BindBuiltinRuntimeEngine(
-		input,
-		plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
-		builtinRuntimeEngine(),
-	)
+	lock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
+			Engine: builtinRuntimeEngine(),
+		}},
+	}
+	bound, err := pruntime.BindRuntimeEngineLock(input, lock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,15 +499,18 @@ func TestBindBuiltinRuntimeEngineDoesNotMutateInputPlan(t *testing.T) {
 	}
 }
 
-func TestBindBuiltinRuntimeEngineRejectsRebindingDifferentEngine(t *testing.T) {
+func TestBindRuntimeEngineLockRejectsRebindingDifferentEngine(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
 	other := builtinRuntimeEngine()
 	other.ImplementationDigest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	if _, err := pruntime.BindBuiltinRuntimeEngine(
-		fx.plan,
-		plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
-		other,
-	); err == nil {
+	lock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
+			Engine: other,
+		}},
+	}
+	if _, err := pruntime.BindRuntimeEngineLock(fx.plan, lock); err == nil {
 		t.Fatal("expected different runtime engine rebinding to fail")
 	}
 }
