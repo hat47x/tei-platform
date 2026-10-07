@@ -307,6 +307,9 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 			}
 		}
 	}
+	if err := validateSupersessionAcyclic(input.Assertions); err != nil {
+		return input, err
+	}
 
 	for i := range input.Dependencies {
 		d := &input.Dependencies[i]
@@ -335,6 +338,37 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 		return input.Dependencies[i].Consumer < input.Dependencies[j].Consumer
 	})
 	return input, nil
+}
+
+func validateSupersessionAcyclic(assertions []Assertion) error {
+	edges := map[string][]string{}
+	for _, assertion := range assertions {
+		edges[assertion.ID] = append([]string{}, assertion.Supersedes...)
+	}
+	state := map[string]int{}
+	var visit func(string) error
+	visit = func(id string) error {
+		switch state[id] {
+		case 1:
+			return fmt.Errorf("supersession cycle detected at %q", id)
+		case 2:
+			return nil
+		}
+		state[id] = 1
+		for _, target := range edges[id] {
+			if err := visit(target); err != nil {
+				return err
+			}
+		}
+		state[id] = 2
+		return nil
+	}
+	for id := range edges {
+		if err := visit(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func normalizeTargetRef(target TargetRef) (TargetRef, error) {
