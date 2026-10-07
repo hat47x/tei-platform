@@ -52,23 +52,19 @@ func TestMaterializeCanonicalizesJSON(t *testing.T) {
 	}
 }
 
-func TestNormalizeSortsOperationsWithoutMutatingSource(t *testing.T) {
-	source := implementationSource(`{"outcome":"accepted"}`)
-	source.Operations = append([]implementation.Operation{
-		{Name: "z", Payload: []byte(`{"value":2}`)},
-		{Name: "a", Payload: []byte(`{"value":1}`)},
-	}, source.Operations...)
-	before := source.Operations[0].Name
+func TestNormalizeDoesNotMutateSource(t *testing.T) {
+	source := implementationSource(`{ "outcome" : "accepted", "attemptId" : "a" }`)
+	before := append([]byte(nil), source.Operations[0].Payload...)
 
 	normalized, err := implementation.Normalize(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source.Operations[0].Name != before {
-		t.Fatal("normalization mutated authoritative source ordering")
+	if string(source.Operations[0].Payload) != string(before) {
+		t.Fatal("normalization mutated authoritative source payload")
 	}
-	if normalized.Operations[0].Name != "a" || normalized.Operations[len(normalized.Operations)-1].Name != "z" {
-		t.Fatalf("normalized operations: %#v", normalized.Operations)
+	if string(normalized.Operations[0].Payload) != `{"attemptId":"a","outcome":"accepted"}` {
+		t.Fatalf("normalized payload: %s", normalized.Operations[0].Payload)
 	}
 }
 
@@ -141,4 +137,32 @@ func TestValidateAgainstDefinitionRejectsRuntimeAndCapabilityMismatch(t *testing
 	if err := implementation.ValidateAgainstDefinition(source, wrongCapability); err == nil {
 		t.Fatal("expected capability mismatch to fail")
 	}
+}
+
+
+func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
+	t.Run("other capability kind", func(t *testing.T) {
+		source := implementationSource(`{"outcome":"accepted"}`)
+		source.CapabilityKind = plugin.CapabilityObservationProvider
+		if err := source.Validate(); err == nil {
+			t.Fatal("expected non-deployment capability to fail")
+		}
+	})
+	t.Run("additional operation", func(t *testing.T) {
+		source := implementationSource(`{"outcome":"accepted"}`)
+		source.Operations = append(source.Operations, implementation.Operation{
+			Name:    "other",
+			Payload: []byte(`{"ok":true}`),
+		})
+		if err := source.Validate(); err == nil {
+			t.Fatal("expected additional operation to fail")
+		}
+	})
+	t.Run("renamed operation", func(t *testing.T) {
+		source := implementationSource(`{"outcome":"accepted"}`)
+		source.Operations[0].Name = "observe"
+		if err := source.Validate(); err == nil {
+			t.Fatal("expected non-execute operation to fail")
+		}
+	})
 }
