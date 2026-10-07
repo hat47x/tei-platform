@@ -19,6 +19,7 @@ func executionAuthorityFixture(
 		"reference.compat.xead.source",
 		"xead.reader.v0",
 	)
+	provider.RealizationTarget = profile.RealizationTarget
 	var err error
 	provider, err = bindProviderExecutionProfile(provider, profile)
 	if err != nil {
