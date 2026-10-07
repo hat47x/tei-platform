@@ -148,6 +148,40 @@ current Reference Workspaceには`.tei/decisions`が存在します。初期runn
 
 このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Agent Workspace / Checkpointを使用しません。Shared Acceptanceを否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることをpressureします。
 
+### runner orchestrationの合成検証
+
+actual TEI checkoutを取得できない制約とは別に、runner自体のGit / Shell orchestrationを検証するため、local container上に最小の合成Go Repositoryを作成しました。
+
+合成Repositoryは、runnerが利用する`workspace-files`、`source-index`、`knowledge-context`、`validate`、`world`だけを最小実装し、同じ名前のtargeted testとReference Workspaceを持ちます。Semantic conflictについては、二つのfileに`ToolNeutralCollision`が存在すると`DUPLICATE_SEMANTIC_ELEMENT`を返すようにしました。
+
+この合成環境で、最新版runnerは次を最後まで通過しました。
+
+```text
+full local clone
+  -> build
+  -> targeted test
+  -> managed source / source trace check
+  -> Decision ledger removal equivalence
+  -> direct file edit
+  -> ordinary commit
+  -> separate integration clone
+  -> rebuild / retest / reload
+  -> two branch Git merge
+  -> semantic conflict rejection
+  -> clean post-state
+```
+
+runner出力:
+
+```text
+changed=reference/workspace/semantic/sales/validation.tei
+decision-ledger-independent=true
+semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT
+tool-neutral development reference: PASS
+```
+
+これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
+
 ### 現在の検証状態
 
 - full local clone方式へ書き直したrunnerは`bash -n`で構文確認済み。
