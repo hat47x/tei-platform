@@ -119,9 +119,10 @@ func main() {
 	formatFlag := flag.String("format", "", "source format: xead or xeaf")
 	inputFlag := flag.String("input", "", "path to the source XML")
 	contractFlag := flag.String("contract", "", "optional transcription contract JSON")
+	localCandidatesFlag := flag.Bool("local-candidates", false, "include source-locator candidate classification; local/private output only")
 	flag.Parse()
 	if *formatFlag == "" || *inputFlag == "" {
-		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json]")
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json] [-local-candidates]")
 		os.Exit(2)
 	}
 	content, err := os.ReadFile(*inputFlag)
@@ -160,11 +161,29 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	var localCandidates []LocalTranscriptionCandidate
+	if *localCandidatesFlag {
+		localCandidates, err = ClassifyObservedDocument(format, doc, contractBytes)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+	}
 	output := struct {
-		Receipt        PublicationReceipt      `json:"receipt"`
-		Coverage       ClassificationCoverage  `json:"classificationCoverage"`
-		Classification ClassificationProjection `json:"classificationProjection"`
-	}{Receipt: receipt, Coverage: coverage, Classification: classification}
+		Receipt            PublicationReceipt                `json:"receipt"`
+		Coverage           ClassificationCoverage            `json:"classificationCoverage"`
+		Classification     ClassificationProjection          `json:"classificationProjection"`
+		LocalOutputNotice  string                            `json:"localOutputNotice,omitempty"`
+		LocalCandidates    []LocalTranscriptionCandidate     `json:"localCandidates,omitempty"`
+	}{
+		Receipt:        receipt,
+		Coverage:       coverage,
+		Classification: classification,
+		LocalCandidates: localCandidates,
+	}
+	if *localCandidatesFlag {
+		output.LocalOutputNotice = "local/private evidence: contains exact source structural locators; do not commit as public Reference Model evidence"
+	}
 	if err := encoder.Encode(output); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
