@@ -176,7 +176,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 }
 
 func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) Assessment {
-	history := assessReviewHistory(assertion)
+	history := assessReviewHistory(assertion, asOf)
 	assessment := Assessment{
 		AssertionID:           assertion.ID,
 		ContentOrigin:         assertion.Origin,
@@ -197,6 +197,9 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 	}
 	if history.StaleEventCount > 0 {
 		assessment.Reasons = append(assessment.Reasons, "STALE_REVIEW_HISTORY_PRESENT")
+	}
+	if history.FutureEventCount > 0 {
+		assessment.Reasons = append(assessment.Reasons, "FUTURE_REVIEW_HISTORY_PRESENT")
 	}
 	switch assertion.MetadataState {
 	case MetadataPartial:
@@ -220,9 +223,10 @@ type reviewHistoryAssessment struct {
 	LatestEventKind   ReviewEventKind
 	Conditions        []string
 	StaleEventCount   int
+	FutureEventCount  int
 }
 
-func assessReviewHistory(assertion Assertion) reviewHistoryAssessment {
+func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAssessment {
 	result := reviewHistoryAssessment{
 		ConfirmationState: "unreviewed",
 		ReviewBinding:     "none",
@@ -230,6 +234,14 @@ func assessReviewHistory(assertion Assertion) reviewHistoryAssessment {
 	var latest *ReviewEvent
 	for i := range assertion.ReviewEvents {
 		event := &assertion.ReviewEvents[i]
+		occurredAt, err := time.Parse(time.RFC3339, event.OccurredAt)
+		if err != nil {
+			continue
+		}
+		if occurredAt.After(asOf) {
+			result.FutureEventCount++
+			continue
+		}
 		if event.MeaningFingerprint != assertion.MeaningFingerprint {
 			result.StaleEventCount++
 			continue
