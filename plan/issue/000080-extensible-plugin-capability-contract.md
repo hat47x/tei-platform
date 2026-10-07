@@ -207,3 +207,18 @@ projectionはread-onlyです。旧Plugin定義をsortやnormalizeの副作用で
 また、artifact identityをまだ持たないlegacy ProviderをCatalog全体のinvalid inputにはしません。候補として存在してもConformance対象から外し、別scopeや別contractの正常な解決は継続します。一方、同じlogical provider identityを未確定projectionとexactな新Provider declarationで重複させた場合は、移行中の二重正本になるためfail closedにします。
 
 この段階でもproductionの`CapabilityKind`は削除しません。次に判断すべき点は、generic contract / provider / scope / lockのReference契約が既存Runtime Plugin Lockとどこまで共有できるか、また旧`CapabilityKind`を標準contract profileへ投影する一方向の移行期間をどう終了するかです。
+
+
+## E3 Runtime Plugin Lock binding pressure — 2026-10-07
+
+generic Capability Resolution LockをApplication Runtimeで利用する場合も、新しいRuntime Authorityを作らず、既存Runtime Plugin Lockへ接続するReference candidateを追加した。
+
+`RuntimeCapabilityBinding`は、Environment、Capability Lock fingerprint、ProviderのPlugin ID / version、Plugin definition fingerprint、artifact digestを結び付ける。Environment Lock全体のfingerprintはidentityへ含めない。同じEnvironmentに無関係なPluginが追加された場合まで、対象Capabilityのbindingを無効にしないためである。
+
+対象Pluginの削除、definition fingerprintの変更、artifact digestの変更はfail closedとする。legacy migration pathでは、Capability Lock内のProviderが現在のauthoritative `plugin.Definition`から一方向に投影された結果と一致することも確認する。これにより、旧Capability宣言とgeneric Provider宣言を二つのAuthorityにしない。
+
+Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability resolution identityへ含めない。同じartifactに対してBuild provenanceだけが更新された場合、Capability identityは変えない。Build provenanceは既存Plugin Lock / BuildArtifactLockから追跡する。
+
+このpressureで、現行Runtime Plugin Lockのpackaging上の限界も明確になった。Plugin LockはPluginごとに一つの`artifactDigest`を持つため、一つのPluginを同じTargetで複数のCapability implementation artifactへ分割した構成を表現できない。ReferenceではProvider artifactとPlugin-level artifactが異なる場合を拒否し、対応済みとは扱わない。
+
+この不足はRQ-024のWeb可搬性、lazy loading、Wasm分割、artifact coalescingと直接関係する。Plugin Lockへ新しいfieldを先に追加せず、ISSUE-000079のBuildArtifactLockとTarget packaging pressureを通して、provider-level artifact identityをRuntime Authorityへ固定する必要が実際に再現するかを確認する。
