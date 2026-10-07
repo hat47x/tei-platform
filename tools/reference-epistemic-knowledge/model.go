@@ -173,9 +173,10 @@ type ScopeBinding struct {
 }
 
 type EvidenceRef struct {
-	Kind        string `json:"kind"`
-	Ref         string `json:"ref"`
-	Fingerprint string `json:"fingerprint,omitempty"`
+	Kind        string   `json:"kind"`
+	Ref         string   `json:"ref"`
+	Fingerprint string   `json:"fingerprint,omitempty"`
+	AccessRefs  []string `json:"accessRefs,omitempty"`
 }
 
 const reviewMethodHuman = "human-review"
@@ -190,6 +191,7 @@ type ReviewEvent struct {
 	OccurredAt         string          `json:"occurredAt"`
 	Evidence           []EvidenceRef   `json:"evidence,omitempty"`
 	Conditions         []string        `json:"conditions,omitempty"`
+	AccessRefs         []string        `json:"accessRefs,omitempty"`
 }
 
 type Assertion struct {
@@ -207,6 +209,7 @@ type Assertion struct {
 	CheckedAt          string         `json:"checkedAt,omitempty"`
 	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
 	ReviewEvents       []ReviewEvent  `json:"reviewEvents,omitempty"`
+	AccessRefs         []string       `json:"accessRefs,omitempty"`
 	Supersedes         []string       `json:"supersedes,omitempty"`
 	ConflictsWith      []string       `json:"conflictsWith,omitempty"`
 	ReviewerCandidates []string       `json:"reviewerCandidates,omitempty"`
@@ -481,6 +484,7 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 		return a, fmt.Errorf("reviewEvents: %w", err)
 	}
 	a.ReviewEvents = reviewEvents
+	a.AccessRefs = normalizeStrings(a.AccessRefs)
 	a.Supersedes = normalizeStrings(a.Supersedes)
 	a.ConflictsWith = normalizeStrings(a.ConflictsWith)
 	a.ReviewerCandidates = normalizeStrings(a.ReviewerCandidates)
@@ -532,6 +536,7 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		}
 		event.Evidence = evidence
 		event.Conditions = normalizeStrings(event.Conditions)
+		event.AccessRefs = normalizeStrings(event.AccessRefs)
 		out = append(out, event)
 	}
 
@@ -564,13 +569,14 @@ func normalizeEvidenceRefs(values []EvidenceRef) ([]EvidenceRef, error) {
 		value.Kind = strings.TrimSpace(value.Kind)
 		value.Ref = strings.TrimSpace(value.Ref)
 		value.Fingerprint = strings.TrimSpace(value.Fingerprint)
+		value.AccessRefs = normalizeStrings(value.AccessRefs)
 		if value.Kind == "" || value.Ref == "" {
 			return nil, fmt.Errorf("evidence[%d] requires kind and ref", i)
 		}
 		if value.Fingerprint != "" && !sha256Pattern.MatchString(value.Fingerprint) {
 			return nil, fmt.Errorf("evidence[%d] fingerprint %q is not exact sha256", i, value.Fingerprint)
 		}
-		key := value.Kind + "|" + value.Ref + "|" + value.Fingerprint
+		key := value.Kind + "|" + value.Ref + "|" + value.Fingerprint + "|" + strings.Join(value.AccessRefs, ",")
 		if _, ok := seen[key]; ok {
 			continue
 		}
