@@ -200,6 +200,52 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+
+	packageBuilderDir, err := os.MkdirTemp("", "tei-plugin-package-builder-*")
+	if err != nil {
+		return evidence{}, err
+	}
+	defer os.RemoveAll(packageBuilderDir)
+	packageBuilderFirstPath := filepath.Join(packageBuilderDir, "builder-first")
+	packageBuilderSecondPath := filepath.Join(packageBuilderDir, "builder-second")
+	if runtime.GOOS == "windows" {
+		packageBuilderFirstPath += ".exe"
+		packageBuilderSecondPath += ".exe"
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		packageBuilderPackage,
+		packageBuilderFirstPath,
+		filepath.Join(packageBuilderDir, "state-builder-first"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build first Plugin package builder: %w", err)
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		packageBuilderPackage,
+		packageBuilderSecondPath,
+		filepath.Join(packageBuilderDir, "state-builder-second"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build second Plugin package builder: %w", err)
+	}
+	packageBuilderFirstDigest, err := hashFile(packageBuilderFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageBuilderSecondDigest, err := hashFile(packageBuilderSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if packageBuilderFirstDigest != packageBuilderSecondDigest {
+		return evidence{}, fmt.Errorf(
+			"Plugin package builder is not reproducible: %s != %s",
+			packageBuilderFirstDigest,
+			packageBuilderSecondDigest,
+		)
+	}
+
 	packagePlan := plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
@@ -219,10 +265,10 @@ func run(repo string) (evidence, error) {
 			},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.package.go.seed"),
-			Version:         goVersion,
+			ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
+			Version:         revision,
 			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  goToolchainDigest,
+			ArtifactDigest:  packageBuilderFirstDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
@@ -239,17 +285,39 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	packageFirstBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	packagePlanPath := filepath.Join(packageBuilderDir, "package-plan.json")
+	packagePlanBytes, err := json.Marshal(packagePlan)
 	if err != nil {
 		return evidence{}, err
 	}
-	packageSecondBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	if err := os.WriteFile(packagePlanPath, packagePlanBytes, 0o644); err != nil {
+		return evidence{}, err
+	}
+	packageFirstPath := filepath.Join(packageBuilderDir, "package-first.json")
+	packageSecondPath := filepath.Join(packageBuilderDir, "package-second.json")
+	if err := runPluginPackageBuilder(root, packageBuilderFirstPath, packagePlanPath, packageFirstPath); err != nil {
+		return evidence{}, fmt.Errorf("first Plugin package materialization: %w", err)
+	}
+	if err := runPluginPackageBuilder(root, packageBuilderSecondPath, packagePlanPath, packageSecondPath); err != nil {
+		return evidence{}, fmt.Errorf("second Plugin package materialization: %w", err)
+	}
+	packageFirstBytes, err := os.ReadFile(packageFirstPath)
 	if err != nil {
 		return evidence{}, err
 	}
-	packageFirstArtifactDigest := plugin.BuildOutputDigest(packageFirstBytes)
-	packageSecondArtifactDigest := plugin.BuildOutputDigest(packageSecondBytes)
-	if packageFirstArtifactDigest != packageSecondArtifactDigest {
+	packageSecondBytes, err := os.ReadFile(packageSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageFirstArtifactDigest, err := hashFile(packageFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageSecondArtifactDigest, err := hashFile(packageSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if string(packageFirstBytes) != string(packageSecondBytes) || packageFirstArtifactDigest != packageSecondArtifactDigest {
 		return evidence{}, fmt.Errorf(
 			"standard plugin package build is not reproducible: %s != %s",
 			packageFirstArtifactDigest,
