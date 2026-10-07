@@ -1,4 +1,4 @@
-# Business Handoff Watanabe Second Realistic Evidence Pressure — 2026-09
+# Business Handoff Second Realistic External Evidence Pressure — 2026-09
 
 Status: **Lane C / external design evidence pressure / no second-corpus fixture / Gate 15c not activated / no production schema adoption**
 
@@ -15,7 +15,7 @@ from / to / condition sufficiencyを確認
 
 Actual Repository runner green前にsecond corpusをTEI fixtureへ昇格しない方針は維持する。
 
-本書では、渡辺幸三氏の公開されている三要素分析法 / 上流工程資料から、H1/R3を壊し得る**realistic external design pressure**だけを抽出する。
+本書では、公開されている三要素分析法 / 上流工程資料から、H1/R3を壊し得る**realistic external design pressure**だけを抽出する。
 
 Exact Procedure / Step / actor / Data / event / Handoffを外部資料から捏造しない。
 
@@ -136,7 +136,7 @@ instruction issued
 
 ## 4. H1/R3がまだ壊れていない理由
 
-Watanabe evidenceはBusiness Flow / event semanticsがProcedure bodyより広いことを示すが、Handoff relationそのものに次が必須だとはまだ証明しない。
+当該外部資料のEvidenceはBusiness Flow / event semanticsがProcedure bodyより広いことを示すが、Handoff relationそのものに次が必須だとはまだ証明しない。
 
 ```text
 eventId
@@ -256,7 +256,7 @@ realistic TEI Referenceをlosslessにreview / partitionできない
 
 ## 8. Second realistic Handoff acceptance seed
 
-Actual green後にGate Cのsecond realistic Handoffを作る場合、Watanabe patternから直接fixtureをコピーせず、TEI-original small caseをauthorする。
+Actual green後にGate Cのsecond realistic Handoffを作る場合、外部資料のPatternから直接fixtureをコピーせず、TEI-original small caseをauthorする。
 
 Candidate pressure shape:
 
@@ -292,7 +292,7 @@ external conceptual pressure
   != current minimum insufficiency
 ```
 
-Watanabe evidenceはcurrent architecture boundaryのcorroborationとして使い、production schemaを外部手法へ合わせる目的では使わない。
+当該外部資料のEvidenceはcurrent architecture boundaryのcorroborationとして使い、production schemaを外部手法へ合わせる目的では使わない。
 
 ## 10. Current conclusion
 
