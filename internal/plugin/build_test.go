@@ -669,6 +669,9 @@ func TestBuildPlanInputFingerprintChangesForNonBuilderInput(t *testing.T) {
 		name string
 		edit func(*plugin.BuildPlan)
 	}{
+		{"builder contract", func(p *plugin.BuildPlan) {
+			p.Builder.ContractVersion = "tei.plugin-build/v2"
+		}},
 		{"source", func(p *plugin.BuildPlan) {
 			p.Sources[0].Digest = buildDigestB
 		}},
