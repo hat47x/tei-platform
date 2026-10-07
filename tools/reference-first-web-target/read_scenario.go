@@ -201,6 +201,9 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		},
 		AuthorityLimits: []string{
 			"synthetic-runtime-fixture-is-not-canonical-data",
+			"runtime-row-index-is-selection-state-not-business-identity",
+			"runtime-row-or-attribute-value-is-not-business-identity-proof",
+			"explicit-result-mapping-is-semantic-correspondence-not-business-key-proof",
 			"browse-runtime-environment-binding-is-not-inferred",
 			"reference-and-header-detail-runtime-binding-use-driver-environment-resolution",
 			"read-slice-does-not-imply-authorization-or-command-readiness",
