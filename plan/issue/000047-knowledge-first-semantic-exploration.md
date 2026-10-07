@@ -444,6 +444,8 @@ Projectionは`availableSections`、`selectedSections`、`disclosedSections`、`u
 
 `subject`、`unresolved`、authority limitは選択対象から外せない安全メタデータとして常に開示する。特に、`omitted-knowledge-is-not-negative-evidence`と`unavailable-requested-section-is-not-empty-meaning`を保持し、開示しなかったことや利用不能だったことを「意味が存在しない」根拠へ使わない。
 
+この`disclose`はsecurity boundary、RBAC、秘密情報のredactionではない。`availableSections`や`omittedAvailableSections`は未開示Knowledgeの存在自体を示し得るため、権限のないKnowledgeを隠す用途には使わない。access controlが必要な場合は、Contextを構築する前段でauthorized source / subjectだけを供給する別責務とする。
+
 Disclosure Projectionには`tei.knowledge.disclosure/v1`と決定論的fingerprintを付ける。section指定はtrim / dedup / sortしてから扱うため、同じ選択集合なら順序が違っても同じProjection identityになる。このfingerprintは「どのKnowledge subsetを実際に開示したか」のidentityであり、Semantic authorityやqualificationの証明ではない。
 
 cached Disclosureを再利用する場合は、`-disclose`と`-expected-disclosure-fingerprint <sha256:...>`を組み合わせる。current Disclosureが`status=complete`で、fingerprintも一致する場合だけ再利用を許す。requested sectionが現在は利用不能で`status=partial`になった場合は、fingerprintが一致していてもfail closedにする。`-expected-disclosure-fingerprint`だけを指定してfull Contextへ暗黙適用することも許さない。
