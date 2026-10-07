@@ -535,3 +535,26 @@ func TestRuntimeEngineIdentityRejectsMalformedDigest(t *testing.T) {
 		t.Fatal("expected malformed runtime engine digest to fail")
 	}
 }
+
+
+func TestBuildBoundBuiltinRejectsDirectEngineInjectionWithoutLock(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	fx.plan.RuntimeEngineLockFingerprint = ""
+	fx.plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(fx.plan)
+
+	registry := pruntime.Registry{BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
+		"tei.native.runtime.reference@1.0.0": fx.reg,
+	}}
+	adapter := pruntime.DeploymentExecutor{
+		Plan:         fx.plan,
+		Registry:     registry,
+		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+	}
+	if _, err := adapter.Execute(context.Background(), executor.Command{
+		ActionID:       "app/start",
+		IdempotencyKey: "k-native",
+		Kind:           string(deployment.ActionApplicationStart),
+	}); err == nil {
+		t.Fatal("expected direct runtime engine injection without engine lock to fail")
+	}
+}
