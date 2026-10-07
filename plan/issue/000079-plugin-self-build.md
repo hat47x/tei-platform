@@ -472,3 +472,51 @@ Referenceではengine implementation digestを、限定したengine Source closu
 - production Host側での独立artifact verification
 
 したがって、Runtime Engine Lock候補によりengine driftを明示検知できる構造は得ますが、#973完了やstandalone executable相当のSB-2達成はまだ主張しません。
+
+
+### 2026-10-08 SB-3 read-only convergence model
+
+E3のactual qualificationが未完了のため、SB-3のbuilder execution runnerはまだ実装しません。一方、stage0 / stage1 / stage2をEvidenceとして混同しないためのread-only modelを`internal/plugin/bootstrap.go`へ追加しました。
+
+`BootstrapConvergenceEvidence`は次を明示します。
+
+```text
+stage0 trusted seed
+  -> stage1
+       builder = exact stage0 seed
+       source closure = S
+       output = current builder artifact B1
+
+stage2
+  builder = exact B1
+  source closure = same S
+  output = current builder artifact B2
+
+convergence
+  B1 digest == B2 digest
+```
+
+比較前に次をfail-closedで要求します。
+
+- stage0 seedのexact BuilderIdentity
+- stage1のbuilderがstage0 seedと一致
+- stage2のbuilderがstage1 outputと一致
+- stage1 / stage2が同じSource closureを使う
+- stage1 / stage2のoutput builder ID / version / contract versionが同じ
+-各stageのBuild Plan fingerprintが固定されている
+
+artifact digestが一致しない場合、それ自体をinvalid Evidenceにはしません。比較条件が同一なら`Converged=false`としてstage1 / stage2 digest差を残します。再現性不一致をvalidation errorへ潰して差分Evidenceを失わないためです。
+
+逆にSource closureやlogical builder identityが違う場合は、そもそもconvergence比較として成立しないためerrorです。
+
+stage1 / stage2がbit-for-bit一致しても、stage0 seedのtrustが証明されたとは扱いません。stage0 identityはEvidenceに残し続けます。
+
+現時点でこのmodelが主張しないもの:
+
+- TEI-native builder自身の実装が完成した
+- stage1 / stage2をactualに実行した
+- semantic equivalence convergenceを定義した
+- stage0 seedを不要にした
+- SB-3を達成した
+
+actual bootstrap runnerは#971 E3 Evidence成立後、builder implementation境界と#973 Runtime Engine identityの残件を踏まえて接続します。
