@@ -65,3 +65,34 @@ func writePluginImplementationWorkspaceFile(t *testing.T, root, rel, content str
 		t.Fatal(err)
 	}
 }
+
+
+func TestPluginImplementationLoaderRejectsPredeclaredArtifact(t *testing.T) {
+	root := t.TempDir()
+	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+sources:
+  - plugins
+  - implementations
+`)
+	writePluginImplementationWorkspaceFile(t, root, "plugins/example/1.0.0/plugin.tei", `plugin tei.example v1.0.0 {
+    runtime builtin
+    artifact {
+        digest "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+    provides deployment-executor runtime.expected {
+        action application-start
+    }
+}
+`)
+	writePluginImplementationWorkspaceFile(t, root, "implementations/example/1.0.0/implementation.tei", `plugin-implementation tei.example v1.0.0 {
+    profile static-response-v1
+    capability deployment-executor runtime.expected
+    operation execute json { {"attemptId":"a","outcome":"accepted"} }
+}
+`)
+
+	_, err := workspace.Load(root)
+	if err == nil || !strings.Contains(err.Error(), "artifact-free authoritative Plugin definition") {
+		t.Fatalf("expected predeclared artifact to fail, got %v", err)
+	}
+}
