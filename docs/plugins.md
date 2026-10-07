@@ -114,6 +114,8 @@ Build可能であること、artifactをAccepted Plugin Lockへ採用できる�
 
 process Pluginは、Plugin LockだけでなくPermission Grant、Resource Binding、Sandbox Profile、Resource Lease、Supervisor ownership / fencing等の実行時境界を通ります。
 
+generic Capability Contract側でも実行権限は別に扱います。Referenceの`CapabilityExecutionProfile`はPermission / isolation要求を固定しますが、新しいproduction Authorityにはしません。Application Runtimeのlegacy移行では`ProductionExecutionBridge`を使い、既存`EnvironmentPlan`のPermission grant、runtime boundary、sandbox policyと一致することを確認します。Resource Binding / Leaseは既存production側に残します。
+
 processはRuntime実装の一形態であり、Plugin化そのものがprocess分離を要求するわけではありません。Web Target等でprocess実行が成立しない場合は、builtin / linked implementation、browser-compatible WebAssembly、JavaScript host integration等、Targetが許容する実現方式を選べる必要があります。Targetが要求するRuntime機能を満たせない場合は、暗黙のfallbackで意味を変えず、build / Conformance段階でUnresolvedまたは非対応として扱います。
 
 詳しくは [Security / Trust Boundary](security.md) を参照してください。
