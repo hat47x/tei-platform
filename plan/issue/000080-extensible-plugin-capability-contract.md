@@ -202,4 +202,8 @@ OracleとPostgresの両方がConformanceを満たす場合、generic resolverは
 
 projectionはread-onlyです。旧Plugin定義をsortやnormalizeの副作用で変更せず、移行bridgeがAuthority sourceを書き換えないことをtestします。
 
+追加の敵対評価では、projectionがPlugin / version / implementation / artifactへだけ結び付いていると、投影元のlegacy Capability payloadが変わっても同じgeneric Providerとして見える問題が分かりました。Referenceではlegacy Capabilityを正規化した`sourceDeclarationFingerprint`をProviderへ持たせ、Resolution identityとConformance Evidenceの双方へ結び付けます。列挙順だけの差は吸収し、payload変更はdriftとして扱います。
+
+また、artifact identityをまだ持たないlegacy ProviderをCatalog全体のinvalid inputにはしません。候補として存在してもConformance対象から外し、別scopeや別contractの正常な解決は継続します。一方、同じlogical provider identityを未確定projectionとexactな新Provider declarationで重複させた場合は、移行中の二重正本になるためfail closedにします。
+
 この段階でもproductionの`CapabilityKind`は削除しません。次に判断すべき点は、generic contract / provider / scope / lockのReference契約が既存Runtime Plugin Lockとどこまで共有できるか、また旧`CapabilityKind`を標準contract profileへ投影する一方向の移行期間をどう終了するかです。
