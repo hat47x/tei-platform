@@ -21,7 +21,7 @@ product repository remains unchanged
 
 ## Scenario
 
-runnerは、現在のProduct repositoryとは別に一時Git repositoryを作ります。そこへ人間起票のWorkを1件保存し、同じWorkへ二つのAgent Resultを追加します。
+runnerは、現在のProduct repositoryとは別に一時Git repositoryを作ります。そこへHuman-originのWorkを1件保存し、作成経路は`createdVia=automation/reference-runner`として別に記録します。同じWorkへ二つのAgent Resultを追加します。
 
 Result Aは現在のProduct revisionを観測しています。Result Bは意図的に古いrevisionを持ち、producerの`actorRef`へ`admin`という自己申告値を設定します。どちらも`canonicalAccepted=false`、`runtimeAuthorized=false`のままです。
 
