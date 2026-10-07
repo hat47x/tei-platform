@@ -362,6 +362,12 @@ Data Design Contextを生成しない場合も理由を隠さない。Validation
 
 Application PatternからData設計へ戻る経路もnegative Referenceとして固定した。`order_entry.order_record`のようにPatternが`data sales.order`を明示している場合は、その参照を使って同じ`knowledge-context`内にData Design Contextを提示する。これにより、Patternを設計しているAIがSemantic Data、Constraint、Persistence Realization、未解決のidentityを別呼び出しなしで確認できる。一方、Pattern IDや画面上のrecord identityからbusiness identityを作らず、`businessOccurrenceIdentifier` / `candidateKeys` / `functionalDependencies`のauthorityはSemantic側に残す。`application-pattern -> semantic-data` dependencyも併存させ、参照経路を追跡できるようにする。PatternがDataを明示していない場合は、RelationやQuery等から都合よくDataを推測しない。現時点で直接pressureしたのはApplication Patternであり、Target / ORM / runtime objectの具体的Referenceは後続に残す。
 
+関数従属性とは別に、値の組合せ自体が許されるかというdomain constraintも独立して扱う。現行Canonical modelには、allowed-combinationやdomain membershipをfirst-classにauthorするprimitiveがない。このためData Design Contextでは、定義が見つからないことを「domain constraintなし」とは扱わず、`domainConstraints.nature = unresolved`として返す。
+
+生成AIには、許可・禁止される値の組合せ、成立するscopeと時間条件、根拠となるSource / Contract、staticなdomainかreference dataから導かれるdomainかをEvidence questionとして渡す。`relation-unique`、Relation key、Persistenceのprimary key / unique constraintは、それだけではdomain constraintのEvidenceにしない。これにより、関数従属性、識別条件、局所的な一意性、allowed-combinationを同じ概念へまとめずに探索できる。
+
+この変更も新しいCore primitiveの追加ではない。現行primitiveとSource / Evidenceから確定できる範囲を返し、表現不足が現実的なReferenceで再現された時点で、Semantic ExtensionまたはCore表現の追加が必要かを判断する。
+
 Persistence RealizationもData Design Contextへ接続した。`sales.order_line`は`public.order_lines`へ実現され、Persistence Mappingでは`sales.order_line.order_line_id`が単独primary keyである。この事実は`database-owned-realization`として保持するが、business occurrence identifierやcandidate keyへは昇格しない。Database-ownedなunique constraintも同じく`accepted-realization`として保持し、業務上の一意性とは区別する。MappingのSource EvidenceもSource Indexから同じContextへ載せ、取得できない場合は`evidenceMissing`へ残す。これにより、単独primary keyやunique constraintが見えている場合でも、生成AIがそれをbusiness identityとみなす経路を明示的に閉じる。なお、現行Referenceの`order_line_id`がsurrogate keyであるとは断定しない。今回実証するのは、physical / persistence primary keyの存在だけではbusiness keyを確定できないという境界である。
 
 逆方向も同じ境界で扱う。`knowledge-context`へ`persistence:sales_core.order_line`を渡した場合は、primary keyやcolumn名からDataを推測せず、Persistence Mappingが明示する`semantic sales.order_line`だけを使ってData Design Contextへ戻る。逆追跡後もbusiness occurrence identifier、candidate key、functional dependencyは`unresolved`のままである。これにより、SemanticからRealizationを見る経路とRealizationからSemanticへ戻る経路のどちらでも、physical keyをlogical identityへ昇格しない。
