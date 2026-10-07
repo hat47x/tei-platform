@@ -464,7 +464,11 @@ tei knowledge-context \
   -expected-disclosure-fingerprint sha256:...
 ```
 
-この経路はavailable Contextを削除せず、Canonical Worldやqualificationも変更しない。selective disclosureはrouting / prompt budget / task-local contextの境界であり、accepted meaningの第二正本にはしない。exact-head full Repository Healthはまだ取得していないため、この段階では完了条件の充足を主張しない。
+この経路はavailable Contextを削除せず、Canonical Worldやqualificationも変更しない。同じsubject / requirementsでDisclosure生成の前後にqualificationを実行し、status、Evidence、dependency Evidenceを含む結果が同一であることをtestへ固定する。selective disclosureはrouting / prompt budget / task-local contextの境界であり、accepted meaningの第二正本にはしない。
+
+Disclosureは元Contextへのview pointerではなく、選択したpointer payloadを独立snapshotとして複製する。返されたData Design候補やApplication PatternのContract Query inputsを呼び出し側が変更しても、元Contextを変更できないことをnegative testへ含める。これによりread-onlyを利用側の慣習ではなく所有境界として扱う。
+
+exact-head full Repository Healthはまだ取得していないため、この段階では完了条件の充足を主張しない。
 
 
 ### Verified Experience Memoryの候補
