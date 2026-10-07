@@ -248,6 +248,52 @@ func TestCLIEmitsMachineReadableProjection(t *testing.T) {
 	}
 }
 
+func TestCLIEmitsReviewMutationWithoutWritingCorpus(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "cli-confirm")
+
+	temp := t.TempDir()
+	commandPath := filepath.Join(temp, "review-command.json")
+	encodedCommand, err := json.MarshalIndent(command, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(commandPath, encodedCommand, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{
+			"-corpus", filepath.Join("testdata", "epistemic-fixture-v0.json"),
+			"-context", filepath.Join("testdata", "context-current.json"),
+			"-review-command", commandPath,
+		},
+		&stdout,
+		&stderr,
+	)
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, stderr.String())
+	}
+	var result ReviewMutationResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Contract != reviewResultContract ||
+		result.AppendedEvent.ID != "cli-confirm" ||
+		assessmentByID(t, result.Projection, "ai-unreviewed").ConfirmationState != "confirmed" {
+		t.Fatalf("unexpected review mutation output: %+v", result)
+	}
+
+	originalProjection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if assessmentByID(t, originalProjection, "ai-unreviewed").ConfirmationState != "unreviewed" {
+		t.Fatal("CLI mutation unexpectedly changed source fixture/caller corpus")
+	}
+}
+
 func TestAIOriginIngestedByUserDoesNotBecomeDirectUserPremise(t *testing.T) {
 	corpus, context := loadFixture(t)
 	corpus.Assertions = append(corpus.Assertions, Assertion{
