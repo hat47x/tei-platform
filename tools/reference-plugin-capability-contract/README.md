@@ -215,3 +215,11 @@ Application Runtimeのlegacy migrationでは、`ProductionExecutionBridge`を確
 Reference testではprocess / sandbox-requiredのProviderを使い、production `HostSandboxLauncher`まで通します。artifact verifier、deny-by-default Network / Filesystem enforcer、sandboxed runnerが既存順序で使われます。必要なenforcerが無ければHostSandboxLauncherがfail closedになります。
 
 このtestはzero-Permissionです。Resource Broker / Leaseを含む実行は次のpressureとして残します。
+
+## Existing Resource Brokerへの委譲
+
+Permissionを持つApplication Runtime Capabilityでも、generic contract専用のResource Authorityは追加しません。Execution Profileにはlogical Permissionを固定し、Resource ID、mount、secret handle、network endpoint、Lease Policyは既存production Runtimeへ残します。
+
+Reference testではfilesystem read Permissionを使い、production Resource Brokerからleaseを取得し、HostSandboxLauncherへmountを渡し、呼出し後にreleaseするところまで既存`Registry.InvokeWithProvenance`を通します。Resource Brokerが無ければ既存Runtimeがfail closedになります。
+
+このpressureはfilesystem read一件までです。Secret / Network、renew / refresh、ownership / fencingはまだgeneric Capability経由で実行していません。
