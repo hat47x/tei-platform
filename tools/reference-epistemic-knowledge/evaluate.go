@@ -166,6 +166,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"coverage-mapping-is-input-not-semantic-completeness-proof",
 			"content-fingerprint-does-not-restore-review-history",
 			"partial-transport-health-is-not-project-wide-health",
+			"review-history-is-bounded-by-context-as-of",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
@@ -188,7 +189,7 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 		StatementKind:         assertion.Mode,
 		ConfirmationState:     history.ConfirmationState,
 		ReviewBinding:         history.ReviewBinding,
-		ReviewEventCount:      len(assertion.ReviewEvents),
+		ReviewEventCount:      history.VisibleEventCount,
 		ReviewLogSequence:     history.LastVisibleSequence,
 		LatestReviewEventID:   history.LatestEventID,
 		LatestReviewEventKind: history.LatestEventKind,
@@ -201,9 +202,6 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 	}
 	if history.StaleEventCount > 0 {
 		assessment.Reasons = append(assessment.Reasons, "STALE_REVIEW_HISTORY_PRESENT")
-	}
-	if history.FutureEventCount > 0 {
-		assessment.Reasons = append(assessment.Reasons, "FUTURE_REVIEW_HISTORY_PRESENT")
 	}
 	switch assertion.MetadataState {
 	case MetadataPartial:
@@ -226,9 +224,9 @@ type reviewHistoryAssessment struct {
 	LatestEventID       string
 	LatestEventKind     ReviewEventKind
 	Conditions          []string
+	VisibleEventCount   int
 	LastVisibleSequence int
 	StaleEventCount     int
-	FutureEventCount    int
 }
 
 func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAssessment {
@@ -244,9 +242,9 @@ func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAsses
 			continue
 		}
 		if occurredAt.After(asOf) {
-			result.FutureEventCount++
 			continue
 		}
+		result.VisibleEventCount++
 		if event.Sequence > result.LastVisibleSequence {
 			result.LastVisibleSequence = event.Sequence
 		}
