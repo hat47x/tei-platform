@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -34,11 +35,54 @@ const (
 	TrustExternalProcess TrustClass = "external-process"
 )
 
+type RuntimeEngineIdentity struct {
+	ID                   core.CanonicalID `json:"id"`
+	Version              string           `json:"version"`
+	ContractVersion      string           `json:"contractVersion"`
+	ImplementationDigest string           `json:"implementationDigest"`
+	Target               string           `json:"target"`
+}
+
+func (e RuntimeEngineIdentity) Validate() error {
+	if e.ID == "" {
+		return fmt.Errorf("runtime engine id is required")
+	}
+	if _, err := core.ParseCanonicalID(string(e.ID)); err != nil {
+		return fmt.Errorf("runtime engine id: %w", err)
+	}
+	if strings.TrimSpace(e.Version) == "" {
+		return fmt.Errorf("runtime engine version is required")
+	}
+	if strings.TrimSpace(e.ContractVersion) == "" {
+		return fmt.Errorf("runtime engine contract version is required")
+	}
+	if err := validateRuntimeSHA256("runtime engine implementation digest", e.ImplementationDigest); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.Target) == "" {
+		return fmt.Errorf("runtime engine target is required")
+	}
+	return nil
+}
+
+func RuntimeEngineIdentityFingerprint(e RuntimeEngineIdentity) (string, error) {
+	if err := e.Validate(); err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(e)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
 type PluginRuntime struct {
-	Plugin                plugin.Identity      `json:"plugin"`
-	DescriptorFingerprint string               `json:"descriptorFingerprint"`
-	BuildPlanFingerprint  string               `json:"buildPlanFingerprint,omitempty"`
-	Boundary              Boundary             `json:"boundary"`
+	Plugin                plugin.Identity        `json:"plugin"`
+	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
+	BuildPlanFingerprint  string                 `json:"buildPlanFingerprint,omitempty"`
+	RuntimeEngine         *RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
+	Boundary              Boundary               `json:"boundary"`
 	Trust                 TrustClass           `json:"trust"`
 	Command               string               `json:"command,omitempty"`
 	Args                  []string             `json:"args,omitempty"`
@@ -143,6 +187,39 @@ func lockedPluginForEnvironment(lock plugin.Lock, environmentID core.CanonicalID
 		}
 	}
 	return plugin.LockedPlugin{}, false
+}
+
+func BindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, engine RuntimeEngineIdentity) (EnvironmentPlan, error) {
+	if err := engine.Validate(); err != nil {
+		return EnvironmentPlan{}, err
+	}
+	found := false
+	for i := range plan.Plugins {
+		if plan.Plugins[i].Plugin != identity {
+			continue
+		}
+		if found {
+			return EnvironmentPlan{}, fmt.Errorf("runtime plan contains plugin %s@%s more than once", identity.ID, identity.Version)
+		}
+		found = true
+		pr := &plan.Plugins[i]
+		if pr.Boundary != BoundaryInProcess {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine binding requires in-process plugin %s@%s", identity.ID, identity.Version)
+		}
+		if pr.BuildPlanFingerprint == "" || pr.Artifact.Digest == "" {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine binding requires build-bound plugin %s@%s", identity.ID, identity.Version)
+		}
+		if pr.RuntimeEngine != nil && *pr.RuntimeEngine != engine {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine for plugin %s@%s is already bound to a different identity", identity.ID, identity.Version)
+		}
+		copy := engine
+		pr.RuntimeEngine = &copy
+	}
+	if !found {
+		return EnvironmentPlan{}, fmt.Errorf("runtime plan has no plugin %s@%s", identity.ID, identity.Version)
+	}
+	plan.RuntimePolicyFingerprint = PolicyFingerprint(plan)
+	return plan, nil
 }
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
@@ -259,9 +336,10 @@ type Builtin interface {
 // realization. Build-bound Runtime locks are checked against this object rather
 // than trusting the Builtin implementation to self-report its own provenance.
 type BuiltinRegistration struct {
-	Builtin              Builtin `json:"-"`
-	BuildPlanFingerprint string  `json:"buildPlanFingerprint"`
-	RealizationDigest    string  `json:"realizationDigest"`
+	Builtin              Builtin               `json:"-"`
+	BuildPlanFingerprint string                `json:"buildPlanFingerprint"`
+	RealizationDigest    string                `json:"realizationDigest"`
+	RuntimeEngine        RuntimeEngineIdentity `json:"runtimeEngine"`
 }
 
 // ProcessCommand preserves executable and argv as separate values across the
@@ -338,6 +416,7 @@ type InvocationProvenance struct {
 	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
 	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
 	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
+	RuntimeEngineFingerprint string                       `json:"runtimeEngineFingerprint,omitempty"`
 	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
 	Artifact                  plugin.Artifact              `json:"artifact,omitempty"`
 	Verification              *ArtifactVerification        `json:"verification,omitempty"`
@@ -376,32 +455,68 @@ type Registry struct {
 func identityKey(i plugin.Identity) string { return string(i.ID) + "@" + i.Version }
 
 
-func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string, error) {
+func validateRuntimeSHA256(label, value string) error {
+	if !strings.HasPrefix(value, "sha256:") {
+		return fmt.Errorf("%s must use sha256:<64-hex>", label)
+	}
+	hexPart := strings.TrimPrefix(value, "sha256:")
+	if len(hexPart) != 64 {
+		return fmt.Errorf("%s must contain 64 hex characters", label)
+	}
+	for _, r := range hexPart {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return fmt.Errorf("%s contains non-hex character", label)
+		}
+	}
+	return nil
+}
+
+
+func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string, string, error) {
 	key := identityKey(pr.Plugin)
 	if pr.BuildPlanFingerprint == "" {
 		impl, ok := r.Builtins[key]
 		if !ok {
-			return nil, "", fmt.Errorf("builtin plugin %s@%s is locked but not registered", pr.Plugin.ID, pr.Plugin.Version)
+			return nil, "", "", fmt.Errorf("builtin plugin %s@%s is locked but not registered", pr.Plugin.ID, pr.Plugin.Version)
 		}
-		return impl, "", nil
+		if pr.RuntimeEngine != nil {
+			return nil, "", "", fmt.Errorf("legacy builtin plugin %s@%s unexpectedly has runtime engine binding", pr.Plugin.ID, pr.Plugin.Version)
+		}
+		return impl, "", "", nil
 	}
 	if pr.Artifact.Digest == "" {
-		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no realization digest", pr.Plugin.ID, pr.Plugin.Version)
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no realization digest", pr.Plugin.ID, pr.Plugin.Version)
 	}
 	if pr.Artifact.SignatureRef != "" || pr.Artifact.Provenance != "" {
-		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s uses unsupported artifact signature/provenance metadata", pr.Plugin.ID, pr.Plugin.Version)
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s uses unsupported artifact signature/provenance metadata", pr.Plugin.ID, pr.Plugin.Version)
 	}
 	registration, ok := r.BuiltinRegistrations[key]
 	if !ok || registration.Builtin == nil {
-		return nil, "", fmt.Errorf("build-bound builtin plugin %s@%s has no accepted realization registration", pr.Plugin.ID, pr.Plugin.Version)
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no accepted realization registration", pr.Plugin.ID, pr.Plugin.Version)
 	}
 	if registration.BuildPlanFingerprint != pr.BuildPlanFingerprint {
-		return nil, "", fmt.Errorf("builtin realization build plan mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+		return nil, "", "", fmt.Errorf("builtin realization build plan mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
 	}
 	if registration.RealizationDigest != pr.Artifact.Digest {
-		return nil, "", fmt.Errorf("builtin realization digest mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+		return nil, "", "", fmt.Errorf("builtin realization digest mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
 	}
-	return registration.Builtin, registration.RealizationDigest, nil
+	if pr.RuntimeEngine == nil {
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no expected runtime engine", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if err := pr.RuntimeEngine.Validate(); err != nil {
+		return nil, "", "", fmt.Errorf("runtime engine binding for %s@%s: %w", pr.Plugin.ID, pr.Plugin.Version, err)
+	}
+	if err := registration.RuntimeEngine.Validate(); err != nil {
+		return nil, "", "", fmt.Errorf("accepted runtime engine for %s@%s: %w", pr.Plugin.ID, pr.Plugin.Version, err)
+	}
+	if registration.RuntimeEngine != *pr.RuntimeEngine {
+		return nil, "", "", fmt.Errorf("runtime engine identity mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	engineFingerprint, err := RuntimeEngineIdentityFingerprint(*pr.RuntimeEngine)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return registration.Builtin, registration.RealizationDigest, engineFingerprint, nil
 }
 
 func (r Registry) Invoke(ctx context.Context, plan EnvironmentPlan, kind plugin.CapabilityKind, id core.CanonicalID, operation, requestID string, payload any) (Response, error) {
@@ -495,7 +610,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	}
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, realizationDigest, err := r.resolveBuiltinRegistration(*pr)
+		impl, realizationDigest, runtimeEngineFingerprint, err := r.resolveBuiltinRegistration(*pr)
 		if err != nil {
 			return Invocation{}, err
 		}
@@ -504,6 +619,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		}
 		acceptedBuiltin = impl
 		prov.RealizationDigest = realizationDigest
+		prov.RuntimeEngineFingerprint = runtimeEngineFingerprint
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
 		if policy == "" {
@@ -704,8 +820,23 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 		if pi.RealizationDigest == "" || pi.RealizationDigest != pr.Artifact.Digest {
 			return fmt.Errorf("deployment attempt builtin realization digest does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
-	} else if pi.RealizationDigest != "" {
-		return fmt.Errorf("deployment attempt reports builtin realization digest for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		if pr.RuntimeEngine == nil {
+			return fmt.Errorf("locked build-bound builtin plugin %s@%s has no runtime engine binding", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		engineFingerprint, err := RuntimeEngineIdentityFingerprint(*pr.RuntimeEngine)
+		if err != nil {
+			return err
+		}
+		if pi.RuntimeEngineFingerprint == "" || pi.RuntimeEngineFingerprint != engineFingerprint {
+			return fmt.Errorf("deployment attempt runtime engine fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+	} else {
+		if pi.RealizationDigest != "" {
+			return fmt.Errorf("deployment attempt reports builtin realization digest for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		if pi.RuntimeEngineFingerprint != "" {
+			return fmt.Errorf("deployment attempt reports runtime engine for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
 	}
 	if pi.PluginLockFingerprint != plan.PluginLockFingerprint {
 		return fmt.Errorf("deployment attempt plugin lock fingerprint does not match environment lock")
