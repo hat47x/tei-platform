@@ -169,6 +169,7 @@ RQ-006の`Unresolved`は主に外部状態比較のRequirementですが、「情
 10. source-backed fact / accepted Business meaning / derived / proposal / unresolvedのnatureを、どこまでdurable metadataとして保持する必要があるか
 11. Handoff condition成立を支えるEvidence traceを、既存Provenance / Evidence mechanismだけで十分にreviewできるか
 12. business identity / candidate key / functional dependency / domain constraintを、既存primitiveでlosslessに扱えるか。専用semantic contractが必要か
+13. business occurrence identityとhistory / version identity、validity period、identifier reuse、current-state selectionを既存primitiveでlosslessに扱えるか。時間軸を必要としないDataへ履歴構造を一律に導入せずに済むか
 
 これらを埋めるために、外部参照に同名概念があるという理由だけでCore kindやschema fieldを追加しません。
 
