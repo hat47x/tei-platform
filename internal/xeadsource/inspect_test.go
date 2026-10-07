@@ -183,3 +183,25 @@ func TestInspectMarksAllDuplicateLegacyKeyOccurrencesUnresolved(t *testing.T) {
 		}
 	}
 }
+
+
+func TestInspectKeepsGlobalSourceIdentityDiagnosticUnresolvedWithoutRelationalFacts(t *testing.T) {
+	got, err := Inspect(
+		FormatXead,
+		[]byte(`<System><Table><TableField/></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.RelationalFacts.LegacyKeys) != 0 ||
+		len(got.RelationalFactResolutions) != 0 {
+		t.Fatalf("fixture unexpectedly produced relational facts: %#v", got)
+	}
+	if got.RelationalResolutionStatus != RelationalFactResolutionUnresolved {
+		t.Fatalf("global source identity diagnostics were hidden by empty fact set: %#v", got)
+	}
+	if len(got.RelationalDiagnostics) == 0 {
+		t.Fatalf("missing table/field identity diagnostics were lost: %#v", got)
+	}
+}
