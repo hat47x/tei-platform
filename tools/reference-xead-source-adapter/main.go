@@ -161,6 +161,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	unresolved, err := BuildUnresolvedProjection(format, receipt, classification)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	var localCandidates []LocalTranscriptionCandidate
 	if *localCandidatesFlag {
 		localCandidates, err = ClassifyObservedDocument(format, doc, contractBytes)
@@ -173,12 +178,14 @@ func main() {
 		Receipt           PublicationReceipt            `json:"receipt"`
 		Coverage          ClassificationCoverage        `json:"classificationCoverage"`
 		Classification    ClassificationProjection      `json:"classificationProjection"`
+		Unresolved        UnresolvedProjection          `json:"unresolvedProjection"`
 		LocalOutputNotice string                        `json:"localOutputNotice,omitempty"`
 		LocalCandidates   []LocalTranscriptionCandidate `json:"localCandidates,omitempty"`
 	}{
 		Receipt:         receipt,
 		Coverage:        coverage,
 		Classification:  classification,
+		Unresolved:      unresolved,
 		LocalCandidates: localCandidates,
 	}
 	if *localCandidatesFlag {
