@@ -115,10 +115,7 @@
           "reviewer": "system-owner",
           "method": "human-review",
           "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-          "occurredAt": "2026-10-06T12:10:00Z",
-          "conditions": [
-            "production only"
-          ]
+          "occurredAt": "2026-10-06T12:10:00Z"
         }
       ]
     },
