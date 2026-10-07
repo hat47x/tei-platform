@@ -275,6 +275,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
 		"candidate keys":        dataDesign.CandidateKeys,
 		"functional dependency": dataDesign.FunctionalDependencies,
+		"domain constraint":     dataDesign.DomainConstraints,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
 			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
@@ -303,6 +304,17 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	} {
 		if !containsKnowledgeContextString(dataDesign.FunctionalDependencyEvidenceQuestions, question) {
 			t.Fatalf("functional dependency evidence question %q is missing: %+v", question, dataDesign.FunctionalDependencyEvidenceQuestions)
+		}
+	}
+	for _, question := range []string{
+		"which-value-combinations-are-allowed-or-forbidden",
+		"is-this-constraint-about-identity-functional-dependency-or-domain-membership",
+		"under-what-scope-and-time-does-the-domain-constraint-hold",
+		"which-source-or-contract-establishes-the-allowed-combinations",
+		"is-the-domain-static-or-derived-from-reference-data",
+	} {
+		if !containsKnowledgeContextString(dataDesign.DomainConstraintEvidenceQuestions, question) {
+			t.Fatalf("domain constraint evidence question %q is missing: %+v", question, dataDesign.DomainConstraintEvidenceQuestions)
 		}
 	}
 	for _, question := range []string{
@@ -429,8 +441,13 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 			t.Fatalf("functional dependency Evidence need %q is missing: %+v", needed, fdCandidate.EvidenceNeeded)
 		}
 	}
-	if dataDesign.FunctionalDependencies.Nature != "unresolved" {
-		t.Fatalf("functional dependency candidate was promoted to accepted FD: %+v", dataDesign.FunctionalDependencies)
+	if dataDesign.FunctionalDependencies.Nature != "unresolved" ||
+		dataDesign.DomainConstraints.Nature != "unresolved" {
+		t.Fatalf(
+			"scoped uniqueness was promoted beyond its accepted local constraint: fd=%+v domain=%+v",
+			dataDesign.FunctionalDependencies,
+			dataDesign.DomainConstraints,
+		)
 	}
 
 	if len(dataDesign.PersistenceRealizations) != 1 {
@@ -452,8 +469,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	}
 	if dataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
 		dataDesign.CandidateKeys.Nature != "unresolved" ||
-		dataDesign.FunctionalDependencies.Nature != "unresolved" {
-		t.Fatalf("physical primary key was promoted to logical identity: %+v", dataDesign)
+		dataDesign.FunctionalDependencies.Nature != "unresolved" ||
+		dataDesign.DomainConstraints.Nature != "unresolved" {
+		t.Fatalf("physical primary key was promoted to logical identity or domain semantics: %+v", dataDesign)
 	}
 
 	for _, want := range []struct {
@@ -485,6 +503,10 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"functional-dependency-candidate-is-not-accepted-functional-dependency",
+		"absence-of-authored-domain-constraint-is-not-no-domain-constraint",
+		"relation-shape-is-not-domain-constraint-evidence",
+		"scoped-uniqueness-is-not-domain-constraint",
+		"persistence-unique-constraint-is-not-domain-constraint",
 		"ambiguous-semantic-identity-does-not-produce-design-candidates",
 		"ambiguous-persistence-identity-does-not-produce-realization-facts",
 		"relation-key-is-not-business-identifier",
