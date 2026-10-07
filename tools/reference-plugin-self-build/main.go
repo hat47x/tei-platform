@@ -288,6 +288,52 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+
+	nativeBuilderDir, err := os.MkdirTemp("", "tei-native-plugin-builder-*")
+	if err != nil {
+		return evidence{}, err
+	}
+	defer os.RemoveAll(nativeBuilderDir)
+	nativeBuilderFirstPath := filepath.Join(nativeBuilderDir, "builder-first")
+	nativeBuilderSecondPath := filepath.Join(nativeBuilderDir, "builder-second")
+	if runtime.GOOS == "windows" {
+		nativeBuilderFirstPath += ".exe"
+		nativeBuilderSecondPath += ".exe"
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		nativeBuilderPackage,
+		nativeBuilderFirstPath,
+		filepath.Join(nativeBuilderDir, "state-builder-first"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build first native Plugin builder: %w", err)
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		nativeBuilderPackage,
+		nativeBuilderSecondPath,
+		filepath.Join(nativeBuilderDir, "state-builder-second"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build second native Plugin builder: %w", err)
+	}
+	nativeBuilderFirstDigest, err := hashFile(nativeBuilderFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeBuilderSecondDigest, err := hashFile(nativeBuilderSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
+		return evidence{}, fmt.Errorf(
+			"TEI-native Plugin builder is not reproducible: %s != %s",
+			nativeBuilderFirstDigest,
+			nativeBuilderSecondDigest,
+		)
+	}
+
 	nativePlan := plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      nativeSource.Plugin,
@@ -313,10 +359,10 @@ func run(repo string) (evidence, error) {
 			},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.native.go.seed"),
-			Version:         goVersion,
+			ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
+			Version:         revision,
 			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  goToolchainDigest,
+			ArtifactDigest:  nativeBuilderFirstDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-native-static-response",
@@ -334,11 +380,28 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	nativeFirstBytes, nativeFirstArtifactDigest, err := implementation.Materialize(nativeSource)
+
+	nativeFirstPath := filepath.Join(nativeBuilderDir, "realization-first.json")
+	nativeSecondPath := filepath.Join(nativeBuilderDir, "realization-second.json")
+	if err := runNativePluginBuilder(root, nativeBuilderFirstPath, nativeFirstPath); err != nil {
+		return evidence{}, fmt.Errorf("first TEI-native realization: %w", err)
+	}
+	if err := runNativePluginBuilder(root, nativeBuilderSecondPath, nativeSecondPath); err != nil {
+		return evidence{}, fmt.Errorf("second TEI-native realization: %w", err)
+	}
+	nativeFirstBytes, err := os.ReadFile(nativeFirstPath)
 	if err != nil {
 		return evidence{}, err
 	}
-	nativeSecondBytes, nativeSecondArtifactDigest, err := implementation.Materialize(nativeSource)
+	nativeSecondBytes, err := os.ReadFile(nativeSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeFirstArtifactDigest, err := hashFile(nativeFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSecondArtifactDigest, err := hashFile(nativeSecondPath)
 	if err != nil {
 		return evidence{}, err
 	}
