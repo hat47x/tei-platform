@@ -699,6 +699,16 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 	if pi.DescriptorFingerprint != pr.DescriptorFingerprint {
 		return fmt.Errorf("deployment attempt descriptor fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 	}
+	if pi.BuildPlanFingerprint != pr.BuildPlanFingerprint {
+		return fmt.Errorf("deployment attempt build plan fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+	}
+	if cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "" {
+		if pi.RealizationDigest == "" || pi.RealizationDigest != pr.Artifact.Digest {
+			return fmt.Errorf("deployment attempt builtin realization digest does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+	} else if pi.RealizationDigest != "" {
+		return fmt.Errorf("deployment attempt reports builtin realization digest for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+	}
 	if pi.PluginLockFingerprint != plan.PluginLockFingerprint {
 		return fmt.Errorf("deployment attempt plugin lock fingerprint does not match environment lock")
 	}
@@ -813,7 +823,7 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 			return fmt.Errorf("deployment attempt supervisor ownership was not released")
 		}
 	}
-	if pr.Artifact.Digest != "" && !pi.DigestVerified {
+	if pr.Artifact.Digest != "" && !(cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "") && !pi.DigestVerified {
 		return fmt.Errorf("deployment attempt artifact digest was not verified")
 	}
 	if pr.Artifact.SignatureRef != "" && !pi.SignatureVerified {
