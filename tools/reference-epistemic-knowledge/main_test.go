@@ -561,3 +561,131 @@ func TestUnmodeledReviewConditionsFailClosed(t *testing.T) {
 		t.Fatalf("free-form review conditions were treated as satisfied: %+v", got)
 	}
 }
+
+
+func coverageAreaByID(t *testing.T, projection Projection, id string) CoverageAreaAssessment {
+	t.Helper()
+	for _, area := range projection.Health.Coverage.Areas {
+		if area.AreaID == id {
+			return area
+		}
+	}
+	t.Fatalf("coverage area %s not found", id)
+	return CoverageAreaAssessment{}
+}
+
+func TestTargetAnchorReanchorsAcrossDocumentRevision(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "anchored-identifier-policy")
+	if got.TargetBinding != "reanchored" || got.UseState != "premise" ||
+		!hasReason(got, "DIRECT_USER_WORKING_PREMISE") {
+		t.Fatalf("target was not safely reanchored after revision: %+v", got)
+	}
+}
+
+func TestAmbiguousTargetAnchorRequiresReview(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range context.TargetSurfaces {
+		if context.TargetSurfaces[i].SourceRef != "repo://plan/identifier-policy.md" {
+			continue
+		}
+		context.TargetSurfaces[i].Segments = append(context.TargetSurfaces[i].Segments, TargetSegment{
+			StructuralPath: "/archive/naming/paragraph[9]",
+			Text:           "Rule: Identifiers may contain hyphens. Applies to application identifiers.",
+		})
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "anchored-identifier-policy")
+	if got.TargetBinding != "ambiguous" || got.UseState != "review-required" ||
+		!hasReason(got, "TARGET_ANCHOR_AMBIGUOUS") {
+		t.Fatalf("ambiguous target anchor was used without review: %+v", got)
+	}
+}
+
+func TestDetachedTargetAnchorRequiresReview(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range context.TargetSurfaces {
+		if context.TargetSurfaces[i].SourceRef != "repo://plan/identifier-policy.md" {
+			continue
+		}
+		context.TargetSurfaces[i].Segments = []TargetSegment{{
+			StructuralPath: "/rules/naming/paragraph[2]",
+			Text:           "A different rule now occupies this location.",
+		}}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "anchored-identifier-policy")
+	if got.TargetBinding != "detached" || got.UseState != "review-required" ||
+		!hasReason(got, "TARGET_ANCHOR_DETACHED") {
+		t.Fatalf("detached target anchor was used without review: %+v", got)
+	}
+}
+
+func TestKnowledgeHealthReportsCoverageGapSeparatelyFromReviewRatio(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Health.Coverage.Counts.TotalAreas != 2 ||
+		projection.Health.Coverage.Counts.MappedAreas != 1 ||
+		projection.Health.Coverage.Counts.GapAreas != 1 {
+		t.Fatalf("unexpected coverage counts: %+v", projection.Health.Coverage.Counts)
+	}
+	gap := coverageAreaByID(t, projection, "legacy-import-coverage")
+	if gap.State != "gap" || !containsString(gap.Reasons, "COVERAGE_UNMAPPED") {
+		t.Fatalf("unmapped knowledge area was not preserved as coverage gap: %+v", gap)
+	}
+}
+
+func TestCriticalCoverageGapEscalatesHealthEvenWithoutBadDependency(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.Dependencies = nil
+	for i := range corpus.CoverageAreas {
+		if corpus.CoverageAreas[i].ID == "legacy-import-coverage" {
+			corpus.CoverageAreas[i].Criticality = CriticalityCritical
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Health.Level != "critical" {
+		t.Fatalf("critical coverage gap did not escalate health: %+v", projection.Health)
+	}
+}
+
+func TestProjectionStatesAnchoringAndCoverageAreNotSemanticProof(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"target-anchor-resolution-does-not-prove-semantic-identity",
+		"coverage-mapping-is-input-not-semantic-completeness-proof",
+	} {
+		if !containsString(projection.AuthorityLimits, expected) {
+			t.Fatalf("missing authority limit %q: %+v", expected, projection.AuthorityLimits)
+		}
+	}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
