@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/deployment/executor"
 	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
 )
@@ -81,7 +82,11 @@ func (s Source) Validate() error {
 			return fmt.Errorf("plugin implementation operation %q is declared more than once", name)
 		}
 		seen[name] = struct{}{}
-		if _, err := canonicalJSON(operation.Payload); err != nil {
+		canonical, err := canonicalJSON(operation.Payload)
+		if err != nil {
+			return fmt.Errorf("plugin implementation operation %q payload: %w", name, err)
+		}
+		if err := validateDeploymentExecutorResponse(canonical); err != nil {
 			return fmt.Errorf("plugin implementation operation %q payload: %w", name, err)
 		}
 	}
@@ -227,6 +232,29 @@ func NewBuiltin(source Source, definition plugin.Definition) (pruntime.Builtin, 
 		source:                normalized,
 		descriptorFingerprint: plugin.DefinitionFingerprint(definition),
 	}, nil
+}
+
+
+
+func validateDeploymentExecutorResponse(raw json.RawMessage) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var result executor.Result
+	if err := decoder.Decode(&result); err != nil {
+		return fmt.Errorf("deployment executor response schema: %w", err)
+	}
+	if result.ExecutorID != "" || result.ActionID != "" || result.IdempotencyKey != "" || result.PluginInvocation != nil {
+		return fmt.Errorf("deployment executor response must not set Host-owned invocation identity or provenance")
+	}
+	switch result.Outcome {
+	case executor.OutcomeAccepted, executor.OutcomeRejected, executor.OutcomeUnknown:
+	default:
+		return fmt.Errorf("deployment executor response outcome %q is invalid", result.Outcome)
+	}
+	if strings.TrimSpace(result.AttemptID) == "" {
+		return fmt.Errorf("deployment executor response attemptId is required")
+	}
+	return nil
 }
 
 func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
