@@ -248,6 +248,10 @@ target-specificな選択は`RuntimeCapabilitySelectionBinding`へ分離し、Env
 
 この結果から、Capability Contractの共通resolverが常にProvider selection Authorityを持つとは限らないことが分かります。既存のdomain / runtime Bindingが選択Authorityを持つ場合、generic Contractは選択済みProviderの契約適合性を検証する層として使います。generic Contract自体が選択Authorityを持つscopeでは、曖昧なProviderを明示wiringまたはAccepted policyなしに選ばない規則を維持します。
 
+Selectionのfreshnessもfingerprintの自己整合だけでは判定しません。legacy pathでは、current Runtime Plugin Lockとauthoritative `plugin.Definition`を照合し、`ResolveEnvironmentWithLock`でEnvironmentのPlugin setを再現したうえで、productionの`ResolveContractQueryExecutor`をcurrent Bindingに対して再実行します。Binding削除、重複、別executorへの変更、Plugin definition drift、artifact driftはいずれも停止条件です。
+
+current Conformance Evidenceの検証はこのreplayへ混ぜません。Runtime Authorityのcurrent性と、Contract適合Evidenceのcurrent性は別々に判定します。
+
 
 ## E4 Target realization pressure — 2026-10-07
 
