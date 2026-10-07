@@ -11,6 +11,7 @@ type Assessment struct {
 	AssertionID          string         `json:"assertionId"`
 	ContentOrigin        Origin         `json:"contentOrigin"`
 	IngestedBy           IngestionActor `json:"ingestedBy"`
+	MetadataState        MetadataState  `json:"metadataState"`
 	StatementKind        AssertionMode  `json:"statementKind"`
 	ConfirmationState    string         `json:"confirmationState"`
 	ReviewBinding        string         `json:"reviewBinding"`
@@ -148,6 +149,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"meaning-fingerprint-is-input-not-semantic-proof",
 			"target-anchor-resolution-does-not-prove-semantic-identity",
 			"coverage-mapping-is-input-not-semantic-completeness-proof",
+			"content-fingerprint-does-not-restore-review-history",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
@@ -165,6 +167,7 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 		AssertionID:           assertion.ID,
 		ContentOrigin:         assertion.Origin,
 		IngestedBy:            assertion.IngestedBy,
+		MetadataState:         assertion.MetadataState,
 		StatementKind:         assertion.Mode,
 		ConfirmationState:     history.ConfirmationState,
 		ReviewBinding:         history.ReviewBinding,
@@ -180,6 +183,12 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 	}
 	if history.StaleEventCount > 0 {
 		assessment.Reasons = append(assessment.Reasons, "STALE_REVIEW_HISTORY_PRESENT")
+	}
+	switch assertion.MetadataState {
+	case MetadataPartial:
+		assessment.Reasons = append(assessment.Reasons, "EPISTEMIC_METADATA_PARTIAL")
+	case MetadataAbsent:
+		assessment.Reasons = append(assessment.Reasons, "EPISTEMIC_METADATA_ABSENT")
 	}
 	for _, binding := range assertion.Context {
 		if binding.Provenance == ScopeInferred {
