@@ -297,6 +297,13 @@
       "observed": "The 289 declared FunctionUsedByThis edges all resolve structurally, but the graph contains four multi-node strongly connected components covering nine Functions.",
       "risk": "Treating declared Function use as an acyclic dependency graph or Business Procedure order can invent a topological sequence and misclassify navigation/call relationships as recursive execution.",
       "teiDirection": "preserve Function-use edges as source-backed interaction/dependency evidence; support cycles and require separate runtime or Business Procedure evidence before interpreting them as call-stack recursion or step order"
+    },
+    {
+      "id": "RMP-046",
+      "topic": "business-procedure-runtime-correspondence-fragmentation",
+      "observed": "Among 148 TaskActions, 57 have Function uses whose Xead design Functions all have structural Xeaf counterparts, 68 mix Functions with and without counterparts, 17 use only Functions without counterparts, and 6 have no Function use. Across 128 business-referenced Xead Functions, 116 have a structural Xeaf correspondence and 12 do not.",
+      "risk": "Treating Runtime correspondence as a property of the whole Business Procedure or assuming every design Function must have one executable counterpart can drop valid design steps, hide implementation drift, or incorrectly mark a partially implemented action as fully executable.",
+      "teiDirection": "reconcile design Function/Capability uses independently and preserve partial realization status at the action/use edge; Business Procedure meaning remains authoritative separately from target/runtime realization completeness"
     }
   ]
 }
