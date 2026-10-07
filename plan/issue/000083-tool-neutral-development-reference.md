@@ -108,7 +108,7 @@ clean current TEI checkout
   -> rebuild / test / reload
 ```
 
-task側では`semantic/sales/validation.tei`へ`sales.order_line.unit_price_positive`をfile editで直接追加します。変更前には既存の`sales.order_line.quantity_positive`へ`knowledge-context`から到達し、変更後には追加したValidationへ同じCLIから到達します。
+task側では`semantic/sales/validation.tei`へ`sales.order_line.unit_price_positive`をfile editで直接追加します。変更前に`workspace-files`でこのfileがmanaged sourceであることを確認し、既存の`sales.order_line.quantity_positive`が`source-index`からこのfileへtraceできることを要求します。変更後も追加Validationの`source-index`が同じauthoring sourceへ戻り、`knowledge-context`から新しい意味へ到達できることを確認します。integration cloneでも同じSource traceを再構築します。
 
 build結果はRepository外の一時directoryへ置きます。関連するknowledge-context testもtask cloneとintegration cloneの双方で実行します。file edit後のGit diffが対象1 file以外へ広がる場合、またbuild / test / CLI利用によってRepository内へuntracked artifactが生じる場合は失敗します。
 
