@@ -68,6 +68,7 @@ func buildTargetCapabilityPackagingPlan(
 
 	artifactProviders := map[string][]TargetPackagingProviderRef{}
 	providerKeys := map[string]string{}
+	providerContractKeys := map[string]struct{}{}
 	pluginArtifacts := map[string]map[string]struct{}{}
 
 	for i, input := range inputs {
@@ -108,19 +109,25 @@ func buildTargetCapabilityPackagingPlan(
 		providerKey := lock.Provider.PluginID + "\x00" +
 			lock.Provider.PluginVersion + "\x00" +
 			lock.Provider.ImplementationID
-		if previousArtifact, duplicate := providerKeys[providerKey]; duplicate {
-			if previousArtifact != binding.ArtifactDigest {
-				return TargetCapabilityPackagingPlan{}, fmt.Errorf(
-					"logical Provider %s is assigned to multiple artifacts",
-					providerKey,
-				)
-			}
+		if previousArtifact, duplicate := providerKeys[providerKey]; duplicate &&
+			previousArtifact != binding.ArtifactDigest {
 			return TargetCapabilityPackagingPlan{}, fmt.Errorf(
-				"logical Provider %s is declared more than once",
+				"logical Provider %s is assigned to multiple artifacts",
 				providerKey,
 			)
 		}
 		providerKeys[providerKey] = binding.ArtifactDigest
+		providerContractKey := providerKey + "\x00" +
+			lock.Contract.ID + "\x00" + lock.Contract.Version
+		if _, duplicate := providerContractKeys[providerContractKey]; duplicate {
+			return TargetCapabilityPackagingPlan{}, fmt.Errorf(
+				"logical Provider %s repeats Contract %s@%s",
+				providerKey,
+				lock.Contract.ID,
+				lock.Contract.Version,
+			)
+		}
+		providerContractKeys[providerContractKey] = struct{}{}
 
 		ref := TargetPackagingProviderRef{
 			PluginID:                         lock.Provider.PluginID,
@@ -164,7 +171,11 @@ func buildTargetCapabilityPackagingPlan(
 			return targetPackagingProviderKey(providers[i]) <
 				targetPackagingProviderKey(providers[j])
 		})
-		if len(providers) > 1 {
+		logicalProviders := map[string]struct{}{}
+		for _, ref := range providers {
+			logicalProviders[targetPackagingLogicalProviderKey(ref)] = struct{}{}
+		}
+		if len(logicalProviders) > 1 {
 			plan.CoalescedArtifactCount++
 		}
 		plan.Artifacts = append(plan.Artifacts, TargetPackagingArtifact{
@@ -202,18 +213,25 @@ func validateTargetCapabilityPackagingPlan(
 	}
 
 	providers := map[string]string{}
+	providerContracts := map[string]struct{}{}
 	pluginArtifacts := map[string]map[string]struct{}{}
+	seenArtifacts := map[string]struct{}{}
 	coalesced := 0
 	for i, artifact := range plan.Artifacts {
 		if !validSHA256Fingerprint(artifact.ArtifactDigest) {
 			return fmt.Errorf("target packaging artifact[%d] digest is invalid", i)
 		}
+		if _, duplicate := seenArtifacts[artifact.ArtifactDigest]; duplicate {
+			return fmt.Errorf(
+				"target packaging artifact %s is declared more than once",
+				artifact.ArtifactDigest,
+			)
+		}
+		seenArtifacts[artifact.ArtifactDigest] = struct{}{}
 		if len(artifact.Providers) == 0 {
 			return fmt.Errorf("target packaging artifact[%d] has no Providers", i)
 		}
-		if len(artifact.Providers) > 1 {
-			coalesced++
-		}
+		logicalProvidersInArtifact := map[string]struct{}{}
 		for j, ref := range artifact.Providers {
 			if ref.PluginID == "" ||
 				ref.PluginVersion == "" ||
@@ -247,27 +265,36 @@ func validateTargetCapabilityPackagingPlan(
 					"target packaging provider source declaration fingerprint is invalid",
 				)
 			}
-			key := ref.PluginID + "\x00" + ref.PluginVersion + "\x00" +
-				ref.ImplementationID
-			if previous, duplicate := providers[key]; duplicate {
-				if previous != artifact.ArtifactDigest {
-					return fmt.Errorf(
-						"logical Provider %s is assigned to multiple artifacts",
-						key,
-					)
-				}
+			key := targetPackagingLogicalProviderKey(ref)
+			if previous, duplicate := providers[key]; duplicate &&
+				previous != artifact.ArtifactDigest {
 				return fmt.Errorf(
-					"logical Provider %s is declared more than once",
+					"logical Provider %s is assigned to multiple artifacts",
 					key,
 				)
 			}
 			providers[key] = artifact.ArtifactDigest
+			logicalProvidersInArtifact[key] = struct{}{}
+			contractKey := key + "\x00" + ref.ContractID + "\x00" +
+				ref.ContractVersion
+			if _, duplicate := providerContracts[contractKey]; duplicate {
+				return fmt.Errorf(
+					"logical Provider %s repeats Contract %s@%s",
+					key,
+					ref.ContractID,
+					ref.ContractVersion,
+				)
+			}
+			providerContracts[contractKey] = struct{}{}
 
 			pluginKey := ref.PluginID + "@" + ref.PluginVersion
 			if pluginArtifacts[pluginKey] == nil {
 				pluginArtifacts[pluginKey] = map[string]struct{}{}
 			}
 			pluginArtifacts[pluginKey][artifact.ArtifactDigest] = struct{}{}
+		}
+		if len(logicalProvidersInArtifact) > 1 {
+			coalesced++
 		}
 	}
 	splitPlugins := 0
@@ -311,6 +338,13 @@ func normalizeTargetCapabilityPackagingPlan(
 		return out.Artifacts[i].ArtifactDigest < out.Artifacts[j].ArtifactDigest
 	})
 	return out
+}
+
+func targetPackagingLogicalProviderKey(
+	ref TargetPackagingProviderRef,
+) string {
+	return ref.PluginID + "\x00" + ref.PluginVersion + "\x00" +
+		ref.ImplementationID
 }
 
 func targetPackagingProviderKey(ref TargetPackagingProviderRef) string {
