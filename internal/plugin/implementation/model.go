@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -102,9 +101,6 @@ func Normalize(s Source) (Source, error) {
 		}
 		out.Operations[i] = Operation{Name: strings.TrimSpace(operation.Name), Payload: payload}
 	}
-	sort.Slice(out.Operations, func(i, j int) bool {
-		return out.Operations[i].Name < out.Operations[j].Name
-	})
 	return out, nil
 }
 
