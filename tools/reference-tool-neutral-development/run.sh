@@ -26,12 +26,9 @@ if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
 fi
 
 run_tei() {
-  local repo="$1"
+  local binary="$1"
   shift
-  (
-    cd "$repo"
-    go run ./cmd/tei "$@"
-  )
+  "$binary" "$@"
 }
 
 build_tei() {
@@ -67,8 +64,8 @@ run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject
 
 cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
 rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
-run_tei "$TASK_REPO" validate -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/stateless-validate.txt"
-run_tei "$TASK_REPO" world -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/without-decisions-world.json"
+run_tei "$TASK_TEI" validate -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/stateless-validate.txt"
+run_tei "$TASK_TEI" world -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/without-decisions-world.json"
 cmp "$TMP_ROOT/with-decisions-world.json" "$TMP_ROOT/without-decisions-world.json"
 
 cat >> "$TASK_REPO/$TARGET_FILE" <<'EOF'
@@ -80,7 +77,7 @@ EOF
 
 run_tei "$TASK_REPO" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
 run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/task-context.json"
-run_tei "$TASK_REPO" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-world.json"
+run_tei "$TASK_TEI" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-world.json"
 run_reference_tests "$TASK_REPO" > "$TMP_ROOT/task-tests.txt"
 
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/task-context.json"
@@ -122,7 +119,7 @@ build_tei "$INTEGRATION_REPO" "$TMP_ROOT/tei-integration"
 run_reference_tests "$INTEGRATION_REPO" > "$TMP_ROOT/integration-tests.txt"
 run_tei "$INTEGRATION_REPO" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
 run_tei "$INTEGRATION_REPO" knowledge-context   -workspace "$INTEGRATION_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/integration-context.json"
-run_tei "$INTEGRATION_REPO" world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-world.json"
+run_tei "$INTEGRATION_TEI" world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-world.json"
 
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/integration-context.json"
 cmp "$TMP_ROOT/task-world.json" "$TMP_ROOT/integration-world.json"
@@ -138,6 +135,8 @@ git -C "$CONFLICT_REPO" config user.name "TEI Reference"
 git -C "$CONFLICT_REPO" config user.email "reference@tei.invalid"
 CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
 CONFLICT_BASE_BRANCH="$(git -C "$CONFLICT_REPO" branch --show-current)"
+CONFLICT_TEI="$TMP_ROOT/tei-conflict"
+build_tei "$CONFLICT_REPO" "$CONFLICT_TEI"
 
 git -C "$CONFLICT_REPO" checkout -qb semantic-a
 cat > "$CONFLICT_WORKSPACE/semantic/sales/tool-neutral-collision-a.tei" <<'EOF'
@@ -148,7 +147,7 @@ data ToolNeutralCollision {
     attribute code type std.code
 }
 EOF
-run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-a-validate.txt"
+run_tei "$CONFLICT_TEI" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-a-validate.txt"
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-a.tei
 git -C "$CONFLICT_REPO" commit -qm "branch a: add collision data"
 
@@ -162,7 +161,7 @@ data ToolNeutralCollision {
     attribute code type std.code
 }
 EOF
-run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-b-validate.txt"
+run_tei "$CONFLICT_TEI" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-b-validate.txt"
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-b.tei
 git -C "$CONFLICT_REPO" commit -qm "branch b: add collision data"
 
@@ -170,7 +169,7 @@ git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-a -m "merge semantic-a"
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-b -m "merge semantic-b"
 
-if run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-merged-validate.txt" 2>&1; then
+if run_tei "$CONFLICT_TEI" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-merged-validate.txt" 2>&1; then
   echo "Git-mergeable semantic conflict was not rejected" >&2
   exit 1
 fi
