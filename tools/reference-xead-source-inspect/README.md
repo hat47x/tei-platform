@@ -25,6 +25,7 @@ go run ./tools/reference-xead-source-inspect \
 - unresolved diagnostic codeとsource-locator digest
 - relational source fact全体の整合状態を示す `relationalResolutionStatus = resolved | partial | unresolved`
 - fact種別ごとの `resolved / unresolved / unvalidated` 件数を示す `relationalFactResolutions`
+- readiness判定算法のrevisionを示す `relationalResolutionPolicyRevision`
 - transcription contract fingerprint
 - normalized classification policy fingerprint
 - authority limit
@@ -33,7 +34,7 @@ go run ./tools/reference-xead-source-inspect \
 `plan/REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md`に従います。
 
 
-`relationalResolutionStatus`と`relationalFactResolutions`は、source factをCanonical meaningとして承認したことを示しません。
+`relationalResolutionStatus`と`relationalFactResolutions`は、source factをCanonical meaningとして承認したことを示しません。`relationalResolutionPolicyRevision`も判定算法のprovenanceであり、semantic authorityではありません。
 `resolved`は、その検証scopeで構造diagnosticが残っていないことだけを表します。
 `partial`は、diagnosticは無いものの現行validatorでは安全に検証できないfactが残る状態です。
 `unresolved`の場合も観測したsource factはEvidenceとして保持します。
