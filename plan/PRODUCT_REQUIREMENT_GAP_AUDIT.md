@@ -2,7 +2,7 @@
 
 - 監査日: 2026-09-21（再監査。前回は2026-09-11）
 - 追記: 2026-10-03（RQ-031〜RQ-033の初期評価）
-- 対象: RQ-001〜RQ-033
+- 対象: RQ-001〜RQ-034
 - 上流Trace: `UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - Quality設計: `../docs/product-quality-architecture.md`
 - Quality実証計画: `PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md`
@@ -42,6 +42,8 @@ Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記�
 2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
 
 2026-10-03には、意味体系を後付けで拡張・合成できることをProduct Valueへ明示したことに伴い、RQ-031〜RQ-033を追加しました。この3件は追加時点ではDesign Onlyです。Requirement追加と同じ変更でPAS mappingと本監査へ登録し、前回のように価値定義だけが検証マップより先へ進む状態を作らないようにします。
+
+2026-10-07には、ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI、CIからTEIを扱う開発経路を、特定Agent Runtimeへ従属させないRQ-034を追加しました。Git-nativeな開発とCLI / MCP利用を第一級に扱い、Agent Sessionや一般的な検証状態をTEIのProduct stateへ持ち込まない境界を定義します。追加時点ではDesign Onlyとし、独立した開発環境からのE2E Referenceを成立Evidenceには数えません。
 
 ```text
 Gate A — Ready
@@ -92,6 +94,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 | RQ-022 | **Strong Evidence** | cross | architecture probe / actual Evidence / production claimを分離 | v1以後のsupport / compatibility level整理 |
 | RQ-023 | **Partial Evidence** | cross | monorepo、Go中心、ADR / Plan / Reference、Provider / Target分離、doc guard（`repository-plan-check`）とhealth check | 保守量のGapが実測として現れた（§9）。plan文書108K行 / production Go 44.8K行。`reference-business-procedure-check`は171 file・50.8K行で、うち101 file・33.6K行がTEI packageをimportしない |
 | RQ-024 | **Design Only** | PAS-04 | First / Second Targetで測る方針、Gate C測定点、R/T traceに加え、Plugin / Semantic Extensionのlogical境界とphysical artifact境界を分離し、cold / warm start、初期転送量、storage、memory、resolver / evaluator overhead、Extension追加時の増分costをTargetごとに観測する設計を追加 | Plugin化前後のactual比較、unused implementation pruning、shared runtime deduplication、Web Targetでのprocess-free realization、context-specific thresholdが未実証 |
+| RQ-034 | **Design Only** | PAS-06 | Git / file-native authoring、既存CLI、knowledge context、Shared Acceptance等の構成要素は存在する。RQ-034とADR-0022で、Chat / Codex / Claude Code / IDE等の独立した開発環境がAgent AdapterなしでSourceを編集し、CLI / MCPと通常のToolchainでBuild / Testまで行える境界を定義 | 独立checkout / worktreeからcontext取得 → Source編集 → Build / Test → Git成果物 → 統合後reloadまでのE2E Referenceがない。CLI / MCPの機能同値性、Gitを直接使えない環境のfallback、開発環境の権限とApplication Runtime Authorityの実証が不足 |
 | RQ-025 | **Partial Evidence** | PAS-07 | Business Action != Application Function、manual / external Action、actor / authority分離、Business Procedure Reference / Pressure、Lane C Gate A actual execution（2026-09-20）、独立second corpus（2026-09-21、作成者self-review） | 独立review未実施。Canonical identity最終判断。Contract ADRはNot Ready |
 | RQ-026 | **Partial Evidence** | PAS-07 | Data / Function / Business cross-view Reference、Handoff identity Pressure、derived Projection原則、realistic second-case actual Evidence（`R = 82e4301`、Gate A A1〜A8） | 独立review未実施。Data-state / ownership cross-check（RRB-P2項目4）はData identityが無く未確認。diagnostic severityの確定 |
 | RQ-027 | **Partial Evidence** | PAS-06 | `tei world` / `source-index`（artifact fingerprint + reference） / `validate` / `index` / `consumer-impact` / `workbench-model`、`changeanalysis`のdependency / impact、ACTOR_CONTEXT R0 source map・R1 builder challenge（production codeを検証）。**accepted Decisionの機械到達**（2026-09-21）: Shared Acceptance Boundaryを通った受理が`.tei/decisions/`へ残り、`decisions`が現在のworkspaceと照合して`current` / `superseded`と`intact` / `diverged`を返す。記録はauthorityではない（消去・偽造しても意味とrevisionは動かない） | 残る到達不能: **`Variation`は表現を持たない**（`internal/`に0件）。Gate Evidence / Release locatorは索引の無い散文からの参照のまま。決定記録はこの境界を通った変更に限られ、Coreには同等の仕組みが無い。再入場の十分性を判定するconformanceが無い。担当Issueが無い（ADR-0028のみ） |
@@ -135,7 +138,7 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-028
 - RQ-029
 
-### Design Only — 8
+### Design Only — 9
 
 - RQ-010
 - RQ-015
@@ -145,12 +148,15 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 - RQ-031
 - RQ-032
 - RQ-033
+- RQ-034
 
 ### Not Started — 0
 
 2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
 
 2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
+
+2026-10-07の追記: RQ-034は追加時点でDesign Onlyです。既存のCLI、Git運用、Shared Acceptance、Knowledge Contextは部分的な構成要素ですが、特定Agent Adapterを使わず独立した開発環境で改修・実行・テストを完結し、そのGit成果を統合後にCanonicalへ再構築する一往復は、まだReferenceとして実証していません。
 
 2026-10-04の追記: RQ-031〜RQ-033向けに`tools/reference-semantic-extension-catalog`のcandidate実装を追加した。Core未定義の意味kindをReference descriptorから既存Source Indexと同じcatalogへ載せ、compatible-major依存、subject conflict、namespace ownership conflictを決定論的に扱う。Core subject集合と正規化Extension意味をresolution identityへ結び、Source Index / descriptor provenanceはEvidence identityへ分離した。ただしfocused testとrepository healthを未実行のため、3件ともDesign Onlyを維持する。
 
