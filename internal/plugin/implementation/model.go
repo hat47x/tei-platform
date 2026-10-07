@@ -166,6 +166,12 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 	if definition.Runtime.Kind != plugin.RuntimeBuiltin {
 		return fmt.Errorf("TEI-native static response Reference requires builtin runtime")
 	}
+	if err := definition.Artifact.Validate(); err != nil {
+		return fmt.Errorf("plugin definition artifact: %w", err)
+	}
+	if len(definition.Requires) != 0 || len(definition.External) != 0 {
+		return fmt.Errorf("%s profile does not accept Plugin or external runtime dependencies", StaticResponseProfileV1)
+	}
 	var matches int
 	var matched plugin.Capability
 	for _, capability := range definition.Provides {
