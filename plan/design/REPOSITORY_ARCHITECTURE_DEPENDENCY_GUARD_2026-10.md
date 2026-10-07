@@ -43,7 +43,7 @@ TEIでは業務上の意味、実装、実行権限、観測結果を区別す�
 
 さらに、すべての`internal/**`から `tei/cmd/**`、`tei/tools/**`、`tei/examples/**`、`tei/reference/**` へのGo package importを禁止する。Go標準ライブラリや外部ライブラリについては、この検査で新しい禁止規則を設けない。
 
-拒否したimportはsource package、import path、理由を報告する。parseまたはfilesystemの失敗も検査成功として扱わない。
+拒否したimportはsource package、import path、理由を報告する。parseまたはfilesystemの失敗も検査成功として扱わない。検査するローカルimportのprefixは現在の`go.mod`の`module`宣言から取得する。将来module pathを変更しても、以前の`tei/`という文字列のままにして依存検査が無効化されることを防ぐ。
 
 通常の `go test -count=1 ./...` に含まれるため、従来の `tools/repository-health-check.sh` の仕様は変更しない。CLIの成否だけでなく、正しいrepository revisionに対する全検査PASSが必要であるという既存Gateも変更しない。
 
