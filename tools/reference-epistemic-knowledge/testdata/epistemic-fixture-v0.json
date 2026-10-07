@@ -18,7 +18,8 @@
           "provenance": "declared"
         }
       ],
-      "ingestedBy": "user"
+      "ingestedBy": "user",
+      "metadataState": "complete"
     },
     {
       "id": "ai-unreviewed",
@@ -46,7 +47,8 @@
       "reviewerCandidates": [
         "release-owner"
       ],
-      "ingestedBy": "ai"
+      "ingestedBy": "ai",
+      "metadataState": "complete"
     },
     {
       "id": "human-reviewed",
@@ -82,7 +84,8 @@
           "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
           "occurredAt": "2026-10-06T12:05:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "conditional-production",
@@ -117,7 +120,8 @@
           "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
           "occurredAt": "2026-10-06T12:10:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "stale-critical",
@@ -151,7 +155,8 @@
           "meaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
           "occurredAt": "2026-09-01T00:00:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "superseded-design",
@@ -181,7 +186,8 @@
           "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
           "occurredAt": "2026-09-20T00:00:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "superseding-design",
@@ -203,7 +209,8 @@
       "supersedes": [
         "superseded-design"
       ],
-      "ingestedBy": "user"
+      "ingestedBy": "user",
+      "metadataState": "complete"
     },
     {
       "id": "conflict-a",
@@ -236,7 +243,8 @@
           "meaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
           "occurredAt": "2026-10-05T00:00:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "conflict-b",
@@ -269,7 +277,8 @@
           "meaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
           "occurredAt": "2026-10-05T00:00:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "rejected-claim",
@@ -299,7 +308,8 @@
           "meaningFingerprint": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
           "occurredAt": "2026-10-05T00:00:00Z"
         }
-      ]
+      ],
+      "metadataState": "complete"
     },
     {
       "id": "anchored-identifier-policy",
@@ -322,6 +332,27 @@
       "origin": "user",
       "ingestedBy": "user",
       "assertionMode": "requirement",
+      "context": [
+        {
+          "dimension": "project",
+          "value": "tei",
+          "provenance": "declared"
+        }
+      ],
+      "metadataState": "complete"
+    },
+    {
+      "id": "legacy-reimport-copy",
+      "target": {
+        "kind": "legacy-document",
+        "id": "imported-copy-of-main-branch-note"
+      },
+      "text": "The repository default branch is main.",
+      "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "origin": "unknown",
+      "ingestedBy": "import",
+      "metadataState": "absent",
+      "assertionMode": "fact",
       "context": [
         {
           "dimension": "project",
