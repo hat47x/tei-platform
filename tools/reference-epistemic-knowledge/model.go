@@ -36,19 +36,53 @@ func (v Origin) valid() bool {
 	}
 }
 
+type IngestionActor string
+
+const (
+	IngestedByUser      IngestionActor = "user"
+	IngestedByAI        IngestionActor = "ai"
+	IngestedBySystem    IngestionActor = "system"
+	IngestedByConnector IngestionActor = "connector"
+	IngestedByImport    IngestionActor = "import"
+)
+
+func (v IngestionActor) valid() bool {
+	switch v {
+	case IngestedByUser, IngestedByAI, IngestedBySystem, IngestedByConnector, IngestedByImport:
+		return true
+	default:
+		return false
+	}
+}
+
 type AssertionMode string
 
 const (
 	ModeFact        AssertionMode = "fact"
+	ModeObservation AssertionMode = "observation"
+	ModeRequirement AssertionMode = "requirement"
+	ModeDecision    AssertionMode = "decision"
+	ModeConstraint  AssertionMode = "constraint"
 	ModeHypothesis  AssertionMode = "hypothesis"
 	ModeQuestion    AssertionMode = "question"
 	ModeInstruction AssertionMode = "instruction"
+	ModePreference  AssertionMode = "preference"
 	ModeOther       AssertionMode = "other"
 )
 
 func (v AssertionMode) valid() bool {
 	switch v {
-	case ModeFact, ModeHypothesis, ModeQuestion, ModeInstruction, ModeOther:
+	case ModeFact, ModeObservation, ModeRequirement, ModeDecision, ModeConstraint,
+		ModeHypothesis, ModeQuestion, ModeInstruction, ModePreference, ModeOther:
+		return true
+	default:
+		return false
+	}
+}
+
+func (v AssertionMode) canBeWorkingPremise() bool {
+	switch v {
+	case ModeFact, ModeObservation, ModeRequirement, ModeDecision, ModeConstraint:
 		return true
 	default:
 		return false
@@ -78,12 +112,13 @@ func (v ReviewState) valid() bool {
 type ScopeProvenance string
 
 const (
-	ScopeExplicit ScopeProvenance = "explicit"
+	ScopeObserved ScopeProvenance = "observed"
+	ScopeDeclared ScopeProvenance = "declared"
 	ScopeInferred ScopeProvenance = "inferred"
 )
 
 func (v ScopeProvenance) valid() bool {
-	return v == ScopeExplicit || v == ScopeInferred
+	return v == ScopeObserved || v == ScopeDeclared || v == ScopeInferred
 }
 
 type TargetRef struct {
@@ -120,8 +155,9 @@ type Assertion struct {
 	Target             TargetRef     `json:"target"`
 	Text               string        `json:"text"`
 	MeaningFingerprint string        `json:"meaningFingerprint"`
-	Origin             Origin        `json:"origin"`
-	Mode               AssertionMode `json:"assertionMode"`
+	Origin             Origin         `json:"origin"`
+	IngestedBy         IngestionActor `json:"ingestedBy"`
+	Mode               AssertionMode  `json:"assertionMode"`
 	ReviewState        ReviewState   `json:"reviewState"`
 	Context            []ScopeBinding `json:"context,omitempty"`
 	ValidFrom          string        `json:"validFrom,omitempty"`
@@ -256,20 +292,21 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 	if !sha256Pattern.MatchString(a.MeaningFingerprint) {
 		return a, fmt.Errorf("meaningFingerprint %q is not exact sha256", a.MeaningFingerprint)
 	}
-	if !a.Origin.valid() || !a.Mode.valid() || !a.ReviewState.valid() {
-		return a, fmt.Errorf("invalid origin / assertionMode / reviewState")
+	if !a.Origin.valid() || !a.IngestedBy.valid() || !a.Mode.valid() || !a.ReviewState.valid() {
+		return a, fmt.Errorf("invalid origin / ingestedBy / assertionMode / reviewState")
 	}
-	if a.ReviewState == ReviewNative && (a.Origin != OriginUser || a.Mode != ModeFact) {
-		return a, fmt.Errorf("native assertion requires user origin and fact assertion mode")
+	if a.ReviewState == ReviewNative &&
+		(a.Origin != OriginUser || a.IngestedBy != IngestedByUser || !a.Mode.canBeWorkingPremise()) {
+		return a, fmt.Errorf("native assertion requires direct user content and a working-premise statement kind")
 	}
 	if a.Origin == OriginAI && a.ReviewState == ReviewNative {
-		return a, fmt.Errorf("AI assertion cannot be native")
+		return a, fmt.Errorf("AI-origin content cannot be native even when a user ingests it")
 	}
 	if (a.ReviewState == ReviewReviewed || a.ReviewState == ReviewConditional) && a.Review == nil {
 		return a, fmt.Errorf("%s assertion requires review record", a.ReviewState)
 	}
-	if a.ReviewState == ReviewConditional && !hasExplicitScope(a.Context) {
-		return a, fmt.Errorf("conditional review requires explicit context scope")
+	if a.ReviewState == ReviewConditional && !hasNonInferredScope(a.Context) {
+		return a, fmt.Errorf("conditional review requires observed or declared context scope")
 	}
 
 	context, err := normalizeBindings(a.Context)
@@ -404,9 +441,9 @@ func normalizeBindings(values []ScopeBinding) ([]ScopeBinding, error) {
 	return out, nil
 }
 
-func hasExplicitScope(values []ScopeBinding) bool {
+func hasNonInferredScope(values []ScopeBinding) bool {
 	for _, value := range values {
-		if value.Provenance == ScopeExplicit {
+		if value.Provenance == ScopeObserved || value.Provenance == ScopeDeclared {
 			return true
 		}
 	}
