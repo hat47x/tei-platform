@@ -381,7 +381,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
 		"candidate keys":        dataDesign.CandidateKeys,
 		"functional dependency": dataDesign.FunctionalDependencies,
-		"composite domain constraint": dataDesign.CompositeCompositeDomainConstraints,
+		"composite domain constraint": dataDesign.CompositeDomainConstraints,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
 			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
