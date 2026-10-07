@@ -205,3 +205,37 @@ func TestInspectKeepsGlobalSourceIdentityDiagnosticUnresolvedWithoutRelationalFa
 		t.Fatalf("missing table/field identity diagnostics were lost: %#v", got)
 	}
 }
+
+
+func TestInspectPropagatesKeyMemberAmbiguityOnlyToDependentRelationship(t *testing.T) {
+	got, err := Inspect(
+		FormatXead,
+		[]byte(`<System><Table ID="T1"><TableField ID="A"/><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Table ID="T3"><TableField ID="C"/><TableKey ID="K3" Type="PK"><TableKeyField FieldID="C"/></TableKey></Table><Table ID="T4"><TableField ID="D"/><TableKey ID="K4" Type="PK"><TableKeyField FieldID="D"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/><Relationship ID="R2" Table1ID="T3" TableKey1ID="K3" Table2ID="T4" TableKey2ID="K4"/></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolutionByLocator := map[string]RelationalFactResolution{}
+	for _, resolution := range got.RelationalFactResolutions {
+		resolutionByLocator[resolution.Locator] = resolution
+	}
+	var r1, r2 RelationalFactResolution
+	for _, relation := range got.RelationalFacts.RelationshipKeys {
+		switch relation.RelationshipID {
+		case "R1":
+			r1 = resolutionByLocator[relation.Locator]
+		case "R2":
+			r2 = resolutionByLocator[relation.Locator]
+		}
+	}
+	if r1.Status != RelationalFactResolutionUnresolved {
+		t.Fatalf("relationship using ambiguous key member was marked resolved: %#v", r1)
+	}
+	if !reflect.DeepEqual(r1.DiagnosticCodes, []string{"relationship-key-field-ambiguous"}) {
+		t.Fatalf("dependent relationship lost propagated diagnostic: %#v", r1)
+	}
+	if r2.Status != RelationalFactResolutionResolved || len(r2.DiagnosticCodes) != 0 {
+		t.Fatalf("unrelated relationship was blocked by another relation's ambiguity: %#v", r2)
+	}
+}
