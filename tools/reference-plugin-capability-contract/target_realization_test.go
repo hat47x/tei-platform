@@ -179,3 +179,34 @@ func TestSameLogicalProviderDuplicateWithinOneTargetFailsClosed(t *testing.T) {
 		t.Fatalf("same-Target duplicate realization was not rejected: %v", err)
 	}
 }
+
+
+func TestCapabilityResolutionLockRejectsNonCanonicalTargetText(t *testing.T) {
+	contract := portableRuntimeContract()
+	web := targetRuntimeProvider(contract, "web-browser", "3")
+	input := targetResolveInput(contract, "web-browser", web)
+
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lock.Target = " web-browser "
+	lock.Provider.Target = lock.Target
+	lock.ResolutionFingerprint = capabilityResolutionFingerprint(
+		lock.Scope,
+		lock.Contract,
+		lock.ContractFingerprint,
+		lock.Provider,
+	)
+	lock.LockFingerprint = capabilityResolutionLockFingerprint(lock)
+
+	if err := validateCapabilityResolutionLock(lock); err == nil ||
+		!strings.Contains(err.Error(), "surrounding whitespace") {
+		t.Fatalf("non-canonical Target text was accepted in lock: %v", err)
+	}
+}
