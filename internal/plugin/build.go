@@ -282,16 +282,18 @@ func (p BuildPlan) Validate() error {
 }
 
 // BuildPlanInputFingerprint returns a stable fingerprint for every resolved
-// build input except the exact Builder identity. Bootstrap stage1/stage2 use
-// this value to prove they are rebuilding the same target with the same
-// sources, recipe, dependencies and parameters while intentionally changing
-// only the builder that performs the build.
+// build input except the exact Builder implementation identity (ID, version
+// and artifact digest). Builder ContractVersion remains part of the
+// fingerprint because it defines how the BuildPlan is interpreted. Bootstrap
+// stage1/stage2 use this value to prove they are rebuilding the same target
+// with the same contract, sources, recipe, dependencies and parameters while
+// intentionally changing only the builder implementation that performs it.
 func BuildPlanInputFingerprint(p BuildPlan) (string, error) {
 	if err := p.Validate(); err != nil {
 		return "", err
 	}
 	n := NormalizeBuildPlan(p)
-	n.Builder = BuilderIdentity{}
+	n.Builder = BuilderIdentity{ContractVersion: p.Builder.ContractVersion}
 	b, err := json.Marshal(n)
 	if err != nil {
 		return "", err
