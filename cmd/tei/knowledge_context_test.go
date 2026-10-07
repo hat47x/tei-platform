@@ -552,6 +552,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"persistence-unique-constraint-is-not-domain-constraint",
 		"ambiguous-semantic-identity-does-not-produce-design-candidates",
 		"ambiguous-persistence-identity-does-not-produce-realization-facts",
+		"relation-shape-does-not-establish-business-meaning",
+		"relation-shape-does-not-establish-temporal-semantics",
 		"relation-key-is-not-business-identifier",
 		"scoped-uniqueness-is-not-business-identifier-or-candidate-key",
 		"persistence-primary-key-is-not-business-identifier-or-candidate-key",
@@ -593,6 +595,12 @@ func TestBuildKnowledgeContextExposesRelationKeyWithoutPromotingItToBusinessIden
 			relation.Keys[0].SourceAttribute != "sales.order.customer_id" ||
 			relation.Keys[0].TargetAttribute != "customer.customer.customer_id" {
 			t.Fatalf("relation key mapping is incomplete: %+v", relation.Keys)
+		}
+		if relation.BusinessMeaning.Nature != "unresolved" ||
+			relation.BusinessMeaning.Reason == "" ||
+			relation.TemporalSemantics.Nature != "unresolved" ||
+			relation.TemporalSemantics.Reason == "" {
+			t.Fatalf("relation shape was promoted to business or temporal meaning: %+v", relation)
 		}
 		found = true
 		break
