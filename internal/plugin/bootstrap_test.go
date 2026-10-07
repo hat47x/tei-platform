@@ -13,6 +13,7 @@ const (
 	bootstrapSource  = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 	bootstrapPlan1   = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 	bootstrapPlan2   = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	bootstrapInput   = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
 
 func bootstrapBuilder(id, version, digest string) plugin.BuilderIdentity {
@@ -29,18 +30,23 @@ func bootstrapEvidenceFixture() plugin.BootstrapConvergenceEvidence {
 	stage1Output := bootstrapBuilder("tei.builder.native", "current", bootstrapDigestA)
 	return plugin.BootstrapConvergenceEvidence{
 		FormatVersion: plugin.BootstrapConvergenceFormatVersion,
-		Stage0Seed:    seed,
+		Stage0Seed: plugin.BootstrapSeedEvidence{
+			Builder:       seed,
+			TrustBoundary: "external-toolchain-seed",
+		},
 		Stage1: plugin.BootstrapStageEvidence{
 			Stage:                plugin.BootstrapStage1,
 			Builder:              seed,
-			SourceClosureDigest:  bootstrapSource,
+			SourceClosureDigest:   bootstrapSource,
+			BuildInputFingerprint: bootstrapInput,
 			BuildPlanFingerprint: bootstrapPlan1,
 			Output:               stage1Output,
 		},
 		Stage2: plugin.BootstrapStageEvidence{
 			Stage:                plugin.BootstrapStage2,
 			Builder:              stage1Output,
-			SourceClosureDigest:  bootstrapSource,
+			SourceClosureDigest:   bootstrapSource,
+			BuildInputFingerprint: bootstrapInput,
 			BuildPlanFingerprint: bootstrapPlan2,
 			Output:               stage1Output,
 		},
@@ -98,6 +104,12 @@ func TestBootstrapConvergenceRejectsIncomparableStages(t *testing.T) {
 		{"source closure", func(e *plugin.BootstrapConvergenceEvidence) {
 			e.Stage2.SourceClosureDigest = bootstrapDigestB
 		}},
+		{"build inputs", func(e *plugin.BootstrapConvergenceEvidence) {
+			e.Stage2.BuildInputFingerprint = bootstrapPlan1
+		}},
+		{"stage0 trust boundary", func(e *plugin.BootstrapConvergenceEvidence) {
+			e.Stage0Seed.TrustBoundary = ""
+		}},
 		{"output builder id", func(e *plugin.BootstrapConvergenceEvidence) {
 			e.Stage2.Output.ID = core.MustCanonicalID("tei.builder.other")
 		}},
@@ -109,6 +121,9 @@ func TestBootstrapConvergenceRejectsIncomparableStages(t *testing.T) {
 		}},
 		{"source digest", func(e *plugin.BootstrapConvergenceEvidence) {
 			e.Stage1.SourceClosureDigest = "sha256:bad"
+		}},
+		{"input fingerprint", func(e *plugin.BootstrapConvergenceEvidence) {
+			e.Stage2.BuildInputFingerprint = "bad"
 		}},
 		{"plan fingerprint", func(e *plugin.BootstrapConvergenceEvidence) {
 			e.Stage2.BuildPlanFingerprint = "bad"
@@ -138,7 +153,7 @@ func TestBootstrapConvergenceDoesNotTreatSeedTrustAsConvergence(t *testing.T) {
 	// Convergence says only that stage1 and stage2 rebuild the same builder
 	// artifact from the same source closure. The trusted stage0 seed remains
 	// explicit in the Evidence and is not erased by convergence.
-	if evidence.Stage0Seed.ArtifactDigest == evidence.Stage1.Output.ArtifactDigest {
+	if evidence.Stage0Seed.Builder.ArtifactDigest == evidence.Stage1.Output.ArtifactDigest {
 		t.Fatal("fixture unexpectedly collapsed stage0 seed into current builder")
 	}
 }
