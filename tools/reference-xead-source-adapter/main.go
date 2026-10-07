@@ -74,6 +74,7 @@ type PublicationReceipt struct {
 	ElementCounts         map[string]int            `json:"elementCounts"`
 	AttributeCounts       map[string]int            `json:"attributeCounts,omitempty"`
 	UnknownElementCount   int                       `json:"unknownElementCount,omitempty"`
+	UnknownAttributeCount int                       `json:"unknownAttributeCount,omitempty"`
 	MarkupCounts          map[string]int            `json:"markupCounts,omitempty"`
 	LocatorCount          int                       `json:"locatorCount"`
 	LocatorSetFingerprint string                    `json:"locatorSetFingerprint"`
@@ -336,6 +337,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 		} else {
 			receipt.UnknownElements[node.Kind]++
 			receipt.UnknownElementCount++
+			receipt.UnknownAttributeCount += len(node.Attributes)
 		}
 		locatorDigests = append(locatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
 	}
@@ -379,6 +381,9 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 }
 
 func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
+	if !node.Known {
+		return nil
+	}
 	attrs := node.Attributes
 	if format == FormatXead {
 		switch node.Kind {
