@@ -36,6 +36,12 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 	if got.RelationalResolutionStatus != "unresolved" {
 		t.Fatalf("relational inconsistency was marked reusable: %#v", got)
 	}
+	if len(got.RelationalFactResolutions) != 1 ||
+		got.RelationalFactResolutions[0].Kind != "legacy-key" ||
+		got.RelationalFactResolutions[0].Status != RelationalFactResolutionUnresolved ||
+		!reflect.DeepEqual(got.RelationalFactResolutions[0].DiagnosticCodes, []string{"key-field-not-found"}) {
+		t.Fatalf("invalid key did not receive local unresolved status: %#v", got.RelationalFactResolutions)
+	}
 	key := got.RelationalFacts.LegacyKeys[0]
 	if key.KeyLegacyID != "K1" || key.KeyType != "PK" || key.Nature != SourceFactNature {
 		t.Fatalf("legacy key fact drifted: %#v", key)
@@ -65,7 +71,10 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 		"candidate-classification-is-not-shared-acceptance",
 		"unresolved-source-meaning-must-not-be-auto-completed",
 		"relational-resolution-status-is-source-consistency-not-canonical-meaning",
-		"unresolved-relational-resolution-blocks-deterministic-semantic-lowering",
+		"relational-fact-resolution-is-structural-not-semantic-acceptance",
+		"resolved-relational-fact-is-only-eligible-not-authorized-for-local-lowering",
+		"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
+		"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
 	}) {
 		t.Fatalf("inspection authority limits drifted: %#v", got.AuthorityLimits)
 	}
@@ -81,6 +90,12 @@ func TestInspectWithoutPolicyKeepsAllCandidateMeaningUnresolved(t *testing.T) {
 	}
 	if len(got.RelationalFacts.DeclaredKeyFields) != 1 {
 		t.Fatalf("declared key-field source fact is missing: %#v", got.RelationalFacts)
+	}
+	if got.RelationalResolutionStatus != "partial" ||
+		len(got.RelationalFactResolutions) != 1 ||
+		got.RelationalFactResolutions[0].Kind != "declared-key-fields" ||
+		got.RelationalFactResolutions[0].Status != RelationalFactResolutionUnvalidated {
+		t.Fatalf("unvalidated selection key was reported as lowerable: %#v", got.RelationalFactResolutions)
 	}
 	for _, candidate := range got.Candidates {
 		if !candidate.Unresolved ||
@@ -107,5 +122,64 @@ func TestInspectMarksRelationalFactsResolvedOnlyWithoutDiagnostics(t *testing.T)
 	}
 	if got.RelationalResolutionStatus != "resolved" {
 		t.Fatalf("diagnostic-free relational source was not marked resolved: %#v", got)
+	}
+	if len(got.RelationalFactResolutions) != 1 ||
+		got.RelationalFactResolutions[0].Status != RelationalFactResolutionResolved {
+		t.Fatalf("valid key did not receive resolved local status: %#v", got.RelationalFactResolutions)
+	}
+}
+
+
+func TestInspectKeepsResolvedFactsUsableWhenAnotherFactIsUnresolved(t *testing.T) {
+	got, err := Inspect(
+		FormatXead,
+		[]byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey><TableKey ID="K2" Type="SK"><TableKeyField FieldID="MISSING"/></TableKey></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RelationalResolutionStatus != RelationalFactResolutionUnresolved {
+		t.Fatalf("full-set status did not remain unresolved: %#v", got)
+	}
+	statusByLocator := map[string]RelationalFactResolution{}
+	for _, resolution := range got.RelationalFactResolutions {
+		statusByLocator[resolution.Locator] = resolution
+	}
+	valid := statusByLocator["/System[1]/Table[1]/TableKey[2]"]
+	if valid.Status != RelationalFactResolutionResolved ||
+		len(valid.DiagnosticCodes) != 0 {
+		t.Fatalf("unrelated valid key was blocked by another key: %#v", valid)
+	}
+	invalid := statusByLocator["/System[1]/Table[1]/TableKey[3]"]
+	if invalid.Status != RelationalFactResolutionUnresolved ||
+		!reflect.DeepEqual(invalid.DiagnosticCodes, []string{"key-field-not-found"}) {
+		t.Fatalf("invalid key lost local diagnostic boundary: %#v", invalid)
+	}
+}
+
+func TestInspectMarksAllDuplicateLegacyKeyOccurrencesUnresolved(t *testing.T) {
+	got, err := Inspect(
+		FormatXead,
+		[]byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey><TableKey ID="K1" Type="SK"><TableKeyField FieldID="A"/></TableKey></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var duplicateKeyResolutions []RelationalFactResolution
+	for _, resolution := range got.RelationalFactResolutions {
+		if resolution.Kind == "legacy-key" {
+			duplicateKeyResolutions = append(duplicateKeyResolutions, resolution)
+		}
+	}
+	if len(duplicateKeyResolutions) != 2 {
+		t.Fatalf("duplicate source key occurrences were lost: %#v", duplicateKeyResolutions)
+	}
+	for _, resolution := range duplicateKeyResolutions {
+		if resolution.Status != RelationalFactResolutionUnresolved ||
+			!reflect.DeepEqual(resolution.DiagnosticCodes, []string{"key-id-duplicate"}) {
+			t.Fatalf("duplicate key occurrence was treated as locally resolved: %#v", resolution)
+		}
 	}
 }
