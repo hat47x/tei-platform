@@ -50,3 +50,20 @@ go run ./tools/reference-xead-source-adapter \
 ```
 
 `localCandidates`にはexact source snapshot内のstructural locatorが入ります。これはローカル調査用であり、public Reference Model Evidenceへ保存しません。属性値やsource本文は含みませんが、locator自体をRepositoryへ公開する必要もありません。
+
+
+## Unresolved projection
+
+`-contract`を指定した出力には`unresolvedProjection`も含めます。これは、loss ledgerへ取り込む前段の集計です。
+
+未解決状態を三つに分けます。
+
+- source observationで未知・namespace付きとして残ったもの
+- mappingが無い、または既知要素と未知要素が混在するもの
+- mappingはあるが、転写契約上の意味が`unresolved`のもの
+
+このprojectionからRML番号を自動生成しません。永続的なloss ledgerは論点単位で管理するため、集計結果を確認してから既存項目へ結び付けるか、新しい論点として起票します。
+
+`mixed`なkindでは、未知側の要素を既知側Extensionへ帰属させません。Extensionを出すのは、mappingが実際に適用されたsemantic candidateだけです。
+
+`unresolvedProjection`は件数とkind、未解決の種類だけを扱い、source valueやstructural locatorは公開しません。
