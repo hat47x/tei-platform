@@ -273,6 +273,78 @@ func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	}
 }
 
+func TestDataDesignContextDoesNotPromoteCompositePhysicalUniqueToBusinessMeaning(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Semantics[0].Data[1].Attributes = append(
+		w.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{
+			ID:      "sales.order_line.item_code",
+			Symbol:  "itemCode",
+			TypeRef: "std.code",
+		},
+	)
+	w.Persistence = []persistence.Mapping{
+		{
+			ID:           "sales_core.order_line",
+			Database:     "sales_core",
+			SemanticData: "sales.order_line",
+			Table:        "public.order_lines",
+			Columns: []persistence.ColumnMapping{
+				{
+					Attribute:   "sales.order_line.line_number",
+					Column:      "line_number",
+					Storage:     persistence.StorageInt64,
+					Nullability: persistence.Required,
+				},
+				{
+					Attribute:   "sales.order_line.item_code",
+					Column:      "item_code",
+					Storage:     persistence.StorageText,
+					Nullability: persistence.Required,
+				},
+			},
+			UniqueConstraints: []persistence.UniqueConstraintMapping{
+				{
+					Name: "order_lines_line_item_uq",
+					Attributes: []core.CanonicalID{
+						"sales.order_line.line_number",
+						"sales.order_line.item_code",
+					},
+				},
+			},
+		},
+	}
+
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil || len(ctx.DataDesign.PersistenceRealizations) != 1 {
+		t.Fatalf("composite physical uniqueness realization is missing: %+v", ctx.DataDesign)
+	}
+	realization := ctx.DataDesign.PersistenceRealizations[0]
+	if len(realization.Uniqueness) != 1 ||
+		realization.Uniqueness[0].Kind != "unique-constraint" ||
+		realization.Uniqueness[0].Name != "order_lines_line_item_uq" ||
+		len(realization.Uniqueness[0].Attributes) != 2 ||
+		realization.Uniqueness[0].Attributes[0] != "sales.order_line.line_number" ||
+		realization.Uniqueness[0].Attributes[1] != "sales.order_line.item_code" ||
+		realization.Uniqueness[0].Nature != "accepted-realization" {
+		t.Fatalf("composite physical unique fact drifted: %+v", realization.Uniqueness)
+	}
+	if ctx.DataDesign.BusinessOccurrenceIdentifier.Nature != "unresolved" ||
+		ctx.DataDesign.CandidateKeys.Nature != "unresolved" ||
+		ctx.DataDesign.FunctionalDependencies.Nature != "unresolved" ||
+		ctx.DataDesign.CompositeDomainConstraints.Nature != "unresolved" {
+		t.Fatalf("composite physical unique was promoted to Semantic meaning: %+v", ctx.DataDesign)
+	}
+	if len(ctx.DataDesign.BusinessIdentityCandidates) != 1 ||
+		ctx.DataDesign.BusinessIdentityCandidates[0].BasisConstraint != "sales.order.lines.line_number_unique" {
+		t.Fatalf("physical composite unique replaced Semantic identity candidate: %+v", ctx.DataDesign.BusinessIdentityCandidates)
+	}
+}
+
 func TestDataDesignContextSuppressesDuplicatePersistenceMappingIdentity(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Persistence = []persistence.Mapping{
