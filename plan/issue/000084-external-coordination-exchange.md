@@ -49,7 +49,7 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 Resultには、対象Work、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
 
-大型Artifactは本文へ埋めず、URI、digest、media type等の参照で扱えるようにします。
+大型Artifactは本文へ埋めず、URI、digest、media type等の参照で扱えるようにします。Backend stateは共通contractへ先に正規化しません。Git textの`ready / completed`はE1 Adapter内の状態であり、GitHub Issues等のnative stateとは別に扱います。
 
 ## E1: Git text profile
 
@@ -100,7 +100,7 @@ runtimeAuthorized = false
 
 E1のGit text profile成立後、Gitとは性質の異なるBackendを第二consumerとして接続します。Task Tracker、Structured Knowledge、File / Artifact Storeのいずれかから、既存環境で実証しやすいものを選びます。
 
-第二consumerで共通して必要になったfieldだけを最小契約候補へ残し、Backend固有metadataはAdapter側へ戻します。
+第二consumerで共通して必要になったfieldだけを最小契約候補へ残し、Backend固有metadataはAdapter側へ戻します。GitHub Issues profileは`tools/reference-external-coordination/github-issues-profile.md`へ記録します。
 
 その後に必要性が確認できた場合だけ、HTTP / MCPから同じ契約を利用するthin Brokerをpressureします。BrokerなしのGit / CLI経路を壊しません。
 
