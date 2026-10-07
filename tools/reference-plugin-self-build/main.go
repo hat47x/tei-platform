@@ -22,6 +22,7 @@ import (
 	"tei/internal/ir"
 	"tei/internal/plugin"
 	"tei/internal/plugin/implementation"
+	pluginbuiltin "tei/internal/plugin/implementation/builtin"
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
 	"tei/internal/workspace"
@@ -359,7 +360,7 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	nativeBuiltin, err := implementation.NewBuiltin(nativeSource, nativeRealized)
+	nativeBuiltin, err := pluginbuiltin.New(nativeSource, nativeRealized)
 	if err != nil {
 		return evidence{}, err
 	}
