@@ -502,6 +502,14 @@ PAS-04で具体化します。
 
 根拠のない一律thresholdを第一Targetだけから固定しません。
 
+### RQ-034 — 標準的な開発環境からの改修・実行・検証
+
+主にPAS-06で開発contextへの機械到達を確認し、PAS-01で通常のSource変更が既存のAuthoring / Acceptance境界へ戻れることを確認します。
+
+ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE / CLI、CI等を、TEI専用Agent Runtimeの下位実装にはしません。各環境は独立したcheckout / worktreeでSourceを編集し、TEI CLI / MCPと通常のToolchainを使ってBuild / Testまで進め、Git等の既存経路から変更を受け渡せます。
+
+Referenceでは、Agent Session、Checkpoint、一般的な検証状態等をTEIのProduct stateへ追加せずに、この一往復が成立するかを確認します。Agent Adapterや独自Change Setが無い場合にも成立することをnegative boundaryとして扱います。
+
 ## 11. Requirement → Primary PAS mapping
 
 | Requirement | Primary PAS | Secondary / cross-cutting |
@@ -539,6 +547,7 @@ PAS-04で具体化します。
 | RQ-031 | PAS-06 | PAS-01 / PAS-07 |
 | RQ-032 | PAS-06 | PAS-01 / PAS-07 |
 | RQ-033 | PAS-06 | PAS-01 |
+| RQ-034 | PAS-06 | PAS-01 |
 
 Primaryは最初に具体化する代表PASであり、coverage scoreではありません。
 
@@ -607,6 +616,8 @@ PAS-01 / PAS-06では次を現行前提とします。
 - accepted sourceは入口toolなしでreload可能
 - stale base revisionは明示処理
 - derived index / AI Knowledge / trajectoryは第二正本ではない
+- 独立した開発環境は、TEI専用Agent AdapterなしでSourceを直接編集し、CLI / MCP / 通常のToolchainでBuild / Testまで行える
+- Git commit / branch / Pull Request等を変更の第一級の受け渡し経路として利用でき、Gitで足りる場合にTEI独自Change Setを要求しない
 
 PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native authoring sourceへ保持し、Pattern-owned Data / Relation / Query / Capability / DatasourceやMatrix / diagnostic等のderived Projectionと分離します。
 
@@ -619,6 +630,8 @@ PAS-07のBusiness Procedure pressureでも、Business固有meaningをfile-native
 - mandatory authored Stable ID / UUID
 - Studio独自semantic authority
 - AI独自Canonical Knowledge Store
+- Agent Session / Workspace / Checkpoint / 一般的な検証状態をTEIの標準Product stateにすること
+- Agent Adapterや特定Chat UIを標準Authoringの必須経路にすること
 - Canonical `Procedure` / `Step`の先行採用
 - Business ProcedureからRuntime Workflow Orchestrationへの自動変換
 
