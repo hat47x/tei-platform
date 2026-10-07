@@ -272,60 +272,98 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 }
 
 func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
-	if format != FormatXead {
-		return nil
-	}
 	attrs := node.Attributes
-	switch node.Kind {
-	case "TableKey":
-		return []SourceFact{{
-			Kind:           node.Kind,
-			Locator:        node.Locator.Path,
-			FactType:       "legacy-table-key",
-			Values:         selectedValues(attrs, "ID", "Type", "KeyType", "SortKey"),
-			AttributeNames: presentAttributeNames(attrs, "ID", "Type", "KeyType", "SortKey"),
-			AuthorityLimits: []string{
-				"legacy-key-is-not-business-identity",
-				"legacy-key-is-not-candidate-key",
-				"legacy-key-is-not-functional-dependency",
-				"legacy-key-is-not-physical-key-authority",
-			},
-		}}
-	case "TableKeyField":
-		return []SourceFact{{
-			Kind:           node.Kind,
-			Locator:        node.Locator.Path,
-			FactType:       "legacy-key-field-membership",
-			Values:         selectedValues(attrs, "FieldID", "SortKey"),
-			AttributeNames: presentAttributeNames(attrs, "FieldID", "SortKey"),
-			AuthorityLimits: []string{
-				"legacy-key-field-membership-is-not-business-identity",
-				"legacy-key-field-membership-is-not-functional-dependency",
-				"ambiguous-key-field-mapping-must-remain-unresolved",
-			},
-		}}
-	case "Relationship":
-		return []SourceFact{{
-			Kind:           node.Kind,
-			Locator:        node.Locator.Path,
-			FactType:       "legacy-relationship-key-reference",
-			Values:         selectedValues(attrs, "Table1ID", "TableKey1ID", "Table2ID", "TableKey2ID", "ExistWhen1", "ExistWhen2", "Type"),
-			AttributeNames: presentAttributeNames(attrs, "Table1ID", "TableKey1ID", "Table2ID", "TableKey2ID", "ExistWhen1", "ExistWhen2", "Type"),
-			AuthorityLimits: []string{
-				"relationship-key-reference-is-not-business-identity",
-				"relationship-key-reference-is-not-functional-dependency",
-				"conditional-prose-is-not-executable-constraint",
-			},
-		}}
-	case "Function", "Detail":
-		if names := presentAttributeNames(attrs, "KeyFields"); len(names) > 0 {
+	if format == FormatXead {
+		switch node.Kind {
+		case "TableKey":
+			return []SourceFact{{
+				Kind:           node.Kind,
+				Locator:        node.Locator.Path,
+				FactType:       "legacy-table-key",
+				Values:         selectedValues(attrs, "ID", "Type", "KeyType", "SortKey"),
+				AttributeNames: presentAttributeNames(attrs, "ID", "Type", "KeyType", "SortKey"),
+				AuthorityLimits: []string{
+					"legacy-key-is-not-business-identity",
+					"legacy-key-is-not-candidate-key",
+					"legacy-key-is-not-functional-dependency",
+					"legacy-key-is-not-physical-key-authority",
+				},
+			}}
+		case "TableKeyField":
+			return []SourceFact{{
+				Kind:           node.Kind,
+				Locator:        node.Locator.Path,
+				FactType:       "legacy-key-field-membership",
+				Values:         selectedValues(attrs, "FieldID", "SortKey"),
+				AttributeNames: presentAttributeNames(attrs, "FieldID", "SortKey"),
+				AuthorityLimits: []string{
+					"legacy-key-field-membership-is-not-business-identity",
+					"legacy-key-field-membership-is-not-functional-dependency",
+					"ambiguous-key-field-mapping-must-remain-unresolved",
+				},
+			}}
+		case "Relationship":
+			return []SourceFact{{
+				Kind:           node.Kind,
+				Locator:        node.Locator.Path,
+				FactType:       "legacy-relationship-key-reference",
+				Values:         selectedValues(attrs, "Table1ID", "TableKey1ID", "Table2ID", "TableKey2ID", "ExistWhen1", "ExistWhen2", "Type"),
+				AttributeNames: presentAttributeNames(attrs, "Table1ID", "TableKey1ID", "Table2ID", "TableKey2ID", "ExistWhen1", "ExistWhen2", "Type"),
+				AuthorityLimits: []string{
+					"relationship-key-reference-is-not-business-identity",
+					"relationship-key-reference-is-not-functional-dependency",
+					"conditional-prose-is-not-executable-constraint",
+				},
+			}}
+		}
+	}
+	if format == FormatXeaf {
+		switch node.Kind {
+		case "Function":
+			names := presentAttributeNames(attrs, "KeyFields", "HeaderKeyFields", "DetailKeyFields", "BatchKeyFields", "BatchWithKeyFields", "StructureChildKeys", "StructureUpperKeys")
+			if len(names) > 0 {
+				return []SourceFact{{
+					Kind:            node.Kind,
+					Locator:         node.Locator.Path,
+					FactType:        "legacy-function-selection-key",
+					Values:          selectedValues(attrs, names...),
+					AttributeNames:  names,
+					AuthorityLimits: []string{"function-selection-key-is-not-business-identity", "function-selection-key-is-not-functional-dependency", "runtime-selection-key-is-not-canonical-data-identity"},
+				}}
+			}
+		case "Detail":
+			names := presentAttributeNames(attrs, "KeyFields", "HeaderKeyFields")
+			if len(names) > 0 {
+				return []SourceFact{{
+					Kind:            node.Kind,
+					Locator:         node.Locator.Path,
+					FactType:        "legacy-detail-key-binding",
+					Values:          selectedValues(attrs, names...),
+					AttributeNames:  names,
+					AuthorityLimits: []string{"detail-key-binding-is-not-business-identity", "detail-key-binding-is-not-functional-dependency", "runtime-key-binding-is-not-canonical-relation-authority"},
+				}}
+			}
+		case "Key":
 			return []SourceFact{{
 				Kind:            node.Kind,
 				Locator:         node.Locator.Path,
-				FactType:        "legacy-function-selection-key",
-				Values:          selectedValues(attrs, "KeyFields"),
-				AttributeNames:  names,
-				AuthorityLimits: []string{"function-selection-key-is-not-business-identity", "function-selection-key-is-not-functional-dependency"},
+				FactType:        "runtime-table-key",
+				Values:          selectedValues(attrs, "Fields", "Type"),
+				AttributeNames:  presentAttributeNames(attrs, "Fields", "Type"),
+				AuthorityLimits: []string{"runtime-key-is-not-business-identity", "runtime-key-is-not-functional-dependency", "runtime-key-is-not-semantic-authority"},
+			}}
+		case "Refer":
+			return []SourceFact{{
+				Kind:           node.Kind,
+				Locator:        node.Locator.Path,
+				FactType:       "runtime-reference-key-binding",
+				Values:         selectedValues(attrs, "Fields", "ToKeyFields", "WithKeyFields", "ToTable", "TableAlias", "Optional"),
+				AttributeNames: presentAttributeNames(attrs, "Fields", "ToKeyFields", "WithKeyFields", "ToTable", "TableAlias", "Optional"),
+				AuthorityLimits: []string{
+					"runtime-reference-is-not-business-identity",
+					"runtime-reference-is-not-functional-dependency",
+					"runtime-reference-is-not-canonical-relation-authority",
+				},
 			}}
 		}
 	}
