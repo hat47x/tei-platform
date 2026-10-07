@@ -659,6 +659,22 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 		fdCandidate.Determinants[1].Attribute != "sales.order_line.line_number" {
 		t.Fatalf("FD candidate lost scoped determinant terms: %+v", fdCandidate)
 	}
+	for _, needed := range []string{
+		"history-version-identity",
+		"identifier-reuse-policy",
+	} {
+		if !containsDataDesignString(identityCandidate.EvidenceNeeded, needed) {
+			t.Fatalf("business identity temporal Evidence need %q is missing: %+v", needed, identityCandidate.EvidenceNeeded)
+		}
+	}
+	for _, needed := range []string{
+		"history-version-identity",
+		"temporal-dependency-scope",
+	} {
+		if !containsDataDesignString(fdCandidate.EvidenceNeeded, needed) {
+			t.Fatalf("FD temporal Evidence need %q is missing: %+v", needed, fdCandidate.EvidenceNeeded)
+		}
+	}
 	for _, want := range []subject.Subject{
 		{Kind: "semantic-data", ID: "sales.order"},
 		{Kind: "semantic-data", ID: "sales.order_line"},
