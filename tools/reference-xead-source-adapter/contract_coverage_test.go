@@ -41,3 +41,18 @@ func TestClassificationCoveragePassesWhenEveryObservedKindHasMapping(t *testing.
 		t.Fatalf("unobserved=%v", coverage.UnobservedMappedKinds)
 	}
 }
+
+func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:extension"><x:Table/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract := []byte(`{"constructMappings":{"xead":{"System":{},"Table":{}}}}`)
+	coverage, err := CheckClassificationCoverage(FormatXead, PublicReceipt(doc), contract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if coverage.Complete || coverage.UnknownObservedElements != 1 {
+		t.Fatalf("namespaced lookalike was hidden by local-name mapping: %+v", coverage)
+	}
+}
