@@ -43,27 +43,27 @@ type Requirement struct {
 }
 
 type Provider struct {
-	PluginID            string         `json:"pluginId"`
-	PluginVersion       string         `json:"pluginVersion"`
-	ImplementationID    string         `json:"implementationId"`
+	PluginID                     string         `json:"pluginId"`
+	PluginVersion                string         `json:"pluginVersion"`
+	ImplementationID             string         `json:"implementationId"`
 	ArtifactDigest               string         `json:"artifactDigest"`
 	SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	Scope                        AuthorityScope `json:"scope"`
-	ContractID          string         `json:"contractId"`
-	ContractVersion     string         `json:"contractVersion"`
-	ContractFingerprint string         `json:"contractFingerprint"`
-	ConformanceProfile  string         `json:"conformanceProfile"`
+	ContractID                   string         `json:"contractId"`
+	ContractVersion              string         `json:"contractVersion"`
+	ContractFingerprint          string         `json:"contractFingerprint"`
+	ConformanceProfile           string         `json:"conformanceProfile"`
 }
 
 type ConformanceEvidence struct {
-	PluginID            string `json:"pluginId"`
-	PluginVersion       string `json:"pluginVersion"`
-	ImplementationID    string `json:"implementationId"`
+	PluginID                     string `json:"pluginId"`
+	PluginVersion                string `json:"pluginVersion"`
+	ImplementationID             string `json:"implementationId"`
 	ArtifactDigest               string `json:"artifactDigest"`
 	SourceDeclarationFingerprint string `json:"sourceDeclarationFingerprint,omitempty"`
 	ContractFingerprint          string `json:"contractFingerprint"`
-	ConformanceProfile  string `json:"conformanceProfile"`
-	EvidenceFingerprint string `json:"evidenceFingerprint"`
+	ConformanceProfile           string `json:"conformanceProfile"`
+	EvidenceFingerprint          string `json:"evidenceFingerprint"`
 }
 
 type Wiring struct {
@@ -294,14 +294,14 @@ func capabilityResolutionFingerprint(
 		ArtifactDigest               string         `json:"artifactDigest"`
 		SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	}{
-		ResolutionPolicy:    capabilityResolutionPolicy,
-		Scope:               scope,
-		ContractID:          contract.ID,
-		ContractVersion:     contract.Version,
-		ContractFingerprint: contractFingerprint,
-		PluginID:            provider.PluginID,
-		PluginVersion:       provider.PluginVersion,
-		ImplementationID:    provider.ImplementationID,
+		ResolutionPolicy:             capabilityResolutionPolicy,
+		Scope:                        scope,
+		ContractID:                   contract.ID,
+		ContractVersion:              contract.Version,
+		ContractFingerprint:          contractFingerprint,
+		PluginID:                     provider.PluginID,
+		PluginVersion:                provider.PluginVersion,
+		ImplementationID:             provider.ImplementationID,
 		ArtifactDigest:               provider.ArtifactDigest,
 		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 	})
