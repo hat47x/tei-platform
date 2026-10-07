@@ -155,10 +155,16 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	classification, err := BuildClassificationProjection(format, receipt, contractBytes)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	output := struct {
-		Receipt  PublicationReceipt     `json:"receipt"`
-		Coverage ClassificationCoverage `json:"classificationCoverage"`
-	}{Receipt: receipt, Coverage: coverage}
+		Receipt        PublicationReceipt      `json:"receipt"`
+		Coverage       ClassificationCoverage  `json:"classificationCoverage"`
+		Classification ClassificationProjection `json:"classificationProjection"`
+	}{Receipt: receipt, Coverage: coverage, Classification: classification}
 	if err := encoder.Encode(output); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
