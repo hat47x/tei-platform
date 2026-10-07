@@ -153,3 +153,53 @@ func TestRuntimeEngineIdentityChangesLockAndPolicyFingerprint(t *testing.T) {
 		t.Fatal("runtime engine implementation change did not change runtime policy fingerprint")
 	}
 }
+
+
+func TestRuntimeEngineLockRejectsMalformedInputs(t *testing.T) {
+	base := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: core.MustCanonicalID("tei.native.reference"), Version: "1.0.0"},
+			Engine: engineLockIdentity("tei.runtime.engine.a"),
+		}},
+	}
+	tests := []struct {
+		name string
+		edit func(*pruntime.RuntimeEngineLock)
+	}{
+		{"format", func(lock *pruntime.RuntimeEngineLock) {
+			lock.FormatVersion = 99
+		}},
+		{"empty", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings = nil
+		}},
+		{"plugin id", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Plugin.ID = core.CanonicalID("Invalid")
+		}},
+		{"plugin version", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Plugin.Version = "v1"
+		}},
+		{"engine id", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Engine.ID = core.CanonicalID("Invalid")
+		}},
+		{"engine digest", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Engine.ImplementationDigest = "sha256:bad"
+		}},
+		{"engine contract", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Engine.ContractVersion = ""
+		}},
+		{"engine target", func(lock *pruntime.RuntimeEngineLock) {
+			lock.Bindings[0].Engine.Target = ""
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lock := base
+			lock.Bindings = append([]pruntime.RuntimeEngineBinding(nil), base.Bindings...)
+			tt.edit(&lock)
+			if _, err := pruntime.RuntimeEngineLockFingerprint(lock); err == nil {
+				t.Fatal("expected malformed runtime engine lock to fail")
+			}
+		})
+	}
+}
