@@ -119,6 +119,24 @@ supersessionは確認状態へ混ぜません。後続assertionの `supersedes` 
 
 Conflict relationも消しません。現在contextで両方が利用候補になる場合、AIが一方を選んで解消したことにはせず、双方を `review-required` として残します。
 
+## annotation対象の再特定
+
+paragraph、card、row、選択範囲へのannotationは、文字位置だけに依存しません。Referenceではtargetへ、元resourceのrevision fingerprint、構造path、TextQuote型のexact / prefix / suffixを持つanchorを付けられます。
+
+現在resourceはcontext側のtarget surfaceとして渡します。元revisionと同じselectorが一意に見つかれば `exact`、revisionや構造位置が変わっても引用と前後文脈から一意に見つかれば `reanchored` とします。候補が複数なら `ambiguous`、見つからなければ `detached` です。
+
+`ambiguous` / `detached` を別の文章へ自動的に付け替えず、利用状態を `review-required` へ戻します。考え方はW3C Web AnnotationのSelector / State、特にTextQuoteSelectorのexact / prefix / suffixを参考にしています。ただしW3C schema自体をTEIの正本にはしません。
+
+anchor解決はsemantic identityの証明ではありません。Projectionには `target-anchor-resolution-does-not-prove-semantic-identity` を残します。
+
+## Epistemic coverage
+
+Healthはannotation済みassertionだけを数えません。Referenceでは、project側が「状態を把握しておくべき情報領域」をcoverage areaとして宣言し、その領域に対応するassertionをmappingできます。
+
+mappingが空、またはmapping先のtargetがすべてambiguous / detachedならcoverage gapです。critical / highのgapはProject Knowledge Healthをそれぞれcritical / attentionへ引き上げます。
+
+coverage mappingそのものは「必要情報が意味的に完全に揃った」ことを証明しません。そのため `coverage-mapping-is-input-not-semantic-completeness-proof` をAuthority limitとして明示します。
+
 ## Project Knowledge Health
 
 Healthは「確認済み件数 / 全件数」のpercentを主判定にしません。
@@ -147,7 +165,7 @@ reviewer candidateはAuthorityではありません。Projectionには `reviewer
 
 `testdata/epistemic-fixture-v0.json` は、SUI / SEIへ同じ意味のfixtureを渡すためのtransport candidateです。
 
-含むcaseは、current-context user fact、AI unreviewed assertion、human-confirmed assertion、構造化scopeによる限定確認、stale情報、relation-derived supersession、reviewed Conflict、reject event、critical / high / low downstream dependencyです。自由文review conditionをfail closedにするnegative testも持ちます。
+含むcaseは、current-context user fact、AI unreviewed assertion、human-confirmed assertion、構造化scopeによる限定確認、stale情報、relation-derived supersession、reviewed Conflict、reject event、critical / high / low downstream dependencyに加え、revisionをまたいで再特定するdocument-range anchorとcoverage areaです。自由文review condition、ambiguous / detached target、coverage gapをfail closedにするnegative testも持ちます。
 
 TEI固有UIやruntime objectをfixtureの正本にはしません。
 
@@ -167,7 +185,7 @@ Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらない�
 
 このReferenceは、confirmation historyを単一review stateから分離するpressureまで進めています。ただしevent kind、sequence方式、context scopeの表現、永続化方式をproduction contractとして固定したわけではありません。
 
-特に、review eventを複数surfaceから永続化・mergeする仕組み、reviewerの正式Authority、annotation targetの再特定、epistemic coverage、legacy / export-import境界は別pressureが必要です。
+特に、review eventを複数surfaceから永続化・mergeする仕組み、reviewerの正式Authority、production向けtarget resolver、coverage area / mappingの生成、legacy / export-import境界は別pressureが必要です。
 
 ## 今回まだ示さないこと
 
@@ -177,8 +195,8 @@ Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらない�
 - reviewer / stakeholderの正式な組織Authority解決
 - Semantic Extension / Pluginとしてのproduction registration
 - review eventのdurable persistence / multi-surface merge
-- annotation targetの編集後再特定
-- epistemic coverage
+- arbitrary documentからtarget surface / selector候補を生成するproduction resolver
+- coverage area / mappingを自動抽出して意味的完全性を証明する仕組み
 - legacy / export-importでのmetadata loss処理
 - Cross-repository fixtureの正式versioning
 
