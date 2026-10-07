@@ -432,7 +432,7 @@ TEIは、人間や生成AIが、TEI専用のAgent Runtimeや常駐Adapterを必�
 
 ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE、CLI中心のローカル環境、CI等は、いずれも開発環境の候補です。特定のAI製品、Chat UI、Agent frameworkを標準の開発経路へ固定しません。
 
-各開発環境では、通常のRepository checkoutやGit worktree等を利用してSourceを編集し、TEI CLI、MCP、Repository内のTool、言語固有のToolchain等を使って、必要なBuild、Driver実行、Validation、Conformance、Test、生成物の確認まで、その環境内で行えることを基本とします。生成AIが隔離された開発Workspace内でSourceを直接編集する場合も、編集前にTEI固有のProposal objectへ変換することを必須にしません。
+各開発環境では、通常のRepository checkoutやGit worktree等を利用してSourceを編集し、TEI CLI、Hostが提供するShell / Filesystem / Git MCP、Repository内のTool、言語固有のToolchain等を使って、必要なBuild、Driver実行、Validation、Conformance、Test、生成物の確認まで、その環境内で行えることを基本とします。生成AIが隔離された開発Workspace内でSourceを直接編集する場合も、編集前にTEI固有のProposal objectへ変換することを必須にしません。
 
 TEIは、この開発過程を管理するために、Agent Session、Agent Workspace、Checkpoint、Plan、Test実行回数、一般的な `verified / unverified` 状態等を、TEI固有の永続的なProduct stateとして要求してはいけません。Git、CI、開発Tool等が所有する状態を、TEI側へ重複して持ち込みません。
 
@@ -444,7 +444,7 @@ TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance�
 
 外部の開発環境が持つShell、Filesystem、Git等の操作権限を、TEI Repositoryを編集するという理由だけでTEI ApplicationのRuntime Capabilityとして再定義することも要求しません。一方、実Database、外部Service、Secret、Production相当Resource、その他の外部副作用へ到達する場合は、RQ-018〜RQ-020のCommand / Observation、Authority、Resource、unknownの境界を維持します。
 
-Agent Adapterや統合Serviceを追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLI / MCPによる開発やCanonical sourceへの到達に必要な前提にはしません。
+Agent Adapter、TEI固有のdeveloper MCP、統合Service等を追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLIやHost-provided MCPによる開発、Canonical sourceへの到達に必要な前提にはしません。
 
 ## 要求を実装へ落とすときの原則
 
