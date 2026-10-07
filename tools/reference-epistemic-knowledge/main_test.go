@@ -722,3 +722,56 @@ func TestProjectionStatesFingerprintCannotRestoreReviewHistory(t *testing.T) {
 		t.Fatalf("missing metadata-loss authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
+
+
+func TestConsumerFreshnessRequirementCanInvalidateOtherwiseUsablePremise(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.Dependencies = []Dependency{{
+		AssertionID:  "human-reviewed",
+		Consumer:     "fresh-branch-decision",
+		Criticality:  CriticalityHigh,
+		MaxAgeSeconds: 3600,
+	}}
+	corpus.CoverageAreas = nil
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Health.Level != "attention" || len(projection.Health.Issues) != 1 {
+		t.Fatalf("consumer freshness did not affect health: %+v", projection.Health)
+	}
+	issue := projection.Health.Issues[0]
+	if issue.ConsumerFreshness != "stale" ||
+		issue.UseState != "blocked" ||
+		!containsString(issue.Reasons, "CONSUMER_FRESHNESS_STALE") {
+		t.Fatalf("stale consumer freshness was not enforced: %+v", issue)
+	}
+	found := false
+	for _, request := range projection.ReviewRequests {
+		if request.AssertionID == "human-reviewed" {
+			found = containsString(request.Reasons, "CONSUMER_FRESHNESS_STALE")
+		}
+	}
+	if !found {
+		t.Fatal("high-criticality stale consumer dependency did not become review request")
+	}
+}
+
+func TestConsumerFreshnessRequirementDoesNotChangeBaseEpistemicState(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.Dependencies = []Dependency{{
+		AssertionID:  "human-reviewed",
+		Consumer:     "fresh-branch-decision",
+		Criticality:  CriticalityHigh,
+		MaxAgeSeconds: 3600,
+	}}
+	corpus.CoverageAreas = nil
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := assessmentByID(t, projection, "human-reviewed")
+	if base.UseState != "premise" || base.ConfirmationState != "confirmed" {
+		t.Fatalf("consumer-specific freshness mutated base epistemic state: %+v", base)
+	}
+}
