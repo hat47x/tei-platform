@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/deployment"
+	"tei/internal/permission"
 	"tei/internal/plugin"
 	"tei/internal/plugin/implementation"
 	pruntime "tei/internal/plugin/runtime"
@@ -29,8 +31,9 @@ func implementationDefinition() plugin.Definition {
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
 		Provides: []plugin.Capability{{
-			Kind: plugin.CapabilityDeploymentExecutor,
-			ID:   core.MustCanonicalID("runtime.native"),
+			Kind:    plugin.CapabilityDeploymentExecutor,
+			ID:      core.MustCanonicalID("runtime.native"),
+			Actions: []deployment.ActionKind{deployment.ActionApplicationStart},
 		}},
 	}
 }
@@ -163,6 +166,29 @@ func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 		source.Operations[0].Name = "observe"
 		if err := source.Validate(); err == nil {
 			t.Fatal("expected non-execute operation to fail")
+		}
+	})
+	t.Run("multiple deployment actions", func(t *testing.T) {
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+		definition := implementationDefinition()
+		definition.Provides[0].Actions = append(
+			definition.Provides[0].Actions,
+			deployment.ActionApplicationRetire,
+		)
+		if err := implementation.ValidateAgainstDefinition(source, definition); err == nil {
+			t.Fatal("expected multi-action capability to fail")
+		}
+	})
+	t.Run("capability permission", func(t *testing.T) {
+		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
+		definition := implementationDefinition()
+		definition.Provides[0].Permissions = []permission.Spec{{
+			Kind:   permission.KindFilesystem,
+			Access: permission.AccessRead,
+			Scope:  "workspace-source",
+		}}
+		if err := implementation.ValidateAgainstDefinition(source, definition); err == nil {
+			t.Fatal("expected permission-bearing capability to fail")
 		}
 	})
 }
