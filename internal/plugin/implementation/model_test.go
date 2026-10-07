@@ -75,7 +75,15 @@ func TestNormalizeDoesNotMutateSource(t *testing.T) {
 func TestStaticResponseBuiltinUsesExistingRuntimeABI(t *testing.T) {
 	source := implementationSource(`{"attemptId":"tei-native","outcome":"accepted"}`)
 	definition := implementationDefinition()
-	builtin, err := pluginbuiltin.New(source, definition)
+	realization, digest, err := implementation.Materialize(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	realizedDefinition, err := plugin.RealizeBuiltDefinition(definition, digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	builtin, err := pluginbuiltin.New(realization, realizedDefinition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +106,15 @@ func TestStaticResponseBuiltinUsesExistingRuntimeABI(t *testing.T) {
 
 func TestStaticResponseBuiltinRejectsUnsupportedInvocation(t *testing.T) {
 	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
-	builtin, err := pluginbuiltin.New(source, implementationDefinition())
+	realization, digest, err := implementation.Materialize(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	realizedDefinition, err := plugin.RealizeBuiltDefinition(implementationDefinition(), digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	builtin, err := pluginbuiltin.New(realization, realizedDefinition)
 	if err != nil {
 		t.Fatal(err)
 	}
