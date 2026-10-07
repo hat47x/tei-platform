@@ -1,6 +1,6 @@
 # ISSUE-000076: Brownfield REF-01で段階的な意味立ち上げを実証する
 
-- 状態: Ready
+- 状態: Done（2026-10-07。最初のwork unitの完了条件をすべて充足）
 - 起点: GitHub Issue #915
 - 関連: ISSUE-000027 / ISSUE-000042 / ISSUE-000046 / ISSUE-000047
 - 関連RQ: RQ-002 / RQ-004 / RQ-006 / RQ-015 / RQ-027 / RQ-031〜RQ-033
@@ -265,17 +265,17 @@ Bが速くても、根拠の無い意味を増やした場合は失敗としま�
 
 最初のwork unitの完了条件:
 
-- [ ] `order_entry.customer_reference`をexact identityで探索できる
-- [ ] candidate source fingerprintへ戻れる
-- [ ] `master_data.customer/find_by_id`のrequired dependency Evidenceへ戻れる
-- [ ] customer edit probeが`BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT`へ到達する
-- [ ] conflictの因果が`Pattern -> datasource master -> owning Application access read`として再構築できる
-- [ ] synthetic write Capabilityを生成しない
-- [ ] synthetic Authorization resourceを生成しない
-- [ ] scratchで`master=read-write`に変えた場合だけ同diagnosticが消える
-- [ ] read-only調査で元Reference sourceを書き換えない
-- [ ] qualificationをAcceptance / write authorityへ昇格しない
-- [ ] Shared Acceptance以外のwrite経路を追加しない
+- [x] `order_entry.customer_reference`をexact identityで探索できる
+- [x] candidate source fingerprintへ戻れる
+- [x] `master_data.customer/find_by_id`のrequired dependency Evidenceへ戻れる
+- [x] customer edit probeが`BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT`へ到達する
+- [x] conflictの因果が`Pattern -> datasource master -> owning Application access read`として再構築できる
+- [x] synthetic write Capabilityを生成しない
+- [x] synthetic Authorization resourceを生成しない
+- [x] scratchで`master=read-write`に変えた場合だけ同diagnosticが消える
+- [x] read-only調査で元Reference sourceを書き換えない
+- [x] qualificationをAcceptance / write authorityへ昇格しない
+- [x] Shared Acceptance以外のwrite経路を追加しない
 
 ## 次段階へ進む条件
 
@@ -340,13 +340,13 @@ GitHub Actionsの利用可否はこのGateの代替にしません。
 | customer edit probeが`BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT`へ到達する | `ReachesExactlyTheAccessConflictWithoutInventingAuthority` | blocking diagnosticがこの1件だけ |
 | conflictの因果を`Pattern → datasource master → owning Application access read`として再構築できる | 同上 | diagnosticのstep = BP-02、messageにPattern / master / read-write / read。derived rowのDatasource = `master`、Relation = `sales.order.customer` |
 | synthetic write Capabilityを生成しない | 同上と`ConflictClearsOnly…` | BP-02のCapability rowが空。scratch変更後も空 |
-| synthetic Authorization resourceを生成しない | 同上 | **限定的**。diagnosticにAuthorizationの語が現れないことと、Capability rowが空であることまで。Authorization resourceの一覧そのものは検査していない |
+| synthetic Authorization resourceを生成しない | `ScratchAccessChangeIsTheOnlyCanonicalDifference` | scratchでaccessを変えても、normalized World全体（Capability / Binding / Pattern / Authorization関連を含む）は、そのaccess一点を戻すと`reflect.DeepEqual`で一致する。diagnosticにAuthorizationの語が現れないことも併せて確認 |
 | scratchで`master=read-write`に変えた場合だけ同diagnosticが消える | `ConflictClearsOnlyWhenScratchAcceptedAccessChanges` | 同一probeで、Accepted側は1件、scratch側は0件 |
 | read-only調査で元Reference sourceを書き換えない | 3件すべて | workspace全体のSHA-256が前後で一致 |
-| qualificationをAcceptance / write authorityへ昇格しない | `EntersAcceptedContext…` | **限定的**。`authorityLimits`にaccept / writeの語があることまで。昇格する経路が無いことの証明ではない |
-| Shared Acceptance以外のwrite経路を追加しない | （testなし） | このtestはwrite経路を持たない。コード側の不変条件で、testでは固定していない |
+| qualificationをAcceptance / write authorityへ昇格しない | `EntersAcceptedContext…` | `authorityLimits`が3件の期待値と完全一致し、結果型にaccept / write / authoriz / grant / permission / decisionを含むfieldが無い |
+| Shared Acceptance以外のwrite経路を追加しない | （testでは固定しない） | この作業が追加したのはtestと文書だけで、productのwrite経路は無い。差分のreviewで確認した。write経路の不在をtestで固定するかは、write経路を持つ変更が現れた時に判断する |
 
-「限定的」とした3件は、完了条件の文面を満たすとは言い切らない。Authorization resourceと昇格禁止は、より強い検査が要るかをreviewで判断する。
+2026-10-07に、Authorization resourceと昇格禁止の2条件を上のとおり強化した。
 
 ### 実行記録
 

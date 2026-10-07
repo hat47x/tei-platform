@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"reflect"
+
+	"tei/internal/database"
 	"tei/internal/knowledgecontext"
 	"tei/internal/subject"
 	"tei/internal/workspace"
@@ -123,6 +126,18 @@ func TestBrownfieldREF01EntersAcceptedContextFromExactSubjectReadOnly(t *testing
 	for _, e := range all {
 		if strings.TrimSpace(e.SourceFingerprint) == "" {
 			t.Fatalf("Evidence without a source fingerprint: %+v", e)
+		}
+	}
+	wantLimits := []string{"only-explicit-requirements-were-evaluated", "qualification-is-not-acceptance", "qualification-is-not-write-or-runtime-authority"}
+	if !reflect.DeepEqual(result.AuthorityLimits, wantLimits) {
+		t.Fatalf("authority limits = %v, want %v", result.AuthorityLimits, wantLimits)
+	}
+	for i := 0; i < reflect.TypeOf(result).NumField(); i++ {
+		name := strings.ToLower(reflect.TypeOf(result).Field(i).Name)
+		for _, forbidden := range []string{"accept", "write", "authoriz", "grant", "permission", "decision"} {
+			if strings.Contains(name, forbidden) && name != "authoritylimits" {
+				t.Fatalf("qualification result carries an authority-bearing field %q", name)
+			}
 		}
 	}
 	joined := strings.ToLower(strings.Join(result.AuthorityLimits, " "))
@@ -247,5 +262,59 @@ func TestBrownfieldREF01ConflictClearsOnlyWhenScratchAcceptedAccessChanges(t *te
 	}
 	if ref01TreeDigest(t, workspacePath) != originalDigest {
 		t.Fatal("the scratch experiment changed the authoritative Reference Workspace")
+	}
+}
+
+// 強化: scratchでmaster accessを変えても、World上で変わるのはそのaccess一点だけで、
+// Capability / Binding / Authorization関連を含む他のどのCanonical要素も増減しない。
+func TestBrownfieldREF01ScratchAccessChangeIsTheOnlyCanonicalDifference(t *testing.T) {
+	workspacePath, _, _ := ref01Paths()
+	scratch := filepath.Join(t.TempDir(), "workspace")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	copyDirectory(t, workspacePath, scratch)
+	appPath := filepath.Join(scratch, "applications", "order-entry", "application.tei")
+	content, err := os.ReadFile(appPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(content)
+	start := strings.Index(text, "database master")
+	if start < 0 {
+		t.Fatal("no master datasource requirement")
+	}
+	changed := text[:start] + strings.Replace(text[start:], "access read", "access read-write", 1)
+	if changed == text {
+		t.Fatal("scratch edit did not change the Application source")
+	}
+	if err := os.WriteFile(appPath, []byte(changed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	accepted, err := workspace.Load(workspacePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	experiment, err := workspace.Load(scratch)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diffs := 0
+	for i := range experiment.World.Applications {
+		app := &experiment.World.Applications[i]
+		for j := range app.Databases {
+			if string(app.Databases[j].Alias) == "master" && app.Databases[j].Access == database.AccessReadWrite {
+				app.Databases[j].Access = database.AccessRead
+				diffs++
+			}
+		}
+	}
+	if diffs != 1 {
+		t.Fatalf("expected exactly one master requirement to differ, found %d", diffs)
+	}
+	if !reflect.DeepEqual(accepted.World, experiment.World) {
+		t.Fatal("the scratch access change altered Canonical meaning beyond the one datasource access (Capability / Binding / Authorization / Pattern included)")
 	}
 }
