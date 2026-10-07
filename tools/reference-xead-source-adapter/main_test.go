@@ -83,7 +83,7 @@ func TestLegacyKeyFactsCarryAuthorityLimits(t *testing.T) {
 	for _, fact := range doc.Facts {
 		kinds[fact.FactType] = fact
 	}
-	for _, factType := range []string{"legacy-table-key", "legacy-key-field-membership", "legacy-relationship-key-reference", "legacy-function-selection-key"} {
+	for _, factType := range []string{"legacy-table-key", "legacy-key-field-membership", "legacy-relationship-key-reference"} {
 		fact, ok := kinds[factType]
 		if !ok {
 			t.Fatalf("missing fact %s: %+v", factType, doc.Facts)
@@ -120,13 +120,22 @@ func TestElementReorderChangesSnapshotLocatorButNotSourceValuesIntoIdentity(t *t
 }
 
 func TestXeafKnownConstructInventory(t *testing.T) {
-	doc, err := Observe(FormatXeaf, []byte(`<System><Function/><Script/><Field/><Column/><Button/><Filter/><Refer/><Detail/><Key/><Menu/></System>`))
+	doc, err := Observe(FormatXeaf, []byte(`<System><Function KeyFields="row_id"/><Script/><Field/><Column/><Button/><Filter/><Refer Fields="a" ToKeyFields="b" WithKeyFields="c" ToTable="t"/><Detail KeyFields="line_id" HeaderKeyFields="row_id"/><Key Fields="row_id" Type="PK"/><Menu/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, node := range doc.Nodes {
 		if !node.Known {
 			t.Fatalf("known Xeaf construct reported unknown: %+v", node)
+		}
+	}
+	factTypes := map[string]bool{}
+	for _, fact := range doc.Facts {
+		factTypes[fact.FactType] = true
+	}
+	for _, want := range []string{"legacy-function-selection-key", "legacy-detail-key-binding", "runtime-table-key", "runtime-reference-key-binding"} {
+		if !factTypes[want] {
+			t.Fatalf("missing Xeaf source fact %s: %+v", want, doc.Facts)
 		}
 	}
 }
