@@ -25,12 +25,12 @@ fi
 
 PRODUCT_HEAD_BEFORE="$(git -C "$ROOT" rev-parse HEAD)"
 
-mkdir -p "$STORE/work/open" "$STORE/work/completed" "$STORE/results/$WORK_ID" "$STORE/artifacts/$WORK_ID"
+mkdir -p "$STORE/work" "$STORE/results/$WORK_ID" "$STORE/artifacts/$WORK_ID"
 git -C "$STORE" init -q
 git -C "$STORE" config user.name "TEI Coordination Reference"
 git -C "$STORE" config user.email "coordination-reference@tei.invalid"
 
-cat > "$STORE/work/open/$WORK_ID.json" <<EOF_WORK
+cat > "$STORE/work/$WORK_ID.json" <<EOF_WORK
 {
   "exchangeVersion": "reference-v0",
   "workRef": {"backend": "git-text", "id": "$WORK_ID"},
@@ -82,8 +82,7 @@ cat > "$STORE/results/$WORK_ID/run-a.json" <<EOF_RESULT_A
     "sourceRefs": [],
     "evidenceRefs": [],
     "followUpRefs": [{"backend": "git-text", "id": "$FOLLOW_UP_ID"}]
-  },
-  "claims": {"canonicalAccepted": false, "runtimeAuthorized": false}
+  }
 }
 EOF_RESULT_A
 
@@ -100,12 +99,11 @@ cat > "$STORE/results/$WORK_ID/run-b.json" <<'EOF_RESULT_B'
     "sourceRefs": [],
     "evidenceRefs": [],
     "followUpRefs": []
-  },
-  "claims": {"canonicalAccepted": false, "runtimeAuthorized": false}
+  }
 }
 EOF_RESULT_B
 
-cat > "$STORE/work/open/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP
+cat > "$STORE/work/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP
 {
   "exchangeVersion": "reference-v0",
   "workRef": {"backend": "git-text", "id": "$FOLLOW_UP_ID"},
@@ -133,8 +131,8 @@ import sys
 
 store = pathlib.Path(sys.argv[1])
 product_head = sys.argv[2]
-work = json.loads((store / "work/open/TW-0001.json").read_text())
-follow_up = json.loads((store / "work/open/TW-0002.json").read_text())
+work = json.loads((store / "work/TW-0001.json").read_text())
+follow_up = json.loads((store / "work/TW-0002.json").read_text())
 results = [
     json.loads((store / "results/TW-0001/run-a.json").read_text()),
     json.loads((store / "results/TW-0001/run-b.json").read_text()),
@@ -151,8 +149,6 @@ assert follow_up["sourceContext"]["baseRevision"] == product_head
 assert len(results) == 2
 assert {result["producer"]["externalRunRef"] for result in results} == {"run-a", "run-b"}
 assert all(result["workRef"]["id"] == work["workRef"]["id"] for result in results)
-assert all(result["claims"]["canonicalAccepted"] is False for result in results)
-assert all(result["claims"]["runtimeAuthorized"] is False for result in results)
 assert results[0]["result"]["followUpRefs"] == [follow_up["workRef"]]
 
 current = [result for result in results if result["observedContext"]["baseRevision"] == product_head]
@@ -176,15 +172,19 @@ for document in [work, follow_up, *results]:
         "privatekey",
         "agentsession",
         "checkpoint",
+        "canonicalaccepted",
+        "runtimeauthorized",
+        "acceptanceauthority",
+        "resourceauthority",
     ):
         assert forbidden not in rendered, forbidden
 PY
 
-git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/open/$FOLLOW_UP_ID.json"
+git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/$FOLLOW_UP_ID.json"
 git -C "$STORE" commit -qm "coordination: append independent agent results"
 RESULTS_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
-python3 - "$STORE/work/open/$WORK_ID.json" <<'PY'
+python3 - "$STORE/work/$WORK_ID.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -195,8 +195,8 @@ document["coordination"]["status"] = "completed"
 path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n")
 PY
 
-git -C "$STORE" mv "work/open/$WORK_ID.json" "work/completed/$WORK_ID.json"
-git -C "$STORE" commit -qam "coordination: mark work completed"
+git -C "$STORE" add "work/$WORK_ID.json"
+git -C "$STORE" commit -qm "coordination: mark work completed"
 COMPLETION_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
 if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
@@ -233,6 +233,7 @@ printf 'duplicate-results=2\n'
 printf 'human-origin-work=1\n'
 printf 'agent-origin-follow-up=1\n'
 printf 'stale-result=preserved-not-applied\n'
+printf 'authority-fields=absent\n'
 printf 'self-asserted-actor=non-authoritative\n'
 printf 'coordination-store-deletion=product-unchanged\n'
 printf 'external coordination git-text reference: PASS\n'
