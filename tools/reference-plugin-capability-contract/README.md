@@ -89,6 +89,10 @@ Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability identityへ�
 
 generic Capability自体が選択Authorityを持つ別scopeでは、曖昧なProviderを明示`Wiring`なしに選ばない従来の規則を維持します。
 
+保存済みのSelection fingerprintだけでは、現在も同じRuntime Authorityが有効だとは判断しません。legacy migration pathでは、current Runtime Plugin Lock、authoritative `plugin.Definition`、Lockに従ったEnvironment Plugin resolution、current `ContractQueryExecutorBinding`を順に再確認します。Plugin definitionやartifactが変わった場合、Bindingが削除・重複・別executorへ変更された場合はstaleとして拒否します。
+
+この再確認はcurrent Conformance Evidenceの再評価とは分けます。Runtime Authorityを再現できることと、現在のEvidenceでもContract適合を確認できることを同じstatusへまとめません。
+
 `RuntimeCapabilitySelectionBinding`は、この既存選択を後からcurrent authorityへ再照合するためのderived bindingです。Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Lock、Runtime Capability Bindingを結びます。productionの`ResolveContractQueryExecutor`で同じ選択を再現できなくなった場合はstaleとして拒否します。
 
 ### 現行Lockで表現できないpackaging
