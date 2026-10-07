@@ -368,3 +368,15 @@ Resource BindingやLease Policyはgeneric Execution Profileへ移しません。
 `ProductionExecutionBridge`自身は`derived-verification-not-runtime-authority`です。Provider選択、Permission Grant、Resource取得、Host Sandbox起動のいずれも行いません。既存production Authorityとgeneric contractの整合を検証するだけです。
 
 これにより、generic Capability Contractへ移行するために既存runtime Permission / Resource / Sandbox機構を捨てる必要がないことをReference上で示せます。ただしactual `HostSandboxLauncher`やResource Brokerをgeneric Capabilityから起動するE2Eは未実施です。production enforcement成立とは扱いません。
+
+## E11 existing Host Sandbox invocation pressure — 2026-10-07
+
+E10でgeneric Execution Profileとproduction Runtime Authorityの整合を確認した後、実行専用APIを追加せず、既存`Registry.InvokeWithProvenance`へlegacy Capability identityで委譲するReference orchestrationを追加しました。
+
+orchestrationは保存済み`ProductionExecutionBridge`をcurrent Capability Lock / Runtime Binding / Execution Authority / EnvironmentPlanへreplayしてからだけproduction Registryを呼びます。bridgeがstaleならPlugin codeへ到達しません。
+
+process / sandbox-requiredのzero-Permission fixtureでは、既存`HostSandboxLauncher`へ実際に到達し、artifact digest verification、deny-by-default Network policy、deny-by-default Filesystem policy、Sandboxed process runnerを通すpressureを追加しました。Network / Filesystem enforcerを供給しない場合は既存HostSandboxLauncherが実行を拒否します。
+
+この結果は、generic Capability Contractの導入に合わせて別のprocess launcherやsandbox bypassを作る必要がないことを示します。Generic側は契約・identity・Authorityの整合を確認し、実行は既存production runtimeへ渡します。
+
+E11で実行したpressureはzero-Permissionです。Resource Broker、Resource Binding、Lease、Secret injection、renew / refresh / fencingまでgeneric Capability経由で実行したEvidenceはまだありません。またRepository exact-head test / health gateも未取得です。
