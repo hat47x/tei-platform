@@ -26,7 +26,7 @@ OpenSSHが見つからない環境では終了コード77で停止します。�
 fixtureでは次のnamespaceを使います。
 
 ```text
-tei-authoring-v1.ws-ref-001.accept.scope-aaaaaaaa@tei-platform
+tei-authoring-v1.ws-ref-001.accept.scope-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@tei-platform.invalid
 ```
 
 workspace、decision semantics、scope identityをnamespaceへ含める理由は、署名鍵がTEI authoring全体の権限を持つように扱わないためです。
@@ -59,10 +59,10 @@ allowed signersはfixtureが一時ディレクトリへ生成します。candida
 ## 実行
 
 ```bash
-tools/reference-authoring-witness-openssh/pressure-test.sh
+bash tools/reference-authoring-witness-openssh/pressure-test.sh
 ```
 
-current OpenSSHの`verify-time` optionを使い、fixtureの検証時刻を固定します。
+current OpenSSHの`verify-time` optionを使い、OpenSSHが受け付ける`YYYYMMDDHHMMSSZ`形式でfixtureの検証時刻を固定します。
 
 このChatGPT実行環境には`ssh-keygen`が無かったため、ここで実行PASSは出していません。OpenSSHがあるtrusted local cloneでpressure testを実行し、exact commitと結果をISSUE-000974へ記録するまで、このReferenceを採用済みとは扱いません。
 
