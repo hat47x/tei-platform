@@ -46,6 +46,7 @@ type Provider struct {
 	PluginID                     string         `json:"pluginId"`
 	PluginVersion                string         `json:"pluginVersion"`
 	ImplementationID             string         `json:"implementationId"`
+	Target                       string         `json:"target,omitempty"`
 	ArtifactDigest               string         `json:"artifactDigest"`
 	SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	Scope                        AuthorityScope `json:"scope"`
@@ -59,6 +60,7 @@ type ConformanceEvidence struct {
 	PluginID                     string `json:"pluginId"`
 	PluginVersion                string `json:"pluginVersion"`
 	ImplementationID             string `json:"implementationId"`
+	Target                       string `json:"target,omitempty"`
 	ArtifactDigest               string `json:"artifactDigest"`
 	SourceDeclarationFingerprint string `json:"sourceDeclarationFingerprint,omitempty"`
 	ContractFingerprint          string `json:"contractFingerprint"`
@@ -75,6 +77,7 @@ type Wiring struct {
 
 type ResolveInput struct {
 	Scope       AuthorityScope        `json:"scope"`
+	Target      string                `json:"target,omitempty"`
 	Requirement Requirement           `json:"requirement"`
 	Contracts   []Contract            `json:"contracts"`
 	Providers   []Provider            `json:"providers"`
@@ -90,6 +93,7 @@ const (
 
 type Resolution struct {
 	Scope                 AuthorityScope `json:"scope"`
+	Target                string         `json:"target,omitempty"`
 	ResolutionPolicy      string         `json:"resolutionPolicy"`
 	Contract              Contract       `json:"contract"`
 	ContractFingerprint   string         `json:"contractFingerprint"`
@@ -103,6 +107,7 @@ type CapabilityResolutionLock struct {
 	Canonicalization       string         `json:"canonicalization"`
 	ResolutionPolicy       string         `json:"resolutionPolicy"`
 	Scope                  AuthorityScope `json:"scope"`
+	Target                 string         `json:"target,omitempty"`
 	Requirement            Requirement    `json:"requirement"`
 	Wiring                 *Wiring        `json:"wiring,omitempty"`
 	Contract               Contract       `json:"contract"`
@@ -215,6 +220,7 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 	seen := map[string]struct{}{}
 	for _, provider := range input.Providers {
 		if provider.Scope != input.Scope ||
+			provider.Target != input.Target ||
 			provider.ContractID != contract.ID ||
 			provider.ContractVersion != contract.Version ||
 			provider.ContractFingerprint != contractFingerprint ||
@@ -270,6 +276,7 @@ func buildResolution(scope AuthorityScope, contract Contract, contractFingerprin
 	})
 	return Resolution{
 		Scope:                 scope,
+		Target:                provider.Target,
 		ResolutionPolicy:      capabilityResolutionPolicy,
 		Contract:              contract,
 		ContractFingerprint:   contractFingerprint,
@@ -288,6 +295,7 @@ func capabilityResolutionFingerprint(
 	return fingerprint(struct {
 		ResolutionPolicy      string         `json:"resolutionPolicy"`
 		Scope                 AuthorityScope `json:"scope"`
+		Target                string         `json:"target,omitempty"`
 		ContractID            string         `json:"contractId"`
 		ContractVersion       string         `json:"contractVersion"`
 		ContractFingerprint   string         `json:"contractFingerprint"`
@@ -299,6 +307,7 @@ func capabilityResolutionFingerprint(
 	}{
 		ResolutionPolicy:             capabilityResolutionPolicy,
 		Scope:                        scope,
+		Target:                       provider.Target,
 		ContractID:                   contract.ID,
 		ContractVersion:              contract.Version,
 		ContractFingerprint:          contractFingerprint,
@@ -314,12 +323,16 @@ func validateResolveInput(input ResolveInput) error {
 	if !input.Scope.Valid() {
 		return fmt.Errorf("invalid authority scope %q", input.Scope)
 	}
+	if input.Target != strings.TrimSpace(input.Target) {
+		return fmt.Errorf("target %q must not contain surrounding whitespace", input.Target)
+	}
 	if input.Requirement.ContractID == "" || input.Requirement.CompatibleMajor < 0 {
 		return fmt.Errorf("invalid contract requirement")
 	}
 	for i, provider := range input.Providers {
 		if provider.PluginID == "" || provider.PluginVersion == "" ||
 			provider.ImplementationID == "" || !provider.Scope.Valid() ||
+			provider.Target != strings.TrimSpace(provider.Target) ||
 			provider.ContractID == "" || provider.ContractVersion == "" ||
 			!validSHA256Fingerprint(provider.ContractFingerprint) ||
 			provider.ConformanceProfile == "" {
@@ -346,6 +359,7 @@ func validateResolveInput(input ResolveInput) error {
 	for i, evidence := range input.Evidence {
 		if evidence.PluginID == "" || evidence.PluginVersion == "" ||
 			evidence.ImplementationID == "" ||
+			evidence.Target != strings.TrimSpace(evidence.Target) ||
 			!validSHA256Fingerprint(evidence.ContractFingerprint) ||
 			evidence.ConformanceProfile == "" ||
 			!validSHA256Fingerprint(evidence.EvidenceFingerprint) {
@@ -432,6 +446,7 @@ func buildCapabilityResolutionLock(
 		Canonicalization:      capabilityResolutionCanonicalization,
 		ResolutionPolicy:      capabilityResolutionPolicy,
 		Scope:                 resolution.Scope,
+		Target:                resolution.Target,
 		Requirement:           requirement,
 		Wiring:                wiring,
 		Contract:              resolution.Contract,
@@ -463,6 +478,13 @@ func verifyCapabilityResolutionLockReplay(
 			"capability lock scope %q differs from current scope %q",
 			lock.Scope,
 			input.Scope,
+		)
+	}
+	if input.Target != lock.Target {
+		return fmt.Errorf(
+			"capability lock target %q differs from current target %q",
+			lock.Target,
+			input.Target,
 		)
 	}
 	if input.Requirement != lock.Requirement {
@@ -610,6 +632,7 @@ func validateCapabilityResolutionLock(lock CapabilityResolutionLock) error {
 	}
 	if lock.Contract.ID != lock.Requirement.ContractID ||
 		lock.Provider.Scope != lock.Scope ||
+		lock.Provider.Target != lock.Target ||
 		lock.Provider.ContractID != lock.Contract.ID ||
 		lock.Provider.ContractVersion != lock.Contract.Version ||
 		lock.Provider.ContractFingerprint != lock.ContractFingerprint ||
@@ -685,6 +708,7 @@ func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFing
 		if evidence.PluginID == provider.PluginID &&
 			evidence.PluginVersion == provider.PluginVersion &&
 			evidence.ImplementationID == provider.ImplementationID &&
+			evidence.Target == provider.Target &&
 			evidence.ArtifactDigest == provider.ArtifactDigest &&
 			evidence.SourceDeclarationFingerprint == provider.SourceDeclarationFingerprint &&
 			evidence.ContractFingerprint == contractFingerprint &&
@@ -707,7 +731,16 @@ func providerIdentityKey(provider Provider) string {
 }
 
 func providerKey(provider Provider) string {
-	return strings.Join([]string{provider.PluginID, provider.PluginVersion, provider.ImplementationID, provider.ArtifactDigest}, "\x00")
+	return strings.Join(
+		[]string{
+			provider.PluginID,
+			provider.PluginVersion,
+			provider.ImplementationID,
+			provider.Target,
+			provider.ArtifactDigest,
+		},
+		"\x00",
+	)
 }
 
 func parseVersion(value string) ([3]int, error) {
