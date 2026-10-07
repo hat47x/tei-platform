@@ -17,5 +17,17 @@
       "provenance": "observed"
     }
   ],
-  "asOf": "2026-10-06T14:00:00Z"
+  "asOf": "2026-10-06T14:00:00Z",
+  "targetSurfaces": [
+    {
+      "sourceRef": "repo://plan/identifier-policy.md",
+      "revisionFingerprint": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "segments": [
+        {
+          "structuralPath": "/rules/naming/paragraph[2]",
+          "text": "Rule: Identifiers may contain hyphens. Applies to application identifiers."
+        }
+      ]
+    }
+  ]
 }
