@@ -160,6 +160,8 @@ reference-model-transfer/
 
 Data / Function-Interaction / Businessについて、source locatorからTEI meaning / native asset / unresolvedへ戻れるmappingを作る。
 
+Relational source factは、観測できたこととdeterministic loweringへ使えることを分ける。inspectionの`relationalResolutionStatus`が`unresolved`である間は、factをEvidenceとして保持してもSemantic loweringへは進めない。diagnosticを解消するか、後続の明示的なAcceptance境界で扱いを確定する。
+
 既存`order_entry`で得たBusiness Procedure checkerやCRUD pressureを再利用し、Reference Modelの規模で壊れる箇所を探す。
 
 ### Phase 3 — modernization pressure
@@ -204,6 +206,8 @@ Canonical World
 
 source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonical modelにはしない。
 
+source factの存在だけでlowering可能と判断しない。relational diagnosticが残る場合は`relationalResolutionStatus = unresolved`とし、deterministic semantic loweringを止める。fact countやcandidate classificationは、この停止条件を上書きしない。
+
 変換不能項目をwarningだけで落とさない。mapping versionを変更した場合は同じsourceから得られるtranscription差分を比較できるようにする。
 
 ## Webチャット外担当
@@ -223,6 +227,7 @@ source-faithful intermediateはmigration Evidenceであり、TEIの第二Canonic
 - [ ] `MfgOrder.xead` / `MfgOrder.xeaf`のsource construct全体が転写Classificationへ割り当てられ、silent dropが無い
 - [ ] source locatorからTEI側のmeaning / native asset / unresolvedへ逆追跡できる
 - [ ] Data / Function-Interaction / Businessのcross-view diagnosticsをsource全体に適用できる
+- [ ] relational diagnosticが残るsourceでfactをEvidenceとして保持しつつ、`relationalResolutionStatus = unresolved`によりdeterministic semantic loweringを止められる
 - [ ] design Functionとruntime Realizationを1:1と仮定していない
 - [ ] legacy TableKeyの型・field membership、Relationshipのkey参照、Function / Detailの明示`KeyFields`をsource factとして逆追跡でき、business identity / FD / domain constraintへ自動昇格しない
 - [ ] declared CRUDとnative Script effectの差を検査またはUnresolvedとして保持できる
