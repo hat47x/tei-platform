@@ -117,7 +117,9 @@ supersessionは確認状態へ混ぜません。後続assertionの `supersedes` 
 
 したがって、旧assertionに有効なconfirm eventが残っていても、後続relationを無視してpremiseへ戻しません。
 
-Conflict relationも消しません。現在contextで両方が利用候補になる場合、AIが一方を選んで解消したことにはせず、双方を `review-required` として残します。
+Conflict relationも消しません。片側だけに `conflictsWith` が記録されていても、Projectionでは対称な関係として扱います。現在contextで両方が利用候補になる場合、AIが一方を選んで解消したことにはせず、双方を `review-required` として残します。
+
+supersessionは方向を持つため対称化しません。ただしcycleは時間的・論理的な置換関係として解釈できないため、corpus validationで拒否します。
 
 ## annotation対象の再特定
 
