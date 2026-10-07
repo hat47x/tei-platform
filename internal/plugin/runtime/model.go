@@ -100,9 +100,10 @@ type CapabilityRuntime struct {
 }
 
 type EnvironmentPlan struct {
-	Environment              core.CanonicalID    `json:"environment"`
-	PluginLockFingerprint    string              `json:"pluginLockFingerprint"`
-	RuntimePolicyFingerprint string              `json:"runtimePolicyFingerprint"`
+	Environment                  core.CanonicalID    `json:"environment"`
+	PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
+	RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
+	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
 	Plugins                  []PluginRuntime     `json:"plugins"`
 	Capabilities             []CapabilityRuntime `json:"capabilities,omitempty"`
 }
@@ -189,7 +190,7 @@ func lockedPluginForEnvironment(lock plugin.Lock, environmentID core.CanonicalID
 	return plugin.LockedPlugin{}, false
 }
 
-func BindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, engine RuntimeEngineIdentity) (EnvironmentPlan, error) {
+func bindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, engine RuntimeEngineIdentity) (EnvironmentPlan, error) {
 	if err := engine.Validate(); err != nil {
 		return EnvironmentPlan{}, err
 	}
@@ -233,11 +234,18 @@ func BindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
 	payload := struct {
-		Environment           core.CanonicalID    `json:"environment"`
-		PluginLockFingerprint string              `json:"pluginLockFingerprint"`
-		Plugins               []PluginRuntime     `json:"plugins"`
-		Capabilities          []CapabilityRuntime `json:"capabilities"`
-	}{Environment: plan.Environment, PluginLockFingerprint: plan.PluginLockFingerprint, Plugins: append([]PluginRuntime(nil), plan.Plugins...), Capabilities: append([]CapabilityRuntime(nil), plan.Capabilities...)}
+		Environment                  core.CanonicalID    `json:"environment"`
+		PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
+		RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
+		Plugins                      []PluginRuntime     `json:"plugins"`
+		Capabilities                 []CapabilityRuntime `json:"capabilities"`
+	}{
+		Environment:                  plan.Environment,
+		PluginLockFingerprint:        plan.PluginLockFingerprint,
+		RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint,
+		Plugins:                      append([]PluginRuntime(nil), plan.Plugins...),
+		Capabilities:                 append([]CapabilityRuntime(nil), plan.Capabilities...),
+	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
@@ -425,8 +433,9 @@ type InvocationProvenance struct {
 	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
 	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
 	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
-	RuntimeEngineFingerprint string                       `json:"runtimeEngineFingerprint,omitempty"`
-	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
+	RuntimeEngineFingerprint     string                       `json:"runtimeEngineFingerprint,omitempty"`
+	RuntimeEngineLockFingerprint string                       `json:"runtimeEngineLockFingerprint,omitempty"`
+	PluginLockFingerprint        string                       `json:"pluginLockFingerprint"`
 	Artifact                  plugin.Artifact              `json:"artifact,omitempty"`
 	Verification              *ArtifactVerification        `json:"verification,omitempty"`
 	Boundary                  Boundary                     `json:"boundary"`
@@ -592,7 +601,7 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		return Invocation{}, fmt.Errorf("plugin runtime descriptor missing for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 	}
 
-	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, BuildPlanFingerprint: pr.BuildPlanFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
+	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, BuildPlanFingerprint: pr.BuildPlanFingerprint, RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
 
 	// Trust and execution-boundary checks happen before a resource lease is
 	// acquired. An unverifiable artifact or unavailable required sandbox must
@@ -846,6 +855,9 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 		if pi.RuntimeEngineFingerprint != "" {
 			return fmt.Errorf("deployment attempt reports runtime engine for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
+	}
+	if pi.RuntimeEngineLockFingerprint != plan.RuntimeEngineLockFingerprint {
+		return fmt.Errorf("deployment attempt runtime engine lock fingerprint does not match environment plan")
 	}
 	if pi.PluginLockFingerprint != plan.PluginLockFingerprint {
 		return fmt.Errorf("deployment attempt plugin lock fingerprint does not match environment lock")
