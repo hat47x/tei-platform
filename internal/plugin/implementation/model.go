@@ -152,6 +152,43 @@ func Materialize(s Source) ([]byte, string, error) {
 	return raw, "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
+func ValidateAgainstDefinition(source Source, definition plugin.Definition) error {
+	normalized, err := Normalize(source)
+	if err != nil {
+		return err
+	}
+	if definition.ID != normalized.Plugin.ID || definition.Version != normalized.Plugin.Version {
+		return fmt.Errorf(
+			"implementation source %s does not match plugin definition %s@%s",
+			normalized.Identity(), definition.ID, definition.Version,
+		)
+	}
+	if definition.Runtime.Kind != plugin.RuntimeBuiltin {
+		return fmt.Errorf("TEI-native static response Reference requires builtin runtime")
+	}
+	var matches int
+	var matched plugin.Capability
+	for _, capability := range definition.Provides {
+		if capability.Kind == normalized.CapabilityKind && capability.ID == normalized.CapabilityID {
+			matches++
+			matched = capability
+		}
+	}
+	if matches != 1 {
+		return fmt.Errorf(
+			"plugin definition must provide capability %s %s exactly once",
+			normalized.CapabilityKind, normalized.CapabilityID,
+		)
+	}
+	if len(matched.Actions) != 1 || !matched.Actions[0].Valid() {
+		return fmt.Errorf("%s profile requires exactly one valid deployment action", StaticResponseProfileV1)
+	}
+	if len(matched.Permissions) != 0 {
+		return fmt.Errorf("%s profile does not accept capability permissions", StaticResponseProfileV1)
+	}
+	return nil
+}
+
 func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
