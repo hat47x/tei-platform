@@ -14,6 +14,7 @@ import (
 	"tei/internal/environment"
 	"tei/internal/plugin"
 	"tei/internal/plugin/implementation"
+	pluginbuiltin "tei/internal/plugin/implementation/builtin"
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -129,7 +130,7 @@ func TestTEINativePluginImplementationReferenceRunsThroughExistingBuiltinABI(t *
 		t.Fatal(err)
 	}
 
-	builtin, err := implementation.NewBuiltin(source, realizedDefinition)
+	builtin, err := pluginbuiltin.New(source, realizedDefinition)
 	if err != nil {
 		t.Fatal(err)
 	}
