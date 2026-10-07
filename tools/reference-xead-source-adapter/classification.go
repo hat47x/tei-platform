@@ -1,0 +1,146 @@
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"sort"
+)
+
+type ConstructMapping struct {
+	Classification  []string `json:"classification"`
+	Extension       string   `json:"extension"`
+	Rules           []string `json:"rules,omitempty"`
+	AuthorityLimits []string `json:"authorityLimits,omitempty"`
+}
+
+type LocalTranscriptionCandidate struct {
+	Kind            string   `json:"kind"`
+	Locator         string   `json:"locator"`
+	Classification  []string `json:"classification"`
+	Extension       string   `json:"extension,omitempty"`
+	Rules           []string `json:"rules,omitempty"`
+	AuthorityLimits []string `json:"authorityLimits,omitempty"`
+	Unresolved      bool     `json:"unresolved"`
+}
+
+type PublishedClassification struct {
+	Kind            string   `json:"kind"`
+	ObservedCount   int      `json:"observedCount"`
+	Classification  []string `json:"classification"`
+	Extension       string   `json:"extension,omitempty"`
+	AuthorityLimits []string `json:"authorityLimits,omitempty"`
+	Unresolved      bool     `json:"unresolved"`
+}
+
+type ClassificationProjection struct {
+	ContractSHA256  string                    `json:"contractSha256"`
+	Format          SourceFormat              `json:"format"`
+	Kinds           []PublishedClassification `json:"kinds"`
+	AuthorityLimits []string                  `json:"authorityLimits"`
+}
+
+func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contractBytes []byte) ([]LocalTranscriptionCandidate, error) {
+	if format != doc.Format {
+		return nil, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
+	}
+	mappings, err := parseConstructMappings(format, contractBytes)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]LocalTranscriptionCandidate, 0, len(doc.Nodes))
+	for _, node := range doc.Nodes {
+		mapping, ok := mappings[node.Kind]
+		if !ok || !node.Known {
+			out = append(out, LocalTranscriptionCandidate{
+				Kind:           node.Kind,
+				Locator:        node.Locator.Path,
+				Classification: []string{"unresolved"},
+				AuthorityLimits: []string{
+					"unmapped-source-construct-is-not-semantic-authority",
+					"unknown-source-construct-must-not-be-silently-dropped",
+				},
+				Unresolved: true,
+			})
+			continue
+		}
+		out = append(out, LocalTranscriptionCandidate{
+			Kind:            node.Kind,
+			Locator:         node.Locator.Path,
+			Classification:  append([]string(nil), mapping.Classification...),
+			Extension:       mapping.Extension,
+			Rules:           append([]string(nil), mapping.Rules...),
+			AuthorityLimits: append([]string(nil), mapping.AuthorityLimits...),
+		})
+	}
+	return out, nil
+}
+
+func BuildClassificationProjection(format SourceFormat, receipt PublicationReceipt, contractBytes []byte) (ClassificationProjection, error) {
+	if format != receipt.Format {
+		return ClassificationProjection{}, fmt.Errorf("receipt format %s does not match requested format %s", receipt.Format, format)
+	}
+	mappings, err := parseConstructMappings(format, contractBytes)
+	if err != nil {
+		return ClassificationProjection{}, err
+	}
+	sum := sha256.Sum256(contractBytes)
+	out := ClassificationProjection{
+		ContractSHA256: hex.EncodeToString(sum[:]),
+		Format:         format,
+		AuthorityLimits: []string{
+			"classification-projection-is-candidate-evidence-not-semantic-acceptance",
+			"kind-level-public-projection-does-not-disclose-source-values-or-source-locators",
+			"mapping-extension-does-not-grant-runtime-authority",
+		},
+	}
+	var kinds []string
+	for kind := range receipt.ElementCounts {
+		kinds = append(kinds, kind)
+	}
+	sort.Strings(kinds)
+	for _, kind := range kinds {
+		mapping, ok := mappings[kind]
+		if !ok || receipt.UnknownElements[kind] > 0 {
+			out.Kinds = append(out.Kinds, PublishedClassification{
+				Kind:           kind,
+				ObservedCount:  receipt.ElementCounts[kind],
+				Classification: []string{"unresolved"},
+				AuthorityLimits: []string{
+					"unmapped-source-construct-is-not-semantic-authority",
+					"unknown-source-construct-must-not-be-silently-dropped",
+				},
+				Unresolved: true,
+			})
+			continue
+		}
+		out.Kinds = append(out.Kinds, PublishedClassification{
+			Kind:            kind,
+			ObservedCount:   receipt.ElementCounts[kind],
+			Classification:  append([]string(nil), mapping.Classification...),
+			Extension:       mapping.Extension,
+			AuthorityLimits: append([]string(nil), mapping.AuthorityLimits...),
+		})
+	}
+	return out, nil
+}
+
+func parseConstructMappings(format SourceFormat, contractBytes []byte) (map[string]ConstructMapping, error) {
+	var contract struct {
+		ConstructMappings map[string]map[string]ConstructMapping `json:"constructMappings"`
+	}
+	if err := json.Unmarshal(contractBytes, &contract); err != nil {
+		return nil, fmt.Errorf("parse transcription contract: %w", err)
+	}
+	mapped, ok := contract.ConstructMappings[string(format)]
+	if !ok {
+		return nil, fmt.Errorf("transcription contract has no %s construct mappings", format)
+	}
+	for kind, mapping := range mapped {
+		if len(mapping.Classification) == 0 {
+			return nil, fmt.Errorf("transcription contract mapping %s/%s has no classification", format, kind)
+		}
+	}
+	return mapped, nil
+}
