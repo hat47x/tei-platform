@@ -74,7 +74,7 @@ func TestReferenceSeparatesOriginReviewContextFreshnessAndConflict(t *testing.T)
 
 	conditional := assessmentByID(t, projection, "conditional-production")
 	if conditional.UseState != "premise" || conditional.ConfirmationState != "confirmed" ||
-		conditional.ReviewBinding != "current" || len(conditional.ReviewConditions) != 1 ||
+		conditional.ReviewBinding != "current" || len(conditional.ReviewConditions) != 0 ||
 		conditional.ContextCompatibility != "compatible" {
 		t.Fatalf("conditional reviewed fact was not usable in matching scope: %+v", conditional)
 	}
@@ -539,5 +539,25 @@ func TestReviewHistoryRejectsBackwardChronology(t *testing.T) {
 	if _, err := evaluateCorpus(corpus, context); err == nil ||
 		!strings.Contains(err.Error(), "must not move backward") {
 		t.Fatalf("backward review chronology was accepted: %v", err)
+	}
+}
+
+func TestUnmodeledReviewConditionsFailClosed(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" || len(corpus.Assertions[i].ReviewEvents) == 0 {
+			continue
+		}
+		corpus.Assertions[i].ReviewEvents[0].Conditions = []string{"only after an external condition is met"}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "confirmed" ||
+		got.UseState != "review-required" ||
+		!hasReason(got, "REVIEW_CONDITIONS_UNRESOLVED") {
+		t.Fatalf("free-form review conditions were treated as satisfied: %+v", got)
 	}
 }
