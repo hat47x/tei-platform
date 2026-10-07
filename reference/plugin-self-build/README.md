@@ -62,3 +62,84 @@ process Pluginのruntime artifactをBuildArtifactLockへ固定した後、既存
 format 3のPlugin entryは`artifactDigest`に加えて`buildPlanFingerprint`を保持します。Source closureやbuilderの詳細はRuntime Lockへ複製せず、Build Planへの参照だけを残します。
 
 runnerはformat 3への昇格、Plugin entryのBuild Plan fingerprint一致、Environment Lock fingerprintの生成まで確認します。
+
+
+## E3 TEI-native Builtin implementation Source
+
+ISSUE #957では、Plugin descriptorそのものとは別に、TEI-nativeなimplementation SourceをReference化します。
+
+最初のprofileは`static-response-v1`だけです。一般目的の式言語や任意コード実行は導入しません。
+
+```text
+plugin-implementation tei.native.runtime.reference v1.0.0 {
+    profile static-response-v1
+    capability deployment-executor runtime.native_reference
+
+    operation execute json {
+        {
+            "attemptId": "tei-native-reference",
+            "outcome": "accepted"
+        }
+    }
+}
+```
+
+このSourceは一つのPluginと一つの既存Capabilityだけを実装します。filesystem、network、clock、random等のambient inputは持たず、同じSourceとRequestから同じResponseを返します。未定義operationや別Capabilityへの呼び出しはerrorです。
+
+implementation SourceはCanonicalな`ir.World`へ追加しません。Workspaceのphysical implementation sourceとして別に保持し、Source Indexでは`RoleImplementation`として追跡します。Plugin descriptorとimplementation Sourceは別のAuthorityです。
+
+### realizationとRuntime登録
+
+`static-response-v1` Sourceは正規化した決定論的realization manifestへmaterializeします。そのSHA-256 digestを`runtime-artifact`としてBuildArtifactLockとRuntime Plugin Lock v3へ結び付けます。
+
+Builtin implementation自身にbuild provenanceを自己申告させません。Host側の`BuiltinRegistration`が次を保持します。
+
+- accepted Builtin implementation
+- exact Build Plan fingerprint
+- realization digest
+
+Runtime Plugin Lockがbuild traceを持つBuiltinでは、Invoke前にこのregistrationを照合します。Build Planまたはrealization digestが一致しない場合はfail-closedです。
+
+legacyなbuild traceなしBuiltinは、既存`Registry.Builtins`経路を維持します。
+
+build-bound Builtinのrealization digestはin-process realizationのidentityであり、外部process artifactと同じ意味ではありません。そのため外部`ArtifactVerifier`を成功したように装いません。Invocation Provenanceには`buildPlanFingerprint`と`realizationDigest`を別に残します。
+
+signature / provenance metadataをbuild-bound Builtinへ付与する契約はまだありません。初期Referenceでは、そのmetadataが存在する場合は検証を省略せずfail-closedにします。
+
+### Reference vertical slice
+
+self-build専用Workspaceへ次を追加します。
+
+```text
+tei.native.runtime.reference@1.0.0
+  -> TEI-native static-response-v1 Source
+  -> deterministic realization
+  -> BuildArtifactLock
+  -> Runtime Plugin Lock v3
+  -> Host BuiltinRegistration
+  -> existing runtime.Builtin ABI
+  -> existing DeploymentExecutor adapter
+```
+
+Referenceでは`application-start`を呼び、`attemptId=tei-native-reference` / `outcome=accepted`を返します。Action ID、Idempotency Key、Executor IDは既存DeploymentExecutor adapterが現在の契約どおり補完します。
+
+既存`runtime.Builtin` ABI、RegistryのRequest / Response、DeploymentExecutor contractは置き換えません。
+
+### runner Evidence
+
+`tools/reference-plugin-self-build`は今後、次の三つを別々のBuild Plan / outputとして記録します。
+
+```text
+tei.runtime.reference
+  -> plugin-package                 # SB-1
+
+tei.process.reference
+  -> runtime-artifact / process     # foreign-language SB-2
+
+tei.native.runtime.reference
+  -> runtime-artifact / builtin     # TEI-native E3
+```
+
+TEI-native realizationについても同じSourceから二回materializeし、digest一致を要求します。その後Runtime Lock v3へbindし、accepted Builtin registration経由で実際にDeploymentExecutorを呼び出します。
+
+このE3はTEI-native implementation SourceからBuiltin realizationを再構築できる最初のReferenceです。builder自体は依然としてGo seed implementationを使うため、SB-3 self-hostingを達成したとは扱いません。
