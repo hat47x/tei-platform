@@ -499,5 +499,48 @@ func diagnoseRelationshipSide(
 		})
 		return LegacyKeyFact{}, false
 	}
-	return matches[0], true
+	key := matches[0]
+	for _, member := range key.Members {
+		if member.FieldLegacyID == "" {
+			*out = append(*out, RelationalDiagnostic{
+				Code:           "relationship-key-field-id-missing",
+				Locator:        relation.Locator,
+				Nature:         RelationalDiagnosticNature,
+				Side:           side,
+				RelationshipID: relation.RelationshipID,
+				TableLegacyID:  tableID,
+				KeyLegacyID:    keyID,
+			})
+			return LegacyKeyFact{}, false
+		}
+		fieldCount := tableIndex.FieldCounts[tableID][member.FieldLegacyID]
+		if fieldCount == 0 {
+			*out = append(*out, RelationalDiagnostic{
+				Code:           "relationship-key-field-not-found",
+				Locator:        relation.Locator,
+				Nature:         RelationalDiagnosticNature,
+				Side:           side,
+				RelationshipID: relation.RelationshipID,
+				TableLegacyID:  tableID,
+				KeyLegacyID:    keyID,
+				FieldLegacyID:  member.FieldLegacyID,
+			})
+			return LegacyKeyFact{}, false
+		}
+		if fieldCount > 1 {
+			*out = append(*out, RelationalDiagnostic{
+				Code:           "relationship-key-field-ambiguous",
+				Locator:        relation.Locator,
+				Nature:         RelationalDiagnosticNature,
+				Side:           side,
+				RelationshipID: relation.RelationshipID,
+				TableLegacyID:  tableID,
+				KeyLegacyID:    keyID,
+				FieldLegacyID:  member.FieldLegacyID,
+				Count:          fieldCount,
+			})
+			return LegacyKeyFact{}, false
+		}
+	}
+	return key, true
 }
