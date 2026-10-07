@@ -425,6 +425,12 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	if assessment.LifecycleState == "superseded" {
 		return "blocked", append(reasons, "ASSERTION_SUPERSEDED")
 	}
+	if assertion.MetadataState == MetadataPartial {
+		return "review-required", append(reasons, "EPISTEMIC_METADATA_INCOMPLETE")
+	}
+	if assertion.MetadataState == MetadataAbsent {
+		return "candidate-only", append(reasons, "EPISTEMIC_METADATA_INCOMPLETE")
+	}
 	if assessment.ConfirmationState == "rejected" {
 		return "blocked", append(reasons, "ASSERTION_REJECTED")
 	}
