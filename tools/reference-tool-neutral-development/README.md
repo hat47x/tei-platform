@@ -5,18 +5,21 @@ RQ-034 / ISSUE-000083（GitHub #972）の最初のExecutable Referenceです。
 目的は、TEI専用Agent Runtime、Agent Adapter、Structured Proposal、TEI独自Change Set、Agent Session / Workspace / Checkpoint等を使わずに、通常のRepository開発だけで次の一往復が成立するかを確認することです。
 
 ```text
-clean Git repository
+clean TEI Repository checkout
+  -> local task clone
   -> TEI CLIでcurrent meaningを読む
   -> file-native sourceを直接編集
-  -> validate / Canonical reload
+  -> build / targeted test / validate / Canonical reload
   -> ordinary Git commit
-  -> separate clone
-  -> validate / Canonical reload
+  -> separate integration clone
+  -> rebuild / test / validate / Canonical reload
 ```
 
 ## Scenario
 
-runnerはcurrent `reference/workspace`を一時directoryへ複製し、その一時directoryだけを独立Git repositoryにします。mainのReference Workspaceは変更しません。
+runnerは、**現在のTEI Repository checkout全体**を`git clone --local`で一時directoryへ複製します。元Repositoryがdirtyなら開始せず、mainや現在のworktreeを変更しません。
+
+task cloneでは`cmd/tei`をbuildし、既存のknowledge-context testを実行したうえで、Reference WorkspaceをCLIから読みます。
 
 baselineには既存の次のruleがあります。
 
@@ -36,25 +39,57 @@ validation sales.order_line.unit_price_positive positive {
 
 この変更はShared Acceptanceのcandidate形式を経由しません。目的はProposal経路を否定することではなく、Proposalを使わない通常のfile-native / Git開発も第一級の経路として成立することを確認することです。
 
-runnerは次を検査します。
+## Tool固有stateを前提にしないpressure
 
+current Reference Workspaceには`.tei/decisions`が存在します。これはShared AcceptanceのDecision ledgerであり、Canonical meaningの第二正本ではありません。
+
+runnerはtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerを持つWorkspaceとCanonical Worldがbyte単位で一致することを要求します。
+
+`.tei/plugin-lock.json`はこのpressureでは削除しません。Plugin resolutionを固定するlockと、削除可能なDecision ledgerを同じ「Tool state」として扱わないためです。
+
+## 検査内容
+
+runnerは少なくとも次を検査します。
+
+- 元RepositoryがGit checkoutでありcleanである
+- task環境がcurrent Repository全体のlocal cloneである
+- task clone内で`cmd/tei`をbuildできる
+- knowledge-contextの関連targeted testを実行できる
 - baseline Workspaceが`tei validate`を通る
 - 既存Validationへ`knowledge-context`から到達できる
+- `.tei/decisions`を除去してもValidationとCanonical Worldが変わらない
 - 直接file edit後も`tei validate`を通る
 - 追加したValidationへ`knowledge-context`から到達できる
 - Canonical Worldがbaselineから実際に変わる
+- file edit後にも関連targeted testを実行できる
 - commit前の変更fileが意図した1 fileだけである
-- TEI CLIの利用によってAgent stateや別のuntracked fileが生成されない
+- CLI / build / testの利用によってRepository内へ別のuntracked artifactが生成されない
 - ordinary Git commitに変更を確定できる
-- 別cloneで同じValidationへ到達できる
-- 別cloneのCanonical Worldがtask側とbyte単位で一致する
-- read-only reload後も別cloneがcleanである
-- 別々のbranchがそれぞれ単独ではValidationを通る
-- 二つのbranchはGit上ではfile conflictなしにmergeできる
-- merge後に同じCanonical Data identityが重複し、`DUPLICATE_SEMANTIC_ELEMENT`としてSemantic Validationが拒否する
-- Semantic Validation失敗によってGit working treeが書き換わらない
+- integration側はtask repositoryから作った別local cloneである
+- integration clone内でもCLIをbuildし、関連targeted testを実行できる
+- integration cloneで同じValidationへ到達できる
+- integration cloneのCanonical Worldがtask側とbyte単位で一致する
+- read-only reload後もintegration cloneがcleanである
 
-このnegative caseでは、二つのbranchが別fileに同じ`sales.tool_neutral_collision` Dataを追加します。TEIがGit mergeを置き換えるのではなく、**Gitが正常に統合した後でも意味上の不整合を既存Validationで止められること**を確認します。
+## Git mergeとSemantic conflict
+
+別のnegative caseでは、current Repositoryから独立したcloneを作り、二つのbranchが別fileへ同じCanonical Data identityを追加します。
+
+```text
+branch A: semantic/sales/tool-neutral-collision-a.tei
+        \
+         +-- Git merge succeeds
+        /
+branch B: semantic/sales/tool-neutral-collision-b.tei
+
+merged workspace
+  -> tei validate
+  -> DUPLICATE_SEMANTIC_ELEMENT
+```
+
+各branch単独ではValidationを通ることを要求します。二つのfile pathは異なるため、Gitのtext mergeではconflictしません。統合後だけ同じCanonical IDの重複を既存Semantic Validationが拒否することを確認します。
+
+TEIがGit mergeを置き換えるのではなく、**Gitが正常に統合した後でも意味上の不整合をTEIが止められること**がこのpressureの目的です。
 
 ## Run
 
@@ -62,7 +97,9 @@ runnerは次を検査します。
 bash tools/reference-tool-neutral-development/run.sh
 ```
 
-このrunnerはlocal Git、Go toolchain、Repository内の通常CLIだけを使います。network、GitHub Actions、developer-facing MCP serverを必要としません。
+runner自身はremote Git operation、GitHub Actions、developer-facing MCP serverを必要としません。Repository内のlocal Git clone、Go toolchain、通常CLIだけを利用します。
+
+ただし、Go moduleがlocal module cacheに存在しない環境では、通常の`go build` / `go test`と同様にdependency取得が必要になる可能性があります。offline hermetic buildをRQ-034の成立条件とはしません。
 
 MCP parityはISSUE-000083 E3で後続検証します。MCPを追加する場合も、CLIと別のCanonical解釈やAuthority modelを作りません。
 
@@ -76,6 +113,8 @@ MCP parityはISSUE-000083 E3で後続検証します。MCPを追加する場合�
 - Shared Acceptance / Semantic Diff / Reviewが不要である
 - local Git write authorityがApplication Runtime authorityを与える
 - production-grade CI / sandboxが完成した
+- offline hermetic Go buildが完成した
 - TEIが独自のGit merge engineを必要とする
+- Decision ledgerが不要である
 
-このReferenceが示すのは、**Tool固有stateをTEIへ持ち込まなくても、SourceとGitを境界にして開発環境を交換できるか**という最小の一往復です。
+このReferenceが示すのは、**Tool固有stateをCanonical meaningの成立条件へ持ち込まなくても、SourceとGitを境界にして開発環境を交換できるか**という最小の一往復です。
