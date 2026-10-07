@@ -427,6 +427,27 @@ routing score、model内部signal、検索順位はcandidate generationのsignal
 
 全Skill / 全Knowledge metadataを毎回promptへ投入することをarchitecture要件にはしません。必要なKnowledgeだけを選択し、何を選び、何を選ばなかったかを必要に応じてprovenanceとして残せることを優先します。
 
+#### 2026-10-07 selective disclosure Projection candidate
+
+`tei knowledge-context`のfull Contextは後方互換のため維持し、`-disclose`を指定した場合だけread-onlyなDisclosure Projectionへ切り替えるcandidate実装を追加した。初期sectionは`source`、`definition`、`dependencies`、`data-design`である。
+
+Projectionは`availableSections`、`selectedSections`、`disclosedSections`、`unavailableSections`、`omittedAvailableSections`を別々に持つ。選択したsectionがそのsubjectに存在しない場合は黙って空として扱わず、`status=partial`と`unavailableSections`へ残す。利用可能だが現在のtaskで選択しなかったsectionは`omittedAvailableSections`へ残す。
+
+`subject`、`unresolved`、authority limitは選択対象から外せない安全メタデータとして常に開示する。特に、`omitted-knowledge-is-not-negative-evidence`と`unavailable-requested-section-is-not-empty-meaning`を保持し、開示しなかったことや利用不能だったことを「意味が存在しない」根拠へ使わない。
+
+Disclosure Projectionには`tei.knowledge.disclosure/v1`と決定論的fingerprintを付ける。section指定はtrim / dedup / sortしてから扱うため、同じ選択集合なら順序が違っても同じProjection identityになる。このfingerprintは「どのKnowledge subsetを実際に開示したか」のidentityであり、Semantic authorityやqualificationの証明ではない。
+
+```bash
+tei knowledge-context \
+  -workspace DIR \
+  -subject-kind semantic-data \
+  -subject-id sales.order_line \
+  -disclose source,data-design
+```
+
+この経路はavailable Contextを削除せず、Canonical Worldやqualificationも変更しない。selective disclosureはrouting / prompt budget / task-local contextの境界であり、accepted meaningの第二正本にはしない。exact-head full Repository Healthはまだ取得していないため、この段階では完了条件の充足を主張しない。
+
+
 ### Verified Experience Memoryの候補
 
 過去trajectoryを再利用する場合、単なる会話履歴や操作列だけでなく、検証済みの局所関係へ圧縮する余地を残します。
