@@ -179,6 +179,15 @@
       "risk": "invalid source identity can go unnoticed until referenced, or a key/Relationship can be attributed to an arbitrary duplicate occurrence and reported as resolved",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "diagnose missing/duplicate Xead Table, Field, TableKey and Relationship identities from source facts, suppress ambiguous lookup/metadata selection, and keep dependent meaning unresolved until source identity is explicit and unambiguous"
+    },
+    {
+      "id": "RML-020",
+      "topic": "diagnosed-fact-reuse-as-valid-transcription-input",
+      "nature": "unresolved",
+      "evidence": "the inspection layer preserves source facts for audit even when relational diagnostics remain; aggregate fact counts therefore include observations that are not structurally ready for deterministic lowering",
+      "risk": "later transcription can accidentally consume an unresolved fact because it exists in RelationalFacts, bypassing the diagnostic boundary",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "expose relationalResolutionStatus independently from fact availability and require resolved status before deterministic semantic lowering; unresolved facts remain Source Evidence only"
     }
   ],
   "claimsNotEstablished": [
