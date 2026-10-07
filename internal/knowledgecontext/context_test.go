@@ -665,6 +665,66 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 }
 
+func TestDerivedDataDesignCandidateFingerprintIsStableAndTyped(t *testing.T) {
+	ctx := Build(
+		dataDesignRelationUniqueWorld(),
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil ||
+		len(ctx.DataDesign.BusinessIdentityCandidates) != 1 ||
+		len(ctx.DataDesign.FunctionalDependencyCandidates) != 1 {
+		t.Fatalf("derived candidates are missing: %+v", ctx.DataDesign)
+	}
+
+	identity := ctx.DataDesign.BusinessIdentityCandidates[0]
+	fd := ctx.DataDesign.FunctionalDependencyCandidates[0]
+	if identity.Fingerprint == "" || fd.Fingerprint == "" {
+		t.Fatalf("candidate fingerprints are missing: identity=%+v fd=%+v", identity, fd)
+	}
+	if identity.Fingerprint == fd.Fingerprint {
+		t.Fatalf("typed candidate identities collided: %s", identity.Fingerprint)
+	}
+
+	reorderedIdentity := identity
+	reorderedIdentity.Components = append([]DataDesignDeterminantTerm(nil), identity.Components...)
+	reorderedIdentity.Components[0], reorderedIdentity.Components[1] =
+		reorderedIdentity.Components[1], reorderedIdentity.Components[0]
+	reorderedIdentity.EvidenceNeeded = append([]string(nil), identity.EvidenceNeeded...)
+	for i, j := 0, len(reorderedIdentity.EvidenceNeeded)-1; i < j; i, j = i+1, j-1 {
+		reorderedIdentity.EvidenceNeeded[i], reorderedIdentity.EvidenceNeeded[j] =
+			reorderedIdentity.EvidenceNeeded[j], reorderedIdentity.EvidenceNeeded[i]
+	}
+	if got := businessIdentityCandidateFingerprint(reorderedIdentity); got != identity.Fingerprint {
+		t.Fatalf("business identity candidate ordering changed identity: have=%s got=%s", identity.Fingerprint, got)
+	}
+
+	changedIdentity := identity
+	changedIdentity.Scope = "global"
+	if got := businessIdentityCandidateFingerprint(changedIdentity); got == identity.Fingerprint {
+		t.Fatalf("business identity candidate semantic change kept fingerprint: %s", got)
+	}
+
+	reorderedFD := fd
+	reorderedFD.Determinants = append([]DataDesignDeterminantTerm(nil), fd.Determinants...)
+	reorderedFD.Determinants[0], reorderedFD.Determinants[1] =
+		reorderedFD.Determinants[1], reorderedFD.Determinants[0]
+	reorderedFD.EvidenceNeeded = append([]string(nil), fd.EvidenceNeeded...)
+	for i, j := 0, len(reorderedFD.EvidenceNeeded)-1; i < j; i, j = i+1, j-1 {
+		reorderedFD.EvidenceNeeded[i], reorderedFD.EvidenceNeeded[j] =
+			reorderedFD.EvidenceNeeded[j], reorderedFD.EvidenceNeeded[i]
+	}
+	if got := functionalDependencyCandidateFingerprint(reorderedFD); got != fd.Fingerprint {
+		t.Fatalf("FD candidate ordering changed identity: have=%s got=%s", fd.Fingerprint, got)
+	}
+
+	changedFD := fd
+	changedFD.DependentOccurrence = "sales.other"
+	if got := functionalDependencyCandidateFingerprint(changedFD); got == fd.Fingerprint {
+		t.Fatalf("FD candidate semantic change kept fingerprint: %s", got)
+	}
+}
+
 func dataDesignRelationUniqueWorld() ir.World {
 	return ir.World{
 		Semantics: []semantic.Namespace{
