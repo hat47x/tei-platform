@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	corpusSchema     = "tei.reference.epistemic-corpus/v0"
-	contextSchema    = "tei.reference.epistemic-context/v0"
-	projectionSchema = "tei.reference.epistemic-assessment/v0"
+	corpusSchema       = "tei.reference.epistemic-corpus/v0"
+	contextSchema      = "tei.reference.epistemic-context/v0"
+	projectionContract = "tei.epistemic-projection/v0"
+	projectionSchema   = "tei.reference.epistemic-assessment/v0"
 )
 
 type Origin string
