@@ -224,9 +224,6 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 		if provider.PluginID == "" || provider.PluginVersion == "" || provider.ImplementationID == "" {
 			continue
 		}
-		if !validSHA256Fingerprint(provider.ArtifactDigest) {
-			continue
-		}
 		identityKey := providerIdentityKey(provider)
 		if _, duplicate := seen[identityKey]; duplicate {
 			return nil, nil, fmt.Errorf(
@@ -235,6 +232,9 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 			)
 		}
 		seen[identityKey] = struct{}{}
+		if !validSHA256Fingerprint(provider.ArtifactDigest) {
+			continue
+		}
 		evidence, ok := matchingEvidence(input.Evidence, provider, contractFingerprint, contract.ConformanceProfile)
 		if !ok {
 			continue
