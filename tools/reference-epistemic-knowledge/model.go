@@ -25,11 +25,12 @@ const (
 	OriginSystem   Origin = "system"
 	OriginImported Origin = "imported"
 	OriginExternal Origin = "external"
+	OriginUnknown  Origin = "unknown"
 )
 
 func (v Origin) valid() bool {
 	switch v {
-	case OriginUser, OriginAI, OriginSystem, OriginImported, OriginExternal:
+	case OriginUser, OriginAI, OriginSystem, OriginImported, OriginExternal, OriginUnknown:
 		return true
 	default:
 		return false
@@ -49,6 +50,23 @@ const (
 func (v IngestionActor) valid() bool {
 	switch v {
 	case IngestedByUser, IngestedByAI, IngestedBySystem, IngestedByConnector, IngestedByImport:
+		return true
+	default:
+		return false
+	}
+}
+
+type MetadataState string
+
+const (
+	MetadataComplete MetadataState = "complete"
+	MetadataPartial  MetadataState = "partial"
+	MetadataAbsent   MetadataState = "absent"
+)
+
+func (v MetadataState) valid() bool {
+	switch v {
+	case MetadataComplete, MetadataPartial, MetadataAbsent:
 		return true
 	default:
 		return false
@@ -181,6 +199,7 @@ type Assertion struct {
 	MeaningFingerprint string         `json:"meaningFingerprint"`
 	Origin             Origin         `json:"origin"`
 	IngestedBy         IngestionActor `json:"ingestedBy"`
+	MetadataState      MetadataState  `json:"metadataState,omitempty"`
 	Mode               AssertionMode  `json:"assertionMode"`
 	Context            []ScopeBinding `json:"context,omitempty"`
 	ValidFrom          string         `json:"validFrom,omitempty"`
@@ -389,8 +408,11 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 	if !sha256Pattern.MatchString(a.MeaningFingerprint) {
 		return a, fmt.Errorf("meaningFingerprint %q is not exact sha256", a.MeaningFingerprint)
 	}
-	if !a.Origin.valid() || !a.IngestedBy.valid() || !a.Mode.valid() {
-		return a, fmt.Errorf("invalid origin / ingestedBy / assertionMode")
+	if a.MetadataState == "" {
+		a.MetadataState = MetadataComplete
+	}
+	if !a.Origin.valid() || !a.IngestedBy.valid() || !a.MetadataState.valid() || !a.Mode.valid() {
+		return a, fmt.Errorf("invalid origin / ingestedBy / metadataState / assertionMode")
 	}
 
 	context, err := normalizeBindings(a.Context)
