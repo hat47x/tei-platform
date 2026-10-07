@@ -184,13 +184,17 @@ SEI #660へ、semantic relevanceとepistemic / context signalsを別々に渡せ
 
 TEI側で一つの最終scoreへ固定しません。
 
-### E6: legacy / export-import boundary
+### E6: legacy / export-import / access containment boundary
 
 既存資料と外部連携ではmetadataが存在しない、または途中で失われる場合があります。
 
 import側の最小candidateとして、`metadataState=complete / partial / absent` と `origin=unknown` を追加した。confirmedな別assertionとtext / meaning fingerprintが一致しても、metadata-free reimportへreview historyを自動移送しないnegative testを置く。
 
-metadataを保持できるexportでは本文とsidecarを一緒に運び、保持できないtext-only exportでは喪失を明示する必要がある。export / import adapterそのもの、transport署名、access control継承は未実証として残す。Evidenceやreview情報が元資料のaccess controlを迂回しないこともproduction adapter側でpressureする。
+metadata-preserving transportのReference candidateとして `tei.reference.epistemic-transport/v0` を追加した。assertion / Evidence / review event / dependency / coverage areaはopaqueな `accessRefs` を持てる。transport自身はauthorizationを判断せず、callerが渡すgranted refとの完全一致だけを使う。
+
+権限不足のassertionは除外し、Evidence / review event / relationだけが欠ける場合は残るassertionを `metadataState=partial` にする。hidden assertionが片側だけからConflict / supersessionを指している場合も、可視側をpartialにして関係を忘れたままpremiseへ戻さない。DependencyやCoverage Areaを除外したtransport全体もpartial viewとして保持し、Project Knowledge Healthをproject全体の完全評価へ格上げしない。
+
+transport adapterを実storage / connectorへ接続すること、text-only exportでloss markerを運ぶこと、accessRefsを既存authorization providerへ接続すること、transport署名は未実証として残す。
 
 ## Plugin / Extension方針
 
@@ -266,7 +270,7 @@ review、health、context evaluation等をPlugin-defined Capabilityとして提�
 
 ## 2026-10-06 First Reference candidate — E0〜E4
 
-このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、append-only review history、target anchoring、epistemic coverage、metadata-free legacy reimport、consumer freshnessまでpressureを広げました。未実証なのは、metadata-preserving export / import adapter、production向けtarget resolver / coverage生成、consumer側での実retrieval統合です。
+このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、append-only review history、target anchoring、epistemic coverage、metadata-free legacy reimport、consumer freshnessまでpressureを広げました。未実証なのは、transport candidateを実storage / connectorへ接続するadapter、text-only transportのloss marker、既存authorization providerとの接続、production向けtarget resolver / coverage生成、consumer側での実retrieval統合です。
 
 確認状態については、初期版のnative / reviewed / conditional / rejected / supersededという単一stateを廃止しました。review eventから導出するconfirmation、meaningへのreview binding、supersedes relationから導出するlifecycleを別軸として扱います。
 
@@ -422,7 +426,9 @@ reviewer candidate
 - [ ] coverage mappingを意味的完全性の証明へ昇格させない
 - [ ] annotation targetを編集後に誤って別箇所へ付け替えない（Reference candidate追加済み。full qualification未完了）
 - [ ] provenance不明のlegacy資料をreview済みへ推定しない（import-side Reference candidate追加済み。full qualification未完了）
-- [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない（reimport negative candidate追加済み。export adapter未実証）
+- [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない（reimport negative candidate追加済み）
+- [ ] metadata-preserving transportでEvidence / review event / relationのaccess containmentを保持できる（Reference candidate追加済み。full qualification未完了）
+- [ ] partial transportをproject全体の完全なHealth viewへ格上げしない（Reference candidate追加済み。full qualification未完了）
 - [ ] epistemic coverage不足を観測できる（Reference candidate追加済み。full qualification未完了）
 - [ ] AI生成主張が保存だけで確認済みへ昇格しない
 - [ ] content provenance / ingestion actor / statement kind / confirmation history / lifecycle / scope / time / Evidenceを分離できる
