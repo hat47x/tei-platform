@@ -609,3 +609,84 @@ func TestCapabilityResolutionReplayIgnoresMalformedCurrentEvidence(t *testing.T)
 		t.Fatal("current Evidence verification accepted malformed Evidence")
 	}
 }
+
+
+func TestIncompleteProviderInOtherScopeDoesNotBlockValidResolution(t *testing.T) {
+	contract := sourceAdapterContract()
+	valid := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.valid",
+	)
+	incomplete := sourceAdapterProvider(
+		contract,
+		ScopeApplicationRuntime,
+		"legacy.runtime.reference",
+		"legacy.reader",
+	)
+	incomplete.ArtifactDigest = ""
+
+	resolution, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{incomplete, valid},
+		Evidence:    []ConformanceEvidence{evidenceFor(valid, contract, "valid-evidence")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolution.Provider.PluginID != valid.PluginID {
+		t.Fatalf("resolved provider=%+v", resolution.Provider)
+	}
+}
+
+func TestRelevantProviderWithoutArtifactRemainsIneligibleNotGloballyInvalid(t *testing.T) {
+	contract := sourceAdapterContract()
+	incomplete := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.incomplete",
+	)
+	incomplete.ArtifactDigest = ""
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{incomplete},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("incomplete provider was not treated as ineligible candidate: %v", err)
+	}
+}
+
+func TestIncompleteAndExactDuplicateLogicalProviderStillFailsClosed(t *testing.T) {
+	contract := sourceAdapterContract()
+	incomplete := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.same",
+	)
+	incomplete.ArtifactDigest = ""
+	exact := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.same",
+	)
+
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{incomplete, exact},
+		Evidence:    []ConformanceEvidence{evidenceFor(exact, contract, "exact-evidence")},
+	})
+	if err == nil || !strings.Contains(err.Error(), "logical provider") {
+		t.Fatalf("duplicate migration/provider authorities were not rejected: %v", err)
+	}
+}
