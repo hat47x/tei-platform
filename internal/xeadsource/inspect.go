@@ -39,7 +39,7 @@ func Inspect(format Format, source []byte, policy ClassificationPolicy) (Inspect
 	facts := ExtractRelationalSourceFacts(doc)
 	diagnostics := DiagnoseRelationalSourceFacts(doc, facts)
 	factResolutions := ProjectRelationalFactResolutions(facts, diagnostics)
-	resolutionStatus := relationalResolutionStatus(factResolutions)
+	resolutionStatus := relationalResolutionStatus(factResolutions, diagnostics)
 	return Inspection{
 		Document:                   doc,
 		Candidates:                 Classify(doc, policy),
@@ -120,7 +120,13 @@ func ProjectRelationalFactResolutions(
 	return out
 }
 
-func relationalResolutionStatus(values []RelationalFactResolution) string {
+func relationalResolutionStatus(
+	values []RelationalFactResolution,
+	diagnostics []RelationalDiagnostic,
+) string {
+	if len(diagnostics) != 0 {
+		return RelationalFactResolutionUnresolved
+	}
 	status := RelationalFactResolutionResolved
 	for _, value := range values {
 		switch value.Status {
