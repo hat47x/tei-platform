@@ -35,7 +35,7 @@ func evidenceFor(provider Provider, contract Contract, marker string) Conformanc
 		PluginID:                     provider.PluginID,
 		PluginVersion:                provider.PluginVersion,
 		ImplementationID:             provider.ImplementationID,
-		Target:                       provider.Target,
+		RealizationTarget:                       provider.RealizationTarget,
 		ArtifactDigest:               provider.ArtifactDigest,
 		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 		ContractFingerprint:          fingerprint(contract),
