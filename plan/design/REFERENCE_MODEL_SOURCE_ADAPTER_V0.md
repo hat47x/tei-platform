@@ -129,3 +129,24 @@ public Publication Receiptへはmarkup本文を出さず、種類ごとの件数
 namespaceもsource factとして区別する。たとえばnamespace付きの`Table`は、local nameが同じでもXead標準の`Table`として扱わない。unknown / namespaced elementが観測されている場合、転写契約に同名のmappingがあってもClassification coverageをcompleteにしない。
 
 この境界は、将来のXead/Xeaf派生形式や拡張metadataを「既知の要素名に見える」という理由だけで取り込まないために必要である。
+
+
+## Candidate classification boundary
+
+Source Adapterの観測結果をCanonicalへ直接変換しないため、classificationを独立したcandidate段階として扱う。
+
+ローカルでは、各Observed Nodeについてsource locator、source kind、転写契約上のclassification、担当Extension、rules、authority limitを`LocalTranscriptionCandidate`へ投影できる。mappingが無い場合や未知namespaceの要素は、推測で近いmappingへ寄せず`mappingStatus: unmapped`のまま残す。
+
+public Evidenceではlocator単位の一覧を出さず、kind単位の`ClassificationProjection`へ集約する。通常の既知要素とnamespace付きlookalike等が同じlocal nameで混在する場合は`mappingStatus: mixed`と未解決件数を返す。
+
+mappingの有無とsemanticな未確定状態は別である。転写契約にmappingが存在しても、そのclassificationが`canonical-candidate`や`unresolved`であればAccepted meaningではない。逆に`mappingStatus: unmapped`は、意味が誤りだと断定するのではなく、現在の転写契約では扱いを決めていないことを表す。
+
+この分離により、Source Adapterは次の三段階を混同しない。
+
+```text
+source observation
+  -> mapping/classification candidate
+  -> Shared Acceptance後のauthoritative meaning
+```
+
+CLIの`-local-candidates`は最初の二段階をsource locator付きで調べるためのローカル機能であり、public Evidenceへ保存しない。
