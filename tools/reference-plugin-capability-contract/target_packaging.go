@@ -202,6 +202,25 @@ func buildTargetCapabilityPackagingPlan(
 	return plan, nil
 }
 
+func verifyTargetCapabilityPackagingPlan(
+	plan TargetCapabilityPackagingPlan,
+	inputs []TargetPackagingInput,
+) error {
+	if err := validateTargetCapabilityPackagingPlan(plan); err != nil {
+		return err
+	}
+	current, err := buildTargetCapabilityPackagingPlan(inputs)
+	if err != nil {
+		return err
+	}
+	if plan.PlanFingerprint != current.PlanFingerprint {
+		return fmt.Errorf(
+			"target packaging plan differs from current Capability / Build realizations",
+		)
+	}
+	return nil
+}
+
 func validateTargetCapabilityPackagingPlan(
 	plan TargetCapabilityPackagingPlan,
 ) error {
