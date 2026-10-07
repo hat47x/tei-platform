@@ -118,25 +118,31 @@ paragraph、card、row、selected range等へのannotationは、編集後の再�
 
 同じ情報への複数回reviewは上書きせず、review eventとして保持します。現在の確認状態は、対象meaning、scope、time、review eventから導出する構造をpressureします。
 
-### E1: state transition
+### E1: confirmation history
 
-少なくとも次を表現します。
+現在の確認状態を単一fieldで上書きせず、review eventの履歴から導出します。
 
 ```text
 AI generated
+  -> no confirmation event
   -> unreviewed
-  -> reviewed / rejected / conditional
 
-user factual assertion
-  -> native assertion in current context
-  -> reviewed when explicit review is needed
+human confirm
+  -> confirmed
+human reject
+  -> rejected
+human withdraw
+  -> unreviewed
 
-reviewed assertion
-  -> semantic edit
-  -> review validity re-evaluation
+confirm
+  -> reject
+  -> confirm
+  -> historyを残したままcurrent confirmation = confirmed
 ```
 
-単純な文字編集だけで全reviewを失効させる実装にはしません。意味変更の判定は既存Semantic Diff等へ接続できるか確認します。
+user-originかつuserが直接入力したworking-premise statementは、現在文脈では通常の前提として利用できます。ただし、確認eventがなければconfirmationはunreviewedのままです。「作業前提として使える」と「人間が確認済み」を同じ状態へしません。
+
+review eventは対象meaning fingerprintへ結び付けます。semantic editで現在meaningとのbindingが切れた場合、旧eventは履歴として保持しつつ再確認対象に戻します。単純な文字編集だけで全reviewを失効させる実装にはせず、意味変更の判定は既存Semantic Diff等へ接続できるか確認します。
 
 ### E2: context compatibility
 
@@ -246,7 +252,7 @@ AI ProposalとCanonical Acceptanceを分離する既存境界は維持します�
 
 ### ISSUE-000047
 
-Knowledge qualification / freshnessを再利用します。epistemic stateを既存qualificationへ無理に押し込まず、applicabilityとreview stateを分けたまま接続します。
+Knowledge qualification / freshnessを再利用します。epistemic stateを既存qualificationへ無理に押し込まず、applicability、confirmation、lifecycleを分けたまま接続します。
 
 ### ISSUE-000077
 
@@ -258,9 +264,9 @@ review、health、context evaluation等をPlugin-defined Capabilityとして提�
 
 ## 2026-10-06 First Reference candidate — E0〜E4
 
-このcandidateは、fact中心の最小pressureとして有効ですが、ADR-0030の最終modelではありません。2026-10-07の要件再点検で、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review event、target anchoring、epistemic coverage、legacy / export-import境界が不足していることを確認しました。
+このcandidateは、fact中心の初期版から、statement kind、content provenance / ingestion actor、observed / declared / inferred context、複数review eventまでpressureを広げました。2026-10-07の再点検で残ったtarget anchoring、epistemic coverage、legacy / export-import境界は、引き続き未実証です。
 
-既存candidateのnative / conditional / superseded等を、そのままproductionの単一review enumへ固定しません。成立経路、確認状態、適用条件、ライフサイクルを分離する次incrementでpressureします。
+確認状態については、初期版のnative / reviewed / conditional / rejected / supersededという単一stateを廃止しました。review eventから導出するconfirmation、meaningへのreview binding、supersedes relationから導出するlifecycleを別軸として扱います。
 
 ADR-0030採用後の最初のTEI側Reference candidateを、既存の `work/issue-000081-contextual-epistemic-knowledge` lane上に追加した。Issue改番前から存在するlaneを再利用しており、同目的のsibling branchは作らない。
 
@@ -281,29 +287,30 @@ ADR-0030採用後の最初のTEI側Reference candidateを、既存の `work/issu
 - content origin
 - ingested by
 - statement kind
-- v0 review state
 - observed / declared / inferred context
 - valid / checked time
 - Evidence
-- review record
+- append-only review events
 - supersedes / conflictsWith
 - downstream dependency criticality
 
-v0のreview stateはReference内部の暫定表現であり、ADR-0030のproduction modelではconfirmation / lifecycle / conditions等へ分離する。
+現在値としてのconfirmationは保存せず、review eventから導出する。supersessionもconfirmationへ混ぜず、relationからlifecycleを導出する。
 
 schemaはReference限定の `tei.reference.epistemic-corpus/v0` とし、現時点で `std.epistemic` やCore enumへ昇格させない。
 
-### E1 review validity candidate
+### E1 confirmation history candidate
 
-user-originかつuserが直接入力したfact / observation / requirement / decision / constraintは、current scope内のworking premiseとして扱える。一方、AI-origin contentはユーザーが貼り付けてもnativeにはせず、保存や取り込みだけで確認済みへ昇格させない。
+user-originかつuserが直接入力したfact / observation / requirement / decision / constraintは、current scope内のworking premiseとして扱える。ただし、review eventがなければ `confirmationState=unreviewed` のままにする。AI-origin contentはユーザーが貼り付けてもdirect user premiseにはせず、保存や取り込みだけでconfirmedへ昇格させない。
 
-reviewed / conditional assertionはv0では `method=human-confirmation` のreview recordを要求する。AI自己reviewをreview済み状態へ読み替えない。そのうえでreview recordの `reviewedMeaningFingerprint` と現在の `meaningFingerprint` を比較し、意味identityが変わった場合は旧reviewを現在値へ継承せず `review-required` とする。
+review eventは `confirm / reject / withdraw` を持ち、positiveで一意なsequenceに従って履歴を保持する。v0では `method=human-review` のeventだけを受け入れる。sequenceが増えているのに `occurredAt` が過去へ戻る履歴は拒否する。
 
-このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る入力であり、一致そのものをsemantic proofへ昇格させない。format差とsemantic差を判別できない場合にreview維持を推測しない。
+現在の `confirmationState` は、現在の `meaningFingerprint` に結び付く最新eventから導出する。過去meaningに対するeventしか存在しない場合は `reviewBinding=stale` とし、旧確認を現在値へ継承せず `review-required` とする。
+
+このReference自身はarbitrary proseのsemantic diffを発明しない。meaning fingerprintは対象surface / transformation contractから受け取る入力であり、一致そのものをsemantic proofへ昇格させない。format差とsemantic差を判別できない場合に確認の有効性を推測しない。
 
 ### E1b supersession / conflict candidate
 
-旧assertionの `reviewState` だけを手で `superseded` へ更新することを前提にせず、後続assertionの `supersedes` relationから旧assertionの利用停止を派生する。Projectionには `supersededBy` を残し、relation provenanceへ戻れるようにする。
+旧assertionのconfirmationを変更してsupersessionを表現せず、後続assertionの `supersedes` relationから `lifecycleState=superseded` を派生する。Projectionには `supersededBy` を残し、relation provenanceへ戻れるようにする。
 
 Conflictもrelationとして保持し、current contextで両方が有効候補になる場合は一方を自動採用せず `review-required` とする。
 
@@ -330,7 +337,7 @@ review-required assertionと、high / critical dependencyがpremiseとして利�
 Projectionは次へ戻れる。
 
 - assertion identity / target
-- current review state
+- derived confirmation state / review binding
 - scope
 - Evidence
 - reason
@@ -387,10 +394,10 @@ reviewer candidate
 - [ ] 複数review eventから現在の確認状態を導出できる
 - [ ] annotation targetを編集後に誤って別箇所へ付け替えない
 - [ ] provenance不明のlegacy資料をreview済みへ推定しない
-- [ ] metadata欠落export / reimportでreview stateを自動復元しない
+- [ ] metadata欠落export / reimportでconfirmation historyを自動復元しない
 - [ ] epistemic coverage不足を観測できる
 - [ ] AI生成主張が保存だけで確認済みへ昇格しない
-- [ ] origin / assertion mode / review state / scope / time / Evidenceを分離できる
+- [ ] content provenance / ingestion actor / statement kind / confirmation history / lifecycle / scope / time / Evidenceを分離できる
 - [ ] explicit contextとinferred contextを区別できる
 - [ ] narrow scopeのfactをwide scopeへ黙って一般化しない
 - [ ] semantic edit後に確認の有効性を再評価できる
