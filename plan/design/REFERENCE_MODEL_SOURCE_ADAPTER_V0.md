@@ -53,7 +53,7 @@ sourceの並び順が変わった場合、snapshot locatorの対応が変わる�
 
 未知のelementをwarningだけで捨てない。Observed Documentへ要素名、属性、テキスト、locatorを残し、unresolvedとして数える。
 
-既知elementに新しい属性が増えた場合も、属性を破棄しない。現時点で意味を解釈しない属性でもObserved Documentには残し、Publication Receiptでは属性名の出現として確認できる。
+既知elementに新しい属性が増えた場合も、属性を破棄しない。現時点で意味を解釈しない属性でもObserved Documentには名前と値を残す。public Publication Receiptでは任意の追加attribute名は公開せず、known constructごとのattribute出現数として観測事実だけを残す。
 
 「意味をまだ理解していない」と「sourceに存在しなかった」を分けるためである。
 
@@ -113,7 +113,7 @@ exact modelを用いたcoverage確認では、public Repositoryへ集計値、di
 
 Source Adapterがsourceを観測できることと、そのconstructに転写方針があることも分ける。
 
-`CheckClassificationCoverage`はPublication Receiptのelement kindと`transcription-contract-v0.json`の`constructMappings`を比較する。観測済みなのにmappingがないkindは`unmappedObservedKinds`として残す。
+`CheckClassificationCoverage`はローカル観測上のelement kindと`transcription-contract-v0.json`の`constructMappings`を比較する。既知の標準constructでmappingがない場合は名前を出して診断できるが、任意のunknown kind名はpublic出力へ載せず、`unmappedObservedKindCount`と`unknownObservedElements`へ集約する。
 
 2026-10-07時点では、exact sourceで観測したXead 30 kind、Xeaf 21 kindのすべてにmapping entryがある。
 
@@ -168,10 +168,10 @@ public projectionにはsource valueとstructural locatorを含めない。件数
 
 Publication Receiptで値と本文を除くだけでは十分ではない。企業独自のXead / Xeaf派生形式では、未知element名や追加attribute名そのものがローカルな業務語彙・内部schemaを表す可能性がある。
 
-現在のReference実装は`elementCounts` / `unknownElements`へ未知elementのlocal nameを、`attributeNameCounts`へ任意のattribute名を出力している。benchmarkではunknown elementが0件のため、この問題は通常のcoverage結果には現れない。
+旧v1 Reference実装は`elementCounts` / `unknownElements`へ未知elementのlocal nameを、`attributeNameCounts`へ任意のattribute名を出力していた。benchmarkではunknown elementが0件のため、この問題は通常のcoverage結果には現れなかった。2026-10-08のv2 candidateでは、これらの任意名をローカル観測へ限定し、public出力をknown標準constructの件数、known constructごとのattribute出現数、unknown総数へ縮退させた。
 
 したがってpublic-safe境界では、任意のsource由来schema名をローカル`ObservedDocument`へ限定する。public Evidenceには存在件数とdeterministicな集合fingerprint等を残し、unknownをsilent dropせずに名称自体は公開しない。
 
 既知のXead / Xeaf標準schema名についても、公開可能性はReference Model本体とは別に根拠を持つ。少なくとも「unknownだからpublicへ名前を出してよい」とは扱わない。
 
-この修正が入るまで、現行`PublicationReceipt`を一般的なpublic-safe contractとして確定しない。RMP-047 / RML-022を停止条件とする。
+v2 candidateでredaction境界を実装したが、現headのfocused testとfull Repository Healthは未取得である。RMP-047 / RML-022は、redaction testのactual PASSを得るまで停止条件として維持する。
