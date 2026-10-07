@@ -2,13 +2,14 @@ package main
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"tei/internal/knowledgecontext"
 )
 
-func TestBuildKnowledgeDisclosureUsesCurrentContextWithoutChangingQualification(t *testing.T) {
+func TestBuildKnowledgeDisclosureUsesCurrentContextWithoutLeakingUnselectedKnowledge(t *testing.T) {
 	root := testRepositoryRoot(t)
 	ctx, err := buildKnowledgeContext(
 		filepath.Join(root, "reference", "workspace"),
@@ -55,6 +56,64 @@ func TestBuildKnowledgeDisclosureUsesCurrentContextWithoutChangingQualification(
 		"omitted-knowledge-is-not-negative-evidence",
 	) {
 		t.Fatalf("selective disclosure authority boundary is missing: %+v", disclosure.AuthorityLimits)
+	}
+}
+
+func TestSelectiveDisclosureDoesNotChangeKnowledgeQualification(t *testing.T) {
+	root := testRepositoryRoot(t)
+	workspacePath := filepath.Join(root, "reference", "workspace")
+	requirements := knowledgecontext.QualificationRequirements{
+		ExpectedKind: "application-pattern",
+		Application:  "order_entry",
+		RequiredDependencies: []knowledgecontext.DependencyRequirement{{
+			Direction: "outgoing",
+			Relation:  "contract-query",
+			Kind:      "database-contract-query",
+			ID:        "master_data.customer/find_by_id",
+		}},
+	}
+
+	before, err := buildKnowledgeQualification(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		requirements,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := buildKnowledgeContext(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disclosure, err := buildKnowledgeDisclosure(ctx, "source,definition")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disclosure.Status != "complete" {
+		t.Fatalf("selected Knowledge is unexpectedly partial: %+v", disclosure)
+	}
+
+	after, err := buildKnowledgeQualification(
+		workspacePath,
+		"application-pattern",
+		"order_entry.customer_reference",
+		requirements,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("selective disclosure changed qualification:\nbefore=%+v\nafter=%+v", before, after)
+	}
+	if before.Status != knowledgecontext.QualificationApplicable ||
+		len(before.Evidence) == 0 ||
+		len(before.DependencyEvidence) == 0 {
+		t.Fatalf("qualification invariant test lost applicable Evidence: %+v", before)
 	}
 }
 
