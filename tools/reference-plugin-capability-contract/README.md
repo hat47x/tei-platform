@@ -65,3 +65,22 @@ projectionしたProviderには、投影元のlegacy Capability宣言を正規化
 artifact digestをまだ持たないlegacy ProviderはCatalogから排除しません。移行状況を発見できる候補として残しつつ、Conformance済みのcallable Providerにはしません。この未確定Providerが別scopeや別contractの正常な解決を止めないことも確認します。
 
 ただし、同じPlugin / version / implementation IDを旧projectionと新しいProvider declarationの双方から同時に出すことは許しません。片方のartifactが未確定でも、logical provider identityが重複した時点で二重Authorityとして拒否します。
+
+
+## Runtime Plugin Lockとの接続
+
+`application-runtime` scopeのCapability Resolution Lockは、それ自体をRuntime Authorityにはしません。Referenceでは、既存Runtime Plugin Lockの対象Plugin entryへ結ぶ`RuntimeCapabilityBinding`を追加しています。
+
+BindingはEnvironment、Capability Lock fingerprint、Plugin ID / version、Plugin definition fingerprint、artifact digestを保持します。Environment Lock全体のfingerprintは固定しません。対象Providerと無関係なPluginが同じEnvironmentへ追加された場合までCapability bindingをstaleにしないためです。
+
+一方、対象PluginがEnvironment Lockから消えた場合、Plugin definition fingerprintが変わった場合、artifact digestが変わった場合はBindingを拒否します。legacy migration pathでは、generic Providerが現在の`plugin.Definition`から一方向に導出されたことも確認します。これにより、新旧のProvider declarationを独立したAuthorityにはしません。
+
+Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability identityへ取り込みません。同じruntime artifactに対してBuild provenanceだけが更新された場合、Capability resolution identityは維持します。exact Build Planへの追跡は既存Plugin LockとBuildArtifactLockの責務です。
+
+### 現行Lockで表現できないpackaging
+
+現在のRuntime Plugin LockはPluginごとに`artifactDigest`を一つ持ちます。そのため、一つのPluginが同じTargetで複数のCapability implementation artifactへ分かれる構成は、このLockだけではAuthorityを表現できません。
+
+Referenceでは、Capability Providerのartifact digestとPlugin Lockのartifact digestが異なる場合をfail closedにします。別artifactへ暗黙にfallbackしたり、Plugin-level digestで複数artifactを代表したことにはしません。
+
+この不足は、Web向けlazy loading、Wasm分割、Plugin内部の複数artifact化と関係します。Plugin Lockへprovider artifact一覧を直ちに追加するのではなく、ISSUE-000079のBuildArtifactLockとTarget packagingのEvidenceを合わせて、どのidentityをRuntime Authorityへ固定する必要があるかを判断します。
