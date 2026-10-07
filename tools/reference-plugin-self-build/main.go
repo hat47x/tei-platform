@@ -319,9 +319,10 @@ func run(repo string) (evidence, error) {
 			Entrypoint: nativeImplementation,
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
-		Target:     "builtin/host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		Target:     "interpreted-builtin/host/" + runtime.GOOS + "/" + runtime.GOARCH,
 		Profile:    "reference",
 		Parameters: []plugin.BuildParameter{
+			{Name: "execution-model", Value: "interpreted-builtin"},
 			{Name: "profile", Value: implementation.StaticResponseProfileV1},
 		},
 	}
