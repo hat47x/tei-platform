@@ -59,6 +59,20 @@ func resolveLegacyContractQueryCapabilityForSelection(
 			selected.Binding.Instance,
 		)
 	}
+	if selected.Instance.Definition != selected.Binding.Target.Database {
+		return CapabilityResolutionLock{}, fmt.Errorf(
+			"resolved Contract Query executor instance realizes %s but target belongs to %s",
+			selected.Instance.Definition,
+			selected.Binding.Target.Database,
+		)
+	}
+	if !selected.Capability.Capability.SupportsDatabaseProvider(selected.Instance.Provider) {
+		return CapabilityResolutionLock{}, fmt.Errorf(
+			"resolved Contract Query executor capability %s does not support instance provider %s",
+			selected.Capability.Capability.ID,
+			selected.Instance.Provider,
+		)
+	}
 	if selected.Binding.Executor != selected.Capability.Capability.ID {
 		return CapabilityResolutionLock{}, fmt.Errorf(
 			"resolved Contract Query executor binding selects %s but capability is %s",
@@ -171,6 +185,16 @@ func buildRuntimeCapabilitySelectionBinding(
 	if selected.Binding.Executor != selected.Capability.Capability.ID {
 		return RuntimeCapabilitySelectionBinding{}, fmt.Errorf(
 			"resolved Contract Query executor binding differs from selected capability",
+		)
+	}
+	if selected.Instance.Definition != selected.Binding.Target.Database {
+		return RuntimeCapabilitySelectionBinding{}, fmt.Errorf(
+			"resolved Contract Query executor instance and target Database differ",
+		)
+	}
+	if !selected.Capability.Capability.SupportsDatabaseProvider(selected.Instance.Provider) {
+		return RuntimeCapabilitySelectionBinding{}, fmt.Errorf(
+			"resolved Contract Query executor capability does not support instance provider",
 		)
 	}
 	if string(selected.Capability.Plugin.ID) != runtimeBinding.PluginID ||
