@@ -108,9 +108,10 @@ var knownElements = map[SourceFormat]map[string]struct{}{
 func main() {
 	formatFlag := flag.String("format", "", "source format: xead or xeaf")
 	inputFlag := flag.String("input", "", "path to the source XML")
+	contractFlag := flag.String("contract", "", "optional transcription contract JSON")
 	flag.Parse()
 	if *formatFlag == "" || *inputFlag == "" {
-		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file>")
+		fmt.Fprintln(os.Stderr, "usage: reference-xead-source-adapter -format xead|xeaf -input <file> [-contract transcription-contract.json]")
 		os.Exit(2)
 	}
 	content, err := os.ReadFile(*inputFlag)
@@ -118,14 +119,37 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	doc, err := Observe(SourceFormat(*formatFlag), content)
+	format := SourceFormat(*formatFlag)
+	doc, err := Observe(format, content)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	receipt := PublicReceipt(doc)
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(PublicReceipt(doc)); err != nil {
+	if *contractFlag == "" {
+		if err := encoder.Encode(receipt); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		return
+	}
+	contractBytes, err := os.ReadFile(*contractFlag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	coverage, err := CheckClassificationCoverage(format, receipt, contractBytes)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	output := struct {
+		Receipt  PublicationReceipt     `json:"receipt"`
+		Coverage ClassificationCoverage `json:"classificationCoverage"`
+	}{Receipt: receipt, Coverage: coverage}
+	if err := encoder.Encode(output); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
