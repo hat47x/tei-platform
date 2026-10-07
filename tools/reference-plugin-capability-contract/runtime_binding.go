@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/plugin"
@@ -12,6 +13,7 @@ const runtimeCapabilityBindingSchema = "tei.reference.runtime-capability-binding
 type RuntimeCapabilityBinding struct {
 	Schema                      string           `json:"schema"`
 	Environment                 core.CanonicalID `json:"environment"`
+	Target                      string           `json:"target,omitempty"`
 	CapabilityLockFingerprint   string           `json:"capabilityLockFingerprint"`
 	PluginID                    string           `json:"pluginId"`
 	PluginVersion               string           `json:"pluginVersion"`
@@ -65,6 +67,7 @@ func buildRuntimeCapabilityBinding(
 	binding := RuntimeCapabilityBinding{
 		Schema:                      runtimeCapabilityBindingSchema,
 		Environment:                 environmentID,
+		Target:                      capabilityLock.Target,
 		CapabilityLockFingerprint:   capabilityLock.LockFingerprint,
 		PluginID:                    capabilityLock.Provider.PluginID,
 		PluginVersion:               capabilityLock.Provider.PluginVersion,
@@ -127,6 +130,13 @@ func verifyRuntimeCapabilityBinding(
 	}
 	if binding.CapabilityLockFingerprint != capabilityLock.LockFingerprint {
 		return fmt.Errorf("runtime capability binding references a different capability lock")
+	}
+	if binding.Target != capabilityLock.Target {
+		return fmt.Errorf(
+			"runtime capability binding target %q differs from capability lock target %q",
+			binding.Target,
+			capabilityLock.Target,
+		)
 	}
 	if binding.PluginID != capabilityLock.Provider.PluginID ||
 		binding.PluginVersion != capabilityLock.Provider.PluginVersion ||
@@ -212,6 +222,9 @@ func validateRuntimeCapabilityBinding(binding RuntimeCapabilityBinding) error {
 		binding.PluginID == "" ||
 		binding.PluginVersion == "" {
 		return fmt.Errorf("runtime capability binding identity is incomplete")
+	}
+	if binding.Target != strings.TrimSpace(binding.Target) {
+		return fmt.Errorf("runtime capability binding target %q has surrounding whitespace", binding.Target)
 	}
 	if _, err := parseVersion(binding.PluginVersion); err != nil {
 		return fmt.Errorf("runtime capability binding plugin version: %w", err)
