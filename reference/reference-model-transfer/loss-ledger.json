@@ -187,7 +187,7 @@
       "evidence": "the inspection layer preserves source facts for audit even when relational diagnostics remain; aggregate fact counts therefore include observations that are not structurally ready for deterministic lowering",
       "risk": "later transcription can accidentally consume an unresolved fact because it exists in RelationalFacts, bypassing the diagnostic boundary",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "expose relationalResolutionStatus independently from fact availability and require resolved status before deterministic semantic lowering; unresolved facts remain Source Evidence only"
+      "stopCondition": "expose relationalResolutionStatus independently from fact availability and require global resolved status before full-set deterministic semantic lowering; unresolved facts remain Source Evidence, while any partial lowering must use the separate per-fact readiness boundary"
     },
     {
       "id": "RML-021",
