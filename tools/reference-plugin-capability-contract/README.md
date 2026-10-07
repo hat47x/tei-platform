@@ -6,6 +6,8 @@ productionの`internal/plugin.CapabilityKind`をすぐに変更せず、Plugin�
 
 最初のcontractはXead / Xeaf Source Adapterです。これはauthoring toolであり、Application Runtime Capabilityではありません。
 
+Capability Contractはrequest / result / failure / unknownの意味を分けて持ちます。unknownをfailureへ畳まず、逆に未対応や実行失敗をunknownとして曖昧にしません。これらの意味はContract fingerprintへ含めます。
+
 このReferenceで確認する境界は次です。
 
 - contract identity / version / fingerprintとprovider packageを分離する
@@ -86,6 +88,8 @@ Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability identityへ�
 同じEnvironmentでOracle targetとPostgreSQL targetが同じgeneric `application-runtime.contract-query-executor`を使っても、それぞれ既存Bindingに従って別Providerを利用できます。generic ContractはProvider選択のAuthorityではなく、選択済みProviderが共通のcallable contractを満たすかを検証する層として働きます。
 
 generic Capability自体が選択Authorityを持つ別scopeでは、曖昧なProviderを明示`Wiring`なしに選ばない従来の規則を維持します。
+
+`RuntimeCapabilitySelectionBinding`は、この既存選択を後からcurrent authorityへ再照合するためのderived bindingです。Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Lock、Runtime Capability Bindingを結びます。productionの`ResolveContractQueryExecutor`で同じ選択を再現できなくなった場合はstaleとして拒否します。
 
 ### 現行Lockで表現できないpackaging
 
