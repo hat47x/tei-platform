@@ -625,3 +625,173 @@ func TestRuntimeCapabilitySelectionRejectsCurrentBindingToDifferentExecutor(t *t
 		t.Fatalf("changed authoritative executor remained current: %v", err)
 	}
 }
+
+
+func TestLegacyRuntimeSelectionReplayRequiresCurrentPluginAuthority(t *testing.T) {
+	definition := exactLegacyRuntimeDefinition(
+		"tei.database.oracle",
+		"database.query.oracle",
+		environment.ProviderOracle,
+		"9",
+	)
+	mapping := legacyRuntimeMapping("database.query.oracle")
+	envID := core.MustCanonicalID("development")
+	instanceID := core.MustCanonicalID("sales.oracle")
+	target := realization.ContractQueryTarget{
+		Database: core.MustCanonicalID("sales_oracle"),
+		Contract: core.MustCanonicalID("sales.oracle.contract"),
+		Query:    core.MustLocalName("find"),
+	}
+	env := environment.Environment{
+		ID: envID,
+		Plugins: []environment.ExtensionRequirement{{
+			ID: definition.ID, CompatibleMajor: 1,
+		}},
+		Instances: []environment.DatabaseInstance{{
+			ID:         instanceID,
+			Definition: target.Database,
+			Provider:   environment.ProviderOracle,
+		}},
+	}
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{definition}}
+	resolvedPlugins, err := catalog.ResolveEnvironment(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindings := []realization.ContractQueryExecutorBinding{{
+		Environment: envID,
+		Instance:    instanceID,
+		Target:      target,
+		Executor:    definition.Provides[0].ID,
+	}}
+	selected, err := realization.ResolveContractQueryExecutor(
+		env,
+		resolvedPlugins,
+		bindings,
+		instanceID,
+		target,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilityLock, err := resolveLegacyContractQueryCapabilityForSelection(
+		selected,
+		definition,
+		mapping,
+		evidenceForLegacyRuntimeSelection(
+			t,
+			definition,
+			mapping,
+			"current-plugin-authority",
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeLock, err := plugin.BuildLock(catalog, []environment.Environment{env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeBinding, err := buildLegacyRuntimeCapabilityBinding(
+		capabilityLock,
+		runtimeLock,
+		envID,
+		definition,
+		mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectionBinding, err := buildRuntimeCapabilitySelectionBinding(
+		runtimeBinding,
+		capabilityLock,
+		selected,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := verifyLegacyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		runtimeLock,
+		env,
+		catalog,
+		bindings,
+		definition,
+		mapping,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	catalogDriftDefinition := definition
+	catalogDriftDefinition.Provides = append(
+		[]plugin.Capability(nil),
+		definition.Provides...,
+	)
+	catalogDriftDefinition.Provides[0] = cloneLegacyCapabilityForTest(
+		t,
+		catalogDriftDefinition.Provides[0],
+	)
+	catalogDriftDefinition.Provides[0].DatabaseProviders = append(
+		catalogDriftDefinition.Provides[0].DatabaseProviders,
+		environment.ProviderPostgres,
+	)
+	err = verifyLegacyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		runtimeLock,
+		env,
+		plugin.Catalog{Plugins: []plugin.Definition{catalogDriftDefinition}},
+		bindings,
+		definition,
+		mapping,
+	)
+	if err == nil || !strings.Contains(err.Error(), "fingerprint diverged") {
+		t.Fatalf("catalog definition drift remained current: %v", err)
+	}
+
+	legacyDefinitionDrift := catalogDriftDefinition
+	err = verifyLegacyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		runtimeLock,
+		env,
+		catalog,
+		bindings,
+		legacyDefinitionDrift,
+		mapping,
+	)
+	if err == nil || !strings.Contains(err.Error(), "authoritative legacy Plugin definition") {
+		t.Fatalf("legacy authority drift remained current: %v", err)
+	}
+
+	runtimeLockDrift := runtimeLock
+	runtimeLockDrift.Environments = append(
+		[]plugin.EnvironmentLock(nil),
+		runtimeLock.Environments...,
+	)
+	runtimeLockDrift.Environments[0].Plugins = append(
+		[]plugin.LockedPlugin(nil),
+		runtimeLock.Environments[0].Plugins...,
+	)
+	runtimeLockDrift.Environments[0].Plugins[0].ArtifactDigest =
+		"sha256:" + strings.Repeat("a", 64)
+	err = verifyLegacyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+		selectionBinding,
+		runtimeBinding,
+		capabilityLock,
+		runtimeLockDrift,
+		env,
+		catalog,
+		bindings,
+		definition,
+		mapping,
+	)
+	if err == nil || !strings.Contains(err.Error(), "artifact") {
+		t.Fatalf("runtime Plugin Lock artifact drift remained current: %v", err)
+	}
+}
