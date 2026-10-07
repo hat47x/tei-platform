@@ -92,8 +92,9 @@ func TestInaccessibleAssertionDoesNotLeakThroughRelationsOrCoverageMapping(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if envelope.Redactions.Assertions != 1 || envelope.Redactions.Relations == 0 {
-		t.Fatalf("restricted assertion or relation was not redacted: %+v", envelope.Redactions)
+	if envelope.Redactions.Assertions != 1 || envelope.Redactions.Relations == 0 ||
+		envelope.Corpus.MetadataState != MetadataPartial {
+		t.Fatalf("restricted assertion or relation was not redacted: envelope=%+v", envelope)
 	}
 	for _, assertion := range envelope.Corpus.Assertions {
 		if assertion.ID == "conflict-b" {
@@ -168,5 +169,62 @@ func TestTransportDoesNotInterpretAccessReferencesAsAuthority(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("exact opaque access reference was not honored")
+	}
+}
+
+
+func TestHiddenOneSidedConflictMarksVisibleAssertionPartial(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		switch corpus.Assertions[i].ID {
+		case "conflict-a":
+			corpus.Assertions[i].ConflictsWith = nil
+		case "conflict-b":
+			corpus.Assertions[i].ConflictsWith = []string{"conflict-a"}
+			corpus.Assertions[i].AccessRefs = []string{"policy:restricted"}
+		}
+	}
+
+	envelope, err := exportCorpusForAccess(corpus, TransportAccess{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported, err := importTransportEnvelope(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := evaluateCorpus(imported, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "conflict-a")
+	if got.MetadataState != MetadataPartial ||
+		got.UseState != "review-required" ||
+		!hasReason(got, "EPISTEMIC_METADATA_INCOMPLETE") {
+		t.Fatalf("hidden incoming conflict was silently forgotten: %+v", got)
+	}
+}
+
+func TestPartialTransportHealthDoesNotClaimCompleteProjectView(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.Dependencies[0].AccessRefs = []string{"policy:restricted-dependency"}
+
+	envelope, err := exportCorpusForAccess(corpus, TransportAccess{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported, err := importTransportEnvelope(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := evaluateCorpus(imported, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Health.ViewMetadataState != MetadataPartial {
+		t.Fatalf("partial transport was presented as complete health view: %+v", projection.Health)
+	}
+	if !containsString(projection.AuthorityLimits, "partial-transport-health-is-not-project-wide-health") {
+		t.Fatalf("missing partial-view health authority limit: %+v", projection.AuthorityLimits)
 	}
 }
