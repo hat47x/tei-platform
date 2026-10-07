@@ -27,10 +27,18 @@ type SourceLocator struct {
 
 type ObservedNode struct {
 	Kind       string            `json:"kind"`
+	Namespace  string            `json:"namespace,omitempty"`
 	Known      bool              `json:"known"`
 	Locator    SourceLocator     `json:"locator"`
 	Attributes map[string]string `json:"attributes,omitempty"`
 	Text       string            `json:"text,omitempty"`
+}
+
+type ObservedMarkup struct {
+	Kind          string `json:"kind"`
+	ParentLocator string `json:"parentLocator,omitempty"`
+	Target        string `json:"target,omitempty"`
+	Data          string `json:"data,omitempty"`
 }
 
 type SourceFact struct {
@@ -46,9 +54,10 @@ type ObservedDocument struct {
 	Format         SourceFormat    `json:"format"`
 	ArtifactSHA256 string          `json:"artifactSha256"`
 	RootKind       string          `json:"rootKind"`
-	Nodes          []ObservedNode  `json:"nodes"`
-	Facts          []SourceFact    `json:"facts,omitempty"`
-	Unresolved     []ObservedIssue `json:"unresolved,omitempty"`
+	Nodes          []ObservedNode   `json:"nodes"`
+	Markup         []ObservedMarkup `json:"markup,omitempty"`
+	Facts          []SourceFact     `json:"facts,omitempty"`
+	Unresolved     []ObservedIssue  `json:"unresolved,omitempty"`
 }
 
 type ObservedIssue struct {
@@ -64,13 +73,14 @@ type PublicationReceipt struct {
 	RootKind            string                    `json:"rootKind"`
 	ElementCounts       map[string]int            `json:"elementCounts"`
 	AttributeNameCounts map[string]map[string]int `json:"attributeNameCounts"`
-	UnknownElements     map[string]int            `json:"unknownElements,omitempty"`
+	UnknownElements       map[string]int            `json:"unknownElements,omitempty"`
+	MarkupCounts          map[string]int            `json:"markupCounts,omitempty"`
 	LocatorCount          int                       `json:"locatorCount"`
 	LocatorSetFingerprint string                    `json:"locatorSetFingerprint"`
 	Facts                 []PublishedFact           `json:"facts,omitempty"`
-	Unresolved          []PublishedIssue          `json:"unresolved,omitempty"`
-	AuthorityLimits     []string                  `json:"authorityLimits"`
-	ReceiptFingerprint  string                    `json:"receiptFingerprint"`
+	Unresolved            []PublishedIssue          `json:"unresolved,omitempty"`
+	AuthorityLimits       []string                  `json:"authorityLimits"`
+	ReceiptFingerprint    string                    `json:"receiptFingerprint"`
 }
 
 type PublishedFact struct {
@@ -176,13 +186,14 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 		case xml.StartElement:
 			ordinal := 1
 			parentPath := ""
+			qualifiedKind := xmlElementName(t.Name)
 			if len(stack) > 0 {
 				parent := stack[len(stack)-1]
-				parent.childCounts[t.Name.Local]++
-				ordinal = parent.childCounts[t.Name.Local]
+				parent.childCounts[qualifiedKind]++
+				ordinal = parent.childCounts[qualifiedKind]
 				parentPath = parent.path
 			}
-			path := fmt.Sprintf("%s/%s[%d]", parentPath, t.Name.Local, ordinal)
+			path := fmt.Sprintf("%s/%s[%d]", parentPath, qualifiedKind, ordinal)
 			attrs := make(map[string]string, len(t.Attr))
 			for _, attr := range t.Attr {
 				name := attr.Name.Local
@@ -192,8 +203,10 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 				attrs[name] = attr.Value
 			}
 			_, known := knownElements[format][t.Name.Local]
+			known = known && t.Name.Space == ""
 			node := ObservedNode{
 				Kind:       t.Name.Local,
+				Namespace:  t.Name.Space,
 				Known:      known,
 				Locator:    SourceLocator{Path: path, LegacyHints: selectedLegacyHints(attrs)},
 				Attributes: attrs,
@@ -206,7 +219,13 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 			stack = append(stack, &parseFrame{kind: t.Name.Local, path: path, childCounts: map[string]int{}, nodeIndex: idx})
 			doc.Facts = append(doc.Facts, factsForNode(format, doc.Nodes[idx])...)
 			if !known {
-				doc.Unresolved = append(doc.Unresolved, ObservedIssue{Code: "unknown-element", Locator: path, Detail: t.Name.Local})
+				code := "unknown-element"
+				detail := t.Name.Local
+				if t.Name.Space != "" {
+					code = "namespaced-element"
+					detail = t.Name.Space + " " + t.Name.Local
+				}
+				doc.Unresolved = append(doc.Unresolved, ObservedIssue{Code: code, Locator: path, Detail: detail})
 			}
 		case xml.CharData:
 			if len(stack) == 0 {
@@ -214,6 +233,12 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 			}
 			idx := stack[len(stack)-1].nodeIndex
 			doc.Nodes[idx].Text += string(t)
+		case xml.Comment:
+			doc.Markup = append(doc.Markup, ObservedMarkup{Kind: "comment", ParentLocator: currentParentLocator(stack), Data: string(t)})
+		case xml.ProcInst:
+			doc.Markup = append(doc.Markup, ObservedMarkup{Kind: "processing-instruction", ParentLocator: currentParentLocator(stack), Target: t.Target, Data: string(t.Inst)})
+		case xml.Directive:
+			doc.Markup = append(doc.Markup, ObservedMarkup{Kind: "directive", ParentLocator: currentParentLocator(stack), Data: string(t)})
 		case xml.EndElement:
 			if len(stack) == 0 || stack[len(stack)-1].kind != t.Name.Local {
 				return ObservedDocument{}, fmt.Errorf("unexpected closing element %s", t.Name.Local)
@@ -238,6 +263,7 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 		ElementCounts:       map[string]int{},
 		AttributeNameCounts: map[string]map[string]int{},
 		UnknownElements:     map[string]int{},
+		MarkupCounts:        map[string]int{},
 		AuthorityLimits: []string{
 			"source-observation-is-not-canonical-authority",
 			"legacy-id-sortkey-and-xml-position-are-not-canonical-identity",
@@ -258,6 +284,12 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			receipt.UnknownElements[node.Kind]++
 		}
 		locatorDigests = append(locatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
+	}
+	for _, markup := range doc.Markup {
+		receipt.MarkupCounts[markup.Kind]++
+	}
+	if len(receipt.MarkupCounts) == 0 {
+		receipt.MarkupCounts = nil
 	}
 	for _, fact := range doc.Facts {
 		receipt.Facts = append(receipt.Facts, PublishedFact{
@@ -392,6 +424,20 @@ func factsForNode(format SourceFormat, node ObservedNode) []SourceFact {
 		}
 	}
 	return nil
+}
+
+func currentParentLocator(stack []*parseFrame) string {
+	if len(stack) == 0 {
+		return ""
+	}
+	return stack[len(stack)-1].path
+}
+
+func xmlElementName(name xml.Name) string {
+	if name.Space == "" {
+		return name.Local
+	}
+	return "{" + name.Space + "}" + name.Local
 }
 
 func selectedLegacyHints(attrs map[string]string) map[string]string {
