@@ -44,7 +44,9 @@ run_reference_tests() {
   local repo="$1"
   (
     cd "$repo"
-    go test ./cmd/tei       -run 'TestBuildKnowledgeContextReturnsSemanticValidationContext|TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier'       -count=1
+    go test ./cmd/tei \
+      -run 'TestBuildKnowledgeContextReturnsSemanticValidationContext|TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier' \
+      -count=1
   )
 }
 
@@ -54,13 +56,18 @@ git -C "$TASK_REPO" config user.email "reference@tei.invalid"
 git -C "$TASK_REPO" checkout -qb rq034-tool-neutral-task
 
 TASK_WORKSPACE="$TASK_REPO/reference/workspace"
+TASK_TEI="$TMP_ROOT/tei-task"
 BASE_REVISION="$(git -C "$TASK_REPO" rev-parse HEAD)"
 
-build_tei "$TASK_REPO" "$TMP_ROOT/tei-task"
+build_tei "$TASK_REPO" "$TASK_TEI"
 run_reference_tests "$TASK_REPO" > "$TMP_ROOT/before-tests.txt"
-run_tei "$TASK_REPO" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-validate.txt"
-run_tei "$TASK_REPO" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/with-decisions-world.json"
-run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.quantity_positive   > "$TMP_ROOT/before-context.json"
+run_tei "$TASK_TEI" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-validate.txt"
+run_tei "$TASK_TEI" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/with-decisions-world.json"
+run_tei "$TASK_TEI" knowledge-context \
+  -workspace "$TASK_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.quantity_positive \
+  > "$TMP_ROOT/before-context.json"
 
 cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
 rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
@@ -75,8 +82,12 @@ validation sales.order_line.unit_price_positive positive {
 }
 EOF
 
-run_tei "$TASK_REPO" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
-run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/task-context.json"
+run_tei "$TASK_TEI" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
+run_tei "$TASK_TEI" knowledge-context \
+  -workspace "$TASK_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.unit_price_positive \
+  > "$TMP_ROOT/task-context.json"
 run_tei "$TASK_TEI" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-world.json"
 run_reference_tests "$TASK_REPO" > "$TMP_ROOT/task-tests.txt"
 
@@ -104,8 +115,8 @@ git -C "$TASK_REPO" add "$TARGET_FILE"
 git -C "$TASK_REPO" commit -qm "reference: add unit price validation"
 
 RESULT_REVISION="$(git -C "$TASK_REPO" rev-parse HEAD)"
-
 commit_paths="$(git -C "$TASK_REPO" diff-tree --no-commit-id --name-only -r HEAD)"
+
 if [[ "$commit_paths" != "$TARGET_FILE" ]]; then
   echo "result commit changed unexpected paths:" >&2
   printf '%s\n' "$commit_paths" >&2
@@ -114,11 +125,16 @@ fi
 
 git clone -q --local --no-hardlinks "$TASK_REPO" "$INTEGRATION_REPO"
 INTEGRATION_WORKSPACE="$INTEGRATION_REPO/reference/workspace"
+INTEGRATION_TEI="$TMP_ROOT/tei-integration"
 
-build_tei "$INTEGRATION_REPO" "$TMP_ROOT/tei-integration"
+build_tei "$INTEGRATION_REPO" "$INTEGRATION_TEI"
 run_reference_tests "$INTEGRATION_REPO" > "$TMP_ROOT/integration-tests.txt"
-run_tei "$INTEGRATION_REPO" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
-run_tei "$INTEGRATION_REPO" knowledge-context   -workspace "$INTEGRATION_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/integration-context.json"
+run_tei "$INTEGRATION_TEI" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
+run_tei "$INTEGRATION_TEI" knowledge-context \
+  -workspace "$INTEGRATION_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.unit_price_positive \
+  > "$TMP_ROOT/integration-context.json"
 run_tei "$INTEGRATION_TEI" world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-world.json"
 
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/integration-context.json"
@@ -133,9 +149,11 @@ fi
 git clone -q --local --no-hardlinks "$ROOT" "$CONFLICT_REPO"
 git -C "$CONFLICT_REPO" config user.name "TEI Reference"
 git -C "$CONFLICT_REPO" config user.email "reference@tei.invalid"
+
 CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
-CONFLICT_BASE_BRANCH="$(git -C "$CONFLICT_REPO" branch --show-current)"
 CONFLICT_TEI="$TMP_ROOT/tei-conflict"
+CONFLICT_BASE_REVISION="$(git -C "$CONFLICT_REPO" rev-parse HEAD)"
+
 build_tei "$CONFLICT_REPO" "$CONFLICT_TEI"
 
 git -C "$CONFLICT_REPO" checkout -qb semantic-a
@@ -151,7 +169,7 @@ run_tei "$CONFLICT_TEI" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/c
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-a.tei
 git -C "$CONFLICT_REPO" commit -qm "branch a: add collision data"
 
-git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
+git -C "$CONFLICT_REPO" checkout -q --detach "$CONFLICT_BASE_REVISION"
 git -C "$CONFLICT_REPO" checkout -qb semantic-b
 cat > "$CONFLICT_WORKSPACE/semantic/sales/tool-neutral-collision-b.tei" <<'EOF'
 
@@ -165,7 +183,8 @@ run_tei "$CONFLICT_TEI" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/c
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-b.tei
 git -C "$CONFLICT_REPO" commit -qm "branch b: add collision data"
 
-git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
+git -C "$CONFLICT_REPO" checkout -q --detach "$CONFLICT_BASE_REVISION"
+git -C "$CONFLICT_REPO" checkout -qb semantic-integration
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-a -m "merge semantic-a"
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-b -m "merge semantic-b"
 
