@@ -41,6 +41,12 @@ func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) e
 	if ctx.DataDesign == nil {
 		return fmt.Errorf("expected Data Design fingerprint %q, but this subject has no Data Design Context", expected)
 	}
+	if ctx.DataDesign.EvidenceCoverageStatus != "complete" {
+		return fmt.Errorf(
+			"Data Design Context evidence coverage is %q; cached Context reuse requires complete Evidence coverage",
+			ctx.DataDesign.EvidenceCoverageStatus,
+		)
+	}
 	if ctx.DataDesign.Fingerprint != expected {
 		return fmt.Errorf(
 			"Data Design Context fingerprint mismatch: expected=%s current=%s",
