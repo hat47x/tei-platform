@@ -68,7 +68,6 @@ func productionImports(root string) ([]importEdge, error) {
 	return edges, nil
 }
 
-
 // readModulePath prevents a future go.mod module rename from silently
 // bypassing first-party import checks that were written for "tei".
 func readModulePath(root string) (string, error) {
