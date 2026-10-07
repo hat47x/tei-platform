@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -404,5 +405,188 @@ func structToLeasePolicyForTest() resource.LeasePolicy {
 		RenewBefore: "2m",
 		RevokeTimeout: "5s",
 		RenewalFailure: resource.RenewalFailClosed,
+	}
+}
+
+
+type referenceArtifactVerifier struct{}
+
+func (referenceArtifactVerifier) Verify(
+	ctx context.Context,
+	identity plugin.Identity,
+	artifact plugin.Artifact,
+) (pluginruntime.ArtifactVerification, error) {
+	if err := ctx.Err(); err != nil {
+		return pluginruntime.ArtifactVerification{}, err
+	}
+	return pluginruntime.ArtifactVerification{
+		VerifierID:        "reference-artifact-verifier",
+		DigestVerified:    artifact.Digest != "",
+		SignatureVerified: artifact.SignatureRef == "",
+		ProvenanceChecked: artifact.Provenance == "",
+	}, nil
+}
+
+type recordingNetworkEnforcer struct {
+	Calls  int
+	Policy pluginruntime.NetworkPolicy
+}
+
+func (e *recordingNetworkEnforcer) ApplyNetworkPolicy(
+	ctx context.Context,
+	policy pluginruntime.NetworkPolicy,
+) (pluginruntime.Cleanup, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	e.Calls++
+	e.Policy = policy
+	return func(context.Context) error { return nil }, nil
+}
+
+type recordingFilesystemEnforcer struct {
+	Calls  int
+	Policy pluginruntime.FilesystemPolicy
+}
+
+func (e *recordingFilesystemEnforcer) ApplyFilesystemPolicy(
+	ctx context.Context,
+	policy pluginruntime.FilesystemPolicy,
+) (pluginruntime.Cleanup, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	e.Calls++
+	e.Policy = policy
+	return func(context.Context) error { return nil }, nil
+}
+
+type recordingSandboxedRunner struct {
+	Calls int
+}
+
+func (r *recordingSandboxedRunner) InvokeSandboxed(
+	ctx context.Context,
+	command pluginruntime.ProcessCommand,
+	req pluginruntime.Request,
+) (pluginruntime.Response, error) {
+	if err := ctx.Err(); err != nil {
+		return pluginruntime.Response{}, err
+	}
+	r.Calls++
+	if command.Executable == "" {
+		return pluginruntime.Response{}, fmt.Errorf("sandbox runner received empty executable")
+	}
+	return pluginruntime.Response{
+		Status: pluginruntime.ResponseOK,
+	}, nil
+}
+
+func TestGenericCapabilityBridgeInvokesExistingHostSandboxPath(t *testing.T) {
+	fx := newProductionExecutionFixture(
+		t,
+		plugin.RuntimeProcess,
+		plugin.SandboxRequired,
+		CapabilityIsolationHostEnforcedSandbox,
+		nil,
+	)
+	bridge, err := buildLegacyProductionExecutionBridge(
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	network := &recordingNetworkEnforcer{}
+	filesystem := &recordingFilesystemEnforcer{}
+	runner := &recordingSandboxedRunner{}
+	registry := pluginruntime.Registry{
+		Verifier: referenceArtifactVerifier{},
+		Sandboxes: pluginruntime.HostSandboxLauncher{
+			Network:    network,
+			Filesystem: filesystem,
+			Runner:     runner,
+		},
+	}
+	invocation, err := invokeLegacyCapabilityWithProductionBridge(
+		context.Background(),
+		bridge,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		registry,
+		fx.Plan,
+		fx.Mapping,
+		"query",
+		"request-1",
+		map[string]any{"id": "customer-1"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if invocation.Response.Status != pluginruntime.ResponseOK ||
+		!invocation.Provenance.Sandboxed ||
+		invocation.Provenance.Verification == nil ||
+		!invocation.Provenance.Verification.DigestVerified {
+		t.Fatalf("production invocation=%+v", invocation)
+	}
+	if network.Calls != 1 || !network.Policy.DenyByDefault {
+		t.Fatalf("network policy was not enforced: %+v", network)
+	}
+	if filesystem.Calls != 1 || !filesystem.Policy.DenyByDefault {
+		t.Fatalf("filesystem policy was not enforced: %+v", filesystem)
+	}
+	if runner.Calls != 1 {
+		t.Fatalf("sandboxed runner calls=%d want=1", runner.Calls)
+	}
+}
+
+func TestGenericCapabilityBridgeDoesNotBypassMissingHostSandboxEnforcement(t *testing.T) {
+	fx := newProductionExecutionFixture(
+		t,
+		plugin.RuntimeProcess,
+		plugin.SandboxRequired,
+		CapabilityIsolationHostEnforcedSandbox,
+		nil,
+	)
+	bridge, err := buildLegacyProductionExecutionBridge(
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	registry := pluginruntime.Registry{
+		Verifier: referenceArtifactVerifier{},
+		Sandboxes: pluginruntime.HostSandboxLauncher{
+			Runner: &recordingSandboxedRunner{},
+		},
+	}
+	if _, err := invokeLegacyCapabilityWithProductionBridge(
+		context.Background(),
+		bridge,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		registry,
+		fx.Plan,
+		fx.Mapping,
+		"query",
+		"request-2",
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "deny-by-default network policy") {
+		t.Fatalf("generic bridge bypassed missing host enforcement: %v", err)
 	}
 }
