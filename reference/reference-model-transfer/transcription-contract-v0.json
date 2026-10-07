@@ -203,7 +203,9 @@
           "legacy PK or SK is not automatically a TEI business occurrence identifier or candidate key",
           "legacy key membership does not by itself establish an accepted functional dependency",
           "composite key shape does not by itself establish an allowed-combination/domain constraint; domain restriction is a separate semantic question",
-          "DDL realization evidence such as PRIMARY KEY or UNIQUE remains separate from business identity"
+          "DDL realization evidence such as PRIMARY KEY or UNIQUE remains separate from business identity",
+          "missing TableKey ID is unresolved because Relationship and synchronization logic address TableKey by ID",
+          "duplicate TableKey ID within one unambiguous Table is unresolved and is never selected by read order"
         ],
         "authorityLimits": [
           "legacy-key-is-not-business-identity",
@@ -244,7 +246,9 @@
           "missing or duplicate SortKey on a multi-field relationship key is not repaired from field names, data types, or source order",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
           "ExistWhen prose is not compiled into a constraint without explicit acceptance",
-          "duplicate participating Table/Field identities make relationship resolution unresolved even when a later occurrence would otherwise satisfy the reference"
+          "duplicate participating Table/Field identities make relationship resolution unresolved even when a later occurrence would otherwise satisfy the reference",
+          "missing Relationship ID remains source ambiguity even when both participating key references resolve",
+          "duplicate Relationship IDs remain distinct source-locator facts and are not collapsed into one relationship identity"
         ],
         "authorityLimits": [
           "relationship-key-reference-is-not-business-identity",
