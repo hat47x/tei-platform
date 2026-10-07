@@ -31,6 +31,42 @@ func (b registeredBuiltin) Invoke(_ context.Context, _ pruntime.Request) (prunti
 	return pruntime.Response{Status: pruntime.ResponseOK, Payload: raw}, nil
 }
 
+
+
+type countingBuiltin struct {
+	id      plugin.Identity
+	fp      string
+	invoked *int
+}
+
+func (b countingBuiltin) Identity() plugin.Identity { return b.id }
+func (b countingBuiltin) DescriptorFingerprint() string { return b.fp }
+func (b countingBuiltin) Invoke(_ context.Context, _ pruntime.Request) (pruntime.Response, error) {
+	(*b.invoked)++
+	raw, _ := json.Marshal(executor.Result{AttemptID: "replacement", Outcome: executor.OutcomeAccepted})
+	return pruntime.Response{Status: pruntime.ResponseOK, Payload: raw}, nil
+}
+
+type swappingBuiltin struct {
+	id           plugin.Identity
+	fp           string
+	key          string
+	registrations map[string]pruntime.BuiltinRegistration
+	replacement  pruntime.BuiltinRegistration
+	invoked      *int
+}
+
+func (b swappingBuiltin) Identity() plugin.Identity { return b.id }
+func (b swappingBuiltin) DescriptorFingerprint() string {
+	b.registrations[b.key] = b.replacement
+	return b.fp
+}
+func (b swappingBuiltin) Invoke(_ context.Context, _ pruntime.Request) (pruntime.Response, error) {
+	*b.invoked++
+	raw, _ := json.Marshal(executor.Result{AttemptID: "accepted-original", Outcome: executor.OutcomeAccepted})
+	return pruntime.Response{Status: pruntime.ResponseOK, Payload: raw}, nil
+}
+
 type buildBoundBuiltinFixture struct {
 	definition plugin.Definition
 	env        environment.Environment
@@ -267,5 +303,59 @@ func TestBuildBoundBuiltinRejectsUnsupportedSignatureOrProvenanceMetadata(t *tes
 				t.Fatal("expected unsupported builtin artifact trust metadata to fail closed")
 			}
 		})
+	}
+}
+
+
+func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	key := "tei.native.runtime.reference@1.0.0"
+	registrations := map[string]pruntime.BuiltinRegistration{}
+	originalInvoked := 0
+	replacementInvoked := 0
+
+	replacement := pruntime.BuiltinRegistration{
+		Builtin: countingBuiltin{
+			id:      fx.reg.Builtin.Identity(),
+			fp:      fx.reg.Builtin.DescriptorFingerprint(),
+			invoked: &replacementInvoked,
+		},
+		BuildPlanFingerprint: fx.reg.BuildPlanFingerprint,
+		RealizationDigest:    fx.reg.RealizationDigest,
+	}
+	original := swappingBuiltin{
+		id:            fx.reg.Builtin.Identity(),
+		fp:            fx.reg.Builtin.DescriptorFingerprint(),
+		key:           key,
+		registrations: registrations,
+		replacement:   replacement,
+		invoked:       &originalInvoked,
+	}
+	registrations[key] = pruntime.BuiltinRegistration{
+		Builtin:              original,
+		BuildPlanFingerprint: fx.reg.BuildPlanFingerprint,
+		RealizationDigest:    fx.reg.RealizationDigest,
+	}
+
+	adapter := pruntime.DeploymentExecutor{
+		Plan: fx.plan,
+		Registry: pruntime.Registry{
+			BuiltinRegistrations: registrations,
+		},
+		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+	}
+	result, err := adapter.Execute(context.Background(), executor.Command{
+		ActionID:       "app/start",
+		IdempotencyKey: "k-native",
+		Kind:           string(deployment.ActionApplicationStart),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if originalInvoked != 1 || replacementInvoked != 0 {
+		t.Fatalf("invocation counts: original=%d replacement=%d", originalInvoked, replacementInvoked)
+	}
+	if result.AttemptID != "accepted-original" {
+		t.Fatalf("unexpected builtin instance executed: %#v", result)
 	}
 }
