@@ -290,21 +290,8 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 	if !sha256Pattern.MatchString(a.MeaningFingerprint) {
 		return a, fmt.Errorf("meaningFingerprint %q is not exact sha256", a.MeaningFingerprint)
 	}
-	if !a.Origin.valid() || !a.IngestedBy.valid() || !a.Mode.valid() || !a.ReviewState.valid() {
-		return a, fmt.Errorf("invalid origin / ingestedBy / assertionMode / reviewState")
-	}
-	if a.ReviewState == ReviewNative &&
-		(a.Origin != OriginUser || a.IngestedBy != IngestedByUser || !a.Mode.canBeWorkingPremise()) {
-		return a, fmt.Errorf("native assertion requires direct user content and a working-premise statement kind")
-	}
-	if a.Origin == OriginAI && a.ReviewState == ReviewNative {
-		return a, fmt.Errorf("AI-origin content cannot be native even when a user ingests it")
-	}
-	if (a.ReviewState == ReviewReviewed || a.ReviewState == ReviewConditional) && a.Review == nil {
-		return a, fmt.Errorf("%s assertion requires review record", a.ReviewState)
-	}
-	if a.ReviewState == ReviewConditional && !hasNonInferredScope(a.Context) {
-		return a, fmt.Errorf("conditional review requires observed or declared context scope")
+	if !a.Origin.valid() || !a.IngestedBy.valid() || !a.Mode.valid() {
+		return a, fmt.Errorf("invalid origin / ingestedBy / assertionMode")
 	}
 
 	context, err := normalizeBindings(a.Context)
@@ -333,42 +320,76 @@ func normalizeAssertion(a Assertion) (Assertion, error) {
 		return a, fmt.Errorf("evidence: %w", err)
 	}
 	a.Evidence = evidence
-	if a.Review != nil {
-		if err := normalizeReview(a.Review); err != nil {
-			return a, err
-		}
+	reviewEvents, err := normalizeReviewEvents(a.ReviewEvents)
+	if err != nil {
+		return a, fmt.Errorf("reviewEvents: %w", err)
 	}
+	a.ReviewEvents = reviewEvents
 	a.Supersedes = normalizeStrings(a.Supersedes)
 	a.ConflictsWith = normalizeStrings(a.ConflictsWith)
 	a.ReviewerCandidates = normalizeStrings(a.ReviewerCandidates)
 	return a, nil
 }
 
-func normalizeReview(r *ReviewRecord) error {
-	r.ID = strings.TrimSpace(r.ID)
-	r.Reviewer = strings.TrimSpace(r.Reviewer)
-	r.Method = strings.TrimSpace(r.Method)
-	r.ReviewedMeaningFingerprint = strings.TrimSpace(r.ReviewedMeaningFingerprint)
-	if r.ID == "" || r.Reviewer == "" || !sha256Pattern.MatchString(r.ReviewedMeaningFingerprint) {
-		return fmt.Errorf("review requires id / reviewer / exact reviewedMeaningFingerprint")
-	}
-	if r.Method != reviewMethodHumanConfirmation {
-		return fmt.Errorf("review method %q is unsupported; v0 requires %q", r.Method, reviewMethodHumanConfirmation)
-	}
-	if err := validateOptionalTime("reviewedAt", r.ReviewedAt); err != nil || r.ReviewedAt == "" {
-		if err != nil {
-			return err
+func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
+	out := make([]ReviewEvent, 0, len(values))
+	seenIDs := map[string]struct{}{}
+	seenSequences := map[int]struct{}{}
+
+	for i, event := range values {
+		event.ID = strings.TrimSpace(event.ID)
+		event.Reviewer = strings.TrimSpace(event.Reviewer)
+		event.Method = strings.TrimSpace(event.Method)
+		event.MeaningFingerprint = strings.TrimSpace(event.MeaningFingerprint)
+		event.OccurredAt = strings.TrimSpace(event.OccurredAt)
+
+		if event.Sequence <= 0 || event.ID == "" || event.Reviewer == "" {
+			return nil, fmt.Errorf("reviewEvents[%d] requires positive sequence, id, and reviewer", i)
 		}
-		return fmt.Errorf("reviewedAt is required")
+		if !event.Kind.valid() {
+			return nil, fmt.Errorf("reviewEvents[%d] has invalid kind %q", i, event.Kind)
+		}
+		if event.Method != reviewMethodHuman {
+			return nil, fmt.Errorf("reviewEvents[%d] method %q is unsupported; v0 requires %q", i, event.Method, reviewMethodHuman)
+		}
+		if !sha256Pattern.MatchString(event.MeaningFingerprint) {
+			return nil, fmt.Errorf("reviewEvents[%d] meaningFingerprint %q is not exact sha256", i, event.MeaningFingerprint)
+		}
+		if err := validateOptionalTime("reviewEvents.occurredAt", event.OccurredAt); err != nil || event.OccurredAt == "" {
+			if err != nil {
+				return nil, err
+			}
+			return nil, fmt.Errorf("reviewEvents[%d].occurredAt is required", i)
+		}
+		if _, ok := seenIDs[event.ID]; ok {
+			return nil, fmt.Errorf("duplicate review event id %q", event.ID)
+		}
+		if _, ok := seenSequences[event.Sequence]; ok {
+			return nil, fmt.Errorf("duplicate review event sequence %d", event.Sequence)
+		}
+		seenIDs[event.ID] = struct{}{}
+		seenSequences[event.Sequence] = struct{}{}
+
+		evidence, err := normalizeEvidenceRefs(event.Evidence)
+		if err != nil {
+			return nil, fmt.Errorf("reviewEvents[%d] evidence: %w", i, err)
+		}
+		event.Evidence = evidence
+		event.Conditions = normalizeStrings(event.Conditions)
+		out = append(out, event)
 	}
-	evidence, err := normalizeEvidenceRefs(r.Evidence)
-	if err != nil {
-		return fmt.Errorf("review evidence: %w", err)
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Sequence < out[j].Sequence
+	})
+	for i := 1; i < len(out); i++ {
+		if out[i].Sequence <= out[i-1].Sequence {
+			return nil, fmt.Errorf("review event sequence must increase")
+		}
 	}
-	r.Evidence = evidence
-	r.Conditions = normalizeStrings(r.Conditions)
-	return nil
+	return out, nil
 }
+
 
 func normalizeEvidenceRefs(values []EvidenceRef) ([]EvidenceRef, error) {
 	out := make([]EvidenceRef, 0, len(values))
