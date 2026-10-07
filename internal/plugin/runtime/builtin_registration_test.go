@@ -467,6 +467,7 @@ func TestRuntimeEngineBindingChangesRuntimePolicyFingerprint(t *testing.T) {
 func TestBindRuntimeEngineLockDoesNotMutateInputPlan(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
 	input := fx.plan
+	input.RuntimeEngineLockFingerprint = ""
 	for i := range input.Plugins {
 		if input.Plugins[i].Plugin.ID == core.MustCanonicalID("tei.native.runtime.reference") {
 			input.Plugins[i].RuntimeEngine = nil
@@ -556,5 +557,24 @@ func TestBuildBoundBuiltinRejectsDirectEngineInjectionWithoutLock(t *testing.T) 
 		Kind:           string(deployment.ActionApplicationStart),
 	}); err == nil {
 		t.Fatal("expected direct runtime engine injection without engine lock to fail")
+	}
+}
+
+
+func TestBindRuntimeEngineLockRejectsPrepopulatedEngineWithoutLockAuthority(t *testing.T) {
+	fx := newBuildBoundBuiltinFixture(t)
+	input := fx.plan
+	input.RuntimeEngineLockFingerprint = ""
+	input.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(input)
+
+	lock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: fx.definition.ID, Version: fx.definition.Version},
+			Engine: builtinRuntimeEngine(),
+		}},
+	}
+	if _, err := pruntime.BindRuntimeEngineLock(input, lock); err == nil {
+		t.Fatal("expected prepopulated runtime engine without lock authority to fail")
 	}
 }
