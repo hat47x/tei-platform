@@ -77,6 +77,7 @@ type DataDesignDeterminantTerm struct {
 }
 
 type DataDesignBusinessIdentityCandidate struct {
+	Fingerprint      string                      `json:"fingerprint"`
 	Relation         core.CanonicalID            `json:"relation"`
 	Components       []DataDesignDeterminantTerm `json:"components"`
 	TargetOccurrence core.CanonicalID            `json:"targetOccurrence"`
@@ -87,6 +88,7 @@ type DataDesignBusinessIdentityCandidate struct {
 }
 
 type DataDesignFunctionalDependencyCandidate struct {
+	Fingerprint         string                      `json:"fingerprint"`
 	Relation            core.CanonicalID            `json:"relation"`
 	Determinants        []DataDesignDeterminantTerm `json:"determinants"`
 	DependentOccurrence core.CanonicalID            `json:"dependentOccurrence"`
@@ -119,7 +121,7 @@ type DataDesignPersistenceRealization struct {
 	Authority    string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v3"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v4"
 
 type DataDesignContext struct {
 	ProjectionRevision                    string                                    `json:"projectionRevision"`
@@ -544,41 +546,40 @@ func buildDataDesignContext(
 						Attribute: validation.Attribute,
 					},
 				}
-				ctx.BusinessIdentityCandidates = append(
-					ctx.BusinessIdentityCandidates,
-					DataDesignBusinessIdentityCandidate{
-						Relation:         validation.Relation,
-						Components:       append([]DataDesignDeterminantTerm(nil), identityTerms...),
-						TargetOccurrence: relation.Target,
-						BasisConstraint:  validation.ID,
-						Scope:            "per-relation-source-occurrence",
-						Nature:           "candidate-from-accepted-scoped-uniqueness",
-						EvidenceNeeded: []string{
-							"source-occurrence-business-identifier",
-							"relation-business-meaning",
-							"target-membership-exclusivity",
-							"identifier-stability",
-							"temporal-validity",
-						},
+				identityCandidate := DataDesignBusinessIdentityCandidate{
+					Relation:         validation.Relation,
+					Components:       append([]DataDesignDeterminantTerm(nil), identityTerms...),
+					TargetOccurrence: relation.Target,
+					BasisConstraint:  validation.ID,
+					Scope:            "per-relation-source-occurrence",
+					Nature:           "candidate-from-accepted-scoped-uniqueness",
+					EvidenceNeeded: []string{
+						"source-occurrence-business-identifier",
+						"relation-business-meaning",
+						"target-membership-exclusivity",
+						"identifier-stability",
+						"temporal-validity",
 					},
-				)
-				ctx.FunctionalDependencyCandidates = append(
-					ctx.FunctionalDependencyCandidates,
-					DataDesignFunctionalDependencyCandidate{
-						Relation:            validation.Relation,
-						Determinants:        append([]DataDesignDeterminantTerm(nil), identityTerms...),
-						DependentOccurrence: relation.Target,
-						BasisConstraint:     validation.ID,
-						Scope:               "per-relation-source-occurrence",
-						Nature:              "candidate-from-accepted-scoped-uniqueness",
-						EvidenceNeeded: []string{
-							"source-occurrence-business-identifier",
-							"relation-business-meaning",
-							"target-membership-exclusivity",
-							"temporal-validity",
-						},
+				}
+				identityCandidate.Fingerprint = businessIdentityCandidateFingerprint(identityCandidate)
+				ctx.BusinessIdentityCandidates = append(ctx.BusinessIdentityCandidates, identityCandidate)
+
+				fdCandidate := DataDesignFunctionalDependencyCandidate{
+					Relation:            validation.Relation,
+					Determinants:        append([]DataDesignDeterminantTerm(nil), identityTerms...),
+					DependentOccurrence: relation.Target,
+					BasisConstraint:     validation.ID,
+					Scope:               "per-relation-source-occurrence",
+					Nature:              "candidate-from-accepted-scoped-uniqueness",
+					EvidenceNeeded: []string{
+						"source-occurrence-business-identifier",
+						"relation-business-meaning",
+						"target-membership-exclusivity",
+						"temporal-validity",
 					},
-				)
+				}
+				fdCandidate.Fingerprint = functionalDependencyCandidateFingerprint(fdCandidate)
+				ctx.FunctionalDependencyCandidates = append(ctx.FunctionalDependencyCandidates, fdCandidate)
 			}
 		}
 	}
@@ -701,6 +702,60 @@ func buildDataDesignContext(
 	})
 	ctx.Fingerprint = dataDesignFingerprint(ctx)
 	return ctx
+}
+
+func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandidate) string {
+	value.Fingerprint = ""
+	value.Components = normalizedDeterminantTerms(value.Components)
+	value.EvidenceNeeded = normalizedStrings(value.EvidenceNeeded)
+	return typedDataDesignCandidateFingerprint(
+		"tei.knowledge.data-design.business-identity-candidate/v1",
+		value,
+	)
+}
+
+func functionalDependencyCandidateFingerprint(value DataDesignFunctionalDependencyCandidate) string {
+	value.Fingerprint = ""
+	value.Determinants = normalizedDeterminantTerms(value.Determinants)
+	value.EvidenceNeeded = normalizedStrings(value.EvidenceNeeded)
+	return typedDataDesignCandidateFingerprint(
+		"tei.knowledge.data-design.functional-dependency-candidate/v1",
+		value,
+	)
+}
+
+func normalizedDeterminantTerms(values []DataDesignDeterminantTerm) []DataDesignDeterminantTerm {
+	out := append([]DataDesignDeterminantTerm(nil), values...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
+		if out[i].Data != out[j].Data {
+			return out[i].Data < out[j].Data
+		}
+		return out[i].Attribute < out[j].Attribute
+	})
+	return out
+}
+
+func normalizedStrings(values []string) []string {
+	out := append([]string(nil), values...)
+	sort.Strings(out)
+	return out
+}
+
+func typedDataDesignCandidateFingerprint(kind string, value any) string {
+	encoded, err := json.Marshal(struct {
+		Kind      string `json:"kind"`
+		Candidate any    `json:"candidate"`
+	}{
+		Kind:      kind,
+		Candidate: value,
+	})
+	if err != nil {
+		panic("Data Design candidate contains non-JSON state: " + err.Error())
+	}
+	return sourceindex.Fingerprint(encoded)
 }
 
 func dataDesignFingerprint(ctx *DataDesignContext) string {
