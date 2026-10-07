@@ -24,18 +24,31 @@ AIが生成した内容を、そのままCanonical Worldと同一視しません
 AIがauthoritative sourceへ未統合の状態で作った変更は、通常のfile edit、Git差分、または必要に応じて**Proposal / Structured Intent candidate**として扱います。Proposal objectは、意味差分や根拠を構造化して受け渡す手段になり得ますが、すべてのAI編集を開始する前に必ず生成する中間形式にはしません。
 
 ```text
-Natural Language / Repository Evidence / AI
-                    ↓
-       Proposal / Structured Intent
-                    ↓
-         Shared Acceptance Boundary
-                    ↓
+Natural Language / Repository Evidence / AI / Human
+                    |
+          +---------+---------+
+          |                   |
+          v                   v
+Proposal / Structured     isolated file edit /
+Intent candidate          Git branch / worktree
+          |                   |
+          +---------+---------+
+                    |
+                    v
+     integration / acceptance boundary
+                    |
+                    v
            authoritative source
-                    ↓ reload
+                    |
+                  reload
+                    v
           Canonical TEI Meaning
-                    ↓
+                    |
+                    v
    Mapping / Driver / Projection / Runtime
 ```
+
+Structured Proposalは、意味差分や根拠を構造化して扱う必要がある場合の経路です。通常のRepository開発では、分離されたbranch / worktree上のfile editをGitで統合する経路も同等に正規です。どちらも、未統合の変更をCanonical authorityとは扱わず、正式統合後のauthoritative sourceから同じ意味を再構築できることを要求します。
 
 ### ProposalはCanonical authorityではない
 
@@ -186,12 +199,12 @@ Proposal schema、API、AI provider、Editor UI、承認UXは、そのEvidence�
 
 ### 増える負担
 
-- Proposalと採用済みDecisionを区別して管理する必要がある
-- revision / conflict handlingが必要になる
-- AI経路でも通常のValidation / Conformanceを通す必要がある
-- provenanceやEvidenceを保存する範囲を設計する必要がある
+- Structured Proposalを利用する経路では、Proposalと採用済みDecisionを区別する必要がある
+- 並行変更にはGitまたは対象に応じたrevision / conflict handlingが必要になる
+- AI経路でも通常のValidation / Conformanceを省略できない
+- provenanceやEvidenceを永続化する場合は、何をTEIが所有し、何をGit / CI / Tool側へ残すかを区別する必要がある
 
-これらは、AI支援をTEIの既存authority modelへ安全に統合するために受け入れます。
+これらは、AI支援をTEIの既存authority modelへ安全に統合するために受け入れます。ただし、すべての変更へProposal lifecycleやTEI独自stateを追加する負担は受け入れません。
 
 ## 採用しない案
 
@@ -225,12 +238,11 @@ autonomyとauthorityは別の関心事であり、security境界を曖昧にす�
 
 ## 検証
 
-`ISSUE-000027`では少なくとも次を確認します。
+`ISSUE-000027`ではStructured Proposal / Shared Acceptanceを利用する経路を確認します。
 
 - read-only knowledge searchとCanonical変更候補を分離できる
-- ProposalがCanonical ID / Source / Evidenceを参照できる
-- AI Proposalをそのままauthoritative sourceへ書かない
-- Editor / CLI等の候補も同じAcceptance原則を利用できる
+- Structured Proposalを利用する場合、Canonical ID / Source / Evidenceを参照できる
+- Proposalをそのままauthoritative sourceへ書かない
 - stale base revisionを検出できる
 - 採用後のauthoritative sourceをAIなしで再読込できる
 - reload後のCanonicalがValidation / Conformanceを満たす
@@ -238,10 +250,21 @@ autonomyとauthorityは別の関心事であり、security境界を曖昧にす�
 - Derived Experience Knowledgeを無効化してもCanonical Worldが変わらない
 - AI固有Evidenceを除去しても業務上の意味が失われない
 
+`ISSUE-000083` / GitHub #972では、Proposalを必須にしないGit-native経路を確認します。
+
+- clean Repository clone / worktreeからTEI CLIをbuild・実行できる
+- managed authoring sourceを直接編集し、Source Indexから同じ意味へ追跡できる
+- ordinary Git commit / branchを変更成果物として利用できる
+- 別のintegration contextから同じCanonical meaningを再構築できる
+- `.tei/decisions`等のderived / supporting stateを除去してもCanonical meaningが変わらない
+- Git上はmerge可能でも意味上不正な変更を既存Validationが拒否できる
+- Agent Adapter、TEI独自Change Set、native developer MCPを必須にしない
+
 ## 関連文書
 
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
+- `plan/issue/000083-tool-neutral-development-reference.md`
 - `docs/architecture.md`
