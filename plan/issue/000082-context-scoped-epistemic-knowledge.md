@@ -64,7 +64,7 @@ reviewed in project B / external API
 
 Referenceでは、content provenanceとingestion actorを別に表し、出所不明のlegacy資料をユーザー由来へ推定しません。
 
-### relevanceとapplicabilityを分ける
+### 検索上の関連度と現在文脈での適用可能性を分ける
 
 検索結果が意味的に近いことと、現在の文脈で前提にできることは別です。
 
@@ -278,21 +278,24 @@ ADR-0030採用後の最初のTEI側Reference candidateを、既存の `work/issu
 一つのtruth / confidence fieldへ畳まず、少なくとも次を別fieldとして保持する。
 
 - target
-- origin
-- assertion mode
-- review state
-- explicit / inferred context
+- content origin
+- ingested by
+- statement kind
+- v0 review state
+- observed / declared / inferred context
 - valid / checked time
 - Evidence
 - review record
 - supersedes / conflictsWith
 - downstream dependency criticality
 
+v0のreview stateはReference内部の暫定表現であり、ADR-0030のproduction modelではconfirmation / lifecycle / conditions等へ分離する。
+
 schemaはReference限定の `tei.reference.epistemic-corpus/v0` とし、現時点で `std.epistemic` やCore enumへ昇格させない。
 
 ### E1 review validity candidate
 
-`user + fact + native` はcurrent scope内の前提として扱える。一方、AI originを `native` にする入力は拒否する。
+user-originかつuserが直接入力したfact / observation / requirement / decision / constraintは、current scope内のworking premiseとして扱える。一方、AI-origin contentはユーザーが貼り付けてもnativeにはせず、保存や取り込みだけで確認済みへ昇格させない。
 
 reviewed / conditional assertionはv0では `method=human-confirmation` のreview recordを要求する。AI自己reviewをreview済み状態へ読み替えない。そのうえでreview recordの `reviewedMeaningFingerprint` と現在の `meaningFingerprint` を比較し、意味identityが変わった場合は旧reviewを現在値へ継承せず `review-required` とする。
 
@@ -312,7 +315,7 @@ assertion scopeとcurrent contextをdimensionごとに照合する。
 - 値が異なる: `incompatible`
 - 必要dimensionがcurrent contextに無い: `unknown`
 
-`unknown` を「たぶん同じ」としてpremiseへ昇格させない。explicit / inferred contextも区別し、inferred contextを使ったassessmentにはsignalを残す。
+`unknown` を「たぶん同じ」としてpremiseへ昇格させない。observed / declared / inferred contextを区別し、inferred contextを使ったassessmentにはsignalを残す。
 
 ### E3 Project Knowledge Health candidate
 
@@ -341,6 +344,8 @@ reviewer candidateには `reviewer-candidate-is-not-review-authority` を明示�
 最初のfixtureには次を同時に含める。
 
 - current-context user fact
+- user decision / constraintのworking-premise test
+- userが取り込んだAI-origin contentのprovenance保持test
 - AI unreviewed assertion
 - human-reviewed assertion
 - narrow-scope conditional review
@@ -384,16 +389,16 @@ reviewer candidate
 - [ ] provenance不明のlegacy資料をreview済みへ推定しない
 - [ ] metadata欠落export / reimportでreview stateを自動復元しない
 - [ ] epistemic coverage不足を観測できる
-- [ ] AI生成主張が保存だけでreviewedへ昇格しない
+- [ ] AI生成主張が保存だけで確認済みへ昇格しない
 - [ ] origin / assertion mode / review state / scope / time / Evidenceを分離できる
 - [ ] explicit contextとinferred contextを区別できる
 - [ ] narrow scopeのfactをwide scopeへ黙って一般化しない
-- [ ] semantic edit後にreview validityを再評価できる
-- [ ] AI summaryへreview stateを無条件継承しない
+- [ ] semantic edit後に確認の有効性を再評価できる
+- [ ] AI summaryへ確認状態を無条件継承しない
 - [ ] contradictionを保持できる
 - [ ] retrievalへrelevanceとcontext compatibilityを別signalとして渡せる
 - [ ] Project Knowledge Healthがcritical dependencyを考慮できる
-- [ ] stakeholder review requestへimpact / Evidence / scopeを渡せる
+- [ ] stakeholderへの確認依頼へimpact / Evidence / scopeを渡せる
 - [ ] conditional reviewでscope refinementを保持できる
 - [ ] SUI #3184とSEI #660が同じcontractを利用できる
 - [ ] Core固定enum追加なしで最初のReferenceを成立させられる
