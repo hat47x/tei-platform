@@ -12,7 +12,12 @@ go run ./tools/reference-epistemic-knowledge \
   -context tools/reference-epistemic-knowledge/testdata/context-current.json
 ```
 
-出力schemaは `tei.reference.epistemic-assessment/v0` です。
+出力は、意味契約とJSON表現を別IDで持ちます。
+
+- semantic contract: `tei.epistemic-projection/v0`
+- representation schema: `tei.reference.epistemic-assessment/v0`
+
+consumerは両方を確認します。同じsemantic contractでも未知のrepresentation schemaを自動受理せず、同じschemaでもcontract IDが異なる場合は互換と推定しません。
 
 ## 分離する情報
 
@@ -224,6 +229,30 @@ epistemic transport自身はRBACや組織Authorityを判定しません。既存
 redaction summaryは件数だけを返し、不可視assertion ID等をtransport metadataから漏らしません。
 
 このcandidateが示すのはaccess containmentであり、authorization decisionそのものではありません。`accessRefs` の発行・解釈・組織Roleとの対応は既存TEI authorization境界の責務です。
+
+## Semantic contractとrepresentation schemaの分離
+
+SUI / SEIの第二consumerを作った結果、Reference内部のJSON schema IDへ直接依存すると、TEI側の表現変更がそのままconsumer破壊になることが分かりました。
+
+そのためProjectionは次を分離します。
+
+```text
+contract
+  tei.epistemic-projection/v0
+
+schema
+  tei.reference.epistemic-assessment/v0
+```
+
+`contract` はconsumerへ渡す意味境界、`schema` はこのReferenceの具体的JSON表現です。
+
+互換性をschema名やfield presenceから推測しません。
+
+- contractが未知: fail closed
+- contractは既知だがschemaが未知: decoder未対応としてfail closed
+- schemaが同じでもcontractが異なる: fail closed
+
+将来、同じsemantic contractに対して別representation profileを追加する場合、consumerは対応decoderを明示的に追加します。意味変更と表現変更を同じversion軸へ押し込めません。
 
 ## v0をproduction modelへ固定しない
 
