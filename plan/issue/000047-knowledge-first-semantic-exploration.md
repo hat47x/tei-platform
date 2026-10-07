@@ -762,6 +762,7 @@ code-changing laneの既存ruleに従い、full `tools/repository-health-check.s
 - [ ] functional dependencyをfirst-classにauthorしていない対象で、根拠不足を「従属性なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] composite domain / allowed-combination constraintをfirst-classにauthorしていない対象で、根拠不足を「複合制約なし」へ丸めずunresolvedとしてAIへ返せる
 - [ ] temporal / history conditionをfirst-classにauthorしていない対象で、datetime属性や履歴columnを根拠に「時間意味が確定済み」と扱わずunresolvedとしてAIへ返せる
+- [ ] 適用開始日、履歴番号、version番号、最新フラグ等をbusiness occurrence identifierへ自動昇格せず、同じoccurrenceのhistory / versionか別occurrenceかをSource / Contract不足時はunresolvedとして保持できる
 - [ ] Data / Relation / Validation / Capability / Application Pattern等をread-only探索できる
 - [ ] Human / AIが同じauthoritative Source / Canonical referencesへ戻れる
 - [ ] authoritative / derived associative / episodic memoryを混同しない
