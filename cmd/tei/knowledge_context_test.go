@@ -484,8 +484,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
 		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
 		"candidate keys":        dataDesign.CandidateKeys,
-		"functional dependency": dataDesign.FunctionalDependencies,
+		"functional dependency":       dataDesign.FunctionalDependencies,
 		"composite domain constraint": dataDesign.CompositeDomainConstraints,
+		"temporal/history conditions": dataDesign.TemporalHistoryConditions,
 	} {
 		if state.Nature != "unresolved" || state.Reason == "" {
 			t.Fatalf("%s was invented or left unexplained: %+v", name, state)
@@ -525,6 +526,17 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	} {
 		if !containsKnowledgeContextString(dataDesign.CompositeDomainConstraintEvidenceQuestions, question) {
 			t.Fatalf("composite domain constraint evidence question %q is missing: %+v", question, dataDesign.CompositeDomainConstraintEvidenceQuestions)
+		}
+	}
+	for _, question := range []string{
+		"when-is-the-business-occurrence-or-identity-valid",
+		"can-the-business-identifier-be-reused-across-time",
+		"which-state-transitions-change-identity-membership-or-validity",
+		"which-history-or-validity-period-must-be-preserved",
+		"which-source-or-contract-establishes-the-temporal-semantics",
+	} {
+		if !containsKnowledgeContextString(dataDesign.TemporalHistoryEvidenceQuestions, question) {
+			t.Fatalf("temporal/history evidence question %q is missing: %+v", question, dataDesign.TemporalHistoryEvidenceQuestions)
 		}
 	}
 	for _, question := range []string{
@@ -717,6 +729,9 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"relation-shape-is-not-composite-domain-constraint-evidence",
 		"scoped-uniqueness-is-not-composite-domain-constraint",
 		"persistence-unique-constraint-is-not-composite-domain-constraint",
+		"absence-of-authored-temporal-history-condition-is-not-timeless-semantics",
+		"datetime-or-timestamp-attribute-is-not-temporal-semantics",
+		"persistence-history-column-is-not-business-temporal-semantics",
 		"ambiguous-semantic-identity-does-not-produce-design-candidates",
 		"ambiguous-persistence-identity-does-not-produce-realization-facts",
 		"relation-shape-does-not-establish-business-meaning",
