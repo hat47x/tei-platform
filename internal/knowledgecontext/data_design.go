@@ -138,8 +138,10 @@ type DataDesignContext struct {
 	BusinessOccurrenceIdentifier          DataDesignKnowledgeState                  `json:"businessOccurrenceIdentifier"`
 	CandidateKeys                         DataDesignKnowledgeState                  `json:"candidateKeys"`
 	FunctionalDependencies                DataDesignKnowledgeState                  `json:"functionalDependencies"`
+	DomainConstraints                      DataDesignKnowledgeState                  `json:"domainConstraints"`
 	BusinessIdentityEvidenceQuestions     []string                                  `json:"businessIdentityEvidenceQuestions"`
 	FunctionalDependencyEvidenceQuestions []string                                  `json:"functionalDependencyEvidenceQuestions"`
+	DomainConstraintEvidenceQuestions      []string                                  `json:"domainConstraintEvidenceQuestions"`
 	RelationEvidenceQuestions             []string                                  `json:"relationEvidenceQuestions"`
 	AuthorityLimits                       []string                                  `json:"authorityLimits"`
 }
@@ -277,6 +279,10 @@ func buildDataDesignContext(
 			Nature: "unresolved",
 			Reason: "functional-dependency-not-first-class-in-current-canonical-model",
 		},
+		DomainConstraints: DataDesignKnowledgeState{
+			Nature: "unresolved",
+			Reason: "domain-constraint-not-first-class-in-current-canonical-model",
+		},
 		BusinessIdentityEvidenceQuestions: []string{
 			"which-fields-identify-the-business-occurrence",
 			"what-is-the-uniqueness-scope",
@@ -293,6 +299,13 @@ func buildDataDesignContext(
 			"which-source-or-evidence-establishes-the-dependency",
 			"is-this-a-functional-dependency-or-a-domain-constraint",
 			"does-scoped-uniqueness-imply-business-functional-dependency-or-only-local-constraint",
+		},
+		DomainConstraintEvidenceQuestions: []string{
+			"which-value-combinations-are-allowed-or-forbidden",
+			"is-this-constraint-about-identity-functional-dependency-or-domain-membership",
+			"under-what-scope-and-time-does-the-domain-constraint-hold",
+			"which-source-or-contract-establishes-the-allowed-combinations",
+			"is-the-domain-static-or-derived-from-reference-data",
 		},
 		RelationEvidenceQuestions: []string{
 			"what-business-meaning-does-the-relation-express",
@@ -311,6 +324,10 @@ func buildDataDesignContext(
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
+			"absence-of-authored-domain-constraint-is-not-no-domain-constraint",
+			"relation-shape-is-not-domain-constraint-evidence",
+			"scoped-uniqueness-is-not-domain-constraint",
+			"persistence-unique-constraint-is-not-domain-constraint",
 			"ambiguous-semantic-identity-does-not-produce-design-candidates",
 			"ambiguous-persistence-identity-does-not-produce-realization-facts",
 			"relation-key-is-not-business-identifier",
