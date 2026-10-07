@@ -150,3 +150,16 @@ source observation
 ```
 
 CLIの`-local-candidates`は最初の二段階をsource locator付きで調べるためのローカル機能であり、public Evidenceへ保存しない。
+
+
+## Unresolved projection boundary
+
+Source Adapterで見つかった未解決状態を、そのまま恒久的なloss ledgerへ書き込まない。まず`UnresolvedProjection`へ集約する。
+
+projectionでは、source観測時の未知状態、mappingの未決定、mapping済みcandidateのsemantic未確定を区別する。これにより、XMLを理解できなかった状態と、転写方針がまだ無い状態と、転写方針はあるが意味を確定していない状態を一つの`unresolved`へまとめない。
+
+`mixed`なkindでは、既知要素へ適用されたExtensionを未知側の観測へ引き継がない。未知側はmapping未決定のまま扱う。Extensionは、mappingが実際に適用されたsemantic candidateにだけ結び付ける。
+
+public projectionにはsource valueとstructural locatorを含めない。件数、kind、未解決の種類、mapping status、必要なauthority limitだけを残す。
+
+`loss-ledger.json`は論点単位の台帳であり、このprojectionからRML IDを自動発番しない。複数の観測が同じ既存論点へ集約される場合もあれば、新しい論点を示す場合もあるためである。
