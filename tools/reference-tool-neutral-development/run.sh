@@ -61,8 +61,18 @@ BASE_REVISION="$(git -C "$TASK_REPO" rev-parse HEAD)"
 
 build_tei "$TASK_REPO" "$TASK_TEI"
 run_reference_tests "$TASK_REPO" > "$TMP_ROOT/before-tests.txt"
+run_tei "$TASK_TEI" workspace-files -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/managed-files.json"
+grep -q '"path": "semantic/sales/validation.tei"' "$TMP_ROOT/managed-files.json"
+
 run_tei "$TASK_TEI" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-validate.txt"
 run_tei "$TASK_TEI" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/with-decisions-world.json"
+run_tei "$TASK_TEI" source-index \
+  -workspace "$TASK_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.quantity_positive \
+  > "$TMP_ROOT/before-source-index.json"
+grep -q '"path": "semantic/sales/validation.tei"' "$TMP_ROOT/before-source-index.json"
+
 run_tei "$TASK_TEI" knowledge-context \
   -workspace "$TASK_WORKSPACE" \
   -subject-kind semantic-validation \
@@ -83,6 +93,13 @@ validation sales.order_line.unit_price_positive positive {
 EOF
 
 run_tei "$TASK_TEI" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
+run_tei "$TASK_TEI" source-index \
+  -workspace "$TASK_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.unit_price_positive \
+  > "$TMP_ROOT/task-source-index.json"
+grep -q '"path": "semantic/sales/validation.tei"' "$TMP_ROOT/task-source-index.json"
+
 run_tei "$TASK_TEI" knowledge-context \
   -workspace "$TASK_WORKSPACE" \
   -subject-kind semantic-validation \
@@ -130,6 +147,13 @@ INTEGRATION_TEI="$TMP_ROOT/tei-integration"
 build_tei "$INTEGRATION_REPO" "$INTEGRATION_TEI"
 run_reference_tests "$INTEGRATION_REPO" > "$TMP_ROOT/integration-tests.txt"
 run_tei "$INTEGRATION_TEI" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
+run_tei "$INTEGRATION_TEI" source-index \
+  -workspace "$INTEGRATION_WORKSPACE" \
+  -subject-kind semantic-validation \
+  -subject-id sales.order_line.unit_price_positive \
+  > "$TMP_ROOT/integration-source-index.json"
+grep -q '"path": "semantic/sales/validation.tei"' "$TMP_ROOT/integration-source-index.json"
+
 run_tei "$INTEGRATION_TEI" knowledge-context \
   -workspace "$INTEGRATION_WORKSPACE" \
   -subject-kind semantic-validation \
