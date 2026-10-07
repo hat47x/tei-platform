@@ -44,6 +44,8 @@ Referenceではfresh resolutionと採用済みresolutionのreplayも分けます
 
 ただし、callable ProviderのConformanceにはexact implementation artifact digestが必要です。現在のbuiltin Plugin定義はこのidentityを持たないため、旧Capabilityを投影しただけではgeneric Providerとして採用しません。
 
+旧Capabilityから導出したProviderは、投影元のCapability宣言そのものにもfingerprintで結び付けます。Plugin/versionやartifactが同じでも旧宣言の意味が変わった場合は同じ解決結果として扱いません。artifact未確定の旧ProviderはCatalog上の候補として残せますが、callable Providerには昇格せず、別scopeの解決も妨げません。
+
 このReferenceはproduction APIではありません。既存Plugin Lock、Permission、Resource、Sandbox、Runtime Authorityの境界は引き続き有効です。
 
 ## Bundle
