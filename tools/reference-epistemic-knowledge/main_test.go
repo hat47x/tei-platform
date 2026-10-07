@@ -775,3 +775,42 @@ func TestConsumerFreshnessRequirementDoesNotChangeBaseEpistemicState(t *testing.
 		t.Fatalf("consumer-specific freshness mutated base epistemic state: %+v", base)
 	}
 }
+
+
+func TestOneSidedConflictRelationIsProjectedSymmetrically(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		switch corpus.Assertions[i].ID {
+		case "conflict-a":
+			corpus.Assertions[i].ConflictsWith = []string{"conflict-b"}
+		case "conflict-b":
+			corpus.Assertions[i].ConflictsWith = nil
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"conflict-a", "conflict-b"} {
+		got := assessmentByID(t, projection, id)
+		if got.Conflict != "present" || got.UseState != "review-required" {
+			t.Fatalf("one-sided conflict relation was not projected symmetrically for %s: %+v", id, got)
+		}
+	}
+}
+
+func TestSupersessionCycleIsRejected(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		switch corpus.Assertions[i].ID {
+		case "superseded-design":
+			corpus.Assertions[i].Supersedes = []string{"superseding-design"}
+		case "superseding-design":
+			corpus.Assertions[i].Supersedes = []string{"superseded-design"}
+		}
+	}
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "supersession cycle") {
+		t.Fatalf("supersession cycle was accepted: %v", err)
+	}
+}
