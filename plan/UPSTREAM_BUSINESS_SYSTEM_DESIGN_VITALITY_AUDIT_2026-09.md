@@ -21,7 +21,7 @@ The existing upstream trace audit checks whether Requirement / PAS / Plan / Refe
 
 ## 2. External references used as design pressure
 
-The audit used relevant public material on business-system design, including Kozo Watanabe's published work, Three-Element Analysis, and public X-TEA / XEAD material. These are independent design references rather than a schema authority or statement of TEI lineage.
+The audit used relevant public material on business-system design, including published work on Three-Element Analysis and public X-TEA / XEAD material. These are independent design references rather than a schema authority or statement of TEI lineage.
 
 When a TEI boundary is unclear, the useful question is not “how did a historical tool model this noun?” but “what design failure or missing viewpoint was the concept intended to expose?” That question is then tested against current TEI Requirements, Architecture, Reference, and Evidence.
 
