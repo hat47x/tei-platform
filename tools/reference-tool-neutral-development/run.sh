@@ -3,35 +3,73 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TMP_ROOT"' EXIT
-
 TASK_REPO="$TMP_ROOT/task"
 INTEGRATION_REPO="$TMP_ROOT/integration"
-TASK_WORKSPACE="$TASK_REPO/reference/workspace"
-INTEGRATION_WORKSPACE="$INTEGRATION_REPO/reference/workspace"
+CONFLICT_REPO="$TMP_ROOT/conflict"
+STATELESS_WORKSPACE="$TMP_ROOT/stateless-workspace"
 TARGET_FILE="reference/workspace/semantic/sales/validation.tei"
 
+cleanup() {
+  rm -rf "$TMP_ROOT"
+}
+trap cleanup EXIT
+
+if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "tool-neutral reference requires a Git checkout" >&2
+  exit 2
+fi
+
+if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
+  echo "tool-neutral reference requires a clean checkout" >&2
+  git -C "$ROOT" status --short >&2
+  exit 2
+fi
+
 run_tei() {
+  local repo="$1"
+  shift
   (
-    cd "$ROOT"
+    cd "$repo"
     go run ./cmd/tei "$@"
   )
 }
 
-mkdir -p "$TASK_REPO/reference"
-cp -R "$ROOT/reference/workspace" "$TASK_REPO/reference/workspace"
+build_tei() {
+  local repo="$1"
+  local output="$2"
+  (
+    cd "$repo"
+    go build -o "$output" ./cmd/tei
+  )
+}
 
-git -C "$TASK_REPO" init -q
+run_reference_tests() {
+  local repo="$1"
+  (
+    cd "$repo"
+    go test ./cmd/tei       -run 'TestBuildKnowledgeContextReturnsSemanticValidationContext|TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier'       -count=1
+  )
+}
+
+git clone -q --local --no-hardlinks "$ROOT" "$TASK_REPO"
 git -C "$TASK_REPO" config user.name "TEI Reference"
 git -C "$TASK_REPO" config user.email "reference@tei.invalid"
-git -C "$TASK_REPO" add reference/workspace
-git -C "$TASK_REPO" commit -qm "baseline"
+git -C "$TASK_REPO" checkout -qb rq034-tool-neutral-task
 
+TASK_WORKSPACE="$TASK_REPO/reference/workspace"
 BASE_REVISION="$(git -C "$TASK_REPO" rev-parse HEAD)"
 
-run_tei validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-validate.txt"
-run_tei world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-world.json"
-run_tei knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.quantity_positive   > "$TMP_ROOT/before-context.json"
+build_tei "$TASK_REPO" "$TMP_ROOT/tei-task"
+run_reference_tests "$TASK_REPO" > "$TMP_ROOT/before-tests.txt"
+run_tei "$TASK_REPO" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/before-validate.txt"
+run_tei "$TASK_REPO" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/with-decisions-world.json"
+run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.quantity_positive   > "$TMP_ROOT/before-context.json"
+
+cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
+rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
+run_tei "$TASK_REPO" validate -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/stateless-validate.txt"
+run_tei "$TASK_REPO" world -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/without-decisions-world.json"
+cmp "$TMP_ROOT/with-decisions-world.json" "$TMP_ROOT/without-decisions-world.json"
 
 cat >> "$TASK_REPO/$TARGET_FILE" <<'EOF'
 
@@ -40,13 +78,14 @@ validation sales.order_line.unit_price_positive positive {
 }
 EOF
 
-run_tei validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
-run_tei knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/task-context.json"
-run_tei world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-world.json"
+run_tei "$TASK_REPO" validate -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-validate.txt"
+run_tei "$TASK_REPO" knowledge-context   -workspace "$TASK_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/task-context.json"
+run_tei "$TASK_REPO" world -workspace "$TASK_WORKSPACE" > "$TMP_ROOT/task-world.json"
+run_reference_tests "$TASK_REPO" > "$TMP_ROOT/task-tests.txt"
 
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/task-context.json"
 
-if cmp -s "$TMP_ROOT/before-world.json" "$TMP_ROOT/task-world.json"; then
+if cmp -s "$TMP_ROOT/with-decisions-world.json" "$TMP_ROOT/task-world.json"; then
   echo "semantic change did not change Canonical World" >&2
   exit 1
 fi
@@ -76,11 +115,14 @@ if [[ "$commit_paths" != "$TARGET_FILE" ]]; then
   exit 1
 fi
 
-git clone -q "$TASK_REPO" "$INTEGRATION_REPO"
+git clone -q --local --no-hardlinks "$TASK_REPO" "$INTEGRATION_REPO"
+INTEGRATION_WORKSPACE="$INTEGRATION_REPO/reference/workspace"
 
-run_tei validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
-run_tei knowledge-context   -workspace "$INTEGRATION_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/integration-context.json"
-run_tei world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-world.json"
+build_tei "$INTEGRATION_REPO" "$TMP_ROOT/tei-integration"
+run_reference_tests "$INTEGRATION_REPO" > "$TMP_ROOT/integration-tests.txt"
+run_tei "$INTEGRATION_REPO" validate -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-validate.txt"
+run_tei "$INTEGRATION_REPO" knowledge-context   -workspace "$INTEGRATION_WORKSPACE"   -subject-kind semantic-validation   -subject-id sales.order_line.unit_price_positive   > "$TMP_ROOT/integration-context.json"
+run_tei "$INTEGRATION_REPO" world -workspace "$INTEGRATION_WORKSPACE" > "$TMP_ROOT/integration-world.json"
 
 grep -q 'sales.order_line.unit_price_positive' "$TMP_ROOT/integration-context.json"
 cmp "$TMP_ROOT/task-world.json" "$TMP_ROOT/integration-world.json"
@@ -91,16 +133,10 @@ if [[ -n "$(git -C "$INTEGRATION_REPO" status --porcelain)" ]]; then
   exit 1
 fi
 
-CONFLICT_REPO="$TMP_ROOT/conflict"
-CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
-mkdir -p "$CONFLICT_REPO/reference"
-cp -R "$ROOT/reference/workspace" "$CONFLICT_REPO/reference/workspace"
-
-git -C "$CONFLICT_REPO" init -q
+git clone -q --local --no-hardlinks "$ROOT" "$CONFLICT_REPO"
 git -C "$CONFLICT_REPO" config user.name "TEI Reference"
 git -C "$CONFLICT_REPO" config user.email "reference@tei.invalid"
-git -C "$CONFLICT_REPO" add reference/workspace
-git -C "$CONFLICT_REPO" commit -qm "baseline"
+CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
 CONFLICT_BASE_BRANCH="$(git -C "$CONFLICT_REPO" branch --show-current)"
 
 git -C "$CONFLICT_REPO" checkout -qb semantic-a
@@ -112,7 +148,7 @@ data ToolNeutralCollision {
     attribute code type std.code
 }
 EOF
-run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-a-validate.txt"
+run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-a-validate.txt"
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-a.tei
 git -C "$CONFLICT_REPO" commit -qm "branch a: add collision data"
 
@@ -126,7 +162,7 @@ data ToolNeutralCollision {
     attribute code type std.code
 }
 EOF
-run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-b-validate.txt"
+run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-b-validate.txt"
 git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-b.tei
 git -C "$CONFLICT_REPO" commit -qm "branch b: add collision data"
 
@@ -134,7 +170,7 @@ git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-a -m "merge semantic-a"
 git -C "$CONFLICT_REPO" merge -q --no-ff semantic-b -m "merge semantic-b"
 
-if run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-merged-validate.txt" 2>&1; then
+if run_tei "$CONFLICT_REPO" validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-merged-validate.txt" 2>&1; then
   echo "Git-mergeable semantic conflict was not rejected" >&2
   exit 1
 fi
@@ -154,5 +190,6 @@ fi
 printf 'base=%s\n' "$BASE_REVISION"
 printf 'result=%s\n' "$RESULT_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"
+printf 'decision-ledger-independent=true\n'
 printf 'semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT\n'
 printf 'tool-neutral development reference: PASS\n'
