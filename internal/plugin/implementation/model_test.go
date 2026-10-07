@@ -9,6 +9,7 @@ import (
 	"tei/internal/permission"
 	"tei/internal/plugin"
 	"tei/internal/plugin/implementation"
+	pluginbuiltin "tei/internal/plugin/implementation/builtin"
 	pruntime "tei/internal/plugin/runtime"
 )
 
@@ -74,7 +75,7 @@ func TestNormalizeDoesNotMutateSource(t *testing.T) {
 func TestStaticResponseBuiltinUsesExistingRuntimeABI(t *testing.T) {
 	source := implementationSource(`{"attemptId":"tei-native","outcome":"accepted"}`)
 	definition := implementationDefinition()
-	builtin, err := implementation.NewBuiltin(source, definition)
+	builtin, err := pluginbuiltin.New(source, definition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ func TestStaticResponseBuiltinUsesExistingRuntimeABI(t *testing.T) {
 
 func TestStaticResponseBuiltinRejectsUnsupportedInvocation(t *testing.T) {
 	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
-	builtin, err := implementation.NewBuiltin(source, implementationDefinition())
+	builtin, err := pluginbuiltin.New(source, implementationDefinition())
 	if err != nil {
 		t.Fatal(err)
 	}
