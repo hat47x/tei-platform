@@ -279,3 +279,27 @@ Referenceでは、productionの`ResolveContractQueryExecutor`が先に選んだP
 Bindingが削除された場合、同じtargetにBindingが重複した場合、別executorへ変更された場合はreplayを拒否する。OracleとPostgreSQLが同じgeneric Contractを満たしても、それぞれの既存target-specific Bindingに従って別Providerを利用できる。
 
 この結果は、Capability Contract共通化のために既存の細粒度なRuntime selection Authorityを捨てる必要がないことを示す。一方、generic Capability自体が選択Authorityを持つscopeでは、従来どおり複数Providerを暗黙選択せず明示`Wiring`を要求する。
+
+
+## E6 Conformance issuer Authority pressure — 2026-10-07
+
+Conformance Evidenceの存在だけをresolverの信頼根拠にすると、Provider自身が任意のEvidence fingerprintを作り、自己申告をConformance済みとして見せられる。このため、Evidenceの内容identityと発行Authorityを分離するReference candidateを追加した。
+
+`CapabilityConformanceAuthorityGrant`は、exact Contract fingerprint、Conformance profile、issuer、Accepted Authority Evidence fingerprintを結び付ける。`CapabilityConformanceAttestation`は、current Conformance Evidence fingerprintをissuerとAuthority Evidenceへ結び付ける。
+
+検証経路は次のように分ける。
+
+```text
+exact Contract / Provider replay
+  -> current Conformance Evidence
+  -> issuer attestation
+  -> Accepted Conformance Authority Grant
+```
+
+Providerと同じIDをissuerにする場合も、Authority Grantが無ければ自己発行Evidenceは通らない。反対に、明示的なGrantがあればself-conformanceを表現できる。この差により「Providerだから信頼する」と「このissuerをこのContract/profileについて信頼する」を分離する。
+
+Authority Evidenceの更新はCapability Resolution Lock identityへ含めない。Contract / Providerが同じならresolution identityは維持し、Authority binding fingerprintだけを更新する。
+
+このcandidateはpublisher trustの最終実装ではない。Authority Evidence fingerprintそのものの真正性、署名、組織trust root、key rotation、失効は未実装である。production化では既存artifact signature / provenance境界と接続できるかを確認し、fingerprintの存在だけをtrustへ読み替えない。
+
+また、実Source Adapter consumerについてはPR #968のSource Adapter contractがnamespaced lookalikeをUnresolvedに残す一方、現在mainのimportable `internal/xeadsource.Parse`はlocal nameだけでknown判定するため、そのままConformance済みProviderとして登録できないことを確認した。#963側で別readerを複製せず、#968のsource-faithful implementationがimportableなhost surfaceへ接続できる段階でE2E consumerを成立させる。
