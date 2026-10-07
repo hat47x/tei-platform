@@ -34,6 +34,9 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		t.Fatal(err)
 	}
 	got := buildReport(inspection)
+	if got.SchemaVersion != "reference-xead-source-inspection-v1" {
+		t.Fatalf("schema version=%q", got.SchemaVersion)
+	}
 	if got.RelationalFacts.DerivedLegacyKeyMemberCount != 1 ||
 		got.RelationalFacts.RelationshipsUsingDerivedKeyCount != 1 {
 		t.Fatalf("derived relation pressure was not detected: %#v", got.RelationalFacts)
@@ -102,6 +105,9 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	var got report
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
+	}
+	if got.SchemaVersion != "reference-xead-source-inspection-v1" {
+		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.RuntimeKeyCount != 1 ||
 		got.Source.Format != xeadsource.FormatXeaf ||
