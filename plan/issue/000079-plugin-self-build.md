@@ -423,3 +423,13 @@ execution identity
 #973が解決するまでは、standalone executable相当のSB-2達成、realization digest単独による完全なruntime behavior固定、engine差替えへのreplay safety、Web / Wasm engine bindingを主張しません。
 
 #971でfocused test、self-build Evidence v1、既存SB-1 / Go process SB-2 regression、TEI-native actual invocation、full Repository Health、clean pre/post stateを確認します。actual Evidenceが得られるまでは#969をReady化・mergeしません。
+
+### 2026-10-07 SB-1 builder identity再監査
+
+E3でexact native builder identityを導入した後、SB-1 package materializationにも同じ問題が残っていることを確認しました。runner内のGo helperがpackageを生成しているにもかかわらず、Build PlanではGo toolchain digestをBuilder artifactとしていました。
+
+この非対称性を解消するため、`tools/reference-plugin-package-builder`を追加します。runnerはこのbuilderをisolated Go stateで2回buildし、binary digest一致を確認します。そのexact builder digestをSB-1 Build Planへ入れ、first / second builderからpackageを各1回生成してpackage bytes / digest一致を要求します。
+
+Go toolchainはSB-1 packageの直接Builderではなく、Reference builderを生成するstage0 seed側のEvidenceとして扱います。これによってSB-1とTEI-native E3でBuilder identityの意味を揃えます。
+
+ただし、builder executable自体のSB-3 stage convergenceやOS-level hermetic executionが成立したという主張はしません。
