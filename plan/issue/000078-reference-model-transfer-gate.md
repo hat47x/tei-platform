@@ -146,6 +146,7 @@ Reference Modelで新しいgapが見つかっても、既存Issueが所有する
 - GitHub #940はoriginal X-TEA Runtimeのactual behavior取得専用レーンへ移す。本Issueでは結果を受け取る。
 - GitHub #941はReference Modelの利用条件・公開範囲確認専用レーンへ移す。本Issueでは安全側publication boundaryを維持し、結果を受け取る。
 - GitHub #951 / ISSUE-000080はPlugin Capability Contract専用レーンで進める。Draft PR #963が存在するため、#950側でgeneric Capability resolver / lockを重複実装しない。
+- Draft PR #964は既存`internal/xeadsource`のlegacy identity / relational diagnostic hardening専用レーンへ任せる。#968のstandalone Source Adapterで同じproduction-side parser修正を重複実装しない。
 
 #950は#951のproduction contract確定を待たずreaderとEvidence整備を進めてよい。ただし、Source Adapter登録のためだけにCore固定`CapabilityKind`を追加しない。
 
@@ -297,3 +298,14 @@ FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Fu
 - [ISSUE-000042 Business Procedure cross-view Reference](000042-business-procedure-cross-view-reference.md)
 - [ISSUE-000077 Semantic Extension Reference](000077-semantic-extension-reference.md)
 - [Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)
+
+### Parallel Draft PR integration rule
+
+#964と#968は一部のRMT JSON / planning artifactを共有するが、実装責務は分ける。
+
+- #964: importable `internal/xeadsource`のmissing / duplicate identity、relational diagnostic、lowering readiness
+- #968: standalone source-faithful adapter、publication receipt、classification / unresolved projection、cross-view accounting
+
+両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
+
+現時点では#968にRMP-040〜048、#964にRMP-037〜039が割り当てられており、IDを再利用しない。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。
