@@ -2,10 +2,42 @@ package main
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/knowledgecontext"
 )
+
+func TestCheckDataDesignFingerprint(t *testing.T) {
+	root := testRepositoryRoot(t)
+	ctx, err := buildKnowledgeContext(
+		filepath.Join(root, "reference", "workspace"),
+		"semantic-data",
+		"sales.order_line",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx.DataDesign == nil || ctx.DataDesign.Fingerprint == "" {
+		t.Fatalf("Data Design Context fingerprint is missing: %+v", ctx.DataDesign)
+	}
+	if err := checkDataDesignFingerprint(ctx, ""); err != nil {
+		t.Fatalf("empty expected fingerprint must not enable the guard: %v", err)
+	}
+	if err := checkDataDesignFingerprint(ctx, ctx.DataDesign.Fingerprint); err != nil {
+		t.Fatalf("current Data Design fingerprint was rejected: %v", err)
+	}
+	if err := checkDataDesignFingerprint(ctx, "sha256:stale"); err == nil ||
+		!strings.Contains(err.Error(), "fingerprint mismatch") {
+		t.Fatalf("stale Data Design fingerprint was not rejected clearly: %v", err)
+	}
+
+	withoutDataDesign := knowledgecontext.Context{}
+	if err := checkDataDesignFingerprint(withoutDataDesign, ctx.DataDesign.Fingerprint); err == nil ||
+		!strings.Contains(err.Error(), "no Data Design Context") {
+		t.Fatalf("missing Data Design Context did not fail closed: %v", err)
+	}
+}
 
 func TestBuildKnowledgeContextReturnsScopedApplicationPatternContext(t *testing.T) {
 	root := testRepositoryRoot(t)
