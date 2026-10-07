@@ -23,7 +23,8 @@ type RelationalDiagnostic struct {
 }
 
 func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []RelationalDiagnostic {
-	tableFields := indexTableFieldMetadata(doc.Root)
+	tableIndex := indexTableFieldIdentity(doc.Root)
+	tableFields := tableIndex.Fields
 	keys := map[string]map[string][]LegacyKeyFact{}
 	for _, key := range facts.LegacyKeys {
 		if _, ok := keys[key.TableLegacyID]; !ok {
@@ -33,9 +34,39 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	}
 
 	out := make([]RelationalDiagnostic, 0)
+	for tableID, count := range tableIndex.TableCounts {
+		if tableID == "" || count <= 1 {
+			continue
+		}
+		out = append(out, RelationalDiagnostic{
+			Code:          "table-id-duplicate",
+			Locator:       tableIndex.TableLocators[tableID][0],
+			Nature:        RelationalDiagnosticNature,
+			TableLegacyID: tableID,
+			Count:         count,
+		})
+	}
+	for tableID, fieldCounts := range tableIndex.FieldCounts {
+		if tableID == "" || tableIndex.TableCounts[tableID] != 1 {
+			continue
+		}
+		for fieldID, count := range fieldCounts {
+			if fieldID == "" || count <= 1 {
+				continue
+			}
+			out = append(out, RelationalDiagnostic{
+				Code:          "field-id-duplicate",
+				Locator:       tableIndex.FieldLocators[tableID][fieldID][0],
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: tableID,
+				FieldLegacyID: fieldID,
+				Count:         count,
+			})
+		}
+	}
 	for tableID, tableKeys := range keys {
 		for keyID, matches := range tableKeys {
-			if tableID == "" || keyID == "" || len(matches) <= 1 {
+			if tableID == "" || tableIndex.TableCounts[tableID] != 1 || keyID == "" || len(matches) <= 1 {
 				continue
 			}
 			out = append(out, RelationalDiagnostic{
@@ -49,7 +80,8 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 		}
 	}
 	for _, key := range facts.LegacyKeys {
-		fields, tableExists := tableFields[key.TableLegacyID]
+		tableCount := tableIndex.TableCounts[key.TableLegacyID]
+		fields := tableFields[key.TableLegacyID]
 		if key.TableLegacyID == "" {
 			out = append(out, RelationalDiagnostic{
 				Code:        "key-table-id-missing",
@@ -57,13 +89,22 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				Nature:      RelationalDiagnosticNature,
 				KeyLegacyID: key.KeyLegacyID,
 			})
-		} else if !tableExists {
+		} else if tableCount == 0 {
 			out = append(out, RelationalDiagnostic{
 				Code:          "key-table-not-found",
 				Locator:       key.Locator,
 				Nature:        RelationalDiagnosticNature,
 				TableLegacyID: key.TableLegacyID,
 				KeyLegacyID:   key.KeyLegacyID,
+			})
+		} else if tableCount > 1 {
+			out = append(out, RelationalDiagnostic{
+				Code:          "key-table-ambiguous",
+				Locator:       key.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: key.TableLegacyID,
+				KeyLegacyID:   key.KeyLegacyID,
+				Count:         tableCount,
 			})
 		}
 		for _, member := range key.Members {
@@ -77,9 +118,32 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				})
 				continue
 			}
-			if _, ok := fields[member.FieldLegacyID]; !ok {
+			if tableCount != 1 {
+				continue
+			}
+			fieldCount := tableIndex.FieldCounts[key.TableLegacyID][member.FieldLegacyID]
+			if fieldCount == 0 {
 				out = append(out, RelationalDiagnostic{
 					Code:          "key-field-not-found",
+					Locator:       member.Locator,
+					Nature:        RelationalDiagnosticNature,
+					TableLegacyID: key.TableLegacyID,
+					KeyLegacyID:   key.KeyLegacyID,
+					FieldLegacyID: member.FieldLegacyID,
+				})
+			} else if fieldCount > 1 {
+				out = append(out, RelationalDiagnostic{
+					Code:          "key-field-ambiguous",
+					Locator:       member.Locator,
+					Nature:        RelationalDiagnosticNature,
+					TableLegacyID: key.TableLegacyID,
+					KeyLegacyID:   key.KeyLegacyID,
+					FieldLegacyID: member.FieldLegacyID,
+					Count:         fieldCount,
+				})
+			} else if _, ok := fields[member.FieldLegacyID]; !ok {
+				out = append(out, RelationalDiagnostic{
+					Code:          "key-field-metadata-unresolved",
 					Locator:       member.Locator,
 					Nature:        RelationalDiagnosticNature,
 					TableLegacyID: key.TableLegacyID,
@@ -91,8 +155,8 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	}
 
 	for _, relation := range facts.RelationshipKeys {
-		left, leftOK := diagnoseRelationshipSide(&out, relation, "table1", relation.Table1LegacyID, relation.Key1LegacyID, tableFields, keys)
-		right, rightOK := diagnoseRelationshipSide(&out, relation, "table2", relation.Table2LegacyID, relation.Key2LegacyID, tableFields, keys)
+		left, leftOK := diagnoseRelationshipSide(&out, relation, "table1", relation.Table1LegacyID, relation.Key1LegacyID, tableIndex, keys)
+		right, rightOK := diagnoseRelationshipSide(&out, relation, "table2", relation.Table2LegacyID, relation.Key2LegacyID, tableIndex, keys)
 		if !leftOK || !rightOK {
 			continue
 		}
@@ -156,7 +220,7 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	}
 
 	for _, key := range facts.RuntimeKeys {
-		fields, tableExists := tableFields[key.TableLegacyID]
+		tableCount := tableIndex.TableCounts[key.TableLegacyID]
 		if key.TableLegacyID == "" {
 			out = append(out, RelationalDiagnostic{
 				Code:    "runtime-key-table-id-missing",
@@ -165,7 +229,7 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 			})
 			continue
 		}
-		if !tableExists {
+		if tableCount == 0 {
 			out = append(out, RelationalDiagnostic{
 				Code:          "runtime-key-table-not-found",
 				Locator:       key.Locator,
@@ -175,8 +239,20 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 			})
 			continue
 		}
+		if tableCount > 1 {
+			out = append(out, RelationalDiagnostic{
+				Code:          "runtime-key-table-ambiguous",
+				Locator:       key.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: key.TableLegacyID,
+				KeyLegacyID:   key.KeyLegacyID,
+				Count:         tableCount,
+			})
+			continue
+		}
 		for _, fieldID := range key.Fields {
-			if _, ok := fields[fieldID]; !ok {
+			fieldCount := tableIndex.FieldCounts[key.TableLegacyID][fieldID]
+			if fieldCount == 0 {
 				out = append(out, RelationalDiagnostic{
 					Code:          "runtime-key-field-not-found",
 					Locator:       key.Locator,
@@ -185,25 +261,45 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 					KeyLegacyID:   key.KeyLegacyID,
 					FieldLegacyID: fieldID,
 				})
+			} else if fieldCount > 1 {
+				out = append(out, RelationalDiagnostic{
+					Code:          "runtime-key-field-ambiguous",
+					Locator:       key.Locator,
+					Nature:        RelationalDiagnosticNature,
+					TableLegacyID: key.TableLegacyID,
+					KeyLegacyID:   key.KeyLegacyID,
+					FieldLegacyID: fieldID,
+					Count:         fieldCount,
+				})
 			}
 		}
 	}
 
 	for _, refer := range facts.RuntimeRefers {
-		sourceFields, sourceOK := tableFields[refer.SourceTableLegacyID]
-		targetFields, targetOK := tableFields[refer.ToTableLegacyID]
+		sourceCount := tableIndex.TableCounts[refer.SourceTableLegacyID]
+		targetCount := tableIndex.TableCounts[refer.ToTableLegacyID]
+		sourceOK := sourceCount == 1
+		targetOK := targetCount == 1
 		if refer.SourceTableLegacyID == "" {
 			out = append(out, RelationalDiagnostic{
 				Code:    "runtime-refer-source-table-id-missing",
 				Locator: refer.Locator,
 				Nature:  RelationalDiagnosticNature,
 			})
-		} else if !sourceOK {
+		} else if sourceCount == 0 {
 			out = append(out, RelationalDiagnostic{
 				Code:          "runtime-refer-source-table-not-found",
 				Locator:       refer.Locator,
 				Nature:        RelationalDiagnosticNature,
 				TableLegacyID: refer.SourceTableLegacyID,
+			})
+		} else if sourceCount > 1 {
+			out = append(out, RelationalDiagnostic{
+				Code:          "runtime-refer-source-table-ambiguous",
+				Locator:       refer.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: refer.SourceTableLegacyID,
+				Count:         sourceCount,
 			})
 		}
 		if refer.ToTableLegacyID == "" {
@@ -212,17 +308,26 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				Locator: refer.Locator,
 				Nature:  RelationalDiagnosticNature,
 			})
-		} else if !targetOK {
+		} else if targetCount == 0 {
 			out = append(out, RelationalDiagnostic{
 				Code:          "runtime-refer-target-table-not-found",
 				Locator:       refer.Locator,
 				Nature:        RelationalDiagnosticNature,
 				TableLegacyID: refer.ToTableLegacyID,
 			})
+		} else if targetCount > 1 {
+			out = append(out, RelationalDiagnostic{
+				Code:          "runtime-refer-target-table-ambiguous",
+				Locator:       refer.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: refer.ToTableLegacyID,
+				Count:         targetCount,
+			})
 		}
 		if sourceOK {
 			for _, fieldID := range refer.WithKeyFields {
-				if _, ok := sourceFields[fieldID]; !ok {
+				fieldCount := tableIndex.FieldCounts[refer.SourceTableLegacyID][fieldID]
+				if fieldCount == 0 {
 					out = append(out, RelationalDiagnostic{
 						Code:          "runtime-refer-source-field-not-found",
 						Locator:       refer.Locator,
@@ -230,18 +335,37 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 						TableLegacyID: refer.SourceTableLegacyID,
 						FieldLegacyID: fieldID,
 					})
+				} else if fieldCount > 1 {
+					out = append(out, RelationalDiagnostic{
+						Code:          "runtime-refer-source-field-ambiguous",
+						Locator:       refer.Locator,
+						Nature:        RelationalDiagnosticNature,
+						TableLegacyID: refer.SourceTableLegacyID,
+						FieldLegacyID: fieldID,
+						Count:         fieldCount,
+					})
 				}
 			}
 		}
 		if targetOK {
 			for _, fieldID := range refer.ToKeyFields {
-				if _, ok := targetFields[fieldID]; !ok {
+				fieldCount := tableIndex.FieldCounts[refer.ToTableLegacyID][fieldID]
+				if fieldCount == 0 {
 					out = append(out, RelationalDiagnostic{
 						Code:          "runtime-refer-target-field-not-found",
 						Locator:       refer.Locator,
 						Nature:        RelationalDiagnosticNature,
 						TableLegacyID: refer.ToTableLegacyID,
 						FieldLegacyID: fieldID,
+					})
+				} else if fieldCount > 1 {
+					out = append(out, RelationalDiagnostic{
+						Code:          "runtime-refer-target-field-ambiguous",
+						Locator:       refer.Locator,
+						Nature:        RelationalDiagnosticNature,
+						TableLegacyID: refer.ToTableLegacyID,
+						FieldLegacyID: fieldID,
+						Count:         fieldCount,
 					})
 				}
 			}
@@ -298,7 +422,7 @@ func diagnoseRelationshipSide(
 	side string,
 	tableID string,
 	keyID string,
-	tableFields map[string]map[string]tableFieldMetadata,
+	tableIndex tableFieldIdentityIndex,
 	keys map[string]map[string][]LegacyKeyFact,
 ) (LegacyKeyFact, bool) {
 	if tableID == "" {
@@ -312,7 +436,8 @@ func diagnoseRelationshipSide(
 		})
 		return LegacyKeyFact{}, false
 	}
-	if _, ok := tableFields[tableID]; !ok {
+	tableCount := tableIndex.TableCounts[tableID]
+	if tableCount == 0 {
 		*out = append(*out, RelationalDiagnostic{
 			Code:           "relationship-table-not-found",
 			Locator:        relation.Locator,
@@ -321,6 +446,19 @@ func diagnoseRelationshipSide(
 			RelationshipID: relation.RelationshipID,
 			TableLegacyID:  tableID,
 			KeyLegacyID:    keyID,
+		})
+		return LegacyKeyFact{}, false
+	}
+	if tableCount > 1 {
+		*out = append(*out, RelationalDiagnostic{
+			Code:           "relationship-table-ambiguous",
+			Locator:        relation.Locator,
+			Nature:         RelationalDiagnosticNature,
+			Side:           side,
+			RelationshipID: relation.RelationshipID,
+			TableLegacyID:  tableID,
+			KeyLegacyID:    keyID,
+			Count:          tableCount,
 		})
 		return LegacyKeyFact{}, false
 	}
