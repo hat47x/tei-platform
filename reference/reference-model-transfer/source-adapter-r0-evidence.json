@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "evidenceKind": "reference-model-source-adapter-r0",
-  "status": "candidate-focused-pass",
+  "status": "historical-r0-focused-pass-stale-for-current-head",
   "issue": 950,
   "sourceAdapter": {
     "branch": "research/reference-model-transfer-gate",
@@ -11,7 +11,8 @@
       "tools/reference-xead-source-adapter/main_test.go": "58308cc3f4cc77e64d8676a75aa74f5a1d10b9f1",
       "tools/reference-xead-source-adapter/contract_coverage.go": "71944ea5fd8312975c7dbec79742529ae0e59857",
       "tools/reference-xead-source-adapter/contract_coverage_test.go": "05b46b167e9df6fd1b4c035023ec54e4c2ab11e6"
-    }
+    },
+    "currentBranchHeadAtEvidenceReview": "92e3cb5e5ca0ff6be403c38b72970c73405be278"
   },
   "focusedValidation": {
     "goVersion": "go1.23.2 linux/amd64",
@@ -19,7 +20,8 @@
     "goTest": "PASS",
     "testCommand": "go test -count=1 ./...",
     "scope": "standalone source-adapter Reference package, not full TEI repository",
-    "fullRepositoryHealthCheck": "NOT_RUN"
+    "fullRepositoryHealthCheck": "NOT_RUN",
+    "applicability": "PASS applies only to sourceAdapter.head listed in this Evidence; it MUST NOT be reused for the current branch head after candidate-classification and public-receipt changes"
   },
   "exactSourceObservations": {
     "xead": {
@@ -76,13 +78,17 @@
     "sourceAttributeValuesIncluded": false,
     "sourceTextIncluded": false,
     "fullLocatorListIncluded": false,
-    "publicEvidence": "digests, aggregate counts, receipt fingerprints, fact type counts, authority limits"
+    "publicEvidence": "digests, aggregate counts, receipt fingerprints, fact type counts, authority limits",
+    "arbitraryUnknownSchemaNamesExcludedAtTestedHead": false,
+    "currentDesignDirection": "local ObservedDocument keeps exact schema names; public receipt must redact arbitrary unknown/additional schema names and retain aggregate occurrence evidence"
   },
   "claimsNotEstablished": [
     "full repository health check PASS",
     "production Source Adapter Plugin contract",
     "semantic transcription complete",
     "original X-TEA runtime behavior equivalence",
-    "Reference Model publication permission beyond the separately owned #941 boundary"
+    "Reference Model publication permission beyond the separately owned #941 boundary",
+    "current PR head focused test PASS",
+    "current public receipt schema-name redaction test PASS"
   ]
 }
