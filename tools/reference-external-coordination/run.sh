@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP_ROOT="$(mktemp -d)"
 STORE="$TMP_ROOT/coordination-store"
 WORK_ID="TW-0001"
+FOLLOW_UP_ID="TW-0002"
 
 cleanup() {
   rm -rf "$TMP_ROOT"
@@ -80,7 +81,7 @@ cat > "$STORE/results/$WORK_ID/run-a.json" <<EOF_RESULT_A
     ],
     "sourceRefs": [],
     "evidenceRefs": [],
-    "followUpRefs": []
+    "followUpRefs": [{"backend": "git-text", "id": "$FOLLOW_UP_ID"}]
   },
   "claims": {"canonicalAccepted": false, "runtimeAuthorized": false}
 }
@@ -104,6 +105,26 @@ cat > "$STORE/results/$WORK_ID/run-b.json" <<'EOF_RESULT_B'
 }
 EOF_RESULT_B
 
+cat > "$STORE/work/open/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP
+{
+  "exchangeVersion": "reference-v0",
+  "workRef": {"backend": "git-text", "id": "$FOLLOW_UP_ID"},
+  "origin": {"kind": "agent", "actorRef": "agent-a"},
+  "createdVia": {"kind": "agent", "actorRef": "agent-a"},
+  "parentRef": {"backend": "git-text", "id": "$WORK_ID"},
+  "objective": "Independently review the current-base result.",
+  "sourceContext": {
+    "repositoryRef": "local-product-checkout",
+    "baseRevision": "$PRODUCT_HEAD_BEFORE",
+    "sourceRefs": []
+  },
+  "constraints": ["do-not-mutate-product-source"],
+  "contextRefs": [],
+  "expectedOutputs": ["reference.review"],
+  "coordination": {"status": "ready"}
+}
+EOF_FOLLOW_UP
+
 python3 - "$STORE" "$PRODUCT_HEAD_BEFORE" <<'PY'
 import hashlib
 import json
@@ -113,6 +134,7 @@ import sys
 store = pathlib.Path(sys.argv[1])
 product_head = sys.argv[2]
 work = json.loads((store / "work/open/TW-0001.json").read_text())
+follow_up = json.loads((store / "work/open/TW-0002.json").read_text())
 results = [
     json.loads((store / "results/TW-0001/run-a.json").read_text()),
     json.loads((store / "results/TW-0001/run-b.json").read_text()),
@@ -122,11 +144,16 @@ assert work["origin"]["kind"] == "human"
 assert work["createdVia"] == {"kind": "automation", "actorRef": "reference-runner"}
 assert work["sourceContext"]["baseRevision"] == product_head
 assert work["coordination"]["status"] == "ready"
+assert follow_up["origin"] == {"kind": "agent", "actorRef": "agent-a"}
+assert follow_up["createdVia"] == {"kind": "agent", "actorRef": "agent-a"}
+assert follow_up["parentRef"] == work["workRef"]
+assert follow_up["sourceContext"]["baseRevision"] == product_head
 assert len(results) == 2
 assert {result["producer"]["externalRunRef"] for result in results} == {"run-a", "run-b"}
 assert all(result["workRef"]["id"] == work["workRef"]["id"] for result in results)
 assert all(result["claims"]["canonicalAccepted"] is False for result in results)
 assert all(result["claims"]["runtimeAuthorized"] is False for result in results)
+assert results[0]["result"]["followUpRefs"] == [follow_up["workRef"]]
 
 current = [result for result in results if result["observedContext"]["baseRevision"] == product_head]
 stale = [result for result in results if result["observedContext"]["baseRevision"] != product_head]
@@ -139,7 +166,7 @@ artifact_path = store / artifact["uri"]
 digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
 assert artifact["digest"] == {"algorithm": "sha256", "value": digest}
 
-for document in [work, *results]:
+for document in [work, follow_up, *results]:
     rendered = json.dumps(document, sort_keys=True).lower()
     for forbidden in (
         "tokenbudget",
@@ -153,7 +180,7 @@ for document in [work, *results]:
         assert forbidden not in rendered, forbidden
 PY
 
-git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID"
+git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/open/$FOLLOW_UP_ID.json"
 git -C "$STORE" commit -qm "coordination: append independent agent results"
 RESULTS_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
@@ -203,6 +230,8 @@ printf 'results-commit=%s\n' "$RESULTS_COMMIT"
 printf 'completion-commit=%s\n' "$COMPLETION_COMMIT"
 printf 'deleted-store-head=%s\n' "$STORE_HEAD"
 printf 'duplicate-results=2\n'
+printf 'human-origin-work=1\n'
+printf 'agent-origin-follow-up=1\n'
 printf 'stale-result=preserved-not-applied\n'
 printf 'self-asserted-actor=non-authoritative\n'
 printf 'coordination-store-deletion=product-unchanged\n'
