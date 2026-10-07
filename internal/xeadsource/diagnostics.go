@@ -34,6 +34,13 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	}
 
 	out := make([]RelationalDiagnostic, 0)
+	for _, locator := range tableIndex.TableLocators[""] {
+		out = append(out, RelationalDiagnostic{
+			Code:    "table-id-missing",
+			Locator: locator,
+			Nature:  RelationalDiagnosticNature,
+		})
+	}
 	for tableID, count := range tableIndex.TableCounts {
 		if tableID == "" || count <= 1 {
 			continue
@@ -49,6 +56,16 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 	for tableID, fieldCounts := range tableIndex.FieldCounts {
 		if tableID == "" || tableIndex.TableCounts[tableID] != 1 {
 			continue
+		}
+		if count := fieldCounts[""]; count > 0 {
+			for _, locator := range tableIndex.FieldLocators[tableID][""] {
+				out = append(out, RelationalDiagnostic{
+					Code:          "field-id-missing",
+					Locator:       locator,
+					Nature:        RelationalDiagnosticNature,
+					TableLegacyID: tableID,
+				})
+			}
 		}
 		for fieldID, count := range fieldCounts {
 			if fieldID == "" || count <= 1 {
