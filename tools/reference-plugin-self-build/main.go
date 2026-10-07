@@ -76,9 +76,11 @@ type evidence struct {
 	NativeLockFingerprint       string             `json:"nativeLockFingerprint"`
 	NativeDefinitionFingerprint string                      `json:"nativeDefinitionFingerprint"`
 	NativeRuntimeEngineSourceDigest string                   `json:"nativeRuntimeEngineSourceDigest"`
-	NativeRuntimeEngine          pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
-	NativeRuntimeEngineFingerprint string                     `json:"nativeRuntimeEngineFingerprint"`
-	NativeInvocation            executor.Result             `json:"nativeInvocation"`
+	NativeRuntimeEngine             pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
+	NativeRuntimeEngineFingerprint  string                        `json:"nativeRuntimeEngineFingerprint"`
+	NativeRuntimeEngineLock         pruntime.RuntimeEngineLock    `json:"nativeRuntimeEngineLock"`
+	NativeRuntimeEngineLockFingerprint string                     `json:"nativeRuntimeEngineLockFingerprint"`
+	NativeInvocation               executor.Result                `json:"nativeInvocation"`
 	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
 	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
 	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
@@ -703,6 +705,10 @@ func run(repo string) (evidence, error) {
 			Engine: nativeRuntimeEngine,
 		}},
 	}
+	nativeRuntimeEngineLockFingerprint, err := pruntime.RuntimeEngineLockFingerprint(nativeRuntimeEngineLock)
+	if err != nil {
+		return evidence{}, err
+	}
 	runtimePlan, err = pruntime.BindRuntimeEngineLock(runtimePlan, nativeRuntimeEngineLock)
 	if err != nil {
 		return evidence{}, err
@@ -737,7 +743,8 @@ func run(repo string) (evidence, error) {
 	if nativeInvocation.PluginInvocation == nil ||
 		nativeInvocation.PluginInvocation.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint ||
 		nativeInvocation.PluginInvocation.RealizationDigest != nativeFirstArtifactDigest ||
-		nativeInvocation.PluginInvocation.RuntimeEngineFingerprint != nativeRuntimeEngineFingerprint {
+		nativeInvocation.PluginInvocation.RuntimeEngineFingerprint != nativeRuntimeEngineFingerprint ||
+		nativeInvocation.PluginInvocation.RuntimeEngineLockFingerprint != nativeRuntimeEngineLockFingerprint {
 		return evidence{}, fmt.Errorf("TEI-native builtin invocation lost build/runtime engine provenance")
 	}
 	if err := pruntime.ValidateDeploymentInvocation(
@@ -786,9 +793,11 @@ func run(repo string) (evidence, error) {
 		NativeLockFingerprint:        nativeLockFingerprint,
 		NativeDefinitionFingerprint:       plugin.DefinitionFingerprint(nativeRealized),
 		NativeRuntimeEngineSourceDigest: nativeRuntimeEngineSourceDigest,
-		NativeRuntimeEngine:             nativeRuntimeEngine,
-		NativeRuntimeEngineFingerprint:  nativeRuntimeEngineFingerprint,
-		NativeInvocation:                nativeInvocation,
+		NativeRuntimeEngine:                nativeRuntimeEngine,
+		NativeRuntimeEngineFingerprint:     nativeRuntimeEngineFingerprint,
+		NativeRuntimeEngineLock:            nativeRuntimeEngineLock,
+		NativeRuntimeEngineLockFingerprint: nativeRuntimeEngineLockFingerprint,
+		NativeInvocation:                   nativeInvocation,
 		BuildPlan:                    plan,
 		BuildPlanFingerprint:         planFingerprint,
 		FirstArtifactDigest:          firstDigest,
