@@ -96,3 +96,16 @@ sources:
 		t.Fatalf("expected predeclared artifact to fail, got %v", err)
 	}
 }
+
+
+func TestPluginImplementationLoaderRejectsAmbiguousGenericRoot(t *testing.T) {
+	root := t.TempDir()
+	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+sources:
+  - implementations
+`)
+	_, err := workspace.Load(root)
+	if err == nil || !strings.Contains(err.Error(), "use plugin-implementations") {
+		t.Fatalf("expected ambiguous generic implementation root to fail, got %v", err)
+	}
+}
