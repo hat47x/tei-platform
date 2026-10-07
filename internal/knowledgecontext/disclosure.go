@@ -67,6 +67,7 @@ func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, erro
 		AuthorityLimits: append(
 			append([]string(nil), ctx.AuthorityLimits...),
 			"selective-disclosure-is-derived-not-authority",
+			"disclosure-fingerprint-is-cache-identity-not-semantic-proof",
 			"selection-does-not-change-qualification-or-canonical-meaning",
 			"omitted-knowledge-is-not-negative-evidence",
 			"unavailable-requested-section-is-not-empty-meaning",
