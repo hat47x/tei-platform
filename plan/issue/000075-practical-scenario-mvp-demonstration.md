@@ -81,6 +81,7 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 4. 候補B（変更を提案し、人が確かめ、受理し、反映される一周）。このとき評価対象の選択（[ISSUE-000073](000073-derive-validation-selection-from-canonical.md)）と人が読む承認の面（[ISSUE-000071](000071-approval-sufficient-projection.md)）が前提になる。
 
 この記録は、一つのシナリオの成功にとどまり、実務全般への適用可能性や、実Databaseでの動作を示しません。
+
 ## 実証Bの追加評価 — 業務設計から実行へ戻す一周（2026-10-08、評価待ち）
 
 本節は、[Product triage #982](https://github.com/hat47x/tei-platform/issues/982)で示した着手順を、**既存の候補Bで試せるか**検討するための補足である。候補Bの選択はまだ行われておらず、2026-10-05にownerが選択・実施したAの記録を置き換えない。新しいProduct Gateや別の実証Issueは設けない。
