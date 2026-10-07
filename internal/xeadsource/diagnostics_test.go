@@ -232,3 +232,27 @@ func TestDiagnoseRelationalSourceFactsRejectsDuplicateXeafReferFieldIdentity(t *
 		t.Fatalf("duplicate runtime refer field identity was resolved implicitly: %#v", got)
 	}
 }
+
+
+func TestDiagnoseRelationalSourceFactsPropagatesDuplicateFieldAmbiguityToRelationship(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
+	var relationshipAmbiguous bool
+	for _, diagnostic := range got {
+		if diagnostic.Code == "relationship-key-field-ambiguous" &&
+			diagnostic.RelationshipID == "R1" &&
+			diagnostic.Side == "table1" &&
+			diagnostic.TableLegacyID == "T1" &&
+			diagnostic.KeyLegacyID == "K1" &&
+			diagnostic.FieldLegacyID == "A" &&
+			diagnostic.Count == 2 {
+			relationshipAmbiguous = true
+		}
+	}
+	if !relationshipAmbiguous {
+		t.Fatalf("relationship did not inherit duplicate field ambiguity: %#v", got)
+	}
+}
