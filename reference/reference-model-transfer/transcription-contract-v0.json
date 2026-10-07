@@ -171,7 +171,8 @@
         "rules": [
           "a Table may represent semantic Data, physical persistence, or a platform/runtime table; do not auto-promote every Table to domain Data",
           "TableTypeID is legacy taxonomy evidence, not a Core enum",
-          "duplicate Table IDs are source ambiguity and must not be resolved by traversal order or map overwrite"
+          "duplicate Table IDs are source ambiguity and must not be resolved by traversal order or map overwrite",
+          "missing Table ID is source ambiguity even when no Relationship currently references that Table"
         ]
       },
       "TableField": {
@@ -185,7 +186,8 @@
           "NATIVE/DERIVABLE/INHERITED are preserved as source facts",
           "DERIVABLE does not establish derivation logic unless an accepted expression/evaluator can be traced",
           "NoUpdate is interaction/policy pressure and is not automatically authorization",
-          "duplicate field IDs within one unambiguous Table remain unresolved and do not donate arbitrary AttributeType/DataTypeID metadata to key mappings"
+          "duplicate field IDs within one unambiguous Table remain unresolved and do not donate arbitrary AttributeType/DataTypeID metadata to key mappings",
+          "missing field ID is source ambiguity even when no key or Function currently references that field"
         ]
       },
       "TableKey": {
@@ -451,7 +453,8 @@
           "runtime Table is realization evidence and does not replace accepted Data meaning",
           "Key and Refer children are preserved separately as runtime mapping facts",
           "physical/runtime table identity is not business occurrence identity",
-          "duplicate runtime Table IDs remain unresolved rather than being treated as one realization object"
+          "duplicate runtime Table IDs remain unresolved rather than being treated as one realization object",
+          "missing runtime Table ID remains unresolved even if the table is otherwise structurally readable"
         ]
       },
       "Function": {
@@ -496,7 +499,8 @@
         "rules": [
           "runtime field definition may realize Data/Relation meaning but does not replace the semantic source",
           "editable/color/default/display behavior stays target/interaction-specific unless separately accepted",
-          "duplicate runtime field IDs remain unresolved for Key/Refer lookup"
+          "duplicate runtime field IDs remain unresolved for Key/Refer lookup",
+          "missing runtime field ID remains unresolved even if no current Key/Refer touches it"
         ]
       },
       "Column": {
