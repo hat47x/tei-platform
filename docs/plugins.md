@@ -74,6 +74,8 @@ Targetごとのpackagingでは、Semantic / Capability上のidentity、version�
 
 この最適化によってPlugin境界を消したことにはしません。diagnostic、Evidence、更新影響、Authorityは、最適化後も元のlogical Plugin / Capabilityへ逆追跡できる必要があります。
 
+Referenceでは、Capability Resolution LockとProviderBuildRealizationから`TargetCapabilityPackagingPlan`を導出します。artifact digestごとにlogical Provider参照をまとめ、coalescingとsplit packagingを同じPlanで表現します。このPlanはRuntime Authorityではなく、現在のCapability / Build realizationから再生成する物理配置のprojectionです。
+
 ## Build / self-build
 
 Plugin descriptorをTEIで記述できることと、Plugin implementationをTEI自身で再構築できることは別です。
