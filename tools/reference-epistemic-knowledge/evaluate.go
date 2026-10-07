@@ -307,7 +307,7 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	}
 	if assessment.ConfirmationState == "confirmed" {
 		if len(assessment.ReviewConditions) > 0 {
-			reasons = append(reasons, "CONFIRMATION_HAS_CONDITIONS")
+			return "review-required", append(reasons, "REVIEW_CONDITIONS_UNRESOLVED")
 		}
 		return "premise", reasons
 	}
