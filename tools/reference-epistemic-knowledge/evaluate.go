@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Assessment struct {
 	LatestReviewEventID  string         `json:"latestReviewEventId,omitempty"`
 	LatestReviewEventKind ReviewEventKind `json:"latestReviewEventKind,omitempty"`
 	ReviewConditions     []string       `json:"reviewConditions,omitempty"`
+	TargetBinding        string         `json:"targetBinding"`
 	ContextCompatibility string         `json:"contextCompatibility"`
 	Freshness            string         `json:"freshness"`
 	LifecycleState       string         `json:"lifecycleState"`
@@ -43,10 +45,32 @@ type HealthIssue struct {
 	Reasons     []string    `json:"reasons"`
 }
 
+type CoverageCounts struct {
+	TotalAreas  int `json:"totalAreas"`
+	MappedAreas int `json:"mappedAreas"`
+	GapAreas    int `json:"gapAreas"`
+}
+
+type CoverageAreaAssessment struct {
+	AreaID             string      `json:"areaId"`
+	Target             TargetRef   `json:"target"`
+	Criticality        Criticality `json:"criticality"`
+	State              string      `json:"state"`
+	TargetBinding      string      `json:"targetBinding"`
+	MappedAssertionIDs []string    `json:"mappedAssertionIds,omitempty"`
+	Reasons            []string    `json:"reasons,omitempty"`
+}
+
+type CoverageAssessment struct {
+	Counts CoverageCounts           `json:"counts"`
+	Areas  []CoverageAreaAssessment `json:"areas,omitempty"`
+}
+
 type KnowledgeHealth struct {
-	Level  string        `json:"level"`
-	Counts HealthCounts  `json:"counts"`
-	Issues []HealthIssue `json:"issues,omitempty"`
+	Level    string             `json:"level"`
+	Counts   HealthCounts       `json:"counts"`
+	Issues   []HealthIssue      `json:"issues,omitempty"`
+	Coverage CoverageAssessment `json:"coverage"`
 }
 
 type ReviewRequest struct {
@@ -54,6 +78,7 @@ type ReviewRequest struct {
 	Target             TargetRef      `json:"target"`
 	ConfirmationState  string         `json:"confirmationState"`
 	ReviewBinding      string         `json:"reviewBinding"`
+	TargetBinding      string         `json:"targetBinding"`
 	Context            []ScopeBinding `json:"context,omitempty"`
 	Evidence           []EvidenceRef  `json:"evidence,omitempty"`
 	Reasons            []string       `json:"reasons"`
@@ -121,13 +146,15 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"assessment-does-not-grant-canonical-acceptance",
 			"assessment-does-not-grant-write-or-runtime-authority",
 			"meaning-fingerprint-is-input-not-semantic-proof",
+			"target-anchor-resolution-does-not-prove-semantic-identity",
+			"coverage-mapping-is-input-not-semantic-completeness-proof",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
 	for _, assertion := range corpus.Assertions {
 		out.Assessments = append(out.Assessments, assessments[assertion.ID])
 	}
-	out.Health = buildHealth(corpus, assessments)
+	out.Health = buildHealth(corpus, assessments, context)
 	out.ReviewRequests = buildReviewRequests(corpus, assertions, assessments)
 	return out, nil
 }
@@ -145,6 +172,7 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 		LatestReviewEventID:   history.LatestEventID,
 		LatestReviewEventKind: history.LatestEventKind,
 		ReviewConditions:      append([]string{}, history.Conditions...),
+		TargetBinding:         targetBinding(assertion.Target, context),
 		ContextCompatibility:  contextCompatibility(assertion.Context, context.Bindings),
 		Freshness:             freshness(assertion, asOf),
 		LifecycleState:        "active",
@@ -205,6 +233,85 @@ func assessReviewHistory(assertion Assertion) reviewHistoryAssessment {
 		result.ConfirmationState = "unreviewed"
 	}
 	return result
+}
+
+func targetBinding(target TargetRef, context ContextQuery) string {
+	if target.Anchor == nil {
+		return "not-required"
+	}
+	var surface *TargetSurface
+	for i := range context.TargetSurfaces {
+		if context.TargetSurfaces[i].SourceRef == target.Anchor.SourceRef {
+			surface = &context.TargetSurfaces[i]
+			break
+		}
+	}
+	if surface == nil {
+		return "detached"
+	}
+
+	anchor := target.Anchor
+	if anchor.StructuralPath != "" {
+		count := 0
+		for _, segment := range surface.Segments {
+			if segment.StructuralPath != anchor.StructuralPath {
+				continue
+			}
+			if anchor.Quote == nil {
+				count++
+			} else {
+				count += countTextQuoteMatches(segment.Text, *anchor.Quote)
+			}
+		}
+		if count == 1 {
+			if surface.RevisionFingerprint == anchor.SourceRevisionFingerprint {
+				return "exact"
+			}
+			return "reanchored"
+		}
+		if count > 1 {
+			return "ambiguous"
+		}
+	}
+
+	if anchor.Quote != nil {
+		count := 0
+		for _, segment := range surface.Segments {
+			count += countTextQuoteMatches(segment.Text, *anchor.Quote)
+		}
+		if count == 1 {
+			if surface.RevisionFingerprint == anchor.SourceRevisionFingerprint {
+				return "exact"
+			}
+			return "reanchored"
+		}
+		if count > 1 {
+			return "ambiguous"
+		}
+	}
+	return "detached"
+}
+
+func countTextQuoteMatches(text string, quote TextQuoteSelector) int {
+	if quote.Exact == "" {
+		return 0
+	}
+	count := 0
+	for start := 0; start <= len(text); {
+		offset := strings.Index(text[start:], quote.Exact)
+		if offset < 0 {
+			break
+		}
+		index := start + offset
+		end := index + len(quote.Exact)
+		prefixOK := quote.Prefix == "" || strings.HasSuffix(text[:index], quote.Prefix)
+		suffixOK := quote.Suffix == "" || strings.HasPrefix(text[end:], quote.Suffix)
+		if prefixOK && suffixOK {
+			count++
+		}
+		start = index + 1
+	}
+	return count
 }
 
 func contextCompatibility(assertion, current []ScopeBinding) string {
@@ -276,6 +383,12 @@ func conflictState(assertion Assertion, assessments map[string]Assessment) strin
 
 func deriveUseState(assertion Assertion, assessment Assessment) (string, []string) {
 	reasons := append([]string{}, assessment.Reasons...)
+	switch assessment.TargetBinding {
+	case "ambiguous":
+		return "review-required", append(reasons, "TARGET_ANCHOR_AMBIGUOUS")
+	case "detached":
+		return "review-required", append(reasons, "TARGET_ANCHOR_DETACHED")
+	}
 	if assessment.ContextCompatibility == "incompatible" {
 		return "blocked", append(reasons, "CONTEXT_INCOMPATIBLE")
 	}
@@ -320,7 +433,7 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
 }
 
-func buildHealth(corpus Corpus, assessments map[string]Assessment) KnowledgeHealth {
+func buildHealth(corpus Corpus, assessments map[string]Assessment, context ContextQuery) KnowledgeHealth {
 	health := KnowledgeHealth{Level: "healthy"}
 	for _, assertion := range corpus.Assertions {
 		switch assessments[assertion.ID].UseState {
@@ -358,6 +471,21 @@ func buildHealth(corpus Corpus, assessments map[string]Assessment) KnowledgeHeal
 			}
 		}
 	}
+	health.Coverage = assessCoverage(corpus, assessments, context)
+	for _, area := range health.Coverage.Areas {
+		if area.State == "mapped" {
+			continue
+		}
+		switch area.Criticality {
+		case CriticalityCritical:
+			health.Level = "critical"
+		case CriticalityHigh:
+			if health.Level != "critical" {
+				health.Level = "attention"
+			}
+		}
+	}
+
 	sort.Slice(health.Issues, func(i, j int) bool {
 		ri, rj := criticalityRank(health.Issues[i].Criticality), criticalityRank(health.Issues[j].Criticality)
 		if ri != rj {
@@ -369,6 +497,62 @@ func buildHealth(corpus Corpus, assessments map[string]Assessment) KnowledgeHeal
 		return health.Issues[i].Consumer < health.Issues[j].Consumer
 	})
 	return health
+}
+
+func assessCoverage(
+	corpus Corpus,
+	assessments map[string]Assessment,
+	context ContextQuery,
+) CoverageAssessment {
+	out := CoverageAssessment{}
+	for _, area := range corpus.CoverageAreas {
+		result := CoverageAreaAssessment{
+			AreaID:             area.ID,
+			Target:             area.Target,
+			Criticality:        area.Criticality,
+			State:              "mapped",
+			TargetBinding:      targetBinding(area.Target, context),
+			MappedAssertionIDs: append([]string{}, area.MappedAssertionIDs...),
+		}
+		out.Counts.TotalAreas++
+		if result.TargetBinding == "ambiguous" {
+			result.State = "gap"
+			result.Reasons = append(result.Reasons, "COVERAGE_TARGET_AMBIGUOUS")
+		} else if result.TargetBinding == "detached" {
+			result.State = "gap"
+			result.Reasons = append(result.Reasons, "COVERAGE_TARGET_DETACHED")
+		} else if len(area.MappedAssertionIDs) == 0 {
+			result.State = "gap"
+			result.Reasons = append(result.Reasons, "COVERAGE_UNMAPPED")
+		} else {
+			resolved := 0
+			for _, id := range area.MappedAssertionIDs {
+				assessment := assessments[id]
+				if assessment.TargetBinding != "ambiguous" && assessment.TargetBinding != "detached" {
+					resolved++
+				}
+			}
+			if resolved == 0 {
+				result.State = "gap"
+				result.Reasons = append(result.Reasons, "COVERAGE_MAPPED_TARGETS_UNRESOLVED")
+			}
+		}
+		if result.State == "mapped" {
+			out.Counts.MappedAreas++
+		} else {
+			out.Counts.GapAreas++
+		}
+		result.Reasons = normalizeStrings(result.Reasons)
+		out.Areas = append(out.Areas, result)
+	}
+	sort.Slice(out.Areas, func(i, j int) bool {
+		ri, rj := criticalityRank(out.Areas[i].Criticality), criticalityRank(out.Areas[j].Criticality)
+		if ri != rj {
+			return ri > rj
+		}
+		return out.Areas[i].AreaID < out.Areas[j].AreaID
+	})
+	return out
 }
 
 func buildReviewRequests(
@@ -396,6 +580,7 @@ func buildReviewRequests(
 			Target:             assertion.Target,
 			ConfirmationState:  assessment.ConfirmationState,
 			ReviewBinding:      assessment.ReviewBinding,
+			TargetBinding:      assessment.TargetBinding,
 			Context:            append([]ScopeBinding{}, assertion.Context...),
 			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
 			Reasons:            append([]string{}, assessment.Reasons...),
