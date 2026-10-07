@@ -377,6 +377,12 @@
       "assertionId": "user-current",
       "consumer": "architecture-note",
       "criticality": "low"
+    },
+    {
+      "assertionId": "human-reviewed",
+      "consumer": "fresh-branch-decision",
+      "criticality": "high",
+      "maxAgeSeconds": 3600
     }
   ],
   "coverageAreas": [
