@@ -191,6 +191,17 @@ func TestProductionExecutionBridgeMatchesExistingHostTrustedAuthority(t *testing
 		!validSHA256Fingerprint(binding.BindingFingerprint) {
 		t.Fatalf("production execution bridge=%+v", binding)
 	}
+	if err := verifyLegacyProductionExecutionBridge(
+		binding,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestProductionExecutionBridgeMatchesRequiredProcessSandbox(t *testing.T) {
@@ -366,6 +377,17 @@ func TestProductionExecutionBridgeChangesWhenSelectedResourcePolicyChanges(t *te
 	}
 	if base.BindingFingerprint == after.BindingFingerprint {
 		t.Fatal("selected production resource/lease policy change was invisible")
+	}
+	if err := verifyLegacyProductionExecutionBridge(
+		base,
+		fx.CapabilityLock,
+		fx.RuntimeBinding,
+		fx.Profile,
+		fx.Authority,
+		fx.Plan,
+		fx.Mapping,
+	); err == nil || !strings.Contains(err.Error(), "current production runtime authority") {
+		t.Fatalf("stale production execution bridge survived resource/lease drift: %v", err)
 	}
 }
 
