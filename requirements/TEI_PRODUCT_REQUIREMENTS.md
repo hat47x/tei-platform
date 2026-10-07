@@ -434,6 +434,8 @@ ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE、
 
 各開発環境では、通常のRepository checkoutやGit worktree等を利用してSourceを編集し、TEI CLI、Hostが提供するShell / Filesystem / Git MCP、Repository内のTool、言語固有のToolchain等を使って、必要なBuild、Driver実行、Validation、Conformance、Test、生成物の確認まで、その環境内で行えることを基本とします。生成AIが隔離された開発Workspace内でSourceを直接編集する場合も、編集前にTEI固有のProposal objectへ変換することを必須にしません。
 
+改修からBuild / Testまで同一環境で完結するには、開発HostがRepositoryをmaterializeでき、Filesystemを読み書きでき、processとGitを実行でき、必要なToolchainを利用できることが前提です。これらはTEI ApplicationのRuntime CapabilityやCanonical stateとして再定義する対象ではありません。Hostが一部の能力しか持たない場合も、その環境で可能な変更をGit等へ受け渡し、別の標準開発環境で継続できることを妨げません。
+
 TEIは、この開発過程を管理するために、Agent Session、Agent Workspace、Checkpoint、Plan、Test実行回数、一般的な `verified / unverified` 状態等を、TEI固有の永続的なProduct stateとして要求してはいけません。Git、CI、開発Tool等が所有する状態を、TEI側へ重複して持ち込みません。
 
 変更の受け渡しには、Git commit、branch、Pull Request等の既存Version管理を第一級の経路として利用できる必要があります。Gitを直接利用できない環境では、patch、bundle、file set、任意のWeb ServiceやCIを経由した受け渡し等を利用できる余地を持ちます。Gitで十分に表現できる変更に対して、TEI独自のChange Set形式を必須にしてはいけません。
