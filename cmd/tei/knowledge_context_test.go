@@ -260,12 +260,12 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v1" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
-		dataDesign.EvidenceStatus != "complete" {
+		dataDesign.EvidenceCoverageStatus != "complete" {
 		t.Fatalf(
-			"data design cache identity is incomplete: revision=%q fingerprint=%q evidenceStatus=%q",
+			"data design cache identity is incomplete: revision=%q fingerprint=%q evidenceCoverageStatus=%q",
 			dataDesign.ProjectionRevision,
 			dataDesign.Fingerprint,
-			dataDesign.EvidenceStatus,
+			dataDesign.EvidenceCoverageStatus,
 		)
 	}
 	if len(dataDesign.Ambiguities) != 0 {
@@ -479,7 +479,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 	for _, limit := range []string{
 		"data-design-context-is-derived-not-authority",
 		"data-design-fingerprint-is-cache-invalidation-not-semantic-proof",
-		"incomplete-data-design-evidence-does-not-establish-complete-freshness",
+		"data-design-evidence-coverage-is-not-source-freshness-proof",
+		"incomplete-data-design-evidence-blocks-complete-cache-reuse",
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
