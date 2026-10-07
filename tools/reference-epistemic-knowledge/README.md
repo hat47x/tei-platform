@@ -181,6 +181,18 @@ TEI固有UIやruntime objectをfixtureの正本にはしません。
 
 Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらないことが設計前提です。このtoolはCanonical loaderへ接続せず、入力sidecarからread-only Projectionを生成します。
 
+## Legacy / metadata loss
+
+既存文書やtext-only exportから再importした内容には、元のprovenanceや確認履歴が付いていない場合があります。Referenceでは `metadataState=absent / partial / complete` を区別し、出所を復元できない内容には `origin=unknown` を使えます。
+
+同じ文章や同じmeaning fingerprintを持つ別assertionにconfirmedなreview historyが存在しても、それをmetadata-free reimportへ自動継承しません。review eventはassertion identityとそのmeaning bindingに属し、fingerprint一致だけでは移送しません。
+
+fixtureでは、confirmedな `human-reviewed` と同じtext / meaning fingerprintを持つ `legacy-reimport-copy` を用意します。後者は `origin=unknown / ingestedBy=import / metadataState=absent` のまま `unreviewed / candidate-only` です。
+
+Projectionには `content-fingerprint-does-not-restore-review-history` をAuthority limitとして残します。
+
+metadata-preserving exporter / importerそのものは、このReferenceではまだ実装しません。保持できるtransportではsidecarを一緒に運び、text-only transportではmetadata lossを明示する契約を後続pressureとします。
+
 ## v0をproduction modelへ固定しない
 
 このReferenceは、confirmation historyを単一review stateから分離するpressureまで進めています。ただしevent kind、sequence方式、context scopeの表現、永続化方式をproduction contractとして固定したわけではありません。
@@ -197,7 +209,7 @@ Epistemic sidecarを削除しても既存TEI Canonical Worldが変わらない�
 - review eventのdurable persistence / multi-surface merge
 - arbitrary documentからtarget surface / selector候補を生成するproduction resolver
 - coverage area / mappingを自動抽出して意味的完全性を証明する仕組み
-- legacy / export-importでのmetadata loss処理
+- metadata-preserving export / import adapterとtext-only transportでのloss marker
 - Cross-repository fixtureの正式versioning
 
 ## 検証
