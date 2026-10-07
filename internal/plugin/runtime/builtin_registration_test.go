@@ -293,6 +293,13 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 			engineFingerprint,
 		)
 	}
+	if result.PluginInvocation.RuntimeEngineLockFingerprint != fx.plan.RuntimeEngineLockFingerprint {
+		t.Fatalf(
+			"runtime engine lock fingerprint: got %s want %s",
+			result.PluginInvocation.RuntimeEngineLockFingerprint,
+			fx.plan.RuntimeEngineLockFingerprint,
+		)
+	}
 	if result.PluginInvocation.DigestVerified {
 		t.Fatal("in-process accepted realization must not pretend external artifact verification occurred")
 	}
@@ -310,6 +317,12 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 	tamperedEngine.RuntimeEngineFingerprint = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	if err := pruntime.ValidateDeploymentInvocation(fx.plan, core.MustCanonicalID("runtime.native_reference"), &tamperedEngine); err == nil {
 		t.Fatal("expected tampered runtime engine provenance to fail")
+	}
+
+	tamperedEngineLock := *result.PluginInvocation
+	tamperedEngineLock.RuntimeEngineLockFingerprint = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	if err := pruntime.ValidateDeploymentInvocation(fx.plan, core.MustCanonicalID("runtime.native_reference"), &tamperedEngineLock); err == nil {
+		t.Fatal("expected tampered runtime engine lock provenance to fail")
 	}
 }
 
