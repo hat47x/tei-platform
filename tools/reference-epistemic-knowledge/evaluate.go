@@ -17,6 +17,7 @@ type Assessment struct {
 	ConfirmationState    string         `json:"confirmationState"`
 	ReviewBinding        string         `json:"reviewBinding"`
 	ReviewEventCount     int            `json:"reviewEventCount"`
+	ReviewLogSequence    int            `json:"reviewLogSequence"`
 	LatestReviewEventID  string         `json:"latestReviewEventId,omitempty"`
 	LatestReviewEventKind ReviewEventKind `json:"latestReviewEventKind,omitempty"`
 	ReviewConditions     []string       `json:"reviewConditions,omitempty"`
@@ -188,6 +189,7 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 		ConfirmationState:     history.ConfirmationState,
 		ReviewBinding:         history.ReviewBinding,
 		ReviewEventCount:      len(assertion.ReviewEvents),
+		ReviewLogSequence:     history.LastVisibleSequence,
 		LatestReviewEventID:   history.LatestEventID,
 		LatestReviewEventKind: history.LatestEventKind,
 		ReviewConditions:      append([]string{}, history.Conditions...),
@@ -221,11 +223,12 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 type reviewHistoryAssessment struct {
 	ConfirmationState string
 	ReviewBinding     string
-	LatestEventID     string
-	LatestEventKind   ReviewEventKind
-	Conditions        []string
-	StaleEventCount   int
-	FutureEventCount  int
+	LatestEventID       string
+	LatestEventKind     ReviewEventKind
+	Conditions          []string
+	LastVisibleSequence int
+	StaleEventCount     int
+	FutureEventCount    int
 }
 
 func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAssessment {
@@ -243,6 +246,9 @@ func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAsses
 		if occurredAt.After(asOf) {
 			result.FutureEventCount++
 			continue
+		}
+		if event.Sequence > result.LastVisibleSequence {
+			result.LastVisibleSequence = event.Sequence
 		}
 		if event.MeaningFingerprint != assertion.MeaningFingerprint {
 			result.StaleEventCount++
