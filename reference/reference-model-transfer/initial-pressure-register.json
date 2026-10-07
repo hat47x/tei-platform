@@ -304,6 +304,13 @@
       "observed": "Among 148 TaskActions, 57 have Function uses whose Xead design Functions all have structural Xeaf counterparts, 68 mix Functions with and without counterparts, 17 use only Functions without counterparts, and 6 have no Function use. Across 128 business-referenced Xead Functions, 116 have a structural Xeaf correspondence and 12 do not.",
       "risk": "Treating Runtime correspondence as a property of the whole Business Procedure or assuming every design Function must have one executable counterpart can drop valid design steps, hide implementation drift, or incorrectly mark a partially implemented action as fully executable.",
       "teiDirection": "reconcile design Function/Capability uses independently and preserve partial realization status at the action/use edge; Business Procedure meaning remains authoritative separately from target/runtime realization completeness"
+    },
+    {
+      "id": "RMP-047",
+      "topic": "public-receipt-schema-name-disclosure",
+      "observed": "The Source Adapter keeps source values and text out of PublicationReceipt, but the current public projection still emits arbitrary unknown element local names through elementCounts/unknownElements and arbitrary attribute names through attributeNameCounts. Exact benchmark sources currently report no unknown elements, so this disclosure pressure is invisible in the benchmark happy path.",
+      "risk": "Enterprise-specific Xead/Xeaf extensions can encode proprietary business vocabulary or local schema information in element or attribute names. A receipt described as public-safe can therefore disclose source-derived names even when values, text, legacy IDs, and structural locators are redacted.",
+      "teiDirection": "keep exact unknown element/attribute names in local ObservedDocument only; public Evidence must preserve their existence and determinism through aggregate counts and stable set fingerprints or other non-reversible summaries. Known standard Xead/Xeaf schema names may remain public only when their publication basis is independently established. Classification and unresolved accounting must not require arbitrary unknown names to be published."
     }
   ]
 }
