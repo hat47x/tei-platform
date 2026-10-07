@@ -231,9 +231,10 @@ func (v Criticality) valid() bool {
 }
 
 type Dependency struct {
-	AssertionID string      `json:"assertionId"`
-	Consumer    string      `json:"consumer"`
-	Criticality Criticality `json:"criticality"`
+	AssertionID  string      `json:"assertionId"`
+	Consumer     string      `json:"consumer"`
+	Criticality  Criticality `json:"criticality"`
+	MaxAgeSeconds int        `json:"maxAgeSeconds,omitempty"`
 }
 
 type CoverageArea struct {
@@ -314,8 +315,8 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 		if _, ok := ids[d.AssertionID]; !ok {
 			return input, fmt.Errorf("dependencies[%d] references unknown assertion %q", i, d.AssertionID)
 		}
-		if d.Consumer == "" || !d.Criticality.valid() {
-			return input, fmt.Errorf("dependencies[%d] has invalid consumer or criticality", i)
+		if d.Consumer == "" || !d.Criticality.valid() || d.MaxAgeSeconds < 0 {
+			return input, fmt.Errorf("dependencies[%d] has invalid consumer / criticality / maxAgeSeconds", i)
 		}
 	}
 	coverageAreas, err := normalizeCoverageAreas(input.CoverageAreas, ids)
