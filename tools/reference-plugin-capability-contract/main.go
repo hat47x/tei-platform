@@ -305,6 +305,7 @@ func capabilityResolutionFingerprint(
 		PluginID                     string         `json:"pluginId"`
 		PluginVersion                string         `json:"pluginVersion"`
 		ImplementationID             string         `json:"implementationId"`
+		ExecutionProfileFingerprint  string         `json:"executionProfileFingerprint,omitempty"`
 		ArtifactDigest               string         `json:"artifactDigest"`
 		SourceDeclarationFingerprint string         `json:"sourceDeclarationFingerprint,omitempty"`
 	}{
@@ -317,6 +318,7 @@ func capabilityResolutionFingerprint(
 		PluginID:                     provider.PluginID,
 		PluginVersion:                provider.PluginVersion,
 		ImplementationID:             provider.ImplementationID,
+		ExecutionProfileFingerprint:  provider.ExecutionProfileFingerprint,
 		ArtifactDigest:               provider.ArtifactDigest,
 		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 	})
