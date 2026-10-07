@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"tei/internal/core"
+	"tei/internal/environment"
 	"tei/internal/plugin"
 	"tei/internal/realization"
 )
@@ -245,6 +246,42 @@ func verifyRuntimeCapabilitySelectionBinding(
 		)
 	}
 	return nil
+}
+
+func verifyRuntimeCapabilitySelectionAgainstCurrentAuthority(
+	binding RuntimeCapabilitySelectionBinding,
+	runtimeBinding RuntimeCapabilityBinding,
+	capabilityLock CapabilityResolutionLock,
+	env environment.Environment,
+	plugins plugin.ResolvedSet,
+	bindings []realization.ContractQueryExecutorBinding,
+) error {
+	if env.ID != binding.Environment {
+		return fmt.Errorf(
+			"runtime capability selection environment %s differs from current environment %s",
+			binding.Environment,
+			env.ID,
+		)
+	}
+	selected, err := realization.ResolveContractQueryExecutor(
+		env,
+		plugins,
+		bindings,
+		binding.Instance,
+		binding.Target,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"current Contract Query executor authority no longer reproduces selection: %w",
+			err,
+		)
+	}
+	return verifyRuntimeCapabilitySelectionBinding(
+		binding,
+		runtimeBinding,
+		capabilityLock,
+		selected,
+	)
 }
 
 func validateRuntimeCapabilitySelectionBinding(
