@@ -21,7 +21,7 @@ func targetRuntimeProvider(contract Contract, target, digestMarker string) Provi
 		PluginID:          "tei.reference.portable",
 		PluginVersion:     "1.0.0",
 		ImplementationID:  "portable.runtime.v1",
-		Target:            target,
+		RealizationTarget:            target,
 		ArtifactDigest:    "sha256:" + strings.Repeat(digestMarker, 64),
 		Scope:             ScopeApplicationRuntime,
 		ContractID:        contract.ID,
@@ -45,7 +45,7 @@ func targetResolveInput(
 	}
 	return ResolveInput{
 		Scope:       ScopeApplicationRuntime,
-		Target:      target,
+		RealizationTarget:      target,
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:   []Contract{contract},
 		Providers:   providers,
@@ -63,19 +63,19 @@ func TestSameLogicalProviderCanUseDifferentArtifactsForDifferentTargets(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if webResolution.Target != "web-browser" ||
-		webResolution.Provider.Target != "web-browser" ||
+	if webResolution.RealizationTarget != "web-browser" ||
+		webResolution.Provider.RealizationTarget != "web-browser" ||
 		webResolution.Provider.ArtifactDigest != web.ArtifactDigest {
 		t.Fatalf("web resolution=%+v", webResolution)
 	}
 
-	input.Target = "desktop"
+	input.RealizationTarget = "desktop"
 	desktopResolution, err := resolveCapability(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if desktopResolution.Target != "desktop" ||
-		desktopResolution.Provider.Target != "desktop" ||
+	if desktopResolution.RealizationTarget != "desktop" ||
+		desktopResolution.Provider.RealizationTarget != "desktop" ||
 		desktopResolution.Provider.ArtifactDigest != desktop.ArtifactDigest {
 		t.Fatalf("desktop resolution=%+v", desktopResolution)
 	}
@@ -120,11 +120,11 @@ func TestTargetSpecificProviderRequiresEvidenceForExactTarget(t *testing.T) {
 	contract := portableRuntimeContract()
 	web := targetRuntimeProvider(contract, "web-browser", "2")
 	desktopEvidenceProvider := web
-	desktopEvidenceProvider.Target = "desktop"
+	desktopEvidenceProvider.RealizationTarget = "desktop"
 
 	input := ResolveInput{
 		Scope:       ScopeApplicationRuntime,
-		Target:      "web-browser",
+		RealizationTarget:      "web-browser",
 		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
 		Contracts:   []Contract{contract},
 		Providers:   []Provider{web},
@@ -156,8 +156,8 @@ func TestCapabilityResolutionLockRejectsTargetDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.Target != "web-browser" {
-		t.Fatalf("lock target=%q", lock.Target)
+	if lock.RealizationTarget != "web-browser" {
+		t.Fatalf("lock target=%q", lock.RealizationTarget)
 	}
 
 	desktopInput := targetResolveInput(contract, "desktop", desktop, web)
@@ -195,8 +195,8 @@ func TestCapabilityResolutionLockRejectsNonCanonicalTargetText(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lock.Target = " web-browser "
-	lock.Provider.Target = lock.Target
+	lock.RealizationTarget = " web-browser "
+	lock.Provider.RealizationTarget = lock.RealizationTarget
 	lock.ResolutionFingerprint = capabilityResolutionFingerprint(
 		lock.Scope,
 		lock.Contract,
