@@ -493,7 +493,7 @@ func TestRuntimeCapabilitySelectionReplaysCurrentProductionBindingAuthority(t *t
 		env,
 		resolvedPlugins,
 		nil,
-	); err == nil || !strings.Contains(err.Error(), "no") {
+	); err == nil || !strings.Contains(err.Error(), "Bindingがありません") {
 		t.Fatalf("removed production Binding remained current: %v", err)
 	}
 
@@ -508,7 +508,7 @@ func TestRuntimeCapabilitySelectionReplaysCurrentProductionBindingAuthority(t *t
 		env,
 		resolvedPlugins,
 		duplicate,
-	); err == nil || !strings.Contains(err.Error(), "multiple") {
+	); err == nil || !strings.Contains(err.Error(), "Bindingが複数あります") {
 		t.Fatalf("duplicate production Binding remained current: %v", err)
 	}
 }
