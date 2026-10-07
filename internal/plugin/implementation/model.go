@@ -191,10 +191,88 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 	return nil
 }
 
+
+
+func rejectDuplicateJSONKeys(raw []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := walkJSONValue(decoder, 0); err != nil {
+		return err
+	}
+	if token, err := decoder.Token(); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("JSON payload contains multiple values after %v", token)
+	}
+	return nil
+}
+
+func walkJSONValue(decoder *json.Decoder, depth int) error {
+	if depth > 128 {
+		return fmt.Errorf("JSON payload nesting exceeds 128 levels")
+	}
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delim {
+	case '{':
+		seen := map[string]struct{}{}
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return fmt.Errorf("JSON object key is not a string")
+			}
+			if _, exists := seen[key]; exists {
+				return fmt.Errorf("JSON object key %q is declared more than once", key)
+			}
+			seen[key] = struct{}{}
+			if err := walkJSONValue(decoder, depth+1); err != nil {
+				return err
+			}
+		}
+		closeToken, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if closeToken != json.Delim('}') {
+			return fmt.Errorf("JSON object is not terminated")
+		}
+	case '[':
+		for decoder.More() {
+			if err := walkJSONValue(decoder, depth+1); err != nil {
+				return err
+			}
+		}
+		closeToken, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if closeToken != json.Delim(']') {
+			return fmt.Errorf("JSON array is not terminated")
+		}
+	default:
+		return fmt.Errorf("unexpected JSON delimiter %q", delim)
+	}
+	return nil
+}
+
 func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return nil, fmt.Errorf("JSON payload is empty")
+	}
+	if err := rejectDuplicateJSONKeys(trimmed); err != nil {
+		return nil, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(trimmed))
 	decoder.UseNumber()
