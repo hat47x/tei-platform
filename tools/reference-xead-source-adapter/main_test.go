@@ -139,3 +139,39 @@ func TestXeafKnownConstructInventory(t *testing.T) {
 		}
 	}
 }
+
+func TestXMLMarkupIsAccountedWithoutPublishingItsContent(t *testing.T) {
+	xmlInput := []byte(`<?xml version="1.0"?><System><!--private comment--><?tool secret?><Table/></System>`)
+	doc, err := Observe(FormatXead, xmlInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Markup) != 3 {
+		t.Fatalf("markup=%+v", doc.Markup)
+	}
+	receipt := PublicReceipt(doc)
+	encoded, err := json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(encoded)
+	if strings.Contains(text, "private comment") || strings.Contains(text, "secret") {
+		t.Fatalf("markup content leaked into publication receipt: %s", text)
+	}
+	if receipt.MarkupCounts["processing-instruction"] != 2 || receipt.MarkupCounts["comment"] != 1 {
+		t.Fatalf("markup counts=%+v", receipt.MarkupCounts)
+	}
+}
+
+func TestNamespacedLookalikeDoesNotBecomeKnownXeadConstruct(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:extension"><x:Table ID="not-xead"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Nodes) != 2 || doc.Nodes[1].Known || doc.Nodes[1].Namespace != "urn:extension" {
+		t.Fatalf("namespaced lookalike was treated as known: %+v", doc.Nodes)
+	}
+	if len(doc.Unresolved) != 1 || doc.Unresolved[0].Code != "namespaced-element" {
+		t.Fatalf("unresolved=%+v", doc.Unresolved)
+	}
+}
