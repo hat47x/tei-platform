@@ -81,6 +81,43 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 			})
 		}
 	}
+	for _, key := range facts.LegacyKeys {
+		if key.KeyLegacyID == "" {
+			out = append(out, RelationalDiagnostic{
+				Code:          "key-id-missing",
+				Locator:       key.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: key.TableLegacyID,
+			})
+		}
+	}
+	relationshipIDs := map[string][]RelationshipKeyFact{}
+	for _, relation := range facts.RelationshipKeys {
+		if relation.RelationshipID == "" {
+			out = append(out, RelationalDiagnostic{
+				Code:    "relationship-id-missing",
+				Locator: relation.Locator,
+				Nature:  RelationalDiagnosticNature,
+			})
+			continue
+		}
+		relationshipIDs[relation.RelationshipID] = append(
+			relationshipIDs[relation.RelationshipID],
+			relation,
+		)
+	}
+	for relationshipID, matches := range relationshipIDs {
+		if len(matches) <= 1 {
+			continue
+		}
+		out = append(out, RelationalDiagnostic{
+			Code:           "relationship-id-duplicate",
+			Locator:        matches[0].Locator,
+			Nature:         RelationalDiagnosticNature,
+			RelationshipID: relationshipID,
+			Count:          len(matches),
+		})
+	}
 	for tableID, tableKeys := range keys {
 		for keyID, matches := range tableKeys {
 			if tableID == "" || tableIndex.TableCounts[tableID] != 1 || keyID == "" || len(matches) <= 1 {
