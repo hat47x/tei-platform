@@ -18,6 +18,8 @@
 
 RMT-2のsource-faithful adapter候補は `internal/xeadsource` に置きます。そこではraw source treeに加え、legacy key / Relationship key reference / declared `KeyFields`をsource factとして機械可読化できます。ただし、それらはbusiness identifier、candidate key、functional dependency、Canonical identity、physical key authorityではありません。AI / Studio / CLIが利用する場合も、candidate classificationとauthority limitを同時に扱います。
 
+relational factの存在はlowering可能性の証明にも使いません。内部Inspectionではfull-setの`relationalResolutionStatus`と、fact単位の`resolved / unresolved / unvalidated`を分離します。局所`resolved`は構造readinessに限り、Canonical meaningやbusiness identityのAcceptanceではありません。公開inspection report v2ではraw locatorやlegacy IDを複製せず、fact種別ごとのreadiness件数だけを保持します。
+
 ## 更新原則
 
 - source snapshotが変わったらdigestを変え、既存Evidenceへ上書きして同一source扱いしない
