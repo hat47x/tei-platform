@@ -245,3 +245,18 @@ Environment
 target-specificな選択は`RuntimeCapabilitySelectionBinding`へ分離し、Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Lock、Runtime Capability Bindingをfingerprintで結びます。Oracle targetとPostgreSQL targetが同じgeneric Contractを要求しても、それぞれ既存Bindingに従って別Providerを利用できるpressureを追加しました。
 
 この結果から、Capability Contractの共通resolverが常にProvider selection Authorityを持つとは限らないことが分かります。既存のdomain / runtime Bindingが選択Authorityを持つ場合、generic Contractは選択済みProviderの契約適合性を検証する層として使います。generic Contract自体が選択Authorityを持つscopeでは、曖昧なProviderを明示wiringまたはAccepted policyなしに選ばない規則を維持します。
+
+
+## E4 Target realization pressure — 2026-10-07
+
+Web可搬性をCapability Contractへ反映するため、TargetごとのrealizationをReference resolverへ追加した。
+
+Contract identityはTargetに依存させない。同じPlugin / version / implementation IDを保ったまま、DesktopとWeb Browserで別artifactを宣言できる。Provider declarationとConformance Evidenceはrealization対象Targetとexact artifactを保持し、resolution identity / Capability Resolution Lockは選択したTargetを含む。
+
+Targetを指定した解決ではexact Targetだけを候補にする。Target未指定Providerを「任意Target対応」とみなさず、process前提Provider等をWebへ暗黙fallbackしない。反対にTarget context自体が無い場合も、Target固有Providerのどれかを推測して選ばない。
+
+同じlogical ProviderのTarget違いは共存できるが、同じTarget内で同じlogical Provider identityを複数artifactへ重複宣言した場合はfail closedとする。明示wiringはlogical Providerを選び、物理realizationはTarget contextによって一意化する。
+
+Capability Resolution LockはTarget driftも拒否する。Runtime Capability BindingにもTargetを露出し、Environment / Plugin Lockとの接続をTargetから追跡できるようにした。
+
+このReferenceで確認したのはselectionとidentityの境界までである。Web Browser向けWasm / JavaScript implementationのactual build、load、sandbox、size / startup / memory測定は未実施であり、RQ-024のEvidence tierは上げない。
