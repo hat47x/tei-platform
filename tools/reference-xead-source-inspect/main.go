@@ -17,7 +17,7 @@ import (
 	"tei/internal/xeadsource"
 )
 
-const reportSchemaVersion = "reference-xead-source-inspection-v0"
+const reportSchemaVersion = "reference-xead-source-inspection-v1"
 
 type sourceIdentity struct {
 	Format xeadsource.Format `json:"format"`
