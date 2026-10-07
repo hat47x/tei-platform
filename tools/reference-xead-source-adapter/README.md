@@ -11,3 +11,14 @@ GitHub #950のsource-faithful adapter候補です。
 Repository外のexact `MfgOrder.xead` / `MfgOrder.xeaf`にも適用し、既存EvidenceのSHA-256と主要件数が一致すること、全12,771 elementが既知constructとしてaccountingされることを確認しました。原model本体やObserved DocumentはRepositoryへ追加していません。
 
 この実装はproduction ImporterでもCanonical authorityでもありません。Plugin登録境界はISSUE-000080 / GitHub #951へ分離しています。
+
+## 実行
+
+```bash
+go run ./tools/reference-xead-source-adapter -format xead -input /path/to/model.xead
+
+go run ./tools/reference-xead-source-adapter -format xead -input /path/to/model.xead \
+  -contract reference/reference-model-transfer/transcription-contract-v0.json
+```
+
+`-contract`を付けた場合は、Publication Receiptに加えて、観測したelement kindが転写契約へ割り当て済みかを返します。mapping entryが存在してもSemantic Acceptance済みとはみなしません。
