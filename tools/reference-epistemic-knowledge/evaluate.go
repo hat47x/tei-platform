@@ -70,10 +70,11 @@ type CoverageAssessment struct {
 }
 
 type KnowledgeHealth struct {
-	Level    string             `json:"level"`
-	Counts   HealthCounts       `json:"counts"`
-	Issues   []HealthIssue      `json:"issues,omitempty"`
-	Coverage CoverageAssessment `json:"coverage"`
+	Level             string             `json:"level"`
+	ViewMetadataState MetadataState      `json:"viewMetadataState"`
+	Counts            HealthCounts       `json:"counts"`
+	Issues            []HealthIssue      `json:"issues,omitempty"`
+	Coverage          CoverageAssessment `json:"coverage"`
 }
 
 type ReviewRequest struct {
@@ -160,6 +161,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"target-anchor-resolution-does-not-prove-semantic-identity",
 			"coverage-mapping-is-input-not-semantic-completeness-proof",
 			"content-fingerprint-does-not-restore-review-history",
+			"partial-transport-health-is-not-project-wide-health",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
@@ -464,7 +466,10 @@ func buildHealth(
 	assessments map[string]Assessment,
 	context ContextQuery,
 ) KnowledgeHealth {
-	health := KnowledgeHealth{Level: "healthy"}
+	health := KnowledgeHealth{
+		Level:             "healthy",
+		ViewMetadataState: corpus.MetadataState,
+	}
 	asOf, _ := time.Parse(time.RFC3339, context.AsOf)
 	for _, assertion := range corpus.Assertions {
 		switch assessments[assertion.ID].UseState {
