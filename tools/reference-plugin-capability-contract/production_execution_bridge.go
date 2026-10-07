@@ -125,8 +125,12 @@ func buildLegacyProductionExecutionBridge(
 			"production Capability is provided by a different Plugin",
 		)
 	}
-	if normalizedLegacyCapabilityFingerprint(capabilityRuntime.Capability) !=
-		lock.Provider.SourceDeclarationFingerprint {
+	capabilityFingerprint, err :=
+		normalizedLegacyCapabilityFingerprint(capabilityRuntime.Capability)
+	if err != nil {
+		return ProductionExecutionBridge{}, err
+	}
+	if capabilityFingerprint != lock.Provider.SourceDeclarationFingerprint {
 		return ProductionExecutionBridge{}, fmt.Errorf(
 			"production Capability declaration differs from locked Provider source declaration",
 		)
