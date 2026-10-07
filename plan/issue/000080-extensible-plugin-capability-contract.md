@@ -158,6 +158,8 @@ process非対応Targetで暗黙に別の意味へfallbackしない。
 
 最初のcontractは`authoring.source-adapter.xead`で、Authority scopeを`authoring-tool`として扱う。contract identity / version / fingerprintとprovider Plugin / implementation / artifactを分離し、providerの自己申告だけでは解決対象にしない。exact contract fingerprintとConformance profileへ結び付くEvidenceを要求する。
 
+Contractにはrequest / result / failureに加えてunknown semanticsも明示する。unknown定義を省略したContractは拒否し、unknown semanticsだけが変わった場合もContract fingerprintを変える。Source Adapterで未解釈constructを保持することと、入力不正や実行失敗を成功扱いしないことを同じ状態へ畳まない。
+
 Referenceでは次のnegative controlを置いた。
 
 - Conformance Evidenceが無いproviderを拒否する
@@ -260,3 +262,16 @@ Targetを指定した解決ではexact Targetだけを候補にする。Target�
 Capability Resolution LockはTarget driftも拒否する。Runtime Capability BindingにもTargetを露出し、Environment / Plugin Lockとの接続をTargetから追跡できるようにした。
 
 このReferenceで確認したのはselectionとidentityの境界までである。Web Browser向けWasm / JavaScript implementationのactual build、load、sandbox、size / startup / memory測定は未実施であり、RQ-024のEvidence tierは上げない。
+
+
+## E5 既存Runtime選択Authorityとの接続 — 2026-10-07
+
+既存`contract-query-executor`には、Environment / Database instance / Contract Query targetごとの`ContractQueryExecutorBinding`がすでにProvider選択のAuthorityとして存在する。この選択へgeneric Capabilityの`Wiring`を重ねると、同じ実行先を二つの仕組みが選ぶことになる。
+
+Referenceでは、productionの`ResolveContractQueryExecutor`が先に選んだPlugin / Capabilityだけをgeneric Contractへ投影し、Conformanceを確認する経路を追加した。この経路のCapability Resolution Lockはgeneric`Wiring`を持たない。generic ContractはProviderを選ぶのではなく、既存Authorityが選んだProviderが共通callable contractを満たすかを検証する。
+
+`RuntimeCapabilitySelectionBinding`は、Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Resolution Lock、Runtime Capability Bindingを結び付けるderived artifactである。current Environment / Plugin set / Contract Query Bindingからproduction resolverを再実行し、同じ選択を再現できる場合だけcurrentと扱う。
+
+Bindingが削除された場合、同じtargetにBindingが重複した場合、別executorへ変更された場合はreplayを拒否する。OracleとPostgreSQLが同じgeneric Contractを満たしても、それぞれの既存target-specific Bindingに従って別Providerを利用できる。
+
+この結果は、Capability Contract共通化のために既存の細粒度なRuntime selection Authorityを捨てる必要がないことを示す。一方、generic Capability自体が選択Authorityを持つscopeでは、従来どおり複数Providerを暗黙選択せず明示`Wiring`を要求する。
