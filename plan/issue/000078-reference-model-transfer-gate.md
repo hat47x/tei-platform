@@ -230,6 +230,20 @@ exact locator付きの`LocalTranscriptionCandidate`はローカル調査用に�
 
 R1追加後のexact-head focused testとfull repository healthは未取得である。R0のPASSをR1 headへ流用しない。
 
+### Phase 2 exact-source cross-view accounting
+
+Repository外のexact Xead / Xeaf sourceを再走査し、`cross-view-accounting-v0.json`へ公開可能な集計だけを保存した。
+
+Data側ではRelationship key shapeがtypeごとに異なることを確認した。51件のREFFERはsource PK/SKとtarget FKが等長、2件のSUBTYPEはPK同士が等長である。一方、27件のFAMILYはすべてtarget PKの方が長い。XeadModeler sourceでも、source-equivalent fieldsを含むtarget PK/SKが同数ならSUBTYPE、より多ければFAMILY、等長FKならREFFERとしている。したがってFAMILYへ等長key validatorを適用しない。
+
+52件のDERIVABLE fieldはいずれもTableKeyへ参加しておらず、benchmarkのRelationship keyではderived-value dynamic referenceを実証していない。一般機能としての可能性とbenchmark coverageを分ける。
+
+Business側では148 TaskActionのうち6件がFunction I/Oなし、10件が1 Function、132件が2〜5 Functionを参照する。TaskAction→Functionを1:1へ縮約しない。Function-wide IOTableから展開できる665 pathはpotential accessであり、action-specific actual effectではない。
+
+FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Functionを含む4個のmulti-node SCCがある。これはsource上のFunction-use graphが非巡回とは限らないことを示すが、actual runtime recursionやBusiness Procedure順序のEvidenceにはしない。
+
+これらをRMP-043〜045へ反映し、RML-002 / 005 / 014 / 017を実測に合わせて更新した。
+
 ## Webチャット外担当
 
 次はactual environmentまたは利用条件判断が必要であり、本Issueの文書研究だけで完了させない。
