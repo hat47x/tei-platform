@@ -118,3 +118,14 @@ Source Adapterがsourceを観測できることと、そのconstructに転写方
 2026-10-07時点では、exact sourceで観測したXead 30 kind、Xeaf 21 kindのすべてにmapping entryがある。
 
 この結果は転写方針の網羅性だけを示す。mapping entryの存在をSemantic Acceptance、behavior equivalence、Runtime Authorityへ読み替えない。
+
+
+## XMLレベルのaccounting
+
+elementとattributeだけを数えても、source全体を観測したことにはならない。Reference実装では、XML comment、processing instruction、directiveもローカル観測へ残す。
+
+public Publication Receiptへはmarkup本文を出さず、種類ごとの件数だけを残す。benchmarkのexact sourceでは、Xead / XeafともXML declarationに対応するprocessing instructionが1件ずつあり、comment、directiveは0件だった。
+
+namespaceもsource factとして区別する。たとえばnamespace付きの`Table`は、local nameが同じでもXead標準の`Table`として扱わない。unknown / namespaced elementが観測されている場合、転写契約に同名のmappingがあってもClassification coverageをcompleteにしない。
+
+この境界は、将来のXead/Xeaf派生形式や拡張metadataを「既知の要素名に見える」という理由だけで取り込まないために必要である。
