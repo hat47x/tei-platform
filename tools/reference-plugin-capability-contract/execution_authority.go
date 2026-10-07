@@ -199,15 +199,15 @@ func validateCapabilityExecutionProfile(
 	if err != nil {
 		return err
 	}
-	if len(normalized) != len(profile.Permissions) {
-		return fmt.Errorf("execution profile permissions are not normalized")
-	}
-	for i := range normalized {
-		if normalized[i] != profile.Permissions[i] {
+	if requireFingerprint {
+		if len(normalized) != len(profile.Permissions) {
 			return fmt.Errorf("execution profile permissions are not normalized")
 		}
-	}
-	if requireFingerprint {
+		for i := range normalized {
+			if normalized[i] != profile.Permissions[i] {
+				return fmt.Errorf("execution profile permissions are not normalized")
+			}
+		}
 		if !validSHA256Fingerprint(profile.ProfileFingerprint) {
 			return fmt.Errorf("execution profile fingerprint is invalid")
 		}
