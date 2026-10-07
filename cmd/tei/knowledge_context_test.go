@@ -465,7 +465,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
-	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v2" ||
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v3" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
 		dataDesign.ResolutionStatus != "resolved" ||
