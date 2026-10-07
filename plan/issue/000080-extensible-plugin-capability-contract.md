@@ -380,3 +380,17 @@ process / sandbox-requiredのzero-Permission fixtureでは、既存`HostSandboxL
 この結果は、generic Capability Contractの導入に合わせて別のprocess launcherやsandbox bypassを作る必要がないことを示します。Generic側は契約・identity・Authorityの整合を確認し、実行は既存production runtimeへ渡します。
 
 E11で実行したpressureはzero-Permissionです。Resource Broker、Resource Binding、Lease、Secret injection、renew / refresh / fencingまでgeneric Capability経由で実行したEvidenceはまだありません。またRepository exact-head test / health gateも未取得です。
+
+## E12 existing Resource Broker / lease pressure — 2026-10-07
+
+E11のzero-Permission sandbox pressureに加え、filesystem read Permissionを一件持つlegacy Capabilityで既存Resource Broker経路を通すReference testを追加しました。
+
+generic Execution ProfileはPermissionの種類・access・logical scopeだけを持ちます。Resource ID、mount source、mount path、Lease Policyはproduction `EnvironmentPlan`の`ResourceBindings` / `CapabilityRuntime`に残します。
+
+Reference orchestrationはE10 bridgeをreplayした後、既存`Registry.InvokeWithProvenance`へ委譲します。production Runtimeは既存どおりResource BrokerへAcquireRequestを送り、leaseを検証し、HostSandboxLauncherへfilesystem mountを渡し、呼出し後にleaseをreleaseします。
+
+testではResource BrokerのAcquire / Release、Capability kind / ID、Runtime Policy fingerprint、filesystem mount target / access、Invocation provenanceのlease releaseを確認します。Resource Broker自体が無い場合は、generic bridgeがあっても既存Runtimeが実行を拒否します。
+
+この結果から、generic Capability Contractの移行に合わせてResource Authorityを二重化する必要はないことが分かります。Permissionの意味契約はgeneric profileへ投影できますが、concrete resource resolutionとlease lifecycleは既存production境界をAuthorityとして維持できます。
+
+E12で確認するのはfilesystem read一件のAcquire / sandbox mount / Releaseまでです。Secret injection、Network endpoint、renew / refresh、Supervisor ownership / fencingのgeneric Capability経由E2Eは未実施です。Repository exact-head test / health gateも未取得です。
