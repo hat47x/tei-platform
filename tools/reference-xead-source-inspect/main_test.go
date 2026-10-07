@@ -34,7 +34,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		t.Fatal(err)
 	}
 	got := buildReport(inspection)
-	if got.SchemaVersion != "reference-xead-source-inspection-v1" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v2" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.DerivedLegacyKeyMemberCount != 1 ||
@@ -43,6 +43,12 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 	}
 	if got.RelationalResolutionStatus != "resolved" {
 		t.Fatalf("valid relational source was marked unresolved: %#v", got)
+	}
+	if got.RelationalFactResolutions.Total != 3 ||
+		got.RelationalFactResolutions.Resolved != 3 ||
+		got.RelationalFactResolutions.Unresolved != 0 ||
+		got.RelationalFactResolutions.Unvalidated != 0 {
+		t.Fatalf("valid relational facts were not reported as locally resolved: %#v", got.RelationalFactResolutions)
 	}
 	if got.UnknownConstructCount != 1 {
 		t.Fatalf("unknown source construct count = %d", got.UnknownConstructCount)
@@ -106,13 +112,15 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != "reference-xead-source-inspection-v1" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v2" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.RuntimeKeyCount != 1 ||
 		got.Source.Format != xeadsource.FormatXeaf ||
 		got.Source.SHA256 == "" ||
-		got.RelationalResolutionStatus != "resolved" {
+		got.RelationalResolutionStatus != "resolved" ||
+		got.RelationalFactResolutions.Total != 1 ||
+		got.RelationalFactResolutions.Resolved != 1 {
 		t.Fatalf("unexpected report: %#v", got)
 	}
 }
@@ -140,5 +148,68 @@ func TestBuildReportMarksRelationalDiagnosticsAsUnresolved(t *testing.T) {
 	}
 	if got.RelationalDiagnostics.Total == 0 {
 		t.Fatalf("unresolved report lost diagnostic Evidence: %#v", got)
+	}
+	if got.RelationalFactResolutions.Total != 1 ||
+		got.RelationalFactResolutions.Unresolved != 1 ||
+		got.RelationalFactResolutions.Resolved != 0 {
+		t.Fatalf("unresolved fact readiness was not summarized: %#v", got.RelationalFactResolutions)
+	}
+}
+
+
+func TestBuildReportPreservesLocalReadinessWithoutPublishingLocators(t *testing.T) {
+	inspection, err := xeadsource.Inspect(
+		xeadsource.FormatXead,
+		[]byte(`<System><Table ID="SECRET_TABLE"><TableField ID="SECRET_A"/><TableKey ID="SECRET_GOOD" Type="PK"><TableKeyField FieldID="SECRET_A"/></TableKey><TableKey ID="SECRET_BAD" Type="SK"><TableKeyField FieldID="SECRET_MISSING"/></TableKey></Table></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := buildReport(inspection)
+	if got.RelationalResolutionStatus != "unresolved" ||
+		got.RelationalFactResolutions.Total != 2 ||
+		got.RelationalFactResolutions.Resolved != 1 ||
+		got.RelationalFactResolutions.Unresolved != 1 ||
+		got.RelationalFactResolutions.Unvalidated != 0 {
+		t.Fatalf("local readiness summary drifted: %#v", got.RelationalFactResolutions)
+	}
+	legacyKeys := got.RelationalFactResolutions.ByKind["legacy-key"]
+	if legacyKeys.Total != 2 || legacyKeys.Resolved != 1 || legacyKeys.Unresolved != 1 {
+		t.Fatalf("legacy-key readiness summary drifted: %#v", legacyKeys)
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"SECRET_TABLE", "SECRET_A", "SECRET_GOOD", "SECRET_BAD", "SECRET_MISSING", "/System[1]/Table[1]"} {
+		if bytes.Contains(encoded, []byte(secret)) {
+			t.Fatalf("public local readiness leaked source locator or identifier %q: %s", secret, encoded)
+		}
+	}
+}
+
+func TestBuildReportMarksUnvalidatedDeclaredKeyFieldsAsPartial(t *testing.T) {
+	inspection, err := xeadsource.Inspect(
+		xeadsource.FormatXeaf,
+		[]byte(`<System><Function ID="PRIVATE_FUNCTION" KeyFields="A;B;"/></System>`),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := buildReport(inspection)
+	if got.RelationalResolutionStatus != "partial" ||
+		got.RelationalFactResolutions.Total != 1 ||
+		got.RelationalFactResolutions.Unvalidated != 1 ||
+		got.RelationalFactResolutions.ByKind["declared-key-fields"].Unvalidated != 1 {
+		t.Fatalf("unvalidated declared key fields were reported as lowerable: %#v", got)
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(encoded, []byte("PRIVATE_FUNCTION")) {
+		t.Fatalf("public partial readiness leaked function identifier: %s", encoded)
 	}
 }
