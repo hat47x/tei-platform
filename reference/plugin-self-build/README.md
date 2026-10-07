@@ -84,7 +84,7 @@ plugin-implementation tei.native.runtime.reference v1.0.0 {
 }
 ```
 
-このSourceは一つのPluginと一つの既存Capabilityだけを実装します。filesystem、network、clock、random等のambient inputは持たず、同じSourceとRequestから同じResponseを返します。未定義operationや別Capabilityへの呼び出しはerrorです。
+この最初のprofileは、一つのPluginについて既存`deployment-executor` Capabilityの`execute` operationを一つだけ実装します。filesystem、network、clock、random等のambient inputは持たず、同じSourceとRequestから同じResponseを返します。追加operation、別Capability kind、未定義operationへの呼び出しはerrorです。ほかのCapabilityへ一般化するのは、#951のcallable contract境界を踏まえた後続課題です。
 
 implementation SourceはCanonicalな`ir.World`へ追加しません。Workspaceのphysical implementation sourceとして別に保持し、Source Indexでは`RoleImplementation`として追跡します。Plugin descriptorとimplementation Sourceは別のAuthorityです。
 
