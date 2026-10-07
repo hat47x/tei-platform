@@ -10,6 +10,7 @@ import (
 
 const usage = `usage:
   reference-epistemic-knowledge -corpus FILE -context FILE [-out FILE]
+  reference-epistemic-knowledge -corpus FILE -context FILE -review-command FILE [-out FILE]
 `
 
 func main() {
@@ -22,6 +23,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	corpusPath := flags.String("corpus", "", "epistemic corpus JSON")
 	contextPath := flags.String("context", "", "current context JSON")
 	outPath := flags.String("out", "", "output JSON file; stdout when omitted")
+	reviewCommandPath := flags.String("review-command", "", "optional human review mutation command JSON")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -50,12 +52,33 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	projection, err := evaluateCorpus(corpus, context)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
+	var output any
+	if *reviewCommandPath == "" {
+		projection, err := evaluateCorpus(corpus, context)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = projection
+	} else {
+		commandData, err := os.ReadFile(*reviewCommandPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		command, err := decodeStrict[ReviewCommand](commandData)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		result, err := applyReviewCommand(corpus, context, command)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		output = result
 	}
-	encoded, err := jsonBytes(projection)
+	encoded, err := jsonBytes(output)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
