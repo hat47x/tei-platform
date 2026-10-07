@@ -8,16 +8,16 @@ import (
 )
 
 type ClassificationCoverage struct {
-	ContractSHA256          string       `json:"contractSha256"`
-	Format                  SourceFormat `json:"format"`
-	ObservedKindCount       int          `json:"observedKindCount"`
-	MappedObservedKindCount int          `json:"mappedObservedKindCount"`
-	UnmappedObservedKinds      []string     `json:"unmappedObservedKinds,omitempty"`
-	UnmappedObservedKindCount  int          `json:"unmappedObservedKindCount,omitempty"`
-	UnobservedMappedKinds      []string     `json:"unobservedMappedKinds,omitempty"`
-	UnknownObservedElements    int          `json:"unknownObservedElements"`
-	Complete                bool         `json:"complete"`
-	AuthorityLimits         []string     `json:"authorityLimits"`
+	ContractSHA256            string       `json:"contractSha256"`
+	Format                    SourceFormat `json:"format"`
+	ObservedKindCount         int          `json:"observedKindCount"`
+	MappedObservedKindCount   int          `json:"mappedObservedKindCount"`
+	UnmappedObservedKinds     []string     `json:"unmappedObservedKinds,omitempty"`
+	UnmappedObservedKindCount int          `json:"unmappedObservedKindCount,omitempty"`
+	UnobservedMappedKinds     []string     `json:"unobservedMappedKinds,omitempty"`
+	UnknownObservedElements   int          `json:"unknownObservedElements"`
+	Complete                  bool         `json:"complete"`
+	AuthorityLimits           []string     `json:"authorityLimits"`
 }
 
 func CheckClassificationCoverage(format SourceFormat, receipt PublicationReceipt, contractBytes []byte) (ClassificationCoverage, error) {
