@@ -55,13 +55,13 @@ Resultには、対象Work、producer、観測したbase revision、summary、Art
 
 最初のExecutable Referenceは`tools/reference-external-coordination/`に置きます。外部SaaSやTEI Coreの変更を必要とせず、標準GitとJSONだけを利用します。
 
-runnerは一時的なCoordination repositoryを作り、人間起票のWorkを1件保存します。同じWorkに対して二つのAgent Resultを保存し、一方はcurrent base revision、もう一方は意図的にstaleなbase revisionと自己申告の`admin` actor labelを持たせます。
+runnerは一時的なCoordination repositoryを作り、Human-originのWorkを1件保存します。同じWorkに対して二つのAgent Resultを保存し、一方はcurrent base revision、もう一方は意図的にstaleなbase revisionと自己申告の`admin` actor labelを持たせます。current側のResultからはAgent-originのfollow-up Workを1件生成し、Human-originとAgent-originを同じStore上で区別します。
 
 この状態でも、どちらのResultにもCanonical AcceptanceやRuntime authorityを与えません。Workを`completed`へ更新してもProduct Sourceは変化しません。最後にCoordination repository自体を削除し、元のProduct repositoryのrevisionとclean stateが変化しないことを確認します。
 
 ### E1で確認するnegative pressure
 
-E1では、一つのWorkへ複数Resultを保存できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Workを`completed`へ変更してもProduct Sourceの変更とはみなしません。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、digest付き参照として扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
+E1では、一つのWorkへ複数Resultを保存できることに加え、Human-origin WorkとAgent-origin follow-up Workを区別できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Workを`completed`へ変更してもProduct Sourceの変更とはみなしません。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、digest付き参照として扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
 
 E1はCanonical Worldを実際にreloadする試験ではありません。その部分はRQ-034 / ISSUE-000083が所有します。本Issueでは、Coordination層がProduct Sourceの第二正本にならないことを先にpressureします。
 
