@@ -91,7 +91,68 @@ if [[ -n "$(git -C "$INTEGRATION_REPO" status --porcelain)" ]]; then
   exit 1
 fi
 
+CONFLICT_REPO="$TMP_ROOT/conflict"
+CONFLICT_WORKSPACE="$CONFLICT_REPO/reference/workspace"
+mkdir -p "$CONFLICT_REPO/reference"
+cp -R "$ROOT/reference/workspace" "$CONFLICT_REPO/reference/workspace"
+
+git -C "$CONFLICT_REPO" init -q
+git -C "$CONFLICT_REPO" config user.name "TEI Reference"
+git -C "$CONFLICT_REPO" config user.email "reference@tei.invalid"
+git -C "$CONFLICT_REPO" add reference/workspace
+git -C "$CONFLICT_REPO" commit -qm "baseline"
+CONFLICT_BASE_BRANCH="$(git -C "$CONFLICT_REPO" branch --show-current)"
+
+git -C "$CONFLICT_REPO" checkout -qb semantic-a
+cat > "$CONFLICT_WORKSPACE/semantic/sales/tool-neutral-collision-a.tei" <<'EOF'
+
+namespace sales
+
+data ToolNeutralCollision {
+    attribute code type std.code
+}
+EOF
+run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-a-validate.txt"
+git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-a.tei
+git -C "$CONFLICT_REPO" commit -qm "branch a: add collision data"
+
+git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
+git -C "$CONFLICT_REPO" checkout -qb semantic-b
+cat > "$CONFLICT_WORKSPACE/semantic/sales/tool-neutral-collision-b.tei" <<'EOF'
+
+namespace sales
+
+data ToolNeutralCollision {
+    attribute code type std.code
+}
+EOF
+run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-b-validate.txt"
+git -C "$CONFLICT_REPO" add reference/workspace/semantic/sales/tool-neutral-collision-b.tei
+git -C "$CONFLICT_REPO" commit -qm "branch b: add collision data"
+
+git -C "$CONFLICT_REPO" checkout -q "$CONFLICT_BASE_BRANCH"
+git -C "$CONFLICT_REPO" merge -q --no-ff semantic-a -m "merge semantic-a"
+git -C "$CONFLICT_REPO" merge -q --no-ff semantic-b -m "merge semantic-b"
+
+if run_tei validate -workspace "$CONFLICT_WORKSPACE" > "$TMP_ROOT/conflict-merged-validate.txt" 2>&1; then
+  echo "Git-mergeable semantic conflict was not rejected" >&2
+  exit 1
+fi
+
+if ! grep -q 'DUPLICATE_SEMANTIC_ELEMENT' "$TMP_ROOT/conflict-merged-validate.txt"; then
+  echo "semantic conflict failed for an unexpected reason" >&2
+  cat "$TMP_ROOT/conflict-merged-validate.txt" >&2
+  exit 1
+fi
+
+if [[ -n "$(git -C "$CONFLICT_REPO" status --porcelain)" ]]; then
+  echo "semantic validation mutated the conflict repository" >&2
+  git -C "$CONFLICT_REPO" status --short >&2
+  exit 1
+fi
+
 printf 'base=%s\n' "$BASE_REVISION"
 printf 'result=%s\n' "$RESULT_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"
+printf 'semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT\n'
 printf 'tool-neutral development reference: PASS\n'
