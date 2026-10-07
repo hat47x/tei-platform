@@ -361,7 +361,7 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	nativeBuiltin, err := pluginbuiltin.New(nativeSource, nativeRealized)
+	nativeBuiltin, err := pluginbuiltin.New(nativeFirstBytes, nativeRealized)
 	if err != nil {
 		return evidence{}, err
 	}
