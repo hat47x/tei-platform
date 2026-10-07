@@ -401,6 +401,10 @@ TEI-native Source
 
 authoritative Plugin Definitionはartifact-freeのまま保持し、build後にだけderived Runtime Definitionへartifact digestを結び付けます。
 
+native realizationはrunner内部のhelperで直接生成せず、`tools/reference-native-plugin-builder`を隔離Go stateで2回buildします。builder binary digest一致を要求し、そのexact digestをBuild Planの`BuilderIdentity.ArtifactDigest`へ入れます。Go toolchainはnative PluginのBuilder artifactではなく、このReference builderを生成するstage0 seed側のEvidenceとして残します。
+
+builder processは空のenvironmentで実行しますが、OS sandboxやnetwork namespaceで隔離したとは主張しません。hermetic build executionは#943の既存Reproducibility / hermeticity要件として残します。
+
 build-bound BuiltinではHost-owned `BuiltinRegistration`がBuild Plan fingerprintとrealization digestを保持し、Lockと不一致ならInvoke前に停止します。preflightで受理したBuiltin instanceをInvokeまで保持し、registration差替えによるTOCTOUも避けます。
 
 ### interpreted realizationという限界
