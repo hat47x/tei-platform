@@ -217,6 +217,50 @@ func TestDataDesignContextKeepsCompositeDomainConstraintUnresolvedWithoutFirstCl
 	}
 }
 
+func TestDataDesignContextKeepsTemporalHistoryUnresolvedFromDatetimeAttribute(t *testing.T) {
+	w := dataDesignRelationUniqueWorld()
+	w.Semantics[0].Data[1].Attributes = append(
+		w.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{
+			ID:      "sales.order_line.observed_at",
+			Symbol:  "observedAt",
+			TypeRef: "std.datetime",
+		},
+	)
+	ctx := Build(
+		w,
+		sourceindex.Index{},
+		subject.Subject{Kind: "semantic-data", ID: "sales.order_line"},
+	)
+	if ctx.DataDesign == nil {
+		t.Fatal("data design context is missing")
+	}
+	if ctx.DataDesign.TemporalHistoryConditions.Nature != "unresolved" ||
+		ctx.DataDesign.TemporalHistoryConditions.Reason != "temporal-history-condition-not-first-class-in-current-canonical-model" {
+		t.Fatalf("datetime attribute was promoted to temporal semantics: %+v", ctx.DataDesign.TemporalHistoryConditions)
+	}
+	for _, question := range []string{
+		"when-is-the-business-occurrence-or-identity-valid",
+		"can-the-business-identifier-be-reused-across-time",
+		"which-state-transitions-change-identity-membership-or-validity",
+		"which-history-or-validity-period-must-be-preserved",
+		"which-source-or-contract-establishes-the-temporal-semantics",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.TemporalHistoryEvidenceQuestions, question) {
+			t.Fatalf("temporal/history Evidence question %q is missing: %+v", question, ctx.DataDesign.TemporalHistoryEvidenceQuestions)
+		}
+	}
+	for _, limit := range []string{
+		"absence-of-authored-temporal-history-condition-is-not-timeless-semantics",
+		"datetime-or-timestamp-attribute-is-not-temporal-semantics",
+		"persistence-history-column-is-not-business-temporal-semantics",
+	} {
+		if !containsDataDesignString(ctx.DataDesign.AuthorityLimits, limit) {
+			t.Fatalf("temporal/history authority limit %q is missing: %+v", limit, ctx.DataDesign.AuthorityLimits)
+		}
+	}
+}
+
 func TestDataDesignContextKeepsPersistenceKeysAsRealizationFacts(t *testing.T) {
 	w := dataDesignRelationUniqueWorld()
 	w.Persistence = []persistence.Mapping{
