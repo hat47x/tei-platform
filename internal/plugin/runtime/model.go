@@ -193,16 +193,25 @@ func BindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 	if err := engine.Validate(); err != nil {
 		return EnvironmentPlan{}, err
 	}
+	out := plan
+	out.Plugins = append([]PluginRuntime(nil), plan.Plugins...)
+	for i := range out.Plugins {
+		if plan.Plugins[i].RuntimeEngine != nil {
+			copy := *plan.Plugins[i].RuntimeEngine
+			out.Plugins[i].RuntimeEngine = &copy
+		}
+	}
+
 	found := false
-	for i := range plan.Plugins {
-		if plan.Plugins[i].Plugin != identity {
+	for i := range out.Plugins {
+		if out.Plugins[i].Plugin != identity {
 			continue
 		}
 		if found {
 			return EnvironmentPlan{}, fmt.Errorf("runtime plan contains plugin %s@%s more than once", identity.ID, identity.Version)
 		}
 		found = true
-		pr := &plan.Plugins[i]
+		pr := &out.Plugins[i]
 		if pr.Boundary != BoundaryInProcess {
 			return EnvironmentPlan{}, fmt.Errorf("runtime engine binding requires in-process plugin %s@%s", identity.ID, identity.Version)
 		}
@@ -218,8 +227,8 @@ func BindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 	if !found {
 		return EnvironmentPlan{}, fmt.Errorf("runtime plan has no plugin %s@%s", identity.ID, identity.Version)
 	}
-	plan.RuntimePolicyFingerprint = PolicyFingerprint(plan)
-	return plan, nil
+	out.RuntimePolicyFingerprint = PolicyFingerprint(out)
+	return out, nil
 }
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
