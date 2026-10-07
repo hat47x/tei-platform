@@ -435,3 +435,51 @@ func TestTargetPackagingPlanIsExplicitlyNonAuthoritative(t *testing.T) {
 		t.Fatalf("authoritative packaging plan was accepted: %v", err)
 	}
 }
+
+
+func TestTargetPackagingPlanReplayDetectsBuildProvenanceDrift(t *testing.T) {
+	contract := portableRuntimeContract()
+	definition := plugin.Definition{
+		ID:      core.MustCanonicalID("tei.reference.packaging-replay"),
+		Version: "1.0.0",
+	}
+	first := syntheticPackagingInput(
+		t, definition, "replay.runtime", contract, "web-browser",
+		"runtime", "a", "5",
+	)
+	plan, err := buildTargetCapabilityPackagingPlan(
+		[]TargetPackagingInput{first},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyTargetCapabilityPackagingPlan(
+		plan,
+		[]TargetPackagingInput{first},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	second := syntheticPackagingInput(
+		t, definition, "replay.runtime", contract, "web-browser",
+		"runtime", "b", "5",
+	)
+	if first.CapabilityLock.LockFingerprint !=
+		second.CapabilityLock.LockFingerprint {
+		t.Fatal("BuildPlan-only drift unexpectedly changed Capability Lock")
+	}
+	if first.BuildRealization.BindingFingerprint ==
+		second.BuildRealization.BindingFingerprint {
+		t.Fatal("BuildPlan drift did not change build realization")
+	}
+	if first.BuildRealization.ArtifactDigest !=
+		second.BuildRealization.ArtifactDigest {
+		t.Fatal("test requires unchanged artifact bytes")
+	}
+	if err := verifyTargetCapabilityPackagingPlan(
+		plan,
+		[]TargetPackagingInput{second},
+	); err == nil || !strings.Contains(err.Error(), "current Capability / Build realizations") {
+		t.Fatalf("stale packaging plan survived BuildPlan drift: %v", err)
+	}
+}
