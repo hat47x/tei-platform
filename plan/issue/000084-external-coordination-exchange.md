@@ -73,6 +73,29 @@ Brokerの候補責務は、認証情報の隔離、Protocol正規化、Backend A
 
 AWS API Gateway + Lambda等は低コストなReference候補ですが、AWSをArchitecture Requirementにはしません。
 
+## E2-A: GitHub Issuesを実Task Tracker consumerとしてpressureする
+
+GitHub Issue #977自体を、Git textとは性質の異なる最初のTask Tracker consumerとして観測します。#977の目的は利用者の依頼から生じていますが、Issue作成はAgentがConnector経由で実行しました。GitHub上のauthorは接続アカウントとして記録されるため、author fieldだけでは「誰の意図から生じたWorkか」と「どの経路で作成されたか」を区別できません。
+
+Reference上は次のように分けます。
+
+```text
+workRef      = github-issues:hat47x/tei-platform#977
+origin.kind  = human
+createdVia   = agent-connector
+backendActor = connected GitHub account
+
+resultRef    = pull-request:#978
+resultKind   = reference.evidence
+
+canonicalAccepted = false
+runtimeAuthorized = false
+```
+
+このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
+
+#978がDraftであることもCoordination上の進捗であり、それ自体をCanonical Acceptanceにはしません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
+
 ## E2以降
 
 E1のGit text profile成立後、Gitとは性質の異なるBackendを第二consumerとして接続します。Task Tracker、Structured Knowledge、File / Artifact Storeのいずれかから、既存環境で実証しやすいものを選びます。
