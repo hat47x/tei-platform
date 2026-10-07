@@ -76,7 +76,6 @@ func BuildUnresolvedProjection(
 				Nature:        "mapping-unresolved",
 				Count:         kind.UnresolvedObservedCount,
 				MappingStatus: kind.MappingStatus,
-				Extension:     kind.Extension,
 				AuthorityLimits: []string{
 					"unmapped-or-mixed-source-construct-must-not-be-inferred-into-a-known-mapping",
 					"mapping-unresolved-is-not-semantic-rejection",
