@@ -33,6 +33,24 @@ func buildKnowledgeContext(root, subjectKind, subjectID string) (knowledgecontex
 		subject.Subject{Kind: kind, ID: id},
 	), nil
 }
+func checkDataDesignFingerprint(ctx knowledgecontext.Context, expected string) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	if ctx.DataDesign == nil {
+		return fmt.Errorf("expected Data Design fingerprint %q, but this subject has no Data Design Context", expected)
+	}
+	if ctx.DataDesign.Fingerprint != expected {
+		return fmt.Errorf(
+			"Data Design Context fingerprint mismatch: expected=%s current=%s",
+			expected,
+			ctx.DataDesign.Fingerprint,
+		)
+	}
+	return nil
+}
+
 func buildKnowledgeQualification(root, subjectKind, subjectID string, requirements knowledgecontext.QualificationRequirements) (knowledgecontext.QualificationResult, error) {
 	if strings.TrimSpace(root) == "" {
 		return knowledgecontext.QualificationResult{}, fmt.Errorf("knowledge-qualify requires -workspace")
