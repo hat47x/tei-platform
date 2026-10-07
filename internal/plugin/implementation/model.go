@@ -172,15 +172,11 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 	if len(definition.Requires) != 0 || len(definition.External) != 0 {
 		return fmt.Errorf("%s profile does not accept Plugin or external runtime dependencies", StaticResponseProfileV1)
 	}
-	var matches int
-	var matched plugin.Capability
-	for _, capability := range definition.Provides {
-		if capability.Kind == normalized.CapabilityKind && capability.ID == normalized.CapabilityID {
-			matches++
-			matched = capability
-		}
+	if len(definition.Provides) != 1 {
+		return fmt.Errorf("%s profile requires Plugin definition to provide exactly one capability", StaticResponseProfileV1)
 	}
-	if matches != 1 {
+	matched := definition.Provides[0]
+	if matched.Kind != normalized.CapabilityKind || matched.ID != normalized.CapabilityID {
 		return fmt.Errorf(
 			"plugin definition must provide capability %s %s exactly once",
 			normalized.CapabilityKind, normalized.CapabilityID,
