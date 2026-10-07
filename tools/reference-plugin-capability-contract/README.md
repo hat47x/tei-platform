@@ -56,7 +56,7 @@ projection自体はConformanceを与えません。既存PluginがCapabilityを�
 
 さらに、callable ProviderをConformance済みとして採用するにはexact implementation artifact digestを必須にします。現在のReference WorkspaceにあるOracle / PostgreSQL Pluginは`runtime builtin`でartifact digestを持たないため、legacy declarationからProvider候補へ投影できても、そのままgeneric resolverの採用対象にはできません。実装artifactのidentityを別の信頼できるbuild / provenance経路で確定することがmigration prerequisiteとして残ります。
 
-OracleとPostgresの両方にConformance Evidenceがある場合、resolverはPlugin名やCatalog順で一方を選びません。Application Runtime側の明示wiringが必要です。これにより、既存Environment Bindingが持つ明示選択の原則をgeneric contractへ移しても維持できます。
+OracleとPostgresの両方にConformance Evidenceがあっても、generic resolverはPlugin名やCatalog順で一方を選びません。`contract-query-executor`では既存の`ContractQueryExecutorBinding`がEnvironment / Database instance / Contract Query targetごとにexecutorを選ぶAuthorityなので、generic Contract側に第二のRuntime wiringを作りません。既存Bindingで選択済みのProviderだけをgeneric ContractのConformance検証へ渡します。
 
 compatibility projectionは入力された旧Plugin定義を変更しません。移行bridgeが旧Authorityを正規化やsortの副作用で書き換えないこともtestします。
 
@@ -76,6 +76,16 @@ BindingはEnvironment、Capability Lock fingerprint、Plugin ID / version、Plug
 一方、対象PluginがEnvironment Lockから消えた場合、Plugin definition fingerprintが変わった場合、artifact digestが変わった場合はBindingを拒否します。legacy migration pathでは、generic Providerが現在の`plugin.Definition`から一方向に導出されたことも確認します。これにより、新旧のProvider declarationを独立したAuthorityにはしません。
 
 Runtime Plugin Lock format 3の`buildPlanFingerprint`はCapability identityへ取り込みません。同じruntime artifactに対してBuild provenanceだけが更新された場合、Capability resolution identityは維持します。exact Build Planへの追跡は既存Plugin LockとBuildArtifactLockの責務です。
+
+### target-specific Runtime selection
+
+既存Runtimeがすでにtarget-specificなBindingを持つ場合、Capability Contractのgeneric `Wiring`を同じ選択へ重ねません。Referenceでは、productionの`ResolveContractQueryExecutor`が返す選択結果を先に受け取り、そのPlugin / Capabilityだけをgeneric Contractへ投影してConformanceを確認します。
+
+この経路で作るCapability Resolution Lockは`Wiring`を持ちません。代わりに、Environment、Database instance、Contract Query target、executor Capability、Plugin identity、Capability Lock、Runtime Capability Bindingを`RuntimeCapabilitySelectionBinding`で結びます。target-specificな選択を変更した場合はSelection fingerprintが変わります。
+
+同じEnvironmentでOracle targetとPostgreSQL targetが同じgeneric `application-runtime.contract-query-executor`を使っても、それぞれ既存Bindingに従って別Providerを利用できます。generic ContractはProvider選択のAuthorityではなく、選択済みProviderが共通のcallable contractを満たすかを検証する層として働きます。
+
+generic Capability自体が選択Authorityを持つ別scopeでは、曖昧なProviderを明示`Wiring`なしに選ばない従来の規則を維持します。
 
 ### 現行Lockで表現できないpackaging
 
