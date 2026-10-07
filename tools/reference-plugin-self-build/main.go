@@ -38,6 +38,7 @@ const (
 	packagePluginVersion   = "1.0.0"
 	packageWorkspace       = "reference/workspace"
 	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
+	packageBuilderPackage  = "./tools/reference-plugin-package-builder"
 	nativePluginID         = "tei.native.runtime.reference"
 	nativePluginVersion    = "1.0.0"
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
@@ -52,6 +53,9 @@ type evidence struct {
 	GoVersion                    string             `json:"goVersion"`
 	GoBinaryDigest               string             `json:"goBinaryDigest"`
 	GoToolchainDigest            string             `json:"goToolchainDigest"`
+	PackageBuilderFirstDigest    string             `json:"packageBuilderFirstDigest"`
+	PackageBuilderSecondDigest   string             `json:"packageBuilderSecondDigest"`
+	PackageBuilderReproducible   bool               `json:"packageBuilderReproducible"`
 	PackageBuildPlan             plugin.BuildPlan   `json:"packageBuildPlan"`
 	PackageBuildPlanFingerprint  string             `json:"packageBuildPlanFingerprint"`
 	PackageFirstArtifactDigest   string             `json:"packageFirstArtifactDigest"`
@@ -174,7 +178,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
 	}
 	goToolchainDigest := sha256Digest([]byte(goVersion + "\n" + goBinaryDigest + "\n" + goRootDigest + "\n"))
-	if err := requireNoExternalModules(root, goPath, referencePackage, nativeBuilderPackage); err != nil {
+	if err := requireNoExternalModules(root, goPath, referencePackage, packageBuilderPackage, nativeBuilderPackage); err != nil {
 		return evidence{}, err
 	}
 
