@@ -67,3 +67,11 @@ go run ./tools/reference-xead-source-adapter \
 `mixed`なkindでは、未知側の要素を既知側Extensionへ帰属させません。Extensionを出すのは、mappingが実際に適用されたsemantic candidateだけです。
 
 `unresolvedProjection`は件数とkind、未解決の種類だけを扱い、source valueやstructural locatorは公開しません。
+
+## Publication Receipt v2
+
+public出力では、任意のunknown element名や追加attribute名を公開しません。exact name / value / textはローカル`ObservedDocument`に保持し、public側はknown標準constructの件数、known constructごとのattribute出現数、unknown総数へ集約します。
+
+`artifactSha256`がexact source bytesを固定するため、public Evidenceへunknown schema名のhash一覧を追加して擬似匿名化することもしません。詳細比較が必要な場合はRepository外のObserved Documentを使います。
+
+この変更によりPublication Receiptは`schemaVersion: 2`です。v1のreceipt fingerprintをv2へ流用しません。
