@@ -205,7 +205,7 @@
       "evidence": "relational inspection originally exposed one global resolved/unresolved status; in a large source, one invalid Key or identity diagnostic can coexist with unrelated structurally valid facts, while declared Function/Detail KeyFields are not yet validated strongly enough for deterministic lowering",
       "risk": "transcription becomes all-or-nothing, or a consumer bypasses the global unresolved status and accidentally consumes unresolved facts without dependency-aware checks",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "publish per-fact resolved/unresolved/unvalidated readiness separately from source facts and global status, propagate dependent diagnostics, keep raw unresolved facts as Evidence, and require explicit local resolved readiness before any partial deterministic lowering"
+      "stopCondition": "publish per-fact resolved/unresolved/unvalidated readiness separately from source facts and global status, propagate dependent diagnostics, keep raw unresolved facts as Evidence, require explicit local resolved readiness before any partial deterministic lowering, and record the resolution-policy revision used to derive readiness"
     }
   ],
   "claimsNotEstablished": [
