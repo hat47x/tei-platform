@@ -37,11 +37,11 @@ type PublishedClassification struct {
 }
 
 type ClassificationProjection struct {
-	ContractSHA256             string                    `json:"contractSha256"`
-	Format                     SourceFormat              `json:"format"`
-	Kinds                      []PublishedClassification `json:"kinds"`
-	RedactedUnknownObservedCount int                     `json:"redactedUnknownObservedCount,omitempty"`
-	AuthorityLimits            []string                  `json:"authorityLimits"`
+	ContractSHA256               string                    `json:"contractSha256"`
+	Format                       SourceFormat              `json:"format"`
+	Kinds                        []PublishedClassification `json:"kinds"`
+	RedactedUnknownObservedCount int                       `json:"redactedUnknownObservedCount,omitempty"`
+	AuthorityLimits              []string                  `json:"authorityLimits"`
 }
 
 func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contractBytes []byte) ([]LocalTranscriptionCandidate, error) {
