@@ -259,9 +259,9 @@
     {
       "id": "RMP-037",
       "topic": "missing-or-duplicate-source-identity",
-      "observed": "legacy XML can be malformed, partially merged, or hand-edited so that Table/Field identifiers are missing or duplicated; a map-based importer would otherwise overwrite one occurrence with another or only notice missing identity when some downstream reference happens to touch it",
-      "risk": "source order, traversal order, or absence of a referencing path can determine whether invalid source identity is noticed, and downstream key/refer resolution can bind to an arbitrary duplicate occurrence",
-      "teiDirection": "diagnose missing and duplicate source identities directly from the source tree; do not collapse duplicate Table/Field IDs into one lookup result, do not borrow metadata from an arbitrary occurrence, and keep dependent key/relation/reference meaning unresolved"
+      "observed": "legacy Xead XML can be malformed, partially merged, or hand-edited so that Table, Field, TableKey, or Relationship identifiers are missing or duplicated; lookup-based importers can otherwise overwrite one occurrence with another or notice missing identity only when a downstream reference happens to touch it",
+      "risk": "source order, traversal order, or absence of a referencing path can determine whether invalid source identity is noticed, and downstream key/relation resolution can bind to an arbitrary duplicate occurrence",
+      "teiDirection": "diagnose missing and duplicate source identities directly from source facts; do not collapse duplicate Table/Field/Key/Relationship IDs into one semantic result, do not borrow metadata from an arbitrary occurrence, and keep dependent meaning unresolved"
     }
   ]
 }
