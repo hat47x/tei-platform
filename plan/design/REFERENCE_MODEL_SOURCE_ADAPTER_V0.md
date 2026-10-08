@@ -214,3 +214,13 @@ FormatVersion欠落、未対応version、root kind不一致、namespace付きroo
 `sourceProfiles`追加により`transcription-contract-v0.json`のbytes / fingerprintは変わる。既存`transcription-map-v0.json`とR0 classification coverageは、旧contract blobで実行した履歴Evidenceとして保持する。
 
 construct mappingの件数が同じでも、新contractへ自動的に付け替えない。current contractでのcoverageは、exact sourceを再実行してprofile Gateを通した後にだけ主張する。RMP-053 / RML-028でこの境界を管理する。
+
+## Malformed XML ambiguity
+
+source-faithfulであることは、不正なXMLを任意の規則で正規化することではない。
+
+Go 1.23.2の`encoding/xml`は、同じexpanded nameを持つattributeが重複していても`StartElement.Attr`へ複数件を渡す。これを`map[string]string`へそのまま格納すると、後の値が前の値を黙って上書きする。`System.FormatVersion`でも同じ現象が起こる。
+
+Source Adapterはmap化の前にduplicate expanded attribute nameを検出し、Observeをfail closedにする。first-wins / last-winsで解決しない。これは意味が未確定な`Unresolved`ではなく、source observationの入力不正である。
+
+namespaceが異なる同名attributeはexpanded nameが異なるため別attributeとして保持する。同じnamespace / local nameの重複だけをparser-invalidとする。RMP-054 / RML-029でこの境界を管理する。
