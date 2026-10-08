@@ -403,6 +403,8 @@ func describeReviewEvidence(e Evidence) string {
 				"mappingContract="+rmt.MappingContractFingerprint,
 				"mappingStatus="+string(rmt.MappingStatus),
 				"rmtEvidenceFingerprint="+rmt.EvidenceFingerprint,
+				"observerConformance=not-verified",
+				"externalSourceFreshness=not-verified-by-shared-acceptance",
 			)
 			if rmt.SourceConstructKnown {
 				parts = append(parts, "sourceConstruct="+rmt.SourceConstruct)
