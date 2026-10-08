@@ -136,7 +136,7 @@ task側では`semantic/sales/validation.tei`へ`sales.order_line.unit_price_posi
 
 build結果はRepository外の一時directoryへ置きます。関連するknowledge-context testもtask cloneとintegration cloneの双方で実行します。file edit後のGit diffが対象1 file以外へ広がる場合、またbuild / test / CLI利用によってRepository内へuntracked artifactが生じる場合は失敗します。
 
-変更は通常のGit commitへ確定し、そのtask repositoryをさらに別directoryへlocal cloneします。integration側でも`cmd/tei`をbuildし、targeted test、`tei validate`、`knowledge-context`、`tei world`を再実行します。task側とintegration側のCanonical Worldがbyte単位で一致し、read-only操作後もintegration cloneがcleanであることを要求します。
+変更は通常のGit commitへ確定します。integration側はtask repositoryを複製せず、元のsource checkoutから別directoryへlocal cloneし、task result commitを通常Gitのfetch / `--ff-only` mergeで統合します。integration cloneがtaskと同じbase revisionから開始し、統合後HEADがtask result revisionと一致することを検査したうえで、`cmd/tei`をbuildし、targeted test、`tei validate`、`knowledge-context`、`tei world`を再実行します。task側とintegration側のValidation出力とCanonical Worldがそれぞれbyte単位で一致し、read-only操作後もintegration cloneがcleanであることを要求します。
 
 ### Decision ledger非依存のpressure
 
@@ -164,7 +164,8 @@ full local clone
   -> Decision ledger removal equivalence
   -> direct file edit
   -> ordinary commit
-  -> separate integration clone
+  -> independent base integration clone
+  -> task commit fetch / fast-forward integration
   -> rebuild / retest / reload
   -> two branch Git merge
   -> semantic conflict rejection
@@ -174,6 +175,7 @@ full local clone
 runner出力:
 
 ```text
+integration=<same revision as result>
 changed=reference/workspace/semantic/sales/validation.tei
 validation-ledger-independent=true
 decision-ledger-independent=true
@@ -181,7 +183,7 @@ semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT
 tool-neutral development reference: PASS
 ```
 
-GitHub上のrunner blob SHA `1442c377d2dfdc1b6e8f12dd9d2fbef6eb9c8655`と、synthetic fixtureへ配置したscriptのGit blob SHAが完全一致することを確認したうえで再実行しました。追加したValidation出力のDecision ledger非依存検査を含め、runnerは最後までPASSしました。
+最新のintegration改善後は、GitHub上のrunner blob SHA `b596c2db23d515ea801ddd30257a4ee0893e1294`とsynthetic fixture側のGit blob SHAが完全一致することを確認したうえで再実行しました。task clone / integration clone / conflict cloneがsource HEADから始まること、integration cloneが元baseからtask result commitを通常Gitでfetch / fast-forwardして同じrevisionへ到達すること、Validation出力とCanonical Worldの再現、Decision ledger非依存、Semantic conflict拒否を含め、runnerは最後までPASSしました。
 
 これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
 
