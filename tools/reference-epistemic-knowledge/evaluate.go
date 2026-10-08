@@ -169,6 +169,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"partial-transport-health-is-not-project-wide-health",
 			"review-history-is-bounded-by-context-as-of",
 			"review-binding-includes-context-kind-and-target-identity",
+			"review-binding-includes-validity-window",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
@@ -285,6 +286,8 @@ func reviewEventMatchesAssertion(event ReviewEvent, assertion Assertion) bool {
 		event.StatementKind != assertion.Mode ||
 		event.TargetIdentity.Kind != assertion.Target.Kind ||
 		event.TargetIdentity.ID != assertion.Target.ID ||
+		event.ValidFrom != assertion.ValidFrom ||
+		event.ValidUntil != assertion.ValidUntil ||
 		len(event.Context) != len(assertion.Context) {
 		return false
 	}
