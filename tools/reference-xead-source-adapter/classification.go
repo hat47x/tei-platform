@@ -81,9 +81,9 @@ func ClassifyObservedDocument(format SourceFormat, doc ObservedDocument, contrac
 	return out, nil
 }
 
-func BuildClassificationProjection(format SourceFormat, receipt PublicationReceipt, contractBytes []byte) (ClassificationProjection, error) {
-	if format != receipt.Format {
-		return ClassificationProjection{}, fmt.Errorf("receipt format %s does not match requested format %s", receipt.Format, format)
+func BuildClassificationProjection(format SourceFormat, doc ObservedDocument, contractBytes []byte) (ClassificationProjection, error) {
+	if format != doc.Format {
+		return ClassificationProjection{}, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
 	}
 	mappings, err := parseConstructMappings(format, contractBytes)
 	if err != nil {
@@ -100,15 +100,26 @@ func BuildClassificationProjection(format SourceFormat, receipt PublicationRecei
 			"mapping-extension-does-not-grant-runtime-authority",
 		},
 	}
+	observedCounts := map[string]int{}
+	mappedCounts := map[string]int{}
+	unresolvedCounts := map[string]int{}
+	for _, node := range doc.Nodes {
+		observedCounts[node.Kind]++
+		if node.Known {
+			mappedCounts[node.Kind]++
+		} else {
+			unresolvedCounts[node.Kind]++
+		}
+	}
 	var kinds []string
-	for kind := range receipt.ObservedElementCounts {
+	for kind := range observedCounts {
 		kinds = append(kinds, kind)
 	}
 	sort.Strings(kinds)
 	for _, kind := range kinds {
-		observedCount := receipt.ObservedElementCounts[kind]
-		unresolvedCount := receipt.UnknownElements[kind]
-		mappedCount := receipt.ElementCounts[kind]
+		observedCount := observedCounts[kind]
+		unresolvedCount := unresolvedCounts[kind]
+		mappedCount := mappedCounts[kind]
 		mapping, ok := mappings[kind]
 		if !ok {
 			if _, standardName := knownElements[format][kind]; !standardName {
