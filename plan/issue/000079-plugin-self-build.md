@@ -4,6 +4,7 @@
 - 起票日: 2026-10-06
 - GitHub Issue: #943
 - 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / GitHub #957 / ADR-0022 / ADR-0028
+- 関連RQ: RQ-021 / RQ-023 / RQ-034
 
 ## 背景
 
@@ -31,6 +32,8 @@ authoritative Plugin / implementation Source
 Build可能であることは、artifactをAccepted Plugin Lockへ採用できることやRuntimeでinvokeできることを意味しません。Authoring / Acceptance / Build / RuntimeのAuthorityは分離します。
 
 また、Plugin package identity、Capability identity、physical artifact identityを一対一には固定しません。複数Pluginを一つのartifactへまとめるTarget最適化や、一つのlogical PluginをTargetごとに異なるartifactへrealizeする構成を許容します。
+
+Self-buildの実行にTEI Studioや特定のAgent Adapterを必須にしません。clean checkoutから通常のCLI / Repository Toolで再実行できることを基準にし、ChatGPT等のチャット実行環境、Codex、Claude Code、CI等も同じRepository contractを利用できる構造にします。Agent Sessionや一般的なTest状態をBuild Lockへ持ち込まず、Build再現性に必要なSource / builder / dependency / artifactの情報だけを扱います。
 
 ## Self-buildの到達段階
 
@@ -177,12 +180,16 @@ builderのstage0 / stage1 / stage2を実行し、同一Sourceからのconvergenc
 - Web / Desktop等のTarget差でもlogical Plugin identityを維持できる。
 - build失敗、unresolved dependency、digest不一致をfail-closedで扱う。
 - clean checkoutから再実行できるRepository Evidenceを残す。
+- TEI StudioやAgent Adapterなしに、通常のCLI / Repository Toolから同じself-build経路を実行できる。
+- Agent Session、Workspace、一般的な検証状態をBuild Plan / Build Lockのidentityへ混ぜない。
 
 ## 非目標
 
 全Pluginを直ちにTEI-nativeへ書き直しません。Go等の既存実装も禁止しません。任意shell scriptを標準Build contractにはしません。
 
 Runtime PluginとSemantic Extensionも再統合しません。Build成功だけでartifactをAccepted状態へ昇格させず、stage0 seedが不要になったとも主張しません。
+
+また、self-buildのために専用Agent Runtimeや常駐Adapterを必須にしません。開発ToolやCIが所有するSession / Job状態をTEIのBuild modelへ複製することも非目標です。
 
 ## 外部設計から採るもの
 
