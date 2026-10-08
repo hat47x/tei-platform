@@ -41,6 +41,12 @@ TEI内の業務仕様テンプレート (#998)
 
 Pluginとしては、少なくとも論理的identity、version、TargetとFrameworkのcompatible range、Renderer、Extension API、依存・CSS隔離、ロールバック可能性を区別する。これらは**契約候補**であり、現行TEIがすべて実装済みとの主張ではない。
 
+## Project全体の構成との接続
+
+ここでいう「二層」は**UI構成キットと業務仕様テンプレートの責務分離**であり、TEIのPlugin全体が二階層だけで成立するという意味ではない。Application単位では、Runtime / Provider、Application機能、offline・document editing等の構造、Target/Framework、Domain意味、Project Extensionを組み合わせる必要がある。
+
+**Application Composition Profile**（[設計候補](../../plan/design/PROJECT_PLUGIN_COMPOSITION_DESIGN.md)／[#1016](https://github.com/hat47x/tei-platform/issues/1016)）は案件がどのKitやPlugin等を選択するかを扱う。一方、**UI構成キット**は選択されたKit内部のUI拡張・Host接続を担当する。両者は異なるCompositionであり、同じ継承・上書き規則を共有するとは限らない。業務仕様のAccepted meaningやRuntime Authorityはいずれも所有しない。
+
 ## AIによる案件別UI要件整理
 
 再利用可能な指示は[requirements-prompt.md](requirements-prompt.md)を使用する。基本UI Pluginを参照し、利用者の短い指示からUI差分・確認点・実装箇所・テスト計画を導く。
