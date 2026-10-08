@@ -28,7 +28,17 @@ func productionImports(root string) ([]importEdge, error) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if d.IsDir() {
+			if path != filepath.Join(root, "internal") {
+				name := d.Name()
+				if name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+					return fs.SkipDir
+				}
+			}
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "_") ||
+			!strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
@@ -229,6 +239,19 @@ import "tei/internal/plugin"
 	// Test-only imports must not become production dependencies.
 	if err := os.WriteFile(filepath.Join(dir, "model_test.go"), []byte("this is deliberately not valid Go"), 0600); err != nil {
 		t.Fatal(err)
+	}
+	// Go excludes testdata, vendor and underscore-prefixed source from package builds.
+	if err := os.WriteFile(filepath.Join(dir, "_ignored.go"), []byte("not valid Go"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"testdata", "vendor"} {
+		ignored := filepath.Join(dir, name)
+		if err := os.MkdirAll(ignored, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(ignored, "model.go"), []byte("not valid Go"), 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	edges, err := productionImports(root)
 	if err != nil || len(edges) != 1 || edges[0].file != "internal/core/model.go" || boundaryViolation(edges[0], "tei") == "" {
