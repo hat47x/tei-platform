@@ -68,7 +68,13 @@ func Load(root string) (Result, error) {
 			return Result{}, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
 		}
 	}
-	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}}
+	// Inventory and verify the physical boundary before any domain loader can
+	// read a Source file or parse a symlink to an outside target.
+	managedFiles, err := scanManagedFiles(root, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}, ManagedFiles: managedFiles}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	for _, sourceRoot := range roots {
@@ -124,11 +130,6 @@ func Load(root string) (Result, error) {
 		return Result{}, err
 	}
 	Normalize(&r.World)
-	managedFiles, err := scanManagedFiles(root, roots)
-	if err != nil {
-		return Result{}, err
-	}
-	r.ManagedFiles = managedFiles
 	return r, nil
 }
 
