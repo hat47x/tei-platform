@@ -1,0 +1,38 @@
+{
+  "schema": "tei.reference.change-candidate/v0",
+  "id": "cand-order-line-number-positive",
+  "baseModelRevision": "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4",
+  "origin": {
+    "kind": "ai",
+    "actor": "claude-haiku-5-5"
+  },
+  "intent": "受注明細の行番号（sales.order_line.line_number）は1から始まるため、0以下を業務上の不成立とするValidationを一件追加し、order_entryが評価する宣言として正本へ置く。この規則は、Canonicalな意味では受注明細ごとに適用される。ただし現在のCommand経路は、読み取った一覧の最初の受注明細だけを評価する（既存のquantity_positiveと同じ制限）。この候補は、全明細への評価を広げることを主張しない。",
+  "evidence": [
+    {
+      "source": "applications/order-entry/application.tei",
+      "note": "order_entryは既存のquantity_positiveとline_number_uniqueを宣言順に評価している。新しい宣言はその後ろへ入る。"
+    },
+    {
+      "subject": "sales.order_line.line_number",
+      "note": "新しいValidationが参照するattribute。Canonical Worldに既に存在し、line_number_uniqueでも使われている。"
+    }
+  ],
+  "delta": [
+    {
+      "op": "add-validation",
+      "namespace": "sales",
+      "id": "sales.order_line.line_number_positive",
+      "kind": "positive",
+      "attribute": "sales.order_line.line_number",
+      "placement": "semantic/sales/validation.tei"
+    },
+    {
+      "op": "add-application-validation-use",
+      "placement": "applications/order-entry/application.tei",
+      "applicationValidationUse": {
+        "application": "order_entry",
+        "validation": "sales.order_line.line_number_positive"
+      }
+    }
+  ]
+}
