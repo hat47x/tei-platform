@@ -833,6 +833,41 @@ func TestConsumerFreshnessRequirementCanInvalidateOtherwiseUsablePremise(t *test
 	}
 }
 
+func TestConsumerFreshnessIgnoresReviewFromOldScope(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.AsOf = "2026-10-06T12:30:00Z"
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "human-reviewed" {
+			continue
+		}
+		corpus.Assertions[i].Context = []ScopeBinding{
+			{Dimension: "project", Value: "tei", Provenance: ScopeDeclared},
+		}
+		corpus.Assertions[i].CheckedAt = ""
+	}
+	corpus.Dependencies = []Dependency{{
+		AssertionID:  "human-reviewed",
+		Consumer:     "fresh-current-scope",
+		Criticality:  CriticalityHigh,
+		MaxAgeSeconds: 3600,
+	}}
+	corpus.CoverageAreas = nil
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.Health.Issues) != 1 {
+		t.Fatalf("stale scoped review unexpectedly satisfied freshness: %+v", projection.Health)
+	}
+	issue := projection.Health.Issues[0]
+	if issue.ConsumerFreshness != "unknown" ||
+		issue.UseState != "review-required" ||
+		!containsString(issue.Reasons, "CONSUMER_FRESHNESS_UNKNOWN") {
+		t.Fatalf("review from old scope counted as current freshness: %+v", issue)
+	}
+}
+
 func TestConsumerFreshnessRequirementDoesNotChangeBaseEpistemicState(t *testing.T) {
 	corpus, context := loadFixture(t)
 	corpus.Dependencies = []Dependency{{
