@@ -96,6 +96,9 @@ func Parse(format Format, source []byte) (Document, error) {
 		case xml.StartElement:
 			name := qualifiedName(t.Name)
 			_, isKnown := knownNames[t.Name.Local]
+			// A foreign namespace is not the same source construct as an
+			// unqualified Xead/Xeaf element with the same local name.
+			isKnown = isKnown && t.Name.Space == ""
 			n := Node{Name: name, Known: isKnown}
 			n.Attributes = make([]Attribute, 0, len(t.Attr))
 			for _, attr := range t.Attr {
@@ -157,6 +160,7 @@ func Parse(format Format, source []byte) (Document, error) {
 	inventory := make([]InventoryEntry, 0, len(counts))
 	for name, count := range counts {
 		_, isKnown := knownNames[localName(name)]
+		isKnown = isKnown && !strings.HasPrefix(name, "{")
 		inventory = append(inventory, InventoryEntry{Name: name, Count: count, Known: isKnown})
 	}
 	sort.Slice(inventory, func(i, j int) bool { return inventory[i].Name < inventory[j].Name })

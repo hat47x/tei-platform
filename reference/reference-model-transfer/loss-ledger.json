@@ -13,17 +13,17 @@
       "id": "RML-001",
       "topic": "design-runtime-function-reconciliation",
       "nature": "unresolved",
-      "evidence": "Xead has 227 Functions and Xeaf has 203; identity-set comparison leaves 47 Xead-only and 23 Xeaf-only entries",
-      "risk": "one-to-one conversion would silently lose design-only meaning or promote helper/runtime functions",
+      "evidence": "Xead has 227 design Functions and Xeaf has 203 runtime Functions; structural identity comparison maps 180 and leaves 47 Xead-only / 23 Xeaf-only. Of 128 Functions referenced by Business Actions, 116 map structurally and 12 do not. At Action level, 57 have complete Function correspondence, 68 are partial, 17 have none, and 6 use no Function.",
+      "risk": "one-to-one or all-or-nothing conversion can silently lose design-only meaning, promote runtime/helper functions, or report a partially realized Business Action as fully executable",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "do not accept a Function mapping without explicit reconciliation evidence"
+      "stopCondition": "reconcile each design Function/Capability use independently; preserve Action-level partial realization and do not infer semantic invalidity or runtime completeness from set membership alone"
     },
     {
       "id": "RML-002",
       "topic": "business-action-specific-data-effect",
       "nature": "unresolved",
-      "evidence": "TaskFunctionIO addresses Panel/Spool while legacy CRUD projection aggregates Function-level IOTable operations",
-      "risk": "potential Function access may be reported as the effect of one Business Action",
+      "evidence": "142 of 148 TaskActions have TaskFunctionIO. Only 10 actions reference one unique Function; 132 reference two to five Functions. These produce 369 distinct Action/Function pairs, while Function-wide IOTable declarations expand to 665 potential Action/Function/Table paths.",
+      "risk": "multi-Function Business Actions can inherit aggregate Function CRUD as if it were one accepted step effect, losing composition and path-specific authority",
       "owner": "ISSUE-000042 / ISSUE-000078",
       "stopCondition": "derive action-specific CRUD only from an accepted path-specific operation relation"
     },
@@ -49,7 +49,7 @@
       "id": "RML-005",
       "topic": "business-step-durable-address",
       "nature": "unresolved",
-      "evidence": "35 of 148 TaskAction elements have no ID",
+      "evidence": "35 of 148 TaskAction elements have no ID; 30 of those still carry TaskFunctionIO and 5 do not, so missing durable address is not limited to manual/placeholder steps",
       "risk": "SortKey, indentation, or XML order may become accidental durable identity",
       "owner": "ISSUE-000042 / ISSUE-000078",
       "stopCondition": "use exact-snapshot source locator; introduce durable step identity only from repeated traceability pressure"
@@ -129,11 +129,11 @@
     {
       "id": "RML-014",
       "topic": "derived-value-dynamic-reference",
-      "nature": "unresolved",
-      "evidence": "the benchmark contains 52 DERIVABLE fields and 51 structural Xeaf VIRTUAL correspondences, while public X-TEA modeling guidance also uses derived attributes as relation keys; exact benchmark participation in Relationship keys is not yet established",
-      "risk": "a derived relation can disappear from the logical model, or native evaluator code can be mistaken for the semantic relation itself",
+      "nature": "coverage-gap-not-observed-in-benchmark",
+      "evidence": "The exact benchmark has 52 DERIVABLE Xead fields, but none participates in any TableKey; therefore none of the 80 Relationship key references exercises a derived-value dynamic reference.",
+      "risk": "The benchmark can falsely appear to validate derived-value relation transfer even though this X-TEA capability is not exercised by its relationship keys.",
       "owner": "ISSUE-000078 / ISSUE-000077",
-      "stopCondition": "confirm exact source participation before claiming a dynamic reference; if present, preserve derivation semantics, evaluator/native realization and Relation as separate traceable layers"
+      "stopCondition": "do not claim benchmark coverage for derived-value dynamic references; preserve the generic design requirement and use a separate accepted fixture/reference before validating that transfer path"
     },
     {
       "id": "RML-015",
@@ -157,10 +157,10 @@
       "id": "RML-017",
       "topic": "composite-relationship-member-correspondence",
       "nature": "unresolved",
-      "evidence": "XeadModeler sorts TableKeyField by SortKey and uses TableField DataTypeID while matching relationship fields; XML source order alone does not define the correspondence",
-      "risk": "equal-arity composite keys can be paired incorrectly or a type-incompatible relationship can be accepted during transfer",
+      "evidence": "Exact benchmark and XeadModeler source show type-specific relationship key shapes: all 51 REFFER relations use equal-arity source PK/SK to target FK, both SUBTYPE relations use equal-arity PK-to-PK, while all 27 FAMILY relations use a strictly larger target PK containing source-equivalent key fields.",
+      "risk": "an equal-arity or positional-zip validator can reject every FAMILY relation or bind the wrong subset of a child composite key while still reporting structural validation",
       "owner": "ISSUE-000078 / GitHub #950",
-      "stopCondition": "for multi-field relationship keys, require unambiguous SortKey ordering before positional comparison; preserve missing/duplicate SortKey and explicit DataTypeID mismatch as unresolved and do not repair by field name or source order"
+      "stopCondition": "apply relationship-type-specific correspondence: REFFER/SUBTYPE require the appropriate equal-arity mapping; FAMILY requires unambiguous containment of source-equivalent fields within the larger target PK/SK; preserve SortKey/DataTypeID/ambiguity evidence and never repair by source order or names"
     },
     {
       "id": "RML-018",
@@ -199,13 +199,40 @@
       "stopCondition": "separate occurrence identity from history/version identity and validity semantics; do not promote effective-date/history/latest fields from source shape alone, and do not require a history model without business temporal evidence"
     },
     {
-      "id": "RML-022",
+      "id": "RML-025",
       "topic": "unrelated-relational-fact-blocked-or-bypassed-by-global-status",
       "nature": "unresolved",
       "evidence": "relational inspection originally exposed one global resolved/unresolved status; in a large source, one invalid Key or identity diagnostic can coexist with unrelated structurally valid facts, while declared Function/Detail KeyFields are not yet validated strongly enough for deterministic lowering",
       "risk": "transcription becomes all-or-nothing, or a consumer bypasses the global unresolved status and accidentally consumes unresolved facts without dependency-aware checks",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "publish per-fact resolved/unresolved/unvalidated readiness separately from source facts and global status, propagate dependent diagnostics, keep raw unresolved facts as Evidence, require explicit local resolved readiness before any partial deterministic lowering, and record the resolution-policy revision used to derive readiness"
+    },
+    {
+      "id": "RML-022",
+      "topic": "public-receipt-leaks-local-schema-names",
+      "nature": "unresolved",
+      "evidence": "Current PublicationReceipt removes source values/text but serializes arbitrary unknown element names in elementCounts/unknownElements and arbitrary attribute names in attributeNameCounts. The benchmark has unknown element count zero and therefore does not exercise the leak.",
+      "risk": "A public Reference Evidence artifact can disclose enterprise-specific schema vocabulary while still appearing to satisfy the no-source-content publication boundary.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "separate local source-faithful schema-name observation from public Evidence; public output retains unknown/additional schema occurrence counts and deterministic fingerprints without arbitrary source-derived names, and tests prove unknown/custom names do not appear in serialized public output"
+    },
+    {
+      "id": "RML-023",
+      "topic": "unknown-qualified-construct-repromoted-by-local-name",
+      "nature": "unresolved",
+      "evidence": "Before the RMP-048 fix, factsForNode dispatched on node.Kind without checking node.Known, so a namespaced element whose local name matched TableKey, Relationship, Function, Detail, Key, or Refer could emit standard source facts despite being unknown to the reader.",
+      "risk": "namespace/vendor extensions can be reinterpreted as standard Xead/Xeaf semantics after the inventory layer has already rejected that interpretation.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "fact extraction and every later projection honor the qualified-name known-state; adversarial tests prove namespaced lookalikes remain unknown and cannot emit standard source facts or public standard-fact claims"
+    },
+    {
+      "id": "RML-024",
+      "topic": "source-name-redaction-bypassed-by-path-hash",
+      "nature": "unresolved",
+      "evidence": "The pre-hardening public LocatorDigest was SHA-256 over artifact identity plus SourceLocator.Path. SourceLocator.Path embeds qualified element names and sibling ordinals; redacted unknown names could therefore be tested by hashing candidate paths.",
+      "risk": "public Evidence can leak low-entropy local schema vocabulary indirectly even after clear-text names are removed.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "public locator/fact/issue tokens are derived without source-derived structural names, exact path remains local only, and adversarial tests verify published locator digests equal ordinal-based tokens rather than legacy path-based digests"
     }
   ],
   "claimsNotEstablished": [

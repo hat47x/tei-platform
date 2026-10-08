@@ -114,7 +114,7 @@ Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller
 
 これらは旧Driverでは実行規約として成立するが、TEIでTargetやagentを交換する場合は明示的なdependency / transaction / authority / effect境界が必要になる。
 
-詳細なmodernization pressureはEvidence Gate `7を正本とし、本Issueへ重複列挙しない。
+詳細なmodernization pressureはEvidence Gate §7を正本とし、本Issueへ重複列挙しない。
 
 ## 担当境界
 
@@ -133,9 +133,22 @@ Driver manual / sourceでは、Scriptからの任意SQL / TableOperator、caller
 | AI re-entry / operational knowledge | 000053 |
 | Target差 / execution profile | 000026 |
 | Semantic Extension / Plugin / DSL | 000077 |
+| Tool / Runtime Capability Contract | 000080 / GitHub #951 |
 | Command / Observation / retry / unknown | 000009 / RQ-018〜020の既存境界 |
 
 Reference Modelで新しいgapが見つかっても、既存Issueが所有する責務なら本Issueの中に別実装を作らない。
+
+### 現在の実装レーン
+
+2026-10-07時点では、次のように担当を分ける。
+
+- GitHub #950は本Reference Model Transferレーンで継続し、source-faithful reader、locator、inventory、public receipt、source fact projection、classification coverageを扱う。
+- GitHub #940はoriginal X-TEA Runtimeのactual behavior取得専用レーンへ移す。本Issueでは結果を受け取る。
+- GitHub #941はReference Modelの利用条件・公開範囲確認専用レーンへ移す。本Issueでは安全側publication boundaryを維持し、結果を受け取る。
+- GitHub #951 / ISSUE-000080はPlugin Capability Contract専用レーンで進める。Draft PR #963が存在するため、#950側でgeneric Capability resolver / lockを重複実装しない。
+- Draft PR #964は既存`internal/xeadsource`のlegacy identity / relational diagnostic hardening専用レーンへ任せる。#968のstandalone Source Adapterで同じproduction-side parser修正を重複実装しない。
+
+#950は#951のproduction contract確定を待たずreaderとEvidence整備を進めてよい。ただし、Source Adapter登録のためだけにCore固定`CapabilityKind`を追加しない。
 
 ## 作業順序
 
@@ -214,6 +227,32 @@ source factの存在だけでlowering可能と判断しない。relational diagn
 
 変換不能項目をwarningだけで落とさない。mapping versionを変更した場合は同じsourceから得られるtranscription差分を比較できるようにする。
 
+### R1 Source Adapter projection
+
+GitHub #950 / Draft PR #968では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。
+
+`ClassificationProjection`は、source kindごとにmappingの有無、mapped / unresolved件数、候補classification、担当Extensionを返す。mappingの存在とsemanticな確定状態は分けて扱う。
+
+`UnresolvedProjection`は、source observationの未知状態、mapping未決定、mapping済みcandidateのsemantic未確定を集約する。これは`loss-ledger.json`への入力Evidenceであり、RML IDを自動生成しない。
+
+exact locator付きの`LocalTranscriptionCandidate`はローカル調査用に限定し、public Evidenceへ保存しない。
+
+R1追加後のexact-head focused testとfull repository healthは未取得である。R0のPASSをR1 headへ流用しない。
+
+### Phase 2 exact-source cross-view accounting
+
+Repository外のexact Xead / Xeaf sourceを再走査し、`cross-view-accounting-v0.json`へ公開可能な集計だけを保存した。
+
+Data側ではRelationship key shapeがtypeごとに異なることを確認した。51件のREFFERはsource PK/SKとtarget FKが等長、2件のSUBTYPEはPK同士が等長である。一方、27件のFAMILYはすべてtarget PKの方が長い。XeadModeler sourceでも、source-equivalent fieldsを含むtarget PK/SKが同数ならSUBTYPE、より多ければFAMILY、等長FKならREFFERとしている。したがってFAMILYへ等長key validatorを適用しない。
+
+52件のDERIVABLE fieldはいずれもTableKeyへ参加しておらず、benchmarkのRelationship keyではderived-value dynamic referenceを実証していない。一般機能としての可能性とbenchmark coverageを分ける。
+
+Business側では148 TaskActionのうち6件がFunction I/Oなし、10件が1 Function、132件が2〜5 Functionを参照する。TaskAction→Functionを1:1へ縮約しない。Function-wide IOTableから展開できる665 pathはpotential accessであり、action-specific actual effectではない。
+
+FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Functionを含む4個のmulti-node SCCがある。これはsource上のFunction-use graphが非巡回とは限らないことを示すが、actual runtime recursionやBusiness Procedure順序のEvidenceにはしない。
+
+これらをRMP-043〜045へ反映し、RML-002 / 005 / 014 / 017を実測に合わせて更新した。
+
 ## Webチャット外担当
 
 次はactual environmentまたは利用条件判断が必要であり、本Issueの文書研究だけで完了させない。
@@ -269,3 +308,14 @@ source factの存在だけでlowering可能と判断しない。relational diagn
 - [ISSUE-000042 Business Procedure cross-view Reference](000042-business-procedure-cross-view-reference.md)
 - [ISSUE-000077 Semantic Extension Reference](000077-semantic-extension-reference.md)
 - [Reference Model Transfer Evidence Gate](../REFERENCE_MODEL_TRANSFER_GATE_2026-10.md)
+
+### Parallel Draft PR integration rule
+
+#964と#968は一部のRMT JSON / planning artifactを共有するが、実装責務は分ける。
+
+- #964: importable `internal/xeadsource`のmissing / duplicate identity、relational diagnostic、lowering readiness
+- #968: standalone source-faithful adapter、publication receipt、classification / unresolved projection、cross-view accounting
+
+両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
+
+現時点では#968にRMP-040〜049とRML-022〜024、#964にRMP-037〜039・RMP-050とRML-019〜021・RML-025が割り当てられており、IDを再利用しない。同期時にRMP-040とRML-022が衝突したため、#964側の2件をRMP-050とRML-025へ付け替えた。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。
