@@ -260,6 +260,15 @@
       "risk": "old aggregate counts can be misrepresented as current-contract validation, or historical provenance can be overwritten to make the artifacts appear current.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "historical artifacts retain their exact old contract fingerprint/blob; current-contract coverage is only claimed after regeneration/revalidation, and planning/docs explicitly distinguish historical mapping counts from current source-profile validation"
+    },
+    {
+      "id": "RML-029",
+      "topic": "duplicate-source-attribute-overwritten-before-evidence",
+      "nature": "unsupported",
+      "evidence": "encoding/xml exposes duplicate attributes to the caller; the prior adapter map assignment silently retained only the last value for the same expanded attribute name, including System.FormatVersion.",
+      "risk": "conflicting source bytes can be reduced to an apparently unambiguous ObservedDocument before profile validation or loss accounting.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "Observe rejects duplicate expanded attribute names before map assignment; tests cover unqualified FormatVersion duplication and duplicate namespaced attributes, and no first/last-value fallback is introduced"
     }
   ],
   "claimsNotEstablished": [
