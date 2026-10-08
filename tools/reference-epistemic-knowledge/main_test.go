@@ -1086,3 +1086,35 @@ func TestProjectionStatesReviewBindingIncludesScopedSubject(t *testing.T) {
 		t.Fatalf("missing scoped review-binding authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
+
+
+func TestValidityWindowChangeInvalidatesReviewBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "human-reviewed" {
+			corpus.Assertions[i].ValidUntil = "2099-12-31T23:59:59Z"
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "unreviewed" ||
+		got.ReviewBinding != "stale" ||
+		got.UseState != "review-required" ||
+		!hasReason(got, "REVIEW_BINDING_STALE") {
+		t.Fatalf("validity-window change inherited old human review: %+v", got)
+	}
+}
+
+func TestProjectionStatesReviewBindingIncludesValidityWindow(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "review-binding-includes-validity-window") {
+		t.Fatalf("missing validity-window review-binding authority boundary: %+v", projection.AuthorityLimits)
+	}
+}
