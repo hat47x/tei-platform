@@ -196,35 +196,35 @@
     {
       "id": "RMP-028",
       "topic": "composite-domain-constraint",
-      "observed": "Watanabe distinguishes functional dependency from domain restriction: a composite value set can require an explicit allowed relation even when no dependent attribute exists",
+      "observed": "The referenced analysis distinguishes functional dependency from domain restriction: a composite value set can require an explicit allowed relation even when no dependent attribute exists",
       "risk": "treating every composite key only as record identity or dependency evidence can lose the business meaning of allowed combinations and can over-normalize or under-constrain transferred Data",
       "teiDirection": "keep composite domain/allowed-combination constraints distinct from business identity and functional dependency; preserve source evidence and leave semantic promotion unresolved until an explicit Constraint/Relation contract is accepted"
     },
     {
       "id": "RMP-029",
       "topic": "derived-value-dynamic-reference",
-      "observed": "Watanabe models derived attributes as logical fields and allows a derived value to participate in a foreign-key-like dynamic reference; the benchmark has 52 DERIVABLE Xead fields, but participation of those fields in Relationship keys has not yet been confirmed",
+      "observed": "The referenced analysis models derived attributes as logical fields and allows a derived value to participate in a foreign-key-like dynamic reference; the benchmark has 52 DERIVABLE Xead fields, but participation of those fields in Relationship keys has not yet been confirmed",
       "risk": "derived values may be reduced to display/cache fields, or native Script may become the only hidden authority for a Relation whose source key is actually derived",
       "teiDirection": "separate derived-value semantic contract, evaluator realization, materialized cache, and Relation use; keep benchmark dynamic-reference occurrence unresolved until exact source mapping confirms it"
     },
     {
       "id": "RMP-030",
       "topic": "post-hoc-semantic-reconstruction",
-      "observed": "Watanabe warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
+      "observed": "The referenced analysis warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
       "risk": "a coherent AI-generated semantic graph can be mistaken for original or accepted system meaning, turning the importer or knowledge layer into a second canonical authority",
       "teiDirection": "keep source-faithful observation, AI-derived candidate and accepted semantic meaning as separate authority stages; require provenance and Shared Acceptance before reconstructed meaning enters authoritative Source"
     },
     {
       "id": "RMP-031",
       "topic": "identifier-field-without-identity-contract",
-      "observed": "Watanabe's 2026-09 critique distinguishes retaining legacy business identifiers as ordinary identifier attributes from actually preserving the uniqueness and functional-dependency structure that made them business identifiers",
+      "observed": "The referenced 2026-09 critique distinguishes retaining legacy business identifiers as ordinary identifier attributes from actually preserving the uniqueness and functional-dependency structure that made them business identifiers",
       "risk": "migration or interoperability can appear identity-preserving because identifier values survive while uniqueness scope, temporal validity, relation semantics, and impact analysis are lost",
       "teiDirection": "treat identifier-like fields as source facts only; promote them to accepted business occurrence identity or candidate key only with explicit uniqueness scope, source/contract responsibility, temporal conditions, and relation/constraint evidence"
     },
     {
       "id": "RMP-032",
       "topic": "service-connectivity-vs-logical-data-integration",
-      "observed": "Watanabe's 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
+      "observed": "The referenced 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
       "risk": "API/message connectivity can be reported as integration while business identity, relation, constraint, and ownership remain fragmented across systems",
       "teiDirection": "allow N:M Database/Service topology while preserving cross-system logical identity, relation, constraint, ownership, and provenance; do not require a single physical database and do not treat connectivity alone as semantic integration"
     },
@@ -238,21 +238,21 @@
     {
       "id": "RMP-034",
       "topic": "representation-vs-business-identity",
-      "observed": "Watanabe's 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
+      "observed": "The referenced 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
       "risk": "normalization, variant replacement, case folding, or code conversion can be mistaken for proof that two source values identify the same business occurrence, or representation differences can be mistaken for distinct identity",
       "teiDirection": "preserve exact source representation when required, keep normalized/search/rendering representations separate, and require an explicit scoped equivalence policy or mapping before representation equality contributes to business identity evidence"
     },
     {
       "id": "RMP-035",
       "topic": "as-is-observation-vs-target-design",
-      "observed": "Watanabe argues that detailed current-state analysis can bias redesign toward preserving the current system; RMT intentionally increases the fidelity of legacy observation",
+      "observed": "The referenced analysis argues that detailed current-state analysis can bias redesign toward preserving the current system; RMT intentionally increases the fidelity of legacy observation",
       "risk": "a high-quality source-faithful transcription can be mistaken for the desired TEI design, preserving accidental legacy topology and runtime constraints precisely because they are now well understood",
       "teiDirection": "keep source observation, target Proposal and Accepted To-Be as separate authority stages; retain compatibility and migration evidence without copying As-Is structure into Desired by default"
     },
     {
       "id": "RMP-036",
       "topic": "semantic-discovery-vs-deterministic-lowering",
-      "observed": "Watanabe distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
+      "observed": "The referenced analysis distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
       "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
       "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
     }

@@ -42,6 +42,13 @@ examples/ bootstrap/
 - 文書の入口では、役割、正本との関係、対象範囲、現在の状態、非主張範囲を必要に応じて明示する。
 - 詳細な執筆・レビュー指針は[`docs/documentation-quality.md`](docs/documentation-quality.md)を参照する。
 
+## 外部資料の帰属と固有名詞
+
+- 外部の研究成果や実装から得た知見は、TEIの要件・設計判断・検証可能な根拠へ翻訳して記述する。原則として個人名を要件、ADR、Issue、実装名、テスト名、見出しやファイル名の主語にしない。
+- 著者名の明記は、文献情報、権利表示、正確な出典帰属など必要な箇所へ限定する。出典は失わず、同じ人物への言及を各文書に繰り返し複製しない。
+- branch名、commit message、PRのtitle / bodyには、出典の特定に不可欠な場合を除き個人名を記載しない。設計上の変更内容と対象境界を記述する。
+- 既に共有したcommit履歴を表記整理だけのためにrebase / force updateしない。Git履歴を書き換える場合は、参照しているbranch・PR・共同作業・外部cloneへの影響を個別に評価し、安全な移行手順を別途定める。
+
 ## 開発フロー
 
 - human ownerは単独でも、複数のAI session / processが同時にRepositoryを更新する。**単独process前提で`main`へ直接commitしない。**
