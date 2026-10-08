@@ -389,3 +389,40 @@ func TestCommandValidationNumericReadCannotDiscardAdditionalLines(t *testing.T) 
 		t.Fatalf("ambiguous positive-rule input was reduced to the first line: %v", err)
 	}
 }
+
+func TestReferenceCommandScenarioRejectsNullRelationKey(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(), readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatal("at least two order lines are required")
+	}
+	// A present-but-null relation key must not turn a uniqueness check into
+	// a successful comparison of the literal string "<nil>".
+	if !setSemanticRowValue(&read.OrderLineRows[1], "sales.order_line.line_number", nil) {
+		t.Fatal("second order line has no line_number attribute")
+	}
+	runner, err := newReferenceCommandScenarioRunner(loaded.World,
+		legacyFixturePath(t, "users.json"), legacyFixturePath(t, "authorization.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: read}
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID: "legacy-order-editor", Credential: "editor-secret",
+		From: "2026-09-18T08:30:00Z", RowIndex: 0,
+	})
+	if err == nil || !strings.Contains(err.Error(), "null key") {
+		t.Fatalf("null relation key was not rejected: stage=%s error=%v", result.Stage, err)
+	}
+	if result.Stage != "validation" || result.Command != nil || result.Observation != nil {
+		t.Fatalf("null relation key escaped validation: %+v", result)
+	}
+}
