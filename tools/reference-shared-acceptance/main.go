@@ -27,7 +27,6 @@ const usage = `usage:
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
   reference-shared-acceptance propose-qualified-reference-pattern -workspace DIR -candidate FILE -qualification FILE -reference-reuse FILE [-out FILE]
   reference-shared-acceptance attach-semantic-evaluation -candidate FILE -semantic-evaluation FILE [-out FILE]
-  reference-shared-acceptance attach-rmt-transcription -candidate FILE -rmt-transcription FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
   reference-shared-acceptance decisions -workspace DIR [-out FILE]
 `
@@ -39,7 +38,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions":
+	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "revision", "decisions":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -52,7 +51,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	qualificationPath := flags.String("qualification", "", "knowledge qualification result JSON file")
 	referenceReusePath := flags.String("reference-reuse", "", "qualified reference Patternのdestination-owned fields JSON file")
 	semanticEvaluationPath := flags.String("semantic-evaluation", "", "semantic evaluation Evidence JSON file")
-	rmtTranscriptionPath := flags.String("rmt-transcription", "", "RMT transcription candidate Evidence JSON file")
 	outPath := flags.String("out", "", "結果の出力先（省略時は標準出力）")
 	format := flags.String("format", "text", "reviewの出力形式（text / json / html）")
 	derivedOut := flags.String("derived-out", "", "accept後にaccepted sourceから再生成したCanonical World JSONの出力先")
@@ -62,14 +60,13 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
-	needsWorkspace := command != "attach-qualification" && command != "attach-semantic-evaluation" && command != "attach-rmt-transcription"
+	needsWorkspace := command != "attach-qualification" && command != "attach-semantic-evaluation"
 	needsCandidate := command != "revision" && command != "decisions"
 	if (needsWorkspace && *workspacePath == "") ||
 		(needsCandidate && *candidatePath == "") ||
 		(command == "attach-qualification" && *qualificationPath == "") ||
 		(command == "propose-qualified-reference-pattern" && (*qualificationPath == "" || *referenceReusePath == "")) ||
-		(command == "attach-semantic-evaluation" && *semanticEvaluationPath == "") ||
-		(command == "attach-rmt-transcription" && *rmtTranscriptionPath == "") {
+		(command == "attach-semantic-evaluation" && *semanticEvaluationPath == "") {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
@@ -168,25 +165,6 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		grounded, err := attachSemanticEvaluationEvidence(candidateData, evaluationData)
-		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		return emit(grounded)
-	}
-
-	if command == "attach-rmt-transcription" {
-		candidateData, err := os.ReadFile(*candidatePath)
-		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		evidenceData, err := os.ReadFile(*rmtTranscriptionPath)
-		if err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		grounded, err := attachRMTTranscriptionEvidence(candidateData, evidenceData)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
