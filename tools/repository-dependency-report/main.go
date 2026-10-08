@@ -146,6 +146,11 @@ func collect(root string) (report, error) {
 			dependentCounts[to]++
 		}
 	}
+	for _, dep := range result.Dependencies {
+		if fileCounts[dep.To] == 0 {
+			return report{}, fmt.Errorf("missing first-party package %s imported from %s", dep.To, dep.SourceFiles[0])
+		}
+	}
 	sort.Slice(result.Dependencies, func(i, j int) bool {
 		if result.Dependencies[i].From != result.Dependencies[j].From {
 			return result.Dependencies[i].From < result.Dependencies[j].From
