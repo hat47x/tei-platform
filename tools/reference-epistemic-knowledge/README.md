@@ -78,9 +78,9 @@ v0のeventは次の3種類です。
 - `reject`: 現在のmeaningを人が退けた
 - `withdraw`: 以前の確認を撤回した
 
-各eventはpositiveな `sequence`、一意なID、reviewer、`method=human-review`、対象meaning fingerprint、確認時点のstatement kind、context、target identity、時刻、任意のEvidenceとconditionsを持ちます。sequenceは一意で、時刻がsequenceに反して過去へ戻る履歴は拒否します。
+各eventはpositiveな `sequence`、一意なID、reviewer、`method=human-review`、対象meaning fingerprint、確認時点のstatement kind、context、target identity、valid from / valid until、時刻、任意のEvidenceとconditionsを持ちます。sequenceは一意で、時刻がsequenceに反して過去へ戻る履歴は拒否します。
 
-review bindingは本文meaningだけでは成立しません。current assertionのstatement kind、context、target identityのいずれかがevent snapshotと異なれば、そのeventは現在値のconfirmationへ使わずstale historyとして扱います。これにより、同じ本文を別scopeへ広げたり、factからhypothesisへ変更したり、別targetへ付け替えたりしただけで旧確認を継承しません。
+review bindingは本文meaningだけでは成立しません。current assertionのstatement kind、context、target identity、validity windowのいずれかがevent snapshotと異なれば、そのeventは現在値のconfirmationへ使わずstale historyとして扱います。これにより、同じ本文を別scopeへ広げたり、factからhypothesisへ変更したり、別targetへ付け替えたりしただけで旧確認を継承しません。
 
 適用条件を機械判定できる場合は、可能な限りassertionの構造化contextへ表します。review eventに自由文conditionsが残っている場合、このReferenceは条件を満たしたと推測せず、`REVIEW_CONDITIONS_UNRESOLVED`として`review-required`へ戻します。
 
