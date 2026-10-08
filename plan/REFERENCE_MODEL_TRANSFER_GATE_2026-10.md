@@ -283,7 +283,7 @@ execution-evidence/
 
 各artifactには、少なくともsource artifact digest、transcriber / mapping contract version、TEI repository revision、accepted / derived / unresolvedのnatureを保持する。
 
-`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。source locatorも、網羅的な名称・説明・配列を再現するものではなく、可能な限りlegacy ID、構造位置、locator digest等の最小情報で表す。公開範囲は[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
+`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。exact locatorやlegacy IDを必要とする情報はlocal/private Evidenceとして保持し、public artifactでは名称を含む構造pathや、その単純hashを公開しない。公開側で相関用の識別子が必要な場合は、source digestやtraversal ordinal等から作るopaque tokenへ縮約する。公開範囲は[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
 
 ## 10. 判定
 
