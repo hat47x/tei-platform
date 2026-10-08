@@ -143,7 +143,7 @@ func boundaryViolation(e importEdge, module string) string {
 func TestBoundaryViolationClassification(t *testing.T) {
 	tests := []struct {
 		source, imported string
-		wantViolation     bool
+		wantViolation    bool
 	}{
 		{"internal/core", "fmt", false},
 		{"internal/core", "tei/internal/plugin", true},
