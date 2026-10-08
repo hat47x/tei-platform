@@ -93,3 +93,40 @@ Before considering a production adapter, add a native-event trace / contract tes
 - No generic Plugin ABI or production `CapabilityKind` change.
 
 The still-open gate #993 is **native component → actual application action + validator + save**, including product-equivalent behavior. E2 only retires the narrower uncertainty that the existing SUI HTTP ETag protocol can be exercised by a fail-closed client adapter.
+
+## E3 — Native domain action and UI-history vs durable save (2026-10-08)
+
+E1/E2 intentionally model a simplified `position.set` followed by a conditional server write. Reading the **actual SUI source** shows that this is not a faithful representation of a Canvas drag. E3 introduces `native-edit.mjs`, a browser-portable **generic lifecycle experiment**, without moving SUI-specific code to TEI Core.
+
+```text
+Native pointermove / component callback
+   -> native adapter.preview(document draft, opaque event)
+   -> native adapter.finish(document draft, pointerup | pointercancel)
+      [SUI-owned zoom, snap, Island reassignment, grouped undo]
+   -> local Document / history transaction committed in memory
+   -> later explicit Save by user
+      [authoritative permission and domain validation, conditional persisted revision]
+```
+
+Reference-level interfaces: `beginNativeEdit`, `previewNativeEdit`, `finishNativeEdit`, `rollbackNativeEdit`, `persistNativeEdit`. Events are opaque to the generic bridge. All Canvas geometry, Island membership, grid snap, key policy and target behavior belong to the provided native adapter. `persistNativeEdit` never happens automatically on `pointerup`; the caller must trigger the separate Save action.
+
+`native-edit.test.mjs` contains a **test-only SUI-style adapter** built from the actual behaviors of SUI's `CardView`, `CanvasShell`, `App.handleCardMove`, `App.commitCardDragSnapshot`, `geometry/bounds`, `layout_ops` and `moveCardToIsland` as inspected on 2026-10-08. This deliberately exercises zoom `2`, grid size `10`, card width `220`, height `80`, polygon *bounding-box* hit testing, a combined coordinate+Island membership change, and one grouped Undo history snapshot. No production SUI files were copied or edited.
+
+Run:
+
+```sh
+node --test tools/reference-sui-interaction/native-edit.test.mjs
+```
+
+Local Node.js v22.16.0: **11/11 passed, 0 failed**. The tested local module/test Git blob hashes equal the committed blobs:
+
+- `native-edit.mjs`: `e399c5e9ad52a86f835d04cdec69f14686dadc9d`
+- `native-edit.test.mjs`: `0d735d03b841630aec690754559ec7ccaf5b1995`
+
+### What E3 resolves and does not resolve
+
+E3 demonstrates that the reusable orchestration boundary need not understand SUI's composite domain action and need not persist pointer events. Source-grounded replay covers multiple moves as one Undo step, `pointercancel` **currently finalizing** native history rather than undoing it, explicit rollback as a separate operation, Island membership and coordinates in one draft, opt-in Save, storage CAS failure, authorization and validator denial, opaque native event failure, field preservation and a simulated non-SUI consumer.
+
+**E3 is not a parity or integration proof for actual SUI behavior.** In particular, the test-only SUI adapter approximates current source behavior; it is not the actual native implementation and its test data is not an upstream SUI conformance fixture. We have not executed React pointer handlers, keyboard/accessibility paths, real SUI undo stack, or SUI's production geometry against this bridge. Browser/Target packaging and TEI Driver binding remain unproved. No claim of automatic domain validation or atomic runtime authority from a mocked port is permitted.
+
+Design distinction: `finishNativeEdit` returns a **local UI history transaction**, whereas `persistNativeEdit` triggers a **separate durable Save**. A single generic `position.set` is insufficient to preserve this product behavior. E3 thus narrows the missing mechanism to **native event lifecycle + Application-owned composite action + two different commit boundaries**. Whether TEI should standardize the orchestration interface is deferred until a real SUI integration and a genuine second consumer establish change-amplification benefits.
