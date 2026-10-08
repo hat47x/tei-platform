@@ -229,7 +229,7 @@ source factの存在だけでlowering可能と判断しない。relational diagn
 
 ### R1 Source Adapter projection
 
-GitHub #950 / Draft PR #968では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。
+GitHub #950では、source observationに加えてcandidate classificationと未解決状態のprojectionまで進めた。旧Draft PR #968由来の実装は並行統合を経てmainへ取り込まれている。
 
 `ClassificationProjection`は、source kindごとにmappingの有無、mapped / unresolved件数、候補classification、担当Extensionを返す。mappingの存在とsemanticな確定状態は分けて扱う。
 
@@ -237,7 +237,7 @@ GitHub #950 / Draft PR #968では、source observationに加えてcandidate clas
 
 exact locator付きの`LocalTranscriptionCandidate`はローカル調査用に限定し、public Evidenceへ保存しない。
 
-R1追加後のexact-head focused testとfull repository healthは未取得である。R0のPASSをR1 headへ流用しない。
+R1以降のcurrent implementationに対するexact-head focused testとfull repository healthは未取得である。R0のPASSをcurrent headへ流用しない。
 
 ### Phase 2 exact-source cross-view accounting
 
@@ -318,4 +318,14 @@ FunctionUsedByThisは289 edgeすべてがstructurally resolveする一方、9 Fu
 
 両方を同じbranchへ先に混ぜない。exact-head Gateを先に通過したPRをmainへ統合し、後続PRはそのmainへ同期して共有JSONを機械的に統合した後、focused / full Gate Evidenceを取り直す。
 
-現時点では#968にRMP-040〜049とRML-022〜024、#964にRMP-037〜039・RMP-051とRML-019〜021・RML-026が割り当てられており、IDを再利用しない。同期時にRMP-040・RMP-050とRML-022・RML-025が衝突したため、#964側の2件をRMP-051とRML-026へ付け替えた。loss ledgerも既存IDを上書きせず、main同期時に双方の項目を保持する。
+Source Adapter / RMT転写レーンはRMP-040〜050・052〜053、RML-022〜025・027〜028を使用する。既存`internal/xeadsource` hardeningレーンはRMP-037〜039・051、RML-019〜021・026を使用する。IDを再利用せず、main同期時にも双方のEvidenceを保持する。
+
+### Source format profile Gate
+
+benchmarkはXead / Xeafとも`FormatVersion 1.2`である。従来のSource Adapterはformat labelとknown construct名を確認したが、`System.FormatVersion`とtranscription contractの互換性をGateにしていなかった。
+
+RMP-052 / RML-027として、raw observationとmapping authorityを分離する。`Observe`は未対応versionでもforensic Evidenceを保持できる。一方、classification / coverage / local candidate mappingは、contract `sourceProfiles`のroot kindとsupported FormatVersionへ一致した場合だけ実行する。
+
+`transcription-contract-v0.json`はschema v2としてXead / Xeaf `System` / `1.2`を宣言する。このversion集合はCore enumではなくSource Adapter / Plugin contract責務である。
+
+RMP-053 / RML-028として、contract更新前に作った`transcription-map-v0.json`とR0 coverageは旧blobへ固定した履歴Evidenceとして扱う。mapping件数が同一でもcurrent contractへ付け替えず、source profile Gateを含むactual再実行後にだけcurrent coverageを更新する。
