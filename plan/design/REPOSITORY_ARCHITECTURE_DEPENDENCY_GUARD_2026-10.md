@@ -102,6 +102,24 @@ main `f27c45f`〜`ff6efce`の確認では、次の直接importが観測できる
 
 次の判断は「新しいPlugin/DB Provider/Targetを一つ追加する際、既存の中核packageの変更が何件必要か」を計測し、具体的な拡張阻害を示すこと。全Go import graphはGo toolchainで `go list -json ./...` 等を使い、生成物として扱う。生成したグラフを意味の正本や永続的な手書き台帳にしない。
 
+## 拡張時変更量の検証契約
+
+依存本数だけでなく、新しいPlugin・DB Provider・Targetを追加するときに既存の中核コードを何箇所変更するかを測定する。
+
+1. 登録・構成：descriptor、binding、workspace等の宣言変更。必要な登録は欠陥とみなさない。
+2. 中核モデル・ディスパッチ：`internal/plugin/model.go`、`internal/ir/world.go`、共通resolver等の既存enum・switch・フィールドを編集する必要があるか。
+3. 実装Adapter：新しい実装専用のpackage、runtime adapter、provider-specific renderer等を追加するだけで済むか。
+
+測定項目は既存中核ファイルの変更数、実装追加ファイル数、既存テスト変更数、依存方向、実行時の権限・Conformance、Go test・Workspace validation結果。中核変更ゼロだけを合格条件としない。
+
+### 全依存グラフの取得方法
+
+trusted full checkoutでrevisionとGo環境（GOOS、GOARCH、build tags）を固定し、`go list -json ./...`のpackage別`Imports`から同一module内の直接依存を集計する。必要なら`go list -deps -json ./...`で推移的依存を調べるが、直接importの本数と混同しない。入次数・出次数・領域横断importを出し、実装追加時の変更量と突き合わせる。
+
+Plugin capabilityの変更は #951 / PR #963、TEI-native sourceは #957 / PR #969に委ねる。Parser/Workspaceの別作業 #988 / PR #989と重複させない。DB Providerは既存のfresh observationと破壊的操作のfail-closed条件を維持する。
+
+このグラフは一時的な分析成果物であり正本ではない。測定前に広域の禁止規則を追加しない。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。
