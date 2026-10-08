@@ -688,7 +688,7 @@ func TestDataDesignContextReportsMissingAuthoritativeEvidence(t *testing.T) {
 	}
 }
 
-func TestDerivedDataDesignCandidateFingerprintIsStableAndTyped(t *testing.T) {
+func TestDerivedDataDesignCandidateFingerprintSeparatesMeaningFromEvidenceRequirements(t *testing.T) {
 	ctx := Build(
 		dataDesignRelationUniqueWorld(),
 		sourceindex.Index{},
@@ -702,7 +702,10 @@ func TestDerivedDataDesignCandidateFingerprintIsStableAndTyped(t *testing.T) {
 
 	identity := ctx.DataDesign.BusinessIdentityCandidates[0]
 	fd := ctx.DataDesign.FunctionalDependencyCandidates[0]
-	if identity.Fingerprint == "" || fd.Fingerprint == "" {
+	if identity.Fingerprint == "" ||
+		identity.EvidenceRequirementFingerprint == "" ||
+		fd.Fingerprint == "" ||
+		fd.EvidenceRequirementFingerprint == "" {
 		t.Fatalf("candidate fingerprints are missing: identity=%+v fd=%+v", identity, fd)
 	}
 	if identity.Fingerprint == fd.Fingerprint {
@@ -721,11 +724,42 @@ func TestDerivedDataDesignCandidateFingerprintIsStableAndTyped(t *testing.T) {
 	if got := businessIdentityCandidateFingerprint(reorderedIdentity); got != identity.Fingerprint {
 		t.Fatalf("business identity candidate ordering changed identity: have=%s got=%s", identity.Fingerprint, got)
 	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		identity.Fingerprint,
+		reorderedIdentity.EvidenceNeeded,
+	); got != identity.EvidenceRequirementFingerprint {
+		t.Fatalf("business identity Evidence ordering changed review contract: have=%s got=%s", identity.EvidenceRequirementFingerprint, got)
+	}
+
+	changedIdentityEvidence := identity
+	changedIdentityEvidence.EvidenceNeeded = append(
+		append([]string(nil), identity.EvidenceNeeded...),
+		"additional-review-requirement",
+	)
+	if got := businessIdentityCandidateFingerprint(changedIdentityEvidence); got != identity.Fingerprint {
+		t.Fatalf("Evidence requirement changed business identity candidate identity: have=%s got=%s", identity.Fingerprint, got)
+	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		identity.Fingerprint,
+		changedIdentityEvidence.EvidenceNeeded,
+	); got == identity.EvidenceRequirementFingerprint {
+		t.Fatalf("changed business identity Evidence requirements kept review fingerprint: %s", got)
+	}
 
 	changedIdentity := identity
 	changedIdentity.Scope = "global"
-	if got := businessIdentityCandidateFingerprint(changedIdentity); got == identity.Fingerprint {
-		t.Fatalf("business identity candidate semantic change kept fingerprint: %s", got)
+	changedIdentityFingerprint := businessIdentityCandidateFingerprint(changedIdentity)
+	if changedIdentityFingerprint == identity.Fingerprint {
+		t.Fatalf("business identity candidate semantic change kept fingerprint: %s", changedIdentityFingerprint)
+	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+		changedIdentityFingerprint,
+		changedIdentity.EvidenceNeeded,
+	); got == identity.EvidenceRequirementFingerprint {
+		t.Fatalf("business identity semantic change kept review fingerprint: %s", got)
 	}
 
 	reorderedFD := fd
@@ -740,11 +774,42 @@ func TestDerivedDataDesignCandidateFingerprintIsStableAndTyped(t *testing.T) {
 	if got := functionalDependencyCandidateFingerprint(reorderedFD); got != fd.Fingerprint {
 		t.Fatalf("FD candidate ordering changed identity: have=%s got=%s", fd.Fingerprint, got)
 	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		fd.Fingerprint,
+		reorderedFD.EvidenceNeeded,
+	); got != fd.EvidenceRequirementFingerprint {
+		t.Fatalf("FD Evidence ordering changed review contract: have=%s got=%s", fd.EvidenceRequirementFingerprint, got)
+	}
+
+	changedFDEvidence := fd
+	changedFDEvidence.EvidenceNeeded = append(
+		append([]string(nil), fd.EvidenceNeeded...),
+		"additional-review-requirement",
+	)
+	if got := functionalDependencyCandidateFingerprint(changedFDEvidence); got != fd.Fingerprint {
+		t.Fatalf("Evidence requirement changed FD candidate identity: have=%s got=%s", fd.Fingerprint, got)
+	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		fd.Fingerprint,
+		changedFDEvidence.EvidenceNeeded,
+	); got == fd.EvidenceRequirementFingerprint {
+		t.Fatalf("changed FD Evidence requirements kept review fingerprint: %s", got)
+	}
 
 	changedFD := fd
 	changedFD.DependentOccurrence = "sales.other"
-	if got := functionalDependencyCandidateFingerprint(changedFD); got == fd.Fingerprint {
-		t.Fatalf("FD candidate semantic change kept fingerprint: %s", got)
+	changedFDFingerprint := functionalDependencyCandidateFingerprint(changedFD)
+	if changedFDFingerprint == fd.Fingerprint {
+		t.Fatalf("FD candidate semantic change kept fingerprint: %s", changedFDFingerprint)
+	}
+	if got := dataDesignCandidateEvidenceRequirementFingerprint(
+		"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+		changedFDFingerprint,
+		changedFD.EvidenceNeeded,
+	); got == fd.EvidenceRequirementFingerprint {
+		t.Fatalf("FD semantic change kept review fingerprint: %s", got)
 	}
 }
 
