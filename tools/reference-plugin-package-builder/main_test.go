@@ -119,7 +119,7 @@ func TestReferencePluginPackageBuilderRejectsWrongBuildPlan(t *testing.T) {
 			ContractVersion: "tei.plugin-build/v1",
 			ArtifactDigest:  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		},
-		Recipe: plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "plugin.tei"},
+		Recipe:     plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "plugin.tei"},
 		OutputKind: plugin.BuildOutputPluginPackage,
 		Target:     "plugin-package",
 	}

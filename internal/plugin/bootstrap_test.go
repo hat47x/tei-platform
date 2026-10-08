@@ -35,20 +35,20 @@ func bootstrapEvidenceFixture() plugin.BootstrapConvergenceEvidence {
 			TrustBoundary: "external-toolchain-seed",
 		},
 		Stage1: plugin.BootstrapStageEvidence{
-			Stage:                plugin.BootstrapStage1,
-			Builder:              seed,
+			Stage:                 plugin.BootstrapStage1,
+			Builder:               seed,
 			SourceClosureDigest:   bootstrapSource,
 			BuildInputFingerprint: bootstrapInput,
-			BuildPlanFingerprint: bootstrapPlan1,
-			Output:               stage1Output,
+			BuildPlanFingerprint:  bootstrapPlan1,
+			Output:                stage1Output,
 		},
 		Stage2: plugin.BootstrapStageEvidence{
-			Stage:                plugin.BootstrapStage2,
-			Builder:              stage1Output,
+			Stage:                 plugin.BootstrapStage2,
+			Builder:               stage1Output,
 			SourceClosureDigest:   bootstrapSource,
 			BuildInputFingerprint: bootstrapInput,
-			BuildPlanFingerprint: bootstrapPlan2,
-			Output:               stage1Output,
+			BuildPlanFingerprint:  bootstrapPlan2,
+			Output:                stage1Output,
 		},
 	}
 }
@@ -160,7 +160,6 @@ func TestBootstrapConvergenceDoesNotTreatSeedTrustAsConvergence(t *testing.T) {
 		t.Fatal("fixture unexpectedly collapsed stage0 seed into current builder")
 	}
 }
-
 
 func TestBootstrapConvergenceFingerprintChangesWithStageEvidence(t *testing.T) {
 	base := bootstrapEvidenceFixture()

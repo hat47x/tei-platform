@@ -159,7 +159,6 @@ func TestValidateAgainstDefinitionRejectsRuntimeAndCapabilityMismatch(t *testing
 	}
 }
 
-
 func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 	t.Run("other capability kind", func(t *testing.T) {
 		source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)
@@ -244,7 +243,6 @@ func TestStaticResponseProfileRejectsScopeExpansion(t *testing.T) {
 	})
 }
 
-
 func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -271,7 +269,6 @@ func TestStaticResponseProfileRejectsHostOwnedOrInvalidResponseFields(t *testing
 	}
 }
 
-
 func TestStaticResponseProfileRejectsExcessiveJSONNesting(t *testing.T) {
 	payload := `{"attemptId":"a","outcome":"accepted","message":`
 	for i := 0; i < 130; i++ {
@@ -288,7 +285,6 @@ func TestStaticResponseProfileRejectsExcessiveJSONNesting(t *testing.T) {
 	}
 }
 
-
 func TestStaticResponseProfileRejectsInvalidUTF8(t *testing.T) {
 	source := implementationSource("")
 	source.Operations[0].Payload = []byte{'{', '"', 'a', 't', 't', 'e', 'm', 'p', 't', 'I', 'd', '"', ':', '"', 0xff, '"', ',', '"', 'o', 'u', 't', 'c', 'o', 'm', 'e', '"', ':', '"', 'a', 'c', 'c', 'e', 'p', 't', 'e', 'd', '"', '}'}
@@ -296,7 +292,6 @@ func TestStaticResponseProfileRejectsInvalidUTF8(t *testing.T) {
 		t.Fatal("expected invalid UTF-8 to fail")
 	}
 }
-
 
 func TestParseRealizationBindsExactCanonicalArtifact(t *testing.T) {
 	source := implementationSource(`{"attemptId":"a","outcome":"accepted"}`)

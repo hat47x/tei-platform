@@ -34,35 +34,35 @@ const (
 // Result is an executor-side acknowledgement. It never constitutes proof that
 // the intended external state exists; that proof comes from reconciliation.
 type PluginInvocation struct {
-	PluginID                  core.CanonicalID             `json:"pluginId"`
-	PluginVersion             string                       `json:"pluginVersion"`
-	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
-	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
-	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
+	PluginID                     core.CanonicalID             `json:"pluginId"`
+	PluginVersion                string                       `json:"pluginVersion"`
+	DescriptorFingerprint        string                       `json:"descriptorFingerprint"`
+	BuildPlanFingerprint         string                       `json:"buildPlanFingerprint,omitempty"`
+	RealizationDigest            string                       `json:"realizationDigest,omitempty"`
 	RuntimeEngineFingerprint     string                       `json:"runtimeEngineFingerprint,omitempty"`
-	RuntimeEngineLockFingerprint string                     `json:"runtimeEngineLockFingerprint,omitempty"`
+	RuntimeEngineLockFingerprint string                       `json:"runtimeEngineLockFingerprint,omitempty"`
 	PluginLockFingerprint        string                       `json:"pluginLockFingerprint"`
-	RuntimePolicyFingerprint  string                       `json:"runtimePolicyFingerprint,omitempty"`
-	ArtifactDigest            string                       `json:"artifactDigest,omitempty"`
-	ArtifactSignatureRef      string                       `json:"artifactSignatureRef,omitempty"`
-	ArtifactProvenance        string                       `json:"artifactProvenance,omitempty"`
-	Boundary                  string                       `json:"boundary"`
-	Sandboxed                 bool                         `json:"sandboxed"`
-	PermissionLease           []permission.Spec            `json:"permissionLease,omitempty"`
-	ResourceLeaseID           string                       `json:"resourceLeaseId,omitempty"`
-	ResourceLeaseExpiresAt    string                       `json:"resourceLeaseExpiresAt,omitempty"`
-	Resources                 []resource.Record            `json:"resources,omitempty"`
-	ResourceLeaseReleased     bool                         `json:"resourceLeaseReleased,omitempty"`
-	ResourceLeaseRevision     int                          `json:"resourceLeaseRevision,omitempty"`
-	ResourceLeaseFencingToken uint64                       `json:"resourceLeaseFencingToken,omitempty"`
-	ResourceLeaseRenewals     []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
-	ResourceLeaseRefreshes    []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
-	ResourceLeaseSupervision  []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
-	ResourceLeaseOwnership    []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
-	VerifierID                string                       `json:"verifierId,omitempty"`
-	DigestVerified            bool                         `json:"digestVerified,omitempty"`
-	SignatureVerified         bool                         `json:"signatureVerified,omitempty"`
-	ProvenanceChecked         bool                         `json:"provenanceChecked,omitempty"`
+	RuntimePolicyFingerprint     string                       `json:"runtimePolicyFingerprint,omitempty"`
+	ArtifactDigest               string                       `json:"artifactDigest,omitempty"`
+	ArtifactSignatureRef         string                       `json:"artifactSignatureRef,omitempty"`
+	ArtifactProvenance           string                       `json:"artifactProvenance,omitempty"`
+	Boundary                     string                       `json:"boundary"`
+	Sandboxed                    bool                         `json:"sandboxed"`
+	PermissionLease              []permission.Spec            `json:"permissionLease,omitempty"`
+	ResourceLeaseID              string                       `json:"resourceLeaseId,omitempty"`
+	ResourceLeaseExpiresAt       string                       `json:"resourceLeaseExpiresAt,omitempty"`
+	Resources                    []resource.Record            `json:"resources,omitempty"`
+	ResourceLeaseReleased        bool                         `json:"resourceLeaseReleased,omitempty"`
+	ResourceLeaseRevision        int                          `json:"resourceLeaseRevision,omitempty"`
+	ResourceLeaseFencingToken    uint64                       `json:"resourceLeaseFencingToken,omitempty"`
+	ResourceLeaseRenewals        []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
+	ResourceLeaseRefreshes       []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
+	ResourceLeaseSupervision     []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
+	ResourceLeaseOwnership       []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
+	VerifierID                   string                       `json:"verifierId,omitempty"`
+	DigestVerified               bool                         `json:"digestVerified,omitempty"`
+	SignatureVerified            bool                         `json:"signatureVerified,omitempty"`
+	ProvenanceChecked            bool                         `json:"provenanceChecked,omitempty"`
 }
 
 type Result struct {

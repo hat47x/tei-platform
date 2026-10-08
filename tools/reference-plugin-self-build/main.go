@@ -43,54 +43,54 @@ const (
 	nativePluginVersion    = "1.0.0"
 	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
 	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
-	nativeBuilderPackage    = "./tools/reference-native-plugin-builder"
+	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
 )
 
 type evidence struct {
-	Schema                       string             `json:"schema"`
-	RepositoryRevision           string             `json:"repositoryRevision"`
-	RepositoryTreeDigest         string             `json:"repositoryTreeDigest"`
-	GoVersion                    string             `json:"goVersion"`
-	GoBinaryDigest               string             `json:"goBinaryDigest"`
-	GoToolchainDigest            string             `json:"goToolchainDigest"`
-	PackageBuilderFirstDigest    string             `json:"packageBuilderFirstDigest"`
-	PackageBuilderSecondDigest   string             `json:"packageBuilderSecondDigest"`
-	PackageBuilderReproducible   bool               `json:"packageBuilderReproducible"`
-	PackageBuildPlan             plugin.BuildPlan   `json:"packageBuildPlan"`
-	PackageBuildPlanFingerprint  string             `json:"packageBuildPlanFingerprint"`
-	PackageFirstArtifactDigest   string             `json:"packageFirstArtifactDigest"`
-	PackageSecondArtifactDigest  string             `json:"packageSecondArtifactDigest"`
-	PackageReproducible          bool               `json:"packageReproducible"`
-	PackageLockedBuild           plugin.LockedBuild `json:"packageLockedBuild"`
-	PackageLockFingerprint       string             `json:"packageLockFingerprint"`
-	NativeSourceFingerprint      string             `json:"nativeSourceFingerprint"`
-	NativeBuilderFirstDigest     string             `json:"nativeBuilderFirstDigest"`
-	NativeBuilderSecondDigest    string             `json:"nativeBuilderSecondDigest"`
-	NativeBuilderReproducible    bool               `json:"nativeBuilderReproducible"`
-	NativeBuildPlan             plugin.BuildPlan   `json:"nativeBuildPlan"`
-	NativeBuildPlanFingerprint  string             `json:"nativeBuildPlanFingerprint"`
-	NativeFirstArtifactDigest   string             `json:"nativeFirstArtifactDigest"`
-	NativeSecondArtifactDigest  string             `json:"nativeSecondArtifactDigest"`
-	NativeReproducible          bool               `json:"nativeReproducible"`
-	NativeLockedBuild           plugin.LockedBuild `json:"nativeLockedBuild"`
-	NativeLockFingerprint       string             `json:"nativeLockFingerprint"`
-	NativeDefinitionFingerprint string                      `json:"nativeDefinitionFingerprint"`
-	NativeRuntimeEngineSourceDigest string                   `json:"nativeRuntimeEngineSourceDigest"`
-	NativeRuntimeEngine             pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
-	NativeRuntimeEngineFingerprint  string                        `json:"nativeRuntimeEngineFingerprint"`
-	NativeRuntimeEngineLock         pruntime.RuntimeEngineLock    `json:"nativeRuntimeEngineLock"`
-	NativeRuntimeEngineLockFingerprint string                     `json:"nativeRuntimeEngineLockFingerprint"`
-	NativeInvocation               executor.Result                `json:"nativeInvocation"`
-	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
-	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
-	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
-	SecondArtifactDigest         string             `json:"secondArtifactDigest"`
-	Reproducible                 bool               `json:"reproducible"`
-	LockedBuild                  plugin.LockedBuild `json:"lockedBuild"`
-	BuildArtifactLockFingerprint string             `json:"buildArtifactLockFingerprint"`
-	RuntimeDefinitionFingerprint string             `json:"runtimeDefinitionFingerprint"`
-	RuntimePluginLockFingerprint string             `json:"runtimePluginLockFingerprint"`
-	RuntimePluginLock            plugin.Lock        `json:"runtimePluginLock"`
+	Schema                             string                         `json:"schema"`
+	RepositoryRevision                 string                         `json:"repositoryRevision"`
+	RepositoryTreeDigest               string                         `json:"repositoryTreeDigest"`
+	GoVersion                          string                         `json:"goVersion"`
+	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
+	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
+	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
+	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
+	PackageBuilderReproducible         bool                           `json:"packageBuilderReproducible"`
+	PackageBuildPlan                   plugin.BuildPlan               `json:"packageBuildPlan"`
+	PackageBuildPlanFingerprint        string                         `json:"packageBuildPlanFingerprint"`
+	PackageFirstArtifactDigest         string                         `json:"packageFirstArtifactDigest"`
+	PackageSecondArtifactDigest        string                         `json:"packageSecondArtifactDigest"`
+	PackageReproducible                bool                           `json:"packageReproducible"`
+	PackageLockedBuild                 plugin.LockedBuild             `json:"packageLockedBuild"`
+	PackageLockFingerprint             string                         `json:"packageLockFingerprint"`
+	NativeSourceFingerprint            string                         `json:"nativeSourceFingerprint"`
+	NativeBuilderFirstDigest           string                         `json:"nativeBuilderFirstDigest"`
+	NativeBuilderSecondDigest          string                         `json:"nativeBuilderSecondDigest"`
+	NativeBuilderReproducible          bool                           `json:"nativeBuilderReproducible"`
+	NativeBuildPlan                    plugin.BuildPlan               `json:"nativeBuildPlan"`
+	NativeBuildPlanFingerprint         string                         `json:"nativeBuildPlanFingerprint"`
+	NativeFirstArtifactDigest          string                         `json:"nativeFirstArtifactDigest"`
+	NativeSecondArtifactDigest         string                         `json:"nativeSecondArtifactDigest"`
+	NativeReproducible                 bool                           `json:"nativeReproducible"`
+	NativeLockedBuild                  plugin.LockedBuild             `json:"nativeLockedBuild"`
+	NativeLockFingerprint              string                         `json:"nativeLockFingerprint"`
+	NativeDefinitionFingerprint        string                         `json:"nativeDefinitionFingerprint"`
+	NativeRuntimeEngineSourceDigest    string                         `json:"nativeRuntimeEngineSourceDigest"`
+	NativeRuntimeEngine                pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
+	NativeRuntimeEngineFingerprint     string                         `json:"nativeRuntimeEngineFingerprint"`
+	NativeRuntimeEngineLock            pruntime.RuntimeEngineLock     `json:"nativeRuntimeEngineLock"`
+	NativeRuntimeEngineLockFingerprint string                         `json:"nativeRuntimeEngineLockFingerprint"`
+	NativeInvocation                   executor.Result                `json:"nativeInvocation"`
+	BuildPlan                          plugin.BuildPlan               `json:"buildPlan"`
+	BuildPlanFingerprint               string                         `json:"buildPlanFingerprint"`
+	FirstArtifactDigest                string                         `json:"firstArtifactDigest"`
+	SecondArtifactDigest               string                         `json:"secondArtifactDigest"`
+	Reproducible                       bool                           `json:"reproducible"`
+	LockedBuild                        plugin.LockedBuild             `json:"lockedBuild"`
+	BuildArtifactLockFingerprint       string                         `json:"buildArtifactLockFingerprint"`
+	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
+	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
+	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
 }
 
 func main() {
@@ -764,50 +764,50 @@ func run(repo string) (evidence, error) {
 	}
 
 	return evidence{
-		Schema:                       "tei.reference.plugin-self-build-evidence/v1",
-		RepositoryRevision:           revision,
-		RepositoryTreeDigest:         treeDigest,
-		GoVersion:                    goVersion,
-		GoBinaryDigest:               goBinaryDigest,
-		GoToolchainDigest:            goToolchainDigest,
-		PackageBuilderFirstDigest:   packageBuilderFirstDigest,
-		PackageBuilderSecondDigest:  packageBuilderSecondDigest,
-		PackageBuilderReproducible:  true,
-		PackageBuildPlan:             packagePlan,
-		PackageBuildPlanFingerprint:  packagePlanFingerprint,
-		PackageFirstArtifactDigest:   packageFirstArtifactDigest,
-		PackageSecondArtifactDigest:  packageSecondArtifactDigest,
-		PackageReproducible:          true,
-		PackageLockedBuild:           packageLockedBuild,
-		PackageLockFingerprint:       packageLockFingerprint,
-		NativeSourceFingerprint:      nativeSourceFingerprint,
-		NativeBuilderFirstDigest:     nativeBuilderFirstDigest,
-		NativeBuilderSecondDigest:    nativeBuilderSecondDigest,
-		NativeBuilderReproducible:    true,
-		NativeBuildPlan:              nativePlan,
-		NativeBuildPlanFingerprint:   nativePlanFingerprint,
-		NativeFirstArtifactDigest:    nativeFirstArtifactDigest,
-		NativeSecondArtifactDigest:   nativeSecondArtifactDigest,
-		NativeReproducible:           true,
-		NativeLockedBuild:            nativeLockedBuild,
-		NativeLockFingerprint:        nativeLockFingerprint,
-		NativeDefinitionFingerprint:       plugin.DefinitionFingerprint(nativeRealized),
-		NativeRuntimeEngineSourceDigest: nativeRuntimeEngineSourceDigest,
+		Schema:                             "tei.reference.plugin-self-build-evidence/v1",
+		RepositoryRevision:                 revision,
+		RepositoryTreeDigest:               treeDigest,
+		GoVersion:                          goVersion,
+		GoBinaryDigest:                     goBinaryDigest,
+		GoToolchainDigest:                  goToolchainDigest,
+		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
+		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
+		PackageBuilderReproducible:         true,
+		PackageBuildPlan:                   packagePlan,
+		PackageBuildPlanFingerprint:        packagePlanFingerprint,
+		PackageFirstArtifactDigest:         packageFirstArtifactDigest,
+		PackageSecondArtifactDigest:        packageSecondArtifactDigest,
+		PackageReproducible:                true,
+		PackageLockedBuild:                 packageLockedBuild,
+		PackageLockFingerprint:             packageLockFingerprint,
+		NativeSourceFingerprint:            nativeSourceFingerprint,
+		NativeBuilderFirstDigest:           nativeBuilderFirstDigest,
+		NativeBuilderSecondDigest:          nativeBuilderSecondDigest,
+		NativeBuilderReproducible:          true,
+		NativeBuildPlan:                    nativePlan,
+		NativeBuildPlanFingerprint:         nativePlanFingerprint,
+		NativeFirstArtifactDigest:          nativeFirstArtifactDigest,
+		NativeSecondArtifactDigest:         nativeSecondArtifactDigest,
+		NativeReproducible:                 true,
+		NativeLockedBuild:                  nativeLockedBuild,
+		NativeLockFingerprint:              nativeLockFingerprint,
+		NativeDefinitionFingerprint:        plugin.DefinitionFingerprint(nativeRealized),
+		NativeRuntimeEngineSourceDigest:    nativeRuntimeEngineSourceDigest,
 		NativeRuntimeEngine:                nativeRuntimeEngine,
 		NativeRuntimeEngineFingerprint:     nativeRuntimeEngineFingerprint,
 		NativeRuntimeEngineLock:            nativeRuntimeEngineLock,
 		NativeRuntimeEngineLockFingerprint: nativeRuntimeEngineLockFingerprint,
 		NativeInvocation:                   nativeInvocation,
-		BuildPlan:                    plan,
-		BuildPlanFingerprint:         planFingerprint,
-		FirstArtifactDigest:          firstDigest,
-		SecondArtifactDigest:         secondDigest,
-		Reproducible:                 true,
-		LockedBuild:                  lockedBuild,
-		BuildArtifactLockFingerprint: buildArtifactLockFingerprint,
-		RuntimeDefinitionFingerprint: plugin.DefinitionFingerprint(realized),
-		RuntimePluginLockFingerprint: runtimePluginLockFingerprint,
-		RuntimePluginLock:            runtimeLock,
+		BuildPlan:                          plan,
+		BuildPlanFingerprint:               planFingerprint,
+		FirstArtifactDigest:                firstDigest,
+		SecondArtifactDigest:               secondDigest,
+		Reproducible:                       true,
+		LockedBuild:                        lockedBuild,
+		BuildArtifactLockFingerprint:       buildArtifactLockFingerprint,
+		RuntimeDefinitionFingerprint:       plugin.DefinitionFingerprint(realized),
+		RuntimePluginLockFingerprint:       runtimePluginLockFingerprint,
+		RuntimePluginLock:                  runtimeLock,
 	}, nil
 }
 
@@ -826,8 +826,6 @@ func requireValidWorld(label string, world ir.World) error {
 	sort.Strings(failures)
 	return fmt.Errorf("%s validation failed: %s", label, strings.Join(failures, "; "))
 }
-
-
 
 func hashSourceFiles(repo string, paths []string) (string, error) {
 	if len(paths) == 0 {

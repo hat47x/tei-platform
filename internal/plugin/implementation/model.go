@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	StaticResponseProfileV1 = "static-response-v1"
+	StaticResponseProfileV1  = "static-response-v1"
 	RealizationFormatVersion = 1
 )
 
@@ -122,9 +122,9 @@ func Fingerprint(s Source) (string, error) {
 }
 
 type RealizationManifest struct {
-	FormatVersion     int                   `json:"formatVersion"`
-	SourceFingerprint string                `json:"sourceFingerprint"`
-	Source            Source                `json:"source"`
+	FormatVersion     int    `json:"formatVersion"`
+	SourceFingerprint string `json:"sourceFingerprint"`
+	Source            Source `json:"source"`
 }
 
 // Materialize emits deterministic bytes that identify the in-process
@@ -239,8 +239,6 @@ func ValidateAgainstDefinition(source Source, definition plugin.Definition) erro
 	}
 	return nil
 }
-
-
 
 func rejectDuplicateJSONKeys(raw []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))

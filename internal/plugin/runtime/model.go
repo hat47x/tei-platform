@@ -83,11 +83,11 @@ type PluginRuntime struct {
 	BuildPlanFingerprint  string                 `json:"buildPlanFingerprint,omitempty"`
 	RuntimeEngine         *RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
 	Boundary              Boundary               `json:"boundary"`
-	Trust                 TrustClass           `json:"trust"`
-	Command               string               `json:"command,omitempty"`
-	Args                  []string             `json:"args,omitempty"`
-	SandboxPolicy         plugin.SandboxPolicy `json:"sandboxPolicy,omitempty"`
-	Artifact              plugin.Artifact      `json:"artifact,omitempty"`
+	Trust                 TrustClass             `json:"trust"`
+	Command               string                 `json:"command,omitempty"`
+	Args                  []string               `json:"args,omitempty"`
+	SandboxPolicy         plugin.SandboxPolicy   `json:"sandboxPolicy,omitempty"`
+	Artifact              plugin.Artifact        `json:"artifact,omitempty"`
 }
 
 type CapabilityRuntime struct {
@@ -104,8 +104,8 @@ type EnvironmentPlan struct {
 	PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
 	RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
 	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
-	Plugins                  []PluginRuntime     `json:"plugins"`
-	Capabilities             []CapabilityRuntime `json:"capabilities,omitempty"`
+	Plugins                      []PluginRuntime     `json:"plugins"`
+	Capabilities                 []CapabilityRuntime `json:"capabilities,omitempty"`
 }
 
 func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) (EnvironmentPlan, error) {
@@ -174,7 +174,6 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 	out.RuntimePolicyFingerprint = PolicyFingerprint(out)
 	return out, nil
 }
-
 
 func lockedPluginForEnvironment(lock plugin.Lock, environmentID core.CanonicalID, ident plugin.Identity) (plugin.LockedPlugin, bool) {
 	for _, environmentLock := range lock.Environments {
@@ -425,32 +424,32 @@ type ArtifactVerifier interface {
 }
 
 type InvocationProvenance struct {
-	RequestID                 string                       `json:"requestId"`
-	Environment               core.CanonicalID             `json:"environment"`
-	Plugin                    plugin.Identity              `json:"plugin"`
-	CapabilityKind            plugin.CapabilityKind        `json:"capabilityKind"`
-	CapabilityID              core.CanonicalID             `json:"capabilityId"`
-	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
-	BuildPlanFingerprint      string                       `json:"buildPlanFingerprint,omitempty"`
-	RealizationDigest         string                       `json:"realizationDigest,omitempty"`
+	RequestID                    string                       `json:"requestId"`
+	Environment                  core.CanonicalID             `json:"environment"`
+	Plugin                       plugin.Identity              `json:"plugin"`
+	CapabilityKind               plugin.CapabilityKind        `json:"capabilityKind"`
+	CapabilityID                 core.CanonicalID             `json:"capabilityId"`
+	DescriptorFingerprint        string                       `json:"descriptorFingerprint"`
+	BuildPlanFingerprint         string                       `json:"buildPlanFingerprint,omitempty"`
+	RealizationDigest            string                       `json:"realizationDigest,omitempty"`
 	RuntimeEngineFingerprint     string                       `json:"runtimeEngineFingerprint,omitempty"`
 	RuntimeEngineLockFingerprint string                       `json:"runtimeEngineLockFingerprint,omitempty"`
 	PluginLockFingerprint        string                       `json:"pluginLockFingerprint"`
-	Artifact                  plugin.Artifact              `json:"artifact,omitempty"`
-	Verification              *ArtifactVerification        `json:"verification,omitempty"`
-	Boundary                  Boundary                     `json:"boundary"`
-	Sandboxed                 bool                         `json:"sandboxed"`
-	Permissions               []permission.Spec            `json:"permissionLease,omitempty"`
-	ResourceLeaseID           string                       `json:"resourceLeaseId,omitempty"`
-	ResourceLeaseExpiresAt    string                       `json:"resourceLeaseExpiresAt,omitempty"`
-	Resources                 []resource.Record            `json:"resources,omitempty"`
-	ResourceLeaseReleased     bool                         `json:"resourceLeaseReleased,omitempty"`
-	ResourceLeaseRevision     int                          `json:"resourceLeaseRevision,omitempty"`
-	ResourceLeaseFencingToken uint64                       `json:"resourceLeaseFencingToken,omitempty"`
-	ResourceLeaseRenewals     []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
-	ResourceLeaseRefreshes    []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
-	ResourceLeaseSupervision  []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
-	ResourceLeaseOwnership    []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
+	Artifact                     plugin.Artifact              `json:"artifact,omitempty"`
+	Verification                 *ArtifactVerification        `json:"verification,omitempty"`
+	Boundary                     Boundary                     `json:"boundary"`
+	Sandboxed                    bool                         `json:"sandboxed"`
+	Permissions                  []permission.Spec            `json:"permissionLease,omitempty"`
+	ResourceLeaseID              string                       `json:"resourceLeaseId,omitempty"`
+	ResourceLeaseExpiresAt       string                       `json:"resourceLeaseExpiresAt,omitempty"`
+	Resources                    []resource.Record            `json:"resources,omitempty"`
+	ResourceLeaseReleased        bool                         `json:"resourceLeaseReleased,omitempty"`
+	ResourceLeaseRevision        int                          `json:"resourceLeaseRevision,omitempty"`
+	ResourceLeaseFencingToken    uint64                       `json:"resourceLeaseFencingToken,omitempty"`
+	ResourceLeaseRenewals        []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
+	ResourceLeaseRefreshes       []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
+	ResourceLeaseSupervision     []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
+	ResourceLeaseOwnership       []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
 }
 
 type Invocation struct {
@@ -472,7 +471,6 @@ type Registry struct {
 
 func identityKey(i plugin.Identity) string { return string(i.ID) + "@" + i.Version }
 
-
 func validateRuntimeSHA256(label, value string) error {
 	if !strings.HasPrefix(value, "sha256:") {
 		return fmt.Errorf("%s must use sha256:<64-hex>", label)
@@ -488,7 +486,6 @@ func validateRuntimeSHA256(label, value string) error {
 	}
 	return nil
 }
-
 
 func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string, string, error) {
 	key := identityKey(pr.Plugin)

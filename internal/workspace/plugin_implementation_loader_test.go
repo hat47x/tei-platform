@@ -66,7 +66,6 @@ func writePluginImplementationWorkspaceFile(t *testing.T, root, rel, content str
 	}
 }
 
-
 func TestPluginImplementationLoaderRejectsPredeclaredArtifact(t *testing.T) {
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
@@ -96,7 +95,6 @@ sources:
 		t.Fatalf("expected predeclared artifact to fail, got %v", err)
 	}
 }
-
 
 func TestPluginImplementationLoaderRejectsAmbiguousGenericRoot(t *testing.T) {
 	root := t.TempDir()

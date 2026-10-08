@@ -35,14 +35,12 @@ type registeredBuiltin struct {
 	fp string
 }
 
-func (b registeredBuiltin) Identity() plugin.Identity      { return b.id }
+func (b registeredBuiltin) Identity() plugin.Identity     { return b.id }
 func (b registeredBuiltin) DescriptorFingerprint() string { return b.fp }
 func (b registeredBuiltin) Invoke(_ context.Context, _ pruntime.Request) (pruntime.Response, error) {
 	raw, _ := json.Marshal(executor.Result{AttemptID: "tei-native-reference", Outcome: executor.OutcomeAccepted})
 	return pruntime.Response{Status: pruntime.ResponseOK, Payload: raw}, nil
 }
-
-
 
 type countingBuiltin struct {
 	id      plugin.Identity
@@ -50,7 +48,7 @@ type countingBuiltin struct {
 	invoked *int
 }
 
-func (b countingBuiltin) Identity() plugin.Identity { return b.id }
+func (b countingBuiltin) Identity() plugin.Identity     { return b.id }
 func (b countingBuiltin) DescriptorFingerprint() string { return b.fp }
 func (b countingBuiltin) Invoke(_ context.Context, _ pruntime.Request) (pruntime.Response, error) {
 	(*b.invoked)++
@@ -59,12 +57,12 @@ func (b countingBuiltin) Invoke(_ context.Context, _ pruntime.Request) (pruntime
 }
 
 type swappingBuiltin struct {
-	id           plugin.Identity
-	fp           string
-	key          string
+	id            plugin.Identity
+	fp            string
+	key           string
 	registrations map[string]pruntime.BuiltinRegistration
-	replacement  pruntime.BuiltinRegistration
-	invoked      *int
+	replacement   pruntime.BuiltinRegistration
+	invoked       *int
 }
 
 func (b swappingBuiltin) Identity() plugin.Identity { return b.id }
@@ -326,7 +324,6 @@ func TestBuildBoundBuiltinUsesRegistrationWithoutExternalArtifactVerifier(t *tes
 	}
 }
 
-
 func TestBuildBoundBuiltinRejectsUnsupportedSignatureOrProvenanceMetadata(t *testing.T) {
 	tests := []struct {
 		name string
@@ -365,7 +362,6 @@ func TestBuildBoundBuiltinRejectsUnsupportedSignatureOrProvenanceMetadata(t *tes
 		})
 	}
 }
-
 
 func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
@@ -422,7 +418,6 @@ func TestBuildBoundBuiltinExecutesExactPreflightAcceptedInstance(t *testing.T) {
 	}
 }
 
-
 func TestBuildBoundBuiltinRequiresRuntimeEngineBinding(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
 	for i := range fx.plan.Plugins {
@@ -462,7 +457,6 @@ func TestRuntimeEngineBindingChangesRuntimePolicyFingerprint(t *testing.T) {
 		t.Fatal("runtime engine identity did not affect runtime policy fingerprint")
 	}
 }
-
 
 func TestBindRuntimeEngineLockDoesNotMutateInputPlan(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
@@ -537,7 +531,6 @@ func TestRuntimeEngineIdentityRejectsMalformedDigest(t *testing.T) {
 	}
 }
 
-
 func TestBuildBoundBuiltinRejectsDirectEngineInjectionWithoutLock(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)
 	fx.plan.RuntimeEngineLockFingerprint = ""
@@ -559,7 +552,6 @@ func TestBuildBoundBuiltinRejectsDirectEngineInjectionWithoutLock(t *testing.T) 
 		t.Fatal("expected direct runtime engine injection without engine lock to fail")
 	}
 }
-
 
 func TestBindRuntimeEngineLockRejectsPrepopulatedEngineWithoutLockAuthority(t *testing.T) {
 	fx := newBuildBoundBuiltinFixture(t)

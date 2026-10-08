@@ -36,12 +36,12 @@ type SourceContribution struct {
 }
 
 type Result struct {
-	World                 ir.World
+	World                       ir.World
 	PluginImplementations       []implementation.Source
 	PluginImplementationSources map[string]SourceLocation
-	Sources             map[string]SourceLocation
-	ManagedFiles        []ManagedFile
-	SourceContributions []SourceContribution
+	Sources                     map[string]SourceLocation
+	ManagedFiles                []ManagedFile
+	SourceContributions         []SourceContribution
 }
 
 func Load(root string) (Result, error) {

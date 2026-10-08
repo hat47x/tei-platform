@@ -622,7 +622,6 @@ func TestVerifyRuntimePluginBuildRequiresBuildPlanBinding(t *testing.T) {
 	}
 }
 
-
 func TestBuildPlanInputFingerprintIgnoresExactBuilderIdentity(t *testing.T) {
 	a := buildPlanFixture()
 	b := buildPlanFixture()

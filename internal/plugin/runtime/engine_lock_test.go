@@ -154,7 +154,6 @@ func TestRuntimeEngineIdentityChangesLockAndPolicyFingerprint(t *testing.T) {
 	}
 }
 
-
 func TestRuntimeEngineLockRejectsMalformedInputs(t *testing.T) {
 	base := pruntime.RuntimeEngineLock{
 		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
