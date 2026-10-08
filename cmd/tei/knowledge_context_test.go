@@ -524,7 +524,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		dataDesign.Focus.ID != "sales.order_line" {
 		t.Fatalf("data design scope drifted: %+v", dataDesign)
 	}
-	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v4" ||
+	if dataDesign.ProjectionRevision != "tei.knowledge.data-design/v5" ||
 		len(dataDesign.Fingerprint) <= len("sha256:") ||
 		dataDesign.Fingerprint[:len("sha256:")] != "sha256:" ||
 		dataDesign.ResolutionStatus != "resolved" ||
@@ -666,6 +666,10 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("business identity candidates=%+v", dataDesign.BusinessIdentityCandidates)
 	}
 	identityCandidate := dataDesign.BusinessIdentityCandidates[0]
+	if identityCandidate.Fingerprint == "" ||
+		identityCandidate.EvidenceRequirementFingerprint == "" {
+		t.Fatalf("business identity candidate fingerprints are missing: %+v", identityCandidate)
+	}
 	if identityCandidate.Relation != "sales.order.lines" ||
 		identityCandidate.TargetOccurrence != "sales.order_line" ||
 		identityCandidate.BasisConstraint != "sales.order.lines.line_number_unique" ||
@@ -702,6 +706,10 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("functional dependency candidates=%+v", dataDesign.FunctionalDependencyCandidates)
 	}
 	fdCandidate := dataDesign.FunctionalDependencyCandidates[0]
+	if fdCandidate.Fingerprint == "" ||
+		fdCandidate.EvidenceRequirementFingerprint == "" {
+		t.Fatalf("functional dependency candidate fingerprints are missing: %+v", fdCandidate)
+	}
 	if fdCandidate.Relation != "sales.order.lines" ||
 		fdCandidate.DependentOccurrence != "sales.order_line" ||
 		fdCandidate.BasisConstraint != "sales.order.lines.line_number_unique" ||
@@ -791,6 +799,7 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		"absence-of-authored-business-identifier-is-not-no-identifier",
 		"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 		"derived-design-candidate-fingerprint-is-identity-not-acceptance",
+		"derived-design-candidate-evidence-requirement-fingerprint-is-review-contract-not-acceptance",
 		"absence-of-authored-functional-dependency-is-not-no-dependency",
 		"functional-dependency-candidate-is-not-accepted-functional-dependency",
 		"absence-of-authored-composite-domain-constraint-is-not-no-composite-domain-constraint",
