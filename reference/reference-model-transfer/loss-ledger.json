@@ -242,6 +242,24 @@
       "risk": "alternate serialization, logs, debugging or reuse of the public artifact object can disclose local schema detail despite JSON tests passing.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "PublicationReceipt and other public Evidence structs contain publication-approved fields only; classification/coverage use ObservedDocument or an explicitly local accounting type, and repository tests contain no dependency on hidden private fields inside public artifacts"
+    },
+    {
+      "id": "RML-027",
+      "topic": "unsupported-source-format-mapped-by-familiar-construct-names",
+      "nature": "unresolved",
+      "evidence": "Before source profile validation, classification and coverage checked the requested xead/xeaf label and known construct names but did not require System.FormatVersion to match a contract-declared supported version. The benchmark itself is FormatVersion 1.2.",
+      "risk": "unknown source-format semantics can be promoted into known transcription mappings solely because names still parse.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "transcription contract declares supported source profiles; classification/local-candidate/coverage reject missing, wrong-root, namespaced-root, and unsupported FormatVersion while raw Observe can still retain unsupported source for local forensic Evidence"
+    },
+    {
+      "id": "RML-028",
+      "topic": "derived-evidence-stale-after-transcription-contract-change",
+      "nature": "unresolved",
+      "evidence": "transcription-map-v0 and historical R0 classification Evidence bind to the prior transcription contract blob. Source profile support changes the current contract fingerprint without rerunning those historical derivations.",
+      "risk": "old aggregate counts can be misrepresented as current-contract validation, or historical provenance can be overwritten to make the artifacts appear current.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "historical artifacts retain their exact old contract fingerprint/blob; current-contract coverage is only claimed after regeneration/revalidation, and planning/docs explicitly distinguish historical mapping counts from current source-profile validation"
     }
   ],
   "claimsNotEstablished": [
