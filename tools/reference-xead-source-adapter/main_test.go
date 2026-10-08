@@ -66,11 +66,18 @@ func TestPublicationReceiptDoesNotContainSourceValuesOrText(t *testing.T) {
 	if receipt.LocatorCount == 0 || receipt.LocatorSetFingerprint == "" {
 		t.Fatalf("locator accounting missing: %+v", receipt)
 	}
-	if receipt.UnknownElements["Mystery"] != 1 || receipt.UnknownElementCount != 1 || receipt.UnknownAttributeCount != 1 {
-		t.Fatalf("unknown element accounting=%+v elements=%d attributes=%d", receipt.UnknownElements, receipt.UnknownElementCount, receipt.UnknownAttributeCount)
+	if receipt.UnknownElementCount != 1 || receipt.UnknownAttributeCount != 1 {
+		t.Fatalf("unknown aggregate accounting elements=%d attributes=%d", receipt.UnknownElementCount, receipt.UnknownAttributeCount)
 	}
-	if receipt.AttributeNameCounts["Table"]["CustomAttr"] != 1 {
-		t.Fatalf("new attribute was silently dropped locally: %+v", receipt.AttributeNameCounts["Table"])
+	var customAttrPreserved bool
+	for _, node := range doc.Nodes {
+		if node.Kind == "Table" && node.Attributes["CustomAttr"] == "kept-locally" {
+			customAttrPreserved = true
+			break
+		}
+	}
+	if !customAttrPreserved {
+		t.Fatalf("new attribute was silently dropped from local observation: %+v", doc.Nodes)
 	}
 	if receipt.AttributeCounts["Table"] == 0 {
 		t.Fatalf("public attribute occurrence accounting missing: %+v", receipt.AttributeCounts)
