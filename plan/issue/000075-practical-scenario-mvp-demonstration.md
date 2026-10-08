@@ -119,6 +119,8 @@ TEIの実用性は、個別にModelやDriverを動かせるだけでは判断で
 - `positive`な明細Validationは、Command実行前に全明細へ適用する。`relation-unique`のように集合全体を扱うValidationは従来どおり一回で評価する。検査不能な明細を成功扱いしない。
 - scratch workspaceで単価の正値制約を追加し、正常値と**2行目の不正値**についてDriver・Web経由の結果を回帰テストする。既存ReferenceのSourceは変更しない。
 
+**追加の実証候補（まだ実行していない）。** #985では、第一Web Targetの回帰テストから`reference-shared-acceptance`のCLIを起動し、scratch workspaceへ`revision → preview → review → accept`を行った後、同じscratch Sourceを通常Loaderで読み直し、DriverとHTTPを評価する一続きのtestを追加した。機械的に作ったreview fingerprintはscratchのテスト専用であり、人間が内容を承認した証拠ではない。2行目の不正な単価・数量、欠落した値、空の明細集合を区別し、副作用へ進ませないnegative caseも用意した。Business Procedure ReferenceのBP-05は独立したauthoring fixtureであり、新しいValidationの追加だけでBP-05が自動更新されたとは主張しない。
+
 現時点ではGitHub連携を通した静的調査とコード変更までで、trustedなcheckout上の`tools/repository-health-check.sh`、実際のPreview/Accept/HTTPテストは未実行である。**PRがDraftであること、コードが書かれたこと、テストが追加されたことは、動作が成立したEvidenceにはならない。** exact-headのfull PASSとpre/post cleanが得られるまで、コードを`main`へ統合しない。
 
 ### Bの判定と停止条件案
