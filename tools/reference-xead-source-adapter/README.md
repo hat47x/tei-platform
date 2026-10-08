@@ -85,3 +85,14 @@ public出力では、任意のunknown element名や追加attribute名を公開�
 未対応versionを、element名が同じという理由だけで既知mappingへ流さないためのfail-closed境界です。対応versionの追加はCore変更ではなくSource Adapter / transcription contract側で行います。
 
 既存の`transcription-map-v0.json`とR0 coverageは旧contract blobに結び付いた履歴Evidenceです。`sourceProfiles`追加後のcontractへ自動で再帰属させず、current contractでのcoverageは再実行後にのみ更新します。
+
+
+## RMT-3 bounded Evidence
+
+`BuildTranscriptionCandidateEvidence`は、exact `ObservedDocument`のnode ordinalを一件だけ指定し、`tei.reference.rmt-transcription-candidate-evidence/v0`を生成します。
+
+Evidenceはexact source artifact digest、FormatVersion、name-independent source token、mapping contract fingerprintへbindします。known / mapped constructでは標準construct名、classification、担当Extensionを保持します。unknown / namespaced constructではsource名を公開せず、`unmapped`のまま残します。
+
+`VerifyTranscriptionCandidateEvidence`は同じexternal sourceとmapping contractからEvidenceを再構成します。source bytes、node位置、mapping contractのいずれかが変わった場合はstaleとして拒否します。
+
+このEvidenceはCanonical Acceptance、human Decision witness、Source Adapter Conformance、Runtime Authorityを与えません。Shared Acceptanceへのtyped artifact接続はGitHub #1008 / #267側で扱います。
