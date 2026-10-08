@@ -25,6 +25,8 @@ if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
   exit 2
 fi
 
+SOURCE_HEAD="$(git -C "$ROOT" rev-parse HEAD)"
+
 run_tei() {
   local binary="$1"
   shift
@@ -140,6 +142,12 @@ if [[ "$commit_paths" != "$TARGET_FILE" ]]; then
   exit 1
 fi
 
+if [[ -n "$(git -C "$TASK_REPO" status --porcelain)" ]]; then
+  echo "task repository is not clean after result commit" >&2
+  git -C "$TASK_REPO" status --short >&2
+  exit 1
+fi
+
 git clone -q --local --no-hardlinks "$TASK_REPO" "$INTEGRATION_REPO"
 INTEGRATION_WORKSPACE="$INTEGRATION_REPO/reference/workspace"
 INTEGRATION_TEI="$TMP_ROOT/tei-integration"
@@ -229,6 +237,18 @@ if [[ -n "$(git -C "$CONFLICT_REPO" status --porcelain)" ]]; then
   exit 1
 fi
 
+if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$SOURCE_HEAD" ]]; then
+  echo "source checkout HEAD changed while reference was running" >&2
+  exit 1
+fi
+
+if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
+  echo "source checkout became dirty while reference was running" >&2
+  git -C "$ROOT" status --short >&2
+  exit 1
+fi
+
+printf 'source-head=%s\n' "$SOURCE_HEAD"
 printf 'base=%s\n' "$BASE_REVISION"
 printf 'result=%s\n' "$RESULT_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"

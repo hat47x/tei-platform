@@ -182,9 +182,27 @@ tool-neutral development reference: PASS
 
 これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
 
+### qualification wrapperの合成検証
+
+`qualify.sh`は、actual TEI checkoutとは切り離した最小Git repositoryでも制御フローを実行確認しました。
+
+合成repositoryには、clean stateを確認してPASSする最小`repository-health-check.sh`と`run.sh`を置き、local bare originへ`main`をpushして`origin/main`を作りました。
+
+確認結果:
+
+- exact `--expected-head` / `--expected-main`が一致し、expected mainをcandidateが含む正常系はPASSした
+- 出力にcandidate head、origin/main、repository-health PASS、Reference PASSが含まれた
+- 誤った`--expected-head`はexit 1でfail closedした
+- dirty pre-stateもexit 1でfail closedした
+- `origin/main == --expected-main`でも、そのmainがcandidate HEADのancestorでないsibling historyはexit 1でfail closedした
+- current `qualify.sh`は`bash -n`を通過した
+
+これはqualification wrapperの制御ロジックに対するsynthetic Evidenceです。actual TEIのRepository health、CLI、Canonical meaning、Semantic Validationが成立したことは示しません。
+
 ### 現在の検証状態
 
 - full local clone方式へ書き直したrunnerは`bash -n`で構文確認済み。
+- `qualify.sh`のcurrent contentも`bash -n`で構文確認済み。
 - E2で期待する`DUPLICATE_SEMANTIC_ELEMENT`がcurrent Validation実装に存在することはsourceから確認済み。
 - current execution environmentにはTEI Repositoryのlocal checkoutが無く、GitHubからcloneしようとすると`github.com`のDNS解決に失敗する。
 - したがって、actual `go build` / `go test` / CLI round trip / Git integration / Repository healthのPASSはまだ主張しない。
@@ -250,7 +268,7 @@ merged workspace
 
 このcaseの目的はTEI独自merge engineを作ることではありません。Gitが所有するtext / history integrationを尊重したまま、その後のSemantic boundaryで意味上の不整合を止められることを確認します。
 
-E2追加後のrunnerも`bash -n`でBash syntaxを再確認しました。また、current `internal/validation.Validate`が同一Canonical IDを`DUPLICATE_SEMANTIC_ELEMENT`として拒否することをsourceから確認しています。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
+E2のstatic auditでは、current `loadSemantics`が複数fileの同一namespaceを一つのSemantic Namespaceへ統合し、Data定義をappendしてからValidationへ渡すことを確認しました。そのため、別fileに同じ`sales.tool_neutral_collision`を置くcaseはloader段階のnamespace errorではなく、`internal/validation.Validate`の`DUPLICATE_SEMANTIC_ELEMENT`まで到達する設計です。actual TEI実行は、current execution environmentのGitHub DNS制約により未確認です。
 
 ## E3 — MCP利用とCLI parity
 
@@ -366,6 +384,27 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 
 これらに独立したProduct上の必要性が後から見つかった場合は、その必要性自体を別に評価します。
 
+## Merge qualificationとの関係
+
+本IssueのExecutable ReferenceがPASSしても、それだけでcode-changing PRをmainへ統合してよいとは判断しません。
+
+Repository全体のGateは`AGENTS.md` / `CONTRIBUTING.md`を正本とし、exact candidate headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post stateを別に要求します。
+
+`tools/reference-tool-neutral-development/qualify.sh`は、そのfull health Gateと本Referenceを同じclean checkoutで順番に実行し、途中でHEADやworking treeが変わったらfail closedする補助です。
+
+```text
+candidate exact head
+  -> full Repository health
+  -> still same clean head
+  -> RQ-034 executable reference
+  -> still same clean head
+  -> qualification output
+```
+
+これはTEIへ新しい`verified`状態を追加する仕組みではありません。Gate実行時の一時的なEvidenceを取り違えにくくするためのRepository Toolです。
+
+`--expected-main`が固定するのは、preflightで取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。remote GitHub上の`main`をlockするものではないため、qualification PASS後もmerge直前にremote stateを再取得し、mainがexpected SHAから動いていれば、そのreceiptをstaleとしてcandidateへ最新mainを統合したうえで再qualificationします。
+
 ## Evidence
 
 最初のReferenceでは少なくとも次を残します。
@@ -404,6 +443,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - [ ] 開発環境のShell / Filesystem / Git authorityとApplication Runtime authorityを混同しない
 - [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
 - [ ] Agent専用subsystemを追加しなくても一往復が成立する
+- [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
 
 ## 非目標
 
