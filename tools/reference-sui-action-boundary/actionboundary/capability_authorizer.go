@@ -4,7 +4,6 @@ import (
  "context"
  "fmt"
 
- "tei/internal/core"
  "tei/internal/security/legacyauthorization"
  "tei/internal/semantic"
  "tei/internal/semantic/capabilityinvoke"
@@ -49,5 +48,3 @@ func (a CapabilityAuthorizer) Authorize(ctx context.Context, appID, docID, actio
  }
  return nil
 }
-
-var _ core.CanonicalID = legacyauthorization.AuthorizationCapability
