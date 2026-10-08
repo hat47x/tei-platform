@@ -42,7 +42,7 @@ go run ./tools/reference-shared-acceptance attach-qualification -candidate FILE 
 go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern -workspace DIR -candidate FILE -qualification FILE -reference-reuse FILE [-out FILE]
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
-go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json] [-out FILE]
+go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -52,7 +52,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `propose-qualified-reference-pattern`: `application-pattern`のapplicable qualificationから、既存candidateへ`add-reference-pattern`を1件追加します。Pattern ID、所有Application、Relation、datasource、placementは`reference-reuse`側で明示します。Contract / Query / input mappingはrequestから受け取らず、current Canonicalのqualified origin Patternから取得します。origin PatternのContract Queryがqualificationの`requiredDependencies`に明示されていない場合や、qualificationのSource / dependency Evidenceがcurrent workspaceと一致しない場合はProposalを生成しません。生成したcandidateにはqualification Evidenceをそのまま引き継ぎます。
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
-- `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力します。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
+- `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力し、`-format html`を指定すると同じ内容を1枚のHTMLで出力します。HTMLは外部のscript・stylesheet・font・imageを使わず、JavaScriptなしで読めます。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。
@@ -60,6 +60,8 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 ### 人が読むReview Projection
 
 `review`は、AIの要約を新しい根拠にせず、Shared Acceptance Previewが持つ差分・影響・診断・未解決点・Evidence・source editをA1〜A8へ並べ直します。Semantic Evaluation artifactがEvidenceに添付されている場合は、A3に`pass / fail / unknown`とdiagnostic、A7にartifact / Semantic Set / evaluation fingerprintを表示します。冒頭は`表示可能`・`一部`・`未評価`の件数と、確認が残るsectionの要約です。各sectionは、導出元の`preview.*`または`candidate.*`項目を`sources`として持ち、text出力でも`根拠:`として表示します。`candidateFingerprint`は意味のidentity、`evidenceFingerprint`は正規化済み根拠のidentity、`reviewFingerprint`はA1〜A8を含む提示Projectionそのもののidentityです。A7ではEvidenceと変更予定sourceへ戻れる情報も出します。
+
+`-format html`のページは、このProjectionを人が読むために描画したものであり、承認の記録ではありません。ページを開いたことや`reviewFingerprint`が一致したことは、人が内容を読んで承認したことを示しません。
 
 A5の権限変更とA6のnative code残存箇所は、現在のPreviewだけでは完全に評価できません。そこで`review`は、現行のtyped operationがPermission grant・Resource binding・lease・実行principalや`customGoBindings`をauthorしないことをcandidateから確認し、その範囲だけを`一部`として表示します。一方、既存権限が変更後のApplicationやbindingへどう及ぶか、既存custom implementationのどこが変更subjectに依存するかは未評価のままです。candidateが権限やnative codeを直接書かないことを、実効権限やnative依存が変わらないことへ読み替えません。
 
