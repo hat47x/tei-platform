@@ -373,7 +373,7 @@ Target / Runtimeでは、Wails / WebView / native / Wasm等をCanonical meaning�
 
 ## Reference Model Transfer Evidence — 成熟した外部modelで全体をpressureする
 
-小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkは渡辺幸三氏のX-TEA / XEAD系「CONCEPTWARE／受注生産」です。
+小規模なReferenceだけでTEIの表現力を判断しないため、Gate C後の横断laneとして[ISSUE-000078](issue/000078-reference-model-transfer-gate.md)を進めます。最初のbenchmarkはX-TEA / XEAD系「CONCEPTWARE／受注生産」の既存Reference Modelです。
 
 これはProduct Gate Dではなく、既存Requirementをまとめて圧迫するEvidence Gateです。X-TEAのschemaやRuntimeをTEIのsemantic authorityへせず、Data / Function-Interaction / Business、native asset、Runtime / Environment、Projectionを一式で転写したときに、意味を黙って落とさず説明できるかを確認します。
 
