@@ -55,8 +55,7 @@ func TestPublishedClassificationDoesNotContainSourceLocatorOrValues(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt := PublicReceipt(doc)
-	projection, err := BuildClassificationProjection(FormatXead, receipt, classificationContractFixture())
+	projection, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +79,7 @@ func TestPublishedClassificationRedactsArbitraryUnmappedKindName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projection, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), classificationContractFixture())
+	projection, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +100,7 @@ func TestNamespacedLookalikeDoesNotHideBehindMappedLocalName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projection, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), classificationContractFixture())
+	projection, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +120,7 @@ func TestNamespacedOnlyLookalikeDoesNotPublishKnownMappingClassification(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	projection, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), classificationContractFixture())
+	projection, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +145,7 @@ func TestClassificationRejectsMappingWithoutClassification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := BuildClassificationProjection(FormatXead, PublicReceipt(doc), contract); err == nil || !strings.Contains(err.Error(), "has no classification") {
+	if _, err := BuildClassificationProjection(FormatXead, doc, contract); err == nil || !strings.Contains(err.Error(), "has no classification") {
 		t.Fatalf("invalid mapping accepted: %v", err)
 	}
 }
