@@ -96,3 +96,25 @@ func TestMappedEvidenceRequiresKnownConstructAndExtension(t *testing.T) {
 		t.Fatal("mapped Evidence without Extension was accepted")
 	}
 }
+
+
+func TestPrepareAddsMandatoryAuthorityLimits(t *testing.T) {
+	value := fixture()
+	value.AuthorityLimits = []string{"producer-specific-limit"}
+	prepared, err := Prepare(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range RequiredAuthorityLimits {
+		found := false
+		for _, actual := range prepared.AuthorityLimits {
+			if actual == required {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("mandatory authority limit %q is missing: %v", required, prepared.AuthorityLimits)
+		}
+	}
+}
