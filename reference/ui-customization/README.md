@@ -1,16 +1,16 @@
-# 基本UIプラグインと案件別カスタマイズ — Reference方針
+# UI構成キット（UI Composition Kit）と案件別カスタマイズ — Reference方針
 
 Status: design / prompt reference（Web/Reactの最小StarterはReference実装済み。ただし実ReactDOM / 正式Plugin化は未了）
-管理Issue: [#997 基本UIプラグイン](https://github.com/hat47x/tei-platform/issues/997)
+管理Issue: [#997 UI構成キット（旧称：基本UIプラグイン）](https://github.com/hat47x/tei-platform/issues/997)
 独立した別課題: [#998 TEI内部の業務仕様テンプレート](https://github.com/hat47x/tei-platform/issues/998)
 
 ## 厳密に分ける二層
 
-**基本UI Plugin**は「あるプラットフォームやフレームワークでApplication UIを作り、TEIへどう繋ぐか」を提供する**技術的な出発点**である。UIホスト、画面遷移、汎用表示・入力部品、Action Invocation、Permission/Validation結果表示、busy/error状態、アクセシビリティ、テーマ・多言語・拡張点を扱う。**個別案件が差し替え・改修することを前提**とする。
+**UI構成キット（旧称：基本UI Plugin）**は「あるプラットフォームやフレームワークでApplication UIを作り、TEIへどう繋ぐか」を提供する**技術的な出発点**である。UIホスト、画面遷移、汎用表示・入力部品、Action Invocation、Permission/Validation結果表示、busy/error状態、アクセシビリティ、テーマ・多言語・拡張点を扱う。**個別案件が差し替え・改修することを前提**とする。
 
 **業務仕様テンプレート**は「受注・承認等の業務をどの意味・制約・手順で設計するか」という**TEI内の再利用可能な設計素材**である。Dataの識別子、関数従属性、Relation、Business Function/Action、Actor・Procedure・例外を扱い、案件へ適用した後のAccepted業務仕様と区別する。RendererやUI Frameworkの実装を所有しない。
 
-結合するのは、**案件のAccepted業務仕様から導出したApplication/Action Contract**である。UI Pluginがテンプレート業務規則を複製したり、UI操作に基づいて業務上の正本を書き換えたりしない。
+結合するのは、**案件のAccepted業務仕様から導出したApplication/Action Contract**である。UI構成キットの実装がテンプレート業務規則を複製したり、UI操作に基づいて業務上の正本を書き換えたりしない。
 
 ## プラットフォームとフレームワークの二軸
 
@@ -63,3 +63,11 @@ Pluginとしては、少なくとも論理的identity、version、TargetとFrame
 **業務仕様テンプレートの独立Reference**: [../business-spec-templates/README.md](../business-spec-templates/README.md)（PR #1009）。三視点を既存Source参照として扱い、採用提案とAcceptanceを混同しない。UI Starterの内部に業務仕様テンプレートを格納しない。
 
 **重要**: Smartphone Plugin、Web/React正式Plugin packageの実装・ブラウザ実行検証・Framework別互換性評価は引き続き未了。基本UI Pluginそのものの普遍性やSIerの工数削減は、実際の二つ目以降の案件で検証してから判断する。
+
+## 用語の精密化と階層化の検討（2026-10-08）
+
+**「基本UIプラグイン」はumbrellaとしての使用を終え、案件別UI実装の再利用資産群を「UI構成キット（UI Composition Kit）」と呼ぶ。** KitはStarter／Renderer／Framework Bridge／案件UI Layer／カスタマイズ用prompt等の論理的構成単位であり、Runtime Plugin / Plugin Lock / Build Artifactと1:1ではない。単独のAdapterを指すときは`UI Host Bridge Plugin`など具体名を使う。業務仕様テンプレート（#998）とも混同しない。
+
+階層化は、OOPクラスの多重継承ではなく、**単一親`extends` → 各種UI公開点への`provide` / `replace` / `decorate` → Action/Domain/Authorityへの`delegation`**を第一候補とする。Kit/Layerごとにexact versionを指定し、上書き対象を`expect`で確認する。任意Framework間のUIコード継承や複数Pluginの暗黙勝者選択は禁止する。
+
+設計、代替名称評価、13件の実行テスト、未実証範囲は[composition/README.md](composition/README.md)へ分離。Reference resolverはデザイン時の軽量実験で、既存TEI Plugin ResolverやProduction Targetの完成を意味しない。旧ディレクトリ名・既存のIssue中の「基本UI Plugin」は移行期間の歴史的記述として残す。
