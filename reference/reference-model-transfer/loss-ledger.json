@@ -188,6 +188,15 @@
       "risk": "namespace/vendor extensions can be reinterpreted as standard Xead/Xeaf semantics after the inventory layer has already rejected that interpretation.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "fact extraction and every later projection honor the qualified-name known-state; adversarial tests prove namespaced lookalikes remain unknown and cannot emit standard source facts or public standard-fact claims"
+    },
+    {
+      "id": "RML-024",
+      "topic": "source-name-redaction-bypassed-by-path-hash",
+      "nature": "unresolved",
+      "evidence": "The pre-hardening public LocatorDigest was SHA-256 over artifact identity plus SourceLocator.Path. SourceLocator.Path embeds qualified element names and sibling ordinals; redacted unknown names could therefore be tested by hashing candidate paths.",
+      "risk": "public Evidence can leak low-entropy local schema vocabulary indirectly even after clear-text names are removed.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "public locator/fact/issue tokens are derived without source-derived structural names, exact path remains local only, and adversarial tests verify published locator digests equal ordinal-based tokens rather than legacy path-based digests"
     }
   ],
   "claimsNotEstablished": [
