@@ -260,6 +260,21 @@ TEIの現在のProduct Gateやsupported scopeを、SUI移管のためだけに�
 - SEI / EKI等の管理面・UI面へ横展開できるか
 
 
+### 実装で顕在化した追加Pressure — GestureとDomain Actionの非同一性
+
+**観測（2026-10-08、SUI実装のソース読取＋TEI Reference E1/E2）**
+
+- SUI `CardView`はpointermoveごとにスクリーン座標の差分を通知し、`CanvasShell`がzoomでworld deltaへ換算する。`App.handleCardMove`はdrag中の**in-memory Document履歴**を随時更新し、設定に応じてgrid snapを適用する。
+- `App`のpointerup **とpointercancelの両方**が現在は一つのundo stepの確定経路へ入り、drop後にCardのIsland所属を更新することがある。単純なCard座標更新だけでは既存のdomain actionを再現できない。
+- 永続化は別の`handleSave`で、`putDocument`へ（存在する場合）ETagを渡す。SUIの`PUT`は`If-Match`欠落時にLWWを許すため、Reference E2では**強いサーバETag必須／無条件PUT禁止**に限定してHTTP境界を検証した。
+- Reference E1は独立Gestureと`position.set`、E2はloopback HTTP上のGET/If-Match PUTであり、実際のSUI React Canvas接続、Domain full validator、TEI Driver/Permission連携、実SUI Backendの条件付き更新の実証は**未了**。
+
+**設計への帰結**
+
+「Gesture preview →座標commit」だけを一般化しても、特殊Applicationの実装が可能になったとは言えない。必要なのは、Native Interactionのイベント粒度と、Applicationが所有する**複合Action（Card座標・島所属・undo単位）**、UI履歴の確定と永続化の確定を結ぶ可変な境界である。TEIはその接続・Authority・Bindingを提供し、SUI固有のIsland geometryやdomain policyをCoreへ引き上げない。
+
+**次の受入試験**: native pointer lifecycle、zoom、grid snap、cancel policy、Islandへのdrop、undo、Save/reloadを一つの実行シナリオとして観察し、現行SUIと比較する。pointercancelの意味を勝手に変更しない。E2のmock HTTP成功をSUI live-Backend準拠と読み替えない。詳細Reference: `tools/reference-sui-interaction/`、PR #994・#995、Issue #993。
+
 ## 非業務・非汎用Applicationによる構成力の圧力試験（2026-10-08）
 
 - Native Canvas / Interaction Hostの実装窓口: GitHub Issue #993（本節を設計・Acceptanceの正本とする）
