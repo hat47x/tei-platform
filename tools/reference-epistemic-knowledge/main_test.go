@@ -1393,3 +1393,15 @@ func TestCheckedAtRequiresSubjectBindingReceipt(t *testing.T) {
 		t.Fatalf("unbound checkedAt was accepted: %v", err)
 	}
 }
+
+
+func TestProjectionStatesCheckedAtIsSubjectBound(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "checked-at-is-bound-to-current-subject") {
+		t.Fatalf("missing checkedAt subject-binding authority boundary: %+v", projection.AuthorityLimits)
+	}
+}
