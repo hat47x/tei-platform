@@ -54,7 +54,11 @@ func Classify(doc Document, policy ClassificationPolicy) []Candidate {
 	out := make([]Candidate, 0)
 	var walk func(Node)
 	walk = func(n Node) {
-		rule, ok := policy[localName(n.Name)]
+		var rule CandidateRule
+		var ok bool
+		if n.Known {
+			rule, ok = policy[localName(n.Name)]
+		}
 		c := Candidate{
 			Locator:    n.Locator,
 			SourceName: n.Name,
