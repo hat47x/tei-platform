@@ -360,6 +360,20 @@
       "observed": "An intermediate PublicationReceipt v2 candidate hid local schema accounting behind json:\"-\" fields. JSON serialization was redacted, but the in-memory object still carried exact unknown element/attribute names and could expose them through alternate serializers, structured logging, reflection, debugging, or later code that mistakes the type for public-safe data.",
       "risk": "A publication boundary implemented only as serializer annotations becomes representation-dependent. Private source detail can cross the boundary without changing the nominal public artifact type, making accidental disclosure and authority confusion easier.",
       "teiDirection": "make public-safe artifact types structurally incapable of carrying private source detail. Keep lossless names/values/locators in ObservedDocument or another explicitly local type; derive public receipt/classification/coverage from local observation and copy only publication-approved fields."
+    },
+    {
+      "id": "RMP-052",
+      "topic": "source-format-version-vs-construct-name-stability",
+      "observed": "The benchmark records Xead and Xeaf FormatVersion 1.2, and the transcription contract classifies System.FormatVersion as source metadata, but the Source Adapter previously applied the same construct mapping to any document whose local element names were recognized. Observe could therefore parse a future or older format version and classification/coverage could interpret familiar names without proving that their schema meaning remained compatible.",
+      "risk": "A new source format can reuse element and attribute names with changed cardinality, semantics, defaults, or runtime meaning. Treating parse success or local-name familiarity as mapping compatibility can silently apply a 1.2 transcription contract to an unsupported source format.",
+      "teiDirection": "keep raw observation version-agnostic enough for forensic Evidence, but make semantic candidate classification and coverage require an explicit source profile declared by the Source Adapter/transcription contract. Profile ownership remains Plugin/Extension-side, not a Core enum; unsupported or missing FormatVersion fails closed before construct mapping."
+    },
+    {
+      "id": "RMP-053",
+      "topic": "transcription-contract-evolution-vs-derived-evidence-validity",
+      "observed": "Adding an explicit sourceProfiles boundary changes the transcription contract bytes and fingerprint even though the existing constructMappings are unchanged. Existing aggregate transcription-map and R0 coverage Evidence point to the earlier contract blob.",
+      "risk": "If derived Evidence is implicitly rebound to the latest contract path, a contract change can appear validated without rerunning classification/coverage. Conversely, rewriting historical Evidence to the new fingerprint destroys the exact provenance of the earlier run.",
+      "teiDirection": "bind every derived Evidence artifact to the exact contract fingerprint/blob used to produce it; preserve old Evidence as historical and require explicit regeneration or revalidation before claiming coverage under a newer contract. Contract evolution invalidates authority by fingerprint, not by file path or matching mapping counts."
     }
   ]
 }
