@@ -391,6 +391,11 @@ func evaluateCommandValidation(
 	if len(orderLines) == 0 {
 		return "", fmt.Errorf("cannot evaluate positive validation %s over an empty order-line collection", rule.ID)
 	}
+	// Complete the read of every row before reporting a business denial.
+	// Otherwise an invalid early row can mask an unknown/missing value in a
+	// later row, incorrectly classifying an incomplete evaluation as a normal
+	// not-satisfied business outcome.
+	aggregate := validationeval.ResultSatisfied
 	for index, line := range orderLines {
 		result, err := validationeval.Evaluate(rule, commandValidationSource{
 			orderLines: []semanticRowProjection{line},
@@ -399,10 +404,10 @@ func evaluateCommandValidation(
 			return "", fmt.Errorf("validation %s on order line %d: %w", rule.ID, index, err)
 		}
 		if result != validationeval.ResultSatisfied {
-			return result, nil
+			aggregate = result
 		}
 	}
-	return validationeval.ResultSatisfied, nil
+	return aggregate, nil
 }
 
 type commandValidationSource struct {
