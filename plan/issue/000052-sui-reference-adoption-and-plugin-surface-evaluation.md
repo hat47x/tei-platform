@@ -260,6 +260,16 @@ TEIの現在のProduct Gateやsupported scopeを、SUI移管のためだけに�
 - SEI / EKI等の管理面・UI面へ横展開できるか
 
 
+### E3 Reference（2026-10-08）— Composite Native Interactionの小規模実証
+
+PR #996で`tools/reference-sui-interaction/native-edit.mjs`に**Generic Lifecycle**のReferenceを追加し、`native-edit.test.mjs`でSUI実装の既存動作を参照したfixture replayを実行した。Node.js v22.16.0で**11件成功**。使用したソースとGitHub blob SHAの一致も確認した。
+
+検証したのは、各pointermoveのnativeな変換、zoom・grid snap、カード座標と島所属の複合変更、pointercancelによる既存SUI型の履歴確定、複数moveを1 Undoにまとめること、明示rollbackとの区別、Saveをしない限り永続化しないこと、Save時の権限・domain validator・CASの必須境界、SUI外の模擬Consumerへの差し替えである。SUI domainのアルゴリズムは**テスト専用Adapter内**に限り、共通部分はopaque native eventの順序管理とlocal transaction / durable Saveの接続だけとした。
+
+**成立範囲の制限**: これは既存SUIコードの挙動に基づくshadow fixtureであり、本物のReact Canvasのevent handler、SUIの正式なgeometry validator、TEI Driver、SUI実サーバーでのconditional PUTを組み合わせたend-to-end実証ではない。第二Consumerも模擬にとどまる。したがってGeneric InterfaceのProduction採用やISSUE-000052の達成を宣言しない。
+
+**次の確認**: SUIのNative Canvas側から`drag start / incremental move / end-or-cancel`を明示的に観測し、現在の`App.handleCardMove`と`commitCardDragSnapshot`が提供する更新、Undo、Island joinの意味を失わずTEI側Adapterへ渡す。実SUIのSaveを通じてCAS、権限、SafeModeを確認する。それまではSUI側のruntime/domain ownershipを変更しない。
+
 ### 実装で顕在化した追加Pressure — GestureとDomain Actionの非同一性
 
 **観測（2026-10-08、SUI実装のソース読取＋TEI Reference E1/E2）**
