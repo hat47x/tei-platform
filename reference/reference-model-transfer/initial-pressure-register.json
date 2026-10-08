@@ -374,6 +374,13 @@
       "observed": "Adding an explicit sourceProfiles boundary changes the transcription contract bytes and fingerprint even though the existing constructMappings are unchanged. Existing aggregate transcription-map and R0 coverage Evidence point to the earlier contract blob.",
       "risk": "If derived Evidence is implicitly rebound to the latest contract path, a contract change can appear validated without rerunning classification/coverage. Conversely, rewriting historical Evidence to the new fingerprint destroys the exact provenance of the earlier run.",
       "teiDirection": "bind every derived Evidence artifact to the exact contract fingerprint/blob used to produce it; preserve old Evidence as historical and require explicit regeneration or revalidation before claiming coverage under a newer contract. Contract evolution invalidates authority by fingerprint, not by file path or matching mapping counts."
+    },
+    {
+      "id": "RMP-054",
+      "topic": "duplicate-xml-attribute-silent-normalization",
+      "observed": "Go 1.23.2 encoding/xml accepts duplicate attributes in a StartElement, including duplicate FormatVersion and duplicate namespace-qualified attributes. The Source Adapter previously copied attributes into a map, so later duplicates overwrote earlier values without any unresolved marker or parse failure.",
+      "risk": "Malformed or adversarial source can change the value observed by later source-profile and source-fact logic while preserving multiple conflicting declarations in the original bytes. A supposedly source-faithful adapter then normalizes ambiguity into one value and may classify the document under the wrong format profile.",
+      "teiDirection": "detect duplicate expanded attribute names before map conversion and fail closed at source observation. Do not pick first/last value, do not use traversal order as conflict resolution, and keep this parser-invalid boundary separate from semantic Unresolved."
     }
   ]
 }
