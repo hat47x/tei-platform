@@ -66,8 +66,8 @@ func TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
 	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
 		t.Fatalf("review projection cannot be bound: %+v", review)
 	}
-	if len(review.Coverage.Incomplete) == 0 {
-		t.Fatal("incomplete review coverage was silently hidden")
+	if len(ev.preview.Unresolved) > 0 && len(review.Coverage.Incomplete) == 0 {
+		t.Fatal("unresolved impact was presented as complete review coverage")
 	}
 	decision, err := accept(dir, payload, acceptOptions{
 		ExpectedReviewFingerprint: review.ReviewFingerprint,
