@@ -177,6 +177,14 @@ git rev-parse HEAD
 **実行・統合の停止条件:** 当該PRのexact headで対象テストとRepository health checkが成功し、検証前後のclean状態とrevisionを記録できるまでDraftを維持する。並行作業で`main`が進んだ場合、差分・競合・qualificationの条件を再評価する。既存のReferenceのauthoritative Source、historical Gate Evidence、Product Requirementの採用状態は、この準備によって変更しない。
 
 
+### 2026-10-08 並行変更の取り込みと統合資格
+
+この候補Bの事前実装はDraft PR #985の同一作業ブランチに保持する。並行開発で進んだ`main`のコミット`5d5731decbc876435d6ee6c35fccbaf1386a9c6a`を、親を二つ持つ通常のmerge commit `d32d7148701a9b830f5b79b1d8ad67bbd7cb48c7`で**作業ブランチへ取り込んだ**。これはmainへ#985の変更を統合したという意味ではない。
+
+三者比較（以前取り込んだmain / 新しいmain / #985）では、候補側の8ファイルのうち両系統で変更があったのは`tools/reference-shared-acceptance/README.md`だけだった。新しいmainに追加されたHTML Review Projectionの説明を失わず、#985の「同じcandidateでValidationと利用宣言を追加する」説明を残した。merge後、PR側は新しいmainからbehind 0、差分は8ファイルであることをGitHub上で確認した。
+
+この統合は**Git上の履歴・内容の整合**を確認したもので、Goのコンパイル、CLI / HTTPシナリオ、Repository health checkの成功を意味しない。資格確認は、**新しいmerge commitを含むexact head**で改めて実行し、その後mainが進んだ場合は再度差分確認を行う。候補Bのowner選択、人間による実際のAcceptance、Business Procedureの採用、旧Gate Evidenceの改訂も発生していない。
+
 ### Bの判定と停止条件案
 
 **成立と判断できる範囲:** 変更が一つの正本へ受理され、reload後にDriverとWebが同じ意味を示し、人がData / Function / Businessへの影響と未確認を理解できること。少なくとも正常系と拒否系の両方を実行し、実装側に複製された規則の有無を確認する。
