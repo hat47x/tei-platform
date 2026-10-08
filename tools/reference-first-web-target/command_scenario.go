@@ -412,6 +412,12 @@ func (s commandValidationSource) Number(attribute core.CanonicalID) (*big.Rat, e
 	if len(s.orderLines) == 0 {
 		return nil, fmt.Errorf("order-line collection is empty")
 	}
+	// Number is a scalar read. A collection of multiple lines must never be
+	// silently reduced to its first element; the caller must evaluate each
+	// line explicitly (evaluateCommandValidation).
+	if len(s.orderLines) != 1 {
+		return nil, fmt.Errorf("numeric validation source requires exactly one order line, got %d", len(s.orderLines))
+	}
 	value, ok := semanticRowValueByAttribute(s.orderLines[0], string(attribute))
 	if !ok {
 		return nil, fmt.Errorf("attribute %s is not present", attribute)
