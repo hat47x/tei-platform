@@ -163,7 +163,7 @@ func TestSymlinkedSourceCannotEscapeWorkspace(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(dir, "alias.txt")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("escaped source target was not rejected: %v", err)
 	}
 }
@@ -177,7 +177,7 @@ func TestSymlinkedSourceRootOutsideWorkspaceFailsClosed(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "custom-assets")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("symlinked source root escaped Workspace: %v", err)
 	}
 }
@@ -202,7 +202,7 @@ func TestWorkspaceContainmentRejectsSiblingPathPrefix(t *testing.T) {
 	if err := os.Symlink(filepath.Join(outside, "private.txt"), filepath.Join(root, "custom-assets", "alias.txt")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("similar Workspace path prefix bypassed containment: %v", err)
 	}
 }
@@ -224,7 +224,7 @@ func TestEmptySourceRootCannotEscapeThroughSymlinkedParent(t *testing.T) {
 	}
 	// There are no leaf files. Containment must still validate the physical
 	// source directory before considering the inventory successful.
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("empty escaped directory was accepted: %v", err)
 	}
 }
@@ -245,7 +245,7 @@ func TestOutsideSymlinkAncestorWithMissingChildFailsClosed(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "custom")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("escaped ancestor with missing child was treated as optional root: %v", err)
 	}
 }
@@ -273,7 +273,7 @@ func TestKnownSemanticRootRejectsEscapedFileBeforeParsing(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(dir, "foreign.tei")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside the Workspace") {
 		t.Fatalf("semantic parser read outside source before containment preflight: %v", err)
 	}
 }
