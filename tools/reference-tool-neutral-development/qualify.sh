@@ -14,7 +14,7 @@ against one unchanged clean checkout.
 
 Options:
   --expected-head SHA   fail unless current HEAD is exactly SHA
-  --expected-main SHA   fail unless local origin/main is exactly SHA
+  --expected-main SHA   fail unless origin/main is exactly SHA and candidate contains it
   -h, --help            show this help
 
 Before using --expected-main, refresh remote refs with the repository's normal
