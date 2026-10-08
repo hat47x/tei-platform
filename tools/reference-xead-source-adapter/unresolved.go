@@ -64,6 +64,19 @@ func BuildUnresolvedProjection(
 		})
 	}
 
+	if classification.RedactedUnknownObservedCount > 0 {
+		out.Items = append(out.Items, UnresolvedSummary{
+			Code:   "classification-unmapped-redacted",
+			Nature: "mapping-unresolved",
+			Count:  classification.RedactedUnknownObservedCount,
+			AuthorityLimits: []string{
+				"unknown-source-construct-name-is-local-only",
+				"redaction-must-not-erase-unresolved-mapping-count",
+				"mapping-unresolved-is-not-semantic-rejection",
+			},
+		})
+	}
+
 	for _, kind := range classification.Kinds {
 		if kind.UnresolvedObservedCount > 0 {
 			code := "classification-unmapped"
