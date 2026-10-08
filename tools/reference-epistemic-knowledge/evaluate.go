@@ -627,7 +627,7 @@ func consumerFreshnessState(assertion Assertion, asOf time.Time, maxAgeSeconds i
 	}
 	for _, event := range assertion.ReviewEvents {
 		if event.Kind != ReviewEventConfirm ||
-			event.MeaningFingerprint != assertion.MeaningFingerprint {
+			!reviewEventMatchesAssertion(event, assertion) {
 			continue
 		}
 		occurredAt, err := time.Parse(time.RFC3339, event.OccurredAt)
