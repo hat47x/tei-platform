@@ -432,3 +432,18 @@ E11だけではfresh resolution時のContract publisher Authorityしか確認で
 - current publicationを更新するとAuthority binding fingerprintは変わるが、Contract fingerprint / Resolution Lock fingerprintは変えない
 
 この分離はConformance Evidenceのcurrent性と同型である。保存済みfingerprintの存在だけを現在のAuthorityへ読み替えず、意味identityとcurrent trustを別artifactとして扱う。
+
+## E13 CompatibleMajor semantic compatibility pressure — 2026-10-08
+
+現Referenceの`Requirement{CompatibleMajor: 1}`は、1.xを数値上compatibleとして探索する。しかしCapability Contractではrequest / result / failure / unknown semanticsそのものが実行契約であり、正当publisherがv1.1で非互換変更を入れた場合でも、major番号だけでは検出できない。
+
+Contract definition Authorityは『誰が定義できるか』を解決するが、『その変更が既存consumerに互換か』は解決しない。この二つを混同しない。
+
+production化前の停止条件として、少なくとも次のどちらかを成立させる。
+
+- minor / patchの互換性を機械可読なContract compatibility profile / lineage / Evidenceで示し、fresh resolutionがそれを検証する
+- consumer Requirementがaccepted baseline Contract fingerprintまたは同等のcompatibility anchorを持ち、数値majorだけでは新Contractへ自動昇格しない
+
+fresh resolutionでhigher compatible versionを選べる現Reference testは、SemVer互換が成立する場合の探索pressureであって、数値majorが意味互換のEvidenceだという主張ではない。
+
+Lock replayは引き続きexact Contractを固定するためこの問題の影響を受けない。問題はfresh resolution / upgrade decisionのAuthorityに限定する。
