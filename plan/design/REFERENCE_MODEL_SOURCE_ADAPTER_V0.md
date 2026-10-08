@@ -185,3 +185,13 @@ unknown schema名を平文で出さなくても、名称を含むstructural path
 これにより、同じexact source snapshot内の位置をpublic Evidence上で相関できる一方、未知element名やnamespace URIをhash入力へ含めない。source順序が変わればtokenも変わるが、それはsnapshot locatorの変更でありsemantic identity変更とは扱わない。
 
 RMP-049 / RML-024をこの境界の停止条件とする。旧path-based locator digestはPublication Receipt v2へ持ち越さない。
+
+## Public artifact type boundary
+
+`json:"-"`などserializer固有の除外指定はpublication boundaryそのものではない。public-safeと呼ぶartifact型がprivate source detailを内部fieldとして保持すると、別serializer、structured log、reflection、debugger、将来の再利用経路から漏れ得る。
+
+Publication Receipt v2 candidateでは、exact unknown element / attribute名の内部fieldをReceipt型から削除した。classification / coverageはローカル`ObservedDocument`から計算し、public artifactへは公開可能な集計だけをcopyする。
+
+この分離により、`PublicationReceipt`を受け取った後段処理はprivate schema名へアクセスできない。詳細が必要な処理は、公開artifactではなく明示的にlocal authorityを持つObserved Documentを要求する。
+
+RMP-050 / RML-025をこの境界のEvidenceとする。

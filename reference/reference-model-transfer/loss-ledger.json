@@ -233,6 +233,15 @@
       "risk": "public Evidence can leak low-entropy local schema vocabulary indirectly even after clear-text names are removed.",
       "owner": "ISSUE-000078 / GitHub #950",
       "stopCondition": "public locator/fact/issue tokens are derived without source-derived structural names, exact path remains local only, and adversarial tests verify published locator digests equal ordinal-based tokens rather than legacy path-based digests"
+    },
+    {
+      "id": "RML-025",
+      "topic": "private-source-detail-carried-inside-public-artifact-type",
+      "nature": "unresolved",
+      "evidence": "The first PublicationReceipt v2 hardening kept ObservedElementCounts, AttributeNameCounts and UnknownElements as json:\"-\" fields so downstream classification could still use them. Those fields were omitted from JSON but remained present in the object.",
+      "risk": "alternate serialization, logs, debugging or reuse of the public artifact object can disclose local schema detail despite JSON tests passing.",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "PublicationReceipt and other public Evidence structs contain publication-approved fields only; classification/coverage use ObservedDocument or an explicitly local accounting type, and repository tests contain no dependency on hidden private fields inside public artifacts"
     }
   ],
   "claimsNotEstablished": [
