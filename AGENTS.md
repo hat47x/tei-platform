@@ -4,12 +4,13 @@ TEI Repositoryの文書構成と管理ルールです。ここを文書配置の
 
 ## 作業前に読むルールと適用範囲
 
-TEIに変更を加える人間・生成AIエージェントは、**作業前に対象branchの最新の`AGENTS.md`を読む**。ルートから変更対象ファイルの親ディレクトリまで、途中に`AGENTS.md`があればすべて読み、共通ルールと対象領域の追加ルールを合わせて適用する。複数領域にまたがる変更では、それぞれの経路を読む。新しいチャット・セッションや作業再開時も、以前読んだ内容を最新版と仮定しない。
+**`AGENTS.md`はリポジトリルートのこの1件だけを管理する。** 下位ディレクトリに別の`AGENTS.md`を作らず、階層ごとの管理規則も本ファイルに集約する。
 
-- ルート`AGENTS.md`はRepository全域の共通ルールと配置先の入口であり、配下の`AGENTS.md`はその領域の管理上の注意を補足する。下位文書で本ファイルの正本性、並行開発の保護、検証Gateを緩めない。
-- `README.md`は利用者・開発者向けの案内、`AGENTS.md`は変更作業者向けの実行規則とする。要求やADR、実装済み状態の第二正本を`AGENTS.md`に作らない。具体的な判断は後述の正本文書を確認する。
-- ルール間で矛盾を発見したら、より都合のよい記述を選ぶのではなく、変更を止めて対象の正本・採用済みADR・作業のGateを確かめ、ルールを整合させる。
-- 調査結果や案を追加するときは、既存の所有ディレクトリと同種の文書を検索し、追加ファイルと別名の「正本」を増やさない。複数領域を扱う内容は、中心となる責務のディレクトリに一つの本文を置き、他方から参照する。
+- TEIを調査・変更する人間と生成AIエージェントは、チャット・セッション開始時と作業再開時に、**対象branchの最新のルート`AGENTS.md`を読む**。別branchや過去の会話で読んだ内容を最新版と仮定しない。
+- 変更対象の`README.md`、Requirement、担当Issue、採用済みADR、対象コードとテスト、および必要なGate資料を確認する。複数領域にまたがる場合は、それぞれの正本を読む。
+- `README.md`は利用者・開発者向けの案内、`AGENTS.md`はリポジトリ全域の変更作業規則とする。要求・ADR・実装済み状態の第二正本をここに作らない。
+- 正本・ADR・Gate・本ファイルの記述が矛盾するときは、都合のよい規則を選ばず、関連する採用判断と実行条件を確認して整合を取る。解決するまで危険な書込み・統合を止める。
+- 新しい資料を置く前に既存の所有ディレクトリと同種文書を探す。領域横断の内容は主要責務の場所に本文を一つだけ置き、他方から参照する。
 
 ## ディレクトリ階層と管理責務
 
@@ -41,14 +42,51 @@ TEIに変更を加える人間・生成AIエージェントは、**作業前に�
 | `skills/` | エージェント向け補助Skillと付属資産。Repository横断ルール、Product Requirement、採用判断の正本にしない。 |
 | `.github/` | GitHub Actionsなどホスティング上の自動化設定。CIが停止中でもtrusted localのRepository Health Gateを代替しない。 |
 
-追加の作業規則を置く領域には次の`AGENTS.md`がある。`plan/AGENTS.md`はその子階層（`issue/`、`adr/`、`design/`）も、`docs/AGENTS.md`は`conformance/`・`adr/`・`audits/`・`specification/`も対象とする。
+## 領域ごとの変更・検証規則
 
-- [計画・ADR・Issue・機能設計](plan/AGENTS.md)
-- [説明・状態・Conformance](docs/AGENTS.md)
-- [製品実装](internal/AGENTS.md)
-- [Referenceとgolden](reference/AGENTS.md)
-- [検証と開発tool](tools/AGENTS.md)
-- [Bootstrap](bootstrap/AGENTS.md)
+以下は上の配置表を適用する際の注意である。既存の文書・データを機械的に移動せず、作業単位で責務・正本・参照先・並行branchへの影響を確認する。
+
+### `plan/` — 計画・Issue・ADR・機能設計
+
+- 着手前に[`plan/README.md`](plan/README.md)、現在のMaster Plan、関連するProduct Value / Requirement、採用済みADRと担当Issueを読む。変更pathが既存PRの所有範囲と重なる場合は先に調整する。
+- `plan/`直下はMaster Plan、Milestone、Acceptance Scenario、Gate・監査・Runbook、横断調査を扱う。従来の資料は参照を壊す一括移動をしない。
+- `plan/issue/`は6桁のリポジトリ内作業定義であり、GitHub Issue番号とは別である。目的、減らす不確実性、完了条件、Evidence、状態を記録する。`plan/adr/`は4桁の継続的な採用判断と理由の正本であり、採用済み判断の変更は後続ADRとする。
+- `plan/design/`は複数Issueにまたがる機能内設計を担当し、進捗・全体Architectureの第二正本としない。小規模な設計はIssueに記す。`plan/design/mockups/`の動作するHTMLなどは検討用であり、正式UI契約や動作するTargetのEvidenceではない。
+- 提案・評価待ち・採用・実装・Gate PASSを区別する。Gate/Evidenceはsource revision、Provider、場所、実行条件、未検証範囲を記録し、過去の成功を現在の保証としない。新しい設計への導線は[`plan/design/README.md`](plan/design/README.md)などの既存索引で整える。
+
+### `docs/` — 説明・実装状況・適合範囲
+
+- `docs/architecture.md`と`docs/business-system-design.md`は対象領域の現在の説明基線であり、RequirementやADRを新たに決定しない。`docs/status.md`は現在の実装状況の正本で、提案、設計検証、合成試験、外部実証、製品採用を分ける。
+- `docs/conformance/`では対象境界・revision・検証条件・非保証範囲を明示する。`docs/adr/`は旧URLの互換案内に限定し、ADR本文は`plan/adr/`に置く。`docs/audits/`は時点付き監査記録、`docs/specification/`は既存正本からの読者向け説明とする。
+- 説明の更新前に対応するIssue、Reference、実際のcommitとEvidenceを照合する。リンク、名称、証拠の鮮度、日本語の読みやすさを確認し、[`docs/documentation-quality.md`](docs/documentation-quality.md)を参照する。
+
+### `internal/`・`cmd/tei/` — Go製品実装とCLI
+
+- `internal/core/`・`subject/`等は基礎表現、`semantic/`は業務上の意味、`syntax/`・`workspace/`は入力構文と読込み、`ir/`は統合表現を主に扱う。`plugin/`はPluginの宣言・解決・構成、`plugin/runtime/`は実行時接続を主に担う。これらの責務は既存実装・ADRと照合し、名前だけから固定しない。
+- `database/`・`deployment/`・`driver/`・`realization/`等は実現・Provider・外部資産に関わる。Provider固有の観測や破壊的操作をCanonicalな意味に混入させず、Capability、権限、Lock、runtime authorityの所有境界を確認する。
+- 変更するpackageの呼出元・依存先・境界テストを確認し、`cmd/`・`tools/`・`reference/`・`examples/`を製品実装からimportしない。`cmd/tei/`はCLI入出力の接続に徹し、業務意味やProvider内部を集中させない。階層を整えるだけの抽象化を増やさない。
+- `tools/repository-architecture-check/`の静的依存検査は一部のpackage境界を対象とするもので、全面的な層分離の保証ではない。依存方向の見直しは[`plan/design/REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md`](plan/design/REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md)を確認する。
+- 変更箇所のunit testと必要なReference / CLI / Provider回帰を用意する。製品コードの`main`統合には後述のtrusted exact-head full Repository Health PASSが必須である。
+
+### `reference/`・`examples/` — 再現可能な入力と検証素材
+
+- `reference/workspace/`は`tei`のReference Workspace authoring source。`workspace/.tei/plugin-lock.json`や`reference/world.json`等の導出goldenを独立の編集正本とせず、入力・生成手順・期待値を合わせて管理する。
+- `observed/`の外部観測素材、`legacy-auth/`、`business-system-design/`、`reference-model-transfer/`、`sei-adoption/`、`sui-adoption/`、`ui-customization/`、`plugin-self-build/`等のfixtureは目的ごとの検証範囲に限る。`examples/`は利用例であり、機能の正本や製品実証ではない。
+- 失敗例・警告・未解決状態・反例も検証契約の一部であり、見栄えのために消さない。秘密情報をfixtureへ含めない。synthetic / mocked / historical / actual providerを区別する。
+- goldenを更新するときは正規の生成経路を使い、`go run ./cmd/tei validate -workspace reference/workspace`や`go run ./tools/reference-golden`等、対象に応じた再現手順と差分を確認する。コード変更を伴えば製品実装と同じ統合Gateを適用する。
+
+### `tools/`・`.github/`・`skills/` — 検証器と開発補助
+
+- `tools/repository-health-check.sh`はコード変更の統合Gateの入口。`--fast`や一部検査の成功はfull PASSでない。`repository-architecture-check/`、`repository-dependency-report/`、`repository-plan-check/`等の結果は対象を限定した診断Evidenceであり、Canonicalモデル自体ではない。
+- `tools/reference-*/`と`sei-resume-reference/`等は指定シナリオの実行・検証に限る。`tools/internal/`はtool専用の共通補助であり、製品用の`internal/`と混同しない。
+- toolの入力・出力・副作用・停止条件とrevisionを把握し、read-only checkerが素材を書き換えないことを確認する。実Providerを扱う実行は資格情報、隔離環境、外部への影響を調べる。検査弱体化は既存Gate・ADRの合意なしに行わない。
+- `.github/`のCI設定や`skills/`のAgent Skillは補助手段であり、GitHub Actionsの停止やSkillの存在はtrusted local Gate、Requirement、ADRの代替にならない。
+
+### `bootstrap/` — 初期構成・再構成と公開
+
+- `final-source/`、`source-safe/`、`payload/`、`materialize/`、`publish/`等では、入力、生成物、公開先が異なる。似た名称だけを理由に処理をまとめない。
+- 変更前に入力の正本、生成先、上書き条件、実行権限、再実行時の副作用、失敗時の停止・復旧を確認する。公開・書込みを単なる検査として扱わない。
+- bootstrapの一時的なartifactや履歴をRequirementやReference Workspaceの代替正本にしない。実行環境・revision・検証範囲・未実行部分を区別し、コード変更には共通の統合Gateを適用する。
 
 ## 文書ルール
 
