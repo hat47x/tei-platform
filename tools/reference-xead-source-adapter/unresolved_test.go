@@ -12,7 +12,7 @@ func TestUnresolvedProjectionAggregatesSourceMappingAndSemanticUnresolved(t *tes
 		t.Fatal(err)
 	}
 	receipt := PublicReceipt(doc)
-	classification, err := BuildClassificationProjection(FormatXead, receipt, classificationContractFixture())
+	classification, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestUnresolvedProjectionDoesNotLeakSourceLocatorOrValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	receipt := PublicReceipt(doc)
-	classification, err := BuildClassificationProjection(FormatXead, receipt, classificationContractFixture())
+	classification, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestMappingUnresolvedDoesNotClaimMappedExtension(t *testing.T) {
 		t.Fatal(err)
 	}
 	receipt := PublicReceipt(doc)
-	classification, err := BuildClassificationProjection(FormatXead, receipt, classificationContractFixture())
+	classification, err := BuildClassificationProjection(FormatXead, doc, classificationContractFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
