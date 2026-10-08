@@ -9,8 +9,8 @@ func TestMetadataPreservingTransportKeepsReviewHistoryWhenAccessIsGranted(t *tes
 			corpus.Assertions[i].AccessRefs = []string{"policy:project-tei"}
 			corpus.Assertions[i].ReviewEvents[0].AccessRefs = []string{"policy:review-history"}
 			corpus.Assertions[i].Evidence = []EvidenceRef{{
-				Kind: "source",
-				Ref: "repo://protected/source",
+				Kind:       "source",
+				Ref:        "repo://protected/source",
 				AccessRefs: []string{"policy:evidence"},
 			}}
 		}
@@ -82,9 +82,9 @@ func TestInaccessibleAssertionDoesNotLeakThroughRelationsOrCoverageMapping(t *te
 		}
 	}
 	corpus.CoverageAreas = append(corpus.CoverageAreas, CoverageArea{
-		ID: "restricted-conflict-coverage",
-		Target: TargetRef{Kind: "knowledge-area", ID: "tei.restricted.conflict"},
-		Criticality: CriticalityHigh,
+		ID:                 "restricted-conflict-coverage",
+		Target:             TargetRef{Kind: "knowledge-area", ID: "tei.restricted.conflict"},
+		Criticality:        CriticalityHigh,
 		MappedAssertionIDs: []string{"conflict-b"},
 	})
 
@@ -171,7 +171,6 @@ func TestTransportDoesNotInterpretAccessReferencesAsAuthority(t *testing.T) {
 		t.Fatal("exact opaque access reference was not honored")
 	}
 }
-
 
 func TestHiddenOneSidedConflictMarksVisibleAssertionPartial(t *testing.T) {
 	corpus, context := loadFixture(t)

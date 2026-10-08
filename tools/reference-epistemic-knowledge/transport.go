@@ -16,7 +16,7 @@ type TransportRedactionSummary struct {
 	Evidence      int `json:"evidence,omitempty"`
 	ReviewEvents  int `json:"reviewEvents,omitempty"`
 	Relations     int `json:"relations,omitempty"`
-	Dependencies int `json:"dependencies,omitempty"`
+	Dependencies  int `json:"dependencies,omitempty"`
 	CoverageAreas int `json:"coverageAreas,omitempty"`
 }
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -15,29 +15,29 @@ const (
 )
 
 type ReviewCommand struct {
-	Contract                   string          `json:"contract"`
-	Schema                     string          `json:"schema"`
-	AssertionID                string          `json:"assertionId"`
-	Operation                  ReviewEventKind `json:"operation"`
-	Reviewer                   string          `json:"reviewer"`
-	EventID                    string          `json:"eventId"`
-	OccurredAt                 string          `json:"occurredAt"`
-	ExpectedMeaningFingerprint string          `json:"expectedMeaningFingerprint"`
-	ExpectedReviewSubjectFingerprint string     `json:"expectedReviewSubjectFingerprint"`
-	ExpectedTargetBinding      string          `json:"expectedTargetBinding"`
-	ExpectedLastSequence       int             `json:"expectedLastSequence"`
-	Evidence                   []EvidenceRef   `json:"evidence,omitempty"`
-	Conditions                 []string        `json:"conditions,omitempty"`
-	AccessRefs                 []string        `json:"accessRefs,omitempty"`
+	Contract                         string          `json:"contract"`
+	Schema                           string          `json:"schema"`
+	AssertionID                      string          `json:"assertionId"`
+	Operation                        ReviewEventKind `json:"operation"`
+	Reviewer                         string          `json:"reviewer"`
+	EventID                          string          `json:"eventId"`
+	OccurredAt                       string          `json:"occurredAt"`
+	ExpectedMeaningFingerprint       string          `json:"expectedMeaningFingerprint"`
+	ExpectedReviewSubjectFingerprint string          `json:"expectedReviewSubjectFingerprint"`
+	ExpectedTargetBinding            string          `json:"expectedTargetBinding"`
+	ExpectedLastSequence             int             `json:"expectedLastSequence"`
+	Evidence                         []EvidenceRef   `json:"evidence,omitempty"`
+	Conditions                       []string        `json:"conditions,omitempty"`
+	AccessRefs                       []string        `json:"accessRefs,omitempty"`
 }
 
 type ReviewMutationResult struct {
-	Contract        string     `json:"contract"`
-	Schema          string     `json:"schema"`
+	Contract        string      `json:"contract"`
+	Schema          string      `json:"schema"`
 	AppendedEvent   ReviewEvent `json:"appendedEvent"`
-	UpdatedCorpus   Corpus     `json:"updatedCorpus"`
-	Projection      Projection `json:"projection"`
-	AuthorityLimits []string   `json:"authorityLimits"`
+	UpdatedCorpus   Corpus      `json:"updatedCorpus"`
+	Projection      Projection  `json:"projection"`
+	AuthorityLimits []string    `json:"authorityLimits"`
 }
 
 func applyReviewCommand(
@@ -154,12 +154,12 @@ func applyReviewCommand(
 			Kind: assertion.Target.Kind,
 			ID:   assertion.Target.ID,
 		},
-		ValidFrom:          assertion.ValidFrom,
-		ValidUntil:         assertion.ValidUntil,
-		OccurredAt:         command.OccurredAt,
-		Evidence:           append([]EvidenceRef{}, command.Evidence...),
-		Conditions:         append([]string{}, command.Conditions...),
-		AccessRefs:         append([]string{}, command.AccessRefs...),
+		ValidFrom:  assertion.ValidFrom,
+		ValidUntil: assertion.ValidUntil,
+		OccurredAt: command.OccurredAt,
+		Evidence:   append([]EvidenceRef{}, command.Evidence...),
+		Conditions: append([]string{}, command.Conditions...),
+		AccessRefs: append([]string{}, command.AccessRefs...),
 	}
 	assertion.ReviewEvents = append(assertion.ReviewEvents, event)
 	corpus.Assertions[assertionIndex] = assertion
@@ -275,14 +275,105 @@ func validTargetBinding(value string) bool {
 	}
 }
 
+// cloneCorpus returns a deep copy of input. It deliberately does not round-trip through
+// JSON: omitempty drops empty slices, so a JSON copy turns an empty list into nil and no
+// longer reflect.DeepEqual to its source.
 func cloneCorpus(input Corpus) (Corpus, error) {
-	encoded, err := json.Marshal(input)
+	cloned, err := deepCopyValue(reflect.ValueOf(input))
 	if err != nil {
 		return Corpus{}, fmt.Errorf("clone corpus: %w", err)
 	}
-	var cloned Corpus
-	if err := json.Unmarshal(encoded, &cloned); err != nil {
-		return Corpus{}, fmt.Errorf("clone corpus: %w", err)
+	copied, ok := cloned.Interface().(Corpus)
+	if !ok {
+		return Corpus{}, fmt.Errorf("clone corpus: unexpected type %s", cloned.Type())
 	}
-	return cloned, nil
+	return copied, nil
+}
+
+// deepCopyValue copies every slice, map, pointer and interface reachable from v while
+// keeping nil and empty values distinct. Unexported struct fields are copied shallowly.
+func deepCopyValue(v reflect.Value) (reflect.Value, error) {
+	switch v.Kind() {
+	case reflect.Slice:
+		if v.IsNil() {
+			return reflect.Zero(v.Type()), nil
+		}
+		out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
+		for i := 0; i < v.Len(); i++ {
+			elem, err := deepCopyValue(v.Index(i))
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			out.Index(i).Set(elem)
+		}
+		return out, nil
+	case reflect.Map:
+		if v.IsNil() {
+			return reflect.Zero(v.Type()), nil
+		}
+		out := reflect.MakeMapWithSize(v.Type(), v.Len())
+		iter := v.MapRange()
+		for iter.Next() {
+			key, err := deepCopyValue(iter.Key())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			value, err := deepCopyValue(iter.Value())
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			out.SetMapIndex(key, value)
+		}
+		return out, nil
+	case reflect.Pointer:
+		if v.IsNil() {
+			return reflect.Zero(v.Type()), nil
+		}
+		elem, err := deepCopyValue(v.Elem())
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		out := reflect.New(v.Type().Elem())
+		out.Elem().Set(elem)
+		return out, nil
+	case reflect.Interface:
+		if v.IsNil() {
+			return reflect.Zero(v.Type()), nil
+		}
+		elem, err := deepCopyValue(v.Elem())
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		out := reflect.New(v.Type()).Elem()
+		out.Set(elem)
+		return out, nil
+	case reflect.Struct:
+		out := reflect.New(v.Type()).Elem()
+		out.Set(v)
+		for i := 0; i < v.NumField(); i++ {
+			if !out.Field(i).CanSet() {
+				continue
+			}
+			field, err := deepCopyValue(v.Field(i))
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			out.Field(i).Set(field)
+		}
+		return out, nil
+	case reflect.Array:
+		out := reflect.New(v.Type()).Elem()
+		for i := 0; i < v.Len(); i++ {
+			elem, err := deepCopyValue(v.Index(i))
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			out.Index(i).Set(elem)
+		}
+		return out, nil
+	case reflect.Func, reflect.Chan, reflect.UnsafePointer:
+		return reflect.Value{}, fmt.Errorf("cannot copy value of kind %s", v.Kind())
+	default:
+		return v, nil
+	}
 }

@@ -34,17 +34,17 @@ func reviewCommandFor(
 			}
 		}
 		return ReviewCommand{
-			Contract:                   reviewCommandContract,
-			Schema:                     reviewCommandSchema,
-			AssertionID:                assertion.ID,
-			Operation:                  operation,
-			Reviewer:                   "user:reviewer",
-			EventID:                    eventID,
-			OccurredAt:                 normalizedContext.AsOf,
-			ExpectedMeaningFingerprint: assertion.MeaningFingerprint,
+			Contract:                         reviewCommandContract,
+			Schema:                           reviewCommandSchema,
+			AssertionID:                      assertion.ID,
+			Operation:                        operation,
+			Reviewer:                         "user:reviewer",
+			EventID:                          eventID,
+			OccurredAt:                       normalizedContext.AsOf,
+			ExpectedMeaningFingerprint:       assertion.MeaningFingerprint,
 			ExpectedReviewSubjectFingerprint: reviewSubjectFingerprint(assertion),
-			ExpectedTargetBinding:      targetBinding(assertion.Target, normalizedContext),
-			ExpectedLastSequence:       lastSequence,
+			ExpectedTargetBinding:            targetBinding(assertion.Target, normalizedContext),
+			ExpectedLastSequence:             lastSequence,
 		}
 	}
 	t.Fatalf("assertion %s not found", assertionID)
@@ -259,7 +259,6 @@ func structuredCorpusCopyForTest(t *testing.T, corpus Corpus) Corpus {
 	}
 	return copy
 }
-
 
 func TestReviewCommandSucceedsWhenMutationContextCatchesUp(t *testing.T) {
 	corpus, context := loadFixture(t)

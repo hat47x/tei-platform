@@ -322,8 +322,8 @@ func TestAIOriginIngestedByUserDoesNotBecomeDirectUserPremise(t *testing.T) {
 func TestMissingContextDimensionDoesNotGeneralize(t *testing.T) {
 	corpus, context := loadFixture(t)
 	context.Bindings = []ScopeBinding{{
-		Dimension: "project",
-		Value: "tei",
+		Dimension:  "project",
+		Value:      "tei",
 		Provenance: ScopeDeclared,
 	}}
 
@@ -369,7 +369,6 @@ func TestProjectionStatesMeaningFingerprintIsNotSemanticProof(t *testing.T) {
 		t.Fatalf("meaning fingerprint authority limit is missing: %+v", projection.AuthorityLimits)
 	}
 }
-
 
 func TestUserDecisionAndConstraintCanBeWorkingPremisesWithoutBecomingCanonicalAuthority(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -462,11 +461,11 @@ func TestReviewHistoryDerivesCurrentConfirmationWithoutOverwritingEvents(t *test
 		assertion := &corpus.Assertions[i]
 		assertion.ReviewEvents = append(assertion.ReviewEvents,
 			ReviewEvent{
-				Sequence: 2,
-				ID: "reject-main-branch",
-				Kind: ReviewEventReject,
-				Reviewer: "reviewer-b",
-				Method: reviewMethodHuman,
+				Sequence:           2,
+				ID:                 "reject-main-branch",
+				Kind:               ReviewEventReject,
+				Reviewer:           "reviewer-b",
+				Method:             reviewMethodHuman,
 				MeaningFingerprint: assertion.MeaningFingerprint,
 				StatementKind:      assertion.Mode,
 				Context:            append([]ScopeBinding{}, assertion.Context...),
@@ -477,11 +476,11 @@ func TestReviewHistoryDerivesCurrentConfirmationWithoutOverwritingEvents(t *test
 				OccurredAt: "2026-10-06T13:00:00Z",
 			},
 			ReviewEvent{
-				Sequence: 3,
-				ID: "reconfirm-main-branch",
-				Kind: ReviewEventConfirm,
-				Reviewer: "reviewer-c",
-				Method: reviewMethodHuman,
+				Sequence:           3,
+				ID:                 "reconfirm-main-branch",
+				Kind:               ReviewEventConfirm,
+				Reviewer:           "reviewer-c",
+				Method:             reviewMethodHuman,
 				MeaningFingerprint: assertion.MeaningFingerprint,
 				StatementKind:      assertion.Mode,
 				Context:            append([]ScopeBinding{}, assertion.Context...),
@@ -515,18 +514,18 @@ func TestConfirmationWithdrawalPreservesHistoryAndReturnsExternalFactToCandidate
 		}
 		assertion := &corpus.Assertions[i]
 		assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
-			Sequence: 2,
-			ID: "withdraw-main-branch-confirmation",
-			Kind: ReviewEventWithdraw,
-			Reviewer: "reviewer-b",
-			Method: reviewMethodHuman,
+			Sequence:           2,
+			ID:                 "withdraw-main-branch-confirmation",
+			Kind:               ReviewEventWithdraw,
+			Reviewer:           "reviewer-b",
+			Method:             reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
-				StatementKind:      assertion.Mode,
-				Context:            append([]ScopeBinding{}, assertion.Context...),
-				TargetIdentity: ReviewTargetIdentity{
-					Kind: assertion.Target.Kind,
-					ID:   assertion.Target.ID,
-				},
+			StatementKind:      assertion.Mode,
+			Context:            append([]ScopeBinding{}, assertion.Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: assertion.Target.Kind,
+				ID:   assertion.Target.ID,
+			},
 			OccurredAt: "2026-10-06T13:00:00Z",
 		})
 	}
@@ -553,18 +552,18 @@ func TestReviewHistoryRejectsDuplicateSequence(t *testing.T) {
 		}
 		assertion := &corpus.Assertions[i]
 		assertion.ReviewEvents = append(assertion.ReviewEvents, ReviewEvent{
-			Sequence: 1,
-			ID: "duplicate-sequence",
-			Kind: ReviewEventReject,
-			Reviewer: "reviewer-b",
-			Method: reviewMethodHuman,
+			Sequence:           1,
+			ID:                 "duplicate-sequence",
+			Kind:               ReviewEventReject,
+			Reviewer:           "reviewer-b",
+			Method:             reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
-				StatementKind:      assertion.Mode,
-				Context:            append([]ScopeBinding{}, assertion.Context...),
-				TargetIdentity: ReviewTargetIdentity{
-					Kind: assertion.Target.Kind,
-					ID:   assertion.Target.ID,
-				},
+			StatementKind:      assertion.Mode,
+			Context:            append([]ScopeBinding{}, assertion.Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: assertion.Target.Kind,
+				ID:   assertion.Target.ID,
+			},
 			OccurredAt: "2026-10-06T13:00:00Z",
 		})
 	}
@@ -603,13 +602,13 @@ func TestReviewHistoryRejectsBackwardChronology(t *testing.T) {
 			Reviewer:           "reviewer-b",
 			Method:             reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
-				StatementKind:      assertion.Mode,
-				Context:            append([]ScopeBinding{}, assertion.Context...),
-				TargetIdentity: ReviewTargetIdentity{
-					Kind: assertion.Target.Kind,
-					ID:   assertion.Target.ID,
-				},
-			OccurredAt:         "2026-10-06T11:00:00Z",
+			StatementKind:      assertion.Mode,
+			Context:            append([]ScopeBinding{}, assertion.Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: assertion.Target.Kind,
+				ID:   assertion.Target.ID,
+			},
+			OccurredAt: "2026-10-06T11:00:00Z",
 		})
 	}
 	if _, err := evaluateCorpus(corpus, context); err == nil ||
@@ -637,7 +636,6 @@ func TestUnmodeledReviewConditionsFailClosed(t *testing.T) {
 		t.Fatalf("free-form review conditions were treated as satisfied: %+v", got)
 	}
 }
-
 
 func coverageAreaByID(t *testing.T, projection Projection, id string) CoverageAreaAssessment {
 	t.Helper()
@@ -766,7 +764,6 @@ func containsString(values []string, expected string) bool {
 	return false
 }
 
-
 func TestMetadataLossDoesNotLaunderPriorReviewByFingerprint(t *testing.T) {
 	corpus, context := loadFixture(t)
 	projection, err := evaluateCorpus(corpus, context)
@@ -799,13 +796,12 @@ func TestProjectionStatesFingerprintCannotRestoreReviewHistory(t *testing.T) {
 	}
 }
 
-
 func TestConsumerFreshnessRequirementCanInvalidateOtherwiseUsablePremise(t *testing.T) {
 	corpus, context := loadFixture(t)
 	corpus.Dependencies = []Dependency{{
-		AssertionID:  "human-reviewed",
-		Consumer:     "fresh-branch-decision",
-		Criticality:  CriticalityHigh,
+		AssertionID:   "human-reviewed",
+		Consumer:      "fresh-branch-decision",
+		Criticality:   CriticalityHigh,
 		MaxAgeSeconds: 3600,
 	}}
 	corpus.CoverageAreas = nil
@@ -846,9 +842,9 @@ func TestConsumerFreshnessIgnoresReviewFromOldScope(t *testing.T) {
 		corpus.Assertions[i].CheckedAt = ""
 	}
 	corpus.Dependencies = []Dependency{{
-		AssertionID:  "human-reviewed",
-		Consumer:     "fresh-current-scope",
-		Criticality:  CriticalityHigh,
+		AssertionID:   "human-reviewed",
+		Consumer:      "fresh-current-scope",
+		Criticality:   CriticalityHigh,
 		MaxAgeSeconds: 3600,
 	}}
 	corpus.CoverageAreas = nil
@@ -871,9 +867,9 @@ func TestConsumerFreshnessIgnoresReviewFromOldScope(t *testing.T) {
 func TestConsumerFreshnessRequirementDoesNotChangeBaseEpistemicState(t *testing.T) {
 	corpus, context := loadFixture(t)
 	corpus.Dependencies = []Dependency{{
-		AssertionID:  "human-reviewed",
-		Consumer:     "fresh-branch-decision",
-		Criticality:  CriticalityHigh,
+		AssertionID:   "human-reviewed",
+		Consumer:      "fresh-branch-decision",
+		Criticality:   CriticalityHigh,
 		MaxAgeSeconds: 3600,
 	}}
 	corpus.CoverageAreas = nil
@@ -886,7 +882,6 @@ func TestConsumerFreshnessRequirementDoesNotChangeBaseEpistemicState(t *testing.
 		t.Fatalf("consumer-specific freshness mutated base epistemic state: %+v", base)
 	}
 }
-
 
 func TestOneSidedConflictRelationIsProjectedSymmetrically(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -926,7 +921,6 @@ func TestSupersessionCycleIsRejected(t *testing.T) {
 	}
 }
 
-
 func TestProjectionSeparatesSemanticContractFromRepresentationSchema(t *testing.T) {
 	corpus, context := loadFixture(t)
 	projection, err := evaluateCorpus(corpus, context)
@@ -943,7 +937,6 @@ func TestProjectionSeparatesSemanticContractFromRepresentationSchema(t *testing.
 		t.Fatalf("semantic contract and representation schema must remain distinct: %+v", projection)
 	}
 }
-
 
 func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -966,7 +959,7 @@ func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 				Kind: corpus.Assertions[i].Target.Kind,
 				ID:   corpus.Assertions[i].Target.ID,
 			},
-			OccurredAt:         "2026-02-01T00:00:00Z",
+			OccurredAt: "2026-02-01T00:00:00Z",
 		}}
 	}
 
@@ -987,7 +980,6 @@ func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 	}
 }
 
-
 func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
@@ -1002,13 +994,13 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 				Reviewer:           "user:reviewer",
 				Method:             reviewMethodHuman,
 				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
-			StatementKind:      corpus.Assertions[i].Mode,
-			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
-			TargetIdentity: ReviewTargetIdentity{
-				Kind: corpus.Assertions[i].Target.Kind,
-				ID:   corpus.Assertions[i].Target.ID,
-			},
-				OccurredAt:         "2026-01-01T00:00:00Z",
+				StatementKind:      corpus.Assertions[i].Mode,
+				Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: corpus.Assertions[i].Target.Kind,
+					ID:   corpus.Assertions[i].Target.ID,
+				},
+				OccurredAt: "2026-01-01T00:00:00Z",
 			},
 			{
 				Sequence:           7,
@@ -1017,13 +1009,13 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 				Reviewer:           "user:reviewer",
 				Method:             reviewMethodHuman,
 				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
-			StatementKind:      corpus.Assertions[i].Mode,
-			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
-			TargetIdentity: ReviewTargetIdentity{
-				Kind: corpus.Assertions[i].Target.Kind,
-				ID:   corpus.Assertions[i].Target.ID,
-			},
-				OccurredAt:         "2026-01-02T00:00:00Z",
+				StatementKind:      corpus.Assertions[i].Mode,
+				Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: corpus.Assertions[i].Target.Kind,
+					ID:   corpus.Assertions[i].Target.ID,
+				},
+				OccurredAt: "2026-01-02T00:00:00Z",
 			},
 		}
 	}
@@ -1037,7 +1029,6 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 	}
 }
 
-
 func TestProjectionStatesReviewHistoryIsAsOfBounded(t *testing.T) {
 	corpus, context := loadFixture(t)
 	projection, err := evaluateCorpus(corpus, context)
@@ -1048,7 +1039,6 @@ func TestProjectionStatesReviewHistoryIsAsOfBounded(t *testing.T) {
 		t.Fatalf("missing as-of history authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
-
 
 func TestScopeChangeInvalidatesReviewBinding(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -1122,7 +1112,6 @@ func TestProjectionStatesReviewBindingIncludesScopedSubject(t *testing.T) {
 	}
 }
 
-
 func TestValidityWindowChangeInvalidatesReviewBinding(t *testing.T) {
 	corpus, context := loadFixture(t)
 	for i := range corpus.Assertions {
@@ -1153,7 +1142,6 @@ func TestProjectionStatesReviewBindingIncludesValidityWindow(t *testing.T) {
 		t.Fatalf("missing validity-window review-binding authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
-
 
 func TestResolutionCoveragePolicyEscalatesHealthAndCreatesMinimalReviewRequest(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -1254,7 +1242,6 @@ func TestResolutionCoverageIsUnknownForPartialTransport(t *testing.T) {
 	}
 }
 
-
 func TestProjectionStatesResolutionCoverageIsNotTruthRatio(t *testing.T) {
 	corpus, context := loadFixture(t)
 	projection, err := evaluateCorpus(corpus, context)
@@ -1274,7 +1261,6 @@ func TestHealthPolicyRejectsInvalidResolutionThreshold(t *testing.T) {
 		t.Fatalf("invalid resolution threshold was accepted: %v", err)
 	}
 }
-
 
 func TestResolutionCoverageKeepsConditionalConfirmationUnresolved(t *testing.T) {
 	corpus, context := loadFixture(t)
@@ -1316,7 +1302,6 @@ func TestResolutionCoverageKeepsConditionalConfirmationUnresolved(t *testing.T) 
 	}
 }
 
-
 func TestBoundCheckedAtCanSatisfyConsumerFreshness(t *testing.T) {
 	corpus, context := loadFixture(t)
 	context.AsOf = "2026-10-06T14:00:00Z"
@@ -1328,9 +1313,9 @@ func TestBoundCheckedAtCanSatisfyConsumerFreshness(t *testing.T) {
 		corpus.Assertions[i].CheckedSubjectFingerprint = freshnessSubjectFingerprint(corpus.Assertions[i])
 	}
 	corpus.Dependencies = []Dependency{{
-		AssertionID:  "user-current",
-		Consumer:     "fresh-user-premise",
-		Criticality:  CriticalityHigh,
+		AssertionID:   "user-current",
+		Consumer:      "fresh-user-premise",
+		Criticality:   CriticalityHigh,
 		MaxAgeSeconds: 3600,
 	}}
 	corpus.CoverageAreas = nil
@@ -1357,9 +1342,9 @@ func TestConsumerFreshnessIgnoresStaleCheckedAtBinding(t *testing.T) {
 		assertion.Context[0].Provenance = ScopeInferred
 	}
 	corpus.Dependencies = []Dependency{{
-		AssertionID:  "user-current",
-		Consumer:     "fresh-user-premise",
-		Criticality:  CriticalityHigh,
+		AssertionID:   "user-current",
+		Consumer:      "fresh-user-premise",
+		Criticality:   CriticalityHigh,
 		MaxAgeSeconds: 3600,
 	}}
 	corpus.CoverageAreas = nil
@@ -1393,7 +1378,6 @@ func TestCheckedAtRequiresSubjectBindingReceipt(t *testing.T) {
 		t.Fatalf("unbound checkedAt was accepted: %v", err)
 	}
 }
-
 
 func TestProjectionStatesCheckedAtIsSubjectBound(t *testing.T) {
 	corpus, context := loadFixture(t)

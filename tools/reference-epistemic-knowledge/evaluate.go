@@ -9,29 +9,29 @@ import (
 )
 
 type Assessment struct {
-	AssertionID          string         `json:"assertionId"`
-	MeaningFingerprint   string         `json:"meaningFingerprint"`
-	ReviewSubjectFingerprint string      `json:"reviewSubjectFingerprint"`
-	ContentOrigin        Origin         `json:"contentOrigin"`
-	IngestedBy           IngestionActor `json:"ingestedBy"`
-	MetadataState        MetadataState  `json:"metadataState"`
-	StatementKind        AssertionMode  `json:"statementKind"`
-	ConfirmationState    string         `json:"confirmationState"`
-	ReviewBinding        string         `json:"reviewBinding"`
-	ReviewEventCount     int            `json:"reviewEventCount"`
-	ReviewLogSequence    int            `json:"reviewLogSequence"`
-	LatestReviewEventID  string         `json:"latestReviewEventId,omitempty"`
-	LatestReviewEventKind ReviewEventKind `json:"latestReviewEventKind,omitempty"`
-	ReviewConditions     []string       `json:"reviewConditions,omitempty"`
-	TargetBinding        string         `json:"targetBinding"`
-	ContextCompatibility string         `json:"contextCompatibility"`
-	Freshness            string         `json:"freshness"`
-	LifecycleState       string         `json:"lifecycleState"`
-	Conflict             string         `json:"conflict"`
-	SupersededBy         []string       `json:"supersededBy,omitempty"`
-	UseState             string         `json:"useState"`
-	InferredContextUsed  bool           `json:"inferredContextUsed"`
-	Reasons              []string       `json:"reasons"`
+	AssertionID              string          `json:"assertionId"`
+	MeaningFingerprint       string          `json:"meaningFingerprint"`
+	ReviewSubjectFingerprint string          `json:"reviewSubjectFingerprint"`
+	ContentOrigin            Origin          `json:"contentOrigin"`
+	IngestedBy               IngestionActor  `json:"ingestedBy"`
+	MetadataState            MetadataState   `json:"metadataState"`
+	StatementKind            AssertionMode   `json:"statementKind"`
+	ConfirmationState        string          `json:"confirmationState"`
+	ReviewBinding            string          `json:"reviewBinding"`
+	ReviewEventCount         int             `json:"reviewEventCount"`
+	ReviewLogSequence        int             `json:"reviewLogSequence"`
+	LatestReviewEventID      string          `json:"latestReviewEventId,omitempty"`
+	LatestReviewEventKind    ReviewEventKind `json:"latestReviewEventKind,omitempty"`
+	ReviewConditions         []string        `json:"reviewConditions,omitempty"`
+	TargetBinding            string          `json:"targetBinding"`
+	ContextCompatibility     string          `json:"contextCompatibility"`
+	Freshness                string          `json:"freshness"`
+	LifecycleState           string          `json:"lifecycleState"`
+	Conflict                 string          `json:"conflict"`
+	SupersededBy             []string        `json:"supersededBy,omitempty"`
+	UseState                 string          `json:"useState"`
+	InferredContextUsed      bool            `json:"inferredContextUsed"`
+	Reasons                  []string        `json:"reasons"`
 }
 
 type HealthCounts struct {
@@ -74,18 +74,18 @@ type CoverageAssessment struct {
 }
 
 type ResolutionCoverage struct {
-	Eligible                    int      `json:"eligible"`
-	Resolved                    int      `json:"resolved"`
-	Confirmed                   int      `json:"confirmed"`
-	NativePremise               int      `json:"nativePremise"`
-	Rejected                    int      `json:"rejected"`
-	Unresolved                  int      `json:"unresolved"`
-	Ratio                       float64  `json:"ratio"`
-	MinimumRatio                float64  `json:"minimumRatio,omitempty"`
-	MinimumEligibleAssertions   int      `json:"minimumEligibleAssertions,omitempty"`
-	RequiredResolutions         int      `json:"requiredResolutions,omitempty"`
-	State                       string   `json:"state"`
-	Reasons                     []string `json:"reasons,omitempty"`
+	Eligible                  int      `json:"eligible"`
+	Resolved                  int      `json:"resolved"`
+	Confirmed                 int      `json:"confirmed"`
+	NativePremise             int      `json:"nativePremise"`
+	Rejected                  int      `json:"rejected"`
+	Unresolved                int      `json:"unresolved"`
+	Ratio                     float64  `json:"ratio"`
+	MinimumRatio              float64  `json:"minimumRatio,omitempty"`
+	MinimumEligibleAssertions int      `json:"minimumEligibleAssertions,omitempty"`
+	RequiredResolutions       int      `json:"requiredResolutions,omitempty"`
+	State                     string   `json:"state"`
+	Reasons                   []string `json:"reasons,omitempty"`
 }
 
 type KnowledgeHealth struct {
@@ -203,25 +203,25 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) Assessment {
 	history := assessReviewHistory(assertion, asOf)
 	assessment := Assessment{
-		AssertionID:           assertion.ID,
-		MeaningFingerprint:    assertion.MeaningFingerprint,
+		AssertionID:              assertion.ID,
+		MeaningFingerprint:       assertion.MeaningFingerprint,
 		ReviewSubjectFingerprint: reviewSubjectFingerprint(assertion),
-		ContentOrigin:         assertion.Origin,
-		IngestedBy:            assertion.IngestedBy,
-		MetadataState:         assertion.MetadataState,
-		StatementKind:         assertion.Mode,
-		ConfirmationState:     history.ConfirmationState,
-		ReviewBinding:         history.ReviewBinding,
-		ReviewEventCount:      history.VisibleEventCount,
-		ReviewLogSequence:     history.LastVisibleSequence,
-		LatestReviewEventID:   history.LatestEventID,
-		LatestReviewEventKind: history.LatestEventKind,
-		ReviewConditions:      append([]string{}, history.Conditions...),
-		TargetBinding:         targetBinding(assertion.Target, context),
-		ContextCompatibility:  contextCompatibility(assertion.Context, context.Bindings),
-		Freshness:             freshness(assertion, asOf),
-		LifecycleState:        "active",
-		Conflict:              "none",
+		ContentOrigin:            assertion.Origin,
+		IngestedBy:               assertion.IngestedBy,
+		MetadataState:            assertion.MetadataState,
+		StatementKind:            assertion.Mode,
+		ConfirmationState:        history.ConfirmationState,
+		ReviewBinding:            history.ReviewBinding,
+		ReviewEventCount:         history.VisibleEventCount,
+		ReviewLogSequence:        history.LastVisibleSequence,
+		LatestReviewEventID:      history.LatestEventID,
+		LatestReviewEventKind:    history.LatestEventKind,
+		ReviewConditions:         append([]string{}, history.Conditions...),
+		TargetBinding:            targetBinding(assertion.Target, context),
+		ContextCompatibility:     contextCompatibility(assertion.Context, context.Bindings),
+		Freshness:                freshness(assertion, asOf),
+		LifecycleState:           "active",
+		Conflict:                 "none",
 	}
 	if history.StaleEventCount > 0 {
 		assessment.Reasons = append(assessment.Reasons, "STALE_REVIEW_HISTORY_PRESENT")
@@ -242,8 +242,8 @@ func baseAssessment(assertion Assertion, context ContextQuery, asOf time.Time) A
 }
 
 type reviewHistoryAssessment struct {
-	ConfirmationState string
-	ReviewBinding     string
+	ConfirmationState   string
+	ReviewBinding       string
 	LatestEventID       string
 	LatestEventKind     ReviewEventKind
 	Conditions          []string
@@ -298,7 +298,6 @@ func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAsses
 	}
 	return result
 }
-
 
 func reviewEventMatchesAssertion(event ReviewEvent, assertion Assertion) bool {
 	if event.MeaningFingerprint != assertion.MeaningFingerprint ||
@@ -521,7 +520,6 @@ func deriveUseState(assertion Assertion, assessment Assessment) (string, []strin
 	}
 	return "candidate-only", append(reasons, "ASSERTION_UNREVIEWED")
 }
-
 
 func resolutionCoverageEligible(assertion Assertion, assessment Assessment) bool {
 	if !assertion.Mode.canBeWorkingPremise() ||
@@ -914,13 +912,13 @@ func buildReviewRequests(
 		}
 		assertion := assertions[id]
 		out = append(out, ReviewRequest{
-			AssertionID:        id,
-			Target:             assertion.Target,
-			ConfirmationState:  assessment.ConfirmationState,
-			ReviewBinding:      assessment.ReviewBinding,
-			TargetBinding:      assessment.TargetBinding,
-			Context:            append([]ScopeBinding{}, assertion.Context...),
-			Evidence:           append([]EvidenceRef{}, assertion.Evidence...),
+			AssertionID:       id,
+			Target:            assertion.Target,
+			ConfirmationState: assessment.ConfirmationState,
+			ReviewBinding:     assessment.ReviewBinding,
+			TargetBinding:     assessment.TargetBinding,
+			Context:           append([]ScopeBinding{}, assertion.Context...),
+			Evidence:          append([]EvidenceRef{}, assertion.Evidence...),
 			Reasons: normalizeStrings(append(
 				append(
 					append([]string{}, assessment.Reasons...),

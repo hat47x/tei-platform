@@ -189,43 +189,43 @@ type ReviewTargetIdentity struct {
 }
 
 type ReviewEvent struct {
-	Sequence           int             `json:"sequence"`
-	ID                 string          `json:"id"`
-	Kind               ReviewEventKind `json:"kind"`
-	Reviewer           string          `json:"reviewer"`
-	Method             string          `json:"method"`
-	MeaningFingerprint string          `json:"meaningFingerprint"`
-	StatementKind      AssertionMode   `json:"statementKind"`
-	Context            []ScopeBinding  `json:"context"`
+	Sequence           int                  `json:"sequence"`
+	ID                 string               `json:"id"`
+	Kind               ReviewEventKind      `json:"kind"`
+	Reviewer           string               `json:"reviewer"`
+	Method             string               `json:"method"`
+	MeaningFingerprint string               `json:"meaningFingerprint"`
+	StatementKind      AssertionMode        `json:"statementKind"`
+	Context            []ScopeBinding       `json:"context"`
 	TargetIdentity     ReviewTargetIdentity `json:"targetIdentity"`
-	ValidFrom          string          `json:"validFrom,omitempty"`
-	ValidUntil         string          `json:"validUntil,omitempty"`
-	OccurredAt         string          `json:"occurredAt"`
-	Evidence           []EvidenceRef   `json:"evidence,omitempty"`
-	Conditions         []string        `json:"conditions,omitempty"`
-	AccessRefs         []string        `json:"accessRefs,omitempty"`
+	ValidFrom          string               `json:"validFrom,omitempty"`
+	ValidUntil         string               `json:"validUntil,omitempty"`
+	OccurredAt         string               `json:"occurredAt"`
+	Evidence           []EvidenceRef        `json:"evidence,omitempty"`
+	Conditions         []string             `json:"conditions,omitempty"`
+	AccessRefs         []string             `json:"accessRefs,omitempty"`
 }
 
 type Assertion struct {
-	ID                 string         `json:"id"`
-	Target             TargetRef      `json:"target"`
-	Text               string         `json:"text"`
-	MeaningFingerprint string         `json:"meaningFingerprint"`
-	Origin             Origin         `json:"origin"`
-	IngestedBy         IngestionActor `json:"ingestedBy"`
-	MetadataState      MetadataState  `json:"metadataState,omitempty"`
-	Mode               AssertionMode  `json:"assertionMode"`
-	Context            []ScopeBinding `json:"context,omitempty"`
-	ValidFrom          string         `json:"validFrom,omitempty"`
-	ValidUntil         string         `json:"validUntil,omitempty"`
+	ID                        string         `json:"id"`
+	Target                    TargetRef      `json:"target"`
+	Text                      string         `json:"text"`
+	MeaningFingerprint        string         `json:"meaningFingerprint"`
+	Origin                    Origin         `json:"origin"`
+	IngestedBy                IngestionActor `json:"ingestedBy"`
+	MetadataState             MetadataState  `json:"metadataState,omitempty"`
+	Mode                      AssertionMode  `json:"assertionMode"`
+	Context                   []ScopeBinding `json:"context,omitempty"`
+	ValidFrom                 string         `json:"validFrom,omitempty"`
+	ValidUntil                string         `json:"validUntil,omitempty"`
 	CheckedAt                 string         `json:"checkedAt,omitempty"`
 	CheckedSubjectFingerprint string         `json:"checkedSubjectFingerprint,omitempty"`
 	Evidence                  []EvidenceRef  `json:"evidence,omitempty"`
-	ReviewEvents       []ReviewEvent  `json:"reviewEvents,omitempty"`
-	AccessRefs         []string       `json:"accessRefs,omitempty"`
-	Supersedes         []string       `json:"supersedes,omitempty"`
-	ConflictsWith      []string       `json:"conflictsWith,omitempty"`
-	ReviewerCandidates []string       `json:"reviewerCandidates,omitempty"`
+	ReviewEvents              []ReviewEvent  `json:"reviewEvents,omitempty"`
+	AccessRefs                []string       `json:"accessRefs,omitempty"`
+	Supersedes                []string       `json:"supersedes,omitempty"`
+	ConflictsWith             []string       `json:"conflictsWith,omitempty"`
+	ReviewerCandidates        []string       `json:"reviewerCandidates,omitempty"`
 }
 
 type Criticality string
@@ -263,16 +263,16 @@ type CoverageArea struct {
 }
 
 type KnowledgeHealthPolicy struct {
-	MinResolvedRatio            float64 `json:"minResolvedRatio,omitempty"`
-	MinimumEligibleAssertions   int     `json:"minimumEligibleAssertions,omitempty"`
+	MinResolvedRatio          float64 `json:"minResolvedRatio,omitempty"`
+	MinimumEligibleAssertions int     `json:"minimumEligibleAssertions,omitempty"`
 }
 
 type Corpus struct {
-	Schema        string         `json:"schema"`
-	MetadataState MetadataState  `json:"metadataState,omitempty"`
-	Assertions    []Assertion    `json:"assertions"`
-	Dependencies  []Dependency   `json:"dependencies,omitempty"`
-	CoverageAreas []CoverageArea `json:"coverageAreas,omitempty"`
+	Schema        string                `json:"schema"`
+	MetadataState MetadataState         `json:"metadataState,omitempty"`
+	Assertions    []Assertion           `json:"assertions"`
+	Dependencies  []Dependency          `json:"dependencies,omitempty"`
+	CoverageAreas []CoverageArea        `json:"coverageAreas,omitempty"`
 	HealthPolicy  KnowledgeHealthPolicy `json:"healthPolicy,omitempty"`
 }
 
@@ -302,6 +302,13 @@ func decodeStrict[T any](data []byte) (T, error) {
 }
 
 func normalizeCorpus(input Corpus) (Corpus, error) {
+	// Normalize a private copy. Assertions and Dependencies share backing arrays with
+	// the caller, so writing or sorting them in place would mutate the caller corpus.
+	cloned, err := cloneCorpus(input)
+	if err != nil {
+		return input, err
+	}
+	input = cloned
 	input.Schema = strings.TrimSpace(input.Schema)
 	if input.Schema != corpusSchema {
 		return input, fmt.Errorf("unsupported corpus schema %q", input.Schema)
@@ -781,7 +788,6 @@ func normalizeStrings(values []string) []string {
 	return out
 }
 
-
 func reviewSubjectFingerprint(assertion Assertion) string {
 	subject := assertion
 	subject.ReviewEvents = nil
@@ -791,7 +797,6 @@ func reviewSubjectFingerprint(assertion Assertion) string {
 	sum := sha256.Sum256(encoded)
 	return fmt.Sprintf("sha256:%x", sum[:])
 }
-
 
 type freshnessSubject struct {
 	MeaningFingerprint string         `json:"meaningFingerprint"`
