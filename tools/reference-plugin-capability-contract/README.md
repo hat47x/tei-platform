@@ -223,3 +223,13 @@ Permissionを持つApplication Runtime Capabilityでも、generic contract専用
 Reference testではfilesystem read Permissionを使い、production Resource Brokerからleaseを取得し、HostSandboxLauncherへmountを渡し、呼出し後にreleaseするところまで既存`Registry.InvokeWithProvenance`を通します。Resource Brokerが無ければ既存Runtimeがfail closedになります。
 
 このpressureはfilesystem read一件までです。Secret / Network、renew / refresh、ownership / fencingはまだgeneric Capability経由で実行していません。
+
+## Contract definition Authority
+
+Conformance Evidenceを誰が発行できるかと、Capability Contractそのものを誰が定義できるかは別です。
+
+ReferenceではContract namespaceごとにaccepted publisher Authorityを持ち、exact Contract ID / version / fingerprintのpublicationを照合してからresolverへ渡します。unauthorizedなhigher compatible Contractは、適合Providerを伴っていてもcandidate catalogへ入りません。
+
+より具体的なnamespace grantがある場合はそちらをownerとして扱います。これにより、共通root namespaceを保ちながら明示的に子namespaceを委譲できます。`std.*`も通常の同じprimitiveで扱いますが、third partyへ暗黙開放しません。
+
+Contract Authority Evidenceの更新はContract意味そのものを変えません。同じContract bytes / Providerならresolution fingerprintは維持し、Authority binding fingerprintだけを更新します。旧Authority Evidenceを参照するpublicationはstaleとして拒否します。
