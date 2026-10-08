@@ -88,7 +88,7 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 **状態。** 受理待ち。`reference/workspace`と`reference/world.json`は変更していない。以下の証明は、workspaceのcopy（scratch copy）の中だけで行った、scratch proofである。実際の`reference/workspace`への受理は行っていない。owner の受理判断は未決定で、Gate Evidenceとしては扱わない。
 
-**reference/との差分と比較の基準。** 比較の基準は`origin/main`（695e9e89）であり、ローカルの`main`は`origin/main`と一致しないため使わない。Windows側のmain（a5d2f710）は`origin/main`より2件（a5d2f710、1aa6cbb5）先行しており、このブランチはそれを通常のmerge commitで取り込んだ。このブランチ自身の変更（merge-base a5d2f710からHEADまで。取り込んだmainの変更を除く）は、`reference/`配下のパスに触れない（`git diff --name-only a5d2f710 HEAD -- reference`が空）。取り込み前の作業commit（1d8fcc95からの変更）も同様に触れていない。`reference/workspace`と`reference/world.json`は、1d8fcc95、origin/main、取り込み後のHEADのいずれでも同じで、revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
+**reference/との差分と比較の基準。** 比較の基準は統合時点の`origin/main`（`d3aab052`）である。ローカルの`main`は`origin/main`と一致しないことがあるため使わない。このブランチには、そのmainを通常のmerge commitで取り込んだ。取り込んだmainの変更には、`reference/`配下のうち`business-system-design`と`plugin-self-build`の文書とWorkspaceが含まれるが、`reference/workspace`と`reference/world.json`は、1d8fcc95、`d3aab052`、このブランチのHEADで同じである（`git diff --name-only d3aab052 HEAD -- reference/workspace reference/world.json`が空）。revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
 
 **完了条件のチェック。** 実証記録Bの作業では、完了条件のチェックを一つも付けていない。完了条件にある四つのチェック（2026-10-05）は実証記録Aに属し、この記録Bの受理と画面の確定までの一周を完了させるものではない。
 
@@ -117,7 +117,7 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 - `applications/order-entry/application.tei`：`uses validation sales.order_line.line_number_positive`を一行追加した（既存の最後の`uses validation`の後ろ）
 - `.tei/decisions/`：決定記録が一件増えた（Canonical sourceではない）
 
-受理後のderived world JSONは、コミット済みの`reference/world.json`と比べて、次の二つの配列への一件の追加だけが違う（構造の比較で確認した）。`semantics`のsales側の`validations`（規則の定義。ID順の位置に入る）と、`order_entry`の`validations`（宣言順の末尾）。その他の内容は一致した。
+受理後のderived world JSONを、コミット済みの`reference/world.json`と比べると、二つの配列に一件ずつ追加がある（`semantics`のsales側の`validations`に`sales.order_line.line_number_positive`の定義、`order_entry`の`validations`の末尾に同じIDの宣言）。ad hocな`diff`では、この二箇所以外の差分は見えなかった。この比較は受理を試したときの確認であり、テストでは固定していない。
 
 **Go testが示したこと。** `tools/reference-first-web-target/practical_b_test.go`は、上の操作をShared Acceptance CLIで行い（`main` packageはimportできないため、CLIをbuildして実行する）、受理後のcopyを`workspace.Load`で読み直して、次を確かめた。
 
