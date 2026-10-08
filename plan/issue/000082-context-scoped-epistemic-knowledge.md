@@ -138,7 +138,7 @@ confirm
 
 user-originかつuserが直接入力したworking-premise statementは、現在文脈では通常の前提として利用できます。ただし、確認eventがなければconfirmationはunreviewedのままです。「作業前提として使える」と「人間が確認済み」を同じ状態へしません。
 
-review eventは対象meaning fingerprintだけでなく、確認時点のstatement kind、context binding、target identityへ結び付けます。semantic edit、statement kind変更、scope変更、target identity変更で現在subjectとのbindingが切れた場合、旧eventは履歴として保持しつつ再確認対象に戻します。
+review eventは対象meaning fingerprintだけでなく、確認時点のstatement kind、context binding、target identity、validity windowへ結び付けます。semantic edit、statement kind変更、scope変更、target identity変更、validity window変更で現在subjectとのbindingが切れた場合、旧eventは履歴として保持しつつ再確認対象に戻します。
 
 単純な文字編集だけで全reviewを失効させる実装にはせず、意味変更の判定は既存Semantic Diff等へ接続できるか確認します。
 
