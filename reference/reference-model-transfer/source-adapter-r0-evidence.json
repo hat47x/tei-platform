@@ -13,8 +13,7 @@
       "tools/reference-xead-source-adapter/contract_coverage_test.go": "05b46b167e9df6fd1b4c035023ec54e4c2ab11e6"
     },
     "historicalReceiptSchemaVersion": 1,
-    "currentCandidateReceiptSchemaVersion": 2,
-    "currentCandidateMainHeadAtEvidenceReview": "d90b06da67f57d5dda89c7f20ce04df88f842a36"
+    "currentCandidateReceiptSchemaVersion": 2
   },
   "focusedValidation": {
     "goVersion": "go1.23.2 linux/amd64",
@@ -59,7 +58,6 @@
     }
   },
   "classificationCoverage": {
-    "transcriptionContractBlob": "6e658b10b526a6a5b84f7e9adcf7355ecbaeb375",
     "xead": {
       "observedKinds": 30,
       "mappedObservedKinds": 30,
@@ -72,7 +70,27 @@
       "unknownObservedElements": 0,
       "complete": true
     },
-    "authority": "mapping coverage only; not semantic acceptance, behavior equivalence, or runtime authority"
+    "authority": "mapping coverage only; not semantic acceptance, behavior equivalence, or runtime authority",
+    "historicalTranscriptionContractBlob": "6e658b10b526a6a5b84f7e9adcf7355ecbaeb375",
+    "currentTranscriptionContract": {
+      "schemaVersion": 2,
+      "blob": "54a41d0d7919c5ab81eadab77b5819823583ecc5",
+      "sourceProfiles": {
+        "xead": {
+          "rootKind": "System",
+          "supportedFormatVersions": [
+            "1.2"
+          ]
+        },
+        "xeaf": {
+          "rootKind": "System",
+          "supportedFormatVersions": [
+            "1.2"
+          ]
+        }
+      },
+      "validation": "NOT_RUN: historical R0 coverage MUST NOT be reused as current source-profile validation"
+    }
   },
   "publicationBoundary": {
     "originalModelIncluded": false,
@@ -83,7 +101,7 @@
     "publicEvidence": "digests, aggregate counts, receipt fingerprints, fact type counts, authority limits",
     "arbitraryUnknownSchemaNamesExcludedAtTestedHead": false,
     "currentDesignDirection": "local ObservedDocument keeps exact schema names; public receipt must redact arbitrary unknown/additional schema names and retain aggregate occurrence evidence",
-    "currentCandidateValidation": "NOT_RUN: Publication Receipt v2 redaction, name-independent locator tokens, public/private artifact-type separation, and current main integration require exact-head focused validation",
+    "currentCandidateValidation": "NOT_RUN: Publication Receipt v2, name-independent locator tokens, public/private artifact-type separation, and source-profile validation require current-head focused validation",
     "currentCandidateAuthority": "design implemented in current main; no new current-head PASS is asserted by this historical R0 Evidence"
   },
   "claimsNotEstablished": [
@@ -93,6 +111,7 @@
     "original X-TEA runtime behavior equivalence",
     "Reference Model publication permission beyond the separately owned #941 boundary",
     "current PR head focused test PASS",
-    "current public receipt schema-name redaction test PASS"
+    "current public receipt schema-name redaction test PASS",
+    "current transcription contract source-profile coverage PASS"
   ]
 }
