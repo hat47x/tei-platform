@@ -1,4 +1,5 @@
 workspace: plugin_self_build_reference
 sources:
   - plugins
+  - plugin-implementations
   - environments

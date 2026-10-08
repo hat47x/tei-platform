@@ -1,4 +1,7 @@
 environment reference {
     plugin tei.process.reference ^1
+    plugin tei.native.runtime.reference ^1
+
     deployment-executor database-release -> process.reference
+    deployment-executor application-start -> runtime.native_reference
 }

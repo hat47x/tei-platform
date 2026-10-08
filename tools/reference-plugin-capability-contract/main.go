@@ -58,6 +58,7 @@ type ConformanceEvidence struct {
 	PluginID            string `json:"pluginId"`
 	PluginVersion       string `json:"pluginVersion"`
 	ImplementationID    string `json:"implementationId"`
+	ArtifactDigest      string `json:"artifactDigest,omitempty"`
 	ContractFingerprint string `json:"contractFingerprint"`
 	ConformanceProfile  string `json:"conformanceProfile"`
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
@@ -68,6 +69,9 @@ type Wiring struct {
 	PluginID         string `json:"pluginId"`
 	PluginVersion    string `json:"pluginVersion"`
 	ImplementationID string `json:"implementationId"`
+	// ArtifactDigest is optional. When one logical provider has several physical
+	// artifacts, wiring that omits it is ambiguous rather than ordered.
+	ArtifactDigest string `json:"artifactDigest,omitempty"`
 }
 
 type ResolveInput struct {
@@ -115,12 +119,20 @@ func resolveCapability(input ResolveInput) (Resolution, error) {
 		}
 
 		if wiring != nil {
+			var wired []Provider
 			for _, provider := range providers {
 				if providerMatchesWiring(provider, *wiring) {
-					return buildResolution(input.Scope, contract, contractFingerprint, provider, evidenceByProvider[providerKey(provider)]), nil
+					wired = append(wired, provider)
 				}
 			}
-			continue
+			switch len(wired) {
+			case 0:
+				continue
+			case 1:
+				return buildResolution(input.Scope, contract, contractFingerprint, wired[0], evidenceByProvider[providerKey(wired[0])]), nil
+			default:
+				return Resolution{}, fmt.Errorf("explicit wiring for contract %s@%s is ambiguous across physical artifacts", contract.ID, contract.Version)
+			}
 		}
 
 		switch len(providers) {
@@ -224,7 +236,8 @@ func conformantProviders(input ResolveInput, contract Contract, contractFingerpr
 func providerMatchesWiring(provider Provider, wiring Wiring) bool {
 	return provider.PluginID == wiring.PluginID &&
 		provider.PluginVersion == wiring.PluginVersion &&
-		provider.ImplementationID == wiring.ImplementationID
+		provider.ImplementationID == wiring.ImplementationID &&
+		(wiring.ArtifactDigest == "" || provider.ArtifactDigest == wiring.ArtifactDigest)
 }
 
 func buildResolution(scope AuthorityScope, contract Contract, contractFingerprint string, provider Provider, evidence ConformanceEvidence) Resolution {
@@ -267,6 +280,7 @@ func matchingEvidence(all []ConformanceEvidence, provider Provider, contractFing
 		if evidence.PluginID == provider.PluginID &&
 			evidence.PluginVersion == provider.PluginVersion &&
 			evidence.ImplementationID == provider.ImplementationID &&
+			evidence.ArtifactDigest == provider.ArtifactDigest &&
 			evidence.ContractFingerprint == contractFingerprint &&
 			evidence.ConformanceProfile == profile &&
 			evidence.EvidenceFingerprint != "" {

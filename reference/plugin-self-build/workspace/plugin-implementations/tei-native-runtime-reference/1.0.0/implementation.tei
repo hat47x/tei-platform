@@ -1,0 +1,11 @@
+plugin-implementation tei.native.runtime.reference v1.0.0 {
+    profile static-response-v1
+    capability deployment-executor runtime.native_reference
+
+    operation execute json {
+        {
+            "attemptId": "tei-native-reference",
+            "outcome": "accepted"
+        }
+    }
+}

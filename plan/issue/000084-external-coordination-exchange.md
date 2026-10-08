@@ -45,11 +45,11 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 ## E0: 最小交換契約
 
-最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work identityやactor referenceはCoordination上の参照であり、Canonical identityやAcceptance authorityではありません。
+最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work / Resultの参照はBackend種別と局所IDの組に固定せず、**Adapterが一意に解決できるbackend-instance-scoped opaque locator**として扱います。複数Repository、tenant、workspace、projectを同時利用しても衝突しないscopeをAdapter側で持たせます。TEI Coreがlocatorをparseしてprovider固有意味を理解する必要はありません。
 
-Resultには、対象Work、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
+Workのoriginやactor referenceもCoordination上のprovenance / descriptive metadataであり、本人性、Canonical identity、Acceptance authorityではありません。Resultには、対象Work locator、任意のresult locator、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
 
-大型Artifactは本文へ埋めず、URI、digest、media type等の参照で扱えるようにします。Backend stateは共通contractへ先に正規化しません。Git textの`ready / completed`はE1 Adapter内の状態であり、GitHub Issues等のnative stateとは別に扱います。
+大型Artifactは本文へ埋めず、backend instanceを含めて解決可能なlocator、optional digest、media type等の参照で扱えるようにします。digestはcontent integrityの補助であり、Canonical identityやAcceptanceの証明ではありません。Backend stateは共通contractへ先に正規化しません。Git textの`ready / completed`はE1 Adapter内の状態であり、GitHub Issues等のnative stateとは別に扱います。
 
 ## E1: Git text profile
 
@@ -57,11 +57,17 @@ Resultには、対象Work、producer、観測したbase revision、summary、Art
 
 runnerは一時的なCoordination repositoryを作り、Human-originのWorkを1件保存します。同じWorkに対して二つのAgent Resultを保存し、一方はcurrent base revision、もう一方は意図的にstaleなbase revisionと自己申告の`admin` actor labelを持たせます。current側のResultからはAgent-originのfollow-up Workを1件生成し、Human-originとAgent-originを同じStore上で区別します。
 
-この状態でも、どちらのResultにもCanonical AcceptanceやRuntime authorityを与えません。Authorityを表すfield自体をWork / Result envelopeへ置かないことで、Coordination metadataからAuthorityへ昇格する経路を作りません。Workは固定pathのまま`coordination.status`だけを`completed`へ更新し、directory名とfieldによる状態の二重管理を避けます。最後にCoordination repository自体を削除し、元のProduct repositoryのrevisionとclean stateが変化しないことを確認します。
+この状態でも、どちらのResultにもCanonical AcceptanceやRuntime authorityを与えません。Authorityを表すfield自体をWork / Result envelopeへ置かないことで、Coordination metadataからAuthorityへ昇格する経路を作りません。
+
+二consumer比較で共通lifecycleを採用しないと判断したため、Git text固有の`ready / completed`はWork envelopeから外し、Adapter-localな`native-state/<work>.json`へ保存します。Work本体はcompletion時にもbyte identityを維持し、変更pathがnative-stateだけであることをrunnerが検査します。
+
+また、同じ局所ID `TW-0001` を別Backend instanceに置いた場合でもlocatorが異なることをpressureします。最後にCoordination repository自体を削除し、元のProduct repositoryのrevisionとclean stateが変化しないことを確認します。
 
 ### E1で確認するnegative pressure
 
-E1では、一つのWorkへ複数Resultを保存できることに加え、Human-origin WorkとAgent-origin follow-up Workを区別できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Authorityを否定するbooleanを置くのではなく、Authority fieldを交換契約から除外します。Workを`completed`へ変更してもProduct Sourceの変更とはみなしません。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、digest付き参照として扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
+E1では、一つのWorkへ複数Resultを保存できることに加え、Human-origin WorkとAgent-origin follow-up Workを区別できることを確認します。stale Resultは履歴として保持しても自動適用せず、actor labelの自己申告もAuthorityへ昇格させません。Authorityを否定するbooleanを置くのではなく、Authority fieldを交換契約から除外します。
+
+Git text固有のcompletionはAdapter-localなnative stateだけを更新し、共通Work envelopeにはlifecycle fieldを置きません。同じ局所Work IDでもBackend instanceが異なればlocatorが異なることを確認します。Agent数とGit branch数は1:1にせず、token、quota、credential、Agent Sessionも交換文書へ要求しません。ArtifactはWork本文へ埋め込まず、instance-scoped locatorとdigestを分離して扱います。最後にCoordination Storeを削除し、Product repositoryが変化しないことを確かめます。
 
 E1はCanonical Worldを実際にreloadする試験ではありません。その部分はRQ-034 / ISSUE-000083が所有します。本Issueでは、Coordination層がProduct Sourceの第二正本にならないことを先にpressureします。
 
@@ -80,19 +86,19 @@ GitHub Issue #977自体を、Git textとは性質の異なる最初のTask Track
 Reference上は次のように分けます。
 
 ```text
-workRef      = github-issues:hat47x/tei-platform#977
+workRef      = github-issue://hat47x/tei-platform/977
 origin.kind  = human
 createdVia   = agent-connector
 backendActor = connected GitHub account
 
-resultRef    = pull-request:#978
+resultRef    = github-pr://hat47x/tei-platform/978
 resultKind   = reference.evidence
 
-canonicalAccepted = false
-runtimeAuthorized = false
+Canonical Acceptance / Runtime Authority
+  = exchange documentには表現しない
 ```
 
-このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
+このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。また、`workRef` / `resultRef`はGitHubという種別名とnumberの組ではなく、Repository instanceまで含めてAdapterが一意に解決できるlocatorとして扱います。例示URIはwire formatの固定ではありません。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
 
 #978がDraftであることもCoordination上の進捗であり、それ自体をCanonical Acceptanceにはしません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
 
