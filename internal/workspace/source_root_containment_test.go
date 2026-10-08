@@ -229,6 +229,27 @@ func TestEmptySourceRootCannotEscapeThroughSymlinkedParent(t *testing.T) {
 	}
 }
 
+func TestBrokenSymlinkAncestorOfOptionalRootFailsClosed(t *testing.T) {
+	root := sourceRootFixture(t, "custom/child")
+	if err := os.Symlink("missing-parent", filepath.Join(root, "custom")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "resolve workspace source root") {
+		t.Fatalf("broken ancestor was treated as missing optional root: %v", err)
+	}
+}
+
+func TestOutsideSymlinkAncestorWithMissingChildFailsClosed(t *testing.T) {
+	root := sourceRootFixture(t, "custom/child")
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "custom")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+		t.Fatalf("escaped ancestor with missing child was treated as optional root: %v", err)
+	}
+}
+
 func TestSourceRootMustBeADirectory(t *testing.T) {
 	root := sourceRootFixture(t, "custom-assets")
 	if err := os.WriteFile(filepath.Join(root, "custom-assets"), []byte("not a directory"), 0600); err != nil {
