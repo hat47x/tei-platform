@@ -167,3 +167,14 @@ Referenceでは次のnegative controlを置いた。
 明示wiringも`ImplementationID`だけでは不足する。同名implementationを別Pluginが提供できるため、Plugin ID / Plugin version / Implementation IDの組で選択する。
 
 現時点ではReference candidateであり、productionの`internal/plugin.CapabilityKind`は変更していない。exact-headのrepository health checkは未実施であり、PRはDraftとして扱う。
+
+## E0 Reference candidate追補 — Authority逆方向とphysical artifact境界（2026-10-08）
+
+完了条件の「Runtime scopeとのAuthority混同をnegative testで拒否できる」「logical contractとphysical artifact / processの境界を分離できる」について、`tools/reference-plugin-capability-contract/`に次を追加した。いずれもReference candidateの範囲で、production型（`internal/plugin.CapabilityKind`）は変更していない。
+
+- **逆方向のnegative control。** `authoring-tool` scopeのproviderを、`application-runtime`要求（Contract Query Executor相当のcontract）のfallbackに使わない。先に置いた「runtime providerをauthoring-tool要求に使わない」testと対になり、どちらの向きの混同も拒否する。
+- **Conformance Evidenceをphysical artifactに結び付ける。** 従来はplugin / version / implementationの組だけでEvidenceを照合していたため、同じ組で別のartifact（たとえばbuiltinとWasm）を出すと、片方のEvidenceをもう片方が引き継げた。Evidenceに`ArtifactDigest`を持たせ、providerのartifactと一致する場合だけ有効とした。
+- **明示wiringのartifact曖昧性。** wiringがplugin / version / implementationまでしか指定しないとき、複数のartifactが一致すると、digestの並び順で先頭が選ばれていた。これは暗黙選択なので、一致が複数なら曖昧として拒否し、`ArtifactDigest`を指定したときだけ選ぶようにした。
+- logical contractのfingerprintはartifactに依存せず、resolution identityは選ばれたartifactを記録する。同じcontractを別のrealizationへ載せても意味は変わらず、どのrealizationを選んだかは逆追跡できる。
+
+まだ残る点: Xead / Xeaf Source Adapter本体のReference、既存`CapabilityKind`の移行ADR候補、process非対応Targetでの別realizationの説明。検証: この変更を含む作業tree（commit前、内容は同一）を非root userのコピー上で`tools/repository-health-check.sh`のfullを実行し、gofmt / vet / `go test` / validateがPASSした。root実行では`tools/reference-shared-acceptance`の`TestAcceptDoesNotDamageAnExistingDerivedArtifactWhenItCannotBeWritten`がFAILする。chmod 0555がroot権限では書込を止めないためで、この変更前の`main`でも同じく再現する環境起因であり、Repositoryの欠陥とは判断していない。ただし、これはexact-headのtrusted local PASS receiptではない。Gate authorityとしては使わない。
