@@ -138,6 +138,14 @@ Plugin capabilityの変更は #951 / PR #963、TEI-native sourceは #957 / PR #9
 
 なおこの観測は静的なソース確認であり、実際のworkspace読込・validation・実行のE2E成功を証明しない。関連するPlugin Capability契約レーン（#951 / PR #963）へ検証論点を引き継ぎ、本依存ガードPRに重複したPlugin実装を追加しない。
 
+## Lock・Package経路の確認と試験優先度
+
+`internal/plugin/resolve_test.go` は既存のdeployment-executor種別でCapabilityの解決を検証している。新しいIDだけを追加する独立した回帰試験や未知KindのE2E試験は、このファイル内には確認できない。
+`internal/plugin/lock.go` はLock format versionを検査する。`internal/plugin/lock_test.go` には定義の順序を入れ替えた際のfingerprint不変性と旧Lock format互換性の試験がある。Capability種別の拡張を検討する際には、単なるJSONの往復だけでなく、Lockのfingerprintと旧形式の読込互換性を守る必要がある。
+`internal/plugin/package.go` の `MaterializePluginPackage` はDefinitionとBuildPlanのfingerprint一致を要求し、正規化したDefinitionをmanifestに格納する。未知Kindがこの経路を通る場合は、定義の検証とfingerprintの意味を同時に検査する。
+
+**検証の優先順**： (1) 既存Kind・新IDでResolveEnvironment→Capability取得、(2) 未知KindのDefinitionの検証箇所特定、(3) Lock/Packageの正規化・fingerprint・旧形式互換、(4) 実行権限とAdapter dispatch。各段階の結果は成功・失敗とその位置を記録し、全経路を通す前に「任意Capability対応済」と宣言しない。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。
