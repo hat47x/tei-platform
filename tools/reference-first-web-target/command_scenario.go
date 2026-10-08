@@ -453,6 +453,9 @@ func (s commandValidationSource) RelationKeys(
 		if !ok {
 			return nil, fmt.Errorf("row %d does not contain %s", rowIndex, attribute)
 		}
+		if value == nil {
+			return nil, fmt.Errorf("row %d contains null key %s for relation %s", rowIndex, attribute, relation)
+		}
 		result = append(result, fmt.Sprint(value))
 	}
 	return result, nil
