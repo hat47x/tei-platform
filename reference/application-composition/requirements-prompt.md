@@ -34,3 +34,23 @@
 - 既存の「UI構成キット要件整理」は[こちら](../ui-customization/requirements-prompt.md)。本指示文はUIだけでなくProject全体の構成を扱い、UI側の詳細設計を複製しない。
 - Plugin、構成Profile、初期Project Template、業務仕様Templateは異なる資産である。配布方式が同じでも正本やAuthorityを混同しない。
 - ひとつの「標準Web構成」を唯一の正解としない。SUIのNative Canvas等、既存独自実装を保持した方がよい場合は正規の選択肢として提示する。
+
+## UI以外の構成を欠かさないための確認観点
+
+案件構成はUI Kitの採用だけでは閉じない。**必要になったものを明示的に選ぶ**ため、次の観点を既存のSourceと契約から確認する。すべての案件に同じ機構が必要だと仮定しない。
+
+| 確認すること | 既存構成から探すもの | 設計上の注意 |
+| --- | --- | --- |
+| データを何に保存し誰が所有するか | Database / Storage Contract、logical datasource、Environment Binding | 画面のモデルや物理主キーを業務識別の正本にしない |
+| ApplicationのActionをどう実現するか | Function / Capability契約、実装Provider、同期/非同期、transaction / failure boundary | Pluginの順序によって業務Actionを変えない |
+| 認証・認可・秘密情報はどこで判定するか | Authentication/Authorization、Grant、Resource、Session・Tenant境界 | Profileを選んだだけではPermissionを付与しない |
+| 外部サービスとどの契約で接続するか | Provider/Adapter、契約Version、失敗・再試行・冪等性 | APIが接続できるだけで意味の整合を証明しない |
+| Offline/共同作業などの構造要件があるか | Application Architecture候補、同期、競合、Undo、状態所有 | UI Frameworkの選択だけで解決済みとしない |
+| どこに配布して稼働を確かめるか | Target、Build/Release、Migration、部署環境、Health・Observation | Build成功と稼働観測を混同しない |
+| 変更をどう検証し更新するか | Test/Conformance、元のSource、Plugin Lock、案件差分 | Versionが合うだけでImplementationの適合は確定しない |
+
+画面の右パネルを変える依頼なら、その影響をUIに限定しても構わない。ただしDatabase切替やオフライン化、認証方式の変更なら、その責務のSourceと契約へ戻る。UIキットの`replace`を永続化・Security・業務の無制限上書き規則へ一般化しない。
+
+出力は必要に応じて**「構成対象／既存の正本・Source／採用するContract・Provider・Target／案件固有の変更／Authority・Scope／検査する不整合／未実施の検証」**を一行ずつ整理する。重複する設定項目を新Profileへコピーせず、元のEnvironment、Application、Plugin Lock、Template採用へ参照で戻れるようにする。
+
+既存Sourceの読取り例と、まだ構成で説明できない箇所の一覧は[受注明細とNative Canvasの構成要素調査](source-inventory.md)を参照する。これは設計用の確認材料であり、実行可能な構成Definitionではない。
