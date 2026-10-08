@@ -214,6 +214,10 @@ go run ./tools/reference-epistemic-knowledge \
 
 元corpusファイルを直接書き換えず、updated corpus、appended event、再評価Projectionを含むmutation resultを返します。storageへの永続化とmulti-surface commitはproduction adapterの責務です。
 
+mutationへ渡すContextQueryは、UI表示時の古いProjection contextをそのまま再利用しません。review eventの `occurredAt` を包含するcurrent contextをcallerが再取得し、`context.asOf >= occurredAt` を満たす必要があります。Referenceはevent時刻がcontext as-ofより未来なら拒否します。
+
+このfresh mutation contextでscope compatibilityとtarget bindingを再評価し、UI intentが持つexpected target binding等と照合します。Projection表示後にenvironment、target surface等が変わっていれば、古い画面の確認をそのまま適用しないためです。
+
 ## review request handoff
 
 reviewが必要なassertion、またはhigh / critical consumerがpremiseとして利用できないassertionはreview requestへ投影できます。
