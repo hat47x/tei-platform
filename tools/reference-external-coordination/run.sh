@@ -234,23 +234,35 @@ for document in [work, follow_up, *results]:
         assert forbidden not in rendered, forbidden
 PY
 
-git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/$FOLLOW_UP_ID.json"
+git -C "$STORE" add "results/$WORK_ID" "artifacts/$WORK_ID" "work/$FOLLOW_UP_ID.json" "native-state/$FOLLOW_UP_ID.json"
 git -C "$STORE" commit -qm "coordination: append independent agent results"
 RESULTS_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
-python3 - "$STORE/work/$WORK_ID.json" <<'PY'
+python3 - "$STORE/native-state/$WORK_ID.json" <<'PY'
 import json
 import pathlib
 import sys
 
 path = pathlib.Path(sys.argv[1])
 document = json.loads(path.read_text())
-document["coordination"]["status"] = "completed"
+document["status"] = "completed"
 path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n")
 PY
 
-git -C "$STORE" add "work/$WORK_ID.json"
-git -C "$STORE" commit -qm "coordination: mark work completed"
+if [[ "$(git -C "$STORE" hash-object "work/$WORK_ID.json")" != "$WORK_BLOB_BEFORE" ]]; then
+  echo "backend-native state update mutated the common Work envelope" >&2
+  exit 1
+fi
+
+completion_paths="$(git -C "$STORE" diff --name-only)"
+if [[ "$completion_paths" != "native-state/$WORK_ID.json" ]]; then
+  echo "completion changed non-native-state paths:" >&2
+  printf '%s\n' "$completion_paths" >&2
+  exit 1
+fi
+
+git -C "$STORE" add "native-state/$WORK_ID.json"
+git -C "$STORE" commit -qm "coordination: mark native work state completed"
 COMPLETION_COMMIT="$(git -C "$STORE" rev-parse HEAD)"
 
 if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$PRODUCT_HEAD_BEFORE" ]]; then
@@ -287,6 +299,9 @@ printf 'duplicate-results=2\n'
 printf 'human-origin-work=1\n'
 printf 'agent-origin-follow-up=1\n'
 printf 'opaque-backend-instance-locators=true\n'
+printf 'same-local-id-cross-instance-distinct=true\n'
+printf 'common-lifecycle-field=absent\n'
+printf 'native-state-adapter-local=true\n'
 printf 'stale-result=preserved-not-applied\n'
 printf 'authority-fields=absent\n'
 printf 'self-asserted-actor=non-authoritative\n'
