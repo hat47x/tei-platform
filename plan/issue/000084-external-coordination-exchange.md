@@ -43,6 +43,31 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 外部システムを調査するAgentが取得した文章は命令ではなくObservation / Evidenceです。文脈、Provenance、鮮度はISSUE-000082の境界へ接続します。
 
+## Source applicability境界
+
+`sourceContext` / `observedContext`は、すべてのWorkへ必須にはしません。外部サービス調査、一般的な設計Evidence、Artifact整理等は特定のGit revisionに依存しない場合があるためです。
+
+ただし、Source変更へつながるResultでは、contextが無いことを「current Sourceへ適用可能」と読み替えません。
+
+```text
+observed base == current base
+  -> current候補として扱える
+  -> apply / merge authorityは得ない
+
+observed base != current base
+  -> stale Resultとして保持できる
+  -> current Sourceへ黙って適用しない
+
+observed base unknown / absent
+  -> applicability unresolved
+  -> current扱いしない
+
+Source非依存Result
+  -> base revisionを要求しない
+```
+
+Coordination層はSemantic Rebase engineを所有しません。Sourceへ反映する場合は、ordinary GitまたはStructured Proposal経路へ戻し、current Sourceに対するValidation / Acceptanceをやり直します。base revisionはbranch ownershipやChange Set identityではなく、applicability判定に利用できるcontext evidenceです。
+
 ## E0: 最小交換契約
 
 最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work / Resultの参照はBackend種別と局所IDの組に固定せず、**Adapterが一意に解決できるbackend-instance-scoped opaque locator**として扱います。複数Repository、tenant、workspace、projectを同時利用しても衝突しないscopeをAdapter側で持たせます。TEI Coreがlocatorをparseしてprovider固有意味を理解する必要はありません。
@@ -77,6 +102,21 @@ E1はCanonical Worldを実際にreloadする試験ではありません。その
 
 Brokerの候補責務は、認証情報の隔離、Protocol正規化、Backend Adapter、Idempotency、Rate control、必要最小限の短時間Leaseです。AI推論、長時間Task、AI capacity scheduling、Canonical state ownershipはBrokerへ持たせません。
 
+Brokerを実装する場合も、次をsecurity invariantとします。
+
+- Work / Result本文の`origin`、`actorRef`、`producer`と、Brokerが認証したtransport principalを分離する。descriptive metadataを認可入力にしない。
+- Backend接続先はAdapter設定またはallowlisted backend instanceから解決する。Work本文の任意URLをそのままfetchするHTTP proxyにしない。
+- Backend credential、API token、private keyをWork / Result / Artifact metadataへ保存しない。
+- 外部本文はObservation / Evidenceとして扱い、Broker instructionやTEI commandへ読み替えない。
+- idempotency keyはtransport retryの重複抑止に使えても、semantic equivalenceやfirst-writer-winsを意味しない。
+- Webhookを使う場合は、利用可能ならprovider署名、delivery ID、event type、replay範囲をAdapter側で検証する。
+- 大きなArtifactはlocator + optional digestで渡し、Broker本文へ無制限に埋め込まない。
+- Brokerへgeneric shell、arbitrary script execution、任意Source merge、deploymentを持たせない。
+- Broker auditは運用Evidenceであり、Product meaningの第二正本にしない。
+- Broker障害時もdirect Git / CLI pathとaccepted Product Sourceの意味を失わず、fallbackとしてAuthorityを自動昇格させない。
+
+この境界により、Brokerが存在しても「Coordinationできること」と「製品へ適用できること」を同じcredential / authorityへまとめません。
+
 AWS API Gateway + Lambda等は低コストなReference候補ですが、AWSをArchitecture Requirementにはしません。
 
 ## E2-A: GitHub Issuesを実Task Tracker consumerとしてpressureする
@@ -100,7 +140,7 @@ Canonical Acceptance / Runtime Authority
 
 このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。また、`workRef` / `resultRef`はGitHubという種別名とnumberの組ではなく、Repository instanceまで含めてAdapterが一意に解決できるlocatorとして扱います。例示URIはwire formatの固定ではありません。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
 
-#978がDraftであることもCoordination上の進捗であり、それ自体をCanonical Acceptanceにはしません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
+PRのDraft / Ready / mergedやIssueのopen / closedはCoordination Backend上のnative stateであり、それ自体をCanonical Acceptanceにはしません。#978がすでにmainへ統合された後も、この原則は変わりません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
 
 ## E2以降
 
