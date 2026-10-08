@@ -160,9 +160,27 @@ func TestPracticalRuleChangeRejectsBrokenOrRepeatedDeltaWithoutChangingSource(t 
 func TestPracticalRuleChangeKeepsAcceptedMeaningInTwoSourceFiles(t *testing.T) {
 	dir := scratchWorkspace(t)
 	candidate := unitPriceWithSelectionCandidate(revisionOfDir(t, dir))
-	decision, err := accept(dir, mustJSON(t, candidate), acceptOptions{})
+	payload := mustJSON(t, candidate)
+	preview, err := evaluate(dir, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.preview.Acceptable {
+		t.Fatalf("the combined rule/use change was not acceptable: %+v", allDiagnostics(preview.preview))
+	}
+	review := buildReviewProjection(preview)
+	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
+		t.Fatalf("no review-bound acceptance can be performed: %+v", review)
+	}
+	decision, err := accept(dir, payload, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
 	if err != nil || decision.Decision != "accepted" {
 		t.Fatalf("accept=%+v error=%v", decision, err)
+	}
+	if decision.ReviewBinding == nil ||
+		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		t.Fatalf("accept was not bound to the exact reviewed projection: %+v", decision.ReviewBinding)
 	}
 	for _, tc := range []struct {
 		path string
