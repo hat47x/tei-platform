@@ -6,6 +6,12 @@ TMP_ROOT="$(mktemp -d)"
 STORE="$TMP_ROOT/coordination-store"
 WORK_ID="TW-0001"
 FOLLOW_UP_ID="TW-0002"
+STORE_LOCATOR="git-text://reference-store"
+WORK_REF="$STORE_LOCATOR/work/$WORK_ID"
+FOLLOW_UP_REF="$STORE_LOCATOR/work/$FOLLOW_UP_ID"
+RESULT_A_REF="$STORE_LOCATOR/result/$WORK_ID/run-a"
+RESULT_B_REF="$STORE_LOCATOR/result/$WORK_ID/run-b"
+ARTIFACT_REF="$STORE_LOCATOR/artifact/$WORK_ID/run-a.txt"
 
 cleanup() {
   rm -rf "$TMP_ROOT"
@@ -33,7 +39,7 @@ git -C "$STORE" config user.email "coordination-reference@tei.invalid"
 cat > "$STORE/work/$WORK_ID.json" <<EOF_WORK
 {
   "exchangeVersion": "reference-v0",
-  "workRef": {"backend": "git-text", "id": "$WORK_ID"},
+  "workRef": "$WORK_REF",
   "origin": {"kind": "human", "actorRef": "human-reference"},
   "createdVia": {"kind": "automation", "actorRef": "reference-runner"},
   "objective": "Verify that external coordination remains outside TEI product state.",
@@ -66,7 +72,8 @@ PY
 cat > "$STORE/results/$WORK_ID/run-a.json" <<EOF_RESULT_A
 {
   "exchangeVersion": "reference-v0",
-  "workRef": {"backend": "git-text", "id": "$WORK_ID"},
+  "resultRef": "$RESULT_A_REF",
+  "workRef": "$WORK_REF",
   "producer": {"kind": "agent", "actorRef": "agent-a", "externalRunRef": "run-a"},
   "observedContext": {"baseRevision": "$PRODUCT_HEAD_BEFORE"},
   "result": {
@@ -74,22 +81,23 @@ cat > "$STORE/results/$WORK_ID/run-a.json" <<EOF_RESULT_A
     "summary": "Current-base result",
     "artifactRefs": [
       {
-        "uri": "artifacts/$WORK_ID/run-a.txt",
+        "locator": "$ARTIFACT_REF",
         "digest": {"algorithm": "sha256", "value": "$ARTIFACT_DIGEST"},
         "mediaType": "text/plain"
       }
     ],
     "sourceRefs": [],
     "evidenceRefs": [],
-    "followUpRefs": [{"backend": "git-text", "id": "$FOLLOW_UP_ID"}]
+    "followUpRefs": ["$FOLLOW_UP_REF"]
   }
 }
 EOF_RESULT_A
 
-cat > "$STORE/results/$WORK_ID/run-b.json" <<'EOF_RESULT_B'
+cat > "$STORE/results/$WORK_ID/run-b.json" <<EOF_RESULT_B
 {
   "exchangeVersion": "reference-v0",
-  "workRef": {"backend": "git-text", "id": "TW-0001"},
+  "resultRef": "$RESULT_B_REF",
+  "workRef": "$WORK_REF",
   "producer": {"kind": "agent", "actorRef": "admin", "externalRunRef": "run-b"},
   "observedContext": {"baseRevision": "0000000000000000000000000000000000000000"},
   "result": {
@@ -106,10 +114,10 @@ EOF_RESULT_B
 cat > "$STORE/work/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP
 {
   "exchangeVersion": "reference-v0",
-  "workRef": {"backend": "git-text", "id": "$FOLLOW_UP_ID"},
+  "workRef": "$FOLLOW_UP_REF",
   "origin": {"kind": "agent", "actorRef": "agent-a"},
   "createdVia": {"kind": "agent", "actorRef": "agent-a"},
-  "parentRef": {"backend": "git-text", "id": "$WORK_ID"},
+  "parentRef": "$WORK_REF",
   "objective": "Independently review the current-base result.",
   "sourceContext": {
     "repositoryRef": "local-product-checkout",
@@ -138,17 +146,26 @@ results = [
     json.loads((store / "results/TW-0001/run-b.json").read_text()),
 ]
 
+assert work["workRef"] == "git-text://reference-store/work/TW-0001"
+assert isinstance(work["workRef"], str)
 assert work["origin"]["kind"] == "human"
 assert work["createdVia"] == {"kind": "automation", "actorRef": "reference-runner"}
 assert work["sourceContext"]["baseRevision"] == product_head
 assert work["coordination"]["status"] == "ready"
+assert follow_up["workRef"] == "git-text://reference-store/work/TW-0002"
+assert isinstance(follow_up["workRef"], str)
 assert follow_up["origin"] == {"kind": "agent", "actorRef": "agent-a"}
 assert follow_up["createdVia"] == {"kind": "agent", "actorRef": "agent-a"}
 assert follow_up["parentRef"] == work["workRef"]
 assert follow_up["sourceContext"]["baseRevision"] == product_head
 assert len(results) == 2
 assert {result["producer"]["externalRunRef"] for result in results} == {"run-a", "run-b"}
-assert all(result["workRef"]["id"] == work["workRef"]["id"] for result in results)
+assert {result["resultRef"] for result in results} == {
+    "git-text://reference-store/result/TW-0001/run-a",
+    "git-text://reference-store/result/TW-0001/run-b",
+}
+assert all(isinstance(result["resultRef"], str) for result in results)
+assert all(result["workRef"] == work["workRef"] for result in results)
 assert results[0]["result"]["followUpRefs"] == [follow_up["workRef"]]
 
 current = [result for result in results if result["observedContext"]["baseRevision"] == product_head]
@@ -158,7 +175,9 @@ assert len(stale) == 1
 assert stale[0]["producer"]["actorRef"] == "admin"
 
 artifact = results[0]["result"]["artifactRefs"][0]
-artifact_path = store / artifact["uri"]
+assert artifact["locator"] == "git-text://reference-store/artifact/TW-0001/run-a.txt"
+assert isinstance(artifact["locator"], str)
+artifact_path = store / "artifacts/TW-0001/run-a.txt"
 digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
 assert artifact["digest"] == {"algorithm": "sha256", "value": digest}
 
@@ -232,6 +251,7 @@ printf 'deleted-store-head=%s\n' "$STORE_HEAD"
 printf 'duplicate-results=2\n'
 printf 'human-origin-work=1\n'
 printf 'agent-origin-follow-up=1\n'
+printf 'opaque-backend-instance-locators=true\n'
 printf 'stale-result=preserved-not-applied\n'
 printf 'authority-fields=absent\n'
 printf 'self-asserted-actor=non-authoritative\n'
