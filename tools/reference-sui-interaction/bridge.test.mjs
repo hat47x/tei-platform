@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {BridgeError, beginGesture, previewGesture, cancelGesture, finishGesture, commitIntent, moveSuiCard} from './bridge.mjs';
 
 const initial = {applicationId: 'sui', documentId: 'doc1', targetId: 'card1', targetKind: 'card', expectedRevision: 'r1', initial: {x: 1, y: 2}};
-const document = () => ({version: 1, id:'doc1', title:'work', cards:[{id:'card1',text:'unreviewed',x:1,y:2,holdState:'held',meta:{source:'source://keep'}}],
-  edges:[{id:'edge1',fromId:'card1',toId:'card1',type:'unknown.future.edge'}],
-  islands:[], affiliations:[{id:'aff1',cardId:'card1',islandId:'some-island'}],
-  reviewAttribution:{reviewState:'unreviewed'}, proprietary:{keep:'opaque'}});
+const document = () => ({version: 1, id:'doc1', title:'work',
+  createdAt:'2026-10-08T00:00:00Z', updatedAt:'2026-10-08T00:00:00Z', transform:{panX:0,panY:0,zoom:1},
+  cards:[{id:'card1',text:'unreviewed',x:1,y:2,holdState:'held',meta:{source:'source://keep'}},
+         {id:'card2',text:'another',x:3,y:4}],
+  edges:[{id:'edge1',fromId:'card1',toId:'card2',type:'unknown.future.edge'}],
+  islands:[{id:'some-island',cardIds:[]}], affiliations:[{id:'aff1',cardId:'card1',islandId:'some-island'}],
+  reviewAttribution:{schemaVersion:'1.0.0',reviewState:'unreviewed',reviewedAt:null,reviewerRef:'actor:opaque',auditRecordedAt:'2026-10-08T00:00:00Z',overridePolicy:'human_dual_control_only'}, proprietary:{keep:'opaque'}});
 function storeFactory({app = 'sui', doc = document(), rev='r1', allow = true, validator = true}={}) {
   let stored = structuredClone(doc); let revision = rev; let writes = 0; let loads = 0;
   const ports = {applicationId:app, authorize: async () => allow,
