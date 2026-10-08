@@ -197,6 +197,7 @@ func applyReviewCommand(
 			"review-command-does-not-grant-reviewer-authority",
 			"review-command-does-not-grant-canonical-acceptance",
 			"review-command-does-not-change-canonical-content",
+			"review-mutation-requires-current-context-as-of",
 			"meaning-fingerprint-is-binding-input-not-semantic-proof",
 			"review-subject-fingerprint-is-concurrency-receipt-not-truth-proof",
 			"target-binding-precondition-does-not-prove-semantic-identity",
