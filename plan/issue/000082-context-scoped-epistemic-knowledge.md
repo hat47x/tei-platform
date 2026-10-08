@@ -138,7 +138,9 @@ confirm
 
 user-originかつuserが直接入力したworking-premise statementは、現在文脈では通常の前提として利用できます。ただし、確認eventがなければconfirmationはunreviewedのままです。「作業前提として使える」と「人間が確認済み」を同じ状態へしません。
 
-review eventは対象meaning fingerprintへ結び付けます。semantic editで現在meaningとのbindingが切れた場合、旧eventは履歴として保持しつつ再確認対象に戻します。単純な文字編集だけで全reviewを失効させる実装にはせず、意味変更の判定は既存Semantic Diff等へ接続できるか確認します。
+review eventは対象meaning fingerprintだけでなく、確認時点のstatement kind、context binding、target identityへ結び付けます。semantic edit、statement kind変更、scope変更、target identity変更で現在subjectとのbindingが切れた場合、旧eventは履歴として保持しつつ再確認対象に戻します。
+
+単純な文字編集だけで全reviewを失効させる実装にはせず、意味変更の判定は既存Semantic Diff等へ接続できるか確認します。
 
 ### E2: context compatibility
 
@@ -253,6 +255,16 @@ SEI routing / assembly
 ```
 
 `std.epistemic`は候補名に留め、Referenceで第二consumerまで成立してから標準namespaceへの昇格を判断します。
+
+### E6c: UI action semanticsを分離する
+
+SUI側のquick actionは見た目上同じpaletteへ置けるが、内部操作は分ける。
+
+- confirm / reject / withdraw: append-only review event
+- hypothesis化: classification change
+- request review: stakeholder / reviewer handoff
+
+hypothesis化をreview eventとして保存しない。withdrawはrejectとは異なり、確認状態だけを外す。
 
 ## SUI #3184へのhandoff
 
