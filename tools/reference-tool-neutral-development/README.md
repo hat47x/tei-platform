@@ -120,14 +120,14 @@ clean pre-state
   -> HEAD / clean-state再確認
   -> run.sh
   -> HEAD / clean-state再確認
-  -> PASS receiptをstdoutへ表示
+  -> candidate / main bindingを含むPASS receiptをstdoutへ表示
 ```
 
 `--expected-main`を使う場合は、呼び出し前に通常のpreflightでremoteを再取得し、`origin/main`がcurrent mainであることを確認します。さらに、そのexpected mainがcandidate HEADのancestorであることも要求します。これにより、local `origin/main`のSHAだけは正しくてもcandidate branchがcurrent mainをまだ取り込んでいない状態をqualification PASSへ進めません。wrapper自身はnetwork accessやref更新を行いません。
 
 `--expected-main`はlocal `origin/main`を固定し、同時にそのcommitがcandidate historyへ含まれることを検査します。ただしremote mainをlockしません。qualification後にmainが動いた場合、そのPASSを新しいmainへのmerge authorityとして流用せず、remote stateを再取得し、candidateへ最新mainを統合してから再qualificationします。
 
-出力は永続的なTEI Product stateではありません。必要なGate handoffで、通常のIssue / PR Evidenceとして記録できます。
+PASS時には`candidate-head`、`origin-main`、`candidate-contains-expected-main=true`、Repository health / Reference / qualification結果をstdoutへ出します。これは永続的なTEI Product stateではなく、その時点のexact Git relationとGate結果を示すreceiptです。必要なGate handoffで、通常のIssue / PR Evidenceとして記録できます。
 
 ## Run
 
