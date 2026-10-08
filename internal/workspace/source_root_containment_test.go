@@ -73,6 +73,24 @@ func TestUnknownLocalRootRemainsManaged(t *testing.T) {
 	}
 }
 
+func TestNestedPortableSourceRootIsValid(t *testing.T) {
+	root := sourceRootFixture(t, "custom/assets")
+	dir := filepath.Join(root, "custom", "assets")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "native.txt"), []byte("ok"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := workspace.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.ManagedFiles) != 1 || result.ManagedFiles[0].Path != "custom/assets/native.txt" {
+		t.Fatalf("nested Workspace-relative source not managed: %+v", result.ManagedFiles)
+	}
+}
+
 func TestMissingOptionalSourceRootDoesNotFail(t *testing.T) {
 	root := sourceRootFixture(t, "custom-not-materialized")
 	result, err := workspace.Load(root)
