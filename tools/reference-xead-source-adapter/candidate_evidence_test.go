@@ -125,7 +125,7 @@ func TestVerifyTranscriptionCandidateEvidenceRejectsSourceOrContractDrift(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, 2, recorded); err != nil {
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, recorded); err != nil {
 		t.Fatalf("current Evidence did not replay: %v", err)
 	}
 
@@ -133,13 +133,39 @@ func TestVerifyTranscriptionCandidateEvidenceRejectsSourceOrContractDrift(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyTranscriptionCandidateEvidence(FormatXead, changedSource, contract, 2, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, changedSource, contract, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
 		t.Fatalf("source drift was accepted: %v", err)
 	}
 
 	changedContract := append([]byte(nil), contract...)
 	changedContract = append(changedContract, ' ')
-	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, changedContract, 2, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, changedContract, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
 		t.Fatalf("mapping contract drift was accepted: %v", err)
+	}
+}
+
+
+func TestVerifyTranscriptionCandidateEvidenceResolvesRecordedTokenWithoutOrdinal(t *testing.T) {
+	contract := classificationContractFixture()
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="a"/><Table ID="b"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded, err := BuildTranscriptionCandidateEvidence(FormatXead, doc, contract, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, recorded); err != nil {
+		t.Fatalf("Evidence could not be replayed from its own source token: %v", err)
+	}
+
+	recorded.SourceToken = sourceNodeToken(doc.ArtifactSHA256, 2)
+	recorded, err = rmtevidence.Prepare(recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, recorded); err == nil ||
+		!strings.Contains(err.Error(), "mapping contract") {
+		t.Fatalf("token rebound to a different node was accepted: %v", err)
 	}
 }
