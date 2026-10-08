@@ -261,12 +261,18 @@ type CoverageArea struct {
 	AccessRefs         []string    `json:"accessRefs,omitempty"`
 }
 
+type KnowledgeHealthPolicy struct {
+	MinResolvedRatio            float64 `json:"minResolvedRatio,omitempty"`
+	MinimumEligibleAssertions   int     `json:"minimumEligibleAssertions,omitempty"`
+}
+
 type Corpus struct {
 	Schema        string         `json:"schema"`
 	MetadataState MetadataState  `json:"metadataState,omitempty"`
 	Assertions    []Assertion    `json:"assertions"`
 	Dependencies  []Dependency   `json:"dependencies,omitempty"`
 	CoverageAreas []CoverageArea `json:"coverageAreas,omitempty"`
+	HealthPolicy  KnowledgeHealthPolicy `json:"healthPolicy,omitempty"`
 }
 
 type ContextQuery struct {
@@ -333,6 +339,12 @@ func normalizeCorpus(input Corpus) (Corpus, error) {
 	}
 	if err := validateSupersessionAcyclic(input.Assertions); err != nil {
 		return input, err
+	}
+	if input.HealthPolicy.MinResolvedRatio < 0 || input.HealthPolicy.MinResolvedRatio > 1 {
+		return input, fmt.Errorf("healthPolicy.minResolvedRatio must be between 0 and 1")
+	}
+	if input.HealthPolicy.MinimumEligibleAssertions < 0 {
+		return input, fmt.Errorf("healthPolicy.minimumEligibleAssertions must be >= 0")
 	}
 
 	for i := range input.Dependencies {
