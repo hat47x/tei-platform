@@ -19,7 +19,7 @@ Status: current interpretation index
 
 判断に迷う場合は、次の順で設計原点へ立ち返ります。
 
-1. 渡辺幸三氏の業務システム設計・三要素分析法に関する明示的な言説
+1. 三要素分析法など、業務システム設計について出典を特定できる一次資料
 2. X-TEA / XEAD Modeler / Driverの公開マニュアル・モデル構造
 3. XeadModeler / XeadDriver公開ソース
 4. Reference Modelでの実際の使われ方
@@ -30,7 +30,7 @@ Status: current interpretation index
 
 このfallbackは歴史的shapeをそのままTEIへ移植するための規則ではありません。歴史的概念が防いでいた設計上の失敗を確認し、現行TEIのmeaning / authority / Provider / Target境界へ翻訳します。
 
-2026-10の渡辺幸三氏の公開言説・公開実装の再調査と、TEIへの採否は [`plan/design/watanabe-business-system-design-pressure.md`](../plan/design/watanabe-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
+2026-10に行った外部の公開資料・公開実装の調査と、TEIへの採否は [`外部設計資料の評価`](../plan/design/watanabe-business-system-design-pressure.md) に整理します。この調査記録もRequirementの正本ではなく、既存Requirementをどう解釈したかを追跡するためのdesign pressureです。
 
 ## 3. RQ-025の解釈
 
