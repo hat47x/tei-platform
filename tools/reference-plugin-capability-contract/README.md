@@ -233,3 +233,9 @@ ReferenceではContract namespaceごとにaccepted publisher Authorityを持ち�
 より具体的なnamespace grantがある場合はそちらをownerとして扱います。これにより、共通root namespaceを保ちながら明示的に子namespaceを委譲できます。`std.*`も通常の同じprimitiveで扱いますが、third partyへ暗黙開放しません。
 
 Contract Authority Evidenceの更新はContract意味そのものを変えません。同じContract bytes / Providerならresolution fingerprintは維持し、Authority binding fingerprintだけを更新します。旧Authority Evidenceを参照するpublicationはstaleとして拒否します。
+
+### Lock後のContract Authority
+
+Capability Resolution Lockが再現できることと、現在もそのContract publisherを信頼してよいことは別です。Lock replayはexact declarationを確認し、current namespace Grant / Publicationの確認は`verifyCapabilityResolutionLockAcceptedContractAuthority`で別に行います。
+
+Authority rotation後もContract意味が同じならLock identityは維持できますが、旧Authority Evidenceを参照するpublicationはcurrent verificationで拒否されます。
