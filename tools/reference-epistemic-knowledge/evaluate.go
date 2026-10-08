@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -602,7 +603,7 @@ func assessResolutionCoverage(
 		return out
 	}
 	out.State = "attention"
-	required := int(out.MinimumRatio*float64(out.Eligible) + 0.999999999)
+	required := int(math.Ceil(out.MinimumRatio * float64(out.Eligible)))
 	if required > out.Eligible {
 		required = out.Eligible
 	}
