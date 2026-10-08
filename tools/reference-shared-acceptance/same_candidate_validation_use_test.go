@@ -10,8 +10,9 @@ import (
 
 // ADR-0029の確かめ方1は、正本へValidationを一件足し、Applicationへ宣言を一行足すだけで、
 // その規則が評価されることを求める。両方を同じcandidateに入れたとき、参照先はまだ基準のWorldに無いため、
-// resolveが誤って拒否しないことを確かめる。実在の確認はoverlay適用後のvalidateが行うため、
-// 参照先がどのcandidateにも無い場合は従来どおり拒否されることも同時に確かめる。
+// resolveが誤って拒否しないことを確かめる。参照先のIDの完全一致はresolveが確かめ、overlay適用後のvalidateは
+// 別の確認として残る。このtestはvalidateが参照を拒否する経路は通さない（その分岐はinternal/validationのtestが単独で確かめる）。
+// 参照先がどのcandidateにも無い場合は従来どおりresolveが拒否することも同時に確かめる。
 func TestApplicationValidationUseMayReferenceAValidationAddedByTheSameCandidate(t *testing.T) {
 	dir := scratchWorkspaceBeforeSelection(t)
 	addRule := Operation{

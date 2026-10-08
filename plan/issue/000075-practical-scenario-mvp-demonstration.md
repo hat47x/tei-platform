@@ -88,6 +88,10 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 **状態。** 受理待ち。`reference/workspace`と`reference/world.json`は変更していない。以下の証明は、workspaceのcopy（scratch copy）の中だけで行った、scratch proofである。実際の`reference/workspace`への受理は行っていない。owner の受理判断は未決定で、Gate Evidenceとしては扱わない。
 
+**reference/との差分と比較の基準。** 比較の基準は`origin/main`（695e9e89）であり、ローカルの`main`は`origin/main`と一致しないため使わない。Windows側のmain（a5d2f710）は`origin/main`より2件（a5d2f710、1aa6cbb5）先行しており、このブランチはそれを通常のmerge commitで取り込んだ。このブランチ自身の変更（merge-base a5d2f710からHEADまで。取り込んだmainの変更を除く）は、`reference/`配下のパスに触れない（`git diff --name-only a5d2f710 HEAD -- reference`が空）。取り込み前の作業commit（1d8fcc95からの変更）も同様に触れていない。`reference/workspace`と`reference/world.json`は、1d8fcc95、origin/main、取り込み後のHEADのいずれでも同じで、revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
+
+**完了条件のチェック。** 実証記録Bの作業では、完了条件のチェックを一つも付けていない。完了条件にある四つのチェック（2026-10-05）は実証記録Aに属し、この記録Bの受理と画面の確定までの一周を完了させるものではない。
+
 **変更の題材。** 受注明細の行番号（`sales.order_line.line_number`）は1から始まる。0以下を業務上の不成立とする規則`sales.order_line.line_number_positive`（kind `positive`）を一件足す。対象を`sales.order_line.unit_price`ではなく行番号にしたのは、`unit_price`のIDが`_test.go`の9ファイルに計31回（出現回数）使われており、今回の変更の影響を切り分けにくいためである。`sales.order_line.line_number_positive`は、この変更以前のリポジトリで使われていないことを`grep`で確かめた。
 
 **候補。** `plan/issue/000075-practical-b/candidate.json`（schema `tei.reference.change-candidate/v0`、id `cand-order-line-number-positive`、origin `ai` / `claude-haiku-5-5`、基準revision `sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`）。deltaは次の二つである。
@@ -97,7 +101,7 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 **候補のintent（審査面に出る文）。** 受注明細の行番号は1から始まるため、0以下を業務上の不成立とするValidationを一件追加する。この規則は、Canonicalな意味では受注明細ごとに適用される。ただし現在のCommand経路は、読み取った一覧の最初の受注明細だけを評価する（既存のquantity_positiveと同じ制限）。この候補は、全明細への評価を広げることを主張しない。
 
-**人が読む面（read-only Preview）。** `plan/issue/000075-practical-b/preview.json`と`review.txt`を、上のintentに書き直した後に、実際の`reference/workspace`に対して作り直した。読み取りだけで、`reference/`には変更がない。Previewの全stageはpassで、Reviewは「受入可能」、coverageは表示可能3 / 一部5 / 未評価0である。
+**人が読む面（read-only Preview）。** `plan/issue/000075-practical-b/preview.json`と`review.txt`を、上のintentに書き直した後に、実際の`reference/workspace`に対して作り直した。読み取りだけで、`reference/`のファイルは変えていない。Previewの全stageはpassで、Reviewは「受入可能」、coverageは表示可能3 / 一部5 / 未評価0である。
 
 - candidate fingerprint: `sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51`（intentの変更の前後で同じ。candidate fingerprintはOrigin / Intent / Evidenceを含まない（`candidate.go`）ため）
 - evidence fingerprint: `sha256:54eb30be346e118b2aa6d6115cf82dd7235205726260439ca5ad56bef7104c5b`（変わらない）
@@ -105,7 +109,7 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 intentの変更はcandidate fingerprintには現れず、review fingerprintにだけ現れる。承認の面で読まれる文面が変わったかは、review fingerprintで確かめる。
 
-**Shared Acceptanceの修正。** 候補を最初にPreviewしたとき、`resolve`が`VALIDATION_NOT_FOUND`で拒否した。`uses validation`の参照先を、変更前のWorldにだけ探していたためで、同じcandidateで追加するValidationを参照できなかった。ADR-0029の確かめ方1は、規則を一件足し、宣言を一行足すだけで評価されることを求めている。そのため`tools/reference-shared-acceptance/resolve.go`を変更し、同じdeltaの`add-validation`を参照先として認めるようにした。参照先が実在するかは、overlay適用後のvalidate（`UNKNOWN_APPLICATION_VALIDATION`）が確かめる。どのcandidateにも無い規則の宣言は、従来どおり拒否する（`same_candidate_validation_use_test.go`）。この修正は受理の境界に触れるため、owner の確認が要る。
+**Shared Acceptanceの修正。** 候補を最初にPreviewしたとき、`resolve`が`VALIDATION_NOT_FOUND`で拒否した。`uses validation`の参照先を、変更前のWorldにだけ探していたためで、同じcandidateで追加するValidationを参照できなかった。ADR-0029の確かめ方1は、規則を一件足し、宣言を一行足すだけで評価されることを求めている。そのため`tools/reference-shared-acceptance/resolve.go`を変更し、同じdeltaの`add-validation`を参照先として認めるようにした。同じcandidateの`add-validation`で追加される規則を参照しているかは、`resolve.go`が、追加するValidationのIDとの完全一致（exact-ID membership、`deltaValidations`）で確かめる。overlay適用後の共有validate（`internal/validation`の`UNKNOWN_APPLICATION_VALIDATION`、`internal/validation/business_validation_reference.go`）は、これとは別の確認で、多層防御として残している。同じcandidateの経路を通すtest（`same_candidate_validation_use_test.go`）は、受理されることを確かめるだけで、この経路でvalidateが`UNKNOWN_APPLICATION_VALIDATION`を返す場合は通していない（その分岐は`internal/validation`のtestが単独で確かめる）。どのcandidateにも無い規則の宣言は、従来どおり`resolve`が`VALIDATION_NOT_FOUND`で拒否する（同じtest）。この修正は受理の境界に触れるため、owner の確認が要る。
 
 **scratch copyでの受理。** 新しいreview fingerprintを`-expected-review-fingerprint`に指定し、`mktemp -d`の下に作ったcopyに対してacceptした（`-allow-reference-baseline`は使っていない。copyの場所は`reference/workspace`で終わらない）。結果はacceptedで、変わったのは次の三つだけである。
 

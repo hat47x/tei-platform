@@ -121,7 +121,8 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 		}
 	}
 	// 同じdeltaで追加するValidationは、`uses validation`の参照先として既に存在するものと同じに扱う（ADR-0029の確かめ方1）。
-	// 参照先が実在するかは、overlay適用後のreloadとvalidate（UNKNOWN_APPLICATION_VALIDATION）が確かめる。
+	// ここで確かめるのは、参照先のIDが基準のWorldのValidation、または同じdeltaのadd-validationのIDと完全一致することだけである。
+	// overlay適用後のreloadとvalidate（UNKNOWN_APPLICATION_VALIDATION）は別の確認で、多層防御として残す。
 	deltaValidations := map[core.CanonicalID]bool{}
 	for _, op := range c.Delta {
 		if op.Op == opAddValidation {
