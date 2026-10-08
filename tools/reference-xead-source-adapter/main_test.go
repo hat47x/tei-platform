@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -206,5 +207,36 @@ func TestNamespacedLookalikeDoesNotProduceKnownSourceFacts(t *testing.T) {
 	}
 	if receipt.UnknownElementCount != 2 {
 		t.Fatalf("unknown element count=%d want=2", receipt.UnknownElementCount)
+	}
+}
+
+func TestPublicLocatorDigestDoesNotHashSourceDerivedPath(t *testing.T) {
+	doc, err := Observe(FormatXead, []byte(syntheticXead))
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt := PublicReceipt(doc)
+	if len(receipt.Unresolved) != 1 {
+		t.Fatalf("unresolved=%+v", receipt.Unresolved)
+	}
+	unknownOrdinal := 0
+	unknownPath := ""
+	for i, node := range doc.Nodes {
+		if !node.Known {
+			unknownOrdinal = i + 1
+			unknownPath = node.Locator.Path
+			break
+		}
+	}
+	if unknownOrdinal == 0 {
+		t.Fatal("fixture has no unknown node")
+	}
+	expected := digestString(fmt.Sprintf("%s|node-ordinal:%d", doc.ArtifactSHA256, unknownOrdinal))
+	if receipt.Unresolved[0].LocatorDigest != expected {
+		t.Fatalf("public locator digest=%q want ordinal digest=%q", receipt.Unresolved[0].LocatorDigest, expected)
+	}
+	legacyPathDigest := digestString(doc.ArtifactSHA256 + "|" + unknownPath)
+	if receipt.Unresolved[0].LocatorDigest == legacyPathDigest {
+		t.Fatal("public locator digest still hashes source-derived structural path")
 	}
 }
