@@ -85,6 +85,7 @@ cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
 rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
 run_tei "$TASK_TEI" validate -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/stateless-validate.txt"
 run_tei "$TASK_TEI" world -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/without-decisions-world.json"
+cmp "$TMP_ROOT/before-validate.txt" "$TMP_ROOT/stateless-validate.txt"
 cmp "$TMP_ROOT/with-decisions-world.json" "$TMP_ROOT/without-decisions-world.json"
 
 cat >> "$TASK_REPO/$TARGET_FILE" <<'EOF'
@@ -252,6 +253,7 @@ printf 'source-head=%s\n' "$SOURCE_HEAD"
 printf 'base=%s\n' "$BASE_REVISION"
 printf 'result=%s\n' "$RESULT_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"
+printf 'validation-ledger-independent=true\n'
 printf 'decision-ledger-independent=true\n'
 printf 'semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT\n'
 printf 'tool-neutral development reference: PASS\n'
