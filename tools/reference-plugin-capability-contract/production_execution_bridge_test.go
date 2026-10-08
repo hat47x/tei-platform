@@ -663,7 +663,7 @@ func TestGenericCapabilityBridgeUsesExistingResourceBrokerAndSandboxMount(t *tes
 	fx.Plan.Capabilities[0].ResourceBindings = []resource.Binding{{
 		Kind:       permission.KindFilesystem,
 		Scope:      "workspace-source",
-		ResourceID: core.MustCanonicalID("resource.workspace-source"),
+		ResourceID: core.MustCanonicalID("resource.workspace_source"),
 	}}
 	fx.Plan.Capabilities[0].LeasePolicy = resource.DefaultLeasePolicy()
 	fx.Plan.RuntimePolicyFingerprint = pluginruntime.PolicyFingerprint(fx.Plan)
@@ -759,7 +759,7 @@ func TestGenericCapabilityBridgeDoesNotBypassMissingResourceBroker(t *testing.T)
 	fx.Plan.Capabilities[0].ResourceBindings = []resource.Binding{{
 		Kind:       permission.KindFilesystem,
 		Scope:      "workspace-source",
-		ResourceID: core.MustCanonicalID("resource.workspace-source"),
+		ResourceID: core.MustCanonicalID("resource.workspace_source"),
 	}}
 	fx.Plan.Capabilities[0].LeasePolicy = resource.DefaultLeasePolicy()
 	fx.Plan.RuntimePolicyFingerprint = pluginruntime.PolicyFingerprint(fx.Plan)

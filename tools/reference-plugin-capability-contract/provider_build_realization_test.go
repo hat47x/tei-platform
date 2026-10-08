@@ -431,7 +431,7 @@ func TestProviderBuildRealizationSeparatesBuildProvenanceFromArtifactIdentity(t 
 
 func TestProviderBuildRealizationReplayDetectsBuildPlanDrift(t *testing.T) {
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.replay-build"),
+		ID:      core.MustCanonicalID("tei.reference.replay_build"),
 		Version: "1.0.0",
 	}
 	logical := Provider{
@@ -468,7 +468,7 @@ func TestProviderBuildRealizationReplayDetectsBuildPlanDrift(t *testing.T) {
 
 func TestProviderBuildRealizationRejectsSourceDeclarationDrift(t *testing.T) {
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.source-bound"),
+		ID:      core.MustCanonicalID("tei.reference.source_bound"),
 		Version: "1.0.0",
 	}
 	logical := Provider{

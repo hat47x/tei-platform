@@ -166,7 +166,7 @@ func TestTargetPackagingPlanRepresentsCoalescingWithoutCollapsingProviders(t *te
 func TestTargetPackagingPlanRepresentsSplitPluginArtifacts(t *testing.T) {
 	contract := portableRuntimeContract()
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.split-packaging"),
+		ID:      core.MustCanonicalID("tei.reference.split_packaging"),
 		Version: "1.0.0",
 	}
 	left := syntheticPackagingInput(
@@ -229,7 +229,7 @@ func TestTargetPackagingPlanIsInputOrderIndependent(t *testing.T) {
 func TestTargetPackagingPlanRejectsMixedTargets(t *testing.T) {
 	contract := portableRuntimeContract()
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.mixed-target"),
+		ID:      core.MustCanonicalID("tei.reference.mixed_target"),
 		Version: "1.0.0",
 	}
 	web := syntheticPackagingInput(
@@ -250,7 +250,7 @@ func TestTargetPackagingPlanRejectsMixedTargets(t *testing.T) {
 func TestTargetPackagingPlanRejectsOneLogicalProviderOnMultipleArtifacts(t *testing.T) {
 	contract := portableRuntimeContract()
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.duplicate-provider"),
+		ID:      core.MustCanonicalID("tei.reference.duplicate_provider"),
 		Version: "1.0.0",
 	}
 	first := syntheticPackagingInput(
@@ -324,7 +324,7 @@ func TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts(t 
 	secondContract.ConformanceProfile = "tei.reference.portable-runtime-secondary/v0"
 
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.multi-contract"),
+		ID:      core.MustCanonicalID("tei.reference.multi_contract"),
 		Version: "1.0.0",
 	}
 	logical := Provider{
@@ -440,7 +440,7 @@ func TestTargetPackagingPlanIsExplicitlyNonAuthoritative(t *testing.T) {
 func TestTargetPackagingPlanReplayDetectsBuildProvenanceDrift(t *testing.T) {
 	contract := portableRuntimeContract()
 	definition := plugin.Definition{
-		ID:      core.MustCanonicalID("tei.reference.packaging-replay"),
+		ID:      core.MustCanonicalID("tei.reference.packaging_replay"),
 		Version: "1.0.0",
 	}
 	first := syntheticPackagingInput(
