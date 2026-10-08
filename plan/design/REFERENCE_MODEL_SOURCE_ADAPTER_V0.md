@@ -224,3 +224,11 @@ Go 1.23.2の`encoding/xml`は、同じexpanded nameを持つattributeが重複�
 Source Adapterはmap化の前にduplicate expanded attribute nameを検出し、Observeをfail closedにする。first-wins / last-winsで解決しない。これは意味が未確定な`Unresolved`ではなく、source observationの入力不正である。
 
 namespaceが異なる同名attributeはexpanded nameが異なるため別attributeとして保持する。同じnamespace / local nameの重複だけをparser-invalidとする。RMP-054 / RML-029でこの境界を管理する。
+
+## Single XML document boundary
+
+`encoding/xml`はwell-formedな単一XML documentだけを受け付けるparserではなく、複数のtop-level elementやroot外CharDataもtoken streamとして返せる。
+
+Xead / Xeaf Source Adapterでは、一つのartifactを一つのsource documentとして扱う。root elementはちょうど一つ必要で、二つ目のtop-level element、root外の非空白text、root elementの無い入力はparser-invalidとして拒否する。root前後の空白は許容する。
+
+comment / processing instruction等のmarkup観測は別であり、parser-invalid構造を`Unresolved`へ丸める理由にはしない。RMP-055 / RML-030でこの境界を管理する。
