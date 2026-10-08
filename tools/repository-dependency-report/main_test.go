@@ -78,3 +78,14 @@ func TestSourceGraphFailsClosed(t *testing.T) {
 		t.Fatal("missing repository must fail")
 	}
 }
+
+func TestUnknownLocalImportFailsClosed(t *testing.T) {
+	root := fixture(t)
+	path := filepath.Join(root, "internal", "host", "host.go")
+	if err := os.WriteFile(path, []byte("package host\nimport \"example.org/tei/internal/not-present\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collect(root); err == nil {
+		t.Fatal("missing first-party import target must not appear as a valid package")
+	}
+}
