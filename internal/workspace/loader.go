@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -169,7 +170,7 @@ func parseWorkspaceYAML(src string) ([]string, error) {
 // managed when the same Workspace is opened on another Target.
 func validateWorkspaceSourceRoot(sourceRoot string) error {
 	if sourceRoot == "" || sourceRoot == "." || !filepath.IsLocal(sourceRoot) ||
-		strings.ContainsAny(sourceRoot, "\\\\:") || filepath.Clean(sourceRoot) != sourceRoot {
+		strings.ContainsAny(sourceRoot, "\\\\:") || path.Clean(sourceRoot) != sourceRoot {
 		return fmt.Errorf("must be a clean Workspace-relative path")
 	}
 	return nil
