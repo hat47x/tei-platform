@@ -27,8 +27,8 @@ func TestUnresolvedProjectionAggregatesSourceMappingAndSemanticUnresolved(t *tes
 	if counts["unknown-element|"] != 1 {
 		t.Fatalf("source unresolved missing: %+v", projection.Items)
 	}
-	if counts["classification-unmapped|Mystery"] != 1 {
-		t.Fatalf("mapping unresolved missing: %+v", projection.Items)
+	if counts["classification-unmapped-redacted|"] != 1 {
+		t.Fatalf("redacted mapping unresolved missing: %+v", projection.Items)
 	}
 	if counts["semantic-classification-unresolved|Table"] != 1 {
 		t.Fatalf("semantic unresolved missing: %+v", projection.Items)
