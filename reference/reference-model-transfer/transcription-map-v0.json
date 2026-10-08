@@ -1,0 +1,613 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "reference-model-transfer-transcription-map",
+  "status": "aggregate-candidate",
+  "benchmarkId": "xtea.conceptware.mfg-order.20160627",
+  "sourceInventoryBlob": "52fd3a6b30c7658626faa2956880320319d731a2",
+  "transcriptionContractBlob": "6e658b10b526a6a5b84f7e9adcf7355ecbaeb375",
+  "semantics": {
+    "granularity": "aggregate-by-source-construct-kind",
+    "classificationTotalsAreNonExclusive": true,
+    "extensionTotalsAreExclusiveByConstructMapping": true,
+    "unresolvedMeaning": "count of observed elements whose construct mapping includes the unresolved classification; not a source parse failure and not semantic rejection",
+    "authority": "candidate mapping evidence only; does not grant canonical acceptance or runtime authority"
+  },
+  "xead": {
+    "sourceArtifactSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9",
+    "observedElementCount": 8718,
+    "mappedObservedElementCount": 8718,
+    "unmappedObservedElementCount": 0,
+    "unresolvedCandidateOccurrenceCount": 1990,
+    "extensionOccurrenceTotals": {
+      "reference.compat.xead.source": 4,
+      "reference.xead.business-flow": 180,
+      "reference.xead.business-procedure": 634,
+      "reference.xead.example-scenario": 35,
+      "reference.xead.function-data-io": 392,
+      "reference.xead.function-interaction-lens": 530,
+      "reference.xead.presentation": 5629,
+      "reference.xead.relational-semantics": 1029,
+      "reference.xead.subsystem-lens": 285
+    },
+    "classificationOccurrenceTotals": {
+      "canonical-candidate": 2791,
+      "derived-projection": 1699,
+      "native-preserved": 5331,
+      "presentation-only": 6363,
+      "provenance": 3,
+      "realization": 1185,
+      "source-metadata": 4,
+      "unresolved": 1990
+    },
+    "constructs": [
+      {
+        "kind": "DataType",
+        "count": 86,
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics"
+      },
+      {
+        "kind": "DataflowLine",
+        "count": 81,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-flow"
+      },
+      {
+        "kind": "DataflowNode",
+        "count": 92,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-flow"
+      },
+      {
+        "kind": "Department",
+        "count": 7,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure"
+      },
+      {
+        "kind": "Function",
+        "count": 227,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens"
+      },
+      {
+        "kind": "FunctionType",
+        "count": 14,
+        "classification": [
+          "derived-projection",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens"
+      },
+      {
+        "kind": "FunctionUsedByThis",
+        "count": 289,
+        "classification": [
+          "derived-projection",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens"
+      },
+      {
+        "kind": "IOPanel",
+        "count": 281,
+        "classification": [
+          "presentation-only",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "IOPanelField",
+        "count": 5,
+        "classification": [
+          "presentation-only",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "IOPanelStyle",
+        "count": 5328,
+        "classification": [
+          "presentation-only",
+          "native-preserved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "IOSpool",
+        "count": 13,
+        "classification": [
+          "presentation-only",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "IOSpoolStyle",
+        "count": 2,
+        "classification": [
+          "presentation-only",
+          "native-preserved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "IOTable",
+        "count": 392,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection"
+        ],
+        "extension": "reference.xead.function-data-io"
+      },
+      {
+        "kind": "Instance",
+        "count": 35,
+        "classification": [
+          "presentation-only",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.example-scenario"
+      },
+      {
+        "kind": "MaintenanceLog",
+        "count": 3,
+        "classification": [
+          "source-metadata",
+          "provenance"
+        ],
+        "extension": "reference.compat.xead.source"
+      },
+      {
+        "kind": "Relationship",
+        "count": 80,
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "relationship-key-reference-is-not-business-identity",
+          "relationship-key-reference-is-not-functional-dependency",
+          "ambiguous-key-field-mapping-must-remain-unresolved"
+        ]
+      },
+      {
+        "kind": "Role",
+        "count": 10,
+        "classification": [
+          "canonical-candidate"
+        ],
+        "extension": "reference.xead.business-procedure"
+      },
+      {
+        "kind": "SubjectArea",
+        "count": 7,
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.business-flow"
+      },
+      {
+        "kind": "Subsystem",
+        "count": 12,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens"
+      },
+      {
+        "kind": "SubsystemRelationship",
+        "count": 145,
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens"
+      },
+      {
+        "kind": "SubsystemTable",
+        "count": 128,
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens"
+      },
+      {
+        "kind": "System",
+        "count": 1,
+        "classification": [
+          "source-metadata",
+          "realization",
+          "native-preserved",
+          "unresolved"
+        ],
+        "extension": "reference.compat.xead.source"
+      },
+      {
+        "kind": "Table",
+        "count": 56,
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics"
+      },
+      {
+        "kind": "TableField",
+        "count": 522,
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics"
+      },
+      {
+        "kind": "TableKey",
+        "count": 110,
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "legacy-key-is-not-business-identity",
+          "legacy-key-is-not-candidate-key",
+          "legacy-key-is-not-functional-dependency",
+          "legacy-key-is-not-physical-key-authority"
+        ]
+      },
+      {
+        "kind": "TableKeyField",
+        "count": 169,
+        "classification": [
+          "canonical-candidate",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "legacy-key-field-membership-is-not-business-identity",
+          "legacy-key-field-membership-is-not-functional-dependency",
+          "ambiguous-key-field-mapping-must-remain-unresolved"
+        ]
+      },
+      {
+        "kind": "TableType",
+        "count": 6,
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics"
+      },
+      {
+        "kind": "Task",
+        "count": 62,
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure"
+      },
+      {
+        "kind": "TaskAction",
+        "count": 148,
+        "classification": [
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.business-procedure"
+      },
+      {
+        "kind": "TaskFunctionIO",
+        "count": 407,
+        "classification": [
+          "canonical-candidate",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.business-procedure"
+      }
+    ]
+  },
+  "xeaf": {
+    "sourceArtifactSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
+    "observedElementCount": 4053,
+    "mappedObservedElementCount": 4053,
+    "unmappedObservedElementCount": 0,
+    "unresolvedCandidateOccurrenceCount": 2988,
+    "extensionOccurrenceTotals": {
+      "reference.compat.xead.source": 8,
+      "reference.xead.function-interaction-lens": 286,
+      "reference.xead.native-script": 161,
+      "reference.xead.platform-service-binding": 1,
+      "reference.xead.presentation": 3361,
+      "reference.xead.relational-semantics": 224,
+      "reference.xead.subsystem-lens": 12
+    },
+    "classificationOccurrenceTotals": {
+      "canonical-candidate": 224,
+      "derived-projection": 215,
+      "native-preserved": 162,
+      "presentation-only": 3444,
+      "provenance": 8,
+      "realization": 4045,
+      "source-metadata": 8,
+      "unresolved": 2988
+    },
+    "constructs": [
+      {
+        "kind": "AddRowListButton",
+        "count": 4,
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "AddRowListColumn",
+        "count": 10,
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "BatchField",
+        "count": 10,
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Button",
+        "count": 626,
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Column",
+        "count": 949,
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Detail",
+        "count": 83,
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "authorityLimits": [
+          "declared-key-fields-are-not-data-identity",
+          "declared-key-fields-are-not-business-identity",
+          "declared-key-fields-are-not-functional-dependency"
+        ]
+      },
+      {
+        "kind": "Field",
+        "count": 1440,
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Filter",
+        "count": 151,
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Function",
+        "count": 203,
+        "classification": [
+          "realization",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.function-interaction-lens",
+        "authorityLimits": [
+          "declared-key-fields-are-not-data-identity",
+          "declared-key-fields-are-not-business-identity",
+          "declared-key-fields-are-not-functional-dependency"
+        ]
+      },
+      {
+        "kind": "HeaderPhrase",
+        "count": 67,
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Key",
+        "count": 72,
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "runtime-key-is-realization-not-business-identity",
+          "runtime-key-is-not-functional-dependency",
+          "runtime-key-does-not-replace-design-key-evidence"
+        ]
+      },
+      {
+        "kind": "MaintenanceLog",
+        "count": 8,
+        "classification": [
+          "source-metadata",
+          "provenance"
+        ],
+        "extension": "reference.compat.xead.source"
+      },
+      {
+        "kind": "Menu",
+        "count": 8,
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Option",
+        "count": 55,
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Phrase",
+        "count": 38,
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "PrintFont",
+        "count": 3,
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation"
+      },
+      {
+        "kind": "Refer",
+        "count": 94,
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "authorityLimits": [
+          "runtime-refer-is-realization-not-semantic-relation-authority",
+          "runtime-refer-key-fields-are-not-business-identity",
+          "runtime-pk-fallback-is-not-business-identity"
+        ]
+      },
+      {
+        "kind": "Script",
+        "count": 161,
+        "classification": [
+          "native-preserved",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.native-script"
+      },
+      {
+        "kind": "Subsystem",
+        "count": 12,
+        "classification": [
+          "realization",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.subsystem-lens"
+      },
+      {
+        "kind": "System",
+        "count": 1,
+        "classification": [
+          "realization",
+          "native-preserved",
+          "unresolved"
+        ],
+        "extension": "reference.xead.platform-service-binding"
+      },
+      {
+        "kind": "Table",
+        "count": 58,
+        "classification": [
+          "realization",
+          "canonical-candidate",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics"
+      }
+    ]
+  },
+  "authorityLimits": [
+    "aggregate-transcription-map-does-not-contain-source-values-or-source-locators",
+    "construct-kind-mapping-is-not-per-node-semantic-acceptance",
+    "unresolved-candidate-count-does-not-authorize-inferred-replacement",
+    "classification-occurrence-totals-overlap-and-must-not-be-summed-as-distinct-elements"
+  ],
+  "claimsNotEstablished": [
+    "per-node transcription accepted",
+    "cross-source design/runtime reconciliation complete",
+    "original runtime behavior equivalence",
+    "production Source Adapter Plugin contract"
+  ]
+}

@@ -196,35 +196,35 @@
     {
       "id": "RMP-028",
       "topic": "composite-domain-constraint",
-      "observed": "Watanabe distinguishes functional dependency from domain restriction: a composite value set can require an explicit allowed relation even when no dependent attribute exists",
+      "observed": "The referenced analysis distinguishes functional dependency from domain restriction: a composite value set can require an explicit allowed relation even when no dependent attribute exists",
       "risk": "treating every composite key only as record identity or dependency evidence can lose the business meaning of allowed combinations and can over-normalize or under-constrain transferred Data",
       "teiDirection": "keep composite domain/allowed-combination constraints distinct from business identity and functional dependency; preserve source evidence and leave semantic promotion unresolved until an explicit Constraint/Relation contract is accepted"
     },
     {
       "id": "RMP-029",
       "topic": "derived-value-dynamic-reference",
-      "observed": "Watanabe models derived attributes as logical fields and allows a derived value to participate in a foreign-key-like dynamic reference; the benchmark has 52 DERIVABLE Xead fields, but participation of those fields in Relationship keys has not yet been confirmed",
+      "observed": "The referenced analysis models derived attributes as logical fields and allows a derived value to participate in a foreign-key-like dynamic reference; the benchmark has 52 DERIVABLE Xead fields, but participation of those fields in Relationship keys has not yet been confirmed",
       "risk": "derived values may be reduced to display/cache fields, or native Script may become the only hidden authority for a Relation whose source key is actually derived",
       "teiDirection": "separate derived-value semantic contract, evaluator realization, materialized cache, and Relation use; keep benchmark dynamic-reference occurrence unresolved until exact source mapping confirms it"
     },
     {
       "id": "RMP-030",
       "topic": "post-hoc-semantic-reconstruction",
-      "observed": "Watanabe warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
+      "observed": "The referenced analysis warns that an AI-ready semantic/ontology layer reconstructed from database definitions, application source and documents cannot reliably recover business meaning when the underlying structured model no longer expresses the relevant functional dependencies; RMT itself reconstructs candidates from legacy XML, code and prose",
       "risk": "a coherent AI-generated semantic graph can be mistaken for original or accepted system meaning, turning the importer or knowledge layer into a second canonical authority",
       "teiDirection": "keep source-faithful observation, AI-derived candidate and accepted semantic meaning as separate authority stages; require provenance and Shared Acceptance before reconstructed meaning enters authoritative Source"
     },
     {
       "id": "RMP-031",
       "topic": "identifier-field-without-identity-contract",
-      "observed": "Watanabe's 2026-09 critique distinguishes retaining legacy business identifiers as ordinary identifier attributes from actually preserving the uniqueness and functional-dependency structure that made them business identifiers",
+      "observed": "The referenced 2026-09 critique distinguishes retaining legacy business identifiers as ordinary identifier attributes from actually preserving the uniqueness and functional-dependency structure that made them business identifiers",
       "risk": "migration or interoperability can appear identity-preserving because identifier values survive while uniqueness scope, temporal validity, relation semantics, and impact analysis are lost",
       "teiDirection": "treat identifier-like fields as source facts only; promote them to accepted business occurrence identity or candidate key only with explicit uniqueness scope, source/contract responsibility, temporal conditions, and relation/constraint evidence"
     },
     {
       "id": "RMP-032",
       "topic": "service-connectivity-vs-logical-data-integration",
-      "observed": "Watanabe's 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
+      "observed": "The referenced 2026-07 argument separates service-oriented data linkage from the harder task of designing one logically coherent data structure across organizational systems",
       "risk": "API/message connectivity can be reported as integration while business identity, relation, constraint, and ownership remain fragmented across systems",
       "teiDirection": "allow N:M Database/Service topology while preserving cross-system logical identity, relation, constraint, ownership, and provenance; do not require a single physical database and do not treat connectivity alone as semantic integration"
     },
@@ -238,23 +238,128 @@
     {
       "id": "RMP-034",
       "topic": "representation-vs-business-identity",
-      "observed": "Watanabe's 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
+      "observed": "The referenced 2026-09 proposal for name variants separates a person's socially significant original representation from the simplified character representation used operationally by administrative systems",
       "risk": "normalization, variant replacement, case folding, or code conversion can be mistaken for proof that two source values identify the same business occurrence, or representation differences can be mistaken for distinct identity",
       "teiDirection": "preserve exact source representation when required, keep normalized/search/rendering representations separate, and require an explicit scoped equivalence policy or mapping before representation equality contributes to business identity evidence"
     },
     {
       "id": "RMP-035",
       "topic": "as-is-observation-vs-target-design",
-      "observed": "Watanabe argues that detailed current-state analysis can bias redesign toward preserving the current system; RMT intentionally increases the fidelity of legacy observation",
+      "observed": "The referenced analysis argues that detailed current-state analysis can bias redesign toward preserving the current system; RMT intentionally increases the fidelity of legacy observation",
       "risk": "a high-quality source-faithful transcription can be mistaken for the desired TEI design, preserving accidental legacy topology and runtime constraints precisely because they are now well understood",
       "teiDirection": "keep source observation, target Proposal and Accepted To-Be as separate authority stages; retain compatibility and migration evidence without copying As-Is structure into Desired by default"
     },
     {
       "id": "RMP-036",
       "topic": "semantic-discovery-vs-deterministic-lowering",
-      "observed": "Watanabe distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
+      "observed": "The referenced analysis distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
       "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
       "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
+    },
+    {
+      "id": "RMP-037",
+      "topic": "missing-or-duplicate-source-identity",
+      "observed": "legacy Xead XML can be malformed, partially merged, or hand-edited so that Table, Field, TableKey, or Relationship identifiers are missing or duplicated; lookup-based importers can otherwise overwrite one occurrence with another or notice missing identity only when a downstream reference happens to touch it",
+      "risk": "source order, traversal order, or absence of a referencing path can determine whether invalid source identity is noticed, and downstream key/relation resolution can bind to an arbitrary duplicate occurrence",
+      "teiDirection": "diagnose missing and duplicate source identities directly from source facts; do not collapse duplicate Table/Field/Key/Relationship IDs into one semantic result, do not borrow metadata from an arbitrary occurrence, and keep dependent meaning unresolved"
+    },
+    {
+      "id": "RMP-038",
+      "topic": "observed-facts-vs-lowering-readiness",
+      "observed": "source-faithful inspection intentionally preserves relational facts even when diagnostics show missing, duplicate, mismatched, or otherwise unresolved relational structure",
+      "risk": "a downstream importer can treat the mere presence or count of extracted facts as proof that those facts are safe inputs to deterministic semantic lowering",
+      "teiDirection": "publish global relational resolution status separately from observed facts; keep unresolved facts as Evidence and block full-set deterministic semantic lowering while diagnostics remain. Per-fact local readiness is handled separately and must not convert unresolved or unvalidated facts into lowerable inputs"
+    },
+    {
+      "id": "RMP-039",
+      "topic": "business-occurrence-vs-history-version-identity",
+      "observed": "Watanabe's temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
+      "risk": "reference transfer can promote version/history selectors into business occurrence identity, erase the distinction between an occurrence and its versions, or impose history structure on domains that do not require it",
+      "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
+    },
+    {
+      "id": "RMP-051",
+      "topic": "global-fail-closed-vs-local-lowering-readiness",
+      "observed": "a mature reference model can contain one malformed or unresolved relational area while unrelated TableKey, Relationship, runtime Key, or Refer facts remain structurally consistent; treating any single diagnostic as proof that every relational fact is unusable preserves safety but makes full-reference transcription unnecessarily all-or-nothing",
+      "risk": "a global unresolved flag can either block useful independent transfer indefinitely or tempt later code to bypass the global gate wholesale, losing the fail-closed dependency boundary",
+      "teiDirection": "retain a global fail-closed status for full-set lowering, but derive per-fact resolved/unresolved/unvalidated readiness with diagnostic propagation through Key/Relationship dependencies; only locally resolved facts are eligible for deterministic lowering, local readiness never grants Canonical or business-semantic authority, and readiness Evidence records the resolution-policy revision so algorithm changes are not mistaken for source changes"
+    },
+    {
+      "id": "RMP-040",
+      "topic": "secondary-construct-silent-drop",
+      "observed": "Full exact-source traversal found source constructs that were absent from the initial transcription map: Xead TableType, SubsystemTable, SubsystemRelationship, IOPanelField, IOPanelStyle, IOSpoolStyle, MaintenanceLog; Xeaf HeaderPhrase, Phrase, Option, PrintFont, BatchField, AddRowListColumn, AddRowListButton, MaintenanceLog. IOPanelStyle alone occurs 5,328 times.",
+      "risk": "A transfer can appear complete while silently discarding presentation, source-history, diagram-membership, menu/navigation, or helper interaction data that was not included in the first semantic inventory.",
+      "teiDirection": "make the Source Adapter account for every XML construct before semantic classification; preserve non-semantic constructs as presentation/projection/provenance/native facts instead of promoting them to Core or dropping them"
+    },
+    {
+      "id": "RMP-041",
+      "topic": "xml-level-silent-drop",
+      "observed": "The initial Source Adapter accounted for XML elements and attributes but not comments, processing instructions, directives, or namespace-qualified lookalikes. The benchmark snapshots contain one processing instruction each (their XML declarations) and no comments/directives/namespaced elements.",
+      "risk": "A future or alternate source can carry extension metadata or provenance outside ordinary elements, or a namespaced lookalike can be mistaken for a known Xead/Xeaf construct when only the local element name is checked.",
+      "teiDirection": "account for XML markup and namespace-qualified elements explicitly; keep raw markup local, publish count-only evidence, and require unknown/namespaced observations to keep classification coverage incomplete"
+    },
+    {
+      "id": "RMP-042",
+      "topic": "presentation-volume-vs-semantic-context",
+      "observed": "Aggregate transcription accounting assigns 5,629 of 8,718 Xead elements and 3,361 of 4,053 Xeaf elements to the Presentation Extension; Xead IOPanelStyle alone accounts for 5,328 elements.",
+      "risk": "A source-faithful adapter or AI authoring context can become dominated by presentation/realization detail, increasing context, storage, browser and editor cost while hiding the smaller set of semantic decisions that require review.",
+      "teiDirection": "preserve presentation source losslessly through a projection/presentation extension, but index and load it lazily; AI/Editor semantic context should request only the subject/dependency closure and fetch presentation/native detail on demand rather than materializing the full source graph"
+    },
+    {
+      "id": "RMP-043",
+      "topic": "relationship-type-specific-key-shape",
+      "observed": "Exact benchmark accounting shows all 51 REFFER relationships use equal-arity PK/SK-to-FK key shapes and both SUBTYPE relationships use equal-arity PK-to-PK shapes, while all 27 FAMILY relationships use a strictly larger target PK. XeadModeler classifies the larger target PK/SK containing source-equivalent key fields as FAMILY.",
+      "risk": "A generic relationship validator that requires equal key cardinality or positional zip for every relationship type rejects all FAMILY relationships or maps the wrong subset of child key fields.",
+      "teiDirection": "make legacy relationship correspondence type-aware: equal-arity matching is valid pressure for REFFER/SUBTYPE, while FAMILY requires containment/extension semantics; preserve source key shape as evidence and keep accepted business identity/FD semantics separate"
+    },
+    {
+      "id": "RMP-044",
+      "topic": "business-step-multi-function-composition",
+      "observed": "Of 148 TaskActions, 6 have no TaskFunctionIO, 10 reference one unique Function, and 132 reference two to five Functions; 407 TaskFunctionIO rows form 369 distinct Action/Function pairs.",
+      "risk": "Mapping a Business Action to one Function loses the normal composition structure of the reference model and can incorrectly attribute one Function's CRUD, transaction or UI behavior to the whole step.",
+      "teiDirection": "represent a Business Action as an ordered/evidenced composition of zero or more Function/Capability uses; keep target I/O interactions and Function-level potential Data access separate from accepted action-specific effects"
+    },
+    {
+      "id": "RMP-045",
+      "topic": "function-use-graph-cycle-vs-procedure-order",
+      "observed": "The 289 declared FunctionUsedByThis edges all resolve structurally, but the graph contains four multi-node strongly connected components covering nine Functions.",
+      "risk": "Treating declared Function use as an acyclic dependency graph or Business Procedure order can invent a topological sequence and misclassify navigation/call relationships as recursive execution.",
+      "teiDirection": "preserve Function-use edges as source-backed interaction/dependency evidence; support cycles and require separate runtime or Business Procedure evidence before interpreting them as call-stack recursion or step order"
+    },
+    {
+      "id": "RMP-046",
+      "topic": "business-procedure-runtime-correspondence-fragmentation",
+      "observed": "Among 148 TaskActions, 57 have Function uses whose Xead design Functions all have structural Xeaf counterparts, 68 mix Functions with and without counterparts, 17 use only Functions without counterparts, and 6 have no Function use. Across 128 business-referenced Xead Functions, 116 have a structural Xeaf correspondence and 12 do not.",
+      "risk": "Treating Runtime correspondence as a property of the whole Business Procedure or assuming every design Function must have one executable counterpart can drop valid design steps, hide implementation drift, or incorrectly mark a partially implemented action as fully executable.",
+      "teiDirection": "reconcile design Function/Capability uses independently and preserve partial realization status at the action/use edge; Business Procedure meaning remains authoritative separately from target/runtime realization completeness"
+    },
+    {
+      "id": "RMP-047",
+      "topic": "public-receipt-schema-name-disclosure",
+      "observed": "The Source Adapter keeps source values and text out of PublicationReceipt, but the current public projection still emits arbitrary unknown element local names through elementCounts/unknownElements and arbitrary attribute names through attributeNameCounts. Exact benchmark sources currently report no unknown elements, so this disclosure pressure is invisible in the benchmark happy path.",
+      "risk": "Enterprise-specific Xead/Xeaf extensions can encode proprietary business vocabulary or local schema information in element or attribute names. A receipt described as public-safe can therefore disclose source-derived names even when values, text, legacy IDs, and structural locators are redacted.",
+      "teiDirection": "keep exact unknown element/attribute names in local ObservedDocument only; public Evidence must preserve their existence and determinism through aggregate counts and stable set fingerprints or other non-reversible summaries. Known standard Xead/Xeaf schema names may remain public only when their publication basis is independently established. Classification and unresolved accounting must not require arbitrary unknown names to be published."
+    },
+    {
+      "id": "RMP-048",
+      "topic": "qualified-source-name-vs-local-name-semantic-bleed",
+      "observed": "The XML reader correctly marks namespaced lookalikes such as x:TableKey or x:Refer as unknown, but source-fact extraction originally switched only on the local element name and could still emit standard Xead/Xeaf key/reference facts from those unknown nodes.",
+      "risk": "A parser can appear namespace-safe at the construct inventory layer while a later projection silently re-promotes an extension element into standard legacy semantics. Unknown/vendor constructs then acquire false relational or runtime authority without an explicit mapping.",
+      "teiDirection": "all semantic/source-fact extractors must consume the reader's qualified-name/known-state decision, not reclassify by local name alone; unknown or namespaced constructs remain opaque source observations until an explicit adapter mapping accepts them."
+    },
+    {
+      "id": "RMP-049",
+      "topic": "redacted-name-recovery-through-structural-locator-digest",
+      "observed": "PublicationReceipt v2 removed arbitrary unknown element and attribute names from public fields, but the earlier public LocatorDigest hashed artifact SHA plus the local structural path. Structural paths contain element names, so an attacker who knows the public artifact digest and plausible low-entropy extension names can test candidate paths against published locator digests.",
+      "risk": "Direct schema-name redaction can be bypassed through deterministic path hashes, especially for shallow XML locations and predictable enterprise vocabulary. A public-safe receipt can therefore remain dictionary-recoverable even when no source name appears in clear text.",
+      "teiDirection": "keep exact name-bearing SourceLocator local; derive public locator tokens from exact artifact identity plus traversal ordinal or another name-independent snapshot address. Fact and unresolved correlation may use that token, but public locator identity must not hash source-derived names."
+    },
+    {
+      "id": "RMP-050",
+      "topic": "serializer-redaction-vs-public-artifact-type-boundary",
+      "observed": "An intermediate PublicationReceipt v2 candidate hid local schema accounting behind json:\"-\" fields. JSON serialization was redacted, but the in-memory object still carried exact unknown element/attribute names and could expose them through alternate serializers, structured logging, reflection, debugging, or later code that mistakes the type for public-safe data.",
+      "risk": "A publication boundary implemented only as serializer annotations becomes representation-dependent. Private source detail can cross the boundary without changing the nominal public artifact type, making accidental disclosure and authority confusion easier.",
+      "teiDirection": "make public-safe artifact types structurally incapable of carrying private source detail. Keep lossless names/values/locators in ObservedDocument or another explicitly local type; derive public receipt/classification/coverage from local observation and copy only publication-approved fields."
     }
   ]
 }

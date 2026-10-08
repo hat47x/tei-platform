@@ -4,6 +4,7 @@
 - 起票日: 2026-10-06
 - GitHub Issue: #943
 - 関連: `docs/plugins.md` / `docs/conformance/plugin-runtime-m0.22.1.md` / ISSUE-000077 / ISSUE-000080 / GitHub #957 / ADR-0022 / ADR-0028
+- 関連RQ: RQ-021 / RQ-023 / RQ-034
 
 ## 背景
 
@@ -31,6 +32,8 @@ authoritative Plugin / implementation Source
 Build可能であることは、artifactをAccepted Plugin Lockへ採用できることやRuntimeでinvokeできることを意味しません。Authoring / Acceptance / Build / RuntimeのAuthorityは分離します。
 
 また、Plugin package identity、Capability identity、physical artifact identityを一対一には固定しません。複数Pluginを一つのartifactへまとめるTarget最適化や、一つのlogical PluginをTargetごとに異なるartifactへrealizeする構成を許容します。
+
+Self-buildの実行にTEI Studioや特定のAgent Adapterを必須にしません。clean checkoutから通常のCLI / Repository Toolで再実行できることを基準にし、ChatGPT等のチャット実行環境、Codex、Claude Code、CI等も同じRepository contractを利用できる構造にします。Agent Sessionや一般的なTest状態をBuild Lockへ持ち込まず、Build再現性に必要なSource / builder / dependency / artifactの情報だけを扱います。
 
 ## Self-buildの到達段階
 
@@ -177,12 +180,16 @@ builderのstage0 / stage1 / stage2を実行し、同一Sourceからのconvergenc
 - Web / Desktop等のTarget差でもlogical Plugin identityを維持できる。
 - build失敗、unresolved dependency、digest不一致をfail-closedで扱う。
 - clean checkoutから再実行できるRepository Evidenceを残す。
+- TEI StudioやAgent Adapterなしに、通常のCLI / Repository Toolから同じself-build経路を実行できる。
+- Agent Session、Workspace、一般的な検証状態をBuild Plan / Build Lockのidentityへ混ぜない。
 
 ## 非目標
 
 全Pluginを直ちにTEI-nativeへ書き直しません。Go等の既存実装も禁止しません。任意shell scriptを標準Build contractにはしません。
 
 Runtime PluginとSemantic Extensionも再統合しません。Build成功だけでartifactをAccepted状態へ昇格させず、stage0 seedが不要になったとも主張しません。
+
+また、self-buildのために専用Agent Runtimeや常駐Adapterを必須にしません。開発ToolやCIが所有するSession / Job状態をTEIのBuild modelへ複製することも非目標です。
 
 ## 外部設計から採るもの
 
@@ -372,3 +379,144 @@ Runtime Plugin LockへSource closureやbuilderの詳細を複製しません。e
 format 2は引き続き読み取り可能です。format 3では`buildPlanFingerprint`が存在する場合、その値が64桁hexでなければ拒否します。package outputをRuntime Lockへbindすること、artifact digestが一致しないbuildをbindすること、既に別Build Planへbind済みのentryを書き換えることもfail-closedにします。
 
 これにより、Plugin Lock fingerprint自体がBuild Plan bindingを含むため、Durable Invocationが保持するPlugin Lock fingerprintからself-build provenanceへ戻れる経路を維持できます。
+
+
+## 2026-10-07 E3 candidate — TEI-native interpreted Plugin realization
+
+E3では、Plugin descriptorだけでなく実装Source自体をTEI-nativeに保持し、Runtimeで利用できるrealizationへ変換する最初のReferenceを#957 / Draft PR #969で進めます。
+
+最初の`static-response-v1`は汎用言語ではありません。一つのPlugin Definition、一つの`deployment-executor` Capability、一つのvalidなdeployment Action、一つの`execute` operationだけを許します。Permission、Plugin runtime dependency、external runtime dependencyは許可しません。
+
+responseからHost-ownedな`executorId`、`actionId`、`idempotencyKey`、`pluginInvocation`を設定できません。`externalRef`や`observedAt`で外部世界を観測したように主張することもできません。
+
+implementation SourceはCanonicalな`ir.World`へ追加せず、Plugin専用の`plugin-implementations` source rootから読み込み、Source Indexでは`RoleImplementation`として追跡します。
+
+### Source → artifact bytes → Runtime
+
+TEI-native Sourceはdeterministic realization manifestへmaterializeします。invalid UTF-8、duplicate JSON key、複数top-level value、過剰nesting、unsupported fieldをfail-closedで拒否します。
+
+Runtime adapterはauthoring時のSource objectを直接実行しません。Lock対象のexact realization bytesを再parseし、format version、Source fingerprint、canonical bytes、Runtime Definition artifact digestを照合した後だけ既存`runtime.Builtin` ABIへ変換します。
+
+```text
+TEI-native Source
+  -> canonical realization bytes
+  -> BuildArtifactLock
+  -> Runtime Plugin Lock v3
+  -> exact realization bytesを再parse
+  -> existing runtime.Builtin ABI
+```
+
+authoritative Plugin Definitionはartifact-freeのまま保持し、build後にだけderived Runtime Definitionへartifact digestを結び付けます。
+
+native realizationはrunner内部のhelperで直接生成せず、`tools/reference-native-plugin-builder`を隔離Go stateで2回buildします。builder binary digest一致を要求し、そのexact digestをBuild Planの`BuilderIdentity.ArtifactDigest`へ入れます。Go toolchainはnative PluginのBuilder artifactではなく、このReference builderを生成するstage0 seed側のEvidenceとして残します。
+
+builder processは空のenvironmentで実行しますが、OS sandboxやnetwork namespaceで隔離したとは主張しません。hermetic build executionは#943の既存Reproducibility / hermeticity要件として残します。
+
+build-bound BuiltinではHost-owned `BuiltinRegistration`がBuild Plan fingerprintとrealization digestを保持し、Lockと不一致ならInvoke前に停止します。preflightで受理したBuiltin instanceをInvokeまで保持し、registration差替えによるTOCTOUも避けます。
+
+### interpreted realizationという限界
+
+E3の`runtime-artifact`はstandalone executableではなく、Host内のgeneric interpreter / Builtin adapterが解釈するartifactです。完全なexecution identityはrealization digestだけでは決まりません。
+
+```text
+execution identity
+  = Plugin realization artifact
+  + Runtime Engine / interpreter
+  + Host acceptance
+```
+
+現在のReferenceではRepository全体を保守的なBuild Plan Source closureに含めるためengine Source変更もBuild Plan fingerprintへ波及します。ただしproductionのexact Runtime Engine identityを独立に固定できたことは意味しません。この不足は#973で追跡します。
+
+#973が解決するまでは、standalone executable相当のSB-2達成、realization digest単独による完全なruntime behavior固定、engine差替えへのreplay safety、Web / Wasm engine bindingを主張しません。
+
+#971でfocused test、self-build Evidence v1、既存SB-1 / Go process SB-2 regression、TEI-native actual invocation、full Repository Health、clean pre/post stateを確認します。actual Evidenceが得られるまでは#969をReady化・mergeしません。
+
+### 2026-10-07 SB-1 builder identity再監査
+
+E3でexact native builder identityを導入した後、SB-1 package materializationにも同じ問題が残っていることを確認しました。runner内のGo helperがpackageを生成しているにもかかわらず、Build PlanではGo toolchain digestをBuilder artifactとしていました。
+
+この非対称性を解消するため、`tools/reference-plugin-package-builder`を追加します。runnerはこのbuilderをisolated Go stateで2回buildし、binary digest一致を確認します。そのexact builder digestをSB-1 Build Planへ入れ、first / second builderからpackageを各1回生成してpackage bytes / digest一致を要求します。
+
+Go toolchainはSB-1 packageの直接Builderではなく、Reference builderを生成するstage0 seed側のEvidenceとして扱います。これによってSB-1とTEI-native E3でBuilder identityの意味を揃えます。
+
+ただし、builder executable自体のSB-3 stage convergenceやOS-level hermetic executionが成立したという主張はしません。
+
+
+### 2026-10-08 Runtime Engine Lock candidate — #973
+
+TEI-native E3のinterpreted realizationでは、realization artifactだけでruntime behaviorを固定できません。generic interpreter / Host adapterのidentityを別に固定する必要があります。
+
+このため候補実装では、Plugin Lockと別に`RuntimeEngineLock`を導入します。
+
+`RuntimeEngineIdentity`は次を持ちます。
+
+- engine ID
+- version
+- contract version
+- implementation digest
+- Target
+
+Runtime EngineをPluginの`Requires`やBuild dependencyへ入れません。Plugin realizationのBuild Planと、実行時に選ばれるengineは別のAuthorityです。
+
+`RuntimeEngineLock`はPlugin identityからexpected engine identityへのbindingだけを保持します。Lock fingerprintをEnvironment Planへ記録し、RuntimePolicyFingerprintにも含めます。build-bound Builtinはengine bindingが欠けていれば実行しません。
+
+Host-owned `BuiltinRegistration`はexpected engine identityと一致しなければ拒否します。Invocation Provenanceにはengine identity fingerprintとRuntime Engine Lock fingerprintを残し、`ValidateDeploymentInvocation`で再検証します。
+
+Referenceではengine implementation digestを、限定したengine Source closureとGo toolchain digestから生成します。Repository全体をengine identityへ含めず、無関係なHost変更によるstale化を避けます。
+
+ただし、このdigestはexact linked machine-code artifactではありません。そのため#973のうち次は未達です。
+
+- actual loaded engine imageのdigest / attestation
+- executable / linked artifactとしてのengine Build Evidence
+- Web / Wasm等、別engine Targetとのexchange
+- production Host側での独立artifact verification
+
+したがって、Runtime Engine Lock候補によりengine driftを明示検知できる構造は得ますが、#973完了やstandalone executable相当のSB-2達成はまだ主張しません。
+
+
+### 2026-10-08 SB-3 read-only convergence model
+
+E3のactual qualificationが未完了のため、SB-3のbuilder execution runnerはまだ実装しません。一方、stage0 / stage1 / stage2をEvidenceとして混同しないためのread-only modelを`internal/plugin/bootstrap.go`へ追加しました。
+
+`BootstrapConvergenceEvidence`は次を明示します。
+
+```text
+stage0 trusted seed
+  -> stage1
+       builder = exact stage0 seed
+       source closure = S
+       output = current builder artifact B1
+
+stage2
+  builder = exact B1
+  source closure = same S
+  output = current builder artifact B2
+
+convergence
+  B1 digest == B2 digest
+```
+
+比較前に次をfail-closedで要求します。
+
+- stage0 seedのexact BuilderIdentity
+- stage1のbuilderがstage0 seedと一致
+- stage2のbuilderがstage1 outputと一致
+- stage1 / stage2が同じSource closureを使う
+- stage1 / stage2のoutput builder ID / version / contract versionが同じ
+-各stageのBuild Plan fingerprintが固定されている
+
+artifact digestが一致しない場合、それ自体をinvalid Evidenceにはしません。比較条件が同一なら`Converged=false`としてstage1 / stage2 digest差を残します。再現性不一致をvalidation errorへ潰して差分Evidenceを失わないためです。
+
+逆にSource closureやlogical builder identityが違う場合は、そもそもconvergence比較として成立しないためerrorです。
+
+stage1 / stage2がbit-for-bit一致しても、stage0 seedのtrustが証明されたとは扱いません。stage0 identityはEvidenceに残し続けます。
+
+現時点でこのmodelが主張しないもの:
+
+- TEI-native builder自身の実装が完成した
+- stage1 / stage2をactualに実行した
+- semantic equivalence convergenceを定義した
+- stage0 seedを不要にした
+- SB-3を達成した
+
+actual bootstrap runnerは#971 E3 Evidence成立後、builder implementation境界と#973 Runtime Engine identityの残件を踏まえて接続します。

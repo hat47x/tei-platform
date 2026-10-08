@@ -122,3 +122,21 @@ func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testi
 		t.Fatalf("key facts were inferred from names: %#v", got)
 	}
 }
+
+func TestExtractRelationalSourceFactsDoesNotChooseMetadataFromDuplicateFieldID(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" AttributeType="NATIVE" DataTypeID="D1"/><TableField ID="A" AttributeType="DERIVABLE" DataTypeID="D2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.LegacyKeys) != 1 || len(got.LegacyKeys[0].Members) != 1 {
+		t.Fatalf("legacy key source fact is missing: %#v", got)
+	}
+	member := got.LegacyKeys[0].Members[0]
+	if member.FieldLegacyID != "A" {
+		t.Fatalf("key member identity drifted: %#v", member)
+	}
+	if member.AttributeType != "" || member.DataTypeLegacyID != "" {
+		t.Fatalf("duplicate field metadata was chosen implicitly: %#v", member)
+	}
+}

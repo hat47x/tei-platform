@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/plugin"
+	"tei/internal/plugin/implementation"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/stdlib"
@@ -35,10 +36,12 @@ type SourceContribution struct {
 }
 
 type Result struct {
-	World               ir.World
-	Sources             map[string]SourceLocation
-	ManagedFiles        []ManagedFile
-	SourceContributions []SourceContribution
+	World                       ir.World
+	PluginImplementations       []implementation.Source
+	PluginImplementationSources map[string]SourceLocation
+	Sources                     map[string]SourceLocation
+	ManagedFiles                []ManagedFile
+	SourceContributions         []SourceContribution
 }
 
 func Load(root string) (Result, error) {
@@ -60,7 +63,7 @@ func Load(root string) (Result, error) {
 	} else {
 		return Result{}, fmt.Errorf("TEI workspace manifest not found: expected %s", manifestYAML)
 	}
-	r := Result{Sources: map[string]SourceLocation{}}
+	r := Result{Sources: map[string]SourceLocation{}, PluginImplementationSources: map[string]SourceLocation{}}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	for _, sourceRoot := range roots {
@@ -69,6 +72,12 @@ func Load(root string) (Result, error) {
 			if err := loadPlugins(root, &r); err != nil {
 				return Result{}, err
 			}
+		case "plugin-implementations":
+			if err := loadPluginImplementations(root, &r); err != nil {
+				return Result{}, err
+			}
+		case "implementations":
+			return Result{}, fmt.Errorf("workspace source root %q is ambiguous; use plugin-implementations for Plugin implementation Source", sourceRoot)
 		case "bundles":
 			if err := loadBundles(root, &r); err != nil {
 				return Result{}, err
@@ -105,6 +114,9 @@ func Load(root string) (Result, error) {
 		default:
 			// Other source roots are accepted for forward-compatible workspace layout.
 		}
+	}
+	if err := validatePluginImplementationDefinitions(&r); err != nil {
+		return Result{}, err
 	}
 	Normalize(&r.World)
 	r.ManagedFiles = scanManagedFiles(root, roots)

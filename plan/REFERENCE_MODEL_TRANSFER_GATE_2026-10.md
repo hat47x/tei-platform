@@ -10,7 +10,7 @@
 
 TEIが小規模な自作Referenceだけに適合した基盤ではなく、長年の実務設計で使われてきた成熟した業務システムモデルを受け止められることを実証する。
 
-最初のbenchmarkには、渡辺幸三氏のX-TEA / XEAD系Reference Modelである「CONCEPTWARE／受注生産」を用いる。目的はX-TEA互換製品を作ることでも、X-TEAのschemaをTEI Coreへ複製することでもない。
+最初のbenchmarkには、X-TEA / XEAD系Reference Modelである「CONCEPTWARE／受注生産」を用いる。目的はX-TEA互換製品を作ることでも、X-TEAのschemaをTEI Coreへ複製することでもない。
 
 確認したいのは次である。
 
@@ -28,11 +28,11 @@ TEIが小規模な自作Referenceだけに適合した基盤ではなく、長�
 
 したがって本Gateは、単なるImporter互換試験ではなく、TEIの中心価値に対する規模・複雑性・異質性のpressure testである。
 
-渡辺氏の設計思想をTEI Architectureへどう翻訳するかという一般的な設計整理は[Watanabe Business System Design Pressure](design/watanabe-business-system-design-pressure.md)を正本とする。本Gateはその解釈を重複所有せず、実Reference Model全体で成立するかを反証可能なEvidenceにする責務を持つ。
+参照した外部設計資料の知見をTEI Architectureへどう翻訳するかという一般的な設計整理は[外部設計資料の評価](design/watanabe-business-system-design-pressure.md)を正本とする。本Gateはその解釈を重複所有せず、実Reference Model全体で成立するかを反証可能なEvidenceにする責務を持つ。
 
 ## 3. Source baselineとprovenance
 
-### 3.1 渡辺幸三氏のGitHub source
+### 3.1 公開GitHub source
 
 設計・実装上の一次sourceとして、次のRepositoryをexact revisionで読む。
 
@@ -156,6 +156,12 @@ Projection
 
 構造をTEI表現へ転写し、source nodeごとに次へ戻れるようにする。
 
+relational sourceについては、source factの観測とlowering readinessを分ける。全体の`relationalResolutionStatus`はfull-set loweringのfail-closed判定として保持し、各top-level relational factには別途`resolved / unresolved / unvalidated`のResolution Projectionを持たせる。`resolved`は構造diagnosticが残っていないことだけを示し、Canonical meaningやbusiness-semantic Acceptanceではない。`unvalidated`は現行validatorでは安全なlowering資格を判断できない状態であり、`resolved`へ丸めない。
+
+Reference Model規模でpartial deterministic loweringを行う場合は、explicitにlocal `resolved`なfactだけを対象とし、Key memberからRelationshipへのdiagnostic伝播やglobal source identity diagnosticを迂回しない。
+
+readiness Evidenceには判定algorithmのrevisionも必要である。同じsource artifact digestとtranscription contract fingerprintでも、diagnostic propagationやlocal readiness算法が変われば結果は変わり得るため、`relationalResolutionPolicyRevision`をEvidenceへ残す。このrevisionはalgorithm provenanceであり、Semantic authorityではない。
+
 ~~~text
 source artifact + source locator
         ↓
@@ -277,7 +283,7 @@ execution-evidence/
 
 各artifactには、少なくともsource artifact digest、transcriber / mapping contract version、TEI repository revision、accepted / derived / unresolvedのnatureを保持する。
 
-`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。source locatorも、網羅的な名称・説明・配列を再現するものではなく、可能な限りlegacy ID、構造位置、locator digest等の最小情報で表す。公開範囲は[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
+`transcription-map.json`はsource contentsのコピーではなく、source locatorとTEI側の対応関係を表す。exact locatorやlegacy IDを必要とする情報はlocal/private Evidenceとして保持し、public artifactでは名称を含む構造pathや、その単純hashを公開しない。公開側で相関用の識別子が必要な場合は、source digestやtraversal ordinal等から作るopaque tokenへ縮約する。公開範囲は[CONCEPTWARE Reference Model公開境界](REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md)に従う。
 
 ## 10. 判定
 
@@ -293,6 +299,7 @@ execution-evidence/
 6. native Script / SQL等を保持する場合、そのSource、依存、Capability、権限、effectの未解決点へ辿れる。
 7. original X-TEA runtimeでのactual behavior比較が必要な項目は、actual実行したか、未取得Evidenceとして明示されている。
 8. Reference Modelの利用条件と公開Evidenceの境界が確認されている。
+9. relational sourceのfull-set fail-closed statusとper-fact local readinessが分離され、局所異常を理由に無関係factを意味不明へ丸めず、かつunresolved / unvalidated factをpartial loweringへ混入させない。
 
 ### Readyであっても主張しないこと
 

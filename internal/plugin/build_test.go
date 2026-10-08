@@ -621,3 +621,92 @@ func TestVerifyRuntimePluginBuildRequiresBuildPlanBinding(t *testing.T) {
 		t.Fatal("expected unbound runtime lock to fail")
 	}
 }
+
+func TestBuildPlanInputFingerprintIgnoresExactBuilderIdentity(t *testing.T) {
+	a := buildPlanFixture()
+	b := buildPlanFixture()
+	b.Builder = plugin.BuilderIdentity{
+		ID:              core.MustCanonicalID("tei.builder.other"),
+		Version:         "other",
+		ContractVersion: a.Builder.ContractVersion,
+		ArtifactDigest:  buildDigestB,
+	}
+
+	afp, err := plugin.BuildPlanInputFingerprint(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bfp, err := plugin.BuildPlanInputFingerprint(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afp != bfp {
+		t.Fatalf("builder identity changed bootstrap build-input fingerprint: %s != %s", afp, bfp)
+	}
+
+	fullA, err := plugin.BuildPlanFingerprint(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullB, err := plugin.BuildPlanFingerprint(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fullA == fullB {
+		t.Fatal("exact Build Plan fingerprint did not change with builder identity")
+	}
+}
+
+func TestBuildPlanInputFingerprintChangesForNonBuilderInput(t *testing.T) {
+	base := buildPlanFixture()
+	baseFP, err := plugin.BuildPlanInputFingerprint(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		edit func(*plugin.BuildPlan)
+	}{
+		{"builder contract", func(p *plugin.BuildPlan) {
+			p.Builder.ContractVersion = "tei.plugin-build/v2"
+		}},
+		{"source", func(p *plugin.BuildPlan) {
+			p.Sources[0].Digest = buildDigestB
+		}},
+		{"definition", func(p *plugin.BuildPlan) {
+			p.PluginDefinitionFingerprint = buildFPB
+		}},
+		{"recipe", func(p *plugin.BuildPlan) {
+			p.Recipe.Entrypoint = "./tools/other"
+		}},
+		{"output kind", func(p *plugin.BuildPlan) {
+			p.OutputKind = plugin.BuildOutputPluginPackage
+		}},
+		{"dependency", func(p *plugin.BuildPlan) {
+			p.Dependencies[0].Version = "9.9.9"
+		}},
+		{"target", func(p *plugin.BuildPlan) {
+			p.Target = "wasm-component"
+		}},
+		{"profile", func(p *plugin.BuildPlan) {
+			p.Profile = "other"
+		}},
+		{"parameter", func(p *plugin.BuildPlan) {
+			p.Parameters[0].Value = "false"
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plan := buildPlanFixture()
+			tt.edit(&plan)
+			got, err := plugin.BuildPlanInputFingerprint(plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got == baseFP {
+				t.Fatal("non-builder input change did not change bootstrap build-input fingerprint")
+			}
+		})
+	}
+}

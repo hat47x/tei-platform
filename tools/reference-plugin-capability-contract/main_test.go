@@ -35,6 +35,7 @@ func evidenceFor(provider Provider, contract Contract, marker string) Conformanc
 		PluginID:            provider.PluginID,
 		PluginVersion:       provider.PluginVersion,
 		ImplementationID:    provider.ImplementationID,
+		ArtifactDigest:      provider.ArtifactDigest,
 		ContractFingerprint: fingerprint(contract),
 		ConformanceProfile:  contract.ConformanceProfile,
 		EvidenceFingerprint: marker,
@@ -217,5 +218,103 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
 		t.Fatalf("contract drift was accepted: %v", err)
+	}
+}
+
+func runtimeContract() Contract {
+	return Contract{
+		ID:                 "runtime.contract-query-executor",
+		Version:            "1.0.0",
+		RequestSemantics:   "contract-query-with-bound-parameters",
+		ResultSemantics:    "rows-or-explicit-unresolved",
+		FailureSemantics:   "execution-error-is-not-empty-result",
+		ConformanceProfile: "tei.reference.contract-query-executor/v0",
+	}
+}
+
+func TestAuthoringToolProviderCannotSatisfyRuntimeRequirement(t *testing.T) {
+	contract := runtimeContract()
+	provider := sourceAdapterProvider(contract, ScopeAuthoringTool, "reference.compat.xead.source", "xead.reader.v0")
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeApplicationRuntime,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{provider},
+		Evidence:    []ConformanceEvidence{evidenceFor(provider, contract, "evidence-authoring")},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("authoring-tool provider was used as a runtime fallback: %v", err)
+	}
+}
+
+func TestOneLogicalContractCanHaveDistinctPhysicalArtifacts(t *testing.T) {
+	contract := sourceAdapterContract()
+	builtin := sourceAdapterProvider(contract, ScopeAuthoringTool, "reference.compat.xead.source", "xead.reader.v0")
+	wasm := builtin
+	wasm.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+	input := ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{wasm, builtin},
+		Evidence: []ConformanceEvidence{
+			evidenceFor(builtin, contract, "evidence-builtin"),
+			evidenceFor(wasm, contract, "evidence-wasm"),
+		},
+	}
+	// Both artifacts conform to the same contract with their own Evidence.
+	// Choosing between them must not depend on digest ordering.
+	if _, err := resolveCapability(input); err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("two physical artifacts were silently selected: %v", err)
+	}
+	input.Wirings = []Wiring{{
+		ContractID:       contract.ID,
+		PluginID:         builtin.PluginID,
+		PluginVersion:    builtin.PluginVersion,
+		ImplementationID: builtin.ImplementationID,
+	}}
+	if _, err := resolveCapability(input); err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("wiring without an artifact digest picked a physical artifact by ordering: %v", err)
+	}
+	input.Wirings[0].ArtifactDigest = wasm.ArtifactDigest
+	resolution, err := resolveCapability(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolution.Provider.ArtifactDigest != wasm.ArtifactDigest {
+		t.Fatalf("provider=%+v", resolution.Provider)
+	}
+	other, err := resolveCapability(ResolveInput{
+		Scope:       input.Scope,
+		Requirement: input.Requirement,
+		Contracts:   input.Contracts,
+		Providers:   []Provider{builtin},
+		Evidence:    input.Evidence,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.ContractFingerprint != resolution.ContractFingerprint {
+		t.Fatal("the logical contract fingerprint must not depend on the physical artifact")
+	}
+	if other.ResolutionFingerprint == resolution.ResolutionFingerprint {
+		t.Fatal("the resolution identity must record which physical artifact was selected")
+	}
+}
+
+func TestConformanceEvidenceOfOneArtifactIsNotInheritedByAnother(t *testing.T) {
+	contract := sourceAdapterContract()
+	builtin := sourceAdapterProvider(contract, ScopeAuthoringTool, "reference.compat.xead.source", "xead.reader.v0")
+	wasm := builtin
+	wasm.ArtifactDigest = "sha256:" + strings.Repeat("b", 64)
+	_, err := resolveCapability(ResolveInput{
+		Scope:       ScopeAuthoringTool,
+		Requirement: Requirement{ContractID: contract.ID, CompatibleMajor: 1},
+		Contracts:   []Contract{contract},
+		Providers:   []Provider{wasm},
+		Evidence:    []ConformanceEvidence{evidenceFor(builtin, contract, "evidence-builtin")},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no conformant provider") {
+		t.Fatalf("a different artifact inherited Conformance Evidence: %v", err)
 	}
 }
