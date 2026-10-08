@@ -368,6 +368,18 @@ func TestReferenceCommandScenarioFailsClosedForEmptyOrderLineCollection(t *testi
 	}
 }
 
+// A uniqueness rule over no observed detail rows must not be considered proof
+// that an order is ready to submit, even if it is the only selected rule.
+func TestCommandValidationRelationKeysRejectsEmptyDetail(t *testing.T) {
+	_, err := (commandValidationSource{}).RelationKeys(
+		core.MustCanonicalID("sales.order.lines"),
+		core.MustCanonicalID("sales.order_line.line_number"),
+	)
+	if err == nil || !strings.Contains(err.Error(), "empty order-line collection") {
+		t.Fatalf("empty detail was treated as uniqueness evidence: %v", err)
+	}
+}
+
 func TestCommandValidationNumericReadCannotDiscardAdditionalLines(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {
