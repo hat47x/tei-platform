@@ -175,3 +175,13 @@ Publication Receiptで値と本文を除くだけでは十分ではない。企�
 既知のXead / Xeaf標準schema名についても、公開可能性はReference Model本体とは別に根拠を持つ。少なくとも「unknownだからpublicへ名前を出してよい」とは扱わない。
 
 v2 candidateでredaction境界を実装したが、現headのfocused testとfull Repository Healthは未取得である。RMP-047 / RML-022は、redaction testのactual PASSを得るまで停止条件として維持する。
+
+## Public locator redaction
+
+unknown schema名を平文で出さなくても、名称を含むstructural pathをそのままhashして公開すると、候補名が少ない場合に辞書照合できる。したがってpublic locator tokenもSourceLocator.Pathから分離する。
+
+ローカル`ObservedDocument`は従来どおりqualified element名を含むexact structural pathを保持する。public `PublicationReceipt`では、exact artifact SHA-256とXML traversal ordinalからlocator tokenを作る。fact / unresolved itemはこのordinal-based tokenを参照する。
+
+これにより、同じexact source snapshot内の位置をpublic Evidence上で相関できる一方、未知element名やnamespace URIをhash入力へ含めない。source順序が変わればtokenも変わるが、それはsnapshot locatorの変更でありsemantic identity変更とは扱わない。
+
+RMP-049 / RML-024をこの境界の停止条件とする。旧path-based locator digestはPublication Receipt v2へ持ち越さない。
