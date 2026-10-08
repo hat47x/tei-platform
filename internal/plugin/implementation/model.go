@@ -320,8 +320,9 @@ func validateDeploymentExecutorResponse(raw json.RawMessage) error {
 	if err := decoder.Decode(&result); err != nil {
 		return fmt.Errorf("deployment executor response schema: %w", err)
 	}
-	if result.ExecutorID != "" || result.ActionID != "" || result.IdempotencyKey != "" || result.PluginInvocation != nil {
-		return fmt.Errorf("deployment executor response must not set Host-owned invocation identity or provenance")
+	if result.ExecutorID != "" || result.ActionID != "" || result.IdempotencyKey != "" || result.PluginInvocation != nil ||
+		result.ExternalRef != "" || result.ObservedAt != "" {
+		return fmt.Errorf("deployment executor response must not set Host-owned invocation identity, provenance, or external observation")
 	}
 	switch result.Outcome {
 	case executor.OutcomeAccepted, executor.OutcomeRejected, executor.OutcomeUnknown:
