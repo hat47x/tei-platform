@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -460,6 +461,11 @@ func (s commandValidationSource) RelationKeys(
 		}
 		if value == nil {
 			return nil, fmt.Errorf("row %d contains null key %s for relation %s", rowIndex, attribute, relation)
+		}
+		// An empty or whitespace-only key is not an observed identity.
+		// A uniqueness check must not treat missing business identity as evidence.
+		if key, isString := value.(string); isString && strings.TrimSpace(key) == "" {
+			return nil, fmt.Errorf("row %d contains blank key %s for relation %s", rowIndex, attribute, relation)
 		}
 		result = append(result, fmt.Sprint(value))
 	}
