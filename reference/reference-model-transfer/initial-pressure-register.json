@@ -325,6 +325,13 @@
       "observed": "PublicationReceipt v2 removed arbitrary unknown element and attribute names from public fields, but the earlier public LocatorDigest hashed artifact SHA plus the local structural path. Structural paths contain element names, so an attacker who knows the public artifact digest and plausible low-entropy extension names can test candidate paths against published locator digests.",
       "risk": "Direct schema-name redaction can be bypassed through deterministic path hashes, especially for shallow XML locations and predictable enterprise vocabulary. A public-safe receipt can therefore remain dictionary-recoverable even when no source name appears in clear text.",
       "teiDirection": "keep exact name-bearing SourceLocator local; derive public locator tokens from exact artifact identity plus traversal ordinal or another name-independent snapshot address. Fact and unresolved correlation may use that token, but public locator identity must not hash source-derived names."
+    },
+    {
+      "id": "RMP-050",
+      "topic": "serializer-redaction-vs-public-artifact-type-boundary",
+      "observed": "An intermediate PublicationReceipt v2 candidate hid local schema accounting behind json:\"-\" fields. JSON serialization was redacted, but the in-memory object still carried exact unknown element/attribute names and could expose them through alternate serializers, structured logging, reflection, debugging, or later code that mistakes the type for public-safe data.",
+      "risk": "A publication boundary implemented only as serializer annotations becomes representation-dependent. Private source detail can cross the boundary without changing the nominal public artifact type, making accidental disclosure and authority confusion easier.",
+      "teiDirection": "make public-safe artifact types structurally incapable of carrying private source detail. Keep lossless names/values/locators in ObservedDocument or another explicitly local type; derive public receipt/classification/coverage from local observation and copy only publication-approved fields."
     }
   ]
 }
