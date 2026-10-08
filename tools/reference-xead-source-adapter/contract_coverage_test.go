@@ -6,11 +6,11 @@ import (
 )
 
 func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System><Table/><Mystery/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table/><Mystery/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
+	contract := []byte(`{"sourceProfiles":{"xead":{"rootKind":"System","supportedFormatVersions":["1.2"]}},"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXead, doc, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -24,11 +24,11 @@ func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
 }
 
 func TestClassificationCoveragePassesWhenEveryObservedKindHasMapping(t *testing.T) {
-	doc, err := Observe(FormatXeaf, []byte(`<System><Function/><Script/></System>`))
+	doc, err := Observe(FormatXeaf, []byte(`<System FormatVersion="1.2"><Function/><Script/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract := []byte(`{"constructMappings":{"xeaf":{"System":{"classification":["source-metadata"]},"Function":{"classification":["realization"]},"Script":{"classification":["native-preserved"]},"Unused":{"classification":["unresolved"]}}}}`)
+	contract := []byte(`{"sourceProfiles":{"xeaf":{"rootKind":"System","supportedFormatVersions":["1.2"]}},"constructMappings":{"xeaf":{"System":{"classification":["source-metadata"]},"Function":{"classification":["realization"]},"Script":{"classification":["native-preserved"]},"Unused":{"classification":["unresolved"]}}}}`)
 	coverage, err := CheckClassificationCoverage(FormatXeaf, doc, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestClassificationCoveragePassesWhenEveryObservedKindHasMapping(t *testing.
 }
 
 func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
-	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:extension"><x:Table/></System>`))
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" xmlns:x="urn:extension"><x:Table/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
