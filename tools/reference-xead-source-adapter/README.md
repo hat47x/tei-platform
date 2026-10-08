@@ -4,7 +4,7 @@ GitHub #950のsource-faithful adapter候補です。
 
 `Observe`はXMLをローカル観測用の`ObservedDocument`へ読み込みます。未知要素や未解釈属性も捨てません。Observed Documentには元sourceの属性値やテキストを含み得るため、public Evidenceとして保存しません。
 
-`PublicReceipt`は、artifact digest、element / attribute名の集計、locator総数と集合fingerprint、必要なsource factのlocator digest、authority limitだけを残します。元sourceの属性値やテキストは出力しません。
+`PublicReceipt`は、artifact digest、既知標準constructの件数、attribute出現数、unknown総数、locator総数と集合fingerprint、必要なsource factのname-independent locator token、authority limitだけを残します。元sourceの属性値・テキスト・任意のunknown schema名・構造pathは出力しません。
 
 独自fixtureのテストでは、同一bytesの決定性、未知constructの保持、公開receiptからのsource値除去、legacy key系source factのauthority limitを確認します。
 
@@ -75,3 +75,13 @@ public出力では、任意のunknown element名や追加attribute名を公開�
 `artifactSha256`がexact source bytesを固定するため、public Evidenceへunknown schema名のhash一覧を追加して擬似匿名化することもしません。詳細比較が必要な場合はRepository外のObserved Documentを使います。
 
 この変更によりPublication Receiptは`schemaVersion: 2`です。v1のreceipt fingerprintをv2へ流用しません。
+
+## Source format profile
+
+`Observe`はsourceをローカルEvidenceとして読む層なので、未対応`FormatVersion`でもparse可能な限り観測を保持します。
+
+`-contract`を指定してclassification / coverageを行う場合は別です。転写契約の`sourceProfiles`に宣言されたroot kindと`FormatVersion`へ一致しなければmappingを適用しません。現在のReference contractはXead / Xeafとも`System` / `1.2`を宣言しています。
+
+未対応versionを、element名が同じという理由だけで既知mappingへ流さないためのfail-closed境界です。対応versionの追加はCore変更ではなくSource Adapter / transcription contract側で行います。
+
+既存の`transcription-map-v0.json`とR0 coverageは旧contract blobに結び付いた履歴Evidenceです。`sourceProfiles`追加後のcontractへ自動で再帰属させず、current contractでのcoverageは再実行後にのみ更新します。
