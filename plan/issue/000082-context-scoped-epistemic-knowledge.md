@@ -394,7 +394,9 @@ target annotationについては、任意targetへ元resourceのrevision fingerp
 
 ### E2b: consumer freshness requirement
 
-情報側のvalidUntilとは別に、dependency consumerが必要とする最大経過時間を `maxAgeSeconds` として指定するcandidateを追加した。基準時刻にはcurrent meaningのhuman confirm eventまたは `checkedAt` のうち最新のものを使う。
+情報側のvalidUntilとは別に、dependency consumerが必要とする最大経過時間を `maxAgeSeconds` として指定するcandidateを追加した。基準時刻にはcurrent subjectへbindingされたhuman confirm eventまたはsource checkのうち最新のものを使う。
+
+`checkedAt` は `checkedSubjectFingerprint` と組にし、meaning / target / statement kind / context / validity / Evidenceが変わってbindingが切れた場合はfreshness根拠へ使わない。
 
 consumer requirementを満たさなくてもassertion本体のconfirmation / base use stateは書き換えない。同じ情報を別用途で利用できる余地を残したまま、high / critical consumerについてHealth issue / review requestへ反映する。
 
