@@ -1,6 +1,6 @@
 # 基本UIプラグインと案件別カスタマイズ — Reference方針
 
-Status: design / prompt reference（UI Pluginの本体は未実装）
+Status: design / prompt reference（Web/Reactの最小StarterはReference実装済み。ただし実ReactDOM / 正式Plugin化は未了）
 管理Issue: [#997 基本UIプラグイン](https://github.com/hat47x/tei-platform/issues/997)
 独立した別課題: [#998 TEI内部の業務仕様テンプレート](https://github.com/hat47x/tei-platform/issues/998)
 
@@ -58,4 +58,8 @@ Pluginとしては、少なくとも論理的identity、version、TargetとFrame
 4. Plugin更新後に案件固有の変更が失われず、互換性違反と競合を診断できるか確認する。
 5. Frameworkごとに差分行数・変更ファイル・AIへの追加質問数・手動同期数・Action再利用数・bundle/起動/入力遅延を記録する。
 
-**重要**: このディレクトリの文書は採用方針とAI向け要件整理テンプレートであり、Web/ReactやMobile Pluginそのものを提供するものではない。最初のReferenceを実装・テストしてから再利用性と保守費用を判定する。
+**実装済みReferenceの入口**: [web-react/README.md](web-react/README.md)（PR #1005）。既存First Web Target JSON Command契約を消費するReact Starterと案件専用サイドパネルを追加し、loopback HTTP＋React API構造スタブで9件成功した。ただし本物のReactDOM上での描画やGo ServerとのE2Eは未実証であり、Web/Reactの正式Plugin本体を完成したとはしない。
+
+**業務仕様テンプレートの独立Reference**: [../business-spec-templates/README.md](../business-spec-templates/README.md)（PR #1009）。三視点を既存Source参照として扱い、採用提案とAcceptanceを混同しない。UI Starterの内部に業務仕様テンプレートを格納しない。
+
+**重要**: Smartphone Plugin、Web/React正式Plugin packageの実装・ブラウザ実行検証・Framework別互換性評価は引き続き未了。基本UI Pluginそのものの普遍性やSIerの工数削減は、実際の二つ目以降の案件で検証してから判断する。

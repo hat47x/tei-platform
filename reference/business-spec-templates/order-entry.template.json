@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "tei-business-spec-template-reference-v0",
+  "artifactRole": "business-specification-template-candidate",
+  "canonical": false,
+  "templateId": "reference.sales.order-entry",
+  "templateVersion": "0.1.0",
+  "purpose": "Seed the Data / Function / Business three-view investigation without asserting project-specific meaning.",
+  "sourceBindings": [
+    {"view": "data", "source": "reference/workspace/semantic/sales/order.tei", "refs": ["sales.order", "sales.order_line", "sales.order.submit"]},
+    {"view": "data", "source": "reference/workspace/semantic/sales/validation.tei", "refs": ["sales.order_line.quantity_positive", "sales.order.lines.line_number_unique"]},
+    {"view": "data", "source": "reference/workspace/semantic/customer/customer.tei", "refs": ["customer.customer"]},
+    {"view": "function", "source": "reference/workspace/applications/order-entry/application.tei", "refs": ["order_entry"]},
+    {"view": "function", "source": "reference/workspace/applications/order-entry/patterns/submit-order.tei", "refs": ["order_entry.submit_order"]},
+    {"view": "business", "source": "reference/business-system-design/order-entry-business-procedure.json", "refs": ["order-entry.order-handling"]}
+  ],
+  "projectDecisions": [
+    {"id": "business-order-identity", "question": "Which values identify one order occurrence in this business context?"},
+    {"id": "business-order-line-identity", "question": "What identifies a line occurrence, independently of physical row IDs?"},
+    {"id": "manual-readiness-decision", "question": "Who judges that an order is ready to submit, and what manual exceptions apply?"},
+    {"id": "submit-authority", "question": "Who is responsible for submission, distinct from system permission checks?"}
+  ]
+}
