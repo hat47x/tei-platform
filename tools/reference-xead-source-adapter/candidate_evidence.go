@@ -73,20 +73,42 @@ func VerifyTranscriptionCandidateEvidence(
 	format SourceFormat,
 	doc ObservedDocument,
 	contractBytes []byte,
-	nodeOrdinal int,
 	recorded rmtevidence.Evidence,
 ) error {
 	verified, err := rmtevidence.Verify(recorded)
 	if err != nil {
 		return err
 	}
+	currentArtifact := "sha256:" + doc.ArtifactSHA256
+	if verified.SourceArtifactDigest != currentArtifact {
+		return fmt.Errorf(
+			"RMT transcription Evidence is stale or belongs to a different source artifact: recorded=%s current=%s",
+			verified.SourceArtifactDigest,
+			currentArtifact,
+		)
+	}
+
+	nodeOrdinal := 0
+	for i := range doc.Nodes {
+		if sourceNodeToken(doc.ArtifactSHA256, i+1) != verified.SourceToken {
+			continue
+		}
+		if nodeOrdinal != 0 {
+			return fmt.Errorf("RMT transcription Evidence source token resolves to more than one node")
+		}
+		nodeOrdinal = i + 1
+	}
+	if nodeOrdinal == 0 {
+		return fmt.Errorf("RMT transcription Evidence source token does not resolve in the exact source artifact")
+	}
+
 	current, err := BuildTranscriptionCandidateEvidence(format, doc, contractBytes, nodeOrdinal)
 	if err != nil {
 		return err
 	}
 	if verified.EvidenceFingerprint != current.EvidenceFingerprint {
 		return fmt.Errorf(
-			"RMT transcription Evidence is stale or belongs to a different source/mapping: recorded=%s current=%s",
+			"RMT transcription Evidence is stale or belongs to a different mapping contract: recorded=%s current=%s",
 			verified.EvidenceFingerprint,
 			current.EvidenceFingerprint,
 		)
