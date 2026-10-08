@@ -148,6 +148,12 @@ func applyReviewCommand(
 		Reviewer:           command.Reviewer,
 		Method:             reviewMethodHuman,
 		MeaningFingerprint: assertion.MeaningFingerprint,
+		StatementKind:      assertion.Mode,
+		Context:            append([]ScopeBinding{}, assertion.Context...),
+		TargetIdentity: ReviewTargetIdentity{
+			Kind: assertion.Target.Kind,
+			ID:   assertion.Target.ID,
+		},
 		OccurredAt:         command.OccurredAt,
 		Evidence:           append([]EvidenceRef{}, command.Evidence...),
 		Conditions:         append([]string{}, command.Conditions...),
