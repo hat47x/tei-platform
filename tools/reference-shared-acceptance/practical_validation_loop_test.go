@@ -110,6 +110,20 @@ func TestPracticalRuleChangeRejectsBrokenOrRepeatedDeltaWithoutChangingSource(t 
 			code: "VALIDATION_NOT_FOUND",
 		},
 		{
+			name: "new rule with nonexistent attribute",
+			edit: func(c *Candidate) {
+				c.Delta[0].Attribute = "sales.order_line.missing_attribute"
+			},
+			code: "ATTRIBUTE_NOT_FOUND",
+		},
+		{
+			name: "new rule with nonexistent namespace",
+			edit: func(c *Candidate) {
+				c.Delta[0].Namespace = "nonexistent"
+			},
+			code: "NAMESPACE_NOT_FOUND",
+		},
+		{
 			name: "same rule declared twice",
 			edit: func(c *Candidate) {
 				c.Delta = append(c.Delta, c.Delta[0])
