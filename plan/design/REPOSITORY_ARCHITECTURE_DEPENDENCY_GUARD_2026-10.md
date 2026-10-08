@@ -90,6 +90,18 @@ main `f27c45f`〜`ff6efce`の確認では、次の直接importが観測できる
 3. 全packageのimport graph、変更の集中箇所、Referenceからproductionへの移行例を取得し、必要な制約だけ増やす。
 4. 外部利用が生じるまでは`module tei`の置換、多module化、リポジトリ分割は保留する。
 
+
+## 次段階の依存調査（部分観測・2026-10-08）
+
+代表的なproduction sourceの直接importを追加確認した。これは全package graphではなく、変更判断に必要な局所観測である。
+
+- `internal/ir/world.go` は application、database、environment、plugin、query、realization、releaseplan、semantic など複数領域を集約する。Worldが現在の統合表現として妥当か、Plugin-first拡張時に固定フィールド追加を強いるかは、実際の拡張例で判断する。
+- `internal/plugin/model.go` と `internal/plugin/build.go` は core、database/migration、deployment、environment、permission を直接importする。Capability契約の移行前に禁止規則を追加しない（#951）。
+- `internal/plugin/runtime/adapters.go` は deployment配下の具体的なexecutor、evidence、observationなどをimportする。実装adapterの配置として意図的か、runtimeが特定targetへ依存する構造かは分離して評価する。
+- `internal/database/migration/plan.go` は `internal/database/providers/postgres` を直接importする。DB providerの複数実装を増やす前に、migration planの汎用部分とPostgres固有のrender/applyの境界を評価する。即時のpackage移動は行わない。
+
+次の判断は「新しいPlugin/DB Provider/Targetを一つ追加する際、既存の中核packageの変更が何件必要か」を計測し、具体的な拡張阻害を示すこと。全Go import graphはGo toolchainで `go list -json ./...` 等を使い、生成物として扱う。生成したグラフを意味の正本や永続的な手書き台帳にしない。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。
