@@ -105,14 +105,12 @@ func TestRMTTranscriptionEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuthor
 			}
 			if !strings.Contains(rendered, wantStatus) ||
 				!strings.Contains(rendered, rmtEvidenceFixture(t, mapped).SourceToken) {
-				t.Fatalf("Review hid RMT Evidence state/binding:
-%s", rendered)
+				t.Fatalf("Review hid RMT Evidence state/binding:\\n%s", rendered)
 			}
 			if mapped {
 				if !strings.Contains(rendered, "sourceConstruct=Table") ||
 					!strings.Contains(rendered, "classification=canonical-candidate,unresolved") {
-					t.Fatalf("Review hid mapped RMT summary:
-%s", rendered)
+					t.Fatalf("Review hid mapped RMT summary:\\n%s", rendered)
 				}
 			}
 		})
@@ -175,8 +173,7 @@ func TestAttachRMTTranscriptionCLIProducesReviewableCandidate(t *testing.T) {
 	rendered := renderReviewProjection(review)
 	if !strings.Contains(rendered, "artifactKind="+evidenceArtifactKindRMTTranscription) ||
 		!strings.Contains(rendered, "mappingStatus=unmapped") {
-		t.Fatalf("Review did not expose RMT artifact state:
-%s", rendered)
+		t.Fatalf("Review did not expose RMT artifact state:\\n%s", rendered)
 	}
 }
 
@@ -209,4 +206,53 @@ func rmtTranscriptionEvidenceItem(values []Evidence) (Evidence, bool) {
 		}
 	}
 	return Evidence{}, false
+}
+
+
+func TestDecisionIndexDoesNotCallRMTArtifactCurrent(t *testing.T) {
+	dir := scratchWorkspaceBeforeSecondApplication(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	candidate.Evidence = nil
+	grounded, err := attachRMTTranscriptionEvidence(
+		mustJSON(t, candidate),
+		rmtEvidenceJSON(t, true),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := acceptViaCLI(t, dir, candidateFile(t, grounded))
+	if decision.Decision != "accepted" {
+		t.Fatalf("decision=%+v", decision)
+	}
+
+	index := decisionsOf(t, dir)
+	if len(index.Records) != 1 {
+		t.Fatalf("records=%+v", index.Records)
+	}
+	record := index.Records[0]
+	if record.EvidenceStatus != "recorded" ||
+		record.SourceEvidenceStatus != "none" ||
+		record.ArtifactEvidenceStatus != "recorded" {
+		t.Fatalf("external RMT artifact was overstated as current: %+v", record)
+	}
+}
+
+func TestUnmappedRMTReviewDoesNotInventSourceConstructName(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidate := unitPriceCandidate(revisionOfDir(t, dir))
+	grounded, err := attachRMTTranscriptionEvidence(
+		mustJSON(t, candidate),
+		rmtEvidenceJSON(t, false),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, err := evaluate(dir, mustJSON(t, grounded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered := renderReviewProjection(buildReviewProjection(ev))
+	if strings.Contains(rendered, "sourceConstruct=") {
+		t.Fatalf("unmapped RMT Evidence invented or exposed a source construct name:\n%s", rendered)
+	}
 }
