@@ -4,6 +4,7 @@ application order_entry {
     uses semantic security
     uses validation sales.order_line.quantity_positive
     uses validation sales.order.lines.line_number_unique
+    uses validation sales.order_line.line_number_positive
 
     database sales {
         target sales_core

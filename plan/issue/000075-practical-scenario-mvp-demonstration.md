@@ -82,11 +82,11 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 この記録は、一つのシナリオの成功にとどまり、実務全般への適用可能性や、実Databaseでの動作を示しません。
 
-## 実証記録B — 変更を提案し、受理し、画面の確定へ反映される一周（受理待ち）
+## 実証記録B — 変更を提案し、受理し、画面の確定へ反映される一周（受理済み、2026-10-08）
 
 **減らす不確実性。** 変更を提案し、人が読んで確かめ、受理し、評価と確定操作へ反映されるまでの一周が、一つのCanonicalな意味の上で通るか（主担当要求 RQ-021）。
 
-**状態。** 受理待ち。`reference/workspace`と`reference/world.json`は変更していない。以下の証明は、workspaceのcopy（scratch copy）の中だけで行った、scratch proofである。実際の`reference/workspace`への受理は行っていない。owner の受理判断は未決定で、Gate Evidenceとしては扱わない。
+**状態。** 受理済み（2026-10-08、owner）。受理により、`reference/workspace`の`order_entry`の宣言と`semantic/sales/validation.tei`、`reference/world.json`、決定記録一件が変わった。受理の記録は下の「受理の記録」を参照する。以下の証明のうち受理前の部分は、workspaceのcopy（scratch copy）の中で行った scratch proof である。この受理はGate BまたはGate Cのevidenceではなく、既存のhistorical evidenceも書き換えていない。
 
 **reference/との差分と比較の基準。** 比較の基準は統合時点の`origin/main`（`d3aab052`）である。ローカルの`main`は`origin/main`と一致しないことがあるため使わない。このブランチには、そのmainを通常のmerge commitで取り込んだ。取り込んだmainの変更には、`reference/`配下のうち`business-system-design`と`plugin-self-build`の文書とWorkspaceが含まれるが、`reference/workspace`と`reference/world.json`は、1d8fcc95、`d3aab052`、このブランチのHEADで同じである（`git diff --name-only d3aab052 HEAD -- reference/workspace reference/world.json`が空）。revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
 
@@ -124,15 +124,29 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 - a. `ResolveApplicationValidations("order_entry")`は、`quantity_positive`、`line_number_unique`、`line_number_positive`の順に三件を返す。
 - b. 既定の一覧行（RowIndex 0、2026-09-18T08:30:00Z）のCommand runnerは`completed`になり、Validationは三件、すべて`satisfied`になる。
 - c. 最初の受注明細の行番号だけを0にした読み取り結果では、stageは`validation-not-satisfied`になる。`quantity_positive`と`line_number_unique`はsatisfied、`line_number_positive`はnot-satisfiedである。数量は既定の正の値のまま残しているため、失敗するのは新しい規則だけである。
-- d. 実際の`reference/workspace`を読み直すと、`order_entry`の宣言は従来どおり二件（`quantity_positive`、`line_number_unique`）で、revisionも変わっていない。
+- d. 受理後の実際の`reference/workspace`を読み直すと、`order_entry`の宣言は三件（`quantity_positive`、`line_number_unique`、`line_number_positive`）になる。このtestは、読み直しの前後でrevisionが変わらないことも確かめる。
 
 `internal/driver/practical_b_line_number_test.go`は、Driverの確認用sourceが行番号を数値として渡すことを確かめる。行番号1はsatisfied、0はnot-satisfiedで、行番号が無いときは業務結果ではなくエラーになる。
 
-**この実証の位置づけ。** ここまでの証明は、`mktemp -d`の下に作ったcopyの中だけで行った scratch proof である。`reference/workspace`と`reference/world.json`は変更していない。実際の受理（real acceptance）は行っておらず、`.tei/decisions/`の既存の決定記録に、この規則を含むものはない。画面の既定データ（`read_scenario.go`の`find_by_order`のfixture）の行番号は、どの注文でも1と2だけで、すべて有効な値である。そのため、実画面では、この規則の行は satisfied としてだけ現れ、不成立は見えない。不成立は、読み取り結果を差し替えたtestでだけ観測された。Command評価は、読み取った一覧の最初の受注明細の行番号だけを見るため、この規則はまだ全明細へ適用されていない（下の「owner が決めること」3を参照）。
+**この実証の位置づけ。** ここまでの証明は、`mktemp -d`の下に作ったcopyの中だけで行った scratch proof である。その後、同じ候補を実際の`reference/workspace`へ受理した（下の「受理の記録」を参照）。ここまでの証明は、その受理の前の状態について、scratch copyの中で行ったものである。画面の既定データ（`read_scenario.go`の`find_by_order`のfixture）の行番号は、どの注文でも1と2だけで、すべて有効な値である。そのため、実画面では、この規則の行は satisfied としてだけ現れ、不成立は見えない。不成立は、読み取り結果を差し替えたtestでだけ観測された。Command評価は、読み取った一覧の最初の受注明細の行番号だけを見るため、この規則はまだ全明細へ適用されていない（下の「owner が決めること」3を参照）。
+
+**受理の記録。**
+
+- 受理: 2026-10-08、owner。作業指示には、owner がチャットで「受理する（推奨）」と回答したと記載されていた。この記録を作成したエージェントは、そのチャット上の回答を直接確認していない。
+- 提示: 作業指示では、owner に規則、第一の受注明細だけを評価するという制限、fingerprint、影響が示されたとされる。エージェントはその提示を確認していない。
+- 審査の全文: `plan/issue/000075-practical-b/review.txt`は全文がリポジトリにある。全文を読んだという記録はない。
+- 決定記録: `reference/workspace/.tei/decisions/a043abc84702feb4a4558e2fbfd6fa17bd60867075f65d126d648998a11f2523.json`（`decision`は`accepted`、candidate `cand-order-line-number-positive`）。決定記録のoriginは`ai` / `claude-haiku-5-5`であり、人間の承認者は記録に含まれない。
+- candidate fingerprint: `sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51`
+- review fingerprint: `sha256:9eb0f1ed5513820a03857f148981ce7678e91af4cd486212f3249b3046c4babb`
+- revision: 受理前は`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`、受理後は`sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2`。
+- 変わったもの: `applications/order-entry/application.tei`（`uses validation`を一行）、`semantic/sales/validation.tei`（validationを一件）、`reference/world.json`（派生物）、決定記録一件。受理後のConformanceは七件すべてpassedである。
+- 受理commit: `work/accept-practical-b`の次のcommit。そのhashは、このcommitの中には書けない。
+- 期待値の更新: 受理により`order_entry`の宣言数が二件から三件になったため、宣言数に依存していたtestの期待値を同じcommitで直した。assertionは弱めていない。実証記録Bのtestは、受理前の状態をscratch copyへ戻してから受理を試す（revertを確かめてから使う）。
+- 残る制限: Commandの評価は、読み取った一覧の最初の受注明細だけを見る（`quantity_positive`と同じ制限）。全明細への適用は、この受理では主張しない。
 
 **証明していないこと。**
 
-- owner による受理。scratch copyでの受理は、実際の`reference/workspace`へのacceptではない。
+- owner による受理の事実。受理は作業指示に記載された回答を根拠に行った（下の「受理の記録」を参照）。
 - Gate BまたはGate Cの Evidence。既存のhistorical evidenceは書き換えていない。
 - HTTPとブラウザの画面。ここで通したのは、第一Web Targetの確定経路が使うCommand runnerを、同じworldに対して直接呼ぶところまでである。
 - 実画面の既定データでの不成立。画面の既定データ（`tools/reference-first-web-target/read_scenario.go`の`find_by_order`のfixture）の行番号は、どの注文でも1と2だけである。そのため、行番号の観点では、実画面で新しい規則はsatisfiedとしてだけ現れる。0による不成立は、読み取り結果を差し替えたtestでだけ観測された。
@@ -140,7 +154,7 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 
 **owner が決めること。**
 
-1. `sales.order_line.line_number_positive`を`reference/workspace`へ受理するか。受理するなら、この候補のreview fingerprint（上記）を指定し、Shared Acceptance Boundaryで受理する。ただし、ADR-0029の影響節が述べるとおり、`reference/workspace`を変えると、Gate Cのarchitecture conformance toolは、RからTの間で`reference/workspace`と`reference/world.json`が変わらないことを要求するため、停止し得る。受理の前に、後継のHandover Baselineを立てるかを決める必要がある。
+1. （2026-10-08に受理した。）`sales.order_line.line_number_positive`を`reference/workspace`へ受理するか。受理するなら、この候補のreview fingerprint（上記）を指定し、Shared Acceptance Boundaryで受理する。ただし、ADR-0029の影響節が述べるとおり、`reference/workspace`を変えると、Gate Cのarchitecture conformance toolは、RからTの間で`reference/workspace`と`reference/world.json`が変わらないことを要求するため、停止し得る。受理の後も現在の`main`に対してGate Cのtoolを再実行するには、後継のHandover Baselineを立てるかを決める必要がある。
 2. `resolve.go`の緩和を、Shared Acceptance Boundaryの変更として採るか。採らない場合は、規則の追加（`add-validation`）と宣言（`add-application-validation-use`）を二つのcandidateに分けて受理する。その場合、一つ目の受理の後には、どこからも宣言されていない規則が一時的に存在する。
 3. 行番号の規則を、最初の受注明細だけに適用し続けるか、全明細へ広げるか。現在の評価は一つの値を見る形なので、全明細へ広げるには評価の形を決める必要がある。
 

@@ -212,8 +212,10 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 	evidence.OrderLines = orderLines.Result
 	evidence.Steps = append(evidence.Steps, "header-detail")
 
+	// line_number_positiveは先頭の受注明細（行番号1）を評価する。
 	validationSource := submitOrderValidationSource{
 		quantity:    lineQuantity,
+		lineNumber:  mustRat(t, "1"),
 		lineNumbers: []string{"1", "2"},
 	}
 	for _, rule := range orderEntryValidations(t, world) {

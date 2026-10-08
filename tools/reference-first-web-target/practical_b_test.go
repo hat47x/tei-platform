@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/fs"
 	"os"
@@ -44,6 +46,8 @@ func TestPracticalBLineNumberPositiveRuleAcceptedOnlyInScratchCopy(t *testing.T)
 	// copyは、末尾が reference/workspace にならない場所へ作る。acceptのbaseline保護を迂回しないため。
 	scratch := filepath.Join(t.TempDir(), "scratch", "workspace")
 	copyPracticalBWorkspace(t, realWorkspace, scratch)
+	// 実workspaceは受理後の状態なので、scratch copyは受理前のbaselineへ戻してから候補を受理する。
+	revertPracticalBAcceptance(t, tool, scratch)
 	before := readPracticalBTree(t, scratch)
 
 	var preview struct {
@@ -187,7 +191,7 @@ func TestPracticalBLineNumberPositiveRuleAcceptedOnlyInScratchCopy(t *testing.T)
 		}
 	})
 
-	t.Run("d real reference/workspace still declares exactly two order_entry validations", func(t *testing.T) {
+	t.Run("d real reference/workspace declares the three order_entry validations after acceptance", func(t *testing.T) {
 		realLoaded, err := workspace.Load(realWorkspace)
 		if err != nil {
 			t.Fatal(err)
@@ -200,7 +204,11 @@ func TestPracticalBLineNumberPositiveRuleAcceptedOnlyInScratchCopy(t *testing.T)
 		for _, rule := range rules {
 			got = append(got, string(rule.ID))
 		}
-		want := []string{"sales.order_line.quantity_positive", "sales.order.lines.line_number_unique"}
+		want := []string{
+			"sales.order_line.quantity_positive",
+			"sales.order.lines.line_number_unique",
+			practicalBRule,
+		}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("実workspaceの解決結果=%v want=%v", got, want)
 		}
@@ -288,6 +296,58 @@ func copyPracticalBWorkspace(t *testing.T, src, dst string) {
 	if err != nil {
 		t.Fatalf("workspace copyを作れません: %v", err)
 	}
+}
+
+// 受理後の正本から、scratch copyを受理前のbaselineへ戻す。
+// 戻すのは、受理時のsourceEditが追加した行だけである。戻した各fileのsha256が受理前のfingerprintと一致し、
+// revisionがbaselineへ戻ったことを確かめてから、候補を受理するscratch copyとして使う。
+// 受理記録もscratch copyから外す。外さないと、同じ内容の記録が既にあるため「追加された記録」が空になる。
+const (
+	practicalBBaseModelRevision = "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4"
+	practicalBApplicationSource = "applications/order-entry/application.tei"
+	practicalBValidationSource  = "semantic/sales/validation.tei"
+	practicalBApplicationBefore = "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
+	practicalBValidationBefore  = "sha256:bd641910f993ef84cbab1ccf3616de8d98c715e7679268115a71a0327e126633"
+	practicalBApplicationInsert = "    uses validation sales.order_line.line_number_positive\n"
+	practicalBValidationInsert  = "\nvalidation sales.order_line.line_number_positive positive {\n    attribute sales.order_line.line_number\n}\n"
+	practicalBAcceptedRecord    = ".tei/decisions/a043abc84702feb4a4558e2fbfd6fa17bd60867075f65d126d648998a11f2523.json"
+)
+
+func revertPracticalBAcceptance(t *testing.T, tool, scratch string) {
+	t.Helper()
+	revertPracticalBSource(t, scratch, practicalBApplicationSource, practicalBApplicationInsert, practicalBApplicationBefore)
+	revertPracticalBSource(t, scratch, practicalBValidationSource, practicalBValidationInsert, practicalBValidationBefore)
+	if err := os.Remove(filepath.Join(scratch, filepath.FromSlash(practicalBAcceptedRecord))); err != nil {
+		t.Fatalf("受理記録をscratch copyから外せません: %v", err)
+	}
+	if revision := practicalBModelRevision(t, tool, scratch); revision != practicalBBaseModelRevision {
+		t.Fatalf("scratch copyがbaselineへ戻りません: revision=%s want=%s", revision, practicalBBaseModelRevision)
+	}
+}
+
+func revertPracticalBSource(t *testing.T, scratch, rel, insert, before string) {
+	t.Helper()
+	path := filepath.Join(scratch, filepath.FromSlash(rel))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if strings.Count(content, insert) != 1 {
+		t.Fatalf("%s に受理時の追加行が一つだけ見つかりません", rel)
+	}
+	restored := strings.Replace(content, insert, "", 1)
+	if got := practicalBSHA256(restored); got != before {
+		t.Fatalf("%s を戻した結果が受理前のfingerprintと一致しません: got=%s want=%s", rel, got, before)
+	}
+	if err := os.WriteFile(path, []byte(restored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func practicalBSHA256(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // readPracticalBTreeは、workspace内の全fileの内容を、slash区切りの相対pathで返す。

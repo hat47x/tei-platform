@@ -227,6 +227,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 			Validations: []validationResultArtifact{
 				{Validation: "sales.order_line.quantity_positive", Result: "satisfied"},
 				{Validation: "sales.order.lines.line_number_unique", Result: "satisfied"},
+				{Validation: "sales.order_line.line_number_positive", Result: "satisfied"},
 			},
 			Authorization: &businessResultArtifact{
 				Capability: "security.authorize",
@@ -309,6 +310,7 @@ func writeAuditFixture(t *testing.T, dir, runID string, p Provenance) {
 			Validations: []validationResultArtifact{
 				{Validation: "sales.order_line.quantity_positive", Result: "satisfied"},
 				{Validation: "sales.order.lines.line_number_unique", Result: "satisfied"},
+				{Validation: "sales.order_line.line_number_positive", Result: "satisfied"},
 			},
 			Authorization: &businessResultArtifact{
 				Capability: "security.authorize",
