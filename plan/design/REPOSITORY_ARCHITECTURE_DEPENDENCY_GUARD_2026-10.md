@@ -57,6 +57,31 @@ TEIでは業務上の意味、実装、実行権限、観測結果を区別す�
 
 これは分類器とsource走査の局所検証に限る。**TEIのactual main / PR head全体のGo test、vet、Workspace validationを通過したEvidenceではない。** PRのmerge前には、対象exact headのtrusted full checkoutでRepository Healthの全項目を実行する必要がある。
 
+## 読み取り専用の依存グラフ
+
+`tools/repository-dependency-report/`に、production Goの直接importをJSONへ出力する診断ツールを追加した。特定の依存方向を設計上の違反と判定する検査とは、役割を分ける。
+
+```sh
+go run ./tools/repository-dependency-report -root . > /tmp/tei-direct-import-graph.json
+```
+
+出力は、Goモジュール名、対象packageとproduction Go file数、重複排除した直接依存先・直接依存元の数、各依存を記述したファイルの一覧を含む。ソースファイル順に依存しない出力とし、timestampや実行者情報を埋め込まない。過去の履歴と比較する際はGit revisionと実行環境のEvidenceを別に添える。
+
+これはbuild tagを解決せず、alternate targetのファイルも含める「source-levelの潜在的な直接importグラフ」である。compileされる依存グラフ、Runtimeで呼び出された機能、Pluginへの実行権限を表すものではない。内部importの行き先にGo sourceが存在しない等の失敗は、完全な出力として公開せず明示的なエラーとする。
+
+Go 1.23.2の隔離した合成fixtureでは、この診断ツールのunit test、go vet、gofmtの正常終了を観測した。**TEIのfull checkoutに対する実測JSONの取得、およびexact PR headのRepository Health PASSはまだ得ていない。** 構成の良否を未取得の集計値で断定しない。
+
+### 代表的な実ソースから見える境界
+
+main `f27c45f`〜`ff6efce`の確認では、次の直接importが観測できる。
+
+- `internal/plugin/model.go`は`internal/database/migration`、`internal/deployment`、`internal/environment`等の型を利用する。Pluginの共通契約が個別実行領域の型に依存する課題は#951で扱う。
+- `internal/database/migration/plan.go`、`render.go`、`postgres_apply.go`は`internal/database/providers/postgres`をimportする。PostgreSQL固有のSQL文法自体はADR-0015に従いProvider側へ移っているが、共通migration packageが具体Providerと結合している事実は残る。
+- `internal/database/realization/realize.go`はPostgreSQL/OracleのPolicyを組み立てる。これはADR-0013で意図して導入したcomposition境界であり、単なる具体Providerへのimportを一律に欠陥と判定しない。
+- `internal/ir/world.go`は複数の業務モデルをまとめる。集約点であることだけを理由に分解しない。
+
+現時点でPostgreSQL固有のmigration処理を急いで移動すると、partition観測を必須とする破壊的操作のfail-closed条件を壊すおそれがある。第二Providerの実証で、共通PlanがProvider専用型なしに成り立つ必要が明らかになったときに、render/applyのcomposition責務を分割する。その際は現在のfresh observation・SQL再検査・副作用前停止のテストを維持する。
+
 ## 段階的な次の判断
 
 1. この狭い依存ガードをfull Repository Healthへ組み込み、既存mainや並行PRに不意のfailを起こさないことを確認する。
