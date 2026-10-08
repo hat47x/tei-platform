@@ -73,7 +73,7 @@ func collect(root string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	result := report{Schema: "tei.repository.direct-import-graph/v1", Module: module, Scope: "internal production Go source; build tags not resolved"}
+	result := report{Schema: "tei.repository.direct-import-graph/v1", Module: module, Scope: "internal production Go source; build tags not resolved", Packages: []pkgInfo{}, Dependencies: []directEdge{}}
 	fileCounts := map[string]int{}
 	edgeFiles := map[string]map[string]map[string]bool{}
 	err = filepath.WalkDir(filepath.Join(root, "internal"), func(path string, d fs.DirEntry, walkErr error) error {
@@ -83,13 +83,13 @@ func collect(root string) (report, error) {
 		if d.IsDir() {
 			if path != filepath.Join(root, "internal") {
 				name := d.Name()
-				if name == "testdata" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+				if name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
 					return fs.SkipDir
 				}
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "_") || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		syntax, parseErr := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
