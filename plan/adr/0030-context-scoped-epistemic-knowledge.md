@@ -129,6 +129,8 @@ similarity、model confidence、retrieval rankをTruthや確認済み状態へ�
 
 鮮度も情報側の有効期限だけで決めません。同じ情報でも、月次レポートと副作用を伴う実行判断では必要な新しさが異なります。情報が最後に確認された時点と、利用側が要求する最大経過時間や再確認条件を分け、用途に応じて鮮度を評価できるようにします。
 
+source checkの時刻も単独では信頼しません。確認後にmeaning、scope、target、validity、Evidence等が変わった場合、古いchecked timeを現在情報の鮮度根拠へ再利用すると誤ります。そのためReferenceではsource checkをcurrent subjectへbindingし、bindingが切れたchecked timeをfreshness根拠へ使いません。
+
 ### 確認履歴は上書きせず、現在状態を履歴から導出する
 
 同じ情報を複数人が確認したり、後から確認を撤回したり、条件を追加して再確認したりすることがあります。単一の確認記録を上書きすると、誰が何を確認し、その後に何が変わったかを失います。
