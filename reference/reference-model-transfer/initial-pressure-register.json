@@ -318,6 +318,13 @@
       "observed": "The XML reader correctly marks namespaced lookalikes such as x:TableKey or x:Refer as unknown, but source-fact extraction originally switched only on the local element name and could still emit standard Xead/Xeaf key/reference facts from those unknown nodes.",
       "risk": "A parser can appear namespace-safe at the construct inventory layer while a later projection silently re-promotes an extension element into standard legacy semantics. Unknown/vendor constructs then acquire false relational or runtime authority without an explicit mapping.",
       "teiDirection": "all semantic/source-fact extractors must consume the reader's qualified-name/known-state decision, not reclassify by local name alone; unknown or namespaced constructs remain opaque source observations until an explicit adapter mapping accepts them."
+    },
+    {
+      "id": "RMP-049",
+      "topic": "redacted-name-recovery-through-structural-locator-digest",
+      "observed": "PublicationReceipt v2 removed arbitrary unknown element and attribute names from public fields, but the earlier public LocatorDigest hashed artifact SHA plus the local structural path. Structural paths contain element names, so an attacker who knows the public artifact digest and plausible low-entropy extension names can test candidate paths against published locator digests.",
+      "risk": "Direct schema-name redaction can be bypassed through deterministic path hashes, especially for shallow XML locations and predictable enterprise vocabulary. A public-safe receipt can therefore remain dictionary-recoverable even when no source name appears in clear text.",
+      "teiDirection": "keep exact name-bearing SourceLocator local; derive public locator tokens from exact artifact identity plus traversal ordinal or another name-independent snapshot address. Fact and unresolved correlation may use that token, but public locator identity must not hash source-derived names."
     }
   ]
 }
