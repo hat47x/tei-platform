@@ -33,7 +33,7 @@ Build可能であることは、artifactをAccepted Plugin Lockへ採用でき�
 
 また、Plugin package identity、Capability identity、physical artifact identityを一対一には固定しません。複数Pluginを一つのartifactへまとめるTarget最適化や、一つのlogical PluginをTargetごとに異なるartifactへrealizeする構成を許容します。
 
-Self-buildの実行にStudioや特定のAgent Adapterを必須にしません。標準開発環境の境界はADR-0031を正本とし、本Issueではclean checkoutから通常のCLI / Repository Toolでbuildを再実行できることと、Build Lockへ開発Tool固有stateを混ぜないことに集中します。
+Self-buildの実行にTEI Studioや特定のAgent Adapterを必須にしません。clean checkoutから通常のCLI / Repository Toolで再実行できることを基準にし、ChatGPT等のチャット実行環境、Codex、Claude Code、CI等も同じRepository contractを利用できる構造にします。Agent Sessionや一般的なTest状態をBuild Lockへ持ち込まず、Build再現性に必要なSource / builder / dependency / artifactの情報だけを扱います。
 
 ## Self-buildの到達段階
 
