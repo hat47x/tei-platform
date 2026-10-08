@@ -730,6 +730,10 @@ func assessDependencyUse(
 		return useState, consumerFreshness, normalizeStrings(reasons)
 	}
 
+	if assertion.CheckedAt != "" &&
+		assertion.CheckedSubjectFingerprint != freshnessSubjectFingerprint(assertion) {
+		reasons = append(reasons, "CHECK_BINDING_STALE")
+	}
 	consumerFreshness = consumerFreshnessState(assertion, asOf, dependency.MaxAgeSeconds)
 	switch consumerFreshness {
 	case "stale":
@@ -750,7 +754,8 @@ func consumerFreshnessState(assertion Assertion, asOf time.Time, maxAgeSeconds i
 	}
 	var latest time.Time
 	found := false
-	if assertion.CheckedAt != "" {
+	if assertion.CheckedAt != "" &&
+		assertion.CheckedSubjectFingerprint == freshnessSubjectFingerprint(assertion) {
 		if checkedAt, err := time.Parse(time.RFC3339, assertion.CheckedAt); err == nil && !checkedAt.After(asOf) {
 			latest = checkedAt
 			found = true
