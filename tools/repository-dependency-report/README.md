@@ -11,7 +11,7 @@ go test -count=1 ./tools/repository-dependency-report
 
 JSONの`packages`は`internal/`配下のGoパッケージごとに、production Goファイル数、異なる直接依存先の数、直接依存元の数を出力します。`dependencies`には一意な`from → to`の組と、そのimportを書いた元ファイルを列挙します。ファイル順やmapの列挙順に結果が左右されないよう、出力をソートします。実行時刻などの不安定な情報は埋め込みません。
 
-対象は`internal/`以下の`_test.go`を除く`.go`ソースで、`testdata`、ドット・アンダースコアで始まるディレクトリは除外します。Goのbuild tagやGOOS/GOARCHごとの実行対象を解決しないため、**実際の一つのビルドで有効な依存グラフ**とは異なります。依存辺が存在しても、その機能が実行可能・権限付与済み・Provider適合済みであるとは主張しません。
+対象は`internal/`以下のGoソースで、`_test.go`、ドット・アンダースコアで始まるファイル、`testdata`・`vendor`やドット・アンダースコアで始まるディレクトリを除外します。Goのbuild tagやGOOS/GOARCHごとの実行対象を解決しないため、**実際の一つのビルドで有効な依存グラフ**とは異なります。依存辺が存在しても、その機能が実行可能・権限付与済み・Provider適合済みであるとは主張しません。
 
 欠けた`go.mod`、ソースの構文エラー、`internal/`へのimport先にproduction Goパッケージがない状態、ディレクトリ走査失敗などは黙って空の成功結果にしません。特定revisionの報告が必要なら、実行した`git rev-parse HEAD`、toolchain、worktree状態を報告と一緒に保存します。ツール自身はcommitやファイルを変更しません。
 
