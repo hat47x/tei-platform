@@ -120,6 +120,24 @@ func TestSymlinkedSourceCannotEscapeWorkspace(t *testing.T) {
 	}
 }
 
+func TestKnownSemanticRootRejectsEscapedFileBeforeParsing(t *testing.T) {
+	root := sourceRootFixture(t, "semantic")
+	dir := filepath.Join(root, "semantic")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "foreign.tei")
+	if err := os.WriteFile(outside, []byte("invalid semantic source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "foreign.tei")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+		t.Fatalf("semantic parser read outside source before containment preflight: %v", err)
+	}
+}
+
 func TestBrokenManagedSymlinkFailsClosed(t *testing.T) {
 	root := sourceRootFixture(t, "custom-assets")
 	dir := filepath.Join(root, "custom-assets")
