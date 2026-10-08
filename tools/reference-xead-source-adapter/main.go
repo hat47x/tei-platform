@@ -314,10 +314,12 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			"legacy-key-facts-are-not-business-identity-or-functional-dependency",
 			"publication-receipt-does-not-contain-source-values-or-source-text",
 			"publication-receipt-does-not-disclose-arbitrary-unknown-element-or-attribute-names",
+			"public-locator-digest-does-not-hash-source-derived-structural-names",
 		},
 	}
 	var locatorDigests []string
-	for _, node := range doc.Nodes {
+	publicLocatorByPath := map[string]string{}
+	for i, node := range doc.Nodes {
 		if node.Known {
 			receipt.ElementCounts[node.Kind]++
 			receipt.AttributeCounts[node.Kind] += len(node.Attributes)
@@ -325,7 +327,9 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 			receipt.UnknownElementCount++
 			receipt.UnknownAttributeCount += len(node.Attributes)
 		}
-		locatorDigests = append(locatorDigests, digestString(doc.ArtifactSHA256+"|"+node.Locator.Path))
+		locatorDigest := digestString(fmt.Sprintf("%s|node-ordinal:%d", doc.ArtifactSHA256, i+1))
+		publicLocatorByPath[node.Locator.Path] = locatorDigest
+		locatorDigests = append(locatorDigests, locatorDigest)
 	}
 	for _, markup := range doc.Markup {
 		receipt.MarkupCounts[markup.Kind]++
@@ -333,17 +337,25 @@ func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	if len(receipt.MarkupCounts) == 0 {
 		receipt.MarkupCounts = nil
 	}
-	for _, fact := range doc.Facts {
+	for i, fact := range doc.Facts {
+		locatorDigest, ok := publicLocatorByPath[fact.Locator]
+		if !ok {
+			locatorDigest = digestString(fmt.Sprintf("%s|unbound-fact-ordinal:%d", doc.ArtifactSHA256, i+1))
+		}
 		receipt.Facts = append(receipt.Facts, PublishedFact{
 			Kind:            fact.Kind,
-			LocatorDigest:   digestString(doc.ArtifactSHA256 + "|" + fact.Locator),
+			LocatorDigest:   locatorDigest,
 			FactType:        fact.FactType,
 			AttributeNames:  append([]string(nil), fact.AttributeNames...),
 			AuthorityLimits: append([]string(nil), fact.AuthorityLimits...),
 		})
 	}
-	for _, issue := range doc.Unresolved {
-		receipt.Unresolved = append(receipt.Unresolved, PublishedIssue{Code: issue.Code, LocatorDigest: digestString(doc.ArtifactSHA256 + "|" + issue.Locator)})
+	for i, issue := range doc.Unresolved {
+		locatorDigest, ok := publicLocatorByPath[issue.Locator]
+		if !ok {
+			locatorDigest = digestString(fmt.Sprintf("%s|unbound-issue-ordinal:%d", doc.ArtifactSHA256, i+1))
+		}
+		receipt.Unresolved = append(receipt.Unresolved, PublishedIssue{Code: issue.Code, LocatorDigest: locatorDigest})
 	}
 	sort.Strings(locatorDigests)
 	receipt.LocatorCount = len(locatorDigests)
