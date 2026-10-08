@@ -52,6 +52,54 @@ func TestLegacyWorkspaceManifestRejectsEscapingRoot(t *testing.T) {
 	}
 }
 
+func TestWorkspaceRejectsDuplicateAndNestedSourceRoots(t *testing.T) {
+	for _, tc := range []struct {
+		name, first, second string
+	}{
+		{"duplicate", "semantic", "semantic"},
+		{"parent-first", "custom", "custom/objects"},
+		{"child-first", "custom/objects", "custom"},
+	} {
+		for _, legacy := range []bool{false, true} {
+			mode := "yaml"
+			if legacy {
+				mode = "tei"
+			}
+			t.Run(tc.name+"/"+mode, func(t *testing.T) {
+				root := sourceRootFixture(t, tc.first)
+				if legacy {
+					if err := os.Remove(filepath.Join(root, "tei.workspace.yaml")); err != nil {
+						t.Fatal(err)
+					}
+					source := "workspace demo { source " + tc.first + " source " + tc.second + " }"
+					if err := os.WriteFile(filepath.Join(root, "tei.workspace.tei"), []byte(source), 0600); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					manifest := "workspace: demo\nsources:\n  - " + tc.first + "\n  - " + tc.second + "\n"
+					if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "overlap") {
+					t.Fatalf("overlapping source roots were accepted: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestWorkspaceAllowsSimilarButSeparateSourceRoots(t *testing.T) {
+	root := sourceRootFixture(t, "custom/assets")
+	manifest := "workspace: demo\nsources:\n  - custom/assets\n  - custom/assets-v2\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.Load(root); err != nil {
+		t.Fatalf("sibling source roots must be independent: %v", err)
+	}
+}
+
 func TestUnknownLocalRootRemainsManaged(t *testing.T) {
 	root := sourceRootFixture(t, "custom-assets")
 	dir := filepath.Join(root, "custom-assets")
