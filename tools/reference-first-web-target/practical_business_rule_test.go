@@ -438,3 +438,29 @@ func TestReferenceCommandScenarioRejectsNullRelationKey(t *testing.T) {
 		t.Fatalf("null relation key escaped validation: %+v", result)
 	}
 }
+
+func TestCommandValidationRelationKeysRejectsBlankKeys(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value string
+	}{
+		{name: "empty", value: ""},
+		{name: "whitespace", value: " \t "},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := []semanticRowProjection{{
+				Attributes: []semanticValueProjection{{
+					Attribute: "sales.order_line.line_number",
+					Value:     tc.value,
+				}},
+			}}
+			_, err := (commandValidationSource{orderLines: rows}).RelationKeys(
+				core.MustCanonicalID("sales.order.lines"),
+				core.MustCanonicalID("sales.order_line.line_number"),
+			)
+			if err == nil || !strings.Contains(err.Error(), "blank key") {
+				t.Fatalf("blank relation key was accepted as uniqueness evidence: %v", err)
+			}
+		})
+	}
+}
