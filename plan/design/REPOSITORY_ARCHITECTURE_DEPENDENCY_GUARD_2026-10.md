@@ -130,6 +130,14 @@ Plugin capabilityの変更は #951 / PR #963、TEI-native sourceは #957 / PR #9
 
 **次の具体的な受け入れ実験**： (A) 既存Kindに含まれない架空Capabilityをdescriptorとして宣言し、parse→validate→lock→resolveの各段階でどこまで保持できるか記録する。(B) 既存WorldフィールドにないモデルをDSL pluginで追加する想定で、parser→IR→validation→serializationを通過するために必要な既存ファイル変更を列挙する。(C) 第2のDB Providerで非破壊migrationを計画する際、共通Planを変更せずrenderer追加だけで済むか確認し、破壊的操作の安全条件は別途試験する。いずれも現時点では実験計画であり、成功を主張しない。
 
+## Capability解決経路の追加確認（2026-10-08）
+
+`internal/plugin/resolve.go` の `Catalog.ResolveEnvironment` はPlugin依存を再帰的に解決し、各Definitionの `Provides` を `ResolvedCapability` に転写している。この箇所ではCapabilityKindのswitchによる種類別分岐を行わず、`ResolvedSet.Capability(kind,id)` もKindとIDの一致で探索する。したがって、未知Kindの追加がresolver自体のコード変更を必ず要するという仮説は支持されない。
+
+実際の境界は `CapabilityKind.Valid()` の既知Kind検証、Definitionの検証呼出元、そしてCapabilityごとに型付きの `Actions` 等の属性を参照するruntime bindingにある。次の試験では「未知Kindを含むDefinitionのValidationはどう失敗するか」と「既存Kindで新しいIDを指定した場合はCore無変更で解決できるか」を分ける。Kind追加とID追加を混同しない。
+
+なおこの観測は静的なソース確認であり、実際のworkspace読込・validation・実行のE2E成功を証明しない。関連するPlugin Capability契約レーン（#951 / PR #963）へ検証論点を引き継ぎ、本依存ガードPRに重複したPlugin実装を追加しない。
+
 ## 非目標
 
 本ガードはRuntime Permission、Plugin Authority、Provider Conformance、外部実装のsource identityを検査しない。また、Plugin packageとphysical process / Wasm artifactが一対一であることを要求しない。Source importがきれいでもRuntimeの振る舞いまで安全・適合済みとはいえない。
