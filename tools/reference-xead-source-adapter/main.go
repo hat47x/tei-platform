@@ -233,6 +233,14 @@ func Observe(format SourceFormat, content []byte) (ObservedDocument, error) {
 				if attr.Name.Space != "" {
 					name = "{" + attr.Name.Space + "}" + attr.Name.Local
 				}
+				if _, duplicate := attrs[name]; duplicate {
+					return ObservedDocument{}, fmt.Errorf(
+						"parse %s: duplicate attribute %s at %s",
+						format,
+						name,
+						path,
+					)
+				}
 				attrs[name] = attr.Value
 			}
 			_, known := knownElements[format][t.Name.Local]
