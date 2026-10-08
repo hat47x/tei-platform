@@ -160,6 +160,15 @@ func TestBoundaryViolationClassification(t *testing.T) {
 		{"internal/plugin", "tei/cmd/tei", true},
 		{"internal/plugin", "tei/tools", true},
 		{"internal/core", "tei/internal", true},
+		{"internal/core", "tei/internal/core", true},
+		{"internal/semantic/capabilityinvoke", "tei/internal/semantic/other", false},
+		{"internal/stdlib", "tei/internal/semantic/other", true},
+		{"internal/permission", "tei/internal/core/other", true},
+		{"internal/plugin", "tei/reference", true},
+		{"internal/plugin", "tei/examples", true},
+		{"internal/plugin", "tei/cmd", true},
+		{"internal/plugin", "tei/toolsmith", false},
+		{"internal/plugin", "example.com/tei/tools", false},
 	}
 	for _, tt := range tests {
 		e := importEdge{source: tt.source, path: tt.imported}
