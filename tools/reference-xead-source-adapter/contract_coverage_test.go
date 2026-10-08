@@ -10,9 +10,8 @@ func TestClassificationCoverageSeparatesAccountingFromAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt := PublicReceipt(doc)
 	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
-	coverage, err := CheckClassificationCoverage(FormatXead, receipt, contract)
+	coverage, err := CheckClassificationCoverage(FormatXead, doc, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +29,7 @@ func TestClassificationCoveragePassesWhenEveryObservedKindHasMapping(t *testing.
 		t.Fatal(err)
 	}
 	contract := []byte(`{"constructMappings":{"xeaf":{"System":{"classification":["source-metadata"]},"Function":{"classification":["realization"]},"Script":{"classification":["native-preserved"]},"Unused":{"classification":["unresolved"]}}}}`)
-	coverage, err := CheckClassificationCoverage(FormatXeaf, PublicReceipt(doc), contract)
+	coverage, err := CheckClassificationCoverage(FormatXeaf, doc, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +47,7 @@ func TestClassificationCoverageRejectsNamespacedLookalike(t *testing.T) {
 		t.Fatal(err)
 	}
 	contract := []byte(`{"constructMappings":{"xead":{"System":{"classification":["source-metadata"]},"Table":{"classification":["canonical-candidate"]}}}}`)
-	coverage, err := CheckClassificationCoverage(FormatXead, PublicReceipt(doc), contract)
+	coverage, err := CheckClassificationCoverage(FormatXead, doc, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
