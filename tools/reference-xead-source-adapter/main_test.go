@@ -240,3 +240,15 @@ func TestPublicLocatorDigestDoesNotHashSourceDerivedPath(t *testing.T) {
 		t.Fatal("public locator digest still hashes source-derived structural path")
 	}
 }
+
+func TestObserveRejectsDuplicateExpandedAttribute(t *testing.T) {
+	_, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2" FormatVersion="9.9"/>`))
+	if err == nil || !strings.Contains(err.Error(), "duplicate attribute FormatVersion") {
+		t.Fatalf("duplicate unqualified attribute was silently normalized: %v", err)
+	}
+
+	_, err = Observe(FormatXead, []byte(`<System xmlns:x="urn:private" x:A="1" x:A="2"/>`))
+	if err == nil || !strings.Contains(err.Error(), "duplicate attribute {urn:private}A") {
+		t.Fatalf("duplicate namespaced attribute was silently normalized: %v", err)
+	}
+}
