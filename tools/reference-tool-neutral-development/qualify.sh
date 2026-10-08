@@ -135,6 +135,9 @@ printf 'candidate-head=%s\n' "$CANDIDATE_HEAD"
 if [[ -n "$ORIGIN_MAIN" ]]; then
   printf 'origin-main=%s\n' "$ORIGIN_MAIN"
 fi
+if [[ -n "$EXPECTED_MAIN" ]]; then
+  printf 'candidate-contains-expected-main=true\n'
+fi
 printf 'repository-health=PASS\n'
 printf 'tool-neutral-development-reference=PASS\n'
 printf 'qualification=PASS\n'
