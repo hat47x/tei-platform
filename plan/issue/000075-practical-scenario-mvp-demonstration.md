@@ -105,6 +105,22 @@ TEIの実用性は、個別にModelやDriverを動かせるだけでは判断で
 7. Data / Function / Businessの三視点で、影響を追跡できた箇所とできなかった箇所を示す。業務手順の受理・production昇格は `ISSUE-000042` / `000048` / `000049` の判断に従い、B成功を理由に飛ばさない。
 8. 使用した実行環境、syntheticかactual Providerか、CommandとObservationの関係、未確認事項をまとめる。historical Gate B/CのEvidenceを更新したことにはしない。
 
+### Bの具体的な実装候補と確認待ち（2026-10-08）
+
+**Repositoryの静的な読解で確認した現状。** `ISSUE-000073`は2026-10-06に完了済みで、`order_entry`の`uses validation`、Driverの`ResolveApplicationValidations`、Web Targetの評価対象の導出は既に実装されている。候補Bはこの修正を新規にやり直さず、**新規則を追加したときに実際の入力全体で働くか**を問う。
+
+一方、既存のShared Acceptanceの`resolveCandidate`は、`add-application-validation-use`で参照するValidationが変更前Worldに存在することを要求していた。そのため`add-validation`と利用宣言を**一つのcandidate**にまとめると、候補内で追加したValidationでも`VALIDATION_NOT_FOUND`となる。この欠落は、業務規則の追加からApplicationでの評価までを一つの意味変更として扱ううえで障害となる。
+
+さらに第一Web Targetの`commandValidationSource.Number`は、order lineが複数あっても**先頭行しか数値を読んでいない**。既存の`quantity_positive`も、2行目以降の違反を見逃し得る。これは新しい業務規則だけの問題ではなく、現行の実務シナリオそのものに関わる欠落である。
+
+[Draft PR #985](https://github.com/hat47x/tei-platform/pull/985)では、次の修正と回帰テストを**未検証の候補**として追加した。
+
+- 同一candidateに含まれるValidation追加を解決段階で認識し、対応するApplicationの`uses validation`と一度にPreview / Acceptできるようにする。未定義参照や重複追加は引き続き拒否する。
+- `positive`な明細Validationは、Command実行前に全明細へ適用する。`relation-unique`のように集合全体を扱うValidationは従来どおり一回で評価する。検査不能な明細を成功扱いしない。
+- scratch workspaceで単価の正値制約を追加し、正常値と**2行目の不正値**についてDriver・Web経由の結果を回帰テストする。既存ReferenceのSourceは変更しない。
+
+現時点ではGitHub連携を通した静的調査とコード変更までで、trustedなcheckout上の`tools/repository-health-check.sh`、実際のPreview/Accept/HTTPテストは未実行である。**PRがDraftであること、コードが書かれたこと、テストが追加されたことは、動作が成立したEvidenceにはならない。** exact-headのfull PASSとpre/post cleanが得られるまで、コードを`main`へ統合しない。
+
 ### Bの判定と停止条件案
 
 **成立と判断できる範囲:** 変更が一つの正本へ受理され、reload後にDriverとWebが同じ意味を示し、人がData / Function / Businessへの影響と未確認を理解できること。少なくとも正常系と拒否系の両方を実行し、実装側に複製された規則の有無を確認する。
