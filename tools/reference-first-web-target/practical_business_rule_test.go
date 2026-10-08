@@ -367,3 +367,25 @@ func TestReferenceCommandScenarioFailsClosedForEmptyOrderLineCollection(t *testi
 		t.Fatalf("empty detail reached downstream side effects: %+v", result)
 	}
 }
+
+func TestCommandValidationNumericReadCannotDiscardAdditionalLines(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(), readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.OrderLineRows) < 2 {
+		t.Fatal("two-line fixture is required")
+	}
+	_, err = (commandValidationSource{orderLines: read.OrderLineRows}).Number(
+		core.MustCanonicalID("sales.order_line.quantity"),
+	)
+	if err == nil || !strings.Contains(err.Error(), "exactly one order line") {
+		t.Fatalf("ambiguous positive-rule input was reduced to the first line: %v", err)
+	}
+}
