@@ -207,7 +207,27 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 			return nil, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
 		}
 		base := filepath.Join(root, sourceRoot)
-		err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+		// Validate the physical root itself. Checking only file leaves would
+		// accept an empty out-of-Workspace directory through a symlinked parent.
+		baseInfo, err := os.Lstat(base)
+		if os.IsNotExist(err) {
+			continue // optional source root has not been materialized
+		}
+		if err != nil {
+			return nil, fmt.Errorf("stat workspace source root %q: %w", sourceRoot, err)
+		}
+		baseReal, err := filepath.EvalSymlinks(base)
+		if err != nil {
+			return nil, fmt.Errorf("resolve workspace source root %q: %w", sourceRoot, err)
+		}
+		baseRel, err := filepath.Rel(rootReal, baseReal)
+		if err != nil || baseRel == ".." || strings.HasPrefix(baseRel, ".."+string(os.PathSeparator)) {
+			return nil, fmt.Errorf("workspace source root %q resolves outside Workspace", sourceRoot)
+		}
+		if !baseInfo.IsDir() {
+			return nil, fmt.Errorf("workspace source root %q must be a directory", sourceRoot)
+		}
+		err = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				if os.IsNotExist(walkErr) && path == base {
 					return nil // an optional source root has not been materialized
