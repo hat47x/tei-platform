@@ -260,6 +260,24 @@ func TestSourceRootMustBeADirectory(t *testing.T) {
 	}
 }
 
+func TestOnePhysicalSourceCannotHaveMultipleManagedAliases(t *testing.T) {
+	root := sourceRootFixture(t, "custom-assets")
+	dir := filepath.Join(root, "custom-assets")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(dir, "original.md")
+	if err := os.WriteFile(original, []byte("one source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(original, filepath.Join(dir, "alias.md")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "same physical file") {
+		t.Fatalf("duplicate physical source aliases were accepted: %v", err)
+	}
+}
+
 func TestKnownSemanticRootRejectsEscapedFileBeforeParsing(t *testing.T) {
 	root := sourceRootFixture(t, "semantic")
 	dir := filepath.Join(root, "semantic")
