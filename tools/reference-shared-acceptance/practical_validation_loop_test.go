@@ -59,9 +59,24 @@ func TestPracticalRuleChangePreviewsAndAcceptsBothMeaningAndApplicationSelection
 		t.Fatalf("changed collections=%v", got)
 	}
 
-	decision, err := accept(dir, payload, acceptOptions{})
+	// A reviewer must be able to see both the new rule and its Application
+	// selection. Binding the exact projection is a technical guard, not proof
+	// of a real person's approval; this test accepts only a scratch fixture.
+	review := buildReviewProjection(ev)
+	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
+		t.Fatalf("review projection cannot be bound: %+v", review)
+	}
+	if len(review.Coverage.Incomplete) == 0 {
+		t.Fatal("incomplete review coverage was silently hidden")
+	}
+	decision, err := accept(dir, payload, acceptOptions{
+		ExpectedReviewFingerprint: review.ReviewFingerprint,
+	})
 	if err != nil || decision.Decision != "accepted" || !decision.SourceChanged {
 		t.Fatalf("accept=%+v error=%v", decision, err)
+	}
+	if decision.ReviewBinding == nil || decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		t.Fatalf("accepted change is not bound to the reviewed projection: %+v", decision.ReviewBinding)
 	}
 	loaded, err := workspace.Load(dir)
 	if err != nil {
