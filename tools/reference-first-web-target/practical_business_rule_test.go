@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,46 +16,133 @@ import (
 	"tei/internal/workspace"
 )
 
-// This test owns only a scratch copy. It does not accept a business decision
-// or change the checked-in Reference workspace.
+// This is a test-only acceptance on a scratch workspace. It uses the real
+// Shared Acceptance CLI, but does NOT represent a human decision to adopt
+// this rule in the checked-in Reference or production.
 func workspaceWithUnitPriceRule(t *testing.T) string {
 	t.Helper()
 	scratch := filepath.Join(t.TempDir(), "workspace")
 	if err := os.CopyFS(scratch, os.DirFS(referenceWorkspacePath(t))); err != nil {
 		t.Fatal(err)
 	}
-	appendSource := func(rel string, change func(string) (string, bool)) {
+	repoRoot := filepath.Clean(filepath.Join(referenceWorkspacePath(t), "..", ".."))
+	runAcceptance := func(args ...string) []byte {
 		t.Helper()
-		path := filepath.Join(scratch, filepath.FromSlash(rel))
-		original, err := os.ReadFile(path)
+		cmd := exec.Command("go", append([]string{"run", "./tools/reference-shared-acceptance"}, args...)...)
+		cmd.Dir = repoRoot
+		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Shared Acceptance CLI args=%v error=%v output=%s", args, err, output)
 		}
-		updated, ok := change(string(original))
-		if !ok {
-			t.Fatalf("scratch fixture source %s does not have the expected shape", rel)
-		}
-		if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		return output
 	}
-	appendSource("semantic/sales/validation.tei", func(s string) (string, bool) {
-		if strings.Contains(s, "sales.order_line.unit_price_positive") {
-			return "", false
-		}
-		return strings.TrimRight(s, "\r\n") +
-			"\n\nvalidation sales.order_line.unit_price_positive positive {\n" +
-			"    attribute sales.order_line.unit_price\n}\n", true
-	})
-	appendSource("applications/order-entry/application.tei", func(s string) (string, bool) {
-		const anchor = "    uses validation sales.order.lines.line_number_unique\n"
-		if !strings.Contains(s, anchor) ||
-			strings.Contains(s, "uses validation sales.order_line.unit_price_positive") {
-			return "", false
-		}
-		return strings.Replace(s, anchor, anchor+
-			"    uses validation sales.order_line.unit_price_positive\n", 1), true
-	})
+	var revision struct {
+		ModelRevision string `json:"modelRevision"`
+	}
+	if err := json.Unmarshal(runAcceptance("revision", "-workspace", scratch), &revision); err != nil {
+		t.Fatal(err)
+	}
+	if revision.ModelRevision == "" {
+		t.Fatal("Shared Acceptance CLI returned empty model revision")
+	}
+	candidate := map[string]any{
+		"schema":            "tei.reference.change-candidate/v0",
+		"id":                "cand-practical-business-rule-test",
+		"baseModelRevision": revision.ModelRevision,
+		"origin":            map[string]string{"kind": "cli", "actor": "test"},
+		"intent":            "受注明細の単価制約と利用宣言を一つの変更として試す",
+		"evidence": []map[string]string{
+			{"source": "semantic/sales/validation.tei"},
+			{"source": "applications/order-entry/application.tei"},
+		},
+		"delta": []map[string]any{
+			{
+				"op":        "add-validation",
+				"namespace": "sales",
+				"id":        "sales.order_line.unit_price_positive",
+				"kind":      "positive",
+				"attribute": "sales.order_line.unit_price",
+			},
+			{
+				"op":        "add-application-validation-use",
+				"placement": "applications/order-entry/application.tei",
+				"applicationValidationUse": map[string]string{
+					"application": "order_entry",
+					"validation":  "sales.order_line.unit_price_positive",
+				},
+			},
+		},
+	}
+	data, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidatePath := filepath.Join(t.TempDir(), "candidate.json")
+	if err := os.WriteFile(candidatePath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Preview is read-only; the two authoritative files may change only on Accept.
+	validationPath := filepath.Join(scratch, "semantic", "sales", "validation.tei")
+	applicationPath := filepath.Join(scratch, "applications", "order-entry", "application.tei")
+	beforeValidation, err := os.ReadFile(validationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeApplication, err := os.ReadFile(applicationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var preview struct {
+		Acceptable bool `json:"acceptable"`
+		SourceEdits []struct {
+			Path string `json:"path"`
+		} `json:"sourceEdits"`
+	}
+	if err := json.Unmarshal(runAcceptance("preview", "-workspace", scratch, "-candidate", candidatePath), &preview); err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Acceptable || len(preview.SourceEdits) != 2 {
+		t.Fatalf("unexpected preview: %+v", preview)
+	}
+	afterPreviewValidation, err := os.ReadFile(validationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterPreviewApplication, err := os.ReadFile(applicationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(beforeValidation, afterPreviewValidation) || !bytes.Equal(beforeApplication, afterPreviewApplication) {
+		t.Fatal("Preview mutated authoritative source")
+	}
+	var review struct {
+		PreviewAcceptable bool   `json:"previewAcceptable"`
+		ReviewFingerprint string `json:"reviewFingerprint"`
+	}
+	if err := json.Unmarshal(runAcceptance("review", "-workspace", scratch, "-candidate", candidatePath, "-format", "json"), &review); err != nil {
+		t.Fatal(err)
+	}
+	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
+		t.Fatalf("unexpected review: %+v", review)
+	}
+	var decision struct {
+		Decision      string `json:"decision"`
+		SourceChanged bool   `json:"sourceChanged"`
+		ReviewBinding *struct {
+			Fingerprint string `json:"fingerprint"`
+		} `json:"reviewBinding"`
+	}
+	if err := json.Unmarshal(runAcceptance("accept", "-workspace", scratch,
+		"-candidate", candidatePath, "-expected-review-fingerprint", review.ReviewFingerprint),
+		&decision); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "accepted" || !decision.SourceChanged ||
+		decision.ReviewBinding == nil ||
+		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
+		t.Fatalf("test-only acceptance is not review-bound: %+v", decision)
+	}
 	return scratch
 }
 
