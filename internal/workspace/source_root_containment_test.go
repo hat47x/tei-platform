@@ -168,6 +168,45 @@ func TestSymlinkedSourceCannotEscapeWorkspace(t *testing.T) {
 	}
 }
 
+func TestSymlinkedSourceRootOutsideWorkspaceFailsClosed(t *testing.T) {
+	root := sourceRootFixture(t, "custom-assets")
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("outside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "custom-assets")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+		t.Fatalf("symlinked source root escaped Workspace: %v", err)
+	}
+}
+
+func TestWorkspaceContainmentRejectsSiblingPathPrefix(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "workspace")
+	if err := os.MkdirAll(filepath.Join(root, "custom-assets"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "workspace: demo\nsources:\n  - custom-assets\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "workspace-other")
+	if err := os.MkdirAll(outside, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "private.txt"), []byte("outside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(outside, "private.txt"), filepath.Join(root, "custom-assets", "alias.txt")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+		t.Fatalf("similar Workspace path prefix bypassed containment: %v", err)
+	}
+}
+
 func TestKnownSemanticRootRejectsEscapedFileBeforeParsing(t *testing.T) {
 	root := sourceRootFixture(t, "semantic")
 	dir := filepath.Join(root, "semantic")
