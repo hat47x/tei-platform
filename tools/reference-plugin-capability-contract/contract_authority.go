@@ -57,6 +57,37 @@ func resolveCapabilityWithAcceptedContractAuthority(
 	return resolution, bindings, nil
 }
 
+func verifyCapabilityResolutionLockAcceptedContractAuthority(
+	lock CapabilityResolutionLock,
+	grants []CapabilityContractAuthorityGrant,
+	publications []CapabilityContractPublication,
+) (CapabilityContractAuthorityBinding, error) {
+	if err := validateCapabilityResolutionLock(lock); err != nil {
+		return CapabilityContractAuthorityBinding{}, err
+	}
+	contracts, bindings, err := acceptedCapabilityContracts(
+		lock.Requirement,
+		[]Contract{lock.Contract},
+		grants,
+		publications,
+	)
+	if err != nil {
+		return CapabilityContractAuthorityBinding{}, err
+	}
+	if len(contracts) != 1 || len(bindings) != 1 {
+		return CapabilityContractAuthorityBinding{}, fmt.Errorf(
+			"capability lock Contract Authority did not resolve exactly once",
+		)
+	}
+	if fingerprint(contracts[0]) != lock.ContractFingerprint ||
+		bindings[0].ContractFingerprint != lock.ContractFingerprint {
+		return CapabilityContractAuthorityBinding{}, fmt.Errorf(
+			"capability lock Contract Authority resolved different Contract meaning",
+		)
+	}
+	return bindings[0], nil
+}
+
 func acceptedCapabilityContracts(
 	requirement Requirement,
 	contracts []Contract,
