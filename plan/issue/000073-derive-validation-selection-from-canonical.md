@@ -1,6 +1,6 @@
 # ISSUE-000073: Applicationが評価するValidationの選択を、Target側の一覧ではなくCanonicalな宣言から導く
 
-- 状態: Done（2026-10-06。全完了条件を充足） — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済みで、統合と、残る判断（Gate Cの後継Handover、BP-05の扱い）が残る
+- 状態: Done（2026-10-06。完了条件はすべてチェック済み） — [ADR-0029](../adr/0029-application-validation-selection-from-canonical-declaration.md)を2026-10-06にownerが採用し、同日、`order_entry`の宣言を受理した。コード・testは実装済み。完了条件に残していた2件の判断（Gate Cの後継Handover、BP-05の扱い）も2026-10-06にownerが決め、下記「判断」節に記録した（後継Handoverは今は発行しない。BP-05は独立した参照とする）
 - 提案日: 2026-09-30
 - 性格: SSOTの欠落の解消 / Reference変更を伴う実装
 - 主担当要求: RQ-003（主）/ RQ-013 / RQ-017 / RQ-021
@@ -20,7 +20,7 @@
 
 - TEIの構文には、Applicationが使うValidationを宣言する`uses validation <id>`があります。parserはこれを`Application.Validations`へ読み込み（`internal/syntax/parser.go`）、共有Validationは参照先の存在を確かめ（`internal/validation/business_validation_reference.go`）、Shared AcceptanceのPreviewは差分とimpactに含めます（`tools/internal/changeanalysis`）。
 - しかし`order_entry`はこの宣言を持っていません。
-- DriverとFirst Web Targetは、この宣言を読んでいません。First Web Targetは`tools/reference-first-web-target/command_scenario.go`の2か所に、評価するCanonical IDの一覧（`sales.order_line.quantity_positive`、`sales.order.lines.line_number_unique`）を直接書いています。なお、`tools/reference-first-web-target/projection.go`は`app.Validations`をProjectionのJSONへ写し、HTML画面にも「Applicationの宣言なし」と表示しますが、表示するだけで、評価には使っていません。`order_entry`が宣言を持つと、この表示が変わり、Web TargetのEvidence artifactと、その期待値を持つtestも変わり得ます。
+- DriverとFirst Web Targetは、この宣言を読んでいません。First Web Targetは`tools/reference-first-web-target/command_scenario.go`の2か所に、評価するCanonical IDの一覧（`sales.order_line.quantity_positive`、`sales.order.lines.line_number_unique`）を直接書いています。なお、`tools/reference-first-web-target/projection.go`は`app.Validations`をProjectionのJSONへ写します。HTML画面（`tools/reference-first-web-target/server.go`の表示テンプレート）は、宣言が無いときに「none declared at Application level」と表示しますが、表示するだけで、評価には使っていません。`order_entry`が宣言を持つと、この表示が変わり、Web TargetのEvidence artifactと、その期待値を持つtestも変わり得ます。
 
 つまり「どの規則を適用するか」という意味の一部が、正本の外（Target側のコード）に二つ目の置き場を持っています。原則P3の「一つの関心事に、暗黙の複数正本を作らない」に反する状態です。
 
