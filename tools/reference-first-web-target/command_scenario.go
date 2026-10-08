@@ -10,6 +10,7 @@ import (
 	"tei/internal/driver"
 	"tei/internal/ir"
 	"tei/internal/realization"
+	"tei/internal/semantic"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/semantic/capabilityinvoke"
@@ -180,7 +181,6 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 	result.Read = &readResult
 
 	result.Stage = "validation"
-	validationSource := commandValidationSource{orderLines: readResult.OrderLineRows}
 	// どのValidationを評価するかは、ApplicationがCanonicalに宣言した選択から得る（ADR-0029）。
 	// Target側に一覧を持たない。宣言が無ければ、空を成功とみなさず、Execution Errorとして返す。
 	rules, err := r.resolver.ResolveApplicationValidations(core.MustCanonicalID("order_entry"))
@@ -189,7 +189,7 @@ func (r *referenceCommandScenarioRunner) RunCommand(
 	}
 	for _, rule := range rules {
 		id := rule.ID
-		evaluated, err := validationeval.Evaluate(rule, validationSource)
+		evaluated, err := evaluateCommandValidation(rule, readResult.OrderLineRows)
 		if err != nil {
 			return result, err
 		}
@@ -374,6 +374,34 @@ func (f capabilityAdapterFunc) Invoke(
 	input any,
 ) (capabilityinvoke.BusinessResult, error) {
 	return f(ctx, capability, input)
+}
+
+// evaluateCommandValidation applies a record-level positive rule to every line in
+// the selected order. A single aggregate result is returned per Canonical rule.
+// Relation-wide uniqueness is evaluated once over the complete collection.
+// Missing values or an empty collection must not silently count as success.
+func evaluateCommandValidation(
+	rule semantic.Validation,
+	orderLines []semanticRowProjection,
+) (validationeval.Result, error) {
+	if rule.Kind != semantic.ValidationPositive {
+		return validationeval.Evaluate(rule, commandValidationSource{orderLines: orderLines})
+	}
+	if len(orderLines) == 0 {
+		return "", fmt.Errorf("cannot evaluate positive validation %s over an empty order-line collection", rule.ID)
+	}
+	for index, line := range orderLines {
+		result, err := validationeval.Evaluate(rule, commandValidationSource{
+			orderLines: []semanticRowProjection{line},
+		})
+		if err != nil {
+			return "", fmt.Errorf("validation %s on order line %d: %w", rule.ID, index, err)
+		}
+		if result != validationeval.ResultSatisfied {
+			return result, nil
+		}
+	}
+	return validationeval.ResultSatisfied, nil
 }
 
 type commandValidationSource struct {
