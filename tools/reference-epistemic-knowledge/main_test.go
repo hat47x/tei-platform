@@ -468,6 +468,12 @@ func TestReviewHistoryDerivesCurrentConfirmationWithoutOverwritingEvents(t *test
 				Reviewer: "reviewer-b",
 				Method: reviewMethodHuman,
 				MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
 				OccurredAt: "2026-10-06T13:00:00Z",
 			},
 			ReviewEvent{
@@ -477,6 +483,12 @@ func TestReviewHistoryDerivesCurrentConfirmationWithoutOverwritingEvents(t *test
 				Reviewer: "reviewer-c",
 				Method: reviewMethodHuman,
 				MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
 				OccurredAt: "2026-10-06T14:00:00Z",
 			},
 		)
@@ -509,6 +521,12 @@ func TestConfirmationWithdrawalPreservesHistoryAndReturnsExternalFactToCandidate
 			Reviewer: "reviewer-b",
 			Method: reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
 			OccurredAt: "2026-10-06T13:00:00Z",
 		})
 	}
@@ -541,6 +559,12 @@ func TestReviewHistoryRejectsDuplicateSequence(t *testing.T) {
 			Reviewer: "reviewer-b",
 			Method: reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
 			OccurredAt: "2026-10-06T13:00:00Z",
 		})
 	}
@@ -579,6 +603,12 @@ func TestReviewHistoryRejectsBackwardChronology(t *testing.T) {
 			Reviewer:           "reviewer-b",
 			Method:             reviewMethodHuman,
 			MeaningFingerprint: assertion.MeaningFingerprint,
+				StatementKind:      assertion.Mode,
+				Context:            append([]ScopeBinding{}, assertion.Context...),
+				TargetIdentity: ReviewTargetIdentity{
+					Kind: assertion.Target.Kind,
+					ID:   assertion.Target.ID,
+				},
 			OccurredAt:         "2026-10-06T11:00:00Z",
 		})
 	}
@@ -895,6 +925,12 @@ func TestFutureReviewEventDoesNotRewriteHistoricalProjection(t *testing.T) {
 			Reviewer:           "user:reviewer",
 			Method:             reviewMethodHuman,
 			MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+			StatementKind:      corpus.Assertions[i].Mode,
+			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: corpus.Assertions[i].Target.Kind,
+				ID:   corpus.Assertions[i].Target.ID,
+			},
 			OccurredAt:         "2026-02-01T00:00:00Z",
 		}}
 	}
@@ -931,6 +967,12 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 				Reviewer:           "user:reviewer",
 				Method:             reviewMethodHuman,
 				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+			StatementKind:      corpus.Assertions[i].Mode,
+			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: corpus.Assertions[i].Target.Kind,
+				ID:   corpus.Assertions[i].Target.ID,
+			},
 				OccurredAt:         "2026-01-01T00:00:00Z",
 			},
 			{
@@ -940,6 +982,12 @@ func TestProjectionExposesReviewLogSequenceSeparatelyFromCount(t *testing.T) {
 				Reviewer:           "user:reviewer",
 				Method:             reviewMethodHuman,
 				MeaningFingerprint: corpus.Assertions[i].MeaningFingerprint,
+			StatementKind:      corpus.Assertions[i].Mode,
+			Context:            append([]ScopeBinding{}, corpus.Assertions[i].Context...),
+			TargetIdentity: ReviewTargetIdentity{
+				Kind: corpus.Assertions[i].Target.Kind,
+				ID:   corpus.Assertions[i].Target.ID,
+			},
 				OccurredAt:         "2026-01-02T00:00:00Z",
 			},
 		}
@@ -963,5 +1011,78 @@ func TestProjectionStatesReviewHistoryIsAsOfBounded(t *testing.T) {
 	}
 	if !containsString(projection.AuthorityLimits, "review-history-is-bounded-by-context-as-of") {
 		t.Fatalf("missing as-of history authority boundary: %+v", projection.AuthorityLimits)
+	}
+}
+
+
+func TestScopeChangeInvalidatesReviewBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "human-reviewed" {
+			corpus.Assertions[i].Context = []ScopeBinding{
+				{Dimension: "environment", Value: "production", Provenance: ScopeDeclared},
+				{Dimension: "project", Value: "tei", Provenance: ScopeDeclared},
+			}
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "unreviewed" ||
+		got.ReviewBinding != "stale" ||
+		got.UseState != "review-required" ||
+		!hasReason(got, "REVIEW_BINDING_STALE") {
+		t.Fatalf("scope change inherited old human review: %+v", got)
+	}
+}
+
+func TestStatementKindChangeInvalidatesReviewBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "human-reviewed" {
+			corpus.Assertions[i].Mode = ModeHypothesis
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "unreviewed" ||
+		got.ReviewBinding != "stale" ||
+		got.UseState != "review-required" {
+		t.Fatalf("statement-kind change inherited old human review: %+v", got)
+	}
+}
+
+func TestTargetIdentityChangeInvalidatesReviewBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "human-reviewed" {
+			corpus.Assertions[i].Target.ID = "tei.changed-target"
+		}
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, projection, "human-reviewed")
+	if got.ConfirmationState != "unreviewed" ||
+		got.ReviewBinding != "stale" ||
+		got.UseState != "review-required" {
+		t.Fatalf("target identity change inherited old human review: %+v", got)
+	}
+}
+
+func TestProjectionStatesReviewBindingIncludesScopedSubject(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "review-binding-includes-context-kind-and-target-identity") {
+		t.Fatalf("missing scoped review-binding authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
