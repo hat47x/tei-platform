@@ -112,7 +112,7 @@ type RelationalSourceFacts struct {
 // candidate keys, physical key authority, or functional dependencies.
 func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	var facts RelationalSourceFacts
-	tableFields := indexTableFieldMetadata(doc.Root)
+	tableFields := indexTableFieldIdentity(doc.Root).Fields
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
@@ -226,15 +226,36 @@ type tableFieldMetadata struct {
 	DataTypeLegacyID string
 }
 
-func indexTableFieldMetadata(root Node) map[string]map[string]tableFieldMetadata {
-	out := map[string]map[string]tableFieldMetadata{}
+type tableFieldIdentityIndex struct {
+	Fields        map[string]map[string]tableFieldMetadata
+	TableCounts   map[string]int
+	TableLocators map[string][]string
+	FieldCounts   map[string]map[string]int
+	FieldLocators map[string]map[string][]string
+}
+
+func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
+	out := tableFieldIdentityIndex{
+		Fields:        map[string]map[string]tableFieldMetadata{},
+		TableCounts:   map[string]int{},
+		TableLocators: map[string][]string{},
+		FieldCounts:   map[string]map[string]int{},
+		FieldLocators: map[string]map[string][]string{},
+	}
 	var walk func(Node)
 	walk = func(n Node) {
 		if localName(n.Name) == "Table" {
 			tableID := attributeValue(n, "ID")
-			if _, ok := out[tableID]; !ok {
-				out[tableID] = map[string]tableFieldMetadata{}
+			out.TableCounts[tableID]++
+			out.TableLocators[tableID] = append(out.TableLocators[tableID], n.Locator)
+			if out.TableCounts[tableID] == 1 {
+				out.Fields[tableID] = map[string]tableFieldMetadata{}
+				out.FieldCounts[tableID] = map[string]int{}
+				out.FieldLocators[tableID] = map[string][]string{}
+			} else {
+				delete(out.Fields, tableID)
 			}
+
 			var collectFields func(Node)
 			collectFields = func(current Node) {
 				for _, child := range current.Children {
@@ -243,9 +264,20 @@ func indexTableFieldMetadata(root Node) map[string]map[string]tableFieldMetadata
 						continue
 					}
 					if childName == "TableField" || childName == "Field" {
-						out[tableID][attributeValue(child, "ID")] = tableFieldMetadata{
-							AttributeType:    attributeValue(child, "AttributeType"),
-							DataTypeLegacyID: attributeValue(child, "DataTypeID"),
+						fieldID := attributeValue(child, "ID")
+						if _, ok := out.FieldCounts[tableID]; !ok {
+							out.FieldCounts[tableID] = map[string]int{}
+							out.FieldLocators[tableID] = map[string][]string{}
+						}
+						out.FieldCounts[tableID][fieldID]++
+						out.FieldLocators[tableID][fieldID] = append(out.FieldLocators[tableID][fieldID], child.Locator)
+						if out.TableCounts[tableID] == 1 && out.FieldCounts[tableID][fieldID] == 1 {
+							out.Fields[tableID][fieldID] = tableFieldMetadata{
+								AttributeType:    attributeValue(child, "AttributeType"),
+								DataTypeLegacyID: attributeValue(child, "DataTypeID"),
+							}
+						} else if fields, ok := out.Fields[tableID]; ok {
+							delete(fields, fieldID)
 						}
 					}
 					collectFields(child)

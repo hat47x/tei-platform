@@ -170,6 +170,42 @@
       "risk": "better observation can silently become stronger pressure to preserve accidental As-Is structure in the TEI target design",
       "owner": "ISSUE-000078 / ISSUE-000027",
       "stopCondition": "keep exact source observations as Source/Actual Evidence and require an explicit Proposal/Acceptance step before any reconstructed legacy structure becomes Desired or authoritative TEI meaning"
+    },
+    {
+      "id": "RML-019",
+      "topic": "missing-or-duplicate-source-identity",
+      "nature": "unresolved",
+      "evidence": "Xead Table, TableField, TableKey and Relationship identities can be absent or duplicated in malformed, merged, or hand-edited source; lookup-based processing can otherwise miss isolated absent IDs or retain one apparent resolution after overwrite",
+      "risk": "invalid source identity can go unnoticed until referenced, or a key/Relationship can be attributed to an arbitrary duplicate occurrence and reported as resolved",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "diagnose missing/duplicate Xead Table, Field, TableKey and Relationship identities from source facts, suppress ambiguous lookup/metadata selection, and keep dependent meaning unresolved until source identity is explicit and unambiguous"
+    },
+    {
+      "id": "RML-020",
+      "topic": "diagnosed-fact-reuse-as-valid-transcription-input",
+      "nature": "unresolved",
+      "evidence": "the inspection layer preserves source facts for audit even when relational diagnostics remain; aggregate fact counts therefore include observations that are not structurally ready for deterministic lowering",
+      "risk": "later transcription can accidentally consume an unresolved fact because it exists in RelationalFacts, bypassing the diagnostic boundary",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "expose relationalResolutionStatus independently from fact availability and require global resolved status before full-set deterministic semantic lowering; unresolved facts remain Source Evidence, while any partial lowering must use the separate per-fact readiness boundary"
+    },
+    {
+      "id": "RML-021",
+      "topic": "history-version-fields-promoted-to-business-identity",
+      "nature": "unresolved",
+      "evidence": "legacy models may encode effective-start dates, history numbers, version selectors, or latest flags alongside keys even when those values identify a version/current view rather than the underlying business occurrence",
+      "risk": "transfer can make version identity part of business occurrence identity, hide stable relations, or infer temporal semantics from field names and physical key shape",
+      "owner": "ISSUE-000078 / ISSUE-000047",
+      "stopCondition": "separate occurrence identity from history/version identity and validity semantics; do not promote effective-date/history/latest fields from source shape alone, and do not require a history model without business temporal evidence"
+    },
+    {
+      "id": "RML-022",
+      "topic": "unrelated-relational-fact-blocked-or-bypassed-by-global-status",
+      "nature": "unresolved",
+      "evidence": "relational inspection originally exposed one global resolved/unresolved status; in a large source, one invalid Key or identity diagnostic can coexist with unrelated structurally valid facts, while declared Function/Detail KeyFields are not yet validated strongly enough for deterministic lowering",
+      "risk": "transcription becomes all-or-nothing, or a consumer bypasses the global unresolved status and accidentally consumes unresolved facts without dependency-aware checks",
+      "owner": "ISSUE-000078 / GitHub #950",
+      "stopCondition": "publish per-fact resolved/unresolved/unvalidated readiness separately from source facts and global status, propagate dependent diagnostics, keep raw unresolved facts as Evidence, require explicit local resolved readiness before any partial deterministic lowering, and record the resolution-policy revision used to derive readiness"
     }
   ],
   "claimsNotEstablished": [

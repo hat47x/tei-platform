@@ -255,6 +255,34 @@
       "observed": "The referenced analysis distinguishes discovering a functional-dependency network from mechanically transforming an established dependency structure into tables",
       "risk": "AI can be used twice as an implicit authority: first to invent semantic dependencies and then to re-interpret already accepted meaning while generating physical schemas",
       "teiDirection": "use AI/human reasoning for evidence-backed proposals, require normal Acceptance for semantic meaning, then use deterministic versioned validators/planners/compilers for transformations that are fully defined by accepted Data/Relation/Constraint semantics"
+    },
+    {
+      "id": "RMP-037",
+      "topic": "missing-or-duplicate-source-identity",
+      "observed": "legacy Xead XML can be malformed, partially merged, or hand-edited so that Table, Field, TableKey, or Relationship identifiers are missing or duplicated; lookup-based importers can otherwise overwrite one occurrence with another or notice missing identity only when a downstream reference happens to touch it",
+      "risk": "source order, traversal order, or absence of a referencing path can determine whether invalid source identity is noticed, and downstream key/relation resolution can bind to an arbitrary duplicate occurrence",
+      "teiDirection": "diagnose missing and duplicate source identities directly from source facts; do not collapse duplicate Table/Field/Key/Relationship IDs into one semantic result, do not borrow metadata from an arbitrary occurrence, and keep dependent meaning unresolved"
+    },
+    {
+      "id": "RMP-038",
+      "topic": "observed-facts-vs-lowering-readiness",
+      "observed": "source-faithful inspection intentionally preserves relational facts even when diagnostics show missing, duplicate, mismatched, or otherwise unresolved relational structure",
+      "risk": "a downstream importer can treat the mere presence or count of extracted facts as proof that those facts are safe inputs to deterministic semantic lowering",
+      "teiDirection": "publish global relational resolution status separately from observed facts; keep unresolved facts as Evidence and block full-set deterministic semantic lowering while diagnostics remain. Per-fact local readiness is handled separately and must not convert unresolved or unvalidated facts into lowerable inputs"
+    },
+    {
+      "id": "RMP-039",
+      "topic": "business-occurrence-vs-history-version-identity",
+      "observed": "Watanabe's temporal modeling examples distinguish the identity of the continuing business occurrence from effective-dated/history records, and warn that mechanically adding effective-start dates, history numbers, or latest-state flags to main-table key design can obscure relations; history structures are useful when the business needs past-state reconstruction but are not a universal default",
+      "risk": "reference transfer can promote version/history selectors into business occurrence identity, erase the distinction between an occurrence and its versions, or impose history structure on domains that do not require it",
+      "teiDirection": "preserve effective date/history number/latest flag as source facts, but distinguish business occurrence identity, history/version identity, validity periods, current-state selection and state transitions; require Source/Contract evidence before promotion and keep temporal modeling opt-in"
+    },
+    {
+      "id": "RMP-040",
+      "topic": "global-fail-closed-vs-local-lowering-readiness",
+      "observed": "a mature reference model can contain one malformed or unresolved relational area while unrelated TableKey, Relationship, runtime Key, or Refer facts remain structurally consistent; treating any single diagnostic as proof that every relational fact is unusable preserves safety but makes full-reference transcription unnecessarily all-or-nothing",
+      "risk": "a global unresolved flag can either block useful independent transfer indefinitely or tempt later code to bypass the global gate wholesale, losing the fail-closed dependency boundary",
+      "teiDirection": "retain a global fail-closed status for full-set lowering, but derive per-fact resolved/unresolved/unvalidated readiness with diagnostic propagation through Key/Relationship dependencies; only locally resolved facts are eligible for deterministic lowering, local readiness never grants Canonical or business-semantic authority, and readiness Evidence records the resolution-policy revision so algorithm changes are not mistaken for source changes"
     }
   ]
 }
