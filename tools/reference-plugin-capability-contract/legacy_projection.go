@@ -79,8 +79,8 @@ func projectLegacyCapabilityProvider(
 	}
 
 	return Provider{
-		PluginID:         string(definition.ID),
-		PluginVersion:    definition.Version,
+		PluginID:      string(definition.ID),
+		PluginVersion: definition.Version,
 		ImplementationID: fmt.Sprintf(
 			"legacy-capability:%s:%s",
 			mapping.Kind,
@@ -89,13 +89,12 @@ func projectLegacyCapabilityProvider(
 		ArtifactDigest:               definition.Artifact.Digest,
 		SourceDeclarationFingerprint: sourceDeclarationFingerprint,
 		Scope:                        mapping.Scope,
-		ContractID:          mapping.Contract.ID,
-		ContractVersion:     mapping.Contract.Version,
-		ContractFingerprint: fingerprint(mapping.Contract),
-		ConformanceProfile:  mapping.Contract.ConformanceProfile,
+		ContractID:                   mapping.Contract.ID,
+		ContractVersion:              mapping.Contract.Version,
+		ContractFingerprint:          fingerprint(mapping.Contract),
+		ConformanceProfile:           mapping.Contract.ConformanceProfile,
 	}, nil
 }
-
 
 func normalizedLegacyCapabilityFingerprint(
 	value plugin.Capability,

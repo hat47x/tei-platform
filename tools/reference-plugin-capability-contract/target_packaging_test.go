@@ -316,7 +316,6 @@ func TestTargetPackagingPlanValidationRejectsStaleCountsAndNormalizesOrder(t *te
 	}
 }
 
-
 func TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts(t *testing.T) {
 	firstContract := portableRuntimeContract()
 	secondContract := firstContract
@@ -405,7 +404,6 @@ func TestTargetPackagingPlanAllowsOneImplementationToSatisfyMultipleContracts(t 
 	}
 }
 
-
 func TestTargetPackagingPlanIsExplicitlyNonAuthoritative(t *testing.T) {
 	oracle := legacyPackagingInput(
 		t,
@@ -435,7 +433,6 @@ func TestTargetPackagingPlanIsExplicitlyNonAuthoritative(t *testing.T) {
 		t.Fatalf("authoritative packaging plan was accepted: %v", err)
 	}
 }
-
 
 func TestTargetPackagingPlanReplayDetectsBuildProvenanceDrift(t *testing.T) {
 	contract := portableRuntimeContract()

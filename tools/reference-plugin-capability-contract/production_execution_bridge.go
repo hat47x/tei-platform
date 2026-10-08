@@ -10,30 +10,28 @@ import (
 )
 
 const (
-	productionExecutionBridgeSchema =
-		"tei.reference.production-execution-bridge/v0"
-	productionExecutionBridgeAuthority =
-		"derived-verification-not-runtime-authority"
+	productionExecutionBridgeSchema    = "tei.reference.production-execution-bridge/v0"
+	productionExecutionBridgeAuthority = "derived-verification-not-runtime-authority"
 )
 
 // ProductionExecutionBridge proves that a generic Capability execution
 // profile matches the already-selected production runtime boundary. It does
 // not select a Provider, grant Permission, acquire Resource, or launch code.
 type ProductionExecutionBridge struct {
-	Schema                          string           `json:"schema"`
-	Authority                       string           `json:"authority"`
-	Environment                     core.CanonicalID `json:"environment"`
-	CapabilityLockFingerprint       string           `json:"capabilityLockFingerprint"`
-	RuntimeCapabilityBindingFingerprint string       `json:"runtimeCapabilityBindingFingerprint"`
-	ExecutionProfileFingerprint     string           `json:"executionProfileFingerprint"`
-	ExecutionAuthorityBindingFingerprint string      `json:"executionAuthorityBindingFingerprint"`
-	LegacyCapabilityKind            string           `json:"legacyCapabilityKind"`
-	LegacyCapabilityID              core.CanonicalID `json:"legacyCapabilityId"`
-	PluginID                        string           `json:"pluginId"`
-	PluginVersion                   string           `json:"pluginVersion"`
-	PluginRuntimeFingerprint        string           `json:"pluginRuntimeFingerprint"`
-	CapabilityRuntimeFingerprint    string           `json:"capabilityRuntimeFingerprint"`
-	BindingFingerprint              string           `json:"bindingFingerprint"`
+	Schema                               string           `json:"schema"`
+	Authority                            string           `json:"authority"`
+	Environment                          core.CanonicalID `json:"environment"`
+	CapabilityLockFingerprint            string           `json:"capabilityLockFingerprint"`
+	RuntimeCapabilityBindingFingerprint  string           `json:"runtimeCapabilityBindingFingerprint"`
+	ExecutionProfileFingerprint          string           `json:"executionProfileFingerprint"`
+	ExecutionAuthorityBindingFingerprint string           `json:"executionAuthorityBindingFingerprint"`
+	LegacyCapabilityKind                 string           `json:"legacyCapabilityKind"`
+	LegacyCapabilityID                   core.CanonicalID `json:"legacyCapabilityId"`
+	PluginID                             string           `json:"pluginId"`
+	PluginVersion                        string           `json:"pluginVersion"`
+	PluginRuntimeFingerprint             string           `json:"pluginRuntimeFingerprint"`
+	CapabilityRuntimeFingerprint         string           `json:"capabilityRuntimeFingerprint"`
+	BindingFingerprint                   string           `json:"bindingFingerprint"`
 }
 
 func buildLegacyProductionExecutionBridge(
@@ -155,19 +153,19 @@ func buildLegacyProductionExecutionBridge(
 	}
 
 	binding := ProductionExecutionBridge{
-		Schema:                              productionExecutionBridgeSchema,
-		Authority:                           productionExecutionBridgeAuthority,
-		Environment:                         plan.Environment,
-		CapabilityLockFingerprint:           lock.LockFingerprint,
-		RuntimeCapabilityBindingFingerprint: runtimeBinding.BindingFingerprint,
-		ExecutionProfileFingerprint:         profile.ProfileFingerprint,
+		Schema:                               productionExecutionBridgeSchema,
+		Authority:                            productionExecutionBridgeAuthority,
+		Environment:                          plan.Environment,
+		CapabilityLockFingerprint:            lock.LockFingerprint,
+		RuntimeCapabilityBindingFingerprint:  runtimeBinding.BindingFingerprint,
+		ExecutionProfileFingerprint:          profile.ProfileFingerprint,
 		ExecutionAuthorityBindingFingerprint: executionAuthority.BindingFingerprint,
-		LegacyCapabilityKind:                string(mapping.Kind),
-		LegacyCapabilityID:                  mapping.CapabilityID,
-		PluginID:                            lock.Provider.PluginID,
-		PluginVersion:                       lock.Provider.PluginVersion,
-		PluginRuntimeFingerprint:            fingerprint(pluginRuntime),
-		CapabilityRuntimeFingerprint:        fingerprint(capabilityRuntime),
+		LegacyCapabilityKind:                 string(mapping.Kind),
+		LegacyCapabilityID:                   mapping.CapabilityID,
+		PluginID:                             lock.Provider.PluginID,
+		PluginVersion:                        lock.Provider.PluginVersion,
+		PluginRuntimeFingerprint:             fingerprint(pluginRuntime),
+		CapabilityRuntimeFingerprint:         fingerprint(capabilityRuntime),
 	}
 	binding.BindingFingerprint = productionExecutionBridgeFingerprint(binding)
 	if err := validateProductionExecutionBridge(binding); err != nil {

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"tei/internal/core"
-	"tei/internal/permission"
 	"tei/internal/environment"
+	"tei/internal/permission"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/resource"
@@ -160,13 +160,13 @@ func newProductionExecutionFixture(
 	}
 
 	return productionExecutionFixture{
-		Definition:      definition,
-		Mapping:         mapping,
+		Definition:     definition,
+		Mapping:        mapping,
 		CapabilityLock: capabilityLock,
 		RuntimeBinding: runtimeBinding,
-		Profile:         profile,
-		Authority:       authority,
-		Plan:            plan,
+		Profile:        profile,
+		Authority:      authority,
+		Plan:           plan,
 	}
 }
 
@@ -402,13 +402,12 @@ func TestProductionExecutionBridgeChangesWhenSelectedResourcePolicyChanges(t *te
 
 func structToLeasePolicyForTest() resource.LeasePolicy {
 	return resource.LeasePolicy{
-		MaxLifetime: "10m",
-		RenewBefore: "2m",
-		RevokeTimeout: "5s",
+		MaxLifetime:    "10m",
+		RenewBefore:    "2m",
+		RevokeTimeout:  "5s",
 		RenewalFailure: resource.RenewalFailClosed,
 	}
 }
-
 
 type referenceArtifactVerifier struct{}
 
@@ -591,7 +590,6 @@ func TestGenericCapabilityBridgeDoesNotBypassMissingHostSandboxEnforcement(t *te
 		t.Fatalf("generic bridge bypassed missing host enforcement: %v", err)
 	}
 }
-
 
 type recordingResourceBroker struct {
 	AcquireCalls int

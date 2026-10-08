@@ -36,7 +36,7 @@ func evidenceFor(provider Provider, contract Contract, marker string) Conformanc
 		PluginID:                     provider.PluginID,
 		PluginVersion:                provider.PluginVersion,
 		ImplementationID:             provider.ImplementationID,
-		RealizationTarget:                       provider.RealizationTarget,
+		RealizationTarget:            provider.RealizationTarget,
 		ArtifactDigest:               provider.ArtifactDigest,
 		SourceDeclarationFingerprint: provider.SourceDeclarationFingerprint,
 		ContractFingerprint:          fingerprint(contract),
@@ -223,7 +223,6 @@ func TestContractFingerprintMismatchFailsClosed(t *testing.T) {
 		t.Fatalf("contract drift was accepted: %v", err)
 	}
 }
-
 
 func TestCapabilityResolutionLockPinsExactProviderAcrossCatalogGrowth(t *testing.T) {
 	v1 := sourceAdapterContract()
@@ -437,7 +436,6 @@ func TestMalformedConformanceEvidenceFingerprintFailsClosed(t *testing.T) {
 	}
 }
 
-
 func TestConformanceEvidenceDoesNotSurviveArtifactReplacement(t *testing.T) {
 	contract := sourceAdapterContract()
 	original := sourceAdapterProvider(
@@ -461,7 +459,6 @@ func TestConformanceEvidenceDoesNotSurviveArtifactReplacement(t *testing.T) {
 		t.Fatalf("old Conformance Evidence survived artifact replacement: %v", err)
 	}
 }
-
 
 func TestCapabilityResolutionLockRejectsWiringDrift(t *testing.T) {
 	contract := sourceAdapterContract()
@@ -523,7 +520,6 @@ func TestCapabilityResolutionLockRejectsWiringDrift(t *testing.T) {
 	}
 }
 
-
 func TestCapabilityResolutionLockRejectsInternallyContradictoryWiring(t *testing.T) {
 	contract := sourceAdapterContract()
 	left := sourceAdapterProvider(
@@ -576,7 +572,6 @@ func TestCapabilityResolutionLockRejectsInternallyContradictoryWiring(t *testing
 	}
 }
 
-
 func TestCapabilityResolutionReplayIgnoresMalformedCurrentEvidence(t *testing.T) {
 	contract := sourceAdapterContract()
 	provider := sourceAdapterProvider(
@@ -611,7 +606,6 @@ func TestCapabilityResolutionReplayIgnoresMalformedCurrentEvidence(t *testing.T)
 		t.Fatal("current Evidence verification accepted malformed Evidence")
 	}
 }
-
 
 func TestIncompleteProviderInOtherScopeDoesNotBlockValidResolution(t *testing.T) {
 	contract := sourceAdapterContract()
@@ -692,7 +686,6 @@ func TestIncompleteAndExactDuplicateLogicalProviderStillFailsClosed(t *testing.T
 		t.Fatalf("duplicate migration/provider authorities were not rejected: %v", err)
 	}
 }
-
 
 func TestCapabilityContractRequiresExplicitUnknownSemantics(t *testing.T) {
 	contract := sourceAdapterContract()

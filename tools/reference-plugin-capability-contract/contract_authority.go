@@ -6,8 +6,7 @@ import (
 	"strings"
 )
 
-const capabilityContractAuthorityBindingSchema =
-	"tei.reference.capability-contract-authority-binding/v0"
+const capabilityContractAuthorityBindingSchema = "tei.reference.capability-contract-authority-binding/v0"
 
 type CapabilityContractAuthorityGrant struct {
 	Namespace                    string `json:"namespace"`

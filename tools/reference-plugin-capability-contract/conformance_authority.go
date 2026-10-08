@@ -6,29 +6,28 @@ import (
 	"strings"
 )
 
-const capabilityConformanceAuthorityBindingSchema =
-	"tei.reference.capability-conformance-authority-binding/v0"
+const capabilityConformanceAuthorityBindingSchema = "tei.reference.capability-conformance-authority-binding/v0"
 
 type CapabilityConformanceAuthorityGrant struct {
-	ContractFingerprint      string `json:"contractFingerprint"`
-	ConformanceProfile       string `json:"conformanceProfile"`
-	Issuer                    string `json:"issuer"`
+	ContractFingerprint          string `json:"contractFingerprint"`
+	ConformanceProfile           string `json:"conformanceProfile"`
+	Issuer                       string `json:"issuer"`
 	AuthorityEvidenceFingerprint string `json:"authorityEvidenceFingerprint"`
 }
 
 type CapabilityConformanceAttestation struct {
-	EvidenceFingerprint      string `json:"evidenceFingerprint"`
-	Issuer                   string `json:"issuer"`
+	EvidenceFingerprint          string `json:"evidenceFingerprint"`
+	Issuer                       string `json:"issuer"`
 	AuthorityEvidenceFingerprint string `json:"authorityEvidenceFingerprint"`
 }
 
 type CapabilityConformanceAuthorityBinding struct {
-	Schema                       string `json:"schema"`
-	CapabilityLockFingerprint    string `json:"capabilityLockFingerprint"`
+	Schema                         string `json:"schema"`
+	CapabilityLockFingerprint      string `json:"capabilityLockFingerprint"`
 	ConformanceEvidenceFingerprint string `json:"conformanceEvidenceFingerprint"`
-	Issuer                       string `json:"issuer"`
-	AuthorityEvidenceFingerprint string `json:"authorityEvidenceFingerprint"`
-	BindingFingerprint           string `json:"bindingFingerprint"`
+	Issuer                         string `json:"issuer"`
+	AuthorityEvidenceFingerprint   string `json:"authorityEvidenceFingerprint"`
+	BindingFingerprint             string `json:"bindingFingerprint"`
 }
 
 func verifyCapabilityResolutionAcceptedConformance(

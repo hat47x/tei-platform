@@ -7,21 +7,19 @@ import (
 )
 
 const (
-	targetCapabilityPackagingPlanSchema =
-		"tei.reference.target-capability-packaging-plan/v0"
-	targetCapabilityPackagingPlanAuthority =
-		"derived-packaging-not-runtime-authority"
+	targetCapabilityPackagingPlanSchema    = "tei.reference.target-capability-packaging-plan/v0"
+	targetCapabilityPackagingPlanAuthority = "derived-packaging-not-runtime-authority"
 )
 
 type TargetPackagingProviderRef struct {
-	PluginID                         string `json:"pluginId"`
-	PluginVersion                    string `json:"pluginVersion"`
-	ImplementationID                 string `json:"implementationId"`
-	SourceDeclarationFingerprint     string `json:"sourceDeclarationFingerprint,omitempty"`
-	ContractID                       string `json:"contractId"`
-	ContractVersion                  string `json:"contractVersion"`
-	ContractFingerprint              string `json:"contractFingerprint"`
-	CapabilityLockFingerprint        string `json:"capabilityLockFingerprint"`
+	PluginID                            string `json:"pluginId"`
+	PluginVersion                       string `json:"pluginVersion"`
+	ImplementationID                    string `json:"implementationId"`
+	SourceDeclarationFingerprint        string `json:"sourceDeclarationFingerprint,omitempty"`
+	ContractID                          string `json:"contractId"`
+	ContractVersion                     string `json:"contractVersion"`
+	ContractFingerprint                 string `json:"contractFingerprint"`
+	CapabilityLockFingerprint           string `json:"capabilityLockFingerprint"`
 	ProviderBuildRealizationFingerprint string `json:"providerBuildRealizationFingerprint"`
 }
 
@@ -136,14 +134,14 @@ func buildTargetCapabilityPackagingPlan(
 		providerContractKeys[providerContractKey] = struct{}{}
 
 		ref := TargetPackagingProviderRef{
-			PluginID:                         lock.Provider.PluginID,
-			PluginVersion:                    lock.Provider.PluginVersion,
-			ImplementationID:                 lock.Provider.ImplementationID,
-			SourceDeclarationFingerprint:     lock.Provider.SourceDeclarationFingerprint,
-			ContractID:                       lock.Contract.ID,
-			ContractVersion:                  lock.Contract.Version,
-			ContractFingerprint:              lock.ContractFingerprint,
-			CapabilityLockFingerprint:        lock.LockFingerprint,
+			PluginID:                            lock.Provider.PluginID,
+			PluginVersion:                       lock.Provider.PluginVersion,
+			ImplementationID:                    lock.Provider.ImplementationID,
+			SourceDeclarationFingerprint:        lock.Provider.SourceDeclarationFingerprint,
+			ContractID:                          lock.Contract.ID,
+			ContractVersion:                     lock.Contract.Version,
+			ContractFingerprint:                 lock.ContractFingerprint,
+			CapabilityLockFingerprint:           lock.LockFingerprint,
 			ProviderBuildRealizationFingerprint: binding.BindingFingerprint,
 		}
 		artifactProviders[binding.ArtifactDigest] = append(

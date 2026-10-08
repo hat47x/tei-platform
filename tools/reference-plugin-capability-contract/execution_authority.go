@@ -7,19 +7,15 @@ import (
 	"tei/internal/permission"
 )
 
-const capabilityExecutionProfileSchema =
-	"tei.reference.capability-execution-profile/v0"
+const capabilityExecutionProfileSchema = "tei.reference.capability-execution-profile/v0"
 
-const capabilityExecutionAuthorityBindingSchema =
-	"tei.reference.capability-execution-authority-binding/v0"
+const capabilityExecutionAuthorityBindingSchema = "tei.reference.capability-execution-authority-binding/v0"
 
 type CapabilityIsolationPolicy string
 
 const (
-	CapabilityIsolationHostTrusted CapabilityIsolationPolicy =
-		"host-trusted"
-	CapabilityIsolationHostEnforcedSandbox CapabilityIsolationPolicy =
-		"host-enforced-sandbox"
+	CapabilityIsolationHostTrusted         CapabilityIsolationPolicy = "host-trusted"
+	CapabilityIsolationHostEnforcedSandbox CapabilityIsolationPolicy = "host-enforced-sandbox"
 )
 
 func (p CapabilityIsolationPolicy) Valid() bool {
@@ -28,19 +24,19 @@ func (p CapabilityIsolationPolicy) Valid() bool {
 }
 
 type CapabilityExecutionProfile struct {
-	Schema            string                    `json:"schema"`
-	Scope             AuthorityScope            `json:"scope"`
-	RealizationTarget string                    `json:"realizationTarget,omitempty"`
-	IsolationPolicy   CapabilityIsolationPolicy `json:"isolationPolicy"`
-	Permissions       []permission.Spec         `json:"permissions,omitempty"`
-	ProfileFingerprint string                   `json:"profileFingerprint"`
+	Schema             string                    `json:"schema"`
+	Scope              AuthorityScope            `json:"scope"`
+	RealizationTarget  string                    `json:"realizationTarget,omitempty"`
+	IsolationPolicy    CapabilityIsolationPolicy `json:"isolationPolicy"`
+	Permissions        []permission.Spec         `json:"permissions,omitempty"`
+	ProfileFingerprint string                    `json:"profileFingerprint"`
 }
 
 type CapabilityExecutionGrant struct {
-	CapabilityLockFingerprint string            `json:"capabilityLockFingerprint"`
-	ExecutionProfileFingerprint string           `json:"executionProfileFingerprint"`
-	Permissions               []permission.Spec `json:"permissions,omitempty"`
-	AuthorityEvidenceFingerprint string          `json:"authorityEvidenceFingerprint"`
+	CapabilityLockFingerprint    string            `json:"capabilityLockFingerprint"`
+	ExecutionProfileFingerprint  string            `json:"executionProfileFingerprint"`
+	Permissions                  []permission.Spec `json:"permissions,omitempty"`
+	AuthorityEvidenceFingerprint string            `json:"authorityEvidenceFingerprint"`
 }
 
 type CapabilityExecutionAuthorityBinding struct {

@@ -279,7 +279,7 @@ func buildResolution(scope AuthorityScope, contract Contract, contractFingerprin
 	})
 	return Resolution{
 		Scope:                 scope,
-		RealizationTarget:                provider.RealizationTarget,
+		RealizationTarget:     provider.RealizationTarget,
 		ResolutionPolicy:      capabilityResolutionPolicy,
 		Contract:              contract,
 		ContractFingerprint:   contractFingerprint,
@@ -458,7 +458,7 @@ func buildCapabilityResolutionLock(
 		Canonicalization:      capabilityResolutionCanonicalization,
 		ResolutionPolicy:      capabilityResolutionPolicy,
 		Scope:                 resolution.Scope,
-		RealizationTarget:                resolution.RealizationTarget,
+		RealizationTarget:     resolution.RealizationTarget,
 		Requirement:           requirement,
 		Wiring:                wiring,
 		Contract:              resolution.Contract,

@@ -294,7 +294,6 @@ func TestRuntimeCapabilityBindingRejectsDuplicateEnvironmentLock(t *testing.T) {
 	}
 }
 
-
 func TestRuntimeCapabilityBindingSeparatesBuildPlanProvenanceFromRuntimeArtifactIdentity(t *testing.T) {
 	fixture := newRuntimeCapabilityFixture(t)
 	binding, err := buildLegacyRuntimeCapabilityBinding(

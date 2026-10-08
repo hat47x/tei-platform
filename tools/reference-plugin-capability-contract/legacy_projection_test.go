@@ -335,7 +335,6 @@ func TestLegacyProjectionDisappearsWhenAuthoritativeCapabilityDisappears(t *test
 	}
 }
 
-
 func TestLegacyProjectionDoesNotMutateAuthoritativePluginDefinition(t *testing.T) {
 	definition := referencePluginDefinition(t, "tei.database.oracle")
 	before := definition

@@ -48,9 +48,9 @@ func targetResolveInput(
 		Scope:             ScopeApplicationRuntime,
 		RealizationTarget: target,
 		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
-		Contracts:   []Contract{contract},
-		Providers:   providers,
-		Evidence:    evidence,
+		Contracts:         []Contract{contract},
+		Providers:         providers,
+		Evidence:          evidence,
 	}
 }
 
@@ -127,8 +127,8 @@ func TestTargetSpecificProviderRequiresEvidenceForExactTarget(t *testing.T) {
 		Scope:             ScopeApplicationRuntime,
 		RealizationTarget: "web-browser",
 		Requirement:       Requirement{ContractID: contract.ID, CompatibleMajor: 1},
-		Contracts:   []Contract{contract},
-		Providers:   []Provider{web},
+		Contracts:         []Contract{contract},
+		Providers:         []Provider{web},
 		Evidence: []ConformanceEvidence{
 			evidenceFor(
 				desktopEvidenceProvider,
@@ -180,7 +180,6 @@ func TestSameLogicalProviderDuplicateWithinOneTargetFailsClosed(t *testing.T) {
 		t.Fatalf("same-Target duplicate realization was not rejected: %v", err)
 	}
 }
-
 
 func TestCapabilityResolutionLockRejectsNonCanonicalTargetText(t *testing.T) {
 	contract := portableRuntimeContract()

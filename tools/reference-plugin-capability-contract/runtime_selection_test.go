@@ -387,7 +387,6 @@ func TestSelectedRuntimeCapabilityRejectsTargetDatabaseMismatch(t *testing.T) {
 	}
 }
 
-
 func TestRuntimeCapabilitySelectionReplaysCurrentProductionBindingAuthority(t *testing.T) {
 	definition := exactLegacyRuntimeDefinition(
 		"tei.database.oracle",
@@ -625,7 +624,6 @@ func TestRuntimeCapabilitySelectionRejectsCurrentBindingToDifferentExecutor(t *t
 		t.Fatalf("changed authoritative executor remained current: %v", err)
 	}
 }
-
 
 func TestLegacyRuntimeSelectionReplayRequiresCurrentPluginAuthority(t *testing.T) {
 	definition := exactLegacyRuntimeDefinition(
