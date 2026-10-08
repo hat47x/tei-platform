@@ -257,7 +257,7 @@ Chat側がMCPを利用する場合も、Hostが提供するShell / Filesystem / 
 
 これらに別のProduct上の必要性がある場合は、その必要性を個別に評価します。開発Toolが所有する状態を、RQ-034のためだけにTEIへ複製しません。
 
-この境界のExecutable Referenceは[ISSUE-000083](../plan/issue/000083-tool-neutral-development-reference.md)で扱います。
+この境界の長期判断は[ADR-0031](../plan/adr/0031-tool-neutral-git-native-development.md)、Executable Referenceは[ISSUE-000083](../plan/issue/000083-tool-neutral-development-reference.md)で扱います。
 
 ## Semantic kernel
 
