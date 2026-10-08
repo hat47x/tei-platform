@@ -27,7 +27,16 @@
       "role": 10,
       "department": 7,
       "dataType": 86,
-      "functionType": 14
+      "functionType": 14,
+      "tableKey": 110,
+      "tableKeyField": 169,
+      "tableType": 6,
+      "subsystemTable": 128,
+      "subsystemRelationship": 145,
+      "ioPanelField": 5,
+      "ioPanelStyle": 5328,
+      "ioSpoolStyle": 2,
+      "maintenanceLog": 3
     },
     "relationshipTypes": {
       "REFFER": 51,
@@ -109,7 +118,15 @@
       "refer": 94,
       "detail": 83,
       "key": 72,
-      "menu": 8
+      "menu": 8,
+      "headerPhrase": 67,
+      "phrase": 38,
+      "option": 55,
+      "printFont": 3,
+      "batchField": 10,
+      "addRowListColumn": 10,
+      "addRowListButton": 4,
+      "maintenanceLog": 8
     },
     "functionTypes": {
       "XF000": 45,
@@ -143,5 +160,72 @@
     "absence of external CUD is an observation of this snapshot, not a universal X-TEA rule",
     "task actions without function include both meaningful manual actions and placeholder-like entries",
     "function mapping requires source-level relation analysis; identifier intersection alone is not authority"
-  ]
+  ],
+  "coverage": {
+    "xead": {
+      "totalElements": 8718,
+      "recognizedElements": 8718,
+      "unrecognizedElements": 0,
+      "exactArtifactSha256": "31af1fe317c661f57c94c69285b7b3e91c7c2fcad940cd7639956aff781088a9"
+    },
+    "xeaf": {
+      "totalElements": 4053,
+      "recognizedElements": 4053,
+      "unrecognizedElements": 0,
+      "exactArtifactSha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754"
+    },
+    "note": "recognized means covered by the source-faithful adapter inventory, not semantically accepted by TEI"
+  },
+  "sourceFactProjection": {
+    "xead": {
+      "total": 359,
+      "byType": {
+        "legacy-table-key": 110,
+        "legacy-key-field-membership": 169,
+        "legacy-relationship-key-reference": 80
+      }
+    },
+    "xeaf": {
+      "total": 407,
+      "byType": {
+        "legacy-function-selection-key": 158,
+        "legacy-detail-key-binding": 83,
+        "runtime-table-key": 72,
+        "runtime-reference-key-binding": 94
+      }
+    },
+    "authority": "source facts only; these counts do not establish accepted business identity, functional dependency, or semantic relation authority"
+  },
+  "classificationCoverage": {
+    "xead": {
+      "observedKindCount": 29,
+      "mappedObservedKindCount": 29,
+      "unmappedObservedKinds": [],
+      "complete": true
+    },
+    "xeaf": {
+      "observedKindCount": 20,
+      "mappedObservedKindCount": 20,
+      "unmappedObservedKinds": [],
+      "complete": true
+    },
+    "authority": "mapping entry existence only; this is not semantic acceptance or behavior equivalence"
+  },
+  "xmlLevelCoverage": {
+    "xead": {
+      "comments": 0,
+      "processingInstructions": 1,
+      "directives": 0,
+      "namespacedElements": 0,
+      "note": "processing instruction is the XML declaration in this exact snapshot"
+    },
+    "xeaf": {
+      "comments": 0,
+      "processingInstructions": 1,
+      "directives": 0,
+      "namespacedElements": 0,
+      "note": "processing instruction is the XML declaration in this exact snapshot"
+    },
+    "authority": "snapshot observation only; absence in this benchmark is not a universal Xead/Xeaf rule"
+  }
 }

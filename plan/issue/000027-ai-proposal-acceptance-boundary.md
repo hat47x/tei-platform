@@ -85,6 +85,7 @@ read-onlyな既存Semantic資産探索そのものは`ISSUE-000047`で扱い、S
 - RQ-019 実行時の権限とResourceを明示的に制約できること
 - RQ-021 Reference / Conformance
 - RQ-022 検証段階の明示
+- RQ-034 標準的な開発環境からTEIを改修・実行・検証できること
 
 ## 本Issueで固定しないもの
 
@@ -104,6 +105,16 @@ Gate C後のReferenceを作るIssueですが、最初から完成形のAI subsys
 - optional Patch形式
 
 これらをCanonical meaningより上位の要求として固定しません。
+
+RQ-034のGit-nativeな標準開発経路そのものは[ADR-0031](../adr/0031-tool-neutral-git-native-development.md) / [ISSUE-000083](000083-tool-neutral-development-reference.md)が正本です。本IssueはStructured Proposal / Shared Acceptance経路のReferenceに集中します。
+
+## 標準的な開発環境との境界
+
+本IssueのProposalは、すべてのAI編集やfile editへ必須となるTEI固有objectではありません。
+
+通常のclone / branch / worktreeでSourceを直接編集し、CLIやHost-provided toolingからBuild / Test / Validationを行い、Gitで統合する経路はADR-0031とISSUE-000083が正本です。本Issueは、その経路を再定義せず、Structured Proposal / Preview / Shared Acceptanceを利用する場合の境界だけを実証します。
+
+したがって、本IssueのReference stateやProposal metadataを、TEI全体の標準変更管理stateへ昇格させません。
 
 ## 前提: knowledge-first探索とProposalを分ける
 
@@ -284,16 +295,28 @@ file pathそのものをSemantic identityにはしません。
 
 AIだけの特別な受入APIを作りません。
 
+この節は、**Structured Proposal / Preview / Acceptを利用するReference経路**を扱います。RQ-034で定めた通常のGit-native開発に対し、すべてのfile editをこのToolへ通すことは要求しません。
+
 ```text
-file edit -------┐
-Studio ----------|
-CLI / refactor --|--> candidate --> Shared Acceptance Boundary --> authoritative source
-AI Proposal -----|
-Matrix ----------|
-optional Patch --┘
+Studio / AI Proposal / optional Patch
+              ↓
+          candidate
+              ↓
+   Shared Acceptance Boundary
+              ↓
+      authoritative source
+
+separate regular path:
+branch / worktree file edit
+              ↓
+      ordinary Git integration
+              ↓
+      authoritative source
 ```
 
-対象に応じて少なくとも次の決定論的検査を共有します。
+二つの経路はauthoritative sourceへの統合後に同じloader / Validation / Conformanceへ戻ります。Shared Acceptance Toolの利用有無をCanonical meaningの差にしません。
+
+Structured Proposal経路では、対象に応じて少なくとも次の決定論的検査を共有します。
 
 ```text
 candidate
@@ -428,6 +451,15 @@ Runtime操作が必要なReferenceを将来追加する場合も、Semantic Capa
 raw tool callをTEIのauthority modelの代わりにはしません。
 
 Observationから変更候補を作る場合も、`Observation -> semantic write`へ直結せず、feedback routing / Proposal / Acceptanceを通します。
+
+### Git-native開発との接続はISSUE-000083へ委譲する
+
+通常のclone / branch / worktreeでSourceを直接編集し、CLIやHost-provided toolingでBuild / Test / Validationを行い、Gitで統合する経路はADR-0031 / ISSUE-000083が正本です。
+
+本Issueでは、その経路を再実証しません。Structured Proposalを利用する場合に、AI固有のauthorityや第二正本を作らずShared Acceptanceへ接続できることへ集中します。
+
+Git-native経路とStructured Proposal経路は、authoritative sourceへ統合された後のloader / Validation / Conformanceで収束します。
+
 
 ## Evidence
 
@@ -616,6 +648,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 22. known operationをdeterministic pathで処理できるcaseとAI-assisted pathを必要とするcaseを区別できる
 23. hybrid routingを比較する場合、routing choice / scoreがSemantic applicability・Acceptance・execution authorityを上書きしない
 
+RQ-034のGit-native開発要件は、この完了条件へ重複して持ち込まず、ADR-0031 / ISSUE-000083の完了条件で判定します。
+
 ## 非目標
 
 - autonomous agent frameworkの完成
@@ -631,6 +665,10 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 - Patch-only authoring modelの固定
 - global online learning
 - 外部研究のsuccess rateやtoken削減率をTEIの固定KPIにすること
+- Agent Adapterを標準Authoringの必須経路にすること
+- Agent Session / Workspace / Checkpoint / PlanをTEIの標準変更管理modelにすること
+- Gitで十分な変更へTEI独自Change Setを必須にすること
+- 開発Tool / CIが所有する一般的な検証状態をTEIへ複製すること
 
 ## 関連文書
 
@@ -639,8 +677,10 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- `plan/issue/000083-tool-neutral-development-reference.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `docs/architecture.md`

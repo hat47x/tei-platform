@@ -17,11 +17,16 @@ func TestPluginSelfBuildReferenceLoadsArtifactFreeSourceDefinition(t *testing.T)
 	if err != nil {
 		t.Fatalf("Plugin self-build Referenceの読み込みに失敗しました: %v", err)
 	}
-	if len(result.World.Plugins) != 1 {
+	// The Reference declares the process Plugin (SB-2) and the TEI-native builtin Plugin (SB-3).
+	if len(result.World.Plugins) != 2 {
 		t.Fatalf("plugins: %#v", result.World.Plugins)
 	}
-
-	definition := result.World.Plugins[0]
+	var definition plugin.Definition
+	for _, candidate := range result.World.Plugins {
+		if candidate.ID == "tei.process.reference" {
+			definition = candidate
+		}
+	}
 	if definition.ID != "tei.process.reference" || definition.Version != "1.0.0" {
 		t.Fatalf("plugin identity: %#v", definition)
 	}

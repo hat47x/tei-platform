@@ -4,7 +4,7 @@
 - 起点: `ISSUE-000008` Editor / AI follow-up
 - 関連: `ISSUE-000027` AI Proposal / Acceptance Boundary
 - Product Acceptance Scenario: **PAS-01 primary**
-- 関連RQ: RQ-001 / RQ-002 / RQ-003 / RQ-010 / RQ-011 / RQ-017 / RQ-019 / RQ-021 / RQ-022
+- 関連RQ: RQ-001 / RQ-002 / RQ-003 / RQ-010 / RQ-011 / RQ-017 / RQ-019 / RQ-021 / RQ-022 / RQ-034
 
 ## 目的
 
@@ -58,6 +58,8 @@ Studio自身を次にはしません。
 - Target固有meaningの発生源
 
 Studioを削除しても、accepted authoring sourceとCanonical meaningを再読込できることを要求します。
+
+Studioを外部開発環境の中央変更仲介Serviceにはしません。Studioを経由しないGit-native / file-native開発の判断はADR-0031を正本とし、本IssueではStudioがその経路を塞がず、同じSource / Canonical解釈へ戻れることだけを確認します。
 
 ## Definition-centered authoring
 
@@ -399,6 +401,8 @@ Persistenceへの影響は、Relationの端点を実現するMappingへのexact 
 - [x] mandatory authored Stable IDをStudio都合で導入しない（追記されるsourceはqualified logical keyだけ）
 - [ ] Wails Hostからbusiness / persistence semanticsを分離できる
 - [ ] Studio Wails HostをApplication Target Evidenceへ数えない
+- [ ] Studioを経由しないGit / file-native変更も同じSource / Acceptance原則で扱える
+- [ ] Studio内部stateや専用Adapterなしで、変更後SourceをCLI等から再読込できる
 
 ## 非目標
 
@@ -413,6 +417,8 @@ Persistenceへの影響は、Relationの端点を実現するMappingへのexact 
 - derived CRUD / matrix等の人手再authoring
 - WailsをTEI全体の標準Target / Runtimeへ固定すること
 - Generated Wails Desktop Application Targetの実装
+- Studioをすべての開発環境の中央変更仲介Serviceにすること
+- Git-nativeな開発へStudio専用Change Setを必須にすること
 
 ## 関連文書
 
@@ -421,6 +427,7 @@ Persistenceへの影響は、Relationの端点を実現するMappingへのexact 
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`

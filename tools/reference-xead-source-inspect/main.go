@@ -17,7 +17,7 @@ import (
 	"tei/internal/xeadsource"
 )
 
-const reportSchemaVersion = "reference-xead-source-inspection-v0"
+const reportSchemaVersion = "reference-xead-source-inspection-v3"
 
 type sourceIdentity struct {
 	Format xeadsource.Format `json:"format"`
@@ -51,8 +51,8 @@ type candidateSummary struct {
 }
 
 type diagnosticEvidence struct {
-	Code          string `json:"code"`
-	LocatorDigest string `json:"locatorDigest"`
+	Code            string `json:"code"`
+	DiagnosticToken string `json:"diagnosticToken"`
 }
 
 type diagnosticSummary struct {
@@ -61,17 +61,35 @@ type diagnosticSummary struct {
 	Evidence []diagnosticEvidence `json:"evidence,omitempty"`
 }
 
+type factResolutionCount struct {
+	Total       int `json:"total"`
+	Resolved    int `json:"resolved"`
+	Unresolved  int `json:"unresolved"`
+	Unvalidated int `json:"unvalidated"`
+}
+
+type factResolutionSummary struct {
+	Total       int                            `json:"total"`
+	Resolved    int                            `json:"resolved"`
+	Unresolved  int                            `json:"unresolved"`
+	Unvalidated int                            `json:"unvalidated"`
+	ByKind      map[string]factResolutionCount `json:"byKind,omitempty"`
+}
+
 type report struct {
-	SchemaVersion                    string                  `json:"schemaVersion"`
-	Source                           sourceIdentity          `json:"source"`
-	Inventory                        []inventorySummaryEntry `json:"inventory"`
-	UnknownConstructCount            int                     `json:"unknownConstructCount"`
-	Candidates                       candidateSummary        `json:"candidates"`
-	RelationalFacts                  factSummary             `json:"relationalFacts"`
-	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
-	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
-	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
-	AuthorityLimits                  []string                `json:"authorityLimits"`
+	SchemaVersion                      string                  `json:"schemaVersion"`
+	Source                             sourceIdentity          `json:"source"`
+	Inventory                          []inventorySummaryEntry `json:"inventory"`
+	UnknownConstructCount              int                     `json:"unknownConstructCount"`
+	Candidates                         candidateSummary        `json:"candidates"`
+	RelationalFacts                    factSummary             `json:"relationalFacts"`
+	RelationalDiagnostics              diagnosticSummary       `json:"relationalDiagnostics"`
+	RelationalFactResolutions          factResolutionSummary   `json:"relationalFactResolutions"`
+	RelationalResolutionStatus         string                  `json:"relationalResolutionStatus"`
+	RelationalResolutionPolicyRevision string                  `json:"relationalResolutionPolicyRevision"`
+	ClassificationPolicyFingerprint    string                  `json:"classificationPolicyFingerprint"`
+	TranscriptionContractFingerprint   string                  `json:"transcriptionContractFingerprint"`
+	AuthorityLimits                    []string                `json:"authorityLimits"`
 }
 
 func main() {
@@ -128,14 +146,21 @@ func buildReport(inspection xeadsource.Inspection) report {
 			Format: inspection.Document.Format,
 			SHA256: inspection.Document.SHA256,
 		},
-		Inventory:                        summarizeInventory(inspection.Document.Inventory),
-		UnknownConstructCount:            countUnknownInventory(inspection.Document.Inventory),
-		Candidates:                       summarizeCandidates(inspection.Candidates),
-		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
-		RelationalDiagnostics:            summarizeDiagnostics(inspection.RelationalDiagnostics),
-		ClassificationPolicyFingerprint:  inspection.ClassificationPolicyFingerprint,
-		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
-		AuthorityLimits:                  append([]string(nil), inspection.AuthorityLimits...),
+		Inventory:                          summarizeInventory(inspection.Document.Inventory),
+		UnknownConstructCount:              countUnknownInventory(inspection.Document.Inventory),
+		Candidates:                         summarizeCandidates(inspection.Candidates),
+		RelationalFacts:                    summarizeFacts(inspection.RelationalFacts),
+		RelationalDiagnostics:              summarizeDiagnostics(inspection.Document.SHA256, inspection.RelationalDiagnostics),
+		RelationalFactResolutions:          summarizeFactResolutions(inspection.RelationalFactResolutions),
+		RelationalResolutionStatus:         inspection.RelationalResolutionStatus,
+		RelationalResolutionPolicyRevision: inspection.RelationalResolutionPolicyRevision,
+		ClassificationPolicyFingerprint:    inspection.ClassificationPolicyFingerprint,
+		TranscriptionContractFingerprint:   inspection.TranscriptionContractFingerprint,
+		AuthorityLimits: append(
+			append([]string(nil), inspection.AuthorityLimits...),
+			"public-diagnostic-token-does-not-hash-source-derived-locator-names",
+			"public-diagnostic-token-is-report-correlation-not-source-or-semantic-identity",
+		),
 	}
 	sort.Strings(result.AuthorityLimits)
 	return result
@@ -242,17 +267,26 @@ func summarizeFacts(facts xeadsource.RelationalSourceFacts) factSummary {
 	return out
 }
 
-func summarizeDiagnostics(diagnostics []xeadsource.RelationalDiagnostic) diagnosticSummary {
+func summarizeDiagnostics(
+	sourceSHA256 string,
+	diagnostics []xeadsource.RelationalDiagnostic,
+) diagnosticSummary {
 	out := diagnosticSummary{
 		Total:  len(diagnostics),
 		ByCode: map[string]int{},
 	}
-	for _, diagnostic := range diagnostics {
+	for i, diagnostic := range diagnostics {
 		out.ByCode[diagnostic.Code]++
-		sum := sha256.Sum256([]byte(diagnostic.Locator))
+		tokenInput := fmt.Sprintf(
+			"%s|%s|diagnostic-ordinal:%d",
+			sourceSHA256,
+			xeadsource.RelationalResolutionPolicyRevision,
+			i+1,
+		)
+		sum := sha256.Sum256([]byte(tokenInput))
 		out.Evidence = append(out.Evidence, diagnosticEvidence{
-			Code:          diagnostic.Code,
-			LocatorDigest: hex.EncodeToString(sum[:]),
+			Code:            diagnostic.Code,
+			DiagnosticToken: hex.EncodeToString(sum[:]),
 		})
 	}
 	if len(out.ByCode) == 0 {
@@ -262,7 +296,34 @@ func summarizeDiagnostics(diagnostics []xeadsource.RelationalDiagnostic) diagnos
 		if out.Evidence[i].Code != out.Evidence[j].Code {
 			return out.Evidence[i].Code < out.Evidence[j].Code
 		}
-		return out.Evidence[i].LocatorDigest < out.Evidence[j].LocatorDigest
+		return out.Evidence[i].DiagnosticToken < out.Evidence[j].DiagnosticToken
 	})
+	return out
+}
+
+func summarizeFactResolutions(values []xeadsource.RelationalFactResolution) factResolutionSummary {
+	out := factResolutionSummary{
+		Total:  len(values),
+		ByKind: map[string]factResolutionCount{},
+	}
+	for _, value := range values {
+		count := out.ByKind[value.Kind]
+		count.Total++
+		switch value.Status {
+		case xeadsource.RelationalFactResolutionResolved:
+			out.Resolved++
+			count.Resolved++
+		case xeadsource.RelationalFactResolutionUnresolved:
+			out.Unresolved++
+			count.Unresolved++
+		case xeadsource.RelationalFactResolutionUnvalidated:
+			out.Unvalidated++
+			count.Unvalidated++
+		}
+		out.ByKind[value.Kind] = count
+	}
+	if len(out.ByKind) == 0 {
+		out.ByKind = nil
+	}
 	return out
 }

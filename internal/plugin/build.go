@@ -50,6 +50,25 @@ type BuilderIdentity struct {
 	ArtifactDigest  string           `json:"artifactDigest"`
 }
 
+func (b BuilderIdentity) Validate() error {
+	if b.ID == "" {
+		return fmt.Errorf("builder id is required")
+	}
+	if _, err := core.ParseCanonicalID(string(b.ID)); err != nil {
+		return fmt.Errorf("builder id: %w", err)
+	}
+	if strings.TrimSpace(b.Version) == "" {
+		return fmt.Errorf("builder version is required")
+	}
+	if strings.TrimSpace(b.ContractVersion) == "" {
+		return fmt.Errorf("builder contract version is required")
+	}
+	if err := validateBuildDigest("builder artifact digest", b.ArtifactDigest); err != nil {
+		return err
+	}
+	return nil
+}
+
 // BuildParameter contains a non-secret input that may affect the build output.
 // Secrets and signing material belong to separate authority/provenance paths and
 // must not be embedded here.
@@ -214,19 +233,7 @@ func (p BuildPlan) Validate() error {
 			return err
 		}
 	}
-	if p.Builder.ID == "" {
-		return fmt.Errorf("builder id is required")
-	}
-	if _, err := core.ParseCanonicalID(string(p.Builder.ID)); err != nil {
-		return fmt.Errorf("builder id: %w", err)
-	}
-	if strings.TrimSpace(p.Builder.Version) == "" {
-		return fmt.Errorf("builder version is required")
-	}
-	if strings.TrimSpace(p.Builder.ContractVersion) == "" {
-		return fmt.Errorf("builder contract version is required")
-	}
-	if err := validateBuildDigest("builder artifact digest", p.Builder.ArtifactDigest); err != nil {
+	if err := p.Builder.Validate(); err != nil {
 		return err
 	}
 	if strings.TrimSpace(p.Recipe.Kind) == "" {
@@ -272,6 +279,27 @@ func (p BuildPlan) Validate() error {
 		parameters[param.Name] = struct{}{}
 	}
 	return nil
+}
+
+// BuildPlanInputFingerprint returns a stable fingerprint for every resolved
+// build input except the exact Builder implementation identity (ID, version
+// and artifact digest). Builder ContractVersion remains part of the
+// fingerprint because it defines how the BuildPlan is interpreted. Bootstrap
+// stage1/stage2 use this value to prove they are rebuilding the same target
+// with the same contract, sources, recipe, dependencies and parameters while
+// intentionally changing only the builder implementation that performs it.
+func BuildPlanInputFingerprint(p BuildPlan) (string, error) {
+	if err := p.Validate(); err != nil {
+		return "", err
+	}
+	n := NormalizeBuildPlan(p)
+	n.Builder = BuilderIdentity{ContractVersion: p.Builder.ContractVersion}
+	b, err := json.Marshal(n)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // BuildPlanFingerprint returns the stable fingerprint for the exact resolved
