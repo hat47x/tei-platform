@@ -1,11 +1,11 @@
-# 渡辺幸三氏の言説からTEIへ取り込む設計圧力
+# 外部設計資料からTEIへ取り込む設計圧力
 
 Status: research-backed architecture clarification  
 Date: 2026-10-06
 
 ## 1. 目的
 
-渡辺幸三氏の三要素分析法、X-TEA / XEAD、レファレンスモデル、実行可能な仕様書、近年のデータモデリングに関する公開言説を再確認し、TEIへ取り込むべき設計圧力と、歴史的実装へ依存するためそのまま移植しない要素を分けます。
+三要素分析法、X-TEA / XEAD、レファレンスモデル、実行可能な仕様書、近年のデータモデリングに関する公開資料を再確認し、TEIへ取り込むべき設計圧力と、歴史的実装へ依存するためそのまま移植しない要素を分けます。
 
 この文書は外部知見の調査記録です。TEIのProduct Requirement、Architecture、Evidenceの正本ではありません。採用した判断は既存の正本文書へ反映し、ここだけに新しい仕様を置きません。
 
@@ -51,13 +51,13 @@ Date: 2026-10-06
 
 ### 3.2 UIを上流のreview surfaceとして扱う
 
-渡辺氏はUIを、利用者が理解しやすく、Data Modelの意味を具体的に確認できる設計要素として重視しています。TEIもUIをauthorityにはしない一方、Interaction ProjectionからData / Functionの矛盾を発見する設計を採っています。
+参照資料ではUIを、利用者が理解しやすく、Data Modelの意味を具体的に確認できる設計要素として重視しています。TEIもUIをauthorityにはしない一方、Interaction ProjectionからData / Functionの矛盾を発見する設計を採っています。
 
 今回、UIを「表示結果」だけでなく利用者による意味確認のreview surfaceとして明文化しました。また、基本設計のreview projectionと出荷TargetのVisual Fidelityを分離し、設計段階の装飾完成度をSemantic成立条件へ混ぜない境界も明確にしました。
 
 ### 3.3 Business ProcedureをApplication Functionへ還元しない
 
-渡辺氏のいう業務モデルは、コンピュータ外の主体や仕事の進め方を含む業務マニュアルとしての性格を持ちます。TEIでは`Business Action != Application Function`を維持し、manual / physical / external workをfirst-classに残しています。
+参照資料で示された業務モデルは、コンピュータ外の主体や仕事の進め方を含む業務マニュアルとしての性格を持ちます。TEIでは`Business Action != Application Function`を維持し、manual / physical / external workをfirst-classに残しています。
 
 ### 3.4 実行可能な仕様とDriver
 
@@ -77,19 +77,19 @@ Canonical subject identity
 
 TEIはnatural key / composite key / surrogate keyのどれかを一律に強制しません。代わりに、業務上のdeterminant、uniqueness、Relation semantics、Constraintを物理実装から失わないことを要求します。
 
-渡辺氏は、単独主キーしか扱いにくい実装環境ではsurrogate keyを使う余地を認めています。その場合も、本来の複合識別をuniquenessとして残し、正規化された意味との差を理解したうえで実装する立場です。TEIではこの点を、Provider / ORM / Target固有のRealizationがlogical Data meaningを上書きしないという境界へ翻訳します。
+参照資料では、単独主キーしか扱いにくい実装環境ではsurrogate keyを使う余地を認めています。その場合も、本来の複合識別をuniquenessとして残し、正規化された意味との差を理解したうえで実装する立場です。TEIではこの点を、Provider / ORM / Target固有のRealizationがlogical Data meaningを上書きしないという境界へ翻訳します。
 
 同じ理由で、View、formの入力単位、Application Pattern、runtime objectのidentityをbusiness keyのauthorityにはしません。これらはData meaningを利用するProjection / Realizationであり、業務上のoccurrenceを何が識別するかはData / Relation / ConstraintとそのSourceへ戻って確認します。
 
 ### 4.2 関数従属性をData設計上の重要なmeaningとして扱う
 
-渡辺氏の近年の言説で一貫しているのは、主キーの形そのものより、その背後にある関数従属性と業務上の識別関係を設計者が理解する必要があるという点です。
+近年の公開資料で一貫しているのは、主キーの形そのものより、その背後にある関数従属性と業務上の識別関係を設計者が理解する必要があるという点です。
 
 TEIでは、これを「複合主キーを推奨する」という規則には翻訳しません。business identity / candidate key / functional dependency / domain constraintを、realistic Referenceで既存primitiveからlosslessに表現・検査できるかを新しいEvidence questionとしました。
 
 ### 4.3 導出属性と動的なRelationを意味として失わない
 
-渡辺氏は、物理的には保持しない導出属性も論理データモデル上へ置き、その導出値を外部キーとして使う「動的参照関係」を示しています。重要なのは名称ではなく、あるDataの事実から導いた値が別DataへのRelationを決め、その関係自体が業務上の制約になる点です。
+参照資料には、物理的には保持しない導出属性も論理データモデル上へ置き、その導出値を外部キーとして使う「動的参照関係」を示しています。重要なのは名称ではなく、あるDataの事実から導いた値が別DataへのRelationを決め、その関係自体が業務上の制約になる点です。
 
 TEIでは、導出値を単なる表示用の計算結果やcacheとして扱いません。少なくとも次を分けます。
 
@@ -106,7 +106,7 @@ derived-value semantic contract
 
 ### 4.4 Referenceを反証可能なProduct Evidenceにする
 
-渡辺氏は、レファレンスモデルを方法論の有効性を第三者が検討する材料と位置づけ、さらに本格的な販売管理モデルをDriver上で実装することで、DriverだけでなくReference Model自身の不備も修正したと説明しています。
+参照資料では、レファレンスモデルを方法論の有効性を第三者が検討する材料と位置づけ、さらに本格的な販売管理モデルをDriver上で実装することで、DriverだけでなくReference Model自身の不備も修正したと説明しています。
 
 TEIではReferenceを次の循環に置きます。
 
@@ -126,7 +126,7 @@ Reference専用の例外実装で成功させません。一つの小例が動�
 
 ### 4.5 Subject Area / Subsystemを認知とcross-referenceの境界として扱う
 
-渡辺氏のSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
+参照資料でのSubsystemは、実装moduleの存在を要求する概念ではありません。Dataの所属とFunctionのCRUDをSubsystemごとに重ね、別Subsystemへの参照と更新を区別することで、設計情報を読みやすくしながら凝集度・結合度を検討する役割を持ちます。
 
 TEIでは、Subsystemを直ちにCore primitive、Application、Database、deployment unitへ固定しません。まずData ownership、Function / Interaction、Capability / Contract等からderived CRUD / dependency Projectionを作り、cross-boundary CUDをdesign pressureとして確認します。durable identityが必要かはrealistic Referenceで判断します。
 
@@ -140,7 +140,7 @@ AIは候補、矛盾、問いを提示できます。Validatorは宣言済みCon
 
 ### 4.7 後付けのSemantic Layerを第二正本にしない
 
-渡辺氏は、既存Database定義、Application source、文書、メール等からAIが意味のネットワークを再構成する方式について、元のDatabase構造自体が業務上の関数従属性を十分に表していなければ、後段のSemantic Layerだけでは意味を回復しきれないと指摘しています。
+参照資料では、既存Database定義、Application source、文書、メール等からAIが意味のネットワークを再構成する方式について、元のDatabase構造自体が業務上の関数従属性を十分に表していなければ、後段のSemantic Layerだけでは意味を回復しきれないと指摘しています。
 
 TEIではこの問題を、RDBを唯一の上位モデルにすることではなく、**意味のauthorityをどの段階で確立したか**として扱います。
 
@@ -170,7 +170,7 @@ authoritative Source
 
 ### 4.8 業務識別を属性名だけへ退避させない
 
-渡辺氏は2026年9月の記事で、機械的な単独IDを主キーにしたまま、従来の業務キーを単なる`identifier`属性として残し、その一意性をApplicationや業務運用へ委ねる設計にも疑問を呈しています。
+2026年9月の記事では、機械的な単独IDを主キーにしたまま、従来の業務キーを単なる`identifier`属性として残し、その一意性をApplicationや業務運用へ委ねる設計にも疑問を呈しています。
 
 TEIでは、この主張を「業務キーを必ずphysical primary keyにする」という規則にはしません。代わりに、業務上の識別条件がaccepted meaningになった場合は、識別を構成する項目だけでなく、一意性が成立する範囲、時間・履歴条件、RelationやConstraintとの関係、責任を持つSourceへ追跡できることを要求します。
 
@@ -197,7 +197,7 @@ Data Design Contextでは、Data全体の時間・履歴条件を`temporalHistor
 
 ### 4.10 論理的なData統合と物理的なDatabase統合を分ける
 
-渡辺氏は2026年7月の記事で、個別System間のサービス連携を整えることと、全体として整合したデータ構造を設計することは同じではないと論じています。記事では行政Databaseの論理的統合を強く主張していますが、TEIはこれを単一Databaseへの物理統合要求としては採用しません。
+2026年7月の記事では、個別System間のサービス連携を整えることと、全体として整合したデータ構造を設計することは同じではないと論じています。記事では行政Databaseの論理的統合を強く主張していますが、TEIはこれを単一Databaseへの物理統合要求としては採用しません。
 
 TEIでは、ApplicationとDatabaseをN:Mで扱い、Dataを複数Database、Provider、外部Serviceへ配置できます。一方、物理的に分散していることを理由に、同じ業務対象のidentity、Relation、Constraint、ownershipを各APIや各Databaseへ閉じ込めません。
 
@@ -215,7 +215,7 @@ physical Database / Service / Provider
 
 ### 4.11 identityと表記の忠実性を分ける
 
-渡辺氏は2026年9月2日の氏名異体字の記事で、行政処理で扱いやすい文字表記と、本人が本来の氏名として保持したい表記を分ける案を示しています。TEIでは「本字を画像登録する」という制度案そのものではなく、同じ業務対象に複数の表記・符号化・外部表現があり得るという設計圧力を取り込みます。
+2026年9月2日の氏名異体字に関する記事では、行政処理で扱いやすい文字表記と、本人が本来の氏名として保持したい表記を分ける案を示しています。TEIでは「本字を画像登録する」という制度案そのものではなく、同じ業務対象に複数の表記・符号化・外部表現があり得るという設計圧力を取り込みます。
 
 業務上のidentityを、正規化後の文字列や一つの表示形式と同一視しません。外部Sourceの表記を忠実に保持する必要がある場合は、原表記と、その検索・照合・表示等に使うnormalized / operational representationを分けます。
 
@@ -233,7 +233,7 @@ Unicode正規化、異体字置換、大文字小文字変換、記号除去等�
 
 ### 4.12 As-Isの観測をDesired Designへ自動昇格しない
 
-渡辺氏は2025年9月の記事で、抜本的な刷新において現行業務や現行Systemを詳細に分析するほど、現行踏襲へ引き寄せられる危険を指摘しています。TEIでは現状分析そのものを否定しません。legacy compatibility、migration、audit、運用継続のためにactual sourceを正確に観測することは必要です。
+2025年9月の記事では、抜本的な刷新において現行業務や現行Systemを詳細に分析するほど、現行踏襲へ引き寄せられる危険を指摘しています。TEIでは現状分析そのものを否定しません。legacy compatibility、migration、audit、運用継続のためにactual sourceを正確に観測することは必要です。
 
 重要なのはauthorityを分けることです。
 
@@ -252,7 +252,7 @@ ImporterやAIが現行Database、code、UI、業務手順を精密に復元で�
 
 ### 4.13 意味の発見と決定論的な構造変換を分ける
 
-渡辺氏は2026年5月の記事で、業務の現実からデータ項目間の関数従属性を見いだす過程と、得られた関数従属性をtable構造へ変換する過程を分けています。前者を本質的な設計問題、後者を比較的機械化しやすい変形問題と位置づけています。
+2026年5月の記事では、業務の現実からデータ項目間の関数従属性を見いだす過程と、得られた関数従属性をtable構造へ変換する過程を分けています。前者を本質的な設計問題、後者を比較的機械化しやすい変形問題と位置づけています。
 
 TEIでは「AIは関数従属性を認識できない」という能力評価を固定的な前提にはしません。モデル能力は変化するためです。代わりに、次のauthority境界を採用します。
 
@@ -272,7 +272,7 @@ AIはdependency、candidate key、constraint、Data分割等を提案できま�
 
 ## 5. そのまま移植しないもの
 
-次は渡辺氏の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
+次は参照資料の歴史的実装・個別の設計見解として尊重しますが、TEIの普遍原則にはしません。
 
 - X-TEA / XEADのXML要素やFunction Typeを、そのままTEIのCanonical kindへすること
 - 全Applicationへ特定の機能パターン集合を固定すること
