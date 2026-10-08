@@ -166,9 +166,17 @@ consumer freshnessがstaleでも、assertion自体のconfirmationや通常のuse
 
 Healthは「確認済み件数 / 全件数」のpercentを主判定にしません。
 
+補助signalとして `resolutionCoverage` を返します。これは現在文脈で作業上の不確実性がどこまで解消されているかを表すもので、Truthや知識の完全性を表しません。
+
+解消済みに数えるのは、currentなhuman confirmation、direct user working premise、currentなhuman rejectionです。未確認のAI / external由来assertionやstale review binding等は未解消として数えます。一方、hypothesis、context不一致、stale / not-yet-valid、ambiguous / detached target、metadata不完全は別signalで扱い、このratioの分母へ混ぜません。
+
+project側が `healthPolicy.minResolvedRatio` を設定した場合だけ、ratioが基準を下回るとHealthを少なくとも `attention` へ引き上げます。`minimumEligibleAssertions` によって小標本の過剰alertを避けます。必要確認件数は `ceil(minResolvedRatio × eligible) - resolved` とし、review requestはその不足分だけ生成します。候補が複数ある場合はdependency criticalityを優先し、それ以外は安定したID順で選びます。
+
 `dependencies` は、どのassertionをどのconsumerがどのcriticalityで利用しているかを表します。criticalなconsumerが未確認、stale、Conflict、適用範囲不一致の情報へ依存する場合は `critical` を返します。
 
 多数の低重要度memoが未確認でも、それだけでcritical dependencyを希釈しません。
+
+Projectionは `resolution-coverage-is-operational-readiness-not-truth-ratio` をAuthority limitとして返します。
 
 ## Human review mutation candidate
 
