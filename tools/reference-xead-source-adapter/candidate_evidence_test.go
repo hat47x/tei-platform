@@ -113,3 +113,33 @@ func TestBuildTranscriptionCandidateEvidenceRejectsInvalidOrdinal(t *testing.T) 
 		t.Fatalf("invalid source ordinal was accepted: %v", err)
 	}
 }
+
+
+func TestVerifyTranscriptionCandidateEvidenceRejectsSourceOrContractDrift(t *testing.T) {
+	contract := classificationContractFixture()
+	doc, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="a"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded, err := BuildTranscriptionCandidateEvidence(FormatXead, doc, contract, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, contract, 2, recorded); err != nil {
+		t.Fatalf("current Evidence did not replay: %v", err)
+	}
+
+	changedSource, err := Observe(FormatXead, []byte(`<System FormatVersion="1.2"><Table ID="b"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, changedSource, contract, 2, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
+		t.Fatalf("source drift was accepted: %v", err)
+	}
+
+	changedContract := append([]byte(nil), contract...)
+	changedContract = append(changedContract, ' ')
+	if err := VerifyTranscriptionCandidateEvidence(FormatXead, doc, changedContract, 2, recorded); err == nil || !strings.Contains(err.Error(), "stale") {
+		t.Fatalf("mapping contract drift was accepted: %v", err)
+	}
+}
