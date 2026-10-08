@@ -181,6 +181,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"meaning-fingerprint-is-input-not-semantic-proof",
 			"target-anchor-resolution-does-not-prove-semantic-identity",
 			"coverage-mapping-is-input-not-semantic-completeness-proof",
+			"resolution-coverage-is-operational-readiness-not-truth-ratio",
 			"content-fingerprint-does-not-restore-review-history",
 			"partial-transport-health-is-not-project-wide-health",
 			"review-history-is-bounded-by-context-as-of",
