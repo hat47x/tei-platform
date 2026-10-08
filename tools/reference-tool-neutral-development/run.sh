@@ -89,8 +89,14 @@ run_tei "$TASK_TEI" knowledge-context \
   > "$TMP_ROOT/before-context.json"
 grep -q 'sales.order_line.quantity_positive' "$TMP_ROOT/before-context.json"
 
+if [[ ! -f "$TASK_WORKSPACE/.tei/plugin-lock.json" ]]; then
+  echo "reference workspace is missing its plugin lock" >&2
+  exit 1
+fi
+
 cp -R "$TASK_WORKSPACE" "$STATELESS_WORKSPACE"
 rm -rf "$STATELESS_WORKSPACE/.tei/decisions"
+cmp "$TASK_WORKSPACE/.tei/plugin-lock.json" "$STATELESS_WORKSPACE/.tei/plugin-lock.json"
 run_tei "$TASK_TEI" validate -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/stateless-validate.txt"
 run_tei "$TASK_TEI" world -workspace "$STATELESS_WORKSPACE" > "$TMP_ROOT/without-decisions-world.json"
 cmp "$TMP_ROOT/before-validate.txt" "$TMP_ROOT/stateless-validate.txt"
@@ -292,5 +298,6 @@ printf 'integration=%s\n' "$INTEGRATION_REVISION"
 printf 'changed=%s\n' "$TARGET_FILE"
 printf 'validation-ledger-independent=true\n'
 printf 'decision-ledger-independent=true\n'
+printf 'plugin-lock-retained=true\n'
 printf 'semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT\n'
 printf 'tool-neutral development reference: PASS\n'
