@@ -377,3 +377,86 @@ func TestConflictingContractNamespaceAuthoritiesFailClosed(t *testing.T) {
 		t.Fatalf("conflicting Contract namespace Authorities were accepted: %v", err)
 	}
 }
+
+func TestLockedContractAuthorityIsRevalidatedSeparatelyFromLockReplay(t *testing.T) {
+	contract := sourceAdapterContract()
+	provider := sourceAdapterProvider(
+		contract,
+		ScopeAuthoringTool,
+		"reference.compat.xead.source",
+		"xead.reader.v0",
+	)
+	input := contractAuthorityInput(
+		[]Contract{contract},
+		[]Provider{provider},
+		[]ConformanceEvidence{evidenceFor(provider, contract, "evidence")},
+	)
+	leftGrant := contractAuthorityGrant(
+		"authoring.source-adapter",
+		"tei.contract.reference",
+		"authority-left",
+	)
+	resolution, _, err := resolveCapabilityWithAcceptedContractAuthority(
+		input,
+		[]CapabilityContractAuthorityGrant{leftGrant},
+		[]CapabilityContractPublication{
+			contractPublication(contract, leftGrant),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := buildCapabilityResolutionLock(input, resolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leftBinding, err := verifyCapabilityResolutionLockAcceptedContractAuthority(
+		lock,
+		[]CapabilityContractAuthorityGrant{leftGrant},
+		[]CapabilityContractPublication{
+			contractPublication(contract, leftGrant),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rightGrant := contractAuthorityGrant(
+		"authoring.source-adapter",
+		"tei.contract.reference",
+		"authority-right",
+	)
+	if err := verifyCapabilityResolutionLockReplay(lock, input); err != nil {
+		t.Fatalf("Contract Authority rotation changed declaration replay: %v", err)
+	}
+	if _, err := verifyCapabilityResolutionLockAcceptedContractAuthority(
+		lock,
+		[]CapabilityContractAuthorityGrant{rightGrant},
+		[]CapabilityContractPublication{
+			contractPublication(contract, leftGrant),
+		},
+	); err == nil || !strings.Contains(err.Error(), "stale Authority Evidence") {
+		t.Fatalf("stale locked Contract Authority was accepted: %v", err)
+	}
+
+	rightBinding, err := verifyCapabilityResolutionLockAcceptedContractAuthority(
+		lock,
+		[]CapabilityContractAuthorityGrant{rightGrant},
+		[]CapabilityContractPublication{
+			contractPublication(contract, rightGrant),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !validSHA256Fingerprint(lock.LockFingerprint) {
+		t.Fatalf("lock fingerprint=%q", lock.LockFingerprint)
+	}
+	if leftBinding.BindingFingerprint == rightBinding.BindingFingerprint {
+		t.Fatal("current Contract Authority refresh was invisible")
+	}
+	if leftBinding.ContractFingerprint != rightBinding.ContractFingerprint ||
+		leftBinding.ContractFingerprint != lock.ContractFingerprint {
+		t.Fatal("Contract Authority refresh changed locked Contract meaning")
+	}
+}
