@@ -140,11 +140,11 @@ build結果はRepository外の一時directoryへ置きます。関連するknowl
 
 ### Decision ledger非依存のpressure
 
-current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Tool固有stateなしでもCanonical meaningを再構築できる」という主張が弱い状態でした。
+current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Decision ledgerのようなCanonical meaningの第二正本ではないauthoring stateへ依存しない」という主張を実証できていませんでした。
 
 現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceに対して、Validation出力とCanonical Worldのそれぞれがbyte単位で一致することを要求します。
 
-`.tei/plugin-lock.json`は削除しません。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
+`.tei/plugin-lock.json`は削除しません。runnerは元WorkspaceにPlugin Lockが存在することを要求し、Decision ledgerを削除した一時Workspaceでもそのfileがbyte単位で同一であることを検査します。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
 
 このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Agent Workspace / Checkpointを使用しません。Shared Acceptanceを否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることをpressureします。
 
@@ -179,11 +179,12 @@ integration=<same revision as result>
 changed=reference/workspace/semantic/sales/validation.tei
 validation-ledger-independent=true
 decision-ledger-independent=true
+plugin-lock-retained=true
 semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT
 tool-neutral development reference: PASS
 ```
 
-最新のintegration改善後は、GitHub上のrunner blob SHA `b596c2db23d515ea801ddd30257a4ee0893e1294`とsynthetic fixture側のGit blob SHAが完全一致することを確認したうえで再実行しました。task clone / integration clone / conflict cloneがsource HEADから始まること、integration cloneが元baseからtask result commitを通常Gitでfetch / fast-forwardして同じrevisionへ到達すること、Validation出力とCanonical Worldの再現、Decision ledger非依存、Semantic conflict拒否を含め、runnerは最後までPASSしました。
+最新のstate境界改善後は、GitHub上のrunner blob SHA `0acf8651a21433b431b13716df379e0c64d9ce63`とsynthetic fixture側のGit blob SHAが完全一致することを確認したうえで再実行しました。task clone / integration clone / conflict cloneがsource HEADから始まること、integration cloneが元baseからtask result commitを通常Gitでfetch / fast-forwardして同じrevisionへ到達すること、Validation出力とCanonical Worldの再現、Decision ledger非依存、Plugin Lock保持、Semantic conflict拒否を含め、runnerは最後までPASSしました。
 
 これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
 
@@ -425,7 +426,7 @@ candidate exact head
 - clean post-state
 - integration context
 - integration後のreload / Validation result
-- Tool固有stateなしで再構築できたこと
+- 削除対象とした非正本state（最初のReferenceではDecision ledger）に依存せず再構築できたこと
 - Semantic conflict negative case
 - 使用した開発環境の制約。ただしCanonical identityには含めない
 
@@ -440,7 +441,7 @@ candidate exact head
 - [ ] Structured Proposal / TEI独自Change Setを必須にしない
 - [ ] 別contextから変更後SourceをreloadしCanonical meaningを再構築できる
 - [ ] Agent Session / Workspace / Checkpoint / Plan / 一般的な検証状態をTEI Product stateへ追加しない
-- [ ] Tool固有stateを除去してもauthoritative sourceとCanonical meaningが変わらない
+- [ ] Decision ledger等、明示的に非正本と分類したstateを除去してもauthoritative sourceとCanonical meaningが変わらない
 - [ ] Git上はmerge可能だがSemantic上は不整合となるnegative caseを少なくとも一つ再現できる
 - [ ] CLI-only pathがdeveloper MCPなしでも成立する
 - [ ] MCPを追加する場合、CLIと同じapplication service / semantic contractを利用できる
