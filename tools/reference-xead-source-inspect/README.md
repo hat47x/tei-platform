@@ -14,7 +14,7 @@ go run ./tools/reference-xead-source-inspect \
 
 主な出力:
 
-- schema version（現在は `reference-xead-source-inspection-v2`）
+- schema version（現在は `reference-xead-source-inspection-v3`）
 - source format / SHA-256
 - XML construct inventory
 - unknown construct件数（名称は公開出力しない）
@@ -22,7 +22,7 @@ go run ./tools/reference-xead-source-inspect \
 - legacy / runtime keyとRelation mappingの集計
 - DERIVABLEなkey memberの件数
 - DERIVABLEなkeyを参照するRelationshipの件数
-- unresolved diagnostic codeとsource-locator digest
+- unresolved diagnostic codeと、source digest / resolution policy revision / diagnostic ordinalから作るopaque diagnostic token
 - relational source fact全体の整合状態を示す `relationalResolutionStatus = resolved | partial | unresolved`
 - fact種別ごとの `resolved / unresolved / unvalidated` 件数を示す `relationalFactResolutions`
 - readiness判定算法のrevisionを示す `relationalResolutionPolicyRevision`
@@ -45,3 +45,5 @@ Canonical meaning、business identity、functional dependency等の承認では�
 そのfactが依存するKey / Table / Field / Relationshipに未解決が伝播していないことをexplicitなResolution Projectionから確認します。
 
 公開reportではraw locatorやlegacy IDを出さず、fact種別ごとの件数だけを出します。
+
+diagnostic tokenもsource locator文字列のhashにはしません。構造pathに業務名や独自schema名が含まれる場合、単純なlocator hashは候補pathから辞書照合できるためです。v3ではexact source digest、readiness判定policy revision、diagnostic ordinalからtokenを生成します。このtokenは同一report内の相関用であり、source node identityやCanonical identityとして使いません。
