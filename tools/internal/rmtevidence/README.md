@@ -28,6 +28,6 @@
 
 unknown / namespaced constructは名前をEvidenceへ出さず、`sourceConstructKnown=false`かつ`mappingStatus=unmapped`のまま保持します。
 
-Evidence fingerprintは内容の同一性を示すだけで、観測者の署名やConformance、human approvalを証明しません。現在のexternal sourceとmapping contractへ再照合する場合は、Source Adapter側で同じnode ordinalからEvidenceを再構成し、fingerprint一致を確認します。
+Evidence fingerprintは内容の同一性を示すだけで、観測者の署名やConformance、human approvalを証明しません。現在のexternal sourceとmapping contractへ再照合する場合は、Source Adapter側でEvidenceに保存された`SourceToken`をexact source内で再解決し、そのnodeからEvidenceを再構成してfingerprint一致を確認します。再入場時に元のnode ordinalを会話や一時状態から渡し直す必要はありません。
 
 Shared Acceptanceへ接続するときは、このschemaをtyped artifactとして検証します。任意JSONをartifact Evidenceとして受け入れるための一般化には使いません。
