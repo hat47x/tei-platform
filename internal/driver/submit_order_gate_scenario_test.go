@@ -21,17 +21,25 @@ import (
 
 type submitOrderValidationSource struct {
 	quantity    *big.Rat
+	lineNumber  *big.Rat
 	lineNumbers []string
 }
 
 func (s submitOrderValidationSource) Number(attribute core.CanonicalID) (*big.Rat, error) {
-	if attribute != "sales.order_line.quantity" {
+	switch attribute {
+	case "sales.order_line.quantity":
+		if s.quantity == nil {
+			return nil, fmt.Errorf("sales.order_line.quantityの値がありません")
+		}
+		return new(big.Rat).Set(s.quantity), nil
+	case "sales.order_line.line_number":
+		if s.lineNumber == nil {
+			return nil, fmt.Errorf("sales.order_line.line_numberの値がありません")
+		}
+		return new(big.Rat).Set(s.lineNumber), nil
+	default:
 		return nil, fmt.Errorf("未登録の数値Attributeです: %s", attribute)
 	}
-	if s.quantity == nil {
-		return nil, fmt.Errorf("sales.order_line.quantityの値がありません")
-	}
-	return new(big.Rat).Set(s.quantity), nil
 }
 
 func (s submitOrderValidationSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {

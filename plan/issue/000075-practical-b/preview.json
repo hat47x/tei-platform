@@ -1,0 +1,306 @@
+{
+  "schema": "tei.reference.change-preview/v0",
+  "candidateId": "cand-order-line-number-positive",
+  "candidateFingerprint": "sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51",
+  "evidenceFingerprint": "sha256:54eb30be346e118b2aa6d6115cf82dd7235205726260439ca5ad56bef7104c5b",
+  "origin": {
+    "kind": "ai",
+    "actor": "claude-haiku-5-5"
+  },
+  "baseModelRevision": "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4",
+  "currentModelRevision": "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4",
+  "modelRevisionAfter": "sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2",
+  "stages": [
+    {
+      "name": "decode",
+      "status": "pass"
+    },
+    {
+      "name": "normalize",
+      "status": "pass"
+    },
+    {
+      "name": "base-revision",
+      "status": "pass"
+    },
+    {
+      "name": "resolve",
+      "status": "pass"
+    },
+    {
+      "name": "apply",
+      "status": "pass"
+    },
+    {
+      "name": "reload",
+      "status": "pass"
+    },
+    {
+      "name": "validate",
+      "status": "pass"
+    },
+    {
+      "name": "architecture-policy",
+      "status": "pass"
+    },
+    {
+      "name": "semantic-diff",
+      "status": "pass"
+    },
+    {
+      "name": "impact",
+      "status": "pass"
+    },
+    {
+      "name": "acceptance-policy",
+      "status": "pass"
+    }
+  ],
+  "acceptable": true,
+  "sourceEdits": [
+    {
+      "path": "applications/order-entry/application.tei",
+      "layer": "application",
+      "beforeFingerprint": "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a",
+      "afterFingerprint": "sha256:42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f",
+      "insertedText": "    uses validation sales.order_line.line_number_positive\n"
+    },
+    {
+      "path": "semantic/sales/validation.tei",
+      "layer": "semantic",
+      "beforeFingerprint": "sha256:bd641910f993ef84cbab1ccf3616de8d98c715e7679268115a71a0327e126633",
+      "afterFingerprint": "sha256:396c37c4cace1d91b8f6e35fd31d69eb1d45e7ff525ade5e97d808189024de40",
+      "insertedText": "\n\nvalidation sales.order_line.line_number_positive positive {\n    attribute sales.order_line.line_number\n}\n"
+    }
+  ],
+  "semanticDiff": [
+    {
+      "kind": "validation",
+      "id": "sales.order_line.line_number_positive",
+      "change": "added",
+      "after": {
+        "id": "sales.order_line.line_number_positive",
+        "symbol": "line_number_positive",
+        "kind": "positive",
+        "attribute": "sales.order_line.line_number"
+      }
+    }
+  ],
+  "applicationDiff": [
+    {
+      "kind": "application",
+      "id": "order_entry",
+      "change": "changed",
+      "before": {
+        "id": "order_entry",
+        "semanticUses": [
+          "sales",
+          "customer",
+          "security"
+        ],
+        "validations": [
+          "sales.order_line.quantity_positive",
+          "sales.order.lines.line_number_unique"
+        ],
+        "databases": [
+          {
+            "alias": "master",
+            "target": "master_data",
+            "access": "read",
+            "requires": [
+              {
+                "contract": "master_data.customer",
+                "compatibleMajor": 2
+              }
+            ]
+          },
+          {
+            "alias": "sales",
+            "target": "sales_core",
+            "access": "read-write",
+            "requires": [
+              {
+                "contract": "sales_core.order",
+                "compatibleMajor": 4
+              },
+              {
+                "contract": "sales_core.order_line",
+                "compatibleMajor": 1
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "id": "order_entry",
+        "semanticUses": [
+          "sales",
+          "customer",
+          "security"
+        ],
+        "validations": [
+          "sales.order_line.quantity_positive",
+          "sales.order.lines.line_number_unique",
+          "sales.order_line.line_number_positive"
+        ],
+        "databases": [
+          {
+            "alias": "master",
+            "target": "master_data",
+            "access": "read",
+            "requires": [
+              {
+                "contract": "master_data.customer",
+                "compatibleMajor": 2
+              }
+            ]
+          },
+          {
+            "alias": "sales",
+            "target": "sales_core",
+            "access": "read-write",
+            "requires": [
+              {
+                "contract": "sales_core.order",
+                "compatibleMajor": 4
+              },
+              {
+                "contract": "sales_core.order_line",
+                "compatibleMajor": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "changedCollections": [
+    "applications",
+    "semantics"
+  ],
+  "unchangedCollections": [
+    "applicationReleases",
+    "bundles",
+    "contractQueryExecutorBindings",
+    "contractQuerySQLRealizations",
+    "customGoBindings",
+    "databaseReleases",
+    "databases",
+    "environments",
+    "headerDetailContractQueryBindings",
+    "migrationProviders",
+    "migrations",
+    "persistenceMappings",
+    "plugins",
+    "queries",
+    "solutionReleases"
+  ],
+  "impact": [
+    {
+      "from": "application:order_entry",
+      "to": "contract:master_data.customer",
+      "via": "application.database.requires-contract",
+      "reason": "Applicationがalias master で要求しているDatabase Contractである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "contract:sales_core.order",
+      "via": "application.database.requires-contract",
+      "reason": "Applicationがalias sales で要求しているDatabase Contractである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "contract:sales_core.order_line",
+      "via": "application.database.requires-contract",
+      "reason": "Applicationがalias sales で要求しているDatabase Contractである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "database:master_data",
+      "via": "application.database.target",
+      "reason": "Applicationがalias master で要求しているDatabaseである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "database:sales_core",
+      "via": "application.database.target",
+      "reason": "Applicationがalias sales で要求しているDatabaseである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "namespace:customer",
+      "via": "application.uses-semantic-namespace",
+      "reason": "Applicationが利用宣言しているsemantic namespaceである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "namespace:sales",
+      "via": "application.uses-semantic-namespace",
+      "reason": "Applicationが利用宣言しているsemantic namespaceである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "namespace:security",
+      "via": "application.uses-semantic-namespace",
+      "reason": "Applicationが利用宣言しているsemantic namespaceである"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "validation:sales.order.lines.line_number_unique",
+      "via": "application.uses-validation",
+      "reason": "Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "validation:sales.order_line.line_number_positive",
+      "via": "application.uses-validation",
+      "reason": "Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）"
+    },
+    {
+      "from": "application:order_entry",
+      "to": "validation:sales.order_line.quantity_positive",
+      "via": "application.uses-validation",
+      "reason": "Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）"
+    },
+    {
+      "from": "attribute:sales.order_line.line_number",
+      "to": "data:sales.order_line",
+      "via": "semantic.data.attribute",
+      "reason": "AttributeはこのDataが宣言している"
+    },
+    {
+      "from": "data:sales.order_line",
+      "to": "relation:sales.order.lines",
+      "via": "semantic.relation.target",
+      "reason": "Relationのtargetがこのデータである"
+    },
+    {
+      "from": "relation:sales.order.lines",
+      "to": "application-pattern:order_entry.order_lines",
+      "via": "application.pattern.relation",
+      "reason": "Application PatternがこのRelationを明示的に参照している"
+    },
+    {
+      "from": "validation:sales.order_line.line_number_positive",
+      "to": "application:order_entry",
+      "via": "application.uses-semantic-namespace",
+      "reason": "ApplicationがValidationの属するsemantic namespaceを利用宣言している"
+    },
+    {
+      "from": "validation:sales.order_line.line_number_positive",
+      "to": "attribute:sales.order_line.line_number",
+      "via": "semantic.validation.attribute",
+      "reason": "Validationが制約対象として宣言したAttributeである"
+    }
+  ],
+  "unresolved": [
+    {
+      "code": "DRIVER_SCENARIO_NOT_RUN",
+      "message": "解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない"
+    },
+    {
+      "code": "TARGET_PROJECTION_NOT_EVALUATED",
+      "message": "解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない"
+    }
+  ]
+}
