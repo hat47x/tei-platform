@@ -34,6 +34,8 @@ Date: 2026-10-06
   - https://dbconcept.hatenablog.com/entry/2025/02/25/120940
   - https://dbconcept.hatenablog.com/entry/2024/12/16/071337
   - https://dbconcept.hatenablog.com/entry/2024/11/27/080850
+  - https://dbconcept.hatenablog.com/entry/2024/08/02/125955
+  - https://dbconcept.hatenablog.com/entry/2023/06/04/135818
 - 公開実装
   - https://github.com/xead/XeadModeler
   - https://github.com/xead/XeadDriver
@@ -174,7 +176,26 @@ TEIでは、この主張を「業務キーを必ずphysical primary keyにする
 
 `identifier`、`external_id`、`code`等の属性が存在するだけでは、その属性をbusiness occurrence identifierやcandidate keyとして扱いません。外部制度や別Systemが一意性を保証する場合も、その責任主体と契約を明示し、TEI内部にConstraintがないことを「一意性は不要」とは解釈しません。
 
-### 4.9 論理的なData統合と物理的なDatabase統合を分ける
+### 4.9 business occurrence identityと履歴version identityを分ける
+
+渡辺氏は、適用開始日や履歴番号を本体Dataの主キーへ機械的に加えると、本来のData間Relationが見えにくくなる問題を指摘しています。別の記事では、履歴番号と最新フラグを使って現行recordを選ぶ設計を問題として取り上げています。一方、組織や所属の変遷を扱う例では、発効日を持つ履歴Dataを独立させることで過去時点を復元できるモデルを示しつつ、履歴が不要な業務へ同じ構造を一律に適用することも避けています。
+
+TEIでは、この考え方を特定の履歴schemaへ固定しません。business occurrenceそのもののidentityと、同じoccurrenceの履歴versionを識別するためのidentity、validity period、state transitionを分けて扱います。
+
+そのため、適用開始日、履歴番号、version番号、最新フラグ、日時型Attributeが存在することだけを根拠に、それらをbusiness occurrence identifierへ含めません。反対に、業務上は時点ごとに別occurrenceとして扱う必要がある場合も、名称だけから同一occurrenceの履歴だと決めません。どちらの意味であるかをSource / Contractへ戻って確認します。
+
+Data Design Contextでは、Data全体の時間・履歴条件を`temporalHistoryConditions`として扱います。現行Canonicalで意味を確定できない場合は`unresolved`とし、少なくとも次を生成AIの確認対象にします。
+
+- business occurrenceや識別子が有効な時点・期間
+- identifierを時間をまたいで再利用できるか
+- 履歴recordが同じbusiness occurrenceのversionか、別occurrenceか
+- validity periodの重複を許すか
+- identity、membership、validityを変えるstate transition
+- 保持すべき履歴と、その意味を定めるSource / Contract
+
+これはEvent Sourcing、Bitemporal Model、履歴table等を全Dataへ要求するものではありません。時間軸は業務上必要な場合に明示し、不要なDataへ一律の履歴構造を導入しません。
+
+### 4.10 論理的なData統合と物理的なDatabase統合を分ける
 
 2026年7月の記事では、個別System間のサービス連携を整えることと、全体として整合したデータ構造を設計することは同じではないと論じています。記事では行政Databaseの論理的統合を強く主張していますが、TEIはこれを単一Databaseへの物理統合要求としては採用しません。
 
@@ -192,7 +213,7 @@ physical Database / Service / Provider
 
 同じ論理Data Modelを持つことも、すべてのrecordを同じDatabaseへ置くことを意味しません。法令、組織責任、可用性、性能、既存資産等の理由で物理配置を分ける場合は、その差をBinding / Realizationとして追跡します。反対に、APIで相互接続できることだけを、Data meaningが統合されたEvidenceにはしません。
 
-### 4.10 identityと表記の忠実性を分ける
+### 4.11 identityと表記の忠実性を分ける
 
 2026年9月2日の氏名異体字に関する記事では、行政処理で扱いやすい文字表記と、本人が本来の氏名として保持したい表記を分ける案を示しています。TEIでは「本字を画像登録する」という制度案そのものではなく、同じ業務対象に複数の表記・符号化・外部表現があり得るという設計圧力を取り込みます。
 
@@ -210,7 +231,7 @@ target-specific rendering
 
 Unicode正規化、異体字置換、大文字小文字変換、記号除去等によって二つの値が一致しても、それだけで同じbusiness occurrenceとは判断しません。反対に、表記が異なることだけで別identityとも判断しません。等価性が業務上重要な場合は、どのscopeでどの変換・対応関係を認めるかをPolicy / Mapping / Sourceとして明示します。
 
-### 4.11 As-Isの観測をDesired Designへ自動昇格しない
+### 4.12 As-Isの観測をDesired Designへ自動昇格しない
 
 2025年9月の記事では、抜本的な刷新において現行業務や現行Systemを詳細に分析するほど、現行踏襲へ引き寄せられる危険を指摘しています。TEIでは現状分析そのものを否定しません。legacy compatibility、migration、audit、運用継続のためにactual sourceを正確に観測することは必要です。
 
@@ -229,7 +250,7 @@ Accepted To-Be
 
 ImporterやAIが現行Database、code、UI、業務手順を精密に復元できても、その構造をDesiredへコピーしません。逆に、To-Beを考えるためにAs-Isを捨てることもしません。互換性、移行、差分、未解決点を追跡できるよう、観測と採用判断を別のauthorityとして保持します。
 
-### 4.12 意味の発見と決定論的な構造変換を分ける
+### 4.13 意味の発見と決定論的な構造変換を分ける
 
 2026年5月の記事では、業務の現実からデータ項目間の関数従属性を見いだす過程と、得られた関数従属性をtable構造へ変換する過程を分けています。前者を本質的な設計問題、後者を比較的機械化しやすい変形問題と位置づけています。
 
@@ -275,5 +296,6 @@ AIはdependency、candidate key、constraint、Data分割等を提案できま�
 6. domainの異なる複数Referenceで同じArchitecture境界が成立し、特定domainの偶然を汎用仕様へ昇格していないことを確認できるか。
 7. legacy移行や外部連携で`identifier`相当の項目を取り込んだ場合、その存在だけを業務識別の成立へ読み替えず、一意性の範囲、Source、Relation / Constraintとの対応を追跡できるか。
 8. 同じ業務Dataを複数Database / Serviceへ分散配置しても、logical identity、Relation、Constraintをcross-system contractから追跡でき、反対に単一Databaseへ統合してもAuthority / Privacy / Responsibilityを一つへ混ぜないことを確認できるか。
+9. 適用開始日、履歴番号、version番号、最新フラグ、日時型Attributeを含むReferenceで、business occurrence identityと履歴version / validity semanticsを分離し、必要のないDataへ履歴構造を一律に導入しないことを確認できるか。
 
 これらの結果が出るまでは、`FunctionalDependency`、`BusinessKey`、`SubjectArea`、`Subsystem`等を新しいCore primitiveとして固定しません。
