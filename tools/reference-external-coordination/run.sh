@@ -136,12 +136,19 @@ cat > "$STORE/work/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP
   },
   "constraints": ["do-not-mutate-product-source"],
   "contextRefs": [],
-  "expectedOutputs": ["reference.review"],
-  "coordination": {"status": "ready"}
+  "expectedOutputs": ["reference.review"]
 }
 EOF_FOLLOW_UP
 
-python3 - "$STORE" "$PRODUCT_HEAD_BEFORE" <<'PY'
+cat > "$STORE/native-state/$FOLLOW_UP_ID.json" <<EOF_FOLLOW_UP_STATE
+{
+  "backendProfile": "git-text-reference",
+  "workRef": "$FOLLOW_UP_REF",
+  "status": "ready"
+}
+EOF_FOLLOW_UP_STATE
+
+python3 - "$STORE" "$PRODUCT_HEAD_BEFORE" "$COLLIDING_LOCAL_WORK_REF" <<'PY'
 import hashlib
 import json
 import pathlib
