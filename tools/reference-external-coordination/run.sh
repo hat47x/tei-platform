@@ -156,8 +156,11 @@ import sys
 
 store = pathlib.Path(sys.argv[1])
 product_head = sys.argv[2]
+colliding_local_work_ref = sys.argv[3]
 work = json.loads((store / "work/TW-0001.json").read_text())
 follow_up = json.loads((store / "work/TW-0002.json").read_text())
+native_state = json.loads((store / "native-state/TW-0001.json").read_text())
+follow_up_state = json.loads((store / "native-state/TW-0002.json").read_text())
 results = [
     json.loads((store / "results/TW-0001/run-a.json").read_text()),
     json.loads((store / "results/TW-0001/run-b.json").read_text()),
@@ -165,12 +168,27 @@ results = [
 
 assert work["workRef"] == "git-text://reference-store/work/TW-0001"
 assert isinstance(work["workRef"], str)
+assert colliding_local_work_ref == "git-text://reference-store-b/work/TW-0001"
+assert work["workRef"] != colliding_local_work_ref
+assert "coordination" not in work
+assert "status" not in work
+assert native_state == {
+    "backendProfile": "git-text-reference",
+    "workRef": work["workRef"],
+    "status": "ready",
+}
 assert work["origin"]["kind"] == "human"
 assert work["createdVia"] == {"kind": "automation", "actorRef": "reference-runner"}
 assert work["sourceContext"]["baseRevision"] == product_head
-assert work["coordination"]["status"] == "ready"
 assert follow_up["workRef"] == "git-text://reference-store/work/TW-0002"
 assert isinstance(follow_up["workRef"], str)
+assert "coordination" not in follow_up
+assert "status" not in follow_up
+assert follow_up_state == {
+    "backendProfile": "git-text-reference",
+    "workRef": follow_up["workRef"],
+    "status": "ready",
+}
 assert follow_up["origin"] == {"kind": "agent", "actorRef": "agent-a"}
 assert follow_up["createdVia"] == {"kind": "agent", "actorRef": "agent-a"}
 assert follow_up["parentRef"] == work["workRef"]
