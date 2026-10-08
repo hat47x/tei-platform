@@ -154,6 +154,8 @@ func applyReviewCommand(
 			Kind: assertion.Target.Kind,
 			ID:   assertion.Target.ID,
 		},
+		ValidFrom:          assertion.ValidFrom,
+		ValidUntil:         assertion.ValidUntil,
 		OccurredAt:         command.OccurredAt,
 		Evidence:           append([]EvidenceRef{}, command.Evidence...),
 		Conditions:         append([]string{}, command.Conditions...),
