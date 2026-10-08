@@ -158,7 +158,9 @@ coverage mappingそのものは「必要情報が意味的に完全に揃った�
 
 情報自体の `validUntil` だけでは、用途ごとに必要な新しさを表せません。Referenceではdependencyに任意の `maxAgeSeconds` を持たせ、consumerが必要とする最大経過時間を指定できます。
 
-鮮度の基準時刻には、現在meaningに対するhuman confirm eventまたは `checkedAt` のうち、現在時刻以前で最も新しいものを使います。基準が無ければ `unknown`、最大経過時間を超えれば `stale` です。
+鮮度の基準時刻には、現在subjectへ結び付いたhuman confirm eventまたはsource checkのうち、現在時刻以前で最も新しいものを使います。基準が無ければ `unknown`、最大経過時間を超えれば `stale` です。
+
+bareな `checkedAt` は受理しません。`checkedSubjectFingerprint` を必須にし、current meaning / target / statement kind / context / validity window / Evidenceと一致するcheckだけを鮮度根拠に使います。編集後にbindingが切れたcheckは `CHECK_BINDING_STALE` として残し、consumer freshnessを満たしたことにはしません。
 
 consumer freshnessがstaleでも、assertion自体のconfirmationや通常のuse stateを書き換えません。同じ情報が低stakesな用途では利用可能でも、freshnessを要求するhigh / critical consumerではHealth issueやreview requestになる、という分離を保ちます。
 
