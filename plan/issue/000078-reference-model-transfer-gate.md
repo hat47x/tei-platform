@@ -350,7 +350,7 @@ Evidenceは次を固定する。
 
 source value、text、legacy ID値、exact structural locator、arbitrary unknown schema名は含めない。unknown / namespaced constructはsource名をredactし、unmappedのまま保持する。
 
-Evidence fingerprintはcontent identityであり、Source Adapter Conformance、publisher trust、human Acceptance witness、Runtime Authorityではない。external sourceのcurrent性を要求する処理ではSource Adapterが同じnode ordinalからEvidenceを再構成し、source bytesとmapping contractのdriftを検出する。
+Evidence fingerprintはcontent identityであり、Source Adapter Conformance、publisher trust、human Acceptance witness、Runtime Authorityではない。external sourceのcurrent性を要求する処理では、Source AdapterがEvidenceに保存されたname-independent `SourceToken`をexact source内で再解決し、そのnodeからEvidenceを再構成してsource bytesとmapping contractのdriftを検出する。replayのために会話や一時状態へnode ordinalを別保存しない。
 
 Shared Acceptance側ではGitHub #267のtyped `EvidenceArtifact`へRMT kindを追加する。generic arbitrary JSON artifactを許可せず、`tools/internal/rmtevidence`のdecoder / canonical bytesを共用する。RMT Evidenceの添付だけでCandidateを自動生成・Acceptしない。
 
