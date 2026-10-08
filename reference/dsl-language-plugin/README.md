@@ -63,3 +63,30 @@ go test ./reference/dsl-language-plugin
 E1から本実装へ進む前に、少なくとも**Language解決の責任者**と**Parser ABIの意味上の責務**を特定します。現行のSemantic Extension resolverと異なる依存解決を増設してはいけません。Language Sourceからの候補がSemantic Setに影響する場合、実行時に選ばれたPluginだけで意味を変えてはいけません。
 
 E2以降は既存`positive`と`relation-unique`を基準に、Operatorの可読な表現、評価エラー、NULL/重複などの同値性へ進みます。最終構文と広範なOperator Catalogは、それらの実証まで標準化しません。
+
+
+## E2試作：Operatorの型付き合成と業務データ参照
+
+このPRにはE1に加え、`operator_reference.go`、`pipeline_reference.go`、`semantic_binding_reference.go`と各テストを含む。設計上の**候補を検証するReference**であり、正式なDSL仕様・Semantic Extension契約・実行器ではない。
+
+`ParsePipeline`は、`rows/order |> std.op.where`のような**引数を持たない限定的な記法**を読み取り、Operatorの識別子と入出力型から呼出し列を構成する。Operatorの登録順に依存せず、未知・重複・不完全な契約、型不一致、副作用を持つ処理を拒否する。ここでの型は`rows/...`形式の**文字列による仮表現**であり、Attribute・Relationの型検査を実現したものではない。
+
+`BindSemanticInput`は既存の`semantic.Namespace.Data`にあるCanonical IDの存在と一意性を確かめ、対応する仮の入力型から合成を始める。**受理済みSemantic Setの証明や取得は行わない。**呼出し側が受理済みの定義を供給する必要があり、このReferenceが独立の受理権限を獲得することはない。
+
+試験する例：
+
+```text
+rows/order |> std.op.where |> std.op.expand |> std.op.summarize
+```
+
+これは`where`の条件式、`expand`のRelation、`summarize`の集計式を解析・実行するものではない。空の引数を伴う識別子列の型のつながりだけを検証する。設計文書に示した`flow { ... }`構文や、NULL、欠損、多重度、順序、精度、集計の意味が実装済みであると解釈してはならない。
+
+### 既存機構への統合に必要な確認
+
+1. Languageの選択、Operatorの意味契約、実現方式の解決を、既存Semantic Extensionとプラグイン依存解決の正本に接続する。Reference独自のCatalogを恒久的な第二正本にしない。
+2. `Data`だけでなく`Attribute`と`Relation`のCanonical ID、型、Cardinalityを検証する。文字列型`rows/...`は本番の型体系へ昇格させない。
+3. `where`・`expand`・`summarize`の引数、NULL、重複、順序、空集合、精度、時点を、既存`positive`と`relation-unique`の結果と比較できるConformance fixtureで確認する。
+4. Source spanと診断、Canonical候補への変換、Shared Acceptance Boundary、実現方式への引渡しを接続する。Native SQLの正本は維持する。
+5. 副作用のある`invoke`等は、型が合っていても既存Capability・Permission境界で別途承認する。純粋Operatorから実行権限を推定しない。
+
+`go test ./reference/dsl-language-plugin`で試作のテストを実行できる設計だが、追加したE2テストのリポジトリ上での実行結果は未確認である。main統合にはexact-headの完全な`tools/repository-health-check.sh` PASSを必須とし、それまではDraft PRを維持する。
