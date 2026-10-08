@@ -12,7 +12,9 @@
       "tools/reference-xead-source-adapter/contract_coverage.go": "71944ea5fd8312975c7dbec79742529ae0e59857",
       "tools/reference-xead-source-adapter/contract_coverage_test.go": "05b46b167e9df6fd1b4c035023ec54e4c2ab11e6"
     },
-    "currentBranchHeadAtEvidenceReview": "92e3cb5e5ca0ff6be403c38b72970c73405be278"
+    "historicalReceiptSchemaVersion": 1,
+    "currentCandidateReceiptSchemaVersion": 2,
+    "currentCandidateMainHeadAtEvidenceReview": "d90b06da67f57d5dda89c7f20ce04df88f842a36"
   },
   "focusedValidation": {
     "goVersion": "go1.23.2 linux/amd64",
@@ -37,7 +39,7 @@
         "legacy-key-field-membership": 169,
         "legacy-relationship-key-reference": 80
       },
-      "receiptFingerprint": "sha256:cc20223d18f89ba7904a025775cd73fc6ffc738292ac640ba42c8ada3fd5f941"
+      "historicalReceiptV1Fingerprint": "sha256:cc20223d18f89ba7904a025775cd73fc6ffc738292ac640ba42c8ada3fd5f941"
     },
     "xeaf": {
       "sha256": "f4b73b36abd8398aa25ad86ecd7570ae0334e7fd93c3ee204c5a05bddebdb754",
@@ -53,7 +55,7 @@
         "runtime-table-key": 72,
         "runtime-reference-key-binding": 94
       },
-      "receiptFingerprint": "sha256:cc9b8098db95b6ec63a663b5176547fd67d7e68205c7c8c84219f4aaee7d75df"
+      "historicalReceiptV1Fingerprint": "sha256:cc9b8098db95b6ec63a663b5176547fd67d7e68205c7c8c84219f4aaee7d75df"
     }
   },
   "classificationCoverage": {
@@ -80,7 +82,9 @@
     "fullLocatorListIncluded": false,
     "publicEvidence": "digests, aggregate counts, receipt fingerprints, fact type counts, authority limits",
     "arbitraryUnknownSchemaNamesExcludedAtTestedHead": false,
-    "currentDesignDirection": "local ObservedDocument keeps exact schema names; public receipt must redact arbitrary unknown/additional schema names and retain aggregate occurrence evidence"
+    "currentDesignDirection": "local ObservedDocument keeps exact schema names; public receipt must redact arbitrary unknown/additional schema names and retain aggregate occurrence evidence",
+    "currentCandidateValidation": "NOT_RUN: Publication Receipt v2 redaction, name-independent locator tokens, public/private artifact-type separation, and current main integration require exact-head focused validation",
+    "currentCandidateAuthority": "design implemented in current main; no new current-head PASS is asserted by this historical R0 Evidence"
   },
   "claimsNotEstablished": [
     "full repository health check PASS",
