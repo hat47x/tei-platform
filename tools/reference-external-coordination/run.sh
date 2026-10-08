@@ -7,7 +7,9 @@ STORE="$TMP_ROOT/coordination-store"
 WORK_ID="TW-0001"
 FOLLOW_UP_ID="TW-0002"
 STORE_LOCATOR="git-text://reference-store"
+SECOND_STORE_LOCATOR="git-text://reference-store-b"
 WORK_REF="$STORE_LOCATOR/work/$WORK_ID"
+COLLIDING_LOCAL_WORK_REF="$SECOND_STORE_LOCATOR/work/$WORK_ID"
 FOLLOW_UP_REF="$STORE_LOCATOR/work/$FOLLOW_UP_ID"
 RESULT_A_REF="$STORE_LOCATOR/result/$WORK_ID/run-a"
 RESULT_B_REF="$STORE_LOCATOR/result/$WORK_ID/run-b"
@@ -31,7 +33,7 @@ fi
 
 PRODUCT_HEAD_BEFORE="$(git -C "$ROOT" rev-parse HEAD)"
 
-mkdir -p "$STORE/work" "$STORE/results/$WORK_ID" "$STORE/artifacts/$WORK_ID"
+mkdir -p "$STORE/work" "$STORE/results/$WORK_ID" "$STORE/artifacts/$WORK_ID" "$STORE/native-state"
 git -C "$STORE" init -q
 git -C "$STORE" config user.name "TEI Coordination Reference"
 git -C "$STORE" config user.email "coordination-reference@tei.invalid"
