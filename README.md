@@ -3,16 +3,16 @@
 - **想定仕様（HTML）:** [仕様ガイド](docs/specification/index.html) — 採用済み・評価待ち・X-TEA原典の対応
 - **期限なしロードマップ（HTML）:** [プロダクト開発ロードマップ](plan/product-roadmap.html) — 依存関係と完了条件
 
-TEIは、業務上の意味を長く保ちながら、実装・Database・Target・Runtimeを必要以上に一体化しない業務Application基盤を目指す実験的なプロジェクトです。
+TEIは、業務上の意味を長く保ちながら、実装・データベース・実行先・実行環境を必要以上に一体化しない業務アプリケーション基盤を目指す実験的なプロジェクトです。
 
-画面やtableを素早く作ることだけでなく、次を技術変更後も追跡・検証できる状態を重視します。
+画面や表を素早く作ることだけでなく、技術を変更しても次の点を追跡・検証できる状態を重視します。
 
 - この業務概念は何を意味するか
-- どのauthoring sourceから来たか
-- どの実装 / Provider / TargetへBindingされたか
-- Commandは何を返したか
+- どの設計元情報から来たか
+- どの実装・提供元・実行先へ対応付けられたか
+- 実行した操作が何を返したか
 - 外部世界で実際に何が観測されたか
-- 何が未検証 / unresolvedか
+- 何が未検証・未解決か
 
 > 現在地 — 2026-09-22: architecture & product validation / research implementation  
 > `order_entry`のApplication Pattern Stage 1とGate Aは完了しています。Application Driverの主要意味境界も成立しています。現在の正式判定は Gate B: Ready（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`）で、Handover Baseline `B / R`も固定済みです。第一Web Targetについてもactual Gate C Evidenceを取得し、Gate C: Readyと判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`。Visual Fidelityは単一のAI評価者による評価で、人による確認ではありません）。  
@@ -22,7 +22,7 @@ TEIは、業務上の意味を長く保ちながら、実装・Database・Target
 
 ## どこから読むか
 
-### Product / planning
+### 製品価値と開発計画
 
 - **最上位の価値:** [TEI Product Value](product/value/TEI_PRODUCT_VALUE.md)
 - **成熟した姿:** [TEI Product Vision](product/vision/TEI_PRODUCT_VISION.md)
@@ -34,7 +34,7 @@ TEIは、業務上の意味を長く保ちながら、実装・Database・Target
 - **Requirement Gap:** [Product Requirement Gap Audit](plan/PRODUCT_REQUIREMENT_GAP_AUDIT.md)
 - **Milestones:** [TEI Milestones](plan/MILESTONES.md)
 
-### 現在のGate
+### 現在の判定段階
 
 - **Gate A:** [Gate A Readiness Audit](plan/GATE_A_READINESS_AUDIT.md) — Ready
 - **Gate B:** [Gate B Readiness Audit](plan/GATE_B_READINESS_AUDIT.md) — Ready
@@ -47,8 +47,8 @@ TEIは、業務上の意味を長く保ちながら、実装・Database・Target
 - [設計文書の案内](docs/README.md)
 - [はじめてTEIを知る方へ](docs/for-readers.md)
 - [TEIの考え方](docs/overview.md)
-- [Getting Started](docs/getting-started.md)
-- [Architecture](docs/architecture.md)
+- [使い始める](docs/getting-started.md)
+- [全体構成](docs/architecture.md)
 - [現在の実装状況](docs/status.md)
 
 ## 現在のv1主線
@@ -83,7 +83,7 @@ PAS-01  PAS-06 / 01     PAS-04
 
 Gate Cを通過したので、Studio / knowledge-first・AI Proposal / 第二Application・第二Targetは並行して進められます。いま必要なのは、どのlaneから始めるかをEvidenceに基づいて判断することです。各laneの進み具合は[現在の実装状況](docs/status.md)を参照してください。
 
-## Gate Bの現在地
+## Gate Bの達成状況
 
 Gate Bは Ready です。candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`について、#310 deterministic Repository、#255 generated artifact reproducibility、#308 real PostgreSQL Provider + ephemeral fixtureをsame-runで揃え、#387 final convergenceと独立artifact auditまで成立しています。
 
@@ -93,7 +93,7 @@ Handover Baseline `B / R`も固定済みです。判定の正本は[Gate B Readi
 
 PostgreSQL以外の実Database Providerと既存外部資産のEvidence（第一Referenceの具体例はactual Oracleの #214 / #371 / #376）は継続しますが、Gate B Readyを差し戻す第四Required laneではありません。
 
-## Gate B → Gate Cでrevisionを分ける
+## Gate BからGate Cへの改訂版の引継ぎ
 
 Gate B Ready revisionを`R`、Handover Baselineを`B`、第一Web Targetの実装revisionを`T1`とします。
 
