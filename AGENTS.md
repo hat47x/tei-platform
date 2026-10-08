@@ -2,25 +2,53 @@
 
 TEI Repositoryの文書構成と管理ルールです。ここを文書配置の正本とします。
 
-## フォルダ構成
+## 作業前に読むルールと適用範囲
 
-```text
-product/          守る価値・原則・Vision
-requirements/     満たすべきProduct Requirement（RQ-001〜）
-plan/             計画管理（Master Plan、Milestone、Gateの監査・契約・Runbook）
-  design/         機能ごとの設計文書
-    mockups/      画面モック（単体で開けるHTML。正本ではない）
-  issue/          作業定義と要件詳細化（000001-*.md）
-  adr/            長く残る設計判断（0001-*.md）
-docs/             利用者向け文書（overview / status / architecture / naming / security）
-  conformance/    意味境界のConformance記述
-  adr/            旧URL互換の案内のみ。本文は plan/adr が正本
-  audits/         過去の監査記録
-reference/        Reference Workspaceと観測fixture
-internal/         Core実装
-cmd/ tools/       CLIと補助tool
-examples/ bootstrap/
-```
+TEIに変更を加える人間・生成AIエージェントは、**作業前に対象branchの最新の`AGENTS.md`を読む**。ルートから変更対象ファイルの親ディレクトリまで、途中に`AGENTS.md`があればすべて読み、共通ルールと対象領域の追加ルールを合わせて適用する。複数領域にまたがる変更では、それぞれの経路を読む。新しいチャット・セッションや作業再開時も、以前読んだ内容を最新版と仮定しない。
+
+- ルート`AGENTS.md`はRepository全域の共通ルールと配置先の入口であり、配下の`AGENTS.md`はその領域の管理上の注意を補足する。下位文書で本ファイルの正本性、並行開発の保護、検証Gateを緩めない。
+- `README.md`は利用者・開発者向けの案内、`AGENTS.md`は変更作業者向けの実行規則とする。要求やADR、実装済み状態の第二正本を`AGENTS.md`に作らない。具体的な判断は後述の正本文書を確認する。
+- ルール間で矛盾を発見したら、より都合のよい記述を選ぶのではなく、変更を止めて対象の正本・採用済みADR・作業のGateを確かめ、ルールを整合させる。
+- 調査結果や案を追加するときは、既存の所有ディレクトリと同種の文書を検索し、追加ファイルと別名の「正本」を増やさない。複数領域を扱う内容は、中心となる責務のディレクトリに一つの本文を置き、他方から参照する。
+
+## ディレクトリ階層と管理責務
+
+これは**新規追加・変更時の振り分け規則**であり、既存ファイルの一括移動指示ではない。特に`plan/`直下の過去の調査・Gate資料や`docs/adr/`の互換リンクは、参照・履歴を守りながら扱う。
+
+| 対象 | 所有する内容と変更規則 |
+| --- | --- |
+| `/` | `AGENTS.md`（作業規則）、`CONTRIBUTING.md`（参加・検証手順）、`README.md`（入口）、`CLAUDE.md`（AGENTSへの参照）、`go.mod` / `go.sum`（Go module）。ルートに個別機能の設計や作業ログを増やさない。 |
+| `product/value/` | 守るProduct Valueの正本。実装都合で暗黙に変更しない。 |
+| `product/vision/` | Valueに基づく到達像。Milestoneの進捗と混同しない。 |
+| `product/principles/` | 設計判断の原則。個別機能の方式・受入Evidenceを書き込まない。 |
+| `requirements/` | Product Requirementの正本は`TEI_PRODUCT_REQUIREMENTS.md`。業務設計要件など他文書との関係を明示し、Issue・実装状態を要求そのものにしない。 |
+| `plan/` | Master Plan、Milestone、Acceptance Scenario、Gate条件・Runbook・監査・横断的調査の計画管理。既存の直下にある領域別履歴は一括移動せず、新規の機能別詳細設計は`plan/design/`へ。 |
+| `plan/issue/` | 6桁IDのRepository内作業定義。減らす不確実性、責務、完了条件、Evidence、状態を所有する。GitHub Issueとは番号体系が異なる。 |
+| `plan/adr/` | 4桁IDの採用判断と理由の正本。採用済み判断は後から書き換えず、判断変更は後続ADRで追跡する。 |
+| `plan/design/` | 複数Issue等にまたがる機能単位の設計。全体Architecture・ADR・進捗の第二正本にしない。小規模な設計はIssue内で扱う。 |
+| `plan/design/mockups/` | 単独で開ける画面モック等の検討成果。動作するTargetや正式なUI仕様のEvidenceにしない。 |
+| `docs/` | 利用・理解のための説明とcurrent Architectureの案内。`docs/status.md`は実装状況の正本。要求・ADR・Gateの判断を重複定義しない。 |
+| `docs/conformance/` | 対象と検証範囲を明示したConformance記述。設計準拠の説明と実環境の成功を区別する。 |
+| `docs/adr/` | 過去URLの互換案内のみ。ADR本文の正本は`plan/adr/`。 |
+| `docs/audits/` | 特定時点の監査記録。過去Evidenceを現在の保証へ読み替えない。 |
+| `docs/specification/` | 正本文書から読者向けにまとめた仕様ガイド。個別RequirementsやADRの独立した決定元にしない。 |
+| `internal/` | Goのproduction実装。packageの責務・依存方向、Canonical / Provider / runtime authorityの境界を守る。検証器やfixtureを製品依存にしない。 |
+| `cmd/tei/` | `tei` CLIの入口と引数・出力の接続。汎用業務意味やProviderの内部実装をCLIへ集約しない。 |
+| `tools/` | 検証器、Reference runner、開発補助。`tools/repository-health-check.sh`を統合Gateの入口とし、tool自身のPASSをproduction保証にしない。 |
+| `reference/` | 再現可能なReference Workspace・入力・観測fixture・golden・試験用構成。生成物の意味上の元データと照合し、合成fixtureをactual Evidenceへ昇格させない。 |
+| `bootstrap/` | 初期構成・materialize・publish等のbootstrap経路。生成先・権限・再実行時の副作用を区別し、通常のReference置場にしない。 |
+| `examples/` | 独立した利用例・最小再現例。機能の正本や成功実績の代わりにしない。 |
+| `skills/` | エージェント向け補助Skillと付属資産。Repository横断ルール、Product Requirement、採用判断の正本にしない。 |
+| `.github/` | GitHub Actionsなどホスティング上の自動化設定。CIが停止中でもtrusted localのRepository Health Gateを代替しない。 |
+
+追加の作業規則を置く領域には次の`AGENTS.md`がある。`plan/AGENTS.md`はその子階層（`issue/`、`adr/`、`design/`）も、`docs/AGENTS.md`は`conformance/`・`adr/`・`audits/`・`specification/`も対象とする。
+
+- [計画・ADR・Issue・機能設計](plan/AGENTS.md)
+- [説明・状態・Conformance](docs/AGENTS.md)
+- [製品実装](internal/AGENTS.md)
+- [Referenceとgolden](reference/AGENTS.md)
+- [検証と開発tool](tools/AGENTS.md)
+- [Bootstrap](bootstrap/AGENTS.md)
 
 ## 文書ルール
 
