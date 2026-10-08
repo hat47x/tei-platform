@@ -9,13 +9,15 @@ ISSUE-000084 / GitHub #977のE2-A Referenceです。Git text profileで見つけ
 GitHub Issue #977をWork、Draft PR #978をResult / Artifact referenceとして利用しました。Issueの目的は利用者の依頼から生じていますが、起票操作はAgentがConnector経由で行いました。GitHubのnative authorは接続アカウントとして記録されるため、authorだけではWorkの由来と作成経路を区別できません。
 
 ```text
-workRef      = github-issues:hat47x/tei-platform#977
+workRef      = github-issue://hat47x/tei-platform/977
 origin.kind  = human
 createdVia   = agent-connector
 backendActor = connected GitHub account
 
-resultRef    = github-pr:hat47x/tei-platform#978
+resultRef    = github-pr://hat47x/tei-platform/978
 ```
+
+`workRef` / `resultRef`はBackend instanceまで含めてAdapterが一意に解決できるopaque locatorの例です。TEI CoreがこのURI構造をparseすることは要求しません。
 
 `backendActor`はBackend側の監査情報として有用ですが、Human-origin、Agent-origin、Acceptance authorityのどれにも自動変換しません。
 
@@ -42,7 +44,7 @@ Git text E1ではReference内の`coordination.status`として`ready`と`complet
 
 ## E0 contractから残す候補
 
-二つのconsumerを比べると、`workRef`、`origin`、`createdVia`、人が読めるobjective、任意のSource context、Result / Artifact referenceは引き続き有用です。ただしSource contextはTask Trackerで常に存在するとは限らないためoptionalのままにします。
+二つのconsumerを比べると、backend-instance-scopedなopaque `workRef` / 任意の`resultRef`、`origin`、`createdVia`、人が読めるobjective、任意のSource context、Result / Artifact referenceは引き続き有用です。ただしSource contextはTask Trackerで常に存在するとは限らないためoptionalのままにします。
 
 Backend author、label、Issue type、project、state reason等はAdapter-localな情報として保持できますが、現時点で共通contractの必須fieldにはしません。Agent Session、model、token / quota、credential、Git branch ownershipも追加しません。
 
@@ -50,7 +52,7 @@ Backend author、label、Issue type、project、state reason等はAdapter-local�
 
 Issueがopen / closedであること、PRがDraft / Ready / mergedであること、commentが投稿されたことはCoordination上の事実です。それだけでCanonical meaning、Acceptance authority、Runtime authority、Resource authorityは変化しません。
 
-GitHub上のactorが管理者権限を持つ場合でも、そのRepository権限をTEI Application Runtime authorityへ読み替えません。
+GitHub上のactorが管理者権限を持つ場合でも、そのRepository権限をTEI Application Runtime authorityへ読み替えません。Canonical AcceptanceやRuntime Authorityを否定するbooleanをexchange documentへ追加することもしません。Authorityはこのexchange contractの外側にあります。
 
 ## Non-claims
 
