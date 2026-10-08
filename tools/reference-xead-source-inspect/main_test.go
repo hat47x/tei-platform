@@ -61,6 +61,15 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		got.TranscriptionContractFingerprint == "" {
 		t.Fatalf("provenance fingerprints are incomplete: %#v", got)
 	}
+	limits := strings.Join(got.AuthorityLimits, "\n")
+	for _, want := range []string{
+		"public-diagnostic-token-does-not-hash-source-derived-locator-names",
+		"public-diagnostic-token-is-report-correlation-not-source-or-semantic-identity",
+	} {
+		if !strings.Contains(limits, want) {
+			t.Fatalf("public diagnostic authority limit %q is missing: %#v", want, got.AuthorityLimits)
+		}
+	}
 	encoded, err := json.Marshal(got)
 	if err != nil {
 		t.Fatal(err)
