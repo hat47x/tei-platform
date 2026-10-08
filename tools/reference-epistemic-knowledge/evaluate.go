@@ -168,6 +168,7 @@ func evaluateCorpus(raw Corpus, rawContext ContextQuery) (Projection, error) {
 			"content-fingerprint-does-not-restore-review-history",
 			"partial-transport-health-is-not-project-wide-health",
 			"review-history-is-bounded-by-context-as-of",
+			"review-binding-includes-context-kind-and-target-identity",
 			"reviewer-candidate-is-not-review-authority",
 		},
 	}
@@ -250,7 +251,7 @@ func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAsses
 		if event.Sequence > result.LastVisibleSequence {
 			result.LastVisibleSequence = event.Sequence
 		}
-		if event.MeaningFingerprint != assertion.MeaningFingerprint {
+		if !reviewEventMatchesAssertion(*event, assertion) {
 			result.StaleEventCount++
 			continue
 		}
@@ -276,6 +277,23 @@ func assessReviewHistory(assertion Assertion, asOf time.Time) reviewHistoryAsses
 		result.ConfirmationState = "unreviewed"
 	}
 	return result
+}
+
+
+func reviewEventMatchesAssertion(event ReviewEvent, assertion Assertion) bool {
+	if event.MeaningFingerprint != assertion.MeaningFingerprint ||
+		event.StatementKind != assertion.Mode ||
+		event.TargetIdentity.Kind != assertion.Target.Kind ||
+		event.TargetIdentity.ID != assertion.Target.ID ||
+		len(event.Context) != len(assertion.Context) {
+		return false
+	}
+	for i := range event.Context {
+		if event.Context[i] != assertion.Context[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func targetBinding(target TargetRef, context ContextQuery) string {
