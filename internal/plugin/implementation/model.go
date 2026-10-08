@@ -315,6 +315,27 @@ func walkJSONValue(decoder *json.Decoder, depth int) error {
 	return nil
 }
 
+func validateDeploymentExecutorResponse(raw json.RawMessage) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var result executor.Result
+	if err := decoder.Decode(&result); err != nil {
+		return fmt.Errorf("deployment executor response schema: %w", err)
+	}
+	if result.ExecutorID != "" || result.ActionID != "" || result.IdempotencyKey != "" || result.PluginInvocation != nil {
+		return fmt.Errorf("deployment executor response must not set Host-owned invocation identity or provenance")
+	}
+	switch result.Outcome {
+	case executor.OutcomeAccepted, executor.OutcomeRejected, executor.OutcomeUnknown:
+	default:
+		return fmt.Errorf("deployment executor response outcome %q is invalid", result.Outcome)
+	}
+	if strings.TrimSpace(result.AttemptID) == "" {
+		return fmt.Errorf("deployment executor response attemptId is required")
+	}
+	return nil
+}
+
 func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
