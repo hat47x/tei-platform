@@ -102,3 +102,9 @@ Evidenceはexact source artifact digest、FormatVersion、name-independent sourc
 `encoding/xml`がtokenとして返すduplicate attributeをmapへ黙って上書きしません。同じexpanded nameのattributeが一つのelement内で重複した場合、`Observe`はparser-invalidとしてエラーにします。
 
 特に`FormatVersion`の重複をfirst-wins / last-winsで解決するとsource profile判定を攻撃・誤判定できるため、semantic mappingへ到達する前に停止します。
+
+## Single document root
+
+`Observe`はXML token streamを複数文書の連結として受け入れません。root elementを一つだけ要求し、二つ目のroot、root外の非空白text、rootless inputをエラーにします。root前後の空白は許容します。
+
+これにより、最初の`System.FormatVersion`でprofileを判定しながら、別rootのnodeまでclassificationへ混ぜる経路を閉じます。
