@@ -104,7 +104,9 @@ func TestRMTTranscriptionEvidenceDoesNotBecomeCandidateMeaningOrAcceptanceAuthor
 				wantStatus = "mappingStatus=mapped"
 			}
 			if !strings.Contains(rendered, wantStatus) ||
-				!strings.Contains(rendered, rmtEvidenceFixture(t, mapped).SourceToken) {
+				!strings.Contains(rendered, rmtEvidenceFixture(t, mapped).SourceToken) ||
+				!strings.Contains(rendered, "observerConformance=not-verified") ||
+				!strings.Contains(rendered, "externalSourceFreshness=not-verified-by-shared-acceptance") {
 				t.Fatalf("Review hid RMT Evidence state/binding:\n%s", rendered)
 			}
 			if mapped {
