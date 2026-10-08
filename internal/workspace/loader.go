@@ -202,6 +202,7 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 		return nil, fmt.Errorf("resolve Workspace root: %w", err)
 	}
 	var out []ManagedFile
+	seenPhysicalSources := make(map[string]string)
 	for _, sourceRoot := range roots {
 		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
 			return nil, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
@@ -258,7 +259,12 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 			if !info.Mode().IsRegular() {
 				return fmt.Errorf("managed source %s is not a regular file", path)
 			}
-			out = append(out, ManagedFile{Path: relPath(root, path), SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
+			logicalPath := relPath(root, path)
+			if previous, exists := seenPhysicalSources[realPath]; exists {
+				return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous, logicalPath)
+			}
+			seenPhysicalSources[realPath] = logicalPath
+			out = append(out, ManagedFile{Path: logicalPath, SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
 			return nil
 		})
 		if err != nil {
