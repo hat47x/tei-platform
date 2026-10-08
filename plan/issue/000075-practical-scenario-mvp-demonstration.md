@@ -1,6 +1,6 @@
 # ISSUE-000075: 実務シナリオを最初から最後まで通すMVP的な実証を先に行い、機能の積み上げと関係性を示す
 
-- 状態: In Progress — 最初の実証はA（2026-10-05にownerが選択）。Aの実装と実行確認までを記録した。B / Cは未着手
+- 状態: In Progress — 最初の実証Aは2026-10-05にownerが選択し、実行確認を記録済み。Bはowner未選択（Draft PR #985で未実行の事前回帰テストを準備中）、Cは未着手
 - 提案日: 2026-10-02
 - 性格: 実証計画 / Reference Evidence。測定に基づく価値判断は含まない
 - 主担当要求: RQ-021（主）/ RQ-022 / RQ-012 / RQ-013 / RQ-014 / RQ-029
@@ -122,6 +122,43 @@ TEIの実用性は、個別にModelやDriverを動かせるだけでは判断で
 **追加の実証候補（まだ実行していない）。** #985では、第一Web Targetの回帰テストから`reference-shared-acceptance`のCLIを起動し、scratch workspaceへ`revision → preview → review → accept`を行った後、同じscratch Sourceを通常Loaderで読み直し、DriverとHTTPを評価する一続きのtestを追加した。機械的に作ったreview fingerprintはscratchのテスト専用であり、人間が内容を承認した証拠ではない。2行目の不正な単価・数量、欠落した値、空の明細集合を区別し、副作用へ進ませないnegative caseも用意した。Business Procedure ReferenceのBP-05は独立したauthoring fixtureであり、新しいValidationの追加だけでBP-05が自動更新されたとは主張しない。
 
 現時点ではGitHub連携を通した静的調査とコード変更までで、trustedなcheckout上の`tools/repository-health-check.sh`、実際のPreview/Accept/HTTPテストは未実行である。**PRがDraftであること、コードが書かれたこと、テストが追加されたことは、動作が成立したEvidenceにはならない。** exact-headのfull PASSとpre/post cleanが得られるまで、コードを`main`へ統合しない。
+
+### Bでまだ接続できていない三視点の境界（2026-10-08）
+
+候補Bの事前実装は **Data → Function / Web** の一部を対象にしており、**Business Procedureへの自動同期や利用者による採用判断を実証したわけではない**。比較対象を曖昧にしないため、現在のSource上で参照できる位置を固定する。
+
+| 視点 | 参照するSource / identity | #985で準備した範囲 | 未実証・未採用の範囲 |
+| --- | --- | --- | --- |
+| Data | `semantic/sales/validation.tei`、`sales.order_line.unit_price`、`sales.order.lines` | scratch上で`sales.order_line.unit_price_positive`を既存Sourceへ追加し、Preview/Accept後に再読込するテスト | この制約を通常のReference Workspaceへ採用する人間の決定 |
+| Function / Interaction | `applications/order-entry/application.tei`、`order_entry`のValidation選択、`order_entry.order_lines`、`order_entry.submit_order` | Canonical選択→Driver→Webで全明細を評価。2行目の値が不正・未取得・空の場合を区別。業務不成立と評価不能を別の結果として扱う | 実Database・実Command Provider・実利用者の操作観測 |
+| Business Procedure | `reference/business-system-design/order-entry-business-procedure.json`の`BP-03`・`BP-04`・`BP-05`・`BP-07`・`BP-08` | read-onlyで元のidentityと手順の接続箇所を照合できる。BP-04の人による判断、BP-08の外部状態確認は別の行為として残る | 手順のauthoritative受理・自動再導出、担当者や権限の確定 |
+
+**現時点で確認できる具体的な差分:** BP-05の`validations`は既存の`sales.order_line.quantity_positive`と`sales.order.lines.line_number_unique`の**2件のまま**である。scratch上のApplicationへ単価制約を追加するとDriver側の選択は3件になるが、BP-05は`artifactRole: reference-authoring-fixture`かつ`canonical: false`なので自動変更されない。これを三視点の一致と呼ばず、**Procedureのread-only解釈とChange Reviewに残すべき未解決の差**として扱う。新規則を手順へ無断で書き足して見かけの一致を作らない。
+
+この差の判断は既存の`ISSUE-000042 / 000048 / 000049`に戻し、Shared Acceptanceの`Review`が網羅的なBusiness Procedure影響を推論できるとは見なさない。実証Bでは、手順を参照した担当者が「機械的な制約の追加はBP-05の判断をどう変えるか」「BP-04の人の判断とどこが異なるか」を説明できるか確認する。説明ができない場合は **Bを完了にせず**、必要な最小Projectionの欠落を記録する。
+
+### #985の検証実行と未達条件
+
+下記は、当該PRの**exact head**を取得したclean checkoutで実行するためのコマンドであり、成功した実行記録ではない。GitHub Actionsを使わない既存の`tools/repository-health-check.sh`を優先する。
+
+```bash
+git status --porcelain
+git rev-parse HEAD
+go test -count=1 ./tools/reference-shared-acceptance -run '^TestPracticalRuleChange'
+go test -count=1 ./tools/reference-first-web-target -run '^(TestPracticalBusinessRuleChange|TestReferenceCommandScenario|TestCommandValidation)'
+tools/repository-health-check.sh
+git status --porcelain
+git rev-parse HEAD
+```
+
+受入に必要なのは、少なくとも次の区別が成り立つことである。
+
+- **完全に評価可能・規則不成立:** `validation-not-satisfied`として後続のAuthorization / Command / Observationへ進まない。
+- **一部の明細を評価できない:** 前の明細が不正でもExecution Errorを優先し、完全な業務判断が済んだと見せない。
+- **正常に評価可能・規則成立:** Commandへ進める。ただし合格は本番の外部状態の成立を意味しない。
+- **BP-05との関係:** 選択済みValidationの差が、read-onlyなBusiness Procedure Reference上では未反映であると明示される。
+
+`go test`の成功だけでは、人間によるReview、実Provider、手順のAcceptance、Studio画面での修正、Production適用を証明しない。最初の実証Aの記録とGate B/Cのhistorical Evidenceは引き続き別物として保持する。
 
 ### Bの判定と停止条件案
 
