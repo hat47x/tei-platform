@@ -67,3 +67,29 @@ func BuildTranscriptionCandidateEvidence(
 
 	return rmtevidence.Prepare(value)
 }
+
+
+func VerifyTranscriptionCandidateEvidence(
+	format SourceFormat,
+	doc ObservedDocument,
+	contractBytes []byte,
+	nodeOrdinal int,
+	recorded rmtevidence.Evidence,
+) error {
+	verified, err := rmtevidence.Verify(recorded)
+	if err != nil {
+		return err
+	}
+	current, err := BuildTranscriptionCandidateEvidence(format, doc, contractBytes, nodeOrdinal)
+	if err != nil {
+		return err
+	}
+	if verified.EvidenceFingerprint != current.EvidenceFingerprint {
+		return fmt.Errorf(
+			"RMT transcription Evidence is stale or belongs to a different source/mapping: recorded=%s current=%s",
+			verified.EvidenceFingerprint,
+			current.EvidenceFingerprint,
+		)
+	}
+	return nil
+}
