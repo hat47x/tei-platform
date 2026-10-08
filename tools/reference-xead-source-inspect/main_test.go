@@ -34,7 +34,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		t.Fatal(err)
 	}
 	got := buildReport(inspection)
-	if got.SchemaVersion != "reference-xead-source-inspection-v2" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v3" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.DerivedLegacyKeyMemberCount != 1 ||
@@ -115,7 +115,7 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != "reference-xead-source-inspection-v2" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v3" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.RuntimeKeyCount != 1 ||
@@ -125,6 +125,50 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 		got.RelationalFactResolutions.Total != 1 ||
 		got.RelationalFactResolutions.Resolved != 1 {
 		t.Fatalf("unexpected report: %#v", got)
+	}
+}
+
+func TestSummarizeDiagnosticsUsesSourceBoundNameIndependentTokens(t *testing.T) {
+	first := summarizeDiagnostics(
+		"sha256:source-a",
+		[]xeadsource.RelationalDiagnostic{
+			{Code: "key-field-not-found", Locator: "/System[1]/SECRET_TABLE[1]/SECRET_KEY[1]"},
+		},
+	)
+	renamedLocator := summarizeDiagnostics(
+		"sha256:source-a",
+		[]xeadsource.RelationalDiagnostic{
+			{Code: "key-field-not-found", Locator: "/System[1]/OTHER_TABLE[1]/OTHER_KEY[1]"},
+		},
+	)
+	otherSource := summarizeDiagnostics(
+		"sha256:source-b",
+		[]xeadsource.RelationalDiagnostic{
+			{Code: "key-field-not-found", Locator: "/System[1]/SECRET_TABLE[1]/SECRET_KEY[1]"},
+		},
+	)
+
+	if len(first.Evidence) != 1 || first.Evidence[0].DiagnosticToken == "" {
+		t.Fatalf("public diagnostic token is missing: %#v", first)
+	}
+	if first.Evidence[0].DiagnosticToken != renamedLocator.Evidence[0].DiagnosticToken {
+		t.Fatalf(
+			"public diagnostic token depends on source locator text: first=%s renamed=%s",
+			first.Evidence[0].DiagnosticToken,
+			renamedLocator.Evidence[0].DiagnosticToken,
+		)
+	}
+	if first.Evidence[0].DiagnosticToken == otherSource.Evidence[0].DiagnosticToken {
+		t.Fatalf("public diagnostic token was not bound to source digest: %s", first.Evidence[0].DiagnosticToken)
+	}
+	encoded, err := json.Marshal(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"SECRET_TABLE", "SECRET_KEY", "/System[1]"} {
+		if bytes.Contains(encoded, []byte(secret)) {
+			t.Fatalf("public diagnostic summary leaked locator text %q: %s", secret, encoded)
+		}
 	}
 }
 
