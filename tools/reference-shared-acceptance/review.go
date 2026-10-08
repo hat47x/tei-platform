@@ -394,28 +394,6 @@ func describeReviewEvidence(e Evidence) string {
 				"evaluationFingerprint="+evaluation.EvidenceFingerprint,
 			)
 		}
-		if rmt, ok := rmtTranscriptionFromEvidence(e); ok {
-			parts = append(parts,
-				"sourceFormat="+rmt.SourceFormat,
-				"sourceFormatVersion="+rmt.SourceFormatVersion,
-				"sourceArtifact="+rmt.SourceArtifactDigest,
-				"sourceToken="+rmt.SourceToken,
-				"mappingContract="+rmt.MappingContractFingerprint,
-				"mappingStatus="+string(rmt.MappingStatus),
-				"rmtEvidenceFingerprint="+rmt.EvidenceFingerprint,
-				"observerConformance=not-verified",
-				"externalSourceFreshness=not-verified-by-shared-acceptance",
-			)
-			if rmt.SourceConstructKnown {
-				parts = append(parts, "sourceConstruct="+rmt.SourceConstruct)
-			}
-			if len(rmt.Classification) > 0 {
-				parts = append(parts, "classification="+strings.Join(rmt.Classification, ","))
-			}
-			if rmt.Extension != "" {
-				parts = append(parts, "extension="+rmt.Extension)
-			}
-		}
 	}
 	switch {
 	case e.SubjectKind != "" && e.Subject != "":
