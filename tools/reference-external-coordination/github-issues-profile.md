@@ -38,9 +38,9 @@ resultRef    = github-pr://hat47x/tei-platform/978
 
 ## Stateを黙って正規化しない
 
-Git text E1ではReference内の`coordination.status`として`ready`と`completed`を使えます。一方、GitHubの`open / closed`を同じ語へ機械的に変換する根拠はありません。`closed`であっても、完了、重複、対象外等の意味があり得ます。
+Git text E1ではAdapter-localな`native-state`として`ready`と`completed`を使いますが、共通Work envelopeにはlifecycle fieldを置きません。一方、GitHubの`open / closed`をGit textのstateへ機械的に変換する根拠もありません。`closed`であっても、完了、重複、対象外等の意味があり得ます。
 
-このため、第二consumerの段階ではBackend native stateをそのまま保持します。共通lifecycleが本当に必要になった場合に限り、Adapterが明示的なmappingと元stateを保持する方式を候補にします。Backend stateはCanonical AcceptanceやProduct completionの証拠として扱いません。
+このため、Backend native stateはAdapter-localに保持します。共通lifecycleが本当に必要になった場合に限り、Adapterが明示的なmappingと元stateを保持する方式を候補にします。Git text E1もこの判断へ追従し、completion時に共通Work envelopeを変更しません。Backend stateはCanonical AcceptanceやProduct completionの証拠として扱いません。
 
 ## E0 contractから残す候補
 
