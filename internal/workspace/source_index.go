@@ -16,6 +16,10 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return sourceindex.Index{}, fmt.Errorf("resolve Workspace root: %w", err)
+	}
 	idx := sourceindex.Index{}
 	contents := map[string][]byte{}
 	artifacts := map[string]sourceindex.Artifact{}
@@ -28,7 +32,26 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 		if content, ok := contents[p]; ok {
 			return content, nil
 		}
-		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+		// A caller may supply a Result without passing through Load. Reject
+		// physical escapes here as well as in the managed-source preflight.
+		// This check is not atomic with ReadFile; see issue #1017 for the
+		// platform-specific read-time race-free boundary.
+		physical, err := filepath.EvalSymlinks(filepath.Join(root, filepath.FromSlash(p)))
+		if err != nil {
+			return nil, fmt.Errorf("resolve source %q: %w", p, err)
+		}
+		rel, err := filepath.Rel(rootReal, physical)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return nil, fmt.Errorf("source %q resolves outside Workspace", p)
+		}
+		info, err := os.Stat(physical)
+		if err != nil {
+			return nil, fmt.Errorf("stat source %q: %w", p, err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("source %q is not a regular file", p)
+		}
+		content, err := os.ReadFile(physical)
 		if err != nil {
 			return nil, err
 		}
