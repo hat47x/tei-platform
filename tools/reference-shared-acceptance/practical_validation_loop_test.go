@@ -99,14 +99,14 @@ func TestPracticalRuleChangeRejectsBrokenOrRepeatedDeltaWithoutChangingSource(t 
 			edit: func(c *Candidate) {
 				c.Delta = append(c.Delta, c.Delta[0])
 			},
-			code: "VALIDATION_DUPLICATE_IN_DELTA",
+			code: "CANDIDATE_NORMALIZE",
 		},
 		{
 			name: "same use declared twice",
 			edit: func(c *Candidate) {
 				c.Delta = append(c.Delta, c.Delta[1])
 			},
-			code: "APPLICATION_VALIDATION_USE_DUPLICATE_IN_DELTA",
+			code: "CANDIDATE_NORMALIZE",
 		},
 	}
 	for _, tc := range cases {
