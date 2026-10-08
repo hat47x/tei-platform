@@ -160,6 +160,22 @@ git rev-parse HEAD
 
 `go test`の成功だけでは、人間によるReview、実Provider、手順のAcceptance、Studio画面での修正、Production適用を証明しない。最初の実証Aの記録とGate B/Cのhistorical Evidenceは引き続き別物として保持する。
 
+#### 受入以前に固定する回帰条件（#985、静的レビューのみ）
+
+| 入力・変更候補 | 期待する結果 | 誤って成立させてはならない状態 |
+| --- | --- | --- |
+| 同じ候補に単価Validationの追加とApplicationの利用宣言 | Previewで2つのSourceへの変更を可視化し、review fingerprintに結び付いたscratch Accept後にDriverが3規則を解決 | 追加した規則が評価されないままCommandへ進む |
+| Validationの未知のAttribute / Namespace、未知の利用先、重複操作 | Shared Acceptanceで拒否し、Sourceは不変 | 規則と適用宣言が別々に受理されたように見える |
+| 2行目の単価・数量が正値でない | `validation-not-satisfied`、CommandとObservationはなし | 最初の1行だけを見て確定する |
+| 前方の行は業務不成立だが後方の行の値が欠落・評価不能 | Execution Error（不完全な評価）、後続副作用なし | 不完全な入力を確定的な業務拒否と呼ぶ |
+| 明細が空、Relation keyがnull・空文字列・空白のみ | Execution Error、後続副作用なし | 空集合や欠落した業務識別値を「一意である証拠」とみなす |
+| Web経由のsubmit | Driverと同じCanonicalの規則選択と評価結果を返す | Web固有に同じ規則を二重管理する |
+
+この表は**期待結果を定義したテストの範囲**を示し、実行PASSを意味しない。Sourceの内容検証をするテストでも、scratchのAcceptには`reviewFingerprint`を指定し、Reviewを通らない近道を正規の利用経路として例示しない。技術的なfingerprint一致は、実際に人が承認した証拠にはならない。
+
+**実行・統合の停止条件:** 当該PRのexact headで対象テストとRepository health checkが成功し、検証前後のclean状態とrevisionを記録できるまでDraftを維持する。並行作業で`main`が進んだ場合、差分・競合・qualificationの条件を再評価する。既存のReferenceのauthoritative Source、historical Gate Evidence、Product Requirementの採用状態は、この準備によって変更しない。
+
+
 ### Bの判定と停止条件案
 
 **成立と判断できる範囲:** 変更が一つの正本へ受理され、reload後にDriverとWebが同じ意味を示し、人がData / Function / Businessへの影響と未確認を理解できること。少なくとも正常系と拒否系の両方を実行し、実装側に複製された規則の有無を確認する。
