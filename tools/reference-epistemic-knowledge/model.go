@@ -183,6 +183,11 @@ type EvidenceRef struct {
 
 const reviewMethodHuman = "human-review"
 
+type ReviewTargetIdentity struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+}
+
 type ReviewEvent struct {
 	Sequence           int             `json:"sequence"`
 	ID                 string          `json:"id"`
@@ -190,6 +195,9 @@ type ReviewEvent struct {
 	Reviewer           string          `json:"reviewer"`
 	Method             string          `json:"method"`
 	MeaningFingerprint string          `json:"meaningFingerprint"`
+	StatementKind      AssertionMode   `json:"statementKind"`
+	Context            []ScopeBinding  `json:"context"`
+	TargetIdentity     ReviewTargetIdentity `json:"targetIdentity"`
 	OccurredAt         string          `json:"occurredAt"`
 	Evidence           []EvidenceRef   `json:"evidence,omitempty"`
 	Conditions         []string        `json:"conditions,omitempty"`
@@ -514,6 +522,8 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		event.Reviewer = strings.TrimSpace(event.Reviewer)
 		event.Method = strings.TrimSpace(event.Method)
 		event.MeaningFingerprint = strings.TrimSpace(event.MeaningFingerprint)
+		event.TargetIdentity.Kind = strings.TrimSpace(event.TargetIdentity.Kind)
+		event.TargetIdentity.ID = strings.TrimSpace(event.TargetIdentity.ID)
 		event.OccurredAt = strings.TrimSpace(event.OccurredAt)
 
 		if event.Sequence <= 0 || event.ID == "" || event.Reviewer == "" {
@@ -527,6 +537,17 @@ func normalizeReviewEvents(values []ReviewEvent) ([]ReviewEvent, error) {
 		}
 		if !sha256Pattern.MatchString(event.MeaningFingerprint) {
 			return nil, fmt.Errorf("reviewEvents[%d] meaningFingerprint %q is not exact sha256", i, event.MeaningFingerprint)
+		}
+		if !event.StatementKind.valid() {
+			return nil, fmt.Errorf("reviewEvents[%d] has invalid statementKind %q", i, event.StatementKind)
+		}
+		context, err := normalizeBindings(event.Context)
+		if err != nil {
+			return nil, fmt.Errorf("reviewEvents[%d] context: %w", i, err)
+		}
+		event.Context = context
+		if event.TargetIdentity.Kind == "" || event.TargetIdentity.ID == "" {
+			return nil, fmt.Errorf("reviewEvents[%d] targetIdentity requires kind and id", i)
 		}
 		if err := validateOptionalTime("reviewEvents.occurredAt", event.OccurredAt); err != nil || event.OccurredAt == "" {
 			if err != nil {
