@@ -43,6 +43,9 @@ type Binding struct {
 type Host struct {
  Bindings []Binding
  Authorizer Authorizer
+ // CommandGate, when supplied, validates the action against TEI Canonical.
+ // It does not replace runtime authorization.
+ CommandGate *CanonicalCommandGate
 }
 
 func (h Host) Commit(ctx context.Context, in Intent) (string, error) {
@@ -58,6 +61,9 @@ func (h Host) Commit(ctx context.Context, in Intent) (string, error) {
   selected = b
  }
  if selected == nil || selected.Store == nil { return "", fmt.Errorf("%w: unbound application action", ErrDenied) }
+ if h.CommandGate != nil {
+  if err := h.CommandGate.Check(ctx,in); err != nil { return "",err }
+ }
  if err := h.Authorizer.Authorize(ctx, in.ApplicationID, in.DocumentID, in.ActionID); err != nil {
   return "", fmt.Errorf("%w: %v", ErrDenied, err)
  }
