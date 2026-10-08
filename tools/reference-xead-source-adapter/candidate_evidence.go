@@ -48,6 +48,7 @@ func BuildTranscriptionCandidateEvidence(
 			"source-observation-is-not-canonical-authority",
 			"mapping-is-candidate-not-semantic-acceptance",
 			"rmt-evidence-does-not-grant-runtime-authority",
+			"rmt-evidence-content-fingerprint-is-not-observer-conformance",
 		},
 	}
 	if node.Known {
@@ -67,7 +68,6 @@ func BuildTranscriptionCandidateEvidence(
 
 	return rmtevidence.Prepare(value)
 }
-
 
 func VerifyTranscriptionCandidateEvidence(
 	format SourceFormat,
