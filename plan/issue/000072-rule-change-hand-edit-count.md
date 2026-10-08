@@ -108,6 +108,16 @@ C3は、正本の外に同じ意味が置かれている箇所で、構造上の
 - Web Targetは先頭の明細だけを評価する。これは既存の数量規則にも共通する制約である。
 - 計測の題材に選んだ規則が、リポジトリ自身のtestやREADMEの例と同じだった。題材の選び方が結果を左右する。
 
+## 後続の実装候補との対応（2026-10-08、元の読解記録は維持）
+
+上記の行番号・C1〜C6の予測と「先頭の明細しか評価しない」という記述は、**当時読んだrevisionに対する静的な観察**であり、最新実装の成立を主張するものではない。履歴上の観察を遡って書き換えず、後続の変更候補を次のとおり区別する。
+
+- [ISSUE-000073](000073-derive-validation-selection-from-canonical.md)は既にDone。現行のApplication Validation選択をCanonicalから導く経路が追加され、当時の「Targetに手書きの選択一覧が残る」という論点には対応済みの実装がある。
+- [Draft PR #985](https://github.com/hat47x/tei-platform/pull/985)では、同じ候補でValidationとApplicationの利用宣言を追加し、複数明細の全行を評価する修正・scratch Preview / Accept / reload / Driver / Webの回帰テストを準備した。空・null・空白の業務識別値と、後続行の評価不能を正常な業務拒否で覆わない条件も含む。ただし**exact-headのGo実行・Repository health checkは未実行**であり、修正済みと断定しない。
+- `reference/business-system-design/order-entry-business-procedure.json`のBP-05は、当時と同様に非Canonicalなauthoring fixtureとして既存2規則を記載する。scratch上に追加する単価制約はBP-05へ自動反映されない。この差は[ISSUE-000075](000075-practical-scenario-mvp-demonstration.md)の実証B案の三視点照合へ戻し、Referenceに無断で新規則を追加しない。
+
+これらは本Issueの研究再開条件を満たしたことを示さない。**変更箇所数をProduct Valueの代理指標に戻さない**というowner判断も変更しない。
+
 ## 研究を再開する条件
 
 次がそろうまで、実測は行いません。そろった後も、変更の種類（横串の機械的な修正か、ロジックの深い変更か等）ごとに分け、単一の数に畳みません。
