@@ -77,7 +77,7 @@ Application Pattern:
 
 Patternから導けない意味をBusiness Procedure側が明示的に要求する場合だけ、Data / Relation / Validation / Capabilityのdirect referenceを持てます。
 
-現在のfixtureではBP-03 / BP-05のValidationがこれに該当します。
+現在のfixtureではBP-05のValidationがこれに該当します。
 
 checkerはdirect referenceもexact identityで解決し、似た名称から補完しません。
 
