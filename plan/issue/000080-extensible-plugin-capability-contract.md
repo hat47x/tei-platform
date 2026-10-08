@@ -447,3 +447,39 @@ production化前の停止条件として、少なくとも次のどちらかを�
 fresh resolutionでhigher compatible versionを選べる現Reference testは、SemVer互換が成立する場合の探索pressureであって、数値majorが意味互換のEvidenceだという主張ではない。
 
 Lock replayは引き続きexact Contractを固定するためこの問題の影響を受けない。問題はfresh resolution / upgrade decisionのAuthorityに限定する。
+
+## E14 Reference saturation / convergence gate — 2026-10-08
+
+Draft PR #963は現時点で25 changed files、約8.7k additions、167 commitsに達している。大半は`tools/reference-plugin-capability-contract/`のpressure実装であり、production Coreを直接増やしてはいないが、これ以上Reference内へ周辺責務を取り込むと第二のPlugin runtime / build / target architectureになり得る。
+
+ここでReferenceのfeature追加を原則freezeし、次工程を**収束・圧縮・production差分抽出**へ切り替える。
+
+### #951に残す中心責務
+
+- openなCapability Contract identity / version / fingerprint
+- Tool / Runtime等のAuthority scope分離
+- Provider identity / Conformance / explicit wiring
+- Contract definition Authority / Conformance issuer Authority
+- deterministic fresh resolutionとexact Resolution Lock
+- legacy `CapabilityKind`からの一方向compatibility projection
+- existing production Authorityへ接続するとき二重Authorityを作らないための最小bridge contract
+
+### production実装のownerへ返す責務
+
+- Source -> Build -> Artifact / self-build / artifact coalescing / split packaging: ISSUE-000079
+- Target portability / execution profile / browser-Wasm pressure: ISSUE-000026およびRQ-024側
+- Permission / Resource / Lease / Sandbox / process supervision:既存production Plugin Runtime境界
+- business outcome / failure / unknown / retry semantics: ISSUE-000009 / RQ-018〜020
+- Xead/Xeaf Source Adapter consumer: GitHub #950
+
+Reference内の既存pressure codeは、各境界が成立するかを示すEvidenceとして当面保持してよい。ただしproduction化の際に#951からそのまま巨大packageを昇格させない。各ownerが必要な最小primitiveだけを取り込む。
+
+### Merge前の追加Gate
+
+- 新しいfeature laneを#963へ追加しない
+- duplicated helper / repeated fixture / redundant bridgeを圧縮できるかreviewする
+- productionへ必要な最小型・関数を一覧化し、それ以外をpressure-onlyと明示する
+- exact-head focused/full testの前にReference codeの責務分類を固定する
+- merge時は可能ならsquashし、Reference探索中の細かなcommit historyをmainへ大量転写しない
+
+このGateはReferenceの知見を捨てるためではなく、Plugin-firstという目的に対してReference自体が新しい固定基盤にならないための停止条件である。
