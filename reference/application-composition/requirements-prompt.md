@@ -13,8 +13,8 @@
 1. **既知情報を取得する**。ProjectのSource / Accepted meaning / Target / Framework / Environment / 既存Plugin Lock / UI Kit / 現行Extensionを読む。既知条件は再質問しない。情報がないときは「未確認」として扱う。
 2. **要求を分ける**。業務・Domainの意味、操作体験、アプリケーション構造（通常の画面処理、オフライン同期、Document Editor、リアルタイム等）、Target、Framework、外部接続、非機能要件に区分する。WebであるというだけでReactやCRUDを確定しない。
 3. **候補を探索・検査する**。既存Plugin / Provider / Contract、UI構成キット（#997）、業務仕様テンプレート（#998）、既存Application Action / Semanticを優先して参照する。Target/Frameworkの整合、契約fingerprint、Authority scope、Provider Conformance、依存・Lockを確認する。探索順位・類似度を適合性の証明にしない。
-4. **案件の変更を分類する**。\`Configure\`（設定変更）、\`Compose\`（資産の接続）、\`Extend\`（公開点への追加）、\`Replace\`（明示交換）、\`Source fork\`（元実装を案件が所有）、\`Meaning change\`（Accepted meaningの変更候補）を区別する。UI Kitのslot operationを他の契約へ転用しない。
-5. **差分と影響を提示する**。どの資産・契約・Project-owned source・Environment bindingに変更が必要か、変えてはならない正本は何か、元Profile / Kitの更新で何が\`unchanged / applicable / conflict / unresolved\`となるか示す。
+4. **案件の変更を分類する**。`Configure`（設定変更）、`Compose`（資産の接続）、`Extend`（公開点への追加）、`Replace`（明示交換）、`Source fork`（元実装を案件が所有）、`Meaning change`（Accepted meaningの変更候補）を区別する。UI Kitのslot operationを他の契約へ転用しない。
+5. **差分と影響を提示する**。どの資産・契約・Project-owned source・Environment bindingに変更が必要か、変えてはならない正本は何か、元Profile / Kitの更新で何が`unchanged / applicable / conflict / unresolved`となるか示す。
 6. **不足を絞って尋ねる**。必要な契約・業務判断・権限が不足していれば質問する。分からないProviderやFrameworkを暗黙選択しない。未確認の業務規則をAIだけで採用しない。
 7. **動作とEvidenceを区別する**。検証方法と失敗例を示す。実際に実行していないTest、構築していないTarget、採用されていないSourceについてPASS・完了と書かない。
 

@@ -74,24 +74,24 @@
 
 1. Projectのauthoritative Sourceと現在の採用済み意味、明示的な構成候補を読み取る。
 2. Semantic契約・Capability契約・Provider適合性を**それぞれ既存の解決境界**で照合する。複数候補の暗黙の勝者選択はしない。
-3. UI Kit、Application機能、Environment bindingを各所有者が宣言したPort / Extension Pointへ接続する。UI Kitの\`extends / provide / replace / decorate\`（#997）を全Pluginの上書き演算へ拡張しない。
+3. UI Kit、Application機能、Environment bindingを各所有者が宣言したPort / Extension Pointへ接続する。UI Kitの`extends / provide / replace / decorate`（#997）を全Pluginの上書き演算へ拡張しない。
 4. Application / Target / Framework / runtime environmentの整合を検査する。未解決なら、根拠・所有者・不足条件を出して停止する。
 5. 採用した論理契約・実装・artifactと実際の依存を、可能な範囲で既存Lockと追跡可能なReferenceに結びつける。
-6. Template更新・Plugin更新・案件差分が重なれば、変更の影響を\`unchanged / applicable / conflict / unresolved\`として**検証候補**に分類する。自動採用したことにはしない。
+6. Template更新・Plugin更新・案件差分が重なれば、変更の影響を`unchanged / applicable / conflict / unresolved`として**検証候補**に分類する。自動採用したことにはしない。
 
-これは設計時の構成判断であり、Runtimeの最新Permission / Resource / Leaseの確認を代替しない。採用済み業務意味をUIやProfileが変更することもない。\`Profile selected != meaning accepted != execution authorized\`を維持する。
+これは設計時の構成判断であり、Runtimeの最新Permission / Resource / Leaseの確認を代替しない。採用済み業務意味をUIやProfileが変更することもない。`Profile selected != meaning accepted != execution authorized`を維持する。
 
 ## 継承・組合せ・交換の境界
 
 初期の基本は**明示的な合成（Compose）**と、契約を満たす実装の**交換（Replace）**、公開Extension Pointへの**追加（Extend）**、許可された設定の**変更（Configure）**である。
 
-Profile間の派生は候補として考えられるが、Profileの\`extends\`、UI Kitの\`extends\`、Plugin dependency、Business Templateの採用・差分は異なる関係である。これらを一つの多重継承グラフや「後から読んだものが優先」という規則にしない。UI Kitの単一親chainは[#997のReference](../../reference/ui-customization/composition/README.md)の範囲にとどめる。
+Profile間の派生は候補として考えられるが、Profileの`extends`、UI Kitの`extends`、Plugin dependency、Business Templateの採用・差分は異なる関係である。これらを一つの多重継承グラフや「後から読んだものが優先」という規則にしない。UI Kitの単一親chainは[#997のReference](../../reference/ui-customization/composition/README.md)の範囲にとどめる。
 
 同一slotを二つのAddonが交換する場合、同名別artifact、別Framework、期待する旧実装の不一致、契約の意味的互換性の不明などは、明示選択・再検査が必要な衝突である。ScopeをまたぐProvider fallback、AIが作った未確認の業務規則の自動Acceptance、UI側の認可変更は認めない。
 
 ## 二つの実Consumerで試す
 
-**A. 受注明細を持つWeb業務Application** — 既存\`order_entry\`を用い、Semantic / Data / Action / Validationは既存のAccepted Source、UIはWeb/React Kit、DBと外部接続はEnvironment Bindingを使用する。案件固有の右側編集PanelはProject UI Layerに保持する。UI Kit更新で業務上の識別子やValidationの意味が変わっていないことを確認する。
+**A. 受注明細を持つWeb業務Application** — 既存`order_entry`を用い、Semantic / Data / Action / Validationは既存のAccepted Source、UIはWeb/React Kit、DBと外部接続はEnvironment Bindingを使用する。案件固有の右側編集PanelはProject UI Layerに保持する。UI Kit更新で業務上の識別子やValidationの意味が変わっていないことを確認する。
 
 **B. Native Canvasを持つ知識整理Application** — [SUI #993](https://github.com/hat47x/tei-platform/issues/993)のDocument / Card / Native React Canvasを維持する。Drag中の状態はNative UIに置き、Drop時だけApplication-owned Actionへ接続する。SUIのDocumentをTEI Canonical objectへ強制変換せず、Framework共通Form構造も要求しない。
 
@@ -101,7 +101,7 @@ Profile間の派生は候補として考えられるが、Profileの\`extends\`�
 
 **E0**: 本書による責務分類と既存構造へのMapping。AI向け要件整理の候補は[構成要件整理プロンプト](../../reference/application-composition/requirements-prompt.md)。この段階では設計・文書上の整理のみ。
 
-**E1**: 既存の\`order_entry\`とSUIのSource / Plugin / UI / Environmentへの参照をread-onlyに列挙し、何が構成として宣言済みか、不足する記述は何かを明示する。
+**E1**: 既存の`order_entry`とSUIのSource / Plugin / UI / Environmentへの参照をread-onlyに列挙し、何が構成として宣言済みか、不足する記述は何かを明示する。
 
 **E2**: 追加schemaが必要だと立証された最小部分に限り、差分・不適合の診断と二つのConsumerでの検証を行う。synthetic test、actual runtime、production adoptionを別Evidenceにする。
 
