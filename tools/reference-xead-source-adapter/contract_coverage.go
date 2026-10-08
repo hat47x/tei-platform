@@ -10,6 +10,7 @@ import (
 type ClassificationCoverage struct {
 	ContractSHA256            string       `json:"contractSha256"`
 	Format                    SourceFormat `json:"format"`
+	SourceFormatVersion       string       `json:"sourceFormatVersion"`
 	ObservedKindCount         int          `json:"observedKindCount"`
 	MappedObservedKindCount   int          `json:"mappedObservedKindCount"`
 	UnmappedObservedKinds     []string     `json:"unmappedObservedKinds,omitempty"`
@@ -21,15 +22,17 @@ type ClassificationCoverage struct {
 }
 
 func CheckClassificationCoverage(format SourceFormat, doc ObservedDocument, contractBytes []byte) (ClassificationCoverage, error) {
-	if format != doc.Format {
-		return ClassificationCoverage{}, fmt.Errorf("observed document format %s does not match requested format %s", doc.Format, format)
+	profile, err := validateSourceProfile(format, doc, contractBytes)
+	if err != nil {
+		return ClassificationCoverage{}, err
 	}
 	mapped, err := parseConstructMappings(format, contractBytes)
 	if err != nil {
 		return ClassificationCoverage{}, err
 	}
 	coverage := ClassificationCoverage{
-		Format: format,
+		Format:               format,
+		SourceFormatVersion: profile.FormatVersion,
 		AuthorityLimits: []string{
 			"mapping-entry-existence-is-not-semantic-acceptance",
 			"classification-coverage-is-not-behavior-equivalence",
