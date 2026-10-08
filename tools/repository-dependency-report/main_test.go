@@ -19,6 +19,8 @@ func fixture(t *testing.T) string {
 		"internal/host/host.go":          "package host\nimport (\"example.org/tei/internal/core\"; \"example.org/tei/internal/features\")\n",
 		"internal/host/host_test.go":     "not valid Go, must be ignored",
 		"internal/host/testdata/mock.go": "not valid Go, must be ignored",
+		"internal/host/_ignore.go":       "not valid Go, must be ignored",
+		"internal/host/vendor/ignore.go": "not valid Go, must be ignored",
 	}
 	for name, contents := range files {
 		path := filepath.Join(root, filepath.FromSlash(name))
@@ -87,5 +89,22 @@ func TestUnknownLocalImportFailsClosed(t *testing.T) {
 	}
 	if _, err := collect(root); err == nil {
 		t.Fatal("missing first-party import target must not appear as a valid package")
+	}
+}
+
+func TestNoInternalEdgesIsArray(t *testing.T) {
+	root := fixture(t)
+	for _, file := range []string{"internal/features/a.go", "internal/features/b.go", "internal/host/host.go"} {
+		if err := os.Remove(filepath.Join(root, filepath.FromSlash(file))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := collect(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, _ := json.Marshal(r)
+	if len(r.Dependencies) != 0 || !reflect.DeepEqual(r.Dependencies, []directEdge{}) {
+		t.Fatalf("zero-dependency graph changed: %s", encoded)
 	}
 }
