@@ -82,7 +82,24 @@
           "reviewer": "human",
           "method": "human-review",
           "meaningFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
-          "occurredAt": "2026-10-06T12:05:00Z"
+          "occurredAt": "2026-10-06T12:05:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            },
+            {
+              "dimension": "branch",
+              "value": "main",
+              "provenance": "inferred"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "repository-fact",
+            "id": "tei.main-branch"
+          }
         }
       ],
       "metadataState": "complete"
@@ -118,7 +135,24 @@
           "reviewer": "system-owner",
           "method": "human-review",
           "meaningFingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-          "occurredAt": "2026-10-06T12:10:00Z"
+          "occurredAt": "2026-10-06T12:10:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            },
+            {
+              "dimension": "environment",
+              "value": "production",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "environment-fact",
+            "id": "production.auth"
+          }
         }
       ],
       "metadataState": "complete"
@@ -153,7 +187,19 @@
           "reviewer": "integration-owner",
           "method": "human-review",
           "meaningFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
-          "occurredAt": "2026-09-01T00:00:00Z"
+          "occurredAt": "2026-09-01T00:00:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "provider-fact",
+            "id": "provider.contract"
+          }
         }
       ],
       "metadataState": "complete"
@@ -184,7 +230,19 @@
           "reviewer": "runtime-owner",
           "method": "human-review",
           "meaningFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
-          "occurredAt": "2026-09-20T00:00:00Z"
+          "occurredAt": "2026-09-20T00:00:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "design-claim",
+            "id": "tei.runtime.old"
+          }
         }
       ],
       "metadataState": "complete"
@@ -241,7 +299,19 @@
           "reviewer": "reviewer-a",
           "method": "human-review",
           "meaningFingerprint": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
-          "occurredAt": "2026-10-05T00:00:00Z"
+          "occurredAt": "2026-10-05T00:00:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "design-claim",
+            "id": "tei.identifier.policy"
+          }
         }
       ],
       "metadataState": "complete"
@@ -275,7 +345,19 @@
           "reviewer": "reviewer-b",
           "method": "human-review",
           "meaningFingerprint": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
-          "occurredAt": "2026-10-05T00:00:00Z"
+          "occurredAt": "2026-10-05T00:00:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "design-claim",
+            "id": "tei.identifier.policy"
+          }
         }
       ],
       "metadataState": "complete"
@@ -306,7 +388,19 @@
           "reviewer": "human-reviewer",
           "method": "human-review",
           "meaningFingerprint": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
-          "occurredAt": "2026-10-05T00:00:00Z"
+          "occurredAt": "2026-10-05T00:00:00Z",
+          "statementKind": "fact",
+          "context": [
+            {
+              "dimension": "project",
+              "value": "tei",
+              "provenance": "declared"
+            }
+          ],
+          "targetIdentity": {
+            "kind": "design-claim",
+            "id": "tei.derived-authority"
+          }
         }
       ],
       "metadataState": "complete"
