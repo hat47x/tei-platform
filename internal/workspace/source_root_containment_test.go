@@ -207,6 +207,38 @@ func TestWorkspaceContainmentRejectsSiblingPathPrefix(t *testing.T) {
 	}
 }
 
+func TestEmptySourceRootCannotEscapeThroughSymlinkedParent(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "workspace")
+	outside := filepath.Join(parent, "outside")
+	for _, dir := range []string{root, filepath.Join(outside, "empty")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nsources:\n  - custom/empty\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "custom")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	// There are no leaf files. Containment must still validate the physical
+	// source directory before considering the inventory successful.
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "outside Workspace") {
+		t.Fatalf("empty escaped directory was accepted: %v", err)
+	}
+}
+
+func TestSourceRootMustBeADirectory(t *testing.T) {
+	root := sourceRootFixture(t, "custom-assets")
+	if err := os.WriteFile(filepath.Join(root, "custom-assets"), []byte("not a directory"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "must be a directory") {
+		t.Fatalf("file was accepted as source directory: %v", err)
+	}
+}
+
 func TestKnownSemanticRootRejectsEscapedFileBeforeParsing(t *testing.T) {
 	root := sourceRootFixture(t, "semantic")
 	dir := filepath.Join(root, "semantic")
