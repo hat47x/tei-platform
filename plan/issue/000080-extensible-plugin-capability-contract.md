@@ -394,3 +394,28 @@ testではResource BrokerのAcquire / Release、Capability kind / ID、Runtime P
 この結果から、generic Capability Contractの移行に合わせてResource Authorityを二重化する必要はないことが分かります。Permissionの意味契約はgeneric profileへ投影できますが、concrete resource resolutionとlease lifecycleは既存production境界をAuthorityとして維持できます。
 
 E12で確認するのはfilesystem read一件のAcquire / sandbox mount / Releaseまでです。Secret injection、Network endpoint、renew / refresh、Supervisor ownership / fencingのgeneric Capability経由E2Eは未実施です。Repository exact-head test / health gateも未取得です。
+
+## E11 Contract definition Authority — 2026-10-08
+
+Provider Conformanceの発行Authorityだけでは、Capability Contract定義そのものを誰が公開・version追加できるかを制御できない。fresh resolutionでは、同じContract ID / compatible majorへ高いversionが追加されるとcandidateになるため、採用前のContract namespace ownershipが必要になる。
+
+`contract_authority.go`にReference candidateを追加した。
+
+- `CapabilityContractAuthorityGrant`: namespace、publisher、current Authority Evidence fingerprintを結ぶ
+- `CapabilityContractPublication`: exact Contract ID / version / fingerprintをpublisherとAuthority Evidenceへ結ぶ
+- `CapabilityContractAuthorityBinding`: accepted Contractとcurrent definition Authorityのderived binding
+- 最長一致namespaceをownerとし、より具体的なaccepted namespace grantを明示的な子namespace Authorityとして扱う
+- Contract semantic fingerprintとAuthority binding fingerprintを分離する
+
+resolver本体へAuthorityを埋め込まず、accepted Contract catalogを作ってから既存`resolveCapability`へ渡す。これにより、Contract selection / Provider selectionの意味と、Contract publisher trustを二重正本にしない。
+
+敵対評価では次を固定した。
+
+- authorized v1.0.0がある状態で、unauthorized v1.1.0 + conformant Providerを追加してもfresh resolutionへ侵入できない
+- authorized higher compatible versionは通常どおりfresh resolution候補になれる
+- `std.*` Contractをthird-party publicationが横取りできない
+- broad namespace Authorityよりspecific namespace Authorityを優先する
+- 同一namespaceへ競合Authorityがある場合はfail closed
+- Authority Evidence rotation後、旧publicationはstaleになり、再publication後もContract / Provider resolution identityは変わらずAuthority bindingだけが変わる
+
+このReferenceはpublisher trust root、署名、鍵rotation/revocationの最終実装ではない。fingerprintの存在だけを真正なAuthorityとはみなさず、production化では既存signature / provenance / Acceptance境界との接続が必要である。
