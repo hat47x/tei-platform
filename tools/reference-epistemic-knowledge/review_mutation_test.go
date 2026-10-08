@@ -243,6 +243,7 @@ func TestReviewCommandAuthorityLimitsRemainExplicit(t *testing.T) {
 		"review-command-does-not-grant-reviewer-authority",
 		"review-command-does-not-grant-canonical-acceptance",
 		"review-command-does-not-change-canonical-content",
+		"review-mutation-requires-current-context-as-of",
 	} {
 		if !containsString(result.AuthorityLimits, expected) {
 			t.Fatalf("missing mutation authority limit %q: %+v", expected, result.AuthorityLimits)
@@ -257,4 +258,26 @@ func structuredCorpusCopyForTest(t *testing.T, corpus Corpus) Corpus {
 		t.Fatal(err)
 	}
 	return copy
+}
+
+
+func TestReviewCommandSucceedsWhenMutationContextCatchesUp(t *testing.T) {
+	corpus, context := loadFixture(t)
+	command := reviewCommandFor(t, corpus, context, "ai-unreviewed", ReviewEventConfirm, "fresh-context")
+	command.OccurredAt = "2026-10-08T10:00:00Z"
+
+	if _, err := applyReviewCommand(corpus, context, command); err == nil ||
+		!strings.Contains(err.Error(), "after context asOf") {
+		t.Fatalf("stale mutation context was accepted: %v", err)
+	}
+
+	context.AsOf = command.OccurredAt
+	result, err := applyReviewCommand(corpus, context, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := assessmentByID(t, result.Projection, "ai-unreviewed")
+	if got.ConfirmationState != "confirmed" {
+		t.Fatalf("fresh mutation context did not accept review command: %+v", got)
+	}
 }
