@@ -82,7 +82,6 @@ type PublicationReceipt struct {
 	Unresolved            []PublishedIssue `json:"unresolved,omitempty"`
 	AuthorityLimits       []string         `json:"authorityLimits"`
 	ReceiptFingerprint    string           `json:"receiptFingerprint"`
-
 }
 
 type PublishedFact struct {
@@ -301,13 +300,13 @@ func publicRootKind(doc ObservedDocument) string {
 
 func PublicReceipt(doc ObservedDocument) PublicationReceipt {
 	receipt := PublicationReceipt{
-		SchemaVersion:         2,
-		Format:                doc.Format,
-		ArtifactSHA256:        doc.ArtifactSHA256,
-		RootKind:              publicRootKind(doc),
-		ElementCounts:         map[string]int{},
-		AttributeCounts:       map[string]int{},
-		MarkupCounts:          map[string]int{},
+		SchemaVersion:   2,
+		Format:          doc.Format,
+		ArtifactSHA256:  doc.ArtifactSHA256,
+		RootKind:        publicRootKind(doc),
+		ElementCounts:   map[string]int{},
+		AttributeCounts: map[string]int{},
+		MarkupCounts:    map[string]int{},
 		AuthorityLimits: []string{
 			"source-observation-is-not-canonical-authority",
 			"legacy-id-sortkey-and-xml-position-are-not-canonical-identity",

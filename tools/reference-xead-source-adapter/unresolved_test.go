@@ -72,7 +72,6 @@ func TestUnresolvedProjectionRejectsFormatMismatch(t *testing.T) {
 	}
 }
 
-
 func TestMappingUnresolvedDoesNotClaimMappedExtension(t *testing.T) {
 	doc, err := Observe(FormatXead, []byte(`<System xmlns:x="urn:ext"><Table/><x:Table/></System>`))
 	if err != nil {

@@ -29,11 +29,11 @@ type DataDesignRelationKey struct {
 }
 
 type DataDesignRelation struct {
-	ID                core.CanonicalID       `json:"id"`
-	Source            core.CanonicalID       `json:"source"`
-	Target            core.CanonicalID       `json:"target"`
-	Cardinality       string                 `json:"cardinality"`
-	Keys              []DataDesignRelationKey `json:"keys,omitempty"`
+	ID                core.CanonicalID         `json:"id"`
+	Source            core.CanonicalID         `json:"source"`
+	Target            core.CanonicalID         `json:"target"`
+	Cardinality       string                   `json:"cardinality"`
+	Keys              []DataDesignRelationKey  `json:"keys,omitempty"`
 	BusinessMeaning   DataDesignKnowledgeState `json:"businessMeaning"`
 	TemporalSemantics DataDesignKnowledgeState `json:"temporalSemantics"`
 }
@@ -80,24 +80,24 @@ type DataDesignBusinessIdentityCandidate struct {
 	Fingerprint                    string                      `json:"fingerprint"`
 	EvidenceRequirementFingerprint string                      `json:"evidenceRequirementFingerprint"`
 	Relation                       core.CanonicalID            `json:"relation"`
-	Components       []DataDesignDeterminantTerm `json:"components"`
-	TargetOccurrence core.CanonicalID            `json:"targetOccurrence"`
-	BasisConstraint  core.CanonicalID            `json:"basisConstraint"`
-	Scope            string                      `json:"scope"`
-	Nature           string                      `json:"nature"`
-	EvidenceNeeded   []string                    `json:"evidenceNeeded"`
+	Components                     []DataDesignDeterminantTerm `json:"components"`
+	TargetOccurrence               core.CanonicalID            `json:"targetOccurrence"`
+	BasisConstraint                core.CanonicalID            `json:"basisConstraint"`
+	Scope                          string                      `json:"scope"`
+	Nature                         string                      `json:"nature"`
+	EvidenceNeeded                 []string                    `json:"evidenceNeeded"`
 }
 
 type DataDesignFunctionalDependencyCandidate struct {
 	Fingerprint                    string                      `json:"fingerprint"`
 	EvidenceRequirementFingerprint string                      `json:"evidenceRequirementFingerprint"`
 	Relation                       core.CanonicalID            `json:"relation"`
-	Determinants        []DataDesignDeterminantTerm `json:"determinants"`
-	DependentOccurrence core.CanonicalID            `json:"dependentOccurrence"`
-	BasisConstraint     core.CanonicalID            `json:"basisConstraint"`
-	Scope               string                      `json:"scope"`
-	Nature              string                      `json:"nature"`
-	EvidenceNeeded      []string                    `json:"evidenceNeeded"`
+	Determinants                   []DataDesignDeterminantTerm `json:"determinants"`
+	DependentOccurrence            core.CanonicalID            `json:"dependentOccurrence"`
+	BasisConstraint                core.CanonicalID            `json:"basisConstraint"`
+	Scope                          string                      `json:"scope"`
+	Nature                         string                      `json:"nature"`
+	EvidenceNeeded                 []string                    `json:"evidenceNeeded"`
 }
 
 type DataDesignPersistenceColumn struct {
@@ -115,44 +115,44 @@ type DataDesignPersistenceUniqueness struct {
 }
 
 type DataDesignPersistenceRealization struct {
-	Mapping      core.CanonicalID                  `json:"mapping"`
-	Database     core.CanonicalID                  `json:"database"`
-	Table        string                            `json:"table"`
-	Columns      []DataDesignPersistenceColumn     `json:"columns,omitempty"`
-	Uniqueness   []DataDesignPersistenceUniqueness `json:"uniqueness,omitempty"`
-	Authority    string                            `json:"authority"`
+	Mapping    core.CanonicalID                  `json:"mapping"`
+	Database   core.CanonicalID                  `json:"database"`
+	Table      string                            `json:"table"`
+	Columns    []DataDesignPersistenceColumn     `json:"columns,omitempty"`
+	Uniqueness []DataDesignPersistenceUniqueness `json:"uniqueness,omitempty"`
+	Authority  string                            `json:"authority"`
 }
 
 const dataDesignProjectionRevision = "tei.knowledge.data-design/v5"
 
 type DataDesignContext struct {
-	ProjectionRevision                    string                                    `json:"projectionRevision"`
-	Fingerprint                           string                                    `json:"fingerprint"`
-	ResolutionStatus                      string                                    `json:"resolutionStatus"`
-	EvidenceCoverageStatus                string                                    `json:"evidenceCoverageStatus"`
-	Data                                  core.CanonicalID                          `json:"data"`
-	Focus                                 subject.Subject                           `json:"focus"`
-	Attributes                            []DataDesignAttribute                     `json:"attributes,omitempty"`
-	Relations                             []DataDesignRelation                      `json:"relations,omitempty"`
-	Constraints                           []DataDesignConstraint                    `json:"constraints,omitempty"`
-	Ambiguities                           []DataDesignAmbiguity                     `json:"ambiguities,omitempty"`
-	ScopedUniqueness                      []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
-	BusinessIdentityCandidates            []DataDesignBusinessIdentityCandidate     `json:"businessIdentityCandidates,omitempty"`
-	FunctionalDependencyCandidates        []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
-	PersistenceRealizations               []DataDesignPersistenceRealization        `json:"persistenceRealizations,omitempty"`
-	Evidence                              []DataDesignEvidence                      `json:"evidence,omitempty"`
-	EvidenceMissing                       []subject.Subject                         `json:"evidenceMissing,omitempty"`
-	BusinessOccurrenceIdentifier          DataDesignKnowledgeState                  `json:"businessOccurrenceIdentifier"`
-	CandidateKeys                         DataDesignKnowledgeState                  `json:"candidateKeys"`
+	ProjectionRevision                         string                                    `json:"projectionRevision"`
+	Fingerprint                                string                                    `json:"fingerprint"`
+	ResolutionStatus                           string                                    `json:"resolutionStatus"`
+	EvidenceCoverageStatus                     string                                    `json:"evidenceCoverageStatus"`
+	Data                                       core.CanonicalID                          `json:"data"`
+	Focus                                      subject.Subject                           `json:"focus"`
+	Attributes                                 []DataDesignAttribute                     `json:"attributes,omitempty"`
+	Relations                                  []DataDesignRelation                      `json:"relations,omitempty"`
+	Constraints                                []DataDesignConstraint                    `json:"constraints,omitempty"`
+	Ambiguities                                []DataDesignAmbiguity                     `json:"ambiguities,omitempty"`
+	ScopedUniqueness                           []DataDesignScopedUniqueness              `json:"scopedUniqueness,omitempty"`
+	BusinessIdentityCandidates                 []DataDesignBusinessIdentityCandidate     `json:"businessIdentityCandidates,omitempty"`
+	FunctionalDependencyCandidates             []DataDesignFunctionalDependencyCandidate `json:"functionalDependencyCandidates,omitempty"`
+	PersistenceRealizations                    []DataDesignPersistenceRealization        `json:"persistenceRealizations,omitempty"`
+	Evidence                                   []DataDesignEvidence                      `json:"evidence,omitempty"`
+	EvidenceMissing                            []subject.Subject                         `json:"evidenceMissing,omitempty"`
+	BusinessOccurrenceIdentifier               DataDesignKnowledgeState                  `json:"businessOccurrenceIdentifier"`
+	CandidateKeys                              DataDesignKnowledgeState                  `json:"candidateKeys"`
 	FunctionalDependencies                     DataDesignKnowledgeState                  `json:"functionalDependencies"`
-	CompositeDomainConstraints                   DataDesignKnowledgeState                  `json:"compositeDomainConstraints"`
-	TemporalHistoryConditions                    DataDesignKnowledgeState                  `json:"temporalHistoryConditions"`
-	BusinessIdentityEvidenceQuestions            []string                                  `json:"businessIdentityEvidenceQuestions"`
-	FunctionalDependencyEvidenceQuestions        []string                                  `json:"functionalDependencyEvidenceQuestions"`
-	CompositeDomainConstraintEvidenceQuestions   []string                                  `json:"compositeDomainConstraintEvidenceQuestions"`
-	TemporalHistoryEvidenceQuestions             []string                                  `json:"temporalHistoryEvidenceQuestions"`
-	RelationEvidenceQuestions                    []string                                  `json:"relationEvidenceQuestions"`
-	AuthorityLimits                       []string                                  `json:"authorityLimits"`
+	CompositeDomainConstraints                 DataDesignKnowledgeState                  `json:"compositeDomainConstraints"`
+	TemporalHistoryConditions                  DataDesignKnowledgeState                  `json:"temporalHistoryConditions"`
+	BusinessIdentityEvidenceQuestions          []string                                  `json:"businessIdentityEvidenceQuestions"`
+	FunctionalDependencyEvidenceQuestions      []string                                  `json:"functionalDependencyEvidenceQuestions"`
+	CompositeDomainConstraintEvidenceQuestions []string                                  `json:"compositeDomainConstraintEvidenceQuestions"`
+	TemporalHistoryEvidenceQuestions           []string                                  `json:"temporalHistoryEvidenceQuestions"`
+	RelationEvidenceQuestions                  []string                                  `json:"relationEvidenceQuestions"`
+	AuthorityLimits                            []string                                  `json:"authorityLimits"`
 }
 
 func persistenceSubjectCount(w ir.World, mappingID core.CanonicalID) int {

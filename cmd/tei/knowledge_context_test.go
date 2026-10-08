@@ -541,8 +541,8 @@ func TestBuildKnowledgeContextReturnsDataDesignContextWithoutInventingIdentifier
 		t.Fatalf("valid Reference Data Design Context has semantic identity ambiguities: %+v", dataDesign.Ambiguities)
 	}
 	for name, state := range map[string]knowledgecontext.DataDesignKnowledgeState{
-		"business identifier":   dataDesign.BusinessOccurrenceIdentifier,
-		"candidate keys":        dataDesign.CandidateKeys,
+		"business identifier":         dataDesign.BusinessOccurrenceIdentifier,
+		"candidate keys":              dataDesign.CandidateKeys,
 		"functional dependency":       dataDesign.FunctionalDependencies,
 		"composite domain constraint": dataDesign.CompositeDomainConstraints,
 		"temporal/history conditions": dataDesign.TemporalHistoryConditions,

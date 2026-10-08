@@ -123,7 +123,6 @@ func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testi
 	}
 }
 
-
 func TestExtractRelationalSourceFactsDoesNotChooseMetadataFromDuplicateFieldID(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A" AttributeType="NATIVE" DataTypeID="D1"/><TableField ID="A" AttributeType="DERIVABLE" DataTypeID="D2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table></System>`))
 	if err != nil {

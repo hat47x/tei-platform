@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"reflect"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"tei/internal/core"

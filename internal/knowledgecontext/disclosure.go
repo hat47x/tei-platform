@@ -21,24 +21,24 @@ var selectableDisclosureSections = []string{
 }
 
 type DisclosureProjection struct {
-	ProjectionRevision       string                                `json:"projectionRevision"`
-	Fingerprint              string                                `json:"fingerprint"`
-	Status                   string                                `json:"status"`
-	Subject                  subject.Subject                       `json:"subject"`
-	AvailableSections        []string                              `json:"availableSections"`
-	SelectedSections         []string                              `json:"selectedSections"`
-	DisclosedSections        []string                              `json:"disclosedSections"`
-	UnavailableSections      []string                              `json:"unavailableSections,omitempty"`
-	OmittedAvailableSections []string                              `json:"omittedAvailableSections,omitempty"`
-	Artifacts                []sourceindex.Artifact                `json:"artifacts,omitempty"`
-	References               []sourceindex.Reference               `json:"references,omitempty"`
-	SemanticElement          *index.SemanticElementEntry           `json:"semanticElement,omitempty"`
-	ApplicationPattern       *index.ApplicationPatternIndexEntry   `json:"applicationPattern,omitempty"`
-	DataDesign               *DataDesignContext                    `json:"dataDesign,omitempty"`
-	Outgoing                 []Edge                                `json:"outgoing,omitempty"`
-	Incoming                 []Edge                                `json:"incoming,omitempty"`
-	Unresolved               []string                              `json:"unresolved,omitempty"`
-	AuthorityLimits          []string                              `json:"authorityLimits"`
+	ProjectionRevision       string                              `json:"projectionRevision"`
+	Fingerprint              string                              `json:"fingerprint"`
+	Status                   string                              `json:"status"`
+	Subject                  subject.Subject                     `json:"subject"`
+	AvailableSections        []string                            `json:"availableSections"`
+	SelectedSections         []string                            `json:"selectedSections"`
+	DisclosedSections        []string                            `json:"disclosedSections"`
+	UnavailableSections      []string                            `json:"unavailableSections,omitempty"`
+	OmittedAvailableSections []string                            `json:"omittedAvailableSections,omitempty"`
+	Artifacts                []sourceindex.Artifact              `json:"artifacts,omitempty"`
+	References               []sourceindex.Reference             `json:"references,omitempty"`
+	SemanticElement          *index.SemanticElementEntry         `json:"semanticElement,omitempty"`
+	ApplicationPattern       *index.ApplicationPatternIndexEntry `json:"applicationPattern,omitempty"`
+	DataDesign               *DataDesignContext                  `json:"dataDesign,omitempty"`
+	Outgoing                 []Edge                              `json:"outgoing,omitempty"`
+	Incoming                 []Edge                              `json:"incoming,omitempty"`
+	Unresolved               []string                            `json:"unresolved,omitempty"`
+	AuthorityLimits          []string                            `json:"authorityLimits"`
 }
 
 func BuildDisclosure(ctx Context, selected []string) (DisclosureProjection, error) {

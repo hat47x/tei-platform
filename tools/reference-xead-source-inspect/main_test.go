@@ -188,7 +188,6 @@ func TestRunRejectsUnsupportedFormat(t *testing.T) {
 	}
 }
 
-
 func TestBuildReportMarksRelationalDiagnosticsAsUnresolved(t *testing.T) {
 	inspection, err := xeadsource.Inspect(
 		xeadsource.FormatXead,
@@ -211,7 +210,6 @@ func TestBuildReportMarksRelationalDiagnosticsAsUnresolved(t *testing.T) {
 		t.Fatalf("unresolved fact readiness was not summarized: %#v", got.RelationalFactResolutions)
 	}
 }
-
 
 func TestBuildReportPreservesLocalReadinessWithoutPublishingLocators(t *testing.T) {
 	inspection, err := xeadsource.Inspect(
