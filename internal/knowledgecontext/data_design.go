@@ -77,8 +77,9 @@ type DataDesignDeterminantTerm struct {
 }
 
 type DataDesignBusinessIdentityCandidate struct {
-	Fingerprint      string                      `json:"fingerprint"`
-	Relation         core.CanonicalID            `json:"relation"`
+	Fingerprint                    string                      `json:"fingerprint"`
+	EvidenceRequirementFingerprint string                      `json:"evidenceRequirementFingerprint"`
+	Relation                       core.CanonicalID            `json:"relation"`
 	Components       []DataDesignDeterminantTerm `json:"components"`
 	TargetOccurrence core.CanonicalID            `json:"targetOccurrence"`
 	BasisConstraint  core.CanonicalID            `json:"basisConstraint"`
@@ -88,8 +89,9 @@ type DataDesignBusinessIdentityCandidate struct {
 }
 
 type DataDesignFunctionalDependencyCandidate struct {
-	Fingerprint         string                      `json:"fingerprint"`
-	Relation            core.CanonicalID            `json:"relation"`
+	Fingerprint                    string                      `json:"fingerprint"`
+	EvidenceRequirementFingerprint string                      `json:"evidenceRequirementFingerprint"`
+	Relation                       core.CanonicalID            `json:"relation"`
 	Determinants        []DataDesignDeterminantTerm `json:"determinants"`
 	DependentOccurrence core.CanonicalID            `json:"dependentOccurrence"`
 	BasisConstraint     core.CanonicalID            `json:"basisConstraint"`
@@ -121,7 +123,7 @@ type DataDesignPersistenceRealization struct {
 	Authority    string                            `json:"authority"`
 }
 
-const dataDesignProjectionRevision = "tei.knowledge.data-design/v4"
+const dataDesignProjectionRevision = "tei.knowledge.data-design/v5"
 
 type DataDesignContext struct {
 	ProjectionRevision                    string                                    `json:"projectionRevision"`
@@ -347,6 +349,7 @@ func buildDataDesignContext(
 			"absence-of-authored-business-identifier-is-not-no-identifier",
 			"business-identity-candidate-is-not-business-identifier-or-candidate-key",
 			"derived-design-candidate-fingerprint-is-identity-not-acceptance",
+			"derived-design-candidate-evidence-requirement-fingerprint-is-review-contract-not-acceptance",
 			"absence-of-authored-functional-dependency-is-not-no-dependency",
 			"functional-dependency-candidate-is-not-accepted-functional-dependency",
 			"absence-of-authored-composite-domain-constraint-is-not-no-composite-domain-constraint",
@@ -573,6 +576,11 @@ func buildDataDesignContext(
 					},
 				}
 				identityCandidate.Fingerprint = businessIdentityCandidateFingerprint(identityCandidate)
+				identityCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
+					"tei.knowledge.data-design.business-identity-candidate-evidence/v1",
+					identityCandidate.Fingerprint,
+					identityCandidate.EvidenceNeeded,
+				)
 				ctx.BusinessIdentityCandidates = append(ctx.BusinessIdentityCandidates, identityCandidate)
 
 				fdCandidate := DataDesignFunctionalDependencyCandidate{
@@ -592,6 +600,11 @@ func buildDataDesignContext(
 					},
 				}
 				fdCandidate.Fingerprint = functionalDependencyCandidateFingerprint(fdCandidate)
+				fdCandidate.EvidenceRequirementFingerprint = dataDesignCandidateEvidenceRequirementFingerprint(
+					"tei.knowledge.data-design.functional-dependency-candidate-evidence/v1",
+					fdCandidate.Fingerprint,
+					fdCandidate.EvidenceNeeded,
+				)
 				ctx.FunctionalDependencyCandidates = append(ctx.FunctionalDependencyCandidates, fdCandidate)
 			}
 		}
@@ -719,8 +732,9 @@ func buildDataDesignContext(
 
 func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandidate) string {
 	value.Fingerprint = ""
+	value.EvidenceRequirementFingerprint = ""
 	value.Components = normalizedDeterminantTerms(value.Components)
-	value.EvidenceNeeded = normalizedDataDesignStrings(value.EvidenceNeeded)
+	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
 		"tei.knowledge.data-design.business-identity-candidate/v1",
 		value,
@@ -729,11 +743,29 @@ func businessIdentityCandidateFingerprint(value DataDesignBusinessIdentityCandid
 
 func functionalDependencyCandidateFingerprint(value DataDesignFunctionalDependencyCandidate) string {
 	value.Fingerprint = ""
+	value.EvidenceRequirementFingerprint = ""
 	value.Determinants = normalizedDeterminantTerms(value.Determinants)
-	value.EvidenceNeeded = normalizedDataDesignStrings(value.EvidenceNeeded)
+	value.EvidenceNeeded = nil
 	return typedDataDesignCandidateFingerprint(
 		"tei.knowledge.data-design.functional-dependency-candidate/v1",
 		value,
+	)
+}
+
+func dataDesignCandidateEvidenceRequirementFingerprint(
+	kind string,
+	candidateFingerprint string,
+	evidenceNeeded []string,
+) string {
+	return typedDataDesignCandidateFingerprint(
+		kind,
+		struct {
+			CandidateFingerprint string   `json:"candidateFingerprint"`
+			EvidenceNeeded       []string `json:"evidenceNeeded"`
+		}{
+			CandidateFingerprint: candidateFingerprint,
+			EvidenceNeeded:       normalizedDataDesignStrings(evidenceNeeded),
+		},
 	)
 }
 
