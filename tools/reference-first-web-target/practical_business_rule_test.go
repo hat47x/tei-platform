@@ -94,7 +94,7 @@ func workspaceWithUnitPriceRule(t *testing.T) string {
 		t.Fatal(err)
 	}
 	var preview struct {
-		Acceptable bool `json:"acceptable"`
+		Acceptable  bool `json:"acceptable"`
 		SourceEdits []struct {
 			Path string `json:"path"`
 		} `json:"sourceEdits"`
@@ -210,10 +210,10 @@ func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *
 
 	// The HTTP endpoint uses the same runner: Web may not keep a second rule list.
 	projection, err := buildWebTargetProjection(changed.World, projectionConfig{
-		HandoverBaselineID: testBaselineID,
+		HandoverBaselineID:         testBaselineID,
 		BaselineRepositoryRevision: testBaselineRevision,
-		TargetBuildRevision: testTargetRevision,
-		ApplicationID: core.MustCanonicalID("order_entry"),
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
 	})
 	if err != nil {
 		t.Fatal(err)
