@@ -106,6 +106,8 @@ Gate C後のReferenceを作るIssueですが、最初から完成形のAI subsys
 
 これらをCanonical meaningより上位の要求として固定しません。
 
+RQ-034のGit-nativeな標準開発経路そのものは[ADR-0031](../adr/0031-tool-neutral-git-native-development.md) / [ISSUE-000083](000083-tool-neutral-development-reference.md)が正本です。本IssueはStructured Proposal / Shared Acceptance経路のReferenceに集中します。
+
 ## 標準的な開発環境との境界
 
 本IssueでいうProposalは、すべてのAI編集を開始する前に必須となるTEI固有objectではありません。
