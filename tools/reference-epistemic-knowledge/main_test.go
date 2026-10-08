@@ -1153,3 +1153,103 @@ func TestProjectionStatesReviewBindingIncludesValidityWindow(t *testing.T) {
 		t.Fatalf("missing validity-window review-binding authority boundary: %+v", projection.AuthorityLimits)
 	}
 }
+
+
+func TestResolutionCoveragePolicyEscalatesHealthAndCreatesMinimalReviewRequest(t *testing.T) {
+	corpus, context := loadFixture(t)
+	keep := map[string]bool{
+		"human-reviewed":             true,
+		"user-current":               true,
+		"ai-unreviewed":              true,
+		"anchored-identifier-policy": true,
+	}
+	var assertions []Assertion
+	for _, assertion := range corpus.Assertions {
+		if keep[assertion.ID] {
+			assertions = append(assertions, assertion)
+		}
+	}
+	corpus.Assertions = assertions
+	corpus.Dependencies = nil
+	corpus.CoverageAreas = nil
+	corpus.HealthPolicy = KnowledgeHealthPolicy{
+		MinResolvedRatio:          0.8,
+		MinimumEligibleAssertions: 4,
+	}
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverage := projection.Health.ResolutionCoverage
+	if coverage.Eligible != 4 ||
+		coverage.Resolved != 3 ||
+		coverage.Confirmed != 1 ||
+		coverage.NativePremise != 2 ||
+		coverage.Unresolved != 1 ||
+		coverage.Ratio != 0.75 ||
+		coverage.State != "attention" ||
+		coverage.RequiredResolutions != 1 ||
+		!containsString(coverage.Reasons, "PROJECT_RESOLUTION_RATIO_BELOW_POLICY") {
+		t.Fatalf("unexpected resolution coverage: %+v", coverage)
+	}
+	if projection.Health.Level != "attention" {
+		t.Fatalf("low resolution coverage did not raise attention: %+v", projection.Health)
+	}
+	if len(projection.ReviewRequests) != 1 ||
+		projection.ReviewRequests[0].AssertionID != "ai-unreviewed" ||
+		!containsString(projection.ReviewRequests[0].Reasons, "PROJECT_RESOLUTION_RATIO_BELOW_POLICY") {
+		t.Fatalf("low resolution ratio did not create minimal actionable review request: %+v", projection.ReviewRequests)
+	}
+}
+
+func TestResolutionCoverageDoesNotForceUserNativePremiseThroughReconfirmation(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.Assertions = []Assertion{
+		func() Assertion {
+			for _, assertion := range corpus.Assertions {
+				if assertion.ID == "user-current" {
+					return assertion
+				}
+			}
+			return Assertion{}
+		}(),
+	}
+	corpus.Dependencies = nil
+	corpus.CoverageAreas = nil
+	corpus.HealthPolicy = KnowledgeHealthPolicy{
+		MinResolvedRatio:          1,
+		MinimumEligibleAssertions: 1,
+	}
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverage := projection.Health.ResolutionCoverage
+	if coverage.Eligible != 1 ||
+		coverage.NativePremise != 1 ||
+		coverage.Resolved != 1 ||
+		coverage.Ratio != 1 ||
+		coverage.State != "healthy" ||
+		len(projection.ReviewRequests) != 0 {
+		t.Fatalf("direct user premise was forced through redundant confirmation: health=%+v requests=%+v", coverage, projection.ReviewRequests)
+	}
+}
+
+func TestResolutionCoverageIsUnknownForPartialTransport(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.MetadataState = MetadataPartial
+	corpus.HealthPolicy = KnowledgeHealthPolicy{
+		MinResolvedRatio:          0.9,
+		MinimumEligibleAssertions: 1,
+	}
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.Health.ResolutionCoverage.State != "unknown" ||
+		!containsString(projection.Health.ResolutionCoverage.Reasons, "RESOLUTION_COVERAGE_METADATA_INCOMPLETE") {
+		t.Fatalf("partial transport produced false project-wide resolution ratio: %+v", projection.Health.ResolutionCoverage)
+	}
+}
