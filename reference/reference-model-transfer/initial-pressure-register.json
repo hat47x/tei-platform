@@ -381,6 +381,13 @@
       "observed": "Go 1.23.2 encoding/xml accepts duplicate attributes in a StartElement, including duplicate FormatVersion and duplicate namespace-qualified attributes. The Source Adapter previously copied attributes into a map, so later duplicates overwrote earlier values without any unresolved marker or parse failure.",
       "risk": "Malformed or adversarial source can change the value observed by later source-profile and source-fact logic while preserving multiple conflicting declarations in the original bytes. A supposedly source-faithful adapter then normalizes ambiguity into one value and may classify the document under the wrong format profile.",
       "teiDirection": "detect duplicate expanded attribute names before map conversion and fail closed at source observation. Do not pick first/last value, do not use traversal order as conflict resolution, and keep this parser-invalid boundary separate from semantic Unresolved."
+    },
+    {
+      "id": "RMP-055",
+      "topic": "evidence-content-integrity-vs-observer-conformance",
+      "observed": "The typed RMT Evidence contract can verify canonical payload integrity and exact fingerprints, but any caller can construct a syntactically valid payload and recompute those fingerprints. Shared Acceptance can therefore verify that a recorded artifact was not altered without proving that a qualified Source Adapter actually observed the asserted external source.",
+      "risk": "Reviewers or downstream tooling can mistake fingerprint-valid RMT Evidence for trusted observation, allowing self-authored mapped/classification claims to gain more epistemic weight than the contract establishes.",
+      "teiDirection": "make non-authority limits mandatory in the RMT Evidence schema, expose observer Conformance and external-source freshness as not verified at the Shared Acceptance boundary, and connect qualified observer/provider authority only through the separate Plugin Capability Conformance boundary rather than the content fingerprint."
     }
   ]
 }
