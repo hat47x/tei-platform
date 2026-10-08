@@ -86,9 +86,9 @@ Product Valueは2026-10-02に、価値を測定値ではなく、**積み上げ�
 
 **減らす不確実性。** 変更を提案し、人が読んで確かめ、受理し、評価と確定操作へ反映されるまでの一周が、一つのCanonicalな意味の上で通るか（主担当要求 RQ-021）。
 
-**状態。** 受理済み（2026-10-08、owner）。受理により、`reference/workspace`の`order_entry`の宣言と`semantic/sales/validation.tei`、`reference/world.json`、決定記録一件が変わった。受理の記録は下の「受理の記録」を参照する。以下の証明のうち受理前の部分は、workspaceのcopy（scratch copy）の中で行った scratch proof である。この受理はGate BまたはGate Cのevidenceではなく、既存のhistorical evidenceも書き換えていない。
+**状態。** 受理済み（2026-10-08）。受理の根拠は、この会話でリポジトリのownerが行った回答である（下の「受理の記録」を参照）。受理により、`reference/workspace`の`order_entry`の宣言と`semantic/sales/validation.tei`、`reference/world.json`、決定記録一件が変わった。受理の記録は下の「受理の記録」を参照する。以下の証明のうち受理前の部分は、workspaceのcopy（scratch copy）の中で行った scratch proof である。この受理はGate BまたはGate Cのevidenceではなく、既存のhistorical evidenceも書き換えていない。
 
-**reference/との差分と比較の基準。** 比較の基準は統合時点の`origin/main`（`d3aab052`）である。ローカルの`main`は`origin/main`と一致しないことがあるため使わない。このブランチには、そのmainを通常のmerge commitで取り込んだ。取り込んだmainの変更には、`reference/`配下のうち`business-system-design`と`plugin-self-build`の文書とWorkspaceが含まれるが、`reference/workspace`と`reference/world.json`は、1d8fcc95、`d3aab052`、このブランチのHEADで同じである（`git diff --name-only d3aab052 HEAD -- reference/workspace reference/world.json`が空）。revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
+**reference/との差分と比較の基準。** 比較の基準は統合時点の`origin/main`（`d3aab052`）である。ローカルの`main`は`origin/main`と一致しないことがあるため使わない。このブランチには、そのmainを通常のmerge commitで取り込んだ。取り込んだmainの変更には、`reference/`配下のうち`business-system-design`と`plugin-self-build`の文書とWorkspaceが含まれるが、受理前の`9310d97f`では、`reference/workspace`と`reference/world.json`は1d8fcc95、`d3aab052`、このブランチのHEADで同じだった。受理後は、この二つを変えたのは受理commitだけである。revisionは`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`のままである。取り込み後のtreeでpreview / reviewを読み取りだけで再生成すると、既存の`preview.json`と`review.txt`とbyte単位で一致し、fingerprintも変わらない。
 
 **完了条件のチェック。** 実証記録Bの作業では、完了条件のチェックを一つも付けていない。完了条件にある四つのチェック（2026-10-05）は実証記録Aに属し、この記録Bの受理と画面の確定までの一周を完了させるものではない。
 
@@ -132,21 +132,23 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 
 **受理の記録。**
 
-- 受理: 2026-10-08、owner。作業指示には、owner がチャットで「受理する（推奨）」と回答したと記載されていた。この記録を作成したエージェントは、そのチャット上の回答を直接確認していない。
-- 提示: 作業指示では、owner に規則、第一の受注明細だけを評価するという制限、fingerprint、影響が示されたとされる。エージェントはその提示を確認していない。
-- 審査の全文: `plan/issue/000075-practical-b/review.txt`は全文がリポジトリにある。全文を読んだという記録はない。
-- 決定記録: `reference/workspace/.tei/decisions/a043abc84702feb4a4558e2fbfd6fa17bd60867075f65d126d648998a11f2523.json`（`decision`は`accepted`、candidate `cand-order-line-number-positive`）。決定記録のoriginは`ai` / `claude-haiku-5-5`であり、人間の承認者は記録に含まれない。
-- candidate fingerprint: `sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51`
-- review fingerprint: `sha256:9eb0f1ed5513820a03857f148981ce7678e91af4cd486212f3249b3046c4babb`
+- 受理: 2026-10-08。この会話で、受理するかどうかの質問に対し、リポジトリのowner（hat47x）が「受理する（推奨）」と回答した（Claude Code sessionの質問への回答）。
+- 同じ質問への回答: `resolve.go`の緩和は「残す（推奨）」、評価範囲は「先頭明細のみ（推奨）」、ADR-0029の残骸の行は「削除する（推奨）」。
+- 直前に提示した内容: 規則`sales.order_line.line_number_positive`（kind `positive`、attribute `sales.order_line.line_number`）、先頭の受注明細だけを評価する制限、candidate fingerprintとreview fingerprint、受理で起きること（`reference/workspace`と`reference/world.json`が変わり、現在の`main`ではGate Cのarchitecture conformance toolが停止し得ること）。
+- 提示していないこと: `review.txt`の全文と、部分的にしか確かめられていないsection（A2 影響、A3 例外・診断、A5 権限の変更、A6 native code、A7 逆追跡）の詳細。ownerが全文を読んだという記録はない。
+- 手続き: `accept`を`-expected-review-fingerprint sha256:9eb0f1ed…`と`-allow-reference-baseline`（baseline保護の上書きを明示）付きで実行した。決定記録のoriginは候補の`ai` / `claude-haiku-5-5`であり、ツールは承認者を記録しない。`decisions`の照会では`decisionActorStatus`が`unresolved`になる。承認の根拠は、上の回答であり、決定記録ではない。
+- candidate fingerprint: `sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51`。review fingerprint: `sha256:9eb0f1ed5513820a03857f148981ce7678e91af4cd486212f3249b3046c4babb`。
 - revision: 受理前は`sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4`、受理後は`sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2`。
+- 決定記録: `reference/workspace/.tei/decisions/a043abc84702feb4a4558e2fbfd6fa17bd60867075f65d126d648998a11f2523.json`。
 - 変わったもの: `applications/order-entry/application.tei`（`uses validation`を一行）、`semantic/sales/validation.tei`（validationを一件）、`reference/world.json`（派生物）、決定記録一件。受理後のConformanceは七件すべてpassedである。
-- 受理commit: `work/accept-practical-b`の次のcommit。そのhashは、このcommitの中には書けない。
-- 期待値の更新: 受理により`order_entry`の宣言数が二件から三件になったため、宣言数に依存していたtestの期待値を同じcommitで直した。assertionは弱めていない。実証記録Bのtestは、受理前の状態をscratch copyへ戻してから受理を試す（revertを確かめてから使う）。
+- このbranchに含まれる、受理より前からのコード変更: `tools/reference-shared-acceptance/resolve.go`（同じcandidateで追加する規則を`uses validation`から参照できる緩和。`deltaValidations`）、`internal/driver/practical_b_line_number_test.go`、`plan/issue/000075-practical-b/`（候補、preview、review）。
+- 期待値の更新: 宣言数が二件から三件になったため、宣言数に依存するtestの期待値を同じbranchで直した。assertionは弱めていない。
+- ADR-0029の影響節は「Evidence auditの期待値（Validation 2件）は変えない」と述べている。この受理後は成功経路の期待値が3件になっている。採用済みADRの本文は書き換えず、この記録で補う。
 - 残る制限: Commandの評価は、読み取った一覧の最初の受注明細だけを見る（`quantity_positive`と同じ制限）。全明細への適用は、この受理では主張しない。
 
 **証明していないこと。**
 
-- owner による受理の事実。受理は作業指示に記載された回答を根拠に行った（下の「受理の記録」を参照）。
+- owner による受理の事実の検証。受理の根拠は、この会話での回答であり、ownerが`review.txt`の全文を読んだという記録はない。
 - Gate BまたはGate Cの Evidence。既存のhistorical evidenceは書き換えていない。
 - HTTPとブラウザの画面。ここで通したのは、第一Web Targetの確定経路が使うCommand runnerを、同じworldに対して直接呼ぶところまでである。
 - 実画面の既定データでの不成立。画面の既定データ（`tools/reference-first-web-target/read_scenario.go`の`find_by_order`のfixture）の行番号は、どの注文でも1と2だけである。そのため、行番号の観点では、実画面で新しい規則はsatisfiedとしてだけ現れる。0による不成立は、読み取り結果を差し替えたtestでだけ観測された。
@@ -154,9 +156,11 @@ intentの変更はcandidate fingerprintには現れず、review fingerprintに�
 
 **owner が決めること。**
 
-1. （2026-10-08に受理した。）`sales.order_line.line_number_positive`を`reference/workspace`へ受理するか。受理するなら、この候補のreview fingerprint（上記）を指定し、Shared Acceptance Boundaryで受理する。ただし、ADR-0029の影響節が述べるとおり、`reference/workspace`を変えると、Gate Cのarchitecture conformance toolは、RからTの間で`reference/workspace`と`reference/world.json`が変わらないことを要求するため、停止し得る。受理の後も現在の`main`に対してGate Cのtoolを再実行するには、後継のHandover Baselineを立てるかを決める必要がある。
-2. `resolve.go`の緩和を、Shared Acceptance Boundaryの変更として採るか。採らない場合は、規則の追加（`add-validation`）と宣言（`add-application-validation-use`）を二つのcandidateに分けて受理する。その場合、一つ目の受理の後には、どこからも宣言されていない規則が一時的に存在する。
-3. 行番号の規則を、最初の受注明細だけに適用し続けるか、全明細へ広げるか。現在の評価は一つの値を見る形なので、全明細へ広げるには評価の形を決める必要がある。
+1. 2026-10-08に受理した（上の「受理の記録」）。
+2. 2026-10-08に「残す（推奨）」と回答した。`resolve.go`の緩和は、Shared Acceptance Boundaryの変更として残る。
+3. 2026-10-08に「先頭明細のみ（推奨）」と回答した。全明細への適用は、評価の形を変える別の提案として扱う。
+
+受理は、Gate Cのarchitecture conformance toolを現在の`main`で停止させ得る。後継Handoverを今は発行しないという判断は、2026-10-06にownerが行っている（[ISSUE-000073](../issue/000073-derive-validation-selection-from-canonical.md)）。
 
 **再現。**
 
