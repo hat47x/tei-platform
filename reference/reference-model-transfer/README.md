@@ -34,3 +34,11 @@ relational factの存在はlowering可能性の証明にも使いません。内
 
 - `../../plan/design/REFERENCE_MODEL_SOURCE_ADAPTER_V0.md` — Repository外のObserved Documentとpublic Publication Receiptを分ける#950の設計境界
 - `../../tools/reference-xead-source-adapter/` — Xead / Xeaf full-source accountingとsource fact projectionのReference実装
+
+## Source profile boundary
+
+`transcription-contract-v0.json` schema v2は、Xead / Xeafの対応source profileを明示する。現在のReferenceは両方ともroot `System`、`FormatVersion 1.2`を宣言する。
+
+raw `Observe`は未対応versionでもローカルEvidenceとして読み取りを試みるが、classification / coverage / local candidate mappingは、contract-declared profileへ一致しなければfail closedとする。
+
+`transcription-map-v0.json`とR0 coverageは旧contract blobに結び付いた履歴Evidenceである。current contractへ自動的に再帰属させず、source profile Gateを含む再実行前にはcurrent coverageを主張しない。
