@@ -1,0 +1,80 @@
+# Shared Acceptance Review
+candidate: cand-order-line-number-positive
+intent: 受注明細の行番号（sales.order_line.line_number）は1から始まるため、0以下を業務上の不成立とするValidationを一件追加し、order_entryが評価する宣言として正本へ置く。この規則は、Canonicalな意味では受注明細ごとに適用される。ただし現在のCommand経路は、読み取った一覧の最初の受注明細だけを評価する（既存のquantity_positiveと同じ制限）。この候補は、全明細への評価を広げることを主張しない。
+candidate fingerprint: sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51
+evidence fingerprint: sha256:54eb30be346e118b2aa6d6115cf82dd7235205726260439ca5ad56bef7104c5b
+review fingerprint: sha256:9eb0f1ed5513820a03857f148981ce7678e91af4cd486212f3249b3046c4babb
+machine preview: 受入可能
+coverage: 表示可能 3 / 一部 5 / 未評価 0
+確認が残るsection: A2 影響 [一部], A3 例外・診断 [一部], A5 権限の変更 [一部], A6 native codeへ残る箇所 [一部], A7 逆追跡 [一部]
+
+## A1 意味差分 [表示可能]
+要約: semantic 1件 / application 1件 / environment 0件
+- changed application:order_entry
+- added validation:sales.order_line.line_number_positive
+根拠: preview.semanticDiff, preview.applicationDiff, preview.environmentDiff
+
+## A2 影響 [一部]
+要約: impact 16本 / unresolved 2件
+- application:order_entry -> contract:master_data.customer via application.database.requires-contract: Applicationがalias master で要求しているDatabase Contractである
+- application:order_entry -> contract:sales_core.order via application.database.requires-contract: Applicationがalias sales で要求しているDatabase Contractである
+- application:order_entry -> contract:sales_core.order_line via application.database.requires-contract: Applicationがalias sales で要求しているDatabase Contractである
+- application:order_entry -> database:master_data via application.database.target: Applicationがalias master で要求しているDatabaseである
+- application:order_entry -> database:sales_core via application.database.target: Applicationがalias sales で要求しているDatabaseである
+- application:order_entry -> namespace:customer via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである
+- application:order_entry -> namespace:sales via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである
+- application:order_entry -> namespace:security via application.uses-semantic-namespace: Applicationが利用宣言しているsemantic namespaceである
+- application:order_entry -> validation:sales.order.lines.line_number_unique via application.uses-validation: Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）
+- application:order_entry -> validation:sales.order_line.line_number_positive via application.uses-validation: Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）
+- application:order_entry -> validation:sales.order_line.quantity_positive via application.uses-validation: Applicationが評価するValidationとして`uses validation`で宣言している（宣言順が評価順になる）
+- attribute:sales.order_line.line_number -> data:sales.order_line via semantic.data.attribute: AttributeはこのDataが宣言している
+- data:sales.order_line -> relation:sales.order.lines via semantic.relation.target: Relationのtargetがこのデータである
+- relation:sales.order.lines -> application-pattern:order_entry.order_lines via application.pattern.relation: Application PatternがこのRelationを明示的に参照している
+- validation:sales.order_line.line_number_positive -> application:order_entry via application.uses-semantic-namespace: ApplicationがValidationの属するsemantic namespaceを利用宣言している
+- validation:sales.order_line.line_number_positive -> attribute:sales.order_line.line_number via semantic.validation.attribute: Validationが制約対象として宣言したAttributeである
+根拠: preview.impact, preview.unresolved
+注記: 解析できなかった範囲があります。A4 未解決点を確認してください
+
+## A3 例外・診断 [一部]
+要約: diagnostic 0件 / semantic evaluation 0件
+- 受入stageのerror diagnosticなし / semantic evaluation artifactなし
+根拠: preview.stages[*].diagnostics, candidate.evidence[*].artifact
+注記: 受入stageと添付Evaluation artifactのdiagnosticを表示します。Evaluationのpass / fail / unknownは根拠であり、それ自体からAccept / Rejectを自動導出しません
+
+## A4 未解決点 [表示可能]
+要約: unresolved 2件
+- DRIVER_SCENARIO_NOT_RUN - 解析はDriver scenarioを実行しない。実行結果への影響はこの解析の根拠にしていない
+- TARGET_PROJECTION_NOT_EVALUATED - 解析はWeb Target Projectionを評価しない。World直下の他collectionが不変であること以上は主張しない
+根拠: preview.unresolved
+
+## A5 権限の変更 [一部]
+要約: runtime authority grant 0件 / effective authority impact 未評価
+- candidateがauthorするruntime authority grant: 0件（現行operationはPermission grant / Resource binding / lease / execution principalをauthorしません）
+- changed collections: applications, semantics
+根拠: candidate.delta, preview.unresolved, preview.changedCollections
+注記: 既存のPermission grant / leaseが変更後のApplicationや新しいbindingへどう及ぶかは評価していません。candidate自身がgrantをauthorしないことと、実効権限が変わらないことは別です
+
+## A6 native codeへ残る箇所 [一部]
+要約: native code authoring 0件 / residual native dependency impact 未評価
+- candidateがauthorするnative code: 0件（現行operationはcustomGoBindingsをauthorしません）
+- customGoBindings collection: unchanged
+根拠: candidate.delta, preview.changedCollections, preview.unchangedCollections
+注記: 既存custom implementationのどこが変更subjectに依存し、残存・再実装・確認を要するかはまだ追跡していません
+
+## A7 逆追跡 [一部]
+要約: Evidence 2件 / source edit 2件
+- candidateFingerprint: sha256:da12cd6346a7e02b81359ec95f7a52709be1a9898329995bd7d7f0fadc869f51
+- baseModelRevision: sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4
+- currentModelRevision: sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4
+- evidenceFingerprint: sha256:54eb30be346e118b2aa6d6115cf82dd7235205726260439ca5ad56bef7104c5b
+- Evidence: source=applications/order-entry/application.tei note=order_entryは既存のquantity_positiveとline_number_uniqueを宣言順に評価している。新しい宣言はその後ろへ入る。
+- Evidence: subject=sales.order_line.line_number note=新しいValidationが参照するattribute。Canonical Worldに既に存在し、line_number_uniqueでも使われている。
+- source edit: applications/order-entry/application.tei layer=application after=sha256:42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f
+- source edit: semantic/sales/validation.tei layer=semantic after=sha256:396c37c4cace1d91b8f6e35fd31d69eb1d45e7ff525ade5e97d808189024de40
+根拠: candidate.evidence, preview.candidateFingerprint, preview.evidenceFingerprint, preview.sourceEdits
+注記: Source Index Evidenceとartifact Evidenceを分離して表示します。artifact Evidenceは受理時に見たexact artifactを固定しますが、現在のEvaluator / Conformance状態を再実行・再証明したことにはなりません
+
+## A8 承認単位の大きさ [表示可能]
+要約: 2 / 8
+- 変更subject数 2 / 上限 8
+根拠: preview.semanticDiff, preview.applicationDiff, preview.environmentDiff, acceptance-policy.maxSubjectChanges

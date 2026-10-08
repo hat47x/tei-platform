@@ -86,9 +86,10 @@ func TestReferenceApplicationsResolveTheirDeclaredValidationSelection(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rules) != 2 ||
+	if len(rules) != 3 ||
 		rules[0].ID != "sales.order_line.quantity_positive" ||
-		rules[1].ID != "sales.order.lines.line_number_unique" {
+		rules[1].ID != "sales.order.lines.line_number_unique" ||
+		rules[2].ID != "sales.order_line.line_number_positive" {
 		t.Fatalf("order_entry selection=%+v", rules)
 	}
 

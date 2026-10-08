@@ -199,9 +199,12 @@ func TestOrderEntryGateBScenarioConnectsMajorBoundariesWithoutUI(t *testing.T) {
 	}
 
 	// 6. Canonical業務Validation。header-detailで得た値を同じScenarioのValidation sourceへ渡す。
+	// line_number_positiveは先頭の受注明細の行番号を評価する（Command経路の評価対象と同じ行）。
+	orderLineNumbers := gateBScenarioLineNumbers(t, headerDetailExecution.Execution.Result.Rows)
 	validationSource := submitOrderValidationSource{
 		quantity:    gateBScenarioQuantity(t, headerDetailExecution.Execution.Result.Rows[0]),
-		lineNumbers: gateBScenarioLineNumbers(t, headerDetailExecution.Execution.Result.Rows),
+		lineNumber:  mustRat(t, orderLineNumbers[0]),
+		lineNumbers: orderLineNumbers,
 	}
 	for _, rule := range orderEntryValidations(t, world) {
 		result, err := validationeval.Evaluate(rule, validationSource)

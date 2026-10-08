@@ -448,6 +448,12 @@
           "relation": "sales.order.lines"
         },
         {
+          "id": "sales.order_line.line_number_positive",
+          "symbol": "line_number_positive",
+          "kind": "positive",
+          "attribute": "sales.order_line.line_number"
+        },
+        {
           "id": "sales.order_line.quantity_positive",
           "symbol": "quantity_positive",
           "kind": "positive",
@@ -676,7 +682,8 @@
       ],
       "validations": [
         "sales.order_line.quantity_positive",
-        "sales.order.lines.line_number_unique"
+        "sales.order.lines.line_number_unique",
+        "sales.order_line.line_number_positive"
       ],
       "databases": [
         {
