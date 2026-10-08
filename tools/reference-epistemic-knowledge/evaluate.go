@@ -537,7 +537,10 @@ func resolutionCoverageEligible(assertion Assertion, assessment Assessment) bool
 }
 
 func resolutionCoverageResolved(assertion Assertion, assessment Assessment) bool {
-	if assessment.ConfirmationState == "confirmed" || assessment.ConfirmationState == "rejected" {
+	if assessment.ConfirmationState == "rejected" {
+		return true
+	}
+	if assessment.ConfirmationState == "confirmed" && assessment.UseState == "premise" {
 		return true
 	}
 	return assertion.Origin == OriginUser &&
@@ -562,7 +565,7 @@ func assessResolutionCoverage(
 		}
 		out.Eligible++
 		switch {
-		case assessment.ConfirmationState == "confirmed":
+		case assessment.ConfirmationState == "confirmed" && assessment.UseState == "premise":
 			out.Confirmed++
 			out.Resolved++
 		case assessment.ConfirmationState == "rejected":
