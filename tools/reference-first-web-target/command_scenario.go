@@ -10,9 +10,9 @@ import (
 	"tei/internal/driver"
 	"tei/internal/ir"
 	"tei/internal/realization"
-	"tei/internal/semantic"
 	"tei/internal/security/legacyauth"
 	"tei/internal/security/legacyauthorization"
+	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/semantic/validationeval"
 )
