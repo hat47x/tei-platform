@@ -160,7 +160,6 @@ func TestDiagnoseRelationalSourceFactsReportsCompositeKeyArityMismatchWithoutRep
 	}
 }
 
-
 func TestDiagnoseRelationalSourceFactsRejectsDuplicateLegacyTableIdentity(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T1"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Table ID="T2"><TableField ID="C"/><TableKey ID="K3" Type="PK"><TableKeyField FieldID="C"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K3"/></System>`))
 	if err != nil {
@@ -233,7 +232,6 @@ func TestDiagnoseRelationalSourceFactsRejectsDuplicateXeafReferFieldIdentity(t *
 	}
 }
 
-
 func TestDiagnoseRelationalSourceFactsPropagatesDuplicateFieldAmbiguityToRelationship(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableField ID="A"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
@@ -256,7 +254,6 @@ func TestDiagnoseRelationalSourceFactsPropagatesDuplicateFieldAmbiguityToRelatio
 		t.Fatalf("relationship did not inherit duplicate field ambiguity: %#v", got)
 	}
 }
-
 
 func TestDiagnoseRelationalSourceFactsReportsMissingTableAndFieldIdentity(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table><TableField/><TableField ID="A"/></Table><Table ID="T1"><TableField/><TableField ID="B"/></Table></System>`))
@@ -284,7 +281,6 @@ func TestDiagnoseRelationalSourceFactsReportsMissingTableAndFieldIdentity(t *tes
 		t.Fatalf("missing source identities were not diagnosed independently: %#v", got)
 	}
 }
-
 
 func TestDiagnoseRelationalSourceFactsReportsMissingLegacyKeyAndRelationshipIdentity(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="A"/><TableKey Type="PK"><TableKeyField FieldID="A"/></TableKey></Table><Table ID="T2"><TableField ID="B"/><TableKey ID="K2" Type="PK"><TableKeyField FieldID="B"/></TableKey></Table><Relationship Table1ID="T1" Table2ID="T2" TableKey2ID="K2"/></System>`))

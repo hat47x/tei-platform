@@ -77,19 +77,19 @@ type factResolutionSummary struct {
 }
 
 type report struct {
-	SchemaVersion                    string                  `json:"schemaVersion"`
-	Source                           sourceIdentity          `json:"source"`
-	Inventory                        []inventorySummaryEntry `json:"inventory"`
-	UnknownConstructCount            int                     `json:"unknownConstructCount"`
-	Candidates                       candidateSummary        `json:"candidates"`
-	RelationalFacts                  factSummary             `json:"relationalFacts"`
-	RelationalDiagnostics            diagnosticSummary       `json:"relationalDiagnostics"`
-	RelationalFactResolutions         factResolutionSummary   `json:"relationalFactResolutions"`
-	RelationalResolutionStatus        string                  `json:"relationalResolutionStatus"`
-	RelationalResolutionPolicyRevision string                 `json:"relationalResolutionPolicyRevision"`
-	ClassificationPolicyFingerprint  string                  `json:"classificationPolicyFingerprint"`
-	TranscriptionContractFingerprint string                  `json:"transcriptionContractFingerprint"`
-	AuthorityLimits                  []string                `json:"authorityLimits"`
+	SchemaVersion                      string                  `json:"schemaVersion"`
+	Source                             sourceIdentity          `json:"source"`
+	Inventory                          []inventorySummaryEntry `json:"inventory"`
+	UnknownConstructCount              int                     `json:"unknownConstructCount"`
+	Candidates                         candidateSummary        `json:"candidates"`
+	RelationalFacts                    factSummary             `json:"relationalFacts"`
+	RelationalDiagnostics              diagnosticSummary       `json:"relationalDiagnostics"`
+	RelationalFactResolutions          factResolutionSummary   `json:"relationalFactResolutions"`
+	RelationalResolutionStatus         string                  `json:"relationalResolutionStatus"`
+	RelationalResolutionPolicyRevision string                  `json:"relationalResolutionPolicyRevision"`
+	ClassificationPolicyFingerprint    string                  `json:"classificationPolicyFingerprint"`
+	TranscriptionContractFingerprint   string                  `json:"transcriptionContractFingerprint"`
+	AuthorityLimits                    []string                `json:"authorityLimits"`
 }
 
 func main() {
@@ -146,16 +146,16 @@ func buildReport(inspection xeadsource.Inspection) report {
 			Format: inspection.Document.Format,
 			SHA256: inspection.Document.SHA256,
 		},
-		Inventory:                        summarizeInventory(inspection.Document.Inventory),
-		UnknownConstructCount:            countUnknownInventory(inspection.Document.Inventory),
-		Candidates:                       summarizeCandidates(inspection.Candidates),
-		RelationalFacts:                  summarizeFacts(inspection.RelationalFacts),
-		RelationalDiagnostics:            summarizeDiagnostics(inspection.Document.SHA256, inspection.RelationalDiagnostics),
+		Inventory:                          summarizeInventory(inspection.Document.Inventory),
+		UnknownConstructCount:              countUnknownInventory(inspection.Document.Inventory),
+		Candidates:                         summarizeCandidates(inspection.Candidates),
+		RelationalFacts:                    summarizeFacts(inspection.RelationalFacts),
+		RelationalDiagnostics:              summarizeDiagnostics(inspection.Document.SHA256, inspection.RelationalDiagnostics),
 		RelationalFactResolutions:          summarizeFactResolutions(inspection.RelationalFactResolutions),
 		RelationalResolutionStatus:         inspection.RelationalResolutionStatus,
 		RelationalResolutionPolicyRevision: inspection.RelationalResolutionPolicyRevision,
-		ClassificationPolicyFingerprint:  inspection.ClassificationPolicyFingerprint,
-		TranscriptionContractFingerprint: inspection.TranscriptionContractFingerprint,
+		ClassificationPolicyFingerprint:    inspection.ClassificationPolicyFingerprint,
+		TranscriptionContractFingerprint:   inspection.TranscriptionContractFingerprint,
 		AuthorityLimits: append(
 			append([]string(nil), inspection.AuthorityLimits...),
 			"public-diagnostic-token-does-not-hash-source-derived-locator-names",
@@ -300,7 +300,6 @@ func summarizeDiagnostics(
 	})
 	return out
 }
-
 
 func summarizeFactResolutions(values []xeadsource.RelationalFactResolution) factResolutionSummary {
 	out := factResolutionSummary{

@@ -111,7 +111,6 @@ func TestInspectWithoutPolicyKeepsAllCandidateMeaningUnresolved(t *testing.T) {
 	}
 }
 
-
 func TestInspectMarksRelationalFactsResolvedOnlyWithoutDiagnostics(t *testing.T) {
 	got, err := Inspect(
 		FormatXead,
@@ -132,7 +131,6 @@ func TestInspectMarksRelationalFactsResolvedOnlyWithoutDiagnostics(t *testing.T)
 		t.Fatalf("valid key did not receive resolved local status: %#v", got.RelationalFactResolutions)
 	}
 }
-
 
 func TestInspectKeepsResolvedFactsUsableWhenAnotherFactIsUnresolved(t *testing.T) {
 	got, err := Inspect(
@@ -188,7 +186,6 @@ func TestInspectMarksAllDuplicateLegacyKeyOccurrencesUnresolved(t *testing.T) {
 	}
 }
 
-
 func TestInspectKeepsGlobalSourceIdentityDiagnosticUnresolvedWithoutRelationalFacts(t *testing.T) {
 	got, err := Inspect(
 		FormatXead,
@@ -209,7 +206,6 @@ func TestInspectKeepsGlobalSourceIdentityDiagnosticUnresolvedWithoutRelationalFa
 		t.Fatalf("missing table/field identity diagnostics were lost: %#v", got)
 	}
 }
-
 
 func TestInspectPropagatesKeyMemberAmbiguityOnlyToDependentRelationship(t *testing.T) {
 	got, err := Inspect(
