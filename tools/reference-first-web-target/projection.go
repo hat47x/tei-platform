@@ -110,6 +110,7 @@ func buildWebTargetProjection(world ir.World, cfg projectionConfig) (webTargetPr
 		AuthorityLimits: []string{
 			"projection-is-derived-not-canonical",
 			"presentation-candidate-is-target-local",
+			"target-or-presentation-identity-is-not-business-data-identity",
 			"web-target-does-not-author-validation-or-authorization",
 			"business-result-execution-error-observation-remain-distinct",
 			"target-build-revision-is-recorded-by-evidence-not-baseline",

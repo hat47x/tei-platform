@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"tei/internal/application"
 	apprelease "tei/internal/application/release"
@@ -80,6 +81,9 @@ func main() {
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
+	knowledgeDisclosure := fs.String("disclose", "", "comma-separated Knowledge sections to disclose: source,definition,dependencies,data-design")
+	expectedDisclosureFingerprint := fs.String("expected-disclosure-fingerprint", "", "expected selective Knowledge Disclosure fingerprint; requires -disclose")
 	qualificationRequirementsPath := fs.String("qualification-requirements", "", "knowledge qualification requirements JSON")
 	var analysisPaths pathList
 	var schemaPaths pathList
@@ -149,6 +153,27 @@ func main() {
 		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(*knowledgeDisclosure) != "" {
+			disclosure, err := buildKnowledgeDisclosure(context, *knowledgeDisclosure)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(2)
+			}
+			if err := checkKnowledgeDisclosureFingerprint(disclosure, *expectedDisclosureFingerprint); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			writeJSON(disclosure)
+			return
+		}
+		if strings.TrimSpace(*expectedDisclosureFingerprint) != "" {
+			fmt.Fprintln(os.Stderr, "-expected-disclosure-fingerprint requires -disclose")
 			os.Exit(2)
 		}
 		writeJSON(context)

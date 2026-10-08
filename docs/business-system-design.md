@@ -99,6 +99,10 @@ Data設計時には、必要に応じて次を確認します。
 
 `identifier`、`external_id`、`code`等の属性名も、業務識別の根拠にはしません。業務上の識別条件がacceptedである場合は、その構成項目に加えて、一意性が成立するscope、時間・履歴条件、Relation / Constraint、Sourceへ追跡できるようにします。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示します。
 
+時間・履歴を扱う場合は、business occurrenceそのもののidentityと、そのoccurrenceの履歴versionを識別するidentityを分けます。適用開始日、履歴番号、version番号、最新フラグ、日時型Attributeが存在することだけを根拠に、それらをbusiness occurrence identifierへ含めません。反対に、時点ごとに別occurrenceとして扱う業務を、名称だけから同一occurrenceの履歴とも決めません。
+
+validity period、identifier reuse、state transition、current-state selection等の時間意味は、業務上必要な場合にSource / Contractへ戻って確定します。履歴table、Event Sourcing、Bitemporal Model等を通常のDataへ一律に導入しません。
+
 ### identityと表記・正規化を分ける
 
 同じ業務対象が、外部Systemごとに異なる文字表記、符号化、コード体系、表示形式を持つことがあります。TEIでは、business identityを一つの文字列表現や正規化規則と同一視しません。

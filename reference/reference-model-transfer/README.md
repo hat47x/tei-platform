@@ -12,9 +12,11 @@
 - `source-inventory.json` — model構造のaggregate inventory。source constructの母集団
 - `initial-pressure-register.json` — 旧Runtimeでは暗黙でも成立した点をTEIへ移す際の初期pressure
 - `transcription-contract-v0.json` — RMT-2のconstruct分類、Plugin / Extension責務、source locator停止線を定めるcandidate contract
+- `transcription-map-v0.json` — full-source inventoryをconstruct kind単位でclassification / Extensionへ割り当てたaggregate candidate map
+- `cross-view-accounting-v0.json` — Data / Function-Interaction / Business / Xeaf correspondenceを原モデル本文なしで集約したRMT-2 cross-view Evidence
 - `loss-ledger.json` — 転写時に推測で埋めてはいけないloss / unresolved / unsupportedの初期台帳
 
-これらはRMT-0 / RMT-1の開始Evidenceです。TEIへのtranscription完了、original Runtimeとのbehavior equivalence、Reference Modelの再配布許諾を意味しません。
+RMT-0 / RMT-1の開始Evidenceに加え、`transcription-map-v0.json`はRMT-2のaggregate candidate Evidenceです。TEIへのtranscription完了、original Runtimeとのbehavior equivalence、Reference Modelの再配布許諾を意味しません。
 
 RMT-2のsource-faithful adapter候補は `internal/xeadsource` に置きます。そこではraw source treeに加え、legacy key / Relationship key reference / declared `KeyFields`をsource factとして機械可読化できます。ただし、それらはbusiness identifier、candidate key、functional dependency、Canonical identity、physical key authorityではありません。AI / Studio / CLIが利用する場合も、candidate classificationとauthority limitを同時に扱います。
 
@@ -27,3 +29,8 @@ relational factの存在はlowering可能性の証明にも使いません。内
 - source nodeを落とす場合は`loss-ledger`へ明示する
 - model proseから抽出した意味をAccepted Canonicalへ自動昇格しない
 - original contentの転載が必要な場合は利用条件を先に確認する
+
+## Source Adapter Reference
+
+- `../../plan/design/REFERENCE_MODEL_SOURCE_ADAPTER_V0.md` — Repository外のObserved Documentとpublic Publication Receiptを分ける#950の設計境界
+- `../../tools/reference-xead-source-adapter/` — Xead / Xeaf full-source accountingとsource fact projectionのReference実装

@@ -8,3 +8,7 @@ validation sales.order.lines.line_number_unique relation-unique {
     relation sales.order.lines
     attribute sales.order_line.line_number
 }
+
+validation sales.order_line.line_number_positive positive {
+    attribute sales.order_line.line_number
+}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -34,15 +35,59 @@ const (
 	TrustExternalProcess TrustClass = "external-process"
 )
 
+type RuntimeEngineIdentity struct {
+	ID                   core.CanonicalID `json:"id"`
+	Version              string           `json:"version"`
+	ContractVersion      string           `json:"contractVersion"`
+	ImplementationDigest string           `json:"implementationDigest"`
+	Target               string           `json:"target"`
+}
+
+func (e RuntimeEngineIdentity) Validate() error {
+	if e.ID == "" {
+		return fmt.Errorf("runtime engine id is required")
+	}
+	if _, err := core.ParseCanonicalID(string(e.ID)); err != nil {
+		return fmt.Errorf("runtime engine id: %w", err)
+	}
+	if strings.TrimSpace(e.Version) == "" {
+		return fmt.Errorf("runtime engine version is required")
+	}
+	if strings.TrimSpace(e.ContractVersion) == "" {
+		return fmt.Errorf("runtime engine contract version is required")
+	}
+	if err := validateRuntimeSHA256("runtime engine implementation digest", e.ImplementationDigest); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.Target) == "" {
+		return fmt.Errorf("runtime engine target is required")
+	}
+	return nil
+}
+
+func RuntimeEngineIdentityFingerprint(e RuntimeEngineIdentity) (string, error) {
+	if err := e.Validate(); err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(e)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
 type PluginRuntime struct {
-	Plugin                plugin.Identity      `json:"plugin"`
-	DescriptorFingerprint string               `json:"descriptorFingerprint"`
-	Boundary              Boundary             `json:"boundary"`
-	Trust                 TrustClass           `json:"trust"`
-	Command               string               `json:"command,omitempty"`
-	Args                  []string             `json:"args,omitempty"`
-	SandboxPolicy         plugin.SandboxPolicy `json:"sandboxPolicy,omitempty"`
-	Artifact              plugin.Artifact      `json:"artifact,omitempty"`
+	Plugin                plugin.Identity        `json:"plugin"`
+	DescriptorFingerprint string                 `json:"descriptorFingerprint"`
+	BuildPlanFingerprint  string                 `json:"buildPlanFingerprint,omitempty"`
+	RuntimeEngine         *RuntimeEngineIdentity `json:"runtimeEngine,omitempty"`
+	Boundary              Boundary               `json:"boundary"`
+	Trust                 TrustClass             `json:"trust"`
+	Command               string                 `json:"command,omitempty"`
+	Args                  []string               `json:"args,omitempty"`
+	SandboxPolicy         plugin.SandboxPolicy   `json:"sandboxPolicy,omitempty"`
+	Artifact              plugin.Artifact        `json:"artifact,omitempty"`
 }
 
 type CapabilityRuntime struct {
@@ -55,11 +100,12 @@ type CapabilityRuntime struct {
 }
 
 type EnvironmentPlan struct {
-	Environment              core.CanonicalID    `json:"environment"`
-	PluginLockFingerprint    string              `json:"pluginLockFingerprint"`
-	RuntimePolicyFingerprint string              `json:"runtimePolicyFingerprint"`
-	Plugins                  []PluginRuntime     `json:"plugins"`
-	Capabilities             []CapabilityRuntime `json:"capabilities,omitempty"`
+	Environment                  core.CanonicalID    `json:"environment"`
+	PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
+	RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
+	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
+	Plugins                      []PluginRuntime     `json:"plugins"`
+	Capabilities                 []CapabilityRuntime `json:"capabilities,omitempty"`
 }
 
 func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) (EnvironmentPlan, error) {
@@ -81,7 +127,11 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 		if !ok {
 			return EnvironmentPlan{}, fmt.Errorf("resolved plugin %s@%s missing from catalog", ident.ID, ident.Version)
 		}
-		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), Command: d.Runtime.Command, Args: append([]string(nil), d.Runtime.Args...), SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
+		locked, ok := lockedPluginForEnvironment(lock, env.ID, ident)
+		if !ok {
+			return EnvironmentPlan{}, fmt.Errorf("resolved plugin %s@%s missing from plugin lock", ident.ID, ident.Version)
+		}
+		pr := PluginRuntime{Plugin: ident, DescriptorFingerprint: plugin.DefinitionFingerprint(d), BuildPlanFingerprint: locked.BuildPlanFingerprint, Command: d.Runtime.Command, Args: append([]string(nil), d.Runtime.Args...), SandboxPolicy: d.Runtime.Sandbox, Artifact: d.Artifact}
 		switch d.Runtime.Kind {
 		case plugin.RuntimeBuiltin:
 			pr.Boundary, pr.Trust = BoundaryInProcess, TrustHostTrusted
@@ -125,13 +175,76 @@ func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) 
 	return out, nil
 }
 
+func lockedPluginForEnvironment(lock plugin.Lock, environmentID core.CanonicalID, ident plugin.Identity) (plugin.LockedPlugin, bool) {
+	for _, environmentLock := range lock.Environments {
+		if environmentLock.Environment != environmentID {
+			continue
+		}
+		for _, locked := range environmentLock.Plugins {
+			if locked.ID == ident.ID && locked.Version == ident.Version {
+				return locked, true
+			}
+		}
+	}
+	return plugin.LockedPlugin{}, false
+}
+
+func bindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, engine RuntimeEngineIdentity) (EnvironmentPlan, error) {
+	if err := engine.Validate(); err != nil {
+		return EnvironmentPlan{}, err
+	}
+	out := plan
+	out.Plugins = append([]PluginRuntime(nil), plan.Plugins...)
+	for i := range out.Plugins {
+		if plan.Plugins[i].RuntimeEngine != nil {
+			copy := *plan.Plugins[i].RuntimeEngine
+			out.Plugins[i].RuntimeEngine = &copy
+		}
+	}
+
+	found := false
+	for i := range out.Plugins {
+		if out.Plugins[i].Plugin != identity {
+			continue
+		}
+		if found {
+			return EnvironmentPlan{}, fmt.Errorf("runtime plan contains plugin %s@%s more than once", identity.ID, identity.Version)
+		}
+		found = true
+		pr := &out.Plugins[i]
+		if pr.Boundary != BoundaryInProcess {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine binding requires in-process plugin %s@%s", identity.ID, identity.Version)
+		}
+		if pr.BuildPlanFingerprint == "" || pr.Artifact.Digest == "" {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine binding requires build-bound plugin %s@%s", identity.ID, identity.Version)
+		}
+		if pr.RuntimeEngine != nil && *pr.RuntimeEngine != engine {
+			return EnvironmentPlan{}, fmt.Errorf("runtime engine for plugin %s@%s is already bound to a different identity", identity.ID, identity.Version)
+		}
+		copy := engine
+		pr.RuntimeEngine = &copy
+	}
+	if !found {
+		return EnvironmentPlan{}, fmt.Errorf("runtime plan has no plugin %s@%s", identity.ID, identity.Version)
+	}
+	out.RuntimePolicyFingerprint = PolicyFingerprint(out)
+	return out, nil
+}
+
 func PolicyFingerprint(plan EnvironmentPlan) string {
 	payload := struct {
-		Environment           core.CanonicalID    `json:"environment"`
-		PluginLockFingerprint string              `json:"pluginLockFingerprint"`
-		Plugins               []PluginRuntime     `json:"plugins"`
-		Capabilities          []CapabilityRuntime `json:"capabilities"`
-	}{Environment: plan.Environment, PluginLockFingerprint: plan.PluginLockFingerprint, Plugins: append([]PluginRuntime(nil), plan.Plugins...), Capabilities: append([]CapabilityRuntime(nil), plan.Capabilities...)}
+		Environment                  core.CanonicalID    `json:"environment"`
+		PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
+		RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
+		Plugins                      []PluginRuntime     `json:"plugins"`
+		Capabilities                 []CapabilityRuntime `json:"capabilities"`
+	}{
+		Environment:                  plan.Environment,
+		PluginLockFingerprint:        plan.PluginLockFingerprint,
+		RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint,
+		Plugins:                      append([]PluginRuntime(nil), plan.Plugins...),
+		Capabilities:                 append([]CapabilityRuntime(nil), plan.Capabilities...),
+	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
@@ -235,6 +348,16 @@ type Builtin interface {
 	Invoke(context.Context, Request) (Response, error)
 }
 
+// BuiltinRegistration is Host-owned acceptance metadata for an in-process
+// realization. Build-bound Runtime locks are checked against this object rather
+// than trusting the Builtin implementation to self-report its own provenance.
+type BuiltinRegistration struct {
+	Builtin              Builtin               `json:"-"`
+	BuildPlanFingerprint string                `json:"buildPlanFingerprint"`
+	RealizationDigest    string                `json:"realizationDigest"`
+	RuntimeEngine        RuntimeEngineIdentity `json:"runtimeEngine"`
+}
+
 // ProcessCommand preserves executable and argv as separate values across the
 // Host boundary. It is never a shell command line and must not be reparsed by
 // ProcessLauncher implementations.
@@ -301,28 +424,32 @@ type ArtifactVerifier interface {
 }
 
 type InvocationProvenance struct {
-	RequestID                 string                       `json:"requestId"`
-	Environment               core.CanonicalID             `json:"environment"`
-	Plugin                    plugin.Identity              `json:"plugin"`
-	CapabilityKind            plugin.CapabilityKind        `json:"capabilityKind"`
-	CapabilityID              core.CanonicalID             `json:"capabilityId"`
-	DescriptorFingerprint     string                       `json:"descriptorFingerprint"`
-	PluginLockFingerprint     string                       `json:"pluginLockFingerprint"`
-	Artifact                  plugin.Artifact              `json:"artifact,omitempty"`
-	Verification              *ArtifactVerification        `json:"verification,omitempty"`
-	Boundary                  Boundary                     `json:"boundary"`
-	Sandboxed                 bool                         `json:"sandboxed"`
-	Permissions               []permission.Spec            `json:"permissionLease,omitempty"`
-	ResourceLeaseID           string                       `json:"resourceLeaseId,omitempty"`
-	ResourceLeaseExpiresAt    string                       `json:"resourceLeaseExpiresAt,omitempty"`
-	Resources                 []resource.Record            `json:"resources,omitempty"`
-	ResourceLeaseReleased     bool                         `json:"resourceLeaseReleased,omitempty"`
-	ResourceLeaseRevision     int                          `json:"resourceLeaseRevision,omitempty"`
-	ResourceLeaseFencingToken uint64                       `json:"resourceLeaseFencingToken,omitempty"`
-	ResourceLeaseRenewals     []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
-	ResourceLeaseRefreshes    []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
-	ResourceLeaseSupervision  []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
-	ResourceLeaseOwnership    []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
+	RequestID                    string                       `json:"requestId"`
+	Environment                  core.CanonicalID             `json:"environment"`
+	Plugin                       plugin.Identity              `json:"plugin"`
+	CapabilityKind               plugin.CapabilityKind        `json:"capabilityKind"`
+	CapabilityID                 core.CanonicalID             `json:"capabilityId"`
+	DescriptorFingerprint        string                       `json:"descriptorFingerprint"`
+	BuildPlanFingerprint         string                       `json:"buildPlanFingerprint,omitempty"`
+	RealizationDigest            string                       `json:"realizationDigest,omitempty"`
+	RuntimeEngineFingerprint     string                       `json:"runtimeEngineFingerprint,omitempty"`
+	RuntimeEngineLockFingerprint string                       `json:"runtimeEngineLockFingerprint,omitempty"`
+	PluginLockFingerprint        string                       `json:"pluginLockFingerprint"`
+	Artifact                     plugin.Artifact              `json:"artifact,omitempty"`
+	Verification                 *ArtifactVerification        `json:"verification,omitempty"`
+	Boundary                     Boundary                     `json:"boundary"`
+	Sandboxed                    bool                         `json:"sandboxed"`
+	Permissions                  []permission.Spec            `json:"permissionLease,omitempty"`
+	ResourceLeaseID              string                       `json:"resourceLeaseId,omitempty"`
+	ResourceLeaseExpiresAt       string                       `json:"resourceLeaseExpiresAt,omitempty"`
+	Resources                    []resource.Record            `json:"resources,omitempty"`
+	ResourceLeaseReleased        bool                         `json:"resourceLeaseReleased,omitempty"`
+	ResourceLeaseRevision        int                          `json:"resourceLeaseRevision,omitempty"`
+	ResourceLeaseFencingToken    uint64                       `json:"resourceLeaseFencingToken,omitempty"`
+	ResourceLeaseRenewals        []resource.RenewalRecord     `json:"resourceLeaseRenewals,omitempty"`
+	ResourceLeaseRefreshes       []resource.RefreshRecord     `json:"resourceLeaseRefreshes,omitempty"`
+	ResourceLeaseSupervision     []resource.SupervisionRecord `json:"resourceLeaseSupervision,omitempty"`
+	ResourceLeaseOwnership       []resource.OwnershipRecord   `json:"resourceLeaseOwnership,omitempty"`
 }
 
 type Invocation struct {
@@ -332,6 +459,7 @@ type Invocation struct {
 
 type Registry struct {
 	Builtins               map[string]Builtin
+	BuiltinRegistrations   map[string]BuiltinRegistration
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
@@ -342,6 +470,69 @@ type Registry struct {
 }
 
 func identityKey(i plugin.Identity) string { return string(i.ID) + "@" + i.Version }
+
+func validateRuntimeSHA256(label, value string) error {
+	if !strings.HasPrefix(value, "sha256:") {
+		return fmt.Errorf("%s must use sha256:<64-hex>", label)
+	}
+	hexPart := strings.TrimPrefix(value, "sha256:")
+	if len(hexPart) != 64 {
+		return fmt.Errorf("%s must contain 64 hex characters", label)
+	}
+	for _, r := range hexPart {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return fmt.Errorf("%s contains non-hex character", label)
+		}
+	}
+	return nil
+}
+
+func (r Registry) resolveBuiltinRegistration(pr PluginRuntime) (Builtin, string, string, error) {
+	key := identityKey(pr.Plugin)
+	if pr.BuildPlanFingerprint == "" {
+		impl, ok := r.Builtins[key]
+		if !ok {
+			return nil, "", "", fmt.Errorf("builtin plugin %s@%s is locked but not registered", pr.Plugin.ID, pr.Plugin.Version)
+		}
+		if pr.RuntimeEngine != nil {
+			return nil, "", "", fmt.Errorf("legacy builtin plugin %s@%s unexpectedly has runtime engine binding", pr.Plugin.ID, pr.Plugin.Version)
+		}
+		return impl, "", "", nil
+	}
+	if pr.Artifact.Digest == "" {
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no realization digest", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if pr.Artifact.SignatureRef != "" || pr.Artifact.Provenance != "" {
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s uses unsupported artifact signature/provenance metadata", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	registration, ok := r.BuiltinRegistrations[key]
+	if !ok || registration.Builtin == nil {
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no accepted realization registration", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if registration.BuildPlanFingerprint != pr.BuildPlanFingerprint {
+		return nil, "", "", fmt.Errorf("builtin realization build plan mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if registration.RealizationDigest != pr.Artifact.Digest {
+		return nil, "", "", fmt.Errorf("builtin realization digest mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if pr.RuntimeEngine == nil {
+		return nil, "", "", fmt.Errorf("build-bound builtin plugin %s@%s has no expected runtime engine", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	if err := pr.RuntimeEngine.Validate(); err != nil {
+		return nil, "", "", fmt.Errorf("runtime engine binding for %s@%s: %w", pr.Plugin.ID, pr.Plugin.Version, err)
+	}
+	if err := registration.RuntimeEngine.Validate(); err != nil {
+		return nil, "", "", fmt.Errorf("accepted runtime engine for %s@%s: %w", pr.Plugin.ID, pr.Plugin.Version, err)
+	}
+	if registration.RuntimeEngine != *pr.RuntimeEngine {
+		return nil, "", "", fmt.Errorf("runtime engine identity mismatch for %s@%s", pr.Plugin.ID, pr.Plugin.Version)
+	}
+	engineFingerprint, err := RuntimeEngineIdentityFingerprint(*pr.RuntimeEngine)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return registration.Builtin, registration.RealizationDigest, engineFingerprint, nil
+}
 
 func (r Registry) Invoke(ctx context.Context, plan EnvironmentPlan, kind plugin.CapabilityKind, id core.CanonicalID, operation, requestID string, payload any) (Response, error) {
 	inv, err := r.InvokeWithProvenance(ctx, plan, kind, id, operation, requestID, payload)
@@ -407,12 +598,13 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		return Invocation{}, fmt.Errorf("plugin runtime descriptor missing for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 	}
 
-	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
+	prov := InvocationProvenance{RequestID: requestID, Environment: plan.Environment, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, BuildPlanFingerprint: pr.BuildPlanFingerprint, RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Artifact: pr.Artifact, Boundary: cr.Boundary, Permissions: permission.Normalize(cr.Permissions)}
 
 	// Trust and execution-boundary checks happen before a resource lease is
 	// acquired. An unverifiable artifact or unavailable required sandbox must
 	// never receive even a short-lived secret/network/filesystem lease.
-	if pr.Artifact.Digest != "" {
+	var acceptedBuiltin Builtin
+	if pr.Artifact.Digest != "" && !(cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "") {
 		if r.Verifier == nil {
 			return Invocation{}, fmt.Errorf("plugin %s@%s declares artifact %s but host has no artifact verifier", cr.Plugin.ID, cr.Plugin.Version, pr.Artifact.Digest)
 		}
@@ -433,13 +625,19 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	}
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, ok := r.Builtins[identityKey(cr.Plugin)]
-		if !ok {
-			return Invocation{}, fmt.Errorf("builtin plugin %s@%s is locked but not registered", cr.Plugin.ID, cr.Plugin.Version)
+		if pr.BuildPlanFingerprint != "" && plan.RuntimeEngineLockFingerprint == "" {
+			return Invocation{}, fmt.Errorf("build-bound builtin plugin %s@%s has no runtime engine lock", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		impl, realizationDigest, runtimeEngineFingerprint, err := r.resolveBuiltinRegistration(*pr)
+		if err != nil {
+			return Invocation{}, err
 		}
 		if impl.Identity() != cr.Plugin || impl.DescriptorFingerprint() != pr.DescriptorFingerprint {
 			return Invocation{}, fmt.Errorf("builtin registry identity/descriptor mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
 		}
+		acceptedBuiltin = impl
+		prov.RealizationDigest = realizationDigest
+		prov.RuntimeEngineFingerprint = runtimeEngineFingerprint
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
 		if policy == "" {
@@ -539,17 +737,10 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	var resp Response
 	switch cr.Boundary {
 	case BoundaryInProcess:
-		impl, ok := r.Builtins[identityKey(cr.Plugin)]
-		if !ok {
-			return Invocation{}, fmt.Errorf("builtin plugin %s@%s is locked but not registered", cr.Plugin.ID, cr.Plugin.Version)
+		if acceptedBuiltin == nil {
+			return Invocation{}, fmt.Errorf("builtin plugin %s@%s lost accepted registration before invocation", cr.Plugin.ID, cr.Plugin.Version)
 		}
-		if impl.Identity() != cr.Plugin {
-			return Invocation{}, fmt.Errorf("builtin registry identity mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
-		}
-		if impl.DescriptorFingerprint() != pr.DescriptorFingerprint {
-			return Invocation{}, fmt.Errorf("builtin registry descriptor fingerprint mismatch for %s@%s", cr.Plugin.ID, cr.Plugin.Version)
-		}
-		resp, err = impl.Invoke(ctx, req)
+		resp, err = acceptedBuiltin.Invoke(ctx, req)
 	case BoundaryProcess:
 		policy := pr.SandboxPolicy
 		if policy == "" {
@@ -639,6 +830,37 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 	}
 	if pi.DescriptorFingerprint != pr.DescriptorFingerprint {
 		return fmt.Errorf("deployment attempt descriptor fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+	}
+	if pi.BuildPlanFingerprint != pr.BuildPlanFingerprint {
+		return fmt.Errorf("deployment attempt build plan fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+	}
+	if cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "" {
+		if plan.RuntimeEngineLockFingerprint == "" {
+			return fmt.Errorf("locked build-bound builtin plugin %s@%s has no runtime engine lock", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		if pi.RealizationDigest == "" || pi.RealizationDigest != pr.Artifact.Digest {
+			return fmt.Errorf("deployment attempt builtin realization digest does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		if pr.RuntimeEngine == nil {
+			return fmt.Errorf("locked build-bound builtin plugin %s@%s has no runtime engine binding", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		engineFingerprint, err := RuntimeEngineIdentityFingerprint(*pr.RuntimeEngine)
+		if err != nil {
+			return err
+		}
+		if pi.RuntimeEngineFingerprint == "" || pi.RuntimeEngineFingerprint != engineFingerprint {
+			return fmt.Errorf("deployment attempt runtime engine fingerprint does not match locked plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+	} else {
+		if pi.RealizationDigest != "" {
+			return fmt.Errorf("deployment attempt reports builtin realization digest for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+		if pi.RuntimeEngineFingerprint != "" {
+			return fmt.Errorf("deployment attempt reports runtime engine for non-build-bound builtin plugin %s@%s", cr.Plugin.ID, cr.Plugin.Version)
+		}
+	}
+	if pi.RuntimeEngineLockFingerprint != plan.RuntimeEngineLockFingerprint {
+		return fmt.Errorf("deployment attempt runtime engine lock fingerprint does not match environment plan")
 	}
 	if pi.PluginLockFingerprint != plan.PluginLockFingerprint {
 		return fmt.Errorf("deployment attempt plugin lock fingerprint does not match environment lock")
@@ -754,7 +976,7 @@ func ValidateDeploymentInvocation(plan EnvironmentPlan, capabilityID core.Canoni
 			return fmt.Errorf("deployment attempt supervisor ownership was not released")
 		}
 	}
-	if pr.Artifact.Digest != "" && !pi.DigestVerified {
+	if pr.Artifact.Digest != "" && !(cr.Boundary == BoundaryInProcess && pr.BuildPlanFingerprint != "") && !pi.DigestVerified {
 		return fmt.Errorf("deployment attempt artifact digest was not verified")
 	}
 	if pr.Artifact.SignatureRef != "" && !pi.SignatureVerified {

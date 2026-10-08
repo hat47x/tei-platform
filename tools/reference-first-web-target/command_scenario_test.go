@@ -49,7 +49,7 @@ func TestReferenceCommandScenarioCompletesWithSeparateBusinessResultsAndObservat
 	if result.Read == nil || result.Read.SelectedRow != 0 {
 		t.Fatalf("read=%+v", result.Read)
 	}
-	if len(result.Validations) != 2 {
+	if len(result.Validations) != 3 {
 		t.Fatalf("validations=%+v", result.Validations)
 	}
 	for _, validation := range result.Validations {
@@ -151,7 +151,7 @@ func TestReferenceCommandScenarioKeepsAuthorizationDenialAsBusinessOutcome(t *te
 		result.Authorization.Payload["reason"] != "not_authorized" {
 		t.Fatalf("authorization denial=%+v", result)
 	}
-	if result.Read == nil || len(result.Validations) != 2 {
+	if result.Read == nil || len(result.Validations) != 3 {
 		t.Fatalf("pre-authorization Driver/Validation path was not retained: %+v", result)
 	}
 	if result.Command != nil || result.Observation != nil {
@@ -286,7 +286,7 @@ func TestReferenceCommandScenarioPreservesCommandInvocationExecutionError(t *tes
 	if result.Stage != "command" ||
 		result.Authentication == nil ||
 		result.Authentication.Outcome != "authenticated" ||
-		len(result.Validations) != 2 ||
+		len(result.Validations) != 3 ||
 		result.Authorization == nil ||
 		result.Authorization.Outcome != "allowed" {
 		t.Fatalf("partial Scenario result=%+v", result)

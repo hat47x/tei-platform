@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,8 +17,13 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/deployment"
+	"tei/internal/deployment/executor"
 	"tei/internal/ir"
 	"tei/internal/plugin"
+	"tei/internal/plugin/implementation"
+	pluginbuiltin "tei/internal/plugin/implementation/builtin"
+	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -32,32 +38,59 @@ const (
 	packagePluginVersion   = "1.0.0"
 	packageWorkspace       = "reference/workspace"
 	packageDescriptor      = "reference/workspace/plugins/tei-runtime-reference/1.0.0/plugin.tei"
+	packageBuilderPackage  = "./tools/reference-plugin-package-builder"
+	nativePluginID         = "tei.native.runtime.reference"
+	nativePluginVersion    = "1.0.0"
+	nativeDescriptor       = "reference/plugin-self-build/workspace/plugins/tei-native-runtime-reference/1.0.0/plugin.tei"
+	nativeImplementation   = "reference/plugin-self-build/workspace/plugin-implementations/tei-native-runtime-reference/1.0.0/implementation.tei"
+	nativeBuilderPackage   = "./tools/reference-native-plugin-builder"
 )
 
 type evidence struct {
-	Schema                       string             `json:"schema"`
-	RepositoryRevision           string             `json:"repositoryRevision"`
-	RepositoryTreeDigest         string             `json:"repositoryTreeDigest"`
-	GoVersion                    string             `json:"goVersion"`
-	GoBinaryDigest               string             `json:"goBinaryDigest"`
-	GoToolchainDigest            string             `json:"goToolchainDigest"`
-	PackageBuildPlan             plugin.BuildPlan   `json:"packageBuildPlan"`
-	PackageBuildPlanFingerprint  string             `json:"packageBuildPlanFingerprint"`
-	PackageFirstArtifactDigest   string             `json:"packageFirstArtifactDigest"`
-	PackageSecondArtifactDigest  string             `json:"packageSecondArtifactDigest"`
-	PackageReproducible          bool               `json:"packageReproducible"`
-	PackageLockedBuild           plugin.LockedBuild `json:"packageLockedBuild"`
-	PackageLockFingerprint       string             `json:"packageLockFingerprint"`
-	BuildPlan                    plugin.BuildPlan   `json:"buildPlan"`
-	BuildPlanFingerprint         string             `json:"buildPlanFingerprint"`
-	FirstArtifactDigest          string             `json:"firstArtifactDigest"`
-	SecondArtifactDigest         string             `json:"secondArtifactDigest"`
-	Reproducible                 bool               `json:"reproducible"`
-	LockedBuild                  plugin.LockedBuild `json:"lockedBuild"`
-	BuildArtifactLockFingerprint string             `json:"buildArtifactLockFingerprint"`
-	RuntimeDefinitionFingerprint string             `json:"runtimeDefinitionFingerprint"`
-	RuntimePluginLockFingerprint string             `json:"runtimePluginLockFingerprint"`
-	RuntimePluginLock            plugin.Lock        `json:"runtimePluginLock"`
+	Schema                             string                         `json:"schema"`
+	RepositoryRevision                 string                         `json:"repositoryRevision"`
+	RepositoryTreeDigest               string                         `json:"repositoryTreeDigest"`
+	GoVersion                          string                         `json:"goVersion"`
+	GoBinaryDigest                     string                         `json:"goBinaryDigest"`
+	GoToolchainDigest                  string                         `json:"goToolchainDigest"`
+	PackageBuilderFirstDigest          string                         `json:"packageBuilderFirstDigest"`
+	PackageBuilderSecondDigest         string                         `json:"packageBuilderSecondDigest"`
+	PackageBuilderReproducible         bool                           `json:"packageBuilderReproducible"`
+	PackageBuildPlan                   plugin.BuildPlan               `json:"packageBuildPlan"`
+	PackageBuildPlanFingerprint        string                         `json:"packageBuildPlanFingerprint"`
+	PackageFirstArtifactDigest         string                         `json:"packageFirstArtifactDigest"`
+	PackageSecondArtifactDigest        string                         `json:"packageSecondArtifactDigest"`
+	PackageReproducible                bool                           `json:"packageReproducible"`
+	PackageLockedBuild                 plugin.LockedBuild             `json:"packageLockedBuild"`
+	PackageLockFingerprint             string                         `json:"packageLockFingerprint"`
+	NativeSourceFingerprint            string                         `json:"nativeSourceFingerprint"`
+	NativeBuilderFirstDigest           string                         `json:"nativeBuilderFirstDigest"`
+	NativeBuilderSecondDigest          string                         `json:"nativeBuilderSecondDigest"`
+	NativeBuilderReproducible          bool                           `json:"nativeBuilderReproducible"`
+	NativeBuildPlan                    plugin.BuildPlan               `json:"nativeBuildPlan"`
+	NativeBuildPlanFingerprint         string                         `json:"nativeBuildPlanFingerprint"`
+	NativeFirstArtifactDigest          string                         `json:"nativeFirstArtifactDigest"`
+	NativeSecondArtifactDigest         string                         `json:"nativeSecondArtifactDigest"`
+	NativeReproducible                 bool                           `json:"nativeReproducible"`
+	NativeLockedBuild                  plugin.LockedBuild             `json:"nativeLockedBuild"`
+	NativeLockFingerprint              string                         `json:"nativeLockFingerprint"`
+	NativeDefinitionFingerprint        string                         `json:"nativeDefinitionFingerprint"`
+	NativeRuntimeEngineSourceDigest    string                         `json:"nativeRuntimeEngineSourceDigest"`
+	NativeRuntimeEngine                pruntime.RuntimeEngineIdentity `json:"nativeRuntimeEngine"`
+	NativeRuntimeEngineFingerprint     string                         `json:"nativeRuntimeEngineFingerprint"`
+	NativeRuntimeEngineLock            pruntime.RuntimeEngineLock     `json:"nativeRuntimeEngineLock"`
+	NativeRuntimeEngineLockFingerprint string                         `json:"nativeRuntimeEngineLockFingerprint"`
+	NativeInvocation                   executor.Result                `json:"nativeInvocation"`
+	BuildPlan                          plugin.BuildPlan               `json:"buildPlan"`
+	BuildPlanFingerprint               string                         `json:"buildPlanFingerprint"`
+	FirstArtifactDigest                string                         `json:"firstArtifactDigest"`
+	SecondArtifactDigest               string                         `json:"secondArtifactDigest"`
+	Reproducible                       bool                           `json:"reproducible"`
+	LockedBuild                        plugin.LockedBuild             `json:"lockedBuild"`
+	BuildArtifactLockFingerprint       string                         `json:"buildArtifactLockFingerprint"`
+	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
+	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
+	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
 }
 
 func main() {
@@ -150,7 +183,27 @@ func run(repo string) (evidence, error) {
 		return evidence{}, fmt.Errorf("hash Go toolchain closure: %w", err)
 	}
 	goToolchainDigest := sha256Digest([]byte(goVersion + "\n" + goBinaryDigest + "\n" + goRootDigest + "\n"))
-	if err := requireNoExternalModules(root, goPath); err != nil {
+	nativeRuntimeEngineSourceDigest, err := hashSourceFiles(root, []string{
+		"internal/plugin/implementation/model.go",
+		"internal/plugin/implementation/builtin/adapter.go",
+		"internal/plugin/runtime/model.go",
+		"internal/plugin/runtime/adapters.go",
+	})
+	if err != nil {
+		return evidence{}, fmt.Errorf("hash TEI-native runtime engine source closure: %w", err)
+	}
+	nativeRuntimeEngine := pruntime.RuntimeEngineIdentity{
+		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		Version:              revision,
+		ContractVersion:      "tei.runtime-engine/static-response-v1",
+		ImplementationDigest: sha256Digest([]byte(nativeRuntimeEngineSourceDigest + "\n" + goToolchainDigest + "\n")),
+		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	}
+	nativeRuntimeEngineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(nativeRuntimeEngine)
+	if err != nil {
+		return evidence{}, err
+	}
+	if err := requireNoExternalModules(root, goPath, referencePackage, packageBuilderPackage, nativeBuilderPackage); err != nil {
 		return evidence{}, err
 	}
 
@@ -172,6 +225,52 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
+
+	packageBuilderDir, err := os.MkdirTemp("", "tei-plugin-package-builder-*")
+	if err != nil {
+		return evidence{}, err
+	}
+	defer os.RemoveAll(packageBuilderDir)
+	packageBuilderFirstPath := filepath.Join(packageBuilderDir, "builder-first")
+	packageBuilderSecondPath := filepath.Join(packageBuilderDir, "builder-second")
+	if runtime.GOOS == "windows" {
+		packageBuilderFirstPath += ".exe"
+		packageBuilderSecondPath += ".exe"
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		packageBuilderPackage,
+		packageBuilderFirstPath,
+		filepath.Join(packageBuilderDir, "state-builder-first"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build first Plugin package builder: %w", err)
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		packageBuilderPackage,
+		packageBuilderSecondPath,
+		filepath.Join(packageBuilderDir, "state-builder-second"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build second Plugin package builder: %w", err)
+	}
+	packageBuilderFirstDigest, err := hashFile(packageBuilderFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageBuilderSecondDigest, err := hashFile(packageBuilderSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if packageBuilderFirstDigest != packageBuilderSecondDigest {
+		return evidence{}, fmt.Errorf(
+			"Plugin package builder is not reproducible: %s != %s",
+			packageBuilderFirstDigest,
+			packageBuilderSecondDigest,
+		)
+	}
+
 	packagePlan := plugin.BuildPlan{
 		FormatVersion:               plugin.BuildPlanFormatVersion,
 		Plugin:                      plugin.Identity{ID: packageDefinition.ID, Version: packageDefinition.Version},
@@ -191,10 +290,10 @@ func run(repo string) (evidence, error) {
 			},
 		},
 		Builder: plugin.BuilderIdentity{
-			ID:              core.MustCanonicalID("tei.builder.package.go.seed"),
-			Version:         goVersion,
+			ID:              core.MustCanonicalID("tei.builder.package.reference.seed"),
+			Version:         revision,
 			ContractVersion: "tei.plugin-build/v1",
-			ArtifactDigest:  goToolchainDigest,
+			ArtifactDigest:  packageBuilderFirstDigest,
 		},
 		Recipe: plugin.BuildRecipe{
 			Kind:       "tei-plugin-package",
@@ -211,17 +310,39 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	packageFirstBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	packagePlanPath := filepath.Join(packageBuilderDir, "package-plan.json")
+	packagePlanBytes, err := json.Marshal(packagePlan)
 	if err != nil {
 		return evidence{}, err
 	}
-	packageSecondBytes, err := plugin.MaterializePluginPackage(packageDefinition, packagePlan)
+	if err := os.WriteFile(packagePlanPath, packagePlanBytes, 0o644); err != nil {
+		return evidence{}, err
+	}
+	packageFirstPath := filepath.Join(packageBuilderDir, "package-first.json")
+	packageSecondPath := filepath.Join(packageBuilderDir, "package-second.json")
+	if err := runPluginPackageBuilder(root, packageBuilderFirstPath, packagePlanPath, packageFirstPath); err != nil {
+		return evidence{}, fmt.Errorf("first Plugin package materialization: %w", err)
+	}
+	if err := runPluginPackageBuilder(root, packageBuilderSecondPath, packagePlanPath, packageSecondPath); err != nil {
+		return evidence{}, fmt.Errorf("second Plugin package materialization: %w", err)
+	}
+	packageFirstBytes, err := os.ReadFile(packageFirstPath)
 	if err != nil {
 		return evidence{}, err
 	}
-	packageFirstArtifactDigest := plugin.BuildOutputDigest(packageFirstBytes)
-	packageSecondArtifactDigest := plugin.BuildOutputDigest(packageSecondBytes)
-	if packageFirstArtifactDigest != packageSecondArtifactDigest {
+	packageSecondBytes, err := os.ReadFile(packageSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageFirstArtifactDigest, err := hashFile(packageFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	packageSecondArtifactDigest, err := hashFile(packageSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if string(packageFirstBytes) != string(packageSecondBytes) || packageFirstArtifactDigest != packageSecondArtifactDigest {
 		return evidence{}, fmt.Errorf(
 			"standard plugin package build is not reproducible: %s != %s",
 			packageFirstArtifactDigest,
@@ -237,6 +358,174 @@ func run(repo string) (evidence, error) {
 		Builds:        []plugin.LockedBuild{packageLockedBuild},
 	}
 	packageLockFingerprint, err := plugin.BuildArtifactLockFingerprint(packageArtifactLock)
+	if err != nil {
+		return evidence{}, err
+	}
+
+	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeDefinition.Artifact.Digest != "" {
+		return evidence{}, fmt.Errorf("TEI-native source definition unexpectedly predeclares artifact %s", nativeDefinition.Artifact.Digest)
+	}
+	nativeSource, err := exactImplementation(loaded.PluginImplementations, nativePluginID, nativePluginVersion)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSourceFingerprint, err := implementation.Fingerprint(nativeSource)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeDescriptorDigest, err := hashFile(filepath.Join(root, filepath.FromSlash(nativeDescriptor)))
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeImplementationDigest, err := hashFile(filepath.Join(root, filepath.FromSlash(nativeImplementation)))
+	if err != nil {
+		return evidence{}, err
+	}
+
+	nativeBuilderDir, err := os.MkdirTemp("", "tei-native-plugin-builder-*")
+	if err != nil {
+		return evidence{}, err
+	}
+	defer os.RemoveAll(nativeBuilderDir)
+	nativeBuilderFirstPath := filepath.Join(nativeBuilderDir, "builder-first")
+	nativeBuilderSecondPath := filepath.Join(nativeBuilderDir, "builder-second")
+	if runtime.GOOS == "windows" {
+		nativeBuilderFirstPath += ".exe"
+		nativeBuilderSecondPath += ".exe"
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		nativeBuilderPackage,
+		nativeBuilderFirstPath,
+		filepath.Join(nativeBuilderDir, "state-builder-first"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build first native Plugin builder: %w", err)
+	}
+	if err := buildGoPackage(
+		root,
+		goPath,
+		nativeBuilderPackage,
+		nativeBuilderSecondPath,
+		filepath.Join(nativeBuilderDir, "state-builder-second"),
+	); err != nil {
+		return evidence{}, fmt.Errorf("build second native Plugin builder: %w", err)
+	}
+	nativeBuilderFirstDigest, err := hashFile(nativeBuilderFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeBuilderSecondDigest, err := hashFile(nativeBuilderSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
+		return evidence{}, fmt.Errorf(
+			"TEI-native Plugin builder is not reproducible: %s != %s",
+			nativeBuilderFirstDigest,
+			nativeBuilderSecondDigest,
+		)
+	}
+
+	nativePlan := plugin.BuildPlan{
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      nativeSource.Plugin,
+		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(nativeDefinition),
+		Sources: []plugin.BuildSource{
+			{
+				Kind:    "git-tree",
+				ID:      "tei-repository",
+				Locator: "git:HEAD",
+				Digest:  treeDigest,
+			},
+			{
+				Kind:    "plugin-definition",
+				ID:      "tei-native-runtime-reference-definition",
+				Locator: nativeDescriptor,
+				Digest:  nativeDescriptorDigest,
+			},
+			{
+				Kind:    "plugin-implementation",
+				ID:      "tei-native-runtime-reference-implementation",
+				Locator: nativeImplementation,
+				Digest:  nativeImplementationDigest,
+			},
+		},
+		Builder: plugin.BuilderIdentity{
+			ID:              core.MustCanonicalID("tei.builder.native.reference.seed"),
+			Version:         revision,
+			ContractVersion: "tei.plugin-build/v1",
+			ArtifactDigest:  nativeBuilderFirstDigest,
+		},
+		Recipe: plugin.BuildRecipe{
+			Kind:       "tei-native-static-response",
+			Entrypoint: nativeImplementation,
+		},
+		OutputKind: plugin.BuildOutputRuntimeArtifact,
+		Target:     "interpreted-builtin/host/" + runtime.GOOS + "/" + runtime.GOARCH,
+		Profile:    "reference",
+		Parameters: []plugin.BuildParameter{
+			{Name: "execution-model", Value: "interpreted-builtin"},
+			{Name: "profile", Value: implementation.StaticResponseProfileV1},
+		},
+	}
+	nativePlanFingerprint, err := plugin.BuildPlanFingerprint(nativePlan)
+	if err != nil {
+		return evidence{}, err
+	}
+
+	nativeFirstPath := filepath.Join(nativeBuilderDir, "realization-first.json")
+	nativeSecondPath := filepath.Join(nativeBuilderDir, "realization-second.json")
+	if err := runNativePluginBuilder(root, nativeBuilderFirstPath, nativeFirstPath); err != nil {
+		return evidence{}, fmt.Errorf("first TEI-native realization: %w", err)
+	}
+	if err := runNativePluginBuilder(root, nativeBuilderSecondPath, nativeSecondPath); err != nil {
+		return evidence{}, fmt.Errorf("second TEI-native realization: %w", err)
+	}
+	nativeFirstBytes, err := os.ReadFile(nativeFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSecondBytes, err := os.ReadFile(nativeSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeFirstArtifactDigest, err := hashFile(nativeFirstPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeSecondArtifactDigest, err := hashFile(nativeSecondPath)
+	if err != nil {
+		return evidence{}, err
+	}
+	if string(nativeFirstBytes) != string(nativeSecondBytes) || nativeFirstArtifactDigest != nativeSecondArtifactDigest {
+		return evidence{}, fmt.Errorf(
+			"TEI-native builtin realization is not reproducible: %s != %s",
+			nativeFirstArtifactDigest,
+			nativeSecondArtifactDigest,
+		)
+	}
+	nativeLockedBuild, err := plugin.LockBuildOutput(nativePlan, nativeFirstArtifactDigest)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeArtifactLock := plugin.BuildArtifactLock{
+		FormatVersion: plugin.BuildArtifactLockFormatVersion,
+		Builds:        []plugin.LockedBuild{nativeLockedBuild},
+	}
+	nativeLockFingerprint, err := plugin.BuildArtifactLockFingerprint(nativeArtifactLock)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeRealized, err := plugin.RealizeBuiltDefinition(nativeDefinition, nativeFirstArtifactDigest)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeBuiltin, err := pluginbuiltin.New(nativeFirstBytes, nativeRealized)
 	if err != nil {
 		return evidence{}, err
 	}
@@ -346,14 +635,21 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	runtimeLock, err := plugin.BuildLock(
-		plugin.Catalog{Plugins: []plugin.Definition{realized}},
-		loaded.World.Environments,
-	)
+	runtimeCatalog := plugin.Catalog{
+		Plugins: append([]plugin.Definition(nil), loaded.World.Plugins...),
+	}
+	replacePluginDefinition(runtimeCatalog.Plugins, realized)
+	replacePluginDefinition(runtimeCatalog.Plugins, nativeRealized)
+
+	runtimeLock, err := plugin.BuildLock(runtimeCatalog, loaded.World.Environments)
 	if err != nil {
 		return evidence{}, err
 	}
 	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, loaded.World.Environments[0].ID, lockedBuild)
+	if err != nil {
+		return evidence{}, err
+	}
+	runtimeLock, err = plugin.BindRuntimeBuild(runtimeLock, loaded.World.Environments[0].ID, nativeLockedBuild)
 	if err != nil {
 		return evidence{}, err
 	}
@@ -368,11 +664,97 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if runtimePlugin.BuildPlanFingerprint != lockedBuild.PlanFingerprint {
-		return evidence{}, fmt.Errorf("runtime plugin lock lost build plan trace")
+		return evidence{}, fmt.Errorf("process runtime plugin lock lost build plan trace")
 	}
 	if err := plugin.VerifyRuntimePluginBuild(plan, lockedBuild, realized, runtimePlugin); err != nil {
 		return evidence{}, err
 	}
+	nativeRuntimePlugin, err := exactLockedPlugin(
+		runtimeLock,
+		loaded.World.Environments[0].ID,
+		nativeDefinition.ID,
+		nativeDefinition.Version,
+	)
+	if err != nil {
+		return evidence{}, err
+	}
+	if nativeRuntimePlugin.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint {
+		return evidence{}, fmt.Errorf("TEI-native runtime plugin lock lost build plan trace")
+	}
+	if err := plugin.VerifyRuntimePluginBuild(
+		nativePlan,
+		nativeLockedBuild,
+		nativeRealized,
+		nativeRuntimePlugin,
+	); err != nil {
+		return evidence{}, err
+	}
+
+	runtimePlan, err := pruntime.BuildPlan(
+		runtimeCatalog,
+		loaded.World.Environments[0],
+		runtimeLock,
+	)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeRuntimeEngineLock := pruntime.RuntimeEngineLock{
+		FormatVersion: pruntime.RuntimeEngineLockFormatVersion,
+		Bindings: []pruntime.RuntimeEngineBinding{{
+			Plugin: plugin.Identity{ID: nativeDefinition.ID, Version: nativeDefinition.Version},
+			Engine: nativeRuntimeEngine,
+		}},
+	}
+	nativeRuntimeEngineLockFingerprint, err := pruntime.RuntimeEngineLockFingerprint(nativeRuntimeEngineLock)
+	if err != nil {
+		return evidence{}, err
+	}
+	runtimePlan, err = pruntime.BindRuntimeEngineLock(runtimePlan, nativeRuntimeEngineLock)
+	if err != nil {
+		return evidence{}, err
+	}
+	nativeRegistry := pruntime.Registry{
+		BuiltinRegistrations: map[string]pruntime.BuiltinRegistration{
+			nativePluginID + "@" + nativePluginVersion: {
+				Builtin:              nativeBuiltin,
+				BuildPlanFingerprint: nativeLockedBuild.PlanFingerprint,
+				RealizationDigest:    nativeFirstArtifactDigest,
+				RuntimeEngine:        nativeRuntimeEngine,
+			},
+		},
+	}
+	nativeAdapter := pruntime.DeploymentExecutor{
+		Plan:         runtimePlan,
+		Registry:     nativeRegistry,
+		CapabilityID: core.MustCanonicalID("runtime.native_reference"),
+	}
+	nativeInvocation, err := nativeAdapter.Execute(context.Background(), executor.Command{
+		ActionID:       "application/start",
+		IdempotencyKey: "tei-native-reference",
+		Kind:           string(deployment.ActionApplicationStart),
+	})
+	if err != nil {
+		return evidence{}, fmt.Errorf("invoke TEI-native builtin Reference: %w", err)
+	}
+	if nativeInvocation.AttemptID != "tei-native-reference" ||
+		nativeInvocation.Outcome != executor.OutcomeAccepted {
+		return evidence{}, fmt.Errorf("unexpected TEI-native builtin Reference result: %#v", nativeInvocation)
+	}
+	if nativeInvocation.PluginInvocation == nil ||
+		nativeInvocation.PluginInvocation.BuildPlanFingerprint != nativeLockedBuild.PlanFingerprint ||
+		nativeInvocation.PluginInvocation.RealizationDigest != nativeFirstArtifactDigest ||
+		nativeInvocation.PluginInvocation.RuntimeEngineFingerprint != nativeRuntimeEngineFingerprint ||
+		nativeInvocation.PluginInvocation.RuntimeEngineLockFingerprint != nativeRuntimeEngineLockFingerprint {
+		return evidence{}, fmt.Errorf("TEI-native builtin invocation lost build/runtime engine provenance")
+	}
+	if err := pruntime.ValidateDeploymentInvocation(
+		runtimePlan,
+		core.MustCanonicalID("runtime.native_reference"),
+		nativeInvocation.PluginInvocation,
+	); err != nil {
+		return evidence{}, fmt.Errorf("validate TEI-native builtin invocation provenance: %w", err)
+	}
+
 	runtimePluginLockFingerprint, err := plugin.EnvironmentLockFingerprint(runtimeLock, loaded.World.Environments[0].ID)
 	if err != nil {
 		return evidence{}, err
@@ -382,29 +764,50 @@ func run(repo string) (evidence, error) {
 	}
 
 	return evidence{
-		Schema:                       "tei.reference.plugin-self-build-evidence/v0",
-		RepositoryRevision:           revision,
-		RepositoryTreeDigest:         treeDigest,
-		GoVersion:                    goVersion,
-		GoBinaryDigest:               goBinaryDigest,
-		GoToolchainDigest:            goToolchainDigest,
-		PackageBuildPlan:             packagePlan,
-		PackageBuildPlanFingerprint:  packagePlanFingerprint,
-		PackageFirstArtifactDigest:   packageFirstArtifactDigest,
-		PackageSecondArtifactDigest:  packageSecondArtifactDigest,
-		PackageReproducible:          true,
-		PackageLockedBuild:           packageLockedBuild,
-		PackageLockFingerprint:       packageLockFingerprint,
-		BuildPlan:                    plan,
-		BuildPlanFingerprint:         planFingerprint,
-		FirstArtifactDigest:          firstDigest,
-		SecondArtifactDigest:         secondDigest,
-		Reproducible:                 true,
-		LockedBuild:                  lockedBuild,
-		BuildArtifactLockFingerprint: buildArtifactLockFingerprint,
-		RuntimeDefinitionFingerprint: plugin.DefinitionFingerprint(realized),
-		RuntimePluginLockFingerprint: runtimePluginLockFingerprint,
-		RuntimePluginLock:            runtimeLock,
+		Schema:                             "tei.reference.plugin-self-build-evidence/v1",
+		RepositoryRevision:                 revision,
+		RepositoryTreeDigest:               treeDigest,
+		GoVersion:                          goVersion,
+		GoBinaryDigest:                     goBinaryDigest,
+		GoToolchainDigest:                  goToolchainDigest,
+		PackageBuilderFirstDigest:          packageBuilderFirstDigest,
+		PackageBuilderSecondDigest:         packageBuilderSecondDigest,
+		PackageBuilderReproducible:         true,
+		PackageBuildPlan:                   packagePlan,
+		PackageBuildPlanFingerprint:        packagePlanFingerprint,
+		PackageFirstArtifactDigest:         packageFirstArtifactDigest,
+		PackageSecondArtifactDigest:        packageSecondArtifactDigest,
+		PackageReproducible:                true,
+		PackageLockedBuild:                 packageLockedBuild,
+		PackageLockFingerprint:             packageLockFingerprint,
+		NativeSourceFingerprint:            nativeSourceFingerprint,
+		NativeBuilderFirstDigest:           nativeBuilderFirstDigest,
+		NativeBuilderSecondDigest:          nativeBuilderSecondDigest,
+		NativeBuilderReproducible:          true,
+		NativeBuildPlan:                    nativePlan,
+		NativeBuildPlanFingerprint:         nativePlanFingerprint,
+		NativeFirstArtifactDigest:          nativeFirstArtifactDigest,
+		NativeSecondArtifactDigest:         nativeSecondArtifactDigest,
+		NativeReproducible:                 true,
+		NativeLockedBuild:                  nativeLockedBuild,
+		NativeLockFingerprint:              nativeLockFingerprint,
+		NativeDefinitionFingerprint:        plugin.DefinitionFingerprint(nativeRealized),
+		NativeRuntimeEngineSourceDigest:    nativeRuntimeEngineSourceDigest,
+		NativeRuntimeEngine:                nativeRuntimeEngine,
+		NativeRuntimeEngineFingerprint:     nativeRuntimeEngineFingerprint,
+		NativeRuntimeEngineLock:            nativeRuntimeEngineLock,
+		NativeRuntimeEngineLockFingerprint: nativeRuntimeEngineLockFingerprint,
+		NativeInvocation:                   nativeInvocation,
+		BuildPlan:                          plan,
+		BuildPlanFingerprint:               planFingerprint,
+		FirstArtifactDigest:                firstDigest,
+		SecondArtifactDigest:               secondDigest,
+		Reproducible:                       true,
+		LockedBuild:                        lockedBuild,
+		BuildArtifactLockFingerprint:       buildArtifactLockFingerprint,
+		RuntimeDefinitionFingerprint:       plugin.DefinitionFingerprint(realized),
+		RuntimePluginLockFingerprint:       runtimePluginLockFingerprint,
+		RuntimePluginLock:                  runtimeLock,
 	}, nil
 }
 
@@ -422,6 +825,55 @@ func requireValidWorld(label string, world ir.World) error {
 	}
 	sort.Strings(failures)
 	return fmt.Errorf("%s validation failed: %s", label, strings.Join(failures, "; "))
+}
+
+func hashSourceFiles(repo string, paths []string) (string, error) {
+	if len(paths) == 0 {
+		return "", fmt.Errorf("source closure must contain at least one file")
+	}
+	ordered := append([]string(nil), paths...)
+	sort.Strings(ordered)
+	sum := sha256.New()
+	seen := map[string]struct{}{}
+	for _, rel := range ordered {
+		rel = filepath.ToSlash(strings.TrimSpace(rel))
+		if rel == "" {
+			return "", fmt.Errorf("source closure contains empty path")
+		}
+		if _, ok := seen[rel]; ok {
+			return "", fmt.Errorf("source closure contains duplicate path %s", rel)
+		}
+		seen[rel] = struct{}{}
+		path := filepath.Join(repo, filepath.FromSlash(rel))
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("source closure symlink is not supported: %s", rel)
+		}
+		if !info.Mode().IsRegular() {
+			return "", fmt.Errorf("source closure member is not a regular file: %s", rel)
+		}
+		if _, err := fmt.Fprintf(sum, "%s\x00", rel); err != nil {
+			return "", err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		if _, err := io.Copy(sum, f); err != nil {
+			f.Close()
+			return "", err
+		}
+		if err := f.Close(); err != nil {
+			return "", err
+		}
+		if _, err := fmt.Fprint(sum, "\n"); err != nil {
+			return "", err
+		}
+	}
+	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
 }
 
 func hashTrackedSourceTree(repo string) (string, error) {
@@ -475,27 +927,30 @@ func hashTrackedSourceTree(repo string) (string, error) {
 	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
 }
 
-func requireNoExternalModules(repo, goPath string) error {
+func requireNoExternalModules(repo, goPath string, packages ...string) error {
+	if len(packages) == 0 {
+		return fmt.Errorf("at least one Go package is required for dependency closure validation")
+	}
 	stateDir, err := os.MkdirTemp("", "tei-plugin-self-build-list-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(stateDir)
 
-	cmd := exec.Command(
-		goPath,
+	args := []string{
 		"list",
 		"-mod=readonly",
 		"-deps",
 		"-f",
 		"{{if .Module}}{{.Module.Path}} {{.Module.Version}}{{end}}",
-		referencePackage,
-	)
+	}
+	args = append(args, packages...)
+	cmd := exec.Command(goPath, args...)
 	cmd.Dir = repo
 	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("resolve reference plugin dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("resolve Reference Go dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	for _, raw := range strings.Split(string(out), "\n") {
 		line := strings.TrimSpace(raw)
@@ -504,7 +959,7 @@ func requireNoExternalModules(repo, goPath string) error {
 		}
 		fields := strings.Fields(line)
 		if len(fields) > 0 && fields[0] != "tei" {
-			return fmt.Errorf("reference plugin has unresolved external build dependency %q", line)
+			return fmt.Errorf("Reference Go package has unresolved external build dependency %q", line)
 		}
 	}
 	return nil
@@ -595,6 +1050,13 @@ func executableName(name string) string {
 }
 
 func buildReferencePlugin(repo, goPath, output, stateDir string) error {
+	if err := buildGoPackage(repo, goPath, referencePackage, output, stateDir); err != nil {
+		return fmt.Errorf("build reference process plugin: %w", err)
+	}
+	return nil
+}
+
+func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
 	cmd := exec.Command(
 		goPath,
 		"build",
@@ -603,13 +1065,51 @@ func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 		"-mod=readonly",
 		"-o",
 		output,
-		referencePackage,
+		packagePath,
 	)
 	cmd.Dir = repo
 	cmd.Env = buildEnvironment(os.Environ(), stateDir)
 	combined, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("build reference process plugin: %w: %s", err, strings.TrimSpace(string(combined)))
+		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
+	}
+	return nil
+}
+
+func runPluginPackageBuilder(repo, builderPath, planPath, output string) error {
+	cmd := exec.Command(
+		builderPath,
+		"-plugin",
+		filepath.Join(repo, filepath.FromSlash(packageDescriptor)),
+		"-plan",
+		planPath,
+		"-out",
+		output,
+	)
+	cmd.Dir = repo
+	cmd.Env = []string{}
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Plugin package builder: %w: %s", err, strings.TrimSpace(string(combined)))
+	}
+	return nil
+}
+
+func runNativePluginBuilder(repo, builderPath, output string) error {
+	cmd := exec.Command(
+		builderPath,
+		"-implementation",
+		filepath.Join(repo, filepath.FromSlash(nativeImplementation)),
+		"-plugin",
+		filepath.Join(repo, filepath.FromSlash(nativeDescriptor)),
+		"-out",
+		output,
+	)
+	cmd.Dir = repo
+	cmd.Env = []string{}
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("native Plugin builder: %w: %s", err, strings.TrimSpace(string(combined)))
 	}
 	return nil
 }
@@ -668,6 +1168,24 @@ func exactPlugin(definitions []plugin.Definition, id, version string) (plugin.De
 		}
 	}
 	return plugin.Definition{}, fmt.Errorf("plugin %s@%s not found", id, version)
+}
+
+func exactImplementation(sources []implementation.Source, id, version string) (implementation.Source, error) {
+	for _, source := range sources {
+		if string(source.Plugin.ID) == id && source.Plugin.Version == version {
+			return source, nil
+		}
+	}
+	return implementation.Source{}, fmt.Errorf("plugin implementation %s@%s not found", id, version)
+}
+
+func replacePluginDefinition(definitions []plugin.Definition, replacement plugin.Definition) {
+	for i := range definitions {
+		if definitions[i].ID == replacement.ID && definitions[i].Version == replacement.Version {
+			definitions[i] = replacement
+			return
+		}
+	}
 }
 
 func exactLockedPlugin(lock plugin.Lock, environmentID core.CanonicalID, id core.CanonicalID, version string) (plugin.LockedPlugin, error) {

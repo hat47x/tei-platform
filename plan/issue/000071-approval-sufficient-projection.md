@@ -152,6 +152,7 @@ A6が「項目なし」と明示されていれば、承認者は「native code�
 - [ ] 条件A1〜A8を、owner reviewで採用・修正・却下のいずれかに判定する。採用した条件はRQ-028の解釈として、このIssueまたはADRへ残す
 - [x] `repair_intake`以外のPreview（`add-validation`、`add-relation`、`add-environment-binding`）でも机上評価を行い、評価が変わる条件を記録した（2026-10-02、上の「机上評価の拡張」。コードは実行していない）
 - [ ] Preview結果をA1〜A8の順に写す最小Projectionを、Reference toolとして作る（candidate実装あり。source変更を伴うため、`tools/repository-health-check.sh`のexact-head full PASSが統合条件）
+  - 2026-10-08: `review`はtext・json・htmlの3形式を出力できる。htmlは外部資源を使わない1枚のページで、同じProjectionを描画する（`tools/reference-shared-acceptance/review_html.go`）。この時点で人がページを読んだ記録は無く、本項目は未完了のまま。
 - [ ] そのProjectionだけを見て、人が一件の変更を承認または却下した記録を残す（AIの要約を介さない）。承認者が気づいた不足を記録する
 - [ ] A5 / A6を示す項目を追加するか、追加しない理由と、承認時にそれを明示する方法を決める（candidate実装では、typed operationから直接authorするgrant / native codeの有無までを`一部`として表示し、実効権限と既存native依存は未評価として残す）
 

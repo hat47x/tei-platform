@@ -19,7 +19,8 @@
     "new semantic requirements are plugin/extension-first; legacy schema names do not become Core kinds by default",
     "legacy TableKey, Relationship key mapping, and Function selection key are distinct source facts and are not business occurrence identity by themselves",
     "a legacy PK/SK declaration or key-field correspondence does not establish an accepted functional dependency without explicit semantic acceptance or corroborating evidence",
-    "a coherent semantic graph reconstructed from legacy source, code, prose, or AI inference is still candidate evidence and does not become accepted authority without Shared Acceptance"
+    "a coherent semantic graph reconstructed from legacy source, code, prose, or AI inference is still candidate evidence and does not become accepted authority without Shared Acceptance",
+    "full-source accounting must classify every observed XML construct before a transfer can claim no silent drop"
   ],
   "sourceLocator": {
     "exactSnapshot": "artifact digest + XML structural path + sibling ordinal + available legacy attributes",
@@ -241,19 +242,23 @@
         "rules": [
           "Table1ID/TableKey1ID and Table2ID/TableKey2ID are source-backed relationship key references and remain distinct from business identity",
           "key references may support explicit relation mapping only when the participating key fields resolve without ambiguity",
-          "multi-field key correspondence follows unambiguous TableKeyField SortKey order rather than XML source order",
           "TableField AttributeType and DataTypeID are distinct source facts; explicit corresponding DataTypeID mismatch remains unresolved",
           "missing or duplicate SortKey on a multi-field relationship key is not repaired from field names, data types, or source order",
           "FAMILY/REFFER/SUBTYPE meanings require lossless mapping or extension semantics",
           "ExistWhen prose is not compiled into a constraint without explicit acceptance",
           "duplicate participating Table/Field identities make relationship resolution unresolved even when a later occurrence would otherwise satisfy the reference",
           "missing Relationship ID remains source ambiguity even when both participating key references resolve",
-          "duplicate Relationship IDs remain distinct source-locator facts and are not collapsed into one relationship identity"
+          "duplicate Relationship IDs remain distinct source-locator facts and are not collapsed into one relationship identity",
+          "relationship key correspondence is type-specific and must not require equal key cardinality for every legacy relationship type",
+          "REFFER uses equal-arity source PK/SK to target FK correspondence; SUBTYPE uses equal-arity PK/SK correspondence",
+          "FAMILY uses a target PK/SK that contains the source-equivalent key fields plus additional key fields; do not positionally zip the entire keys or reject the relationship only because target arity is larger",
+          "within the fields that must correspond, preserve TableKeyField SortKey, DataTypeID and ambiguity evidence rather than repairing by XML order or field name heuristics"
         ],
         "authorityLimits": [
           "relationship-key-reference-is-not-business-identity",
           "relationship-key-reference-is-not-functional-dependency",
-          "ambiguous-key-field-mapping-must-remain-unresolved"
+          "ambiguous-key-field-mapping-must-remain-unresolved",
+          "family-key-extension-is-not-equal-arity-correspondence"
         ]
       },
       "FunctionType": {
@@ -418,6 +423,85 @@
         "rules": [
           "free text is preserved as source asset",
           "SortKey can indicate time or explanation order and is not assumed to be a transition sequence"
+        ]
+      },
+      "TableType": {
+        "classification": [
+          "canonical-candidate",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.relational-semantics",
+        "rules": [
+          "legacy table categorization is source evidence and does not become a Core enum by name alone",
+          "name/description/order metadata does not by itself establish business Data semantics"
+        ]
+      },
+      "SubsystemTable": {
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens",
+        "rules": [
+          "TableID membership is subsystem/model projection evidence, not Data ownership authority",
+          "box/divider/instance/display attributes are model presentation metadata"
+        ]
+      },
+      "SubsystemRelationship": {
+        "classification": [
+          "derived-projection",
+          "presentation-only"
+        ],
+        "extension": "reference.xead.subsystem-lens",
+        "rules": [
+          "RelationshipID membership is subsystem/model projection evidence and does not duplicate Relationship semantic authority",
+          "terminal/show attributes are diagram presentation metadata"
+        ]
+      },
+      "IOPanelField": {
+        "classification": [
+          "presentation-only",
+          "derived-projection",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "panel-local field/input metadata is interaction/presentation evidence",
+          "a panel field name or ID is not automatically a canonical Data field or Business Action input"
+        ]
+      },
+      "IOPanelStyle": {
+        "classification": [
+          "presentation-only",
+          "native-preserved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "style payload is target-specific presentation data",
+          "style values are preserved without compiling them into semantic constraints"
+        ]
+      },
+      "IOSpoolStyle": {
+        "classification": [
+          "presentation-only",
+          "native-preserved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "spool style payload is report/presentation data",
+          "style values are preserved without promoting them to business meaning"
+        ]
+      },
+      "MaintenanceLog": {
+        "classification": [
+          "source-metadata",
+          "provenance"
+        ],
+        "extension": "reference.compat.xead.source",
+        "rules": [
+          "maintenance history is source/provenance evidence rather than current canonical business meaning",
+          "descriptions/header/order metadata must not overwrite accepted TEI history or authorship"
         ]
       }
     },
@@ -606,6 +690,94 @@
         "extension": "reference.xead.presentation",
         "rules": [
           "menu visibility/navigation is separated from business actor and authorization policy"
+        ]
+      },
+      "HeaderPhrase": {
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "header phrase/font/alignment/order attributes are report presentation realization"
+        ]
+      },
+      "Phrase": {
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "phrase/font/alignment/order attributes are report presentation realization"
+        ]
+      },
+      "Option": {
+        "classification": [
+          "presentation-only",
+          "realization",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "menu option and FunctionID linkage are navigation realization evidence",
+          "menu navigation does not by itself establish Business Action order, authorization, or capability authority"
+        ]
+      },
+      "PrintFont": {
+        "classification": [
+          "presentation-only",
+          "realization"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "font/PDF encoding information is report realization metadata"
+        ]
+      },
+      "BatchField": {
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "batch field DataSource/FieldOptions are interaction realization evidence",
+          "DataSource text does not by itself establish canonical Data identity or functional dependency"
+        ]
+      },
+      "AddRowListColumn": {
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "add-row list column metadata is interaction realization evidence",
+          "DataSource text does not by itself establish canonical Data identity"
+        ]
+      },
+      "AddRowListButton": {
+        "classification": [
+          "realization",
+          "presentation-only",
+          "unresolved"
+        ],
+        "extension": "reference.xead.presentation",
+        "rules": [
+          "button action/caption/position are interaction realization evidence",
+          "button Action does not become a Business Action or Runtime Capability without explicit mapping"
+        ]
+      },
+      "MaintenanceLog": {
+        "classification": [
+          "source-metadata",
+          "provenance"
+        ],
+        "extension": "reference.compat.xead.source",
+        "rules": [
+          "maintenance history is source/provenance evidence rather than executable or canonical business meaning"
         ]
       }
     }

@@ -53,10 +53,14 @@ var known = map[Format]map[string]struct{}{
 		"FunctionType", "Function", "FunctionUsedByThis", "IOTable", "IOPanel", "IOSpool",
 		"Role", "Task", "TaskAction", "TaskFunctionIO", "SubjectArea",
 		"DataflowNode", "DataflowLine", "Instance",
+		"TableType", "SubsystemTable", "SubsystemRelationship",
+		"IOPanelField", "IOPanelStyle", "IOSpoolStyle", "MaintenanceLog",
 	),
 	FormatXeaf: set(
 		"System", "Subsystem", "Table", "Function", "Script",
 		"Field", "Column", "Button", "Filter", "Refer", "Detail", "Key", "Menu",
+		"HeaderPhrase", "Phrase", "Option", "PrintFont", "BatchField",
+		"AddRowListColumn", "AddRowListButton", "MaintenanceLog",
 	),
 }
 
@@ -95,8 +99,10 @@ func Parse(format Format, source []byte) (Document, error) {
 		switch t := token.(type) {
 		case xml.StartElement:
 			name := qualifiedName(t.Name)
-			_, knownLocalName := knownNames[t.Name.Local]
-			isKnown := t.Name.Space == "" && knownLocalName
+			_, isKnown := knownNames[t.Name.Local]
+			// A foreign namespace is not the same source construct as an
+			// unqualified Xead/Xeaf element with the same local name.
+			isKnown = isKnown && t.Name.Space == ""
 			n := Node{Name: name, Known: isKnown}
 			n.Attributes = make([]Attribute, 0, len(t.Attr))
 			for _, attr := range t.Attr {
@@ -157,8 +163,8 @@ func Parse(format Format, source []byte) (Document, error) {
 
 	inventory := make([]InventoryEntry, 0, len(counts))
 	for name, count := range counts {
-		_, knownLocalName := knownNames[localName(name)]
-		isKnown := name == localName(name) && knownLocalName
+		_, isKnown := knownNames[localName(name)]
+		isKnown = isKnown && !strings.HasPrefix(name, "{")
 		inventory = append(inventory, InventoryEntry{Name: name, Count: count, Known: isKnown})
 	}
 	sort.Slice(inventory, func(i, j int) bool { return inventory[i].Name < inventory[j].Name })

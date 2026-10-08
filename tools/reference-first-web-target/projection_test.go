@@ -132,6 +132,20 @@ func TestBuildWebTargetProjectionUsesDriverResolvedOrderEntryMeaning(t *testing.
 			t.Fatalf("projection hid unresolved boundary %q: %+v", unresolved, projection.Unresolved)
 		}
 	}
+
+	for _, limit := range []string{
+		"projection-is-derived-not-canonical",
+		"presentation-candidate-is-target-local",
+		"target-or-presentation-identity-is-not-business-data-identity",
+	} {
+		if !containsString(projection.AuthorityLimits, limit) {
+			t.Fatalf("target projection authority limit %q is missing: %+v", limit, projection.AuthorityLimits)
+		}
+	}
+	if record.PresentationCandidate == record.Data ||
+		browse.PresentationCandidate == browse.Data {
+		t.Fatalf("Target presentation identity was collapsed into business Data identity: record=%+v browse=%+v", record, browse)
+	}
 }
 
 func TestWebTargetServerRendersHTMLAndJSONFromSameProjection(t *testing.T) {

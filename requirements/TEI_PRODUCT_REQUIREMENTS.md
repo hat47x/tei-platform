@@ -16,6 +16,8 @@ Canonical IDはfile pathやphysical object nameから独立し、実装や配置
 
 業務上の識別条件をaccepted meaningとして扱う場合は、単なる`identifier`属性の存在だけで成立済みとしてはいけません。識別を構成する項目、一意性が成立するscope、時間・履歴条件、Relation / Constraintとの関係、根拠となるSourceへ追跡できる必要があります。外部Systemや制度が一意性を保証する場合は、その責任をContract / Sourceとして明示できる必要があります。
 
+時間・履歴を扱うDataでは、business occurrence identityとhistory / version identityを区別できる必要があります。適用開始日、履歴番号、version番号、最新フラグ、日時型Attribute等を、その存在や名称だけを根拠にbusiness occurrence identifierへ昇格してはいけません。validity period、identifier reuse、state transition、current-state selectionを業務意味として扱う場合は、そのscopeとSource / Contractへ追跡できる必要があります。
+
 文字列や外部コードを正規化・変換した結果の一致を、それだけでbusiness identityの一致へ読み替えてはいけません。原Sourceの表記を保持する必要がある場合は、exact representationとnormalized / operational representationを区別し、同値性を判断するPolicy / MappingのscopeとSourceへ追跡できる必要があります。
 
 ## RQ-002 Authoring sourceとCanonical meaningを追跡できること
@@ -166,6 +168,8 @@ Application Pattern、View、Target、ORM等の実装都合から、Dataのbusin
 Data / Relationを設計・変更する場合、そのcontextから、業務上の識別条件、既知または候補の関数従属性、candidate key、Relationの意味、cardinality、時間・履歴条件、Source / Evidence、unresolvedへ到達できる必要があります。これらが現在のCanonical schemaでfirst-classに表現されていない場合も、AIが名称や一般的なschema patternから補完した値をaccepted factとして扱ってはいけません。
 
 生成AIは、`identifier`、`external_id`、`code`等の属性名や外部から移行した識別子値だけを根拠に、business identifierやcandidate keyが成立したと判断してはいけません。acceptedな識別条件がある場合は、一意性のscope、時間・履歴条件、Relation / Constraint、Source / Contractを含むcontextへ到達できる必要があります。
+
+生成AIは、適用開始日、履歴番号、version番号、最新フラグ、datetime / timestamp属性、Persistence上のhistory / audit columnだけを根拠に、business occurrence identityやtemporal semanticsが確定したと判断してはいけません。current contextから、同じoccurrenceのhistory / versionか別occurrenceか、有効期間、identifier reuse、状態遷移、保持すべき履歴、根拠となるSource / Contractへ到達できる必要があります。
 
 生成AIがUUIDやsurrogate key、単独`id`等を実装候補として使うことは妨げません。ただし、それらを追加することで業務上の識別や従属性の分析を省略したり、既にacceptedな複合識別やRelation topologyを失わせたりしてはいけません。
 
@@ -424,6 +428,29 @@ Semantic Extensionのlogical identityと、実行・配布に使うartifact境�
 resolution budget超過、Catalog不足、Interface authority不足等も、実際のdependency conflictと区別して説明できる必要があります。AIやToolが「解けなかった」ことを「解が存在しない」ことへ読み替えてはいけません。
 
 この要求はAIが誤らないことを前提にしません。実装上の自由度を必要な箇所へ限定し、機械的に検証できる境界を増やすことで、同じ設計論点の再判断とApplication固有コードを減らすことを求めます。
+
+
+## RQ-034 標準的な開発環境からTEIを改修・実行・検証できること
+
+TEIは、人間や生成AIが、TEI専用のAgent Runtimeや常駐Adapterを必須とせず、一般的な開発環境から継続的に改修できなければなりません。
+
+ChatGPT等のチャット実行環境、Codex、Claude Code、一般的なIDE、CLI中心のローカル環境、CI等は、いずれも開発環境の候補です。特定のAI製品、Chat UI、Agent frameworkを標準の開発経路へ固定しません。
+
+各開発環境では、通常のRepository checkoutやGit worktree等を利用してSourceを編集し、TEI CLI、Hostが提供するShell / Filesystem / Git MCP、Repository内のTool、言語固有のToolchain等を使って、必要なBuild、Driver実行、Validation、Conformance、Test、生成物の確認まで、その環境内で行えることを基本とします。生成AIが隔離された開発Workspace内でSourceを直接編集する場合も、編集前にTEI固有のProposal objectへ変換することを必須にしません。
+
+改修からBuild / Testまで同一環境で完結するには、開発HostがRepositoryをmaterializeでき、Filesystemを読み書きでき、processとGitを実行でき、必要なToolchainを利用できることが前提です。これらはTEI ApplicationのRuntime CapabilityやCanonical stateとして再定義する対象ではありません。Hostが一部の能力しか持たない場合も、その環境で可能な変更をGit等へ受け渡し、別の標準開発環境で継続できることを妨げません。
+
+TEIは、この開発過程を管理するために、Agent Session、Agent Workspace、Checkpoint、Plan、Test実行回数、一般的な `verified / unverified` 状態等を、TEI固有の永続的なProduct stateとして要求してはいけません。Git、CI、開発Tool等が所有する状態を、TEI側へ重複して持ち込みません。
+
+変更の受け渡しには、Git commit、branch、Pull Request等の既存Version管理を第一級の経路として利用できる必要があります。Gitを直接利用できない環境では、patch、bundle、file set、任意のWeb ServiceやCIを経由した受け渡し等を利用できる余地を持ちます。Gitで十分に表現できる変更に対して、TEI独自のChange Set形式を必須にしてはいけません。
+
+TEI CLIは、Canonical meaning、Source、Dependency、Validation、Conformance等へ到達するための標準的な開発Interfaceとして利用できなければなりません。チャット実行環境等がMCPを利用する場合、汎用のShell / Filesystem / Git MCP等からTEI CLIを呼び出す構成を正規経路として許容し、TEI自身のdeveloper MCP serverを必須にはしません。TEI固有のMCP projectionを追加する場合も、CLIと別のCanonical解釈・Validation・Authority modelを実装してはいけません。同じ意味操作をCLI、MCP、Studio等から利用する場合、入口の違いだけでCanonical meaningが変化してはいけず、MCP経由であること自体を追加のSemantic authorityやRuntime authorityの根拠にもしてはいけません。
+
+人間、ChatGPT、Codex、Claude Code等のどの手段でSourceが編集されたかは、Canonical meaningそのものの一部にはしません。変更後のauthoritative sourceから、特定のAgent、Chat transcript、Editor内部状態等なしにCanonical meaningを再構築できる必要があります。
+
+外部の開発環境が持つShell、Filesystem、Git等の操作権限を、TEI Repositoryを編集するという理由だけでTEI ApplicationのRuntime Capabilityとして再定義することも要求しません。一方、実Database、外部Service、Secret、Production相当Resource、その他の外部副作用へ到達する場合は、RQ-018〜RQ-020のCommand / Observation、Authority、Resource、unknownの境界を維持します。
+
+Agent Adapter、TEI固有のdeveloper MCP、統合Service等を追加することは妨げません。ただし、それらは特定環境との連携や利便性を高める任意機能とし、標準的なGit / CLIやHost-provided MCPによる開発、Canonical sourceへの到達に必要な前提にはしません。
 
 ## 要求を実装へ落とすときの原則
 

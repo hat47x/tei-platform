@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -504,4 +506,231 @@ func sectionContains(section ReviewSection, want string) bool {
 		}
 	}
 	return strings.Contains(section.Note, want)
+}
+
+// reviewHTMLFingerprintは、HTML rendering内のreview fingerprintの表示位置を指す。
+var reviewHTMLFingerprint = regexp.MustCompile(`data-field="review-fingerprint">([^<]*)</code>`)
+
+// reviewHTMLActiveMarkupは、外部資源の読み込みや実行を起こし得るtagとinline event属性を検出する。
+var reviewHTMLActiveMarkup = regexp.MustCompile(`(?i)<\s*(script|link|img|iframe|object|embed|source|base|video|audio|picture|svg|font)\b|<[a-z][^>]*\son[a-z]+\s*=`)
+
+// escapingReviewCandidateは、candidateの自由記述（intentとEvidence note）へmarkupを混ぜたcandidateを返す。
+// HTML renderingがこれらを文字列として表示し、tagとして解釈しないことを確かめるために使う。
+func escapingReviewCandidate(revision string) Candidate {
+	candidate := unitPriceCandidate(revision)
+	candidate.Intent = "単価ruleを明示する<script>alert(1)</script>"
+	candidate.Evidence[0].Note = "</pre><img src=x onerror=alert(1)>"
+	return candidate
+}
+
+func writeReviewCandidate(t *testing.T, data []byte) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "candidate.json")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func reviewOutput(t *testing.T, dir, candidatePath, format string) string {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	code := runCLI(
+		[]string{"review", "-workspace", dir, "-candidate", candidatePath, "-format", format},
+		&stdout,
+		&stderr,
+	)
+	if code != 0 {
+		t.Fatalf("review -format %s code=%d stderr=%s output=%s", format, code, stderr.String(), stdout.String())
+	}
+	return stdout.String()
+}
+
+func assertReviewHTMLDocument(t *testing.T, page string) {
+	t.Helper()
+	if !strings.HasPrefix(page, "<!doctype html>") || !strings.HasSuffix(strings.TrimSpace(page), "</html>") {
+		t.Fatalf("html is not a single document: %.80s", page)
+	}
+	if !strings.Contains(page, `<meta charset="utf-8">`) || !strings.Contains(page, "<style>") {
+		t.Fatal("html lacks a charset declaration or an inline style")
+	}
+}
+
+func TestReviewHTMLShowsIdentityVerdictCoverageAndA1ToA8(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	candidatePath := writeReviewCandidate(t, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))))
+
+	var review ReviewProjection
+	if err := json.Unmarshal([]byte(reviewOutput(t, dir, candidatePath, "json")), &review); err != nil {
+		t.Fatal(err)
+	}
+	page := reviewOutput(t, dir, candidatePath, "html")
+	assertReviewHTMLDocument(t, page)
+
+	headings := []string{
+		"<h2>A1 意味差分",
+		"<h2>A2 影響",
+		"<h2>A3 例外・診断",
+		"<h2>A4 未解決点",
+		"<h2>A5 権限の変更",
+		"<h2>A6 native codeへ残る箇所",
+		"<h2>A7 逆追跡",
+		"<h2>A8 承認単位の大きさ",
+	}
+	last := -1
+	for _, heading := range headings {
+		index := strings.Index(page, heading)
+		if index < 0 {
+			t.Fatalf("html lacks heading %q", heading)
+		}
+		if index <= last {
+			t.Fatalf("heading %q is out of A1-A8 order", heading)
+		}
+		last = index
+	}
+
+	for _, want := range []string{
+		"cand-unit-price-positive",
+		html.EscapeString(review.Intent),
+		review.CandidateFingerprint,
+		review.EvidenceFingerprint,
+		review.ReviewFingerprint,
+		"受入可能",
+		"表示可能 3 / 一部 5 / 未評価 0",
+	} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("html lacks %q", want)
+		}
+	}
+
+	for _, section := range review.Sections {
+		open := `<section class="card" id="section-` + section.Code + `" data-coverage="` + section.Coverage + `">`
+		start := strings.Index(page, open)
+		if start < 0 {
+			t.Fatalf("section %s lacks its coverage marker", section.Code)
+		}
+		body := page[start : start+strings.Index(page[start:], "</section>")]
+		if !strings.Contains(body, reviewCoverageLabel(section.Coverage)) {
+			t.Fatalf("section %s lacks coverage label %q", section.Code, reviewCoverageLabel(section.Coverage))
+		}
+		if section.Summary != "" && !strings.Contains(body, "要約: "+html.EscapeString(section.Summary)) {
+			t.Fatalf("section %s lacks summary %q", section.Code, section.Summary)
+		}
+		for _, item := range section.Items {
+			if !strings.Contains(body, "<li>"+html.EscapeString(item)+"</li>") {
+				t.Fatalf("section %s lacks item %q", section.Code, item)
+			}
+		}
+		for _, source := range section.Sources {
+			if !strings.Contains(body, "<code>"+html.EscapeString(source)+"</code>") {
+				t.Fatalf("section %s lacks source %q", section.Code, source)
+			}
+		}
+		if section.Note != "" && !strings.Contains(body, "注記: "+html.EscapeString(section.Note)) {
+			t.Fatalf("section %s lacks note %q", section.Code, section.Note)
+		}
+	}
+
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
+func TestReviewHTMLEscapesCandidateAndEvidenceText(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	candidate := escapingReviewCandidate(revisionOfDir(t, dir))
+	candidate.ID = "cand-x<script>alert(3)</script>"
+	candidatePath := writeReviewCandidate(t, mustJSON(t, candidate))
+
+	page := reviewOutput(t, dir, candidatePath, "html")
+	for _, raw := range []string{
+		"<script>alert(1)</script>",
+		"<script>alert(3)</script>",
+		"<script",
+		"</pre><img src=x onerror=alert(1)>",
+		"<img",
+		"</pre>",
+	} {
+		if strings.Contains(page, raw) {
+			t.Fatalf("raw markup %q reached the html page", raw)
+		}
+	}
+	for _, want := range []string{
+		"<dt>candidate</dt><dd>cand-x&lt;script&gt;alert(3)&lt;/script&gt;</dd>",
+		"単価ruleを明示する&lt;script&gt;alert(1)&lt;/script&gt;",
+		"note=&lt;/pre&gt;&lt;img src=x onerror=alert(1)&gt;",
+	} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("html lacks escaped text %q", want)
+		}
+	}
+
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
+func TestReviewHTMLReviewFingerprintMatchesJSONOutput(t *testing.T) {
+	dir := scratchWorkspace(t)
+	candidatePath := writeReviewCandidate(t, mustJSON(t, unitPriceCandidate(revisionOfDir(t, dir))))
+
+	jsonFingerprint := reviewFingerprintViaCLI(t, dir, candidatePath)
+	matches := reviewHTMLFingerprint.FindAllStringSubmatch(reviewOutput(t, dir, candidatePath, "html"), -1)
+	if len(matches) != 1 {
+		t.Fatalf("review fingerprint appears %d times in html, want exactly once", len(matches))
+	}
+	if matches[0][1] != jsonFingerprint {
+		t.Fatalf("html review fingerprint=%s json review fingerprint=%s", matches[0][1], jsonFingerprint)
+	}
+}
+
+func TestReviewHTMLIsSelfContainedWithoutExternalResourcesOrScripts(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	revision := revisionOfDir(t, dir)
+	for _, candidate := range []Candidate{unitPriceCandidate(revision), escapingReviewCandidate(revision)} {
+		page := reviewOutput(t, dir, writeReviewCandidate(t, mustJSON(t, candidate)), "html")
+		lower := strings.ToLower(page)
+		for _, forbidden := range []string{"http://", "https://", "@import", "@font-face", "url(", "javascript:"} {
+			if strings.Contains(lower, forbidden) {
+				t.Fatalf("html contains %q", forbidden)
+			}
+		}
+		if match := reviewHTMLActiveMarkup.FindString(page); match != "" {
+			t.Fatalf("html contains script, link, image or inline event markup %q", match)
+		}
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
+
+func TestReviewHTMLRenderingIsByteIdentical(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	data := mustJSON(t, escapingReviewCandidate(revisionOfDir(t, dir)))
+	candidatePath := writeReviewCandidate(t, data)
+
+	first := reviewOutput(t, dir, candidatePath, "html")
+	second := reviewOutput(t, dir, candidatePath, "html")
+	if first != second {
+		t.Fatal("two html renders of the same candidate differ")
+	}
+
+	var renders []string
+	for i := 0; i < 2; i++ {
+		ev, err := evaluate(dir, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		page, err := renderReviewHTML(buildReviewProjection(ev))
+		if err != nil {
+			t.Fatal(err)
+		}
+		renders = append(renders, page)
+	}
+	if renders[0] != renders[1] {
+		t.Fatal("two library renders of the same projection differ")
+	}
+	if renders[0] != first {
+		t.Fatal("library render and CLI html output differ")
+	}
+
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
 }

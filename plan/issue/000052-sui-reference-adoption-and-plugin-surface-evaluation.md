@@ -258,3 +258,99 @@ TEIの現在のProduct Gateやsupported scopeを、SUI移管のためだけに�
 - どのPluginを先に育てるべきか
 - TEI Coreへ不足があるのか、extension surfaceだけで十分なのか
 - SEI / EKI等の管理面・UI面へ横展開できるか
+
+
+### E3 Reference（2026-10-08）— Composite Native Interactionの小規模実証
+
+PR #996で`tools/reference-sui-interaction/native-edit.mjs`に**Generic Lifecycle**のReferenceを追加し、`native-edit.test.mjs`でSUI実装の既存動作を参照したfixture replayを実行した。Node.js v22.16.0で**11件成功**。使用したソースとGitHub blob SHAの一致も確認した。
+
+検証したのは、各pointermoveのnativeな変換、zoom・grid snap、カード座標と島所属の複合変更、pointercancelによる既存SUI型の履歴確定、複数moveを1 Undoにまとめること、明示rollbackとの区別、Saveをしない限り永続化しないこと、Save時の権限・domain validator・CASの必須境界、SUI外の模擬Consumerへの差し替えである。SUI domainのアルゴリズムは**テスト専用Adapter内**に限り、共通部分はopaque native eventの順序管理とlocal transaction / durable Saveの接続だけとした。
+
+**成立範囲の制限**: これは既存SUIコードの挙動に基づくshadow fixtureであり、本物のReact Canvasのevent handler、SUIの正式なgeometry validator、TEI Driver、SUI実サーバーでのconditional PUTを組み合わせたend-to-end実証ではない。第二Consumerも模擬にとどまる。したがってGeneric InterfaceのProduction採用やISSUE-000052の達成を宣言しない。
+
+**次の確認**: SUIのNative Canvas側から`drag start / incremental move / end-or-cancel`を明示的に観測し、現在の`App.handleCardMove`と`commitCardDragSnapshot`が提供する更新、Undo、Island joinの意味を失わずTEI側Adapterへ渡す。実SUIのSaveを通じてCAS、権限、SafeModeを確認する。それまではSUI側のruntime/domain ownershipを変更しない。
+
+### 実装で顕在化した追加Pressure — GestureとDomain Actionの非同一性
+
+**観測（2026-10-08、SUI実装のソース読取＋TEI Reference E1/E2）**
+
+- SUI `CardView`はpointermoveごとにスクリーン座標の差分を通知し、`CanvasShell`がzoomでworld deltaへ換算する。`App.handleCardMove`はdrag中の**in-memory Document履歴**を随時更新し、設定に応じてgrid snapを適用する。
+- `App`のpointerup **とpointercancelの両方**が現在は一つのundo stepの確定経路へ入り、drop後にCardのIsland所属を更新することがある。単純なCard座標更新だけでは既存のdomain actionを再現できない。
+- 永続化は別の`handleSave`で、`putDocument`へ（存在する場合）ETagを渡す。SUIの`PUT`は`If-Match`欠落時にLWWを許すため、Reference E2では**強いサーバETag必須／無条件PUT禁止**に限定してHTTP境界を検証した。
+- Reference E1は独立Gestureと`position.set`、E2はloopback HTTP上のGET/If-Match PUTであり、実際のSUI React Canvas接続、Domain full validator、TEI Driver/Permission連携、実SUI Backendの条件付き更新の実証は**未了**。
+
+**設計への帰結**
+
+「Gesture preview →座標commit」だけを一般化しても、特殊Applicationの実装が可能になったとは言えない。必要なのは、Native Interactionのイベント粒度と、Applicationが所有する**複合Action（Card座標・島所属・undo単位）**、UI履歴の確定と永続化の確定を結ぶ可変な境界である。TEIはその接続・Authority・Bindingを提供し、SUI固有のIsland geometryやdomain policyをCoreへ引き上げない。
+
+**次の受入試験**: native pointer lifecycle、zoom、grid snap、cancel policy、Islandへのdrop、undo、Save/reloadを一つの実行シナリオとして観察し、現行SUIと比較する。pointercancelの意味を勝手に変更しない。E2のmock HTTP成功をSUI live-Backend準拠と読み替えない。詳細Reference: `tools/reference-sui-interaction/`、PR #994・#995、Issue #993。
+
+## 非業務・非汎用Applicationによる構成力の圧力試験（2026-10-08）
+
+- Native Canvas / Interaction Hostの実装窓口: GitHub Issue #993（本節を設計・Acceptanceの正本とする）
+
+### 判定したい問い
+
+SUIのように専用の空間UI、探索的な状態、利用者による保留・判断、任意の認知処理を持つApplicationを、**TEI CoreにSUI固有概念を追加せず**組み立てられるかを検証する。SUIを移植した割合ではなく、同じ意味変更を行ったときの保守負荷、既存native資産の再利用、Validationの一貫性を成果とする。
+
+このPressureでは次を混同しない。
+
+- TEIのCanonical *definition* と、SUIで利用者が作るCard / Island等の *instance data*
+- TEI sourceのShared Acceptanceと、SUI上で利用者が行うProposal / Hold / Mergeの判断
+- 観察・仮説・保留というSUI domain stateと、一般的な開発作業の検証状態
+- Canvas上の一時的なpointer / selection / preview状態と、確定して保存するDocument state
+- SUIの原Source / DocumentV1のauthorityと、TEIのread-only mapping・derived projection
+- Targetで可能な操作と、Runtime実装の配置・権限・Resource条件
+
+「Canvasが表示できた」「JSONを読み込めた」「Pluginに名前が付いた」だけでは、ApplicationをTEIで実装可能と判定しない。
+
+### Gap inventoryと配置の第一候補
+
+| SUIからのPressure | 現状の境界・未成立点 | 最初に配置する先 | 判定に必要なEvidence |
+| --- | --- | --- | --- |
+| Islandのnullable parent、異種endpoint、任意の関係種別 | Relationのone/manyだけでは0..1をlosslessに表現できない。SUIのEdge instanceをTEI Relation definitionへ変換できない | SUI domain schema + Semantic Extension / Validation Interface | 0..1・参照先存在・cycle・関係の方向を個別に検証。未知種別の往復保持 |
+| アプリケーション固有の意味語彙 | 固定kindだけで新しい意味・規則を表すとCore変更が必要 | RQ-031〜033 / ISSUE-000077 | Extensionの宣言・依存解決・pin・通常Validationへの接続・AI discoveryを一つの経路で実証 |
+| 独自DSL構文・Operator | Operatorだけの追加ではParserや意味変換を拡張できない | #988（DSL Language Provider） | 外部Language Providerの選択・構文解析・意味変換・衝突検出を順序非依存で実証。SUIのためにTEI固定Parserへ追加しない |
+| Canvas / polygonなどの専用UI | 第一Web Targetは業務Pattern中心。任意の既存ReactコンポーネントをApplicationへ結ぶ実証がない | Target Adapter内native UI → 再利用性確認後にInteraction / Projection Extension | native componentからRead / Preview / Commitへの接続を実行。UI実装をCoreへ複製しない |
+| Pointer操作・複合選択・一時preview | 操作中の一時状態と永続変更をどう接続するかが未実証 | UI Host + Application-owned Action | previewはread / write副作用なし、commit時だけValidation / current authority / revision整合を確認 |
+| Document-levelな変更・共有・復元 | SUI DocumentV1をTEI定義へ全面移管すると二重正本化する | native DocumentV1を保持、scope単位で必要ならauthority移行 | Save / Reload / Export / Importで意味が保全。移行する場合のみscope / roundtrip / rollbackを明示 |
+| AIの統合提案と人間の判断 | 開発時Shared AcceptanceとSUIのdomain decisionは別。実行時Capabilityの一体接続が未実証 | SUI domain transaction + TEI Capability / Permission / Provider境界 | AIは候補のみ。reject / holdは原Cardを改変せず、accept後のmutationとObservationを区別 |
+| SafeMode・出力時の秘匿 | 表示、AI入力、export、importで異なる経路を通る | SUI policyを正本とした実行時Policy / native safety gate | 未review本文・秘密情報が既定で意図せず外部へ出ない。認可不足はfail closed |
+| Browser / offline / Plugin packaging | builtin / process中心の実装をBrowserへそのまま移せない | #951のCapability Interface、#957のself-build、RQ-024 / #259 | 論理Extension・Runtime実装・Target artifactを区別し、起動時間・転送量・メモリ・追加依存を計測 |
+
+「未成立」はその能力が原理的に実装不可能という意味ではない。すでにReference candidateがある項目も、productionのApplication end-to-endに接続できたEvidenceがない限り成立済みとしない。
+
+### 最初の縦切り（段階的な構成実証）
+
+SUI固有のCore追加や全面rewriteをしない。既存DocumentV1とCanvasを正本／native資産として保持し、独立したfixture上で次を順に確認する。
+
+1. **A — Semantic / Validation**: 既存M1〜M4を維持し、nullable parent、target existence、cycle、parent-child consistencyを独立判定する。SUI正本validatorと共通Evaluatorの結果の差は、domain constraint、consumer compatibility policy、未実装の三つへ明確に分ける。#932で第二consumerと共有できた非循環検証は、SUI全域の規則の再利用成立へ拡大解釈しない。
+2. **B — Native Interaction Host**: Canvasでカードを選択・移動し、視覚previewと永続commitを分離する。操作イベント全件をTEIへ永続化しない。初回はSUI既存コンポーネントのadapterで実施し、Canvas自体の汎用Plugin化は保留する。
+3. **C — Domain Action / Decision**: グルーピング候補を提示し、利用者のaccept / reject / holdを扱う。SUIのdomain decisionをTEI authoring Decision ledgerへ書き込まない。acceptedな変更だけをSUI domain validatorと現在の実行権限で審査し、Documentへ反映する。
+4. **D — Reload / Export / Cognition off**: 保存したDocumentを再読込して同じ構造・保留・来歴が残ることを検証する。SafeMode既定値でExportとAI入力を点検する。Cognitive Providerが無効でも主要な操作が成立することを確認する。
+5. **E — Change-amplification / second consumer**: 同等のSUI既存変更Challenge A（hierarchy）、B（polygon）、C（merge apply）をSUI-native経路とTEI接続経路で比較する。少なくとも一つの共通部品をSUI以外のApplicationでも再利用し、SUI特有の偶然の一般化を排除する。
+
+各段階で**構成できた／外部native実装で回避した／TEIの共通機構が不足した／判断材料が不足**を区別する。read-only Stage 0のpassはB〜Eのpassを意味しない。
+
+### 検証時に失敗させるべきケース
+
+- parent不在は許すが、存在しないparent参照、階層cycle、parent-child不整合はSUI正本と同じ規則で検出する。
+- Canvas previewの開始・取消し・Pointer中断で、Document revisionや永続stateを変えない。
+- 予期しないDocument更新後の古いpreviewを、現在revisionへ黙ってcommitしない。
+- Componentが別ApplicationのActionや許可されていないResourceへ到達しない。
+- AI候補を返すProviderの変更・不在・errorを、利用者によるacceptや確定済みの意味へ読み替えない。
+- reject / holdや表示上の非表示だけを、原Card削除や意味の確定に読み替えない。
+- SafeModeのUI表示だけを信頼せず、export / share / external AIへのデータ境界でも漏出を防ぐ。
+- 未対応のEdge kind、横断的Affiliation、由来のあるinstance dataを、導入時に黙って破棄しない。
+
+### 成功条件と既存作業の担当
+
+このPressureの**成功条件**は次のとおり。いずれも現時点で完了とは主張しない。
+
+1. SUI domain固有の新規Core kind / 固定CapabilityKindを追加せず、A〜Dの最小シナリオが通常実行経路で成立する。
+2. Semantic Extensionの解決、実行時のPermission、Target Binding、Application Data保存、safe outputをそれぞれ別の所有境界で説明できる。
+3. 専用UIや特殊アルゴリズムがnativeのまま残っても、TEIで再利用する構造・規則・契約の二重管理が増えない。
+4. Challenge A〜Cの少なくとも一つで、変更対象・重複記述・手動同期・再検証の負担がSUI-native baselineより実質的に下がる。
+5. 性能・配布サイズ・オフライン利用・ブラウザ可搬性の悪化を隠さず測定し、限定適用が適切なら限定適用と結論できる。
+
+既存の担当境界を維持する。Meaning / ConstraintはISSUE-000077、DSLのProviderは#988、Generic Capabilityは#951、Target差は#259、AIと開発時Acceptanceは#267等を参照する。本Issueは**非業務Applicationとしてのend-to-end統合と比較**に責任を限定する。重複するCore実装・新Product Requirement・SUI専用標準Pluginを、本記録だけで確定しない。

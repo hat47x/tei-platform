@@ -161,3 +161,22 @@ func TestRejectsUnsupportedFormat(t *testing.T) {
 		t.Fatal("expected unsupported format error")
 	}
 }
+
+func TestForeignNamespaceLookalikeRemainsUnknown(t *testing.T) {
+	source := []byte(`<System xmlns:other="urn:external"><other:TableKey ID="K1"/><TableKey ID="K2"/></System>`)
+	doc, err := Parse(FormatXead, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Root.Children) != 2 || doc.Root.Children[0].Known || !doc.Root.Children[1].Known {
+		t.Fatalf("foreign namespace was conflated with source construct: %#v", doc.Root.Children)
+	}
+	if !reflect.DeepEqual(doc.UnknownNames, []string{"{urn:external}TableKey"}) {
+		t.Fatalf("unknown inventory lost qualified name: %#v", doc.UnknownNames)
+	}
+	for _, entry := range doc.Inventory {
+		if entry.Name == "{urn:external}TableKey" && entry.Known {
+			t.Fatal("foreign namespace incorrectly marked known in inventory")
+		}
+	}
+}
