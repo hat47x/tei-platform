@@ -204,3 +204,39 @@ func TestPracticalRuleChangeKeepsAcceptedMeaningInTwoSourceFiles(t *testing.T) {
 		}
 	}
 }
+
+// A stale review cannot accept only one half of a paired rule/use change.
+func TestPracticalRuleChangeRefusesStaleReviewBeforeWritingEitherSource(t *testing.T) {
+	dir := scratchWorkspace(t)
+	before := treeDigest(t, dir)
+	candidate := unitPriceWithSelectionCandidate(revisionOfDir(t, dir))
+	payload := mustJSON(t, candidate)
+	ev, err := evaluate(dir, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ev.preview.Acceptable {
+		t.Fatalf("test setup is not acceptable: %+v", allDiagnostics(ev.preview))
+	}
+	review := buildReviewProjection(ev)
+	if review.ReviewFingerprint == "" {
+		t.Fatal("missing review fingerprint")
+	}
+	// A syntactically valid but different fingerprint simulates a stale
+	// reviewed projection without changing the semantic candidate.
+	wrongFingerprint := "sha256:" + strings.Repeat("0", 64)
+	if review.ReviewFingerprint == wrongFingerprint {
+		wrongFingerprint = "sha256:" + strings.Repeat("f", 64)
+	}
+	decision, err := accept(dir, payload, acceptOptions{
+		ExpectedReviewFingerprint: wrongFingerprint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.Decision != "refused" || decision.SourceChanged ||
+		len(decision.Refusals) != 1 || decision.Refusals[0].Code != "REVIEW_FINGERPRINT_MISMATCH" {
+		t.Fatalf("stale review was accepted: %+v", decision)
+	}
+	assertTreeUnchanged(t, before, treeDigest(t, dir))
+}
