@@ -79,6 +79,7 @@ main `f27c45f`〜`ff6efce`の確認では、次の直接importが観測できる
 - `internal/database/migration/plan.go`、`render.go`、`postgres_apply.go`は`internal/database/providers/postgres`をimportする。PostgreSQL固有のSQL文法自体はADR-0015に従いProvider側へ移っているが、共通migration packageが具体Providerと結合している事実は残る。
 - `internal/database/realization/realize.go`はPostgreSQL/OracleのPolicyを組み立てる。これはADR-0013で意図して導入したcomposition境界であり、単なる具体Providerへのimportを一律に欠陥と判定しない。
 - `internal/ir/world.go`は複数の業務モデルをまとめる。集約点であることだけを理由に分解しない。
+- `internal/syntax/parser.go`はApplication、Database、Deployment、Plugin、Semantic等の型を直接参照する。また`internal/workspace/loader.go`は現行のsource rootをswitchで読み分ける。これは現時点の実装方式を表すが、DSL自体をPlugin化する際のLanguage Plugin bootstrapと読込み契約はまだ別途実証が必要である。Issue #988 / PR #989の担当範囲とし、本レーンからParserやWorkspace Loaderを改変しない。
 
 現時点でPostgreSQL固有のmigration処理を急いで移動すると、partition観測を必須とする破壊的操作のfail-closed条件を壊すおそれがある。第二Providerの実証で、共通PlanがProvider専用型なしに成り立つ必要が明らかになったときに、render/applyのcomposition責務を分割する。その際は現在のfresh observation・SQL再検査・副作用前停止のテストを維持する。
 
