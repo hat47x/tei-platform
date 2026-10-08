@@ -199,7 +199,8 @@
           "targetIdentity": {
             "kind": "provider-fact",
             "id": "provider.contract"
-          }
+          },
+          "validUntil": "2026-09-30T23:59:59Z"
         }
       ],
       "metadataState": "complete"
