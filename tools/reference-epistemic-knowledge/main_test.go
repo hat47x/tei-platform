@@ -1253,3 +1253,24 @@ func TestResolutionCoverageIsUnknownForPartialTransport(t *testing.T) {
 		t.Fatalf("partial transport produced false project-wide resolution ratio: %+v", projection.Health.ResolutionCoverage)
 	}
 }
+
+
+func TestProjectionStatesResolutionCoverageIsNotTruthRatio(t *testing.T) {
+	corpus, context := loadFixture(t)
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(projection.AuthorityLimits, "resolution-coverage-is-operational-readiness-not-truth-ratio") {
+		t.Fatalf("missing resolution coverage authority boundary: %+v", projection.AuthorityLimits)
+	}
+}
+
+func TestHealthPolicyRejectsInvalidResolutionThreshold(t *testing.T) {
+	corpus, context := loadFixture(t)
+	corpus.HealthPolicy.MinResolvedRatio = 1.1
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "healthPolicy.minResolvedRatio") {
+		t.Fatalf("invalid resolution threshold was accepted: %v", err)
+	}
+}
