@@ -59,7 +59,7 @@ Studio自身を次にはしません。
 
 Studioを削除しても、accepted authoring sourceとCanonical meaningを再読込できることを要求します。
 
-Studioは外部開発環境の変更を必ず仲介する中央Serviceでもありません。file-native edit、通常のGit workflow、ChatGPT等のチャット実行環境、Codex、Claude Code等がStudioを経由せずSourceを変更できることを維持します。Studioを利用する場合も、同じSource / CLI / Acceptance契約を高密度なUIとして投影する立場に留めます。
+Studioを外部開発環境の中央変更仲介Serviceにはしません。Studioを経由しないGit-native / file-native開発の判断はADR-0031を正本とし、本IssueではStudioがその経路を塞がず、同じSource / Canonical解釈へ戻れることだけを確認します。
 
 ## Definition-centered authoring
 
@@ -427,6 +427,7 @@ Persistenceへの影響は、Relationの端点を実現するMappingへのexact 
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/GATE_C_EVIDENCE_CONTRACT.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000027-ai-proposal-acceptance-boundary.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`

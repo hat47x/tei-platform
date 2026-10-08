@@ -110,28 +110,11 @@ RQ-034のGit-nativeな標準開発経路そのものは[ADR-0031](../adr/0031-to
 
 ## 標準的な開発環境との境界
 
-本IssueでいうProposalは、すべてのAI編集を開始する前に必須となるTEI固有objectではありません。
+本IssueのProposalは、すべてのAI編集やfile editへ必須となるTEI固有objectではありません。
 
-ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI等は、独立したRepository clone、branch、worktree、scratch workspaceでSourceを直接編集できます。その環境でTEI CLI、Host-provided Shell / Filesystem / Git MCP、Repository内Tool、通常のToolchainを使い、Build、Driver、Validation、Conformance、Testまで進めて構いません。TEI自身のdeveloper MCP serverは必須ではありません。
+通常のclone / branch / worktreeでSourceを直接編集し、CLIやHost-provided toolingからBuild / Test / Validationを行い、Gitで統合する経路はADR-0031とISSUE-000083が正本です。本Issueは、その経路を再定義せず、Structured Proposal / Preview / Shared Acceptanceを利用する場合の境界だけを実証します。
 
-概念上の標準経路は次です。
-
-```text
-independent development environment
-  -> checkout / worktree
-  -> TEI CLI / Host-provided MCPでcurrent meaningを探索
-  -> Source edit
-  -> Build / Driver / Validation / Test
-  -> Git commit / branch / Pull Request等
-  -> integration
-  -> reload / Canonical validation
-```
-
-TEIが途中の編集操作を逐次仲介することや、Agent Session、Workspace snapshot、Checkpoint、Plan、一般的な検証状態をProduct stateとして保持することは要求しません。
-
-Git差分やfile-native sourceが変更候補を十分に表現できる場合、それらをそのままcandidateとして扱えます。Structured Proposalは、minimum semantic delta、explicit references、Source / Evidence等を機械可読に渡すことで追加価値がある場合に利用します。
-
-また、開発環境自身が持つShell / Filesystem / Git権限と、TEI Application RuntimeのCapability / Resource authorityを混同しません。実Database、外部Service、Secret、Production相当Resource等へ副作用を発生させる場合は、既存のRQ-018〜RQ-020の境界を維持します。
+したがって、本IssueのReference stateやProposal metadataを、TEI全体の標準変更管理stateへ昇格させません。
 
 ## 前提: knowledge-first探索とProposalを分ける
 
@@ -469,25 +452,14 @@ raw tool callをTEIのauthority modelの代わりにはしません。
 
 Observationから変更候補を作る場合も、`Observation -> semantic write`へ直結せず、feedback routing / Proposal / Acceptanceを通します。
 
-### Git-nativeな独立開発環境
+### Git-native開発との接続はISSUE-000083へ委譲する
 
-RQ-034の最初のpressureとして、一つの小さい変更をTEI専用Agent Adapterなしで完結させます。
+通常のclone / branch / worktreeでSourceを直接編集し、CLIやHost-provided toolingでBuild / Test / Validationを行い、Gitで統合する経路はADR-0031 / ISSUE-000083が正本です。
 
-少なくとも次を一続きで確認します。
+本Issueでは、その経路を再実証しません。Structured Proposalを利用する場合に、AI固有のauthorityや第二正本を作らずShared Acceptanceへ接続できることへ集中します。
 
-```text
-clean checkout / task-local worktree
-  -> current Source / Canonical contextをCLIまたはMCPから取得
-  -> file-native sourceを直接編集
-  -> Repository内で必要なBuild / Test / Validationを実行
-  -> 通常のGit成果物として変更を確定
-  -> 別のintegration側から変更後Sourceをreload
-  -> Canonical meaning / Validation / Conformanceを再確認
-```
+Git-native経路とStructured Proposal経路は、authoritative sourceへ統合された後のloader / Validation / Conformanceで収束します。
 
-このReferenceでは、編集主体がHuman、ChatGPT、Codex、Claude Codeのどれであるかを成功条件にはしません。同じRepository contractを利用できることを確認します。
-
-negative conditionは、Agent Adapterが無いことを理由に開発できない状態へしないこと、Agent Session / Workspace / CheckpointをTEI側に作らないこと、一般的なTest PASS / FAILをTEI独自の永続状態へ複製しないこと、Gitで表現できる変更へ独自Change Setを必須にしないこと、MCP経由だけに特別なSemantic authorityを与えないことです。
 
 ## Evidence
 
@@ -675,10 +647,8 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 21. policyごとに別Capability / Permission semantics / Business Outcome / Observation modelを作らない
 22. known operationをdeterministic pathで処理できるcaseとAI-assisted pathを必要とするcaseを区別できる
 23. hybrid routingを比較する場合、routing choice / scoreがSemantic applicability・Acceptance・execution authorityを上書きしない
-24. TEI専用Agent Adapterなしの独立開発環境で、Source探索・編集・Build / Test・Git成果物作成まで完結できる
-25. Git-nativeな変更をStructured Proposalへ事前変換せず、統合後のSourceからCanonical meaningを再構築できる
-26. Agent Session / Workspace / Checkpoint / 一般的な検証状態をTEIのProduct stateへ追加せずReferenceが成立する
-27. CLIとMCPの入口差がCanonical meaningやAcceptance authorityの差にならない
+
+RQ-034のGit-native開発要件は、この完了条件へ重複して持ち込まず、ADR-0031 / ISSUE-000083の完了条件で判定します。
 
 ## 非目標
 
@@ -707,8 +677,10 @@ Gate C後は`ISSUE-000046` / `ISSUE-000047`と同じone-change Referenceへ合�
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/TECH_RESEARCH_INTEGRATION_2026-09.md`
 - `plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md`
+- `plan/adr/0031-tool-neutral-git-native-development.md`
 - `plan/issue/000008-editor-and-ai-followup-note.md`
 - `plan/issue/000046-studio-shared-acceptance-authoring-loop.md`
 - `plan/issue/000047-knowledge-first-semantic-exploration.md`
+- `plan/issue/000083-tool-neutral-development-reference.md`
 - `requirements/TEI_PRODUCT_REQUIREMENTS.md`
 - `docs/architecture.md`

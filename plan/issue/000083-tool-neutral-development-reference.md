@@ -136,15 +136,15 @@ task側では`semantic/sales/validation.tei`へ`sales.order_line.unit_price_posi
 
 build結果はRepository外の一時directoryへ置きます。関連するknowledge-context testもtask cloneとintegration cloneの双方で実行します。file edit後のGit diffが対象1 file以外へ広がる場合、またbuild / test / CLI利用によってRepository内へuntracked artifactが生じる場合は失敗します。
 
-変更は通常のGit commitへ確定し、そのtask repositoryをさらに別directoryへlocal cloneします。integration側でも`cmd/tei`をbuildし、targeted test、`tei validate`、`knowledge-context`、`tei world`を再実行します。task側とintegration側のCanonical Worldがbyte単位で一致し、read-only操作後もintegration cloneがcleanであることを要求します。
+変更は通常のGit commitへ確定します。integration側はtask repositoryを複製せず、元のsource checkoutから別directoryへlocal cloneし、task result commitを通常Gitのfetch / `--ff-only` mergeで統合します。integration cloneがtaskと同じbase revisionから開始し、統合後HEADがtask result revisionと一致することを検査したうえで、`cmd/tei`をbuildし、targeted test、`tei validate`、`knowledge-context`、`tei world`を再実行します。task側とintegration側のValidation出力とCanonical Worldがそれぞれbyte単位で一致し、read-only操作後もintegration cloneがcleanであることを要求します。
 
 ### Decision ledger非依存のpressure
 
-current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Tool固有stateなしでもCanonical meaningを再構築できる」という主張が弱い状態でした。
+current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Decision ledgerのようなCanonical meaningの第二正本ではないauthoring stateへ依存しない」という主張を実証できていませんでした。
 
-現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceとCanonical Worldがbyte単位で一致することを要求します。
+現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceに対して、Validation出力とCanonical Worldのそれぞれがbyte単位で一致することを要求します。
 
-`.tei/plugin-lock.json`は削除しません。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
+`.tei/plugin-lock.json`は削除しません。runnerは元WorkspaceにPlugin Lockが存在することを要求し、Decision ledgerを削除した一時Workspaceでもそのfileがbyte単位で同一であることを検査します。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
 
 このcandidateはStructured Proposal、Shared Acceptance candidate schema、TEI独自Change Set、Agent Session / Agent Workspace / Checkpointを使用しません。Shared Acceptanceを否定するものではなく、Proposalを使わないfile-native / Git経路も第一級であることをpressureします。
 
@@ -164,7 +164,8 @@ full local clone
   -> Decision ledger removal equivalence
   -> direct file edit
   -> ordinary commit
-  -> separate integration clone
+  -> independent base integration clone
+  -> task commit fetch / fast-forward integration
   -> rebuild / retest / reload
   -> two branch Git merge
   -> semantic conflict rejection
@@ -174,17 +175,40 @@ full local clone
 runner出力:
 
 ```text
+integration=<same revision as result>
 changed=reference/workspace/semantic/sales/validation.tei
+validation-ledger-independent=true
 decision-ledger-independent=true
+plugin-lock-retained=true
 semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT
 tool-neutral development reference: PASS
 ```
 
+最新のstate境界改善後は、GitHub上のrunner blob SHA `0acf8651a21433b431b13716df379e0c64d9ce63`とsynthetic fixture側のGit blob SHAが完全一致することを確認したうえで再実行しました。task clone / integration clone / conflict cloneがsource HEADから始まること、integration cloneが元baseからtask result commitを通常Gitでfetch / fast-forwardして同じrevisionへ到達すること、Validation出力とCanonical Worldの再現、Decision ledger非依存、Plugin Lock保持、Semantic conflict拒否を含め、runnerは最後までPASSしました。
+
 これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
+
+### qualification wrapperの合成検証
+
+`qualify.sh`は、actual TEI checkoutとは切り離した最小Git repositoryでも制御フローを実行確認しました。
+
+合成repositoryには、clean stateを確認してPASSする最小`repository-health-check.sh`と`run.sh`を置き、local bare originへ`main`をpushして`origin/main`を作りました。
+
+確認結果:
+
+- exact `--expected-head` / `--expected-main`が一致し、expected mainをcandidateが含む正常系はPASSした
+- 出力にcandidate head、origin/main、`candidate-contains-expected-main=true`、repository-health PASS、Reference PASSが含まれる
+- 誤った`--expected-head`はexit 1でfail closedした
+- dirty pre-stateもexit 1でfail closedした
+- `origin/main == --expected-main`でも、そのmainがcandidate HEADのancestorでないsibling historyはexit 1でfail closedした
+- current `qualify.sh`は`bash -n`を通過した
+
+これはqualification wrapperの制御ロジックに対するsynthetic Evidenceです。actual TEIのRepository health、CLI、Canonical meaning、Semantic Validationが成立したことは示しません。
 
 ### 現在の検証状態
 
 - full local clone方式へ書き直したrunnerは`bash -n`で構文確認済み。
+- `qualify.sh`のcurrent contentも`bash -n`で構文確認済み。
 - E2で期待する`DUPLICATE_SEMANTIC_ELEMENT`がcurrent Validation実装に存在することはsourceから確認済み。
 - current execution environmentにはTEI Repositoryのlocal checkoutが無く、GitHubからcloneしようとすると`github.com`のDNS解決に失敗する。
 - したがって、actual `go build` / `go test` / CLI round trip / Git integration / Repository healthのPASSはまだ主張しない。
@@ -250,7 +274,7 @@ merged workspace
 
 このcaseの目的はTEI独自merge engineを作ることではありません。Gitが所有するtext / history integrationを尊重したまま、その後のSemantic boundaryで意味上の不整合を止められることを確認します。
 
-E2追加後のrunnerも`bash -n`でBash syntaxを再確認しました。また、current `internal/validation.Validate`が同一Canonical IDを`DUPLICATE_SEMANTIC_ELEMENT`として拒否することをsourceから確認しています。actual TEI実行は、前節と同じくcurrent execution environmentのGitHub DNS制約により未確認です。
+E2のstatic auditでは、current `loadSemantics`が複数fileの同一namespaceを一つのSemantic Namespaceへ統合し、Data定義をappendしてからValidationへ渡すことを確認しました。そのため、別fileに同じ`sales.tool_neutral_collision`を置くcaseはloader段階のnamespace errorではなく、`internal/validation.Validate`の`DUPLICATE_SEMANTIC_ELEMENT`まで到達する設計です。actual TEI実行は、current execution environmentのGitHub DNS制約により未確認です。
 
 ## E3 — MCP利用とCLI parity
 
@@ -366,6 +390,27 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 
 これらに独立したProduct上の必要性が後から見つかった場合は、その必要性自体を別に評価します。
 
+## Merge qualificationとの関係
+
+本IssueのExecutable ReferenceがPASSしても、それだけでcode-changing PRをmainへ統合してよいとは判断しません。
+
+Repository全体のGateは`AGENTS.md` / `CONTRIBUTING.md`を正本とし、exact candidate headに対するfull `tools/repository-health-check.sh` PASSとclean pre/post stateを別に要求します。
+
+`tools/reference-tool-neutral-development/qualify.sh`は、そのfull health Gateと本Referenceを同じclean checkoutで順番に実行し、途中でHEADやworking treeが変わったらfail closedする補助です。
+
+```text
+candidate exact head
+  -> full Repository health
+  -> still same clean head
+  -> RQ-034 executable reference
+  -> still same clean head
+  -> qualification output
+```
+
+これはTEIへ新しい`verified`状態を追加する仕組みではありません。Gate実行時の一時的なEvidenceを取り違えにくくするためのRepository Toolです。
+
+`--expected-main`が固定するのは、preflightで取得済みのlocal `origin/main`です。wrapperはそのSHA一致だけでなく、expected mainがcandidate HEADのancestorであることも確認します。remote GitHub上の`main`をlockするものではないため、qualification PASS後もmerge直前にremote stateを再取得し、mainがexpected SHAから動いていれば、そのreceiptをstaleとしてcandidateへ最新mainを統合したうえで再qualificationします。
+
 ## Evidence
 
 最初のReferenceでは少なくとも次を残します。
@@ -381,7 +426,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - clean post-state
 - integration context
 - integration後のreload / Validation result
-- Tool固有stateなしで再構築できたこと
+- 削除対象とした非正本state（最初のReferenceではDecision ledger）に依存せず再構築できたこと
 - Semantic conflict negative case
 - 使用した開発環境の制約。ただしCanonical identityには含めない
 
@@ -396,7 +441,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - [ ] Structured Proposal / TEI独自Change Setを必須にしない
 - [ ] 別contextから変更後SourceをreloadしCanonical meaningを再構築できる
 - [ ] Agent Session / Workspace / Checkpoint / Plan / 一般的な検証状態をTEI Product stateへ追加しない
-- [ ] Tool固有stateを除去してもauthoritative sourceとCanonical meaningが変わらない
+- [ ] Decision ledger等、明示的に非正本と分類したstateを除去してもauthoritative sourceとCanonical meaningが変わらない
 - [ ] Git上はmerge可能だがSemantic上は不整合となるnegative caseを少なくとも一つ再現できる
 - [ ] CLI-only pathがdeveloper MCPなしでも成立する
 - [ ] MCPを追加する場合、CLIと同じapplication service / semantic contractを利用できる
@@ -404,6 +449,7 @@ RQ-034のためだけに次をTEIのProduct stateへ追加しません。
 - [ ] 開発環境のShell / Filesystem / Git authorityとApplication Runtime authorityを混同しない
 - [ ] Referenceで見つかった不足を通常CLI / application serviceのGapとして説明できる
 - [ ] Agent専用subsystemを追加しなくても一往復が成立する
+- [ ] exact candidate headがcurrent mainを含む状態で、full `tools/repository-health-check.sh`と本Referenceをclean pre/post state付きでPASSできる
 
 ## 非目標
 
