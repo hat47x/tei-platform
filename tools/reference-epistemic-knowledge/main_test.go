@@ -1315,3 +1315,81 @@ func TestResolutionCoverageKeepsConditionalConfirmationUnresolved(t *testing.T) 
 		t.Fatalf("conditional confirmation did not remain actionable: %+v", projection.ReviewRequests)
 	}
 }
+
+
+func TestBoundCheckedAtCanSatisfyConsumerFreshness(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.AsOf = "2026-10-06T14:00:00Z"
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		corpus.Assertions[i].CheckedAt = "2026-10-06T13:30:00Z"
+		corpus.Assertions[i].CheckedSubjectFingerprint = freshnessSubjectFingerprint(corpus.Assertions[i])
+	}
+	corpus.Dependencies = []Dependency{{
+		AssertionID:  "user-current",
+		Consumer:     "fresh-user-premise",
+		Criticality:  CriticalityHigh,
+		MaxAgeSeconds: 3600,
+	}}
+	corpus.CoverageAreas = nil
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.Health.Issues) != 0 {
+		t.Fatalf("bound recent checkedAt did not satisfy freshness: %+v", projection.Health.Issues)
+	}
+}
+
+func TestConsumerFreshnessIgnoresStaleCheckedAtBinding(t *testing.T) {
+	corpus, context := loadFixture(t)
+	context.AsOf = "2026-10-06T14:00:00Z"
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID != "user-current" {
+			continue
+		}
+		assertion := &corpus.Assertions[i]
+		assertion.CheckedAt = "2026-10-06T13:30:00Z"
+		assertion.CheckedSubjectFingerprint = freshnessSubjectFingerprint(*assertion)
+		assertion.Context[0].Provenance = ScopeInferred
+	}
+	corpus.Dependencies = []Dependency{{
+		AssertionID:  "user-current",
+		Consumer:     "fresh-user-premise",
+		Criticality:  CriticalityHigh,
+		MaxAgeSeconds: 3600,
+	}}
+	corpus.CoverageAreas = nil
+
+	projection, err := evaluateCorpus(corpus, context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.Health.Issues) != 1 {
+		t.Fatalf("stale checkedAt binding unexpectedly satisfied freshness: %+v", projection.Health)
+	}
+	issue := projection.Health.Issues[0]
+	if issue.ConsumerFreshness != "unknown" ||
+		issue.UseState != "review-required" ||
+		!containsString(issue.Reasons, "CHECK_BINDING_STALE") ||
+		!containsString(issue.Reasons, "CONSUMER_FRESHNESS_UNKNOWN") {
+		t.Fatalf("stale checkedAt receipt was trusted: %+v", issue)
+	}
+}
+
+func TestCheckedAtRequiresSubjectBindingReceipt(t *testing.T) {
+	corpus, context := loadFixture(t)
+	for i := range corpus.Assertions {
+		if corpus.Assertions[i].ID == "user-current" {
+			corpus.Assertions[i].CheckedAt = "2026-10-06T13:30:00Z"
+			corpus.Assertions[i].CheckedSubjectFingerprint = ""
+		}
+	}
+	if _, err := evaluateCorpus(corpus, context); err == nil ||
+		!strings.Contains(err.Error(), "checkedAt requires exact checkedSubjectFingerprint") {
+		t.Fatalf("unbound checkedAt was accepted: %v", err)
+	}
+}
