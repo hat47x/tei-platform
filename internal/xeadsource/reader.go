@@ -53,10 +53,14 @@ var known = map[Format]map[string]struct{}{
 		"FunctionType", "Function", "FunctionUsedByThis", "IOTable", "IOPanel", "IOSpool",
 		"Role", "Task", "TaskAction", "TaskFunctionIO", "SubjectArea",
 		"DataflowNode", "DataflowLine", "Instance",
+		"TableType", "SubsystemTable", "SubsystemRelationship",
+		"IOPanelField", "IOPanelStyle", "IOSpoolStyle", "MaintenanceLog",
 	),
 	FormatXeaf: set(
 		"System", "Subsystem", "Table", "Function", "Script",
 		"Field", "Column", "Button", "Filter", "Refer", "Detail", "Key", "Menu",
+		"HeaderPhrase", "Phrase", "Option", "PrintFont", "BatchField",
+		"AddRowListColumn", "AddRowListButton", "MaintenanceLog",
 	),
 }
 
