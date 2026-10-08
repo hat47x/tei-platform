@@ -329,3 +329,29 @@ RMP-052 / RML-027として、raw observationとmapping authorityを分離する�
 `transcription-contract-v0.json`はschema v2としてXead / Xeaf `System` / `1.2`を宣言する。このversion集合はCore enumではなくSource Adapter / Plugin contract責務である。
 
 RMP-053 / RML-028として、contract更新前に作った`transcription-map-v0.json`とR0 coverageは旧blobへ固定した履歴Evidenceとして扱う。mapping件数が同一でもcurrent contractへ付け替えず、source profile Gateを含むactual再実行後にだけcurrent coverageを更新する。
+
+
+### RMT-3 bounded Acceptance Evidence
+
+RMT-2のSource Adapterがsource全体を観測できても、その結果をCanonicalへ直接writeしない。RMT-3では、一つのsource nodeを一つのsemantic candidateの根拠としてShared Acceptanceへ渡す境界を追加する。
+
+共有contractは`tools/internal/rmtevidence`の`tei.reference.rmt-transcription-candidate-evidence/v0`とする。これはPlatform全体のProposal schemaではなく、external source observationをtyped artifact Evidenceとして運ぶReference contractである。
+
+Evidenceは次を固定する。
+
+- source format / FormatVersion
+- exact source artifact digest
+- source nodeのname-independent token
+- mapping contract fingerprint
+- known standard constructかどうか
+- mapped / unmapped
+- candidate classification /担当Extension
+- authority limit
+
+source value、text、legacy ID値、exact structural locator、arbitrary unknown schema名は含めない。unknown / namespaced constructはsource名をredactし、unmappedのまま保持する。
+
+Evidence fingerprintはcontent identityであり、Source Adapter Conformance、publisher trust、human Acceptance witness、Runtime Authorityではない。external sourceのcurrent性を要求する処理ではSource Adapterが同じnode ordinalからEvidenceを再構成し、source bytesとmapping contractのdriftを検出する。
+
+Shared Acceptance側ではGitHub #267のtyped `EvidenceArtifact`へRMT kindを追加する。generic arbitrary JSON artifactを許可せず、`tools/internal/rmtevidence`のdecoder / canonical bytesを共用する。RMT Evidenceの添付だけでCandidateを自動生成・Acceptしない。
+
+GitHub #1008がこのwork unitを所有する。RMT側のtyped Evidence生成とreplayを本レーンで進め、Shared Acceptanceへのattach / review表示 / Decision provenanceは#267へ引き渡す。
