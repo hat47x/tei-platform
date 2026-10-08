@@ -142,7 +142,7 @@ build結果はRepository外の一時directoryへ置きます。関連するknowl
 
 current Reference Workspaceには`.tei/decisions`が存在します。初期runnerはこれをそのまま複製していたため、「Tool固有stateなしでもCanonical meaningを再構築できる」という主張が弱い状態でした。
 
-現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceとCanonical Worldがbyte単位で一致することを要求します。
+現在のrunnerではtask cloneから別の一時Workspaceを作り、そこだけ`.tei/decisions`を削除します。その状態で`validate`と`world`を再実行し、Decision ledgerありのWorkspaceに対して、Validation出力とCanonical Worldのそれぞれがbyte単位で一致することを要求します。
 
 `.tei/plugin-lock.json`は削除しません。Plugin resolutionを固定するlockと、Canonical meaningの第二正本ではないDecision ledgerを同じstateとして扱わないためです。
 
@@ -175,10 +175,13 @@ runner出力:
 
 ```text
 changed=reference/workspace/semantic/sales/validation.tei
+validation-ledger-independent=true
 decision-ledger-independent=true
 semantic-conflict=DUPLICATE_SEMANTIC_ELEMENT
 tool-neutral development reference: PASS
 ```
+
+GitHub上のrunner blob SHA `1442c377d2dfdc1b6e8f12dd9d2fbef6eb9c8655`と、synthetic fixtureへ配置したscriptのGit blob SHAが完全一致することを確認したうえで再実行しました。追加したValidation出力のDecision ledger非依存検査を含め、runnerは最後までPASSしました。
 
 これは**runner orchestrationの検証**であってTEI Product Evidenceではありません。合成CLIがactual TEI semanticsを実装しているわけではないため、RQ-034のEvidence tierは上げません。
 
