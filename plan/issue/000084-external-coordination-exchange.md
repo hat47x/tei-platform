@@ -45,11 +45,11 @@ Coordination BackendへWorkやResultが保存されても、Canonical Acceptance
 
 ## E0: 最小交換契約
 
-最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work identityやactor referenceはCoordination上の参照であり、Canonical identityやAcceptance authorityではありません。
+最初のReferenceでは、WorkとResultをBackend非依存の小さいenvelopeとして扱います。Work / Resultの参照はBackend種別と局所IDの組に固定せず、**Adapterが一意に解決できるbackend-instance-scoped opaque locator**として扱います。複数Repository、tenant、workspace、projectを同時利用しても衝突しないscopeをAdapter側で持たせます。TEI Coreがlocatorをparseしてprovider固有意味を理解する必要はありません。
 
-Resultには、対象Work、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
+Workのoriginやactor referenceもCoordination上のprovenance / descriptive metadataであり、本人性、Canonical identity、Acceptance authorityではありません。Resultには、対象Work locator、任意のresult locator、producer、観測したbase revision、summary、Artifact参照等を持たせます。model名、token budget、quota、credential、Agent Session、Checkpointは最小交換契約へ含めません。Canonical AcceptanceやRuntime Authorityも交換文書のfieldとして表現せず、既存の別契約へ戻します。
 
-大型Artifactは本文へ埋めず、URI、digest、media type等の参照で扱えるようにします。Backend stateは共通contractへ先に正規化しません。Git textの`ready / completed`はE1 Adapter内の状態であり、GitHub Issues等のnative stateとは別に扱います。
+大型Artifactは本文へ埋めず、backend instanceを含めて解決可能なlocator、optional digest、media type等の参照で扱えるようにします。digestはcontent integrityの補助であり、Canonical identityやAcceptanceの証明ではありません。Backend stateは共通contractへ先に正規化しません。Git textの`ready / completed`はE1 Adapter内の状態であり、GitHub Issues等のnative stateとは別に扱います。
 
 ## E1: Git text profile
 
@@ -80,19 +80,19 @@ GitHub Issue #977自体を、Git textとは性質の異なる最初のTask Track
 Reference上は次のように分けます。
 
 ```text
-workRef      = github-issues:hat47x/tei-platform#977
+workRef      = github-issue://hat47x/tei-platform/977
 origin.kind  = human
 createdVia   = agent-connector
 backendActor = connected GitHub account
 
-resultRef    = pull-request:#978
+resultRef    = github-pr://hat47x/tei-platform/978
 resultKind   = reference.evidence
 
-canonicalAccepted = false
-runtimeAuthorized = false
+Canonical Acceptance / Runtime Authority
+  = exchange documentには表現しない
 ```
 
-このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
+このpressureから、`origin`と`createdVia`を同じfieldへ畳まないことをE2の要件候補とします。また、`workRef` / `resultRef`はGitHubという種別名とnumberの組ではなく、Repository instanceまで含めてAdapterが一意に解決できるlocatorとして扱います。例示URIはwire formatの固定ではありません。Backendのnative authorは監査上の事実として保持できますが、Human-origin、Agent-origin、Acceptance authorityのいずれもauthorだけから推定しません。
 
 #978がDraftであることもCoordination上の進捗であり、それ自体をCanonical Acceptanceにはしません。GitHub Issuesを標準Backendへ昇格させる判断も、このconsumerだけでは行いません。
 
